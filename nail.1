@@ -1873,33 +1873,32 @@ message text.
 .Ss "On URL syntax and credential lookup"
 .
 \*(IN For accessing protocol-specific resources usage of Uniform
-Resource Locators (URL, RFC 1738) has become omnipresent.
-\*(UA expects and understands URLs in the following form;
-parts in brackets
-.Ql []
-denote optional parts, optional either because there also exist other
-ways to define the information in question or because support of the
-part is protocol-specific, e.g.,
+Resource Locators (URL, RFC 3986) has become omnipresent.
+\*(UA expects and understands URLs in a
+.Dq normalized
+variant which is not used in data exchange, but only meant as a compact,
+easy-to-use way of defining and representing information in a well-known
+notation; as such they do not conform to any real standard.
+Optional parts are placed in brackets
+.Ql [] ,
+optional either because there also exist other ways to define the
+information in question, or because the part is protocol-specific, e.g.,
 .Ql /path
-is used by the \*(OPal Maildir directory and the IMAP protocol, but not
-by POP3; If any of
+is used by the \*(OPal Maildir
+.Ic file
+type and the IMAP protocol, but not
+by POP3.
+If as part of the URL any of
 .Ql USER
 and
 .Ql PASSWORD
-are specified they must be given in URL percent encoded form (RFC 3986;
+is specified, then the URL percent encoded form must be used (RFC 3986;
 the command
 .Ic urlcodec
-may be helpful):
+can be used to perform the encoding):
 .
 .Pp
 .Dl PROTOCOL://[USER[:PASSWORD]@]server[:port][/path]
-.
-.Pp
-Note that these \*(UA URLs most often do not conform to any real
-standard, but instead represent a normalized variant of RFC 1738 \(en
-they are not used in data exchange but only meant as a compact,
-easy-to-use way of defining and representing information in
-a well-known notation.
 .
 .Pp
 Many internal variables of \*(UA exist in multiple versions, called
@@ -7443,17 +7442,6 @@ Same as
 .It Ic urlcodec
 Perform URL percent codec operations on the raw-data argument, rather
 according to RFC 3986.
-Supports
-.Cm vput
-(see
-.Sx "Command modifiers" ) ,
-and manages the error number
-.Va \&! .
-This is a character set agnostic and thus locale dependent operation,
-and it may decode bytes which are invalid in the current
-.Va ttycharset .
-\*(ID This command does not know about URLs beside that.
-.Pp
 The first argument specifies the operation:
 .Ar e[ncode]
 or
@@ -7471,12 +7459,27 @@ nor dot
 .Ql .
 as an initial character.
 The remains of the line form the URL data which is to be converted.
+This is a character set agnostic operation,
+and it may thus decode bytes which are invalid in the current
+.Va ttycharset .
+.Pp
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) ,
+and manages the error number
+.Va \&! .
 If the coding operation fails the error number
 .Va \&!
 is set to
 .Va ^ERR Ns -CANCELED ,
 and the unmodified input is used as the result; the error number may
 change again due to output or result storage errors.
+\*(ID This command does not know about URLs beside what is documented.
+.Pf ( Ic vexpr
+offers a
+.Cm makeprint
+subcommand, shall the URL be displayed.)
 .
 .Mx
 .It Ic varshow
@@ -7712,7 +7715,7 @@ etc. is replaced with the according match group of the regular expression:
 ? vput vexpr res regex?case bananarama \e
     (.*)NanA(.*) '\e${1}uauf\e$2'
 ? echo $?/$!/$^ERRNAME:$res:
-0/0/NONE:baauf:
+0/0/NONE:bauauframa:
 .Ed
 .El
 .
@@ -10248,7 +10251,7 @@ If so, copying the entire mailbox to some other file, as in
 will perform proper, all-compatible
 .Ql From_
 quoting for all detected messages, resulting in a valid MBOX mailbox.
-(\*(ID The better and non-destructive approach is to reencode invalid
+(\*(ID The better and non-destructive approach is to re-encode invalid
 messages, as if it would be created anew, instead of mangling the
 .Ql From_
 lines; this requires the structural code changes of the v15 rewrite.)
@@ -10434,7 +10437,7 @@ unchanged, but may cause problems when transferring mail messages over
 channels that are not ESMTP (RFC 1869) compliant.
 Also, several input data constructs are not allowed by the
 specifications and may cause a different transfer-encoding to be used.
-By established rules and popular demand occurrances of
+By established rules and popular demand occurrences of
 .Ql ^From_
 (see
 .Va mbox-rfc4155 )
@@ -12008,8 +12011,8 @@ as well as the widely available
 .Ql SHA256 ,
 .Ql SHA224 ,
 and the proposed insecure
-.Ql SHA1
-and
+.Ql SHA1 ,
+finally
 .Ql MD5 .
 More digests may \*(OPally be available through dynamic loading via,
 e.g., the OpenSSL function
@@ -12801,12 +12804,6 @@ Fallback support via
 .Xr SSL_CTX_use_certificate_chain_file 3 .
 .Sx "Filename transformations"
 are performed.
-.\" v15compat: remove the next sentence
-.Sy Note:
-if you use this you need to specify the private key via
-.Cd PrivateKey ,
-.Va tls-key
-will not be used!
 Some services support so-called
 .Ql external
 authentication if a TLS client certificate was successfully presented
@@ -12877,12 +12874,6 @@ If unset, the name of the certificate file is used.
 are performed.
 Fallback via
 .Xr SSL_CTX_use_PrivateKey_file 3 .
-.\" v15compat: remove the next sentence
-.Sy Note:
-if you use this you need to specify the certificate (chain) via
-.Cd Certificate ,
-.Va tls-cert
-will not be used!
 .
 .It Cd Protocol
 The used TLS protocol.
@@ -13082,11 +13073,11 @@ For a safe-by-default policy the process file mode creation mask
 .Xr umask 2
 will be set to
 .Ql 0077
-on program startup by default.
-Child processes inherit the file mode creation mask of their parent, and
-by setting this variable to an empty value no change will be applied,
-and the inherited value will be used.
-Otherwise the given value will be made the new file mode creation mask.
+on program startup after the resource files have been loaded,
+and unless this variable is set.
+By assigning this an empty value the active setting will not be changed,
+otherwise the given value will be made the new file mode creation mask.
+Child processes inherit the file mode creation mask of their parent.
 .
 .Mx Va user
 .It Va user-HOST , user
@@ -13256,7 +13247,7 @@ does not exist, is not accessible or cannot be read;
 it will always be used for the root user.
 (No test for being writable is performed to allow usage by
 non-privileged users within read-only jails, but dependent on the
-variable settings this directory is a default write target, e.g. for
+variable settings this directory is a default write target, e.g., for
 .Ev DEAD ,
 .Ev MBOX
 and more.)
@@ -14483,7 +14474,7 @@ It is used to decrypt messages that were previously encrypted with the
 public key, and to sign messages.
 .
 .Pp
-For personal use it is recommended that get a S/MIME certificate from
+For personal use it is recommended to get a S/MIME certificate from
 one of the major CAs on the Internet.
 Many CAs offer such certificates for free.
 Usually offered is a combined certificate and private key in PKCS#12
@@ -15202,7 +15193,7 @@ The earliest well documented electronic mail system was part of the
 Compatible Time Sharing System (CTSS) at MIT, its MAIL command had been
 proposed in a staff planning memo at the end of 1964 and was implemented
 in mid-1965 when Tom Van Vleck and Noel Morris wrote the necessary code.
-Similar communications programs were built for other timesharing systems.
+Similar communication programs were built for other timesharing systems.
 One of the most ambitious and influential was Murray Turoff's EMISARI.
 Created in 1971 for the United States Office of Emergency Preparedness,
 EMISARI combined private electronic messages with a chat system, public
@@ -15293,20 +15284,23 @@ that is capable of message queuing.
 .
 .Sh BUGS
 .
+When a network-based mailbox is open, directly changing to another
+network-based mailbox of a different protocol (i.e., from POP3 to IMAP
+or vice versa) will cause a
+.Dq deadlock .
+.
+.Pp
 After deleting some message of a POP3 mailbox the header summary falsely
 claims that there are no messages to display, one needs to perform
 a scroll or dot movement to restore proper state.
 .
+.Pp
 In
 .Ql thread Ns
 ed
 .Ic sort
 mode a power user may encounter crashes very occasionally (this is may
 and very).
-.
-The file
-.Pa TODO
-in the source repository lists future directions.
 .
 .Pp
 Please report bugs to the
