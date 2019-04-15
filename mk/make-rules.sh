@@ -48,20 +48,17 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
    }
 
    function parse_one(no){
-      # The source file
-      po_i = "basename " farr[no]
-      po_j = po_i | getline bname
-      close(po_i)
-      if(po_j == -1)
-         exit(1)
+      # The source file (basename)
+      bname = farr[no]
+      for(po_i = bname;; bname = po_i)
+         if(!sub(".+/", "", po_i))
+            break
 
       # On first invocation, create our dirname prefixes
       if(no == 1){
-         po_i = "dirname " farr[no]
-         po_j = po_i | getline dname
-         close(po_i)
-         if(po_j == -1)
-            exit(1)
+         dname = farr[no]
+         if(index(dname, "/"))
+            sub("/[^/]*$", "", dname)
 
          DNAME = dname
          dname = tolower(dname)
