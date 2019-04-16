@@ -123,7 +123,7 @@ main(int argc, char **argv){
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
       fprintf(stderr,
-         "This is a helper program of " VAL_UAGENT " (in " VAL_BINDIR ").\n"
+         "This is a helper program of " VAL_BINDIR "/" VAL_UAGENT ".\n"
          "  It is capable of gaining more privileges than " VAL_UAGENT "\n"
          "  and will be used to create lock files.\n"
          "  The sole purpose is outsourcing of high privileges into\n"
