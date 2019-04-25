@@ -14930,17 +14930,28 @@ brought order to communications with a grab-bag of external networks
 .
 .Pp
 .Bx
-Mail was written in 1978 by Kurt Shoens and developed as part of the
+Mail, in large parts compatible with
+.Ux
+mail, was written in 1978 by Kurt Shoens and developed as part of the
 .Bx
 .Ux
 distribution until 1995.
-Mail has then seen further development in open source
+The common
+.Ux
+and
 .Bx
-variants, noticeably by Christos Zoulas in
+denominator became standardized as
+.Xr mailx 1
+in the X/Open Portability Guide Issue 2 (January 1987).
+After the rise of Open Source
+.Bx
+variants
+Mail saw continuous development in the individual code forks,
+noticeably by Christos Zoulas in
 .Pf Net Bx .
 Based upon this Nail, later Heirloom Mailx, was developed by Gunnar
 Ritter in the years 2000 until 2008.
-Since 2012 S-nail is maintained by Steffen (Daode) Nurpmeso.
+Since 2012 S-nail is maintained by Steffen Nurpmeso.
 This man page is derived from
 .Dq The Mail Reference Manual
 that was originally written by Kurt Shoens.
@@ -15030,6 +15041,6 @@ Bug subject
 .
 .Pp
 Information on the web at
-.Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ' -Xx .
+.Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ; x' .
 .
 .\" s-ts-mode
