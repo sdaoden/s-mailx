@@ -420,6 +420,47 @@ _cc_default() {
    fi
 }
 
+cc_create_testfile() {
+   ${cat} > ${tmp}.c <<-\!
+		#include <stdio.h>
+		#include <string.h>
+		static void doit(char const *s);
+		int
+		main(int argc, char **argv){
+		   (void)argc;
+		   (void)argv;
+		   doit("Hello world");
+		   return 0;
+		}
+		static void
+		doit(char const *s){
+		   char buf[12];
+		   memcpy(buf, s, strlen(s) +1);
+		   puts(s);
+		}
+!
+}
+
+cc_hello() {
+   [ -n "${cc_check_silent}" ] || msg_nonl ' . CC compiles "Hello world" .. '
+   if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS}; then
+      [ -n "${cc_check_silent}" ] || msg 'yes'
+      feat_yes CROSS_BUILD && return 0
+      [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
+      if ( [ "`\"${tmp2}\"`" = 'Hello world' ] ) >/dev/null 2>&1; then
+         [ -n "${cc_check_silent}" ] || msg 'yes'
+         return 0
+      fi
+   fi
+   [ -n "${cc_check_silent}" ] || msg 'no'
+   msg 'ERROR: i cannot compile or run a "Hello world" via'
+   msg '   %s' \
+  "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
+   msg 'ERROR:   Please read INSTALL, rerun'
+   config_exit 1
+}
+
 cc_flags() {
    if feat_yes AUTOCC; then
       if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
@@ -1014,7 +1055,7 @@ path_check() {
       else
          y=" :${i}:"
          j="${i}"
-         # But do not link any fakeroot path into our binaries!
+         # But do not link any fakeroot injected path into our binaries!
          if [ -n "${addflag}" ]; then
             case "${i}" in *fakeroot*) continue;; esac
             k="${k} ${addflag}${i}"
@@ -1034,7 +1075,7 @@ ld_runtime_flags() {
       IFS=${i}
       for i
       do
-         # But do not link any fakeroot path into our binaries!
+         # But do not link any fakeroot injected path into our binaries!
          case "${i}" in *fakeroot*) continue;; esac
          LDFLAGS="${LDFLAGS} ${ld_need_R_flags}${i}"
          _LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
@@ -1051,10 +1092,9 @@ cc_check() {
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} \
             ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
-            -o ${tmp2} ${tmp}.c ${LIBS} &&
-            echo jeu1 &&
-            echo >&2 jeu &&
-         ${tmp2}
+            -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+      feat_no CROSS_BUILD || exit 0
+      ${tmp2}
    ) >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       _CFLAGS="${_CFLAGS} ${1}"
@@ -1071,8 +1111,9 @@ ld_check() {
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
-            -o ${tmp2} ${tmp}.c ${LIBS} &&
-         ${tmp2}
+            -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+      feat_no CROSS_BUILD || exit 0
+      ${tmp2}
    ) >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
@@ -1386,37 +1427,8 @@ ld_runtime_flags
 ## Detect CC, whether we can use it, and possibly which CFLAGS we can use
 
 cc_setup
-
-${cat} > ${tmp}.c << \!
-#include <stdio.h>
-#include <string.h>
-static void doit(char const *s);
-int
-main(int argc, char **argv){
-   (void)argc;
-   (void)argv;
-   doit("Hello world");
-   return 0;
-}
-static void
-doit(char const *s){
-   char buf[12];
-   memcpy(buf, s, strlen(s) +1);
-   puts(s);
-}
-!
-
-if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
-      -o ${tmp2} ${tmp}.c ${LIBS}; then
-   :
-else
-   msg 'ERROR: i cannot compile a "Hello world" via'
-   msg '   %s' \
-   "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
-   msg 'ERROR:   Please read INSTALL, rerun'
-   config_exit 1
-fi
-
+cc_create_testfile
+cc_hello
 # This may also update ld_runtime_flags() (again)
 cc_flags
 
