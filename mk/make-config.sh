@@ -438,9 +438,9 @@ cc_flags() {
       else
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
-         if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-            cc_force_no_stackprot=1
-         fi
+         #if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
+         #   cc_force_no_stackprot=1
+         #fi
          _cc_flags_generic
       fi
 
@@ -1047,9 +1047,16 @@ ld_runtime_flags() {
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
-   if ${CC} ${INCS} \
-         ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+   (
+      trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
+      ${CC} ${INCS} \
+            ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
+            -o ${tmp2} ${tmp}.c ${LIBS} &&
+            echo jeu1 &&
+            echo >&2 jeu &&
+         ${tmp2}
+   ) >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
@@ -1061,8 +1068,13 @@ cc_check() {
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
-   if ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+   (
+      trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
+      ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+            -o ${tmp2} ${tmp}.c ${LIBS} &&
+         ${tmp2}
+   ) >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
