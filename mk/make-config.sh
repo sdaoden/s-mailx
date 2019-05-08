@@ -861,9 +861,9 @@ option_join_rc() {
       else
          j=`${awk} -v LINE="${line}" 'BEGIN{
             sub(/^[^=]*=/, "", LINE)
-            sub(/^\"*/, "", LINE)
-            sub(/\"*$/, "", LINE)
-            gsub(/\"/, "\\\\\"", LINE)
+            sub(/^"*/, "", LINE)
+            sub(/"*$/, "", LINE)
+            gsub(/"/, "\\\\\"", LINE)
             print LINE
          }'`
       fi
