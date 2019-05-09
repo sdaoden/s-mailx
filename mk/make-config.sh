@@ -328,11 +328,13 @@ os_setup() {
    #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
-   if feat_def USE_PKGSYS && [ -d /usr/pkg ]; then
-      msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
-      C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
-      LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
-      ld_rpath_not_runpath=1
+   if feat_yes USE_PKGSYS; then
+      if [ -d /usr/pkg ]; then
+         msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
+         C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
+         LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
+         ld_rpath_not_runpath=1
+      fi
    fi
 }
 
@@ -1563,6 +1565,8 @@ dump_test_program=0
 dump_test_program=1
 
 ## /SU
+
+feat_def USE_PKGSYS
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
