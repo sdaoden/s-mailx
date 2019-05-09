@@ -57,8 +57,11 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
       # On first invocation, create our dirname prefixes
       if(no == 1){
          dname = farr[no]
-         if(index(dname, "/"))
-            sub("/[^/]*$", "", dname)
+         if(index(dname, "/")){
+            sub("/+[^/]*$", "", dname)
+            if(length(input) == 0)
+               input = "/"
+         }
 
          DNAME = dname
          dname = tolower(dname)
