@@ -94,6 +94,6 @@ __prestop = if [ -f "$(OBJDIR)"/mk-config.mk ]; then :; else \
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 0;\
 	fi
-_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.ev
+_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.env
 
 # s-mk-mode

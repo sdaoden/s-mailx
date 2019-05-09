@@ -13,9 +13,9 @@
 # does not run in the configured, but the user environment nonetheless!
 i=
 while true; do
-   if [ -f ./mk-config.ev ]; then
+   if [ -f ./mk-config.env ]; then
       break
-   elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.ev ]; then
+   elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.env ]; then
       i=`pwd`/ # not from environment, sic
       cd "${OBJDIR}"
       break
@@ -24,13 +24,13 @@ while true; do
       echo >&2 'This test script requires the shell environment that only the'
       echo >&2 'configuration script can figure out, even if it will be used to'
       echo >&2 'test a different binary than the one that would be produced!'
-      echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.ev.)'
+      echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.env.)'
       echo >&2 'Hit RETURN to run "make config CONFIG=null'
       read l
       make config CONFIG=null
    fi
 done
-. ./mk-config.ev
+. ./mk-config.env
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
    MAILX__CC_TEST_RUNNING=1
    export MAILX__CC_TEST_RUNNING

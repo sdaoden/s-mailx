@@ -74,7 +74,7 @@ XOPTIONS_XTRA="\
 "
 
 # To avoid too many recompilations we use a two-stage "configuration changed"
-# detection, the first uses mk-config.lst, which only goes for actual user
+# detection, the first uses mk-config.env, which only goes for actual user
 # config settings etc. the second uses mk-config.h, which thus includes the
 # things we have truly detected.  This does not work well for multiple choice
 # values of which only one will be really used, so those user wishes may not be
@@ -239,30 +239,19 @@ option_update() {
    fi
 }
 
-: ${OBJDIR:=.obj}
-
-rc=./make.rc
-lst="${OBJDIR}"/mk-config.lst
-ev="${OBJDIR}"/mk-config.ev
-h="${OBJDIR}"/mk-config.h h_name=mk-config.h
-mk="${OBJDIR}"/mk-config.mk
-
-newlst="${OBJDIR}"/mk-nconfig.lst
-newmk="${OBJDIR}"/mk-nconfig.mk
-oldmk="${OBJDIR}"/mk-oconfig.mk
-newev="${OBJDIR}"/mk-nconfig.ev
-newh="${OBJDIR}"/mk-nconfig.h
-oldh="${OBJDIR}"/mk-oconfig.h
-tmp0="${OBJDIR}"/___tmp
-tmp=${tmp0}1$$
-tmp2=${tmp0}2$$
-
-##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
+##  --  >8  - << OPTIONS | EARLY >> -  8<  --  ##
 
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
 COMMLINE="${*}"
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
+# Also not standardized: a way to round-trip quote
+. "${TOPDIR}"mk/su-quote-rndtrip.sh
+
+##  --  >8  - << EARLY | OS/CC >> -  8<  --  ##
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
@@ -415,7 +404,7 @@ _cc_default() {
       config_exit 1
    fi
 
-   if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
+   if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
       :
    else
       msg 'Using C compiler ${CC}=%s' "${CC}"
@@ -465,7 +454,7 @@ cc_hello() {
 
 cc_flags() {
    if feat_yes AUTOCC; then
-      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+      if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
             "${CC}"
@@ -720,10 +709,6 @@ config_exit() {
    exit ${1}
 }
 
-# which(1) not standardized, command(1) -v may return non-executable: unroll!
-#
-SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
-
 msg() {
    fmt=${1}
    shift
@@ -922,8 +907,9 @@ option_join_rc() {
 
 option_evaluate() {
    # Expand the option values, which may contain shell snippets
-   ${rm} -f ${newlst} ${newmk}
-   exec 5<&0 6>&1 <${tmp} >${newlst}
+   ${rm} -f ${newenv} ${newmk}
+
+   exec 5<&0 6>&1 <${tmp} >${newenv}
    while read line; do
       z=
       if [ -n "${good_shell}" ]; then
@@ -961,8 +947,8 @@ option_evaluate() {
       else
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
-      printf "${i} = ${j}\n" >> ${newmk}
-      printf "${i}=${j}\n"
+      printf -- "${i} = ${j}\n" >> ${newmk}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
    exec 0<&5 1>&6 5<&- 6<&-
@@ -1244,13 +1230,6 @@ squeeze_em() {
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
 
-# First of all, create new configuration and check whether it changed
-
-if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
-   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
-   exit 1
-fi
-
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
 os_early_setup
@@ -1264,6 +1243,36 @@ thecmd_testandset_fail tr tr
 # Lowercase this now in order to isolate all the remains from case matters
 OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 export OS
+
+# But first of all, create new configuration and check whether it changed
+if [ -z "${OBJDIR}" ]; then
+   OBJDIR=.obj
+else
+   OBJDIR=`${awk} -v input="${OBJDIR}" 'BEGIN{
+         if(index(input, "/"))
+            sub("/+$", "", input)
+         print input
+         }'`
+fi
+
+rc=./make.rc
+env="${OBJDIR}"/mk-config.env
+h="${OBJDIR}"/mk-config.h h_name=mk-config.h
+mk="${OBJDIR}"/mk-config.mk
+
+newmk="${OBJDIR}"/mk-nconfig.mk
+oldmk="${OBJDIR}"/mk-oconfig.mk
+newenv="${OBJDIR}"/mk-nconfig.env
+newh="${OBJDIR}"/mk-nconfig.h
+oldh="${OBJDIR}"/mk-oconfig.h
+tmp0="${OBJDIR}"/___tmp
+tmp=${tmp0}1$$
+tmp2=${tmp0}2$$
+
+if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
+   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
+   exit 1
+fi
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1325,8 +1334,8 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* \
-      ${newmk} ${oldmk} ${newev} ${newh} ${oldh}" EXIT
+   ${rm} -rf ${tmp0}.* ${tmp0}* \
+      ${newmk} ${oldmk} ${newenv} ${newh} ${oldh}" EXIT
 
 printf '#ifdef mx_SOURCE\n' > ${newh}
 
@@ -1365,6 +1374,7 @@ msg 'done'
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
+printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT; " >> ${newenv}
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -1402,12 +1412,8 @@ for i in \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=${j}\n" >> ${newlst}
-   printf -- "${i}=\"${j}\";export ${i}; " >> ${newev}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
-# Note that makefile reads and eval'uates one line of this file, whereas other
-# consumers source it via .(1)
-printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
@@ -1441,7 +1447,7 @@ for i in \
       INCS LIBS \
       ; do
    eval j="\$${i}"
-   printf -- "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
 
 MX_CFLAGS=${CFLAGS}
@@ -1465,17 +1471,21 @@ for i in \
    eval j=\$${i}
    if [ -n "${j}" ]; then
       printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=${j}\n" >> ${newlst}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
    fi
 done
+
+# Note that makefile reads and eval'uates one line of this file, whereas other
+# consumers source it via .(1)
+printf "\n" >> ${newenv}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 config_updated=
-if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
+if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
    echo 'Configuration is up-to-date'
    exit 0
-elif [ -f ${lst} ]; then
+elif [ -f ${env} ]; then
    config_updated=1
    echo 'Configuration has been updated..'
 else
@@ -1484,12 +1494,11 @@ fi
 
 # Time to redefine helper 1
 config_exit() {
-   ${rm} -f ${lst} ${h} ${mk}
+   ${rm} -f ${h} ${mk}
    exit ${1}
 }
 
-${mv} -f ${newlst} ${lst}
-${mv} -f ${newev} ${ev}
+${mv} -f ${newenv} ${env}
 [ -f ${h} ] && ${mv} -f ${h} ${oldh}
 ${mv} -f ${newh} ${h} # Note this has still #ifdef mx_SOURCE open
 [ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
@@ -1505,7 +1514,7 @@ makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${lst} ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+   ${rm} -f ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
       HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
@@ -2201,10 +2210,10 @@ int main(void){
    if feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
-      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
-      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
-      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
-      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
+      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
+      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
+      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
+      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
       *) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
       esac
    fi

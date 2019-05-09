@@ -159,9 +159,8 @@ set) to store some files of interest (it is also here where the build
 and the tests take place):
 
 - mk-config.log  Any output generated during the configuration process.
-- mk-config.lst  Configuration (chosen option, programs, paths).
-- mk-config.h    C program header produced according to mk-config.lst.
-- mk-config.ev   A set of sh(1) variables for reproducible compile runs.
+- mk-config.h    C program header representing the configuration.
+- mk-config.env  sh(1) environment representing the configuration.
 - mk-config.inc  Compiler directives to include necessary C headers ...
 - mk-config.lib  ... to find and link against needed external libraries.
 
