@@ -1394,9 +1394,6 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_BEGIN = @(exec 4>&1 1>/dev/null;\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_END = )\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_CMD = echo '  CMD' >&4;\n" >> ${newmk}
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
@@ -1404,6 +1401,8 @@ printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
 printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
+   "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
    printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 else
