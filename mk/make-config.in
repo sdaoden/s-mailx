@@ -25,64 +25,8 @@ gen-mime-types.h: $(TOPDIR)mime.types
 	awk=$(awk) $(SHELL) $(TOPDIR)mk/make-mime-types.sh
 
 uman.1: $(TOPDIR)nail.1
-	$(ECHO_GEN)\
-	LC_ALL=C \
-		_UAGENT="$(VAL_UAGENT)" \
-		_SYSCONFRC="$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" \
-		_MAILRC="$(VAL_MAILRC)" \
-			_DEAD="$(VAL_DEAD)" \
-			_MBOX="$(VAL_MBOX)" \
-			_NETRC="$(VAL_NETRC)" \
-			_TMPDIR="$(VAL_TMPDIR)" \
-				_MT_S="$(VAL_MIME_TYPES_SYS)" \
-				_MT_U="$(VAL_MIME_TYPES_USR)" \
-		$(_version_from_header) \
-	< $(TOPDIR)nail.1 > $(@) $(awk) '\
-	BEGIN { written = 0 }\
-	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
-		if (written++ != 0)\
-			next;\
-		OFS = "";\
-		print ".ds VV \\\\%v", ENVIRON["VERSION"];\
-		\
-		un = toupper(ENVIRON["_UAGENT"]);\
-			ln = tolower(un);\
-			cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-			print ".ds UU \\\\%", un;\
-			print ".ds UA \\\\%", cn;\
-			print ".ds uA \\\\%", ln;\
-		path = ENVIRON["_SYSCONFRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds UR \\\\%", path;\
-		path = ENVIRON["_MAILRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds ur \\\\%", path;\
-		\
-		path = ENVIRON["_DEAD"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VD \\\\%", path;\
-		path = ENVIRON["_MBOX"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VM \\\\%", path;\
-		path = ENVIRON["_NETRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VN \\\\%", path;\
-		path = ENVIRON["_TMPDIR"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VT \\\\%", path;\
-		\
-		path = ENVIRON["_MT_S"];\
-			gsub("/", "/\\:", path);\
-			print ".ds vS \\\\%", path;\
-		path = ENVIRON["_MT_U"];\
-			gsub("/", "/\\:", path);\
-			print ".ds vU \\\\%", path;\
-		\
-		OFS = " ";\
-		next\
-	}\
-	{print}\
-	'
+	$(ECHO_GEN)$(_version_from_header) \
+		$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
 
 urc.rc: $(TOPDIR)nail.rc
 	$(ECHO_GEN)\
