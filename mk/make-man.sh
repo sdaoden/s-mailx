@@ -5,6 +5,9 @@
 
 LC_ALL=C
 
+VERSION=`${SHELL} "${TOPDIR}"mk/make-version.sh query`
+export VERSION
+
 < "$1" > "$2" exec ${awk} '
    BEGIN {written = 0}
    /\.\\"--MKMAN-START--/,/\.\\"--MKMAN-END--/{

@@ -5,10 +5,6 @@
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-_version_from_header = VERSION="`< $(CWDDIR)include/mx/gen-version.h $(sed) \
-		-e '/ n_VERSION /b X' -e d -e ':X' \
-		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
-
 all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK)
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
@@ -25,12 +21,10 @@ gen-mime-types.h: $(TOPDIR)mime.types
 	awk=$(awk) $(SHELL) $(TOPDIR)mk/make-mime-types.sh
 
 uman.1: $(TOPDIR)nail.1
-	$(ECHO_GEN)$(_version_from_header) \
-		$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
 
 urc.rc: $(TOPDIR)nail.rc
-	$(ECHO_GEN)$(_version_from_header) \
-		$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
 
 install:
 	$(ECHO_BLOCK_BEGIN)\
@@ -137,57 +131,5 @@ distclean: clean
 		$(rm) -f "$(CWDDIR)include/mx/config.h" \
 			"$(CWDDIR)include/mx/gen-config.h";\
 	fi
-
-# MUST work with "TOPDIR= grep=grep sed=sed cmp=cmp mv=mv",
-# otherwise make-release.sh needs to be changed
-_echo-version:
-	@LC_ALL=C; export LC_ALL; $(_version_from_header); echo "$${VERSION}"
-_update-version:
-	@LC_ALL=C; export LC_ALL;\
-	if [ -z "$(VERSION)" ]; then \
-		eval VERSION="`([ -n \"$(TOPDIR)\" ] && cd \"$(TOPDIR)\";\
-			[ -d .git ] && git describe --tags) 2>/dev/null`";\
-		if [ -n "$${VERSION}" ]; then \
-			VERSION="`echo $${VERSION} |\
-				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
-			[ "`([ -n \"$(TOPDIR)\" ] && cd \"$(TOPDIR)\";\
-					git status --porcelain) |\
-				$(awk) '\
-					BEGIN {n=0}\
-					/gen-version\.h/ {next}\
-					/^\?\?/ {next}\
-					{++n}\
-					END {print n}\
-				'`" -ne 0 ] &&\
-				VERSION="$${VERSION}-dirty";\
-		else \
-			$(_version_from_header);\
-			echo "$${VERSION}" | $(grep) -q -F dirty ||\
-				VERSION="$${VERSION}-dirty";\
-		fi;\
-	fi;\
-	vmaj="`echo \"$${VERSION}\" |\
-		$(sed) -e 's/^\([^.]\{1,\}\).*/\1/'`";\
-	vmin="`echo \"$${VERSION}\" |\
-		$(sed) -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/'`";\
-	[ "$${vmin}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vmin=0;\
-	vupd="`echo \"$${VERSION}\" |\
-		$(sed) -e \
-			's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
-	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
-	trap "$(rm) -f ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define n_VERSION \"v$${VERSION}\"\n";\
-	printf >> ./version.tmp \
-		"#define n_VERSION_DATE \"`date -u +'%Y-%m-%d'`\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_MAJOR \"$${vmaj}\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_MINOR \"$${vmin}\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_UPDATE \"$${vupd}\"\n";\
-	printf >> ./version.tmp \
-		"#define n_VERSION_HEXNUM \"0x%02X%03X%03X\"\n" \
-		"$${vmaj}" "$${vmin}" "$${vupd}";\
-	$(cmp) ./version.tmp $(CWDDIR)include/mx/gen-version.h \
-		>/dev/null 2>&1 && exit;\
-	$(mv) ./version.tmp $(CWDDIR)include/mx/gen-version.h;\
-	trap : 0 1 2 15
 
 # s-mk-mode

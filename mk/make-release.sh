@@ -35,8 +35,9 @@ fi
 ## Hooks
 
 current_version() {
-   VERSION=`TOPDIR= grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
-         ${make} -f mk/make-config.in _echo-version`
+   VERSION=`VERSION= TOPDIR= \
+         awk=${awk} grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
+         ${SHELL} mk/make-version.sh create`
 }
 
 update_stable_hook() {
@@ -44,8 +45,8 @@ update_stable_hook() {
 
    #
    echo 'gen-version.h: update'
-   TOPDIR= grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
-      ${make} -f mk/make-config.in _update-version
+   VERSION= TOPDIR= awk=${awk} grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
+      ${SHELL} mk/make-version.sh create
    ${git} add -f include/mx/gen-version.h
 
    #
