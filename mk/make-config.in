@@ -17,8 +17,8 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 	$(SIZE_CHECK)
 
 gen-mime-types.h: $(TOPDIR)mime.types
-	$(ECHO_GEN) < $(TOPDIR)mime.types > $(@) \
-	awk=$(awk) $(SHELL) $(TOPDIR)mk/make-mime-types.sh
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh \
+		"$(TOPDIR)"mime.types "$(@)"
 
 uman.1: $(TOPDIR)nail.1
 	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
