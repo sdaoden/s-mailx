@@ -29,27 +29,8 @@ uman.1: $(TOPDIR)nail.1
 		$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
 
 urc.rc: $(TOPDIR)nail.rc
-	$(ECHO_GEN)\
-	LC_ALL=C \
-		_UAGENT="$(VAL_UAGENT)" \
-		_SYSCONFRC="$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" \
-		$(_version_from_header) \
-	< $(TOPDIR)nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
-	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
-		if (written == 1)\
-			next;\
-		written = 1;\
-		OFS = "";\
-		ln = tolower(ENVIRON["_UAGENT"]);\
-		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print "#@ ", ENVIRON["_SYSCONFRC"];\
-		print "#@ Configuration file for ", cn, " v",\
-			ENVIRON["VERSION"], ".";\
-		OFS = " ";\
-		next\
-	}\
-	{print}\
-	'
+	$(ECHO_GEN)$(_version_from_header) \
+		$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
 
 install:
 	$(ECHO_BLOCK_BEGIN)\
