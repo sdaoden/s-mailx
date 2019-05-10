@@ -722,31 +722,37 @@ msg_nonl() {
 }
 
 # Our feature check environment
-feat_val_no() {
+_feats_eval_done=0
+
+_feat_val_no() {
    [ "x${1}" = x0 ] || [ "x${1}" = xn ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
-feat_val_yes() {
+_feat_val_yes() {
    [ "x${1}" = x1 ] || [ "x${1}" = xy ] ||
    [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
 
-feat_val_require() {
+_feat_val_require() {
    [ "x${1}" = xrequire ]
 }
 
 _feat_check() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   if feat_val_no "${i}"; then
+   eval _fc_i=\$OPT_${1}
+   if [ "$_feats_eval_done" = 1 ]; then
+      [ "x${_fc_i}" = x0 ] && return 1
+      return 0
+   fi
+   _fc_i="`echo ${_fc_i} | ${tr} '[A-Z]' '[a-z]'`"
+   if _feat_val_no "${_fc_i}"; then
       return 1
-   elif feat_val_yes "${i}"; then
+   elif _feat_val_yes "${_fc_i}"; then
       return 0
    else
       msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" \
-         "${1}" "${i}"
+         "${1}" "${_fc_i}"
       config_exit 11
    fi
 }
@@ -761,9 +767,9 @@ feat_no() {
 }
 
 feat_require() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+   eval _fr_i=\$OPT_${1}
+   _fr_i="`echo ${_fr_i} | ${tr} '[A-Z]' '[a-z]'`"
+   [ "x${_fr_i}" = xrequire ] || [ "x${_fr_i}" = xrequired ]
 }
 
 feat_bail_required() {
@@ -907,6 +913,7 @@ option_join_rc() {
 
 option_evaluate() {
    # Expand the option values, which may contain shell snippets
+   # Set booleans to 0 or 1, or require, set _feats_eval_done=1
    ${rm} -f ${newenv} ${newmk}
 
    exec 5<&0 6>&1 <${tmp} >${newenv}
@@ -928,11 +935,11 @@ option_evaluate() {
       eval j=\$${i}
       if [ -n "${z}" ]; then
          j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
-         if [ -z "${j}" ] || feat_val_no "${j}"; then
+         if [ -z "${j}" ] || _feat_val_no "${j}"; then
             j=0
             printf "   /* #undef ${i} */\n" >> ${newh}
-         elif feat_val_yes "${j}"; then
-            if feat_val_require "${j}"; then
+         elif _feat_val_yes "${j}"; then
+            if _feat_val_require "${j}"; then
                j=require
             else
                j=1
@@ -952,6 +959,8 @@ option_evaluate() {
       eval "${i}=\"${j}\""
    done
    exec 0<&5 1>&6 5<&- 6<&-
+
+   _feats_eval_done=1
 }
 
 val_allof() {
@@ -1134,12 +1143,12 @@ _check_preface() {
 }
 
 without_check() {
-   yesno=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+   oneorzero=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
 
    echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
 
-   if feat_val_yes ${yesno}; then
+   if [ "${oneorzero}" = 1 ]; then
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
          echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
@@ -2533,7 +2542,7 @@ if feat_yes TLS; then # {{{
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls 'TLS new style TLS_client_method(3ssl)' \
+         without_check 1 xtls 'TLS new style TLS_client_method(3ssl)' \
             '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
       elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
@@ -2586,7 +2595,7 @@ int main(void){
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_stack_of 'TLS STACK_OF()' \
+         without_check 1 xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF'
       elif compile_check xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF' << \!
@@ -2608,7 +2617,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
+         without_check 1 xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
             '#define mx_HAVE_XTLS_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       elif link_check xtls_conf \
@@ -2629,7 +2638,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+         without_check 1 xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
             '#define mx_HAVE_XTLS_CONF_CTX'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
@@ -2658,7 +2667,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+         without_check 1 xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
             '#define mx_HAVE_XTLS_CTX_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
@@ -2678,7 +2687,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_maxmin_proto \
+         without_check 1 xtls_set_maxmin_proto \
             'TLS SSL_CTX_set_min_proto_version(3ssl)' \
             '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
@@ -2700,7 +2709,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_ciphersuites \
+         without_check 1 xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
             '#define mx_HAVE_XTLS_SET_CIPHERSUITES'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
@@ -2724,7 +2733,7 @@ int main(void){
    if feat_yes TLS; then # digest etc algorithms {{{
       if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
-            without_check yes tls_all_algo 'TLS_ALL_ALGORITHMS support' \
+            without_check 1 tls_all_algo 'TLS_ALL_ALGORITHMS support' \
                '#define mx_HAVE_TLS_ALL_ALGORITHMS'
          elif link_check tls_all_algo 'TLS all-algorithms support' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS' << \!
@@ -2742,7 +2751,7 @@ int main(void){
             feat_bail_required TLS_ALL_ALGORITHMS
          fi
       elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes tls_all_algo \
+         without_check 1 tls_all_algo \
             'TLS all-algorithms (always available in v1.1.0+)' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS'
       fi
