@@ -120,36 +120,36 @@ option_setup() {
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
          OPT_CMD_CSOP=1
-         OPT_CMD_VEXPR=1
-         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+            OPT_CMD_VEXPR=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
-         OPT_UISTRINGS=1
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_ERRORS=1
          OPT_IDNA=1
          OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
+         OPT_UISTRINGS=1
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
          OPT_CMD_CSOP=1
-         OPT_CMD_VEXPR=1
+            OPT_CMD_VEXPR=1
+         OPT_COLOUR=1
+         OPT_DOCSTRINGS=1
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+         OPT_ERRORS=1
+         OPT_IDNA=1
+         OPT_MAILDIR=1
+         OPT_MLE=1
+            OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SOCKETS=require
             OPT_TLS=require
             OPT_SMTP=require
             OPT_GSSAPI=1 OPT_NETRC=1
                OPT_AGENT=1
-         OPT_COLOUR=1
-         OPT_DOCSTRINGS=1
-         OPT_UISTRINGS=1
-         OPT_ERRORS=1
-         OPT_IDNA=1
-         OPT_MAILDIR=1
-         OPT_MLE=1
-            OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
+         OPT_UISTRINGS=1
          ;;
       [mM][aA][xX][iI][mM][aA][lL])
          option_maximal
@@ -801,7 +801,7 @@ feat_is_unsupported() {
 
 feat_def() {
    if feat_yes ${1}; then
-      msg ' . %s ... yes' "${1}"
+      [ -n "${VERBOSE}" ] && msg ' . %s ... yes' "${1}"
       echo '#define mx_HAVE_'${1}'' >> ${h}
       return 0
    else
@@ -1570,23 +1570,6 @@ dump_test_program=0
 dump_test_program=1
 
 ## /SU
-
-feat_def USE_PKGSYS
-
-feat_def ALWAYS_UNICODE_LOCALE
-feat_def AMALGAMATION 0
-feat_def CROSS_BUILD
-feat_def DOCSTRINGS
-feat_def MAILDIR
-feat_def UISTRINGS
-feat_def ERRORS
-
-feat_def ASAN_ADDRESS 0
-feat_def ASAN_MEMORY 0
-feat_def USAN 0
-feat_def DEBUG 0
-feat_def DEVEL 0
-feat_def NOMEMDBG 0
 
 ## Test for "basic" system-calls / functionality that is used by all parts
 ## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
@@ -2819,7 +2802,6 @@ if [ "${have_xtls}" = yes ]; then
 else
    OPT_SMIME=0
 fi
-feat_def SMIME
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
@@ -2955,10 +2937,6 @@ do
 done
 # }}} VAL_RANDOM
 
-feat_def SMTP
-feat_def POP3
-feat_def IMAP
-
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
@@ -3018,9 +2996,6 @@ int main(void){
 else
    feat_is_disabled GSSAPI
 fi # feat_yes GSSAPI
-
-feat_def NETRC
-feat_def AGENT
 
 if feat_yes IDNA; then # {{{
    if val_allof VAL_IDNA "idnkit,idn2,idn"; then
@@ -3114,8 +3089,6 @@ else
    feat_is_disabled IDNA
 fi # }}} IDNA
 
-feat_def IMAP_SEARCH
-
 if feat_yes REGEX; then
    if link_check regex 'regular expressions' '#define mx_HAVE_REGEX' << \!
 #include <regex.h>
@@ -3152,13 +3125,8 @@ else
    feat_is_disabled MLE
 fi
 
-# Generic have-a-line-editor switch for those who need it below
-if [ -n "${have_mle}" ]; then
-   have_cle=1
-fi
-
 if feat_yes HISTORY; then
-   if [ -n "${have_cle}" ]; then
+   if [ -n "${have_mle}" ]; then
       echo '#define mx_HAVE_HISTORY' >> ${h}
    else
       feat_is_unsupported HISTORY
@@ -3302,39 +3270,20 @@ else # }}}
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
 
-if feat_def SPAM_SPAMC; then
-   if acmd_set i spamc; then
-      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
-   fi
-fi
+## Final feat_def's XXX should be loop over OPTIONs
 
-if feat_yes SPAM_SPAMD; then
-   if [ -n "${have_af_unix}" ]; then
-      echo '#define mx_HAVE_SPAM_SPAMD' >> ${h}
-   else
-      feat_bail_required SPAM_SPAMD
-   fi
-else
-   feat_is_disabled SPAM_SPAMD
-fi
-
-feat_def SPAM_FILTER
-
-if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
-   echo '#define mx_HAVE_SPAM' >> ${h}
-else
-   echo '/* mx_HAVE_SPAM */' >> ${h}
-fi
-
+feat_def AGENT
+feat_def ALWAYS_UNICODE_LOCALE
+feat_def AMALGAMATION 0
 if feat_def CMD_CSOP; then
    feat_def CMD_VEXPR # v15compat: VEXPR needs CSOP for byte string ops YET
 else
    feat_bail_required CMD_VEXPR
 fi
 feat_def COLOUR
+feat_def CROSS_BUILD
 feat_def DOTLOCK
 feat_def FILTER_HTML_TAGSOUP
-
 if feat_yes FILTER_QUOTE_FOLD; then
    if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
       echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
@@ -3344,8 +3293,45 @@ if feat_yes FILTER_QUOTE_FOLD; then
 else
    feat_is_disabled FILTER_QUOTE_FOLD
 fi
+feat_def DOCSTRINGS
+feat_def ERRORS
+feat_def IMAP
+feat_def IMAP_SEARCH
+feat_def MAILDIR
+feat_def MD5 # XXX only sockets
+feat_def NETRC
+feat_def POP3
+feat_def SMIME
+feat_def SMTP
+feat_def SPAM_FILTER
+if feat_def SPAM_SPAMC; then
+   if acmd_set i spamc; then
+      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
+   fi
+fi
+   if feat_yes SPAM_SPAMD; then
+      if [ -n "${have_af_unix}" ]; then
+         echo '#define mx_HAVE_SPAM_SPAMD' >> ${h}
+      else
+         feat_bail_required SPAM_SPAMD
+      fi
+   else
+      feat_is_disabled SPAM_SPAMD
+   fi
+if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
+   echo '#define mx_HAVE_SPAM' >> ${h}
+else
+   echo '/* mx_HAVE_SPAM */' >> ${h}
+fi
+feat_def UISTRINGS
+feat_def USE_PKGSYS
 
-feat_def MD5
+feat_def ASAN_ADDRESS 0
+feat_def ASAN_MEMORY 0
+feat_def USAN 0
+feat_def DEBUG 0
+feat_def DEVEL 0
+feat_def NOMEMDBG 0
 
 ## Summarizing
 
