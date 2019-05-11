@@ -240,7 +240,7 @@ OPT_ERRORS=yes
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
-# be used for all MIME types which have the @h@ or @H@ type markers
+# be used for all MIME types which have the corresponding type marker
 # (more on this in the manual section "The mime.types files").  And
 # which do not have any user defined MIME type handler, of course.
 OPT_FILTER_HTML_TAGSOUP=yes
@@ -288,7 +288,7 @@ OPT_MAILDIR=yes
 # Can be "require"d.
 OPT_MLE=yes
 
-   # Add support for history management.
+   # Add support for `history' management.
    OPT_HISTORY=yes
 
    # Add support for `(un)?bind'ing of key sequences.
@@ -303,7 +303,7 @@ OPT_MLE=yes
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
 # . urandom - reading from /dev/urandom.
-# . builtin - a builtin ARC4 implementation with unscientific seeding.
+# . builtin - unscientific seeding for our builtin ARC4 implementation.
 # . (error - bail out)
 VAL_RANDOM="arc4,tls,libgetrandom,sysgetrandom,urandom,builtin"
 
@@ -409,7 +409,7 @@ VAL_SID=s-
 VAL_MAILX=nail
 
 # The name of the exemplary resource template.
-# Note 1: not overwritten by "make install" if yet existent!
+# Note 1: not overwritten by "make install" if yet exists!
 VAL_SYSCONFRC="${VAL_SID}${VAL_MAILX}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
