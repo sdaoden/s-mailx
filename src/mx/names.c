@@ -48,6 +48,7 @@
 #include <su/sort.h>
 
 #include "mx/iconv.h"
+#include "mx/mta-aliases.h"
 
 #include "mx/names.h"
 #include "su/code-in.h"
@@ -238,7 +239,7 @@ a_nm_extract1(char const *line, enum gfield ntype, char const *seps,
       nbuf = n_lofi_alloc(su_cs_len(cp = line) +1);
 
       for(tailp = headp;
-            ((cp = a_nm_yankname(cp, nbuf, seps, keepcomms)) != NULL);)
+            ((cp = a_nm_yankname(cp, nbuf, seps, keepcomms)) != NULL);){
          /* TODO Cannot set GNULL_OK because otherwise this software blows up.
           * TODO We will need a completely new way of reporting the errors of
           * TODO is_addr_invalid() ... */
@@ -249,6 +250,7 @@ a_nm_extract1(char const *line, enum gfield ntype, char const *seps,
                headp = np;
             tailp = np;
          }
+      }
 
       n_lofi_free(nbuf);
    }
@@ -284,9 +286,11 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
    ASSERT_NYD(a_nm_alias_dp != NIL);
    ASSERT(mx_alias_is_valid_name(name));
 
-   if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){
+   if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){ /* TODO not a real error!! */
       n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
-      goto jleave;
+      slp_next = NIL;
+      ccp = name;
+      goto jlinkin;
    }
 
    slp_next = slp_base =
@@ -331,7 +335,6 @@ jlinkin:
       }
    }while((slp = slp_next) != NIL);
 
-jleave:
    NYD2_OU;
    return nlist;
 }
@@ -778,7 +781,7 @@ checkaddrs(struct mx_name *np, enum expand_addr_check_mode eacm,
       if ((rv = is_addr_invalid(n, eacm)) != 0) {
          if (set_on_error != NULL)
             *set_on_error |= rv; /* don't loose -1! */
-         else if (eacm & EAF_MAYKEEP) /* TODO HACK!  See definition! */
+         if (eacm & EAF_MAYKEEP) /* TODO HACK!  See definition! */
             continue;
          if (n->n_blink)
             n->n_blink->n_flink = n->n_flink;
@@ -793,8 +796,8 @@ checkaddrs(struct mx_name *np, enum expand_addr_check_mode eacm,
 }
 
 FL struct mx_name *
-n_namelist_vaporise_head(boole strip_alternates, struct header *hp,
-   enum expand_addr_check_mode eacm, s8 *set_on_error)
+n_namelist_vaporise_head(struct header *hp, boole metoo,
+   boole strip_alternates, enum expand_addr_check_mode eacm, s8 *set_on_error)
 {
    /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct mx_name *tolist, *np, **npp;
@@ -803,10 +806,27 @@ n_namelist_vaporise_head(boole strip_alternates, struct header *hp,
    tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
    hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
-   tolist = usermap(tolist, strip_alternates/*metoo*/);
+   tolist = usermap(tolist, metoo);
+
+   /* MTA aliases are resolved last */
+#ifdef mx_HAVE_MTA_ALIASES
+   switch(mx_mta_aliases_expand(&tolist)){
+   case su_ERR_DESTADDRREQ:
+   case su_ERR_NONE:
+   case su_ERR_NOENT:
+      break;
+   default:
+      *set_on_error |= TRU1;
+      break;
+   }
+#endif
+
    if(strip_alternates)
       tolist = mx_alternates_remove(tolist, TRU1);
-   tolist = elide(checkaddrs(tolist, eacm, set_on_error));
+
+   tolist = elide(tolist);
+
+   tolist = checkaddrs(tolist, eacm, set_on_error);
 
    for (np = tolist; np != NULL; np = np->n_flink) {
       switch (np->n_type & (GDEL | GMASK)) {
@@ -817,6 +837,7 @@ n_namelist_vaporise_head(boole strip_alternates, struct header *hp,
       }
       *npp = cat(*npp, ndup(np, np->n_type | GFULL));
    }
+
    NYD_OU;
    return tolist;
 }
@@ -1123,7 +1144,8 @@ mx_alias_is_valid_name(char const *name){
        * As extensions allow high-bit bytes, exclamation mark and period:
        *    [[:alnum:]_#:@!.-]+ */
       /* TODO alias_is_valid_name(): locale dependent validity check,
-       * TODO with Unicode prefix valid UTF-8! */
+       * TODO with Unicode prefix valid UTF-8!
+       * TODO no support for trailing $ yet, as says Linux usernames! */
       if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
             /* Extensions */

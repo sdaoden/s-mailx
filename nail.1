@@ -978,21 +978,24 @@ and
 can be used to add (blind) carbon copy receivers:
 .
 .Bd -literal -offset indent
-# Via sendmail(1)
-$ \*(uA -s ubject -a ttach.txt bill@exam.ple
+# Via test MTA
+$ echo Hello, world | \*(uA -:/ -Smta=test -s test $LOGNAME
 
-# But... try it in an isolated dry-run mode (-d) first
-$ LC_ALL=C \*(uA -d -:/ -Ssendwait -Sttycharset=utf8 \e
-   -b bcc@exam.ple -c cc@exam.ple \e
-   -Sfullnames -. \e
+# Via sendmail(1) MTA
+$ </dev/null \*(uA -:/ -s test $LOGNAME
+
+# Debug dry-run mode:
+$ </dev/null LC_ALL=C \*(uA -d -:/ \e
+   -Sttycharset=utf8 -Sfullnames \e
+   -b bcc@exam.ple -c cc@exam.ple -. \e
    '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
 
-# With SMTP
+# With SMTP (no real sending due to -d debug dry-run)
 $ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
     -S from=scriptreply@exam.ple \e
-    -a /etc/mail.rc \e
-    -. eric@exam.ple < /tmp/letter.txt
+    -a /etc/mail.rc -. \e
+    eric@exam.ple < /tmp/letter.txt
 .Ed
 .
 .Pp
@@ -1211,13 +1214,11 @@ It is possible to create personal distribution lists via the
 command, so that, for instance, the user can send mail to
 .Ql cohorts
 and have it go to a group of people.
-Different to the alias mechanism of a local
-.Va mta ,
-which is often tracked in a file
-.Pa /etc/aliases ,
-documented in
-.Xr aliases 5 ,
-and the names of which are subject to the
+Different to the alias mechanism of most local
+.Va mta Ns
+s, often documented in
+.Xr aliases 5
+and subject to the
 .Ql name
 constraint of
 .Va expandaddr ,
@@ -1228,10 +1229,13 @@ itself, correlate with the active set of
 and are subject to
 .Va metoo
 filtering.
+\*(OPally MTA aliases can be expanded before sending messages by setting
+.Va mta-aliases .
 .
 .Bd -literal -offset indent
 ? alias  cohorts  bill jkf mark kridle@ucbcory ~/cohorts.mbox
 ? alias  mark  mark@exam.ple
+? set mta-aliases=/etc/aliases
 .Ed
 .
 .Pp
@@ -6751,8 +6755,8 @@ but useful for sending a message again to the same recipients.
 .
 .Mx
 .It Ic resend
-Takes a list of messages and a user name
-and sends each message to the named user.
+Takes a list of messages and a name,
+and sends each message to the given, fully expanded addressee.
 .Ql Resent-From:
 and related header fields are prepended to the new copy of the message.
 Saving in
@@ -6765,7 +6769,7 @@ This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
 if no receiver has been specified,
 .Va ^ERR Ns -PERM
-if some addressees where rejected by
+if the addressee was rejected by
 .Va expandaddr ,
 .Va ^ERR Ns -NODATA
 if no applicable messages have been given,
@@ -9483,7 +9487,10 @@ file targets (it includes
 .Ql pipe
 command pipeline targets,
 .Ql name
-plain user names and (MTA) aliases and
+plain user names left for further expansion by the MTA (implicitly
+disallowed for the SMTP based
+.Va mta ) ,
+and
 .Ql addr
 network addresses;
 Targets are interpreted in the given order, so that
@@ -10495,8 +10502,8 @@ the MIME type cache).
 .
 .Mx
 .It Va mta
-To choose an alternate Mail-Transfer-Agent, set this option to either
-the full pathname of an executable (optionally prefixed with the protocol
+Select an alternate Mail-Transfer-Agent by either specifying the full
+pathname of an executable (optionally prefixed with the protocol
 .Ql file:// ) ,
 or \*(OPally a SMTP aka SUBMISSION protocol URL, e.g., \*(IN
 .Pp
@@ -10505,17 +10512,15 @@ or \*(OPally a SMTP aka SUBMISSION protocol URL, e.g., \*(IN
 (\*(OU:
 .Ql [smtp://]server[:port] . )
 The default has been chosen at compile time.
-All supported data transfers are executed in child processes, which
-run asynchronously and without supervision unless either the
+MTA data transfers are always performed in asynchronous child processes,
+and without supervision unless either the
 .Va sendwait
 or the
 .Va verbose
 variable is set.
-If such a child receives a TERM signal, it will abort and
-.Va save
-the message to
-.Ev DEAD ,
-if so configured.
+\*(OPally \*(UA can take care of expansion of the usual
+.Va mta-aliases
+.Pf ( Xr aliases 5 ) .
 .
 .Pp
 For a file-based MTA it may be necessary to set
@@ -10628,6 +10633,33 @@ necessary to explicitly specify the port as
 .Ql :465 .
 .El
 .
+.
+.Mx
+.It Va mta-aliases
+\*(OP If set to a valid path pointing to a text file in MTA
+.Xr aliases 5
+format, plain
+.Ql name
+(see
+.Va expandaddr )
+message receiver names are recursively expanded as a last expansion
+step, after the distribution lists which can be created with
+.Ic alias .
+Constraints on
+.Xr \&\&aliases 5
+content support: only local addresses (names) which are valid usernames
+.Pf ( Ql [a-z_][a-z0-9_-]*[$]? )
+are understood, and \*(ID
+.Ql :include:/file/name
+directives are not supported.
+By including
+.Ql -name
+in the setting of
+.Va expandaddr
+it can be asserted that only expanded names (mail addresses) are passed
+through to the MTA, hard errors occur otherwise.
+The file content is cached, but variable as well as file size and
+modification time changes will cause an update.
 .
 .Mx
 .It Va mta-arguments

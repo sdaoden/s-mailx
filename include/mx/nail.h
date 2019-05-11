@@ -196,7 +196,8 @@ enum expand_addr_check_mode{
     * May NOT clash with EAF_* bits which may be ORd to these here! */
 
    EACM_NONAME = 1u<<16,
-   EACM_DOMAINCHECK = 1u<<17 /* Honour it! */
+   EACM_NONAME_OR_FAIL = 1u<<17,
+   EACM_DOMAINCHECK = 1u<<18 /* Honour it! */
 };
 
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
@@ -1072,7 +1073,8 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mime_encoding,
    ok_b_mime_force_sendout,
    ok_v_mimetypes_load_control,
-   ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
+   ok_v_mta, /* {notempty=1,defval=VAL_MTA} */
+   ok_v_mta_aliases, /* {notempty=1} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
    ok_b_mta_no_receiver_arguments,
@@ -1755,7 +1757,10 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    /* All given input (nalloc() etc.) to be interpreted as a single address */
    GNOT_A_LIST = 1u<<21,
    GNULL_OK = 1u<<22, /* NULL return OK for nalloc()+ */
-   GMAILTO_URI = 1u<<23 /* RFC 6068-style */
+   GMAILTO_URI = 1u<<23, /* RFC 6068-style */
+   /* HACK: support "|bla", i.e., anything enclosed in quotes; e.g., used for
+    * MTA alias parsing */
+   GQUOTE_ENCLOSED_OK = 1u<<24
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 
@@ -1855,8 +1860,8 @@ struct sendbundle{
    struct header *sb_hp;
    struct mx_name *sb_to;
    FILE *sb_input;
+   struct url *sb_url; /* Or NIL for file-based MTA */
    struct str sb_signer; /* USER@HOST for signing+ */
-   struct url sb_url;
    struct ccred sb_ccred;
 };
 

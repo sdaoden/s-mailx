@@ -131,12 +131,11 @@ FL struct mx_name *checkaddrs(struct mx_name *np,
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
  * aliases etc.  eacm and set_on_error are passed to checkaddrs().
- * metoo is implied (for usermap()).
  * After updating hp to the new state this returns a flat list of all
- * addressees, which may be NULL */
-FL struct mx_name *n_namelist_vaporise_head(boole strip_alternates,
-      struct header *hp, enum expand_addr_check_mode eacm,
-      s8 *set_on_error);
+ * addressees, which may be NIL */
+FL struct mx_name *n_namelist_vaporise_head(struct header *hp,
+      boole metoo, boole strip_alternates,
+      enum expand_addr_check_mode eacm, s8 *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */

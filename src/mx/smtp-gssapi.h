@@ -144,10 +144,10 @@ _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
       goto jleave;
 
    send_tok.value = n_autorec_alloc(
-         (send_tok.length = sbp->sb_url.url_host.l + 5) +1);
+         (send_tok.length = sbp->sb_url->url_host.l + 5) +1);
    su_mem_copy(send_tok.value, "smtp@", 5);
-   su_mem_copy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
-      sbp->sb_url.url_host.l +1);
+   su_mem_copy((char*)send_tok.value + 5, sbp->sb_url->url_host.s,
+      sbp->sb_url->url_host.l +1);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;

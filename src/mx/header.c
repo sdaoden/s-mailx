@@ -1908,7 +1908,11 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
    case mx_NAME_ADDRSPEC_ISNAME:
       if(eaf & EAF_NAME)
          goto jgood;
-      cs = _("%s%s: *expandaddr* does not allow user name target\n");
+      if(!(eaf & EAF_FAIL) && (eacm & EACM_NONAME_OR_FAIL)){
+         rv = -rv;
+         cs = _("%s%s: user name (MTA alias) targets are not allowed\n");
+      }else
+         cs = _("%s%s: *expandaddr* does not allow user name target\n");
       break;
    default:
    case mx_NAME_ADDRSPEC_ISADDR:
@@ -1986,11 +1990,13 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, u32 gfield){
       a_NONE,
       a_DOSKIN = 1u<<0,
       a_NOLIST = 1u<<1,
+      a_QUENCO = 1u<<2,
 
-      a_GOTLT = 1u<<2,
-      a_GOTADDR = 1u<<3,
-      a_GOTSPACE = 1u<<4,
-      a_LASTSP = 1u<<5
+      a_GOTLT = 1u<<3,
+      a_GOTADDR = 1u<<4,
+      a_GOTSPACE = 1u<<5,
+      a_LASTSP = 1u<<6,
+      a_IDX0 = 1u<<7
    } flags;
    NYD_IN;
 
@@ -2010,6 +2016,10 @@ jredo_uri:
       flags |= a_DOSKIN;
    if(gfield & GNOT_A_LIST)
       flags |= a_NOLIST;
+   if(gfield & GQUOTE_ENCLOSED_OK){
+      gfield ^= GQUOTE_ENCLOSED_OK;
+      flags |= a_QUENCO;
+   }
 
    if(!(flags & a_DOSKIN)){
       su_ASSERT(!(gfield & GMAILTO_URI));
@@ -2051,10 +2061,19 @@ jredo_uri:
           * XXX [9.23] released 11/15/00, "Do not remove quotes
           * XXX when skinning names"?  No more info.. */
          *cp2++ = c;
+         ASSERT(!(flags & a_IDX0));
+         if((flags & a_QUENCO) && cp == name)
+            flags |= a_IDX0;
          while ((c = *cp) != '\0') { /* TODO improve */
             ++cp;
             if (c == '"') {
                *cp2++ = c;
+               /* Special case: if allowed so and anything is placed in quotes
+                * then throw away the quotes and start all over again */
+               if((flags & a_IDX0) && *cp == '\0'){
+                  name = savestrbuf(name, P2UZ(--cp - name));
+                  goto jredo_uri;
+               }
                break;
             }
             if (c != '\\')
@@ -2064,7 +2083,7 @@ jredo_uri:
                ++cp;
             }
          }
-         flags &= ~a_LASTSP;
+         flags &= ~(a_LASTSP | a_IDX0);
          break;
       case ' ':
       case '\t':

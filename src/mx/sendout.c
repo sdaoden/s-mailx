@@ -129,7 +129,7 @@ static boole        mightrecord(FILE *fp, struct mx_name *to, boole resend);
 static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 
 /*  */
-static boole        _transfer(struct sendbundle *sbp);
+static boole a_sendout_transfer(struct sendbundle *sbp, boole *senderror);
 
 static boole        __mta_start(struct sendbundle *sbp);
 static char const ** __mta_prepare_args(struct mx_name *to, struct header *hp);
@@ -536,9 +536,6 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
 {
    boole v15, rv = FAL0;
    char *shost, *from;
-#ifdef mx_HAVE_SMTP
-   char const *smtp;
-#endif
    NYD_IN;
 
    v15 = (ok_vlook(v15_compat) != su_NIL);
@@ -559,32 +556,23 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
 #ifndef mx_HAVE_SMTP
    rv = TRU1;
 #else
-   if ((smtp = ok_vlook(smtp)) == NULL) { /* TODO v15 url_creat(,ok_vlook(mta)*/
-      char const *proto;
-
-      /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = n_servbyname(smtp = ok_vlook(mta), NULL)) == NULL ||
-            *proto == '\0'){
-         rv = TRU1;
-         goto jleave;
-      }
-   }
-
-   if (!url_parse(&sbp->sb_url, CPROTO_SMTP, smtp))
+   if(sbp->sb_url == NIL){
+      rv = TRU1;
       goto jleave;
+   }
 
    if (v15) {
       if (shost == NULL) {
          if (from == NULL)
             goto jenofrom;
-         sbp->sb_url.url_u_h.l = su_cs_len(sbp->sb_url.url_u_h.s = from);
+         sbp->sb_url->url_u_h.l = su_cs_len(sbp->sb_url->url_u_h.s = from);
       } else
-         __sendout_ident = sbp->sb_url.url_u_h.s;
-      if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
+         __sendout_ident = sbp->sb_url->url_u_h.s;
+      if (!ccred_lookup(&sbp->sb_ccred, sbp->sb_url))
          goto jleave;
    } else {
-      if ((sbp->sb_url.url_flags & n_URL_HAD_USER) ||
-            sbp->sb_url.url_pass.s != NULL) {
+      if ((sbp->sb_url->url_flags & n_URL_HAD_USER) ||
+            sbp->sb_url->url_pass.s != NULL) {
          n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
       }
@@ -597,7 +585,7 @@ jenofrom:
       }
       if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
          goto jleave;
-      sbp->sb_url.url_u_h.l = su_cs_len(sbp->sb_url.url_u_h.s = from);
+      sbp->sb_url->url_u_h.l = su_cs_len(sbp->sb_url->url_u_h.s = from);
    }
 
    rv = TRU1;
@@ -1238,12 +1226,15 @@ j_leave:
 }
 
 static boole
-_transfer(struct sendbundle *sbp)
+a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
 {
-   struct mx_name *np;
    u32 cnt;
-   boole rv = TRU1;
+   struct mx_name *np;
+   boole rv;
    NYD_IN;
+   UNUSED(senderror);
+
+   rv = TRU1;
 
    for (cnt = 0, np = sbp->sb_to; np != NULL;) {
       char const k[] = "smime-encrypt-", *cp;
@@ -1360,20 +1351,6 @@ __mta_start(struct sendbundle *sbp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-      /* C99 */{
-         struct mx_name *np;
-
-         for(np = sbp->sb_to; np != NULL; np = np->n_flink)
-            if(!(np->n_type & GDEL) &&
-                  (np->n_flags & mx_NAME_ADDRSPEC_ISNAME)){
-               n_err(_("SMTP *mta* cannot send to alias name: %s\n"),
-                  n_shexp_quote_cp(np->n_name, FAL0));
-               rv = FAL0;
-            }
-         if(!rv)
-            goto jstop;
-      }
-
       if (n_poption & n_PO_DEBUG) {
          (void)smtp_mta(sbp);
          rv = TRU1;
@@ -1790,6 +1767,33 @@ jleave:
    return rv;
 }
 
+FL boole
+mx_sendout_mta_url(struct url *urlp){
+   boole rv;
+   char const *smtp, *proto;
+   NYD_IN;
+
+   if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
+      /* *smtp* OBSOLETE message in mta_start() */
+      if((proto = n_servbyname(smtp = ok_vlook(mta), NIL)) == NIL ||
+            *proto == '\0'){
+         rv = TRUM1;
+         goto jleave;
+      }
+   }
+
+#ifdef mx_HAVE_SOCKETS
+   rv = url_parse(urlp, CPROTO_SMTP, smtp);
+#else
+   UNUSED(urlp);
+   rv = FAL0;
+#endif
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+
 FL int
 n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
    struct mx_name *bcc, char const *subject, struct attachment *attach,
@@ -1867,8 +1871,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 {
    struct n_sigman sm;
    struct sendbundle sb;
+   struct url url;
    struct mx_name *to;
-   boole dosign;
+   boole dosign, mta_isexe;
    FILE * volatile mtf, *nmtf;
    enum okay volatile rv;
    NYD_IN;
@@ -1942,30 +1947,33 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO header fields ONCE, call that ONCE after user editing etc. has
     * TODO completed (one edit cycle) */
 
+   if(!(mta_isexe = mx_sendout_mta_url(&url)))
+      goto jleave;
+   mta_isexe = (mta_isexe != TRU1);
+
    /* Take the user names from the combined to and cc lists and do all the
     * alias processing.  The POSIX standard says:
     *   The names shall be substituted when alias is used as a recipient
     *   address specified by the user in an outgoing message (that is,
     *   other recipients addressed indirectly through the reply command
     *   shall not be substituted in this manner).
-    * S-nail thus violates POSIX, as has been pointed out correctly by
-    * Martin Neitzel, but logic and usability of POSIX standards is not seldom
-    * disputable anyway.  Go for user friendliness */
-
-   to = n_namelist_vaporise_head(((quote != NULL &&
+    * XXX S-nail thus violates POSIX, as has been pointed out correctly by
+    * XXX Martin Neitzel, but logic and usability of POSIX standards is
+    * XXX sometimes disputable: go for user friendliness */
+   to = n_namelist_vaporise_head(hp, TRU1, ((quote != NULL &&
             (msf & n_MAILSEND_IS_FWD) == 0) || !ok_blook(posix)),
-         hp, (EACM_NORMAL | EACM_DOMAINCHECK |
-             (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
+         (EACM_NORMAL | EACM_DOMAINCHECK |
+            (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),
          &_sendout_error);
 
-   if(to == NULL){
-      n_err(_("No recipients specified\n"));
-      n_pstate_err_no = su_ERR_DESTADDRREQ;
-      goto jfail_dead;
-   }
    if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
       n_pstate_err_no = su_ERR_PERM;
+      goto jfail_dead;
+   }
+   if(to == NULL){
+      n_err(_("No recipients specified\n"));
+      n_pstate_err_no = su_ERR_DESTADDRREQ;
       goto jfail_dead;
    }
 
@@ -1974,6 +1982,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
+   sb.sb_url = mta_isexe ? NIL : &url;
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
@@ -2048,8 +2057,13 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          sb.sb_hp = hp;
          sb.sb_to = to;
          sb.sb_input = mtf;
-         if (_transfer(&sb))
+         b = FAL0;
+         if(a_sendout_transfer(&sb, &b))
             rv = OKAY;
+         else if(b && _sendout_error == 0){
+            _sendout_error = b;
+            savedeadletter(mtf, FAL0);
+         }
       } else if (!_sendout_error)
          rv = OKAY;
    }
@@ -2479,7 +2493,8 @@ jleave:
 }
 
 FL enum okay
-resend_msg(struct message *mp, struct header *hp, boole add_resent)
+n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
+   boole add_resent)
 {
    struct n_sigman sm;
    struct sendbundle sb;
@@ -2492,8 +2507,11 @@ resend_msg(struct message *mp, struct header *hp, boole add_resent)
    _sendout_error = FAL0;
    __sendout_ident = NULL;
    n_pstate_err_no = su_ERR_INVAL;
+
    rv = STOP;
    to = hp->h_to;
+   ASSERT(hp->h_cc == NIL);
+   ASSERT(hp->h_bcc == NIL);
    nfi = ibuf = NULL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
@@ -2505,19 +2523,6 @@ resend_msg(struct message *mp, struct header *hp, boole add_resent)
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
-
-   /* If we fail we delay that a bit until we can write $DEAD! */
-
-   to = checkaddrs(to, (EACM_NORMAL |
-         (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
-         &_sendout_error);
-   if(_sendout_error < 0){
-      n_err(_("Some addressees were classified as \"hard error\"\n"));
-      n_pstate_err_no = su_ERR_PERM;
-   }else if(to == NULL){
-      n_err(_("No recipients specified\n"));
-      n_pstate_err_no = su_ERR_DESTADDRREQ;
-   }
 
    if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
          ) == NULL) {
@@ -2539,10 +2544,6 @@ resend_msg(struct message *mp, struct header *hp, boole add_resent)
       goto jerr_io;
    }
 
-   /* Honour delayed error */
-   if(_sendout_error != 0)
-      goto jfail_dead;
-
    /* C99 */{
       char const *cp;
 
@@ -2556,6 +2557,7 @@ resend_msg(struct message *mp, struct header *hp, boole add_resent)
    su_mem_set(&sb, 0, sizeof sb);
    sb.sb_to = to;
    sb.sb_input = nfi;
+   sb.sb_url = urlp;
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
@@ -2599,8 +2601,13 @@ jerr_o:
          if(!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)){
             sb.sb_to = to;
             /*sb.sb_input = nfi;*/
-            if(!c || _transfer(&sb))
+            b = FAL0;
+            if(!c || a_sendout_transfer(&sb, &b))
                rv = OKAY;
+            else if(b && _sendout_error == 0){
+               _sendout_error = b;
+               savedeadletter(nfi, FAL0);
+            }
          }
       }else if(!_sendout_error)
          rv = OKAY;

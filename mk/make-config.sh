@@ -34,6 +34,7 @@ XOPTIONS="\
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
       KEY_BINDINGS='Configurable key bindings' \
+   MTA_ALIASES='MTA aliases(5) (text file) support' \
    REGEX='Regular expressions' \
    SOCKETS='Network support' \
          AGENT='-' \
@@ -143,6 +144,7 @@ option_setup() {
          OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+         OPT_MTA_ALIASES=1
          OPT_SOCKETS=require
             OPT_TLS=require
             OPT_SMTP=require
@@ -3343,6 +3345,7 @@ feat_def IMAP
 feat_def IMAP_SEARCH
 feat_def MAILDIR
 feat_def MD5 # XXX only sockets
+feat_def MTA_ALIASES
 feat_def NETRC
 feat_def POP3
 feat_def SMIME

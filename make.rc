@@ -94,6 +94,7 @@ VAL_MAIL=`\
    fi`
 
 # Path to the local MTA (Mail-Transfer-Agent).
+# MTA aliases (aliases(5)) are optionally supported via OPT_MTA_ALIASES.
 VAL_MTA=`\
    if [ -x /usr/bin/sendmail ]; then \
       echo /usr/bin/sendmail;\
@@ -293,6 +294,14 @@ OPT_MLE=yes
 
    # Add support for `(un)?bind'ing of key sequences.
    OPT_KEY_BINDINGS=yes
+
+# Whether support for MTA aliases(5) shall be included.
+# With it, and if *mta-aliases* is set to a file, MTA aliases will be
+# expanded as a last step before messages are sent.
+# Note this only supports text-, no database files; expansion only
+# supports (names and) address values, /file/name and |command values
+# are ignored (*verbose* logs).  TODO :include:/file/name.
+OPT_MTA_ALIASES=yes
 
 # Several different P(seudo) R(andom number) G(enerator) possibilities.
 # No need for somewhat strong random is necessary.

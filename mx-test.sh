@@ -406,6 +406,7 @@ t_all() {
 
    # Operational basics with easy tests
    t_expandaddr # (after t_alias)
+   t_mta_aliases # (after t_expandaddr)
    t_filetype
    t_record_a_resend
    t_e_H_L_opts
@@ -4730,6 +4731,7 @@ t_shortcut() {
 
 # Operational basics with easy tests {{{
 t_expandaddr() {
+   # after: t_alias
    t_prolog expandaddr
 
    if have_feat uistrings; then :; else
@@ -4902,7 +4904,7 @@ t_expandaddr() {
       -c '\$this' -b '\$this' '\$this' \
       > ./.tall 2>&1
    check 55 4 "${MBOX}" '2071294634 1054'
-   check 56 - .tall '2482340035 247'
+   check 56 - .tall '1144578880 139'
 
    </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
       -Sthis=taddr@exam.ple -Sexpandaddr=shquote \
@@ -5021,6 +5023,122 @@ t_expandaddr() {
 	_EOT
    check 85 0 "${MBOX}" '10610402 404'
    check 86 - .tall '4294967295 0'
+
+   t_epilog
+}
+
+t_mta_aliases() {
+   # after: t_expandaddr
+   t_prolog mta_aliases
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta 'CrateagusMonogyna May 13 15:22:33 2019'
+
+   ${cat} > ./.tali <<- '__EOT'
+	
+	   # Comment
+	
+	
+	a1: ex1@a1.ple  , 
+	  ex2@a1.ple, <ex3@a1.ple> ,
+	  ex4@a1.ple    
+	a2:     ex1@a2.ple  ,   ex2@a2.ple,a2_2
+	a2_2:ex3@a2.ple,ex4@a2.ple
+	a3: a4
+	a4: a5,
+	# Comment
+	      # More comment
+	   ex1@a4.ple
+	# Comment
+	a5: a6
+	a6: a7  , ex1@a6.ple
+	a7: a8,a9
+	a8: ex1@a8.ple
+	__EOT
+
+   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -Smta-aliases=./.tali \
+      -b a3 -c a2 a1 > ./.tall 2>&1
+   check 1 0 "${MBOX}" '1698752635 233'
+   check 2 - .tall '4294967295 0'
+
+   ## xxx The following are actually *expandaddr* tests!!
+
+   # May not send plain names over SMTP!
+   echo | ${MAILX} ${ARGS} -Smta=smtp://laber.backe \
+      -Smta-aliases=./.tali \
+      -b a3 -c a2 a1 > ./.tall 2>&1
+   check_exn0 3
+   check 4 - "${MBOX}" '1698752635 233'
+   check 5 - .tall '771616226 179'
+
+   # xxx for false-positive SMTP test we would need some mocking
+   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -Sexpandaddr=fail,-name \
+      -Smta-aliases=./.tali \
+      -b a3 -c a2 a1 > ./.tall 2>&1
+   check_exn0 6
+   check 7 - "${MBOX}" '1698752635 233'
+   check 8 - .tall '2834389894 178'
+
+   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -Sexpandaddr=-name \
+      -Smta-aliases=./.tali \
+      -b a3 -c a2 a1 > ./.tall 2>&1
+   check 9 4 "${MBOX}" '1018003273 462'
+   check 10 - .tall '2136559508 69'
+
+   echo 'a9:nine@nine.nine' >> ./.tali
+
+   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -Sexpandaddr=fail,-name \
+      -Smta-aliases=./.tali \
+      -b a3 -c a2 a1 > ./.tall 2>&1
+   check 11 0 "${MBOX}" '891102860 707'
+   check 12 - .tall '4294967295 0'
+
+   printf '#
+   set expandaddr=-name
+   mail a1
+!c a2
+!:echo $?/$^ERRNAME
+!^header insert bcc a3
+!:echo $?/$^ERRNAME
+!:set expandaddr
+!t a1
+!c a2
+!:echo $?/$^ERRNAME
+!^header insert bcc a3
+!:echo $?/$^ERRNAME
+!.
+   echo and, once again, check that cache is updated
+   # Enclose one pipe in quotes: immense stress for our stupid address parser:(
+   !echo "a10:./.tf1,|%s>./.tp1,\\"|%s > ./.tp2\\",./.tf2" >> ./.tali
+   mail a1
+!c a2
+!:echo $?/$^ERRNAME
+!^header insert bcc a3
+!:echo $?/$^ERRNAME
+!.
+   echo trigger happiness
+   mail a1
+!c a2
+!:echo $?/$^ERRNAME
+!^header insert bcc a3 a10
+!:echo $?/$^ERRNAME
+!.
+   ' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+      -Smta-aliases=./.tali \
+      > ./.tall 2>&1
+   check 13 0 "${MBOX}" '1331842343 1439'
+   check 14 - .tall '1795496020 473'
+   check 15 - .tf1 '3056269950 249'
+   check 16 - .tp1 '3056269950 249'
+   check 17 - .tp2 '3056269950 249'
+   check 18 - .tf2 '3056269950 249'
+
+   # TODO t_mta_aliases: n_ALIAS_MAXEXP is compile-time constant,
+   # TODO need to somehow provide its contents to the test, then test
 
    t_epilog
 }

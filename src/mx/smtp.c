@@ -175,7 +175,7 @@ _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
 
 #ifdef mx_HAVE_TLS
    if (!sop->s_use_tls &&
-         xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+         xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -183,11 +183,11 @@ _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sop))
+      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_url, sop))
          goto jleave;
    }
 #else
-   if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+   if (xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)) {
       n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
@@ -280,7 +280,7 @@ jerr_cred:
    }
 
 jsend:
-   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_url.url_u_h.s);
+   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_url->url_u_h.s);
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
@@ -364,7 +364,7 @@ smtp_mta(struct sendbundle *sbp)
 
    if(n_poption & n_PO_DEBUG)
       su_mem_set(&so, 0, sizeof so);
-   else if(!sopen(&so, &sbp->sb_url))
+   else if(!sopen(&so, sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";

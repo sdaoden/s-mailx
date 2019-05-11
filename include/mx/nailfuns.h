@@ -1607,6 +1607,11 @@ FL int         sendmp(struct message *mp, FILE *obuf,
  * sendout.c
  */
 
+/* Check whether outgoing transport is via SMTP/SUBMISSION etc.
+ * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file based
+ * (or bad), and FAL0 if URL parsing failed */
+FL boole mx_sendout_mta_url(struct url *urlp);
+
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
 FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
@@ -1618,7 +1623,7 @@ FL int c_sendmail(void *v);
 FL int c_Sendmail(void *v);
 
 /* Mail a message on standard input to the people indicated in the passed
- * header.  (Internal interface) */
+ * header, applying all the address massages first.  (Internal interface) */
 FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
                struct message *quote, char const *quotefile);
 
@@ -1637,11 +1642,13 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
                   enum conversion convert, char const *contenttype,
                   char const *charset);
 
-/*  */
-FL enum okay   resend_msg(struct message *mp, struct header *hp,
-                  boole add_resent);
+/* Note: hp->h_to must already have undergone address massage(s), it is taken
+ * as-is; h_cc and h_bcc are asserted to be NIL.  urlp should be NIL if
+ * sendout_mta_url() says we are file based, otherwise... */
+FL enum okay n_resend_msg(struct message *mp, struct url *urlp,
+      struct header *hp, boole add_resent);
 
-/* $DEAD */
+/* *save* / $DEAD */
 FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
 
 /*
