@@ -25,6 +25,8 @@
 #define su_SOURCE_CORE_CODE
 #define su_MASTER
 
+#include "su/code.h"
+
 #include <errno.h> /* XXX Grrrr */
 #include <stdarg.h>
 #include <stdio.h> /* TODO Get rid */
@@ -33,7 +35,7 @@
 
 #include "su/icodec.h"
 
-#include "su/code.h"
+/*#include "su/code.h"*/
 #include "su/code-in.h"
 
 #define a_PRIMARY_DOLOG(LVL) \

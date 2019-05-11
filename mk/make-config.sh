@@ -1545,6 +1545,11 @@ echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
 
 printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
 
+if [ -n "${OS_DEFINES}" ]; then
+   printf '#ifdef su_SOURCE\n'"${OS_DEFINES}"'#endif /* su_SOURCE */\n\n' \
+       >> ${h}
+fi
+
 ## SU
 
 i=`${getconf} PAGESIZE 2>/dev/null`
