@@ -62,7 +62,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
     * cases, so add another check, then */
    snprintf(lname, sizeof lname, "%s%s%s",
       dip->di_lock_name, dip->di_randstr, dip->di_hostname);
-#ifdef mx_SOURCE_DOTLOCK_PS
+#ifdef mx_SOURCE_PS_DOTLOCK_MAIN
    if(!strcmp(lname, dip->di_lock_name)){
       rv = n_DLS_FISHY | n_DLS_ABANDON;
       goto jleave;
@@ -92,7 +92,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
       n_msleep(dip->di_pollmsecs, FAL0);
    }
 
-#ifdef mx_SOURCE_DOTLOCK_PS
+#ifdef mx_SOURCE_PS_DOTLOCK_MAIN
 jleave:
 #endif
    return rv;
@@ -115,7 +115,7 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if(fd != -1){
-#ifdef mx_SOURCE_DOTLOCK_PS
+#ifdef mx_SOURCE_PS_DOTLOCK_MAIN
          if(dip->di_stb != NULL &&
                fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)){
             int x = su_err_no();
