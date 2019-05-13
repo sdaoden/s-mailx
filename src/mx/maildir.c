@@ -136,7 +136,7 @@ _cleantmp(void)
    if ((dirp = opendir("tmp")) == NULL)
       goto jleave;
 
-   now = n_time_now(FAL0)->ts_sec;
+   now = n_time_now(FAL0)->ts_sec - 36*3600;
    s = n_string_creat_auto(&s_b);
 
    while ((dp = readdir(dirp)) != NULL) {
@@ -148,7 +148,7 @@ _cleantmp(void)
       s = n_string_push_cp(s, dp->d_name);
       if (stat(n_string_cp(s), &st) == -1)
          continue;
-      if (st.st_atime + 36*3600 < now)
+      if (st.st_atime <= now)
          unlink(s->s_dat);
    }
    closedir(dirp);
