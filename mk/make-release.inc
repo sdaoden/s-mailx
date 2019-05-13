@@ -72,7 +72,11 @@ ref_status() {
    done
    if [ -z "${brref}" ]; then
       echo >&2 'Not on the [master] or a [stable/*] branch'
-      exit 1
+      [ -z "${grappa}" ] && exit 1
+      if yesno 'Are you sure you want grappa from '${headref}'?'; then :; else
+         echo >&2 'Bailing out'
+         exit 3
+      fi
    fi
    if [ "`${git} status --porcelain --ignored |
          ${awk} 'BEGIN{no=0}{++no}END{print no}'`" -ne 0 ]; then
