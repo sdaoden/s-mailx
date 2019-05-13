@@ -26,10 +26,15 @@ cd ..
 : ${MAILBCC:=mailx-announce-bcc}
 : ${MAILTO:=mailx-announce}
 
-
 have_perl=
 if command -v perl >/dev/null 2>&1; then
    have_perl=1
+fi
+
+if command -v s-nail >/dev/null 2>&1; then :; else
+   echo >&2 'We need s-nail in the path in order to update errors etc.!'
+   echo >&2 '(To create hashtables of those, to be exact.)'
+   exit 1
 fi
 
 ## Hooks
