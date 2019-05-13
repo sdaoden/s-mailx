@@ -1,0 +1,19 @@
+reproducible_build: a2: *expandaddr* does not allow user name target
+1/INVAL
+reproducible_build: a3: *expandaddr* does not allow user name target
+505 Bcc
+0/NONE
+0/NONE
+210 Bcc 1
+0/NONE
+reproducible_build: No message, no subject; hope that's ok
+and, once again, check that cache is updated
+0/NONE
+210 Bcc 1
+0/NONE
+reproducible_build: No message, no subject; hope that's ok
+trigger happiness
+0/NONE
+210 Bcc 1
+0/NONE
+reproducible_build: No message, no subject; hope that's ok

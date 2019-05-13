@@ -1,0 +1,3 @@
+reproducible_build: a9: *expandaddr* does not allow user name target
+reproducible_build: Some addressees were classified as "hard error"
+reproducible_build: ... message not sent

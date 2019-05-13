@@ -1,0 +1,3 @@
+reproducible_build: a9: user name (MTA alias) targets are not allowed
+reproducible_build: Some addressees were classified as "hard error"
+reproducible_build: ... message not sent
