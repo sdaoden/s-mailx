@@ -364,8 +364,8 @@ jredo:
 #ifdef mx_HAVE_UISTRINGS
       fputs(su_program, n_stdout);
       fputs(_(
-         " commands -- <msglist> denotes message specification tokens,\n"
-         "e.g., 1-5, :n or . (current, the \"dot\"), separated by *ifs*:\n"),
+         " commands -- <msglist> denotes message specification tokens, e.g.,\n"
+         "1-5, :n, @f@Ulf or . (current, the \"dot\"), separated by *ifs*:\n"),
          n_stdout);
       fputs(_(
 "\n"
@@ -373,7 +373,7 @@ jredo:
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
 "headers                header summary ... for messages surrounding \"dot\"\n"
-"search <msglist>       ... for the given list (alias for `from')\n"
+"search <msglist>       ... for the given expression list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
          n_stdout);
 
