@@ -86,4 +86,20 @@ There subject was
 0/NONE
 0/NONE
 0/NONE
+======= new game new fun!
+-oneo
+210 To 2
+0/NONE
+--two
+reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
+505 Cc
+0/NONE
+210 Cc 1
+0/NONE
+--three
+reproducible_build: abcc: *expandaddr* does not allow user name target
+505 Bcc
+0/NONE
+210 Bcc 1
+0/0/NONE
 --bye
