@@ -72,6 +72,84 @@ msg() {
 
 ##  --  >8  --  8<  --  ##
 
+t_all() {
+   # Absolute Basics
+   t_X_Y_opt_input_go_stack
+   t_X_errexit
+   t_Y_errexit
+   t_S_freeze
+   t_input_inject_semicolon_seq
+   t_wysh
+   t_commandalias # test now, save space later on!
+
+   # Basics
+   t_shcodec
+   t_ifelse
+   t_localopts
+   t_local
+   t_environ
+   t_macro_param_shift
+   t_addrcodec
+   t_csop
+   t_vexpr
+   t_call_ret
+   t_xcall
+   t_vpospar
+   t_atxplode
+   t_read
+
+   # Send/RFC absolute basics
+   t_can_send_rfc
+
+   # VFS
+   t_mbox
+   t_maildir
+
+   # MIME and RFC basics
+   t_mime_if_not_ascii
+   t_mime_encoding
+   t_xxxheads_rfc2047
+   t_iconv_mbyte_base64
+   t_iconv_mainbody
+   t_mime_force_sendout
+   t_binary_mainbody
+   t_C_opt_customhdr
+
+   # Operational basics with trivial tests
+   t_alias
+   t_charsetalias
+   t_shortcut
+
+   # Operational basics with easy tests
+   t_expandaddr # (after t_alias)
+   t_mta_aliases # (after t_expandaddr)
+   t_filetype
+   t_record_a_resend
+   t_e_H_L_opts
+   t_q_t_etc_opts
+   t_message_injections
+   t_attachments
+   t_rfc2231 # (after attachments)
+   t_mime_types_load_control
+
+   # Around state machine, after basics
+   t_alternates
+   t_quote_a_cmd_escapes
+   t_compose_edits
+   t_digmsg
+
+   # Heavy use of/rely on state machine (behaviour) and basics
+   t_compose_hooks
+   t_mass_recipients
+   t_lreply_futh_rth_etc
+   t_pipe_handlers
+
+   # Rest
+   t_s_mime
+}
+
+## Now it is getting really weird. You've been warned.
+# Setup and support {{{
 export ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR  \
    MAKE awk cat cksum rm sed grep
 
@@ -128,6 +206,7 @@ RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
+# We want an UTF-8 locale
 if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
@@ -355,82 +434,7 @@ else
       ${awk} 'BEGIN{print '${1}' % '${2}'}'
    }
 fi
-
-t_all() {
-   # Absolute Basics
-   t_X_Y_opt_input_go_stack
-   t_X_errexit
-   t_Y_errexit
-   t_S_freeze
-   t_input_inject_semicolon_seq
-   t_wysh
-   t_commandalias # test now, save space later on!
-
-   # Basics
-   t_shcodec
-   t_ifelse
-   t_localopts
-   t_local
-   t_environ
-   t_macro_param_shift
-   t_addrcodec
-   t_csop
-   t_vexpr
-   t_call_ret
-   t_xcall
-   t_vpospar
-   t_atxplode
-   t_read
-
-   # Send/RFC absolute basics
-   t_can_send_rfc
-
-   # VFS
-   t_mbox
-   t_maildir
-
-   # MIME and RFC basics
-   t_mime_if_not_ascii
-   t_mime_encoding
-   t_xxxheads_rfc2047
-   t_iconv_mbyte_base64
-   t_iconv_mainbody
-   t_mime_force_sendout
-   t_binary_mainbody
-   t_C_opt_customhdr
-
-   # Operational basics with trivial tests
-   t_alias
-   t_charsetalias
-   t_shortcut
-
-   # Operational basics with easy tests
-   t_expandaddr # (after t_alias)
-   t_mta_aliases # (after t_expandaddr)
-   t_filetype
-   t_record_a_resend
-   t_e_H_L_opts
-   t_q_t_etc_opts
-   t_message_injections
-   t_attachments
-   t_rfc2231 # (after attachments)
-   t_mime_types_load_control
-
-   # Around state machine, after basics
-   t_alternates
-   t_quote_a_cmd_escapes
-   t_compose_edits
-   t_digmsg
-
-   # Heavy use of/rely on state machine (behaviour) and basics
-   t_compose_hooks
-   t_mass_recipients
-   t_lreply_futh_rth_etc
-   t_pipe_handlers
-
-   # Rest
-   t_s_mime
-}
+# }}}
 
 # Absolute Basics {{{
 t_X_Y_opt_input_go_stack() {
