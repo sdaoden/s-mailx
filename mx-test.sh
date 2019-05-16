@@ -6097,6 +6097,8 @@ t_digmsg() { # XXX rudimentary
    t_prolog digmsg
    TRAP_EXIT_ADDONS="./.t*"
 
+   t_xmta
+
    printf '#
    mail ./.tout\n!s This subject is\nThis body is
 !:echo --one
@@ -6172,13 +6174,34 @@ t_digmsg() { # XXX rudimentary
    digmsg remove 1; echo $?/$^ERRNAME;\\
    digmsg remove 2; echo $?/$^ERRNAME;
 !x
+   echo ======= new game new fun!
+   mail one@to.invalid
+!s hossa
+!:set expandaddr=-name
+!:echo -oneo
+!^ header insert to two@to.invalid
+!:echo $?/$^ERRNAME
+!:echo --two
+!^ header insert cc no-name-allowed
+!:echo $?/$^ERRNAME
+!^ header insert cc one@cc.invalid
+!:echo $?/$^ERRNAME
+!:echo --three
+!:alias abcc one@bcc.invalid
+!^ header insert bcc abcc
+!:echo $?/$^ERRNAME
+!:set expandaddr=+addr
+!^ header insert bcc abcc
+!:echo $!/$?/$^ERRNAME
+!.
    echo --bye
-      ' "${cat}" "${sed}" | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
-   check_ex0 1-estat
+      ' "${cat}" "${sed}" |
+      ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! >./.tall 2>&1
+   check 0 0 "$MBOX" '1766312852 177'
    if have_feat uistrings; then
-      check 1 - ./.tall '362777535 1087'
+      check 1 - ./.tall '2554217728 1366'
    else
-      check 1 - ./.tall '4281367066 967'
+      check 1 - ./.tall '121327235 1093'
    fi
    check 2 - ./.tfcc '3993703854 127'
    check 3 - ./.tempty '4294967295 0'

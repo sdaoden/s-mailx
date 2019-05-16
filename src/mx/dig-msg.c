@@ -328,10 +328,10 @@ jins_505:
          mult_ok = TRUM1;
       }
 
-      a_X("To", h_to, ntype = GTO|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
-      a_X("Cc", h_cc, ntype = GCC|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
-      a_X("Bcc", h_bcc, ntype = GBCC|GFULL su_COMMA
-         eacm = EACM_NORMAL|EAF_NAME);
+      /* Just like with ~t,~c,~b, immediately test *expandaddr* compliance */
+      a_X("To", h_to, ntype = GTO|GFULL su_COMMA eacm = EACM_NORMAL);
+      a_X("Cc", h_cc, ntype = GCC|GFULL su_COMMA eacm = EACM_NORMAL);
+      a_X("Bcc", h_bcc, ntype = GBCC|GFULL su_COMMA eacm = EACM_NORMAL);
 
       if((cp = mod_suff) != su_NIL)
          goto j501cp;
