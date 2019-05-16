@@ -4732,6 +4732,8 @@ t_shortcut() {
 # Operational basics with easy tests {{{
 t_expandaddr() {
    # after: t_alias
+   # MTA alias specific part in t_mta_aliases()
+   # This only tests from command line, rest later on (iff any)
    t_prolog expandaddr
 
    if have_feat uistrings; then :; else
@@ -5827,6 +5829,8 @@ my body
 }
 
 t_quote_a_cmd_escapes() {
+   # quote and cmd escapes because this (since Mail times) is worked in the
+   # big collect() monster of functions
    t_prolog quote_a_cmd_escapes
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -5898,7 +5902,8 @@ t_quote_a_cmd_escapes() {
    ${cat} ./.tall >> "${MBOX}"
    check 1 0 "${MBOX}" '2181726970 2023'
 
-   # ~@ is tested with other attachment stuff, ~^ is in compose_hooks
+   # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
+   # have some in compose_edits and digmsg
    ${rm} "${MBOX}"
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
@@ -5977,10 +5982,37 @@ and i ~w rite this out to ./.tmsg
    check 2 - "${MBOX}" '2613898218 4090'
    check 3 - ./.tmsg '2771314896 3186'
 
+   # Simple return/error value after *expandaddr* failure test
+   printf 'body
+!:echo --one
+!s This a new subject is
+!:set expandaddr=-name
+!t two@to.invalid
+!:echo $?/$^ERRNAME
+!:echo --two
+!c no-name-allowed
+!:echo $?/$^ERRNAME
+!c one@cc.invalid
+!:echo $?/$^ERRNAME
+!:echo --three
+!:alias abcc one@bcc.invalid
+!b abcc
+!:echo $?/$^ERRNAME
+!:set expandaddr=+addr
+!b abcc
+!:echo $!/$?/$^ERRNAME
+!.
+   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+         -Sescape=! \
+         -s testsub one@to.invalid >./.tall 2>&1
+   check 4 0 "${MBOX}" '3630515814 4288'
+   check 5 - ./.tall '2336041127 212'
+
    t_epilog
 }
 
 t_compose_edits() { # XXX very rudimentary
+   # after: t_quote_a_cmd_escapes
    t_prolog compose_edits
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -6055,6 +6087,8 @@ t_compose_edits() { # XXX very rudimentary
 	_EOT
    check 12 0 ./.ttout '1289478830 122'
    check 13 - ./.tall '4294967295 0'
+
+   # This test assumes code of `^' and `digmsg' is shared: see t_digmsg()
 
    t_epilog
 }
