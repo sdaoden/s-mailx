@@ -131,10 +131,13 @@ static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 /*  */
 static boole a_sendout_transfer(struct sendbundle *sbp, boole *senderror);
 
-static boole        __mta_start(struct sendbundle *sbp);
-static char const ** __mta_prepare_args(struct mx_name *to, struct header *hp);
-static void          __mta_debug(struct sendbundle *sbp, char const *mta,
-                        char const **args);
+/* Actual MTA interaction */
+static boole a_sendout_mta_start(struct sendbundle *sbp);
+static char const **a_sendout_mta_file_args(struct mx_name *to,
+      struct header *hp);
+static void a_sendout_mta_file_debug(struct sendbundle *sbp, char const *mta,
+      char const **args);
+static boole a_sendout_mta_test(struct sendbundle *sbp, char const *mta);
 
 /* Create a Message-ID: header field.  Use either host name or from address */
 static char const *a_sendout_random_id(struct header *hp, boole msgid);
@@ -1253,7 +1256,7 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
             sbp->sb_input = ef;
-            if (!__mta_start(sbp))
+            if(!a_sendout_mta_start(sbp))
                rv = FAL0;
             sbp->sb_to = nsave;
             sbp->sb_input = fisave;
@@ -1285,14 +1288,15 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
       n_lofi_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))
+   if (cnt > 0 && (ok_blook(smime_force_encryption) ||
+         !a_sendout_mta_start(sbp)))
       rv = FAL0;
    NYD_OU;
    return rv;
 }
 
 static boole
-__mta_start(struct sendbundle *sbp)
+a_sendout_mta_start(struct sendbundle *sbp)
 {
    pid_t pid;
    sigset_t nset;
@@ -1305,10 +1309,12 @@ __mta_start(struct sendbundle *sbp)
       n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
       /* For *smtp* the smtp:// protocol was optional; be simple: don't check
        * that *smtp* is misused with file:// or so */
-      if(n_servbyname(mta, NULL) == NULL)
+      if(n_servbyname(mta, NIL, NIL) == NIL)
          mta = savecat("smtp://", mta);
       rv = TRU1;
    }else{
+      boole issnd;
+      u16 pno;
       char const *proto;
 
       mta = ok_vlook(mta); /* TODO v15: what solely remains in here */
@@ -1320,38 +1326,56 @@ __mta_start(struct sendbundle *sbp)
       /* TODO for now this is pretty hacky: in v15 we should simply create
        * TODO an URL object; i.e., be able to do so, and it does it right
        * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      if((proto = n_servbyname(mta, NULL)) != NULL){
+      if((proto = n_servbyname(mta, &pno, &issnd)) != NIL){
          if(*proto == '\0'){
-            mta += sizeof("file://") -1;
+            if(pno == 0){
+               mta += sizeof("file://") -1;
+               rv = FAL0;
+            }else{
+               /* test -> stdout, test://X -> X */
+               mta += sizeof("test") -1;
+               if(mta[0] == ':' && mta[1] == '/' && mta[2] == '/')
+                  mta += 3;
+               rv = TRUM1;
+            }
+         }else if(!issnd){
+            n_err(_("*mta* does not denote a message sending protocol: %s\n"),
+               n_shexp_quote_cp(mta, FAL0));
             rv = FAL0;
+            goto jstop;
          }else
             rv = TRU1;
       }else
          rv = FAL0;
    }
 
-   if(!rv){
+   if(!rv || rv == TRUM1){
       char const *mta_base;
 
       if((mta = fexpand(mta_base = mta, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
-         n_err(_("*mta* variable expansion failure: %s\n"),
+         n_err(_("*mta* variable file expansion failure: %s\n"),
             n_shexp_quote_cp(mta_base, FAL0));
          goto jstop;
       }
 
-      args = __mta_prepare_args(sbp->sb_to, sbp->sb_hp);
-      if (n_poption & n_PO_DEBUG) {
-         __mta_debug(sbp, mta, args);
+      if(rv == TRUM1){
+         rv = a_sendout_mta_test(sbp, mta);
+         goto jleave;
+      }
+
+      args = a_sendout_mta_file_args(sbp->sb_to, sbp->sb_hp);
+      if(n_poption & n_PO_DEBUG){
+         a_sendout_mta_file_debug(sbp, mta, args);
          rv = TRU1;
          goto jleave;
       }
-   } else {
+   }else/* if(rv == TRU1)*/{
       UNINIT(args, NULL);
 #ifndef mx_HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-      if (n_poption & n_PO_DEBUG) {
+      if(n_poption & n_PO_DEBUG){
          (void)smtp_mta(sbp);
          rv = TRU1;
          goto jleave;
@@ -1361,14 +1385,14 @@ __mta_start(struct sendbundle *sbp)
 
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
-   if ((pid = n_child_fork()) == -1) {
+   if((pid = n_child_fork()) == -1){
       n_perr("fork", 0);
 jstop:
       savedeadletter(sbp->sb_input, 0);
       _sendout_error = TRU1;
       goto jleave;
    }
-   if (pid == 0) {
+   if(pid == 0){
       sigemptyset(&nset);
       sigaddset(&nset, SIGHUP);
       sigaddset(&nset, SIGINT);
@@ -1378,9 +1402,9 @@ jstop:
       sigaddset(&nset, SIGTTOU);
       /* n_stdin = */freopen(n_path_devnull, "r", stdin);
 #ifdef mx_HAVE_SMTP
-      if (rv) {
+      if(rv == TRU1){
          n_child_prepare(&nset, 0, 1);
-         if (smtp_mta(sbp))
+         if(smtp_mta(sbp))
             _exit(n_EXIT_OK);
       } else
 #endif
@@ -1400,20 +1424,21 @@ jstop:
       _exit(n_EXIT_ERR);
    }
 
-   if ((n_poption & n_PO_D_V) || ok_blook(sendwait)) {
-      if (!(rv = n_child_wait(pid, NULL)))
+   if((n_poption & n_PO_D_V) || ok_blook(sendwait)){
+      if(!(rv = n_child_wait(pid, NULL)))
          _sendout_error = TRU1;
-   } else {
+   }else{
       n_child_free(pid);
       rv = TRU1;
    }
+
 jleave:
    NYD_OU;
    return rv;
 }
 
 static char const **
-__mta_prepare_args(struct mx_name *to, struct header *hp)
+a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
 {
    uz vas_cnt, i, j;
    char **vas;
@@ -1514,7 +1539,8 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
 }
 
 static void
-__mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
+a_sendout_mta_file_debug(struct sendbundle *sbp, char const *mta,
+   char const **args)
 {
    uz cnt, bufsize, llen;
    char *buf;
@@ -1537,6 +1563,83 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    if (buf != NULL)
       n_free(buf);
    NYD_OU;
+}
+
+static boole
+a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
+{
+   enum{
+      a_OK = 0,
+      a_ERR = 1u<<0,
+      a_MAFC = 1u<<1,
+      a_ANY = 1u<<2,
+      a_LASTNL = 1u<<3
+   };
+   char *buf;
+   uz cnt, bufsize, llen;
+   FILE *fp;
+   s32 f;
+   NYD_IN;
+
+   if(*mta == '\0')
+      fp = n_stdout;
+   else{
+      if((fp = Fopen(mta, "W+")) != NIL)
+         ;
+      else if((fp = Fopen(mta, "r+")) == NIL)
+         goto jeno;
+      else if(!n_file_lock(fileno(fp), FLT_READ|FLT_WRITE, 0,0, UZ_MAX)){
+         f = su_ERR_NOLCK;
+         goto jefo;
+      }else if((f = n_folder_mbox_prepare_append(fp, NIL)) != su_ERR_NONE)
+         goto jefo;
+   }
+
+   fflush_rewind(sbp->sb_input);
+   cnt = fsize(sbp->sb_input);
+   buf = NIL;
+   bufsize = 0;
+   f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
+
+   if((f & a_MAFC) &&
+         fprintf(fp, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime
+            ) < 0)
+      goto jeno;
+   while(fgetline(&buf, &bufsize, &cnt, &llen, sbp->sb_input, TRU1) != NIL){
+      if(fwrite(buf, 1, llen, fp) != llen)
+         goto jeno;
+      if(f & a_MAFC){
+         f |= a_ANY;
+         if(llen > 0 && buf[llen - 1] == '\0')
+            f |= a_LASTNL;
+         else
+            f &= ~a_LASTNL;
+      }
+   }
+   if((f & (a_ANY | a_LASTNL)) == a_ANY && putc('\n', fp) == EOF)
+      goto jeno;
+
+jdone:
+   if(buf != NULL)
+      n_free(buf);
+
+   if(fp != n_stdout)
+      Fclose(fp);
+   else
+      clearerr(fp);
+jleave:
+   NYD_OU;
+   return ((f & a_ERR) == 0);
+
+jeno:
+   f = su_err_no();
+jefo:
+   n_err(_("test MTA: cannot open/prepare/write: %s: %s\n"),
+      n_shexp_quote_cp(mta, FAL0), su_err_doc(f));
+   f = a_ERR;
+   if(fp != NIL)
+      goto jdone;
+   goto jleave;
 }
 
 static char const *
@@ -1775,7 +1878,7 @@ mx_sendout_mta_url(struct url *urlp){
 
    if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
       /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = n_servbyname(smtp = ok_vlook(mta), NIL)) == NIL ||
+      if((proto = n_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
             *proto == '\0'){
          rv = TRUM1;
          goto jleave;

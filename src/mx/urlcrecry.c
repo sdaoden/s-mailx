@@ -814,21 +814,23 @@ jleave:
 }
 
 FL char const *
-n_servbyname(char const *proto, u16 *irv_or_null){
+n_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
    static struct{
       char const name[14];
-      char const port[8];
+      char const port[7];
+      boole issnd;
       u16 portno;
    } const tbl[] = {
-      { "smtp", "25", 25},
-      { "smtps", "465", 465},
-      { "submission", "587", 587},
-      { "submissions", "465", 465},
-      { "pop3", "110", 110},
-      { "pop3s", "995", 995},
-      { "imap", "143", 143},
-      { "imaps", "993", 993},
-      { "file", "", 0}
+      { "smtp", "25", TRU1, 25},
+      { "smtps", "465", TRU1, 465},
+      { "submission", "587", TRU1, 587},
+      { "submissions", "465", TRU1, 465},
+      { "pop3", "110", FAL0, 110},
+      { "pop3s", "995", FAL0, 995},
+      { "imap", "143", FAL0, 143},
+      { "imaps", "993", FAL0, 993},
+      { "file", "", TRU1, 0},
+      { "test", "", TRU1, U16_MAX}
    };
    char const *rv;
    uz l, i;
@@ -839,11 +841,13 @@ n_servbyname(char const *proto, u16 *irv_or_null){
          break;
    l = P2UZ(rv - proto);
 
-   for(rv = NULL, i = 0; i < NELEM(tbl); ++i)
+   for(rv = NIL, i = 0; i < NELEM(tbl); ++i)
       if(!su_cs_cmp_case_n(tbl[i].name, proto, l)){
          rv = tbl[i].port;
-         if(irv_or_null != NULL)
-            *irv_or_null = tbl[i].portno;
+         if(port_or_nil != NIL)
+            *port_or_nil = tbl[i].portno;
+         if(issnd_or_nil != NIL)
+            *issnd_or_nil = tbl[i].issnd;
          break;
       }
    NYD2_OU;

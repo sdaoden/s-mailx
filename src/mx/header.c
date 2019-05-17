@@ -1262,29 +1262,31 @@ nexttoken(char const *cp)
 FL char const *
 myaddrs(struct header *hp) /* TODO */
 {
+   boole issnd;
    struct mx_name *np;
    char const *rv, *mta;
    NYD_IN;
 
-   if (hp != NULL && (np = hp->h_from) != NULL) {
-      if ((rv = np->n_fullname) != NULL)
+   if(hp != NULL && (np = hp->h_from) != NIL){
+      if((rv = np->n_fullname) != NIL)
          goto jleave;
-      if ((rv = np->n_name) != NULL)
+      if((rv = np->n_name) != NIL)
          goto jleave;
    }
 
    /* Verified once variable had been set */
-   if((rv = ok_vlook(from)) != NULL)
+   if((rv = ok_vlook(from)) != NIL)
       goto jleave;
 
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
     * accept his desire */
-   if (ok_vlook(hostname) != NULL)
+   if(ok_vlook(hostname) != NIL)
       goto jnodename;
-   if (ok_vlook(smtp) != NULL || /* TODO obsolete -> mta */
+   if(ok_vlook(smtp) != NIL || /* TODO obsolete -> mta */
          /* TODO pretty hacky for now (this entire fun), later: url_creat()! */
-         ((mta = n_servbyname(ok_vlook(mta), NULL)) != NULL && *mta != '\0'))
+         ((mta = n_servbyname(ok_vlook(mta), NIL, &issnd)) != NIL &&
+         *mta != '\0' && issnd))
       goto jnodename;
 jleave:
    NYD_OU;

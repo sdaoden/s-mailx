@@ -10523,6 +10523,18 @@ variable is set.
 .Pf ( Xr aliases 5 ) .
 .
 .Pp
+For testing purposes there is the
+.Ql test
+pseudo-MTA, which dumps to standard output or optionally to a file,
+and honours
+.Va mbox-fcc-and-pcc :
+.
+.Bd -literal -offset indent
+$ echo text | \*(uA -:/ -Smta=test -s ubject user@exam.ple
+$ </dev/null \*(uA -:/ -Smta=test://./xy -s ub user@exam.ple
+.Ed
+.
+.Pp
 For a file-based MTA it may be necessary to set
 .Va mta-argv0
 in in order to choose the right target of a modern

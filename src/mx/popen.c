@@ -127,7 +127,8 @@ a_popen_scan_mode(char const *mode, int *omode){
       {"a", O_WRONLY | O_APPEND | O_CREAT | n_O_NOXY_BITS},
       {"a+", O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS},
       {"r+", O_RDWR},
-      {"w+", O_RDWR | O_CREAT | O_EXCL}
+      {"w+", O_RDWR | O_CREAT | n_O_NOXY_BITS | O_TRUNC},
+      {"W+", O_RDWR | O_CREAT | O_EXCL}
    };
    int i;
    NYD2_IN;

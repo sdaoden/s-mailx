@@ -2182,9 +2182,13 @@ FL int c_urldecode(void *v); /* TODO obsolete */
  * Return NULL or something that can be converted to a struct mx_name */
 FL char *      url_mailto_to_address(char const *mailtop);
 
-/* Return port for proto (and set irv_or_null), or NULL if unknown.
- * For file:// this returns an empty string */
-FL char const *n_servbyname(char const *proto, u16 *irv_or_null);
+/* Return port for proto, or NIL if unknown.
+ * Upon sucess *port_or_nil and *issnd_or_nil will be updated, if set; the
+ * latter states whether protocol is of a sending type (SMTP, file etc.).
+ * For file:// and test[://] this returns su_empty, in the former case
+ * *port_or_nil is 0 and in the latter U16_MAX */
+FL char const *n_servbyname(char const *proto, u16 *port_or_nil,
+      boole *issnd_or_nil);
 
 #ifdef mx_HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
