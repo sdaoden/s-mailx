@@ -1,7 +1,6 @@
 #@ make-config.in -- mk-config.mk template, completed by make-config.sh.
-#@ TODO All the shell/awk snippets should become scripts in mk/!
 
-.PHONY: all test install uninstall clean distclean
+.PHONY: all install uninstall clean distclean
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
