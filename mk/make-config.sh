@@ -2202,6 +2202,7 @@ int main(void){
    iconv_t id;
    size_t inl, oul;
 
+   /* U+2013 */
    memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
    inl = sizeof("\342\200\223") -1;
    oul = sizeof oub;

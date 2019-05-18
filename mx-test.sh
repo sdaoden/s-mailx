@@ -275,17 +275,6 @@ have_feat() {
       ${grep} +${1} ) >/dev/null 2>&1
 }
 
-t_xmta() {
-   [ ${#} -ge 1 ] && __from=${1} ||
-      __from='Silybum Marianum Tue Apr 17 15:55:01 2018'
-   [ ${#} -eq 2 ] && __to=${2} || __to="${MBOX}"
-   ${cat} <<-_EOT > .tmta.sh
-		#!${SHELL} -
-		( echo 'From '"${__from}" && ${cat} && echo ) >> "${__to}"
-	_EOT
-   chmod 0755 .tmta.sh
-}
-
 t_prolog() {
    ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
    TRAP_EXIT_ADDONS=
@@ -3874,28 +3863,26 @@ t_can_send_rfc() {
    t_prolog can_send_rfc
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta
-
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.1 \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.1 \
       receiver@number.1 \
       > ./.terr 2>&1
-   check 1 0 "${MBOX}" '2479071721 124'
+   check 1 0 "${MBOX}" '550126528 126'
    check 1-err - .terr '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.2 \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.2 \
       -b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
       -c cc@no.1 -c cc@no.2 -c cc@no.3 \
       to@no.1 to@no.2 to@no.3 \
       > ./.terr 2>&1
-   check 2 0 "${MBOX}" '1963862532 320'
+   check 2 0 "${MBOX}" '3259888945 324'
    check 2-err - .terr '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.2no \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.2no \
       -b bcc@no.1\ \ bcc@no.2 -b bcc@no.3 \
       -c cc@no.1,cc@no.2 -c cc@no.3 \
       to@no.1,to@no.2 to@no.3 \
       > ./.terr 2>&1
-   check 2no 4 "${MBOX}" '1327601796 462'
+   check 2no 4 "${MBOX}" '3350946897 468'
    if have_feat uistrings; then
       check 2no-err - .terr '3397557940 190'
    else
@@ -3904,25 +3891,42 @@ t_can_send_rfc() {
 
    # XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
    # XXX would not treat that as a list but look for "," as a separator
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.3 \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sfullnames -s Sub.3 \
       -T 'bcc?single: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
       -T cc?si\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
       -T to?:\ to@no.1,'<to@no.2>' -T to:\ to@no.3 \
       > ./.terr 2>&1
-   check 3 0 "${MBOX}" '3798301395 670'
+   check 3 0 "${MBOX}" '1453534480 678'
    check 3-err - .terr '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.4 \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sfullnames -s Sub.4 \
       -T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
       -T cc:\ 'cc@no.1, <cc@no.2>' -T cc\ \ :\ \ cc@no.3 \
       -T to\ :to@no.1,'<to@no.2>' -T to:\ to@no.3 \
       > ./.terr 2>&1
-   check 4 0 "${MBOX}" '1809352988 872'
+   check 4 0 "${MBOX}" '535767201 882'
    check 4-err - .terr '4294967295 0'
+
+   # Two test with a file-based MTA
+   "${cat}" <<-_EOT > .tmta.sh
+		#!${SHELL} -
+		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
+			"${cat}" && echo pardauz && echo) > "${MBOX}"
+	_EOT
+   chmod 0755 .tmta.sh
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.mta-1 \
+      receiver@number.1 > ./.terr 2>&1
+   check 5 0 "${MBOX}" '2384401657 138'
+   check 5-err - .terr '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=file://./.tmta.sh -s Sub.mta-2 \
+      receiver@number.1 > ./.terr 2>&1
+   check 6 0 "${MBOX}" '3006460737 138'
+   check 6-err - .terr '4294967295 0'
 
    t_epilog
 }
-
 # }}}
 
 # VFS {{{
@@ -4205,8 +4209,6 @@ t_xxxheads_rfc2047() {
    t_prolog xxxheads_rfc2047
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'GentianaLutea Mon Dec 04 17:15:29 2017'
-
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
@@ -4265,10 +4267,10 @@ t_xxxheads_rfc2047() {
    # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
    ${rm} "${MBOX}"
    echo "Dat Früchtchen riecht häußlich" |
-      ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=./.tmta.sh \
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=test://"$MBOX" \
          -s Hühöttchen \
          'Schnödes "Früchtchen" <do@du> (Hä!)'
-   check 7 0 "${MBOX}" '800505986 368'
+   check 7 0 "${MBOX}" '3681801246 373'
 
    # RFC 2047 in an address field, and iconv involved
    if have_feat iconv; then
@@ -4288,8 +4290,8 @@ Content-Transfer-Encoding: 8bit
 _EOT
       echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
          -Sfullnames -Sreply-in-same-charset \
-         -Smta=./.tmta.sh -Rf ./.trebox
-      check 8 0 "${MBOX}" '2914485741 280'
+         -Smta=test://"$MBOX" -Rf ./.trebox
+      check 8 0 "${MBOX}" '3499372945 285'
    else
       t_echoskip '8:[no iconv option]'
    fi
@@ -4317,11 +4319,9 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
 
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'DroseriaRotundifolia Thu Aug 03 17:26:25 2017'
-
    if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tmta.sh \
+            -Smta=test://"$MBOX" \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=iso-2022-jp
          m t1@exam.ple
@@ -4353,7 +4353,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check_ex0 1-estat
       ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
          < "${MBOX}" > ./.tcksum
-      check 1 - ./.tcksum '2694609714 520'
+      check 1 - ./.tcksum '3314001564 516'
       check 2 - ./.terr '4294967295 0'
 
       printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
@@ -4363,7 +4363,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check 3 0 ./.twrite '1259742080 686'
       #check 4 - ./.tlog '3214068822 2123'
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
-      check 4 - ./.txlog '3659773472 2035'
+      check 4 - ./.txlog '3880307860 2031'
    else
       t_echoskip '1-4:[ISO-2022-JP unsupported]'
    fi
@@ -4371,7 +4371,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tmta.sh \
+            -Smta=test://"$MBOX" \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=euc-jp
          m t1@exam.ple
@@ -4402,7 +4402,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check_ex0 5-estat
       ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
          < "${MBOX}" > ./.tcksum
-      check 5 - ./.tcksum '2870183985 473'
+      check 5 - ./.tcksum '1754179361 469'
       check 6 - ./.terr '4294967295 0'
 
       printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
@@ -4412,7 +4412,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check 7 0 ./.twrite '1259742080 686'
       #check 8 - ./.tlog '2506063395 2075'
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
-      check 8 - ./.txlog '2528199891 1988'
+      check 8 - ./.txlog '3875358865 1984'
    else
       t_echoskip '5-8:[EUC-JP unsupported]'
    fi
@@ -4431,19 +4431,17 @@ t_iconv_mainbody() {
 
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'HamamelisVirginiana Fri Oct 20 16:23:21 2017'
-
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tmta.sh \
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://"$MBOX" \
       -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
       -s '–' over-the@rain.bow 2>./.terr
-   check 1 0 "${MBOX}" '3634015017 251'
+   check 1 0 "${MBOX}" '3559538297 250'
    check 2 - ./.terr '4294967295 0'
 
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tmta.sh \
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://"$MBOX" \
       -S charset-7bit=us-ascii -S charset-8bit=us-ascii \
       -s '–' over-the@rain.bow 2>./.terr
    check_exn0 3
-   check 3 - "${MBOX}" '3634015017 251'
+   check 3 - "${MBOX}" '3559538297 250'
    if have_feat uistrings; then
       if have_feat docstrings; then # xxx should not be like that
          check 4 - ./.terr '2579894983 148'
@@ -4463,13 +4461,13 @@ t_iconv_mainbody() {
       check_ex0 5-1-estat ${j}
       check 5-1 - ./.terr '4294967295 0'
       if [ ${i} -eq 13 ]; then
-         check 5-2 - ./.tout '189327996 283'
+         check 5-2 - ./.tout '189327996 283' # XXX old (before test MTA)
       elif [ ${i} -eq 12 ]; then
-         check 5-3 - ./.tout '1959197095 283'
+         check 5-3 - ./.tout '1959197095 283' # XXX old (before test MTA)
       elif [ ${i} -eq 3 ]; then
-         check 5-4 - ./.tout '3196380198 279'
+         check 5-4 - ./.tout '3896050050 278'
       else
-         check 5-5 - ./.tout '3760313827 279'
+         check 5-5 - ./.tout '3216374419 278'
       fi
    else
       t_echoskip '5:[test unsupported]'
@@ -4510,50 +4508,49 @@ t_mime_force_sendout() {
 
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'OenotheraBiennis Thu Jan 03 17:27:31 2019'
    printf '\150\303\274' > ./.tmba
    printf 'ha' > ./.tsba
    printf '' > "${MBOX}"
 
-   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s nogo \
       over-the@rain.bow 2>>${ERR}
    check 1 4 "${MBOX}" '4294967295 0'
 
-   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s go -Smime-force-sendout \
       over-the@rain.bow 2>>${ERR}
-   check 2 0 "${MBOX}" '1302465325 217'
+   check 2 0 "${MBOX}" '1866273282 219'
 
-   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf ha | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s nogo \
       -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 3 4 "${MBOX}" '1302465325 217'
+   check 3 4 "${MBOX}" '1866273282 219'
 
-   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf ha | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s go -Smime-force-sendout \
       -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 4 0 "${MBOX}" '3895092636 876'
+   check 4 0 "${MBOX}" '644433809 880'
 
-   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf ha | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s nogo \
       -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 5 4 "${MBOX}" '3895092636 876'
+   check 5 4 "${MBOX}" '644433809 880'
 
-   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf ha | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s go -Smime-force-sendout \
       -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 6 0 "${MBOX}" '824424508 1723'
+   check 6 0 "${MBOX}" '3172365123 1729'
 
-   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s nogo \
       -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 7 4 "${MBOX}" '824424508 1723'
+   check 7 4 "${MBOX}" '3172365123 1729'
 
-   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -s go -Smime-force-sendout \
       -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
-   check 8 0 "${MBOX}" '796644887 2557'
+   check 8 0 "${MBOX}" '4002905306 2565'
 
    t_epilog
 }
@@ -4562,17 +4559,15 @@ t_C_opt_customhdr() {
    t_prolog C_opt_customhdr
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'CimicifugaRacemosa Mon Dec 25 21:33:40 2017'
-
    echo bla |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
       -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
       this-goes@nowhere >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '2400078426 195'
+   check 1 0 "${MBOX}" '1174844658 195'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.
@@ -4583,14 +4578,14 @@ t_C_opt_customhdr() {
       set customhdr=%ccustom1 :  custom1\\,  body  ,  custom2: custom2  body%c
       m this-goes3@nowhere\nbody3\n!.
    ' "'" "'" "'" "'" |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+   ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
       -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '3546878678 752'
+   check 2 0 "${MBOX}" '158121534 752'
 
    t_epilog
 }
@@ -4601,9 +4596,7 @@ t_alias() {
    t_prolog alias
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'Hippocastanum Mon Jun 19 15:07:07 2017'
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tmta.sh > ./.tall 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" > ./.tall 2>&1
    alias a1 ex1@a1.ple
    alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
    alias a1 ex4@a1.ple
@@ -4625,7 +4618,7 @@ t_alias() {
    This also body is!!
 _EOT
 	__EOT
-   check 1 0 "${MBOX}" '2496925843 272'
+   check 1 0 "${MBOX}" '139467786 277'
    check 2 - .tall '1598893942 133'
 
    if have_feat uistrings; then
@@ -4748,181 +4741,180 @@ t_expandaddr() {
 
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'GentianaCruciata Sun Aug 19 00:33:32 2017'
    echo "${cat}" > ./.tcat
    chmod 0755 ./.tcat
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat > ./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 1 4 "${MBOX}" '3340207712 136'
+   check 1 4 "${MBOX}" '1216011460 138'
    check 2 - .tall '4169590008 162'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 3 0 "${MBOX}" '1628837241 272'
+   check 3 0 "${MBOX}" '847567042 276'
    check 4 - .tall '4294967295 0'
    check 5 - .tfile '1216011460 138'
    check 6 - .tpipe '1216011460 138'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,+name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 7 0 "${MBOX}" '1999682727 408'
+   check 7 0 "${MBOX}" '3682360102 414'
    check 8 - .tall '4294967295 0'
    check 9 - .tfile '847567042 276'
    check 10 - .tpipe '1216011460 138'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,-file,+pipe,+name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 11 4 "${MBOX}" '3378406068 544'
+   check 11 4 "${MBOX}" '1010907786 552'
    check 12 - .tall '673208446 70'
    check 13 - .tfile '847567042 276'
    check 14 - .tpipe '1216011460 138'
 
    printf '' > ./.tpipe
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=fail,-all,+file,-file,+pipe,+name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 15 4 "${MBOX}" '3378406068 544'
+   check 15 4 "${MBOX}" '1010907786 552'
    check 16 - .tall '3280630252 179'
    check 17 - .tfile '847567042 276'
    check 18 - .tpipe '4294967295 0'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,-pipe,+name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 19 4 "${MBOX}" '1783660516 680'
+   check 19 4 "${MBOX}" '3359494254 690'
    check 20 - .tall '4052857227 91'
    check 21 - .tfile '3682360102 414'
    check 22 - .tpipe '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=fail,-all,+file,+pipe,-pipe,+name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 23 4 "${MBOX}" '1783660516 680'
+   check 23 4 "${MBOX}" '3359494254 690'
    check 24 - .tall '2168069102 200'
    check 25 - .tfile '3682360102 414'
    check 26 - .tpipe '4294967295 0'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 27 0 "${MBOX}" '1345230450 816'
+   check 27 0 "${MBOX}" '3735108703 828'
    check 28 - .tall '4294967295 0'
    check 29 - .tfile '1010907786 552'
    check 30 - .tpipe '1216011460 138'
 
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 31 4 "${MBOX}" '3012323063 935'
+   check 31 4 "${MBOX}" '4225234603 949'
    check 32 - .tall '3486613973 73'
    check 33 - .tfile '452731060 673'
    check 34 - .tpipe '1905076731 121'
 
    printf '' > ./.tpipe
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=fail,-all,+file,+pipe,+name,-name,+addr \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 35 4 "${MBOX}" '3012323063 935'
+   check 35 4 "${MBOX}" '4225234603 949'
    check 36 - .tall '3032065285 182'
    check 37 - .tfile '452731060 673'
    check 38 - .tpipe '4294967295 0'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,+name,+addr,-addr \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 39 4 "${MBOX}" '3012323063 935'
+   check 39 4 "${MBOX}" '4225234603 949'
    check 40 - .tall '3863610168 169'
    check 41 - .tfile '1975297706 775'
    check 42 - .tpipe '130065764 102'
 
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+file,+pipe,+name,+addr,-addr \
       -Sadd-file-recipients \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 43 4 "${MBOX}" '3012323063 935'
+   check 43 4 "${MBOX}" '4225234603 949'
    check 44 - .tall '3863610168 169'
    check 45 - .tfile '3291831864 911'
    check 46 - .tpipe '4072000848 136'
 
    printf '' > ./.tpipe
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=fail,-all,+file,+pipe,+name,+addr,-addr \
       -Sadd-file-recipients \
       -X'alias talias talias@exam.ple' \
       './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
       > ./.tall 2>&1
-   check 47 4 "${MBOX}" '3012323063 935'
+   check 47 4 "${MBOX}" '4225234603 949'
    check 48 - .tall '851041772 278'
    check 49 - .tfile '3291831864 911'
    check 50 - .tpipe '4294967295 0'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,+addr \
       'taddr@exam.ple' 'this@@c.example' \
       > ./.tall 2>&1
-   check 51 4 "${MBOX}" '2071294634 1054'
+   check 51 4 "${MBOX}" '473729143 1070'
    check 52 - .tall '2646392129 66'
 
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sexpandaddr=-all,failinvaddr \
       'taddr@exam.ple' 'this@@c.example' \
       > ./.tall 2>&1
-   check 53 4 "${MBOX}" '2071294634 1054'
+   check 53 4 "${MBOX}" '473729143 1070'
    check 54 - .tall '887391555 175'
 
    #
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sthis=taddr@exam.ple -Sexpandaddr \
       -c '\$this' -b '\$this' '\$this' \
       > ./.tall 2>&1
-   check 55 4 "${MBOX}" '2071294634 1054'
+   check 55 4 "${MBOX}" '473729143 1070'
    check 56 - .tall '1144578880 139'
 
-   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
       -Sthis=taddr@exam.ple -Sexpandaddr=shquote \
       -c '\$this' -b '\$this' '\$this' \
       > ./.tall 2>&1
-   check 57 0 "${MBOX}" '900911911 1173'
+   check 57 0 "${MBOX}" '398243793 1191'
    check 58 - .tall '4294967295 0'
 
    #
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sadd-file-recipients \
          -Sexpandaddr=-all,+fcc \
          > ./.tall 2>&1
@@ -4936,7 +4928,7 @@ t_expandaddr() {
 
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sadd-file-recipients \
          -Sexpandaddr=-all,+file \
          > ./.tall 2>&1
@@ -4950,7 +4942,7 @@ t_expandaddr() {
 
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sadd-file-recipients \
          -Sexpandaddr=-all,+file,-fcc \
          > ./.tall 2>&1
@@ -4964,7 +4956,7 @@ t_expandaddr() {
 
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sadd-file-recipients \
          -Sexpandaddr=-all,+fcc,-file \
          > ./.tall 2>&1
@@ -4978,7 +4970,7 @@ t_expandaddr() {
 
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sadd-file-recipients \
          -Sexpandaddr=-all,fail,+addr \
          > ./.tall 2>&1
@@ -4994,40 +4986,40 @@ t_expandaddr() {
    #
    printf '' > "${MBOX}"
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sexpandaddr=fail,domaincheck \
          > ./.tall 2>&1
 	To: one@localhost
 	_EOT
-   check 79 0 "${MBOX}" '30149440 118'
+   check 79 0 "${MBOX}" '171635532 120'
    check 80 - .tall '4294967295 0'
 
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sexpandaddr=domaincheck \
          > ./.tall 2>&1
 	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-   check 81 4 "${MBOX}" '3259486172 236'
+   check 81 4 "${MBOX}" '2659464839 240'
    check 82 - .tall '1119895397 158'
 
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sexpandaddr=fail,domaincheck \
          > ./.tall 2>&1
 	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-   check 83 4 "${MBOX}" '3259486172 236'
+   check 83 4 "${MBOX}" '2659464839 240'
    check 84 - .tall '1577313789 267'
 
    ${cat} <<-_EOT |\
-      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -t -ssub \
          -Sexpandaddr=fail,domaincheck \
          -Sexpandaddr-domaincheck=exam.ple,tro.uble \
          > ./.tall 2>&1
 	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-   check 85 0 "${MBOX}" '10610402 404'
+   check 85 0 "${MBOX}" '1670655701 410'
    check 86 - .tall '4294967295 0'
 
    t_epilog
@@ -5036,9 +5028,14 @@ t_expandaddr() {
 t_mta_aliases() {
    # after: t_expandaddr
    t_prolog mta_aliases
-   TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'CrateagusMonogyna May 13 15:22:33 2019'
+   if have_feat mta-aliases; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
+
+   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} > ./.tali <<- '__EOT'
 	
@@ -5062,10 +5059,10 @@ t_mta_aliases() {
 	a8: ex1@a8.ple
 	__EOT
 
-   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Smta-aliases=./.tali \
       -b a3 -c a2 a1 > ./.tall 2>&1
-   check 1 0 "${MBOX}" '1698752635 233'
+   check 1 0 "${MBOX}" '1172368381 238'
    check 2 - .tall '4294967295 0'
 
    ## xxx The following are actually *expandaddr* tests!!
@@ -5075,32 +5072,44 @@ t_mta_aliases() {
       -Smta-aliases=./.tali \
       -b a3 -c a2 a1 > ./.tall 2>&1
    check_exn0 3
-   check 4 - "${MBOX}" '1698752635 233'
-   check 5 - .tall '771616226 179'
+   check 4 - "${MBOX}" '1172368381 238'
+   if have_feat uistrings; then
+      check 5 - .tall '771616226 179'
+   else
+      t_echoskip '5:[test unsupported]'
+   fi
 
    # xxx for false-positive SMTP test we would need some mocking
-   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Sexpandaddr=fail,-name \
       -Smta-aliases=./.tali \
       -b a3 -c a2 a1 > ./.tall 2>&1
    check_exn0 6
-   check 7 - "${MBOX}" '1698752635 233'
-   check 8 - .tall '2834389894 178'
+   check 7 - "${MBOX}" '1172368381 238'
+   if have_feat uistrings; then
+      check 8 - .tall '2834389894 178'
+   else
+      t_echoskip '8:[test unsupported]'
+   fi
 
-   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Sexpandaddr=-name \
       -Smta-aliases=./.tali \
       -b a3 -c a2 a1 > ./.tall 2>&1
-   check 9 4 "${MBOX}" '1018003273 462'
-   check 10 - .tall '2136559508 69'
+   check 9 4 "${MBOX}" '2322273994 472'
+   if have_feat uistrings; then
+      check 10 - .tall '2136559508 69'
+   else
+      t_echoskip '10:[test unsupported]'
+   fi
 
    echo 'a9:nine@nine.nine' >> ./.tali
 
-   echo | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Sexpandaddr=fail,-name \
       -Smta-aliases=./.tali \
       -b a3 -c a2 a1 > ./.tall 2>&1
-   check 11 0 "${MBOX}" '891102860 707'
+   check 11 0 "${MBOX}" '2422268299 722'
    check 12 - .tall '4294967295 0'
 
    printf '#
@@ -5133,11 +5142,15 @@ t_mta_aliases() {
 !^header insert bcc a3 a10
 !:echo $?/$^ERRNAME
 !.
-   ' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+   ' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
       -Smta-aliases=./.tali \
       > ./.tall 2>&1
-   check 13 0 "${MBOX}" '1331842343 1439'
-   check 14 - .tall '1795496020 473'
+   check 13 0 "${MBOX}" '550955032 1469'
+   if have_feat uistrings; then
+      check 14 - .tall '1795496020 473'
+   else
+      t_echoskip '14:[test unsupported]'
+   fi
    check 15 - .tf1 '3056269950 249'
    check 16 - .tp1 '3056269950 249'
    check 17 - .tp2 '3056269950 249'
@@ -5153,11 +5166,9 @@ t_filetype() {
    t_prolog filetype
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'Alchemilla Wed Apr 25 15:12:13 2017'
-
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
-      "${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tmta.sh
-   check 1 0 "${MBOX}" '1594682963 13520'
+      "${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=test://"$MBOX"
+   check 1 0 "${MBOX}" '1314354444 13536'
 
    if (echo | gzip -c) >/dev/null 2>&1; then
       {
@@ -5167,8 +5178,8 @@ t_filetype() {
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
             ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./.t.out 2>&1
-      check 2 - "./.t.mbox" '1594682963 13520'
-      check 3 - "./.t.out" '2392348396 102'
+      check 2 - ./.t.mbox '1314354444 13536'
+      check 3 - ./.t.out '635961640 103'
    else
       t_echoskip '2:[missing gzip(1)]'
       t_echoskip '3:[missing gzip(1)]'
@@ -5190,8 +5201,8 @@ t_filetype() {
             -X'filetype gz gzip\ -dc gzip\ -c' \
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
    } > ./.t.out 2>&1
-   check 4 - "./.t.mbox" '2886541147 27060'
-   check 5 - "./.t.out" '852335377 172'
+   check 4 - ./.t.mbox '2687765142 27092'
+   check 5 - ./.t.out '2230192693 173'
 
    t_epilog
 }
@@ -5223,18 +5234,16 @@ t_record_a_resend() {
 
 t_e_H_L_opts() {
    t_prolog e_H_L_opts
-   TRAP_EXIT_ADDONS="./.tmta.sh ./.t.mbox"
-
-   t_xmta 'Alchemilla Wed Apr 07 17:03:33 2017' ./.t.mbox
+   TRAP_EXIT_ADDONS="./.t.mbox"
 
    touch ./.t.mbox
    ${MAILX} ${ARGS} -ef ./.t.mbox
    echo ${?} > "${MBOX}"
 
    printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh
+   ${MAILX} ${ARGS} -Smta=test://./.t.mbox
    printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh
+   ${MAILX} ${ARGS} -Smta=test://./.t.mbox
 
    ${MAILX} ${ARGS} -ef ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
@@ -5266,39 +5275,39 @@ t_e_H_L_opts() {
    ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>>${ERR}
    echo ${?} >> "${MBOX}"
 
-   check 1 - "${MBOX}" '1708955574 678'
+   check 1 - "${MBOX}" '2908244922 678'
 
    ##
 
    printf 'm me1@exam.ple\n~s subject cab\nLine 1.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
       -r '' -X 'wysh set from=pony1@$LOGNAME'
    printf 'm me2@exam.ple\n~s subject bac\nLine 12.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
       -r '' -X 'wysh set from=pony2@$LOGNAME'
    printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
       -r '' -X 'wysh set from=pony3@$LOGNAME'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 2-1 0 "${MBOX}" '512787278 418'
+   check 2 0 "${MBOX}" '3368721321 418'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test subject; set autosort=subject showname showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 2-2 0 "${MBOX}" '3606067531 421'
+   check 3 0 "${MBOX}" '4147276467 421'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test from; set autosort=from showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 2-3 0 "${MBOX}" '2506148572 418'
+   check 4 0 "${MBOX}" '1352273544 418'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test to; set autosort=to showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 2-4 0 "${MBOX}" '1221542854 416'
+   check 5 0 "${MBOX}" '2884982403 416'
 
    t_epilog
 }
@@ -5307,8 +5316,6 @@ t_q_t_etc_opts() {
    # Simple, if we need more here, place in a later vim fold!
    t_prolog q_t_etc_opts
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta
 
    # Three tests for MIME encoding and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
@@ -5350,7 +5357,7 @@ t_q_t_etc_opts() {
       echo 'To?    : ./.tout3 .tout4  ' &&
       echo &&
       echo body
-   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -t -Smta=./.tmta.sh
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -t -Smta=test://"$MBOX"
    check 5 0 './.tout1 .tout2' '2948857341 94'
    check 6 - ./.tcc1 '2948857341 94'
    check 7 - ./.tcc2 '2948857341 94'
@@ -5366,16 +5373,14 @@ t_message_injections() {
    t_prolog message_injections
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'Echinacea Tue Jun 20 15:54:02 2017'
-
    echo mysig > ./.tmysig
 
-   echo some-body | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   echo some-body | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
       -Smessage-inject-tail=tail-inject \
       -Ssignature=./.tmysig \
       ex@am.ple > ./.tall 2>&1
-   check 1 0 "${MBOX}" '2434746382 134'
+   check 1 0 "${MBOX}" '701778583 143'
    check 2 - .tall '4294967295 0' # empty file
 
    ${rm} "${MBOX}"
@@ -5387,12 +5392,12 @@ t_message_injections() {
 
    Body, body, body me.
 	_EOT
-   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tmta.sh \
+   < ./.template ${MAILX} ${ARGS} -t -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
       -Smessage-inject-tail=tail-inject \
       -Ssignature=./.tmysig \
       > ./.tall 2>&1
-   check 3 0 "${MBOX}" '3114203412 198'
+   check 3 0 "${MBOX}" '2189109479 207'
    check 4 - .tall '4294967295 0' # empty file
 
    t_epilog
@@ -5402,8 +5407,6 @@ t_attachments() {
    # Relatively Simple, if we need more here, place in a later vim fold!
    t_prolog attachments
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta 'Cannabis Sun Feb 18 02:02:46 2018'
 
    ${cat} <<-_EOT  > ./.tx
 	From steffen Sun Feb 18 02:48:40 2018
@@ -5435,11 +5438,11 @@ t_attachments() {
 
 !p
 !.' \
-   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" \
       -a ./.t1 -a './.t 2' \
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
-   check 1 0 "${MBOX}" '4107062253 634'
+   check 1 0 "${MBOX}" '2484200149 644'
    if have_feat uistrings; then
       check 2 - .tall '1928331872 720'
    else
@@ -5491,9 +5494,9 @@ t_attachments() {
 
 !p
 !.' \
-   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Rf ./.tx \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Rf ./.tx \
          > ./.tall 2>&1
-   check 3 0 "${MBOX}" '798122412 2285'
+   check 3 0 "${MBOX}" '3637385058 2335'
    if have_feat uistrings; then
       check 4 - .tall '2526106274 1910'
    else
@@ -5526,9 +5529,9 @@ reply 1 2
 
 !p
 !.' \
-   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Rf ./.tx \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Rf ./.tx \
          > ./.tall 2>&1
-   check 5 0 "${MBOX}" '2165311808 2276'
+   check 5 0 "${MBOX}" '1604688179 2316'
    if have_feat uistrings; then
       check 6 - .tall '3662598562 509'
    else
@@ -5640,9 +5643,7 @@ t_alternates() {
    t_prolog alternates
    TRAP_EXIT_ADDONS="./.t*"
 
-   t_xmta 'Valeriana Sat Jul 08 15:54:03 2017'
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tmta.sh > ./.tall 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" > ./.tall 2>&1
    commandalias x echo '$?/$^ERRNAME'
    commandalias y echo '$?/$^ERRNAME <$rv>'
    echo --0
@@ -5742,7 +5743,7 @@ _EOT
    vput alternates rv;y
 	__EOT
 
-   check 1 0 "${MBOX}" '142184864 515'
+   check 1 0 "${MBOX}" '3901995195 542'
    if have_feat uistrings; then
       check 2 - .tall '1878598364 505'
    else
@@ -5774,10 +5775,10 @@ a@b.org  b@b.org c@c.org
 
 my body
 !.
-   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
          -Rf ./.tin > ./.tall 2>&1
-   check 3 0 "${MBOX}" '287250471 256'
+   check 3 0 "${MBOX}" '3184203976 265'
    check 4 - .tall '4294967295 0'
 
    # same, per command
@@ -5791,9 +5792,9 @@ a@b.org  b@b.org c@c.org
 
 my body
 !.
-   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -Rf ./.tin > ./.tall 2>&1
-   check 5 0 "${MBOX}" '2618762028 512'
+   check 5 0 "${MBOX}" '98184290 530'
    check 6 - .tall '4294967295 0'
 
    # And more, with/out -r
@@ -5804,29 +5805,29 @@ my body
    # TODO For now we are a bit messy
 
    ${rm} "${MBOX}"
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
       -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 7 0 "${MBOX}" '3510981487 192'
+   check 7 0 "${MBOX}" '2052716617 201'
    check 8 - .tout '2052716617 201'
    check 9 - .tall '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
       -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 10 0 "${MBOX}" '2282326606 364'
+   check 10 0 "${MBOX}" '3213404599 382'
    check 11 - .tout '3213404599 382'
    check 12 - .tall '4294967295 0'
 
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
       -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       b@b.example >./.tall 2>&1
-   check 13 0 "${MBOX}" '1460017970 582'
+   check 13 0 "${MBOX}" '337984804 609'
    check 14 - .tall '4294967295 0'
 
    t_epilog
@@ -5837,8 +5838,6 @@ t_quote_a_cmd_escapes() {
    # big collect() monster of functions
    t_prolog quote_a_cmd_escapes
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta
 
    echo 'included file' > ./.ttxt
 
@@ -5899,12 +5898,12 @@ t_quote_a_cmd_escapes() {
       set quote=allheaders
       reply 2
 !.
-   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Rf \
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' >' \
          ./.tmbox >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '2181726970 2023'
+   check 1 0 "${MBOX}" '1960457897 2031'
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
    # have some in compose_edits and digmsg
@@ -5978,12 +5977,12 @@ and i ~w rite this out to ./.tmsg
 ~!echo shell command output
 ~:wysh set escape=$x
 !.
-   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Rf \
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' |' \
          ./.tmbox >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '2613898218 4090'
+   check 2 - "${MBOX}" '209404720 4092'
    check 3 - ./.tmsg '2771314896 3186'
 
    # Simple return/error value after *expandaddr* failure test
@@ -6006,11 +6005,15 @@ and i ~w rite this out to ./.tmsg
 !b abcc
 !:echo $!/$?/$^ERRNAME
 !.
-   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '3630515814 4288'
-   check 5 - ./.tall '2336041127 212'
+   check 4 0 "${MBOX}" '3995224952 4293'
+   if have_feat uistrings; then
+      check 5 - ./.tall '2336041127 212'
+   else
+      check 5 - ./.tall '1818580177 59'
+   fi
 
    t_epilog
 }
@@ -6100,8 +6103,6 @@ t_compose_edits() { # XXX very rudimentary
 t_digmsg() { # XXX rudimentary
    t_prolog digmsg
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta
 
    printf '#
    mail ./.tout\n!s This subject is\nThis body is
@@ -6200,20 +6201,19 @@ t_digmsg() { # XXX rudimentary
 !.
    echo --bye
       ' "${cat}" "${sed}" |
-      ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! >./.tall 2>&1
-   check 0 0 "$MBOX" '1766312852 177'
+      ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
+   check 1 0 "$MBOX" '665881681 179'
    if have_feat uistrings; then
-      check 1 - ./.tall '2554217728 1366'
+      check 2 - ./.tall '2554217728 1366'
    else
-      check 1 - ./.tall '121327235 1093'
+      check 2 - ./.tall '121327235 1093'
    fi
-   check 2 - ./.tfcc '3993703854 127'
-   check 3 - ./.tempty '4294967295 0'
-   check 4 - ./.tcat '2157992522 256'
+   check 3 - ./.tfcc '3993703854 127'
+   check 4 - ./.tempty '4294967295 0'
+   check 5 - ./.tcat '2157992522 256'
 
    t_epilog
 }
-
 # }}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
@@ -6228,8 +6228,6 @@ t_compose_hooks() { # {{{ TODO monster
    fi
 
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta 'PrimulaVeris Wed Apr 10 22:59:00 2017'
 
    (echo line one&&echo line two&&echo line three) > ./.treadctl
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
@@ -6806,18 +6804,18 @@ __EOT__
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tmta.sh \
+      -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3049397940 10523'
+   check 1 0 "${MBOX}" '3199865751 10529'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh \
+      -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '2131370361 12737'
+   check 2 0 "${MBOX}" '473642362 12743'
 
    ##
 
@@ -6832,7 +6830,7 @@ __EOT__
       echon ${mailx-orig-from}${mailx-orig-to}${mailx-orig-gcc}${mailx-orig-bcc}
       var t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
    ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
-      -Smta=./.tmta.sh \
+      -Smta=test://"$MBOX" \
       -X'
          define bail {
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -7033,7 +7031,7 @@ __EOT__
       ' > ./.tnotes 2>&1
    check_ex0 3-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 3 - "${MBOX}" '679526364 2431'
+   check 3 - "${MBOX}" '3986011319 2437'
 
    # Reply, forward, resend, Resend
 
@@ -7047,7 +7045,7 @@ b1
       m t2@z
 b2
 !.
-      ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Snomemdebug -Sescape=!
+      ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Snomemdebug -Sescape=!
 
    printf '
       echo start: $? $! $^ERRNAME
@@ -7084,7 +7082,7 @@ this is content of forward 2, 2nd, with showname set
       echo Resend 1 2: $? $! $^ERRNAME;echo;echo
    ' "${MBOX}" |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sfullnames \
-      -Smta=./.tmta.sh \
+      -Smta=test://"$MBOX" \
       -X'
          define bail {
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -7166,7 +7164,7 @@ this is content of forward 2, 2nd, with showname set
       ' > ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '2151712038 11184'
+   check 4 - "${MBOX}" '1818661134 11250'
 
    t_epilog
 } # }}}
@@ -7180,8 +7178,6 @@ t_mass_recipients() {
       t_epilog
       return
    fi
-
-   t_xmta 'Eucalyptus Sat Jul 08 21:14:57 2017'
 
    ${cat} <<'__EOT__' > ./.trc
    define bail {
@@ -7223,27 +7219,28 @@ __EOT__
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=${LOOPS_MAX} \
+      -X'source ./.trc' -Smta=test://"$MBOX" -Smaximum=${LOOPS_MAX} \
       >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
    if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
-      check 1-${LOOPS_BIG} - "${MBOX}" '2912243346 51526'
+      check 1-${LOOPS_BIG} - "${MBOX}" '3835365533 51534'
    elif [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
-      check 1-${LOOPS_SMALL} - "${MBOX}" '3517315544 4678'
+      check 1-${LOOPS_SMALL} - "${MBOX}" '3647549277 4686'
    fi
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=${LOOPS_MAX} \
+      -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
+      -Smaximum=${LOOPS_MAX} \
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
    if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
-      check 2-${LOOPS_BIG} - "${MBOX}" '4097804632 34394'
+      check 2-${LOOPS_BIG} - "${MBOX}" '3768249992 34402'
    elif [ $LOOPS_MAX -eq ${LOOPS_SMALL} ]; then
-      check 2-${LOOPS_SMALL} - "${MBOX}" '3994680040 3162'
+      check 2-${LOOPS_SMALL} - "${MBOX}" '4042568441 3170'
    fi
 
    t_epilog
@@ -7252,8 +7249,6 @@ __EOT__
 t_lreply_futh_rth_etc() {
    t_prolog lreply_futh_rth_etc
    TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta 'HumulusLupulus Thu Jul 27 14:41:20 2017'
 
    ${cat} <<-_EOT > ./.tmbox
 	From neverneverland  Sun Jul 23 13:46:25 2017
@@ -7316,7 +7311,7 @@ t_lreply_futh_rth_etc() {
 
    #
 
-   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh \
+   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" \
          -Rf ./.tmbox >> "${MBOX}" 2>&1
 	define r {
 	   wysh set m="This is text of \"reply ${1}."
@@ -7394,7 +7389,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '1530821219 29859'
+      check 1 - "${MBOX}" '223982085 30183'
    else
       t_echoskip '1:[test unsupported]'
    fi
@@ -7423,29 +7418,29 @@ t_lreply_futh_rth_etc() {
 
    ${rm} "${MBOX}"
    printf 'reply 1\nthread\n!.\n' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf ./.tmbox > .tall 2>&1
-   check 2 0 "${MBOX}" '3321764338 429'
+   check 2 0 "${MBOX}" '841868335 433'
    check 3 - .tall '4294967295 0'
 
    printf 'reply 1\nnew <- thread!\n!||%s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 4 0 "${MBOX}" '1682552516 763'
+   check 4 0 "${MBOX}" '3136957908 771'
    check 5 - .tall '4294967295 0'
 
    printf 'reply 2\nold <- new <- thread!\n!.\n' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 6 0 "${MBOX}" '2900984135 1219'
+   check 6 0 "${MBOX}" '3036449053 1231'
    check 7 - .tall '4294967295 0'
 
    printf 'reply 3\nnew <- old <- new <- thread!\n!|| %s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 8 0 "${MBOX}" '794031200 1567'
+   check 8 0 "${MBOX}" '2069841383 1583'
    check 9 - .tall '4294967295 0'
 
    # And follow-up testing whether changing In-Reply-To: to - starts a new
@@ -7453,9 +7448,9 @@ t_lreply_futh_rth_etc() {
 
    printf 'reply 1\nthread with only one ref!\n!||%s -e "%s"\n!.\n' \
          "${sed}" 's/^In-Reply-To:.*$/In-Reply-To:-/' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 10 0 "${MBOX}" '1266422860 2027'
+   check 10 0 "${MBOX}" '3155846378 2047'
    check 11 - .tall '4294967295 0'
 
    t_epilog
@@ -7577,24 +7572,24 @@ t_s_mime() {
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tmta.sh"
 
    ${cat} <<-_EOT > ./.t.conf
-		[ req ]
-		default_bits           = 1024
-		default_keyfile        = keyfile.pem
-		distinguished_name     = req_distinguished_name
-		attributes             = req_attributes
-		prompt                 = no
-		output_password        =
+		[req]
+		default_bits = 1024
+		default_keyfile = keyfile.pem
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		output_password =
 
-		[ req_distinguished_name ]
-		C                      = GB
-		ST                     = Over the
-		L                      = rainbow
-		O                      = S-nail
-		OU                     = S-nail.smime
-		CN                     = S-nail.test
-		emailAddress           = test@localhost
+		[req_distinguished_name]
+		C = GB
+		ST = Over the
+		L = rainbow
+		O = S-nail
+		OU = S-nail.smime
+		CN = S-nail.test
+		emailAddress = test@localhost
 
-		[ req_attributes ]
+		[req_attributes]
 		challengePassword =
 	_EOT
    openssl req -x509 -nodes -days 3650 -config ./.t.conf \
@@ -7626,22 +7621,21 @@ t_s_mime() {
    check_ex0 3
 
    # (signing +) encryption / decryption
-   t_xmta 'Euphrasia Thu Apr 27 17:56:23 2017' ./.ENCRYPT
 
    echo bla |
    ${MAILX} ${ARGS} \
-      -Smta=./.tmta.sh \
+      -Smta=test://./.ENCRYPT \
       -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Ssmime-sign-digest=sha1 \
       -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    check_ex0 4-estat
    ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 4 - "${MBOX}" '1937410597 327'
+   check 4 - "${MBOX}" '2359655411 336'
 
    printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
    ${MAILX} ${ARGS} \
-      -Smta=./.tmta.sh \
+      -Smta=test://./.ENCRYPT \
       -Ssmime-ca-file=./.tcert.pem \
       -Ssmime-sign-cert=./.tpair.pem \
       -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
@@ -7653,7 +7647,7 @@ t_s_mime() {
       { if(!skip) print }
    ' \
       < ./.DECRYPT > "${MBOX}"
-   check 5 - "${MBOX}" '1019076159 931'
+   check 5 - "${MBOX}" '2602978204 940'
 
    (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
          openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
@@ -7661,20 +7655,20 @@ t_s_mime() {
 
    ${rm} ./.ENCRYPT
    echo bla | ${MAILX} ${ARGS} \
-      -Smta=./.tmta.sh \
+      -Smta=test://./.ENCRYPT \
       -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    check_ex0 7-estat
    ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 7 - "${MBOX}" '1937410597 327'
+   check 7 - "${MBOX}" '2359655411 336'
 
    ${rm} ./.DECRYPT
    printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-      -Smta=./.tmta.sh \
+      -Smta=test://./.ENCRYPT \
       -Ssmime-sign-cert=./.tpair.pem \
       -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check 8 0 "./.DECRYPT" '2624716890 422'
+   check 8 0 "./.DECRYPT" '2453471323 431'
 
    openssl smime -decrypt -inkey ./.tkey.pem \
          -in ./.ENCRYPT >>${ERR} 2>&1
