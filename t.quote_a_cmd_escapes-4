@@ -1,4 +1,4 @@
-From Silybum Marianum Tue Apr 17 15:55:01 2018
+From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: mr2@originator, bugstop-commit@five.miles.out,
  25 added ~t o <ex3@am.ple>
@@ -165,7 +165,8 @@ Interpolating: 2
 Interpolating: 1
 ./.tmsg 129/3186
 shell command output
-From Silybum Marianum Tue Apr 17 15:55:01 2018
+
+From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: one@to.invalid, two@to.invalid
 Cc: one@cc.invalid
