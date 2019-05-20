@@ -1,0 +1,47 @@
+[-- Message  1 -- 18 lines, 376 bytes --]:
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Status: R
+
+[-- #1.1 4/88 text/plain, utf-8 --]
+Content-Transfer-Encoding: quoted-printable
+
+foo
+
+[-- #1.2 5/121 text/plain, 7bit, us-ascii --]
+[-- name-c-t --]
+Content-Transfer-Encoding: 7bit
+
+bar
+
+[-- Message  2 -- 20 lines, 459 bytes --]:
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Status: R
+
+[-- #1.1 4/88 text/plain, utf-8 --]
+Content-Transfer-Encoding: quoted-printable
+
+foo
+
+[-- #1.2 7/204 text/plain, 7bit, us-ascii --]
+[-- name-c-t --]
+Content-Transfer-Encoding: 7bit
+
+bar
+
+[-- Message  3 -- 18 lines, 423 bytes --]:
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Status: R
+
+[-- #1.1 4/88 text/plain, utf-8 --]
+Content-Transfer-Encoding: quoted-printable
+
+foo
+
+[-- #1.2 6/169 text/plain, 7bit, us-ascii --]
+[-- name-c-d --]
+Content-Transfer-Encoding: 7bit
+
+bar
