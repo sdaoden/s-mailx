@@ -5577,6 +5577,78 @@ t_rfc2231() {
    printf "resend ./.t3\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
    check 3 0 ./.t3 '3979736592 3133'
 
+   # And a primitive test for reading messages with invalid parameters
+   ${cat} <<-_EOT > ./.tinv
+	From a@b.invalid Wed May 15 12:43:00 2018
+	MIME-Version: 1.0
+	Content-Type: multipart/mixed; boundary="1"
+	
+	This is a multi-part message in MIME format.
+	--1
+	Content-Type: text/plain; charset=UTF-8
+	Content-Transfer-Encoding: quoted-printable
+	
+	foo
+	--1
+	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+	Content-Transfer-Encoding: 7bit
+	Content-Disposition: inline
+	
+	bar
+	--1--
+	
+	From a@b.invalid Wed May 15 12:43:00 2018
+	MIME-Version: 1.0
+	Content-Type: multipart/mixed; boundary="2"
+	
+	This is a multi-part message in MIME format.
+	--2
+	Content-Type: text/plain; charset=UTF-8
+	Content-Transfer-Encoding: quoted-printable
+	
+	foo
+	--2
+	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+	Content-Transfer-Encoding: 7bit
+	Content-Disposition: inline;
+	        filename*0="na";
+	        filename*998999999999999999999999999999="me-c-d"
+	
+	bar
+	--2--
+	
+	From a@b.invalid Wed May 15 12:43:00 2018
+	MIME-Version: 1.0
+	Content-Type: multipart/mixed; boundary="3"
+	
+	This is a multi-part message in MIME format.
+	--3
+	Content-Type: text/plain; charset=UTF-8
+	Content-Transfer-Encoding: quoted-printable
+	
+	foo
+	--3
+	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+	Content-Transfer-Encoding: 7bit
+	Content-Disposition: inline;
+	        filename*0="na"; filename*998="me-c-d"
+	
+	bar
+	--3--
+	_EOT
+
+   printf '\\#
+   \\headerpick type ignore Content-Type Content-Disposition
+   \\type 1 2 3
+   \\xit
+   ' | ${MAILX} ${ARGS} -Rf ./.tinv > ./.tall 2> ./.terr
+   check 4 0 ./.tall '1842050412 902'
+   if have_feat uistrings; then
+      check 5 - ./.terr '1989222006 453'
+   else
+      t_echoskip '5:[test unsupported]'
+   fi
+
    t_epilog
 }
 
