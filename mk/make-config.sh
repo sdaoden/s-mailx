@@ -1232,6 +1232,31 @@ xrun_check() {
    _link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
+string_to_char_array() {
+   ${awk} -v xy="${@}" 'BEGIN{
+      # POSIX: unspecified behaviour.
+      # Does not work for SunOS /usr/xpg4/bin/awk!
+      if(split("abc", xya, "") == 3)
+         i = split(xy, xya, "")
+      else{
+         j = length(xy)
+         for(i = 0; j > 0; --j){
+            xya[++i] = substr(xy, 1, 1)
+            xy = substr(xy, 2)
+         }
+      }
+      xya[++i] = "\\0"
+      for(j = 1; j <= i; ++j){
+         if(j != 1)
+            printf ", "
+         y = xya[j]
+         if(y == "\012")
+            y = "\\n"
+         printf "'"'"'%s'"'"'", y
+      }
+   }'
+}
+
 squeeze_em() {
    < "${1}" > "${2}" ${awk} \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
@@ -3387,12 +3412,18 @@ elif (${CC} -v) >/dev/null 2>&1; then
       END{gsub(/"/, "", l); print "\\\\n" l}
    '`
 fi
-printf '#define VAL_BUILD_CC "%s %s %s%s"\n' \
-   "${CC}" "${CFLAGS}" "" "${i}" >> ${h}
-printf '#define VAL_BUILD_LD "%s %s %s"\n' \
-   "${CC}" "${LDFLAGS}" "`${cat} ${lib}`" >> ${h}
-printf '#define VAL_BUILD_REST "%s"\n' "${COMMLINE}" >> ${h}
-printf '\n' >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
+   printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "\`${cat} ${lib}\`"`
+   printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
+i=${COMMLINE}
+   printf '#define VAL_BUILD_REST "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> ${h}
 
 # Throw away all temporaries
 ${rm} -rf ${tmp0}.* ${tmp0}*
