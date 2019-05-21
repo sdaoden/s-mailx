@@ -14956,6 +14956,55 @@ This man page is derived from
 .Dq The Mail Reference Manual
 that was originally written by Kurt Shoens.
 .
+.Pp
+Electronic mail exchange in general is a concept even older.
+The earliest well documented electronic mail system was part of the
+Compatible Time Sharing System (CTSS) at MIT, its MAIL command had been
+proposed in a staff planning memo at the end of 1964 and was implemented
+in mid-1965 when Tom Van Vleck and Noel Morris wrote the necessary code.
+Similar communications programs were built for other timesharing systems.
+One of the most ambitious and influential was Murray Turoff's EMISARI.
+Created in 1971 for the United States Office of Emergency Preparedness,
+EMISARI combined private electronic messages with a chat system, public
+postings, voting, and a user directory.
+.
+.Pp
+During the 1960s it was common to connect a large number of terminals to
+a single, central computer.
+Connecting two computers together was relatively unusual.
+This began to change with the development of the ARPANET, the ancestor
+of today's Internet.
+In 1971 Ray Tomlinson adapted the SNDMSG program, originally developed
+for the University of California at Berkeley timesharing system, to give
+it the ability to transmit a message across the network into the mailbox
+of a user on a different computer.
+For the first time it was necessary to specify the recipient's computer
+as well as an account name.
+Tomlinson decided that the underused commercial at
+.Ql @
+would work to separate the two.
+.
+.Pp
+Sending a message across the network was originally treated as a special
+instance of transmitting a file, and so a MAIL command was included in
+RFC 385 on file transfer in 1972.
+Because it was not always clear when or where a message had come from,
+RFC 561 in 1973 aimed to formalize electronic mail headers, including
+.Dq from ,
+.Dq date ,
+and
+.Dq subject .
+In 1975 RFC 680 described fields to help with the transmission of
+messages to multiple users, including
+.Dq to ,
+.Dq cc ,
+and
+.Dq bcc .
+In 1977 these features and others went from best practices to a binding
+standard in RFC 733.
+Queen Elizabeth II of England became the first head of state to send
+electronic mail on March 26 1976 while ceremonially opening a building
+in the British Royal Signals and Radar Establishment (RSRE) in Malvern.
 .\" }}}
 .
 .
