@@ -7773,6 +7773,7 @@ t_z() {
    t_epilog
 }
 
+# Test support {{{
 t__put_subject() {
    # MIME encoding (QP) stress message subject
    printf 'Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
@@ -8006,6 +8007,7 @@ cc_all_configs() {
    ${rm} -f .ccac.h
    cd .. && ${MAKE} distclean
 }
+# }}}
 
 [ -n "${ERR}" ]  && echo > ${ERR}
 ssec=$SECONDS
