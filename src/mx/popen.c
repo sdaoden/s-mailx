@@ -1183,76 +1183,80 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
    int rv, e;
    NYD_IN;
 
-   if ((rv = n_child_fork()) == -1) {
+   if((rv = n_child_fork()) == -1){
       e = su_err_no();
       n_perr(_("fork"), 0);
       su_err_set_no(e);
       rv = -1;
-   } else if (rv == 0) {
-      char *argv[128];
-      int i;
+   }else if(rv == 0)
+      goto jchild;
 
-      if (env_addon_or_null != NULL) {
-         extern char **environ;
-         uz ei, ei_orig, ai, ai_orig;
-         char **env;
-
-         /* TODO note we don't check the POSIX limit:
-          * the total space used to store the environment and the arguments to
-          * the process is limited to {ARG_MAX} bytes */
-         for (ei = 0; environ[ei] != NULL; ++ei)
-            ;
-         ei_orig = ei;
-         for (ai = 0; env_addon_or_null[ai] != NULL; ++ai)
-            ;
-         ai_orig = ai;
-         env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
-         su_mem_copy(env, environ, sizeof(*env) * ei);
-
-         /* Replace all those keys that yet exist */
-         while (ai-- > 0) {
-            char const *ee, *kvs;
-            uz kl;
-
-            ee = env_addon_or_null[ai];
-            kvs = su_cs_find_c(ee, '=');
-            ASSERT(kvs != NULL);
-            kl = P2UZ(kvs - ee);
-            ASSERT(kl > 0);
-            for (ei = ei_orig; ei-- > 0;) {
-               char const *ekvs = su_cs_find_c(env[ei], '=');
-               if (ekvs != NULL && kl == P2UZ(ekvs - env[ei]) &&
-                     !su_mem_cmp(ee, env[ei], kl)) {
-                  env[ei] = n_UNCONST(ee);
-                  env_addon_or_null[ai] = NULL;
-                  break;
-               }
-            }
-         }
-
-         /* And append the rest */
-         for (ei = ei_orig, ai = ai_orig; ai-- > 0;)
-            if (env_addon_or_null[ai] != NULL)
-               env[ei++] = n_UNCONST(env_addon_or_null[ai]);
-
-         env[ei] = NULL;
-         environ = env;
-      }
-
-      i = (int)getrawlist(TRU1, argv, NELEM(argv), cmd, su_cs_len(cmd));
-      if(i >= 0){
-         if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
-               (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
-               (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
-            argv[i] = NULL;
-         n_child_prepare(mask_or_null, infd, outfd);
-         execvp(argv[0], argv);
-         perror(argv[0]);
-      }
-      _exit(n_EXIT_ERR);
-   }
    NYD_OU;
    return rv;
+
+jchild:{
+   char *argv[128 + 4]; /* TODO magic constant, fixed size */
+   int i;
+
+   if (env_addon_or_null != NULL) {
+      extern char **environ;
+      uz ei, ei_orig, ai, ai_orig;
+      char **env;
+
+      /* TODO note we don't check the POSIX limit:
+       * the total space used to store the environment and the arguments to
+       * the process is limited to {ARG_MAX} bytes */
+      for (ei = 0; environ[ei] != NULL; ++ei)
+         ;
+      ei_orig = ei;
+      for (ai = 0; env_addon_or_null[ai] != NULL; ++ai)
+         ;
+      ai_orig = ai;
+      env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
+      su_mem_copy(env, environ, sizeof(*env) * ei);
+
+      /* Replace all those keys that yet exist */
+      while (ai-- > 0) {
+         char const *ee, *kvs;
+         uz kl;
+
+         ee = env_addon_or_null[ai];
+         kvs = su_cs_find_c(ee, '=');
+         ASSERT(kvs != NULL);
+         kl = P2UZ(kvs - ee);
+         ASSERT(kl > 0);
+         for (ei = ei_orig; ei-- > 0;) {
+            char const *ekvs = su_cs_find_c(env[ei], '=');
+            if (ekvs != NULL && kl == P2UZ(ekvs - env[ei]) &&
+                  !su_mem_cmp(ee, env[ei], kl)) {
+               env[ei] = n_UNCONST(ee);
+               env_addon_or_null[ai] = NULL;
+               break;
+            }
+         }
+      }
+
+      /* And append the rest */
+      for (ei = ei_orig, ai = ai_orig; ai-- > 0;)
+         if (env_addon_or_null[ai] != NULL)
+            env[ei++] = n_UNCONST(env_addon_or_null[ai]);
+
+      env[ei] = NULL;
+      environ = env;
+   }
+
+   i = (int)getrawlist(TRU1, argv, NELEM(argv) - 4, cmd, su_cs_len(cmd));
+   if(i >= 0){
+      if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
+            (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
+            (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
+         argv[i] = NULL;
+      n_child_prepare(mask_or_null, infd, outfd);
+      execvp(argv[0], argv);
+      perror(argv[0]);
+   }
+   _exit(n_EXIT_ERR);
+   }
 }
 
 FL int
