@@ -892,11 +892,13 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
    u32 pipecnt, xcnt, i;
    char const *sh;
    struct mx_name *np;
+   s32 *pida;
    FILE *fp, **fppa;
    NYD_IN;
 
-   fp = NULL;
-   fppa = NULL;
+   fp = NIL;
+   fppa = NIL;
+   pida = NIL;
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */
@@ -924,6 +926,11 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
       i = sizeof(FILE*) * pipecnt;
       fppa = n_lofi_alloc(i);
       su_mem_set(fppa, 0, i);
+
+      i = sizeof(s32) * pipecnt;
+      pida = n_lofi_alloc(i);
+      su_mem_set(pida, 0, i);
+
       sh = ok_vlook(SHELL);
    }
 
@@ -994,21 +1001,23 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
       /* Now either copy "image" to the desired file or give it as the standard
        * input to the desired program as appropriate */
       if(np->n_flags & mx_NAME_ADDRSPEC_ISPIPE){
-         int pid;
+         s32 pid;
          sigset_t nset;
 
          sigemptyset(&nset);
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = n_child_start(sh, &nset, fileno(fppa[xcnt++]), n_CHILD_FD_NULL,
+         pid = n_child_start(sh, &nset, fileno(fppa[xcnt]), n_CHILD_FD_NULL,
                "-c", &np->n_name[1], NULL, NULL);
          if(pid < 0){
             n_err(_("Piping message to %s failed\n"),
                n_shexp_quote_cp(np->n_name, FAL0));
             goto jerror;
          }
-         n_child_free(pid);
+         pida[xcnt] = pid;
+         ++xcnt;
+         /*n_child_free(pid);*/
       }else{
          int c;
          FILE *fout;
@@ -1057,12 +1066,15 @@ jefile:
    }
 
 jleave:
-   if(fp != NULL)
+   if(fp != NIL)
       Fclose(fp);
-   if(fppa != NULL){
+   if(fppa != NIL){
       for(i = 0; i < pipecnt; ++i)
-         if((fp = fppa[i]) != NULL)
+         if((fp = fppa[i]) != NIL){
+            n_child_wait(pida[i], NIL);
             Fclose(fp);
+         }
+      n_lofi_free(pida);
       n_lofi_free(fppa);
    }
    NYD_OU;
