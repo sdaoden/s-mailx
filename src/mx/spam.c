@@ -34,6 +34,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/random.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -942,7 +944,7 @@ _spam_cf_setup(struct spam_vc *vcp, boole useshell)
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(MIN(NAME_MAX / 4, 16), NULL);
+   cp = mx_random_create_cp(MIN(NAME_MAX / 4, 16), NIL);
    scfp->cf_env[0] = str_concat_csvl(&s,
          n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
    /* v15 compat NAIL_ environments vanish! */

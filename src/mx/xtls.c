@@ -72,6 +72,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 
 #include "mx/names.h"
+#include "mx/random.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -477,23 +478,23 @@ a_xtls_rand_init(void){
    (void)RAND_load_file(cp, a_XTLS_RAND_LOAD_FILE_MAXBYTES);
 
    /* And feed in some data, then write the updated file.
-    * While this rather feeds the PRNG with itself in the n_RANDOM_IMPL_TLS
+    * While this rather feeds the PRNG with itself in the RANDOM_IMPL_TLS
     * case, let us stir the buffer a little bit.
     * Estimate a low but likely still too high number of entropy bytes, use
     * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
     * alphabet is a 6 bit one */
    for(x = (char*)-1;;){
-      RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
+      RAND_add(mx_random_create_buf(b64buf, sizeof(b64buf) -1, NIL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
       if((x = (char*)((up)x >> (1
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
          + 3
 # endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-# if mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
 # endif
@@ -1835,9 +1836,9 @@ jleave:
    return rv;
 }
 
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
 FL void
-n_tls_rand_bytes(void *buf, uz blen){
+mx_tls_rand_bytes(void *buf, uz blen){
    NYD2_IN;
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
@@ -1871,7 +1872,7 @@ n_tls_rand_bytes(void *buf, uz blen){
    }
    NYD2_OU;
 }
-#endif
+#endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
 
 FL boole
 n_tls_open(struct url *urlp, struct sock *sop){

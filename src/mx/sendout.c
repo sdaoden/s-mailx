@@ -46,6 +46,7 @@
 #include "mx/iconv.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/random.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1684,7 +1685,7 @@ jgen:
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      n_random_create_cp(rl, &reprocnt), sep, h);
+      mx_random_create_cp(rl, &reprocnt), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    NYD_OU;

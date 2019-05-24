@@ -58,16 +58,6 @@
 # include <locale.h>
 #endif
 
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
-# define a_AUX_RAND_USE_BUILTIN
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-#  include n_RANDOM_GETRANDOM_H
-# endif
-# ifdef mx_HAVE_SCHED_YIELD
-#  include <sched.h>
-# endif
-#endif
-
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
@@ -84,10 +74,6 @@
 #include <su/icodec.h>
 #include <su/sort.h>
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-# include <su/prime.h>
-#endif
-
 #include "mx/filetype.h"
 
 #ifdef mx_HAVE_IDNA
@@ -97,19 +83,6 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-union rand_state{
-   struct rand_arc4{
-      u8 _dat[256];
-      u8 _i;
-      u8 _j;
-      u8 __pad[6];
-   } a;
-   u8 b8[sizeof(struct rand_arc4)];
-   u32 b32[sizeof(struct rand_arc4) / sizeof(u32)];
-};
-#endif
-
 #ifdef mx_HAVE_ERRORS
 struct a_aux_err_node{
    struct a_aux_err_node *ae_next;
@@ -117,185 +90,11 @@ struct a_aux_err_node{
 };
 #endif
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-static union rand_state *a_aux_rand;
-#endif
-
 /* Error ring, for `errors' */
 #ifdef mx_HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 #endif
 static uz a_aux_err_linelen;
-
-/* Our ARC4 random generator with its completely unacademical pseudo
- * initialization (shall /dev/urandom fail) */
-#ifdef a_AUX_RAND_USE_BUILTIN
-static void a_aux_rand_init(void);
-su_SINLINE u8 a_aux_rand_get8(void);
-static u32 a_aux_rand_weak(u32 seed);
-#endif
-
-#ifdef a_AUX_RAND_USE_BUILTIN
-static void
-a_aux_rand_init(void){
-   union {int fd; uz i;} u;
-   NYD2_IN;
-
-   a_aux_rand = n_alloc(sizeof *a_aux_rand);
-
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-   /* getrandom(2) guarantees 256 without su_ERR_INTR..
-    * However, support sequential reading to avoid possible hangs that have
-    * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
-    * mx_HAVE_GETRANDOM is #defined) */
-   LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer too large to be served without su_ERR_INTR error");
-   LCTA(sizeof(a_aux_rand->a._dat) >= 256,
-      "Buffer too small to serve used array indices");
-   /* C99 */{
-      uz o, i;
-
-      for(o = 0, i = sizeof a_aux_rand->a._dat;;){
-         sz gr;
-
-         gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
-         if(gr == -1 && su_err_no() == su_ERR_NOSYS)
-            break;
-         a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-               a_aux_rand->a._dat[84]]);
-         a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-               a_aux_rand->a._dat[42]]);
-         /* ..but be on the safe side */
-         if(gr > 0){
-            i -= (uz)gr;
-            if(i == 0)
-               goto jleave;
-            o += (uz)gr;
-         }
-         n_err(_("Not enough entropy for the "
-            "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
-         n_msleep(250, FAL0);
-      }
-   }
-
-# elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
-   if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
-      boole ok;
-
-      ok = (sizeof(a_aux_rand->a._dat) == (uz)read(u.fd,
-            a_aux_rand->a._dat, sizeof(a_aux_rand->a._dat)));
-      close(u.fd);
-
-      a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-            a_aux_rand->a._dat[84]]);
-      a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-            a_aux_rand->a._dat[42]]);
-      if(ok)
-         goto jleave;
-   }
-# elif mx_HAVE_RANDOM != n_RANDOM_IMPL_BUILTIN
-#  error a_aux_rand_init(): the value of mx_HAVE_RANDOM is not supported
-# endif
-
-   /* As a fallback, a homebrew seed */
-   if(n_poption & n_PO_D_V)
-      n_err(_("P(seudo)R(andom)N(umber)G(enerator): "
-         "creating homebrew seed\n"));
-   /* C99 */{
-# ifdef mx_HAVE_CLOCK_GETTIME
-      struct timespec ts;
-# else
-      struct timeval ts;
-# endif
-      boole slept;
-      u32 seed, rnd, t, k;
-
-      /* We first do three rounds, and then add onto that a (cramped) random
-       * number of rounds; in between we give up our timeslice once (from our
-       * point of view) */
-      seed = (up)a_aux_rand & U32_MAX;
-      rnd = 3;
-      slept = FAL0;
-
-      for(;;){
-         /* Stir the entire pool once */
-         for(u.i = NELEM(a_aux_rand->b32); u.i-- != 0;){
-
-# ifdef mx_HAVE_CLOCK_GETTIME
-            clock_gettime(CLOCK_REALTIME, &ts);
-            t = (u32)ts.tv_nsec;
-# else
-            gettimeofday(&ts, NULL);
-            t = (u32)ts.tv_usec;
-# endif
-            if(rnd & 1)
-               t = (t >> 16) | (t << 16);
-            a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
-            a_aux_rand->b32[t % NELEM(a_aux_rand->b32)] ^= seed;
-            if(rnd == 7 || rnd == 17)
-               a_aux_rand->b32[u.i] ^=
-                  a_aux_rand_weak(seed ^ (u32)ts.tv_sec);
-            k = a_aux_rand->b32[u.i] % NELEM(a_aux_rand->b32);
-            a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
-            seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
-            if((rnd & 3) == 3)
-               seed ^= su_prime_lookup_next(seed);
-         }
-
-         if(--rnd == 0){
-            if(slept)
-               break;
-            rnd = (a_aux_rand_get8() % 5) + 3;
-# ifdef mx_HAVE_SCHED_YIELD
-            sched_yield();
-# elif defined mx_HAVE_NANOSLEEP
-            ts.tv_sec = 0, ts.tv_nsec = 0;
-            nanosleep(&ts, NULL);
-# else
-            rnd += 10;
-# endif
-            slept = TRU1;
-         }
-      }
-
-      for(u.i = sizeof(a_aux_rand->b8) * ((a_aux_rand_get8() % 5)  + 1);
-            u.i != 0; --u.i)
-         a_aux_rand_get8();
-      goto jleave; /* (avoid unused warning) */
-   }
-jleave:
-   NYD2_OU;
-}
-
-su_SINLINE u8
-a_aux_rand_get8(void){
-   u8 si, sj;
-
-   si = a_aux_rand->a._dat[++a_aux_rand->a._i];
-   sj = a_aux_rand->a._dat[a_aux_rand->a._j += si];
-   a_aux_rand->a._dat[a_aux_rand->a._i] = sj;
-   a_aux_rand->a._dat[a_aux_rand->a._j] = si;
-   return a_aux_rand->a._dat[(u8)(si + sj)];
-}
-
-static u32
-a_aux_rand_weak(u32 seed){
-   /* From "Random number generators: good ones are hard to find",
-    * Park and Miller, Communications of the ACM, vol. 31, no. 10,
-    * October 1988, p. 1195.
-    * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
-   u32 hi;
-
-   if(seed == 0)
-      seed = 123459876;
-   hi =  seed /  127773;
-         seed %= 127773;
-   seed = (seed * 16807) - (hi * 2836);
-   if((s32)seed < 0)
-      seed += S32_MAX;
-   return seed;
-}
-#endif /* a_AUX_RAND_USE_BUILTIN */
 
 FL void
 n_locale_init(void){
@@ -784,133 +583,6 @@ jleave:
    return rv;
 }
 #endif /* mx_HAVE_IDNA */
-
-FL char *
-n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null){
-   struct str b64;
-   char *indat, *cp, *oudat;
-   uz i, inlen, oulen;
-   NYD_IN;
-
-   if(!(n_psonce & n_PSO_RANDOM_INIT)){
-      n_psonce |= n_PSO_RANDOM_INIT;
-
-      if(n_poption & n_PO_D_V){
-         char const *prngn;
-
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_ARC4
-         prngn = "arc4random";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-         prngn = "*TLS RAND_*";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-         prngn = "getrandom(2/3) + builtin ARC4";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
-         prngn = "/dev/urandom + builtin ARC4";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_BUILTIN
-         prngn = "builtin ARC4";
-#else
-# error n_random_create_buf(): the value of mx_HAVE_RANDOM is not supported
-#endif
-         n_err(_("P(seudo)R(andom)N(umber)G(enerator): %s\n"), prngn);
-      }
-
-#ifdef a_AUX_RAND_USE_BUILTIN
-      a_aux_rand_init();
-#endif
-   }
-
-   /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
-    * with PAD stripped is still longer than what the user requests, easy way.
-    * The relation of base64 is fixed 3 in = 4 out, and we do not want to
-    * include the base64 PAD characters in our random string: give some pad */
-   i = len;
-   if((inlen = i % 3) != 0)
-      i += 3 - inlen;
-jinc1:
-   inlen = i >> 2;
-   oulen = inlen << 2;
-   if(oulen < len){
-      i += 3;
-      goto jinc1;
-   }
-   inlen = inlen + (inlen << 1);
-
-   indat = n_lofi_alloc(inlen +1);
-
-   if(!su_state_has(su_STATE_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-      n_tls_rand_bytes(indat, inlen);
-#elif mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4
-      for(i = inlen; i-- > 0;)
-         indat[i] = (char)a_aux_rand_get8();
-#else
-      for(cp = indat, i = inlen; i > 0;){
-         union {u32 i4; char c[4];} r;
-         uz j;
-
-         r.i4 = (u32)arc4random();
-         switch((j = i & 3)){
-         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
-         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
-         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
-         default: cp[0] = r.c[0]; break;
-         }
-         cp += j;
-         i -= j;
-      }
-#endif
-   }else{
-      for(cp = indat, i = inlen; i > 0;){
-         union {u32 i4; char c[4];} r;
-         uz j;
-
-         r.i4 = ++*reprocnt_or_null;
-         if(su_BOM_IS_BIG()){ /* TODO BSWAP */
-            char x;
-
-            x = r.c[0];
-            r.c[0] = r.c[3];
-            r.c[3] = x;
-            x = r.c[1];
-            r.c[1] = r.c[2];
-            r.c[2] = x;
-         }
-         switch((j = i & 3)){
-         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
-         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
-         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
-         default: cp[0] = r.c[0]; break;
-         }
-         cp += j;
-         i -= j;
-      }
-   }
-
-   oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
-   b64.s = oudat;
-   b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
-   ASSERT(b64.l >= len);
-   su_mem_copy(dat, b64.s, len);
-   dat[len] = '\0';
-   if(oudat != dat)
-      n_lofi_free(oudat);
-
-   n_lofi_free(indat);
-
-   NYD_OU;
-   return dat;
-}
-
-FL char *
-n_random_create_cp(uz len, u32 *reprocnt_or_null){
-   char *dat;
-   NYD_IN;
-
-   dat = n_autorec_alloc(len +1);
-   dat = n_random_create_buf(dat, len, reprocnt_or_null);
-   NYD_OU;
-   return dat;
-}
 
 FL boole
 n_boolify(char const *inbuf, uz inlen, boole emptyrv){

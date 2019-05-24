@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/filetype.h"
+#include "mx/random.h"
 #include "mx/termcap.h"
 
 /* TODO fake */
@@ -756,7 +757,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       osoflags |= O_APPEND;
 
    for(relesigs = TRU1, i = 0;; ++i){
-      su_mem_copy(cp, n_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
+      su_mem_copy(cp, mx_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
 
       hold_all_sigs();
 

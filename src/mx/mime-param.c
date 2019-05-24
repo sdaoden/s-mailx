@@ -27,6 +27,8 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/random.h"
+
 #include "mx/iconv.h"
 
 /* TODO fake */
@@ -937,7 +939,7 @@ mime_param_boundary_create(void)
    bp = n_autorec_alloc(36 + 6 +1);
    bp[0] = bp[2] = bp[39] = bp[41] = '=';
    bp[1] = bp[40] = '-';
-   su_mem_copy(bp + 3, n_random_create_cp(36, &reprocnt), 36);
+   su_mem_copy(bp + 3, mx_random_create_cp(36, &reprocnt), 36);
    bp[42] = '\0';
    NYD_OU;
    return bp;

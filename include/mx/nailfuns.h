@@ -316,13 +316,6 @@ FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen);
             uz ilen);*/
 #endif
 
-/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
- * terminator, the second returns an n_autorec_alloc()ed buffer.
- * If su_STATE_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
- * a reproducable string by using and managing that counter instead */
-FL char *n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null);
-FL char *n_random_create_cp(uz len, u32 *reprocnt_or_null);
-
 /* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
  * string, in which case TRUM1 is returned.
  * If the input buffer is empty emptyrv is used as the return: if it is GE
@@ -2245,8 +2238,8 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 
 #ifdef mx_HAVE_XTLS
 /* Our wrapper for RAND_bytes(3) */
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-FL void n_tls_rand_bytes(void *buf, uz blen);
+# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
+FL void mx_tls_rand_bytes(void *buf, uz blen);
 # endif
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed

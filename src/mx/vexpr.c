@@ -46,6 +46,7 @@ su_EMPTY_FILE()
 
 /* v15compat: csop.h */
 #include "mx/csop.h"
+#include "mx/random.h"
 #include "mx/ui-str.h"
 
 #include "mx/vexpr.h"
@@ -613,7 +614,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
       }
       if(vcp->vc_lhv == 0)
          vcp->vc_lhv = NAME_MAX;
-      vcp->vc_varres = n_random_create_cp(S(uz,vcp->vc_lhv), NIL);
+      vcp->vc_varres = mx_random_create_cp(S(uz,vcp->vc_lhv), NIL);
       break;
     }
 

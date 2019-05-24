@@ -2863,7 +2863,7 @@ fi
 
 val_random_arc4() {
    link_check arc4random 'VAL_RANDOM: arc4random(3)' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_ARC4' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
@@ -2875,7 +2875,7 @@ int main(void){
 val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_TLS' >> ${h}
       # Avoid reseeding, all we need is a streamy random producer
       link_check xtls_rand_drbg_set_reseed_defaults \
          'RAND_DRBG_set_reseed_defaults(3ssl)' \
@@ -2912,9 +2912,9 @@ int main(void){
 val_random_libgetrandom() {
    val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
-      #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
-      #define n_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
+      #define mx_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
+      #define mx_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
 int main(void){
    char buf[256];
@@ -2927,9 +2927,9 @@ int main(void){
 val_random_sysgetrandom() {
    val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
-      #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define n_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
+      #define mx_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define mx_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
 int main(void){
    char buf[256];
@@ -2944,10 +2944,10 @@ val_random_urandom() {
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
    elif [ -f /dev/urandom ]; then
       msg yes
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
    else
       msg no
       return 1
@@ -2964,7 +2964,7 @@ val_random_builtin() {
       config_exit 1
    else
       msg yes
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_BUILTIN' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_BUILTIN' >> ${h}
    fi
 }
 

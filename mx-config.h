@@ -130,12 +130,12 @@
 /* How much spaces a <tab> counts when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
 
-/* Supported (external) PRG implementations */
-#define n_RANDOM_IMPL_BUILTIN 0
-#define n_RANDOM_IMPL_ARC4 1
-#define n_RANDOM_IMPL_TLS 2
-#define n_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
-#define n_RANDOM_IMPL_URANDOM 4
+/* Supported (external) PRG implementations TODO should not be here!?! */
+#define mx_RANDOM_IMPL_BUILTIN 0
+#define mx_RANDOM_IMPL_ARC4 1
+#define mx_RANDOM_IMPL_TLS 2
+#define mx_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
+#define mx_RANDOM_IMPL_URANDOM 4
 
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */
