@@ -41,6 +41,9 @@
 # include "mx/nail.h"
 #endif
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -109,7 +112,7 @@ edit1(int *msgvec, int viored)
          mp->m_size = (uz)size;
          if (ferror(mb.mb_otf))
             n_perr(_("/tmp"), 0);
-         Fclose(fp);
+         mx_fs_close(fp);
       }
 
       safe_signal(SIGINT, sigint);
@@ -141,28 +144,28 @@ c_visual(void *v)
 }
 
 FL FILE *
-n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
+n_run_editor(FILE *fp, off_t size, int viored, boole readonly,/* TODO condom */
    struct header *hp, struct message *mp, enum sendaction action,
    n_sighdl_t oldint, char const *pipecmd)
 {
    struct stat statb;
+   struct mx_child_ctx cc;
    sigset_t cset;
-   int t, ws;
+   int t;
    time_t modtime;
    off_t modsize;
-   char *tmp_name;
+   struct mx_fs_tmp_ctx *fstcp;
    FILE *nf, *nf_pipetmp, *nf_tmp;
    NYD_IN;
 
-   nf = nf_pipetmp = NULL;
-   tmp_name = NULL;
+   nf = nf_pipetmp = NIL;
    modtime = 0, modsize = 0;
 
-   if((nf_tmp = Ftmp(&tmp_name, "runed",
-         ((viored == '|' ? OF_RDWR : OF_WRONLY) | OF_REGISTER |
-          OF_REGISTER_UNLINK | OF_FN_AUTOREC))) == NULL){
+   if((nf_tmp = mx_fs_tmp_open("edbase", ((viored == '|' ? mx_FS_O_RDWR
+               : mx_FS_O_WRONLY) | mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK),
+               &fstcp)) == NIL){
 jetempo:
-      n_perr(_("temporary mail edit file"), 0);
+      n_perr(_("creation of temporary mail edit file"), 0);
       goto jleave;
    }
 
@@ -203,57 +206,66 @@ jetempo:
    }
 
    if(t != 0){
-      n_perr(tmp_name, 0);
+      n_perr(fstcp->fstc_filename, 0);
       goto jleave;
    }
 
+   mx_child_ctx_setup(&cc);
+   cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+
    if(viored == '|'){
-      ASSERT(pipecmd != NULL);
-      tmp_name = NULL;
-      if((nf_pipetmp = Ftmp(&tmp_name, "runed", OF_WRONLY | OF_REGISTER |
-            OF_REGISTER_UNLINK | OF_FN_AUTOREC)) == NULL)
+      ASSERT(pipecmd != NIL);
+
+      if((nf_pipetmp = mx_fs_tmp_open("edpipe", (mx_FS_O_WRONLY |
+               mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
          goto jetempo;
       really_rewind(nf = nf_tmp);
       nf_tmp = nf_pipetmp;
       nf_pipetmp = nf;
-      nf = NULL;
-      if(n_child_run(ok_vlook(SHELL), 0, fileno(nf_pipetmp), fileno(nf_tmp),
-            "-c", pipecmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0)
-         goto jleave;
+      nf = NIL;
+
+      cc.cc_fds[mx_CHILD_FD_IN] = fileno(nf_pipetmp);
+      cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf_tmp);
+      cc.cc_cmd = ok_vlook(SHELL);
+      cc.cc_args[0] = "-c";
+      cc.cc_args[1] = pipecmd;
    }else{
-      sigemptyset(&cset);
-      if(n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
-            (oldint != SIG_IGN ? &cset : NULL),
-            n_CHILD_FD_PASS, n_CHILD_FD_PASS, tmp_name, NULL, NULL, NULL,
-            &ws) < 0 || WEXITSTATUS(ws) != 0)
-         goto jleave;
+      cc.cc_cmd = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
+      if(oldint != SIG_IGN){
+         sigemptyset(&cset);
+         cc.cc_mask = &cset;
+      }
+      cc.cc_args[0] = fstcp->fstc_filename;
    }
+
+   if(!mx_child_run(&cc) || cc.cc_exit_status != 0)
+      goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary
     * and return.  Otherwise switch to new file */
    if(viored != '|'){
       if(readonly)
          goto jleave;
-      if(stat(tmp_name, &statb) == -1){
-         n_perr(tmp_name, 0);
+      if(stat(fstcp->fstc_filename, &statb) == -1){
+         n_perr(fstcp->fstc_filename, 0);
          goto jleave;
       }
       if(modtime == statb.st_mtime && modsize == statb.st_size)
          goto jleave;
    }
 
-   if((nf = Fopen(tmp_name, "r+")) == NULL)
-      n_perr(tmp_name, 0);
+   if((nf = mx_fs_open(fstcp->fstc_filename, "r+")) == NIL)
+      n_perr(fstcp->fstc_filename, 0);
 
 jleave:
-   if(nf_pipetmp != NULL)
-      Fclose(nf_pipetmp);
-   if(nf_tmp != NULL && Fclose(nf_tmp) < 0){
-      if(tmp_name != NULL)
-         n_perr(tmp_name, 0);
-      if(nf != NULL)
-         Fclose(nf);
-      nf = NULL;
+   if(nf_pipetmp != NIL)
+      mx_fs_close(nf_pipetmp);
+
+   if(nf_tmp != NIL && !mx_fs_close(nf_tmp)){
+      n_perr(_("closing of temporary mail edit file"), 0);
+      if(nf != NIL)
+         mx_fs_close(nf);
+      nf = NIL;
    }
    NYD_OU;
    return nf;

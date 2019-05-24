@@ -119,13 +119,6 @@ do{\
       ftruncate(fileno(stream), off);\
 }while(0)
 
-# define n_fd_cloexec_set(FD) \
-do{\
-      int a__fd = (FD)/*, a__fl*/;\
-      /*if((a__fl = fcntl(a__fd, F_GETFD)) != -1 && !(a__fl & FD_CLOEXEC))*/\
-         (void)fcntl(a__fd, F_SETFD, FD_CLOEXEC);\
-}while(0)
-
 /*
  * accmacvar.c
  */
@@ -279,10 +272,11 @@ FL void n_locale_init(void);
 /* Compute screen size */
 FL uz n_screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
- * some environment variable that supports colour+ and set *env_addon to that,
- * e.g., "LESS=FRSXi" */
-FL char const *n_pager_get(char const **env_addon);
+/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
+ * These are specialized version of fs_pipe_open()/fs_pipe_close() which also
+ * encapsulate error message printing, terminal handling etc. additionally */
+FL FILE *mx_pager_open(void);
+FL boole mx_pager_close(FILE *fp);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, uz lines);
@@ -716,7 +710,7 @@ FL int         c_visual(void *v);
  * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
  * from within compose mode, and giving TRUM1 to n_puthead().
  * Signals must be handled by the caller.
- * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
+ * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
  * which case pipecmd must have been given */
 FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
                   struct header *hp, struct message *mp,
@@ -1458,103 +1452,6 @@ FL enum okay   pop3_body(struct message *m);
 /*  */
 FL boole      pop3_quit(boole hold_sigs_on);
 #endif /* mx_HAVE_POP3 */
-
-/*
- * popen.c
- * Subprocesses, popen, but also file handling with registering
- */
-
-/* For program startup in main.c: initialize process manager */
-FL void        n_child_manager_start(void);
-
-/* xflags may be NULL.  Implied: cloexec */
-FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
-
-/* oflags implied: cloexec,OF_REGISTER.
- * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
- * creator has to take appropriate steps in order to ensure this is true! */
-FL FILE *      Fopen(char const *file, char const *oflags);
-FL FILE *      Fdopen(int fd, char const *oflags, boole nocloexec);
-
-FL int         Fclose(FILE *fp);
-
-/* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
- * Open file according to oflags (see popen.c).  Handles compressed files,
- * maildir etc.  If ft_or_null is given it will be filled accordingly */
-FL FILE * n_fopen_any(char const *file, char const *oflags,
-            enum n_fopen_state *fs_or_null);
-
-/* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
- * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
- * part of the resulting filename, otherwise Ftmp() will fail), store the
- * unique name in fn if set (and unless OF_UNLINK is set in oflags), creating
- * n_alloc() storage or n_autorec_alloc() if OF_NAME_AUTOREC is set,
- * and return a stdio FILE pointer with access oflags.
- * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
-FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
-
-/* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
- * called: call this to unlink(2) and free *fn and to rele_all_sigs() */
-FL void        Ftmp_release(char **fn);
-
-/* Free the resources associated with the given filename.  To be called after
- * unlink() */
-FL void        Ftmp_free(char **fn);
-
-/* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
-FL boole      pipe_cloexec(int fd[2]);
-
-/*
- * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
- * called from within the child process.
- * n_psignal() takes a FILE* returned by Popen, and returns <0 if no process
- * can be found, 0 on success, and an errno number on kill(2) failure */
-FL FILE *Popen(char const *cmd, char const *mode, char const *shell,
-            char const **env_addon, int newfd1);
-FL boole Pclose(FILE *fp, boole dowait);
-VL int n_psignal(FILE *fp, int sig);
-
-/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
- * These are specialized version of Popen()/Pclose() which also encapsulate
- * error message printing, terminal handling etc. additionally */
-FL FILE *      n_pager_open(void);
-FL boole      n_pager_close(FILE *fp);
-
-/*  */
-FL void        close_all_files(void);
-
-/* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  FDs may also be n_CHILD_FD_NULL and n_CHILD_FD_PASS, meaning
- * to redirect from/to /dev/null or pass through our own set of FDs; in the
- * latter case terminal capabilities are saved/restored if possible.
- * The command name can be a sequence of words.
- * Signals must be handled by the caller.  "Mask" contains the signals to
- * ignore in the new process.  SIGINT is enabled unless it's in the mask.
- * If env_addon_or_null is set, it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * wait_status_or_null is set to waitpid(2) status if given */
-FL int n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null, int *wait_status_or_null);
-
-/* Like n_child_run(), but don't wait for the command to finish (use
- * n_child_wait() for waiting on a successful return value).
- * Also it is usually an error to use n_CHILD_FD_PASS for this one */
-FL int n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null);
-
-/* Fork a child process, enable the other three:
- * - in-child image preparation
- * - mark a child as don't care
- * - wait for child pid, return whether we've had a normal n_EXIT_OK exit.
- *   If wait_status_or_null is set, it is set to the waitpid(2) status */
-FL int n_child_fork(void);
-FL void n_child_prepare(sigset_t *nset, int infd, int outfd);
-FL void n_child_free(int pid);
-FL boole n_child_wait(int pid, int *wait_status_or_null);
 
 /*
  * quit.c

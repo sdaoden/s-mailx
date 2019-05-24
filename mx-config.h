@@ -32,7 +32,8 @@
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
-#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
+#define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */
+#define mx_FS_TMP_OPEN_TRIES 10 /* Maximum number of fs_tmp_open() tries */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define n_LINE_EDITOR_CPL_WORD_BREAKS "\"'@=;|:"
 /* Fallback in case the systems reports an empty hostname (?) */
@@ -42,8 +43,7 @@
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NULL /* DOC! */
-#define REFERENCES_MAX 20     /* Maximum entries in References: */
-#define n_SIGSUSPEND_NOT_WAITPID 0 /* Not waitpid(2), but sigsuspend(2) */
+#define REFERENCES_MAX 20 /* Maximum entries in References: */
 #define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
 
 /* * */
@@ -173,27 +173,19 @@
 # define STDERR_FILENO 2
 #endif
 
-#ifdef O_CLOEXEC
-# define _O_CLOEXEC O_CLOEXEC
-# define _CLOEXEC_SET(FD) do {;} while(0)
-#else
-# define _O_CLOEXEC 0
-# define _CLOEXEC_SET(FD) n_fd_cloexec_set(FD)
-#endif
-
 #ifdef O_NOCTTY
-# define n_O_NOCTTY O_NOCTTY
+# define mx_O_NOCTTY O_NOCTTY
 #else
-# define n_O_NOCTTY 0
+# define mx_O_NOCTTY 0
 #endif
 /*
 #ifdef O_NOFOLLOW
-# define n_O_NOFOLLOW O_NOFOLLOW
+# define mx_O_NOFOLLOW O_NOFOLLOW
 #else
-# define n_O_NOFOLLOW 0
+# define mx_O_NOFOLLOW 0
 #endif
 */
-#define n_O_NOXY_BITS (n_O_NOCTTY /*| n_O_NOFOLLOW*/)
+#define mx_O_NOXY_BITS (mx_O_NOCTTY /*| mx_O_NOFOLLOW*/)
 
 #ifdef NSIG_MAX
 # undef NSIG

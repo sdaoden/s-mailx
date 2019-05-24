@@ -43,7 +43,7 @@ struct htmlflt{
 };
 
 /* TODO Because we don't support filter chains yet this filter will be run
- * TODO in a dedicated subprocess, driven via a special Popen() mode */
+ * TODO in a dedicated subprocess, driven via a special fs_popen() mode */
 FL int htmlflt_process_main(void);
 
 FL void htmlflt_init(struct htmlflt *self);

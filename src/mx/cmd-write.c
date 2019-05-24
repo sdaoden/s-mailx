@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -58,7 +59,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    int convert, boole domark, boole domove)
 {
    u64 mstats[1], tstats[2];
-   enum n_fopen_state fs;
+   enum mx_fs_open_state fs;
    struct message *mp;
    char *file, *cp, *cq;
    FILE *obuf;
@@ -112,7 +113,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          shell = ok_vlook(SHELL);
 
          /* Pipe target is special TODO hacked in later, normalize flow! */
-         if((obuf = Popen(file, "w", shell, NULL, 1)) == NULL){
+         if((obuf = mx_fs_pipe_open(file, "w", shell, NIL, -1)) == NIL){
             int esave;
 
             n_perr(file, esave = su_err_no());
@@ -132,23 +133,23 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
     * TODO However, URL parse because that file:// prefix check is a HACK! */
    if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
       file = savecat("file://", file);
-   if((obuf = n_fopen_any(file, "a+", &fs)) == NULL){
+   if((obuf = mx_fs_open_any(file, "a+", &fs)) == NIL){
       n_perr(file, 0);
       goto jleave;
    }
 
 #if defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
    if(mb.mb_type == MB_POP3 && (fs & n_PROTO_MASK) == n_PROTO_IMAP){
-      Fclose(obuf);
+      mx_fs_close(obuf);
       n_err(_("Direct copy from POP3 to IMAP not supported before v15\n"));
       goto jleave;
    }
 #endif
 
-   disp = (fs & n_FOPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
+   disp = (fs & mx_FS_OPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
 
-   if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
-         (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
+   if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
+         (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
       int xerr;
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
@@ -213,10 +214,10 @@ jferr:
          srelax_rele();
       success = FAL0;
    }
-   if (shell != NULL) {
-      if (!Pclose(obuf, TRU1))
+   if(shell != NIL){
+      if(!mx_fs_pipe_close(obuf, TRU1))
          success = FAL0;
-   } else if (Fclose(obuf) != 0)
+   }else if(!mx_fs_close(obuf))
       success = FAL0;
 
    if (success) {

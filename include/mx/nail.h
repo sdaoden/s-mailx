@@ -41,7 +41,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #ifdef mx_HAVE_GETTIMEOFDAY
 # include <sys/time.h>
@@ -78,10 +77,6 @@
 
 /* TODO fake */
 #include "su/code-in.h"
-
-/* Special FD requests for n_child_run(), n_child_start() */
-#define n_CHILD_FD_PASS -1
-#define n_CHILD_FD_NULL -2
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -304,7 +299,7 @@ enum n_dig_msg_flags{
    n_DIG_MSG_COMPOSE_DIGGED = 1u<<1, /* ..with `digmsg' handle also! */
    n_DIG_MSG_RDONLY = 1u<<2, /* Message is read-only */
    n_DIG_MSG_OWN_MEMBAG = 1u<<3, /* .gdm_membag==&.gdm__membag_buf[0] */
-   n_DIG_MSG_HAVE_FP = 1u<<4, /* Open on a Ftmp() file */
+   n_DIG_MSG_HAVE_FP = 1u<<4, /* Open on a fs_tmp_open() file */
    n_DIG_MSG_FCLOSE = 1u<<5 /* (mx_HAVE_FP:) needs fclose() */
 };
 
@@ -360,12 +355,6 @@ enum fexp_mode{
 enum n_file_lock_type{
    FLT_READ,
    FLT_WRITE
-};
-
-enum n_fopen_state{ /* TODO add n_fopen_mode, too */
-   /* First n__PROTO_SHIFT bits are enum protocol!  MCTA()d below */
-   n_FOPEN_STATE_NONE = 0,
-   n_FOPEN_STATE_EXISTS = 1u<<5
 };
 
 enum n_go_input_flags{
@@ -573,22 +562,6 @@ enum mime_handler_flags{
    MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
-enum oflags{
-   OF_RDONLY = 1u<<0,
-   OF_WRONLY = 1u<<1,
-   OF_RDWR = 1u<<2,
-   OF_APPEND = 1u<<3,
-   OF_CREATE = 1u<<4,
-   OF_TRUNC = 1u<<5,
-   OF_EXCL = 1u<<6,
-   OF_UNLINK = 1u<<7, /* Only for Ftmp(): unlink(2) after creation */
-   OF_HOLDSIGS = 1u<<8, /* Ftmp(): await Ftmp_free(), mutual OF_UNLINK */
-   OF_FN_AUTOREC = 1u<<9, /* Ftmp(): fn not on heap, mutual OF_UNLINK */
-   OF_REGISTER = 1u<<10, /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER ASSERTed */
-   OF_SUFFIX = 1u<<12 /* Ftmp() name hint is mandatory! extension! */
-};
-
 enum okay{
    STOP = 0,
    OKAY = 1
@@ -622,10 +595,8 @@ PROTO_MAILDIR = n_PROTO_MAILDIR,
    n_PROTO_UNKNOWN, /* unknown protocol */
 PROTO_UNKNOWN = n_PROTO_UNKNOWN,
 
-   n__PROTO_SHIFT = n_PROTO_UNKNOWN,
-   n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
+   n_PROTO_MASK = (1u << 5) - 1
 };
-MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction{
    SEND_MBOX, /* no conversion to perform */
@@ -1432,7 +1403,7 @@ do{\
 #define n_DIG_MSG_COMPOSE_GUT(DMCP) \
 do{\
    ASSERT(n_dig_msg_compose_ctx == DMCP);\
-   /* File cleaned up via close_all_files() */\
+   /* File cleaned up via fs_close_all_files() */\
    n_dig_msg_compose_ctx = NULL;\
 }while(0)
 

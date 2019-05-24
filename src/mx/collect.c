@@ -45,6 +45,8 @@
 #include <su/cs.h>
 #include <su/utf.h>
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/filter-quote.h"
 #include "mx/names.h"
 #include "mx/ui-str.h"
@@ -67,9 +69,9 @@ struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
 struct a_coll_ocs_arg{
    n_sighdl_t coa_opipe;
    n_sighdl_t coa_oint;
-   FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
-   FILE *coa_stdout; /* The Popen()ed pipe through which we write to the hook */
-   int coa_pipe[2];  /* ..backing .coa_stdin */
+   FILE *coa_stdin; /* The descriptor (pipe(2)+fs_fd_open()) we read from */
+   FILE *coa_stdout; /* The pipe_open() through which we write to the hook */
+   sz coa_pipe[2]; /* ..backing .coa_stdin */
    s8 *coa_senderr; /* Set to 1 on failure */
    char coa_cmd[VFIELD_SIZE(0)];
 };
@@ -256,7 +258,7 @@ jdelim_empty:
          }
       }
       name = n_hy;
-   }else if((fbuf = Fopen(name, "r")) == NULL){
+   }else if((fbuf = mx_fs_open(name, "r")) == NIL){
       n_perr(name, rv = su_err_no());
       goto jleave;
    }
@@ -296,11 +298,11 @@ jdelim_empty:
    if(heredb != NULL)
       rv = su_ERR_NOTOBACCO;
 jleave:
-   if(linebuf != NULL)
+   if(linebuf != NIL)
       n_free(linebuf);
-   if(fbuf != NULL){
+   if(fbuf != NIL){
       if(fbuf != n_stdin)
-         Fclose(fbuf);
+         mx_fs_close(fbuf);
       else if(heredl > 0)
          clearerr(n_stdin);
    }
@@ -322,7 +324,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    rv = su_ERR_NONE;
    lc = cc = 0;
 
-   if((ibuf = Popen(cmd, "r", ok_vlook(SHELL), NULL, 0)) != NULL){
+   if((ibuf = mx_fs_pipe_open(cmd, "r", ok_vlook(SHELL), NIL, -1)) != NIL){
       int c;
 
       while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
@@ -338,7 +340,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
          if(rv == su_ERR_NONE)
             rv = su_ERR_IO;
       }
-      if(!Pclose(ibuf, TRU1)){
+      if(!mx_fs_pipe_close(ibuf, TRU1)){
          if(rv == su_ERR_NONE)
             rv = su_ERR_IO;
       }
@@ -360,9 +362,10 @@ print_collf(FILE *cf, struct header *hp)
    NYD_IN;
 
    fflush_rewind(cf);
-   cnt = (uz)fsize(cf);
+   cnt = S(uz,fsize(cf));
 
-   if((obuf = Ftmp(NULL, "collfp", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("Can't create temporary file for `~p' command"), 0);
       goto jleave;
    }
@@ -390,7 +393,7 @@ print_collf(FILE *cf, struct header *hp)
 
    page_or_print(obuf, 0);
 
-   Fclose(obuf);
+   mx_fs_close(obuf);
 jleave:
    NYD_OU;
 }
@@ -411,7 +414,7 @@ a_coll_write(char const *name, FILE *fp, int f)
       fflush(n_stdout);
    }
 
-   if ((of = Fopen(name, "a")) == NULL) {
+   if((of = mx_fs_open(name, "a")) == NIL){
       n_perr(name, rv = su_err_no());
       goto jerr;
    }
@@ -429,8 +432,8 @@ a_coll_write(char const *name, FILE *fp, int f)
    fprintf(n_stdout, "%" PRId64 "/%" PRId64 "\n", lc, cc);
 
 jleave:
-   if(of != NULL)
-      Fclose(of);
+   if(of != NIL)
+      mx_fs_close(of);
    fflush(n_stdout);
    NYD_OU;
    return rv;
@@ -615,7 +618,8 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    rv = FAL0;
 
-   if ((nf = Ftmp(NULL, "colhead", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+   if((nf = mx_fs_tmp_open("colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
@@ -645,18 +649,18 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
 
-   if (fp != _coll_fp)
-      Fclose(_coll_fp);
-   Fclose(fp);
+   if(fp != _coll_fp)
+      mx_fs_close(_coll_fp);
+   mx_fs_close(fp);
    _coll_fp = nf;
-   nf = NULL;
+   nf = NIL;
 
    if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
    rv = TRU1;
 jleave:
-   if(nf != NULL)
-      Fclose(nf);
+   if(nf != NIL)
+      mx_fs_close(nf);
    NYD_OU;
    return rv;
 }
@@ -718,7 +722,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
          }
       }else{
          fseek(nf, 0L, SEEK_END);
-         Fclose(_coll_fp);
+         mx_fs_close(_coll_fp);
          _coll_fp = nf;
       }
    }else
@@ -737,7 +741,6 @@ jleave:
 static s32
 a_coll_pipe(char const *cmd)
 {
-   int ws;
    FILE *nf;
    n_sighdl_t sigint;
    s32 rv;
@@ -746,7 +749,8 @@ a_coll_pipe(char const *cmd)
    rv = su_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+   if((nf = mx_fs_tmp_open("colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
 jperr:
       n_perr(_("temporary mail edit file"), rv = su_err_no());
       goto jout;
@@ -756,23 +760,34 @@ jperr:
    if(fflush(_coll_fp) == EOF)
       goto jperr;
    rewind(_coll_fp);
-   if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
-         cmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0) {
-      Fclose(nf);
-      rv = su_ERR_CHILD;
-      goto jout;
+
+   /* C99 */{
+      struct mx_child_ctx cc;
+
+      mx_child_ctx_setup(&cc);
+      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+      cc.cc_fds[mx_CHILD_FD_IN] = fileno(_coll_fp);
+      cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf);
+      cc.cc_cmd = ok_vlook(SHELL);
+      cc.cc_args[0] = "-c";
+      cc.cc_args[1] = cmd;
+      if(!mx_child_run(&cc) || cc.cc_exit_status != 0){
+         mx_fs_close(nf);
+         rv = su_ERR_CHILD;
+         goto jout;
+      }
    }
 
    if (fsize(nf) == 0) {
       n_err(_("No bytes from %s !?\n"), n_shexp_quote_cp(cmd, FAL0));
-      Fclose(nf);
+      mx_fs_close(nf);
       rv = su_ERR_NODATA;
       goto jout;
    }
 
    /* Take new files */
    fseek(nf, 0L, SEEK_END);
-   Fclose(_coll_fp);
+   mx_fs_close(_coll_fp);
    _coll_fp = nf;
 jout:
    safe_signal(SIGINT, sigint);
@@ -946,15 +961,15 @@ a_coll_ocs__finalize(void *vp){
    coap = *(coapp = vp);
    *coapp = (struct a_coll_ocs_arg*)-1;
 
-   if(coap->coa_stdin != NULL)
-      Fclose(coap->coa_stdin);
+   if(coap->coa_stdin != NIL)
+      mx_fs_close(coap->coa_stdin);
    else if(coap->coa_pipe[0] != -1)
-      close(coap->coa_pipe[0]);
+      close(S(int,coap->coa_pipe[0]));
 
-   if(coap->coa_stdout != NULL && !Pclose(coap->coa_stdout, TRU1))
-      *coap->coa_senderr = 111;
+   if(coap->coa_stdout != NIL && !mx_fs_pipe_close(coap->coa_stdout, TRU1))
+      *coap->coa_senderr = 1;
    if(coap->coa_pipe[1] != -1)
-      close(coap->coa_pipe[1]);
+      close(S(int,coap->coa_pipe[1]));
 
    opipe = coap->coa_opipe;
    oint = coap->coa_oint;
@@ -1028,24 +1043,26 @@ FL FILE *
 n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    char const *quotefile, s8 *checkaddr_err)
 {
-   struct n_dig_msg_ctx dmc;
-   struct n_string s_b, * volatile s;
-   struct a_coll_ocs_arg *coap;
-   int c;
-   int volatile t, eofcnt, getfields;
-   char volatile escape;
    enum{
       a_NONE,
       a_ERREXIT = 1u<<0,
       a_IGNERR = 1u<<1,
       a_COAP_NOSIGTERM = 1u<<8
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
-   } volatile flags;
+   };
+
+   struct n_dig_msg_ctx dmc;
+   struct n_string s_b, * volatile s;
+   struct a_coll_ocs_arg *coap;
+   int c;
+   int volatile t, eofcnt, getfields;
+   char volatile escape;
    char *linebuf;
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
    uz i, linesize; /* TODO line pool */
    long cnt;
    sigset_t oset, nset;
+   u32 volatile flags;
    FILE * volatile sigfp;
    NYD_IN;
 
@@ -1053,9 +1070,9 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    _coll_fp = NULL;
 
    sigfp = NULL;
+   flags = a_NONE;
    linesize = 0;
    linebuf = NULL;
-   flags = a_NONE;
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
@@ -1076,8 +1093,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    n_pstate |= n_PS_COMPOSE_MODE;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
-   if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((_coll_fp = mx_fs_tmp_open("collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("collect: temporary mail file"), 0);
       goto jerr;
    }
@@ -1796,7 +1813,7 @@ jout:
       ok_vclear(ifs);
 
       if(coapm != NULL){
-         /* XXX Due Popen() fflush(NULL) in PTF mode, ensure nothing to flush */
+         /* XXX Due pipe_open() fflush(NIL) in PTF mode */
          /*if(!n_real_seek(_coll_fp, 0, SEEK_END))
           *  goto jerr;*/
          u.ptf = &a_coll_ocs__mac;
@@ -1811,7 +1828,7 @@ jout:
       coap = n_lofi_alloc(VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
-      coap->coa_stdin = coap->coa_stdout = NULL;
+      coap->coa_stdin = coap->coa_stdout = NIL;
       coap->coa_senderr = checkaddr_err;
       su_mem_copy(coap->coa_cmd, cp, i);
 
@@ -1820,11 +1837,12 @@ jout:
       coap->coa_oint = safe_signal(SIGINT, SIG_IGN);
       rele_all_sigs();
 
-      if(pipe_cloexec(coap->coa_pipe) &&
-            (coap->coa_stdin = Fdopen(coap->coa_pipe[0], "r", FAL0)) != NULL &&
-            (coap->coa_stdout = Popen(cmd, "W", u.sh, NULL, coap->coa_pipe[1])
-             ) != NULL){
-         close(coap->coa_pipe[1]);
+      if(mx_fs_pipe_cloexec(coap->coa_pipe) &&
+            (coap->coa_stdin = mx_fs_fd_open(coap->coa_pipe[0], "r", FAL0)
+               ) != NIL &&
+            (coap->coa_stdout = mx_fs_pipe_open(cmd, "W", u.sh, NIL,
+               coap->coa_pipe[1])) != NIL){
+         close(S(int,coap->coa_pipe[1]));
          coap->coa_pipe[1] = -1;
 
          temporary_compose_mode_hook_call(NULL, NULL, NULL);
@@ -1942,7 +1960,7 @@ jreasksend:
       }
       cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
-      if((sigfp = Fopen(cp, "r")) == NULL){
+      if((sigfp = mx_fs_open(cp, "r")) == NIL){
          n_err(_("Can't open *signature* %s: %s\n"),
             cpq, su_err_doc(su_err_no()));
          goto jerr;
@@ -1963,7 +1981,7 @@ jreasksend:
          int e = su_err_no(), ise = ferror(x);
 
          sigfp = NULL;
-         Fclose(x);
+         mx_fs_close(x);
 
          if(ise){
             n_err(_("Errors while reading *signature* %s: %s\n"),
@@ -2024,7 +2042,7 @@ jerr:
 
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1){
       if(!(flags & a_COAP_NOSIGTERM))
-         n_psignal(coap->coa_stdout, SIGTERM);
+         mx_fs_pipe_signal(coap->coa_stdout, SIGTERM);
       n_go_splice_hack_remove_after_jump();
       coap = NULL;
    }
@@ -2032,13 +2050,13 @@ jerr:
       ok_vset(ifs, ifs_saved);
       ifs_saved = NULL;
    }
-   if(sigfp != NULL){
-      Fclose(UNVOLATILE(FILE*,sigfp));
+   if(sigfp != NIL){
+      mx_fs_close(UNVOLATILE(FILE*,sigfp));
       sigfp = NULL;
    }
-   if(_coll_fp != NULL){
-      Fclose(_coll_fp);
-      _coll_fp = NULL;
+   if(_coll_fp != NIL){
+      mx_fs_close(_coll_fp);
+      _coll_fp = NIL;
    }
 
    rele_all_sigs();

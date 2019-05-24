@@ -49,8 +49,10 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/child.h"
 #include "mx/colour.h"
 #include "mx/commandalias.h"
+#include "mx/file-streams.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -970,10 +972,10 @@ jrestart:
          }
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          n_pstate &= ~n_PS_ERR_EXIT_MASK;
-         close_all_files();
+         mx_fs_close_all();
       }else{
          if(!(n_pstate & n_PS_SOURCING))
-            close_all_files();
+            mx_fs_close_all();
       }
 
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
@@ -1027,9 +1029,9 @@ jrestart:
    }else if(gcp->gc_flags & a_GO_PIPE)
       /* XXX command manager should -TERM then -KILL instead of hoping
        * XXX for exit of provider due to su_ERR_PIPE / SIGPIPE */
-      Pclose(gcp->gc_file, TRU1);
+      mx_fs_pipe_close(gcp->gc_file, TRU1);
    else if(gcp->gc_flags & a_GO_FILE)
-      Fclose(gcp->gc_file);
+      mx_fs_close(gcp->gc_file);
 
    if(!(gcp->gc_flags & a_GO_MEMBAG_INHERITED))
       su_mem_bag_gut(gcp->gc_data.gdc_membag);
@@ -1150,12 +1152,12 @@ a_go_file(char const *file, boole silent_open_error){
 #endif
 
    if(ispipe){
-      if((fip = Popen(nbuf /* #if 0 above = savestrbuf(file, nlen)*/, "r",
-            ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)) == NULL)
+      if((fip = mx_fs_pipe_open(nbuf /* #if 0 above = savestrbuf(file, nlen)*/,
+            "r", ok_vlook(SHELL), NIL, -1)) == NIL)
          goto jeopencheck;
    }else if((nbuf = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL)
       goto jeopencheck;
-   else if((fip = Fopen(nbuf, "r")) == NULL){
+   else if((fip = mx_fs_open(nbuf, "r")) == NIL){
 jeopencheck:
       if(!silent_open_error || (n_poption & n_PO_D_V))
          n_perr(nbuf, 0);
@@ -1327,7 +1329,7 @@ n_go_init(void){
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
 
-   n_child_manager_start();
+   mx_child_manager_start();
    NYD2_OU;
 }
 
@@ -1893,9 +1895,9 @@ n_go_load(char const *name){
 
    rv = TRU1;
 
-   if(name == NULL || *name == '\0')
+   if(name == NIL || *name == '\0')
       goto jleave;
-   else if((fip = Fopen(name, "r")) == NULL){
+   else if((fip = mx_fs_open(name, "r")) == NIL){
       if(n_poption & n_PO_D_V)
          n_err(_("No such file to load: %s\n"), n_shexp_quote_cp(name, FAL0));
       goto jleave;
@@ -2464,14 +2466,14 @@ jfound:
          }
          fd = -1;
          elen = su_cs_len(emsg);
-         fp = safe_fopen(emsg, "r", NULL);
+         fp = mx_fs_open(emsg, "&r");
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
          n_err(_("`readctl': create: standard descriptors are not allowed\n"));
          goto jeinval;
       }else{
          /* xxx Avoid */
-         _CLOEXEC_SET(fd);
+         mx_FS_FD_CLOEXEC_SET(fd);
          emsg = NULL;
          elen = 0;
          fp = fdopen(fd, "r");

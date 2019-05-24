@@ -43,6 +43,8 @@
 
 #include <su/cs.h>
 
+#include "mx/child.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -358,7 +360,7 @@ c_folders(void *v){ /* TODO fexpand*/
          | FEXP_LOCAL
 #endif
       ;
-
+   struct mx_child_ctx cc;
    char const *cp;
    char **argv;
    int rv;
@@ -367,18 +369,25 @@ c_folders(void *v){ /* TODO fexpand*/
    rv = 1;
 
    if(*(argv = v) != NULL){
-      if((cp = fexpand(*argv, fexp)) == NULL)
+      if((cp = fexpand(*argv, fexp)) == NIL)
          goto jleave;
    }else
       cp = n_folder_query();
 
 #ifdef mx_HAVE_IMAP
-   if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
-      rv = imap_folders(cp, *argv == NULL);
+   if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
+      rv = imap_folders(cp, *argv == NIL);
    else
 #endif
-   rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
-         cp, NULL, NULL, NULL, NULL);
+       {
+      mx_child_ctx_setup(&cc);
+      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+      cc.cc_cmd = ok_vlook(LISTER);
+      cc.cc_args[0] = cp;
+      if(mx_child_run(&cc) && cc.cc_exit_status == 0)
+         rv = 0;
+   }
+
 jleave:
    NYD_OU;
    return rv;

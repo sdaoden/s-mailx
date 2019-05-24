@@ -52,6 +52,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/file-streams.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -166,7 +168,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
       goto jleave;
-   if ((fp = Fopen(encuid(mp, m->m_uid), "r")) == NULL)
+   if((fp = mx_fs_open(encuid(mp, m->m_uid), "r")) == NIL)
       goto jleave;
 
    n_file_lock(fileno(fp), FLT_READ, 0,0, 0);
@@ -259,7 +261,7 @@ jflags:
    }
    rv = OKAY;
 jfail:
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD2_OU;
    return rv;
@@ -299,8 +301,8 @@ putcache(struct mailbox *mp, struct message *m)
       goto jleave;
    if ((oldoffset = ftell(mp->mb_itf)) < 0) /* XXX weird err hdling */
       oldoffset = 0;
-   if ((obuf = Fopen(name = encuid(mp, m->m_uid), "r+")) == NULL) {
-      if ((obuf = Fopen(name, "w")) == NULL)
+   if((obuf = mx_fs_open(name = encuid(mp, m->m_uid), "r+")) == NIL){
+      if((obuf = mx_fs_open(name, "w")) == NIL)
          goto jleave;
       n_file_lock(fileno(obuf), FLT_WRITE, 0,0, 0); /* XXX err hdl */
    } else {
@@ -319,17 +321,19 @@ putcache(struct mailbox *mp, struct message *m)
                USEBITS(m->m_flag), (unsigned long)m->m_time, m->m_xlines);
             putc('\n', obuf);
          }
-         Fclose(obuf);
+         mx_fs_close(obuf);
          goto jleave;
       }
       fflush(obuf);
       rewind(obuf);
       ftruncate(fileno(obuf), 0);
    }
-   if ((ibuf = setinput(mp, m, NEED_UNSPEC)) == NULL) {
-      Fclose(obuf);
+
+   if((ibuf = setinput(mp, m, NEED_UNSPEC)) == NIL){
+      mx_fs_close(obuf);
       goto jleave;
    }
+
    if (c == 'N')
       goto jdone;
    fseek(obuf, INITSKIP, SEEK_SET);
@@ -360,8 +364,9 @@ jdone:
    }
    if (c == 'B' && USEBITS(m->m_flag) == MREAD)
       m->m_flag |= MFULLYCACHED;
+
 jout:
-   if (Fclose(obuf) != 0) {
+   if(!mx_fs_close(obuf)){
       m->m_flag &= ~MFULLYCACHED;
       unlink(name);
    }
@@ -389,7 +394,8 @@ initcache(struct mailbox *mp)
       goto jleave;
    if (cwget(&cw) == STOP)
       goto jleave;
-   if ((uvfp = Fopen(uvname, "r+")) == NULL ||
+
+   if((uvfp = mx_fs_open(uvname, "r+")) == NIL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%" PRIu64 , &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
@@ -398,12 +404,21 @@ initcache(struct mailbox *mp)
       fflush(uvfp);
       rewind(uvfp);
    }
+
    n_file_lock(fileno(uvfp), FLT_WRITE, 0,0, 0);
    fprintf(uvfp, "%" PRIu64 "\n", mp->mb_uidvalidity);
-   if (ferror(uvfp) || Fclose(uvfp) != 0) {
-      unlink(uvname);
-      mp->mb_uidvalidity = 0;
+
+   /* C99 */{
+      int x;
+
+      x = ferror(uvfp);
+
+      if(!mx_fs_close(uvfp) || x){
+         unlink(uvname);
+         mp->mb_uidvalidity = 0;
+      }
    }
+
 jout:
    cwrelse(&cw);
 jleave:
@@ -455,12 +470,12 @@ clean(struct mailbox *mp, struct cw *cw)
    if (!n_path_mkdir(cachedir))
       goto jleave;
    snprintf(buf, bufsz, "%s/README", cachedir);
-   if ((fp = Fopen(buf, "wx")) != NULL) {
+   if((fp = mx_fs_open(buf, "wx")) != NIL){
       fputs(README1, fp);
       fputs(README2, fp);
       fputs(README3, fp);
       fputs(README4, fp);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    fp = NULL;
    snprintf(buf, bufsz, "%s/%s/%s", cachedir, eaccount, emailbox);
@@ -477,7 +492,7 @@ clean(struct mailbox *mp, struct cw *cw)
       unlink(dp->d_name);
    }
    closedir(dirp);
-   fp = Fopen("UIDVALIDITY", "w");
+   fp = mx_fs_open("UIDVALIDITY", "w");
 jout:
    if (cwret(cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
@@ -772,12 +787,12 @@ cached_uidvalidity(struct mailbox *mp)
       uv = 0;
       goto jleave;
    }
-   if ((uvfp = Fopen(uvname, "r")) == NULL ||
+   if((uvfp = mx_fs_open(uvname, "r")) == NIL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%" PRIu64, &uv) != 1)
       uv = 0;
-   if (uvfp != NULL)
-      Fclose(uvfp);
+   if(uvfp != NIL)
+      mx_fs_close(uvfp);
 jleave:
    NYD_OU;
    return uv;
@@ -792,7 +807,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
 
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
-   if ((fp = Fopen(name, mode)) != NULL)
+   if((fp = mx_fs_open(name, mode)) != NIL)
       n_file_lock(fileno(fp), FLT_WRITE, 0,0, 0);
    if (xname)
       *xname = name;
@@ -872,7 +887,7 @@ dequeue1(struct mailbox *mp)
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
-            (uvfp = Fopen(uvname, "r")) == NULL ||
+            (uvfp = mx_fs_open(uvname, "r")) == NIL ||
             (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
             fscanf(uvfp, "%" PRIu64, &uv) != 1 || uv != mp->mb_uidvalidity) {
          n_err(_("Unique identifiers for \"%s\" are out of date. "
@@ -881,18 +896,19 @@ jsave:
          n_err(_("Saving IMAP commands to *DEAD*\n"));
          savedeadletter(fp, 0);
          ftruncate(fileno(fp), 0);
-         Fclose(fp);
-         if (uvfp)
-            Fclose(uvfp);
+         mx_fs_close(fp);
+         if(uvfp != NIL)
+            mx_fs_close(uvfp);
          rv = STOP;
          goto jleave;
       }
-      Fclose(uvfp);
+      mx_fs_close(uvfp);
       printf("Committing IMAP commands for \"%s\"\n", mp->mb_imap_mailbox);
       imap_dequeue(mp, fp);
    }
-   if (fp) {
-      Fclose(fp);
+
+   if(fp != NIL){
+      mx_fs_close(fp);
       unlink(qname);
    }
 jleave:

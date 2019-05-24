@@ -1061,7 +1061,7 @@ c_from(void *vp)
             ib = n_screensize();
          else
             su_idec_uz_cp(&ib, cp, 0, NULL);
-         if (UCMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
+         if (UCMP(z, n, >, ib) && (obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
    }
@@ -1082,7 +1082,7 @@ c_from(void *vp)
    mx_COLOUR( mx_colour_env_gut(); )
 
    if (obuf != n_stdout)
-      n_pager_close(obuf);
+      mx_pager_close(obuf);
 jleave:
    NYD_OU;
    return 0;

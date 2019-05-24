@@ -45,6 +45,7 @@
 
 #include <su/cs.h>
 
+#include "mx/file-streams.h"
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
@@ -537,7 +538,7 @@ jlogname:
       goto jem1;
    }
 
-   if ((ibuf = n_fopen_any(savecat("file://", name), "r", NULL)) == NULL) {
+   if((ibuf = mx_fs_open_any(savecat("file://", name), "r", NIL)) == NIL){
       int e = su_err_no();
 
       if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
@@ -592,8 +593,9 @@ jlogname:
    hold_sigs();
 
 #ifdef mx_HAVE_SOCKETS
-   if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
-      sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
+   if(!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
+      /* Silly to call that for 0, maybe main.c init to -1? */
+      sclose(&mb.mb_sock); /* TODO VMAILFS->close() on open thing, thank you */
 #endif
 
    /* TODO There is no intermediate VOID box we've switched to: name may
@@ -604,9 +606,9 @@ jlogname:
     * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
    if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !su_cs_cmp(name, mailname)) {
       name = mailname;
-      Fclose(ibuf);
+      mx_fs_close(ibuf);
 
-      if ((ibuf = n_fopen_any(name, "r", NULL)) == NULL ||
+      if((ibuf = mx_fs_open_any(name, "r", NIL)) == NIL ||
             fstat(fileno(ibuf), &stb) == -1 ||
             (!S_ISREG(stb.st_mode) && !isdevnull)) {
          n_perr(name, 0);
@@ -689,11 +691,11 @@ jlogname:
       c_sort((void*)-1);
    }
 
-   Fclose(ibuf);
-   ibuf = NULL;
-   if (lckfp != NULL && lckfp != (FILE*)-1) {
-      Pclose(lckfp, FAL0);
-      /*lckfp = NULL;*/
+   mx_fs_close(ibuf);
+   ibuf = NIL;
+   if(lckfp != NIL && lckfp != R(FILE*,-1)){
+      mx_fs_pipe_close(lckfp, FAL0);
+      /*lckfp = NIL;*/
    }
 
    if (!(fm & FEDIT_NEWMAIL)) {
@@ -724,13 +726,15 @@ jlogname:
    if(fm & FEDIT_NEWMAIL)
       newmailinfo(omsgCount);
 jleave:
-   if (ibuf != NULL) {
-      Fclose(ibuf);
-      if (lckfp != NULL && lckfp != (FILE*)-1)
-         Pclose(lckfp, FAL0);
+   if(ibuf != NIL){
+      mx_fs_close(ibuf);
+      if(lckfp != NIL && lckfp != R(FILE*,-1))
+         mx_fs_pipe_close(lckfp, FAL0);
    }
+
    NYD_OU;
    return rv;
+
 jem2:
    if(mb.mb_digmsg != NULL)
       n_dig_msg_on_mailbox_close(&mb);
@@ -966,8 +970,8 @@ jleave:
 FL void
 initbox(char const *name)
 {
+   struct mx_fs_tmp_ctx *fstcp;
    boole err;
-   char *tempMesg;
    NYD_IN;
 
    if (mb.mb_type != MB_VOID)
@@ -978,15 +982,16 @@ initbox(char const *name)
    _update_mailname((name != mailname) ? name : NULL);
 
    err = FAL0;
-   if((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
-         NULL){
+   if((mb.mb_otf = mx_fs_tmp_open("tmpmbox", (mx_FS_O_WRONLY |
+            mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
       n_perr(_("initbox: temporary mail message file, writer"), 0);
       err = TRU1;
-   }else if((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
+   }else if((mb.mb_itf = mx_fs_open(fstcp->fstc_filename, "&r")
+         ) == NIL){
       n_perr(_("initbox: temporary mail message file, reader"), 0);
       err = TRU1;
    }
-   Ftmp_release(&tempMesg);
+   mx_fs_tmp_release(fstcp);
    if(err)
       exit(n_EXIT_ERR);
 

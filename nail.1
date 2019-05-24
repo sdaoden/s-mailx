@@ -1059,10 +1059,6 @@ A number of
 and
 .Sx "INTERNAL VARIABLES"
 can be used to alter default behavior.
-E.g., messages are sent asynchronously, without supervision, unless the
-internal variable
-.Va sendwait
-is set, therefore send errors will not be recognizable until then.
 .Ic set Ns
 ting (also via
 .Fl S )
@@ -11071,6 +11067,8 @@ but only when it will be displayed:
 .It Ql &
 Run the command asynchronously, i.e., without blocking \*(UA:
 .Cd x-mailx-async .
+The standard output of the command will go to
+.Pa /dev/null .
 .
 .It Ql \&!
 The command must be run on an interactive terminal, \*(UA will
@@ -11084,17 +11082,19 @@ of which will be made accessible via the environment variable
 .Cd x-mailx-tmpfile .
 If given twice then the file will be unlinked automatically by \*(UA
 when the command loop is entered again at latest:
-.Cd x-mailx-tmpfile-unlink .
+.Cd x-mailx-tmpfile-unlink ;
+it is an error to use automatic deletion in conjunction with
+.Cd x-mailx-async .
 .
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
 input; if this flag is set then the data will instead be written into
 .Ev MAILX_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile-fill ) ,
-the creation of which is implied; note however that in order to cause
-deletion of the temporary file you still have to use two plus signs
+the creation of which is implied; in order to cause automatic deletion
+of the temporary file two plus signs
 .Ql ++
-explicitly!
+still have to be used.
 .
 .It Ql \&?
 To avoid ambiguities with normal shell command content another
@@ -11698,11 +11698,12 @@ Also see
 .It Va sendwait
 \*(BO When sending a message wait until the
 .Va mta
-(including the built-in SMTP one) exits before accepting further commands.
+exits before accepting further commands.
 .Sy Only
 with this variable set errors reported by the MTA will be recognizable!
 If the MTA returns a non-zero exit status,
 the exit status of \*(UA will also be non-zero.
+Remarks: this variable is now implicit for file-based MTAs.
 .
 .Mx
 .It Va showlast
@@ -13854,7 +13855,9 @@ Extension flag field that denotes that the given
 .Cd view
 command shall be executed asynchronously, without blocking \*(UA.
 Cannot be used in conjunction with
-.Cd needsterminal .
+.Cd needsterminal ;
+the standard output of the command will go to
+.Pa /dev/null .
 .
 .Mx
 .It Cd x-mailx-test-once

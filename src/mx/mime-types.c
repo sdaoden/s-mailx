@@ -28,6 +28,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/file-streams.h"
 /* TODO that this does not belong: clear */
 #include "mx/filter-html.h"
 
@@ -269,9 +270,9 @@ __mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
    uz len;
    NYD_IN;
 
-   if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-         (fp = Fopen(cp, "r")) == NULL) {
-      cp = NULL;
+   if((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NIL ||
+         (fp = mx_fs_open(cp, "r")) == NIL){
+      cp = NIL;
       goto jleave;
    }
 
@@ -288,7 +289,7 @@ __mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
       _mt_list = head;
    }
 
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD_OU;
    return (cp != NULL);
@@ -965,10 +966,10 @@ c_mimetype(void *v){
          goto jleave;
       }
 
-      if((fp = Ftmp(NULL, "mimetype", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL){
+      if((fp = mx_fs_tmp_open("mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
-         v = NULL;
+         v = NIL;
          goto jleave;
       }
 
@@ -1006,7 +1007,7 @@ c_mimetype(void *v){
        }
 
       page_or_print(fp, l);
-      Fclose(fp);
+      mx_fs_close(fp);
    }else{
       for(; *argv != NULL; ++argv){
          if(s->s_len > 0)

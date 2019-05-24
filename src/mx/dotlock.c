@@ -28,12 +28,13 @@
 # include <su/cs.h>
 #endif
 
+#include "mx/file-streams.h"
 #include "mx/random.h"
 
 /* TODO fake */
 #include "su/code-in.h"
 
-/* XXX Our Popen() main() takes void, temporary global data store */
+/* XXX Our pipe_open() main() takes void, temporary global data store */
 #ifdef mx_HAVE_DOTLOCK
 static enum n_file_lock_type a_dotlock_flt;
 static int a_dotlock_fd;
@@ -244,7 +245,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
 
 #ifdef mx_HAVE_DOTLOCK
-   int cpipe[2];
+   sz cpipe[2];
    struct n_dotlock_info di;
    enum n_dotlock_state dls;
    char const *emsg;
@@ -309,7 +310,7 @@ jleave:
 
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
-   if(!pipe_cloexec(cpipe)){
+   if(!mx_fs_pipe_cloexec(cpipe)){
       serr = su_err_no();
       emsg = N_("  Cannot create dotlock file control pipe\n");
       goto jemsg;
@@ -332,19 +333,19 @@ jleave:
    a_dotlock_dip = &di;
 
    u.ptf = &a_dotlock_main;
-   rv = Popen((char*)-1, "W", u.sh, NULL, cpipe[1]);
+   rv = mx_fs_pipe_open(R(char*,-1), "W", u.sh, NIL, cpipe[1]);
    serr = su_err_no();
 
-   close(cpipe[1]);
+   close(S(int,cpipe[1]));
    if(rv == NULL){
-      close(cpipe[0]);
+      close(S(int,cpipe[0]));
       emsg = N_("  Cannot create file lock process\n");
       goto jemsg;
    }
 
    /* Let's check whether we were able to create the dotlock file */
    for(;;){
-      u.r = read(cpipe[0], &dls, sizeof dls);
+      u.r = read(S(int,cpipe[0]), &dls, sizeof dls);
       if(UCMP(z, u.r, !=, sizeof dls)){
          serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no();
          dls = n_DLS_DUNNO | n_DLS_ABANDON;
@@ -352,7 +353,7 @@ jleave:
          serr = su_ERR_NONE;
 
       if(dls == n_DLS_NONE || (dls & n_DLS_ABANDON))
-         close(cpipe[0]);
+         close(S(int,cpipe[0]));
 
       switch(dls & ~n_DLS_ABANDON){
       case n_DLS_NONE:
@@ -430,8 +431,8 @@ jleave:
       }
 
       if(dls & n_DLS_ABANDON){
-         Pclose(rv, FAL0);
-         rv = NULL;
+         mx_fs_pipe_close(rv, FAL0);
+         rv = NIL;
          break;
       }
    }

@@ -38,6 +38,7 @@
 # endif
 #endif
 
+#include "mx/file-streams.h"
 #include "mx/termcap.h"
 #include "mx/ui-str.h"
 
@@ -2548,8 +2549,8 @@ jmulti:{
       uz locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL){
+      if((fp = mx_fs_tmp_open("mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          fp = n_tty_fp;
       }
@@ -2701,7 +2702,7 @@ jsep:
 
       page_or_print(fp, lncnt);
       if(fp != n_tty_fp)
-         Fclose(fp);
+         mx_fs_close(fp);
 
       n_string_gut(shoup);
 
@@ -4503,12 +4504,13 @@ jlist:{
    uz no, l, b;
    FILE *fp;
 
-   if(a_tty.tg_hist == NULL)
+   if(a_tty.tg_hist == NIL)
       goto jleave;
 
-   if((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tmpfile"), 0);
-      v = NULL;
+      v = NIL;
       goto jleave;
    }
 
@@ -4539,7 +4541,7 @@ jlist:{
    }
 
    page_or_print(fp, l);
-   Fclose(fp);
+   mx_fs_close(fp);
    }
    goto jleave;
 
@@ -4616,7 +4618,8 @@ c_bind(void *v){
       u32 lns;
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "bind", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      if((fp = mx_fs_tmp_open("bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;
@@ -4693,7 +4696,7 @@ c_bind(void *v){
       }
       page_or_print(fp, lns);
 
-      Fclose(fp);
+      mx_fs_close(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
       struct n_cmd_arg *cap;

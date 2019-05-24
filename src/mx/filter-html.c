@@ -1142,7 +1142,7 @@ jleave:
 
 /*
  * TODO Because we don't support filter chains yet this filter will be run
- * TODO in a dedicated subprocess, driven via a special Popen() mode
+ * TODO in a dedicated subprocess, driven via a special fs_pipe_open() mode
  */
 static boole __hf_hadpipesig;
 static void

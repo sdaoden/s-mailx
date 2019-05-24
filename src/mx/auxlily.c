@@ -74,6 +74,8 @@
 #include <su/icodec.h>
 #include <su/sort.h>
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/filetype.h"
 
 #ifdef mx_HAVE_IDNA
@@ -95,6 +97,34 @@ struct a_aux_err_node{
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 #endif
 static uz a_aux_err_linelen;
+
+/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
+ * some environment variable that supports colour+ and set *env_addon to that,
+ * e.g., "LESS=FRSXi" */
+static char const *a_aux_pager_get(char const **env_addon);
+
+static char const *
+a_aux_pager_get(char const **env_addon){
+   char const *rv;
+   NYD_IN;
+
+   rv = ok_vlook(PAGER);
+
+   if(env_addon != NIL){
+      *env_addon = NIL;
+      /* Update the manual upon any changes:
+       *    *colour-pager*, $PAGER */
+      if(su_cs_find(rv, "less") != NIL){
+         if(getenv("LESS") == NIL)
+            *env_addon = "LESS=RXi";
+      }else if(su_cs_find(rv, "lv") != NIL){
+         if(getenv("LV") == NIL)
+            *env_addon = "LV=-c";
+      }
+   }
+   NYD_OU;
+   return rv;
+}
 
 FL void
 n_locale_init(void){
@@ -156,25 +186,30 @@ n_screensize(void){
    return rv;
 }
 
-FL char const *
-n_pager_get(char const **env_addon){
-   char const *rv;
+FL FILE *
+mx_pager_open(void){
+   char const *env_add[2], *pager;
+   FILE *rv;
    NYD_IN;
 
-   rv = ok_vlook(PAGER);
+   ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
-   if(env_addon != NULL){
-      *env_addon = NULL;
-      /* Update the manual upon any changes:
-       *    *colour-pager*, $PAGER */
-      if(su_cs_find(rv, "less") != NULL){
-         if(getenv("LESS") == NULL)
-            *env_addon = "LESS=RXi";
-      }else if(su_cs_find(rv, "lv") != NULL){
-         if(getenv("LV") == NULL)
-            *env_addon = "LV=-c";
-      }
-   }
+   pager = a_aux_pager_get(env_add + 0);
+   env_add[1] = NIL;
+
+   if((rv = mx_fs_pipe_open(pager, "w", NIL, env_add, mx_CHILD_FD_PASS)
+         ) == NIL)
+      n_perr(pager, 0);
+   NYD_OU;
+   return rv;
+}
+
+FL boole
+mx_pager_close(FILE *fp){
+   boole rv;
+   NYD_IN;
+
+   rv = mx_fs_pipe_close(fp, TRU1);
    NYD_OU;
    return rv;
 }
@@ -208,12 +243,16 @@ page_or_print(FILE *fp, uz lines)
 
       /* Take account for the follow-up prompt */
       if(lines + 1 >= rows){
-         char const *env_add[2], *pager;
+         struct mx_child_ctx cc;
+         char const *env_addon[2];
 
-         pager = n_pager_get(&env_add[0]);
-         env_add[1] = NULL;
-         n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
-            env_add, NULL);
+         mx_child_ctx_setup(&cc);
+         cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+         cc.cc_fds[mx_CHILD_FD_IN] = fileno(fp);
+         cc.cc_cmd = a_aux_pager_get(&env_addon[0]);
+         env_addon[1] = NIL;
+         cc.cc_env_addon = env_addon;
+         mx_child_run(&cc);
          goto jleave;
       }
    }
@@ -1091,10 +1130,10 @@ jlist:{
          goto jleave;
       }
 
-      if((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL){
+      if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          fprintf(n_stderr, _("tmpfile"));
-         v = NULL;
+         v = NIL;
          goto jleave;
       }
 
@@ -1104,7 +1143,7 @@ jlist:{
       putc('\n', fp);
 
       page_or_print(fp, 0);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    /* FALLTHRU */
 
@@ -1261,7 +1300,8 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    rv = TRU1;
 
-   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+   if((fp = mx_fs_tmp_open(cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
    /* Create visual result */
@@ -1276,7 +1316,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
 
    NYD_OU;

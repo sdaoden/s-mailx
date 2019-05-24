@@ -43,6 +43,8 @@
 
 #include <su/cs.h>
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
@@ -379,10 +381,10 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    err = su_ERR_NONE;
 
    /* Is this already in target charset?  Simply copy over */
-   if (ap->a_conv == AC_TMPFILE) {
+   if(ap->a_conv == AC_TMPFILE){
       err = a_sendout__attach_file(hp, ap, fo, force);
-      Fclose(ap->a_tmpf);
-      su_DBG( ap->a_tmpf = NULL; )
+      mx_fs_close(ap->a_tmpf);
+      su_DBG( ap->a_tmpf = NIL; )
       goto jleave;
    }
 
@@ -448,7 +450,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
       ASSERT(ftell(fi) == 0);
-   } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
+   }else if((fi = mx_fs_open(ap->a_path, "r")) == NIL){
       err = su_err_no();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
          su_err_doc(err));
@@ -528,7 +530,7 @@ jerr_header:
    err = a_sendout_body(fo, fi, convert);
 jerr_fclose:
    if(ap->a_conv != AC_TMPFILE)
-      Fclose(fi);
+      mx_fs_close(fi);
 
 jleave:
    NYD_OU;
@@ -706,7 +708,7 @@ jleave:
 static FILE *
 a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 {
-   char *tempMail;
+   struct mx_fs_tmp_ctx *fstcp;
    enum conversion convert;
    int do_iconv, err;
    char const *contenttype, *charset;
@@ -721,17 +723,20 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    do_iconv = 0;
    err = su_ERR_NONE;
 
-   if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
-         == NULL) {
+   if((nfo = mx_fs_tmp_open("infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
+            mx_FS_O_REGISTER), &fstcp)) == NIL){
       n_perr(_("infix: temporary mail file"), err = su_err_no());
       goto jleave;
    }
-   if ((nfi = Fopen(tempMail, "r")) == NULL) {
-      n_perr(tempMail, err = su_err_no());
-      Fclose(nfo);
+
+   if((nfi = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
+      n_perr(fstcp->fstc_filename, err = su_err_no());
+      mx_fs_close(nfo);
    }
-   Ftmp_release(&tempMail);
-   if (nfi == NULL)
+
+   mx_fs_tmp_release(fstcp);
+
+   if(nfi == NIL)
       goto jleave;
 
    n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
@@ -812,15 +817,16 @@ jiconv_err:
    if(fflush(nfo) == EOF)
       err = su_err_no();
 jerr:
-   Fclose(nfo);
+   mx_fs_close(nfo);
 
    if(err == su_ERR_NONE){
       fflush_rewind(nfi);
-      Fclose(fi);
+      mx_fs_close(fi);
    }else{
-      Fclose(nfi);
-      nfi = NULL;
+      mx_fs_close(nfi);
+      nfi = NIL;
    }
+
 jleave:
 #ifdef mx_HAVE_ICONV
    if(iconvd != (iconv_t)-1)
@@ -884,13 +890,11 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
    u32 pipecnt, xcnt, i;
    char const *sh;
    struct mx_name *np;
-   s32 *pida;
    FILE *fp, **fppa;
    NYD_IN;
 
    fp = NIL;
    fppa = NIL;
-   pida = NIL;
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */
@@ -919,10 +923,6 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
       fppa = n_lofi_alloc(i);
       su_mem_set(fppa, 0, i);
 
-      i = sizeof(s32) * pipecnt;
-      pida = n_lofi_alloc(i);
-      su_mem_set(pida, 0, i);
-
       sh = ok_vlook(SHELL);
    }
 
@@ -948,22 +948,23 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
       /* See if we have copied the complete message out yet.  If not, do so */
       if(fp == NULL){
          int c;
-         char *tempEdit;
+         struct mx_fs_tmp_ctx *fstcp;
 
-         if((fp = Ftmp(&tempEdit, "outof", OF_RDWR | OF_HOLDSIGS | OF_REGISTER)
-               ) == NULL){
+         if((fp = mx_fs_tmp_open("outof", (mx_FS_O_RDWR | mx_FS_O_HOLDSIGS |
+                  mx_FS_O_REGISTER), &fstcp)) == NIL){
             n_perr(_("Creation of temporary image"), 0);
             pipecnt = 0;
             goto jerror;
          }
 
          for(i = 0; i < pipecnt; ++i)
-            if((fppa[i] = Fopen(tempEdit, "r")) == NULL){
+            if((fppa[i] = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
                n_perr(_("Creation of pipe image descriptor"), 0);
                break;
             }
 
-         Ftmp_release(&tempEdit);
+         mx_fs_tmp_release(fstcp);
+
          if(i != pipecnt){
             pipecnt = i;
             goto jerror;
@@ -990,26 +991,40 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          xcnt = 0;
       }
 
-      /* Now either copy "image" to the desired file or give it as the standard
-       * input to the desired program as appropriate */
+      /* Now either copy "image" to the desired file or give it as the
+       * standard input to the desired program as appropriate */
       if(np->n_flags & mx_NAME_ADDRSPEC_ISPIPE){
-         s32 pid;
+         struct mx_child_ctx cc;
          sigset_t nset;
 
          sigemptyset(&nset);
          sigaddset(&nset, SIGHUP);
          sigaddset(&nset, SIGINT);
          sigaddset(&nset, SIGQUIT);
-         pid = n_child_start(sh, &nset, fileno(fppa[xcnt]), n_CHILD_FD_NULL,
-               "-c", &np->n_name[1], NULL, NULL);
-         if(pid < 0){
+
+         mx_child_ctx_setup(&cc);
+         cc.cc_flags = mx_CHILD_SPAWN_CONTROL;
+         cc.cc_mask = &nset;
+         cc.cc_fds[mx_CHILD_FD_IN] = fileno(fppa[xcnt]);
+         cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
+         cc.cc_cmd = sh;
+         cc.cc_args[0] = "-c";
+         cc.cc_args[1] = &np->n_name[1];
+
+         if(!mx_child_run(&cc)){
             n_err(_("Piping message to %s failed\n"),
                n_shexp_quote_cp(np->n_name, FAL0));
             goto jerror;
          }
-         pida[xcnt] = pid;
-         ++xcnt;
-         /*n_child_free(pid);*/
+
+         /* C99 */{
+            FILE *tmp;
+
+            tmp = fppa[xcnt];
+            fppa[xcnt++] = NIL;
+            mx_fs_close(tmp);
+         }
+         mx_child_forget(&cc);
       }else{
          int c;
          FILE *fout;
@@ -1023,9 +1038,10 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             fout = n_stdout;
          else{
             int xerr;
-            enum n_fopen_state fs;
+            enum mx_fs_open_state fs;
 
-            if((fout = n_fopen_any(fname, (mfap ? "a+" : "w"), &fs)) == NULL){
+            if((fout = mx_fs_open_any(fname, (mfap ? "a+" : "w"), &fs)
+                  ) == NIL){
                xerr = su_err_no();
 jefile:
                n_err(_("Writing message to %s failed: %s\n"),
@@ -1033,8 +1049,8 @@ jefile:
                goto jerror;
             }
 
-            if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
-                  (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
+            if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
+                  (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
                n_file_lock(fileno(fout), FLT_WRITE, 0,0, UZ_MAX);
 
                if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
@@ -1053,20 +1069,17 @@ jefile:
          }
 
          if(fout != n_stdout)
-            Fclose(fout);
+            mx_fs_close(fout);
       }
    }
 
 jleave:
    if(fp != NIL)
-      Fclose(fp);
+      mx_fs_close(fp);
    if(fppa != NIL){
       for(i = 0; i < pipecnt; ++i)
-         if((fp = fppa[i]) != NIL){
-            n_child_wait(pida[i], NIL);
-            Fclose(fp);
-         }
-      n_lofi_free(pida);
+         if((fp = fppa[i]) != NIL)
+            mx_fs_close(fp);
       n_lofi_free(fppa);
    }
    NYD_OU;
@@ -1074,7 +1087,7 @@ jleave:
 
 jerror:
    *senderror = TRU1;
-   while(np != NULL){
+   while(np != NIL){
       if(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE)
          np->n_type |= GDEL;
       np = np->n_flink;
@@ -1164,7 +1177,7 @@ static boole
 a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
    uz bufsize, buflen, cnt;
-   enum n_fopen_state fs;
+   enum mx_fs_open_state fs;
    boole rv, emptyline;
    char *buf;
    NYD_IN;
@@ -1173,13 +1186,13 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
 
-   if((fo = n_fopen_any(name, "a+", &fs)) == NULL){
+   if((fo = mx_fs_open_any(name, "a+", &fs)) == NIL){
       n_perr(name, 0);
       goto j_leave;
    }
 
-   if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
-         (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
+   if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
+         (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
       int xerr;
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
@@ -1221,8 +1234,7 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
 
 jleave:
    really_rewind(fp);
-   if(Fclose(fo) != 0)
-      rv = FAL0;
+   rv = mx_fs_close(fo);
 j_leave:
    n_free(buf);
    NYD_OU;
@@ -1262,7 +1274,7 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
             sbp->sb_to = nsave;
             sbp->sb_input = fisave;
 
-            Fclose(ef);
+            mx_fs_close(ef);
          } else {
 #else
             n_err(_("No S/MIME support compiled in\n"));
@@ -1299,10 +1311,10 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
 static boole
 a_sendout_mta_start(struct sendbundle *sbp)
 {
-   pid_t pid;
+   struct mx_child_ctx cc;
    sigset_t nset;
    char const **args, *mta;
-   boole rv;
+   boole rv, dowait;
    NYD_IN;
 
    /* Let rv mean "is smtp-based MTA" */
@@ -1350,7 +1362,20 @@ a_sendout_mta_start(struct sendbundle *sbp)
          rv = FAL0;
    }
 
-   if(!rv || rv == TRUM1){
+   sigemptyset(&nset);
+   sigaddset(&nset, SIGHUP);
+   sigaddset(&nset, SIGINT);
+   sigaddset(&nset, SIGQUIT);
+   sigaddset(&nset, SIGTSTP);
+   sigaddset(&nset, SIGTTIN);
+   sigaddset(&nset, SIGTTOU);
+   mx_child_ctx_setup(&cc);
+   dowait = ((n_poption & n_PO_D_V) || ok_blook(sendwait));
+   if(rv != TRU1 || dowait)
+      cc.cc_flags |= mx_CHILD_SPAWN_CONTROL;
+   cc.cc_mask = &nset;
+
+   if(rv != TRU1){
       char const *mta_base;
 
       if((mta = fexpand(mta_base = mta, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
@@ -1370,6 +1395,11 @@ a_sendout_mta_start(struct sendbundle *sbp)
          rv = TRU1;
          goto jleave;
       }
+
+      /* Wait with control pipe close until after exec */
+      if(cc.cc_flags & mx_CHILD_SPAWN_CONTROL)
+         cc.cc_flags |= mx_CHILD_SPAWN_CONTROL_LINGER;
+      cc.cc_fds[mx_CHILD_FD_IN] = fileno(sbp->sb_input);
    }else/* if(rv == TRU1)*/{
       UNINIT(args, NULL);
 #ifndef mx_HAVE_SMTP
@@ -1381,61 +1411,60 @@ a_sendout_mta_start(struct sendbundle *sbp)
          rv = TRU1;
          goto jleave;
       }
+
+      cc.cc_fds[mx_CHILD_FD_IN] = mx_CHILD_FD_NULL;
+      cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
 #endif
    }
 
    /* Fork, set up the temporary mail file as standard input for "mail", and
     * exec with the user list we generated far above */
-   if((pid = n_child_fork()) == -1){
-      n_perr("fork", 0);
-jstop:
-      savedeadletter(sbp->sb_input, 0);
-      _sendout_error = TRU1;
-      goto jleave;
-   }
-   if(pid == 0){
-      sigemptyset(&nset);
-      sigaddset(&nset, SIGHUP);
-      sigaddset(&nset, SIGINT);
-      sigaddset(&nset, SIGQUIT);
-      sigaddset(&nset, SIGTSTP);
-      sigaddset(&nset, SIGTTIN);
-      sigaddset(&nset, SIGTTOU);
-      /* n_stdin = */freopen(n_path_devnull, "r", stdin);
-#ifdef mx_HAVE_SMTP
-      if(rv == TRU1){
-         n_child_prepare(&nset, 0, 1);
-         if(smtp_mta(sbp))
-            _exit(n_EXIT_OK);
-      } else
-#endif
-      {
+   if(!mx_child_fork(&cc)){
+      if(cc.cc_flags & mx_CHILD_SPAWN_CONTROL_LINGER){
          char const *ecp;
-         int e;
 
-         n_child_prepare(&nset, fileno(sbp->sb_input), -1);
-         execv(mta, n_UNCONST(args));
-         e = su_err_no();
-         ecp = (e != su_ERR_NOENT) ? su_err_doc(e)
+         ecp = (cc.cc_error != su_ERR_NOENT) ? su_err_doc(cc.cc_error)
                : _("executable not found (adjust *mta* variable)");
          n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
-      savedeadletter(sbp->sb_input, 1);
+jstop:
+      savedeadletter(sbp->sb_input, TRU1);
       n_err(_("... message not sent\n"));
-      _exit(n_EXIT_ERR);
-   }
-
-   if((n_poption & n_PO_D_V) || ok_blook(sendwait)){
-      if(!(rv = n_child_wait(pid, NULL)))
-         _sendout_error = TRU1;
+      _sendout_error = TRU1;
+   }else if(cc.cc_pid == 0)
+      goto jkid;
+   else if(dowait){
+      /* TODO Now with SPAWN_CONTROL we could actually (1) handle $DEAD only
+       * TODO in the parent, and (2) report the REAL child error status!! */
+      rv = (mx_child_wait(&cc) && cc.cc_exit_status == 0);
+      if(!rv)
+         goto jstop;
    }else{
-      n_child_free(pid);
+      mx_child_forget(&cc);
       rv = TRU1;
    }
 
 jleave:
    NYD_OU;
    return rv;
+
+jkid:
+   mx_child_in_child_setup(&cc);
+
+#ifdef mx_HAVE_SMTP
+   if(rv == TRU1){
+      if(smtp_mta(sbp))
+         _exit(n_EXIT_OK);
+      savedeadletter(sbp->sb_input, TRU1);
+      n_err(_("... message not sent\n"));
+   }else
+#endif
+        {
+      execv(mta, n_UNCONST(args));
+      mx_child_in_child_exec_failed(&cc, su_err_no());
+   }
+   for(;;)
+      _exit(n_EXIT_ERR);
 }
 
 static char const **
@@ -1585,9 +1614,9 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
    if(*mta == '\0')
       fp = n_stdout;
    else{
-      if((fp = Fopen(mta, "W+")) != NIL)
+      if((fp = mx_fs_open(mta, "W+")) != NIL)
          ;
-      else if((fp = Fopen(mta, "r+")) == NIL)
+      else if((fp = mx_fs_open(mta, "r+")) == NIL)
          goto jeno;
       else if(!n_file_lock(fileno(fp), FLT_READ|FLT_WRITE, 0,0, UZ_MAX)){
          f = su_ERR_NOLCK;
@@ -1625,7 +1654,7 @@ jdone:
       n_free(buf);
 
    if(fp != n_stdout)
-      Fclose(fp);
+      mx_fs_close(fp);
    else
       clearerr(fp);
 jleave:
@@ -2130,7 +2159,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    if (dosign) {
       if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
          goto jfail_dead;
-      Fclose(mtf);
+      mx_fs_close(mtf);
       mtf = nmtf;
    }
 #endif
@@ -2174,10 +2203,10 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(mtf != NULL){
+   if(mtf != NIL){
       char const *cp;
 
-      Fclose(mtf);
+      mx_fs_close(mtf);
 
       if((cp = ok_vlook(on_compose_cleanup)) != NULL)
          temporary_compose_mode_hook_call(cp, NULL, NULL);
@@ -2603,7 +2632,7 @@ n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
    struct n_sigman sm;
    struct sendbundle sb;
    FILE * volatile ibuf, *nfo, * volatile nfi;
-   char *tempMail;
+   struct mx_fs_tmp_ctx *fstcp;
    struct mx_name *to;
    enum okay volatile rv;
    NYD_IN;
@@ -2628,19 +2657,22 @@ n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
-         ) == NULL) {
+   if((nfo = mx_fs_tmp_open("resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
+            mx_FS_O_REGISTER), &fstcp)) == NIL){
       _sendout_error = TRU1;
       n_perr(_("resend_msg: temporary mail file"), 0);
       n_pstate_err_no = su_ERR_IO;
       goto jleave;
    }
-   if((nfi = Fopen(tempMail, "r")) == NULL){
-      n_perr(tempMail, 0);
+
+   if((nfi = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
+      n_perr(fstcp->fstc_filename, 0);
       n_pstate_err_no = su_ERR_IO;
    }
-   Ftmp_release(&tempMail);
-   if(nfi == NULL)
+
+   mx_fs_tmp_release(fstcp);
+
+   if(nfi == NIL)
       goto jerr_o;
 
    if((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL){
@@ -2674,10 +2706,10 @@ jfail_dead:
       savedeadletter(nfi, TRU1);
       n_err(_("... message not sent\n"));
 jerr_io:
-      Fclose(nfi);
-      nfi = NULL;
+      mx_fs_close(nfi);
+      nfi = NIL;
 jerr_o:
-      Fclose(nfo);
+      mx_fs_close(nfo);
       _sendout_error = TRU1;
       goto jleave;
    }
@@ -2685,7 +2717,7 @@ jerr_o:
    if(_sendout_error < 0)
       goto jfail_dead;
 
-   Fclose(nfo);
+   mx_fs_close(nfo);
    rewind(nfi);
 
    /* C99 */{
@@ -2719,10 +2751,10 @@ jerr_o:
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(nfi != NULL){
+   if(nfi != NIL){
       char const *cp;
 
-      Fclose(nfi);
+      mx_fs_close(nfi);
 
       if(ibuf != NULL){
          if((cp = ok_vlook(on_resend_cleanup)) != NULL)
@@ -2769,7 +2801,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
       goto jleave;
    }
 
-   if((dbuf = Fopen(cp, "w")) == NULL){
+   if((dbuf = mx_fs_open(cp, "w")) == NIL){
       n_perr(_("Cannot save to $DEAD"), 0);
       goto jleave;
    }
@@ -2836,7 +2868,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
    }
    n_string_gut(&line);
 
-   Fclose(dbuf);
+   mx_fs_close(dbuf);
    fprintf(n_stdout, "%lu/%lu\n", lines, bytes);
    fflush(n_stdout);
 

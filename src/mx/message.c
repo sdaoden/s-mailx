@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 
+#include "mx/file-streams.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
 
@@ -1434,7 +1435,8 @@ message_match(struct message *mp, struct search_expr const *sep,
 
    rv = FAL0;
 
-   if((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if((fp = mx_fs_tmp_open("mpmatch", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       goto j_leave;
 
    if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
@@ -1464,7 +1466,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    }
 
 jleave:
-   Fclose(fp);
+   mx_fs_close(fp);
 j_leave:
    NYD_OU;
    return rv;

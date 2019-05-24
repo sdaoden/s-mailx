@@ -34,6 +34,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -1140,13 +1141,14 @@ c_digmsg(void *vp){
 
       if(cacp->cac_no == 3)
          dmcp->dmc_fp = n_stdout;
-      /* For compose mode simply use OF_REGISTER, the number of dangling
-       * deleted files with open descriptors until next close_all_files()
+      /* For compose mode simply use FS_O_REGISTER, the number of dangling
+       * deleted files with open descriptors until next fs_close_all()
        * should be very small; if this paradigm is changed
        * n_DIG_MSG_COMPOSE_GUT() needs to be adjusted */
-      else if((dmcp->dmc_fp = Ftmp(NULL, "digmsg", (OF_RDWR | OF_UNLINK |
-               (dmcp->dmc_flags & n_DIG_MSG_COMPOSE ? OF_REGISTER : 0)))
-            ) != NULL)
+      else if((dmcp->dmc_fp = mx_fs_tmp_open("digmsg", (mx_FS_O_RDWR |
+               mx_FS_O_UNLINK | (dmcp->dmc_flags & n_DIG_MSG_COMPOSE
+                  ? mx_FS_O_REGISTER : 0)),
+               NIL)) != NIL)
          dmcp->dmc_flags |= n_DIG_MSG_HAVE_FP |
                (dmcp->dmc_flags & n_DIG_MSG_COMPOSE ? 0 : n_DIG_MSG_FCLOSE);
       else{

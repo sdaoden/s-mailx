@@ -32,6 +32,8 @@
 # include <su/icodec.h>
 #endif
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -136,8 +138,8 @@ _nrc_init(void)
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
-      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)
-            ) == NULL) {
+      if((fi = mx_fs_pipe_open(netrc_load, "r", ok_vlook(SHELL), NIL,
+            mx_CHILD_FD_NULL)) == NIL){
          n_perr(netrc_load, 0);
          goto j_leave;
       }
@@ -146,7 +148,7 @@ _nrc_init(void)
             ) == NULL)
          goto j_leave;
 
-      if ((fi = Fopen(netrc_load, "r")) == NULL) {
+      if((fi = mx_fs_open(netrc_load, "r")) == NIL){
          n_err(_("Cannot open %s\n"), n_shexp_quote_cp(netrc_load, FAL0));
          goto j_leave;
       }
@@ -261,11 +263,11 @@ jerr:
    if (nhead != NULL)
       nrc = nhead;
 jleave:
-   if (fi != NULL) {
-      if (ispipe)
-            Pclose(fi, TRU1);
+   if(fi != NIL){
+      if(ispipe)
+         mx_fs_pipe_close(fi, TRU1);
       else
-         Fclose(fi);
+         mx_fs_close(fi);
    }
    if (nrc == NRC_NODE_ERR)
       while (nhead != NULL) {
@@ -1540,9 +1542,10 @@ jlist:   {
    if (load_only)
       goto jleave;
 
-   if ((fp = Ftmp(NULL, "netrc", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if((fp = mx_fs_tmp_open("netrc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tmpfile"), 0);
-      v = NULL;
+      v = NIL;
       goto jleave;
    }
 
@@ -1559,7 +1562,7 @@ jlist:   {
    }
 
    page_or_print(fp, l);
-   Fclose(fp);
+   mx_fs_close(fp);
    }
    goto jleave;
 

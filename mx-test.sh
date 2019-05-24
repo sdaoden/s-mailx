@@ -7569,18 +7569,18 @@ t_pipe_handlers() {
          -S 'pipe-image/jpeg=?=&?'\
 'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
 'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
-'echo C=$MAILX_CONTENT;'\
+'{ echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tay 2>&1; '"$mv"' ./.tay ./.tasy' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
-   sleep 1 # occasional errors, try that..
-   check 4 - "${BODY}" '4256558715 620'
+   check 4 - "${BODY}" '2275717813 469'
+   check 4-hdl - ./.tasy '144517347 151' async
 
    # Keep $MBOX..
    if [ -z "${ln}" ]; then
