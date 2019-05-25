@@ -578,7 +578,9 @@ _cc_flags_generic() {
       if feat_yes AMALGAMATION; then
          cc_check -Wno-unused-function
       fi
-      cc_check -Wno-maybe-uninitialized
+      if cc_check -Wno-uninitialized; then :; else
+         cc_check -Wno-maybe-uninitialized
+      fi
       cc_check -Wno-unused-result
       cc_check -Wno-unused-value
    fi
