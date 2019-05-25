@@ -1820,7 +1820,7 @@ jout:
       coap->coa_oint = safe_signal(SIGINT, SIG_IGN);
       rele_all_sigs();
 
-      if(pipe_cloexec(coap->coa_pipe) != -1 &&
+      if(pipe_cloexec(coap->coa_pipe) &&
             (coap->coa_stdin = Fdopen(coap->coa_pipe[0], "r", FAL0)) != NULL &&
             (coap->coa_stdout = Popen(cmd, "W", u.sh, NULL, coap->coa_pipe[1])
              ) != NULL){
