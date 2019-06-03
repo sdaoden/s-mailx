@@ -3067,6 +3067,7 @@ FL void
 n_var_setup_batch_mode(void){
    NYD2_IN;
    n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
+   n_poption |= n_PO_S_FLAG_TEMPORARY;
    ok_vset(MAIL, n_path_devnull);
    ok_vset(MBOX, n_path_devnull);
    ok_bset(emptystart);
@@ -3077,6 +3078,7 @@ n_var_setup_batch_mode(void){
    ok_bset(quiet);
    ok_bset(sendwait);
    ok_bset(typescript_mode);
+   n_poption &= ~n_PO_S_FLAG_TEMPORARY;
    n_pstate &= ~n_PS_ROBOT;
    NYD2_OU;
 }
