@@ -675,8 +675,10 @@ This option may be used multiple times.
 .
 .Mx
 .It Fl t , Fl Fl template
-The message given (on standard input) is expected to contain, separated
-from the message body by an empty line, one or multiple message headers.
+The text message given (on standard input) is expected to contain,
+separated from the message body by an empty line, one or multiple
+plain text message headers.
+\*(ID Readily prepared MIME mail messages cannot be passed.
 Headers can span multiple consecutive lines if follow lines start with
 any amount of whitespace.
 A line starting with the number sign
