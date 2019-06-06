@@ -37,7 +37,7 @@
 
 # Adjustments of standard imposed default- as well as other settings follow.
 # - Some of the latter are not portable and may thus have no effect with
-#   other  Mail(1) / mailx(1) / mail(1) programs.
+#   other Mail(1) / mailx(1) / mail(1) programs.
 # - "wysh" is one of the "Command modifiers" and is not portable: before v15 it
 #   changes the syntax of some old-style commands to sh(1)ell style quoting,
 #   also see "COMMANDS" -> "Shell-style argument quoting" in the manual.
@@ -224,7 +224,9 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 
 # If mail is send from cron scripts and iconv(3) is compiled it, it could be
 # that sending fails because of invalid (according to locale) character input.
-# This undesired event can be prevented like this:
+# This undesired event can be prevented as follows, the (possibly) resulting
+# octet-stream message data can be read nonetheless via
+# *mime-counter-evidence*=0b1111:
 #if ! terminal && [ "$LOGNAME" == root ]
 #   set mime-force-sendout
 #endif
