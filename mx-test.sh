@@ -62,14 +62,6 @@ LOOPS_MAX=$LOOPS_SMALL
 MEMTESTER=
 #MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
 
-##  -- (>8  --  8<)  --  ##
-
-msg() {
-   fmt=${1}
-   shift
-   printf >&2 -- "${fmt}\\n" "${@}"
-}
-
 ##  --  >8  --  8<  --  ##
 
 t_all() {
@@ -310,6 +302,12 @@ t_echoerr() {
    TEST_ANY=
 }
 
+t_echowarn() {
+   [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+   printf "${__i__}"'%s%s%s' "${COLOR_WARN_ON}" "${*}" "${COLOR_WARN_OFF}"
+   TEST_ANY=1
+}
+
 t_echoskip() {
    [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
    printf "${__i__}"'%s%s[skip]%s' \
@@ -319,9 +317,22 @@ t_echoskip() {
 }
 
 check() {
-   restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
+   restat=${?} tid=${1} eestat=${2} f=${3} s=${4} optmode=${5}
 
    TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
+
+   case "${optmode}" in
+   '') ;;
+   async)
+      [ "$eestat" = - ] || exit 200
+      while [ 1 ]; do
+         [ -s "${f}" ] && break
+         t_echowarn "[${tid}:async=wait]"
+         sleep 1
+      done
+      ;;
+   *) exit 222;;
+   esac
 
    check__bad= check__runx=
 
