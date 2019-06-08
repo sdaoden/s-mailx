@@ -469,7 +469,6 @@ OPT_NOMEMDBG=`\
    fi`
 
 # Obsolete stuff
-OPT_AGENT=no
 OPT_SPAM_SPAMD=no
 
 # vim:set tw=72: s-it-mode

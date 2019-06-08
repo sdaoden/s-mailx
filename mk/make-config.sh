@@ -37,7 +37,6 @@ XOPTIONS="\
    MTA_ALIASES='MTA aliases(5) (text file) support' \
    REGEX='Regular expressions' \
    SOCKETS='Network support' \
-         AGENT='-' \
       GSSAPI='Generic Security Service authentication' \
       IMAP='IMAP v4r1 client' \
       MD5='MD5 message digest (APOP, CRAM-MD5)' \
@@ -149,7 +148,6 @@ option_setup() {
             OPT_TLS=require
             OPT_SMTP=require
             OPT_GSSAPI=1 OPT_NETRC=1
-               OPT_AGENT=1
          OPT_SPAM_FILTER=1
          OPT_UISTRINGS=1
          ;;
@@ -198,7 +196,7 @@ option_update() {
       fi
       OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
-      OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
+      OPT_GSSAPI=0 OPT_NETRC=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       OPT_GSSAPI=0
@@ -3319,7 +3317,6 @@ fi
 
 ## Final feat_def's XXX should be loop over OPTIONs
 
-feat_def AGENT
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
 if feat_def CMD_CSOP; then
