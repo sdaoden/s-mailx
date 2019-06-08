@@ -52,6 +52,7 @@
 #include "mx/iconv.h"
 #include "mx/names.h"
 #include "mx/termcap.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -158,8 +159,8 @@ a_main_startup(void){
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
 #if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
-      if((n_tty_fp = fdopen(fileno(n_stdin), "w")) != NULL)
-         setvbuf(n_tty_fp, NULL, _IOLBF, 0);
+      if((mx_tty_fp = fdopen(fileno(n_stdin), "w")) != NIL)
+         setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
 #endif
    }
    if(isatty(STDOUT_FILENO))
@@ -172,8 +173,8 @@ a_main_startup(void){
 
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
-   if(n_tty_fp == NULL)
-      n_tty_fp = n_stdout;
+   if(mx_tty_fp == NIL)
+      mx_tty_fp = n_stdout;
 
    /*  --  >8  --  8<  --  */
 
@@ -361,13 +362,13 @@ a_main__scrsz(int is_sighdl){
    }
 
 #ifdef mx_HAVE_TCGETWINSIZE
-   if(tcgetwinsize(fileno(n_tty_fp), &ws) == -1)
+   if(tcgetwinsize(fileno(mx_tty_fp), &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGWINSZ
-   if(ioctl(fileno(n_tty_fp), TIOCGWINSZ, &ws) == -1)
+   if(ioctl(fileno(mx_tty_fp), TIOCGWINSZ, &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
-   if(ioctl(fileno(n_tty_fp), TIOCGSIZE, &ws) == -1)
+   if(ioctl(fileno(mx_tty_fp), TIOCGSIZE, &ws) == -1)
       ts.ts_lines = ts.ts_cols = 0;
 #endif
 
@@ -382,7 +383,7 @@ a_main__scrsz(int is_sighdl){
       else{
          speed_t ospeed;
 
-         ospeed = ((tcgetattr(fileno(n_tty_fp), &tbuf) == -1)
+         ospeed = ((tcgetattr(fileno(mx_tty_fp), &tbuf) == -1)
                ? B9600 : cfgetospeed(&tbuf));
 
          if(ospeed < B1200)
@@ -495,14 +496,14 @@ a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
 
    /* Enter the command loop */
    if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_init();
+      mx_tty_init();
    /* "load()" more commands given on command line */
    if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
       n_exit_status = n_EXIT_ERR;
    else
       n_go_main_loop();
    if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+      mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
    if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
@@ -1317,7 +1318,7 @@ je_expandargv:
       }
 
       if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_init();
+         mx_tty_init();
       /* "load()" more commands given on command line */
       if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
          n_exit_status = n_EXIT_ERR;
@@ -1325,7 +1326,7 @@ je_expandargv:
          n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
             to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+         mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
 
 jleave:

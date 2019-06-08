@@ -1884,7 +1884,7 @@ VL char const n_at[2]; /* Commercial at @ */
 VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
-VL FILE *n_tty_fp; /* Our terminal output TODO input channel */
+/* XXX Plus mx_tty_fp in tty.h */
 /* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
  * XXX event driven nature of individual program parts */
 VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */

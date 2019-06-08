@@ -46,6 +46,7 @@
 # include "mx/colour.h"
 #endif
 
+#include "mx/tty.h"
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -116,7 +117,7 @@ a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
 }
 
 FL boole
-getapproval(char const * volatile prompt, boole noninteract_default)
+mx_tty_yesorno(char const * volatile prompt, boole noninteract_default)
 {
    n_sighdl_t volatile oint, ohup;
    boole volatile rv;
@@ -169,7 +170,7 @@ jleave:
 
 #ifdef mx_HAVE_SOCKETS
 FL char *
-getuser(char const * volatile query) /* TODO v15-compat obsolete */
+mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
    n_sighdl_t volatile oint, ohup;
    char * volatile user = NULL;
@@ -202,7 +203,7 @@ jrestore:
 }
 
 FL char *
-getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
+mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
 {
    n_sighdl_t volatile oint, ohup;
    struct termios tios;
@@ -210,14 +211,14 @@ getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
    int volatile sig;
    NYD_IN;
 
-   pass = NULL;
+   pass = NIL;
    if(!(n_psonce & n_PSO_TTYIN))
       goto j_leave;
 
-   if (query == NULL)
+   if(query == NIL)
       query = _("Password: ");
-   fputs(query, n_tty_fp);
-   fflush(n_tty_fp);
+   fputs(query, mx_tty_fp);
+   fflush(mx_tty_fp);
 
    /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
     * FIXME foreground pgrp, and can fail with EINTR!! also affects
@@ -241,7 +242,7 @@ getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   putc('\n', n_tty_fp);
+   putc('\n', mx_tty_fp);
 
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
@@ -254,7 +255,7 @@ j_leave:
 #endif /* mx_HAVE_SOCKETS */
 
 FL u32
-n_tty_create_prompt(struct n_string *store, char const *xprompt,
+mx_tty_create_prompt(struct n_string *store, char const *xprompt,
       enum n_go_input_flags gif){
    struct n_visual_info_ctx vic;
    struct str in, out;
@@ -1021,7 +1022,7 @@ a_tty_signal(int sig){
    sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
    /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
    a_tty_sigs_up();
    mx_TERMCAP_RESUME(TRU1);
    a_tty_term_mode(TRU1);
@@ -1041,7 +1042,7 @@ a_tty_term_mode(boole raw){
     * to foreground or however else in between sessions */
    /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
     * XXX as we don't properly deal with TTIN and TTOU etc. */
-   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ n_tty_fp! */
+   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ mx_tty_fp! */
    tiosp->c_lflag |= ECHO | ICANON;
 
    su_mem_copy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
@@ -1487,11 +1488,10 @@ a_tty_vinuni(struct a_tty_line *tlp){
             csuf = mx_colour_reset_to_str();
       }
 #endif
-      fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
-         (cpre != NULL ? cpre->s : n_empty),
-         (csuf != NULL ? csuf->s : n_empty));
+      fprintf(mx_tty_fp, _("%sPlease enter Unicode code point:%s "),
+         (cpre != NIL ? cpre->s : n_empty), (csuf != NIL ? csuf->s : n_empty));
    }
-   fflush(n_tty_fp);
+   fflush(mx_tty_fp);
 
    buf[sizeof(buf) -1] = '\0';
    for(i = 0;;){
@@ -1510,8 +1510,8 @@ a_tty_vinuni(struct a_tty_line *tlp){
          goto jerr;
       }
 
-      putc(buf[i], n_tty_fp);
-      fflush(n_tty_fp);
+      putc(buf[i], mx_tty_fp);
+      fflush(mx_tty_fp);
       if(++i == sizeof buf)
          goto jerr;
    }
@@ -1539,7 +1539,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_BELL){
       tlp->tl_vi_flags |= a_TTY_VF_SYNC;
-      if(putc('\a', n_tty_fp) == EOF)
+      if(putc('\a', mx_tty_fp) == EOF)
          goto jerr;
    }
 
@@ -1568,7 +1568,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_SYNC){
       tlp->tl_vi_flags &= ~a_TTY_VF_SYNC;
-      if(fflush(n_tty_fp))
+      if(fflush(mx_tty_fp))
          goto jerr;
    }
 
@@ -1579,7 +1579,7 @@ jleave:
    return rv;
 
 jerr:
-   clearerr(n_tty_fp); /* xxx I/O layer rewrite */
+   clearerr(mx_tty_fp); /* xxx I/O layer rewrite */
    n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
       "  Setting *line-editor-disable* to get us through!\n"));
    ok_bset(line_editor_disable);
@@ -1660,7 +1660,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) ==
             (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
-         if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+         if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
             goto jerr;
          phy_cur = tlp->tl_prompt_width + 1;
       }
@@ -1834,7 +1834,7 @@ jpaint:
 
    if(f & a_SHOW_PROMPT){
       ASSERT(phy_base == tlp->tl_prompt_width);
-      if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+      if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
       f |= a_VISIBLE_PROMPT;
@@ -1849,7 +1849,7 @@ jpaint:
 
       if(LIKELY(!tcp_left->tc_novis)){
          if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf,
-               tcp_left->tc_count, n_tty_fp) != tcp_left->tc_count)
+               tcp_left->tc_count, mx_tty_fp) != tcp_left->tc_count)
             goto jerr;
       }else{ /* XXX Shouldn't be here <-> CText, ui_str.c */
          char wbuf[8]; /* XXX magic */
@@ -1868,7 +1868,7 @@ jpaint:
          }else
             wbuf[0] = '?', wbuf[1] = '\0';
 
-         if(fputs(wbuf, n_tty_fp) == EOF)
+         if(fputs(wbuf, mx_tty_fp) == EOF)
             goto jerr;
          cw = 1;
       }
@@ -1921,7 +1921,7 @@ jpaint:
          pos[2] = '%';
       }
 
-      if(fputs(posbuf, n_tty_fp) == EOF)
+      if(fputs(posbuf, mx_tty_fp) == EOF)
          goto jerr;
       phy_cur += 4;
    }
@@ -2111,8 +2111,8 @@ a_tty_kdel(struct a_tty_line *tlp){
       }
       f = a_TTY_VF_MOD_CONTENT;
    }else if(cnt == 0 && !ok_blook(ignoreeof)){
-      putc('^', n_tty_fp);
-      putc('D', n_tty_fp);
+      putc('^', mx_tty_fp);
+      putc('D', mx_tty_fp);
       i = -1;
       f = a_TTY_VF_NONE;
    }else{
@@ -2552,7 +2552,7 @@ jmulti:{
       if((fp = mx_fs_tmp_open("mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
-         fp = n_tty_fp;
+         fp = mx_tty_fp;
       }
 
       /* How long is the result string for real?  Search the NUL NUL
@@ -2701,7 +2701,7 @@ jsep:
       ++lncnt;
 
       page_or_print(fp, lncnt);
-      if(fp != n_tty_fp)
+      if(fp != mx_tty_fp)
          mx_fs_close(fp);
 
       n_string_gut(shoup);
@@ -3470,8 +3470,8 @@ jkother:
 jdone:
    rv = a_tty_cell2dat(tlp);
 jleave:
-   putc('\n', n_tty_fp);
-   fflush(n_tty_fp);
+   putc('\n', mx_tty_fp);
+   fflush(mx_tty_fp);
    NYD_OU;
    return rv;
 
@@ -4198,7 +4198,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 FL void
-n_tty_init(void){
+mx_tty_init(void){
    NYD_IN;
 
    if(ok_blook(line_editor_disable))
@@ -4272,7 +4272,7 @@ jleave:
 }
 
 FL void
-n_tty_destroy(boole xit_fastpath){
+mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
@@ -4299,8 +4299,8 @@ jleave:
 }
 
 FL int
-(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, uz *linesize, uz n, boole *histok_or_null
+(mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
@@ -4312,11 +4312,11 @@ FL int
 
    ASSERT(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
-      n_tty_init();
+      mx_tty_init();
    ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 # ifdef mx_HAVE_COLOUR
-   mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0);
+   mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
 
    /* .tl_pos_buf is a hack */
    posbuf = pos = NULL;
@@ -4388,7 +4388,7 @@ FL int
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
-      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, gif)
+      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt, gif)
                ) > 0){
          tl.tl_prompt = n_string_cp_const(&xprompt);
          tl.tl_prompt_length = (u32)xprompt.s_len;
@@ -4407,7 +4407,7 @@ FL int
    a_tty_sigs_up();
    mx_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
-   nn = a_tty_readline(&tl, n, histok_or_null  su_DBG_LOC_ARGS_USE);
+   nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
    mx_COLOUR( mx_colour_env_gut(); )
    a_tty_term_mode(FAL0);
    mx_TERMCAP_SUSPEND(FAL0);
@@ -4419,7 +4419,7 @@ FL int
 }
 
 FL void
-n_tty_addhist(char const *s, enum n_go_input_flags gif){
+mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);
@@ -4463,7 +4463,7 @@ c_history(void *v){
    }
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
-      n_tty_init();
+      mx_tty_init();
       ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
@@ -4807,13 +4807,13 @@ a_tty_signal(int sig){
 
 # if 0
 FL void
-n_tty_init(void){
+mx_tty_init(void){
    NYD_IN;
    NYD_OU;
 }
 
 FL void
-n_tty_destroy(boole xit_fastpath){
+mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
    UNUSED(xit_fastpath);
    NYD_OU;
@@ -4821,18 +4821,18 @@ n_tty_destroy(boole xit_fastpath){
 # endif /* 0 */
 
 FL int
-(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, uz *linesize, uz n, boole *histok_or_null
+(mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;
    NYD_IN;
-   UNUSED(histok_or_null);
+   UNUSED(histok_or_nil);
 
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
-      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
-         fwrite(xprompt.s_dat, 1, xprompt.s_len, n_tty_fp);
-         fflush(n_tty_fp);
+      if(mx_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
+         fwrite(xprompt.s_dat, 1, xprompt.s_len, mx_tty_fp);
+         fflush(mx_tty_fp);
       }
    }
 
@@ -4850,7 +4850,7 @@ FL int
 }
 
 FL void
-n_tty_addhist(char const *s, enum n_go_input_flags gif){
+mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);

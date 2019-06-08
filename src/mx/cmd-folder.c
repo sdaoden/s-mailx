@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/child.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -207,8 +208,8 @@ c_remove(void *v)
          vl = su_cs_len(ename) + fmt_len +1;
          vb = n_autorec_alloc(vl);
          snprintf(vb, vl, fmt, ename);
-         asw = getapproval(vb, TRU1);
-         if (!asw)
+         asw = mx_tty_yesorno(vb, TRU1);
+         if(!asw)
             continue;
       }
 

@@ -50,6 +50,7 @@
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/random.h"
+#include "mx/tty.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -791,7 +792,7 @@ jheaders_skip:
                else{
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
                   /* Because: interactive OR batch mode, so */
-                  if(!getapproval(_("Run MIME handler for this part?"),
+                  if(!mx_tty_yesorno(_("Run MIME handler for this part?"),
                         su_state_has(su_STATE_REPRODUCIBLE)))
                      goto jleave;
                }

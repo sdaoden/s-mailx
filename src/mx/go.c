@@ -53,6 +53,7 @@
 #include "mx/colour.h"
 #include "mx/commandalias.h"
 #include "mx/file-streams.h"
+#include "mx/tty.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -1492,7 +1493,7 @@ n_go_main_loop(void){ /* FIXME */
          else if(ca != NULL)
             cc = ca;
          ASSERT(cc != NULL);
-         n_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
+         mx_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
             (gec.gec_hist_flags & a_GO_HIST_GABBY ? n_GO_INPUT_HIST_GABBY
                : n_GO_INPUT_NONE)));
       }
@@ -1596,7 +1597,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 
 FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
-      uz *linesize, char const *string, boole *histok_or_null
+      uz *linesize, char const *string, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    /* TODO readline: linebuf pool!; n_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
@@ -1748,7 +1749,7 @@ jforce_stdin:
 
          rele_all_sigs();
 
-         n = (n_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_null
+         n = (mx_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_nil
                su_DBG_LOC_ARGS_USE);
 
          hold_all_sigs();
@@ -1757,7 +1758,7 @@ jforce_stdin:
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
       }else{
          if(!(gif & n_GO_INPUT_PROMPT_NONE))
-            n_tty_create_prompt(&xprompt, prompt, gif);
+            mx_tty_create_prompt(&xprompt, prompt, gif);
 
          rele_all_sigs();
 
@@ -1839,8 +1840,8 @@ jleave:
          a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
    }
 
-   if(histok_or_null != NULL && !(f & a_HISTOK))
-      *histok_or_null = FAL0;
+   if(histok_or_nil != NIL && !(f & a_HISTOK))
+      *histok_or_nil = FAL0;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       rele_all_sigs();
@@ -1874,7 +1875,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    if(n > 0 && *(rv = savestrbuf(linebuf, (uz)n)) != '\0' &&
          (gif & n_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
          histadd)
-      n_tty_addhist(rv, gif);
+      mx_tty_addhist(rv, gif);
 
    n_sigman_cleanup_ping(&sm);
 jleave:

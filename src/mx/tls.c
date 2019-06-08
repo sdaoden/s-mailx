@@ -50,6 +50,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 
 #include "mx/file-streams.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -100,7 +101,7 @@ n_tls_verify_decide(void){
       rv = FAL0;
       break;
    case n_TLS_VERIFY_ASK:
-      rv = getapproval(NULL, FAL0);
+      rv = mx_tty_yesorno(NIL, FAL0);
       break;
    case n_TLS_VERIFY_WARN:
    case n_TLS_VERIFY_IGNORE:

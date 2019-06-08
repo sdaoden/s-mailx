@@ -74,6 +74,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/random.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1549,7 +1550,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    }
 
    /* Old-style */
-   if ((pass = getpassword("PEM pass phrase:")) != NULL) {
+   if((pass = mx_tty_getpass("PEM pass phrase:")) != NIL){
       len = su_cs_len(pass);
       if (UCMP(z, len, >=, size))
          len = size -1;

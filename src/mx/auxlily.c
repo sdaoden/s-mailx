@@ -77,6 +77,7 @@
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/filetype.h"
+#include "mx/tty.h"
 
 #ifdef mx_HAVE_IDNA
 # include "mx/iconv.h"
@@ -675,7 +676,7 @@ n_quadify(char const *inbuf, uz inlen, char const *prompt, boole emptyrv){
          !su_cs_cmp_case_n(inbuf, "ask-", 4) &&
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-      rv = getapproval(prompt, rv);
+      rv = mx_tty_yesorno(prompt, rv);
    NYD2_OU;
    return rv;
 }

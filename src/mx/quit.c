@@ -44,6 +44,7 @@
 #include <utime.h>
 
 #include "mx/file-streams.h"
+#include "mx/tty.h"
 
 #include <su/cs.h>
 
@@ -297,7 +298,7 @@ jleave:
        * TODO For now we follow the latter unless we are interactive,
        * TODO in which case we ask the user whether the error is to be
        * TODO ignored or not.  More of this around here in this file! */
-      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
+      rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
    }
 j_leave:
    NYD_OU;
@@ -387,7 +388,7 @@ jnewmail:
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       mx_fs_close(fbuf);
       fbuf = NIL;
-      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
+      rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 
@@ -432,14 +433,14 @@ jnewmail:
          if (writeback(rbuf, fbuf) >= 0)
             rv = TRU1;
          else
-            rv = getapproval(_("Continue, possibly losing changes"), TRU1);
+            rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
          goto jleave;
       }
       goto jcream;
    }
 
    if (makembox() == STOP) {
-      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
+      rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 
@@ -447,7 +448,7 @@ jnewmail:
     * any were requested */
    if (p != 0) {
       if (writeback(rbuf, fbuf) < 0)
-         rv = getapproval(_("Continue, possibly losing changes"), TRU1);
+         rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 

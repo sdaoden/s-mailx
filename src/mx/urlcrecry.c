@@ -34,6 +34,7 @@
 
 #include "mx/child.h"
 #include "mx/file-streams.h"
+#include "mx/tty.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -1320,7 +1321,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
       if ((s = n_var_vlook(vbuf, FAL0)) == NULL && (ware & REQ_USER)) {
-         if ((s = getuser(NULL)) == NULL) {
+         if((s = mx_tty_getuser(NIL)) == NIL){
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
              * TODO check that first, then! change control flow, grow vbuf */
@@ -1348,10 +1349,11 @@ jpass:
       vbuf[--i] = '\0';
       if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
             (ware & REQ_PASS)) {
-         if ((s = getpassword(savecat(_("Password for "), pname))) == NULL) {
+         if((s = mx_tty_getpass(savecat(_("Password for "), pname))) != NIL){
+         }else{
             n_err(_("A password is necessary for %s authentication\n"),
                pname);
-            ccp = NULL;
+            ccp = NIL;
             goto jleave;
          }
       }
@@ -1480,8 +1482,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 # endif
 
    if (ware & REQ_PASS) {
-      if((s = getpassword(savecat(urlp->url_u_h.s, _(" requires a password: ")))
-            ) != NULL)
+      if((s = mx_tty_getpass(savecat(urlp->url_u_h.s,
+            _(" requires a password: ")))) != NIL)
 js2pass:
          ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
       else {

@@ -49,6 +49,7 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/random.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -2040,8 +2041,8 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    /* */
    if(n_psonce & n_PSO_INTERACTIVE){
-      if (ok_blook(asksign))
-         dosign = getapproval(_("Sign this message"), TRU1);
+      if(ok_blook(asksign))
+         dosign = mx_tty_yesorno(_("Sign this message"), TRU1);
    }
 
    if(fsize(mtf) == 0){

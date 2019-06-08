@@ -43,6 +43,7 @@
 
 #include "mx/child.h"
 #include "mx/file-streams.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -71,7 +72,7 @@ edit1(int *msgvec, int viored)
          char prompt[64];
 
          snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
-         if(!getapproval(prompt, TRU1))
+         if(!mx_tty_yesorno(prompt, TRU1))
             continue;
       }
 

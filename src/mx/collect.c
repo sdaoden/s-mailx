@@ -50,6 +50,7 @@
 #include "mx/filter-quote.h"
 #include "mx/names.h"
 #include "mx/ui-str.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1792,7 +1793,7 @@ jhistcont:
          /* Do not add *escape* to the history in order to allow history search
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
-         n_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
+         mx_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
             (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
       }
       if(c != '\0')

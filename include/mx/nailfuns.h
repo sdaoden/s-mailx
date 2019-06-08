@@ -832,7 +832,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
- * If histok_or_null is set it will be updated to FAL0 if input shall not be
+ * If histok_or_nil is set it will be updated to FAL0 if input shall not be
  * placed in history.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
@@ -840,7 +840,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, uz *linesize, char const *string,
-         boole *histok_or_null  su_DBG_LOC_ARGS_DECL);
+         boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
@@ -1982,72 +1982,6 @@ FL boole n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
 /* `tls' */
 FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
-
-/*
- * tty.c
- */
-
-/* Return whether user says yes, on STDIN if interactive.
- * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for n_boolify() and chooses the yes/no string to append to prompt
- * accordingly.  If prompt is NULL "Continue" is used instead.
- * Handles+reraises SIGINT */
-FL boole getapproval(char const *prompt, boole noninteract_default);
-
-#ifdef mx_HAVE_SOCKETS
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error */
-FL char *getuser(char const *query);
-
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
- * termios_state_reset() must be called anyway */
-FL char *getpassword(char const *query);
-#endif
-
-/* Create the prompt and return its visual width in columns, which may be 0
- * if evaluation is disabled etc.  The data is placed in store.
- * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
- * takes place */
-FL u32 n_tty_create_prompt(struct n_string *store, char const *xprompt,
-            enum n_go_input_flags gif);
-
-/* Overall interactive terminal life cycle for command line editor library */
-#ifdef mx_HAVE_MLE
-FL void n_tty_init(void);
-FL void n_tty_destroy(boole xit_fastpath);
-#else
-# define n_tty_init() do{;}while(0)
-# define n_tty_destroy(B) do{;}while(0)
-#endif
-
-/* Read a line after printing prompt (if set and non-empty).
- * If n>0 assumes that *linebuf has n bytes of default content.
- * histok_or_null like for n_go_input().
- * Only the _CTX_ bits in lif are used */
-FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, uz *linesize, uz n, boole *histok_or_null
-         su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_tty_readline(A,B,C,D,E,F) \
-   (n_tty_readline)(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Whether and how an entry is added for real depends on gif, e.g.,
- * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
- * Empty strings are never stored */
-FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
-
-#ifdef mx_HAVE_HISTORY
-FL int c_history(void *v);
-#endif
-
-/* `bind' and `unbind' */
-#ifdef mx_HAVE_KEY_BINDINGS
-FL int c_bind(void *v);
-FL int c_unbind(void *v);
-#endif
 
 /*
  * urlcrecry.c

@@ -45,6 +45,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/tty.h"
+
 /* TODO fake */
 #include "mx/termcap.h"
 #include "su/code-in.h"
@@ -461,7 +463,7 @@ a_termcap_load(char const *term){
    int err;
    NYD2_IN;
 
-   if(!(rv = (setupterm(term, fileno(n_tty_fp), &err) == OK)))
+   if(!(rv = (setupterm(term, fileno(mx_tty_fp), &err) == OK)))
       n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
    NYD2_OU;
    return rv;
@@ -589,7 +591,7 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
 
 static int
 a_termcap_putc(int c){
-   return putc(c, n_tty_fp);
+   return putc(c, mx_tty_fp);
 }
 #endif /* mx_HAVE_TERMCAP */
 
@@ -715,7 +717,7 @@ mx_termcap_resume(boole complete){
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          mx_termcap_cmdx(mx_TERMCAP_CMD_ti);
       mx_termcap_cmdx(mx_TERMCAP_CMD_ks);
-      fflush(n_tty_fp);
+      fflush(mx_tty_fp);
    }
    NYD_OU;
 }
@@ -727,7 +729,7 @@ mx_termcap_suspend(boole complete){
       mx_termcap_cmdx(mx_TERMCAP_CMD_ke);
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          mx_termcap_cmdx(mx_TERMCAP_CMD_te);
-      fflush(n_tty_fp);
+      fflush(mx_tty_fp);
    }
    NYD_OU;
 }
@@ -805,7 +807,7 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
                break;
          }else
 #endif
-               if(fputs(cp, n_tty_fp) == EOF)
+               if(fputs(cp, mx_tty_fp) == EOF)
             break;
          if(!(tep->te_flags & a_TERMCAP_F_ARG_CNT) || --a1 <= 0){
             rv = TRU1;
@@ -825,7 +827,7 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
             --a1;
          if((rv = mx_termcap_cmd(mx_TERMCAP_CMD_ch, a1, 0)) > 0){
             for(a2 = n_scrnwidth - a1 - 1; a2 > 0; --a2)
-               if(putc(' ', n_tty_fp) == EOF){
+               if(putc(' ', mx_tty_fp) == EOF){
                   rv = FAL0;
                   break;
                }
@@ -851,8 +853,8 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
 
 jflush:
       if(flags & mx_TERMCAP_CMD_FLAG_FLUSH)
-         fflush(n_tty_fp);
-      if(ferror(n_tty_fp))
+         fflush(mx_tty_fp);
+      if(ferror(mx_tty_fp))
          rv = FAL0;
    }
 
