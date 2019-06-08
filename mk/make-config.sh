@@ -47,7 +47,6 @@ XOPTIONS="\
          TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
    SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
-      SPAM_SPAMD='-' \
    TERMCAP='Terminal capability queries (termcap(5))' \
       TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    UISTRINGS='User interface and error message strings' \
@@ -2255,7 +2254,7 @@ else
    feat_is_disabled ICONV
 fi # feat_yes ICONV
 
-if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
+if feat_yes SOCKETS; then
    ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -3354,16 +3353,7 @@ if feat_def SPAM_SPAMC; then
       echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
    fi
 fi
-   if feat_yes SPAM_SPAMD; then
-      if [ -n "${have_af_unix}" ]; then
-         echo '#define mx_HAVE_SPAM_SPAMD' >> ${h}
-      else
-         feat_bail_required SPAM_SPAMD
-      fi
-   else
-      feat_is_disabled SPAM_SPAMD
-   fi
-if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
+if feat_yes SPAM_SPAMC || feat_yes SPAM_FILTER; then
    echo '#define mx_HAVE_SPAM' >> ${h}
 else
    echo '/* mx_HAVE_SPAM */' >> ${h}
