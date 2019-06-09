@@ -55,6 +55,7 @@
 #include "mx/commandalias.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
+#include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 
@@ -254,9 +255,9 @@ a_go_update_pstate(void){
    if(act){
       char buf[32];
 
-      snprintf(buf, sizeof buf, "%d", n_scrnwidth);
+      snprintf(buf, sizeof buf, "%u", S(unsigned,n_scrnwidth));
       ok_vset(COLUMNS, buf);
-      snprintf(buf, sizeof buf, "%d", n_scrnheight);
+      snprintf(buf, sizeof buf, "%u", S(unsigned,n_scrnheight));
       ok_vset(LINES, buf);
    }
    NYD_OU;
@@ -929,7 +930,7 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 
    safe_signal(SIGINT, a_go_onintr);
 
-   termios_state_reset();
+   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
 
    a_go_cleanup(a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
 

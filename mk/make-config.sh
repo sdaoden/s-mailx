@@ -1837,9 +1837,11 @@ if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void){
    struct termios tios;
+   speed_t ospeed;
 
    tcgetattr(0, &tios);
    tcsetattr(0, TCSANOW | TCSADRAIN | TCSAFLUSH, &tios);
+   ospeed = ((tcgetattr(0, &tios) == -1) ? B9600 : cfgetospeed(&tios));
    return 0;
 }
 !

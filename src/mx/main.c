@@ -41,8 +41,6 @@
 
 #include "mx/nail.h"
 
-#include <sys/ioctl.h>
-
 #include <pwd.h>
 
 #include <su/avopt.h>
@@ -53,6 +51,7 @@
 #include "mx/iconv.h"
 #include "mx/names.h"
 #include "mx/termcap.h"
+#include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 
@@ -280,24 +279,6 @@ a_main_setup_vars(void){
 
 su_SINLINE void
 a_main_setup_screen(void){
-   /* Problem: VAL_ configuration values are strings, we need numbers */
-   LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
-      VAL_HEIGHT[2] == '\0' || VAL_HEIGHT[3] == '\0'));
-#define a_HEIGHT \
-   (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
-   : (VAL_HEIGHT[2] == '\0' \
-      ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
-      : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
-         (VAL_HEIGHT[2] - '0'))))
-   LCTAV(VAL_WIDTH[0] != '\0' &&
-      (VAL_WIDTH[1] == '\0' || VAL_WIDTH[2] == '\0' || VAL_WIDTH[3] == '\0'));
-#define a_WIDTH \
-   (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
-   : (VAL_WIDTH[2] == '\0' \
-      ? ((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) \
-      : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
-         (VAL_WIDTH[2] - '0'))))
-
    NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE) &&
@@ -319,19 +300,14 @@ a_main_setup_screen(void){
       }
    }else
       /* $COLUMNS and $LINES defaults as documented in the manual */
-      n_scrnheight = n_realscreenheight = a_HEIGHT,
-      n_scrnwidth = a_WIDTH;
+      n_scrnheight = n_realscreenheight = mx_TERMIOS_DEFAULT_HEIGHT,
+      n_scrnwidth = mx_TERMIOS_DEFAULT_WIDTH;
    NYD2_OU;
 }
 
 static void
 a_main__scrsz(int is_sighdl){
-   struct termios tbuf;
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-   struct winsize ws;
-#elif defined TIOCGSIZE
-   struct ttysize ts;
-#endif
+   struct mx_termios_dimension tiosd;
    NYD2_IN;
    ASSERT((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
@@ -357,65 +333,20 @@ a_main__scrsz(int is_sighdl){
       /* In non-interactive mode, stop now, except for the documented case that
        * both are set but not both have been usable */
       if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc)){
-         n_scrnheight = n_realscreenheight = a_HEIGHT;
-         n_scrnwidth = a_WIDTH;
+         n_scrnheight = n_realscreenheight = mx_TERMIOS_DEFAULT_HEIGHT;
+         n_scrnwidth = mx_TERMIOS_DEFAULT_WIDTH;
          goto jleave;
       }
    }
 
-#ifdef mx_HAVE_TCGETWINSIZE
-   if(tcgetwinsize(fileno(mx_tty_fp), &ws) == -1)
-      ws.ws_col = ws.ws_row = 0;
-#elif defined TIOCGWINSZ
-   if(ioctl(fileno(mx_tty_fp), TIOCGWINSZ, &ws) == -1)
-      ws.ws_col = ws.ws_row = 0;
-#elif defined TIOCGSIZE
-   if(ioctl(fileno(mx_tty_fp), TIOCGSIZE, &ws) == -1)
-      ts.ts_lines = ts.ts_cols = 0;
-#endif
+   mx_termios_dimension_lookup(&tiosd);
 
    if(n_scrnheight == 0){
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-      if(ws.ws_row != 0)
-         n_scrnheight = ws.ws_row;
-#elif defined TIOCGSIZE
-      if(ts.ts_lines != 0)
-         n_scrnheight = ts.ts_lines;
-#endif
-      else{
-         speed_t ospeed;
-
-         ospeed = ((tcgetattr(fileno(mx_tty_fp), &tbuf) == -1)
-               ? B9600 : cfgetospeed(&tbuf));
-
-         if(ospeed < B1200)
-            n_scrnheight = 9;
-         else if(ospeed == B1200)
-            n_scrnheight = 14;
-         else
-            n_scrnheight = a_HEIGHT;
-      }
-
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
-      if(0 ==
-# if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-            (n_realscreenheight = ws.ws_row)
-# else
-            (n_realscreenheight = ts.ts_lines)
-# endif
-      )
-         n_realscreenheight = a_HEIGHT;
-#endif
+      n_scrnheight = tiosd.tiosd_height;
+      n_realscreenheight = tiosd.tiosd_real_height;
    }
-
-   if(n_scrnwidth == 0 && 0 ==
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-         (n_scrnwidth = ws.ws_col)
-#elif defined TIOCGSIZE
-         (n_scrnwidth = ts.ts_cols)
-#endif
-   )
-      n_scrnwidth = a_WIDTH;
+   if(n_scrnwidth == 0)
+      n_scrnwidth = tiosd.tiosd_width;
 
    /**/
    n_pstate |= n_PS_SIGWINCH_PEND;
@@ -429,9 +360,6 @@ jleave:
       --n_scrnwidth;
 /*#endif*/
    NYD2_OU;
-
-#undef a_HEIGHT
-#undef a_WIDTH
 }
 
 static sigjmp_buf a_main__hdrjmp; /* XXX */

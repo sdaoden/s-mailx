@@ -47,6 +47,7 @@
 #include "mx/file-streams.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/termios.h"
 
 /* TODO fake */
 #include "su/code-in.h"

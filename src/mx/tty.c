@@ -41,6 +41,7 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/termcap.h"
+#include "mx/termios.h"
 #include "mx/ui-str.h"
 
 #ifdef mx_HAVE_MLE
@@ -115,7 +116,6 @@ static sigjmp_buf a_tty__actjmp; /* TODO someday, we won't need it no more */
 static void
 a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
 {
-   NYD; /* Signal handler */
    siglongjmp(a_tty__actjmp, s);
 }
 
@@ -221,7 +221,6 @@ jrestore:
 char *
 mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
 {
-   struct termios tios;
    n_sighdl_t volatile oint, ohup;
    uz lsize;
    char *ldat;
@@ -238,14 +237,7 @@ mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
    fputs(query, mx_tty_fp);
    fflush(mx_tty_fp);
 
-   /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
-    * FIXME foreground pgrp, and can fail with EINTR!! also affects
-    * FIXME termios_state_reset() */
-   tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
-   su_mem_copy(&tios, &termios_state.ts_tios, sizeof tios);
-   termios_state.ts_needs_reset = TRU1;
-   tios.c_iflag &= ~(ISTRIP);
-   tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
@@ -257,14 +249,13 @@ mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-   if (readline_restart(n_stdin, &ldat, &lsize, 0) >= 0)
+   mx_termios_cmd(mx_TERMIOS_CMD_PASSWORD, 0);
 
    if(readline_restart(n_stdin, &ldat, &lsize, 0) >= 0)
       pass = savestr(ldat);
 
 jrestore:
-   termios_state_reset();
+   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
    putc('\n', mx_tty_fp);
 
    mx_fs_linepool_release(ldat, lsize);
@@ -272,7 +263,7 @@ jrestore:
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
    NYD_OU;
-   if (sig != 0)
+   if(sig != 0)
       n_raise(sig);
 j_leave:
    return pass;
@@ -692,8 +683,6 @@ struct a_tty_global{
    struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
    struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
 # endif
-   struct termios tg_tios_old;
-   struct termios tg_tios_new;
 };
 # ifdef mx_HAVE_KEY_BINDINGS
 CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
@@ -918,9 +907,6 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 
 static struct a_tty_global a_tty;
 
-/* Change from canonical to raw, non-canonical mode, and way back */
-static void a_tty_term_mode(boole raw);
-
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
 static boole a_tty_hist_load(void);
@@ -1035,7 +1021,7 @@ a_tty_signal(int sig){
    NYD; /* Signal handler */
 
    mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
-   a_tty_term_mode(FAL0);
+   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
    mx_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
 
@@ -1050,35 +1036,9 @@ a_tty_signal(int sig){
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
    a_tty_sigs_up();
    mx_TERMCAP_RESUME(TRU1);
-   a_tty_term_mode(TRU1);
+   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
+   mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
    a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
-}
-
-static void
-a_tty_term_mode(boole raw){
-   struct termios *tiosp;
-   NYD2_IN;
-
-   tiosp = &a_tty.tg_tios_old;
-   if(!raw)
-      goto jleave;
-
-   /* Always requery the attributes, in case we've been moved from background
-    * to foreground or however else in between sessions */
-   /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
-    * XXX as we don't properly deal with TTIN and TTOU etc. */
-   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ mx_tty_fp! */
-   tiosp->c_lflag |= ECHO | ICANON;
-
-   su_mem_copy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
-   tiosp = &a_tty.tg_tios_new;
-   tiosp->c_cc[VMIN] = 1;
-   tiosp->c_cc[VTIME] = 0;
-   tiosp->c_iflag &= ~(ISTRIP | IGNCR | IXON | IXOFF);
-   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN | ISIG);
-jleave:
-   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
-   NYD2_OU;
 }
 
 # ifdef mx_HAVE_HISTORY
@@ -1355,19 +1315,20 @@ jleave:
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
 a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable){
+   enum mx_termios_cmd cmd;
+   u8 i;
    NYD2_IN;
-   if(enable){
-      u8 bt;
 
-      a_tty.tg_tios_new.c_cc[VMIN] = 0;
-      if((bt = tlp->tl_bind_timeout) == 0)
-         bt = a_TTY_BIND_TIMEOUT;
-      a_tty.tg_tios_new.c_cc[VTIME] = bt;
+   if(enable){
+      cmd = mx_TERMIOS_CMD_RAW_TIMEOUT;
+      if((i = tlp->tl_bind_timeout) == 0)
+         i = a_TTY_BIND_TIMEOUT;
    }else{
-      a_tty.tg_tios_new.c_cc[VMIN] = 1;
-      a_tty.tg_tios_new.c_cc[VTIME] = 0;
+      cmd = mx_TERMIOS_CMD_RAW;
+      i = 1;
    }
-   tcsetattr(STDIN_FILENO, TCSANOW, &a_tty.tg_tios_new);
+
+   mx_termios_cmd(cmd, i);
    NYD2_OU;
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
@@ -4430,10 +4391,11 @@ int
    a_tty.tg_line = &tl;
    a_tty_sigs_up();
    mx_TERMCAP_RESUME(FAL0);
-   a_tty_term_mode(TRU1);
+   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
+   mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
    nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
    mx_COLOUR( mx_colour_env_gut(); )
-   a_tty_term_mode(FAL0);
+   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
    mx_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
    a_tty.tg_line = NULL;

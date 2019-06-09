@@ -56,7 +56,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -1407,21 +1406,6 @@ struct n_timespec{
    sz ts_nsec;
 };
 
-struct termios_state{
-   struct termios ts_tios;
-   char *ts_linebuf;
-   uz ts_linesize;
-   boole ts_needs_reset;
-};
-
-#define termios_state_reset() \
-do{\
-   if(termios_state.ts_needs_reset){\
-      tcsetattr(STDIN_FILENO, TCSADRAIN, &termios_state.ts_tios);\
-      termios_state.ts_needs_reset = FAL0;\
-   }\
-}while(0)
-
 struct time_current{ /* TODO s64, etc. */
    time_t tc_time;
    struct tm tc_gm;
@@ -1882,7 +1866,6 @@ VL int imap_created_mailbox; /* hack to get feedback from imap */
 VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 
 VL struct time_current time_current; /* time(3); send: mail1() XXXcarrier */
-VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
 #ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */

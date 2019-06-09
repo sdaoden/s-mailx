@@ -52,6 +52,7 @@
 #include "mx/file-streams.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/termios.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
