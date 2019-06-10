@@ -718,6 +718,13 @@ FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
  * fio.c
  */
 
+/* XXX Temporary (pre v15 I/O) line buffer "pool".
+ * (Possibly) Get a line buffer, and release one to the pool, respectively.
+ * The latter is driven by the mainloop to perform cleanups */
+FL void mx_linepool_aquire(char **dp, uz *sp);
+FL void mx_linepool_release(char *dp, uz sp);
+FL void mx_linepool_cleanup(void);
+
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
  * characters.
  * line - line buffer.  *line may be NULL.

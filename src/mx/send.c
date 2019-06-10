@@ -1505,8 +1505,8 @@ static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    u64 *stats)
 {
-   char *line = NULL; /* TODO line pool */
-   uz linesize = 0, linelen, cnt;
+   char *line;
+   uz linesize, linelen, cnt;
    sz all_sz, i;
    NYD_IN;
 
@@ -1515,6 +1515,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    cnt = (uz)fsize(pipebuf);
    all_sz = 0;
 
+   mx_linepool_aquire(&line, &linesize);
    quoteflt_reset(qf, outbuf);
    while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NULL) {
       if ((i = quoteflt_push(qf, line, linelen)) < 0)
@@ -1523,8 +1524,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    }
    if ((i = quoteflt_flush(qf)) > 0)
       all_sz += i;
-   if (line)
-      n_free(line);
+   mx_linepool_release(line, linesize);
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;

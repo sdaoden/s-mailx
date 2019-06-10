@@ -396,15 +396,17 @@ static void
 a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    FILE *ibuf;
    int hlen;
-   char *hline = NULL; /* TODO line pool */
-   uz hsize = 0;
+   char *hline;
+   uz hsize;
    NYD2_IN;
+
+   mx_linepool_aquire(&hline, &hsize);
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
       a_header_extract_date_from_from_(hline, hlen, date);
-   if(hline != NULL)
-      n_free(hline);
+
+   mx_linepool_release(hline, hsize);
    NYD2_OU;
 }
 
@@ -1368,13 +1370,17 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    struct str suffix;
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
-   char *linebuf = NULL /* TODO line pool */, *colon;
-   uz linesize = 0, seenfields = 0;
+   char *linebuf, *colon;
+   uz linesize, seenfields = 0;
    int c;
    long lc;
    off_t firstoff;
    char const *val, *cp;
    NYD_IN;
+
+   mx_linepool_aquire(&linebuf, &linesize);
+   if(linebuf != NIL)
+      linebuf[0] = '\0';
 
    su_mem_set(hq, 0, sizeof *hq);
    if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
@@ -1593,8 +1599,7 @@ jebadhead:
       n_err(_("Restoring deleted header lines\n"));
 
 jleave:
-   if (linebuf != NULL)
-      n_free(linebuf);
+   mx_linepool_release(linebuf, linesize);
    NYD_OU;
 }
 
@@ -1604,10 +1609,12 @@ hfield_mult(char const *field, struct message *mp, int mult)
    FILE *ibuf;
    struct str hfs;
    long lc;
-   uz linesize = 0; /* TODO line pool */
-   char *linebuf = NULL, *colon;
+   uz linesize;
+   char *linebuf, *colon;
    char const *hfield;
    NYD_IN;
+
+   mx_linepool_aquire(&linebuf, &linesize);
 
    /* There are (spam) messages which have header bytes which are many KB when
     * joined, so resize a single heap storage until we are done if we shall
@@ -1639,8 +1646,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
    }
 
 jleave:
-   if (linebuf != NULL)
-      n_free(linebuf);
+   mx_linepool_release(linebuf, linesize);
    if (mult && hfs.s != NULL) {
       colon = savestrbuf(hfs.s, hfs.l);
       n_free(hfs.s);
@@ -2437,10 +2443,12 @@ n_header_senderfield_of(struct message *mp){
    else if((cp = hfield1("sender", mp)) != NULL && *cp != '\0')
       ;
    else{
-      char *namebuf, *cp2, *linebuf = NULL /* TODO line pool */;
-      uz namesize, linesize = 0;
+      char *namebuf, *cp2, *linebuf;
+      uz namesize, linesize;
       FILE *ibuf;
       int f1st = 1;
+
+      mx_linepool_aquire(&linebuf, &linesize);
 
       /* And fallback only works for MBOX */
       namebuf = n_alloc(namesize = 1);
@@ -2502,8 +2510,7 @@ jout:
             *cp == '\0')
          cp = savestr(namebuf);
 
-      if (linebuf != NULL)
-         n_free(linebuf);
+      mx_linepool_release(linebuf, linesize);
       n_free(namebuf);
    }
 
@@ -3178,16 +3185,15 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    char const *field;
    long lc;
    FILE *ibuf;
-   uz *linesize;
-   char **linebuf, *colon;
+   uz linesize;
+   char *linebuf, *colon;
    enum {a_NONE, a_ALL, a_ITER, a_RE} match;
    boole rv;
    NYD_IN;
 
    rv = FAL0;
    match = a_NONE;
-   linebuf = &termios_state.ts_linebuf; /* XXX line pool */
-   linesize = &termios_state.ts_linesize; /* XXX line pool */
+   mx_linepool_aquire(&linebuf, &linesize);
    UNINIT(fiter.l, 0);
    UNINIT(fiter.s, NULL);
 
@@ -3197,7 +3203,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       goto jleave;
 
    if((mp->m_flag & MNOFROM) == 0 &&
-         readline_restart(ibuf, linebuf, linesize, 0) < 0)
+         readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
       goto jleave;
 
    /* */
@@ -3220,7 +3226,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    while(lc > 0){
       struct mx_name *np;
 
-      if((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, linebuf, linesize,
+      if((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, &linebuf, &linesize,
             lc, &colon)) <= 0)
          break;
 
@@ -3245,7 +3251,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
                }
             }
 
-            if(!su_cs_cmp_case_n(field, *linebuf, P2UZ(colon - *linebuf)))
+            if(!su_cs_cmp_case_n(field, linebuf, P2UZ(colon - linebuf)))
                break;
          }
          if(field == NULL)
@@ -3255,9 +3261,9 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          char *cp;
          uz i;
 
-         i = P2UZ(colon - *linebuf);
+         i = P2UZ(colon - linebuf);
          cp = n_lofi_alloc(i +1);
-         su_mem_copy(cp, *linebuf, i);
+         su_mem_copy(cp, linebuf, i);
          cp[i] = '\0';
          i = (regexec(sep->ss_fieldre, cp, 0,NULL, 0) != REG_NOMATCH);
          n_lofi_free(cp);
@@ -3311,6 +3317,7 @@ jnext_name:
 jleave:
    if(match == a_ITER)
       n_lofi_free(fiter.s);
+   mx_linepool_release(linebuf, linesize);
    NYD_OU;
    return rv;
 }

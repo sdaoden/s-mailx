@@ -44,6 +44,15 @@
 /* TODO fake */
 #include "su/code-in.h"
 
+struct a_fio_lpool_ent{
+   struct a_fio_lpool_ent *fiole_last;
+   char *fiole_dat;
+   uz fiole_size;
+};
+
+struct a_fio_lpool_ent *a_fio_lpool_free;
+struct a_fio_lpool_ent *a_fio_lpool_used;
+
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
 static uz     _length_of_line(char const *line, uz linesize);
@@ -144,6 +153,61 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
       }
    NYD2_OU;
    return rv;
+}
+
+FL void
+mx_linepool_aquire(char **dp, uz *sp){
+   struct a_fio_lpool_ent *lpep;
+   NYD2_IN;
+
+   if((lpep = a_fio_lpool_free) != NIL)
+      a_fio_lpool_free = lpep->fiole_last;
+   else
+      lpep = su_TCALLOC(struct a_fio_lpool_ent, 1);
+
+   lpep->fiole_last = a_fio_lpool_used;
+   a_fio_lpool_used = lpep;
+   *dp = lpep->fiole_dat;
+   lpep->fiole_dat = NIL;
+   *sp = lpep->fiole_size;
+   NYD2_OU;
+}
+
+FL void
+mx_linepool_release(char *d, uz s){
+   struct a_fio_lpool_ent *lpep;
+   NYD2_IN;
+
+   ASSERT(a_fio_lpool_used != NIL);
+   lpep = a_fio_lpool_used;
+   a_fio_lpool_used = lpep->fiole_last;
+
+   lpep->fiole_last = a_fio_lpool_free;
+   a_fio_lpool_free = lpep;
+   lpep->fiole_dat = d;
+   lpep->fiole_size = s;
+   NYD2_OU;
+}
+
+FL void mx_linepool_cleanup(void){
+   struct a_fio_lpool_ent *lpep, *tmp;
+   NYD2_IN;
+
+   lpep = a_fio_lpool_used;
+   a_fio_lpool_used = NIL;
+jredo:
+   while((tmp = lpep) != NIL){
+      lpep = lpep->fiole_last;
+      if(tmp->fiole_dat != NIL)
+         su_FREE(tmp->fiole_dat);
+      su_FREE(tmp);
+   }
+
+   if((lpep = a_fio_lpool_free) != NIL){
+      a_fio_lpool_free = NIL;
+      goto jredo;
+   }
+   NYD2_OU;
 }
 
 FL char *

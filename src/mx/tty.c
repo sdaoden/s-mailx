@@ -120,6 +120,8 @@ FL boole
 mx_tty_yesorno(char const * volatile prompt, boole noninteract_default)
 {
    n_sighdl_t volatile oint, ohup;
+   uz lsize;
+   char *ldat;
    boole volatile rv;
    int volatile sig;
    NYD_IN;
@@ -142,23 +144,28 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default)
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
+
+   mx_linepool_aquire(&ldat, &lsize);
+
    if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-            &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL
-         ) >= 0){
+            &ldat, &lsize, NIL,NIL) >= 0){
       boole x;
 
-      x = n_boolify(termios_state.ts_linebuf, UZ_MAX, noninteract_default);
+      x = n_boolify(ldat, UZ_MAX, noninteract_default);
       if(x >= FAL0){
          rv = x;
          break;
       }
    }
+
 jrestore:
+   mx_linepool_release(ldat, lsize);
+
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 jleave:
@@ -173,6 +180,8 @@ FL char *
 mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
    n_sighdl_t volatile oint, ohup;
+   uz lsize;
+   char *ldat;
    char * volatile user = NULL;
    int volatile sig;
    NYD_IN;
@@ -182,17 +191,21 @@ mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
+
+   mx_linepool_aquire(&ldat, &lsize);
+
+   if((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL, NULL
-         ) >= 0)
-      user = termios_state.ts_linebuf;
+   if(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
+         &ldat, &lsize, NIL, NIL) >= 0)
+      user = savestr(ldat);
 
 jrestore:
+   mx_linepool_release(ldat, lsize);
+
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 
@@ -205,8 +218,10 @@ jrestore:
 FL char *
 mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
 {
-   n_sighdl_t volatile oint, ohup;
    struct termios tios;
+   n_sighdl_t volatile oint, ohup;
+   uz lsize;
+   char *ldat;
    char * volatile pass;
    int volatile sig;
    NYD_IN;
@@ -231,18 +246,25 @@ mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
+
+   mx_linepool_aquire(&ldat, &lsize);
+
+   if((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-   if (readline_restart(n_stdin, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, 0) >= 0)
-      pass = termios_state.ts_linebuf;
+   if (readline_restart(n_stdin, &ldat, &lsize, 0) >= 0)
+
+   if(readline_restart(n_stdin, &ldat, &lsize, 0) >= 0)
+      pass = savestr(ldat);
+
 jrestore:
    termios_state_reset();
    putc('\n', mx_tty_fp);
+
+   mx_linepool_release(ldat, lsize);
 
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
@@ -1074,7 +1096,7 @@ a_tty_hist_load(void){
       goto jleave;
 
    hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
+   f = fopen(v, "r");
    if(f == NULL){
       int e;
 
@@ -1098,8 +1120,8 @@ a_tty_hist_load(void){
       a_tty.tg_hist_size = 0;
    }
 
-   lbuf = NULL;
-   lsize = 0;
+   mx_linepool_aquire(&lbuf, &lsize);
+
    cnt = (uz)fsize(f);
    version = 0;
 
@@ -1157,8 +1179,7 @@ a_tty_hist_load(void){
       }
    }
 
-   if(lbuf != NULL)
-      n_free(lbuf);
+   mx_linepool_release(lbuf, lsize);
 
    fclose(f);
 jrele:

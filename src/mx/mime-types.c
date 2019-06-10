@@ -168,7 +168,7 @@ static void
 _mt_init(void)
 {
    struct mtnode *tail;
-   char c, *line; /* TODO line pool (below) */
+   char c, *line;
    uz linesize;
    u32 i, j;
    char const *srcs_arr[10], *ccp, **srcs;
@@ -242,20 +242,19 @@ jecontent:
       }
 
    /* Load all file-based sources in the desired order */
-   line = NULL;
-   linesize = 0;
-   for (j = 0, i = (u32)P2UZ(srcs - srcs_arr), srcs = srcs_arr;
+   mx_linepool_aquire(&line, &linesize);
+   for(j = 0, i = S(u32,P2UZ(srcs - srcs_arr)), srcs = srcs_arr;
          i > 0; ++j, ++srcs, --i)
-      if (*srcs == NULL)
+      if(*srcs == NIL)
          continue;
-      else if (!__mt_load_file((j == 0 ? _MT_USR
+      else if(!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
-         if ((n_poption & n_PO_D_V) || j > 1)
+         if((n_poption & n_PO_D_V) || j > 1)
             n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
-   if (line != NULL)
-      n_free(line);
+   mx_linepool_release(line, linesize);
+
 jleave:
    _mt_is_init = TRU1;
    NYD_OU;

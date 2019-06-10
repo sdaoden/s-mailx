@@ -576,9 +576,8 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    enum okay volatile rv;
    NYD_IN;
 
-   line = NULL; /* TODO line pool */
+   mx_linepool_aquire(&line, &linesize);
    saveint = savepipe = SIG_IGN;
-   linesize = 0;
    number = (int)P2UZ(m - message + 1);
    emptyline = 0;
    rv = STOP;
@@ -705,8 +704,7 @@ jretry:
 
    rv = OKAY;
 jleave:
-   if (line != NULL)
-      n_free(line);
+   mx_linepool_release(line, linesize);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)

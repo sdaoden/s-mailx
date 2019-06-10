@@ -34,10 +34,10 @@ VL FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 FL boole mx_tty_yesorno(char const *prompt, boole noninteract_default);
 
 #ifdef mx_HAVE_SOCKETS
-/* Get a password the expected way, a lofi_alloc string on success or NIL */
+/* Get a password the expected way, return autorec string on success or NIL */
 FL char *mx_tty_getuser(char const *query);
 
-/* Get a password the expected way, return lofi_alloc string on success or NIL.
+/* Get a password the expected way, return autorec string on success or NIL.
  * SIGINT is temporarily blocked, *not* reraised */
 FL char *mx_tty_getpass(char const *query);
 #endif

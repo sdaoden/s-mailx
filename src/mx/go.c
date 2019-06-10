@@ -1367,15 +1367,8 @@ n_go_main_loop(void){ /* FIXME */
        * TODO a recursive mainloop object without that cruft should be used!! */
       if(a_go_ctx->gc_inject == su_NIL &&
             !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
-         char *cp;
+         mx_linepool_cleanup();
 
-         /* TODO Note: this buffer may contain a password.  We should redefine
-          * TODO the code flow which has to do that */
-         if ((cp = termios_state.ts_linebuf) != NULL) {
-            termios_state.ts_linebuf = NULL;
-            termios_state.ts_linesize = 0;
-            n_free(cp); /* TODO bag give-back */
-         }
          if (gec.gec_line.l > LINESIZE * 3) {
             n_free(gec.gec_line.s);
             gec.gec_line.s = NULL;
@@ -1383,6 +1376,8 @@ n_go_main_loop(void){ /* FIXME */
          }
 
          if(n_psonce & n_PSO_INTERACTIVE){
+            char *cp;
+
             if ((cp = ok_vlook(newmail)) != NULL) { /* TODO bla */
                struct stat st;
 
