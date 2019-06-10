@@ -51,13 +51,6 @@
 # include <netdb.h>
 #endif
 
-#ifdef mx_HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#ifdef mx_HAVE_SETLOCALE
-# include <locale.h>
-#endif
-
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
@@ -125,47 +118,6 @@ a_aux_pager_get(char const **env_addon){
    }
    NYD_OU;
    return rv;
-}
-
-FL void
-n_locale_init(void){
-   NYD2_IN;
-
-   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
-
-#ifndef mx_HAVE_SETLOCALE
-   n_mb_cur_max = 1;
-#else
-   setlocale(LC_ALL, n_empty);
-   n_mb_cur_max = MB_CUR_MAX;
-# ifdef mx_HAVE_NL_LANGINFO
-   /* C99 */{
-      char const *cp;
-
-      if((cp = nl_langinfo(CODESET)) != NULL)
-         /* (Will log during startup if user set that via -S) */
-         ok_vset(ttycharset, cp);
-   }
-# endif /* mx_HAVE_SETLOCALE */
-
-# ifdef mx_HAVE_C90AMEND1
-   if(n_mb_cur_max > 1){
-#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
-      n_psonce |= n_PSO_UNICODE;
-#  else
-      wchar_t wc;
-      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         n_psonce |= n_PSO_UNICODE;
-      /* Reset possibly messed up state; luckily this also gives us an
-       * indication whether the encoding has locking shift state sequences */
-      if(mbtowc(&wc, NULL, n_mb_cur_max))
-         n_psonce |= n_PSO_ENC_MBSTATE;
-#  endif
-   }
-# endif
-#endif /* mx_HAVE_C90AMEND1 */
-   NYD2_OU;
 }
 
 FL uz

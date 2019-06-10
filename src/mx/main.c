@@ -53,6 +53,7 @@
 #include "mx/names.h"
 #include "mx/termcap.h"
 #include "mx/tty.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"

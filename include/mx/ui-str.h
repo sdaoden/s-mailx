@@ -69,6 +69,9 @@ struct n_visual_info_ctx{
 #endif
 };
 
+/* setlocale(3), *ttycharset* etc. */
+FL void n_locale_init(void);
+
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
  * vicp must be zeroed before first use */

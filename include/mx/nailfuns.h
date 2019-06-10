@@ -266,10 +266,7 @@ FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
  * auxlily.c
  */
 
-/* setlocale(3), *ttycharset* etc. */
-FL void n_locale_init(void);
-
-/* Compute screen size */
+/* Compute *screen* size */
 FL uz n_screensize(void);
 
 /* In n_PSO_INTERACTIVE, we want to go over $PAGER.

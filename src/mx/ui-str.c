@@ -38,6 +38,13 @@
 # include "mx/nail.h"
 #endif
 
+#ifdef mx_HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
+#ifdef mx_HAVE_SETLOCALE
+# include <locale.h>
+#endif
+
 #include <su/cs.h>
 #include <su/utf.h>
 
@@ -130,6 +137,47 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip)
    NYD_OU;
 }
 #endif /* mx_HAVE_NATCH_CHAR */
+
+FL void
+n_locale_init(void){
+   NYD2_IN;
+
+   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
+
+#ifndef mx_HAVE_SETLOCALE
+   n_mb_cur_max = 1;
+#else
+   setlocale(LC_ALL, n_empty);
+   n_mb_cur_max = MB_CUR_MAX;
+# ifdef mx_HAVE_NL_LANGINFO
+   /* C99 */{
+      char const *cp;
+
+      if((cp = nl_langinfo(CODESET)) != NULL)
+         /* (Will log during startup if user set that via -S) */
+         ok_vset(ttycharset, cp);
+   }
+# endif /* mx_HAVE_SETLOCALE */
+
+# ifdef mx_HAVE_C90AMEND1
+   if(n_mb_cur_max > 1){
+#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
+      n_psonce |= n_PSO_UNICODE;
+#  else
+      wchar_t wc;
+      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
+         n_psonce |= n_PSO_UNICODE;
+      /* Reset possibly messed up state; luckily this also gives us an
+       * indication whether the encoding has locking shift state sequences */
+      if(mbtowc(&wc, NULL, n_mb_cur_max))
+         n_psonce |= n_PSO_ENC_MBSTATE;
+#  endif
+   }
+# endif
+#endif /* mx_HAVE_C90AMEND1 */
+   NYD2_OU;
+}
 
 FL boole
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
