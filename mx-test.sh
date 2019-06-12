@@ -7867,10 +7867,22 @@ t__put_body() {
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '
 }
+# }}}
 
-# cc_all_configs()
+# cc_all_configs() {{{
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
+   jobs=
+   if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
+      if command -v nproc >/dev/null 2>&1; then
+         i=`nproc 2>/dev/null`
+         [ $? -eq 0 ] && jobs='-j '${i}
+      else
+         i=`getconf _NPROCESSORS_ONLN`
+         [ $? -eq 0 ] && [ -n "${i}" ] && jobs='-j '${i}
+      fi
+   fi
+
    < ${CONF} ${awk} '
       BEGIN{
          ALWAYS = "OPT_AUTOCC=1 OPT_AMALGAMATION=1"
@@ -7884,7 +7896,6 @@ cc_all_configs() {
          NOTME["OPT_ASAN_MEMORY"] = 1
          NOTME["OPT_FORCED_STACKPROT"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
-         NOTME["OPT_NYD2"] = 1
 
          #OPTVALS
          OPTNO = 0
@@ -8013,7 +8024,7 @@ cc_all_configs() {
          printf 'Skipping after config, nothing changed\n' >&2
          continue
       fi
-      ${SHELL} -c "cd ../ && ${MAKE} build test"
+      ${SHELL} -c "cd ../ && ${MAKE} ${jobs} build test"
    done
    ${rm} -f .ccac.h
    cd .. && ${MAKE} distclean
