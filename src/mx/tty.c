@@ -3130,9 +3130,6 @@ jinput_loop:
                    * TODO with a SysV one, here */
                   n_sighdl_t otstp, ottin, ottou;
 
-                  otstp = n_signal(SIGTSTP, &a_tty_signal);
-                  ottin = n_signal(SIGTTIN, &a_tty_signal);
-                  ottou = n_signal(SIGTTOU, &a_tty_signal);
 # ifdef mx_HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
                   if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
@@ -3140,59 +3137,58 @@ jinput_loop:
                      a_tty_term_rawmode_timeout(tlp, TRU1);
                      flags |= a_TIMEOUT;
                   }
+jread_again:
 # endif
+                  otstp = n_signal(SIGTSTP, &a_tty_signal);
+                  ottin = n_signal(SIGTTIN, &a_tty_signal);
+                  ottou = n_signal(SIGTTOU, &a_tty_signal);
 
-                  while((rv = read(STDIN_FILENO, cbufp, 1)) < 1){
-                     if(rv == -1){
-                        if(su_err_no() == su_ERR_INTR){
-                           if((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
-                                 !a_tty_vi_refresh(tlp))
-                              break;
-                           continue;
-                        }
+                  while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
+                     if(su_err_no() != su_ERR_INTR ||
+                           ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
+                              !a_tty_vi_refresh(tlp)))
                         break;
-                     }
-
-# ifdef mx_HAVE_KEY_BINDINGS
-                     /* Timeout expiration */
-                     if(rv == 0){
-                        ASSERT(flags & a_TIMEOUT);
-                        ASSERT(isp != NULL);
-                        a_tty_term_rawmode_timeout(tlp, FAL0);
-
-                        /* Something "atomic" broke.  Maybe the current one can
-                         * also be terminated already, itself? xxx really? */
-                        if((tbtp = isp->tbtp)->tbt_bind != NULL){
-                           tlp->tl_bind_takeover = wc;
-                           goto jhave_bind;
-                        }
-
-                        /* Or, maybe there is a second path without a timeout;
-                         * this should be covered by .tbt_isseq_trail, but then
-                         * again a single-layer implementation cannot "know" */
-                        for(xtbtp = tbtp;
-                              (xtbtp = xtbtp->tbt_sibling) != NULL;)
-                           if(xtbtp->tbt_char == tbtp->tbt_char){
-                              ASSERT(!xtbtp->tbt_isseq);
-                              break;
-                           }
-                        /* Lay down on read(2)? */
-                        if(xtbtp != NULL)
-                           continue;
-                        goto jtake_over;
-                     }
-# endif /* mx_HAVE_KEY_BINDINGS */
                   }
 
+                  safe_signal(SIGTSTP, otstp);
+                  safe_signal(SIGTTIN, ottin);
+                  safe_signal(SIGTTOU, ottou);
 # ifdef mx_HAVE_KEY_BINDINGS
                   if(flags & a_TIMEOUT)
                      a_tty_term_rawmode_timeout(tlp, FAL0);
 # endif
-                  safe_signal(SIGTSTP, otstp);
-                  safe_signal(SIGTTIN, ottin);
-                  safe_signal(SIGTTOU, ottou);
+
                   if(rv < 0)
                      goto jleave;
+# ifdef mx_HAVE_KEY_BINDINGS
+                  /* Timeout expiration */
+                  else if(rv == 0){
+                     ASSERT(flags & a_TIMEOUT);
+                     ASSERT(isp != NIL);
+
+                     /* Something "atomic" broke.  Maybe the current one can
+                      * also be terminated already, itself? xxx really? */
+                     if((tbtp = isp->tbtp)->tbt_bind != NIL){
+                        tlp->tl_bind_takeover = wc;
+                        goto jhave_bind;
+                     }
+
+                     /* Or, maybe there is a second path without a timeout;
+                      * this should be covered by .tbt_isseq_trail, but then
+                      * again a single-layer implementation cannot "know" */
+                     for(xtbtp = tbtp; (xtbtp = xtbtp->tbt_sibling) != NIL;)
+                        if(xtbtp->tbt_char == tbtp->tbt_char){
+                           ASSERT(!xtbtp->tbt_isseq);
+                           break;
+                        }
+                     /* So -- lay down on a blocking read(2)? */
+                     if(xtbtp != NIL){
+                        flags &= ~a_TIMEOUT;
+                        goto jread_again;
+                     }
+                     goto jtake_over;
+                  }
+# endif /* mx_HAVE_KEY_BINDINGS */
 
                   /* As a special case, simulate EOF via EOT (which can happen
                    * via type-ahead as when typing "yes\n^@" during sleep of
