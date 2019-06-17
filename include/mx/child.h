@@ -72,8 +72,8 @@ struct mx_child_ctx{
 #define mx_CHILD_FD_PASS (-1)
 #define mx_CHILD_FD_NULL (-2)
 
-/* For program startup: initialize our "process manager" */
-EXPORT void mx_child_manager_start(void);
+/* At program startup: initialize controller (panic on failure) */
+EXPORT void mx_child_controller_setup(void);
 
 /* Initialize (zero out etc.).  The .cc_fds are set to CHILD_FD_PASS */
 EXPORT void mx_child_ctx_setup(struct mx_child_ctx *ccp);

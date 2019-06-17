@@ -45,7 +45,6 @@
 
 #include <su/avopt.h>
 #include <su/cs.h>
-#include <su/icodec.h>
 #include <su/mem.h>
 
 #include "mx/iconv.h"
@@ -95,16 +94,6 @@ static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
 /* Setup some variables which we require to be valid / verified */
 static void a_main_setup_vars(void);
 
-/* We're in an interactive session - compute what the screen size for printing
- * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
- * We use the following algorithm for the height:
- * If baud rate < 1200, use  9
- * If baud rate = 1200, use 14
- * If baud rate > 1200, use VAL_HEIGHT or ws_row
- * Width is either VAL_WIDTH or ws_col */
-su_SINLINE void a_main_setup_screen(void);
-static void a_main__scrsz(int is_sighdl);
-
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
 static int a_main_rcv_mode(boole had_A_arg, char const *folder,
@@ -137,19 +126,6 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#if su_DVLOR(1, 0)
-   safe_signal(SIGABRT, &mx__nyd_oncrash);
-# ifdef SIGBUS
-   safe_signal(SIGBUS, &mx__nyd_oncrash);
-# endif
-   safe_signal(SIGFPE, &mx__nyd_oncrash);
-   safe_signal(SIGILL, &mx__nyd_oncrash);
-   safe_signal(SIGSEGV, &mx__nyd_oncrash);
-#endif
-
-   /* Initialize our input, loop and command machinery */
-   n_go_init();
-
    /* Set up a reasonable environment */
 
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
@@ -167,15 +143,30 @@ a_main_startup(void){
    if(isatty(STDOUT_FILENO))
       n_psonce |= n_PSO_TTYOUT;
    if((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) ==
-         (n_PSO_TTYIN | n_PSO_TTYOUT)){
+         (n_PSO_TTYIN | n_PSO_TTYOUT))
       n_psonce |= n_PSO_INTERACTIVE;
-      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-   }
 
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    if(mx_tty_fp == NIL)
       mx_tty_fp = n_stdout;
+
+   /* Now that the basic I/O is accessible, initialize our main machinery,
+    * input, loop, child, termios, whatever */
+   n_go_init();
+
+   if(n_psonce & n_PSO_INTERACTIVE)
+      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+
+#if su_DVLOR(1, 0)
+   safe_signal(SIGABRT, &mx__nyd_oncrash);
+# ifdef SIGBUS
+   safe_signal(SIGBUS, &mx__nyd_oncrash);
+# endif
+   safe_signal(SIGFPE, &mx__nyd_oncrash);
+   safe_signal(SIGILL, &mx__nyd_oncrash);
+   safe_signal(SIGSEGV, &mx__nyd_oncrash);
+#endif
 
    /*  --  >8  --  8<  --  */
 
@@ -274,91 +265,11 @@ a_main_setup_vars(void){
       cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
-   NYD2_OU;
-}
 
-su_SINLINE void
-a_main_setup_screen(void){
-   NYD2_IN;
 
-   if(!su_state_has(su_STATE_REPRODUCIBLE) &&
-         ((n_psonce & n_PSO_INTERACTIVE) ||
-            ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
-            (n_poption & n_PO_BATCH_FLAG)))){
-      a_main__scrsz(FAL0);
-      if(n_psonce & n_PSO_INTERACTIVE){
-         /* XXX Yet WINCH after SIGWINCH/SIGCONT, but see POSIX TOSTOP flag */
-#ifdef SIGWINCH
-# ifndef TTY_WANTS_SIGWINCH
-         if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
-# endif
-            safe_signal(SIGWINCH, &a_main__scrsz);
-#endif
-#ifdef SIGCONT
-         safe_signal(SIGCONT, &a_main__scrsz);
-#endif
-      }
-   }else
-      /* $COLUMNS and $LINES defaults as documented in the manual */
-      n_scrnheight = n_realscreenheight = mx_TERMIOS_DEFAULT_HEIGHT,
-      n_scrnwidth = mx_TERMIOS_DEFAULT_WIDTH;
-   NYD2_OU;
-}
+   /* Finally set our terminal dimension */
+   mx_termios_controller_setup(mx_TERMIOS_SETUP_TERMSIZE);
 
-static void
-a_main__scrsz(int is_sighdl){
-   struct mx_termios_dimension tiosd;
-   NYD2_IN;
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
-
-   n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
-
-   /* (Also) POSIX: LINES and COLUMNS always override.  Adjust this
-    * a little bit to be able to honour resizes during our lifetime and
-    * only honour it upon first run; abuse *is_sighdl* as an indicator */
-   if(!is_sighdl){
-      char const *cp;
-      boole hadl, hadc;
-
-      if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
-         su_idec_u32_cp(&n_scrnheight, cp, 0, NULL);
-         n_realscreenheight = n_scrnheight;
-      }
-      if((hadc = ((cp = ok_vlook(COLUMNS)) != NULL)))
-         su_idec_u32_cp(&n_scrnwidth, cp, 0, NULL);
-
-      if(n_scrnwidth != 0 && n_scrnheight != 0)
-         goto jleave;
-
-      /* In non-interactive mode, stop now, except for the documented case that
-       * both are set but not both have been usable */
-      if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc)){
-         n_scrnheight = n_realscreenheight = mx_TERMIOS_DEFAULT_HEIGHT;
-         n_scrnwidth = mx_TERMIOS_DEFAULT_WIDTH;
-         goto jleave;
-      }
-   }
-
-   mx_termios_dimension_lookup(&tiosd);
-
-   if(n_scrnheight == 0){
-      n_scrnheight = tiosd.tiosd_height;
-      n_realscreenheight = tiosd.tiosd_real_height;
-   }
-   if(n_scrnwidth == 0)
-      n_scrnwidth = tiosd.tiosd_width;
-
-   /**/
-   n_pstate |= n_PS_SIGWINCH_PEND;
-jleave:
-   /* Note: for the first invocation this will always trigger.
-    * If we have termcap support then main() will undo this if FULLWIDTH is set
-    * after termcap is initialized.
-    * We had to evaluate screen size now since cmds may run pre-termcap ... */
-/*#ifdef mx_HAVE_TERMCAP*/
-   if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-      --n_scrnwidth;
-/*#endif*/
    NYD2_OU;
 }
 
@@ -1108,7 +1019,6 @@ jgetopt_done:
    n_psonce |= n_PSO_STARTED_GETOPT;
 
    a_main_setup_vars();
-   a_main_setup_screen();
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
    su_mem_bag_fixate(n_go_data->gdc_membag);
@@ -1177,9 +1087,11 @@ je_expandargv:
 #ifdef mx_HAVE_TCAP
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
       mx_termcap_init();
-      /* Undo the decrement from a_main__scrsz()s first invocation */
-      if(n_scrnwidth > 0 && (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-         ++n_scrnwidth;
+      /* Since termcap was not initialized when we did TERMIOS_SETUP_TERMSIZE
+       * we need/should adjust the found setting to reality */
+      if(mx_termios_dimen.tiosd_width > 0 &&
+            (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
+         ++mx_termios_dimen.tiosd_width;
    }
 #endif
 

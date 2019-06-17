@@ -125,7 +125,7 @@ a_child__sigchld(int signo){
 }
 
 void
-mx_child_manager_start(void){
+mx_child_controller_setup(void){
    struct sigaction nact, oact;
    NYD_IN;
 
@@ -138,7 +138,7 @@ mx_child_manager_start(void){
          ;
 
    if(sigaction(SIGCHLD, &nact, &oact) != 0)
-      n_panic(_("Cannot install signal handler for child process management"));
+      n_panic(_("Cannot install signal handler for child process controller"));
    NYD_OU;
 }
 

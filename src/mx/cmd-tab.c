@@ -61,6 +61,7 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/shortcut.h"
+#include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/vexpr.h"
 
@@ -249,7 +250,7 @@ a_ctab_c_list(void *vp){
             mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
-   scrwid = n_SCRNWIDTH_FOR_LISTS;
+   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
 
    fprintf(fp, _("Commands are:\n"));
    l = 1;

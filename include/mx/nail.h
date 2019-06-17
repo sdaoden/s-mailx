@@ -1808,9 +1808,6 @@ VL FILE *n_stderr;
 VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
 
 VL u32 n_mb_cur_max; /* Value of MB_CUR_MAX */
-VL u32 n_realscreenheight; /* The real screen height */
-VL u32 n_scrnwidth; /* Screen width/guess; also n_SCRNWIDTH_LIST */
-VL u32 n_scrnheight; /* Screen height/guess (for header summary+) */
 
 VL gid_t n_group_id; /* getgid() and getuid() */
 VL uid_t n_user_id;

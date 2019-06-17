@@ -130,11 +130,6 @@
 /* How much spaces a <tab> counts when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
 
-/* For long iterative output, like `list', tabulator-completion, etc.,
- * determine the screen width that should be used */
-#define n_SCRNWIDTH_FOR_LISTS \
-   ((uz)n_scrnwidth - ((uz)n_scrnwidth >> 3))
-
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
 

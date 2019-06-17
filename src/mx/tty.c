@@ -1607,7 +1607,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    /* XXX We don't have a OnTerminalResize event (see main.c) yet, so we need
     * XXX to reevaluate our circumstances over and over again */
    /* Don't display prompt or position indicator on very small screens */
-   if((phy_wid_base = (u32)n_scrnwidth) <= a_TTY_WIDTH_RIPOFF)
+   if((phy_wid_base = mx_termios_dimen.tiosd_width) <= a_TTY_WIDTH_RIPOFF)
       f &= ~(a_HAVE_PROMPT | a_HAVE_POSITION);
    else{
       phy_wid_base -= a_TTY_WIDTH_RIPOFF;
@@ -2195,7 +2195,7 @@ a_tty_kgoscr(struct a_tty_line *tlp, s32 dir){
    u32 sw, i, cur, f, cnt;
    NYD2_IN;
 
-   if((sw = (u32)n_scrnwidth) > 2)
+   if((sw = mx_termios_dimen.tiosd_width) > 2)
       sw -= 2;
    if(sw > (i = tlp->tl_prompt_width))
       sw -= i;
@@ -2556,7 +2556,7 @@ jmulti:{
             locolen + (locolen >> 1));
 
       /* Iterate (once again) over all results */
-      scrwid = n_SCRNWIDTH_FOR_LISTS;
+      scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
       lnlen = lncnt = 0;
       UNINIT(prefixlen, 0);
       UNINIT(lococp, NULL);

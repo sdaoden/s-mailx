@@ -255,9 +255,9 @@ a_go_update_pstate(void){
    if(act){
       char buf[32];
 
-      snprintf(buf, sizeof buf, "%u", S(unsigned,n_scrnwidth));
+      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_width);
       ok_vset(COLUMNS, buf);
-      snprintf(buf, sizeof buf, "%u", S(unsigned,n_scrnheight));
+      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_height);
       ok_vset(LINES, buf);
    }
    NYD_OU;
@@ -1333,7 +1333,8 @@ n_go_init(void){
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
 
-   mx_child_manager_start();
+   mx_termios_controller_setup(mx_TERMIOS_SETUP_STARTUP);
+   mx_child_controller_setup();
    NYD2_OU;
 }
 

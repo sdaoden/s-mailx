@@ -46,6 +46,7 @@
 
 #include "mx/colour.h"
 #include "mx/file-streams.h"
+#include "mx/termios.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -142,7 +143,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
                ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
-               : (uz)n_realscreenheight)){
+               : S(uz,mx_termios_dimen.tiosd_real_height))){
          if((obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }

@@ -28,6 +28,8 @@
 #include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/termios.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -324,7 +326,7 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
    i = fprintf(n_stdout, "headerpick %s %s",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
       (retain ? "retain" : "ignore"));
-   sw = n_scrnwidth;
+   sw = mx_termios_dimen.tiosd_width;
 
    for(ap = ring; *ap != NULL; ++ap){
       /* These fields are all ASCII, no visual width needed */

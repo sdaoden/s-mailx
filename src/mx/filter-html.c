@@ -43,6 +43,8 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/termios.h"
+
 #include "mx/filter-html.h"
 /* TODO fake */
 #include "su/code-in.h"
@@ -275,7 +277,7 @@ _hf_dump_hrefs(struct htmlflt *self)
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
-   self->hf_href_dist = (u32)n_realscreenheight >> 1;
+   self->hf_href_dist = mx_termios_dimen.tiosd_real_height >> 1;
 jleave:
    NYD2_OU;
    return self;
@@ -1229,7 +1231,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    su_mem_set(self, 0, sizeof *self);
 
    if (f != NULL) {
-      u32 sw = MAX(_HF_MINLEN, (u32)n_scrnwidth);
+      u32 sw = MAX(_HF_MINLEN, mx_termios_dimen.tiosd_width);
 
       self->hf_line = n_alloc((uz)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;

@@ -71,6 +71,7 @@
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/filetype.h"
+#include "mx/termios.h"
 #include "mx/tty.h"
 
 #ifdef mx_HAVE_IDNA
@@ -127,12 +128,12 @@ n_screensize(void){
    uz rv;
    NYD2_IN;
 
-   if((cp = ok_vlook(screen)) != NULL){
-      su_idec_uz_cp(&rv, cp, 0, NULL);
+   if((cp = ok_vlook(screen)) != NIL){
+      su_idec_uz_cp(&rv, cp, 0, NIL);
       if(rv == 0)
-         rv = n_scrnheight;
+         rv = mx_termios_dimen.tiosd_height;
    }else
-      rv = n_scrnheight;
+      rv = mx_termios_dimen.tiosd_height;
 
    if(rv > 2)
       rv -= 2;
@@ -181,7 +182,7 @@ page_or_print(FILE *fp, uz lines)
       uz rows;
 
       if(*cp == '\0')
-         rows = (uz)n_scrnheight;
+         rows = mx_termios_dimen.tiosd_height;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
       /* Avoid overflow later on */

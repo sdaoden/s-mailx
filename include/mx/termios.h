@@ -24,9 +24,14 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+enum mx_termios_setup{
+   mx_TERMIOS_SETUP_STARTUP,
+   mx_TERMIOS_SETUP_TERMSIZE
+};
+
 enum mx_termios_cmd{
-   mx_TERMIOS_CMD_QUERY, /* Query status, assume that is "norm"al */
    mx_TERMIOS_CMD_NORMAL, /* Set "norm"al canonical state (as necessary) */
+   mx_TERMIOS_CMD_QUERY, /* Query status, assume that is "norm"al */
    mx_TERMIOS_CMD_PASSWORD, /* Set password input mode */
    mx_TERMIOS_CMD_RAW, /* Set raw mode, use by-byte input */
    mx_TERMIOS_CMD_RAW_TIMEOUT /* Set raw mode, use (the given) timeout */
@@ -41,22 +46,16 @@ struct mx_termios_dimension{
    su_64( u8 tiosd__pad[4]; )
 };
 
-/* Problem: VAL_ configuration values are strings, we need numbers */
-#define mx_TERMIOS_DEFAULT_HEIGHT \
-   (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
-   : (VAL_HEIGHT[2] == '\0' \
-      ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
-      : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
-         (VAL_HEIGHT[2] - '0'))))
-#define mx_TERMIOS_DEFAULT_WIDTH \
-   (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
-   : (VAL_WIDTH[2] == '\0' \
-      ? ((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) \
-      : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
-         (VAL_WIDTH[2] - '0'))))
+/* */
+EXPORT_DATA struct mx_termios_dimension mx_termios_dimen;
 
-/* For _RAW and _RAW_TIMEOUT a1 describes VMIN and VTIME, respectively */
-EXPORT boole mx_termios_cmd(enum mx_termios_cmd cmd, uz a1);
+/* For long iterative output, like `list', tabulator-completion, etc.,
+ * determine the screen width that should be used */
+#define mx_TERMIOS_WIDTH_OF_LISTS() \
+   (mx_termios_dimen.tiosd_width - (mx_termios_dimen.tiosd_width >> 3))
+
+/* Panics on failure */
+EXPORT void mx_termios_controller_setup(enum mx_termios_setup what);
 
 /* For _RAW and _RAW_TIMEOUT a1 describes VMIN and VTIME, respectively */
 EXPORT boole mx_termios_cmd(enum mx_termios_cmd cmd, uz a1);
