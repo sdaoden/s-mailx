@@ -326,7 +326,7 @@ _qf_state_data(struct qf_vc *vc)
 }
 #endif /* mx_HAVE_FILTER_QUOTE_FOLD */
 
-FL struct quoteflt *
+struct quoteflt *
 quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 {
    static struct quoteflt qf_i;
@@ -335,7 +335,7 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
    return &qf_i;
 }
 
-FL void
+void
 quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
 {
 #ifdef mx_HAVE_FILTER_QUOTE_FOLD
@@ -388,7 +388,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
    NYD_OU;
 }
 
-FL void
+void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
    NYD_IN;
@@ -396,7 +396,7 @@ quoteflt_destroy(struct quoteflt *self) /* xxx inline */
    NYD_OU;
 }
 
-FL void
+void
 quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
    NYD_IN;
@@ -410,7 +410,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
    NYD_OU;
 }
 
-FL sz
+sz
 quoteflt_push(struct quoteflt *self, char const *dat, uz len)
 {
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
@@ -515,7 +515,7 @@ jerr:
    goto jleave;
 }
 
-FL sz
+sz
 quoteflt_flush(struct quoteflt *self)
 {
    sz rv = 0;

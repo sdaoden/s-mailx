@@ -293,7 +293,7 @@ jesubstring_len:
    NYD2_OU;
 }
 
-FL int
+int
 c_csop(void *vp){
    struct a_csop_ctx csc;
    char const *cp;

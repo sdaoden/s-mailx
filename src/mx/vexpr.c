@@ -764,7 +764,7 @@ a_vexpr__regex_replace(void *uservp){
 }
 #endif /* mx_HAVE_REGEX */
 
-FL int
+int
 c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
    struct a_vexpr_ctx vc;
    char const *cp;

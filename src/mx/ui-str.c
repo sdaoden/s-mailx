@@ -138,7 +138,7 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip)
 }
 #endif /* mx_HAVE_NATCH_CHAR */
 
-FL void
+void
 n_locale_init(void){
    NYD2_IN;
 
@@ -179,7 +179,7 @@ n_locale_init(void){
    NYD2_OU;
 }
 
-FL boole
+boole
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
@@ -289,7 +289,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    return rv;
 }
 
-FL uz
+uz
 field_detect_clip(uz maxlen, char const *buf, uz blen)/*TODO mbrtowc()*/
 {
    uz rv;
@@ -314,7 +314,7 @@ field_detect_clip(uz maxlen, char const *buf, uz blen)/*TODO mbrtowc()*/
    return rv;
 }
 
-FL char *
+char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_nil)
 {
    n_NATCH_CHAR( struct a_uis_bidi_info bi; )
@@ -429,7 +429,7 @@ jnobidi:
    return nb;
 }
 
-FL void
+void
 makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
 {
    /* TODO: makeprint() should honour *ttycharset*.  This of course does not
@@ -518,7 +518,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    NYD_OU;
 }
 
-FL uz
+uz
 delctrl(char *cp, uz len)
 {
    uz x, y;
@@ -532,7 +532,7 @@ delctrl(char *cp, uz len)
    return y;
 }
 
-FL char *
+char *
 prstr(char const *s)
 {
    struct str in, out;
@@ -548,7 +548,7 @@ prstr(char const *s)
    return rp;
 }
 
-FL int
+int
 prout(char const *s, uz size, FILE *fp)
 {
    struct str in, out;

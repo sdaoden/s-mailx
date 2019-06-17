@@ -45,6 +45,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/termios.h"
 #include "mx/tty.h"
 
 /* TODO fake */
@@ -624,7 +625,7 @@ a_termcap_enum_for_name(char const *name, uz nlen, s32 min, s32 max){
    return rv;
 }
 
-FL void
+void
 mx_termcap_init(void){
    struct mx_termcap_value tv;
    struct str termvar;
@@ -685,7 +686,7 @@ mx_termcap_init(void){
    NYD_OU;
 }
 
-FL void
+void
 mx_termcap_destroy(void){
    NYD_IN;
    ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
@@ -710,7 +711,7 @@ mx_termcap_destroy(void){
 }
 
 #ifdef mx_HAVE_TERMCAP
-FL void
+void
 mx_termcap_resume(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
@@ -722,7 +723,7 @@ mx_termcap_resume(boole complete){
    NYD_OU;
 }
 
-FL void
+void
 mx_termcap_suspend(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
@@ -735,7 +736,7 @@ mx_termcap_suspend(boole complete){
 }
 #endif /* mx_HAVE_TERMCAP */
 
-FL sz
+sz
 mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
    /* Commands are not lazy queried */
    struct a_termcap_ent const *tep;
@@ -826,7 +827,7 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
          if(a1 > 0)
             --a1;
          if((rv = mx_termcap_cmd(mx_TERMCAP_CMD_ch, a1, 0)) > 0){
-            for(a2 = n_scrnwidth - a1 - 1; a2 > 0; --a2)
+            for(a2 = mx_termios_dimen.tiosd_width - a1 - 1; a2 > 0; --a2)
                if(putc(' ', mx_tty_fp) == EOF){
                   rv = FAL0;
                   break;
@@ -863,7 +864,7 @@ jleave:
    return rv;
 }
 
-FL boole
+boole
 mx_termcap_query(enum mx_termcap_query query, struct mx_termcap_value *tvp){
    /* Queries are lazy queried upon request */
    /* XXX mx_termcap_query(): boole handling suboptimal, tvp used on success */
@@ -945,7 +946,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_KEY_BINDINGS
-FL s32
+s32
 mx_termcap_query_for_name(char const *name, enum mx_termcap_captype type){
    s32 rv;
    NYD2_IN;
@@ -963,7 +964,7 @@ mx_termcap_query_for_name(char const *name, enum mx_termcap_captype type){
    return rv;
 }
 
-FL char const *
+char const *
 mx_termcap_name_of_query(enum mx_termcap_query query){
    char const *rv;
    NYD2_IN;

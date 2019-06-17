@@ -24,6 +24,7 @@
 
 #include <mx/names.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* Expand all names from *npp which are still of type mx_NAME_ADDRSPEC_ISNAME,
@@ -33,7 +34,7 @@
  * ERR_DESTADDRREQ is returned instead of ERR_NONE if after expansion ISNAME
  * entries still remain in *npp.
  * The result may contain duplicates */
-s32 mx_mta_aliases_expand(struct mx_name **npp);
+EXPORT s32 mx_mta_aliases_expand(struct mx_name **npp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_MTA_ALIASES */

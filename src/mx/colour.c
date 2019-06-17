@@ -794,7 +794,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_colour(void *v){
    int rv;
    NYD_IN;
@@ -804,7 +804,7 @@ c_colour(void *v){
    return rv;
 }
 
-FL int
+int
 c_uncolour(void *v){
    int rv;
    NYD_IN;
@@ -814,7 +814,7 @@ c_uncolour(void *v){
    return rv;
 }
 
-FL void
+void
 mx_colour_stack_del(struct n_go_data_ctx *gdcp){
    struct mx_colour_env *vp, *cep;
    NYD_IN;
@@ -839,7 +839,7 @@ mx_colour_stack_del(struct n_go_data_ctx *gdcp){
    NYD_OU;
 }
 
-FL void
+void
 mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp, boole pager_used){
    struct mx_colour_env *cep;
    NYD_IN;
@@ -893,7 +893,7 @@ jleave:
    NYD_OU;
 }
 
-FL void
+void
 mx_colour_env_gut(void){
    struct mx_colour_env *cep;
    NYD_IN;
@@ -919,7 +919,7 @@ jleave:
    NYD_OU;
 }
 
-FL void
+void
 mx_colour_put(enum mx_colour_id cid, char const *ctag){
    NYD_IN;
    if(mx_COLOUR_IS_ACTIVE()){
@@ -938,7 +938,7 @@ mx_colour_put(enum mx_colour_id cid, char const *ctag){
    NYD_OU;
 }
 
-FL void
+void
 mx_colour_reset(void){
    NYD_IN;
    if(mx_COLOUR_IS_ACTIVE()){
@@ -955,7 +955,7 @@ mx_colour_reset(void){
    NYD_OU;
 }
 
-FL struct str const *
+struct str const *
 mx_colour_reset_to_str(void){
    struct str *rv;
    NYD_IN;
@@ -968,7 +968,7 @@ mx_colour_reset_to_str(void){
    return rv;
 }
 
-FL struct mx_colour_pen *
+struct mx_colour_pen *
 mx_colour_pen_create(enum mx_colour_id cid, char const *ctag){
    struct a_colour_map *cmp;
    struct mx_colour_pen *rv;
@@ -987,7 +987,7 @@ mx_colour_pen_create(enum mx_colour_id cid, char const *ctag){
    return rv;
 }
 
-FL void
+void
 mx_colour_pen_put(struct mx_colour_pen *self){
    NYD_IN;
    if(mx_COLOUR_IS_ACTIVE()){
@@ -1010,7 +1010,7 @@ mx_colour_pen_put(struct mx_colour_pen *self){
    NYD_OU;
 }
 
-FL struct str const *
+struct str const *
 mx_colour_pen_to_str(struct mx_colour_pen *self){
    struct str *rv;
    NYD_IN;

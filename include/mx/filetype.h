@@ -21,6 +21,7 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 struct mx_filetype{
@@ -33,18 +34,20 @@ struct mx_filetype{
 };
 
 /* `(un)?filetype' */
-FL int c_filetype(void *vp);
-FL int c_unfiletype(void *vp);
+EXPORT int c_filetype(void *vp);
+EXPORT int c_unfiletype(void *vp);
 
 /* Whether the non-existing file has a handable "equivalent", to be checked by
  * iterating over all established extensions and trying the resulting
  * concatenated filename; a set res_or_nil will be filled on success (data must
  * be copied out) */
-FL boole mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file);
+EXPORT boole mx_filetype_trial(struct mx_filetype *res_or_nil,
+      char const *file);
 
 /* Whether (the extension of) file is known; a set res_or_nil will be filled
  * on success (data must be copied out) */
-FL boole mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file);
+EXPORT boole mx_filetype_exists(struct mx_filetype *res_or_nil,
+      char const *file);
 
 #include <su/code-ou.h>
 #endif /* mx_FILETYPE_H */

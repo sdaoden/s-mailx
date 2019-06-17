@@ -316,7 +316,7 @@ jleave:
    return rv;
 }
 
-FL FILE *
+FILE *
 mx_fs_open(char const *file, char const *oflags){
    int osflags, fd;
    char const *moflags;
@@ -344,7 +344,7 @@ jleave:
    return fp;
 }
 
-FL FILE *
+FILE *
 mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       enum mx_fs_open_state *fs_or_nil){ /* TODO as bits, return state */
    /* TODO Support file locking upon open time */
@@ -490,7 +490,7 @@ jleave:
    return rv;
 }
 
-FL FILE *
+FILE *
 mx_fs_tmp_open(char const *namehint, u32 oflags,
       struct mx_fs_tmp_ctx **fstcp_or_nil){
    /* The 8 is arbitrary but leaves room for a six character suffix (the
@@ -673,7 +673,7 @@ jfree:
    goto jleave;
 }
 
-FL void
+void
 mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
    union {void *vp; struct a_fs_ent *fsep;} u;
    NYD_IN;
@@ -692,7 +692,7 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
    NYD_OU;
 }
 
-FL FILE *
+FILE *
 mx_fs_fd_open(sz fd, char const *oflags, boole nocloexec){
    FILE *fp;
    int osflags;
@@ -719,7 +719,7 @@ mx_fs_fd_cloexec_set(sz fd){
    NYD2_OU;
 }
 
-FL boole
+boole
 mx_fs_close(FILE *fp){
    boole rv;
    NYD_IN;
@@ -729,7 +729,7 @@ mx_fs_close(FILE *fp){
    return rv;
 }
 
-FL boole
+boole
 mx_fs_pipe_cloexec(sz fd[2]){
    int xfd[2];
    boole rv;
@@ -757,7 +757,7 @@ mx_fs_pipe_cloexec(sz fd[2]){
    return rv;
 }
 
-FL FILE *
+FILE *
 mx_fs_pipe_open(char const *cmd, char const *mode, char const *sh,
       char const **env_addon, int newfd1){
    struct mx_child_ctx cc;
@@ -865,7 +865,7 @@ jleave:
    return rv;
 }
 
-FL s32
+s32
 mx_fs_pipe_signal(FILE *fp, s32 sig){
    s32 rv;
    struct a_fs_ent *fsep;
@@ -884,7 +884,7 @@ mx_fs_pipe_signal(FILE *fp, s32 sig){
    return rv;
 }
 
-FL boole
+boole
 mx_fs_pipe_close(FILE *ptr, boole dowait){
    n_sighdl_t opipe;
    struct mx_child_ctx cc;
@@ -921,7 +921,7 @@ jleave:
    return rv;
 }
 
-FL void
+void
 mx_fs_close_all(void){
    NYD_IN;
    while(a_fs_fp_head != NIL)

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ iconv(3) interface.
+ *@ Implementation of iconv.h.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -49,7 +49,12 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-FL char *
+#ifdef mx_HAVE_ICONV
+s32 n_iconv_err_no; /* TODO HACK: part of CTX to not get lost */
+iconv_t iconvd;
+#endif
+
+char *
 n_iconv_normalize_name(char const *cset){
    char *cp, c, *tcp, tc;
    boole any;
@@ -85,7 +90,7 @@ jleave:
    return n_UNCONST(cset);
 }
 
-FL boole
+boole
 n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    /* In reversed MIME preference order */
    static char const * const names[] = {"csASCII", "cp367", "IBM367", "us",
@@ -104,7 +109,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
 }
 
 #ifdef mx_HAVE_ICONV
-FL iconv_t
+iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
    NYD_IN;
@@ -127,7 +132,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
    return id;
 }
 
-FL void
+void
 n_iconv_close(iconv_t cd){
    NYD_IN;
    iconv_close(cd);
@@ -136,7 +141,7 @@ n_iconv_close(iconv_t cd){
    NYD_OU;
 }
 
-FL void
+void
 n_iconv_reset(iconv_t cd){
    NYD_IN;
    iconv(cd, NULL, NULL, NULL, NULL);
@@ -163,7 +168,7 @@ n_iconv_reset(iconv_t cd){
 #  define __INBCAST(S)  (char **)n_UNCONST(S)
 # endif
 
-FL int
+int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    char const **inb, uz *inbleft, char **outb, uz *outbleft){
    int err;
@@ -221,7 +226,7 @@ jleave:
 }
 # undef __INBCAST
 
-FL int
+int
 n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       struct str *out, struct str const *in, struct str *in_rest_or_null){
    struct n_string s_b, *s;
@@ -288,7 +293,7 @@ j_leave:
    return err;
 }
 
-FL char *
+char *
 n_iconv_onetime_cp(enum n_iconv_flags icf,
       char const *tocode, char const *fromcode, char const *input){
    struct str out, in;

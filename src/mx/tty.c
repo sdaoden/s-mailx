@@ -60,6 +60,8 @@ static n_sighdl_t a_tty_oint, a_tty_oquit, a_tty_oterm,
    a_tty_otstp, a_tty_ottin, a_tty_ottou;
 #endif
 
+FILE *mx_tty_fp; /* Our terminal output TODO input channel */
+
 #ifdef a_TTY_SIGNALS
 /**/
 static void a_tty_sigs_up(void), a_tty_sigs_down(void);
@@ -116,7 +118,7 @@ a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
    siglongjmp(a_tty__actjmp, s);
 }
 
-FL boole
+boole
 mx_tty_yesorno(char const * volatile prompt, boole noninteract_default)
 {
    n_sighdl_t volatile oint, ohup;
@@ -176,7 +178,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_SOCKETS
-FL char *
+char *
 mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
    n_sighdl_t volatile oint, ohup;
@@ -215,7 +217,7 @@ jrestore:
    return user;
 }
 
-FL char *
+char *
 mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
 {
    struct termios tios;
@@ -276,7 +278,7 @@ j_leave:
 }
 #endif /* mx_HAVE_SOCKETS */
 
-FL u32
+u32
 mx_tty_create_prompt(struct n_string *store, char const *xprompt,
       enum n_go_input_flags gif){
    struct n_visual_info_ctx vic;
@@ -4218,7 +4220,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-FL void
+void
 mx_tty_init(void){
    NYD_IN;
 
@@ -4292,7 +4294,7 @@ jleave:
    NYD_OU;
 }
 
-FL void
+void
 mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
 
@@ -4319,7 +4321,7 @@ jleave:
    NYD_OU;
 }
 
-FL int
+int
 (mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
@@ -4439,7 +4441,7 @@ FL int
    return (int)nn;
 }
 
-FL void
+void
 mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);
@@ -4471,7 +4473,7 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
 }
 
 # ifdef mx_HAVE_HISTORY
-FL int
+int
 c_history(void *v){
    sz entry;
    struct a_tty_hist *thp;
@@ -4603,7 +4605,7 @@ jentry:{
 # endif /* mx_HAVE_HISTORY */
 
 # ifdef mx_HAVE_KEY_BINDINGS
-FL int
+int
 c_bind(void *v){
    /* TODO `bind': since empty expansions are forbidden it would be nice to
     * TODO be able to say "bind base a,b,c" and see the expansion of only
@@ -4738,7 +4740,7 @@ jleave:
    return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
 }
 
-FL int
+int
 c_unbind(void *v){
    struct a_tty_bind_parse_ctx tbpc;
    struct a_tty_bind_ctx *tbcp;
@@ -4827,13 +4829,13 @@ a_tty_signal(int sig){
 # endif /* a_TTY_SIGNALS */
 
 # if 0
-FL void
+void
 mx_tty_init(void){
    NYD_IN;
    NYD_OU;
 }
 
-FL void
+void
 mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
    UNUSED(xit_fastpath);
@@ -4841,7 +4843,7 @@ mx_tty_destroy(boole xit_fastpath){
 }
 # endif /* 0 */
 
-FL int
+int
 (mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
@@ -4870,7 +4872,7 @@ FL int
    return rv;
 }
 
-FL void
+void
 mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);

@@ -1153,7 +1153,7 @@ __hf_onpipe(int signo)
    __hf_hadpipesig = TRU1;
 }
 
-FL int
+int
 htmlflt_process_main(void)
 {
    char buf[BUFFER_SIZE];
@@ -1192,7 +1192,7 @@ htmlflt_process_main(void)
    return rv;
 }
 
-FL void
+void
 htmlflt_init(struct htmlflt *self)
 {
    NYD_IN;
@@ -1201,7 +1201,7 @@ htmlflt_init(struct htmlflt *self)
    NYD_OU;
 }
 
-FL void
+void
 htmlflt_destroy(struct htmlflt *self)
 {
    NYD_IN;
@@ -1209,7 +1209,7 @@ htmlflt_destroy(struct htmlflt *self)
    NYD_OU;
 }
 
-FL void
+void
 htmlflt_reset(struct htmlflt *self, FILE *f)
 {
    struct htmlflt_href *hfhp;
@@ -1240,7 +1240,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    NYD_OU;
 }
 
-FL sz
+sz
 htmlflt_push(struct htmlflt *self, char const *dat, uz len)
 {
    sz rv;
@@ -1251,7 +1251,7 @@ htmlflt_push(struct htmlflt *self, char const *dat, uz len)
    return rv;
 }
 
-FL sz
+sz
 htmlflt_flush(struct htmlflt *self)
 {
    sz rv;

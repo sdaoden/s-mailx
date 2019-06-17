@@ -22,10 +22,11 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_CMD_CSOP
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* `csop' */
-FL int c_csop(void *vp);
+EXPORT int c_csop(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_CSOP */

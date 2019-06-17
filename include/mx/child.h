@@ -21,6 +21,7 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* */
@@ -72,10 +73,10 @@ struct mx_child_ctx{
 #define mx_CHILD_FD_NULL (-2)
 
 /* For program startup: initialize our "process manager" */
-FL void mx_child_manager_start(void);
+EXPORT void mx_child_manager_start(void);
 
 /* Initialize (zero out etc.).  The .cc_fds are set to CHILD_FD_PASS */
-FL void mx_child_ctx_setup(struct mx_child_ctx *ccp);
+EXPORT void mx_child_ctx_setup(struct mx_child_ctx *ccp);
 
 /* Start and run a command, with optional arguments and splicing of stdin and
  * stdout, as defined by the ctx_setup()d ccp, return whether the process has
@@ -84,33 +85,33 @@ FL void mx_child_ctx_setup(struct mx_child_ctx *ccp);
  * child_wait()ed successfully, i.e., whether the child has terminated
  * already; .cc_exit_status etc. can be examined for more.
  * Otherwise _signal(), _forget() and _wait() can be used on ccp */
-FL boole mx_child_run(struct mx_child_ctx *ccp);
+EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
 
 /* Fork a child process, "enable" the below functions upon success.
  * With SPAWN_CONTROL the parent will linger until the child has called
  * in_child_setup() or even (with SPAWN_CONTROL_LINGER) until it execve's */
-FL boole mx_child_fork(struct mx_child_ctx *ccp);
+EXPORT boole mx_child_fork(struct mx_child_ctx *ccp);
 
 /* Setup an image in the child; signals are still blocked before that! */
-FL void mx_child_in_child_setup(struct mx_child_ctx *ccp);
+EXPORT void mx_child_in_child_setup(struct mx_child_ctx *ccp);
 
 /* This can only be used if SPAWN_CONTROL_LINGER had been used.
  * It will pass err up to the parent, and close the control pipe.
  * It does not exit the program */
-FL void mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err);
+EXPORT void mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err);
 
 /* Send a signal to a managed process, return 0 on success, a negative value
  * if the process does no(t) (longer) exist, or an error constant */
-FL s32 mx_child_signal(struct mx_child_ctx *ccp, s32 sig);
+EXPORT s32 mx_child_signal(struct mx_child_ctx *ccp, s32 sig);
 
 /* Loose any knowledge we might have regarding ccp.
  * Neither waiting nor any other status report will be available.
  * This must not be used in conjunction with FD_PASS. */
-FL void mx_child_forget(struct mx_child_ctx *ccp);
+EXPORT void mx_child_forget(struct mx_child_ctx *ccp);
 
 /* Wait on the child and return whether ccp was a known child and has been
  * waited for successfully; examine ccp for error / status */
-FL boole mx_child_wait(struct mx_child_ctx *ccp);
+EXPORT boole mx_child_wait(struct mx_child_ctx *ccp);
 
 #include <su/code-ou.h>
 #endif /* mx_CHILD_H */

@@ -227,7 +227,7 @@ a_rand_weak(u32 seed){
 }
 #endif /* a_RAND_USE_BUILTIN */
 
-FL char *
+char *
 mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil){
    struct str b64;
    char *indat, *cp, *oudat;
@@ -343,7 +343,7 @@ jinc1:
    return dat;
 }
 
-FL char *
+char *
 mx_random_create_cp(uz len, u32 *reprocnt_or_nil){
    char *dat;
    NYD_IN;

@@ -59,7 +59,7 @@ static struct mx_filetype const a_ft_OBSOLETE_xz = { /* TODO v15 compat */
 
 /* +toolbox below */
 
-struct su_cs_dict *a_ft_dp, a_ft__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_ft_dp, a_ft__d; /* XXX atexit _gut() (DVL()) */
 
 /* */
 static void *a_ft_clone(void const *t, u32 estate);
@@ -165,7 +165,7 @@ a_ft_dump(char const *cmdname, char const *key, void const *dat){
    return slp;
 }
 
-FL int
+int
 c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
    struct a_ft_dat ftd;
    struct su_cs_dict_view dv;
@@ -233,7 +233,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_unfiletype(void *vp){
    int rv;
    NYD_IN;
@@ -243,7 +243,7 @@ c_unfiletype(void *vp){
    return rv;
 }
 
-FL boole
+boole
 mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    struct stat stb;
    struct su_cs_dict_view dv;
@@ -319,7 +319,7 @@ jleave:
    return (file != NIL);
 }
 
-FL boole
+boole
 mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file){
    struct su_cs_dict_view dv, *dvp;
    char const *lext, *ext;

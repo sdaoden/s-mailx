@@ -22,10 +22,11 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_CMD_VEXPR
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* `vexpr' */
-FL int c_vexpr(void *vp);
+EXPORT int c_vexpr(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_VEXPR */

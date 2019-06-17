@@ -37,9 +37,9 @@
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CMDAL_TRESHOLD_SHIFT 2
 
-struct su_cs_dict *a_cmdal_dp, a_cmdal__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_cmdal_dp, a_cmdal__d; /* XXX atexit _gut() (DVL) */
 
-FL int
+int
 c_commandalias(void *vp){
    struct su_cs_dict_view dv;
    struct n_string s_b, *s;
@@ -109,7 +109,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_uncommandalias(void *vp){
    int rv;
    NYD_IN;
@@ -119,7 +119,7 @@ c_uncommandalias(void *vp){
    return rv;
 }
 
-FL char const *
+char const *
 mx_commandalias_exists(char const *name, char const **expansion_or_nil){
    char const *dat;
    NYD_IN;

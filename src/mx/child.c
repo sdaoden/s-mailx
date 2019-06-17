@@ -124,7 +124,7 @@ a_child__sigchld(int signo){
    }
 }
 
-FL void
+void
 mx_child_manager_start(void){
    struct sigaction nact, oact;
    NYD_IN;
@@ -142,7 +142,7 @@ mx_child_manager_start(void){
    NYD_OU;
 }
 
-FL void
+void
 mx_child_ctx_setup(struct mx_child_ctx *ccp){
    NYD2_IN;
    ASSERT(ccp);
@@ -152,7 +152,7 @@ mx_child_ctx_setup(struct mx_child_ctx *ccp){
    NYD2_OU;
 }
 
-FL boole
+boole
 mx_child_run(struct mx_child_ctx *ccp){
    s32 e;
    NYD_IN;
@@ -257,7 +257,7 @@ jchild:{
    }
 }
 
-FL boole
+boole
 mx_child_fork(struct mx_child_ctx *ccp){
    sigset_t nset, oset;
    struct a_child_ent *nlp, *cep;
@@ -353,7 +353,7 @@ jkid:
    goto jleave;
 }
 
-FL void
+void
 mx_child_in_child_setup(struct mx_child_ctx *ccp){
    sigset_t fset;
    s32 fd, i;
@@ -399,7 +399,7 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
    sigprocmask(SIG_SETMASK, &fset, NIL);
 }
 
-FL void
+void
 mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err){
    ASSERT(ccp);
    ASSERT(ccp->cc_pid == 0);
@@ -411,7 +411,7 @@ mx_child_in_child_exec_failed(struct mx_child_ctx *ccp, s32 err){
    close(S(int,ccp->cc__cpipe[1]));
 }
 
-FL s32
+s32
 mx_child_signal(struct mx_child_ctx *ccp, s32 sig){
    s32 rv;
    struct a_child_ent *cep;
@@ -433,7 +433,7 @@ mx_child_signal(struct mx_child_ctx *ccp, s32 sig){
    return rv;
 }
 
-FL void
+void
 mx_child_forget(struct mx_child_ctx *ccp){
    sigset_t nset, oset;
    struct a_child_ent *cep, **cepp;
@@ -463,7 +463,7 @@ mx_child_forget(struct mx_child_ctx *ccp){
    NYD_OU;
 }
 
-FL boole
+boole
 mx_child_wait(struct mx_child_ctx *ccp){
    sigset_t oset, nset;
    s32 ws;
