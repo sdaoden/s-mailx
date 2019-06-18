@@ -396,6 +396,9 @@ page_or_print(FILE *fp, uz lines)
          rows = (uz)n_scrnheight;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
+      /* Avoid overflow later on */
+      if(rows == UZ_MAX)
+         --rows;
 
       if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
@@ -404,7 +407,8 @@ page_or_print(FILE *fp, uz lines)
          really_rewind(fp);
       }
 
-      if (lines >= rows) {
+      /* Take account for the follow-up prompt */
+      if(lines + 1 >= rows){
          char const *env_add[2], *pager;
 
          pager = n_pager_get(&env_add[0]);
