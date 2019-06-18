@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <sys/socket.h>
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 #include "mx/names.h"
 

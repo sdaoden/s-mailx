@@ -56,6 +56,7 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
 #include "mx/file-streams.h"

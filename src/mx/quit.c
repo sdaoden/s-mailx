@@ -43,6 +43,7 @@
 
 #include <utime.h>
 
+#include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/tty.h"
 
@@ -319,9 +320,9 @@ quit(boole hold_sigs_on)
       hold_sigs();
 
    rv = FAL0;
-   fbuf = lckfp = rbuf = NULL;
-   if(mb.mb_digmsg != NULL)
-      n_dig_msg_on_mailbox_close(&mb);
+   fbuf = lckfp = rbuf = NIL;
+   if(mb.mb_digmsg != NIL)
+      mx_dig_msg_on_mailbox_close(&mb);
    temporary_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */

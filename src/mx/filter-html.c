@@ -40,6 +40,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/filter-html.h"

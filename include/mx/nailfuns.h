@@ -659,20 +659,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * dig-msg.c
- */
-
-/**/
-FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
-
-/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
-FL boole n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
-            char const *cmd);
-
-/* `digmsg' */
-FL int c_digmsg(void *vp);
-
-/*
  * dotlock.c
  */
 

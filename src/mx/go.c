@@ -48,10 +48,12 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/child.h"
 #include "mx/colour.h"
 #include "mx/commandalias.h"
+#include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
@@ -1607,7 +1609,7 @@ FL int
       a_HISTOK = 1u<<0,
       a_USE_PROMPT = 1u<<1,
       a_USE_MLE = 1u<<2,
-      a_DIGMSG_OVERLAY = 1u<<16
+      a_DIG_MSG_OVERLAY = 1u<<16
    } f;
    NYD2_IN;
 
@@ -1712,11 +1714,11 @@ jforce_stdin:
 
    if(gif & n_GO_INPUT_FORCE_STDIN){
       struct a_go_readctl_ctx *grcp;
-      struct n_dig_msg_ctx *dmcp;
+      struct mx_dig_msg_ctx *dmcp;
 
-      if((dmcp = n_digmsg_read_overlay) != NULL){
+      if((dmcp = mx_dig_msg_read_overlay) != NIL){
          ifile = dmcp->dmc_fp;
-         f |= a_DIGMSG_OVERLAY;
+         f |= a_DIG_MSG_OVERLAY;
       }else if((grcp = n_readctl_read_overlay) == NULL ||
             (ifile = grcp->grc_fp) == NULL)
          ifile = n_stdin;
@@ -1827,10 +1829,10 @@ jleave:
 
    /* TODO We need to special case a_GO_SPLICE, since that is not managed by us
     * TODO but only established from the outside and we need to drop this
-    * TODO overlay context somehow; ditto DIGMSG_OVERLAY */
+    * TODO overlay context somehow; ditto DIG_MSG_OVERLAY */
    if(n < 0){
-      if(f & a_DIGMSG_OVERLAY)
-         n_digmsg_read_overlay = NULL;
+      if(f & a_DIG_MSG_OVERLAY)
+         mx_dig_msg_read_overlay = NIL;
       if(a_go_ctx->gc_flags & a_GO_SPLICE)
          a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
    }

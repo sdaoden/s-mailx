@@ -48,6 +48,7 @@
 su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
 #include <su/cs.h>
+#include <su/mem.h>
 
 #include "mx/file-streams.h"
 #include "mx/tty.h"

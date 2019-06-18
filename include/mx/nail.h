@@ -72,11 +72,12 @@
 #include <mx/config.h>
 
 #include <su/code.h>
-#include <su/mem.h> /* TODO should not be needed */
 #include <su/mem-bag.h> /* TODO should not be needed */
 
 /* TODO fake */
 #include "su/code-in.h"
+
+struct mx_dig_msg_ctx;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -291,16 +292,6 @@ enum cproto{
    CPROTO_SMTP,
    CPROTO_POP3
 ,CPROTO_IMAP
-};
-
-enum n_dig_msg_flags{
-   n_DIG_MSG_NONE,
-   n_DIG_MSG_COMPOSE = 1u<<0, /* Compose mode object.. */
-   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1, /* ..with `digmsg' handle also! */
-   n_DIG_MSG_RDONLY = 1u<<2, /* Message is read-only */
-   n_DIG_MSG_OWN_MEMBAG = 1u<<3, /* .gdm_membag==&.gdm__membag_buf[0] */
-   n_DIG_MSG_HAVE_FP = 1u<<4, /* Open on a fs_tmp_open() file */
-   n_DIG_MSG_FCLOSE = 1u<<5 /* (mx_HAVE_FP:) needs fclose() */
 };
 
 enum n_dotlock_state{
@@ -1381,32 +1372,6 @@ struct ccred{
    struct str cc_pass; /* Password (urlxdec()oded) or NULL */
 };
 
-struct n_dig_msg_ctx{
-   struct n_dig_msg_ctx *dmc_last; /* Linked only if !n_DIG_MSG_COMPOSE */
-   struct n_dig_msg_ctx *dmc_next;
-   struct message *dmc_mp; /* XXX Yet NULL if n_DIG_MSG_COMPOSE */
-   enum n_dig_msg_flags dmc_flags;
-   u32 dmc_msgno; /* XXX Only if !n_DIG_MSG_COMPOSE */
-   FILE *dmc_fp;
-   struct header *dmc_hp;
-   struct su_mem_bag *dmc_membag;
-   struct su_mem_bag dmc__membag_buf[1];
-};
-/* This is a bit hairy */
-#define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
-do{\
-   su_mem_set(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
-   (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
-   (DMCP)->dmc_hp = HP;\
-   (DMCP)->dmc_membag = su_mem_bag_top(n_go_data->gdc_membag);\
-}while(0)
-#define n_DIG_MSG_COMPOSE_GUT(DMCP) \
-do{\
-   ASSERT(n_dig_msg_compose_ctx == DMCP);\
-   /* File cleaned up via fs_close_all_files() */\
-   n_dig_msg_compose_ctx = NULL;\
-}while(0)
-
 #ifdef mx_HAVE_DOTLOCK
 struct n_dotlock_info{
    char const *di_file_name; /* Mailbox to lock */
@@ -1559,7 +1524,7 @@ MB_CACHE, /* IMAP cache */
 #endif
    /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
     * XXX have an on_close event to which that machinery should connect */
-   struct n_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
+   struct mx_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
    struct sock mb_sock; /* socket structure */
 };
 
@@ -1888,8 +1853,6 @@ VL FILE *n_stderr;
 /* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
  * XXX event driven nature of individual program parts */
 VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
-VL struct n_dig_msg_ctx *n_digmsg_read_overlay; /* `digmsg' XXX HACK */
-VL struct n_dig_msg_ctx *n_dig_msg_compose_ctx; /* Or NULL XXX HACK */
 
 VL u32 n_mb_cur_max; /* Value of MB_CUR_MAX */
 VL u32 n_realscreenheight; /* The real screen height */

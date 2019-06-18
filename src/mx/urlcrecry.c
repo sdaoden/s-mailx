@@ -27,6 +27,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 #ifdef mx_HAVE_SOCKETS
 # include <su/icodec.h>

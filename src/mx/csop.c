@@ -32,6 +32,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/csop.h"
 #include "su/code-in.h"

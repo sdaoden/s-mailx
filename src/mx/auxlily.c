@@ -65,6 +65,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
 #include "mx/child.h"

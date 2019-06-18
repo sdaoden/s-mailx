@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/mem.h>
+
 /* TODO fake */
 #include "su/code-in.h"
 

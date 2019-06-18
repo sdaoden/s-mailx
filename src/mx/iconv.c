@@ -42,10 +42,10 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/iconv.h"
-
 /* TODO fake */
 #include "su/code-in.h"
 

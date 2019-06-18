@@ -23,7 +23,7 @@
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 /* Protocol version for *on-compose-splice** -- update manual on change! */
-#define n_DIG_MSG_PLUMBING_VERSION "0 0 1"
+#define mx_DIG_MSG_PLUMBING_VERSION "0 0 1"
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX 5000       /* Error queue size (s32) TODO configurable */

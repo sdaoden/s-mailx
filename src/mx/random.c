@@ -36,6 +36,8 @@
 # endif
 #endif
 
+#include <su/mem.h>
+
 #ifdef a_RAND_USE_BUILTIN
 # include <su/prime.h>
 #endif

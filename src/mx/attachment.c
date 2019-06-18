@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/file-streams.h"
 #include "mx/iconv.h"

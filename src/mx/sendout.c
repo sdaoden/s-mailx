@@ -42,6 +42,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 #include "mx/child.h"
 #include "mx/file-streams.h"

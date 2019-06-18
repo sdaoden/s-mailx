@@ -48,12 +48,14 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
 #include "mx/charsetalias.h"
 #include "mx/colour.h"
 #include "mx/commandalias.h"
 #include "mx/csop.h"
+#include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filetype.h"
 #include "mx/mlist.h"

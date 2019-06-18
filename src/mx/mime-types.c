@@ -27,6 +27,7 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/file-streams.h"
 /* TODO that this does not belong: clear */

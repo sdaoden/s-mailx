@@ -37,6 +37,8 @@
 # include <su/icodec.h>
 #endif
 
+#include <su/mem.h>
+
 #include "mx/filter-quote.h"
 /* TODO fake */
 #include "su/code-in.h"

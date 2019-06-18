@@ -44,7 +44,9 @@
 #include <pwd.h>
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
@@ -555,8 +557,8 @@ jlogname:
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
 
-      if(mb.mb_digmsg != NULL)
-         n_dig_msg_on_mailbox_close(&mb);
+      if(mb.mb_digmsg != NIL)
+         mx_dig_msg_on_mailbox_close(&mb);
       mb.mb_type = MB_VOID;
 
       if (ok_blook(emptystart)) {
@@ -736,8 +738,8 @@ jleave:
    return rv;
 
 jem2:
-   if(mb.mb_digmsg != NULL)
-      n_dig_msg_on_mailbox_close(&mb);
+   if(mb.mb_digmsg != NIL)
+      mx_dig_msg_on_mailbox_close(&mb);
    mb.mb_type = MB_VOID;
 jem1:
    su_err_set_no(su_ERR_NOTOBACCO);

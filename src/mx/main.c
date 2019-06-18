@@ -48,6 +48,7 @@
 #include <su/avopt.h>
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/iconv.h"
 #include "mx/names.h"

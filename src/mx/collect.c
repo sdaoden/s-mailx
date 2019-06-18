@@ -43,9 +43,11 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/child.h"
+#include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"
 #include "mx/names.h"
@@ -935,7 +937,7 @@ a_coll_ocs__mac(void){
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    n_readctl_read_overlay = NULL; /* TODO need OnForkEvent! See c_readctl() */
-   n_digmsg_read_overlay = NULL; /* TODO need OnForkEvent! See c_digmsg() */
+   mx_dig_msg_read_overlay = NIL; /* TODO need OnForkEvent! See c_digmsg() */
    if(n_poption & n_PO_D_VV){
       char buf[128];
 
@@ -1050,7 +1052,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
    };
 
-   struct n_dig_msg_ctx dmc;
+   struct mx_dig_msg_ctx dmc;
    struct n_string s_b, * volatile s;
    struct a_coll_ocs_arg *coap;
    int c;
@@ -1065,7 +1067,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    FILE * volatile sigfp;
    NYD_IN;
 
-   n_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
+   mx_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
    _coll_fp = NULL;
 
    sigfp = NULL;
@@ -1464,7 +1466,7 @@ jearg:
          n_pstate_ex_no = 0; /* XXX */
          }break;
       case '^':
-         if(!n_dig_msg_circumflex(&dmc, n_stdout, cp)){
+         if(!mx_dig_msg_circumflex(&dmc, n_stdout, cp)){
             if(ferror(_coll_fp))
                goto jerr;
             goto jearg;
@@ -1849,7 +1851,7 @@ jout:
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
-         fputs(n_DIG_MSG_PLUMBING_VERSION "\n", n_stdout/*coap->coa_stdout*/);
+         fputs(mx_DIG_MSG_PLUMBING_VERSION "\n", n_stdout/*coap->coa_stdout*/);
          goto jcont;
       }
 
@@ -2027,7 +2029,7 @@ jskiptails:
 jleave:
    sigprocmask(SIG_BLOCK, &nset, NULL);
    mx_linepool_release(linebuf, linesize);
-   n_DIG_MSG_COMPOSE_GUT(&dmc);
+   mx_DIG_MSG_COMPOSE_GUT(&dmc);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);

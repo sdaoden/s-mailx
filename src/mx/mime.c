@@ -47,6 +47,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 /* TODO nonsense (should be filter chain!) */

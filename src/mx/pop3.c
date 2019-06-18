@@ -48,9 +48,9 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_POP3
-
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 /* TODO fake */
 #include "su/code-in.h"

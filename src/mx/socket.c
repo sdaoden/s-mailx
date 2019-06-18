@@ -71,6 +71,7 @@ su_EMPTY_FILE()
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 /* TODO fake */
 #include "su/code-in.h"

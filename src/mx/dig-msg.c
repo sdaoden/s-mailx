@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Dig message objects. TODO Very very restricted (especially non-compose)
- *@ On protocol change adjust config.h:n_DIG_MSG_PLUMBING_VERSION + `~^' manual
+ *@ Protocol change: adjust mx-config.h:mx_DIG_MSG_PLUMBING_VERSION + `~^' man.
  *@ TODO - a_dmsg_cmd() should generate string lists, not perform real I/O.
  *@ TODO   I.e., drop FILE* arg, generate stringlist; up to callers...
  *@ TODO - With our own I/O there should then be a StringListDevice as the
@@ -26,6 +26,7 @@
 #undef su_FILE
 #define su_FILE dig_msg
 #define mx_SOURCE
+#define mx_SOURCE_DIG_MSG
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -33,41 +34,45 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/file-streams.h"
 #include "mx/names.h"
 
-/* TODO fake */
+#include "mx/dig-msg.h"
 #include "su/code-in.h"
+
+struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */
+struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx; /* Or NIL XXX HACK*/
 
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
  * On oexcl success *dmcp will be n_alloc()ated with .dmc_msgno and .dmc_mp
  * etc. set; but not linked into mb.mb_digmsg and .dmc_fp not created etc. */
-static s32 a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp,
-               boole oexcl);
+static s32 a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp,
+      boole oexcl);
 
 /* Subcommand drivers */
-static boole a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
-               uz cmdl, char const *cp);
+static boole a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, char const *cmd,
+      uz cmdl, char const *cp);
 
-static boole a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
-               char *cmda[3]);
-static boole a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
-               char *cmda[3]);
+static boole a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp,
+      char *cmda[3]);
+static boole a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp,
+      char *cmda[3]);
 
 static s32
-a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, boole oexcl){
-   struct n_dig_msg_ctx *dmcp;
+a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
+   struct mx_dig_msg_ctx *dmcp;
    s32 rv;
    u32 msgno;
    NYD2_IN;
 
    if(cp[0] == '-' && cp[1] == '\0'){
-      if((dmcp = n_dig_msg_compose_ctx) != NULL){
+      if((dmcp = mx_dig_msg_compose_ctx) != NULL){
          *dmcpp = dmcp;
-         if(dmcp->dmc_flags & n_DIG_MSG_COMPOSE_DIGGED)
+         if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE_DIGGED)
             rv = oexcl ? su_ERR_EXIST : su_ERR_NONE;
          else
             rv = oexcl ? su_ERR_NONE : su_ERR_NOENT;
@@ -97,9 +102,9 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, boole oexcl){
 
    *dmcpp = dmcp = n_calloc(1, Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
-   dmcp->dmc_flags = n_DIG_MSG_OWN_MEMBAG |
+   dmcp->dmc_flags = mx_DIG_MSG_OWN_MEMBAG |
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
-            ? n_DIG_MSG_RDONLY : n_DIG_MSG_NONE);
+            ? mx_DIG_MSG_RDONLY : mx_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
    dmcp->dmc_hp = (struct header*)P2UZ(&dmcp[1]);
    dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
@@ -111,7 +116,7 @@ jleave:
 }
 
 static boole
-a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
+a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
       char const *cp){
    char *cmda[3];
    boole rv;
@@ -147,7 +152,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
    if(su_cs_starts_with_case_n("header", cmd, cmdl))
       rv = a_dmsg__header(fp, dmcp, cmda);
    else if(su_cs_starts_with_case_n("attachment", cmd, cmdl)){
-      if(!(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)) /* TODO attachment support */
+      if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)) /* TODO attachment support */
          rv = (fprintf(fp,
                "505 `digmsg attachment' only in compose mode (yet)\n") > 0);
       else
@@ -155,7 +160,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
    }else if(su_cs_starts_with_case_n("version", cmd, cmdl)){
       if(cmda[0] != NULL)
          goto jecmd;
-      rv = (fputs("210 " n_DIG_MSG_PLUMBING_VERSION "\n", fp) != EOF);
+      rv = (fputs("210 " mx_DIG_MSG_PLUMBING_VERSION "\n", fp) != EOF);
    }else if((cmdl == 1 && cmd[0] == '?') ||
          su_cs_starts_with_case_n("help", cmd, cmdl)){
       if(cmda[0] != NULL)
@@ -197,7 +202,7 @@ jecmd:
 }
 
 static boole
-a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
+a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, char *cmda[3]){
    uz i;
    struct n_header_field *hfp;
    struct mx_name *np, **npp;
@@ -237,7 +242,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       /* Strip [\r\n] which would render a body invalid XXX all controls? */
@@ -491,7 +496,7 @@ jlist:
    }else if(su_cs_starts_with_case("remove", cp)){
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if(!su_cs_cmp_case(cmda[1], cp = "Subject")){
@@ -567,7 +572,7 @@ jrem:
    }else if(su_cs_starts_with_case("remove-at", cp)){
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if((su_idec_uz_cp(&i, cmda[2], 0, NULL
@@ -772,7 +777,7 @@ j501cp:
 }
 
 static boole
-a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
+a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp, char *cmda[3]){
    boole status;
    struct attachment *ap;
    char const *cp;
@@ -842,7 +847,7 @@ jatt_att:
    }else if(su_cs_starts_with_case("attribute-set", cp)){
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if((ap = n_attachment_find(hp->h_attach, cmda[1], NULL)) != NULL){
@@ -921,7 +926,7 @@ jatt_attset:
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if((su_idec_uz_cp(&i, cmda[1], 0, NULL
@@ -944,7 +949,7 @@ jatt_attset:
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       hp->h_attach = n_attachment_append(hp->h_attach, cmda[1], &aerr, &ap);
@@ -988,7 +993,7 @@ jdefault:
    }else if(su_cs_starts_with_case("remove", cp)){
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if((ap = n_attachment_find(hp->h_attach, cmda[1], &status)) != NULL){
@@ -1009,7 +1014,7 @@ jdefault:
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
-      if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
+      if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
       if((su_idec_uz_cp(&i, cmda[1], 0, NULL
@@ -1045,46 +1050,26 @@ j505r:
    goto jleave;
 }
 
-FL void
-n_dig_msg_on_mailbox_close(struct mailbox *mbp){
-   struct n_dig_msg_ctx *dmcp;
+void
+mx_dig_msg_on_mailbox_close(struct mailbox *mbp){ /* XXX HACK <- event! */
+   struct mx_dig_msg_ctx *dmcp;
    NYD_IN;
 
    while((dmcp = mbp->mb_digmsg) != NULL){
       mbp->mb_digmsg = dmcp->dmc_next;
-      if(dmcp->dmc_flags & n_DIG_MSG_FCLOSE)
+      if(dmcp->dmc_flags & mx_DIG_MSG_FCLOSE)
          fclose(dmcp->dmc_fp);
-      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMBAG)
+      if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
          su_mem_bag_gut(dmcp->dmc_membag);
       n_free(dmcp);
    }
    NYD_OU;
 }
 
-FL boole
-n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
-   boole rv;
-   char c;
-   char const *cp, *cmd_top;
-   NYD_IN;
-
-   cp = cmd;
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   cmd = cp;
-   for(cmd_top = cp; (c = *cp) != '\0'; cmd_top = ++cp)
-      if(su_cs_is_blank(c))
-         break;
-
-   rv = a_dmsg_cmd(fp, dmcp, cmd, P2UZ(cmd_top - cmd), cp);
-   NYD_OU;
-   return rv;
-}
-
-FL int
+int
 c_digmsg(void *vp){
    char const *cp, *emsg;
-   struct n_dig_msg_ctx *dmcp;
+   struct mx_dig_msg_ctx *dmcp;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
    NYD_IN;
@@ -1119,8 +1104,8 @@ c_digmsg(void *vp){
          break;
       }
 
-      if(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)
-         dmcp->dmc_flags = n_DIG_MSG_COMPOSE | n_DIG_MSG_COMPOSE_DIGGED;
+      if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
+         dmcp->dmc_flags = mx_DIG_MSG_COMPOSE | mx_DIG_MSG_COMPOSE_DIGGED;
       else{
          FILE *fp;
 
@@ -1144,13 +1129,13 @@ c_digmsg(void *vp){
       /* For compose mode simply use FS_O_REGISTER, the number of dangling
        * deleted files with open descriptors until next fs_close_all()
        * should be very small; if this paradigm is changed
-       * n_DIG_MSG_COMPOSE_GUT() needs to be adjusted */
+       * DIG_MSG_COMPOSE_GUT() needs to be adjusted */
       else if((dmcp->dmc_fp = mx_fs_tmp_open("digmsg", (mx_FS_O_RDWR |
-               mx_FS_O_UNLINK | (dmcp->dmc_flags & n_DIG_MSG_COMPOSE
+               mx_FS_O_UNLINK | (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE
                   ? mx_FS_O_REGISTER : 0)),
                NIL)) != NIL)
-         dmcp->dmc_flags |= n_DIG_MSG_HAVE_FP |
-               (dmcp->dmc_flags & n_DIG_MSG_COMPOSE ? 0 : n_DIG_MSG_FCLOSE);
+         dmcp->dmc_flags |= mx_DIG_MSG_HAVE_FP |
+               (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE ? 0 : mx_DIG_MSG_FCLOSE);
       else{
          n_err(_("`digmsg': create: cannot create temporary file: %s\n"),
             su_err_doc(n_pstate_err_no = su_err_no()));
@@ -1158,7 +1143,7 @@ c_digmsg(void *vp){
          goto jeremove;
       }
 
-      if(!(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)){
+      if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)){
          dmcp->dmc_last = NULL;
          if((dmcp->dmc_next = mb.mb_digmsg) != NULL)
             dmcp->dmc_next->dmc_last = dmcp;
@@ -1174,8 +1159,8 @@ c_digmsg(void *vp){
          emsg = N_("`digmsg': remove: message number invalid: %s\n");
          goto jeinval_quote;
       default:
-         if(!(dmcp->dmc_flags & n_DIG_MSG_COMPOSE) ||
-               (dmcp->dmc_flags & n_DIG_MSG_COMPOSE_DIGGED))
+         if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE) ||
+               (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE_DIGGED))
             break;
          /* FALLTHRU */
       case su_ERR_NOENT:
@@ -1183,7 +1168,7 @@ c_digmsg(void *vp){
          goto jeinval_quote;
       }
 
-      if(!(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)){
+      if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)){
          if(dmcp->dmc_last != NULL)
             dmcp->dmc_last->dmc_next = dmcp->dmc_next;
          else{
@@ -1194,14 +1179,14 @@ c_digmsg(void *vp){
             dmcp->dmc_next->dmc_last = dmcp->dmc_last;
       }
 
-      if(dmcp->dmc_flags & n_DIG_MSG_FCLOSE)
+      if(dmcp->dmc_flags & mx_DIG_MSG_FCLOSE)
          fclose(dmcp->dmc_fp);
 jeremove:
-      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMBAG)
+      if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
          su_mem_bag_gut(dmcp->dmc_membag);
 
-      if(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)
-         dmcp->dmc_flags = n_DIG_MSG_COMPOSE;
+      if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
+         dmcp->dmc_flags = mx_DIG_MSG_COMPOSE;
       else
          n_free(dmcp);
    }else{
@@ -1217,7 +1202,7 @@ jeremove:
       }
       cap = cap->ca_next;
 
-      if(dmcp->dmc_flags & n_DIG_MSG_HAVE_FP){
+      if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
          rewind(dmcp->dmc_fp);
          ftruncate(fileno(dmcp->dmc_fp), 0);
       }
@@ -1241,9 +1226,9 @@ jeremove:
       }
       su_mem_bag_pop(n_go_data->gdc_membag, dmcp->dmc_membag);
 
-      if(dmcp->dmc_flags & n_DIG_MSG_HAVE_FP){
+      if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
          rewind(dmcp->dmc_fp);
-         n_digmsg_read_overlay = dmcp;
+         mx_dig_msg_read_overlay = dmcp;
       }
    }
 
@@ -1261,6 +1246,26 @@ jeinval:
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
+}
+
+boole
+mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
+   boole rv;
+   char c;
+   char const *cp, *cmd_top;
+   NYD_IN;
+
+   cp = cmd;
+   while(su_cs_is_blank(*cp))
+      ++cp;
+   cmd = cp;
+   for(cmd_top = cp; (c = *cp) != '\0'; cmd_top = ++cp)
+      if(su_cs_is_blank(c))
+         break;
+
+   rv = a_dmsg_cmd(fp, dmcp, cmd, P2UZ(cmd_top - cmd), cp);
+   NYD_OU;
+   return rv;
 }
 
 #include "su/code-ou.h"

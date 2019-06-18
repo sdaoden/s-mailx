@@ -34,6 +34,7 @@
 
 #include <su/cs.h>
 #include <su/cs-dict.h>
+#include <su/mem.h>
 
 #include "mx/names.h"
 

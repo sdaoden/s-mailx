@@ -32,6 +32,7 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_COLOUR
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/termcap.h"
 

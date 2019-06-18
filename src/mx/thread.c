@@ -46,6 +46,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/prime.h>
 
 #include "mx/names.h"
