@@ -934,7 +934,7 @@ a_coll_ocs__mac(void){
    /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
    setvbuf(n_stdin, NULL, _IOLBF, 0);
    setvbuf(n_stdout, NULL, _IOLBF, 0);
-   n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
+   n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYANY);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    n_readctl_read_overlay = NULL; /* TODO need OnForkEvent! See c_readctl() */
    mx_dig_msg_read_overlay = NIL; /* TODO need OnForkEvent! See c_digmsg() */
@@ -1848,7 +1848,7 @@ jout:
 
          temporary_compose_mode_hook_call(NULL, NULL, NULL);
          n_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
-            (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
+            (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYANY)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
          fputs(mx_DIG_MSG_PLUMBING_VERSION "\n", n_stdout/*coap->coa_stdout*/);

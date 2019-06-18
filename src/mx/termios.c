@@ -1,8 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of termios.h.
  *@ FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
- *@ FIXME foreground pgrp, and can fail with EINTR!! also affects
- *@ FIXME termios_state_reset()
+ *@ FIXME foreground pgrp, and can fail with EINTR!!
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -56,29 +55,158 @@ CTAV(mx_TERMIOS_CMD_NORMAL == 0);
       : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
          (VAL_WIDTH[2] - '0'))))
 
-/* Set "norm"al canonical state (as necessary) */
+#ifdef SIGWINCH
+# define a_TERMIOS_SIGWINCH SIGWINCH
+#else
+# define a_TERMIOS_SIGWINCH -1
+#endif
+
 struct a_termios_g{
    u8 tiosg_state_cmd;
-   u8 tiosc__pad[3];
-   int volatile tiosc_hadsig;
-   n_sighdl_t tiosc_ocont;
-#ifdef SIGWINCH
-   n_sighdl_t tiosc_owinch;
+   u8 tiosg__pad[1];
+   boole tiosg_norm_init;
+   boole tiosg_norm_need;
+   int volatile tiosg_hadsig;
+   mx_termios_on_signal tiosg_on_signal;
+   n_sighdl_t tiosg_otstp;
+   n_sighdl_t tiosg_ottin;
+   n_sighdl_t tiosg_ottou;
+   n_sighdl_t tiosg_ocont;
+#if a_TERMIOS_SIGWINCH != -1
+   n_sighdl_t tiosg_owinch;
 #endif
+   /* Remaining signals only in password/raw mode */
+   n_sighdl_t tiosg_ohup;
+   n_sighdl_t tiosg_oint;
+   n_sighdl_t tiosg_oquit;
+   n_sighdl_t tiosg_oterm;
    struct termios tiosg_normal;
    struct termios tiosg_other;
 };
 
-struct a_termios_g a_termios_g;
+static struct a_termios_g a_termios_g;
+FILE *a_termios_FIXME;
 
-/* */
-static void a_termios_dimen_query(struct mx_termios_dimension *tiosdp);
+struct mx_termios_dimension mx_termios_dimen;
+
+static void a_termios_sig_adjust(boole condome);
 
 /* */
 static void a_termios_onsig(int sig);
 
+/* Do the system-dependent dance on getting used to terminal dimension */
+static void a_termios_dimen_query(void);
+static void a_termios__dimit(struct mx_termios_dimension *tiosdp);
+
 static void
-a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
+a_termios_sig_adjust(boole condome){
+   NYD2_IN;
+
+   if(condome){
+      ASSERT(a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_NORMAL);
+      a_termios_g.tiosg_ohup = safe_signal(SIGHUP, &a_termios_onsig);
+      a_termios_g.tiosg_oint = safe_signal(SIGINT, &a_termios_onsig);
+      a_termios_g.tiosg_oquit = safe_signal(SIGQUIT, &a_termios_onsig);
+      a_termios_g.tiosg_oterm = safe_signal(SIGTERM, &a_termios_onsig);
+   }else{
+      ASSERT(a_termios_g.tiosg_state_cmd != mx_TERMIOS_CMD_NORMAL);
+      safe_signal(SIGHUP, a_termios_g.tiosg_ohup);
+      safe_signal(SIGINT, a_termios_g.tiosg_oint);
+      safe_signal(SIGQUIT, a_termios_g.tiosg_oquit);
+      safe_signal(SIGTERM, a_termios_g.tiosg_oterm);
+   }
+   NYD2_OU;
+}
+
+static void
+a_termios_onsig(int sig){
+   n_sighdl_t oldact;
+   sigset_t nset;
+   boole inredo, hadsig;
+   NYD; /* Signal handler */
+
+   inredo = FAL0;
+
+   hadsig = (a_termios_g.tiosg_hadsig != 0);
+   a_termios_g.tiosg_hadsig = 1;
+
+   switch(sig){
+   case a_TERMIOS_SIGWINCH:
+jsigwinch:
+      n_pstate |= n_PS_SIGWINCH_PEND;
+      a_termios_dimen_query();
+      break;
+   case SIGTSTP:
+   case SIGTTIN:
+   case SIGTTOU:
+   case SIGCONT:
+      if(!a_termios_g.tiosg_norm_init)
+         goto jleave;
+      if(0){
+         /* FALLTHRU*/
+   case SIGHUP:
+   case SIGINT:
+   case SIGQUIT:
+   case SIGTERM:
+         ASSERT(a_termios_g.tiosg_norm_init);
+      }
+      if(a_termios_g.tiosg_state_cmd != mx_TERMIOS_CMD_NORMAL){
+         if(tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &a_termios_g.tiosg_normal
+               ) == 0){
+            a_termios_g.tiosg_state_cmd = mx_TERMIOS_CMD_NORMAL;
+            a_termios_g.tiosg_norm_need = TRU1;
+         }
+      }
+      break;
+   }
+
+   if(!inredo){
+      /* Do we need two pre calls? one blocked, one unblocked?*/
+      if(a_termios_g.tiosg_on_signal != NIL)
+         (*a_termios_g.tiosg_on_signal)(sig, FAL0);
+
+      if(sig != a_TERMIOS_SIGWINCH){
+         oldact = safe_signal(sig, SIG_DFL);
+
+         sigemptyset(&nset);
+         sigaddset(&nset, sig);
+         sigprocmask(SIG_UNBLOCK, &nset, NULL);
+         n_raise(sig);
+         sigprocmask(SIG_BLOCK, &nset, NULL);
+
+         safe_signal(sig, oldact);
+      }
+
+      if(a_termios_g.tiosg_on_signal != NIL)
+         (*a_termios_g.tiosg_on_signal)(sig, TRU1);
+
+      if(sig == SIGCONT){
+         inredo = TRU1;
+         goto jsigwinch;
+      }
+   }
+
+jleave:;
+}
+
+static void
+a_termios_dimen_query(void){
+   NYD_IN;
+   a_termios__dimit(&mx_termios_dimen);
+   /* Note: for the first invocation this will always trigger.
+    * If we have termcap support then termcap_init() will undo this if
+    * FULLWIDTH is set after termcap is initialized.
+    * We have to evaluate it now since cmds may run pre-termcap ... */
+/*#ifdef mx_HAVE_TERMCAP*/
+   if(mx_termios_dimen.tiosd_width > 1 &&
+         !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
+      --mx_termios_dimen.tiosd_width;
+/*#endif*/
+   NYD_OU;
+}
+
+static void
+a_termios__dimit(struct mx_termios_dimension *tiosdp){
    struct termios tbuf;
 #if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
    struct winsize ws;
@@ -87,7 +215,7 @@ a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
 #else
 # error One of TCGETWINSIZE, TIOCGWINSZ and TIOCGSIZE
 #endif
-   NYD_IN;
+   NYD2_IN;
 
 #ifdef mx_HAVE_TCGETWINSIZE
    if(tcgetwinsize(fileno(mx_tty_fp), &ws) == -1)
@@ -136,61 +264,8 @@ a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
          ))
       tiosdp->tiosd_width = a_TERMIOS_DEFAULT_WIDTH;
 
-   NYD_OU;
+   NYD2_OU;
 }
-
-static void
-a_termios_onsig(int sig){
-   n_sighdl_t oldact;
-   sigset_t nset;
-   NYD; /* Signal handler */
-
-   switch(sig){
-   case -1:
-#ifdef SIGWINCH
-   case SIGWINCH:
-#endif
-jsigwinch:
-      a_termios_dimen_query(&mx_termios_dimen);
-      n_pstate |= n_PS_SIGWINCH_PEND;
-      /* Note: for the first invocation this will always trigger.
-       * If we have termcap support then main() will undo this if FULLWIDTH is
-       * set after termcap is initialized.
-       * We have to evaluate it now since cmds may run pre-termcap ... */
-/*#ifdef mx_HAVE_TERMCAP*/
-      if(mx_termios_dimen.tiosd_width > 1 &&
-            !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-         --mx_termios_dimen.tiosd_width;
-/*#endif*/
-      break;
-
-   case SIGTSTP:
-   case SIGTTIN:
-   case SIGTTOU:
-   case SIGCONT:
-      /* L*/
-   /*
-      if(!hadsig)
-         n_TERMCAP_SUSPEND(TRU1);
-   */
-
-      oldact = safe_signal(sig, SIG_DFL);
-
-      sigemptyset(&nset);
-      sigaddset(&nset, sig);
-      sigprocmask(SIG_UNBLOCK, &nset, NULL);
-      n_raise(sig);
-      sigprocmask(SIG_BLOCK, &nset, NULL);
-
-      safe_signal(sig, oldact);
-
-      if(sig == SIGCONT)
-         goto jsigwinch;
-      break;
-   }
-}
-
-struct mx_termios_dimension mx_termios_dimen;
 
 void
 mx_termios_controller_setup(enum mx_termios_setup what){
@@ -199,11 +274,17 @@ mx_termios_controller_setup(enum mx_termios_setup what){
 
    if(what == mx_TERMIOS_SETUP_STARTUP){
       sigfillset(&nset);
-
       sigprocmask(SIG_BLOCK, &nset, &oset);
-      a_termios_g.tiosc_ocont = safe_signal(SIGCONT, &a_termios_onsig);
+
+      a_termios_g.tiosg_otstp = safe_signal(SIGTSTP, &a_termios_onsig);
+      a_termios_g.tiosg_ottin = safe_signal(SIGTTIN, &a_termios_onsig);
+      a_termios_g.tiosg_ottou = safe_signal(SIGTTOU, &a_termios_onsig);
+      a_termios_g.tiosg_ocont = safe_signal(SIGCONT, &a_termios_onsig);
 
       /* This assumes oset contains nothing but SIGCHLD, so to say */
+      sigdelset(&oset, SIGTSTP);
+      sigdelset(&oset, SIGTTIN);
+      sigdelset(&oset, SIGTTOU);
       sigdelset(&oset, SIGCONT);
       sigprocmask(SIG_SETMASK, &oset, NIL);
    }else{
@@ -213,8 +294,7 @@ mx_termios_controller_setup(enum mx_termios_setup what){
 
       if(!su_state_has(su_STATE_REPRODUCIBLE) &&
             ((n_psonce & n_PSO_INTERACTIVE) ||
-               ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
-                (n_poption & n_PO_BATCH_FLAG)))){
+               ((n_psonce & n_PSO_TTYANY) && (n_poption & n_PO_BATCH_FLAG)))){
          /* (Also) POSIX: LINES and COLUMNS always override.  These variables
           * are ensured to be positive numbers, so no checking */
          u32 l, c;
@@ -224,14 +304,14 @@ mx_termios_controller_setup(enum mx_termios_setup what){
          ASSERT(mx_termios_dimen.tiosd_height == 0);
          ASSERT(mx_termios_dimen.tiosd_real_height == 0);
          ASSERT(mx_termios_dimen.tiosd_width == 0);
-#ifdef SIGWINCH
          if(n_psonce & n_PSO_INTERACTIVE){
             /* XXX Yet WINCH after WINCH/CONT, but see POSIX TOSTOP flag */
+#if a_TERMIOS_SIGWINCH != -1
             if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
-               a_termios_g.tiosc_owinch = safe_signal(SIGWINCH,
+               a_termios_g.tiosg_owinch = safe_signal(SIGWINCH,
                      &a_termios_onsig);
-         }
 #endif
+         }
 
          l = c = 0;
          if((hadl = ((cp = ok_vlook(LINES)) != NIL)))
@@ -245,7 +325,7 @@ mx_termios_controller_setup(enum mx_termios_setup what){
             if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc))
                goto jtermsize_default;
 
-            a_termios_onsig(-1);
+            a_termios_dimen_query();
          }
 
          if(l != 0)
@@ -265,12 +345,47 @@ jtermsize_default:
    NYD_OU;
 }
 
+mx_termios_on_signal
+mx_termios_set_on_signal(mx_termios_on_signal hdl){
+   mx_termios_on_signal rv;
+   NYD_IN;
+
+   rv = a_termios_g.tiosg_on_signal;
+   a_termios_g.tiosg_on_signal = hdl;
+   NYD_OU;
+   return rv;
+}
+
 boole
 mx_termios_cmd(enum mx_termios_cmd cmd, uz a1){
    /* xxx tcsetattr not correct says manual: would need to requery and check
     * whether all desired changes made it instead! */
+   enum{
+      a_NONE,
+      a_SIGS_DO = 1u<<0,
+      a_SIGS_BLOCKED = 1u<<1,
+      a_SIGS_CONDOME = 1u<<2
+   };
+
+   sigset_t nset, oset;
    boole rv;
+   u8 f;
    NYD_IN;
+
+   if(!a_termios_g.tiosg_norm_init){
+      a_termios_g.tiosg_norm_init = TRU1;
+      if(cmd != mx_TERMIOS_CMD_QUERY)
+         mx_termios_cmdx(mx_TERMIOS_CMD_QUERY);
+   }
+
+   f = a_NONE;
+
+   if(a_termios_g.tiosg_state_cmd != mx_TERMIOS_CMD_NORMAL ||
+         cmd > mx_TERMIOS_CMD_QUERY){
+      f = a_SIGS_DO | a_SIGS_BLOCKED;
+      sigfillset(&nset);
+      sigprocmask(SIG_BLOCK, &nset, &oset); /* (delays ASSERT()s..) */
+   }
 
    switch(cmd){
    default:
@@ -280,19 +395,38 @@ mx_termios_cmd(enum mx_termios_cmd cmd, uz a1){
       a_termios_g.tiosg_normal.c_lflag |= ECHO | ICANON;
       break;
    case mx_TERMIOS_CMD_NORMAL:
-      rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &a_termios_g.tiosg_normal
-            ) == 0);
+      if(a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_NORMAL)
+         rv = TRU1;
+      else
+         rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN,
+               &a_termios_g.tiosg_normal) == 0);
       break;
    case mx_TERMIOS_CMD_PASSWORD:
+      ASSERT(a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_NORMAL);
+      ASSERT(f & a_SIGS_DO);
+
       su_mem_copy(&a_termios_g.tiosg_other, &a_termios_g.tiosg_normal,
          sizeof(a_termios_g.tiosg_normal));
       a_termios_g.tiosg_other.c_iflag &= ~(ISTRIP);
       a_termios_g.tiosg_other.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+
       rv = (tcsetattr(fileno(mx_tty_fp), TCSAFLUSH, &a_termios_g.tiosg_other
             ) == 0);
+      f |= a_SIGS_CONDOME;
       break;
    case mx_TERMIOS_CMD_RAW:
    case mx_TERMIOS_CMD_RAW_TIMEOUT:
+      ASSERT(a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_NORMAL ||
+         a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_RAW ||
+         a_termios_g.tiosg_state_cmd == mx_TERMIOS_CMD_RAW_TIMEOUT);
+      ASSERT(f & a_SIGS_DO);
+
+      if(cmd == a_termios_g.tiosg_state_cmd){
+         f &= ~a_SIGS_DO;
+         rv = TRU1;
+         break;
+      }
+
       su_mem_copy(&a_termios_g.tiosg_other, &a_termios_g.tiosg_normal,
          sizeof(a_termios_g.tiosg_normal));
       a1 = MIN(U8_MAX, a1);
@@ -306,13 +440,24 @@ mx_termios_cmd(enum mx_termios_cmd cmd, uz a1){
       a_termios_g.tiosg_other.c_iflag &= ~(ISTRIP | IGNCR | IXON | IXOFF);
       a_termios_g.tiosg_other.c_lflag &= ~(ECHO /*| ECHOE | ECHONL */|
             ICANON | IEXTEN | ISIG);
+
       rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &a_termios_g.tiosg_other
             ) == 0);
+      if(a_termios_g.tiosg_state_cmd != mx_TERMIOS_CMD_NORMAL)
+         f &= ~a_SIGS_DO;
+      f |= a_SIGS_CONDOME;
       break;
    }
 
-   if(rv && cmd != mx_TERMIOS_CMD_QUERY)
-      a_termios_g.tiosg_state_cmd = cmd;
+   if(rv){
+      if(f & a_SIGS_DO)
+         a_termios_sig_adjust((f & a_SIGS_CONDOME) != 0);
+      if(cmd != mx_TERMIOS_CMD_QUERY)
+         a_termios_g.tiosg_state_cmd = cmd;
+   }
+
+   if(f & a_SIGS_BLOCKED)
+      sigprocmask(SIG_SETMASK, &oset, NIL);
 
    NYD_OU;
    return rv;

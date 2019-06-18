@@ -32,10 +32,13 @@ enum mx_termios_setup{
 enum mx_termios_cmd{
    mx_TERMIOS_CMD_NORMAL, /* Set "norm"al canonical state (as necessary) */
    mx_TERMIOS_CMD_QUERY, /* Query status, assume that is "norm"al */
+   /* Higher values turn terminal state which needs to be reset before exit */
    mx_TERMIOS_CMD_PASSWORD, /* Set password input mode */
    mx_TERMIOS_CMD_RAW, /* Set raw mode, use by-byte input */
    mx_TERMIOS_CMD_RAW_TIMEOUT /* Set raw mode, use (the given) timeout */
 };
+
+typedef void (*mx_termios_on_signal)(s32 signal, boole after_reraise);
 
 struct mx_termios_dimension{
    u32 tiosd_height;
@@ -54,11 +57,20 @@ EXPORT_DATA struct mx_termios_dimension mx_termios_dimen;
 #define mx_TERMIOS_WIDTH_OF_LISTS() \
    (mx_termios_dimen.tiosd_width - (mx_termios_dimen.tiosd_width >> 3))
 
-/* Panics on failure */
+/* Installs signal handlers etc.  Early! */
 EXPORT void mx_termios_controller_setup(enum mx_termios_setup what);
+
+/* Install a new signal hook to be run pre/post signal reraise.
+ * The old respective handler is returned.
+ * When installing, the old handler should be stored so that an entire chain of
+ * handlers can be notified by calling the first.
+ * The old former handler should be reinstalled when done.
+ * xxx Of course this is primitive, yet sufficient for now */
+EXPORT mx_termios_on_signal mx_termios_set_on_signal(mx_termios_on_signal hdl);
 
 /* For _RAW and _RAW_TIMEOUT a1 describes VMIN and VTIME, respectively */
 EXPORT boole mx_termios_cmd(enum mx_termios_cmd cmd, uz a1);
+#define mx_termios_cmdx(CMD) mx_termios_cmd(CMD, 0)
 
 #include <su/code-ou.h>
 #endif /* mx_TERMIOS_H */

@@ -633,7 +633,7 @@ mx_termcap_init(void){
    char const *ccp;
    NYD_IN;
 
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
+   ASSERT(n_psonce & n_PSO_TTYANY);
 
    a_termcap_g = n_alloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
@@ -680,8 +680,15 @@ mx_termcap_init(void){
 
    /* TODO We do not handle !mx_TERMCAP_QUERY_sam in this software! */
    if(!mx_termcap_query(mx_TERMCAP_QUERY_am, &tv) ||
-         mx_termcap_query(mx_TERMCAP_QUERY_xenl, &tv))
+         mx_termcap_query(mx_TERMCAP_QUERY_xenl, &tv)){
       n_psonce |= n_PSO_TERMCAP_FULLWIDTH;
+
+      /* Since termcap was not initialized when we did TERMIOS_SETUP_TERMSIZE
+       * we need/should adjust the found setting to reality (without causing
+       * a synthesized SIGWINCH or something even more expensive that is) */
+      if(mx_termios_dimen.tiosd_width > 0)
+         ++mx_termios_dimen.tiosd_width;
+   }
 
    mx_TERMCAP_RESUME(TRU1);
    NYD_OU;
@@ -690,7 +697,6 @@ mx_termcap_init(void){
 void
 mx_termcap_destroy(void){
    NYD_IN;
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
    ASSERT(a_termcap_g != NULL);
 
    mx_TERMCAP_SUSPEND(TRU1);

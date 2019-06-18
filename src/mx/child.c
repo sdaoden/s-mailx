@@ -3,6 +3,7 @@
  *@ TODO . argument and environment space constraints not tested.
  *@ TODO . use a SU child, offer+use our own stuff for "wait status" checks.
  *@ TODO (requires event loop then, likely)
+ *@ TODO STDERR is always "passed", yet not taken care of regarding termios!
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

@@ -21,7 +21,8 @@
 
 #include <mx/nail.h>
 
-/* Switch indicating necessity of terminal access interface */
+/* Switch indicating necessity of terminal access interface.
+ * (As of the time of this writing TERMCAP only with available MLE, but..) */
 #if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
 # define mx_HAVE_TCAP
 #endif

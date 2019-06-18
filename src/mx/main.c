@@ -135,21 +135,24 @@ a_main_startup(void){
     * TODO but v15 should use ONLY this, also for terminal input! */
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
-#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
+#ifdef mx_HAVE_MLE
       if((mx_tty_fp = fdopen(fileno(n_stdin), "w")) != NIL)
          setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
 #endif
    }
-   if(isatty(STDOUT_FILENO))
-      n_psonce |= n_PSO_TTYOUT;
-   if((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) ==
-         (n_PSO_TTYIN | n_PSO_TTYOUT))
-      n_psonce |= n_PSO_INTERACTIVE;
 
+   if(isatty(STDOUT_FILENO)){
+      n_psonce |= n_PSO_TTYOUT;
+      mx_tty_fp = n_stdout;
+   }
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
+
+   if((n_psonce & n_PSO_TTYANY) == n_PSO_TTYANY)
+      n_psonce |= n_PSO_INTERACTIVE;
+
    if(mx_tty_fp == NIL)
-      mx_tty_fp = n_stdout;
+      mx_tty_fp = (n_psonce & n_PSO_TTYIN) ? n_stdin : n_stdout;
 
    /* Now that the basic I/O is accessible, initialize our main machinery,
     * input, loop, child, termios, whatever */
@@ -628,7 +631,7 @@ main(int argc, char *argv[]){
             (void)su_avopt_dump_doc(&avo, &a_main_dump_doc,
                su_S(su_up,n_stdout));
          }
-         goto j_leave;
+         goto jleave;
       case 'i':
          /* Ignore interrupts */
          ok_bset(ignore);
@@ -844,7 +847,7 @@ jeTuse:
          fputs(n_string_cp_const(n_version(
             n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
          n_exit_status = n_EXIT_OK;
-         }goto j_leave;
+         }goto jleave;
       case 'v':
          /* Be verbose */
          ok_bset(verbose);
@@ -909,7 +912,7 @@ jusage:
          }
          a_main_usage(n_stderr);
          n_exit_status = n_EXIT_USE;
-         goto j_leave;
+         goto jleave;
       }
    }
 jgetopt_done:
@@ -1035,18 +1038,18 @@ jgetopt_done:
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
                !n_go_load(ok_vlook(system_mailrc)))
-            goto j_leave;
+            goto jleave;
       }
 
       if((resfiles & a_RF_USER) &&
             !n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
-         goto j_leave;
+         goto jleave;
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
       if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
             !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
-         goto j_leave;
+         goto jleave;
    }
 
    /* Cause possible umask(2) to be applied, now that any setting is
@@ -1085,14 +1088,8 @@ je_expandargv:
     * setting has been restored, but get the termcap up and going before we
     * switch account or running commands */
 #ifdef mx_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
+   if(n_psonce & n_PSO_TTYANY)
       mx_termcap_init();
-      /* Since termcap was not initialized when we did TERMIOS_SETUP_TERMSIZE
-       * we need/should adjust the found setting to reality */
-      if(mx_termios_dimen.tiosd_width > 0 &&
-            (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-         ++mx_termios_dimen.tiosd_width;
-   }
 #endif
 
    /* Now we can set the account */
@@ -1172,13 +1169,6 @@ je_expandargv:
    }
 
 jleave:
-  /* Be aware of identical code for `exit' command! */
-#ifdef mx_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
-      mx_termcap_destroy();
-#endif
-
-j_leave:
 #ifdef su_HAVE_DEBUG
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);

@@ -34,6 +34,8 @@ XOPTIONS="\
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
       KEY_BINDINGS='Configurable key bindings' \
+      TERMCAP='Terminal capability queries (termcap(5))' \
+         TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    MTA_ALIASES='MTA aliases(5) (text file) support' \
    REGEX='Regular expressions' \
    SOCKETS='Network support' \
@@ -47,8 +49,6 @@ XOPTIONS="\
          TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
    SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
-   TERMCAP='Terminal capability queries (termcap(5))' \
-      TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    UISTRINGS='User interface and error message strings' \
 "
 
@@ -226,6 +226,9 @@ option_update() {
 
    if feat_no MLE; then
       OPT_HISTORY=0 OPT_KEY_BINDINGS=0
+      OPT_TERMCAP=0 OPT_TERMCAP_VIA_TERMINFO=0
+   elif feat_no TERMCAP; then
+      OPT_TERMCAP_VIA_TERMINFO=0
    fi
 
    # If we don't need MD5 leave it alone
@@ -233,9 +236,6 @@ option_update() {
       OPT_MD5=0
    fi
 
-   if feat_no TERMCAP; then
-      OPT_TERMCAP_VIA_TERMINFO=0
-   fi
 }
 
 ##  --  >8  - << OPTIONS | EARLY >> -  8<  --  ##

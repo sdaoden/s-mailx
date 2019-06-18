@@ -40,141 +40,54 @@
 
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
-#include "mx/termcap.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
 #ifdef mx_HAVE_MLE
 # include "mx/colour.h"
+# include "mx/termcap.h"
 #endif
 
 #include "mx/tty.h"
 /* TODO fake */
 #include "su/code-in.h"
 
-#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
-# define a_TTY_SIGNALS
-#endif
-
-#ifdef a_TTY_SIGNALS
-static n_sighdl_t a_tty_oint, a_tty_oquit, a_tty_oterm,
-   a_tty_ohup,
-   a_tty_otstp, a_tty_ottin, a_tty_ottou;
-#endif
-
 FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 
-#ifdef a_TTY_SIGNALS
-/**/
-static void a_tty_sigs_up(void), a_tty_sigs_down(void);
-
-/* Is editor specific code */
-static void a_tty_signal(int sig);
-#endif
-
-#ifdef a_TTY_SIGNALS
-static void
-a_tty_sigs_up(void){
-   sigset_t nset, oset;
-   NYD2_IN;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   a_tty_oint = safe_signal(SIGINT, &a_tty_signal);
-   a_tty_oquit = safe_signal(SIGQUIT, &a_tty_signal);
-   a_tty_oterm = safe_signal(SIGTERM, &a_tty_signal);
-   a_tty_ohup = safe_signal(SIGHUP, &a_tty_signal);
-   a_tty_otstp = safe_signal(SIGTSTP, &a_tty_signal);
-   a_tty_ottin = safe_signal(SIGTTIN, &a_tty_signal);
-   a_tty_ottou = safe_signal(SIGTTOU, &a_tty_signal);
-   sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD2_OU;
-}
-
-static void
-a_tty_sigs_down(void){
-   sigset_t nset, oset;
-   NYD2_IN;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   safe_signal(SIGINT, a_tty_oint);
-   safe_signal(SIGQUIT, a_tty_oquit);
-   safe_signal(SIGTERM, a_tty_oterm);
-   safe_signal(SIGHUP, a_tty_ohup);
-   safe_signal(SIGTSTP, a_tty_otstp);
-   safe_signal(SIGTTIN, a_tty_ottin);
-   safe_signal(SIGTTOU, a_tty_ottou);
-   sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD2_OU;
-}
-#endif /* a_TTY_SIGNALS */
-
-static sigjmp_buf a_tty__actjmp; /* TODO someday, we won't need it no more */
-static void
-a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
-{
-   siglongjmp(a_tty__actjmp, s);
-}
-
 boole
-mx_tty_yesorno(char const * volatile prompt, boole noninteract_default)
-{
-   n_sighdl_t volatile oint, ohup;
-   uz lsize;
-   char *ldat;
-   boole volatile rv;
-   int volatile sig;
+mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
+   boole rv;
    NYD_IN;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT)){
-      sig = 0;
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT))
       rv = noninteract_default;
-      goto jleave;
-   }
-   rv = FAL0;
+   else{
+      uz lsize;
+      char *ldat;
+      char const *quest;
 
-   /* C99 */{
-      char const *quest = noninteract_default
-            ? _("[yes]/no? ") : _("[no]/yes? ");
+      rv = FAL0;
 
-      if (prompt == NULL)
+      quest = noninteract_default ? _("[yes]/no? ") : _("[no]/yes? ");
+      if(prompt == NIL)
          prompt = _("Continue");
       prompt = savecatsep(prompt, ' ', quest);
-   }
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
+      mx_fs_linepool_aquire(&ldat, &lsize);
+      while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+               &ldat, &lsize, NIL,NIL) >= 0){
+         boole x;
 
-   mx_fs_linepool_aquire(&ldat, &lsize);
-
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
-
-   while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-            &ldat, &lsize, NIL,NIL) >= 0){
-      boole x;
-
-      x = n_boolify(ldat, UZ_MAX, noninteract_default);
-      if(x >= FAL0){
-         rv = x;
-         break;
+         x = n_boolify(ldat, UZ_MAX, noninteract_default);
+         if(x >= FAL0){
+            rv = x;
+            break;
+         }
       }
+      mx_fs_linepool_release(ldat, lsize);
    }
 
-jrestore:
-   mx_fs_linepool_release(ldat, lsize);
-
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
-jleave:
    NYD_OU;
-   if (sig != 0)
-      n_raise(sig);
    return rv;
 }
 
@@ -182,90 +95,51 @@ jleave:
 char *
 mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
-   n_sighdl_t volatile oint, ohup;
    uz lsize;
-   char *ldat;
-   char * volatile user = NULL;
-   int volatile sig;
+   char *ldat, *user;
    NYD_IN;
 
    if (query == NULL)
       query = _("User: ");
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
-
    mx_fs_linepool_aquire(&ldat, &lsize);
-
-   if((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
-
    if(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
          &ldat, &lsize, NIL, NIL) >= 0)
       user = savestr(ldat);
-
-jrestore:
+   else
+      user = NIL;
    mx_fs_linepool_release(ldat, lsize);
 
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
-
    NYD_OU;
-   if (sig != 0)
-      n_raise(sig);
    return user;
 }
 
 char *
-mx_tty_getpass(char const *query)/* TODO v15: use _only_ mx_tty_fp! */
-{
-   n_sighdl_t volatile oint, ohup;
+mx_tty_getpass(char const *query){
    uz lsize;
-   char *ldat;
-   char * volatile pass;
-   int volatile sig;
+   char *ldat, *pass;
    NYD_IN;
 
    pass = NIL;
-   if(!(n_psonce & n_PSO_TTYIN))
-      goto j_leave;
 
-   if(query == NIL)
-      query = _("Password: ");
-   fputs(query, mx_tty_fp);
-   fflush(mx_tty_fp);
+   if(n_psonce & n_PSO_TTYANY){
+      if(query == NIL)
+         query = _("Password: ");
+      fputs(query, mx_tty_fp);
+      fflush(mx_tty_fp);
 
-   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
+      mx_termios_cmdx(mx_TERMIOS_CMD_PASSWORD);
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
+      mx_fs_linepool_aquire(&ldat, &lsize);
+      if(readline_restart(mx_tty_fp, &ldat, &lsize, 0) >= 0)
+         pass = savestr(ldat);
+      mx_fs_linepool_release(ldat, lsize);
 
-   mx_fs_linepool_aquire(&ldat, &lsize);
+      mx_termios_cmdx(mx_TERMIOS_CMD_NORMAL);
+      putc('\n', mx_tty_fp);
+   }
 
-   if((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
-
-   mx_termios_cmd(mx_TERMIOS_CMD_PASSWORD, 0);
-
-   if(readline_restart(n_stdin, &ldat, &lsize, 0) >= 0)
-      pass = savestr(ldat);
-
-jrestore:
-   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
-   putc('\n', mx_tty_fp);
-
-   mx_fs_linepool_release(ldat, lsize);
-
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
    NYD_OU;
-   if(sig != 0)
-      n_raise(sig);
-j_leave:
    return pass;
 }
 #endif /* mx_HAVE_SOCKETS */
@@ -424,6 +298,9 @@ jleave:
  * TODO   and "last modified slot" (including "unknown" and "any" specials),
  * TODO   update that virtual instead, then synchronize what has truly changed.
  * TODO   I.e., add an indirection layer.
+ * TODO .. This also has an effect on our signal hook (as long as this codebase
+ * TODO    uses SA_RESTART), which currently does a tremendous amount of work.
+ * TODO    With double-buffer, it could simply write through the prepared one.
  * TODO . No BIDI support.
  * TODO . `bind': we currently use only one lookup tree.
  * TODO   For graceful behaviour (in conjunction with mx_HAVE_TERMCAP) we
@@ -759,6 +636,7 @@ struct a_tty_line{
    char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
    char *tl_pos;                 /* Address of the [4] */
 # endif
+   mx_termios_on_signal tl_otos;
 };
 
 # if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
@@ -907,6 +785,9 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 
 static struct a_tty_global a_tty;
 
+/* */
+static void a_tty_on_signal(s32 sig, boole after_reraise);
+
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
 static boole a_tty_hist_load(void);
@@ -1015,30 +896,23 @@ static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 static void
-a_tty_signal(int sig){
+a_tty_on_signal(s32 sig, boole after_reraise){
    /* Prototype at top */
-   sigset_t nset, oset;
    NYD; /* Signal handler */
+   UNUSED(sig);
 
-   mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
-   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
-   mx_TERMCAP_SUSPEND(TRU1);
-   a_tty_sigs_down();
-
-   sigemptyset(&nset);
-   sigaddset(&nset, sig);
-   sigprocmask(SIG_UNBLOCK, &nset, &oset);
-   n_raise(sig);
-   /* When we come here we'll continue editing, so reestablish */
-   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-
-   /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(TRU1);
-   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
-   mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
-   a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+   if(!after_reraise){
+      mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSP POSSIBLE.. */
+      mx_TERMCAP_SUSPEND(TRU1);
+   }else{
+      /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
+      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
+      mx_TERMCAP_RESUME(TRU1);
+      mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
+      a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+      /* TODO Due to SA_RESTART we need to refresh the line in here! */
+      a_tty_vi_refresh(a_tty.tg_line);
+   }
 }
 
 # ifdef mx_HAVE_HISTORY
@@ -1604,9 +1478,9 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       f |= a_HAVE_PROMPT;
    f |= a_HAVE_POSITION;
 
-   /* XXX We don't have a OnTerminalResize event (see main.c) yet, so we need
+   /* XXX We do not have a OnTerminalResize event (see termios) yet, so we need
     * XXX to reevaluate our circumstances over and over again */
-   /* Don't display prompt or position indicator on very small screens */
+   /* Do not display prompt or position indicator on very small screens */
    if((phy_wid_base = mx_termios_dimen.tiosd_width) <= a_TTY_WIDTH_RIPOFF)
       f &= ~(a_HAVE_PROMPT | a_HAVE_POSITION);
    else{
@@ -3144,11 +3018,6 @@ jinput_loop:
                   /* Let me at least once dream of iomon(itor), timer with
                    * one-shot, enwrapped with key_event and key_sequence_event,
                    * all driven by an event_loop */
-                  /* TODO v15 Until we have SysV signal handling all through we
-                   * TODO need to temporarily adjust our BSD signal handler
-                   * TODO with a SysV one, here */
-                  n_sighdl_t otstp, ottin, ottou;
-
 # ifdef mx_HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
                   if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
@@ -3158,20 +3027,14 @@ jinput_loop:
                   }
 jread_again:
 # endif
-                  otstp = n_signal(SIGTSTP, &a_tty_signal);
-                  ottin = n_signal(SIGTTIN, &a_tty_signal);
-                  ottou = n_signal(SIGTTOU, &a_tty_signal);
-
                   while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
+                     /* TODO Currently a noop due to SA_RESTART */
                      if(su_err_no() != su_ERR_INTR ||
                            ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
                               !a_tty_vi_refresh(tlp)))
                         break;
                   }
 
-                  safe_signal(SIGTSTP, otstp);
-                  safe_signal(SIGTTIN, ottin);
-                  safe_signal(SIGTTOU, ottou);
 # ifdef mx_HAVE_KEY_BINDINGS
                   if(flags & a_TIMEOUT)
                      a_tty_term_rawmode_timeout(tlp, FAL0);
@@ -4263,6 +4126,15 @@ mx_tty_destroy(boole xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
+
+  /* Be aware of identical code for `exit' command! */
+#ifdef mx_HAVE_TCAP
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
+      mx_termcap_destroy();
+#endif
+
+
+
    /* Write the history file */
 # ifdef mx_HAVE_HISTORY
    if(!xit_fastpath)
@@ -4389,16 +4261,15 @@ int
    tl.tl_x_bufsize = linesize;
 
    a_tty.tg_line = &tl;
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(FAL0);
-   mx_termios_cmd(mx_TERMIOS_CMD_QUERY, 0);
    mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
+   tl.tl_otos = mx_termios_set_on_signal(&a_tty_on_signal);
+   mx_TERMCAP_RESUME(FAL0);
    nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
    mx_COLOUR( mx_colour_env_gut(); )
-   mx_termios_cmd(mx_TERMIOS_CMD_NORMAL, 0);
    mx_TERMCAP_SUSPEND(FAL0);
-   a_tty_sigs_down();
-   a_tty.tg_line = NULL;
+   mx_termios_set_on_signal(tl.tl_otos);
+   mx_termios_cmdx(mx_TERMIOS_CMD_NORMAL);
+   a_tty.tg_line = NIL;
 
    NYD_OU;
    return (int)nn;
@@ -4764,33 +4635,6 @@ jleave:
  * The really-nothing-at-all implementation
  */
 
-# ifdef a_TTY_SIGNALS
-static void
-a_tty_signal(int sig){
-   /* Prototype at top */
-#  ifdef mx_HAVE_TERMCAP
-   sigset_t nset, oset;
-#  endif
-   NYD; /* Signal handler */
-   UNUSED(sig);
-
-#  ifdef mx_HAVE_TERMCAP
-   mx_TERMCAP_SUSPEND(TRU1);
-   a_tty_sigs_down();
-
-   sigemptyset(&nset);
-   sigaddset(&nset, sig);
-   sigprocmask(SIG_UNBLOCK, &nset, &oset);
-   n_raise(sig);
-   /* When we come here we'll continue editing, so reestablish */
-   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(TRU1);
-#  endif /* mx_HAVE_TERMCAP */
-}
-# endif /* a_TTY_SIGNALS */
-
 # if 0
 void
 mx_tty_init(void){
@@ -4822,15 +4666,7 @@ int
       }
    }
 
-# ifdef mx_HAVE_TERMCAP
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(FAL0);
-# endif
    rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
-# ifdef mx_HAVE_TERMCAP
-   mx_TERMCAP_SUSPEND(FAL0);
-   a_tty_sigs_down();
-# endif
    NYD_OU;
    return rv;
 }
@@ -4843,8 +4679,6 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_OU;
 }
 #endif /* nothing at all */
-
-#undef a_TTY_SIGNALS
 
 #include "su/code-ou.h"
 /* s-it-mode */

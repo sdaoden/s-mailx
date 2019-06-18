@@ -839,6 +839,7 @@ enum n_program_state_once{
    n_PSO_INTERACTIVE = 1u<<10,
    n_PSO_TTYIN = 1u<<11,
    n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
+   n_PSO_TTYANY = n_PSO_TTYIN | n_PSO_TTYOUT, /* mx_tty_fp = TTY */
 
    /* "Later" */
    n_PSO_t_FLAG_DONE = 1u<<15,
