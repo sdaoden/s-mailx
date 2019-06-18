@@ -162,10 +162,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    ok = STOP;
    f = a_F_NONE;
 
-   {  uz i = su_cs_len(mp->mb_imap_account) +1;
-      server = n_autorec_alloc(i);
-      su_mem_copy(server, mp->mb_imap_account, i);
-   }
+   server = savestr(mp->mb_imap_account);
    if (!strncmp(server, "imap://", 7))
       server += 7;
    else if (!strncmp(server, "imaps://", 8))
@@ -174,9 +171,11 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       server = &cp[1];
    for (cp = server; *cp; cp++)
       *cp = su_cs_to_lower(*cp);
+
    send_tok.value = n_autorec_alloc(
-         (send_tok.length = su_cs_len(server) -1 + 5) +1);
-   snprintf(send_tok.value, send_tok.length, "imap@%s", server);
+         (send_tok.length = su_cs_len(server) + 5) +1);
+   su_mem_copy(send_tok.value, "imap@", 5);
+   su_mem_copy(&S(char*,send_tok.value)[5], server, send_tok.length - 4);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;
