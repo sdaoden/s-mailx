@@ -20,16 +20,16 @@
 #ifndef mx_CONFIG_H
 # define mx_CONFIG_H
 
-#define ACCOUNT_NULL "null"   /* Name of "null" account */
-#define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
+#define ACCOUNT_NULL "null" /* Name of "null" account */
+#define n_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
 /* Protocol version for *on-compose-splice** -- update manual on change! */
 #define mx_DIG_MSG_PLUMBING_VERSION "0 0 1"
-#define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
-#define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX 5000       /* Error queue size (s32) TODO configurable */
-#define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
-#define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
-#define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
+#define mx_DOTLOCK_TRIES 5 /* Number of open(2) calls for dotlock */
+#define n_ERROR "ERROR" /* Is-error?  Also as n_error[] */
+#define ERRORS_MAX 5000 /* Error queue size (s32) TODO configurable */
+#define n_ESCAPE "~" /* Default escape for sending (POSIX standard) */
+#define mx_FILE_LOCK_TRIES 10 /* Maximum tries before file_lock() fails */
+#define mx_FILE_LOCK_MILLIS 200 /* If UZ_MAX, fall back to that */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
 #define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */

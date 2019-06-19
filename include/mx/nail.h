@@ -294,21 +294,6 @@ enum cproto{
 ,CPROTO_IMAP
 };
 
-enum n_dotlock_state{
-   n_DLS_NONE,
-   n_DLS_CANT_CHDIR, /* Failed to chdir(2) into desired path */
-   n_DLS_NAMETOOLONG, /* Lock file name would be too long */
-   n_DLS_ROFS, /* Read-only filesystem (no error, mailbox RO) */
-   n_DLS_NOPERM, /* No permission to creat lock file */
-   n_DLS_NOEXEC, /* Privilege separated dotlocker not found */
-   n_DLS_PRIVFAILED, /* Rising privileges failed in dotlocker */
-   n_DLS_EXIST, /* Lock file already exists, stale lock? */
-   n_DLS_FISHY, /* Something makes us think bad of situation */
-   n_DLS_DUNNO, /* Catch-all error */
-   n_DLS_PING, /* Not an error, but have to wait for lock */
-   n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
-};
-
 /* enum n_err_number from gen-config.h, which is in sync with
  * su_err_doc(), su_err_name() and su_err_from_name() */
 
@@ -341,11 +326,6 @@ enum fexp_mode{
    FEXP_NFOLDER = 1u<<7, /* NSPECIAL and no + folder, too */
    FEXP_NSHELL = 1u<<8, /* Don't do shell word exp. (but ~/, $VAR) */
    FEXP_NVAR = 1u<<9 /* ..not even $VAR expansion */
-};
-
-enum n_file_lock_type{
-   FLT_READ,
-   FLT_WRITE
 };
 
 enum n_go_input_flags{
@@ -1371,17 +1351,6 @@ struct ccred{
    struct str cc_user; /* User (urlxdec()oded) or NULL */
    struct str cc_pass; /* Password (urlxdec()oded) or NULL */
 };
-
-#ifdef mx_HAVE_DOTLOCK
-struct n_dotlock_info{
-   char const *di_file_name; /* Mailbox to lock */
-   char const *di_lock_name; /* .di_file_name + .lock */
-   char const *di_hostname; /* ..filled in parent (due resolver delays) */
-   char const *di_randstr; /* ..ditto, random string */
-   uz di_pollmsecs;  /* Delay in between locking attempts */
-   struct stat *di_stb;
-};
-#endif
 
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;

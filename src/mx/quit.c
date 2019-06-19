@@ -44,6 +44,7 @@
 #include <utime.h>
 
 #include "mx/dig-msg.h"
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/tty.h"
 
@@ -212,7 +213,7 @@ edstop(void) /* TODO oh my god */
          goto jleave;
       }
 
-      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UZ_MAX); /* TODO ign. lock err*/
+      mx_file_lock(fileno(ibuf), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
       fseek(ibuf, (long)mailsize, SEEK_SET);
       while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
          putc(c, obuf);
@@ -230,7 +231,7 @@ edstop(void) /* TODO oh my god */
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
-   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX); /* TODO ign. lock err! */
+   mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
    ftrunc(obuf);
 
    srelax_hold();
@@ -384,8 +385,8 @@ jnewmail:
       goto jleave;
    }
 
-   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UZ_MAX)
-         ) == NULL) {
+   if((lckfp = mx_file_dotlock(mailname, fileno(fbuf), mx_FILE_LOCK_TYPE_WRITE,
+         0,0, UZ_MAX)) == NIL){
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       mx_fs_close(fbuf);
       fbuf = NIL;

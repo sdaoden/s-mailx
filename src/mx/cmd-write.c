@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 
@@ -155,7 +156,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX);
+      mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
          n_perr(file, xerr);

@@ -63,10 +63,6 @@ static uz     _length_of_line(char const *line, uz linesize);
 static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
                      FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
 
-/* Workhorse */
-static boole a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
-               off_t len);
-
 static uz
 _length_of_line(char const *line, uz linesize)
 {
@@ -123,36 +119,6 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
    if (llen)
       *llen = n;
 jleave:
-   NYD2_OU;
-   return rv;
-}
-
-static boole
-a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
-{
-   struct flock flp;
-   boole rv;
-   NYD2_IN;
-
-   su_mem_set(&flp, 0, sizeof flp);
-
-   switch (flt) {
-   default:
-   case FLT_READ:    rv = F_RDLCK;  break;
-   case FLT_WRITE:   rv = F_WRLCK;  break;
-   }
-   flp.l_type = rv;
-   flp.l_start = off;
-   flp.l_whence = SEEK_SET;
-   flp.l_len = len;
-
-   if (!(rv = (fcntl(fd, F_SETLK, &flp) != -1)))
-      switch (su_err_no()) {
-      case su_ERR_BADF:
-      case su_ERR_INVAL:
-         rv = TRUM1;
-         break;
-      }
    NYD2_OU;
    return rv;
 }
@@ -338,43 +304,6 @@ fsize(FILE *iob)
    NYD_IN;
 
    rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
-   NYD_OU;
-   return rv;
-}
-
-FL boole
-n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
-   uz pollmsecs)
-{
-   uz tries;
-   boole didmsg, rv;
-   NYD_IN;
-
-   if(pollmsecs == UZ_MAX)
-      pollmsecs = FILE_LOCK_MILLIS;
-
-   UNINIT(rv, 0);
-   for (didmsg = FAL0, tries = 0; tries <= FILE_LOCK_TRIES; ++tries) {
-      rv = a_file_lock(fd, flt, off, len);
-
-      if (rv == TRUM1) {
-         rv = FAL0;
-         break;
-      }
-      if (rv || pollmsecs == 0)
-         break;
-      else {
-         if(!didmsg){
-            n_err(_("Failed to create a file lock, waiting %lu milliseconds "),
-               pollmsecs);
-            didmsg = TRU1;
-         }else
-            n_err(".");
-         n_msleep(pollmsecs, FAL0);
-      }
-   }
-   if(didmsg)
-      n_err(" %s\n", (rv ? _("ok") : _("failure")));
    NYD_OU;
    return rv;
 }

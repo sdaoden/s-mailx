@@ -38,6 +38,7 @@
 # endif
 #endif
 
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/termcap.h"
 #include "mx/ui-str.h"
@@ -1108,7 +1109,7 @@ a_tty_hist_load(void){
       rv = FAL0;
       goto jrele;
    }
-   (void)n_file_lock(fileno(f), FLT_READ, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
 
    /* Clear old history */
    /* C99 */{
@@ -1224,7 +1225,7 @@ a_tty_hist_save(void){
       rv = FAL0;
       goto jrele;
    }
-   (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
    if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER,
          sizeof(a_TTY_HIST_MARKER "\n") -1, f) !=

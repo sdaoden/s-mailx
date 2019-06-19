@@ -45,6 +45,7 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/mlist.h"
@@ -1053,7 +1054,8 @@ jefile:
 
             if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
                   (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
-               n_file_lock(fileno(fout), FLT_WRITE, 0,0, UZ_MAX);
+               mx_file_lock(fileno(fout), mx_FILE_LOCK_TYPE_WRITE, 0,0,
+                     UZ_MAX);
 
                if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
                      ) != su_ERR_NONE)
@@ -1199,7 +1201,7 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      n_file_lock(fileno(fo), FLT_WRITE, 0,0, UZ_MAX);
+      mx_file_lock(fileno(fo), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != su_ERR_NONE){
          n_perr(name, xerr);
@@ -1620,7 +1622,8 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
          ;
       else if((fp = mx_fs_open(mta, "r+")) == NIL)
          goto jeno;
-      else if(!n_file_lock(fileno(fp), FLT_READ|FLT_WRITE, 0,0, UZ_MAX)){
+      else if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_TYPE_READ |
+            mx_FILE_LOCK_TYPE_WRITE), 0,0, UZ_MAX)){
          f = su_ERR_NOLCK;
          goto jefo;
       }else if((f = n_folder_mbox_prepare_append(fp, NIL)) != su_ERR_NONE)
@@ -2807,7 +2810,8 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
       n_perr(_("Cannot save to $DEAD"), 0);
       goto jleave;
    }
-   n_file_lock(fileno(dbuf), FLT_WRITE, 0,0, UZ_MAX); /* XXX Natomic */
+   /* XXX Natomic */
+   mx_file_lock(fileno(dbuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
    fprintf(n_stdout, "%s ", cpq);
    fflush(n_stdout);

@@ -53,6 +53,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 
 /* TODO fake */
@@ -172,7 +173,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if((fp = mx_fs_open(encuid(mp, m->m_uid), "r")) == NIL)
       goto jleave;
 
-   n_file_lock(fileno(fp), FLT_READ, 0,0, 0);
+   mx_file_lock(fileno(fp), mx_FILE_LOCK_TYPE_READ, 0,0, 0);
    if (fscanf(fp, infofmt, &b, (unsigned long*)&xsize, &xflag,
          (unsigned long*)&xtime, &xlines) < 4)
       goto jfail;
@@ -305,9 +306,9 @@ putcache(struct mailbox *mp, struct message *m)
    if((obuf = mx_fs_open(name = encuid(mp, m->m_uid), "r+")) == NIL){
       if((obuf = mx_fs_open(name, "w")) == NIL)
          goto jleave;
-      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, 0); /* XXX err hdl */
-   } else {
-      n_file_lock(fileno(obuf), FLT_READ, 0,0, 0); /* XXX err hdl */
+      mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, 0); /* XXX err*/
+   }else{
+      mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_READ, 0,0, 0); /* XXX err */
       if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
             (unsigned long*)&otime, &olines) >= 4 && ob != '\0' &&
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
@@ -397,7 +398,7 @@ initcache(struct mailbox *mp)
       goto jleave;
 
    if((uvfp = mx_fs_open(uvname, "r+")) == NIL ||
-         (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
+         (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_TYPE_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%" PRIu64 , &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
@@ -406,7 +407,7 @@ initcache(struct mailbox *mp)
       rewind(uvfp);
    }
 
-   n_file_lock(fileno(uvfp), FLT_WRITE, 0,0, 0);
+   mx_file_lock(fileno(uvfp), mx_FILE_LOCK_TYPE_WRITE, 0,0, 0);
    fprintf(uvfp, "%" PRIu64 "\n", mp->mb_uidvalidity);
 
    /* C99 */{
@@ -789,7 +790,7 @@ cached_uidvalidity(struct mailbox *mp)
       goto jleave;
    }
    if((uvfp = mx_fs_open(uvname, "r")) == NIL ||
-         (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
+         (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_TYPE_READ, 0,0, 0), 0) ||
          fscanf(uvfp, "%" PRIu64, &uv) != 1)
       uv = 0;
    if(uvfp != NIL)
@@ -809,7 +810,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
    if((fp = mx_fs_open(name, mode)) != NIL)
-      n_file_lock(fileno(fp), FLT_WRITE, 0,0, 0);
+      mx_file_lock(fileno(fp), mx_FILE_LOCK_TYPE_WRITE, 0,0, 0);
    if (xname)
       *xname = name;
 jleave:
@@ -889,7 +890,7 @@ dequeue1(struct mailbox *mp)
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = mx_fs_open(uvname, "r")) == NIL ||
-            (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
+            (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_TYPE_READ, 0,0, 0), 0) ||
             fscanf(uvfp, "%" PRIu64, &uv) != 1 || uv != mp->mb_uidvalidity) {
          n_err(_("Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
