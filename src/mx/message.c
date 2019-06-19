@@ -1445,7 +1445,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    fflush_rewind(fp);
    cnt = fsize(fp);
 
-   mx_linepool_aquire(&line, &linesize);
+   mx_fs_linepool_aquire(&line, &linesize);
 
    if(!with_headers)
       while(fgetline(&line, &linesize, &cnt, NULL, fp, 0))
@@ -1465,7 +1465,7 @@ message_match(struct message *mp, struct search_expr const *sep,
       break;
    }
 
-   mx_linepool_release(line, linesize);
+   mx_fs_linepool_release(line, linesize);
 
 jleave:
    mx_fs_close(fp);

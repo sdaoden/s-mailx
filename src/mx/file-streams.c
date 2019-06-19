@@ -79,7 +79,16 @@ struct a_fs_ent{
    struct mx_child_ctx fse_cc;
 };
 
+struct a_fs_lpool_ent{
+   struct a_fs_lpool_ent *fsle_last;
+   char *fsle_dat;
+   uz fsle_size;
+};
+
 static struct a_fs_ent *a_fs_fp_head;
+
+struct a_fs_lpool_ent *a_fs_lpool_free;
+struct a_fs_lpool_ent *a_fs_lpool_used;
 
 /* Scan file open mode, and turn it to flags.  If & was prepended, set *mode
  * to NIL to indicate O_REGISTER shall not be set */
@@ -930,6 +939,262 @@ mx_fs_close_all(void){
       else
          mx_fs_close(a_fs_fp_head->fse_fp);
    NYD_OU;
+}
+
+void
+mx_fs_linepool_aquire(char **dpp, uz *dsp){
+   struct a_fs_lpool_ent *lpep;
+   NYD2_IN;
+
+   if((lpep = a_fs_lpool_free) != NIL)
+      a_fs_lpool_free = lpep->fsle_last;
+   else
+      lpep = su_TCALLOC(struct a_fs_lpool_ent, 1);
+
+   lpep->fsle_last = a_fs_lpool_used;
+   a_fs_lpool_used = lpep;
+   *dpp = lpep->fsle_dat;
+   lpep->fsle_dat = NIL;
+   *dsp = lpep->fsle_size;
+   NYD2_OU;
+}
+
+void
+mx_fs_linepool_release(char *dp, uz ds){
+   struct a_fs_lpool_ent *lpep;
+   NYD2_IN;
+
+   ASSERT(a_fs_lpool_used != NIL);
+   lpep = a_fs_lpool_used;
+   a_fs_lpool_used = lpep->fsle_last;
+
+   lpep->fsle_last = a_fs_lpool_free;
+   a_fs_lpool_free = lpep;
+   lpep->fsle_dat = dp;
+   lpep->fsle_size = ds;
+   NYD2_OU;
+}
+
+void
+mx_fs_linepool_cleanup(void){
+   struct a_fs_lpool_ent *lpep, *tmp;
+   NYD2_IN;
+
+   lpep = a_fs_lpool_used;
+   a_fs_lpool_used = NIL;
+jredo:
+   while((tmp = lpep) != NIL){
+      lpep = lpep->fsle_last;
+      if(tmp->fsle_dat != NIL)
+         su_FREE(tmp->fsle_dat);
+      su_FREE(tmp);
+   }
+
+   if((lpep = a_fs_lpool_free) != NIL){
+      a_fs_lpool_free = NIL;
+      goto jredo;
+   }
+   NYD2_OU;
+}
+
+/* TODO The rest below is old-style */
+
+/* line is a buffer with the result of fgets(). Returns the first newline or
+ * the last character read */
+static uz     _length_of_line(char const *line, uz linesize);
+
+/* Read a line, one character at a time */
+static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
+                     FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
+
+static uz
+_length_of_line(char const *line, uz linesize)
+{
+   uz i;
+   NYD2_IN;
+
+   /* Last character is always '\0' and was added by fgets() */
+   for (--linesize, i = 0; i < linesize; i++)
+      if (line[i] == '\n')
+         break;
+   i = (i < linesize) ? i + 1 : linesize;
+   NYD2_OU;
+   return i;
+}
+
+static char *
+_fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
+   int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
+{
+   char *rv;
+   int c;
+   NYD2_IN;
+
+   ASSERT(*linesize == 0 || *line != NULL);
+   n_pstate &= ~n_PS_READLINE_NL;
+
+   for (rv = *line;;) {
+      if (*linesize <= LINESIZE || n >= *linesize - 128) {
+         *linesize += ((rv == NULL) ? LINESIZE + n + 1 : 256);
+         *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize,
+               su_DBG_LOC_ARGS_ORUSE);
+      }
+      c = getc(fp);
+      if (c != EOF) {
+         rv[n++] = c;
+         rv[n] = '\0';
+         if (c == '\n') {
+            n_pstate |= n_PS_READLINE_NL;
+            break;
+         }
+      } else {
+         if (n > 0) {
+            if (appendnl) {
+               rv[n++] = '\n';
+               rv[n] = '\0';
+            }
+            break;
+         } else {
+            rv = NULL;
+            goto jleave;
+         }
+      }
+   }
+   if (llen)
+      *llen = n;
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+FL char *
+(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
+   int appendnl su_DBG_LOC_ARGS_DECL)
+{
+   uz i_llen, size;
+   char *rv;
+   NYD2_IN;
+
+   if (cnt == NULL) {
+      /* Without count, we can't determine where the chars returned by fgets()
+       * end if there's no newline.  We have to read one character by one */
+      rv = _fgetline_byone(line, linesize, llen, fp, appendnl, 0
+            su_DBG_LOC_ARGS_USE);
+      goto jleave;
+   }
+
+   n_pstate &= ~n_PS_READLINE_NL;
+
+   if ((rv = *line) == NULL || *linesize < LINESIZE)
+      *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
+            su_DBG_LOC_ARGS_ORUSE);
+   size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
+   if (size <= 1 || fgets(rv, size, fp) == NULL) {
+      /* Leave llen untouched; it is used to determine whether the last line
+       * was \n-terminated in some callers */
+      rv = NULL;
+      goto jleave;
+   }
+
+   i_llen = _length_of_line(rv, size);
+   *cnt -= i_llen;
+   while (rv[i_llen - 1] != '\n') {
+      *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
+            su_DBG_LOC_ARGS_ORUSE);
+      size = *linesize - i_llen;
+      size = (size <= *cnt) ? size : *cnt + 1;
+      if (size <= 1 || fgets(rv + i_llen, size, fp) == NULL) {
+         if (appendnl) {
+            rv[i_llen++] = '\n';
+            rv[i_llen] = '\0';
+         }
+         break;
+      }
+      size = _length_of_line(rv + i_llen, size);
+      i_llen += size;
+      *cnt -= size;
+   }
+   if (llen)
+      *llen = i_llen;
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+FL int
+(readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
+   su_DBG_LOC_ARGS_DECL)
+{
+   /* TODO readline_restart(): always *appends* LF just to strip it again;
+    * TODO should be configurable just as for fgetline(); ..or whatever..
+    * TODO intwrap */
+   int rv = -1;
+   long size;
+   NYD2_IN;
+
+   clearerr(ibuf);
+
+   /* Interrupts will cause trouble if we are inside a stdio call. As this is
+    * only relevant if input is from tty, bypass it by read(), then */
+   if ((n_psonce & n_PSO_TTYIN) && fileno(ibuf) == 0) {
+      ASSERT(*linesize == 0 || *linebuf != NULL);
+      n_pstate &= ~n_PS_READLINE_NL;
+      for (;;) {
+         if (*linesize <= LINESIZE || n >= *linesize - 128) {
+            *linesize += ((*linebuf == NULL) ? LINESIZE + n + 1 : 256);
+            *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
+                  su_DBG_LOC_ARGS_ORUSE);
+         }
+jagain:
+         size = read(0, *linebuf + n, *linesize - n - 1);
+         if (size > 0) {
+            n += size;
+            (*linebuf)[n] = '\0';
+            if ((*linebuf)[n - 1] == '\n') {
+               n_pstate |= n_PS_READLINE_NL;
+               break;
+            }
+         } else {
+            if (size < 0 && su_err_no() == su_ERR_INTR)
+               goto jagain;
+            /* TODO eh.  what is this?  that now supposed to be a line?!? */
+            if (n > 0) {
+               if ((*linebuf)[n - 1] != '\n') {
+                  (*linebuf)[n++] = '\n';
+                  (*linebuf)[n] = '\0';
+               } else
+                  n_pstate |= n_PS_READLINE_NL;
+               break;
+            } else
+               goto jleave;
+         }
+      }
+   } else {
+      /* Not reading from standard input or standard input not a terminal. We
+       * read one char at a time as it is the only way to get lines with
+       * embedded NUL characters in standard stdio */
+      if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
+            su_DBG_LOC_ARGS_USE) == NULL)
+         goto jleave;
+   }
+   if (n > 0 && (*linebuf)[n - 1] == '\n')
+      (*linebuf)[--n] = '\0';
+   rv = (int)n;
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+FL off_t
+fsize(FILE *iob)
+{
+   struct stat sbuf;
+   off_t rv;
+   NYD_IN;
+
+   rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
+   NYD_OU;
+   return rv;
 }
 
 #include "su/code-ou.h"

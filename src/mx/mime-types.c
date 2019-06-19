@@ -243,7 +243,7 @@ jecontent:
       }
 
    /* Load all file-based sources in the desired order */
-   mx_linepool_aquire(&line, &linesize);
+   mx_fs_linepool_aquire(&line, &linesize);
    for(j = 0, i = S(u32,P2UZ(srcs - srcs_arr)), srcs = srcs_arr;
          i > 0; ++j, ++srcs, --i)
       if(*srcs == NIL)
@@ -254,7 +254,7 @@ jecontent:
             n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
-   mx_linepool_release(line, linesize);
+   mx_fs_linepool_release(line, linesize);
 
 jleave:
    _mt_is_init = TRU1;

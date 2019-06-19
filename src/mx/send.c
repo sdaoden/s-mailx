@@ -1513,21 +1513,21 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 
    fflush(pipebuf);
    rewind(pipebuf);
-   cnt = (uz)fsize(pipebuf);
+   cnt = S(uz,fsize(pipebuf));
    all_sz = 0;
 
-   mx_linepool_aquire(&line, &linesize);
+   mx_fs_linepool_aquire(&line, &linesize);
    quoteflt_reset(qf, outbuf);
-   while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NULL) {
-      if ((i = quoteflt_push(qf, line, linelen)) < 0)
+   while(fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NIL){
+      if((i = quoteflt_push(qf, line, linelen)) < 0)
          break;
       all_sz += i;
    }
-   if ((i = quoteflt_flush(qf)) > 0)
+   if((i = quoteflt_flush(qf)) > 0)
       all_sz += i;
-   mx_linepool_release(line, linesize);
+   mx_fs_linepool_release(line, linesize);
 
-   if (all_sz > 0 && outbuf == origobuf && stats != NULL)
+   if(all_sz > 0 && outbuf == origobuf && stats != NIL)
       *stats += all_sz;
    mx_fs_close(pipebuf);
    NYD_OU;

@@ -52,6 +52,8 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/file-streams.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -576,7 +578,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    enum okay volatile rv;
    NYD_IN;
 
-   mx_linepool_aquire(&line, &linesize);
+   mx_fs_linepool_aquire(&line, &linesize);
    saveint = savepipe = SIG_IGN;
    number = (int)P2UZ(m - message + 1);
    emptyline = 0;
@@ -704,7 +706,7 @@ jretry:
 
    rv = OKAY;
 jleave:
-   mx_linepool_release(line, linesize);
+   mx_fs_linepool_release(line, linesize);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)

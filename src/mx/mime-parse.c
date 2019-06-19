@@ -45,6 +45,7 @@
 #include <su/mem.h>
 
 #include "mx/charsetalias.h"
+#include "mx/file-streams.h"
 
 /* TODO fake */
 #include "su/code-in.h"

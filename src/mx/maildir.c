@@ -1085,7 +1085,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   mx_linepool_aquire(&buf, &bufsize);
+   mx_fs_linepool_aquire(&buf, &bufsize);
    buflen = 0;
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
@@ -1163,7 +1163,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    ASSERT(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
-   mx_linepool_release(buf, bufsize);
+   mx_fs_linepool_release(buf, bufsize);
 jleave:
    NYD_OU;
    return rv;

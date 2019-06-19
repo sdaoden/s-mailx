@@ -213,7 +213,7 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
 
    rv = su_ERR_NONE;
    lc = cc = 0;
-   mx_linepool_aquire(&linebuf, &linesize);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
    heredb = NULL;
    heredl = 0;
 
@@ -300,7 +300,7 @@ jdelim_empty:
    if(heredb != NULL)
       rv = su_ERR_NOTOBACCO;
 jleave:
-   mx_linepool_release(linebuf, linesize);
+   mx_fs_linepool_release(linebuf, linesize);
    if(fbuf != NIL){
       if(fbuf != n_stdin)
          mx_fs_close(fbuf);
@@ -1077,7 +1077,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    coap = NULL;
    s = NULL;
 
-   mx_linepool_aquire(&linebuf, &linesize);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
 
    /* Start catching signals from here, but we still die on interrupts
     * until we're in the main loop */
@@ -2028,7 +2028,7 @@ jskiptails:
 
 jleave:
    sigprocmask(SIG_BLOCK, &nset, NULL);
-   mx_linepool_release(linebuf, linesize);
+   mx_fs_linepool_release(linebuf, linesize);
    mx_DIG_MSG_COMPOSE_GUT(&dmc);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);

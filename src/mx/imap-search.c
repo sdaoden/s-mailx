@@ -54,6 +54,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -467,10 +468,10 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
          char *line;
          uz linesize;
 
-         mx_linepool_aquire(&line, &linesize);
+         mx_fs_linepool_aquire(&line, &linesize);
          if (readline_restart(ibuf, &line, &linesize, 0) > 0)
             m->m_time = unixtime(line);
-         mx_linepool_release(line, linesize);
+         mx_fs_linepool_release(line, linesize);
       }
       break;
    case ITSENTBEFORE:

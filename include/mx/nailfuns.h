@@ -682,48 +682,6 @@ FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
                   char const *pipecmd);
 
 /*
- * fio.c
- */
-
-/* XXX Temporary (pre v15 I/O) line buffer "pool".
- * (Possibly) Get a line buffer, and release one to the pool, respectively.
- * The latter is driven by the mainloop to perform cleanups */
-FL void mx_linepool_aquire(char **dp, uz *sp);
-FL void mx_linepool_release(char *dp, uz sp);
-FL void mx_linepool_cleanup(void);
-
-/* fgets() replacement to handle lines of arbitrary size and with embedded \0
- * characters.
- * line - line buffer.  *line may be NULL.
- * linesize - allocated size of line buffer.
- * count - maximum characters to read.  May be NULL.
- * llen - length_of_line(*line).
- * fp - input FILE.
- * appendnl - always terminate line with \n, append if necessary.
- * Manages the n_PS_READLINE_NL hack */
-FL char *      fgetline(char **line, uz *linesize, uz *count,
-                  uz *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define fgetline(A,B,C,D,E,F)   \
-   fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Read up a line from the specified input into the linebuffer.
- * Return the number of characters read.  Do not include the newline at EOL.
- * n is the number of characters already read and present in *linebuf; it'll be
- * treated as _the_ line if no more (successful) reads are possible.
- * Manages the n_PS_READLINE_NL hack */
-FL int         readline_restart(FILE *ibuf, char **linebuf, uz *linesize,
-                  uz n  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define readline_restart(A,B,C,D) \
-   readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Determine the size of the file possessed by the passed buffer */
-FL off_t       fsize(FILE *iob);
-
-/*
  * folder.c
  */
 

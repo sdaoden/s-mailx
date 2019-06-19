@@ -49,6 +49,7 @@
 #include <su/mem.h>
 
 #include "mx/colour.h"
+#include "mx/file-streams.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/ui-str.h"
@@ -401,13 +402,13 @@ a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    uz hsize;
    NYD2_IN;
 
-   mx_linepool_aquire(&hline, &hsize);
+   mx_fs_linepool_aquire(&hline, &hsize);
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
       a_header_extract_date_from_from_(hline, hlen, date);
 
-   mx_linepool_release(hline, hsize);
+   mx_fs_linepool_release(hline, hsize);
    NYD2_OU;
 }
 
@@ -1095,14 +1096,17 @@ static long
 a_gethfield(enum n_header_extract_flags hef, FILE *f,
    char **linebuf, uz *linesize, long rem, char **colon)
 {
-   char *line2 = NULL, *cp, *cp2;
-   uz line2size = 0;
+   char *line2, *cp, *cp2;
+   uz line2size;
    int c, isenc;
    NYD2_IN;
 
    if (*linebuf == NULL)
       *linebuf = n_realloc(*linebuf, *linesize = 1);
    **linebuf = '\0';
+
+   mx_fs_linepool_aquire(&line2, &line2size);
+
    for (;;) {
       if (--rem < 0) {
          rem = -1;
@@ -1149,7 +1153,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          ungetc(c = getc(f), f);
          if (!su_cs_is_blank(c))
             break;
-         c = readline_restart(f, &line2, &line2size, 0); /* TODO linepool! */
+         c = readline_restart(f, &line2, &line2size, 0);
          if (c < 0)
             break;
          --rem;
@@ -1171,11 +1175,11 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          cp += c;
       }
       *cp = '\0';
-
-      if (line2 != NULL)
-         n_free(line2);
       break;
    }
+
+   mx_fs_linepool_release(line2, line2size);
+
    NYD2_OU;
    return rem;
 }
@@ -1379,7 +1383,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    char const *val, *cp;
    NYD_IN;
 
-   mx_linepool_aquire(&linebuf, &linesize);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
    if(linebuf != NIL)
       linebuf[0] = '\0';
 
@@ -1600,7 +1604,7 @@ jebadhead:
       n_err(_("Restoring deleted header lines\n"));
 
 jleave:
-   mx_linepool_release(linebuf, linesize);
+   mx_fs_linepool_release(linebuf, linesize);
    NYD_OU;
 }
 
@@ -1615,7 +1619,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
    char const *hfield;
    NYD_IN;
 
-   mx_linepool_aquire(&linebuf, &linesize);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
 
    /* There are (spam) messages which have header bytes which are many KB when
     * joined, so resize a single heap storage until we are done if we shall
@@ -1647,7 +1651,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
    }
 
 jleave:
-   mx_linepool_release(linebuf, linesize);
+   mx_fs_linepool_release(linebuf, linesize);
    if (mult && hfs.s != NULL) {
       colon = savestrbuf(hfs.s, hfs.l);
       n_free(hfs.s);
@@ -2449,7 +2453,7 @@ n_header_senderfield_of(struct message *mp){
       FILE *ibuf;
       int f1st = 1;
 
-      mx_linepool_aquire(&linebuf, &linesize);
+      mx_fs_linepool_aquire(&linebuf, &linesize);
 
       /* And fallback only works for MBOX */
       namebuf = n_alloc(namesize = 1);
@@ -2511,7 +2515,7 @@ jout:
             *cp == '\0')
          cp = savestr(namebuf);
 
-      mx_linepool_release(linebuf, linesize);
+      mx_fs_linepool_release(linebuf, linesize);
       n_free(namebuf);
    }
 
@@ -3194,9 +3198,9 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
    rv = FAL0;
    match = a_NONE;
-   mx_linepool_aquire(&linebuf, &linesize);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
    UNINIT(fiter.l, 0);
-   UNINIT(fiter.s, NULL);
+   UNINIT(fiter.s, NIL);
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
@@ -3318,7 +3322,7 @@ jnext_name:
 jleave:
    if(match == a_ITER)
       n_lofi_free(fiter.s);
-   mx_linepool_release(linebuf, linesize);
+   mx_fs_linepool_release(linebuf, linesize);
    NYD_OU;
    return rv;
 }
