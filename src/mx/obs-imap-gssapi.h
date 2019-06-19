@@ -299,14 +299,13 @@ jebase64:
    /* First octet: bit-mask with protection mechanisms (1 = no protection
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
-    * Fifth and following octets: user name string.
-    */
+    * Fifth and following octets: user name string */
+   su_mem_copy(&o[4], ccred->cc_user.s, ccred->cc_user.l +1);
    o[0] = 1;
    o[1] = 0;
-   o[2] = o[3] = (char)0377;
-   snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
+   o[2] = o[3] = S(char,0xFF);
+   send_tok.length = 4 + ccred->cc_user.l;
    send_tok.value = o;
-   send_tok.length = su_cs_len(&o[4]) -1 + 4;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    f |= a_F_RECV_TOK;
