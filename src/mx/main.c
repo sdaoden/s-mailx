@@ -1246,7 +1246,7 @@ je_expandargv:
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we
     * switch account or running commands */
-#ifdef n_HAVE_TCAP
+#ifdef mx_HAVE_TCAP
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
       mx_termcap_init();
       /* Undo the decrement from a_main__scrsz()s first invocation */
@@ -1333,7 +1333,7 @@ je_expandargv:
 
 jleave:
   /* Be aware of identical code for `exit' command! */
-#ifdef n_HAVE_TCAP
+#ifdef mx_HAVE_TCAP
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
       mx_termcap_destroy();
 #endif

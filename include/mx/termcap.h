@@ -20,7 +20,12 @@
 #define mx_TERMCAP_H
 
 #include <mx/nail.h>
-#ifdef n_HAVE_TCAP
+
+/* Switch indicating necessity of terminal access interface */
+#if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
+# define mx_HAVE_TCAP
+#endif
+#ifdef mx_HAVE_TCAP
 
 #define mx_HEADER
 #include <su/code-in.h>
@@ -208,7 +213,7 @@ EXPORT s32 mx_termcap_query_for_name(char const *name,
 EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # endif
 
-#endif /* n_HAVE_TCAP */
+#endif /* mx_HAVE_TCAP */
 
 #ifndef mx_TERMCAP_RESUME
 # define mx_TERMCAP_RESUME(CPL) do{;}while(0)

@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Some constants etc. for which adjustments may be desired.
  *@ This is included (as mx/config.h) after all the (system) headers.
+ *@ TODO It is a wild name convention mess, to say the least.
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -34,13 +35,13 @@
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
 #define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */
 #define mx_FS_TMP_OPEN_TRIES 10 /* Maximum number of fs_tmp_open() tries */
-#define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
+#define n_IMAP_DELIM "/." /* Directory separator ([0] == replacer, too) */
 #define n_LINE_EDITOR_CPL_WORD_BREAKS "\"'@=;|:"
 /* Fallback in case the systems reports an empty hostname (?) */
 #define n_LOCALHOST_DEFAULT_NAME "localhost.localdomain"
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
-#define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
-#define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
+#define n_MAXARGC 512 /* Maximum list of raw strings TODO dyn vector! */
+#define n_PATH_DEVNULL "/dev/null" /* Note: manual uses /dev/null as such */
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NULL /* DOC! */
 #define REFERENCES_MAX 20 /* Maximum entries in References: */
@@ -55,7 +56,7 @@
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
  * Note: must be lowercase!
- * (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!) */
+ * (Keep in SYNC: ./nail.1:"Character sets", mx-config.h:CHARSET_*!) */
 #define CHARSET_7BIT "us-ascii"
 #ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
@@ -77,7 +78,7 @@
 # endif
 #endif
 
-/* Supported IDNA implementations */
+/* Supported IDNA implementations TODO should not be here!?! */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
 #define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
@@ -122,19 +123,12 @@
 #define n_PIPEENV_CONTENT_EVIDENCE "MAILX_CONTENT_EVIDENCE"
 #define n_PIPEENV_EXTERNAL_BODY_URL "MAILX_EXTERNAL_BODY_URL"
 
-/* Maximum number of quote characters (not bytes!) that'll be used on
+/* Maximum number of quote characters (not bytes!) that will be used on
  * follow lines when compressing leading quote characters */
 #define n_QUOTE_MAX 42u
 
 /* How much spaces a <tab> counts when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
-
-/* Supported (external) PRG implementations TODO should not be here!?! */
-#define mx_RANDOM_IMPL_BUILTIN 0
-#define mx_RANDOM_IMPL_ARC4 1
-#define mx_RANDOM_IMPL_TLS 2
-#define mx_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
-#define mx_RANDOM_IMPL_URANDOM 4
 
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */
@@ -192,13 +186,6 @@
 # define NSIG NSIG_MAX
 #elif !defined NSIG
 # define NSIG ((sizeof(sigset_t) * 8) - 1)
-#endif
-
-/* * */
-
-/* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
-# define n_HAVE_TCAP
 #endif
 
 #endif /* mx_CONFIG_H */

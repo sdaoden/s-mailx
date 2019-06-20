@@ -1992,10 +1992,9 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
  */
 
 #ifdef mx_HAVE_XTLS
-/* Our wrapper for RAND_bytes(3) */
-# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
+/* Our wrapper for RAND_bytes(3); the implementation exists only when
+ * HAVE_RANDOM is RANDOM_IMPL_TLS, though */
 FL void mx_tls_rand_bytes(void *buf, uz blen);
-# endif
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */

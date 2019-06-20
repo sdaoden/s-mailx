@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of termcap.h.
  *@ For encapsulation purposes provide a basic foundation even without
- *@ mx_HAVE_TERMCAP, but with config.h:n_HAVE_TCAP.
  *@ HOWTO add a new non-dynamic command or query:
  *@ - add an entry to enum mx_termcap_{cmd,query}
  *@ - run make-tcap-map.pl
@@ -32,7 +31,8 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef n_HAVE_TCAP
+#include "mx/termcap.h"
+#ifdef mx_HAVE_TCAP
 
 /* If available, curses.h must be included before term.h! */
 #ifdef mx_HAVE_TERMCAP
@@ -49,8 +49,8 @@ su_EMPTY_FILE()
 #include "mx/termios.h"
 #include "mx/tty.h"
 
+/* Already: #include "mx/termcap.h"*/
 /* TODO fake */
-#include "mx/termcap.h"
 #include "su/code-in.h"
 
 /*
@@ -978,5 +978,5 @@ mx_termcap_name_of_query(enum mx_termcap_query query){
 #endif /* mx_HAVE_KEY_BINDINGS */
 
 #include "su/code-ou.h"
-#endif /* n_HAVE_TCAP */
+#endif /* mx_HAVE_TCAP */
 /* s-it-mode */

@@ -25,6 +25,7 @@
 # include "mx/nail.h"
 #endif
 
+#include "mx/random.h"
 #if mx_HAVE_RANDOM != mx_RANDOM_IMPL_ARC4 &&\
       mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
 # define a_RAND_USE_BUILTIN
@@ -42,7 +43,7 @@
 # include <su/prime.h>
 #endif
 
-#include "mx/random.h"
+/* Already: #include "mx/random.h" */
 #include "su/code-in.h"
 
 #ifdef a_RAND_USE_BUILTIN
