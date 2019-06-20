@@ -76,7 +76,7 @@
 
 /* Note: changing the hash function must be reflected in `vexpr' "hash32",
  * because that is used by the hashtable creator scripts! */
-#define a_AMV_PRIME HSHSIZE
+#define a_AMV_PRIME 23 /* TODO cs_dict! */
 #define a_AMV_NAME2HASH(N) ((u32)su_cs_hash(N))
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 

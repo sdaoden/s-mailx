@@ -33,7 +33,6 @@
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
-#define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define n_LINE_EDITOR_CPL_WORD_BREAKS "\"'@=;|:"
 /* Fallback in case the systems reports an empty hostname (?) */
