@@ -731,9 +731,9 @@ main(int argc, char *argv[]){
          /* Create custom header (at list tail) */
          struct n_header_field **hflpp;
 
-         if(*(hflpp = &n_poption_arg_C) != NULL){
-            while((*hflpp)->hf_next != NULL)
-               *hflpp = (*hflpp)->hf_next;
+         if(*(hflpp = &n_poption_arg_C) != NIL){
+            while((*hflpp)->hf_next != NIL)
+               hflpp = &(*hflpp)->hf_next;
             hflpp = &(*hflpp)->hf_next;
          }
          if(!n_header_add_custom(hflpp, avo.avo_current_arg, FAL0)){
