@@ -3,8 +3,10 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: this-goes@nowhere
 C-One: Custom One Body
 C-Two: CustomTwoBody
+C-Three: CustomThreeBody   
 chdr1: chdr1 body
 chdr2: chdr2 body
+chdr3: chdr3 body
 
 bla
 
