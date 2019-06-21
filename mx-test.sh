@@ -4574,29 +4574,35 @@ t_C_opt_customhdr() {
    ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
-      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      -C 'C-Three:      CustomThreeBody   ' \
+      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body, chdr3: chdr3 body ' \
       this-goes@nowhere >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '1174844658 195'
+   check 1 0 "${MBOX}" '3555856637 241'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.
       unset customhdr
       m this-goes2@nowhere\nbody2\n!.
       set customhdr=%ccustom1 :  custom1  body%c
-      m this-goes2@nowhere\nbody2\n!.
-      set customhdr=%ccustom1 :  custom1\\,  body  ,  custom2: custom2  body%c
       m this-goes3@nowhere\nbody3\n!.
+      set customhdr=%ccustom1 :  custom1\\,  body  ,  \\
+            custom2: custom2  body ,  custom-3 : custom3 body ,\\
+            custom-4:custom4-body     %c
+      m this-goes4@nowhere\nbody4\n!.
    ' "'" "'" "'" "'" |
    ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
-      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      -C 'C-Three:                   CustomThreeBody  ' \
+      -C '   C-Four:CustomFourBody  ' \
+      -C 'C-Five:CustomFiveBody' \
+      -S customhdr='ch1:  b1 , ch2:b2, ch3:b3 ,ch4:b4,  ch5: b5 ' \
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '158121534 752'
+   check 2 0 "${MBOX}" '1826639044 1102'
 
    t_epilog
 }
