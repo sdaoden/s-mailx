@@ -147,6 +147,8 @@ a_main_startup(void){
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
 
+   /* Assume we are interactive, then.
+    * This state will become unset later for n_PO_QUICKRUN_MASK! */
    if((n_psonce & n_PSO_TTYANY) == n_PSO_TTYANY)
       n_psonce |= n_PSO_INTERACTIVE;
 
@@ -606,6 +608,7 @@ main(int argc, char *argv[]){
       case 'e':
          /* Check if mail (matching -L) exists in given box, exit status */
          n_poption |= n_PO_EXISTONLY;
+         n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'F':
          /* Save msg in file named after local part of first recipient */
@@ -621,6 +624,7 @@ main(int argc, char *argv[]){
       case 'H':
          /* Display summary of headers, exit */
          n_poption |= n_PO_HEADERSONLY;
+         n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'h':
       case (char)(su_u8)'\201':
@@ -638,8 +642,9 @@ main(int argc, char *argv[]){
       case 'L':
          /* Display summary of headers which match given spec, exit.
           * In conjunction with -e, only test the given spec for existence */
-         Larg = avo.avo_current_arg;
          n_poption |= n_PO_HEADERLIST;
+         n_psonce &= ~n_PSO_INTERACTIVE;
+         Larg = avo.avo_current_arg;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
             uz j;
 

@@ -846,7 +846,7 @@ mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp, boole pager_used){
    struct mx_colour_env *cep;
    NYD_IN;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE))
+   if(!(n_psonce & n_PSO_TTYANY))
       goto jleave;
 
    if(!a_colour_g.cg_is_init)

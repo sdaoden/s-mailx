@@ -382,6 +382,7 @@ if yes, return an exit status of zero, a non-zero value otherwise.
 To restrict the set of mails to consider in this evaluation a message
 specification can be added with the option
 .Fl L .
+Quickrun: does not open an interactive session.
 .
 .Mx
 .It Fl F
@@ -429,11 +430,13 @@ for the given
 or
 .Ev MAIL ,
 or as specified via
-.Fl f ) .
+.Fl f ) ,
+then exit.
 A configurable summary view is available via the option
 .Fl L .
 This mode does not honour
 .Va showlast .
+Quickrun: does not open an interactive session.
 .
 .Mx
 .It Fl h , Fl Fl help
@@ -477,6 +480,7 @@ or not
 note that any verbose output is suppressed in this mode and must instead
 be enabled explicitly (e.g., by using the option
 .Fl v ) .
+Quickrun: does not open an interactive session.
 .
 .Mx
 .It Fl M Ar type
@@ -3291,9 +3295,13 @@ is set then any active usage of colour and font attribute sequences
 is suppressed without affecting possibly established
 .Ic colour
 mappings.
-Since colours are only available in interactive mode, it may make
-sense to conditionalize the colour setup by encapsulating it with
-.Ic if :
+Since colours are available if any of the standard I/O descriptors it
+opened on a terminal, it might make sense to conditionalize the colour
+setup by encapsulating it with
+.Ic if
+.Pf ( Ql terminal
+indeed means
+.Dq interactive ) :
 .
 .Bd -literal -offset indent
 if terminal && [ "$features" =% +colour ]
@@ -5896,8 +5904,16 @@ endif
 .Pp
 Further (case-insensitive) one-argument conditions are
 .Ql t Ns
-erminal which evaluates to true in interactive (terminal) sessions,
-as well as any boolean value (see
+erminal which evaluates to true in interactive terminal sessions
+(running with standard input or standard output attached to a terminal,
+and none of the
+.Dq quickrun
+command line options
+.Fl e ,
+.Fl H
+and
+.Fl L
+have been used), as well as any boolean value (see
 .Sx "INTERNAL VARIABLES"
 for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
