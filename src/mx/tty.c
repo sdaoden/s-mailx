@@ -125,17 +125,19 @@ mx_tty_getpass(char const *query){
    if(n_psonce & n_PSO_TTYANY){
       if(query == NIL)
          query = _("Password: ");
+
+      mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_PASSWORD);
+
       fputs(query, mx_tty_fp);
       fflush(mx_tty_fp);
-
-      mx_termios_cmdx(mx_TERMIOS_CMD_PASSWORD);
 
       mx_fs_linepool_aquire(&ldat, &lsize);
       if(readline_restart(mx_tty_fp, &ldat, &lsize, 0) >= 0)
          pass = savestr(ldat);
       mx_fs_linepool_release(ldat, lsize);
 
-      mx_termios_cmdx(mx_TERMIOS_CMD_NORMAL);
+      mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_PASSWORD);
+
       putc('\n', mx_tty_fp);
    }
 
@@ -636,7 +638,7 @@ struct a_tty_line{
    char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
    char *tl_pos;                 /* Address of the [4] */
 # endif
-   mx_termios_on_signal tl_otos;
+   mx_termios_on_state_change tl_otosc;
 };
 
 # if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
@@ -786,7 +788,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 static struct a_tty_global a_tty;
 
 /* */
-static void a_tty_on_signal(s32 sig, boole after_reraise);
+static void a_tty_on_state_change(u32 tiossc, s32 sig);
 
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
@@ -896,19 +898,18 @@ static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 static void
-a_tty_on_signal(s32 sig, boole after_reraise){
-   /* Prototype at top */
+a_tty_on_state_change(u32 tiossc, s32 sig){
    NYD; /* Signal handler */
    UNUSED(sig);
 
-   if(!after_reraise){
+   if(tiossc & mx_TERMIOS_STATE_SUSPEND){
       mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSP POSSIBLE.. */
-      mx_TERMCAP_SUSPEND(TRU1);
-   }else{
+      mx_TERMCAP_SUSPEND((tiossc & mx_TERMIOS_STATE_POP) == 0 &&
+         !(tiossc & mx_TERMIOS_STATE_SIGNAL));
+   }else if(tiossc & mx_TERMIOS_STATE_RESUME){
       /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
       mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
       mx_TERMCAP_RESUME(TRU1);
-      mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
       a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       /* TODO Due to SA_RESTART we need to refresh the line in here! */
       a_tty_vi_refresh(a_tty.tg_line);
@@ -1189,20 +1190,20 @@ jleave:
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
 a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable){
-   enum mx_termios_cmd cmd;
+   u32 tiosc;
    u8 i;
    NYD2_IN;
 
    if(enable){
-      cmd = mx_TERMIOS_CMD_RAW_TIMEOUT;
+      tiosc = mx_TERMIOS_CMD_RAW_TIMEOUT;
       if((i = tlp->tl_bind_timeout) == 0)
          i = a_TTY_BIND_TIMEOUT;
    }else{
-      cmd = mx_TERMIOS_CMD_RAW;
+      tiosc = mx_TERMIOS_CMD_RAW;
       i = 1;
    }
 
-   mx_termios_cmd(cmd, i);
+   mx_termios_cmd(tiosc, i);
    NYD2_OU;
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
@@ -2559,7 +2560,9 @@ jsep:
       putc('\n', fp);
       ++lncnt;
 
+      su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
       page_or_print(fp, lncnt);
+      su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
       if(fp != mx_tty_fp)
          mx_fs_close(fp);
 
@@ -4261,14 +4264,14 @@ int
    tl.tl_x_bufsize = linesize;
 
    a_tty.tg_line = &tl;
-   mx_termios_cmd(mx_TERMIOS_CMD_RAW, 1);
-   tl.tl_otos = mx_termios_set_on_signal(&a_tty_on_signal);
+   mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
+   tl.tl_otosc = mx_termios_on_state_change_set(&a_tty_on_state_change);
    mx_TERMCAP_RESUME(FAL0);
    nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
-   mx_COLOUR( mx_colour_env_gut(); )
-   mx_TERMCAP_SUSPEND(FAL0);
-   mx_termios_set_on_signal(tl.tl_otos);
-   mx_termios_cmdx(mx_TERMIOS_CMD_NORMAL);
+   /*mx_COLOUR( mx_colour_env_gut(); )
+    *mx_TERMCAP_SUSPEND(FAL0);
+    *mx_termios_on_state_change_set(tl.tl_otosc);*/
+   mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
    a_tty.tg_line = NIL;
 
    NYD_OU;

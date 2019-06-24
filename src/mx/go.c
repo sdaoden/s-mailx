@@ -930,7 +930,7 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 
    safe_signal(SIGINT, a_go_onintr);
 
-   mx_termios_cmdx(mx_TERMIOS_CMD_NORMAL);
+   mx_termios_cmdx(mx_TERMIOS_CMD_RESET);
 
    a_go_cleanup(a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
 
