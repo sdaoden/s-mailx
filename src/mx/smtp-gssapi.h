@@ -257,7 +257,7 @@ jebase64:
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
    in.s = n_autorec_alloc((send_tok.length = 4 + sbp->sb_ccred.cc_user.l) +1);
-   su_mem_copy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
+   su_mem_copy(&in.s[4], sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;
    in.s[2] = in.s[3] = (char)0xFF;
