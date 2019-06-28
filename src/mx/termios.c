@@ -98,8 +98,7 @@ static void a_termios_sig_adjust(boole condome);
 static void a_termios_onsig(int sig);
 
 /* Do the system-dependent dance on getting used to terminal dimension */
-static void a_termios_dimen_query(void);
-static void a_termios__dimit(struct mx_termios_dimension *tiosdp);
+static void a_termios_dimen_query(struct mx_termios_dimension *tiosdp);
 
 static void
 a_termios_sig_adjust(boole condome){
@@ -196,29 +195,18 @@ jleave:
    return;
 
 jsigwinch:
-   n_pstate |= n_PS_SIGWINCH_PEND;
-   a_termios_dimen_query();
+   if(n_psonce & n_PSO_INTERACTIVE){
+      a_termios_dimen_query(&mx_termios_dimen);
+      if(mx_termios_dimen.tiosd_width > 1 &&
+            !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
+         --mx_termios_dimen.tiosd_width;
+      n_pstate |= n_PS_SIGWINCH_PEND;
+   }
    goto jleave;
 }
 
 static void
-a_termios_dimen_query(void){
-   NYD_IN;
-   a_termios__dimit(&mx_termios_dimen);
-   /* Note: for the first invocation this will always trigger.
-    * If we have termcap support then termcap_init() will undo this if
-    * FULLWIDTH is set after termcap is initialized.
-    * We have to evaluate it now since cmds may run pre-termcap ... */
-/*#ifdef mx_HAVE_TERMCAP*/
-   if(mx_termios_dimen.tiosd_width > 1 &&
-         !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-      --mx_termios_dimen.tiosd_width;
-/*#endif*/
-   NYD_OU;
-}
-
-static void
-a_termios__dimit(struct mx_termios_dimension *tiosdp){
+a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
    struct termios tbuf;
 #if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
    struct winsize ws;
@@ -227,7 +215,7 @@ a_termios__dimit(struct mx_termios_dimension *tiosdp){
 #else
 # error One of TCGETWINSIZE, TIOCGWINSZ and TIOCGSIZE
 #endif
-   NYD2_IN;
+   /*NYD2_IN;*/
 
 #ifdef mx_HAVE_TCGETWINSIZE
    if(tcgetwinsize(fileno(mx_tty_fp), &ws) == -1)
@@ -269,14 +257,14 @@ a_termios__dimit(struct mx_termios_dimension *tiosdp){
 
    if(0 == (
 #if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-       tiosdp->tiosd_width = ws.ws_col
+       tiosdp->tiosd_width = tiosdp->tiosd_real_width = ws.ws_col
 #elif defined TIOCGSIZE
-       tiosdp->tiosd_width = ts.ts_cols
+       tiosdp->tiosd_width = tiosdp->tiosd_real_width = ts.ts_cols
 #endif
          ))
-      tiosdp->tiosd_width = a_TERMIOS_DEFAULT_WIDTH;
+      tiosdp->tiosd_width = tiosdp->tiosd_real_width = a_TERMIOS_DEFAULT_WIDTH;
 
-   NYD2_OU;
+   /*NYD2_OU;*/
 }
 
 void
@@ -304,8 +292,6 @@ mx_termios_controller_setup(enum mx_termios_setup what){
    }else{
       /* Semantics are a bit hairy and cast in stone in the manual, and
        * scattered all over the place, at least $COLUMNS, $LINES, -# */
-      n_pstate |= n_PS_SIGWINCH_PEND;
-
       if(!su_state_has(su_STATE_REPRODUCIBLE) &&
             ((n_psonce & n_PSO_INTERACTIVE) ||
                ((n_psonce & n_PSO_TTYANY) && (n_poption & n_PO_BATCH_FLAG)))){
@@ -318,6 +304,7 @@ mx_termios_controller_setup(enum mx_termios_setup what){
          ASSERT(mx_termios_dimen.tiosd_height == 0);
          ASSERT(mx_termios_dimen.tiosd_real_height == 0);
          ASSERT(mx_termios_dimen.tiosd_width == 0);
+         ASSERT(mx_termios_dimen.tiosd_real_width == 0);
          if(n_psonce & n_PSO_INTERACTIVE){
             /* XXX Yet WINCH after WINCH/CONT, but see POSIX TOSTOP flag */
 #if a_TERMIOS_SIGWINCH != -1
@@ -339,21 +326,31 @@ mx_termios_controller_setup(enum mx_termios_setup what){
             if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc))
                goto jtermsize_default;
 
-            a_termios_dimen_query();
+            a_termios_dimen_query(&mx_termios_dimen);
          }
 
          if(l != 0)
             mx_termios_dimen.tiosd_real_height =
                   mx_termios_dimen.tiosd_height = l;
          if(c != 0)
-            mx_termios_dimen.tiosd_width = c;
+            mx_termios_dimen.tiosd_width =
+                  mx_termios_dimen.tiosd_real_width = c;
       }else{
 jtermsize_default:
          /* $COLUMNS and $LINES defaults as documented in the manual! */
          mx_termios_dimen.tiosd_height =
                mx_termios_dimen.tiosd_real_height = a_TERMIOS_DEFAULT_HEIGHT;
-         mx_termios_dimen.tiosd_width = a_TERMIOS_DEFAULT_WIDTH;
+         mx_termios_dimen.tiosd_width =
+               mx_termios_dimen.tiosd_real_width = a_TERMIOS_DEFAULT_WIDTH;
       }
+
+      /* Note: for this first invocation this will always trigger.
+       * If we have termcap support then termcap_init() will undo this if
+       * FULLWIDTH is set after termcap is initialized.
+       * We have to evaluate it now since cmds may run pre-termcap ... */
+      if(mx_termios_dimen.tiosd_width > 1)
+         --mx_termios_dimen.tiosd_width;
+      n_pstate |= n_PS_SIGWINCH_PEND;
    }
 
    NYD_OU;
@@ -444,11 +441,11 @@ mx_termios_cmd(u32 tiosc, uz a1){
    if(tiosc & mx_TERMIOS_CMD_PUSH){
       if((tiosep->tiose_prev = a_termios_g.tiosg_envp)->tiose_prev == NIL)
          a_termios_sig_adjust(TRU1);
-      else if(!a_termios_g.tiosg_envp->tiose_suspended &&
-            a_termios_g.tiosg_envp->tiose_on_state_change != NIL){
-         tiosep->tiose_suspended = TRU1;
-         (*a_termios_g.tiosg_envp->tiose_on_state_change)(
-            mx_TERMIOS_STATE_SUSPEND, 0);
+      else if(!a_termios_g.tiosg_envp->tiose_suspended){
+         a_termios_g.tiosg_envp->tiose_suspended = TRU1;
+         if(a_termios_g.tiosg_envp->tiose_on_state_change != NIL)
+            (*a_termios_g.tiosg_envp->tiose_on_state_change)(
+               mx_TERMIOS_STATE_SUSPEND, 0);
       }
 
       a_termios_g.tiosg_envp = tiosep;
@@ -506,7 +503,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
       break;
    }
 
-   if(!(tiosc & mx__TERMIOS_CMD_CTL_MASK) && tiosep->tiose_suspended &&
+   if(/*!(tiosc & mx__TERMIOS_CMD_CTL_MASK) &&*/ tiosep->tiose_suspended &&
          tiosep->tiose_on_state_change != NIL)
       (*tiosep->tiose_on_state_change)(mx_TERMIOS_STATE_RESUME, 0);
 

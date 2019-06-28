@@ -255,9 +255,9 @@ a_go_update_pstate(void){
    if(act){
       char buf[32];
 
-      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_width);
+      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_real_width);
       ok_vset(COLUMNS, buf);
-      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_height);
+      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_real_height);
       ok_vset(LINES, buf);
    }
    NYD_OU;

@@ -75,7 +75,10 @@ struct mx_termios_dimension{
     * still is set to the real terminal height */
    u32 tiosd_real_height;
    u32 tiosd_width;
-   su_64( u8 tiosd__pad[4]; )
+   /* .tiosd_width might be reduces deduced by one if we have no termcap
+    * support or if the terminal cannot write in the last column (without
+    * wrapping), in which case this still is set to the real terminal width */
+   u32 tiosd_real_width;
 };
 
 /* */
