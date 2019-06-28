@@ -1,6 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ HTML tagsoup filter TODO rewrite wchar_t based (require mx_HAVE_C90AMEND1)
+ *@ TODO . NEW STYLE PLEASE (booaaa!!)
  *@ TODO . Numeric &#NO; entities should also be treated by struct hf_ent
+ *@ TODO . Binary sort/search ENTITY table
  *@ TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
  *@ TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
  *@ TODO   nonstandard) and tracking a stack of such elements (to be popped
@@ -177,29 +179,113 @@ static struct hf_ent const       _hf_ents[] = {
    _X("lt", '<'),                _X("gt", '>'),
 
    _XU("nbsp", ' ', 0x0020 /* Note: not 0x00A0 seems to be better for us */),
-   _XU("middot", '.', 0x00B7),
    _XSU("hellip", "...", 0x2026),
    _XSU("mdash", "---", 0x2014), _XSU("ndash", "--", 0x2013),
-   _XSU("laquo", "<<", 0x00AB),  _XSU("raquo", ">>", 0x00BB),
    _XSU("lsaquo", "<", 0x2039),  _XSU("rsaquo", ">", 0x203A),
    _XSU("lsquo", "'", 0x2018),   _XSU("rsquo", "'", 0x2019),
    _XSU("ldquo", "\"", 0x201C),  _XSU("rdquo", "\"", 0x201D),
    _XSU("uarr", "^|", 0x2191),   _XSU("darr", "|v", 0x2193),
 
-   _XSU("cent", "CENT", 0x00A2),
-   _XSU("copy", "(C)", 0x00A9),
    _XSU("euro", "EUR", 0x20AC),
    _XSU("infin", "INFY", 0x221E),
-   _XSU("pound", "GBP", 0x00A3),
-   _XSU("reg", "(R)", 0x00AE),
-   _XSU("sect", "S:", 0x00A7),
-   _XSU("yen", "JPY", 0x00A5),
 
-   /* German umlauts */
-   _XSU("Auml", "Ae", 0x00C4),   _XSU("auml", "ae", 0x00E4),
-   _XSU("Ouml", "Oe", 0x00D6),   _XSU("ouml", "oe", 0x00F6),
-   _XSU("Uuml", "Ue", 0x00DC),   _XSU("uuml", "ue", 0x00FC),
+   /* Latin1 entities */
+/*nbsp   "&#160;" no-break space = non-breaking space, U+00A0 ISOnum*/
+   _XSU("iexcl", "!", 0x00A1),
+   _XSU("cent", "CENT", 0x00A2),
+   _XSU("pound", "GBP", 0x00A3),
+/*curren "&#164;" currency sign, U+00A4 ISOnum*/
+   _XSU("yen", "JPY", 0x00A5),
+/*brvbar "&#166;" broken bar = broken vertical bar, U+00A6 ISOnum*/
+   _XSU("sect", "S:", 0x00A7),
+/*uml    "&#168;" diaeresis = spacing diaeresis, U+00A8 ISOdia*/
+   _XSU("copy", "(C)", 0x00A9),
+/*ordf   "&#170;" feminine ordinal indicator, U+00AA ISOnum*/
+   _XSU("laquo", "<<", 0x00AB),
+/*not    "&#172;" not sign, U+00AC ISOnum*/
+   _XSU("shy", "-", 0x00AD),
+   _XSU("reg", "(R)", 0x00AE),
+/*macr   "&#175;" macron = spacing macron, U+00AF ISOdia */
+/*deg    "&#176;" degree sign, U+00B0 ISOnum*/
+/*plusmn "&#177;" plus-minus sign = plus-or-minus sign, U+00B1 ISOnum*/
+/*sup2   "&#178;" superscript two = superscript digit two, U+00B2 ISOnum*/
+/*sup3   "&#179;" superscript three = superscript digit three, U+00B3 ISOnum*/
+/*acute  "&#180;" acute accent = spacing acute, U+00B4 ISOdia*/
+/*micro  "&#181;" micro sign, U+00B5 ISOnum*/
+/*para   "&#182;" pilcrow sign = paragraph sign, U+00B6 ISOnum*/
+   _XU("middot", '.', 0x00B7),
+/*cedil  "&#184;" cedilla = spacing cedilla, U+00B8 ISOdia*/
+/*sup1   "&#185;" superscript one = superscript digit one, U+00B9 ISOnum*/
+/*ordm   "&#186;" masculine ordinal indicator, U+00BA ISOnum*/
+   _XSU("raquo", ">>", 0x00BB),
+/*frac14 "&#188;" vulgar fraction one quarter, U+00BC ISOnum*/
+/*frac12 "&#189;" vulgar fraction one half, U+00BD ISOnum*/
+/*frac34 "&#190;" vulgar fraction three quarters, U+00BE ISOnum*/
+   _XSU("iquest", "?", 0x00BF),
+   _XSU("Agrave", "A", 0x00C0),
+   _XSU("Aacute", "A", 0x00C1),
+   _XSU("Acirc", "A", 0x00C2),
+   _XSU("Atilde", "A", 0x00C3),
+   _XSU("Auml", "Ae", 0x00C4),
+   _XSU("Aring", "A", 0x00C5),
+   _XSU("AElig", "AE", 0x00C6),
+   _XSU("Ccedil", "C", 0x00C7),
+   _XSU("Egrave", "E", 0x00C8),
+   _XSU("Eacute", "E", 0x00C9),
+   _XSU("Ecirc", "E", 0x00CA),
+   _XSU("Euml", "E", 0x00CB),
+   _XSU("Igrave", "I", 0x00CC),
+   _XSU("Iacute", "I", 0x00CD),
+   _XSU("Icirc", "I", 0x00CE),
+   _XSU("Iuml", "I", 0x00CF),
+/*ETH    "&#208;" latin capital letter ETH, U+00D0 ISOlat1*/
+   _XSU("Ntilde", "N", 0x00D1),
+   _XSU("Ograve", "O", 0x00D2),
+   _XSU("Oacute", "O", 0x00D3),
+   _XSU("Ocirc", "O", 0x00D4),
+   _XSU("Otilde", "O", 0x00D5),
+   _XSU("Ouml", "OE", 0x00D6),
+/*times  "&#215;" multiplication sign, U+00D7 ISOnum*/
+   _XSU("Oslash", "O", 0x00D8),
+   _XSU("Ugrave", "U", 0x00D9),
+   _XSU("Uacute", "U", 0x00DA),
+   _XSU("Ucirc", "U", 0x00DB),
+   _XSU("Uuml", "UE", 0x00DC),
+   _XSU("Yacute", "Y", 0x00DD),
+/*THORN  "&#222;" latin capital letter THORN, U+00DE ISOlat1*/
    _XSU("szlig", "ss", 0x00DF),
+   _XSU("agrave", "a", 0x00E0),
+   _XSU("aacute", "a", 0x00E1),
+   _XSU("acirc", "a", 0x00E2),
+   _XSU("atilde", "a", 0x00E3),
+   _XSU("auml", "ae", 0x00E4),
+   _XSU("aring", "a", 0x00E5),
+   _XSU("aelig", "ae", 0x00E6),
+   _XSU("ccedil", "c", 0x00E7),
+   _XSU("egrave", "e", 0x00E8),
+   _XSU("eacute", "e", 0x00E9),
+   _XSU("ecirc", "e", 0x00EA),
+   _XSU("euml", "e", 0x00EB),
+   _XSU("igrave", "i", 0x00EC),
+   _XSU("iacute", "i", 0x00ED),
+   _XSU("icirc", "i", 0x00EE),
+   _XSU("iuml", "i", 0x00EF),
+/*eth    "&#240;" latin small letter eth, U+00F0 ISOlat1*/
+   _XSU("ntilde", "n", 0x00F1),
+   _XSU("ograve", "o", 0x00F2),
+   _XSU("oacute", "o", 0x00F3),
+   _XSU("ocirc", "o", 0x00F4),
+   _XSU("otilde", "o", 0x00F5),
+   _XSU("ouml", "oe", 0x00F6),
+/*divide "&#247;" division sign, U+00F7 ISOnum*/
+   _XSU("oslash", "o", 0x00F8),
+   _XSU("ugrave", "u", 0x00F9),
+   _XSU("uacute", "u", 0x00FA),
+   _XSU("ucirc", "u", 0x00FB),
+   _XSU("uuml", "ue", 0x00FC),
+   _XSU("yacute", "y", 0x00FD),
+/*thorn  "&#254;" latin small letter thorn, 0x00FE ISOlat1*/
+   _XSU("yuml", "y", 0x00FF),
 
    /* No-ops in non-Unicode */
    _XU("zwnj", '\0', 0x200C)
