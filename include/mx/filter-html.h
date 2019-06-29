@@ -25,33 +25,33 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-struct htmlflt{
-   FILE *hf_os; /* Output stream */
-   u32 hf_flags;
-   u32 hf_lmax; /* Maximum byte +1 in .hf_line/4 */
-   u32 hf_len; /* Current bytes in .hf_line */
-   u32 hf_last_ws; /* Last whitespace on line (fold purposes) */
-   u32 hf_mboff; /* Last offset for "mbtowc" */
-   u32 hf_mbwidth; /* We count characters not bytes if possible */
-   char *hf_line; /* Output line buffer - MUST be last field! */
-   s32 hf_href_dist; /* Count of lines since last HREF flush */
-   u32 hf_href_no; /* HREF sequence number */
-   struct htmlflt_href *hf_hrefs;
-   struct htmlflt_tag const *hf_ign_tag; /* Tag that will end ignore mode */
-   char *hf_curr; /* Current cursor into .hf_bdat */
-   char *hf_bmax; /* Maximum byte in .hf_bdat +1 */
-   char *hf_bdat; /* (Temporary) Tag content data storage */
+struct mx_flthtml{
+   FILE *fh_os; /* Output stream */
+   u32 fh_flags;
+   u32 fh_lmax; /* Maximum byte +1 in .fh_line/4 */
+   u32 fh_len; /* Current bytes in .fh_line */
+   u32 fh_last_ws; /* Last whitespace on line (fold purposes) */
+   u32 fh_mboff; /* Last offset for "mbtowc" */
+   u32 fh_mbwidth; /* We count characters not bytes if possible */
+   char *fh_line; /* Output line buffer - MUST be last field! */
+   s32 fh_href_dist; /* Count of lines since last HREF flush */
+   u32 fh_href_no; /* HREF sequence number */
+   struct mx_flthtml_href *fh_hrefs;
+   struct mx_flthtml_tag const *fh_ign_tag; /* Tag that ends ignore mode */
+   char *fh_curr; /* Current cursor into .fh_bdat */
+   char *fh_bmax; /* Maximum byte in .fh_bdat +1 */
+   char *fh_bdat; /* (Temporary) Tag content data storage */
 };
 
 /* TODO Because we don't support filter chains yet this filter will be run
  * TODO in a dedicated subprocess, driven via a special fs_popen() mode */
-EXPORT int htmlflt_process_main(void);
+EXPORT int mx_flthtml_process_main(void);
 
-EXPORT void htmlflt_init(struct htmlflt *self);
-EXPORT void htmlflt_destroy(struct htmlflt *self);
-EXPORT void htmlflt_reset(struct htmlflt *self, FILE *f);
-EXPORT sz htmlflt_push(struct htmlflt *self, char const *dat, uz len);
-EXPORT sz htmlflt_flush(struct htmlflt *self);
+EXPORT void mx_flthtml_init(struct mx_flthtml *self);
+EXPORT void mx_flthtml_destroy(struct mx_flthtml *self);
+EXPORT void mx_flthtml_reset(struct mx_flthtml *self, FILE *f);
+EXPORT sz mx_flthtml_push(struct mx_flthtml *self, char const *dat,uz len);
+EXPORT sz mx_flthtml_flush(struct mx_flthtml *self);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_FILTER_HTML_TAGSOUP */

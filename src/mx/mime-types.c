@@ -1405,7 +1405,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       case a_MT_TM_SOUP_h:
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
-         mhp->mh_ptf = &htmlflt_process_main;
+         mhp->mh_ptf = &mx_flthtml_process_main;
          mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s =
                n_UNCONST(_("Built-in HTML tagsoup filter")));
          rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
