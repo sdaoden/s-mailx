@@ -51,6 +51,7 @@ enum mx_colour_id{
    /* Mailx-Line-Editor */
    mx_COLOUR_ID_MLE_POSITION = 0,
    mx_COLOUR_ID_MLE_PROMPT,
+   mx_COLOUR_ID_MLE_ERROR,
 
    mx__COLOUR_IDS = mx_COLOUR_ID_VIEW_PARTINFO + 1
 };

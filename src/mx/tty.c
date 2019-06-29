@@ -152,7 +152,7 @@ mx_tty_create_prompt(struct n_string *store, char const *xprompt,
       enum n_go_input_flags gif){
    struct n_visual_info_ctx vic;
    struct str in, out;
-   u32 pwidth;
+   u32 pwidth, poff;
    char const *cp;
    NYD2_IN;
    ASSERT(n_psonce & n_PSO_INTERACTIVE);
@@ -162,9 +162,9 @@ mx_tty_create_prompt(struct n_string *store, char const *xprompt,
 #ifdef mx_HAVE_ERRORS
    if(!(n_psonce & n_PSO_ERRORS_NOTED) && (n_pstate & n_PS_ERRORS_PROMPT)){
       n_psonce |= n_PSO_ERRORS_NOTED;
-      fprintf(n_stdout, _("There are new messages in the error message ring "
-         "(denoted by %s)\n"
-         "  It can be managed with the `errors' command\n"),
+      n_err(_("There are new messages in the error message ring "
+         "(denoted by %s),\n"
+         "  which can be managed with the `errors' command\n"),
          V_(n_error));
    }
 #endif
@@ -173,21 +173,29 @@ jredo:
    n_string_trunc(store, 0);
 
    if(gif & n_GO_INPUT_PROMPT_NONE){
-      pwidth = 0;
+      pwidth = poff = 0;
       goto jleave;
    }
 
+   /* Possible error/info prefix? */
 #ifdef mx_HAVE_ERRORS
    if(n_pstate & n_PS_ERRORS_PROMPT){
       n_pstate &= ~n_PS_ERRORS_PROMPT;
       store = n_string_push_cp(store, V_(n_error));
-      store = n_string_push_c(store, '#');
-      store = n_string_push_c(store, ' ');
    }
 #endif
 
-   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_is_skip())
-      store = n_string_push_cp(store, _("WHITEOUT: NEED `endif'# "));
+   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_is_skip()){
+      if(store->s_len != 0)
+         store = n_string_push_c(store, '#');
+      store = n_string_push_cp(store, _("WHITEOUT: NEED `endif'"));
+   }
+
+   if((poff = store->s_len) != 0){
+      ++poff;
+      store = n_string_push_c(store, '#');
+      store = n_string_push_c(store, ' ');
+   }
 
    cp = (gif & n_GO_INPUT_PROMPT_EVAL)
          ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
@@ -269,14 +277,23 @@ jeeval:
    /* And there may be colour support, too */
 #ifdef mx_HAVE_COLOUR
    if(mx_COLOUR_IS_ACTIVE()){
-      struct str const *psp, *rsp;
       struct mx_colour_pen *ccp;
+      struct str const *rsp, *psp, *esp;
 
-      if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NIL)) != NIL &&
-            (psp = mx_colour_pen_to_str(ccp)) != NIL &&
-            (rsp = mx_colour_reset_to_str()) != NIL){
-         store = n_string_unshift_buf(store, psp->s, psp->l);
-         /*store =*/ n_string_push_buf(store, rsp->s, rsp->l);
+      psp = NIL;
+      if((rsp = mx_colour_reset_to_str()) != NIL &&
+         (ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NIL)) != NIL &&
+            (psp = mx_colour_pen_to_str(ccp)) != NIL){
+         store = n_string_insert_buf(store, poff, psp->s, psp->l);
+         store = n_string_push_buf(store, rsp->s, rsp->l);
+      }
+
+      if(poff > 0 && rsp != NIL &&
+            (((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_ERROR, NIL)
+               ) != NIL &&
+             (esp = mx_colour_pen_to_str(ccp)) != NIL) || (esp = psp) != NIL)){
+         store = n_string_insert_buf(store, poff, rsp->s, rsp->l);
+         store = n_string_unshift_buf(store, esp->s, esp->l);
       }
    }
 #endif /* mx_HAVE_COLOUR */
@@ -381,8 +398,8 @@ CTA(a_TTY_LINE_MAX <= S32_MAX,
  * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
 enum a_tty_bind_flags{
 # ifdef mx_HAVE_KEY_BINDINGS
-   a_TTY_BIND_RESOLVE = 1u<<8,   /* Term cap. yet needs to be resolved */
-   a_TTY_BIND_DEFUNCT = 1u<<9,   /* Unicode/term cap. used but not avail. */
+   a_TTY_BIND_RESOLVE = 1u<<8, /* Term cap. yet needs to be resolved */
+   a_TTY_BIND_DEFUNCT = 1u<<9, /* Unicode/term cap. used but not avail. */
    a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT,
    /* MLE fun assigned to a one-byte-sequence: this may be used for special
     * key-sequence bypass processing */
@@ -448,10 +465,10 @@ CTA(UCMP(64, a_TTY__BIND_LAST, <=, S32_MAX),
    "Flag bits excess storage datatype" /* And we need one bit free */);
 
 enum a_tty_fun_status{
-   a_TTY_FUN_STATUS_OK,       /* Worked, next character */
-   a_TTY_FUN_STATUS_COMMIT,   /* Line done */
-   a_TTY_FUN_STATUS_RESTART,  /* Complete restart, reset multibyte etc. */
-   a_TTY_FUN_STATUS_END       /* End, return EOF */
+   a_TTY_FUN_STATUS_OK, /* Worked, next character */
+   a_TTY_FUN_STATUS_COMMIT, /* Line done */
+   a_TTY_FUN_STATUS_RESTART, /* Complete restart, reset multibyte etc. */
+   a_TTY_FUN_STATUS_END /* End, return EOF */
 };
 
 # ifdef mx_HAVE_HISTORY
@@ -468,14 +485,14 @@ CTA(a_TTY_HIST_CTX_MASK < a_TTY_HIST_GABBY, "Enumeration value overlap");
 
 enum a_tty_visual_flags{
    a_TTY_VF_NONE,
-   a_TTY_VF_MOD_CURSOR = 1u<<0,  /* Cursor moved */
+   a_TTY_VF_MOD_CURSOR = 1u<<0, /* Cursor moved */
    a_TTY_VF_MOD_CONTENT = 1u<<1, /* Content modified */
-   a_TTY_VF_MOD_DIRTY = 1u<<2,   /* Needs complete repaint */
-   a_TTY_VF_MOD_SINGLE = 1u<<3,  /* TODO Drop if indirection as above comes */
+   a_TTY_VF_MOD_DIRTY = 1u<<2, /* Needs complete repaint */
+   a_TTY_VF_MOD_SINGLE = 1u<<3, /* TODO Drop if indirection as above comes */
    a_TTY_VF_REFRESH = a_TTY_VF_MOD_DIRTY | a_TTY_VF_MOD_CURSOR |
          a_TTY_VF_MOD_CONTENT | a_TTY_VF_MOD_SINGLE,
-   a_TTY_VF_BELL = 1u<<8,        /* Ring the bell */
-   a_TTY_VF_SYNC = 1u<<9,        /* Flush/Sync I/O channel */
+   a_TTY_VF_BELL = 1u<<8, /* Ring the bell */
+   a_TTY_VF_SYNC = 1u<<9, /* Flush/Sync I/O channel */
 
    a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL | a_TTY_VF_SYNC,
    a_TTY__VF_LAST = a_TTY_VF_SYNC
@@ -484,8 +501,8 @@ enum a_tty_visual_flags{
 # ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_ctx{
    struct a_tty_bind_ctx *tbc_next;
-   char *tbc_seq;       /* quence as given (poss. re-quoted), in .tb__buf */
-   char *tbc_exp;       /* ansion, in .tb__buf */
+   char *tbc_seq; /* quence as given (poss. re-quoted), in .tb__buf */
+   char *tbc_exp; /* ansion, in .tb__buf */
    /* The .tbc_seq'uence with any terminal capabilities resolved; in fact an
     * array of structures, the first entry of which is {s32 buf_len_iscap;}
     * where the signed bit indicates whether the buffer is a resolved terminal
@@ -500,27 +517,27 @@ struct a_tty_bind_ctx{
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 struct a_tty_bind_builtin_tuple{
-   boole tbbt_iskey;   /* Whether this is a control key; else termcap query */
-   char tbbt_ckey;      /* Control code */
-   u16 tbbt_query;   /* enum mx_termcap_query (instead) */
-   char tbbt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
+   boole tbbt_iskey;  /* Whether this is a control key; else termcap query */
+   char tbbt_ckey; /* Control code */
+   u16 tbbt_query; /* enum mx_termcap_query (instead) */
+   char tbbt_exp[12]; /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
 };
 CTA(mx__TERMCAP_QUERY_MAX1 <= U16_MAX,
    "Enumeration cannot be stored in datatype");
 
 # ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_parse_ctx{
-   char const *tbpc_cmd;      /* Command which parses */
-   char const *tbpc_in_seq;   /* In: key sequence */
-   struct str tbpc_exp;       /* In/Out: expansion (or NULL) */
-   struct a_tty_bind_ctx *tbpc_tbcp;  /* Out: if yet existent */
+   char const *tbpc_cmd; /* Command which parses */
+   char const *tbpc_in_seq; /* In: key sequence */
+   struct str tbpc_exp; /* In/Out: expansion (or NULL) */
+   struct a_tty_bind_ctx *tbpc_tbcp; /* Out: if yet existent */
    struct a_tty_bind_ctx *tbpc_ltbcp; /* Out: the one before .tbpc_tbcp */
-   char *tbpc_seq;            /* Out: normalized sequence */
-   char *tbpc_cnv;            /* Out: sequence when read(2)ing it */
+   char *tbpc_seq; /* Out: normalized sequence */
+   char *tbpc_cnv; /* Out: sequence when read(2)ing it */
    u32 tbpc_seq_len;
    u32 tbpc_cnv_len;
    u32 tbpc_cnv_align_mask; /* For creating a_tty_bind_ctx.tbc_cnv */
-   u32 tbpc_flags;         /* n_go_input_flags | a_tty_bind_flags */
+   u32 tbpc_flags; /* n_go_input_flags | a_tty_bind_flags */
 };
 
 /* Input character tree */
@@ -528,24 +545,24 @@ struct a_tty_bind_tree{
    struct a_tty_bind_tree *tbt_sibling; /* s at same level */
    struct a_tty_bind_tree *tbt_childs; /* Sequence continues.. here */
    struct a_tty_bind_tree *tbt_parent;
-   struct a_tty_bind_ctx *tbt_bind;    /* NULL for intermediates */
-   wchar_t tbt_char;                   /* acter this level represents */
-   boole tbt_isseq;                   /* Belongs to multibyte sequence */
-   boole tbt_isseq_trail;             /* ..is trailing byte of it */
+   struct a_tty_bind_ctx *tbt_bind; /* NULL for intermediates */
+   wchar_t tbt_char; /* acter this level represents */
+   boole tbt_isseq; /* Belongs to multibyte sequence */
+   boole tbt_isseq_trail; /* ..is trailing byte of it */
    u8 tbt__dummy[2];
 };
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 struct a_tty_cell{
    wchar_t tc_wc;
-   u16 tc_count;  /* ..of bytes */
-   u8 tc_width;   /* Visual width; TAB==U8_MAX! */
-   boole tc_novis;  /* Don't display visually as such (control character) */
+   u16 tc_count; /* ..of bytes */
+   u8 tc_width; /* Visual width; TAB==U8_MAX! */
+   boole tc_novis; /* Don't display visually as such (control character) */
    char tc_cbuf[MB_LEN_MAX * 2]; /* .. plus reset shift sequence */
 };
 
 struct a_tty_global{
-   struct a_tty_line *tg_line;   /* To be able to access it from signal hdl */
+   struct a_tty_line *tg_line; /* To be able to access it from signal hdl */
 # ifdef mx_HAVE_HISTORY
    struct a_tty_hist *tg_hist;
    struct a_tty_hist *tg_hist_tail;
@@ -553,7 +570,7 @@ struct a_tty_global{
    uz tg_hist_size_max;
 # endif
 # ifdef mx_HAVE_KEY_BINDINGS
-   u32 tg_bind_cnt;           /* Overall number of bindings */
+   u32 tg_bind_cnt; /* Overall number of bindings */
    boole tg_bind_isdirty;
    boole tg_bind_isbuild;
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
@@ -577,7 +594,7 @@ struct a_tty_hist{
    struct a_tty_hist *th_older;
    struct a_tty_hist *th_younger;
    u32 th_len;
-   u8 th_flags;                  /* enum a_tty_hist_flags */
+   u8 th_flags; /* enum a_tty_hist_flags */
    char th_dat[VFIELD_SIZE(3)];
 };
 CTA(U8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
@@ -586,7 +603,7 @@ CTA(U8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 #if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 struct a_tty_input_ctx_map{
    enum n_go_input_flags ticm_ctx;
-   char const ticm_name[12];  /* Name of `bind' context */
+   char const ticm_name[12]; /* Name of `bind' context */
 };
 #endif
 
@@ -596,48 +613,49 @@ struct a_tty_line{
    uz *tl_x_bufsize;
    /* Input processing */
 # ifdef mx_HAVE_KEY_BINDINGS
-   wchar_t tl_bind_takeover;     /* Leftover byte to consume next */
-   u8 tl_bind_timeout;        /* In-seq. inter-byte-timer, in 1/10th secs */
-   u8 tl__bind_dummy[3];
+   wchar_t tl_bind_takeover; /* Leftover byte to consume next */
+   u8 tl_bind_timeout; /* In-seq. inter-byte-timer, in 1/10th secs */
+   u8 tl__bind_pad1[3];
    char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
    char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
    struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
    struct a_tty_bind_tree *tl_bind_tree;
 # endif
    /* Line data / content handling */
-   u32 tl_count;              /* ..of a_tty_cell's (<= a_TTY_LINE_MAX) */
-   u32 tl_cursor;             /* Current a_tty_cell insertion point */
+   u32 tl_count; /* ..of a_tty_cell's (<= a_TTY_LINE_MAX) */
+   u32 tl_cursor; /* Current a_tty_cell insertion point */
    union{
-      char *cbuf;                /* *.tl_x_buf */
+      char *cbuf; /* *.tl_x_buf */
       struct a_tty_cell *cells;
    } tl_line;
-   struct str tl_defc;           /* Current default content */
-   uz tl_defc_cursor_byte;   /* Desired cursor position after takeover */
-   struct str tl_savec;          /* Saved default content */
-   struct str tl_pastebuf;       /* Last snarfed data */
+   struct str tl_defc; /* Current default content */
+   uz tl_defc_cursor_byte; /* Desired cursor position after takeover */
+   struct str tl_savec; /* Saved default content */
+   struct str tl_pastebuf; /* Last snarfed data */
 # ifdef mx_HAVE_HISTORY
-   struct a_tty_hist *tl_hist;   /* History cursor */
+   struct a_tty_hist *tl_hist; /* History cursor */
 # endif
-   u32 tl_count_max;          /* ..before buffer needs to grow */
+   u32 tl_count_max; /* ..before buffer needs to grow */
    /* Visual data representation handling */
-   u32 tl_vi_flags;           /* enum a_tty_visual_flags */
-   u32 tl_lst_count;          /* .tl_count after last sync */
-   u32 tl_lst_cursor;         /* .tl_cursor after last sync */
+   u32 tl_vi_flags; /* enum a_tty_visual_flags */
+   u32 tl_lst_count; /* .tl_count after last sync */
+   u32 tl_lst_cursor; /* .tl_cursor after last sync */
    /* TODO Add another indirection layer by adding a tl_phy_line of
     * TODO a_tty_cell objects, incorporate changes in visual layer,
     * TODO then check what _really_ has changed, sync those changes only */
    struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
-   u32 tl_phy_cursor;         /* Physical cursor position */
-   boole tl_quote_rndtrip;      /* For _kht() expansion */
-   u8 tl__dummy2[3 + 4];
-   u32 tl_goinflags;          /* enum n_go_input_flags */
-   u32 tl_prompt_length;      /* Preclassified (TODO needed as tty_cell) */
+   u32 tl_phy_cursor; /* Physical cursor position */
+   boole tl_quote_rndtrip; /* For _kht() expansion */
+   u8 tl__pad2[3];
+   u32 tl_goinflags; /* enum n_go_input_flags */
+   u32 tl_prompt_length; /* Preclassified (TODO needed as tty_cell) */
    u32 tl_prompt_width;
-   char const *tl_prompt;        /* Preformatted prompt (including colours) */
+   su_64( u8 tl__pad3[4]; )
+   char const *tl_prompt; /* Preformatted prompt (including colours) */
    /* .tl_pos_buf is a hack */
 # ifdef mx_HAVE_COLOUR
-   char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
-   char *tl_pos;                 /* Address of the [4] */
+   char *tl_pos_buf; /* mle-position colour-on, [4], reset seq. */
+   char *tl_pos; /* Address of the [4] */
 # endif
 };
 
@@ -4257,10 +4275,10 @@ int
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
-      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt, gif)
-               ) > 0){
+      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt,
+            gif)) > 0){
          tl.tl_prompt = n_string_cp_const(&xprompt);
-         tl.tl_prompt_length = (u32)xprompt.s_len;
+         tl.tl_prompt_length = S(u32,xprompt.s_len);
       }
    }
 
