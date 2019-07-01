@@ -155,6 +155,9 @@ a_main_startup(void){
    if(mx_tty_fp == NIL)
       mx_tty_fp = (n_psonce & n_PSO_TTYIN) ? n_stdin : n_stdout;
 
+   if(isatty(STDERR_FILENO))
+      n_psonce |= n_PSO_TTYERR;
+
    /* Now that the basic I/O is accessible, initialize our main machinery,
     * input, loop, child, termios, whatever */
    n_go_init();

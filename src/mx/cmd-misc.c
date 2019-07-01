@@ -147,7 +147,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){
          /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
          if(donl)
             cp = n_string_cp(n_string_trunc(s, s->s_len - 1));
-         n_err((donl ? "%s\n" : "%s"), cp);
+         n_errx(TRU1, (donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
          e = su_err_no();
       if((rv = (fflush(fp) == EOF)))

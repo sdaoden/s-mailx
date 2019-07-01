@@ -5661,7 +5661,7 @@ t_rfc2231() {
    ' | ${MAILX} ${ARGS} -Rf ./.tinv > ./.tall 2> ./.terr
    check 4 0 ./.tall '1842050412 902'
    if have_feat uistrings; then
-      check 5 - ./.terr '1989222006 453'
+      check 5 - ./.terr '3713266499 473'
    else
       t_echoskip '5:[test unsupported]'
    fi

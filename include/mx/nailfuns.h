@@ -345,7 +345,9 @@ FL uz n_msleep(uz millis, boole ignint);
  * whether a newline was included or not -- this affects the output!
  * xxx Prototype changes to be reflected in src/su/core-code. (for now) */
 FL void n_err(char const *format, ...);
+FL void n_errx(boole allow_multiple, char const *format, ...);
 FL void n_verr(char const *format, va_list ap);
+FL void n_verrx(boole allow_multiple, char const *format, va_list ap);
 
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);

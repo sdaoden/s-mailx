@@ -69,6 +69,7 @@
 #include <su/sort.h>
 
 #include "mx/child.h"
+#include "mx/colour.h"
 #include "mx/file-streams.h"
 #include "mx/filetype.h"
 #include "mx/termios.h"
@@ -81,18 +82,24 @@
 /* TODO fake */
 #include "su/code-in.h"
 
+/* */
 #ifdef mx_HAVE_ERRORS
-struct a_aux_err_node{
-   struct a_aux_err_node *ae_next;
-   struct n_string ae_str;
-};
+CTAV(mx_ERRORS_MAX > 1);
 #endif
 
+/* The difference in between mx_HAVE_ERRORS and not, is size of queue only */
+struct a_aux_err_node{
+   struct a_aux_err_node *ae_next;
+   u32 ae_cnt;
+   boole ae_done;
+   u8 ae_pad[3];
+   uz ae_dumped_till;
+   struct n_string ae_str;
+};
+
 /* Error ring, for `errors' */
-#ifdef mx_HAVE_ERRORS
-static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
-#endif
-static uz a_aux_err_linelen;
+static struct a_aux_err_node *a_aux_err_head;
+static struct a_aux_err_node *a_aux_err_tail;
 
 /* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
  * some environment variable that supports colour+ and set *env_addon to that,
@@ -808,182 +815,226 @@ n_err(char const *format, ...){
    NYD2_IN;
 
    va_start(ap, format);
-#ifdef mx_HAVE_ERRORS
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_verr(format, ap);
-   else
-#endif
-   {
-      uz len;
-      boole doname;
+   n_verrx(FAL0, format, ap);
+   va_end(ap);
+   NYD2_OU;
+}
 
-      doname = FAL0;
+FL void
+n_errx(boole allow_multiple, char const *format, ...){
+   va_list ap;
+   NYD2_IN;
 
-      while(*format == '\n'){
-         doname = TRU1;
-         putc('\n', n_stderr);
-         ++format;
-      }
-
-      if(doname)
-         a_aux_err_linelen = 0;
-
-      if((len = su_cs_len(format)) > 0){
-         if(doname || a_aux_err_linelen == 0){
-            char const *cp;
-
-            if(*(cp = ok_vlook(log_prefix)) != '\0')
-               fputs(cp, n_stderr);
-         }
-         vfprintf(n_stderr, format, ap);
-
-         /* C99 */{
-            uz i = len;
-            do{
-               if(format[--len] == '\n'){
-                  a_aux_err_linelen = (i -= ++len);
-                  break;
-               }
-               ++a_aux_err_linelen;
-            }while(len > 0);
-         }
-      }
-
-      fflush(n_stderr);
-   }
+   va_start(ap, format);
+   n_verrx(allow_multiple, format, ap);
    va_end(ap);
    NYD2_OU;
 }
 
 FL void
 n_verr(char const *format, va_list ap){
-#ifdef mx_HAVE_ERRORS
-   struct a_aux_err_node *enp;
-#endif
-   boole doname;
-   uz len;
+   NYD2_IN;
+   n_verrx(FAL0, format, ap);
+   NYD2_OU;
+}
+
+FL void
+n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
+   mx_COLOUR( static uz c5recur; ) /* *termcap* recursion */
+   struct str s_b, s;
+   struct a_aux_err_node *lenp, *enp;
+   sz i;
+   char const *lpref, *c5pref, *c5suff;
    NYD2_IN;
 
-   doname = FAL0;
+   mx_COLOUR( ++c5recur; )
+   lpref = NIL;
+   c5pref = c5suff = su_empty;
 
-   while(*format == '\n'){
-      putc('\n', n_stderr);
-      doname = TRU1;
-      ++format;
-   }
+   /* Fully expand the buffer (TODO use fmtenc) */
+#undef a_X
+#ifdef mx_HAVE_N_VA_COPY
+# define a_X 128
+#else
+# define a_X MIN(LINESIZE, 1024)
+#endif
+   mx_fs_linepool_aquire(&s_b.s, &s_b.l);
+   if(s_b.l < a_X)
+      s_b.l = a_X;
+   for(i = s_b.l;; s_b.l = ++i /* xxx could wrap, maybe */){
+#ifdef mx_HAVE_N_VA_COPY
+      va_list vac;
 
-   if(doname){
-      a_aux_err_linelen = 0;
-#ifdef mx_HAVE_ERRORS
-      if(n_psonce & n_PSO_INTERACTIVE){
-         if((enp = a_aux_err_tail) != NULL &&
-               (enp->ae_str.s_len > 0 &&
-                enp->ae_str.s_dat[enp->ae_str.s_len - 1] != '\n'))
-            n_string_push_c(&enp->ae_str, '\n');
+      n_va_copy(vac, ap);
+#else
+# define vac ap
+#endif
+
+      s_b.s = su_MEM_REALLOC(s_b.s, s_b.l);
+      i = vsnprintf(s_b.s, s_b.l, format, vac);
+
+#ifdef mx_HAVE_N_VA_COPY
+      va_end(vac);
+#else
+# undef vac
+#endif
+
+      if(i <= 0)
+         goto jleave;
+      if(UCMP(z, i, >=, s_b.l)){
+#ifdef mx_HAVE_N_VA_COPY
+         continue;
+#else
+         i = S(int,su_cs_len(s_b.s));
+#endif
       }
-#endif
+      break;
    }
+   s = s_b;
+   s.l = S(uz,i);
 
-   if((len = su_cs_len(format)) == 0)
-      goto jleave;
-#ifdef mx_HAVE_ERRORS
-   n_pstate |= n_PS_ERRORS_PROMPT;
-#endif
-
-   if(doname || a_aux_err_linelen == 0){
-      char const *cp;
-
-      if(*(cp = ok_vlook(log_prefix)) != '\0')
-         fputs(cp, n_stderr);
-   }
-
+   /* Remove control characters but \n as we do not makeprint() XXX config */
    /* C99 */{
-      uz i = len;
-      do{
-         if(format[--len] == '\n'){
-            a_aux_err_linelen = (i -= ++len);
-            break;
-         }
-         ++a_aux_err_linelen;
-      }while(len > 0);
+      char *ins, *curr, *max, c;
+
+      for(ins = curr = s.s, max = &ins[s.l]; curr < max; ++curr)
+         if(!su_cs_is_cntrl(c = *curr) || c == '\n')
+            *ins++ = c;
+      *ins = '\0';
+      s.l = P2UZ(ins - s.s);
    }
 
-#ifdef mx_HAVE_ERRORS
-   if(!(n_psonce & n_PSO_INTERACTIVE))
-#endif
-      vfprintf(n_stderr, format, ap);
-#ifdef mx_HAVE_ERRORS
-   else{
-      int imax, i;
-      LCTAV(ERRORS_MAX > 3);
+   /* We have the prepared error message, take it over line-by-line, possibly
+    * completing partly prepared one first */
+   n_pstate |= n_PS_ERRORS_PROMPT;
+   lpref = ok_vlook(log_prefix);
+#ifdef mx_HAVE_COLOUR
+   if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
+      struct str const *pref, *suff;
+      struct mx_colour_pen *cp;
 
-      /* Link it into the `errors' message ring */
-      if((enp = a_aux_err_tail) == NULL){
-jcreat:
-         enp = n_alloc(sizeof *enp);
-         enp->ae_next = NULL;
+      if((cp = mx_colour_get_pen(mx_COLOUR_GET_FORCED,
+               mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_ERROR, NIL)
+               ) != NIL && (pref = mx_colour_pen_get_cseq(cp)) != NIL &&
+            (suff = mx_colour_get_reset_cseq(mx_COLOUR_GET_FORCED)
+                  ) != NIL){
+         c5pref = pref->s;
+         c5suff = suff->s;
+      }
+   }
+#endif
+
+   for(i = 0; UCMP(z, i, <, s.l);){
+      char c, *cp;
+      boole fresh;
+
+      lenp = enp = a_aux_err_tail;
+      if((fresh = (enp == NIL || enp->ae_done))){
+         enp = su_TCALLOC(struct a_aux_err_node, 1);
+         enp->ae_cnt = 1;
          n_string_creat(&enp->ae_str);
-         if(a_aux_err_tail != NULL)
+
+         if(a_aux_err_tail != NIL)
             a_aux_err_tail->ae_next = enp;
          else
             a_aux_err_head = enp;
          a_aux_err_tail = enp;
-         ++n_pstate_err_cnt;
-      }else if(doname ||
-            (enp->ae_str.s_len > 0 &&
-             enp->ae_str.s_dat[enp->ae_str.s_len - 1] == '\n')){
-         if(n_pstate_err_cnt < ERRORS_MAX)
-            goto jcreat;
-
-         a_aux_err_head = (enp = a_aux_err_head)->ae_next;
-         a_aux_err_tail->ae_next = enp;
-         a_aux_err_tail = enp;
-         enp->ae_next = NULL;
-         n_string_trunc(&enp->ae_str, 0);
       }
 
-# ifdef mx_HAVE_N_VA_COPY
-      imax = 64;
-# else
-      imax = MIN(LINESIZE, 1024);
-# endif
-      for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
-# ifdef mx_HAVE_N_VA_COPY
-         va_list vac;
+      /* xxx if(!n_string_book(&enp->ae_str, s.l - i))
+       * xxx    goto jleave;*/
 
-         n_va_copy(vac, ap);
-# else
-#  define vac ap
-# endif
+      /* We have completed a line? */
+      /* C99 */{
+         uz oi, j, k;
 
-         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (uz)i);
-         i = vsnprintf(&enp->ae_str.s_dat[len], (uz)i, format, vac);
-# ifdef mx_HAVE_N_VA_COPY
-         va_end(vac);
-# else
-#  undef vac
-# endif
-         if(i <= 0)
-            goto jleave;
-         if(UCMP(z, i, >=, imax)){
-# ifdef mx_HAVE_N_VA_COPY
-            /* XXX Check overflow for upcoming LEN+++i! */
-            n_string_trunc(&enp->ae_str, len);
-            continue;
-# else
-            i = (int)su_cs_len(&enp->ae_str.s_dat[len]);
-# endif
+         oi = S(uz,i);
+         j = s.l - oi;
+         k = enp->ae_str.s_len;
+         cp = S(char*,su_mem_find(&s.s[oi], '\n', j));
+
+         if(cp == NIL){
+            n_string_push_buf(&enp->ae_str, &s.s[oi], j);
+            i = s.l;
+         }else{
+            j = P2UZ(cp - &s.s[oi]);
+            i += j + 1;
+            n_string_push_buf(&enp->ae_str, &s.s[oi], j);
          }
-         break;
-      }
-      n_string_trunc(&enp->ae_str, len + (uz)i);
 
-      fwrite(&enp->ae_str.s_dat[len], 1, (uz)i, n_stderr);
+         /* We need to write it out regardless of whether it is a complete line
+          * or not, say (for at least `echoerrn') TODO IO errors not handled */
+         if(cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)){
+            enp->ae_dumped_till = enp->ae_str.s_len;
+            fprintf(n_stderr, "%s%s%s%s%s",
+               c5pref, (fresh ? lpref : su_empty),
+               &n_string_cp(&enp->ae_str)[k], c5suff,
+               (cp != NIL ? "\n" : su_empty));
+            fflush(n_stderr);
+         }
+      }
+
+      if(cp == NIL)
+         continue;
+      enp->ae_done = TRU1;
+
+      /* Check whether it is identical to the last one dumped, in which case
+       * we throw it away and only increment the counter, as syslog would.
+       * If not, dump it out, if not already */
+      c = FAL0;
+      if(lenp != NIL){
+         if(lenp != enp &&
+               lenp->ae_str.s_len == enp->ae_str.s_len &&
+               !su_mem_cmp(lenp->ae_str.s_dat, enp->ae_str.s_dat,
+                  enp->ae_str.s_len)){
+            ++lenp->ae_cnt;
+            c = TRU1;
+         }
+         /* Otherwise, if the last error has a count, say so, unless it would
+          * soil and intermix display */
+         else if(lenp->ae_cnt > 1 && !allow_multiple &&
+               (n_psonce & n_PSO_INTERACTIVE)){
+            fprintf(n_stderr,
+               _("%s%s-- Last message occurred %u times --%s\n"),
+               c5pref, lpref, lenp->ae_cnt, c5suff);
+            fflush(n_stderr);
+         }
+      }
+
+      if(!c && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE) &&
+            enp->ae_dumped_till != enp->ae_str.s_len){
+         fprintf(n_stderr, "%s%s%s%s\n",
+            c5pref, ((fresh && enp->ae_dumped_till == 0) ? lpref : su_empty),
+            &n_string_cp(&enp->ae_str)[enp->ae_dumped_till], c5suff);
+         fflush(n_stderr);
+      }
+
+      if(c){
+         lenp->ae_next = NIL;
+         a_aux_err_tail = lenp;
+         n_string_gut(&enp->ae_str);
+         su_FREE(enp);
+         continue;
+      }
+
+#ifdef mx_HAVE_ERRORS
+      if(n_pstate_err_cnt < mx_ERRORS_MAX){
+         ++n_pstate_err_cnt;
+         continue;
+      }
+      a_aux_err_head = (lenp = a_aux_err_head)->ae_next;
+#else
+      a_aux_err_head = a_aux_err_tail = enp;
+#endif
+      if(lenp != NIL){
+         n_string_gut(&lenp->ae_str);
+         su_FREE(lenp);
+      }
    }
-#endif /* mx_HAVE_ERRORS */
 
 jleave:
-   fflush(n_stderr);
+   mx_fs_linepool_release(s_b.s, s_b.l);
+   mx_COLOUR( --c5recur; )
    NYD2_OU;
 }
 
@@ -1011,7 +1062,7 @@ n_perr(char const *msg, int errval){
       fmt = "%s: %s\n";
 
    e = (errval == 0) ? su_err_no() : errval;
-   n_err(fmt, msg, su_err_doc(e));
+   n_errx(FAL0, fmt, msg, su_err_doc(e));
    if(errval == 0)
       su_err_set_no(e);
    NYD2_OU;
@@ -1022,10 +1073,12 @@ n_alert(char const *format, ...){
    va_list ap;
    NYD2_IN;
 
-   n_err(a_aux_err_linelen > 0 ? _("\nAlert: ") : _("Alert: "));
+
+   n_err((a_aux_err_tail != NIL && !a_aux_err_tail->ae_done)
+      ? _("\nAlert: ") : _("Alert: "));
 
    va_start(ap, format);
-   n_verr(format, ap);
+   n_verrx(TRU1, format, ap);
    va_end(ap);
 
    n_err("\n");
@@ -1037,9 +1090,9 @@ n_panic(char const *format, ...){
    va_list ap;
    NYD2_IN;
 
-   if(a_aux_err_linelen > 0){
+   if(a_aux_err_tail != NIL && !a_aux_err_tail->ae_done){
+      a_aux_err_tail->ae_done = TRU1;
       putc('\n', n_stderr);
-      a_aux_err_linelen = 0;
    }
    fprintf(n_stderr, "%sPanic: ", ok_vlook(log_prefix));
 
@@ -1080,7 +1133,7 @@ jlist:{
       FILE *fp;
       uz i;
 
-      if(a_aux_err_head == NULL){
+      if(a_aux_err_head == NIL){
          fprintf(n_stderr, _("The error ring is empty\n"));
          goto jleave;
       }
@@ -1092,10 +1145,9 @@ jlist:{
          goto jleave;
       }
 
-      for(i = 0, enp = a_aux_err_head; enp != NULL; enp = enp->ae_next)
-         fprintf(fp, "%4" PRIuZ ". %s", ++i, n_string_cp(&enp->ae_str));
-      /* We don't know whether last string ended with NL; be simple XXX */
-      putc('\n', fp);
+      for(i = 0, enp = a_aux_err_head; enp != NIL; enp = enp->ae_next)
+         fprintf(fp, "%4" PRIuZ "/%-3u %s\n",
+            ++i, enp->ae_cnt, n_string_cp(&enp->ae_str));
 
       page_or_print(fp, 0);
       mx_fs_close(fp);
@@ -1103,13 +1155,12 @@ jlist:{
    /* FALLTHRU */
 
 jclear:
-   a_aux_err_tail = NULL;
+   a_aux_err_tail = NIL;
    n_pstate_err_cnt = 0;
-   a_aux_err_linelen = 0;
-   while((enp = a_aux_err_head) != NULL){
+   while((enp = a_aux_err_head) != NIL){
       a_aux_err_head = enp->ae_next;
       n_string_gut(&enp->ae_str);
-      n_free(enp);
+      su_FREE(enp);
    }
    goto jleave;
 }

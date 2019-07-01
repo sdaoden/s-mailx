@@ -204,10 +204,10 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
 #   colour 256 mle-position fg=202
 #   colour 256 mle-prompt fg=203
-#   colour 256 mle-error fg=11
+#   colour 256 mle-error bg=124
 #   colour iso mle-position ft=bold
 #   colour iso mle-prompt fg=brown
-#   colour iso mle-error fg=brown,ft=bold
+#   colour iso mle-error bg=red
 #   colour mono mle-position ft=reverse
 #   colour mono mle-prompt ft=bold
 #   colour mono mle-error ft=reverse

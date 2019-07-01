@@ -27,7 +27,7 @@
 #define mx_DIG_MSG_PLUMBING_VERSION "0 0 1"
 #define mx_DOTLOCK_TRIES 5 /* Number of open(2) calls for dotlock */
 #define n_ERROR "ERROR" /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX 5000 /* Error queue size (s32) TODO configurable */
+#define mx_ERRORS_MAX 5000 /* Error queue size (s32) TODO configurable */
 #define n_ESCAPE "~" /* Default escape for sending (POSIX standard) */
 #define mx_FILE_LOCK_TRIES 10 /* Maximum tries before file_lock() fails */
 #define mx_FILE_LOCK_MILLIS 200 /* If UZ_MAX, fall back to that */
