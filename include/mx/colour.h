@@ -62,6 +62,11 @@ enum mx_colour_id{
 #define mx_COLOUR_TAG_SUM_DOT ((char*)-2)
 #define mx_COLOUR_TAG_SUM_OLDER ((char*)-3)
 
+enum mx_colour_get_flags{
+   mx_COLOUR_GET_FORCED = 1u<<0, /* Act even if COLOUR_IS_ACTIVE() is false */
+   mx_COLOUR_PAGER_USED = 1u<<1 /* Assume output goes to pager */
+};
+
 struct mx_colour_env{
    struct mx_colour_env *ce_last;
    boole ce_enabled; /* Colour enabled on this level */
@@ -104,7 +109,25 @@ EXPORT struct mx_colour_pen *mx_colour_pen_create(enum mx_colour_id cid,
                            char const *ctag);
 EXPORT void mx_colour_pen_put(struct mx_colour_pen *self);
 
+/* Get an escape sequence (or NIL, if self is, or no colour there is) */
 EXPORT struct str const *mx_colour_pen_to_str(struct mx_colour_pen *self);
+
+/*
+ * NEW STYLE TODO
+ */
+
+/* Get terminal reset control sequence (or NIL if no colour there is).
+ * The return value is "volatile" to colour change commands */
+EXPORT struct str const *mx_colour_get_reset_cseq(u32 get_flags);
+
+/* Just get the pen for the given combination, or NIL.
+ * The return value is "volatile" to colour change commands */
+EXPORT struct mx_colour_pen *mx_colour_get_pen(u32 get_flags,
+      enum mx_colour_ctx cctx, enum mx_colour_id cid, char const *ctag);
+
+/* Get terminal control sequence (or NIL, if self is, or no colour there is) */
+EXPORT struct str const *mx_colour_pen_get_cseq(
+      struct mx_colour_pen const *self);
 
 #include <su/code-ou.h>
 #else
