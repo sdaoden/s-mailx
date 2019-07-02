@@ -141,10 +141,8 @@ a_main_startup(void){
 #endif
    }
 
-   if(isatty(STDOUT_FILENO)){
+   if(isatty(STDOUT_FILENO))
       n_psonce |= n_PSO_TTYOUT;
-      mx_tty_fp = n_stdout;
-   }
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
 
