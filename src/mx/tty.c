@@ -639,7 +639,6 @@ struct a_tty_line{
    char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
    char *tl_pos;                 /* Address of the [4] */
 # endif
-   mx_termios_on_state_change tl_otosc;
 };
 
 # if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
@@ -789,7 +788,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 static struct a_tty_global a_tty;
 
 /* */
-static void a_tty_on_state_change(u32 tiossc, s32 sig);
+static void a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
 
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
@@ -899,8 +898,9 @@ static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 static void
-a_tty_on_state_change(u32 tiossc, s32 sig){
+a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
    NYD; /* Signal handler */
+   UNUSED(cookie);
    UNUSED(sig);
 
    if(tiossc & mx_TERMIOS_STATE_SUSPEND){
@@ -914,7 +914,8 @@ a_tty_on_state_change(u32 tiossc, s32 sig){
       a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       /* TODO Due to SA_RESTART we need to refresh the line in here! */
       a_tty_vi_refresh(a_tty.tg_line);
-   }
+   }else
+      ASSERT(!(tiossc & mx_TERMIOS_STATE_POP));
 }
 
 # ifdef mx_HAVE_HISTORY
@@ -4266,12 +4267,11 @@ int
 
    a_tty.tg_line = &tl;
    mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
-   tl.tl_otosc = mx_termios_on_state_change_set(&a_tty_on_state_change);
+   mx_termios_on_state_change_set(&a_tty_on_state_change, S(up,NIL));
    mx_TERMCAP_RESUME(FAL0);
    nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
    /*mx_COLOUR( mx_colour_env_gut(); )
-    *mx_TERMCAP_SUSPEND(FAL0);
-    *mx_termios_on_state_change_set(tl.tl_otosc);*/
+    *mx_TERMCAP_SUSPEND(FAL0);*/
    mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
    a_tty.tg_line = NIL;
 

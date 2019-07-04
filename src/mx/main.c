@@ -137,7 +137,7 @@ a_main_startup(void){
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
 #ifdef mx_HAVE_MLE
-      if((mx_tty_fp = fdopen(fileno(n_stdin), "w")) != NIL)
+      if((mx_tty_fp = fdopen(fileno(n_stdin), "w+")) != NIL)
          setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
 #endif
    }

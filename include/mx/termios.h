@@ -29,6 +29,8 @@ enum mx_termios_cmd{
     * The outermost level will be regulary shutdown, as via POP.
     * Further bits may not be set (this is 0) */
    mx_TERMIOS_CMD_RESET,
+   /* Only when HANDS_OFF is active, only by itself! */
+/*   mx_TERMIOS_CMD_SET_PGRP = 1u,*/
    /* Create a (POPable) environment, as necessary change to the given mode.
     * An environment carries the terminal mode as well as a possibly installed
     * on_state_change hook; if such environment is reentered, the state change
@@ -37,12 +39,12 @@ enum mx_termios_cmd{
     * XXX Any state change requires this, only RAW and RAW_TIMEOUT may be
     * XXX switched back and forth on the same level (otherwise state_change
     * XXX needs cmd argument, plus plus plus) */
-   mx_TERMIOS_CMD_PUSH = 1u<<0,
+   mx_TERMIOS_CMD_PUSH = 1u<<1,
    /* Pop stack and restore the terminal setting active before.
     * If a hook is installed, it will be called first.
     * If a mode is given, debug version will assert the stack top matches.
     * Further bits are ignored */
-   mx_TERMIOS_CMD_POP = 1u<<1,
+   mx_TERMIOS_CMD_POP = 1u<<2,
    mx__TERMIOS_CMD_CTL_MASK = mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_POP,
    mx_TERMIOS_CMD_NORMAL = 1u<<3, /* Normal canonical mode */
    mx_TERMIOS_CMD_PASSWORD = 2u<<3, /* Password input mode */
@@ -60,14 +62,16 @@ enum mx_termios_setup{
 enum mx_termios_state_change{
    mx_TERMIOS_STATE_SUSPEND = 1u<<0, /* Need to suspend terminal state */
    mx_TERMIOS_STATE_RESUME = 1u<<1, /* Need to resume terminal state */
-   mx_TERMIOS_STATE_SIGNAL = 1u<<2, /* Change was caused by a !job signal */
-   /* This (final) _SUSPEND is caused by the environment being popped */
+   mx_TERMIOS_STATE_SIGNAL = 1u<<2, /* Call was caused by a signal */
+   /* This (final) _SUSPEND is caused by the environment being popped.
+    * For HANDS_OFF handlers this will be called in a RESET even in already
+    * suspended state, so no _STATE_SUSPEND is set, then! */
    mx_TERMIOS_STATE_POP = 1u<<3
 };
 
-/* tiossc is termios_state_change bitmix.
+/* tiossc is termios_state_change bitmix, cookie is user argument.
  * signal is only meaningful when _STATE_SIGNAL is set */
-typedef void (*mx_termios_on_state_change)(u32 tiossc, s32 signal);
+typedef void (*mx_termios_on_state_change)(up cookie, u32 tiossc, s32 signal);
 
 struct mx_termios_dimension{
    u32 tiosd_height;
@@ -92,14 +96,15 @@ EXPORT_DATA struct mx_termios_dimension mx_termios_dimen;
 /* Installs signal handlers etc.  Early! */
 EXPORT void mx_termios_controller_setup(enum mx_termios_setup what);
 
-/* Install a new state change hook for the current environment,
- * and return the old handler.
- * May not be used in the top-, nor in a HANDS_OFF level */
-EXPORT mx_termios_on_state_change mx_termios_on_state_change_set(
-      mx_termios_on_state_change hdl);
+/* Install a state change hook for the current environment,
+ * which will receive cookie as its user argument.
+ * May not be used in and for the top level */
+EXPORT void mx_termios_on_state_change_set(mx_termios_on_state_change hdl,
+      up cookie);
 
 /* tiosc is a bitmix of mx_termios_cmd values.
- * For _RAW and _RAW_TIMEOUT a1 describes VMIN and VTIME, respectively */
+ * For _RAW and _RAW_TIMEOUT a1 describes VMIN and VTIME, respectively,
+ * for SET_PGRP it is the PID */
 EXPORT boole mx_termios_cmd(u32 tiosc, uz a1);
 #define mx_termios_cmdx(CMD) mx_termios_cmd(CMD, 0)
 
