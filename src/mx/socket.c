@@ -73,6 +73,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/sigs.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 

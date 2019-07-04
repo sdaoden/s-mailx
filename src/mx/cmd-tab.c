@@ -61,6 +61,7 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/shortcut.h"
+#include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/vexpr.h"

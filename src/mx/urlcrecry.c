@@ -35,6 +35,7 @@
 
 #include "mx/child.h"
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 
@@ -136,7 +137,7 @@ _nrc_init(void)
    ispipe = FAL0;
    fi = NULL;
 
-   hold_all_sigs(); /* todo */
+   mx_sigs_all_holdx(); /* todo */
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
@@ -279,7 +280,7 @@ jleave:
       }
 j_leave:
    _nrc_list = nrc;
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD_OU;
 }
 

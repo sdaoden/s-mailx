@@ -36,6 +36,7 @@
 #include "mx/child.h"
 #include "mx/filetype.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 #include "mx/termcap.h"
 
 #include "mx/file-streams.h"
@@ -605,7 +606,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    for(relesigs = TRU1, i = 0;; ++i){
       su_mem_copy(cp, mx_random_create_cp(a_RANDCHARS, NIL), a_RANDCHARS);
 
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 
       if((fd = open(cp_base, osoflags, 0600)) != -1){
          mx_FS_FD_CLOEXEC_SET(fd);
@@ -616,7 +617,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
          goto jfree;
       }
 
-      rele_all_sigs();
+      mx_sigs_all_rele();
    }
 
    /* C99 */{
@@ -667,7 +668,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 
 jleave:
    if(relesigs && (fp == NIL || !(oflags & mx_FS_O_HOLDSIGS)))
-      rele_all_sigs();
+      mx_sigs_all_rele();
    if(fp == NIL){
       su_err_set_no(e);
       if(fstcp_or_nil != NIL)
@@ -697,7 +698,7 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
    unlink(u.fsep->fse_realfile);
 
    u.fsep->fse_flags &= ~(a_FS_EF_HOLDSIGS | a_FS_EF_UNLINK);
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD_OU;
 }
 

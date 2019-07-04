@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Signal related stuff as well as NotYetDead functions.
+ *@ Implementation of sigs.h.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE signal
+#define su_FILE sigs
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -48,6 +48,7 @@
 #include <su/mem.h>
 
 /* TODO fake */
+#include "mx/sigs.h"
 #include "su/code-in.h"
 
 /*
@@ -94,23 +95,19 @@
  * TODO   SA_RESTART setting, since that has to be done for every signal.)
  */
 
-/* {hold,rele}_all_sigs() TODO obsolete in favour of mx_signal_all_* */
-static uz           _alls_depth;
-static sigset_t         _alls_nset, _alls_oset;
-
 /* signal_all_ */
-static uz volatile a_sig_all_depth;
-static sigset_t a_sig_all_nset, a_sig_all_oset;
+static uz volatile a_sigs_all_depth;
+static sigset_t a_sigs_all_nset, a_sigs_all_oset;
 
 /* {hold,rele}_sigs() */
 static uz           _hold_sigdepth;
 static sigset_t         _hold_nset, _hold_oset;
 
 /* */
-static void a_signal_dummyhdl(int sig);
+static void a_sigs_dummyhdl(int sig);
 
 static void
-a_signal_dummyhdl(int sig){
+a_sigs_dummyhdl(int sig){
    UNUSED(sig);
 }
 
@@ -151,11 +148,11 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    /* XXX This requires a terrible mess of signal handling:
     * - we usually have our SA_RESTART handler, that must be replaced
     * - we most often have a sigsetjmp() to overcome SA_RESTART
-    * - TODO for now hold_all_sigs() most often on in robot mode,
+    * - TODO for now signal_all_hold() most often on in robot mode,
     *   TODO therefore we also need sigprocmask(), to block anything
     *   TODO except SIGINT, and to unblock SIGINT, thus! */
    su_mem_set(&nact, 0, sizeof nact);
-   nact.sa_handler = &a_signal_dummyhdl;
+   nact.sa_handler = &a_sigs_dummyhdl;
    sigemptyset(&nact.sa_mask);
    sigaddset(&nact.sa_mask, SIGINT);
    sigaction(SIGINT, &nact, &oact);
@@ -185,50 +182,6 @@ jesyn:
    argv = NULL;
    goto jleave;
 }
-
-#ifdef mx_HAVE_DEVEL
-FL int
-c_sigstate(void *vp){ /* TODO remove again */
-   struct{
-      int val;
-      char const name[12];
-   } const *hdlp, hdla[] = {
-      {SIGINT, "SIGINT"}, {SIGHUP, "SIGHUP"}, {SIGQUIT, "SIGQUIT"},
-      {SIGTSTP, "SIGTSTP"}, {SIGTTIN, "SIGTTIN"}, {SIGTTOU, "SIGTTOU"},
-      {SIGCHLD, "SIGCHLD"}, {SIGPIPE, "SIGPIPE"}
-   };
-   char const *cp;
-   NYD2_IN;
-
-   if((cp = vp) != NULL && cp[0] != '\0'){
-      if(!su_cs_cmp_case(&cp[1], "all")){
-         if(cp[0] == '+')
-            hold_all_sigs();
-         else
-            rele_all_sigs();
-      }else if(!su_cs_cmp_case(&cp[1], "hold")){
-         if(cp[0] == '+')
-            hold_sigs();
-         else
-            rele_sigs();
-      }
-   }
-
-   fprintf(n_stdout, "alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
-      _alls_depth, _hold_sigdepth);
-   for(hdlp = hdla; hdlp < &hdla[NELEM(hdla)]; ++hdlp){
-      n_sighdl_t shp;
-
-      shp = safe_signal(hdlp->val, SIG_IGN);
-      safe_signal(hdlp->val, shp);
-      fprintf(n_stdout, "  %s: %p (%s)\n", hdlp->name, shp,
-         (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
-            : (shp == SIG_IGN ? "IGN" : "ptf?"))));
-   }
-   NYD2_OU;
-   return OKAY;
-}
-#endif /* mx_HAVE_DEVEL */
 
 FL void
 n_raise(int signo)
@@ -269,73 +222,58 @@ n_signal(int signo, n_sighdl_t hdl){
 }
 
 FL void
-hold_all_sigs(void)
-{
-   NYD2_IN;
-   if (_alls_depth++ == 0) {
-      sigfillset(&_alls_nset);
-      sigdelset(&_alls_nset, SIGABRT);
+mx_sigs_all_hold(s32 sigadjust, ...){
+   sigset_t unbl, *ossp;
+   boole nounbl, anyunbl;
+
+   sigemptyset(&unbl);
+
+   if((nounbl = (a_sigs_all_depth++ == 0))){
+      sigfillset(&a_sigs_all_nset);
+      sigdelset(&a_sigs_all_nset, SIGABRT);
 #ifdef SIGBUS
-      sigdelset(&_alls_nset, SIGBUS);
+      sigdelset(&a_sigs_all_nset, SIGBUS);
 #endif
-      sigdelset(&_alls_nset, SIGFPE);
-      sigdelset(&_alls_nset, SIGILL);
-      sigdelset(&_alls_nset, SIGKILL);
-      sigdelset(&_alls_nset, SIGSEGV);
-      sigdelset(&_alls_nset, SIGSTOP);
+      sigdelset(&a_sigs_all_nset, SIGFPE);
+      sigdelset(&a_sigs_all_nset, SIGILL);
+      sigdelset(&a_sigs_all_nset, SIGSEGV);
 
-      sigdelset(&_alls_nset, SIGCHLD);
-      sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
-   }
-   NYD2_OU;
-}
+      sigdelset(&a_sigs_all_nset, SIGCHLD);
 
-FL void
-rele_all_sigs(void)
-{
-   NYD2_IN;
-   if (--_alls_depth == 0)
-      sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   NYD2_OU;
-}
+      sigdelset(&a_sigs_all_nset, SIGKILL);
+      sigdelset(&a_sigs_all_nset, SIGSTOP);
 
-FL void
-mx_signal_all_hold(s32 delsig, ...){
-   sigset_t *ossp;
-
-   if(a_sig_all_depth++ == 0){
-      sigfillset(&a_sig_all_nset);
-      sigdelset(&a_sig_all_nset, SIGABRT);
-#ifdef SIGBUS
-      sigdelset(&a_sig_all_nset, SIGBUS);
-#endif
-      sigdelset(&a_sig_all_nset, SIGFPE);
-      sigdelset(&a_sig_all_nset, SIGILL);
-      sigdelset(&a_sig_all_nset, SIGKILL);
-      sigdelset(&a_sig_all_nset, SIGSEGV);
-      sigdelset(&a_sig_all_nset, SIGSTOP);
-
-      ossp = &a_sig_all_oset;
+      ossp = &a_sigs_all_oset;
    }else
       ossp = NIL;
 
-   if(delsig != -1){
+   anyunbl = FAL0;
+   if(sigadjust != 0){
       va_list val;
 
-      va_start(val, delsig);
-      do
-         sigdelset(&a_sig_all_nset, delsig);
-      while((delsig = va_arg(val, s32)) != -1);
+      va_start(val, sigadjust);
+
+      do if(sigadjust > 0)
+         sigaddset(&a_sigs_all_nset, sigadjust);
+      else{
+         sigadjust = -sigadjust;
+         sigdelset(&a_sigs_all_nset, sigadjust);
+         sigaddset(&unbl, sigadjust);
+         anyunbl = TRU1;
+      }while((sigadjust = va_arg(val, s32)) != 0);
+
       va_end(val);
    }
 
-   sigprocmask(SIG_BLOCK, &a_sig_all_nset, ossp);
+   sigprocmask(SIG_BLOCK, &a_sigs_all_nset, ossp);
+   if(!nounbl && anyunbl)
+      sigprocmask(SIG_UNBLOCK, &unbl, NIL);
 }
 
 FL void
-mx_signal_all_rele(void){
-   if(--a_sig_all_depth == 0)
-      sigprocmask(SIG_SETMASK, &a_sig_all_oset, NIL);
+mx_sigs_all_rele(void){
+   if(--a_sigs_all_depth == 0)
+      sigprocmask(SIG_SETMASK, &a_sigs_all_oset, NIL);
 }
 
 FL void
@@ -512,9 +450,9 @@ n_sigman_consume(void){
 }
 
 #if su_DVLOR(1, 0)
-static void a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen);
+static void a_sigs_nyd__dump(su_up cookie, char const *buf, su_uz blen);
 static void
-a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen){
+a_sigs_nyd__dump(su_up cookie, char const *buf, su_uz blen){
    write((int)cookie, buf, blen);
 }
 
@@ -568,7 +506,7 @@ mx__nyd_oncrash(int signo)
 
    write(fd, _X(":\n"));
 
-   su_nyd_dump(&a_signal_nyd__dump, (su_uz)(su_u32)fd);
+   su_nyd_dump(&a_sigs_nyd__dump, (su_uz)(su_u32)fd);
 
    write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
 

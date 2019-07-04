@@ -50,6 +50,7 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/shortcut.h"
+#include "mx/sigs.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

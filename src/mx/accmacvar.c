@@ -62,6 +62,7 @@
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -3049,7 +3050,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    su_mem_set(&los, 0, sizeof los);
 
-   hold_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_holdx(); /* TODO DISLIKE! */
 
    los.as_global_saved = a_amv_lopts;
    los.as_amcap = &amca;
@@ -3060,7 +3061,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    a_amv_lopts = los.as_global_saved;
 
-   rele_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_rele(); /* TODO DISLIKE! */
 
    NYD_OU;
    return rv;

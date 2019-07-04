@@ -35,6 +35,7 @@
 #include <su/mem.h>
 
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/termcap.h"
 #include "mx/termios.h"
 

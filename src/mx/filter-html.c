@@ -43,6 +43,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/sigs.h"
 #include "mx/termios.h"
 
 #include "mx/filter-html.h"

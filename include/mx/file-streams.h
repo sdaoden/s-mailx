@@ -100,7 +100,7 @@ EXPORT FILE *mx_fs_tmp_open(char const *namehint, u32 oflags,
       struct mx_fs_tmp_ctx **fstcp_or_nil);
 
 /* If (O_REGISTER|)O_HOLDSIGS and a context pointer was set when calling
- * tmp_open(), then hold_all_sigs() had not been released yet.
+ * tmp_open(), then sigs_all_*() had not been released yet.
  * Call this to first unlink(2) the temporary file and then release signals */
 EXPORT void mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp);
 

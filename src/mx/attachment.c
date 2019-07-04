@@ -47,6 +47,7 @@
 
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"

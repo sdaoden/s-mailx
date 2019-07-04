@@ -34,6 +34,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/sigs.h"
 #include "mx/termcap.h"
 
 /* TODO fake */

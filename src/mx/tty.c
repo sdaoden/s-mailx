@@ -40,6 +40,7 @@
 
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
@@ -798,7 +799,7 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
 
-/* (Definetely) Add an entry TODO yet assumes hold_all_sigs() is held! */
+/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held! */
 static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
@@ -933,7 +934,7 @@ a_tty_hist_load(void){
          a_tty.tg_hist_size_max == 0)
       goto jleave;
 
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+   mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
    f = fopen(v, "r");
    if(f == NULL){
       int e;
@@ -1021,7 +1022,7 @@ a_tty_hist_load(void){
 
    fclose(f);
 jrele:
-   rele_all_sigs(); /* XXX remove jumps */
+   mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;
    return rv;
@@ -1050,7 +1051,7 @@ a_tty_hist_save(void){
          if((dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)) && --i == 0)
             break;
 
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+   mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
    if((f = fopen(v, "w")) == NULL){ /* TODO temporary + rename?! */
       int e;
 
@@ -1100,7 +1101,7 @@ jioerr:
 
    fclose(f);
 jrele:
-   rele_all_sigs(); /* XXX remove jumps */
+   mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;
    return rv;
@@ -1239,12 +1240,12 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
 
       i = cmax * sizeof(struct a_tty_cell) + 2 * sizeof(struct a_tty_cell);
       if(LIKELY(i >= *tlp->tl_x_bufsize)){
-         hold_all_sigs(); /* XXX v15 drop */
+         mx_sigs_all_holdx(); /* XXX v15 drop */
          i <<= 1;
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
                su_DBG_LOC_ARGS_ORUSE);
-         rele_all_sigs(); /* XXX v15 drop */
+         mx_sigs_all_rele(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
       *tlp->tl_x_bufsize = i;
@@ -2276,9 +2277,9 @@ a_tty_kht(struct a_tty_line *tlp){
    wedid = FAL0;
 jredo:
    /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
-   hold_all_sigs();
+   mx_sigs_all_holdx();
    exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
-   rele_all_sigs();
+   mx_sigs_all_rele();
 
    if(exp.s == NULL || (exp.l = su_cs_len(exp.s)) == 0){
       if(wedid < FAL0)
@@ -3329,7 +3330,7 @@ jleave:
 jinject_input:{
    uz i;
 
-   hold_all_sigs(); /* XXX v15 drop */
+   mx_sigs_all_holdx(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
    n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = su_cs_len(cbufp) +1;
@@ -3339,7 +3340,7 @@ jinject_input:{
       *tlp->tl_x_bufsize = i;
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
-   rele_all_sigs(); /* XXX v15 drop */
+   mx_sigs_all_rele(); /* XXX v15 drop */
    if(histok_or_null != NULL)
       *histok_or_null = FAL0;
    rv = (sz)--i;
@@ -4300,9 +4301,9 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
        * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
             ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
-         hold_all_sigs();
+         mx_sigs_all_holdx();
          a_tty_hist_add(s, gif);
-         rele_all_sigs();
+         mx_sigs_all_rele();
       }
    }
 # endif

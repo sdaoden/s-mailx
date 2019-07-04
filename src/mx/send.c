@@ -51,6 +51,7 @@
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 

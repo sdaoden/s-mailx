@@ -51,8 +51,9 @@
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"
 #include "mx/names.h"
-#include "mx/ui-str.h"
+#include "mx/sigs.h"
 #include "mx/tty.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -371,7 +372,7 @@ print_collf(FILE *cf, struct header *hp)
       goto jleave;
    }
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    fprintf(obuf, _("-------\nMessage contains:\n")); /* XXX112 */
    n_puthead(TRU1, hp, obuf,
@@ -390,7 +391,7 @@ print_collf(FILE *cf, struct header *hp)
       n_attachment_list_print(hp->h_attach, obuf);
    }
 
-   rele_all_sigs();
+   mx_sigs_all_rele();
 
    page_or_print(obuf, 0);
 
@@ -977,10 +978,10 @@ a_coll_ocs__finalize(void *vp){
 
    n_lofi_free(coap);
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
    safe_signal(SIGPIPE, opipe);
    safe_signal(SIGINT, oint);
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD2_OU;
 }
 
@@ -1833,10 +1834,10 @@ jout:
       coap->coa_senderr = checkaddr_err;
       su_mem_copy(coap->coa_cmd, cp, i);
 
-      hold_all_sigs();
+      mx_sigs_all_holdx();
       coap->coa_opipe = safe_signal(SIGPIPE, SIG_IGN);
       coap->coa_oint = safe_signal(SIGINT, SIG_IGN);
-      rele_all_sigs();
+      mx_sigs_all_rele();
 
       if(mx_fs_pipe_cloexec(coap->coa_pipe) &&
             (coap->coa_stdin = mx_fs_fd_open(coap->coa_pipe[0], "r", FAL0)
@@ -2038,7 +2039,7 @@ jleave:
    return _coll_fp;
 
 jerr:
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1){
       if(!(flags & a_COAP_NOSIGTERM))
@@ -2059,7 +2060,7 @@ jerr:
       _coll_fp = NIL;
    }
 
-   rele_all_sigs();
+   mx_sigs_all_rele();
 
    ASSERT(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?

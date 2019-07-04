@@ -33,6 +33,7 @@
 
 #include "mx/file-streams.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 
 #include "mx/file-locks.h"
 /* TODO fake */

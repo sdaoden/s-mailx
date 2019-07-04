@@ -34,6 +34,7 @@ su_EMPTY_FILE()
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"

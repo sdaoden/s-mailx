@@ -62,6 +62,7 @@ su_EMPTY_FILE()
 
 #include "mx/iconv.h"
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

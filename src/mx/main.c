@@ -49,6 +49,7 @@
 
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
 #include "mx/termcap.h"
 #include "mx/termios.h"
 #include "mx/tty.h"

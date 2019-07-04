@@ -46,6 +46,7 @@
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/tty.h"
 
 #include <su/cs.h>

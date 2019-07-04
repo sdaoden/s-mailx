@@ -338,7 +338,7 @@ enum n_go_input_flags{
     * This is CTA()d!  For actual spacing of arrays we use _MAX1 instead */
    n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
 
-   n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* hold_all_sigs() active TODO */
+   n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
    /* `xcall' is `call' (at the level where this is set): to be set when
     * teardown of top level has undesired effects, e.g., for `account's and
     * folder hooks etc., where we do not to loose our `localopts' unroll list */

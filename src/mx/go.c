@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
  *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
- *@ TODO - hold_all_sigs() most often on, especially robot mode: TERRIBLE!
+ *@ TODO - sigs_hold_all() most often on, especially robot mode: TERRIBLE!
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
  *@ TODO   example to handle injections, and also `readctl' channels!
  *@ TODO   (Including sh(1)ell HERE strings and such.)
@@ -55,6 +55,7 @@
 #include "mx/commandalias.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
@@ -138,7 +139,7 @@ enum a_go_cleanup_mode{
 
    a_GO_CLEANUP_ERROR = 1u<<8,      /* Error occurred on level */
    a_GO_CLEANUP_SIGINT = 1u<<9,     /* Interrupt signal received */
-   a_GO_CLEANUP_HOLDALLSIGS = 1u<<10 /* hold_all_sigs() active TODO */
+   a_GO_CLEANUP_HOLDALLSIGS = 1u<<10 /* sigs_all_hol() active TODO */
 };
 
 enum a_go_hist_flags{
@@ -230,7 +231,7 @@ static void a_go_onintr(int s);
 
 /* Cleanup current execution context, update the program state.
  * If _CLEANUP_ERROR is set then we don't alert and error out if the stack
- * doesn't exist at all, unless _CLEANUP_HOLDALLSIGS we hold_all_sigs() */
+ * doesn't exist at all, unless _CLEANUP_HOLDALLSIGS we sigs_all_hold() */
 static void a_go_cleanup(enum a_go_cleanup_mode gcm);
 
 /* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
@@ -947,7 +948,7 @@ a_go_cleanup(enum a_go_cleanup_mode gcm){
    NYD_IN;
 
    if(!(gcm & a_GO_CLEANUP_HOLDALLSIGS))
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 jrestart:
    gcp = a_go_ctx;
 
@@ -1083,7 +1084,7 @@ jleave:
 jxleave:
    NYD_OU;
    if(!(gcm & a_GO_CLEANUP_HOLDALLSIGS))
-      rele_all_sigs();
+      mx_sigs_all_rele();
    return;
 
 jerr:
@@ -1178,7 +1179,7 @@ jeopencheck:
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
@@ -1207,7 +1208,7 @@ a_go_load(struct a_go_ctx *gcp){
    gcp->gc_flags |= a_GO_MEMBAG_INHERITED;
    gcp->gc_data.gdc_membag = n_go_data->gdc_membag;
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    /* POSIX:
     *    Any errors in the start-up file shall either cause mailx to terminate
@@ -1223,7 +1224,7 @@ a_go_load(struct a_go_ctx *gcp){
 */
    n_pstate |= n_PS_ROBOT | n_PS_SOURCING;
 
-   rele_all_sigs();
+   mx_sigs_all_rele();
 
    n_go_main_loop();
    NYD2_OU;
@@ -1258,7 +1259,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    if((soldhdl = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN){
       safe_signal(SIGINT, &a_go__eloopint);
       if(sigsetjmp(gcp->gc_eloop_jmp, 1)){
-         hold_all_sigs();
+         mx_sigs_all_holdx();
          hadint = TRU1;
          f &= ~a_RETOK;
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
@@ -1276,20 +1277,20 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
 
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
-      rele_all_sigs();
+      mx_sigs_all_rele();
       n = n_go_input(gif, NULL, &gec.gec_line.s, &gec.gec_line.l, NULL, NULL);
-      hold_all_sigs();
+      mx_sigs_all_holdx();
       gec.gec_line_size = (u32)gec.gec_line.l;
       gec.gec_line.l = (u32)n;
 
       if(n < 0)
          break;
 
-      rele_all_sigs();
+      mx_sigs_all_rele();
       ASSERT(gec.gec_hist_flags == a_GO_HIST_NONE);
       if(!a_go_evaluate(&gec))
          f &= ~a_RETOK;
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 
       if(!(f & a_RETOK) || a_go_xcall != NULL ||
             (n_psonce & n_PSO_EXIT_MASK) || (n_pstate & n_PS_ERR_EXIT_MASK))
@@ -1307,7 +1308,7 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
    if(soldhdl != SIG_IGN)
       safe_signal(SIGINT, soldhdl);
    NYD2_OU;
-   rele_all_sigs();
+   mx_sigs_all_rele();
    if(hadint){
       sigprocmask(SIG_SETMASK, &osigmask, NULL);
       n_raise(SIGINT);
@@ -1359,7 +1360,7 @@ n_go_main_loop(void){ /* FIXME */
    su_mem_set(&gec, 0, sizeof gec);
 
    (void)sigsetjmp(a_go_srbuf, 1); /* FIXME get rid */
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    for (eofcnt = 0;; gec.gec_ever_seen = TRU1) {
       interrupts = 0;
@@ -1397,11 +1398,11 @@ n_go_main_loop(void){ /* FIXME */
                      odot = P2UZ(dot - message);
                      odid = (n_pstate & n_PS_DID_PRINT_DOT);
 
-                     rele_all_sigs();
+                     mx_sigs_all_rele();
                      n = setfile(mailname,
                            (FEDIT_NEWMAIL |
                               ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)));
-                     hold_all_sigs();
+                     mx_sigs_all_holdx();
 
                      if(n < 0) {
                         n_exit_status |= n_EXIT_ERR;
@@ -1450,11 +1451,11 @@ n_go_main_loop(void){ /* FIXME */
          histadd = ((n_psonce & n_PSO_INTERACTIVE) &&
                !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)) &&
                 a_go_ctx->gc_inject == su_NIL); /* xxx really injection? */
-         rele_all_sigs();
+         mx_sigs_all_rele();
          ASSERT(!gec.gec_ignerr);
          n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
                &gec.gec_line.s, &gec.gec_line.l, NULL, &histadd);
-         hold_all_sigs();
+         mx_sigs_all_holdx();
 
          gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
       }
@@ -1473,9 +1474,9 @@ n_go_main_loop(void){ /* FIXME */
       }
 
       n_pstate &= ~n_PS_HOOK_MASK;
-      rele_all_sigs();
+      mx_sigs_all_rele();
       rv = a_go_evaluate(&gec);
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 
       if(gec.gec_hist_flags & a_GO_HIST_ADD){
          char const *cc, *ca;
@@ -1515,7 +1516,7 @@ n_go_main_loop(void){ /* FIXME */
    if (gec.gec_line.s != NULL)
       n_free(gec.gec_line.s);
 
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD_OU;
    return rv;
 }
@@ -1577,7 +1578,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
          len > 0){
       struct a_go_input_inject *giip,  **giipp;
 
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 
       giip = n_alloc(VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat
             ) + 1 + len +1);
@@ -1589,7 +1590,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
       giip->gii_dat[giip->gii_len = len] = '\0';
       *giipp = giip;
 
-      rele_all_sigs();
+      mx_sigs_all_rele();
    }
    NYD_OU;
 }
@@ -1616,7 +1617,7 @@ FL int
    NYD2_IN;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
-      hold_all_sigs();
+      mx_sigs_all_holdx();
 
    f = a_NONE;
 
@@ -1746,30 +1747,31 @@ jforce_stdin:
          }
          string = NULL;
 
-         rele_all_sigs();
+         mx_sigs_all_rele();
 
          n = (mx_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_nil
                su_DBG_LOC_ARGS_USE);
 
-         hold_all_sigs();
+         mx_sigs_all_holdx();
 
          if(n < 0 && !ferror(ifile)) /* EOF never i guess */
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
       }else{
-         if(!(gif & n_GO_INPUT_PROMPT_NONE))
+         mx_sigs_all_rele();
+
+         if(!(gif & n_GO_INPUT_PROMPT_NONE)){
             mx_tty_create_prompt(&xprompt, prompt, gif);
 
-         rele_all_sigs();
-
-         if(!(gif & n_GO_INPUT_PROMPT_NONE) && xprompt.s_len > 0){
-            fwrite(xprompt.s_dat, 1, xprompt.s_len, n_stdout);
-            fflush(n_stdout);
+            if(xprompt.s_len > 0){
+               fwrite(xprompt.s_dat, 1, xprompt.s_len, n_stdout);
+               fflush(n_stdout);
+            }
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
                su_DBG_LOC_ARGS_USE);
 
-         hold_all_sigs();
+         mx_sigs_all_holdx();
 
          if(n < 0 && !ferror(ifile))
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
@@ -1843,7 +1845,7 @@ jleave:
       *histok_or_nil = FAL0;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
-      rele_all_sigs();
+      mx_sigs_all_rele();
    NYD2_OU;
    return n;
 }
@@ -2064,7 +2066,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
@@ -2093,7 +2095,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
          /* Indicate that "our" (ex-) parent now hosts xcall optimization */
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
          while(a_go_xcall != NULL){
-            hold_all_sigs();
+            mx_sigs_all_holdx();
 
             a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
 
@@ -2102,7 +2104,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
             cacp = n_cmd_arg_restore_from_heap(vp);
             n_free(vp);
 
-            rele_all_sigs();
+            mx_sigs_all_rele();
 
             (void)c_call(cacp);
          }
@@ -2132,7 +2134,7 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
@@ -2165,7 +2167,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
          (i = su_cs_len(cmd) +1));
    su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
-   hold_all_sigs();
+   mx_sigs_all_holdx();
 
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
@@ -2185,7 +2187,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    /* Do NOT touch n_go_data! */
    n_pstate |= n_PS_ROBOT;
 
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD_OU;
 }
 

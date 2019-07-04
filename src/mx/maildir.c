@@ -57,6 +57,7 @@ su_EMPTY_FILE()
 #include <su/prime.h>
 
 #include "mx/file-streams.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"

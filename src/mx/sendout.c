@@ -51,6 +51,7 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 #include "mx/tty.h"
 
 /* TODO fake */
