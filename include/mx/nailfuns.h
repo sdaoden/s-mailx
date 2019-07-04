@@ -1538,6 +1538,12 @@ FL n_sighdl_t  n_signal(int signo, n_sighdl_t hdl);
 FL void        hold_all_sigs(void);
 FL void        rele_all_sigs(void);
 
+/* Hold all signals except some fatal trap ones, and less delsig and all
+ * others given -- -1 terminates the list.
+ * Adds onto list of not-to-block if already active */
+FL void mx_signal_all_hold(s32 delsig, ...);
+FL void mx_signal_all_rele(void);
+
 /* Hold HUP/QUIT/INT */
 FL void        hold_sigs(void);
 FL void        rele_sigs(void);

@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <stdarg.h>
+
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
@@ -92,9 +94,13 @@
  * TODO   SA_RESTART setting, since that has to be done for every signal.)
  */
 
-/* {hold,rele}_all_sigs() */
+/* {hold,rele}_all_sigs() TODO obsolete in favour of mx_signal_all_* */
 static uz           _alls_depth;
 static sigset_t         _alls_nset, _alls_oset;
+
+/* signal_all_ */
+static uz volatile a_sig_all_depth;
+static sigset_t a_sig_all_nset, a_sig_all_oset;
 
 /* {hold,rele}_sigs() */
 static uz           _hold_sigdepth;
@@ -291,6 +297,45 @@ rele_all_sigs(void)
    if (--_alls_depth == 0)
       sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
    NYD2_OU;
+}
+
+FL void
+mx_signal_all_hold(s32 delsig, ...){
+   sigset_t *ossp;
+
+   if(a_sig_all_depth++ == 0){
+      sigfillset(&a_sig_all_nset);
+      sigdelset(&a_sig_all_nset, SIGABRT);
+#ifdef SIGBUS
+      sigdelset(&a_sig_all_nset, SIGBUS);
+#endif
+      sigdelset(&a_sig_all_nset, SIGFPE);
+      sigdelset(&a_sig_all_nset, SIGILL);
+      sigdelset(&a_sig_all_nset, SIGKILL);
+      sigdelset(&a_sig_all_nset, SIGSEGV);
+      sigdelset(&a_sig_all_nset, SIGSTOP);
+
+      ossp = &a_sig_all_oset;
+   }else
+      ossp = NIL;
+
+   if(delsig != -1){
+      va_list val;
+
+      va_start(val, delsig);
+      do
+         sigdelset(&a_sig_all_nset, delsig);
+      while((delsig = va_arg(val, s32)) != -1);
+      va_end(val);
+   }
+
+   sigprocmask(SIG_BLOCK, &a_sig_all_nset, ossp);
+}
+
+FL void
+mx_signal_all_rele(void){
+   if(--a_sig_all_depth == 0)
+      sigprocmask(SIG_SETMASK, &a_sig_all_oset, NIL);
 }
 
 FL void
