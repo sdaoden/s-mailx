@@ -113,6 +113,7 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
       goto jnostd;
 #endif
 
+   /* TODO ensure each line has the prefix */
    if(su_program != NIL){
       if(su_state_has(su_STATE_LOG_SHOW_PID)){
          cp = su_ienc_u32(buf, getpid(), 10);
@@ -309,19 +310,11 @@ su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp){
 void
 su_assert(char const *expr, char const *file, u32 line, char const *fun,
       boole crash){
-   char const *pre;
-
-   /* TODO su_assert(): plays with su_program prefix due to usecase mess,
-    * TODO and because (we do not have our own I/O) we do not embed the
-    * TODO su_program after each NEWLINE */
-   pre = (su_program != NIL) ? su_program : su_empty;
    su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
-      /*"%s: "*/"SU assert failed: %.60s\n"
-      "%s:   File %.60s, line %" PRIu32 "\n"
-      "%s:   Function %.142s\n",
-      /*pre, */expr,
-      pre, file, line,
-      pre, fun);
+      "SU assert failed: %.60s\n"
+      "  File %.60s, line %" PRIu32 "\n"
+      "  Function %.142s\n",
+      expr, file, line, fun);
 }
 
 #if DVLOR(1, 0)
