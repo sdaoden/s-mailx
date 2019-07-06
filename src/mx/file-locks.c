@@ -316,9 +316,12 @@ mx_file_lock(int fd, enum mx_file_lock_type flt, off_t off, off_t len,
 FILE *
 mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
       off_t off, off_t len, uz pollmsecs){
-#undef _DOMSG
-#define _DOMSG() \
-   n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
+#undef a_DOMSG
+#define a_DOMSG() \
+   do if(!didmsg){\
+      didmsg = TRUM1;\
+      n_err(dmsg, dmsg_name);\
+}while(0)
 
 #ifdef mx_HAVE_DOTLOCK
    sz cpipe[2];
@@ -326,6 +329,7 @@ mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
    enum mx_file_dotlock_state fdls;
    char const *emsg;
 #endif
+   char const *dmsg, *dmsg_name;
    int serr;
    union {uz tries; int (*ptf)(void); char const *sh; sz r;} u;
    boole flocked, didmsg;
@@ -341,11 +345,11 @@ mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
 #ifdef mx_HAVE_DOTLOCK
    emsg = NIL;
 #endif
+   dmsg = _("Creating file (dot) lock for %s ");
+   dmsg_name = n_shexp_quote_cp(fname, FAL0);
 
-   if(n_poption & n_PO_D_VV){
-      _DOMSG();
-      didmsg = TRUM1;
-   }
+   if(n_poption & n_PO_D_VV)
+      a_DOMSG();
 
    flocked = FAL0;
    for(u.tries = 0; !mx_file_lock(fd, flt, off, len, 0);)
@@ -354,10 +358,8 @@ mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
       case su_ERR_AGAIN:
       case su_ERR_NOLCK:
          if(pollmsecs > 0 && ++u.tries < mx_FILE_LOCK_TRIES){
-            if(!didmsg)
-               _DOMSG();
+            a_DOMSG();
             n_err(".");
-            didmsg = TRUM1;
             n_msleep(pollmsecs, FAL0);
             continue;
          }
@@ -488,22 +490,17 @@ jleave:
             serr = su_ERR_INVAL;
          break;
       case mx_FILE_DOTLOCK_STATE_PING:
-         if(!didmsg)
-            _DOMSG();
+         a_DOMSG();
          n_err(".");
-         didmsg = TRUM1;
          continue;
       }
 
       if(emsg != NIL){
-         if(!didmsg){
-            _DOMSG();
-            didmsg = TRUM1;
-         }
-         if(didmsg == TRUM1)
-            n_err(_(". failed\n"));
+         a_DOMSG();
+         n_err(_(". failed\n%s%s"), V_(emsg),
+            ((fdls & mx_FILE_DOTLOCK_STATE_ABANDON) ? su_empty
+               : _("Trying different policy ")));
          didmsg = TRU1;
-         n_err(V_(emsg));
          emsg = NIL;
       }
 
@@ -538,14 +535,13 @@ jserr:
    NYD_OU;
    return rv;
 jemsg:
-   if(!didmsg)
-      _DOMSG();
+   a_DOMSG();
    n_err("\n");
-   didmsg = TRU1;
    n_err(V_(emsg));
+   didmsg = TRU1;
    goto jleave;
 #endif /* mx_HAVE_DOTLOCK */
-#undef _DOMSG
+#undef a_DOMSG
 }
 
 #include "su/code-ou.h"
