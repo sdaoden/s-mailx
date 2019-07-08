@@ -239,9 +239,9 @@ For sanitizers plus special options exist, please read make.rc for more.
 In case of errors using the -d (*debug*) and -v (*verbose*; may be set
 twice for even more verbosity) options (variables) is always good idea:
 
-  $ s-nail -dv
+  $ s-nail -dvv
 or
-  $ s-nail -Sdebug -Sverbose
+  $ s-nail -Sdebug -Sverbose -Sverbose
 
 Should you really discover any problems with S-nail it would be very
 useful for development if you would contact the mailing-list!
@@ -257,6 +257,12 @@ Thank you!
     These will vanish after the large v15 I/O and MIME rewrite.
   * Some "XYZ may be used uninitialized" warnings are logically false.
 
+  * Running the tests on a NFS filesystem might cause some false
+    negatives.  (Seen on the SunOS 5.11 OpenCSW machines, in
+    [pipe_handlers] failure due to hard link count mismatch since NFS
+    links the file to some other name, too, and that lingers too long,
+    reproducibly).
+
 - All 32-bit systems:
   * There _may_ be warnings about format strings, like, e.g.,
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
@@ -270,34 +276,30 @@ Thank you!
     with gcc(1) and clang(1): with OPT_AUTOCC pass
     "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 in $CFLAGS.
 
-Development and/or regular tests:
+Development:
 
-. AlpineLinux <https://www.alpinelinux.org/> (edge; x86-64).
+. CRUX Linux <https://www.crux.nu/> (3.5/x86-64).
 
-. ArchLinux <https://www.archlinux.org/> (~weekly updated; x86-64).
+Frequently:
 
-. FreeBSD <https://www.freebsd.org/> (11.2; x86).
+. ArchLinux <https://www.archlinux.org/> (x86-64).
+
+. FreeBSD <https://www.freebsd.org/> (11.2/x86; 11.3/x86).
   - The tests iconv_mbyte_base64-4 and
     iconv_mbyte_base64-8 will fail because the ISO C function
     iswprint(3) will falsely claim that U+FF08 and U+FF09 (FULLWIDTH
     LEFT and RIGHT PARENTHESIS, respectively) are not printable, causing
     replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
+    Also, iconv_mainbody-5-5 is triggered because a different
+    replacement character is used than the one we expect.
 
-(More or less) Frequently tested:
-
-. CRUX Linux <https://www.crux.nu/> (3.4; x86-64).
-
-. OpenBSD <https://www.openbsd.org/> (6.4; x86).
-
-. OSUKISS Linux <https://osukiss.safe.ca/>
-  @ Thanks to Jean-Marc Pigeon for generously providing access to
-    a VZGOT on the most "beefy" machine i have ever worked on!
-    It does the thing i need an hour for in 90 seconds.  ^_^
+. OpenBSD <https://www.openbsd.org/> (6.4/x86; 6.5/x86).
 
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
+    (Sparc and x86 machines with SunOS 5.9, 5.10 and 5.11.)
 
   * Some notes collected on earlier trials:
     + We forcefully disable stack protectors on SunOS/gcc because of
@@ -310,34 +312,27 @@ Development and/or regular tests:
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
 
-  - At least some combinations of the NFS based filesystem and the
-    OpenCSW machines cause [pipe_handlers] test failure due to hard link
-    count mismatch the NFS implementation links the file to some other
-    name, too, and that lingers too long (reproducibly).
-
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).
 
-  - The make(1) often seems to have problems with file descriptors,
-    especially when pipes are involved.
-    Such "make test" failures often cannot be reproduced via
-      $ ./mx-test.sh --run-test ./s-nail
+Pre-release, and other landmarks:
 
-  -   $ make all OPT_USE_PKGSYS=no OPT_GSSAPI=no
-    ok on Solaris/SPARC 5.9 (+ OPT_IDN=no), 5.10 and 5.11.
-    The latter two have a hanging test X_Y_opt_input_go_stack no.
-    2 which needs -KILLing, the rest will run fine; this is about FDs
-    again, and since the same snippet succeeds in other combinations
-    i am out of ideas).  Solaris/x86 did not even need the caveats.
+. AlpineLinux <https://www.alpinelinux.org/> (edge/x86-64).
 
-Occasional tests:
+. DragonFly BSD <https://www.dragonflybsd.org/> (5.6.1/x86-64).
+  See FreeBSD for the three failing test cases.
 
-. DragonFly BSD <https://www.dragonflybsd.org/> (5.2.1; x86-64).
-  See FreeBSD for the two failing test cases.
+. NetBSD <https://www.netbsd.org/> (8.0_RC1/i386).
+  - Still not have setup all my environment after having lost all,
+    so not tested recently.
+  (- Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.))
 
-. NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
-  - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
+. OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
+  @ Thanks to Jean-Marc Pigeon for generously providing access to
+    a VZGOT on the most "beefy" machine i have ever worked on! ^_^
 
 . Void Linux <https://www.voidlinux.org/> (x86)
+  - Still not have setup all my environment after having lost all,
+    so not tested recently.
 
 # s-ts-mode
