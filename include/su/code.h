@@ -436,11 +436,19 @@ do{\
 /* inline keyword */
 #define su_HAVE_INLINE
 #if su_C_LANG
-# if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
+# ifdef DOXYGEN
+#  define su_INLINE inline /*!< \_ */
+#  define su_SINLINE inline /*!< \_ */
+# elif su_CC_CLANG || su_CC_GCC || su_CC_PCC
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+    /* That gcc is totally weird */
+#   if su_OS_OPENBSD && su_CC_GCC
+#    define su_INLINE extern __inline __attribute__((gnu_inline))
+#    define su_SINLINE static __inline __attribute__((gnu_inline))
     /* All CCs coming here know __OPTIMIZE__ */
-#   if !defined NDEBUG || !defined __OPTIMIZE__
-#    define su_INLINE static inline /*!< \_ */
+#   elif !defined NDEBUG || !defined __OPTIMIZE__
+#    define su_INLINE static inline
+#    define su_SINLINE static inline
 #   else
      /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
 #    if su_CC_GCC && defined __OPTIMIZE_SIZE__
@@ -448,8 +456,8 @@ do{\
 #    else
 #     define su_INLINE inline
 #    endif
+#    define su_SINLINE static inline
 #   endif
-#   define su_SINLINE static inline /*!< \_ */
 #  else
 #   define su_INLINE static __inline
 #   define su_SINLINE static __inline
