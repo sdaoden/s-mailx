@@ -71,9 +71,19 @@ enum a_sendout_addrline_flags{
 CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
+enum a_sendout_sendwait_flags{
+   a_SENDOUT_SWF_NONE,
+   a_SENDOUT_SWF_MTA = 1u<<0,
+   a_SENDOUT_SWF_PCC = 1u<<1,
+   a_SENDOUT_SWF_MASK = a_SENDOUT_SWF_MTA | a_SENDOUT_SWF_PCC
+};
+
 static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
 static char *  _sendout_boundary;
 static s8   _sendout_error;
+
+/* */
+static u32 a_sendout_sendwait_to_swf(void);
 
 /* *fullnames* appears after command line arguments have been parsed */
 static struct mx_name *a_sendout_fullnames_cleanup(struct mx_name *np);
@@ -156,6 +166,34 @@ static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
 /* Rewrite a message for resending, adding the Resent-Headers */
 static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
                         struct mx_name *to, int add_resent);
+
+static u32
+a_sendout_sendwait_to_swf(void){ /* TODO should happen at var assign time */
+   char *buf;
+   u32 rv;
+   char const *cp;
+   NYD2_IN;
+
+   if((cp = ok_vlook(sendwait)) == NIL)
+      rv = a_SENDOUT_SWF_NONE;
+   else if(*cp == '\0')
+      rv = a_SENDOUT_SWF_MASK;
+   else{
+      rv = a_SENDOUT_SWF_NONE;
+
+      for(buf = savestr(cp); (cp = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
+         if(!su_cs_cmp_case(cp, "mta"))
+            rv |= a_SENDOUT_SWF_MTA;
+         else if(!su_cs_cmp_case(cp, "pcc"))
+            rv |= a_SENDOUT_SWF_PCC;
+         else if(n_poption & n_PO_D_V)
+            n_err(_("Unknown *sendwait* content: %s\n"),
+               n_shexp_quote_cp(cp, FAL0));
+      }
+   }
+   NYD2_OU;
+   return rv;
+}
 
 static struct mx_name *
 a_sendout_fullnames_cleanup(struct mx_name *np){
@@ -891,8 +929,8 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
 static struct mx_name *
 a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
    boole mfap;
-   u32 pipecnt, xcnt, i;
    char const *sh;
+   u32 pipecnt, xcnt, i, swf;
    struct mx_name *np;
    FILE *fp, **fppa;
    NYD_IN;
@@ -902,7 +940,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
 
    /* Look through all recipients and do a quick return if no file or pipe
     * addressee is found */
-   for(pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink){
+   for(pipecnt = xcnt = 0, np = names; np != NIL; np = np->n_flink){
       if(np->n_type & GDEL)
          continue;
       switch(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE){
@@ -917,11 +955,15 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
     * addressee to get around the dup(2)-shared-file-offset problem, i.e.,
     * each pipe subprocess needs its very own file descriptor, and we need
     * to deal with that.
+    * This is true even if *sendwait* requires fully synchronous mode, since
+    * the shell handlers can fork away and pass the descriptor around, so we
+    * cannot simply use a single one and rewind that after the top children
+    * shell has returned.
     * To make our life a bit easier let's just use the auto-reclaimed
     * string storage */
    if(pipecnt == 0 || (n_poption & n_PO_DEBUG)){
       pipecnt = 0;
-      sh = NULL;
+      sh = NIL;
    }else{
       i = sizeof(FILE*) * pipecnt;
       fppa = n_lofi_alloc(i);
@@ -931,8 +973,9 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
    }
 
    mfap = ok_blook(mbox_fcc_and_pcc);
+   swf = a_sendout_sendwait_to_swf();
 
-   for(np = names; np != NULL; np = np->n_flink){
+   for(np = names; np != NIL; np = np->n_flink){
       if(!(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE) || (np->n_type & GDEL))
          continue;
 
@@ -950,7 +993,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          continue;
 
       /* See if we have copied the complete message out yet.  If not, do so */
-      if(fp == NULL){
+      if(fp == NIL){
          int c;
          struct mx_fs_tmp_ctx *fstcp;
 
@@ -1007,7 +1050,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          sigaddset(&nset, SIGQUIT);
 
          mx_child_ctx_setup(&cc);
-         cc.cc_flags = mx_CHILD_SPAWN_CONTROL;
+         cc.cc_flags = mx_CHILD_SPAWN_CONTROL |
+               (swf & a_SENDOUT_SWF_PCC ? mx_CHILD_RUN_WAIT_LIFE : 0);
          cc.cc_mask = &nset;
          cc.cc_fds[mx_CHILD_FD_IN] = fileno(fppa[xcnt]);
          cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
@@ -1028,13 +1072,15 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             fppa[xcnt++] = NIL;
             mx_fs_close(tmp);
          }
-         mx_child_forget(&cc);
+
+         if(!(swf & a_SENDOUT_SWF_PCC))
+            mx_child_forget(&cc);
       }else{
          int c;
          FILE *fout;
          char const *fname, *fnameq;
 
-         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NULL)
+         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NIL)
             goto jerror;
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
@@ -1058,7 +1104,7 @@ jefile:
                mx_file_lock(fileno(fout), mx_FILE_LOCK_TYPE_WRITE, 0,0,
                      UZ_MAX);
 
-               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
+               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NIL)
                      ) != su_ERR_NONE)
                   goto jefile;
             }
@@ -1375,7 +1421,8 @@ a_sendout_mta_start(struct sendbundle *sbp)
    sigaddset(&nset, SIGTTIN);
    sigaddset(&nset, SIGTTOU);
    mx_child_ctx_setup(&cc);
-   dowait = ((n_poption & n_PO_D_V) || ok_blook(sendwait));
+   dowait = ((n_poption & n_PO_D_V) ||
+         (a_sendout_sendwait_to_swf() & a_SENDOUT_SWF_MTA));
    if(rv != TRU1 || dowait)
       cc.cc_flags |= mx_CHILD_SPAWN_CONTROL;
    cc.cc_mask = &nset;
@@ -1402,8 +1449,8 @@ a_sendout_mta_start(struct sendbundle *sbp)
       }
 
       /* Wait with control pipe close until after exec */
-      if(cc.cc_flags & mx_CHILD_SPAWN_CONTROL)
-         cc.cc_flags |= mx_CHILD_SPAWN_CONTROL_LINGER;
+      ASSERT(cc.cc_flags & mx_CHILD_SPAWN_CONTROL);
+      cc.cc_flags |= mx_CHILD_SPAWN_CONTROL_LINGER;
       cc.cc_fds[mx_CHILD_FD_IN] = fileno(sbp->sb_input);
    }else/* if(rv == TRU1)*/{
       UNINIT(args, NULL);
@@ -1461,7 +1508,8 @@ jkid:
       if(smtp_mta(sbp))
          _exit(n_EXIT_OK);
       savedeadletter(sbp->sb_input, TRU1);
-      n_err(_("... message not sent\n"));
+      if(!dowait)
+         n_err(_("... message not sent\n"));
    }else
 #endif
         {

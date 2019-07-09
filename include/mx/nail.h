@@ -1111,7 +1111,7 @@ ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
 ok_v_sendmail_progname, /* {obsolete=1} */
-   ok_b_sendwait,
+   ok_v_sendwait, /* {i3val=""} */
    ok_b_showlast,
    ok_b_showname,
    ok_b_showto,

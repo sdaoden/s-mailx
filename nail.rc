@@ -27,10 +27,12 @@
 # [t-z] toplines="5"
 #
 # Notes:
-# - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
-# - no*onehop* does not exist in this implementation.
-#   (To pass options through to the MTA, either add them after a "--"
-#   separator on the command line or set the *mta-arguments* variable.)
+# - In this implementation:
+#   + *sendwait* is set by default (and has extended meaning).
+#   + no*onehop* does not exist.
+#     (To pass options through to the MTA, either add them after a "--"
+#     separator on the command line or set the *mta-arguments* variable.)
+# - *hold, *keep*, and *keepsave* are deliberately set below.
 # (Keep in SYNC: mx/nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 # Adjustments of standard imposed default- as well as other settings follow.
@@ -138,11 +140,6 @@ set recipients-in-cc
 # *sendcharsets-else-ttycharset*; and of course we inherit the $LC_CTYPE /
 # $LC_ALL / $LANG environment variables and react upon them).
 set sendcharsets=utf-8,iso-8859-1
-
-# When sending a message wait until the MTA (including the built-in SMTP one)
-# exits before accepting further commands.  Only with this variable set errors
-# reported by the MTA will be recognizable!
-set sendwait
 
 # Display real sender names in header summaries instead of only addresses.
 set showname

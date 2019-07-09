@@ -931,16 +931,8 @@ to not remove empty system MBOX mailbox files (or all empty such files if
 mode has been enabled) to avoid mangling of file permissions when files
 eventually get recreated.
 .Pp
-It also enables
-.Va sendwait
-in order to synchronize \*(UA with the exit status report of the used
-.Va mta
-when sending mails.
-It
-.Ic set Ns
-s
-.Va emptystart
-to enter interactive startup even if the initial mailbox is empty,
+To enter interactive mode even if the initial mailbox is empty it sets
+.Va emptystart ,
 .Va editheaders
 to allow editing of headers as well as
 .Va fullnames
@@ -991,7 +983,7 @@ $ </dev/null LC_ALL=C \*(uA -d -:/ \e
    '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
 
 # With SMTP (no real sending due to -d debug dry-run)
-$ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
+$ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Sttycharset=utf8 \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc -. \e
@@ -1176,7 +1168,7 @@ What remains is treated as a network address.
 $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
-    \*(uA -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
+    \*(uA -:/ -Sv15-compat -Sttycharset=utf8 \e
       --set mime-force-sendout \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
@@ -1298,7 +1290,7 @@ to specify variables:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
-    -Sv15-compat -Ssendwait \e
+    -Sv15-compat \e
     -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
@@ -4666,7 +4658,7 @@ and mappings are ineffective if character set conversion is not available
 does not announce
 .Ql +iconv ) .
 Expansion happens recursively for cases where aliases point to other
-aliases (builtin loop limit: 8).
+aliases (built-in loop limit: 8).
 .Pp
 The latter command deletes all aliases given as arguments,
 or all at once when given the asterisk
@@ -8745,28 +8737,26 @@ set to
 .Ql 5 .
 .
 .Pp
-Notes: \*(UA does not support the
+However, \*(UA has built-in some initial (and some default) settings
+which (may) diverge, others may become adjusted by one of the
+.Sx "Resource files" .
+Displaying the former is accomplished via
+.Ic set :
+.Ql $ \*(uA -:/ -v -Xset -Xx .
+In general this implementation sets (and has extended the meaning of)
+.Va sendwait ,
+and does not support the
 .Pf no Va onehop
 variable \(en use command line options or
 .Va mta-arguments
 to pass options through to a
 .Va mta .
-And the default global
-.Pa \*(UR
-file, which is loaded unless the
-.Fl \&:
-(with according argument) or
-.Fl n
-command line options have been used, or the
-.Ev MAILX_NO_SYSTEM_RC
-environment variable is set (see
-.Sx "Resource files" )
-bends those initial settings a bit, e.g., it sets the variables
+The default global resource file sets, among others, the variables
 .Va hold ,
-.Va keepsave
+.Va keep
 and
-.Va keep ,
-to name a few, establishes a default
+.Va keepsave ,
+establishes a default
 .Ic headerpick
 selection etc., and should thus be taken into account.
 .\" }}}
@@ -11696,14 +11686,30 @@ Also see
 .
 .Mx
 .It Va sendwait
-\*(BO When sending a message wait until the
+Sending messages to the chosen
 .Va mta
-exits before accepting further commands.
-.Sy Only
-with this variable set errors reported by the MTA will be recognizable!
-If the MTA returns a non-zero exit status,
-the exit status of \*(UA will also be non-zero.
-Remarks: this variable is now implicit for file-based MTAs.
+or to command-pipe receivers (see
+.Sx "On sending mail, and non-interactive mode" )
+will be performed asynchronously.
+This means that only startup errors of the respective program will be
+recognizable, but no delivery errors.
+Also, no guarantees can be made as to when the respective program will
+actually run, as well as to when they will have produced output.
+.Pp
+If this variable is set then child program exit is waited for, and its
+exit status code is used to decide about success.
+Remarks: in conflict with the POSIX standard this variable is built-in
+to be initially set.
+Another difference is that it can have a value, which is interpreted as
+a comma-separated list of case-insensitive strings naming specific
+subsystems for which synchronousness shall be ensured (only).
+Possible values are
+.Ql mta
+for
+.Va mta
+delivery, and
+.Ql pcc
+for command-pipe receivers.
 .
 .Mx
 .It Va showlast
@@ -11928,7 +11934,7 @@ refers to the variable
 (or, if that contains multiple addresses,
 .Va sender ) .
 The available algorithms depend on the used cryptographic library, but
-at least one usable builtin algorithm is ensured as a default.
+at least one usable built-in algorithm is ensured as a default.
 If possible the standard RFC 5751 will be violated by using
 .Ql SHA512
 instead of the mandated

@@ -3081,7 +3081,7 @@ n_var_setup_batch_mode(void){
    ok_vset(inbox, n_path_devnull);
    ok_bclear(posix);
    ok_bset(quiet);
-   ok_bset(sendwait);
+   ok_vset(sendwait, su_empty);
    ok_bset(typescript_mode);
    n_poption &= ~n_PO_S_FLAG_TEMPORARY;
    n_pstate &= ~n_PS_ROBOT;

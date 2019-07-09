@@ -326,7 +326,7 @@ check() {
    async)
       [ "$eestat" = - ] || exit 200
       while [ 1 ]; do
-         [ -s "${f}" ] && break
+         [ -f "${f}" ] && break
          t_echowarn "[${tid}:async=wait]"
          sleep 1
       done
@@ -7576,11 +7576,11 @@ t_pipe_handlers() {
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tay 2>&1; '"$mv"' ./.tay ./.tasy' \
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tax 2>&1;'"${mv}"' ./.tax ./.tay' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
    check 4 - "${BODY}" '2275717813 469'
-   check 4-hdl - ./.tasy '144517347 151' async
+   check 4-hdl - ./.tay '144517347 151' async
 
    # Keep $MBOX..
    if [ -z "${ln}" ]; then

@@ -1763,7 +1763,7 @@ jleave:
 }
 
 FL enum expand_addr_flags
-expandaddr_to_eaf(void){
+expandaddr_to_eaf(void){ /* TODO should happen at var assignment time */
    struct eafdesc{
       char eafd_name[15];
       boole eafd_is_target;
@@ -1776,9 +1776,9 @@ expandaddr_to_eaf(void){
       {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
-         {"fcc", TRU1, EAF_NONE, EAF_FCC},
-         {"file", TRU1, EAF_NONE, EAF_FILE | EAF_FCC},
-         {"pipe", TRU1, EAF_NONE, EAF_PIPE},
+         {"fcc", TRU1, EAF_NONE, EAF_FCC}, /* Fcc: only */
+         {"file", TRU1, EAF_NONE, EAF_FILE | EAF_FCC}, /* Fcc: + other addr */
+         {"pipe", TRU1, EAF_NONE, EAF_PIPE}, /* TODO No Pcc: yet! */
          {"name", TRU1, EAF_NONE, EAF_NAME},
          {"addr", TRU1, EAF_NONE, EAF_ADDR}
    }, *eafp;
