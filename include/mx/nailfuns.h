@@ -1518,15 +1518,6 @@ FL boole n_shexp_is_valid_varname(char const *name);
 FL int c_shcodec(void *vp);
 
 /*
- * smtp.c
- */
-
-#ifdef mx_HAVE_SMTP
-/* Send a message via SMTP */
-FL boole      smtp_mta(struct sendbundle *sbp);
-#endif
-
-/*
  * socket.c
  */
 

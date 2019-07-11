@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ SMTP client.
+ *@ Implementation of net-smtp.h.
  *@ TODO - use initial responses to save a round-trip (RFC 4954)
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
  *
@@ -40,7 +40,7 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE smtp
+#define su_FILE net_smtp
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -58,158 +58,175 @@ su_EMPTY_FILE()
 #include "mx/names.h"
 #include "mx/sigs.h"
 
-/* TODO fake */
-#include "su/code-in.h"
-
-struct smtp_line {
-   char     *dat;    /* Actual data */
-   uz   datlen;
-   char     *buf;    /* Memory buffer */
-   uz   bufsize;
-};
-
-static sigjmp_buf _smtp_jmp;
-
-static void    _smtp_onterm(int signo);
-
-/* Get the SMTP server's answer, expecting val */
-static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
-                  boole ign_eof, boole want_dat);
-
-/* Talk to a SMTP server */
-static boole  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
-
 #ifdef mx_HAVE_GSSAPI
-static boole  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
-                  struct smtp_line *slp);
+# include "mx/net-smtp-gss.h" /* $(MX_SRCDIR) */
 #endif
 
+#include "mx/net-smtp.h"
+#include "su/code-in.h"
+
+struct a_netsmtp_line{
+   struct str sl_dat;
+   struct str sl_buf;
+};
+
+static sigjmp_buf a_netsmtp_jmp;
+
+static void a_netsmtp_onterm(int signo);
+
+/* Get the SMTP server's answer, expecting val */
+static int a_netsmtp_read(struct sock *sp, struct a_netsmtp_line *slp, int val,
+      boole ign_eof, boole want_dat);
+
+/* Talk to a SMTP server */
+static boole a_netsmtp_talk(struct sock *sp, struct sendbundle *sbp);
+
+#ifdef mx_HAVE_GSSAPI
+# include <mx/net-smtp-gss.h>
+#endif
+
+/* Indirect SMTP I/O */
+#define a_OUT(X) \
+do{\
+   char const *__cx__ = (X);\
+   \
+   if(n_poption & n_PO_D_VV){\
+      /* TODO for now n_err() cannot normalize newlines in %s expansions */\
+      char *__x__, *__y__;\
+      uz __z__;\
+      \
+      __y__ = UNCONST(char*,__cx__);\
+      __z__ = su_cs_len(__y__);\
+      __x__ = n_lofi_alloc(__z__);\
+      \
+      su_mem_copy(__x__, __y__, __z__);\
+      __y__ = &__x__[__z__];\
+      \
+      while(__y__ > __x__ && (__y__[-1] == '\n' || __y__[-1] == '\r'))\
+         --__y__;\
+      *__y__ = '\0';\
+      n_err(">>> %s\n", __x__);\
+      \
+      n_lofi_free(__x__);\
+   }\
+   \
+   if(!(n_poption & n_PO_DEBUG))\
+      swrite(sop, __cx__);\
+}while(0)
+
+#define a_ANSWER(X, IGNEOF, WANTDAT) \
+do if(!(n_poption & n_PO_DEBUG)) {\
+   int y;\
+   \
+   if((y = a_netsmtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
+         (!(IGNEOF) || y != -1))\
+      goto jleave;\
+}while(0)
+
 static void
-_smtp_onterm(int signo)
-{
-   NYD; /* Signal handler */
+a_netsmtp_onterm(int signo){
    UNUSED(signo);
-   siglongjmp(_smtp_jmp, 1);
+   siglongjmp(a_netsmtp_jmp, 1);
 }
 
 static int
-_smtp_read(struct sock *sop, struct smtp_line *slp, int val,
-   boole ign_eof, boole want_dat)
-{
+a_netsmtp_read(struct sock *sop, struct a_netsmtp_line *slp, int val,
+      boole ign_eof, boole want_dat){
    int rv, len;
    char *cp;
    NYD_IN;
 
-   do {
-      if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sop)) < 6) {
-         if (len >= 0 && !ign_eof)
+   do{
+      if((len = sgetline(&slp->sl_buf.s, &slp->sl_buf.l, NIL, sop)) < 6){
+         if(len >= 0 && !ign_eof)
             n_err(_("Unexpected EOF on SMTP connection\n"));
          rv = -1;
          goto jleave;
       }
-      if (n_poption & n_PO_VERBVERB)
-         n_err(slp->buf);
-      switch (slp->buf[0]) {
-      case '1':   rv = 1; break;
-      case '2':   rv = 2; break;
-      case '3':   rv = 3; break;
-      case '4':   rv = 4; break;
-      default:    rv = 5; break;
-      }
-      if (val != rv)
-         n_err(_("smtp-server: %s"), slp->buf);
-   } while (slp->buf[3] == '-');
+      if(n_poption & n_PO_VERBVERB)
+         n_err(">>> %s", slp->sl_buf.s);
 
-   if (want_dat) {
-      for (cp = slp->buf; su_cs_is_digit(*cp); --len, ++cp)
+      switch(slp->sl_buf.s[0]){
+      case '1': rv = 1; break;
+      case '2': rv = 2; break;
+      case '3': rv = 3; break;
+      case '4': rv = 4; break;
+      default: rv = 5; break;
+      }
+      if(val != rv)
+         n_err(_("smtp-server: %s"), slp->sl_buf.s);
+   }while(slp->sl_buf.s[3] == '-');
+
+   if(want_dat){
+      for(cp = slp->sl_buf.s; su_cs_is_digit(*cp); --len, ++cp)
          ;
-      for (; su_cs_is_blank(*cp); --len, ++cp)
+      for(; su_cs_is_blank(*cp); --len, ++cp)
          ;
-      slp->dat = cp;
+      slp->sl_dat.s = cp;
       ASSERT(len >= 2);
       len -= 2;
-      cp[slp->datlen = (uz)len] = '\0';
+      cp[slp->sl_dat.l = S(uz,len)] = '\0';
    }
+
 jleave:
    NYD_OU;
    return rv;
 }
 
-/* Indirect SMTP I/O */
-#define _ANSWER(X, IGNEOF, WANTDAT) \
-do if (!(n_poption & n_PO_DEBUG)) {\
-   int y;\
-   if ((y = _smtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
-         (!(IGNEOF) || y != -1))\
-      goto jleave;\
-} while (0)
-#define _OUT(X) \
-do {\
-   if (n_poption & n_PO_D_VV){\
-      /* TODO for now n_err() cannot normalize newlines in %s expansions */\
-      char *__x__ = savestr(X), *__y__ = &__x__[su_cs_len(__x__)];\
-      while(__y__ > __x__ && (__y__[-1] == '\n' || __y__[-1] == '\r'))\
-         --__y__;\
-      *__y__ = '\0';\
-      n_err(">>> %s\n", __x__);\
-   }\
-   if (!(n_poption & n_PO_DEBUG))\
-      swrite(sop, X);\
-} while (0)
-
 static boole
-_smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
-{
+a_netsmtp_talk(struct sock *sop, struct sendbundle *sbp){ /* TODO n_string++ */
    char o[LINESIZE];
    char const *hostname;
-   struct smtp_line _sl, *slp = &_sl;
+   struct a_netsmtp_line _sl, *slp = &_sl;
    struct str b64;
    struct mx_name *np;
    uz blen, cnt;
-   boole inhdr = TRU1, inbcc = FAL0, rv = FAL0;
+   boole inhdr, inbcc, rv;
    NYD_IN;
 
+   inhdr = TRU1;
+   inbcc = FAL0;
+   rv = FAL0;
    hostname = n_nodename(TRU1);
-   slp->buf = NULL;
-   slp->bufsize = 0;
+   su_mem_set(slp, 0, sizeof(*slp));
 
    /* Read greeting */
-   _ANSWER(2, FAL0, FAL0);
+   a_ANSWER(2, FAL0, FAL0);
 
 #ifdef mx_HAVE_TLS
-   if (!sop->s_use_tls &&
-         xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)) {
+   if(!sop->s_use_tls &&
+         xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)){
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-      _OUT(o);
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(o);
+      a_ANSWER(2, FAL0, FAL0);
 
-      _OUT(NETLINE("STARTTLS"));
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(NETLINE("STARTTLS"));
+      a_ANSWER(2, FAL0, FAL0);
 
       if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_url, sop))
          goto jleave;
    }
 #else
-   if (xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)) {
+   if(xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
 #endif
 
    /* Shorthand: no authentication, plain HELO? */
-   if (sbp->sb_ccred.cc_authtype == AUTHTYPE_NONE) {
+   if(sbp->sb_ccred.cc_authtype == AUTHTYPE_NONE){
       snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
-      _OUT(o);
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(o);
+      a_ANSWER(2, FAL0, FAL0);
       goto jsend;
    }
 
    /* We'll have to deal with authentication */
    snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-   _OUT(o);
-   _ANSWER(2, FAL0, FAL0);
+   a_OUT(o);
+   a_ANSWER(2, FAL0, FAL0);
 
-   switch (sbp->sb_ccred.cc_authtype) {
+   switch(sbp->sb_ccred.cc_authtype){
    default:
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
@@ -228,55 +245,55 @@ jerr_cred:
       if(b64_encode_calc_size(cnt) == UZ_MAX)
          goto jerr_cred;
 
-      _OUT(NETLINE("AUTH PLAIN"));
-      _ANSWER(3, FAL0, FAL0);
+      a_OUT(NETLINE("AUTH PLAIN"));
+      a_ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
          '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
-      if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NULL)
+      if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
-      _OUT(b64.s);
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(b64.s);
+      a_ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
       if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UZ_MAX ||
             b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
-      _OUT(NETLINE("AUTH LOGIN"));
-      _ANSWER(3, FAL0, FAL0);
+      a_OUT(NETLINE("AUTH LOGIN"));
+      a_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
-            B64_SALLOC | B64_CRLF) == NULL)
+            B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
-      _OUT(b64.s);
-      _ANSWER(3, FAL0, FAL0);
+      a_OUT(b64.s);
+      a_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
-            B64_SALLOC | B64_CRLF) == NULL)
+            B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
-      _OUT(b64.s);
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(b64.s);
+      a_ANSWER(2, FAL0, FAL0);
       break;
 #ifdef mx_HAVE_MD5
    case AUTHTYPE_CRAM_MD5:{
       char *cp;
 
-      _OUT(NETLINE("AUTH CRAM-MD5"));
-      _ANSWER(3, FAL0, TRU1);
+      a_OUT(NETLINE("AUTH CRAM-MD5"));
+      a_ANSWER(3, FAL0, TRU1);
 
       if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
-            slp->dat)) == NULL)
+            slp->sl_dat.s)) == NIL)
          goto jerr_cred;
-      _OUT(cp);
-      _ANSWER(2, FAL0, FAL0);
+      a_OUT(cp);
+      a_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
 #ifdef mx_HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (n_poption & n_PO_DEBUG)
+      if(n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if (!_smtp_gssapi(sop, sbp, slp))
+      else if(!a_netsmtp_gss(sop, sbp, slp))
          goto jleave;
       break;
 #endif
@@ -284,86 +301,84 @@ jerr_cred:
 
 jsend:
    snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_url->url_u_h.s);
-   _OUT(o);
-   _ANSWER(2, FAL0, FAL0);
+   a_OUT(o);
+   a_ANSWER(2, FAL0, FAL0);
 
-   for(np = sbp->sb_to; np != NULL; np = np->n_flink){
-      if (!(np->n_type & GDEL)) { /* TODO should not happen!?! */
+   for(np = sbp->sb_to; np != NIL; np = np->n_flink){
+      if(!(np->n_type & GDEL)){ /* TODO should not happen!?! */
          if(np->n_flags & mx_NAME_ADDRSPEC_WITHOUT_DOMAIN)
             snprintf(o, sizeof o, NETLINE("RCPT TO:<%s@%s>"),
                np->n_name, hostname);
          else
             snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), np->n_name);
-         _OUT(o);
-         _ANSWER(2, FAL0, FAL0);
+         a_OUT(o);
+         a_ANSWER(2, FAL0, FAL0);
       }
    }
 
-   _OUT(NETLINE("DATA"));
-   _ANSWER(3, FAL0, FAL0);
+   a_OUT(NETLINE("DATA"));
+   a_ANSWER(3, FAL0, FAL0);
 
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
-   while (fgetline(&slp->buf, &slp->bufsize, &cnt, &blen, sbp->sb_input, 1)
-         != NULL) {
-      if (inhdr) {
-         if (*slp->buf == '\n')
+   while(fgetline(&slp->sl_buf.s, &slp->sl_buf.l, &cnt, &blen, sbp->sb_input,
+         1) != NIL){
+      if(inhdr){
+         if(*slp->sl_buf.s == '\n')
             inhdr = inbcc = FAL0;
-         else if (inbcc && su_cs_is_blank(*slp->buf))
+         else if(inbcc && su_cs_is_blank(*slp->sl_buf.s))
             continue;
          /* We know what we have generated first, so do not look for whitespace
           * before the ':' */
-         else if (!su_cs_cmp_case_n(slp->buf, "bcc: ", 5)) {
+         else if(!su_cs_cmp_case_n(slp->sl_buf.s, "bcc:", 4)){
             inbcc = TRU1;
             continue;
-         } else
+         }else
             inbcc = FAL0;
       }
 
-      if (n_poption & n_PO_DEBUG) {
-         slp->buf[blen - 1] = '\0';
-         n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : n_empty), slp->buf);
-         continue;
-      }
-      if (*slp->buf == '.')
+      if(*slp->sl_buf.s == '.' && !(n_poption & n_PO_DEBUG))
          swrite1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
-      slp->buf[blen - 1] = NETNL[0];
-      slp->buf[blen] = NETNL[1];
-      swrite1(sop, slp->buf, blen + 1, 1);
+      slp->sl_buf.s[blen - 1] = NETNL[0];
+      slp->sl_buf.s[blen] = NETNL[1];
+      slp->sl_buf.s[blen + 1] = '\0';
+      a_OUT(slp->sl_buf.s);
    }
-   _OUT(NETLINE("."));
-   _ANSWER(2, FAL0, FAL0);
+   a_OUT(NETLINE("."));
+   a_ANSWER(2, FAL0, FAL0);
 
-   _OUT(NETLINE("QUIT"));
-   _ANSWER(2, TRU1, FAL0);
+   a_OUT(NETLINE("QUIT"));
+   a_ANSWER(2, TRU1, FAL0);
+
    rv = TRU1;
 jleave:
-   if (slp->buf != NULL)
-      n_free(slp->buf);
+   if(slp->sl_buf.s != NIL)
+      n_free(slp->sl_buf.s);
    NYD_OU;
    return rv;
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/smtp-gssapi.h" /* $(MX_SRCDIR) */
+# include <mx/net-smtp-gss.h>
 #endif
 
-#undef _OUT
-#undef _ANSWER
+#undef a_OUT
+#undef a_ANSWER
 
-FL boole
-smtp_mta(struct sendbundle *sbp)
-{
+boole
+mx_smtp_mta(struct sendbundle *sbp){
    struct sock so;
    n_sighdl_t volatile saveterm;
-   boole volatile rv = FAL0;
+   boole volatile rv;
    NYD_IN;
 
+   rv = FAL0;
+
    saveterm = safe_signal(SIGTERM, SIG_IGN);
-   if (sigsetjmp(_smtp_jmp, 1))
+   if(sigsetjmp(a_netsmtp_jmp, 1))
       goto jleave;
-   if (saveterm != SIG_IGN)
-      safe_signal(SIGTERM, &_smtp_onterm);
+   if(saveterm != SIG_IGN)
+      safe_signal(SIGTERM, &a_netsmtp_onterm);
 
    if(n_poption & n_PO_DEBUG)
       su_mem_set(&so, 0, sizeof so);
@@ -371,9 +386,9 @@ smtp_mta(struct sendbundle *sbp)
       goto jleave;
 
    so.s_desc = "SMTP";
-   rv = _smtp_talk(&so, sbp);
+   rv = a_netsmtp_talk(&so, sbp);
 
-   if (!(n_poption & n_PO_DEBUG))
+   if(!(n_poption & n_PO_DEBUG))
       sclose(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);

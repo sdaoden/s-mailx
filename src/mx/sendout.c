@@ -50,6 +50,7 @@
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/net-smtp.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
@@ -1459,7 +1460,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       goto jstop;
 #else
       if(n_poption & n_PO_DEBUG){
-         (void)smtp_mta(sbp);
+         (void)mx_smtp_mta(sbp);
          rv = TRU1;
          goto jleave;
       }
@@ -1505,7 +1506,7 @@ jkid:
 
 #ifdef mx_HAVE_SMTP
    if(rv == TRU1){
-      if(smtp_mta(sbp))
+      if(mx_smtp_mta(sbp))
          _exit(n_EXIT_OK);
       savedeadletter(sbp->sb_input, TRU1);
       if(!dowait)

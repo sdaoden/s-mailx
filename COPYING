@@ -82,7 +82,7 @@
  */
 
 ==========================================================================
-smtp-gssapi.h:
+net-smtp-gss.h:
 partially derived from sample code in:
 
 /*
