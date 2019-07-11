@@ -2587,11 +2587,13 @@ jsep:
       putc('\n', fp);
       ++lncnt;
 
-      su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
-      page_or_print(fp, lncnt);
-      su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
-      if(fp != mx_tty_fp)
+      if(fp != mx_tty_fp){
+         su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
+         page_or_print(fp, lncnt);
+         su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
+
          mx_fs_close(fp);
+      }
 
       n_string_gut(shoup);
 
