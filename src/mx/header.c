@@ -1128,7 +1128,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
       if (cp > *linebuf)
          while (su_cs_is_blank(*cp))
             ++cp;
-      if (cp == *linebuf)
+      if (cp == *linebuf) /* TODO very first line of input with lead WS? */
          continue;
       /* XXX Not a header line, logging only for -t / compose mode? */
       if(*cp != ':'){

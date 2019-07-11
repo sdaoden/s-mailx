@@ -1049,8 +1049,15 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
       a_NONE,
       a_ERREXIT = 1u<<0,
       a_IGNERR = 1u<<1,
-      a_COAP_NOSIGTERM = 1u<<8
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
+
+      a_COAP_NOSIGTERM = 1u<<8,
+
+      a_NEED_INJECT_RESTART = 1u<<16,
+      a_CAN_DELAY_INJECT = 1u<<17,
+      a_EVER_LEFT_INPUT_LOOPS = 1u<<18,
+      a_ROUND_MASK = a_NEED_INJECT_RESTART | a_CAN_DELAY_INJECT |
+            a_EVER_LEFT_INPUT_LOOPS
    };
 
    struct mx_dig_msg_ctx dmc;
@@ -1072,7 +1079,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    _coll_fp = NULL;
 
    sigfp = NULL;
-   flags = a_NONE;
+   flags = a_CAN_DELAY_INJECT;
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
@@ -1167,26 +1174,36 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
-            if((cp = ok_vlook(editalong)) == NULL){
-               if(msf & n_MAILSEND_HEADERS_PRINT)
-                  n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
-                     NULL, NULL);
-
-               rewind(_coll_fp);
-               while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-                  putc(c, n_stdout);
-               if (fseek(_coll_fp, 0, SEEK_END))
-                  goto jerr;
+            if(n_go_input_have_injections()){
+               flags |= a_NEED_INJECT_RESTART;
+               flags &= ~a_CAN_DELAY_INJECT;
             }else{
-               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NULL
-                     ) != su_ERR_NONE)
-                  goto jerr;
-               /* Print msg mandated by the Mail Reference Manual */
+jinject_restart:
+               if((cp = ok_vlook(editalong)) == NIL){
+                  if(msf & n_MAILSEND_HEADERS_PRINT)
+                     n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
+                        NULL, NULL);
+
+                  rewind(_coll_fp);
+                  while((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
+                     putc(c, n_stdout);
+                  if(fseek(_coll_fp, 0, SEEK_END))
+                     goto jerr;
+                  fflush(n_stdout);
+               }else{
+                  if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NIL
+                        ) != su_ERR_NONE)
+                     goto jerr;
+
+                  /* Print msg mandated by the Mail Reference Manual */
 jcont:
-               if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-                  fputs(_("(continue)\n"), n_stdout);
+                  if((n_psonce & n_PSO_INTERACTIVE) &&
+                        !(n_pstate & n_PS_ROBOT) &&
+                        !(flags & a_NEED_INJECT_RESTART))
+                     fputs(_("(continue)\n"), n_stdout);
+                  fflush(n_stdout);
+               }
             }
-            fflush(n_stdout);
          }
       }
    } else {
@@ -1198,7 +1215,7 @@ jcont:
    }
 
    /* If not under shell hook control */
-   if(coap == NULL){
+   if(coap == NIL){
       /* We're done with -M or -m TODO because: we are too stupid yet, above */
       if(n_poption & n_PO_Mm_FLAG)
          goto jout;
@@ -1208,6 +1225,7 @@ jcont:
          /* Need to go over n_go_input() to handle injections nonetheless */
          enum n_go_input_flags gif;
 
+         ASSERT(!(flags & a_NEED_INJECT_RESTART));
          for(gif = n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_DELAY_INJECTIONS;;){
             cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, NULL);
             if(cnt < 0){
@@ -1219,7 +1237,8 @@ jcont:
                }
                break;
             }
-            i = (uz)cnt;
+
+            i = S(uz,cnt);
             if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
             /* TODO n_PS_READLINE_NL is a hack to ensure that _in_all_-
@@ -1233,12 +1252,14 @@ jcont:
          }
          goto jout;
       }
+
+      escape = *ok_vlook(escape);
    }
 
-   /* The interactive collect loop */
-   if(coap == NULL)
-      escape = *ok_vlook(escape);
-   flags = ok_blook(errexit) ? a_ERREXIT : a_NONE;
+   /* The "interactive" collect loop */
+   flags &= a_ROUND_MASK;
+   if(ok_blook(errexit))
+      flags |= a_ERREXIT;
 
    for(;;){
       enum {a_HIST_NONE, a_HIST_ADD = 1u<<0, a_HIST_GABBY = 1u<<1} hist;
@@ -1248,27 +1269,51 @@ jcont:
          boole histadd;
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
+         histadd = (s != NIL);
          gif = n_GO_INPUT_CTX_COMPOSE;
-         histadd = (s != NULL);
-         if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE)){
-            if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG))
-               gif |= n_GO_INPUT_NL_ESC;
-         }else
+         if(flags & a_CAN_DELAY_INJECT)
             gif |= n_GO_INPUT_DELAY_INJECTIONS;
+
+         if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
+            ASSERT(!(flags & a_NEED_INJECT_RESTART));
+         }else{
+            if(n_psonce & n_PSO_INTERACTIVE){
+               gif |= n_GO_INPUT_NL_ESC;
+               if(UNLIKELY((flags & a_NEED_INJECT_RESTART) &&
+                     !n_go_input_have_injections())){
+                  flags &= ~a_NEED_INJECT_RESTART;
+                  goto jinject_restart;
+               }
+            }else{
+               ASSERT(!(flags & a_NEED_INJECT_RESTART));
+               if(n_poption & n_PO_TILDE_FLAG)
+                  gif |= n_GO_INPUT_NL_ESC;
+            }
+         }
+
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
          hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
 
       if(cnt < 0){ /* TODO n_go_input_is_eof()!  Could be error!! */
-         if(coap != NULL)
+         if(coap != NIL)
             break;
+
          if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
             fflush_rewind(_coll_fp);
             n_psonce |= n_PSO_t_FLAG_DONE;
+            flags &= ~a_CAN_DELAY_INJECT;
             if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err, TRU1))
                goto jerr;
             continue;
-         }else if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
+         }
+
+         if((flags & a_CAN_DELAY_INJECT) && n_go_input_have_injections()){
+            flags &= ~a_CAN_DELAY_INJECT;
+            continue;
+         }
+
+         if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                ok_blook(ignoreeof) && ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
@@ -1802,6 +1847,8 @@ jhistcont:
    }
 
 jout:
+   flags |= a_EVER_LEFT_INPUT_LOOPS;
+
    /* Do we have *on-compose-splice-shell*, or *on-compose-splice*?
     * TODO Usual f...ed up state of signals and terminal etc. */
    if(coap == NULL && (cp = ok_vlook(on_compose_splice_shell)) != NULL) Jocs:{
@@ -1811,8 +1858,9 @@ jout:
       /* Reset *escape* and more to their defaults.  On change update manual! */
       if(ifs_saved == NULL)
          ifs_saved = savestr(ok_vlook(ifs));
-      escape = n_ESCAPE[0];
       ok_vclear(ifs);
+      escape = n_ESCAPE[0];
+      flags &= ~a_CAN_DELAY_INJECT;
 
       if(coapm != NULL){
          /* XXX Due pipe_open() fflush(NIL) in PTF mode */
@@ -1865,11 +1913,11 @@ jout:
       *checkaddr_err = 0;
       goto jerr;
    }
-   if(coapm == NULL && (coapm = ok_vlook(on_compose_splice)) != NULL)
+   if(coapm == NIL && (coapm = ok_vlook(on_compose_splice)) != NIL)
       goto Jocs;
-   if(coap != NULL){
+   if(coap != NIL && ifs_saved != NIL){
       ok_vset(ifs, ifs_saved);
-      ifs_saved = NULL;
+      ifs_saved = NIL;
    }
 
    /*

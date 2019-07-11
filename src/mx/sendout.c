@@ -2346,6 +2346,11 @@ do {\
 
    rv = FAL0;
 
+   if(nosend_msg == TRUM1 &&
+         fputs(_("# Message will be discarded unless file is saved\n"),
+            fo) == EOF)
+      goto jleave;
+
    if ((addr = ok_vlook(stealthmua)) != NULL)
       stealthmua = !su_cs_cmp(addr, "noagent") ? -1 : 1;
    else
