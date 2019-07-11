@@ -3565,13 +3565,8 @@ t_xcall() {
 
    ${cat} <<- '__EOT' | \
       ${MAILX} ${ARGS} -Snomemdebug \
-         -SLOOPS_BIG=${LOOPS_BIG} -SLOOPS_SMALL=${LOOPS_SMALL} \
+         -Smax=${LOOPS_MAX} \
          > "${MBOX}" 2>&1
-	\if [ "$features" !% +debug ]
-		\wysh set max=$LOOPS_BIG
-	\else
-		\wysh set max=$LOOPS_SMALL
-	\end
 	define work {
 		echon "$1 "
 		vput vexpr i + $1 1
@@ -3604,12 +3599,12 @@ t_xcall() {
 	__EOT
 
    i=${?}
-   if have_feat debug; then
-      check_ex0 1-${LOOPS_SMALL} ${i}
-      check 1-${LOOPS_SMALL} - "${MBOX}" '859201011 3894'
-   else
+   if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
       check_ex0 1-${LOOPS_BIG} ${i}
       check 1-${LOOPS_BIG} - "${MBOX}" '1069764187 47161'
+   else
+      check_ex0 1-${LOOPS_SMALL} ${i}
+      check 1-${LOOPS_SMALL} - "${MBOX}" '859201011 3894'
    fi
 
    ##
