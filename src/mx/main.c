@@ -1169,7 +1169,9 @@ je_expandargv:
       if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
          n_exit_status = n_EXIT_ERR;
       else
-         n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
+         n_mail((((n_psonce & n_PSO_INTERACTIVE
+                  ) ? n_MAILSEND_HEADERS_PRINT : 0) |
+               (n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0)),
             to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
