@@ -338,6 +338,11 @@ su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
 }
 
 void
+su_nyd_stop(void){
+   a_core_nyd_skip = TRU1;
+}
+
+void
 su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
    uz i;
    struct a_core_nyd_info const *cnip;

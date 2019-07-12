@@ -466,6 +466,8 @@ mx__nyd_oncrash(int signo)
    uz i, fnl;
    char const *tmpdir;
 
+   su_nyd_stop();
+
    LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
       "System limits too low for fixed-size buffer operation");
 

@@ -1394,8 +1394,10 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #endif
 
 #if DVLOR(1, 0)
-void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
-void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
+EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+EXPORT void su_nyd_stop(void);
+EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
+      up cookie);
 #endif
 
 /* BASIC C INTERFACE (SYMBOLS) }}} */
