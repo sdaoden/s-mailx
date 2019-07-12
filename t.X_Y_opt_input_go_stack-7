@@ -12,3 +12,10 @@ Subject: Subject via -Y
 this body via -t.
 Additional body via -Y
 
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+
+this body via stdin pipe.
+~s Subject via -Y (not!)
+Additional body via -Y, nobatch mode
+
