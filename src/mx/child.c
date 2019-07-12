@@ -71,7 +71,7 @@ SINLINE struct a_child_ent *a_child_find(s32 pid,
 static void a_child__sigchld(int signo);
 
 /* Handle job control signals */
-static void a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig);
+static boole a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig);
 
 static struct a_child_ent *
 a_child_manager_cleanup(void){
@@ -134,7 +134,7 @@ a_child__sigchld(int signo){
    }
 }
 
-static void
+static boole
 a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig){/* TODO bad */
    struct a_child_ent *cep;
 
@@ -186,6 +186,8 @@ a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig){/* TODO bad */
          }
       }
    }
+
+   return FAL0;
 }
 
 void

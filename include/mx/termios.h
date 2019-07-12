@@ -27,6 +27,7 @@
 enum mx_termios_cmd{
    /* Throw away the entire stack, and restore normal terminal state.
     * The outermost level will be regulary shutdown, as via POP.
+    * The state_change handlers of all stack entries will be called.
     * Further bits may not be set (this is 0) */
    mx_TERMIOS_CMD_RESET,
    /* Only when HANDS_OFF is active, only by itself! */
@@ -63,15 +64,24 @@ enum mx_termios_state_change{
    mx_TERMIOS_STATE_SUSPEND = 1u<<0, /* Need to suspend terminal state */
    mx_TERMIOS_STATE_RESUME = 1u<<1, /* Need to resume terminal state */
    mx_TERMIOS_STATE_SIGNAL = 1u<<2, /* Call was caused by a signal */
-   /* This (final) _SUSPEND is caused by the environment being popped.
+   mx_TERMIOS_STATE_JOB_SIGNAL = 1u<<3, /* It was a job signal indeed */
+   /* The environment is being popped.
+    * If it is still active, _STATE_SUSPEND will be set in addition.
     * For HANDS_OFF handlers this will be called in a RESET even in already
     * suspended state, so no _STATE_SUSPEND is set, then! */
-   mx_TERMIOS_STATE_POP = 1u<<3
+   mx_TERMIOS_STATE_POP = 1u<<4
 };
 
 /* tiossc is termios_state_change bitmix, cookie is user argument.
- * signal is only meaningful when _STATE_SIGNAL is set */
-typedef void (*mx_termios_on_state_change)(up cookie, u32 tiossc, s32 signal);
+ * signal is only meaningful when _STATE_SIGNAL is set.
+ * Return value indicates whether level shall be CMD_POPped: it is only
+ * honoured if TERMIOS_STATE_SUSPEND and TERMIOS_STATE_SIGNAL are both set.
+ * TODO This "to-pop" return will vanish in v15, we only need it due to longjmp
+ * TODO and of course it sucks since how many levels does the jump cross?
+ * TODO We do not know except when installing setjmps on each and every level,
+ * TODO but we do not; it is ok for this MUA today, but a real generic solution
+ * TODO in v15 will simply not care for signal jumps at all, they suck more */
+typedef boole (*mx_termios_on_state_change)(up cookie, u32 tiossc, s32 signal);
 
 struct mx_termios_dimension{
    u32 tiosd_height;

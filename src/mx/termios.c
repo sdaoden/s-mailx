@@ -87,6 +87,7 @@ struct a_termios_g{
    struct a_termios_env *tiosg_envp;
    /* If outermost == normal state; used as init switch, too */
    struct a_termios_env *tiosg_normal;
+   struct a_termios_env *tiosg_pend_free;
    /*s32 tiosg_pgrp;
     *u8 tiosg__pad[4];*/
    n_sighdl_t tiosg_otstp;
@@ -155,8 +156,8 @@ static void
 a_termios_onsig(int sig){
    n_sighdl_t oact, myact;
    sigset_t nset;
-   boole jobsig;
    struct a_termios_env *tiosep;
+   boole jobsig, dopop;
    NYD; /* Signal handler */
 
    if(sig == a_TERMIOS_SIGWINCH)
@@ -179,15 +180,21 @@ a_termios_onsig(int sig){
 
 #undef a_X
 
+   dopop = FAL0;
    tiosep = a_termios_g.tiosg_envp;
 
    if(!jobsig || sig != SIGCONT){
       if(!tiosep->tiose_suspended){
          tiosep->tiose_suspended = TRU1;
 
-         if(tiosep->tiose_on_state_change != NIL)
-            (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
-               (mx_TERMIOS_STATE_SUSPEND | mx_TERMIOS_STATE_SIGNAL), sig);
+         if(tiosep->tiose_on_state_change != NIL){
+            dopop = (*tiosep->tiose_on_state_change)(
+                  tiosep->tiose_osc_cookie,
+                  (mx_TERMIOS_STATE_SUSPEND | mx_TERMIOS_STATE_SIGNAL |
+                   (jobsig ? mx_TERMIOS_STATE_JOB_SIGNAL : 0)), sig);
+            if(dopop)
+               a_termios_g.tiosg_envp = tiosep->tiose_prev;
+         }
 
          if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
             tcsetattr(fileno(mx_tty_fp), TCSAFLUSH,
@@ -208,7 +215,7 @@ a_termios_onsig(int sig){
       safe_signal(sig, myact);
 
       /* When we come here we shall continue */
-      if(tiosep->tiose_suspended){
+      if(!dopop && tiosep->tiose_suspended){
          tiosep->tiose_suspended = FAL0;
 
          if(tiosep->tiose_cmd != mx_TERMIOS_CMD_HANDS_OFF){
@@ -222,13 +229,21 @@ a_termios_onsig(int sig){
 
          if(tiosep->tiose_on_state_change != NIL)
             (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
-               (mx_TERMIOS_STATE_RESUME | mx_TERMIOS_STATE_SIGNAL), sig);
+               (mx_TERMIOS_STATE_RESUME | mx_TERMIOS_STATE_SIGNAL |
+                (jobsig ? mx_TERMIOS_STATE_JOB_SIGNAL : 0)), sig);
       }
 
 #if a_TERMIOS_SIGWINCH == -1
       if(sig == SIGCONT)
          goto jsigwinch;
 #endif
+   }
+
+   /* If we shall pop this level link context in a list for later freeing in
+    * a more regular context */
+   if(dopop){
+      tiosep->tiose_prev = a_termios_g.tiosg_pend_free;
+      a_termios_g.tiosg_pend_free = tiosep;
    }
 
 jleave:
@@ -411,8 +426,10 @@ mx_termios_cmd(u32 tiosc, uz a1){
    /* xxx tcsetattr not correct says manual: would need to requery and check
     * whether all desired changes made it instead! */
    boole rv;
-   struct a_termios_env *tiosep, *tiosep_2free;
+   struct a_termios_env *tiosep_2free, *tiosep;
    NYD_IN;
+
+   tiosep_2free = NIL;
 
    ASSERT_NYD_EXEC((tiosc & mx__TERMIOS_CMD_CTL_MASK) ||
        tiosc == mx_TERMIOS_CMD_RESET ||
@@ -438,33 +455,30 @@ mx_termios_cmd(u32 tiosc, uz a1){
 
    /* Note: RESET only called with signals blocked in main loop handler */
    if(tiosc == mx_TERMIOS_CMD_RESET){
+      boole first;
+
       if((tiosep = a_termios_g.tiosg_envp)->tiose_prev == NIL){
          rv = TRU1;
          goto jleave;
       }
-      a_termios_g.tiosg_envp = tiosep->tiose_prev;
+      rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state
+            ) == 0);
 
-      if(!tiosep->tiose_suspended){
-         if(tiosep->tiose_on_state_change != NIL)
-            (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
-               (mx_TERMIOS_STATE_SUSPEND | mx_TERMIOS_STATE_POP), 0);
-      }
+      for(first = TRU1;; first = FAL0){
+         a_termios_g.tiosg_envp = tiosep->tiose_prev;
 
-      for(;;){
+         if(first || !tiosep->tiose_suspended){
+            if(tiosep->tiose_on_state_change != NIL)
+               (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
+                  (first ? mx_TERMIOS_STATE_SUSPEND : 0
+                      | mx_TERMIOS_STATE_POP), 0);
+         }
+
          su_FREE(tiosep);
 
          if((tiosep = a_termios_g.tiosg_envp)->tiose_prev == NIL)
             break;
-         a_termios_g.tiosg_envp = tiosep->tiose_prev;
-
-         if(tiosep->tiose_cmd == mx_TERMIOS_CMD_HANDS_OFF &&
-               tiosep->tiose_on_state_change != NIL)
-            (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
-               mx_TERMIOS_STATE_POP, 0);
       }
-
-      rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state
-            ) == 0);
 
       a_termios_sig_adjust(FAL0);
       goto jleave;
@@ -489,7 +503,6 @@ mx_termios_cmd(u32 tiosc, uz a1){
 
    mx_sigs_all_holdx();
 
-   tiosep_2free = NIL;
    if(tiosc & mx_TERMIOS_CMD_PUSH){
       if((tiosep->tiose_prev = a_termios_g.tiosg_envp)->tiose_prev == NIL)
          a_termios_sig_adjust(TRU1);
@@ -507,6 +520,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
    }else if(tiosc & mx_TERMIOS_CMD_POP){
       tiosep_2free = tiosep = a_termios_g.tiosg_envp;
       a_termios_g.tiosg_envp = tiosep->tiose_prev;
+      tiosep->tiose_prev = NIL;
 
       if(!tiosep->tiose_suspended && tiosep->tiose_on_state_change != NIL)
          (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
@@ -571,11 +585,20 @@ mx_termios_cmd(u32 tiosc, uz a1){
    /* XXX if(rv)*/
       tiosep->tiose_suspended = FAL0;
 
+   if(tiosep_2free != NIL)
+      tiosep_2free->tiose_prev = a_termios_g.tiosg_pend_free;
+   else
+      tiosep_2free = a_termios_g.tiosg_pend_free;
+   a_termios_g.tiosg_pend_free = NIL;
+
    mx_sigs_all_rele();
 
-   if(tiosep_2free != NIL)
-      su_FREE(tiosep_2free);
 jleave:
+   while((tiosep = tiosep_2free) != NIL){
+      tiosep_2free = tiosep->tiose_prev;
+      su_FREE(tiosep);
+   }
+
    NYD_OU;
    return rv;
 }

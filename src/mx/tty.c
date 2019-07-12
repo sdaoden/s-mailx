@@ -788,7 +788,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 static struct a_tty_global a_tty;
 
 /* */
-static void a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
+static boole a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
 
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
@@ -897,16 +897,22 @@ static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-static void
+static boole
 a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
+   boole rv;
    NYD; /* Signal handler */
    UNUSED(cookie);
    UNUSED(sig);
+
+   rv = FAL0;
 
    if(tiossc & mx_TERMIOS_STATE_SUSPEND){
       mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSP POSSIBLE.. */
       mx_TERMCAP_SUSPEND((tiossc & mx_TERMIOS_STATE_POP) == 0 &&
          !(tiossc & mx_TERMIOS_STATE_SIGNAL));
+      if((tiossc & (mx_TERMIOS_STATE_SIGNAL | mx_TERMIOS_STATE_JOB_SIGNAL)
+            ) == mx_TERMIOS_STATE_SIGNAL)
+         rv = TRU1;
    }else if(tiossc & mx_TERMIOS_STATE_RESUME){
       /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
       mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
@@ -914,8 +920,9 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
       a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       /* TODO Due to SA_RESTART we need to refresh the line in here! */
       a_tty_vi_refresh(a_tty.tg_line);
-   }else
-      ASSERT(!(tiossc & mx_TERMIOS_STATE_POP));
+   }
+
+   return rv;
 }
 
 # ifdef mx_HAVE_HISTORY
