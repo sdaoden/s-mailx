@@ -2476,8 +2476,12 @@ jouter:
          struct a_amv_var_carrier avc;
          boole isunset;
 
-         if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o')))
+         if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o'))){
+            if(c != '\0')
+               n_err(_("Un`set'ting via \"no\" takes no value: %s=%s\n"),
+                  varbuf, n_shexp_quote_cp(cp, FAL0));
             varbuf = &varbuf[2];
+         }
 
          a_amv_var_revlookup(&avc, varbuf, TRU1);
 
