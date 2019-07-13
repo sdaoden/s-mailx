@@ -57,6 +57,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
+#include "mx/net-socket.h"
 
 #ifdef mx_HAVE_GSSAPI
 # include "mx/net-smtp-gss.h" /* $(MX_SRCDIR) */
@@ -75,11 +76,11 @@ static sigjmp_buf a_netsmtp_jmp;
 static void a_netsmtp_onterm(int signo);
 
 /* Get the SMTP server's answer, expecting val */
-static int a_netsmtp_read(struct sock *sp, struct a_netsmtp_line *slp, int val,
-      boole ign_eof, boole want_dat);
+static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
+      int val, boole ign_eof, boole want_dat);
 
 /* Talk to a SMTP server */
-static boole a_netsmtp_talk(struct sock *sp, struct sendbundle *sbp);
+static boole a_netsmtp_talk(struct mx_socket *sp, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
 # include <mx/net-smtp-gss.h>
@@ -111,7 +112,7 @@ do{\
    }\
    \
    if(!(n_poption & n_PO_DEBUG))\
-      swrite(sop, __cx__);\
+      mx_socket_write(sop, __cx__);\
 }while(0)
 
 #define a_ANSWER(X, IGNEOF, WANTDAT) \
@@ -130,14 +131,15 @@ a_netsmtp_onterm(int signo){
 }
 
 static int
-a_netsmtp_read(struct sock *sop, struct a_netsmtp_line *slp, int val,
+a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
       boole ign_eof, boole want_dat){
    int rv, len;
    char *cp;
    NYD_IN;
 
    do{
-      if((len = sgetline(&slp->sl_buf.s, &slp->sl_buf.l, NIL, sop)) < 6){
+      if((len = mx_socket_getline(&slp->sl_buf.s, &slp->sl_buf.l, NIL, sop)
+            ) < 6){
          if(len >= 0 && !ign_eof)
             n_err(_("Unexpected EOF on SMTP connection\n"));
          rv = -1;
@@ -174,8 +176,8 @@ jleave:
 }
 
 static boole
-a_netsmtp_talk(struct sock *sop, struct sendbundle *sbp){ /* TODO n_string++ */
-   char o[LINESIZE];
+a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
+   char o[LINESIZE]; /* TODO n_string++ */
    char const *hostname;
    struct a_netsmtp_line _sl, *slp = &_sl;
    struct str b64;
@@ -338,7 +340,7 @@ jsend:
       }
 
       if(*slp->sl_buf.s == '.' && !(n_poption & n_PO_DEBUG))
-         swrite1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
+         mx_socket_write1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
       slp->sl_buf.s[blen - 1] = NETNL[0];
       slp->sl_buf.s[blen] = NETNL[1];
       slp->sl_buf.s[blen + 1] = '\0';
@@ -367,7 +369,7 @@ jleave:
 
 boole
 mx_smtp_mta(struct sendbundle *sbp){
-   struct sock so;
+   struct mx_socket so;
    n_sighdl_t volatile saveterm;
    boole volatile rv;
    NYD_IN;
@@ -382,14 +384,14 @@ mx_smtp_mta(struct sendbundle *sbp){
 
    if(n_poption & n_PO_DEBUG)
       su_mem_set(&so, 0, sizeof so);
-   else if(!sopen(&so, sbp->sb_url))
+   else if(!mx_socket_open(&so, sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";
    rv = a_netsmtp_talk(&so, sbp);
 
    if(!(n_poption & n_PO_DEBUG))
-      sclose(&so);
+      mx_socket_close(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);
    NYD_OU;

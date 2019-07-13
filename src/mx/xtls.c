@@ -74,6 +74,7 @@ su_EMPTY_FILE()
 
 #include "mx/file-streams.h"
 #include "mx/names.h"
+#include "mx/net-socket.h"
 #include "mx/random.h"
 #include "mx/tty.h"
 
@@ -410,7 +411,7 @@ static boole a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
 static boole a_xtls_config_pairs(void *confp, struct url const *urlp);
 static boole a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
 
-static boole a_xtls_check_host(struct sock *sp, X509 *peercert,
+static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
                struct url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
@@ -1293,7 +1294,8 @@ jleave:
 }
 
 static boole
-a_xtls_check_host(struct sock *sop, X509 *peercert, struct url const *urlp){
+a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
+      struct url const *urlp){
    char data[256];
    n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
@@ -1878,7 +1880,7 @@ mx_tls_rand_bytes(void *buf, uz blen){
 #endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
 
 FL boole
-n_tls_open(struct url *urlp, struct sock *sop){
+n_tls_open(struct url *urlp, struct mx_socket *sop){
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;

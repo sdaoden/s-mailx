@@ -1415,31 +1415,6 @@ struct time_current{ /* TODO s64, etc. */
    char tc_ctime[32];
 };
 
-struct sock{ /* data associated with a socket */
-   int s_fd; /* file descriptor */
-#ifdef mx_HAVE_TLS
-   int s_use_tls; /* TLS is used */
-# ifdef mx_HAVE_XTLS
-   void *s_tls;  /* TLS object */
-# endif
-   char *s_tls_finger; /* Set to autorec! store for CPROTO_CERTINFO */
-#endif
-   char *s_wbuf; /* for buffered writes */
-   int s_wbufsize; /* allocated size of s_buf */
-   int s_wbufpos; /* position of first empty data byte */
-   char *s_rbufptr; /* read pointer to s_rbuf */
-   int s_rsz; /* size of last read in s_rbuf */
-   char const *s_desc; /* description of error messages */
-   void (*s_onclose)(void); /* execute on close */
-   char s_rbuf[LINESIZE + 1]; /* for buffered reads */
-};
-
-struct sockconn{
-   struct url sc_url;
-   struct ccred sc_cred;
-   struct sock sc_sock;
-};
-
 struct mailbox{
    enum{
       MB_NONE = 000, /* no reply expected */
@@ -1480,7 +1455,7 @@ MB_CACHE, /* IMAP cache */
    /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
     * XXX have an on_close event to which that machinery should connect */
    struct mx_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
-   struct sock mb_sock; /* socket structure */
+   struct mx_socket *mb_sock; /* socket structure */
 };
 
 enum needspec{

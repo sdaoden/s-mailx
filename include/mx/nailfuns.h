@@ -1497,26 +1497,6 @@ FL boole n_shexp_is_valid_varname(char const *name);
 FL int c_shcodec(void *vp);
 
 /*
- * socket.c
- */
-
-#ifdef mx_HAVE_NET
-/* Immediately closes the socket for CPROTO_CERTINFO */
-FL boole      sopen(struct sock *sp, struct url *urlp);
-FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, char const *data);
-FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
-                  int use_buffer);
-
-/*  */
-FL int         sgetline(char **line, uz *linesize, uz *linelen,
-                  struct sock *sp  su_DBG_LOC_ARGS_DECL);
-# ifdef su_HAVE_DBG_LOC_ARGS
-#  define sgetline(A,B,C,D) sgetline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-# endif
-#endif
-
-/*
  * spam.c
  */
 
@@ -1910,7 +1890,7 @@ FL void mx_tls_rand_bytes(void *buf, uz blen);
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */
-FL boole n_tls_open(struct url *urlp, struct sock *sp);
+FL boole n_tls_open(struct url *urlp, struct mx_socket *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);

@@ -51,6 +51,7 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/net-pop3.h"
+#include "mx/net-socket.h"
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
 
@@ -598,9 +599,12 @@ jlogname:
    hold_sigs();
 
 #ifdef mx_HAVE_NET
-   if(!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
-      /* Silly to call that for 0, maybe main.c init to -1? */
-      sclose(&mb.mb_sock); /* TODO VMAILFS->close() on open thing, thank you */
+   if(!(fm & FEDIT_NEWMAIL) && mb.mb_sock != NIL){
+      if(mb.mb_sock->s_fd >= 0)
+         mx_socket_close(mb.mb_sock); /* TODO VMAILFS->close() on open thing */
+      su_FREE(mb.mb_sock);
+      mb.mb_sock = NIL;
+   }
 #endif
 
    /* TODO There is no intermediate VOID box we've switched to: name may

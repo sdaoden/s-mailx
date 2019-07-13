@@ -51,6 +51,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 #include "mx/file-streams.h"
+#include "mx/net-socket.h"
 #include "mx/tty.h"
 
 /* TODO fake */
@@ -456,7 +457,7 @@ c_tls(void *vp){
       n_pstate_err_no = su_ERR_OPNOTSUPP;
       goto jleave;
 #else
-      struct sock so;
+      struct mx_socket so;
       struct url url;
 
       if(argv[1] == NULL || argv[2] != NULL)
@@ -465,7 +466,7 @@ c_tls(void *vp){
          goto jeoverflow; /* TODO generic for ALL commands!! */
       if(!url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
-      if(!sopen(&so, &url)){ /* auto-closes for CPROTO_CERTINFO on success */
+      if(!mx_socket_open(&so, &url)){ /* auto-close 4 CPROTO_CERTINFO if ok */
          n_pstate_err_no = su_err_no();
          goto jleave;
       }

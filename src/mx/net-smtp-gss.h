@@ -89,7 +89,7 @@
 # define a_NET_SMTP_GSS_H 2
 
 /* */
-static boole a_netsmtp_gss(struct sock *sp, struct sendbundle *sbp,
+static boole a_netsmtp_gss(struct mx_socket *sp, struct sendbundle *sbp,
       struct a_netsmtp_line *slp);
 
 static void a_netsmtp_gss__error(char const *s, OM_uint32 maj_stat,
@@ -99,7 +99,7 @@ static void a_netsmtp_gss__error1(char const *s, OM_uint32 code, int typ);
 #elif a_NET_SMTP_GSS_H == 2
 
 static boole
-a_netsmtp_gss(struct sock *sop, struct sendbundle *sbp,
+a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
       struct a_netsmtp_line *slp){
    enum{
       a_F_NONE,
