@@ -1969,7 +1969,7 @@ mx_sendout_mta_url(struct url *urlp){
       }
    }
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
    rv = url_parse(urlp, CPROTO_SMTP, smtp);
 #else
    UNUSED(urlp);

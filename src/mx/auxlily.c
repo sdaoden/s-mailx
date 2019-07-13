@@ -43,7 +43,7 @@
 
 #include <sys/utsname.h>
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
 #  include <sys/socket.h>
 # endif
@@ -407,7 +407,7 @@ n_nodename(boole mayoverride){
 
    struct utsname ut;
    char *hn;
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
    struct addrinfo hints, *res;
 # else
@@ -427,7 +427,7 @@ n_nodename(boole mayoverride){
       uname(&ut);
       hn = ut.nodename;
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
@@ -448,7 +448,7 @@ n_nodename(boole mayoverride){
       if(hent != NULL)
          hn = hent->h_name;
 # endif
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
       /* Ensure it is non-empty! */
       if(hn[0] == '\0')

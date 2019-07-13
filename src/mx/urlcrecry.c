@@ -29,7 +29,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # include <su/icodec.h>
 #endif
 
@@ -74,7 +74,7 @@ static struct nrc_node  *_nrc_list;
 
 /* Find the last @ before a slash
  * TODO Casts off the const but this is ok here; obsolete function! */
-#ifdef mx_HAVE_SOCKETS /* temporary (we'll have file://..) */
+#ifdef mx_HAVE_NET /* temporary (we'll have file://..) */
 static char *           _url_last_at_before_slash(char const *cp);
 #endif
 
@@ -98,7 +98,7 @@ static boole           __nrc_find_pass(struct url *urlp, boole user_match,
                            struct nrc_node const *nrc);
 #endif /* mx_HAVE_NETRC */
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 static char *
 _url_last_at_before_slash(char const *cp){
    char const *xcp;
@@ -795,7 +795,7 @@ n_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
    return rv;
 }
 
-#ifdef mx_HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
+#ifdef mx_HAVE_NET /* Note: not indented for that -- later: file:// etc.! */
 FL boole
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
@@ -1502,7 +1502,7 @@ jleave:
    NYD_OU;
    return (ccp != NULL);
 }
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
 #ifdef mx_HAVE_NETRC
 FL int

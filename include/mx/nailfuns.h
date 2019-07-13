@@ -197,7 +197,7 @@ FL boole n_var_vclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
@@ -1530,7 +1530,7 @@ FL boole      smtp_mta(struct sendbundle *sbp);
  * socket.c
  */
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 /* Immediately closes the socket for CPROTO_CERTINFO */
 FL boole      sopen(struct sock *sp, struct url *urlp);
 FL int         sclose(struct sock *sp);
@@ -1880,7 +1880,7 @@ FL char *      url_mailto_to_address(char const *mailtop);
 FL char const *n_servbyname(char const *proto, u16 *port_or_nil,
       boole *issnd_or_nil);
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL boole      url_parse(struct url *urlp, enum cproto cproto,
@@ -1891,7 +1891,7 @@ FL boole      url_parse(struct url *urlp, enum cproto cproto,
 FL boole      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL boole      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
 /* `netrc' */
 #ifdef mx_HAVE_NETRC

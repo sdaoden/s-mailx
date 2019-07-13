@@ -3239,7 +3239,7 @@ n_var_vclear(char const *vokey){
    return ok;
 }
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 FL char *
 n_var_xoklook(enum okeys okey, struct url const *urlp,
       enum okey_xlook_mode oxm){
@@ -3298,7 +3298,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
 FL int
 c_set(void *vp){

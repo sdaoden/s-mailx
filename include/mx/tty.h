@@ -33,7 +33,7 @@ EXPORT_DATA FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  * Handles+reraises SIGINT */
 EXPORT boole mx_tty_yesorno(char const *prompt, boole noninteract_default);
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 /* Get a password the expected way, return autorec string on success or NIL */
 EXPORT char *mx_tty_getuser(char const *query);
 

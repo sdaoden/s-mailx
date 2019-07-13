@@ -451,7 +451,7 @@ c_tls(void *vp){
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
    else if(su_cs_starts_with_case("fingerprint", cp)){
-#ifndef mx_HAVE_SOCKETS
+#ifndef mx_HAVE_NET
       n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
       n_pstate_err_no = su_ERR_OPNOTSUPP;
       goto jleave;
@@ -472,7 +472,7 @@ c_tls(void *vp){
       if(so.s_tls_finger == NULL)
          goto jeinval;
       varres = so.s_tls_finger;
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
    }else
       goto jesubcmd;
 

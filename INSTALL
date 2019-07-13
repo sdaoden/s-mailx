@@ -37,7 +37,7 @@ With adjustments:
 
 With utility program and feature adjustments:
 
-  $ make awk=/usr/bin/nawk VERBOSE=yes OPT_SOCKETS=no tangerine
+  $ make awk=/usr/bin/nawk VERBOSE=yes OPT_NET=no tangerine
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
 SETUID (to VAL_DOTLOCK_USER, default "root") helper program will be build

@@ -596,7 +596,7 @@ jlogname:
 
    hold_sigs();
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
    if(!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
       /* Silly to call that for 0, maybe main.c init to -1? */
       sclose(&mb.mb_sock); /* TODO VMAILFS->close() on open thing, thank you */

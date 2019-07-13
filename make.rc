@@ -334,50 +334,48 @@ OPT_REGEX=yes
 # Major switch to toggle *all* network related protocols
 # (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
-OPT_SOCKETS=yes
+OPT_NET=yes
 
-   # If $OPT_SOCKETS: support for GSS-API (Generic Security Services
-   # Application Programming Interface) based authentication, e.g.,
-   # Kerberos v5?  Available for IMAP and SMTP; can be "require"d.
+   # Detect support for GSS-API (Generic Security Services Application
+   # Programming Interface) based authentication, e.g., Kerberos v5?
+   # Available for IMAP and SMTP; can be "require"d.
    OPT_GSSAPI=yes
 
-   # If $OPT_SOCKETS: support for IMAP protocol?
+   # Add support for IMAP protocol.
+   # Reading of mails directly on the server.
    # Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which
-   # case it only warns.
-   # (Reading of mails directly on the server)  Can be "require"d.
+   # case it only warns.  Can be "require"d.
    OPT_IMAP=yes
 
-   # Enabling the MD5 message digest adds support for several
-   # authentication possibilities: POP3 (APOP), IMAP and SMTP (CRAM-MD5).
-   # They can be turned off by excluding MD5.
+   # The MD5 message digest (RFC 1321) enables several authentication
+   # possibilities for POP3 (APOP), IMAP and SMTP (CRAM-MD5).
    OPT_MD5=yes
 
-   # If $OPT_SOCKETS: support for parsing of user and password
-   # credentials from the ~/.netrc file ($NETRC; see *netrc-lookup*
-   # manual entry).
+   # Support for parsing of user and password credentials from the
+   # ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
    OPT_NETRC=yes
 
-   # If $OPT_SOCKETS: support for POP3 protocol?
-   # (Download of mails via POP protocol)  Can be "require"d.
+   # Add support for POP3 protocol.
+   # Download of mails via POP protocol.  Can be "require"d.
    OPT_POP3=yes
 
-   # If $OPT_SOCKETS: support for SMTP protocol?
-   # (Directly sending mails over the network)  Can be "require"d.
+   # Add support for SMTP (and SUBMISSION) protocol.
+   # Sending mails directly over the network.  Can be "require"d.
    OPT_SMTP=yes
 
-   # If $OPT_SOCKETS: support for Secure Socket Layer (Transport Layer
-   # Security, TLS), i.e., encrypted socket connections; can be
-   # "require"d.  It also automatically enables support for S/MIME
-   # message signing, verification, en- and decryption.
-   # This needs the OpenSSL (https://www.openssl.org) or LibreSSL
+   # Detect support for Secure Socket Layer (Transport Layer Security,
+   # TLS), i.e., encrypted socket connections; can be "require"d.
+   # It also automatically enables support for S/MIME message signing,
+   # verification, en- and decryption.
+   # Supported are the OpenSSL (https://www.openssl.org) and LibreSSL
    # (http://www.libressl.org) libraries.
    OPT_TLS=yes
 
-      # If $OPT_TLS: shall S-nail (try to) use mechanisms to support
-      # more digest and cipher algorithms than the few that are
-      # documented?  For S/MIME *smime-cipher* for example this will
-      # cause EVP_get_cipherbyname(3) to be tried shall the (S-nail-)
-      # built-in knowledge not suffice to understand the user request.
+      # If $OPT_TLS: shall mechanisms to support more digest and cipher
+      # algorithms than the few that are documented be used?
+      # For S/MIME *smime-cipher* for example this will cause
+      # EVP_get_cipherbyname(3) to be tried shall the built-in knowledge
+      # not suffice to understand the user request.
       # Will create a large statically linked binary; dynamically linked
       # the costs only arise once the extended lookup is actually needed
       # (the first time).  Some TLS libraries will always support all

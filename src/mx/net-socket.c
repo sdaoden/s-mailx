@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE socket
+#define su_FILE net_socket
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -39,7 +39,7 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_NONBLOCKSOCK
 /*#  include <sys/types.h>*/
 #  include <sys/select.h>
@@ -79,13 +79,13 @@ su_EMPTY_FILE()
 #include "su/code-in.h"
 
 /* */
-static boole a_socket_open(struct sock *sop, struct url *urlp);
+static boole a_netso_open(struct sock *sop, struct url *urlp);
 
 /* */
-static int a_socket_connect(int fd, struct sockaddr *soap, uz soapl);
+static int a_netso_connect(int fd, struct sockaddr *soap, uz soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
-static long a_socket_xwrite(int fd, char const *data, uz size);
+static long a_netso_xwrite(int fd, char const *data, uz size);
 
 static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
 static int        __sopen_sig; /* TODO someday, we won't need it no more */
@@ -104,7 +104,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static boole
-a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
+a_netso_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
 {
 # ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
@@ -208,7 +208,7 @@ jpseudo_jump:
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if(sofd >= 0 &&
-            (errval = a_socket_connect(sofd, res->ai_addr, res->ai_addrlen)
+            (errval = a_netso_connect(sofd, res->ai_addr, res->ai_addrlen)
                ) != su_ERR_NONE)
          sofd = -1;
    }
@@ -282,7 +282,7 @@ jjumped:
    if (n_poption & n_PO_D_V)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
-   if((errval = a_socket_connect(sofd, (struct sockaddr*)&servaddr,
+   if((errval = a_netso_connect(sofd, (struct sockaddr*)&servaddr,
          sizeof servaddr)) != su_ERR_NONE)
       sofd = -1;
 jjumped:
@@ -375,7 +375,7 @@ jleave:
 }
 
 static int
-a_socket_connect(int fd, struct sockaddr *soap, uz soapl){
+a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
    int rv;
    NYD_IN;
 
@@ -455,7 +455,7 @@ jerr_noerrno:
 }
 
 static long
-a_socket_xwrite(int fd, char const *data, uz size)
+a_netso_xwrite(int fd, char const *data, uz size)
 {
    long rv = -1, wo;
    uz wt = 0;
@@ -585,7 +585,7 @@ jssl_retry:
    } else
 # endif
    {
-      x = a_socket_xwrite(sop->s_fd, data, size);
+      x = a_netso_xwrite(sop->s_fd, data, size);
    }
    if (x != size) {
       char o[512];
@@ -619,7 +619,7 @@ sopen(struct sock *sop, struct url *urlp){
 
    /* We may have a proxy configured */
    if((cp = xok_vlook(socks_proxy, urlp, OXM_ALL)) == NULL)
-      rv = a_socket_open(sop, urlp);
+      rv = a_netso_open(sop, urlp);
    else{
       u8 pbuf[4 + 1 + 255 + 2];
       uz i;
@@ -641,7 +641,7 @@ sopen(struct sock *sop, struct url *urlp){
             urlp->url_host.s,
             (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
 
-      if(!a_socket_open(sop, &url2)){
+      if(!a_netso_open(sop, &url2)){
          n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
          goto jleave;
       }
@@ -815,5 +815,5 @@ jleave:
 }
 
 #include "su/code-ou.h"
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 /* s-it-mode */

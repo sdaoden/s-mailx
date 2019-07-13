@@ -92,7 +92,7 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
    return rv;
 }
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 char *
 mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
@@ -145,7 +145,7 @@ mx_tty_getpass(char const *query){
    NYD_OU;
    return pass;
 }
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
 u32
 mx_tty_create_prompt(struct n_string *store, char const *xprompt,
