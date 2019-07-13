@@ -50,6 +50,7 @@
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/net-pop3.h"
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
 
@@ -525,7 +526,7 @@ jlogname:
 #ifdef mx_HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
-      rv = pop3_setfile(who, orig_name, fm);
+      rv = mx_pop3_setfile(who, orig_name, fm);
       goto jleave;
 #endif
 #ifdef mx_HAVE_IMAP

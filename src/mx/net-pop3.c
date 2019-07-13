@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ POP3 (RFCs 1939, 2595) client.
+ *@ Implementation of net-pop3.h.
  *@ TODO UIDL (as struct message.m_uid, *headline* %U), etc...
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -39,7 +39,7 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE pop3
+#define su_FILE net_pop3
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 
+#include "mx/net-pop3.h"
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -798,8 +799,8 @@ pop3_update(struct mailbox *mp)
    return OKAY;
 }
 
-FL enum okay
-pop3_noop(void)
+enum okay
+mx_pop3_noop(void)
 {
    n_sighdl_t volatile saveint, savepipe;
    enum okay volatile rv = STOP;
@@ -823,8 +824,8 @@ pop3_noop(void)
    return rv;
 }
 
-FL int
-pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
+int
+mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
    struct sockconn sockc;
    n_sighdl_t saveint, savepipe;
@@ -953,8 +954,8 @@ jleave:
    return rv;
 }
 
-FL enum okay
-pop3_header(struct message *m)
+enum okay
+mx_pop3_header(struct message *m)
 {
    enum okay rv;
    NYD_IN;
@@ -965,8 +966,8 @@ pop3_header(struct message *m)
    return rv;
 }
 
-FL enum okay
-pop3_body(struct message *m)
+enum okay
+mx_pop3_body(struct message *m)
 {
    enum okay rv;
    NYD_IN;
@@ -976,8 +977,8 @@ pop3_body(struct message *m)
    return rv;
 }
 
-FL boole
-pop3_quit(boole hold_sigs_on)
+boole
+mx_pop3_quit(boole hold_sigs_on)
 {
    n_sighdl_t volatile saveint, savepipe;
    boole rv;

@@ -1359,27 +1359,6 @@ FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
 /*
- * pop3.c
- */
-
-#ifdef mx_HAVE_POP3
-/*  */
-FL enum okay   pop3_noop(void);
-
-/*  */
-FL int pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
-
-/*  */
-FL enum okay   pop3_header(struct message *m);
-
-/*  */
-FL enum okay   pop3_body(struct message *m);
-
-/*  */
-FL boole      pop3_quit(boole hold_sigs_on);
-#endif /* mx_HAVE_POP3 */
-
-/*
  * quit.c
  */
 
