@@ -54,6 +54,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
@@ -198,7 +199,7 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
 
 #ifdef mx_HAVE_TLS
    if(!sop->s_use_tls &&
-         xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)){
+         xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       a_OUT(o);
       a_ANSWER(2, FAL0, FAL0);
@@ -206,18 +207,18 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
       a_OUT(NETLINE("STARTTLS"));
       a_ANSWER(2, FAL0, FAL0);
 
-      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_url, sop))
+      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_urlp, sop))
          goto jleave;
    }
 #else
-   if(xok_blook(smtp_use_starttls, sbp->sb_url, OXM_ALL)){
+   if(xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
 #endif
 
    /* Shorthand: no authentication, plain HELO? */
-   if(sbp->sb_ccred.cc_authtype == AUTHTYPE_NONE){
+   if(sbp->sb_credp->cc_authtype == mx_CRED_AUTHTYPE_NONE){
       snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
       a_OUT(o);
       a_ANSWER(2, FAL0, FAL0);
@@ -229,18 +230,18 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    a_OUT(o);
    a_ANSWER(2, FAL0, FAL0);
 
-   switch(sbp->sb_ccred.cc_authtype){
+   switch(sbp->sb_credp->cc_authtype){
    default:
       /* FALLTHRU (doesn't happen) */
-   case AUTHTYPE_PLAIN:
-      cnt = sbp->sb_ccred.cc_user.l;
-      if(sbp->sb_ccred.cc_pass.l >= UZ_MAX - 2 ||
-            cnt >= UZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
+   case mx_CRED_AUTHTYPE_PLAIN:
+      cnt = sbp->sb_credp->cc_user.l;
+      if(sbp->sb_credp->cc_pass.l >= UZ_MAX - 2 ||
+            cnt >= UZ_MAX - 2 - sbp->sb_credp->cc_pass.l){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
       }
-      cnt += sbp->sb_ccred.cc_pass.l;
+      cnt += sbp->sb_credp->cc_pass.l;
 
       if(cnt >= sizeof(o) - 2)
          goto jerr_cred;
@@ -252,48 +253,48 @@ jerr_cred:
       a_ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
-         '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
+         '\0', sbp->sb_credp->cc_user.s, '\0', sbp->sb_credp->cc_pass.s);
       if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_OUT(b64.s);
       a_ANSWER(2, FAL0, FAL0);
       break;
-   case AUTHTYPE_LOGIN:
-      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UZ_MAX ||
-            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UZ_MAX)
+   case mx_CRED_AUTHTYPE_LOGIN:
+      if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
+            b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
       a_OUT(NETLINE("AUTH LOGIN"));
       a_ANSWER(3, FAL0, FAL0);
 
-      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
-            B64_SALLOC | B64_CRLF) == NIL)
+      if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
+            sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_OUT(b64.s);
       a_ANSWER(3, FAL0, FAL0);
 
-      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
-            B64_SALLOC | B64_CRLF) == NIL)
+      if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
+            sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_OUT(b64.s);
       a_ANSWER(2, FAL0, FAL0);
       break;
 #ifdef mx_HAVE_MD5
-   case AUTHTYPE_CRAM_MD5:{
+   case mx_CRED_AUTHTYPE_CRAM_MD5:{
       char *cp;
 
       a_OUT(NETLINE("AUTH CRAM-MD5"));
       a_ANSWER(3, FAL0, TRU1);
 
-      if((cp = mx_md5_cram_string(&sbp->sb_ccred.cc_user,
-            &sbp->sb_ccred.cc_pass, slp->sl_dat.s)) == NIL)
+      if((cp = mx_md5_cram_string(&sbp->sb_credp->cc_user,
+            &sbp->sb_credp->cc_pass, slp->sl_dat.s)) == NIL)
          goto jerr_cred;
       a_OUT(cp);
       a_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
 #ifdef mx_HAVE_GSSAPI
-   case AUTHTYPE_GSSAPI:
+   case mx_CRED_AUTHTYPE_GSSAPI:
       if(n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
       else if(!a_netsmtp_gss(sop, sbp, slp))
@@ -303,7 +304,7 @@ jerr_cred:
    }
 
 jsend:
-   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_url->url_u_h.s);
+   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_urlp->url_u_h.s);
    a_OUT(o);
    a_ANSWER(2, FAL0, FAL0);
 
@@ -385,7 +386,7 @@ mx_smtp_mta(struct sendbundle *sbp){
 
    if(n_poption & n_PO_DEBUG)
       su_mem_set(&so, 0, sizeof so);
-   else if(!mx_socket_open(&so, sbp->sb_url))
+   else if(!mx_socket_open(&so, sbp->sb_urlp))
       goto jleave;
 
    so.s_desc = "SMTP";

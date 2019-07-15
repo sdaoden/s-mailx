@@ -136,14 +136,6 @@ enum n_announce_flags{
    n__ANNOUNCE_ANY = 1u<<7
 };
 
-enum authtype{
-   AUTHTYPE_NONE = 1u<<0,
-   AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */
-   AUTHTYPE_LOGIN = 1u<<2,
-   AUTHTYPE_CRAM_MD5 = 1u<<3,
-   AUTHTYPE_GSSAPI = 1u<<4
-};
-
 enum expand_addr_flags{
    EAF_NONE = 0, /* -> EAF_NOFILE | EAF_NOPIPE */
    EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interaktive / -[~#]) */
@@ -1341,14 +1333,6 @@ struct url{
    char const *url_p_eu_h_p_p; /* .url_proto://.url_eu_h_p[/.url_path] */
 };
 
-struct ccred{
-   enum cproto cc_cproto; /* Communication protocol */
-   enum authtype cc_authtype; /* Desired authentication */
-   char const *cc_auth; /* Authentication type as string */
-   struct str cc_user; /* User (urlxdec()oded) or NULL */
-   struct str cc_pass; /* Password (urlxdec()oded) or NULL */
-};
-
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
    void *gdc_ifcond; /* Saved state of conditional stack */
@@ -1720,9 +1704,9 @@ struct sendbundle{
    struct header *sb_hp;
    struct mx_name *sb_to;
    FILE *sb_input;
-   struct url *sb_url; /* Or NIL for file-based MTA */
+   struct url *sb_urlp; /* Or NIL for file-based MTA */
+   struct mx_cred_ctx *sb_credp; /* cred-auth.h not included */
    struct str sb_signer; /* USER@HOST for signing+ */
-   struct ccred sb_ccred;
 };
 
 /* For saving the current directory and later returning */

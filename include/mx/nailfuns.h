@@ -1835,12 +1835,6 @@ FL char const *n_servbyname(char const *proto, u16 *port_or_nil,
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL boole      url_parse(struct url *urlp, enum cproto cproto,
                   char const *data);
-
-/* Zero ccp and lookup credentials for communicating with urlp.
- * Return whether credentials are available and valid (for chosen auth) */
-FL boole      ccred_lookup(struct ccred *ccp, struct url *urlp);
-FL boole      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
-                  char const *addr);
 #endif /* mx_HAVE_NET */
 
 /*

@@ -72,6 +72,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cred-auth.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/net-socket.h"
@@ -1536,10 +1537,10 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    /* New-style */
    if(userdata != NULL){
       struct url url;
-      struct ccred cred;
+      struct mx_cred_ctx cred;
 
       if(url_parse(&url, CPROTO_CCRED, userdata)){
-         if(ccred_lookup(&cred, &url)){
+         if(mx_cred_auth_lookup(&cred, &url)){
             char *end;
 
             if((end = su_cs_pcopy_n(buf, cred.cc_pass.s, size)) != NULL){

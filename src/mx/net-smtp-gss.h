@@ -124,14 +124,14 @@ a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
    f = a_F_NONE;
    buf = NIL;
 
-   if(INT_MAX - 1 - 4 <= sbp->sb_ccred.cc_user.l)
+   if(INT_MAX - 1 - 4 <= sbp->sb_credp->cc_user.l)
       goto jleave;
 
    send_tok.value = buf = n_lofi_alloc(
-         (send_tok.length = sbp->sb_url->url_host.l + 5) +1);
+         (send_tok.length = sbp->sb_urlp->url_host.l + 5) +1);
    su_mem_copy(send_tok.value, "smtp@", 5);
-   su_mem_copy(&S(char*,send_tok.value)[5], sbp->sb_url->url_host.s,
-      sbp->sb_url->url_host.l +1);
+   su_mem_copy(&S(char*,send_tok.value)[5], sbp->sb_urlp->url_host.s,
+      sbp->sb_urlp->url_host.l +1);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;
@@ -241,9 +241,10 @@ jebase64:
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
    n_lofi_free(buf);
-   in.s = buf = n_lofi_alloc((send_tok.length = 4u + sbp->sb_ccred.cc_user.l
+   in.s = buf = n_lofi_alloc((send_tok.length = 4u + sbp->sb_credp->cc_user.l
          ) +1);
-   su_mem_copy(&in.s[4], sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
+   su_mem_copy(&in.s[4], sbp->sb_credp->cc_user.s,
+      sbp->sb_credp->cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;
    in.s[2] = in.s[3] = S(char,0xFF);

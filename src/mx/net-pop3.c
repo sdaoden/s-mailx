@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/file-streams.h"
 #include "mx/net-socket.h"
@@ -143,7 +144,7 @@ _pop3_login(struct mailbox *mp, struct mx_socket_conn *scp)
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
-      if(!n_tls_open(&scp->sc_url, scp->sc_sock)){
+      if(!n_tls_open(&scp->sc_url, scp->sc_sockp)){
          rv = STOP;
          goto jleave;
       }
@@ -163,7 +164,7 @@ _pop3_login(struct mailbox *mp, struct mx_socket_conn *scp)
          char const *ccp;
 
 # ifdef mx_HAVE_TLS
-         if (scp->sc_sock->s_use_tls)
+         if (scp->sc_sockp->s_use_tls)
             ccp = _("over an encrypted connection");
          else
 # endif
@@ -241,15 +242,16 @@ _pop3_auth_apop(struct mailbox *mp, struct mx_socket_conn const *scp,
 
    mx_md5_init(&ctx);
    mx_md5_update(&ctx, S(uc*,UNCONST(char*,ts)), su_cs_len(ts));
-   mx_md5_update(&ctx, S(uc*,scp->sc_cred.cc_pass.s), scp->sc_cred.cc_pass.l);
+   mx_md5_update(&ctx, S(uc*,scp->sc_credp->cc_pass.s),
+      scp->sc_credp->cc_pass.l);
    mx_md5_final(digest, &ctx);
    mx_md5_tohex(hex, digest);
 
-   i = scp->sc_cred.cc_user.l;
+   i = scp->sc_credp->cc_user.l;
    cp = n_lofi_alloc(5 + i + 1 + mx_MD5_TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    su_mem_copy(cp, "APOP ", 5);
-   su_mem_copy(cp + 5, scp->sc_cred.cc_user.s, i);
+   su_mem_copy(cp + 5, scp->sc_credp->cc_user.s, i);
    i += 5;
    cp[i++] = ' ';
    su_mem_copy(cp + i, hex, mx_MD5_TOHEX_SIZE);
@@ -274,18 +276,18 @@ _pop3_auth_plain(struct mailbox *mp, struct mx_socket_conn const *scp)
    NYD_IN;
 
    /* The USER/PASS plain text version */
-   cp = n_lofi_alloc(MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
+   cp = n_lofi_alloc(MAX(scp->sc_credp->cc_user.l, scp->sc_credp->cc_pass.l) +
          5 + sizeof(NETNL)-1 +1);
 
    su_mem_copy(cp, "USER ", 5);
-   su_mem_copy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
-   su_mem_copy(cp + 5 + scp->sc_cred.cc_user.l, NETNL, sizeof(NETNL));
+   su_mem_copy(cp + 5, scp->sc_credp->cc_user.s, scp->sc_credp->cc_user.l);
+   su_mem_copy(cp + 5 + scp->sc_credp->cc_user.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
    su_mem_copy(cp, "PASS ", 5);
-   su_mem_copy(cp + 5, scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
-   su_mem_copy(cp + 5 + scp->sc_cred.cc_pass.l, NETNL, sizeof(NETNL));
+   su_mem_copy(cp + 5, scp->sc_credp->cc_pass.s, scp->sc_credp->cc_pass.l);
+   su_mem_copy(cp + 5 + scp->sc_credp->cc_pass.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -832,6 +834,7 @@ mx_pop3_noop(void)
 int
 mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
+   struct mx_cred_ctx cred_ctx;
    struct mx_socket_conn sc;
    n_sighdl_t saveint, savepipe;
    char const *cp;
@@ -852,9 +855,10 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       goto jleave;
    }
 
+   sc.sc_credp = &cred_ctx;
    if (!((ok_vlook(v15_compat) != su_NIL)
-         ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
-         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3,
+         ? mx_cred_auth_lookup(sc.sc_credp, &sc.sc_url)
+         : mx_cred_auth_lookup_old(sc.sc_credp, CPROTO_POP3,
             ((sc.sc_url.url_flags & n_URL_HAD_USER)
              ? sc.sc_url.url_eu_h_p.s
              : sc.sc_url.url_u_h_p.s))))
@@ -863,9 +867,9 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
    if (!quit(FAL0))
       goto jleave;
 
-   sc.sc_sock = su_TALLOC(struct mx_socket, 1);
-   if(!mx_socket_open(sc.sc_sock, &sc.sc_url)){
-      su_FREE(sc.sc_sock);
+   sc.sc_sockp = su_TALLOC(struct mx_socket, 1);
+   if(!mx_socket_open(sc.sc_sockp, &sc.sc_url)){
+      su_FREE(sc.sc_sockp);
       goto jleave;
    }
 
@@ -899,8 +903,8 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
    saveint = safe_signal(SIGINT, SIG_IGN);
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1)) {
-      mx_socket_close(sc.sc_sock);
-      su_FREE(sc.sc_sock);
+      mx_socket_close(sc.sc_sockp);
+      su_FREE(sc.sc_sockp);
       n_err(_("POP3 connection closed\n"));
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
@@ -923,16 +927,16 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       }
    }
 
-   sc.sc_sock->s_desc = (sc.sc_url.url_flags & n_URL_TLS_REQUIRED)
+   sc.sc_sockp->s_desc = (sc.sc_url.url_flags & n_URL_TLS_REQUIRED)
          ? "POP3S" : "POP3";
-   sc.sc_sock->s_onclose = pop3_timer_off;
-   mb.mb_sock = sc.sc_sock;
+   sc.sc_sockp->s_onclose = pop3_timer_off;
+   mb.mb_sock = sc.sc_sockp;
 
    if (_pop3_login(&mb, &sc) != OKAY ||
          pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {
       mb.mb_sock = NIL;
-      mx_socket_close(sc.sc_sock);
-      su_FREE(sc.sc_sock);
+      mx_socket_close(sc.sc_sockp);
+      su_FREE(sc.sc_sockp);
       pop3_timer_off();
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);

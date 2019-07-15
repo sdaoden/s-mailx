@@ -60,6 +60,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/iconv.h"
 #include "mx/file-streams.h"
@@ -208,19 +209,20 @@ static void       rec_rmqueue(void);
 static void       imapalarm(int s);
 static enum okay  imap_preauth(struct mailbox *mp, struct url *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
-static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #ifdef mx_HAVE_MD5
-static enum okay  imap_cram_md5(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_cram_md5(struct mailbox *mp,
+      struct mx_cred_ctx *ccred);
 #endif
-static enum okay  imap_login(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #ifdef mx_HAVE_GSSAPI
-static enum okay  _imap_gssapi(struct mailbox *mp, struct ccred *ccred);
+static enum okay  _imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #endif
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
-static boole     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
+static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
                      struct url *urlp);
 static int _imap_setfile1(char const *who, struct url *urlp,
             enum fedit_mode fm, int transparent);
@@ -1381,7 +1383,7 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay
-imap_auth(struct mailbox *mp, struct ccred *ccred)
+imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    enum okay rv;
    NYD_IN;
@@ -1392,16 +1394,16 @@ imap_auth(struct mailbox *mp, struct ccred *ccred)
    }
 
    switch (ccred->cc_authtype) {
-   case AUTHTYPE_LOGIN:
+   case mx_CRED_AUTHTYPE_LOGIN:
       rv = imap_login(mp, ccred);
       break;
 #ifdef mx_HAVE_MD5
-   case AUTHTYPE_CRAM_MD5:
+   case mx_CRED_AUTHTYPE_CRAM_MD5:
       rv = imap_cram_md5(mp, ccred);
       break;
 #endif
 #ifdef mx_HAVE_GSSAPI
-   case AUTHTYPE_GSSAPI:
+   case mx_CRED_AUTHTYPE_GSSAPI:
       rv = _imap_gssapi(mp, ccred);
       break;
 #endif
@@ -1416,7 +1418,7 @@ jleave:
 
 #ifdef mx_HAVE_MD5
 static enum okay
-imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
+imap_cram_md5(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE], *cp;
    FILE *queuefp = NULL;
@@ -1442,7 +1444,7 @@ jleave:
 #endif /* mx_HAVE_MD5 */
 
 static enum okay
-imap_login(struct mailbox *mp, struct ccred *ccred)
+imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE];
    FILE *queuefp = NULL;
@@ -1450,7 +1452,8 @@ imap_login(struct mailbox *mp, struct ccred *ccred)
    NYD_IN;
 
    snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-      tag(1), imap_quotestr(ccred->cc_user.s), imap_quotestr(ccred->cc_pass.s));
+      tag(1), imap_quotestr(ccred->cc_user.s),
+      imap_quotestr(ccred->cc_pass.s));
    IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
@@ -1667,13 +1670,14 @@ jleave:
 }
 
 static boole
-_imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
+_imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
+   struct url *urlp)
 {
    boole rv = FAL0;
    NYD_IN;
 
    if (ok_vlook(v15_compat) != su_NIL)
-      rv = ccred_lookup(ccredp, urlp);
+      rv = mx_cred_auth_lookup(ccredp, urlp);
    else {
       char *var, *old,
          *xuhp = ((urlp->url_flags & n_URL_HAD_USER) ? urlp->url_eu_h_p.s
@@ -1685,7 +1689,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
             old = su_cs_dup(old, 0);
          n_var_vset(var, (up)mbp->mb_imap_pass);
       }
-      rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
+      rv = mx_cred_auth_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
          if (old != NULL) {
             n_var_vset(var, (up)old);
@@ -1704,7 +1708,7 @@ _imap_setfile1(char const * volatile who, struct url *urlp,
    enum fedit_mode volatile fm, int volatile transparent)
 {
    struct mx_socket so;
-   struct ccred ccred;
+   struct mx_cred_ctx ccred;
    n_sighdl_t volatile saveint, savepipe;
    char const *cp;
    int rv;
@@ -3131,7 +3135,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
 {
    n_sighdl_t volatile saveint, savepipe;
    struct url url;
-   struct ccred ccred;
+   struct mx_cred_ctx ccred;
    enum okay volatile rv = STOP;
    NYD_IN;
 

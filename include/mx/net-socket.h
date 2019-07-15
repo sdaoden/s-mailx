@@ -59,9 +59,9 @@ struct mx_socket{ /* data associated with a socket */
 };
 
 struct mx_socket_conn{
-   struct mx_socket *sc_sock;
+   struct mx_socket *sc_sockp;
+   struct mx_cred_ctx *sc_credp; /* cred-auth.h not included */
    struct url sc_url;
-   struct ccred sc_cred;
 };
 
 /* Note: immediately closes the socket again for CPROTO_CERTINFO */
