@@ -54,6 +54,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cred-md5.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
@@ -284,8 +285,8 @@ jerr_cred:
       a_OUT(NETLINE("AUTH CRAM-MD5"));
       a_ANSWER(3, FAL0, TRU1);
 
-      if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
-            slp->sl_dat.s)) == NIL)
+      if((cp = mx_md5_cram_string(&sbp->sb_ccred.cc_user,
+            &sbp->sb_ccred.cc_pass, slp->sl_dat.s)) == NIL)
          goto jerr_cred;
       a_OUT(cp);
       a_ANSWER(2, FAL0, FAL0);

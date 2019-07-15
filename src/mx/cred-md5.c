@@ -1,14 +1,22 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ RFC 1321 derived MD5 algorithm implementation.
- *@ This is included by nailfuns.h if 'mx_HAVE_MD5 && !mx_HAVE_XTLS_MD5',
- *@ and contains MD5.H as well as MD5C.C from the RFC.
+ *@ Implementation of cred-md5.h.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-/* MD5.H - header file for MD5C.C
- */
+/* MD5.c - header file for MD5C.C from RFC 1321 is */
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
 
@@ -30,51 +38,25 @@ without express or implied warranty of any kind.
 These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
+#undef su_FILE
+#define su_FILE cred_md5
+#define mx_SOURCE
+#define mx_SOURCE_CRED_MD5
 
-/*
- * This version of MD5 has been changed such that any unsigned type with
- * at least 32 bits is acceptable. This is important e.g. for Cray vector
- * machines which provide only 64-bit integers.
- */
-typedef	unsigned long	md5_type;
+#ifndef mx_HAVE_AMALGAMATION
+# include "mx/nail.h"
+#endif
 
-typedef struct {
-	md5_type state[4];	/* state (ABCD) */
-	md5_type count[2];	/* number of bits, modulo 2^64 (lsb first) */
-	unsigned char	buffer[64];	/* input buffer */
-} md5_ctx;
+su_EMPTY_FILE()
+#ifdef mx_HAVE_MD5
+#include <su/cs.h>
+#include <su/mem.h>
 
-FL void	md5_init(md5_ctx *);
-FL void	md5_update(md5_ctx *, unsigned char *, unsigned int);
-FL void	md5_final(unsigned char[16], md5_ctx *);
+#include "mx/cred-md5.h"
+#include "su/code-in.h"
 
-#ifdef mx_SOURCE_MASTER
-/* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
- */
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
-rights reserved.
-
-License to copy and use this software is granted provided that it
-is identified as the "RSA Data Security, Inc. MD5 Message-Digest
-Algorithm" in all material mentioning or referencing this software
-or this function.
-
-License is also granted to make and use derivative works provided
-that such works are identified as "derived from the RSA Data
-Security, Inc. MD5 Message-Digest Algorithm" in all material
-mentioning or referencing the derived work.
-
-RSA Data Security, Inc. makes no representations concerning either
-the merchantability of this software or the suitability of this
-software for any particular purpose. It is provided "as is"
-without express or implied warranty of any kind.
-
-These notices must be retained in any copies of any part of this
-documentation and/or software.
- */
-
-# include <string.h>
-
+#ifndef mx_HAVE_XTLS_MD5
+/* RFC 1321, MD5.C: */
 #define UINT4B_MAX	0xFFFFFFFFul
 
 /* Constants for MD5Transform routine.
@@ -148,19 +130,16 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
-static void * (* volatile _volatile_su_mem_set)(void*, int, uz
-	) = &(su_mem_set);
-
-static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);
-static void Decode(md5_type *outp, unsigned char *inp, unsigned int len);
-static void MD5Transform(md5_type state[], unsigned char block[]);
+static void Encode(unsigned char *outp, mx_md5_type *inp, unsigned int len);
+static void Decode(mx_md5_type *outp, unsigned char *inp, unsigned int len);
+static void MD5Transform(mx_md5_type state[], unsigned char block[]);
 
 /*
  * Encodes input (md5_type) into output (unsigned char). Assumes len is
  * a multiple of 4.
  */
 static void
-Encode(unsigned char *outp, md5_type *inp, unsigned int len)
+Encode(unsigned char *outp, mx_md5_type *inp, unsigned int len)
 {
 	unsigned int i, j;
 
@@ -177,22 +156,22 @@ Encode(unsigned char *outp, md5_type *inp, unsigned int len)
  * a multiple of 4.
  */
 static void
-Decode(md5_type *outp, unsigned char *inp, unsigned int len)
+Decode(mx_md5_type *outp, unsigned char *inp, unsigned int len)
 {
 	unsigned int	i, j;
 
 	for (i = 0, j = 0; j < len; i++, j += 4)
-		outp[i] = ((md5_type)inp[j] |
-			(md5_type)inp[j+1] << 8 |
-			(md5_type)inp[j+2] << 16 |
-			(md5_type)inp[j+3] << 24) & UINT4B_MAX;
+		outp[i] = ((mx_md5_type)inp[j] |
+			(mx_md5_type)inp[j+1] << 8 |
+			(mx_md5_type)inp[j+2] << 16 |
+			(mx_md5_type)inp[j+3] << 24) & UINT4B_MAX;
 }
 
 /* MD5 basic transformation. Transforms	state based on block. */
 static void
-MD5Transform(md5_type state[4], unsigned char block[64])
+MD5Transform(mx_md5_type state[4], unsigned char block[64])
 {
-	md5_type a = state[0], b = state[1], c = state[2], d = state[3],
+	mx_md5_type a = state[0], b = state[1], c = state[2], d = state[3],
 		x[16];
 
 	Decode(x, block, 64);
@@ -277,16 +256,14 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*_volatile_su_mem_set)(x, 0, sizeof x);
+	(*su_mem_set_volatile)(x, 0, sizeof x);
 }
 
 /*
  * MD5 initialization. Begins an MD5 operation, writing a new context.
  */
-FL void
-md5_init(
-    md5_ctx *context	/* context */
-)
+void
+mx_md5_init(mx_md5_t *context)
 {
 	context->count[0] = context->count[1] = 0;
 	/*
@@ -303,12 +280,9 @@ md5_init(
  * operation, processing another message block, and updating the
  * context.
  */
-FL void
-md5_update(
-    md5_ctx *context,		/* context */
-    unsigned char *input,		/* input block */
-    unsigned int inputLen		/* length of input block */
-)
+void
+mx_md5_update(mx_md5_t *context, unsigned char *input,
+   unsigned int inputLen)
 {
 	unsigned int i, idx, partLen;
 
@@ -346,11 +320,8 @@ md5_update(
  * MD5 finalization. Ends an MD5 message-digest	operation, writing the
  * the message digest and zeroizing the context.
  */
-FL void
-md5_final(
-    unsigned char digest[16],	/* message digest */
-    md5_ctx *context		/* context */
-)
+void
+mx_md5_final(unsigned char digest[mx_MD5_DIGEST_SIZE], mx_md5_t *context)
 {
 	unsigned char	bits[8];
 	unsigned int	idx, padLen;
@@ -363,17 +334,17 @@ md5_final(
 	 */
 	idx = context->count[0]>>3 & 0x3f;
 	padLen = idx < 56 ? 56 - idx : 120 - idx;
-	md5_update(context, PADDING, padLen);
+	mx_md5_update(context, PADDING, padLen);
 
 	/* Append length (before padding) */
-	md5_update(context, bits, 8);
+	mx_md5_update(context, bits, 8);
 	/* Store state in digest */
 	Encode(digest, context->state, 16);
 
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*_volatile_su_mem_set)(context, 0, sizeof *context);
+	(*su_mem_set_volatile)(context, 0, sizeof *context);
 }
 
 # undef UINT4B_MAX
@@ -402,4 +373,140 @@ md5_final(
 # undef GG
 # undef HH
 # undef II
-#endif /* mx_SOURCE_MASTER */
+#endif /* mx_HAVE_XTLS_MD5 */
+
+char *
+mx_md5_tohex(char hex[mx_MD5_TOHEX_SIZE], void const *vp){
+   uz i, j;
+   char const *cp;
+   NYD_IN;
+
+   cp = vp;
+
+   for(i = 0; i < mx_MD5_TOHEX_SIZE / 2; ++i){
+      j = i << 1;
+#define a_HEX(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
+      hex[j] = a_HEX((cp[i] & 0xF0) >> 4);
+      hex[++j] = a_HEX(cp[i] & 0x0F);
+#undef a_HEX
+   }
+
+   NYD_OU;
+   return hex;
+}
+
+char *
+mx_md5_cram_string(struct str const *user, struct str const *pass,
+      char const *b64){
+   struct str in, out;
+   char digest[16], *cp;
+   NYD_IN;
+
+   out.s = NIL;
+   if(user->l >= UZ_MAX - 1 - mx_MD5_TOHEX_SIZE - 1)
+      goto jleave;
+   if(pass->l >= INT_MAX)
+      goto jleave;
+
+   in.s = UNCONST(char*,b64);
+   in.l = su_cs_len(in.s);
+   if(!b64_decode(&out, &in))
+      goto jleave;
+   if(out.l >= INT_MAX){
+      n_free(out.s);
+      out.s = NIL;
+      goto jleave;
+   }
+
+   mx_md5_hmac(S(uc*,out.s), out.l, S(uc*,pass->s), pass->l, digest);
+   n_free(out.s);
+   cp = mx_md5_tohex(n_autorec_alloc(mx_MD5_TOHEX_SIZE +1), digest);
+
+   in.l = user->l + mx_MD5_TOHEX_SIZE +1;
+   in.s = n_lofi_alloc(user->l + 1 + mx_MD5_TOHEX_SIZE +1);
+   su_mem_copy(in.s, user->s, user->l);
+   in.s[user->l] = ' ';
+   su_mem_copy(&in.s[user->l + 1], cp, mx_MD5_TOHEX_SIZE);
+   if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NIL)
+      out.s = NIL;
+   n_lofi_free(in.s);
+
+jleave:
+   NYD_OU;
+   return out.s;
+}
+
+void
+mx_md5_hmac(unsigned char *text, int text_len, unsigned char *key,
+      int key_len, void *digest){
+   /*
+    * This code is taken from
+    *
+    * Network Working Group                                       H. Krawczyk
+    * Request for Comments: 2104                                          IBM
+    * Category: Informational                                      M. Bellare
+    *                                                                    UCSD
+    *                                                              R. Canetti
+    *                                                                     IBM
+    *                                                           February 1997
+    *
+    *
+    *             HMAC: Keyed-Hashing for Message Authentication
+    */
+   mx_md5_t context;
+   unsigned char k_ipad[65]; /* inner padding - key XORd with ipad */
+   unsigned char k_opad[65]; /* outer padding - key XORd with opad */
+   unsigned char tk[16];
+   int i;
+   NYD_IN;
+
+   /* if key is longer than 64 bytes reset it to key=MD5(key) */
+   if(key_len > 64){
+      mx_md5_t tctx;
+
+      mx_md5_init(&tctx);
+      mx_md5_update(&tctx, key, key_len);
+      mx_md5_final(tk, &tctx);
+
+      key = tk;
+      key_len = 16;
+   }
+
+   /* the HMAC_MD5 transform looks like:
+    *
+    * MD5(K XOR opad, MD5(K XOR ipad, text))
+    *
+    * where K is an n byte key
+    * ipad is the byte 0x36 repeated 64 times
+    * opad is the byte 0x5c repeated 64 times
+    * and text is the data being protected */
+
+   /* start out by storing key in pads */
+   su_mem_set(k_ipad, 0, sizeof k_ipad);
+   su_mem_set(k_opad, 0, sizeof k_opad);
+   su_mem_copy(k_ipad, key, key_len);
+   su_mem_copy(k_opad, key, key_len);
+
+   /* XOR key with ipad and opad values */
+   for(i=0; i<64; i++){
+      k_ipad[i] ^= 0x36;
+      k_opad[i] ^= 0x5c;
+   }
+
+   /* perform inner MD5 */
+   mx_md5_init(&context); /* init context for 1st pass */
+   mx_md5_update(&context, k_ipad, 64); /* start with inner pad */
+   mx_md5_update(&context, text, text_len); /* then text of datagram */
+   mx_md5_final(digest, &context); /* finish up 1st pass */
+
+   /* perform outer MD5 */
+   mx_md5_init(&context); /* init context for 2nd pass */
+   mx_md5_update(&context, k_opad, 64); /* start with outer pad */
+   mx_md5_update(&context, digest, 16); /* then results of 1st hash */
+   mx_md5_final(digest, &context); /* finish up 2nd pass */
+   NYD_OU;
+}
+
+#include "su/code-ou.h"
+#endif /* mx_HAVE_MD5 */
+/* s-it-mode */

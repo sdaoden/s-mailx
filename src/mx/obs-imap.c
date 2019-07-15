@@ -60,6 +60,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cred-md5.h"
 #include "mx/iconv.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
@@ -1428,7 +1429,7 @@ imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
    if (response_type != RESPONSE_CONT)
       goto jleave;
 
-   cp = cram_md5_string(&ccred->cc_user, &ccred->cc_pass, responded_text);
+   cp = mx_md5_cram_string(&ccred->cc_user, &ccred->cc_pass, responded_text);
    if(cp == NULL)
       goto jleave;
    IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);

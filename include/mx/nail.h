@@ -63,10 +63,6 @@
 # include <regex.h>
 #endif
 
-#ifdef mx_HAVE_XTLS_MD5
-# include <openssl/md5.h>
-#endif
-
 /* Many things possibly of interest for adjustments have been outsourced */
 #include <mx/config.h>
 

@@ -29,6 +29,8 @@
 #include "su/x-mem-tools.h" /* $(SU_SRCDIR) */
 #include "su/code-in.h"
 
+void * (* volatile su_mem_set_volatile)(void*, int, uz) = &su_mem_set;
+
 void *
 su_mem_find(void const *vp, s32 what, uz len){
    void *rv;

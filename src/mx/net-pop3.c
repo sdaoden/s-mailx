@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cred-md5.h"
 #include "mx/file-streams.h"
 #include "mx/net-socket.h"
 #include "mx/sigs.h"
@@ -232,27 +233,27 @@ _pop3_auth_apop(struct mailbox *mp, struct mx_socket_conn const *scp,
    char const *ts)
 {
    unsigned char digest[16];
-   char hex[MD5TOHEX_SIZE], *cp;
-   md5_ctx ctx;
+   char hex[mx_MD5_TOHEX_SIZE], *cp;
+   mx_md5_t ctx;
    uz i;
    enum okay rv = STOP;
    NYD_IN;
 
-   md5_init(&ctx);
-   md5_update(&ctx, (uc*)n_UNCONST(ts), su_cs_len(ts));
-   md5_update(&ctx, (uc*)scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
-   md5_final(digest, &ctx);
-   md5tohex(hex, digest);
+   mx_md5_init(&ctx);
+   mx_md5_update(&ctx, S(uc*,UNCONST(char*,ts)), su_cs_len(ts));
+   mx_md5_update(&ctx, S(uc*,scp->sc_cred.cc_pass.s), scp->sc_cred.cc_pass.l);
+   mx_md5_final(digest, &ctx);
+   mx_md5_tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = n_lofi_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(5 + i + 1 + mx_MD5_TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    su_mem_copy(cp, "APOP ", 5);
    su_mem_copy(cp + 5, scp->sc_cred.cc_user.s, i);
    i += 5;
    cp[i++] = ' ';
-   su_mem_copy(cp + i, hex, MD5TOHEX_SIZE);
-   i += MD5TOHEX_SIZE;
+   su_mem_copy(cp + i, hex, mx_MD5_TOHEX_SIZE);
+   i += mx_MD5_TOHEX_SIZE;
    su_mem_copy(cp + i, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);

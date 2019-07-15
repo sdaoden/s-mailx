@@ -82,8 +82,7 @@
  */
 
 ==========================================================================
-net-smtp-gss.h:
-partially derived from sample code in:
+The GSSAPI code is partially derived from sample code in:
 
 /*
  * GSS-API Programming Guide
@@ -115,8 +114,7 @@ partially derived from sample code in:
  */
 
 ==========================================================================
-rfc1321.h:
-derived from RFC 1321:
+The MD5 code is derived from RFC 1321:
 
 Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
@@ -138,26 +136,3 @@ without express or implied warranty of any kind.
 
 These notices must be retained in any copies of any part of this
 documentation and/or software.
-
-==========================================================================
-hmac_md5():
-derived from:
-
-Network Working Group					    H. Krawczyk
-Request for Comments: 2104					    IBM
-Category: Informational					     M. Bellare
-								   UCSD
-							     R. Canetti
-								    IBM
-							  February 1997
-
-
-	     HMAC: Keyed-Hashing for Message Authentication
-
-Status of This Memo
-
-   This memo provides information for the Internet community.  This memo
-   does not specify an Internet standard of any kind.  Distribution of
-   this memo is unlimited.
-
-Appendix -- Sample Code
