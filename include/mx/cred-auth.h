@@ -31,8 +31,11 @@ enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_NONE = 1u<<0,
    mx_CRED_AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */
    mx_CRED_AUTHTYPE_LOGIN = 1u<<2,
-   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<3,
-   mx_CRED_AUTHTYPE_GSSAPI = 1u<<4
+   mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<3,
+
+   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<4,
+
+   mx_CRED_AUTHTYPE_GSSAPI = 1u<<5
 };
 
 struct mx_cred_ctx{

@@ -1385,7 +1385,8 @@ MB_CACHE, /* IMAP cache */
 #ifdef mx_HAVE_IMAP
    enum mbflags{
       MB_NOFLAGS = 000,
-      MB_UIDPLUS = 001 /* supports IMAP UIDPLUS */
+      MB_UIDPLUS = 001, /* supports IMAP UIDPLUS */
+      MB_SASL_IR = 002  /* supports RFC 4959 SASL-IR */
    } mb_flags;
    u64 mb_uidvalidity; /* IMAP unique identifier validity */
    char *mb_imap_account; /* name of current IMAP account */

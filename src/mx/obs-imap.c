@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ IMAP v4r1 client following RFC 2060.
+ *@ TODO Anything. SASL-IR for more.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -215,6 +216,8 @@ static enum okay  imap_cram_md5(struct mailbox *mp,
       struct mx_cred_ctx *ccred);
 #endif
 static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
+static enum okay a_imap_oauthbearer(struct mailbox *mp,
+      struct mx_cred_ctx *ccp);
 #ifdef mx_HAVE_GSSAPI
 static enum okay  _imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #endif
@@ -1374,6 +1377,9 @@ imap_capability(struct mailbox *mp)
             if (strncmp(cp, "UIDPLUS", 7) == 0 && su_cs_is_space(cp[7]))
                /* RFC 2359 */
                mp->mb_flags |= MB_UIDPLUS;
+            else if(strncmp(cp, "SASL-IR ", 7) == 0 && su_cs_is_space(cp[7]))
+               /* RFC 4959 */
+               mp->mb_flags |= MB_SASL_IR;
             while (*cp && !su_cs_is_space(*cp))
                ++cp;
          }
@@ -1396,6 +1402,9 @@ imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
    switch (ccred->cc_authtype) {
    case mx_CRED_AUTHTYPE_LOGIN:
       rv = imap_login(mp, ccred);
+      break;
+   case mx_CRED_AUTHTYPE_OAUTHBEARER:
+      rv = a_imap_oauthbearer(mp, ccred);
       break;
 #ifdef mx_HAVE_MD5
    case mx_CRED_AUTHTYPE_CRAM_MD5:
@@ -1458,6 +1467,89 @@ imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred)
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
 jleave:
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_imap_oauthbearer(struct mailbox *mp, struct mx_cred_ctx *ccp){
+   struct str b64;
+   int i;
+   uz cnt;
+   boole nsaslir;
+   char *cp;
+   FILE *queuefp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   queuefp = NIL;
+   cp = NIL;
+   nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* Calculate required storage */
+   cnt = ccp->cc_user.l;
+#define a_MAX \
+   (sizeof("T1 ") -1 +\
+   sizeof("AUTHENTICATE XOAUTH2 ") -1 +\
+    2 + sizeof("user=\001auth=Bearer \001\001") -1 +\
+    sizeof(NETNL) -1 +1)
+
+   if(ccp->cc_pass.l >= UZ_MAX - a_MAX ||
+         cnt >= UZ_MAX - a_MAX - ccp->cc_pass.l){
+jerr_cred:
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto jleave;
+   }
+   cnt += ccp->cc_pass.l;
+
+   cnt += a_MAX;
+#undef a_MAX
+   if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
+      goto jerr_cred;
+
+   cp = n_lofi_alloc(cnt +1);
+
+   /* Then create login query */
+   i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
+         ccp->cc_user.s, ccp->cc_pass.s);
+   if(b64_encode_buf(&b64, cp, i, B64_SALLOC) == NIL)
+      goto jleave;
+   else{
+      char const *tp;
+
+      tp = tag(TRU1);
+      cnt = su_cs_len(tp);
+      su_mem_copy(cp, tp, cnt);
+   }
+   su_mem_copy(&cp[cnt], " AUTHENTICATE XOAUTH2 ",
+      sizeof(" AUTHENTICATE XOAUTH2 ") /*-1*/);
+   cnt += sizeof(" AUTHENTICATE XOAUTH2 ") -1 - 1;
+   if(!nsaslir){
+      su_mem_copy(&cp[++cnt], b64.s, b64.l);
+      cnt += b64.l;
+   }
+   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
+
+   IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   rv = imap_answer(mp, 1);
+   if(rv == STOP)
+      goto jleave;
+
+   if(nsaslir){
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+
+      su_mem_copy(cp, b64.s, b64.l);
+      su_mem_copy(&cp[b64.l], NETNL, sizeof(NETNL));
+      IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
+   }
+
+   while(mp->mb_active & MB_COMD)
+      rv = imap_answer(mp, 1);
+jleave:
+   if(cp != NIL)
+      n_lofi_free(cp);
    NYD_OU;
    return rv;
 }

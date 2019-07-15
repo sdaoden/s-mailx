@@ -90,6 +90,8 @@ static enum okay a_pop3_auth_apop(struct mailbox *mp,
 /* Several (other) authentication methods */
 static enum okay a_pop3_auth_plain(struct mailbox *mp,
       struct a_pop3_ctx const *pcp);
+static enum okay a_pop3_auth_oauthbearer(struct mailbox *mp,
+      struct a_pop3_ctx const *pcp);
 
 static void a_pop3_timer_off(void);
 static enum okay a_pop3_answer(struct mailbox *mp);
@@ -110,28 +112,20 @@ static enum okay a_pop3_update(struct mailbox *mp);
 /* Indirect POP3 I/O */
 #define a_OUT(RV,X,Y,ACTIONSTOP) \
 do{\
-   if(!(n_poption & n_PO_DEBUG))\
-      if(((RV) = a_pop3_finish(mp)) == STOP){\
-         ACTIONSTOP;\
-      }\
+   if(((RV) = a_pop3_finish(mp)) == STOP){\
+      ACTIONSTOP;\
+   }\
    if(n_poption & n_PO_D_VV)\
       n_err(">>> %s", X);\
-   if(!(n_poption & n_PO_DEBUG)){\
-      mp->mb_active |= Y;\
-      if(((RV) = mx_socket_write(mp->mb_sock, X)) == STOP){\
-         ACTIONSTOP;\
-      }\
-   }else \
-      RV = OKAY;\
+   mp->mb_active |= Y;\
+   if(((RV) = mx_socket_write(mp->mb_sock, X)) == STOP){\
+      ACTIONSTOP;\
+   }\
 }while(0)
 
 #define a_ANSWER(RV,ACTIONSTOP) \
-do{\
-   if(n_poption & n_PO_DEBUG)\
-      RV = OKAY;\
-   else if(((RV) = a_pop3_answer(mp)) == STOP){\
-         ACTIONSTOP;\
-   }\
+do if(((RV) = a_pop3_answer(mp)) == STOP){\
+   ACTIONSTOP;\
 }while(0)
 
 static enum okay
@@ -191,8 +185,10 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
    }
 #endif
 
-   rv = (pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
-         ? a_pop3_auth_plain(mp, pcp) : STOP;
+   rv = ((pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
+         ? a_pop3_auth_plain(mp, pcp)
+         : ((pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_OAUTHBEARER)
+            ? a_pop3_auth_oauthbearer(mp, pcp) : STOP));
 jleave:
    NYD_OU;
    return rv;
@@ -310,6 +306,60 @@ a_pop3_auth_plain(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    rv = OKAY;
 jleave:
    n_lofi_free(cp);
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_pop3_auth_oauthbearer(struct mailbox *mp, struct a_pop3_ctx const *pcp){
+   struct str b64;
+   int i;
+   uz cnt;
+   char *cp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   cp = NIL;
+
+   /* Calculate required storage */
+   cnt = pcp->pc_cred.cc_user.l;
+#define a_MAX \
+   (2 + sizeof("AUTH XOAUTH2 " "user=\001auth=Bearer \001\001" NETNL))
+
+   if(pcp->pc_cred.cc_pass.l >= UZ_MAX - a_MAX ||
+         cnt >= UZ_MAX - a_MAX - pcp->pc_cred.cc_pass.l){
+jerr_cred:
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto jleave;
+   }
+   cnt += pcp->pc_cred.cc_pass.l;
+
+   cnt += a_MAX;
+#undef a_MAX
+   if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
+      goto jerr_cred;
+
+   cp = n_lofi_alloc(cnt +1);
+
+   /* Then create login query */
+   i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
+      pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_pass.s);
+   if(b64_encode_buf(&b64, cp, i, B64_SALLOC) == NIL)
+      goto jleave;
+
+   cnt = sizeof("AUTH XOAUTH2 ") -1;
+   su_mem_copy(cp, "AUTH XOAUTH2 ", cnt);
+   su_mem_copy(&cp[cnt], b64.s, b64.l);
+   su_mem_copy(&cp[cnt += b64.l], NETNL, sizeof(NETNL));
+
+   a_OUT(rv, cp, MB_COMD, goto jleave);
+   a_ANSWER(rv, goto jleave);
+
+   rv = OKAY;
+jleave:
+   if(cp != NIL)
+      n_lofi_free(cp);
    NYD_OU;
    return rv;
 }

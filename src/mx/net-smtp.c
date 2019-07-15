@@ -2,6 +2,8 @@
  *@ Implementation of net-smtp.h.
  *@ TODO - use initial responses to save a round-trip (RFC 4954)
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
+ *@ TODO - this is so dumb :(; except on macos we can shutdown.
+ *@ TODO   do not care no more after 221? seen some short hangs.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -179,18 +181,23 @@ jleave:
 
 static boole
 a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
+   enum{
+      a_ERROR = 1u<<0,
+      a_IS_OAUTHBEARER = 1u<<1,
+      a_IN_HEAD = 1u<<2,
+      a_IN_BCC = 1u<<3
+   };
+
    char o[LINESIZE]; /* TODO n_string++ */
    char const *hostname;
    struct a_netsmtp_line _sl, *slp = &_sl;
    struct str b64;
    struct mx_name *np;
    uz blen, cnt;
-   boole inhdr, inbcc, rv;
+   u8 f;
    NYD_IN;
 
-   inhdr = TRU1;
-   inbcc = FAL0;
-   rv = FAL0;
+   f = a_ERROR | a_IN_HEAD;
    hostname = n_nodename(TRU1);
    su_mem_set(slp, 0, sizeof(*slp));
 
@@ -231,34 +238,58 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    a_ANSWER(2, FAL0, FAL0);
 
    switch(sbp->sb_credp->cc_authtype){
-   default:
-      /* FALLTHRU (doesn't happen) */
+   case mx_CRED_AUTHTYPE_OAUTHBEARER:
+      f |= a_IS_OAUTHBEARER;
+      /* FALLTHRU */
    case mx_CRED_AUTHTYPE_PLAIN:
+   default: /* (this does not happen) */
+      /* Calculate required storage */
       cnt = sbp->sb_credp->cc_user.l;
-      if(sbp->sb_credp->cc_pass.l >= UZ_MAX - 2 ||
-            cnt >= UZ_MAX - 2 - sbp->sb_credp->cc_pass.l){
+#define a_MAX \
+   (2 + sizeof("AUTH XOAUTH2 " "user=\001auth=Bearer \001\001" NETNL))
+
+      if(sbp->sb_credp->cc_pass.l >= UZ_MAX - a_MAX ||
+            cnt >= UZ_MAX - a_MAX - sbp->sb_credp->cc_pass.l){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
       }
       cnt += sbp->sb_credp->cc_pass.l;
 
-      if(cnt >= sizeof(o) - 2)
+      cnt += a_MAX;
+      if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
          goto jerr_cred;
-      cnt += 2;
-      if(b64_encode_calc_size(cnt) == UZ_MAX)
+      if(cnt >= sizeof(o))
          goto jerr_cred;
+#undef a_MAX
 
-      a_OUT(NETLINE("AUTH PLAIN"));
-      a_ANSWER(3, FAL0, FAL0);
+      /* Then create login query */
+      if(f & a_IS_OAUTHBEARER){
+         int i;
 
-      snprintf(o, sizeof o, "%c%s%c%s",
-         '\0', sbp->sb_credp->cc_user.s, '\0', sbp->sb_credp->cc_pass.s);
-      if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NIL)
-         goto jleave;
+         i = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
+            sbp->sb_credp->cc_user.s, sbp->sb_credp->cc_pass.s);
+         if(b64_encode_buf(&b64, o, i, B64_SALLOC) == NIL)
+            goto jleave;
+         snprintf(o, sizeof o, NETLINE("AUTH XOAUTH2 %s"), b64.s);
+         b64.s = o;
+      }else{
+         int i;
+
+         a_OUT(NETLINE("AUTH PLAIN"));
+         a_ANSWER(3, FAL0, FAL0);
+
+         i = snprintf(o, sizeof o, "%c%s%c%s",
+            '\0', sbp->sb_credp->cc_user.s, '\0', sbp->sb_credp->cc_pass.s);
+         if(b64_encode_buf(&b64, o, i, B64_SALLOC | B64_CRLF) == NIL)
+            goto jleave;
+      }
       a_OUT(b64.s);
       a_ANSWER(2, FAL0, FAL0);
+      /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
+       * message (when status was 334) */
       break;
+
    case mx_CRED_AUTHTYPE_LOGIN:
       if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
             b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
@@ -279,6 +310,7 @@ jerr_cred:
       a_OUT(b64.s);
       a_ANSWER(2, FAL0, FAL0);
       break;
+
 #ifdef mx_HAVE_MD5
    case mx_CRED_AUTHTYPE_CRAM_MD5:{
       char *cp;
@@ -293,6 +325,7 @@ jerr_cred:
       a_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
+
 #ifdef mx_HAVE_GSSAPI
    case mx_CRED_AUTHTYPE_GSSAPI:
       if(n_poption & n_PO_DEBUG)
@@ -327,18 +360,18 @@ jsend:
    cnt = fsize(sbp->sb_input);
    while(fgetline(&slp->sl_buf.s, &slp->sl_buf.l, &cnt, &blen, sbp->sb_input,
          1) != NIL){
-      if(inhdr){
+      if(f & a_IN_HEAD){
          if(*slp->sl_buf.s == '\n')
-            inhdr = inbcc = FAL0;
-         else if(inbcc && su_cs_is_blank(*slp->sl_buf.s))
+            f &= ~(a_IN_HEAD | a_IN_BCC);
+         else if((f & a_IN_BCC) && su_cs_is_blank(*slp->sl_buf.s))
             continue;
          /* We know what we have generated first, so do not look for whitespace
           * before the ':' */
          else if(!su_cs_cmp_case_n(slp->sl_buf.s, "bcc:", 4)){
-            inbcc = TRU1;
+            f |= a_IN_BCC;
             continue;
          }else
-            inbcc = FAL0;
+            f &= ~a_IN_BCC;
       }
 
       if(*slp->sl_buf.s == '.' && !(n_poption & n_PO_DEBUG))
@@ -354,12 +387,12 @@ jsend:
    a_OUT(NETLINE("QUIT"));
    a_ANSWER(2, TRU1, FAL0);
 
-   rv = TRU1;
+   f &= ~a_ERROR;
 jleave:
    if(slp->sl_buf.s != NIL)
       n_free(slp->sl_buf.s);
    NYD_OU;
-   return rv;
+   return ((f & a_ERROR) == 0);
 }
 
 #ifdef mx_HAVE_GSSAPI

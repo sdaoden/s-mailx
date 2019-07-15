@@ -91,13 +91,16 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authokey = ok_v_smtp_auth;
       authmask = mx_CRED_AUTHTYPE_NONE |
             mx_CRED_AUTHTYPE_PLAIN | mx_CRED_AUTHTYPE_LOGIN |
-            mx_CRED_AUTHTYPE_CRAM_MD5 | mx_CRED_AUTHTYPE_GSSAPI;
+            mx_CRED_AUTHTYPE_OAUTHBEARER |
+            mx_CRED_AUTHTYPE_CRAM_MD5 |
+            mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "plain";
       pstr = "smtp";
       break;
    case CPROTO_POP3:
       authokey = ok_v_pop3_auth;
-      authmask = mx_CRED_AUTHTYPE_PLAIN;
+      authmask = mx_CRED_AUTHTYPE_PLAIN |
+            mx_CRED_AUTHTYPE_OAUTHBEARER;
       authdef = "plain";
       pstr = "pop3";
       break;
@@ -106,13 +109,15 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       pstr = "imap";
       authokey = ok_v_imap_auth;
       authmask = mx_CRED_AUTHTYPE_LOGIN |
-            mx_CRED_AUTHTYPE_CRAM_MD5 | mx_CRED_AUTHTYPE_GSSAPI;
+            mx_CRED_AUTHTYPE_OAUTHBEARER |
+            mx_CRED_AUTHTYPE_CRAM_MD5 |
+            mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "login";
       break;
 #endif
    }
 
-   /* Authentication type */
+   /* Authentication type XXX table driven iter */
    if(authokey == R(enum okeys,-1) ||
          (s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NIL)
       s = UNCONST(char*,authdef);
@@ -128,6 +133,10 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    }else if(!su_cs_cmp_case(s, "login")){
       ccp->cc_auth = "LOGIN";
       ccp->cc_authtype = mx_CRED_AUTHTYPE_LOGIN;
+      ware = a_REQ_PASS | a_REQ_USER;
+   }else if(!su_cs_cmp_case(s, "oauthbearer")){
+      ccp->cc_auth = "OAUTHBEARER";
+      ccp->cc_authtype = mx_CRED_AUTHTYPE_OAUTHBEARER;
       ware = a_REQ_PASS | a_REQ_USER;
    }else if(!su_cs_cmp_case(s, "cram-md5")){
       ccp->cc_auth = "CRAM-MD5";

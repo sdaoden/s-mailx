@@ -621,9 +621,9 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
          __sendout_ident = sbp->sb_urlp->url_u_h.s;
       if(!mx_cred_auth_lookup(sbp->sb_credp, sbp->sb_urlp))
          goto jleave;
-   } else {
-      if ((sbp->sb_urlp->url_flags & mx_URL_HAD_USER) ||
-            sbp->sb_urlp->url_pass.s != NULL) {
+   }else{
+      if((sbp->sb_urlp->url_flags & mx_URL_HAD_USER) ||
+            sbp->sb_urlp->url_pass.s != NULL){
          n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
       }
