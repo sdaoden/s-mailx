@@ -1843,11 +1843,6 @@ FL boole      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
 #endif /* mx_HAVE_NET */
 
-/* `netrc' */
-#ifdef mx_HAVE_NETRC
-FL int c_netrc(void *v);
-#endif
-
 /* MD5 (RFC 1321) related facilities */
 #ifdef mx_HAVE_MD5
 # ifdef mx_HAVE_XTLS_MD5
