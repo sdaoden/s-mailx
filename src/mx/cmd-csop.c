@@ -1,7 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of csop.h.
+ *@ Implementation of cmd-csop.h.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
+ *@ TODO - _CSOP -> _CCSOP
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -19,9 +20,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE csop
+#define su_FILE cmd_csop
 #define mx_SOURCE
-#define mx_SOURCE_CSOP
+#define mx_SOURCE_CMD_CSOP
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -34,7 +35,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
-#include "mx/csop.h"
+#include "mx/cmd-csop.h"
 #include "su/code-in.h"
 
 enum a_csop_cmd{

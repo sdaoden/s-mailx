@@ -45,10 +45,10 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/cmd-mlist.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
-#include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/random.h"
 #include "mx/sigs.h"

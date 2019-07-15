@@ -55,8 +55,8 @@
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
-#include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of commandalias.h.
+ *@ Implementation of cmd-commandalias.h.
  *@ TODO Support vput, i.e.: vput commandalias x what-this-expands-to
+ *@ TODO _CMDAL -> _CCMDAL
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -18,9 +19,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE commandalias
+#define su_FILE cmd_commandalias
 #define mx_SOURCE
-#define mx_SOURCE_COMMANDALIAS
+#define mx_SOURCE_CMD_COMMANDALIAS
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -29,7 +30,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
-#include "mx/commandalias.h"
+#include "mx/cmd-commandalias.h"
 #include "su/code-in.h"
 
 /* ..of a_cmdal_dp */

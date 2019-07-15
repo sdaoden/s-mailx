@@ -69,9 +69,9 @@
 #include <su/sort.h>
 
 #include "mx/child.h"
+#include "mx/cmd-filetype.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
-#include "mx/filetype.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 

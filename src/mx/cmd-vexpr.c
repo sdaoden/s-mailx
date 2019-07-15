@@ -1,10 +1,11 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of vexpr.h.
+ *@ Implementation of cmd-vexpr.h.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
  *@ TODO - use su_regex (and if it's a wrapper only)
  *@ TODO - use su_path_info instead of stat(2)
  *@ TODO - yet needs OPT_CMD_CSOP for compat byte string operation call-out
+ *@ TODO - _VEXPR -> _CVEXPR
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -22,9 +23,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE vexpr
+#define su_FILE cmd_vexpr
 #define mx_SOURCE
-#define mx_SOURCE_VEXPR
+#define mx_SOURCE_CMD_VEXPR
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -47,11 +48,11 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 /* v15compat: csop.h */
-#include "mx/csop.h"
+#include "mx/cmd-csop.h"
 #include "mx/random.h"
 #include "mx/ui-str.h"
 
-#include "mx/vexpr.h"
+#include "mx/cmd-vexpr.h"
 #include "su/code-in.h"
 
 enum a_vexpr_cmd{

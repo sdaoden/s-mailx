@@ -44,8 +44,8 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
-#include "mx/charsetalias.h"
-#include "mx/mlist.h"
+#include "mx/cmd-charsetalias.h"
+#include "mx/cmd-mlist.h"
 #include "mx/names.h"
 
 /* TODO fake */

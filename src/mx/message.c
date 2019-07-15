@@ -44,8 +44,8 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
-#include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/termios.h"
 

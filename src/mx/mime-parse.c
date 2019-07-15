@@ -44,7 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
-#include "mx/charsetalias.h"
+#include "mx/cmd-charsetalias.h"
 #include "mx/file-streams.h"
 
 /* TODO fake */

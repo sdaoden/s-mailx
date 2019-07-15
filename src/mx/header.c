@@ -48,9 +48,9 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
-#include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"

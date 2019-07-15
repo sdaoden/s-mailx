@@ -1,7 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of filetype.h.
+ *@ Implementation of cmd-filetype.h.
  *@ TODO Simply use su_string data via "LOAD\0SAVE[\0]" values, then drop all
  *@ TODO the toolbox and such stuff in here!
+ *@ TODO _FT_ -> _CFT
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -19,9 +20,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE filetype
+#define su_FILE cmd_filetype
 #define mx_SOURCE
-#define mx_SOURCE_FILETYPE
+#define mx_SOURCE_CMD_FILETYPE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -31,7 +32,7 @@
 #include <su/cs-dict.h>
 #include <su/mem.h>
 
-#include "mx/filetype.h"
+#include "mx/cmd-filetype.h"
 #include "su/code-in.h"
 
 /* ..of a_ft_dp */

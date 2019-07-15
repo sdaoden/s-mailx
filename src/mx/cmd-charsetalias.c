@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of charsetalias.h.
+ *@ Implementation of cmd-charsetalias.h.
  *@ TODO Support vput, i.e.: vput charsetalias x what-this-expands-to
+ *@ TODO _CSAL -> _CCSAL
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -18,9 +19,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE charsetalias
+#define su_FILE cmd_charsetalias
 #define mx_SOURCE
-#define mx_SOURCE_CHARSETALIAS
+#define mx_SOURCE_CMD_CHARSETALIAS
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -31,7 +32,7 @@
 
 #include "mx/iconv.h"
 
-#include "mx/charsetalias.h"
+#include "mx/cmd-charsetalias.h"
 #include "su/code-in.h"
 
 /* ..of a_csal_dp */

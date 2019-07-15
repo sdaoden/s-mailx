@@ -51,8 +51,8 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/cmd-commandalias.h"
 #include "mx/colour.h"
-#include "mx/commandalias.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"

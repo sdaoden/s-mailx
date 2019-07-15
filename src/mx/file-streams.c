@@ -34,7 +34,7 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
-#include "mx/filetype.h"
+#include "mx/cmd-filetype.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"

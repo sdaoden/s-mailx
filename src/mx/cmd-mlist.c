@@ -1,8 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of mlist.h.
+ *@ Implementation of cmd-mlist.h.
  *@ XXX Use a su_cs_set for non-regex stuff?
  *@ XXX use su_list for the regex stuff?
  *@ TODO use su_regex (and if it's a wrapper only)
+ *@ TODO _ML -> _CML
  *
  * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -20,9 +21,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE mlist
+#define su_FILE cmd_mlist
 #define mx_SOURCE
-#define mx_SOURCE_MLIST
+#define mx_SOURCE_CMD_MLIST
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -38,7 +39,7 @@
 
 #include "mx/names.h"
 
-#include "mx/mlist.h"
+#include "mx/cmd-mlist.h"
 #include "su/code-in.h"
 
 /* ..of a_ml_dp.. */

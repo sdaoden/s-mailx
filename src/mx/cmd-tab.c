@@ -51,20 +51,20 @@
 #include <su/mem.h>
 #include <su/sort.h>
 
-#include "mx/charsetalias.h"
+#include "mx/cmd-charsetalias.h"
+#include "mx/cmd-commandalias.h"
+#include "mx/cmd-csop.h"
+#include "mx/cmd-filetype.h"
+#include "mx/cmd-mlist.h"
+#include "mx/cmd-shortcut.h"
+#include "mx/cmd-vexpr.h"
 #include "mx/colour.h"
-#include "mx/commandalias.h"
-#include "mx/csop.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
-#include "mx/filetype.h"
-#include "mx/mlist.h"
 #include "mx/names.h"
-#include "mx/shortcut.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
-#include "mx/vexpr.h"
 
 /* TODO fake */
 #include "su/code-in.h"

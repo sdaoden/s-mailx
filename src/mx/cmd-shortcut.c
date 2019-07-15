@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of shortcut.h.
+ *@ Implementation of cmd-shortcut.h.
  *@ TODO Support vput, i.e.: vput shorcut x what-this-expands-to
+ *@ TODO _SCUT -> _CSCUT
  *
  * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -18,9 +19,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE shortcut
+#define su_FILE cmd_shortcut
 #define mx_SOURCE
-#define mx_SOURCE_SHORTCUT
+#define mx_SOURCE_CMD_SHORTCUT
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -29,7 +30,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
-#include "mx/shortcut.h"
+#include "mx/cmd-shortcut.h"
 #include "su/code-in.h"
 
 /* ..of a_scut_dp */
