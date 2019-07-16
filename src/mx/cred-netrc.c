@@ -35,6 +35,7 @@ su_EMPTY_FILE()
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
+#include "mx/url.h"
 
 #include "mx/cred-netrc.h"
 #include "su/code-in.h"
@@ -75,12 +76,12 @@ static enum a_netrc_token a_netrc__token(FILE *fi,
 
 /* 0=no match; 1=exact match; -1=wildcard match */
 static int a_netrc_match_host(struct a_netrc_node const *nrc,
-      struct url const *urlp);
+      struct mx_url const *urlp);
 
 /* */
-static boole a_netrc_find_user(struct url *urlp,
+static boole a_netrc_find_user(struct mx_url *urlp,
       struct a_netrc_node const *nrc);
-static boole a_netrc_find_pass(struct url *urlp, boole user_match,
+static boole a_netrc_find_pass(struct mx_url *urlp, boole user_match,
       struct a_netrc_node const *nrc);
 
 static void
@@ -346,7 +347,7 @@ jleave:
 }
 
 static int
-a_netrc_match_host(struct a_netrc_node const *nrc, struct url const *urlp){
+a_netrc_match_host(struct a_netrc_node const *nrc, struct mx_url const *urlp){
    char const *d2, *d1;
    uz l2, l1;
    int rv = 0;
@@ -388,13 +389,13 @@ jleave:
 }
 
 static boole
-a_netrc_find_user(struct url *urlp, struct a_netrc_node const *nrc){
+a_netrc_find_user(struct mx_url *urlp, struct a_netrc_node const *nrc){
    NYD2_IN;
 
    for(; nrc != NIL; nrc = nrc->nrc_result)
       if(nrc->nrc_ulen > 0){
          /* Fake it was part of URL otherwise XXX */
-         urlp->url_flags |= n_URL_HAD_USER;
+         urlp->url_flags |= mx_URL_HAD_USER;
          /* That buffer will be duplicated by url_parse() in this case! */
          urlp->url_user.s = n_UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
          urlp->url_user.l = nrc->nrc_ulen;
@@ -406,7 +407,7 @@ a_netrc_find_user(struct url *urlp, struct a_netrc_node const *nrc){
 }
 
 static boole
-a_netrc_find_pass(struct url *urlp, boole user_match,
+a_netrc_find_pass(struct mx_url *urlp, boole user_match,
       struct a_netrc_node const *nrc){
    NYD2_IN;
 
@@ -512,7 +513,7 @@ jclear:
 }
 
 boole
-mx_netrc_lookup(struct url *urlp, boole only_pass){
+mx_netrc_lookup(struct mx_url *urlp, boole only_pass){
    struct a_netrc_node *nrc, *wild, *exact;
    boole rv;
    NYD_IN;

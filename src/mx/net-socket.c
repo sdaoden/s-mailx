@@ -74,13 +74,14 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 #include "mx/sigs.h"
+#include "mx/url.h"
 
 #include "mx/net-socket.h"
 /* TODO fake */
 #include "su/code-in.h"
 
 /* */
-static boole a_netso_open(struct mx_socket *sop, struct url *urlp);
+static boole a_netso_open(struct mx_socket *sop, struct mx_url *urlp);
 
 /* */
 static int a_netso_connect(int fd, struct sockaddr *soap, uz soapl);
@@ -106,7 +107,7 @@ a_netso_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static boole
-a_netso_open(struct mx_socket *sop, struct url *urlp) /* TODO sigs; refactor */
+a_netso_open(struct mx_socket *sop, struct mx_url *urlp) /*TODO sigs;refactor*/
 {
 # ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
@@ -181,7 +182,7 @@ jpseudo_jump:
        * check for the given ai_socktype.. */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
-               (serv = n_servbyname(urlp->url_proto, NIL, NIL)) != NIL &&
+               (serv = mx_url_servbyname(urlp->url_proto, NIL, NIL)) != NIL &&
                *serv != '\0') {
             n_err(_("  Trying standard protocol port %s\n"), serv);
             n_err(_("  If that succeeds consider including the "
@@ -228,7 +229,7 @@ jjumped:
       else {
          if (n_poption & n_PO_D_V)
             n_err(_("failed\n"));
-         if ((serv = n_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
+         if ((serv = mx_url_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
                ) != NIL && *serv != '\0')
             n_err(_("  Unknown service: %s\n"), urlp->url_proto);
             n_err(_("  Trying standard protocol port %s\n"), serv);
@@ -326,7 +327,7 @@ jjumped:
 
 #  if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
       /* TODO the SSL_ def check should NOT be here */
-   if(urlp->url_flags & n_URL_TLS_MASK){
+   if(urlp->url_flags & mx_URL_TLS_MASK){
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_NUMERICHOST;
@@ -334,11 +335,11 @@ jjumped:
       if(getaddrinfo(urlp->url_host.s, NULL, &hints, &res0) == 0)
          freeaddrinfo(res0);
       else
-         urlp->url_flags |= n_URL_HOST_IS_NAME;
+         urlp->url_flags |= mx_URL_HOST_IS_NAME;
    }
 #  endif
 
-   if (urlp->url_flags & n_URL_TLS_REQUIRED) {
+   if (urlp->url_flags & mx_URL_TLS_REQUIRED) {
       ohup = safe_signal(SIGHUP, &a_netso_onsig);
       oint = safe_signal(SIGINT, &a_netso_onsig);
       if (sigsetjmp(a_netso_actjmp, 0)) {
@@ -479,7 +480,7 @@ jleave:
 }
 
 boole
-mx_socket_open(struct mx_socket *sop, struct url *urlp){
+mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
    char const *cp;
    boole rv;
    NYD_IN;
@@ -493,9 +494,9 @@ mx_socket_open(struct mx_socket *sop, struct url *urlp){
       u8 pbuf[4 + 1 + 255 + 2];
       uz i;
       char const *emsg;
-      struct url url2;
+      struct mx_url url2;
 
-      if(!url_parse(&url2, CPROTO_SOCKS, cp)){
+      if(!mx_url_parse(&url2, CPROTO_SOCKS, cp)){
          n_err(_("Failed to parse *socks-proxy*: %s\n"), cp);
          goto jleave;
       }

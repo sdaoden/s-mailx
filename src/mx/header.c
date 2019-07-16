@@ -54,6 +54,7 @@
 #include "mx/names.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1293,7 +1294,7 @@ myaddrs(struct header *hp) /* TODO */
       goto jnodename;
    if(ok_vlook(smtp) != NIL || /* TODO obsolete -> mta */
          /* TODO pretty hacky for now (this entire fun), later: url_creat()! */
-         ((mta = n_servbyname(ok_vlook(mta), NIL, &issnd)) != NIL &&
+         ((mta = mx_url_servbyname(ok_vlook(mta), NIL, &issnd)) != NIL &&
          *mta != '\0' && issnd))
       goto jnodename;
 jleave:
@@ -2048,7 +2049,7 @@ jredo_uri:
    if(gfield & GMAILTO_URI){
       su_ASSERT(gfield & GNOT_A_LIST);
       if(*(cp = name) == '<' && cp[agp->ag_ilen - 1] == '>'){
-         name = url_mailto_to_address(savestrbuf(++cp, agp->ag_ilen - 2));
+         name = mx_url_mailto_to_address(savestrbuf(++cp, agp->ag_ilen - 2));
          gfield &= ~GMAILTO_URI;
          goto jredo_uri;
       }

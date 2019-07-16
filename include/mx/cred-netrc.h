@@ -22,6 +22,8 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_NETRC
 
+#include <mx/url.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -31,7 +33,7 @@ EXPORT int c_netrc(void *vp);
 /* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
  * only_pass is true then the lookup is for the password only, otherwise we
  * look for a user (and add password only if we have an exact machine match) */
-EXPORT boole mx_netrc_lookup(struct url *urlp, boole only_pass);
+EXPORT boole mx_netrc_lookup(struct mx_url *urlp, boole only_pass);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_NETRC */

@@ -198,7 +198,7 @@ FL boole n_var_vclear(char const *vokey);
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
 #ifdef mx_HAVE_NET
-FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
+FL char *n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
@@ -1405,7 +1405,7 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 /* Check whether outgoing transport is via SMTP/SUBMISSION etc.
  * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file based
  * (or bad), and FAL0 if URL parsing failed */
-FL boole mx_sendout_mta_url(struct url *urlp);
+FL boole mx_sendout_mta_url(struct mx_url *urlp);
 
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
@@ -1440,7 +1440,7 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
 /* Note: hp->h_to must already have undergone address massage(s), it is taken
  * as-is; h_cc and h_bcc are asserted to be NIL.  urlp should be NIL if
  * sendout_mta_url() says we are file based, otherwise... */
-FL enum okay n_resend_msg(struct message *mp, struct url *urlp,
+FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
       struct header *hp, boole add_resent);
 
 /* *save* / $DEAD */
@@ -1769,7 +1769,7 @@ FL void        uncollapse1(struct message *mp, int always);
 
 #ifdef mx_HAVE_TLS
 /*  */
-FL void n_tls_set_verify_level(struct url const *urlp);
+FL void n_tls_set_verify_level(struct mx_url const *urlp);
 
 /* */
 FL boole n_tls_verify_decide(void);
@@ -1800,44 +1800,6 @@ FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
 
 /*
- * urlcrecry.c
- */
-
-/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly autorec_alloc()ated result, or NULL on length excess */
-FL char *urlxenc(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL);
-FL char *urlxdec(char const *cp  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define urlxenc(CP,P) urlxenc(CP, P  su_DBG_LOC_ARGS_INJ)
-# define urlxdec(CP) urlxdec(CP  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* `urlcodec' */
-FL int c_urlcodec(void *vp);
-
-FL int c_urlencode(void *v); /* TODO obsolete*/
-FL int c_urldecode(void *v); /* TODO obsolete */
-
-/* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
- * Return NULL or something that can be converted to a struct mx_name */
-FL char *      url_mailto_to_address(char const *mailtop);
-
-/* Return port for proto, or NIL if unknown.
- * Upon sucess *port_or_nil and *issnd_or_nil will be updated, if set; the
- * latter states whether protocol is of a sending type (SMTP, file etc.).
- * For file:// and test[://] this returns su_empty, in the former case
- * *port_or_nil is 0 and in the latter U16_MAX */
-FL char const *n_servbyname(char const *proto, u16 *port_or_nil,
-      boole *issnd_or_nil);
-
-#ifdef mx_HAVE_NET
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp (URL rather according to RFC 3986) */
-FL boole      url_parse(struct url *urlp, enum cproto cproto,
-                  char const *data);
-#endif /* mx_HAVE_NET */
-
-/*
  * xtls.c
  */
 
@@ -1848,7 +1810,7 @@ FL void mx_tls_rand_bytes(void *buf, uz blen);
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */
-FL boole n_tls_open(struct url *urlp, struct mx_socket *sp);
+FL boole n_tls_open(struct mx_url *urlp, struct mx_socket *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);

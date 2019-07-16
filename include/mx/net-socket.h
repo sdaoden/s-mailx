@@ -36,6 +36,8 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_NET
 
+#include <mx/url.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -61,11 +63,11 @@ struct mx_socket{ /* data associated with a socket */
 struct mx_socket_conn{
    struct mx_socket *sc_sockp;
    struct mx_cred_ctx *sc_credp; /* cred-auth.h not included */
-   struct url sc_url;
+   struct mx_url sc_url;
 };
 
 /* Note: immediately closes the socket again for CPROTO_CERTINFO */
-EXPORT boole mx_socket_open(struct mx_socket *sp, struct url *urlp);
+EXPORT boole mx_socket_open(struct mx_socket *sp, struct mx_url *urlp);
 
 /* */
 EXPORT int mx_socket_close(struct mx_socket *sp);

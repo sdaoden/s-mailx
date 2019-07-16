@@ -32,6 +32,7 @@ su_EMPTY_FILE()
 
 #include "mx/cred-netrc.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 #include "mx/cred-auth.h"
 #include "su/code-in.h"
@@ -57,7 +58,7 @@ a_credauth_last_at_before_slash(char const *cp){
 }
 
 boole
-mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct url *urlp){
+mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    enum{
       a_NONE,
       a_WANT_PASS = 1u<<0,
@@ -311,7 +312,7 @@ mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp, enum cproto cproto,
 
          cp = savestrbuf(addr, P2UZ(s - addr));
 
-         if((ccp->cc_user.s = urlxdec(cp)) == NULL){
+         if((ccp->cc_user.s = mx_url_xdec(cp)) == NIL){
             n_err(_("String is not properly URL percent encoded: %s\n"), cp);
             ccp = NULL;
             goto jleave;

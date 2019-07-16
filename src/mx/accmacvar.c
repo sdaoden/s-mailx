@@ -64,6 +64,7 @@
 #include "mx/names.h"
 #include "mx/sigs.h"
 #include "mx/ui-str.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -3241,7 +3242,7 @@ n_var_vclear(char const *vokey){
 
 #ifdef mx_HAVE_NET
 FL char *
-n_var_xoklook(enum okeys okey, struct url const *urlp,
+n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
       enum okey_xlook_mode oxm){
    struct a_amv_var_carrier avc;
    struct str const *usp;

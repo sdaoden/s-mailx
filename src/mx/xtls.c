@@ -78,6 +78,7 @@ su_EMPTY_FILE()
 #include "mx/net-socket.h"
 #include "mx/random.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -404,16 +405,17 @@ static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
 static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
 
 /* SSL_CTX configuration; the latter always NULLs *confp */
-static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
+static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp);
 static boole a_xtls_conf(void *confp, char const *cmd, char const *value);
 static boole a_xtls_conf_finish(void **confp, boole error);
 
-static boole a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
-static boole a_xtls_config_pairs(void *confp, struct url const *urlp);
-static boole a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
+static boole a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp);
+static boole a_xtls_config_pairs(void *confp, struct mx_url const *urlp);
+static boole a_xtls_load_verifications(SSL_CTX *ctxp,
+      struct mx_url const *urlp);
 
 static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
-               struct url const *urlp);
+      struct mx_url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
                      n_XTLS_STACKOF(X509) *chain, X509_STORE *store);
@@ -769,7 +771,7 @@ jouter:
 
 #ifdef mx_HAVE_XTLS_CONF_CTX
 static void *
-a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp){
    char const *cp;
    SSL_CONF_CTX *sccp;
    NYD2_IN;
@@ -866,7 +868,7 @@ a_xtls_conf_finish(void **confp, boole error){
 # endif
 
 static void *
-a_xtls_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX* ctxp, struct mx_url const *urlp){
    char const *cp;
    NYD2_IN;
 
@@ -1040,7 +1042,7 @@ a_xtls_conf_finish(void **confp, boole error){
 #endif /* !mx_HAVE_XTLS_CONF_CTX */
 
 static boole
-a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
+a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    char const *cp, *cp_base, *certchain;
    boole rv;
    NYD2_IN;
@@ -1126,7 +1128,7 @@ jleave:
 }
 
 static boole
-a_xtls_config_pairs(void *confp, struct url const *urlp){
+a_xtls_config_pairs(void *confp, struct mx_url const *urlp){
    /* Due to interdependencies some commands have to be delayed a bit */
    static char const cmdcert[] = "Certificate", cmdprivkey[] = "PrivateKey";
    char const *valcert, *valprivkey;
@@ -1233,7 +1235,7 @@ jleave:
 }
 
 static boole
-a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
    char *ca_dir, *ca_file;
    X509_STORE *store;
    boole rv;
@@ -1296,7 +1298,7 @@ jleave:
 
 static boole
 a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
-      struct url const *urlp){
+      struct mx_url const *urlp){
    char data[256];
    n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
@@ -1536,10 +1538,10 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 
    /* New-style */
    if(userdata != NULL){
-      struct url url;
+      struct mx_url url;
       struct mx_cred_ctx cred;
 
-      if(url_parse(&url, CPROTO_CCRED, userdata)){
+      if(mx_url_parse(&url, CPROTO_CCRED, userdata)){
          if(mx_cred_auth_lookup(&cred, &url)){
             char *end;
 
@@ -1881,7 +1883,7 @@ mx_tls_rand_bytes(void *buf, uz blen){
 #endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
 
 FL boole
-n_tls_open(struct url *urlp, struct mx_socket *sop){
+n_tls_open(struct mx_url *urlp, struct mx_socket *sop){
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
@@ -1945,8 +1947,8 @@ n_tls_open(struct url *urlp, struct mx_socket *sop){
     * therefore i refrained from changing so much code just to check out
     * whether we are using SSLv3, which should become more and more rare */
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-   if((urlp->url_flags & n_URL_TLS_MASK) &&
-         (urlp->url_flags & n_URL_HOST_IS_NAME)){
+   if((urlp->url_flags & mx_URL_TLS_MASK) &&
+         (urlp->url_flags & mx_URL_HOST_IS_NAME)){
       if(!SSL_set_tlsext_host_name(sop->s_tls, urlp->url_host.s) &&
             (n_poption & n_PO_D_V))
          n_err(_("Hostname cannot be used with ServerNameIndication "

@@ -1,7 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ URL parsing, credential handling and crypto hooks.
- *@ .netrc parser quite loosely based upon NetBSD usr.bin/ftp/
- *@   $NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $
+ *@ Implementation of url.h.
  *
  * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -19,7 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE urlcrecry
+#define su_FILE url
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -38,18 +36,19 @@
 #include "mx/file-streams.h"
 #include "mx/ui-str.h"
 
+#include "mx/url.h"
 /* TODO fake */
 #include "su/code-in.h"
 
 /* Find the last @ before a slash
  * TODO Casts off the const but this is ok here; obsolete function! */
 #ifdef mx_HAVE_NET /* temporary (we'll have file://..) */
-static char *           _url_last_at_before_slash(char const *cp);
+static char *a_url_last_at_before_slash(char const *cp);
 #endif
 
 #ifdef mx_HAVE_NET
 static char *
-_url_last_at_before_slash(char const *cp){
+a_url_last_at_before_slash(char const *cp){
    char const *xcp;
    char c;
    NYD2_IN;
@@ -61,14 +60,14 @@ _url_last_at_before_slash(char const *cp){
       ;
    if(*xcp != '@')
       xcp = NIL;
+
    NYD2_OU;
    return UNCONST(char*,xcp);
 }
 #endif
 
-FL char *
-(urlxenc)(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL)
-{
+char *
+(mx_url_xenc)(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL){
    char *n, *np, c1;
    NYD2_IN;
 
@@ -77,7 +76,7 @@ FL char *
 
       i = su_cs_len(cp);
       if(i >= UZ_MAX / 3){
-         n = NULL;
+         n = NIL;
          goto jleave;
       }
       i *= 3;
@@ -85,19 +84,19 @@ FL char *
       np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DBG_LOC_ARGS_ORUSE);
    }
 
-   for (; (c1 = *cp) != '\0'; ++cp) {
+   for(; (c1 = *cp) != '\0'; ++cp){
       /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
        *    ALPHA / DIGIT / "-" / "." / "_" / "~"
        * However add a special is[file]path mode for file-system friendliness */
-      if (su_cs_is_alnum(c1) || c1 == '_')
+      if(su_cs_is_alnum(c1) || c1 == '_')
          *np++ = c1;
-      else if (!ispath) {
-         if (c1 != '-' && c1 != '.' && c1 != '~')
+      else if(!ispath) {
+         if(c1 != '-' && c1 != '.' && c1 != '~')
             goto jesc;
          *np++ = c1;
-      } else if (PCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+      }else if(PCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
          *np++ = c1;
-      else {
+      else{
 jesc:
          np[0] = '%';
          n_c_to_hex_base16(np + 1, c1);
@@ -105,14 +104,14 @@ jesc:
       }
    }
    *np = '\0';
+
 jleave:
    NYD2_OU;
    return n;
 }
 
-FL char *
-(urlxdec)(char const *cp  su_DBG_LOC_ARGS_DECL)
-{
+char *
+(mx_url_xdec)(char const *cp  su_DBG_LOC_ARGS_DECL){
    char *n, *np;
    s32 c;
    NYD2_IN;
@@ -120,22 +119,23 @@ FL char *
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
 
-   while ((c = (uc)*cp++) != '\0') {
-      if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
+   while((c = S(uc,*cp++)) != '\0'){
+      if(c == '%' && cp[0] != '\0' && cp[1] != '\0'){
          s32 o = c;
-         if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
+         if(LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
             c = o;
       }
-      *np++ = (char)c;
+      *np++ = S(char,c);
    }
    *np = '\0';
+
    NYD2_OU;
    return n;
 }
 
-FL int
+int
 c_urlcodec(void *vp){
    boole ispath;
    uz alen;
@@ -143,7 +143,7 @@ c_urlcodec(void *vp){
    NYD_IN;
 
    argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
 
    act = *argv;
    for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
@@ -161,22 +161,22 @@ c_urlcodec(void *vp){
    n_pstate_err_no = su_ERR_NONE;
 
    if(su_cs_starts_with_case_n("encode", act, alen))
-      varres = urlxenc(cp, ispath);
+      varres = mx_url_xenc(cp, ispath);
    else if(su_cs_starts_with_case_n("decode", act, alen))
-      varres = urlxdec(cp);
+      varres = mx_url_xdec(cp);
    else
       goto jesynopsis;
 
-   if(varres == NULL){
+   if(varres == NIL){
       n_pstate_err_no = su_ERR_CANCELED;
       varres = cp;
-      vp = NULL;
+      vp = NIL;
    }
 
-   if(varname != NULL){
+   if(varname != NIL){
       if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
-         cp = NULL;
+         cp = NIL;
       }
    }else{
       struct str in, out;
@@ -185,73 +185,31 @@ c_urlcodec(void *vp){
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_no();
-         vp = NULL;
+         vp = NIL;
       }
       n_free(out.s);
    }
 
 jleave:
    NYD_OU;
-   return (vp != NULL ? 0 : 1);
+   return (vp != NIL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
       "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
    n_pstate_err_no = su_ERR_INVAL;
-   vp = NULL;
+   vp = NIL;
    goto jleave;
 }
 
-FL int
-c_urlencode(void *v) /* XXX IDNA?? */
-{
-   char **ap;
-   NYD_IN;
-
-   n_OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
-
-   for (ap = v; *ap != NULL; ++ap) {
-      char *in = *ap, *out = urlxenc(in, FAL0);
-
-      if(out == NULL)
-         out = n_UNCONST(V_(n_error));
-      fprintf(n_stdout,
-         " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, su_cs_len(in), out, su_cs_len(out));
-   }
-   NYD_OU;
-   return 0;
-}
-
-FL int
-c_urldecode(void *v) /* XXX IDNA?? */
-{
-   char **ap;
-   NYD_IN;
-
-   n_OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
-
-   for (ap = v; *ap != NULL; ++ap) {
-      char *in = *ap, *out = urlxdec(in);
-
-      if(out == NULL)
-         out = n_UNCONST(V_(n_error));
-      fprintf(n_stdout,
-         " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, su_cs_len(in), out, su_cs_len(out));
-   }
-   NYD_OU;
-   return 0;
-}
-
-FL char *
-url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
+char *
+mx_url_mailto_to_address(char const *mailtop){ /* TODO hack RFC6068 factory? */
    uz i;
    char *rv;
    char const *mailtop_orig;
    NYD_IN;
 
    if(!su_cs_starts_with(mailtop_orig = mailtop, "mailto:")){
-      rv = NULL;
+      rv = NIL;
       goto jleave;
    }
    mailtop += sizeof("mailto:") -1;
@@ -259,7 +217,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    /* TODO This is all intermediate, and for now just enough to understand
     * TODO a little bit of a little more advanced List-Post: headers. */
    /* Strip any hfield additions, keep only to addr-spec's */
-   if((rv = su_cs_find_c(mailtop, '?')) != NULL)
+   if((rv = su_cs_find_c(mailtop, '?')) != NIL)
       rv = savestrbuf(mailtop, i = P2UZ(rv - mailtop));
    else
       rv = savestrbuf(mailtop, i = su_cs_len(mailtop));
@@ -267,7 +225,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    i = su_cs_len(rv);
 
    /* Simply perform percent-decoding if there is a percent % */
-   if(su_mem_find(rv, '%', i) != NULL){
+   if(su_mem_find(rv, '%', i) != NIL){
       char *rv_base;
       boole err;
 
@@ -283,7 +241,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
                      n_shexp_quote_cp(mailtop_orig, FAL0));
                goto jhex_putc;
             }
-            *rv++ = (char)cc;
+            *rv++ = S(char,cc);
             mailtop += 2;
             i -= 3;
          }else{
@@ -295,13 +253,14 @@ jhex_putc:
       *rv = '\0';
       rv = rv_base;
    }
+
 jleave:
    NYD_OU;
    return rv;
 }
 
-FL char const *
-n_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
+char const *
+mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
    static struct{
       char const name[14];
       char const port[7];
@@ -342,9 +301,8 @@ n_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
 }
 
 #ifdef mx_HAVE_NET /* Note: not indented for that -- later: file:// etc.! */
-FL boole
-url_parse(struct url *urlp, enum cproto cproto, char const *data)
-{
+boole
+mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
 # define a_ALLPROTO
 #endif
@@ -353,13 +311,15 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 # define a_ANYPROTO
    char *cp, *x;
 #endif
-   boole rv = FAL0;
+   boole rv;
    NYD_IN;
    UNUSED(data);
 
    su_mem_set(urlp, 0, sizeof *urlp);
    urlp->url_input = data;
    urlp->url_cproto = cproto;
+
+   rv = FAL0;
 
    /* Network protocol */
 #define a_PROTOX(X,Y,Z) \
@@ -378,8 +338,8 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    }
 #define a_IF(X,Y) a__IF(X, Y, (void)0)
 #ifdef mx_HAVE_TLS
-# define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_REQUIRED)
-# define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_OPTIONAL)
+# define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_REQUIRED)
+# define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
 #else
 # define a_IFS(X,Y) goto jeproto;
 # define a_IFs(X,Y) a_IF(X, Y)
@@ -390,8 +350,8 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
 #ifdef mx_HAVE_TLS
-      if((cp = su_cs_find(data, "://")) == NULL)
-         a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
+      if((cp = su_cs_find(data, "://")) == NIL)
+         a_PRIVPROTOX("https", 443, urlp->url_flags |= mx_URL_TLS_REQUIRED);
       else{
          uz i;
 
@@ -403,7 +363,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
          i -= sizeof("://") -1;
          urlp->url_proto[i] = '\0';\
          urlp->url_proto_len = i;
-         urlp->url_flags |= n_URL_TLS_REQUIRED;
+         urlp->url_flags |= mx_URL_TLS_REQUIRED;
       }
       break;
 #else
@@ -428,7 +388,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       a_IFs("smtp", 25)
       a_IFs("submission", 587)
       a_IFS("submissions", 465)
-      a_PROTOX("smtp", 25, urlp->url_flags |= n_URL_TLS_OPTIONAL);
+      a_PROTOX("smtp", 25, urlp->url_flags |= mx_URL_TLS_OPTIONAL);
       break;
 #else
       goto jeproto;
@@ -437,7 +397,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #ifdef mx_HAVE_POP3
       a_IFS("pop3s", 995)
       a_IFs("pop3", 110)
-      a_PROTOX("pop3", 110, urlp->url_flags |= n_URL_TLS_OPTIONAL);
+      a_PROTOX("pop3", 110, urlp->url_flags |= mx_URL_TLS_OPTIONAL);
       break;
 #else
       goto jeproto;
@@ -446,7 +406,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    case CPROTO_IMAP:
       a_IFS("imaps", 993)
       a_IFs("imap", 143)
-      a_PROTOX("imap", 143, urlp->url_flags |= n_URL_TLS_OPTIONAL);
+      a_PROTOX("imap", 143, urlp->url_flags |= mx_URL_TLS_OPTIONAL);
       break;
 #else
       goto jeproto;
@@ -460,7 +420,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFS
 #undef a_IFs
 
-   if (su_cs_find(data, "://") != NULL) {
+   if(su_cs_find(data, "://") != NIL){
 jeproto:
       n_err(_("URL proto:// invalid (protocol or TLS support missing?): %s\n"),
          urlp->url_input);
@@ -470,7 +430,7 @@ jeproto:
 
    /* User and password, I */
 juser:
-   if ((cp = _url_last_at_before_slash(data)) != NULL) {
+   if((cp = a_url_last_at_before_slash(data)) != NIL){
       uz l;
       char const *urlpe, *d;
       char *ub;
@@ -478,21 +438,21 @@ juser:
       l = P2UZ(cp - data);
       ub = n_lofi_alloc(l +1);
       d = data;
-      urlp->url_flags |= n_URL_HAD_USER;
+      urlp->url_flags |= mx_URL_HAD_USER;
       data = &cp[1];
 
       /* And also have a password? */
-      if((cp = su_mem_find(d, ':', l)) != NULL){
+      if((cp = su_mem_find(d, ':', l)) != NIL){
          uz i = P2UZ(cp - d);
 
          l -= i + 1;
          su_mem_copy(ub, cp + 1, l);
          ub[l] = '\0';
 
-         if((urlp->url_pass.s = urlxdec(ub)) == NULL)
+         if((urlp->url_pass.s = mx_url_xdec(ub)) == NIL)
             goto jurlp_err;
          urlp->url_pass.l = su_cs_len(urlp->url_pass.s);
-         if((urlpe = urlxenc(urlp->url_pass.s, FAL0)) == NULL)
+         if((urlpe = mx_url_xenc(urlp->url_pass.s, FAL0)) == NIL)
             goto jurlp_err;
          if(su_cs_cmp(ub, urlpe))
             goto jurlp_err;
@@ -501,41 +461,41 @@ juser:
 
       su_mem_copy(ub, d, l);
       ub[l] = '\0';
-      if((urlp->url_user.s = urlxdec(ub)) == NULL)
+      if((urlp->url_user.s = mx_url_xdec(ub)) == NIL)
          goto jurlp_err;
       urlp->url_user.l = su_cs_len(urlp->url_user.s);
-      if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL)
+      if((urlp->url_user_enc.s = mx_url_xenc(urlp->url_user.s, FAL0)) == NIL)
          goto jurlp_err;
       urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
 
       if(urlp->url_user_enc.l != l || su_mem_cmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
          n_err(_("String is not properly URL percent encoded: %s\n"), ub);
-         d = NULL;
+         d = NIL;
       }
 
       n_lofi_free(ub);
-      if(d == NULL)
+      if(d == NIL)
          goto jleave;
    }
 
    /* Servername and port -- and possible path suffix */
-   if ((cp = su_cs_find_c(data, ':')) != NULL) { /* TODO URL: use IPAddress! */
+   if((cp = su_cs_find_c(data, ':')) != NIL){ /* TODO URL: use IPAddress! */
       urlp->url_port = x = savestr(x = &cp[1]);
-      if ((x = su_cs_find_c(x, '/')) != NULL) {
+      if((x = su_cs_find_c(x, '/')) != NIL){
          *x = '\0';
          while(*++x == '/')
             ;
       }
 
-      if((su_idec_u16_cp(&urlp->url_portno, urlp->url_port, 10, NULL
+      if((su_idec_u16_cp(&urlp->url_portno, urlp->url_port, 10, NIL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || urlp->url_portno == 0){
          n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
          goto jleave;
       }
-   } else {
-      if ((x = su_cs_find_c(data, '/')) != NULL) {
+   }else{
+      if((x = su_cs_find_c(data, '/')) != NIL){
          data = savestrbuf(data, P2UZ(x - data));
          while(*++x == '/')
             ;
@@ -544,7 +504,7 @@ jurlp_err:
    }
 
    /* A (non-empty) path may only occur with IMAP */
-   if (x != NULL && *x != '\0') {
+   if(x != NIL && *x != '\0'){
       /* Take care not to count adjacent solidus for real, on either end */
       char *x2;
       uz i;
@@ -556,8 +516,8 @@ jurlp_err:
             break;
       x2[i] = '\0';
 
-      if (i > 0) {
-         if (cproto != CPROTO_IMAP) {
+      if(i > 0){
+         if(cproto != CPROTO_IMAP){
             n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
                urlp->url_input);
             goto jleave;
@@ -574,14 +534,16 @@ jurlp_err:
       }
    }
 # ifdef mx_HAVE_IMAP
-   if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
+   if(cproto == CPROTO_IMAP && urlp->url_path.s == NIL)
       urlp->url_path.s = savestrbuf("INBOX",
             urlp->url_path.l = sizeof("INBOX") -1);
 # endif
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = P2UZ(cp - data));
-   {  uz i;
-      for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
+   /* C99 */{
+      uz i;
+
+      for(cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = su_cs_to_lower(*cp);
    }
 # ifdef mx_HAVE_IDNA
@@ -599,10 +561,11 @@ jurlp_err:
 # endif /* mx_HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
-   {  uz upl, i;
+   /* C99 */{
+      uz upl, i;
       struct str *s = &urlp->url_h_p;
 
-      upl = (urlp->url_port == NULL) ? 0 : 1u + su_cs_len(urlp->url_port);
+      upl = (urlp->url_port == NIL) ? 0 : 1u + su_cs_len(urlp->url_port);
       s->s = n_autorec_alloc(urlp->url_host.l + upl +1);
       su_mem_copy(s->s, urlp->url_host.s, i = urlp->url_host.l);
       if(upl > 0){
@@ -615,21 +578,21 @@ jurlp_err:
 
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
-   if (!(urlp->url_flags & n_URL_HAD_USER)) {
-      if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
-            == NULL) {
+   if(!(urlp->url_flags & mx_URL_HAD_USER)){
+      if((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P)
+            ) == NIL){
          /* No, check whether .netrc lookup is desired */
 # ifdef mx_HAVE_NETRC
-         if (ok_vlook(v15_compat) == su_NIL ||
+         if(ok_vlook(v15_compat) == NIL ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !mx_netrc_lookup(urlp, FAL0))
 # endif
-            urlp->url_user.s = n_UNCONST(ok_vlook(LOGNAME));
+            urlp->url_user.s = UNCONST(char*,ok_vlook(LOGNAME));
       }
 
       urlp->url_user.l = su_cs_len(urlp->url_user.s);
       urlp->url_user.s = savestrbuf(urlp->url_user.s, urlp->url_user.l);
-      if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL){
+      if((urlp->url_user_enc.s = mx_url_xenc(urlp->url_user.s, FAL0)) == NIL){
          n_err(_("Cannot URL encode %s\n"), urlp->url_user.s);
          goto jleave;
       }
@@ -641,22 +604,23 @@ jurlp_err:
    /* .url_u_h: .url_user@.url_host
     * For SMTP we apply ridiculously complicated *v15-compat* plus
     * *smtp-hostname* / *hostname* dependent rules */
-   {  struct str h, *s;
+   /* C99 */{
+      struct str h, *s;
       uz i;
 
-      if (cproto == CPROTO_SMTP && ok_vlook(v15_compat) != su_NIL &&
-            (cp = ok_vlook(smtp_hostname)) != NULL) {
-         if (*cp == '\0')
+      if(cproto == CPROTO_SMTP && ok_vlook(v15_compat) != NIL &&
+            (cp = ok_vlook(smtp_hostname)) != NIL){
+         if(*cp == '\0')
             cp = n_nodename(TRU1);
          h.s = savestrbuf(cp, h.l = su_cs_len(cp));
-      } else
+      }else
          h = urlp->url_host;
 
       s = &urlp->url_u_h;
       i = urlp->url_user.l;
 
       s->s = n_autorec_alloc(i + 1 + h.l +1);
-      if (i > 0) {
+      if(i > 0){
          su_mem_copy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
       }
@@ -666,11 +630,12 @@ jurlp_err:
    }
 
    /* .url_u_h_p: .url_user@.url_host[:.url_port] */
-   {  struct str *s = &urlp->url_u_h_p;
+   /* C99 */{
+      struct str *s = &urlp->url_u_h_p;
       uz i = urlp->url_user.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
-      if (i > 0) {
+      if(i > 0){
          su_mem_copy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
       }
@@ -680,11 +645,12 @@ jurlp_err:
    }
 
    /* .url_eu_h_p: .url_user_enc@.url_host[:.url_port] */
-   {  struct str *s = &urlp->url_eu_h_p;
+   /* C99 */{
+      struct str *s = &urlp->url_eu_h_p;
       uz i = urlp->url_user_enc.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
-      if (i > 0) {
+      if(i > 0){
          su_mem_copy(s->s, urlp->url_user_enc.s, i);
          s->s[i++] = '@';
       }
@@ -694,7 +660,8 @@ jurlp_err:
    }
 
    /* .url_p_u_h_p: .url_proto://.url_u_h_p */
-   {  uz i;
+   /* C99 */{
+      uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -708,7 +675,8 @@ jurlp_err:
    }
 
    /* .url_p_eu_h_p, .url_p_eu_h_p_p: .url_proto://.url_eu_h_p[/.url_path] */
-   {  uz i;
+   /* C99 */{
+      uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -718,9 +686,9 @@ jurlp_err:
          urlp->url_eu_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
-      if (urlp->url_path.l == 0)
+      if(urlp->url_path.l == 0)
          urlp->url_p_eu_h_p = urlp->url_p_eu_h_p_p = ud;
-      else {
+      else{
          urlp->url_p_eu_h_p = savestrbuf(ud, i);
          urlp->url_p_eu_h_p_p = ud;
          ud += i;

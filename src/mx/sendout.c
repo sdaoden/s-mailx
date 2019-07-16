@@ -55,6 +55,7 @@
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -621,7 +622,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
       if(!mx_cred_auth_lookup(sbp->sb_credp, sbp->sb_urlp))
          goto jleave;
    } else {
-      if ((sbp->sb_urlp->url_flags & n_URL_HAD_USER) ||
+      if ((sbp->sb_urlp->url_flags & mx_URL_HAD_USER) ||
             sbp->sb_urlp->url_pass.s != NULL) {
          n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
@@ -1375,7 +1376,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
       /* For *smtp* the smtp:// protocol was optional; be simple: don't check
        * that *smtp* is misused with file:// or so */
-      if(n_servbyname(mta, NIL, NIL) == NIL)
+      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
          mta = savecat("smtp://", mta);
       rv = TRU1;
    }else{
@@ -1392,7 +1393,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       /* TODO for now this is pretty hacky: in v15 we should simply create
        * TODO an URL object; i.e., be able to do so, and it does it right
        * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      if((proto = n_servbyname(mta, &pno, &issnd)) != NIL){
+      if((proto = mx_url_servbyname(mta, &pno, &issnd)) != NIL){
          if(*proto == '\0'){
             if(pno == 0){
                mta += sizeof("file://") -1;
@@ -1957,14 +1958,14 @@ jleave:
 }
 
 FL boole
-mx_sendout_mta_url(struct url *urlp){
+mx_sendout_mta_url(struct mx_url *urlp){
    boole rv;
    char const *smtp, *proto;
    NYD_IN;
 
    if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
       /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = n_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
+      if((proto = mx_url_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
             *proto == '\0'){
          rv = TRUM1;
          goto jleave;
@@ -1972,7 +1973,7 @@ mx_sendout_mta_url(struct url *urlp){
    }
 
 #ifdef mx_HAVE_NET
-   rv = url_parse(urlp, CPROTO_SMTP, smtp);
+   rv = mx_url_parse(urlp, CPROTO_SMTP, smtp);
 #else
    UNUSED(urlp);
    rv = FAL0;
@@ -2060,7 +2061,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 {
    struct n_sigman sm;
    struct mx_cred_ctx cc;
-   struct url url;
+   struct mx_url url;
    struct sendbundle sb;
    struct mx_name *to;
    boole dosign, mta_isexe;
@@ -2690,7 +2691,7 @@ jleave:
 }
 
 FL enum okay
-n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
+n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    boole add_resent)
 {
    struct n_sigman sm;

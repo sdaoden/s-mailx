@@ -22,6 +22,8 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_NET
 
+#include <mx/url.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -37,13 +39,13 @@ struct mx_cred_ctx{
    u32 cc_cproto; /* Used enum cproto */
    u32 cc_authtype; /* Desired enum mx_cred_authtype */
    char const *cc_auth; /* Authentication type as string */
-   struct str cc_user; /* User (urlxdec()oded) or NIL */
-   struct str cc_pass; /* Password (urlxdec()oded) or NIL */
+   struct str cc_user; /* User (url_xdec()oded) or NIL */
+   struct str cc_pass; /* Password (url_xdec()oded) or NIL */
 };
 
 /* Zero ccp and lookup credentials for communicating with urlp.
  * Return whether credentials are available and valid (for chosen auth) */
-EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct url *urlp);
+EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp);
 EXPORT boole mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp,
       enum cproto cproto, char const *addr);
 

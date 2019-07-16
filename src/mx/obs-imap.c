@@ -189,7 +189,7 @@ static boole           _imap_rdonly;
 
 static char *imap_quotestr(char const *s);
 static char *imap_unquotestr(char const *s);
-static void imap_delim_init(struct mailbox *mp, struct url const *urlp);
+static void imap_delim_init(struct mailbox *mp, struct mx_url const *urlp);
 static char const *imap_path_normalize(struct mailbox *mp, char const *cp);
 /* Returns NULL on error */
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
@@ -207,7 +207,7 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static enum okay  imap_preauth(struct mailbox *mp, struct url *urlp);
+static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #ifdef mx_HAVE_MD5
@@ -223,8 +223,8 @@ static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
 static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
-                     struct url *urlp);
-static int _imap_setfile1(char const *who, struct url *urlp,
+                     struct mx_url *urlp);
+static int _imap_setfile1(char const *who, struct mx_url *urlp,
             enum fedit_mode fm, int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      uz expected, int need, const char *head,
@@ -325,7 +325,7 @@ jleave:
 }
 
 static void
-imap_delim_init(struct mailbox *mp, struct url const *urlp){
+imap_delim_init(struct mailbox *mp, struct mx_url const *urlp){
    uz i;
    char const *cp;
    NYD2_IN;
@@ -1323,7 +1323,7 @@ jleave:
 }
 
 static enum okay
-imap_preauth(struct mailbox *mp, struct url *urlp)
+imap_preauth(struct mailbox *mp, struct mx_url *urlp)
 {
    NYD;
 
@@ -1650,16 +1650,16 @@ FL int
 imap_setfile(char const * volatile who, const char *xserver,
    enum fedit_mode fm)
 {
-   struct url url;
+   struct mx_url url;
    int rv;
    NYD_IN;
 
-   if (!url_parse(&url, CPROTO_IMAP, xserver)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, xserver)){
       rv = 1;
       goto jleave;
    }
-   if (ok_vlook(v15_compat) == su_NIL &&
-         (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
+   if (ok_vlook(v15_compat) == NIL &&
+         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
@@ -1671,7 +1671,7 @@ jleave:
 
 static boole
 _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
-   struct url *urlp)
+   struct mx_url *urlp)
 {
    boole rv = FAL0;
    NYD_IN;
@@ -1680,7 +1680,7 @@ _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
       rv = mx_cred_auth_lookup(ccredp, urlp);
    else {
       char *var, *old,
-         *xuhp = ((urlp->url_flags & n_URL_HAD_USER) ? urlp->url_eu_h_p.s
+         *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
                : urlp->url_u_h_p.s);
 
       if ((var = mbp->mb_imap_pass) != NULL) {
@@ -1704,7 +1704,7 @@ _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
 }
 
 static int
-_imap_setfile1(char const * volatile who, struct url *urlp,
+_imap_setfile1(char const * volatile who, struct mx_url *urlp,
    enum fedit_mode volatile fm, int volatile transparent)
 {
    struct mx_socket so;
@@ -3134,15 +3134,15 @@ FL enum okay
 imap_append(const char *xserver, FILE *fp, long offset)
 {
    n_sighdl_t volatile saveint, savepipe;
-   struct url url;
+   struct mx_url url;
    struct mx_cred_ctx ccred;
    enum okay volatile rv = STOP;
    NYD_IN;
 
-   if (!url_parse(&url, CPROTO_IMAP, xserver))
+   if(!mx_url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
-   if (ok_vlook(v15_compat) == su_NIL &&
-         (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
+   if(ok_vlook(v15_compat) == NIL &&
+         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
    ASSERT(url.url_path.s != NULL);
 
@@ -4156,7 +4156,7 @@ check_expunged(void)
 FL int
 c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
-   struct url url;
+   struct mx_url url;
    int rv, omsgCount = msgCount;
    NYD_IN;
    UNUSED(vp);
@@ -4167,7 +4167,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, mailname)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, mailname)){
       rv = 1;
       goto jleave;
    }
@@ -4193,7 +4193,7 @@ jleave:
 FL int
 c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
-   struct url url;
+   struct mx_url url;
    int rv = 1, *msgvec = vp;
    NYD_IN;
 
@@ -4206,7 +4206,7 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, mailname))
+   if(!mx_url_parse(&url, CPROTO_IMAP, mailname))
       goto jleave;
 
    if (*msgvec)
@@ -4266,7 +4266,7 @@ jleave:
 FL int
 disconnected(const char *file)
 {
-   struct url url;
+   struct mx_url url;
    int rv = 1;
    NYD_IN;
 
@@ -4275,7 +4275,7 @@ disconnected(const char *file)
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, file)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, file)){
       rv = 0;
       goto jleave;
    }

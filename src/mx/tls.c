@@ -53,6 +53,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/net-socket.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -71,7 +72,7 @@ static struct a_tls_verify_levels const a_tls_verify_levels[] = {
 };
 
 FL void
-n_tls_set_verify_level(struct url const *urlp){
+n_tls_set_verify_level(struct mx_url const *urlp){
    uz i;
    char const *cp;
    NYD2_IN;
@@ -458,13 +459,13 @@ c_tls(void *vp){
       goto jleave;
 #else
       struct mx_socket so;
-      struct url url;
+      struct mx_url url;
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
       if((i = su_cs_len(*++argv)) >= U32_MAX)
          goto jeoverflow; /* TODO generic for ALL commands!! */
-      if(!url_parse(&url, CPROTO_CERTINFO, *argv))
+      if(!mx_url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
       if(!mx_socket_open(&so, &url)){ /* auto-close 4 CPROTO_CERTINFO if ok */
          n_pstate_err_no = su_err_no();
