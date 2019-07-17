@@ -184,8 +184,9 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
-      a_IN_HEAD = 1u<<2,
-      a_IN_BCC = 1u<<3
+      a_IS_EXTERNAL = 1u<<2,
+      a_IN_HEAD = 1u<<3,
+      a_IN_BCC = 1u<<4
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
@@ -205,20 +206,27 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    a_ANSWER(2, FAL0, FAL0);
 
 #ifdef mx_HAVE_TLS
-   if(!sop->s_use_tls &&
-         xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
-      snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-      a_OUT(o);
-      a_ANSWER(2, FAL0, FAL0);
+   if(!sop->s_use_tls){
+      if(xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
+         snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
+         a_OUT(o);
+         a_ANSWER(2, FAL0, FAL0);
 
-      a_OUT(NETLINE("STARTTLS"));
-      a_ANSWER(2, FAL0, FAL0);
+         a_OUT(NETLINE("STARTTLS"));
+         a_ANSWER(2, FAL0, FAL0);
 
-      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_urlp, sop))
+         if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_urlp, sop))
+            goto jleave;
+      }else if(sbp->sb_credp->cc_needs_tls){
+         n_err(_("SMTP authentication %s needs TLS "
+            "(*smtp-use-starttls* set?)\n"),
+            sbp->sb_credp->cc_auth);
          goto jleave;
+      }
    }
 #else
-   if(xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
+   if(sbp->sb_credp->cc_needs_tls ||
+         xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
@@ -290,24 +298,31 @@ jerr_cred:
        * message (when status was 334) */
       break;
 
+   case mx_CRED_AUTHTYPE_EXTERNAL: /* TODO untested; single roundtrip... */
+      f |= a_IS_EXTERNAL;
+      /* FALLTHRU */
    case mx_CRED_AUTHTYPE_LOGIN:
       if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
-            b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
+            (!(f & a_IS_EXTERNAL) &&
+             b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX))
          goto jerr_cred;
 
-      a_OUT(NETLINE("AUTH LOGIN"));
+      a_OUT((f & a_IS_EXTERNAL) ? NETLINE("AUTH EXTERNAL")
+         : NETLINE("AUTH LOGIN"));
       a_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
             sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_OUT(b64.s);
-      a_ANSWER(3, FAL0, FAL0);
+      if(!(f & a_IS_EXTERNAL)){
+         a_ANSWER(3, FAL0, FAL0);
 
-      if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
-            sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
-         goto jleave;
-      a_OUT(b64.s);
+         if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
+               sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
+            goto jleave;
+         a_OUT(b64.s);
+      }
       a_ANSWER(2, FAL0, FAL0);
       break;
 

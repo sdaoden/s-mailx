@@ -208,7 +208,8 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp);
+static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccred);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #ifdef mx_HAVE_MD5
@@ -218,6 +219,7 @@ static enum okay  imap_cram_md5(struct mailbox *mp,
 static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
 static enum okay a_imap_oauthbearer(struct mailbox *mp,
       struct mx_cred_ctx *ccp);
+static enum okay a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp);
 #ifdef mx_HAVE_GSSAPI
 static enum okay  _imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #endif
@@ -1326,7 +1328,8 @@ jleave:
 }
 
 static enum okay
-imap_preauth(struct mailbox *mp, struct mx_url *urlp)
+imap_preauth(struct mailbox *mp, struct mx_url *urlp,
+   struct mx_cred_ctx *ccred)
 {
    NYD;
 
@@ -1334,18 +1337,25 @@ imap_preauth(struct mailbox *mp, struct mx_url *urlp)
    imap_answer(mp, 1);
 
 #ifdef mx_HAVE_TLS
-   if(!mp->mb_sock->s_use_tls && xok_blook(imap_use_starttls, urlp, OXM_ALL)){
-      FILE *queuefp = NULL;
-      char o[LINESIZE];
+   if(!mp->mb_sock->s_use_tls){
+      if(xok_blook(imap_use_starttls, urlp, OXM_ALL)){
+         FILE *queuefp = NULL;
+         char o[LINESIZE];
 
-      snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
-      IMAP_OUT(o, MB_COMD, return STOP)
-      IMAP_ANSWER()
-      if(!n_tls_open(urlp, mp->mb_sock))
+         snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
+         IMAP_OUT(o, MB_COMD, return STOP)
+         IMAP_ANSWER()
+         if(!n_tls_open(urlp, mp->mb_sock))
+            return STOP;
+      }else if(ccred->cc_needs_tls){
+         n_err(_("IMAP authentication %s needs TLS "
+            "(*imap-use-starttls* set?)\n"),
+            ccred->cc_auth);
          return STOP;
+      }
    }
 #else
-   if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
+   if(ccred->cc_needs_tls || xok_blook(imap_use_starttls, urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       return STOP;
    }
@@ -1405,6 +1415,9 @@ imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
       break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
       rv = a_imap_oauthbearer(mp, ccred);
+      break;
+   case mx_CRED_AUTHTYPE_EXTERNAL:
+      rv = a_imap_external(mp, ccred);
       break;
 #ifdef mx_HAVE_MD5
    case mx_CRED_AUTHTYPE_CRAM_MD5:
@@ -1542,6 +1555,76 @@ jerr_cred:
 
       su_mem_copy(cp, b64.s, b64.l);
       su_mem_copy(&cp[b64.l], NETNL, sizeof(NETNL));
+      IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
+   }
+
+   while(mp->mb_active & MB_COMD)
+      rv = imap_answer(mp, 1);
+jleave:
+   if(cp != NIL)
+      n_lofi_free(cp);
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
+   uz cnt;
+   boole nsaslir;
+   char *cp;
+   FILE *queuefp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   queuefp = NIL;
+   cp = NIL;
+   nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* Calculate required storage */
+   cnt = ccp->cc_user.l;
+#define a_MAX \
+   (sizeof("T1 ") -1 +\
+   sizeof("AUTHENTICATE EXTERNAL ") -1 +\
+    sizeof(NETNL) -1 +1)
+
+   if(cnt >= UZ_MAX - a_MAX){
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto jleave;
+   }
+
+   cnt += a_MAX;
+#undef a_MAX
+
+   cp = n_lofi_alloc(cnt +1);
+
+   /* C99 */{
+      char const *tp;
+
+      tp = tag(TRU1);
+      cnt = su_cs_len(tp);
+      su_mem_copy(cp, tp, cnt);
+   }
+   su_mem_copy(&cp[cnt], " AUTHENTICATE EXTERNAL ",
+      sizeof(" AUTHENTICATE EXTERNAL ") /*-1*/);
+   cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
+   if(!nsaslir){
+      su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
+      cnt += ccp->cc_user.l;
+   }
+   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
+
+   IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   rv = imap_answer(mp, 1);
+   if(rv == STOP)
+      goto jleave;
+
+   if(nsaslir){
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+
+      su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
+      su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
       IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    }
 
@@ -1952,7 +2035,8 @@ jduppass:
       *mb.mb_sock = so;
       mb.mb_sock->s_desc = "IMAP";
       mb.mb_sock->s_onclose = imap_timer_off;
-      if (imap_preauth(&mb, urlp) != OKAY || imap_auth(&mb, &ccred) != OKAY) {
+      if (imap_preauth(&mb, urlp, &ccred) != OKAY ||
+            imap_auth(&mb, &ccred) != OKAY) {
          if(mb.mb_sock->s_fd >= 0)
             mx_socket_close(mb.mb_sock);
          su_FREE(mb.mb_sock);
@@ -3279,7 +3363,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
           * TODO is possibly even a constant
           * TODO i changed this to su_cs_dup() sofar, as is used
           * TODO somewhere else in this file for this! */
-         if (imap_preauth(&mx, &url) != OKAY ||
+         if (imap_preauth(&mx, &url, &ccred) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
             mx_socket_close(mx.mb_sock);
             su_FREE(mx.mb_sock);

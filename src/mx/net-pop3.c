@@ -92,6 +92,8 @@ static enum okay a_pop3_auth_plain(struct mailbox *mp,
       struct a_pop3_ctx const *pcp);
 static enum okay a_pop3_auth_oauthbearer(struct mailbox *mp,
       struct a_pop3_ctx const *pcp);
+static enum okay a_pop3_auth_external(struct mailbox *mp,
+      struct a_pop3_ctx const *pcp);
 
 static void a_pop3_timer_off(void);
 static enum okay a_pop3_answer(struct mailbox *mp);
@@ -148,17 +150,25 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
 
    /* If not yet secured, can we upgrade to TLS? */
 #ifdef mx_HAVE_TLS
-   if(!(pcp->pc_url.url_flags & mx_URL_TLS_REQUIRED) &&
-         xok_blook(pop3_use_starttls, &pcp->pc_url, oxm)){
-      a_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
-      a_ANSWER(rv, goto jleave);
-      if(!n_tls_open(&pcp->pc_url, pcp->pc_sockp)){
+   if(!(pcp->pc_url.url_flags & mx_URL_TLS_REQUIRED)){
+      if(xok_blook(pop3_use_starttls, &pcp->pc_url, oxm)){
+         a_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
+         a_ANSWER(rv, goto jleave);
+         if(!n_tls_open(&pcp->pc_url, pcp->pc_sockp)){
+            rv = STOP;
+            goto jleave;
+         }
+      }else if(pcp->pc_cred.cc_needs_tls){
+         n_err(_("POP3 authentication %s needs TLS "
+            "(*pop3-use-starttls* set?)\n"),
+            pcp->pc_cred.cc_auth);
          rv = STOP;
          goto jleave;
       }
    }
 #else
-   if(xok_blook(pop3_use_starttls, &pcp->pc_url, oxm)){
+   if(pcp->pc_cred.cc_needs_tls ||
+         xok_blook(pop3_use_starttls, &pcp->pc_url, oxm)){
       n_err(_("No TLS support compiled in\n"));
       rv = STOP;
       goto jleave;
@@ -185,10 +195,21 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
    }
 #endif
 
-   rv = ((pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
-         ? a_pop3_auth_plain(mp, pcp)
-         : ((pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_OAUTHBEARER)
-            ? a_pop3_auth_oauthbearer(mp, pcp) : STOP));
+   switch(pcp->pc_cred.cc_authtype){
+   case mx_CRED_AUTHTYPE_PLAIN:
+      rv = a_pop3_auth_plain(mp, pcp);
+      break;
+   case mx_CRED_AUTHTYPE_OAUTHBEARER:
+      rv = a_pop3_auth_oauthbearer(mp, pcp);
+      break;
+   case mx_CRED_AUTHTYPE_EXTERNAL:
+      rv = a_pop3_auth_external(mp, pcp);
+      break;
+   default:
+      rv = FAL0;
+      break;
+   }
+
 jleave:
    NYD_OU;
    return rv;
@@ -360,6 +381,35 @@ jerr_cred:
 jleave:
    if(cp != NIL)
       n_lofi_free(cp);
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
+   /* TODO auth_external: untested; single roundtrip... */
+   char *cp;
+   enum okay rv;
+   NYD_IN;
+
+   cp = n_lofi_alloc(MAX(pcp->pc_cred.cc_user.l, sizeof("AUTH EXTERNAL") -1) +
+         sizeof(NETNL)-1 +1);
+
+   rv = STOP;
+
+   su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
+      sizeof(NETLINE("AUTH EXTERNAL")) -1);
+   a_OUT(rv, cp, MB_COMD, goto jleave);
+   a_ANSWER(rv, goto jleave);
+
+   su_mem_copy(cp, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
+   su_mem_copy(&cp[pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));
+   a_OUT(rv, cp, MB_COMD, goto jleave);
+   a_ANSWER(rv, goto jleave);
+
+   rv = OKAY;
+jleave:
+   n_lofi_free(cp);
    NYD_OU;
    return rv;
 }

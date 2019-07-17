@@ -11170,16 +11170,22 @@ Handlers registered using this method take precedence.
 \*(OP\*(IN Variable chain that sets the POP3 authentication method.
 Supported are the default
 .Ql plain ,
-as well as \*(IN
+\*(IN
 .Ql oauthbearer
 (you might want to read the
 .Sx FAQ
 entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) .
-Both methods need a
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+as well as \*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) .
 .Va user
-and a
-.Va password .
+and
+.Va password
+are required but for
+.Ql external ,
+which only needs the former.
 Unless
 .Va pop3-no-apop
 is set the
@@ -12054,15 +12060,21 @@ authentication method, possible values are
 (you might want to read the
 .Sx FAQ
 entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
-as well as the \*(OPal methods
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
+as well as \*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) .
+There may be the \*(OPal methods
 .Ql cram-md5
 and
 .Ql gssapi .
 .Ql none
 does not need any user credentials,
+.Ql external
+and
 .Ql gssapi
-requires a user name and all other methods require a
+require a user name, and all other methods require a
 .Va user
 name and a
 .Va password .
@@ -12785,6 +12797,11 @@ if you use this you need to specify the private key via
 .Cd PrivateKey ,
 .Va tls-key
 will not be used!
+Some services support so-called
+.Ql external
+authentication if a TLS client certificate was successfully presented
+during connection establishment
+.Pf ( Dq connecting is authenticating ) .
 .
 .It Cd CipherString
 A list of ciphers for TLS connections, see
@@ -15016,6 +15033,10 @@ Supported are the default
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+\*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) ,
 as well as the \*(OPal
 .Ql cram-md5
 and
@@ -15025,8 +15046,10 @@ All methods need a
 and a
 .Va password
 except
-.Ql gssapi ,
-which only needs the former.
+.Ql gssapi
+and
+.Ql external ,
+which only need the former.
 .
 .Mx
 .It Va imap-cache

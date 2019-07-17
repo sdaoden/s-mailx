@@ -64,12 +64,13 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       a_WANT_PASS = 1u<<0,
       a_REQ_PASS = 1u<<1,
       a_WANT_USER = 1u<<2,
-      a_REQ_USER = 1u<<3
+      a_REQ_USER = 1u<<3,
+      a_NEED_TLS = 1u<<4
    };
 
    char *s;
    char const *pstr, *authdef;
-   u8 authmask;
+   u16 authmask;
    enum okeys authokey;
    u32 ware;
    NYD_IN;
@@ -92,6 +93,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authmask = mx_CRED_AUTHTYPE_NONE |
             mx_CRED_AUTHTYPE_PLAIN | mx_CRED_AUTHTYPE_LOGIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
+            mx_CRED_AUTHTYPE_EXTERNAL |
             mx_CRED_AUTHTYPE_CRAM_MD5 |
             mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "plain";
@@ -100,7 +102,8 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    case CPROTO_POP3:
       authokey = ok_v_pop3_auth;
       authmask = mx_CRED_AUTHTYPE_PLAIN |
-            mx_CRED_AUTHTYPE_OAUTHBEARER;
+            mx_CRED_AUTHTYPE_OAUTHBEARER |
+            mx_CRED_AUTHTYPE_EXTERNAL;
       authdef = "plain";
       pstr = "pop3";
       break;
@@ -110,6 +113,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authokey = ok_v_imap_auth;
       authmask = mx_CRED_AUTHTYPE_LOGIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
+            mx_CRED_AUTHTYPE_EXTERNAL |
             mx_CRED_AUTHTYPE_CRAM_MD5 |
             mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "login";
@@ -137,7 +141,13 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    }else if(!su_cs_cmp_case(s, "oauthbearer")){
       ccp->cc_auth = "OAUTHBEARER";
       ccp->cc_authtype = mx_CRED_AUTHTYPE_OAUTHBEARER;
+      ccp->cc_needs_tls = TRU1;
       ware = a_REQ_PASS | a_REQ_USER;
+   }else if(!su_cs_cmp_case(s, "external")){
+      ccp->cc_auth = "EXTERNAL";
+      ccp->cc_authtype = mx_CRED_AUTHTYPE_EXTERNAL;
+      ware = a_REQ_USER;
+      ware |= a_NEED_TLS;
    }else if(!su_cs_cmp_case(s, "cram-md5")){
       ccp->cc_auth = "CRAM-MD5";
       ccp->cc_authtype = mx_CRED_AUTHTYPE_CRAM_MD5;
@@ -169,6 +179,17 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    }
 #endif
 
+   if((ware & a_NEED_TLS)
+#ifdef mx_HAVE_TLS
+         && !(urlp->url_flags & (mx_URL_TLS_REQUIRED | mx_URL_TLS_OPTIONAL))
+#endif
+   ){
+      n_err(_("TLS transport is required for authentication %s: %s\n"),
+      ccp->cc_auth, urlp->url_p_u_h_p);
+      ccp = NIL;
+      goto jleave;
+   }
+
    /* Password */
    ccp->cc_pass = urlp->url_pass;
    if(ccp->cc_pass.s != NIL)
@@ -189,7 +210,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
             _(" requires a password: ")))) != NIL)
 js2pass:
          ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
-      else {
+      else{
          n_err(_("A password is necessary for %s authentication\n"), pstr);
          ccp = NIL;
       }

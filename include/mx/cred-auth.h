@@ -32,15 +32,18 @@ enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */
    mx_CRED_AUTHTYPE_LOGIN = 1u<<2,
    mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<3,
+   mx_CRED_AUTHTYPE_EXTERNAL = 1u<<4,
 
-   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<4,
+   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<5,
 
-   mx_CRED_AUTHTYPE_GSSAPI = 1u<<5
+   mx_CRED_AUTHTYPE_GSSAPI = 1u<<6
 };
 
 struct mx_cred_ctx{
    u32 cc_cproto; /* Used enum cproto */
-   u32 cc_authtype; /* Desired enum mx_cred_authtype */
+   u16 cc_authtype; /* Desired enum mx_cred_authtype */
+   boole cc_needs_tls; /* .cc_authtype requires TLS transport */
+   u8 cc__pad[1];
    char const *cc_auth; /* Authentication type as string */
    struct str cc_user; /* User (url_xdec()oded) or NIL */
    struct str cc_pass; /* Password (url_xdec()oded) or NIL */
