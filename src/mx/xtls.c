@@ -206,16 +206,15 @@ struct ssl_method { /* TODO v15 obsolete */
    char const  sm_map[16];
 };
 
-#ifndef mx_HAVE_XTLS_CONF_CTX
 struct a_xtls_protocol{
    char const xp_name[8];
    sl xp_op_no;               /* SSL_OP_NO_* bit */
    u16 xp_version;            /* *_VERSION number */
    boole xp_ok_minmaxproto;   /* Valid for {Min,Max}Protocol= */
    boole xp_ok_proto;         /* Valid for Protocol= */
-   u8 xp__dummy[4];
+   boole xp_last;
+   u8 xp__dummy[3];
 };
-#endif
 
 struct a_xtls_cipher{
    char const xc_name[8];
@@ -244,18 +243,16 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
 /* Update manual on change!
  * Ensure array size by adding \0 to longest entry.
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
-#ifndef mx_HAVE_XTLS_CONF_CTX
 static struct a_xtls_protocol const a_xtls_protocols[] = {
-   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
-   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, {0}},
-   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, {0}},
-   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, {0}},
-   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, {0}}
+   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, {0}},
+   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, TRU1, {0}}
 };
-#endif /* mx_HAVE_XTLS_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
@@ -935,19 +932,14 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       goto jxerr;
 # else
       struct a_xtls_protocol const *xpp;
-      uz i;
 
-      for(i = 1 /* [0] == ALL */;;){
-         xpp = &a_xtls_protocols[i];
-
+      for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;;)
          if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name))
             break;
-
-         if(++i >= NELEM(a_xtls_protocols)){
+         else if((++xpp)->xp_last){
             emsg = N_("TLS: %s: unsupported element: %s\n");
             goto jxerr;
          }
-      }
 
       if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->xp_version)
             : SSL_CTX_set_min_proto_version(ctxp, xpp->xp_version)) != 1){
@@ -967,8 +959,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
+      struct a_xtls_protocol const *xpp;
       char *iolist, *cp, addin;
-      uz i;
       sl opts;
 
       opts = 0;
@@ -988,11 +980,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          default : break;
          }
 
-         for(i = 0;;){
-            struct a_xtls_protocol const *xpp;
-
-            xpp = &a_xtls_protocols[i];
-
+         for(xpp = &a_xtls_protocols[0];;){
             if(xpp->xp_ok_proto && !su_cs_cmp_case(cp, xpp->xp_name)){
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
@@ -1000,9 +988,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
                else
                   opts &= ~xpp->xp_op_no;
                break;
-            }
-
-            if(++i >= NELEM(a_xtls_protocols)){
+            }else if((++xpp)->xp_last){
                emsg = N_("TLS: %s: unsupported element: %s\n");
                goto jxerr;
             }
@@ -2026,6 +2012,19 @@ jpeer_leave:
       X509_free(peercert);
       if(!stay)
          goto jerr2;
+   }
+
+   if(n_poption & n_PO_D_V){
+      struct a_xtls_protocol const *xpp;
+      int ver;
+
+      ver = SSL_version(sop->s_tls);
+      for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;; ++xpp)
+         if(xpp->xp_version == ver || xpp->xp_last){
+            n_err(_("TLS connection using %s / %s\n"),
+               xpp->xp_name, SSL_get_cipher(sop->s_tls));
+            break;
+         }
    }
 
    sop->s_use_tls = 1;
