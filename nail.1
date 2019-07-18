@@ -11171,6 +11171,11 @@ Handlers registered using this method take precedence.
 The only possible value as of now is
 .Ql plain ,
 which is thus the default.
+Unless
+.Va pop3-no-apop
+is set the
+.Ql plain
+method will be \*(OPally replaced with APOP if possible (see there).
 .
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
@@ -11194,14 +11199,18 @@ command to be sent each value seconds if no other operation is performed.
 .
 .Mx Va pop3-no-apop
 .It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
-\*(BO\*(OP Unless this variable is set the
+\*(BO\*(OP Unless this variable is set the MD5 based
 .Ql APOP
-authentication method will be used when connecting to a POP3 server that
-advertises support.
+authentication method will be used instead of a chosen
+.Ql plain
+.Va pop3-auth
+when connecting to a POP3 server that advertises support.
 The advantage of
 .Ql APOP
-is that the password is not sent in clear text over the wire and that
-only a single packet is sent for the user/password tuple.
+is that only a single packet is sent for the user/password tuple.
+(Originally also that the password is not sent in clear text over the
+wire, but for one MD5 does not any longer offer sufficient security,
+and then today transport is almost ever TLS secured.)
 Note that
 .Va pop3-no-apop-HOST
 requires \*(IN.

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Socket operations.
+ *@ Socket operations. TODO enum okay -> boole
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -58,12 +58,6 @@ struct mx_socket{ /* data associated with a socket */
    char const *s_desc; /* description of error messages */
    void (*s_onclose)(void); /* execute on close */
    char s_rbuf[LINESIZE + 1]; /* for buffered reads */
-};
-
-struct mx_socket_conn{
-   struct mx_socket *sc_sockp;
-   struct mx_cred_ctx *sc_credp; /* cred-auth.h not included */
-   struct mx_url sc_url;
 };
 
 /* Note: immediately closes the socket again for CPROTO_CERTINFO */
