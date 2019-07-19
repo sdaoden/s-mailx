@@ -1116,7 +1116,7 @@ jerr:
                 ? _("evaluating command line") : _("evaluating macro"))
              : _("loading initialization resource"))),
          n_shexp_quote_cp(gcp->gc_name, FAL0),
-         (n_poption & n_PO_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
+         (n_poption & n_PO_D ? n_empty : _(" (enable *debug* for trace)")));
    goto jleave;
 }
 
@@ -1824,7 +1824,7 @@ jforce_stdin:
    (*linebuf)[*linesize = n] = '\0';
 
 jhave_dat:
-   if(n_poption & n_PO_D_VV)
+   if(n_poption & n_PO_D_VVV)
       n_err(_("%s%s %d bytes <%s>\n"),
          iftype, (n_cnd_if_is_skip() ? "?whiteout" : su_empty), n, *linebuf);
 jleave:

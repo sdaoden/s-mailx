@@ -766,7 +766,7 @@ will also show the list of
 ting the internal variable
 .Va verbose
 enables display of some informational context messages.
-Using it twice increases the level of verbosity.
+(Will increase the level of verbosity when used multiple times.)
 .
 .Mx
 .It Fl X Ar cmd , Fl Fl startup-cmd Ns =..
@@ -13105,11 +13105,11 @@ doing things, respectively.
 .Fl v ,
 causes \*(UA to be more verbose, e.g., it will display obsoletion
 warnings and TLS certificate chains.
-Even though marked \*(BO this option may be set twice in order to
-increase the level of verbosity even more, in which case even details of
-the actual message delivery and protocol conversations are shown.
-A single
-.Pf no Va verbose
+Even though marked \*(BO this option may be set up to three times in
+order to increase the level of verbosity, higher levels show details of
+the actual message delivery, protocol conversations and even variable
+lookups; a single
+.Ic unset Va verbose
 is sufficient to disable verbosity as such.
 .
 .Mx

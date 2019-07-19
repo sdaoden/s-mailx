@@ -115,12 +115,12 @@ do{\
       n_lofi_free(__x__);\
    }\
    \
-   if(!(n_poption & n_PO_DEBUG))\
+   if(!(n_poption & n_PO_D))\
       mx_socket_write(sop, __cx__);\
 }while(0)
 
 #define a_SMTP_ANSWER(X, IGNEOF, WANTDAT) \
-do if(!(n_poption & n_PO_DEBUG)){\
+do if(!(n_poption & n_PO_D)){\
    int y;\
    \
    if((y = a_netsmtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
@@ -149,7 +149,7 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
          rv = -1;
          goto jleave;
       }
-      if(n_poption & n_PO_VERBVERB)
+      if(n_poption & n_PO_VV)
          n_err(">>> %s", slp->sl_buf.s);
 
       switch(slp->sl_buf.s[0]){
@@ -215,7 +215,7 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
          a_SMTP_OUT(NETLINE("STARTTLS"));
          a_SMTP_ANSWER(2, FAL0, FAL0);
 
-         if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_urlp, sop))
+         if(!(n_poption & n_PO_D) && !n_tls_open(sbp->sb_urlp, sop))
             goto jleave;
       }else if(sbp->sb_credp->cc_needs_tls){
          n_err(_("SMTP authentication %s needs TLS "
@@ -343,7 +343,7 @@ jerr_cred:
 
 #ifdef mx_HAVE_GSSAPI
    case mx_CRED_AUTHTYPE_GSSAPI:
-      if(n_poption & n_PO_DEBUG)
+      if(n_poption & n_PO_D)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
       else if(!a_netsmtp_gss(sop, sbp, slp))
          goto jleave;
@@ -389,7 +389,7 @@ jsend:
             f &= ~a_IN_BCC;
       }
 
-      if(*slp->sl_buf.s == '.' && !(n_poption & n_PO_DEBUG))
+      if(*slp->sl_buf.s == '.' && !(n_poption & n_PO_D))
          mx_socket_write1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
       slp->sl_buf.s[blen - 1] = NETNL[0];
       slp->sl_buf.s[blen] = NETNL[1];
@@ -432,7 +432,7 @@ mx_smtp_mta(struct sendbundle *sbp){
    if(saveterm != SIG_IGN)
       safe_signal(SIGTERM, &a_netsmtp_onterm);
 
-   if(n_poption & n_PO_DEBUG)
+   if(n_poption & n_PO_D)
       su_mem_set(&so, 0, sizeof so);
    else if(!mx_socket_open(&so, sbp->sb_urlp))
       goto jleave;
@@ -440,7 +440,7 @@ mx_smtp_mta(struct sendbundle *sbp){
    so.s_desc = "SMTP";
    rv = a_netsmtp_talk(&so, sbp);
 
-   if(!(n_poption & n_PO_DEBUG))
+   if(!(n_poption & n_PO_D))
       mx_socket_close(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);

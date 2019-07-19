@@ -2381,7 +2381,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       if (n == -1 &&
             mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock
                ) > 0) {
-         if (n_poption & n_PO_VERBVERB)
+         if (n_poption & n_PO_VV)
             fputs(imapbuf, stderr);
          if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
@@ -2517,7 +2517,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          commitmsg(mp, &m[n-1], &mt, CI_HAVE_HEADER);
       if(n == -1 &&
             mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock) > 0){
-         if (n_poption & n_PO_VERBVERB)
+         if (n_poption & n_PO_VV)
             fputs(imapbuf, stderr);
          if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             u64 uid;

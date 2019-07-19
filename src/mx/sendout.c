@@ -964,7 +964,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
     * shell has returned.
     * To make our life a bit easier let's just use the auto-reclaimed
     * string storage */
-   if(pipecnt == 0 || (n_poption & n_PO_DEBUG)){
+   if(pipecnt == 0 || (n_poption & n_PO_D)){
       pipecnt = 0;
       sh = NIL;
    }else{
@@ -990,7 +990,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          n_err(_(">>> Writing message via %s\n"),
             n_shexp_quote_cp(np->n_name, FAL0));
       /* We _do_ write to STDOUT, anyway! */
-      if((n_poption & n_PO_DEBUG) &&
+      if((n_poption & n_PO_D) &&
             ((np->n_flags & mx_NAME_ADDRSPEC_ISPIPE) ||
                np->n_name[0] != '-' || np->n_name[1] != '\0'))
          continue;
@@ -1158,7 +1158,7 @@ mightrecord(FILE *fp, struct mx_name *to, boole resend){
 
    rv = TRU1;
 
-   if(n_poption & n_PO_DEBUG)
+   if(n_poption & n_PO_D)
       ccp = NULL;
    else if(to != NULL){
       ccp = cp = savestr(to->n_name);
@@ -1445,7 +1445,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       }
 
       args = a_sendout_mta_file_args(sbp->sb_to, sbp->sb_hp);
-      if(n_poption & n_PO_DEBUG){
+      if(n_poption & n_PO_D){
          a_sendout_mta_file_debug(sbp, mta, args);
          rv = TRU1;
          goto jleave;
@@ -1461,7 +1461,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-      if(n_poption & n_PO_DEBUG){
+      if(n_poption & n_PO_D){
          (void)mx_smtp_mta(sbp);
          rv = TRU1;
          goto jleave;
@@ -1568,7 +1568,7 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
       i = 2;
       if (ok_blook(metoo))
          args[i++] = "-m";
-      if (n_poption & n_PO_VERB)
+      if (n_poption & n_PO_V)
          args[i++] = "-v";
    }
 
@@ -2864,7 +2864,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
    cp = n_getdeadletter();
    cpq = n_shexp_quote_cp(cp, FAL0);
 
-   if(n_poption & n_PO_DEBUG){
+   if(n_poption & n_PO_D){
       n_err(_(">>> Would (try to) write $DEAD %s\n"), cpq);
       goto jleave;
    }

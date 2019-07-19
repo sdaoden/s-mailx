@@ -1090,7 +1090,7 @@ jefrom:
          ok_bset(asksub);
          break;
       case ok_b_debug:
-         n_poption |= n_PO_DEBUG;
+         n_poption |= n_PO_D;
          su_log_set_level(su_LOG_DEBUG);
 # define a_DEBUG_MEMCONF su_MEM_CONF_DEBUG | su_MEM_CONF_LINGER_FREE
          su_DBG( su_mem_set_conf(a_DEBUG_MEMCONF, TRU1); )
@@ -1150,8 +1150,8 @@ jefrom:
          }
          break;
       case ok_b_verbose:
-         n_poption |= (n_poption & n_PO_VERB) ? n_PO_VERBVERB : n_PO_VERB;
-         if(!(n_poption & n_PO_DEBUG))
+         n_poption = (((n_poption & n_PO_V_MASK) << 1) & n_PO_V_MASK) | n_PO_V;
+         if(!(n_poption & n_PO_D))
             su_log_set_level(su_LOG_INFO);
          break;
       }
@@ -1163,8 +1163,8 @@ jefrom:
          ok_bclear(asksub);
          break;
       case ok_b_debug:
-         n_poption &= ~n_PO_DEBUG;
-         su_log_set_level((n_poption & n_PO_VERB) ? su_LOG_INFO : n_LOG_LEVEL);
+         n_poption &= ~n_PO_D;
+         su_log_set_level((n_poption & n_PO_V) ? su_LOG_INFO : n_LOG_LEVEL);
          su_DBG( if(!ok_blook(memdebug))
             su_mem_set_conf(a_DEBUG_MEMCONF, FAL0); )
          break;
@@ -1199,8 +1199,8 @@ jefrom:
          n_poption &= ~n_PO_E_FLAG;
          break;
       case ok_b_verbose:
-         n_poption &= ~(n_PO_VERB | n_PO_VERBVERB);
-         if(!(n_poption & n_PO_DEBUG))
+         n_poption &= ~n_PO_V_MASK;
+         if(!(n_poption & n_PO_D))
             su_log_set_level(n_LOG_LEVEL);
          break;
       }
@@ -1600,7 +1600,7 @@ jleave:
    avcp->avc_var = avp;
 j_leave:
    if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
-         UNLIKELY(n_poption & n_PO_VERBVERB) &&
+         UNLIKELY(n_poption & n_PO_VVV) &&
          avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
       /* I18N: Variable "name" is set to "value" */
       n_err(_("*%s* is %s\n"),

@@ -229,12 +229,13 @@ a_colour_termcap_init(void){
 
 SINLINE boole
 a_colour_ok_to_go(u32 get_flags){
-   boole rv, vv;
+   u32 po;
+   boole rv;
    NYD2_IN;
 
    rv = FAL0;
-   if((vv = ((n_poption & n_PO_VERBVERB) != 0)))/* TODO *colour-disable* */
-      n_poption ^= n_PO_VERBVERB; /* TODO log too load - need "no log" bit!! */
+   po = (n_poption & n_PO_V_MASK);/* TODO *colour-disable* */
+   n_poption &= ~n_PO_V_MASK; /* TODO log too loud - need "no log" bit!! */
 
    /* xxx Entire preamble could later be a shared function */
    if(!(n_psonce & n_PSO_TTYANY) || !(n_psonce & n_PSO_STARTED) ||
@@ -250,8 +251,7 @@ a_colour_ok_to_go(u32 get_flags){
 
    rv = TRU1;
 jleave:
-   if(vv)
-      n_poption ^= n_PO_VERBVERB;
+   n_poption |= po;
    NYD2_OU;
    return rv;
 }

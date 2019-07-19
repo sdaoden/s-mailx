@@ -1229,7 +1229,8 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    if(dp == NIL || (cnt = su_cs_dict_count(dp)) == 0)
       goto jleave;
 
-   su_cs_dict_statistics(dp);
+   if(n_poption & n_PO_D_V)
+      su_cs_dict_statistics(dp);
 
    /* TODO we need LOFI/AUTOREC TALLOC version which check overflow!!
     * TODO these then could _really_ return NIL... */

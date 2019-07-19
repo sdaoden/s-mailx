@@ -817,7 +817,7 @@ print_header_summary(char const *Larg)
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
-      if ((n_poption & (n_PO_VERB | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
+      if ((n_poption & (n_PO_V | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
          n_stdout = freopen(n_path_devnull, "w", stdout);
          n_stderr = freopen(n_path_devnull, "w", stderr);
       }

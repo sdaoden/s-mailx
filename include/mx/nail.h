@@ -712,26 +712,29 @@ enum n_visual_info_flags{
 };
 
 enum n_program_option{
-   n_PO_DEBUG = 1u<<0, /* -d / *debug* */
-   n_PO_VERB = 1u<<1, /* -v / *verbose* */
-   n_PO_VERBVERB = 1u<<2, /* .. even more verbosity */
-   n_PO_EXISTONLY = 1u<<3, /* -e */
-   n_PO_HEADERSONLY = 1u<<4, /* -H */
-   n_PO_HEADERLIST = 1u<<5, /* -L */
+   n_PO_D = 1u<<0, /* -d / *debug* */
+   n_PO_V = 1u<<1, /* -v / *verbose* */
+   n_PO_VV = 1u<<2, /* .. more verbosity */
+   n_PO_VVV = 1u<<3, /* .. most verbosity */
+   n_PO_EXISTONLY = 1u<<4, /* -e */
+   n_PO_HEADERSONLY = 1u<<5, /* -H */
+   n_PO_HEADERLIST = 1u<<6, /* -L */
    n_PO_QUICKRUN_MASK = n_PO_EXISTONLY | n_PO_HEADERSONLY | n_PO_HEADERLIST,
-   n_PO_E_FLAG = 1u<<6, /* -E / *skipemptybody* */
-   n_PO_F_FLAG = 1u<<7, /* -F */
-   n_PO_Mm_FLAG = 1u<<8, /* -M or -m (plus n_poption_arg_Mm) */
-   n_PO_R_FLAG = 1u<<9, /* -R */
-   n_PO_r_FLAG = 1u<<10, /* -r (plus n_poption_arg_r) */
-   n_PO_S_FLAG_TEMPORARY = 1u<<11, /* -S about to set a variable */
-   n_PO_t_FLAG = 1u<<12, /* -t */
-   n_PO_TILDE_FLAG = 1u<<13, /* -~ */
-   n_PO_BATCH_FLAG = 1u<<14, /* -# */
+   n_PO_E_FLAG = 1u<<7, /* -E / *skipemptybody* */
+   n_PO_F_FLAG = 1u<<8, /* -F */
+   n_PO_Mm_FLAG = 1u<<9, /* -M or -m (plus n_poption_arg_Mm) */
+   n_PO_R_FLAG = 1u<<10, /* -R */
+   n_PO_r_FLAG = 1u<<11, /* -r (plus n_poption_arg_r) */
+   n_PO_S_FLAG_TEMPORARY = 1u<<12, /* -S about to set a variable */
+   n_PO_t_FLAG = 1u<<13, /* -t */
+   n_PO_TILDE_FLAG = 1u<<14, /* -~ */
+   n_PO_BATCH_FLAG = 1u<<15, /* -# */
 
-   /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
-   n_PO_D_V = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB,
-   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB
+   /* Some easy-access shortcut; the V bits must be contiguous! */
+   n_PO_V_MASK = n_PO_V | n_PO_VV | n_PO_VVV,
+   n_PO_D_V = n_PO_D | n_PO_V_MASK,
+   n_PO_D_VV = n_PO_D | n_PO_VV | n_PO_VVV,
+   n_PO_D_VVV = n_PO_D | n_PO_VVV
 };
 
 #define n_OBSOLETE(X) \

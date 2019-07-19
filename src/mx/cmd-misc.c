@@ -635,7 +635,7 @@ c_version(void *vp){
    s = n_string_push_c(s, '\n');
 
    /* */
-   if(n_poption & n_PO_VERB){
+   if(n_poption & n_PO_V){
       s = n_string_push_cp(s, "Compile: ");
       s = n_string_push_cp(s, ok_vlook(build_cc));
       s = n_string_push_cp(s, "\nLink: ");

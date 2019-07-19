@@ -426,10 +426,10 @@ a_ctab_c_memtrace(void *vp){
 
    /* Only for development.. */
    oopt = n_poption;
-   if(!(oopt & n_PO_VERB))
+   if(!(oopt & n_PO_V))
       ok_bset(verbose);
    rv = (su_mem_trace() != FAL0);
-   if(!(oopt & n_PO_VERB))
+   if(!(oopt & n_PO_V))
       ok_bclear(verbose);
    NYD2_OU;
    return rv;

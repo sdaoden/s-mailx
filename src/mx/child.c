@@ -334,7 +334,7 @@ mx_child_fork(struct mx_child_ctx *ccp){
       (ccp->cc_flags & mx_CHILD_SPAWN_CONTROL));
    ASSERT(ccp->cc_error == su_ERR_NONE);
 
-   if(n_poption & n_PO_D_V)
+   if(n_poption & n_PO_D_VV)
       n_err(_("Forking child%s: %s %s %s %s\n"),
          (ccp->cc_flags & mx_CHILD_SPAWN_CONTROL ? _(" with spawn control")
             : su_empty),

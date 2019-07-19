@@ -168,7 +168,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    su_mem_set(&vc, 0, sizeof vc);
    vc.vc_action = sa;
-   vc.vc_verbose = ((n_poption & n_PO_VERB) != 0);
+   vc.vc_verbose = ((n_poption & n_PO_V) != 0);
    vc.vc_progress = (!vc.vc_verbose && ((n_psonce & n_PSO_INTERACTIVE) != 0));
    vc.vc_esep = vc.vc_progress ? "\n" : n_empty;
 
