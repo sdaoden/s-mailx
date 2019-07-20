@@ -131,6 +131,7 @@ t_all() {
    t_quote_a_cmd_escapes
    t_compose_edits
    t_digmsg
+   t_on_main_loop_tick
 
    # Heavy use of/rely on state machine (behaviour) and basics
    t_compose_hooks
@@ -6313,6 +6314,33 @@ t_digmsg() { # XXX rudimentary
    check 3 - ./.tfcc '3993703854 127'
    check 4 - ./.tempty '4294967295 0'
    check 5 - ./.tcat '2157992522 256'
+
+   t_epilog
+}
+
+t_on_main_loop_tick() {
+   t_prolog on_main_loop_tick
+   TRAP_EXIT_ADDONS="./.t*"
+
+   printf '#
+   echo hello; set i=1
+define bla {
+   echo bla1
+   echo bla2
+}
+define omlt {
+   echo in omlt: $i
+   vput vexpr i + 1 $i
+}
+   echo one
+   set on-main-loop-tick=omlt
+   echo two
+   echo three
+   echo calling bla;call bla
+   echo four
+   echo --bye;xit' |
+      ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
+   check 1 0 ./.tall '367031402 108'
 
    t_epilog
 }

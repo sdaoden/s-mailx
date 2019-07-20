@@ -2618,8 +2618,7 @@ c_account(void *v){
          struct a_amv_mac *amphook;
 
          if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
-            amcap = n_lofi_alloc(sizeof *amcap);
-            su_mem_set(amcap, 0, sizeof *amcap);
+            amcap = n_lofi_calloc(sizeof *amcap);
             amcap->amca_name = cp;
             amcap->amca_amp = amphook;
             amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
@@ -2648,8 +2647,7 @@ c_account(void *v){
    /* And switch to any non-"null" account */
    if(amp != NULL){
       ASSERT(amp->am_lopts == NULL);
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = amp->am_name;
       amcap->amca_amp = amp;
       amcap->amca_unroller = &amp->am_lopts;
@@ -2847,6 +2845,31 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    return rv;
 }
 
+FL void
+temporary_on_main_loop_tick_hook(void){ /* TODO temporary, v15: drop */
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_mac *amp;
+   char const *cp;
+   NYD_IN;
+
+   if((cp = ok_vlook(on_main_loop_tick)) != NIL){
+      if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
+         mx_sigs_all_rele();
+         amcap = n_lofi_calloc(sizeof *amcap);
+         amcap->amca_name = cp;
+         amcap->amca_amp = amp;
+         amcap->amca_ps_hook_mask = TRU1;
+         amcap->amca_no_xcall = TRU1;
+         n_pstate &= ~n_PS_HOOK_MASK;
+         n_pstate |= n_PS_HOOK;
+         a_amv_mac_exec(amcap);
+         mx_sigs_all_holdx();
+      }else
+         n_err(_("*on-main-loop-tick* macro does not exist: %s\n"), cp);
+   }
+   NYD_OU;
+}
+
 FL boole
 temporary_folder_hook_check(boole nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
@@ -2891,8 +2914,7 @@ jmac:
       goto jleave;
    }
 
-   amcap = n_lofi_alloc(sizeof *amcap);
-   su_mem_set(amcap, 0, sizeof *amcap);
+   amcap = n_lofi_calloc(sizeof *amcap);
    amcap->amca_name = cp;
    amcap->amca_amp = amp;
    n_pstate &= ~n_PS_HOOK_MASK;
@@ -2948,8 +2970,7 @@ temporary_compose_mode_hook_call(char const *macname,
       n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
          macname);
    else{
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = (macname != NULL) ? macname
             : "*on-compose-splice(-shell)?*";
       amcap->amca_amp = amp;
@@ -2964,8 +2985,7 @@ temporary_compose_mode_hook_call(char const *macname,
       if(macname != NULL)
          a_amv_mac_exec(amcap);
       else{
-         cmh_losp = n_lofi_alloc(sizeof *cmh_losp);
-         su_mem_set(cmh_losp, 0, sizeof *cmh_losp);
+         cmh_losp = n_lofi_calloc(sizeof *cmh_losp);
          cmh_losp->as_global_saved = a_amv_lopts;
          cmh_losp->as_lopts = *(cmh_losp->as_amcap = amcap)->amca_unroller;
          cmh_losp->as_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -3015,8 +3035,7 @@ temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
       argv[2] = histent;
       argv[3] = NULL;
 
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = macname;
       amcap->amca_amp = amp;
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;

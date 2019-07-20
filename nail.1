@@ -1597,6 +1597,9 @@ and update the \*(OPal (see
 .Va features )
 line editor
 .Va history-file .
+By the way, whenever the main event loop is about to look out for the
+next input line it will trigger the hook
+.Va on-main-loop-tick .
 .\" }}}
 .
 .\" .Ss "HTML mail and MIME attachments" {{{
@@ -10971,6 +10974,13 @@ and will then be able to access the positional parameters as usual via
 etc.
 .
 .Mx
+.It Va on-main-loop-tick
+This hook will be called whenever the program's main event loop is
+about to read the next input line.
+Note variable and other changes it performs are not scoped, e.g., via
+.Ic localopts !
+.
+.Mx
 .It Va on-resend-cleanup
 \*(ID Identical to
 .Va on-compose-cleanup ,
@@ -14741,8 +14751,9 @@ $ python oauth2.py --user=EMAIL \e
 \*(UA does not (yet) offer the possibility to (lazy) expand aka run
 shell commandos which are embedded in variable content, or periodically
 run some command, therefore keeping an access token up-to-date from
-within it does not seem to be the best solution.
-For sending mails code could become evaluated from withing the hook
+within it can only be performed by setting the hook
+.Va on-main-loop-tick ,
+or (for sending only)
 .Va on-compose-splice .
 For more on authentication please see the section
 .Sx "On URL syntax and credential lookup" .

@@ -1380,6 +1380,9 @@ n_go_main_loop(void){ /* FIXME */
             gec.gec_line.l = gec.gec_line_size = 0;
          }
 
+         if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)))
+            temporary_on_main_loop_tick_hook();
+
          if(n_psonce & n_PSO_INTERACTIVE){
             char *cp;
 

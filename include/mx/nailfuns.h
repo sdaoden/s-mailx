@@ -138,6 +138,9 @@ FL int c_localopts(void *vp);
 FL int c_shift(void *vp);
 FL int c_return(void *vp);
 
+/* TODO Main loop on tick event; mx_sigs_all_holdx() is active */
+FL void temporary_on_main_loop_tick_hook(void);
+
 /* TODO Check whether a *folder-hook* exists for currently active mailbox */
 FL boole temporary_folder_hook_check(boole nmail);
 FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
@@ -1087,6 +1090,7 @@ FL enum okay maildir_remove(char const *name);
 
 /* Pseudo alloca (and also auto-reclaimed) */
 #define n_lofi_alloc su_MEM_BAG_SELF_LOFI_ALLOC
+#define n_lofi_calloc su_MEM_BAG_SELF_LOFI_CALLOC
 #define n_lofi_free su_MEM_BAG_SELF_LOFI_FREE
 
 #define n_lofi_snap_create() su_mem_bag_lofi_snap_create(n_go_data->gdc_membag)
