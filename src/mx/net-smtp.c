@@ -91,7 +91,7 @@ static boole a_netsmtp_talk(struct mx_socket *sp, struct sendbundle *sbp);
 #endif
 
 /* Indirect SMTP I/O */
-#define a_OUT(X) \
+#define a_SMTP_OUT(X) \
 do{\
    char const *__cx__ = (X);\
    \
@@ -119,8 +119,8 @@ do{\
       mx_socket_write(sop, __cx__);\
 }while(0)
 
-#define a_ANSWER(X, IGNEOF, WANTDAT) \
-do if(!(n_poption & n_PO_DEBUG)) {\
+#define a_SMTP_ANSWER(X, IGNEOF, WANTDAT) \
+do if(!(n_poption & n_PO_DEBUG)){\
    int y;\
    \
    if((y = a_netsmtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
@@ -203,17 +203,17 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    su_mem_set(slp, 0, sizeof(*slp));
 
    /* Read greeting */
-   a_ANSWER(2, FAL0, FAL0);
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
 #ifdef mx_HAVE_TLS
    if(!sop->s_use_tls){
       if(xok_blook(smtp_use_starttls, sbp->sb_urlp, OXM_ALL)){
          snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-         a_OUT(o);
-         a_ANSWER(2, FAL0, FAL0);
+         a_SMTP_OUT(o);
+         a_SMTP_ANSWER(2, FAL0, FAL0);
 
-         a_OUT(NETLINE("STARTTLS"));
-         a_ANSWER(2, FAL0, FAL0);
+         a_SMTP_OUT(NETLINE("STARTTLS"));
+         a_SMTP_ANSWER(2, FAL0, FAL0);
 
          if(!(n_poption & n_PO_DEBUG) && !n_tls_open(sbp->sb_urlp, sop))
             goto jleave;
@@ -235,15 +235,15 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    /* Shorthand: no authentication, plain HELO? */
    if(sbp->sb_credp->cc_authtype == mx_CRED_AUTHTYPE_NONE){
       snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
-      a_OUT(o);
-      a_ANSWER(2, FAL0, FAL0);
+      a_SMTP_OUT(o);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
       goto jsend;
    }
 
    /* We'll have to deal with authentication */
    snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-   a_OUT(o);
-   a_ANSWER(2, FAL0, FAL0);
+   a_SMTP_OUT(o);
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
    switch(sbp->sb_credp->cc_authtype){
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
@@ -284,16 +284,16 @@ jerr_cred:
       }else{
          int i;
 
-         a_OUT(NETLINE("AUTH PLAIN"));
-         a_ANSWER(3, FAL0, FAL0);
+         a_SMTP_OUT(NETLINE("AUTH PLAIN"));
+         a_SMTP_ANSWER(3, FAL0, FAL0);
 
          i = snprintf(o, sizeof o, "%c%s%c%s",
             '\0', sbp->sb_credp->cc_user.s, '\0', sbp->sb_credp->cc_pass.s);
          if(b64_encode_buf(&b64, o, i, B64_SALLOC | B64_CRLF) == NIL)
             goto jleave;
       }
-      a_OUT(b64.s);
-      a_ANSWER(2, FAL0, FAL0);
+      a_SMTP_OUT(b64.s);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
       /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
        * message (when status was 334) */
       break;
@@ -307,37 +307,37 @@ jerr_cred:
              b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX))
          goto jerr_cred;
 
-      a_OUT((f & a_IS_EXTERNAL) ? NETLINE("AUTH EXTERNAL")
+      a_SMTP_OUT((f & a_IS_EXTERNAL) ? NETLINE("AUTH EXTERNAL")
          : NETLINE("AUTH LOGIN"));
-      a_ANSWER(3, FAL0, FAL0);
+      a_SMTP_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
             sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
-      a_OUT(b64.s);
+      a_SMTP_OUT(b64.s);
       if(!(f & a_IS_EXTERNAL)){
-         a_ANSWER(3, FAL0, FAL0);
+         a_SMTP_ANSWER(3, FAL0, FAL0);
 
          if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
                sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
             goto jleave;
-         a_OUT(b64.s);
+         a_SMTP_OUT(b64.s);
       }
-      a_ANSWER(2, FAL0, FAL0);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
 #ifdef mx_HAVE_MD5
    case mx_CRED_AUTHTYPE_CRAM_MD5:{
       char *cp;
 
-      a_OUT(NETLINE("AUTH CRAM-MD5"));
-      a_ANSWER(3, FAL0, TRU1);
+      a_SMTP_OUT(NETLINE("AUTH CRAM-MD5"));
+      a_SMTP_ANSWER(3, FAL0, TRU1);
 
       if((cp = mx_md5_cram_string(&sbp->sb_credp->cc_user,
             &sbp->sb_credp->cc_pass, slp->sl_dat.s)) == NIL)
          goto jerr_cred;
-      a_OUT(cp);
-      a_ANSWER(2, FAL0, FAL0);
+      a_SMTP_OUT(cp);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
 
@@ -353,8 +353,8 @@ jerr_cred:
 
 jsend:
    snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), sbp->sb_urlp->url_u_h.s);
-   a_OUT(o);
-   a_ANSWER(2, FAL0, FAL0);
+   a_SMTP_OUT(o);
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
    for(np = sbp->sb_to; np != NIL; np = np->n_flink){
       if(!(np->n_type & GDEL)){ /* TODO should not happen!?! */
@@ -363,13 +363,13 @@ jsend:
                np->n_name, hostname);
          else
             snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), np->n_name);
-         a_OUT(o);
-         a_ANSWER(2, FAL0, FAL0);
+         a_SMTP_OUT(o);
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       }
    }
 
-   a_OUT(NETLINE("DATA"));
-   a_ANSWER(3, FAL0, FAL0);
+   a_SMTP_OUT(NETLINE("DATA"));
+   a_SMTP_ANSWER(3, FAL0, FAL0);
 
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
@@ -394,13 +394,13 @@ jsend:
       slp->sl_buf.s[blen - 1] = NETNL[0];
       slp->sl_buf.s[blen] = NETNL[1];
       slp->sl_buf.s[blen + 1] = '\0';
-      a_OUT(slp->sl_buf.s);
+      a_SMTP_OUT(slp->sl_buf.s);
    }
-   a_OUT(NETLINE("."));
-   a_ANSWER(2, FAL0, FAL0);
+   a_SMTP_OUT(NETLINE("."));
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
-   a_OUT(NETLINE("QUIT"));
-   a_ANSWER(2, TRU1, FAL0);
+   a_SMTP_OUT(NETLINE("QUIT"));
+   a_SMTP_ANSWER(2, TRU1, FAL0);
 
    f &= ~a_ERROR;
 jleave:
@@ -414,8 +414,8 @@ jleave:
 # include <mx/net-smtp-gss.h>
 #endif
 
-#undef a_OUT
-#undef a_ANSWER
+#undef a_SMTP_OUT
+#undef a_SMTP_ANSWER
 
 boole
 mx_smtp_mta(struct sendbundle *sbp){

@@ -161,8 +161,8 @@ a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
       goto jleave;
    }
 
-   a_OUT(NETLINE("AUTH GSSAPI"));
-   a_ANSWER(3, FAL0, FAL0);
+   a_SMTP_OUT(NETLINE("AUTH GSSAPI"));
+   a_SMTP_ANSWER(3, FAL0, FAL0);
    while(maj_stat == GSS_S_CONTINUE_NEEDED){
       /* Pass token obtained from first gss_init_sec_context() call */
       if(b64_encode_buf(&out, send_tok.value, send_tok.length,
@@ -170,8 +170,8 @@ a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
          goto jleave;
       gss_release_buffer(&min_stat, &send_tok);
       f &= ~a_F_SEND_TOK;
-      a_OUT(out.s);
-      a_ANSWER(3, FAL0, TRU1);
+      a_SMTP_OUT(out.s);
+      a_SMTP_ANSWER(3, FAL0, TRU1);
 
       out.s = NIL;
       in.s = slp->sl_dat.s;
@@ -208,12 +208,12 @@ a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
    if(b64_encode_buf(&out, send_tok.value, send_tok.length,
          B64_SALLOC | B64_CRLF) == NIL)
       goto jleave;
-   a_OUT(out.s);
+   a_SMTP_OUT(out.s);
 
    gss_release_buffer(&min_stat, &send_tok);
    f &= ~a_F_SEND_TOK;
 
-   a_ANSWER(3, FAL0, TRU1);
+   a_SMTP_ANSWER(3, FAL0, TRU1);
    out.s = NIL;
    in.s = slp->sl_dat.s;
    in.l = slp->sl_dat.l;
@@ -260,8 +260,8 @@ jebase64:
    if(b64_encode_buf(&out, recv_tok.value, recv_tok.length,
          B64_SALLOC | B64_CRLF) == NIL)
       goto jleave;
-   a_OUT(out.s);
-   a_ANSWER(2, FAL0, FAL0);
+   a_SMTP_OUT(out.s);
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
    ok = TRU1;
 jleave:

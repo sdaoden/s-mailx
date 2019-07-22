@@ -112,7 +112,7 @@ static enum okay a_pop3_delete(struct mailbox *mp, int n);
 static enum okay a_pop3_update(struct mailbox *mp);
 
 /* Indirect POP3 I/O */
-#define a_OUT(RV,X,Y,ACTIONSTOP) \
+#define a_POP3_OUT(RV,X,Y,ACTIONSTOP) \
 do{\
    if(((RV) = a_pop3_finish(mp)) == STOP){\
       ACTIONSTOP;\
@@ -125,7 +125,7 @@ do{\
    }\
 }while(0)
 
-#define a_ANSWER(RV,ACTIONSTOP) \
+#define a_POP3_ANSWER(RV,ACTIONSTOP) \
 do if(((RV) = a_pop3_answer(mp)) == STOP){\
    ACTIONSTOP;\
 }while(0)
@@ -142,7 +142,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
    oxm = (ok_vlook(v15_compat) != NIL) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
    /* Get the greeting, check whether APOP is advertised */
-   a_ANSWER(rv, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 #ifdef mx_HAVE_MD5
    ts = (pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
          ? a_pop3_lookup_apop_timestamp(a_pop3_dat.s) : NIL;
@@ -152,8 +152,8 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
 #ifdef mx_HAVE_TLS
    if(!(pcp->pc_url.url_flags & mx_URL_TLS_REQUIRED)){
       if(xok_blook(pop3_use_starttls, &pcp->pc_url, oxm)){
-         a_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
-         a_ANSWER(rv, goto jleave);
+         a_POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
+         a_POP3_ANSWER(rv, goto jleave);
          if(!n_tls_open(&pcp->pc_url, pcp->pc_sockp)){
             rv = STOP;
             goto jleave;
@@ -290,8 +290,8 @@ a_pop3_auth_apop(struct mailbox *mp, struct a_pop3_ctx const *pcp,
    su_mem_copy(&cp[i], hex, mx_MD5_TOHEX_SIZE);
    i += mx_MD5_TOHEX_SIZE;
    su_mem_copy(&cp[i], NETNL, sizeof(NETNL));
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    rv = OKAY;
 jleave:
@@ -315,14 +315,14 @@ a_pop3_auth_plain(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    su_mem_copy(cp, "USER ", 5);
    su_mem_copy(&cp[5], pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
    su_mem_copy(&cp[5 + pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    su_mem_copy(cp, "PASS ", 5);
    su_mem_copy(&cp[5], pcp->pc_cred.cc_pass.s, pcp->pc_cred.cc_pass.l);
    su_mem_copy(&cp[5 + pcp->pc_cred.cc_pass.l], NETNL, sizeof(NETNL));
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    rv = OKAY;
 jleave:
@@ -374,8 +374,8 @@ jerr_cred:
    su_mem_copy(&cp[cnt], b64.s, b64.l);
    su_mem_copy(&cp[cnt += b64.l], NETNL, sizeof(NETNL));
 
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    rv = OKAY;
 jleave:
@@ -399,13 +399,13 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
 
    su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
       sizeof(NETLINE("AUTH EXTERNAL")) -1);
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    su_mem_copy(cp, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
    su_mem_copy(&cp[pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));
-   a_OUT(rv, cp, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    rv = OKAY;
 jleave:
@@ -518,8 +518,8 @@ a_pop3_noop1(struct mailbox *mp){
    enum okay rv;
    NYD_IN;
 
-   a_OUT(rv, "NOOP" NETNL, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, "NOOP" NETNL, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_OU;
    return rv;
@@ -565,8 +565,8 @@ a_pop3_stat(struct mailbox *mp, off_t *size, int *cnt){
    enum okay rv;
    NYD_IN;
 
-   a_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    for(cp = a_pop3_dat.s; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
@@ -612,8 +612,8 @@ a_pop3_list(struct mailbox *mp, int n, uz *size){
    NYD_IN;
 
    snprintf(o, sizeof o, "LIST %u" NETNL, n);
-   a_OUT(rv, o, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, o, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 
    for(cp = a_pop3_dat.s; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
@@ -671,7 +671,7 @@ a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp){
       m = &message[i];
 
       if((cp = hfield1("status", m)) != NIL)
-         while(*cp != '\0') {
+         while(*cp != '\0'){
             if(*cp == 'R')
                m->m_flag |= MREAD;
             else if(*cp == 'O')
@@ -737,7 +737,7 @@ jretry:
    case NEED_UNSPEC:
       n_panic("net-pop3.c bug\n");
    }
-   a_OUT(rv, o, MB_COMD | MB_MULT, goto jleave);
+   a_POP3_OUT(rv, o, MB_COMD | MB_MULT, goto jleave);
 
    if(a_pop3_answer(mp) == STOP){
       if(need == NEED_HEADER){
@@ -845,8 +845,8 @@ a_pop3_exit(struct mailbox *mp){
    enum okay rv;
    NYD_IN;
 
-   a_OUT(rv, "QUIT" NETNL, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, "QUIT" NETNL, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_OU;
    return rv;
@@ -859,8 +859,8 @@ a_pop3_delete(struct mailbox *mp, int n){
    NYD_IN;
 
    snprintf(o, sizeof o, "DELE %u" NETNL, n);
-   a_OUT(rv, o, MB_COMD, goto jleave);
-   a_ANSWER(rv, goto jleave);
+   a_POP3_OUT(rv, o, MB_COMD, goto jleave);
+   a_POP3_ANSWER(rv, goto jleave);
 jleave:
    NYD_OU;
    return rv;
@@ -917,8 +917,8 @@ a_pop3_update(struct mailbox *mp){
    return OKAY;
 }
 
-#undef a_OUT
-#undef a_ANSWER
+#undef a_POP3_OUT
+#undef a_POP3_ANSWER
 
 enum okay
 mx_pop3_noop(void){
