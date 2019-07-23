@@ -162,12 +162,12 @@ static struct mx_flthtml_tag const a_flthtml_tags[] = {
 # undef a_XC
 };
 
-/* Entity list; TODO not binary searched */
+/* Entity list, more or less HTML 4.0; TODO not binary searched */
 static struct a_flthtml_ent const a_flthtml_ents[] = {
 # undef a_X
 # undef a_XU
 # undef a_XS
-# undef a_XUS
+# undef a_XSU
 # define a_X(E,C) {(sizeof(E) -1), C, 0x0u, "", E "\0"}
 # define a_XU(E,C,U) {(sizeof(E) -1) | a_FLTHTML_EF_HAVE_UNI, C, U, "", E "\0"}
 # define a_XS(E,S) \
@@ -223,74 +223,96 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
 /*frac14 "&#188;" vulgar fraction one quarter, U+00BC ISOnum*/
 /*frac12 "&#189;" vulgar fraction one half, U+00BD ISOnum*/
 /*frac34 "&#190;" vulgar fraction three quarters, U+00BE ISOnum*/
-   a_XSU("iquest", "?", 0x00BF),
-   a_XSU("Agrave", "A", 0x00C0),
-   a_XSU("Aacute", "A", 0x00C1),
-   a_XSU("Acirc", "A", 0x00C2),
-   a_XSU("Atilde", "A", 0x00C3),
+   a_XU("iquest", '?', 0x00BF),
+   a_XU("Agrave", 'A', 0x00C0),
+   a_XU("Aacute", 'A', 0x00C1),
+   a_XU("Acirc", 'A', 0x00C2),
+   a_XU("Atilde", 'A', 0x00C3),
    a_XSU("Auml", "Ae", 0x00C4),
-   a_XSU("Aring", "A", 0x00C5),
+   a_XU("Aring", 'A', 0x00C5),
    a_XSU("AElig", "AE", 0x00C6),
-   a_XSU("Ccedil", "C", 0x00C7),
-   a_XSU("Egrave", "E", 0x00C8),
-   a_XSU("Eacute", "E", 0x00C9),
-   a_XSU("Ecirc", "E", 0x00CA),
-   a_XSU("Euml", "E", 0x00CB),
-   a_XSU("Igrave", "I", 0x00CC),
-   a_XSU("Iacute", "I", 0x00CD),
-   a_XSU("Icirc", "I", 0x00CE),
-   a_XSU("Iuml", "I", 0x00CF),
+   a_XU("Ccedil", 'C', 0x00C7),
+   a_XU("Egrave", 'E', 0x00C8),
+   a_XU("Eacute", 'E', 0x00C9),
+   a_XU("Ecirc", 'E', 0x00CA),
+   a_XU("Euml", 'E', 0x00CB),
+   a_XU("Igrave", 'I', 0x00CC),
+   a_XU("Iacute", 'I', 0x00CD),
+   a_XU("Icirc", 'I', 0x00CE),
+   a_XU("Iuml", 'I', 0x00CF),
 /*ETH    "&#208;" latin capital letter ETH, U+00D0 ISOlat1*/
-   a_XSU("Ntilde", "N", 0x00D1),
-   a_XSU("Ograve", "O", 0x00D2),
-   a_XSU("Oacute", "O", 0x00D3),
-   a_XSU("Ocirc", "O", 0x00D4),
-   a_XSU("Otilde", "O", 0x00D5),
+   a_XU("Ntilde", 'N', 0x00D1),
+   a_XU("Ograve", 'O', 0x00D2),
+   a_XU("Oacute", 'O', 0x00D3),
+   a_XU("Ocirc", 'O', 0x00D4),
+   a_XU("Otilde", 'O', 0x00D5),
    a_XSU("Ouml", "OE", 0x00D6),
 /*times  "&#215;" multiplication sign, U+00D7 ISOnum*/
-   a_XSU("Oslash", "O", 0x00D8),
-   a_XSU("Ugrave", "U", 0x00D9),
-   a_XSU("Uacute", "U", 0x00DA),
-   a_XSU("Ucirc", "U", 0x00DB),
+   a_XU("Oslash", 'O', 0x00D8),
+   a_XU("Ugrave", 'U', 0x00D9),
+   a_XU("Uacute", 'U', 0x00DA),
+   a_XU("Ucirc", 'U', 0x00DB),
    a_XSU("Uuml", "UE", 0x00DC),
-   a_XSU("Yacute", "Y", 0x00DD),
+   a_XU("Yacute", 'Y', 0x00DD),
 /*THORN  "&#222;" latin capital letter THORN, U+00DE ISOlat1*/
    a_XSU("szlig", "ss", 0x00DF),
-   a_XSU("agrave", "a", 0x00E0),
-   a_XSU("aacute", "a", 0x00E1),
-   a_XSU("acirc", "a", 0x00E2),
-   a_XSU("atilde", "a", 0x00E3),
+   a_XU("agrave", 'a', 0x00E0),
+   a_XU("aacute", 'a', 0x00E1),
+   a_XU("acirc", 'a', 0x00E2),
+   a_XU("atilde", 'a', 0x00E3),
    a_XSU("auml", "ae", 0x00E4),
-   a_XSU("aring", "a", 0x00E5),
+   a_XU("aring", 'a', 0x00E5),
    a_XSU("aelig", "ae", 0x00E6),
-   a_XSU("ccedil", "c", 0x00E7),
-   a_XSU("egrave", "e", 0x00E8),
-   a_XSU("eacute", "e", 0x00E9),
-   a_XSU("ecirc", "e", 0x00EA),
-   a_XSU("euml", "e", 0x00EB),
-   a_XSU("igrave", "i", 0x00EC),
-   a_XSU("iacute", "i", 0x00ED),
-   a_XSU("icirc", "i", 0x00EE),
-   a_XSU("iuml", "i", 0x00EF),
+   a_XU("ccedil", 'c', 0x00E7),
+   a_XU("egrave", 'e', 0x00E8),
+   a_XU("eacute", 'e', 0x00E9),
+   a_XU("ecirc", 'e', 0x00EA),
+   a_XU("euml", 'e', 0x00EB),
+   a_XU("igrave", 'i', 0x00EC),
+   a_XU("iacute", 'i', 0x00ED),
+   a_XU("icirc", 'i', 0x00EE),
+   a_XU("iuml", 'i', 0x00EF),
 /*eth    "&#240;" latin small letter eth, U+00F0 ISOlat1*/
-   a_XSU("ntilde", "n", 0x00F1),
-   a_XSU("ograve", "o", 0x00F2),
-   a_XSU("oacute", "o", 0x00F3),
-   a_XSU("ocirc", "o", 0x00F4),
-   a_XSU("otilde", "o", 0x00F5),
+   a_XU("ntilde", 'n', 0x00F1),
+   a_XU("ograve", 'o', 0x00F2),
+   a_XU("oacute", 'o', 0x00F3),
+   a_XU("ocirc", 'o', 0x00F4),
+   a_XU("otilde", 'o', 0x00F5),
    a_XSU("ouml", "oe", 0x00F6),
 /*divide "&#247;" division sign, U+00F7 ISOnum*/
-   a_XSU("oslash", "o", 0x00F8),
-   a_XSU("ugrave", "u", 0x00F9),
-   a_XSU("uacute", "u", 0x00FA),
-   a_XSU("ucirc", "u", 0x00FB),
+   a_XU("oslash", 'o', 0x00F8),
+   a_XU("ugrave", 'u', 0x00F9),
+   a_XU("uacute", 'u', 0x00FA),
+   a_XU("ucirc", 'u', 0x00FB),
    a_XSU("uuml", "ue", 0x00FC),
-   a_XSU("yacute", "y", 0x00FD),
+   a_XU("yacute", 'y', 0x00FD),
 /*thorn  "&#254;" latin small letter thorn, 0x00FE ISOlat1*/
-   a_XSU("yuml", "y", 0x00FF),
+   a_XU("yuml", 'y', 0x00FF),
 
-   /* No-ops in non-Unicode */
-   a_XU("zwnj", '\0', 0x200C)
+   /* Latin Extended-A */
+   a_XSU("OElig", "OE", 0x0152),
+   a_XSU("oelig", "oe", 0x0153),
+   a_XU("Scaron", 'S', 0x0160),
+   a_XU("scaron", 's', 0x0161),
+   a_XU("Yuml", 'Y', 0x0178),
+
+   /* Spacing Modifier Letters */
+/*circ "&#710;" modifier letter circumflex accent, u+02C6 ISOpub*/
+   a_XU("tilde", '~', 0x02DC),
+
+   /*- General Punctuation (many of them above) */
+   a_XU("ensp", ' ', 0x2002),
+   a_XU("emsp", ' ', 0x2003),
+   a_XU("thinsp", ' ', 0x2009),
+   a_XU("zwnj", '\0', 0x200C),
+   a_XU("zwj", '\0', 0x200D),
+/*lrm "&#8206;" left-to-right mark, u+200E NEW RFC 2070*/
+/*rlm "&#8207;" right-to-left mark, u+200F NEW RFC 2070*/
+   a_XU("sbquo", ',',  0x201A),
+   a_XSU("bdquo", ",,", 0x201E)
+/*dagger "&#8224;" dagger, u+2020 ISOpub*/
+/*Dagger "&#8225;" double dagger, u+2021 ISOpub*/
+/*permil "&#8240;" per mille sign, u+2030 ISOtech*/
 
 # undef a_X
 # undef a_XU
