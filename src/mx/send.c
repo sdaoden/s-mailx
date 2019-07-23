@@ -397,7 +397,7 @@ _out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
    NYD_IN;
 
    /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
-    * TODO subclass should detect such From_ cases and either reencode the part
+    * TODO subclass should detect From_ cases and either re-encode the part
     * TODO in question, or perform From_ quoting as necessary!?!?!?  How?!? */
    /* C99 */{
       boole from_;

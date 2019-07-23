@@ -126,7 +126,7 @@ struct su_mem_bag{
  *
  * Memory bags can serve chunks larger than what pools can handle, but these
  * need special treatment, and thus counteract the idea of a pool: their
- * occurrance is logged with \r{su_HAVE_DEBUG}. */
+ * occurrence is logged with \r{su_HAVE_DEBUG}. */
 EXPORT struct su_mem_bag *su_mem_bag_create(struct su_mem_bag *self, uz bsz);
 
 /*! If \SELF owns a stack of bags as created via \r{su_mem_bag_push()}, all
