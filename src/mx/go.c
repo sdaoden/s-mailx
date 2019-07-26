@@ -2490,6 +2490,7 @@ jfound:
          if((i = UZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
                (i -= cap->ca_arg.ca_str.l) <=
                   VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
+            fclose(fp);
             n_err(_("`readctl': failed to create storage for %s\n"),
                cap->ca_arg.ca_str.s);
             n_pstate_err_no = su_ERR_OVERFLOW;
