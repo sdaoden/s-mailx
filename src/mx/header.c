@@ -215,8 +215,8 @@ jleave:
 jerr:
    cp = _("<Unknown date>");
    linelen = su_cs_len(cp);
-   if (linelen >= n_FROM_DATEBUF)
-      linelen = n_FROM_DATEBUF;
+   if(linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF -1;
    rv = 0;
    goto jleave;
 }
