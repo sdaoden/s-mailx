@@ -197,7 +197,7 @@ a_termios_onsig(int sig){
          }
 
          if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
-            tcsetattr(fileno(mx_tty_fp), TCSAFLUSH,
+            (void)tcsetattr(fileno(mx_tty_fp), TCSAFLUSH,
                &a_termios_g.tiosg_normal->tiose_state);
       }
    }
@@ -224,7 +224,8 @@ a_termios_onsig(int sig){
             a_termios_norm_query();
 
             if(tiosep->tiose_cmd != mx_TERMIOS_CMD_NORMAL)
-               tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state);
+               (void)tcsetattr(fileno(mx_tty_fp), TCSADRAIN,
+                  &tiosep->tiose_state);
          }
 
          if(tiosep->tiose_on_state_change != NIL)
