@@ -3494,7 +3494,7 @@ imap_folders(const char * volatile name, int strip)
    n_sighdl_t saveint, savepipe;
    const char * volatile fold, *cp, *xsp;
    FILE * volatile fp;
-   int rv = 1;
+   int volatile rv = 1;
    NYD_IN;
 
    cp = protbase(name);

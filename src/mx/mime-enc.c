@@ -1017,9 +1017,9 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
    /* TODO b64_decode_part() does not yet STOP if it sees padding, whereas
     * TODO OpenSSL and mutt simply bail on such stuff */
-   UNINIT(ca, 0);
-   UNINIT(cb, 0);
-   UNINIT(cc, 0);
+   UNINIT(ca, 0); UNINIT(a, 0);
+   UNINIT(cb, 0); UNINIT(b, 0);
+   UNINIT(cc, 0); UNINIT(c, 0);
    for(b64l = 0;;){
       u32 x;
 
