@@ -703,7 +703,7 @@ _mt_classify_os_part(u32 mce, struct mimepart *mpp, boole deep_inspect)
 
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
-   UNINIT(mtc, 0);
+   mtc = 0;
    did_inrest = FAL0;
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
