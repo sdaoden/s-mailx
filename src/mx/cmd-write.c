@@ -123,6 +123,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
             goto jleave;
          }
          disp = A_("[Piped]");
+         fs = mx_FS_OPEN_STATE_NONE;
          goto jsend;
       }
    }
