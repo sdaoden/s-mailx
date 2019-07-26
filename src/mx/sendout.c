@@ -1661,11 +1661,13 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
       a_ANY = 1u<<2,
       a_LASTNL = 1u<<3
    };
-   char *buf;
    uz cnt, bufsize, llen;
    FILE *fp;
    s32 f;
+   char *buf;
    NYD_IN;
+
+   buf = NIL;
 
    if(*mta == '\0')
       fp = n_stdout;
@@ -1684,7 +1686,6 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
 
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
-   buf = NIL;
    bufsize = 0;
    f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
 
