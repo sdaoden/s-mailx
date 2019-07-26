@@ -450,7 +450,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
    if(a_termios_g.tiosg_normal == NIL){
       a_termios_g.tiosg_normal = a_termios_g.tiosg_envp;
       a_termios_g.tiosg_normal->tiose_cmd = mx_TERMIOS_CMD_NORMAL;
-      rv = a_termios_norm_query();
+      /*rv =*/ a_termios_norm_query();
    }
 
    /* Note: RESET only called with signals blocked in main loop handler */
