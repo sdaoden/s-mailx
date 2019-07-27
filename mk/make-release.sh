@@ -50,7 +50,7 @@ update_stable_hook() {
 
    #
    echo 'gen-version.h: update'
-   VERSION= TOPDIR= awk=${awk} grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
+   TOPDIR= awk=${awk} grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
       ${SHELL} mk/make-version.sh create
    ${git} add -f include/mx/gen-version.h
 
