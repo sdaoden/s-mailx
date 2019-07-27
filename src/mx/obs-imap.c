@@ -191,7 +191,8 @@ static boole           _imap_rdonly;
 static char *imap_quotestr(char const *s);
 static char *imap_unquotestr(char const *s);
 static void imap_delim_init(struct mailbox *mp, struct mx_url const *urlp);
-static char const *imap_path_normalize(struct mailbox *mp, char const *cp);
+static char const *a_imap_path_normalize(struct mailbox *mp, char const *cp,
+      boole look_delim); /* for `imapcodec' only! */
 /* Returns NULL on error */
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
@@ -357,18 +358,27 @@ jcopy:
 }
 
 static char const *
-imap_path_normalize(struct mailbox *mp, char const *cp){
-   char *rv_base, *rv, dc2, dc, c, lc;
+a_imap_path_normalize(struct mailbox *mp, char const *cp, boole look_delim){
    char const *dcp;
+   boole dosrch;
+   char dc, *rv_base, *rv, c, lc;
    NYD2_IN;
+   ASSERT(mp == NIL || !look_delim);
+   ASSERT(!look_delim || mp == NIL);
 
-   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean "use
-    * exactly what i have specified" */
-   if(mp == NULL || mp->mb_imap_delim[0] == '\0')
-      dcp = &n_IMAP_DELIM[0];
-   else
-      dcp = &mp->mb_imap_delim[0];
-   dc2 = ((dc = *dcp) != '\0') ? *++dcp : dc;
+   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean
+    * "use exactly what i have specified" */
+   if(mp == NIL){
+      if(look_delim && (dcp = ok_vlook(imap_delim)) != NIL)
+         dc = *dcp;
+      else{
+         dcp = n_IMAP_DELIM;
+         dc = '\0';
+      }
+   }else if((dc = (dcp = mp->mb_imap_delim)[0]) == '\0')
+      dcp = n_IMAP_DELIM;
+
+   dosrch = (dcp[1] != '\0');
 
    /* Plain names don't need path quoting */
    /* C99 */{
@@ -378,14 +388,16 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
       for(cpx = cp;; ++cpx)
          if((c = *cpx) == '\0')
             goto jleave;
+         /* Without *imap-delim*, use the first separator discovered in path */
          else if(dc == '\0'){
-            if(su_cs_find_c(n_IMAP_DELIM, c)){
+            ASSERT(!su_cs_cmp(dcp, n_IMAP_DELIM));
+            if(su_cs_find_c(dcp, c)){
                dc = c;
                break;
             }
          }else if(c == dc)
             break;
-         else if(dc2 && su_cs_find_c(dcp, c) != NULL)
+         else if(dosrch && su_cs_find_c(dcp, c) != NIL)
             break;
 
       /* And we don't need to reevaluate what we have seen yet */
@@ -400,7 +412,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
 
    /* Squeeze adjacent delimiters, convert remain to dc */
    for(lc = '\0'; (c = *cp++) != '\0'; lc = c){
-      if(c == dc || (lc != '\0' && dc2 && su_cs_find_c(dcp, c) != NULL))
+      if(c != dc && dosrch && su_cs_find_c(dcp, c) != NIL)
          c = dc;
       if(c != dc || lc != dc)
          *rv++ = c;
@@ -776,7 +788,7 @@ imap_path_quote(struct mailbox *mp, char const *cp){
    char *rv;
    NYD2_IN;
 
-   cp = imap_path_normalize(mp, cp);
+   cp = a_imap_path_normalize(mp, cp, FAL0);
    cp = imap_path_encode(cp, &err);
    rv = err ? NULL : imap_quotestr(cp);
    NYD2_OU;
@@ -1983,8 +1995,8 @@ jduppass:
          n_free(mb.mb_imap_mailbox);
       ASSERT(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
-      mb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mb,
-            urlp->url_path.s), 0);
+      mb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&mb,
+            urlp->url_path.s, FAL0), 0);
       initbox(savecatsep(urlp->url_p_eu_h_p,
          (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
          mb.mb_imap_mailbox));
@@ -2939,7 +2951,7 @@ c_imapcodec(void *vp){
       ++cp;
 
    n_pstate_err_no = su_ERR_NONE;
-   varres = imap_path_normalize(NULL, cp);
+   varres = a_imap_path_normalize(NULL, cp, TRU1);
 
    if(su_cs_starts_with_case_n("encode", act, alen))
       varres = imap_path_encode(varres, &err);
@@ -3345,8 +3357,8 @@ imap_append(const char *xserver, FILE *fp, long offset)
          goto jleave;
 
       imap_delim_init(&mx, &url);
-      mx.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mx, url.url_path.s),
-            0);
+      mx.mb_imap_mailbox = su_cs_dup(
+            a_imap_path_normalize(&mx, url.url_path.s, FAL0), 0);
 
       if(disconnected(url.url_p_eu_h_p) == 0){
          mx.mb_sock = su_TALLOC(struct mx_socket, 1);
@@ -3765,7 +3777,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass, 0);
    su_mem_copy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
       sizeof(xmb.mb_imap_delim));
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
+   xmb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&xmb, name, FAL0), 0);
    if (mp->mb_cache_directory != NULL)
       xmb.mb_cache_directory = su_cs_dup(mp->mb_cache_directory, 0);
    xmb.mb_uidvalidity = uidvalidity;
@@ -3823,7 +3835,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    /* XXX mb_imap_delim reused */
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
+   xmb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&xmb, name, FAL0), 0);
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
