@@ -47,6 +47,7 @@
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
+#include "mx/net-pop3.h"
 #include "mx/termios.h"
 
 /* TODO fake */
@@ -214,7 +215,7 @@ a_msg_get_header(struct message *mp){
       break;
 #ifdef mx_HAVE_POP3
    case MB_POP3:
-      rv = pop3_header(mp);
+      rv = mx_pop3_header(mp);
       break;
 #endif
 #ifdef mx_HAVE_IMAP
@@ -1366,7 +1367,7 @@ get_body(struct message *mp){
       break;
 #ifdef mx_HAVE_POP3
    case MB_POP3:
-      rv = pop3_body(mp);
+      rv = mx_pop3_body(mp);
       break;
 #endif
 #ifdef mx_HAVE_IMAP

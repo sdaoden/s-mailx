@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -108,7 +109,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
    int resz;
    NYD2_IN;
 
-   ename = urlxenc(name, TRU1);
+   ename = mx_url_xenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
       res = n_autorec_alloc(resz = su_cs_len(mp->mb_cache_directory) +
             su_cs_len(ename) + 2);
@@ -120,7 +121,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       if ((cachedir = ok_vlook(imap_cache)) == NULL ||
             (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
          goto jleave;
-      eaccount = urlxenc(mp->mb_imap_account, TRU1);
+      eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
 
       if (box != NULL || su_cs_cmp_case(box = mp->mb_imap_mailbox, "INBOX")) {
          boole err;
@@ -128,7 +129,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
          box = imap_path_encode(box, &err);
          if(err)
             goto jleave;
-         box = urlxenc(box, TRU1);
+         box = mx_url_xenc(box, TRU1);
       } else
          box = "INBOX";
 
@@ -458,14 +459,14 @@ clean(struct mailbox *mp, struct cw *cw)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account, TRU1);
+   eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    if (su_cs_cmp_case(emailbox = mp->mb_imap_mailbox, "INBOX")) {
       boole err;
 
       emailbox = imap_path_encode(emailbox, &err);
       if(err)
          goto jleave;
-      emailbox = urlxenc(emailbox, TRU1);
+      emailbox = mx_url_xenc(emailbox, TRU1);
    }
    buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) + su_cs_len(eaccount) +
          su_cs_len(emailbox) + 40);
@@ -685,7 +686,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account, TRU1);
+   eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    name = n_autorec_alloc(namesz = su_cs_len(cachedir) +
          su_cs_len(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
@@ -694,7 +695,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      cp = cp2 = imap_path_decode(urlxdec(dp->d_name), NULL);
+      cp = cp2 = imap_path_decode(mx_url_xdec(dp->d_name), NULL);
       for (bp = base; *bp && *bp == *cp2; bp++)
          cp2++;
       if (*bp)
@@ -844,7 +845,7 @@ cache_dequeue(struct mailbox *mp)
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
-   eaccount = urlxenc(mp->mb_imap_account, TRU1);
+   eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) +
          su_cs_len(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
@@ -857,7 +858,7 @@ cache_dequeue(struct mailbox *mp)
       /* FIXME MUST BLOCK SIGNALS IN ORDER TO ENSURE PROPER RESTORE!
        * (but wuuuuh, what a shit!) */
       mp->mb_imap_mailbox = su_cs_dup(
-            imap_path_decode(urlxdec(dp->d_name), NULL), 0);
+            imap_path_decode(mx_url_xdec(dp->d_name), NULL), 0);
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;

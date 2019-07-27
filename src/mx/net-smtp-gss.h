@@ -69,8 +69,10 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 #ifdef mx_HAVE_GSSAPI
+#ifndef a_NET_SMTP_GSS_H
+# define a_NET_SMTP_GSS_H 1
+
 #ifndef GSSAPI_REG_INCLUDE
 # include <gssapi/gssapi.h>
 # ifdef GSSAPI_OLD_STYLE
@@ -82,77 +84,59 @@
 # include <gssapi.h>
 #endif
 
-static void _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ);
-static void _smtp_gssapi_error(char const *s, OM_uint32 maj_stat,
-               OM_uint32 min_stat);
+#elif a_NET_SMTP_GSS_H == 1
+# undef a_NET_SMTP_GSS_H
+# define a_NET_SMTP_GSS_H 2
 
-static void
-_smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
-{
-   OM_uint32 maj_stat, min_stat;
-   gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
-   OM_uint32 msg_ctx = 0;
-   NYD_IN;
+/* */
+static boole a_netsmtp_gss(struct mx_socket *sp, struct sendbundle *sbp,
+      struct a_netsmtp_line *slp);
 
-   do {
-      maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
-            &msg_ctx, &msg);
-      if (maj_stat == GSS_S_COMPLETE) {
-         n_err(_("GSS error: %s / %.*s\n"),
-            s, (int)msg.length, (char*)msg.value);
-         gss_release_buffer(&min_stat, &msg);
-      } else {
-         n_err(_("GSS error: %s / unknown\n"), s);
-         break;
-      }
-   } while (msg_ctx);
-   NYD_OU;
-}
+static void a_netsmtp_gss__error(char const *s, OM_uint32 maj_stat,
+      OM_uint32 min_stat);
+static void a_netsmtp_gss__error1(char const *s, OM_uint32 code, int typ);
 
-static void
-_smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
-{
-   NYD_IN;
-   _smtp_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
-   _smtp_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
-   NYD_OU;
-}
+#elif a_NET_SMTP_GSS_H == 2
 
 static boole
-_smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
-{
-   struct str in, out;
-   gss_buffer_desc send_tok, recv_tok;
-   gss_name_t target_name;
-   gss_ctx_id_t gss_context;
-   OM_uint32 maj_stat, min_stat, ret_flags;
-   int conf_state;
+a_netsmtp_gss(struct mx_socket *sop, struct sendbundle *sbp,
+      struct a_netsmtp_line *slp){
    enum{
       a_F_NONE,
       a_F_RECV_TOK = 1u<<0,
       a_F_SEND_TOK = 1u<<1,
       a_F_TARGET_NAME = 1u<<2,
       a_F_GSS_CONTEXT = 1u<<3
-   } f;
+   };
+
+   struct str in, out;
+   gss_buffer_desc send_tok, recv_tok;
+   gss_name_t target_name;
+   gss_ctx_id_t gss_context;
+   OM_uint32 maj_stat, min_stat, ret_flags;
+   int conf_state;
+   char *buf;
+   u32 f;
    boole ok;
    NYD_IN;
 
    ok = FAL0;
    f = a_F_NONE;
+   buf = NIL;
 
-   if(INT_MAX - 1 - 4 <= sbp->sb_ccred.cc_user.l)
+   if(INT_MAX - 1 - 4 <= sbp->sb_credp->cc_user.l)
       goto jleave;
 
-   send_tok.value = n_autorec_alloc(
-         (send_tok.length = sbp->sb_url->url_host.l + 5) +1);
+   send_tok.value = buf = n_lofi_alloc(
+         (send_tok.length = sbp->sb_urlp->url_host.l + 5) +1);
    su_mem_copy(send_tok.value, "smtp@", 5);
-   su_mem_copy((char*)send_tok.value + 5, sbp->sb_url->url_host.s,
-      sbp->sb_url->url_host.l +1);
+   su_mem_copy(&S(char*,send_tok.value)[5], sbp->sb_urlp->url_host.s,
+      sbp->sb_urlp->url_host.l +1);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;
-   if (maj_stat != GSS_S_COMPLETE) {
-      _smtp_gssapi_error(savestrbuf(send_tok.value, send_tok.length),
+   if(maj_stat != GSS_S_COMPLETE){
+      a_netsmtp_gss__error(savestrbuf(send_tok.value, send_tok.length),
          maj_stat, min_stat);
       goto jleave;
    }
@@ -167,31 +151,31 @@ _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
          0,
          GSS_C_NO_CHANNEL_BINDINGS,
          GSS_C_NO_BUFFER,
-         NULL,
+         NIL,
          &send_tok,
          &ret_flags,
-         NULL);
+         NIL);
    f |= a_F_SEND_TOK | a_F_GSS_CONTEXT;
-   if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-      _smtp_gssapi_error("initializing GSS context", maj_stat, min_stat);
+   if(maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED){
+      a_netsmtp_gss__error("initializing GSS context", maj_stat, min_stat);
       goto jleave;
    }
 
-   _OUT(NETLINE("AUTH GSSAPI"));
-   _ANSWER(3, FAL0, FAL0);
-   while (maj_stat == GSS_S_CONTINUE_NEEDED) {
+   a_SMTP_OUT(NETLINE("AUTH GSSAPI"));
+   a_SMTP_ANSWER(3, FAL0, FAL0);
+   while(maj_stat == GSS_S_CONTINUE_NEEDED){
       /* Pass token obtained from first gss_init_sec_context() call */
       if(b64_encode_buf(&out, send_tok.value, send_tok.length,
-            B64_SALLOC | B64_CRLF) == NULL)
+            B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       gss_release_buffer(&min_stat, &send_tok);
       f &= ~a_F_SEND_TOK;
-      _OUT(out.s);
-      _ANSWER(3, FAL0, TRU1);
+      a_SMTP_OUT(out.s);
+      a_SMTP_ANSWER(3, FAL0, TRU1);
 
-      out.s = NULL;
-      in.s = slp->dat;
-      in.l = slp->datlen;
+      out.s = NIL;
+      in.s = slp->sl_dat.s;
+      in.l = slp->sl_dat.l;
       if(!b64_decode(&out, &in))
          goto jebase64;
       recv_tok.value = out.s;
@@ -205,14 +189,14 @@ _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
             0,
             GSS_C_NO_CHANNEL_BINDINGS,
             &recv_tok,
-            NULL,
+            NIL,
             &send_tok,
             &ret_flags,
-            NULL);
+            NIL);
       n_free(out.s);
       f |= a_F_SEND_TOK;
-      if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
-         _smtp_gssapi_error("initializing context", maj_stat, min_stat);
+      if(maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED){
+         a_netsmtp_gss__error("initializing context", maj_stat, min_stat);
          goto jleave;
       }
    }
@@ -222,20 +206,20 @@ _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
 
    /* Pass token obtained from second gss_init_sec_context() call */
    if(b64_encode_buf(&out, send_tok.value, send_tok.length,
-         B64_SALLOC | B64_CRLF) == NULL)
+         B64_SALLOC | B64_CRLF) == NIL)
       goto jleave;
-   _OUT(out.s);
+   a_SMTP_OUT(out.s);
 
    gss_release_buffer(&min_stat, &send_tok);
    f &= ~a_F_SEND_TOK;
 
-   _ANSWER(3, FAL0, TRU1);
-   out.s = NULL;
-   in.s = slp->dat;
-   in.l = slp->datlen;
+   a_SMTP_ANSWER(3, FAL0, TRU1);
+   out.s = NIL;
+   in.s = slp->sl_dat.s;
+   in.l = slp->sl_dat.l;
    if(!b64_decode(&out, &in)){
 jebase64:
-      if(out.s != NULL)
+      if(out.s != NIL)
          n_free(out.s);
       n_err(_("Invalid base64 encoding from GSSAPI server\n"));
       goto jleave;
@@ -243,12 +227,12 @@ jebase64:
    recv_tok.value = out.s;
    recv_tok.length = out.l;
    maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok, &send_tok,
-         &conf_state, NULL);
+         &conf_state, NIL);
    n_free(out.s);
    gss_release_buffer(&min_stat, &send_tok);
    /*f &= ~a_F_SEND_TOK;*/
-   if (maj_stat != GSS_S_COMPLETE) {
-      _smtp_gssapi_error("unwrapping data", maj_stat, min_stat);
+   if(maj_stat != GSS_S_COMPLETE){
+      a_netsmtp_gss__error("unwrapping data", maj_stat, min_stat);
       goto jleave;
    }
 
@@ -256,25 +240,28 @@ jebase64:
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
-   in.s = n_autorec_alloc((send_tok.length = 4 + sbp->sb_ccred.cc_user.l) +1);
-   su_mem_copy(&in.s[4], sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
+   n_lofi_free(buf);
+   in.s = buf = n_lofi_alloc((send_tok.length = 4u + sbp->sb_credp->cc_user.l
+         ) +1);
+   su_mem_copy(&in.s[4], sbp->sb_credp->cc_user.s,
+      sbp->sb_credp->cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;
-   in.s[2] = in.s[3] = (char)0xFF;
+   in.s[2] = in.s[3] = S(char,0xFF);
    send_tok.value = in.s;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    f |= a_F_RECV_TOK;
-   if (maj_stat != GSS_S_COMPLETE) {
-      _smtp_gssapi_error("wrapping data", maj_stat, min_stat);
+   if(maj_stat != GSS_S_COMPLETE){
+      a_netsmtp_gss__error("wrapping data", maj_stat, min_stat);
       goto jleave;
    }
 
    if(b64_encode_buf(&out, recv_tok.value, recv_tok.length,
-         B64_SALLOC | B64_CRLF) == NULL)
+         B64_SALLOC | B64_CRLF) == NIL)
       goto jleave;
-   _OUT(out.s);
-   _ANSWER(2, FAL0, FAL0);
+   a_SMTP_OUT(out.s);
+   a_SMTP_ANSWER(2, FAL0, FAL0);
 
    ok = TRU1;
 jleave:
@@ -286,13 +273,49 @@ jleave:
       gss_release_name(&min_stat, &target_name);
    if(f & a_F_GSS_CONTEXT)
       gss_delete_sec_context(&min_stat, &gss_context, GSS_C_NO_BUFFER);
+   if(buf != NIL)
+      n_lofi_free(buf);
    NYD_OU;
    return ok;
 }
 
-# ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
-#  undef GSS_C_NT_HOSTBASED_SERVICE
-# endif
-#endif /* mx_HAVE_GSSAPI */
+static void
+a_netsmtp_gss__error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat){
+   NYD_IN;
+   a_netsmtp_gss__error1(s, maj_stat, GSS_C_GSS_CODE);
+   a_netsmtp_gss__error1(s, min_stat, GSS_C_MECH_CODE);
+   NYD_OU;
+}
 
+static void
+a_netsmtp_gss__error1(char const *s, OM_uint32 code, int typ){
+   gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
+   OM_uint32 maj_stat, min_stat;
+   OM_uint32 msg_ctx;
+   NYD_IN;
+
+   msg_ctx = 0;
+   do{
+      maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
+            &msg_ctx, &msg);
+      if(maj_stat == GSS_S_COMPLETE){
+         n_err(_("GSS error: %s / %.*s\n"),
+            s, S(int,msg.length), S(char*,msg.value));
+         gss_release_buffer(&min_stat, &msg);
+      }else{
+         n_err(_("GSS error: %s / unknown\n"), s);
+         break;
+      }
+   }while(msg_ctx);
+   NYD_OU;
+}
+
+#ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+# undef GSS_C_NT_HOSTBASED_SERVICE
+#endif
+
+#else
+# error a_NET_SMTP_GSS_H included thrice already
+#endif
+#endif /* mx_HAVE_GSSAPI */
 /* s-it-mode */

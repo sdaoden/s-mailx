@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/child.h"
+#include "mx/net-pop3.h"
 #include "mx/tty.h"
 
 /* TODO fake */
@@ -156,7 +157,7 @@ c_noop(void *v)
    switch (mb.mb_type) {
 #ifdef mx_HAVE_POP3
    case MB_POP3:
-      pop3_noop();
+      mx_pop3_noop();
       break;
 #endif
 #ifdef mx_HAVE_IMAP

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE socket
+#define su_FILE net_socket
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -39,7 +39,7 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_NONBLOCKSOCK
 /*#  include <sys/types.h>*/
 #  include <sys/select.h>
@@ -74,37 +74,40 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 #include "mx/sigs.h"
+#include "mx/url.h"
 
+#include "mx/net-socket.h"
 /* TODO fake */
 #include "su/code-in.h"
 
 /* */
-static boole a_socket_open(struct sock *sop, struct url *urlp);
+static boole a_netso_open(struct mx_socket *sop, struct mx_url *urlp);
 
 /* */
-static int a_socket_connect(int fd, struct sockaddr *soap, uz soapl);
+static int a_netso_connect(int fd, struct sockaddr *soap, uz soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
-static long a_socket_xwrite(int fd, char const *data, uz size);
+static long a_netso_xwrite(int fd, char const *data, uz size);
 
-static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
-static int        __sopen_sig; /* TODO someday, we won't need it no more */
+static sigjmp_buf a_netso_actjmp; /* TODO someday, we won't need it no more */
+static int a_netso_sig; /* TODO someday, we won't need it no more */
+
 static void
-__sopen_onsig(int sig) /* TODO someday, we won't need it no more */
+a_netso_onsig(int sig) /* TODO someday, we won't need it no more */
 {
    NYD; /* Signal handler */
-   if (__sopen_sig == -1) {
+   if (a_netso_sig == -1) {
       fprintf(n_stderr, _("\nInterrupting this operation may turn "
          "the DNS resolver unusable\n"));
-      __sopen_sig = 0;
+      a_netso_sig = 0;
    } else {
-      __sopen_sig = sig;
-      siglongjmp(__sopen_actjmp, 1);
+      a_netso_sig = sig;
+      siglongjmp(a_netso_actjmp, 1);
    }
 }
 
 static boole
-a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
+a_netso_open(struct mx_socket *sop, struct mx_url *urlp) /*TODO sigs;refactor*/
 {
 # ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
@@ -137,16 +140,16 @@ a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
    if (n_poption & n_PO_D_V)
       n_err(_("Resolving host %s:%s ... "), urlp->url_host.s, serv);
 
-   /* Signal handling (in respect to __sopen_sig dealing) is heavy, but no
+   /* Signal handling (in respect to a_netso_sig dealing) is heavy, but no
     * healing until v15.0 and i want to end up with that functionality */
    hold_sigs();
-   __sopen_sig = 0;
-   ohup = safe_signal(SIGHUP, &__sopen_onsig);
-   oint = safe_signal(SIGINT, &__sopen_onsig);
-   if (sigsetjmp(__sopen_actjmp, 0)) {
+   a_netso_sig = 0;
+   ohup = safe_signal(SIGHUP, &a_netso_onsig);
+   oint = safe_signal(SIGINT, &a_netso_onsig);
+   if (sigsetjmp(a_netso_actjmp, 0)) {
 jpseudo_jump:
       n_err("%s\n",
-         (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+         (a_netso_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
       if (sofd >= 0) {
          close(sofd);
          sofd = -1;
@@ -159,13 +162,13 @@ jpseudo_jump:
    for (;;) {
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_socktype = SOCK_STREAM;
-      __sopen_sig = -1;
+      a_netso_sig = -1;
       errval = getaddrinfo(urlp->url_host.s, serv, &hints, &res0);
-      if (__sopen_sig != -1) {
-         __sopen_sig = SIGINT;
+      if (a_netso_sig != -1) {
+         a_netso_sig = SIGINT;
          goto jpseudo_jump;
       }
-      __sopen_sig = 0;
+      a_netso_sig = 0;
       if (errval == 0)
          break;
 
@@ -179,7 +182,7 @@ jpseudo_jump:
        * check for the given ai_socktype.. */
       if (errval == EAI_NONAME || errval == EAI_SERVICE) {
          if (serv == urlp->url_proto &&
-               (serv = n_servbyname(urlp->url_proto, NIL, NIL)) != NIL &&
+               (serv = mx_url_servbyname(urlp->url_proto, NIL, NIL)) != NIL &&
                *serv != '\0') {
             n_err(_("  Trying standard protocol port %s\n"), serv);
             n_err(_("  If that succeeds consider including the "
@@ -208,7 +211,7 @@ jpseudo_jump:
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if(sofd >= 0 &&
-            (errval = a_socket_connect(sofd, res->ai_addr, res->ai_addrlen)
+            (errval = a_netso_connect(sofd, res->ai_addr, res->ai_addrlen)
                ) != su_ERR_NONE)
          sofd = -1;
    }
@@ -226,7 +229,7 @@ jjumped:
       else {
          if (n_poption & n_PO_D_V)
             n_err(_("failed\n"));
-         if ((serv = n_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
+         if ((serv = mx_url_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
                ) != NIL && *serv != '\0')
             n_err(_("  Unknown service: %s\n"), urlp->url_proto);
             n_err(_("  Trying standard protocol port %s\n"), serv);
@@ -242,13 +245,13 @@ jjumped:
       }
    }
 
-   __sopen_sig = -1;
+   a_netso_sig = -1;
    hp = gethostbyname(urlp->url_host.s);
-   if (__sopen_sig != -1) {
-      __sopen_sig = SIGINT;
+   if (a_netso_sig != -1) {
+      a_netso_sig = SIGINT;
       goto jpseudo_jump;
    }
-   __sopen_sig = 0;
+   a_netso_sig = 0;
 
    if (hp == NULL) {
       char const *emsg;
@@ -282,7 +285,7 @@ jjumped:
    if (n_poption & n_PO_D_V)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
-   if((errval = a_socket_connect(sofd, (struct sockaddr*)&servaddr,
+   if((errval = a_netso_connect(sofd, (struct sockaddr*)&servaddr,
          sizeof servaddr)) != su_ERR_NONE)
       sofd = -1;
 jjumped:
@@ -324,7 +327,7 @@ jjumped:
 
 #  if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
       /* TODO the SSL_ def check should NOT be here */
-   if(urlp->url_flags & n_URL_TLS_MASK){
+   if(urlp->url_flags & mx_URL_TLS_MASK){
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_NUMERICHOST;
@@ -332,26 +335,26 @@ jjumped:
       if(getaddrinfo(urlp->url_host.s, NULL, &hints, &res0) == 0)
          freeaddrinfo(res0);
       else
-         urlp->url_flags |= n_URL_HOST_IS_NAME;
+         urlp->url_flags |= mx_URL_HOST_IS_NAME;
    }
 #  endif
 
-   if (urlp->url_flags & n_URL_TLS_REQUIRED) {
-      ohup = safe_signal(SIGHUP, &__sopen_onsig);
-      oint = safe_signal(SIGINT, &__sopen_onsig);
-      if (sigsetjmp(__sopen_actjmp, 0)) {
+   if (urlp->url_flags & mx_URL_TLS_REQUIRED) {
+      ohup = safe_signal(SIGHUP, &a_netso_onsig);
+      oint = safe_signal(SIGINT, &a_netso_onsig);
+      if (sigsetjmp(a_netso_actjmp, 0)) {
          n_err(_("%s during SSL/TLS handshake\n"),
-            (__sopen_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
+            (a_netso_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
          goto jsclose;
       }
       rele_sigs();
 
       if(!n_tls_open(urlp, sop)){
 jsclose:
-         sclose(sop);
+         mx_socket_close(sop);
          sofd = -1;
       }else if(urlp->url_cproto == CPROTO_CERTINFO)
-         sclose(sop);
+         mx_socket_close(sop);
 
       hold_sigs();
       safe_signal(SIGINT, oint);
@@ -363,19 +366,19 @@ jsclose:
 
 jleave:
    /* May need to bounce the signal to the go.c trampoline (or wherever) */
-   if (__sopen_sig != 0) {
+   if (a_netso_sig != 0) {
       sigset_t cset;
       sigemptyset(&cset);
-      sigaddset(&cset, __sopen_sig);
+      sigaddset(&cset, a_netso_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      n_raise(__sopen_sig);
+      n_raise(a_netso_sig);
    }
    NYD2_OU;
    return (sofd >= 0);
 }
 
 static int
-a_socket_connect(int fd, struct sockaddr *soap, uz soapl){
+a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
    int rv;
    NYD_IN;
 
@@ -455,7 +458,7 @@ jerr_noerrno:
 }
 
 static long
-a_socket_xwrite(int fd, char const *data, uz size)
+a_netso_xwrite(int fd, char const *data, uz size)
 {
    long rv = -1, wo;
    uz wt = 0;
@@ -476,141 +479,8 @@ jleave:
    return rv;
 }
 
-FL int
-sclose(struct sock *sop)
-{
-   int i;
-   NYD_IN;
-
-   i = sop->s_fd;
-   sop->s_fd = -1;
-   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
-    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
-    * TODO but unfortunately it isn't yet */
-   if (i <= 0)
-      i = 0;
-   else {
-      if (sop->s_onclose != NULL)
-         (*sop->s_onclose)();
-      if (sop->s_wbuf != NULL)
-         n_free(sop->s_wbuf);
-# ifdef mx_HAVE_XTLS
-      if (sop->s_use_tls) {
-         void *s_tls = sop->s_tls;
-
-         sop->s_tls = NULL;
-         sop->s_use_tls = 0;
-         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
-            ;
-         SSL_free(s_tls);
-      }
-# endif
-      i = close(i);
-   }
-   NYD_OU;
-   return i;
-}
-
-FL enum okay
-swrite(struct sock *sop, char const *data)
-{
-   enum okay rv;
-   NYD2_IN;
-
-   rv = swrite1(sop, data, su_cs_len(data), 0);
-   NYD2_OU;
-   return rv;
-}
-
-FL enum okay
-swrite1(struct sock *sop, char const *data, int size, int use_buffer)
-{
-   enum okay rv = STOP;
-   int x;
-   NYD2_IN;
-
-   if (use_buffer > 0) {
-      int di;
-
-      if (sop->s_wbuf == NULL) {
-         sop->s_wbufsize = 4096;
-         sop->s_wbuf = n_alloc(sop->s_wbufsize);
-         sop->s_wbufpos = 0;
-      }
-      while (sop->s_wbufpos + size > sop->s_wbufsize) {
-         di = sop->s_wbufsize - sop->s_wbufpos;
-         size -= di;
-         if (sop->s_wbufpos > 0) {
-            su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, di);
-            rv = swrite1(sop, sop->s_wbuf, sop->s_wbufsize, -1);
-         } else
-            rv = swrite1(sop, data, sop->s_wbufsize, -1);
-         if (rv != OKAY)
-            goto jleave;
-         data += di;
-         sop->s_wbufpos = 0;
-      }
-      if (size == sop->s_wbufsize) {
-         rv = swrite1(sop, data, sop->s_wbufsize, -1);
-         if (rv != OKAY)
-            goto jleave;
-      } else if (size > 0) {
-         su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, size);
-         sop->s_wbufpos += size;
-      }
-      rv = OKAY;
-      goto jleave;
-   } else if (use_buffer == 0 && sop->s_wbuf != NULL && sop->s_wbufpos > 0) {
-      x = sop->s_wbufpos;
-      sop->s_wbufpos = 0;
-      if ((rv = swrite1(sop, sop->s_wbuf, x, -1)) != OKAY)
-         goto jleave;
-   }
-   if (size == 0) {
-      rv = OKAY;
-      goto jleave;
-   }
-
-# ifdef mx_HAVE_XTLS
-   if (sop->s_use_tls) {
-jssl_retry:
-      x = SSL_write(sop->s_tls, data, size);
-      if (x < 0) {
-         switch (SSL_get_error(sop->s_tls, x)) {
-         case SSL_ERROR_WANT_READ:
-         case SSL_ERROR_WANT_WRITE:
-            goto jssl_retry;
-         }
-      }
-   } else
-# endif
-   {
-      x = a_socket_xwrite(sop->s_fd, data, size);
-   }
-   if (x != size) {
-      char o[512];
-
-      snprintf(o, sizeof o, "%s write error",
-         (sop->s_desc ? sop->s_desc : "socket"));
-# ifdef mx_HAVE_XTLS
-      if (sop->s_use_tls)
-         ssl_gen_err("%s", o);
-      else
-# endif
-         n_perr(o, 0);
-      if (x < 0)
-         sclose(sop);
-      rv = STOP;
-      goto jleave;
-   }
-   rv = OKAY;
-jleave:
-   NYD2_OU;
-   return rv;
-}
-
-FL boole
-sopen(struct sock *sop, struct url *urlp){
+boole
+mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
    char const *cp;
    boole rv;
    NYD_IN;
@@ -619,14 +489,14 @@ sopen(struct sock *sop, struct url *urlp){
 
    /* We may have a proxy configured */
    if((cp = xok_vlook(socks_proxy, urlp, OXM_ALL)) == NULL)
-      rv = a_socket_open(sop, urlp);
+      rv = a_netso_open(sop, urlp);
    else{
       u8 pbuf[4 + 1 + 255 + 2];
       uz i;
       char const *emsg;
-      struct url url2;
+      struct mx_url url2;
 
-      if(!url_parse(&url2, CPROTO_SOCKS, cp)){
+      if(!mx_url_parse(&url2, CPROTO_SOCKS, cp)){
          n_err(_("Failed to parse *socks-proxy*: %s\n"), cp);
          goto jleave;
       }
@@ -641,7 +511,7 @@ sopen(struct sock *sop, struct url *urlp){
             urlp->url_host.s,
             (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
 
-      if(!a_socket_open(sop, &url2)){
+      if(!a_netso_open(sop, &url2)){
          n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
          goto jleave;
       }
@@ -654,7 +524,7 @@ sopen(struct sock *sop, struct url *urlp){
 jerrsocks:
          n_perr("*socks-proxy*", 0);
 jesocks:
-         sclose(sop);
+         mx_socket_close(sop);
          goto jleave;
       }
 
@@ -733,9 +603,143 @@ jleave:
    return rv;
 }
 
-FL int
-(sgetline)(char **line, uz *linesize, uz *linelen, struct sock *sop
-   su_DBG_LOC_ARGS_DECL)
+int
+mx_socket_close(struct mx_socket *sop)
+{
+   int i;
+   NYD_IN;
+
+   i = sop->s_fd;
+   sop->s_fd = -1;
+   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
+    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
+    * TODO but unfortunately it isn't yet */
+   if (i <= 0)
+      i = 0;
+   else {
+      if (sop->s_onclose != NULL)
+         (*sop->s_onclose)();
+      if (sop->s_wbuf != NULL)
+         n_free(sop->s_wbuf);
+# ifdef mx_HAVE_XTLS
+      if (sop->s_use_tls) {
+         void *s_tls = sop->s_tls;
+
+         sop->s_tls = NULL;
+         sop->s_use_tls = 0;
+         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
+            ;
+         SSL_free(s_tls);
+      }
+# endif
+      i = close(i);
+   }
+   NYD_OU;
+   return i;
+}
+
+enum okay
+mx_socket_write(struct mx_socket *sop, char const *data) /* XXX INLINE */
+{
+   enum okay rv;
+   NYD2_IN;
+
+   rv = mx_socket_write1(sop, data, su_cs_len(data), 0);
+   NYD2_OU;
+   return rv;
+}
+
+enum okay
+mx_socket_write1(struct mx_socket *sop, char const *data, int size,
+   int use_buffer)
+{
+   enum okay rv = STOP;
+   int x;
+   NYD2_IN;
+
+   if (use_buffer > 0) {
+      int di;
+
+      if (sop->s_wbuf == NULL) {
+         sop->s_wbufsize = 4096;
+         sop->s_wbuf = n_alloc(sop->s_wbufsize);
+         sop->s_wbufpos = 0;
+      }
+      while (sop->s_wbufpos + size > sop->s_wbufsize) {
+         di = sop->s_wbufsize - sop->s_wbufpos;
+         size -= di;
+         if (sop->s_wbufpos > 0) {
+            su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, di);
+            rv = mx_socket_write1(sop, sop->s_wbuf, sop->s_wbufsize, -1);
+         } else
+            rv = mx_socket_write1(sop, data, sop->s_wbufsize, -1);
+         if (rv != OKAY)
+            goto jleave;
+         data += di;
+         sop->s_wbufpos = 0;
+      }
+      if (size == sop->s_wbufsize) {
+         rv = mx_socket_write1(sop, data, sop->s_wbufsize, -1);
+         if (rv != OKAY)
+            goto jleave;
+      } else if (size > 0) {
+         su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, size);
+         sop->s_wbufpos += size;
+      }
+      rv = OKAY;
+      goto jleave;
+   } else if (use_buffer == 0 && sop->s_wbuf != NULL && sop->s_wbufpos > 0) {
+      x = sop->s_wbufpos;
+      sop->s_wbufpos = 0;
+      if ((rv = mx_socket_write1(sop, sop->s_wbuf, x, -1)) != OKAY)
+         goto jleave;
+   }
+   if (size == 0) {
+      rv = OKAY;
+      goto jleave;
+   }
+
+# ifdef mx_HAVE_XTLS
+   if (sop->s_use_tls) {
+jssl_retry:
+      x = SSL_write(sop->s_tls, data, size);
+      if (x < 0) {
+         switch (SSL_get_error(sop->s_tls, x)) {
+         case SSL_ERROR_WANT_READ:
+         case SSL_ERROR_WANT_WRITE:
+            goto jssl_retry;
+         }
+      }
+   } else
+# endif
+   {
+      x = a_netso_xwrite(sop->s_fd, data, size);
+   }
+   if (x != size) {
+      char o[512];
+
+      snprintf(o, sizeof o, "%s write error",
+         (sop->s_desc ? sop->s_desc : "socket"));
+# ifdef mx_HAVE_XTLS
+      if (sop->s_use_tls)
+         ssl_gen_err("%s", o);
+      else
+# endif
+         n_perr(o, 0);
+      if (x < 0)
+         mx_socket_close(sop);
+      rv = STOP;
+      goto jleave;
+   }
+   rv = OKAY;
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+int
+(mx_socket_getline)(char **line, uz *linesize, uz *linelen,
+   struct mx_socket *sop  su_DBG_LOC_ARGS_DECL)
 {
    int rv;
    uz lsize;
@@ -747,7 +751,7 @@ FL int
    lp = lp_base;
 
    if (sop->s_rsz < 0) {
-      sclose(sop);
+      mx_socket_close(sop);
       rv = sop->s_rsz;
       goto jleave;
    }
@@ -815,5 +819,5 @@ jleave:
 }
 
 #include "su/code-ou.h"
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 /* s-it-mode */

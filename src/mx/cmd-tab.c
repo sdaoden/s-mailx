@@ -59,12 +59,14 @@
 #include "mx/cmd-shortcut.h"
 #include "mx/cmd-vexpr.h"
 #include "mx/colour.h"
+#include "mx/cred-netrc.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"

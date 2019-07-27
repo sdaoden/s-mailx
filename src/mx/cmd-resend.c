@@ -47,6 +47,7 @@
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"
 #include "mx/names.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -722,7 +723,7 @@ jleave:
 
 static int
 a_crese_resend1(void *vp, boole add_resent){
-   struct url url;
+   struct mx_url url;
    struct header head;
    struct mx_name *myto, *myrawto;
    boole mta_isexe;

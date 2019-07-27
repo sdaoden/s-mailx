@@ -38,7 +38,7 @@ XOPTIONS="\
          TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    MTA_ALIASES='MTA aliases(5) (text file) support' \
    REGEX='Regular expressions' \
-   SOCKETS='Network support' \
+   NET='Network support' \
       GSSAPI='Generic Security Service authentication' \
       IMAP='IMAP v4r1 client' \
       MD5='MD5 message digest (APOP, CRAM-MD5)' \
@@ -143,10 +143,11 @@ option_setup() {
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_MTA_ALIASES=1
-         OPT_SOCKETS=require
-            OPT_TLS=require
+         OPT_NET=require
+            OPT_GSSAPI=1
+            OPT_NETRC=1
             OPT_SMTP=require
-            OPT_GSSAPI=1 OPT_NETRC=1
+            OPT_TLS=require
          OPT_SPAM_FILTER=1
          OPT_UISTRINGS=1
          ;;
@@ -178,24 +179,28 @@ option_update() {
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      OPT_SOCKETS=0
+      OPT_NET=0
    fi
-   if feat_no SOCKETS; then
-      if feat_require SMTP; then
-         msg 'ERROR: need SOCKETS for required feature SMTP'
+   if feat_no NET; then
+      if feat_require IMAP; then
+         msg 'ERROR: need NETwork for required feature IMAP'
          config_exit 13
       fi
       if feat_require POP3; then
-         msg 'ERROR: need SOCKETS for required feature POP3'
+         msg 'ERROR: need NETwork for required feature POP3'
          config_exit 13
       fi
-      if feat_require IMAP; then
-         msg 'ERROR: need SOCKETS for required feature IMAP'
+      if feat_require SMTP; then
+         msg 'ERROR: need NETwork for required feature SMTP'
          config_exit 13
       fi
+      OPT_GSSAPI=0
+      OPT_IMAP=0
+      OPT_MD5=0
+      OPT_NETRC=0
+      OPT_POP3=0
+      OPT_SMTP=0
       OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
-      OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
-      OPT_GSSAPI=0 OPT_NETRC=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       OPT_GSSAPI=0
@@ -230,12 +235,6 @@ option_update() {
    elif feat_no TERMCAP; then
       OPT_TERMCAP_VIA_TERMINFO=0
    fi
-
-   # If we don't need MD5 leave it alone
-   if feat_no SOCKETS; then
-      OPT_MD5=0
-   fi
-
 }
 
 ##  --  >8  - << OPTIONS | EARLY >> -  8<  --  ##
@@ -2256,7 +2255,7 @@ else
    feat_is_disabled ICONV
 fi # feat_yes ICONV
 
-if feat_yes SOCKETS; then
+if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2283,7 +2282,7 @@ int main(void){
          '#define mx_HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
-if feat_yes SOCKETS; then
+if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2301,17 +2300,17 @@ int main(void){
 !
 
    < ${tmp2}.c run_check sockets 'sockets' \
-         '#define mx_HAVE_SOCKETS' ||
+         '#define mx_HAVE_NET' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lnsl)' \
-         '#define mx_HAVE_SOCKETS' '-lnsl' ||
+         '#define mx_HAVE_NET' '-lnsl' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' \
-         '#define mx_HAVE_SOCKETS' '-lsocket -lnsl' ||
-      feat_bail_required SOCKETS
+         '#define mx_HAVE_NET' '-lsocket -lnsl' ||
+      feat_bail_required NET
 else
-   feat_is_disabled SOCKETS
-fi # feat_yes SOCKETS
+   feat_is_disabled NET
+fi # feat_yes NET
 
-feat_yes SOCKETS &&
+feat_yes NET &&
    link_check sockopt '[gs]etsockopt(2)' '#define mx_HAVE_SOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2331,7 +2330,7 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS &&
+feat_yes NET &&
    link_check nonblocksock 'non-blocking sockets' \
       '#define mx_HAVE_NONBLOCKSOCK' << \!
 #include <sys/types.h>
@@ -2379,7 +2378,7 @@ int main(void){
 }
 !
 
-if feat_yes SOCKETS; then
+if feat_yes NET; then
    link_check getaddrinfo 'getaddrinfo(3)' \
       '#define mx_HAVE_GETADDRINFO' << \!
 #include <sys/types.h>
@@ -2403,7 +2402,7 @@ int main(void){
 !
 fi
 
-if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
+if feat_yes NET && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define mx_HAVE_ARPA_INET_H' << \!
 #include <sys/types.h>
@@ -2467,10 +2466,10 @@ int main(void){
       < ${tmp2}.c link_check gethostbyname \
          'get(serv|host)byname(3) (via -lsocket -nsl)' \
          '' '-lsocket -lnsl' ||
-      feat_bail_required SOCKETS
+      feat_bail_required NET
 fi
 
-feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "${have_sockopt}" ] &&
    link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define mx_HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2486,7 +2485,7 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "${have_sockopt}" ] &&
    link_check so_linger 'SO_LINGER' '#define mx_HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2983,7 +2982,7 @@ do
 done
 # }}} VAL_RANDOM
 
-if feat_yes GSSAPI; then
+if feat_yes GSSAPI; then # {{{
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
 int main(void){
@@ -3041,7 +3040,7 @@ int main(void){
    fi
 else
    feat_is_disabled GSSAPI
-fi # feat_yes GSSAPI
+fi # feat_yes GSSAPI }}}
 
 if feat_yes IDNA; then # {{{
    if val_allof VAL_IDNA "idnkit,idn2,idn"; then

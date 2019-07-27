@@ -46,6 +46,7 @@
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/net-pop3.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 
@@ -344,7 +345,7 @@ quit(boole hold_sigs_on)
 #endif
 #ifdef mx_HAVE_POP3
    case MB_POP3:
-      rv = pop3_quit(TRU1);
+      rv = mx_pop3_quit(TRU1);
       goto jleave;
 #endif
 #ifdef mx_HAVE_IMAP

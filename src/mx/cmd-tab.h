@@ -804,22 +804,18 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0, NULL
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
-      { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, MAC, NULL
-        DS(N_("Obsoleted by `urlcodec'")) },
-      { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC, NULL
-        DS(N_("Obsoleted by `urlcodec'")) }
 
 #ifdef mx_HAVE_DEVEL
 # ifdef su_MEM_ALLOC_DEBUG
-   ,{ "memtrace", &a_ctab_c_memtrace, (I | M | TWYSH), 0, 0, NULL
-     DS(N_("Trace current memory usage afap")) }
+   { "memtrace", &a_ctab_c_memtrace, (I | M | TWYSH), 0, 0, NULL
+     DS(N_("Trace current memory usage afap")) },
 # endif
 #endif /* mx_HAVE_DEVEL */
 
    /* Obsolete stuff */
 
 #ifdef mx_HAVE_IMAP
-   ,{ "imap", &c_imap_imap, (A | TSTRING), 0, MAC, NULL
+   { "imap", &c_imap_imap, (A | TSTRING), 0, MAC, NULL
      DS(N_("Send command strings directly to the IMAP server")) },
    { "connect", &c_connect, (A | TSTRING), 0, 0, NULL
      DS(N_("If disconnected, connect to IMAP mailbox")) },

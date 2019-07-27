@@ -46,13 +46,16 @@
 
 #include "mx/child.h"
 #include "mx/cmd-mlist.h"
+#include "mx/cred-auth.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/net-smtp.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -604,7 +607,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
 #ifndef mx_HAVE_SMTP
    rv = TRU1;
 #else
-   if(sbp->sb_url == NIL){
+   if(sbp->sb_urlp == NIL){
       rv = TRU1;
       goto jleave;
    }
@@ -613,14 +616,14 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
       if (shost == NULL) {
          if (from == NULL)
             goto jenofrom;
-         sbp->sb_url->url_u_h.l = su_cs_len(sbp->sb_url->url_u_h.s = from);
+         sbp->sb_urlp->url_u_h.l = su_cs_len(sbp->sb_urlp->url_u_h.s = from);
       } else
-         __sendout_ident = sbp->sb_url->url_u_h.s;
-      if (!ccred_lookup(&sbp->sb_ccred, sbp->sb_url))
+         __sendout_ident = sbp->sb_urlp->url_u_h.s;
+      if(!mx_cred_auth_lookup(sbp->sb_credp, sbp->sb_urlp))
          goto jleave;
-   } else {
-      if ((sbp->sb_url->url_flags & n_URL_HAD_USER) ||
-            sbp->sb_url->url_pass.s != NULL) {
+   }else{
+      if((sbp->sb_urlp->url_flags & mx_URL_HAD_USER) ||
+            sbp->sb_urlp->url_pass.s != NULL){
          n_err(_("New-style URL used without *v15-compat* being set\n"));
          goto jleave;
       }
@@ -631,9 +634,9 @@ jenofrom:
             "but none was given\n"));
          goto jleave;
       }
-      if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
+      if(!mx_cred_auth_lookup_old(sbp->sb_credp, CPROTO_SMTP, from))
          goto jleave;
-      sbp->sb_url->url_u_h.l = su_cs_len(sbp->sb_url->url_u_h.s = from);
+      sbp->sb_urlp->url_u_h.l = su_cs_len(sbp->sb_urlp->url_u_h.s = from);
    }
 
    rv = TRU1;
@@ -1373,7 +1376,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
       /* For *smtp* the smtp:// protocol was optional; be simple: don't check
        * that *smtp* is misused with file:// or so */
-      if(n_servbyname(mta, NIL, NIL) == NIL)
+      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
          mta = savecat("smtp://", mta);
       rv = TRU1;
    }else{
@@ -1390,7 +1393,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       /* TODO for now this is pretty hacky: in v15 we should simply create
        * TODO an URL object; i.e., be able to do so, and it does it right
        * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      if((proto = n_servbyname(mta, &pno, &issnd)) != NIL){
+      if((proto = mx_url_servbyname(mta, &pno, &issnd)) != NIL){
          if(*proto == '\0'){
             if(pno == 0){
                mta += sizeof("file://") -1;
@@ -1459,7 +1462,7 @@ a_sendout_mta_start(struct sendbundle *sbp)
       goto jstop;
 #else
       if(n_poption & n_PO_DEBUG){
-         (void)smtp_mta(sbp);
+         (void)mx_smtp_mta(sbp);
          rv = TRU1;
          goto jleave;
       }
@@ -1505,7 +1508,7 @@ jkid:
 
 #ifdef mx_HAVE_SMTP
    if(rv == TRU1){
-      if(smtp_mta(sbp))
+      if(mx_smtp_mta(sbp))
          _exit(n_EXIT_OK);
       savedeadletter(sbp->sb_input, TRU1);
       if(!dowait)
@@ -1955,22 +1958,22 @@ jleave:
 }
 
 FL boole
-mx_sendout_mta_url(struct url *urlp){
+mx_sendout_mta_url(struct mx_url *urlp){
    boole rv;
    char const *smtp, *proto;
    NYD_IN;
 
    if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
       /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = n_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
+      if((proto = mx_url_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
             *proto == '\0'){
          rv = TRUM1;
          goto jleave;
       }
    }
 
-#ifdef mx_HAVE_SOCKETS
-   rv = url_parse(urlp, CPROTO_SMTP, smtp);
+#ifdef mx_HAVE_NET
+   rv = mx_url_parse(urlp, CPROTO_SMTP, smtp);
 #else
    UNUSED(urlp);
    rv = FAL0;
@@ -2057,8 +2060,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    char const *quotefile)
 {
    struct n_sigman sm;
+   struct mx_cred_ctx cc;
+   struct mx_url url;
    struct sendbundle sb;
-   struct url url;
    struct mx_name *to;
    boole dosign, mta_isexe;
    FILE * volatile mtf, *nmtf;
@@ -2169,7 +2173,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
-   sb.sb_url = mta_isexe ? NIL : &url;
+   sb.sb_urlp = mta_isexe ? NIL : &url;
+   sb.sb_credp = &cc;
+
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
@@ -2685,10 +2691,11 @@ jleave:
 }
 
 FL enum okay
-n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
+n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    boole add_resent)
 {
    struct n_sigman sm;
+   struct mx_cred_ctx cc;
    struct sendbundle sb;
    FILE * volatile ibuf, *nfo, * volatile nfi;
    struct mx_fs_tmp_ctx *fstcp;
@@ -2752,7 +2759,9 @@ n_resend_msg(struct message *mp, struct url *urlp, struct header *hp,
    su_mem_set(&sb, 0, sizeof sb);
    sb.sb_to = to;
    sb.sb_input = nfi;
-   sb.sb_url = urlp;
+   sb.sb_urlp = urlp;
+   sb.sb_credp = &cc;
+
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */

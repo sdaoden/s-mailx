@@ -40,6 +40,9 @@ C_DECL_BEGIN
  * @{
  */
 
+/* A memset that is not optimized away */
+EXPORT_DATA void * (* volatile su_mem_set_volatile)(void*, int, uz);
+
 /*! \_ */
 EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 
@@ -444,6 +447,11 @@ public:
    /*! \copydoc{su_mem_set()} */
    static void *set(void *vp, s32 what, uz len){
       return su_mem_set(vp, what, len);
+   }
+
+   /*! \copydoc{su_mem_set_volatile()} */
+   static void *set_volatile(void *vp, s32 what, uz len){
+      return (*su_mem_set_volatile)(vp, what, len);
    }
 
 public:

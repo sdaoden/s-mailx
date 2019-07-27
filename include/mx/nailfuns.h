@@ -197,8 +197,8 @@ FL boole n_var_vclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef mx_HAVE_SOCKETS
-FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
+#ifdef mx_HAVE_NET
+FL char *n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
@@ -1359,27 +1359,6 @@ FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
 /*
- * pop3.c
- */
-
-#ifdef mx_HAVE_POP3
-/*  */
-FL enum okay   pop3_noop(void);
-
-/*  */
-FL int pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
-
-/*  */
-FL enum okay   pop3_header(struct message *m);
-
-/*  */
-FL enum okay   pop3_body(struct message *m);
-
-/*  */
-FL boole      pop3_quit(boole hold_sigs_on);
-#endif /* mx_HAVE_POP3 */
-
-/*
  * quit.c
  */
 
@@ -1426,7 +1405,7 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 /* Check whether outgoing transport is via SMTP/SUBMISSION etc.
  * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file based
  * (or bad), and FAL0 if URL parsing failed */
-FL boole mx_sendout_mta_url(struct url *urlp);
+FL boole mx_sendout_mta_url(struct mx_url *urlp);
 
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
@@ -1461,7 +1440,7 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
 /* Note: hp->h_to must already have undergone address massage(s), it is taken
  * as-is; h_cc and h_bcc are asserted to be NIL.  urlp should be NIL if
  * sendout_mta_url() says we are file based, otherwise... */
-FL enum okay n_resend_msg(struct message *mp, struct url *urlp,
+FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
       struct header *hp, boole add_resent);
 
 /* *save* / $DEAD */
@@ -1516,35 +1495,6 @@ FL boole n_shexp_is_valid_varname(char const *name);
 
 /* `shcodec' */
 FL int c_shcodec(void *vp);
-
-/*
- * smtp.c
- */
-
-#ifdef mx_HAVE_SMTP
-/* Send a message via SMTP */
-FL boole      smtp_mta(struct sendbundle *sbp);
-#endif
-
-/*
- * socket.c
- */
-
-#ifdef mx_HAVE_SOCKETS
-/* Immediately closes the socket for CPROTO_CERTINFO */
-FL boole      sopen(struct sock *sp, struct url *urlp);
-FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, char const *data);
-FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
-                  int use_buffer);
-
-/*  */
-FL int         sgetline(char **line, uz *linesize, uz *linelen,
-                  struct sock *sp  su_DBG_LOC_ARGS_DECL);
-# ifdef su_HAVE_DBG_LOC_ARGS
-#  define sgetline(A,B,C,D) sgetline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-# endif
-#endif
 
 /*
  * spam.c
@@ -1819,7 +1769,7 @@ FL void        uncollapse1(struct message *mp, int always);
 
 #ifdef mx_HAVE_TLS
 /*  */
-FL void n_tls_set_verify_level(struct url const *urlp);
+FL void n_tls_set_verify_level(struct mx_url const *urlp);
 
 /* */
 FL boole n_tls_verify_decide(void);
@@ -1850,86 +1800,6 @@ FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
 
 /*
- * urlcrecry.c
- */
-
-/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly autorec_alloc()ated result, or NULL on length excess */
-FL char *urlxenc(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL);
-FL char *urlxdec(char const *cp  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define urlxenc(CP,P) urlxenc(CP, P  su_DBG_LOC_ARGS_INJ)
-# define urlxdec(CP) urlxdec(CP  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* `urlcodec' */
-FL int c_urlcodec(void *vp);
-
-FL int c_urlencode(void *v); /* TODO obsolete*/
-FL int c_urldecode(void *v); /* TODO obsolete */
-
-/* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
- * Return NULL or something that can be converted to a struct mx_name */
-FL char *      url_mailto_to_address(char const *mailtop);
-
-/* Return port for proto, or NIL if unknown.
- * Upon sucess *port_or_nil and *issnd_or_nil will be updated, if set; the
- * latter states whether protocol is of a sending type (SMTP, file etc.).
- * For file:// and test[://] this returns su_empty, in the former case
- * *port_or_nil is 0 and in the latter U16_MAX */
-FL char const *n_servbyname(char const *proto, u16 *port_or_nil,
-      boole *issnd_or_nil);
-
-#ifdef mx_HAVE_SOCKETS
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp (URL rather according to RFC 3986) */
-FL boole      url_parse(struct url *urlp, enum cproto cproto,
-                  char const *data);
-
-/* Zero ccp and lookup credentials for communicating with urlp.
- * Return whether credentials are available and valid (for chosen auth) */
-FL boole      ccred_lookup(struct ccred *ccp, struct url *urlp);
-FL boole      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
-                  char const *addr);
-#endif /* mx_HAVE_SOCKETS */
-
-/* `netrc' */
-#ifdef mx_HAVE_NETRC
-FL int c_netrc(void *v);
-#endif
-
-/* MD5 (RFC 1321) related facilities */
-#ifdef mx_HAVE_MD5
-# ifdef mx_HAVE_XTLS_MD5
-#  define md5_ctx	               MD5_CTX
-#  define md5_init	            MD5_Init
-#  define md5_update	            MD5_Update
-#  define md5_final	            MD5_Final
-# else
-   /* The function definitions are instantiated in main.c */
-#  include "mx/rfc1321.h"
-# endif
-
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
- * using lowercase ASCII letters as defined in RFC 2195 */
-# define MD5TOHEX_SIZE           32
-FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
-
-/* CRAM-MD5 encode the *user* / *pass* / *b64* combo; NULL on overflow error */
-FL char *      cram_md5_string(struct str const *user, struct str const *pass,
-                  char const *b64);
-
-/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
- * unsigned char *text: pointer to data stream
- * int text_len       : length of data stream
- * unsigned char *key : pointer to authentication key
- * int key_len        : length of authentication key
- * caddr_t digest     : caller digest to be filled in */
-FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
-                  int key_len, void *digest);
-#endif /* mx_HAVE_MD5 */
-
-/*
  * xtls.c
  */
 
@@ -1940,7 +1810,7 @@ FL void mx_tls_rand_bytes(void *buf, uz blen);
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */
-FL boole n_tls_open(struct url *urlp, struct sock *sp);
+FL boole n_tls_open(struct mx_url *urlp, struct mx_socket *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);

@@ -63,10 +63,6 @@
 # include <regex.h>
 #endif
 
-#ifdef mx_HAVE_XTLS_MD5
-# include <openssl/md5.h>
-#endif
-
 /* Many things possibly of interest for adjustments have been outsourced */
 #include <mx/config.h>
 
@@ -138,14 +134,6 @@ enum n_announce_flags{
 
    n__ANNOUNCE_HEADER = 1u<<6,
    n__ANNOUNCE_ANY = 1u<<7
-};
-
-enum authtype{
-   AUTHTYPE_NONE = 1u<<0,
-   AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */
-   AUTHTYPE_LOGIN = 1u<<2,
-   AUTHTYPE_CRAM_MD5 = 1u<<3,
-   AUTHTYPE_GSSAPI = 1u<<4
 };
 
 enum expand_addr_flags{
@@ -706,14 +694,6 @@ enum tdflags{
     * enum sendaction, and may thus NOT clash with their bit range! */
    _TD_EOF = 1<<14, /* EOF seen, last round! */
    _TD_BUFCOPY = 1<<15 /* Buffer may be constant, copy it */
-};
-
-enum n_url_flags{
-   n_URL_TLS_REQUIRED = 1u<<0, /* Whether protocol always uses SSL/TLS.. */
-   n_URL_TLS_OPTIONAL = 1u<<1, /* ..may later upgrade to SSL/TLS */
-   n_URL_TLS_MASK = n_URL_TLS_REQUIRED | n_URL_TLS_OPTIONAL,
-   n_URL_HAD_USER = 1u<<2, /* Whether .url_user was part of the URL */
-   n_URL_HOST_IS_NAME = 1u<<3 /* .url_host not numeric address */
 };
 
 enum n_visual_info_flags{
@@ -1315,44 +1295,6 @@ struct n_cmd_desc{
 #define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
 #define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
 
-struct url{
-   char const *url_input; /* Input as given (really) */
-   u32 url_flags;
-   u16 url_portno; /* atoi .url_port or default, host endian */
-   u8 url_cproto; /* enum cproto as given */
-   u8 url_proto_len; /* Length of .url_proto (to first '\0') */
-   char url_proto[16]; /* Communication protocol as 'xy\0://\0' */
-   char const *url_port; /* Port (if given) or NULL */
-   struct str url_user; /* User, exactly as given / looked up */
-   struct str url_user_enc; /* User, urlxenc()oded */
-   struct str url_pass; /* Pass (urlxdec()oded) or NULL */
-   /* TODO we don't know whether .url_host is a name or an address.  Us
-    * TODO Net::IPAddress::fromString() to check that, then set
-    * TODO n_URL_HOST_IS_NAME solely based on THAT!  Until then,
-    * TODO n_URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK+mx_HAVE_GETADDRINFO */
-   struct str url_host; /* Service hostname TODO we don't know */
-   struct str url_path; /* Path suffix or NULL */
-   /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
-   struct str url_h_p; /* .url_host[:.url_port] */
-   /* .url_user@.url_host
-    * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
-    * *hostname*)!  (And may later be overwritten according to *from*!) */
-   struct str url_u_h;
-   struct str url_u_h_p; /* .url_user@.url_host[:.url_port] */
-   struct str url_eu_h_p; /* .url_user_enc@.url_host[:.url_port] */
-   char const *url_p_u_h_p; /* .url_proto://.url_u_h_p */
-   char const *url_p_eu_h_p; /* .url_proto://.url_eu_h_p */
-   char const *url_p_eu_h_p_p; /* .url_proto://.url_eu_h_p[/.url_path] */
-};
-
-struct ccred{
-   enum cproto cc_cproto; /* Communication protocol */
-   enum authtype cc_authtype; /* Desired authentication */
-   char const *cc_auth; /* Authentication type as string */
-   struct str cc_user; /* User (urlxdec()oded) or NULL */
-   struct str cc_pass; /* Password (urlxdec()oded) or NULL */
-};
-
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
    void *gdc_ifcond; /* Saved state of conditional stack */
@@ -1415,31 +1357,6 @@ struct time_current{ /* TODO s64, etc. */
    char tc_ctime[32];
 };
 
-struct sock{ /* data associated with a socket */
-   int s_fd; /* file descriptor */
-#ifdef mx_HAVE_TLS
-   int s_use_tls; /* TLS is used */
-# ifdef mx_HAVE_XTLS
-   void *s_tls;  /* TLS object */
-# endif
-   char *s_tls_finger; /* Set to autorec! store for CPROTO_CERTINFO */
-#endif
-   char *s_wbuf; /* for buffered writes */
-   int s_wbufsize; /* allocated size of s_buf */
-   int s_wbufpos; /* position of first empty data byte */
-   char *s_rbufptr; /* read pointer to s_rbuf */
-   int s_rsz; /* size of last read in s_rbuf */
-   char const *s_desc; /* description of error messages */
-   void (*s_onclose)(void); /* execute on close */
-   char s_rbuf[LINESIZE + 1]; /* for buffered reads */
-};
-
-struct sockconn{
-   struct url sc_url;
-   struct ccred sc_cred;
-   struct sock sc_sock;
-};
-
 struct mailbox{
    enum{
       MB_NONE = 000, /* no reply expected */
@@ -1468,7 +1385,8 @@ MB_CACHE, /* IMAP cache */
 #ifdef mx_HAVE_IMAP
    enum mbflags{
       MB_NOFLAGS = 000,
-      MB_UIDPLUS = 001 /* supports IMAP UIDPLUS */
+      MB_UIDPLUS = 001, /* supports IMAP UIDPLUS */
+      MB_SASL_IR = 002  /* supports RFC 4959 SASL-IR */
    } mb_flags;
    u64 mb_uidvalidity; /* IMAP unique identifier validity */
    char *mb_imap_account; /* name of current IMAP account */
@@ -1480,7 +1398,7 @@ MB_CACHE, /* IMAP cache */
    /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
     * XXX have an on_close event to which that machinery should connect */
    struct mx_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
-   struct sock mb_sock; /* socket structure */
+   struct mx_socket *mb_sock; /* socket structure */
 };
 
 enum needspec{
@@ -1749,9 +1667,9 @@ struct sendbundle{
    struct header *sb_hp;
    struct mx_name *sb_to;
    FILE *sb_input;
-   struct url *sb_url; /* Or NIL for file-based MTA */
+   struct mx_url *sb_urlp; /* Or NIL for file-based MTA */
+   struct mx_cred_ctx *sb_credp; /* cred-auth.h not included */
    struct str sb_signer; /* USER@HOST for signing+ */
-   struct ccred sb_ccred;
 };
 
 /* For saving the current directory and later returning */

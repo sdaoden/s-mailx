@@ -138,7 +138,7 @@ _imap_gssapi_last_at_before_slash(char const *cp)
 }
 
 static enum okay
-_imap_gssapi(struct mailbox *mp, struct ccred *ccred)
+_imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE];
    struct str in, out;

@@ -1034,9 +1034,10 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
    ASSERT(*linesize == 0 || *line != NULL);
    n_pstate &= ~n_PS_READLINE_NL;
 
+   /* Always leave room for NETNL, not only \n */
    for (rv = *line;;) {
       if (*linesize <= LINESIZE || n >= *linesize - 128) {
-         *linesize += ((rv == NULL) ? LINESIZE + n + 1 : 256);
+         *linesize += ((rv == NULL) ? LINESIZE + n + 2 : 256);
          *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize,
                su_DBG_LOC_ARGS_ORUSE);
       }
@@ -1115,6 +1116,12 @@ FL char *
       i_llen += size;
       *cnt -= size;
    }
+
+   /* Always leave room for NETNL, not only \n */
+   if(appendnl && *linesize - i_llen < 3)
+      *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
+            su_DBG_LOC_ARGS_ORUSE);
+
    if (llen)
       *llen = i_llen;
 jleave:

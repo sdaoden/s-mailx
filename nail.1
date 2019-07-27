@@ -11168,9 +11168,29 @@ Handlers registered using this method take precedence.
 .Mx Va pop3-auth
 .It Va pop3-auth-USER@HOST , pop3-auth-HOST , pop3-auth
 \*(OP\*(IN Variable chain that sets the POP3 authentication method.
-The only possible value as of now is
+Supported are the default
 .Ql plain ,
-which is thus the default.
+\*(IN
+.Ql oauthbearer
+(you might want to read the
+.Sx FAQ
+entry
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+as well as \*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) .
+.Va user
+and
+.Va password
+are required but for
+.Ql external ,
+which only needs the former.
+Unless
+.Va pop3-no-apop
+is set the
+.Ql plain
+method will \*(OPally be replaced with APOP if possible (see there).
 .
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
@@ -11194,14 +11214,18 @@ command to be sent each value seconds if no other operation is performed.
 .
 .Mx Va pop3-no-apop
 .It Va pop3-no-apop-USER@HOST , pop3-no-apop-HOST , pop3-no-apop
-\*(BO\*(OP Unless this variable is set the
+\*(BO\*(OP Unless this variable is set the MD5 based
 .Ql APOP
-authentication method will be used when connecting to a POP3 server that
-advertises support.
+authentication method will be used instead of a chosen
+.Ql plain
+.Va pop3-auth
+when connecting to a POP3 server that advertises support.
 The advantage of
 .Ql APOP
-is that the password is not sent in clear text over the wire and that
-only a single packet is sent for the user/password tuple.
+is that only a single packet is sent for the user/password tuple.
+(Originally also that the password is not sent in clear text over the
+wire, but for one MD5 does not any longer offer sufficient security,
+and then today transport is almost ever TLS secured.)
 Note that
 .Va pop3-no-apop-HOST
 requires \*(IN.
@@ -12030,33 +12054,43 @@ authentication method, possible values are
 (\*(OU default),
 .Ql plain
 (\*(IN default),
-.Ql login
-as well as the \*(OPal methods
+.Ql login ,
+\*(IN
+.Ql oauthbearer
+(you might want to read the
+.Sx FAQ
+entry
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
+as well as \*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) .
+There may be the \*(OPal methods
 .Ql cram-md5
 and
 .Ql gssapi .
-The
 .Ql none
-method does not need any user credentials,
+does not need any user credentials,
+.Ql external
+and
 .Ql gssapi
-requires a user name and all other methods require a user name and
-a password.
-See \*(IN
-.Va mta ,
+require a user name, and all other methods require a
 .Va user
-and
-.Va password
-(\*(OU
-.Va smtp-auth-password
-and
-.Va smtp-auth-user ) .
+name and a
+.Va password .
+Also see
+.Va mta .
 Note that
 .Va smtp-auth-HOST
 is \*(IN.
-\*(OU: Note for
+(\*(OU Requires
+.Va smtp-auth-password
+and
+.Va smtp-auth-user .
+Note for
 .Va smtp-auth-USER@HOST :
 may override dependent on sender address in the variable
-.Va from .
+.Va from . )
 .
 .It Va smtp-auth-password
 \*(OP\*(OU Sets the global fallback password for SMTP authentication.
@@ -12763,6 +12797,11 @@ if you use this you need to specify the private key via
 .Cd PrivateKey ,
 .Va tls-key
 will not be used!
+Some services support so-called
+.Ql external
+authentication if a TLS client certificate was successfully presented
+during connection establishment
+.Pf ( Dq connecting is authenticating ) .
 .
 .It Cd CipherString
 A list of ciphers for TLS connections, see
@@ -14602,8 +14641,8 @@ RFC 6762 standardized the link-local top-level domain
 try again after adding an (additional) entry with this extension.
 .\" }}}
 .
-.\" .Ss "I cannot login to Google mail aka GMail" {{{
-.Ss "I cannot login to Google mail aka GMail"
+.\" .Ss "I cannot login to Google mail (via OAuth)" {{{
+.Ss "I cannot login to Google mail \&(via OAuth\&)"
 .
 Since 2014 some free service providers classify programs as
 .Dq less secure
@@ -14642,6 +14681,71 @@ use that special password instead of the real Google account password in
 \*(UA (for more on that see the section
 .Sx "On URL syntax and credential lookup" ) .
 .El
+.\" }}}
+.
+.\" .Ss "But, how about XOAUTH2 / OAUTHBEARER?" {{{
+.Ss "But, how about XOAUTH2 / OAUTHBEARER?"
+.
+Following up
+.Sx "I cannot login to Google mail \&(via OAuth\&)"
+one OAuth-based authentication method is available:
+the OAuth 2.0 bearer token usage as standardized in RFC 6750,
+also known as XOAUTH2 and OAUTHBEARER, allows fetching a temporary
+access token via the web that can locally be used as a
+.Va password .
+The protocol is simple and extendable, token updates or even password
+changes via a simple TLS secured server login would be possible in
+theory, but today a web browser and an external support tool are
+prerequisites for using this authentication method.
+The token times out and must be refreshed via the web periodically; in
+Kerberos / GSSAPI the local programs
+.Xr kinit 1
+and
+.Xr kdestroy 1
+offer user local control, the latter also while offline.
+.
+.Pp
+Before being able to use OAUTHBEARER, some hurdles must be taken.
+Using GMail as an example, an application (a simple name) needs to be
+registered, for which credentials need to be created.
+This configuration step generates a
+.Dq client ID
+and a
+.Dq client secret .
+These two strings need to be saved locally in a secure way.
+For GMail these initial configuration steps can be performed via
+.Lk https://developers.google.com/identity/protocols/OAuth2 .
+Thereafter access tokens can be requested, the program available for
+download do do this for a GMail account is
+.Lk https://github.com/google/\:gmail-oauth2-tools/\:blob/\:\
+master/\:python/\:oauth2.py :
+.
+.Bd -literal -offset indent
+$ python oauth2.py --user=EMAIL \e
+  --client-id=THE-ID --client-secret=THE-SECRET \e
+  --generate_oauth2_token
+To authorize token, visit this url and follow the directions:
+  https://accounts.google.com/o/oauth2/auth?client_id=...
+  Enter verification code: ...
+  Refresh Token: ...
+  Access Token: ...
+  Access Token Expiration Seconds: 3600
+$ # The last three are the actual token responses.
+$ # To refresh the granted token:
+$ python oauth2.py --user=EMAIL \e
+  --client-id=THE-ID --client-secret=THE-SECRET \e
+  --refresh-token=THE-REFRESH-TOKEN
+.Ed
+.
+.Pp
+\*(UA does not (yet) offer the possibility to (lazy) expand aka run
+shell commandos which are embedded in variable content, or periodically
+run some command, therefore keeping an access token up-to-date from
+within it does not seem to be the best solution.
+For sending mails code could become evaluated from withing the hook
+.Va on-compose-splice .
+For more on authentication please see the section
+.Sx "On URL syntax and credential lookup" .
 .\" }}}
 .
 .\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{
@@ -14921,11 +15025,31 @@ but other accounts are not affected.
 .Mx Va imap-auth
 .It Va imap-auth-USER@HOST , imap-auth
 Sets the IMAP authentication method.
-Valid values are `login' for the usual password-based authentication
-(the default),
-`cram-md5', which is a password-based authentication that does not send
-the password over the network in clear text,
-and `gssapi' for GSS-API based authentication.
+Supported are the default
+.Ql login ,
+\*(IN
+.Ql oauthbearer
+(you might want to read the
+.Sx FAQ
+entry
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
+\*(IN
+.Ql external
+(for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs ) ,
+as well as the \*(OPal
+.Ql cram-md5
+and
+.Ql gssapi .
+All methods need a
+.Va user
+and a
+.Va password
+except
+.Ql gssapi
+and
+.Ql external ,
+which only need the former.
 .
 .Mx
 .It Va imap-cache
