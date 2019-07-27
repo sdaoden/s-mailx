@@ -215,8 +215,8 @@ jleave:
 jerr:
    cp = _("<Unknown date>");
    linelen = su_cs_len(cp);
-   if (linelen >= n_FROM_DATEBUF)
-      linelen = n_FROM_DATEBUF;
+   if(linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF -1;
    rv = 0;
    goto jleave;
 }
@@ -275,7 +275,7 @@ a_header_cmatch(char const *tp, char const *date){
       case 'O':
          if(!su_cs_is_digit(dc) && dc != ' ')
                goto jleave;
-         tc = *tp++; /* is "0"! */
+         /*tc =*/ *tp++; /* is "0"! */
          dc = *date;
          if(su_cs_is_digit(dc))
             ++date;

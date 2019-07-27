@@ -679,7 +679,6 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    NYD_IN;
 
    rv = su_ERR_NONE;
-   UNINIT(sigint, SIG_ERR);
    saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -687,6 +686,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
       sigint = safe_signal(SIGINT, SIG_IGN);
       break;
    default:
+      sigint = SIG_ERR;
       rv = su_ERR_INTR;
       goto jleave;
    }
@@ -734,7 +734,8 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 jleave:
    if(!saved_filrec)
       ok_bclear(add_file_recipients);
-   safe_signal(SIGINT, sigint);
+   if(sigint != SIG_ERR)
+      safe_signal(SIGINT, sigint);
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
