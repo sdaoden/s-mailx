@@ -35,6 +35,7 @@
 : ${openssl:=openssl}
 : ${gpg:=gpg}
 : ${rm:=rm}
+: ${roff:=s-roff} # optional (command(1) tested)
 : ${sftp:=sftp}
 : ${tar:=tar}
 : ${xz:=xz}

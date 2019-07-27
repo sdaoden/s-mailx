@@ -7,7 +7,7 @@
 #@    ChangeLog  ..  ^(Appendix|git\(1\) shortlog)  (or EOF, of course)
 #@ The ANCHORFILE can be produced by
 #@    $ < manual.mdoc mdocmx.sh |
-#@          MDOCMX_ENABLE=1 groff -U -mdoc -dmx-anchor-dump=/tmp/anchors \
+#@          MDOCMX_ENABLE=1 s-roff -U -mdoc -dmx-anchor-dump=/tmp/anchors \
 #@             -dmx-toc-force=tree >/dev/null
 # Public Domain
 

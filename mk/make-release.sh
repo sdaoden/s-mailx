@@ -74,10 +74,10 @@ update_stable_hook() {
    ${git} add nail.1
 
    #
-   if [ -z "${grappa}" ] && command -v groff >/dev/null 2>&1; then
+   if [ -z "${grappa}" ] && command -v ${roff} >/dev/null 2>&1; then
       echo 'NEWS: updating anchors'
       < nail.1 ${SHELL} mk/mdocmx.sh |
-         MDOCMX_ENABLE=1 groff -U -Tutf8 -mdoc \
+         MDOCMX_ENABLE=1 ${roff} -U -Tutf8 -mdoc \
             -dmx-anchor-dump=/tmp/anchors -dmx-toc-force=tree >/dev/null
       ${SHELL} mk/make-news-anchors.sh /tmp/anchors < NEWS > NEWSx
       ${mv} -f NEWSx NEWS
@@ -123,8 +123,8 @@ update_release_hook() {
    ${SHELL} mk/mdocmx.sh < nail.1 > nail.1x
    ${mv} -f nail.1x nail.1
    # And generate the HTML manual, while here
-   if [ -z "${grappa}" ] && command -v groff >/dev/null 2>&1; then
-      < nail.1 MDOCMX_ENABLE=1 groff -Thtml -mdoc > /tmp/nail-manual.html
+   if [ -z "${grappa}" ] && command -v ${roff} >/dev/null 2>&1; then
+      < nail.1 MDOCMX_ENABLE=1 ${roff} -Thtml -mdoc > /tmp/nail-manual.html
    fi
    ${git} add nail.1
 
