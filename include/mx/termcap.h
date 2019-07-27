@@ -20,8 +20,15 @@
 #define mx_TERMCAP_H
 
 #include <mx/nail.h>
-#ifdef n_HAVE_TCAP
 
+/* Switch indicating necessity of terminal access interface.
+ * (As of the time of this writing TERMCAP only with available MLE, but..) */
+#if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
+# define mx_HAVE_TCAP
+#endif
+#ifdef mx_HAVE_TCAP
+
+#define mx_HEADER
 #include <su/code-in.h>
 
 enum mx_termcap_captype{
@@ -166,8 +173,8 @@ struct mx_termcap_value{
 
 /* termcap(3) / xy lifetime handling -- only called if we're n_PSO_INTERACTIVE
  * but not doing something in n_PO_QUICKRUN_MASK */
-FL void mx_termcap_init(void);
-FL void mx_termcap_destroy(void);
+EXPORT void mx_termcap_init(void);
+EXPORT void mx_termcap_destroy(void);
 
 /* enter_ca_mode / enable keypad (both if possible).
  * TODO When complete is not set we won't enter_ca_mode, for example: we don't
@@ -175,8 +182,8 @@ FL void mx_termcap_destroy(void);
  * TODO a mail, because otherwise the screen would look differently for normal
  * TODO stdout display messages.  Etc. */
 # ifdef mx_HAVE_TERMCAP
-FL void mx_termcap_resume(boole complete);
-FL void mx_termcap_suspend(boole complete);
+EXPORT void mx_termcap_resume(boole complete);
+EXPORT void mx_termcap_suspend(boole complete);
 
 #  define mx_TERMCAP_RESUME(CPL) do{ mx_termcap_resume(CPL); }while(0)
 #  define mx_TERMCAP_SUSPEND(CPL) do{ mx_termcap_suspend(CPL); }while(0)
@@ -187,7 +194,7 @@ FL void mx_termcap_suspend(boole complete);
  * For query options the return represents a true value and -1 error.
  * Will return FAL0 directly unless we've been initialized.
  * By convention unused argument slots are given as -1 */
-FL sz mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2);
+EXPORT sz mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2);
 # define mx_termcap_cmdx(CMD) mx_termcap_cmd(CMD, -1, -1)
 
 /* Query multiplexer.  If query is mx__TERMCAP_QUERY_MAX1 then
@@ -196,18 +203,18 @@ FL sz mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2);
  * Returns TRU1 on success and TRUM1 for queries for which a built-in default
  * is returned; FAL0 is returned on non-availability; for boolean the return
  * value equals the result as such (still tvp is mandatory argument) */
-FL boole mx_termcap_query(enum mx_termcap_query query,
+EXPORT boole mx_termcap_query(enum mx_termcap_query query,
       struct mx_termcap_value *tvp);
 
 /* Get a mx_termcap_query for name or -1 if it is not known, and -2 if
  * type wasn't _NONE and the type doesn't match. */
 # ifdef mx_HAVE_KEY_BINDINGS
-FL s32 mx_termcap_query_for_name(char const *name,
+EXPORT s32 mx_termcap_query_for_name(char const *name,
       enum mx_termcap_captype type);
-FL char const *mx_termcap_name_of_query(enum mx_termcap_query query);
+EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # endif
 
-#endif /* n_HAVE_TCAP */
+#endif /* mx_HAVE_TCAP */
 
 #ifndef mx_TERMCAP_RESUME
 # define mx_TERMCAP_RESUME(CPL) do{;}while(0)

@@ -295,6 +295,17 @@ OPT_MLE=yes
    # Add support for `(un)?bind'ing of key sequences.
    OPT_KEY_BINDINGS=yes
 
+   # Use termcap(5) for MLE terminal control; can be "require"d.
+   # Today most environments ship a termcap(5) that in fact is part of
+   # terminfo(5), and acts as a converting wrapper for this library.
+   # To avoid this redundancy we also support terminfo(5), and use it
+   # instead if we find it (assuming that termcap(5) is a stub, then).
+   # Note that terminfo(5) offers access to more key sequences, e.g.,
+   # kLFT5, for which no termcap(5) entry exists.
+   # terminfo(5) support can (thus) be "require"d.
+   OPT_TERMCAP=yes
+      OPT_TERMCAP_VIA_TERMINFO=yes
+
 # Whether support for MTA aliases(5) shall be included.
 # With it, and if *mta-aliases* is set to a file, MTA aliases will be
 # expanded as a last step before messages are sent.
@@ -384,17 +395,6 @@ OPT_SOCKETS=yes
 #   Support for interaction with spamassassin(1)s spamc(1).
 OPT_SPAM_FILTER=yes
 OPT_SPAM_SPAMC=no
-
-# Use termcap(5) for terminal control; can be "require"d.
-# Today most environments ship a termcap(5) that in fact is part of
-# terminfo(5), and acts as a converting wrapper for this library.
-# To avoid this redundancy we also support terminfo(5), and use it
-# instead if we find it (assuming that termcap(5) is a stub, then).
-# Note that terminfo(5) offers access to more key sequences, e.g.,
-# kLFT5, for which no termcap(5) entry exists.
-# terminfo(5) support can (thus) be "require"d.
-OPT_TERMCAP=yes
-OPT_TERMCAP_VIA_TERMINFO=yes
 
 # It is possible to strip out (almost) all user interface and error messages.
 # This might be interesting for automated use cases (only).

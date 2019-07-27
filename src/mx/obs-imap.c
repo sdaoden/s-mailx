@@ -57,9 +57,12 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/iconv.h"
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -2641,8 +2644,9 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
       IMAP_ANSWER()
    else
       mb.mb_active &= ~MB_COMD;
-   if (queuefp != NULL)
-      Fclose(queuefp);
+
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
    return OKAY;
 }
 
@@ -2997,10 +3001,11 @@ jtrycreate:
       else if (response_status == RESPONSE_OK && (mp->mb_flags & MB_UIDPLUS))
          imap_appenduid(mp, fp, t, off1, xsize, ysize, lines, flag, name);
    }
+
 jleave:
-   if (queuefp != NULL)
-      Fclose(queuefp);
-   if (buf != NULL)
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
+   if(buf != NIL)
       n_free(buf);
    NYD_OU;
    return rv;
@@ -3292,9 +3297,9 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if (n_psonce & n_PSO_TTYOUT) {
-      if ((fp = Ftmp(NULL, "imapfold", OF_RDWR | OF_UNLINK | OF_REGISTER))
-            == NULL) {
+   if(n_psonce & n_PSO_TTYOUT){
+      if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          goto jleave;
       }
@@ -3317,8 +3322,8 @@ imap_folders(const char * volatile name, int strip)
 
    imaplock = 0;
    if (interrupts) {
-      if (n_psonce & n_PSO_TTYOUT)
-         Fclose(fp);
+      if(n_psonce & n_PSO_TTYOUT)
+         mx_fs_close(fp);
       rv = 0;
       goto jleave;
    }
@@ -3333,11 +3338,13 @@ imap_folders(const char * volatile name, int strip)
          n_err(_("Folder not found\n"));
    }else
       rv = 0;
+
 junroll:
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
-   if (n_psonce & n_PSO_TTYOUT)
-      Fclose(fp);
+   if(n_psonce & n_PSO_TTYOUT)
+      mx_fs_close(fp);
+
 jleave:
    NYD_OU;
    if (interrupts)
@@ -3419,8 +3426,8 @@ again:
       }
    }
 
-   if (queuefp != NULL)
-      Fclose(queuefp);
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
 
    /* ... and reset the flag to its initial value so that the 'exit'
     * command still leaves the message unread */
@@ -3666,8 +3673,8 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    }
    t = imap_read_date_time(cp);
 
-   if ((tp = Ftmp(NULL, "imapapui", OF_RDWR | OF_UNLINK | OF_REGISTER))
-         == NULL)
+   if((tp = mx_fs_tmp_open("imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       goto jstop;
 
    size = xsize;
@@ -3688,10 +3695,11 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    imap_appenduid(mp, tp, t, 0, xsize-2, ysize-1, lines-1, flag,
       imap_unquotestr(name));
    rv = OKAY;
+
 jstop:
    n_free(buf);
-   if (tp)
-      Fclose(tp);
+   if(tp != NIL)
+      mx_fs_close(tp);
    NYD_OU;
    return rv;
 }

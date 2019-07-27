@@ -52,8 +52,11 @@ su_EMPTY_FILE()
 #include <sys/socket.h>
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"

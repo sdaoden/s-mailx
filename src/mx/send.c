@@ -42,12 +42,17 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/child.h"
 #include "mx/colour.h"
+#include "mx/file-streams.h"
 /* TODO but only for creating chain! */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
+#include "mx/tty.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -276,9 +281,9 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
 
    rbuf = *qbuf;
 
-   if (mhp->mh_flags & MIME_HDL_ISQUOTE) {
-      if ((*qbuf = Ftmp(NULL, "sendp", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL) {
+   if(mhp->mh_flags & MIME_HDL_ISQUOTE){
+      if((*qbuf = mx_fs_tmp_open("sendp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          *qbuf = rbuf;
       }
@@ -292,7 +297,8 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
          fflush(n_stdout);
 
       u.ptf = mhp->mh_ptf;
-      if((rbuf = Popen((char*)-1, "W", u.sh, NULL, fileno(*qbuf))) == NULL)
+      if((rbuf = mx_fs_pipe_open(R(char*,-1), "W", u.sh, NIL, fileno(*qbuf))
+            ) == NIL)
          goto jerror;
       goto jleave;
    }
@@ -348,23 +354,31 @@ env_addon[i++] = str_concat_csvl(&s,
    sh = ok_vlook(SHELL);
 
    if (mhp->mh_flags & MIME_HDL_NEEDSTERM) {
+      struct mx_child_ctx cc;
       sigset_t nset;
-      int pid;
 
       sigemptyset(&nset);
-      pid = n_child_run(sh, &nset, term_infd, n_CHILD_FD_PASS, "-c",
-            mhp->mh_shell_cmd, NULL, env_addon, NULL);
-      rbuf = (pid < 0) ? NULL : (FILE*)-1;
-   } else {
-      rbuf = Popen(mhp->mh_shell_cmd, "W", sh, env_addon,
-            (mhp->mh_flags & MIME_HDL_ASYNC ? -1 : fileno(*qbuf)));
+      mx_child_ctx_setup(&cc);
+      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+      cc.cc_mask = &nset;
+      cc.cc_fds[mx_CHILD_FD_IN] = term_infd;
+      cc.cc_cmd = sh;
+      cc.cc_args[0] = "-c";
+      cc.cc_args[1] = mhp->mh_shell_cmd;
+      cc.cc_env_addon = env_addon;
+
+      rbuf = !mx_child_run(&cc) ? NIL : R(FILE*,-1);
+   }else{
+      rbuf = mx_fs_pipe_open(mhp->mh_shell_cmd, "W", sh, env_addon,
+            (mhp->mh_flags & MIME_HDL_ASYNC ? mx_CHILD_FD_NULL
+             : fileno(*qbuf)));
 jerror:
-      if (rbuf == NULL)
+      if(rbuf == NIL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
             mhp->mh_msg, su_err_doc(su_err_no()));
-      else {
+      else{
          fflush(*qbuf);
-         if (*qbuf != n_stdout)
+         if(*qbuf != n_stdout)
             fflush(n_stdout);
       }
    }
@@ -780,7 +794,7 @@ jheaders_skip:
                else{
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
                   /* Because: interactive OR batch mode, so */
-                  if(!getapproval(_("Run MIME handler for this part?"),
+                  if(!mx_tty_yesorno(_("Run MIME handler for this part?"),
                         su_state_has(su_STATE_REPRODUCIBLE)))
                      goto jleave;
                }
@@ -939,18 +953,18 @@ jmulti:
                 * TODO than asking the user for something stupid.
                 * TODO oh, wait, we did ask for a filename for this MIME mail,
                 * TODO and that outer container is useless anyway ;-P */
-               if (np->m_multipart != NULL && np->m_mimecontent != MIME_822) {
-                  if ((obuf = Fopen(n_path_devnull, "w")) == NULL)
+               if(np->m_multipart != NULL && np->m_mimecontent != MIME_822) {
+                  if((obuf = mx_fs_open(n_path_devnull, "w")) == NIL)
                      continue;
-               } else if ((obuf = newfile(np, &ispipe)) == NULL)
+               }else if((obuf = newfile(np, &ispipe)) == NIL)
                   continue;
-               if (!ispipe)
-                  break;
-               if (sigsetjmp(_send_pipejmp, 1)) {
-                  rv = -1;
-                  goto jpipe_close;
+               if(ispipe){
+                  oldpipe = safe_signal(SIGPIPE, &_send_onpipe);
+                  if(sigsetjmp(_send_pipejmp, 1)){
+                     rv = -1;
+                     goto jpipe_close;
+                  }
                }
-               oldpipe = safe_signal(SIGPIPE, &_send_onpipe);
                break;
             case SEND_TODISP:
             case SEND_TODISP_ALL:
@@ -989,12 +1003,11 @@ jmulti:
                   break;
             }
             if (action == SEND_TOFILE && obuf != origobuf) {
-               if (!ispipe)
-                  Fclose(obuf);
+               if(!ispipe)
+                  mx_fs_close(obuf);
                else {
 jpipe_close:
-                  safe_signal(SIGPIPE, SIG_IGN);
-                  Pclose(obuf, TRU1);
+                  mx_fs_pipe_close(obuf, TRU1);
                   safe_signal(SIGPIPE, oldpipe);
                }
             }
@@ -1094,30 +1107,32 @@ jpipe_close:
       tmpname = NULL;
       qbuf = obuf;
 
-      term_infd = n_CHILD_FD_PASS;
+      term_infd = mx_CHILD_FD_PASS;
       if (mhp->mh_flags & (MIME_HDL_TMPF | MIME_HDL_NEEDSTERM)) {
-         enum oflags of;
+         struct mx_fs_tmp_ctx *fstcp;
+         enum mx_fs_oflags of;
 
-         of = OF_RDWR | OF_REGISTER;
-         if (!(mhp->mh_flags & MIME_HDL_TMPF)) {
+         of = mx_FS_O_RDWR | mx_FS_O_REGISTER;
+         if(!(mhp->mh_flags & MIME_HDL_TMPF)){
             term_infd = 0;
             mhp->mh_flags |= MIME_HDL_TMPF_FILL;
-            of |= OF_UNLINK;
-         } else if (mhp->mh_flags & MIME_HDL_TMPF_UNLINK)
-            of |= OF_REGISTER_UNLINK;
-
-         if ((pbuf = Ftmp((mhp->mh_flags & MIME_HDL_TMPF ? &cp : NULL),
-               (mhp->mh_flags & MIME_HDL_TMPF_FILL ? "mimehdlfill" : "mimehdl"),
-               of)) == NULL)
-            goto jesend;
-
-         if (mhp->mh_flags & MIME_HDL_TMPF) {
-            tmpname = savestr(cp);
-            Ftmp_free(&cp);
+            of |= mx_FS_O_UNLINK;
+         }else{
+            /* (async and unlink are mutual exclusive) */
+            if(mhp->mh_flags & MIME_HDL_TMPF_UNLINK)
+               of |= mx_FS_O_REGISTER_UNLINK;
          }
 
-         if (mhp->mh_flags & MIME_HDL_TMPF_FILL) {
-            if (term_infd == 0)
+         if((pbuf = mx_fs_tmp_open((mhp->mh_flags & MIME_HDL_TMPF_FILL
+                     ? "mimehdlfill" : "mimehdl"), of,
+               (mhp->mh_flags & MIME_HDL_TMPF ? &fstcp : NIL))) == NIL)
+            goto jesend;
+
+         if(mhp->mh_flags & MIME_HDL_TMPF)
+            tmpname = fstcp->fstc_filename; /* In autorec storage! */
+
+         if(mhp->mh_flags & MIME_HDL_TMPF_FILL){
+            if(term_infd == 0)
                term_infd = fileno(pbuf);
             goto jsend;
          }
@@ -1217,7 +1232,7 @@ joutln:
       mhp->mh_flags &= ~MIME_HDL_TMPF_FILL;
       fflush(pbuf);
       really_rewind(pbuf);
-      /* Don't Fclose() the Ftmp() thing due to OF_REGISTER_UNLINK++ */
+      /* Don't fs_close() a tmp_open() thing due to FS_O_UNREGISTER_UNLINK++ */
       goto jpipe_for_real;
    }
 
@@ -1236,17 +1251,18 @@ joutln:
    }
 
 jend:
-   if (pbuf != qbuf) {
-      safe_signal(SIGPIPE, SIG_IGN);
-      Pclose(pbuf, !(mhp->mh_flags & MIME_HDL_ASYNC));
+   if(pbuf != qbuf){
+      mx_fs_pipe_close(pbuf, !(mhp->mh_flags & MIME_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
       if (rv >= 0 && qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);
    }
+
 #ifdef mx_HAVE_ICONV
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
 #endif
+
 jleave:
    NYD_OU;
    return rv;
@@ -1440,14 +1456,14 @@ jgetname:
 
    if (f == NULL || f == (char*)-1 || *f == '\0')
       fp = NULL;
-   else if (n_psonce & n_PSO_INTERACTIVE) {
-      if (*f == '|') {
-         fp = Popen(&f[1], "w", ok_vlook(SHELL), NULL, 1);
-         if (!(*ispipe = (fp != NULL)))
+   else if(n_psonce & n_PSO_INTERACTIVE){
+      if(*f == '|'){
+         fp = mx_fs_pipe_open(&f[1], "w", ok_vlook(SHELL), NIL, -1);
+         if(!(*ispipe = (fp != NIL)))
             n_perr(f, 0);
-      } else if ((fp = Fopen(f, "w")) == NULL)
+      }else if((fp = mx_fs_open(f, "w")) == NIL)
          n_err(_("Cannot open %s\n"), n_shexp_quote_cp(f, FAL0));
-   } else {
+   }else{
       /* Be very picky in non-interactive mode: actively disallow pipes,
        * prevent directory separators, and any filename member that would
        * become expanded by the shell if the name would be echo(1)ed */
@@ -1467,7 +1483,7 @@ jgetname:
       }
 
       /* Avoid overwriting of existing files */
-      while((fp = Fopen(f, "wx")) == NULL){
+      while((fp = mx_fs_open(f, "wx")) == NIL){
          int e;
 
          if((e = su_err_no()) != su_ERR_EXIST){
@@ -1491,30 +1507,30 @@ static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    u64 *stats)
 {
-   char *line = NULL; /* TODO line pool */
-   uz linesize = 0, linelen, cnt;
+   char *line;
+   uz linesize, linelen, cnt;
    sz all_sz, i;
    NYD_IN;
 
    fflush(pipebuf);
    rewind(pipebuf);
-   cnt = (uz)fsize(pipebuf);
+   cnt = S(uz,fsize(pipebuf));
    all_sz = 0;
 
+   mx_fs_linepool_aquire(&line, &linesize);
    quoteflt_reset(qf, outbuf);
-   while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NULL) {
-      if ((i = quoteflt_push(qf, line, linelen)) < 0)
+   while(fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NIL){
+      if((i = quoteflt_push(qf, line, linelen)) < 0)
          break;
       all_sz += i;
    }
-   if ((i = quoteflt_flush(qf)) > 0)
+   if((i = quoteflt_flush(qf)) > 0)
       all_sz += i;
-   if (line)
-      n_free(line);
+   mx_fs_linepool_release(line, linesize);
 
-   if (all_sz > 0 && outbuf == origobuf && stats != NULL)
+   if(all_sz > 0 && outbuf == origobuf && stats != NIL)
       *stats += all_sz;
-   Fclose(pipebuf);
+   mx_fs_close(pipebuf);
    NYD_OU;
 }
 

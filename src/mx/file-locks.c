@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ n_dotlock(): creation of an exclusive "dotlock" file.
+ *@ Implementation of file-locks.h.
  *
- * Copyright (c) 2016 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -17,82 +17,121 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE dotlock
+#define su_FILE file_locks
 #define mx_SOURCE
+#define mx_SOURCE_FILE_LOCKS
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
+#include <su/mem.h>
+
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
 #endif
 
+#include "mx/file-streams.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 
+#include "mx/file-locks.h"
 /* TODO fake */
 #include "su/code-in.h"
 
-/* XXX Our Popen() main() takes void, temporary global data store */
+/* XXX Our pipe_open() main() takes void, temporary global data store */
 #ifdef mx_HAVE_DOTLOCK
-static enum n_file_lock_type a_dotlock_flt;
-static int a_dotlock_fd;
-struct n_dotlock_info *a_dotlock_dip;
+static enum mx_file_lock_type a_filo_flt;
+static int a_filo_fd;
+struct mx_file_dotlock_info *a_filo_fdip;
 #endif
+
+/* Workhorse */
+static boole a_filo_lock(int fd, enum mx_file_lock_type flt, off_t off,
+      off_t len);
 
 /* main() of fork(2)ed dot file locker */
 #ifdef mx_HAVE_DOTLOCK
-static int a_dotlock_main(void);
+static int a_filo_main(void);
 #endif
 
 #ifdef mx_HAVE_DOTLOCK
-# include "mx/dotlock.h" /* $(MX_SRCDIR) */
+# include "mx/file-dotlock.h" /* $(MX_SRCDIR) */
 #endif
+
+static boole
+a_filo_lock(int fd, enum mx_file_lock_type flt, off_t off, off_t len){
+   struct flock flp;
+   boole rv;
+   NYD2_IN;
+
+   su_mem_set(&flp, 0, sizeof flp);
+
+   switch(flt){
+   default:
+   case mx_FILE_LOCK_TYPE_READ: rv = F_RDLCK; break;
+   case mx_FILE_LOCK_TYPE_WRITE: rv = F_WRLCK; break;
+   }
+   flp.l_type = rv;
+   flp.l_start = off;
+   flp.l_whence = SEEK_SET;
+   flp.l_len = len;
+
+   if(!(rv = (fcntl(fd, F_SETLK, &flp) != -1)))
+      switch(su_err_no()){
+      case su_ERR_BADF:
+      case su_ERR_INVAL:
+         rv = TRUM1;
+         break;
+      }
+   NYD2_OU;
+   return rv;
+}
 
 #ifdef mx_HAVE_DOTLOCK
 static int
-a_dotlock_main(void){
+a_filo_main(void){
    /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
     * problems (SunOS), since the pathconf(3) value comes too late! */
    char name[PATH_MAX +1];
-   struct n_dotlock_info di;
+   struct mx_file_dotlock_info fdi;
    struct stat stb, fdstb;
-   enum n_dotlock_state dls;
+   enum mx_file_dotlock_state fdls;
    char const *cp;
    int fd;
-   enum n_file_lock_type flt;
+   enum mx_file_lock_type flt;
    NYD_IN;
 
-   /* Ignore SIGPIPE, we will see su_ERR_PIPE and "fall through" */
+   /* Ignore SIGPIPE, we will see ERR_PIPE and "fall through" */
    safe_signal(SIGPIPE, SIG_IGN);
 
    /* Get the arguments "passed to us" */
-   flt = a_dotlock_flt;
-   fd = a_dotlock_fd;
+   flt = a_filo_flt;
+   fd = a_filo_fd;
    UNUSED(fd);
-   di = *a_dotlock_dip;
+   fdi = *a_filo_fdip;
 
    /* chdir(2)? */
 jislink:
-   dls = n_DLS_CANT_CHDIR | n_DLS_ABANDON;
+   fdls = mx_FILE_DOTLOCK_STATE_CANT_CHDIR | mx_FILE_DOTLOCK_STATE_ABANDON;
 
-   if((cp = su_cs_rfind_c(di.di_file_name, '/')) != NULL){
+   if((cp = su_cs_rfind_c(fdi.fdi_file_name, '/')) != NIL){
       char const *fname = cp + 1;
 
-      while(PCMP(cp - 1, >, di.di_file_name) && cp[-1] == '/')
+      while(PCMP(cp - 1, >, fdi.fdi_file_name) && cp[-1] == '/')
          --cp;
-      cp = savestrbuf(di.di_file_name, P2UZ(cp - di.di_file_name));
+      cp = savestrbuf(fdi.fdi_file_name, P2UZ(cp - fdi.fdi_file_name));
       if(chdir(cp))
          goto jmsg;
 
-      di.di_file_name = fname;
+      fdi.fdi_file_name = fname;
    }
 
    /* So we are here, but then again the file can be a symbolic link!
     * This is however only true if we do not have realpath(3) available since
     * that will have resolved the path already otherwise; nonetheless, let
     * readlink(2) be a precondition for dotlocking and keep this code */
-   if(lstat(cp = di.di_file_name, &stb) == -1)
+   if(lstat(cp = fdi.fdi_file_name, &stb) == -1)
       goto jmsg;
    if(S_ISLNK(stb.st_mode)){
       /* Use n_autorec_alloc() and hope we stay in built-in buffer.. */
@@ -100,11 +139,11 @@ jislink:
       uz i;
       sz sr;
 
-      for(x = NULL, i = PATH_MAX;; i += PATH_MAX){
+      for(x = NIL, i = PATH_MAX;; i += PATH_MAX){
          x = n_autorec_alloc(i +1);
          sr = readlink(cp, x, i);
          if(sr <= 0){
-            dls = n_DLS_FISHY | n_DLS_ABANDON;
+            fdls = mx_FILE_DOTLOCK_STATE_FISHY | mx_FILE_DOTLOCK_STATE_ABANDON;
             goto jmsg;
          }
          if(UCMP(z, sr, <, i)){
@@ -112,11 +151,11 @@ jislink:
             break;
          }
       }
-      di.di_file_name = x;
+      fdi.fdi_file_name = x;
       goto jislink;
    }
 
-   dls = n_DLS_FISHY | n_DLS_ABANDON;
+   fdls = mx_FILE_DOTLOCK_STATE_FISHY | mx_FILE_DOTLOCK_STATE_ABANDON;
 
    /* Bail out if the file has changed its identity in the meanwhile */
    if(fstat(fd, &fdstb) == -1 ||
@@ -125,19 +164,20 @@ jislink:
          fdstb.st_mode != stb.st_mode)
       goto jmsg;
 
-   /* Be aware, even if the error is false!  Note the shared code in dotlock.h
-    * *requires* that it is possible to create a filename at least one byte
-    * longer than di_lock_name! */
+   /* Be aware, even if the error is false!  Note the shared code in
+    * file-dotlock.h *requires* that it is possible to create a filename
+    * at least one byte longer than di_lock_name! */
    do/* while(0) breaker */{
 # ifdef mx_HAVE_PATHCONF
       long pc;
 # endif
       int i;
 
-      i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
+      i = snprintf(name, sizeof name, "%s.lock", fdi.fdi_file_name);
       if(i < 0 || UCMP(32, i, >=, sizeof name)){
 jenametool:
-         dls = n_DLS_NAMETOOLONG | n_DLS_ABANDON;
+         fdls = mx_FILE_DOTLOCK_STATE_NAMETOOLONG |
+               mx_FILE_DOTLOCK_STATE_ABANDON;
          goto jmsg;
       }
 
@@ -146,7 +186,7 @@ jenametool:
       su_err_set_no(su_ERR_NONE);
       if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
          /* su_err_no() unchanged: no limit */
-         if(su_err_no() == 0)
+         if(su_err_no() == su_ERR_NONE)
             break;
 # endif
          if(UCMP(z, NAME_MAX - 1, <, i))
@@ -159,48 +199,49 @@ jenametool:
 # endif
    }while(0);
 
-   di.di_lock_name = name;
+   fdi.fdi_lock_name = name;
 
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  Any symbolic links have been resolved.
     * We do not know whether we have realpath(3) available,and manually
-    * resolving the path is due especially given that S-nail supports the
-    * special "%:" syntax to warp any file into a "system mailbox"; there may
-    * also be multiple system mailbox directories...
+    * resolving the path is due especially given that we support the special
+    * "%:" syntax to warp any file into a "system mailbox"; there may also be
+    * multiple system mailbox directories...
     * So what we do is that we fstat(2) the mailbox and check its UID and
     * GID against that of our own process: if any of those mismatch we must
     * either assume a directory we are not allowed to write in, or that we run
     * via -u/$USER/%USER as someone else, in which case we favour our
     * privilege-separated dotlock process */
-   ASSERT(cp != NULL); /* Ugly: avoid a useless var and reuse that one */
+   ASSERT(cp != NIL); /* Ugly: avoid a useless var and reuse that one */
    if(access(".", W_OK)){
       /* This may however also indicate a read-only filesystem, which is not
        * really an error from our point of view since the mailbox will degrade
        * to a readonly one for which no dotlock is needed, then, and errors
        * may arise only due to actions which require box modifications */
       if(su_err_no() == su_ERR_ROFS){
-         dls = n_DLS_ROFS | n_DLS_ABANDON;
+         fdls = mx_FILE_DOTLOCK_STATE_ROFS | mx_FILE_DOTLOCK_STATE_ABANDON;
          goto jmsg;
       }
-      cp = NULL;
+      cp = NIL;
    }
-   if(cp == NULL || stb.st_uid != n_user_id || stb.st_gid != n_group_id){
+
+   if(cp == NIL || stb.st_uid != n_user_id || stb.st_gid != n_group_id){
       char itoabuf[64];
       char const *args[13];
 
-      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, di.di_pollmsecs);
+      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, fdi.fdi_pollmsecs);
       args[ 0] = VAL_PS_DOTLOCK;
-      args[ 1] = (flt == FLT_READ ? "rdotlock" : "wdotlock");
-      args[ 2] = "mailbox";   args[ 3] = di.di_file_name;
-      args[ 4] = "name";      args[ 5] = di.di_lock_name;
-      args[ 6] = "hostname";  args[ 7] = di.di_hostname;
-      args[ 8] = "randstr";   args[ 9] = di.di_randstr;
+      args[ 1] = (flt == mx_FILE_LOCK_TYPE_READ) ? "rdotlock" : "wdotlock";
+      args[ 2] = "mailbox";   args[ 3] = fdi.fdi_file_name;
+      args[ 4] = "name";      args[ 5] = fdi.fdi_lock_name;
+      args[ 6] = "hostname";  args[ 7] = fdi.fdi_hostname;
+      args[ 8] = "randstr";   args[ 9] = fdi.fdi_randstr;
       args[10] = "pollmsecs"; args[11] = itoabuf;
-      args[12] = NULL;
+      args[12] = NIL;
       execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-dotlock", n_UNCONST(args));
 
-      dls = n_DLS_NOEXEC;
-      write(STDOUT_FILENO, &dls, sizeof dls);
+      fdls = mx_FILE_DOTLOCK_STATE_NOEXEC;
+      write(STDOUT_FILENO, &fdls, sizeof fdls);
       /* But fall through and try it with normal privileges! */
    }
 
@@ -216,18 +257,18 @@ jenametool:
    safe_signal(SIGTERM, SIG_IGN);
 
    NYD;
-   dls = a_dotlock_create(&di);
+   fdls = a_file_lock_dotlock_create(&fdi);
    NYD;
 
    /* Finally: notify our parent about the actual lock state.. */
 jmsg:
-   write(STDOUT_FILENO, &dls, sizeof dls);
+   write(STDOUT_FILENO, &fdls, sizeof fdls);
    close(STDOUT_FILENO);
 
    /* ..then eventually wait until we shall remove the lock again, which will
     * be notified via the read returning */
-   if(dls == n_DLS_NONE){
-      read(STDIN_FILENO, &dls, sizeof dls);
+   if(fdls == mx_FILE_DOTLOCK_STATE_NONE){
+      read(STDIN_FILENO, &fdls, sizeof fdls);
 
       unlink(name);
    }
@@ -236,17 +277,53 @@ jmsg:
 }
 #endif /* mx_HAVE_DOTLOCK */
 
-FL FILE *
-n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
+boole
+mx_file_lock(int fd, enum mx_file_lock_type flt, off_t off, off_t len,
+      uz pollmsecs){
+   uz tries;
+   boole didmsg, rv;
+   NYD_IN;
+
+   if(pollmsecs == UZ_MAX)
+      pollmsecs = mx_FILE_LOCK_MILLIS;
+
+   UNINIT(rv, 0);
+   for(didmsg = FAL0, tries = 0; tries <= mx_FILE_LOCK_TRIES; ++tries){
+      rv = a_filo_lock(fd, flt, off, len);
+
+      if(rv == TRUM1){
+         rv = FAL0;
+         break;
+      }
+      if(rv || pollmsecs == 0)
+         break;
+      else{
+         if(!didmsg){
+            n_err(_("Failed to create a file lock, waiting %lu milliseconds "),
+               pollmsecs);
+            didmsg = TRU1;
+         }else
+            n_err(".");
+         n_msleep(pollmsecs, FAL0);
+      }
+   }
+   if(didmsg)
+      n_err(" %s\n", (rv ? _("ok") : _("failure")));
+   NYD_OU;
+   return rv;
+}
+
+FILE *
+mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
       off_t off, off_t len, uz pollmsecs){
 #undef _DOMSG
 #define _DOMSG() \
    n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
 
 #ifdef mx_HAVE_DOTLOCK
-   int cpipe[2];
-   struct n_dotlock_info di;
-   enum n_dotlock_state dls;
+   sz cpipe[2];
+   struct mx_file_dotlock_info fdi;
+   enum mx_file_dotlock_state fdls;
    char const *emsg;
 #endif
    int serr;
@@ -256,13 +333,13 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    NYD_IN;
 
    if(pollmsecs == UZ_MAX)
-      pollmsecs = FILE_LOCK_MILLIS;
+      pollmsecs = mx_FILE_LOCK_MILLIS;
 
-   rv = NULL;
+   rv = NIL;
    didmsg = FAL0;
    UNINIT(serr, 0);
 #ifdef mx_HAVE_DOTLOCK
-   emsg = NULL;
+   emsg = NIL;
 #endif
 
    if(n_poption & n_PO_D_VV){
@@ -271,12 +348,12 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    }
 
    flocked = FAL0;
-   for(u.tries = 0; !n_file_lock(fd, flt, off, len, 0);)
+   for(u.tries = 0; !mx_file_lock(fd, flt, off, len, 0);)
       switch((serr = su_err_no())){
       case su_ERR_ACCES:
       case su_ERR_AGAIN:
       case su_ERR_NOLCK:
-         if(pollmsecs > 0 && ++u.tries < FILE_LOCK_TRIES){
+         if(pollmsecs > 0 && ++u.tries < mx_FILE_LOCK_TRIES){
             if(!didmsg)
                _DOMSG();
             n_err(".");
@@ -303,13 +380,13 @@ jleave:
 
 #else
    if(ok_blook(dotlock_disable)){
-      rv = (FILE*)-1;
+      rv = R(FILE*,-1);
       goto jleave;
    }
 
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
-   if(!pipe_cloexec(cpipe)){
+   if(!mx_fs_pipe_cloexec(cpipe)){
       serr = su_err_no();
       emsg = N_("  Cannot create dotlock file control pipe\n");
       goto jemsg;
@@ -319,67 +396,68 @@ jleave:
     * unless the lock has to be placed in the system spool and we have our
     * privilege-separated dotlock program available, in which case that will be
     * executed and do "it" */
-   di.di_file_name = fname;
-   di.di_pollmsecs = pollmsecs;
+   fdi.fdi_file_name = fname;
+   fdi.fdi_pollmsecs = pollmsecs;
    /* Initialize some more stuff; query the two strings in the parent in order
     * to cache the result of the former and anyway minimalize child page-ins.
     * Especially uname(3) may hang for multiple seconds when it is called the
     * first time! */
-   di.di_hostname = n_nodename(FAL0);
-   di.di_randstr = mx_random_create_cp(16, NIL);
-   a_dotlock_flt = flt;
-   a_dotlock_fd = fd;
-   a_dotlock_dip = &di;
+   fdi.fdi_hostname = n_nodename(FAL0);
+   fdi.fdi_randstr = mx_random_create_cp(16, NIL);
+   a_filo_flt = flt;
+   a_filo_fd = fd;
+   a_filo_fdip = &fdi;
 
-   u.ptf = &a_dotlock_main;
-   rv = Popen((char*)-1, "W", u.sh, NULL, cpipe[1]);
+   u.ptf = &a_filo_main;
+   rv = mx_fs_pipe_open(R(char*,-1), "W", u.sh, NIL, cpipe[1]);
    serr = su_err_no();
 
-   close(cpipe[1]);
-   if(rv == NULL){
-      close(cpipe[0]);
+   close(S(int,cpipe[1]));
+   if(rv == NIL){
+      close(S(int,cpipe[0]));
       emsg = N_("  Cannot create file lock process\n");
       goto jemsg;
    }
 
    /* Let's check whether we were able to create the dotlock file */
    for(;;){
-      u.r = read(cpipe[0], &dls, sizeof dls);
-      if(UCMP(z, u.r, !=, sizeof dls)){
+      u.r = read(S(int,cpipe[0]), &fdls, sizeof fdls);
+      if(UCMP(z, u.r, !=, sizeof fdls)){
          serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no();
-         dls = n_DLS_DUNNO | n_DLS_ABANDON;
+         fdls = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
       }else
          serr = su_ERR_NONE;
 
-      if(dls == n_DLS_NONE || (dls & n_DLS_ABANDON))
-         close(cpipe[0]);
+      if(fdls == mx_FILE_DOTLOCK_STATE_NONE ||
+            (fdls & mx_FILE_DOTLOCK_STATE_ABANDON))
+         close(S(int,cpipe[0]));
 
-      switch(dls & ~n_DLS_ABANDON){
-      case n_DLS_NONE:
+      switch(fdls & ~mx_FILE_DOTLOCK_STATE_ABANDON){
+      case mx_FILE_DOTLOCK_STATE_NONE:
          goto jleave;
-      case n_DLS_CANT_CHDIR:
+      case mx_FILE_DOTLOCK_STATE_CANT_CHDIR:
          if(n_poption & n_PO_D_V)
             emsg = N_("  Cannot change directory, please check permissions\n");
          serr = su_ERR_ACCES;
          break;
-      case n_DLS_NAMETOOLONG:
+      case mx_FILE_DOTLOCK_STATE_NAMETOOLONG:
          emsg = N_("Resulting dotlock filename would be too long\n");
          serr = su_ERR_ACCES;
          break;
-      case n_DLS_ROFS:
-         ASSERT(dls & n_DLS_ABANDON);
+      case mx_FILE_DOTLOCK_STATE_ROFS:
+         ASSERT(fdls & mx_FILE_DOTLOCK_STATE_ABANDON);
          if(n_poption & n_PO_D_V)
             emsg = N_("  Read-only filesystem, not creating lock file\n");
          serr = su_ERR_ROFS;
          break;
-      case n_DLS_NOPERM:
+      case mx_FILE_DOTLOCK_STATE_NOPERM:
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
             emsg = N_("  Cannot create a dotlock file, "
                   "please check permissions\n"
                   "  (Or set *dotlock-disable*, then try again)\n");
          serr = su_ERR_ACCES;
          break;
-      case n_DLS_NOEXEC:
+      case mx_FILE_DOTLOCK_STATE_NOEXEC:
          if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_PS_DOTLOCK_NOTED)
                ) == n_PSO_INTERACTIVE || (n_poption & n_PO_D_V)){
             n_psonce |= n_PSO_PS_DOTLOCK_NOTED;
@@ -387,29 +465,29 @@ jleave:
          }
          serr = su_ERR_NOENT;
          break;
-      case n_DLS_PRIVFAILED:
+      case mx_FILE_DOTLOCK_STATE_PRIVFAILED:
          emsg = N_("  Privilege-separated dotlock program cannot change "
                "privileges\n");
          serr = su_ERR_PERM;
          break;
-      case n_DLS_EXIST:
+      case mx_FILE_DOTLOCK_STATE_EXIST:
          emsg = N_("  It seems there is a stale dotlock file?\n"
                "  Please remove the lock file manually, then retry\n");
          serr = su_ERR_EXIST;
          break;
-      case n_DLS_FISHY:
+      case mx_FILE_DOTLOCK_STATE_FISHY:
          emsg = N_("  Fishy!  Is someone trying to \"steal\" foreign files?\n"
                "  Please check the mailbox file etc. manually, then retry\n");
          serr = su_ERR_AGAIN; /* ? Hack to ignore *dotlock-ignore-error* xxx */
          break;
       default:
-      case n_DLS_DUNNO:
+      case mx_FILE_DOTLOCK_STATE_DUNNO:
          emsg = N_("  Unspecified dotlock file control process error.\n"
                "  Like broken I/O pipe; this one is unlikely to happen\n");
          if(serr != su_ERR_AGAIN)
             serr = su_ERR_INVAL;
          break;
-      case n_DLS_PING:
+      case mx_FILE_DOTLOCK_STATE_PING:
          if(!didmsg)
             _DOMSG();
          n_err(".");
@@ -417,7 +495,7 @@ jleave:
          continue;
       }
 
-      if(emsg != NULL){
+      if(emsg != NIL){
          if(!didmsg){
             _DOMSG();
             didmsg = TRUM1;
@@ -426,36 +504,37 @@ jleave:
             n_err(_(". failed\n"));
          didmsg = TRU1;
          n_err(V_(emsg));
-         emsg = NULL;
+         emsg = NIL;
       }
 
-      if(dls & n_DLS_ABANDON){
-         Pclose(rv, FAL0);
-         rv = NULL;
+      if(fdls & mx_FILE_DOTLOCK_STATE_ABANDON){
+         mx_fs_pipe_close(rv, FAL0);
+         rv = NIL;
          break;
       }
    }
 
 jleave:
    if(didmsg == TRUM1)
-      n_err(". %s\n", (rv != NULL ? _("ok") : _("failed")));
-   if(rv == NULL) {
+      n_err(". %s\n", (rv != NIL ? _("ok") : _("failed")));
+   if(rv == NIL){
       if(flocked){
          if(serr == su_ERR_ROFS)
-            rv = (FILE*)-1;
+            rv = R(FILE*,-1);
          else if(serr != su_ERR_AGAIN && serr != su_ERR_EXIST &&
                ok_blook(dotlock_ignore_error)){
             n_OBSOLETE(_("*dotlock-ignore-error*: please use "
                "*dotlock-disable* instead"));
             if(n_poption & n_PO_D_V)
                n_err(_("  *dotlock-ignore-error* set: continuing\n"));
-            rv = (FILE*)-1;
+            rv = R(FILE*,-1);
          }else
             goto jserr;
       }else
 jserr:
          su_err_set_no(serr);
    }
+
    NYD_OU;
    return rv;
 jemsg:

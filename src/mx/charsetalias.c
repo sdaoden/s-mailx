@@ -39,9 +39,9 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CSAL_TRESHOLD_SHIFT 4
 
-struct su_cs_dict *a_csal_dp, a_csal__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_csal_dp, a_csal__d; /* XXX atexit _gut() (DVL()) */
 
-FL int
+int
 c_charsetalias(void *vp){
    struct su_cs_dict_view dv;
    int rv;
@@ -113,7 +113,7 @@ c_charsetalias(void *vp){
    return rv;
 }
 
-FL int
+int
 c_uncharsetalias(void *vp){
    char const **argv, *cp, *key;
    int rv;
@@ -137,7 +137,7 @@ c_uncharsetalias(void *vp){
    return rv;
 }
 
-FL char const *
+char const *
 mx_charsetalias_expand(char const *cp, boole is_normalized){
    uz i;
    char const *cp_orig, *dat;

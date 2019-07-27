@@ -326,7 +326,7 @@ check() {
    async)
       [ "$eestat" = - ] || exit 200
       while [ 1 ]; do
-         [ -s "${f}" ] && break
+         [ -f "${f}" ] && break
          t_echowarn "[${tid}:async=wait]"
          sleep 1
       done
@@ -3958,11 +3958,11 @@ t_mbox() {
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check 2 0 .tall '3075634057 9103'
+   check 2 0 .tall '3467540956 8991'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
       "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check 3 0 .tall '1902668747 9110'
+   check 3 0 .tall '2410946529 8998'
 
    # copy only the odd (but the first), move the even
    (
@@ -3975,7 +3975,7 @@ t_mbox() {
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
    ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
    check 4 0 .tmbox3 '2554734733 6666'
-   check 5 - .tall '3168324241 4573'
+   check 5 - .tall '2062382804 4517'
    # ...
    (
       printf 'file "file://%s"\nmove ' .tmbox2
@@ -3993,7 +3993,7 @@ t_mbox() {
    else
       ${cp} .tall .tallx
    fi
-   check 7 - .tallx '3604509039 13645'
+   check 7 - .tallx '169518319 13477'
 
    # Invalid MBOXes (after [f4db93b3])
    echo > .tinvmbox
@@ -4105,7 +4105,7 @@ t_maildir() {
          from*
       ' "${MBOX}" .tmdir1 .tmdir1 |
       ${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst
-   check 2 0 .tlst '1713783045 9103'
+   check 2 0 .tlst '3442251309 8991'
 
    printf 'File "%s"
          copy * "maildir://%s"
@@ -4113,7 +4113,7 @@ t_maildir() {
          from*
       ' "${MBOX}" .tmdir2 .tmdir2 |
       ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check 3 0 .tlst '1240307893 9113'
+   check 3 0 .tlst '3524806062 9001'
 
    printf 'File "maildir://%s"
          copy * "file://%s"
@@ -4122,7 +4122,7 @@ t_maildir() {
       ' .tmdir2 .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} -Sshowlast > .tlst
    check 4 0 .tmbox1 '4096198846 12772'
-   check 5 - .tlst '817337448 9110'
+   check 5 - .tlst '1262452287 8998'
 
    # only the odd (even)
    (
@@ -4140,7 +4140,7 @@ t_maildir() {
          ' .tmbox2 .tmbox2
    ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check 6 0 .tmbox2 '4228337024 6386'
-   check 7 - .tlst '884389294 4573'
+   check 7 - .tlst '2078821439 4517'
    # ...
    (
       printf 'file "maildir://%s"
@@ -4160,7 +4160,7 @@ t_maildir() {
    ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check 8 0 .tmbox2 '978751761 12656'
    ${sed} 2d < .tlst > .tlstx
-   check 9 - .tlstx '2391942957 13645'
+   check 9 - .tlstx '2172297531 13477'
 
    t_epilog
 }
@@ -4374,7 +4374,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check 3 0 ./.twrite '1259742080 686'
       #check 4 - ./.tlog '3214068822 2123'
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
-      check 4 - ./.txlog '3880307860 2031'
+      check 4 - ./.txlog '4083300132 2030'
    else
       t_echoskip '1-4:[ISO-2022-JP unsupported]'
    fi
@@ -4423,7 +4423,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       check 7 0 ./.twrite '1259742080 686'
       #check 8 - ./.tlog '2506063395 2075'
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
-      check 8 - ./.txlog '3875358865 1984'
+      check 8 - ./.txlog '3192017734 1983'
    else
       t_echoskip '5-8:[EUC-JP unsupported]'
    fi
@@ -5550,7 +5550,7 @@ reply 1 2
          > ./.tall 2>&1
    check 5 0 "${MBOX}" '1604688179 2316'
    if have_feat uistrings; then
-      check 6 - .tall '3662598562 509'
+      check 6 - .tall '1210753005 508'
    else
       t_echoskip '6:[test unsupported]'
    fi
@@ -5716,12 +5716,12 @@ t_mime_types_load_control() {
          > ./.tout 2>&1
    check_ex0 1-estat
    ${cat} "${MBOX}" >> ./.tout
-   check 1 - ./.tout '2716124839 2441'
+   check 1 - ./.tout '919615295 2440'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '2093030907 3634'
+   check 2 0 ./.tout '3998003232 3633'
 
    t_epilog
 }
@@ -7569,18 +7569,18 @@ t_pipe_handlers() {
          -S 'pipe-image/jpeg=?=&?'\
 'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
 'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
-'echo C=$MAILX_CONTENT;'\
+'{ echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
 'echo F=$MAILX_FILENAME;'\
 'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
 'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
-''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tax 2>&1;'"${mv}"' ./.tax ./.tay' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
-   sleep 1 # occasional errors, try that..
-   check 4 - "${BODY}" '4256558715 620'
+   check 4 - "${BODY}" '2275717813 469'
+   check 4-hdl - ./.tay '144517347 151' async
 
    # Keep $MBOX..
    if [ -z "${ln}" ]; then

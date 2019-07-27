@@ -34,6 +34,7 @@
 
 #include <su/cs.h>
 #include <su/cs-dict.h>
+#include <su/mem.h>
 
 #include "mx/names.h"
 
@@ -69,9 +70,9 @@ struct a_ml_regex{
 
 /* The value of our direct match dict is in fact a boole, the regex one
  * uses a_ml_regex* (still with boole as first bit, as above) */
-struct su_cs_dict *a_ml_dp, a_ml__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_ml_dp, a_ml__d; /* XXX atexit _gut() (DVL()) */
 #ifdef mx_HAVE_REGEX
-struct su_cs_dict *a_ml_re_dp, a_ml__re_d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_ml_re_dp, a_ml__re_d; /* XXX atexit _gut (DVL()) */
 
 /* Regex are searched in order, subscribed first, then "default"; make this
  * easier by using two dedicated lists.
@@ -386,7 +387,7 @@ a_ml_re_assign(void *self, void const *t, u32 estate){
 }
 #endif /* mx_HAVE_REGEX */
 
-FL int
+int
 c_mlist(void *vp){
    int rv;
    NYD_IN;
@@ -396,7 +397,7 @@ c_mlist(void *vp){
    return rv;
 }
 
-FL int
+int
 c_unmlist(void *vp){
    char const **argv, *key;
    int rv;
@@ -428,7 +429,7 @@ c_unmlist(void *vp){
    return rv;
 }
 
-FL int
+int
 c_mlsubscribe(void *vp){
    int rv;
    NYD_IN;
@@ -438,7 +439,7 @@ c_mlsubscribe(void *vp){
    return rv;
 }
 
-FL int
+int
 c_unmlsubscribe(void *vp){
    struct su_cs_dict_view dv;
    union {void *vp; up flags;} u;
@@ -482,7 +483,7 @@ jenot:
    return rv;
 }
 
-FL enum mx_mlist_type
+enum mx_mlist_type
 mx_mlist_query(char const *name, boole subscribed_only){
    struct su_cs_dict_view dv;
    union {void *vp; void const *cvp; up flags;} u;
@@ -540,7 +541,7 @@ jregex_leave:;
    return rv;
 }
 
-FL enum mx_mlist_type
+enum mx_mlist_type
 mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what){
    /* XXX mlist_query_mp() possibly belongs to message or header instead */
    struct mx_name *np;

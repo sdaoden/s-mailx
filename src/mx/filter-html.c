@@ -40,7 +40,11 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/utf.h>
+
+#include "mx/sigs.h"
+#include "mx/termios.h"
 
 #include "mx/filter-html.h"
 /* TODO fake */
@@ -274,7 +278,7 @@ _hf_dump_hrefs(struct htmlflt *self)
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
-   self->hf_href_dist = (u32)n_realscreenheight >> 1;
+   self->hf_href_dist = mx_termios_dimen.tiosd_real_height >> 1;
 jleave:
    NYD2_OU;
    return self;
@@ -1142,7 +1146,7 @@ jleave:
 
 /*
  * TODO Because we don't support filter chains yet this filter will be run
- * TODO in a dedicated subprocess, driven via a special Popen() mode
+ * TODO in a dedicated subprocess, driven via a special fs_pipe_open() mode
  */
 static boole __hf_hadpipesig;
 static void
@@ -1153,7 +1157,7 @@ __hf_onpipe(int signo)
    __hf_hadpipesig = TRU1;
 }
 
-FL int
+int
 htmlflt_process_main(void)
 {
    char buf[BUFFER_SIZE];
@@ -1192,7 +1196,7 @@ htmlflt_process_main(void)
    return rv;
 }
 
-FL void
+void
 htmlflt_init(struct htmlflt *self)
 {
    NYD_IN;
@@ -1201,7 +1205,7 @@ htmlflt_init(struct htmlflt *self)
    NYD_OU;
 }
 
-FL void
+void
 htmlflt_destroy(struct htmlflt *self)
 {
    NYD_IN;
@@ -1209,7 +1213,7 @@ htmlflt_destroy(struct htmlflt *self)
    NYD_OU;
 }
 
-FL void
+void
 htmlflt_reset(struct htmlflt *self, FILE *f)
 {
    struct htmlflt_href *hfhp;
@@ -1228,7 +1232,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    su_mem_set(self, 0, sizeof *self);
 
    if (f != NULL) {
-      u32 sw = MAX(_HF_MINLEN, (u32)n_scrnwidth);
+      u32 sw = MAX(_HF_MINLEN, mx_termios_dimen.tiosd_width);
 
       self->hf_line = n_alloc((uz)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
@@ -1240,7 +1244,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    NYD_OU;
 }
 
-FL sz
+sz
 htmlflt_push(struct htmlflt *self, char const *dat, uz len)
 {
    sz rv;
@@ -1251,7 +1255,7 @@ htmlflt_push(struct htmlflt *self, char const *dat, uz len)
    return rv;
 }
 
-FL sz
+sz
 htmlflt_flush(struct htmlflt *self)
 {
    sz rv;

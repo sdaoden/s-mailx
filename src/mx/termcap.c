@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of termcap.h.
  *@ For encapsulation purposes provide a basic foundation even without
- *@ mx_HAVE_TERMCAP, but with config.h:n_HAVE_TCAP.
  *@ HOWTO add a new non-dynamic command or query:
  *@ - add an entry to enum mx_termcap_{cmd,query}
  *@ - run make-tcap-map.pl
@@ -32,7 +31,8 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef n_HAVE_TCAP
+#include "mx/termcap.h"
+#ifdef mx_HAVE_TCAP
 
 /* If available, curses.h must be included before term.h! */
 #ifdef mx_HAVE_TERMCAP
@@ -44,9 +44,13 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
+#include "mx/termios.h"
+#include "mx/tty.h"
+
+/* Already: #include "mx/termcap.h"*/
 /* TODO fake */
-#include "mx/termcap.h"
 #include "su/code-in.h"
 
 /*
@@ -461,7 +465,7 @@ a_termcap_load(char const *term){
    int err;
    NYD2_IN;
 
-   if(!(rv = (setupterm(term, fileno(n_tty_fp), &err) == OK)))
+   if(!(rv = (setupterm(term, fileno(mx_tty_fp), &err) == OK)))
       n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
    NYD2_OU;
    return rv;
@@ -589,7 +593,7 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
 
 static int
 a_termcap_putc(int c){
-   return putc(c, n_tty_fp);
+   return putc(c, mx_tty_fp);
 }
 #endif /* mx_HAVE_TERMCAP */
 
@@ -622,14 +626,14 @@ a_termcap_enum_for_name(char const *name, uz nlen, s32 min, s32 max){
    return rv;
 }
 
-FL void
+void
 mx_termcap_init(void){
    struct mx_termcap_value tv;
    struct str termvar;
    char const *ccp;
    NYD_IN;
 
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
+   ASSERT(n_psonce & n_PSO_TTYANY);
 
    a_termcap_g = n_alloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
@@ -676,17 +680,23 @@ mx_termcap_init(void){
 
    /* TODO We do not handle !mx_TERMCAP_QUERY_sam in this software! */
    if(!mx_termcap_query(mx_TERMCAP_QUERY_am, &tv) ||
-         mx_termcap_query(mx_TERMCAP_QUERY_xenl, &tv))
+         mx_termcap_query(mx_TERMCAP_QUERY_xenl, &tv)){
       n_psonce |= n_PSO_TERMCAP_FULLWIDTH;
+
+      /* Since termcap was not initialized when we did TERMIOS_SETUP_TERMSIZE
+       * we need/should adjust the found setting to reality (without causing
+       * a synthesized SIGWINCH or something even more expensive that is) */
+      if(mx_termios_dimen.tiosd_width > 0)
+         ++mx_termios_dimen.tiosd_width;
+   }
 
    mx_TERMCAP_RESUME(TRU1);
    NYD_OU;
 }
 
-FL void
+void
 mx_termcap_destroy(void){
    NYD_IN;
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
    ASSERT(a_termcap_g != NULL);
 
    mx_TERMCAP_SUSPEND(TRU1);
@@ -708,32 +718,32 @@ mx_termcap_destroy(void){
 }
 
 #ifdef mx_HAVE_TERMCAP
-FL void
+void
 mx_termcap_resume(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          mx_termcap_cmdx(mx_TERMCAP_CMD_ti);
       mx_termcap_cmdx(mx_TERMCAP_CMD_ks);
-      fflush(n_tty_fp);
+      fflush(mx_tty_fp);
    }
    NYD_OU;
 }
 
-FL void
+void
 mx_termcap_suspend(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       mx_termcap_cmdx(mx_TERMCAP_CMD_ke);
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          mx_termcap_cmdx(mx_TERMCAP_CMD_te);
-      fflush(n_tty_fp);
+      fflush(mx_tty_fp);
    }
    NYD_OU;
 }
 #endif /* mx_HAVE_TERMCAP */
 
-FL sz
+sz
 mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
    /* Commands are not lazy queried */
    struct a_termcap_ent const *tep;
@@ -805,7 +815,7 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
                break;
          }else
 #endif
-               if(fputs(cp, n_tty_fp) == EOF)
+               if(fputs(cp, mx_tty_fp) == EOF)
             break;
          if(!(tep->te_flags & a_TERMCAP_F_ARG_CNT) || --a1 <= 0){
             rv = TRU1;
@@ -824,8 +834,8 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
          if(a1 > 0)
             --a1;
          if((rv = mx_termcap_cmd(mx_TERMCAP_CMD_ch, a1, 0)) > 0){
-            for(a2 = n_scrnwidth - a1 - 1; a2 > 0; --a2)
-               if(putc(' ', n_tty_fp) == EOF){
+            for(a2 = mx_termios_dimen.tiosd_width - a1 - 1; a2 > 0; --a2)
+               if(putc(' ', mx_tty_fp) == EOF){
                   rv = FAL0;
                   break;
                }
@@ -851,8 +861,8 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
 
 jflush:
       if(flags & mx_TERMCAP_CMD_FLAG_FLUSH)
-         fflush(n_tty_fp);
-      if(ferror(n_tty_fp))
+         fflush(mx_tty_fp);
+      if(ferror(mx_tty_fp))
          rv = FAL0;
    }
 
@@ -861,7 +871,7 @@ jleave:
    return rv;
 }
 
-FL boole
+boole
 mx_termcap_query(enum mx_termcap_query query, struct mx_termcap_value *tvp){
    /* Queries are lazy queried upon request */
    /* XXX mx_termcap_query(): boole handling suboptimal, tvp used on success */
@@ -943,7 +953,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_KEY_BINDINGS
-FL s32
+s32
 mx_termcap_query_for_name(char const *name, enum mx_termcap_captype type){
    s32 rv;
    NYD2_IN;
@@ -961,7 +971,7 @@ mx_termcap_query_for_name(char const *name, enum mx_termcap_captype type){
    return rv;
 }
 
-FL char const *
+char const *
 mx_termcap_name_of_query(enum mx_termcap_query query){
    char const *rv;
    NYD2_IN;
@@ -974,5 +984,5 @@ mx_termcap_name_of_query(enum mx_termcap_query query){
 #endif /* mx_HAVE_KEY_BINDINGS */
 
 #include "su/code-ou.h"
-#endif /* n_HAVE_TCAP */
+#endif /* mx_HAVE_TCAP */
 /* s-it-mode */

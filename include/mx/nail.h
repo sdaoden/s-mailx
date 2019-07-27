@@ -41,7 +41,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #ifdef mx_HAVE_GETTIMEOFDAY
 # include <sys/time.h>
@@ -57,7 +56,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -73,15 +71,12 @@
 #include <mx/config.h>
 
 #include <su/code.h>
-#include <su/mem.h> /* TODO should not be needed */
 #include <su/mem-bag.h> /* TODO should not be needed */
 
 /* TODO fake */
 #include "su/code-in.h"
 
-/* Special FD requests for n_child_run(), n_child_start() */
-#define n_CHILD_FD_PASS -1
-#define n_CHILD_FD_NULL -2
+struct mx_dig_msg_ctx;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -298,31 +293,6 @@ enum cproto{
 ,CPROTO_IMAP
 };
 
-enum n_dig_msg_flags{
-   n_DIG_MSG_NONE,
-   n_DIG_MSG_COMPOSE = 1u<<0, /* Compose mode object.. */
-   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1, /* ..with `digmsg' handle also! */
-   n_DIG_MSG_RDONLY = 1u<<2, /* Message is read-only */
-   n_DIG_MSG_OWN_MEMBAG = 1u<<3, /* .gdm_membag==&.gdm__membag_buf[0] */
-   n_DIG_MSG_HAVE_FP = 1u<<4, /* Open on a Ftmp() file */
-   n_DIG_MSG_FCLOSE = 1u<<5 /* (mx_HAVE_FP:) needs fclose() */
-};
-
-enum n_dotlock_state{
-   n_DLS_NONE,
-   n_DLS_CANT_CHDIR, /* Failed to chdir(2) into desired path */
-   n_DLS_NAMETOOLONG, /* Lock file name would be too long */
-   n_DLS_ROFS, /* Read-only filesystem (no error, mailbox RO) */
-   n_DLS_NOPERM, /* No permission to creat lock file */
-   n_DLS_NOEXEC, /* Privilege separated dotlocker not found */
-   n_DLS_PRIVFAILED, /* Rising privileges failed in dotlocker */
-   n_DLS_EXIST, /* Lock file already exists, stale lock? */
-   n_DLS_FISHY, /* Something makes us think bad of situation */
-   n_DLS_DUNNO, /* Catch-all error */
-   n_DLS_PING, /* Not an error, but have to wait for lock */
-   n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
-};
-
 /* enum n_err_number from gen-config.h, which is in sync with
  * su_err_doc(), su_err_name() and su_err_from_name() */
 
@@ -357,17 +327,6 @@ enum fexp_mode{
    FEXP_NVAR = 1u<<9 /* ..not even $VAR expansion */
 };
 
-enum n_file_lock_type{
-   FLT_READ,
-   FLT_WRITE
-};
-
-enum n_fopen_state{ /* TODO add n_fopen_mode, too */
-   /* First n__PROTO_SHIFT bits are enum protocol!  MCTA()d below */
-   n_FOPEN_STATE_NONE = 0,
-   n_FOPEN_STATE_EXISTS = 1u<<5
-};
-
 enum n_go_input_flags{
    n_GO_INPUT_NONE,
    n_GO_INPUT_CTX_BASE = 0, /* Generic shared base: don't use! */
@@ -379,7 +338,7 @@ enum n_go_input_flags{
     * This is CTA()d!  For actual spacing of arrays we use _MAX1 instead */
    n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
 
-   n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* hold_all_sigs() active TODO */
+   n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
    /* `xcall' is `call' (at the level where this is set): to be set when
     * teardown of top level has undesired effects, e.g., for `account's and
     * folder hooks etc., where we do not to loose our `localopts' unroll list */
@@ -573,22 +532,6 @@ enum mime_handler_flags{
    MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
-enum oflags{
-   OF_RDONLY = 1u<<0,
-   OF_WRONLY = 1u<<1,
-   OF_RDWR = 1u<<2,
-   OF_APPEND = 1u<<3,
-   OF_CREATE = 1u<<4,
-   OF_TRUNC = 1u<<5,
-   OF_EXCL = 1u<<6,
-   OF_UNLINK = 1u<<7, /* Only for Ftmp(): unlink(2) after creation */
-   OF_HOLDSIGS = 1u<<8, /* Ftmp(): await Ftmp_free(), mutual OF_UNLINK */
-   OF_FN_AUTOREC = 1u<<9, /* Ftmp(): fn not on heap, mutual OF_UNLINK */
-   OF_REGISTER = 1u<<10, /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER ASSERTed */
-   OF_SUFFIX = 1u<<12 /* Ftmp() name hint is mandatory! extension! */
-};
-
 enum okay{
    STOP = 0,
    OKAY = 1
@@ -622,10 +565,8 @@ PROTO_MAILDIR = n_PROTO_MAILDIR,
    n_PROTO_UNKNOWN, /* unknown protocol */
 PROTO_UNKNOWN = n_PROTO_UNKNOWN,
 
-   n__PROTO_SHIFT = n_PROTO_UNKNOWN,
-   n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
+   n_PROTO_MASK = (1u << 5) - 1
 };
-MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction{
    SEND_MBOX, /* no conversion to perform */
@@ -898,6 +839,7 @@ enum n_program_state_once{
    n_PSO_INTERACTIVE = 1u<<10,
    n_PSO_TTYIN = 1u<<11,
    n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
+   n_PSO_TTYANY = n_PSO_TTYIN | n_PSO_TTYOUT, /* mx_tty_fp = TTY */
 
    /* "Later" */
    n_PSO_t_FLAG_DONE = 1u<<15,
@@ -1169,7 +1111,7 @@ ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
 ok_v_sendmail_progname, /* {obsolete=1} */
-   ok_b_sendwait,
+   ok_v_sendwait, /* {i3val=""} */
    ok_b_showlast,
    ok_b_showname,
    ok_b_showto,
@@ -1410,43 +1352,6 @@ struct ccred{
    struct str cc_pass; /* Password (urlxdec()oded) or NULL */
 };
 
-struct n_dig_msg_ctx{
-   struct n_dig_msg_ctx *dmc_last; /* Linked only if !n_DIG_MSG_COMPOSE */
-   struct n_dig_msg_ctx *dmc_next;
-   struct message *dmc_mp; /* XXX Yet NULL if n_DIG_MSG_COMPOSE */
-   enum n_dig_msg_flags dmc_flags;
-   u32 dmc_msgno; /* XXX Only if !n_DIG_MSG_COMPOSE */
-   FILE *dmc_fp;
-   struct header *dmc_hp;
-   struct su_mem_bag *dmc_membag;
-   struct su_mem_bag dmc__membag_buf[1];
-};
-/* This is a bit hairy */
-#define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
-do{\
-   su_mem_set(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
-   (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
-   (DMCP)->dmc_hp = HP;\
-   (DMCP)->dmc_membag = su_mem_bag_top(n_go_data->gdc_membag);\
-}while(0)
-#define n_DIG_MSG_COMPOSE_GUT(DMCP) \
-do{\
-   ASSERT(n_dig_msg_compose_ctx == DMCP);\
-   /* File cleaned up via close_all_files() */\
-   n_dig_msg_compose_ctx = NULL;\
-}while(0)
-
-#ifdef mx_HAVE_DOTLOCK
-struct n_dotlock_info{
-   char const *di_file_name; /* Mailbox to lock */
-   char const *di_lock_name; /* .di_file_name + .lock */
-   char const *di_hostname; /* ..filled in parent (due resolver delays) */
-   char const *di_randstr; /* ..ditto, random string */
-   uz di_pollmsecs;  /* Delay in between locking attempts */
-   struct stat *di_stb;
-};
-#endif
-
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
    void *gdc_ifcond; /* Saved state of conditional stack */
@@ -1501,21 +1406,6 @@ struct n_timespec{
    s64 ts_sec;
    sz ts_nsec;
 };
-
-struct termios_state{
-   struct termios ts_tios;
-   char *ts_linebuf;
-   uz ts_linesize;
-   boole ts_needs_reset;
-};
-
-#define termios_state_reset() \
-do{\
-   if(termios_state.ts_needs_reset){\
-      tcsetattr(STDIN_FILENO, TCSADRAIN, &termios_state.ts_tios);\
-      termios_state.ts_needs_reset = FAL0;\
-   }\
-}while(0)
 
 struct time_current{ /* TODO s64, etc. */
    time_t tc_time;
@@ -1588,7 +1478,7 @@ MB_CACHE, /* IMAP cache */
 #endif
    /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
     * XXX have an on_close event to which that machinery should connect */
-   struct n_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
+   struct mx_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
    struct sock mb_sock; /* socket structure */
 };
 
@@ -1913,17 +1803,12 @@ VL char const n_at[2]; /* Commercial at @ */
 VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
-VL FILE *n_tty_fp; /* Our terminal output TODO input channel */
+/* XXX Plus mx_tty_fp in tty.h */
 /* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
  * XXX event driven nature of individual program parts */
 VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
-VL struct n_dig_msg_ctx *n_digmsg_read_overlay; /* `digmsg' XXX HACK */
-VL struct n_dig_msg_ctx *n_dig_msg_compose_ctx; /* Or NULL XXX HACK */
 
 VL u32 n_mb_cur_max; /* Value of MB_CUR_MAX */
-VL u32 n_realscreenheight; /* The real screen height */
-VL u32 n_scrnwidth; /* Screen width/guess; also n_SCRNWIDTH_LIST */
-VL u32 n_scrnheight; /* Screen height/guess (for header summary+) */
 
 VL gid_t n_group_id; /* getgid() and getuid() */
 VL uid_t n_user_id;
@@ -1979,7 +1864,6 @@ VL int imap_created_mailbox; /* hack to get feedback from imap */
 VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 
 VL struct time_current time_current; /* time(3); send: mail1() XXXcarrier */
-VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
 #ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */

@@ -37,9 +37,9 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_SCUT_TRESHOLD_SHIFT 2
 
-struct su_cs_dict *a_scut_dp, a_scut__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_scut_dp, a_scut__d; /* XXX atexit _gut() (DVL()) */
 
-FL int
+int
 c_shortcut(void *vp){
    struct su_cs_dict_view dv;
    int rv;
@@ -91,7 +91,7 @@ c_shortcut(void *vp){
    return rv;
 }
 
-FL int
+int
 c_unshortcut(void *vp){
    int rv;
    NYD_IN;
@@ -101,7 +101,7 @@ c_unshortcut(void *vp){
    return rv;
 }
 
-FL char const *
+char const *
 mx_shortcut_expand(char const *cp){
    NYD_IN;
 

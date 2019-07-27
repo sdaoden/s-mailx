@@ -41,6 +41,7 @@
 # include <iconv.h>
 #endif
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 #ifdef mx_HAVE_ICONV
@@ -53,25 +54,25 @@ enum n_iconv_flags{
    n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
 
-VL s32 n_iconv_err_no; /* TODO HACK: part of CTX to not get lost */
-VL iconv_t iconvd;
+EXPORT_DATA s32 n_iconv_err_no; /* TODO HACK: part of CTX to not get lost */
+EXPORT_DATA iconv_t iconvd;
 #endif /* mx_HAVE_ICONV */
 
 /* Returns a newly n_autorec_alloc()ated thing if there were adjustments.
  * Return value is always smaller or of equal size.
  * NIL will be returned if cset is an invalid character set name */
-FL char *n_iconv_normalize_name(char const *cset);
+EXPORT char *n_iconv_normalize_name(char const *cset);
 
 /* Is it ASCII indeed? */
-FL boole n_iconv_name_is_ascii(char const *cset);
+EXPORT boole n_iconv_name_is_ascii(char const *cset);
 
 #ifdef mx_HAVE_ICONV
-FL iconv_t n_iconv_open(char const *tocode, char const *fromcode);
+EXPORT iconv_t n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */
-FL void n_iconv_close(iconv_t cd);
+EXPORT void n_iconv_close(iconv_t cd);
 
 /* Reset encoding state */
-FL void n_iconv_reset(iconv_t cd);
+EXPORT void n_iconv_reset(iconv_t cd);
 
 /* iconv(3), but return su_err_no() or 0 upon success.
  * The err_no may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
@@ -82,14 +83,14 @@ FL void n_iconv_reset(iconv_t cd);
  * TODO These must be contexts.  For now we duplicate su_err_no() into
  * TODO n_iconv_err_no in order to be able to access it when stuff happens
  * TODO "in between"! */
-FL int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
+EXPORT int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
       char const **inb, uz *inbleft, char **outb, uz *outbleft);
-FL int n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
+EXPORT int n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
       struct str *out, struct str const *in, struct str *in_rest_or_nil);
 
 /* If tocode==NIL, uses *ttycharset*.  If fromcode==NIL, uses UTF-8.
  * Returns a autorec_alloc()ed buffer or NIL */
-FL char *n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode,
+EXPORT char *n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode,
       char const *fromcode, char const *input);
 #endif /* mx_HAVE_ICONV */
 

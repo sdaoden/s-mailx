@@ -119,13 +119,6 @@ do{\
       ftruncate(fileno(stream), off);\
 }while(0)
 
-# define n_fd_cloexec_set(FD) \
-do{\
-      int a__fd = (FD)/*, a__fl*/;\
-      /*if((a__fl = fcntl(a__fd, F_GETFD)) != -1 && !(a__fl & FD_CLOEXEC))*/\
-         (void)fcntl(a__fd, F_SETFD, FD_CLOEXEC);\
-}while(0)
-
 /*
  * accmacvar.c
  */
@@ -273,16 +266,14 @@ FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
  * auxlily.c
  */
 
-/* setlocale(3), *ttycharset* etc. */
-FL void n_locale_init(void);
-
-/* Compute screen size */
+/* Compute *screen* size */
 FL uz n_screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
- * some environment variable that supports colour+ and set *env_addon to that,
- * e.g., "LESS=FRSXi" */
-FL char const *n_pager_get(char const **env_addon);
+/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
+ * These are specialized version of fs_pipe_open()/fs_pipe_close() which also
+ * encapsulate error message printing, terminal handling etc. additionally */
+FL FILE *mx_pager_open(void);
+FL boole mx_pager_close(FILE *fp);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, uz lines);
@@ -668,39 +659,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * dig-msg.c
- */
-
-/**/
-FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
-
-/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
-FL boole n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
-            char const *cmd);
-
-/* `digmsg' */
-FL int c_digmsg(void *vp);
-
-/*
- * dotlock.c
- */
-
-/* Aquire a flt n_file_lock().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used.
- * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be aquired,
- * NULL if not, with n_err_ being usable.
- * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
- * returned upon success which keeps the link in between us and the
- * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
- * execv(2) with the privilege-separated dotlock helper program): the lock file
- * will be removed once the control pipe is closed via Pclose().
- * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established, otherwise su_err_no() is usable */
-FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-            off_t off, off_t len, uz pollmsecs);
-
-/*
  * edit.c
  */
 
@@ -716,52 +674,12 @@ FL int         c_visual(void *v);
  * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
  * from within compose mode, and giving TRUM1 to n_puthead().
  * Signals must be handled by the caller.
- * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
+ * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
  * which case pipecmd must have been given */
 FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
                   struct header *hp, struct message *mp,
                   enum sendaction action, n_sighdl_t oldint,
                   char const *pipecmd);
-
-/*
- * fio.c
- */
-
-/* fgets() replacement to handle lines of arbitrary size and with embedded \0
- * characters.
- * line - line buffer.  *line may be NULL.
- * linesize - allocated size of line buffer.
- * count - maximum characters to read.  May be NULL.
- * llen - length_of_line(*line).
- * fp - input FILE.
- * appendnl - always terminate line with \n, append if necessary.
- * Manages the n_PS_READLINE_NL hack */
-FL char *      fgetline(char **line, uz *linesize, uz *count,
-                  uz *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define fgetline(A,B,C,D,E,F)   \
-   fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Read up a line from the specified input into the linebuffer.
- * Return the number of characters read.  Do not include the newline at EOL.
- * n is the number of characters already read and present in *linebuf; it'll be
- * treated as _the_ line if no more (successful) reads are possible.
- * Manages the n_PS_READLINE_NL hack */
-FL int         readline_restart(FILE *ibuf, char **linebuf, uz *linesize,
-                  uz n  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define readline_restart(A,B,C,D) \
-   readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Determine the size of the file possessed by the passed buffer */
-FL off_t       fsize(FILE *iob);
-
-/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0.
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used */
-FL boole      n_file_lock(int fd, enum n_file_lock_type flt,
-                  off_t off, off_t len, uz pollmsecs);
 
 /*
  * folder.c
@@ -838,7 +756,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
- * If histok_or_null is set it will be updated to FAL0 if input shall not be
+ * If histok_or_nil is set it will be updated to FAL0 if input shall not be
  * placed in history.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
@@ -846,7 +764,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, uz *linesize, char const *string,
-         boole *histok_or_null  su_DBG_LOC_ARGS_DECL);
+         boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
@@ -1460,103 +1378,6 @@ FL boole      pop3_quit(boole hold_sigs_on);
 #endif /* mx_HAVE_POP3 */
 
 /*
- * popen.c
- * Subprocesses, popen, but also file handling with registering
- */
-
-/* For program startup in main.c: initialize process manager */
-FL void        n_child_manager_start(void);
-
-/* xflags may be NULL.  Implied: cloexec */
-FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
-
-/* oflags implied: cloexec,OF_REGISTER.
- * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
- * creator has to take appropriate steps in order to ensure this is true! */
-FL FILE *      Fopen(char const *file, char const *oflags);
-FL FILE *      Fdopen(int fd, char const *oflags, boole nocloexec);
-
-FL int         Fclose(FILE *fp);
-
-/* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
- * Open file according to oflags (see popen.c).  Handles compressed files,
- * maildir etc.  If ft_or_null is given it will be filled accordingly */
-FL FILE * n_fopen_any(char const *file, char const *oflags,
-            enum n_fopen_state *fs_or_null);
-
-/* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
- * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
- * part of the resulting filename, otherwise Ftmp() will fail), store the
- * unique name in fn if set (and unless OF_UNLINK is set in oflags), creating
- * n_alloc() storage or n_autorec_alloc() if OF_NAME_AUTOREC is set,
- * and return a stdio FILE pointer with access oflags.
- * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
-FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
-
-/* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
- * called: call this to unlink(2) and free *fn and to rele_all_sigs() */
-FL void        Ftmp_release(char **fn);
-
-/* Free the resources associated with the given filename.  To be called after
- * unlink() */
-FL void        Ftmp_free(char **fn);
-
-/* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
-FL boole      pipe_cloexec(int fd[2]);
-
-/*
- * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
- * called from within the child process.
- * n_psignal() takes a FILE* returned by Popen, and returns <0 if no process
- * can be found, 0 on success, and an errno number on kill(2) failure */
-FL FILE *Popen(char const *cmd, char const *mode, char const *shell,
-            char const **env_addon, int newfd1);
-FL boole Pclose(FILE *fp, boole dowait);
-VL int n_psignal(FILE *fp, int sig);
-
-/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
- * These are specialized version of Popen()/Pclose() which also encapsulate
- * error message printing, terminal handling etc. additionally */
-FL FILE *      n_pager_open(void);
-FL boole      n_pager_close(FILE *fp);
-
-/*  */
-FL void        close_all_files(void);
-
-/* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  FDs may also be n_CHILD_FD_NULL and n_CHILD_FD_PASS, meaning
- * to redirect from/to /dev/null or pass through our own set of FDs; in the
- * latter case terminal capabilities are saved/restored if possible.
- * The command name can be a sequence of words.
- * Signals must be handled by the caller.  "Mask" contains the signals to
- * ignore in the new process.  SIGINT is enabled unless it's in the mask.
- * If env_addon_or_null is set, it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * wait_status_or_null is set to waitpid(2) status if given */
-FL int n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null, int *wait_status_or_null);
-
-/* Like n_child_run(), but don't wait for the command to finish (use
- * n_child_wait() for waiting on a successful return value).
- * Also it is usually an error to use n_CHILD_FD_PASS for this one */
-FL int n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null);
-
-/* Fork a child process, enable the other three:
- * - in-child image preparation
- * - mark a child as don't care
- * - wait for child pid, return whether we've had a normal n_EXIT_OK exit.
- *   If wait_status_or_null is set, it is set to the waitpid(2) status */
-FL int n_child_fork(void);
-FL void n_child_prepare(sigset_t *nset, int infd, int outfd);
-FL void n_child_free(int pid);
-FL boole n_child_wait(int pid, int *wait_status_or_null);
-
-/*
  * quit.c
  */
 
@@ -1693,66 +1514,6 @@ FL boole n_shexp_is_valid_varname(char const *name);
 
 /* `shcodec' */
 FL int c_shcodec(void *vp);
-
-/*
- * signal.c
- */
-
-/* `sleep' */
-FL int c_sleep(void *v);
-
-#ifdef mx_HAVE_DEVEL
-FL int         c_sigstate(void *);
-#endif
-
-FL void        n_raise(int signo);
-
-/* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
-FL n_sighdl_t safe_signal(int signum, n_sighdl_t handler);
-
-/* Provide reproducable non-restartable signal handler installation */
-FL n_sighdl_t  n_signal(int signo, n_sighdl_t hdl);
-
-/* Hold *all* signals but SIGCHLD, and release that total block again */
-FL void        hold_all_sigs(void);
-FL void        rele_all_sigs(void);
-
-/* Hold HUP/QUIT/INT */
-FL void        hold_sigs(void);
-FL void        rele_sigs(void);
-
-/* Call _ENTER_SWITCH() with the according flags, it'll take care for the rest
- * and also set the jump buffer - it returns 0 if anything went fine and
- * a signal number if a jump occurred, in which case all handlers requested in
- * flags are temporarily SIG_IGN.
- * _cleanup_ping() informs the condome that no jumps etc. shall be performed
- * until _leave() is called in the following -- to be (optionally) called right
- * before the local jump label is reached which is jumped to after a long jump
- * occurred, straight code flow provided, e.g., to avoid destructors to be
- * called twice.  _leave() must always be called last, reraise_flags will be
- * used to decide how signal handling has to continue
- */
-#define n_SIGMAN_ENTER_SWITCH(S,F) do{\
-   int __x__;\
-   hold_sigs();\
-   if(sigsetjmp((S)->sm_jump, 1))\
-      __x__ = -1;\
-   else\
-      __x__ = F;\
-   n__sigman_enter(S, __x__);\
-}while(0); switch((S)->sm_signo)
-FL int         n__sigman_enter(struct n_sigman *self, int flags);
-FL void        n_sigman_cleanup_ping(struct n_sigman *self);
-FL void        n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
-
-/* Pending signal or 0? */
-FL int         n_sigman_peek(void);
-FL void        n_sigman_consume(void);
-
-/* Not-Yet-Dead debug information (handler installation in main.c) */
-#if su_DVLOR(1, 0)
-FL void mx__nyd_oncrash(int signo);
-#endif
 
 /*
  * smtp.c
@@ -2087,72 +1848,6 @@ FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
 
 /*
- * tty.c
- */
-
-/* Return whether user says yes, on STDIN if interactive.
- * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for n_boolify() and chooses the yes/no string to append to prompt
- * accordingly.  If prompt is NULL "Continue" is used instead.
- * Handles+reraises SIGINT */
-FL boole getapproval(char const *prompt, boole noninteract_default);
-
-#ifdef mx_HAVE_SOCKETS
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error */
-FL char *getuser(char const *query);
-
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
- * termios_state_reset() must be called anyway */
-FL char *getpassword(char const *query);
-#endif
-
-/* Create the prompt and return its visual width in columns, which may be 0
- * if evaluation is disabled etc.  The data is placed in store.
- * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
- * takes place */
-FL u32 n_tty_create_prompt(struct n_string *store, char const *xprompt,
-            enum n_go_input_flags gif);
-
-/* Overall interactive terminal life cycle for command line editor library */
-#ifdef mx_HAVE_MLE
-FL void n_tty_init(void);
-FL void n_tty_destroy(boole xit_fastpath);
-#else
-# define n_tty_init() do{;}while(0)
-# define n_tty_destroy(B) do{;}while(0)
-#endif
-
-/* Read a line after printing prompt (if set and non-empty).
- * If n>0 assumes that *linebuf has n bytes of default content.
- * histok_or_null like for n_go_input().
- * Only the _CTX_ bits in lif are used */
-FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, uz *linesize, uz n, boole *histok_or_null
-         su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_tty_readline(A,B,C,D,E,F) \
-   (n_tty_readline)(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Whether and how an entry is added for real depends on gif, e.g.,
- * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
- * Empty strings are never stored */
-FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
-
-#ifdef mx_HAVE_HISTORY
-FL int c_history(void *v);
-#endif
-
-/* `bind' and `unbind' */
-#ifdef mx_HAVE_KEY_BINDINGS
-FL int c_bind(void *v);
-FL int c_unbind(void *v);
-#endif
-
-/*
  * urlcrecry.c
  */
 
@@ -2237,10 +1932,9 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
  */
 
 #ifdef mx_HAVE_XTLS
-/* Our wrapper for RAND_bytes(3) */
-# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
+/* Our wrapper for RAND_bytes(3); the implementation exists only when
+ * HAVE_RANDOM is RANDOM_IMPL_TLS, though */
 FL void mx_tls_rand_bytes(void *buf, uz blen);
-# endif
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */

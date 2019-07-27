@@ -38,7 +38,15 @@
 # include "mx/nail.h"
 #endif
 
+#ifdef mx_HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
+#ifdef mx_HAVE_SETLOCALE
+# include <locale.h>
+#endif
+
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/ui-str.h"
@@ -131,7 +139,48 @@ a_uis_bidi_info_create(struct a_uis_bidi_info *bip)
 }
 #endif /* mx_HAVE_NATCH_CHAR */
 
-FL boole
+void
+n_locale_init(void){
+   NYD2_IN;
+
+   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
+
+#ifndef mx_HAVE_SETLOCALE
+   n_mb_cur_max = 1;
+#else
+   setlocale(LC_ALL, n_empty);
+   n_mb_cur_max = MB_CUR_MAX;
+# ifdef mx_HAVE_NL_LANGINFO
+   /* C99 */{
+      char const *cp;
+
+      if((cp = nl_langinfo(CODESET)) != NULL)
+         /* (Will log during startup if user set that via -S) */
+         ok_vset(ttycharset, cp);
+   }
+# endif /* mx_HAVE_SETLOCALE */
+
+# ifdef mx_HAVE_C90AMEND1
+   if(n_mb_cur_max > 1){
+#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
+      n_psonce |= n_PSO_UNICODE;
+#  else
+      wchar_t wc;
+      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
+         n_psonce |= n_PSO_UNICODE;
+      /* Reset possibly messed up state; luckily this also gives us an
+       * indication whether the encoding has locking shift state sequences */
+      if(mbtowc(&wc, NULL, n_mb_cur_max))
+         n_psonce |= n_PSO_ENC_MBSTATE;
+#  endif
+   }
+# endif
+#endif /* mx_HAVE_C90AMEND1 */
+   NYD2_OU;
+}
+
+boole
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
@@ -241,7 +290,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    return rv;
 }
 
-FL uz
+uz
 field_detect_clip(uz maxlen, char const *buf, uz blen)/*TODO mbrtowc()*/
 {
    uz rv;
@@ -266,7 +315,7 @@ field_detect_clip(uz maxlen, char const *buf, uz blen)/*TODO mbrtowc()*/
    return rv;
 }
 
-FL char *
+char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_nil)
 {
    n_NATCH_CHAR( struct a_uis_bidi_info bi; )
@@ -381,7 +430,7 @@ jnobidi:
    return nb;
 }
 
-FL void
+void
 makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
 {
    /* TODO: makeprint() should honour *ttycharset*.  This of course does not
@@ -470,7 +519,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    NYD_OU;
 }
 
-FL uz
+uz
 delctrl(char *cp, uz len)
 {
    uz x, y;
@@ -484,7 +533,7 @@ delctrl(char *cp, uz len)
    return y;
 }
 
-FL char *
+char *
 prstr(char const *s)
 {
    struct str in, out;
@@ -500,7 +549,7 @@ prstr(char const *s)
    return rp;
 }
 
-FL int
+int
 prout(char const *s, uz size, FILE *fp)
 {
    struct str in, out;

@@ -48,9 +48,12 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_POP3
-
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
+
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -410,7 +413,7 @@ pop3alarm(int s)
    UNUSED(s);
 
    if (_pop3_lock++ == 0) {
-      hold_all_sigs();
+      mx_sigs_all_holdx();
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -422,7 +425,7 @@ pop3alarm(int s)
       }
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
-      rele_all_sigs();
+      mx_sigs_all_rele();
       if (pop3_noop1(&mb) != OKAY) {
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
@@ -576,9 +579,8 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    enum okay volatile rv;
    NYD_IN;
 
-   line = NULL; /* TODO line pool */
+   mx_fs_linepool_aquire(&line, &linesize);
    saveint = savepipe = SIG_IGN;
-   linesize = 0;
    number = (int)P2UZ(m - message + 1);
    emptyline = 0;
    rv = STOP;
@@ -590,7 +592,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    }
 
    if (_pop3_lock++ == 0) {
-      hold_all_sigs();
+      mx_sigs_all_holdx();
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &_pop3_maincatch);
       savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -598,7 +600,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
          goto jleave;
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
-      rele_all_sigs();
+      mx_sigs_all_rele();
    }
 
    fseek(mp->mb_otf, 0L, SEEK_END);
@@ -705,8 +707,7 @@ jretry:
 
    rv = OKAY;
 jleave:
-   if (line != NULL)
-      n_free(line);
+   mx_fs_linepool_release(line, linesize);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)
@@ -805,14 +806,14 @@ pop3_noop(void)
    NYD_IN;
 
    _pop3_lock = 1;
-   hold_all_sigs();
+   mx_sigs_all_holdx();
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_pop3_maincatch);
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(_pop3_jmp, 1) == 0) {
       if (savepipe != SIG_IGN)
          safe_signal(SIGPIPE, pop3catch);
-      rele_all_sigs();
+      mx_sigs_all_rele();
       rv = pop3_noop1(&mb);
    }
    safe_signal(SIGINT, saveint);

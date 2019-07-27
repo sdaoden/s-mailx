@@ -21,6 +21,7 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 enum mx_mlist_type{
@@ -30,17 +31,18 @@ enum mx_mlist_type{
 };
 
 /* `(un)?ml(ist|subscribe)' */
-FL int c_mlist(void *vp);
-FL int c_unmlist(void *vp);
-FL int c_mlsubscribe(void *vp);
-FL int c_unmlsubscribe(void *vp);
+EXPORT int c_mlist(void *vp);
+EXPORT int c_unmlist(void *vp);
+EXPORT int c_mlsubscribe(void *vp);
+EXPORT int c_unmlsubscribe(void *vp);
 
 /* Whether a name is a (wanted) list;
  * give MLIST_OTHER to the latter to search for any, in which case all
  * receivers are searched until EOL or _SUBSCRIBED is seen.
  * XXX the latter possibly belongs to message or header */
-FL enum mx_mlist_type mx_mlist_query(char const *name, boole subscribed_only);
-FL enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
+EXPORT enum mx_mlist_type mx_mlist_query(char const *name,
+      boole subscribed_only);
+EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
       enum mx_mlist_type what);
 
 #include <su/code-ou.h>

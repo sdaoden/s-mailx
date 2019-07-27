@@ -32,6 +32,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/csop.h"
 #include "su/code-in.h"
@@ -293,7 +294,7 @@ jesubstring_len:
    NYD2_OU;
 }
 
-FL int
+int
 c_csop(void *vp){
    struct a_csop_ctx csc;
    char const *cp;

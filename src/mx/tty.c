@@ -38,222 +38,117 @@
 # endif
 #endif
 
-#include "mx/termcap.h"
+#include "mx/file-locks.h"
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
+#include "mx/termios.h"
 #include "mx/ui-str.h"
 
 #ifdef mx_HAVE_MLE
 # include "mx/colour.h"
+# include "mx/termcap.h"
 #endif
 
+#include "mx/tty.h"
 /* TODO fake */
 #include "su/code-in.h"
 
-#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
-# define a_TTY_SIGNALS
-#endif
+FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 
-#ifdef a_TTY_SIGNALS
-static n_sighdl_t a_tty_oint, a_tty_oquit, a_tty_oterm,
-   a_tty_ohup,
-   a_tty_otstp, a_tty_ottin, a_tty_ottou;
-#endif
-
-#ifdef a_TTY_SIGNALS
-/**/
-static void a_tty_sigs_up(void), a_tty_sigs_down(void);
-
-/* Is editor specific code */
-static void a_tty_signal(int sig);
-#endif
-
-#ifdef a_TTY_SIGNALS
-static void
-a_tty_sigs_up(void){
-   sigset_t nset, oset;
-   NYD2_IN;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   a_tty_oint = safe_signal(SIGINT, &a_tty_signal);
-   a_tty_oquit = safe_signal(SIGQUIT, &a_tty_signal);
-   a_tty_oterm = safe_signal(SIGTERM, &a_tty_signal);
-   a_tty_ohup = safe_signal(SIGHUP, &a_tty_signal);
-   a_tty_otstp = safe_signal(SIGTSTP, &a_tty_signal);
-   a_tty_ottin = safe_signal(SIGTTIN, &a_tty_signal);
-   a_tty_ottou = safe_signal(SIGTTOU, &a_tty_signal);
-   sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD2_OU;
-}
-
-static void
-a_tty_sigs_down(void){
-   sigset_t nset, oset;
-   NYD2_IN;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   safe_signal(SIGINT, a_tty_oint);
-   safe_signal(SIGQUIT, a_tty_oquit);
-   safe_signal(SIGTERM, a_tty_oterm);
-   safe_signal(SIGHUP, a_tty_ohup);
-   safe_signal(SIGTSTP, a_tty_otstp);
-   safe_signal(SIGTTIN, a_tty_ottin);
-   safe_signal(SIGTTOU, a_tty_ottou);
-   sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD2_OU;
-}
-#endif /* a_TTY_SIGNALS */
-
-static sigjmp_buf a_tty__actjmp; /* TODO someday, we won't need it no more */
-static void
-a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
-{
-   NYD; /* Signal handler */
-   siglongjmp(a_tty__actjmp, s);
-}
-
-FL boole
-getapproval(char const * volatile prompt, boole noninteract_default)
-{
-   n_sighdl_t volatile oint, ohup;
-   boole volatile rv;
-   int volatile sig;
+boole
+mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
+   boole rv;
    NYD_IN;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT)){
-      sig = 0;
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT))
       rv = noninteract_default;
-      goto jleave;
-   }
-   rv = FAL0;
+   else{
+      uz lsize;
+      char *ldat;
+      char const *quest;
 
-   /* C99 */{
-      char const *quest = noninteract_default
-            ? _("[yes]/no? ") : _("[no]/yes? ");
+      rv = FAL0;
 
-      if (prompt == NULL)
+      quest = noninteract_default ? _("[yes]/no? ") : _("[no]/yes? ");
+      if(prompt == NIL)
          prompt = _("Continue");
       prompt = savecatsep(prompt, ' ', quest);
-   }
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
+      mx_fs_linepool_aquire(&ldat, &lsize);
+      while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+               &ldat, &lsize, NIL,NIL) >= 0){
+         boole x;
 
-   while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-            &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL
-         ) >= 0){
-      boole x;
-
-      x = n_boolify(termios_state.ts_linebuf, UZ_MAX, noninteract_default);
-      if(x >= FAL0){
-         rv = x;
-         break;
+         x = n_boolify(ldat, UZ_MAX, noninteract_default);
+         if(x >= FAL0){
+            rv = x;
+            break;
+         }
       }
+      mx_fs_linepool_release(ldat, lsize);
    }
-jrestore:
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
-jleave:
+
    NYD_OU;
-   if (sig != 0)
-      n_raise(sig);
    return rv;
 }
 
 #ifdef mx_HAVE_SOCKETS
-FL char *
-getuser(char const * volatile query) /* TODO v15-compat obsolete */
+char *
+mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
-   n_sighdl_t volatile oint, ohup;
-   char * volatile user = NULL;
-   int volatile sig;
+   uz lsize;
+   char *ldat, *user;
    NYD_IN;
 
    if (query == NULL)
       query = _("User: ");
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
-
-   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL, NULL
-         ) >= 0)
-      user = termios_state.ts_linebuf;
-
-jrestore:
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
+   mx_fs_linepool_aquire(&ldat, &lsize);
+   if(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
+         &ldat, &lsize, NIL, NIL) >= 0)
+      user = savestr(ldat);
+   else
+      user = NIL;
+   mx_fs_linepool_release(ldat, lsize);
 
    NYD_OU;
-   if (sig != 0)
-      n_raise(sig);
    return user;
 }
 
-FL char *
-getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
-{
-   n_sighdl_t volatile oint, ohup;
-   struct termios tios;
-   char * volatile pass;
-   int volatile sig;
+char *
+mx_tty_getpass(char const *query){
+   uz lsize;
+   char *ldat, *pass;
    NYD_IN;
 
-   pass = NULL;
-   if(!(n_psonce & n_PSO_TTYIN))
-      goto j_leave;
+   pass = NIL;
 
-   if (query == NULL)
-      query = _("Password: ");
-   fputs(query, n_tty_fp);
-   fflush(n_tty_fp);
+   if(n_psonce & n_PSO_TTYANY){
+      if(query == NIL)
+         query = _("Password: ");
 
-   /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
-    * FIXME foreground pgrp, and can fail with EINTR!! also affects
-    * FIXME termios_state_reset() */
-   tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
-   su_mem_copy(&tios, &termios_state.ts_tios, sizeof tios);
-   termios_state.ts_needs_reset = TRU1;
-   tios.c_iflag &= ~(ISTRIP);
-   tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
+      mx_termios_cmdx(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_PASSWORD);
 
-   oint = safe_signal(SIGINT, SIG_IGN);
-   ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
-      goto jrestore;
-   safe_signal(SIGINT, &a_tty__acthdl);
-   safe_signal(SIGHUP, &a_tty__acthdl);
+      fputs(query, mx_tty_fp);
+      fflush(mx_tty_fp);
 
-   tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-   if (readline_restart(n_stdin, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, 0) >= 0)
-      pass = termios_state.ts_linebuf;
-jrestore:
-   termios_state_reset();
-   putc('\n', n_tty_fp);
+      mx_fs_linepool_aquire(&ldat, &lsize);
+      if(readline_restart(mx_tty_fp, &ldat, &lsize, 0) >= 0)
+         pass = savestr(ldat);
+      mx_fs_linepool_release(ldat, lsize);
 
-   safe_signal(SIGHUP, ohup);
-   safe_signal(SIGINT, oint);
+      mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_PASSWORD);
+
+      putc('\n', mx_tty_fp);
+   }
+
    NYD_OU;
-   if (sig != 0)
-      n_raise(sig);
-j_leave:
    return pass;
 }
 #endif /* mx_HAVE_SOCKETS */
 
-FL u32
-n_tty_create_prompt(struct n_string *store, char const *xprompt,
+u32
+mx_tty_create_prompt(struct n_string *store, char const *xprompt,
       enum n_go_input_flags gif){
    struct n_visual_info_ctx vic;
    struct str in, out;
@@ -406,6 +301,9 @@ jleave:
  * TODO   and "last modified slot" (including "unknown" and "any" specials),
  * TODO   update that virtual instead, then synchronize what has truly changed.
  * TODO   I.e., add an indirection layer.
+ * TODO .. This also has an effect on our signal hook (as long as this codebase
+ * TODO    uses SA_RESTART), which currently does a tremendous amount of work.
+ * TODO    With double-buffer, it could simply write through the prepared one.
  * TODO . No BIDI support.
  * TODO . `bind': we currently use only one lookup tree.
  * TODO   For graceful behaviour (in conjunction with mx_HAVE_TERMCAP) we
@@ -665,8 +563,6 @@ struct a_tty_global{
    struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
    struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
 # endif
-   struct termios tg_tios_old;
-   struct termios tg_tios_new;
 };
 # ifdef mx_HAVE_KEY_BINDINGS
 CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
@@ -891,8 +787,8 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 
 static struct a_tty_global a_tty;
 
-/* Change from canonical to raw, non-canonical mode, and way back */
-static void a_tty_term_mode(boole raw);
+/* */
+static boole a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
 
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
@@ -902,7 +798,7 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
 
-/* (Definetely) Add an entry TODO yet assumes hold_all_sigs() is held! */
+/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held! */
 static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
@@ -1001,57 +897,32 @@ static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-static void
-a_tty_signal(int sig){
-   /* Prototype at top */
-   sigset_t nset, oset;
+static boole
+a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
+   boole rv;
    NYD; /* Signal handler */
+   UNUSED(cookie);
+   UNUSED(sig);
 
-   mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
-   a_tty_term_mode(FAL0);
-   mx_TERMCAP_SUSPEND(TRU1);
-   a_tty_sigs_down();
+   rv = FAL0;
 
-   sigemptyset(&nset);
-   sigaddset(&nset, sig);
-   sigprocmask(SIG_UNBLOCK, &nset, &oset);
-   n_raise(sig);
-   /* When we come here we'll continue editing, so reestablish */
-   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+   if(tiossc & mx_TERMIOS_STATE_SUSPEND){
+      mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSP POSSIBLE.. */
+      mx_TERMCAP_SUSPEND((tiossc & mx_TERMIOS_STATE_POP) == 0 &&
+         !(tiossc & mx_TERMIOS_STATE_SIGNAL));
+      if((tiossc & (mx_TERMIOS_STATE_SIGNAL | mx_TERMIOS_STATE_JOB_SIGNAL)
+            ) == mx_TERMIOS_STATE_SIGNAL)
+         rv = TRU1;
+   }else if(tiossc & mx_TERMIOS_STATE_RESUME){
+      /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
+      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
+      mx_TERMCAP_RESUME(TRU1);
+      a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+      /* TODO Due to SA_RESTART we need to refresh the line in here! */
+      a_tty_vi_refresh(a_tty.tg_line);
+   }
 
-   /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(TRU1);
-   a_tty_term_mode(TRU1);
-   a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
-}
-
-static void
-a_tty_term_mode(boole raw){
-   struct termios *tiosp;
-   NYD2_IN;
-
-   tiosp = &a_tty.tg_tios_old;
-   if(!raw)
-      goto jleave;
-
-   /* Always requery the attributes, in case we've been moved from background
-    * to foreground or however else in between sessions */
-   /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
-    * XXX as we don't properly deal with TTIN and TTOU etc. */
-   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ n_tty_fp! */
-   tiosp->c_lflag |= ECHO | ICANON;
-
-   su_mem_copy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
-   tiosp = &a_tty.tg_tios_new;
-   tiosp->c_cc[VMIN] = 1;
-   tiosp->c_cc[VTIME] = 0;
-   tiosp->c_iflag &= ~(ISTRIP | IGNCR | IXON | IXOFF);
-   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN | ISIG);
-jleave:
-   tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
-   NYD2_OU;
+   return rv;
 }
 
 # ifdef mx_HAVE_HISTORY
@@ -1071,8 +942,8 @@ a_tty_hist_load(void){
          a_tty.tg_hist_size_max == 0)
       goto jleave;
 
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
+   mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
+   f = fopen(v, "r");
    if(f == NULL){
       int e;
 
@@ -1082,7 +953,7 @@ a_tty_hist_load(void){
       rv = FAL0;
       goto jrele;
    }
-   (void)n_file_lock(fileno(f), FLT_READ, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
 
    /* Clear old history */
    /* C99 */{
@@ -1096,8 +967,8 @@ a_tty_hist_load(void){
       a_tty.tg_hist_size = 0;
    }
 
-   lbuf = NULL;
-   lsize = 0;
+   mx_fs_linepool_aquire(&lbuf, &lsize);
+
    cnt = (uz)fsize(f);
    version = 0;
 
@@ -1155,12 +1026,11 @@ a_tty_hist_load(void){
       }
    }
 
-   if(lbuf != NULL)
-      n_free(lbuf);
+   mx_fs_linepool_release(lbuf, lsize);
 
    fclose(f);
 jrele:
-   rele_all_sigs(); /* XXX remove jumps */
+   mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;
    return rv;
@@ -1189,7 +1059,7 @@ a_tty_hist_save(void){
          if((dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)) && --i == 0)
             break;
 
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+   mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
    if((f = fopen(v, "w")) == NULL){ /* TODO temporary + rename?! */
       int e;
 
@@ -1199,7 +1069,7 @@ a_tty_hist_save(void){
       rv = FAL0;
       goto jrele;
    }
-   (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
    if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER,
          sizeof(a_TTY_HIST_MARKER "\n") -1, f) !=
@@ -1239,7 +1109,7 @@ jioerr:
 
    fclose(f);
 jrele:
-   rele_all_sigs(); /* XXX remove jumps */
+   mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;
    return rv;
@@ -1329,19 +1199,20 @@ jleave:
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
 a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable){
+   u32 tiosc;
+   u8 i;
    NYD2_IN;
-   if(enable){
-      u8 bt;
 
-      a_tty.tg_tios_new.c_cc[VMIN] = 0;
-      if((bt = tlp->tl_bind_timeout) == 0)
-         bt = a_TTY_BIND_TIMEOUT;
-      a_tty.tg_tios_new.c_cc[VTIME] = bt;
+   if(enable){
+      tiosc = mx_TERMIOS_CMD_RAW_TIMEOUT;
+      if((i = tlp->tl_bind_timeout) == 0)
+         i = a_TTY_BIND_TIMEOUT;
    }else{
-      a_tty.tg_tios_new.c_cc[VMIN] = 1;
-      a_tty.tg_tios_new.c_cc[VTIME] = 0;
+      tiosc = mx_TERMIOS_CMD_RAW;
+      i = 1;
    }
-   tcsetattr(STDIN_FILENO, TCSANOW, &a_tty.tg_tios_new);
+
+   mx_termios_cmd(tiosc, i);
    NYD2_OU;
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
@@ -1377,12 +1248,12 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
 
       i = cmax * sizeof(struct a_tty_cell) + 2 * sizeof(struct a_tty_cell);
       if(LIKELY(i >= *tlp->tl_x_bufsize)){
-         hold_all_sigs(); /* XXX v15 drop */
+         mx_sigs_all_holdx(); /* XXX v15 drop */
          i <<= 1;
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
                su_DBG_LOC_ARGS_ORUSE);
-         rele_all_sigs(); /* XXX v15 drop */
+         mx_sigs_all_rele(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
       *tlp->tl_x_bufsize = i;
@@ -1486,11 +1357,10 @@ a_tty_vinuni(struct a_tty_line *tlp){
             csuf = mx_colour_reset_to_str();
       }
 #endif
-      fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
-         (cpre != NULL ? cpre->s : n_empty),
-         (csuf != NULL ? csuf->s : n_empty));
+      fprintf(mx_tty_fp, _("%sPlease enter Unicode code point:%s "),
+         (cpre != NIL ? cpre->s : n_empty), (csuf != NIL ? csuf->s : n_empty));
    }
-   fflush(n_tty_fp);
+   fflush(mx_tty_fp);
 
    buf[sizeof(buf) -1] = '\0';
    for(i = 0;;){
@@ -1509,8 +1379,8 @@ a_tty_vinuni(struct a_tty_line *tlp){
          goto jerr;
       }
 
-      putc(buf[i], n_tty_fp);
-      fflush(n_tty_fp);
+      putc(buf[i], mx_tty_fp);
+      fflush(mx_tty_fp);
       if(++i == sizeof buf)
          goto jerr;
    }
@@ -1538,7 +1408,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_BELL){
       tlp->tl_vi_flags |= a_TTY_VF_SYNC;
-      if(putc('\a', n_tty_fp) == EOF)
+      if(putc('\a', mx_tty_fp) == EOF)
          goto jerr;
    }
 
@@ -1567,7 +1437,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
 
    if(tlp->tl_vi_flags & a_TTY_VF_SYNC){
       tlp->tl_vi_flags &= ~a_TTY_VF_SYNC;
-      if(fflush(n_tty_fp))
+      if(fflush(mx_tty_fp))
          goto jerr;
    }
 
@@ -1578,7 +1448,7 @@ jleave:
    return rv;
 
 jerr:
-   clearerr(n_tty_fp); /* xxx I/O layer rewrite */
+   clearerr(mx_tty_fp); /* xxx I/O layer rewrite */
    n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
       "  Setting *line-editor-disable* to get us through!\n"));
    ok_bset(line_editor_disable);
@@ -1618,10 +1488,10 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       f |= a_HAVE_PROMPT;
    f |= a_HAVE_POSITION;
 
-   /* XXX We don't have a OnTerminalResize event (see main.c) yet, so we need
+   /* XXX We do not have a OnTerminalResize event (see termios) yet, so we need
     * XXX to reevaluate our circumstances over and over again */
-   /* Don't display prompt or position indicator on very small screens */
-   if((phy_wid_base = (u32)n_scrnwidth) <= a_TTY_WIDTH_RIPOFF)
+   /* Do not display prompt or position indicator on very small screens */
+   if((phy_wid_base = mx_termios_dimen.tiosd_width) <= a_TTY_WIDTH_RIPOFF)
       f &= ~(a_HAVE_PROMPT | a_HAVE_POSITION);
    else{
       phy_wid_base -= a_TTY_WIDTH_RIPOFF;
@@ -1659,7 +1529,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) ==
             (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
-         if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+         if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
             goto jerr;
          phy_cur = tlp->tl_prompt_width + 1;
       }
@@ -1833,7 +1703,7 @@ jpaint:
 
    if(f & a_SHOW_PROMPT){
       ASSERT(phy_base == tlp->tl_prompt_width);
-      if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+      if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
       f |= a_VISIBLE_PROMPT;
@@ -1848,7 +1718,7 @@ jpaint:
 
       if(LIKELY(!tcp_left->tc_novis)){
          if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf,
-               tcp_left->tc_count, n_tty_fp) != tcp_left->tc_count)
+               tcp_left->tc_count, mx_tty_fp) != tcp_left->tc_count)
             goto jerr;
       }else{ /* XXX Shouldn't be here <-> CText, ui_str.c */
          char wbuf[8]; /* XXX magic */
@@ -1867,7 +1737,7 @@ jpaint:
          }else
             wbuf[0] = '?', wbuf[1] = '\0';
 
-         if(fputs(wbuf, n_tty_fp) == EOF)
+         if(fputs(wbuf, mx_tty_fp) == EOF)
             goto jerr;
          cw = 1;
       }
@@ -1920,7 +1790,7 @@ jpaint:
          pos[2] = '%';
       }
 
-      if(fputs(posbuf, n_tty_fp) == EOF)
+      if(fputs(posbuf, mx_tty_fp) == EOF)
          goto jerr;
       phy_cur += 4;
    }
@@ -2110,8 +1980,8 @@ a_tty_kdel(struct a_tty_line *tlp){
       }
       f = a_TTY_VF_MOD_CONTENT;
    }else if(cnt == 0 && !ok_blook(ignoreeof)){
-      putc('^', n_tty_fp);
-      putc('D', n_tty_fp);
+      putc('^', mx_tty_fp);
+      putc('D', mx_tty_fp);
       i = -1;
       f = a_TTY_VF_NONE;
    }else{
@@ -2209,7 +2079,7 @@ a_tty_kgoscr(struct a_tty_line *tlp, s32 dir){
    u32 sw, i, cur, f, cnt;
    NYD2_IN;
 
-   if((sw = (u32)n_scrnwidth) > 2)
+   if((sw = mx_termios_dimen.tiosd_width) > 2)
       sw -= 2;
    if(sw > (i = tlp->tl_prompt_width))
       sw -= i;
@@ -2415,9 +2285,9 @@ a_tty_kht(struct a_tty_line *tlp){
    wedid = FAL0;
 jredo:
    /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
-   hold_all_sigs();
+   mx_sigs_all_holdx();
    exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
-   rele_all_sigs();
+   mx_sigs_all_rele();
 
    if(exp.s == NULL || (exp.l = su_cs_len(exp.s)) == 0){
       if(wedid < FAL0)
@@ -2548,10 +2418,10 @@ jmulti:{
       uz locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL){
+      if((fp = mx_fs_tmp_open("mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
-         fp = n_tty_fp;
+         fp = mx_tty_fp;
       }
 
       /* How long is the result string for real?  Search the NUL NUL
@@ -2570,7 +2440,7 @@ jmulti:{
             locolen + (locolen >> 1));
 
       /* Iterate (once again) over all results */
-      scrwid = n_SCRNWIDTH_FOR_LISTS;
+      scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
       lnlen = lncnt = 0;
       UNINIT(prefixlen, 0);
       UNINIT(lococp, NULL);
@@ -2699,9 +2569,11 @@ jsep:
       putc('\n', fp);
       ++lncnt;
 
+      su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
       page_or_print(fp, lncnt);
-      if(fp != n_tty_fp)
-         Fclose(fp);
+      su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
+      if(fp != mx_tty_fp)
+         mx_fs_close(fp);
 
       n_string_gut(shoup);
 
@@ -3158,11 +3030,6 @@ jinput_loop:
                   /* Let me at least once dream of iomon(itor), timer with
                    * one-shot, enwrapped with key_event and key_sequence_event,
                    * all driven by an event_loop */
-                  /* TODO v15 Until we have SysV signal handling all through we
-                   * TODO need to temporarily adjust our BSD signal handler
-                   * TODO with a SysV one, here */
-                  n_sighdl_t otstp, ottin, ottou;
-
 # ifdef mx_HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
                   if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
@@ -3172,20 +3039,14 @@ jinput_loop:
                   }
 jread_again:
 # endif
-                  otstp = n_signal(SIGTSTP, &a_tty_signal);
-                  ottin = n_signal(SIGTTIN, &a_tty_signal);
-                  ottou = n_signal(SIGTTOU, &a_tty_signal);
-
                   while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
+                     /* TODO Currently a noop due to SA_RESTART */
                      if(su_err_no() != su_ERR_INTR ||
                            ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
                               !a_tty_vi_refresh(tlp)))
                         break;
                   }
 
-                  safe_signal(SIGTSTP, otstp);
-                  safe_signal(SIGTTIN, ottin);
-                  safe_signal(SIGTTOU, ottou);
 # ifdef mx_HAVE_KEY_BINDINGS
                   if(flags & a_TIMEOUT)
                      a_tty_term_rawmode_timeout(tlp, FAL0);
@@ -3469,15 +3330,15 @@ jkother:
 jdone:
    rv = a_tty_cell2dat(tlp);
 jleave:
-   putc('\n', n_tty_fp);
-   fflush(n_tty_fp);
+   putc('\n', mx_tty_fp);
+   fflush(mx_tty_fp);
    NYD_OU;
    return rv;
 
 jinject_input:{
    uz i;
 
-   hold_all_sigs(); /* XXX v15 drop */
+   mx_sigs_all_holdx(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
    n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = su_cs_len(cbufp) +1;
@@ -3487,7 +3348,7 @@ jinject_input:{
       *tlp->tl_x_bufsize = i;
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
-   rele_all_sigs(); /* XXX v15 drop */
+   mx_sigs_all_rele(); /* XXX v15 drop */
    if(histok_or_null != NULL)
       *histok_or_null = FAL0;
    rv = (sz)--i;
@@ -4196,8 +4057,8 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-FL void
-n_tty_init(void){
+void
+mx_tty_init(void){
    NYD_IN;
 
    if(ok_blook(line_editor_disable))
@@ -4270,12 +4131,21 @@ jleave:
    NYD_OU;
 }
 
-FL void
-n_tty_destroy(boole xit_fastpath){
+void
+mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
+
+
+  /* Be aware of identical code for `exit' command! */
+#ifdef mx_HAVE_TCAP
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
+      mx_termcap_destroy();
+#endif
+
+
 
    /* Write the history file */
 # ifdef mx_HAVE_HISTORY
@@ -4297,9 +4167,9 @@ jleave:
    NYD_OU;
 }
 
-FL int
-(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, uz *linesize, uz n, boole *histok_or_null
+int
+(mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
@@ -4311,11 +4181,11 @@ FL int
 
    ASSERT(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
-      n_tty_init();
+      mx_tty_init();
    ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 # ifdef mx_HAVE_COLOUR
-   mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0);
+   mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
 
    /* .tl_pos_buf is a hack */
    posbuf = pos = NULL;
@@ -4387,7 +4257,7 @@ FL int
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
-      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, gif)
+      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt, gif)
                ) > 0){
          tl.tl_prompt = n_string_cp_const(&xprompt);
          tl.tl_prompt_length = (u32)xprompt.s_len;
@@ -4403,22 +4273,21 @@ FL int
    tl.tl_x_bufsize = linesize;
 
    a_tty.tg_line = &tl;
-   a_tty_sigs_up();
+   mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
+   mx_termios_on_state_change_set(&a_tty_on_state_change, S(up,NIL));
    mx_TERMCAP_RESUME(FAL0);
-   a_tty_term_mode(TRU1);
-   nn = a_tty_readline(&tl, n, histok_or_null  su_DBG_LOC_ARGS_USE);
-   mx_COLOUR( mx_colour_env_gut(); )
-   a_tty_term_mode(FAL0);
-   mx_TERMCAP_SUSPEND(FAL0);
-   a_tty_sigs_down();
-   a_tty.tg_line = NULL;
+   nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
+   /*mx_COLOUR( mx_colour_env_gut(); )
+    *mx_TERMCAP_SUSPEND(FAL0);*/
+   mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
+   a_tty.tg_line = NIL;
 
    NYD_OU;
    return (int)nn;
 }
 
-FL void
-n_tty_addhist(char const *s, enum n_go_input_flags gif){
+void
+mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);
@@ -4439,9 +4308,9 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
        * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
             ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
-         hold_all_sigs();
+         mx_sigs_all_holdx();
          a_tty_hist_add(s, gif);
-         rele_all_sigs();
+         mx_sigs_all_rele();
       }
    }
 # endif
@@ -4449,7 +4318,7 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
 }
 
 # ifdef mx_HAVE_HISTORY
-FL int
+int
 c_history(void *v){
    sz entry;
    struct a_tty_hist *thp;
@@ -4462,7 +4331,7 @@ c_history(void *v){
    }
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
-      n_tty_init();
+      mx_tty_init();
       ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
@@ -4503,12 +4372,13 @@ jlist:{
    uz no, l, b;
    FILE *fp;
 
-   if(a_tty.tg_hist == NULL)
+   if(a_tty.tg_hist == NIL)
       goto jleave;
 
-   if((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tmpfile"), 0);
-      v = NULL;
+      v = NIL;
       goto jleave;
    }
 
@@ -4539,7 +4409,7 @@ jlist:{
    }
 
    page_or_print(fp, l);
-   Fclose(fp);
+   mx_fs_close(fp);
    }
    goto jleave;
 
@@ -4580,7 +4450,7 @@ jentry:{
 # endif /* mx_HAVE_HISTORY */
 
 # ifdef mx_HAVE_KEY_BINDINGS
-FL int
+int
 c_bind(void *v){
    /* TODO `bind': since empty expansions are forbidden it would be nice to
     * TODO be able to say "bind base a,b,c" and see the expansion of only
@@ -4616,7 +4486,8 @@ c_bind(void *v){
       u32 lns;
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "bind", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      if((fp = mx_fs_tmp_open("bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;
@@ -4693,7 +4564,7 @@ c_bind(void *v){
       }
       page_or_print(fp, lns);
 
-      Fclose(fp);
+      mx_fs_close(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
       struct n_cmd_arg *cap;
@@ -4714,7 +4585,7 @@ jleave:
    return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
 }
 
-FL int
+int
 c_unbind(void *v){
    struct a_tty_bind_parse_ctx tbpc;
    struct a_tty_bind_ctx *tbcp;
@@ -4775,87 +4646,50 @@ jleave:
  * The really-nothing-at-all implementation
  */
 
-# ifdef a_TTY_SIGNALS
-static void
-a_tty_signal(int sig){
-   /* Prototype at top */
-#  ifdef mx_HAVE_TERMCAP
-   sigset_t nset, oset;
-#  endif
-   NYD; /* Signal handler */
-   UNUSED(sig);
-
-#  ifdef mx_HAVE_TERMCAP
-   mx_TERMCAP_SUSPEND(TRU1);
-   a_tty_sigs_down();
-
-   sigemptyset(&nset);
-   sigaddset(&nset, sig);
-   sigprocmask(SIG_UNBLOCK, &nset, &oset);
-   n_raise(sig);
-   /* When we come here we'll continue editing, so reestablish */
-   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(TRU1);
-#  endif /* mx_HAVE_TERMCAP */
-}
-# endif /* a_TTY_SIGNALS */
-
 # if 0
-FL void
-n_tty_init(void){
+void
+mx_tty_init(void){
    NYD_IN;
    NYD_OU;
 }
 
-FL void
-n_tty_destroy(boole xit_fastpath){
+void
+mx_tty_destroy(boole xit_fastpath){
    NYD_IN;
    UNUSED(xit_fastpath);
    NYD_OU;
 }
 # endif /* 0 */
 
-FL int
-(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, uz *linesize, uz n, boole *histok_or_null
+int
+(mx_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;
    NYD_IN;
-   UNUSED(histok_or_null);
+   UNUSED(histok_or_nil);
 
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
-      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
-         fwrite(xprompt.s_dat, 1, xprompt.s_len, n_tty_fp);
-         fflush(n_tty_fp);
+      if(mx_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
+         fwrite(xprompt.s_dat, 1, xprompt.s_len, mx_tty_fp);
+         fflush(mx_tty_fp);
       }
    }
 
-# ifdef mx_HAVE_TERMCAP
-   a_tty_sigs_up();
-   mx_TERMCAP_RESUME(FAL0);
-# endif
    rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
-# ifdef mx_HAVE_TERMCAP
-   mx_TERMCAP_SUSPEND(FAL0);
-   a_tty_sigs_down();
-# endif
    NYD_OU;
    return rv;
 }
 
-FL void
-n_tty_addhist(char const *s, enum n_go_input_flags gif){
+void
+mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);
    NYD_OU;
 }
 #endif /* nothing at all */
-
-#undef a_TTY_SIGNALS
 
 #include "su/code-ou.h"
 /* s-it-mode */

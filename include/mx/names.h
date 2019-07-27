@@ -23,6 +23,7 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 enum mx_name_flags{
@@ -80,52 +81,53 @@ INLINE u32 mx_name_flags_set_err(u32 flags, u32 err, s32 e_wc){
 /* Allocate a single element of a name list, initialize its name field to the
  * passed name and return it.
  * May return NULL with GNULL_OK (only, unfortunately) */
-FL struct mx_name *nalloc(char const *str, enum gfield ntype);
+EXPORT struct mx_name *nalloc(char const *str, enum gfield ntype);
 
 /* Alloc an Fcc: entry TODO temporary only i hope */
-FL struct mx_name *nalloc_fcc(char const *file);
+EXPORT struct mx_name *nalloc_fcc(char const *file);
 
 /* Like nalloc(), but initialize from content of np */
-FL struct mx_name *ndup(struct mx_name *np, enum gfield ntype);
+EXPORT struct mx_name *ndup(struct mx_name *np, enum gfield ntype);
 
 /* Concatenate the two passed name lists, return the result */
-FL struct mx_name *cat(struct mx_name *n1, struct mx_name *n2);
+EXPORT struct mx_name *cat(struct mx_name *n1, struct mx_name *n2);
 
 /* Duplicate np */
-FL struct mx_name *n_namelist_dup(struct mx_name const *np, enum gfield ntype);
+EXPORT struct mx_name *n_namelist_dup(struct mx_name const *np,
+      enum gfield ntype);
 
 /* Determine the number of undeleted elements in a name list and return it;
  * the latter also doesn't count file and pipe addressees in addition */
-FL u32 count(struct mx_name const *np);
-FL u32 count_nonlocal(struct mx_name const *np);
+EXPORT u32 count(struct mx_name const *np);
+EXPORT u32 count_nonlocal(struct mx_name const *np);
 
 /* Extract a list of names from a line, and make a list of names from it.
  * Return the list or NULL if none found */
-FL struct mx_name *extract(char const *line, enum gfield ntype);
+EXPORT struct mx_name *extract(char const *line, enum gfield ntype);
 
 /* Like extract() unless line contains anyof ",\"\\(<|", in which case
  * comma-separated list extraction is used instead */
-FL struct mx_name *lextract(char const *line, enum gfield ntype);
+EXPORT struct mx_name *lextract(char const *line, enum gfield ntype);
 
 /* Interprets the entire line as one address: identical to extract() and
  * lextract() but only returns one (or none) name.
  * GSKIN will be added to ntype as well as GNULL_OK: may return NULL! */
-FL struct mx_name *n_extract_single(char const *line, enum gfield ntype);
+EXPORT struct mx_name *n_extract_single(char const *line, enum gfield ntype);
 
 /* Turn a list of names into a string of the same names */
-FL char *detract(struct mx_name *np, enum gfield ntype);
+EXPORT char *detract(struct mx_name *np, enum gfield ntype);
 
 /* Get a lextract() list via n_go_input_cp(), reassigning to *np* */
-FL struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
+EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
       struct mx_name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 n2 share the domain name */
-FL boole name_is_same_domain(struct mx_name const *n1,
+EXPORT boole name_is_same_domain(struct mx_name const *n1,
       struct mx_name const *n2);
 
 /* Check all addresses in np and delete invalid ones; if set_on_error is not
  * NULL it'll be set to TRU1 for error or -1 for "hard fail" error */
-FL struct mx_name *checkaddrs(struct mx_name *np,
+EXPORT struct mx_name *checkaddrs(struct mx_name *np,
       enum expand_addr_check_mode eacm, s8 *set_on_error);
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
@@ -133,34 +135,35 @@ FL struct mx_name *checkaddrs(struct mx_name *np,
  * aliases etc.  eacm and set_on_error are passed to checkaddrs().
  * After updating hp to the new state this returns a flat list of all
  * addressees, which may be NIL */
-FL struct mx_name *n_namelist_vaporise_head(struct header *hp,
+EXPORT struct mx_name *n_namelist_vaporise_head(struct header *hp,
       boole metoo, boole strip_alternates,
       enum expand_addr_check_mode eacm, s8 *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
  * into the list */
-FL struct mx_name *usermap(struct mx_name *names, boole force_metoo);
+EXPORT struct mx_name *usermap(struct mx_name *names, boole force_metoo);
 
 /* Remove all of the duplicates from the passed name list by insertion sorting
  * them, then checking for dups.  Return the head of the new list */
-FL struct mx_name *elide(struct mx_name *names);
+EXPORT struct mx_name *elide(struct mx_name *names);
 
 /* `(un)?alias' */
-FL int c_alias(void *vp);
-FL int c_unalias(void *vp);
+EXPORT int c_alias(void *vp);
+EXPORT int c_unalias(void *vp);
 
 /* Is name a valid alias name (as opposed to: "is an alias") */
-FL boole mx_alias_is_valid_name(char const *name);
+EXPORT boole mx_alias_is_valid_name(char const *name);
 
 /* `(un)?alternates' deal with the list of alternate names */
-FL int c_alternates(void *vp);
-FL int c_unalternates(void *vp);
+EXPORT int c_alternates(void *vp);
+EXPORT int c_unalternates(void *vp);
 
 /* If keep_single is set one alternates member will be allowed in np */
-FL struct mx_name *mx_alternates_remove(struct mx_name *np, boole keep_single);
+EXPORT struct mx_name *mx_alternates_remove(struct mx_name *np,
+      boole keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
-FL boole mx_name_is_mine(char const *name);
+EXPORT boole mx_name_is_mine(char const *name);
 
 #include <su/code-ou.h>
 #endif /* mx_NAMES_H */

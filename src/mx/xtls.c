@@ -70,9 +70,12 @@ su_EMPTY_FILE()
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 #include "mx/random.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1387,8 +1390,8 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
       break;
    }
 
-   if ((fp = Ftmp(NULL, "smimever", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((fp = mx_fs_tmp_open("smimever", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -1467,8 +1470,8 @@ jleave:
       BIO_free(fb);
    if (pkcs7 != NULL)
       PKCS7_free(pkcs7);
-   if (fp != NULL)
-      Fclose(fp);
+   if(fp != NIL)
+      mx_fs_close(fp);
    NYD_OU;
    return rv;
 }
@@ -1548,7 +1551,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    }
 
    /* Old-style */
-   if ((pass = getpassword("PEM pass phrase:")) != NULL) {
+   if((pass = mx_tty_getpass("PEM pass phrase:")) != NIL){
       len = su_cs_len(pass);
       if (UCMP(z, len, >=, size))
          len = size -1;
@@ -1605,7 +1608,7 @@ jloop:
 jopen:
    if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
-   if ((fp = Fopen(cp, "r")) == NULL)
+   if((fp = mx_fs_open(cp, "r")) == NIL)
       n_perr(cp, 0);
 jleave:
    NYD_OU;
@@ -1660,7 +1663,7 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
    for (nfield = savestr(cfiles);
          (cfield = su_cs_sep_c(&nfield, ',', TRU1)) != NULL;) {
       if ((x = fexpand(cfield, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-            (fp = Fopen(cfield = x, "r")) == NULL) {
+            (fp = mx_fs_open(cfield = x, "r")) == NIL){
          n_perr(cfiles, 0);
          goto jerr;
       }
@@ -1668,11 +1671,11 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
             ) == NULL) {
          ssl_gen_err(_("Error reading certificate from %s"),
             n_shexp_quote_cp(cfield, FAL0));
-         Fclose(fp);
+         mx_fs_close(fp);
          goto jerr;
       }
       sk_X509_push(*chain, tmp);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
 
    if (sk_X509_num(*chain) == 0) {
@@ -2161,7 +2164,7 @@ smime_sign(FILE *ip, char const *addr)
       ssl_gen_err(_("Error reading signer certificate from"));
       goto jleave;
    }
-   Fclose(fp);
+   mx_fs_close(fp);
    fp = NULL;
 
    if ((name = _smime_sign_include_certs(addr)) != NULL &&
@@ -2173,8 +2176,8 @@ smime_sign(FILE *ip, char const *addr)
    if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
-   if ((sfp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((sfp = mx_fs_tmp_open("smimesign", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2238,14 +2241,14 @@ jleave:
       X509_free(cert);
    if (pkey != NULL)
       EVP_PKEY_free(pkey);
-   if (fp != NULL)
-      Fclose(fp);
-   if (hp != NULL)
-      Fclose(hp);
-   if (bp != NULL)
-      Fclose(bp);
-   if (sfp != NULL)
-      Fclose(sfp);
+   if(fp != NIL)
+      mx_fs_close(fp);
+   if(hp != NIL)
+      mx_fs_close(hp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(sfp != NIL)
+      mx_fs_close(sfp);
    NYD_OU;
    return rv;
 }
@@ -2274,7 +2277,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
 
-   if ((fp = Fopen(certfile, "r")) == NULL) {
+   if((fp = mx_fs_open(certfile, "r")) == NIL){
       n_perr(certfile, 0);
       goto jleave;
    }
@@ -2285,15 +2288,15 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
    if (bail)
       goto jleave;
-   Fclose(fp);
+   mx_fs_close(fp);
    fp = NULL;
    bail = FAL0;
 
    certs = sk_X509_new_null();
    sk_X509_push(certs, cert);
 
-   if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((yp = mx_fs_tmp_open("smimeenc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jerr1;
    }
@@ -2322,28 +2325,29 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    PKCS7_free(pkcs7);
 
 jerr2:
-   if (bb != NULL)
+   if(bb != NIL)
       BIO_free(bb);
-   if (yb != NULL)
+   if(yb != NIL)
       BIO_free(yb);
-   Fclose(bp);
-   bp = NULL;
-   if (!bail) {
+   mx_fs_close(bp);
+   bp = NIL;
+   if(!bail){
       fflush_rewind(yp);
       rv = smime_encrypt_assemble(hp, yp);
-      hp = yp = NULL;
+      hp = yp = NIL;
    }
 jerr1:
    sk_X509_pop_free(certs, X509_free);
+
 jleave:
-   if(yp != NULL)
-      Fclose(yp);
-   if(fp != NULL)
-      Fclose(fp);
-   if(bp != NULL)
-      Fclose(bp);
-   if(hp != NULL)
-      Fclose(hp);
+   if(yp != NIL)
+      mx_fs_close(yp);
+   if(fp != NIL)
+      mx_fs_close(fp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(hp != NIL)
+      mx_fs_close(hp);
    NYD_OU;
    return rv;
 }
@@ -2391,11 +2395,12 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
          goto jleave;
       }
 
-      Fclose(op);
+      mx_fs_close(op);
       op = NULL;
    }
 
-   if((op = Ftmp(NULL, "smimed", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((op = mx_fs_tmp_open("smimed", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2438,27 +2443,28 @@ jerr:
       goto jleave;
    }
    fflush_rewind(op);
-   Fclose(bp);
-   bp = NULL;
+
+   mx_fs_close(bp);
+   bp = NIL;
 
    rv = smime_decrypt_assemble(m, hp, op);
-   hp = op = NULL; /* xxx closed by decrypt_assemble */
+   hp = op = NIL; /* xxx closed by decrypt_assemble */
 jleave:
-   if(op != NULL)
-      Fclose(op);
-   if(hp != NULL)
-      Fclose(hp);
-   if(bp != NULL)
-      Fclose(bp);
-   if(bb != NULL)
+   if(op != NIL)
+      mx_fs_close(op);
+   if(hp != NIL)
+      mx_fs_close(hp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(bb != NIL)
       BIO_free(bb);
-   if(ob != NULL)
+   if(ob != NIL)
       BIO_free(ob);
-   if(pkcs7 != NULL)
+   if(pkcs7 != NIL)
       PKCS7_free(pkcs7);
-   if(cert != NULL)
+   if(cert != NIL)
       X509_free(cert);
-   if(pkey != NULL)
+   if(pkey != NIL)
       EVP_PKEY_free(pkey);
    NYD_OU;
    return rv;
@@ -2508,8 +2514,8 @@ jloop:
    }
    size = m->m_size;
 
-   if ((fp = Ftmp(NULL, "smimecert", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((fp = mx_fs_tmp_open("smimecert", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2523,18 +2529,18 @@ jloop:
    rewind(fp);
    if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err("Error creating BIO object for message %d", n);
-      Fclose(fp);
+      mx_fs_close(fp);
       goto jleave;
    }
 
    if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
       ssl_gen_err(_("Error reading PKCS#7 object for message %d"), n);
       BIO_free(fb);
-      Fclose(fp);
+      mx_fs_close(fp);
       goto jleave;
    }
    BIO_free(fb);
-   Fclose(fp);
+   mx_fs_close(fp);
 
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {

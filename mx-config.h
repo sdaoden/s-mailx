@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Some constants etc. for which adjustments may be desired.
  *@ This is included (as mx/config.h) after all the (system) headers.
+ *@ TODO It is a wild name convention mess, to say the least.
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -20,30 +21,30 @@
 #ifndef mx_CONFIG_H
 # define mx_CONFIG_H
 
-#define ACCOUNT_NULL "null"   /* Name of "null" account */
-#define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
+#define ACCOUNT_NULL "null" /* Name of "null" account */
+#define n_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
 /* Protocol version for *on-compose-splice** -- update manual on change! */
-#define n_DIG_MSG_PLUMBING_VERSION "0 0 1"
-#define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
-#define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX 5000       /* Error queue size (s32) TODO configurable */
-#define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
-#define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
-#define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
+#define mx_DIG_MSG_PLUMBING_VERSION "0 0 1"
+#define mx_DOTLOCK_TRIES 5 /* Number of open(2) calls for dotlock */
+#define n_ERROR "ERROR" /* Is-error?  Also as n_error[] */
+#define ERRORS_MAX 5000 /* Error queue size (s32) TODO configurable */
+#define n_ESCAPE "~" /* Default escape for sending (POSIX standard) */
+#define mx_FILE_LOCK_TRIES 10 /* Maximum tries before file_lock() fails */
+#define mx_FILE_LOCK_MILLIS 200 /* If UZ_MAX, fall back to that */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
-#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
-#define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
+#define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */
+#define mx_FS_TMP_OPEN_TRIES 10 /* Maximum number of fs_tmp_open() tries */
+#define n_IMAP_DELIM "/." /* Directory separator ([0] == replacer, too) */
 #define n_LINE_EDITOR_CPL_WORD_BREAKS "\"'@=;|:"
 /* Fallback in case the systems reports an empty hostname (?) */
 #define n_LOCALHOST_DEFAULT_NAME "localhost.localdomain"
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
-#define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
-#define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
+#define n_MAXARGC 512 /* Maximum list of raw strings TODO dyn vector! */
+#define n_PATH_DEVNULL "/dev/null" /* Note: manual uses /dev/null as such */
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NULL /* DOC! */
-#define REFERENCES_MAX 20     /* Maximum entries in References: */
-#define n_SIGSUSPEND_NOT_WAITPID 0 /* Not waitpid(2), but sigsuspend(2) */
+#define REFERENCES_MAX 20 /* Maximum entries in References: */
 #define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
 
 /* * */
@@ -55,7 +56,7 @@
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
  * Note: must be lowercase!
- * (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!) */
+ * (Keep in SYNC: ./nail.1:"Character sets", mx-config.h:CHARSET_*!) */
 #define CHARSET_7BIT "us-ascii"
 #ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
@@ -77,7 +78,7 @@
 # endif
 #endif
 
-/* Supported IDNA implementations */
+/* Supported IDNA implementations TODO should not be here!?! */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
 #define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
@@ -122,24 +123,12 @@
 #define n_PIPEENV_CONTENT_EVIDENCE "MAILX_CONTENT_EVIDENCE"
 #define n_PIPEENV_EXTERNAL_BODY_URL "MAILX_EXTERNAL_BODY_URL"
 
-/* Maximum number of quote characters (not bytes!) that'll be used on
+/* Maximum number of quote characters (not bytes!) that will be used on
  * follow lines when compressing leading quote characters */
 #define n_QUOTE_MAX 42u
 
 /* How much spaces a <tab> counts when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
-
-/* Supported (external) PRG implementations TODO should not be here!?! */
-#define mx_RANDOM_IMPL_BUILTIN 0
-#define mx_RANDOM_IMPL_ARC4 1
-#define mx_RANDOM_IMPL_TLS 2
-#define mx_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
-#define mx_RANDOM_IMPL_URANDOM 4
-
-/* For long iterative output, like `list', tabulator-completion, etc.,
- * determine the screen width that should be used */
-#define n_SCRNWIDTH_FOR_LISTS \
-   ((uz)n_scrnwidth - ((uz)n_scrnwidth >> 3))
 
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
@@ -173,40 +162,25 @@
 # define STDERR_FILENO 2
 #endif
 
-#ifdef O_CLOEXEC
-# define _O_CLOEXEC O_CLOEXEC
-# define _CLOEXEC_SET(FD) do {;} while(0)
-#else
-# define _O_CLOEXEC 0
-# define _CLOEXEC_SET(FD) n_fd_cloexec_set(FD)
-#endif
-
 #ifdef O_NOCTTY
-# define n_O_NOCTTY O_NOCTTY
+# define mx_O_NOCTTY O_NOCTTY
 #else
-# define n_O_NOCTTY 0
+# define mx_O_NOCTTY 0
 #endif
 /*
 #ifdef O_NOFOLLOW
-# define n_O_NOFOLLOW O_NOFOLLOW
+# define mx_O_NOFOLLOW O_NOFOLLOW
 #else
-# define n_O_NOFOLLOW 0
+# define mx_O_NOFOLLOW 0
 #endif
 */
-#define n_O_NOXY_BITS (n_O_NOCTTY /*| n_O_NOFOLLOW*/)
+#define mx_O_NOXY_BITS (mx_O_NOCTTY /*| mx_O_NOFOLLOW*/)
 
 #ifdef NSIG_MAX
 # undef NSIG
 # define NSIG NSIG_MAX
 #elif !defined NSIG
 # define NSIG ((sizeof(sigset_t) * 8) - 1)
-#endif
-
-/* * */
-
-/* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
-# define n_HAVE_TCAP
 #endif
 
 #endif /* mx_CONFIG_H */

@@ -56,10 +56,14 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -645,8 +649,8 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
 
    rv = FAL0;
 
-   if((fp = Ftmp(NULL, "deflist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL){
+   if((fp = mx_fs_tmp_open("deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`define' or `account' list: cannot create temporary file"), 0);
       goto jleave;
    }
@@ -682,7 +686,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
       page_or_print(fp, lc);
 
    rv = (ferror(fp) == 0);
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD2_OU;
    return rv;
@@ -2290,7 +2294,8 @@ a_amv_var_show_all(void){
    char const **vacp, **cap;
    NYD2_IN;
 
-   if((fp = Ftmp(NULL, "setlist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((fp = mx_fs_tmp_open("setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`set' list: cannot create temporary file"), 0);
       goto jleave;
    }
@@ -2325,7 +2330,7 @@ a_amv_var_show_all(void){
    n_string_gut(&msg);
 
    page_or_print(fp, i);
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD2_OU;
 }
@@ -3045,7 +3050,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    su_mem_set(&los, 0, sizeof los);
 
-   hold_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_holdx(); /* TODO DISLIKE! */
 
    los.as_global_saved = a_amv_lopts;
    los.as_amcap = &amca;
@@ -3056,7 +3061,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    a_amv_lopts = los.as_global_saved;
 
-   rele_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_rele(); /* TODO DISLIKE! */
 
    NYD_OU;
    return rv;
@@ -3076,7 +3081,7 @@ n_var_setup_batch_mode(void){
    ok_vset(inbox, n_path_devnull);
    ok_bclear(posix);
    ok_bset(quiet);
-   ok_bset(sendwait);
+   ok_vset(sendwait, su_empty);
    ok_bset(typescript_mode);
    n_poption &= ~n_PO_S_FLAG_TEMPORARY;
    n_pstate &= ~n_PS_ROBOT;
@@ -3397,15 +3402,15 @@ c_varedit(void *v){ /* TODO v15 drop */
 
       a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE);
 
-      if((of = Ftmp(NULL, "varedit", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL){
+      if((of = mx_fs_tmp_open("varedit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("`varedit': cannot create temporary file"), 0);
          err = 1;
          break;
       }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
             sizeof *val != fwrite(val, su_cs_len(val), sizeof *val, of)){
          n_perr(_("`varedit' failed to write old value to temporary file"), 0);
-         Fclose(of);
+         mx_fs_close(of);
          err = 1;
          continue;
       }
@@ -3413,7 +3418,7 @@ c_varedit(void *v){ /* TODO v15 drop */
       fflush_rewind(of);
       nf = n_run_editor(of, (off_t)-1, 'e', FAL0, NULL,NULL, SEND_MBOX, sigint,
             NULL);
-      Fclose(of);
+      mx_fs_close(of);
 
       if(nf != NULL){
          int c;
@@ -3441,7 +3446,7 @@ c_varedit(void *v){ /* TODO v15 drop */
          if(!a_amv_var_set(&avc, varres, a_AMV_VSETCLR_NONE))
             err = 1;
 
-         Fclose(nf);
+         mx_fs_close(nf);
       }else{
          n_err(_("`varedit': cannot start $EDITOR\n"));
          err = 1;

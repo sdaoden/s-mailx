@@ -43,9 +43,11 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/colour.h"
 #include "mx/mlist.h"
+#include "mx/termios.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -166,7 +168,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    /* Detect the width of the non-format characters in *headline*;
     * like that we can simply use putc() in the next loop, since we have
     * already calculated their column widths (TODO it's sick) */
-   wleft = subjlen = n_scrnwidth;
+   wleft = subjlen = mx_termios_dimen.tiosd_width;
 
    for (fp = fmt; *fp != '\0'; ++fp) {
       if (*fp == '%') {
@@ -370,7 +372,8 @@ jputcb:
                   mx_colour_pen_put(cpen_cur = cpen_new);
             }
 #endif
-            n = a_chead__putindent(f, mp, MIN(wleft, (int)n_scrnwidth - 60));
+            n = a_chead__putindent(f, mp,
+                  MIN(wleft, S(int,mx_termios_dimen.tiosd_width) - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef mx_HAVE_COLOUR
             if(mx_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
@@ -1061,7 +1064,7 @@ c_from(void *vp)
             ib = n_screensize();
          else
             su_idec_uz_cp(&ib, cp, 0, NULL);
-         if (UCMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
+         if (UCMP(z, n, >, ib) && (obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
    }
@@ -1082,7 +1085,7 @@ c_from(void *vp)
    mx_COLOUR( mx_colour_env_gut(); )
 
    if (obuf != n_stdout)
-      n_pager_close(obuf);
+      mx_pager_close(obuf);
 jleave:
    NYD_OU;
    return 0;

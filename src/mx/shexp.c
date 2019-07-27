@@ -52,6 +52,7 @@
 
 #include <su/cs.h>
 #include <su/sort.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 #include "mx/iconv.h"

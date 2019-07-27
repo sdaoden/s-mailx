@@ -44,7 +44,12 @@
 #include <sys/utsname.h>
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/sort.h>
+
+#include "mx/child.h"
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -196,67 +201,71 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 }
 
 FL int
-c_shell(void *v)
-{
+c_shell(void *v){
+   struct mx_child_ctx cc;
    sigset_t mask;
    int rv;
    FILE *fp;
-   char const **argv, *varname, *varres, *cp;
+   char const **argv, *varname, *varres;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
    argv = v;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
    varres = n_empty;
-   fp = NULL;
+   fp = NIL;
 
-   if(varname != NULL &&
-         (fp = Ftmp(NULL, "shell", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL){
+   if(varname != NIL &&
+         (fp = mx_fs_tmp_open("shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
       n_pstate_err_no = su_ERR_CANCELED;
       rv = -1;
    }else{
-      cp = a_cmisc_bangexp(*argv);
-
       sigemptyset(&mask);
-      if(n_child_run(ok_vlook(SHELL), &mask,
-            n_CHILD_FD_PASS, (fp != NULL ? fileno(fp) : n_CHILD_FD_PASS),
-            "-c", cp, NULL, NULL, &rv) < 0){
-         n_pstate_err_no = su_err_no();
+      mx_child_ctx_setup(&cc);
+      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+      cc.cc_mask = &mask;
+      if(fp != NIL)
+         cc.cc_fds[mx_CHILD_FD_OUT] = fileno(fp);
+      cc.cc_cmd = ok_vlook(SHELL);
+      cc.cc_args[0] = "-c";
+      cc.cc_args[1] = a_cmisc_bangexp(*argv);
+
+      if(!mx_child_run(&cc) || (rv = cc.cc_exit_status) < 0){
+         n_pstate_err_no = cc.cc_error;
          rv = -1;
-      }else{
-         rv = WEXITSTATUS(rv);
-
-         if(fp != NULL){
-            int c;
-            char *x;
-            off_t l;
-
-            fflush_rewind(fp);
-            l = fsize(fp);
-            if(UCMP(64, l, >=, UZ_MAX -42)){
-               n_pstate_err_no = su_ERR_NOMEM;
-               varres = n_empty;
-            }else{
-               varres = x = n_autorec_alloc(l +1);
-
-               for(; l > 0 && (c = getc(fp)) != EOF; --l)
-                  *x++ = c;
-               *x++ = '\0';
-               if(l != 0){
-                  n_pstate_err_no = su_err_no();
-                  varres = n_empty; /* xxx hmmm */
-               }
-            }
-         }
       }
    }
 
-   if(fp != NULL)
-      Fclose(fp);
+   if(fp != NIL){
+      if(rv != -1){
+         int c;
+         char *x;
+         off_t l;
 
-   if(varname != NULL){
-      if(!n_var_vset(varname, (up)varres)){
+         fflush_rewind(fp);
+         l = fsize(fp);
+         if(UCMP(64, l, >=, UZ_MAX -42)){
+            n_pstate_err_no = su_ERR_NOMEM;
+            varres = n_empty;
+         }else if(l > 0){
+            varres = x = n_autorec_alloc(l +1);
+
+            for(; l > 0 && (c = getc(fp)) != EOF; --l)
+               *x++ = c;
+            *x++ = '\0';
+            if(l != 0){
+               n_pstate_err_no = su_err_no();
+               varres = n_empty; /* xxx hmmm */
+            }
+         }
+      }
+
+      mx_fs_close(fp);
+   }
+
+   if(varname != NIL){
+      if(!n_var_vset(varname, R(up,varres))){
          n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
       }
@@ -269,22 +278,25 @@ c_shell(void *v)
 }
 
 FL int
-c_dosh(void *v)
-{
+c_dosh(void *v){
+   struct mx_child_ctx cc;
    int rv;
    NYD_IN;
    UNUSED(v);
 
-   if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
-         NULL, NULL, NULL, &rv) < 0){
-      n_pstate_err_no = su_err_no();
-      rv = -1;
-   }else{
+   mx_child_ctx_setup(&cc);
+   cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+   cc.cc_cmd = ok_vlook(SHELL);
+
+   if(mx_child_run(&cc) && (rv = cc.cc_exit_status) >= 0){
       putc('\n', n_stdout);
       /* Line buffered fflush(n_stdout); */
       n_pstate_err_no = su_ERR_NONE;
-      rv = WEXITSTATUS(rv);
+   }else{
+      n_pstate_err_no = cc.cc_error;
+      rv = -1;
    }
+
    NYD_OU;
    return rv;
 }

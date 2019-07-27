@@ -42,6 +42,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 #include "mx/charsetalias.h"
 #include "mx/mlist.h"

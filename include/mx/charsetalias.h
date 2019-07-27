@@ -21,15 +21,16 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* `(un)?charsetalias' */
-FL int c_charsetalias(void *vp);
-FL int c_uncharsetalias(void *vp);
+EXPORT int c_charsetalias(void *vp);
+EXPORT int c_uncharsetalias(void *vp);
 
 /* Try to expand a charset, return mapping or itself.
  * If is_normalized is true iconv_normalize_name() will not be called on cp */
-FL char const *mx_charsetalias_expand(char const *cp, boole is_normalized);
+EXPORT char const *mx_charsetalias_expand(char const *cp, boole is_normalized);
 
 #include <su/code-ou.h>
 #endif /* mx_CHARSETALIAS_H */

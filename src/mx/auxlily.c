@@ -51,13 +51,6 @@
 # include <netdb.h>
 #endif
 
-#ifdef mx_HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#ifdef mx_HAVE_SETLOCALE
-# include <locale.h>
-#endif
-
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
@@ -72,9 +65,14 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/filetype.h"
+#include "mx/termios.h"
+#include "mx/tty.h"
 
 #ifdef mx_HAVE_IDNA
 # include "mx/iconv.h"
@@ -96,45 +94,32 @@ static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 #endif
 static uz a_aux_err_linelen;
 
-FL void
-n_locale_init(void){
-   NYD2_IN;
+/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
+ * some environment variable that supports colour+ and set *env_addon to that,
+ * e.g., "LESS=FRSXi" */
+static char const *a_aux_pager_get(char const **env_addon);
 
-   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
+static char const *
+a_aux_pager_get(char const **env_addon){
+   char const *rv;
+   NYD_IN;
 
-#ifndef mx_HAVE_SETLOCALE
-   n_mb_cur_max = 1;
-#else
-   setlocale(LC_ALL, n_empty);
-   n_mb_cur_max = MB_CUR_MAX;
-# ifdef mx_HAVE_NL_LANGINFO
-   /* C99 */{
-      char const *cp;
+   rv = ok_vlook(PAGER);
 
-      if((cp = nl_langinfo(CODESET)) != NULL)
-         /* (Will log during startup if user set that via -S) */
-         ok_vset(ttycharset, cp);
+   if(env_addon != NIL){
+      *env_addon = NIL;
+      /* Update the manual upon any changes:
+       *    *colour-pager*, $PAGER */
+      if(su_cs_find(rv, "less") != NIL){
+         if(getenv("LESS") == NIL)
+            *env_addon = "LESS=RXi";
+      }else if(su_cs_find(rv, "lv") != NIL){
+         if(getenv("LV") == NIL)
+            *env_addon = "LV=-c";
+      }
    }
-# endif /* mx_HAVE_SETLOCALE */
-
-# ifdef mx_HAVE_C90AMEND1
-   if(n_mb_cur_max > 1){
-#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
-      n_psonce |= n_PSO_UNICODE;
-#  else
-      wchar_t wc;
-      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         n_psonce |= n_PSO_UNICODE;
-      /* Reset possibly messed up state; luckily this also gives us an
-       * indication whether the encoding has locking shift state sequences */
-      if(mbtowc(&wc, NULL, n_mb_cur_max))
-         n_psonce |= n_PSO_ENC_MBSTATE;
-#  endif
-   }
-# endif
-#endif /* mx_HAVE_C90AMEND1 */
-   NYD2_OU;
+   NYD_OU;
+   return rv;
 }
 
 FL uz
@@ -143,12 +128,12 @@ n_screensize(void){
    uz rv;
    NYD2_IN;
 
-   if((cp = ok_vlook(screen)) != NULL){
-      su_idec_uz_cp(&rv, cp, 0, NULL);
+   if((cp = ok_vlook(screen)) != NIL){
+      su_idec_uz_cp(&rv, cp, 0, NIL);
       if(rv == 0)
-         rv = n_scrnheight;
+         rv = mx_termios_dimen.tiosd_height;
    }else
-      rv = n_scrnheight;
+      rv = mx_termios_dimen.tiosd_height;
 
    if(rv > 2)
       rv -= 2;
@@ -156,25 +141,30 @@ n_screensize(void){
    return rv;
 }
 
-FL char const *
-n_pager_get(char const **env_addon){
-   char const *rv;
+FL FILE *
+mx_pager_open(void){
+   char const *env_add[2], *pager;
+   FILE *rv;
    NYD_IN;
 
-   rv = ok_vlook(PAGER);
+   ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
-   if(env_addon != NULL){
-      *env_addon = NULL;
-      /* Update the manual upon any changes:
-       *    *colour-pager*, $PAGER */
-      if(su_cs_find(rv, "less") != NULL){
-         if(getenv("LESS") == NULL)
-            *env_addon = "LESS=RXi";
-      }else if(su_cs_find(rv, "lv") != NULL){
-         if(getenv("LV") == NULL)
-            *env_addon = "LV=-c";
-      }
-   }
+   pager = a_aux_pager_get(env_add + 0);
+   env_add[1] = NIL;
+
+   if((rv = mx_fs_pipe_open(pager, "w", NIL, env_add, mx_CHILD_FD_PASS)
+         ) == NIL)
+      n_perr(pager, 0);
+   NYD_OU;
+   return rv;
+}
+
+FL boole
+mx_pager_close(FILE *fp){
+   boole rv;
+   NYD_IN;
+
+   rv = mx_fs_pipe_close(fp, TRU1);
    NYD_OU;
    return rv;
 }
@@ -192,7 +182,7 @@ page_or_print(FILE *fp, uz lines)
       uz rows;
 
       if(*cp == '\0')
-         rows = (uz)n_scrnheight;
+         rows = mx_termios_dimen.tiosd_height;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
       /* Avoid overflow later on */
@@ -208,12 +198,16 @@ page_or_print(FILE *fp, uz lines)
 
       /* Take account for the follow-up prompt */
       if(lines + 1 >= rows){
-         char const *env_add[2], *pager;
+         struct mx_child_ctx cc;
+         char const *env_addon[2];
 
-         pager = n_pager_get(&env_add[0]);
-         env_add[1] = NULL;
-         n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
-            env_add, NULL);
+         mx_child_ctx_setup(&cc);
+         cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+         cc.cc_fds[mx_CHILD_FD_IN] = fileno(fp);
+         cc.cc_cmd = a_aux_pager_get(&env_addon[0]);
+         env_addon[1] = NIL;
+         cc.cc_env_addon = env_addon;
+         mx_child_run(&cc);
          goto jleave;
       }
    }
@@ -636,7 +630,7 @@ n_quadify(char const *inbuf, uz inlen, char const *prompt, boole emptyrv){
          !su_cs_cmp_case_n(inbuf, "ask-", 4) &&
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-      rv = getapproval(prompt, rv);
+      rv = mx_tty_yesorno(prompt, rv);
    NYD2_OU;
    return rv;
 }
@@ -1091,10 +1085,10 @@ jlist:{
          goto jleave;
       }
 
-      if((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL){
+      if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          fprintf(n_stderr, _("tmpfile"));
-         v = NULL;
+         v = NIL;
          goto jleave;
       }
 
@@ -1104,7 +1098,7 @@ jlist:{
       putc('\n', fp);
 
       page_or_print(fp, 0);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    /* FALLTHRU */
 
@@ -1261,7 +1255,8 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    rv = TRU1;
 
-   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+   if((fp = mx_fs_tmp_open(cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
    /* Create visual result */
@@ -1276,7 +1271,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
 
    NYD_OU;

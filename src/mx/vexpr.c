@@ -35,6 +35,7 @@ su_EMPTY_FILE()
 
 #include <sys/types.h> /* TODO su_path_info */
 #include <sys/stat.h> /* TODO su_path_info */
+
 #include <unistd.h> /* TODO su_path_info */
 
 #ifdef mx_HAVE_REGEX
@@ -43,6 +44,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 /* v15compat: csop.h */
 #include "mx/csop.h"
@@ -764,7 +766,7 @@ a_vexpr__regex_replace(void *uservp){
 }
 #endif /* mx_HAVE_REGEX */
 
-FL int
+int
 c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
    struct a_vexpr_ctx vc;
    char const *cp;

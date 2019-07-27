@@ -45,6 +45,7 @@
 
 #include <su/cs.h>
 #include <su/cs-dict.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
 #include "mx/iconv.h"
@@ -67,8 +68,8 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_NM_A8S_TRESHOLD_SHIFT 2
 
-struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d; /* XXX atexit gut() (DVL()) */
-struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d; /* XXX atexit gut()..*/
+static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX .. (DVL()) */
 
 /* Same name, while taking care for *allnet*? */
 static boole a_nm_is_same_name(char const *n1, char const *n2);
@@ -390,7 +391,7 @@ a_nm_a8s_dump(char const *cmdname, char const *key, void const *dat){
    return slp;
 }
 
-FL struct mx_name *
+struct mx_name *
 nalloc(char const *str, enum gfield ntype)
 {
    struct n_addrguts ag;
@@ -511,7 +512,7 @@ jleave:
    return np;
 }
 
-FL struct mx_name *
+struct mx_name *
 nalloc_fcc(char const *file){
    struct mx_name *nnp;
    NYD_IN;
@@ -527,7 +528,7 @@ nalloc_fcc(char const *file){
    return nnp;
 }
 
-FL struct mx_name *
+struct mx_name *
 ndup(struct mx_name *np, enum gfield ntype)
 {
    struct mx_name *nnp;
@@ -558,7 +559,7 @@ jleave:
    return nnp;
 }
 
-FL struct mx_name *
+struct mx_name *
 cat(struct mx_name *n1, struct mx_name *n2){
    struct mx_name *tail;
    NYD_IN;
@@ -582,7 +583,7 @@ jleave:
    return tail;
 }
 
-FL struct mx_name *
+struct mx_name *
 n_namelist_dup(struct mx_name const *np, enum gfield ntype){
    struct mx_name *nlist, *xnp;
    NYD_IN;
@@ -603,7 +604,7 @@ n_namelist_dup(struct mx_name const *np, enum gfield ntype){
    return nlist;
 }
 
-FL u32
+u32
 count(struct mx_name const *np){
    u32 c;
    NYD_IN;
@@ -615,7 +616,7 @@ count(struct mx_name const *np){
    return c;
 }
 
-FL u32
+u32
 count_nonlocal(struct mx_name const *np){
    u32 c;
    NYD_IN;
@@ -628,7 +629,7 @@ count_nonlocal(struct mx_name const *np){
    return c;
 }
 
-FL struct mx_name *
+struct mx_name *
 extract(char const *line, enum gfield ntype)
 {
    struct mx_name *rv;
@@ -639,7 +640,7 @@ extract(char const *line, enum gfield ntype)
    return rv;
 }
 
-FL struct mx_name *
+struct mx_name *
 lextract(char const *line, enum gfield ntype)
 {
    char *cp;
@@ -681,7 +682,7 @@ lextract(char const *line, enum gfield ntype)
    return rv;
 }
 
-FL struct mx_name *
+struct mx_name *
 n_extract_single(char const *line, enum gfield ntype){
    struct mx_name *rv;
    NYD_IN;
@@ -691,7 +692,7 @@ n_extract_single(char const *line, enum gfield ntype){
    return rv;
 }
 
-FL char *
+char *
 detract(struct mx_name *np, enum gfield ntype)
 {
    char *topp, *cp;
@@ -736,7 +737,7 @@ jleave:
    return topp;
 }
 
-FL struct mx_name *
+struct mx_name *
 grab_names(enum n_go_input_flags gif, char const *field, struct mx_name *np,
       int comma, enum gfield gflags)
 {
@@ -752,7 +753,7 @@ jloop:
    return np;
 }
 
-FL boole
+boole
 name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2)
 {
    char const *d1, *d2;
@@ -768,7 +769,7 @@ name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2)
    return rv;
 }
 
-FL struct mx_name *
+struct mx_name *
 checkaddrs(struct mx_name *np, enum expand_addr_check_mode eacm,
    s8 *set_on_error)
 {
@@ -795,7 +796,7 @@ checkaddrs(struct mx_name *np, enum expand_addr_check_mode eacm,
    return np;
 }
 
-FL struct mx_name *
+struct mx_name *
 n_namelist_vaporise_head(struct header *hp, boole metoo,
    boole strip_alternates, enum expand_addr_check_mode eacm, s8 *set_on_error)
 {
@@ -842,7 +843,7 @@ n_namelist_vaporise_head(struct header *hp, boole metoo,
    return tolist;
 }
 
-FL struct mx_name *
+struct mx_name *
 usermap(struct mx_name *names, boole force_metoo){
    struct su_cs_dict_view dv;
    struct mx_name *nlist, **nlist_tail, *np, *nxtnp;
@@ -889,7 +890,7 @@ usermap(struct mx_name *names, boole force_metoo){
    return nlist;
 }
 
-FL struct mx_name *
+struct mx_name *
 elide(struct mx_name *names)
 {
    uz i, j, k;
@@ -965,7 +966,7 @@ jleave:
    return nlist;
 }
 
-FL int
+int
 c_alias(void *vp){
    struct su_cs_dict_view dv;
    union {void const *cvp; boole haskey; struct n_strlist *slp;} dat;
@@ -1087,7 +1088,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
    struct su_cs_dict_view dv;
    struct n_strlist *slp;
@@ -1132,7 +1133,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
    return rv;
 }
 
-FL boole
+boole
 mx_alias_is_valid_name(char const *name){
    char c;
    char const *cp;
@@ -1157,7 +1158,7 @@ mx_alias_is_valid_name(char const *name){
    return rv;
 }
 
-FL int
+int
 c_alternates(void *vp){
    struct n_string s_b, *s;
    struct n_strlist *slp;
@@ -1233,7 +1234,7 @@ c_alternates(void *vp){
    return rv;
 }
 
-FL int
+int
 c_unalternates(void *vp){
    int rv;
    NYD_IN;
@@ -1243,7 +1244,7 @@ c_unalternates(void *vp){
    return rv;
 }
 
-FL struct mx_name *
+struct mx_name *
 mx_alternates_remove(struct mx_name *np, boole keep_single){
    /* XXX keep a single pointer, initial null, and immediate remove nodes
     * XXX on successful match unless keep single and that pointer null! */
@@ -1310,7 +1311,7 @@ mx_alternates_remove(struct mx_name *np, boole keep_single){
    return np;
 }
 
-FL boole
+boole
 mx_name_is_mine(char const *name){
    struct su_cs_dict_view dv;
    struct mx_name *xp;

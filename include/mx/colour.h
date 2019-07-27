@@ -22,6 +22,7 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_COLOUR
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 #define mx_COLOUR(X) X
@@ -73,36 +74,36 @@ struct mx_colour_env{
 struct mx_colour_pen;
 
 /* `(un)?colour' */
-FL int c_colour(void *v);
-FL int c_uncolour(void *v);
+EXPORT int c_colour(void *v);
+EXPORT int c_uncolour(void *v);
 
 /* An execution context is teared down, and it finds to have a colour stack.
  * Signals are blocked */
-FL void mx_colour_stack_del(struct n_go_data_ctx *gdcp);
+EXPORT void mx_colour_stack_del(struct n_go_data_ctx *gdcp);
 
 /* We want coloured output (in this autorec memory cycle), pager_used is used
  * to test whether *colour-pager* is to be inspected, if fp is given, the reset
  * sequence will be written as necessary by _stack_del()
  * env_gut() will reset() as necessary if fp is not NIL */
-FL void mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp,
+EXPORT void mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp,
          boole pager_used);
-FL void mx_colour_env_gut(void);
+EXPORT void mx_colour_env_gut(void);
 
 /* Putting anything (for pens: including NIL) resets current state first */
-FL void mx_colour_put(enum mx_colour_id cid, char const *ctag);
-FL void mx_colour_reset(void);
+EXPORT void mx_colour_put(enum mx_colour_id cid, char const *ctag);
+EXPORT void mx_colour_reset(void);
 
 /* Of course temporary only and may return NIL.  Does not affect state! */
-FL struct str const *mx_colour_reset_to_str(void);
+EXPORT struct str const *mx_colour_reset_to_str(void);
 
 /* A pen is bound to its environment and automatically reclaimed; it may be
  * NULL but that can be used anyway for simplicity.
  * This includes pen_to_str() -- which doesn't affect state! */
-FL struct mx_colour_pen *mx_colour_pen_create(enum mx_colour_id cid,
+EXPORT struct mx_colour_pen *mx_colour_pen_create(enum mx_colour_id cid,
                            char const *ctag);
-FL void mx_colour_pen_put(struct mx_colour_pen *self);
+EXPORT void mx_colour_pen_put(struct mx_colour_pen *self);
 
-FL struct str const *mx_colour_pen_to_str(struct mx_colour_pen *self);
+EXPORT struct str const *mx_colour_pen_to_str(struct mx_colour_pen *self);
 
 #include <su/code-ou.h>
 #else

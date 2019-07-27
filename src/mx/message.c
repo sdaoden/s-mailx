@@ -42,9 +42,12 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/termios.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1426,45 +1429,47 @@ message_append_null(void){
 FL boole
 message_match(struct message *mp, struct search_expr const *sep,
       boole with_headers){
-   char **line;
-   uz *linesize, cnt;
+   char *line;
+   uz linesize, cnt;
    FILE *fp;
    boole rv;
    NYD_IN;
 
    rv = FAL0;
 
-   if((fp = Ftmp(NULL, "mpmatch", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if((fp = mx_fs_tmp_open("mpmatch", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       goto j_leave;
 
    if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
       goto jleave;
    fflush_rewind(fp);
-
    cnt = fsize(fp);
-   line = &termios_state.ts_linebuf; /* XXX line pool */
-   linesize = &termios_state.ts_linesize; /* XXX line pool */
+
+   mx_fs_linepool_aquire(&line, &linesize);
 
    if(!with_headers)
-      while(fgetline(line, linesize, &cnt, NULL, fp, 0))
-         if(**line == '\n')
+      while(fgetline(&line, &linesize, &cnt, NULL, fp, 0))
+         if(*line == '\n')
             break;
 
-   while(fgetline(line, linesize, &cnt, NULL, fp, 0)){
+   while(fgetline(&line, &linesize, &cnt, NULL, fp, 0)){
 #ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL){
-         if(regexec(sep->ss_bodyre, *line, 0,NULL, 0) == REG_NOMATCH)
+         if(regexec(sep->ss_bodyre, line, 0,NULL, 0) == REG_NOMATCH)
             continue;
       }else
 #endif
-            if(!substr(*line, sep->ss_body))
+            if(!substr(line, sep->ss_body))
          continue;
       rv = TRU1;
       break;
    }
 
+   mx_fs_linepool_release(line, linesize);
+
 jleave:
-   Fclose(fp);
+   mx_fs_close(fp);
 j_leave:
    NYD_OU;
    return rv;

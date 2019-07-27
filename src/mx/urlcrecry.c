@@ -27,11 +27,16 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 #ifdef mx_HAVE_SOCKETS
 # include <su/icodec.h>
 #endif
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
+#include "mx/tty.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -132,12 +137,12 @@ _nrc_init(void)
    ispipe = FAL0;
    fi = NULL;
 
-   hold_all_sigs(); /* todo */
+   mx_sigs_all_holdx(); /* todo */
 
    if ((netrc_load = ok_vlook(netrc_pipe)) != NULL) {
       ispipe = TRU1;
-      if ((fi = Popen(netrc_load, "r", ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)
-            ) == NULL) {
+      if((fi = mx_fs_pipe_open(netrc_load, "r", ok_vlook(SHELL), NIL,
+            mx_CHILD_FD_NULL)) == NIL){
          n_perr(netrc_load, 0);
          goto j_leave;
       }
@@ -146,7 +151,7 @@ _nrc_init(void)
             ) == NULL)
          goto j_leave;
 
-      if ((fi = Fopen(netrc_load, "r")) == NULL) {
+      if((fi = mx_fs_open(netrc_load, "r")) == NIL){
          n_err(_("Cannot open %s\n"), n_shexp_quote_cp(netrc_load, FAL0));
          goto j_leave;
       }
@@ -261,11 +266,11 @@ jerr:
    if (nhead != NULL)
       nrc = nhead;
 jleave:
-   if (fi != NULL) {
-      if (ispipe)
-            Pclose(fi, TRU1);
+   if(fi != NIL){
+      if(ispipe)
+         mx_fs_pipe_close(fi, TRU1);
       else
-         Fclose(fi);
+         mx_fs_close(fi);
    }
    if (nrc == NRC_NODE_ERR)
       while (nhead != NULL) {
@@ -275,7 +280,7 @@ jleave:
       }
 j_leave:
    _nrc_list = nrc;
-   rele_all_sigs();
+   mx_sigs_all_rele();
    NYD_OU;
 }
 
@@ -1318,7 +1323,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
       if ((s = n_var_vlook(vbuf, FAL0)) == NULL && (ware & REQ_USER)) {
-         if ((s = getuser(NULL)) == NULL) {
+         if((s = mx_tty_getuser(NIL)) == NIL){
 jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
              * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
              * TODO check that first, then! change control flow, grow vbuf */
@@ -1346,10 +1351,11 @@ jpass:
       vbuf[--i] = '\0';
       if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
             (ware & REQ_PASS)) {
-         if ((s = getpassword(savecat(_("Password for "), pname))) == NULL) {
+         if((s = mx_tty_getpass(savecat(_("Password for "), pname))) != NIL){
+         }else{
             n_err(_("A password is necessary for %s authentication\n"),
                pname);
-            ccp = NULL;
+            ccp = NIL;
             goto jleave;
          }
       }
@@ -1478,8 +1484,8 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 # endif
 
    if (ware & REQ_PASS) {
-      if((s = getpassword(savecat(urlp->url_u_h.s, _(" requires a password: ")))
-            ) != NULL)
+      if((s = mx_tty_getpass(savecat(urlp->url_u_h.s,
+            _(" requires a password: ")))) != NIL)
 js2pass:
          ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
       else {
@@ -1540,9 +1546,10 @@ jlist:   {
    if (load_only)
       goto jleave;
 
-   if ((fp = Ftmp(NULL, "netrc", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if((fp = mx_fs_tmp_open("netrc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tmpfile"), 0);
-      v = NULL;
+      v = NIL;
       goto jleave;
    }
 
@@ -1559,7 +1566,7 @@ jlist:   {
    }
 
    page_or_print(fp, l);
-   Fclose(fp);
+   mx_fs_close(fp);
    }
    goto jleave;
 

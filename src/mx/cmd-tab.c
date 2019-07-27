@@ -48,16 +48,22 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
 #include "mx/charsetalias.h"
 #include "mx/colour.h"
 #include "mx/commandalias.h"
 #include "mx/csop.h"
+#include "mx/dig-msg.h"
+#include "mx/file-streams.h"
 #include "mx/filetype.h"
-#include "mx/shortcut.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/shortcut.h"
+#include "mx/sigs.h"
+#include "mx/termios.h"
+#include "mx/tty.h"
 #include "mx/vexpr.h"
 
 /* TODO fake */
@@ -236,15 +242,16 @@ a_ctab_c_list(void *vp){
       cdpa[i] = &a_ctab_ctable[i];
    for(l = 0; l < NELEM(a_ctab_ctable_plus); ++i, ++l)
       cdpa[i] = &a_ctab_ctable_plus[l];
-   cdpa[i] = NULL;
+   cdpa[i] = NIL;
 
-   if(*(void**)vp == NULL)
-      su_sort_shell_vpp(su_S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
+   if(*(void**)vp == NIL)
+      su_sort_shell_vpp(S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
 
-   if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if((fp = mx_fs_tmp_open("list", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
-   scrwid = n_SCRNWIDTH_FOR_LISTS;
+   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
 
    fprintf(fp, _("Commands are:\n"));
    l = 1;
@@ -285,7 +292,7 @@ a_ctab_c_list(void *vp){
 
    if(fp != n_stdout){
       page_or_print(fp, l);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    NYD_OU;
    return 0;

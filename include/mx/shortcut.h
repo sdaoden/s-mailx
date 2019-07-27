@@ -21,14 +21,15 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* `(un)?shortcut' */
-FL int c_shortcut(void *vp);
-FL int c_unshortcut(void *vp);
+EXPORT int c_shortcut(void *vp);
+EXPORT int c_unshortcut(void *vp);
 
 /* Check if str is a shortcut, return expansion or NIL */
-FL char const *mx_shortcut_expand(char const *str);
+EXPORT char const *mx_shortcut_expand(char const *str);
 
 #include <su/code-ou.h>
 #endif /* mx_SHORTCUT_H */

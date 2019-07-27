@@ -25,6 +25,7 @@
 # include <wchar.h>
 #endif
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 struct quoteflt{
@@ -56,12 +57,13 @@ struct quoteflt{
 #endif
 };
 
-FL struct quoteflt *quoteflt_dummy(void); /* TODO LEGACY */
-FL void quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass);
-FL void quoteflt_destroy(struct quoteflt *self);
-FL void quoteflt_reset(struct quoteflt *self, FILE *f);
-FL sz quoteflt_push(struct quoteflt *self, char const *dat, uz len);
-FL sz quoteflt_flush(struct quoteflt *self);
+EXPORT struct quoteflt *quoteflt_dummy(void); /* TODO LEGACY */
+EXPORT void quoteflt_init(struct quoteflt *self, char const *prefix,
+      boole bypass);
+EXPORT void quoteflt_destroy(struct quoteflt *self);
+EXPORT void quoteflt_reset(struct quoteflt *self, FILE *f);
+EXPORT sz quoteflt_push(struct quoteflt *self, char const *dat, uz len);
+EXPORT sz quoteflt_flush(struct quoteflt *self);
 
 #include <su/code-ou.h>
 #endif /* mx_FILTER_QUOTE_H */

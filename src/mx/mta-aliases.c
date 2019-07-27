@@ -33,6 +33,7 @@ su_EMPTY_FILE()
 #include <su/cs-dict.h>
 #include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 
 #include "mx/mta-aliases.h"
@@ -141,7 +142,7 @@ a_mtaali_read_file(struct a_mtaali_stack *masp){
    FILE *afp;
    NYD_IN;
 
-   if((afp = Fopen(masp->mas_path, "r")) == NIL){
+   if((afp = mx_fs_open(masp->mas_path, "r")) == NIL){
       rv = su_err_no();
       n_err(_("*mta-aliases*: cannot open %s: %s\n"),
          n_shexp_quote_cp(masp->mas_user, FAL0), su_err_doc(rv));
@@ -297,7 +298,7 @@ jdone:
    if(rv != su_ERR_NONE)
       a_mtaali_gut_csd(dp);
 
-   Fclose(afp);
+   mx_fs_close(afp);
 jleave:
    NYD_OU;
    return rv;

@@ -45,6 +45,8 @@
 #include <su/icodec.h>
 
 #include "mx/colour.h"
+#include "mx/file-streams.h"
+#include "mx/termios.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -117,8 +119,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
 
-   if (dopipe) {
-      if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
+   if(dopipe){
+      if((obuf = mx_fs_pipe_open(cmd, "w", ok_vlook(SHELL), NIL, -1)) == NIL){
          n_perr(cmd, 0);
          obuf = n_stdout;
       }
@@ -141,8 +143,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
                ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
-               : (uz)n_realscreenheight)){
-         if((obuf = n_pager_open()) == NULL)
+               : S(uz,mx_termios_dimen.tiosd_real_height))){
+         if((obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
       mx_COLOUR(
@@ -193,7 +195,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
    )
 jleave:
    if (obuf != n_stdout)
-      n_pager_close(obuf);
+      mx_pager_close(obuf);
    NYD_OU;
    return rv;
 }
@@ -240,14 +242,16 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    FILE *iobuf, *pbuf;
    NYD2_IN;
 
-   if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((iobuf = mx_fs_tmp_open("topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`top': I/O temporary file"), 0);
-      vp = NULL;
+      vp = NIL;
       goto jleave;
    }
-   if((pbuf = Ftmp(NULL, "toppag", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((pbuf = mx_fs_tmp_open("toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`top': temporary pager file"), 0);
-      vp = NULL;
+      vp = NIL;
       goto jleave1;
    }
 
@@ -400,9 +404,9 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    fflush(pbuf);
    page_or_print(pbuf, plines);
 
-   Fclose(pbuf);
+   mx_fs_close(pbuf);
 jleave1:
-   Fclose(iobuf);
+   mx_fs_close(iobuf);
 jleave:
    NYD2_OU;
    return (vp != NULL);

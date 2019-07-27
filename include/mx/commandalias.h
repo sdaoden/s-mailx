@@ -21,15 +21,16 @@
 
 #include <mx/nail.h>
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 /* `(un)?commandalias' */
-FL int c_commandalias(void *vp);
-FL int c_uncommandalias(void *vp);
+EXPORT int c_commandalias(void *vp);
+EXPORT int c_uncommandalias(void *vp);
 
 /* Whether a `commandalias' name exists, returning name or NIL, pointing
  * expansion_or_nil to expansion if set: both point into internal storage */
-FL char const *mx_commandalias_exists(char const *name,
+EXPORT char const *mx_commandalias_exists(char const *name,
       char const **expansion_or_nil);
 
 #include <su/code-ou.h>

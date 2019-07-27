@@ -29,8 +29,12 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
+#include "mx/child.h"
+#include "mx/file-streams.h"
 #include "mx/random.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -54,30 +58,30 @@ enum spam_action {
 };
 
 #if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
-struct spam_cf {
-   char const        *cf_cmd;
-   char              *cf_result; /* _SPAM_RATE: first response line */
-   int               cf_waitstat;
-   u8             __pad[3];
-   boole            cf_useshell;
+struct spam_cf{
+   char const *cf_cmd;
+   char *cf_result; /* _SPAM_RATE: first response line */
+   s32 cf_exit_status;
+   u8 cf__pad[3];
+   boole cf_useshell;
    /* .cf_cmd may be adjusted for each call (`spamforget')... */
-   char const        *cf_acmd;
-   char const        *cf_a0;
-   char const        *cf_env[4];
-   n_sighdl_t   cf_otstp;
-   n_sighdl_t   cf_ottin;
-   n_sighdl_t   cf_ottou;
-   n_sighdl_t   cf_ohup;
-   n_sighdl_t   cf_opipe;
-   n_sighdl_t   cf_oint;
-   n_sighdl_t   cf_oquit;
+   char const *cf_acmd;
+   char const *cf_a0;
+   char const *cf_env[4];
+   n_sighdl_t cf_otstp;
+   n_sighdl_t cf_ottin;
+   n_sighdl_t cf_ottou;
+   n_sighdl_t cf_ohup;
+   n_sighdl_t cf_opipe;
+   n_sighdl_t cf_oint;
+   n_sighdl_t cf_oquit;
 };
 #endif
 
 #ifdef mx_HAVE_SPAM_SPAMC
-struct spam_spamc {
-   struct spam_cf    c_super;
-   char const        *c_cmd_arr[9];
+struct spam_spamc{
+   struct spam_cf c_super;
+   char const *c_cmd_arr[9];
 };
 #endif
 
@@ -345,7 +349,7 @@ _spamc_interact(struct spam_vc *vcp)
    } else {
       char *buf, *cp;
 
-      switch (WEXITSTATUS(vcp->vc_t.spamc.c_super.cf_waitstat)) {
+      switch(vcp->vc_t.spamc.c_super.cf_exit_status){
       case 1:
          vcp->vc_mp->m_flag |= MSPAM;
          /* FALLTHRU */
@@ -497,7 +501,7 @@ _spamfilter_interact(struct spam_vc *vcp)
       if (vcp->vc_action == _SPAM_SPAM)
          vcp->vc_mp->m_flag |= MSPAM;
       goto jleave;
-   } else switch (WEXITSTATUS(vcp->vc_t.filter.f_super.cf_waitstat)) {
+   }else switch(vcp->vc_t.filter.f_super.cf_exit_status){
    case 2:
       vcp->vc_mp->m_flag |= MSPAMUNSURE;
       /* FALLTHRU */
@@ -606,12 +610,12 @@ __spam_cf_onsig(int sig) /* TODO someday, we won't need it no more */
 static boole
 _spam_cf_interact(struct spam_vc *vcp)
 {
+   struct mx_child_ctx cc;
    struct spam_cf *scfp;
-   int p2c[2], c2p[2];
+   sz p2c[2], c2p[2];
    sigset_t cset;
    char const *cp;
    uz size;
-   pid_t volatile pid;
    enum {
       _NONE    = 0,
       _SIGHOLD = 1<<0,
@@ -646,16 +650,15 @@ _spam_cf_interact(struct spam_vc *vcp)
    scfp->cf_oint = safe_signal(SIGINT, &__spam_cf_onsig);
    scfp->cf_oquit = safe_signal(SIGQUIT, &__spam_cf_onsig);
    /* Keep sigs blocked */
-   pid = 0; /* cc uninit */
 
-   if (!pipe_cloexec(p2c)) {
+   if(!mx_fs_pipe_cloexec(p2c)){
       n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       goto jtail;
    }
    state |= _P2C;
 
-   if (!pipe_cloexec(c2p)) {
+   if(!mx_fs_pipe_cloexec(c2p)){
       n_err(_("%s`%s': cannot create child pipe: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       goto jtail;
@@ -673,11 +676,17 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    /* Start our command as requested */
    sigemptyset(&cset);
-   if ((pid = n_child_start(
-         (scfp->cf_acmd != NULL ? scfp->cf_acmd : scfp->cf_cmd),
-         &cset, p2c[0], c2p[1],
-         scfp->cf_a0, (scfp->cf_acmd != NULL ? scfp->cf_cmd : NULL), NULL,
-         scfp->cf_env)) < 0) {
+   mx_child_ctx_setup(&cc);
+   cc.cc_mask = &cset;
+   cc.cc_fds[mx_CHILD_FD_IN] = p2c[0];
+   cc.cc_fds[mx_CHILD_FD_OUT] = c2p[1];
+   cc.cc_cmd = (scfp->cf_acmd != NULL ? scfp->cf_acmd : scfp->cf_cmd);
+   cc.cc_args[0] = scfp->cf_a0;
+   if(scfp->cf_acmd != NIL)
+      cc.cc_args[1] = scfp->cf_cmd;
+   cc.cc_env_addon = scfp->cf_env;
+
+   if(!mx_child_run(&cc)){
       state |= _ERRORS;
       goto jtail;
    }
@@ -698,7 +707,7 @@ _spam_cf_interact(struct spam_vc *vcp)
          break;
       }
       size -= i;
-      if (i != (uz)write(p2c[1], vcp->vc_buffer, i)) {
+      if(i != S(uz,write(S(int,p2c[1]), vcp->vc_buffer, i))){
          state |= _ERRORS;
          break;
       }
@@ -711,24 +720,24 @@ jtail:
       rele_sigs();
    }
 
-   if (state & _P2C_0) {
+   if(state & _P2C_0){
       state &= ~_P2C_0;
-      close(p2c[0]);
+      close(S(int,p2c[0]));
    }
-   if (state & _C2P_1) {
+   if(state & _C2P_1){
       state &= ~_C2P_1;
-      close(c2p[1]);
+      close(S(int,c2p[1]));
    }
    /* And cause EOF for the reader */
-   if (state & _P2C_1) {
+   if(state & _P2C_1){
       state &= ~_P2C_1;
-      close(p2c[1]);
+      close(S(int,p2c[1]));
    }
 
    if (state & _RUNNING) {
       if (!(state & _ERRORS) &&
             vcp->vc_action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
-         sz i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
+         sz i = read(S(int,c2p[0]), vcp->vc_buffer, BUFFER_SIZE - 1);
          if (i > 0) {
             vcp->vc_buffer[i] = '\0';
             if ((cp = su_cs_find_c(vcp->vc_buffer, NETNL[0])) == NULL &&
@@ -747,14 +756,13 @@ jtail:
       }
 
       state &= ~_RUNNING;
-      n_child_wait(pid, &scfp->cf_waitstat);
-      if (WIFEXITED(scfp->cf_waitstat))
+      if(mx_child_wait(&cc) && (scfp->cf_exit_status = cc.cc_exit_status) >= 0)
          state |= _GOODRUN;
    }
 
    if (state & _C2P_0) {
       state &= ~_C2P_0;
-      close(c2p[0]);
+      close(S(int,c2p[0]));
    }
 
    safe_signal(SIGQUIT, scfp->cf_oquit);

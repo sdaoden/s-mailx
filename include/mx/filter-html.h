@@ -22,6 +22,7 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 struct htmlflt{
@@ -43,14 +44,14 @@ struct htmlflt{
 };
 
 /* TODO Because we don't support filter chains yet this filter will be run
- * TODO in a dedicated subprocess, driven via a special Popen() mode */
-FL int htmlflt_process_main(void);
+ * TODO in a dedicated subprocess, driven via a special fs_popen() mode */
+EXPORT int htmlflt_process_main(void);
 
-FL void htmlflt_init(struct htmlflt *self);
-FL void htmlflt_destroy(struct htmlflt *self);
-FL void htmlflt_reset(struct htmlflt *self, FILE *f);
-FL sz htmlflt_push(struct htmlflt *self, char const *dat, uz len);
-FL sz htmlflt_flush(struct htmlflt *self);
+EXPORT void htmlflt_init(struct htmlflt *self);
+EXPORT void htmlflt_destroy(struct htmlflt *self);
+EXPORT void htmlflt_reset(struct htmlflt *self, FILE *f);
+EXPORT sz htmlflt_push(struct htmlflt *self, char const *dat, uz len);
+EXPORT sz htmlflt_flush(struct htmlflt *self);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_FILTER_HTML_TAGSOUP */

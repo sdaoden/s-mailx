@@ -25,6 +25,7 @@
 # include "mx/nail.h"
 #endif
 
+#include "mx/random.h"
 #if mx_HAVE_RANDOM != mx_RANDOM_IMPL_ARC4 &&\
       mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
 # define a_RAND_USE_BUILTIN
@@ -36,11 +37,13 @@
 # endif
 #endif
 
+#include <su/mem.h>
+
 #ifdef a_RAND_USE_BUILTIN
 # include <su/prime.h>
 #endif
 
-#include "mx/random.h"
+/* Already: #include "mx/random.h" */
 #include "su/code-in.h"
 
 #ifdef a_RAND_USE_BUILTIN
@@ -227,7 +230,7 @@ a_rand_weak(u32 seed){
 }
 #endif /* a_RAND_USE_BUILTIN */
 
-FL char *
+char *
 mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil){
    struct str b64;
    char *indat, *cp, *oudat;
@@ -343,7 +346,7 @@ jinc1:
    return dat;
 }
 
-FL char *
+char *
 mx_random_create_cp(uz len, u32 *reprocnt_or_nil){
    char *dat;
    NYD_IN;

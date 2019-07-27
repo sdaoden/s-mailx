@@ -71,6 +71,8 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
+#include <su/mem.h>
+
 /* TODO fake */
 #include "su/code-in.h"
 
