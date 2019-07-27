@@ -132,7 +132,6 @@ a_netrc_init(void){
 
    seen_default = FAL0;
    nl_last = TRU1;
-jnext:
    switch((t = a_netrc__token(fi, buffer, &nl_last))){
    case a_NETRC_NONE:
       break;
@@ -224,8 +223,7 @@ jm_h:
          goto jm_h;
       if(t == a_NETRC_DEFAULT)
          goto jdef;
-      if(t != a_NETRC_NONE)
-         goto jnext;
+      ASSERT(t == a_NETRC_NONE);
       break;
    case a_NETRC_ERROR:
 jerr:

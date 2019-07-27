@@ -1059,7 +1059,7 @@ c_alias(void *vp){
          }else{
             n_err(_("alias: %s: invalid argument: %s\n"),
                key, n_shexp_quote_cp(val1, FAL0));
-            rv = 1;
+            /*rv = 1;*/
             continue;
          }
 
