@@ -585,7 +585,7 @@ n_version(struct n_string *s){
    s = n_string_push_cp(s, ok_vlook(version_date));
    s = n_string_push_c(s, ' ');
    s = n_string_push_c(s, '(');
-   s = n_string_push_cp(s, _("build for "));
+   s = n_string_push_cp(s, _("built for "));
    s = n_string_push_cp(s, ok_vlook(build_os));
    s = n_string_push_c(s, ')');
    s = n_string_push_c(s, '\n');
