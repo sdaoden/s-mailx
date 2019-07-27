@@ -1208,8 +1208,6 @@ ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
-ok_v_spamd_socket, /* {obsolete=1} */
-ok_v_spamd_user, /* {obsolete=1} */
    ok_v_spamfilter_ham,
    ok_v_spamfilter_noham,
    ok_v_spamfilter_nospam,
