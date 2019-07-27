@@ -91,8 +91,9 @@ NOTES, ChangeLog (packager-affine)
   are supported.  Only clear text files are supported, no DBs.
   (Jean-Marc Pigeon)
 
-- "`~^'#? head ins to|cc|bcc" will now verify *expandaddr*#?
-  right away, as is yet done for `~t'#?, `~c'#? and `~b'#?.
+- `~^'#? will now verify *expandaddr*#? right away in
+  "~^ head ins to|cc|bcc", as is already done for `~t'#?,
+  `~c'#? and `~b'#?.
 
 - OPT_AGENT and OPT_SPAM_SPAMD are gone; they were obsoleted on
   2017-07-16, and it is not expected to become noticed.
