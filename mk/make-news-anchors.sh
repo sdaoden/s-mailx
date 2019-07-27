@@ -76,7 +76,7 @@ BEGIN{hot = 0}
       }else if(mat ~ /^-/){ # Fl
          mat = substr(mat, 2, length(mat) - 1)
          t = 4
-      }else if(mat ~ /^\"/){ # Sh, Ss.  But: "catch-all"
+      }else if(mat ~ /^"/){ # Sh, Ss.  But: "catch-all"
          mat = substr(mat, 2, length(mat) - 2)
          t = 5
       }else
