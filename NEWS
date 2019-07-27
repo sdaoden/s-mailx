@@ -1131,7 +1131,7 @@ NOTES, ChangeLog (packager-affine)
   support new possibilities of OpenSSL (and LibreSSL) without
   ending up and introducing more and more variables.
 
-  Instead we now have *ssl-config-pairs*#?, a comma-separated
+  Instead we now have *ssl-config-pairs*, a comma-separated
   list of all options.  With e.g. OpenSSL 1.1.xx this will be
   directly passed through to SSL_CONF_cmd(), so there _anything_
   can be passed, otherwise we use a builtin parser to map.
@@ -1151,9 +1151,9 @@ NOTES, ChangeLog (packager-affine)
 
   OpenSSL v1.1.xx also introduces an interesting and neat idea to
   centralize SSL/TLS configuration of (all) programs in a single
-  file.  This can be driven via *ssl-config-file*#? and the new
-  *ssl-config-module*#? variables, several entries per program
-  are allowed, see *ssl-config-module*#? for an example.
+  file.  This can be driven via *ssl-config-file* and the new
+  *ssl-config-module* variables, several entries per program
+  are allowed, see *ssl-config-module* for an example.
 
   New manual section "Encrypted network communication"#13.
 
