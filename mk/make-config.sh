@@ -74,7 +74,7 @@ XOPTIONS_XTRA="\
 "
 
 # To avoid too many recompilations we use a two-stage "configuration changed"
-# detection, the first uses mk-config.lst, which only goes for actual user
+# detection, the first uses mk-config.env, which only goes for actual user
 # config settings etc. the second uses mk-config.h, which thus includes the
 # things we have truly detected.  This does not work well for multiple choice
 # values of which only one will be really used, so those user wishes may not be
@@ -239,30 +239,19 @@ option_update() {
    fi
 }
 
-: ${OBJDIR:=.obj}
-
-rc=./make.rc
-lst="${OBJDIR}"/mk-config.lst
-ev="${OBJDIR}"/mk-config.ev
-h="${OBJDIR}"/mk-config.h h_name=mk-config.h
-mk="${OBJDIR}"/mk-config.mk
-
-newlst="${OBJDIR}"/mk-nconfig.lst
-newmk="${OBJDIR}"/mk-nconfig.mk
-oldmk="${OBJDIR}"/mk-oconfig.mk
-newev="${OBJDIR}"/mk-nconfig.ev
-newh="${OBJDIR}"/mk-nconfig.h
-oldh="${OBJDIR}"/mk-oconfig.h
-tmp0="${OBJDIR}"/___tmp
-tmp=${tmp0}1$$
-tmp2=${tmp0}2$$
-
-##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
+##  --  >8  - << OPTIONS | EARLY >> -  8<  --  ##
 
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
 COMMLINE="${*}"
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
+# Also not standardized: a way to round-trip quote
+. "${TOPDIR}"mk/su-quote-rndtrip.sh
+
+##  --  >8  - << EARLY | OS/CC >> -  8<  --  ##
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
@@ -415,7 +404,7 @@ _cc_default() {
       config_exit 1
    fi
 
-   if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
+   if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
       :
    else
       msg 'Using C compiler ${CC}=%s' "${CC}"
@@ -465,7 +454,7 @@ cc_hello() {
 
 cc_flags() {
    if feat_yes AUTOCC; then
-      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+      if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
             "${CC}"
@@ -720,10 +709,6 @@ config_exit() {
    exit ${1}
 }
 
-# which(1) not standardized, command(1) -v may return non-executable: unroll!
-#
-SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
-
 msg() {
    fmt=${1}
    shift
@@ -737,31 +722,37 @@ msg_nonl() {
 }
 
 # Our feature check environment
-feat_val_no() {
+_feats_eval_done=0
+
+_feat_val_no() {
    [ "x${1}" = x0 ] || [ "x${1}" = xn ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
-feat_val_yes() {
+_feat_val_yes() {
    [ "x${1}" = x1 ] || [ "x${1}" = xy ] ||
    [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
 
-feat_val_require() {
+_feat_val_require() {
    [ "x${1}" = xrequire ]
 }
 
 _feat_check() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   if feat_val_no "${i}"; then
+   eval _fc_i=\$OPT_${1}
+   if [ "$_feats_eval_done" = 1 ]; then
+      [ "x${_fc_i}" = x0 ] && return 1
+      return 0
+   fi
+   _fc_i="`echo ${_fc_i} | ${tr} '[A-Z]' '[a-z]'`"
+   if _feat_val_no "${_fc_i}"; then
       return 1
-   elif feat_val_yes "${i}"; then
+   elif _feat_val_yes "${_fc_i}"; then
       return 0
    else
       msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" \
-         "${1}" "${i}"
+         "${1}" "${_fc_i}"
       config_exit 11
    fi
 }
@@ -776,9 +767,9 @@ feat_no() {
 }
 
 feat_require() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+   eval _fr_i=\$OPT_${1}
+   _fr_i="`echo ${_fr_i} | ${tr} '[A-Z]' '[a-z]'`"
+   [ "x${_fr_i}" = xrequire ] || [ "x${_fr_i}" = xrequired ]
 }
 
 feat_bail_required() {
@@ -922,8 +913,10 @@ option_join_rc() {
 
 option_evaluate() {
    # Expand the option values, which may contain shell snippets
-   ${rm} -f ${newlst} ${newmk}
-   exec 5<&0 6>&1 <${tmp} >${newlst}
+   # Set booleans to 0 or 1, or require, set _feats_eval_done=1
+   ${rm} -f ${newenv} ${newmk}
+
+   exec 5<&0 6>&1 <${tmp} >${newenv}
    while read line; do
       z=
       if [ -n "${good_shell}" ]; then
@@ -942,11 +935,11 @@ option_evaluate() {
       eval j=\$${i}
       if [ -n "${z}" ]; then
          j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
-         if [ -z "${j}" ] || feat_val_no "${j}"; then
+         if [ -z "${j}" ] || _feat_val_no "${j}"; then
             j=0
             printf "   /* #undef ${i} */\n" >> ${newh}
-         elif feat_val_yes "${j}"; then
-            if feat_val_require "${j}"; then
+         elif _feat_val_yes "${j}"; then
+            if _feat_val_require "${j}"; then
                j=require
             else
                j=1
@@ -961,11 +954,13 @@ option_evaluate() {
       else
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
-      printf "${i} = ${j}\n" >> ${newmk}
-      printf "${i}=${j}\n"
+      printf -- "${i} = ${j}\n" >> ${newmk}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
    exec 0<&5 1>&6 5<&- 6<&-
+
+   _feats_eval_done=1
 }
 
 val_allof() {
@@ -1148,12 +1143,12 @@ _check_preface() {
 }
 
 without_check() {
-   yesno=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+   oneorzero=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
 
    echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
 
-   if feat_val_yes ${yesno}; then
+   if [ "${oneorzero}" = 1 ]; then
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
          echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
@@ -1237,19 +1232,37 @@ xrun_check() {
    _link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
+string_to_char_array() {
+   ${awk} -v xy="${@}" 'BEGIN{
+      # POSIX: unspecified behaviour.
+      # Does not work for SunOS /usr/xpg4/bin/awk!
+      if(split("abc", xya, "") == 3)
+         i = split(xy, xya, "")
+      else{
+         j = length(xy)
+         for(i = 0; j > 0; --j){
+            xya[++i] = substr(xy, 1, 1)
+            xy = substr(xy, 2)
+         }
+      }
+      xya[++i] = "\\0"
+      for(j = 1; j <= i; ++j){
+         if(j != 1)
+            printf ", "
+         y = xya[j]
+         if(y == "\012")
+            y = "\\n"
+         printf "'"'"'%s'"'"'", y
+      }
+   }'
+}
+
 squeeze_em() {
    < "${1}" > "${2}" ${awk} \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
 }
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
-
-# First of all, create new configuration and check whether it changed
-
-if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
-   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
-   exit 1
-fi
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
@@ -1264,6 +1277,36 @@ thecmd_testandset_fail tr tr
 # Lowercase this now in order to isolate all the remains from case matters
 OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 export OS
+
+# But first of all, create new configuration and check whether it changed
+if [ -z "${OBJDIR}" ]; then
+   OBJDIR=.obj
+else
+   OBJDIR=`${awk} -v input="${OBJDIR}" 'BEGIN{
+         if(index(input, "/"))
+            sub("/+$", "", input)
+         print input
+         }'`
+fi
+
+rc=./make.rc
+env="${OBJDIR}"/mk-config.env
+h="${OBJDIR}"/mk-config.h h_name=mk-config.h
+mk="${OBJDIR}"/mk-config.mk
+
+newmk="${OBJDIR}"/mk-nconfig.mk
+oldmk="${OBJDIR}"/mk-oconfig.mk
+newenv="${OBJDIR}"/mk-nconfig.env
+newh="${OBJDIR}"/mk-nconfig.h
+oldh="${OBJDIR}"/mk-oconfig.h
+tmp0="${OBJDIR}"/___tmp
+tmp=${tmp0}1$$
+tmp2=${tmp0}2$$
+
+if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
+   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
+   exit 1
+fi
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1325,8 +1368,8 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* \
-      ${newmk} ${oldmk} ${newev} ${newh} ${oldh}" EXIT
+   ${rm} -rf ${tmp0}.* ${tmp0}* \
+      ${newmk} ${oldmk} ${newenv} ${newh} ${oldh}" EXIT
 
 printf '#ifdef mx_SOURCE\n' > ${newh}
 
@@ -1365,6 +1408,7 @@ msg 'done'
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
+printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT; " >> ${newenv}
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -1375,9 +1419,6 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_BEGIN = @(exec 4>&1 1>/dev/null;\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_END = )\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_CMD = echo '  CMD' >&4;\n" >> ${newmk}
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
@@ -1385,6 +1426,8 @@ printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
 printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
+   "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
    printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 else
@@ -1402,12 +1445,8 @@ for i in \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=${j}\n" >> ${newlst}
-   printf -- "${i}=\"${j}\";export ${i}; " >> ${newev}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
-# Note that makefile reads and eval'uates one line of this file, whereas other
-# consumers source it via .(1)
-printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
@@ -1441,7 +1480,7 @@ for i in \
       INCS LIBS \
       ; do
    eval j="\$${i}"
-   printf -- "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
 
 MX_CFLAGS=${CFLAGS}
@@ -1465,17 +1504,21 @@ for i in \
    eval j=\$${i}
    if [ -n "${j}" ]; then
       printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=${j}\n" >> ${newlst}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
    fi
 done
+
+# Note that makefile reads and eval'uates one line of this file, whereas other
+# consumers source it via .(1)
+printf "\n" >> ${newenv}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 config_updated=
-if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
+if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
    echo 'Configuration is up-to-date'
    exit 0
-elif [ -f ${lst} ]; then
+elif [ -f ${env} ]; then
    config_updated=1
    echo 'Configuration has been updated..'
 else
@@ -1484,12 +1527,11 @@ fi
 
 # Time to redefine helper 1
 config_exit() {
-   ${rm} -f ${lst} ${h} ${mk}
+   ${rm} -f ${h} ${mk}
    exit ${1}
 }
 
-${mv} -f ${newlst} ${lst}
-${mv} -f ${newev} ${ev}
+${mv} -f ${newenv} ${env}
 [ -f ${h} ] && ${mv} -f ${h} ${oldh}
 ${mv} -f ${newh} ${h} # Note this has still #ifdef mx_SOURCE open
 [ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
@@ -1505,7 +1547,7 @@ makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${lst} ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+   ${rm} -f ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
       HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
@@ -2201,10 +2243,10 @@ int main(void){
    if feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
-      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
-      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
-      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
-      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
+      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
+      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
+      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
+      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
       *) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
       esac
    fi
@@ -2524,7 +2566,7 @@ if feat_yes TLS; then # {{{
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls 'TLS new style TLS_client_method(3ssl)' \
+         without_check 1 xtls 'TLS new style TLS_client_method(3ssl)' \
             '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
       elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
@@ -2577,7 +2619,7 @@ int main(void){
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_stack_of 'TLS STACK_OF()' \
+         without_check 1 xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF'
       elif compile_check xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF' << \!
@@ -2599,7 +2641,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
+         without_check 1 xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
             '#define mx_HAVE_XTLS_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       elif link_check xtls_conf \
@@ -2620,7 +2662,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+         without_check 1 xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
             '#define mx_HAVE_XTLS_CONF_CTX'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
@@ -2649,7 +2691,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+         without_check 1 xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
             '#define mx_HAVE_XTLS_CTX_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
@@ -2669,7 +2711,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_maxmin_proto \
+         without_check 1 xtls_set_maxmin_proto \
             'TLS SSL_CTX_set_min_proto_version(3ssl)' \
             '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
@@ -2691,7 +2733,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_ciphersuites \
+         without_check 1 xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
             '#define mx_HAVE_XTLS_SET_CIPHERSUITES'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
@@ -2715,7 +2757,7 @@ int main(void){
    if feat_yes TLS; then # digest etc algorithms {{{
       if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
-            without_check yes tls_all_algo 'TLS_ALL_ALGORITHMS support' \
+            without_check 1 tls_all_algo 'TLS_ALL_ALGORITHMS support' \
                '#define mx_HAVE_TLS_ALL_ALGORITHMS'
          elif link_check tls_all_algo 'TLS all-algorithms support' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS' << \!
@@ -2733,7 +2775,7 @@ int main(void){
             feat_bail_required TLS_ALL_ALGORITHMS
          fi
       elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes tls_all_algo \
+         without_check 1 tls_all_algo \
             'TLS all-algorithms (always available in v1.1.0+)' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS'
       fi
@@ -3370,12 +3412,18 @@ elif (${CC} -v) >/dev/null 2>&1; then
       END{gsub(/"/, "", l); print "\\\\n" l}
    '`
 fi
-printf '#define VAL_BUILD_CC "%s %s %s%s"\n' \
-   "${CC}" "${CFLAGS}" "" "${i}" >> ${h}
-printf '#define VAL_BUILD_LD "%s %s %s"\n' \
-   "${CC}" "${LDFLAGS}" "`${cat} ${lib}`" >> ${h}
-printf '#define VAL_BUILD_REST "%s"\n' "${COMMLINE}" >> ${h}
-printf '\n' >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
+   printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "\`${cat} ${lib}\`"`
+   printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
+i=${COMMLINE}
+   printf '#define VAL_BUILD_REST "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> ${h}
 
 # Throw away all temporaries
 ${rm} -rf ${tmp0}.* ${tmp0}*

@@ -35,19 +35,19 @@ distclean:
 
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
-	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
-	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-b:
 	@$(_prestop);\
-	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-v:
 	@$(_prestop);\
-	LC_ALL=C $${MAKE} -f mk-config.mk _update-version
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create
 
 # The test should inherit the user runtime environment!
 test:
@@ -94,6 +94,6 @@ __prestop = if [ -f "$(OBJDIR)"/mk-config.mk ]; then :; else \
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 0;\
 	fi
-_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.ev
+_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.env
 
 # s-mk-mode

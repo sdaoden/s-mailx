@@ -1,13 +1,11 @@
 #!/bin/sh -
-#@ make-mime-types.sh
-#@ Read mime.types file from STDIN and generate S-nail builtin rules on STDOUT.
+#@ Generate builtin mime.types (configuration sourced in environment).
+#
 # Public Domain
-
-: ${awk:=awk}
 
 LC_ALL=C
 
-exec ${awk} '
+< "$1" > "$2" exec ${awk} '
    function add(mt, ln){
       gsub(/[ 	]]+/, " ", ln);
       i = split(ln, i_a);
