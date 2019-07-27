@@ -1273,6 +1273,7 @@ thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
 
 # Lowercase this now in order to isolate all the remains from case matters
+OS_ORIG_CASE=${OS}
 OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 export OS
 
@@ -1581,7 +1582,7 @@ ${cat} > ${makefile} << \!
 
 ## Generics
 
-echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
+echo '#define VAL_BUILD_OS "'"${OS_ORIG_CASE}"'"' >> ${h}
 
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
