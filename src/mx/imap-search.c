@@ -52,7 +52,9 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -446,8 +448,7 @@ static int
 itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
 {
    struct search_expr se;
-   char *cp, *line = NULL; /* TODO line pool */
-   uz linesize = 0;
+   char *cp;
    FILE *ibuf;
    int rv;
    NYD_IN;
@@ -464,9 +465,13 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
    case ITSINCE:
       if (m->m_time == 0 && !(m->m_flag & MNOFROM) &&
             (ibuf = setinput(mp, m, NEED_HEADER)) != NULL) {
+         char *line;
+         uz linesize;
+
+         mx_fs_linepool_aquire(&line, &linesize);
          if (readline_restart(ibuf, &line, &linesize, 0) > 0)
             m->m_time = unixtime(line);
-         n_free(line);
+         mx_fs_linepool_release(line, linesize);
       }
       break;
    case ITSENTBEFORE:

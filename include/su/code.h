@@ -1,7 +1,8 @@
 /*@ Code of the basic infrastructure (POD types, macros etc.) and functions.
  *@ And main documentation entry point, as below.
  *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and NDEBUG.
- *@   The latter is a precondition for su_HAVE_INLINE.
+ *@   The latter is a precondition for su_HAVE_INLINE; dependent upon compiler
+ *@   __OPTIMIZE__ (and __OPTIMIZE_SIZE__) may be looked at in addition, then.
  *@   su_HAVE_DEVEL is meant as a possibility to enable test paths with
  *@   debugging disabled.
  *@ - Some macros require su_FILE to be defined to a literal.
@@ -303,14 +304,28 @@ do{\
 /* inline keyword */
 #define su_HAVE_INLINE
 #if su_C_LANG
-# if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
+# ifdef DOXYGEN
+#  define su_INLINE inline
+#  define su_SINLINE inline
+# elif su_CC_CLANG || su_CC_GCC || su_CC_PCC
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-#   ifndef NDEBUG
+    /* That gcc is totally weird */
+#   if su_OS_OPENBSD && su_CC_GCC
+#    define su_INLINE extern __inline __attribute__((gnu_inline))
+#    define su_SINLINE static __inline __attribute__((gnu_inline))
+    /* All CCs coming here know __OPTIMIZE__ */
+#   elif !defined NDEBUG || !defined __OPTIMIZE__
 #    define su_INLINE static inline
+#    define su_SINLINE static inline
 #   else
-#    define su_INLINE inline
+     /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
+#    if su_CC_GCC && defined __OPTIMIZE_SIZE__
+#     define su_INLINE inline __attribute__((always_inline))
+#    else
+#     define su_INLINE inline
+#    endif
+#    define su_SINLINE static inline
 #   endif
-#   define su_SINLINE static inline
 #  else
 #   define su_INLINE static __inline
 #   define su_SINLINE static __inline
@@ -966,8 +981,10 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 # define su_assert(EXPR,FILE,LINE,FUN,CRASH)
 #endif
 #if DVLOR(1, 0)
-void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
-void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
+EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+EXPORT void su_nyd_stop(void);
+EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
+      up cookie);
 #endif
 /* BASIC C INTERFACE (SYMBOLS) }}} */
 C_DECL_END

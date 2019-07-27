@@ -52,10 +52,11 @@
 
 #include <su/cs.h>
 #include <su/sort.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
-#include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -326,7 +327,7 @@ jerr:
    UNUSED(fexpm);
 
    if(!(fexpm & FEXP_SILENT))
-      n_err(_("No filename pattern (fnmatch(3)) support compiled in\n"));
+      n_err(_("No filename pattern support (fnmatch(3) not available)\n"));
    return savestr(name);
 #endif
 }

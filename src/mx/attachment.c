@@ -43,8 +43,11 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -151,7 +154,8 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
 
    cnt = (uz)fsize(ifp);
 
-   if((ofp = Ftmp(NULL, "atticonv", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL){
+   if((ofp = mx_fs_tmp_open("atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("Temporary attachment data file"), 0);
       goto jerr;
    }
@@ -181,7 +185,7 @@ jleave:
       n_free(oul.s);
    if(icp != (iconv_t)-1)
       n_iconv_close(icp);
-   Fclose(ifp);
+   mx_fs_close(ifp);
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
    NYD_OU;
@@ -191,8 +195,8 @@ jeconv:
    n_err(_("Cannot convert from %s to %s\n"),
       ap->a_input_charset, ap->a_charset);
 jerr:
-   if(ofp != NULL)
-      Fclose(ofp);
+   if(ofp != NIL)
+      mx_fs_close(ofp);
    ofp = NULL;
    goto jleave;
 }
@@ -257,8 +261,8 @@ jrefexp:
 
       if((
 #ifdef mx_HAVE_ICONV
-            (oucs != NULL && oucs != (char*)-1)
-               ? (cnvfp = Fopen(file, "r")) == NULL :
+            (oucs != NIL && oucs != R(char*,-1))
+               ? (cnvfp = mx_fs_open(file, "r")) == NIL :
 #endif
                access(file, R_OK) != 0)){
          e = su_err_no();
@@ -417,7 +421,7 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
    }
 
    if(ap->a_conv == AC_TMPFILE)
-      Fclose(ap->a_tmpf);
+      mx_fs_close(ap->a_tmpf);
    NYD_OU;
    return aplist;
 }
@@ -508,7 +512,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
           * TODO expansion then we could avoid closing+rebuilding the temporary
           * TODO file if the new user input matches the original value! */
          if(aplist->a_conv == AC_TMPFILE)
-            Fclose(aplist->a_tmpf);
+            mx_fs_close(aplist->a_tmpf);
          shin.s = n_shexp_quote_cp(aplist->a_path_user, FAL0);
       }else
          shin.s = n_UNCONST(n_empty);

@@ -27,7 +27,9 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
+#include "mx/file-streams.h"
 /* TODO that this does not belong: clear */
 #include "mx/filter-html.h"
 
@@ -167,7 +169,7 @@ static void
 _mt_init(void)
 {
    struct mtnode *tail;
-   char c, *line; /* TODO line pool (below) */
+   char c, *line;
    uz linesize;
    u32 i, j;
    char const *srcs_arr[10], *ccp, **srcs;
@@ -241,20 +243,19 @@ jecontent:
       }
 
    /* Load all file-based sources in the desired order */
-   line = NULL;
-   linesize = 0;
-   for (j = 0, i = (u32)P2UZ(srcs - srcs_arr), srcs = srcs_arr;
+   mx_fs_linepool_aquire(&line, &linesize);
+   for(j = 0, i = S(u32,P2UZ(srcs - srcs_arr)), srcs = srcs_arr;
          i > 0; ++j, ++srcs, --i)
-      if (*srcs == NULL)
+      if(*srcs == NIL)
          continue;
-      else if (!__mt_load_file((j == 0 ? _MT_USR
+      else if(!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
-         if ((n_poption & n_PO_D_V) || j > 1)
+         if((n_poption & n_PO_D_V) || j > 1)
             n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
-   if (line != NULL)
-      n_free(line);
+   mx_fs_linepool_release(line, linesize);
+
 jleave:
    _mt_is_init = TRU1;
    NYD_OU;
@@ -269,9 +270,9 @@ __mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
    uz len;
    NYD_IN;
 
-   if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-         (fp = Fopen(cp, "r")) == NULL) {
-      cp = NULL;
+   if((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NIL ||
+         (fp = mx_fs_open(cp, "r")) == NIL){
+      cp = NIL;
       goto jleave;
    }
 
@@ -288,7 +289,7 @@ __mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
       _mt_list = head;
    }
 
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD_OU;
    return (cp != NULL);
@@ -702,7 +703,7 @@ _mt_classify_os_part(u32 mce, struct mimepart *mpp, boole deep_inspect)
 
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
-   UNINIT(mtc, 0);
+   mtc = 0;
    did_inrest = FAL0;
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
@@ -965,10 +966,10 @@ c_mimetype(void *v){
          goto jleave;
       }
 
-      if((fp = Ftmp(NULL, "mimetype", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL){
+      if((fp = mx_fs_tmp_open("mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
-         v = NULL;
+         v = NIL;
          goto jleave;
       }
 
@@ -1006,7 +1007,7 @@ c_mimetype(void *v){
        }
 
       page_or_print(fp, l);
-      Fclose(fp);
+      mx_fs_close(fp);
    }else{
       for(; *argv != NULL; ++argv){
          if(s->s_len > 0)
@@ -1404,7 +1405,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       case a_MT_TM_SOUP_h:
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
-         mhp->mh_ptf = &htmlflt_process_main;
+         mhp->mh_ptf = &mx_flthtml_process_main;
          mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s =
                n_UNCONST(_("Built-in HTML tagsoup filter")));
          rv ^= MIME_HDL_NULL | MIME_HDL_PTF;

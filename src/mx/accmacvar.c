@@ -56,10 +56,15 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
+#include "mx/ui-str.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -76,7 +81,7 @@
 
 /* Note: changing the hash function must be reflected in `vexpr' "hash32",
  * because that is used by the hashtable creator scripts! */
-#define a_AMV_PRIME HSHSIZE
+#define a_AMV_PRIME 23 /* TODO cs_dict! */
 #define a_AMV_NAME2HASH(N) ((u32)su_cs_hash(N))
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
@@ -645,8 +650,8 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
 
    rv = FAL0;
 
-   if((fp = Ftmp(NULL, "deflist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL){
+   if((fp = mx_fs_tmp_open("deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`define' or `account' list: cannot create temporary file"), 0);
       goto jleave;
    }
@@ -682,7 +687,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
       page_or_print(fp, lc);
 
    rv = (ferror(fp) == 0);
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD2_OU;
    return rv;
@@ -1085,7 +1090,7 @@ jefrom:
          ok_bset(asksub);
          break;
       case ok_b_debug:
-         n_poption |= n_PO_DEBUG;
+         n_poption |= n_PO_D;
          su_log_set_level(su_LOG_DEBUG);
 # define a_DEBUG_MEMCONF su_MEM_CONF_DEBUG | su_MEM_CONF_LINGER_FREE
          su_DBG( su_mem_set_conf(a_DEBUG_MEMCONF, TRU1); )
@@ -1145,8 +1150,8 @@ jefrom:
          }
          break;
       case ok_b_verbose:
-         n_poption |= (n_poption & n_PO_VERB) ? n_PO_VERBVERB : n_PO_VERB;
-         if(!(n_poption & n_PO_DEBUG))
+         n_poption = (((n_poption & n_PO_V_MASK) << 1) & n_PO_V_MASK) | n_PO_V;
+         if(!(n_poption & n_PO_D))
             su_log_set_level(su_LOG_INFO);
          break;
       }
@@ -1158,8 +1163,8 @@ jefrom:
          ok_bclear(asksub);
          break;
       case ok_b_debug:
-         n_poption &= ~n_PO_DEBUG;
-         su_log_set_level((n_poption & n_PO_VERB) ? su_LOG_INFO : n_LOG_LEVEL);
+         n_poption &= ~n_PO_D;
+         su_log_set_level((n_poption & n_PO_V) ? su_LOG_INFO : n_LOG_LEVEL);
          su_DBG( if(!ok_blook(memdebug))
             su_mem_set_conf(a_DEBUG_MEMCONF, FAL0); )
          break;
@@ -1194,8 +1199,8 @@ jefrom:
          n_poption &= ~n_PO_E_FLAG;
          break;
       case ok_b_verbose:
-         n_poption &= ~(n_PO_VERB | n_PO_VERBVERB);
-         if(!(n_poption & n_PO_DEBUG))
+         n_poption &= ~n_PO_V_MASK;
+         if(!(n_poption & n_PO_D))
             su_log_set_level(n_LOG_LEVEL);
          break;
       }
@@ -1595,7 +1600,7 @@ jleave:
    avcp->avc_var = avp;
 j_leave:
    if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
-         UNLIKELY(n_poption & n_PO_VERBVERB) &&
+         UNLIKELY(n_poption & n_PO_VVV) &&
          avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
       /* I18N: Variable "name" is set to "value" */
       n_err(_("*%s* is %s\n"),
@@ -2290,7 +2295,8 @@ a_amv_var_show_all(void){
    char const **vacp, **cap;
    NYD2_IN;
 
-   if((fp = Ftmp(NULL, "setlist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((fp = mx_fs_tmp_open("setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`set' list: cannot create temporary file"), 0);
       goto jleave;
    }
@@ -2325,7 +2331,7 @@ a_amv_var_show_all(void){
    n_string_gut(&msg);
 
    page_or_print(fp, i);
-   Fclose(fp);
+   mx_fs_close(fp);
 jleave:
    NYD2_OU;
 }
@@ -2471,8 +2477,12 @@ jouter:
          struct a_amv_var_carrier avc;
          boole isunset;
 
-         if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o')))
+         if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o'))){
+            if(c != '\0')
+               n_err(_("Un`set'ting via \"no\" takes no value: %s=%s\n"),
+                  varbuf, n_shexp_quote_cp(cp, FAL0));
             varbuf = &varbuf[2];
+         }
 
          a_amv_var_revlookup(&avc, varbuf, TRU1);
 
@@ -2608,8 +2618,7 @@ c_account(void *v){
          struct a_amv_mac *amphook;
 
          if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
-            amcap = n_lofi_alloc(sizeof *amcap);
-            su_mem_set(amcap, 0, sizeof *amcap);
+            amcap = n_lofi_calloc(sizeof *amcap);
             amcap->amca_name = cp;
             amcap->amca_amp = amphook;
             amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
@@ -2638,8 +2647,7 @@ c_account(void *v){
    /* And switch to any non-"null" account */
    if(amp != NULL){
       ASSERT(amp->am_lopts == NULL);
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = amp->am_name;
       amcap->amca_amp = amp;
       amcap->amca_unroller = &amp->am_lopts;
@@ -2837,6 +2845,31 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    return rv;
 }
 
+FL void
+temporary_on_main_loop_tick_hook(void){ /* TODO temporary, v15: drop */
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_mac *amp;
+   char const *cp;
+   NYD_IN;
+
+   if((cp = ok_vlook(on_main_loop_tick)) != NIL){
+      if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
+         mx_sigs_all_rele();
+         amcap = n_lofi_calloc(sizeof *amcap);
+         amcap->amca_name = cp;
+         amcap->amca_amp = amp;
+         amcap->amca_ps_hook_mask = TRU1;
+         amcap->amca_no_xcall = TRU1;
+         n_pstate &= ~n_PS_HOOK_MASK;
+         n_pstate |= n_PS_HOOK;
+         a_amv_mac_exec(amcap);
+         mx_sigs_all_holdx();
+      }else
+         n_err(_("*on-main-loop-tick* macro does not exist: %s\n"), cp);
+   }
+   NYD_OU;
+}
+
 FL boole
 temporary_folder_hook_check(boole nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
@@ -2881,8 +2914,7 @@ jmac:
       goto jleave;
    }
 
-   amcap = n_lofi_alloc(sizeof *amcap);
-   su_mem_set(amcap, 0, sizeof *amcap);
+   amcap = n_lofi_calloc(sizeof *amcap);
    amcap->amca_name = cp;
    amcap->amca_amp = amp;
    n_pstate &= ~n_PS_HOOK_MASK;
@@ -2938,8 +2970,7 @@ temporary_compose_mode_hook_call(char const *macname,
       n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
          macname);
    else{
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = (macname != NULL) ? macname
             : "*on-compose-splice(-shell)?*";
       amcap->amca_amp = amp;
@@ -2954,8 +2985,7 @@ temporary_compose_mode_hook_call(char const *macname,
       if(macname != NULL)
          a_amv_mac_exec(amcap);
       else{
-         cmh_losp = n_lofi_alloc(sizeof *cmh_losp);
-         su_mem_set(cmh_losp, 0, sizeof *cmh_losp);
+         cmh_losp = n_lofi_calloc(sizeof *cmh_losp);
          cmh_losp->as_global_saved = a_amv_lopts;
          cmh_losp->as_lopts = *(cmh_losp->as_amcap = amcap)->amca_unroller;
          cmh_losp->as_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -3005,8 +3035,7 @@ temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
       argv[2] = histent;
       argv[3] = NULL;
 
-      amcap = n_lofi_alloc(sizeof *amcap);
-      su_mem_set(amcap, 0, sizeof *amcap);
+      amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = macname;
       amcap->amca_amp = amp;
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -3045,7 +3074,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    su_mem_set(&los, 0, sizeof los);
 
-   hold_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_holdx(); /* TODO DISLIKE! */
 
    los.as_global_saved = a_amv_lopts;
    los.as_amcap = &amca;
@@ -3056,7 +3085,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    a_amv_lopts = los.as_global_saved;
 
-   rele_all_sigs(); /* TODO DISLIKE! */
+   mx_sigs_all_rele(); /* TODO DISLIKE! */
 
    NYD_OU;
    return rv;
@@ -3067,6 +3096,7 @@ FL void
 n_var_setup_batch_mode(void){
    NYD2_IN;
    n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
+   n_poption |= n_PO_S_FLAG_TEMPORARY;
    ok_vset(MAIL, n_path_devnull);
    ok_vset(MBOX, n_path_devnull);
    ok_bset(emptystart);
@@ -3075,8 +3105,9 @@ n_var_setup_batch_mode(void){
    ok_vset(inbox, n_path_devnull);
    ok_bclear(posix);
    ok_bset(quiet);
-   ok_bset(sendwait);
+   ok_vset(sendwait, su_empty);
    ok_bset(typescript_mode);
+   n_poption &= ~n_PO_S_FLAG_TEMPORARY;
    n_pstate &= ~n_PS_ROBOT;
    NYD2_OU;
 }
@@ -3228,9 +3259,9 @@ n_var_vclear(char const *vokey){
    return ok;
 }
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 FL char *
-n_var_xoklook(enum okeys okey, struct url const *urlp,
+n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
       enum okey_xlook_mode oxm){
    struct a_amv_var_carrier avc;
    struct str const *usp;
@@ -3287,7 +3318,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
 FL int
 c_set(void *vp){
@@ -3395,15 +3426,15 @@ c_varedit(void *v){ /* TODO v15 drop */
 
       a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE);
 
-      if((of = Ftmp(NULL, "varedit", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL){
+      if((of = mx_fs_tmp_open("varedit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("`varedit': cannot create temporary file"), 0);
          err = 1;
          break;
       }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
             sizeof *val != fwrite(val, su_cs_len(val), sizeof *val, of)){
          n_perr(_("`varedit' failed to write old value to temporary file"), 0);
-         Fclose(of);
+         mx_fs_close(of);
          err = 1;
          continue;
       }
@@ -3411,7 +3442,7 @@ c_varedit(void *v){ /* TODO v15 drop */
       fflush_rewind(of);
       nf = n_run_editor(of, (off_t)-1, 'e', FAL0, NULL,NULL, SEND_MBOX, sigint,
             NULL);
-      Fclose(of);
+      mx_fs_close(of);
 
       if(nf != NULL){
          int c;
@@ -3439,7 +3470,7 @@ c_varedit(void *v){ /* TODO v15 drop */
          if(!a_amv_var_set(&avc, varres, a_AMV_VSETCLR_NONE))
             err = 1;
 
-         Fclose(nf);
+         mx_fs_close(nf);
       }else{
          n_err(_("`varedit': cannot start $EDITOR\n"));
          err = 1;

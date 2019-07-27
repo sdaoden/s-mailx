@@ -21,6 +21,8 @@
 #define su_HEADER
 #include <su/code-in.h>
 C_DECL_BEGIN
+/* A memset that is not optimized away */
+EXPORT_DATA void * (* volatile su_mem_set_volatile)(void*, int, uz);
 EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 EXPORT void *su_mem_copy(void *vp, void const *src, uz len);
 EXPORT void *su_mem_find(void const *vp, s32 what, uz len);
@@ -225,6 +227,9 @@ public:
    }
    static void *set(void *vp, s32 what, uz len){
       return su_mem_set(vp, what, len);
+   }
+   static void *set_volatile(void *vp, s32 what, uz len){
+      return (*su_mem_set_volatile)(vp, what, len);
    }
 public:
    struct johnny;

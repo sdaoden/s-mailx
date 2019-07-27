@@ -43,6 +43,10 @@
 
 #include <su/cs.h>
 
+#include "mx/child.h"
+#include "mx/net-pop3.h"
+#include "mx/tty.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -153,7 +157,7 @@ c_noop(void *v)
    switch (mb.mb_type) {
 #ifdef mx_HAVE_POP3
    case MB_POP3:
-      pop3_noop();
+      mx_pop3_noop();
       break;
 #endif
 #ifdef mx_HAVE_IMAP
@@ -205,8 +209,8 @@ c_remove(void *v)
          vl = su_cs_len(ename) + fmt_len +1;
          vb = n_autorec_alloc(vl);
          snprintf(vb, vl, fmt, ename);
-         asw = getapproval(vb, TRU1);
-         if (!asw)
+         asw = mx_tty_yesorno(vb, TRU1);
+         if(!asw)
             continue;
       }
 
@@ -358,7 +362,7 @@ c_folders(void *v){ /* TODO fexpand*/
          | FEXP_LOCAL
 #endif
       ;
-
+   struct mx_child_ctx cc;
    char const *cp;
    char **argv;
    int rv;
@@ -367,18 +371,25 @@ c_folders(void *v){ /* TODO fexpand*/
    rv = 1;
 
    if(*(argv = v) != NULL){
-      if((cp = fexpand(*argv, fexp)) == NULL)
+      if((cp = fexpand(*argv, fexp)) == NIL)
          goto jleave;
    }else
       cp = n_folder_query();
 
 #ifdef mx_HAVE_IMAP
-   if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
-      rv = imap_folders(cp, *argv == NULL);
+   if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
+      rv = imap_folders(cp, *argv == NIL);
    else
 #endif
-   rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
-         cp, NULL, NULL, NULL, NULL);
+       {
+      mx_child_ctx_setup(&cc);
+      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+      cc.cc_cmd = ok_vlook(LISTER);
+      cc.cc_args[0] = cp;
+      if(mx_child_run(&cc) && cc.cc_exit_status == 0)
+         rv = 0;
+   }
+
 jleave:
    NYD_OU;
    return rv;

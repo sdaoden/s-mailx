@@ -41,6 +41,8 @@
 # include <priv.h>
 #endif
 
+#include "mx/file-locks.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -58,7 +60,7 @@ boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 static void _ign_signal(int signum);
 static uz n_msleep(uz millis, boole ignint);
 
-#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
+#include "mx/file-dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
 static void
 _ign_signal(int signum){
@@ -102,10 +104,10 @@ n_msleep(uz millis, boole ignint){
 int
 main(int argc, char **argv){
    char hostbuf[64];
-   struct n_dotlock_info di;
+   struct mx_file_dotlock_info fdi;
    struct stat stb;
    sigset_t nset, oset;
-   enum n_dotlock_state dls;
+   enum mx_file_dotlock_state fdls;
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
    if(argc != 12 ||
@@ -123,7 +125,7 @@ main(int argc, char **argv){
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
       fprintf(stderr,
-         "This is a helper program of " VAL_UAGENT " (in " VAL_BINDIR ").\n"
+         "This is a helper program of " VAL_BINDIR "/" VAL_UAGENT ".\n"
          "  It is capable of gaining more privileges than " VAL_UAGENT "\n"
          "  and will be used to create lock files.\n"
          "  The sole purpose is outsourcing of high privileges into\n"
@@ -147,26 +149,27 @@ jeuse:
       argv[7] = hostbuf;
    }
 
-   di.di_file_name = argv[3];
-   di.di_lock_name = argv[5];
-   di.di_hostname = argv[7];
-   di.di_randstr = argv[9];
-   di.di_pollmsecs = (uz)strtoul(argv[11], NULL, 10);
+   fdi.fdi_file_name = argv[3];
+   fdi.fdi_lock_name = argv[5];
+   fdi.fdi_hostname = argv[7];
+   fdi.fdi_randstr = argv[9];
+   fdi.fdi_pollmsecs = S(uz,strtoul(argv[11], NULL, 10)); /* XXX SU */
 
    /* Ensure the lock name and the file name are identical */
    /* C99 */{
       uz i;
 
-      i = strlen(di.di_file_name);
-      if(i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
-            di.di_lock_name[i] == '\0' || strcmp(di.di_lock_name + i, ".lock"))
+      i = strlen(fdi.fdi_file_name);
+      if(i == 0 || strncmp(fdi.fdi_file_name, fdi.fdi_lock_name, i) ||
+            fdi.fdi_lock_name[i] == '\0' ||
+            strcmp(fdi.fdi_lock_name + i, ".lock"))
          goto jeuse;
    }
 
    /* Ensure that we got some random string, and some hostname.
     * a_dotlock_create() will later ensure that it will produce some string
-    * not-equal to .di_lock_name if it is called by us */
-   if(di.di_hostname[0] == '\0' || di.di_randstr[0] == '\0')
+    * not-equal to .fdi_lock_name if it is called by us */
+   if(fdi.fdi_hostname[0] == '\0' || fdi.fdi_randstr[0] == '\0')
       goto jeuse;
 
    close(STDERR_FILENO);
@@ -184,18 +187,18 @@ jeuse:
    sigdelset(&nset, SIGCONT); /* (Rather redundant, though) */
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
-   dls = n_DLS_NOPERM | n_DLS_ABANDON;
+   fdls = mx_FILE_DOTLOCK_STATE_NOPERM | mx_FILE_DOTLOCK_STATE_ABANDON;
 
    /* First of all: we only dotlock when the executing user has the necessary
     * rights to access the mailbox */
-   if(access(di.di_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
+   if(access(fdi.fdi_file_name, (argv[1][0] == 'r' ? R_OK : R_OK | W_OK)))
       goto jmsg;
 
    /* We need UID and GID information about the mailbox to lock */
-   if(stat(di.di_file_name, di.di_stb = &stb) == -1)
+   if(stat(fdi.fdi_file_name, fdi.fdi_stb = &stb) == -1)
       goto jmsg;
 
-   dls = n_DLS_PRIVFAILED | n_DLS_ABANDON;
+   fdls = mx_FILE_DOTLOCK_STATE_PRIVFAILED | mx_FILE_DOTLOCK_STATE_ABANDON;
 
    /* We are SETUID and do not want to become traced or being attached to */
 #if defined mx_HAVE_PRCTL_DUMPABLE
@@ -214,23 +217,23 @@ jeuse:
    if(setuid(geteuid()))
       goto jmsg;
 
-   dls = a_dotlock_create(&di);
+   fdls = a_file_lock_dotlock_create(&fdi);
 
    /* Finally: notify our parent about the actual lock state.. */
 jmsg:
-   write(STDOUT_FILENO, &dls, sizeof dls);
+   write(STDOUT_FILENO, &fdls, sizeof fdls);
    close(STDOUT_FILENO);
 
    /* ..then eventually wait until we shall remove the lock again, which will
     * be notified via the read returning */
-   if(dls == n_DLS_NONE){
-      read(STDIN_FILENO, &dls, sizeof dls);
+   if(fdls == mx_FILE_DOTLOCK_STATE_NONE){
+      read(STDIN_FILENO, &fdls, sizeof fdls);
 
-      unlink(di.di_lock_name);
+      unlink(fdi.fdi_lock_name);
    }
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   return (dls == n_DLS_NONE ? n_EXIT_OK : n_EXIT_ERR);
+   return (fdls == mx_FILE_DOTLOCK_STATE_NONE ? n_EXIT_OK : n_EXIT_ERR);
 }
 
 #include "su/code-ou.h"

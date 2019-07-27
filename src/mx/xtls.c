@@ -70,8 +70,15 @@ su_EMPTY_FILE()
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
+#include "mx/cred-auth.h"
+#include "mx/file-streams.h"
 #include "mx/names.h"
+#include "mx/net-socket.h"
+#include "mx/random.h"
+#include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -199,16 +206,15 @@ struct ssl_method { /* TODO v15 obsolete */
    char const  sm_map[16];
 };
 
-#ifndef mx_HAVE_XTLS_CONF_CTX
 struct a_xtls_protocol{
    char const xp_name[8];
    sl xp_op_no;               /* SSL_OP_NO_* bit */
    u16 xp_version;            /* *_VERSION number */
    boole xp_ok_minmaxproto;   /* Valid for {Min,Max}Protocol= */
    boole xp_ok_proto;         /* Valid for Protocol= */
-   u8 xp__dummy[4];
+   boole xp_last;
+   u8 xp__dummy[3];
 };
-#endif
 
 struct a_xtls_cipher{
    char const xc_name[8];
@@ -237,18 +243,16 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
 /* Update manual on change!
  * Ensure array size by adding \0 to longest entry.
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
-#ifndef mx_HAVE_XTLS_CONF_CTX
 static struct a_xtls_protocol const a_xtls_protocols[] = {
-   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
-   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, {0}},
-   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, {0}},
-   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, {0}},
-   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, {0}},
-   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, {0}}
+   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, {0}},
+   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, FAL0, {0}},
+   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, TRU1, {0}}
 };
-#endif /* mx_HAVE_XTLS_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
@@ -398,16 +402,17 @@ static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
 static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
 
 /* SSL_CTX configuration; the latter always NULLs *confp */
-static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
+static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp);
 static boole a_xtls_conf(void *confp, char const *cmd, char const *value);
 static boole a_xtls_conf_finish(void **confp, boole error);
 
-static boole a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
-static boole a_xtls_config_pairs(void *confp, struct url const *urlp);
-static boole a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
+static boole a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp);
+static boole a_xtls_config_pairs(void *confp, struct mx_url const *urlp);
+static boole a_xtls_load_verifications(SSL_CTX *ctxp,
+      struct mx_url const *urlp);
 
-static boole a_xtls_check_host(struct sock *sp, X509 *peercert,
-               struct url const *urlp);
+static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
+      struct mx_url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
                      n_XTLS_STACKOF(X509) *chain, X509_STORE *store);
@@ -477,23 +482,23 @@ a_xtls_rand_init(void){
    (void)RAND_load_file(cp, a_XTLS_RAND_LOAD_FILE_MAXBYTES);
 
    /* And feed in some data, then write the updated file.
-    * While this rather feeds the PRNG with itself in the n_RANDOM_IMPL_TLS
+    * While this rather feeds the PRNG with itself in the RANDOM_IMPL_TLS
     * case, let us stir the buffer a little bit.
     * Estimate a low but likely still too high number of entropy bytes, use
     * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
     * alphabet is a 6 bit one */
    for(x = (char*)-1;;){
-      RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
+      RAND_add(mx_random_create_buf(b64buf, sizeof(b64buf) -1, NIL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
       if((x = (char*)((up)x >> (1
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
          + 3
 # endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-# if mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
 # endif
@@ -763,7 +768,7 @@ jouter:
 
 #ifdef mx_HAVE_XTLS_CONF_CTX
 static void *
-a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp){
    char const *cp;
    SSL_CONF_CTX *sccp;
    NYD2_IN;
@@ -860,7 +865,7 @@ a_xtls_conf_finish(void **confp, boole error){
 # endif
 
 static void *
-a_xtls_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX* ctxp, struct mx_url const *urlp){
    char const *cp;
    NYD2_IN;
 
@@ -927,19 +932,14 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       goto jxerr;
 # else
       struct a_xtls_protocol const *xpp;
-      uz i;
 
-      for(i = 1 /* [0] == ALL */;;){
-         xpp = &a_xtls_protocols[i];
-
+      for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;;)
          if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name))
             break;
-
-         if(++i >= NELEM(a_xtls_protocols)){
+         else if((++xpp)->xp_last){
             emsg = N_("TLS: %s: unsupported element: %s\n");
             goto jxerr;
          }
-      }
 
       if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->xp_version)
             : SSL_CTX_set_min_proto_version(ctxp, xpp->xp_version)) != 1){
@@ -959,8 +959,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
+      struct a_xtls_protocol const *xpp;
       char *iolist, *cp, addin;
-      uz i;
       sl opts;
 
       opts = 0;
@@ -980,11 +980,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          default : break;
          }
 
-         for(i = 0;;){
-            struct a_xtls_protocol const *xpp;
-
-            xpp = &a_xtls_protocols[i];
-
+         for(xpp = &a_xtls_protocols[0];;){
             if(xpp->xp_ok_proto && !su_cs_cmp_case(cp, xpp->xp_name)){
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
@@ -992,9 +988,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
                else
                   opts &= ~xpp->xp_op_no;
                break;
-            }
-
-            if(++i >= NELEM(a_xtls_protocols)){
+            }else if((++xpp)->xp_last){
                emsg = N_("TLS: %s: unsupported element: %s\n");
                goto jxerr;
             }
@@ -1034,7 +1028,7 @@ a_xtls_conf_finish(void **confp, boole error){
 #endif /* !mx_HAVE_XTLS_CONF_CTX */
 
 static boole
-a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
+a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    char const *cp, *cp_base, *certchain;
    boole rv;
    NYD2_IN;
@@ -1120,7 +1114,7 @@ jleave:
 }
 
 static boole
-a_xtls_config_pairs(void *confp, struct url const *urlp){
+a_xtls_config_pairs(void *confp, struct mx_url const *urlp){
    /* Due to interdependencies some commands have to be delayed a bit */
    static char const cmdcert[] = "Certificate", cmdprivkey[] = "PrivateKey";
    char const *valcert, *valprivkey;
@@ -1227,7 +1221,7 @@ jleave:
 }
 
 static boole
-a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
    char *ca_dir, *ca_file;
    X509_STORE *store;
    boole rv;
@@ -1289,7 +1283,8 @@ jleave:
 }
 
 static boole
-a_xtls_check_host(struct sock *sop, X509 *peercert, struct url const *urlp){
+a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
+      struct mx_url const *urlp){
    char data[256];
    n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
@@ -1386,8 +1381,8 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
       break;
    }
 
-   if ((fp = Ftmp(NULL, "smimever", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((fp = mx_fs_tmp_open("smimever", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -1466,8 +1461,8 @@ jleave:
       BIO_free(fb);
    if (pkcs7 != NULL)
       PKCS7_free(pkcs7);
-   if (fp != NULL)
-      Fclose(fp);
+   if(fp != NIL)
+      mx_fs_close(fp);
    NYD_OU;
    return rv;
 }
@@ -1529,11 +1524,11 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 
    /* New-style */
    if(userdata != NULL){
-      struct url url;
-      struct ccred cred;
+      struct mx_url url;
+      struct mx_cred_ctx cred;
 
-      if(url_parse(&url, CPROTO_CCRED, userdata)){
-         if(ccred_lookup(&cred, &url)){
+      if(mx_url_parse(&url, CPROTO_CCRED, userdata)){
+         if(mx_cred_auth_lookup(&cred, &url)){
             char *end;
 
             if((end = su_cs_pcopy_n(buf, cred.cc_pass.s, size)) != NULL){
@@ -1547,7 +1542,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    }
 
    /* Old-style */
-   if ((pass = getpassword("PEM pass phrase:")) != NULL) {
+   if((pass = mx_tty_getpass("PEM pass phrase:")) != NIL){
       len = su_cs_len(pass);
       if (UCMP(z, len, >=, size))
          len = size -1;
@@ -1604,7 +1599,7 @@ jloop:
 jopen:
    if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
-   if ((fp = Fopen(cp, "r")) == NULL)
+   if((fp = mx_fs_open(cp, "r")) == NIL)
       n_perr(cp, 0);
 jleave:
    NYD_OU;
@@ -1659,7 +1654,7 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
    for (nfield = savestr(cfiles);
          (cfield = su_cs_sep_c(&nfield, ',', TRU1)) != NULL;) {
       if ((x = fexpand(cfield, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-            (fp = Fopen(cfield = x, "r")) == NULL) {
+            (fp = mx_fs_open(cfield = x, "r")) == NIL){
          n_perr(cfiles, 0);
          goto jerr;
       }
@@ -1667,11 +1662,11 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
             ) == NULL) {
          ssl_gen_err(_("Error reading certificate from %s"),
             n_shexp_quote_cp(cfield, FAL0));
-         Fclose(fp);
+         mx_fs_close(fp);
          goto jerr;
       }
       sk_X509_push(*chain, tmp);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
 
    if (sk_X509_num(*chain) == 0) {
@@ -1835,9 +1830,9 @@ jleave:
    return rv;
 }
 
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
 FL void
-n_tls_rand_bytes(void *buf, uz blen){
+mx_tls_rand_bytes(void *buf, uz blen){
    NYD2_IN;
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
@@ -1871,10 +1866,10 @@ n_tls_rand_bytes(void *buf, uz blen){
    }
    NYD2_OU;
 }
-#endif
+#endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
 
 FL boole
-n_tls_open(struct url *urlp, struct sock *sop){
+n_tls_open(struct mx_url *urlp, struct mx_socket *sop){
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
@@ -1938,8 +1933,8 @@ n_tls_open(struct url *urlp, struct sock *sop){
     * therefore i refrained from changing so much code just to check out
     * whether we are using SSLv3, which should become more and more rare */
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-   if((urlp->url_flags & n_URL_TLS_MASK) &&
-         (urlp->url_flags & n_URL_HOST_IS_NAME)){
+   if((urlp->url_flags & mx_URL_TLS_MASK) &&
+         (urlp->url_flags & mx_URL_HOST_IS_NAME)){
       if(!SSL_set_tlsext_host_name(sop->s_tls, urlp->url_host.s) &&
             (n_poption & n_PO_D_V))
          n_err(_("Hostname cannot be used with ServerNameIndication "
@@ -2017,6 +2012,19 @@ jpeer_leave:
       X509_free(peercert);
       if(!stay)
          goto jerr2;
+   }
+
+   if(n_poption & n_PO_D_V){
+      struct a_xtls_protocol const *xpp;
+      int ver;
+
+      ver = SSL_version(sop->s_tls);
+      for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;; ++xpp)
+         if(xpp->xp_version == ver || xpp->xp_last){
+            n_err(_("TLS connection using %s / %s\n"),
+               xpp->xp_name, SSL_get_cipher(sop->s_tls));
+            break;
+         }
    }
 
    sop->s_use_tls = 1;
@@ -2160,7 +2168,7 @@ smime_sign(FILE *ip, char const *addr)
       ssl_gen_err(_("Error reading signer certificate from"));
       goto jleave;
    }
-   Fclose(fp);
+   mx_fs_close(fp);
    fp = NULL;
 
    if ((name = _smime_sign_include_certs(addr)) != NULL &&
@@ -2172,8 +2180,8 @@ smime_sign(FILE *ip, char const *addr)
    if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
-   if ((sfp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((sfp = mx_fs_tmp_open("smimesign", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2237,14 +2245,14 @@ jleave:
       X509_free(cert);
    if (pkey != NULL)
       EVP_PKEY_free(pkey);
-   if (fp != NULL)
-      Fclose(fp);
-   if (hp != NULL)
-      Fclose(hp);
-   if (bp != NULL)
-      Fclose(bp);
-   if (sfp != NULL)
-      Fclose(sfp);
+   if(fp != NIL)
+      mx_fs_close(fp);
+   if(hp != NIL)
+      mx_fs_close(hp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(sfp != NIL)
+      mx_fs_close(sfp);
    NYD_OU;
    return rv;
 }
@@ -2273,7 +2281,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
 
-   if ((fp = Fopen(certfile, "r")) == NULL) {
+   if((fp = mx_fs_open(certfile, "r")) == NIL){
       n_perr(certfile, 0);
       goto jleave;
    }
@@ -2284,15 +2292,15 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
    if (bail)
       goto jleave;
-   Fclose(fp);
+   mx_fs_close(fp);
    fp = NULL;
    bail = FAL0;
 
    certs = sk_X509_new_null();
    sk_X509_push(certs, cert);
 
-   if ((yp = Ftmp(NULL, "smimeenc", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((yp = mx_fs_tmp_open("smimeenc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jerr1;
    }
@@ -2321,28 +2329,29 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    PKCS7_free(pkcs7);
 
 jerr2:
-   if (bb != NULL)
+   if(bb != NIL)
       BIO_free(bb);
-   if (yb != NULL)
+   if(yb != NIL)
       BIO_free(yb);
-   Fclose(bp);
-   bp = NULL;
-   if (!bail) {
+   mx_fs_close(bp);
+   bp = NIL;
+   if(!bail){
       fflush_rewind(yp);
       rv = smime_encrypt_assemble(hp, yp);
-      hp = yp = NULL;
+      hp = yp = NIL;
    }
 jerr1:
    sk_X509_pop_free(certs, X509_free);
+
 jleave:
-   if(yp != NULL)
-      Fclose(yp);
-   if(fp != NULL)
-      Fclose(fp);
-   if(bp != NULL)
-      Fclose(bp);
-   if(hp != NULL)
-      Fclose(hp);
+   if(yp != NIL)
+      mx_fs_close(yp);
+   if(fp != NIL)
+      mx_fs_close(fp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(hp != NIL)
+      mx_fs_close(hp);
    NYD_OU;
    return rv;
 }
@@ -2390,11 +2399,12 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
          goto jleave;
       }
 
-      Fclose(op);
+      mx_fs_close(op);
       op = NULL;
    }
 
-   if((op = Ftmp(NULL, "smimed", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((op = mx_fs_tmp_open("smimed", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2437,27 +2447,28 @@ jerr:
       goto jleave;
    }
    fflush_rewind(op);
-   Fclose(bp);
-   bp = NULL;
+
+   mx_fs_close(bp);
+   bp = NIL;
 
    rv = smime_decrypt_assemble(m, hp, op);
-   hp = op = NULL; /* xxx closed by decrypt_assemble */
+   hp = op = NIL; /* xxx closed by decrypt_assemble */
 jleave:
-   if(op != NULL)
-      Fclose(op);
-   if(hp != NULL)
-      Fclose(hp);
-   if(bp != NULL)
-      Fclose(bp);
-   if(bb != NULL)
+   if(op != NIL)
+      mx_fs_close(op);
+   if(hp != NIL)
+      mx_fs_close(hp);
+   if(bp != NIL)
+      mx_fs_close(bp);
+   if(bb != NIL)
       BIO_free(bb);
-   if(ob != NULL)
+   if(ob != NIL)
       BIO_free(ob);
-   if(pkcs7 != NULL)
+   if(pkcs7 != NIL)
       PKCS7_free(pkcs7);
-   if(cert != NULL)
+   if(cert != NIL)
       X509_free(cert);
-   if(pkey != NULL)
+   if(pkey != NIL)
       EVP_PKEY_free(pkey);
    NYD_OU;
    return rv;
@@ -2507,8 +2518,8 @@ jloop:
    }
    size = m->m_size;
 
-   if ((fp = Ftmp(NULL, "smimecert", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
+   if((fp = mx_fs_tmp_open("smimecert", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2522,18 +2533,18 @@ jloop:
    rewind(fp);
    if ((fb = BIO_new_fp(fp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err("Error creating BIO object for message %d", n);
-      Fclose(fp);
+      mx_fs_close(fp);
       goto jleave;
    }
 
    if ((pkcs7 = SMIME_read_PKCS7(fb, &pb)) == NULL) {
       ssl_gen_err(_("Error reading PKCS#7 object for message %d"), n);
       BIO_free(fb);
-      Fclose(fp);
+      mx_fs_close(fp);
       goto jleave;
    }
    BIO_free(fb);
-   Fclose(fp);
+   mx_fs_close(fp);
 
    certs = PKCS7_get0_signers(pkcs7, chain, 0);
    if (certs == NULL) {

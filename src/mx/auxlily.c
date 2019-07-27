@@ -43,29 +43,12 @@
 
 #include <sys/utsname.h>
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
 #  include <sys/socket.h>
 # endif
 
 # include <netdb.h>
-#endif
-
-#ifdef mx_HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#ifdef mx_HAVE_SETLOCALE
-# include <locale.h>
-#endif
-
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
-# define a_AUX_RAND_USE_BUILTIN
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-#  include n_RANDOM_GETRANDOM_H
-# endif
-# ifdef mx_HAVE_SCHED_YIELD
-#  include <sched.h>
-# endif
 #endif
 
 #ifdef mx_HAVE_IDNA
@@ -82,13 +65,15 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-# include <su/prime.h>
-#endif
-
-#include "mx/filetype.h"
+#include "mx/child.h"
+#include "mx/cmd-filetype.h"
+#include "mx/colour.h"
+#include "mx/file-streams.h"
+#include "mx/termios.h"
+#include "mx/tty.h"
 
 #ifdef mx_HAVE_IDNA
 # include "mx/iconv.h"
@@ -97,245 +82,51 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-union rand_state{
-   struct rand_arc4{
-      u8 _dat[256];
-      u8 _i;
-      u8 _j;
-      u8 __pad[6];
-   } a;
-   u8 b8[sizeof(struct rand_arc4)];
-   u32 b32[sizeof(struct rand_arc4) / sizeof(u32)];
-};
+/* */
+#ifdef mx_HAVE_ERRORS
+CTAV(mx_ERRORS_MAX > 1);
 #endif
 
-#ifdef mx_HAVE_ERRORS
+/* The difference in between mx_HAVE_ERRORS and not, is size of queue only */
 struct a_aux_err_node{
    struct a_aux_err_node *ae_next;
+   u32 ae_cnt;
+   boole ae_done;
+   u8 ae_pad[3];
+   uz ae_dumped_till;
    struct n_string ae_str;
 };
-#endif
-
-#ifdef a_AUX_RAND_USE_BUILTIN
-static union rand_state *a_aux_rand;
-#endif
 
 /* Error ring, for `errors' */
-#ifdef mx_HAVE_ERRORS
-static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
-#endif
-static uz a_aux_err_linelen;
+static struct a_aux_err_node *a_aux_err_head;
+static struct a_aux_err_node *a_aux_err_tail;
 
-/* Our ARC4 random generator with its completely unacademical pseudo
- * initialization (shall /dev/urandom fail) */
-#ifdef a_AUX_RAND_USE_BUILTIN
-static void a_aux_rand_init(void);
-su_SINLINE u8 a_aux_rand_get8(void);
-static u32 a_aux_rand_weak(u32 seed);
-#endif
+/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
+ * some environment variable that supports colour+ and set *env_addon to that,
+ * e.g., "LESS=FRSXi" */
+static char const *a_aux_pager_get(char const **env_addon);
 
-#ifdef a_AUX_RAND_USE_BUILTIN
-static void
-a_aux_rand_init(void){
-   union {int fd; uz i;} u;
-   NYD2_IN;
+static char const *
+a_aux_pager_get(char const **env_addon){
+   char const *rv;
+   NYD_IN;
 
-   a_aux_rand = n_alloc(sizeof *a_aux_rand);
+   rv = ok_vlook(PAGER);
 
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-   /* getrandom(2) guarantees 256 without su_ERR_INTR..
-    * However, support sequential reading to avoid possible hangs that have
-    * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
-    * mx_HAVE_GETRANDOM is #defined) */
-   LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer too large to be served without su_ERR_INTR error");
-   LCTA(sizeof(a_aux_rand->a._dat) >= 256,
-      "Buffer too small to serve used array indices");
-   /* C99 */{
-      uz o, i;
-
-      for(o = 0, i = sizeof a_aux_rand->a._dat;;){
-         sz gr;
-
-         gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
-         if(gr == -1 && su_err_no() == su_ERR_NOSYS)
-            break;
-         a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-               a_aux_rand->a._dat[84]]);
-         a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-               a_aux_rand->a._dat[42]]);
-         /* ..but be on the safe side */
-         if(gr > 0){
-            i -= (uz)gr;
-            if(i == 0)
-               goto jleave;
-            o += (uz)gr;
-         }
-         n_err(_("Not enough entropy for the "
-            "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
-         n_msleep(250, FAL0);
+   if(env_addon != NIL){
+      *env_addon = NIL;
+      /* Update the manual upon any changes:
+       *    *colour-pager*, $PAGER */
+      if(su_cs_find(rv, "less") != NIL){
+         if(getenv("LESS") == NIL)
+            *env_addon = "LESS=RXi";
+      }else if(su_cs_find(rv, "lv") != NIL){
+         if(getenv("LV") == NIL)
+            *env_addon = "LV=-c";
       }
    }
-
-# elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
-   if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
-      boole ok;
-
-      ok = (sizeof(a_aux_rand->a._dat) == (uz)read(u.fd,
-            a_aux_rand->a._dat, sizeof(a_aux_rand->a._dat)));
-      close(u.fd);
-
-      a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-            a_aux_rand->a._dat[84]]);
-      a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-            a_aux_rand->a._dat[42]]);
-      if(ok)
-         goto jleave;
-   }
-# elif mx_HAVE_RANDOM != n_RANDOM_IMPL_BUILTIN
-#  error a_aux_rand_init(): the value of mx_HAVE_RANDOM is not supported
-# endif
-
-   /* As a fallback, a homebrew seed */
-   if(n_poption & n_PO_D_V)
-      n_err(_("P(seudo)R(andom)N(umber)G(enerator): "
-         "creating homebrew seed\n"));
-   /* C99 */{
-# ifdef mx_HAVE_CLOCK_GETTIME
-      struct timespec ts;
-# else
-      struct timeval ts;
-# endif
-      boole slept;
-      u32 seed, rnd, t, k;
-
-      /* We first do three rounds, and then add onto that a (cramped) random
-       * number of rounds; in between we give up our timeslice once (from our
-       * point of view) */
-      seed = (up)a_aux_rand & U32_MAX;
-      rnd = 3;
-      slept = FAL0;
-
-      for(;;){
-         /* Stir the entire pool once */
-         for(u.i = NELEM(a_aux_rand->b32); u.i-- != 0;){
-
-# ifdef mx_HAVE_CLOCK_GETTIME
-            clock_gettime(CLOCK_REALTIME, &ts);
-            t = (u32)ts.tv_nsec;
-# else
-            gettimeofday(&ts, NULL);
-            t = (u32)ts.tv_usec;
-# endif
-            if(rnd & 1)
-               t = (t >> 16) | (t << 16);
-            a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
-            a_aux_rand->b32[t % NELEM(a_aux_rand->b32)] ^= seed;
-            if(rnd == 7 || rnd == 17)
-               a_aux_rand->b32[u.i] ^=
-                  a_aux_rand_weak(seed ^ (u32)ts.tv_sec);
-            k = a_aux_rand->b32[u.i] % NELEM(a_aux_rand->b32);
-            a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
-            seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
-            if((rnd & 3) == 3)
-               seed ^= su_prime_lookup_next(seed);
-         }
-
-         if(--rnd == 0){
-            if(slept)
-               break;
-            rnd = (a_aux_rand_get8() % 5) + 3;
-# ifdef mx_HAVE_SCHED_YIELD
-            sched_yield();
-# elif defined mx_HAVE_NANOSLEEP
-            ts.tv_sec = 0, ts.tv_nsec = 0;
-            nanosleep(&ts, NULL);
-# else
-            rnd += 10;
-# endif
-            slept = TRU1;
-         }
-      }
-
-      for(u.i = sizeof(a_aux_rand->b8) * ((a_aux_rand_get8() % 5)  + 1);
-            u.i != 0; --u.i)
-         a_aux_rand_get8();
-      goto jleave; /* (avoid unused warning) */
-   }
-jleave:
-   NYD2_OU;
-}
-
-su_SINLINE u8
-a_aux_rand_get8(void){
-   u8 si, sj;
-
-   si = a_aux_rand->a._dat[++a_aux_rand->a._i];
-   sj = a_aux_rand->a._dat[a_aux_rand->a._j += si];
-   a_aux_rand->a._dat[a_aux_rand->a._i] = sj;
-   a_aux_rand->a._dat[a_aux_rand->a._j] = si;
-   return a_aux_rand->a._dat[(u8)(si + sj)];
-}
-
-static u32
-a_aux_rand_weak(u32 seed){
-   /* From "Random number generators: good ones are hard to find",
-    * Park and Miller, Communications of the ACM, vol. 31, no. 10,
-    * October 1988, p. 1195.
-    * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
-   u32 hi;
-
-   if(seed == 0)
-      seed = 123459876;
-   hi =  seed /  127773;
-         seed %= 127773;
-   seed = (seed * 16807) - (hi * 2836);
-   if((s32)seed < 0)
-      seed += S32_MAX;
-   return seed;
-}
-#endif /* a_AUX_RAND_USE_BUILTIN */
-
-FL void
-n_locale_init(void){
-   NYD2_IN;
-
-   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
-
-#ifndef mx_HAVE_SETLOCALE
-   n_mb_cur_max = 1;
-#else
-   setlocale(LC_ALL, n_empty);
-   n_mb_cur_max = MB_CUR_MAX;
-# ifdef mx_HAVE_NL_LANGINFO
-   /* C99 */{
-      char const *cp;
-
-      if((cp = nl_langinfo(CODESET)) != NULL)
-         /* (Will log during startup if user set that via -S) */
-         ok_vset(ttycharset, cp);
-   }
-# endif /* mx_HAVE_SETLOCALE */
-
-# ifdef mx_HAVE_C90AMEND1
-   if(n_mb_cur_max > 1){
-#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
-      n_psonce |= n_PSO_UNICODE;
-#  else
-      wchar_t wc;
-      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         n_psonce |= n_PSO_UNICODE;
-      /* Reset possibly messed up state; luckily this also gives us an
-       * indication whether the encoding has locking shift state sequences */
-      if(mbtowc(&wc, NULL, n_mb_cur_max))
-         n_psonce |= n_PSO_ENC_MBSTATE;
-#  endif
-   }
-# endif
-#endif /* mx_HAVE_C90AMEND1 */
-   NYD2_OU;
+   NYD_OU;
+   return rv;
 }
 
 FL uz
@@ -344,12 +135,12 @@ n_screensize(void){
    uz rv;
    NYD2_IN;
 
-   if((cp = ok_vlook(screen)) != NULL){
-      su_idec_uz_cp(&rv, cp, 0, NULL);
+   if((cp = ok_vlook(screen)) != NIL){
+      su_idec_uz_cp(&rv, cp, 0, NIL);
       if(rv == 0)
-         rv = n_scrnheight;
+         rv = mx_termios_dimen.tiosd_height;
    }else
-      rv = n_scrnheight;
+      rv = mx_termios_dimen.tiosd_height;
 
    if(rv > 2)
       rv -= 2;
@@ -357,25 +148,30 @@ n_screensize(void){
    return rv;
 }
 
-FL char const *
-n_pager_get(char const **env_addon){
-   char const *rv;
+FL FILE *
+mx_pager_open(void){
+   char const *env_add[2], *pager;
+   FILE *rv;
    NYD_IN;
 
-   rv = ok_vlook(PAGER);
+   ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
-   if(env_addon != NULL){
-      *env_addon = NULL;
-      /* Update the manual upon any changes:
-       *    *colour-pager*, $PAGER */
-      if(su_cs_find(rv, "less") != NULL){
-         if(getenv("LESS") == NULL)
-            *env_addon = "LESS=RXi";
-      }else if(su_cs_find(rv, "lv") != NULL){
-         if(getenv("LV") == NULL)
-            *env_addon = "LV=-c";
-      }
-   }
+   pager = a_aux_pager_get(env_add + 0);
+   env_add[1] = NIL;
+
+   if((rv = mx_fs_pipe_open(pager, "w", NIL, env_add, mx_CHILD_FD_PASS)
+         ) == NIL)
+      n_perr(pager, 0);
+   NYD_OU;
+   return rv;
+}
+
+FL boole
+mx_pager_close(FILE *fp){
+   boole rv;
+   NYD_IN;
+
+   rv = mx_fs_pipe_close(fp, TRU1);
    NYD_OU;
    return rv;
 }
@@ -393,9 +189,12 @@ page_or_print(FILE *fp, uz lines)
       uz rows;
 
       if(*cp == '\0')
-         rows = (uz)n_scrnheight;
+         rows = mx_termios_dimen.tiosd_height;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
+      /* Avoid overflow later on */
+      if(rows == UZ_MAX)
+         --rows;
 
       if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
@@ -404,13 +203,18 @@ page_or_print(FILE *fp, uz lines)
          really_rewind(fp);
       }
 
-      if (lines >= rows) {
-         char const *env_add[2], *pager;
+      /* Take account for the follow-up prompt */
+      if(lines + 1 >= rows){
+         struct mx_child_ctx cc;
+         char const *env_addon[2];
 
-         pager = n_pager_get(&env_add[0]);
-         env_add[1] = NULL;
-         n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
-            env_add, NULL);
+         mx_child_ctx_setup(&cc);
+         cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+         cc.cc_fds[mx_CHILD_FD_IN] = fileno(fp);
+         cc.cc_cmd = a_aux_pager_get(&env_addon[0]);
+         env_addon[1] = NIL;
+         cc.cc_env_addon = env_addon;
+         mx_child_run(&cc);
          goto jleave;
       }
    }
@@ -603,7 +407,7 @@ n_nodename(boole mayoverride){
 
    struct utsname ut;
    char *hn;
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
    struct addrinfo hints, *res;
 # else
@@ -623,7 +427,7 @@ n_nodename(boole mayoverride){
       uname(&ut);
       hn = ut.nodename;
 
-#ifdef mx_HAVE_SOCKETS
+#ifdef mx_HAVE_NET
 # ifdef mx_HAVE_GETADDRINFO
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
@@ -644,7 +448,7 @@ n_nodename(boole mayoverride){
       if(hent != NULL)
          hn = hent->h_name;
 # endif
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
 
       /* Ensure it is non-empty! */
       if(hn[0] == '\0')
@@ -781,133 +585,6 @@ jleave:
 }
 #endif /* mx_HAVE_IDNA */
 
-FL char *
-n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null){
-   struct str b64;
-   char *indat, *cp, *oudat;
-   uz i, inlen, oulen;
-   NYD_IN;
-
-   if(!(n_psonce & n_PSO_RANDOM_INIT)){
-      n_psonce |= n_PSO_RANDOM_INIT;
-
-      if(n_poption & n_PO_D_V){
-         char const *prngn;
-
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_ARC4
-         prngn = "arc4random";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-         prngn = "*TLS RAND_*";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-         prngn = "getrandom(2/3) + builtin ARC4";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
-         prngn = "/dev/urandom + builtin ARC4";
-#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_BUILTIN
-         prngn = "builtin ARC4";
-#else
-# error n_random_create_buf(): the value of mx_HAVE_RANDOM is not supported
-#endif
-         n_err(_("P(seudo)R(andom)N(umber)G(enerator): %s\n"), prngn);
-      }
-
-#ifdef a_AUX_RAND_USE_BUILTIN
-      a_aux_rand_init();
-#endif
-   }
-
-   /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
-    * with PAD stripped is still longer than what the user requests, easy way.
-    * The relation of base64 is fixed 3 in = 4 out, and we do not want to
-    * include the base64 PAD characters in our random string: give some pad */
-   i = len;
-   if((inlen = i % 3) != 0)
-      i += 3 - inlen;
-jinc1:
-   inlen = i >> 2;
-   oulen = inlen << 2;
-   if(oulen < len){
-      i += 3;
-      goto jinc1;
-   }
-   inlen = inlen + (inlen << 1);
-
-   indat = n_lofi_alloc(inlen +1);
-
-   if(!su_state_has(su_STATE_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-      n_tls_rand_bytes(indat, inlen);
-#elif mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4
-      for(i = inlen; i-- > 0;)
-         indat[i] = (char)a_aux_rand_get8();
-#else
-      for(cp = indat, i = inlen; i > 0;){
-         union {u32 i4; char c[4];} r;
-         uz j;
-
-         r.i4 = (u32)arc4random();
-         switch((j = i & 3)){
-         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
-         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
-         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
-         default: cp[0] = r.c[0]; break;
-         }
-         cp += j;
-         i -= j;
-      }
-#endif
-   }else{
-      for(cp = indat, i = inlen; i > 0;){
-         union {u32 i4; char c[4];} r;
-         uz j;
-
-         r.i4 = ++*reprocnt_or_null;
-         if(su_BOM_IS_BIG()){ /* TODO BSWAP */
-            char x;
-
-            x = r.c[0];
-            r.c[0] = r.c[3];
-            r.c[3] = x;
-            x = r.c[1];
-            r.c[1] = r.c[2];
-            r.c[2] = x;
-         }
-         switch((j = i & 3)){
-         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
-         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
-         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
-         default: cp[0] = r.c[0]; break;
-         }
-         cp += j;
-         i -= j;
-      }
-   }
-
-   oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
-   b64.s = oudat;
-   b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
-   ASSERT(b64.l >= len);
-   su_mem_copy(dat, b64.s, len);
-   dat[len] = '\0';
-   if(oudat != dat)
-      n_lofi_free(oudat);
-
-   n_lofi_free(indat);
-
-   NYD_OU;
-   return dat;
-}
-
-FL char *
-n_random_create_cp(uz len, u32 *reprocnt_or_null){
-   char *dat;
-   NYD_IN;
-
-   dat = n_autorec_alloc(len +1);
-   dat = n_random_create_buf(dat, len, reprocnt_or_null);
-   NYD_OU;
-   return dat;
-}
-
 FL boole
 n_boolify(char const *inbuf, uz inlen, boole emptyrv){
    boole rv;
@@ -960,7 +637,7 @@ n_quadify(char const *inbuf, uz inlen, char const *prompt, boole emptyrv){
          !su_cs_cmp_case_n(inbuf, "ask-", 4) &&
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
-      rv = getapproval(prompt, rv);
+      rv = mx_tty_yesorno(prompt, rv);
    NYD2_OU;
    return rv;
 }
@@ -1138,182 +815,226 @@ n_err(char const *format, ...){
    NYD2_IN;
 
    va_start(ap, format);
-#ifdef mx_HAVE_ERRORS
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_verr(format, ap);
-   else
-#endif
-   {
-      uz len;
-      boole doname;
+   n_verrx(FAL0, format, ap);
+   va_end(ap);
+   NYD2_OU;
+}
 
-      doname = FAL0;
+FL void
+n_errx(boole allow_multiple, char const *format, ...){
+   va_list ap;
+   NYD2_IN;
 
-      while(*format == '\n'){
-         doname = TRU1;
-         putc('\n', n_stderr);
-         ++format;
-      }
-
-      if(doname)
-         a_aux_err_linelen = 0;
-
-      if((len = su_cs_len(format)) > 0){
-         if(doname || a_aux_err_linelen == 0){
-            char const *cp;
-
-            if(*(cp = ok_vlook(log_prefix)) != '\0')
-               fputs(cp, n_stderr);
-         }
-         vfprintf(n_stderr, format, ap);
-
-         /* C99 */{
-            uz i = len;
-            do{
-               if(format[--len] == '\n'){
-                  a_aux_err_linelen = (i -= ++len);
-                  break;
-               }
-               ++a_aux_err_linelen;
-            }while(len > 0);
-         }
-      }
-
-      fflush(n_stderr);
-   }
+   va_start(ap, format);
+   n_verrx(allow_multiple, format, ap);
    va_end(ap);
    NYD2_OU;
 }
 
 FL void
 n_verr(char const *format, va_list ap){
-#ifdef mx_HAVE_ERRORS
-   struct a_aux_err_node *enp;
-#endif
-   boole doname;
-   uz len;
+   NYD2_IN;
+   n_verrx(FAL0, format, ap);
+   NYD2_OU;
+}
+
+FL void
+n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
+   mx_COLOUR( static uz c5recur; ) /* *termcap* recursion */
+   struct str s_b, s;
+   struct a_aux_err_node *lenp, *enp;
+   sz i;
+   char const *lpref, *c5pref, *c5suff;
    NYD2_IN;
 
-   doname = FAL0;
+   mx_COLOUR( ++c5recur; )
+   lpref = NIL;
+   c5pref = c5suff = su_empty;
 
-   while(*format == '\n'){
-      putc('\n', n_stderr);
-      doname = TRU1;
-      ++format;
-   }
+   /* Fully expand the buffer (TODO use fmtenc) */
+#undef a_X
+#ifdef mx_HAVE_N_VA_COPY
+# define a_X 128
+#else
+# define a_X MIN(LINESIZE, 1024)
+#endif
+   mx_fs_linepool_aquire(&s_b.s, &s_b.l);
+   if(s_b.l < a_X)
+      s_b.l = a_X;
+   for(i = s_b.l;; s_b.l = ++i /* xxx could wrap, maybe */){
+#ifdef mx_HAVE_N_VA_COPY
+      va_list vac;
 
-   if(doname){
-      a_aux_err_linelen = 0;
-#ifdef mx_HAVE_ERRORS
-      if(n_psonce & n_PSO_INTERACTIVE){
-         if((enp = a_aux_err_tail) != NULL &&
-               (enp->ae_str.s_len > 0 &&
-                enp->ae_str.s_dat[enp->ae_str.s_len - 1] != '\n'))
-            n_string_push_c(&enp->ae_str, '\n');
+      n_va_copy(vac, ap);
+#else
+# define vac ap
+#endif
+
+      s_b.s = su_MEM_REALLOC(s_b.s, s_b.l);
+      i = vsnprintf(s_b.s, s_b.l, format, vac);
+
+#ifdef mx_HAVE_N_VA_COPY
+      va_end(vac);
+#else
+# undef vac
+#endif
+
+      if(i <= 0)
+         goto jleave;
+      if(UCMP(z, i, >=, s_b.l)){
+#ifdef mx_HAVE_N_VA_COPY
+         continue;
+#else
+         i = S(int,su_cs_len(s_b.s));
+#endif
       }
-#endif
+      break;
    }
+   s = s_b;
+   s.l = S(uz,i);
 
-   if((len = su_cs_len(format)) == 0)
-      goto jleave;
-#ifdef mx_HAVE_ERRORS
-   n_pstate |= n_PS_ERRORS_PROMPT;
-#endif
-
-   if(doname || a_aux_err_linelen == 0){
-      char const *cp;
-
-      if(*(cp = ok_vlook(log_prefix)) != '\0')
-         fputs(cp, n_stderr);
-   }
-
+   /* Remove control characters but \n as we do not makeprint() XXX config */
    /* C99 */{
-      uz i = len;
-      do{
-         if(format[--len] == '\n'){
-            a_aux_err_linelen = (i -= ++len);
-            break;
-         }
-         ++a_aux_err_linelen;
-      }while(len > 0);
+      char *ins, *curr, *max, c;
+
+      for(ins = curr = s.s, max = &ins[s.l]; curr < max; ++curr)
+         if(!su_cs_is_cntrl(c = *curr) || c == '\n')
+            *ins++ = c;
+      *ins = '\0';
+      s.l = P2UZ(ins - s.s);
    }
 
-#ifdef mx_HAVE_ERRORS
-   if(!(n_psonce & n_PSO_INTERACTIVE))
-#endif
-      vfprintf(n_stderr, format, ap);
-#ifdef mx_HAVE_ERRORS
-   else{
-      int imax, i;
-      LCTAV(ERRORS_MAX > 3);
+   /* We have the prepared error message, take it over line-by-line, possibly
+    * completing partly prepared one first */
+   n_pstate |= n_PS_ERRORS_PROMPT;
+   lpref = ok_vlook(log_prefix);
+#ifdef mx_HAVE_COLOUR
+   if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
+      struct str const *pref, *suff;
+      struct mx_colour_pen *cp;
 
-      /* Link it into the `errors' message ring */
-      if((enp = a_aux_err_tail) == NULL){
-jcreat:
-         enp = n_alloc(sizeof *enp);
-         enp->ae_next = NULL;
+      if((cp = mx_colour_get_pen(mx_COLOUR_GET_FORCED,
+               mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_ERROR, NIL)
+               ) != NIL && (pref = mx_colour_pen_get_cseq(cp)) != NIL &&
+            (suff = mx_colour_get_reset_cseq(mx_COLOUR_GET_FORCED)
+                  ) != NIL){
+         c5pref = pref->s;
+         c5suff = suff->s;
+      }
+   }
+#endif
+
+   for(i = 0; UCMP(z, i, <, s.l);){
+      char c, *cp;
+      boole fresh;
+
+      lenp = enp = a_aux_err_tail;
+      if((fresh = (enp == NIL || enp->ae_done))){
+         enp = su_TCALLOC(struct a_aux_err_node, 1);
+         enp->ae_cnt = 1;
          n_string_creat(&enp->ae_str);
-         if(a_aux_err_tail != NULL)
+
+         if(a_aux_err_tail != NIL)
             a_aux_err_tail->ae_next = enp;
          else
             a_aux_err_head = enp;
          a_aux_err_tail = enp;
-         ++n_pstate_err_cnt;
-      }else if(doname ||
-            (enp->ae_str.s_len > 0 &&
-             enp->ae_str.s_dat[enp->ae_str.s_len - 1] == '\n')){
-         if(n_pstate_err_cnt < ERRORS_MAX)
-            goto jcreat;
-
-         a_aux_err_head = (enp = a_aux_err_head)->ae_next;
-         a_aux_err_tail->ae_next = enp;
-         a_aux_err_tail = enp;
-         enp->ae_next = NULL;
-         n_string_trunc(&enp->ae_str, 0);
       }
 
-# ifdef mx_HAVE_N_VA_COPY
-      imax = 64;
-# else
-      imax = MIN(LINESIZE, 1024);
-# endif
-      for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
-# ifdef mx_HAVE_N_VA_COPY
-         va_list vac;
+      /* xxx if(!n_string_book(&enp->ae_str, s.l - i))
+       * xxx    goto jleave;*/
 
-         n_va_copy(vac, ap);
-# else
-#  define vac ap
-# endif
+      /* We have completed a line? */
+      /* C99 */{
+         uz oi, j, k;
 
-         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (uz)i);
-         i = vsnprintf(&enp->ae_str.s_dat[len], (uz)i, format, vac);
-# ifdef mx_HAVE_N_VA_COPY
-         va_end(vac);
-# else
-#  undef vac
-# endif
-         if(i <= 0)
-            goto jleave;
-         if(UCMP(z, i, >=, imax)){
-# ifdef mx_HAVE_N_VA_COPY
-            /* XXX Check overflow for upcoming LEN+++i! */
-            n_string_trunc(&enp->ae_str, len);
-            continue;
-# else
-            i = (int)su_cs_len(&enp->ae_str.s_dat[len]);
-# endif
+         oi = S(uz,i);
+         j = s.l - oi;
+         k = enp->ae_str.s_len;
+         cp = S(char*,su_mem_find(&s.s[oi], '\n', j));
+
+         if(cp == NIL){
+            n_string_push_buf(&enp->ae_str, &s.s[oi], j);
+            i = s.l;
+         }else{
+            j = P2UZ(cp - &s.s[oi]);
+            i += j + 1;
+            n_string_push_buf(&enp->ae_str, &s.s[oi], j);
          }
-         break;
-      }
-      n_string_trunc(&enp->ae_str, len + (uz)i);
 
-      fwrite(&enp->ae_str.s_dat[len], 1, (uz)i, n_stderr);
+         /* We need to write it out regardless of whether it is a complete line
+          * or not, say (for at least `echoerrn') TODO IO errors not handled */
+         if(cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)){
+            enp->ae_dumped_till = enp->ae_str.s_len;
+            fprintf(n_stderr, "%s%s%s%s%s",
+               c5pref, (fresh ? lpref : su_empty),
+               &n_string_cp(&enp->ae_str)[k], c5suff,
+               (cp != NIL ? "\n" : su_empty));
+            fflush(n_stderr);
+         }
+      }
+
+      if(cp == NIL)
+         continue;
+      enp->ae_done = TRU1;
+
+      /* Check whether it is identical to the last one dumped, in which case
+       * we throw it away and only increment the counter, as syslog would.
+       * If not, dump it out, if not already */
+      c = FAL0;
+      if(lenp != NIL){
+         if(lenp != enp &&
+               lenp->ae_str.s_len == enp->ae_str.s_len &&
+               !su_mem_cmp(lenp->ae_str.s_dat, enp->ae_str.s_dat,
+                  enp->ae_str.s_len)){
+            ++lenp->ae_cnt;
+            c = TRU1;
+         }
+         /* Otherwise, if the last error has a count, say so, unless it would
+          * soil and intermix display */
+         else if(lenp->ae_cnt > 1 && !allow_multiple &&
+               (n_psonce & n_PSO_INTERACTIVE)){
+            fprintf(n_stderr,
+               _("%s%s-- Last message occurred %u times --%s\n"),
+               c5pref, lpref, lenp->ae_cnt, c5suff);
+            fflush(n_stderr);
+         }
+      }
+
+      if(!c && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE) &&
+            enp->ae_dumped_till != enp->ae_str.s_len){
+         fprintf(n_stderr, "%s%s%s%s\n",
+            c5pref, ((fresh && enp->ae_dumped_till == 0) ? lpref : su_empty),
+            &n_string_cp(&enp->ae_str)[enp->ae_dumped_till], c5suff);
+         fflush(n_stderr);
+      }
+
+      if(c){
+         lenp->ae_next = NIL;
+         a_aux_err_tail = lenp;
+         n_string_gut(&enp->ae_str);
+         su_FREE(enp);
+         continue;
+      }
+
+#ifdef mx_HAVE_ERRORS
+      if(n_pstate_err_cnt < mx_ERRORS_MAX){
+         ++n_pstate_err_cnt;
+         continue;
+      }
+      a_aux_err_head = (lenp = a_aux_err_head)->ae_next;
+#else
+      a_aux_err_head = a_aux_err_tail = enp;
+#endif
+      if(lenp != NIL){
+         n_string_gut(&lenp->ae_str);
+         su_FREE(lenp);
+      }
    }
-#endif /* mx_HAVE_ERRORS */
 
 jleave:
-   fflush(n_stderr);
+   mx_fs_linepool_release(s_b.s, s_b.l);
+   mx_COLOUR( --c5recur; )
    NYD2_OU;
 }
 
@@ -1341,7 +1062,7 @@ n_perr(char const *msg, int errval){
       fmt = "%s: %s\n";
 
    e = (errval == 0) ? su_err_no() : errval;
-   n_err(fmt, msg, su_err_doc(e));
+   n_errx(FAL0, fmt, msg, su_err_doc(e));
    if(errval == 0)
       su_err_set_no(e);
    NYD2_OU;
@@ -1352,10 +1073,12 @@ n_alert(char const *format, ...){
    va_list ap;
    NYD2_IN;
 
-   n_err(a_aux_err_linelen > 0 ? _("\nAlert: ") : _("Alert: "));
+
+   n_err((a_aux_err_tail != NIL && !a_aux_err_tail->ae_done)
+      ? _("\nAlert: ") : _("Alert: "));
 
    va_start(ap, format);
-   n_verr(format, ap);
+   n_verrx(TRU1, format, ap);
    va_end(ap);
 
    n_err("\n");
@@ -1367,9 +1090,9 @@ n_panic(char const *format, ...){
    va_list ap;
    NYD2_IN;
 
-   if(a_aux_err_linelen > 0){
+   if(a_aux_err_tail != NIL && !a_aux_err_tail->ae_done){
+      a_aux_err_tail->ae_done = TRU1;
       putc('\n', n_stderr);
-      a_aux_err_linelen = 0;
    }
    fprintf(n_stderr, "%sPanic: ", ok_vlook(log_prefix));
 
@@ -1410,36 +1133,34 @@ jlist:{
       FILE *fp;
       uz i;
 
-      if(a_aux_err_head == NULL){
+      if(a_aux_err_head == NIL){
          fprintf(n_stderr, _("The error ring is empty\n"));
          goto jleave;
       }
 
-      if((fp = Ftmp(NULL, "errors", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL){
+      if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          fprintf(n_stderr, _("tmpfile"));
-         v = NULL;
+         v = NIL;
          goto jleave;
       }
 
-      for(i = 0, enp = a_aux_err_head; enp != NULL; enp = enp->ae_next)
-         fprintf(fp, "%4" PRIuZ ". %s", ++i, n_string_cp(&enp->ae_str));
-      /* We don't know whether last string ended with NL; be simple XXX */
-      putc('\n', fp);
+      for(i = 0, enp = a_aux_err_head; enp != NIL; enp = enp->ae_next)
+         fprintf(fp, "%4" PRIuZ "/%-3u %s\n",
+            ++i, enp->ae_cnt, n_string_cp(&enp->ae_str));
 
       page_or_print(fp, 0);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    /* FALLTHRU */
 
 jclear:
-   a_aux_err_tail = NULL;
+   a_aux_err_tail = NIL;
    n_pstate_err_cnt = 0;
-   a_aux_err_linelen = 0;
-   while((enp = a_aux_err_head) != NULL){
+   while((enp = a_aux_err_head) != NIL){
       a_aux_err_head = enp->ae_next;
       n_string_gut(&enp->ae_str);
-      n_free(enp);
+      su_FREE(enp);
    }
    goto jleave;
 }
@@ -1508,7 +1229,8 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    if(dp == NIL || (cnt = su_cs_dict_count(dp)) == 0)
       goto jleave;
 
-   su_cs_dict_statistics(dp);
+   if(n_poption & n_PO_D_V)
+      su_cs_dict_statistics(dp);
 
    /* TODO we need LOFI/AUTOREC TALLOC version which check overflow!!
     * TODO these then could _really_ return NIL... */
@@ -1585,7 +1307,8 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    rv = TRU1;
 
-   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+   if((fp = mx_fs_tmp_open(cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
    /* Create visual result */
@@ -1600,7 +1323,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
 
    NYD_OU;

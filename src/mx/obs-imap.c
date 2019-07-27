@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ IMAP v4r1 client following RFC 2060.
+ *@ TODO Anything. SASL-IR for more.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
@@ -57,9 +58,15 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cred-auth.h"
+#include "mx/cred-md5.h"
 #include "mx/iconv.h"
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
+#include "mx/net-socket.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -92,7 +99,7 @@ su_EMPTY_FILE()
       if (n_poption & n_PO_D_VV)\
          n_err(">>> %s", X);\
       mp->mb_active |= Y;\
-      if (swrite(&mp->mb_sock, X) == STOP) {\
+      if (mx_socket_write(mp->mb_sock, X) == STOP) {\
          ACTIONERR;\
       }\
    } else {\
@@ -183,8 +190,9 @@ static boole           _imap_rdonly;
 
 static char *imap_quotestr(char const *s);
 static char *imap_unquotestr(char const *s);
-static void imap_delim_init(struct mailbox *mp, struct url const *urlp);
-static char const *imap_path_normalize(struct mailbox *mp, char const *cp);
+static void imap_delim_init(struct mailbox *mp, struct mx_url const *urlp);
+static char const *a_imap_path_normalize(struct mailbox *mp, char const *cp,
+      boole look_delim); /* for `imapcodec' only! */
 /* Returns NULL on error */
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
@@ -201,23 +209,28 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static enum okay  imap_preauth(struct mailbox *mp, struct url *urlp);
+static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccred);
 static enum okay  imap_capability(struct mailbox *mp);
-static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #ifdef mx_HAVE_MD5
-static enum okay  imap_cram_md5(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_cram_md5(struct mailbox *mp,
+      struct mx_cred_ctx *ccred);
 #endif
-static enum okay  imap_login(struct mailbox *mp, struct ccred *ccred);
+static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
+static enum okay a_imap_oauthbearer(struct mailbox *mp,
+      struct mx_cred_ctx *ccp);
+static enum okay a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp);
 #ifdef mx_HAVE_GSSAPI
-static enum okay  _imap_gssapi(struct mailbox *mp, struct ccred *ccred);
+static enum okay  _imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred);
 #endif
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
-static boole     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
-                     struct url *urlp);
-static int _imap_setfile1(char const *who, struct url *urlp,
+static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
+                     struct mx_url *urlp);
+static int _imap_setfile1(char const *who, struct mx_url *urlp,
             enum fedit_mode fm, int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      uz expected, int need, const char *head,
@@ -318,7 +331,7 @@ jleave:
 }
 
 static void
-imap_delim_init(struct mailbox *mp, struct url const *urlp){
+imap_delim_init(struct mailbox *mp, struct mx_url const *urlp){
    uz i;
    char const *cp;
    NYD2_IN;
@@ -345,18 +358,27 @@ jcopy:
 }
 
 static char const *
-imap_path_normalize(struct mailbox *mp, char const *cp){
-   char *rv_base, *rv, dc2, dc, c, lc;
+a_imap_path_normalize(struct mailbox *mp, char const *cp, boole look_delim){
    char const *dcp;
+   boole dosrch;
+   char dc, *rv_base, *rv, c, lc;
    NYD2_IN;
+   ASSERT(mp == NIL || !look_delim);
+   ASSERT(!look_delim || mp == NIL);
 
-   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean "use
-    * exactly what i have specified" */
-   if(mp == NULL || mp->mb_imap_delim[0] == '\0')
-      dcp = &n_IMAP_DELIM[0];
-   else
-      dcp = &mp->mb_imap_delim[0];
-   dc2 = ((dc = *dcp) != '\0') ? *++dcp : dc;
+   /* Unless we operate in free fly, honour a non-set *imap-delim* to mean
+    * "use exactly what i have specified" */
+   if(mp == NIL){
+      if(look_delim && (dcp = ok_vlook(imap_delim)) != NIL)
+         dc = *dcp;
+      else{
+         dcp = n_IMAP_DELIM;
+         dc = '\0';
+      }
+   }else if((dc = (dcp = mp->mb_imap_delim)[0]) == '\0')
+      dcp = n_IMAP_DELIM;
+
+   dosrch = (dcp[1] != '\0');
 
    /* Plain names don't need path quoting */
    /* C99 */{
@@ -366,14 +388,16 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
       for(cpx = cp;; ++cpx)
          if((c = *cpx) == '\0')
             goto jleave;
+         /* Without *imap-delim*, use the first separator discovered in path */
          else if(dc == '\0'){
-            if(su_cs_find_c(n_IMAP_DELIM, c)){
+            ASSERT(!su_cs_cmp(dcp, n_IMAP_DELIM));
+            if(su_cs_find_c(dcp, c)){
                dc = c;
                break;
             }
          }else if(c == dc)
             break;
-         else if(dc2 && su_cs_find_c(dcp, c) != NULL)
+         else if(dosrch && su_cs_find_c(dcp, c) != NIL)
             break;
 
       /* And we don't need to reevaluate what we have seen yet */
@@ -388,7 +412,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
 
    /* Squeeze adjacent delimiters, convert remain to dc */
    for(lc = '\0'; (c = *cp++) != '\0'; lc = c){
-      if(c == dc || (lc != '\0' && dc2 && su_cs_find_c(dcp, c) != NULL))
+      if(c != dc && dosrch && su_cs_find_c(dcp, c) != NIL)
          c = dc;
       if(c != dc || lc != dc)
          *rv++ = c;
@@ -764,7 +788,7 @@ imap_path_quote(struct mailbox *mp, char const *cp){
    char *rv;
    NYD2_IN;
 
-   cp = imap_path_normalize(mp, cp);
+   cp = a_imap_path_normalize(mp, cp, FAL0);
    cp = imap_path_encode(cp, &err);
    rv = err ? NULL : imap_quotestr(cp);
    NYD2_OU;
@@ -922,7 +946,7 @@ imap_answer(struct mailbox *mp, int errprnt)
       goto jleave;
    rv = STOP;
 jagain:
-   if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
+   if (mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock) > 0) {
       if (n_poption & n_PO_D_VV)
          n_err(">>> SERVER: %s", imapbuf);
       imap_response_parse();
@@ -1057,7 +1081,8 @@ static enum okay
 imap_finish(struct mailbox *mp)
 {
    NYD_IN;
-   while (mp->mb_sock.s_fd > 0 && mp->mb_active & MB_COMD)
+   while(mp->mb_sock != NIL && mp->mb_sock->s_fd > 0 &&
+         (mp->mb_active & MB_COMD))
       imap_answer(mp, 1);
    NYD_OU;
    return OKAY;
@@ -1315,7 +1340,8 @@ jleave:
 }
 
 static enum okay
-imap_preauth(struct mailbox *mp, struct url *urlp)
+imap_preauth(struct mailbox *mp, struct mx_url *urlp,
+   struct mx_cred_ctx *ccred)
 {
    NYD;
 
@@ -1323,18 +1349,25 @@ imap_preauth(struct mailbox *mp, struct url *urlp)
    imap_answer(mp, 1);
 
 #ifdef mx_HAVE_TLS
-   if (!mp->mb_sock.s_use_tls && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
-      FILE *queuefp = NULL;
-      char o[LINESIZE];
+   if(!mp->mb_sock->s_use_tls){
+      if(xok_blook(imap_use_starttls, urlp, OXM_ALL)){
+         FILE *queuefp = NULL;
+         char o[LINESIZE];
 
-      snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
-      IMAP_OUT(o, MB_COMD, return STOP)
-      IMAP_ANSWER()
-      if(!n_tls_open(urlp, &mp->mb_sock))
+         snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
+         IMAP_OUT(o, MB_COMD, return STOP)
+         IMAP_ANSWER()
+         if(!n_tls_open(urlp, mp->mb_sock))
+            return STOP;
+      }else if(ccred->cc_needs_tls){
+         n_err(_("IMAP authentication %s needs TLS "
+            "(*imap-use-starttls* set?)\n"),
+            ccred->cc_auth);
          return STOP;
+      }
    }
 #else
-   if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
+   if(ccred->cc_needs_tls || xok_blook(imap_use_starttls, urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       return STOP;
    }
@@ -1366,6 +1399,9 @@ imap_capability(struct mailbox *mp)
             if (strncmp(cp, "UIDPLUS", 7) == 0 && su_cs_is_space(cp[7]))
                /* RFC 2359 */
                mp->mb_flags |= MB_UIDPLUS;
+            else if(strncmp(cp, "SASL-IR ", 7) == 0 && su_cs_is_space(cp[7]))
+               /* RFC 4959 */
+               mp->mb_flags |= MB_SASL_IR;
             while (*cp && !su_cs_is_space(*cp))
                ++cp;
          }
@@ -1375,7 +1411,7 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay
-imap_auth(struct mailbox *mp, struct ccred *ccred)
+imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    enum okay rv;
    NYD_IN;
@@ -1386,16 +1422,22 @@ imap_auth(struct mailbox *mp, struct ccred *ccred)
    }
 
    switch (ccred->cc_authtype) {
-   case AUTHTYPE_LOGIN:
+   case mx_CRED_AUTHTYPE_LOGIN:
       rv = imap_login(mp, ccred);
       break;
+   case mx_CRED_AUTHTYPE_OAUTHBEARER:
+      rv = a_imap_oauthbearer(mp, ccred);
+      break;
+   case mx_CRED_AUTHTYPE_EXTERNAL:
+      rv = a_imap_external(mp, ccred);
+      break;
 #ifdef mx_HAVE_MD5
-   case AUTHTYPE_CRAM_MD5:
+   case mx_CRED_AUTHTYPE_CRAM_MD5:
       rv = imap_cram_md5(mp, ccred);
       break;
 #endif
 #ifdef mx_HAVE_GSSAPI
-   case AUTHTYPE_GSSAPI:
+   case mx_CRED_AUTHTYPE_GSSAPI:
       rv = _imap_gssapi(mp, ccred);
       break;
 #endif
@@ -1410,7 +1452,7 @@ jleave:
 
 #ifdef mx_HAVE_MD5
 static enum okay
-imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
+imap_cram_md5(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE], *cp;
    FILE *queuefp = NULL;
@@ -1423,7 +1465,7 @@ imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
    if (response_type != RESPONSE_CONT)
       goto jleave;
 
-   cp = cram_md5_string(&ccred->cc_user, &ccred->cc_pass, responded_text);
+   cp = mx_md5_cram_string(&ccred->cc_user, &ccred->cc_pass, responded_text);
    if(cp == NULL)
       goto jleave;
    IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
@@ -1436,7 +1478,7 @@ jleave:
 #endif /* mx_HAVE_MD5 */
 
 static enum okay
-imap_login(struct mailbox *mp, struct ccred *ccred)
+imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE];
    FILE *queuefp = NULL;
@@ -1444,11 +1486,165 @@ imap_login(struct mailbox *mp, struct ccred *ccred)
    NYD_IN;
 
    snprintf(o, sizeof o, "%s LOGIN %s %s\r\n",
-      tag(1), imap_quotestr(ccred->cc_user.s), imap_quotestr(ccred->cc_pass.s));
+      tag(1), imap_quotestr(ccred->cc_user.s),
+      imap_quotestr(ccred->cc_pass.s));
    IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
    while (mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
 jleave:
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_imap_oauthbearer(struct mailbox *mp, struct mx_cred_ctx *ccp){
+   struct str b64;
+   int i;
+   uz cnt;
+   boole nsaslir;
+   char *cp;
+   FILE *queuefp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   queuefp = NIL;
+   cp = NIL;
+   nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* Calculate required storage */
+   cnt = ccp->cc_user.l;
+#define a_MAX \
+   (sizeof("T1 ") -1 +\
+   sizeof("AUTHENTICATE XOAUTH2 ") -1 +\
+    2 + sizeof("user=\001auth=Bearer \001\001") -1 +\
+    sizeof(NETNL) -1 +1)
+
+   if(ccp->cc_pass.l >= UZ_MAX - a_MAX ||
+         cnt >= UZ_MAX - a_MAX - ccp->cc_pass.l){
+jerr_cred:
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto jleave;
+   }
+   cnt += ccp->cc_pass.l;
+
+   cnt += a_MAX;
+#undef a_MAX
+   if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
+      goto jerr_cred;
+
+   cp = n_lofi_alloc(cnt +1);
+
+   /* Then create login query */
+   i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
+         ccp->cc_user.s, ccp->cc_pass.s);
+   if(b64_encode_buf(&b64, cp, i, B64_SALLOC) == NIL)
+      goto jleave;
+   else{
+      char const *tp;
+
+      tp = tag(TRU1);
+      cnt = su_cs_len(tp);
+      su_mem_copy(cp, tp, cnt);
+   }
+   su_mem_copy(&cp[cnt], " AUTHENTICATE XOAUTH2 ",
+      sizeof(" AUTHENTICATE XOAUTH2 ") /*-1*/);
+   cnt += sizeof(" AUTHENTICATE XOAUTH2 ") -1 - 1;
+   if(!nsaslir){
+      su_mem_copy(&cp[++cnt], b64.s, b64.l);
+      cnt += b64.l;
+   }
+   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
+
+   IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   rv = imap_answer(mp, 1);
+   if(rv == STOP)
+      goto jleave;
+
+   if(nsaslir){
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+
+      su_mem_copy(cp, b64.s, b64.l);
+      su_mem_copy(&cp[b64.l], NETNL, sizeof(NETNL));
+      IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
+   }
+
+   while(mp->mb_active & MB_COMD)
+      rv = imap_answer(mp, 1);
+jleave:
+   if(cp != NIL)
+      n_lofi_free(cp);
+   NYD_OU;
+   return rv;
+}
+
+static enum okay
+a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
+   uz cnt;
+   boole nsaslir;
+   char *cp;
+   FILE *queuefp;
+   enum okay rv;
+   NYD_IN;
+
+   rv = STOP;
+   queuefp = NIL;
+   cp = NIL;
+   nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* Calculate required storage */
+   cnt = ccp->cc_user.l;
+#define a_MAX \
+   (sizeof("T1 ") -1 +\
+   sizeof("AUTHENTICATE EXTERNAL ") -1 +\
+    sizeof(NETNL) -1 +1)
+
+   if(cnt >= UZ_MAX - a_MAX){
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto jleave;
+   }
+
+   cnt += a_MAX;
+#undef a_MAX
+
+   cp = n_lofi_alloc(cnt +1);
+
+   /* C99 */{
+      char const *tp;
+
+      tp = tag(TRU1);
+      cnt = su_cs_len(tp);
+      su_mem_copy(cp, tp, cnt);
+   }
+   su_mem_copy(&cp[cnt], " AUTHENTICATE EXTERNAL ",
+      sizeof(" AUTHENTICATE EXTERNAL ") /*-1*/);
+   cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
+   if(!nsaslir){
+      su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
+      cnt += ccp->cc_user.l;
+   }
+   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
+
+   IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   rv = imap_answer(mp, 1);
+   if(rv == STOP)
+      goto jleave;
+
+   if(nsaslir){
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+
+      su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
+      su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
+      IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
+   }
+
+   while(mp->mb_active & MB_COMD)
+      rv = imap_answer(mp, 1);
+jleave:
+   if(cp != NIL)
+      n_lofi_free(cp);
    NYD_OU;
    return rv;
 }
@@ -1641,16 +1837,16 @@ FL int
 imap_setfile(char const * volatile who, const char *xserver,
    enum fedit_mode fm)
 {
-   struct url url;
+   struct mx_url url;
    int rv;
    NYD_IN;
 
-   if (!url_parse(&url, CPROTO_IMAP, xserver)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, xserver)){
       rv = 1;
       goto jleave;
    }
-   if (ok_vlook(v15_compat) == su_NIL &&
-         (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
+   if (ok_vlook(v15_compat) == NIL &&
+         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
@@ -1661,16 +1857,17 @@ jleave:
 }
 
 static boole
-_imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
+_imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
+   struct mx_url *urlp)
 {
    boole rv = FAL0;
    NYD_IN;
 
    if (ok_vlook(v15_compat) != su_NIL)
-      rv = ccred_lookup(ccredp, urlp);
+      rv = mx_cred_auth_lookup(ccredp, urlp);
    else {
       char *var, *old,
-         *xuhp = ((urlp->url_flags & n_URL_HAD_USER) ? urlp->url_eu_h_p.s
+         *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
                : urlp->url_u_h_p.s);
 
       if ((var = mbp->mb_imap_pass) != NULL) {
@@ -1679,7 +1876,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
             old = su_cs_dup(old, 0);
          n_var_vset(var, (up)mbp->mb_imap_pass);
       }
-      rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
+      rv = mx_cred_auth_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
          if (old != NULL) {
             n_var_vset(var, (up)old);
@@ -1694,11 +1891,11 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(char const * volatile who, struct url *urlp,
+_imap_setfile1(char const * volatile who, struct mx_url *urlp,
    enum fedit_mode volatile fm, int volatile transparent)
 {
-   struct sock so;
-   struct ccred ccred;
+   struct mx_socket so;
+   struct mx_cred_ctx ccred;
    n_sighdl_t volatile saveint, savepipe;
    char const *cp;
    int rv;
@@ -1721,7 +1918,7 @@ _imap_setfile1(char const * volatile who, struct url *urlp,
    same_imap_account = 0;
    if (mb.mb_imap_account != NULL &&
          (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)) {
-      if (mb.mb_sock.s_fd > 0 && mb.mb_sock.s_rsz >= 0 &&
+      if(mb.mb_sock != NIL && mb.mb_sock->s_fd > 0 && mb.mb_sock->s_rsz >= 0 &&
             !su_cs_cmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
             disconnected(mb.mb_imap_account) == 0) {
          same_imap_account = 1;
@@ -1750,13 +1947,14 @@ jduppass:
    su_mem_set(&so, 0, sizeof so);
    so.s_fd = -1;
    if (!same_imap_account) {
-      if (!disconnected(urlp->url_p_eu_h_p) && !sopen(&so, urlp)) {
+      if (!disconnected(urlp->url_p_eu_h_p) && !mx_socket_open(&so, urlp)) {
          rv = -1;
          goto jleave;
       }
-   } else
-      so = mb.mb_sock;
-   if (!transparent) {
+   }else if(mb.mb_sock != NIL)
+      so = *mb.mb_sock;
+
+   if(!transparent){
       if(!quit(FAL0)){
          rv = -1;
          goto jleave;
@@ -1776,9 +1974,11 @@ jduppass:
     * TODO object, and mailbox will naturally have an URL and credentials */
    mb.mb_imap_pass = su_cs_dup_cbuf(ccred.cc_pass.s, ccred.cc_pass.l, 0);
 
-   if (!same_imap_account) {
-      if (mb.mb_sock.s_fd >= 0)
-         sclose(&mb.mb_sock);
+   if(!same_imap_account && mb.mb_sock != NIL){
+      if(mb.mb_sock->s_fd >= 0)
+         mx_socket_close(mb.mb_sock);
+      su_FREE(mb.mb_sock);
+      mb.mb_sock = NIL;
    }
    same_imap_account = 0;
 
@@ -1795,8 +1995,8 @@ jduppass:
          n_free(mb.mb_imap_mailbox);
       ASSERT(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
-      mb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mb,
-            urlp->url_path.s), 0);
+      mb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&mb,
+            urlp->url_path.s, FAL0), 0);
       initbox(savecatsep(urlp->url_p_eu_h_p,
          (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
          mb.mb_imap_mailbox));
@@ -1809,7 +2009,12 @@ jduppass:
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if (sigsetjmp(imapjmp, 1)) {
       /* Not safe to use &so; save to use mb.mb_sock?? :-( TODO */
-      sclose(&mb.mb_sock);
+      if(mb.mb_sock != NIL){
+         if(mb.mb_sock->s_fd >= 0)
+            mx_socket_close(mb.mb_sock);
+         su_FREE(mb.mb_sock);
+         mb.mb_sock = NIL;
+      }
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
       imaplock = 0;
@@ -1824,7 +2029,7 @@ jduppass:
    if (savepipe != SIG_IGN)
       safe_signal(SIGPIPE, imapcatch);
 
-   if (mb.mb_sock.s_fd < 0) {
+   if(mb.mb_sock == NIL || mb.mb_sock->s_fd < 0){
       if (disconnected(mb.mb_imap_account)) {
          if (cache_setptr(fm, transparent) == STOP)
             n_err(_("Mailbox \"%s\" is not cached\n"), urlp->url_p_eu_h_p_p);
@@ -1837,11 +2042,17 @@ jduppass:
          }
       }
 
-      mb.mb_sock = so;
-      mb.mb_sock.s_desc = "IMAP";
-      mb.mb_sock.s_onclose = imap_timer_off;
-      if (imap_preauth(&mb, urlp) != OKAY || imap_auth(&mb, &ccred) != OKAY) {
-         sclose(&mb.mb_sock);
+      if(mb.mb_sock == NIL)
+         mb.mb_sock = su_TALLOC(struct mx_socket, 1);
+      *mb.mb_sock = so;
+      mb.mb_sock->s_desc = "IMAP";
+      mb.mb_sock->s_onclose = imap_timer_off;
+      if (imap_preauth(&mb, urlp, &ccred) != OKAY ||
+            imap_auth(&mb, &ccred) != OKAY) {
+         if(mb.mb_sock->s_fd >= 0)
+            mx_socket_close(mb.mb_sock);
+         su_FREE(mb.mb_sock);
+         mb.mb_sock = NIL;
          imap_timer_off();
          safe_signal(SIGINT, saveint);
          safe_signal(SIGPIPE, savepipe);
@@ -1859,8 +2070,10 @@ jduppass:
    cache_dequeue(&mb);
    ASSERT(urlp->url_path.s != NULL);
    if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
-      /*sclose(&mb.mb_sock);
-      imap_timer_off();*/
+      mx_socket_close(mb.mb_sock);
+      su_FREE(mb.mb_sock);
+      mb.mb_sock = NIL;
+      /*imap_timer_off();*/
       safe_signal(SIGINT, saveint);
       safe_signal(SIGPIPE, savepipe);
       imaplock = 0;
@@ -1935,7 +2148,7 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
    if (head)
       fwrite(head, 1, headsize, mp->mb_otf);
 
-   while (sgetline(&line, &linesize, &linelen, &mp->mb_sock) > 0) {
+   while (mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0) {
       lp = line;
       if (linelen > expected) {
          excess = linelen - expected;
@@ -2079,7 +2292,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       return STOP;
    }
 
-   if (mp->mb_sock.s_fd < 0) {
+   if(mp->mb_sock == NIL || mp->mb_sock->s_fd < 0){
       n_err(_("IMAP connection closed\n"));
       return STOP;
    }
@@ -2177,8 +2390,10 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          commitmsg(mp, m, &mt, mt.m_content_info);
          break;
       }
-      if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-         if (n_poption & n_PO_VERBVERB)
+      if (n == -1 &&
+            mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock
+               ) > 0) {
+         if (n_poption & n_PO_VV)
             fputs(imapbuf, stderr);
          if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
@@ -2312,8 +2527,9 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
       imap_fetchdata(mp, &mt, expected, NEED_HEADER, NULL, 0, 0);
       if (n >= 0 && !(m[n-1].m_content_info & CI_HAVE_HEADER))
          commitmsg(mp, &m[n-1], &mt, CI_HAVE_HEADER);
-      if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-         if (n_poption & n_PO_VERBVERB)
+      if(n == -1 &&
+            mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock) > 0){
+         if (n_poption & n_PO_VV)
             fputs(imapbuf, stderr);
          if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             u64 uid;
@@ -2425,7 +2641,12 @@ imap_exit(struct mailbox *mp)
    mp->mb_cache_directory = NULL;
 #endif
 #endif
-   sclose(&mp->mb_sock);
+   if(mp->mb_sock != NIL){
+      if(mp->mb_sock->s_fd >= 0)
+         mx_socket_close(mp->mb_sock);
+      su_FREE(mp->mb_sock);
+      mp->mb_sock = NIL;
+   }
    NYD_OU;
    return rv;
 }
@@ -2585,7 +2806,7 @@ imap_quit(boole hold_sigs_on)
 
    rv = FAL0;
 
-   if (mb.mb_sock.s_fd < 0) {
+   if(mb.mb_sock == NIL || mb.mb_sock->s_fd < 0){
       n_err(_("IMAP connection closed\n"));
       goto jleave;
    }
@@ -2641,8 +2862,9 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
       IMAP_ANSWER()
    else
       mb.mb_active &= ~MB_COMD;
-   if (queuefp != NULL)
-      Fclose(queuefp);
+
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
    return OKAY;
 }
 
@@ -2729,7 +2951,7 @@ c_imapcodec(void *vp){
       ++cp;
 
    n_pstate_err_no = su_ERR_NONE;
-   varres = imap_path_normalize(NULL, cp);
+   varres = a_imap_path_normalize(NULL, cp, TRU1);
 
    if(su_cs_starts_with_case_n("encode", act, alen))
       varres = imap_path_encode(varres, &err);
@@ -2964,13 +3186,13 @@ jagain:
       buf[buflen - 1] = '\r';
       buf[buflen] = '\n';
       if (mp->mb_type != MB_CACHE)
-         swrite1(&mp->mb_sock, buf, buflen+1, 1);
+         mx_socket_write1(mp->mb_sock, buf, buflen+1, 1);
       else if (queuefp)
          fwrite(buf, 1, buflen+1, queuefp);
       size -= buflen + 1;
    }
    if (mp->mb_type != MB_CACHE)
-      swrite(&mp->mb_sock, "\r\n");
+      mx_socket_write(mp->mb_sock, "\r\n");
    else if (queuefp)
       fputs("\r\n", queuefp);
    while (mp->mb_active & MB_COMD) {
@@ -2997,10 +3219,11 @@ jtrycreate:
       else if (response_status == RESPONSE_OK && (mp->mb_flags & MB_UIDPLUS))
          imap_appenduid(mp, fp, t, off1, xsize, ysize, lines, flag, name);
    }
+
 jleave:
-   if (queuefp != NULL)
-      Fclose(queuefp);
-   if (buf != NULL)
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
+   if(buf != NIL)
       n_free(buf);
    NYD_OU;
    return rv;
@@ -3099,15 +3322,15 @@ FL enum okay
 imap_append(const char *xserver, FILE *fp, long offset)
 {
    n_sighdl_t volatile saveint, savepipe;
-   struct url url;
-   struct ccred ccred;
+   struct mx_url url;
+   struct mx_cred_ctx ccred;
    enum okay volatile rv = STOP;
    NYD_IN;
 
-   if (!url_parse(&url, CPROTO_IMAP, xserver))
+   if(!mx_url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
-   if (ok_vlook(v15_compat) == su_NIL &&
-         (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
+   if(ok_vlook(v15_compat) == NIL &&
+         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
    ASSERT(url.url_path.s != NULL);
 
@@ -3120,7 +3343,9 @@ imap_append(const char *xserver, FILE *fp, long offset)
    if (savepipe != SIG_IGN)
       safe_signal(SIGPIPE, imapcatch);
 
-   if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) && mb.mb_imap_account &&
+   if((mb.mb_type == MB_CACHE ||
+         (mb.mb_sock != NIL && mb.mb_sock->s_fd > 0)) &&
+         mb.mb_imap_account &&
          !su_cs_cmp(url.url_p_eu_h_p, mb.mb_imap_account)) {
       rv = imap_append0(&mb, url.url_path.s, fp, offset);
    } else {
@@ -3132,13 +3357,16 @@ imap_append(const char *xserver, FILE *fp, long offset)
          goto jleave;
 
       imap_delim_init(&mx, &url);
-      mx.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mx, url.url_path.s),
-            0);
+      mx.mb_imap_mailbox = su_cs_dup(
+            a_imap_path_normalize(&mx, url.url_path.s, FAL0), 0);
 
-      if (disconnected(url.url_p_eu_h_p) == 0) {
-         if (!sopen(&mx.mb_sock, &url))
+      if(disconnected(url.url_p_eu_h_p) == 0){
+         mx.mb_sock = su_TALLOC(struct mx_socket, 1);
+         if(!mx_socket_open(mx.mb_sock, &url)){
+            su_FREE(mx.mb_sock);
             goto jfail;
-         mx.mb_sock.s_desc = "IMAP";
+         }
+         mx.mb_sock->s_desc = "IMAP";
          mx.mb_type = MB_IMAP;
          mx.mb_imap_account = n_UNCONST(url.url_p_eu_h_p);
          /* TODO the code now did
@@ -3147,9 +3375,10 @@ imap_append(const char *xserver, FILE *fp, long offset)
           * TODO is possibly even a constant
           * TODO i changed this to su_cs_dup() sofar, as is used
           * TODO somewhere else in this file for this! */
-         if (imap_preauth(&mx, &url) != OKAY ||
+         if (imap_preauth(&mx, &url, &ccred) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
-            sclose(&mx.mb_sock);
+            mx_socket_close(mx.mb_sock);
+            su_FREE(mx.mb_sock);
             goto jfail;
          }
          rv = imap_append0(&mx, url.url_path.s, fp, offset);
@@ -3277,7 +3506,7 @@ imap_folders(const char * volatile name, int strip)
    n_sighdl_t saveint, savepipe;
    const char * volatile fold, *cp, *xsp;
    FILE * volatile fp;
-   int rv = 1;
+   int volatile rv = 1;
    NYD_IN;
 
    cp = protbase(name);
@@ -3292,9 +3521,9 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if (n_psonce & n_PSO_TTYOUT) {
-      if ((fp = Ftmp(NULL, "imapfold", OF_RDWR | OF_UNLINK | OF_REGISTER))
-            == NULL) {
+   if(n_psonce & n_PSO_TTYOUT){
+      if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+               mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          goto jleave;
       }
@@ -3317,8 +3546,8 @@ imap_folders(const char * volatile name, int strip)
 
    imaplock = 0;
    if (interrupts) {
-      if (n_psonce & n_PSO_TTYOUT)
-         Fclose(fp);
+      if(n_psonce & n_PSO_TTYOUT)
+         mx_fs_close(fp);
       rv = 0;
       goto jleave;
    }
@@ -3333,11 +3562,13 @@ imap_folders(const char * volatile name, int strip)
          n_err(_("Folder not found\n"));
    }else
       rv = 0;
+
 junroll:
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
-   if (n_psonce & n_PSO_TTYOUT)
-      Fclose(fp);
+   if(n_psonce & n_PSO_TTYOUT)
+      mx_fs_close(fp);
+
 jleave:
    NYD_OU;
    if (interrupts)
@@ -3419,8 +3650,8 @@ again:
       }
    }
 
-   if (queuefp != NULL)
-      Fclose(queuefp);
+   if(queuefp != NIL)
+      mx_fs_close(queuefp);
 
    /* ... and reset the flag to its initial value so that the 'exit'
     * command still leaves the message unread */
@@ -3546,7 +3777,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass, 0);
    su_mem_copy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
       sizeof(xmb.mb_imap_delim));
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
+   xmb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&xmb, name, FAL0), 0);
    if (mp->mb_cache_directory != NULL)
       xmb.mb_cache_directory = su_cs_dup(mp->mb_cache_directory, 0);
    xmb.mb_uidvalidity = uidvalidity;
@@ -3604,7 +3835,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    /* XXX mb_imap_delim reused */
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
+   xmb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&xmb, name, FAL0), 0);
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
@@ -3666,8 +3897,8 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    }
    t = imap_read_date_time(cp);
 
-   if ((tp = Ftmp(NULL, "imapapui", OF_RDWR | OF_UNLINK | OF_REGISTER))
-         == NULL)
+   if((tp = mx_fs_tmp_open("imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       goto jstop;
 
    size = xsize;
@@ -3688,10 +3919,11 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    imap_appenduid(mp, tp, t, 0, xsize-2, ysize-1, lines-1, flag,
       imap_unquotestr(name));
    rv = OKAY;
+
 jstop:
    n_free(buf);
-   if (tp)
-      Fclose(tp);
+   if(tp != NIL)
+      mx_fs_close(tp);
    NYD_OU;
    return rv;
 }
@@ -3807,7 +4039,8 @@ imap_thisaccount(const char *cp)
 
    if (mb.mb_type != MB_CACHE && mb.mb_type != MB_IMAP)
       rv = 0;
-   else if ((mb.mb_type != MB_CACHE && mb.mb_sock.s_fd < 0) ||
+   else if ((mb.mb_type != MB_CACHE &&
+            (mb.mb_sock == NIL || mb.mb_sock->s_fd < 0)) ||
          mb.mb_imap_account == NULL)
       rv = 0;
    else
@@ -4021,9 +4254,9 @@ again:
             octets -= n;
             if (n != fread(iob, 1, n, fp))
                goto fail;
-            swrite1(&mp->mb_sock, iob, n, 1);
+            mx_socket_write1(mp->mb_sock, iob, n, 1);
          }
-         swrite(&mp->mb_sock, "");
+         mx_socket_write(mp->mb_sock, "");
          while (mp->mb_active & MB_COMD) {
             ok = imap_answer(mp, 0);
             if (response_status == RESPONSE_NO && twice++ == 0) {
@@ -4111,18 +4344,18 @@ check_expunged(void)
 FL int
 c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
-   struct url url;
+   struct mx_url url;
    int rv, omsgCount = msgCount;
    NYD_IN;
    UNUSED(vp);
 
-   if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd > 0) {
+   if(mb.mb_type == MB_IMAP && mb.mb_sock != NIL && mb.mb_sock->s_fd > 0){
       n_err(_("Already connected\n"));
       rv = 1;
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, mailname)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, mailname)){
       rv = 1;
       goto jleave;
    }
@@ -4148,7 +4381,7 @@ jleave:
 FL int
 c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
 {
-   struct url url;
+   struct mx_url url;
    int rv = 1, *msgvec = vp;
    NYD_IN;
 
@@ -4161,7 +4394,7 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, mailname))
+   if(!mx_url_parse(&url, CPROTO_IMAP, mailname))
       goto jleave;
 
    if (*msgvec)
@@ -4173,7 +4406,12 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
          fm |= FEDIT_RDONLY;
       if (!(n_pstate & n_PS_EDIT))
          fm |= FEDIT_SYSBOX;
-      sclose(&mb.mb_sock);
+      if(mb.mb_sock != NIL){
+         if(mb.mb_sock->s_fd >= 0)
+            mx_socket_close(mb.mb_sock);
+         su_FREE(mb.mb_sock);
+         mb.mb_sock = NIL;
+      }
       _imap_setfile1(NULL, &url, fm, 1);
    }
    rv = 0;
@@ -4216,7 +4454,7 @@ jleave:
 FL int
 disconnected(const char *file)
 {
-   struct url url;
+   struct mx_url url;
    int rv = 1;
    NYD_IN;
 
@@ -4225,7 +4463,7 @@ disconnected(const char *file)
       goto jleave;
    }
 
-   if (!url_parse(&url, CPROTO_IMAP, file)) {
+   if(!mx_url_parse(&url, CPROTO_IMAP, file)){
       rv = 0;
       goto jleave;
    }

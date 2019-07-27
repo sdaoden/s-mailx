@@ -32,6 +32,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1016,9 +1017,9 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
    /* TODO b64_decode_part() does not yet STOP if it sees padding, whereas
     * TODO OpenSSL and mutt simply bail on such stuff */
-   UNINIT(ca, 0);
-   UNINIT(cb, 0);
-   UNINIT(cc, 0);
+   UNINIT(ca, 0); UNINIT(a, 0);
+   UNINIT(cb, 0); UNINIT(b, 0);
+   UNINIT(cc, 0); UNINIT(c, 0);
    for(b64l = 0;;){
       u32 x;
 
@@ -1049,6 +1050,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
          if(x == a_ME_B64_BAD){
 jrepl:
             /* TODO This would be wrong since iconv(3) may be applied first! */
+            n_err(_("Invalid base64 encoding ignored\n"));
 #if 0
             if(n_psonce & n_PSO_UNICODE)
                n_string_push_buf(&s, su_utf_8_replacer,
@@ -1060,6 +1062,7 @@ jrepl:
          }else if(c == a_ME_B64_EQU && x != a_ME_B64_EQU){
             /* This is not only invalid but bogus.  Skip it over! */
             /* TODO This would be wrong since iconv(3) may be applied first! */
+            n_err(_("Illegal base64 encoding ignored\n"));
 #if 0
             n_string_push_buf(&s, su_UTF_8_REPLACER su_UTF_8_REPLACEMENT
                su_UTF_8_REPLACER su_UTF_8_REPLACEMENT,

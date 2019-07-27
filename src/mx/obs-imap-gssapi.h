@@ -138,7 +138,7 @@ _imap_gssapi_last_at_before_slash(char const *cp)
 }
 
 static enum okay
-_imap_gssapi(struct mailbox *mp, struct ccred *ccred)
+_imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
    char o[LINESIZE];
    struct str in, out;
@@ -162,10 +162,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    ok = STOP;
    f = a_F_NONE;
 
-   {  uz i = su_cs_len(mp->mb_imap_account) +1;
-      server = n_autorec_alloc(i);
-      su_mem_copy(server, mp->mb_imap_account, i);
-   }
+   server = savestr(mp->mb_imap_account);
    if (!strncmp(server, "imap://", 7))
       server += 7;
    else if (!strncmp(server, "imaps://", 8))
@@ -174,9 +171,11 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       server = &cp[1];
    for (cp = server; *cp; cp++)
       *cp = su_cs_to_lower(*cp);
+
    send_tok.value = n_autorec_alloc(
-         (send_tok.length = su_cs_len(server) -1 + 5) +1);
-   snprintf(send_tok.value, send_tok.length, "imap@%s", server);
+         (send_tok.length = su_cs_len(server) + 5) +1);
+   su_mem_copy(send_tok.value, "imap@", 5);
+   su_mem_copy(&S(char*,send_tok.value)[5], server, send_tok.length - 4);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;
@@ -300,14 +299,13 @@ jebase64:
    /* First octet: bit-mask with protection mechanisms (1 = no protection
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
-    * Fifth and following octets: user name string.
-    */
-   o[0] = 1;
-   o[1] = 0;
-   o[2] = o[3] = (char)0377;
-   snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
-   send_tok.value = o;
-   send_tok.length = su_cs_len(&o[4]) -1 + 4;
+    * Fifth and following octets: user name string */
+   in.s = n_autorec_alloc((send_tok.length = 4 + ccred->cc_user.l) +1);
+   su_mem_copy(&in.s[4], ccred->cc_user.s, ccred->cc_user.l +1);
+   in.s[0] = 1;
+   in.s[1] = 0;
+   in.s[2] = in.s[3] = (char)0xFF;
+   send_tok.value = in.s;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    f |= a_F_RECV_TOK;

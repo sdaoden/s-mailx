@@ -41,16 +41,19 @@
 
 #include "mx/nail.h"
 
-#include <sys/ioctl.h>
-
 #include <pwd.h>
 
 #include <su/avopt.h>
 #include <su/cs.h>
-#include <su/icodec.h>
+#include <su/mem.h>
 
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
+#include "mx/termcap.h"
+#include "mx/termios.h"
+#include "mx/tty.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -92,16 +95,6 @@ static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
 /* Setup some variables which we require to be valid / verified */
 static void a_main_setup_vars(void);
 
-/* We're in an interactive session - compute what the screen size for printing
- * headers etc. should be; notify tty upon resize if *is_sighdl* is not 0.
- * We use the following algorithm for the height:
- * If baud rate < 1200, use  9
- * If baud rate = 1200, use 14
- * If baud rate > 1200, use VAL_HEIGHT or ws_row
- * Width is either VAL_WIDTH or ws_col */
-su_SINLINE void a_main_setup_screen(void);
-static void a_main__scrsz(int is_sighdl);
-
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
 static int a_main_rcv_mode(boole had_A_arg, char const *folder,
@@ -134,19 +127,6 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#if su_DVLOR(1, 0)
-   safe_signal(SIGABRT, &mx__nyd_oncrash);
-# ifdef SIGBUS
-   safe_signal(SIGBUS, &mx__nyd_oncrash);
-# endif
-   safe_signal(SIGFPE, &mx__nyd_oncrash);
-   safe_signal(SIGILL, &mx__nyd_oncrash);
-   safe_signal(SIGSEGV, &mx__nyd_oncrash);
-#endif
-
-   /* Initialize our input, loop and command machinery */
-   n_go_init();
-
    /* Set up a reasonable environment */
 
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
@@ -156,23 +136,44 @@ a_main_startup(void){
     * TODO but v15 should use ONLY this, also for terminal input! */
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
-#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
-      if((n_tty_fp = fdopen(fileno(n_stdin), "w")) != NULL)
-         setvbuf(n_tty_fp, NULL, _IOLBF, 0);
+#ifdef mx_HAVE_MLE
+      if((mx_tty_fp = fdopen(fileno(n_stdin), "w+")) != NIL)
+         setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
 #endif
    }
+
    if(isatty(STDOUT_FILENO))
       n_psonce |= n_PSO_TTYOUT;
-   if((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) ==
-         (n_PSO_TTYIN | n_PSO_TTYOUT)){
-      n_psonce |= n_PSO_INTERACTIVE;
-      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
-   }
-
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
-   if(n_tty_fp == NULL)
-      n_tty_fp = n_stdout;
+
+   /* Assume we are interactive, then.
+    * This state will become unset later for n_PO_QUICKRUN_MASK! */
+   if((n_psonce & n_PSO_TTYANY) == n_PSO_TTYANY)
+      n_psonce |= n_PSO_INTERACTIVE;
+
+   if(mx_tty_fp == NIL)
+      mx_tty_fp = (n_psonce & n_PSO_TTYIN) ? n_stdin : n_stdout;
+
+   if(isatty(STDERR_FILENO))
+      n_psonce |= n_PSO_TTYERR;
+
+   /* Now that the basic I/O is accessible, initialize our main machinery,
+    * input, loop, child, termios, whatever */
+   n_go_init();
+
+   if(n_psonce & n_PSO_INTERACTIVE)
+      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+
+#if su_DVLOR(1, 0)
+   safe_signal(SIGABRT, &mx__nyd_oncrash);
+# ifdef SIGBUS
+   safe_signal(SIGBUS, &mx__nyd_oncrash);
+# endif
+   safe_signal(SIGFPE, &mx__nyd_oncrash);
+   safe_signal(SIGILL, &mx__nyd_oncrash);
+   safe_signal(SIGSEGV, &mx__nyd_oncrash);
+#endif
 
    /*  --  >8  --  8<  --  */
 
@@ -271,163 +272,12 @@ a_main_setup_vars(void){
       cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
+
+
+   /* Finally set our terminal dimension */
+   mx_termios_controller_setup(mx_TERMIOS_SETUP_TERMSIZE);
+
    NYD2_OU;
-}
-
-su_SINLINE void
-a_main_setup_screen(void){
-   /* Problem: VAL_ configuration values are strings, we need numbers */
-   LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
-      VAL_HEIGHT[2] == '\0' || VAL_HEIGHT[3] == '\0'));
-#define a_HEIGHT \
-   (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
-   : (VAL_HEIGHT[2] == '\0' \
-      ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
-      : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
-         (VAL_HEIGHT[2] - '0'))))
-   LCTAV(VAL_WIDTH[0] != '\0' &&
-      (VAL_WIDTH[1] == '\0' || VAL_WIDTH[2] == '\0' || VAL_WIDTH[3] == '\0'));
-#define a_WIDTH \
-   (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
-   : (VAL_WIDTH[2] == '\0' \
-      ? ((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) \
-      : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
-         (VAL_WIDTH[2] - '0'))))
-
-   NYD2_IN;
-
-   if(!su_state_has(su_STATE_REPRODUCIBLE) &&
-         ((n_psonce & n_PSO_INTERACTIVE) ||
-            ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
-            (n_poption & n_PO_BATCH_FLAG)))){
-      a_main__scrsz(FAL0);
-      if(n_psonce & n_PSO_INTERACTIVE){
-         /* XXX Yet WINCH after SIGWINCH/SIGCONT, but see POSIX TOSTOP flag */
-#ifdef SIGWINCH
-# ifndef TTY_WANTS_SIGWINCH
-         if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
-# endif
-            safe_signal(SIGWINCH, &a_main__scrsz);
-#endif
-#ifdef SIGCONT
-         safe_signal(SIGCONT, &a_main__scrsz);
-#endif
-      }
-   }else
-      /* $COLUMNS and $LINES defaults as documented in the manual */
-      n_scrnheight = n_realscreenheight = a_HEIGHT,
-      n_scrnwidth = a_WIDTH;
-   NYD2_OU;
-}
-
-static void
-a_main__scrsz(int is_sighdl){
-   struct termios tbuf;
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-   struct winsize ws;
-#elif defined TIOCGSIZE
-   struct ttysize ts;
-#endif
-   NYD2_IN;
-   ASSERT((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
-
-   n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
-
-   /* (Also) POSIX: LINES and COLUMNS always override.  Adjust this
-    * a little bit to be able to honour resizes during our lifetime and
-    * only honour it upon first run; abuse *is_sighdl* as an indicator */
-   if(!is_sighdl){
-      char const *cp;
-      boole hadl, hadc;
-
-      if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
-         su_idec_u32_cp(&n_scrnheight, cp, 0, NULL);
-         n_realscreenheight = n_scrnheight;
-      }
-      if((hadc = ((cp = ok_vlook(COLUMNS)) != NULL)))
-         su_idec_u32_cp(&n_scrnwidth, cp, 0, NULL);
-
-      if(n_scrnwidth != 0 && n_scrnheight != 0)
-         goto jleave;
-
-      /* In non-interactive mode, stop now, except for the documented case that
-       * both are set but not both have been usable */
-      if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc)){
-         n_scrnheight = n_realscreenheight = a_HEIGHT;
-         n_scrnwidth = a_WIDTH;
-         goto jleave;
-      }
-   }
-
-#ifdef mx_HAVE_TCGETWINSIZE
-   if(tcgetwinsize(fileno(n_tty_fp), &ws) == -1)
-      ws.ws_col = ws.ws_row = 0;
-#elif defined TIOCGWINSZ
-   if(ioctl(fileno(n_tty_fp), TIOCGWINSZ, &ws) == -1)
-      ws.ws_col = ws.ws_row = 0;
-#elif defined TIOCGSIZE
-   if(ioctl(fileno(n_tty_fp), TIOCGSIZE, &ws) == -1)
-      ts.ts_lines = ts.ts_cols = 0;
-#endif
-
-   if(n_scrnheight == 0){
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-      if(ws.ws_row != 0)
-         n_scrnheight = ws.ws_row;
-#elif defined TIOCGSIZE
-      if(ts.ts_lines != 0)
-         n_scrnheight = ts.ts_lines;
-#endif
-      else{
-         speed_t ospeed;
-
-         ospeed = ((tcgetattr(fileno(n_tty_fp), &tbuf) == -1)
-               ? B9600 : cfgetospeed(&tbuf));
-
-         if(ospeed < B1200)
-            n_scrnheight = 9;
-         else if(ospeed == B1200)
-            n_scrnheight = 14;
-         else
-            n_scrnheight = a_HEIGHT;
-      }
-
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
-      if(0 ==
-# if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-            (n_realscreenheight = ws.ws_row)
-# else
-            (n_realscreenheight = ts.ts_lines)
-# endif
-      )
-         n_realscreenheight = a_HEIGHT;
-#endif
-   }
-
-   if(n_scrnwidth == 0 && 0 ==
-#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
-         (n_scrnwidth = ws.ws_col)
-#elif defined TIOCGSIZE
-         (n_scrnwidth = ts.ts_cols)
-#endif
-   )
-      n_scrnwidth = a_WIDTH;
-
-   /**/
-   n_pstate |= n_PS_SIGWINCH_PEND;
-jleave:
-   /* Note: for the first invocation this will always trigger.
-    * If we have termcap support then main() will undo this if FULLWIDTH is set
-    * after termcap is initialized.
-    * We had to evaluate screen size now since cmds may run pre-termcap ... */
-/*#ifdef mx_HAVE_TERMCAP*/
-   if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-      --n_scrnwidth;
-/*#endif*/
-   NYD2_OU;
-
-#undef a_HEIGHT
-#undef a_WIDTH
 }
 
 static sigjmp_buf a_main__hdrjmp; /* XXX */
@@ -494,14 +344,14 @@ a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
 
    /* Enter the command loop */
    if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_init();
+      mx_tty_init();
    /* "load()" more commands given on command line */
    if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
       n_exit_status = n_EXIT_ERR;
    else
       n_go_main_loop();
    if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+      mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
    if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
@@ -731,9 +581,9 @@ main(int argc, char *argv[]){
          /* Create custom header (at list tail) */
          struct n_header_field **hflpp;
 
-         if(*(hflpp = &n_poption_arg_C) != NULL){
-            while((*hflpp)->hf_next != NULL)
-               *hflpp = (*hflpp)->hf_next;
+         if(*(hflpp = &n_poption_arg_C) != NIL){
+            while((*hflpp)->hf_next != NIL)
+               hflpp = &(*hflpp)->hf_next;
             hflpp = &(*hflpp)->hf_next;
          }
          if(!n_header_add_custom(hflpp, avo.avo_current_arg, FAL0)){
@@ -761,6 +611,7 @@ main(int argc, char *argv[]){
       case 'e':
          /* Check if mail (matching -L) exists in given box, exit status */
          n_poption |= n_PO_EXISTONLY;
+         n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'F':
          /* Save msg in file named after local part of first recipient */
@@ -776,6 +627,7 @@ main(int argc, char *argv[]){
       case 'H':
          /* Display summary of headers, exit */
          n_poption |= n_PO_HEADERSONLY;
+         n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'h':
       case (char)(su_u8)'\201':
@@ -785,7 +637,7 @@ main(int argc, char *argv[]){
             (void)su_avopt_dump_doc(&avo, &a_main_dump_doc,
                su_S(su_up,n_stdout));
          }
-         goto j_leave;
+         goto jleave;
       case 'i':
          /* Ignore interrupts */
          ok_bset(ignore);
@@ -793,8 +645,9 @@ main(int argc, char *argv[]){
       case 'L':
          /* Display summary of headers which match given spec, exit.
           * In conjunction with -e, only test the given spec for existence */
-         Larg = avo.avo_current_arg;
          n_poption |= n_PO_HEADERLIST;
+         n_psonce &= ~n_PSO_INTERACTIVE;
+         Larg = avo.avo_current_arg;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
             uz j;
 
@@ -1001,7 +854,7 @@ jeTuse:
          fputs(n_string_cp_const(n_version(
             n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
          n_exit_status = n_EXIT_OK;
-         }goto j_leave;
+         }goto jleave;
       case 'v':
          /* Be verbose */
          ok_bset(verbose);
@@ -1066,7 +919,7 @@ jusage:
          }
          a_main_usage(n_stderr);
          n_exit_status = n_EXIT_USE;
-         goto j_leave;
+         goto jleave;
       }
    }
 jgetopt_done:
@@ -1176,7 +1029,6 @@ jgetopt_done:
    n_psonce |= n_PSO_STARTED_GETOPT;
 
    a_main_setup_vars();
-   a_main_setup_screen();
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
    su_mem_bag_fixate(n_go_data->gdc_membag);
@@ -1193,18 +1045,18 @@ jgetopt_done:
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
                !n_go_load(ok_vlook(system_mailrc)))
-            goto j_leave;
+            goto jleave;
       }
 
       if((resfiles & a_RF_USER) &&
             !n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
-         goto j_leave;
+         goto jleave;
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
       if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
             !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
-         goto j_leave;
+         goto jleave;
    }
 
    /* Cause possible umask(2) to be applied, now that any setting is
@@ -1242,13 +1094,9 @@ je_expandargv:
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we
     * switch account or running commands */
-#ifdef n_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
-      n_termcap_init();
-      /* Undo the decrement from a_main__scrsz()s first invocation */
-      if(n_scrnwidth > 0 && (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
-         ++n_scrnwidth;
-   }
+#ifdef mx_HAVE_TCAP
+   if(n_psonce & n_PSO_TTYANY)
+      mx_termcap_init();
 #endif
 
    /* Now we can set the account */
@@ -1316,25 +1164,20 @@ je_expandargv:
       }
 
       if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_init();
+         mx_tty_init();
       /* "load()" more commands given on command line */
       if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
          n_exit_status = n_EXIT_ERR;
       else
-         n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
+         n_mail((((n_psonce & n_PSO_INTERACTIVE
+                  ) ? n_MAILSEND_HEADERS_PRINT : 0) |
+               (n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0)),
             to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+         mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
 
 jleave:
-  /* Be aware of identical code for `exit' command! */
-#ifdef n_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
-      n_termcap_destroy();
-#endif
-
-j_leave:
 #ifdef su_HAVE_DEBUG
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);

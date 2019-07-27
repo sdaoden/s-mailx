@@ -44,6 +44,10 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/colour.h"
+#include "mx/file-streams.h"
+#include "mx/termios.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -71,15 +75,16 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
 
    cpre = csuf = n_empty;
 #ifdef mx_HAVE_COLOUR
-   if(n_COLOUR_IS_ACTIVE()){
-      struct n_colour_pen *cpen;
+   if(mx_COLOUR_IS_ACTIVE()){
+      struct mx_colour_pen *cpen;
 
-      if((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
+      if((cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_MSGINFO, NULL)
+            ) != NIL){
          struct str const *s;
 
-         if((s = n_colour_pen_to_str(cpen)) != NULL)
+         if((s = mx_colour_pen_to_str(cpen)) != NIL)
             cpre = s->s;
-         if((s = n_colour_reset_to_str()) != NULL)
+         if((s = mx_colour_reset_to_str()) != NIL)
             csuf = s->s;
       }
    }
@@ -114,8 +119,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
 
-   if (dopipe) {
-      if ((obuf = Popen(cmd, "w", ok_vlook(SHELL), NULL, 1)) == NULL) {
+   if(dopipe){
+      if((obuf = mx_fs_pipe_open(cmd, "w", ok_vlook(SHELL), NIL, -1)) == NIL){
          n_perr(cmd, 0);
          obuf = n_stdout;
       }
@@ -138,22 +143,22 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
                ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
-               : (uz)n_realscreenheight)){
-         if((obuf = n_pager_open()) == NULL)
+               : S(uz,mx_termios_dimen.tiosd_real_height))){
+         if((obuf = mx_pager_open()) == NULL)
             obuf = n_stdout;
       }
-      n_COLOUR(
+      mx_COLOUR(
          if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-            n_colour_env_create(n_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
+            mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
       )
    }
-   n_COLOUR(
+   mx_COLOUR(
       else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-         n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
+         mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0);
    )
 
    rv = 0;
-   srelax_hold();
+   n_autorec_relax_create();
    for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
@@ -173,7 +178,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      srelax();
+      n_autorec_relax_unroll();
       if(formfeed){ /* TODO a nicer way to separate piped messages! */
          if(putc('\f', obuf) == EOF){
             rv = 1;
@@ -183,14 +188,14 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       if (tstats != NULL)
          tstats[0] += mstats[0];
    }
-   srelax_rele();
-   n_COLOUR(
+   n_autorec_relax_gut();
+   mx_COLOUR(
       if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
-         n_colour_env_gut();
+         mx_colour_env_gut();
    )
 jleave:
    if (obuf != n_stdout)
-      n_pager_close(obuf);
+      mx_pager_close(obuf);
    NYD_OU;
    return rv;
 }
@@ -237,14 +242,16 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    FILE *iobuf, *pbuf;
    NYD2_IN;
 
-   if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((iobuf = mx_fs_tmp_open("topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`top': I/O temporary file"), 0);
-      vp = NULL;
+      vp = NIL;
       goto jleave;
    }
-   if((pbuf = Ftmp(NULL, "toppag", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((pbuf = mx_fs_tmp_open("toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("`top': temporary pager file"), 0);
-      vp = NULL;
+      vp = NIL;
       goto jleave1;
    }
 
@@ -255,7 +262,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_pstate &= ~n_PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
    plines = 0;
 
-   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_VIEW, iobuf, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf, FAL0); )
    n_string_creat_auto(&s);
    /* C99 */{
       sz l;
@@ -392,14 +399,14 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    }
 
    n_string_gut(&s);
-   n_COLOUR( n_colour_env_gut(); )
+   mx_COLOUR( mx_colour_env_gut(); )
 
    fflush(pbuf);
    page_or_print(pbuf, plines);
 
-   Fclose(pbuf);
+   mx_fs_close(pbuf);
 jleave1:
-   Fclose(iobuf);
+   mx_fs_close(iobuf);
 jleave:
    NYD2_OU;
    return (vp != NULL);
@@ -508,9 +515,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    n_pstate |= n_PS_DID_PRINT_DOT;
    uncollapse1(mp, 1);
 
-   n_COLOUR(
-      n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
-   )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0); )
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;
@@ -520,9 +525,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    else
       n_pstate_err_no = su_ERR_NONE;
 
-   n_COLOUR(
-      n_colour_env_gut();
-   )
+   mx_COLOUR( mx_colour_env_gut(); )
 
    rv = (n_pstate_err_no != su_ERR_NONE);
 jleave:

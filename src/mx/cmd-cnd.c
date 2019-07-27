@@ -26,6 +26,7 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 
 /* TODO fake */
 #include "su/code-in.h"

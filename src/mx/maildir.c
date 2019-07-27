@@ -53,7 +53,11 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/mem.h>
 #include <su/prime.h>
+
+#include "mx/file-streams.h"
+#include "mx/sigs.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -136,7 +140,7 @@ _cleantmp(void)
    if ((dirp = opendir("tmp")) == NULL)
       goto jleave;
 
-   now = n_time_now(FAL0)->ts_sec;
+   now = n_time_now(FAL0)->ts_sec - 36*3600;
    s = n_string_creat_auto(&s_b);
 
    while ((dp = readdir(dirp)) != NULL) {
@@ -148,7 +152,7 @@ _cleantmp(void)
       s = n_string_push_cp(s, dp->d_name);
       if (stat(n_string_cp(s), &st) == -1)
          continue;
-      if (st.st_atime + 36*3600 < now)
+      if (st.st_atime <= now)
          unlink(s->s_dat);
    }
    closedir(dirp);
@@ -460,7 +464,7 @@ readin(char const *name, struct message *m)
    int emptyline = 0;
    NYD_IN;
 
-   if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
+   if((fp = mx_fs_open(m->m_maildir_file, "r")) == NIL){
       n_err(_("Cannot read %s for message %lu\n"),
          n_shexp_quote_cp(savecatsep(name, '/', m->m_maildir_file), FAL0),
          (ul)P2UZ(m - message + 1));
@@ -496,7 +500,7 @@ readin(char const *name, struct message *m)
       ++size;
    }
 
-   Fclose(fp);
+   mx_fs_close(fp);
    fflush(mb.mb_otf);
    m->m_size = m->m_xsize = size;
    m->m_lines = m->m_xlines = lines;
@@ -711,8 +715,8 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if ((!stat(tfn, &st) || su_err_no() == su_ERR_NOENT) &&
-            (op = Fopen(tfn, "wx")) != NULL)
+      if((!stat(tfn, &st) || su_err_no() == su_ERR_NOENT) &&
+            (op = mx_fs_open(tfn, "wx")) != NIL)
          break;
 
       nfn = (char*)(P2UZ(nfn) - 1);
@@ -731,12 +735,12 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
       if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
          n_err(_("Error writing to %s\n"), n_shexp_quote_cp(tfn, FAL0));
-         Fclose(op);
+         mx_fs_close(op);
          goto jerr;
       }
       size -= n;
    }
-   Fclose(op);
+   mx_fs_close(op);
 
    nfn = n_autorec_alloc(n = nlen + flen + 6);
    snprintf(nfn, n, "%s/new/%s", name, fn);
@@ -1082,7 +1086,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   buf = n_alloc(bufsize = LINESIZE); /* TODO line pool; signals */
+   mx_fs_linepool_aquire(&buf, &bufsize);
    buflen = 0;
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
@@ -1156,10 +1160,11 @@ maildir_append(char const *name, FILE *fp, long offset)
          }
       }
    }
+
    ASSERT(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
 jleave:
    NYD_OU;
    return rv;

@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 require 5.008_001;
 use utf8;
-#@ Parse 'enum n_termcap_{cmd,query}' from nail.h and create gen-tcaps.h.
+#@ Parse 'enum mx_termcap_{cmd,query}' from termcap.h and create gen-tcaps.h.
 # Public Domain
 
-my $IN = 'include/mx/nail.h';
+my $IN = 'include/mx/termcap.h';
 my $OUT = 'src/mx/gen-tcaps.h';
 
 # Generate a more verbose output.  Not for shipout versions.
@@ -41,11 +41,11 @@ sub parse_in_h{
       chomp;
 
       # Only want the enum okeys content
-      if(/^enum n_termcap_cmd/){
+      if(/^enum mx_termcap_cmd/){
          $init = 1;
          next
       }
-      if(!$init && /^enum n_termcap_query/){
+      if(!$init && /^enum mx_termcap_query/){
          $init = 2;
          next
       }
@@ -85,7 +85,7 @@ sub parse_in_h{
       die "Unsupported terminal capability type: $4"
          unless($4 eq 'BOOL' || $4 eq 'NUMERIC' || $4 eq 'STRING');
 
-      my $e = 'n_TERMCAP_CAPTYPE_' . $4;
+      my $e = 'mx_TERMCAP_CAPTYPE_' . $4;
       $e = $e . '|a_TERMCAP_F_QUERY' if $init == 2;
       $e = $e . '|a_TERMCAP_F_ARG_' . $5 if $5;
       push @ENTS, [$1, $e, $CAPS_LEN];

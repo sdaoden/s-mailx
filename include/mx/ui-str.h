@@ -40,6 +40,7 @@
 # include <wctype.h>
 #endif
 
+#define mx_HEADER
 #include <su/code-in.h>
 
 #ifdef mx_HAVE_C90AMEND1
@@ -69,27 +70,30 @@ struct n_visual_info_ctx{
 #endif
 };
 
+/* setlocale(3), *ttycharset* etc. */
+EXPORT void n_locale_init(void);
+
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
  * vicp must be zeroed before first use */
-FL boole n_visual_info(struct n_visual_info_ctx *vicp,
+EXPORT boole n_visual_info(struct n_visual_info_ctx *vicp,
       enum n_visual_info_flags vif);
 
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
-FL uz field_detect_clip(uz maxlen, char const *buf, uz blen);
+EXPORT uz field_detect_clip(uz maxlen, char const *buf, uz blen);
 
 /* Place cp in a autorec_alloc()ed buffer, column-aligned.
  * For header display only */
-FL char *colalign(char const *cp, int col, int fill,
+EXPORT char *colalign(char const *cp, int col, int fill,
       int *cols_decr_used_or_nil);
 
 /* Convert a string to a displayable one;
  * prstr() returns the result savestr()d, prout() writes it */
-FL void makeprint(struct str const *in, struct str *out);
-FL uz delctrl(char *cp, uz len);
-FL char *prstr(char const *s);
-FL int prout(char const *s, uz sz, FILE *fp);
+EXPORT void makeprint(struct str const *in, struct str *out);
+EXPORT uz delctrl(char *cp, uz len);
+EXPORT char *prstr(char const *s);
+EXPORT int prout(char const *s, uz sz, FILE *fp);
 
 #include <su/code-ou.h>
 #endif /* mx_UI_STR_H */

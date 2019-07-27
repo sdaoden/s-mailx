@@ -48,6 +48,12 @@
 su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
 #include <su/cs.h>
+#include <su/mem.h>
+
+#include "mx/file-streams.h"
+#include "mx/net-socket.h"
+#include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -66,7 +72,7 @@ static struct a_tls_verify_levels const a_tls_verify_levels[] = {
 };
 
 FL void
-n_tls_set_verify_level(struct url const *urlp){
+n_tls_set_verify_level(struct mx_url const *urlp){
    uz i;
    char const *cp;
    NYD2_IN;
@@ -98,7 +104,7 @@ n_tls_verify_decide(void){
       rv = FAL0;
       break;
    case n_TLS_VERIFY_ASK:
-      rv = getapproval(NULL, FAL0);
+      rv = mx_tty_yesorno(NIL, FAL0);
       break;
    case n_TLS_VERIFY_WARN:
    case n_TLS_VERIFY_IGNORE:
@@ -123,11 +129,12 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    enum okay rv = STOP;
    NYD_IN;
 
-   if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if((*hp = mx_fs_tmp_open("smimeh", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       goto jetmp;
-   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)
-         ) == NULL) {
-      Fclose(*hp);
+   if((*bp = mx_fs_tmp_open("smimeb", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
+      mx_fs_close(*hp);
 jetmp:
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -193,8 +200,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
    FILE *op;
    NYD_IN;
 
-   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)
-         ) == NULL) {
+   if((op = mx_fs_tmp_open("smimea", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -229,14 +236,14 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
 
    fprintf(op, "\n--%s--\n", boundary);
 
-   Fclose(hp);
-   Fclose(bp);
-   Fclose(tsp);
+   mx_fs_close(hp);
+   mx_fs_close(bp);
+   mx_fs_close(tsp);
 
    fflush(op);
    if (ferror(op)) {
       n_perr(_("signed output data"), 0);
-      Fclose(op);
+      mx_fs_close(op);
       op = NULL;
       goto jleave;
    }
@@ -253,8 +260,8 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_IN;
 
-   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)
-         ) == NULL) {
+   if((op = mx_fs_tmp_open("smimee", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -278,13 +285,13 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
       putc(c, op);
    }
 
-   Fclose(hp);
-   Fclose(yp);
+   mx_fs_close(hp);
+   mx_fs_close(yp);
 
    fflush(op);
    if (ferror(op)) {
       n_perr(_("encrypted output data"), 0);
-      Fclose(op);
+      mx_fs_close(op);
       op = NULL;
       goto jleave;
    }
@@ -355,8 +362,8 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       ++lastnl;
    }
 
-   Fclose(hp);
-   Fclose(bp);
+   mx_fs_close(hp);
+   mx_fs_close(bp);
    n_free(buf);
 
    fflush(mb.mb_otf);
@@ -397,7 +404,7 @@ c_certsave(void *vp){
       }
       file = cp;
 
-      if((fp = Fopen(file, "a")) == NULL){
+      if((fp = mx_fs_open(file, "a")) == NIL){
          n_perr(file, 0);
          vp = NULL;
          goto jleave;
@@ -408,7 +415,7 @@ c_certsave(void *vp){
       if(smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
          vp = NULL;
 
-   Fclose(fp);
+   mx_fs_close(fp);
 
    if(vp != NULL)
       fprintf(n_stdout, "Certificate(s) saved\n");
@@ -446,28 +453,28 @@ c_tls(void *vp){
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
    else if(su_cs_starts_with_case("fingerprint", cp)){
-#ifndef mx_HAVE_SOCKETS
+#ifndef mx_HAVE_NET
       n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
       n_pstate_err_no = su_ERR_OPNOTSUPP;
       goto jleave;
 #else
-      struct sock so;
-      struct url url;
+      struct mx_socket so;
+      struct mx_url url;
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
       if((i = su_cs_len(*++argv)) >= U32_MAX)
          goto jeoverflow; /* TODO generic for ALL commands!! */
-      if(!url_parse(&url, CPROTO_CERTINFO, *argv))
+      if(!mx_url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
-      if(!sopen(&so, &url)){ /* auto-closes for CPROTO_CERTINFO on success */
+      if(!mx_socket_open(&so, &url)){ /* auto-close 4 CPROTO_CERTINFO if ok */
          n_pstate_err_no = su_err_no();
          goto jleave;
       }
       if(so.s_tls_finger == NULL)
          goto jeinval;
       varres = so.s_tls_finger;
-#endif /* mx_HAVE_SOCKETS */
+#endif /* mx_HAVE_NET */
    }else
       goto jesubcmd;
 

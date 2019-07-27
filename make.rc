@@ -21,6 +21,7 @@
 #@
 #@   Values which are only used during configuration, building, and / or
 #@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed etc.
+#@   Strings which contain whitespace need to be quoted.
 #@
 #@   Some values offer "multiple choice" values, e.g., VAL_RANDOM
 #@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
@@ -65,15 +66,15 @@ VAL_PREFIX=/usr/local
 
 # Fine tune individual locations, normally under $VAL_PREFIX.
 # . the place of the S-nail program.
-VAL_BINDIR="${VAL_PREFIX}/bin"
+VAL_BINDIR=${VAL_PREFIX}/bin
 # . the place of privilege-separated helpers, names of which are
 #   ${VAL_SID}${VAL_MAILX}-foo ($VAL_SID and $VAL_MAILX are below).
 #   (Only with: $OPT_DOTLOCK.)
-VAL_LIBEXECDIR="${VAL_PREFIX}/libexec"
+VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
 # . of the manual.
-VAL_MANDIR="${VAL_PREFIX}/share/man"
+VAL_MANDIR=${VAL_PREFIX}/share/man
 # . of the exemplary resource file.
-VAL_SYSCONFDIR="${VAL_PREFIX}/etc"
+VAL_SYSCONFDIR=${VAL_PREFIX}/etc
 
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for, e.g., package
@@ -94,6 +95,7 @@ VAL_MAIL=`\
    fi`
 
 # Path to the local MTA (Mail-Transfer-Agent).
+# MTA aliases (aliases(5)) are optionally supported via OPT_MTA_ALIASES.
 VAL_MTA=`\
    if [ -x /usr/bin/sendmail ]; then \
       echo /usr/bin/sendmail;\
@@ -120,7 +122,7 @@ VAL_SHELL=/bin/sh
 # and (thus)/or documented in the manual (changes not reflected there!).
 # Note that default paths are often not (shell) quoted when displayed.
 VAL_DEAD_BASENAME=dead.letter
-VAL_DEAD="~/${VAL_DEAD_BASENAME}"
+VAL_DEAD=~/${VAL_DEAD_BASENAME}
 VAL_EDITOR=ed
 VAL_LISTER=ls
 VAL_MAILRC=~/.mailrc
@@ -240,7 +242,7 @@ OPT_ERRORS=yes
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
-# be used for all MIME types which have the @h@ or @H@ type markers
+# be used for all MIME types which have the corresponding type marker
 # (more on this in the manual section "The mime.types files").  And
 # which do not have any user defined MIME type handler, of course.
 OPT_FILTER_HTML_TAGSOUP=yes
@@ -270,7 +272,7 @@ OPT_ICONV=yes
 # . idn - GNU Libidn for IDNA 2003, same,
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
-VAL_IDNA="idnkit,idn2,idn"
+VAL_IDNA=idnkit,idn2,idn
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
@@ -288,11 +290,30 @@ OPT_MAILDIR=yes
 # Can be "require"d.
 OPT_MLE=yes
 
-   # Add support for history management.
+   # Add support for `history' management.
    OPT_HISTORY=yes
 
    # Add support for `(un)?bind'ing of key sequences.
    OPT_KEY_BINDINGS=yes
+
+   # Use termcap(5) for MLE terminal control; can be "require"d.
+   # Today most environments ship a termcap(5) that in fact is part of
+   # terminfo(5), and acts as a converting wrapper for this library.
+   # To avoid this redundancy we also support terminfo(5), and use it
+   # instead if we find it (assuming that termcap(5) is a stub, then).
+   # Note that terminfo(5) offers access to more key sequences, e.g.,
+   # kLFT5, for which no termcap(5) entry exists.
+   # terminfo(5) support can (thus) be "require"d.
+   OPT_TERMCAP=yes
+      OPT_TERMCAP_VIA_TERMINFO=yes
+
+# Whether support for MTA aliases(5) shall be included.
+# With it, and if *mta-aliases* is set to a file, MTA aliases will be
+# expanded as a last step before messages are sent.
+# Note this only supports text-, no database files; expansion only
+# supports (names and) address values, /file/name and |command values
+# are ignored (*verbose* logs).  TODO :include:/file/name.
+OPT_MTA_ALIASES=yes
 
 # Several different P(seudo) R(andom number) G(enerator) possibilities.
 # No need for somewhat strong random is necessary.
@@ -303,9 +324,9 @@ OPT_MLE=yes
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
 # . urandom - reading from /dev/urandom.
-# . builtin - a builtin ARC4 implementation with unscientific seeding.
+# . builtin - unscientific seeding for our builtin ARC4 implementation.
 # . (error - bail out)
-VAL_RANDOM="arc4,tls,libgetrandom,sysgetrandom,urandom,builtin"
+VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,urandom,builtin
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.
@@ -314,50 +335,48 @@ OPT_REGEX=yes
 # Major switch to toggle *all* network related protocols
 # (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
-OPT_SOCKETS=yes
+OPT_NET=yes
 
-   # If $OPT_SOCKETS: support for GSS-API (Generic Security Services
-   # Application Programming Interface) based authentication, e.g.,
-   # Kerberos v5?  Available for IMAP and SMTP; can be "require"d.
+   # Detect support for GSS-API (Generic Security Services Application
+   # Programming Interface) based authentication, e.g., Kerberos v5?
+   # Available for IMAP and SMTP; can be "require"d.
    OPT_GSSAPI=yes
 
-   # If $OPT_SOCKETS: support for IMAP protocol?
+   # Add support for IMAP protocol.
+   # Reading of mails directly on the server.
    # Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which
-   # case it only warns.
-   # (Reading of mails directly on the server)  Can be "require"d.
+   # case it only warns.  Can be "require"d.
    OPT_IMAP=yes
 
-   # Enabling the MD5 message digest adds support for several
-   # authentication possibilities: POP3 (APOP), IMAP and SMTP (CRAM-MD5).
-   # They can be turned off by excluding MD5.
+   # The MD5 message digest (RFC 1321) enables several authentication
+   # possibilities for POP3 (APOP), IMAP and SMTP (CRAM-MD5).
    OPT_MD5=yes
 
-   # If $OPT_SOCKETS: support for parsing of user and password
-   # credentials from the ~/.netrc file ($NETRC; see *netrc-lookup*
-   # manual entry).
+   # Support for parsing of user and password credentials from the
+   # ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
    OPT_NETRC=yes
 
-   # If $OPT_SOCKETS: support for POP3 protocol?
-   # (Download of mails via POP protocol)  Can be "require"d.
+   # Add support for POP3 protocol.
+   # Download of mails via POP protocol.  Can be "require"d.
    OPT_POP3=yes
 
-   # If $OPT_SOCKETS: support for SMTP protocol?
-   # (Directly sending mails over the network)  Can be "require"d.
+   # Add support for SMTP (and SUBMISSION) protocol.
+   # Sending mails directly over the network.  Can be "require"d.
    OPT_SMTP=yes
 
-   # If $OPT_SOCKETS: support for Secure Socket Layer (Transport Layer
-   # Security, TLS), i.e., encrypted socket connections; can be
-   # "require"d.  It also automatically enables support for S/MIME
-   # message signing, verification, en- and decryption.
-   # This needs the OpenSSL (https://www.openssl.org) or LibreSSL
+   # Detect support for Secure Socket Layer (Transport Layer Security,
+   # TLS), i.e., encrypted socket connections; can be "require"d.
+   # It also automatically enables support for S/MIME message signing,
+   # verification, en- and decryption.
+   # Supported are the OpenSSL (https://www.openssl.org) and LibreSSL
    # (http://www.libressl.org) libraries.
    OPT_TLS=yes
 
-      # If $OPT_TLS: shall S-nail (try to) use mechanisms to support
-      # more digest and cipher algorithms than the few that are
-      # documented?  For S/MIME *smime-cipher* for example this will
-      # cause EVP_get_cipherbyname(3) to be tried shall the (S-nail-)
-      # built-in knowledge not suffice to understand the user request.
+      # If $OPT_TLS: shall mechanisms to support more digest and cipher
+      # algorithms than the few that are documented be used?
+      # For S/MIME *smime-cipher* for example this will cause
+      # EVP_get_cipherbyname(3) to be tried shall the built-in knowledge
+      # not suffice to understand the user request.
       # Will create a large statically linked binary; dynamically linked
       # the costs only arise once the extended lookup is actually needed
       # (the first time).  Some TLS libraries will always support all
@@ -375,17 +394,6 @@ OPT_SOCKETS=yes
 #   Support for interaction with spamassassin(1)s spamc(1).
 OPT_SPAM_FILTER=yes
 OPT_SPAM_SPAMC=no
-
-# Use termcap(5) for terminal control; can be "require"d.
-# Today most environments ship a termcap(5) that in fact is part of
-# terminfo(5), and acts as a converting wrapper for this library.
-# To avoid this redundancy we also support terminfo(5), and use it
-# instead if we find it (assuming that termcap(5) is a stub, then).
-# Note that terminfo(5) offers access to more key sequences, e.g.,
-# kLFT5, for which no termcap(5) entry exists.
-# terminfo(5) support can (thus) be "require"d.
-OPT_TERMCAP=yes
-OPT_TERMCAP_VIA_TERMINFO=yes
 
 # It is possible to strip out (almost) all user interface and error messages.
 # This might be interesting for automated use cases (only).
@@ -409,8 +417,8 @@ VAL_SID=s-
 VAL_MAILX=nail
 
 # The name of the exemplary resource template.
-# Note 1: not overwritten by "make install" if yet existent!
-VAL_SYSCONFRC="${VAL_SID}${VAL_MAILX}.rc"
+# Note 1: not overwritten by "make install" if yet exists!
+VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 
 ## FEATURE SET, DEVELOPMENT ##
 
@@ -458,9 +466,5 @@ OPT_NOMEMDBG=`\
    else \
       echo no;\
    fi`
-
-# Obsolete stuff
-OPT_AGENT=no
-OPT_SPAM_SPAMD=no
 
 # vim:set tw=72: s-it-mode

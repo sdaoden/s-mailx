@@ -119,13 +119,6 @@ do{\
       ftruncate(fileno(stream), off);\
 }while(0)
 
-# define n_fd_cloexec_set(FD) \
-do{\
-      int a__fd = (FD)/*, a__fl*/;\
-      /*if((a__fl = fcntl(a__fd, F_GETFD)) != -1 && !(a__fl & FD_CLOEXEC))*/\
-         (void)fcntl(a__fd, F_SETFD, FD_CLOEXEC);\
-}while(0)
-
 /*
  * accmacvar.c
  */
@@ -144,6 +137,9 @@ FL int c_unaccount(void *v);
 FL int c_localopts(void *vp);
 FL int c_shift(void *vp);
 FL int c_return(void *vp);
+
+/* TODO Main loop on tick event; mx_sigs_all_holdx() is active */
+FL void temporary_on_main_loop_tick_hook(void);
 
 /* TODO Check whether a *folder-hook* exists for currently active mailbox */
 FL boole temporary_folder_hook_check(boole nmail);
@@ -204,8 +200,8 @@ FL boole n_var_vclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef mx_HAVE_SOCKETS
-FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
+#ifdef mx_HAVE_NET
+FL char *n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
@@ -273,16 +269,14 @@ FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
  * auxlily.c
  */
 
-/* setlocale(3), *ttycharset* etc. */
-FL void n_locale_init(void);
-
-/* Compute screen size */
+/* Compute *screen* size */
 FL uz n_screensize(void);
 
-/* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
- * some environment variable that supports colour+ and set *env_addon to that,
- * e.g., "LESS=FRSXi" */
-FL char const *n_pager_get(char const **env_addon);
+/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
+ * These are specialized version of fs_pipe_open()/fs_pipe_close() which also
+ * encapsulate error message printing, terminal handling etc. additionally */
+FL FILE *mx_pager_open(void);
+FL boole mx_pager_close(FILE *fp);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, uz lines);
@@ -315,13 +309,6 @@ FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen);
 /*TODO FL boole n_idna_from_ascii(struct n_string *out, char const *ibuf,
             uz ilen);*/
 #endif
-
-/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
- * terminator, the second returns an n_autorec_alloc()ed buffer.
- * If su_STATE_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
- * a reproducable string by using and managing that counter instead */
-FL char *n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null);
-FL char *n_random_create_cp(uz len, u32 *reprocnt_or_null);
 
 /* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
  * string, in which case TRUM1 is returned.
@@ -361,7 +348,9 @@ FL uz n_msleep(uz millis, boole ignint);
  * whether a newline was included or not -- this affects the output!
  * xxx Prototype changes to be reflected in src/su/core-code. (for now) */
 FL void n_err(char const *format, ...);
+FL void n_errx(boole allow_multiple, char const *format, ...);
 FL void n_verr(char const *format, va_list ap);
+FL void n_verrx(boole allow_multiple, char const *format, va_list ap);
 
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);
@@ -675,77 +664,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * colour.c
- */
-
-#ifdef mx_HAVE_COLOUR
-/* `(un)?colour' */
-FL int c_colour(void *v);
-FL int c_uncolour(void *v);
-
-/* An execution context is teared down, and it finds to have a colour stack.
- * Signals are blocked */
-FL void n_colour_stack_del(struct n_go_data_ctx *gdcp);
-
-/* We want coloured output (in this autorec memory() cycle), pager_used is used
- * to test whether *colour-pager* is to be inspected, if fp is given, the reset
- * sequence will be written as necessary by _stack_del()
- * env_gut() will reset() as necessary if fp is not NULL */
-FL void n_colour_env_create(enum n_colour_ctx cctx, FILE *fp,
-         boole pager_used);
-FL void n_colour_env_gut(void);
-
-/* Putting anything (for pens: including NULL) resets current state first */
-FL void n_colour_put(enum n_colour_id cid, char const *ctag);
-FL void n_colour_reset(void);
-
-/* Of course temporary only and may return NULL.  Doesn't affect state! */
-FL struct str const *n_colour_reset_to_str(void);
-
-/* A pen is bound to its environment and automatically reclaimed; it may be
- * NULL but that can be used anyway for simplicity.
- * This includes pen_to_str() -- which doesn't affect state! */
-FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
-                           char const *ctag);
-FL void n_colour_pen_put(struct n_colour_pen *self);
-
-FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
-#endif /* mx_HAVE_COLOUR */
-
-/*
- * dig-msg.c
- */
-
-/**/
-FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
-
-/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
-FL boole n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
-            char const *cmd);
-
-/* `digmsg' */
-FL int c_digmsg(void *vp);
-
-/*
- * dotlock.c
- */
-
-/* Aquire a flt n_file_lock().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used.
- * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be aquired,
- * NULL if not, with n_err_ being usable.
- * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
- * returned upon success which keeps the link in between us and the
- * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
- * execv(2) with the privilege-separated dotlock helper program): the lock file
- * will be removed once the control pipe is closed via Pclose().
- * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established, otherwise su_err_no() is usable */
-FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-            off_t off, off_t len, uz pollmsecs);
-
-/*
  * edit.c
  */
 
@@ -761,52 +679,12 @@ FL int         c_visual(void *v);
  * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
  * from within compose mode, and giving TRUM1 to n_puthead().
  * Signals must be handled by the caller.
- * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
+ * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
  * which case pipecmd must have been given */
 FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
                   struct header *hp, struct message *mp,
                   enum sendaction action, n_sighdl_t oldint,
                   char const *pipecmd);
-
-/*
- * fio.c
- */
-
-/* fgets() replacement to handle lines of arbitrary size and with embedded \0
- * characters.
- * line - line buffer.  *line may be NULL.
- * linesize - allocated size of line buffer.
- * count - maximum characters to read.  May be NULL.
- * llen - length_of_line(*line).
- * fp - input FILE.
- * appendnl - always terminate line with \n, append if necessary.
- * Manages the n_PS_READLINE_NL hack */
-FL char *      fgetline(char **line, uz *linesize, uz *count,
-                  uz *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define fgetline(A,B,C,D,E,F)   \
-   fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Read up a line from the specified input into the linebuffer.
- * Return the number of characters read.  Do not include the newline at EOL.
- * n is the number of characters already read and present in *linebuf; it'll be
- * treated as _the_ line if no more (successful) reads are possible.
- * Manages the n_PS_READLINE_NL hack */
-FL int         readline_restart(FILE *ibuf, char **linebuf, uz *linesize,
-                  uz n  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define readline_restart(A,B,C,D) \
-   readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Determine the size of the file possessed by the passed buffer */
-FL off_t       fsize(FILE *iob);
-
-/* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0.
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used */
-FL boole      n_file_lock(int fd, enum n_file_lock_type flt,
-                  off_t off, off_t len, uz pollmsecs);
 
 /*
  * folder.c
@@ -883,7 +761,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
- * If histok_or_null is set it will be updated to FAL0 if input shall not be
+ * If histok_or_nil is set it will be updated to FAL0 if input shall not be
  * placed in history.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
@@ -891,7 +769,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, uz *linesize, char const *string,
-         boole *histok_or_null  su_DBG_LOC_ARGS_DECL);
+         boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
@@ -1212,6 +1090,7 @@ FL enum okay maildir_remove(char const *name);
 
 /* Pseudo alloca (and also auto-reclaimed) */
 #define n_lofi_alloc su_MEM_BAG_SELF_LOFI_ALLOC
+#define n_lofi_calloc su_MEM_BAG_SELF_LOFI_CALLOC
 #define n_lofi_free su_MEM_BAG_SELF_LOFI_FREE
 
 #define n_lofi_snap_create() su_mem_bag_lofi_snap_create(n_go_data->gdc_membag)
@@ -1484,124 +1363,6 @@ FL enum okay   cwret(struct cw *cw);
 FL void        cwrelse(struct cw *cw);
 
 /*
- * pop3.c
- */
-
-#ifdef mx_HAVE_POP3
-/*  */
-FL enum okay   pop3_noop(void);
-
-/*  */
-FL int pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
-
-/*  */
-FL enum okay   pop3_header(struct message *m);
-
-/*  */
-FL enum okay   pop3_body(struct message *m);
-
-/*  */
-FL boole      pop3_quit(boole hold_sigs_on);
-#endif /* mx_HAVE_POP3 */
-
-/*
- * popen.c
- * Subprocesses, popen, but also file handling with registering
- */
-
-/* For program startup in main.c: initialize process manager */
-FL void        n_child_manager_start(void);
-
-/* xflags may be NULL.  Implied: cloexec */
-FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
-
-/* oflags implied: cloexec,OF_REGISTER.
- * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
- * creator has to take appropriate steps in order to ensure this is true! */
-FL FILE *      Fopen(char const *file, char const *oflags);
-FL FILE *      Fdopen(int fd, char const *oflags, boole nocloexec);
-
-FL int         Fclose(FILE *fp);
-
-/* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
- * Open file according to oflags (see popen.c).  Handles compressed files,
- * maildir etc.  If ft_or_null is given it will be filled accordingly */
-FL FILE * n_fopen_any(char const *file, char const *oflags,
-            enum n_fopen_state *fs_or_null);
-
-/* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
- * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
- * part of the resulting filename, otherwise Ftmp() will fail), store the
- * unique name in fn if set (and unless OF_UNLINK is set in oflags), creating
- * n_alloc() storage or n_autorec_alloc() if OF_NAME_AUTOREC is set,
- * and return a stdio FILE pointer with access oflags.
- * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
-FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
-
-/* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
- * called: call this to unlink(2) and free *fn and to rele_all_sigs() */
-FL void        Ftmp_release(char **fn);
-
-/* Free the resources associated with the given filename.  To be called after
- * unlink() */
-FL void        Ftmp_free(char **fn);
-
-/* Create a pipe and ensure CLOEXEC bit is set in both descriptors */
-FL boole      pipe_cloexec(int fd[2]);
-
-/*
- * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
- * called from within the child process.
- * n_psignal() takes a FILE* returned by Popen, and returns <0 if no process
- * can be found, 0 on success, and an errno number on kill(2) failure */
-FL FILE *Popen(char const *cmd, char const *mode, char const *shell,
-            char const **env_addon, int newfd1);
-FL boole Pclose(FILE *fp, boole dowait);
-VL int n_psignal(FILE *fp, int sig);
-
-/* In n_PSO_INTERACTIVE, we want to go over $PAGER.
- * These are specialized version of Popen()/Pclose() which also encapsulate
- * error message printing, terminal handling etc. additionally */
-FL FILE *      n_pager_open(void);
-FL boole      n_pager_close(FILE *fp);
-
-/*  */
-FL void        close_all_files(void);
-
-/* Run a command without a shell, with optional arguments and splicing of stdin
- * and stdout.  FDs may also be n_CHILD_FD_NULL and n_CHILD_FD_PASS, meaning
- * to redirect from/to /dev/null or pass through our own set of FDs; in the
- * latter case terminal capabilities are saved/restored if possible.
- * The command name can be a sequence of words.
- * Signals must be handled by the caller.  "Mask" contains the signals to
- * ignore in the new process.  SIGINT is enabled unless it's in the mask.
- * If env_addon_or_null is set, it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment.
- * wait_status_or_null is set to waitpid(2) status if given */
-FL int n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null, int *wait_status_or_null);
-
-/* Like n_child_run(), but don't wait for the command to finish (use
- * n_child_wait() for waiting on a successful return value).
- * Also it is usually an error to use n_CHILD_FD_PASS for this one */
-FL int n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
-         char const **env_addon_or_null);
-
-/* Fork a child process, enable the other three:
- * - in-child image preparation
- * - mark a child as don't care
- * - wait for child pid, return whether we've had a normal n_EXIT_OK exit.
- *   If wait_status_or_null is set, it is set to the waitpid(2) status */
-FL int n_child_fork(void);
-FL void n_child_prepare(sigset_t *nset, int infd, int outfd);
-FL void n_child_free(int pid);
-FL boole n_child_wait(int pid, int *wait_status_or_null);
-
-/*
  * quit.c
  */
 
@@ -1645,6 +1406,11 @@ FL int         sendmp(struct message *mp, FILE *obuf,
  * sendout.c
  */
 
+/* Check whether outgoing transport is via SMTP/SUBMISSION etc.
+ * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file based
+ * (or bad), and FAL0 if URL parsing failed */
+FL boole mx_sendout_mta_url(struct mx_url *urlp);
+
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
 FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
@@ -1656,7 +1422,7 @@ FL int c_sendmail(void *v);
 FL int c_Sendmail(void *v);
 
 /* Mail a message on standard input to the people indicated in the passed
- * header.  (Internal interface) */
+ * header, applying all the address massages first.  (Internal interface) */
 FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
                struct message *quote, char const *quotefile);
 
@@ -1675,11 +1441,13 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
                   enum conversion convert, char const *contenttype,
                   char const *charset);
 
-/*  */
-FL enum okay   resend_msg(struct message *mp, struct header *hp,
-                  boole add_resent);
+/* Note: hp->h_to must already have undergone address massage(s), it is taken
+ * as-is; h_cc and h_bcc are asserted to be NIL.  urlp should be NIL if
+ * sendout_mta_url() says we are file based, otherwise... */
+FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
+      struct header *hp, boole add_resent);
 
-/* $DEAD */
+/* *save* / $DEAD */
 FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
 
 /*
@@ -1731,95 +1499,6 @@ FL boole n_shexp_is_valid_varname(char const *name);
 
 /* `shcodec' */
 FL int c_shcodec(void *vp);
-
-/*
- * signal.c
- */
-
-/* `sleep' */
-FL int c_sleep(void *v);
-
-#ifdef mx_HAVE_DEVEL
-FL int         c_sigstate(void *);
-#endif
-
-FL void        n_raise(int signo);
-
-/* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
-FL n_sighdl_t safe_signal(int signum, n_sighdl_t handler);
-
-/* Provide reproducable non-restartable signal handler installation */
-FL n_sighdl_t  n_signal(int signo, n_sighdl_t hdl);
-
-/* Hold *all* signals but SIGCHLD, and release that total block again */
-FL void        hold_all_sigs(void);
-FL void        rele_all_sigs(void);
-
-/* Hold HUP/QUIT/INT */
-FL void        hold_sigs(void);
-FL void        rele_sigs(void);
-
-/* Call _ENTER_SWITCH() with the according flags, it'll take care for the rest
- * and also set the jump buffer - it returns 0 if anything went fine and
- * a signal number if a jump occurred, in which case all handlers requested in
- * flags are temporarily SIG_IGN.
- * _cleanup_ping() informs the condome that no jumps etc. shall be performed
- * until _leave() is called in the following -- to be (optionally) called right
- * before the local jump label is reached which is jumped to after a long jump
- * occurred, straight code flow provided, e.g., to avoid destructors to be
- * called twice.  _leave() must always be called last, reraise_flags will be
- * used to decide how signal handling has to continue
- */
-#define n_SIGMAN_ENTER_SWITCH(S,F) do{\
-   int __x__;\
-   hold_sigs();\
-   if(sigsetjmp((S)->sm_jump, 1))\
-      __x__ = -1;\
-   else\
-      __x__ = F;\
-   n__sigman_enter(S, __x__);\
-}while(0); switch((S)->sm_signo)
-FL int         n__sigman_enter(struct n_sigman *self, int flags);
-FL void        n_sigman_cleanup_ping(struct n_sigman *self);
-FL void        n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
-
-/* Pending signal or 0? */
-FL int         n_sigman_peek(void);
-FL void        n_sigman_consume(void);
-
-/* Not-Yet-Dead debug information (handler installation in main.c) */
-#if su_DVLOR(1, 0)
-FL void mx__nyd_oncrash(int signo);
-#endif
-
-/*
- * smtp.c
- */
-
-#ifdef mx_HAVE_SMTP
-/* Send a message via SMTP */
-FL boole      smtp_mta(struct sendbundle *sbp);
-#endif
-
-/*
- * socket.c
- */
-
-#ifdef mx_HAVE_SOCKETS
-/* Immediately closes the socket for CPROTO_CERTINFO */
-FL boole      sopen(struct sock *sp, struct url *urlp);
-FL int         sclose(struct sock *sp);
-FL enum okay   swrite(struct sock *sp, char const *data);
-FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
-                  int use_buffer);
-
-/*  */
-FL int         sgetline(char **line, uz *linesize, uz *linelen,
-                  struct sock *sp  su_DBG_LOC_ARGS_DECL);
-# ifdef su_HAVE_DBG_LOC_ARGS
-#  define sgetline(A,B,C,D) sgetline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
-# endif
-#endif
 
 /*
  * spam.c
@@ -2063,61 +1742,6 @@ FL char const *n_string_cp_const(struct n_string const *self);
 #endif
 
 /*
- * termcap.c
- * This is a little bit hairy since it provides stuff even if mx_HAVE_TERMCAP
- * is false due to encapsulation desire
- */
-
-#ifdef n_HAVE_TCAP
-/* termcap(3) / xy lifetime handling -- only called if we're n_PSO_INTERACTIVE
- * but not doing something in n_PO_QUICKRUN_MASK */
-FL void n_termcap_init(void);
-FL void n_termcap_destroy(void);
-
-/* enter_ca_mode / enable keypad (both if possible).
- * TODO When complete is not set we won't enter_ca_mode, for example: we don't
- * TODO want a complete screen clearance after $PAGER returned after displaying
- * TODO a mail, because otherwise the screen would look differently for normal
- * TODO stdout display messages.  Etc. */
-# ifdef mx_HAVE_TERMCAP
-FL void n_termcap_resume(boole complete);
-FL void n_termcap_suspend(boole complete);
-
-#  define n_TERMCAP_RESUME(CPL) do{ n_termcap_resume(CPL); }while(0)
-#  define n_TERMCAP_SUSPEND(CPL) do{ n_termcap_suspend(CPL); }while(0)
-# endif
-
-/* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
- * for commands which are not available and have no built-in fallback.
- * For query options the return represents a true value and -1 error.
- * Will return FAL0 directly unless we've been initialized.
- * By convention unused argument slots are given as -1 */
-FL sz n_termcap_cmd(enum n_termcap_cmd cmd, sz a1, sz a2);
-# define n_termcap_cmdx(CMD) n_termcap_cmd(CMD, -1, -1)
-
-/* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX1 then
- * tvp->tv_data.tvd_string must contain the name of the query to look up; this
- * is used to lookup just about *any* (string) capability.
- * Returns TRU1 on success and TRUM1 for queries for which a built-in default
- * is returned; FAL0 is returned on non-availability; for boolean the return
- * value equals the result as such (still tvp is mandatory argument) */
-FL boole n_termcap_query(enum n_termcap_query query,
-      struct n_termcap_value *tvp);
-
-/* Get a n_termcap_query for name or -1 if it is not known, and -2 if
- * type wasn't _NONE and the type doesn't match. */
-# ifdef mx_HAVE_KEY_BINDINGS
-FL s32 n_termcap_query_for_name(char const *name, enum n_termcap_captype type);
-FL char const *n_termcap_name_of_query(enum n_termcap_query query);
-# endif
-#endif /* n_HAVE_TCAP */
-
-#ifndef n_TERMCAP_RESUME
-# define n_TERMCAP_RESUME(CPL) do{;}while(0)
-# define n_TERMCAP_SUSPEND(CPL) do{;}while(0);
-#endif
-
-/*
  * thread.c
  */
 
@@ -2149,7 +1773,7 @@ FL void        uncollapse1(struct message *mp, int always);
 
 #ifdef mx_HAVE_TLS
 /*  */
-FL void n_tls_set_verify_level(struct url const *urlp);
+FL void n_tls_set_verify_level(struct mx_url const *urlp);
 
 /* */
 FL boole n_tls_verify_decide(void);
@@ -2180,160 +1804,17 @@ FL int c_tls(void *vp);
 #endif /* mx_HAVE_TLS */
 
 /*
- * tty.c
- */
-
-/* Return whether user says yes, on STDIN if interactive.
- * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for n_boolify() and chooses the yes/no string to append to prompt
- * accordingly.  If prompt is NULL "Continue" is used instead.
- * Handles+reraises SIGINT */
-FL boole getapproval(char const *prompt, boole noninteract_default);
-
-#ifdef mx_HAVE_SOCKETS
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error */
-FL char *getuser(char const *query);
-
-/* Get a password the expected way, return termios_state.ts_linebuf on
- * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
- * termios_state_reset() must be called anyway */
-FL char *getpassword(char const *query);
-#endif
-
-/* Create the prompt and return its visual width in columns, which may be 0
- * if evaluation is disabled etc.  The data is placed in store.
- * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
- * takes place */
-FL u32 n_tty_create_prompt(struct n_string *store, char const *xprompt,
-            enum n_go_input_flags gif);
-
-/* Overall interactive terminal life cycle for command line editor library */
-#ifdef mx_HAVE_MLE
-FL void n_tty_init(void);
-FL void n_tty_destroy(boole xit_fastpath);
-#else
-# define n_tty_init() do{;}while(0)
-# define n_tty_destroy(B) do{;}while(0)
-#endif
-
-/* Read a line after printing prompt (if set and non-empty).
- * If n>0 assumes that *linebuf has n bytes of default content.
- * histok_or_null like for n_go_input().
- * Only the _CTX_ bits in lif are used */
-FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, uz *linesize, uz n, boole *histok_or_null
-         su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_tty_readline(A,B,C,D,E,F) \
-   (n_tty_readline)(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Whether and how an entry is added for real depends on gif, e.g.,
- * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
- * Empty strings are never stored */
-FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
-
-#ifdef mx_HAVE_HISTORY
-FL int c_history(void *v);
-#endif
-
-/* `bind' and `unbind' */
-#ifdef mx_HAVE_KEY_BINDINGS
-FL int c_bind(void *v);
-FL int c_unbind(void *v);
-#endif
-
-/*
- * urlcrecry.c
- */
-
-/* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly autorec_alloc()ated result, or NULL on length excess */
-FL char *urlxenc(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL);
-FL char *urlxdec(char const *cp  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define urlxenc(CP,P) urlxenc(CP, P  su_DBG_LOC_ARGS_INJ)
-# define urlxdec(CP) urlxdec(CP  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* `urlcodec' */
-FL int c_urlcodec(void *vp);
-
-FL int c_urlencode(void *v); /* TODO obsolete*/
-FL int c_urldecode(void *v); /* TODO obsolete */
-
-/* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
- * Return NULL or something that can be converted to a struct mx_name */
-FL char *      url_mailto_to_address(char const *mailtop);
-
-/* Return port for proto (and set irv_or_null), or NULL if unknown.
- * For file:// this returns an empty string */
-FL char const *n_servbyname(char const *proto, u16 *irv_or_null);
-
-#ifdef mx_HAVE_SOCKETS
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp (URL rather according to RFC 3986) */
-FL boole      url_parse(struct url *urlp, enum cproto cproto,
-                  char const *data);
-
-/* Zero ccp and lookup credentials for communicating with urlp.
- * Return whether credentials are available and valid (for chosen auth) */
-FL boole      ccred_lookup(struct ccred *ccp, struct url *urlp);
-FL boole      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
-                  char const *addr);
-#endif /* mx_HAVE_SOCKETS */
-
-/* `netrc' */
-#ifdef mx_HAVE_NETRC
-FL int c_netrc(void *v);
-#endif
-
-/* MD5 (RFC 1321) related facilities */
-#ifdef mx_HAVE_MD5
-# ifdef mx_HAVE_XTLS_MD5
-#  define md5_ctx	               MD5_CTX
-#  define md5_init	            MD5_Init
-#  define md5_update	            MD5_Update
-#  define md5_final	            MD5_Final
-# else
-   /* The function definitions are instantiated in main.c */
-#  include "mx/rfc1321.h"
-# endif
-
-/* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
- * using lowercase ASCII letters as defined in RFC 2195 */
-# define MD5TOHEX_SIZE           32
-FL char *      md5tohex(char hex[MD5TOHEX_SIZE], void const *vp);
-
-/* CRAM-MD5 encode the *user* / *pass* / *b64* combo; NULL on overflow error */
-FL char *      cram_md5_string(struct str const *user, struct str const *pass,
-                  char const *b64);
-
-/* RFC 2104: HMAC: Keyed-Hashing for Message Authentication.
- * unsigned char *text: pointer to data stream
- * int text_len       : length of data stream
- * unsigned char *key : pointer to authentication key
- * int key_len        : length of authentication key
- * caddr_t digest     : caller digest to be filled in */
-FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
-                  int key_len, void *digest);
-#endif /* mx_HAVE_MD5 */
-
-/*
  * xtls.c
  */
 
 #ifdef mx_HAVE_XTLS
-/* Our wrapper for RAND_bytes(3) */
-# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-FL void n_tls_rand_bytes(void *buf, uz blen);
-# endif
+/* Our wrapper for RAND_bytes(3); the implementation exists only when
+ * HAVE_RANDOM is RANDOM_IMPL_TLS, though */
+FL void mx_tls_rand_bytes(void *buf, uz blen);
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */
-FL boole n_tls_open(struct url *urlp, struct sock *sp);
+FL boole n_tls_open(struct mx_url *urlp, struct mx_socket *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);

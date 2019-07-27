@@ -48,16 +48,25 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/sort.h>
 
-#include "mx/charsetalias.h"
-#include "mx/commandalias.h"
-#include "mx/csop.h"
-#include "mx/filetype.h"
-#include "mx/shortcut.h"
-#include "mx/mlist.h"
+#include "mx/cmd-charsetalias.h"
+#include "mx/cmd-commandalias.h"
+#include "mx/cmd-csop.h"
+#include "mx/cmd-filetype.h"
+#include "mx/cmd-mlist.h"
+#include "mx/cmd-shortcut.h"
+#include "mx/cmd-vexpr.h"
+#include "mx/colour.h"
+#include "mx/cred-netrc.h"
+#include "mx/dig-msg.h"
+#include "mx/file-streams.h"
 #include "mx/names.h"
-#include "mx/vexpr.h"
+#include "mx/sigs.h"
+#include "mx/termios.h"
+#include "mx/tty.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -235,15 +244,16 @@ a_ctab_c_list(void *vp){
       cdpa[i] = &a_ctab_ctable[i];
    for(l = 0; l < NELEM(a_ctab_ctable_plus); ++i, ++l)
       cdpa[i] = &a_ctab_ctable_plus[l];
-   cdpa[i] = NULL;
+   cdpa[i] = NIL;
 
-   if(*(void**)vp == NULL)
-      su_sort_shell_vpp(su_S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
+   if(*(void**)vp == NIL)
+      su_sort_shell_vpp(S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
 
-   if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if((fp = mx_fs_tmp_open("list", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
-   scrwid = n_SCRNWIDTH_FOR_LISTS;
+   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
 
    fprintf(fp, _("Commands are:\n"));
    l = 1;
@@ -284,7 +294,7 @@ a_ctab_c_list(void *vp){
 
    if(fp != n_stdout){
       page_or_print(fp, l);
-      Fclose(fp);
+      mx_fs_close(fp);
    }
    NYD_OU;
    return 0;
@@ -364,8 +374,8 @@ jredo:
 #ifdef mx_HAVE_UISTRINGS
       fputs(su_program, n_stdout);
       fputs(_(
-         " commands -- <msglist> denotes message specification tokens,\n"
-         "e.g., 1-5, :n or . (current, the \"dot\"), separated by *ifs*:\n"),
+         " commands -- <msglist> denotes message specification tokens, e.g.,\n"
+         "1-5, :n, @f@Ulf or . (current, the \"dot\"), separated by *ifs*:\n"),
          n_stdout);
       fputs(_(
 "\n"
@@ -373,7 +383,7 @@ jredo:
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
 "headers                header summary ... for messages surrounding \"dot\"\n"
-"search <msglist>       ... for the given list (alias for `from')\n"
+"search <msglist>       ... for the given expression list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
          n_stdout);
 
@@ -416,10 +426,10 @@ a_ctab_c_memtrace(void *vp){
 
    /* Only for development.. */
    oopt = n_poption;
-   if(!(oopt & n_PO_VERB))
+   if(!(oopt & n_PO_V))
       ok_bset(verbose);
    rv = (su_mem_trace() != FAL0);
-   if(!(oopt & n_PO_VERB))
+   if(!(oopt & n_PO_V))
       ok_bclear(verbose);
    NYD2_OU;
    return rv;

@@ -47,12 +47,14 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 #include <su/utf.h>
 
 /* TODO nonsense (should be filter chain!) */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/sigs.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */

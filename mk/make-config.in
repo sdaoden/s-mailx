@@ -1,13 +1,8 @@
 #@ make-config.in -- mk-config.mk template, completed by make-config.sh.
-#@ TODO All the shell/awk snippets should become scripts in mk/!
 
-.PHONY: all test install uninstall clean distclean
+.PHONY: all install uninstall clean distclean
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
-
-_version_from_header = VERSION="`< $(CWDDIR)include/mx/gen-version.h $(sed) \
-		-e '/ n_VERSION /b X' -e d -e ':X' \
-		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
 all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK)
 
@@ -21,177 +16,17 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 	$(SIZE_CHECK)
 
 gen-mime-types.h: $(TOPDIR)mime.types
-	$(ECHO_GEN) < $(TOPDIR)mime.types > $(@) \
-	awk=$(awk) $(SHELL) $(TOPDIR)mk/make-mime-types.sh
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh \
+		"$(TOPDIR)"mime.types "$(@)"
 
 uman.1: $(TOPDIR)nail.1
-	$(ECHO_GEN)\
-	LC_ALL=C \
-		_UAGENT="$(VAL_UAGENT)" \
-		_SYSCONFRC="$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" \
-		_MAILRC="$(VAL_MAILRC)" \
-			_DEAD="$(VAL_DEAD)" \
-			_MBOX="$(VAL_MBOX)" \
-			_NETRC="$(VAL_NETRC)" \
-			_TMPDIR="$(VAL_TMPDIR)" \
-				_MT_S="$(VAL_MIME_TYPES_SYS)" \
-				_MT_U="$(VAL_MIME_TYPES_USR)" \
-		$(_version_from_header) \
-	< $(TOPDIR)nail.1 > $(@) $(awk) '\
-	BEGIN { written = 0 }\
-	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
-		if (written++ != 0)\
-			next;\
-		OFS = "";\
-		print ".ds VV \\\\%v", ENVIRON["VERSION"];\
-		\
-		un = toupper(ENVIRON["_UAGENT"]);\
-			ln = tolower(un);\
-			cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-			print ".ds UU \\\\%", un;\
-			print ".ds UA \\\\%", cn;\
-			print ".ds uA \\\\%", ln;\
-		path = ENVIRON["_SYSCONFRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds UR \\\\%", path;\
-		path = ENVIRON["_MAILRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds ur \\\\%", path;\
-		\
-		path = ENVIRON["_DEAD"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VD \\\\%", path;\
-		path = ENVIRON["_MBOX"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VM \\\\%", path;\
-		path = ENVIRON["_NETRC"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VN \\\\%", path;\
-		path = ENVIRON["_TMPDIR"];\
-			gsub("/", "/\\:", path);\
-			print ".ds VT \\\\%", path;\
-		\
-		path = ENVIRON["_MT_S"];\
-			gsub("/", "/\\:", path);\
-			print ".ds vS \\\\%", path;\
-		path = ENVIRON["_MT_U"];\
-			gsub("/", "/\\:", path);\
-			print ".ds vU \\\\%", path;\
-		\
-		OFS = " ";\
-		next\
-	}\
-	{print}\
-	'
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
 
 urc.rc: $(TOPDIR)nail.rc
-	$(ECHO_GEN)\
-	LC_ALL=C \
-		_UAGENT="$(VAL_UAGENT)" \
-		_SYSCONFRC="$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" \
-		$(_version_from_header) \
-	< $(TOPDIR)nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
-	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
-		if (written == 1)\
-			next;\
-		written = 1;\
-		OFS = "";\
-		ln = tolower(ENVIRON["_UAGENT"]);\
-		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
-		print "#@ ", ENVIRON["_SYSCONFRC"];\
-		print "#@ Configuration file for ", cn, " v",\
-			ENVIRON["VERSION"], ".";\
-		OFS = " ";\
-		next\
-	}\
-	{print}\
-	'
+	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
 
 install:
-	$(ECHO_BLOCK_BEGIN)\
-	__mkdir() {\
-		_dir="$(DESTDIR)$${1}";\
-		if [ -d "$${_dir}" ]; then :; else \
-			$(ECHO_BLOCK_CMD)$(mkdir) -m 0755 -p "$${_dir}";\
-		fi;\
-	};\
-	__copyfile() {\
-		_mode=$${1} _src=$${2} _xdst=$${3} _dst="$(DESTDIR)$${3}";\
-		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
-			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
-		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
-	};\
-	__copychownfile() {\
-		_mode=$${1} _ident=$${2} _src=$${3} \
-			_xdst=$${4} _dst="$(DESTDIR)$${4}";\
-		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
-			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
-		$(ECHO_BLOCK_CMD)$(chown) $${_ident} "$${_dst}" || true;\
-		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
-		\
-	};\
-	__stripfile() {\
-		_file=$${1};\
-		if [ "$(OPT_DEBUG)" != 0 ]; then :;\
-		elif [ -n "$(HAVE_STRIP)" ]; then \
-			$(ECHO_BLOCK_CMD)$(strip) "$${_file}";\
-		fi;\
-	};\
-	\
-	cd "$(CWDDIR)" || exit 11;\
-	echo '#!/bin/sh -' > "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	echo '#@ Uninstall script for $(VAL_UAGENT)' >> \
-		"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	echo >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	echo 'DESTDIR="$(DESTDIR)"' >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	echo 'DESTDIR=' >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	echo >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	\
-	if [ -n "$(DESTDIR)" ]; then __mkdir ''; fi;\
-	__mkdir "$(VAL_BINDIR)";\
-	__mkdir "$(VAL_MANDIR)/man1";\
-	__mkdir "$(VAL_SYSCONFDIR)";\
-	\
-	__stripfile "$(OBJDIR)"/"$(VAL_UAGENT)";\
-	__copyfile 0555 "$(OBJDIR)"/"$(VAL_UAGENT)" \
-		"$(VAL_BINDIR)/$(VAL_UAGENT)";\
-	__copyfile 0444 "$(OBJDIR)"/uman.1 \
-		"$(VAL_MANDIR)/man1/$(VAL_UAGENT).1";\
-	if [ -f "$(DESTDIR)$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" ]; then :;else \
-		__copyfile 0444 "$(OBJDIR)"/urc.rc \
-			"$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)";\
-	fi;\
-	\
-	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
-		__mkdir "$(VAL_LIBEXECDIR)";\
-		\
-		__stripfile "$(OBJDIR)"/"$(VAL_PS_DOTLOCK)";\
-		m='o=rx' o=;\
-		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
-			m="g=rxs,$${m}" o=":$(VAL_PRIVSEP_GROUP)";\
-		else \
-			m="g=rx,$${m}";\
-		fi;\
-		if [ -n "$(VAL_PS_DOTLOCK_USER)" ]; then \
-			m="u=rxs,$${m}" o="$(VAL_PS_DOTLOCK_USER)$${o}";\
-		else \
-			m="u=rx,$${m}";\
-		fi;\
-		__copychownfile "$${m}" "$${o}" \
-			"$(OBJDIR)"/"$(VAL_PS_DOTLOCK)" \
-			"$(VAL_LIBEXECDIR)/$(VAL_PS_DOTLOCK)";\
-	fi;\
-	\
-	if [ -z "$(DESTDIR)" ]; then \
-		__copyfile 0555 "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh" \
-			"$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	else \
-	echo "rm -f \"\$${DESTDIR}$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh\"" \
-			>> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-	fi;\
-	$(ECHO_BLOCK_END)
+	$(ECHO_CMD)$(SHELL) "$(TOPDIR)"mk/make-install.sh
 
 uninstall:
 	@echo 'Invoke $(VAL_UAGENT)-uninstall.sh to uninstall $(VAL_UAGENT)'
@@ -212,57 +47,5 @@ distclean: clean
 		$(rm) -f "$(CWDDIR)include/mx/config.h" \
 			"$(CWDDIR)include/mx/gen-config.h";\
 	fi
-
-# MUST work with "TOPDIR= grep=grep sed=sed cmp=cmp mv=mv",
-# otherwise make-release.sh needs to be changed
-_echo-version:
-	@LC_ALL=C; export LC_ALL; $(_version_from_header); echo "$${VERSION}"
-_update-version:
-	@LC_ALL=C; export LC_ALL;\
-	if [ -z "$(VERSION)" ]; then \
-		eval VERSION="`([ -n \"$(TOPDIR)\" ] && cd \"$(TOPDIR)\";\
-			[ -d .git ] && git describe --tags) 2>/dev/null`";\
-		if [ -n "$${VERSION}" ]; then \
-			VERSION="`echo $${VERSION} |\
-				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
-			[ "`([ -n \"$(TOPDIR)\" ] && cd \"$(TOPDIR)\";\
-					git status --porcelain) |\
-				$(awk) '\
-					BEGIN {n=0}\
-					/gen-version\.h/ {next}\
-					/^\?\?/ {next}\
-					{++n}\
-					END {print n}\
-				'`" -ne 0 ] &&\
-				VERSION="$${VERSION}-dirty";\
-		else \
-			$(_version_from_header);\
-			echo "$${VERSION}" | $(grep) -q -F dirty ||\
-				VERSION="$${VERSION}-dirty";\
-		fi;\
-	fi;\
-	vmaj="`echo \"$${VERSION}\" |\
-		$(sed) -e 's/^\([^.]\{1,\}\).*/\1/'`";\
-	vmin="`echo \"$${VERSION}\" |\
-		$(sed) -e 's/^[^.]\{1,\}\.\([^.]\{1,\}\).*/\1/'`";\
-	[ "$${vmin}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vmin=0;\
-	vupd="`echo \"$${VERSION}\" |\
-		$(sed) -e \
-			's/^[^.]\{1,\}\.[^.]\{1,\}\.\([^.-]\{1,\}\).*/\1/'`";\
-	[ "$${vupd}" = "$${VERSION}" ] && VERSION="$${VERSION}.0" vupd=0;\
-	trap "$(rm) -f ./version.tmp" 0 1 2 15;\
-	printf > ./version.tmp "#define n_VERSION \"v$${VERSION}\"\n";\
-	printf >> ./version.tmp \
-		"#define n_VERSION_DATE \"`date -u +'%Y-%m-%d'`\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_MAJOR \"$${vmaj}\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_MINOR \"$${vmin}\"\n";\
-	printf >> ./version.tmp "#define n_VERSION_UPDATE \"$${vupd}\"\n";\
-	printf >> ./version.tmp \
-		"#define n_VERSION_HEXNUM \"0x%02X%03X%03X\"\n" \
-		"$${vmaj}" "$${vmin}" "$${vupd}";\
-	$(cmp) ./version.tmp $(CWDDIR)include/mx/gen-version.h \
-		>/dev/null 2>&1 && exit;\
-	$(mv) ./version.tmp $(CWDDIR)include/mx/gen-version.h;\
-	trap : 0 1 2 15
 
 # s-mk-mode

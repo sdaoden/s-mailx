@@ -107,6 +107,7 @@ static char const a_amv_var_names[] = {
 'L','I','N','E','S','\0',
 'L','I','S','T','E','R','\0',
 'L','O','G','N','A','M','E','\0',
+'l','i','n','e','-','e','d','i','t','o','r','-','c','p','l','-','w','o','r','d','-','b','r','e','a','k','s','\0',
 'l','i','n','e','-','e','d','i','t','o','r','-','d','i','s','a','b','l','e','\0',
 'l','i','n','e','-','e','d','i','t','o','r','-','n','o','-','d','e','f','a','u','l','t','s','\0',
 'l','o','g','-','p','r','e','f','i','x','\0',
@@ -132,6 +133,7 @@ static char const a_amv_var_names[] = {
 'm','i','m','e','-','f','o','r','c','e','-','s','e','n','d','o','u','t','\0',
 'm','i','m','e','t','y','p','e','s','-','l','o','a','d','-','c','o','n','t','r','o','l','\0',
 'm','t','a','\0',
+'m','t','a','-','a','l','i','a','s','e','s','\0',
 'm','t','a','-','a','r','g','u','m','e','n','t','s','\0',
 'm','t','a','-','n','o','-','d','e','f','a','u','l','t','-','a','r','g','u','m','e','n','t','s','\0',
 'm','t','a','-','n','o','-','r','e','c','e','i','v','e','r','-','a','r','g','u','m','e','n','t','s','\0',
@@ -168,6 +170,7 @@ static char const a_amv_var_names[] = {
 'o','n','-','c','o','m','p','o','s','e','-','s','p','l','i','c','e','\0',
 'o','n','-','c','o','m','p','o','s','e','-','s','p','l','i','c','e','-','s','h','e','l','l','\0',
 'o','n','-','h','i','s','t','o','r','y','-','a','d','d','i','t','i','o','n','\0',
+'o','n','-','m','a','i','n','-','l','o','o','p','-','t','i','c','k','\0',
 'o','n','-','r','e','s','e','n','d','-','c','l','e','a','n','u','p','\0',
 'o','n','-','r','e','s','e','n','d','-','e','n','t','e','r','\0',
 'o','u','t','f','o','l','d','e','r','\0',
@@ -253,8 +256,6 @@ static char const a_amv_var_names[] = {
 's','p','a','m','c','-','c','o','m','m','a','n','d','\0',
 's','p','a','m','c','-','a','r','g','u','m','e','n','t','s','\0',
 's','p','a','m','c','-','u','s','e','r','\0',
-'s','p','a','m','d','-','s','o','c','k','e','t','\0',
-'s','p','a','m','d','-','u','s','e','r','\0',
 's','p','a','m','f','i','l','t','e','r','-','h','a','m','\0',
 's','p','a','m','f','i','l','t','e','r','-','n','o','h','a','m','\0',
 's','p','a','m','f','i','l','t','e','r','-','n','o','s','p','a','m','\0',
@@ -327,7 +328,7 @@ static char const a_amv_var_names[] = {
 'i','m','a','p','-','l','i','s','t','-','d','e','p','t','h','\0',
 'i','m','a','p','-','u','s','e','-','s','t','a','r','t','t','l','s','\0',
 };
-#define a_AMV_VAR_NAME_KEY_MAXOFF 4140U
+#define a_AMV_VAR_NAME_KEY_MAXOFF 4174U
 
 CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");
 static struct a_amv_var_map const a_amv_var_map[] = {
@@ -436,225 +437,226 @@ static struct a_amv_var_map const a_amv_var_map[] = {
 {2376678931u, 1104u, 0|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
 {1848015380u, 1110u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
 {3871590672u, 1117u, 0|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
-{3293963057u, 1125u, 0|a_AMV_VF_BOOL},
-{3853763107u, 1145u, 0|a_AMV_VF_BOOL},
-{1789070192u, 1169u, 0|a_AMV_VF_NODEL|a_AMV_VF_I3VAL},
-{1789157842u, 1180u, 0|a_AMV_VF_ENV},
-{3252715507u, 1185u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{3506381864u, 1192u, 0|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
-{81016594u, 1211u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{431868467u, 1216u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},
-{3586483916u, 1233u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},
-{1809788732u, 1249u, 0},
-{3344360316u, 1264u, 0|a_AMV_VF_BOOL},
-{97960896u, 1277u, 0|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},
-{1206644946u, 1294u, 0|a_AMV_VF_BOOL},
-{411705792u, 1307u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
-{2924780567u, 1316u, 0|a_AMV_VF_BOOL},
-{3508650772u, 1335u, 0},
-{2318901230u, 1355u, 0},
-{3755204636u, 1375u, 0|a_AMV_VF_BOOL},
-{1123775568u, 1381u, 0|a_AMV_VF_BOOL},
-{1016573875u, 1406u, 0|a_AMV_VF_BOOL},
-{1894749336u, 1435u, 0|a_AMV_VF_POSNUM},
-{7077405u, 1457u, 0},
-{212277572u, 1471u, 0|a_AMV_VF_BOOL},
-{3037097698u, 1490u, 0},
-{553443582u, 1513u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
-{2950745266u, 1517u, 0},
-{3777230887u, 1531u, 0|a_AMV_VF_BOOL},
-{1537483713u, 1556u, 0|a_AMV_VF_BOOL},
-{2122434769u, 1582u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
-{2060730609u, 1592u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{878559998u, 1606u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3291580202u, 1620u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1152455935u, 1631u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3628560729u, 1644u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3280403201u, 1653u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{4089466605u, 1662u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{733346855u, 1672u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3980034930u, 1685u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{2033036569u, 1698u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1852847708u, 1712u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3612286188u, 1728u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1108270344u, 1742u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{114853847u, 1756u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3872053044u, 1771u, 0|a_AMV_VF_OBSOLETE},
-{297169422u, 1785u, 0|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},
-{1607860199u, 1803u, 0|a_AMV_VF_OBSOLETE},
-{2276529140u, 1813u, 0|a_AMV_VF_OBSOLETE},
-{3334752474u, 1827u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM|a_AMV_VF_OBSOLETE},
-{1983079716u, 1841u, 0|a_AMV_VF_OBSOLETE},
-{2020589051u, 1851u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{1260217930u, 1857u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{3886637952u, 1870u, 0},
-{3651172215u, 1881u, 0},
-{3304640034u, 1892u, 0},
-{117356079u, 1900u, 0|a_AMV_VF_NOTEMPTY},
-{4290007558u, 1919u, 0|a_AMV_VF_NOTEMPTY},
-{293825268u, 1938u, 0|a_AMV_VF_NOTEMPTY},
-{2131049871u, 1955u, 0|a_AMV_VF_NOTEMPTY},
-{3562380821u, 1972u, 0|a_AMV_VF_NOTEMPTY},
-{3452672776u, 1990u, 0|a_AMV_VF_NOTEMPTY},
-{1488358487u, 2014u, 0|a_AMV_VF_NOTEMPTY},
-{1767855548u, 2034u, 0|a_AMV_VF_NOTEMPTY},
-{2401366305u, 2052u, 0|a_AMV_VF_NOTEMPTY},
-{416513343u, 2068u, 0|a_AMV_VF_BOOL},
-{1489818949u, 2078u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{2822297945u, 2084u, 0|a_AMV_VF_NODEL|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
-{2133454918u, 2089u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
-{110139073u, 2105u, 0|a_AMV_VF_BOOL},
-{236033362u, 2110u, 0|a_AMV_VF_CHAIN},
-{1184554264u, 2119u, 0|a_AMV_VF_BOOL},
-{959912200u, 2127u, 0|a_AMV_VF_CHAIN},
-{2157156237u, 2137u, 0|a_AMV_VF_BOOL},
-{3679046711u, 2152u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
-{1128676729u, 2167u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{403462699u, 2180u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{2340434703u, 2198u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
-{909397219u, 2204u, 0|a_AMV_VF_BOOL},
-{3753422504u, 2223u, 0|a_AMV_VF_I3VAL},
-{1957394514u, 2230u, 0|a_AMV_VF_I3VAL},
-{149149615u, 2238u, 0|a_AMV_VF_BOOL},
-{3721493487u, 2244u, 0},
-{1890299439u, 2250u, 0|a_AMV_VF_BOOL},
-{4044677414u, 2270u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
-{3595968213u, 2282u, 0},
-{2640088545u, 2293u, 0},
-{2904204181u, 2311u, 0},
-{1640115048u, 2329u, 0|a_AMV_VF_BOOL},
-{188553526u, 2347u, 0|a_AMV_VF_BOOL},
-{540723528u, 2364u, 0},
-{146539205u, 2371u, 0|a_AMV_VF_BOOL},
-{2425465309u, 2384u, 0|a_AMV_VF_BOOL},
-{1513358607u, 2398u, 0|a_AMV_VF_BOOL},
-{1900410726u, 2420u, 0},
-{2583631056u, 2434u, 0|a_AMV_VF_OBSOLETE},
-{1151099134u, 2442u, 0|a_AMV_VF_NOTEMPTY},
-{2823711003u, 2451u, 0},
-{3620202244u, 2467u, 0|a_AMV_VF_BOOL},
-{1938020952u, 2485u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{4069714370u, 2491u, 0|a_AMV_VF_BOOL|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},
-{3498694618u, 2497u, 0|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},
-{3962019339u, 2502u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
-{1130371609u, 2509u, 0|a_AMV_VF_BOOL},
-{968926480u, 2523u, 0|a_AMV_VF_VIP},
-{760633097u, 2536u, 0|a_AMV_VF_BOOL},
-{504631978u, 2565u, 0|a_AMV_VF_VIP},
-{856236114u, 2572u, 0|a_AMV_VF_OBSOLETE},
-{3085354123u, 2581u, 0|a_AMV_VF_OBSOLETE},
-{1325127300u, 2600u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
-{3864687553u, 2630u, 0|a_AMV_VF_OBSOLETE},
-{1977567474u, 2648u, 0|a_AMV_VF_BOOL},
-{3980879360u, 2657u, 0|a_AMV_VF_BOOL},
-{4203664219u, 2666u, 0|a_AMV_VF_BOOL},
-{3064935001u, 2675u, 0|a_AMV_VF_BOOL},
-{833163053u, 2682u, 0},
-{1713520988u, 2687u, 0},
-{2783766075u, 2692u, 0|a_AMV_VF_OBSOLETE},
-{534091439u, 2702u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
-{135477722u, 2716u, 0},
-{946781610u, 2729u, 0},
-{1507345877u, 2743u, 0},
-{2951976498u, 2758u, 0|a_AMV_VF_BOOL},
-{1752439545u, 2779u, 0|a_AMV_VF_CHAIN},
-{102302029u, 2792u, 0},
-{86428004u, 2806u, 0},
-{237746033u, 2821u, 0|a_AMV_VF_CHAIN},
-{2767628932u, 2835u, 0|a_AMV_VF_BOOL},
-{1005584095u, 2858u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
-{2610149716u, 2878u, 0|a_AMV_VF_BOOL},
-{4112782207u, 2889u, 0|a_AMV_VF_CHAIN},
-{1704393517u, 2905u, 0|a_AMV_VF_CHAIN},
-{2740251050u, 2923u, 0|a_AMV_VF_CHAIN},
-{3761658326u, 2948u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{1782732536u, 2974u, 0|a_AMV_VF_OBSOLETE},
-{1658958037u, 2979u, 0|a_AMV_VF_CHAIN},
-{3638650800u, 2989u, 0|a_AMV_VF_OBSOLETE},
-{2020555875u, 3008u, 0|a_AMV_VF_OBSOLETE},
-{1820965540u, 3023u, 0|a_AMV_VF_VIP},
-{1837607842u, 3037u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{900761917u, 3055u, 0|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
-{3456900515u, 3073u, 0|a_AMV_VF_POSNUM},
-{3775764645u, 3096u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN},
-{1607330400u, 3108u, 0},
-{1763068644u, 3123u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
-{1908563950u, 3136u, 0},
-{1452123120u, 3150u, 0},
-{4013666858u, 3166u, 0},
-{86528760u, 3177u, 0|a_AMV_VF_OBSOLETE},
-{923560515u, 3190u, 0|a_AMV_VF_OBSOLETE},
-{1923764058u, 3201u, 0},
-{3955925583u, 3216u, 0},
-{3561917382u, 3233u, 0},
-{261790554u, 3251u, 0},
-{914178751u, 3267u, 0},
-{2230056064u, 3293u, 0},
-{1769124455u, 3309u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{1778108319u, 3320u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{3110362859u, 3332u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{623065149u, 3345u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{139775082u, 3364u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{2317777583u, 3373u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{3936220190u, 3389u, 0|a_AMV_VF_OBSOLETE},
-{315983966u, 3405u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{1105329479u, 3423u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{800287693u, 3440u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{542424727u, 3451u, 0|a_AMV_VF_OBSOLETE},
-{1605928646u, 3463u, 0|a_AMV_VF_OBSOLETE},
-{2392084957u, 3476u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_OBSOLETE},
-{4242392148u, 3489u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{842733395u, 3497u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{120659094u, 3508u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
-{3391235883u, 3526u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{2493237115u, 3539u, 0|a_AMV_VF_OBSOLETE},
-{1150749481u, 3552u, 0|a_AMV_VF_OBSOLETE},
-{3001703062u, 3566u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
-{3060393762u, 3577u, 0},
-{3170554710u, 3588u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1689227859u, 3602u, 0|a_AMV_VF_ENV},
-{275160966u, 3607u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{2006033901u, 3614u, 0},
-{1881431006u, 3622u, 0|a_AMV_VF_BOOL},
-{3874156389u, 3638u, 0|a_AMV_VF_BOOL},
-{49001407u, 3654u, 0|a_AMV_VF_CHAIN},
-{2310520195u, 3665u, 0|a_AMV_VF_CHAIN},
-{1223767828u, 3677u, 0|a_AMV_VF_CHAIN},
-{3113270631u, 3690u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{172056861u, 3709u, 0},
-{3002246919u, 3725u, 0|a_AMV_VF_CHAIN},
-{789322284u, 3743u, 0|a_AMV_VF_CHAIN},
-{3248783469u, 3760u, 0},
-{1888319427u, 3772u, 0},
-{4259586683u, 3785u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1139189225u, 3798u, 0|a_AMV_VF_CHAIN},
-{2530971234u, 3814u, 0|a_AMV_VF_CHAIN},
-{2971415438u, 3837u, 0},
-{3259662180u, 3851u, 0|a_AMV_VF_CHAIN},
-{3045770460u, 3862u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM},
-{2347832344u, 3871u, 0|a_AMV_VF_BOOL},
-{3335676089u, 3882u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
-{807899482u, 3893u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
-{330400956u, 3909u, 0|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
-{1567917856u, 3914u, 0|a_AMV_VF_VIP|a_AMV_VF_NODEL|a_AMV_VF_I3VAL|a_AMV_VF_POSNUM},
-{875435785u, 3920u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN},
-{1942497279u, 3925u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
-{691216848u, 3932u, 0},
-{3973338304u, 3943u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
-{944087093u, 3951u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{1337487108u, 3959u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
-{3081657388u, 3972u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
-{1921844491u, 3987u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
-{1707804737u, 4001u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
-{3760910668u, 4015u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
-{432301395u, 4030u, 0|a_AMV_VF_BOOL},
-{1643918527u, 4046u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
-{259555527u, 4059u, 0|a_AMV_VF_CHAIN},
-{3710399665u, 4069u, 0},
-{3006849165u, 4080u, 0|a_AMV_VF_CHAIN},
-{1681336106u, 4091u, 0|a_AMV_VF_CHAIN},
-{3435503022u, 4106u, 0},
-{2746817971u, 4122u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{3059025987u, 1125u, 0|a_AMV_VF_DEFVAL},
+{3293963057u, 1153u, 0|a_AMV_VF_BOOL},
+{3853763107u, 1173u, 0|a_AMV_VF_BOOL},
+{1789070192u, 1197u, 0|a_AMV_VF_NODEL|a_AMV_VF_I3VAL},
+{1789157842u, 1208u, 0|a_AMV_VF_ENV},
+{3252715507u, 1213u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{3506381864u, 1220u, 0|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
+{81016594u, 1239u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{431868467u, 1244u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},
+{3586483916u, 1261u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},
+{1809788732u, 1277u, 0},
+{3344360316u, 1292u, 0|a_AMV_VF_BOOL},
+{97960896u, 1305u, 0|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},
+{1206644946u, 1322u, 0|a_AMV_VF_BOOL},
+{411705792u, 1335u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
+{2924780567u, 1344u, 0|a_AMV_VF_BOOL},
+{3508650772u, 1363u, 0},
+{2318901230u, 1383u, 0},
+{3755204636u, 1403u, 0|a_AMV_VF_BOOL},
+{1123775568u, 1409u, 0|a_AMV_VF_BOOL},
+{1016573875u, 1434u, 0|a_AMV_VF_BOOL},
+{1894749336u, 1463u, 0|a_AMV_VF_POSNUM},
+{7077405u, 1485u, 0},
+{212277572u, 1499u, 0|a_AMV_VF_BOOL},
+{3037097698u, 1518u, 0},
+{553443582u, 1541u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
+{832650830u, 1545u, 0|a_AMV_VF_NOTEMPTY},
+{2950745266u, 1557u, 0},
+{3777230887u, 1571u, 0|a_AMV_VF_BOOL},
+{1537483713u, 1596u, 0|a_AMV_VF_BOOL},
+{2122434769u, 1622u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
+{2060730609u, 1632u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{878559998u, 1646u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3291580202u, 1660u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1152455935u, 1671u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3628560729u, 1684u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3280403201u, 1693u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{4089466605u, 1702u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{733346855u, 1712u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3980034930u, 1725u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{2033036569u, 1738u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1852847708u, 1752u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3612286188u, 1768u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1108270344u, 1782u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{114853847u, 1796u, 0|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3872053044u, 1811u, 0|a_AMV_VF_OBSOLETE},
+{297169422u, 1825u, 0|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},
+{1607860199u, 1843u, 0|a_AMV_VF_OBSOLETE},
+{2276529140u, 1853u, 0|a_AMV_VF_OBSOLETE},
+{3334752474u, 1867u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM|a_AMV_VF_OBSOLETE},
+{1983079716u, 1881u, 0|a_AMV_VF_OBSOLETE},
+{2020589051u, 1891u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{1260217930u, 1897u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{3886637952u, 1910u, 0},
+{3651172215u, 1921u, 0},
+{3304640034u, 1932u, 0},
+{117356079u, 1940u, 0|a_AMV_VF_NOTEMPTY},
+{4290007558u, 1959u, 0|a_AMV_VF_NOTEMPTY},
+{293825268u, 1978u, 0|a_AMV_VF_NOTEMPTY},
+{2131049871u, 1995u, 0|a_AMV_VF_NOTEMPTY},
+{3562380821u, 2012u, 0|a_AMV_VF_NOTEMPTY},
+{3452672776u, 2030u, 0|a_AMV_VF_NOTEMPTY},
+{1488358487u, 2054u, 0|a_AMV_VF_NOTEMPTY},
+{3412211600u, 2074u, 0|a_AMV_VF_NOTEMPTY},
+{1767855548u, 2092u, 0|a_AMV_VF_NOTEMPTY},
+{2401366305u, 2110u, 0|a_AMV_VF_NOTEMPTY},
+{416513343u, 2126u, 0|a_AMV_VF_BOOL},
+{1489818949u, 2136u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{2822297945u, 2142u, 0|a_AMV_VF_NODEL|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
+{2133454918u, 2147u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
+{110139073u, 2163u, 0|a_AMV_VF_BOOL},
+{236033362u, 2168u, 0|a_AMV_VF_CHAIN},
+{1184554264u, 2177u, 0|a_AMV_VF_BOOL},
+{959912200u, 2185u, 0|a_AMV_VF_CHAIN},
+{2157156237u, 2195u, 0|a_AMV_VF_BOOL},
+{3679046711u, 2210u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
+{1128676729u, 2225u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{403462699u, 2238u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{2340434703u, 2256u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
+{909397219u, 2262u, 0|a_AMV_VF_BOOL},
+{3753422504u, 2281u, 0|a_AMV_VF_I3VAL},
+{1957394514u, 2288u, 0|a_AMV_VF_I3VAL},
+{149149615u, 2296u, 0|a_AMV_VF_BOOL},
+{3721493487u, 2302u, 0},
+{1890299439u, 2308u, 0|a_AMV_VF_BOOL},
+{4044677414u, 2328u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
+{3595968213u, 2340u, 0},
+{2640088545u, 2351u, 0},
+{2904204181u, 2369u, 0},
+{1640115048u, 2387u, 0|a_AMV_VF_BOOL},
+{188553526u, 2405u, 0|a_AMV_VF_BOOL},
+{540723528u, 2422u, 0},
+{146539205u, 2429u, 0|a_AMV_VF_BOOL},
+{2425465309u, 2442u, 0|a_AMV_VF_BOOL},
+{1513358607u, 2456u, 0|a_AMV_VF_BOOL},
+{1900410726u, 2478u, 0},
+{2583631056u, 2492u, 0|a_AMV_VF_OBSOLETE},
+{1151099134u, 2500u, 0|a_AMV_VF_NOTEMPTY},
+{2823711003u, 2509u, 0},
+{3620202244u, 2525u, 0|a_AMV_VF_BOOL},
+{1938020952u, 2543u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{4069714370u, 2549u, 0|a_AMV_VF_BOOL|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},
+{3498694618u, 2555u, 0|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},
+{3962019339u, 2560u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
+{1130371609u, 2567u, 0|a_AMV_VF_BOOL},
+{968926480u, 2581u, 0|a_AMV_VF_VIP},
+{760633097u, 2594u, 0|a_AMV_VF_BOOL},
+{504631978u, 2623u, 0|a_AMV_VF_VIP},
+{856236114u, 2630u, 0|a_AMV_VF_OBSOLETE},
+{3085354123u, 2639u, 0|a_AMV_VF_OBSOLETE},
+{1325127300u, 2658u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
+{3864687553u, 2688u, 0|a_AMV_VF_OBSOLETE},
+{1977567474u, 2706u, 0|a_AMV_VF_I3VAL},
+{3980879360u, 2715u, 0|a_AMV_VF_BOOL},
+{4203664219u, 2724u, 0|a_AMV_VF_BOOL},
+{3064935001u, 2733u, 0|a_AMV_VF_BOOL},
+{833163053u, 2740u, 0},
+{1713520988u, 2745u, 0},
+{2783766075u, 2750u, 0|a_AMV_VF_OBSOLETE},
+{534091439u, 2760u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
+{135477722u, 2774u, 0},
+{946781610u, 2787u, 0},
+{1507345877u, 2801u, 0},
+{2951976498u, 2816u, 0|a_AMV_VF_BOOL},
+{1752439545u, 2837u, 0|a_AMV_VF_CHAIN},
+{102302029u, 2850u, 0},
+{86428004u, 2864u, 0},
+{237746033u, 2879u, 0|a_AMV_VF_CHAIN},
+{2767628932u, 2893u, 0|a_AMV_VF_BOOL},
+{1005584095u, 2916u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
+{2610149716u, 2936u, 0|a_AMV_VF_BOOL},
+{4112782207u, 2947u, 0|a_AMV_VF_CHAIN},
+{1704393517u, 2963u, 0|a_AMV_VF_CHAIN},
+{2740251050u, 2981u, 0|a_AMV_VF_CHAIN},
+{3761658326u, 3006u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{1782732536u, 3032u, 0|a_AMV_VF_OBSOLETE},
+{1658958037u, 3037u, 0|a_AMV_VF_CHAIN},
+{3638650800u, 3047u, 0|a_AMV_VF_OBSOLETE},
+{2020555875u, 3066u, 0|a_AMV_VF_OBSOLETE},
+{1820965540u, 3081u, 0|a_AMV_VF_VIP},
+{1837607842u, 3095u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{900761917u, 3113u, 0|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
+{3456900515u, 3131u, 0|a_AMV_VF_POSNUM},
+{3775764645u, 3154u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN},
+{1607330400u, 3166u, 0},
+{1763068644u, 3181u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},
+{1908563950u, 3194u, 0},
+{1452123120u, 3208u, 0},
+{4013666858u, 3224u, 0},
+{1923764058u, 3235u, 0},
+{3955925583u, 3250u, 0},
+{3561917382u, 3267u, 0},
+{261790554u, 3285u, 0},
+{914178751u, 3301u, 0},
+{2230056064u, 3327u, 0},
+{1769124455u, 3343u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{1778108319u, 3354u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{3110362859u, 3366u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{623065149u, 3379u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{139775082u, 3398u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{2317777583u, 3407u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{3936220190u, 3423u, 0|a_AMV_VF_OBSOLETE},
+{315983966u, 3439u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{1105329479u, 3457u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{800287693u, 3474u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{542424727u, 3485u, 0|a_AMV_VF_OBSOLETE},
+{1605928646u, 3497u, 0|a_AMV_VF_OBSOLETE},
+{2392084957u, 3510u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_OBSOLETE},
+{4242392148u, 3523u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{842733395u, 3531u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{120659094u, 3542u, 0|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},
+{3391235883u, 3560u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{2493237115u, 3573u, 0|a_AMV_VF_OBSOLETE},
+{1150749481u, 3586u, 0|a_AMV_VF_OBSOLETE},
+{3001703062u, 3600u, 0|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},
+{3060393762u, 3611u, 0},
+{3170554710u, 3622u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1689227859u, 3636u, 0|a_AMV_VF_ENV},
+{275160966u, 3641u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{2006033901u, 3648u, 0},
+{1881431006u, 3656u, 0|a_AMV_VF_BOOL},
+{3874156389u, 3672u, 0|a_AMV_VF_BOOL},
+{49001407u, 3688u, 0|a_AMV_VF_CHAIN},
+{2310520195u, 3699u, 0|a_AMV_VF_CHAIN},
+{1223767828u, 3711u, 0|a_AMV_VF_CHAIN},
+{3113270631u, 3724u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{172056861u, 3743u, 0},
+{3002246919u, 3759u, 0|a_AMV_VF_CHAIN},
+{789322284u, 3777u, 0|a_AMV_VF_CHAIN},
+{3248783469u, 3794u, 0},
+{1888319427u, 3806u, 0},
+{4259586683u, 3819u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1139189225u, 3832u, 0|a_AMV_VF_CHAIN},
+{2530971234u, 3848u, 0|a_AMV_VF_CHAIN},
+{2971415438u, 3871u, 0},
+{3259662180u, 3885u, 0|a_AMV_VF_CHAIN},
+{3045770460u, 3896u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM},
+{2347832344u, 3905u, 0|a_AMV_VF_BOOL},
+{3335676089u, 3916u, 0|a_AMV_VF_VIP|a_AMV_VF_DEFVAL|a_AMV_VF_NOTEMPTY},
+{807899482u, 3927u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
+{330400956u, 3943u, 0|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV},
+{1567917856u, 3948u, 0|a_AMV_VF_VIP|a_AMV_VF_NODEL|a_AMV_VF_I3VAL|a_AMV_VF_POSNUM},
+{875435785u, 3954u, 0|a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN},
+{1942497279u, 3959u, 0|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},
+{691216848u, 3966u, 0},
+{3973338304u, 3977u, 0|a_AMV_VF_BOOL|a_AMV_VF_VIP},
+{944087093u, 3985u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{1337487108u, 3993u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},
+{3081657388u, 4006u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
+{1921844491u, 4021u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
+{1707804737u, 4035u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
+{3760910668u, 4049u, 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM},
+{432301395u, 4064u, 0|a_AMV_VF_BOOL},
+{1643918527u, 4080u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
+{259555527u, 4093u, 0|a_AMV_VF_CHAIN},
+{3710399665u, 4103u, 0},
+{3006849165u, 4114u, 0|a_AMV_VF_CHAIN},
+{1681336106u, 4125u, 0|a_AMV_VF_CHAIN},
+{3435503022u, 4140u, 0},
+{2746817971u, 4156u, 0|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},
 };
 
 #ifndef a__CREATE_OKEY_MAP_PL
@@ -666,48 +668,48 @@ static struct a_amv_var_map const a_amv_var_map[] = {
 
 CTAV(4 == FIELD_SIZEOF(struct a_amv_var_chain_map_bsrch, avcmb_prefix));
 static struct a_amv_var_chain_map const a_amv_var_chain_map[] = {
-{4046, ok_b_disconnected},
-{4059, ok_v_imap_auth},
-{4080, ok_v_imap_delim},
-{4091, ok_v_imap_keepalive},
-{4122, ok_b_imap_use_starttls},
-{1857, ok_b_netrc_lookup},
-{2110, ok_v_password},
-{2127, ok_v_pop3_auth},
-{2167, ok_b_pop3_no_apop},
-{2180, ok_b_pop3_use_starttls},
-{2779, ok_v_smime_cipher},
-{2821, ok_v_smime_encrypt},
-{2889, ok_v_smime_sign_cert},
-{2905, ok_v_smime_sign_digest},
-{2923, ok_v_smime_sign_include_certs},
-{2948, ok_v_smime_sign_message_digest},
-{2979, ok_v_smtp_auth},
-{3037, ok_b_smtp_use_starttls},
-{3096, ok_v_socks_proxy},
-{3309, ok_v_ssl_ca_dir},
-{3320, ok_v_ssl_ca_file},
-{3332, ok_v_ssl_ca_flags},
-{3345, ok_b_ssl_ca_no_defaults},
-{3364, ok_v_ssl_cert},
-{3373, ok_v_ssl_cipher_list},
-{3405, ok_v_ssl_config_module},
-{3423, ok_v_ssl_config_pairs},
-{3440, ok_v_ssl_curves},
-{3489, ok_v_ssl_key},
-{3497, ok_v_ssl_method},
-{3526, ok_v_ssl_protocol},
-{3566, ok_v_ssl_verify},
-{3654, ok_v_tls_ca_dir},
-{3665, ok_v_tls_ca_file},
-{3677, ok_v_tls_ca_flags},
-{3690, ok_b_tls_ca_no_defaults},
-{3725, ok_v_tls_config_module},
-{3743, ok_v_tls_config_pairs},
-{3798, ok_v_tls_fingerprint},
-{3814, ok_v_tls_fingerprint_digest},
-{3851, ok_v_tls_verify},
-{3920, ok_v_user},
+{4080, ok_b_disconnected},
+{4093, ok_v_imap_auth},
+{4114, ok_v_imap_delim},
+{4125, ok_v_imap_keepalive},
+{4156, ok_b_imap_use_starttls},
+{1897, ok_b_netrc_lookup},
+{2168, ok_v_password},
+{2185, ok_v_pop3_auth},
+{2225, ok_b_pop3_no_apop},
+{2238, ok_b_pop3_use_starttls},
+{2837, ok_v_smime_cipher},
+{2879, ok_v_smime_encrypt},
+{2947, ok_v_smime_sign_cert},
+{2963, ok_v_smime_sign_digest},
+{2981, ok_v_smime_sign_include_certs},
+{3006, ok_v_smime_sign_message_digest},
+{3037, ok_v_smtp_auth},
+{3095, ok_b_smtp_use_starttls},
+{3154, ok_v_socks_proxy},
+{3343, ok_v_ssl_ca_dir},
+{3354, ok_v_ssl_ca_file},
+{3366, ok_v_ssl_ca_flags},
+{3379, ok_b_ssl_ca_no_defaults},
+{3398, ok_v_ssl_cert},
+{3407, ok_v_ssl_cipher_list},
+{3439, ok_v_ssl_config_module},
+{3457, ok_v_ssl_config_pairs},
+{3474, ok_v_ssl_curves},
+{3523, ok_v_ssl_key},
+{3531, ok_v_ssl_method},
+{3560, ok_v_ssl_protocol},
+{3600, ok_v_ssl_verify},
+{3688, ok_v_tls_ca_dir},
+{3699, ok_v_tls_ca_file},
+{3711, ok_v_tls_ca_flags},
+{3724, ok_b_tls_ca_no_defaults},
+{3759, ok_v_tls_config_module},
+{3777, ok_v_tls_config_pairs},
+{3832, ok_v_tls_fingerprint},
+{3848, ok_v_tls_fingerprint_digest},
+{3885, ok_v_tls_verify},
+{3954, ok_v_user},
 };
 #define a_AMV_VAR_CHAIN_MAP_CNT 42
 
@@ -727,23 +729,23 @@ static struct a_amv_var_chain_map_bsrch const a_amv_var_chain_map_bsrch[] = {
 #define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT 11
 
 /* Unfortunately init of varsized buffer impossible: define "subclass"es */
-static char const a_amv_var_virt_build_cc_val[] = {VAL_BUILD_CC};
+static char const a_amv_var_virt_build_cc_val[] = {VAL_BUILD_CC_ARRAY};
 static struct{
 struct a_amv_var *av_link;
 char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[8 +1];
-} const a_amv_var_virt_build_cc = {NULL, a_amv_var_virt_build_cc_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-cc"};
+} const a_amv_var_virt_build_cc = {NIL, a_amv_var_virt_build_cc_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-cc"};
 
-static char const a_amv_var_virt_build_ld_val[] = {VAL_BUILD_LD};
+static char const a_amv_var_virt_build_ld_val[] = {VAL_BUILD_LD_ARRAY};
 static struct{
 struct a_amv_var *av_link;
 char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[8 +1];
-} const a_amv_var_virt_build_ld = {NULL, a_amv_var_virt_build_ld_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-ld"};
+} const a_amv_var_virt_build_ld = {NIL, a_amv_var_virt_build_ld_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-ld"};
 
 static char const a_amv_var_virt_build_os_val[] = {VAL_BUILD_OS};
 static struct{
@@ -752,16 +754,16 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[8 +1];
-} const a_amv_var_virt_build_os = {NULL, a_amv_var_virt_build_os_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-os"};
+} const a_amv_var_virt_build_os = {NIL, a_amv_var_virt_build_os_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-os"};
 
-static char const a_amv_var_virt_build_rest_val[] = {VAL_BUILD_REST};
+static char const a_amv_var_virt_build_rest_val[] = {VAL_BUILD_REST_ARRAY};
 static struct{
 struct a_amv_var *av_link;
 char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[10 +1];
-} const a_amv_var_virt_build_rest = {NULL, a_amv_var_virt_build_rest_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-rest"};
+} const a_amv_var_virt_build_rest = {NIL, a_amv_var_virt_build_rest_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "build-rest"};
 
 static char const a_amv_var_virt_contact_mail_val[] = {VAL_CONTACT_MAIL};
 static struct{
@@ -770,7 +772,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[12 +1];
-} const a_amv_var_virt_contact_mail = {NULL, a_amv_var_virt_contact_mail_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "contact-mail"};
+} const a_amv_var_virt_contact_mail = {NIL, a_amv_var_virt_contact_mail_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "contact-mail"};
 
 static char const a_amv_var_virt_contact_web_val[] = {VAL_CONTACT_WEB};
 static struct{
@@ -779,7 +781,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[11 +1];
-} const a_amv_var_virt_contact_web = {NULL, a_amv_var_virt_contact_web_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "contact-web"};
+} const a_amv_var_virt_contact_web = {NIL, a_amv_var_virt_contact_web_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "contact-web"};
 
 static char const a_amv_var_virt_features_val[] = {VAL_FEATURES};
 static struct{
@@ -788,7 +790,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[8 +1];
-} const a_amv_var_virt_features = {NULL, a_amv_var_virt_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "features"};
+} const a_amv_var_virt_features = {NIL, a_amv_var_virt_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "features"};
 
 static char const a_amv_var_virt_ssl_features_val[] = {VAL_TLS_FEATURES};
 static struct{
@@ -797,7 +799,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[12 +1];
-} const a_amv_var_virt_ssl_features = {NULL, a_amv_var_virt_ssl_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_OBSOLETE, "ssl-features"};
+} const a_amv_var_virt_ssl_features = {NIL, a_amv_var_virt_ssl_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_OBSOLETE, "ssl-features"};
 
 static char const a_amv_var_virt_system_mailrc_val[] = {VAL_SYSCONFDIR "/" VAL_SYSCONFRC};
 static struct{
@@ -806,7 +808,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[13 +1];
-} const a_amv_var_virt_system_mailrc = {NULL, a_amv_var_virt_system_mailrc_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "system-mailrc"};
+} const a_amv_var_virt_system_mailrc = {NIL, a_amv_var_virt_system_mailrc_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "system-mailrc"};
 
 static char const a_amv_var_virt_tls_features_val[] = {VAL_TLS_FEATURES};
 static struct{
@@ -815,7 +817,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[12 +1];
-} const a_amv_var_virt_tls_features = {NULL, a_amv_var_virt_tls_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "tls-features"};
+} const a_amv_var_virt_tls_features = {NIL, a_amv_var_virt_tls_features_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "tls-features"};
 
 static char const a_amv_var_virt_version_val[] = {n_VERSION};
 static struct{
@@ -824,7 +826,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[7 +1];
-} const a_amv_var_virt_version = {NULL, a_amv_var_virt_version_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "version"};
+} const a_amv_var_virt_version = {NIL, a_amv_var_virt_version_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "version"};
 
 static char const a_amv_var_virt_version_date_val[] = {n_VERSION_DATE};
 static struct{
@@ -833,7 +835,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[12 +1];
-} const a_amv_var_virt_version_date = {NULL, a_amv_var_virt_version_date_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "version-date"};
+} const a_amv_var_virt_version_date = {NIL, a_amv_var_virt_version_date_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL, "version-date"};
 
 static char const a_amv_var_virt_version_hexnum_val[] = {n_VERSION_HEXNUM};
 static struct{
@@ -842,7 +844,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[14 +1];
-} const a_amv_var_virt_version_hexnum = {NULL, a_amv_var_virt_version_hexnum_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-hexnum"};
+} const a_amv_var_virt_version_hexnum = {NIL, a_amv_var_virt_version_hexnum_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-hexnum"};
 
 static char const a_amv_var_virt_version_major_val[] = {n_VERSION_MAJOR};
 static struct{
@@ -851,7 +853,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[13 +1];
-} const a_amv_var_virt_version_major = {NULL, a_amv_var_virt_version_major_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-major"};
+} const a_amv_var_virt_version_major = {NIL, a_amv_var_virt_version_major_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-major"};
 
 static char const a_amv_var_virt_version_minor_val[] = {n_VERSION_MINOR};
 static struct{
@@ -860,7 +862,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[13 +1];
-} const a_amv_var_virt_version_minor = {NULL, a_amv_var_virt_version_minor_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-minor"};
+} const a_amv_var_virt_version_minor = {NIL, a_amv_var_virt_version_minor_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-minor"};
 
 static char const a_amv_var_virt_version_update_val[] = {n_VERSION_UPDATE};
 static struct{
@@ -869,7 +871,7 @@ char const *av_value;
 a_X(char *av_env;)
 u32 av_flags;
 char const av_name[14 +1];
-} const a_amv_var_virt_version_update = {NULL, a_amv_var_virt_version_update_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-update"};
+} const a_amv_var_virt_version_update = {NIL, a_amv_var_virt_version_update_val, a_X(0 su_COMMA) 0|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-update"};
 
 
 static struct a_amv_var_virt const a_amv_var_virts[] = {
@@ -893,20 +895,21 @@ static struct a_amv_var_virt const a_amv_var_virts[] = {
 #define a_AMV_VAR_VIRTS_CNT 16
 
 static struct a_amv_var_defval const a_amv_var_i3vals[] = {
-{ok_b_asksend, {0,}, NULL},
-{ok_b_asksub, {0,}, NULL},
+{ok_b_asksend, {0,}, NIL},
+{ok_b_asksub, {0,}, NIL},
 {ok_v_datefield, {0,}, "%Y-%m-%d %H:%M"},
 {ok_v_datefield_markout_older, {0,}, "%Y-%m-%d"},
-{ok_b_header, {0,}, NULL},
+{ok_b_header, {0,}, NIL},
 {ok_v_ifs_ws, {0,}, " \t\n"},
 {ok_v_log_prefix, {0,}, VAL_UAGENT ": "},
-{ok_b_mbox_fcc_and_pcc, {0,}, NULL},
+{ok_b_mbox_fcc_and_pcc, {0,}, NIL},
 {ok_v_prompt, {0,}, "? "},
 {ok_v_prompt2, {0,}, ".. "},
-{ok_b_save, {0,}, NULL},
+{ok_b_save, {0,}, NIL},
+{ok_v_sendwait, {0,}, ""},
 {ok_v_umask, {0,}, "0077"},
 };
-#define a_AMV_VAR_I3VALS_CNT 12
+#define a_AMV_VAR_I3VALS_CNT 13
 
 static struct a_amv_var_defval const a_amv_var_defvals[] = {
 {ok_v_DEAD, {0,}, VAL_DEAD},
@@ -924,13 +927,14 @@ static struct a_amv_var_defval const a_amv_var_defvals[] = {
 {ok_v_escape, {0,}, n_ESCAPE},
 {ok_v_ifs, {0,}, " \t\n"},
 {ok_v_indentprefix, {0,}, "\t"},
+{ok_v_line_editor_cpl_word_breaks, {0,}, n_LINE_EDITOR_CPL_WORD_BREAKS},
 {ok_v_mta, {0,}, VAL_MTA},
 {ok_v_mta_argv0, {0,}, VAL_MTA_ARGV0},
 {ok_v_quote_chars, {0,}, ">|}:"},
 {ok_v_toplines, {0,}, "5"},
 {ok_v_ttycharset, {0,}, CHARSET_8BIT},
 };
-#define a_AMV_VAR_DEFVALS_CNT 20
+#define a_AMV_VAR_DEFVALS_CNT 21
 
 #define a_AMV_VAR__SPECIAL_PARAM_MAP_IDX 0u
 #define a_AMV_VAR__QM_MAP_IDX 1u
@@ -938,67 +942,67 @@ static struct a_amv_var_defval const a_amv_var_defvals[] = {
 
 # undef a_X
 #endif /* !a__CREATE_OKEY_MAP_PL */
-#define a_AMV_VAR_REV_ILL 324u
+#define a_AMV_VAR_REV_ILL 325u
 #define a_AMV_VAR_REV_PRIME 571u
 #define a_AMV_VAR_REV_LONGEST 6u
 #define a_AMV_VAR_REV_WRAPAROUND 0
 static u16 const a_amv_var_revmap[a_AMV_VAR_REV_PRIME] = {
-208u,324u,324u,10u,101u,201u,207u,140u,226u,169u,
-324u,324u,48u,324u,324u,324u,324u,324u,324u,4u,
-324u,324u,324u,324u,206u,172u,324u,324u,324u,278u,
-297u,324u,324u,324u,324u,324u,125u,204u,220u,324u,
-112u,76u,324u,324u,260u,324u,324u,324u,277u,194u,
-160u,324u,147u,324u,318u,324u,187u,288u,324u,195u,
-324u,324u,7u,282u,324u,324u,324u,177u,97u,324u,
-3u,324u,324u,324u,324u,324u,275u,324u,157u,52u,
-264u,39u,312u,324u,54u,324u,324u,6u,44u,128u,
-161u,200u,224u,324u,91u,324u,0u,324u,324u,313u,
-287u,144u,1u,88u,151u,175u,324u,324u,324u,324u,
-167u,324u,64u,324u,324u,324u,324u,324u,49u,129u,
-5u,40u,57u,239u,311u,280u,324u,283u,324u,324u,
-202u,60u,324u,324u,324u,141u,116u,324u,324u,22u,
-324u,324u,150u,153u,225u,324u,103u,28u,108u,166u,
-23u,59u,258u,303u,316u,324u,324u,324u,294u,324u,
-324u,211u,9u,159u,50u,79u,165u,324u,324u,324u,
-106u,293u,324u,324u,90u,123u,100u,134u,45u,212u,
-324u,61u,324u,115u,324u,324u,324u,256u,285u,324u,
-192u,299u,2u,138u,196u,324u,324u,324u,324u,324u,
-234u,324u,323u,324u,324u,143u,33u,139u,273u,324u,
-171u,324u,324u,324u,324u,162u,66u,324u,324u,324u,
-324u,308u,131u,324u,164u,242u,65u,85u,232u,223u,
-262u,246u,193u,183u,173u,114u,92u,120u,219u,261u,
-324u,81u,267u,324u,213u,324u,324u,324u,168u,67u,
-199u,324u,324u,324u,301u,182u,83u,170u,296u,80u,
-111u,156u,310u,324u,324u,324u,94u,96u,314u,324u,
-324u,324u,34u,324u,324u,324u,324u,324u,324u,244u,
-320u,243u,270u,284u,306u,265u,290u,324u,324u,241u,
-324u,324u,324u,145u,259u,291u,122u,302u,324u,324u,
-324u,324u,228u,109u,237u,281u,124u,324u,221u,245u,
-324u,324u,324u,324u,324u,324u,17u,31u,324u,324u,
-324u,324u,12u,117u,70u,315u,163u,324u,127u,257u,
-43u,272u,95u,238u,214u,324u,324u,324u,324u,324u,
-72u,321u,51u,191u,295u,324u,324u,324u,324u,324u,
-181u,324u,235u,324u,137u,324u,188u,324u,324u,19u,
-25u,133u,268u,324u,324u,324u,324u,87u,271u,113u,
-119u,82u,29u,304u,155u,158u,203u,324u,324u,324u,
-179u,324u,324u,189u,63u,324u,324u,324u,86u,20u,
-307u,46u,305u,75u,218u,317u,58u,324u,324u,324u,
-324u,324u,324u,215u,324u,324u,148u,324u,324u,47u,
-324u,324u,324u,324u,26u,324u,185u,324u,184u,56u,
-324u,324u,269u,324u,324u,15u,324u,324u,324u,240u,
-107u,126u,324u,324u,292u,62u,324u,38u,324u,73u,
-322u,324u,324u,55u,78u,178u,276u,248u,324u,324u,
-209u,324u,324u,27u,136u,324u,146u,36u,249u,324u,
-324u,68u,176u,324u,324u,324u,149u,324u,254u,324u,
-324u,286u,324u,324u,324u,324u,216u,229u,8u,289u,
-324u,110u,142u,53u,24u,14u,324u,154u,210u,35u,
-174u,84u,102u,180u,279u,324u,324u,230u,324u,69u,
-30u,324u,300u,324u,13u,324u,18u,324u,324u,247u,
-250u,41u,205u,186u,274u,324u,37u,21u,32u,98u,
-118u,71u,99u,198u,42u,324u,105u,227u,324u,298u,
-324u,324u,93u,197u,324u,253u,324u,233u,16u,255u,
-190u,11u,324u,74u,104u,236u,309u,324u,132u,222u,
-324u,77u,89u,319u,324u,135u,324u,130u,152u,324u,
-266u,324u,251u,231u,252u,263u,324u,324u,121u,324u,
-217u
+211u,325u,325u,10u,101u,204u,210u,142u,229u,172u,
+325u,325u,48u,325u,325u,325u,325u,325u,325u,4u,
+325u,325u,325u,325u,209u,175u,325u,325u,325u,279u,
+298u,325u,325u,325u,325u,325u,126u,207u,223u,325u,
+113u,76u,325u,325u,261u,325u,325u,325u,278u,197u,
+162u,325u,149u,325u,319u,325u,190u,289u,325u,198u,
+325u,325u,7u,283u,325u,325u,325u,180u,97u,325u,
+3u,325u,325u,325u,325u,325u,276u,325u,159u,52u,
+265u,39u,313u,325u,54u,325u,325u,6u,44u,129u,
+163u,203u,227u,325u,91u,325u,0u,325u,325u,314u,
+288u,146u,1u,88u,153u,178u,325u,325u,168u,325u,
+170u,325u,64u,325u,325u,325u,325u,325u,49u,130u,
+5u,40u,57u,242u,312u,281u,325u,284u,325u,325u,
+205u,60u,325u,325u,325u,143u,117u,325u,325u,22u,
+325u,325u,152u,155u,228u,325u,103u,28u,109u,169u,
+23u,59u,259u,304u,317u,325u,325u,325u,295u,325u,
+325u,214u,9u,161u,50u,79u,167u,325u,325u,325u,
+107u,294u,325u,325u,90u,124u,100u,136u,45u,215u,
+325u,61u,325u,116u,325u,325u,325u,257u,286u,325u,
+195u,300u,2u,140u,199u,325u,325u,325u,325u,325u,
+237u,325u,324u,325u,325u,145u,33u,141u,274u,325u,
+174u,325u,325u,325u,325u,164u,66u,325u,325u,325u,
+325u,309u,133u,325u,166u,245u,65u,85u,235u,226u,
+263u,249u,196u,186u,176u,115u,92u,121u,222u,262u,
+325u,81u,268u,325u,216u,325u,325u,325u,171u,67u,
+202u,325u,325u,325u,302u,185u,83u,173u,297u,80u,
+112u,158u,311u,325u,105u,325u,94u,96u,315u,325u,
+325u,325u,34u,325u,325u,325u,325u,325u,325u,247u,
+321u,246u,271u,285u,307u,266u,291u,325u,325u,244u,
+325u,325u,325u,147u,260u,292u,123u,303u,325u,325u,
+325u,325u,231u,110u,240u,282u,125u,325u,224u,248u,
+325u,325u,325u,325u,325u,325u,17u,31u,325u,325u,
+325u,325u,12u,118u,70u,316u,165u,325u,128u,258u,
+43u,273u,95u,241u,217u,325u,325u,325u,325u,325u,
+72u,322u,51u,194u,296u,325u,325u,325u,325u,325u,
+184u,325u,238u,325u,139u,325u,191u,325u,131u,19u,
+25u,135u,269u,325u,325u,325u,325u,87u,272u,114u,
+120u,82u,29u,305u,157u,160u,206u,325u,325u,325u,
+182u,325u,325u,192u,63u,325u,325u,325u,86u,20u,
+308u,46u,306u,75u,221u,318u,58u,325u,325u,325u,
+325u,325u,325u,218u,325u,325u,150u,325u,325u,47u,
+325u,325u,325u,325u,26u,325u,188u,325u,187u,56u,
+325u,325u,270u,325u,325u,15u,325u,325u,325u,243u,
+108u,127u,325u,325u,293u,62u,325u,38u,325u,73u,
+323u,325u,325u,55u,78u,181u,277u,251u,325u,325u,
+212u,325u,325u,27u,138u,325u,148u,36u,252u,325u,
+325u,68u,179u,325u,325u,325u,151u,325u,255u,325u,
+325u,287u,325u,325u,325u,325u,219u,232u,8u,290u,
+325u,111u,144u,53u,24u,14u,325u,156u,213u,35u,
+177u,84u,102u,183u,280u,325u,325u,233u,325u,69u,
+30u,325u,301u,325u,13u,325u,18u,325u,325u,250u,
+253u,41u,208u,189u,275u,325u,37u,21u,32u,98u,
+119u,71u,99u,201u,42u,325u,106u,230u,325u,299u,
+325u,325u,93u,200u,325u,254u,325u,236u,16u,256u,
+193u,11u,325u,74u,104u,239u,310u,325u,134u,225u,
+325u,77u,89u,320u,325u,137u,325u,132u,154u,325u,
+267u,325u,325u,234u,264u,325u,325u,325u,122u,325u,
+220u
 };

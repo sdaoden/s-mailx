@@ -422,7 +422,7 @@ _EOT
       my $fa = join '|', @{$e->{flags}};
       $f .= '|' . $fa if length $fa;
       print F "} const a_amv_$e->{vstruct} = ",
-         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 su_COMMA) $f, ",
+         "{NIL, a_amv_$e->{vstruct}_val, a_X(0 su_COMMA) $f, ",
          "\"$e->{name}\"};\n\n"
    }
 
@@ -444,7 +444,7 @@ _EOT
    foreach(@skeys){
       my $e = $i3vals{$_};
       print F "${S}{", $e->{enum}, ', {0,}, ',
-         (!$e->{bool} ? $e->{i3val} : "NULL"), "},\n"
+         (!$e->{bool} ? $e->{i3val} : "NIL"), "},\n"
    }
    print F "};\n";
    print F '#define a_AMV_VAR_I3VALS_CNT ', scalar @skeys, "\n";
@@ -457,7 +457,7 @@ _EOT
    foreach(@skeys){
       my $e = $defvals{$_};
       print F "${S}{", $e->{enum}, ', {0,}, ',
-         (!$e->{bool} ? $e->{defval} : "NULL"), "},\n"
+         (!$e->{bool} ? $e->{defval} : "NIL"), "},\n"
    }
    print F "};\n";
    print F '#define a_AMV_VAR_DEFVALS_CNT ', scalar @skeys, "\n";

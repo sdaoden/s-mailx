@@ -19,7 +19,7 @@ VERB=1
 LC_ALL=C
 export LC_ALL MAXDISTANCE_PENALTY VERB MAILX IN XOUT
 
-[ -n "${awk}" ] || awk=awk
+: ${awk:=awk}
 
 # The set of errors we support
 ERRORS="\
@@ -112,7 +112,7 @@ error_parse() {
    ${awk} -v dodoc="${1}" -v incnone="${2}" -v input="${ERRORS}" '
       BEGIN{
          for(i = 0;;){
-            voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
+            voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
             if(voff == 0)
                break
             v = substr(input, voff, RLENGTH)

@@ -34,9 +34,11 @@ XOPTIONS="\
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
       KEY_BINDINGS='Configurable key bindings' \
+      TERMCAP='Terminal capability queries (termcap(5))' \
+         TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
+   MTA_ALIASES='MTA aliases(5) (text file) support' \
    REGEX='Regular expressions' \
-   SOCKETS='Network support' \
-         AGENT='-' \
+   NET='Network support' \
       GSSAPI='Generic Security Service authentication' \
       IMAP='IMAP v4r1 client' \
       MD5='MD5 message digest (APOP, CRAM-MD5)' \
@@ -47,9 +49,6 @@ XOPTIONS="\
          TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
    SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
-      SPAM_SPAMD='-' \
-   TERMCAP='Terminal capability queries (termcap(5))' \
-      TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    UISTRINGS='User interface and error message strings' \
 "
 
@@ -74,7 +73,7 @@ XOPTIONS_XTRA="\
 "
 
 # To avoid too many recompilations we use a two-stage "configuration changed"
-# detection, the first uses mk-config.lst, which only goes for actual user
+# detection, the first uses mk-config.env, which only goes for actual user
 # config settings etc. the second uses mk-config.h, which thus includes the
 # things we have truly detected.  This does not work well for multiple choice
 # values of which only one will be really used, so those user wishes may not be
@@ -120,36 +119,37 @@ option_setup() {
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
          OPT_CMD_CSOP=1
-         OPT_CMD_VEXPR=1
-         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+            OPT_CMD_VEXPR=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
-         OPT_UISTRINGS=1
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_ERRORS=1
          OPT_IDNA=1
          OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
+         OPT_UISTRINGS=1
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
          OPT_CMD_CSOP=1
-         OPT_CMD_VEXPR=1
-         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
-         OPT_SOCKETS=require
-            OPT_TLS=require
-            OPT_SMTP=require
-            OPT_GSSAPI=1 OPT_NETRC=1
-               OPT_AGENT=1
+            OPT_CMD_VEXPR=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
-         OPT_UISTRINGS=1
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_ERRORS=1
          OPT_IDNA=1
          OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
+         OPT_MTA_ALIASES=1
+         OPT_NET=require
+            OPT_GSSAPI=1
+            OPT_NETRC=1
+            OPT_SMTP=require
+            OPT_TLS=require
          OPT_SPAM_FILTER=1
+         OPT_UISTRINGS=1
          ;;
       [mM][aA][xX][iI][mM][aA][lL])
          option_maximal
@@ -179,24 +179,28 @@ option_update() {
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
-      OPT_SOCKETS=0
+      OPT_NET=0
    fi
-   if feat_no SOCKETS; then
-      if feat_require SMTP; then
-         msg 'ERROR: need SOCKETS for required feature SMTP'
+   if feat_no NET; then
+      if feat_require IMAP; then
+         msg 'ERROR: need NETwork for required feature IMAP'
          config_exit 13
       fi
       if feat_require POP3; then
-         msg 'ERROR: need SOCKETS for required feature POP3'
+         msg 'ERROR: need NETwork for required feature POP3'
          config_exit 13
       fi
-      if feat_require IMAP; then
-         msg 'ERROR: need SOCKETS for required feature IMAP'
+      if feat_require SMTP; then
+         msg 'ERROR: need NETwork for required feature SMTP'
          config_exit 13
       fi
+      OPT_GSSAPI=0
+      OPT_IMAP=0
+      OPT_MD5=0
+      OPT_NETRC=0
+      OPT_POP3=0
+      OPT_SMTP=0
       OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
-      OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
-      OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
    if feat_no SMTP && feat_no IMAP; then
       OPT_GSSAPI=0
@@ -227,42 +231,25 @@ option_update() {
 
    if feat_no MLE; then
       OPT_HISTORY=0 OPT_KEY_BINDINGS=0
-   fi
-
-   # If we don't need MD5 leave it alone
-   if feat_no SOCKETS; then
-      OPT_MD5=0
-   fi
-
-   if feat_no TERMCAP; then
+      OPT_TERMCAP=0 OPT_TERMCAP_VIA_TERMINFO=0
+   elif feat_no TERMCAP; then
       OPT_TERMCAP_VIA_TERMINFO=0
    fi
 }
 
-: ${OBJDIR:=.obj}
-
-rc=./make.rc
-lst="${OBJDIR}"/mk-config.lst
-ev="${OBJDIR}"/mk-config.ev
-h="${OBJDIR}"/mk-config.h h_name=mk-config.h
-mk="${OBJDIR}"/mk-config.mk
-
-newlst="${OBJDIR}"/mk-nconfig.lst
-newmk="${OBJDIR}"/mk-nconfig.mk
-oldmk="${OBJDIR}"/mk-oconfig.mk
-newev="${OBJDIR}"/mk-nconfig.ev
-newh="${OBJDIR}"/mk-nconfig.h
-oldh="${OBJDIR}"/mk-oconfig.h
-tmp0="${OBJDIR}"/___tmp
-tmp=${tmp0}1$$
-tmp2=${tmp0}2$$
-
-##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
+##  --  >8  - << OPTIONS | EARLY >> -  8<  --  ##
 
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
 COMMLINE="${*}"
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
+# Also not standardized: a way to round-trip quote
+. "${TOPDIR}"mk/su-quote-rndtrip.sh
+
+##  --  >8  - << EARLY | OS/CC >> -  8<  --  ##
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
@@ -328,11 +315,13 @@ os_setup() {
    #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
-   if feat_def USE_PKGSYS && [ -d /usr/pkg ]; then
-      msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
-      C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
-      LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
-      ld_rpath_not_runpath=1
+   if feat_yes USE_PKGSYS; then
+      if [ -d /usr/pkg ]; then
+         msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
+         C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
+         LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
+         ld_rpath_not_runpath=1
+      fi
    fi
 }
 
@@ -413,16 +402,57 @@ _cc_default() {
       config_exit 1
    fi
 
-   if [ -z "${VERBOSE}" ] && [ -f ${lst} ] && feat_no DEBUG; then
+   if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
       :
    else
       msg 'Using C compiler ${CC}=%s' "${CC}"
    fi
 }
 
+cc_create_testfile() {
+   ${cat} > ${tmp}.c <<-\!
+		#include <stdio.h>
+		#include <string.h>
+		static void doit(char const *s);
+		int
+		main(int argc, char **argv){
+		   (void)argc;
+		   (void)argv;
+		   doit("Hello world");
+		   return 0;
+		}
+		static void
+		doit(char const *s){
+		   char buf[12];
+		   memcpy(buf, s, strlen(s) +1);
+		   puts(s);
+		}
+!
+}
+
+cc_hello() {
+   [ -n "${cc_check_silent}" ] || msg_nonl ' . CC compiles "Hello world" .. '
+   if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS}; then
+      [ -n "${cc_check_silent}" ] || msg 'yes'
+      feat_yes CROSS_BUILD && return 0
+      [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
+      if ( [ "`\"${tmp2}\"`" = 'Hello world' ] ) >/dev/null 2>&1; then
+         [ -n "${cc_check_silent}" ] || msg 'yes'
+         return 0
+      fi
+   fi
+   [ -n "${cc_check_silent}" ] || msg 'no'
+   msg 'ERROR: i cannot compile or run a "Hello world" via'
+   msg '   %s' \
+  "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
+   msg 'ERROR:   Please read INSTALL, rerun'
+   config_exit 1
+}
+
 cc_flags() {
    if feat_yes AUTOCC; then
-      if [ -f ${lst} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
+      if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
             "${CC}"
@@ -438,9 +468,9 @@ cc_flags() {
       else
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
-         if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-            cc_force_no_stackprot=1
-         fi
+         #if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
+         #   cc_force_no_stackprot=1
+         #fi
          _cc_flags_generic
       fi
 
@@ -535,7 +565,9 @@ _cc_flags_generic() {
       if feat_yes AMALGAMATION; then
          cc_check -Wno-unused-function
       fi
-      cc_check -Wno-maybe-uninitialized
+      if cc_check -Wno-uninitialized; then :; else
+         cc_check -Wno-maybe-uninitialized
+      fi
       cc_check -Wno-unused-result
       cc_check -Wno-unused-value
    fi
@@ -675,10 +707,6 @@ config_exit() {
    exit ${1}
 }
 
-# which(1) not standardized, command(1) -v may return non-executable: unroll!
-#
-SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
-
 msg() {
    fmt=${1}
    shift
@@ -692,31 +720,37 @@ msg_nonl() {
 }
 
 # Our feature check environment
-feat_val_no() {
+_feats_eval_done=0
+
+_feat_val_no() {
    [ "x${1}" = x0 ] || [ "x${1}" = xn ] ||
    [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
 }
 
-feat_val_yes() {
+_feat_val_yes() {
    [ "x${1}" = x1 ] || [ "x${1}" = xy ] ||
    [ "x${1}" = xtrue ] || [ "x${1}" = xyes ] || [ "x${1}" = xon ] ||
          [ "x${1}" = xrequire ]
 }
 
-feat_val_require() {
+_feat_val_require() {
    [ "x${1}" = xrequire ]
 }
 
 _feat_check() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   if feat_val_no "${i}"; then
+   eval _fc_i=\$OPT_${1}
+   if [ "$_feats_eval_done" = 1 ]; then
+      [ "x${_fc_i}" = x0 ] && return 1
+      return 0
+   fi
+   _fc_i="`echo ${_fc_i} | ${tr} '[A-Z]' '[a-z]'`"
+   if _feat_val_no "${_fc_i}"; then
       return 1
-   elif feat_val_yes "${i}"; then
+   elif _feat_val_yes "${_fc_i}"; then
       return 0
    else
       msg "ERROR: %s: 0/n/false/no/off or 1/y/true/yes/on/require, got: %s" \
-         "${1}" "${i}"
+         "${1}" "${_fc_i}"
       config_exit 11
    fi
 }
@@ -731,9 +765,9 @@ feat_no() {
 }
 
 feat_require() {
-   eval i=\$OPT_${1}
-   i="`echo ${i} | ${tr} '[A-Z]' '[a-z]'`"
-   [ "x${i}" = xrequire ] || [ "x${i}" = xrequired ]
+   eval _fr_i=\$OPT_${1}
+   _fr_i="`echo ${_fr_i} | ${tr} '[A-Z]' '[a-z]'`"
+   [ "x${_fr_i}" = xrequire ] || [ "x${_fr_i}" = xrequired ]
 }
 
 feat_bail_required() {
@@ -758,7 +792,7 @@ feat_is_unsupported() {
 
 feat_def() {
    if feat_yes ${1}; then
-      msg ' . %s ... yes' "${1}"
+      [ -n "${VERBOSE}" ] && msg ' . %s ... yes' "${1}"
       echo '#define mx_HAVE_'${1}'' >> ${h}
       return 0
    else
@@ -774,7 +808,7 @@ option_parse() {
    i="`${awk} -v input=\"${2}\" '
       BEGIN{
          for(i = 0;;){
-            voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
+            voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
             if(voff == 0)
                break
             v = substr(input, voff, RLENGTH)
@@ -798,7 +832,7 @@ option_doc_of() {
       -v input="${XOPTIONS_DETECT}${XOPTIONS}${XOPTIONS_XTRA}" '
    BEGIN{
       for(;;){
-         voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
+         voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
          if(voff == 0)
             break
          v = substr(input, voff, RLENGTH)
@@ -827,9 +861,9 @@ option_join_rc() {
    # use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
    # slow in VMs (see [fa2e248]), Aharon Robbins suggested the following
    < ${rc} ${awk} 'BEGIN{line = ""}{
-      gsub(/^[[:space:]]+/, "", $0)
-      gsub(/[[:space:]]+$/, "", $0)
-      if(gsub(/\\$/, "", $0)){
+      sub(/^[ 	]+/, "", $0)
+      sub(/[ 	]+$/, "", $0)
+      if(sub(/\\$/, "", $0)){
          line = line $0
          next
       }else
@@ -846,7 +880,7 @@ option_join_rc() {
          i=${line%%=*}
       else
          i=`${awk} -v LINE="${line}" 'BEGIN{
-            gsub(/=.*$/, "", LINE)
+            sub(/=.*$/, "", LINE)
             print LINE
          }'`
       fi
@@ -860,9 +894,10 @@ option_join_rc() {
          : # Yet present
       else
          j=`${awk} -v LINE="${line}" 'BEGIN{
-            gsub(/^[^=]*=/, "", LINE)
-            gsub(/^\"*/, "", LINE)
-            gsub(/\"*$/, "", LINE)
+            sub(/^[^=]*=/, "", LINE)
+            sub(/^"*/, "", LINE)
+            sub(/"*$/, "", LINE)
+            gsub(/"/, "\\\\\"", LINE)
             print LINE
          }'`
       fi
@@ -876,8 +911,10 @@ option_join_rc() {
 
 option_evaluate() {
    # Expand the option values, which may contain shell snippets
-   ${rm} -f ${newlst} ${newmk}
-   exec 5<&0 6>&1 <${tmp} >${newlst}
+   # Set booleans to 0 or 1, or require, set _feats_eval_done=1
+   ${rm} -f ${newenv} ${newmk}
+
+   exec 5<&0 6>&1 <${tmp} >${newenv}
    while read line; do
       z=
       if [ -n "${good_shell}" ]; then
@@ -896,11 +933,11 @@ option_evaluate() {
       eval j=\$${i}
       if [ -n "${z}" ]; then
          j="`echo ${j} | ${tr} '[A-Z]' '[a-z]'`"
-         if [ -z "${j}" ] || feat_val_no "${j}"; then
+         if [ -z "${j}" ] || _feat_val_no "${j}"; then
             j=0
             printf "   /* #undef ${i} */\n" >> ${newh}
-         elif feat_val_yes "${j}"; then
-            if feat_val_require "${j}"; then
+         elif _feat_val_yes "${j}"; then
+            if _feat_val_require "${j}"; then
                j=require
             else
                j=1
@@ -915,11 +952,13 @@ option_evaluate() {
       else
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
-      printf "${i} = ${j}\n" >> ${newmk}
-      printf "${i}=${j}\n"
+      printf -- "${i} = ${j}\n" >> ${newmk}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
    exec 0<&5 1>&6 5<&- 6<&-
+
+   _feats_eval_done=1
 }
 
 val_allof() {
@@ -1013,7 +1052,7 @@ path_check() {
       else
          y=" :${i}:"
          j="${i}"
-         # But do not link any fakeroot path into our binaries!
+         # But do not link any fakeroot injected path into our binaries!
          if [ -n "${addflag}" ]; then
             case "${i}" in *fakeroot*) continue;; esac
             k="${k} ${addflag}${i}"
@@ -1033,7 +1072,7 @@ ld_runtime_flags() {
       IFS=${i}
       for i
       do
-         # But do not link any fakeroot path into our binaries!
+         # But do not link any fakeroot injected path into our binaries!
          case "${i}" in *fakeroot*) continue;; esac
          LDFLAGS="${LDFLAGS} ${ld_need_R_flags}${i}"
          _LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
@@ -1046,9 +1085,15 @@ ld_runtime_flags() {
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
-   if ${CC} ${INCS} \
-         ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+   (
+      trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
+      ${CC} ${INCS} \
+            ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
+            -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+      feat_no CROSS_BUILD || exit 0
+      ${tmp2}
+   ) >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
@@ -1060,8 +1105,14 @@ cc_check() {
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
-   if ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
+   (
+      trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
+      ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+            -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
+      feat_no CROSS_BUILD || exit 0
+      ${tmp2}
+   ) >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
       return 0
@@ -1090,12 +1141,12 @@ _check_preface() {
 }
 
 without_check() {
-   yesno=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+   oneorzero=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
 
    echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
 
-   if feat_val_yes ${yesno}; then
+   if [ "${oneorzero}" = 1 ]; then
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
          echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
@@ -1179,19 +1230,37 @@ xrun_check() {
    _link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
+string_to_char_array() {
+   ${awk} -v xy="${@}" 'BEGIN{
+      # POSIX: unspecified behaviour.
+      # Does not work for SunOS /usr/xpg4/bin/awk!
+      if(split("abc", xya, "") == 3)
+         i = split(xy, xya, "")
+      else{
+         j = length(xy)
+         for(i = 0; j > 0; --j){
+            xya[++i] = substr(xy, 1, 1)
+            xy = substr(xy, 2)
+         }
+      }
+      xya[++i] = "\\0"
+      for(j = 1; j <= i; ++j){
+         if(j != 1)
+            printf ", "
+         y = xya[j]
+         if(y == "\012")
+            y = "\\n"
+         printf "'"'"'%s'"'"'", y
+      }
+   }'
+}
+
 squeeze_em() {
    < "${1}" > "${2}" ${awk} \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
 }
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
-
-# First of all, create new configuration and check whether it changed
-
-if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
-   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
-   exit 1
-fi
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
@@ -1204,8 +1273,39 @@ thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
 
 # Lowercase this now in order to isolate all the remains from case matters
+OS_ORIG_CASE=${OS}
 OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 export OS
+
+# But first of all, create new configuration and check whether it changed
+if [ -z "${OBJDIR}" ]; then
+   OBJDIR=.obj
+else
+   OBJDIR=`${awk} -v input="${OBJDIR}" 'BEGIN{
+         if(index(input, "/"))
+            sub("/+$", "", input)
+         print input
+         }'`
+fi
+
+rc=./make.rc
+env="${OBJDIR}"/mk-config.env
+h="${OBJDIR}"/mk-config.h h_name=mk-config.h
+mk="${OBJDIR}"/mk-config.mk
+
+newmk="${OBJDIR}"/mk-nconfig.mk
+oldmk="${OBJDIR}"/mk-oconfig.mk
+newenv="${OBJDIR}"/mk-nconfig.env
+newh="${OBJDIR}"/mk-nconfig.h
+oldh="${OBJDIR}"/mk-oconfig.h
+tmp0="${OBJDIR}"/___tmp
+tmp=${tmp0}1$$
+tmp2=${tmp0}2$$
+
+if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
+   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
+   exit 1
+fi
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1267,8 +1367,8 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* \
-      ${newmk} ${oldmk} ${newev} ${newh} ${oldh}" EXIT
+   ${rm} -rf ${tmp0}.* ${tmp0}* \
+      ${newmk} ${oldmk} ${newenv} ${newh} ${oldh}" EXIT
 
 printf '#ifdef mx_SOURCE\n' > ${newh}
 
@@ -1307,6 +1407,7 @@ msg 'done'
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
+printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT; " >> ${newenv}
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -1317,9 +1418,6 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_BEGIN = @(exec 4>&1 1>/dev/null;\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_END = )\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_CMD = echo '  CMD' >&4;\n" >> ${newmk}
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
@@ -1327,6 +1425,8 @@ printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
 printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
+   "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
    printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 else
@@ -1344,12 +1444,8 @@ for i in \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=${j}\n" >> ${newlst}
-   printf -- "${i}=\"${j}\";export ${i}; " >> ${newev}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
-# Note that makefile reads and eval'uates one line of this file, whereas other
-# consumers source it via .(1)
-printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
@@ -1373,37 +1469,8 @@ ld_runtime_flags
 ## Detect CC, whether we can use it, and possibly which CFLAGS we can use
 
 cc_setup
-
-${cat} > ${tmp}.c << \!
-#include <stdio.h>
-#include <string.h>
-static void doit(char const *s);
-int
-main(int argc, char **argv){
-   (void)argc;
-   (void)argv;
-   doit("Hello world");
-   return 0;
-}
-static void
-doit(char const *s){
-   char buf[12];
-   memcpy(buf, s, strlen(s) +1);
-   puts(s);
-}
-!
-
-if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
-      -o ${tmp2} ${tmp}.c ${LIBS}; then
-   :
-else
-   msg 'ERROR: i cannot compile a "Hello world" via'
-   msg '   %s' \
-   "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
-   msg 'ERROR:   Please read INSTALL, rerun'
-   config_exit 1
-fi
-
+cc_create_testfile
+cc_hello
 # This may also update ld_runtime_flags() (again)
 cc_flags
 
@@ -1412,7 +1479,7 @@ for i in \
       INCS LIBS \
       ; do
    eval j="\$${i}"
-   printf -- "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
 done
 
 MX_CFLAGS=${CFLAGS}
@@ -1436,17 +1503,21 @@ for i in \
    eval j=\$${i}
    if [ -n "${j}" ]; then
       printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=${j}\n" >> ${newlst}
+      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
    fi
 done
+
+# Note that makefile reads and eval'uates one line of this file, whereas other
+# consumers source it via .(1)
+printf "\n" >> ${newenv}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 config_updated=
-if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
+if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
    echo 'Configuration is up-to-date'
    exit 0
-elif [ -f ${lst} ]; then
+elif [ -f ${env} ]; then
    config_updated=1
    echo 'Configuration has been updated..'
 else
@@ -1455,12 +1526,11 @@ fi
 
 # Time to redefine helper 1
 config_exit() {
-   ${rm} -f ${lst} ${h} ${mk}
+   ${rm} -f ${h} ${mk}
    exit ${1}
 }
 
-${mv} -f ${newlst} ${lst}
-${mv} -f ${newev} ${ev}
+${mv} -f ${newenv} ${env}
 [ -f ${h} ] && ${mv} -f ${h} ${oldh}
 ${mv} -f ${newh} ${h} # Note this has still #ifdef mx_SOURCE open
 [ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
@@ -1476,7 +1546,7 @@ makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${lst} ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+   ${rm} -f ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
       HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
@@ -1512,11 +1582,16 @@ ${cat} > ${makefile} << \!
 
 ## Generics
 
-echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
+echo '#define VAL_BUILD_OS "'"${OS_ORIG_CASE}"'"' >> ${h}
 
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 
 printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
+
+if [ -n "${OS_DEFINES}" ]; then
+   printf '#ifdef su_SOURCE\n'"${OS_DEFINES}"'#endif /* su_SOURCE */\n\n' \
+       >> ${h}
+fi
 
 ## SU
 
@@ -1538,21 +1613,6 @@ dump_test_program=0
 dump_test_program=1
 
 ## /SU
-
-feat_def ALWAYS_UNICODE_LOCALE
-feat_def AMALGAMATION 0
-feat_def CROSS_BUILD
-feat_def DOCSTRINGS
-feat_def MAILDIR
-feat_def UISTRINGS
-feat_def ERRORS
-
-feat_def ASAN_ADDRESS 0
-feat_def ASAN_MEMORY 0
-feat_def USAN 0
-feat_def DEBUG 0
-feat_def DEVEL 0
-feat_def NOMEMDBG 0
 
 ## Test for "basic" system-calls / functionality that is used by all parts
 ## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
@@ -1777,9 +1837,11 @@ if link_check termios 'termios.h and tc*(3) family' << \!
 #include <termios.h>
 int main(void){
    struct termios tios;
+   speed_t ospeed;
 
    tcgetattr(0, &tios);
    tcsetattr(0, TCSANOW | TCSADRAIN | TCSAFLUSH, &tios);
+   ospeed = ((tcgetattr(0, &tios) == -1) ? B9600 : cfgetospeed(&tios));
    return 0;
 }
 !
@@ -2139,6 +2201,7 @@ int main(void){
    iconv_t id;
    size_t inl, oul;
 
+   /* U+2013 */
    memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
    inl = sizeof("\342\200\223") -1;
    oul = sizeof oub;
@@ -2182,10 +2245,10 @@ int main(void){
    if feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
-      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
-      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
-      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
-      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
+      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
+      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
+      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
+      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
       *) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
       esac
    fi
@@ -2193,7 +2256,7 @@ else
    feat_is_disabled ICONV
 fi # feat_yes ICONV
 
-if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
+if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2220,7 +2283,7 @@ int main(void){
          '#define mx_HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
-if feat_yes SOCKETS; then
+if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -2238,17 +2301,17 @@ int main(void){
 !
 
    < ${tmp2}.c run_check sockets 'sockets' \
-         '#define mx_HAVE_SOCKETS' ||
+         '#define mx_HAVE_NET' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lnsl)' \
-         '#define mx_HAVE_SOCKETS' '-lnsl' ||
+         '#define mx_HAVE_NET' '-lnsl' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' \
-         '#define mx_HAVE_SOCKETS' '-lsocket -lnsl' ||
-      feat_bail_required SOCKETS
+         '#define mx_HAVE_NET' '-lsocket -lnsl' ||
+      feat_bail_required NET
 else
-   feat_is_disabled SOCKETS
-fi # feat_yes SOCKETS
+   feat_is_disabled NET
+fi # feat_yes NET
 
-feat_yes SOCKETS &&
+feat_yes NET &&
    link_check sockopt '[gs]etsockopt(2)' '#define mx_HAVE_SOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2268,7 +2331,7 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS &&
+feat_yes NET &&
    link_check nonblocksock 'non-blocking sockets' \
       '#define mx_HAVE_NONBLOCKSOCK' << \!
 #include <sys/types.h>
@@ -2316,7 +2379,7 @@ int main(void){
 }
 !
 
-if feat_yes SOCKETS; then
+if feat_yes NET; then
    link_check getaddrinfo 'getaddrinfo(3)' \
       '#define mx_HAVE_GETADDRINFO' << \!
 #include <sys/types.h>
@@ -2340,7 +2403,7 @@ int main(void){
 !
 fi
 
-if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
+if feat_yes NET && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h '<arpa/inet.h>' \
       '#define mx_HAVE_ARPA_INET_H' << \!
 #include <sys/types.h>
@@ -2404,10 +2467,10 @@ int main(void){
       < ${tmp2}.c link_check gethostbyname \
          'get(serv|host)byname(3) (via -lsocket -nsl)' \
          '' '-lsocket -lnsl' ||
-      feat_bail_required SOCKETS
+      feat_bail_required NET
 fi
 
-feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "${have_sockopt}" ] &&
    link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define mx_HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2423,7 +2486,7 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+feat_yes NET && [ -n "${have_sockopt}" ] &&
    link_check so_linger 'SO_LINGER' '#define mx_HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -2505,7 +2568,7 @@ if feat_yes TLS; then # {{{
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls 'TLS new style TLS_client_method(3ssl)' \
+         without_check 1 xtls 'TLS new style TLS_client_method(3ssl)' \
             '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
       elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
@@ -2558,7 +2621,7 @@ int main(void){
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_stack_of 'TLS STACK_OF()' \
+         without_check 1 xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF'
       elif compile_check xtls_stack_of 'TLS STACK_OF()' \
             '#define mx_HAVE_XTLS_STACK_OF' << \!
@@ -2580,7 +2643,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
+         without_check 1 xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
             '#define mx_HAVE_XTLS_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       elif link_check xtls_conf \
@@ -2601,7 +2664,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+         without_check 1 xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
             '#define mx_HAVE_XTLS_CONF_CTX'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
@@ -2630,7 +2693,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+         without_check 1 xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
             '#define mx_HAVE_XTLS_CTX_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
@@ -2650,7 +2713,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_maxmin_proto \
+         without_check 1 xtls_set_maxmin_proto \
             'TLS SSL_CTX_set_min_proto_version(3ssl)' \
             '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
@@ -2672,7 +2735,7 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
-         without_check yes xtls_set_ciphersuites \
+         without_check 1 xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
             '#define mx_HAVE_XTLS_SET_CIPHERSUITES'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
@@ -2696,7 +2759,7 @@ int main(void){
    if feat_yes TLS; then # digest etc algorithms {{{
       if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
-            without_check yes tls_all_algo 'TLS_ALL_ALGORITHMS support' \
+            without_check 1 tls_all_algo 'TLS_ALL_ALGORITHMS support' \
                '#define mx_HAVE_TLS_ALL_ALGORITHMS'
          elif link_check tls_all_algo 'TLS all-algorithms support' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS' << \!
@@ -2714,7 +2777,7 @@ int main(void){
             feat_bail_required TLS_ALL_ALGORITHMS
          fi
       elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes tls_all_algo \
+         without_check 1 tls_all_algo \
             'TLS all-algorithms (always available in v1.1.0+)' \
             '#define mx_HAVE_TLS_ALL_ALGORITHMS'
       fi
@@ -2785,7 +2848,6 @@ if [ "${have_xtls}" = yes ]; then
 else
    OPT_SMIME=0
 fi
-feat_def SMIME
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
@@ -2800,7 +2862,7 @@ fi
 
 val_random_arc4() {
    link_check arc4random 'VAL_RANDOM: arc4random(3)' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_ARC4' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
@@ -2812,7 +2874,7 @@ int main(void){
 val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_TLS' >> ${h}
       # Avoid reseeding, all we need is a streamy random producer
       link_check xtls_rand_drbg_set_reseed_defaults \
          'RAND_DRBG_set_reseed_defaults(3ssl)' \
@@ -2849,9 +2911,9 @@ int main(void){
 val_random_libgetrandom() {
    val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
-      #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
-      #define n_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
+      #define mx_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
+      #define mx_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
 int main(void){
    char buf[256];
@@ -2864,9 +2926,9 @@ int main(void){
 val_random_sysgetrandom() {
    val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
-      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
-      #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define n_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
+      #define mx_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define mx_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
 int main(void){
    char buf[256];
@@ -2881,10 +2943,10 @@ val_random_urandom() {
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
    elif [ -f /dev/urandom ]; then
       msg yes
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
    else
       msg no
       return 1
@@ -2901,7 +2963,7 @@ val_random_builtin() {
       config_exit 1
    else
       msg yes
-      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_BUILTIN' >> ${h}
+      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_BUILTIN' >> ${h}
    fi
 }
 
@@ -2921,11 +2983,7 @@ do
 done
 # }}} VAL_RANDOM
 
-feat_def SMTP
-feat_def POP3
-feat_def IMAP
-
-if feat_yes GSSAPI; then
+if feat_yes GSSAPI; then # {{{
    ${cat} > ${tmp2}.c << \!
 #include <gssapi/gssapi.h>
 int main(void){
@@ -2983,10 +3041,7 @@ int main(void){
    fi
 else
    feat_is_disabled GSSAPI
-fi # feat_yes GSSAPI
-
-feat_def NETRC
-feat_def AGENT
+fi # feat_yes GSSAPI }}}
 
 if feat_yes IDNA; then # {{{
    if val_allof VAL_IDNA "idnkit,idn2,idn"; then
@@ -3080,8 +3135,6 @@ else
    feat_is_disabled IDNA
 fi # }}} IDNA
 
-feat_def IMAP_SEARCH
-
 if feat_yes REGEX; then
    if link_check regex 'regular expressions' '#define mx_HAVE_REGEX' << \!
 #include <regex.h>
@@ -3118,13 +3171,8 @@ else
    feat_is_disabled MLE
 fi
 
-# Generic have-a-line-editor switch for those who need it below
-if [ -n "${have_mle}" ]; then
-   have_cle=1
-fi
-
 if feat_yes HISTORY; then
-   if [ -n "${have_cle}" ]; then
+   if [ -n "${have_mle}" ]; then
       echo '#define mx_HAVE_HISTORY' >> ${h}
    else
       feat_is_unsupported HISTORY
@@ -3268,39 +3316,19 @@ else # }}}
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
 
-if feat_def SPAM_SPAMC; then
-   if acmd_set i spamc; then
-      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
-   fi
-fi
+## Final feat_def's XXX should be loop over OPTIONs
 
-if feat_yes SPAM_SPAMD; then
-   if [ -n "${have_af_unix}" ]; then
-      echo '#define mx_HAVE_SPAM_SPAMD' >> ${h}
-   else
-      feat_bail_required SPAM_SPAMD
-   fi
-else
-   feat_is_disabled SPAM_SPAMD
-fi
-
-feat_def SPAM_FILTER
-
-if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
-   echo '#define mx_HAVE_SPAM' >> ${h}
-else
-   echo '/* mx_HAVE_SPAM */' >> ${h}
-fi
-
+feat_def ALWAYS_UNICODE_LOCALE
+feat_def AMALGAMATION 0
 if feat_def CMD_CSOP; then
    feat_def CMD_VEXPR # v15compat: VEXPR needs CSOP for byte string ops YET
 else
    feat_bail_required CMD_VEXPR
 fi
 feat_def COLOUR
+feat_def CROSS_BUILD
 feat_def DOTLOCK
 feat_def FILTER_HTML_TAGSOUP
-
 if feat_yes FILTER_QUOTE_FOLD; then
    if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
       echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
@@ -3310,8 +3338,37 @@ if feat_yes FILTER_QUOTE_FOLD; then
 else
    feat_is_disabled FILTER_QUOTE_FOLD
 fi
+feat_def DOCSTRINGS
+feat_def ERRORS
+feat_def IMAP
+feat_def IMAP_SEARCH
+feat_def MAILDIR
+feat_def MD5 # XXX only sockets
+feat_def MTA_ALIASES
+feat_def NETRC
+feat_def POP3
+feat_def SMIME
+feat_def SMTP
+feat_def SPAM_FILTER
+if feat_def SPAM_SPAMC; then
+   if acmd_set i spamc; then
+      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
+   fi
+fi
+if feat_yes SPAM_SPAMC || feat_yes SPAM_FILTER; then
+   echo '#define mx_HAVE_SPAM' >> ${h}
+else
+   echo '/* mx_HAVE_SPAM */' >> ${h}
+fi
+feat_def UISTRINGS
+feat_def USE_PKGSYS
 
-feat_def MD5
+feat_def ASAN_ADDRESS 0
+feat_def ASAN_MEMORY 0
+feat_def USAN 0
+feat_def DEBUG 0
+feat_def DEVEL 0
+feat_def NOMEMDBG 0
 
 ## Summarizing
 
@@ -3348,12 +3405,18 @@ elif (${CC} -v) >/dev/null 2>&1; then
       END{gsub(/"/, "", l); print "\\\\n" l}
    '`
 fi
-printf '#define VAL_BUILD_CC "%s %s %s%s"\n' \
-   "${CC}" "${CFLAGS}" "" "${i}" >> ${h}
-printf '#define VAL_BUILD_LD "%s %s %s"\n' \
-   "${CC}" "${LDFLAGS}" "`${cat} ${lib}`" >> ${h}
-printf '#define VAL_BUILD_REST "%s"\n' "${COMMLINE}" >> ${h}
-printf '\n' >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
+   printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
+i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "\`${cat} ${lib}\`"`
+   printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
+i=${COMMLINE}
+   printf '#define VAL_BUILD_REST "%s"\n' "$i" >> ${h}
+   i=`string_to_char_array "${i}"`
+   printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> ${h}
 
 # Throw away all temporaries
 ${rm} -rf ${tmp0}.* ${tmp0}*

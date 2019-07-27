@@ -42,10 +42,12 @@
 #endif
 
 #include <su/cs.h>
+#include <su/mem.h>
 
-#include "mx/charsetalias.h"
-#include "mx/mlist.h"
+#include "mx/cmd-charsetalias.h"
+#include "mx/cmd-mlist.h"
 #include "mx/names.h"
+#include "mx/url.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -721,8 +723,10 @@ jleave:
 
 static int
 a_crese_resend1(void *vp, boole add_resent){
+   struct mx_url url;
    struct header head;
    struct mx_name *myto, *myrawto;
+   boole mta_isexe;
    enum gfield gf;
    int *msgvec, rv, *ip;
    struct n_cmd_arg *cap;
@@ -738,18 +742,40 @@ a_crese_resend1(void *vp, boole add_resent){
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+jedar:
          n_err(_("No recipient specified.\n"));
       goto jleave;
    }
 
+   if(!(mta_isexe = mx_sendout_mta_url(&url)))
+      goto jleave;
+   mta_isexe = (mta_isexe != TRU1);
+
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
-   myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
-   myto = usermap(n_namelist_dup(myrawto, myrawto->n_type), FAL0);
-   if(!ok_blook(posix))
-      myto = mx_alternates_remove(myto, TRU1);
-   if(myto == NULL)
-      goto jleave;
+   myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf | GNOT_A_LIST | GNULL_OK);
+   if(myrawto == NIL)
+      goto jedar;
+
+   su_mem_set(&head, 0, sizeof head);
+   head.h_to = n_namelist_dup(myrawto, myrawto->n_type);
+   /* C99 */{
+      s8 snderr;
+
+      snderr = 0;
+      myto = n_namelist_vaporise_head(&head, FAL0, !ok_blook(posix),
+            (EACM_NORMAL | EACM_DOMAINCHECK |
+               (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),
+            &snderr);
+
+      if(snderr < 0){
+         n_err(_("Some addressees were classified as \"hard error\"\n"));
+         n_pstate_err_no = su_ERR_PERM;
+         goto jleave;
+      }
+      if(myto == NIL)
+         goto jedar;
+   }
 
    n_autorec_relax_create();
    for(ip = msgvec; *ip != 0; ++ip){
@@ -768,7 +794,8 @@ a_crese_resend1(void *vp, boole add_resent){
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
-      if(resend_msg(mp, &head, add_resent) != OKAY){
+      if(n_resend_msg(mp, (mta_isexe ? NIL : &url), &head, add_resent
+            ) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
       }
