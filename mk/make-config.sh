@@ -2840,7 +2840,7 @@ else
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
 printf '#ifdef mx_SOURCE\n' >> ${h}
-printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
 printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
@@ -3427,8 +3427,8 @@ ${rm} -rf ${tmp0}.* ${tmp0}*
 echo 'The following features are included (+) or not (-):' > ${tmp}
 set -- ${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}
 printf '/* The "feature string" */\n' >> ${h}
-# Because + is expanded by *folder* if first in "echo $features", put something
-printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES "#' >> ${h}
+# Prefix sth. to avoid that + is expanded by *folder* (echo $features)
+printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES ",' >> ${h}
 sep=
 for opt
 do
