@@ -883,3 +883,281 @@ Mail-Followup-To: mister originator2 <mr2@originator>,
 
 This message should have *fullnames* in the header.
 
+
+===== CHANGING === unmlsubscribe bugstop@five.miles.out; set followup-to-add-cc nofullnames =====
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "reply 8.1".
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "reply 8.2".
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: laber@backe.eu
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, laber@backe.eu
+
+This is text of "reply 8.3".
+
+-----After reply 8.1 - 8.3: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: laber@backe.eu
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, laber@backe.eu
+
+This is text of "Reply 8.1".
+
+-----After Reply 8.1: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "Reply 8.2".
+
+-----After Reply 8.2: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: laber@backe.eu
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, laber@backe.eu
+
+This is text of "Reply 8.3".
+
+-----After Reply 8.3: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator
+Cc: bugstop@five.miles.out, laber@backe.eu
+Subject: Re: Bugstop: five miles out 4
+In-Reply-To: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, laber@backe.eu
+
+This is text of "Reply 8.4".
+
+-----After Reply 8.4: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: bugstop@five.miles.out, is@a.list, laber@backe.eu
+
+This is text of "Lreply 8.1".
+
+-----After Lreply 8.1: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: bugstop@five.miles.out, is@a.list, laber@backe.eu
+
+This is text of "Lreply 8.2".
+
+-----After Lreply 8.2: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: laber@backe.eu
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu
+
+This is text of "Lreply 8.3".
+
+-----After Lreply 8.3: 0/NONE
+
+===== CHANGING === mlsubscribe bugstop@five.miles.out =====
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "reply 9.1".
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "reply 9.2".
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+
+This is text of "reply 9.3".
+
+-----After reply 9.1 - 9.3: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+
+This is text of "Reply 9.1".
+
+-----After Reply 9.1: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out, is@a.list,
+ laber@backe.eu
+
+This is text of "Reply 9.2".
+
+-----After Reply 9.2: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+
+This is text of "Reply 9.3".
+
+-----After Reply 9.3: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mr2@originator
+Cc: bugstop@five.miles.out
+Subject: Re: Bugstop: five miles out 4
+In-Reply-To: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+
+This is text of "Reply 9.4".
+
+-----After Reply 9.4: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: bugstop@five.miles.out, is@a.list, laber@backe.eu
+
+This is text of "Lreply 9.1".
+
+-----After Lreply 9.1: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+Mail-Followup-To: bugstop@five.miles.out, is@a.list, laber@backe.eu
+
+This is text of "Lreply 9.2".
+
+-----After Lreply 9.2: 0/NONE
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: bugstop@five.miles.out
+Subject: Re: Bugstop: five miles out 3
+In-Reply-To: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+References: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+Mail-Followup-To: bugstop@five.miles.out
+
+This is text of "Lreply 9.3".
+
+-----After Lreply 9.3: 0/NONE
