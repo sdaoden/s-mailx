@@ -237,7 +237,7 @@ function graph listings in case of crashes etc.
 For sanitizers plus special options exist, please read make.rc for more.
 
 In case of errors using the -d (*debug*) and -v (*verbose*; may be set
-twice for even more verbosity) options (variables) is always good idea:
+multiply for more verbosity) options (variables) is always good idea:
 
   $ s-nail -dvv
 or
