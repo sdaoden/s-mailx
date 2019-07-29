@@ -7515,11 +7515,17 @@ t_lreply_futh_rth_etc() {
 	reply 1
 	This message should have *fullnames* in the header.
 	!.
+	# Revert
+	call tweak unmlsubscribe bugstop@five.miles.out';' \
+		set followup-to-add-cc nofullnames
+	call x 8
+	call tweak mlsubscribe bugstop@five.miles.out
+	call x 9
 	_EOT
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '223982085 30183'
+      check 1 - "${MBOX}" '564303313 39797'
    else
       t_echoskip '1:[test unsupported]'
    fi

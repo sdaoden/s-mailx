@@ -1702,7 +1702,10 @@ and
 .Va followup-to
 controls creation of this header when creating
 .Ic mail Ns
-s; it may be created automatically, e.g., when list-replying via
+s, if the necessary user setup
+.Pf ( from , sender ) ;
+is available; then, it may also be created automatically, e.g., when
+list-replying via
 .Ic Lreply ,
 when
 .Ic reply
@@ -1753,6 +1756,16 @@ is used instead (if it is a single address on the same domain as
 .Ql List-Post: )
 in order to accept a list administrator's wish that is supposed to have
 been manifested like that.
+.
+.Pp
+For convenience and compatibility with mail programs that do not honour
+the non-standard M-F-T, an automatic user entry in the carbon-copy
+.Ql Cc:
+address list of generated message can be created by setting
+.Va followup-to-add-cc .
+This entry will be added whenever the user will be placed in the
+.Ql Mail-Followup-To:
+list, and is not a regular addressee already.
 .\" }}}
 .
 .\" .Ss "Signed and encrypted messages with S/MIME" {{{
@@ -9665,12 +9678,26 @@ once that evaluation has occurred; rather internal.
 \*(BO Controls whether a
 .Ql Mail-Followup-To:
 header is generated when sending messages to known mailing lists.
+The user as determined via
+.Va from
+(or, if that contains multiple addresses,
+.Va sender )
+will be placed in there if any list addressee is not a subscribed list.
 Also see
 .Va followup-to-honour
 and the commands
 .Ic mlist , mlsubscribe , reply
 and
 .Ic Lreply .
+.
+.Mx
+.It Va followup-to-add-cc
+\*(BO Controls whether the user will be added to the messages'
+.Ql Cc:
+list in addition to placing an entry in
+.Ql Mail-Followup-To:
+(see
+.Va followup-to ) .
 .
 .Mx
 .It Va followup-to-honour
@@ -9681,13 +9708,9 @@ header is honoured when group-replying to a message via
 or
 .Ic Lreply .
 This is a quadoption; if set without a value it defaults to
-.Dq yes .
-Also see
-.Va followup-to
-and the commands
-.Ic mlist
-and
-.Ic mlsubscribe .
+.Dq yes ,
+and see
+.Va followup-to .
 .
 .Mx
 .It Va forward-as-attachment

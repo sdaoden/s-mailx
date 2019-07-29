@@ -934,6 +934,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
+   ok_b_followup_to_add_cc,
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,

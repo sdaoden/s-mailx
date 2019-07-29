@@ -2344,13 +2344,15 @@ do {\
 
    char const *addr;
    uz gotcha;
-   struct mx_name *np, *fromasender = NULL;
    int stealthmua;
    boole nodisp;
    enum a_sendout_addrline_flags saf;
+   struct mx_name *np, *fromasender, *mft, **mftp;
    boole rv;
    NYD_IN;
 
+   mftp = NIL;
+   fromasender = mft = NIL;
    rv = FAL0;
 
    if(nosend_msg == TRUM1 &&
@@ -2392,6 +2394,134 @@ do {\
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
    }
 
+   /* M-F-T: check this now, and possibly place us in Cc: */
+   if((w & GIDENT) && !nosend_msg){
+      /* Mail-Followup-To: TODO factor out this huge block of code.
+       * TODO Also, this performs multiple expensive list operations, which
+       * TODO hopefully can be heavily optimized later on! */
+      /* Place ourselfs in there if any non-subscribed list is an addressee */
+      if((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NIL ||
+            ok_blook(followup_to)){
+         enum{
+            a_HADMFT = 1u<<(HF__NEXT_SHIFT + 0),
+            a_WASINMFT = 1u<<(HF__NEXT_SHIFT + 1),
+            a_ANYLIST = 1u<<(HF__NEXT_SHIFT + 2),
+            a_OTHER = 1u<<(HF__NEXT_SHIFT + 3)
+         };
+         struct mx_name *x;
+         u32 f;
+
+         f = hp->h_flags | (hp->h_mft != NIL ? a_HADMFT : 0);
+         if(f & a_HADMFT){
+            /* Detect whether we were part of the former MFT:.
+             * Throw away MFT: if we were the sole member (kidding) */
+            hp->h_mft = mft = elide(hp->h_mft);
+            mft = mx_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
+            if(mft == NIL)
+               f ^= a_HADMFT;
+            else for(x = hp->h_mft; x != NIL;
+                  x = x->n_flink, mft = mft->n_flink){
+               if(mft == NIL){
+                  f |= a_WASINMFT;
+                  break;
+               }
+            }
+         }
+
+         /* But for that, we have to remove all incarnations of ourselfs first.
+          * TODO It is total crap that we have alternates_remove(), is_myname()
+          * TODO or whatever; these work only with variables, not with data
+          * TODO that is _currently_ in some header fields!!!  v15.0: complete
+          * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
+          * TODO then this should be a really cheap thing in here... */
+         np = elide(mx_alternates_remove(cat(
+               n_namelist_dup(hp->h_to, GEXTRA | GFULL),
+               n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
+         addr = hp->h_list_post;
+         mft = NIL;
+         mftp = &mft;
+
+         while((x = np) != NIL){
+            s8 ml;
+
+            np = np->n_flink;
+
+            /* Automatically make MLIST_KNOWN List-Post: address */
+            /* XXX mx_mlist_query_mp()?? */
+            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
+                  addr != NIL && !su_cs_cmp_case(addr, x->n_name))
+               ml = mx_MLIST_KNOWN;
+
+            /* Any non-subscribed list?  Add ourselves */
+            switch(ml){
+            case mx_MLIST_KNOWN:
+               f |= HF_MFT_SENDER;
+               /* FALLTHRU */
+            case mx_MLIST_SUBSCRIBED:
+               f |= a_ANYLIST;
+               goto j_mft_add;
+            case mx_MLIST_OTHER:
+               f |= a_OTHER;
+               if(!(f & HF_LIST_REPLY)){
+j_mft_add:
+                  if(!is_addr_invalid(x,
+                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)){
+                     x->n_blink = *mftp;
+                     x->n_flink = NIL;
+                     *mftp = x;
+                     mftp = &x->n_flink;
+                  } /* XXX write some warning?  if verbose?? */
+                  continue;
+               }
+               /* And if this is a reply that honoured a M-F-T: header then
+                * we'll also add all members of the original M-F-T: that are
+                * still addressed by us, regardless of other circumstances */
+               /* TODO If the user edited this list, then we should include
+                * TODO whatever she did therewith, even if _LIST_REPLY! */
+               else if(f & a_HADMFT){
+                  struct mx_name *ox;
+
+                  for(ox = hp->h_mft; ox != NIL; ox = ox->n_flink)
+                     if(!su_cs_cmp_case(ox->n_name, x->n_name))
+                        goto j_mft_add;
+               }
+               break;
+            }
+         }
+
+         if((f & (a_ANYLIST | a_HADMFT)) && mft != NIL){
+            if(((f & HF_MFT_SENDER) ||
+                     ((f & (a_ANYLIST | a_HADMFT)) == a_HADMFT)) &&
+                  (np = fromasender) != NIL && np != R(struct mx_name*,0x1)){
+               *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
+
+               /* Place ourselfs in the Cc: if we will be a member of M-F-T:,
+                * and we are not subscribed (and are no addressee yet)? */
+               /* TODO This entire block is much to expensive and should
+                * TODO be somewhere else (like name_unite(), or so) */
+               if(ok_blook(followup_to_add_cc)){
+                  struct mx_name **npp;
+
+                  np = ndup(np, (np->n_type & ~GMASK) | GCC | GFULL);
+                  np = cat(cat(hp->h_to, hp->h_cc), np);
+                  np = mx_alternates_remove(np, TRU1);
+                  np = elide(np);
+                  hp->h_to = hp->h_cc = NIL;
+                  for(; np != NIL; np = np->n_flink){
+                     switch(np->n_type & (GDEL | GMASK)){
+                     case GTO: npp = &hp->h_to; break;
+                     case GCC: npp = &hp->h_cc; break;
+                     default: continue;
+                     }
+                     *npp = cat(*npp, ndup(np, np->n_type | GFULL));
+                  }
+               }
+            }
+         }else
+            mft = NIL;
+      }
+   }
+
    if(nosend_msg == TRUM1 &&
          fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
@@ -2427,7 +2557,7 @@ jto_fmt:
    }
 #endif
 
-   if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
+   if(!ok_blook(bsdcompat) && !ok_blook(bsdorder))
       a_PUT_CC_BCC_FCC();
 
    if ((w & GSUBJECT) && (hp->h_subject != NULL || nosend_msg == TRUM1)) {
@@ -2517,111 +2647,14 @@ jto_fmt:
       }
    }
 
-   if ((w & GIDENT) && !nosend_msg) {
-      /* Mail-Followup-To: TODO factor out this huge block of code */
-      /* Place ourselfs in there if any non-subscribed list is an addressee */
-      if((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NULL ||
-            ok_blook(followup_to)){
-         enum{
-            a_HADMFT = 1u<<(HF__NEXT_SHIFT + 0),
-            a_WASINMFT = 1u<<(HF__NEXT_SHIFT + 1),
-            a_ANYLIST = 1u<<(HF__NEXT_SHIFT + 2),
-            a_OTHER = 1u<<(HF__NEXT_SHIFT + 3)
-         };
-         struct mx_name *mft, **mftp, *x;
-         u32 f;
-
-         f = hp->h_flags | (hp->h_mft != NULL ? a_HADMFT : 0);
-         if(f & a_HADMFT){
-            /* Detect whether we were part of the former MFT:.
-             * Throw away MFT: if we were the sole member (kidding) */
-            hp->h_mft = mft = elide(hp->h_mft);
-            mft = mx_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
-            if(mft == NULL)
-               f ^= a_HADMFT;
-            else for(x = hp->h_mft; x != NULL;
-                  x = x->n_flink, mft = mft->n_flink){
-               if(mft == NULL){
-                  f |= a_WASINMFT;
-                  break;
-               }
-            }
-         }
-
-         /* But for that, we have to remove all incarnations of ourselfs first.
-          * TODO It is total crap that we have alternates_remove(), is_myname()
-          * TODO or whatever; these work only with variables, not with data
-          * TODO that is _currently_ in some header fields!!!  v15.0: complete
-          * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
-          * TODO then this should be a really cheap thing in here... */
-         np = elide(mx_alternates_remove(cat(
-               n_namelist_dup(hp->h_to, GEXTRA | GFULL),
-               n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
-         addr = hp->h_list_post;
-         mft = NULL;
-         mftp = &mft;
-
-         while((x = np) != NULL){
-            s8 ml;
-
-            np = np->n_flink;
-
-            /* Automatically make MLIST_KNOWN List-Post: address */
-            /* XXX mx_mlist_query_mp()?? */
-            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
-                  addr != NULL && !su_cs_cmp_case(addr, x->n_name))
-               ml = mx_MLIST_KNOWN;
-
-            /* Any non-subscribed list?  Add ourselves */
-            switch(ml){
-            case mx_MLIST_KNOWN:
-               f |= HF_MFT_SENDER;
-               /* FALLTHRU */
-            case mx_MLIST_SUBSCRIBED:
-               f |= a_ANYLIST;
-               goto j_mft_add;
-            case mx_MLIST_OTHER:
-               f |= a_OTHER;
-               if(!(f & HF_LIST_REPLY)){
-j_mft_add:
-                  if(!is_addr_invalid(x,
-                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)){
-                     x->n_blink = *mftp;
-                     x->n_flink = NULL;
-                     *mftp = x;
-                     mftp = &x->n_flink;
-                  } /* XXX write some warning?  if verbose?? */
-                  continue;
-               }
-               /* And if this is a reply that honoured a M-F-T: header then
-                * we'll also add all members of the original M-F-T: that are
-                * still addressed by us, regardless of other circumstances */
-               /* TODO If the user edited this list, then we should include
-                * TODO whatever she did therewith, even if _LIST_REPLY! */
-               else if(f & a_HADMFT){
-                  struct mx_name *ox;
-
-                  for(ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
-                     if(!su_cs_cmp_case(ox->n_name, x->n_name))
-                        goto j_mft_add;
-               }
-               break;
-            }
-         }
-
-         if((f & (a_ANYLIST | a_HADMFT)) && mft != NULL){
-            if(((f & HF_MFT_SENDER) ||
-                     ((f & (a_ANYLIST | a_HADMFT)) == a_HADMFT)) &&
-                  (np = fromasender) != NULL && np != (struct mx_name*)0x1)
-               *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
-
-            if(!a_sendout_put_addrline("Mail-Followup-To:", mft, fo, saf))
-               goto jleave;
-            ++gotcha;
-         }
+   if((w & GIDENT) && !nosend_msg){
+      if(mft != NIL){
+         if(!a_sendout_put_addrline("Mail-Followup-To:", mft, fo, saf))
+            goto jleave;
+         ++gotcha;
       }
 
-      if (!_check_dispo_notif(fromasender, hp, fo))
+      if(!_check_dispo_notif(fromasender, hp, fo))
          goto jleave;
    }
 
