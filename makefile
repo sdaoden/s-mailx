@@ -52,6 +52,9 @@ d-v:
 # The test should inherit the user runtime environment!
 test:
 	@$(__prestop); cd "$(OBJDIR)" && LC_ALL=C $(MAKE) -f mk-config.mk test
+testnj:
+	@$(__prestop); cd "$(OBJDIR)" &&\
+	LC_ALL=C $(MAKE) -f mk-config.mk testnj
 
 d-okeys:
 	perl mk/make-okey-map.pl

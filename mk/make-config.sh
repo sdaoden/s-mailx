@@ -1343,7 +1343,8 @@ thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
 # pwd(1) is needed - either for make-emerge.sh, or for ourselves
-[ -n "${CWDDIR}" ] || thecmd_testandset_fail pwd pwd
+#[ -n "${CWDDIR}" ] ||
+   thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1421,6 +1422,9 @@ if [ -z "${VERBOSE}" ]; then
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
+printf \
+   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check-only %s\n' \
+   "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
@@ -1439,7 +1443,7 @@ for i in \
          PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
          SU_CWDDIR SU_INCDIR SU_SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
-         ln mkdir mv rm sed sort tee tr \
+         ln mkdir mv pwd rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}

@@ -86,6 +86,8 @@ The following make(1) targets exist, the default being `build':
 - distclean   Remove anything which can be rebuild or reconfigured.
 
 - test        Run mx-test.sh in --check-only mode on the built binary.
+- testnj      Likewise, but add --no-jobs to avoid spawning multiple
+              tests in parallel.
 
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
