@@ -379,7 +379,10 @@ mx_termios_controller_setup(enum mx_termios_setup what){
          if(l == 0 || c == 0){
             /* In non-interactive mode, stop now, except for the documented case
              * that both are set but not both have been usable */
-            if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc))
+            if(!(n_psonce & n_PSO_INTERACTIVE) &&
+                  !((n_psonce & n_PSO_TTYANY) &&
+                     (n_poption & n_PO_BATCH_FLAG)) &&
+                  (!hadl || !hadc))
                goto jtermsize_default;
 
             a_termios_dimen_query(&mx_termios_dimen);
