@@ -2242,7 +2242,7 @@ int main(void){
          '#define mx_HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 
-   if feat_no CROSS_BUILD; then
+   if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
