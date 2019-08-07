@@ -60,7 +60,7 @@ LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
 # In debug built the value is doubled (due to memory checks).
-JOBWAIT=66
+JOBWAIT=88
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -155,6 +155,8 @@ t_all() {
    jspawn s_mime
    jspawn z
    jsync
+
+   jsync 1
 }
 
 ## Now it is getting really weird. You have been warned.
@@ -192,49 +194,10 @@ _EOT
    exit 1
 }
 
-DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+NOJOBS= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
 if [ "${1}" = --no-jobs ]; then
-   jobs_max() { :; }
+   NOJOBS=y
    shift
-else
-   jobs_max() {
-      # ..the user desired variant
-      if ( echo "${MAKEFLAGS}" | ${grep} -- -j ) >/dev/null 2>&1; then
-         i=`echo "${MAKEFLAGS}" |
-               ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
-         if ( echo "${i}" | grep -q -e '^[0-9]\{1,\}$' ); then
-            MAXJOBS=${i}
-            return
-         fi
-      fi
-
-      # The actual hardware
-      if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
-         if command -v nproc >/dev/null 2>&1; then
-            i=`nproc 2>/dev/null`
-            [ ${?} -eq 0 ] && MAXJOBS=${i}
-         else
-            i=`getconf _NPROCESSORS_ONLN 2>/dev/null`
-            j=${?}
-            if [ ${j} -ne 0 ]; then
-               i=`getconf NPROCESSORS_ONLN 2>/dev/null`
-               j=${?}
-            fi
-            if [ ${j} -ne 0 ]; then
-               # SunOS 5.9 ++
-               if command -v kstat >/dev/null 2>&1; then
-                  i=`PERL5OPT= kstat -p cpu | ${awk} '
-                     BEGIN{no=0; FS=":"}
-                     {if($2 > no) max = $2; next}
-                     END{print ++max}
-                     '`
-                  j=${?}
-               fi
-            fi
-            [ $j -eq 0 ] && [ -n "${i}" ] && MAXJOBS=${i}
-         fi
-      fi
-   }
 fi
 
 if [ "${1}" = --check-only ]; then
@@ -317,7 +280,7 @@ fi
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
-JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
+JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
@@ -329,66 +292,122 @@ trap "${rm} -rf ./t.*.d ./t.*.io ./t.*.result; jobreaper_stop" EXIT
 trap "exit 1" HUP INT TERM
 
 # JOBS {{{
+if [ -n "${NOJOBS}" ]; then
+   jobs_max() { :; }
+else
+   jobs_max() {
+      # Do only use half of the CPUs, since we live in pipes or do a lot of
+      # shell stuff, and i have seen lesser timeouts like this (on SunOS 5.9)
+      # ..the user desired variant
+      if ( echo "${MAKEFLAGS}" | ${grep} -- -j ) >/dev/null 2>&1; then
+         i=`echo "${MAKEFLAGS}" |
+               ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
+         if ( echo "${i}" | grep -q -e '^[0-9]\{1,\}$' ); then
+            printf 'Job number derived from MAKEFLAGS: %s\n' ${i}
+            MAXJOBS=${i}
+            [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+            return
+         fi
+      fi
+
+      # The actual hardware
+      if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
+         if command -v nproc >/dev/null 2>&1; then
+            i=`nproc 2>/dev/null`
+            [ ${?} -eq 0 ] && MAXJOBS=${i}
+         else
+            i=`getconf _NPROCESSORS_ONLN 2>/dev/null`
+            j=${?}
+            if [ ${j} -ne 0 ]; then
+               i=`getconf NPROCESSORS_ONLN 2>/dev/null`
+               j=${?}
+            fi
+            if [ ${j} -ne 0 ]; then
+               # SunOS 5.9 ++
+               if command -v kstat >/dev/null 2>&1; then
+                  i=`PERL5OPT= kstat -p cpu | ${awk} '
+                     BEGIN{no=0; FS=":"}
+                     {if($2 > no) max = $2; next}
+                     END{print ++max}
+                     '`
+                  j=${?}
+               fi
+            fi
+            if [ ${j} -eq 0 ] && [ -n "${i}" ]; then
+               printf 'Job number derived from CPU number: %s\n' ${i}
+               MAXJOBS=${i}
+            fi
+         fi
+         [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+      fi
+   }
+fi
+
 jobreaper_start() {
+   if mkfifo -m 0600 t.fifo; then :; else
+      printf '%s!! Cannot start wild job reaper%s\n' \
+         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
+      ${rm} -f t.fifo
+      return
+   fi
+
+   i=
+   trap i=1 USR1
    (
-      sleeper= int= hot=
+      parent=${$}
+      sleeper= int=0 hot=0
+      trap '' HUP INT TERM EXIT
       trap '
-         [ -n "${sleeper}" ] && kill -KILL ${sleeper}
+         [ -n "${sleeper}" ] && kill -KILL ${sleeper} >/dev/null 2>&1
          int=1 hot=1
       ' USR1
       trap '
-         [ -n "${sleeper}" ] && kill -KILL ${sleeper}
-         int=1 hot=
+         [ -n "${sleeper}" ] && kill -KILL ${sleeper} >/dev/null 2>&1
+         int=1 hot=0
       ' USR2
       trap '
-         [ -n "${sleeper}" ] kill -KILL ${sleeper}
+         [ -n "${sleeper}" ] && kill -KILL ${sleeper} >/dev/null 2>&1
          echo "Stopping job reaper"
          exit 0
       ' TERM
-      trap '' EXIT
 
       # traps are setup, notify parent that we are up and running
-      echo > t.jobreaper
+      kill -USR1 ${parent}
 
       while [ 1 ]; do
-         int=
+         int=0
          sleep ${JOBWAIT} &
          sleeper=${!}
          wait
          sleeper=
-         if [ -z "${int}" ] && [ -n "${hot}" ]; then
-            i=0 l=
-            while [ ${i} -lt ${MAXJOBS} ]; do
-               i=`add ${i} 1`
-
-               if [ -s t.${i}.pid ] && read p n < t.${i}.pid; then
-                  # Of course a race condition, but cannot be helped!
-                  if [ -s t.${i}.pid ]; then
-                     kill -KILL ${p}
-                     ${rm} -f t.${i}.result
-                     l="${l} ${i}/${n}"
-                  fi
-               fi
-            done
-            [ -n "${l}" ] &&
-               printf '%s!! Reaped job(s)%s after %s seconds%s\n' \
-                  "${COLOR_ERR_ON}" "${l}" ${JOBWAIT} "${COLOR_ERR_OFF}"
-         fi
+         [ "${int}${hot}" = 01 ] && echo timeout >> t.fifo
       done
    ) </dev/null & #>/dev/null 2>&1 &
    JOBREAPER=${!}
 
-   while [ 1 ]; do
-      [ -f t.jobreaper ] && break
-      printf '.. waiting for job reaper to come up\n'
-      sleep 1
-   done
-   ${rm} t.jobreaper
+   if [ ${?} -eq 0 ]; then
+      while [ 1 ]; do
+         if [ -n "${i}" ]; then
+            trap '' USR1
+            return
+         fi
+         printf '.. waiting for job reaper to come up\n'
+         sleep 1
+      done
+   fi
+
+   JOBREAPER=
+   printf '%s!! Cannot start wild job reaper%s\n' \
+      "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
+   ${rm} -f t.fifo
 }
 
 jobreaper_stop() {
-   [ -n "${JOBREAPER}" ] && kill -TERM ${JOBREAPER}
-   JOBREAPER=
+   if [ -n "${JOBREAPER}" ]; then
+      kill -TERM ${JOBREAPER}
+      ${rm} -f t.fifo
+      JOBREAPER=
+   fi
 }
 
 jspawn() {
@@ -404,14 +423,14 @@ jspawn() {
    fi
 
    (
+      trap '' HUP INT TERM EXIT
       if ${mkdir} t.${JOBS}.d; then
-         cd t.${JOBS}.d
-         eval t_${1} ${JOBS} ${1}
+         ( cd t.${JOBS}.d && eval t_${1} ${JOBS} ${1} )
       fi
-      ${rm} -f ../t.${JOBS}.pid
+      [ -e t.fifo ] && echo ${JOBS} >> t.fifo
    ) > t.${JOBS}.io 2>&1 </dev/null &
    JOBLIST="${JOBLIST} ${!}"
-   printf "${!} ${1}\n" > t.${JOBS}.pid
+   JOBDESC="${JOBDESC} ${JOBS}=${!}/${1}"
 
    # ..until we should sync or reach the maximum concurrent number
    [ ${JOBS} -lt ${MAXJOBS} ] && return
@@ -423,11 +442,83 @@ jsync() {
    [ ${JOBS} -eq 0 ] && return
    [ -z "${JOBSYNC}" ] && [ ${#} -eq 0 ] && return
 
-   [ ${MAXJOBS} -ne 1 ] && printf ' .. wait(1)\n'
-   wait ${JOBLIST}
-   JOBLIST=
+   [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
 
-   [ -n "${JOBREAPER}" ] && kill -USR2 ${JOBREAPER}
+   if [ -n "${JOBREAPER}" ]; then
+      while [ 1 ]; do
+         read js < t.fifo
+         # I saw quite frequest "Interrupted system call" errors on FreeBSD!
+         [ ${?} -ne 0 ] && continue
+         if [ "${js}" != timeout ]; then
+            JOBDESC=`${awk} -v i="${js}" -v L="${JOBDESC}" '
+               BEGIN{
+                  sub( i "=[0-9]+/[^ ]+", "", L)
+                  sub("^[ ]+", "", L)
+                  sub("[ ]+$", "", L)
+                  print L
+               }'`
+
+            # If all jobs finished regulary: done
+            [ -z "${JOBDESC}" ] && break
+         else
+            # Job reaper timeout triggered, kill all jobs!
+            # Since we have not yet wait(1)ed for any, simply do!
+            ${awk} -v L="${JOBDESC}" '
+               BEGIN{
+                  while(1){
+                     sub("^[ ]+", "", L)
+                     sub("[ ]+$", "", L)
+                     if(length(L) == 0)
+                        break
+
+                     x = L
+                     sub("[ ]+.+$", "", x)
+                     y = z = x
+                     sub("^[0-9]+=[0-9]+/", "", z)
+                     sub("/.+$", "", y)
+                     x = y
+                     sub("=.+", "", x)
+                     sub(".+=", "", y)
+                     print x " " y " " z
+
+                     sub("^[^ ]+", "", L)
+                  }
+               }
+            ' | {
+               l=
+               while read j p n; do
+                  l="${l} ${j}/[${n}]"
+                  kill -KILL ${p} >/dev/null 2>&1
+                  ${rm} -f t.${j}.result
+               done
+               printf '%s!! Timeout: reaped job(s)%s%s\n' \
+                  "${COLOR_ERR_ON}" "${l}" "${COLOR_ERR_OFF}"
+            }
+            JOBDESC=
+            break
+         fi
+      done
+
+      kill -USR2 ${JOBREAPER}
+   fi
+
+   # Now collect the zombies
+   wait ${JOBLIST}
+   JOBLIST= JOBDESC=
+
+   # Then read our synchronization mark from the FIFO
+   if [ -n "${JOBREAPER}" ]; then
+      (
+         trap '' HUP INT TERM EXIT
+         echo sync >> t.fifo
+      ) </dev/null &
+      while [ 1 ]; do
+         read js < t.fifo
+         # I saw "interrupted system call errors on FreeBSD and SunOS
+         [ ${?} -ne 0 ] && continue
+         [ "${js}" = sync ] && break
+      done
+   fi
 
    # Update global counters
    i=0
@@ -449,15 +540,15 @@ jsync() {
          TESTS_OK=`add ${TESTS_OK} ${to}`
          TESTS_FAILED=`add ${TESTS_FAILED} ${tf}`
          TESTS_SKIPPED=`add ${TESTS_SKIPPED} ${ts}`
-         [ ${es} -ne 0 ] && ESTAT=${es}
+         [ "${es}" != 0 ] && ESTAT=${es}
       else
-         printf '%s! Job %s seems to have been killed%s\n' \
-            "${COLOR_ERR_ON}" ${i} "${COLOR_ERR_OFF}"
+         #printf '%s! Job %s did not make it%s\n' \
+         #   "${COLOR_ERR_ON}" ${i} "${COLOR_ERR_OFF}"
          TESTS_FAILED=`add ${TESTS_FAILED} 1`
          ESTAT=1
       fi
    done
-   ${rm} -rf ./t.*.d ./t.*.io t.*.result t.*.pid
+   ${rm} -rf ./t.*.d ./t.*.io t.*.result
 
    JOBS=0
 }
@@ -8302,7 +8393,8 @@ else
 
    if [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
       jobs_max
-      printf 'Spawing up to %s tests in parallel\n' ${MAXJOBS}
+      printf 'Spawing up to %s tests in parallel, timeout after %s seconds\n' \
+         ${MAXJOBS} ${JOBWAIT}
       jobreaper_start
       t_all
       jobreaper_stop
