@@ -4285,6 +4285,54 @@ t_mbox() {
    check 22 - ./.tfcc2 '3629108107 98'
    check 23 - ./.tpcc1 '2373220256 246'
 
+   # More invalid: since in "copy * X" messages will be copied in date order,
+   # reordering may happen, and before ([f5db11fe] (a_cwrite_save1(): FIX:
+   # ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
+   # could still have created invalid MBOX files!
+   ${cat} <<-_EOT > ./.tinv1
+		 
+		
+		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+		Date: Sun, 04 Oct 1998 01:50:07 +0000
+		Subject: h4
+		
+		B4
+		
+		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+		Date: Nix, 01 Oct BAD 01:50:07 +0000
+		Subject: hinvalid
+		
+		BINV
+		
+		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+		Date: Fri, 03 Oct 1997 01:50:07 +0000
+		Subject: h3
+		
+		B3
+		
+		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+		Date: Sun, 01 Oct 1995 01:50:07 +0000
+		Subject:h1
+		
+		B1
+		
+		
+		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		Subject: h2
+		
+		b2
+		_EOT
+
+   printf \
+      'File ./.tinv1
+      sort date
+      remove ./.tinv2
+      copy * ./.tinv2
+      file ./.tinv1' | ${MAILX} ${ARGS} >>${ERR} 2>&1
+   check 24 0 ./.tinv1 '104184185 560'
+   check 25 - ./.tinv2 '853754737 510'
+
    t_epilog "${@}"
 }
 
