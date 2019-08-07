@@ -995,7 +995,7 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          else if(lenp->ae_cnt > 1 && !allow_multiple &&
                (n_psonce & n_PSO_INTERACTIVE)){
             fprintf(n_stderr,
-               _("%s%s-- Last message occurred %u times --%s\n"),
+               _("%s%s-- Last message repeated %u times --%s\n"),
                c5pref, lpref, lenp->ae_cnt, c5suff);
             fflush(n_stderr);
          }
