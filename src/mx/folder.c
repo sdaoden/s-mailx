@@ -279,7 +279,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          message_append_null();
 
          if(f & a_HAD_BAD_FROM_){
-            if(!(mb.mb_active & MB_BAD_FROM_)){
+            /*if(!(mb.mb_active & MB_BAD_FROM_))*/{
                mb.mb_active |= MB_BAD_FROM_;
                /* TODO mbox-rfc4155 does NOT fix From_ line! */
                n_err(_("MBOX contains non-conforming From_ line(s)!\n"
