@@ -151,17 +151,18 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
    disp = (fs & mx_FS_OPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
 
-   if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
-         (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
-      int xerr;
-
+   if((fs & n_PROTO_MASK) == n_PROTO_FILE){
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
       mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
-      if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
-         n_perr(file, xerr);
-         goto jleave;
+      if(fs & mx_FS_OPEN_STATE_EXISTS){
+         int xerr;
+
+         if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
+            n_perr(file, xerr);
+            goto jleave;
+         }
       }
    }
 
@@ -185,9 +186,17 @@ jsend:
          mstats[0] = mp->m_xsize;
       }else
 #endif
-      if (sendmp(mp, obuf, itp, NULL, convert, mstats) < 0) {
-         success = FAL0;
-         goto jferr;
+           {
+         if(sendmp(mp, obuf, itp, NIL, convert, mstats) < 0){
+            success = FAL0;
+            goto jferr;
+         }
+
+         /* TODO v15compat: solely Mailbox()->append() related, and today
+          * TODO can mess with the content of a message (in that if a msg
+          * TODO ends with two \n, that is ok'd as MBOX separator! */
+         if((fs & n_PROTO_MASK) == n_PROTO_FILE && convert == SEND_MBOX)
+            n_folder_mbox_prepare_append(obuf, NIL);
       }
       n_autorec_relax_unroll();
 
@@ -205,10 +214,6 @@ jsend:
    n_autorec_relax_gut();
 
    fflush(obuf);
-
-   /* TODO Should be a VFS, then n_MBOX knows what to do upon .close()! */
-   if((fs & n_PROTO_MASK) == n_PROTO_FILE && convert == SEND_MBOX)
-      n_folder_mbox_prepare_append(obuf, NULL);
 
    if (ferror(obuf)) {
 jferr:
