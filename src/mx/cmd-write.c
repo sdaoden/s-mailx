@@ -140,6 +140,9 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
       n_perr(file, 0);
       goto jleave;
    }
+   ASSERT((fs & n_PROTO_MASK) == n_PROTO_IMAP ||
+      (fs & n_PROTO_MASK) == n_PROTO_FILE ||
+      (fs & n_PROTO_MASK) == n_PROTO_MAILDIR);
 
 #if defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
    if(mb.mb_type == MB_POP3 && (fs & n_PROTO_MASK) == n_PROTO_IMAP){
@@ -151,7 +154,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
    disp = (fs & mx_FS_OPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
 
-   if((fs & n_PROTO_MASK) == n_PROTO_FILE){
+   if((fs & n_PROTO_MASK) != n_PROTO_IMAP){
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
       mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
@@ -195,7 +198,7 @@ jsend:
          /* TODO v15compat: solely Mailbox()->append() related, and today
           * TODO can mess with the content of a message (in that if a msg
           * TODO ends with two \n, that is ok'd as MBOX separator! */
-         if((fs & n_PROTO_MASK) == n_PROTO_FILE && convert == SEND_MBOX)
+         if(convert == SEND_MBOX)
             n_folder_mbox_prepare_append(obuf, NIL);
       }
       n_autorec_relax_unroll();
