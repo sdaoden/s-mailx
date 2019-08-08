@@ -1168,7 +1168,7 @@ jset:
 }
 
 FL int
-n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
+n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
    struct stat stb;
    char buf[2];
@@ -1176,22 +1176,20 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    boole needsep;
    NYD2_IN;
 
-   if(!fseek(fout, -2L, SEEK_END)){
-      if(fread(buf, sizeof *buf, 2, fout) != 2)
-         goto jerrno;
+   if(!fseek(fout, -2L, SEEK_END) && fread(buf, sizeof *buf, 2, fout) == 2)
       needsep = (buf[0] != '\n' || buf[1] != '\n');
-   }else{
+   else{
       rv = su_err_no();
-
-      if(st_or_null == NULL){
-         st_or_null = &stb;
-         if(fstat(fileno(fout), st_or_null))
+      if(st_or_nil == NIL){
+         st_or_nil = &stb;
+         if(fstat(fileno(fout), st_or_nil))
             goto jerrno;
       }
 
-      if(st_or_null->st_size >= 2)
+      if(st_or_nil->st_size >= 2)
          goto jleave;
-      if(st_or_null->st_size == 0){
+      if(st_or_nil->st_size == 0){
+         clearerr(fout);
          rv = su_ERR_NONE;
          goto jleave;
       }
