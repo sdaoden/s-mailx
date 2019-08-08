@@ -3130,6 +3130,10 @@ t_environ() {
 
    check 1 0 "${MBOX}" '1685686686 1342'
 
+t_epilog "${@}"
+return
+
+
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	define l4 {
 	   echo '-------> L4 (environ unlink EK1, own localopts)'
