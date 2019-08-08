@@ -4376,7 +4376,7 @@ t_mbox() {
    check 22 - ./.tfcc2 '3629108107 98'
    check 23 - ./.tpcc1 '2373220256 246'
 
-   # More invalid: since in "copy * X" messages will be copied in date order,
+   # More invalid: since in "copy * X" messages will be copied in `sort' order,
    # reordering may happen, and before ([f5db11fe] (a_cwrite_save1(): FIX:
    # ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
    # could still have created invalid MBOX files!
@@ -4508,6 +4508,58 @@ t_maildir() {
    check 8 0 .tmbox2 '978751761 12656'
    ${sed} 2d < .tlst > .tlstx
    check 9 - .tlstx '2172297531 13477'
+
+   # More invalid: since in "copy * X" messages will be copied in `sort' order,
+   # reordering may happen, and before ([f5db11fe] (a_cwrite_save1(): FIX:
+   # ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
+   # could still have created invalid MBOX files!
+   ${cat} <<-_EOT > ./.tinv1
+		 
+		
+		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+		Date: Sun, 04 Oct 1998 01:50:07 +0000
+		Subject: h4
+		
+		B4
+		
+		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+		Date: Nix, 01 Oct BAD 01:50:07 +0000
+		Subject: hinvalid
+		
+		BINV
+		
+		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+		Date: Fri, 03 Oct 1997 01:50:07 +0000
+		Subject: h3
+		
+		B3
+		
+		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+		Date: Sun, 01 Oct 1995 01:50:07 +0000
+		Subject:h1
+		
+		B1
+		
+		
+		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		Subject: h2
+		
+		b2
+		_EOT
+
+   printf \
+      'File ./.tinv1
+      sort date
+      copy * maildir://./.tmdir10
+      !{ for f in ./.tmdir10/new/*; do echo ===; %s $f; done; } > ./.t11
+      File ./.tmdir10
+      sort date
+      copy * ./.t10warp
+   ' "${cat}" | ${MAILX} ${ARGS} >>${ERR} 2>&1
+   # Note that substdate() fixes all but one From_ line to $SOURCE_DATE_EPOCH!
+   check 10 0 ./.t10warp '3551111321 502'
+   check 11 - ./.t11 '642719592 302'
 
    t_epilog "${@}"
 }
