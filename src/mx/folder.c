@@ -253,18 +253,19 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    uz filesize, linesize, cnt;
    NYD_IN;
 
+   filesize = mailsize - offset;
+
    su_mem_set(&self, 0, sizeof self);
    self.m_flag = MUSED | MNEW | MNEWEST;
-   filesize = mailsize - offset;
+
    offset = ftell(mb.mb_otf);
    f = a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0);
 
-   linebuf = NULL, linesize = 0; /* TODO string pool */
-
+   mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
       /* Ensure space for terminating LF, so do append it */
       if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
-            ) == NULL)){
+            ) == NIL)){
          if(f & a_HADONE){
             if(f & a_CREATE){
                commit.m_size += self.m_size;
@@ -287,13 +288,12 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
                   "  Setting *mbox-rfc4155* and reopening _may_ "
                      "improve the result.\n"
                   "  Recreating the mailbox will perform MBOXO quoting: "
-                     "\"copy * SOME-FILE\".  "
-                     "(Then unset *mbox-rfc4155* again.)\n"));
+                     "\"copy * SOME-FILE\".\n"
+                  "  (Then unset *mbox-rfc4155* again.)\n"));
             }
          }
 
-         if(linebuf != NULL)
-            n_free(linebuf);
+         mx_fs_linepool_release(linebuf, linesize);
          break;
       }
 
@@ -432,6 +432,7 @@ jputln:
       linebuf[cnt++] = '\n';
       ASSERT(linebuf[cnt] == '\0');
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
+
       if(ferror(mb.mb_otf)){
          n_perr(_("/tmp"), 0);
          exit(n_EXIT_ERR); /* TODO no! */
