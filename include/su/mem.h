@@ -172,7 +172,8 @@ EXPORT boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE);
  * Normally to be used through the macros below */
 EXPORT void *su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL);
 
-/*! \_ */
+/*! If \NIL is returned, then the original memory has not been freed.
+ * (From our point of view. TODO We are yet backed by OS malloc.) */
 EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no, u32 maf
       su_DBG_LOC_ARGS_DECL);
 
