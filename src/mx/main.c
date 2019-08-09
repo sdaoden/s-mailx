@@ -499,7 +499,7 @@ main(int argc, char *argv[]){
       "template;t;" N_("message to be sent is read from standard input"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
       "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
-         "verbose;v;" N_("identical to -Sverbose (twice for more verbosity)"),
+         "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
       "startup-cmd:;X;" N_("to be executed before normal operation"),
       "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
       "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
