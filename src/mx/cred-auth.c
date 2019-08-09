@@ -386,9 +386,9 @@ jpass:
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
       if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
-            (ware & REQ_PASS)) {
-         if((s = mx_tty_getpass(savecat(_("Password for "), pname))) != NIL){
-         }else{
+            (ware & REQ_PASS)){
+         if((s = mx_tty_getpass(savecat(pname, _(" requires a password: ")))
+               ) == NIL){
             n_err(_("A password is necessary for %s authentication\n"),
                pname);
             ccp = NIL;
