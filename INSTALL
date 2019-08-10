@@ -286,15 +286,15 @@ Frequently:
 
 . ArchLinux <https://www.archlinux.org/> (x86-64).
 
-. FreeBSD <https://www.freebsd.org/> (11.2/x86; 11.3/x86).
-  - The tests iconv_mbyte_base64-4 and
+. FreeBSD <https://www.freebsd.org/> (11.2/x86; 11.3-RC2/x86).
+  - On 11.2 the tests iconv_mbyte_base64-4 and
     iconv_mbyte_base64-8 will fail because the ISO C function
     iswprint(3) will falsely claim that U+FF08 and U+FF09 (FULLWIDTH
     LEFT and RIGHT PARENTHESIS, respectively) are not printable, causing
     replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
-    Also, iconv_mainbody-5-5 is triggered because a different
-    replacement character is used than the one we expect.
+  - iconv_mainbody-5-5 is triggered because a different replacement
+    character is used than the one we expect.
 
 . OpenBSD <https://www.openbsd.org/> (6.4/x86; 6.5/x86).
 
@@ -318,8 +318,6 @@ Frequently:
     false Unicode tables on elder releases (as in NetBSD).
 
 Pre-release, and other landmarks:
-
-. AlpineLinux <https://www.alpinelinux.org/> (edge/x86-64).
 
 . DragonFly BSD <https://www.dragonflybsd.org/> (5.6.1/x86-64).
   See FreeBSD for the three failing test cases.
