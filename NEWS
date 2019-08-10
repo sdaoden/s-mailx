@@ -6,6 +6,117 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.15 ("Tit family in the trees"), 2019-08-18
+------------------------------------------------
+
+Plugging a bug regarding copying data out of invalid MBOX mail
+databases which is present in all BSD Mails and in Unix V10 mail,
+and bringing in some tweaks, this update hopefully really marks
+the end of the v14.9.* series.
+
+After more than four and a half years i again have a VM testbed,
+with an increasing number of VM combinations.  (Yet still too few,
+but nonetheless, a dramatical improvement.)  This includes
+a GSS-API testbed, with an ArchLinux server and Linux and FreeBSD
+clients (do not ask why no additional FreeBSD server, i want to
+use binary packages).  This brought GSSAPI tweaks.
+
+Credits, in order of commit appearance: Ralph Corderoy,
+Chet Ramey, Robert Elz, Jilles Tjoelker, Steve Izma, Viktor Szépe,
+and Jean-Marc Pigeon.
+
+Very special thanks go to Tarqi Kazan and Ivan Vučica, who tested
+GSS-API in the past until it worked (again), testing against my
+blind flight patches!  Thank you very much, guys!
+
+We welcome Chet Ramey, Jilles Tjoelker and Steve Izma in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Warning: we _will_ have v15-compat=yes as a default in v14.10!
+
+- *features*#? and *tls-features*#? are now prefixed with
+  a comma ",", not with the number sign "#" (which could
+  increasingly `eval'#?uate to a comment).
+
+- We now support parallelized tests.  It takes a numeric job
+  number out of $MAKEFLAGS, or tries to fetch the number of
+  processors otherwise (really!).  To go singleprocessor
+  "$ make testnj" has to be called explicitly.
+  With or without, we will terminate tests which take too long.
+
+  This is truly tremendous, on the unstable9s machine of the
+  OpenCSW.org cluster for example we now need 24 seconds instead
+  of by far more than 300.  What a release!
+
+  With help of (Chet Ramey, Robert Elz, Jilles Tjoelker and
+  Steve Izma)
+
+- EXTERNAL authentication is truly a mess.  It has been fixed for
+  POP3, where it was broken on our side.  But it seems the
+  internet does not like that, or cannot (pass user credentials
+  from a certificate gracefully to the authenticator).
+  Anyway.  I have introduced EXTERNANON in addition for all of
+  IMAP, POP3 and SMTP.  This could now result in a usable
+  combination, regardless of what server(s) are contacted.
+
+- The hook *on-account-cleanup*#? will now be called even
+  upon program exit (i.e., implicitly leaving the account).
+
+ChangeLog
+^^^^^^^^^
+
+- New *followup-to-add-cc*#? will place the user in the Cc:
+  list if it will place her in the Mail-Followup-To:.
+
+- New hook *on-program-exit*#?.
+
+- *pop3-auth*#?=gssapi is now supported.
+  For IMAP, SASL-IR will be used for GSSAPI if possible (saving
+  a packet round-trip).
+
+- *expandaddr*#? has the new keyword "namehostex".
+  If set, plain name addressees, like "To: steffen", will be
+  expanded to NAME@HOSTNAME (where the latter could be
+  *hostname*#?) if NAME is a valid user on the current host.
+  (Viktor Szépe, Jean-Marc Pigeon)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (45):
+94546dc0 Stop prefixing $features and $tls-features #, use , instead..
+4089979b mx_termios_controller_setup(): fix: honour sole $COLUMNS/$LINES in
+        batch mode..
+897229cf nail.1: <user> is expanded unless *hostname* set to empty string
+f5db11fe a_cwrite_save1(): FIX: ensure pre-v15 MBOX separation "in between"
+        messages..
+d203daa2 a_cwrite_save1(): FIX2: ensure pre-v15 MBOX separation "in between"
+        messages..
+b8663873 mx_smtp_mta(): FIX: never handled SIGPIPE!
+43fabd65 Add *followup-to-add-cc*
+7963df6c Tweak [a99becbc] (main.c: set MAILSEND_HEADERS_PRINT..) (Ralph
+        Corderoy)..
+be5859d8 mx-test.sh: support test parallelization
+12798bd4 mx-test.sh: catch wild (Chet Ramey,Robert Elz,Jilles Tjoelker,Steve
+        Izma)..
+85b2437e THANKS: Chet Ramey
+989b122c THANKS: Jilles Tjoelker
+a12f56b3 THANKS: Steve Izma
+e5435409 mx-test.sh: no, use my initial approach plus Robert Elz..
+70108b66 mx-test.sh: use "while :;" not "while [ 1 ];" (Robert Elz)
+32673514 (Test and) FIX: EXTERNAL AUTH for POP3 and IMAP (test bed, horray!)
+2d8216f6 Call *on-account-cleanup* on program exit, too!
+ea340781 Add *on-program-exit* hook
+81634ead Add EXTERNANON auth type (the internet is BROKEN!)..
+7d18860c mx_url_parse(): do not treat empty user as set
+db0ef042 Add GSSAPI authentication for POP3
+dda830bc Switch IMAP GSSAPI implementation to new shared one
+f00ef7fc *expandaddr*: add "namehostex" (Viktor Szépe, Jean-Marc Pigeon)
+9d82d85e mx_pop3_setfile(), imap_setfile(): oops, !v15-compat URL _may_ have
+        no user!
+
 v14.9.14 ("Great tit passed moult"), 2019-07-27
 -----------------------------------------------
 
@@ -191,81 +302,7 @@ ChangeLog
 
 - The HTML filter knows more HTML 4.0 entities.  (Russell Bell)
 
-git(1) topics and shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Topics: makefile-dev.5, slim.1, pipes-kids-tios, cred.4,
-        coverity-444-v14.9.14-1, coverity-444-v14.9.14-2
-
-Steffen Nurpmeso (161):
-d4ed7189 Fix: support the very backward Debian mawk (Martin Lucina, Viktor
-        Szépe)
-4053ed1c THANKS: Martin Lucina
-bb45e622 Get rid of type-punning warnings via intermediate (Viktor Szépe)
-51ed1c81 mk/make-rules.sh: unroll basename/dirname (Alexander Harm)..
-fd5cbd59 THANKS: Anders Magnusson
-9378506b nail.1: extend HISTORY (Thomas Haigh)..
-7a8faa3d THANKS: Thomas Haigh
-4dbef142 FIX "|PIPE RECEIVER" errors seen on SunOS 5.9 and OpenBSD..
-3b8e3296 FIX two pipe_cloexec() return checks: returns boole for a while
-35db7d56 nail.1: say clear that -t requires plain text (Martin T)
-0eab7d58 THANKS: Martin T
-3c24b5ee page_or_print(): take into account follow-up prompt when not/chosing
-        pager
-384c8e2e _imap_gssapi(): FIX hostname length calculation (Ivan Vučica)..
-5c4e270d THANKS: Ivan Vučica
-6b070335 _imap_gssapi(): FIX also username length calculation (Ivan Vučica)
-1e7377c8 FIX -C with more than two arguments (grrrr!! Test separately!)
-40b5d284 Add *line-editor-cpl-word-breaks* (yet restricted)
-c5435e69 MLE: add mle-raise-{int,quit,tstp} functions (Nicholas Marriott)
-56569155 THANKS: Nicholas Marriott
-7709aecc Config stuff: get rid of .lst file, make .env pivotal point..
-22a085af mk/make-man.sh: added: split man creation off make-config.in
-        (Alexander Harm)
-084e2573 mk/make-rc.sh: added: split rc creation off make-config.in (Alexander
-        Harm)
-dacd73b7 mk/make-version.sh: added: split version stuff off make-config.in
-        (Alexander Harm)
-0b29f3b6 mk/make-install.sh: added: split install off make-config.in
-        (Alexander Harm)
-6e48284a mk/make-config.in: no more awk embedded, drop TODO (Alexander Harm)
-4764f7a8 mk/su-quote-roundtrip.sh: do not leak local vars (Steven Penny)
-d9e736f5 THANKS: Steven Penny
-acd35c8c OPT_MTA_ALIASES: expand MTA aliases(5), by default enabled (Jean-Marc
-        Pigeon)
-01c22314 XXX (BWDIC!) "~^head ins to|cc|bcc": verify *expandaddr* right
-        away!..
-49587e7f Add a *mta*=test[://PATH] MTA
-ba91b4d2 BWDIC! -#: act as if vars were set via -S, not as via `set'
-45667556 (BWDIC!) Detach file stream and child handling to file-streams.h and
-        child.h..
-4a57126a (BWDIC!) Reinstantiate a bit of signal handling, this time via
-        termios!..
-4fa7ca5f Reinstantiate termios signal handling during child takeover..
-8da40b9f Drop that OPT_AGENT hack, obsoleted on 2017-07-16
-f49272cb (BWDIC!) mx_termios_controller_setup(): reduce initial screen width
-        (again)..
-04a86e94 Drop OPT_SPAM_SPAMD, obsoleted on 2017-07-16 (untested for longer!)
-21e2be44 And now, termios/child/signal _almost_ for _real_ (and _almost_ like
-        it now)
-4ee30409 Extend *sendwait*, make it i3val - fix async tests
-09332f4b Clearly defined "interactive session", allow colours even in quickrun
-        mode
-61651ed9 Add "mle-error" colour mapping (Martin Neitzel, Paul Vojta)
-7560a2fb Colours/repitition count for error messages (Paul Vojta, Martin
-        Neitzel)
-b38443fb (BWDIC!) OPT_SOCKETS -> OPT_NET
-8fcab7b1 (BWDIC!) Fix: clearly define -Y in all conditions, with tests
-76dd6011 Add XOAUTH2/OAUTHBEARER (OAuth 2.0 bearer token, RFC 6750) support
-3699aa0c (UNTESTED!) Support EXTERNAL (via TLS client certificate)
-d5ff46a8 n_tls_open(): PO_D_V log used TLS version and cipher
-fc1a8d06 Use three levels of *verbose*ity..
-2d43201c Add *on-main-loop-tick* hook
-4200be37 HTML filter: more HTML 4.0 entities (Russell Bell)..
-9b605148 Some: fix a few spelling mistakes (again) (Paride Legovini)..
-6812eee0 FIX *imap-delim* behaviour fix, use it in `imapcodec' (Ralph
-        Keller)..
-910958a6 THANKS: Ralph Keller
+git(1) shortlog: Steffen Nurpmeso (161)
 
 v14.9.13 ("Blue tit's spiral marriage swoop"), 2019-03-08
 ---------------------------------------------------------
