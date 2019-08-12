@@ -369,7 +369,7 @@ jobreaper_start() {
       # traps are setup, notify parent that we are up and running
       kill -USR1 ${parent}
 
-      while [ 1 ]; do
+      while :; do
          int=0
          sleep ${JOBWAIT} &
          sleeper=${!}
@@ -381,7 +381,7 @@ jobreaper_start() {
    JOBREAPER=${!}
 
    if [ ${?} -eq 0 ]; then
-      while [ 1 ]; do
+      while :; do
          if [ -n "${i}" ]; then
             trap '' USR1
             return
@@ -582,7 +582,7 @@ check() {
    '') ;;
    async)
       [ "$eestat" = - ] || exit 200
-      while [ 1 ]; do
+      while :; do
          [ -f "${f}" ] && break
          t_echowarn "[${tid}:async=wait]"
          sleep 1 &
