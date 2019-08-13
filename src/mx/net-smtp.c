@@ -150,7 +150,7 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
          goto jleave;
       }
       if(n_poption & n_PO_VV)
-         n_err(">>> %s", slp->sl_buf.s);
+         n_err(">>> SERVER: %s", slp->sl_buf.s);
 
       switch(slp->sl_buf.s[0]){
       case '1': rv = 1; break;
@@ -160,7 +160,7 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
       default: rv = 5; break;
       }
       if(val != rv)
-         n_err(_("smtp-server: %s"), slp->sl_buf.s);
+         n_err(_("SMTP server: %s"), slp->sl_buf.s);
    }while(slp->sl_buf.s[3] == '-');
 
    if(want_dat){

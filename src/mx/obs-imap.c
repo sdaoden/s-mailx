@@ -1580,7 +1580,7 @@ jleave:
 }
 
 static enum okay
-a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
+a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    uz cnt;
    boole nsaslir;
    char *cp;
@@ -1592,6 +1592,12 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
    queuefp = NIL;
    cp = NIL;
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   /* XXX The problem is that this user would overwrite the user from the CN
+    * XXX of the client certificate, and dovecot (for example) then wants to
+    * XXX interpret this as a master user.  We need to nullify this user */
+   ccp->cc_user.l = !nsaslir;
+   ccp->cc_user.s = UNCONST(char*,"=");
 
    /* Calculate required storage */
    cnt = ccp->cc_user.l;

@@ -387,7 +387,6 @@ jleave:
 
 static enum okay
 a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
-   /* TODO auth_external: untested; single roundtrip... */
    char *cp;
    enum okay rv;
    NYD_IN;
@@ -398,12 +397,16 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    rv = STOP;
 
    su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
-      sizeof(NETLINE("AUTH EXTERNAL")) -1);
+      sizeof(NETLINE("AUTH EXTERNAL")));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   su_mem_copy(cp, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
-   su_mem_copy(&cp[pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));
+   /* XXX The problem is that this user would overwrite the user from the CN
+    * XXX of the client certificate, and dovecot (for example) then wants to
+    * XXX interpret this as a master user.  We need to nullify this user */
+   /*su_mem_copy(cp, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
+    *su_mem_copy(&cp[pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));*/
+   su_mem_copy(&cp[0], NETNL, sizeof(NETNL));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
@@ -439,7 +442,7 @@ jretry:
          goto jmultiline;
 
       if(n_poption & n_PO_D_VV)
-         n_err(a_pop3_dat.s);
+         n_err(">>> SERVER: %s\n", a_pop3_dat.s);
 
       switch(*a_pop3_dat.s){
       case '+':
