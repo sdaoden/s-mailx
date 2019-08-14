@@ -12863,6 +12863,8 @@ Fallback support via
 .Xr SSL_CTX_use_certificate_chain_file 3 .
 .Sx "Filename transformations"
 are performed.
+.Cd PrivateKey
+will be set to the same value if not initialized explicitly.
 Some services support so-called
 .Ql external
 authentication if a TLS client certificate was successfully presented
@@ -12928,7 +12930,9 @@ results in an error.
 .
 .It Cd PrivateKey
 Filename of the private key in PEM format of a TLS client certificate.
-If unset, the name of the certificate file is used.
+If unset, the value of
+.Cd Certificate
+is used.
 .Sx "Filename transformations"
 are performed.
 Fallback via
