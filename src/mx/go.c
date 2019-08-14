@@ -1381,7 +1381,8 @@ n_go_main_loop(void){ /* FIXME */
          }
 
          if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)))
-            temporary_on_main_loop_tick_hook();
+            temporary_on_xy_hook_caller("on-main-loop-tick",
+               ok_vlook(on_main_loop_tick), TRU1);
 
          if(n_psonce & n_PSO_INTERACTIVE){
             char *cp;

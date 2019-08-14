@@ -2855,26 +2855,28 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
 }
 
 FL void
-temporary_on_main_loop_tick_hook(void){ /* TODO temporary, v15: drop */
+temporary_on_xy_hook_caller(char const *hname, char const *mac,
+      boole sigs_held){
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
-   char const *cp;
    NYD_IN;
 
-   if((cp = ok_vlook(on_main_loop_tick)) != NIL){
-      if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
-         mx_sigs_all_rele();
+   if(mac != NIL){
+      if((amp = a_amv_mac_lookup(mac, NIL, a_AMV_MF_NONE)) != NIL){
+         if(sigs_held)
+            mx_sigs_all_rele();
          amcap = n_lofi_calloc(sizeof *amcap);
-         amcap->amca_name = cp;
+         amcap->amca_name = mac;
          amcap->amca_amp = amp;
          amcap->amca_ps_hook_mask = TRU1;
          amcap->amca_no_xcall = TRU1;
          n_pstate &= ~n_PS_HOOK_MASK;
          n_pstate |= n_PS_HOOK;
          a_amv_mac_exec(amcap);
-         mx_sigs_all_holdx();
+         if(sigs_held)
+            mx_sigs_all_holdx();
       }else
-         n_err(_("*on-main-loop-tick* macro does not exist: %s\n"), cp);
+         n_err(_("*%s* macro does not exist: %s\n"), hname, mac);
    }
    NYD_OU;
 }

@@ -142,6 +142,7 @@ t_all() {
    jspawn compose_edits
    jspawn digmsg
    jspawn on_main_loop_tick
+   jspawn on_program_exit
    jsync
 
    # Heavy use of/rely on state machine (behaviour) and basics
@@ -6669,6 +6670,34 @@ define omlt {
    echo --bye;xit' |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 ./.tall '367031402 108'
+
+   t_epilog "${@}"
+}
+
+t_on_program_exit() {
+   t_prolog "${@}"
+
+   ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -X x -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 1 0 ./.tall '2820891503 4'
+
+   ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -X q -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 2 0 ./.tall '2820891503 4'
+
+   </dev/null ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 3 0 ./.tall '2820891503 4'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
+      -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x \
+      -s subject -. hey@you \
+      > ./.tall 2>&1
+   check 4 0 ./.tall '2820891503 4'
+   check 5 - "$MBOX" '561900352 118'
 
    t_epilog "${@}"
 }

@@ -1178,14 +1178,16 @@ je_expandargv:
    }
 
 jleave_full:
-   do{
-      int nes;
+   i = n_exit_status;
 
-      nes = n_exit_status;
-      n_psonce &= ~n_PSO_EXIT_MASK;
-      mx_account_leave();
-      n_exit_status = nes;
-   }while(0);
+   n_psonce &= ~n_PSO_EXIT_MASK;
+   mx_account_leave();
+
+   n_psonce &= ~n_PSO_EXIT_MASK;
+   temporary_on_xy_hook_caller("on-program-exit", ok_vlook(on_program_exit),
+      FAL0);
+
+   n_exit_status = i;
 
 jleave:
 #ifdef su_HAVE_DEBUG

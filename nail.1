@@ -11010,6 +11010,14 @@ Note variable and other changes it performs are not scoped, e.g., via
 .Ic localopts !
 .
 .Mx
+.It Va on-program-exit
+This hook will be called when the program exits, whether via
+.Ic exit
+or
+.Ic quit ,
+or because the send mode is done.
+.
+.Mx
 .It Va on-resend-cleanup
 \*(ID Identical to
 .Va on-compose-cleanup ,

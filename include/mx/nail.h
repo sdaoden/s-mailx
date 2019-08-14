@@ -1044,6 +1044,7 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_compose_splice_shell, /* {notempty=1} */
    ok_v_on_history_addition, /* {notempty=1} */
    ok_v_on_main_loop_tick, /* {notempty=1} */
+   ok_v_on_program_exit, /* {notempty=1} */
    ok_v_on_resend_cleanup, /* {notempty=1} */
    ok_v_on_resend_enter, /* {notempty=1} */
    ok_b_outfolder,
