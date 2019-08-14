@@ -1119,7 +1119,7 @@ je_expandargv:
 
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0 && !n_go_XYargs(FAL0, Xargs, Xargs_cnt))
-      goto jleave;
+      goto jleave_full;
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1128,14 +1128,14 @@ je_expandargv:
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
             n_exit_status = n_EXIT_ERR;
-            goto jleave;
+            goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
             (n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;
-         goto jleave;
+         goto jleave_full;
       }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
          n_poption_arg_Mm = NULL;
    }
@@ -1159,7 +1159,7 @@ je_expandargv:
          attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
          if(aerr != n_ATTACH_ERR_NONE){
             n_exit_status = n_EXIT_ERR;
-            goto jleave;
+            goto jleave_full;
          }
       }
 
@@ -1176,6 +1176,16 @@ je_expandargv:
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
+
+jleave_full:
+   do{
+      int nes;
+
+      nes = n_exit_status;
+      n_psonce &= ~n_PSO_EXIT_MASK;
+      mx_account_leave();
+      n_exit_status = nes;
+   }while(0);
 
 jleave:
 #ifdef su_HAVE_DEBUG

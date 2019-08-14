@@ -130,6 +130,7 @@ FL int c_call(void *v);
 FL int c_call_if(void *v);
 
 /* Accounts: `account', `unaccount' */
+FL void mx_account_leave(void);
 FL int c_account(void *v);
 FL int c_unaccount(void *v);
 

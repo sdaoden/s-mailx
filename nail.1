@@ -4226,7 +4226,7 @@ latter command, and in one operation with the special name
 .Ql * .
 Also for all but it a possibly set
 .Va on-account-cleanup
-hook is called once they are left.
+hook is called once they are left, including program exit.
 .Pp
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
@@ -5430,6 +5430,9 @@ any saving of messages in the
 .Ev MBOX ,
 as well as a possibly tracked line editor
 .Va history-file .
+A possibly set
+.Va on-account-cleanup
+will be invoked, however.
 The optional status number argument will be passed through to
 .Xr exit 3 .
 \*(ID For now it can happen that the given status will be overwritten,
