@@ -1429,6 +1429,7 @@ imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
       rv = a_imap_oauthbearer(mp, ccred);
       break;
    case mx_CRED_AUTHTYPE_EXTERNAL:
+   case mx_CRED_AUTHTYPE_EXTERNANON:
       rv = a_imap_external(mp, ccred);
       break;
 #ifdef mx_HAVE_MD5
@@ -1593,11 +1594,10 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    cp = NIL;
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
 
-   /* XXX The problem is that this user would overwrite the user from the CN
-    * XXX of the client certificate, and dovecot (for example) then wants to
-    * XXX interpret this as a master user.  We need to nullify this user */
-   ccp->cc_user.l = !nsaslir;
-   ccp->cc_user.s = UNCONST(char*,"=");
+   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
+      ccp->cc_user.l = !nsaslir;
+      ccp->cc_user.s = UNCONST(char*,"=");
+   }
 
    /* Calculate required storage */
    cnt = ccp->cc_user.l;
@@ -1626,6 +1626,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    su_mem_copy(&cp[cnt], " AUTHENTICATE EXTERNAL ",
       sizeof(" AUTHENTICATE EXTERNAL ") /*-1*/);
    cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
+
    if(!nsaslir){
       su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
       cnt += ccp->cc_user.l;
@@ -1643,6 +1644,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
 
       su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
       su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
+
       IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    }
 

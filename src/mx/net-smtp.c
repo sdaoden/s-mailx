@@ -184,9 +184,8 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
-      a_IS_EXTERNAL = 1u<<2,
-      a_IN_HEAD = 1u<<3,
-      a_IN_BCC = 1u<<4
+      a_IN_HEAD = 1u<<2,
+      a_IN_BCC = 1u<<3
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
@@ -298,31 +297,44 @@ jerr_cred:
        * message (when status was 334) */
       break;
 
-   case mx_CRED_AUTHTYPE_EXTERNAL: /* TODO untested; single roundtrip... */
-      f |= a_IS_EXTERNAL;
-      /* FALLTHRU */
+   case mx_CRED_AUTHTYPE_EXTERNAL:
+#define a_MAX (sizeof("AUTH EXTERNAL " NETNL))
+      cnt = b64_encode_calc_size(sbp->sb_credp->cc_user.l);
+      if(/*cnt == UZ_MAX ||*/ cnt >= sizeof(o) - a_MAX)
+         goto jerr_cred;
+#undef a_MAX
+
+      su_mem_copy(o, "AUTH EXTERNAL ", sizeof("AUTH EXTERNAL ") -1);
+      b64.s = &o[sizeof("AUTH EXTERNAL ") -1];
+      b64_encode_buf(&b64, sbp->sb_credp->cc_user.s, sbp->sb_credp->cc_user.l,
+         B64_BUF | B64_CRLF);
+      a_SMTP_OUT(o);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      break;
+
+   case mx_CRED_AUTHTYPE_EXTERNANON:
+      a_SMTP_OUT(NETLINE("AUTH EXTERNAL ="));
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      break;
+
    case mx_CRED_AUTHTYPE_LOGIN:
       if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
-            (!(f & a_IS_EXTERNAL) &&
-             b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX))
+            b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
-      a_SMTP_OUT((f & a_IS_EXTERNAL) ? NETLINE("AUTH EXTERNAL")
-         : NETLINE("AUTH LOGIN"));
+      a_SMTP_OUT(NETLINE("AUTH LOGIN"));
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
             sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
-      if(!(f & a_IS_EXTERNAL)){
-         a_SMTP_ANSWER(3, FAL0, FAL0);
+      a_SMTP_ANSWER(3, FAL0, FAL0);
 
-         if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
-               sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
-            goto jleave;
-         a_SMTP_OUT(b64.s);
-      }
+      if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
+            sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
+         goto jleave;
+      a_SMTP_OUT(b64.s);
       a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 

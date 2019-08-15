@@ -93,7 +93,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authmask = mx_CRED_AUTHTYPE_NONE |
             mx_CRED_AUTHTYPE_PLAIN | mx_CRED_AUTHTYPE_LOGIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
-            mx_CRED_AUTHTYPE_EXTERNAL |
+            mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
             mx_CRED_AUTHTYPE_CRAM_MD5 |
             mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "plain";
@@ -103,7 +103,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authokey = ok_v_pop3_auth;
       authmask = mx_CRED_AUTHTYPE_PLAIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
-            mx_CRED_AUTHTYPE_EXTERNAL;
+            mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON;
       authdef = "plain";
       pstr = "pop3";
       break;
@@ -113,7 +113,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authokey = ok_v_imap_auth;
       authmask = mx_CRED_AUTHTYPE_LOGIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
-            mx_CRED_AUTHTYPE_EXTERNAL |
+            mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
             mx_CRED_AUTHTYPE_CRAM_MD5 |
             mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "login";
@@ -148,6 +148,10 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       ccp->cc_authtype = mx_CRED_AUTHTYPE_EXTERNAL;
       ware = a_REQ_USER;
       ware |= a_NEED_TLS;
+   }else if(!su_cs_cmp_case(s, "externanon")){
+      ccp->cc_auth = "EXTERNAL";
+      ccp->cc_authtype = mx_CRED_AUTHTYPE_EXTERNANON;
+      ware = a_NEED_TLS;
    }else if(!su_cs_cmp_case(s, "cram-md5")){
       ccp->cc_auth = "CRAM-MD5";
       ccp->cc_authtype = mx_CRED_AUTHTYPE_CRAM_MD5;

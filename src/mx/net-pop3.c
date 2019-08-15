@@ -203,6 +203,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       rv = a_pop3_auth_oauthbearer(mp, pcp);
       break;
    case mx_CRED_AUTHTYPE_EXTERNAL:
+   case mx_CRED_AUTHTYPE_EXTERNANON:
       rv = a_pop3_auth_external(mp, pcp);
       break;
    default:
@@ -388,31 +389,43 @@ jleave:
 static enum okay
 a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    char *cp;
+   uz cnt;
    enum okay rv;
    NYD_IN;
 
-   cp = n_lofi_alloc(MAX(pcp->pc_cred.cc_user.l, sizeof("AUTH EXTERNAL") -1) +
-         sizeof(NETNL)-1 +1);
-
    rv = STOP;
+
+   /* Calculate required storage */
+   cnt = pcp->pc_cred.cc_user.l;
+#define a_MAX \
+   (sizeof("AUTH EXTERNAL ") -1 + sizeof(NETNL) -1 +1)
+
+   if(cnt >= UZ_MAX - a_MAX){
+      n_err(_("Credentials overflow buffer sizes\n"));
+      goto j_leave;
+   }
+   cnt += a_MAX;
+
+   cp = n_lofi_alloc(cnt);
 
    su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
       sizeof(NETLINE("AUTH EXTERNAL")));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   /* XXX The problem is that this user would overwrite the user from the CN
-    * XXX of the client certificate, and dovecot (for example) then wants to
-    * XXX interpret this as a master user.  We need to nullify this user */
-   /*su_mem_copy(cp, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l);
-    *su_mem_copy(&cp[pcp->pc_cred.cc_user.l], NETNL, sizeof(NETNL));*/
-   su_mem_copy(&cp[0], NETNL, sizeof(NETNL));
+   if(pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON)
+      cnt = 0;
+   else
+      su_mem_copy(&cp[0], pcp->pc_cred.cc_user.s,
+         cnt = pcp->pc_cred.cc_user.l);
+   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
    rv = OKAY;
 jleave:
    n_lofi_free(cp);
+j_leave:
    NYD_OU;
    return rv;
 }

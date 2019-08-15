@@ -11219,20 +11219,26 @@ Supported are the default
 .Ql plain ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
 as well as \*(IN
 .Ql external
-(for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs ) .
+and
+.Ql externanon
+for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs .
 .Va user
 and
 .Va password
 are required but for
 .Ql external ,
 which only needs the former.
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422, and fail if additional credentials are actually passed.
 Unless
 .Va pop3-no-apop
 is set the
@@ -12104,20 +12110,24 @@ authentication method, possible values are
 .Ql login ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
 as well as \*(IN
 .Ql external
-(for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs ) .
+and
+.Ql externanon
+for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs .
 There may be the \*(OPal methods
 .Ql cram-md5
 and
 .Ql gssapi .
 .Ql none
-does not need any user credentials,
+and
+.Ql externanon
+do not need any user credentials,
 .Ql external
 and
 .Ql gssapi
@@ -12125,6 +12135,10 @@ require a user name, and all other methods require a
 .Va user
 name and a
 .Va password .
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422 aka RFC 4954, and fail if additional credentials are passed.
 Also see
 .Va mta .
 Note that
@@ -15067,12 +15081,14 @@ Supported are the default
 .Ql login ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
 \*(IN
 .Ql external
+and
+.Ql externanon
 (for TLS secured connections which pass a client certificate via
 .Va tls-config-pairs ) ,
 as well as the \*(OPal
@@ -15088,6 +15104,10 @@ except
 and
 .Ql external ,
 which only need the former.
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422, and fail if additional credentials are actually passed.
 .
 .Mx
 .It Va imap-cache
