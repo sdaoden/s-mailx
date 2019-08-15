@@ -77,7 +77,7 @@ struct a_netsmtp_line{
 
 static sigjmp_buf a_netsmtp_jmp;
 
-static void a_netsmtp_onterm(int signo);
+static void a_netsmtp_onsig(int signo);
 
 /* Get the SMTP server's answer, expecting val */
 static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
@@ -129,7 +129,7 @@ do if(!(n_poption & n_PO_D)){\
 }while(0)
 
 static void
-a_netsmtp_onterm(int signo){
+a_netsmtp_onsig(int signo){
    UNUSED(signo);
    siglongjmp(a_netsmtp_jmp, 1);
 }
@@ -420,29 +420,33 @@ jleave:
 boole
 mx_smtp_mta(struct sendbundle *sbp){
    struct mx_socket so;
-   n_sighdl_t volatile saveterm;
+   n_sighdl_t volatile saveterm, savepipe;
    boole volatile rv;
    NYD_IN;
 
    rv = FAL0;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
+   savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if(sigsetjmp(a_netsmtp_jmp, 1))
       goto jleave;
    if(saveterm != SIG_IGN)
-      safe_signal(SIGTERM, &a_netsmtp_onterm);
+      safe_signal(SIGTERM, &a_netsmtp_onsig);
+   safe_signal(SIGPIPE, &a_netsmtp_onsig);
 
    if(n_poption & n_PO_D)
       su_mem_set(&so, 0, sizeof so);
    else if(!mx_socket_open(&so, sbp->sb_urlp))
-      goto jleave;
+      goto j_leave;
 
    so.s_desc = "SMTP";
    rv = a_netsmtp_talk(&so, sbp);
 
+jleave:
    if(!(n_poption & n_PO_D))
       mx_socket_close(&so);
-jleave:
+j_leave:
+   safe_signal(SIGPIPE, savepipe);
    safe_signal(SIGTERM, saveterm);
    NYD_OU;
    return rv;
