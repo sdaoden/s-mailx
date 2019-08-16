@@ -152,7 +152,7 @@ an implied default.
 .Pp
 .Sy Warning!
 .Va v15-compat
-(with value) will be a default in v14.10.0!
+(with value) is default since v14.10.0!
 .Ed
 .
 .Pp
@@ -971,7 +971,7 @@ $ </dev/null LC_ALL=C \*(uA -d -:/ \e
    '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
 
 # With SMTP (no real sending due to -d debug dry-run)
-$ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Sttycharset=utf8 \e
+$ LC_ALL=C \*(uA -d -:/ -Sttycharset=utf8 \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc --end-options \e
@@ -1034,7 +1034,7 @@ header, see
 $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
-    \*(uA -:/ -Smta=test -Sv15-compat -Sttycharset=utf8 \e
+    \*(uA -:/ -Smta=test -Sttycharset=utf8 \e
       --set mime-force-sendout --set fullnames \e
       -S expandaddr=fail,-all,+addr,failinvaddr -s test \e
       --end-options 'Imagine John <cold@turk.ey>'
@@ -1101,7 +1101,6 @@ to specify variables:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
-    -Sv15-compat \e
     -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
@@ -13520,7 +13519,7 @@ This variable defaults to the name of the user who runs \*(UA.
 .It Va v15-compat
 Enable upward compatibility with \*(UA version 15.0 in respect to which
 configuration options are available and how they are handled.
-If set to a non-empty value the command modifier
+If set to a non-empty value (the default) the command modifier
 .Cm wysh
 is implied and thus enforces
 .Sx "Shell-style argument quoting"
