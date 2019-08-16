@@ -95,18 +95,17 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
    OM_uint32 msg_ctx = 0;
    NYD_IN;
 
-   do {
+   do{
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
             &msg_ctx, &msg);
-      if (maj_stat == GSS_S_COMPLETE) {
-         fprintf(stderr, "GSS error: %s / %.*s\n",
-            s, (int)msg.length, (char*)msg.value);
+      if(maj_stat == GSS_S_COMPLETE){
+         n_err("GSS error: %s / %.*s\n", s, (int)msg.length, (char*)msg.value);
          gss_release_buffer(&min_stat, &msg);
-      } else {
-         fprintf(stderr, "GSS error: %s / unknown\n", s);
+      }else{
+         n_err("GSS error: %s / unknown\n", s);
          break;
       }
-   } while (msg_ctx);
+   }while(msg_ctx);
    NYD_OU;
 }
 
