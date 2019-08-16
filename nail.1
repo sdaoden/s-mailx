@@ -148,29 +148,35 @@
 .Sh DESCRIPTION
 .
 .Bd -filled -compact -offset indent
-.Sy Compatibility note:
-S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2020).
-Backward incompatibility has to be expected \(en
+.Sy Note:
+S-nail (\*(UA) will see major changes in v15.0 (circa 2020).
+Some backward incompatibilities cannot be avoided.
 .Sx COMMANDS
-will use
-.Sx "Shell-style argument quoting"
-rules, for example, and shell metacharacters will become meaningful.
-Many old-style commands accept new syntax via
-.Cm wysh ,
-one of the
-.Sx "Command modifiers" .
-New and old behaviour is flagged \*(IN and \*(OU, and setting
-.Va v15-compat ,
-one of the many
-.Sx "INTERNAL VARIABLES" ,
-will choose new behaviour when applicable; when set with value,
+change to
+.Sx "Shell-style argument quoting" ,
+and shell metacharacters will become (more) meaningful.
+Some commands accept new syntax today via
 .Cm wysh
-is default behaviour.
-\*(OB flags what will vanish, and enabling
+.Pf ( Sx "Command modifiers" ) .
+Behaviour is flagged \*(IN and \*(OU,
+.Ic set Ns
+ting
+.Va v15-compat
+.Pf ( Sx "INTERNAL VARIABLES" )
+will choose new behaviour when applicable;
+giving it a value makes
+.Cm wysh
+an implied default.
+\*(OB flags what will vanish.
+Using
 .Fl d
 or
 .Fl v
 enables obsoletion warnings.
+.Pp
+.Sy Warning!
+.Va v15-compat
+(with value) will be a default in v14.10.0!
 .Ed
 .
 .Pp

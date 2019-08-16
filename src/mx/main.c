@@ -1145,6 +1145,10 @@ je_expandargv:
     */
    n_psonce |= n_PSO_STARTED;
 
+   /* TODO v15compat */
+   if((n_poption & n_PO_D_V) && ok_vlook(v15_compat) == NIL)
+      n_err("Warning -- v15-compat=yes will be default in v14.10.0!\n");
+
    if(!(n_psonce & n_PSO_SENDMODE))
       n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg,
             Yargs, Yargs_cnt);
