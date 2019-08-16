@@ -104,7 +104,8 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       authokey = ok_v_pop3_auth;
       authmask = mx_CRED_AUTHTYPE_PLAIN |
             mx_CRED_AUTHTYPE_OAUTHBEARER |
-            mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON;
+            mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+            mx_CRED_AUTHTYPE_GSSAPI;
       authdef = "plain";
       pstr = "pop3";
       break;

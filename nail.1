@@ -11230,12 +11230,17 @@ and
 .Ql externanon
 for TLS secured connections which pass a client certificate via
 .Va tls-config-pairs .
-.Va user
+There may be the \*(OPal method \*(IN
+.Ql gssapi .
+.Ql externanon
+does not need any user credentials,
+.Ql external
 and
-.Va password
-are required but for
-.Ql external ,
-which only needs the former.
+.Ql gssapi
+need a
+.Va user ,
+the remains also require a
+.Va password .
 .Ql externanon
 solely builds upon the credentials passed via a client certificate,
 and is usually the way to go since tested servers do not actually follow

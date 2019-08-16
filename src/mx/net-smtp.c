@@ -44,6 +44,7 @@
 #undef su_FILE
 #define su_FILE net_smtp
 #define mx_SOURCE
+#define mx_SOURCE_NET_SMTP
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -64,7 +65,7 @@ su_EMPTY_FILE()
 #include "mx/net-socket.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-smtp-gss.h" /* $(MX_SRCDIR) */
+# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #include "mx/net-smtp.h"
@@ -87,7 +88,7 @@ static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
 static boole a_netsmtp_talk(struct mx_socket *sp, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-smtp-gss.h>
+# include <mx/net-gssapi.h>
 #endif
 
 /* Indirect SMTP I/O */
@@ -357,7 +358,7 @@ jerr_cred:
    case mx_CRED_AUTHTYPE_GSSAPI:
       if(n_poption & n_PO_D)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if(!a_netsmtp_gss(sop, sbp, slp))
+      else if(!su_CONCAT(su_FILE,_gss)(sop, sbp->sb_urlp, sbp->sb_credp, slp))
          goto jleave;
       break;
 #endif
@@ -423,7 +424,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-smtp-gss.h>
+# include <mx/net-gssapi.h>
 #endif
 
 #undef a_SMTP_OUT

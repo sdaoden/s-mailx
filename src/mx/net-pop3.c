@@ -42,6 +42,7 @@
 #undef su_FILE
 #define su_FILE net_pop3
 #define mx_SOURCE
+#define mx_SOURCE_NET_POP3
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -59,6 +60,10 @@ su_EMPTY_FILE()
 #include "mx/net-socket.h"
 #include "mx/sigs.h"
 
+#ifdef mx_HAVE_GSSAPI
+# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+#endif
+
 #include "mx/net-pop3.h"
 /* TODO fake */
 #include "su/code-in.h"
@@ -70,6 +75,7 @@ struct a_pop3_ctx{
 };
 
 static struct str a_pop3_dat;
+static char const *a_pop3_realdat;
 static sigjmp_buf a_pop3_jmp;
 static n_sighdl_t a_pop3_savealrm;
 static s32 a_pop3_keepalive;
@@ -111,6 +117,10 @@ static enum okay a_pop3_exit(struct mailbox *mp);
 static enum okay a_pop3_delete(struct mailbox *mp, int n);
 static enum okay a_pop3_update(struct mailbox *mp);
 
+#ifdef mx_HAVE_GSSAPI
+# include <mx/net-gssapi.h>
+#endif
+
 /* Indirect POP3 I/O */
 #define a_POP3_OUT(RV,X,Y,ACTIONSTOP) \
 do{\
@@ -145,7 +155,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
    a_POP3_ANSWER(rv, goto jleave);
 #ifdef mx_HAVE_MD5
    ts = (pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_PLAIN)
-         ? a_pop3_lookup_apop_timestamp(a_pop3_dat.s) : NIL;
+         ? a_pop3_lookup_apop_timestamp(a_pop3_realdat) : NIL;
 #endif
 
    /* If not yet secured, can we upgrade to TLS? */
@@ -206,6 +216,15 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
    case mx_CRED_AUTHTYPE_EXTERNANON:
       rv = a_pop3_auth_external(mp, pcp);
       break;
+#ifdef mx_HAVE_GSSAPI
+   case mx_CRED_AUTHTYPE_GSSAPI:
+      if(n_poption & n_PO_D)
+         n_err(_(">>> We would perform GSS-API authentication now\n"));
+      else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, &pcp->pc_url,
+            &pcp->pc_cred, mp))
+         goto jleave;
+      break;
+#endif
    default:
       rv = FAL0;
       break;
@@ -459,6 +478,21 @@ jretry:
 
       switch(*a_pop3_dat.s){
       case '+':
+         while(blen > 0 &&
+               (a_pop3_dat.s[blen - 1] == NETNL[0] ||
+                a_pop3_dat.s[blen - 1] == NETNL[1]))
+            a_pop3_dat.s[--blen] = '\0';
+
+         if(blen == 0)
+            a_pop3_realdat = su_empty;
+         else{
+            for(a_pop3_realdat = a_pop3_dat.s;
+                  *a_pop3_realdat != '\0' && !su_cs_is_space(*a_pop3_realdat);
+                  ++a_pop3_realdat)
+               ;
+            while(*a_pop3_realdat != '\0' && su_cs_is_space(*a_pop3_realdat))
+               ++a_pop3_realdat;
+         }
          rv = OKAY;
          mp->mb_active &= ~MB_COMD;
          break;
@@ -584,12 +618,8 @@ a_pop3_stat(struct mailbox *mp, off_t *size, int *cnt){
    a_POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   for(cp = a_pop3_dat.s; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
-      ;
-   while(*cp != '\0' && su_cs_is_space(*cp))
-      ++cp;
-
    rv = STOP;
+   cp = a_pop3_realdat;
 
    if(*cp != '\0'){
       uz i;
@@ -623,7 +653,8 @@ jleave:
 
 static enum okay
 a_pop3_list(struct mailbox *mp, int n, uz *size){
-   char o[LINESIZE], *cp;
+   char o[LINESIZE];
+   char const *cp;
    enum okay rv;
    NYD_IN;
 
@@ -631,10 +662,7 @@ a_pop3_list(struct mailbox *mp, int n, uz *size){
    a_POP3_OUT(rv, o, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   for(cp = a_pop3_dat.s; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
-      ;
-   while(*cp != '\0' && su_cs_is_space(*cp))
-      ++cp;
+   cp = a_pop3_realdat;
    while(*cp != '\0' && !su_cs_is_space(*cp))
       ++cp;
    while(*cp != '\0' && su_cs_is_space(*cp))
@@ -932,6 +960,10 @@ a_pop3_update(struct mailbox *mp){
    NYD_OU;
    return OKAY;
 }
+
+#ifdef mx_HAVE_GSSAPI
+# include <mx/net-gssapi.h>
+#endif
 
 #undef a_POP3_OUT
 #undef a_POP3_ANSWER
