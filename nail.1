@@ -1960,6 +1960,7 @@ necessary credential information of an account:
 .
 .Bl -bullet
 .It
+A user is always required.
 If no
 .Ql USER
 has been given in the URL the variables
@@ -13129,9 +13130,8 @@ Child processes inherit the file mode creation mask of their parent.
 .
 .Mx Va user
 .It Va user-HOST , user
-\*(IN Variable chain that sets a global fallback user name, which is
-used in case none has been given in the protocol and account-specific
-URL.
+\*(IN Variable chain that sets a global fallback user name, used in case
+none has been given in the protocol and account-specific URL.
 This variable defaults to the name of the user who runs \*(UA.
 .
 .Mx

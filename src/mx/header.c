@@ -1307,7 +1307,7 @@ jnodename:{
       uz i;
 
       hn = n_nodename(TRU1);
-      ln = ok_vlook(LOGNAME);
+      ln = ok_vlook(LOGNAME); /* TODO I'd like to have USER@HOST --> from */
       i = su_cs_len(ln) + su_cs_len(hn) + 1 +1;
       rv = cp = n_autorec_alloc(i);
       su_cs_pcopy(su_cs_pcopy(su_cs_pcopy(cp, ln), n_at), hn);

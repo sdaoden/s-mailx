@@ -77,6 +77,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
 
    su_mem_set(ccp, 0, sizeof *ccp);
    ccp->cc_user = urlp->url_user;
+   ASSERT(urlp->url_user.s != NIL);
 
    ware = a_NONE;
 
@@ -223,8 +224,9 @@ js2pass:
 jleave:
    if(ccp != NIL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
-         urlp->url_h_p.s, (ccp->cc_user.s != NIL ? ccp->cc_user.s : su_empty),
-         (ccp->cc_pass.s != NIL ? ccp->cc_pass.s : su_empty));
+         urlp->url_h_p.s, n_shexp_quote_cp(ccp->cc_user.s, FAL0),
+         n_shexp_quote_cp((ccp->cc_pass.s != NIL ? ccp->cc_pass.s : su_empty),
+            FAL0));
    NYD_OU;
    return (ccp != NIL);
 }
