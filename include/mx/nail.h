@@ -1112,7 +1112,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_user, /* {notempty=1,chain=1} */
 
    ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
-   ok_v_v15_compat,
+   ok_v_v15_compat, /* {i3val="y"} */
    ok_v_verbose, /* {vip=1,posnum=1} */
    ok_v_version, /* {virt=mx_VERSION} */
    ok_v_version_date, /* {virt=mx_VERSION_DATE} */
