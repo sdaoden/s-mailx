@@ -1862,8 +1862,7 @@ imap_setfile(char const * volatile who, const char *xserver,
       rv = 1;
       goto jleave;
    }
-   if (ok_vlook(v15_compat) == NIL &&
-         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
+   if (ok_vlook(v15_compat) == NIL && url.url_pass.s != NIL)
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);

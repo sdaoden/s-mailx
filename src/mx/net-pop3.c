@@ -1010,9 +1010,7 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
 
    if(!mx_url_parse(&pc.pc_url, CPROTO_POP3, server))
       goto jleave;
-   if(ok_vlook(v15_compat) == NIL &&
-         (!(pc.pc_url.url_flags & mx_URL_HAD_USER) ||
-            pc.pc_url.url_pass.s != NIL)){
+   if(ok_vlook(v15_compat) == NIL && pc.pc_url.url_pass.s != NIL){
       n_err(_("POP3: new-style URL used without *v15-compat* being set: %s\n"),
          n_shexp_quote_cp(server, FAL0));
       goto jleave;
