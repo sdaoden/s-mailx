@@ -379,15 +379,22 @@ mx_child_fork(struct mx_child_ctx *ccp){
       goto jkid;
    case -1:
       ccp->cc_error = su_err_no();
+
+      /* Link in cleanup list on failure */
+      cep->ce_link = nlp;
+      nlp = cep;
+
+      /* And shutdown our termios environment */
+      if(cep->ce_tios)
+         mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_HANDS_OFF);
+
       mx_sigs_all_rele();
+
       if(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL){
          close(S(int,ccp->cc__cpipe[0]));
          close(S(int,ccp->cc__cpipe[1]));
       }
       n_perr(_("child_fork(): fork failure"), ccp->cc_error);
-      /* Link in cleanup list on failure */
-      cep->ce_link = nlp;
-      nlp = cep;
       break;
    default:
       /* In the parent, conditionally wait on the control pipe */

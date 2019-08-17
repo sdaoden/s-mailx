@@ -16,17 +16,20 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 	$(SIZE_CHECK)
 
 gen-mime-types.h: $(TOPDIR)mime.types
-	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh \
-		"$(TOPDIR)"mime.types "$(@)"
+	$(ECHO_GEN) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(TOPDIR)"mime.types "$(@)"
 
 uman.1: $(TOPDIR)nail.1
-	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
+	$(ECHO_GEN) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-man.sh "$(TOPDIR)"nail.1 "$(@)"
 
 urc.rc: $(TOPDIR)nail.rc
-	$(ECHO_GEN)$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
+	$(ECHO_GEN) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-rc.sh "$(TOPDIR)"nail.rc "$(@)"
 
 install:
-	$(ECHO_CMD)$(SHELL) "$(TOPDIR)"mk/make-install.sh
+	$(ECHO_CMD) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-install.sh
 
 uninstall:
 	@echo 'Invoke $(VAL_UAGENT)-uninstall.sh to uninstall $(VAL_UAGENT)'
@@ -41,7 +44,7 @@ clean:
 
 distclean: clean
 	$(ECHO_CMD)\
-	${rm} -f mk-*;\
+	$(rm) -f mk-*;\
 	cd .. && $(rm) -r "$(OBJDIR)";\
 	if [ -f "$(CWDDIR)include/mx/config.h" ]; then \
 		$(rm) -f "$(CWDDIR)include/mx/config.h" \

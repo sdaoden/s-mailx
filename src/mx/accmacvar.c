@@ -2561,6 +2561,47 @@ c_call_if(void *vp){
    return rv;
 }
 
+FL void
+mx_account_leave(void){
+   /* Note no care for *account* here */
+   struct a_amv_mac_call_args *amcap;
+   struct a_amv_mac *amp;
+   char const *cp;
+   char *var;
+   NYD_IN;
+
+   if(a_amv_acc_curr != NIL){
+      /* Is there a cleanup hook? */
+      var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
+      if((cp = n_var_vlook(var, FAL0)) != NIL ||
+            (cp = ok_vlook(on_account_cleanup)) != NIL){
+         if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
+            amcap = n_lofi_calloc(sizeof *amcap);
+            amcap->amca_name = cp;
+            amcap->amca_amp = amp;
+            amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
+            amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+            amcap->amca_no_xcall = TRU1;
+            n_pstate |= n_PS_HOOK;
+            (void)a_amv_mac_exec(amcap);
+            n_pstate &= ~n_PS_HOOK_MASK;
+         }else
+            n_err(_("*on-account-leave* hook %s does not exist\n"),
+               n_shexp_quote_cp(cp, FAL0));
+      }
+
+      /* `localopts'? */
+      if(a_amv_acc_curr->am_lopts != NIL)
+         a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+
+      /* For accounts this lingers */
+      --a_amv_acc_curr->am_refcnt;
+      if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
+         a_amv_mac_free(a_amv_acc_curr);
+   }
+   NYD_OU;
+}
+
 FL int
 c_account(void *v){
    struct a_amv_mac_call_args *amcap;
@@ -2607,40 +2648,8 @@ c_account(void *v){
    oqf = savequitflags();
 
    /* Shutdown the active account */
-   if(a_amv_acc_curr != NULL){
-      char const *cp;
-      char *var;
-
-      /* Is there a cleanup hook? */
-      var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
-      if((cp = n_var_vlook(var, FAL0)) != NULL ||
-            (cp = ok_vlook(on_account_cleanup)) != NULL){
-         struct a_amv_mac *amphook;
-
-         if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
-            amcap = n_lofi_calloc(sizeof *amcap);
-            amcap->amca_name = cp;
-            amcap->amca_amp = amphook;
-            amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
-            amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
-            amcap->amca_no_xcall = TRU1;
-            n_pstate |= n_PS_HOOK;
-            rv = a_amv_mac_exec(amcap);
-            n_pstate &= ~n_PS_HOOK_MASK;
-         }else
-            n_err(_("*on-account-leave* hook %s does not exist\n"),
-               n_shexp_quote_cp(cp, FAL0));
-      }
-
-      /* `localopts'? */
-      if(a_amv_acc_curr->am_lopts != NULL)
-         a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
-
-      /* For accounts this lingers */
-      --a_amv_acc_curr->am_refcnt;
-      if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
-         a_amv_mac_free(a_amv_acc_curr);
-   }
+   if(a_amv_acc_curr != NULL)
+      mx_account_leave();
 
    a_amv_acc_curr = amp;
 
@@ -2846,26 +2855,28 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
 }
 
 FL void
-temporary_on_main_loop_tick_hook(void){ /* TODO temporary, v15: drop */
+temporary_on_xy_hook_caller(char const *hname, char const *mac,
+      boole sigs_held){
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
-   char const *cp;
    NYD_IN;
 
-   if((cp = ok_vlook(on_main_loop_tick)) != NIL){
-      if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
-         mx_sigs_all_rele();
+   if(mac != NIL){
+      if((amp = a_amv_mac_lookup(mac, NIL, a_AMV_MF_NONE)) != NIL){
+         if(sigs_held)
+            mx_sigs_all_rele();
          amcap = n_lofi_calloc(sizeof *amcap);
-         amcap->amca_name = cp;
+         amcap->amca_name = mac;
          amcap->amca_amp = amp;
          amcap->amca_ps_hook_mask = TRU1;
          amcap->amca_no_xcall = TRU1;
          n_pstate &= ~n_PS_HOOK_MASK;
          n_pstate |= n_PS_HOOK;
          a_amv_mac_exec(amcap);
-         mx_sigs_all_holdx();
+         if(sigs_held)
+            mx_sigs_all_holdx();
       }else
-         n_err(_("*on-main-loop-tick* macro does not exist: %s\n"), cp);
+         n_err(_("*%s* macro does not exist: %s\n"), hname, mac);
    }
    NYD_OU;
 }

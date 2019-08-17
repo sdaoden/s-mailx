@@ -85,11 +85,12 @@
 The GSSAPI code is partially derived from sample code in:
 
 /*
- * GSS-API Programming Guide
- * Part No: 816-1331-11
- * Sun Microsystems, Inc. 4150 Network Circle Santa Clara, CA 95054 U.S.A.
+ * Partially derived from sample code in:
  *
- * (c) 2002 Sun Microsystems
+ * GSS-API Programming Guide
+ * Part No: 806-3814-10
+ * Sun Microsystems, Inc. 901 San Antonio Road, Palo Alto, CA 94303-4900 U.S.A.
+ * (c) 2000 Sun Microsystems
  */
 /*
  * Copyright 1994 by OpenVision Technologies, Inc.

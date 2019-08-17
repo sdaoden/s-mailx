@@ -130,6 +130,7 @@ FL int c_call(void *v);
 FL int c_call_if(void *v);
 
 /* Accounts: `account', `unaccount' */
+FL void mx_account_leave(void);
 FL int c_account(void *v);
 FL int c_unaccount(void *v);
 
@@ -139,7 +140,8 @@ FL int c_shift(void *vp);
 FL int c_return(void *vp);
 
 /* TODO Main loop on tick event; mx_sigs_all_holdx() is active */
-FL void temporary_on_main_loop_tick_hook(void);
+FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
+      boole sigs_held);
 
 /* TODO Check whether a *folder-hook* exists for currently active mailbox */
 FL boole temporary_folder_hook_check(boole nmail);

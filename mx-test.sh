@@ -1,9 +1,8 @@
 #!/bin/sh -
-#@ Synopsis: ./mx-test.sh --check-only [s-mailx-binary]
+#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check-only [s-mailx-binary]
 #@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
-#@ The latter generates output files.
-#@ TODO _All_ the tests should happen in a temporary subdir.
+#@ --no-jobs can be used to prevent spawning concurrent tests.
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -22,8 +21,8 @@ while true; do
    else
       echo >&2 'S-nail/S-mailx is not configured.'
       echo >&2 'This test script requires the shell environment that only the'
-      echo >&2 'configuration script can figure out, even if it will be used to'
-      echo >&2 'test a different binary than the one that would be produced!'
+      echo >&2 'configuration script can figure out, even if used to test'
+      echo >&2 'a different binary than the one that would be produced!'
       echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.env.)'
       echo >&2 'Hit RETURN to run "make config CONFIG=null'
       read l
@@ -59,6 +58,10 @@ TMPDIR=`pwd`
 LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 
+# How long unless started tests get reaped (avoid endless looping)
+# In debug built the value is doubled (due to memory checks).
+JOBWAIT=66
+
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
 MEMTESTER=
@@ -68,82 +71,96 @@ MEMTESTER=
 
 t_all() {
    # Absolute Basics
-   t_X_Y_opt_input_go_stack
-   t_X_errexit
-   t_Y_errexit
-   t_S_freeze
-   t_input_inject_semicolon_seq
-   t_wysh
-   t_commandalias # test now, save space later on!
+   jspawn X_Y_opt_input_go_stack
+   jspawn X_errexit
+   jspawn Y_errexit
+   jspawn S_freeze
+   jspawn input_inject_semicolon_seq
+   jspawn wysh
+   jspawn commandalias # test now, save space later on!
+   jsync
 
    # Basics
-   t_shcodec
-   t_ifelse
-   t_localopts
-   t_local
-   t_environ
-   t_macro_param_shift
-   t_addrcodec
-   t_csop
-   t_vexpr
-   t_call_ret
-   t_xcall
-   t_vpospar
-   t_atxplode
-   t_read
+   jspawn shcodec
+   jspawn ifelse
+   jspawn localopts
+   jspawn local
+   jspawn environ
+   jspawn macro_param_shift
+   jspawn addrcodec
+   jspawn csop
+   jspawn vexpr
+   jspawn call_ret
+   jspawn xcall
+   jspawn vpospar
+   jspawn atxplode
+   jspawn read
+   jsync
 
    # Send/RFC absolute basics
-   t_can_send_rfc
+   jspawn can_send_rfc
+   jsync
 
    # VFS
-   t_mbox
-   t_maildir
+   jspawn mbox
+   jspawn maildir
+   jsync
 
    # MIME and RFC basics
-   t_mime_if_not_ascii
-   t_mime_encoding
-   t_xxxheads_rfc2047
-   t_iconv_mbyte_base64
-   t_iconv_mainbody
-   t_mime_force_sendout
-   t_binary_mainbody
-   t_C_opt_customhdr
+   jspawn mime_if_not_ascii
+   jspawn mime_encoding
+   jspawn xxxheads_rfc2047
+   jspawn iconv_mbyte_base64
+   jspawn iconv_mainbody
+   jspawn mime_force_sendout
+   jspawn binary_mainbody
+   jspawn C_opt_customhdr
+   jsync
 
    # Operational basics with trivial tests
-   t_alias
-   t_charsetalias
-   t_shortcut
+   jspawn alias
+   jspawn charsetalias
+   jspawn shortcut
+   jsync
 
    # Operational basics with easy tests
-   t_expandaddr # (after t_alias)
-   t_mta_aliases # (after t_expandaddr)
-   t_filetype
-   t_record_a_resend
-   t_e_H_L_opts
-   t_q_t_etc_opts
-   t_message_injections
-   t_attachments
-   t_rfc2231 # (after attachments)
-   t_mime_types_load_control
+   jspawn expandaddr # (after t_alias)
+   jspawn mta_aliases # (after t_expandaddr)
+   jspawn filetype
+   jspawn record_a_resend
+   jspawn e_H_L_opts
+   jspawn q_t_etc_opts
+   jspawn message_injections
+   jspawn attachments
+   jspawn rfc2231 # (after attachments)
+   jspawn mime_types_load_control
+   jsync
 
    # Around state machine, after basics
-   t_alternates
-   t_quote_a_cmd_escapes
-   t_compose_edits
-   t_digmsg
-   t_on_main_loop_tick
+   jspawn alternates
+   jspawn quote_a_cmd_escapes
+   jspawn compose_edits
+   jspawn digmsg
+   jspawn on_main_loop_tick
+   jspawn on_program_exit
+   jsync
 
    # Heavy use of/rely on state machine (behaviour) and basics
-   t_compose_hooks
-   t_mass_recipients
-   t_lreply_futh_rth_etc
-   t_pipe_handlers
+   jspawn compose_hooks
+   jspawn mass_recipients
+   jspawn lreply_futh_rth_etc
+   jspawn pipe_handlers
+   jsync
 
    # Rest
-   t_s_mime
+   jspawn s_mime
+   jspawn z
+   jsync
+
+   jsync 1
 }
 
-## Now it is getting really weird. You've been warned.
+## Now it is getting really weird. You have been warned.
 # Setup and support {{{
 export ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR  \
    MAKE awk cat cksum rm sed grep
@@ -156,11 +173,12 @@ SOURCE_DATE_EPOCH=844221007
 export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT LOGNAME USER
 
+# usage {{{
 usage() {
    ${cat} >&2 <<_EOT
-Synopsis: mx-test.sh --check-only s-mailx-binary
-Synopsis: mx-test.sh --run-test s-mailx-binary [:TEST:]
-Synopsis: mx-test.sh
+Synopsis: mx-test.sh [--no-jobs] --check-only s-mailx-binary
+Synopsis: mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
+Synopsis: mx-test.sh [--no-jobs]
 
  --check-only EXE         run the test series, exit success or error;
                           if run in a git(1) checkout then failed tests
@@ -169,14 +187,20 @@ Synopsis: mx-test.sh
                           test output data files; if run in a git(1)
                           checkout with the [test-out] branch available,
                           it will also create file differences
+ --no-jobs                do not spawn multiple jobs simultaneously
 
-Without arguments as many different configurations as possible
-will be compiled and tested.
+The last invocation style will compile and test as many different
+configurations as possible.
 _EOT
    exit 1
 }
 
-CHECK_ONLY= RUN_TEST= GIT_REPO= MAILX=
+NOJOBS= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+if [ "${1}" = --no-jobs ]; then
+   NOJOBS=y
+   shift
+fi
+
 if [ "${1}" = --check-only ]; then
    [ ${#} -eq 2 ] || usage
    CHECK_ONLY=1 MAILX=${2}
@@ -196,12 +220,14 @@ else
    MAILX__CC_TEST_NO_DATA_FILES=1
    export MAILX__CC_TEST_NO_DATA_FILES
 fi
+# }}}
 
+MAILX=`${pwd}`/${MAILX}
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-# We want an UTF-8 locale
+# We want an UTF-8 locale {{{
 if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
@@ -210,11 +236,11 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
             \define cset_test {
-               \if [ "${ttycharset}" =%?case utf ]
+               \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
                   \xit 0
                \end
-               \if [ "${#}" -gt 0 ]
+               \if "${#}" -gt 0
                   \wysh set LC_ALL=${1}
                   \shift
                   \eval xcall cset_test "${@}"
@@ -236,7 +262,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
                   m=${n}
                   if { echo ${n} |
                         ${grep} -e POSIX -e en_EN -e en_US; } \
-                        >/dev/null 2>&1; then
+                           >/dev/null 2>&1; then
                      break
                   fi
                fi
@@ -252,37 +278,266 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
       echo 'No Unicode locale found, disabling Unicode tests'
    fi
 fi
+# }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
+JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
 COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
-TRAP_EXIT_ADDONS=
 
-trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \"${ERR}\" \${TRAP_EXIT_ADDONS}" EXIT
+trap "${rm} -rf ./t.*.d ./t.*.io ./t.*.result; jobreaper_stop" EXIT
 trap "exit 1" HUP INT TERM
 
-have_feat() {
-   ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
-      ${grep} +${1} ) >/dev/null 2>&1
+# JOBS {{{
+if [ -n "${NOJOBS}" ]; then
+   jobs_max() { :; }
+else
+   jobs_max() {
+      # Do only use half of the CPUs, since we live in pipes or do a lot of
+      # shell stuff, and i have seen lesser timeouts like this (on SunOS 5.9)
+      # ..the user desired variant
+      if ( echo "${MAKEFLAGS}" | ${grep} -- -j ) >/dev/null 2>&1; then
+         i=`echo "${MAKEFLAGS}" |
+               ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
+         if ( echo "${i}" | grep -q -e '^[0-9]\{1,\}$' ); then
+            printf 'Job number derived from MAKEFLAGS: %s\n' ${i}
+            MAXJOBS=${i}
+            [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+            return
+         fi
+      fi
+
+      # The actual hardware
+      if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
+         if command -v nproc >/dev/null 2>&1; then
+            i=`nproc 2>/dev/null`
+            [ ${?} -eq 0 ] && MAXJOBS=${i}
+         else
+            i=`getconf _NPROCESSORS_ONLN 2>/dev/null`
+            j=${?}
+            if [ ${j} -ne 0 ]; then
+               i=`getconf NPROCESSORS_ONLN 2>/dev/null`
+               j=${?}
+            fi
+            if [ ${j} -ne 0 ]; then
+               # SunOS 5.9 ++
+               if command -v kstat >/dev/null 2>&1; then
+                  i=`PERL5OPT= kstat -p cpu | ${awk} '
+                     BEGIN{no=0; FS=":"}
+                     {if($2 > no) max = $2; next}
+                     END{print ++max}
+                     ' 2>/dev/null`
+                  j=${?}
+               fi
+            fi
+            if [ ${j} -eq 0 ] && [ -n "${i}" ]; then
+               printf 'Job number derived from CPU number: %s\n' ${i}
+               MAXJOBS=${i}
+            fi
+         fi
+         [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+      fi
+   }
+fi
+
+jobreaper_start() {
+   ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
+
+   i=
+   trap 'i=1' USR1
+   printf 'Starting job reaper\n'
+   (
+      parent=${$}
+      sleeper= int=0 hot=0
+      trap '
+         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
+         int=1 hot=1
+      ' USR1
+      trap '
+         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
+         int=1 hot=0
+      ' USR2
+      trap '
+         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
+         echo "Stopping job reaper"
+         exit 0
+      ' TERM
+
+      # traps are setup, notify parent that we are up and running
+      kill -USR1 ${parent}
+
+      while :; do
+         int=0
+         sleep ${JOBWAIT} &
+         sleeper=${!}
+         wait ${!}
+         sleeper=
+         [ "${int}${hot}" = 01 ] && kill -USR1 ${parent} >/dev/null 2>&1
+      done
+   ) </dev/null & #>/dev/null 2>&1 &
+   JOBREAPER=${!}
+
+   if [ ${?} -eq 0 ]; then
+      while :; do
+         if [ -n "${i}" ]; then
+            trap '' USR1
+            return
+         fi
+         printf '.. waiting for job reaper to come up\n'
+         sleep 1 &
+         wait ${!}
+      done
+   fi
+
+   JOBREAPER=
+   printf '%s!! Cannot start wild job reaper%s\n' \
+      "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
 }
 
-t_prolog() {
-   ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
-   TRAP_EXIT_ADDONS=
-   if [ ${#} -gt 0 ]; then
-      TEST_NAME=${1}
-      TEST_ANY=
-      printf '%s[%s]%s\n' "" "${1}" ""
+jobreaper_stop() {
+   if [ -n "${JOBREAPER}" ]; then
+      kill -TERM ${JOBREAPER}
+      JOBREAPER=
    fi
+}
+
+jspawn() {
+   if [ ${MAXJOBS} -gt 1 ]; then
+      # We are spawning multiple jobs..
+      [ ${JOBS} -eq 0 ] && printf '...'
+      JOBS=`add ${JOBS} 1`
+      printf ' [%s=%s]' ${JOBS} "${1}"
+   else
+      JOBS=1
+   fi
+
+   (
+      ${mkdir} t.${JOBS}.d && cd t.${JOBS}.d &&
+         eval t_${1} ${JOBS} ${1} &&
+         ${rm} -f ../t.${JOBS}.id
+   ) > t.${JOBS}.io </dev/null & # 2>&1 </dev/null &
+   JOBLIST="${JOBLIST} ${!}"
+   printf '%s\n%s\n' ${!} ${1} > t.${JOBS}.id
+
+   # ..until we should sync or reach the maximum concurrent number
+   [ ${JOBS} -lt ${MAXJOBS} ] && return
+
+   jsync 1
+}
+
+jsync() {
+   [ ${JOBS} -eq 0 ] && return
+   [ -z "${JOBSYNC}" ] && [ ${#} -eq 0 ] && return
+
+   [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
+
+   if [ -n "${JOBREAPER}" ]; then
+      timeout= alldone=
+
+      trap 'timeout=1' USR1
+      kill -USR1 ${JOBREAPER}
+
+      loops=0
+      while [ -z "${timeout}" ]; do
+         alldone=1
+         i=0
+         while [ ${i} -lt ${JOBS} ]; do
+            i=`add ${i} 1`
+            [ -f t.${i}.id ] || continue
+            alldone=
+            break
+         done
+         [ -n "${alldone}" ] && break
+
+         if [ -z "${sleep_subsecond}" ]; then
+            loops=`add ${loops} 1`
+            [ ${loops} -lt 111 ] && continue
+            sleep 1 &
+         else
+            sleep .1 &
+         fi
+         wait ${!}
+      done
+
+      kill -USR2 ${JOBREAPER}
+      trap '' USR1
+
+      if [ -n "${timeout}" ]; then
+         i=0
+         while [ ${i} -lt ${JOBS} ]; do
+            i=`add ${i} 1`
+            if [ -f t.${i}.id ] &&
+                  read pid < t.${i}.id >/dev/null 2>&1; then
+               kill -KILL ${pid}
+            fi
+         done
+      fi
+   fi
+
+   # Now collect the zombies
+   wait ${JOBLIST}
+   JOBLIST=
+
+   # Update global counters
+   i=0
+   while [ ${i} -lt ${JOBS} ]; do
+      i=`add ${i} 1`
+
+      [ -s t.${i}.io ] && ${cat} t.${i}.io
+      if [ -n "${DUMPERR}" ] && [ -s ./t.${i}.d/${ERR} ]; then
+         printf '%s   [Debug/Devel: nullified errors]\n' "${COLOR_ERR_ON}"
+         while read l; do
+            printf '   %s\n' "${l}"
+         done < t.${i}.d/${ERR}
+         printf '%s' "${COLOR_ERR_OFF}"
+      fi
+
+      if [ -f t.${i}.id ]; then
+         { read pid; read desc; } < t.${i}.id
+         desc=${desc#${desc%%[! ]*}}
+         desc=${desc%${desc##*[! ]}}
+         printf >&2 '%s!! Timeout: reaped job %s [%s]%s\n' \
+            "${COLOR_ERR_ON}" ${i} "${desc}" "${COLOR_ERR_OFF}"
+         TESTS_FAILED=`add ${TESTS_FAILED} 1`
+      elif [ -s t.${i}.result ]; then
+         read es tp to tf ts < t.${i}.result
+         TESTS_PERFORMED=`add ${TESTS_PERFORMED} ${tp}`
+         TESTS_OK=`add ${TESTS_OK} ${to}`
+         TESTS_FAILED=`add ${TESTS_FAILED} ${tf}`
+         TESTS_SKIPPED=`add ${TESTS_SKIPPED} ${ts}`
+         [ "${es}" != 0 ] && ESTAT=${es}
+      else
+         TESTS_FAILED=`add ${TESTS_FAILED} 1`
+         ESTAT=1
+      fi
+   done
+   ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
+
+   JOBS=0
+}
+# }}}
+
+# echoes, checks, etc. {{{
+t_prolog() {
+   shift
+
+   ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 \
+      TEST_NAME=${1} TEST_ANY=
+
+   printf '%s[%s]%s\n' "" "${TEST_NAME}" ""
 }
 
 t_epilog() {
    [ -n "${TEST_ANY}" ] && printf '\n'
-   t_prolog
+
+   printf '%s %s %s %s %s\n' \
+      ${ESTAT} \
+         ${TESTS_PERFORMED} ${TESTS_OK} ${TESTS_FAILED} ${TESTS_SKIPPED} \
+      > ../t.${1}.result
 }
 
 t_echo() {
@@ -328,10 +583,11 @@ check() {
    '') ;;
    async)
       [ "$eestat" = - ] || exit 200
-      while [ 1 ]; do
+      while :; do
          [ -f "${f}" ] && break
          t_echowarn "[${tid}:async=wait]"
-         sleep 1
+         sleep 1 &
+         wait ${!}
       done
       ;;
    *) exit 222;;
@@ -364,14 +620,14 @@ check() {
       x="t.${TEST_NAME}-${tid}"
       if [ -n "${RUN_TEST}" ] ||
             [ -n "${check__runx}" -a -n "${GIT_REPO}" ]; then
-         ${cp} -f "${f}" ./"${x}"
+         ${cp} -f "${f}" ../"${x}"
       fi
 
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
             command -v diff >/dev/null 2>&1 &&
             (git rev-parse --verify test-out) >/dev/null 2>&1 &&
-            git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
-         diff -ru ./"${x}".old ./"${x}" > "${x}".diff
+            git show test-out:"${x}" > ../"${x}".old 2>/dev/null; then
+         diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
       fi
    fi
 }
@@ -409,6 +665,7 @@ check_exn0() {
       TESTS_OK=`add ${TESTS_OK} 1`
    fi
 }
+# }}}
 
 color_init() {
    if (command -v tput && tput setaf 1 && tput sgr0) >/dev/null 2>&1; then
@@ -437,12 +694,16 @@ else
       ${awk} 'BEGIN{print '${1}' % '${2}'}'
    }
 fi
+
+have_feat() {
+   ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
+      ${grep} +${1} ) >/dev/null 2>&1
+}
 # }}}
 
 # Absolute Basics {{{
 t_X_Y_opt_input_go_stack() {
-   t_prolog X_Y_opt_input_go_stack
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
@@ -629,15 +890,15 @@ t_X_Y_opt_input_go_stack() {
    ${MAILX} ${ARGS} -RX'call      ;echo $?' -Xx >> ./.tall 2>&1
    check cmdline 0 ./.tall '1867586969 8'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_X_errexit() {
-   t_prolog X_errexit
+   t_prolog "${@}"
 
    if have_feat uistrings; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -700,15 +961,15 @@ t_X_errexit() {
       > "${BODY}" 2>&1
    check 11 0 "${BODY}" '916157812 53'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_Y_errexit() {
-   t_prolog Y_errexit
+   t_prolog "${@}"
 
    if have_feat uistrings; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -751,11 +1012,11 @@ t_Y_errexit() {
       > "${BODY}" 2>&1
    check 6 0 "${BODY}" '916157812 53'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_S_freeze() {
-   t_prolog S_freeze
+   t_prolog "${@}"
    oterm=$TERM
    unset TERM
 
@@ -851,11 +1112,11 @@ t_S_freeze() {
    fi
 
    TERM=$oterm
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_input_inject_semicolon_seq() {
-   t_prolog input_inject_semicolon_seq
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	define mydeepmac {
@@ -873,11 +1134,11 @@ t_input_inject_semicolon_seq() {
 
    check 1 0 "${MBOX}" '512117110 140'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_wysh() {
-   t_prolog wysh
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' > "${BODY}"
 	#
@@ -958,11 +1219,11 @@ t_wysh() {
 	__EOT
    check 3 0 "${MBOX}" '1289698238 69'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_commandalias() {
-   t_prolog commandalias
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	commandalias echo echo hoho
@@ -984,13 +1245,13 @@ t_commandalias() {
 
    check 1 0 "${MBOX}" '1638809585 36'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # Basics {{{
 t_shcodec() {
-   t_prolog shcodec
+   t_prolog "${@}"
 
    # XXX the first needs to be checked, it is quite dumb as such
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
@@ -1177,11 +1438,11 @@ t_shcodec() {
       check unicode 0 "${MBOX}" '1175985867 77'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_ifelse() {
-   t_prolog ifelse
+   t_prolog "${@}"
 
    # v15compat: old and new tests share the same result files!
    # v15compat: i.e., just throw away -old tests one day
@@ -2652,11 +2913,11 @@ t_ifelse() {
       t_echoskip 'regex:[no regex option]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_localopts() {
-   t_prolog localopts
+   t_prolog "${@}"
 
    # Nestable conditions test
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
@@ -2742,11 +3003,11 @@ t_localopts() {
 
    check 1 0 "${MBOX}" '4016155249 1246'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_local() {
-   t_prolog local
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	define du2 {
@@ -2790,11 +3051,11 @@ t_local() {
 
    check 1 0 "${MBOX}" '2411598140 641'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_environ() {
-   t_prolog environ
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
@@ -2837,8 +3098,9 @@ t_environ() {
 
    check 1 0 "${MBOX}" '1685686686 1342'
 
-   t_epilog # TODO
-   return
+t_epilog "${@}"
+return
+
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	define l4 {
@@ -2900,11 +3162,11 @@ t_environ() {
 
    check 2 0 "${MBOX}" '1903030743 1131'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_macro_param_shift() {
-   t_prolog macro_param_shift
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	define t2 {
@@ -2947,11 +3209,11 @@ t_macro_param_shift() {
 
    check 1 0 "${MBOX}" '1402489146 1682'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_addrcodec() {
-   t_prolog addrcodec
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	commandalias x echo '$?/$^ERRNAME $res'
@@ -3053,7 +3315,8 @@ t_addrcodec() {
 	eval vput addrcodec res d $res
 	x
 	#
-	vput addrcodec res +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	vput addrcodec res \
+	   +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
 	x
 	eval vput addrcodec res d $res
 	x
@@ -3126,15 +3389,15 @@ t_addrcodec() {
       t_echoskip 'idna:[no IDNA option]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_csop() {
-   t_prolog csop
+   t_prolog "${@}"
 
    if have_feat cmd-csop; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -3202,15 +3465,15 @@ t_csop() {
 
    check 1 0 "${MBOX}" '1892119538 755'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_vexpr() {
-   t_prolog vexpr
+   t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -3487,15 +3750,15 @@ t_vexpr() {
       t_echoskip 'regex:[no regex option]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_call_ret() {
-   t_prolog call_ret
+   t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -3570,15 +3833,15 @@ t_call_ret() {
 
    check 1 0 "${MBOX}" '1572045517 5922'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_xcall() {
-   t_prolog xcall
+   t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -3679,11 +3942,11 @@ t_xcall() {
       t_echoskip '2-3:[test unsupported]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_vpospar() {
-   t_prolog vpospar
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    vpospar set hey, "'you    ", world!
@@ -3748,12 +4011,11 @@ t_vpospar() {
 	__EOT
    check ifs 0 "${MBOX}" '2015927702 706'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_atxplode() {
-   t_prolog atxplode
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} > ./.t.sh <<- '___'; ${cat} > ./.t.rc <<- '___'
 	x() { echo $#; }
@@ -3810,12 +4072,11 @@ t_atxplode() {
    #${SHELL} ./.t.sh > ./.tshout 2>&1
    #check disproof-1 0 ./.tshout '41566293 164'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_read() {
-   t_prolog read
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' > .tin
    hey1, "'you    ", world!
@@ -3879,14 +4140,13 @@ t_read() {
 	__EOT
    check readall 0 "${MBOX}" '4113506527 405'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # Send/RFC absolute basics {{{
 t_can_send_rfc() {
-   t_prolog can_send_rfc
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.1 \
       receiver@number.1 \
@@ -3950,14 +4210,13 @@ t_can_send_rfc() {
    check 6 0 "${MBOX}" '3006460737 138'
    check 6-err - .terr '4294967295 0'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # VFS {{{
 t_mbox() {
-   t_prolog mbox
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    (
       i=1
@@ -4089,19 +4348,65 @@ t_mbox() {
    check 22 - ./.tfcc2 '3629108107 98'
    check 23 - ./.tpcc1 '2373220256 246'
 
-   t_epilog
+   # More invalid: since in "copy * X" messages will be copied in `sort' order,
+   # reordering may happen, and before ([f5db11fe] (a_cwrite_save1(): FIX:
+   # ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
+   # could still have created invalid MBOX files!
+   ${cat} <<-_EOT > ./.tinv1
+		 
+		
+		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+		Date: Sun, 04 Oct 1998 01:50:07 +0000
+		Subject: h4
+		
+		B4
+		
+		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+		Date: Nix, 01 Oct BAD 01:50:07 +0000
+		Subject: hinvalid
+		
+		BINV
+		
+		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+		Date: Fri, 03 Oct 1997 01:50:07 +0000
+		Subject: h3
+		
+		B3
+		
+		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+		Date: Sun, 01 Oct 1995 01:50:07 +0000
+		Subject:h1
+		
+		B1
+		
+		
+		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		Subject: h2
+		
+		b2
+		_EOT
+
+   printf \
+      'File ./.tinv1
+      sort date
+      remove ./.tinv2
+      copy * ./.tinv2
+      file ./.tinv1' | ${MAILX} ${ARGS} >>${ERR} 2>&1
+   check 24 0 ./.tinv1 '104184185 560'
+   check 25 - ./.tinv2 '853754737 510'
+
+   t_epilog "${@}"
 }
 
 t_maildir() {
-   t_prolog maildir
+   t_prolog "${@}"
 
    if have_feat maildir; then :; else
       t_echoskip '[no maildir option]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    (
       i=0
@@ -4176,13 +4481,65 @@ t_maildir() {
    ${sed} 2d < .tlst > .tlstx
    check 9 - .tlstx '2172297531 13477'
 
-   t_epilog
+   # More invalid: since in "copy * X" messages will be copied in `sort' order,
+   # reordering may happen, and before ([f5db11fe] (a_cwrite_save1(): FIX:
+   # ensure pre-v15 MBOX separation "in between" messages.., 2019-08-07) that
+   # could still have created invalid MBOX files!
+   ${cat} <<-_EOT > ./.tinv1
+		 
+		
+		From MAILER-DAEMON-4 Sun Oct  4 01:50:07 1998
+		Date: Sun, 04 Oct 1998 01:50:07 +0000
+		Subject: h4
+		
+		B4
+		
+		From MAILER-DAEMON-0 Fri Oct 28 21:02:21 2147483649
+		Date: Nix, 01 Oct BAD 01:50:07 +0000
+		Subject: hinvalid
+		
+		BINV
+		
+		From MAILER-DAEMON-3 Fri Oct  3 01:50:07 1997
+		Date: Fri, 03 Oct 1997 01:50:07 +0000
+		Subject: h3
+		
+		B3
+		
+		From MAILER-DAEMON-1 Sun Oct  1 01:50:07 1995
+		Date: Sun, 01 Oct 1995 01:50:07 +0000
+		Subject:h1
+		
+		B1
+		
+		
+		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		Subject: h2
+		
+		b2
+		_EOT
+
+   printf \
+      'File ./.tinv1
+      sort date
+      copy * maildir://./.tmdir10
+      !{ for f in ./.tmdir10/new/*; do echo ===; %s $f; done; } > ./.t11
+      File ./.tmdir10
+      sort date
+      copy * ./.t10warp
+   ' "${cat}" | ${MAILX} ${ARGS} >>${ERR} 2>&1
+   # Note that substdate() fixes all but one From_ line to $SOURCE_DATE_EPOCH!
+   check 10 0 ./.t10warp '3551111321 502'
+   check 11 - ./.t11 '642719592 302'
+
+   t_epilog "${@}"
 }
 # }}}
 
 # MIME and RFC basics {{{
 t_mime_if_not_ascii() {
-   t_prolog mime_if_not_ascii
+   t_prolog "${@}"
 
    </dev/null ${MAILX} ${ARGS} -s Subject "${MBOX}" >> "${MBOX}" 2>&1
    check 1 0 "${MBOX}" '3647956381 106'
@@ -4191,11 +4548,11 @@ t_mime_if_not_ascii() {
       >> "${MBOX}" 2>&1
    check 2 0 "${MBOX}" '3964303752 274'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_mime_encoding() {
-   t_prolog mime_encoding
+   t_prolog "${@}"
 
    # 8B
    printf 'Hey, you.\nFrom me to you\nCiao\n' |
@@ -4227,12 +4584,11 @@ t_mime_encoding() {
          >> "${MBOX}" 2>&1
    check 6 0 "${MBOX}" '3926760595 1034'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_xxxheads_rfc2047() {
-   t_prolog xxxheads_rfc2047
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
@@ -4321,11 +4677,11 @@ _EOT
       t_echoskip '8:[no iconv option]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
-   t_prolog iconv_mbyte_base64
+   t_prolog "${@}"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
       if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
@@ -4333,16 +4689,14 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
          :
       else
          t_echoskip '[iconv(1) missing conversion]'
-         t_epilog
+         t_epilog "${@}"
          return
       fi
    else
       t_echoskip '[no UTF-8 locale/no iconv option]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
@@ -4394,7 +4748,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    fi
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-      rm -f "${MBOX}" ./.twrite
+      ${rm} -f "${MBOX}" ./.twrite
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=test://"$MBOX" \
             -Sescape=! -Smime-encoding=base64 2>./.terr
@@ -4442,19 +4796,17 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       t_echoskip '5-8:[EUC-JP unsupported]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_iconv_mainbody() {
-   t_prolog iconv_mainbody
+   t_prolog "${@}"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then :; else
       t_echoskip '[no UTF-8 locale/no iconv option]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://"$MBOX" \
       -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
@@ -4498,12 +4850,11 @@ t_iconv_mainbody() {
       t_echoskip '5:[test unsupported]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_binary_mainbody() {
-   t_prolog binary_mainbody
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    printf 'abra\0\nka\r\ndabra' |
       ${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' \
@@ -4519,19 +4870,17 @@ t_binary_mainbody() {
    check 4 - ./.tcat '3817108933 15'
    check 5 - ./.twrite '3817108933 15'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_mime_force_sendout() {
-   t_prolog mime_force_sendout
+   t_prolog "${@}"
 
    if have_feat iconv; then :; else
       t_echoskip '[option iconv missing, unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    printf '\150\303\274' > ./.tmba
    printf 'ha' > ./.tsba
@@ -4577,12 +4926,11 @@ t_mime_force_sendout() {
       -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
    check 8 0 "${MBOX}" '4002905306 2565'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_C_opt_customhdr() {
-   t_prolog C_opt_customhdr
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    echo bla |
    ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
@@ -4618,14 +4966,13 @@ t_C_opt_customhdr() {
    ${cat} ./.tall >> "${MBOX}"
    check 2 0 "${MBOX}" '1826639044 1102'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # Operational basics with trivial tests {{{
 t_alias() {
-   t_prolog alias
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" > ./.tall 2>&1
    alias a1 ex1@a1.ple
@@ -4699,11 +5046,11 @@ _EOT
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_charsetalias() {
-   t_prolog charsetalias
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    commandalias x echo '$?/$^ERRNAME'
@@ -4729,11 +5076,11 @@ t_charsetalias() {
 	__EOT
    check 1 0 "${MBOX}" '3551595280 433'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_shortcut() {
-   t_prolog shortcut
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    commandalias x echo '$?/$^ERRNAME'
@@ -4753,7 +5100,7 @@ t_shortcut() {
 	__EOT
    check 1 0 "${MBOX}" '1970515669 430'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
@@ -4762,15 +5109,13 @@ t_expandaddr() {
    # after: t_alias
    # MTA alias specific part in t_mta_aliases()
    # This only tests from command line, rest later on (iff any)
-   t_prolog expandaddr
+   t_prolog "${@}"
 
    if have_feat uistrings; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    echo "${cat}" > ./.tcat
    chmod 0755 ./.tcat
@@ -5053,20 +5398,18 @@ t_expandaddr() {
    check 85 0 "${MBOX}" '1670655701 410'
    check 86 - .tall '4294967295 0'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_mta_aliases() {
    # after: t_expandaddr
-   t_prolog mta_aliases
+   t_prolog "${@}"
 
    if have_feat mta-aliases; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} > ./.tali <<- '__EOT'
 	
@@ -5190,12 +5533,11 @@ t_mta_aliases() {
    # TODO t_mta_aliases: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_filetype() {
-   t_prolog filetype
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
       "${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=test://"$MBOX"
@@ -5235,12 +5577,11 @@ t_filetype() {
    check 4 - ./.t.mbox '2687765142 27092'
    check 5 - ./.t.out '2230192693 173'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_record_a_resend() {
-   t_prolog record_a_resend
-   TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
+   t_prolog "${@}"
 
    printf '
          set record=%s
@@ -5260,12 +5601,11 @@ t_record_a_resend() {
    check 2 - .t.record '3337485450 456'
    check 3 - .t.resent '1560890069 640'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_e_H_L_opts() {
-   t_prolog e_H_L_opts
-   TRAP_EXIT_ADDONS="./.t.mbox"
+   t_prolog "${@}"
 
    touch ./.t.mbox
    ${MAILX} ${ARGS} -ef ./.t.mbox
@@ -5306,7 +5646,7 @@ t_e_H_L_opts() {
    ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>>${ERR}
    echo ${?} >> "${MBOX}"
 
-   check 1 - "${MBOX}" '2908244922 678'
+   check 1 - "${MBOX}" '1369201287 670'
 
    ##
 
@@ -5323,30 +5663,29 @@ t_e_H_L_opts() {
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '3368721321 418'
+   check 2 0 "${MBOX}" '4286438644 413'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test subject; set autosort=subject showname showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '4147276467 421'
+   check 3 0 "${MBOX}" '3208053922 416'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test from; set autosort=from showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 4 0 "${MBOX}" '1352273544 418'
+   check 4 0 "${MBOX}" '4209767839 413'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test to; set autosort=to showto
       }' -fH ./.t.mbox > "${MBOX}" 2>&1
-   check 5 0 "${MBOX}" '2884982403 416'
+   check 5 0 "${MBOX}" '2785342736 411'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_q_t_etc_opts() {
    # Simple, if we need more here, place in a later vim fold!
-   t_prolog q_t_etc_opts
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    # Three tests for MIME encoding and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
@@ -5396,13 +5735,12 @@ t_q_t_etc_opts() {
    check 9 - './.tout3 .tout4' '2948857341 94'
    check 10 - "${MBOX}" '4294967295 0'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_message_injections() {
    # Simple, if we need more here, place in a later vim fold!
-   t_prolog message_injections
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    echo mysig > ./.tmysig
 
@@ -5431,13 +5769,12 @@ t_message_injections() {
    check 3 0 "${MBOX}" '2189109479 207'
    check 4 - .tall '4294967295 0' # empty file
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_attachments() {
    # Relatively Simple, if we need more here, place in a later vim fold!
-   t_prolog attachments
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<-_EOT  > ./.tx
 	From steffen Sun Feb 18 02:48:40 2018
@@ -5569,13 +5906,12 @@ reply 1 2
       t_echoskip '6:[test unsupported]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_rfc2231() {
    # (after attachments) 
-   t_prolog rfc2231
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    (
       mkdir ./.ttt || exit 1
@@ -5680,19 +6016,17 @@ t_rfc2231() {
       t_echoskip '5:[test unsupported]'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_mime_types_load_control() {
-   t_prolog mime_types_load_control
+   t_prolog "${@}"
 
    if have_feat uistrings; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1
    ? application/mathml+xml mathml
@@ -5737,14 +6071,13 @@ t_mime_types_load_control() {
       -f "${MBOX}" >> ./.tout 2>&1
    check 2 0 ./.tout '3998003232 3633'
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # Around state machine, after basics {{{
 t_alternates() {
-   t_prolog alternates
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" > ./.tall 2>&1
    commandalias x echo '$?/$^ERRNAME'
@@ -5933,14 +6266,13 @@ my body
    check 13 0 "${MBOX}" '337984804 609'
    check 14 - .tall '4294967295 0'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_quote_a_cmd_escapes() {
    # quote and cmd escapes because this (since Mail times) is worked in the
    # big collect() monster of functions
-   t_prolog quote_a_cmd_escapes
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    echo 'included file' > ./.ttxt
 
@@ -6118,13 +6450,12 @@ and i ~w rite this out to ./.tmsg
       check 5 - ./.tall '1818580177 59'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_compose_edits() { # XXX very rudimentary
    # after: t_quote_a_cmd_escapes
-   t_prolog compose_edits
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<-_EOT > ./.ted.sh
 	#!${SHELL}
@@ -6200,12 +6531,11 @@ t_compose_edits() { # XXX very rudimentary
 
    # This test assumes code of `^' and `digmsg' is shared: see t_digmsg()
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_digmsg() { # XXX rudimentary
-   t_prolog digmsg
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    printf '#
    mail ./.tout\n!s This subject is\nThis body is
@@ -6315,12 +6645,11 @@ t_digmsg() { # XXX rudimentary
    check 4 - ./.tempty '4294967295 0'
    check 5 - ./.tcat '2157992522 256'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_on_main_loop_tick() {
-   t_prolog on_main_loop_tick
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    printf '#
    echo hello; set i=1
@@ -6342,22 +6671,48 @@ define omlt {
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 ./.tall '367031402 108'
 
-   t_epilog
+   t_epilog "${@}"
+}
+
+t_on_program_exit() {
+   t_prolog "${@}"
+
+   ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -X x -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 1 0 ./.tall '2820891503 4'
+
+   ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -X q -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 2 0 ./.tall '2820891503 4'
+
+   </dev/null ${MAILX} ${ARGS} \
+      -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x \
+      > ./.tall 2>&1
+   check 3 0 ./.tall '2820891503 4'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
+      -X 'define x {' -X 'echo jay' -X '}' -Son-program-exit=x \
+      -s subject -. hey@you \
+      > ./.tall 2>&1
+   check 4 0 ./.tall '2820891503 4'
+   check 5 - "$MBOX" '561900352 118'
+
+   t_epilog "${@}"
 }
 # }}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
 t_compose_hooks() { # {{{ TODO monster
-   t_prolog compose_hooks
+   t_prolog "${@}"
 
    if have_feat uistrings &&
          have_feat cmd-csop && have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t*"
 
    (echo line one&&echo line two&&echo line three) > ./.treadctl
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
@@ -7296,16 +7651,15 @@ this is content of forward 2, 2nd, with showname set
    ${cat} ./.tnotes >> "${MBOX}"
    check 4 - "${MBOX}" '1818661134 11250'
 
-   t_epilog
+   t_epilog "${@}"
 } # }}}
 
 t_mass_recipients() {
-   t_prolog mass_recipients
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -7373,12 +7727,11 @@ __EOT__
       check 2-${LOOPS_SMALL} - "${MBOX}" '4042568441 3170'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_lreply_futh_rth_etc() {
-   t_prolog lreply_futh_rth_etc
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    ${cat} <<-_EOT > ./.tmbox
 	From neverneverland  Sun Jul 23 13:46:25 2017
@@ -7515,11 +7868,17 @@ t_lreply_futh_rth_etc() {
 	reply 1
 	This message should have *fullnames* in the header.
 	!.
+	# Revert
+	call tweak unmlsubscribe bugstop@five.miles.out';' \
+		set followup-to-add-cc nofullnames
+	call x 8
+	call tweak mlsubscribe bugstop@five.miles.out
+	call x 9
 	_EOT
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '223982085 30183'
+      check 1 - "${MBOX}" '564303313 39797'
    else
       t_echoskip '1:[test unsupported]'
    fi
@@ -7583,16 +7942,15 @@ t_lreply_futh_rth_etc() {
    check 10 0 "${MBOX}" '3155846378 2047'
    check 11 - .tall '4294967295 0'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 t_pipe_handlers() {
-   t_prolog pipe_handlers
-   TRAP_EXIT_ADDONS="./.t*"
+   t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
 
@@ -7683,23 +8041,19 @@ t_pipe_handlers() {
       check 7 0 "${BODY}" '686281717 676'
    fi
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
 # Rest {{{
 t_s_mime() {
-   t_prolog s_mime
+   t_prolog "${@}"
 
    if have_feat smime; then :; else
       t_echoskip '[no S/MIME option]'
-      t_epilog
+      t_epilog "${@}"
       return
    fi
-
-   TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
-   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
-   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tmta.sh"
 
    ${cat} <<-_EOT > ./.t.conf
 		[req]
@@ -7798,13 +8152,12 @@ t_s_mime() {
       -Smta=test://./.ENCRYPT \
       -Ssmime-sign-cert=./.tpair.pem \
       -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check 8 0 "./.DECRYPT" '2453471323 431'
+   check 8 0 ./.DECRYPT '2453471323 431'
 
-   openssl smime -decrypt -inkey ./.tkey.pem \
-         -in ./.ENCRYPT >>${ERR} 2>&1
+   openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT >>${ERR} 2>&1
    check_ex0 9
 
-   t_epilog
+   t_epilog "${@}"
 }
 # }}}
 
@@ -7813,7 +8166,7 @@ t_s_mime() {
 # xxx At some future date and time, convert the last remains not covered
 # xxx elsewhere to a real t_* test and drop it
 t_z() {
-   t_prolog z
+   t_prolog "${@}"
 
    # Test for [260e19d] (Juergen Daubert)
    echo body | ${MAILX} ${ARGS} "${MBOX}"
@@ -7828,7 +8181,7 @@ t_z() {
       }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
    check 7 0 "${MBOX}" '1707496413 61812'
 
-   t_epilog
+   t_epilog "${@}"
 }
 
 # Test support {{{
@@ -7919,15 +8272,10 @@ t__put_body() {
 # cc_all_configs() {{{
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
-   jobs=
-   if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
-      if command -v nproc >/dev/null 2>&1; then
-         i=`nproc 2>/dev/null`
-         [ $? -eq 0 ] && jobs='-j '${i}
-      else
-         i=`getconf _NPROCESSORS_ONLN`
-         [ $? -eq 0 ] && [ -n "${i}" ] && jobs='-j '${i}
-      fi
+   if [ ${MAXJOBS} -gt 1 ]; then
+      MAXJOBS='-j '${MAXJOBS}
+   else
+      MAXJOBS=
    fi
 
    < ${CONF} ${awk} '
@@ -8071,38 +8419,51 @@ cc_all_configs() {
          printf 'Skipping after config, nothing changed\n' >&2
          continue
       fi
-      ${SHELL} -c "cd ../ && ${MAKE} ${jobs} build test"
+      ${SHELL} -c "cd ../ && ${MAKE} ${MAXJOBS} build test"
    done
    ${rm} -f .ccac.h
    cd .. && ${MAKE} distclean
 }
 # }}}
 
-[ -n "${ERR}" ]  && echo > ${ERR}
 ssec=$SECONDS
 if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
+   jobs_max
    cc_all_configs
-elif [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
-#   if have_feat devel; then
-#      ARGS="${ARGS} -Smemdebug"
-#      export ARGS
-#   fi
-   if have_feat debug; then :; elif have_feat devel; then
+else
+   if have_feat debug; then
+      JOBWAIT=`add ${JOBWAIT} ${JOBWAIT}`
+      if have_feat devel; then
+         JOBSYNC=1
+         DUMPERR=y
+         ARGS="${ARGS} -Smemdebug"
+      fi
+   elif have_feat devel; then
       LOOPS_MAX=${LOOPS_BIG}
    fi
    color_init
-   t_all
-   t_z
-else
-   color_init
-   while [ ${#} -gt 0 ]; do
-      eval t_${1}
-      shift
-   done
+
+   if [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
+      jobs_max
+      printf 'Will do up to %s tests in parallel, with a %s second timeout\n' \
+         ${MAXJOBS} ${JOBWAIT}
+      jobreaper_start
+      t_all
+      jobreaper_stop
+   else
+      MAXJOBS=1
+      #jobreaper_start
+      while [ ${#} -gt 0 ]; do
+         jspawn ${1}
+         shift
+      done
+      #jobreaper_stop
+   fi
+
 fi
 esec=$SECONDS
 
-printf '%u tests: %s%u ok%s, %s%u failure(s)%s, %s%u test(s) skipped%s\n' \
+printf '%u tests: %s%u ok%s, %s%u failure(s)%s.  %s%u test(s) skipped%s\n' \
    "${TESTS_PERFORMED}" "${COLOR_OK_ON}" "${TESTS_OK}" "${COLOR_OK_OFF}" \
    "${COLOR_ERR_ON}" "${TESTS_FAILED}" "${COLOR_ERR_OFF}" \
    "${COLOR_WARN_ON}" "${TESTS_SKIPPED}" "${COLOR_WARN_OFF}"

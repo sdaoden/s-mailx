@@ -33,10 +33,11 @@ enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_LOGIN = 1u<<2,
    mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<3,
    mx_CRED_AUTHTYPE_EXTERNAL = 1u<<4,
+   mx_CRED_AUTHTYPE_EXTERNANON = 1u<<5,
 
-   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<5,
+   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<6,
 
-   mx_CRED_AUTHTYPE_GSSAPI = 1u<<6
+   mx_CRED_AUTHTYPE_GSSAPI = 1u<<7
 };
 
 struct mx_cred_ctx{

@@ -253,18 +253,19 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    uz filesize, linesize, cnt;
    NYD_IN;
 
+   filesize = mailsize - offset;
+
    su_mem_set(&self, 0, sizeof self);
    self.m_flag = MUSED | MNEW | MNEWEST;
-   filesize = mailsize - offset;
+
    offset = ftell(mb.mb_otf);
    f = a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0);
 
-   linebuf = NULL, linesize = 0; /* TODO string pool */
-
+   mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
       /* Ensure space for terminating LF, so do append it */
       if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
-            ) == NULL)){
+            ) == NIL)){
          if(f & a_HADONE){
             if(f & a_CREATE){
                commit.m_size += self.m_size;
@@ -279,7 +280,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          message_append_null();
 
          if(f & a_HAD_BAD_FROM_){
-            if(!(mb.mb_active & MB_BAD_FROM_)){
+            /*if(!(mb.mb_active & MB_BAD_FROM_))*/{
                mb.mb_active |= MB_BAD_FROM_;
                /* TODO mbox-rfc4155 does NOT fix From_ line! */
                n_err(_("MBOX contains non-conforming From_ line(s)!\n"
@@ -287,13 +288,12 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
                   "  Setting *mbox-rfc4155* and reopening _may_ "
                      "improve the result.\n"
                   "  Recreating the mailbox will perform MBOXO quoting: "
-                     "\"copy * SOME-FILE\".  "
-                     "(Then unset *mbox-rfc4155* again.)\n"));
+                     "\"copy * SOME-FILE\".\n"
+                  "  (Then unset *mbox-rfc4155* again.)\n"));
             }
          }
 
-         if(linebuf != NULL)
-            n_free(linebuf);
+         mx_fs_linepool_release(linebuf, linesize);
          break;
       }
 
@@ -432,6 +432,7 @@ jputln:
       linebuf[cnt++] = '\n';
       ASSERT(linebuf[cnt] == '\0');
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
+
       if(ferror(mb.mb_otf)){
          n_perr(_("/tmp"), 0);
          exit(n_EXIT_ERR); /* TODO no! */
@@ -1167,7 +1168,7 @@ jset:
 }
 
 FL int
-n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
+n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
    struct stat stb;
    char buf[2];
@@ -1175,22 +1176,20 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    boole needsep;
    NYD2_IN;
 
-   if(!fseek(fout, -2L, SEEK_END)){
-      if(fread(buf, sizeof *buf, 2, fout) != 2)
-         goto jerrno;
+   if(!fseek(fout, -2L, SEEK_END) && fread(buf, sizeof *buf, 2, fout) == 2)
       needsep = (buf[0] != '\n' || buf[1] != '\n');
-   }else{
+   else{
       rv = su_err_no();
-
-      if(st_or_null == NULL){
-         st_or_null = &stb;
-         if(fstat(fileno(fout), st_or_null))
+      if(st_or_nil == NIL){
+         st_or_nil = &stb;
+         if(fstat(fileno(fout), st_or_nil))
             goto jerrno;
       }
 
-      if(st_or_null->st_size >= 2)
+      if(st_or_nil->st_size >= 2)
          goto jleave;
-      if(st_or_null->st_size == 0){
+      if(st_or_nil->st_size == 0){
+         clearerr(fout);
          rv = su_ERR_NONE;
          goto jleave;
       }

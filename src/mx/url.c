@@ -438,7 +438,6 @@ juser:
       l = P2UZ(cp - data);
       ub = n_lofi_alloc(l +1);
       d = data;
-      urlp->url_flags |= mx_URL_HAD_USER;
       data = &cp[1];
 
       /* And also have a password? */
@@ -463,16 +462,22 @@ juser:
       ub[l] = '\0';
       if((urlp->url_user.s = mx_url_xdec(ub)) == NIL)
          goto jurlp_err;
-      urlp->url_user.l = su_cs_len(urlp->url_user.s);
-      if((urlp->url_user_enc.s = mx_url_xenc(urlp->url_user.s, FAL0)) == NIL)
-         goto jurlp_err;
-      urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
+      if((urlp->url_user.l = su_cs_len(urlp->url_user.s)) > 0){
+         urlp->url_flags |= mx_URL_HAD_USER;
 
-      if(urlp->url_user_enc.l != l || su_mem_cmp(urlp->url_user_enc.s, ub, l)){
+         if((urlp->url_user_enc.s = mx_url_xenc(urlp->url_user.s, FAL0)
+               ) == NIL)
+            goto jurlp_err;
+         urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
+
+         if(urlp->url_user_enc.l != l ||
+               su_mem_cmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
-         n_err(_("String is not properly URL percent encoded: %s\n"), ub);
-         d = NIL;
-      }
+            n_err(_("Incorrect URL percent encoding: %s\n"), ub);
+            d = NIL;
+         }
+      }else
+         urlp->url_user.s = NIL;
 
       n_lofi_free(ub);
       if(d == NIL)
@@ -579,13 +584,14 @@ jurlp_err:
    /* User, II
     * If there was no user in the URL, do we have *user-HOST* or *user*? */
    if(!(urlp->url_flags & mx_URL_HAD_USER)){
+      /* *user* guaranteed non-empty */
       if((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P)
             ) == NIL){
          /* No, check whether .netrc lookup is desired */
 # ifdef mx_HAVE_NETRC
          if(ok_vlook(v15_compat) == NIL ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
-               !mx_netrc_lookup(urlp, FAL0))
+               !mx_netrc_lookup(urlp, FAL0) || urlp->url_user.s[0] == '\0')
 # endif
             urlp->url_user.s = UNCONST(char*,ok_vlook(LOGNAME));
       }

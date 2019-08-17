@@ -73,8 +73,8 @@ static void             __maildircatch_hold(int s);
 /* Do some cleanup in the tmp/ subdir */
 static void             _cleantmp(void);
 
-static int              _maildir_setfile1(char const *name, enum fedit_mode fm,
-                           int omsgCount);
+static int a_maildir_setfile1(char const *name, enum fedit_mode fm,
+      int omsgCount);
 
 static int a_maildir_cmp(void const *a, void const *b);
 
@@ -84,7 +84,7 @@ static int              _maildir_subdir(char const *name, char const *sub,
 static void             _maildir_append(char const *name, char const *sub,
                            char const *fn);
 
-static void             readin(char const *name, struct message *m);
+static boole a_maildir_readin(char const *name, struct message *mp);
 
 static void             maildir_update(void);
 
@@ -161,7 +161,7 @@ jleave:
 }
 
 static int
-_maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
+a_maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
 {
    int i;
    NYD_IN;
@@ -178,11 +178,16 @@ _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
    _maildir_append(name, NULL, NULL);
 
    n_autorec_relax_create();
-   for (i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i) {
-      readin(name, message + i);
+   for(i = ((fm & FEDIT_NEWMAIL) ? omsgCount : 0); i < msgCount; ++i){
+      if(!a_maildir_readin(name, &message[i])){
+         i = -1;
+         break;
+      }
       n_autorec_relax_unroll();
    }
    n_autorec_relax_gut();
+   if(i < 0)
+      goto jleave;
 
    if (fm & FEDIT_NEWMAIL) {
       if (msgCount > omsgCount)
@@ -453,44 +458,44 @@ jleave:
    return;
 }
 
-static void
-readin(char const *name, struct message *m)
-{
+static boole
+a_maildir_readin(char const *name, struct message *mp){
+   long size, lines;
+   boole b;
    char *buf;
-   uz bufsize, buflen, cnt;
-   long size = 0, lines = 0;
+   uz cnt, buflen, bufsize;
    off_t offset;
    FILE *fp;
-   int emptyline = 0;
+   char const *emsg;
    NYD_IN;
 
-   if((fp = mx_fs_open(m->m_maildir_file, "r")) == NIL){
-      n_err(_("Cannot read %s for message %lu\n"),
-         n_shexp_quote_cp(savecatsep(name, '/', m->m_maildir_file), FAL0),
-         (ul)P2UZ(m - message + 1));
-      m->m_flag |= MHIDDEN;
-      goto jleave;
+   if((fp = mx_fs_open(mp->m_maildir_file, "r")) == NIL){
+      emsg = _("Cannot read %s for message %lu\n");
+      goto jerr;
    }
 
-   cnt = fsize(fp);
-   fseek(mb.mb_otf, 0L, SEEK_END);
    offset = ftell(mb.mb_otf);
-   buf = n_alloc(bufsize = LINESIZE);
+   cnt = fsize(fp);
+
+   mx_fs_linepool_aquire(&buf, &bufsize);
    buflen = 0;
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NULL) {
+   b = FAL0;
+   size = lines = 0;
+   while(fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NIL){
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(buf, buflen, FAL0)) {
+      if(b && is_head(buf, buflen, FAL0)){
          putc('>', mb.mb_otf);
          ++size;
       }
-      size += fwrite(buf, 1, buflen, mb.mb_otf);/*XXX err hdling*/
-      emptyline = (*buf == '\n');
+      size += fwrite(buf, 1, buflen, mb.mb_otf);
+      b = (*buf == '\n');
       ++lines;
    }
-   n_free(buf);
-   if (!emptyline) {
+   mx_fs_linepool_release(buf, bufsize);
+
+   if(!b){
       /* TODO we need \n\n for mbox format.
        * TODO That is to say we do it wrong here in order to get it right
        * TODO when send.c stuff or with MBOX handling, even though THIS
@@ -499,16 +504,30 @@ readin(char const *name, struct message *m)
       ++lines;
       ++size;
    }
+   b = (fflush(mb.mb_otf) != EOF);
 
    mx_fs_close(fp);
-   fflush(mb.mb_otf);
-   m->m_size = m->m_xsize = size;
-   m->m_lines = m->m_xlines = lines;
-   m->m_block = mailx_blockof(offset);
-   m->m_offset = mailx_offsetof(offset);
-   substdate(m);
+
+   if(!b){
+      emsg = _("I/O error reading %s for message %lu\n");
+      goto jleave;
+   }
+
+   mp->m_size = mp->m_xsize = size;
+   mp->m_lines = mp->m_xlines = lines;
+   mp->m_block = mailx_blockof(offset);
+   mp->m_offset = mailx_offsetof(offset);
+   substdate(mp);
 jleave:
    NYD_OU;
+   return b;
+
+jerr:
+   n_err(emsg,
+      n_shexp_quote_cp(savecatsep(name, '/', mp->m_maildir_file), FAL0),
+      S(ul,P2UZ(mp - message + 1)));
+   b = FAL0;
+   goto jleave;
 }
 
 static void
@@ -975,18 +994,17 @@ jerr:
          mktable();
       if (saveint != SIG_IGN)
          safe_signal(SIGINT, &__maildircatch);
-      i = _maildir_setfile1(name, fm, omsgCount);
+      if(a_maildir_setfile1(name, fm, omsgCount) < 0){
+         if((fm & FEDIT_NEWMAIL) && a_maildir_tbl != NIL)
+            n_free(a_maildir_tbl);
+         emsg = N_("Cannot setup maildir://%s\n");
+         goto jerr;
+      }
    }
    if ((fm & FEDIT_NEWMAIL) && a_maildir_tbl != NULL)
       n_free(a_maildir_tbl);
 
    safe_signal(SIGINT, saveint);
-
-   if (i < 0) {
-      mb.mb_type = MB_VOID;
-      *mailname = '\0';
-      msgCount = 0;
-   }
 
    if (cwret(&cw) == STOP)
       n_panic(_("Cannot change back to current directory"));

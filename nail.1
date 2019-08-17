@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.14 / 2019-07-27
-.Dd July 27, 2019
-.ds VV \\%v14.9.14
+.\"@ S-nail v14.9.15 / 2019-08-17
+.Dd August 17, 2019
+.ds VV \\%v14.9.15
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -478,6 +478,7 @@
 .Mx -anchor-spass Va "folder-hook"
 .Mx -anchor-spass Va "folder-resolved"
 .Mx -anchor-spass Va "followup-to"
+.Mx -anchor-spass Va "followup-to-add-cc"
 .Mx -anchor-spass Va "followup-to-honour"
 .Mx -anchor-spass Va "forward-as-attachment"
 .Mx -anchor-spass Va "forward-inject-head"
@@ -544,6 +545,7 @@
 .Mx -anchor-spass Va "on-compose-splice-shell"
 .Mx -anchor-spass Va "on-history-addition"
 .Mx -anchor-spass Va "on-main-loop-tick"
+.Mx -anchor-spass Va "on-program-exit"
 .Mx -anchor-spass Va "on-resend-cleanup"
 .Mx -anchor-spass Va "on-resend-enter"
 .Mx -anchor-spass Va "page"
@@ -784,29 +786,35 @@
 .Mx -toc -tree html pdf ps xhtml
 .Sh DESCRIPTION
 .Bd -filled -compact -offset indent
-.Sy Compatibility note:
-S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2020).
-Backward incompatibility has to be expected \(en
+.Sy Note:
+S-nail (\*(UA) will see major changes in v15.0 (circa 2020).
+Some backward incompatibilities cannot be avoided.
 .Sx COMMANDS
-will use
-.Sx "Shell-style argument quoting"
-rules, for example, and shell metacharacters will become meaningful.
-Many old-style commands accept new syntax via
-.Cm wysh ,
-one of the
-.Sx "Command modifiers" .
-New and old behaviour is flagged \*(IN and \*(OU, and setting
-.Va v15-compat ,
-one of the many
-.Sx "INTERNAL VARIABLES" ,
-will choose new behaviour when applicable; when set with value,
+change to
+.Sx "Shell-style argument quoting" ,
+and shell metacharacters will become (more) meaningful.
+Some commands accept new syntax today via
 .Cm wysh
-is default behaviour.
-\*(OB flags what will vanish, and enabling
+.Pf ( Sx "Command modifiers" ) .
+Behaviour is flagged \*(IN and \*(OU,
+.Ic set Ns
+ting
+.Va v15-compat
+.Pf ( Sx "INTERNAL VARIABLES" )
+will choose new behaviour when applicable;
+giving it a value makes
+.Cm wysh
+an implied default.
+\*(OB flags what will vanish.
+Using
 .Fl d
 or
 .Fl v
 enables obsoletion warnings.
+.Pp
+.Sy Warning!
+.Va v15-compat
+(with value) will be a default in v14.10.0!
 .Ed
 .Pp
 \*(UA provides a simple and friendly environment for sending and
@@ -1676,32 +1684,26 @@ or
 .Va debug
 sandbox dry-run tests will prove correctness.
 .Pp
-Message recipients (as specified on the command line or defined in
-.Ql To: ,
-.Ql Cc:
-or
-.Ql Bcc: ;
-these support the
-.Ql ?single
-modifier to enforce treatment as a single addressee, e.g.,
-.Ql To?single: exa, <m@ple> )
-are subject to
+Message recipients are subject to
 .Ic alternates
-filtering, and may not only be email addressees but can also be names of
-mailboxes and even complete shell command pipe specifications.
+filtering, and may not only be email addresses, but can also be names
+of mailboxes and even complete shell command pipe specifications.
 If the variable
 .Va expandaddr
-is not set then only network addresses (see
-.Xr mailaddr 7
-for a description of mail addresses) and plain user names (including MTA
-aliases) may be used, other types will be filtered out, giving a warning
-message.
+is not set then only email addresses like
+.Ql bob@exam.ple
+and plain user names (including MTA aliases) may be used, other types
+will be filtered out, giving a warning message.
+.Va expandaddr
+indeed allows further control over and adjustments of message recipients,
+e.g., user names can be expanded to network addresses by specifying
+.Ql namehostex .
 A network address that contains no domain-, but only a valid local user
 .Ql <name>
 in angle brackets will be automatically expanded to a valid address when
 .Va hostname
-is set to a non-empty value; setting it to the empty value instructs
-\*(UA that the used
+is not set, or set to a non-empty value; setting it to the empty value
+instructs \*(UA that the used
 .Va mta
 will perform the necessary expansion.
 The command
@@ -2236,7 +2238,10 @@ and
 .Va followup-to
 controls creation of this header when creating
 .Ic mail Ns
-s; it may be created automatically, e.g., when list-replying via
+s, if the necessary user setup
+.Pf ( from , sender ) ;
+is available; then, it may also be created automatically, e.g., when
+list-replying via
 .Ic Lreply ,
 when
 .Ic reply
@@ -2284,6 +2289,15 @@ is used instead (if it is a single address on the same domain as
 .Ql List-Post: )
 in order to accept a list administrator's wish that is supposed to have
 been manifested like that.
+.Pp
+For convenience and compatibility with mail programs that do not honour
+the non-standard M-F-T, an automatic user entry in the carbon-copy
+.Ql Cc:
+address list of generated message can be created by setting
+.Va followup-to-add-cc .
+This entry will be added whenever the user will be placed in the
+.Ql Mail-Followup-To:
+list, and is not a regular addressee already.
 .Ss "Signed and encrypted messages with S/MIME"
 \*(OP S/MIME provides two central mechanisms:
 message signing and message encryption.
@@ -2457,6 +2471,7 @@ exists before finally ending up looking at the plain variable itself.
 necessary credential information of an account:
 .Bl -bullet
 .It
+A user is always required.
 If no
 .Ql USER
 has been given in the URL the variables
@@ -4499,7 +4514,7 @@ latter command, and in one operation with the special name
 .Ql * .
 Also for all but it a possibly set
 .Va on-account-cleanup
-hook is called once they are left.
+hook is called once they are left, including program exit.
 .Pp
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
@@ -5609,6 +5624,9 @@ any saving of messages in the
 .Ev MBOX ,
 as well as a possibly tracked line editor
 .Va history-file .
+A possibly set
+.Va on-account-cleanup
+will be invoked, however.
 The optional status number argument will be passed through to
 .Xr exit 3 .
 \*(ID For now it can happen that the given status will be overwritten,
@@ -9301,16 +9319,21 @@ so care for ordering issues must be taken.
 .Pp
 Indeed the value is interpreted as a comma-separated list of
 case-insensitive strings.
-Presence of forbidden address types is treated as a hard send error
-instead of only causing them to be filtered out if the list contains
-.Ql fail .
-Address targets can be added and subtracted with a plus sign
+Hard send errors can be enforced for disallowed address types by setting
+.Ql fail ;
+by default these are only filtered out.
+User name receivers addressing valid local users can be expanded to
+a network address (also see
+.Va hostname )
+by setting
+.Ql namehostex .
+Address targets can be added and removed with a plus sign
 .Ql +
 or hyphen-minus
 .Ql -
-prefix: the value
+prefix, respectively: the value
 .Ql all
-addresses all possible address specifications,
+addresses all possible specifications,
 .Ql fcc
 whitelists targets specified via
 .Ql Fcc:
@@ -9326,7 +9349,7 @@ disallowed for the SMTP based
 .Va mta ) ,
 and
 .Ql addr
-network addresses;
+network addresses.
 Targets are interpreted in the given order, so that
 .Ql restrict,\:fail,\:+file,\:-all,\:+addr
 will cause hard errors for any non-network address recipient address
@@ -9398,7 +9421,7 @@ if they are available, with a hyphen-minus
 otherwise.
 The output of the command
 .Ic version
-will include this information in a more pleasant output.
+includes this information in a more pleasant output.
 .Mx
 .It Va flipr
 \*(BO This setting reverses the meanings of a set of reply commands,
@@ -9478,12 +9501,25 @@ once that evaluation has occurred; rather internal.
 \*(BO Controls whether a
 .Ql Mail-Followup-To:
 header is generated when sending messages to known mailing lists.
+The user as determined via
+.Va from
+(or, if that contains multiple addresses,
+.Va sender )
+will be placed in there if any list addressee is not a subscribed list.
 Also see
 .Va followup-to-honour
 and the commands
 .Ic mlist , mlsubscribe , reply
 and
 .Ic Lreply .
+.Mx
+.It Va followup-to-add-cc
+\*(BO Controls whether the user will be added to the messages'
+.Ql Cc:
+list in addition to placing an entry in
+.Ql Mail-Followup-To:
+(see
+.Va followup-to ) .
 .Mx
 .It Va followup-to-honour
 Controls whether a
@@ -9493,13 +9529,9 @@ header is honoured when group-replying to a message via
 or
 .Ic Lreply .
 This is a quadoption; if set without a value it defaults to
-.Dq yes .
-Also see
-.Va followup-to
-and the commands
-.Ic mlist
-and
-.Ic mlsubscribe .
+.Dq yes ,
+and see
+.Va followup-to .
 .Mx
 .It Va forward-as-attachment
 \*(BO Original messages are normally sent as inline text with the
@@ -10704,6 +10736,13 @@ about to read the next input line.
 Note variable and other changes it performs are not scoped, e.g., via
 .Ic localopts !
 .Mx
+.It Va on-program-exit
+This hook will be called when the program exits, whether via
+.Ic exit
+or
+.Ic quit ,
+or because the send mode is done.
+.Mx
 .It Va on-resend-cleanup
 \*(ID Identical to
 .Va on-compose-cleanup ,
@@ -10878,20 +10917,31 @@ Supported are the default
 .Ql plain ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
 as well as \*(IN
 .Ql external
-(for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs ) .
-.Va user
 and
-.Va password
-are required but for
-.Ql external ,
-which only needs the former.
+.Ql externanon
+for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs .
+There may be the \*(OPal method \*(IN
+.Ql gssapi .
+.Ql externanon
+does not need any user credentials,
+.Ql external
+and
+.Ql gssapi
+need a
+.Va user ,
+the remains also require a
+.Va password .
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422, and fail if additional credentials are actually passed.
 Unless
 .Va pop3-no-apop
 is set the
@@ -11694,20 +11744,24 @@ authentication method, possible values are
 .Ql login ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
 as well as \*(IN
 .Ql external
-(for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs ) .
+and
+.Ql externanon
+for TLS secured connections which pass a client certificate via
+.Va tls-config-pairs .
 There may be the \*(OPal methods
 .Ql cram-md5
 and
 .Ql gssapi .
 .Ql none
-does not need any user credentials,
+and
+.Ql externanon
+do not need any user credentials,
 .Ql external
 and
 .Ql gssapi
@@ -11715,6 +11769,10 @@ require a user name, and all other methods require a
 .Va user
 name and a
 .Va password .
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422 aka RFC 4954, and fail if additional credentials are passed.
 Also see
 .Va mta .
 Note that
@@ -12356,6 +12414,8 @@ Fallback support via
 .Xr SSL_CTX_use_certificate_chain_file 3 .
 .Sx "Filename transformations"
 are performed.
+.Cd PrivateKey
+will be set to the same value if not initialized explicitly.
 Some services support so-called
 .Ql external
 authentication if a TLS client certificate was successfully presented
@@ -12415,7 +12475,9 @@ in which case any other value but (exactly)
 results in an error.
 .It Cd PrivateKey
 Filename of the private key in PEM format of a TLS client certificate.
-If unset, the name of the certificate file is used.
+If unset, the value of
+.Cd Certificate
+is used.
 .Sx "Filename transformations"
 are performed.
 Fallback via
@@ -12614,9 +12676,8 @@ otherwise the given value will be made the new file mode creation mask.
 Child processes inherit the file mode creation mask of their parent.
 .Mx Va user
 .It Va user-HOST , user
-\*(IN Variable chain that sets a global fallback user name, which is
-used in case none has been given in the protocol and account-specific
-URL.
+\*(IN Variable chain that sets a global fallback user name, used in case
+none has been given in the protocol and account-specific URL.
 This variable defaults to the name of the user who runs \*(UA.
 .Mx
 .It Va v15-compat
@@ -14338,12 +14399,14 @@ Supported are the default
 .Ql login ,
 \*(IN
 .Ql oauthbearer
-(you might want to read the
+(see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
 \*(IN
 .Ql external
+and
+.Ql externanon
 (for TLS secured connections which pass a client certificate via
 .Va tls-config-pairs ) ,
 as well as the \*(OPal
@@ -14359,6 +14422,10 @@ except
 and
 .Ql external ,
 which only need the former.
+.Ql externanon
+solely builds upon the credentials passed via a client certificate,
+and is usually the way to go since tested servers do not actually follow
+RFC 4422, and fail if additional credentials are actually passed.
 .Mx
 .It Va imap-cache
 Enables caching of IMAP mailboxes.

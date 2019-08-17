@@ -1343,7 +1343,8 @@ thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
 # pwd(1) is needed - either for make-emerge.sh, or for ourselves
-[ -n "${CWDDIR}" ] || thecmd_testandset_fail pwd pwd
+#[ -n "${CWDDIR}" ] ||
+   thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1421,6 +1422,9 @@ if [ -z "${VERBOSE}" ]; then
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
+printf \
+   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check-only %s\n' \
+   "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
@@ -1439,7 +1443,7 @@ for i in \
          PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
          SU_CWDDIR SU_INCDIR SU_SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
-         ln mkdir mv rm sed sort tee tr \
+         ln mkdir mv pwd rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
@@ -2242,7 +2246,7 @@ int main(void){
          '#define mx_HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 
-   if feat_no CROSS_BUILD; then
+   if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
@@ -2840,7 +2844,7 @@ else
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
 printf '#ifdef mx_SOURCE\n' >> ${h}
-printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
 printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
@@ -3427,8 +3431,8 @@ ${rm} -rf ${tmp0}.* ${tmp0}*
 echo 'The following features are included (+) or not (-):' > ${tmp}
 set -- ${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}
 printf '/* The "feature string" */\n' >> ${h}
-# Because + is expanded by *folder* if first in "echo $features", put something
-printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES "#' >> ${h}
+# Prefix sth. to avoid that + is expanded by *folder* (echo $features)
+printf '#define VAL_FEATURES_CNT '${#}'\n#define VAL_FEATURES ",' >> ${h}
 sep=
 for opt
 do

@@ -44,6 +44,7 @@
 #undef su_FILE
 #define su_FILE net_smtp
 #define mx_SOURCE
+#define mx_SOURCE_NET_SMTP
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -64,7 +65,7 @@ su_EMPTY_FILE()
 #include "mx/net-socket.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-smtp-gss.h" /* $(MX_SRCDIR) */
+# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #include "mx/net-smtp.h"
@@ -77,7 +78,7 @@ struct a_netsmtp_line{
 
 static sigjmp_buf a_netsmtp_jmp;
 
-static void a_netsmtp_onterm(int signo);
+static void a_netsmtp_onsig(int signo);
 
 /* Get the SMTP server's answer, expecting val */
 static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
@@ -87,7 +88,7 @@ static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
 static boole a_netsmtp_talk(struct mx_socket *sp, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-smtp-gss.h>
+# include <mx/net-gssapi.h>
 #endif
 
 /* Indirect SMTP I/O */
@@ -129,7 +130,7 @@ do if(!(n_poption & n_PO_D)){\
 }while(0)
 
 static void
-a_netsmtp_onterm(int signo){
+a_netsmtp_onsig(int signo){
    UNUSED(signo);
    siglongjmp(a_netsmtp_jmp, 1);
 }
@@ -150,7 +151,7 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
          goto jleave;
       }
       if(n_poption & n_PO_VV)
-         n_err(">>> %s", slp->sl_buf.s);
+         n_err(">>> SERVER: %s", slp->sl_buf.s);
 
       switch(slp->sl_buf.s[0]){
       case '1': rv = 1; break;
@@ -160,7 +161,7 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
       default: rv = 5; break;
       }
       if(val != rv)
-         n_err(_("smtp-server: %s"), slp->sl_buf.s);
+         n_err(_("SMTP server: %s"), slp->sl_buf.s);
    }while(slp->sl_buf.s[3] == '-');
 
    if(want_dat){
@@ -184,9 +185,8 @@ a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp){
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
-      a_IS_EXTERNAL = 1u<<2,
-      a_IN_HEAD = 1u<<3,
-      a_IN_BCC = 1u<<4
+      a_IN_HEAD = 1u<<2,
+      a_IN_BCC = 1u<<3
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
@@ -298,31 +298,44 @@ jerr_cred:
        * message (when status was 334) */
       break;
 
-   case mx_CRED_AUTHTYPE_EXTERNAL: /* TODO untested; single roundtrip... */
-      f |= a_IS_EXTERNAL;
-      /* FALLTHRU */
+   case mx_CRED_AUTHTYPE_EXTERNAL:
+#define a_MAX (sizeof("AUTH EXTERNAL " NETNL))
+      cnt = b64_encode_calc_size(sbp->sb_credp->cc_user.l);
+      if(/*cnt == UZ_MAX ||*/ cnt >= sizeof(o) - a_MAX)
+         goto jerr_cred;
+#undef a_MAX
+
+      su_mem_copy(o, "AUTH EXTERNAL ", sizeof("AUTH EXTERNAL ") -1);
+      b64.s = &o[sizeof("AUTH EXTERNAL ") -1];
+      b64_encode_buf(&b64, sbp->sb_credp->cc_user.s, sbp->sb_credp->cc_user.l,
+         B64_BUF | B64_CRLF);
+      a_SMTP_OUT(o);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      break;
+
+   case mx_CRED_AUTHTYPE_EXTERNANON:
+      a_SMTP_OUT(NETLINE("AUTH EXTERNAL ="));
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      break;
+
    case mx_CRED_AUTHTYPE_LOGIN:
       if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
-            (!(f & a_IS_EXTERNAL) &&
-             b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX))
+            b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
-      a_SMTP_OUT((f & a_IS_EXTERNAL) ? NETLINE("AUTH EXTERNAL")
-         : NETLINE("AUTH LOGIN"));
+      a_SMTP_OUT(NETLINE("AUTH LOGIN"));
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
       if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
             sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
-      if(!(f & a_IS_EXTERNAL)){
-         a_SMTP_ANSWER(3, FAL0, FAL0);
+      a_SMTP_ANSWER(3, FAL0, FAL0);
 
-         if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
-               sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
-            goto jleave;
-         a_SMTP_OUT(b64.s);
-      }
+      if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
+            sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
+         goto jleave;
+      a_SMTP_OUT(b64.s);
       a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
@@ -345,7 +358,7 @@ jerr_cred:
    case mx_CRED_AUTHTYPE_GSSAPI:
       if(n_poption & n_PO_D)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if(!a_netsmtp_gss(sop, sbp, slp))
+      else if(!su_CONCAT(su_FILE,_gss)(sop, sbp->sb_urlp, sbp->sb_credp, slp))
          goto jleave;
       break;
 #endif
@@ -411,7 +424,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-smtp-gss.h>
+# include <mx/net-gssapi.h>
 #endif
 
 #undef a_SMTP_OUT
@@ -420,29 +433,33 @@ jleave:
 boole
 mx_smtp_mta(struct sendbundle *sbp){
    struct mx_socket so;
-   n_sighdl_t volatile saveterm;
+   n_sighdl_t volatile saveterm, savepipe;
    boole volatile rv;
    NYD_IN;
 
    rv = FAL0;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
+   savepipe = safe_signal(SIGPIPE, SIG_IGN);
    if(sigsetjmp(a_netsmtp_jmp, 1))
       goto jleave;
    if(saveterm != SIG_IGN)
-      safe_signal(SIGTERM, &a_netsmtp_onterm);
+      safe_signal(SIGTERM, &a_netsmtp_onsig);
+   safe_signal(SIGPIPE, &a_netsmtp_onsig);
 
    if(n_poption & n_PO_D)
       su_mem_set(&so, 0, sizeof so);
    else if(!mx_socket_open(&so, sbp->sb_urlp))
-      goto jleave;
+      goto j_leave;
 
    so.s_desc = "SMTP";
    rv = a_netsmtp_talk(&so, sbp);
 
+jleave:
    if(!(n_poption & n_PO_D))
       mx_socket_close(&so);
-jleave:
+j_leave:
+   safe_signal(SIGPIPE, savepipe);
    safe_signal(SIGTERM, saveterm);
    NYD_OU;
    return rv;

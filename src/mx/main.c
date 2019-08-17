@@ -499,7 +499,7 @@ main(int argc, char *argv[]){
       "template;t;" N_("message to be sent is read from standard input"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
       "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
-         "verbose;v;" N_("identical to -Sverbose (twice for more verbosity)"),
+         "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
       "startup-cmd:;X;" N_("to be executed before normal operation"),
       "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
       "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
@@ -1119,7 +1119,7 @@ je_expandargv:
 
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0 && !n_go_XYargs(FAL0, Xargs, Xargs_cnt))
-      goto jleave;
+      goto jleave_full;
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1128,14 +1128,14 @@ je_expandargv:
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
             n_exit_status = n_EXIT_ERR;
-            goto jleave;
+            goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
             (n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;
-         goto jleave;
+         goto jleave_full;
       }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
          n_poption_arg_Mm = NULL;
    }
@@ -1144,6 +1144,10 @@ je_expandargv:
     * We're finally completely setup and ready to go!
     */
    n_psonce |= n_PSO_STARTED;
+
+   /* TODO v15compat */
+   if((n_poption & n_PO_D_V) && ok_vlook(v15_compat) == NIL)
+      n_err("Warning -- v15-compat=yes will be default in v14.10.0!\n");
 
    if(!(n_psonce & n_PSO_SENDMODE))
       n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg,
@@ -1159,7 +1163,7 @@ je_expandargv:
          attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
          if(aerr != n_ATTACH_ERR_NONE){
             n_exit_status = n_EXIT_ERR;
-            goto jleave;
+            goto jleave_full;
          }
       }
 
@@ -1176,6 +1180,18 @@ je_expandargv:
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
+
+jleave_full:
+   i = n_exit_status;
+
+   n_psonce &= ~n_PSO_EXIT_MASK;
+   mx_account_leave();
+
+   n_psonce &= ~n_PSO_EXIT_MASK;
+   temporary_on_xy_hook_caller("on-program-exit", ok_vlook(on_program_exit),
+      FAL0);
+
+   n_exit_status = i;
 
 jleave:
 #ifdef su_HAVE_DEBUG

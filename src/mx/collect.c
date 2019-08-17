@@ -1065,7 +1065,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    struct n_string s_b, * volatile s;
    struct a_coll_ocs_arg *coap;
    int c;
-   int volatile t, eofcnt, getfields;
+   int volatile gfield, eofcnt, getfields;
    char volatile escape;
    char *linebuf;
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
@@ -1113,33 +1113,33 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
     * after the headers (since some people mind) */
    getfields = 0;
    if(!(n_poption & n_PO_t_FLAG)){
-      t = GTO | GSUBJECT | GCC | GNL;
+      gfield = GTO | GSUBJECT | GCC | GBCC | GNL;
       if(ok_blook(fullnames))
-         t |= GCOMMA;
+         gfield |= GCOMMA;
 
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
-         if(hp->h_subject == NULL && ok_blook(asksub)/* *ask* auto warped! */)
-            t &= ~GNL, getfields |= GSUBJECT;
+         if(hp->h_subject == NIL && ok_blook(asksub)/* *ask* auto warped! */)
+            gfield &= ~(GSUBJECT | GNL), getfields |= GSUBJECT;
 
          if(hp->h_to == NULL)
-            t &= ~GNL, getfields |= GTO;
+            gfield &= ~(GTO | GNL), getfields |= GTO;
 
          if(!ok_blook(bsdcompat) && !ok_blook(askatend)){
             if(ok_blook(askbcc))
-               t &= ~GNL, getfields |= GBCC;
+               gfield &= ~(GBCC | GNL), getfields |= GBCC;
             if(ok_blook(askcc))
-               t &= ~GNL, getfields |= GCC;
+               gfield &= ~(GCC | GNL), getfields |= GCC;
          }
       }
    }else{
-      UNINIT(t, 0);
+      UNINIT(gfield, 0);
    }
 
    _coll_hadintr = 0;
 
    if (!sigsetjmp(_coll_jmp, 1)) {
       /* Ask for some headers first, as necessary */
-      if (getfields)
+      if(getfields)
          grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
       /* Execute compose-enter; delayed for -t mode */
@@ -1182,8 +1182,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 jinject_restart:
                if((cp = ok_vlook(editalong)) == NIL){
                   if(msf & n_MAILSEND_HEADERS_PRINT)
-                     n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
-                        NULL, NULL);
+                     n_puthead(TRU1, hp, n_stdout, gfield, SEND_TODISP,
+                        CONV_NONE, NIL, NIL);
 
                   rewind(_coll_fp);
                   while((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
@@ -1929,15 +1929,13 @@ jout:
    /* Final chance to edit headers, if not already above; and *asksend* */
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
       if(ok_blook(bsdcompat) || ok_blook(askatend)){
-         enum gfield gf;
-
-         gf = GNONE;
+         gfield = GNONE;
          if(ok_blook(askcc))
-            gf |= GCC;
+            gfield |= GCC;
          if(ok_blook(askbcc))
-            gf |= GBCC;
-         if(gf != 0)
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, gf, 1);
+            gfield |= GBCC;
+         if(gfield != GNONE)
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, gfield, 1);
       }
 
       if(ok_blook(askattach))

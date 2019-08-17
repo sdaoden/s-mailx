@@ -41,6 +41,7 @@
 #undef su_FILE
 #define su_FILE obs_imap
 #define mx_SOURCE
+#define mx_SOURCE_NET_IMAP
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -68,6 +69,10 @@ su_EMPTY_FILE()
 #include "mx/sigs.h"
 #include "mx/net-socket.h"
 #include "mx/ui-str.h"
+
+#ifdef mx_HAVE_GSSAPI
+# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+#endif
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -212,7 +217,8 @@ static void       imapalarm(int s);
 static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccred);
 static enum okay  imap_capability(struct mailbox *mp);
-static enum okay  imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred);
+static enum okay a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccredp);
 #ifdef mx_HAVE_MD5
 static enum okay  imap_cram_md5(struct mailbox *mp,
       struct mx_cred_ctx *ccred);
@@ -221,9 +227,6 @@ static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
 static enum okay a_imap_oauthbearer(struct mailbox *mp,
       struct mx_cred_ctx *ccp);
 static enum okay a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp);
-#ifdef mx_HAVE_GSSAPI
-static enum okay  _imap_gssapi(struct mailbox *mp, struct mx_cred_ctx *ccred);
-#endif
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
@@ -285,6 +288,10 @@ static enum okay  imap_rename1(struct mailbox *mp, const char *old,
                      const char *new);
 static char *     imap_strex(char const *cp, char const **xp);
 static enum okay  check_expunged(void);
+
+#ifdef mx_HAVE_GSSAPI
+# include <mx/net-gssapi.h>
+#endif
 
 static char *
 imap_quotestr(char const *s)
@@ -424,6 +431,10 @@ jleave:
    NYD2_OU;
    return cp;
 }
+
+#ifdef mx_HAVE_GSSAPI
+# include <mx/net-gssapi.h>
+#endif
 
 FL char const *
 imap_path_encode(char const *cp, boole *err_or_null){
@@ -1411,41 +1422,44 @@ imap_capability(struct mailbox *mp)
 }
 
 static enum okay
-imap_auth(struct mailbox *mp, struct mx_cred_ctx *ccred)
-{
+a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccredp){
    enum okay rv;
    NYD_IN;
+   UNUSED(urlp);
 
-   if (!(mp->mb_active & MB_PREAUTH)) {
+   if(!(mp->mb_active & MB_PREAUTH))
       rv = OKAY;
-      goto jleave;
-   }
-
-   switch (ccred->cc_authtype) {
+   else switch(ccredp->cc_authtype){
    case mx_CRED_AUTHTYPE_LOGIN:
-      rv = imap_login(mp, ccred);
+      rv = imap_login(mp, ccredp);
       break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
-      rv = a_imap_oauthbearer(mp, ccred);
+      rv = a_imap_oauthbearer(mp, ccredp);
       break;
    case mx_CRED_AUTHTYPE_EXTERNAL:
-      rv = a_imap_external(mp, ccred);
+   case mx_CRED_AUTHTYPE_EXTERNANON:
+      rv = a_imap_external(mp, ccredp);
       break;
 #ifdef mx_HAVE_MD5
    case mx_CRED_AUTHTYPE_CRAM_MD5:
-      rv = imap_cram_md5(mp, ccred);
+      rv = imap_cram_md5(mp, ccredp);
       break;
 #endif
 #ifdef mx_HAVE_GSSAPI
    case mx_CRED_AUTHTYPE_GSSAPI:
-      rv = _imap_gssapi(mp, ccred);
+      rv = OKAY;
+      if(n_poption & n_PO_D)
+         n_err(_(">>> We would perform GSS-API authentication now\n"));
+      else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, urlp, ccredp, mp))
+         rv = STOP;
       break;
 #endif
    default:
       rv = STOP;
       break;
    }
-jleave:
+
    NYD_OU;
    return rv;
 }
@@ -1580,7 +1594,7 @@ jleave:
 }
 
 static enum okay
-a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
+a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    uz cnt;
    boole nsaslir;
    char *cp;
@@ -1592,6 +1606,11 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
    queuefp = NIL;
    cp = NIL;
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
+
+   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
+      ccp->cc_user.l = !nsaslir;
+      ccp->cc_user.s = UNCONST(char*,"=");
+   }
 
    /* Calculate required storage */
    cnt = ccp->cc_user.l;
@@ -1620,6 +1639,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
    su_mem_copy(&cp[cnt], " AUTHENTICATE EXTERNAL ",
       sizeof(" AUTHENTICATE EXTERNAL ") /*-1*/);
    cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
+
    if(!nsaslir){
       su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
       cnt += ccp->cc_user.l;
@@ -1637,6 +1657,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){ /*TODO untested*/
 
       su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
       su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
+
       IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    }
 
@@ -1648,10 +1669,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-
-#ifdef mx_HAVE_GSSAPI
-# include "mx/obs-imap-gssapi.h" /* $(MX_SRCDIR) */
-#endif
 
 FL enum okay
 imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
@@ -1845,8 +1862,7 @@ imap_setfile(char const * volatile who, const char *xserver,
       rv = 1;
       goto jleave;
    }
-   if (ok_vlook(v15_compat) == NIL &&
-         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
+   if (ok_vlook(v15_compat) == NIL && url.url_pass.s != NIL)
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
@@ -2048,7 +2064,7 @@ jduppass:
       mb.mb_sock->s_desc = "IMAP";
       mb.mb_sock->s_onclose = imap_timer_off;
       if (imap_preauth(&mb, urlp, &ccred) != OKAY ||
-            imap_auth(&mb, &ccred) != OKAY) {
+            a_imap_auth(&mb, urlp, &ccred) != OKAY) {
          if(mb.mb_sock->s_fd >= 0)
             mx_socket_close(mb.mb_sock);
          su_FREE(mb.mb_sock);
@@ -3375,8 +3391,8 @@ imap_append(const char *xserver, FILE *fp, long offset)
           * TODO is possibly even a constant
           * TODO i changed this to su_cs_dup() sofar, as is used
           * TODO somewhere else in this file for this! */
-         if (imap_preauth(&mx, &url, &ccred) != OKAY ||
-               imap_auth(&mx, &ccred) != OKAY) {
+         if(imap_preauth(&mx, &url, &ccred) != OKAY ||
+               a_imap_auth(&mx, &url, &ccred) != OKAY){
             mx_socket_close(mx.mb_sock);
             su_FREE(mx.mb_sock);
             goto jfail;
