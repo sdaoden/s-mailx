@@ -142,7 +142,8 @@ enum expand_addr_flags{
    EAF_FAIL = 1u<<1, /* "fail" */
    EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
    EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
-   EAF_SHEXP_PARSE = 1u<<4, /* shexp_parse() the address first is allowed */
+   EAF_NAMEHOSTEX = 1u<<4, /* "namehostex": expand local user names */
+   EAF_SHEXP_PARSE = 1u<<5, /* shexp_parse() the address first is allowed */
    /* Bits reused by enum expand_addr_check_mode! */
    EAF_FCC = 1u<<8, /* +"fcc" umbrella */
    EAF_FILE = 1u<<9, /* +"file" targets */

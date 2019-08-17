@@ -1102,26 +1102,20 @@ or
 sandbox dry-run tests will prove correctness.
 .
 .Pp
-Message recipients (as specified on the command line or defined in
-.Ql To: ,
-.Ql Cc:
-or
-.Ql Bcc: ;
-these support the
-.Ql ?single
-modifier to enforce treatment as a single addressee, e.g.,
-.Ql To?single: exa, <m@ple> )
-are subject to
+Message recipients are subject to
 .Ic alternates
-filtering, and may not only be email addressees but can also be names of
-mailboxes and even complete shell command pipe specifications.
+filtering, and may not only be email addresses, but can also be names
+of mailboxes and even complete shell command pipe specifications.
 If the variable
 .Va expandaddr
-is not set then only network addresses (see
-.Xr mailaddr 7
-for a description of mail addresses) and plain user names (including MTA
-aliases) may be used, other types will be filtered out, giving a warning
-message.
+is not set then only email addresses like
+.Ql bob@exam.ple
+and plain user names (including MTA aliases) may be used, other types
+will be filtered out, giving a warning message.
+.Va expandaddr
+indeed allows further control over and adjustments of message recipients,
+e.g., user names can be expanded to network addresses by specifying
+.Ql namehostex .
 A network address that contains no domain-, but only a valid local user
 .Ql <name>
 in angle brackets will be automatically expanded to a valid address when
@@ -9495,16 +9489,21 @@ so care for ordering issues must be taken.
 .Pp
 Indeed the value is interpreted as a comma-separated list of
 case-insensitive strings.
-Presence of forbidden address types is treated as a hard send error
-instead of only causing them to be filtered out if the list contains
-.Ql fail .
-Address targets can be added and subtracted with a plus sign
+Hard send errors can be enforced for disallowed address types by setting
+.Ql fail ;
+by default these are only filtered out.
+User name receivers addressing valid local users can be expanded to
+a network address (also see
+.Va hostname )
+by setting
+.Ql namehostex .
+Address targets can be added and removed with a plus sign
 .Ql +
 or hyphen-minus
 .Ql -
-prefix: the value
+prefix, respectively: the value
 .Ql all
-addresses all possible address specifications,
+addresses all possible specifications,
 .Ql fcc
 whitelists targets specified via
 .Ql Fcc:
@@ -9520,7 +9519,7 @@ disallowed for the SMTP based
 .Va mta ) ,
 and
 .Ql addr
-network addresses;
+network addresses.
 Targets are interpreted in the given order, so that
 .Ql restrict,\:fail,\:+file,\:-all,\:+addr
 will cause hard errors for any non-network address recipient address

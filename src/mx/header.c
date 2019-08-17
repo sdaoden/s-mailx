@@ -1775,6 +1775,7 @@ expandaddr_to_eaf(void){ /* TODO should happen at var assignment time */
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
       {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
       {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
+      {"namehostex\0", FAL0, EAF_NONE, EAF_NAMEHOSTEX},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"fcc", TRU1, EAF_NONE, EAF_FCC}, /* Fcc: only */
@@ -1921,6 +1922,15 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
       cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       break;
    case mx_NAME_ADDRSPEC_ISNAME:
+      if((eaf & EAF_NAMEHOSTEX) &&
+            (!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) ||
+               getpwnam(np->n_name) != NIL)){
+         np->n_flags ^= mx_NAME_ADDRSPEC_ISADDR | mx_NAME_ADDRSPEC_ISNAME;
+         np->n_name = np->n_fullname = savecatsep(np->n_name, '@',
+               n_nodename(TRU1));
+         goto jisaddr;
+      }
+
       if(eaf & EAF_NAME)
          goto jgood;
       if(!(eaf & EAF_FAIL) && (eacm & EACM_NONAME_OR_FAIL)){
@@ -1931,6 +1941,7 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
       break;
    default:
    case mx_NAME_ADDRSPEC_ISADDR:
+jisaddr:
       if(!(eaf & EAF_ADDR)){
          cs = _("%s%s: *expandaddr* does not allow mail address target\n");
          break;
