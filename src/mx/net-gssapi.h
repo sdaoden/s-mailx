@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of GSS-API authentication.
- *@ According to RFC 4954 (SMTP), RFC 5034 (POP3).
+ *@ According to RFC 4954 (SMTP), RFC 5034 (POP3), RFC 4422/4959 (IMAP).
  *
  * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-4-Clause
@@ -42,7 +42,7 @@
 # include <gssapi/gssapi.h>
 # ifdef GSSAPI_OLD_STYLE
 #  include <gssapi/gssapi_generic.h>
-#  define GSS_C_NT_HOSTBASED_SERVICE   gss_nt_service_name
+#  define GSS_C_NT_HOSTBASED_SERVICE gss_nt_service_name
 #  define m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 # endif
 #else
@@ -58,7 +58,7 @@ static boole su_CONCAT(su_FILE,_gss)(struct mx_socket *sp, struct mx_url *urlp,
       struct mx_cred_ctx *credp,
 # ifdef mx_SOURCE_NET_SMTP
       struct a_netsmtp_line *slp
-# elif defined mx_SOURCE_NET_POP3
+# elif defined mx_SOURCE_NET_POP3 || defined mx_SOURCE_NET_IMAP
       struct mailbox *mp
 # endif
       );
@@ -76,7 +76,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       struct mx_cred_ctx *credp,
 # ifdef mx_SOURCE_NET_SMTP
       struct a_netsmtp_line *slp
-# elif defined mx_SOURCE_NET_POP3
+# elif defined mx_SOURCE_NET_POP3 || defined mx_SOURCE_NET_IMAP
       struct mailbox *mp
 # endif
       ){
@@ -92,6 +92,8 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 
 # if defined mx_SOURCE_NET_POP3
    int poprv;
+# elif defined mx_SOURCE_NET_IMAP
+   FILE *queuefp = NIL;
 # endif
    struct str in, out;
    gss_buffer_desc send_tok, recv_tok;
@@ -103,6 +105,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
    u32 f;
    boole ok;
    NYD_IN;
+   UNUSED(sop);
 
    ok = FAL0;
    f = a_F_NONE;
@@ -123,6 +126,8 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       su_mem_copy(send_tok.value, "smtp@", i = 5);
 # elif defined mx_SOURCE_NET_POP3
       su_mem_copy(send_tok.value, "pop@", i = 4);
+# elif defined mx_SOURCE_NET_IMAP
+      su_mem_copy(send_tok.value, "imap@", i = 5);
 # endif
       su_mem_copy(&S(char*,send_tok.value)[i], urlp->url_host.s,
          urlp->url_host.l +1);
@@ -136,6 +141,17 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
          send_tok.length), maj_stat, min_stat);
       goto jleave;
    }
+
+   /* */
+# ifdef mx_SOURCE_NET_IMAP
+   if(!(mp->mb_flags & MB_SASL_IR)){
+      IMAP_OUT(savecat(tag(1), NETLINE(" AUTHENTICATE GSSAPI")),
+         0, goto jleave);
+      imap_answer(mp, 1);
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+   }
+# endif
 
    gss_context = GSS_C_NO_CONTEXT;
    for(;;){
@@ -170,7 +186,12 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       f &= ~a_F_SEND_TOK;
       if(!(f & a_F_SETUP)){
          f |= a_F_SETUP;
+# if defined mx_SOURCE_NET_SMTP || defined mx_SOURCE_NET_POP3
          out.s = savecat("AUTH GSSAPI ", out.s);
+# elif defined mx_SOURCE_NET_IMAP
+         if(mp->mb_flags & MB_SASL_IR)
+            out.s = savecat(tag(1), savecat(" AUTHENTICATE GSSAPI ", out.s));
+# endif
       }
 
 # ifdef mx_SOURCE_NET_SMTP
@@ -181,6 +202,12 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
       a_POP3_ANSWER(poprv, goto jleave);
       in.l = su_cs_len(in.s = a_pop3_realdat);
+# elif defined mx_SOURCE_NET_IMAP
+      IMAP_OUT(out.s, 0, goto jleave);
+      imap_answer(mp, 1);
+      if(response_type != RESPONSE_CONT)
+         goto jleave;
+      in.l = su_cs_len(in.s = responded_text);
 # endif
 
       out.s = NIL;
@@ -236,6 +263,10 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # elif defined mx_SOURCE_NET_POP3
    a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
    a_POP3_ANSWER(poprv, goto jleave);
+# elif defined mx_SOURCE_NET_IMAP
+   IMAP_OUT(out.s, 0, goto jleave);
+   while(mp->mb_active & MB_COMD)
+      ok = imap_answer(mp, 1);
 # endif
 
    ok = TRU1;
