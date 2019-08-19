@@ -213,7 +213,7 @@ big_balls() {
 
       ${tar} -c -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
       < "${PROGRAM}-${REL}.tar" ${xz} -e -C sha256 > "${PROGRAM}-${REL}.tar.xz"
-      < "${PROGRAM}-${REL}.tar" ${gzip} > "${PROGRAM}-${REL}.tar.gz"
+      < "${PROGRAM}-${REL}.tar" ${gzip} -9 > "${PROGRAM}-${REL}.tar.gz"
       ${rm} "${PROGRAM}-${REL}.tar"
 
       printf '' > "${PROGRAM}-${REL}.cksum"
