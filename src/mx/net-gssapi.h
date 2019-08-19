@@ -61,6 +61,8 @@
 # include <gssapi.h>
 #endif
 
+#include <su/cs.h>
+
 #elif a_NET_GSSAPI_H == 1
 # undef a_NET_GSSAPI_H
 # define a_NET_GSSAPI_H 2
@@ -129,21 +131,17 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       goto jleave;
    }
 
-   send_tok.value = buf = n_lofi_alloc(
-         (send_tok.length = urlp->url_host.l + 5) +1);
-   /* C99 */{
-      uz i;
-
+   su_cs_pcopy(su_cs_pcopy(
+      send_tok.value = buf = n_lofi_alloc(
+            (send_tok.length = urlp->url_host.l + 5) +1),
 # ifdef mx_SOURCE_NET_SMTP
-      su_mem_copy(send_tok.value, "smtp@", i = 5);
+      "smtp@"
 # elif defined mx_SOURCE_NET_POP3
-      su_mem_copy(send_tok.value, "pop@", i = 4);
+      "pop@"
 # elif defined mx_SOURCE_NET_IMAP
-      su_mem_copy(send_tok.value, "imap@", i = 5);
+      "imap@"
 # endif
-      su_mem_copy(&S(char*,send_tok.value)[i], urlp->url_host.s,
-         urlp->url_host.l +1);
-   }
+      ), urlp->url_host.s);
 
    maj_stat = gss_import_name(&min_stat, &send_tok,
          GSS_C_NT_HOSTBASED_SERVICE, &target_name);
