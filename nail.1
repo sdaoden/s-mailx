@@ -1121,7 +1121,7 @@ will be filtered out, giving a warning message.
 .Va expandaddr
 indeed allows further control over and adjustments of message recipients,
 e.g., user names can be expanded to network addresses by specifying
-.Ql namehostex .
+.Ql nametoaddr .
 A network address that contains no domain-, but only a valid local user
 .Ql <name>
 in angle brackets will be automatically expanded to a valid address when
@@ -9502,7 +9502,7 @@ User name receivers addressing valid local users can be expanded to
 a network address (also see
 .Va hostname )
 by setting
-.Ql namehostex .
+.Ql nametoaddr .
 Address targets can be added and removed with a plus sign
 .Ql +
 or hyphen-minus

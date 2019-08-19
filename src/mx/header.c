@@ -1775,7 +1775,7 @@ expandaddr_to_eaf(void){ /* TODO should happen at var assignment time */
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
       {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
       {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
-      {"namehostex\0", FAL0, EAF_NONE, EAF_NAMEHOSTEX},
+      {"nametoaddr\0", FAL0, EAF_NONE, EAF_NAMETOADDR},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"fcc", TRU1, EAF_NONE, EAF_FCC}, /* Fcc: only */
@@ -1827,6 +1827,12 @@ jandor:
             }else if(!su_cs_cmp_case(cp, "noalias")){ /* TODO v15 OBSOLETE */
                n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
+               break;
+            }else if(!su_cs_cmp_case(cp, "namehostex")){ /* TODO v15 OBSOLETE*/
+               n_OBSOLETE(_("*expandaddr*: "
+                  "weird namehostex renamed to nametoaddr, "
+                  "sorry for the inconvenience!"));
+               rv |= EAF_NAMETOADDR;
                break;
             }
          }
@@ -1922,7 +1928,7 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
       cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       break;
    case mx_NAME_ADDRSPEC_ISNAME:
-      if((eaf & EAF_NAMEHOSTEX) &&
+      if((eaf & EAF_NAMETOADDR) &&
             (!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) ||
                getpwnam(np->n_name) != NIL)){
          np->n_flags ^= mx_NAME_ADDRSPEC_ISADDR | mx_NAME_ADDRSPEC_ISNAME;
