@@ -741,13 +741,19 @@ enum n_program_option{
 
 #define n_OBSOLETE(X) \
 do{\
-   if(n_poption & n_PO_D_V)\
+   static boole su_CONCAT(a__warned__, __LINE__);\
+   if(!su_CONCAT(a__warned__, __LINE__)){\
+      su_CONCAT(a__warned__, __LINE__) = TRU1;\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
+   }\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
 do{\
-   if(n_poption & n_PO_D_V)\
+   static boole su_CONCAT(a__warned__, __LINE__);\
+   if(!su_CONCAT(a__warned__, __LINE__)){\
+      su_CONCAT(a__warned__, __LINE__) = TRU1;\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+   }\
 }while(0)
 
 /* Program state bits which may regulary fluctuate */

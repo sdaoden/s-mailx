@@ -168,11 +168,6 @@ giving it a value makes
 .Cm wysh
 an implied default.
 \*(OB flags what will vanish.
-Using
-.Fl d
-or
-.Fl v
-enables obsoletion warnings.
 .Pp
 .Sy Warning!
 .Va v15-compat
@@ -9376,8 +9371,8 @@ The default is
 .
 .Mx
 .It Va debug
-\*(BO Enables debug messages and obsoletion warnings, disables the
-actual delivery of messages and also implies
+\*(BO Enables debug messages, disables the actual delivery of messages,
+and also implies
 .Pf no Va record
 as well as
 .Pf no Va save .
@@ -13182,8 +13177,7 @@ doing things, respectively.
 .It Va verbose
 \*(BO This setting, also controllable via the command line option
 .Fl v ,
-causes \*(UA to be more verbose, e.g., it will display obsoletion
-warnings and TLS certificate chains.
+causes \*(UA to be more verbose and show, e.g., TLS certificate chains.
 Even though marked \*(BO this option may be set up to three times in
 order to increase the level of verbosity, higher levels show details of
 the actual message delivery, protocol conversations and even variable
