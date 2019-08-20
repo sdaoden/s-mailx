@@ -289,7 +289,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \wysh set LC_ALL=${1}
+                  \set LC_ALL=${1}
                   \shift
                   \xcall cset_test "${@}"
                \end
@@ -1404,11 +1404,11 @@ t_wysh() {
    check c 0 "${MBOX}" '1473887148 321'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
-   wysh set mager='\hey\'
+   set mager='\hey\'
    varshow mager
-   wysh set mager="\hey\\"
+   set mager="\hey\\"
    varshow mager
-   wysh set mager=$'\hey\\'
+   set mager=$'\hey\\'
    varshow mager
 	__EOT
    check 3 0 "${MBOX}" '1289698238 69'
@@ -2488,14 +2488,14 @@ t_localopts() {
       echo ll2=$x
    }
    define ll1 {
-      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set y=$1; shift; eval localopts $y; localopts $1; shift
       set x=1
       echo ll1.1=$x
       call ll2 $1
       echo ll1.2=$x
    }
    define ll0 {
-      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set y=$1; shift; eval localopts $y; localopts $1; shift
       set x=0
       echo ll0.1=$x
       call ll1 $y "$@"
@@ -2727,7 +2727,7 @@ t_macro_param_shift() {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
 	   localopts on
-	   wysh set ignerr=$1
+	   set ignerr=$1
 	   shift
 	   localopts off
 	   echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -3261,7 +3261,7 @@ t_call_ret() {
 				echo .
 			end
 			call w1 $i
-			wysh set i=$? k=$!
+			set i=$? k=$!
 			vput vexpr j '&' $i 7
 			echon "<$1/$i/$k "
 			if [ $j -eq 7 ]
@@ -3278,7 +3278,7 @@ t_call_ret() {
 		vput vexpr i + $1 1
 		if [ $1 -lt 42 ]
 			call w2 $i
-			wysh set i=$? j=$! k=$^ERRNAME
+			set i=$? j=$! k=$^ERRNAME
 			echon "<$1/$i/$k "
 			return $i $j
 		else
@@ -3293,14 +3293,14 @@ t_call_ret() {
 		vput vexpr i + $1 1
 		if [ $1 -lt 42 ]
 			call w3 $i $2
-			wysh set i=$? j=$!
+			set i=$? j=$!
 			vput vexpr k - $1 $2
 			if [ $k -eq 21 ]
 				vput vexpr i + $1 1
 				vput vexpr j + $2 1
 				echo "# <$i/$j> .. "
 				call w3 $i $j
-				wysh set i=$? j=$!
+				set i=$? j=$!
 			end
 			eval echon "<\$1=\$i/\$^ERRNAME-$j "
 			return $i $j
@@ -3488,11 +3488,11 @@ t_vpospar() {
    eval vpospar set ${x};\
       unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 
-   wysh set ifs=$',\t'
+   set ifs=$',\t'
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
    unset ifs; echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   wysh set ifs=$',\t'
+   set ifs=$',\t'
    vput vpospar x quote; echo x<$x>
    vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
    eval vpospar set ${x};\
@@ -3615,10 +3615,10 @@ t_read() {
 	commandalias x echo '$?/$^ERRNAME / <$d>'
    readctl create .tin
    readall d;x
-   wysh set d;readall d;x
+   set d;readall d;x
    readctl create .tin2
    readall d;x
-   wysh set d;readall d;x
+   set d;readall d;x
    readctl remove .tin;echo $?/$^ERRNAME;\
       readctl remove .tin2;echo $?/$^ERRNAME
    echo '### now with empty lines'
@@ -3693,7 +3693,7 @@ t_headerpick() {
 \echo --- $?/$^ERRNAME, 9
 \if "$features" =% +uistrings,
    \unheaderpick type ignore from_ ba:l
-   \wysh set x=$? y=$^ERRNAME
+   \set x=$? y=$^ERRNAME
 \else
    \echoerr reproducible_build: Field not ignored: from_
    \echoerr reproducible_build: Field not ignored: ba:l
@@ -5011,7 +5011,7 @@ t_mbox() { # {{{
 
    printf \
       'define mboxfix {
-         \\localopts yes; \\wysh set mbox-rfc4155;\\wysh File "${1}";\\
+         \\localopts yes; \\set mbox-rfc4155;\\File "${1}";\\
             \\eval copy * "${2}"
       }
       call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
@@ -5020,10 +5020,10 @@ t_mbox() { # {{{
    check 14 - ./.tall '739301109 616'
 
    printf \
-      'wysh file ./.tinv1 # ^From not repaired, but missing trailing NL is
-      wysh File ./.tok # Just move away to nowhere
+      'file ./.tinv1 # ^From not repaired, but missing trailing NL is
+      File ./.tok # Just move away to nowhere
       set mbox-rfc4155
-      wysh file ./.tinv2 # Fully repaired
+      file ./.tinv2 # Fully repaired
       File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    check_ex0 15-estat
    # Equal since [Auto-fix when MBOX had From_ errors on read (Dr. Werner
@@ -6399,13 +6399,13 @@ t_e_H_L_opts() {
 
    printf 'm me1@exam.ple\n~s subject cab\nLine 1.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony1@$LOGNAME'
+      -r '' -X 'set from=pony1@$LOGNAME'
    printf 'm me2@exam.ple\n~s subject bac\nLine 12.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony2@$LOGNAME'
+      -r '' -X 'set from=pony2@$LOGNAME'
    printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=test://./.t.mbox \
-      -r '' -X 'wysh set from=pony3@$LOGNAME'
+      -r '' -X 'set from=pony3@$LOGNAME'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
@@ -7157,7 +7157,7 @@ t_cmd_escapes() {
 !Q 1 3
 !:echo 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
-!:wysh set quote-inject-head=%%a quote-inject-tail=--%%r
+!:set quote-inject-head=%%a quote-inject-tail=--%%r
 32: ~Q
 !Q
 !:echo 32:$?/$^ERRNAME
@@ -7199,10 +7199,10 @@ unset fullnames, quote stuff
 and i ~w rite this out to ./.tmsg
 !w ./.tmsg
 !:echo i ~w:$?/$^ERRNAME
-!:wysh set x=$escape;set escape=~
+!:set x=$escape;set escape=~
 ~!echo shell command output
 ~:echo shell:$?/$^ERRNAME
-~:wysh set escape=$x
+~:set escape=$x
 50:F
 !F 6
 !:echo 50 was F:$?/$^ERRNAME
@@ -7650,7 +7650,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define read_mline_res {
-      read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+      read hl; set len=$? es=$! en=$^ERRNAME;\
          echo $len/$es/$^ERRNAME: $hl
       if [ $es -ne $^ERR-NONE ]
          xcall bail read_mline_res
@@ -7659,7 +7659,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define ins_addr {
-      wysh set xh=$1
+      set xh=$1
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "in_addr ($xh) 0-1"
 
@@ -7771,7 +7771,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
    }
    define ins_ref {
-      wysh set xh=$1 mult=$2
+      set xh=$1 mult=$2
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "ins_ref ($xh) 0-1"
 
@@ -8204,7 +8204,7 @@ t_compose_hooks() { # {{{ TODO monster
          digmsg - header list;readall x;echon $x;\
          digmsg remove -;echo $?/$!/$^ERRNAME
    }
-   wysh set on-compose-splice=t_ocs \
+   set on-compose-splice=t_ocs \
       on-compose-enter=t_oce on-compose-leave=t_ocl \
          on-compose-cleanup=t_occ
 __EOT__
@@ -8249,7 +8249,7 @@ __EOT__
             end
          }
          define read_mline_res {
-            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+            read hl; set len=$? es=$! en=$^ERRNAME;\
                echo $len/$es/$^ERRNAME: $hl
             if [ $es -ne $^ERR-NONE ]
                xcall bail read_mline_res
@@ -8274,7 +8274,7 @@ __EOT__
             return $i
          }
          define _read {
-            wysh set line; read line;wysh set es=$? en=$^ERRNAME ;\
+            set line; read line;set es=$? en=$^ERRNAME ;\
                echo read:$es/$en: $line
             if [ "${es}" -ne -1 ]
                xcall _read
@@ -8430,7 +8430,7 @@ __EOT__
                mailx-orig-to<$mailx-orig-to> \
                mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
-         wysh set on-compose-splice=t_ocs \
+         set on-compose-splice=t_ocs \
             on-compose-splice-shell="read ver;echo t_ocs-shell;\
                echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -8592,7 +8592,7 @@ t_mass_recipients() {
       echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
    }
    define ins_addr {
-      wysh set nr=$1 hn=$2
+      set nr=$1 hn=$2
       echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
       if [ "$es" -ne 0 ]
         xcall bail "ins_addr $hn 1-$nr"
@@ -8603,7 +8603,7 @@ t_mass_recipients() {
       end
    }
    define bld_alter {
-      wysh set nr=$1 hn=$2
+      set nr=$1 hn=$2
       alternates $hn$nr@$hn
       vput vexpr nr + $nr 2
       if [ "$nr" -le "$maximum" ]
@@ -8721,7 +8721,7 @@ t_lreply_futh_rth_etc() {
    ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" \
          -Rf ./.tmbox >> "${MBOX}" 2>&1
 	define r {
-	   wysh set m="This is text of \"reply ${1}."
+	   set m="This is text of \"reply ${1}."
 	   reply 1 2 3
 	!I m
 	1".
@@ -8735,7 +8735,7 @@ t_lreply_futh_rth_etc() {
 	   echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
 	}
 	define R {
-	   wysh set m="This is text of \"Reply ${1}."
+	   set m="This is text of \"Reply ${1}."
 	   eval Reply $2
 	!I m
 	!I 2
@@ -8750,7 +8750,7 @@ t_lreply_futh_rth_etc() {
 	   echo '".'
 	}
 	define _Ls {
-	   wysh set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
+	   set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
 	   eval Lreply $2
 	}
 	define L {
@@ -8912,7 +8912,7 @@ t_pipe_handlers() {
    else
       # Let us fill in tmpfile, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?=++?'\
@@ -8930,7 +8930,7 @@ t_pipe_handlers() {
 
       # Fill in ourselfs, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?++?'\
@@ -8948,7 +8948,7 @@ t_pipe_handlers() {
 
       # And the same, via copiousoutput (fake)
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
-'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+'eval set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
             -S 'pipe-image/jpeg=?*++?'\
