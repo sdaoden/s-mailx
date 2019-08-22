@@ -2125,7 +2125,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 #ifndef mx_HAVE_SMIME
    if (dosign) {
       n_err(_("No S/MIME support compiled in\n"));
-      goto jleave;
+      goto jfail_dead;
    }
 #endif
 
@@ -2144,7 +2144,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO completed (one edit cycle) */
 
    if(!(mta_isexe = mx_sendout_mta_url(urlp)))
-      goto jleave;
+      goto jfail_dead;
    mta_isexe = (mta_isexe != TRU1);
 
    /* Take the user names from the combined to and cc lists and do all the
