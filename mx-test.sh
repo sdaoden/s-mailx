@@ -6656,6 +6656,12 @@ t_digmsg() { # XXX rudimentary
 t_on_main_loop_tick() {
    t_prolog "${@}"
 
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog "${@}"
+      return
+   fi
+
    printf '#
    echo hello; set i=1
 define bla {
@@ -8320,7 +8326,7 @@ cc_all_configs() {
       /^[ 	]*VAL_/{
          sub(/^[ 	]*/, "")
          val = substr($0, index($0, "=") + 1)
-         if(val ~ /^\"/){
+         if(val ~ /^"/){
             val = substr(val, 2)
             val = substr(val, 1, length(val) - 1)
          }
