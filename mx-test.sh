@@ -5444,7 +5444,8 @@ t_mta_aliases() {
    # May not send plain names over SMTP!
    mtaali=
    if have_feat smtp; then
-      echo | ${MAILX} ${ARGS} -Smta=smtp://laber.backe \
+      echo | ${MAILX} ${ARGS} \
+         -Smta=smtp://laber.backe -Ssmtp-auth=none \
          -Smta-aliases=./.tali \
          -b a3 -c a2 a1 > ./.tall 2>&1
       check_exn0 3
