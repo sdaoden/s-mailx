@@ -214,6 +214,7 @@ EXPORT s32 mx_termcap_query_for_name(char const *name,
 EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # endif
 
+#include <su/code-ou.h>
 #endif /* mx_HAVE_TCAP */
 
 #ifndef mx_TERMCAP_RESUME
@@ -221,6 +222,5 @@ EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # define mx_TERMCAP_SUSPEND(CPL) do{;}while(0);
 #endif
 
-#include <su/code-ou.h>
 #endif /* mx_TERMCAP_H */
 /* s-it-mode */
