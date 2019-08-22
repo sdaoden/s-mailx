@@ -24,9 +24,9 @@ while true; do
       echo >&2 'configuration script can figure out, even if used to test'
       echo >&2 'a different binary than the one that would be produced!'
       echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.env.)'
-      echo >&2 'Hit RETURN to run "make config CONFIG=null'
+      echo >&2 'Hit RETURN to run "make config"'
       read l
-      make config CONFIG=null
+      make config
    fi
 done
 . ./mk-config.env
@@ -8417,14 +8417,22 @@ cc_all_configs() {
          print "CONFIG=DEVEL OPT_AUTOCC=1"
          print "CONFIG=ODEVEL OPT_AUTOCC=1"
 
+         print split_here
+
          onepass("OPT_DEBUG=1")
          onepass("")
       }
    ' | while read c; do
+      if [ "$c" = split_here ]; then
+         printf 'Predefined configs done, now OPT_ combinations\n'
+         printf 'Predefined configs done, now OPT_ combinations\n' >&2
+         ${SHELL} -c "cd ../ && ${MAKE} distclean"
+         continue
+      fi
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
-      printf "\n\n##########\n$c\n"
-      printf "\n\n##########\n$c\n" >&2
-      ${SHELL} -c "cd .. && ${MAKE} ${c} config"
+      printf "\n\n##########\n${MAKE} config $c\n"
+      printf "\n\n##########\n${MAKE} config $c\n" >&2
+      ${SHELL} -c "cd .. && ${MAKE} config ${c}"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
