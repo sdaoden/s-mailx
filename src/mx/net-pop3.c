@@ -424,6 +424,7 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
       goto j_leave;
    }
    cnt += a_MAX;
+#undef a_MAX
 
    cp = n_lofi_alloc(cnt);
 
