@@ -1069,7 +1069,7 @@ jleave:
    return rv;
 }
 
-FL char *
+char *
 (fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
@@ -1129,7 +1129,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 (readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
    su_DBG_LOC_ARGS_DECL)
 {
@@ -1193,7 +1193,7 @@ jleave:
    return rv;
 }
 
-FL off_t
+off_t
 fsize(FILE *iob)
 {
    struct stat sbuf;
