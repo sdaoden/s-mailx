@@ -2060,9 +2060,13 @@ FL enum okay
 n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    char const *quotefile)
 {
-   struct n_sigman sm;
+#ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
-   struct mx_url url;
+   struct mx_url url, *urlp = &url;
+#else
+   struct mx_url *urlp = NIL;
+#endif
+   struct n_sigman sm;
    struct sendbundle sb;
    struct mx_name *to;
    boole dosign, mta_isexe;
@@ -2139,7 +2143,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO header fields ONCE, call that ONCE after user editing etc. has
     * TODO completed (one edit cycle) */
 
-   if(!(mta_isexe = mx_sendout_mta_url(&url)))
+   if(!(mta_isexe = mx_sendout_mta_url(urlp)))
       goto jleave;
    mta_isexe = (mta_isexe != TRU1);
 
@@ -2174,8 +2178,10 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
-   sb.sb_urlp = mta_isexe ? NIL : &url;
+   sb.sb_urlp = mta_isexe ? NIL : urlp;
+#ifdef mx_HAVE_NET
    sb.sb_credp = &cc;
+#endif
 
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
@@ -2728,8 +2734,10 @@ FL enum okay
 n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    boole add_resent)
 {
-   struct n_sigman sm;
+#ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
+#endif
+   struct n_sigman sm;
    struct sendbundle sb;
    FILE * volatile ibuf, *nfo, * volatile nfi;
    struct mx_fs_tmp_ctx *fstcp;
@@ -2794,7 +2802,9 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    sb.sb_to = to;
    sb.sb_input = nfi;
    sb.sb_urlp = urlp;
+#ifdef mx_HAVE_NET
    sb.sb_credp = &cc;
+#endif
 
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){

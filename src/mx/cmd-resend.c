@@ -723,7 +723,11 @@ jleave:
 
 static int
 a_crese_resend1(void *vp, boole add_resent){
-   struct mx_url url;
+#ifdef mx_HAVE_NET
+   struct mx_url url, *urlp = &url;
+#else
+   struct mx_url *urlp = NIL;
+#endif
    struct header head;
    struct mx_name *myto, *myrawto;
    boole mta_isexe;
@@ -747,7 +751,7 @@ jedar:
       goto jleave;
    }
 
-   if(!(mta_isexe = mx_sendout_mta_url(&url)))
+   if(!(mta_isexe = mx_sendout_mta_url(urlp)))
       goto jleave;
    mta_isexe = (mta_isexe != TRU1);
 
@@ -794,7 +798,7 @@ jedar:
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
-      if(n_resend_msg(mp, (mta_isexe ? NIL : &url), &head, add_resent
+      if(n_resend_msg(mp, (mta_isexe ? NIL : urlp), &head, add_resent
             ) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
