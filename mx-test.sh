@@ -5442,12 +5442,16 @@ t_mta_aliases() {
    ## xxx The following are actually *expandaddr* tests!!
 
    # May not send plain names over SMTP!
-   echo | ${MAILX} ${ARGS} -Smta=smtp://laber.backe \
-      -Smta-aliases=./.tali \
-      -b a3 -c a2 a1 > ./.tall 2>&1
-   check_exn0 3
-   check 4 - "${MBOX}" '1172368381 238'
-   if have_feat uistrings; then
+   mtaali=
+   if have_feat smtp; then
+      echo | ${MAILX} ${ARGS} -Smta=smtp://laber.backe \
+         -Smta-aliases=./.tali \
+         -b a3 -c a2 a1 > ./.tall 2>&1
+      check_exn0 3
+      check 4 - "${MBOX}" '1172368381 238'
+      mtaali=1
+   fi
+   if [ -n "${mtaali}" ] && have_feat uistrings; then
       check 5 - .tall '771616226 179'
    else
       t_echoskip '5:[test unsupported]'
