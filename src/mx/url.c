@@ -321,29 +321,33 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 
    rv = FAL0;
 
+#ifdef mx_HAVE_TLS
+# define a_OUCH 0
+#else
+# define a_OUCH 1
+#endif
+
    /* Network protocol */
 #define a_PROTOX(X,Y,Z) \
    urlp->url_portno = Y;\
    su_mem_copy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
-   do{ Z; }while(0)
+   if(a_OUCH){ Z; }
 #define a_PRIVPROTOX(X,Y,Z) \
    do{ a_PROTOX(X, Y, Z); }while(0)
-#define a__IF(X,Y,Z)  \
+
+#define a__IF(T,X,Y,Z)  \
    if(!su_cs_cmp_case_n(data, X "://", sizeof(X "://") -1)){\
+      if(a_OUCH && T)\
+         goto jeproto;\
       a_PROTOX(X, Y, Z);\
       data += sizeof(X "://") -1;\
       goto juser;\
    }
-#define a_IF(X,Y) a__IF(X, Y, (void)0)
-#ifdef mx_HAVE_TLS
-# define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_REQUIRED)
-# define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
-#else
-# define a_IFS(X,Y) goto jeproto;
-# define a_IFs(X,Y) a_IF(X, Y)
-#endif
+#define a_IF(X,Y) a__IF(0, X, Y, (void)0)
+#define a_IFS(X,Y) a__IF(1, X, Y, urlp->url_flags |= mx_URL_TLS_REQUIRED)
+#define a_IFs(X,Y) a__IF(0, X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
 
    switch(cproto){
    case CPROTO_CERTINFO:
@@ -413,6 +417,7 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #endif
    }
 
+#undef a_OUCH
 #undef a_PRIVPROTOX
 #undef a_PROTOX
 #undef a__IF
