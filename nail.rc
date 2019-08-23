@@ -2,7 +2,7 @@
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
-#@ - Any leading and trailing whitespace (space, tabulator, newline: " \t\n"),
+#@ - Leading and trailing whitespace (space, tabulator, newline: " \t\n"),
 #@   and all members of (the internal variable) *ifs-ws* are removed.
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines may spread over multiple
@@ -27,7 +27,6 @@
 # [s]   save, nosendwait, noshowto, nosign, noSign,
 # [t-z] toplines="5"
 #
-# Notes:
 # - In this implementation:
 #   + *sendwait* is set by default (and has extended meaning).
 #   + no*onehop* does not exist.
@@ -37,11 +36,9 @@
 # (Keep in SYNC: mx/nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 # Adjustments of standard imposed default- as well as other settings follow.
+# - Settings in this file assume v15-compat=yes.
 # - Some of the latter are not portable and may thus have no effect with
 #   other Mail(1) / mailx(1) / mail(1) programs.
-# - "wysh" is one of the "Command modifiers" and is not portable: before v15 it
-#   changes the syntax of some old-style commands to sh(1)ell style quoting,
-#   also see "COMMANDS" -> "Shell-style argument quoting" in the manual.
 # - Availability of entries marked [OPTION] is a compile-time decision.
 
 # If threaded mode is activated, automatically collapse thread.
@@ -61,8 +58,8 @@ set asksend
 # Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
 # If your $PAGER is less(1) or lv(1) you will usually be served with
-#  ? wysh set PAGER=less; environ unset LESS
-#  ? wysh set PAGER=lv; environ unset LV
+#  ? set PAGER=less; environ unset LESS
+#  ? set PAGER=lv; environ unset LV
 
 # Assume a CRT-like terminal and invoke $PAGER if output does not fit on
 # the screen.  (Set crt=0 to always page; value treated as number of lines.)
@@ -93,7 +90,7 @@ set history-gabby=all history-gabby-persist
 set hold
 
 # Quote the original message in replies with "> " as usual on the Internet.
-# POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
+# POSIX mandates tabulator ("set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
 # Honour Mail-Followup-To: headers when replying etc.
@@ -124,7 +121,7 @@ set keepsave
 # An informational prompt (and see "Gimmicks" below).
 # Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
 # Note the _real_ evaluation occurs once used (see *prompt* manual entry).
-#wysh set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
+#set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to.
 set quote
@@ -188,10 +185,10 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 #\endif
 
 # "External body", URL type supported only.
-#\wysh set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
+#\set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
 # PDF display, asynchronous display: via `mimeview' command only.
-#\wysh set pipe-application/pdf='?=&@\
+#\set pipe-application/pdf='?=&?\
 #   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf "${MAILX_FILENAME_TEMPORARY}"'
