@@ -25,6 +25,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_flthtml;
+
 struct mx_flthtml{
    FILE *fh_os; /* Output stream */
    u32 fh_flags;

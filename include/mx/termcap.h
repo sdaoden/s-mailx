@@ -30,7 +30,11 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
+#endif
 
+struct mx_termcap_value;
+
+#ifdef mx_HAVE_TCAP
 enum mx_termcap_captype{
    mx_TERMCAP_CAPTYPE_NONE,
    /* Internally we share the bitspace, so ensure no value ends up as 0 */

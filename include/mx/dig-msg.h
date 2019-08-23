@@ -26,6 +26,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_dig_msg_ctx;
+
 enum mx_dig_msg_flags{
    mx_DIG_MSG_NONE,
    mx_DIG_MSG_COMPOSE = 1u<<0, /* Compose mode object.. */

@@ -24,11 +24,14 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_file_dotlock_info;
+
 enum mx_file_lock_type{
    mx_FILE_LOCK_TYPE_READ,
    mx_FILE_LOCK_TYPE_WRITE
 };
 
+#ifdef mx_HAVE_DOTLOCK
 enum mx_file_dotlock_state{
    mx_FILE_DOTLOCK_STATE_NONE,
    mx_FILE_DOTLOCK_STATE_CANT_CHDIR, /* Failed to chdir(2) into desired path */
@@ -44,6 +47,7 @@ enum mx_file_dotlock_state{
    /* ORd to any but _NONE: give up, do not retry */
    mx_FILE_DOTLOCK_STATE_ABANDON = 1u<<7
 };
+#endif
 
 #ifdef mx_HAVE_DOTLOCK
 struct mx_file_dotlock_info{

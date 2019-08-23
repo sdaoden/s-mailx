@@ -28,6 +28,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct quoteflt;
+
 struct quoteflt{
    FILE *qf_os; /* Output stream */
    char const *qf_pfix;

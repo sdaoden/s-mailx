@@ -26,6 +26,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_name;
+
 enum mx_name_flags{
    mx_NAME_SKINNED = 1u<<0, /* Has been skin()ned */
    mx_NAME_IDNA = 1u<<1, /* IDNA has been applied */

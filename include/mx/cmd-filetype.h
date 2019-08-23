@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_filetype;
+
 struct mx_filetype{
    char const *ft_ext_dat; /* Extension this handles, without first period */
    uz ft_ext_len;

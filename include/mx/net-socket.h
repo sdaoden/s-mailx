@@ -40,8 +40,13 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
+#endif
 
-struct mx_socket{ /* data associated with a socket */
+struct mx_socket;
+
+#ifdef mx_HAVE_NET
+/* Data associated with a socket */
+struct mx_socket{
    int s_fd; /* file descriptor */
 #ifdef mx_HAVE_TLS
    int s_use_tls; /* TLS is used */

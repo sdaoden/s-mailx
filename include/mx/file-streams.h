@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_fs_tmp_ctx;
+
 enum mx_fs_oflags{
    mx_FS_O_RDONLY = 1u<<0,
    mx_FS_O_WRONLY = 1u<<1,

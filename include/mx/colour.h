@@ -25,6 +25,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_colour_env;
+
 #define mx_COLOUR(X) X
 
 /* We do have several contexts of colour IDs; since only one of them can be

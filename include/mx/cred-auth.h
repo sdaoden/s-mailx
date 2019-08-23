@@ -26,7 +26,11 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
+#endif
 
+struct mx_cred_ctx;
+
+#ifdef mx_HAVE_NET
 enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_NONE = 1u<<0,
    mx_CRED_AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */

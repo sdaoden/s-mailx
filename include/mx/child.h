@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_child_ctx;
+
 /* */
 #define mx_CHILD_MAXARGS 3 /* xxx vector */
 

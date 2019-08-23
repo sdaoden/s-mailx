@@ -24,7 +24,9 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-#ifdef mx_HAVE_NET /* XXX only for now */
+struct mx_url;
+
+#ifdef mx_HAVE_NET
 enum mx_url_flags{
    mx_URL_TLS_REQUIRED = 1u<<0, /* Whether protocol always uses SSL/TLS.. */
    mx_URL_TLS_OPTIONAL = 1u<<1, /* ..may later upgrade to SSL/TLS */
@@ -32,7 +34,9 @@ enum mx_url_flags{
    mx_URL_HAD_USER = 1u<<2, /* Whether .url_user was part of the URL */
    mx_URL_HOST_IS_NAME = 1u<<3 /* .url_host not numeric address */
 };
+#endif
 
+#ifdef mx_HAVE_NET
 struct mx_url{ /* XXX not _ctx: later object */
    char const *url_input; /* Input as given (really) */
    u32 url_flags;

@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_termios_dimension;
+
 enum mx_termios_cmd{
    /* Throw away the entire stack, and restore normal terminal state.
     * The outermost level will be regulary shutdown, as via POP.
