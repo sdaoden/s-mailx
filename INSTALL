@@ -163,8 +163,6 @@ and the tests take place):
 - mk-config.log  Any output generated during the configuration process.
 - mk-config.h    C program header representing the configuration.
 - mk-config.env  sh(1) environment representing the configuration.
-- mk-config.inc  Compiler directives to include necessary C headers ...
-- mk-config.lib  ... to find and link against needed external libraries.
 
 Of special interest is mk-config.log since the error usually manifests
 here in textual output.  Maybe that makes it obvious what can be done

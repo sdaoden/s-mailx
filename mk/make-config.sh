@@ -24,7 +24,7 @@ if [ -z "${SHELL}" ]; then
 fi
 
 # The feature set, to be kept in sync with make.rc
-# If no documentation given, the option is used as such; if doc is a hyphen,
+# If no documentation given, the option is used as such; if doc is '-',
 # entry is suppressed when configuration overview is printed, and also in the
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
@@ -1168,9 +1168,7 @@ without_check() {
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
          echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
-         echo "${libs}" >> ${lib}
          INCS="${INCS} ${incs}"
-         echo "${incs}" >> ${inc}
       fi
       msg 'yes (deduced)'
       echo "${define}" >> ${h}
@@ -1223,9 +1221,7 @@ _link_mayrun() {
       msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
-      echo "${libs}" >> ${lib}
       INCS="${INCS} ${incs}"
-      echo "${incs}" >> ${inc}
       eval have_${variable}=yes
       return 0
    else
@@ -1273,9 +1269,9 @@ string_to_char_array() {
    }'
 }
 
-squeeze_em() {
-   < "${1}" > "${2}" ${awk} \
-   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
+squeeze_ws() {
+   echo "${*}" |
+   ${sed} -e 's/^[ 	]\{1,\}//' -e 's/[ 	]\{1,\}$//' -e 's/[ 	]\{1,\}/ /g'
 }
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
@@ -1400,20 +1396,18 @@ fi
 if [ -z "${TOPDIR}" ]; then
    TOPDIR=${CWDDIR}
 fi
-INCDIR="${TOPDIR}"include/
-SRCDIR="${TOPDIR}"src/
+   INCDIR="${TOPDIR}"include/
+   SRCDIR="${TOPDIR}"src/
 
 MX_CWDDIR=${CWDDIR}
-MX_INCDIR=${INCDIR}
-MX_SRCDIR=${SRCDIR}
-
+   MX_INCDIR=${INCDIR}
+   MX_SRCDIR=${SRCDIR}
 PS_DOTLOCK_CWDDIR=${CWDDIR}
-PS_DOTLOCK_INCDIR=${INCDIR}
-PS_DOTLOCK_SRCDIR=${SRCDIR}
-
+   PS_DOTLOCK_INCDIR=${INCDIR}
+   PS_DOTLOCK_SRCDIR=${SRCDIR}
 SU_CWDDIR=${CWDDIR}
-SU_INCDIR=${INCDIR}
-SU_SRCDIR=${SRCDIR}
+   SU_INCDIR=${INCDIR}
+   SU_SRCDIR=${SRCDIR}
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -1497,35 +1491,13 @@ cc_flags
 
 for i in \
       COMMLINE \
+      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
+      CC CFLAGS LDFLAGS \
       INCS LIBS \
+      OSFULLSPEC \
       ; do
    eval j="\$${i}"
    printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
-done
-
-MX_CFLAGS=${CFLAGS}
-
-PS_DOTLOCK_CFLAGS=${CFLAGS}
-PS_DOTLOCK_INCS=${INCS}
-PS_DOTLOCK_LDFLAGS=${LDFLAGS}
-
-SU_CFLAGS=${CFLAGS}
-SU_CXXFLAGS=
-SU_INCS=${INCS}
-
-for i in \
-      CC CFLAGS LDFLAGS \
-      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
-      OSFULLSPEC \
-         MX_CFLAGS \
-         PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS \
-         SU_CFLAGS SU_CXXFLAGS SU_INCS \
-      ; do
-   eval j=\$${i}
-   if [ -n "${j}" ]; then
-      printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
-   fi
 done
 
 # Note that makefile reads and eval'uates one line of this file, whereas other
@@ -1545,6 +1517,8 @@ else
    echo 'Shiny configuration..'
 fi
 
+### WE ARE STARTING OVER ###
+
 # Time to redefine helper 1
 config_exit() {
    ${rm} -f ${h} ${mk}
@@ -1561,13 +1535,11 @@ ${mv} -f ${newmk} ${mk}
 
 tmp3=${tmp0}3$$
 log="${OBJDIR}"/mk-config.log
-lib="${OBJDIR}"/mk-config.lib
-inc="${OBJDIR}"/mk-config.inc
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+   ${rm} -f ${oldh} ${h} ${oldmk} ${mk}; exit 1" \
       HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
@@ -1589,8 +1561,6 @@ msg_nonl() {
 # !!
 exec 5>&2 > ${log} 2>&1
 
-echo "${LIBS}" > ${lib}
-echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
@@ -1605,14 +1575,14 @@ ${cat} > ${makefile} << \!
 
 echo '#define VAL_BUILD_OS "'"${OS_ORIG_CASE}"'"' >> ${h}
 
-[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
-
 printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
 
-if [ -n "${OS_DEFINES}" ]; then
-   printf '#ifdef su_SOURCE\n'"${OS_DEFINES}"'#endif /* su_SOURCE */\n\n' \
-       >> ${h}
-fi
+[ -n "${OS_DEFINES}" ] && printf \
+'#if defined mx_SOURCE || defined mx_EXT_SOURCE || defined su_SOURCE
+'"${OS_DEFINES}"'
+#endif /* mx_SOURCE || mx_EXT_SOURCE || su_SOURCE */
+
+' >> ${h}
 
 ## SU
 
@@ -1995,9 +1965,6 @@ int main(void){
 
 ##
 
-# The random check has been moved to below TLS detection due to multiple choice
-# selection for PRG sources
-
 link_check putc_unlocked 'putc_unlocked(3)' '#define mx_HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void){
@@ -2119,22 +2086,15 @@ int main(void){
    fi
 fi
 
-## Now it is the time to fork away the BASE_ series
+### FORK AWAY SHARED BASE SERIES ###
 
-${rm} -f ${tmp}
-squeeze_em ${inc} ${tmp}
-${mv} ${tmp} ${inc}
-squeeze_em ${lib} ${tmp}
-${mv} ${tmp} ${lib}
-
-echo "BASE_LIBS = `${cat} ${lib}`" >> ${mk}
-echo 'PS_DOTLOCK_LIBS = $(BASE_LIBS)' >> ${mk}
-echo 'SU_LIBS = $(BASE_LIBS)' >> ${mk}
-echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
-echo 'PS_DOTLOCK_INCS = $(BASE_INCS)' >> ${mk}
-echo 'SU_INCS = $(BASE_INCS)' >> ${mk}
+BASE_CFLAGS=${CFLAGS}
+BASE_INCS=`squeeze_ws "${INCS}"`
+BASE_LDFLAGS=${LDFLAGS}
+BASE_LIBS=`squeeze_ws "${LIBS}"`
 
 ## The remains are expected to be used only by the main MUA binary!
+## (And possibly by test programs)
 
 OPT_LOCALES=0
 link_check setlocale 'setlocale(3)' '#define mx_HAVE_SETLOCALE' << \!
@@ -3393,16 +3353,33 @@ feat_def NOMEMDBG 0
 
 ## Summarizing
 
-${rm} -f ${tmp}
-squeeze_em ${inc} ${tmp}
-${mv} ${tmp} ${inc}
-squeeze_em ${lib} ${tmp}
-${mv} ${tmp} ${lib}
+INCS=`squeeze_ws "${INCS}"`
+LIBS=`squeeze_ws "${LIBS}"`
 
-echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo 'MX_LIBS = $(LIBS)' >> ${mk}
-echo "INCS = `${cat} ${inc}`" >> ${mk}
-echo 'MX_INCS = $(INCS)' >> ${mk}
+MX_CFLAGS=${CFLAGS}
+   MX_INCS=${INCS}
+   MX_LDFLAGS=${LDFLAGS}
+   MX_LIBS=${LIBS}
+SU_CFLAGS=${BASE_CFLAGS}
+   SU_CXXFLAGS=
+   SU_INCS=${BASE_INCS}
+   SU_LDFLAGS=${BASE_LDFLAGS}
+   SU_LIBS=${BASE_LIBS}
+PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
+   PS_DOTLOCK_INCS=${BASE_INCS}
+   PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
+   PS_DOTLOCK_LIBS=${BASE_LIBS}
+
+for i in \
+      CC \
+      MX_CFLAGS MX_INCS MX_LDFLAGS MX_LIBS \
+      PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS PS_DOTLOCK_LIBS \
+      SU_CFLAGS SU_CXXFLAGS SU_INCS SU_LDFLAGS SU_LIBS \
+      ; do
+   eval j=\$${i}
+   printf -- "${i} = ${j}\n" >> ${mk}
+done
+
 echo >> ${mk}
 
 # mk-config.h (which becomes mx/gen-config.h)
@@ -3426,11 +3403,18 @@ elif (${CC} -v) >/dev/null 2>&1; then
       END{gsub(/"/, "", l); print "\\\\n" l}
    '`
 fi
+
+CC=`squeeze_ws "${CC}"`
+CFLAGS=`squeeze_ws "${CFLAGS}"`
+LDLAGS=`squeeze_ws "${LDFLAGS}"`
+LIBS=`squeeze_ws "${LIBS}"`
+COMMLINE=`squeeze_ws "${COMMLINE}"`
+
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
    printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
    i=`string_to_char_array "${i}"`
    printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
-i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "\`${cat} ${lib}\`"`
+i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "${LIBS}"`
    printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
    i=`string_to_char_array "${i}"`
    printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
@@ -3442,7 +3426,7 @@ i=${COMMLINE}
 # Throw away all temporaries
 ${rm} -rf ${tmp0}.* ${tmp0}*
 
-# Create the string that is used by *features* and `version'.
+# Create the string that is used by *features* and the version command.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
 echo 'The following features are included (+) or not (-):' > ${tmp}
