@@ -1,10 +1,12 @@
 #@ make-config.in -- mk-config.mk template, completed by make-config.sh.
 
 .PHONY: all install uninstall clean distclean
+.POSIX: # To make .IGNORE: work the desired way on eg. SunOS 5.10
+.IGNORE: net-test
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
-all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK)
+all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK) $(OPTIONAL_NET_TEST)
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(MX_LDFLAGS) -o $(@) $(OBJ) $(MX_LIBS)
@@ -14,6 +16,10 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 	$(ECHO_LINK)$(CC) $(PS_DOTLOCK_LDFLAGS) -o $(@) $(PS_DOTLOCK_C_OBJ) \
 		$(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
+
+net-test: $(NET_TEST_C_OBJ)
+	$(ECHO_LINK)$(CC) $(NET_TEST_LDFLAGS) -o $(@) $(NET_TEST_C_OBJ) \
+		$(NET_TEST_LIBS)
 
 gen-bltin-rc.h: $(TOPDIR)nail.rc
 	$(ECHO_GEN) . ./mk-config.env; \
@@ -46,6 +52,10 @@ clean:
 	\
 	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
 		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK)";\
+	fi;\
+	\
+	if [ -n "$(OPTIONAL_NET_TEST)" ]; then \
+		$(rm) -f $(NET_TEST_C_OBJ) net-test;\
 	fi
 
 distclean: clean

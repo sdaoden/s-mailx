@@ -53,6 +53,7 @@ XOPTIONS="\
       IMAP='IMAP v4r1 client' \
       MD5='MD5 message digest (APOP, CRAM-MD5)' \
       NETRC='.netrc file support' \
+      NET_TEST='-' \
       POP3='Post Office Protocol Version 3 client' \
       SMTP='Simple Mail Transfer Protocol client' \
       TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
@@ -173,6 +174,7 @@ option_setup() {
          OPT_NET=require
             OPT_GSSAPI=1
             OPT_NETRC=1
+            OPT_NET_TEST=1
             OPT_SMTP=require
             OPT_TLS=require
          OPT_SPAM_FILTER=1
@@ -227,6 +229,7 @@ option_update() {
       OPT_IMAP=0
       OPT_MD5=0
       OPT_NETRC=0
+      OPT_NET_TEST=0
       OPT_POP3=0
       OPT_SMTP=0
       OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
@@ -1514,6 +1517,9 @@ MX_CWDDIR=${CWDDIR}
 PS_DOTLOCK_CWDDIR=${CWDDIR}
    PS_DOTLOCK_INCDIR=${INCDIR}
    PS_DOTLOCK_SRCDIR=${SRCDIR}
+NET_TEST_CWDDIR=${CWDDIR}
+   NET_TEST_INCDIR=${INCDIR}
+   NET_TEST_SRCDIR=${SRCDIR}
 SU_CWDDIR=${CWDDIR}
    SU_INCDIR=${INCDIR}
    SU_SRCDIR=${SRCDIR}
@@ -1555,10 +1561,15 @@ if feat_yes DOTLOCK; then
    printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 fi
 
+if feat_yes NET_TEST; then
+   printf "#real below OPTIONAL_NET_TEST = net-test\n" >> ${newmk}
+fi
+
 for i in \
    CWDDIR TOPDIR OBJDIR INCDIR SRCDIR \
          MX_CWDDIR MX_INCDIR MX_SRCDIR \
          PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
+         NET_TEST_CWDDIR NET_TEST_INCDIR NET_TEST_SRCDIR \
          SU_CWDDIR SU_INCDIR SU_SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
          ln mkdir mv pwd rm sed sort tee tr \
@@ -3592,11 +3603,16 @@ PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
    PS_DOTLOCK_INCS=${BASE_INCS}
    PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
    PS_DOTLOCK_LIBS=${BASE_LIBS}
+NET_TEST_CFLAGS=${CFLAGS}
+   NET_TEST_INCS=${INCS}
+   NET_TEST_LDFLAGS=${LDFLAGS}
+   NET_TEST_LIBS=${LIBS}
 
 for i in \
       CC \
       MX_CFLAGS MX_INCS MX_LDFLAGS MX_LIBS \
       PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS PS_DOTLOCK_LIBS \
+      NET_TEST_CFLAGS NET_TEST_INCS NET_TEST_LDFLAGS NET_TEST_LIBS \
       SU_CFLAGS SU_CXXFLAGS SU_INCS SU_LDFLAGS SU_LIBS \
       ; do
    eval j=\$${i}
@@ -3688,6 +3704,13 @@ if feat_yes DOTLOCK; then
    (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
 else
    printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
+fi
+
+if feat_yes NET_TEST; then
+   printf "OPTIONAL_NET_TEST = net-test\n" >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh net-test/*.c) >> ${mk}
+else
+   printf "OPTIONAL_NET_TEST =\n" >> ${mk}
 fi
 
 # Not those SU sources with su_USECASE_MX_DISABLED
