@@ -374,6 +374,10 @@ OPT_NET=yes
    # ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
    OPT_NETRC=yes
 
+   # This will compile a test server which the test series will use to
+   # test the network code.  It is not installed, but only for testing.
+   OPT_NET_TEST=yes
+
    # Add support for POP3 protocol.
    # Download of mails via POP protocol.  Can be "require"d.
    OPT_POP3=yes
