@@ -319,7 +319,8 @@ jchild:{
       execvp(argv[0], argv);
       perror(argv[0]);
    }
-   _exit(n_EXIT_ERR);
+   for(;;)
+      _exit(n_EXIT_ERR);
    }
 }
 
