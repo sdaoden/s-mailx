@@ -49,7 +49,7 @@ MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
-TMPDIR=`pwd`
+TMPDIR=`${pwd}`
 
 # When testing mass mail/loops, maximum number of receivers/loops.
 # TODO note we do not gracefully handle ARG_MAX excess yet!
@@ -176,9 +176,9 @@ unset POSIXLY_CORRECT LOGNAME USER
 # usage {{{
 usage() {
    ${cat} >&2 <<_EOT
-Synopsis: mx-test.sh [--no-jobs] --check-only s-mailx-binary
-Synopsis: mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
-Synopsis: mx-test.sh [--no-jobs]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
 
  --check-only EXE         run the test series, exit success or error;
                           if run in a git(1) checkout then failed tests
@@ -191,6 +191,7 @@ Synopsis: mx-test.sh [--no-jobs]
 
 The last invocation style will compile and test as many different
 configurations as possible.
+OBJDIR= may be set to the location of the built objects etc.
 _EOT
    exit 1
 }
@@ -222,7 +223,9 @@ else
 fi
 # }}}
 
-MAILX=`${pwd}`/${MAILX}
+# Since we invoke $MAILX from within several directories we need a fully
+# qualified path.  Or at least something similar.
+{ echo ${MAILX} | ${grep} -q ^/; } || MAILX=`${pwd}`/${MAILX}
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX

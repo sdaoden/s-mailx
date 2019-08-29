@@ -1342,9 +1342,8 @@ thecmd_testandset_fail cmp cmp
 thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
-# pwd(1) is needed - either for make-emerge.sh, or for ourselves
-#[ -n "${CWDDIR}" ] ||
-   thecmd_testandset_fail pwd pwd
+# We always need pwd(1), for at least mx-test.sh
+thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
