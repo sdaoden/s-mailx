@@ -486,7 +486,7 @@ main(int argc, char *argv[]){
       "file;f;" N_("open secondary mailbox, or \"file\" last on command line"),
       "header-summary;H;" N_("is to be displayed (for given file) only"),
          "help;h;" N_("short help"),
-      "header-search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+      "search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
       "no-header-summary;N;" N_("identical to -Snoheader"),
       "quote-file:;q;" N_("initialize body of message to be sent with a file"),
       "read-only;R;" N_("any mailbox file will be opened read-only"),
