@@ -3,8 +3,9 @@
 #@ See the file INSTALL if you need help.
 
 .PHONY: ohno tangerine citron \
-	all config build install uninstall clean distclean test \
-	devel odevel
+	all config build install uninstall clean distclean \
+	devel odevel \
+	test testnj
 .NOTPARALLEL:
 .WAIT: # Luckily BSD make supports specifying this as target, too
 
