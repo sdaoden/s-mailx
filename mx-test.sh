@@ -357,6 +357,10 @@ JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
 SUBSECOND_SLEEP=
    ( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
+   TESTS_NET_TEST=
+   [ "${OPT_NET_TEST}" = 1 ] && [ -x ./net-test ] && TESTS_NET_TEST=1
+   export TESTS_NET_TEST
+
 COLOR_ERR_ON= COLOR_ERR_OFF=  COLOR_DBGERR_ON= COLOR_DBGERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
 COLOR_OK_ON= COLOR_OK_OFF=
@@ -9545,7 +9549,6 @@ t_s_mime() {
 
    t_epilog "${@}"
 }
-# }}}
 
 # xxx Note: t_z() was the first test (series) written.  Today many
 # xxx aspects are (better) covered by other tests above, some are not.
@@ -9569,6 +9572,7 @@ t_z() {
 
    t_epilog "${@}"
 }
+# }}}
 
 # Test support {{{
 t__gen_msg() {
@@ -9793,6 +9797,22 @@ t__put_body() {
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '
+}
+
+t__net_script() {
+   file=${1}
+   proto=${2}
+   shift 2
+
+   ${cat} <<-_EOT > ${file}
+		#!${SHELL} -
+		</dev/null ${MAILX} -# ${ARGS} \\
+			-Suser=steffen -Spassword=Sway \\
+			${@} \\
+			-Y 'File ${proto}://localhost:'\${1} \\
+			-Y 'h;q'
+		_EOT
+   ${chmod} 0755 ${file}
 }
 # }}}
 
