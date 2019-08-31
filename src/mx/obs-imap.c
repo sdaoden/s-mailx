@@ -235,7 +235,7 @@ static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
                      struct mx_url *urlp);
 static int _imap_setfile1(char const *who, struct mx_url *urlp,
             enum fedit_mode fm, int transparent);
-static int        imap_fetchdata(struct mailbox *mp, struct message *m,
+static void       imap_fetchdata(struct mailbox *mp, struct message *m,
                      uz expected, int need, const char *head,
                      uz headsize, long headlines);
 static void       imap_putstr(struct mailbox *mp, struct message *m,
@@ -2148,28 +2148,38 @@ jleave:
    return rv;
 }
 
-static int
+static void
 imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
    int need, const char *head, uz headsize, long headlines)
 {
-   char *line = NULL, *lp;
-   uz linesize = 0, linelen, size = 0;
-   int emptyline = 0, lines = 0, excess = 0;
+   char *line, *lp;
+   uz linesize, linelen, size = 0;
+   int emptyline = 0, lines = 0;
    off_t offset;
    NYD_IN;
+
+   mx_fs_linepool_aquire(&line, &linesize);
 
    fseek(mp->mb_otf, 0L, SEEK_END);
    offset = ftell(mp->mb_otf);
 
-   if (head)
+   if(head)
       fwrite(head, 1, headsize, mp->mb_otf);
 
-   while (mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0) {
+   while(expected > 0 &&
+         mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0){
       lp = line;
-      if (linelen > expected) {
-         excess = linelen - expected;
-         linelen = expected;
-      }
+      if(linelen > expected)
+         lp[linelen = expected] = '\0';
+      expected -= linelen;
+
+      while(linelen > 0 && (lp[linelen - 1] == NETNL[0] ||
+            lp[linelen - 1] == NETNL[1]))
+         lp[--linelen] = '\0';
+
+      if(n_poption & n_PO_D_VVV)
+         n_err(">>> SERVER: %s\n", lp);
+
       /* TODO >>
        * Need to mask 'From ' lines. This cannot be done properly
        * since some servers pass them as 'From ' and others as
@@ -2182,47 +2192,37 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
        * If the line is the first line of the message header, it
        * is likely a real 'From ' line. In this case, it is just
        * ignored since it violates all standards.
-       * TODO can the latter *really* happen??
+       * TODO i have *never* seen the latter?!?!?
        * TODO <<
        */
-      /* Since we simply copy over data without doing any transfer
-       * encoding reclassification/adjustment we *have* to perform
-       * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(lp, linelen, FAL0)) {
+      /* TODO Since we simply copy over data without doing any transfer
+       * TODO encoding reclassification/adjustment we *have* to perform
+       * TODO RFC 4155 compliant From_ quoting here TODO REALLY NOT! */
+      if(emptyline && is_head(lp, linelen, FAL0)){
          fputc('>', mp->mb_otf);
          ++size;
       }
-      emptyline = 0;
-      if (lp[linelen-1] == '\n' && (linelen == 1 || lp[linelen-2] == '\r')) {
-         if (linelen > 2) {
-            fwrite(lp, 1, linelen - 2, mp->mb_otf);
-            size += linelen - 1;
-         } else {
-            emptyline = 1;
-            ++size;
-         }
-         fputc('\n', mp->mb_otf);
-      } else {
+      if(!(emptyline = (linelen == 0)))
          fwrite(lp, 1, linelen, mp->mb_otf);
-         size += linelen;
-      }
+      putc('\n', mp->mb_otf);
+      size += ++linelen;
       ++lines;
-      if ((expected -= linelen) <= 0)
-         break;
    }
-   if (!emptyline) {
+
+   if(!emptyline){
       /* TODO This is very ugly; but some IMAP daemons don't end a
        * TODO message with \r\n\r\n, and we need \n\n for mbox format.
        * TODO That is to say we do it wrong here in order to get it right
        * TODO when send.c stuff or with MBOX handling, even though THIS
        * TODO line is solely a property of the MBOX database format! */
       fputc('\n', mp->mb_otf);
-      ++lines;
       ++size;
+      ++lines;
    }
+
    fflush(mp->mb_otf);
 
-   if (m != NULL) {
+   if(m != NIL){
       m->m_size = size + headsize;
       m->m_lines = lines + headlines;
       m->m_block = mailx_blockof(offset);
@@ -2238,9 +2238,9 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
          break;
       }
    }
-   n_free(line);
+
+   mx_fs_linepool_release(line, linesize);
    NYD_OU;
-   return excess;
 }
 
 static void
