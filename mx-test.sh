@@ -904,7 +904,7 @@ t_X_errexit() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -975,7 +975,7 @@ t_Y_errexit() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -2917,7 +2917,7 @@ t_ifelse() {
 
       check regex 0 "${MBOX}" '1115671789 95'
    else
-      t_echoskip 'regex:[no regex option]'
+      t_echoskip 'regex:[!REGEX]'
    fi
 
    t_epilog "${@}"
@@ -3393,7 +3393,7 @@ t_addrcodec() {
 
       check idna 0 "${MBOX}" '498775983 326'
    else
-      t_echoskip 'idna:[no IDNA option]'
+      t_echoskip 'idna:[!IDNA]'
    fi
 
    t_epilog "${@}"
@@ -3403,7 +3403,7 @@ t_csop() {
    t_prolog "${@}"
 
    if have_feat cmd-csop; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_CSOP]'
       t_epilog "${@}"
       return
    fi
@@ -3479,7 +3479,7 @@ t_vexpr() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3689,7 +3689,7 @@ t_vexpr() {
 
       check regex 0 "${MBOX}" '2831099111 542'
    else
-      t_echoskip 'regex:[no regex option]'
+      t_echoskip 'regex:[!REGEX]'
    fi
 
    t_epilog "${@}"
@@ -3699,7 +3699,7 @@ t_call_ret() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3782,7 +3782,7 @@ t_xcall() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3881,7 +3881,7 @@ t_xcall() {
          -Snomemdebug > "${MBOX}" 2>&1
       check 3 1 "${MBOX}" '1006776201 2799'
    else
-      t_echoskip '2-3:[test unsupported]'
+      t_echoskip '2-3:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"
@@ -4345,7 +4345,7 @@ t_maildir() {
    t_prolog "${@}"
 
    if have_feat maildir; then :; else
-      t_echoskip '[no maildir option]'
+      t_echoskip '[!MAILDIR]'
       t_epilog "${@}"
       return
    fi
@@ -4616,7 +4616,7 @@ _EOT
          -Smta=test://"$MBOX" -Rf ./.trebox
       check 8 0 "${MBOX}" '3499372945 285'
    else
-      t_echoskip '8:[no iconv option]'
+      t_echoskip '8:[!ICONV]'
    fi
 
    t_epilog "${@}"
@@ -4635,7 +4635,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
          return
       fi
    else
-      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_echoskip '[no UTF-8 locale or !ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4745,7 +4745,7 @@ t_iconv_mainbody() {
    t_prolog "${@}"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then :; else
-      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_echoskip '[no UTF-8 locale or !ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4768,7 +4768,7 @@ t_iconv_mainbody() {
          check 4 - ./.terr '271380835 121'
       fi
    else
-      t_echoskip '4:[test unsupported]'
+      t_echoskip '4:[!UISTRINGS]'
    fi
 
    # The different iconv(3) implementations use different replacement sequence
@@ -4819,7 +4819,7 @@ t_mime_force_sendout() {
    t_prolog "${@}"
 
    if have_feat iconv; then :; else
-      t_echoskip '[option iconv missing, unsupported]'
+      t_echoskip '[!ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4982,7 +4982,7 @@ _EOT
 		__EOT
       check 3 0 "${MBOX}" '1072772360 789'
    else
-      t_echoskip '3:[test unsupported]'
+      t_echoskip '3:[!UISTRINGS]'
    fi
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
@@ -5054,7 +5054,7 @@ t_expandaddr() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -5348,7 +5348,7 @@ t_mta_aliases() {
    t_prolog "${@}"
 
    if have_feat mta-aliases; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!MTA_ALIASES]'
       t_epilog "${@}"
       return
    fi
@@ -5397,7 +5397,7 @@ t_mta_aliases() {
    if [ -n "${mtaali}" ] && have_feat uistrings; then
       check 5 - .tall '771616226 179'
    else
-      t_echoskip '5:[test unsupported]'
+      t_echoskip '5:[!SMTP/!UISTRINGS]'
    fi
 
    # xxx for false-positive SMTP test we would need some mocking
@@ -5410,7 +5410,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 8 - .tall '2834389894 178'
    else
-      t_echoskip '8:[test unsupported]'
+      t_echoskip '8:[!UISTRINGS]'
    fi
 
    echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
@@ -5421,7 +5421,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 10 - .tall '2136559508 69'
    else
-      t_echoskip '10:[test unsupported]'
+      t_echoskip '10:[!UISTRINGS]'
    fi
 
    echo 'a9:nine@nine.nine' >> ./.tali
@@ -5470,7 +5470,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 14 - .tall '1795496020 473'
    else
-      t_echoskip '14:[test unsupported]'
+      t_echoskip '14:[!UISTRINGS]'
    fi
    check 15 - .tf1 '3056269950 249'
    check 16 - .tp1 '3056269950 249'
@@ -5759,7 +5759,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 2 - .tall '1928331872 720'
    else
-      t_echoskip '2:[test unsupported]'
+      t_echoskip '2:[!UISTRINGS]'
    fi
 
    ${rm} "${MBOX}"
@@ -5813,7 +5813,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 4 - .tall '2526106274 1910'
    else
-      t_echoskip '4:[test unsupported]'
+      t_echoskip '4:[!UISTRINGS]'
    fi
 
    ${rm} "${MBOX}"
@@ -5848,7 +5848,7 @@ reply 1 2
    if have_feat uistrings; then
       check 6 - .tall '1210753005 508'
    else
-      t_echoskip '6:[test unsupported]'
+      t_echoskip '6:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"
@@ -5958,7 +5958,7 @@ t_rfc2231() {
    if have_feat uistrings; then
       check 5 - ./.terr '3713266499 473'
    else
-      t_echoskip '5:[test unsupported]'
+      t_echoskip '5:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"
@@ -5968,7 +5968,7 @@ t_mime_types_load_control() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -6128,7 +6128,7 @@ _EOT
    if have_feat uistrings; then
       check 2 - .tall '1878598364 505'
    else
-      t_echoskip '2:[test unsupported]'
+      t_echoskip '2:[!UISTRINGS]'
    fi
 
    # Automatic alternates, also from command line (freezing etc.)
@@ -6643,7 +6643,7 @@ t_on_main_loop_tick() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -6706,7 +6706,7 @@ t_compose_hooks() { # {{{ TODO monster
 
    if have_feat uistrings &&
          have_feat cmd-csop && have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS/!CMD_CSOP/!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -7657,7 +7657,7 @@ t_mass_recipients() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -7880,7 +7880,7 @@ t_lreply_futh_rth_etc() {
    if have_feat uistrings; then
       check 1 - "${MBOX}" '4194791149 39789'
    else
-      t_echoskip '1:[test unsupported]'
+      t_echoskip '1:[!UISTRINGS]'
    fi
 
    ##
@@ -7949,7 +7949,7 @@ t_pipe_handlers() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -8050,7 +8050,7 @@ t_s_mime() {
    t_prolog "${@}"
 
    if have_feat smime; then :; else
-      t_echoskip '[no S/MIME option]'
+      t_echoskip '[!SMIME]'
       t_epilog "${@}"
       return
    fi
