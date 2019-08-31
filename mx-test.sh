@@ -182,6 +182,10 @@ t_all() { # {{{
    jspawn z
    jsync
 
+   ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
+   jspawn net_pop3
+   jsync
+
    jsync 1
 } # }}}
 
@@ -9572,6 +9576,106 @@ t_z() {
 
    t_epilog "${@}"
 }
+# }}}
+
+# OPT_NET_TEST {{{
+t_net_pop3() { # {{{ TODO TLS tests, then also EXTERN*
+   t_prolog "${@}"
+
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
+      t_echoskip '[!NET_TEST or !POP3]'
+      t_epilog "${@}"
+      return
+   fi
+
+   pop3_logged_in() { # {{{
+      printf '\001
++OK Logged in.
+\002
+STAT
+\001
++OK 2 506
+\002
+LIST 1
+\001
++OK 1 258
+\002
+LIST 2
+\001
++OK 2 248
+\002
+TOP 1 0
+\001
++OK
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Fri, 16 Aug 2019 19:46:20 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: The GSSAPI dance is done!
+Message-ID: <20190816174620.LeViGqO2@kdc.localdomain>
+
+.
+\002
+TOP 2 0
+\001
++OK
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Sat, 17 Aug 2019 23:21:25 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: Hi from FreeBSD
+Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
+
+.
+\002
+QUIT
+\001
++OK Logging out.
+'
+   } # }}}
+
+   t__net_script .t.sh pop3 \
+      -Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
+   { printf '\001
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\002
+USER steffen
+\001
++OK
+\002
+PASS Sway
+' &&
+      pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '3754674759 160'
+
+   if have_feat md5; then
+      t__net_script .t.sh pop3 \
+         -Spop3-auth=plain -Snopop3-use-starttls
+      { printf '\001
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\002
+APOP steffen 4f66ea9bf092117b009b9f8d928c656d
+' &&
+         pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 2 0 "${MBOX}" '3754674759 160'
+   else
+      t_echoskip '2:[!MD5]'
+   fi
+
+   t__net_script .t.sh pop3 \
+      -Spop3-auth=oauthbearer -Snopop3-use-starttls
+   { printf '\001
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\002
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+      pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 3 0 "${MBOX}" '3754674759 160'
+
+   t_epilog "${@}"
+} # }}}
 # }}}
 
 # Test support {{{
