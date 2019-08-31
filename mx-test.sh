@@ -184,6 +184,7 @@ t_all() { # {{{
 
    ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
    jspawn net_pop3
+   jspawn net_imap
    jsync
 
    jsync 1
@@ -9673,6 +9674,119 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
       pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 3 0 "${MBOX}" '3754674759 160'
+
+   t_epilog "${@}"
+} # }}}
+
+t_net_imap() { # {{{ TODO TLS tests, then also EXTERN*
+   t_prolog "${@}"
+
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
+      t_echoskip '[!NET_TEST or !IMAP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   imap_hello() { # {{{
+      printf '\001
+* OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL] Dovecot ready.
+\002
+T1 CAPABILITY
+\001
+* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL
+T1 OK Pre-login capabilities listed, post-login capabilities have more.
+'
+   } # }}}
+
+   imap_logged_in() { # {{{
+      printf '\001
+* CAPABILITY IMAP4rev1 SASL-IR
+T2 OK Logged in
+\002
+T3 EXAMINE "INBOX"
+\001
+* FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)
+* OK [PERMANENTFLAGS ()] Read-only mailbox.
+* 2 EXISTS
+* 0 RECENT
+* OK [UNSEEN 2] First unseen.
+* OK [UIDVALIDITY 1565715806] UIDs valid
+* OK [UIDNEXT 38] Predicted next UID
+T3 OK [READ-ONLY] Examine completed (0.001 + 0.000 secs).
+\002
+T4 FETCH 1:2 (FLAGS UID)
+\001
+* 1 FETCH (FLAGS (\\Seen) UID 36)
+* 2 FETCH (FLAGS () UID 37)
+T4 OK Fetch completed (0.001 + 0.000 secs).
+\002
+T5 FETCH 1:2 (RFC822.SIZE INTERNALDATE)
+\001
+* 1 FETCH (RFC822.SIZE 258 INTERNALDATE "16-Aug-2019 19:46:20 +0200")
+* 2 FETCH (RFC822.SIZE 248 INTERNALDATE "17-Aug-2019 23:21:27 +0200")
+T5 OK Fetch completed (0.001 + 0.000 secs).
+\002
+T6 UID FETCH 36:37 (RFC822.HEADER)
+\001
+* 1 FETCH (UID 36 RFC822.HEADER {253}
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Fri, 16 Aug 2019 19:46:20 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: The GSSAPI dance is done!
+Message-ID: <20190816174620.LeViGqO2@kdc.localdomain>
+
+)
+* 2 FETCH (UID 37 RFC822.HEADER {243}
+Return-Path: <steffen@kdc.localdomain>
+Delivered-To: root@localhost
+Date: Sat, 17 Aug 2019 23:21:25 +0200
+From: steffen@kdc.localdomain
+To: root@localhost
+Subject: Hi from FreeBSD
+Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
+
+)
+T6 OK Fetch completed (0.001 + 0.000 secs).
+\002
+T7 LOGOUT
+\001
+* BYE Logging out
+'
+   } # }}}
+
+   t__net_script .t.sh imap \
+      -Simap-auth=login -Snoimap-use-starttls
+   { imap_hello && printf '\002
+T2 LOGIN "steffen" "Sway"
+' &&
+      imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '4233548649 160'
+
+   t__net_script .t.sh imap \
+      -Simap-auth=oauthbearer -Snoimap-use-starttls
+   { imap_hello && printf '\002
+T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+      imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" '4233548649 160'
+
+   if have_feat md5; then
+      t__net_script .t.sh imap \
+         -Simap-auth=cram-md5 -Snoimap-use-starttls
+      { imap_hello && printf '\002
+T2 AUTHENTICATE CRAM-MD5
+\001
++ PDAzMjYxNTc5NDU2Mzc3MTAuMTU2NzI5NDU0MUBhcmNoLTIwMTk+
+\002
+c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
+' &&
+         imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 3 0 "${MBOX}" '4233548649 160'
+   else
+      t_echoskip '2:[!MD5]'
+   fi
 
    t_epilog "${@}"
 } # }}}
