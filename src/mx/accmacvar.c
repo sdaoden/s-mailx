@@ -1149,11 +1149,15 @@ jefrom:
             umask((mode_t)uib);
          }
          break;
-      case ok_b_verbose:
-         n_poption = (((n_poption & n_PO_V_MASK) << 1) & n_PO_V_MASK) | n_PO_V;
+      case ok_b_verbose:{
+         u32 i;
+
+         i = ((n_poption << 1) | n_PO_V) & n_PO_V_MASK;
+         n_poption &= ~n_PO_V_MASK;
+         n_poption |= i;
          if(!(n_poption & n_PO_D))
             su_log_set_level(su_LOG_INFO);
-         break;
+         }break;
       }
    }else{
       switch(okey){
