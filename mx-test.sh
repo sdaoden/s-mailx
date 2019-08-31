@@ -315,7 +315,8 @@ else
       fi
 
       # The actual hardware
-      if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
+      printf 'all:\n' > .t.mk.io
+      if ( ${MAKE} -j 10 -f .t.mk.io ) >/dev/null 2>&1; then
          if command -v nproc >/dev/null 2>&1; then
             i=`nproc 2>/dev/null`
             [ ${?} -eq 0 ] && MAXJOBS=${i}
