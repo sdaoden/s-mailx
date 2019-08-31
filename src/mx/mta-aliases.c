@@ -136,7 +136,7 @@ jerr:
 static s32
 a_mtaali_read_file(struct a_mtaali_stack *masp){
    struct str line, l;
-   struct n_string s, *sp;
+   struct n_string ns, *nsp;
    struct su_cs_dict *dp;
    s32 rv;
    FILE *afp;
@@ -151,8 +151,8 @@ a_mtaali_read_file(struct a_mtaali_stack *masp){
 
    dp = su_cs_dict_create(&masp->mas_dict,
          (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE), NIL);
-   sp = n_string_creat_auto(&s);
-   sp = n_string_book(sp, 512);
+   nsp = n_string_creat_auto(&ns);
+   nsp = n_string_book(nsp, 512);
 
    /* Read in the database */
    su_mem_set(&line, 0, sizeof line);
@@ -172,12 +172,12 @@ a_mtaali_read_file(struct a_mtaali_stack *masp){
       /* :
        *    A logical line starts with non-whitespace text.  A line that starts
        *    with whitespace continues a logical line. */
-      if(l.s != line.s || sp->s_len == 0){
-         sp = n_string_push_buf(sp, l.s, l.l);
+      if(l.s != line.s || nsp->s_len == 0){
+         nsp = n_string_push_buf(nsp, l.s, l.l);
          continue;
       }
 
-      ASSERT(sp->s_len > 0);
+      ASSERT(nsp->s_len > 0);
 jparse_line:{
          /* :
           *    An alias definition has the form
@@ -191,11 +191,11 @@ jparse_line:{
          struct str l2;
          char c;
 
-         l2.l = sp->s_len;
-         l2.s = n_string_cp(sp);
+         l2.l = nsp->s_len;
+         l2.s = n_string_cp(nsp);
 
          if((l2.s = su_cs_find_c(l2.s, ':')) == NIL ||
-               (l2.l = P2UZ(l2.s - sp->s_dat)) == 0){
+               (l2.l = P2UZ(l2.s - nsp->s_dat)) == 0){
             l.s = UNCONST(char*,N_("invalid line"));
             rv = su_ERR_INVAL;
             goto jparse_err;
@@ -209,7 +209,7 @@ jparse_line:{
           *    Usernames may only be up to 32 characters long.
           * Test against alpha since the csdict will lowercase names.. */
          *l2.s = '\0';
-         c = *(l2.s = sp->s_dat);
+         c = *(l2.s = nsp->s_dat);
          if(!su_cs_is_alpha(c) && c != '_'){
 jename:
             l.s = UNCONST(char*,N_("not a valid name\n"));
@@ -224,7 +224,7 @@ jename:
             }
 
          /* Be strict regarding file content */
-         if(UNLIKELY(su_cs_dict_has_key(dp, sp->s_dat))){
+         if(UNLIKELY(su_cs_dict_has_key(dp, nsp->s_dat))){
             l.s = UNCONST(char*,N_("duplicate name"));
             rv = su_ERR_ADDRINUSE;
             goto jparse_err;
@@ -233,7 +233,7 @@ jename:
             struct n_strlist *head, **tailp;
             struct mx_name *nphead,*np;
 
-            nphead = lextract(l2.s = &sp->s_dat[l2.l + 1], GTO | GFULL |
+            nphead = lextract(l2.s = &nsp->s_dat[l2.l + 1], GTO | GFULL |
                   GQUOTE_ENCLOSED_OK);
 
             if(UNLIKELY(nphead == NIL)){
@@ -241,7 +241,7 @@ jeval:
                n_err(_("*mta_aliases*: %s: ignoring empty/unsupported value: "
                      "%s: %s\n"),
                   n_shexp_quote_cp(masp->mas_user, FAL0),
-                  n_shexp_quote_cp(sp->s_dat, FAL0),
+                  n_shexp_quote_cp(nsp->s_dat, FAL0),
                   n_shexp_quote_cp(l2.s, FAL0));
                continue;
             }
@@ -267,7 +267,7 @@ jeval:
                      ) != 0);
             }
 
-            if((rv = su_cs_dict_insert(dp, sp->s_dat, head)) != su_ERR_NONE){
+            if((rv = su_cs_dict_insert(dp, nsp->s_dat, head)) != su_ERR_NONE){
                n_err(_("*mta_aliases*: failed to create storage: %s\n"),
                   su_err_doc(rv));
                goto jdone;
@@ -281,10 +281,10 @@ jeval:
           *break;*/
          goto jparse_done;
       }
-      sp = n_string_assign_buf(sp, l.s, l.l);
+      nsp = n_string_assign_buf(nsp, l.s, l.l);
    }
    /* Last line leftover to parse? */
-   if(sp->s_len > 0){
+   if(nsp->s_len > 0){
       l.l = 0;
       goto jparse_line;
    }
@@ -306,7 +306,7 @@ jleave:
 jparse_err:
    n_err("*mta-aliases*: %s: %s: %s\n",
       n_shexp_quote_cp(masp->mas_user, FAL0), V_(l.s),
-      n_shexp_quote_cp(sp->s_dat, FAL0));
+      n_shexp_quote_cp(nsp->s_dat, FAL0));
    goto jdone;
 }
 
