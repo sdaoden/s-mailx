@@ -474,17 +474,16 @@ jretry:
       if((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
 
+      while(blen > 0 && (a_pop3_dat.s[blen - 1] == NETNL[0] ||
+            a_pop3_dat.s[blen - 1] == NETNL[1]))
+         a_pop3_dat.s[--blen] = '\0';
+
       if(n_poption & n_PO_D_VV)
          n_err(">>> SERVER: %s\n", a_pop3_dat.s);
 
       switch(*a_pop3_dat.s){
       case '+':
-         while(blen > 0 &&
-               (a_pop3_dat.s[blen - 1] == NETNL[0] ||
-                a_pop3_dat.s[blen - 1] == NETNL[1]))
-            a_pop3_dat.s[--blen] = '\0';
-
-         if(blen == 0)
+         if(blen == 1)
             a_pop3_realdat = su_empty;
          else{
             for(a_pop3_realdat = a_pop3_dat.s;
@@ -500,10 +499,6 @@ jretry:
       case '-':
          rv = STOP;
          mp->mb_active = MB_NONE;
-         while(blen > 0 &&
-               (a_pop3_dat.s[blen - 1] == NETNL[0] ||
-                a_pop3_dat.s[blen - 1] == NETNL[1]))
-            a_pop3_dat.s[--blen] = '\0';
          n_err(_("POP3 error: %s\n"), a_pop3_dat.s);
          break;
       default:
