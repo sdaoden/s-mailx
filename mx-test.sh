@@ -185,6 +185,7 @@ t_all() { # {{{
    ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
    jspawn net_pop3
    jspawn net_imap
+   jspawn net_smtp
    jsync
 
    jsync 1
@@ -9787,6 +9788,276 @@ c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
    else
       t_echoskip '2:[!MD5]'
    fi
+
+   t_epilog "${@}"
+} # }}}
+
+t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
+   t_prolog "${@}"
+
+   if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
+      t_echoskip '[!NET_TEST or !SMTP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   # SMTP net-test script {{{
+   helo= smtp_from= from= msgid=
+   smtp__script() {
+      proto=${1}
+      shift
+
+      ${cat} <<-_EOT > ./.t.sh
+		#!${SHELL} -
+		</dev/null ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+			-Suser=steffen -Spassword=Sway -s ub \\
+			${@} \\
+			-S 'mta=${proto}://localhost:'\${1} \\
+			ex@am.ple
+		_EOT
+      ${chmod} 0755 ./.t.sh
+   }
+
+   smtp_script() {
+      helo=reproducible_build
+      smtp_from=reproducible_build@${helo}
+      from=${smtp_from}
+      msgid='
+Message-ID: <19961002015007.AQACA%reproducible_build@reproducible_build>'
+      smtp__script "$@"
+   }
+
+   smtp_script_hostname() {
+      helo=am.ple
+      smtp_from=reproducible_build@${helo}
+      from=${smtp_from}
+      msgid='
+Message-ID: <19961002015007.AQACAAAA@am.ple>'
+      smtp__script "$@" -Shostname=am.ple
+   }
+
+   smtp_script_hostname_smtp_hostname() {
+      helo=am.ple
+      smtp_from=steffen@am2.ple2
+      from=reproducible_build@${helo}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+      smtp__script "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
+   }
+
+   smtp_script_hostname_smtp_hostname_empty() {
+      helo=am.ple
+      smtp_from=steffen@am.ple
+      from=reproducible_build@${helo}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am.ple>'
+      smtp__script "$@" -Shostname=am.ple -Ssmtp-hostname=
+   }
+
+   smtp_script_from() {
+      helo=reproducible_build
+      smtp_from=steffen.ex@am.ple
+      from=${smtp_from}
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
+      smtp__script "$@" -Sfrom=steffen.ex@am.ple
+   }
+
+   smtp_script_from_hostname() {
+      helo=am2.ple2
+      smtp_from=steffen.ex@am.ple
+      from=${smtp_from}
+      msgid='
+Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
+      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2
+   }
+
+   smtp_script_from_hostname_smtp_hostname() {
+      helo=am2.ple2
+      smtp_from=steffen@am3.ple3
+      from=steffen.ex@am.ple
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
+      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2 \
+         -Ssmtp-hostname=am3.ple3
+   }
+
+   smtp_script_from_hostname_smtp_hostname_empty() {
+      helo=am2.ple2
+      smtp_from=steffen@am2.ple2
+      from=steffen.ex@am.ple
+      msgid='
+Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
+      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2 \
+         -Ssmtp-hostname=
+   }
+   # }}}
+
+   # HE-EH-LOs {{{
+   smtp_helo() {
+      printf '\001
+220 arch-2019 ESMTP Postfix
+\002
+HELO %s
+\001
+250 arch-2019
+' \
+      "${helo}"
+   }
+
+   smtp_ehlo() {
+      printf '\001
+220 arch-2019 ESMTP Postfix
+\002
+EHLO %s
+\001
+250-arch-2019
+250-STARTTLS
+250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 EXTERNAL
+250 ENHANCEDSTATUSCODES
+' \
+      "${helo}"
+   }
+   # }}}
+
+   smtp_auth_ok() { printf '\001\n235 2.7.0 Authentication successful\n'; }
+
+   # After AUTH {{{
+   smtp__go_pre() {
+      printf '\002
+MAIL FROM:<%s>
+\001
+250 2.1.0 Ok
+\002
+RCPT TO:<ex@am.ple>
+\001
+250 2.1.5 Ok
+\002
+DATA
+\001
+354 End data with <CR><LF>.<CR><LF>
+\002
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: %s
+To: ex@am.ple
+Subject: ub%s
+
+' \
+      "${smtp_from}" "${from}" "${msgid}"
+   }
+
+   smtp__go_post() {
+      printf '.
+\001
+250 2.0.0 Ok: queued as 78FFC20305
+\002
+QUIT
+\001
+221 2.0.0 Bye
+' \
+      "${smtp_from}" "${from}" "${msgid}"
+   }
+
+   smtp_go() { smtp__go_pre && smtp__go_post; }
+   # }}}
+
+   # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
+
+   smtp_script smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_hostname smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_hostname_smtp_hostname smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 3 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_hostname_smtp_hostname_empty smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 4 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_from smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 5 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_from_hostname smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 6 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_from_hostname_smtp_hostname smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 7 0 "${MBOX}" '4294967295 0'
+
+   smtp_script_from_hostname_smtp_hostname_empty smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls
+   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check 8 0 "${MBOX}" '4294967295 0'
+   # }}}
+
+   # Real EHLO authentication types {{{
+
+   smtp_script smtp \
+      -Ssmtp-auth=plain -Snosmtp-use-starttls
+   { smtp_ehlo && printf '\002
+AUTH PLAIN
+\001
+334 
+\002
+AHN0ZWZmZW4AU3dheQ==
+' &&
+      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check auth-1 0 "${MBOX}" '4294967295 0'
+
+   smtp_script smtp \
+      -Ssmtp-auth=login -Snosmtp-use-starttls
+   { smtp_ehlo && printf '\002
+AUTH LOGIN
+\001
+334 VXNlcm5hbWU6
+\002
+c3RlZmZlbg==
+\001
+334 UGFzc3dvcmQ6
+\002
+U3dheQ==
+' &&
+      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check auth-2 0 "${MBOX}" '4294967295 0'
+
+   smtp_script smtp \
+      -Ssmtp-auth=oauthbearer -Snosmtp-use-starttls
+   { smtp_ehlo && printf '\002
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+   check auth-3 0 "${MBOX}" '4294967295 0'
+
+   if have_feat md5; then
+      smtp_script smtp \
+         -Ssmtp-auth=cram-md5 -Snosmtp-use-starttls
+      { smtp_ehlo && printf '\002
+AUTH CRAM-MD5
+\001
+334 PDM2MzI5MzIyMDE2MDM5NDUuMTU2NzQ1NTkxOUBhcmNoLTIwMTk+
+\002
+c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check auth-4 0 "${MBOX}" '4294967295 0'
+   else
+      t_echoskip 'auth-4:[!MD5]'
+   fi
+   # }}}
 
    t_epilog "${@}"
 } # }}}
