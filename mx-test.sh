@@ -59,8 +59,7 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
-# In debug built the value is doubled (due to memory checks).
-JOBWAIT=66
+JOBWAIT=42
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -417,6 +416,10 @@ jspawn() {
       printf ' [%s=%s]' ${JOBS} "${1}"
    else
       JOBS=1
+      # Assume problems exist, do not let user hanging on terminal
+      if [ -n "${RUN_TEST}" ]; then
+         printf '... [%s]\n' "${1}"
+      fi
    fi
 
    (
@@ -8437,7 +8440,6 @@ if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
    cc_all_configs
 else
    if have_feat debug; then
-      JOBWAIT=`add ${JOBWAIT} ${JOBWAIT}`
       if have_feat devel; then
          JOBSYNC=1
          DUMPERR=y
