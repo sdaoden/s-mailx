@@ -416,10 +416,10 @@ n_nodename(boole mayoverride){
 #endif
    NYD2_IN;
 
-   if(su_state_has(su_STATE_REPRODUCIBLE))
-      hn = n_UNCONST(su_reproducible_build);
-   else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
+   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
+   }else if(su_state_has(su_STATE_REPRODUCIBLE)){
+      hn = n_UNCONST(su_reproducible_build);
    }else if((hn = sys_hostname) == NULL){
       boole lofi;
 
