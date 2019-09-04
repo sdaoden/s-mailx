@@ -9801,95 +9801,103 @@ t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
       return
    fi
 
+   helo= mail_from= from= msgid=
+
    # SMTP net-test script {{{
-   helo= smtp_from= from= msgid=
    smtp__script() {
-      proto=${1}
-      shift
+      file=${1}
+      proto=${2}
+      shift 2
 
       ${cat} <<-_EOT > ./.t.sh
 		#!${SHELL} -
-		</dev/null ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+		<"${file}" ${MAILX} ${ARGS} -Sstealthmua=noagent \\
 			-Suser=steffen -Spassword=Sway -s ub \\
-			${@} \\
 			-S 'mta=${proto}://localhost:'\${1} \\
+			${@} \\
 			ex@am.ple
 		_EOT
       ${chmod} 0755 ./.t.sh
    }
 
-   smtp_script() {
+   smtp_script_file() {
+      file=${1}
+      shift
       helo=reproducible_build
-      smtp_from=reproducible_build@${helo}
-      from=${smtp_from}
+      mail_from=reproducible_build@${helo}
+      from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACA%reproducible_build@reproducible_build>'
-      smtp__script "$@"
+      smtp__script ${file} "$@"
+   }
+
+   smtp_script() {
+      smtp_script_file /dev/null "$@"
    }
 
    smtp_script_hostname() {
       helo=am.ple
-      smtp_from=reproducible_build@${helo}
-      from=${smtp_from}
+      mail_from=reproducible_build@${helo}
+      from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACAAAA@am.ple>'
-      smtp__script "$@" -Shostname=am.ple
+      smtp__script /dev/null "$@" -Shostname=am.ple
    }
 
    smtp_script_hostname_smtp_hostname() {
       helo=am.ple
-      smtp_from=steffen@am2.ple2
+      mail_from=steffen@am2.ple2
       from=reproducible_build@${helo}
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
-      smtp__script "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
+      smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
    }
 
    smtp_script_hostname_smtp_hostname_empty() {
       helo=am.ple
-      smtp_from=steffen@am.ple
+      mail_from=steffen@am.ple
       from=reproducible_build@${helo}
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am.ple>'
-      smtp__script "$@" -Shostname=am.ple -Ssmtp-hostname=
+      smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=
    }
 
    smtp_script_from() {
       helo=reproducible_build
-      smtp_from=steffen.ex@am.ple
-      from=${smtp_from}
+      mail_from=steffen.ex@am.ple
+      from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
-      smtp__script "$@" -Sfrom=steffen.ex@am.ple
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple
    }
 
    smtp_script_from_hostname() {
       helo=am2.ple2
-      smtp_from=steffen.ex@am.ple
-      from=${smtp_from}
+      mail_from=steffen.ex@am.ple
+      from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
-      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2
    }
 
    smtp_script_from_hostname_smtp_hostname() {
       helo=am2.ple2
-      smtp_from=steffen@am3.ple3
+      mail_from=steffen@am3.ple3
       from=steffen.ex@am.ple
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
-      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2 \
-         -Ssmtp-hostname=am3.ple3
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+         -Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
    }
 
    smtp_script_from_hostname_smtp_hostname_empty() {
       helo=am2.ple2
-      smtp_from=steffen@am2.ple2
+      mail_from=steffen@am2.ple2
       from=steffen.ex@am.ple
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
-      smtp__script "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2 \
-         -Ssmtp-hostname=
+      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+         -Shostname=am2.ple2 -Ssmtp-hostname=
    }
    # }}}
 
@@ -9923,30 +9931,39 @@ EHLO %s
    smtp_auth_ok() { printf '\001\n235 2.7.0 Authentication successful\n'; }
 
    # After AUTH {{{
-   smtp__go_pre() {
+   smtp_mail_from() {
       printf '\002
 MAIL FROM:<%s>
 \001
 250 2.1.0 Ok
-\002
-RCPT TO:<ex@am.ple>
-\001
-250 2.1.5 Ok
-\002
+' \
+      "${mail_from}"
+   }
+
+   smtp_rcpt_to() { printf '\002\nRCPT TO:<%s>\n\001\n250 2.1.5 Ok\n' "${@}"; }
+
+   smtp_data() {
+      printf '\002
 DATA
 \001
 354 End data with <CR><LF>.<CR><LF>
 \002
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: %s
-To: ex@am.ple
-Subject: ub%s
-
 ' \
-      "${smtp_from}" "${from}" "${msgid}"
+      "${from}"
    }
 
-   smtp__go_post() {
+   smtp_to() { printf 'To: ex@am.ple\n'; }
+
+   smtp_head_tail() { printf 'Subject: ub%s\n\n' "${msgid}"; }
+
+   smtp_head_all() {
+      smtp_mail_from && smtp_rcpt_to ex@am.ple &&
+      smtp_data && smtp_to && smtp_head_tail
+   }
+
+   smtp_quit() {
       printf '.
 \001
 250 2.0.0 Ok: queued as 78FFC20305
@@ -9954,11 +9971,10 @@ Subject: ub%s
 QUIT
 \001
 221 2.0.0 Bye
-' \
-      "${smtp_from}" "${from}" "${msgid}"
+'
    }
 
-   smtp_go() { smtp__go_pre && smtp__go_post; }
+   smtp_go() { smtp_head_all && smtp_quit; }
    # }}}
 
    # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
@@ -10057,6 +10073,81 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
    else
       t_echoskip 'auth-4:[!MD5]'
    fi
+   # }}}
+
+   # Some data feeding {{{
+
+   # body data
+   ${awk} '
+      BEGIN{
+         for(lnlen = i = 0; i < 9999; ++i){
+            j = "[" i "]"
+            printf j
+            if((lnlen += length(j)) >= 70){
+               printf "\n"
+               lnlen = 0
+            }
+         }
+         if(lnlen > 0)
+            printf "\n"
+      }' > .t.dat
+
+   smtp_script_file .t.dat smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls &&
+   { smtp_helo && smtp_head_all && ${cat} .t.dat && smtp_quit; } |
+      ../net-test .t.sh > "${MBOX}" 2>&1
+   check data-1 0 "${MBOX}" '4294967295 0'
+
+   # more RCPT TO:<>
+   rcpt_to=`${awk} '
+         BEGIN{
+            for(i = 0; i < 100; i += 2)
+               printf "ex-" i "@am.ple "
+            printf "ex@am.ple "
+            for(i = 1; i < 100; i += 2)
+               printf "ex-" i "@am.ple "
+         }'`
+   tolist=`${awk} '
+         BEGIN{
+            for(i = 0; i < 100; i += 2)
+               printf "ex-%s@am.ple ", i
+         }'`
+   cclist=`${awk} '
+         BEGIN{
+            for(i = 1; i < 100; i += 2)
+               printf "-c ex-%s@am.ple ", i
+         }'`
+
+   smtp_script smtp \
+      -Ssmtp-auth=none -Snosmtp-use-starttls \
+      ${cclist} ${tolist} &&
+   { smtp_helo && smtp_mail_from && smtp_rcpt_to $rcpt_to &&
+         smtp_data && ${awk} '
+            function doit(i, j){
+               printf j
+               lnlen = length(j)
+               for(; i <= 100; i += 2){
+                  if(i + 2 > 100){
+                     printf "ex%s@am.ple\n", (i == 100 ? "" : "-99")
+                     break
+                  }
+
+                  j = "ex-" i "@am.ple,"
+                  if((lnlen += length(j)) >= 60){
+                     lnlen = 1;
+                     j = j "\n "
+                  }else
+                     j = j " "
+                  printf j
+               }
+            }
+            BEGIN{
+               doit(0, "To: ")
+               doit(1, "Cc: ")
+            }' &&
+         smtp_head_tail && smtp_quit; } |
+      ../net-test .t.sh > "${MBOX}" 2>&1
+   check data-2 0 "${MBOX}" '4294967295 0'
    # }}}
 
    t_epilog "${@}"
