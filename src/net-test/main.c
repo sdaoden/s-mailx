@@ -37,6 +37,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #ifdef mx_HAVE_ARPA_INET_H
 # include <arpa/inet.h>
@@ -96,7 +97,9 @@ main(int argc, char **argv){
    socklen_t soal;
    struct a_comm *commp;
    int es, sofd, i;
+   pid_t clipid;
 
+   clipid = 0;
    es = 1;
 
    if(argc == 3 && !strcmp(argv[1], "-v")){
@@ -167,7 +170,7 @@ main(int argc, char **argv){
    sigaction(SIGCHLD, &siac, NULL);
    ++es;
 
-   switch(fork()){
+   switch((clipid = fork())){
    case -1:
       goto jex1;
    case 0:{
@@ -188,8 +191,16 @@ main(int argc, char **argv){
       ++es;
 
       if(!a_connection(i, commp)){
-         if(errno == 0)
+         switch(errno){
+         case 0:
             errno = ECANCELED;
+            /* FALLTHRU */
+         default:
+            break;
+         case ETIMEDOUT:
+            kill(clipid, SIGKILL);
+            break;
+         }
          ++es;
          goto jex1;
       }
@@ -201,6 +212,9 @@ main(int argc, char **argv){
 jex1:
       perror("net-test");
    }
+
+   if(clipid != 0)
+      wait(NULL);
    return es;
 }
 
