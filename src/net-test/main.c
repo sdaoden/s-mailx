@@ -1,5 +1,12 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Simple optional pseudo server to test network I/O and protocols.
+ *@ Synopsis: net-test [-v] TEST-SCRIPT
+ *@ TEST-SCRIPT must be an executable script, which is invoked with the port
+ *@ number to connect to as an argument.
+ *@ net-test reads \001\n:SERVER DATA:\002\n:CLIENT DATA: data tuples from
+ *@ STDIN, and uses that to "replay" I/O over the TCP connection the client
+ *@ establishes via the provided port number.  Data mismatches cause errors.
+ *@ If -v is given, the prepared I/O as well as real I/O is logged on STDERR.
  *@ TODO - TLS
  *@ TODO - intermangled responses (expect tuple 2[lines follow] 3[..]),
  *@ TODO   store list unless fullfilled (or whatever).  E.g.,
@@ -70,6 +77,7 @@ struct a_dat{
    size_t d_len;
 };
 
+static int a_verbose;
 static int a_sigchld_seen;
 
 static void a_sigchld(int sig);
@@ -91,6 +99,10 @@ main(int argc, char **argv){
 
    es = 1;
 
+   if(argc == 3 && !strcmp(argv[1], "-v")){
+      a_verbose = 1;
+      --argc, ++argv;
+   }
    if(argc != 2)
       goto jex1;
    ++es;
@@ -231,6 +243,10 @@ a_prepare_comm(void){
                }
             }
 
+            if(a_verbose)
+               fprintf(stderr, "MODE %s\n",
+                  (b[0] == a_MODE_SRV ? "SERVER" : "CLIENT"));
+
             if((cp = (struct a_comm*)calloc(1, sizeof *cp)) == NULL)
                goto jerr;
             if(commp != NULL)
@@ -251,6 +267,10 @@ a_prepare_comm(void){
 
             while(i > 0 && b[i - 1] == '\n')
                --i;
+            if(a_verbose){
+               b[i] = '\0';
+               fprintf(stderr, "  DAT %lu <%s>\n", (unsigned long)i + 2, b);
+            }
             b[i++] = '\015';
             b[i++] = '\012';
             b[i] = '\0';
@@ -307,7 +327,7 @@ a_connection(int sofd, struct a_comm *commp){
             (commp->c_mode == a_MODE_SRV ? &fds : NULL),
             NULL, &tv))){
       case 0:
-         /* Timeout */
+         errno = ETIMEDOUT;
          goto jleave;
       case -1:
          if(((i = errno) != EINTR && i != EAGAIN) || a_sigchld_seen)
@@ -322,7 +342,15 @@ a_connection(int sofd, struct a_comm *commp){
          /* This test should work even if lines cannot be send / are not
           * received as a whole, but splitted across several poll events */
          if(commp->c_mode == a_MODE_SRV){
+            if(a_verbose)
+               fprintf(stderr, "SERV WRITES\n");
+
             for(;;){
+               if(a_verbose)
+                  fprintf(stderr, "  DAT %lu <%.*s>\n",
+                     (unsigned long)dp->d_len,
+                     (int)(dp->d_len - 2), dp->d_dat);
+
                if((ssz = write(sofd, dp->d_dat, dp->d_len)) == -1){
                   if(a_sigchld_seen)
                      goto jleave;
@@ -342,6 +370,9 @@ a_connection(int sofd, struct a_comm *commp){
                }
             }
          }else{
+            if(a_verbose)
+               fprintf(stderr, "SERV READS\n");
+
             for(;;){
                if((ssz = read(sofd, b, sizeof(b) -1)) == -1){
                   if(a_sigchld_seen)
@@ -354,6 +385,16 @@ a_connection(int sofd, struct a_comm *commp){
                if(ssz == 0) /* xxx */
                   break;
                b[(size_t)ssz] = '\0';
+
+               if(a_verbose){
+                  size_t j;
+
+                  for(j = ssz; (j > 0 && (b[j - 1] == '\015' ||
+                           b[j - 1] == '\012')); --j)
+                     ;
+                  fprintf(stderr, "  DAT %lu <%.*s>\n",
+                     (unsigned long)ssz, (int)j, b);
+               }
 
                bp = b;
                if(rnl_pend){
