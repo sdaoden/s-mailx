@@ -8297,6 +8297,7 @@ cc_all_configs() {
    < ${CONF} ${awk} '
       BEGIN{
          ALWAYS = "OPT_AUTOCC=1 OPT_AMALGAMATION=1"
+         NOTME["OPT_AUTOCC_STACKPROT"] = 1
          NOTME["OPT_ALWAYS_UNICODE_LOCALE"] = 1
          NOTME["OPT_CROSS_BUILD"] = 1
          NOTME["OPT_AUTOCC"] = 1
@@ -8305,7 +8306,6 @@ cc_all_configs() {
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
-         NOTME["OPT_FORCED_STACKPROT"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
 
          #OPTVALS

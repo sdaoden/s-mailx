@@ -193,11 +193,14 @@ OPT_AMALGAMATION=no
 # otherwise pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
 #     $ make EXTRA_CFLAGS=-std=c99 tangerine
 # Whatever you do, the configuration is fixated and updates will force
-# rebuilds.  And far below in this file there is $OPT_FORCED_STACKPROT,
-# too, which can be used to cause injection of stack protectors, but
-# which normally happens for development and debug builds only.
-# (Remember, file is parsed from top to bottom, sorry.)
+# rebuilds.
 OPT_AUTOCC=yes
+
+   # With $OPT_AUTOCC we will use stack protector guards shall the
+   # detected compiler support them; this goes in line with our own
+   # (heap) memory canaries and will detect buffer overflows.  Usually
+   # only useful during development, but often always enabled today.
+   OPT_AUTOCC_STACKPROT=yes
 
 # Whether the commands `csop', `vexpr' .. shall be included.
 # v15compat: until v15 VEXPR needs CSOP.
@@ -441,18 +444,6 @@ OPT_DEBUG=no
 
 # Development only.
 OPT_DEVEL=no
-
-# With $OPT_AUTOCC we will use stack protector guards shall the
-# detected compiler support them; this goes in line with our own (heap)
-# memory canaries and will detect buffer overflows.  It is usually only
-# useful during development, i.e., in a debug environment that tests all
-# aspects of a program.  But today it is often used even in shipout code.
-OPT_FORCED_STACKPROT=`\
-   if feat_yes DEVEL || feat_yes DEBUG; then \
-      echo yes;\
-   else \
-      echo no;\
-   fi`
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no

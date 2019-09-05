@@ -263,7 +263,7 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
-#cc_force_no_stackprot=
+#cc_no_stackprot=
 #ld_need_R_flags=
 #ld_no_bind_now=
 #ld_rpath_not_runpath=
@@ -368,7 +368,7 @@ _os_setup_sunos() {
          export CC CFLAGS LDFLAGS
          OPT_AUTOCC=0 ld_need_R_flags=-R
       else
-         cc_maxopt=2 cc_force_no_stackprot=1
+         cc_maxopt=2 cc_no_stackprot=1
       fi
    fi
 }
@@ -480,7 +480,7 @@ cc_flags() {
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
          #if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-         #   cc_force_no_stackprot=1
+         #   cc_no_stackprot=1
          #fi
          _cc_flags_generic
       fi
@@ -590,8 +590,8 @@ _cc_flags_generic() {
       cc_check -Wstrict-overflow=5
    fi
 
-   if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
-      if [ -z "${cc_force_no_stackprot}" ]; then
+   if feat_yes AUTOCC_STACKPROT; then
+      if [ -z "${cc_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
             cc_check -D_FORTIFY_SOURCE=2
