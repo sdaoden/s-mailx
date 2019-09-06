@@ -296,9 +296,10 @@ jjumped:
    safe_signal(SIGHUP, ohup);
    rele_sigs();
 
-   if (sofd < 0) {
-      if (errval != 0) {
-         n_perr(_("Could not connect"), errval);
+   if(sofd < 0){
+      if(errval != 0){
+         if(!(n_poption & n_PO_D_V))
+            n_perr(_("Could not connect(2)"), errval);
          su_err_set_no(errval);
       }
       goto jleave;
@@ -398,7 +399,7 @@ a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
       }
 
       show_progress = ((n_poption & n_PO_D_V) ||
-               ((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)));
+            ((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)));
 
       FD_ZERO(&fdset);
       FD_SET(fd, &fdset);
@@ -450,7 +451,8 @@ jerr:
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
-      n_perr(_("connect(2) failed:"), rv);
+      if(n_poption & n_PO_D_V)
+         n_perr(_("connect(2) failed:"), rv);
       close(fd);
    }
    NYD_OU;
