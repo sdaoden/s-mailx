@@ -73,7 +73,7 @@
 static boole su_CONCAT(su_FILE,_gss)(struct mx_socket *sp, struct mx_url *urlp,
       struct mx_cred_ctx *credp,
 # ifdef mx_SOURCE_NET_SMTP
-      struct a_netsmtp_line *slp
+      struct a_netsmtp_ctx *scp
 # elif defined mx_SOURCE_NET_POP3 || defined mx_SOURCE_NET_IMAP
       struct mailbox *mp
 # endif
@@ -91,7 +91,7 @@ static boole
 su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       struct mx_cred_ctx *credp,
 # ifdef mx_SOURCE_NET_SMTP
-      struct a_netsmtp_line *slp
+      struct a_netsmtp_ctx *scp
 # elif defined mx_SOURCE_NET_POP3 || defined mx_SOURCE_NET_IMAP
       struct mailbox *mp
 # endif
@@ -216,7 +216,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # ifdef mx_SOURCE_NET_SMTP
       a_SMTP_OUT(out.s);
       a_SMTP_ANSWER(3, FAL0, TRU1);
-      in = slp->sl_dat;
+      in = scp->sc_dat;
 # elif defined mx_SOURCE_NET_POP3
       a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
       a_POP3_ANSWER(poprv, goto jleave);
