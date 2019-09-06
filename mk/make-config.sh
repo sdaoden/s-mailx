@@ -2843,7 +2843,7 @@ else
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
 printf '#ifdef mx_SOURCE\n' >> ${h}
-printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"',"\n' >> ${h}
 printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
@@ -3447,7 +3447,7 @@ done
 #exec 5>&1 >>${h}
 #${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
 #   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
-printf '"\n' >> ${h}
+printf ',"\n' >> ${h}
 
 # Create the real mk-config.mk
 # Note we cannot use explicit ./ filename prefix for source and object

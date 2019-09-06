@@ -701,7 +701,7 @@ fi
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
-      ${grep} +${1} ) >/dev/null 2>&1
+      ${grep} +${1}, ) >/dev/null 2>&1
 }
 # }}}
 
