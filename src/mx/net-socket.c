@@ -508,11 +508,8 @@ mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
          goto jleave;
       }
 
-      if (n_poption & n_PO_D_V)
-         n_err(_("Connecting via *socks-proxy* to %s:%s ...\n"),
-            urlp->url_host.s,
-            (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
-
+      if(n_poption & n_PO_D_V)
+         n_err(_("Connecting to *socks-proxy*=%s\n"), cp);
       if(!a_netso_open(sop, &url2)){
          n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
          goto jleave;
@@ -543,6 +540,10 @@ jesocksreplymsg:
       }
 
       /* RFC 1928: CONNECT request */
+      if(n_poption & n_PO_D_V)
+         n_err(_("Through *socks-proxy*, connecting to %s:%s ...\n"),
+            urlp->url_host.s,
+            (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
       pbuf[0] = 0x05; /* VER: protocol version: X'05' */
       pbuf[1] = 0x01; /* CMD: CONNECT X'01' */
       pbuf[2] = 0x00; /* RESERVED */
