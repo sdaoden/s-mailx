@@ -5,7 +5,7 @@
 IN="${SRCDIR}"su/gen-errors.h
 XOUT=src/su/gen-errors.h
 
-# We use `vexpr' for hashing
+# We use `csop' for hashing
 MAILX='LC_ALL=C s-nail -#:/'
 
 # Acceptable "longest distance" from hash-modulo-index to key
@@ -477,7 +477,7 @@ sub hash_em{
    die "hash_em: open: $^E"
       unless my $pid = open2 *RFD, *WFD, $ENV{MAILX};
    foreach my $e (@ENTS){
-      print WFD "vexpr hash32 $e->{name}\n";
+      print WFD "csop hash32 $e->{name}\n";
       my $h = <RFD>;
       chomp $h;
       $e->{hash} = $h
