@@ -65,7 +65,37 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       a_REQ_PASS = 1u<<1,
       a_WANT_USER = 1u<<2,
       a_REQ_USER = 1u<<3,
-      a_NEED_TLS = 1u<<4
+      a_NEED_TLS = 1u<<4,
+      a_UNAVAIL = 1u<<7
+
+   };
+
+   static struct authtype{
+      char const at_user_name[16];
+      char const at_name[13];
+      u8 at_ware;
+      u16 at_type;
+   } const ata[] = {
+      {"none", "NONE", a_NONE, mx_CRED_AUTHTYPE_NONE},
+
+      {"plain", "PLAIN", (a_REQ_PASS | a_REQ_USER), mx_CRED_AUTHTYPE_PLAIN},
+      {"login", "LOGIN", (a_REQ_PASS | a_REQ_USER), mx_CRED_AUTHTYPE_LOGIN},
+      {"oauthbearer\0", "OAUTHBEARER\0", (a_REQ_PASS | a_REQ_USER |a_NEED_TLS),
+         mx_CRED_AUTHTYPE_OAUTHBEARER},
+      {"external", "EXTERNAL", (a_REQ_USER | a_NEED_TLS),
+         mx_CRED_AUTHTYPE_EXTERNAL},
+      {"externanon\0", "EXTERNAL", a_NEED_TLS, mx_CRED_AUTHTYPE_EXTERNANON},
+
+      {"cram-md5", "CRAM-MD5", (a_REQ_PASS | a_REQ_USER
+#ifndef mx_HAVE_MD5
+            | a_UNAVAIL
+#endif
+         ), mx_CRED_AUTHTYPE_CRAM_MD5},
+      {"gssapi", "GSS-API", (a_REQ_USER
+#ifndef mx_HAVE_GSSAPI
+            | a_UNAVAIL
+#endif
+         ), mx_CRED_AUTHTYPE_GSSAPI}
    };
 
    char *s;
@@ -128,42 +158,23 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
          (s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NIL)
       s = UNCONST(char*,authdef);
 
-   if(!su_cs_cmp_case(s, "none")){
-      ccp->cc_auth = "NONE";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_NONE;
-      /*ware = a_NONE;*/
-   }else if(!su_cs_cmp_case(s, "plain")){
-      ccp->cc_auth = "PLAIN";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_PLAIN;
-      ware = a_REQ_PASS | a_REQ_USER;
-   }else if(!su_cs_cmp_case(s, "login")){
-      ccp->cc_auth = "LOGIN";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_LOGIN;
-      ware = a_REQ_PASS | a_REQ_USER;
-   }else if(!su_cs_cmp_case(s, "oauthbearer")){
-      ccp->cc_auth = "OAUTHBEARER";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_OAUTHBEARER;
-      ccp->cc_needs_tls = TRU1;
-      ware = a_REQ_PASS | a_REQ_USER;
-   }else if(!su_cs_cmp_case(s, "external")){
-      ccp->cc_auth = "EXTERNAL";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_EXTERNAL;
-      ccp->cc_needs_tls = TRU1;
-      ware = a_REQ_USER | a_NEED_TLS;
-   }else if(!su_cs_cmp_case(s, "externanon")){
-      ccp->cc_auth = "EXTERNAL";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_EXTERNANON;
-      ccp->cc_needs_tls = TRU1;
-      ware = a_NEED_TLS;
-   }else if(!su_cs_cmp_case(s, "cram-md5")){
-      ccp->cc_auth = "CRAM-MD5";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_CRAM_MD5;
-      ware = a_REQ_PASS | a_REQ_USER;
-   }else if(!su_cs_cmp_case(s, "gssapi")){
-      ccp->cc_auth = "GSS-API";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_GSSAPI;
-      ware = a_REQ_USER;
-   } /* no else */
+   for(ware = 0; ware < NELEM(ata); ++ware){
+      struct authtype const *atp;
+
+      if(!su_cs_cmp_case(s, (atp = &ata[ware])->at_user_name)){
+         ccp->cc_auth = atp->at_name;
+         ccp->cc_authtype = atp->at_type;
+         if((ware = atp->at_ware) & a_NEED_TLS)
+            ccp->cc_needs_tls = TRU1;
+
+         if(ware & a_UNAVAIL){
+            n_err(_("No %s support compiled in\n"), ccp->cc_auth);
+            ccp = NIL;
+            goto jleave;
+         }
+         break;
+      }
+   }
 
    /* Verify method */
    if(!(ccp->cc_authtype & authmask)){
@@ -171,20 +182,6 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       ccp = NIL;
       goto jleave;
    }
-#ifndef mx_HAVE_MD5
-   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_CRAM_MD5){
-      n_err(_("No CRAM-MD5 support compiled in\n"));
-      ccp = NIL;
-      goto jleave;
-   }
-#endif
-#ifndef mx_HAVE_GSSAPI
-   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_GSSAPI){
-      n_err(_("No GSS-API support compiled in\n"));
-      ccp = NIL;
-      goto jleave;
-   }
-#endif
 
    if((ware & a_NEED_TLS)
 #ifdef mx_HAVE_TLS
@@ -192,7 +189,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
 #endif
    ){
       n_err(_("TLS transport is required for authentication %s: %s\n"),
-      ccp->cc_auth, urlp->url_p_u_h_p);
+         ccp->cc_auth, urlp->url_p_u_h_p);
       ccp = NIL;
       goto jleave;
    }
