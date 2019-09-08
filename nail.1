@@ -948,7 +948,7 @@ $ </dev/null LC_ALL=C \*(uA -d -:/ \e
 
 # With SMTP (no real sending due to -d debug dry-run)
 $ LC_ALL=C \*(uA -d -:/ -Sttycharset=utf8 \e
-    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
+    -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-auth \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc --end-options \e
     eric@exam.ple < /tmp/letter.txt
@@ -1079,7 +1079,7 @@ to specify variables:
 $ env LC_ALL=C \*(uA -:/ \e
     -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
-    -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
+    -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-allmechs,plain \e
     -S from=scriptreply@exam.ple \e
     -s 'Subject to go' -a attachment_file \e
     -Sfullnames -. \e
@@ -4229,7 +4229,7 @@ and protocol specifics like
 account myisp {
   set folder=~/mail inbox=+syste.mbox record=+sent.mbox
   set from='(My Name) myname@myisp.example'
-  set mta=smtp://mylogin@smtp.myisp.example
+  set mta=smtp://me@smtp.myisp.example
 }
 .Ed
 .
@@ -10628,13 +10628,12 @@ will (not) be passed.
 .Pp
 \*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
-a SMTP or SUBMISSION URL (see
+a corresponding URL (see
 .Sx "On URL syntax and credential lookup" ) .
-An authentication scheme can be specified via the variable chain
-.Va smtp-auth .
-Encrypted network connections are \*(OPally available, the section
-.Sx "Encrypted network communication"
-should give an overview and provide links to more information on this.
+Server interaction (TLS, authentication type, etc.) is configurable via
+.Va smtp-config .
+An overview on TLS and links to more information can be found under
+.Sx "Encrypted network communication" .
 Note that with some mail providers it may be necessary to set the
 .Va smtp-hostname
 variable in order to use a specific combination of
@@ -12018,11 +12017,13 @@ Also see
 and
 .Va smime-sign-digest .
 .
+.
 .Mx Va smime-sign-cert
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
 \*(OP Points to a file in PEM format.
 For the purpose of signing and decryption this file needs to contain the
 user's private key, followed by his certificate.
+.
 .Pp
 For message signing
 .Ql USER@HOST
@@ -12037,6 +12038,7 @@ can be used to save certificates of signed messages (the section
 .Sx "Signed and encrypted messages with S/MIME"
 gives some details).
 This mode of operation is usually driven by the specialized form.
+.
 .Pp
 When decrypting messages the account is derived from the recipient
 fields
@@ -12048,6 +12050,7 @@ a variable is set.
 \*(UA always uses the first address that matches,
 so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
+.
 .Pp
 Password-encrypted keys may be used for signing and decryption.
 Automated password lookup is possible via the
@@ -12073,6 +12076,7 @@ To include intermediate certificates, use
 The possible password sources are documented in
 .Sx "On URL syntax and credential lookup" .
 .
+.
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
@@ -12092,6 +12096,7 @@ due to security concerns.
 This variable is ignored for very old (released before 2010)
 cryptographic libraries which do not offer the necessary interface:
 it will be logged if that happened.
+.
 .Pp
 \*(UA will try to add built-in support for the following message
 digests, names are case-insensitive:
@@ -12114,6 +12119,7 @@ More digests may \*(OPally be available through dynamic loading via the
 OpenSSL function
 .Xr EVP_get_digestbyname 3 .
 .
+.
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
 \*(OP If used, this is supposed to a consist of a comma-separated list
@@ -12128,6 +12134,7 @@ a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
 Even though top level certificates may also be included in the chain,
 they will not be used for the verification on the receiver's side.
+.
 .Pp
 For the purpose of the mechanisms involved here,
 .Ql USER@HOST
@@ -12142,54 +12149,12 @@ shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
 .
+.
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
-\*(OP Variable chain that controls the used SMTP
-.Va mta
-authentication method, unless disallowed via
-.Va smtp-config .
-Possible values are
-.Ql none ,
-.Ql plain
-(default),
-.Ql login ,
-.Ql oauthbearer
-(see
-.Sx FAQ
-entry
-.Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
-as well as
-.Ql external
-and
-.Ql externanon
-for TLS secured connections which pass a client certificate via
-.Va tls-config-pairs .
-There may be the \*(OPal methods
-.Ql cram-md5
-and
-.Ql gssapi .
-.Pp
-.Ql none
-and
-.Ql externanon
-do not need any user credentials,
-.Ql external
-and
-.Ql gssapi
-require a user name, and all other methods require a
-.Va user
-name and a
-.Va password .
-.Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422 aka RFC 4954, and fail if additional credentials are passed.
-Also see
-.Va mta .
-Note for
-.Va smtp-auth-USER@HOST :
-may override dependent on sender address in the variable
-.Va from . )
+\*(OP\*(OB Please use the authentication slots of
+.Va smtp-config
+as necessary.
 .
 .
 .Mx Va smtp-config
@@ -12199,57 +12164,148 @@ may override dependent on sender address in the variable
 is contacted a list of supported SMTP service extensions will
 (optionally) be announced by the server.
 This comma-separated (case-insensitive) list configures which extensions
-shall be used, and which of the available ones not.
+shall be used, and which of the available ones shall not.
 Order matters, whitespace is ignored, an optional plus sign
 .Ql +
 prefix enables, a hyphen-minus
 .Ql -
 prefix disables usage of an extension, for example
-.Ql -all , ehlo,+starttls .
+.Ql -all , ehlo,+starttls,   gssapi .
+\*(ID Until v15 this variable must be set (at least empty) in order to
+choose new-style SMTP configuration.
 .
 .Pp
 .Bl -tag -compact -width ".It Cd BaNg"
 .It Cd all
 This special word enables or disables all extensions.
-By default all extensions are enabled.
-Disabling this also disables all the below properties.
+By default, or when set to the empty string, all extensions are enabled.
+Disabling it also disables all the below properties and authentication
+mechanisms.
 .It Cd ehlo
 Service Extensions (RFC 1869) added the notion of extensions to the SMTP
 protocol; when disabled, all other extensions are also disabled, but
 properties are not.
-All
-.Va smtp-auth Ns
-entication methods (but
-.Ql none )
-are SMTP extensions.
+All authentication methods are SMTP extensions.
 .It Cd pipelining
 Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
 successive commands without waiting for respective server responses.
 .It Cd starttls
 Secure SMTP over TLS (RFC 3207) allows upgrading an unencrypted (SMTP
 not SMTPS) connection to use private, authenticated communication.
-This upgrading can be forced by including the below
+This upgrading can be forced by including the property
 .Cd force-tls .
+.It Cd auth
+Authentication (RFC 4954) allows account credentials to be passed.
+This word disables all authentication mechanisms, but enables only those
+which can be managed automatically without external help; e.g., GSSAPI
+requires an externally granted ticket to exist, and is therefore
+excluded by the default automatic selection, as is EXTERNAL etc.: these
+mechanisms have to be enabled explicitly.
+The default selection depends upon the (im- or explicit) presence of TLS.
 .El
 .
 .Pp
 In addition to the SMTP extensions which correspond 1:1 to a standard,
-additional properties can be included in the list:
+additional properties can be included in the list.
+Properties contemplating an extension enable that when enabled, but do
+not disable it when disabled.
 .
 .Pp
 .Bl -tag -compact -width ".It Cd BaNg"
-.It Cd prop-all
+.It Cd props
 This special word enables or disables all additional properties.
 By default they are all disabled.
 .It Cd force-tls
-Enforces the TLS upgrade of
+Enforces the TLS upgrade of a non-secured connection via
 .Cd starttls
 regardless of whether the server announced availability or not,
 as such providing a safety measure against man-in-the-middle attacks
 which try to prevent these upgrades.
-This is automatically enabled if the given authentication method
-requires TLS encryption.
+This is automatically enabled if any of the given authentication
+methods requires TLS encryption.
 Directly using encrypted communication channels should be preferred.
+.El
+.
+.Pp
+If multiple
+.Cd auth Ns
+entication mechanisms are available, an automatic selection of the
+.Dq best
+method is performed, preferring non-automatic mechanisms.
+The used list can be fine-tuned, and if the result does not equal
+.Cd allmechs
+then the list will be taken as-is, even if some members would otherwise
+be excluded by the automatic selection, e.g., because they transmit
+passwords in clear and the connection is not secured.
+.Cd auth
+will be implied unless the fine-tuned list is empty.
+For example,
+.Ql smtp-config=-allmechs,gssapi,external,plain
+will favour external over gssapi, and use plain as a last resort only.
+The following mechanisms are known:
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd allmechs
+Special word which covers all authentication methods.
+.It Cd cram-md5
+\*(OP Challenge-Response authentication mechanism (CRAM; included in
+RFC 2195), needs
+.Va user
+and
+.Va password .
+.It Cd external
+\*(OP Included in the simple authentication and security layer (SASL;
+RFC 4422).
+Authentication happens through a TLS client certificate (see
+.Va tls-config-pairs ,
+.Cd Certificate )
+on the transport layer, therefore not automatic.
+Needs a
+.Va user .
+.It Cd externanon
+\*(OP Likewise, but does not need a user.
+This is usually the way to go since tested servers do not actually
+follow RFC 4422 aka RFC 4954, and fail if additional credentials are
+passed.
+.It Cd gssapi
+\*(OP The Kerberos V5 ("GSSAPI") mechanism (RFC 4752).
+Needs an external ticket (to be granted by
+.Xr kinit 1 ) ,
+therefore not automatic.
+Needs a
+.Va user .
+.It Cd login
+The LOGIN mechanism
+.Pf ( Pa draft-murchison-sasl-login-00.txt ) .
+It requires three packet roundtrips, has been obsoleted by the IETF,
+and should only be used as a last resort.
+Needs
+.Va user
+and
+.Va password .
+.It Cd oauthbearer
+A set of mechanisms for OAuth (RFC 7628).
+One packet roundtrip.
+Needs
+.Va user
+and
+.Va password .
+The password here is a bearer token, not the real password,
+therefore this mechanism is not automatic.
+Also see the
+.Sx FAQ
+entry
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?"
+.It Cd plain
+The PLAIN mechanism (RFC 4616).
+One packet roundtrip, needs
+.Va user
+and
+.Va password .
+.It Cd xoauth2
+A popular slightly modified variant of
+.Cd oauthbearer .
 .El
 .
 .
@@ -14763,7 +14819,7 @@ Note: some IMAP servers do not accept the creation of mailboxes in
 the hierarchy base, but require that they are created as subfolders of
 `INBOX' \(en with such servers a folder name of the form
 .Pp
-.Dl imaps://mylogin@imap.myisp.example/INBOX.
+.Dl imaps://me@imap.myisp.example/INBOX.
 .Pp
 should be used (the last character is the server's hierarchy
 delimiter).
