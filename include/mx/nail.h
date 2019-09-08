@@ -181,6 +181,7 @@ enum conversion{
    CONV_TOHDR_A /* convert addresses for header */
 };
 
+/* Real protocols must be first */
 enum cproto{
    CPROTO_NONE, /* Invalid.  But sometimes used to be able to parse an URL */
 CPROTO_IMAP,

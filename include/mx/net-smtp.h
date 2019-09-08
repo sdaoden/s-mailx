@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ SMTP (simple mail transfer protocol) MTA.
  *
- * Copyright (c) 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -22,10 +22,19 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_SMTP
 
+#include <mx/cred-auth.h>
+#include <mx/url.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Send a message via SMTP */
+/* Parse the according *smtp-config* (-alike), and fill in credp accordingly.
+ * Return whether we have found a valid configuration.
+ * TODO v15-compat returns TRUM1 if old-style credentials shall be searched */
+EXPORT boole mx_smtp_parse_config(struct mx_cred_ctx *credp,
+      struct mx_url *urlp);
+
+/* Send a message via SMTP (unless *debug*) */
 EXPORT boole mx_smtp_mta(struct mx_send_ctx *scp);
 
 #include <su/code-ou.h>
