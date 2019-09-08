@@ -1552,8 +1552,6 @@ a_sendout_mta_start(struct mx_send_ctx *scp)
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
-
-
       if(n_poption & n_PO_D){
          (void)mx_smtp_mta(scp);
          rv = TRU1;

@@ -6438,7 +6438,7 @@ t_mta_aliases() { # {{{
    mtaali=
    if have_feat smtp; then
       echo | ${MAILX} ${ARGS} \
-         -Smta=smtp://laber.backe -Ssmtp-auth=none \
+         -Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
          -Smta-aliases=./t.ali \
          -b a3 -c a2 a1 > ./t5 2>&1
       check_exn0 3
@@ -9666,15 +9666,19 @@ APOP steffen 4f66ea9bf092117b009b9f8d928c656d
       t_echoskip '2:[!MD5]'
    fi
 
-   t__net_script .t.sh pop3 \
-      -Spop3-auth=oauthbearer -Snopop3-use-starttls
-   { printf '\001
+   if false && have_feat tls; then # TODO TLS-NET-SERV
+      t__net_script .t.sh pop3 \
+         -Spop3-auth=oauthbearer -Snopop3-use-starttls
+      { printf '\001
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \002
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-      pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '3754674759 160'
+         pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 3 0 "${MBOX}" '3754674759 160'
+   else
+      t_echoskip '3:[false/TODO/!TLS]'
+   fi
 
    t_epilog "${@}"
 } # }}}
@@ -9765,13 +9769,17 @@ T2 LOGIN "steffen" "Sway"
       imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 1 0 "${MBOX}" '4233548649 160'
 
-   t__net_script .t.sh imap \
-      -Simap-auth=oauthbearer -Snoimap-use-starttls
-   { imap_hello && printf '\002
+   if false && have_feat tls; then # TODO TLS-NET-SERV
+      t__net_script .t.sh imap \
+         -Simap-auth=oauthbearer -Snoimap-use-starttls
+      { imap_hello && printf '\002
 T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-      imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '4233548649 160'
+         imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check 2 0 "${MBOX}" '4233548649 160'
+   else
+      t_echoskip '2:[false/TODO/!TLS]'
+   fi
 
    if have_feat md5; then
       t__net_script .t.sh imap \
@@ -9921,7 +9929,7 @@ HELO %s
 EHLO %s
 \001
 250-arch-2019
-%s250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 EXTERNAL
+%s250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 OAUTHBEARER EXTERNAL
 250-ENHANCEDSTATUSCODES
 250 PIPELINING
 ' \
@@ -9953,12 +9961,12 @@ EHLO %s
             shift
          done
       fi
-      printf '354 End data with <CR><LF>.<CR><LF>
-\002
-Date: Wed, 02 Oct 1996 01:50:07 +0000
-From: %s
-' \
-      "${from}"
+      printf '354 End data with <CR><LF>.<CR><LF>\n\002\n'
+      smtp_date_from
+   }
+
+   smtp_date_from() {
+      printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nFrom: %s\n' "${from}"
    }
 
    smtp_to() { printf 'To: ex@am.ple\n'; }
@@ -9981,64 +9989,63 @@ QUIT
 '
    }
 
+   smtp_quit_pipelining() {
+      printf '.
+QUIT
+\001
+250 2.0.0 Ok: queued as 78FFC20305
+221 2.0.0 Bye
+'
+   }
+
    smtp_go() { smtp_head_all && smtp_quit; }
    # }}}
 
    # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
 
-   smtp_script smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 1 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_hostname smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_hostname smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 2 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_hostname_smtp_hostname smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 3 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_hostname_smtp_hostname_empty smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 4 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_from smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_from smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 5 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_from_hostname smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_from_hostname smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 6 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_from_hostname_smtp_hostname smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_from_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 7 0 "${MBOX}" '4294967295 0'
 
-   smtp_script_from_hostname_smtp_hostname_empty smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-ehlo
+   smtp_script_from_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 8 0 "${MBOX}" '4294967295 0'
    # }}}
 
    # Real EHLO authentication types {{{
 
-   smtp_script smtp \
-      -Ssmtp-auth=plain -Ssmtp-config=-all,ehlo
+   smtp_script smtp -Ssmtp-config=-all,ehlo,plain
    { smtp_ehlo && printf '\002
 AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
 ' &&
       smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check auth-1 0 "${MBOX}" '4294967295 0'
 
-   smtp_script smtp \
-      -Ssmtp-auth=login -Ssmtp-config=-all,ehlo
+   smtp_script smtp -Ssmtp-config=-all,ehlo,login
    { smtp_ehlo && printf '\002
 AUTH LOGIN
 \001
@@ -10053,17 +10060,19 @@ U3dheQ==
       smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check auth-2 0 "${MBOX}" '4294967295 0'
 
-   smtp_script smtp \
-      -Ssmtp-auth=oauthbearer -Ssmtp-config=-all,ehlo
-   { smtp_ehlo && printf '\002
+   if false && have_feat tls; then # TODO TLS-NET-SERV
+      smtp_script smtp -Ssmtp-config=-all,ehlo,xoauth2
+      { smtp_ehlo && printf '\002
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check auth-3 0 "${MBOX}" '4294967295 0'
+         smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
+      check auth-3 0 "${MBOX}" '4294967295 0'
+   else
+      t_echoskip 'auth-3:[false/TODO/!TLS]'
+   fi
 
    if have_feat md5; then
-      smtp_script smtp \
-         -Ssmtp-auth=cram-md5 -Ssmtp-config=-all,ehlo
+      smtp_script smtp -Ssmtp-config=-all,ehlo,cram-md5
       { smtp_ehlo && printf '\002
 AUTH CRAM-MD5
 \001
@@ -10095,8 +10104,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
             printf "\n"
       }' > .t.dat
 
-   smtp_script_file .t.dat smtp \
-      -Ssmtp-auth=none -Ssmtp-config=-all &&
+   smtp_script_file .t.dat smtp -Ssmtp-config=-all &&
    { smtp_helo && smtp_head_all && ${cat} .t.dat && smtp_quit; } |
       ../net-test .t.sh > "${MBOX}" 2>&1
    check data-1 0 "${MBOX}" '4294967295 0'
@@ -10122,8 +10130,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
          }'`
 
    smtp_rcpt_to() {
-      smtp_script smtp \
-         -Ssmtp-auth=none -Ssmtp-config=${1} \
+      smtp_script smtp -Ssmtp-config=${1} \
          ${cclist} ${tolist} &&
       { ${2} && ${3} $rcpt_to &&
             eval "smtp_data ${4}" && ${awk} '
@@ -10149,12 +10156,18 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
                   doit(0, "To: ")
                   doit(1, "Cc: ")
                }' &&
-            smtp_head_tail && smtp_quit; } |
+            smtp_head_tail && ${5}; } |
          ../net-test .t.sh > "${MBOX}" 2>&1
    }
-   smtp_rcpt_to -ehlo smtp_helo smtp_mail_from_to
+   smtp_rcpt_to -ehlo \
+      smtp_helo \
+      smtp_mail_from_to '' \
+      smtp_quit
    check data-2 0 "${MBOX}" '4294967295 0'
-   smtp_rcpt_to all smtp_ehlo smtp_mail_from_to_pipelining "$rcpt_to"
+   smtp_rcpt_to all,-allmechs \
+      smtp_ehlo \
+      smtp_mail_from_to_pipelining "$rcpt_to" \
+      smtp_quit_pipelining
    check data-3 0 "${MBOX}" '4294967295 0'
    # }}}
 

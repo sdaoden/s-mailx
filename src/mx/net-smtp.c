@@ -1,45 +1,21 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of net-smtp.h.
- *@ TODO - use initial responses to save a round-trip (RFC 4954)
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
- *@ TODO - this is so dumb :(; except on macos we can shutdown.
- *@ TODO   do not care no more after 221? seen some short hangs.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-4-Clause
- */
-/*
- * Copyright (c) 2000
- * Gunnar Ritter.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by Gunnar Ritter
- *    and his contributors.
- * 4. Neither the name of Gunnar Ritter nor the names of his contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY GUNNAR RITTER AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL GUNNAR RITTER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
 #define su_FILE net_smtp
@@ -73,21 +49,37 @@ su_EMPTY_FILE()
 #include "mx/net-smtp.h"
 #include "su/code-in.h"
 
+CTA(mx_CRED_AUTHTYPE_LASTBIT <= 15, "Flag bits excess storage type");
+#define a_X(X) (mx_CRED_AUTHTYPE_LASTBIT + 1 + (X))
 enum a_netsmtp_flags{
+   /* *smtp-config* parser verifies some conditions.
+    * The rest of this file assumes for example that if _AUTH is not set no
+    * authentication types are set */
    a_NETSMTP_CAP_NONE,
-
-   a_NETSMTP_CAP_EHLO = 1u<<0, /* RFC 1869 */
-   a_NETSMTP_CAP_PIPELINING = 1u<<1, /* RFC 2920 */
-   a_NETSMTP_CAP_STARTTLS = 1u<<2, /* RFC 3207 */
+   a_NETSMTP_CAP_EHLO = 1u<<a_X(1), /* RFC 1869 */
+   a_NETSMTP_CAP_PIPELINING = 1u<<a_X(2), /* RFC 2920 */
+   a_NETSMTP_CAP_STARTTLS = 1u<<a_X(3), /* RFC 3207 */
+   a_NETSMTP_CAP_AUTH = 1u<<a_X(4), /* RFC 4954 */
    a_NETSMTP_CAP_ALL = a_NETSMTP_CAP_EHLO |
-         a_NETSMTP_CAP_PIPELINING | a_NETSMTP_CAP_STARTTLS,
+         a_NETSMTP_CAP_PIPELINING | a_NETSMTP_CAP_STARTTLS |
+         a_NETSMTP_CAP_AUTH,
 
-   a_NETSMTP_CAP_FORCE_TLS = 1u<<13,
-   a_NETSMTP_CAP_PROP_ALL = a_NETSMTP_CAP_FORCE_TLS,
+   a_NETSMTP_PROP_FORCE_TLS = 1u<<a_X(5),
+   a_NETSMTP_PROP_ALL = a_NETSMTP_PROP_FORCE_TLS,
 
-   a_NETSMTP_CAP_MASK = a_NETSMTP_CAP_ALL | a_NETSMTP_CAP_PROP_ALL,
-   a_NETSMTP_CAP_READ_IS_HOT = 1u<<15
+   a_NETSMTP_AUTH_MASK = mx_CRED_PROTO_AUTHTYPES_SMTP,
+   a_NETSMTP_AUTO_AUTH_MASK = mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP,
+   /* cred_auth_type_verify_bits() says all possible mechs are set */
+   a_NETSMTP_AUTH_ALLMECHS = 1u<<a_X(6),
+
+   a_NETSMTP_ALL_MASK = a_NETSMTP_CAP_ALL | a_NETSMTP_PROP_ALL |
+         a_NETSMTP_AUTH_MASK,
+
+   /* Temporary or calculated */
+   a_NETSMTP_CAP_READ_IS_HOT = 1u<<a_X(15)
 };
+#undef a_X
+CTA(a_NETSMTP_CAP_READ_IS_HOT <= S32_MAX, "Flag bits excess storage type");
 
 struct a_netsmtp_ctx{
    u32 nsc_config;
@@ -100,21 +92,20 @@ static sigjmp_buf a_netsmtp_jmp;
 
 static void a_netsmtp_onsig(int signo);
 
-/* */
-static u32 a_netsmtp_parse_config(struct mx_send_ctx *scp);
-
 /* Get the SMTP server's answer, expecting val */
 static int a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_ctx *nscp,
       int val, boole ign_eof, boole want_dat);
+static void a_netsmtp_parse_caps(struct a_netsmtp_ctx *nscp, char const *cp);
 
 /* Talk to a SMTP server */
-static boole a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp);
+static boole a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp,
+      struct a_netsmtp_ctx *nscp);
 
 #ifdef mx_HAVE_GSSAPI
 # include <mx/net-gssapi.h>
 #endif
 
-/* Indirect SMTP I/O */
+/* Indirect SMTP I/O; manual claims log happens for 2x*verbose*! */
 #define a_SMTP_OUT(X) \
 do{\
    char const *__cx__ = (X);\
@@ -145,10 +136,11 @@ do{\
 
 #define a_SMTP_ANSWER(X, IGNEOF, WANTDAT) \
 do if(!(n_poption & n_PO_D)){\
-   int y;\
+   int __x__, __y__;\
    \
-   if((y = a_netsmtp_read(sop, nscp, X, IGNEOF, WANTDAT)) != (X) &&\
-         (!(IGNEOF) || y != -1))\
+   __x__ = (X);\
+   if((__y__ = a_netsmtp_read(sop, nscp, __x__, IGNEOF, WANTDAT)) != __x__ &&\
+         (!(IGNEOF) || __y__ != -1))\
       goto jleave;\
 }while(0)
 
@@ -156,55 +148,6 @@ static void
 a_netsmtp_onsig(int signo){
    UNUSED(signo);
    siglongjmp(a_netsmtp_jmp, 1);
-}
-
-static u32
-a_netsmtp_parse_config(struct mx_send_ctx *scp){
-   struct capdis{
-      u16 cd_on;
-      u16 cd_off;
-      char const cd_user_name[12];
-   } const cda[] = {
-      {a_NETSMTP_CAP_ALL, a_NETSMTP_CAP_MASK, "all\0"}, /* All */
-      {a_NETSMTP_CAP_EHLO, a_NETSMTP_CAP_ALL, "ehlo\0"},
-      {a_NETSMTP_CAP_PIPELINING, a_NETSMTP_CAP_PIPELINING, "pipelining\0"},
-      {a_NETSMTP_CAP_STARTTLS, a_NETSMTP_CAP_STARTTLS, "starttls\0"},
-
-      {a_NETSMTP_CAP_PROP_ALL, a_NETSMTP_CAP_PROP_ALL, "prop-all\0"},
-      {a_NETSMTP_CAP_FORCE_TLS, a_NETSMTP_CAP_FORCE_TLS, "force-tls\0"}
-   };
-   char *buf;
-   char const *ccp;
-   u32 rv, i;
-   NYD_IN;
-
-   rv = a_NETSMTP_CAP_ALL;
-
-   if((ccp = xok_vlook(smtp_config, scp->sc_urlp, OXM_ALL)) == NIL)
-      goto jleave;
-
-   for(buf = savestr(ccp); (ccp = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
-      boole minus;
-
-      if((minus = (*ccp == '-')) || *ccp == '-')
-         ++ccp;
-      for(i = 0;;)
-         if(!su_cs_cmp_case(ccp, cda[i].cd_user_name)){
-            if(minus)
-               rv &= ~cda[i].cd_off;
-            else
-               rv |= cda[i].cd_on;
-            break;
-         }else if(++i == NELEM(cda)){
-            n_err(_("*smtp-config*: unknown directive: %s\n"),
-               n_shexp_quote_cp(ccp, FAL0));
-            break;
-         }
-   }
-
-jleave:
-   NYD_OU;
-   return rv;
 }
 
 static int
@@ -245,12 +188,8 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_ctx *nscp, int val,
          n_err(_("SMTP: unexpected status from server: %s\n"),
             nscp->nsc_dat.s);
          goto jleave;
-      }else if(UNLIKELY(nscp->nsc_server_config & a_NETSMTP_CAP_READ_IS_HOT)){
-         if(!su_cs_cmp(&nscp->nsc_dat.s[4], "PIPELINING"))
-            nscp->nsc_server_config |= a_NETSMTP_CAP_PIPELINING;
-         else if(!su_cs_cmp(&nscp->nsc_dat.s[4], "STARTTLS"))
-            nscp->nsc_server_config |= a_NETSMTP_CAP_STARTTLS;
-      }
+      }else if(UNLIKELY(nscp->nsc_server_config & a_NETSMTP_CAP_READ_IS_HOT))
+         a_netsmtp_parse_caps(nscp, &nscp->nsc_dat.s[4]);
    }while(nscp->nsc_dat.s[3] == '-');
 
    if(rv == val && want_dat){
@@ -271,8 +210,32 @@ jleave:
    return rv;
 }
 
+static void
+a_netsmtp_parse_caps(struct a_netsmtp_ctx *nscp, char const *cp){
+   NYD_IN;
+   if(!su_cs_cmp(cp, "PIPELINING"))
+      nscp->nsc_server_config |= a_NETSMTP_CAP_PIPELINING;
+   else if(!su_cs_cmp(cp, "STARTTLS"))
+      nscp->nsc_server_config |= a_NETSMTP_CAP_STARTTLS;
+   else if(su_cs_starts_with_case(cp, "AUTH ")){
+      struct mx_cred_authtype_info const *caip;
+      char *buf;
+
+      for(buf = savestr(&cp[sizeof("AUTH ") -1]);
+            (cp = su_cs_sep_c(&buf, ' ', TRU1)) != NIL;){
+         if((caip = mx_cred_auth_type_find_name(cp, FAL0)) != NIL)
+            nscp->nsc_server_config |= caip->cai_type;
+         else if(n_poption & n_PO_D_V)
+            n_err("SMTP: authentication: skipping %s\n", cp);
+      }
+      nscp->nsc_server_config |= a_NETSMTP_CAP_AUTH;
+   }
+   NYD_OU;
+}
+
 static boole
-a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
+a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/
+      struct a_netsmtp_ctx *nscp){
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
@@ -281,21 +244,17 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
-   struct a_netsmtp_ctx nsc_b, *nscp = &nsc_b;
    struct str b64;
    struct mx_name *np;
    u8 f;
-   uz resp2_cnt, blen, cnt;
+   uz resp2_cnt, blen, i;
    char const *hostname;
    NYD_IN;
 
-   hostname = n_nodename(TRU1);
+   hostname = n_nodename(TRU1); /* TODO in parent process (at least init) */
    /* With the pipelining extension we may be able to save (an) authentication
     * roundtrip(s), too, so start counting expected 2xx responses beforehand */
    resp2_cnt = 0;
-
-   su_mem_set(nscp, 0, sizeof(*nscp));
-   nscp->nsc_config = a_netsmtp_parse_config(scp);
 
    f = a_ERROR | a_IN_HEAD;
 
@@ -306,6 +265,9 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
    if(nscp->nsc_config & a_NETSMTP_CAP_EHLO){
       int sr;
 
+      if(n_poption & n_PO_D_V)
+         n_err(_("*smtp-config*: using ehlo extension\n"));
+
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       a_SMTP_OUT(o);
       if(!(n_poption & n_PO_D)){
@@ -315,140 +277,158 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
          nscp->nsc_server_config ^= a_NETSMTP_CAP_READ_IS_HOT;
       }else{
          sr = 2;
-         nscp->nsc_server_config = a_NETSMTP_CAP_MASK;
+         nscp->nsc_server_config = a_NETSMTP_ALL_MASK;
       }
 
-      /* Keep only user desires */
-      nscp->nsc_server_config &= nscp->nsc_config;
-
+      /* In case of error we may be able to try to use normal HELO */
       if(sr != 2){
-         if(sr == -1)
-            goto jleave;
-         nscp->nsc_server_config = nscp->nsc_config = a_NETSMTP_CAP_NONE;
          /* TODO RFC 1869 gives detailed error codes etc. but of course
           * TODO this is all we (can) do for now, anyway */
-         switch(scp->sc_credp->cc_authtype){
-         case mx_CRED_AUTHTYPE_NONE:
-            goto jhelo;
-         default:
-            n_err(_("SMTP server incapable of EHLO, "
-               "the chosen authentication is not possible\n"));
+         u32 at;
+
+         if(sr == -1)
             goto jleave;
-         }
+         n_err(_("*smtp-config*: cannot use \"ehlo\" extension!\n"));
+
+         at = nscp->nsc_config;
+         nscp->nsc_server_config = nscp->nsc_config = a_NETSMTP_CAP_NONE;
+
+         if(!(at & (a_NETSMTP_CAP_AUTH
+#ifdef mx_HAVE_TLS
+               | (sop->s_use_tls ? a_NETSMTP_CAP_NONE
+                  : a_NETSMTP_PROP_FORCE_TLS)
+#endif
+         )))
+            goto jhelo;
+         goto je_ehlo;
       }
-   }else if(scp->sc_credp->cc_authtype == mx_CRED_AUTHTYPE_NONE){
+      /* Keep only user desires */
+      nscp->nsc_server_config &= nscp->nsc_config;
+      if(nscp->nsc_config & a_NETSMTP_PROP_FORCE_TLS)
+         nscp->nsc_server_config |= a_NETSMTP_CAP_STARTTLS;
+   }else if(!(nscp->nsc_config & a_NETSMTP_CAP_AUTH)){
 jhelo:
-      nscp->nsc_config &= ~a_NETSMTP_CAP_ALL;
-      nscp->nsc_server_config &= ~a_NETSMTP_CAP_ALL;
+      nscp->nsc_config &= ~a_NETSMTP_ALL_MASK;
+      nscp->nsc_server_config &= ~a_NETSMTP_ALL_MASK;
       snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
       a_SMTP_OUT(o);
       a_SMTP_ANSWER(2, FAL0, FAL0);
       /* Skip TLS + Authentication */
       goto jsend;
    }else{
-      n_err(_("The chosen authentication is not possible with "
-         "the given *smtp-config*\n"));
+je_ehlo:
+      n_err(_("*smtp-config* settings do not work out.\n"
+         "  Communication with server can be viewed by setting "
+            "*verbose* 2 times\n"));
       goto jleave;
    }
 
-   /* In a session state; if unencrypted, try to upgrade */
+/* In a session state; if unencrypted, try to upgrade */
 #ifdef mx_HAVE_TLS
-   if(!sop->s_use_tls){
-      if((nscp->nsc_config & a_NETSMTP_CAP_STARTTLS) &&
-            ((nscp->nsc_config & a_NETSMTP_CAP_FORCE_TLS) ||
-             scp->sc_credp->cc_needs_tls ||
-             (nscp->nsc_server_config & a_NETSMTP_CAP_STARTTLS) ||
-             xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL))){
-         a_SMTP_OUT(NETLINE("STARTTLS"));
-         a_SMTP_ANSWER(2, FAL0, FAL0);
+   if(!sop->s_use_tls && (nscp->nsc_server_config & a_NETSMTP_CAP_STARTTLS)){
+      if(n_poption & n_PO_D_V)
+         n_err(_("*smtp-config*: using starttls extension\n"));
+      a_SMTP_OUT(NETLINE("STARTTLS"));
+      a_SMTP_ANSWER(2, FAL0, FAL0);
 
-         if(!(n_poption & n_PO_D) && !n_tls_open(scp->sc_urlp, sop))
-            goto jleave;
-
-         /* Capabilities might have changed after STARTTLS */
-         snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-         a_SMTP_OUT(o);
-         nscp->nsc_server_config &= ~a_NETSMTP_CAP_ALL;
-         nscp->nsc_server_config |= a_NETSMTP_CAP_READ_IS_HOT;
-         a_SMTP_ANSWER(2, FAL0, FAL0);
-         nscp->nsc_server_config ^= a_NETSMTP_CAP_READ_IS_HOT;
-         nscp->nsc_server_config &= nscp->nsc_config;
-      }else if(scp->sc_credp->cc_needs_tls){
-         n_err(_("SMTP authentication %s needs TLS "
-               "(see manual, *smtp-use-starttls*)\n"),
-            scp->sc_credp->cc_auth);
+      if(!(n_poption & n_PO_D) && !n_tls_open(scp->sc_urlp, sop))
          goto jleave;
-      }
-   }
-#else
-   if((nscp->nsc_config & a_NETSMTP_CAP_FORCE_TLS) ||
-         scp->sc_credp->cc_needs_tls ||
-         xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL)){
-      n_err(_("No TLS support compiled in\n"));
-      goto jleave;
+
+      /* Capabilities might have changed after STARTTLS */
+      snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
+      a_SMTP_OUT(o);
+      nscp->nsc_server_config &= ~a_NETSMTP_ALL_MASK;
+      nscp->nsc_server_config |= a_NETSMTP_CAP_READ_IS_HOT;
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      nscp->nsc_server_config ^= a_NETSMTP_CAP_READ_IS_HOT;
+      /* Keep only user desires */
+      nscp->nsc_server_config &= nscp->nsc_config;
    }
 #endif /* mx_HAVE_TLS */
 
-   switch(scp->sc_credp->cc_authtype){
+   if(n_poption & n_PO_D_V){
+      if(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING)
+         n_err(_("*smtp-config*: using pipelining extension\n"));
+   }
+
+   if(!(nscp->nsc_server_config & a_NETSMTP_CAP_AUTH))
+      goto jsend;
+   if(n_poption & n_PO_D_V)
+      n_err(_("*smtp-config*: using auth extension\n"));
+
+/*
+TODO
+check smtputf8 and check against line length maximum!!
+*/
+
+   /* Let us decide upon the authentication mechanism.
+    * All authentication types end with a 2 response: share this */
+   switch(mx_cred_auth_type_select(CPROTO_SMTP, nscp->nsc_server_config,
+         ((nscp->nsc_config & a_NETSMTP_AUTH_ALLMECHS) == 0)
+#ifdef mx_HAVE_TLS
+         || sop->s_use_tls
+#endif
+         )){
+   default:
+      ASSERT(0);
+      /* FALLTHRU */
+   case U32_MAX:
+      /* Was already logged */
+      goto jleave;
    case mx_CRED_AUTHTYPE_NONE:
       break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
+   case mx_CRED_AUTHTYPE_XOAUTH2: /* TODO XOAUTH2 == OAUTHBEARER */
       f |= a_IS_OAUTHBEARER;
       /* FALLTHRU */
    case mx_CRED_AUTHTYPE_PLAIN:
-   default: /* (this does not happen) */
       /* Calculate required storage */
-      cnt = scp->sc_credp->cc_user.l;
+      i = scp->sc_credp->cc_user.l;
 #define a_MAX \
    (2 + sizeof("AUTH XOAUTH2 " "user=\001auth=Bearer \001\001" NETNL))
 
       if(scp->sc_credp->cc_pass.l >= UZ_MAX - a_MAX ||
-            cnt >= UZ_MAX - a_MAX - scp->sc_credp->cc_pass.l){
+            i >= UZ_MAX - a_MAX - scp->sc_credp->cc_pass.l){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
       }
-      cnt += scp->sc_credp->cc_pass.l;
+      i += scp->sc_credp->cc_pass.l;
 
-      cnt += a_MAX;
-      if((cnt = mx_b64_enc_calc_size(cnt)) == UZ_MAX)
+      i += a_MAX;
+      if((i = mx_b64_enc_calc_size(i)) == UZ_MAX)
          goto jerr_cred;
-      if(cnt >= sizeof(o))
+      if(i >= sizeof(o))
          goto jerr_cred;
 #undef a_MAX
 
       /* Then create login query */
       /* C99 */{
-         int i;
+         int j;
          char const *authfmt;
 
          if(f & a_IS_OAUTHBEARER){
             authfmt = NETLINE("AUTH XOAUTH2 %s");
-            i = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
+            j = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
                scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
          }else{
             authfmt = NETLINE("AUTH PLAIN %s");
-            i = snprintf(o, sizeof o, "%c%s%c%s",
+            j = snprintf(o, sizeof o, "%c%s%c%s",
                '\0', scp->sc_credp->cc_user.s, '\0', scp->sc_credp->cc_pass.s);
          }
 
-         if(mx_b64_enc_buf(&b64, o, i, mx_B64_AUTO_ALLOC) == NIL)
+         if(mx_b64_enc_buf(&b64, o, j, mx_B64_AUTO_ALLOC) == NIL)
             goto jleave;
          snprintf(o, sizeof o, authfmt, b64.s);
          b64.s = o;
       }
       a_SMTP_OUT(b64.s);
-      ++resp2_cnt;
-      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
-         a_SMTP_ANSWER(2, FAL0, FAL0);
-      /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
-       * message (when status was 334) */
       break;
 
    case mx_CRED_AUTHTYPE_EXTERNAL:
 #define a_MAX (sizeof("AUTH EXTERNAL " NETNL))
-      cnt = mx_b64_enc_calc_size(scp->sc_credp->cc_user.l);
-      if(/*cnt == UZ_MAX ||*/ cnt >= sizeof(o) - a_MAX)
+      i = mx_b64_enc_calc_size(scp->sc_credp->cc_user.l);
+      if(/*i == UZ_MAX ||*/ i >= sizeof(o) - a_MAX)
          goto jerr_cred;
 #undef a_MAX
 
@@ -457,16 +437,10 @@ jerr_cred:
       mx_b64_enc_buf(&b64, scp->sc_credp->cc_user.s,
          scp->sc_credp->cc_user.l, mx_B64_BUF | mx_B64_CRLF);
       a_SMTP_OUT(o);
-      ++resp2_cnt;
-      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
-         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
    case mx_CRED_AUTHTYPE_EXTERNANON:
       a_SMTP_OUT(NETLINE("AUTH EXTERNAL ="));
-      ++resp2_cnt;
-      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
-         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
    case mx_CRED_AUTHTYPE_LOGIN:
@@ -487,9 +461,6 @@ jerr_cred:
             scp->sc_credp->cc_pass.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
-      ++resp2_cnt;
-      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
-         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
 #ifdef mx_HAVE_MD5
@@ -503,9 +474,6 @@ jerr_cred:
             &scp->sc_credp->cc_pass, nscp->nsc_dat.s)) == NIL)
          goto jerr_cred;
       a_SMTP_OUT(cp);
-      ++resp2_cnt;
-      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
-         a_SMTP_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
 
@@ -518,6 +486,13 @@ jerr_cred:
       break;
 #endif
    }
+
+   /* Complete authentication */
+   ++resp2_cnt;
+   if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+   /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
+    * message (when status was 334) */
 
 jsend:
    snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), scp->sc_urlp->url_u_h.s);
@@ -541,14 +516,16 @@ jsend:
    }
 
    a_SMTP_OUT(NETLINE("DATA"));
-   if(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING)
-      while(resp2_cnt-- > 0)
+   if(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING){
+      for(; resp2_cnt != 0; --resp2_cnt)
          a_SMTP_ANSWER(2, FAL0, FAL0);
+   }else
+      resp2_cnt = 0;
    a_SMTP_ANSWER(3, FAL0, FAL0);
 
    fflush_rewind(scp->sc_input);
-   cnt = fsize(scp->sc_input);
-   while(fgetline(&nscp->nsc_buf.s, &nscp->nsc_buf.l, &cnt, &blen,
+   i = S(uz,fsize(scp->sc_input)); /* xxx off_t (->s64!) -> uz!! */
+   while(fgetline(&nscp->nsc_buf.s, &nscp->nsc_buf.l, &i, &blen,
          scp->sc_input, TRU1) != NIL){
       if(f & a_IN_HEAD){
          if(*nscp->nsc_buf.s == '\n')
@@ -574,10 +551,15 @@ jsend:
    if(ferror(scp->sc_input))
       goto jleave;
    a_SMTP_OUT(NETLINE("."));
-   a_SMTP_ANSWER(2, FAL0, FAL0);
+   if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+   else
+      ++resp2_cnt;
 
    a_SMTP_OUT(NETLINE("QUIT"));
-   a_SMTP_ANSWER(2, TRU1, FAL0);
+   ++resp2_cnt;
+   while(resp2_cnt-- != 0)
+      a_SMTP_ANSWER(2, FAL0, FAL0);
 
    f &= ~a_ERROR;
 jleave:
@@ -595,13 +577,130 @@ jleave:
 #undef a_SMTP_ANSWER
 
 boole
+mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
+   static struct capdis{
+      u32 cd_on;
+      u32 cd_off;
+      char const cd_user_name[16];
+   } const cda[] = {
+      {a_NETSMTP_CAP_ALL, a_NETSMTP_ALL_MASK, "all"},
+      {a_NETSMTP_CAP_EHLO, a_NETSMTP_CAP_ALL, "ehlo"},
+      {a_NETSMTP_CAP_PIPELINING, a_NETSMTP_CAP_PIPELINING, "pipelining\0"},
+      {a_NETSMTP_CAP_STARTTLS, a_NETSMTP_CAP_STARTTLS, "starttls"},
+      {(a_NETSMTP_CAP_AUTH | a_NETSMTP_AUTO_AUTH_MASK),
+         (a_NETSMTP_CAP_AUTH | a_NETSMTP_AUTH_MASK), "auth"},
+
+      {a_NETSMTP_PROP_ALL, a_NETSMTP_PROP_ALL, "props"},
+      {(a_NETSMTP_PROP_FORCE_TLS | a_NETSMTP_CAP_STARTTLS),
+         a_NETSMTP_PROP_FORCE_TLS, "force-tls\0"}
+      /* The rest comes in via mx_cred_proto_authtypes */
+   };
+   struct mx_cred_authtype_verify_ctx cavc;
+   char *buf;
+   char const *config, *ccp;
+   u32 flags, i;
+   boole rv;
+   NYD_IN;
+
+   rv = TRU1;
+   flags = a_NETSMTP_CAP_ALL | a_NETSMTP_AUTO_AUTH_MASK;
+
+   if((config = xok_vlook(smtp_config, urlp, OXM_ALL)) == NIL){
+      /* v15-compat: fallback to old-style config */
+      flags = a_NETSMTP_CAP_NONE; /* v15-compat */
+      rv = TRUM1; /* v15-compat */
+      goto jleave;
+   }
+
+   for(buf = savestr(config); (ccp = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
+      boole minus;
+
+      if((minus = (*ccp == '-')) || *ccp == '+')
+         ++ccp;
+      for(i = 0;;){
+         if(!su_cs_cmp_case(ccp, cda[i].cd_user_name)){
+            if(minus)
+               flags &= ~cda[i].cd_off;
+            else
+               flags |= cda[i].cd_on;
+            break;
+         }
+
+         if(++i == NELEM(cda)){
+            /* It could also be an authentication type, check that first */
+            struct mx_cred_authtype_info const *caip;
+
+            if((caip = mx_cred_auth_type_find_name(ccp, TRU1)) != NIL){
+               u32 b;
+
+               b = (caip == R(struct mx_cred_authtype_info*,-1))
+                     ? a_NETSMTP_AUTH_MASK : caip->cai_type;
+               if(minus)
+                  flags &= ~b;
+               else
+                  flags |= b | a_NETSMTP_CAP_AUTH;
+               break;
+            }else{
+               n_err(_("*smtp-config*: unsupported directive: %s: %s\n"),
+                  n_shexp_quote_cp(ccp, FAL0), n_shexp_quote_cp(config, FAL0));
+               break;
+            }
+         }
+      }
+   }
+
+   /* Authentication mechanisms */
+   if(flags & a_NETSMTP_CAP_AUTH){
+      cavc.cavc_proto = CPROTO_SMTP;
+      cavc.cavc_mechplusbits = flags & a_NETSMTP_AUTH_MASK;
+      /* We do not actually take about the TLS state for URL here! */
+      if((rv = mx_cred_auth_type_verify_bits(&cavc,
+            ((flags & a_NETSMTP_CAP_STARTTLS) != 0)))){
+         flags &= ~(a_NETSMTP_CAP_AUTH | a_NETSMTP_AUTH_MASK);
+         flags |= cavc.cavc_mechplusbits & mx_CRED_AUTHTYPE_MASK;
+         if((flags & a_NETSMTP_AUTH_MASK) != mx_CRED_AUTHTYPE_NONE){
+            flags |= a_NETSMTP_CAP_AUTH;
+            if(rv == TRUM1)
+               flags |= a_NETSMTP_AUTH_ALLMECHS;
+         }
+         rv = TRU1;
+         if(flags & mx_CRED_AUTHTYPE_NEED_TLS)
+            flags |= a_NETSMTP_CAP_STARTTLS | a_NETSMTP_PROP_FORCE_TLS;
+      }else
+         flags &= ~a_NETSMTP_CAP_AUTH;
+   }
+
+#ifndef mx_HAVE_TLS
+   if(rv && (flags & a_NETSMTP_PROP_FORCE_TLS)){
+      n_err(_("*smtp-config*: force-tls: no TLS support compiled in\n"));
+      rv = FAL0;
+   }
+#endif
+
+jleave:
+   credp->cc_config = flags;
+   NYD_OU;
+   return rv;
+}
+
+boole
 mx_smtp_mta(struct mx_send_ctx *scp){
+   struct a_netsmtp_ctx nsc;
    struct mx_socket so;
    n_sighdl_t volatile saveterm, savepipe;
    boole volatile rv;
    NYD_IN;
 
    rv = FAL0;
+
+#ifndef mx_HAVE_TLS
+   if(scp->sc_credp->cc_auth != NIL && /* v15-compat */
+         (scp->sc_credp->cc_needs_tls ||
+          xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL))){
+      n_err(_("No TLS support compiled in\n"));
+      goto j_leave;
+   }
+#endif
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -615,9 +714,26 @@ mx_smtp_mta(struct mx_send_ctx *scp){
       su_mem_set(&so, 0, sizeof so);
    else if(!mx_socket_open(&so, scp->sc_urlp))
       goto j_leave;
-
    so.s_desc = "SMTP";
-   rv = a_netsmtp_talk(&so, scp);
+
+   su_mem_set(&nsc, 0, sizeof nsc);
+   if(scp->sc_credp->cc_auth == NIL) /* v15-compat */
+      nsc.nsc_config = scp->sc_credp->cc_config;
+   else{
+      if(scp->sc_credp->cc_authtype != mx_CRED_AUTHTYPE_NONE)
+         /* STARTTLS not really 1:1 of old behaviour, but try it! */
+         nsc.nsc_config = a_NETSMTP_CAP_EHLO | a_NETSMTP_CAP_STARTTLS |
+               a_NETSMTP_CAP_AUTH;
+      nsc.nsc_config |= scp->sc_credp->cc_authtype;
+#ifdef mx_HAVE_TLS
+      if(!so.s_use_tls && (scp->sc_credp->cc_needs_tls ||
+            xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL)))
+         nsc.nsc_config |= a_NETSMTP_CAP_EHLO | a_NETSMTP_CAP_STARTTLS |
+               a_NETSMTP_PROP_FORCE_TLS;
+#endif
+   }
+
+   rv = a_netsmtp_talk(&so, scp, &nsc);
 
 jleave:
    if(!(n_poption & n_PO_D))

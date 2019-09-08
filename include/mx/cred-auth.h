@@ -32,33 +32,128 @@ struct mx_cred_ctx;
 
 #ifdef mx_HAVE_NET
 enum mx_cred_authtype{
-   mx_CRED_AUTHTYPE_NONE = 1u<<0,
-   mx_CRED_AUTHTYPE_PLAIN = 1u<<1, /* POP3: APOP is covered by this */
-   mx_CRED_AUTHTYPE_LOGIN = 1u<<2,
-   mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<3,
-   mx_CRED_AUTHTYPE_EXTERNAL = 1u<<4,
-   mx_CRED_AUTHTYPE_EXTERNANON = 1u<<5,
+   mx_CRED_AUTHTYPE_NONE,
+   mx_CRED_AUTHTYPE_ERROR = mx_CRED_AUTHTYPE_NONE,
+   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<0,
+   mx_CRED_AUTHTYPE_EXTERNAL = 1u<<1,
+      mx_CRED_AUTHTYPE_EXTERNANON = 1u<<2,
+   mx_CRED_AUTHTYPE_GSSAPI = 1u<<3,
+   mx_CRED_AUTHTYPE_LOGIN = 1u<<4, /* SMTP: SASL, IMAP: IMAP login */
+   mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<5,
+   mx_CRED_AUTHTYPE_PLAIN = 1u<<6, /* POP3: APOP is covered by this */
+   mx_CRED_AUTHTYPE_XOAUTH2 = 1u<<7
+};
+enum{
+   /* The additional bits will be set by auth_authtype_verify_bits() */
+   mx_CRED_AUTHTYPE_MULTI = 1u<<8, /* Multiple types are set */
+   mx_CRED_AUTHTYPE_NEED_TLS = 1u<<9, /* TLS is requirement for 1+ mech */
 
-   mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<6,
+   mx_CRED_AUTHTYPE_MECH_MASK = mx_CRED_AUTHTYPE_MULTI - 1,
+   mx_CRED_AUTHTYPE_MECH_COUNT = 8,
+   mx_CRED_AUTHTYPE_LASTBIT = 9,
+   mx_CRED_AUTHTYPE_MASK = (1u<<(mx_CRED_AUTHTYPE_LASTBIT+1)) - 1
+};
 
-   mx_CRED_AUTHTYPE_GSSAPI = 1u<<7
+enum mx_cred_proto_authtypes{
+   mx_CRED_PROTO_AUTHTYPES_IMAP =
+         mx_CRED_AUTHTYPE_CRAM_MD5 |
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+         mx_CRED_AUTHTYPE_GSSAPI |
+         mx_CRED_AUTHTYPE_LOGIN |
+         mx_CRED_AUTHTYPE_OAUTHBEARER,
+      /*mx_CRED_PROTO_AUTHTYPES_AUTO_IMAP*/
+      /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_IMAP*/
+      mx_CRED_PROTO_AUTHTYPES_DEFAULT_IMAP = mx_CRED_AUTHTYPE_LOGIN,
+   mx_CRED_PROTO_AUTHTYPES_POP3 =
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+         mx_CRED_AUTHTYPE_GSSAPI |
+         mx_CRED_AUTHTYPE_OAUTHBEARER |
+         mx_CRED_AUTHTYPE_PLAIN,
+      mx_CRED_PROTO_AUTHTYPES_DEFAULT_POP3 = mx_CRED_AUTHTYPE_PLAIN,
+      /*mx_CRED_PROTO_AUTHTYPES_AUTO_POP3*/
+      /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP*/
+   mx_CRED_PROTO_AUTHTYPES_SMTP =
+         mx_CRED_AUTHTYPE_CRAM_MD5 |
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+         mx_CRED_AUTHTYPE_GSSAPI |
+         mx_CRED_AUTHTYPE_LOGIN |
+         mx_CRED_AUTHTYPE_OAUTHBEARER |
+         mx_CRED_AUTHTYPE_PLAIN |
+         mx_CRED_AUTHTYPE_XOAUTH2,
+      mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP =
+            mx_CRED_AUTHTYPE_CRAM_MD5 |
+            mx_CRED_AUTHTYPE_LOGIN |
+            mx_CRED_AUTHTYPE_PLAIN,
+      mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP =
+            mx_CRED_AUTHTYPE_CRAM_MD5,
+      mx_CRED_PROTO_AUTHTYPES_DEFAULT_SMTP = mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP
 };
 
 struct mx_cred_ctx{
-   u32 cc_cproto; /* Used enum cproto */
-   u16 cc_authtype; /* Desired enum mx_cred_authtype */
-   boole cc_needs_tls; /* .cc_authtype requires TLS transport */
-   u8 cc__pad[1];
-   char const *cc_auth; /* Authentication type as string */
-   struct str cc_user; /* User (url_xdec()oded) or NIL */
-   struct str cc_pass; /* Password (url_xdec()oded) or NIL */
+   /* TODO cc_auth, cc_authtype and cc_needs_tls are obsolete
+    * TODO If .cc_auth!=NIL then old style config is used */
+char const *cc_auth; /* v15-compat Authentication type as string */
+u32 cc_authtype; /* v15-compat Desired cred_authtype */
+boole cc_needs_tls; /* v15-compat .cc_authtype requires TLS transport */
+   u8 cc_cproto; /* Used enum cproto */
+   u8 cc__dummy[2 + 4];
+   u32 cc_config; /* authtype, additional bits, plus protocol internals */
+   struct str cc_user; /* User or NIL */
+   struct str cc_pass; /* Password or NIL */
+};
+
+struct mx_cred_authtype_info{
+   u32 cai_type; /* The cred_authtype */
+   u16 cai_flags; /* Internal */
+   boole cai_pass_cleartxt;
+   boole cai_needs_tls;
+   char const cai_user_name[12]; /* What we expect in config */
+   char const cai_name[12]; /* The real name */
+};
+
+struct mx_cred_authtype_verify_ctx{
+   enum cproto cavc_proto; /* Input: protocol to test */
+   u32 cavc_mechplusbits; /* I/O: (usable) mechanisms (plus additional bits) */
+   u32 cavc_cnt; /* Output: number of reauthentication methods */
+   u8 cavc__pad[4];
 };
 
 /* Zero ccp and lookup credentials for communicating with urlp.
+ * The former will call protocol specific _config() function if possible: if
+ * so, that should not use URL except for using it to lookup variable chains.
  * Return whether credentials are available and valid (for chosen auth) */
-EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp);
-EXPORT boole mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp,
+EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *credp,
+      struct mx_url *urlp);
+EXPORT boole mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp,/* v15-compat */
       enum cproto cproto, char const *addr);
+
+/* Find a (usr config, else official) type name.  Return it or NIL,
+ * or -1 if name is "allmechs" (only with usr config).
+ * The latter finds a type, and returns it or NIL (unsupported) */
+EXPORT struct mx_cred_authtype_info const *mx_cred_auth_type_find_name(
+      char const *name, boole usr);
+EXPORT struct mx_cred_authtype_info const *mx_cred_auth_type_find_type(
+      u32 type);
+
+/* Verify all cred_authtype .cavc_mechplusbits for the given .cavc_proto,
+ * with bells and whistles.
+ * maybe_tls is an indication whether the transport could eventually be
+ * secured -- that "whether" should solely be based upon the protocol
+ * configuration, not to an actual URL.
+ * Return whether any usable mechanism remains in .cavc_mechbits.
+ * Returns TRUM1 if the list includes all possible mechanisms. */
+EXPORT boole mx_cred_auth_type_verify_bits(
+      struct mx_cred_authtype_verify_ctx *cavcp, boole maybe_tls);
+
+/* Once the connection is established, and potentially has been secured,
+ * select an actual authentication type from the given mechanisms.
+ * mechplusbits should have been adjusted already to be compatible with the
+ * server offerings.
+ * assume_tls states whether the connection is secured, or not.
+ * Returns the "best" match, or U32_MAX upon error aka no authentication
+ * mechanism can be used */
+EXPORT u32 mx_cred_auth_type_select(enum cproto proto, u32 mechplusbits,
+      boole assume_tls);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_NET */

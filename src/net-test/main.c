@@ -7,7 +7,10 @@
  *@ STDIN, and uses that to "replay" I/O over the TCP connection the client
  *@ establishes via the provided port number.  Data mismatches cause errors.
  *@ If -v is given, the prepared I/O as well as real I/O is logged on STDERR.
- *@ TODO - TLS
+ *@ TODO - TLS.  This ALSO needs the test to reenable some which are falsified
+ *@        and in FACT these could be splitted into four different: TLS via
+ *@        PROTOS://, TLS via starttls, TLS disabled but type wanted, no TLS
+ *@        support at all
  *@ TODO - intermangled responses (expect tuple 2[lines follow] 3[..]),
  *@ TODO   store list unless fullfilled (or whatever).  E.g.,
  *@ TODO   "tuples 1/2 2/3" would read one line and save the next two as
