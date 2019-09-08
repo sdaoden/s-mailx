@@ -278,7 +278,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 
 # ifdef mx_SOURCE_NET_SMTP
    a_SMTP_OUT(out.s);
-   a_SMTP_ANSWER(2, FAL0, FAL0);
+   /* Done in generic code: a_SMTP_ANSWER(2, FAL0, FAL0);*/
    ok = TRU1;
 # elif defined mx_SOURCE_NET_POP3
    a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
