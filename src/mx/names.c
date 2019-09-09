@@ -541,17 +541,19 @@ ndup(struct mx_name *np, enum gfield ntype)
 
    nnp = n_autorec_alloc(sizeof *np);
    nnp->n_flink = nnp->n_blink = NULL;
-   nnp->n_type = ntype;
+   nnp->n_type = ntype & ~(GFULL | GFULLEXTRA);
    nnp->n_flags = np->n_flags | mx_NAME_NAME_SALLOC;
    nnp->n_name = savestr(np->n_name);
 
-   if (np->n_name == np->n_fullname || !(ntype & (GFULL | GSKIN))) {
+   if(np->n_name == np->n_fullname || !(ntype & GFULL)){
+      ASSERT((ntype & GFULL) || !(ntype & GFULLEXTRA));
       nnp->n_fullname = nnp->n_name;
       nnp->n_fullextra = NULL;
-   } else {
+   }else{
       nnp->n_fullname = savestr(np->n_fullname);
-      nnp->n_fullextra = (np->n_fullextra == NULL) ? NULL
-            : savestr(np->n_fullextra);
+      nnp->n_fullextra = (!(ntype & GFULLEXTRA) || np->n_fullextra == NIL)
+            ? NIL : savestr(np->n_fullextra);
+      nnp->n_type = ntype;
    }
 
 jleave:

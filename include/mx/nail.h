@@ -873,6 +873,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_b_followup_to,
    ok_b_followup_to_add_cc,
    ok_v_followup_to_honour,
+   ok_b_forward_add_cc,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
    ok_v_forward_inject_tail,
@@ -1004,6 +1005,7 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
 
    ok_b_quiet,
    ok_v_quote,
+   ok_b_quote_add_cc,
    ok_b_quote_as_attachment,
    ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,

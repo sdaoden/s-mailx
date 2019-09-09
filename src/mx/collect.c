@@ -111,8 +111,12 @@ static s32 a_coll_write(char const *name, FILE *fp, int f);
 /* *message-inject-head* */
 static boole a_coll_message_inject_head(FILE *fp);
 
+/* If mp==NIL, we try to use hp->h_mailx_orig_from */
+static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
+
 /* With bells and whistles */
-static boole a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd);
+static boole a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
+      FILE *fp, struct header *hp, struct message *mp, boole isfwd);
 
 /* *{forward,quote}-inject-{head,tail}*.
  * fmt may be NULL or the empty string, in which case no output is produced */
@@ -136,7 +140,7 @@ static s32 a_coll_pipe(char const *cmd);
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
-static s32 a_coll_forward(char const *ms, FILE *fp, int f);
+static s32 a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -464,8 +468,27 @@ a_coll_message_inject_head(FILE *fp){
    return rv;
 }
 
+static void
+a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
+   struct mx_name *addcc;
+   NYD_IN;
+
+   addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_from;
+
+   if(addcc != NIL){
+      u32 gf;
+
+      gf = GCC | GSKIN;
+      if(ok_blook(fullnames))
+         gf |= GFULL;
+      hp->h_cc = cat(hp->h_cc, ndup(addcc, gf));
+   }
+   NYD_OU;
+}
+
 static boole
-a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
+a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
+      FILE *fp, struct header *hp, struct message *mp, boole isfwd){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
    struct n_ignore const *quoteitp;
@@ -480,6 +503,9 @@ a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
    if(isfwd){
       char const *cp_v15compat;
 
+      if(ok_blook(forward_add_cc))
+         a_collect_add_sender_to_cc(hp, mp);
+
       if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
          n_OBSOLETE(_("please use *forward-inject-head* instead of "
             "*fwdheading*"));
@@ -491,6 +517,14 @@ a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
       rv = TRU1;
       goto jleave;
    }else{
+      if(hp != NIL && ok_blook(quote_add_cc)){
+         if(membag_persist_or_nil)
+            su_mem_bag_push(n_go_data->gdc_membag, membag_persist_or_nil);
+         a_collect_add_sender_to_cc(hp, mp);
+         if(membag_persist_or_nil)
+            su_mem_bag_pop(n_go_data->gdc_membag, membag_persist_or_nil);
+      }
+
       if(!su_cs_cmp(cp, "noheading"))
          ;
       else if(!su_cs_cmp(cp, "headers"))
@@ -800,44 +834,56 @@ jout:
 }
 
 static s32
-a_coll_forward(char const *ms, FILE *fp, int f)
-{
-   int *msgvec, rv = 0;
+a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
+   struct su_mem_bag *membag, *membag_persist, membag__buf[1];
    struct n_ignore const *itp;
    char const *tabst;
    enum sendaction action;
+   int rv, *msgvec;
    NYD_IN;
 
-   if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
+   membag = su_mem_bag_create(&membag__buf[0], 0);
+   membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
+   su_mem_bag_push(n_go_data->gdc_membag, membag);
+
+   if((rv = n_getmsglist(ms, n_msgvec, 0, NIL)) < 0){
       rv = n_pstate_err_no; /* XXX not really, should be handled there! */
       goto jleave;
    }
-   if (rv == 0) {
-      *n_msgvec = first(0, MMNORM);
-      if (*n_msgvec == 0) {
+   if(rv == 0){
+      *n_msgvec = first(0, MMNORM); /* TODO integrate mode into getmsglist */
+      if(*n_msgvec == 0){
          n_err(_("No appropriate messages\n"));
-         rv = su_ERR_BADMSG;
+         rv = su_ERR_NOMSG;
          goto jleave;
       }
       rv = 1;
    }
+
    msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
    while(rv-- > 0)
       msgvec[rv] = n_msgvec[rv];
-   rv = 0;
 
-   if (f == 'f' || f == 'F' || f == 'u')
-      tabst = NULL;
-   else
-      tabst = ok_vlook(indentprefix);
-   if (f == 'u' || f == 'U')
+   action = SEND_QUOTE_ALL;
+   tabst = (f == 'f' || f == 'F' || f == 'u') ? NIL : ok_vlook(indentprefix);
+   if(f == 'u' || f == 'U'){
+      if(f == 'U')
+         action = SEND_QUOTE;
       itp = n_IGNORE_ALL;
+   }else if(su_cs_is_upper(f))
+      itp = NIL;
+   else if((f == 'f' || f == 'F') && !ok_blook(posix))
+      itp = n_IGNORE_FWD;
    else
-      itp = su_cs_is_upper(f) ? NULL : n_IGNORE_TYPE;
-   action = (su_cs_is_upper(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
+      itp = n_IGNORE_TYPE;
+
+   rv = 0;
+   if(f != 'Q')
+      f = ok_blook(forward_add_cc) ? '1' : '\0';
 
    fprintf(n_stdout, A_("Interpolating:"));
-   srelax_hold();
+   n_autorec_relax_create();
+
    for(; *msgvec != 0; ++msgvec){
       struct message *mp;
 
@@ -847,20 +893,34 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
       if(f == 'Q'){
-         if(!a_coll_quote_message(fp, mp, FAL0)){
+         if(!a_coll_quote_message(membag_persist, fp, hp, mp, FAL0)){
             rv = su_ERR_IO;
             break;
          }
-      }else if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
-         n_perr(_("forward: temporary mail file"), 0);
-         rv = su_ERR_IO;
-         break;
+      }else{
+         if(f != '\0'){
+            su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
+            a_collect_add_sender_to_cc(hp, mp);
+            su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
+         }
+
+         if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
+            n_perr(_("forward: temporary mail file"), 0);
+            rv = su_ERR_IO;
+            break;
+         }
       }
-      srelax();
+
+      n_autorec_relax_unroll();
    }
-   srelax_rele();
+
+   n_autorec_relax_gut();
    fprintf(n_stdout, "\n");
+
 jleave:
+   su_mem_bag_pop(n_go_data->gdc_membag, membag);
+   su_mem_bag_gut(membag);
+
    NYD_OU;
    return rv;
 }
@@ -1157,7 +1217,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp,
+         if(mp != NIL && !a_coll_quote_message(NIL, _coll_fp,
+               (((msf & n_MAILSEND_IS_FWD) != 0) ? hp : NIL), mp,
                ((msf & n_MAILSEND_IS_FWD) != 0)))
             goto jerr;
       }
@@ -1685,10 +1746,9 @@ jev_go:
       case 'Q':
       case 'U':
       case 'u':
-         /* Interpolate the named messages, if we are in receiving mail mode.
-          * Does the standard list processing garbage.  If ~f is given, we
-          * don't shift over */
-         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == su_ERR_NONE)
+         /* Interpolate the named messages */
+         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, hp, c)
+               ) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;

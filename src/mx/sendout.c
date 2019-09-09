@@ -1326,7 +1326,7 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
             FILE *fisave = sbp->sb_input;
             struct mx_name *nsave = sbp->sb_to;
 
-            sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
+            sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GFULLEXTRA | GSKIN));
             sbp->sb_input = ef;
             if(!a_sendout_mta_start(sbp))
                rv = FAL0;

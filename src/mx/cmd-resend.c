@@ -734,6 +734,13 @@ jwork_msg:
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
       head.h_attach->a_content_description = _("Forwarded message");
+
+      if(head.h_mailx_orig_from != NIL && ok_blook(forward_add_cc)){
+         gf = GCC | GSKIN;
+         if(ok_blook(fullnames))
+            gf |= GFULL;
+         head.h_cc = ndup(head.h_mailx_orig_from, gf);
+      }
    }
 
    if(n_mail1((n_MAILSEND_IS_FWD |

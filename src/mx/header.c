@@ -2490,6 +2490,28 @@ jleave:
    return n_UNCONST(cp);
 }
 
+FL struct mx_name *
+mx_header_sender_of(struct message *mp, u32 gf){
+   struct mx_name *rv;
+   char const *cp;
+   NYD_IN;
+
+   if(gf == 0)
+      gf = GFULL | GSKIN;
+
+   if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
+         (rv = lextract(cp, gf)) != NIL && rv->n_flink == NIL)
+      cp = savestr(cp);
+   else if((cp = hfield1("sender", mp)) != NIL && *cp != '\0' &&
+         (rv = lextract(cp, gf)) != NIL)
+      ;
+   else
+      rv = NIL;
+
+   NYD_OU;
+   return rv;
+}
+
 FL char *
 n_header_senderfield_of(struct message *mp){
    struct mx_name *np;

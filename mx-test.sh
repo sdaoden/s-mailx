@@ -4550,7 +4550,7 @@ Repbody6
    t_it followup Followup 16 17 yes
    #${rm} -f from1 from2
 
-   ## Quoting
+   ## Quoting (if not cmd_escapes related)
    ${rm} -f "${MBOX}"
    t__x2_msg > ./.tmbox
 
@@ -4653,23 +4653,33 @@ b6-1
 b6-2
 !.
       echo 6:$?/$^ERRNAME; echoerr 6:done
+      set forward-add-cc fullnames
+      '${1}' . ex7@am.ple
+b7
+!.
+      echo 7:$?/$^ERRNAME; echoerr 7:done
+      set nofullnames
+      '${1}' . ex8@am.ple
+b8
+!.
+      echo 8:$?/$^ERRNAME; echoerr 8:done
       #' \
          "${MBOX}" > ./.tall 2>./.terr
       return ${?}
    }
 
    t_it forward
-   check 1 0 ./.tall '860408950 1587'
+   check 1 0 ./.tall '2356713156 2219'
    if have_feat uistrings; then
-      check 2 - ./.terr '3468678748 251'
+      check 2 - ./.terr '693399532 265'
    else
       t_echoskip '2:[!UISTRINGS]'
    fi
 
    t_it Forward
-   check 3 0 ./.tall '860408950 1587'
+   check 3 0 ./.tall '2356713156 2219'
    if have_feat uistrings; then
-      check 4 - ./.terr '3468678748 251'
+      check 4 - ./.terr '693399532 265'
    else
       t_echoskip '4:[!UISTRINGS]'
    fi
@@ -7367,13 +7377,16 @@ t_cmd_escapes() {
    t_prolog "${@}"
 
    echo 'included file' > ./.ttxt
-   { t__x1_msg && t__x2_msg && t__x3_msg; } > ./.tmbox
+   { t__x1_msg && t__x2_msg && t__x3_msg &&
+      t__gen_msg from 'ex4@am.ple' subject sub4 &&
+      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5; } > ./.tmbox
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
    # have some in compose_edits and digmsg
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
       headerpick type retain Subject
+      headerpick forward retain Subject To
       reply 2
 !!1 Not escaped.  And shell test last, right before !..
 !:echo 1
@@ -7406,10 +7419,19 @@ t_cmd_escapes() {
 !F 1 3
 !:echo 13:$?/$^ERRNAME
 !F 1000
-!:echo 13-1:$?/$^ERRNAME
+!:echo 13-1:$?/$^ERRNAME; set posix
 14: ~f (headerpick: subject)
 !f
-!:echo 14:$?/$^ERRNAME
+!:echo 14:$?/$^ERRNAME; unset posix
+14.1: ~f (!posix: headerpick: subject to)
+!f
+!:echo 14.1:$?/$^ERRNAME; set forward-add-cc
+14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
+!f 3
+!:echo 14.2:$?/$^ERRNAME; set fullnames
+14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+!f 1
+!:echo 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
 15: ~f 1
 !f 1
 !:echo 15:$?/$^ERRNAME
@@ -7425,17 +7447,17 @@ t_cmd_escapes() {
 !:echo 17:$?/$^ERRNAME
 18: ~M
 !M
-!:echo 18:$?/$^ERRNAME
+!:echo 18:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 19: ~M 1
 !M 1
 !:echo 19:$?/$^ERRNAME
 20: ~m
 !m
-!:echo 20:$?/$^ERRNAME
+!:echo 20:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 21: ~m 3
 !m 3
 !:echo 21:$?/$^ERRNAME
-28-32: ~Q; 28: ~Q
+28-34: ~Q; 28: ~Q
 !Q
 !:echo 28:$?/$^ERRNAME
 29: ~Q 1 3
@@ -7454,8 +7476,18 @@ set quote-inject-head quote-inject-tail indentprefix
 32: ~Q
 !Q
 !:echo 32:$?/$^ERRNAME
-unset quote stuff
-!:unset quote quote-inject-head quote-inject-tail
+set noquote-inject-head noquote-inject-tail quote-add-cc
+!:set noquote-inject-head noquote-inject-tail quote-add-cc
+33: ~Q 4
+!Q 4
+!:echo 33:$?/$^ERRNAME
+set fullnames
+!:set fullnames
+34: ~Q 5
+!Q 5
+!:echo 34:$?/$^ERRNAME
+unset fullnames, quote stuff
+!:unset quote quote-add-cc fullnames
 22: ~R ./.ttxt
 !R ./.ttxt
 !:echo 22:$?/$^ERRNAME
@@ -7467,12 +7499,18 @@ unset quote stuff
 !:echo 24:$?/$^ERRNAME
 !t 25 added ~t o <ex3@am.ple>
 !:echo 25:$?/$^ERRNAME
-26: ~U
+26.1: ~U
 !U
-!:echo 26:$?/$^ERRNAME
-27: ~U 1
+!:echo 26.1:$?/$^ERRNAME
+26.2: ~U 1
 !U 1
-!:echo 27:$?/$^ERRNAME
+!:echo 26.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+27.1: ~u
+!u
+!:echo 27.1:$?/$^ERRNAME
+27.2: ~u 1
+!u 1
+!:echo 27.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 and i ~w rite this out to ./.tmsg
 !w ./.tmsg
 !:echo i ~w:$?/$^ERRNAME
@@ -7486,13 +7524,13 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '326143427 4622'
+   check 2 - "${MBOX}" '1742333334 5604'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS]'
    fi
-   check 3 - ./.tmsg '2291587961 3343'
+   check 3 - ./.tmsg '1237056298 4035'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7517,7 +7555,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '2851285356 4823'
+   check 4 0 "${MBOX}" '430234709 5805'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else

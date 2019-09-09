@@ -8469,7 +8469,8 @@ offers a pipe-based editing approach.
 .Mx
 .It Ic ~F Ar messages
 Read the named messages into the message being sent, including all
-message headers and MIME parts.
+message headers and MIME parts, and honouring
+.Va forward-add-cc .
 If no messages are specified, read in the current message, the
 .Dq dot .
 .
@@ -8479,9 +8480,14 @@ Read the named messages into the message being sent.
 If no messages are specified, read in the current message, the
 .Dq dot .
 Strips down the list of header fields according to the
-.Ql type
+.Ql forward
+(with
+.Va posix :
+.Ql type )
 white- and blacklist selection of
-.Ic headerpick .
+.Ic headerpick ,
+and honours
+.Va forward-add-cc .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -8541,6 +8547,8 @@ indented by
 .Va indentprefix .
 If no messages are specified, read the current message, the
 .Dq dot .
+Honours
+.Va forward-add-cc .
 .
 .Mx
 .It Ic ~m Ar messages
@@ -8553,6 +8561,8 @@ Strips down the list of header fields according to the
 .Ql type
 white- and blacklist selection of
 .Ic headerpick .
+Honours
+.Va forward-add-cc .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -8565,7 +8575,9 @@ and followed by the attachment list, if any.
 .Mx
 .It Ic ~Q
 Read in the given / current message(s) according to the algorithm of
-.Va quote .
+.Va quote ,
+honouring
+.Va quote-add-cc .
 .
 .Mx
 .It Ic ~q
@@ -8616,10 +8628,14 @@ Add the given name(s) to the direct recipient list.
 .It Ic ~U Ar messages
 Read in the given / current message(s) excluding all headers, indented by
 .Va indentprefix .
+Honours
+.Va forward-add-cc .
 .
 .Mx
 .It Ic ~u Ar messages
 Read in the given / current message(s), excluding all headers.
+Honours
+.Va forward-add-cc .
 .
 .Mx
 .It Ic ~v
@@ -9748,6 +9764,14 @@ This is a quadoption; if set without a value it defaults to
 .Dq yes ,
 and see
 .Va followup-to .
+.
+.Mx
+.It Va forward-add-cc
+\*(BO Whether the sender of a message quoted via
+.Ic ~Q
+shall be added to the messages'
+.Ql Cc:
+list.
 .
 .Mx
 .It Va forward-as-attachment
@@ -11382,6 +11406,17 @@ line feed.
 \*(ID For compatibility reasons this step will always be performed.
 .
 .It
+Reading in messages via
+.Ic ~f
+.Pf ( Sx "COMMAND ESCAPES" )
+will use the
+.Ql type
+not the
+.Ql forward
+.Ic headerpick
+selection.
+.
+.It
 Upon changing the active
 .Ic folder
 no summary of
@@ -11479,11 +11514,20 @@ The quoted message will be enclosed by the expansions of
 and
 .Va quote-inject-tail .
 Also see
+.Va quote-add-cc ,
 .Va quote-as-attachment
 and
 .Ic ~Q ,
 one of the
 .Sx "COMMAND ESCAPES" .
+.
+.Mx
+.It Va quote-add-cc
+\*(BO Whether the sender of a message quoted via
+.Ic ~Q
+shall be added to the messages'
+.Ql Cc:
+list.
 .
 .Mx
 .It Va quote-as-attachment

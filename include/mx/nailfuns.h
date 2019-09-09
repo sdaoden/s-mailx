@@ -877,7 +877,11 @@ FL int c_addrcodec(void *vp);
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
 
-/* Get the list of senders (From: or Sender: or From_ line) from this message.
+/* Get the sender (From: or Sender:) of this message, or NIL.
+ * If gf is 0 GFULL|GSKIN is used (no senderfield beside that) */
+FL struct mx_name *mx_header_sender_of(struct message *mp, u32 gf);
+
+/* Get header_sender_of(), or From_ line from this message.
  * The return value may be empty and needs lextract()ion */
 FL char *n_header_senderfield_of(struct message *mp);
 
