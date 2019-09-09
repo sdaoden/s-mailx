@@ -38,11 +38,9 @@
 .ds BO (Boolean)
 .ds CM (Compose mode)
 .ds ID [v15 behaviour may differ]
-.ds IN [v15-compat]
 .ds NQ [Only new quoting rules]
 .ds OB [Obsolete]
 .ds OP [Option]
-.ds OU [no v15-compat]
 .ds RO (Read-only)
 .ds SM (Send mode)
 .\"
@@ -129,30 +127,16 @@
 .Sh DESCRIPTION
 .
 .Bd -filled -compact -offset indent
-.Sy Note:
-S-nail (\*(UA) will see major changes in v15.0 (circa 2022).
-Some backward incompatibilities cannot be avoided.
-.Sx COMMANDS
-change to
-.Sx "Shell-style argument quoting" ,
-and shell metacharacters will become (more) meaningful.
-Some commands accept new syntax today via
-.Cm wysh
-.Pf ( Sx "Command modifiers" ) .
-Behaviour is flagged \*(IN and \*(OU,
-.Ic set Ns
-ting
-.Va v15-compat
-.Pf ( Sx "INTERNAL VARIABLES" )
-will choose new behaviour when applicable;
-giving it a value makes
-.Cm wysh
-an implied default.
-\*(OB flags what will vanish.
-.Pp
 .Sy Warning!
 .Va v15-compat
-(with value) is default since v14.10.0!
+(with value) is default since v14.10.0, and the manual
+expects this context;
+Most old (other context) documentation has been removed.
+S-nail (\*(UA) will see major changes until v15.0 (circa 2022).
+Some backward incompatibilities cannot be avoided, for example
+.Sx COMMANDS
+will change to
+.Sx "Shell-style argument quoting" .
 .Ed
 .
 .Pp
@@ -579,12 +563,9 @@ as documented in
 .Ar var Ns
 iable and optionally assign
 .Ar value ,
-if supported; \*(ID the entire expression is evaluated as if specified
+if supported, it is evaluated as if specified
 within dollar-single-quotes (see
-.Sx "Shell-style argument quoting" )
-if the internal variable
-.Va v15-compat
-is set.
+.Sx "Shell-style argument quoting" ) .
 If the operation fails the program will exit if any of
 .Va errexit
 or
@@ -5643,8 +5624,7 @@ All network traffic may be proxied over a SOCKS server via
 .Va socks-proxy .
 .
 .Pp
-.Dl \*(IN protocol://[user[:password]@]host[:port][/path]
-.Dl \*(OU protocol://[user@]host[:port][/path]
+.Dl protocol://[user[:password]@]host[:port][/path]
 .
 .Pp
 \*(OPally supported network protocols are
@@ -5938,30 +5918,7 @@ or
 .Ic endif . )
 .
 .Pp
-\*(OU and without
-.Cm wysh :
-It is possible to check
-.Sx "INTERNAL VARIABLES"
-as well as
-.Sx ENVIRONMENT
-variables for existence or compare their expansion against a user given
-value or another variable by using the
-.Ql $
-.Pf ( Dq variable next )
-conditional trigger character;
-a variable on the right hand side may be signalled using the same
-mechanism.
-Variable names may be enclosed in a pair of matching braces.
-When this mode has been triggered, several operators are available
-(\*(IN and
-.Cm wysh :
-they are always available, and there is no trigger: variables will have
-been expanded by the shell-compatible parser before the
-.Ic if
-etc. command sees them).
-.
-.Pp
-\*(IN Two argument conditions.
+Two argument conditions.
 Variables can be tested for existence and expansion:
 .Ql -N
 will test whether the given variable exists, so that
@@ -10000,9 +9957,9 @@ command line option (without argument; see there for more), or by setting
 .
 .Pp
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine), then either this variable or
-.Va hostname
-(\*(IN a SMTP-based
+a dialup machine) then either this variable or
+.Va hostname ;
+(a SMTP-based
 .Va mta
 adds even more fine-tuning capabilities with
 .Va smtp-hostname )
@@ -10283,7 +10240,7 @@ variable assignment is aborted when a necessary conversion fails.
 .Pp
 Setting it to the empty string will cause the normal hostname to be
 used, but nonetheless enables creation of said ID fields.
-\*(IN in conjunction with the built-in SMTP
+In conjunction with the built-in SMTP
 .Va mta
 .Va smtp-hostname
 also influences the results:
@@ -10791,12 +10748,10 @@ the MIME type cache).
 Select an alternate Mail-Transfer-Agent by either specifying the full
 pathname of an executable (a
 .Ql file://
-prefix may be given), or \*(OPally a SMTP aka SUBMISSION protocol URL \*(IN:
+prefix may be given), or \*(OPally a SMTP aka SUBMISSION protocol URL:
 .Pp
 .Dl submissions://[user[:password]@]server[:port]
 .Pp
-(\*(OU:
-.Ql [smtp://]server[:port] . )
 The default has been chosen at compile time.
 MTA data transfers are always performed in asynchronous child processes,
 and without supervision unless either the
@@ -10898,10 +10853,8 @@ The plain SMTP protocol (RFC 5321) that normally lives on the
 server port 25 and requires setting the
 .Va smtp-use-starttls
 variable to enter a TLS encrypted session state.
-Assign a value like \*(IN
+Assign a value like
 .Ql smtp://[user[:password]@]server[:port]
-(\*(OU
-.Ql smtp://server[:port] )
 to choose this protocol.
 .It
 The so-called SMTPS which is supposed to live on server port 465
@@ -10912,10 +10865,8 @@ be supported by your hosts network service database
 protocols!
 .Pp
 SMTPS is nonetheless a commonly offered protocol and thus can be
-chosen by assigning a value like \*(IN
-.Ql smtps://[user[:password]@]server[:port]
-(\*(OU
-.Ql smtps://server[:port] ) ;
+chosen by assigning a value like
+.Ql smtps://[user[:password]@]server[:port] ;
 due to the mentioned problems it is usually necessary to explicitly
 specify the port as
 .Ql :465 ,
@@ -10925,12 +10876,12 @@ The SUBMISSION protocol (RFC 6409) lives on server port 587 and
 is identically to the SMTP protocol from \*(UA's point of view;
 it requires setting
 .Va smtp-use-starttls
-to enter a TLS secured session state; e.g., \*(IN
+to enter a TLS secured session state; e.g.,
 .Ql submission://[user[:password]@]server[:port] .
 .It
 The SUBMISSIONS protocol (RFC 8314) that lives on server port 465 and is
 TLS secured by default.
-It can be chosen by assigning a value like \*(IN
+It can be chosen by assigning a value like
 .Ql submissions://[user[:password]@]server[:port] .
 Due to the problems mentioned for SMTPS above and the fact that
 SUBMISSIONS is new and a successor that lives on the same port as the
@@ -11024,7 +10975,7 @@ itself is stripped before being sent over the wire.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
-\*(BO\*(IN\*(OP Used to control usage of the user's
+\*(BO\*(OP Used to control usage of the user's
 .Pa \*(VN
 file for lookup of account credentials, as documented in the section
 .Sx "On URL syntax and credential lookup"
@@ -11038,7 +10989,7 @@ Also see
 .
 .Mx
 .It Va netrc-pipe
-\*(IN\*(OP When
+\*(OP When
 .Pa \*(VN
 is loaded (see
 .Ic netrc
@@ -11321,21 +11272,10 @@ is followed by a formfeed character
 .
 .Mx Va password
 .It Va password-USER@HOST , password-HOST , password
-\*(IN Variable chain that sets a password, which is used in case none has
+Variable chain that sets a password, which is used in case none has
 been given in the protocol and account-specific URL;
 as a last resort \*(UA will ask for a password on the user's terminal if
 the authentication method requires a password.
-Specifying passwords in a startup file is generally a security risk;
-the file should be readable by the invoking user only.
-.
-.It Va password-USER@HOST
-\*(OU (see the chain above for \*(IN)
-Set the password for
-.Ql USER
-when connecting to
-.Ql HOST .
-If no such variable is defined for a host,
-the user will be asked for a password on standard input.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
 .
@@ -11497,22 +11437,21 @@ temporary file.
 .
 .Mx Va pop3-auth
 .It Va pop3-auth-USER@HOST , pop3-auth-HOST , pop3-auth
-\*(OP\*(IN Variable chain that sets the POP3 authentication method.
+\*(OP Variable chain that sets the POP3 authentication method.
 Supported are the default
 .Ql plain ,
-\*(IN
 .Ql oauthbearer
 (see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
-as well as \*(IN
+as well as
 .Ql external
 and
 .Ql externanon
 for TLS secured connections which pass a client certificate via
 .Va tls-config-pairs .
-There may be the \*(OPal method \*(IN
+There may be the \*(OPal method
 .Ql gssapi .
 .Ql externanon
 does not need any user credentials,
@@ -11567,9 +11506,6 @@ is that only a single packet is sent for the user/password tuple.
 (Originally also that the password is not sent in clear text over the
 wire, but for one MD5 does not any longer offer sufficient security,
 and then today transport is almost ever TLS secured.)
-Note that
-.Va pop3-no-apop-HOST
-requires \*(IN.
 .
 .Mx Va pop3-use-starttls
 .It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
@@ -11578,9 +11514,6 @@ requires \*(IN.
 command to make an unencrypted POP3 session TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the POP3S method.
-Note that
-.Va pop3-use-starttls-HOST
-requires \*(IN.
 .
 .
 .Mx
@@ -12462,18 +12395,16 @@ is used in preference of
 \*(OP Variable chain that controls the SMTP
 .Va mta
 authentication method, possible values are
-.Ql none
-(\*(OU default),
+.Ql none ,
 .Ql plain
-(\*(IN default),
+(default),
 .Ql login ,
-\*(IN
 .Ql oauthbearer
 (see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" )
-as well as \*(IN
+as well as
 .Ql external
 and
 .Ql externanon
@@ -12500,51 +12431,14 @@ and is usually the way to go since tested servers do not actually follow
 RFC 4422 aka RFC 4954, and fail if additional credentials are passed.
 Also see
 .Va mta .
-Note that
-.Va smtp-auth-HOST
-is \*(IN.
-(\*(OU Requires
-.Va smtp-auth-password
-and
-.Va smtp-auth-user .
 Note for
 .Va smtp-auth-USER@HOST :
 may override dependent on sender address in the variable
 .Va from . )
 .
-.It Va smtp-auth-password
-\*(OP\*(OU Sets the global fallback password for SMTP authentication.
-If the authentication method requires a password, but neither
-.Va smtp-auth-password
-nor a matching
-.Va smtp-auth-password-USER@HOST
-can be found,
-\*(UA will ask for a password on the user's terminal.
-.
-.It Va smtp-auth-password-USER@HOST
-\*(OU Overrides
-.Va smtp-auth-password
-for specific values of sender addresses, dependent upon the variable
-.Va from .
-.
-.It Va smtp-auth-user
-\*(OP\*(OU Sets the global fallback user name for SMTP authentication.
-If the authentication method requires a user name, but neither
-.Va smtp-auth-user
-nor a matching
-.Va smtp-auth-user-USER@HOST
-can be found,
-\*(UA will ask for a user name on the user's terminal.
-.
-.It Va smtp-auth-user-USER@HOST
-\*(OU Overrides
-.Va smtp-auth-user
-for specific values of sender addresses, dependent upon the variable
-.Va from .
-.
 .Mx
 .It Va smtp-hostname
-\*(OP\*(IN Normally \*(UA uses the variable
+\*(OP Normally \*(UA uses the variable
 .Va from
 to derive the necessary
 .Ql USER@HOST
@@ -13511,7 +13405,7 @@ Child processes inherit the file mode creation mask of their parent.
 .
 .Mx Va user
 .It Va user-HOST , user
-\*(IN Variable chain that sets a global fallback user name, used in case
+Variable chain that sets a global fallback user name, used in case
 none has been given in the protocol and account-specific URL.
 This variable defaults to the name of the user who runs \*(UA.
 .
@@ -13526,8 +13420,6 @@ is implied and thus enforces
 over
 .Sx "Old-style argument quoting"
 for all commands which support both.
-This manual uses \*(IN and \*(OU to refer to the new and the old way of
-doing things, respectively.
 .
 .Mx
 .It Va verbose
@@ -13795,7 +13687,7 @@ Also see
 .
 .Mx
 .It Ev NETRC
-\*(IN\*(OP This variable overrides the default location of the user's
+\*(OP This variable overrides the default location of the user's
 .Pa \*(VN
 file.
 .
@@ -13943,7 +13835,7 @@ Personal and system-wide MIME types, see
 .
 .Mx
 .It Pa \*(VN
-\*(IN\*(OP The default location of the user's
+\*(OP The default location of the user's
 .Pa .netrc
 file \(en the section
 .Sx "The .netrc file"
@@ -15500,13 +15392,11 @@ Supported are the default
 (called
 .Ql plain
 by some servers),
-\*(IN
 .Ql oauthbearer
 (see
 .Sx FAQ
 entry
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?" ) ,
-\*(IN
 .Ql external
 and
 .Ql externanon
