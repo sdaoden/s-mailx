@@ -250,11 +250,6 @@ first \(em only the latter mode is available unless
 includes
 .Ql ,+iconv, .
 .
-.It Fl B
-(\*(OB: \*(UA will always use line-buffered output, to gain
-line-buffered input even in batch mode enable batch mode via
-.Fl # . )
-.
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
 \*(SM Send a blind carbon copy to recipient
@@ -5725,27 +5720,6 @@ An alias of this command is
 Also see
 .Sx "Specifying messages" .
 .
-.It Ic Fwd
-\*(OB Alias for
-.Ic Forward .
-.
-.It Ic fwd
-\*(OB Alias for
-.Ic forward .
-.
-.It Ic fwdignore
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic fwdretain
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic ghost , unghost
-\*(OB Replaced by
-.Ic commandalias ,
-.Ic uncommandalias .
-.
 .Mx
 .Mx
 .It Ic headerpick , unheaderpick
@@ -6849,18 +6823,6 @@ slot of the white- and blacklisting command
 Also see
 .Ic Copy .
 .
-.It Ic savediscard
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic saveignore
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic saveretain
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
 .Mx
 .It Ic search
 Takes a message specification (list) and displays a header summary of
@@ -7196,13 +7158,6 @@ This also sets the
 .Ql is-spam
 flag of the messages in question.
 .
-.It Ic thread
-\*(OB The same as
-.Ql sort thread
-(consider using a
-.Ql commandalias
-as necessary).
-.
 .
 .Mx
 .It Ic tls
@@ -7364,14 +7319,6 @@ See
 See
 .Ic flag .
 .
-.It Ic unfwdignore
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic unfwdretain
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
 .Mx
 .It Ic unignore
 Superseded by the multiplexer
@@ -7403,14 +7350,6 @@ Takes a message list and marks each message as not having been read.
 Superseded by the multiplexer
 .Ic headerpick .
 .
-.It Ic unsaveignore
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
-.It Ic unsaveretain
-\*(OB Superseded by the multiplexer
-.Ic headerpick .
-.
 .It Ic unset
 \*(NQ (uns) See
 .Ic set .
@@ -7422,11 +7361,6 @@ See
 .It Ic unsort
 See
 .Ic short .
-.
-.It Ic unthread
-\*(OB
-Same as
-.Ic unsort .
 .
 .Mx
 .It Ic urlcodec
@@ -9557,14 +9491,6 @@ mode with a set
 .Sx "dotlock files"
 for MBOX databases.
 .
-.It Va dotlock-ignore-error
-\*(OB\*(BO\*(OP Ignore failures when creating
-.Mx -sx
-.Sx "dotlock files" .
-Please use
-.Va dotlock-disable
-instead.
-.
 .Mx
 .It Va editalong
 If this variable is set then the editor is started automatically when
@@ -9979,10 +9905,6 @@ or
 addresses are removed by default when sending mail, replying to or
 forwarding a message.
 If this variable is set such stripping is not performed.
-.
-.It Va fwdheading
-\*(OB Predecessor of
-.Va forward-inject-head .
 .
 .Mx
 .It Va header
@@ -11885,10 +11807,6 @@ Members of this list are handled as if they were in the
 .Ic alternates
 list.
 .
-.It Va replyto
-\*(OB Variant of
-.Va reply-to .
-.
 .Mx
 .It Va reply-to-honour
 Controls whether a
@@ -12046,22 +11964,6 @@ Also see
 .Fl r ,
 .Va r-option-implicit .
 .
-.It Va sendmail
-\*(OB Predecessor of
-.Va mta .
-.
-.It Va sendmail-arguments
-\*(OB Predecessor of
-.Va mta-arguments .
-.
-.It Va sendmail-no-default-arguments
-\*(OB\*(BO Predecessor of
-.Va mta-no-default-arguments .
-.
-.It Va sendmail-progname
-\*(OB Predecessor of
-.Va mta-argv0 .
-.
 .Mx
 .It Va sendwait
 Sending messages to the chosen
@@ -12130,18 +12032,6 @@ Also see
 .Va on-compose-leave
 and
 .Va on-compose-splice .
-.
-.Mx
-.It Va signature
-\*(OB Please use
-.Va on-compose-splice
-or
-.Va on-compose-splice-shell
-or
-.Va on-compose-leave
-and (if necessary)
-.Va message-inject-tail
-instead!
 .
 .Mx
 .It Va skipemptybody
@@ -12377,18 +12267,6 @@ will be used for performing password lookups for these certificates,
 shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
-.
-.It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
-\*(OB\*(OP Predecessor(s) of
-.Va smime-sign-digest .
-.
-.It Va smtp
-\*(OB\*(OP To use the built-in SMTP transport, specify a SMTP URL in
-.Va mta .
-\*(ID For compatibility reasons a set
-.Va smtp
-is used in preference of
-.Va mta .
 .
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
@@ -12650,87 +12528,6 @@ Then the latter is used to parse the first output line of the
 .Va spamfilter-rate
 hook, and, in case the evaluation is successful, the group that has been
 specified via the number is interpreted as a floating point scan score.
-.
-.It Va ssl-ca-dir-USER@HOST , ssl-ca-dir-HOST , ssl-ca-dir ,\
-  ssl-ca-file-USER@HOST , ssl-ca-file-HOST , ssl-ca-file
-\*(OB\*(OP Predecessors of
-.Va tls-ca-file ,
-.Va tls-ca-dir .
-.
-.It Va ssl-ca-flags-USER@HOST , ssl-ca-flags-HOST , ssl-ca-flags
-\*(OB\*(OP Predecessor of
-.Va tls-ca-flags .
-.
-.It Va ssl-ca-no-defaults-USER@HOST , ssl-ca-no-defaults-HOST ,\
-  ssl-ca-no-defaults
-\*(OB\*(BO\*(OP Predecessor of
-.Va tls-ca-no-defaults .
-.
-.It Va ssl-cert-USER@HOST , ssl-cert-HOST , ssl-cert
-\*(OB\*(OP Please use the
-.Cd Certificate
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-cipher-list-USER@HOST , ssl-cipher-list-HOST , ssl-cipher-list
-\*(OB\*(OP Please use the
-.Cd CipherString
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-config-file
-\*(OB\*(OP Predecessor of
-.Va tls-config-file .
-.
-.It Va ssl-config-module-USER@HOST , ssl-config-module-HOST ,\
-  ssl-config-module
-\*(OB\*(OP Predecessor of
-.Va tls-config-module .
-.
-.It Va ssl-config-pairs-USER@HOST , ssl-config-pairs-HOST , ssl-config-pairs
-\*(OB\*(OP Predecessor of
-.Va tls-config-pairs .
-.
-.It Va ssl-crl-dir , ssl-crl-file
-\*(OB\*(OP Predecessors of
-.Va tls-crl-dir ,
-.Va tls-crl-file .
-.
-.It Va ssl-curves-USER@HOST , ssl-curves-HOST , ssl-curves
-\*(OB\*(OP Please use the
-.Cd Curves
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-features
-\*(OB\*(OP\*(RO Predecessor of
-.Va tls-features .
-.
-.It Va ssl-key-USER@HOST , ssl-key-HOST , ssl-key
-\*(OB\*(OP Please use the
-.Cd PrivateKey
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
-\*(OB\*(OP Please use the
-.Cd Protocol
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
-\*(OB\*(OP Please use the
-.Cd Protocol
-slot of
-.Va tls-config-pairs .
-.
-.It Va ssl-rand-file
-\*(OB\*(OP Predecessor of
-.Va tls-rand-file .
-.
-.It Va ssl-verify-USER@HOST , ssl-verify-HOST , ssl-verify
-\*(OB\*(OP Predecessor of
-.Va tls-verify .
 .
 .Mx
 .It Va stealthmua
