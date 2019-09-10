@@ -2660,6 +2660,7 @@ c_account(void *v){
    /* And switch to any non-"null" account */
    if(amp != NULL){
       ASSERT(amp->am_lopts == NULL);
+      n_PS_ROOT_BLOCK(ok_vset(account, amp->am_name));
       amcap = n_lofi_calloc(sizeof *amcap);
       amcap->amca_name = amp->am_name;
       amcap->amca_amp = amp;
@@ -2667,15 +2668,15 @@ c_account(void *v){
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
       amcap->amca_no_xcall = TRU1;
       ++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
-      if(!a_amv_mac_exec(amcap)){
+      if(!a_amv_mac_exec(amcap) || n_pstate_ex_no != 0){
          /* XXX account switch incomplete, unroll? */
+         mx_account_leave();
+         n_PS_ROOT_BLOCK(ok_vclear(account));
          n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
       }
-   }
-
-   n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
-      : ok_vclear(account)));
+   }else
+      n_PS_ROOT_BLOCK(ok_vclear(account));
 
    /* Otherwise likely initial setfile() in a_main_rcv_mode() will pick up */
    if(n_psonce & n_PSO_STARTED){

@@ -10818,8 +10818,9 @@ Macro hook which will be called once an
 .Ic account
 is left, as the very last step before unrolling per-account
 .Ic localopts .
-This hook is run even in case of fatal errors, and it is advisable to
-perform only absolutely necessary actions, like cleaning up
+This hook is run even in case of fatal errors, including those generated
+by switching to the account as such, and it is advisable to perform only
+absolutely necessary actions, like cleaning up
 .Ic alternates ,
 for example.
 The specialized form is used in favour of the generic one if found.
