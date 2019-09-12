@@ -10032,11 +10032,7 @@ QUIT
    smtp_script smtp \
       -Ssmtp-auth=plain -Ssmtp-config=-all,ehlo
    { smtp_ehlo && printf '\002
-AUTH PLAIN
-\001
-334 
-\002
-AHN0ZWZmZW4AU3dheQ==
+AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
 ' &&
       smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check auth-1 0 "${MBOX}" '4294967295 0'
