@@ -418,26 +418,24 @@ jerr_cred:
 #undef a_MAX
 
       /* Then create login query */
-      if(f & a_IS_OAUTHBEARER){
+      /* C99 */{
          int i;
+         char const *authfmt;
 
-         i = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
-            scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
+         if(f & a_IS_OAUTHBEARER){
+            authfmt = NETLINE("AUTH XOAUTH2 %s");
+            i = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
+               scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
+         }else{
+            authfmt = NETLINE("AUTH PLAIN %s");
+            i = snprintf(o, sizeof o, "%c%s%c%s",
+               '\0', scp->sc_credp->cc_user.s, '\0', scp->sc_credp->cc_pass.s);
+         }
+
          if(mx_b64_enc_buf(&b64, o, i, mx_B64_AUTO_ALLOC) == NIL)
             goto jleave;
-         snprintf(o, sizeof o, NETLINE("AUTH XOAUTH2 %s"), b64.s);
+         snprintf(o, sizeof o, authfmt, b64.s);
          b64.s = o;
-      }else{
-         int i;
-
-         a_SMTP_OUT(NETLINE("AUTH PLAIN"));
-         a_SMTP_ANSWER(3, FAL0, FAL0);
-
-         i = snprintf(o, sizeof o, "%c%s%c%s",
-            '\0', scp->sc_credp->cc_user.s, '\0', scp->sc_credp->cc_pass.s);
-         if(mx_b64_enc_buf(&b64, o, i, mx_B64_AUTO_ALLOC | mx_B64_CRLF
-               ) == NIL)
-            goto jleave;
       }
       a_SMTP_OUT(b64.s);
       ++resp2_cnt;
