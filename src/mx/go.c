@@ -1448,6 +1448,8 @@ n_go_main_loop(void){ /* FIXME */
       }
 
       /* Read a line of commands and handle end of file specially */
+      n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
+
       gec.gec_line.l = gec.gec_line_size;
       /* C99 */{
          boole histadd;
@@ -1481,6 +1483,8 @@ n_go_main_loop(void){ /* FIXME */
       mx_sigs_all_rele();
       rv = a_go_evaluate(&gec);
       mx_sigs_all_holdx();
+
+      n_pstate &= ~n_PS_ERRORS_NEED_PRINT_ONCE;
 
       if(gec.gec_hist_flags & a_GO_HIST_ADD){
          char const *cc, *ca;

@@ -793,6 +793,10 @@ do{\
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17, /* Last fexpand() with MULTIOK had .. */
    n_PS_ERRORS_PROMPT = 1u<<18, /* New error to be reported in prompt */
+   /* In the interactive mainloop, we want any error to appear once for each
+    * tick, even if it is the same as in the tick before and would normally be
+    * suppressed */
+   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<19,
 
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */

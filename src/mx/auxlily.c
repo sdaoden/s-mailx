@@ -907,6 +907,11 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    /* We have the prepared error message, take it over line-by-line, possibly
     * completing partly prepared one first */
    n_pstate |= n_PS_ERRORS_PROMPT;
+   if(n_pstate & n_PS_ERRORS_NEED_PRINT_ONCE){
+      n_pstate ^= n_PS_ERRORS_NEED_PRINT_ONCE;
+      allow_multiple = TRU1;
+   }
+
    lpref = ok_vlook(log_prefix);
 #ifdef mx_HAVE_COLOUR
    if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
