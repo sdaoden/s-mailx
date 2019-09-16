@@ -199,27 +199,36 @@ a_crese_mail_followup_to(struct message *mp){
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np){
-   boole once;
+   enum{
+      a_NONE,
+      a_ONCE = 1u<<0,
+      a_LIST_CLASSIFIED = 1u<<1,
+      a_SEEN_TO = 1u<<2
+   };
+
+   struct mx_name *np_orig;
+   u32 f;
    NYD2_IN;
    UNUSED(mp);
 
    if(np == hp->h_to)
-      hp->h_to = NULL;
+      hp->h_to = NIL;
    if(np == hp->h_cc)
-      hp->h_cc = NULL;
+      hp->h_cc = NIL;
 
    /* We may find that in the end To: is empty but Cc: is not, in which case we
     * upgrade Cc: to To: and jump back and redo the thing slightly different */
-   once = FAL0;
+   f = a_NONE;
+   np_orig = np;
 jredo:
-   while(np != NULL){
+   while(np != NIL){
       enum gfield gf;
       struct mx_name *nnp, **xpp, *xp;
 
       nnp = np;
       np = np->n_flink;
 
-      if(once){
+      if(f & a_ONCE){
          gf = GTO;
          xpp = &hp->h_to;
       }else{
@@ -228,47 +237,74 @@ jredo:
       }
 
       /* Try primary, then secondary */
-      for(xp = hp->h_mailx_orig_to; xp != NULL; xp = xp->n_flink)
-         if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
+      for(xp = hp->h_mailx_orig_to; xp != NIL; xp = xp->n_flink)
+         if(!su_cs_cmp_case(xp->n_name, nnp->n_name)){
+            if(!(f & a_LIST_CLASSIFIED)){
+               f |= a_SEEN_TO;
+               goto jclass_ok;
+            }
             goto jlink;
+         }
 
-      if(once){
+      if(f & a_ONCE){
          gf = GCC;
          xpp = &hp->h_cc;
       }
 
-      for(xp = hp->h_mailx_orig_cc; xp != NULL; xp = xp->n_flink)
+      for(xp = hp->h_mailx_orig_cc; xp != NIL; xp = xp->n_flink)
          if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
             goto jlink;
 
       /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
-       * To: due to lack of a better place */
-      gf = GTO;
-      xpp = &hp->h_to;
+       * To: due to lack of a better place.  But only if To: is not empty after
+       * all formerly present receivers have been worked, to avoid that yet
+       * unaddressed receivers propagate to To: whereas formerly addressed ones
+       * end in Cc: */
+      if(f & a_LIST_CLASSIFIED){
+         if(f & a_SEEN_TO){
+            gf = GCC;
+            xpp = &hp->h_cc;
+         }else{
+            gf = GTO;
+            xpp = &hp->h_to;
+         }
+      }
+
 jlink:
+      if(!(f & a_LIST_CLASSIFIED))
+         continue;
+
       /* Link it at the end to not loose original sort order */
-      if((xp = *xpp) != NULL)
-         while(xp->n_flink != NULL)
+      if((xp = *xpp) != NIL)
+         while(xp->n_flink != NIL)
             xp = xp->n_flink;
 
-      if((nnp->n_blink = xp) != NULL)
+      if((nnp->n_blink = xp) != NIL)
          xp->n_flink = nnp;
       else
          *xpp = nnp;
-      nnp->n_flink = NULL;
+      nnp->n_flink = NIL;
       nnp->n_type = (nnp->n_type & ~GMASK) | gf;
    }
 
+   /* Include formerly unaddressed receivers at the right place */
+   if(!(f & a_LIST_CLASSIFIED)){
+jclass_ok:
+      f |= a_LIST_CLASSIFIED;
+      np = np_orig;
+      goto jredo;
+   }
+
    /* If afterwards only Cc: data remains, upgrade all of it to To: */
-   if(hp->h_to == NULL){
+   if(hp->h_to == NIL){
       np = hp->h_cc;
-      hp->h_cc = NULL;
-      if(!once){
-         hp->h_to = NULL;
-         once = TRU1;
+      hp->h_cc = NIL;
+      if(!(f & a_ONCE)){
+         f |= a_ONCE;
+         hp->h_to = NIL;
          goto jredo;
       }else
-         for(hp->h_to = np; np != NULL; np = np->n_flink)
+         for(hp->h_to = np; np != NIL; np = np->n_flink)
             np->n_type = (np->n_type & ~GMASK) | GTO;
    }
    NYD2_OU;

@@ -7849,6 +7849,7 @@ t_lreply_futh_rth_etc() {
 	   # fails because of missing recipients: we need to read EOF next, thus
 	   # place this in _Ls last; and second for the succeeding cases EOF is
 	   # not what these should read, so go over the backside and splice it in!
+	   # (A shame we do not have redirection++ as a Bourne/K/POSIX shell!)
 	   call _Ls "$@"
 	   echo -----After Lreply $1.$2: $?/$^ERRNAME
 	}
@@ -7893,7 +7894,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '564303313 39797'
+      check 1 - "${MBOX}" '4194791149 39789'
    else
       t_echoskip '1:[test unsupported]'
    fi
