@@ -143,7 +143,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
    }else if(!su_cs_cmp_case(s, "oauthbearer")){
       ccp->cc_auth = "OAUTHBEARER";
       ccp->cc_authtype = mx_CRED_AUTHTYPE_OAUTHBEARER;
-      /*ccp->cc_needs_tls = TRU1;*/
+      ccp->cc_needs_tls = TRU1;
       ware = a_REQ_PASS | a_REQ_USER;
    }else if(!su_cs_cmp_case(s, "external")){
       ccp->cc_auth = "EXTERNAL";
