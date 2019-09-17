@@ -76,7 +76,7 @@ else
   if [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
     exec /usr/xpg4/bin/sh "${0}" "${@}"
   else
-    synopsis 1 'Not a sh(1)ell with "set -C" (for save temporary file creation)'
+    synopsis 1 'Not a sh(1)ell with "set -C" (for safe temporary file creation)'
   fi
 fi
 
