@@ -738,8 +738,7 @@ This is text of "Lreply 6.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out
-Cc: is@a.list
+To: mr2@originator, bugstop@five.miles.out, is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -818,12 +817,12 @@ This is text of "Reply 7.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator
-Cc: bugstop@five.miles.out
+To: bugstop@five.miles.out
+Cc: mr2@originator
 Subject: Re: Bugstop: five miles out 4
 In-Reply-To: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
 References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+Mail-Followup-To: bugstop@five.miles.out, mr2@originator
 
 This is text of "Reply 7.4".
 
@@ -832,8 +831,7 @@ This is text of "Reply 7.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out
-Cc: is@a.list
+To: bugstop@five.miles.out, is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -873,8 +871,8 @@ This is text of "Lreply 7.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-Cc: is@a.list
+To: mister originator2 <mr2@originator>, bugstop@five.miles.out,
+ is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -889,8 +887,8 @@ This message should have *fullnames* in the header.
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out
-Cc: is@a.list, laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out, is@a.list
+Cc: laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -972,12 +970,12 @@ This is text of "Reply 8.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator
-Cc: bugstop@five.miles.out, laber@backe.eu
+To: bugstop@five.miles.out
+Cc: mr2@originator, laber@backe.eu
 Subject: Re: Bugstop: five miles out 4
 In-Reply-To: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
 References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-Mail-Followup-To: mr2@originator, bugstop@five.miles.out, laber@backe.eu
+Mail-Followup-To: bugstop@five.miles.out, mr2@originator, laber@backe.eu
 
 This is text of "Reply 8.4".
 
@@ -986,8 +984,8 @@ This is text of "Reply 8.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out
-Cc: is@a.list, laber@backe.eu
+To: bugstop@five.miles.out, is@a.list
+Cc: laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -1030,8 +1028,8 @@ This is text of "Lreply 8.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out
-Cc: is@a.list, laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out, is@a.list
+Cc: laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -1110,12 +1108,12 @@ This is text of "Reply 9.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator
-Cc: bugstop@five.miles.out
+To: bugstop@five.miles.out
+Cc: mr2@originator
 Subject: Re: Bugstop: five miles out 4
 In-Reply-To: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
 References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-Mail-Followup-To: mr2@originator, bugstop@five.miles.out
+Mail-Followup-To: bugstop@five.miles.out, mr2@originator
 
 This is text of "Reply 9.4".
 
@@ -1124,8 +1122,8 @@ This is text of "Reply 9.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out
-Cc: is@a.list, laber@backe.eu
+To: bugstop@five.miles.out, is@a.list
+Cc: laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
