@@ -1729,16 +1729,21 @@ The commands
 and
 .Ic mlsubscribe
 manage \*(UAs notion of which addresses are mailing lists.
-With the \*(OPal regular expression support any such address
+With the \*(OPal regular expression support any address
 .Mx -ix "magic regular expression characters"
-which contains magic regular expression characters
-.Ql ( ^[]*+?|$ ;
+which contains any of the magic regular expression characters
+.Ql ( ^[*+?|$ ;
 see
 .Xr re_format 7
 or
 .Xr regex 7 ,
 dependent on the host system)
 will be compiled and used as one, possibly matching many addresses.
+It is not possible to escape the
+.Dq magic :
+in order to match special characters as-is, bracket expressions must be
+used, for example
+.Ql Ic search Li @subject@'[[]open bracket' .
 .
 .Bd -literal -offset indent
 ? set followup-to followup-to-honour=ask-yes \e

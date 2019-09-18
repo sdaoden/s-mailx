@@ -178,6 +178,17 @@ FL struct str *
  * Routines that are not related to auto-reclaimed storage follow.
  */
 
+FL boole
+n_is_maybe_regex_buf(char const *buf, uz len){
+   boole rv;
+   NYD2_IN;
+
+   rv = (su_cs_first_of_cbuf_cbuf(buf, len, "^[*+?|$", su_UZ_MAX
+         ) != su_UZ_MAX);
+   NYD2_OU;
+   return rv;
+}
+
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {

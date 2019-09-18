@@ -59,12 +59,6 @@ struct quoteflt;
 #define fieldnamechar(c) \
    (su_cs_is_ascii(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
-/* Could the string contain a regular expression?
- * NOTE: on change: manual contains several occurrences of this string! */
-#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, su_UZ_MAX)
-#define n_is_maybe_regex_buf(D,L) \
-      (su_cs_first_of_cbuf_cbuf(D, L, "^[]*+?|$", su_UZ_MAX) != su_UZ_MAX)
-
 /* Single-threaded, use unlocked I/O */
 #ifdef mx_HAVE_PUTC_UNLOCKED
 # undef getc
@@ -1554,8 +1548,10 @@ FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
-/* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
-FL char *      string_quote(char const *v);
+/* Could the string contain a regular expression?
+ * NOTE: on change: manual contains several occurrences of this string! */
+#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, su_UZ_MAX)
+FL boole n_is_maybe_regex_buf(char const *buf, uz len);
 
 /* Convert a string to lowercase, in-place and with multibyte-aware */
 FL void        makelow(char *cp);
