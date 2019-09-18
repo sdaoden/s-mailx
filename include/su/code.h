@@ -608,7 +608,9 @@ do if(!(X)){\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
 
-/*! Create a bit mask for the bit range LO..HI -- HI cannot use highest bit! */
+/*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
+ * \remarks{\a{HI} cannot use highest bit!}
+ * \remarks{Identical to \r{su_BITS_RANGE_MASK().} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
 
 /* For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */

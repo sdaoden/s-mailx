@@ -53,17 +53,22 @@ C_DECL_BEGIN
 
 /*! Maximum useful offset in a \r{su_uz} array for \a{BITS}.
  * \remarks{\a{BITS} may not be 0.} */
-#define su_BITS_TOPOFF(BITS) (su_BITS_TO_UZ(BITS) - 1)
+#define su_BITS_TOP_OFF(BITS) (su_BITS_TO_UZ(BITS) - 1)
 
 /*! Number of useful bits in the topmost offset of a \r{su_uz} array used to
  * store \a{BITS}.
  * \remarks{\a{BITS} may not be 0.} */
-#define su_BITS_TOPBITNO(BITS) (su_UZ_BITS - (su_BITS_ROUNDUP(BITS) - (BITS)))
+#define su_BITS_TOP_BITNO(BITS) (su_UZ_BITS - (su_BITS_ROUNDUP(BITS) - (BITS)))
 
 /*! The mask for the topmost offset of a \r{su_uz} array used to store
  * store \a{BITS}.
  * \remarks{\a{BITS} may not be 0.} */
-#define su_BITS_TOPMASK(BITS) (su_UZ_MAX >> (su_BITS_ROUNDUP(BITS) - (BITS)))
+#define su_BITS_TOP_MASK(BITS) (su_UZ_MAX >> (su_BITS_ROUNDUP(BITS) - (BITS)))
+
+/*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
+ * \remarks{\a{HI} cannot use highest bit!}
+ * \remarks{Identical to \r{su_BITENUM_MASK().} */
+#define su_BITS_RANGE_MASK(LO,HI) su_BITENUM_MASK(LO, HI)
 
 /*! \_ */
 INLINE boole su_bits_test(uz x, uz bit){
