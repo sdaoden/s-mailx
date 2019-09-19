@@ -1574,14 +1574,13 @@ some other magic attached:
 
 ? mimetype ?t application/mathml+xml mathml
 
-? wysh set pipe-application/pdf='?&=? \e
+? set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
 
 ? define showhtml {
-?   \elocalopts yes
-?   \eset mime-alternative-favour-rich pipe-text/html=?h?
+?   \elocal set mime-alternative-favour-rich pipe-text/html=?h?
 ?   \etype "$@"
 ? }
 ? \ecommandalias html \e\ecall showhtml
@@ -2013,7 +2012,7 @@ The message digest (algorithm) can be configured via the variable chain
 can again be used:
 .
 .Bd -literal -offset indent
-$ \*(uA -X 'wysh set verbose; tls fingerprint SERVER-URL[:PORT]; x'
+$ \*(uA -X 'set verbose; tls fingerprint SERVER-URL[:PORT]; x'
 .Ed
 .
 .Pp
@@ -2056,7 +2055,7 @@ that uses OpenSSL 0.9.8za from June 2014 (refer to
 for more on variable chains):
 .
 .Bd -literal -offset indent
-wysh set tls-config-pairs-lion@exam.ple='MinProtocol=TLSv1.1,\e
+set tls-config-pairs-lion@exam.ple='MinProtocol=TLSv1.1,\e
     CipherString=TLSv1.2:!aNULL:!eNULL:\e
       ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
       DHE-RSA-AES256-SHA:@STRENGTH'
@@ -3426,8 +3425,7 @@ information which applies; a handy suggestion might thus be:
 .
 .Bd -literal -offset indent
 ? define __xv {
-  # Before v15: need to enable sh(1)ell-style on _entire_ line!
-  localopts yes;wysh set verbose;ignerr eval "${@}";return ${?}
+  localopts yes;set verbose;ignerr eval "${@}";return ${?}
 }
 ? commandalias xv '\ecall __xv'
 ? xv help set
@@ -3544,7 +3542,7 @@ rules over the traditional
 .Sx "Old-style argument quoting" .
 This modifier is implied if
 .Va v15-compat
-is set to a non-empty value.
+is set to a non-empty value, which now is the default.
 .El
 .\" }}}
 .
@@ -6005,7 +6003,6 @@ via unary operators: the unary operator
 will reverse the result.
 .
 .Bd -literal -offset indent
-wysh set v15-compat=yes # with value: automatic "wysh"!
 if -N debug;echo *debug* set;else;echo not;endif
 if "$ttycharset" == UTF-8 || "$ttycharset" ==?cas UTF8
   echo ttycharset is UTF-8, the former case-sensitive!
@@ -6569,7 +6566,7 @@ remains.
    H  e  l  l  o
 ? echo "<$a> <$b> <$c>"
 <H> <e> <l  l  o>
-? wysh set ifs=:; read a b c;unset ifs
+? set ifs=:; read a b c;unset ifs
 hey2.0,:"'you    ",:world!:mars.:
 ? echo $?/$^ERRNAME / <$a><$b><$c>
 0/NONE / <hey2.0,><"'you    ",><world!:mars.:><><>
@@ -6912,8 +6909,8 @@ and
 .Sx ENVIRONMENT .
 .
 .Bd -literal -offset indent
-? wysh set indentprefix=' -> '
-? wysh set atab=$'\t' aspace=' ' zero=0
+? set indentprefix=' -> '
+? set atab=$'\t' aspace=' ' zero=0
 .Ed
 .
 .
@@ -7492,7 +7489,7 @@ It is possible to enforce signed interpretation by (instead) prefixing a
 The number sign notation uses a permissive parse mode and as such
 supports complicated conditions out of the box:
 .Bd -literal -offset indent
-? wysh set ifs=:;read i;unset ifs;echo $i;vexpr pb 2 10#$i
+? set ifs=:;read i;unset ifs;echo $i;vexpr pb 2 10#$i
    -009
 <   -009>
 0b1001
@@ -7574,7 +7571,7 @@ settings and character sets.
 .It Cm date-utc
 Outputs the current date and time in UTC (Coordinated Universal Time)
 with values named such that
-.Ql vput vexpr x date-utc; eval wysh set $x
+.Ql vput vexpr x date-utc; eval set $x
 creates accessible variables.
 .It Cm date-stamp-utc
 Outputs a RFC 3339 internet date/time format of UTC.
@@ -7585,7 +7582,7 @@ named
 and
 .Ql epoch_nsec
 such that
-.Ql vput vexpr x epoch; eval wysh set $x
+.Ql vput vexpr x epoch; eval set $x
 creates accessible variables.
 .It Cm file-expand
 Performs the usual
@@ -7599,7 +7596,7 @@ on the argument, then call
 and
 .Xr lstat 2 ,
 respectively, and output values such that
-.Ql vput vexpr x file-stat FILE; eval wysh set $x
+.Ql vput vexpr x file-stat FILE; eval set $x
 creates accessible variables.
 The variable
 .Ql st_type
@@ -8689,7 +8686,7 @@ introduction of the section
 documents the supported quoting rules.
 .
 .Bd -literal -offset indent
-? wysh set one=val\e 1 two="val 2" \e
+? set one=val\e 1 two="val 2" \e
     three='val "3"' four=$'val \e'4\e''; \e
     varshow one two three four; \e
     unset one two three four
@@ -10408,8 +10405,8 @@ lines; this requires the structural code changes of the v15 rewrite.)
 Finally the variable can be unset again:
 .Bd -literal -offset indent
 define mboxfix {
-  localopts yes; wysh set mbox-rfc4155;\e
-    wysh File "${1}"; copy * "${2}"
+  localopts yes; set mbox-rfc4155;\e
+    File "${1}"; copy * "${2}"
 }
 call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Ed
@@ -10843,7 +10840,7 @@ Arguments to pass through to a file-based
 .Sx "Shell-style argument quoting"
 into an array of arguments which will be joined onto MTA options
 from other sources, for example
-.Ql \&? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
+.Ql \&? set mta-arguments='-t -X \&"/tmp/my log\&"' .
 .
 .Mx
 .It Va mta-no-default-arguments
@@ -11095,7 +11092,7 @@ define ocs_signature {
 }
 set on-compose-splice=ocs_signature
 
-wysh set on-compose-splice-shell=$'\e
+set on-compose-splice-shell=$'\e
   read version;\e
   printf "hello $version!  Headers: ";\e
   echo \e'~^header list\e';\e
@@ -15236,7 +15233,7 @@ output of the command
 may be helpful:
 .
 .Bd -literal -offset indent
-? wysh set escape=! verbose; vput version xy; unset verbose;\e
+? set escape=! verbose; vput version xy; unset verbose;\e
   eval mail $contact-mail
 Bug subject
 !I xy
