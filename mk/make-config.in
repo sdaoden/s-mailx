@@ -15,6 +15,10 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 		$(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
 
+gen-bltin-rc.h: $(TOPDIR)nail.rc
+	$(ECHO_GEN) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-bltin-rc.sh "$(TOPDIR)"nail.rc "$(@)"
+
 gen-mime-types.h: $(CWDDIR)mime.types
 	$(ECHO_GEN) . ./mk-config.env; \
 	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(CWDDIR)"mime.types "$(@)"
@@ -36,7 +40,9 @@ uninstall:
 
 clean:
 	$(ECHO_CMD)\
-	$(rm) -f $(OBJ) "$(VAL_UAGENT)" ./gen-mime-types.h ./uman.1 ./urc.rc;\
+	$(rm) -f $(OBJ) "$(VAL_UAGENT)" \
+		./gen-bltin-rc.h ./gen-mime-types.h \
+		./uman.1 ./urc.rc;\
 	\
 	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
 		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK)";\

@@ -344,7 +344,7 @@ a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
    if(n_psonce & n_PSO_INTERACTIVE)
       mx_tty_init();
    /* "load()" more commands given on command line */
-   if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
+   if(Yargs_cnt > 0 && !n_go_load_lines(TRU1, Yargs, Yargs_cnt))
       n_exit_status = n_EXIT_ERR;
    else
       n_go_main_loop();
@@ -516,11 +516,13 @@ main(int argc, char *argv[]){
    struct mx_name *to, *cc, *bcc;
    struct a_arg *a_head, *a_curr;
    enum{
-      a_RF_NONE = 0,
-      a_RF_SET = 1<<0,
-      a_RF_SYSTEM = 1<<1,
-      a_RF_USER = 1<<2,
-      a_RF_ALL = a_RF_SYSTEM | a_RF_USER
+      a_RF_NONE,
+      a_RF_SET = 1u<<0,
+      a_RF_SYSTEM = 1u<<1,
+      a_RF_USER = 1u<<2,
+      a_RF_BLTIN = 1u<<3,
+      a_RF_DEFAULT = a_RF_SYSTEM | a_RF_USER,
+      a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
    } resfiles;
    NYD_IN;
 
@@ -531,7 +533,7 @@ main(int argc, char *argv[]){
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
    Xargs = Yargs = NULL;
    Xargs_size = Xargs_cnt = Yargs_size = Yargs_cnt = smopts_size = 0;
-   resfiles = a_RF_ALL;
+   resfiles = a_RF_DEFAULT;
 
    /*
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
@@ -881,7 +883,8 @@ jeTuse:
             switch(i){
             case 'S': case 's': resfiles |= a_RF_SYSTEM; break;
             case 'U': case 'u': resfiles |= a_RF_USER; break;
-            case '-': case '/': resfiles &= ~a_RF_ALL; break;
+            case 'X': case 'x': resfiles |= a_RF_BLTIN; break;
+            case '-': case '/': resfiles &= ~a_RF_MASK; break;
             default:
                emsg = N_("Invalid argument of -:");
                goto jusage;
@@ -1033,7 +1036,7 @@ jgetopt_done:
    su_mem_bag_fixate(n_go_data->gdc_membag);
 
    /* load() any resource files */
-   if(resfiles & a_RF_ALL){
+   if(resfiles & a_RF_MASK){
       /* *expand() returns a savestr(), but load() only uses the file name
        * for fopen(), so it is safe to do this */
       if(resfiles & a_RF_SYSTEM){
@@ -1043,12 +1046,16 @@ jgetopt_done:
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
-               !n_go_load(ok_vlook(system_mailrc)))
+               !n_go_load_rc(ok_vlook(system_mailrc)))
             goto jleave;
       }
 
       if((resfiles & a_RF_USER) &&
-            !n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
+            (cp = fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)
+               ) != NIL && !n_go_load_rc(cp))
+         goto jleave;
+
+      if((resfiles & a_RF_BLTIN) && !n_go_load_lines(FAL0, NIL, 0))
          goto jleave;
    }
 
@@ -1056,7 +1063,7 @@ jgetopt_done:
       n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
    if((cp != NIL || (cp = ok_vlook(mailx_extra_rc)) != NIL) &&
          (cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NIL &&
-         !n_go_load(cp))
+         !n_go_load_rc(cp))
       goto jleave;
 
    /* Cause possible umask(2) to be applied, now that any setting is
@@ -1118,7 +1125,7 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED_CONFIG;
 
    /* "load()" commands given on command line */
-   if(Xargs_cnt > 0 && !n_go_XYargs(FAL0, Xargs, Xargs_cnt))
+   if(Xargs_cnt > 0 && !n_go_load_lines(FAL0, Xargs, Xargs_cnt))
       goto jleave_full;
 
    /* Final tests */
@@ -1170,7 +1177,7 @@ je_expandargv:
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_init();
       /* "load()" more commands given on command line */
-      if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
+      if(Yargs_cnt > 0 && !n_go_load_lines(TRU1, Yargs, Yargs_cnt))
          n_exit_status = n_EXIT_ERR;
       else
          n_mail((((n_psonce & n_PSO_INTERACTIVE

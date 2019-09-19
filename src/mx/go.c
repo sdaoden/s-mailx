@@ -71,9 +71,10 @@ enum a_go_flags{
    a_GO_MACRO = 1u<<3,        /* Running a macro */
    a_GO_MACRO_FREE_DATA = 1u<<4, /* Lines are allocated, n_free() once done */
    /* TODO For simplicity this is yet _MACRO plus specialization overlay
-    * TODO (_X_OPTION, _CMD) -- these should be types on their own! */
+    * TODO (_X_OPTION, _BLTIN_RC, _CMD) -- should be types on their own! */
    a_GO_MACRO_X_OPTION = 1u<<5, /* Macro indeed command line -X option */
-   a_GO_MACRO_CMD = 1u<<6,    /* Macro indeed single-line: ~:COMMAND */
+   a_GO_MACRO_BLTIN_RC = 1u<<6, /* Macro indeed command line -:x option */
+   a_GO_MACRO_CMD = 1u<<7,    /* Macro indeed single-line: ~:COMMAND */
    /* TODO a_GO_SPLICE: the right way to support *on-compose-splice(-shell)?*
     * TODO would be a command_loop object that emits an on_read_line event, and
     * TODO have a special handler for the compose mode; with that, then,
@@ -93,13 +94,14 @@ enum a_go_flags{
     * TODO This splice thing is very special and has to go again.  HACK!!
     * TODO a_go_input() will drop it once it sees EOF (HACK!), but care for
     * TODO jumps must be taken by splice creators.  HACK!!!  But works. ;} */
-   a_GO_SPLICE = 1u<<7,
+   a_GO_SPLICE = 1u<<8,
    /* If it is none of those, it must be the outermost, the global one */
    a_GO_TYPE_MASK = a_GO_PIPE | a_GO_FILE | a_GO_MACRO |
-         /* a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD | */ a_GO_SPLICE,
+         /* a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD | */
+         a_GO_SPLICE,
 
-   a_GO_FORCE_EOF = 1u<<8,    /* go_input() shall return EOF next */
-   a_GO_IS_EOF = 1u<<9,
+   a_GO_FORCE_EOF = 1u<<14,    /* go_input() shall return EOF next */
+   a_GO_IS_EOF = 1u<<15,
 
    a_GO_SUPER_MACRO = 1u<<16, /* *Not* inheriting n_PS_SOURCING state */
    /* This context has inherited the memory bag from its parent.
@@ -195,6 +197,10 @@ struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    FILE *grc_fp;
    s32 grc_fd;                   /* Based upon file-descriptor */
    char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
+};
+
+static char const * const a_go_bltin_rc_lines[] = {
+#include "gen-bltin-rc.h" /* */
 };
 
 static n_sighdl_t a_go_oldpipe;
@@ -1125,9 +1131,11 @@ jerr:
                 : (gcp->gc_flags & a_GO_FILE
                   ? _("loading `source'd file") : _(a_GO_MAINCTX_NAME))))
           )
-          : (gcp->gc_flags & a_GO_MACRO
-             ? (gcp->gc_flags & a_GO_MACRO_X_OPTION
-                ? _("evaluating command line") : _("evaluating macro"))
+          : (((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_BLTIN_RC)
+               ) == a_GO_MACRO)
+             ? ((gcp->gc_flags & a_GO_MACRO_X_OPTION)
+                ? _("evaluating command line")
+                : _("evaluating macro"))
              : _("loading initialization resource"))),
          n_shexp_quote_cp(gcp->gc_name, FAL0),
          (n_poption & n_PO_D ? n_empty : _(" (enable *debug* for trace)")));
@@ -1682,9 +1690,10 @@ jinject:
          if(!(a_go_ctx->gc_flags & a_GO_MACRO_FREE_DATA))
             *linebuf = su_cs_dup_cbuf(*linebuf, *linesize, 0);
 
-         iftype = (a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)
-               ? "-X OPTION"
-               : (a_go_ctx->gc_flags & a_GO_MACRO_CMD) ? "CMD" : "MACRO";
+         iftype = ((a_go_ctx->gc_flags &
+                  (a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC))
+               ? "COMMAND-LINE"
+               : (a_go_ctx->gc_flags & a_GO_MACRO_CMD) ? "CMD" : "MACRO");
       }
       n = (int)*linesize;
       n_pstate |= n_PS_READLINE_NL;
@@ -1910,18 +1919,17 @@ jleave:
 }
 
 FL boole
-n_go_load(char const *name){
+n_go_load_rc(char const *name){
    struct a_go_ctx *gcp;
    uz i;
    FILE *fip;
    boole rv;
    NYD_IN;
+   ASSERT_NYD_EXEC(name != NIL, rv = FAL0);
 
    rv = TRU1;
 
-   if(name == NIL || *name == '\0')
-      goto jleave;
-   else if((fip = mx_fs_open(name, "r")) == NIL){
+   if((fip = mx_fs_open(name, "r")) == NIL){
       if(n_poption & n_PO_D_V)
          n_err(_("No such file to load: %s\n"), n_shexp_quote_cp(name, FAL0));
       goto jleave;
@@ -1944,34 +1952,45 @@ jleave:
 }
 
 FL boole
-n_go_XYargs(boole injectit, char const **lines, uz cnt){
-   static char const name[] = "-X";
+n_go_load_lines(boole injectit, char const **lines, uz cnt){
+   static char const a_name_x[] = "-X", a_name_bltin[] = "builtin RC file";
 
    union{
       boole rv;
       u64 align;
-      char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + sizeof(name)];
+      char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+            MAX(sizeof(a_name_x), sizeof(a_name_bltin))];
    } b;
    char const *srcp, *xsrcp;
    char *cp;
    uz imax, i, len;
+   boole nofail;
    struct a_go_ctx *gcp;
    NYD_IN;
 
    gcp = (void*)b.uf;
    su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
-   if(!injectit){
+   if(lines == NIL){
+      su_mem_copy(gcp->gc_name, a_name_bltin, sizeof a_name_bltin);
+      lines = C(char const**,a_go_bltin_rc_lines);
+      cnt = a_GO_BLTIN_RC_LINES_CNT;
+      gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_BLTIN_RC |
+            a_GO_SUPER_MACRO | a_GO_MACRO_FREE_DATA;
+      nofail = TRUM1;
+   }else if(!injectit){
+      su_mem_copy(gcp->gc_name, a_name_x, sizeof a_name_x);
       gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_X_OPTION |
             a_GO_SUPER_MACRO | a_GO_MACRO_FREE_DATA;
-      su_mem_copy(gcp->gc_name, name, sizeof name);
-   }
+      nofail = FAL0;
+   }else
+      nofail = TRU1;
 
    /* The problem being that we want to support reverse solidus newline
     * escaping also within multiline -X, i.e., POSIX says:
     *    An unquoted <backslash> at the end of a command line shall
     *    be discarded and the next line shall continue the command
-    * Therefore instead of "gcp->gc_lines = n_UNCONST(lines)", duplicate
+    * Therefore instead of "gcp->gc_lines = UNCONST(lines)", duplicate
     * the entire lines array and set _MACRO_FREE_DATA.
     * Likewise, for injections, we need to reverse the order. */
    imax = cnt + 1;
@@ -1988,7 +2007,7 @@ n_go_XYargs(boole injectit, char const **lines, uz cnt){
       }
 
       /* Separate one line from a possible multiline input string */
-      if((xsrcp = su_mem_find(srcp, '\n', j)) != NULL){
+      if(nofail != TRUM1 && (xsrcp = su_mem_find(srcp, '\n', j)) != NIL){
          *lines = &xsrcp[1];
          j = P2UZ(xsrcp - srcp);
       }else
@@ -2044,9 +2063,12 @@ n_go_XYargs(boole injectit, char const **lines, uz cnt){
          n_free(cp);
       }
       n_free(gcp->gc_lines);
-      b.rv = TRU1;
+      ASSERT(nofail);
    }
 
+   if(nofail)
+      /* Program exit handling is a total mess! */
+      b.rv = ((n_psonce & n_PSO_EXIT_MASK) == 0);
    NYD_OU;
    return b.rv;
 }
@@ -2298,8 +2320,8 @@ c_xcall(void *vp){
     * level of `eval' (TODO: yet) was used to double-expand our arguments */
    if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
       gcp = gcp->gc_outer;
-   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD)
-         ) != a_GO_MACRO){
+   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION |
+         a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD)) != a_GO_MACRO){
       if(n_poption & n_PO_D_V)
          n_err(_("`xcall': can only be used inside a macro, using `call'\n"));
       rv = c_call(vp);

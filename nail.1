@@ -209,19 +209,26 @@ shall be
 .Ic source Ns
 d (loaded): if the letter
 .Ql s
-is (case-insensitively) part of the
+is (case-insensitively) part of
 .Ar spec
 then the system wide
 .Pa \*(UR
-is sourced, likewise the letter
+is sourced,
 .Ql u
-controls sourcing of the user's personal
-.Pa \*(ur
-file, whereas the letters
+controls sourcing of the user's personal file
+.Pa \*(ur .
+The (original, unmodified) system resource file content is also
+available in the binary itself, and can be sourced without accessing
+the fileystem via
+.Ql x .
+The letters
 .Ql -
 and
 .Ql /
 explicitly forbid sourcing of any resource files.
+The default is
+.Ql su .
+.Pp
 Scripts should use this option: to avoid environmental noise they should
 .Dq detach
 from any configuration and create a script-specific environment, setting
@@ -840,7 +847,7 @@ are looked up, and acted upon.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' |\e
-  LC_ALL=C \*(uA -d#:/ -X'alias bob bob@exam.ple'
+  LC_ALL=C \*(uA -d#:x -X'alias bob bob@exam.ple'
 .Ed
 .
 .Mx
@@ -912,7 +919,7 @@ it is likely that some configuration settings have to be adjusted before
 using it is a smooth experience.
 (Rather complete configuration examples can be found in the section
 .Sx EXAMPLES . )
-The provided global
+The builtin as well as the (default) global
 .Pa \*(UR
 (one of the
 .Sx "Resource files" )
@@ -963,6 +970,14 @@ Files and shell pipe output can be
 .Ic source Ns
 d for evaluation, also during startup from within the
 .Sx "Resource files" .
+Informational context can be available by
+.Ic set Ns
+ting
+.Va verbose
+or
+.Va debug
+(as via
+.Fl v , d ) .
 .\" }}}
 .
 .\" .Ss "On sending mail, and non-interactive mode" {{{
@@ -983,7 +998,7 @@ can be used to add (blind) carbon copy receivers:
 $ echo Hello, world | \*(uA -:/ -Smta=test -s test $LOGNAME
 
 # Via sendmail(1) MTA
-$ </dev/null \*(uA -:/ -s test $LOGNAME
+$ </dev/null \*(uA -:x -s test $LOGNAME
 
 # Debug dry-run mode:
 $ </dev/null LC_ALL=C \*(uA -d -:/ \e
@@ -995,7 +1010,7 @@ $ </dev/null LC_ALL=C \*(uA -d -:/ \e
 $ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Sttycharset=utf8 \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
     -S from=scriptreply@exam.ple \e
-    -a /etc/mail.rc -. \e
+    -a /etc/mail.rc --end-options \e
     eric@exam.ple < /tmp/letter.txt
 .Ed
 .
@@ -1174,7 +1189,7 @@ $ echo safe | LC_ALL=C \e
     \*(uA -:/ -Sv15-compat -Sttycharset=utf8 \e
       --set mime-force-sendout \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
-      -. bob@exam.ple
+      --end-options bob@exam.ple
 .Ed
 .
 .Pp
@@ -13632,9 +13647,6 @@ Defines a startup file to be read after all other resource files.
 It can be used to specify settings that are not understood by other
 .Xr mailx 1
 implementations, for example.
-This variable is only honoured when defined in a resource file, e.g.,
-it is one of the
-.Sx "INTERNAL VARIABLES" .
 .El
 .
 .Pp

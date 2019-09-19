@@ -985,17 +985,17 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_line_editor_no_defaults,
    ok_v_log_prefix, /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
-   ok_v_MAIL,                          /* {env=1} */
-   ok_v_MAILRC,                  /* {import=1,notempty=1,defval=VAL_MAILRC} */
-   ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
-   ok_v_MBOX,                          /* {env=1,notempty=1,defval=VAL_MBOX} */
-   ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v_mailx_extra_rc,
+   ok_v_MAIL, /* {env=1} */
+   ok_v_MAILRC, /* {import=1,notempty=1,defval=VAL_MAILRC} */
+   ok_b_MAILX_NO_SYSTEM_RC, /* {name=MAILX_NO_SYSTEM_RC,import=1} */
+   ok_v_MBOX, /* {env=1,notempty=1,defval=VAL_MBOX} */
+   ok_v_mailbox_resolved, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_display, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailx_extra_rc, /* {notempty=1} */
    ok_b_markanswered,
-   ok_b_mbox_fcc_and_pcc,              /* {i3val=1} */
+   ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
    ok_b_mbox_rfc4155,
-   ok_b_memdebug,                      /* {vip=1} */
+   ok_b_memdebug, /* {vip=1} */
    ok_b_message_id_disable,
    ok_v_message_inject_head,
    ok_v_message_inject_tail,
@@ -1030,7 +1030,7 @@ ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1} */
 ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
 ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
-ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,obsolete=1} */
+ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,env=1,notempty=1,obsolete=1} */
 ok_b_NAIL_NO_SYSTEM_RC, /* {name=NAIL_NO_SYSTEM_RC,import=1,obsolete=1} */
 ok_v_NAIL_HEAD, /* {name=NAIL_HEAD,obsolete=1} */
 ok_v_NAIL_HISTFILE, /* {name=NAIL_HISTFILE,obsolete=1} */

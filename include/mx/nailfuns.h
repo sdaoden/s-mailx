@@ -789,12 +789,13 @@ FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
 
 /* Load a file of user system startup resources.
  * *Only* for main(), returns whether program shall continue */
-FL boole n_go_load(char const *name);
+FL boole n_go_load_rc(char const *name);
 
 /* "Load" or go_inject() command line option "cmd" arguments in order.
  * *Only* for main(), returns whether program shall continue unless injectit is
- * set, in which case this function does not fail */
-FL boole n_go_XYargs(boole injectit, char const **lines, uz cnt);
+ * set, in which case this function does not fail.
+ * If lines is NIL the builtin RC file is used, and errors are ignored */
+FL boole n_go_load_lines(boole injectit, char const **lines, uz cnt);
 
 /* Pushdown current input file and switch to a new one. */
 FL int c_source(void *v);
