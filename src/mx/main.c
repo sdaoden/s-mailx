@@ -1059,6 +1059,13 @@ jgetopt_done:
          goto jleave;
    }
 
+   if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+      n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
+   if((cp != NIL || (cp = ok_vlook(mailx_extra_rc)) != NIL) &&
+         (cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NIL &&
+         !n_go_load(cp))
+      goto jleave;
+
    /* Cause possible umask(2) to be applied, now that any setting is
     * established, and before we change accounts, evaluate commands etc. */
    (void)ok_vlook(umask);
