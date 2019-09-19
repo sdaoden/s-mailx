@@ -2541,12 +2541,19 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    }
 
    UNINIT(quote, NULL);
+   /* C99 */{
+   boole v15_compat; /* Temporary block */
+
+   quote = ok_vlook(v15_compat);
+   v15_compat = (quote != NIL && *quote != '\0');
+
    if(!(avp->av_flags & a_AMV_VF_BOOL)){
       quote = n_shexp_quote_cp(avp->av_value, TRU1);
-      if(su_cs_cmp(quote, avp->av_value))
+      if(!v15_compat && su_cs_cmp(quote, avp->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
-   }else if(n_poption & n_PO_D_V)
+   }else if(!v15_compat && (n_poption & n_PO_D_V))
       msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
+   }
 
    if(avp->av_flags & a_AMV_VF_EXT_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
