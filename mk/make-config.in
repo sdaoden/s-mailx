@@ -15,9 +15,9 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 		$(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
 
-gen-mime-types.h: $(TOPDIR)mime.types
+gen-mime-types.h: $(CWDDIR)mime.types
 	$(ECHO_GEN) . ./mk-config.env; \
-	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(TOPDIR)"mime.types "$(@)"
+	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(CWDDIR)"mime.types "$(@)"
 
 uman.1: $(TOPDIR)nail.1
 	$(ECHO_GEN) . ./mk-config.env; \
