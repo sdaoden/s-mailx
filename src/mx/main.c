@@ -429,8 +429,8 @@ a_main_usage(FILE *fp){
    fprintf(fp, _(
          ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
          ". -a attachment[=input-charset[#output-charset]]\n"
-         ". -[bcrT], to-addr: ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
-         ". -[Mmqt]: special input data (-t: template message on stdin)\n"
+         ". -b, -c, -r, -T, to-addr: ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
+         ". -M, -m, -q, -t: special input (-t: template message on stdin)\n"
          ". -e only mail check, -H header summary; "
             "both: message specification via -L\n"
          ". -S (un)sets variable, -X/-Y execute commands pre/post startup, "
