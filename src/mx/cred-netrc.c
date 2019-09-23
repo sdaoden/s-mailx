@@ -68,6 +68,9 @@ struct a_netrc_node{
 
 static struct a_netrc_node *a_netrc_cache;
 
+/* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
+static char *a_netrc_bsd_quote(char const *v);
+
 /* Initialize .netrc cache */
 static void a_netrc_init(void);
 
@@ -83,6 +86,27 @@ static boole a_netrc_find_user(struct mx_url *urlp,
       struct a_netrc_node const *nrc);
 static boole a_netrc_find_pass(struct mx_url *urlp, boole user_match,
       struct a_netrc_node const *nrc);
+
+static char *
+a_netrc_bsd_quote(char const *v){
+   char const *cp;
+   uz i;
+   char c, *rv;
+   NYD2_IN;
+
+   for(i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
+      if(c == '"' || c == '\\')
+         ++i;
+
+   rv = n_autorec_alloc(i +1);
+
+   for(i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
+      if(c == '"' || c == '\\')
+         rv[i++] = '\\';
+   rv[i] = '\0';
+   NYD2_OU;
+   return rv;
+}
 
 static void
 a_netrc_init(void){
@@ -487,10 +511,11 @@ jlist:{
       fprintf(fp, _("machine %s "), nrc->nrc_dat); /* XXX quote? */
       if(nrc->nrc_ulen > 0)
          fprintf(fp, _("login \"%s\" "),
-            string_quote(nrc->nrc_dat + nrc->nrc_mlen +1));
+            a_netrc_bsd_quote(&nrc->nrc_dat[nrc->nrc_mlen +1]));
       if(nrc->nrc_plen > 0)
          fprintf(fp, _("password \"%s\"\n"),
-            string_quote(nrc->nrc_dat + nrc->nrc_mlen +1 + nrc->nrc_ulen +1));
+            a_netrc_bsd_quote(&nrc->nrc_dat[nrc->nrc_mlen +1 +
+               nrc->nrc_ulen +1]));
       else
          putc('\n', fp);
    }

@@ -178,27 +178,6 @@ FL struct str *
  * Routines that are not related to auto-reclaimed storage follow.
  */
 
-FL char *
-string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
-{
-   char const *cp;
-   uz i;
-   char c, *rv;
-   NYD2_IN;
-
-   for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
-      if (c == '"' || c == '\\')
-         ++i;
-   rv = n_autorec_alloc(i +1);
-
-   for (i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
-      if (c == '"' || c == '\\')
-         rv[i++] = '\\';
-   rv[i] = '\0';
-   NYD2_OU;
-   return rv;
-}
-
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {

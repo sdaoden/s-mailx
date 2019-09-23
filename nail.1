@@ -14125,12 +14125,22 @@ be usable across multiple programs and platforms:
 .Bl -bullet -compact
 .It
 BSD does not support single, but only double quotation marks, e.g.,
-.Ql password="pass with spaces" .
+.Ql password "pass with spaces" .
 .It
 BSD (only?) supports escaping of single characters via a reverse solidus
 (e.g., a space can be escaped via
 .Ql \e\0 ) ,
 in- as well as outside of a quoted string.
+This method is assumed to be present, and will actively be used to quote
+double quotation marks
+.Ql \&"
+and reverse solidus
+.Ql \e
+characters inside the
+.Cd login
+and
+.Cd password
+tokens, for example for display purposes.
 .It
 BSD does not require a final quotation mark of the last user input token.
 .It
