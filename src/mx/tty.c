@@ -33,7 +33,7 @@
 # include <su/cs.h>
 # include <su/utf.h>
 
-# ifdef mx_HAVE_KEY_BINDINGS
+# if defined mx_HAVE_HISTORY || defined mx_HAVE_KEY_BINDINGS
 #  include <su/icodec.h>
 # endif
 #endif
