@@ -1051,12 +1051,6 @@ jgetopt_done:
       if((resfiles & a_RF_USER) &&
             !n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
          goto jleave;
-
-      if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
-         n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
-      if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
-            !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
-         goto jleave;
    }
 
    if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
