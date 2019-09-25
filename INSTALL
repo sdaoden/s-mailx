@@ -93,8 +93,8 @@ Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
 output of the `all', `install' etc. targets to a more verbose one.
 
-There are also some predefined configuration sets available, meant to be
-used instead of doing manual adjustments.
+There are also some predefined configuration sets available.
+It is possible to apply manual adjustments on top of those.
 
 - CONFIG=NULL, CONFIG=NULLI
   Anything that can be turned off is off.  MIME cannot.

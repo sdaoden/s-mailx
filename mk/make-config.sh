@@ -97,6 +97,8 @@ option_reset() {
    set -- ${OPTIONS}
    for i
    do
+      eval j=\$OPT_${i}
+      [ -n "${j}" ] && eval SAVE_OPT_${i}=${j}
       eval OPT_${i}=0
    done
 }
@@ -108,6 +110,21 @@ option_maximal() {
       eval OPT_${i}=1
    done
    OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+}
+
+option_restore() {
+   any=
+   set -- ${OPTIONS}
+   for i
+   do
+      eval j=\$SAVE_OPT_${i}
+      if [ -n "${j}" ]; then
+         msg_nonl "${any}${i}=${j}"
+         any=', '
+         eval OPT_${i}=${j}
+      fi
+   done
+   [ -n "${any}" ] && msg_nonl ' ... '
 }
 
 option_setup() {
@@ -178,6 +195,7 @@ option_setup() {
          ;;
       esac
       msg_nonl "CONFIG=${CONFIG} ... "
+      option_restore
    fi
 }
 
