@@ -136,24 +136,22 @@ a_main_startup(void){
     * TODO but v15 should use ONLY this, also for terminal input! */
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
-#ifdef mx_HAVE_MLE
+      /* We need a writable terminal descriptor then, anyway */
       if((mx_tty_fp = fdopen(fileno(n_stdin), "w+")) != NIL)
          setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
-#endif
    }
 
    if(isatty(STDOUT_FILENO))
       n_psonce |= n_PSO_TTYOUT;
    /* STDOUT is always line buffered from our point of view */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
+   if(mx_tty_fp == NIL)
+      mx_tty_fp = n_stdout;
 
    /* Assume we are interactive, then.
     * This state will become unset later for n_PO_QUICKRUN_MASK! */
    if((n_psonce & n_PSO_TTYANY) == n_PSO_TTYANY)
       n_psonce |= n_PSO_INTERACTIVE;
-
-   if(mx_tty_fp == NIL)
-      mx_tty_fp = (n_psonce & n_PSO_TTYIN) ? n_stdin : n_stdout;
 
    if(isatty(STDERR_FILENO))
       n_psonce |= n_PSO_TTYERR;
