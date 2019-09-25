@@ -2977,7 +2977,9 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
    mbstate_t ps[2];
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    sz rv;
+# ifdef mx_HAVE_KEY_BINDINGS
    struct a_tty_bind_tree *tbtp;
+# endif
    wchar_t wc;
    enum a_tty_bind_flags tbf;
    enum {a_NONE, a_WAS_HERE = 1<<0, a_BUFMODE = 1<<1, a_MAYBEFUN = 1<<2,

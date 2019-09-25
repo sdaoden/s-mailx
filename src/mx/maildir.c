@@ -980,6 +980,7 @@ maildir_setfile(char const *who, char const * volatile name,
       emsg = N_("Cannot enter maildir://%s\n");
 jerr:
       n_err(V_(emsg), n_shexp_quote_cp(name, FAL0));
+      UNUSED(emsg);
       mb.mb_type = MB_VOID;
       *mailname = '\0';
       msgCount = 0;
