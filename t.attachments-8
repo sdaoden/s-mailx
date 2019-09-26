@@ -1,0 +1,42 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@am.ple
+Subject: Y
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=ascii
+Content-Disposition: attachment; filename=".t1"
+
+att1
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=latin1
+Content-Disposition: attachment; filename=".t 2"
+
+att2-1
+att2-2
+att2-4
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename=".t3"
+
+att3-1
+att3-2
+att3-4
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=utf8
+Content-Disposition: attachment; filename=".t 4"
+
+att4-1
+att4-2
+att4-4
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+

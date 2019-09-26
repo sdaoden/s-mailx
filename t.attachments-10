@@ -1,0 +1,29 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: reproducible_build@reproducible_build
+To: ex@am.ple
+Subject: Y
+Message-ID: <19961002015007.AQACAAAA@reproducible_build>
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=utf8
+Content-Disposition: attachment; filename=".t1"
+Content-ID: <19961002015007.AwAEAAAA@reproducible_build>
+
+att1
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=latin1
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment; filename=".t10-f1"
+Content-ID: <19961002015007.BQAGAAAA@reproducible_build>
+
+ein =E4ffchen und ein pferd
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
