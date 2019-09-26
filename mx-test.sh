@@ -7864,7 +7864,7 @@ t_lreply_futh_rth_etc() {
 	call tweak set recipients-in-cc
 	call x 7
 	# While here, test that *fullnames* works (also here)
-	set fullnames
+	call tweak set fullnames
 	reply 1
 	This message should have *fullnames* in the header.
 	!.
@@ -7878,7 +7878,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '4194791149 39789'
+      check 1 - "${MBOX}" '2954356452 39829'
    else
       t_echoskip '1:[!UISTRINGS]'
    fi
