@@ -419,8 +419,9 @@ jleave:
    if(credp != NIL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          urlp->url_h_p.s, n_shexp_quote_cp(credp->cc_user.s, FAL0),
-         n_shexp_quote_cp((credp->cc_pass.s != NIL ? credp->cc_pass.s
-            : su_empty), FAL0));
+         n_shexp_quote_cp(((n_poption & n_PO_D_VVV)
+            ? (credp->cc_pass.s != NIL ? credp->cc_pass.s : su_empty)
+            : _("3x *verbose* for password")), FAL0));
 
    NYD_OU;
    return (credp != NIL);
