@@ -2071,62 +2071,58 @@ The section
 contains complete example configurations.
 .\" }}}
 .
-.\" .Ss "Encrypted network communication" {{{
+.\" .Ss "Encrypted network communication" {{{ review
 .Ss "Encrypted network communication"
 .
 \*(OP SSL (Secure Sockets Layer) aka its successor TLS (Transport Layer
 Security) are protocols which aid in securing communication by providing
 a safely initiated and encrypted network connection.
-A central concept of TLS is that of certificates: as part of each
-network connection setup a (set of) certificates will be exchanged, and
-by using those the identity of the network peer can be cryptographically
-verified; if possible the TLS/SNI (ServerNameIndication) extension will
-be enabled in order to allow servers fine-grained control over the
-certificates being used.
-TLS works by using a locally installed pool of trusted certificates,
-and verifying the connection peer succeeds if that provides
-a certificate which has been issued or is trusted by any certificate in
-the trusted local pool.
+A central concept of TLS are certificates: as part of each network
+connection setup a (set of) certificates will be exchanged through which
+the identity of the network peer can be cryptographically verified;
+if possible the TLS/SNI (ServerNameIndication) extension will be enabled
+to allow servers fine-grained control over the certificates being used.
+A locally installed pool of trusted certificates will then be inspected,
+and verification will succeed if it contains a(n in)direct signer of the
+presented certificate(s).
 .
 .Pp
 The local pool of trusted so-called CA (Certification Authority)
-certificates is usually delivered with the used TLS library, and
-will be selected automatically.
-It is also possible to use a specific pool of trusted certificates.
-If this is desired,
-.Va tls-ca-no-defaults
-should be set to avoid using the default certificate pool, and
+certificates is usually delivered with and used along the TLS library.
+A custom pool of trusted certificates can be selected by pointing
 .Va tls-ca-file
 and/or (with special preparation)
 .Va tls-ca-dir
-should be pointed to a trusted pool of certificates.
+to the desired location; setting
+.Va tls-ca-no-defaults
+in addition will avoid additional inspection of the default pool.
 A certificate cannot be more secure than the method its CA certificate
 has been retrieved with.
 For inspection or other purposes, the certificate of a server (as seen
-when connecting to it) can be fetched like this:
+when connecting to it) can be fetched like this (port can usually be the
+protocol name, too):
 .
 .Bd -literal -offset indent
 $ </dev/null openssl s_client -showcerts -connect \e
-    the-server.example:pop3s 2>&1 | tee log.txt
+    SERVER-URL[:PORT] 2>&1 | tee log.txt
 .Ed
 .
 .Pp
-\*(UA also supports a mode of operation in which certificates are not
-at all matched against a local pool of CA certificates.
-Instead a message digest will be calculated for the certificate
-presented by the connection peer, and be compared against
-.Va tls-fingerprint
-(a variable chain that picks up
-.Ql USER@HOST
-or
-.Ql HOST
-context-dependent variable variants), and the connection will succeed if
-the calculated digest equals the expected one.
-The used message digest can be configured via (the chain)
+A local pool of CA certificates is not strictly necessary, however,
+server certificates can also be verified via their fingerprint.
+For this a message digest will be calculated and compared against the
+variable chain
+.Va tls-fingerprint ,
+and verification will succeed if the fingerprint matches.
+The message digest (algorithm) can be configured via the variable chain
 .Va tls-fingerprint-digest .
 The command
 .Ic tls
-may be helpful.
+aids in generating fingerprints easily:
+.
+.Bd -literal -offset indent
+$ \*(uA -X 'wysh set verbose; tls fingerprint SERVER-URL[:PORT]; x'
+.Ed
 .
 .Pp
 It depends on the used protocol whether encrypted communication is
@@ -2157,8 +2153,7 @@ For example certificate verification settings can be fine-tuned via
 .Va tls-ca-flags ,
 and the TLS configuration basics are accessible via
 .Va tls-config-pairs ,
-for example to specify the allowed protocols or cipher lists that
-a communication channel may use.
+e.g., to control protocol versions or cipher lists.
 In the past hints on how to restrict the set of protocols to highly
 secure ones were indicated, but as of the time of this writing the list
 of protocols or ciphers may need to become relaxed in order to be able
@@ -2178,7 +2173,7 @@ wysh set tls-config-pairs-lion@exam.ple='MinProtocol=TLSv1.1,\e
 .Pp
 The OpenSSL program
 .Xr ciphers 1
-can be used and should be referred to when creating a custom cipher list.
+should be referred to when creating a custom cipher list.
 Variables of interest for TLS in general are
 .Va tls-ca-dir ,
 .Va tls-ca-file ,
