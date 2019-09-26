@@ -4630,7 +4630,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
             (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
          :
       else
-         t_echoskip '[iconv(1) missing conversion]'
+         t_echoskip '[ICONV/iconv(1):missing conversion(s)]'
          t_epilog "${@}"
          return
       fi
@@ -4686,7 +4686,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 4 - ./.txlog '4083300132 2030'
    else
-      t_echoskip '1-4:[ISO-2022-JP unsupported]'
+      t_echoskip '1-4:[ICONV/iconv(1):ISO-2022-JP unsupported]'
    fi
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
@@ -4735,7 +4735,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 8 - ./.txlog '3192017734 1983'
    else
-      t_echoskip '5-8:[EUC-JP unsupported]'
+      t_echoskip '5-8:[ICONV/iconv(1):EUC-JP unsupported]'
    fi
 
    t_epilog "${@}"
@@ -5718,7 +5718,7 @@ t_message_injections() {
 }
 
 t_attachments() {
-   # Relatively Simple, if we need more here, place in a later vim fold!
+   # TODO More should be in compose mode stuff aka digmsg
    t_prolog "${@}"
 
    ${cat} <<-_EOT  > ./.tx
@@ -5849,6 +5849,50 @@ reply 1 2
       check 6 - .tall '1210753005 508'
    else
       t_echoskip '6:[!UISTRINGS]'
+   fi
+
+   ##
+
+   # Content-ID:
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -Sstealthmua=noagent -Shostname \
+      -a ./.t1 -a './.t 2' \
+      -a ./.t3 -a './.t 4' \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 7 0 .tall '1003537919 1262'
+
+   # input charset
+   </dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
+      -a ./.t1=ascii -a './.t 2'=LATin1 \
+      -a ./.t3=UTF-8 -a './.t 4'=- \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 8 0 .tall '361641281 921'
+
+   # input+output charset, no iconv
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -a ./.t1=ascii#- -a './.t 2'=LATin1#- \
+      -a ./.t3=UTF-8#- -a './.t 4'=utf8#- \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 9 0 .tall '1357456844 933'
+
+   if have_feat iconv; then
+      printf 'ein \303\244ffchen und ein pferd\n' > .t10-f1
+      if (< .t10-f1 iconv -f ascii -t utf8) >/dev/null 2>&1; then
+         </dev/null ${MAILX} ${ARGS} --set mta=test \
+            --set stealthmua=noagent --set hostname \
+            --attach ./.t1=-#utf8 \
+            --attach ./.t10-f1=utf8#latin1 \
+            --subject Y \
+            ex@am.ple > ./.tall 2>&1
+         check 10 0 .tall '1257664842 877'
+      else
+         t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
+      fi
+   else
+      t_echoskip '10:[!ICONV]'
    fi
 
    t_epilog "${@}"
