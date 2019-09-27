@@ -608,10 +608,11 @@ jredo:
                (ncap.ca_ent_flags[0] & (n_CMD_ARG_DESC_OPTION |
                   n_CMD_ARG_DESC_HONOUR_STOP))){
             if(!(shs & n_SHEXP_STATE_OUTPUT)){
-               /* We would return FAL0 for bind in "bind;echo huhu", whereas we
-                * do not for "bind" due to the "shin.l==0 goto jloop_break;"
-                * introductional quickshot; ensure we succeed */
-               if(shs & n_SHEXP_STATE_META_SEMICOLON)
+               /* We would return FAL0 for bind in "bind;echo huhu" or
+                * "reply # comment", whereas we do not for "bind" or "reply"
+                * due to the "shin.l==0 goto jloop_break;" introductional
+                * quickshot; ensure we succeed */
+               if(shs & (n_SHEXP_STATE_STOP | n_SHEXP_STATE_META_SEMICOLON))
                   goto jloop_break;
                goto jleave;
             }
