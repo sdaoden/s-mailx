@@ -5731,20 +5731,21 @@ With an existing folder as an argument,
 lists the names of folders below the named folder.
 .
 .Mx
-.It Ic Followup
-(F) Similar to
-.Ic Respond ,
-but saves the message in a file named after the local part of the first
-recipient's address (instead of in
-.Va record Ns ).
-.
 .Mx
-.It Ic followup
-(fo) Similar to
-.Ic respond ,
-but saves the message in a file named after the local part of the first
-recipient's address (instead of in
-.Va record Ns ).
+.It Ic Followup , followup
+(F,fo) Similar to
+.Ic Reply ,
+and
+.Ic reply ,
+respectively, but save the message in a file named after the local part
+of the (first) recipient's address, possibly overwriting
+.Va record ,
+and honouring
+.Va outfolder .
+Also see
+.Ic Copy
+and
+.Ic Save .
 .
 .Mx
 .It Ic Forward
@@ -6756,7 +6757,8 @@ are performed on both arguments.
 Both folders must be of the same type.
 .
 .Mx
-.It Ic Reply
+.Mx
+.It Ic Reply , Respond
 (R) Identical to
 .Ic reply
 except that it replies to only the sender of each message of the given
@@ -6768,9 +6770,12 @@ will exchange this command with
 .Ic reply .
 .
 .Mx
-.It Ic reply
-(r) Take a message and group-responds to it by addressing the sender
-and all recipients, subject to
+.Mx
+.It Ic reply , respond
+(r) Take a message (list) and group-respond (to each in turn)
+by addressing the sender and all recipients, subject to
+.Va fullnames
+and
 .Ic alternates
 processing.
 .Va followup-to ,
@@ -6779,9 +6784,6 @@ processing.
 as well as
 .Va recipients-in-cc
 influence response behaviour.
-Unless the internal variable
-.Va fullnames
-is set recipient addresses will be stripped from comments, names etc.
 .Va quote
 as well as
 .Va quote-as-attachment
@@ -6797,10 +6799,9 @@ For more documentation please refer to
 .Pp
 This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
-if no receiver has been specified,
-.Va ^ERR Ns -PERM
-if some addressees where rejected by
-.Va expandaddr ,
+if no receiver has been specified, or was rejected by
+.Va expandaddr
+policy,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
@@ -6809,8 +6810,6 @@ if a necessary character set conversion fails, and
 for other errors.
 It can also fail with errors of
 .Sx "Specifying messages" .
-Occurrence of some of the errors depend on the value of
-.Va expandaddr .
 Any error stops processing of further messages.
 .
 .Mx
@@ -6850,16 +6849,6 @@ It can also fail with errors of
 Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
-.
-.Mx
-.It Ic Respond
-Same as
-.Ic Reply .
-.
-.Mx
-.It Ic respond
-Same as
-.Ic reply .
 .
 .Mx
 .It Ic retain
@@ -10832,15 +10821,15 @@ Maildir folders are \*(OPal.
 .
 .Mx
 .It Va outfolder
-\*(BO Unless specified as absolute pathnames, causes the filename given
-in the
-.Va record
-variable
-and the sender-based filenames for the
-.Ic Copy
+\*(BO Causes a non-absolute filename specified in
+.Va record ,
+as well as the sender-based filenames of the
+.Ic Copy ,
+.Ic Save ,
+.Ic Followup
 and
-.Ic Save
-commands to be interpreted relative to the directory given in the
+.Ic followup
+commands to be interpreted relative to the
 .Va folder
 variable rather than relative to the current directory.
 .
@@ -11458,31 +11447,30 @@ The default is
 .
 .Mx
 .It Va quote
-If set a
+If set messages processed by
+.Ic followup ,
 .Ic reply
-message is started with the quoted original message,
-the lines of which are prefixed by the value of the variable
+and variants will be prefixed with the quoted original message,
+the lines of which prefixed by
 .Va indentprefix ,
 taking into account
 .Va quote-chars
 and
 .Va quote-fold .
-If set to the empty value, the quoted message will be preceded and
-followed by the expansions of the values of
-.Va quote-inject-head
-and
-.Va quote-inject-tail ,
-respectively.
-None of the headers of the quoted message is included in the quote if
-the value equals
+No headers will be quoted when set without value or if the value is
 .Ql noheading ,
-and only the headers selected by the
+if it is
+.Ql headers
+the
 .Ql type
 .Ic headerpick
-selection are put above the message body for
-.Ql headers ,
+selection will be included in the quotation,
 whereas all headers and all MIME parts are included for
 .Ql allheaders .
+The quoted message will be enclosed by the expansions of
+.Va quote-inject-head
+and
+.Va quote-inject-tail .
 Also see
 .Va quote-as-attachment
 and
@@ -11531,7 +11519,7 @@ plus some additional pad; necessary adjustments take place silently.
 .It Va quote-inject-head , quote-inject-tail
 The strings to put before and after the text of a
 .Va quote Ns
-d message, respectively.
+d message, if non-empty, and respectively.
 The former defaults to
 .Ql %f wrote:\en\en .
 Special format directives will be expanded if possible, and if so

@@ -98,6 +98,9 @@ t_all() {
 
    # Send/RFC absolute basics
    jspawn can_send_rfc
+   jspawn reply
+   jspawn forward
+   jspawn record_a_resend
    jsync
 
    # VFS
@@ -126,7 +129,6 @@ t_all() {
    jspawn expandaddr # (after t_alias)
    jspawn mta_aliases # (after t_expandaddr)
    jspawn filetype
-   jspawn record_a_resend
    jspawn e_H_L_opts
    jspawn q_t_etc_opts
    jspawn message_injections
@@ -137,7 +139,7 @@ t_all() {
 
    # Around state machine, after basics
    jspawn alternates
-   jspawn quote_a_cmd_escapes
+   jspawn cmd_escapes
    jspawn compose_edits
    jspawn digmsg
    jspawn on_main_loop_tick
@@ -4167,6 +4169,286 @@ xit
 
    t_epilog "${@}"
 }
+
+t_reply() { # {{{
+   # Alternates and ML related address massage etc. somewhere else
+   t_prolog "${@}"
+   XARGS=${ARGS} # TODO v15-compat
+   ARGS="${ARGS} -Sv15-compat=y"
+
+   t__gen_msg subject reply from 1 to 2 cc 2 > "${MBOX}"
+
+   ## Base (does not test "recipient record")
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y "${2}${1}"'
+r1
+~.
+      echo 1:$?/$^ERRNAME
+      set fullnames escape=!; '${1}'
+r2 fullnames
+!.
+      echo 2:$?/$^ERRNAME
+      set recipients-in-cc nofullnames; '${1}'
+r3 recipients-in-cc
+!.
+      echo 3:$?/$^ERRNAME
+      unset recipients-in-cc; '${1}'
+r4
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it reply
+   check 1 0 ./.tall '4164251531 851'
+   t_it Reply
+   check 2 0 ./.tall '3034955332 591'
+   t_it reply 'set flipr;'
+   check 3 0 ./.tall '3034955332 591'
+   t_it Reply 'set flipr;'
+   check 4 0 ./.tall '4164251531 851'
+
+   ## Dig the errors
+   t__gen_msg subject reply-no-addr > ./.tnoaddr
+
+   # MBOX will deduce addressee from From_ line..
+   </dev/null ${MAILX} ${ARGS} -R -Sescape=! \
+      -Y '#
+   File ./.tnoaddr; reply # Takes addressee from From_ line :(
+body1
+!.
+   echo 1:$?/$^ERRNAME
+   File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+body2
+!.
+   echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
+   echo 3:$?/$^ERRNAME; reply # cannot test IO,NOTSUP,INVAL
+body3
+!.
+   echo 4:$?/$^ERRNAME
+   #' \
+      > ./.tall 2>./.terr
+   check 5 0 ./.tall '3088217220 382'
+   if have_feat uistrings; then
+      check 6 - ./.terr '2514745519 544'
+   else
+      t_echoskip '6:[!UISTRINGS]'
+   fi
+
+   # ..but Maildir will not
+   if have_feat maildir; then
+      ${mkdir} -p .tdir .tdir/tmp .tdir/cur .tdir/new
+      ${sed} 1d < ./.tnoaddr > .tdir/new/sillyname
+
+      </dev/null ${MAILX} ${ARGS} -R -Sescape=! \
+         -Y '#
+      File ./.tdir; reply
+body1
+!.
+      echo 1:$?/$^ERRNAME
+      File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+body2
+!.
+      echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
+      echo 3:$?/$^ERRNAME;reply # cannot test IO,NOTSUP,INVAL
+body3
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         > ./.tall 2>./.terr
+      check 7 0 ./.tall '3631170341 244'
+      if have_feat uistrings; then
+         check 8 - ./.terr '1074346767 629'
+      else
+         t_echoskip '8:[!UISTRINGS]'
+      fi
+   fi
+
+   ## Ensure action on multiple messages
+   t__gen_msg subject reply2 from from2@exam.ple body body2 >> "${MBOX}"
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! \
+      -Y '#
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody1
+!.
+      echo 2:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${3} 0 ./.tall '283309820 502'
+      if [ ${#} -eq 4 ]; then
+         echo * > ./.tlst
+         check ${3}-1 - ./.tlst '1649520021 12'
+         check ${3}-2 - ./from1 '1501109193 347'
+         check ${3}-3 - ./from2 '2154231432 137'
+      fi
+   }
+
+   t_it reply Reply 9
+   t_it respond Respond 10
+   t_it followup Followup 11 yes
+   ${rm} -f from1 from2
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody3
+!.
+      echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+repbody4
+!.
+repbody5
+!.
+      echo 3:$?/$^ERRNAME; '${2}' 1 2
+Repbody6
+!.
+      echo 4:$?/$^ERRNAME; set outfolder norecord
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody3
+!.
+      echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+repbody4
+!.
+repbody5
+!.
+      echo 3:$?/$^ERRNAME; '${2}' 1 2
+Repbody6
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${3} 0 ./.tall '3410330303 2008'
+      if [ ${#} -ne 5 ]; then
+         check ${4} - ./.trec${4} '3044885336 484'
+         check ${4}-1 - ./.tfolder/.trec${4} '3044885336 484'
+      else
+         [ -f ./.trec${4} ]; check_exn0 ${4}
+         echo * > ./.tlst
+         check ${4}-1 - ./.tlst '1649520021 12'
+         check ${4}-2 - ./from1 '2668975631 694'
+         check ${4}-3 - ./from2 '225462887 274'
+         [ -f ./.tfolder/.trec${4} ]; check_exn0 ${4}-4
+         ( cd .tfolder && echo * > ./.tlst )
+         check ${4}-5 - ./.tfolder/.tlst '1649520021 12'
+         check ${4}-6 - ./.tfolder/from1 '2668975631 694'
+         check ${4}-7 - ./.tfolder/from2 '225462887 274'
+      fi
+   }
+
+   t_it reply Reply 12 13
+   t_it respond Respond 14 15
+   t_it followup Followup 16 17 yes
+   #${rm} -f from1 from2
+
+   ## Quoting
+   ${rm} -f "${MBOX}"
+   t__x2_msg > ./.tmbox
+
+   printf '#
+      set indentprefix=" |" quote
+      reply
+b1
+!.
+      set quote=noheading quote-inject-head
+      reply
+b2
+!.
+      headerpick type retain cc date from message-id reply-to subject to
+      set quote=headers
+      reply
+b3
+!.
+      set quote=allheaders
+      reply
+b4
+!.
+      set quote-inject-head=%% quote-inject-tail=%% quote=headers
+      reply
+b5
+!.
+      set quote \\
+         quote-inject-head='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"' \\
+         quote-inject-tail='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"'
+      reply
+b6
+!.
+      set showname datefield=%%y nodatefield-markout-older indentprefix=\\ :
+      reply
+b7
+!.
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
+         -Sescape=! -Sindentprefix=' >' \
+         ./.tmbox >./.tall 2>&1
+   check_ex0 18-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check 18 - "${MBOX}" '4192298831 3932'
+
+   # quote-as-attachment, fullnames
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! \
+         -S quote-as-attachment \
+         -Y reply -Y yb1 -Y !. \
+         -Y 'unset quote-as-attachment' \
+         -Y 'reply;yb2' -Y !. \
+         -Y 'set quote-as-attachment fullnames' \
+         -Y ';reply;yb3' -Y !. \
+         ./.tmbox >./.tall 2>&1
+   check 19 0 ./.tall '2774517283 2571'
+
+   ARGS=${XARGS} # TODO v15-compat
+   t_epilog "${@}"
+} # }}}
+
+t_record_a_resend() {
+   t_prolog "${@}"
+
+   printf '#
+         set record=%s
+         m %s\n~s Subject 1.\nHello.\n~.
+         set record-files add-file-recipients
+         m %s\n~s Subject 2.\nHello.\n~.
+         File %s
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+         set record-resent
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+      #' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
+      ${MAILX} ${ARGS}
+
+   check 1 0 "${MBOX}" '2632690399 252'
+   check 2 - .t.record '3337485450 456'
+   check 3 - .t.resent '1560890069 640'
+
+   t_epilog "${@}"
+}
 # }}}
 
 # VFS {{{
@@ -5540,30 +5822,6 @@ t_filetype() {
    t_epilog "${@}"
 }
 
-t_record_a_resend() {
-   t_prolog "${@}"
-
-   printf '
-         set record=%s
-         m %s\n~s Subject 1.\nHello.\n~.
-         set record-files add-file-recipients
-         m %s\n~s Subject 2.\nHello.\n~.
-         File %s
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-         set record-resent
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
-      ${MAILX} ${ARGS}
-
-   check 1 0 "${MBOX}" '2632690399 252'
-   check 2 - .t.record '3337485450 456'
-   check 3 - .t.resent '1560890069 640'
-
-   t_epilog "${@}"
-}
-
 t_e_H_L_opts() {
    t_prolog "${@}"
 
@@ -6271,7 +6529,7 @@ my body
    t_epilog "${@}"
 }
 
-t_quote_a_cmd_escapes() {
+t_cmd_escapes() {
    # quote and cmd escapes because this (since Mail times) is worked in the
    # big collect() monster of functions
    t_prolog "${@}"
@@ -6279,31 +6537,8 @@ t_quote_a_cmd_escapes() {
    echo 'included file' > ./.ttxt
    { t__x1_msg && t__x2_msg && t__x3_msg; } > ./.tmbox
 
-   printf '#
-      set indentprefix=" |"
-      set quote
-      reply 2
-!.
-      set quote=noheading
-      reply 2
-!.
-      headerpick type retain cc date from message-id reply-to subject to
-      set quote=headers
-      reply 2
-!.
-      set quote=allheaders
-      reply 2
-!.
-   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
-         -Sescape=! -Sindentprefix=' >' \
-         ./.tmbox >./.tall 2>&1
-   check_ex0 1-estat
-   ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '1960457897 2031'
-
    # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
    # have some in compose_edits and digmsg
-   ${rm} "${MBOX}"
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
       headerpick type retain Subject
@@ -6461,7 +6696,7 @@ and i ~w rite this out to ./.tmsg
 }
 
 t_compose_edits() { # XXX very rudimentary
-   # after: t_quote_a_cmd_escapes
+   # after: t_cmd_escapes
    t_prolog "${@}"
 
    ${cat} <<-_EOT > ./.ted.sh

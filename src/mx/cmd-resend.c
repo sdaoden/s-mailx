@@ -624,6 +624,8 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    enum gfield gf;
    NYD2_IN;
 
+   n_pstate_err_no = su_ERR_NONE;
+
    su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
