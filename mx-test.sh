@@ -38,10 +38,10 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-Sv15-compat -:/ -Sdotlock-disable -Sexpandaddr=restrict -Smemdebug'
-   ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
+ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smemdebug -Sstealthmua'
+   ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
-   ARGS="${ARGS}"' -#'
+   ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
 BODY=./.cc-body.txt
@@ -8230,6 +8230,45 @@ t_z() {
 }
 
 # Test support {{{
+t__gen_msg() {
+   t___header() {
+      printf '%s: ' ${1}
+      case "${3}" in
+      [0-9]*)
+         ___hi=1
+         while [ ${___hi} -le ${3} ]; do
+            [ ${___hi} -gt 1 ] && printf ', '
+            printf '%s%s <%s%s@exam.ple>' ${1} ${___hi} ${2} ${___hi}
+            ___hi=`add ${___hi} 1`
+         done
+         ;;
+      *)
+         printf '%s' "${3}"
+         ;;
+      esac
+      printf '\n'
+   }
+
+   printf 'From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+'
+
+   body=Body
+   while [ ${#} -ge 2 ]; do
+      case "${1}" in
+      from) t___header From from "${2}";;
+      to) t___header To to "${2}";;
+      cc) t___header Cc cc "${2}";;
+      bcc) t___header Bcc bcc "${2}";;
+      subject) printf 'Subject: %s\n' "${2}";;
+      body) body="${2}";;
+      esac
+      shift 2
+   done
+
+   printf '\n%s\n\n' "${body}"
+}
+
 t__put_subject() {
    # MIME encoding (QP) stress message subject
    printf 'Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
