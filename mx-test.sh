@@ -675,7 +675,8 @@ check_exn0() {
 # }}}
 
 color_init() {
-   if (command -v tput && tput setaf 1 && tput sgr0) >/dev/null 2>&1; then
+   if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
+         >/dev/null 2>&1; then
       COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
       COLOR_WARN_ON=`tput setaf 3``tput bold`  COLOR_WARN_OFF=`tput sgr0`
       COLOR_OK_ON=`tput setaf 2`  COLOR_OK_OFF=`tput sgr0`
