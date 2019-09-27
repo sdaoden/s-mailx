@@ -9,6 +9,7 @@ References: <20170719132257.766AF781267-2@originator>
 mister originator2 <mr2@originator> wrote:
 
  |That's appalling, II.
+b1
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -19,6 +20,7 @@ In-Reply-To: <20170719132257.766AF781267-2@originator>
 References: <20170719132257.766AF781267-2@originator>
 
  |That's appalling, II.
+b2
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -38,6 +40,7 @@ References: <20170719132257.766AF781267-2@originator>
  |
  |That's appalling, II.
  |
+b3
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -60,4 +63,51 @@ References: <20170719132257.766AF781267-2@originator>
  |
  |That's appalling, II.
  |
+b4
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: mr2@originator, bugstop-commit@five.miles.out
+Cc: is2@a.list
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <20170719132257.766AF781267-2@originator>
+References: <20170719132257.766AF781267-2@originator>
+
+% |Subject: Bugstop: five miles out 2
+ |Reply-To: mister originator2 <mr2@originator>
+ |From: mister originator2 <mr2@originator>
+ |To: bugstop-commit@five.miles.out
+ |Cc: is2@a.list
+ |Date: Wed, 19 Jul 2017 09:23:57 -0400
+ |Message-Id: <20170719132257.766AF781267-2@originator>
+ |
+ |That's appalling, II.
+ |
+%b5
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: mr2@originator, bugstop-commit@five.miles.out
+Cc: is2@a.list
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <20170719132257.766AF781267-2@originator>
+References: <20170719132257.766AF781267-2@originator>
+
+(%a=mr2@originator %d=2017-07-19 %f=mister originator2 <mr2@originator> %i=20170719132257.766AF781267-2@originator %n=mr2@originator %r=mister originator2)
+ |That's appalling, II.
+(%a=mr2@originator %d=2017-07-19 %f=mister originator2 <mr2@originator> %i=20170719132257.766AF781267-2@originator %n=mr2@originator %r=mister originator2)
+b6
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: mr2@originator, bugstop-commit@five.miles.out
+Cc: is2@a.list
+Subject: Re: Bugstop: five miles out 2
+In-Reply-To: <20170719132257.766AF781267-2@originator>
+References: <20170719132257.766AF781267-2@originator>
+
+(%a=mr2@originator %d=17 %f=mister originator2 <mr2@originator> %i=20170719132257.766AF781267-2@originator %n=mister originator2 %r=mister originator2)
+ :That's appalling, II.
+(%a=mr2@originator %d=17 %f=mister originator2 <mr2@originator> %i=20170719132257.766AF781267-2@originator %n=mister originator2 %r=mister originator2)
+b7
 

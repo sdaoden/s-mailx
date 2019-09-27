@@ -1,0 +1,96 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, to1@exam.ple, to2@exam.ple
+Cc: cc1@exam.ple, cc2@exam.ple
+Subject: Re: reply
+
+repbody1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from2@exam.ple
+Subject: Re: reply2
+
+repbody2
+
+1:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, from2@exam.ple
+Subject: Re: reply
+
+Repbody3
+
+2:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, to1@exam.ple, to2@exam.ple
+Cc: cc1@exam.ple, cc2@exam.ple
+Subject: Re: reply
+
+repbody4
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from2@exam.ple
+Subject: Re: reply2
+
+repbody5
+
+3:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, from2@exam.ple
+Subject: Re: reply
+
+Repbody6
+
+4:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, to1@exam.ple, to2@exam.ple
+Cc: cc1@exam.ple, cc2@exam.ple
+Subject: Re: reply
+
+repbody1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from2@exam.ple
+Subject: Re: reply2
+
+repbody2
+
+1:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, from2@exam.ple
+Subject: Re: reply
+
+Repbody3
+
+2:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, to1@exam.ple, to2@exam.ple
+Cc: cc1@exam.ple, cc2@exam.ple
+Subject: Re: reply
+
+repbody4
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from2@exam.ple
+Subject: Re: reply2
+
+repbody5
+
+3:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: from1@exam.ple, from2@exam.ple
+Subject: Re: reply
+
+Repbody6
+
+4:0/NONE

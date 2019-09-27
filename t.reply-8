@@ -1,0 +1,10 @@
+reproducible_build: No recipients specified
+reproducible_build: ... message not sent
+reproducible_build: from1@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: to1@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: to2@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: cc1@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: cc2@exam.ple: *expandaddr* does not allow mail address target
+reproducible_build: No recipients specified
+reproducible_build: ... message not sent
+reproducible_build: 10: Invalid message number
