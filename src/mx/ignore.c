@@ -163,7 +163,8 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
    if(retain && self->i_retain.it_count > 0){
       rv = TRU1;
       for(ifp = self->i_retain.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
-         if(!su_cs_cmp_case_n(ifp->if_field, dat, len))
+         if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
+               ifp->if_field[len] == '\0')
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
@@ -171,14 +172,16 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
       for(irp = self->i_retain.it_re; irp != NULL; irp = irp->ir_next)
          if((retain == TRUM1
                ? (regexec(&irp->ir_regex, dat, 0,NULL, 0) != REG_NOMATCH)
-               : !strncmp(irp->ir_input, dat, len)))
+               : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
+                  irp->ir_input[len] == '\0')))
             goto jleave;
 #endif
       rv = (retain == TRUM1) ? TRUM1 : FAL0;
    }else if((retain == TRUM1 || !retain) && self->i_ignore.it_count > 0){
       rv = TRUM1;
       for(ifp = self->i_ignore.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
-         if(!su_cs_cmp_case_n(ifp->if_field, dat, len))
+         if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
+               ifp->if_field[len] == '\0')
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
@@ -186,7 +189,8 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
       for(irp = self->i_ignore.it_re; irp != NULL; irp = irp->ir_next)
          if((retain == TRUM1
                ? (regexec(&irp->ir_regex, dat, 0,NULL, 0) != REG_NOMATCH)
-               : !strncmp(irp->ir_input, dat, len)))
+               : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
+                  irp->ir_input[len] == '\0')))
             goto jleave;
 #endif
       rv = (retain == TRUM1) ? TRU1 : FAL0;
