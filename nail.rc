@@ -162,7 +162,7 @@ set showto
 
 # Only include the selected header fields when printing messages
 # `headerpick' is not portable, so use the standard `retain'
-retain from_ date from to cc subject message-id mail-followup-to reply-to
+retain date sender from to cc subject message-id mail-followup-to reply-to
 #headerpick type retain from_ date from to cc subject \
 #   message-id mail-followup-to reply-to
 # ...when forwarding messages
