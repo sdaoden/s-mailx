@@ -4945,8 +4945,8 @@ _EOT
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		commandalias x echo '$?/$^ERRNAME'
 		echo 1
-		alias :abra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
-		alias :abra!; x
+		alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+		alias a:bra!; x
 		alias ha@m  ham-expansion  ha@m '';x
 		alias ha@m;x
 		alias beb@ra  ceb@ra beb@ra1;x
@@ -4956,16 +4956,16 @@ _EOT
 		alias deb@ris   '';x
 		alias deb@ris;x
 		echo 2
-		alias - :abra!;x
+		alias - a:bra!;x
 		alias - ha@m;x
 		alias - beb@ra;x
 		alias - ceb@ra;x
 		alias - deb@ris;x
 		echo 3
 		unalias ha@m;x
-		alias - :abra!;x
+		alias - a:bra!;x
 		unalias beb@ra;x
-		alias - :abra!;x
+		alias - a:bra!;x
 		echo 4
 		unalias*;x;alias;x
 		echo 5
@@ -4980,7 +4980,7 @@ _EOT
 		\alias - ha@m;x
 		\alias - expa@and;x
 		__EOT
-      check 3 0 "${MBOX}" '1072772360 789'
+      check 3 0 "${MBOX}" '1788149870 789'
    else
       t_echoskip '3:[!UISTRINGS]'
    fi

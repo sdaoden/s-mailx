@@ -4415,18 +4415,23 @@ other address type.
 Recursive expansion of (what looks like) alias name(s) targets can be
 prevented by prefixing the target with the modifier reverse solidus
 .Cm \e .
-A valid alias name conforms to the Postfix MTA
-.Xr aliases 5
-rules, and may consist of alphabetic characters, digits, the underscore,
-the number sign, colon, commercial at and hyphen-minus; extensions:
+A valid alias name conforms to
+.Va mta-aliases
+syntax, but follow-up characters can also be the number sign
+.Ql # ,
+colon
+.Ql : ,
+commercial at
+.Ql @,
 exclamation mark
 .Ql \&! ,
 period
 .Ql \&.
 as well as
-.Dq any character that has the high bit set
-may be used:
-.Ql [[:alnum:]_#:@!.-]+ .
+.Dq any character that has the high bit set .
+The dollar sign
+.Ql $
+may be the last character.
 The number sign may need be quoted to avoid misinterpretation as the
 shell comment character.
 .Pp
@@ -10717,7 +10722,7 @@ necessary to explicitly specify the port as
 .
 .Mx
 .It Va mta-aliases
-\*(OP If set to a valid path pointing to a text file in MTA
+\*(OP If set to a valid path pointing to a text file in MTA (Postfix)
 .Xr aliases 5
 format, plain
 .Ql name
@@ -10730,7 +10735,7 @@ Constraints on
 .Xr \&\&aliases 5
 content support: only local addresses (names) which are valid usernames
 .Pf ( Ql [a-z_][a-z0-9_-]*[$]? )
-are understood, and \*(ID
+are treated as expandable aliases, and \*(ID
 .Ql :include:/file/name
 directives are not supported.
 By including
