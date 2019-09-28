@@ -4846,7 +4846,7 @@ t_iconv_mainbody() {
       elif [ ${i} -eq 12 ]; then
          check 5-3 - ./.tout '1959197095 283' # XXX old (before test MTA)
       elif [ ${i} -eq 3 ]; then
-         check 5-4 - ./.tout '3896050050 278'
+         check 5-4 - ./.tout '3544755786 278'
       else
          check 5-5 - ./.tout '3216374419 278'
       fi
