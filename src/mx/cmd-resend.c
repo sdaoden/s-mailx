@@ -863,7 +863,7 @@ c_reply(void *vp){
 }
 
 FL int
-c_replyall(void *vp){
+c_replyall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -873,7 +873,7 @@ c_replyall(void *vp){
 }
 
 FL int
-c_replysender(void *vp){
+c_replysender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -913,7 +913,7 @@ c_followup(void *vp){
 }
 
 FL int
-c_followupall(void *vp){
+c_followupall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -923,7 +923,7 @@ c_followupall(void *vp){
 }
 
 FL int
-c_followupsender(void *vp){
+c_followupsender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 

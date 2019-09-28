@@ -574,12 +574,12 @@ FL int c_version(void *vp);
 
 /* All thinkable sorts of `reply' / `respond' and `followup'.. */
 FL int c_reply(void *vp);
-FL int c_replyall(void *vp);
-FL int c_replysender(void *vp);
+FL int c_replyall(void *vp); /* v15-compat */
+FL int c_replysender(void *vp); /* v15-compat */
 FL int c_Reply(void *vp);
 FL int c_followup(void *vp);
-FL int c_followupall(void *vp);
-FL int c_followupsender(void *vp);
+FL int c_followupall(void *vp); /* v15-compat */
+FL int c_followupsender(void *vp); /* v15-compat */
 FL int c_Followup(void *vp);
 
 /* ..and a mailing-list reply */

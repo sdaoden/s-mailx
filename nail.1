@@ -5688,22 +5688,6 @@ recipient's address (instead of in
 .Va record Ns ).
 .
 .Mx
-.It Ic followupall
-Similar to
-.Ic followup ,
-but responds to all recipients regardless of the
-.Va flipr
-variable.
-.
-.Mx
-.It Ic followupsender
-Similar to
-.Ic Followup ,
-but responds to the sender only regardless of the
-.Va flipr
-variable.
-.
-.Mx
 .It Ic Forward
 Similar to
 .Ic forward ,
@@ -6768,20 +6752,6 @@ Occurrence of some of the errors depend on the value of
 Any error stops processing of further messages.
 .
 .Mx
-.It Ic replyall
-Similar to
-.Ic reply ,
-but initiates a group-reply regardless of the value of
-.Va flipr .
-.
-.Mx
-.It Ic replysender
-Similar to
-.Ic Reply ,
-but responds to the sender only regardless of the value of
-.Va flipr .
-.
-.Mx
 .It Ic Resend
 Like
 .Ic resend ,
@@ -6828,16 +6798,6 @@ Same as
 .It Ic respond
 Same as
 .Ic reply .
-.
-.Mx
-.It Ic respondall
-Same as
-.Ic replyall .
-.
-.Mx
-.It Ic respondsender
-Same as
-.Ic replysender .
 .
 .Mx
 .It Ic retain
@@ -9622,12 +9582,6 @@ included in the header of a message
 into the uppercase variants, which by default address the sender only
 .Pf ( Ic Reply , Respond , Followup )
 and vice versa.
-The commands
-.Ic replysender , respondsender , followupsender
-as well as
-.Ic replyall , respondall , followupall
-are not affected by the current setting of
-.Va flipr .
 .
 .Mx
 .It Va folder
