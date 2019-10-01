@@ -620,6 +620,7 @@ main(int argc, char *argv[]){
          /* User is specifying file to "edit" with Mail, as opposed to reading
           * system mailbox.  If no argument is given, we read his mbox file.
           * Check for remaining arguments later */
+         n_poption |= n_PO_f_FLAG;
          folder = "&";
          break;
       case 'H':
@@ -934,9 +935,9 @@ jgetopt_done:
    else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* n_PO_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
-   else if(folder != NULL && /*folder[0] == '&' &&*/ folder[1] == '\0'){
+   else if(n_poption & n_PO_f_FLAG){
       folder = cp;
-      if((cp = argv[++i]) != NULL){
+      if((cp = argv[++i]) != NIL){
          if(cp[0] != '-' || cp[1] != '-' || cp[2] != '\0'){
             emsg = N_("More than one file given with -f");
             goto jusage;
