@@ -2513,20 +2513,29 @@ Mark messages which need special attention.
 .\" .Ss "Specifying messages" {{{
 .Ss "Specifying messages"
 .
-\*(NQ Commands which take
+\*(NQ
+.Ic COMMANDS
+which take
 .Sx "Message list arguments" ,
 such as
-.Ic from
-aka\&
 .Ic search ,
-.Ic type
+.Ic type ,
+.Ic copy ,
 and
 .Ic delete ,
-can be given a list of message numbers as arguments to apply to a number
-of messages at once.
-Thus
+can perform actions on a number of messages at once.
+Specifying invalid messages, or using illegal syntax, will cause errors
+to be reported through the
+.Sx "INTERNAL VARIABLES"
+.Va \&! ,
+.Va ^ERR
+and companions, as well as the command exit status
+.Va \&? .
+.
+.Pp
+For example,
 .Ql delete 1 2
-deletes messages 1 and 2,
+deletes the messages 1 and 2,
 whereas
 .Ql delete 1-5
 will delete the messages 1 through 5.
@@ -2538,6 +2547,19 @@ will delete the messages that are located between (and including)
 messages 1 through 5 in the sorted/threaded order, as shown in the
 .Ic headers
 summary.
+.
+.Pp
+Errors can for example be
+.Va ^ERR Ns -BADMSG
+when requesting an invalid message,
+.Va ^ERR Ns -NOMSG
+if no applicable message can be found,
+.Va ^ERR Ns -CANCELED
+for missing informational data (mostly thread-related).
+.Va ^ERR Ns -INVAL
+for invalid syntax as well as
+.Va ^ERR Ns -IO
+for input/output errors can happen.
 The following special message names exist:
 .
 .
@@ -5722,8 +5744,6 @@ if no receiver has been specified,
 .Va ^ERR Ns -PERM
 if some addressees where rejected by
 .Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
 .Va ^ERR Ns -NOTSUP
 if multiple messages have been specified,
 .Va ^ERR Ns -IO
@@ -5732,6 +5752,8 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
+It can also fail with errors of
+.Sx "Specifying messages" .
 .
 .Mx
 .It Ic from
@@ -6266,14 +6288,14 @@ if no receiver has been specified,
 .Va ^ERR Ns -PERM
 if some addressees where rejected by
 .Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
+It can also fail with errors of
+.Sx "Specifying messages" .
 Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
@@ -6303,8 +6325,6 @@ if no receiver has been specified,
 .Va ^ERR Ns -PERM
 if some addressees where rejected by
 .Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
 .Va ^ERR Ns -NOTSUP
 if multiple messages have been specified,
 .Va ^ERR Ns -IO
@@ -6313,6 +6333,8 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
+It can also fail with errors of
+.Sx "Specifying messages" .
 Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 .
@@ -6739,14 +6761,14 @@ if no receiver has been specified,
 .Va ^ERR Ns -PERM
 if some addressees where rejected by
 .Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
+It can also fail with errors of
+.Sx "Specifying messages" .
 Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
@@ -6777,14 +6799,14 @@ if no receiver has been specified,
 .Va ^ERR Ns -PERM
 if the addressee was rejected by
 .Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
+It can also fail with errors of
+.Sx "Specifying messages" .
 Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.

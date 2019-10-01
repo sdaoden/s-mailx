@@ -707,7 +707,7 @@ jmsglist_err:
                   (n_poption & n_PO_D_V))
                fprintf(n_stdout, _("No applicable messages\n"));
             nerrn = su_ERR_NOMSG;
-            flags |= a_NO_ERRNO;
+           /* flags |= a_NO_ERRNO;*/
             break;
          }
       }
@@ -909,10 +909,9 @@ jleave:
 
    if(cdp == NULL)
       goto jret0;
-   if((cdp->cd_caflags & n_CMD_ARG_P) && ok_blook(autoprint))
-      if(visible(dot))
-         n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
-            sizeof("\\type") -1);
+   if((cdp->cd_caflags & n_CMD_ARG_P) && ok_blook(autoprint) && visible(dot))
+      n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
+         sizeof("\\type") -1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
          !(cdp->cd_caflags & n_CMD_ARG_T))
