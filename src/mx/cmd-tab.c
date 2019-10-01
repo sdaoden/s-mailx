@@ -269,7 +269,9 @@ a_ctab_c_list(void *vp){
       if(n_poption & n_PO_D_V){
          fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
          ++l;
-         fprintf(fp, "  : %s\n", V_(cdp->cd_doc));
+         fprintf(fp, "  : %s%s\n",
+            ((cdp->cd_caflags & n_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
+            V_(cdp->cd_doc));
          ++l;
          fprintf(fp, "  : %s\n", (cdp->cd_func != NIL ? a_ctab_cmdinfo(cdp)
             : _("command is not compiled in")));
@@ -348,7 +350,9 @@ jredo:
             continue;
 
 #ifdef mx_HAVE_DOCSTRINGS
-         fprintf(n_stdout, ": %s", V_(cdp->cd_doc));
+         fprintf(n_stdout, ": %s%s",
+            ((cdp->cd_caflags & n_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
+            V_(cdp->cd_doc));
          if(n_poption & n_PO_D_V)
             fprintf(n_stdout, "\n  : %s", a_ctab_cmdinfo(cdp));
 #endif
