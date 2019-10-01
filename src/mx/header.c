@@ -2483,9 +2483,10 @@ n_header_senderfield_of(struct message *mp){
       int f1st = 1;
 
       mx_fs_linepool_aquire(&linebuf, &linesize);
+      mx_fs_linepool_aquire(&namebuf, &namesize);
 
       /* And fallback only works for MBOX */
-      namebuf = n_alloc(namesize = 1);
+      namebuf = n_realloc(namebuf, namesize = LINESIZE);
       namebuf[0] = 0;
       if (mp->m_flag & MNOFROM)
          goto jout;
@@ -2544,8 +2545,8 @@ jout:
             *cp == '\0')
          cp = savestr(namebuf);
 
+      mx_fs_linepool_release(namebuf, namesize);
       mx_fs_linepool_release(linebuf, linesize);
-      n_free(namebuf);
    }
 
 jleave:
