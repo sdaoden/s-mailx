@@ -74,6 +74,7 @@ t_all() {
    jspawn X_errexit
    jspawn Y_errexit
    jspawn S_freeze
+   jspawn f_batch_order
    jspawn input_inject_semicolon_seq
    jspawn wysh
    jspawn commandalias # test now, save space later on!
@@ -1122,6 +1123,25 @@ t_S_freeze() {
    fi
 
    TERM=$oterm
+   t_epilog "${@}"
+}
+
+t_f_batch_order() {
+   t_prolog "${@}"
+
+   t__gen_msg subject f-batch-order > "${MBOX}"
+
+   # This would exit 64 (EX_USAGE) from ? to [fbddb3b3] (FIX: -f: add
+   # n_PO_f_FLAG to avoid that command line order matters)
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -R -f -# \
+      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
+   check 1 0 ./.tall '1690247457 86'
+
+   # And this ever worked (hopefully)
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -R -# -f \
+      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
+   check 2 0 ./.tall '1690247457 86'
+
    t_epilog "${@}"
 }
 
