@@ -13668,8 +13668,10 @@ therefore the usual follow lines mechanism applies!)
 .El
 .
 .Pp
-Unless \*(UA is about to enter interactive mode syntax errors that occur
-while loading these files are treated as errors and cause program exit.
+Errors while loading these files are subject to the settings of
+.Va errexit
+and
+.Va posix .
 More files with syntactically equal content can be
 .Ic source Ns ed .
 The following, saved in a file, would be an examplary content:
