@@ -95,6 +95,7 @@ t_all() {
    jspawn vpospar
    jspawn atxplode
    jspawn read
+   jspawn headerpick # so we have a notion that it works a bit
    jsync
 
    # Send/RFC absolute basics
@@ -4104,6 +4105,118 @@ t_read() {
    readctl remove .temptynl;echo $?/$^ERRNAME
 	__EOT
    check readall 0 "${MBOX}" '4113506527 405'
+
+   t_epilog "${@}"
+}
+
+t_headerpick() {
+   t_prolog "${@}"
+
+   t__x1_msg > ./.tmbox
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Rf -Y '# Do not care much on error UISTRINGS
+\echo --- 1
+\headerpick
+\echo --- $?/$^ERRNAME, 2
+\type
+\echo --- $?/$^ERRNAME, 3
+\if "$features" !% +uistrings,
+   \echoerr reproducible_build: Invalid field name cannot be ignored: ba:l
+\endif
+\headerpick type ignore \
+   from_ mail-followup-to in-reply-to DATE MESSAGE-ID STATUS ba:l
+\echo --- $?/$^ERRNAME, 4
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 5
+\type
+\echo --- $?/$^ERRNAME, 6
+\unheaderpick type ignore from_ DATE STATUS
+\echo --- $?/$^ERRNAME, 7
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 8
+\type
+\echo --- $?/$^ERRNAME, 9
+\if "$features" =% +uistrings,
+   \unheaderpick type ignore from_ ba:l
+   \wysh set x=$? y=$^ERRNAME
+\else
+   \echoerr reproducible_build: Field not ignored: from_
+   \echoerr reproducible_build: Field not ignored: ba:l
+   \set x=1 y=INVAL
+\endif
+\echo --- $x/$y, 10
+\unheaderpick type ignore *
+\echo --- $?/$^ERRNAME, 11
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+   \echo "#headerpick type ignore currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 12
+\type
+\echo --- $?/$^ERRNAME, 13 ---
+#  ' ./.tmbox >./.tall 2>&1
+   check 1 0 ./.tall '2481904228 2273'
+
+   #
+   if have_feat uistrings; then
+      </dev/null ${MAILX} ${ARGS} -Y '#
+\headerpick type retain \
+   bcc cc date from sender subject to \
+   message-id mail-followup-to reply-to user-agent
+\echo --- $?/$^ERRNAME, 1
+\headerpick forward retain \
+   cc date from message-id list-id sender subject to \
+   mail-followup-to reply-to
+\echo --- $?/$^ERRNAME, 2
+\headerpick save ignore ^Original-.*$ ^X-.*$ ^DKIM.*$
+\echo --- $?/$^ERRNAME, 3
+\headerpick top retain To Cc
+\echo --- $?/$^ERRNAME, 4 ---
+\headerpick
+\echo --- $?/$^ERRNAME, 5
+\headerpick type
+\echo --- $?/$^ERRNAME, 6
+\headerpick forward
+\echo --- $?/$^ERRNAME, 7
+\headerpick save
+\echo --- $?/$^ERRNAME, 8
+\headerpick top
+\echo --- $?/$^ERRNAME, 9 ---
+\unheaderpick type retain message-id mail-followup-to reply-to user-agent
+\echo --- $?/$^ERRNAME, 10
+\unheaderpick save ignore ^X-.*$ ^DKIM.*$
+\echo --- $?/$^ERRNAME, 11
+\unheaderpick forward retain *
+\echo --- $?/$^ERRNAME, 12 ---
+\headerpick
+\echo --- $?/$^ERRNAME, 13
+\headerpick type
+\echo --- $?/$^ERRNAME, 14
+\headerpick save
+\echo --- $?/$^ERRNAME, 15 --
+\unheaderpick type retain *
+\echo --- $?/$^ERRNAME, 16
+\unheaderpick forward retain *
+\echo --- $?/$^ERRNAME, 17
+\unheaderpick save ignore *
+\echo --- $?/$^ERRNAME, 18
+\unheaderpick top retain *
+\echo --- $?/$^ERRNAME, 19 --
+\headerpick
+\echo --- $?/$^ERRNAME, 20
+#  ' >./.tall 2>&1
+      check 2 0 ./.tall '3515512395 2378'
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
 
    t_epilog "${@}"
 }
