@@ -1086,7 +1086,7 @@ n_alert(char const *format, ...){
    n_verrx(TRU1, format, ap);
    va_end(ap);
 
-   n_err("\n");
+   n_errx(TRU1, "\n");
    NYD2_OU;
 }
 
