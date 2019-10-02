@@ -968,6 +968,24 @@ jrestart:
          mx_colour_stack_del(&gcp->gc_data);
    )
 
+   /* Cleanup crucial external stuff as necessary */
+   if(gcp->gc_data.gdc_ifcond != NIL &&
+         ((gcp->gc_outer == NIL && (gcm & a_GO_CLEANUP_UNWIND)) ||
+            !(gcm & a_GO_CLEANUP_LOOPTICK))){
+      n_cnd_if_stack_del(&gcp->gc_data);
+      if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
+            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL &&
+            !(n_psonce & n_PSO_EXIT_MASK)){
+         n_err(_("Unmatched `if' at end of %s%s\n"),
+            (gcp->gc_outer == NIL ? su_empty
+             : ((gcp->gc_flags & a_GO_MACRO
+              ? (gcp->gc_flags & a_GO_MACRO_CMD ? _(" command") : _(" macro"))
+              : _(" `source'd file")))),
+            gcp->gc_name);
+         gcm |= a_GO_CLEANUP_ERROR;
+      }
+   }
+
    /* Work the actual context (according to cleanup mode) */
    if(gcp->gc_outer == NULL){
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
@@ -991,6 +1009,9 @@ jrestart:
       ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
       ASSERT(gcp->gc_on_finalize == NULL);
       mx_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NIL); )
+
+      if(gcm & a_GO_CLEANUP_ERROR)
+         goto jerr;
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
@@ -1001,21 +1022,6 @@ jrestart:
       n_stdout = gcp->gc_splice_stdout;
       n_psonce = gcp->gc_splice_psonce;
       goto jstackpop;
-   }
-
-   /* Cleanup crucial external stuff */
-   if(gcp->gc_data.gdc_ifcond != NULL){
-      n_cnd_if_stack_del(&gcp->gc_data);
-      if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
-            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL &&
-            !(n_psonce & n_PSO_EXIT_MASK)){
-         n_err(_("Unmatched `if' at end of %s %s\n"),
-            ((gcp->gc_flags & a_GO_MACRO
-             ? (gcp->gc_flags & a_GO_MACRO_CMD ? _("command") : _("macro"))
-             : _("`source'd file"))),
-            gcp->gc_name);
-         gcm |= a_GO_CLEANUP_ERROR;
-      }
    }
 
    /* Teardown context */
