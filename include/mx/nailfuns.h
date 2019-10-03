@@ -841,6 +841,12 @@ FL char const * myorigin(struct header *hp);
 FL boole      is_head(char const *linebuf, uz linelen,
                   boole check_rfc4155);
 
+/* Return pointer to first non-header, non-space character, or NIL if invalid.
+ * If lead_ws is true leading whitespace is allowed and skipped.
+ * If cramp_or_nil is not NIL it will be set to the valid header name itself */
+FL char const *mx_header_is_valid(char const *name, boole lead_ws,
+      struct str *cramp_or_nil);
+
 /* Print hp "to user interface" fp for composing purposes xxx what a sigh */
 FL boole n_header_put4compose(FILE *fp, struct header *hp);
 

@@ -1351,6 +1351,48 @@ is_head(char const *linebuf, uz linelen, boole check_rfc4155)
    return rv;
 }
 
+FL char const *
+mx_header_is_valid(char const *name, boole lead_ws, struct str *cramp_or_nil){
+   char const *cp;
+   NYD_IN;
+
+   cp = name;
+
+   if(lead_ws){
+      while(su_cs_is_blank(*cp))
+         ++cp;
+      name = cp;
+   }
+
+   if(cramp_or_nil != NIL)
+      cramp_or_nil->s = UNCONST(char*,name);
+
+   while(fieldnamechar(*cp))
+      ++cp;
+   if(cp == name){
+      name = NIL;
+      goto jleave;
+   }
+
+   if(cramp_or_nil != NIL)
+      cramp_or_nil->l = P2UZ(cp - name);
+
+   while(su_cs_is_blank(*cp))
+      ++cp;
+   if(*cp != ':'){
+      name = NIL;
+      goto jleave;
+   }
+
+   while(su_cs_is_blank(*++cp))
+      ;
+   name = cp;
+
+jleave:
+   NYD_OU;
+   return name;
+}
+
 FL boole
 n_header_put4compose(FILE *fp, struct header *hp){
    boole rv;
@@ -1520,37 +1562,28 @@ jeseek:
       }
       /* A free-form header; a_gethfield() did some verification already.. */
       else{
+         struct str hfield;
          struct n_header_field *hfp;
-         u32 nl, bl;
-         char const *nstart;
+         uz bl;
 
-         for(nstart = cp = linebuf;; ++cp)
-            if(!fieldnamechar(*cp))
-               break;
-         nl = (u32)P2UZ(cp - nstart);
-
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         if(*cp++ != ':'){
+         if((cp = mx_header_is_valid(linebuf, FAL0, &hfield)) == NIL){
 jebadhead:
             n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
          }
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         bl = (u32)su_cs_len(cp) +1;
+         bl = su_cs_len(cp) +1;
 
          ++seenfields;
          *hftail =
          hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
-               hf_dat) + nl +1 + bl);
+               hf_dat) + hfield.l +1 + bl);
             hftail = &hfp->hf_next;
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl;
-         hfp->hf_bl = bl - 1;
-         su_mem_copy(hfp->hf_dat, nstart, nl);
-            hfp->hf_dat[nl++] = '\0';
-            su_mem_copy(hfp->hf_dat + nl, cp, bl);
+         hfp->hf_next = NIL;
+         hfp->hf_nl = S(u32,hfield.l);
+         hfp->hf_bl = S(u32,bl - 1);
+         su_mem_copy(hfp->hf_dat, hfield.s, hfield.l);
+            hfp->hf_dat[hfield.l++] = '\0';
+            su_mem_copy(&hfp->hf_dat[hfield.l], cp, bl);
       }
    }
 
@@ -3387,69 +3420,50 @@ n_header_is_known(char const *name, uz len){
 }
 
 FL boole
-n_header_add_custom(struct n_header_field **hflp, char const *dat,
-      boole heap){
+n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
+   struct str hname;
    uz i;
-   u32 nl, bl;
+   u32 bl;
    char const *cp;
    struct n_header_field *hfp;
    NYD_IN;
 
-   hfp = NULL;
+   hfp = NIL;
 
    /* For (-C) convenience, allow leading WS */
-   while(su_cs_is_blank(*dat))
-      ++dat;
-
-   /* Isolate the header field from the body */
-   for(cp = dat;; ++cp){
-      if(fieldnamechar(*cp))
-         continue;
-      if(*cp == '\0'){
-         if(cp == dat)
-            goto jename;
-      }else if(*cp != ':' && !su_cs_is_blank(*cp)){
-jename:
-         cp = N_("Invalid custom header (not \"field: body\"): %s\n");
-         goto jerr;
-      }
-      break;
+   if((cp = mx_header_is_valid(dat, TRU1, &hname)) == NIL){
+      cp = N_("Invalid custom header (not valid \"field: body\"): %s\n");
+      goto jerr;
    }
-   nl = (u32)P2UZ(cp - dat);
-   if(nl == 0)
-      goto jename;
 
    /* Verify the custom header does not use standard/managed field name */
-   if(n_header_is_known(dat, nl) != NULL){
+   if(n_header_is_known(hname.s, hname.l) != NIL){
       cp = N_("Custom headers cannot use standard header names: %s\n");
       goto jerr;
    }
 
    /* Skip on over to the body */
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   if(*cp++ != ':')
-      goto jename;
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   bl = (u32)su_cs_len(cp);
+   bl = S(u32,su_cs_len(cp));
+   while(bl > 0 && su_cs_is_space(cp[bl - 1]))
+      --bl;
    for(i = bl++; i-- != 0;)
       if(su_cs_is_cntrl(cp[i])){
          cp = N_("Invalid custom header: contains control characters: %s\n");
          goto jerr;
       }
 
-   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
+   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + hname.l +1 + bl +1;
    *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
    hfp->hf_next = NULL;
-   hfp->hf_nl = nl;
+   hfp->hf_nl = hname.l;
    hfp->hf_bl = bl - 1;
-   su_mem_copy(hfp->hf_dat, dat, nl);
-      hfp->hf_dat[nl++] = '\0';
-      su_mem_copy(hfp->hf_dat + nl, cp, bl);
+   su_mem_copy(hfp->hf_dat, hname.s, hname.l);
+      hfp->hf_dat[hname.l++] = '\0';
+      su_mem_copy(&hfp->hf_dat[hname.l], cp, bl);
+
 jleave:
    NYD_OU;
-   return (hfp != NULL);
+   return (hfp != NIL);
 
 jerr:
    n_err(V_(cp), n_shexp_quote_cp(dat, FAL0));

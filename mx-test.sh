@@ -5198,7 +5198,7 @@ t_C_opt_customhdr() {
       this-goes@nowhere >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3555856637 241'
+   check 1 0 "${MBOX}" '2535463301 238'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.
@@ -5221,7 +5221,7 @@ t_C_opt_customhdr() {
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '1826639044 1102'
+   check 2 0 "${MBOX}" '544085062 1086'
 
    t_epilog "${@}"
 }
