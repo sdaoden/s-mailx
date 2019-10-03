@@ -1,0 +1,74 @@
+--- 1
+--- 0/NONE, 2
+[-- Message  1 -- 14 lines, 464 bytes --]:
+From neverneverland  Sun Jul 23 13:46:25 2017
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator1 <mr1@originator>
+From: mister originator1 <mr1@originator>
+To: bugstop-commit@five.miles.out
+Cc: is1@a.list
+In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
+Date: Wed, 19 Jul 2017 09:22:57 -0400
+Message-Id: <20170719132257.766AF781267-1@originator>
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+Status: RO
+
+That's appalling, I.
+
+--- 0/NONE, 3
+reproducible_build: Invalid field name cannot be ignored: ba:l
+--- 1/INVAL, 4
+#headerpick type retain currently covers no fields
+headerpick type ignore DATE from_ in-reply-to mail-followup-to MESSAGE-ID \
+  STATUS
+--- 0/NONE, 5
+[-- Message  1 -- 14 lines, 464 bytes --]:
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator1 <mr1@originator>
+From: mister originator1 <mr1@originator>
+To: bugstop-commit@five.miles.out
+Cc: is1@a.list
+
+That's appalling, I.
+
+--- 0/NONE, 6
+--- 0/NONE, 7
+#headerpick type retain currently covers no fields
+headerpick type ignore in-reply-to mail-followup-to MESSAGE-ID
+--- 0/NONE, 8
+[-- Message  1 -- 14 lines, 464 bytes --]:
+From neverneverland  Sun Jul 23 13:46:25 2017
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator1 <mr1@originator>
+From: mister originator1 <mr1@originator>
+To: bugstop-commit@five.miles.out
+Cc: is1@a.list
+Date: Wed, 19 Jul 2017 09:22:57 -0400
+Status: RO
+
+That's appalling, I.
+
+--- 0/NONE, 9
+reproducible_build: Field not ignored: from_
+reproducible_build: Field not ignored: ba:l
+--- 1/INVAL, 10
+--- 0/NONE, 11
+#headerpick type retain currently covers no fields
+#headerpick type ignore currently covers no fields
+--- 0/NONE, 12
+[-- Message  1 -- 14 lines, 464 bytes --]:
+From neverneverland  Sun Jul 23 13:46:25 2017
+Subject: Bugstop: five miles out 1
+Reply-To: mister originator1 <mr1@originator>
+From: mister originator1 <mr1@originator>
+To: bugstop-commit@five.miles.out
+Cc: is1@a.list
+In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
+Date: Wed, 19 Jul 2017 09:22:57 -0400
+Message-Id: <20170719132257.766AF781267-1@originator>
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+Status: RO
+
+That's appalling, I.
+
+--- 0/NONE, 13 ---

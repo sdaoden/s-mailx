@@ -1,0 +1,61 @@
+--- 0/NONE, 1
+--- 0/NONE, 2
+--- 0/NONE, 3
+--- 0/NONE, 4 ---
+headerpick type retain bcc cc date from mail-followup-to message-id reply-to \
+  sender subject to user-agent
+#headerpick type ignore currently covers no fields
+#headerpick save retain currently covers no fields
+headerpick save ignore '^Original-.*$' '^X-.*$' '^DKIM.*$'
+headerpick forward retain cc date from list-id mail-followup-to message-id \
+  reply-to sender subject to
+#headerpick forward ignore currently covers no fields
+headerpick top retain Cc To
+#headerpick top ignore currently covers no fields
+--- 0/NONE, 5
+headerpick type retain bcc cc date from mail-followup-to message-id reply-to \
+  sender subject to user-agent
+#headerpick type ignore currently covers no fields
+--- 0/NONE, 6
+headerpick forward retain cc date from list-id mail-followup-to message-id \
+  reply-to sender subject to
+#headerpick forward ignore currently covers no fields
+--- 0/NONE, 7
+#headerpick save retain currently covers no fields
+headerpick save ignore '^Original-.*$' '^X-.*$' '^DKIM.*$'
+--- 0/NONE, 8
+headerpick top retain Cc To
+#headerpick top ignore currently covers no fields
+--- 0/NONE, 9 ---
+--- 0/NONE, 10
+--- 0/NONE, 11
+--- 0/NONE, 12 ---
+headerpick type retain bcc cc date from sender subject to
+#headerpick type ignore currently covers no fields
+#headerpick save retain currently covers no fields
+headerpick save ignore '^Original-.*$'
+#headerpick forward retain currently covers no fields
+#headerpick forward ignore currently covers no fields
+headerpick top retain Cc To
+#headerpick top ignore currently covers no fields
+--- 0/NONE, 13
+headerpick type retain bcc cc date from sender subject to
+#headerpick type ignore currently covers no fields
+--- 0/NONE, 14
+#headerpick save retain currently covers no fields
+headerpick save ignore '^Original-.*$'
+--- 0/NONE, 15 --
+--- 0/NONE, 16
+reproducible_build: No fields currently being retained
+--- 0/NONE, 17
+--- 0/NONE, 18
+--- 0/NONE, 19 --
+#headerpick type retain currently covers no fields
+#headerpick type ignore currently covers no fields
+#headerpick save retain currently covers no fields
+#headerpick save ignore currently covers no fields
+#headerpick forward retain currently covers no fields
+#headerpick forward ignore currently covers no fields
+#headerpick top retain currently covers no fields
+#headerpick top ignore currently covers no fields
+--- 0/NONE, 20
