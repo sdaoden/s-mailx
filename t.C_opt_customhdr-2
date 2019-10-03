@@ -3,8 +3,8 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: this-goes@nowhere
 C-One: Custom One Body
 C-Two: CustomTwoBody
-C-Three: CustomThreeBody  
-C-Four: CustomFourBody  
+C-Three: CustomThreeBody
+C-Four: CustomFourBody
 C-Five: CustomFiveBody
 ch1: b1
 ch2: b2
@@ -19,8 +19,8 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: this-goes2@nowhere
 C-One: Custom One Body
 C-Two: CustomTwoBody
-C-Three: CustomThreeBody  
-C-Four: CustomFourBody  
+C-Three: CustomThreeBody
+C-Four: CustomFourBody
 C-Five: CustomFiveBody
 
 body2
@@ -30,8 +30,8 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: this-goes3@nowhere
 C-One: Custom One Body
 C-Two: CustomTwoBody
-C-Three: CustomThreeBody  
-C-Four: CustomFourBody  
+C-Three: CustomThreeBody
+C-Four: CustomFourBody
 C-Five: CustomFiveBody
 custom1: custom1  body
 
@@ -42,8 +42,8 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: this-goes4@nowhere
 C-One: Custom One Body
 C-Two: CustomTwoBody
-C-Three: CustomThreeBody  
-C-Four: CustomFourBody  
+C-Three: CustomThreeBody
+C-Four: CustomFourBody
 C-Five: CustomFiveBody
 custom1: custom1,  body
 custom2: custom2  body
