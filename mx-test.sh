@@ -4153,6 +4153,18 @@ t_can_send_rfc() {
    check 6 0 "${MBOX}" '3006460737 138'
    check 6-err - .terr '4294967295 0'
 
+   # Command
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -Y '#
+mail hey@exam.ple
+~s Subject 1
+Body1
+~.
+echo $?/$^ERRNAME
+xit
+# '   > ./.tall 2>&1
+   check 7 0 ./.tall '951018449 138'
+
    t_epilog "${@}"
 }
 # }}}
