@@ -9,6 +9,7 @@ if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
       [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
    SHELL=/usr/xpg4/bin/sh
    export SHELL
+   echo >&2 'Redirecting through $SHELL=/usr/xpg4/bin/sh'
    exec /usr/xpg4/bin/sh "${0}" "${@}"
 fi
 [ -n "${SHELL}" ] || SHELL=/bin/sh

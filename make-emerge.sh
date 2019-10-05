@@ -7,15 +7,14 @@
 ## Upon interest see mk/make-config.sh, the source of all this!
 
 # For heaven's sake auto-redirect on SunOS/Solaris
-if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
-      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+if [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ] &&
+      [ -z "${__MAKE_EMERGE_UP}" ]; then
    SHELL=/usr/xpg4/bin/sh
-   export SHELL
+   __MAKE_EMERGE_UP=y
+   export SHELL __MAKE_EMERGE_UP
    exec /usr/xpg4/bin/sh "${0}" "${@}"
 fi
-[ -n "${SHELL}" ] || SHELL=/bin/sh
 export SHELL
-
 
 config_exit() {
    exit ${1}
