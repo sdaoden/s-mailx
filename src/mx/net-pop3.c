@@ -226,7 +226,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       break;
 #endif
    default:
-      rv = FAL0;
+      rv = STOP;
       break;
    }
 

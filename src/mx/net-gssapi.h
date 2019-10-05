@@ -213,7 +213,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # elif defined mx_SOURCE_NET_POP3
       a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
       a_POP3_ANSWER(poprv, goto jleave);
-      in.l = su_cs_len(in.s = a_pop3_realdat);
+      in.l = su_cs_len(in.s = UNCONST(char*,a_pop3_realdat));
 # elif defined mx_SOURCE_NET_IMAP
       IMAP_OUT(out.s, 0, goto jleave);
       imap_answer(mp, 1);
@@ -332,12 +332,13 @@ su_CONCAT(su_FILE,_gss__error1)(char const *s, OM_uint32 code, int typ){
    NYD2_OU;
 }
 
+   /* Cleanup, and re-enable for amalgamation */
 # ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+#  undef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 #  undef GSS_C_NT_HOSTBASED_SERVICE
 # endif
 
-#else
-# error a_NET_GSSAPI_H included thrice already
+# undef a_NET_GSSAPI_H
 #endif
 #endif /* mx_HAVE_GSSAPI */
 /* s-it-mode */
