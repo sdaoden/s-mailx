@@ -406,8 +406,8 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #else
       goto jeproto;
 #endif
-#ifdef mx_HAVE_IMAP
    case CPROTO_IMAP:
+#ifdef mx_HAVE_IMAP
       a_IFS("imaps", 993)
       a_IFs("imap", 143)
       a_PROTOX("imap", 143, urlp->url_flags |= mx_URL_TLS_OPTIONAL);
