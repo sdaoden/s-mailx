@@ -897,7 +897,14 @@ option_join_rc() {
             sub(/^[^=]*=/, "", LINE)
             sub(/^"*/, "", LINE)
             sub(/"*$/, "", LINE)
-            gsub(/"/, "\\\\\"", LINE)
+            # Sun xpg4/bin/awk expands those twice:
+            #  Notice that backslash escapes are interpreted twice, once in
+            #  lexical processing of the string and once in processing the
+            #  regular expression.
+               i = "\""
+               gsub(/"/, "\\\\\"", i)
+               i = (i == "\"")
+            gsub(/"/, (i ? "\\\\\"" : "\134\134\""), LINE)
             print LINE
          }'`
       fi
