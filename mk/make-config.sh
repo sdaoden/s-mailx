@@ -904,8 +904,8 @@ option_join_rc() {
             #  regular expression.
                i = "\""
                gsub(/"/, "\\\\\"", i)
-               i = (i == "\"")
-            gsub(/"/, (i ? "\\\\\"" : "\134\134\""), LINE)
+               i = (i == "\134\"")
+            gsub(/"/, (i ? "\\\\\"" : "\134\""), LINE)
             print LINE
          }'`
       fi
