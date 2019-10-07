@@ -5,15 +5,23 @@ LC_ALL=C
 export LC_ALL
 
 # For heaven's sake auto-redirect on SunOS/Solaris
-if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
-      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
-   SHELL=/usr/xpg4/bin/sh
-   export SHELL
-   echo >&2 'Redirecting through $SHELL=/usr/xpg4/bin/sh'
-   exec /usr/xpg4/bin/sh "${0}" "${@}"
+if [ -z "${__MAKE_CONFIG_UP}" ] && [ -d /usr/xpg4 ]; then
+   __MAKE_CONFIG_UP=y
+   PATH=/usr/xpg4/bin:${PATH}
+   export __MAKE_CONFIG_UP PATH
+
+   if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ]; then
+      SHELL=/usr/xpg4/bin/sh
+      export SHELL
+      echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
+      exec /usr/xpg4/bin/sh "${0}" "${@}"
+   fi
 fi
-[ -n "${SHELL}" ] || SHELL=/bin/sh
-export SHELL
+
+if [ -z "${SHELL}" ]; then
+   SHELL=/bin/sh
+   export SHELL
+fi
 
 # The feature set, to be kept in sync with make.rc
 # If no documentation given, the option is used as such; if doc is a hyphen,
@@ -277,6 +285,8 @@ os_early_setup() {
          msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
          config_exit 1
       fi
+      # xpg4/bin was already added at top, but we need it first and it will be
+      # cleaned up via path_check along the way
       PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
       [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
       export PATH
