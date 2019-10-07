@@ -8448,7 +8448,7 @@ only the first displayable part is included.
 .
 .Mx
 .It Ic ~H
-Edit the message header fields
+In interactive mode, edit the message header fields
 .Ql From: ,
 .Ql Reply-To:
 and
@@ -8459,16 +8459,20 @@ The default values for these fields originate from the
 and
 .Va sender
 variables.
+In non-interactive mode this sets
+.Va ^ERR Ns -NOTTY .
 .
 .Mx
 .It Ic ~h
-Edit the message header fields
+In interactive mode, edit the message header fields
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc:
 and
 .Ql Subject:
 by typing each one in turn and allowing the user to edit the field.
+In non-interactive mode this sets
+.Va ^ERR Ns -NOTTY .
 .
 .Mx
 .It Ic ~I Ar variable

@@ -808,14 +808,14 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    NYD_IN;
 
    if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
-      rv = su_ERR_NOENT; /* XXX not really, should be handled there! */
+      rv = n_pstate_err_no; /* XXX not really, should be handled there! */
       goto jleave;
    }
    if (rv == 0) {
       *n_msgvec = first(0, MMNORM);
       if (*n_msgvec == 0) {
          n_err(_("No appropriate messages\n"));
-         rv = su_ERR_NOENT;
+         rv = su_ERR_BADMSG;
          goto jleave;
       }
       rv = 1;
@@ -1700,6 +1700,11 @@ jev_go:
          /* Grab extra headers */
          if(cnt != 0)
             goto jearg;
+         if(!(n_psonce & n_PSO_INTERACTIVE)){
+            n_pstate_err_no = su_ERR_NOTTY;
+            n_pstate_ex_no = 1;
+            break;
+         }
          do
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
@@ -1710,6 +1715,11 @@ jev_go:
          /* Grab a bunch of headers */
          if(cnt != 0)
             goto jearg;
+         if(!(n_psonce & n_PSO_INTERACTIVE)){
+            n_pstate_err_no = su_ERR_NOTTY;
+            n_pstate_ex_no = 1;
+            break;
+         }
          do
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),

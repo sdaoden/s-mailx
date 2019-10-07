@@ -6146,34 +6146,34 @@ _EOT
 
    printf '#
    reply
-!h
-b@b.org
-a@b.org  b@b.org c@c.org
-
-
+!^header remove to
+!^header remove cc
+!^header remove subject
+!^header insert to b@b.org
+!^header insert cc a@b.org  b@b.org c@c.org
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
          -Rf ./.tin > ./.tall 2>&1
    check 3 0 "${MBOX}" '3184203976 265'
-   check 4 - .tall '4294967295 0'
+   check 4 - .tall '3604001424 44'
 
    # same, per command
    printf '#
    set from=a@b.org,b@b.org,c@c.org sender=a@b.org
    reply
-!h
-b@b.org
-a@b.org  b@b.org c@c.org
-
-
+!^header remove to
+!^header remove cc
+!^header remove subject
+!^header insert to b@b.org
+!^header insert cc a@b.org  b@b.org c@c.org
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -Rf ./.tin > ./.tall 2>&1
    check 5 0 "${MBOX}" '98184290 530'
-   check 6 - .tall '4294967295 0'
+   check 6 - .tall '3604001424 44'
 
    # And more, with/out -r
    # TODO -r should be the Sender:, which should automatically propagate to
@@ -6290,77 +6290,123 @@ t_quote_a_cmd_escapes() {
       headerpick type retain Subject
       reply 2
 !!1 Not escaped.  And shell test last, right before !..
+!:echo 1
 !:   echo 2 only echoed via colon
+!:echo 2:$?/$^ERRNAME
 !_  echo 3 only echoed via underscore
+!:echo 3:$?/$^ERRNAME
 !< ./.ttxt
+!:echo 4:$?/$^ERRNAME
 !<! echo 5 shell echo included
+!:echo 5:$?/$^ERRNAME
 !| echo 6 pipecmd-pre; cat; echo 6 pipecmd-post
+!:echo 6:$?/$^ERRNAME
 7 and 8 are ~A and ~a:
 !A
+!:echo 7:$?/$^ERRNAME
 !a
+!:echo 8:$?/$^ERRNAME
 !b 9 added ~b cc <ex1@am.ple>
+!:echo 9:$?/$^ERRNAME
 !c 10 added ~c c <ex2@am.ple>
+!:echo 10:$?/$^ERRNAME
 11 next ~d / $DEAD
 !d
+!:echo 11:$?/$^ERRNAME
 12: ~F
 !F
+!:echo 12:$?/$^ERRNAME
 13: ~F 1 3
 !F 1 3
+!:echo 13:$?/$^ERRNAME
+!F 1000
+!:echo 13-1:$?/$^ERRNAME
 14: ~f (headerpick: subject)
 !f
+!:echo 14:$?/$^ERRNAME
 15: ~f 1
 !f 1
+!:echo 15:$?/$^ERRNAME
+15.5: nono: ~H, ~h
+!H
+!:echo 15.5-1:$?/$^ERRNAME
+!h
+!:echo 15.5-2:$?/$^ERRNAME
 16, 17: ~I Sign, ~i Sign
 !I Sign
+!:echo 16:$?/$^ERRNAME
 !i Sign
+!:echo 17:$?/$^ERRNAME
 18: ~M
 !M
+!:echo 18:$?/$^ERRNAME
 19: ~M 1
 !M 1
+!:echo 19:$?/$^ERRNAME
 20: ~m
 !m
+!:echo 20:$?/$^ERRNAME
 21: ~m 3
 !m 3
+!:echo 21:$?/$^ERRNAME
 28-32: ~Q; 28: ~Q
 !Q
+!:echo 28:$?/$^ERRNAME
 29: ~Q 1 3
 !Q 1 3
+!:echo 29:$?/$^ERRNAME
 set quote
 !:set quote
 30: ~Q
 !Q
+!:echo 30:$?/$^ERRNAME
 31: ~Q 1 3
 !Q 1 3
+!:echo 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
 !:wysh set quote-inject-head=%%a quote-inject-tail=--%%r
 32: ~Q
 !Q
+!:echo 32:$?/$^ERRNAME
 unset quote stuff
 !:unset quote quote-inject-head quote-inject-tail
 22: ~R ./.ttxt
 !R ./.ttxt
+!:echo 22:$?/$^ERRNAME
 23: ~r ./.ttxt
 !r ./.ttxt
+!:echo 23:$?/$^ERRNAME
 24: ~s this new subject
 !s 24 did new ~s ubject
+!:echo 24:$?/$^ERRNAME
 !t 25 added ~t o <ex3@am.ple>
+!:echo 25:$?/$^ERRNAME
 26: ~U
 !U
+!:echo 26:$?/$^ERRNAME
 27: ~U 1
 !U 1
+!:echo 27:$?/$^ERRNAME
 and i ~w rite this out to ./.tmsg
 !w ./.tmsg
+!:echo i ~w:$?/$^ERRNAME
 !:wysh set x=$escape;set escape=~
 ~!echo shell command output
+~:echo shell:$?/$^ERRNAME
 ~:wysh set escape=$x
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' |' \
-         ./.tmbox >./.tall 2>&1
+         ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '209404720 4092'
-   check 3 - ./.tmsg '2771314896 3186'
+   check 2 - "${MBOX}" '2360425973 4484'
+   if have_feat uistrings; then
+      check 2-err - ./.terr '3575876476 49'
+   else
+      t_echoskip '2-err:[!UISTRINGS]'
+   fi
+   check 3 - ./.tmsg '2478660132 3205'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -6385,7 +6431,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '3995224952 4293'
+   check 4 0 "${MBOX}" '1372705643 4685'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
