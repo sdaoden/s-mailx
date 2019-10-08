@@ -1557,9 +1557,11 @@ unless
 is set), or
 .Ic Reply Ql R
 exclusively to the sender(s).
-The command
+The commands
 .Ic Lreply
-knows how to apply a special addressee massage, see
+and
+.Ic Lfollowup
+know how to apply a special addressee massage, see
 .Sx "Mailing lists" .
 Dependent on the presence and value of
 .Va quote
@@ -1705,9 +1707,10 @@ and will gain special treatment when sending mails: the variable
 will ensure that a
 .Ql Mail-\:Followup-\:To:
 header is honoured when a message is being replied to
-.Pf ( Ic reply
-and
-.Ic Lreply ) ,
+.Pf ( Ic reply ,
+.Ic followup ,
+.Ic Lreply ,
+.Ic Lfollowup ) ,
 and
 .Va followup-to
 controls creation of this header when creating
@@ -1716,8 +1719,12 @@ s, if the necessary user setup
 .Pf ( from , sender ) ;
 is available; then, it may also be created automatically, e.g., when
 list-replying via
-.Ic Lreply ,
+.Ic Lreply
+or
+.Ic Lfollowup ,
 when
+.Ic followup
+or
 .Ic reply
 is used and the messages
 .Ql Mail-Followup-To:
@@ -6263,7 +6270,8 @@ define temporary_settings {
 .
 .
 .Mx
-.It Ic Lreply
+.Mx
+.It Ic Lfollowup , Lreply
 Reply to messages that come in via known
 .Pf ( Ic mlist )
 or subscribed
@@ -6271,10 +6279,12 @@ or subscribed
 mailing lists, or pretend to do so (see
 .Sx "Mailing lists" ) :
 on top of the usual
-.Ic reply
-functionality this will actively resort and even remove message
-recipients in order to generate a message that is supposed to be sent to
-a mailing list.
+.Ic followup
+and
+.Ic reply ,
+respectively, functionality this will actively resort and even remove
+message recipients in order to generate a message that is supposed to be
+sent to a mailing list.
 For example it will also implicitly generate a
 .Ql Mail-Followup-To:
 header if that seems useful, regardless of the setting of the variable

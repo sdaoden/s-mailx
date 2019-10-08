@@ -943,6 +943,16 @@ c_Followup(void *vp){
 }
 
 FL int
+c_Lfollowup(void *vp){
+   int rv;
+   NYD_IN;
+
+   rv = a_crese_list_reply(vp, HF_LIST_REPLY | HF_RECIPIENT_RECORD);
+   NYD_OU;
+   return rv;
+}
+
+FL int
 c_forward(void *vp){
    int rv;
    NYD_IN;

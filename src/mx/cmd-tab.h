@@ -580,6 +580,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mailing-list reply to the given <msglist>")) },
+   { "Lfollowup", &c_Lfollowup, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+     DS(N_("Mailing-list followup to the given <msglist>")) },
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1, NULL
      DS(N_("Move the dot up <-> or down <+> by one")) },
 

@@ -576,8 +576,9 @@ FL int c_followupall(void *vp); /* v15-compat */
 FL int c_followupsender(void *vp); /* v15-compat */
 FL int c_Followup(void *vp);
 
-/* ..and a mailing-list reply */
+/* ..and a mailing-list reply and followup */
 FL int c_Lreply(void *vp);
+FL int c_Lfollowup(void *vp);
 
 /* 'forward' / `Forward' */
 FL int c_forward(void *vp);
