@@ -144,7 +144,7 @@ static struct mx_name *a_sendout_file_a_pipe(struct mx_name *names, FILE *fo,
                      boole *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static boole        mightrecord(FILE *fp, struct mx_name *to, boole resend);
+static boole a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend);
 
 static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 
@@ -1150,17 +1150,15 @@ jerror:
 }
 
 static boole
-mightrecord(FILE *fp, struct mx_name *to, boole resend){
-   char *cp;
+a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
    char const *ccp;
+   char *cp;
    boole rv;
    NYD2_IN;
 
    rv = TRU1;
 
-   if(n_poption & n_PO_D)
-      ccp = NULL;
-   else if(to != NULL){
+   if(to != NIL){
       ccp = cp = savestr(to->n_name);
       while(*cp != '\0' && *cp != '@')
          ++cp;
@@ -1168,61 +1166,67 @@ mightrecord(FILE *fp, struct mx_name *to, boole resend){
    }else
       ccp = ok_vlook(record);
 
-   if(ccp != NULL){
-      if((cp = fexpand(ccp, FEXP_NSHELL)) == NULL)
-         goto jbail;
+   if(ccp == NIL)
+      goto jleave;
 
-      switch(*(ccp = cp)){
-      case '.':
-         if(cp[1] != '/'){ /* DIRSEP */
-      default:
-            if(ok_blook(outfolder)){
-               struct str s;
-               char const *nccp, *folder;
+   if((cp = fexpand(ccp, FEXP_NSHELL)) == NIL)
+      goto jbail;
 
-               switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
-               case PROTO_FILE:
-                  ccp = "file://";
-                  if(0){
-                  /* FALLTHRU */
-               case PROTO_MAILDIR:
+   switch(*(ccp = cp)){
+   case '.':
+      if(cp[1] != '/'){ /* DIRSEP */
+   default:
+         if(ok_blook(outfolder)){
+            struct str s;
+            char const *nccp, *folder;
+
+            switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
+            case PROTO_FILE:
+               ccp = "file://";
+               if(0){
+               /* FALLTHRU */
+            case PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
-                     ccp = "maildir://";
+                  ccp = "maildir://";
 #else
-                     n_err(_("*record*: *outfolder*: no Maildir directory "
-                        "support compiled in\n"));
-                     goto jbail;
+                  n_err(_("*record*: *outfolder*: no Maildir directory "
+                     "support compiled in\n"));
+                  goto jbail;
 #endif
-                  }
-                  folder = n_folder_query();
-#ifdef mx_HAVE_IMAP
-                  if(which_protocol(folder, FAL0, FAL0, NULL) == PROTO_IMAP){
-                     n_err(_("*record*: *outfolder* set, *folder* is IMAP "
-                        "based: only one protocol per file is possible\n"));
-                     goto jbail;
-                  }
-#endif
-                  ccp = str_concat_csvl(&s, ccp, folder, nccp, NULL)->s;
-                  /* FALLTHRU */
-               default:
-                  break;
                }
+               folder = n_folder_query();
+#ifdef mx_HAVE_IMAP
+               if(which_protocol(folder, FAL0, FAL0, NIL) == PROTO_IMAP){
+                  n_err(_("*record*: *outfolder* set, *folder* is IMAP "
+                     "based: only one protocol per file is possible\n"));
+                  goto jbail;
+               }
+#endif
+               ccp = str_concat_csvl(&s, ccp, folder, nccp, NIL)->s;
+               /* FALLTHRU */
+            default:
+               break;
             }
          }
-         /* FALLTHRU */
-      case '/':
-         break;
       }
-
-      if(!a_sendout__savemail(ccp, fp, resend)){
-jbail:
-         n_err(_("Failed to save message in %s - message not sent\n"),
-            n_shexp_quote_cp(ccp, FAL0));
-         n_exit_status |= n_EXIT_ERR;
-         savedeadletter(fp, 1);
-         rv = FAL0;
-      }
+      /* FALLTHRU */
+   case '/':
+      break;
    }
+
+   if(n_poption & n_PO_D_VV)
+      n_err(_(">>> Writing message via %s\n"), n_shexp_quote_cp(ccp, FAL0));
+
+   if(!(n_poption & n_PO_D) && !a_sendout__savemail(ccp, fp, resend)){
+jbail:
+      n_err(_("Failed to save message in %s - message not sent\n"),
+         n_shexp_quote_cp(ccp, FAL0));
+      n_exit_status |= n_EXIT_ERR;
+      savedeadletter(fp, 1);
+      rv = FAL0;
+   }
+
+jleave:
    NYD2_OU;
    return rv;
 }
@@ -2249,9 +2253,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
       to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       cnt = count(to);
 
-      if (((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
-            !mightrecord(mtf, (msf & n_MAILSEND_RECORD_RECIPIENT ? to : NULL),
-               FAL0))
+      if(((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
+            !a_sendout_mightrecord(mtf,
+               (msf & n_MAILSEND_RECORD_RECIPIENT ? to : NIL), FAL0))
          goto jleave;
       if (cnt > 0) {
          sb.sb_hp = hp;
@@ -2846,7 +2850,7 @@ jerr_o:
       c = (count(to) > 0);
 
       if(b || c){
-         if(!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)){
+         if(!ok_blook(record_resent) || a_sendout_mightrecord(nfi, NIL, TRU1)){
             sb.sb_to = to;
             /*sb.sb_input = nfi;*/
             b = FAL0;
