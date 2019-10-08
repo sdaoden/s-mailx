@@ -6,6 +6,127 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.17 ("To bind, or not to bind.."), 2020-02-02
+--------------------------------------------------
+
+A shadowed key bindings report on bash-bugs@ made me aware that
+our `bind' code has never seen a real review, and not only were we
+incapable too, but the code was a piece of shit, when i looked at
+it.  So please find here a bugfix release to smoothly end v14.9.
+
+Credits, in order of commit appearance: Jens Schleusener,
+Johannes Schöpfer, Russell Bell, and Koichi Murase.
+
+It is courtesy to give a special credit to Coverity.com.
+(<https://scan.coverity.com/projects/s-nail>, project 444.)
+
+We welcome Koichi Murase in THANKS.
+
+And now for something completely different.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- "make test" now works when run by root or on read-only
+  file-systems.  (Johannes Schöpfer)
+
+- Our `bind'#? now supports overall key-sequence timeouts,
+  as opposed to inter-byte timeouts.  For this i have obsoleted
+  *bind-timeout* in favour of *bind-inter-byte-timeout*#?
+  and *bind-inter-key-timeout*#? (not set by default).
+
+  The bind tree code had two bugs, for one the "shortcut"
+  key-bindings would all have been created in the "base" context,
+  not where they really belong ("default" and "compose").
+  And due to false list relinking shadowed key bindings did not
+  work.  (Koichi Murase)
+
+  When used with 3x*verbose*#? (aka -v#?) the bind tree
+  is now dumped when it has been build (once used first, and after
+  modifications.  Putting all this together, a resource file
+
+    cat >/tmp/t.sh <<'__EOT'
+    MAILX=s-nail
+    cat >/tmp/t.rc <<'_EOT'
+    set line-editor-no-defaults
+    bind base $'\n' mle-commit
+    bind base $'\c?' mle-del-bwd
+    bind base $'\cT' echo one
+    bind base $'\cT',$'\cT' echo two
+    bind base abc echo 0
+    bind base ab,c echo 1
+    bind base abc,d echo 2
+    bind base ac,d echo 3
+    bind base a,b,c echo 4
+    bind base a,b,c,d echo 5
+    bind base a,b,cc,d echo 6
+    set quiet noheader
+    set bind-inter-key-timeout=2500
+    set bind-inter-byte-timeout=250
+    bind base a,b,c,d # now works, too!
+    _EOT
+    MAILRC=/tmp/t.rc $MAILX -R:u -Y 'set verbose=3'
+    rm -f /tmp/t.sh /tmp/t.rc
+    __EOT
+    sh /tmp/t.sh
+
+  will now do the expected.
+
+- `Reply'#?: no longer honours *recipients-in-cc*#?
+
+ChangeLog
+^^^^^^^^^
+
+- Manual: after review i think the following sections are of
+  acceptable quality: "On terminal control and line editor"#?,
+  "Coloured display"#?.
+
+- *verbose*#? is no longer a boolean but can be assigned
+  a numeric value.  But "set verbose verbose verbose"
+  also still works.
+
+- New variable *reply-to-swap-in*#? tries to work around
+  the DKIM/DMARC "HUMAN via LIST <LIST@ADDRESS>" ugliness
+  when `reply'#?ing (or `Reply'#?ing) to such a message.
+  It tries to move the HUMAN into responsibility.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (65):
+236c0f64 Many: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
+bcc2c626 mx-test.sh: oops, use ${chmod} not chmod (Johannes Schöpfer)
+c33e3725 mx-test.sh: fix invocations by root/on fs without rdonly (Johannes
+        Schöpfer)
+812e96a6 Dramatically improve obsoleted warnings of variables (Russell Bell)
+5118dd9d mx_header_list_post_of(): fix RFC 2369 compliance (a bit)
+7be1fa12 c_history(): fix: NUMBER: relink selected as new head as documented!
+187346a5 a_tty_hist_add(): fix: do not propagate existing non-gabby entry to
+        gabby!
+e354b759 nail.rc: fix: ouch! Used old syntax!!!
+350e4be5 a_tty_{bind_tree_build,_bind_tree_add}(): FIX: add shortcut to
+        correct context!
+3c52d169 a_tty__bind_tree_add_wc(): FIX: shadow bindings (Koichi Murase)..
+4a17872e THANKS: Koichi Murase
+8b1189d4 a_tty_bind_parse(): trim non-editable bindings once again, reject
+        empty ones..
+e3d14f38 Drop `varedit'
+2d2afc55 HTML filter: ignore <xml></xml> that Microsoft word generates..
+8cef8b82 (BWDIC!) MLE: split *bind-timeout* into
+        *bind-inter-{byte,key}-timeout*
+48d26434 `bind': with -vvv or -d, dump the built lookup tree
+549445b1 Review `bind' tree resolving..
+202a1d79 Compile with !KEY_BINDINGS && !HISTORY; fix tcc(1) warning
+2e94731f TTY: review, mostly style stuff, though
+31916973 nail.1: review "On terminal control and line editor"
+223d5ea0 `bind': show binding expansion if no arguments are given..
+dc41cf6f `colour': show all mappings when used without arguments
+814d19c5 nail.1: review "Coloured display"
+d12838f5 Turn *verbose* into a numeric variable
+d103c6ea (BWDIC!) `Reply': _never_ honour *recipients-in-cc* for this one!
+ad828272 Add *reply-to-swap-in* to aid DKIM/DMARC sauce a bit
+437828c8 CID 1415138: ninitialized variable
+
 v14.9.16 ("Message of Winter, your hopes shall be crushed"), 2019-12-29
 -----------------------------------------------------------------------
 
@@ -177,105 +298,7 @@ ChangeLog
 - *on-main-loop-tick*#491 now also happens for commands passed
   via -Y#87.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Yasuhiro KIMURA (1):
-a507b469 mk/make-{config,install}.sh: FIX strip(1)ing (Yasuhiro KIMURA)..
-
-Steffen Nurpmeso (263):
-0e7d3aff Nonsense! *expandaddr*: rename namehostex to nametoaddr!
-2dce22b7 Fix build with OPT_NET=no (Brian Evans)
-267e3734 THANKS: Brian Evans
-0f43c961 n_mail1(): FIX: always fail with $DEAD letter after composing is
-        finished
-6bf97bd6 mx_url_parse(): fix proto check with !mx_HAVE_TLS (Brian Evans)..
-b5651953 mx-test.sh: fix the "test all combis" thing, not ran for long (Brian
-        Evans)
-a72c2cc6 mx-test.sh: fix invocations with fully qualified s-nail (Paride
-        Legovini)
-98c32e37 THANKS: Yasuhiro KIMURA
-0b859e62 THANKS: update Cág's email address
-98f94f8e Fix *recipients-in-cc*: do not mix propagations..
-669b6f50 FIX: load *mailx-extra-rc* on request even if other RC are disabled
-94e1612d a_main_usage(): make grep(1)able (John P. Linderman)
-d15a9c85 THANKS: John P. Linderman
-0076f8f6 mk/make-rules.sh: close() C source files (Martin Neitzel, (Alexander
-        Harm))
-ec2b110f nail.rc: keep Sender: by default (Ken Hornstein)
-1c6e9d44 a_ignore_lookup(): FIX: perform exact testing..
-20b22298 mx-test.sh:t_iconv_mainbody(): fix 5-4 checksum (Leo)
-0b5cab91 THANKS: Leo
-fbddb3b3 FIX: -f: add n_PO_f_FLAG to avoid that command line order matters
-e12e612b FIX `Forward': got assigned false CMD_ARG, thus crashed!!
-ba2053de `bind': fix weird leftover, make '? bind CTX' show CTX again, not all
-11a8a622 Fix [e1ec3def], could crash due to default command -> history
-3284daba a_xtls_protocols[]: fail if proto is unavailable (Martynas
-        Bendorius)..
-20a7f6bd mx/xtls.c: need SSL macros even if !HAVE_XTLS_CONF_CTX (Martynas
-        Bendorius)..
-0e6a485f THANKS: Martynas Bendorius
-302fff70 `Reply': fix: avoid attaching two *quote-as-attachment*s (grrrr)
-3f27df64 (BWDIC!) Change misnomer --header-search to --search
-2c3d20ae a_pop3_get(): log entire communication with 3x*verbose*
-a4fa174d imap_fetchdata(): use linepool, log entire comm. with 3x*verbose*
-c1a1d325 (BWDIC!) Rename OPT_FORCED_STACKPROT=xy -> OPT_AUTOCC_STACKPROT=y
-0a786d5b (BWDIC!) `account': honour $? when deciding whether switch
-        succeeded..
-2ef5cf34 Add builtin resource file, selectable via -:x (Brian Evans)
-ac5b796a Obsolete (followup|reply|respond)(all|sender)
-ba7120c0 (BWDIC!) Remove ] from set of magic regex characters; give a manual
-        example
-a629e027 (BWDIC!) INSTALL,mk/make-config.sh: allow overrides with predefined
-        CONFIG='s!
-fe21d5f0 n_getmsglist(): generate $!/$^ERR errors!
-b94173e5 (BWDIC!) `~H', `~h': only work in interactive mode
-780d172e Add `Lfollowup' (Russell Bell)
-a1b020f2 (BWDIC!) Actively detect "primary system mailboxes" by checking
-        against *inbox*
-9830c436 (BWDIC!) mx-test.sh: add t_reply; *quote*: always inject..
-b2f2ba2c (BWDIC!) mx-test.sh: add t_posix_abbrev (changes cmd lookup order!)
-1af60b07 (BWDIC!) Speed up cmd lookup via per-character index table. Finally..
-81c18187 `? CMD': allow \ to avoid alias expansions
-2b6685c1 `history': add "delete NUMBER" subcommand
-f96fa233 Add *forward-add-cc* and *quote-add-cc* (Goesta Smekal)
-8563c2c6 THANKS: Goesta Smekal
-a221837b (BWDIC!) Give *history-gabby* a value, allow more history entries..
-35584299 (BWDIC!) Add *mta-bcc-ok* (Kevin McCarthy)..
-8bb4b0df make.rc: add OPT_MAILCAP, VAL_MAILCAPS, by default enabled
-1988417b make-config.sh: support OPT_MAILCAP
-a9cdb612 (BWDIC!) Add `mtaaliases', no longer auto-update *mta-aliases* cache
-e9692bb6 (BWDIC!) `netrc': let 'load' be 'clear'+'load'
-303e3570 nail.rc: set *(followup|reply)-to-honour* by default
-1aa3ecd7 *headline*: let %L announce List-Post: presence as applicable
-452b37a0 Introduce some *content-description-XY* variables (defaults in
-        mx-config.h)
-7bfa022f Add Mailx-Orig-Sender: pseudo header (the "real" RFC 5322 sender)
-55b2531b Add $ (evaluate) modifier for command escapes (Ralph Keller)
-0483db1e (BWDIC!) `chdir': use shell-style quoting
-dd440457 (BWDIC!) ~<, ~R, ~r: no longer expand $VAR in file argument
-cbc8e222 (BWDIC!) -a, ~@, ~^/digmsg a ins: only tilde expand attachment names
-2ba375ac (BWDIC!) `rename': use shell-style quoting
-fd38d97b (BWDIC!) `remove': use shell-style quoting
-bdf61d26 (BWDIC!) ~^: use shell-style expansion for arguments (Ralph Keller)..
-08cc51f7 `tls': add certchain and certificate subcommands
-1abc705e `netrc': add lookup subcommand (Ralph Corderoy)
-39d547d5 Add primitive read-only eml:// `folder' support (Viktor Szépe)
-a1302cbc mk/make-config.sh: inc repro-build (Jelle van der Waa, Arnout
-        Engelen)..
-aeff5d67 THANKS: Jelle van der Waa
-2f022b37 THANKS: Arnout Engelen
-3a6359c9 (BWDIC!) Support *format-inject-(head|tail)* for ~[FfMmUu]
-b1ae5dfd *folder*, `folders': follow suit UNIX v10 Mail and BSD Mail (elo)..
-22a5c8d5 THANKS: elo
-4eac67a2 nail.1: update "But, how about XOAUTH2 / OAUTHBEARER?" (Stuart
-        Henderson)
-1483d426 `vexpr': add date-utc, date-stamp-utc and epoch subcmds (Benjamin A.
-        Wong)
-4b250366 THANKS: Benjamin A. Wong
-b8695012 n_go_main_loop(): *on-main-loop-tick* also during injections (like
-        -Y)!
-9911bd6f Add `readsh': like `read', but splits on shell token boundaries
+git(1) shortlog: Yasuhiro KIMURA (1), Steffen Nurpmeso (263)
 
 v14.9.15 ("Tit family in the trees"), 2019-08-18
 ------------------------------------------------
@@ -351,40 +374,7 @@ ChangeLog
   *hostname*#439) if NAME is a valid user on the current host.
   (Viktor Szépe, Jean-Marc Pigeon)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (45):
-94546dc0 Stop prefixing $features and $tls-features #, use , instead..
-4089979b mx_termios_controller_setup(): fix: honour sole $COLUMNS/$LINES in
-        batch mode..
-897229cf nail.1: <user> is expanded unless *hostname* set to empty string
-f5db11fe a_cwrite_save1(): FIX: ensure pre-v15 MBOX separation "in between"
-        messages..
-d203daa2 a_cwrite_save1(): FIX2: ensure pre-v15 MBOX separation "in between"
-        messages..
-b8663873 mx_smtp_mta(): FIX: never handled SIGPIPE!
-43fabd65 Add *followup-to-add-cc*
-7963df6c Tweak [a99becbc] (main.c: set MAILSEND_HEADERS_PRINT..) (Ralph
-        Corderoy)..
-be5859d8 mx-test.sh: support test parallelization
-12798bd4 mx-test.sh: catch wild (Chet Ramey,Robert Elz,Jilles Tjoelker,Steve
-        Izma)..
-85b2437e THANKS: Chet Ramey
-989b122c THANKS: Jilles Tjoelker
-a12f56b3 THANKS: Steve Izma
-e5435409 mx-test.sh: no, use my initial approach plus Robert Elz..
-70108b66 mx-test.sh: use "while :;" not "while [ 1 ];" (Robert Elz)
-32673514 (Test and) FIX: EXTERNAL AUTH for POP3 and IMAP (test bed, horray!)
-2d8216f6 Call *on-account-cleanup* on program exit, too!
-ea340781 Add *on-program-exit* hook
-81634ead Add EXTERNANON auth type (the internet is BROKEN!)..
-7d18860c mx_url_parse(): do not treat empty user as set
-db0ef042 Add GSSAPI authentication for POP3
-dda830bc Switch IMAP GSSAPI implementation to new shared one
-f00ef7fc *expandaddr*: add "namehostex" (Viktor Szépe, Jean-Marc Pigeon)
-9d82d85e mx_pop3_setfile(), imap_setfile(): oops, !v15-compat URL _may_ have
-        no user!
+git(1) shortlog: Steffen Nurpmeso (45)
 
 v14.9.14 ("Great tit passed moult"), 2019-07-27
 -----------------------------------------------
