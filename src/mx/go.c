@@ -289,7 +289,8 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_WYSH = 1u<<11, /* XXX v15+ drop wysh modifier prefix */
       a_MODE_MASK = su_BITENUM_MASK(5, 11),
       a_NO_ERRNO = 1u<<16, /* Don't set n_pstate_err_no */
-      a_IS_SKIP = 1u<<17 /* Conditional active, is skipping */
+      a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
+      a_IS_EMPTY = 1u<<18 /* The empty command */
    } flags;
    NYD_IN;
 
@@ -317,8 +318,9 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
 jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
       line.s[0] = '\0';
-      gecp->gec_hist_flags = a_GO_HIST_NONE;
-      goto jempty;
+      flags |= a_IS_EMPTY;
+      cdp = n_cmd_default();
+      goto jexec;
    }
    (cp = line.s)[line.l] = '\0';
 
@@ -432,13 +434,7 @@ jrestart:
    /* Look up the command; if not found, bitch.  An empty cmd maps to the first
     * command table entry.. */
    if(*word == '\0'){
-jempty:
-      /* ..not in a macro or when sourcing, when expanded an alias etc. */
-      if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
-            alias_name != NULL){
-         gecp->gec_hist_flags = a_GO_HIST_NONE;
-         goto jret0;
-      }
+      flags |= a_IS_EMPTY;
       cdp = n_cmd_default();
       goto jexec;
    }
@@ -497,15 +493,24 @@ jempty:
       goto jleave;
    }
 
-   /* See if we should execute the command -- if a conditional we always
-    * execute it, otherwise, check the state of cond */
 jexec:
-   if((flags & a_IS_SKIP) && !(cdp->cd_caflags & n_CMD_ARG_F)){
+   /* The default command is not executed in a macro or when sourcing, when
+    * have had expanded an alias etc.  To be able to deal with ";reply;~." we
+    * need to perform the shell expansion anyway, however */
+   if(UNLIKELY(flags & a_IS_EMPTY) &&
+         ((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
+          alias_name != NIL))
+      goto jwhite;
+
+   /* See if we should execute the command -- if a conditional we always
+    * execute it, otherwise, check the state of cond.
+    * To allow "if 0; echo no; else; echo yes;end" we need to be able to
+    * perform input line sequentiation / rest injection even in whiteout
+    * situations.  See if we can do that. */
+   if(UNLIKELY(flags & a_IS_SKIP) && !(cdp->cd_caflags & n_CMD_ARG_F)){
+jwhite:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
 
-      /* However, to allow "if 0; echo no; else; echo yes;end" we need to be
-       * able to perform input line sequentiation / rest injection even in
-       * whiteout situations.  See if we can do that. */
       switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
       case n_CMD_ARG_TYPE_WYRA:{
             char const *v15compat;
