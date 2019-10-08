@@ -6,6 +6,277 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.16 ("Message of Winter, your hopes shall be crushed"), 2019-12-29
+-----------------------------------------------------------------------
+
+At the end of the v14.9 series we finally deliver the RFC 1524
+mailcap support, as well as other improvements, and new features.
+Many bugfixes and tests arrive.
+A whole bunch of things are backward-incompatible, but i would
+assume that most use cases are not at all affected.
+
+Credits, in order of commit appearance: Brian Evans,
+Paride Legovini, Yasuhiro KIMURA, John P. Linderman, Leo,
+Martin Neitzel, Alexander Harm, Ken Hornstein, Martynas Bendorius,
+Russell Bell, Goesta Smekal, Kevin McCarthy, Ralph Keller,
+Ralph Corderoy, Viktor Szépe, Jelle van der Waa, Arnout Engelen,
+Stuart Henderson, elo, and Benjamin A. Wong.
+
+We welcome Yasuhiro KIMURA, John P. Linderman, Leo,
+Martynas Bendorius, Goesta Smekal, Jelle van der Waa,
+Arnout Engelen, elo, and Benjamin A. Wong in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Warning: we _will_ have v15-compat=yes as a default in v14.10!
+
+- Renamed *expandaddr*#? namehostex to nametoaddr.  (Better.)
+
+- *tls-features*#? string now starts and ends with comma.
+  (Just like *features*#? does.)
+
+- -L#? longname --header-search renamed to --search.
+
+- Config option OPT_FORCED_STACKPROT=xy now
+  OPT_AUTOCC_STACKPROT=y, and now auto-enabled for OPT_AUTOCC=y
+  (even though i hate that, protectors in shipout code..).
+
+- `account'#? return value now matters, and can thus be used to
+  abort account switching.
+
+- -:#? has new "x" mode, which executes the directives of the
+  compiled-in resource file.  (The template content is now
+  compiled in too, so the real file does not need to be loaded.)
+  (Brian Evans)
+
+- Quote etc. injections (*quote-inject-head*#?) now always
+  happen (if set), regardless of *quote*#?.
+
+- We now truly honour POSIX command abbreviations (order).
+  As part of that i finally implemented a simple command lookup
+  speedup, these are now almost alphabetical (unless abbreviations
+  prevent it).
+
+- Added *mta-bcc-ok*#?.  Bummer.  It seems exim and courier
+  do not remove Bcc: headers as required by standards unless
+  invoked with a special command line argument.  So we now
+  do not pass Bcc: headers to file-based MTAs unless this
+  variable is set explicitly.  (Kevin McCarthy).
+
+- "COMMAND ESCAPES"#? now have a $ command modifier, which
+  causes a shell-style `eval'#?uation before the command
+  escape is executed.
+
+  And so `~<'#?, `~R'#? and `~r'#? no longer expand $VAR
+  expressions by themselves.
+
+  And so -a#?, `~@'#?, and "attachment insert" of `~^'#?
+  and `digmsg'#? only perform ~/-style expansions.
+
+- `~^'#?: use shell-style argument expansion.
+  We handled `~^' and `digmsg' differently, but furthermore
+  turned the shell-parsed data of the latter into whitespace
+  separated data, which made it impossible to, for example,
+  use attachments with whitespace in their names.
+
+  This increases the interaction protocol version number of
+  *on-compose-splice*#? from "0 0 1" to "0 0 2"!
+  Because, we do also quote the output, since using `read'
+  (or read(1)) causes *ifs*#? ($IFS) normalization.
+  All that could be done would be (for ourselves):
+
+      define x {
+        set ifs=
+        read vany
+        unset ifs
+        vpospar set $vany
+        # And now assign the desired real fields
+        set real-var1=$1 real-var2=$2  ...
+      }
+
+  Sick!  So instead introduce a `readsh'#? command which works
+  like `read'#? but splits fields at shell token boundaries,
+  for example from within *on-compose-splice*#?:
+
+    echo '~^h s subject'; read stat name; readsh sub; read i
+
+  There would be better examples.  (Ralph Keller)
+
+- `~F'#?, `~f'#?, `~M'#?, `~m'#?, `~U'#? and `~u'#? now
+  honour *forward-inject-head*#? and *forward-inject-tail*#?.
+
+- New option OPT_MAILCAP, by default enabled.
+  Disable at runtime via *mailcap-disable*#?, all documented
+  in "The Mailcap files"#?.
+
+- OpenBSD: really auto-find number of processors in test script.
+  Work around fflush(3) not adapting POSIX behaviour.
+
+- Manual: after review i think the following sections are of
+  acceptable quality: "Encrypted network communication"#?,
+  "A starter"#?, "On URL syntax and credential lookup"#?,
+  "The Mailcap files"#?, and
+  "But, how about XOAUTH2 / OAUTHBEARER?"#?.
+
+  The latter is actually (Stuart Henderson, Benjamin A. Wong),
+  and now provides a copy+paste example of how to keep a
+  OAUTHBEARER token up-to-date with S-nail (with some care).
+  Yes, it is terrible.
+
+- Default .rc file: keeps Sender: by default (Ken Hornstein),
+  sets *followup-to-honour*#? and *reply-to-honour*#?,
+  and gives more *history-gabby*#?ness.
+
+ChangeLog
+^^^^^^^^^
+
+- Add `Lfollowup'#?.  (Russell Bell)
+
+- `?'#?: prefix \ (quoted!) to command to avoid
+  `commandalias'#?  matching:
+
+  ? ? S
+  S -> spamspam: Teach the spam detector that <msglist> is spam
+  ? ? \\S
+  S (Save): Like `save', but derive filename from first sender
+
+- `history'#? has new "delete NUMBER" subcommand.
+
+- Add *forward-add-cc*#? and *quote-add-cc*#? to Cc: the
+  originator of a forwarded or quoted message, respectively.
+  (Goesta Smekal)
+
+- *history-gabby*#? now has a value to allow for more.
+  This changes second argument of *on-history-addition*#?
+  from boolean to context string.
+
+- New command `mtaaliases'#?.  We no longer automatically
+  update the *mta-aliases*#? cache.  (Maybe much later we will
+  have a path_monitor or something, until then, not.)
+
+  And `netrc'#? "load" is now indeed "clear" + "load".
+
+  `netrc' also gained a "lookup" subcommand.  (Ralph Corderoy)
+
+- *headline*#? %L format will announce possibility that
+  a message could be a list.
+
+- `chdir'#?, `rename'#? and `remove'#? use shell-style
+  argument quoting.
+
+- `tls'#? gained "certchain" and "certificate" subcommands.
+
+- `folder'#? can open RFC 5322 messages via eml:// protocol,
+  as in "folder eml:///tmp/msg.eml".  Yet primitive and only
+  read-only.  (Viktor Szépe)
+
+- `vexpr'#? gained "date-utc", "date-stamp-utc" and "epoch"
+  subcommands.  (Benjamin A. Wong)
+
+- *on-main-loop-tick*#? now also happens for commands passed
+  via -Y#?.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Yasuhiro KIMURA (1):
+a507b469 mk/make-{config,install}.sh: FIX strip(1)ing (Yasuhiro KIMURA)..
+
+Steffen Nurpmeso (263):
+0e7d3aff Nonsense! *expandaddr*: rename namehostex to nametoaddr!
+2dce22b7 Fix build with OPT_NET=no (Brian Evans)
+267e3734 THANKS: Brian Evans
+0f43c961 n_mail1(): FIX: always fail with $DEAD letter after composing is
+        finished
+6bf97bd6 mx_url_parse(): fix proto check with !mx_HAVE_TLS (Brian Evans)..
+b5651953 mx-test.sh: fix the "test all combis" thing, not ran for long (Brian
+        Evans)
+a72c2cc6 mx-test.sh: fix invocations with fully qualified s-nail (Paride
+        Legovini)
+98c32e37 THANKS: Yasuhiro KIMURA
+0b859e62 THANKS: update Cág's email address
+98f94f8e Fix *recipients-in-cc*: do not mix propagations..
+669b6f50 FIX: load *mailx-extra-rc* on request even if other RC are disabled
+94e1612d a_main_usage(): make grep(1)able (John P. Linderman)
+d15a9c85 THANKS: John P. Linderman
+0076f8f6 mk/make-rules.sh: close() C source files (Martin Neitzel, (Alexander
+        Harm))
+ec2b110f nail.rc: keep Sender: by default (Ken Hornstein)
+1c6e9d44 a_ignore_lookup(): FIX: perform exact testing..
+20b22298 mx-test.sh:t_iconv_mainbody(): fix 5-4 checksum (Leo)
+0b5cab91 THANKS: Leo
+fbddb3b3 FIX: -f: add n_PO_f_FLAG to avoid that command line order matters
+e12e612b FIX `Forward': got assigned false CMD_ARG, thus crashed!!
+ba2053de `bind': fix weird leftover, make '? bind CTX' show CTX again, not all
+11a8a622 Fix [e1ec3def], could crash due to default command -> history
+3284daba a_xtls_protocols[]: fail if proto is unavailable (Martynas
+        Bendorius)..
+20a7f6bd mx/xtls.c: need SSL macros even if !HAVE_XTLS_CONF_CTX (Martynas
+        Bendorius)..
+0e6a485f THANKS: Martynas Bendorius
+302fff70 `Reply': fix: avoid attaching two *quote-as-attachment*s (grrrr)
+3f27df64 (BWDIC!) Change misnomer --header-search to --search
+2c3d20ae a_pop3_get(): log entire communication with 3x*verbose*
+a4fa174d imap_fetchdata(): use linepool, log entire comm. with 3x*verbose*
+c1a1d325 (BWDIC!) Rename OPT_FORCED_STACKPROT=xy -> OPT_AUTOCC_STACKPROT=y
+0a786d5b (BWDIC!) `account': honour $? when deciding whether switch
+        succeeded..
+2ef5cf34 Add builtin resource file, selectable via -:x (Brian Evans)
+ac5b796a Obsolete (followup|reply|respond)(all|sender)
+ba7120c0 (BWDIC!) Remove ] from set of magic regex characters; give a manual
+        example
+a629e027 (BWDIC!) INSTALL,mk/make-config.sh: allow overrides with predefined
+        CONFIG='s!
+fe21d5f0 n_getmsglist(): generate $!/$^ERR errors!
+b94173e5 (BWDIC!) `~H', `~h': only work in interactive mode
+780d172e Add `Lfollowup' (Russell Bell)
+a1b020f2 (BWDIC!) Actively detect "primary system mailboxes" by checking
+        against *inbox*
+9830c436 (BWDIC!) mx-test.sh: add t_reply; *quote*: always inject..
+b2f2ba2c (BWDIC!) mx-test.sh: add t_posix_abbrev (changes cmd lookup order!)
+1af60b07 (BWDIC!) Speed up cmd lookup via per-character index table. Finally..
+81c18187 `? CMD': allow \ to avoid alias expansions
+2b6685c1 `history': add "delete NUMBER" subcommand
+f96fa233 Add *forward-add-cc* and *quote-add-cc* (Goesta Smekal)
+8563c2c6 THANKS: Goesta Smekal
+a221837b (BWDIC!) Give *history-gabby* a value, allow more history entries..
+35584299 (BWDIC!) Add *mta-bcc-ok* (Kevin McCarthy)..
+8bb4b0df make.rc: add OPT_MAILCAP, VAL_MAILCAPS, by default enabled
+1988417b make-config.sh: support OPT_MAILCAP
+a9cdb612 (BWDIC!) Add `mtaaliases', no longer auto-update *mta-aliases* cache
+e9692bb6 (BWDIC!) `netrc': let 'load' be 'clear'+'load'
+303e3570 nail.rc: set *(followup|reply)-to-honour* by default
+1aa3ecd7 *headline*: let %L announce List-Post: presence as applicable
+452b37a0 Introduce some *content-description-XY* variables (defaults in
+        mx-config.h)
+7bfa022f Add Mailx-Orig-Sender: pseudo header (the "real" RFC 5322 sender)
+55b2531b Add $ (evaluate) modifier for command escapes (Ralph Keller)
+0483db1e (BWDIC!) `chdir': use shell-style quoting
+dd440457 (BWDIC!) ~<, ~R, ~r: no longer expand $VAR in file argument
+cbc8e222 (BWDIC!) -a, ~@, ~^/digmsg a ins: only tilde expand attachment names
+2ba375ac (BWDIC!) `rename': use shell-style quoting
+fd38d97b (BWDIC!) `remove': use shell-style quoting
+bdf61d26 (BWDIC!) ~^: use shell-style expansion for arguments (Ralph Keller)..
+08cc51f7 `tls': add certchain and certificate subcommands
+1abc705e `netrc': add lookup subcommand (Ralph Corderoy)
+39d547d5 Add primitive read-only eml:// `folder' support (Viktor Szépe)
+a1302cbc mk/make-config.sh: inc repro-build (Jelle van der Waa, Arnout
+        Engelen)..
+aeff5d67 THANKS: Jelle van der Waa
+2f022b37 THANKS: Arnout Engelen
+3a6359c9 (BWDIC!) Support *format-inject-(head|tail)* for ~[FfMmUu]
+b1ae5dfd *folder*, `folders': follow suit UNIX v10 Mail and BSD Mail (elo)..
+22a5c8d5 THANKS: elo
+4eac67a2 nail.1: update "But, how about XOAUTH2 / OAUTHBEARER?" (Stuart
+        Henderson)
+1483d426 `vexpr': add date-utc, date-stamp-utc and epoch subcmds (Benjamin A.
+        Wong)
+4b250366 THANKS: Benjamin A. Wong
+b8695012 n_go_main_loop(): *on-main-loop-tick* also during injections (like
+        -Y)!
+9911bd6f Add `readsh': like `read', but splits on shell token boundaries
+
 v14.9.15 ("Tit family in the trees"), 2019-08-18
 ------------------------------------------------
 
@@ -33,8 +304,6 @@ We welcome Chet Ramey, Jilles Tjoelker and Steve Izma in THANKS.
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Warning: we _will_ have v15-compat=yes as a default in v14.10!
 
 - *features*#412 and *tls-features*#582 are now prefixed with
   a comma ",", not with the number sign "#" (which could
