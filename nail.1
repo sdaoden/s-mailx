@@ -883,7 +883,7 @@ constraints do not apply to the content of
 .Va mta-arguments .
 .\" }}}
 .
-.\" .Ss "A starter" {{{
+.\" .Ss "A starter" {{{ review
 .Ss "A starter"
 .
 \*(UA is a direct descendant of
@@ -898,8 +898,8 @@ It thus represents the user side of the
 .Ux
 mail system, whereas the system side (Mail-Transfer-Agent, MTA) was
 traditionally taken by
-.Xr sendmail 8 ,
-and most MTAs provide a binary of this name for compatibility purposes.
+.Xr sendmail 8
+(and most MTAs provide a binary of this name for compatibility reasons).
 If the \*(OPal SMTP
 .Va mta
 is included in the
@@ -908,26 +908,34 @@ of \*(UA then the system side is not a mandatory precondition for mail
 delivery.
 .
 .Pp
-Because \*(UA strives for compliance with POSIX
+\*(UA strives for compliance with the POSIX
 .Xr mailx 1
-it is likely that some configuration settings have to be adjusted before
-using it is a smooth experience.
-(Rather complete configuration examples can be found in the section
-.Sx EXAMPLES . )
+standard, but
+.Va posix ,
+one of the
+.Sx "INTERNAL VARIABLES"
+(or its
+.Sx ENVIRONMENT Ns
+al equivalent
+.Ev POSIXLY_CORRECT ) ,
+needs to be set to adjust behaviour to be almost on par.
+Almost, because there is one important difference: POSIX
+.Sx "Shell-style argument quoting"
+is (\*(ID increasingly) used instead of the
+.Sx "Old-style argument quoting"
+that the standard documents, which is believed to be a feature.
 The builtin as well as the (default) global
 .Pa \*(UR
-(one of the
-.Sx "Resource files" )
-template bends those standard imposed settings of the
-.Sx "INTERNAL VARIABLES"
-a bit towards more user friendliness and safety, however.
+.Sx "Resource files"
+already bend the standard imposed settings a bit.
 .
 .Pp
-For example, it
-.Ic set Ns s
+For example,
 .Va hold
 and
 .Va keepsave
+are
+.Ic set
 in order to suppress the automatic moving of messages to the
 .Mx -sx
 .Sx "secondary mailbox"
@@ -936,14 +944,15 @@ that would otherwise occur (see
 .Sx "Message states" ) ,
 and
 .Va keep
-to not remove empty system MBOX mailbox files (or all empty such files if
+to not remove empty system MBOX mailbox files (or all empty such files in
 .Va posix
-.Pf aka\0 Ev POSIXLY_CORRECT
-mode has been enabled) to avoid mangling of file permissions when files
-eventually get recreated.
+mode) to avoid mangling of file permissions when files eventually get
+recreated.
+.
 .Pp
-To enter interactive mode even if the initial mailbox is empty it sets
-.Va emptystart ,
+To enter interactive mode even if the initial mailbox is empty
+.Va emptystart
+is set,
 .Va editheaders
 to allow editing of headers as well as
 .Va fullnames
@@ -958,7 +967,7 @@ that also deviates from standard imposed settings.
 is fully enabled, too.
 .
 .Pp
-Some random remarks.
+Random remarks.
 The file mode creation mask can be managed explicitly via the variable
 .Va umask .
 Files and shell pipe output can be
@@ -3699,12 +3708,13 @@ is set to a non-empty value.
 .El
 .\" }}}
 .
-.\" .Ss "Old-style argument quoting" {{{
+.\" .Ss "Old-style argument quoting" v15-compat: rename Obsolete.. {{{
 .Ss "Old-style argument quoting"
 .
-\*(ID This section documents the old, traditional style of quoting
-non-message-list arguments to commands which expect this type of
-arguments: whereas still used by the majority of such commands, the new
+\*(ID This section documents the traditional and POSIX standardized
+style of quoting non-message list arguments to commands which expect
+this type of arguments: whereas still used by the majority of such
+commands, the new
 .Sx "Shell-style argument quoting"
 may be available even for those via
 .Cm wysh ,
