@@ -78,6 +78,7 @@ t_all() {
    jspawn input_inject_semicolon_seq
    jspawn wysh
    jspawn commandalias # test now, save space later on!
+   jspawn posix_abbrev
    jsync
 
    # Basics
@@ -1275,6 +1276,55 @@ t_commandalias() {
 	__EOT
 
    check 1 0 "${MBOX}" '1638809585 36'
+
+   t_epilog "${@}"
+}
+
+t_posix_abbrev() {
+   t_prolog "${@}"
+
+   # In POSIX C181 standard order
+   </dev/null ${MAILX} ${ARGS} \
+      -Y 'echon alias/a\ ; ? a; echon group/g\ ; ?g' \
+      -Y 'echon alternates/alt\ ; ? alt' \
+      -Y 'echon chdir/ch\ ; ? ch' \
+      -Y 'echon copy/c\ ; ? c; echon Copy/C\ ; ?C' \
+      -Y 'echon delete/d\ ; ? d' \
+      -Y 'echon discard/di\ ; ? di; echon ignore/ig\ ; ?ig' \
+      -Y 'echon echo/ec\ ; ? ec' \
+      -Y 'echon edit/e\ ; ? e' \
+      -Y 'echon exit/ex\ ; ? ex; echon xit/x\ ; ?x' \
+      -Y 'echon file/fi\ ; ? fi; echon folder/fold\ ; ?  fold' \
+      -Y 'echon followup/fo\ ; ? fo; echon Followup/F\ ; ?F' \
+      -Y 'echon from/f\ ; ? f' \
+      -Y 'echon headers/h\ ; ? h' \
+      -Y 'echon help/hel\ ; ? hel' \
+      -Y 'echon hold/ho\ ; ? ho; echon preserve/pre\ ; ? pre' \
+      -Y 'echon if/i\ ; ? i; echon else/el\ ; ? el; echon endif/en\ ; ? en' \
+      -Y 'echon list/l\ ; ? l' \
+      -Y 'echon mail/m\ ; ? m' \
+      -Y 'echon mbox/mb\ ; ? mb' \
+      -Y 'echon next/n\ ; ? n' \
+      -Y 'echon pipe/pi\ ; ? pi' \
+      -Y 'echon Print/P\ ; ? P; echon Type/T\ ; ? T' \
+      -Y 'echon print/p\ ; ? p; echon type/t\ ; ? t' \
+      -Y 'echon quit/q\ ; ? q' \
+      -Y 'echon Reply/R\ ; ? R' \
+      -Y 'echon reply/r\ ; ? r' \
+      -Y 'echon retain/ret\ ; ? ret' \
+      -Y 'echon save/s\ ; ? s; echon Save/S\ ; ? S' \
+      -Y 'echon set/se\ ; ? se' \
+      -Y 'echon shell/sh\ ; ? sh' \
+      -Y 'echon size/si\ ; ? si' \
+      -Y 'echon source/so\ ; ? so' \
+      -Y 'echon touch/tou\ ; ? tou' \
+      -Y 'echon unalias/una\ ; ? una' \
+      -Y 'echon undelete/u\ ; ? u' \
+      -Y 'echon unset/uns\ ; ? uns' \
+      -Y 'echon visual/v\ ; ? v' \
+      -Y 'echon write/w\ ; ? w' \
+      | ${sed} -e 's/:.*$//' > "${MBOX}"
+   check 1 0 "${MBOX}" '1012680481 968'
 
    t_epilog "${@}"
 }
