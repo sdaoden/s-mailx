@@ -3636,71 +3636,6 @@ t_vexpr() {
 
    check numeric 0 "${MBOX}" '163128733 2519'
 
-   # v15compat: vexpr byte ops <> csop compat: drop this!
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	commandalias x echo '$?/$^ERRNAME :$res:'
-	echo ' #-2'
-	vput vexpr res find you y;x
-	vput vexpr res find you o;x
-	vput vexpr res find you u;x
-	vput vexpr res find you yo;x
-	vput vexpr res find you ou;x
-	vput vexpr res find you you;x
-	echo ' #-1'
-	vput vexpr res find you Y;x
-	vput vexpr res find? you Y;x
-	vput vexpr res find? you O;x
-	vput vexpr res find? you U;x
-	vput vexpr res find? you yO;x
-	vput vexpr res find? you oU;x
-	vput vexpr res find? you YoU;x
-	echo ' #0'
-	vput vexpr res find 'bananarama' 'nana';x
-	vput vexpr res find 'bananarama' 'bana';x
-	vput vexpr res find 'bananarama' 'Bana';x
-	vput vexpr res find 'bananarama' 'rama';x
-	echo ' #1'
-	vput vexpr res ifind 'bananarama' 'nana';x
-	vput vexpr res ifind 'bananarama' 'bana';x
-	vput vexpr res ifind 'bananarama' 'Bana';x
-	vput vexpr res ifind 'bananarama' 'rama';x
-	echo ' #2'
-	vput vexpr res substring 'bananarama' 1;x
-	vput vexpr res substring 'bananarama' 3;x
-	vput vexpr res substring 'bananarama' 5;x
-	vput vexpr res substring 'bananarama' 7;x
-	vput vexpr res substring 'bananarama' 9;x
-	vput vexpr res substring 'bananarama' 10;x
-	vput vexpr res substring 'bananarama' 1 3;x
-	vput vexpr res substring 'bananarama' 3 3;x
-	vput vexpr res substring 'bananarama' 5 3;x
-	vput vexpr res substring 'bananarama' 7 3;x
-	vput vexpr res substring 'bananarama' 9 3;x
-	vput vexpr res substring 'bananarama' 10 3;x
-	echo ' #3'
-	vput vexpr res substring 'bananarama' -1;x
-	vput vexpr res substring 'bananarama' -3;x
-	vput vexpr res substring 'bananarama' -5;x
-	vput vexpr res substring 'bananarama' -7;x
-	vput vexpr res substring 'bananarama' -9;x
-	vput vexpr res substring 'bananarama' -10;x
-	vput vexpr res substring 'bananarama' 1 -3;x
-	vput vexpr res substring 'bananarama' 3 -3;x
-	vput vexpr res substring 'bananarama' 5 -3;x
-	vput vexpr res substring 'bananarama' 7 -3;x
-	vput vexpr res substring 'bananarama' 9 -3;x
-	vput vexpr res substring 'bananarama' 10 -3;x
-	echo ' #4'
-	vput vexpr res trim 'Cocoon  Cocoon';x
-	vput vexpr res trim '  Cocoon  Cocoon 	  ';x
-	vput vexpr res trim-front 'Cocoon  Cocoon';x
-	vput vexpr res trim-front '  Cocoon  Cocoon 	  ';x
-	vput vexpr res trim-end 'Cocoon  Cocoon';x
-	vput vexpr res trim-end '  Cocoon  Cocoon 	  ';x
-	__EOT
-
-   check byte 0 "${MBOX}" '1892119538 755'
-
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		commandalias x echo '$?/$^ERRNAME :$res:'
@@ -3725,20 +3660,20 @@ t_vexpr() {
 		vput vexpr res regex 'bananarama' 'Bana';x
 		vput vexpr res regex 'bananarama' 'rama';x
 		echo ' #1'
-		vput vexpr res iregex 'bananarama' 'nana';x
-		vput vexpr res iregex 'bananarama' 'bana';x
-		vput vexpr res iregex 'bananarama' 'Bana';x
-		vput vexpr res iregex 'bananarama' 'rama';x
+		vput vexpr res regex? 'bananarama' 'nana';x
+		vput vexpr res regex? 'bananarama' 'bana';x
+		vput vexpr res regex? 'bananarama' 'Bana';x
+		vput vexpr res regex? 'bananarama' 'rama';x
 		echo ' #2'
 		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
 		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
 		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0';x
 		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #3'
-		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
-		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
-		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0';x
-		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0';x
+		vput vexpr res regex? 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
+		vput vexpr res regex? 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
+		vput vexpr res regex? 'bananarama' 'Bana(.+)' '\$1\$0';x
+		vput vexpr res regex? 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #4'
 		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
          '\$1\${2}\$4\${3}rama';x
@@ -5755,8 +5690,7 @@ t_message_injections() {
 
    echo some-body | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
+      -Smessage-inject-tail="`${cat} ./.tmysig`"'\ntail-inject' \
       ex@am.ple > ./.tall 2>&1
    check 1 0 "${MBOX}" '701778583 143'
    check 2 - .tall '4294967295 0' # empty file
@@ -5772,8 +5706,7 @@ t_message_injections() {
 	_EOT
    < ./.template ${MAILX} ${ARGS} -t -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
+      -Smessage-inject-tail="`${cat} ./.tmysig`\n"'tail-inject' \
       > ./.tall 2>&1
    check 3 0 "${MBOX}" '2189109479 207'
    check 4 - .tall '4294967295 0' # empty file
@@ -7537,7 +7470,7 @@ __EOT__
 
    ${rm} "${MBOX}"
    printf '#
-      set from="f1@z
+      set from="f1@z"
       m t1@z
 b1
 !.
@@ -7545,7 +7478,9 @@ b1
       m t2@z
 b2
 !.
-      ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Snomemdebug -Sescape=!
+      ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Snomemdebug -Sescape=! \
+         > ./.tnotes 2>&1
+   check_ex0 4-intro-estat
 
    printf '
       echo start: $? $! $^ERRNAME
@@ -7661,7 +7596,7 @@ this is content of forward 2, 2nd, with showname set
             on-compose-enter=t_oce on-compose-leave=t_ocl \
                on-compose-cleanup=t_occ \
             on-resend-enter=t_oce on-resend-cleanup=t_occ
-      ' > ./.tnotes 2>&1
+      ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
    check 4 - "${MBOX}" '1818661134 11250'
