@@ -94,14 +94,14 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 3, a_ctab_cad_digmsg){ /* XXX 2 OR 3 */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(Forward, 1, a_ctab_cad_Forward){
-   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY /*|
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE*/,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_ctab_cad_forward){
-   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY /*|
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE*/,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
@@ -384,10 +384,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1, NIL
      DS(N_("List mailboxes below the given or the global folder")) },
-   { "Forward", &c_Forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+   { "Forward", &c_Forward, (A | I | R | SC | EM | TARG), 0, MMNDEL,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Forward)
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "forward", &c_forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+   { "forward", &c_forward, (A | I | R | SC | EM | TARG), 0, MMNDEL,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_forward)
      DS(N_("Forward <message> to <address>")) },
 { "followupall", &c_followupall, (O | A | I | R | SC | TMSGLST),

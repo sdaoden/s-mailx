@@ -4609,6 +4609,170 @@ b7
    t_epilog "${@}"
 } # }}}
 
+t_forward() { # {{{
+   t_prolog "${@}"
+   XARGS=${ARGS}
+   ARGS="${ARGS} -Sv15-compat=y"
+
+   t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
+   t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
+
+   ## Base (does not test "recipient record")
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y ${1}' . "du <ex1@am.ple>"
+b1
+~.
+      echo 1:$?/$^ERRNAME; echoerr 1:done
+      set fullnames escape=!
+      '${1}' 1 "du <ex2@am.ple>"
+b2 fullnames
+!.
+      echo 2:$?/$^ERRNAME; echoerr 2:done
+      # Some errors
+      set nofullnames ea=$expandaddr expandaddr=-all
+      '${1}' ` "du <ex3@am.ple>"
+b3
+!.
+      echo 3:$?/$^ERRNAME; echoerr 3:done
+      set expandaddr=$ea
+      '${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
+b4
+!.
+      echo 4:$?/$^ERRNAME; echoerr 4:done
+      '${1}' # TODO not yet possible b5 !.
+      echo 5:$?/$^ERRNAME; echoerr 5:done
+      set expandaddr=$ea
+      '${1}' 1 2 ex6@am.ple
+b6-1
+!.
+b6-2
+!.
+      echo 6:$?/$^ERRNAME; echoerr 6:done
+      #' \
+         "${MBOX}" > ./.tall 2>./.terr
+      return ${?}
+   }
+
+   t_it forward
+   check 1 0 ./.tall '860408950 1587'
+   if have_feat uistrings; then
+      check 2 - ./.terr '3468678748 251'
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
+
+   t_it Forward
+   check 3 0 ./.tall '860408950 1587'
+   if have_feat uistrings; then
+      check 4 - ./.terr '3468678748 251'
+   else
+      t_echoskip '4:[!UISTRINGS]'
+   fi
+   ${rm} -f ex*
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      '${1}' 1 ex1@am.ple
+b1
+!.
+      echo 1:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 1 ex2@am.ple
+b2
+!.
+      echo 2:$?/$^ERRNAME; set outfolder norecord; '${1}' 2 ex1@am.ple
+b3
+!.
+      echo 3:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 2 ex2@am.ple
+b4
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${2} 0 ./.tall '3180366037 1212'
+      if [ ${#} -ne 4 ]; then
+         check ${3}-1 - ./.trec${2} '1769129556 304'
+         check ${3}-2 - ./.tfolder/.trec${2} '2335391111 284'
+      else
+         [ -f ./.trec${2} ]; check_exn0 ${3}
+         echo * > ./.tlst
+         check ${3}-1 - ./.tlst '2020171298 8'
+         check ${3}-2 - ./ex1 '1512529673 304'
+         check ${3}-3 - ./ex2 '1769129556 304'
+         [ -f ./.tfolder/.trec${2} ]; check_exn0 ${3}-4
+         ( cd .tfolder && echo * > ./.tlst )
+         check ${3}-5 - ./.tfolder/.tlst '2020171298 8'
+         check ${3}-6 - ./.tfolder/ex1 '2016773910 284'
+         check ${3}-7 - ./.tfolder/ex2 '2335391111 284'
+      fi
+   }
+
+   t_it forward 5 6
+   t_it Forward 7 8 yes
+   #${rm} -f ex*
+
+   ## Injections, headerpick selection
+   ${rm} -f "${MBOX}"
+   t__x2_msg > ./.tmbox
+
+   printf '#
+      set quote=noheading forward-inject-head
+      forward 1 ex1@am.ple
+b1
+!.
+      headerpick forward retain cc from subject to
+      forward 1 ex1@am.ple
+b2
+!.
+      unheaderpick forward retain *
+      forward 1 ex1@am.ple
+b3
+!.
+      headerpick forward ignore in-reply-to reply-to message-id status
+      set forward-inject-head=%% forward-inject-tail=%%
+      forward 1 ex1@am.ple
+b4
+!.
+      set forward-inject-head='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"' \\
+         forward-inject-tail='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"'
+      forward 1 ex1@am.ple
+b5
+!.
+      set showname datefield=%%y nodatefield-markout-older
+      forward 1 ex1@am.ple
+b6
+!.
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
+         -Sescape=! \
+         ./.tmbox >./.tall 2>&1
+   check_ex0 9-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check 9 - "${MBOX}" '2976943913 2916'
+
+   # forward-as-attachment
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! \
+         -S forward-inject-head=.head. \
+         -S forward-inject-tail=.tail. \
+         -S forward-as-attachment \
+         -Y 'headerpick forward retain subject to from' \
+         -Y 'forward ex1@am.ple' -Y b1 -Y !. \
+         -Y 'unset forward-as-attachment' \
+         -Y 'forward ex1@am.ple;b2' -Y !. \
+         ./.tmbox >./.tall 2>&1
+   check 10 0 ./.tall '799103633 1250'
+
+   ARGS=${XARGS}
+   t_epilog "${@}"
+} # }}}
+
 t_record_a_resend() {
    t_prolog "${@}"
 

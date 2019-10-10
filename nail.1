@@ -50,13 +50,14 @@
 .\"--MKMAN-END--
 .\" --BEGINSTRIP--
 .\"
+.ds BO (Boolean)
+.ds CM (Compose mode)
+.ds ID [v15 behaviour may differ]
+.ds IN [v15-compat]
+.ds NQ [Only new quoting rules]
 .ds OB [Obsolete]
 .ds OP [Option]
-.ds IN [v15-compat]
 .ds OU [no v15-compat]
-.ds ID [v15 behaviour may differ]
-.ds NQ [Only new quoting rules]
-.ds BO (Boolean)
 .ds RO (Read-only)
 .\"
 .if !d str-Lb-libterminfo \
@@ -4396,7 +4397,7 @@ diet@exam.ple
 .Mx
 .Mx
 .It Ic alias , unalias
-\*(NQ (a, una) Define or list, and remove, respectively, address aliases.
+\*(NQ(a, una) Define or list, and remove, respectively, address aliases.
 Address aliases are a method of creating personal distribution lists
 that map a single alias name to none to multiple receivers;
 aliases are expanded after message composing is completed.
@@ -5303,7 +5304,7 @@ being draft, respectively, as documented in the section
 .
 .Mx
 .It Ic echo
-\*(NQ (ec) Echoes arguments to standard output and writes a trailing
+\*(NQ(ec) Echoes arguments to standard output and writes a trailing
 newline, whereas the otherwise identical
 .Ic echon
 does not.
@@ -5733,7 +5734,7 @@ lists the names of folders below the named folder.
 .Mx
 .Mx
 .It Ic Followup , followup
-(F,fo) Similar to
+\*(CM(F,fo) Similar to
 .Ic Reply ,
 and
 .Ic reply ,
@@ -5749,7 +5750,7 @@ and
 .
 .Mx
 .It Ic Forward
-Similar to
+\*(CM Similar to
 .Ic forward ,
 but saves the message in a file named after the local part of the
 recipient's address (instead of in
@@ -5757,33 +5758,26 @@ recipient's address (instead of in
 .
 .Mx
 .It Ic forward
-Takes a message and the address of a recipient
-and forwards the message to him.
+\*(CM Take a message list and the address of a recipient, subject to
+.Va fullnames ,
+to whom the messages are sent.
 The text of the original message is included in the new one,
-with the value of the
+enclosed by the values of
 .Va forward-inject-head
-variable preceding, and the value of
-.Va forward-inject-tail
-succeeding it.
-To filter the included header fields to the desired subset use the
+and
+.Va forward-inject-tail .
+The list of included headers can be filtered with the
 .Ql forward
 slot of the white- and blacklisting command
 .Ic headerpick .
-Only the first part of a multipart message is included unless
-.Va forward-as-attachment ,
-and recipient addresses will be stripped from comments, names
-etc. unless the internal variable
-.Va fullnames
-is set.
+Only the first part of a multipart message is included but for
+.Va forward-as-attachment .
 .Pp
 This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
-if no receiver has been specified,
-.Va ^ERR Ns -PERM
-if some addressees where rejected by
-.Va expandaddr ,
-.Va ^ERR Ns -NOTSUP
-if multiple messages have been specified,
+if no receiver has been specified, or was rejected by
+.Va expandaddr
+policy,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
@@ -5792,6 +5786,7 @@ if a necessary character set conversion fails, and
 for other errors.
 It can also fail with errors of
 .Sx "Specifying messages" .
+Any error stops processing of further messages.
 .
 .Mx
 .It Ic from
@@ -6303,7 +6298,7 @@ define temporary_settings {
 .Mx
 .Mx
 .It Ic Lfollowup , Lreply
-Reply to messages that come in via known
+\*(CM Reply to messages that come in via known
 .Pf ( Ic mlist )
 or subscribed
 .Pf ( Ic mlsubscribe )
@@ -6343,7 +6338,7 @@ Any error stops processing of further messages.
 .
 .Mx
 .It Ic Mail
-Similar to
+\*(CM Similar to
 .Ic mail ,
 but saves the message in a file named after the local part of the first
 recipient's address (instead of in
@@ -6351,7 +6346,7 @@ recipient's address (instead of in
 .
 .Mx
 .It Ic mail
-(m) Takes a (list of) recipient address(es) as (an) argument(s),
+\*(CM(m) Takes a (list of) recipient address(es) as (an) argument(s),
 or asks on standard input if none were given;
 then collects the remaining mail content and sends it out.
 Unless the internal variable
@@ -6759,7 +6754,7 @@ Both folders must be of the same type.
 .Mx
 .Mx
 .It Ic Reply , Respond
-(R) Identical to
+\*(CM(R) Identical to
 .Ic reply
 except that it replies to only the sender of each message of the given
 list, by using the first message as the template to quote, for the
@@ -6772,7 +6767,7 @@ will exchange this command with
 .Mx
 .Mx
 .It Ic reply , respond
-(r) Take a message (list) and group-respond (to each in turn)
+\*(CM(r) Take a message (list) and group-respond (to each in turn)
 by addressing the sender and all recipients, subject to
 .Va fullnames
 and

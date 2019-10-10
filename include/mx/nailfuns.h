@@ -1415,8 +1415,8 @@ FL int         sendmp(struct message *mp, FILE *obuf,
  * (or bad), and FAL0 if URL parsing failed */
 FL boole mx_sendout_mta_url(struct mx_url *urlp);
 
-/* Interface between the argument list and the mail1 routine which does all the
- * dirty work */
+/* For main() only: interface between the command line argument list and the
+ * mail1 routine which does all the dirty work */
 FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
       struct mx_name *cc, struct mx_name *bcc, char const *subject,
       struct attachment *attach, char const *quotefile);
