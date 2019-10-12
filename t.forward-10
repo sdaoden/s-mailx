@@ -1,0 +1,49 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex1@am.ple
+Subject: Fwd: Bugstop: five miles out 2
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+b1
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+Content-Description: Forwarded message
+
+Subject: Bugstop: five miles out 2
+Reply-To: mister originator2 <mr2@originator>
+From: mister originator2 <mr2@originator>
+To: bugstop-commit@five.miles.out
+Cc: is2@a.list
+In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
+Date: Wed, 19 Jul 2017 09:23:57 -0400
+Message-Id: <20170719132257.766AF781267-2@originator>
+Status: RO
+
+That's appalling, II.
+
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex1@am.ple
+Subject: Fwd: Bugstop: five miles out 2
+
+.head.Subject: Bugstop: five miles out 2
+From: mister originator2 <mr2@originator>
+To: bugstop-commit@five.miles.out
+
+That's appalling, II.
+
+.tail.b2
+

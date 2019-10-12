@@ -1,0 +1,10 @@
+1:done
+2:done
+reproducible_build: ex3@am.ple: *expandaddr* does not allow mail address target
+reproducible_build: No recipients specified
+reproducible_build: ... message not sent
+3:done
+4:done
+reproducible_build: No recipient specified.
+5:done
+6:done
