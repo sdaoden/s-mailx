@@ -156,7 +156,8 @@ t_all() {
    jspawn pipe_handlers
    jsync
 
-   # Rest
+   # Unclassified rest
+   jspawn top
    jspawn s_mime
    jspawn z
    jsync
@@ -8643,7 +8644,49 @@ t_pipe_handlers() {
 }
 # }}}
 
-# Rest {{{
+# Unclassified rest {{{
+t_top() {
+   t_prolog "${@}"
+
+   t__gen_msg subject top1 to 1 from 1 cc 1 body 'body1-1
+body1-2
+
+body1-3
+body1-4
+
+
+body1-5
+'     > "${MBOX}"
+   t__gen_msg subject top2 to 1 from 1 cc 1 body 'body2-1
+body2-2
+
+
+body2-3
+
+
+body2-4
+body2-5
+'     >> "${MBOX}"
+
+   ${MAILX} ${ARGS} -Rf -Y '#
+\top 1
+\echo --- $?/$^ERRNAME, 1; \set toplines=10
+\top 1
+\echo --- $?/$^ERRNAME, 2; \set toplines=5
+\headerpick top retain subject # For top
+\headerpick type retain to subject # For Top
+\top 1
+\echo --- $?/$^ERRNAME, 3; \set topsqueeze
+\top 1 2
+\echo --- $?/$^ERRNAME, 4
+\Top 1
+\echo --- $?/$^ERRNAME, 5
+#  ' "${MBOX}" > ./.tall 2>&1
+   check 1 0 ./.tall '2556125754 705'
+
+   t_epilog "${@}"
+}
+
 t_s_mime() {
    t_prolog "${@}"
 
