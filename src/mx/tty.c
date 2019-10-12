@@ -4484,17 +4484,17 @@ c_bind(void *v){
    cacp = v;
    gif = 0;
 
-   if(cacp->cac_no <= 1)
+   if(cacp->cac_no == 0)
       aster = show = TRU1;
    else{
       c.cp = cacp->cac_arg->ca_arg.ca_str.s;
-      show = !su_cs_cmp_case(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
+      show = (cacp->cac_no == 1);
       aster = FAL0;
 
       if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
          if(!(aster = n_is_all_or_aster(c.cp)) || !show){
             n_err(_("`bind': invalid context: %s\n"), c.cp);
-            v = NULL;
+            v = NIL;
             goto jleave;
          }
          gif = 0;
