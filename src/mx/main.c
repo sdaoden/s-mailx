@@ -103,6 +103,11 @@ static int a_main_rcv_mode(boole had_A_arg, char const *folder,
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
 
+/* SIGUSR1, then */
+#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+static void a_main_memtrace(int signo);
+#endif
+
 /* */
 static void a_main_usage(FILE *fp);
 static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt,
@@ -163,7 +168,10 @@ a_main_startup(void){
    if(n_psonce & n_PSO_INTERACTIVE)
       safe_signal(SIGPIPE, dflpipe = SIG_IGN);
 
-#if su_DVLOR(1, 0)
+#if DVLOR(1, 0)
+# if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+   safe_signal(SIGUSR1, &a_main_memtrace);
+# endif
    safe_signal(SIGABRT, &mx__nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &mx__nyd_oncrash);
@@ -375,6 +383,22 @@ a_main_hdrstop(int signo){
    n_err_sighdl(_("\nInterrupt\n"));
    siglongjmp(a_main__hdrjmp, 1);
 }
+
+#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+static void
+a_main_memtrace(int signo){
+   u32 oopt;
+   UNUSED(signo);
+
+   su_mem_trace();
+   oopt = n_poption;
+   if(!(oopt & n_PO_V))
+      ok_bset(verbose);
+   su_mem_trace();
+   if(!(oopt & n_PO_V))
+      ok_bclear(verbose);
+}
+#endif
 
 static void
 a_main_usage(FILE *fp){

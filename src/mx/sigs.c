@@ -56,7 +56,7 @@
  * TODO and a half week to convert this codebase to SysV style signal handling,
  * TODO meaning no SA_RESTART and EINTR in a lot of places and error reporting
  * TODO up the chain.   I failed miserably, not only because S/MIME / SSL but
- * TODO also because of general frustration.  Directly after v14.9 i will strip
+ * TODO also because of general frustration.  Directly after v14.10 i will strip
  * TODO ANYTHING off the codebase (socket stuff etc.) and keep only the very
  * TODO core, doing namespace and type cleanup and convert this core to a clean
  * TODO approach, from which i plan to start this thing anew.

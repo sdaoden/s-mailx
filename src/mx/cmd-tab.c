@@ -66,10 +66,6 @@ static su_sz a_ctab__pcmd_cmp(void const *s1, void const *s2);
 /* `help' / `?' command */
 static int a_ctab_c_help(void *vp);
 
-#if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
-static int a_ctab_c_memtrace(void *vp);
-#endif
-
 /* List of all commands; but first their n_cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
 static struct n_cmd_desc const a_ctab_ctable[] = {
@@ -402,26 +398,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-
-#if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
-static int
-a_ctab_c_memtrace(void *vp){
-   int rv;
-   u32 oopt;
-   NYD2_IN;
-   UNUSED(vp);
-
-   /* Only for development.. */
-   oopt = n_poption;
-   if(!(oopt & n_PO_V))
-      ok_bset(verbose);
-   rv = (su_mem_trace() != FAL0);
-   if(!(oopt & n_PO_V))
-      ok_bclear(verbose);
-   NYD2_OU;
-   return rv;
-}
-#endif
 
 FL char const *
 n_cmd_isolate_name(char const *cmd){

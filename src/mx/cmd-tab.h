@@ -797,13 +797,6 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("IMAP mailbox name <e[ncode]|d[ecode]> <rest-of-line>")) },
 #endif
 
-#ifdef mx_HAVE_DEVEL
-# ifdef su_MEM_ALLOC_DEBUG
-   { "memtrace", &a_ctab_c_memtrace, (I | M | TWYSH), 0, 0, NIL
-     DS(N_("Trace current memory usage afap")) },
-# endif
-#endif /* mx_HAVE_DEVEL */
-
 #undef DS
 
 #undef MAC
