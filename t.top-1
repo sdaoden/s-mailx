@@ -1,0 +1,46 @@
+[-- Message  1 -- 17 lines, 222 bytes --]:
+Subject: top1
+To: To1 <to1@exam.ple>
+From: From1 <from1@exam.ple>
+Cc: Cc1 <cc1@exam.ple>
+
+--- 0/NONE, 1
+[-- Message  1 -- 17 lines, 222 bytes --]:
+Subject: top1
+To: To1 <to1@exam.ple>
+From: From1 <from1@exam.ple>
+Cc: Cc1 <cc1@exam.ple>
+
+body1-1
+body1-2
+
+body1-3
+body1-4
+--- 0/NONE, 2
+[-- Message  1 -- 17 lines, 222 bytes --]:
+Subject: top1
+
+body1-1
+body1-2
+
+--- 0/NONE, 3
+[-- Message  1 -- 17 lines, 222 bytes --]:
+Subject: top1
+
+body1-1
+body1-2
+body1-3
+[-- Message  2 -- 18 lines, 223 bytes --]:
+Subject: top2
+
+body2-1
+body2-2
+body2-3
+--- 0/NONE, 4
+[-- Message  1 -- 17 lines, 222 bytes --]:
+Subject: top1
+To: To1 <to1@exam.ple>
+
+body1-1
+body1-2
+--- 0/NONE, 5
