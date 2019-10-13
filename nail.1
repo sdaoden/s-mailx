@@ -3567,11 +3567,8 @@ the command
 not the language.
 .
 .Pp
-The command
-.Ic list
-can be used to show the list of all commands, either alphabetically
-sorted or in prefix search order (these do not match, also because the
-POSIX standard prescribes a set of abbreviations).
+A list of all commands in lookup order is dumped by the command
+.Ic list .
 \*(OPally the command
 .Ic help
 (or
@@ -6169,9 +6166,7 @@ Superseded by the multiplexer
 .
 .Mx
 .It Ic list
-Shows the names of all available commands, alphabetically sorted.
-If given any non-whitespace argument the list will be shown in the order
-in which command prefixes are searched.
+Shows the names of all available commands, in command lookup order.
 \*(OP In conjunction with a set variable
 .Va verbose
 additional information will be provided for each command: the argument

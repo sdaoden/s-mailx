@@ -4,7 +4,6 @@
  *@ TODO too stupid yet, however: it should fully support subcommands, too, so
  *@ TODO that, e.g., "vexpr regex" arguments can be fully prepared by the
  *@ TODO generic parser.  But at least a bit.
- *@ TODO See cmd-tab.h for sort and speedup TODOs.
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -61,8 +60,6 @@ static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
 /* Print a list of all commands */
 static int a_ctab_c_list(void *vp);
 
-static su_sz a_ctab__pcmd_cmp(void const *s1, void const *s2);
-
 /* `help' / `?' command */
 static int a_ctab_c_help(void *vp);
 
@@ -71,6 +68,9 @@ static int a_ctab_c_help(void *vp);
 static struct n_cmd_desc const a_ctab_ctable[] = {
 #include <mx/cmd-tab.h>
 };
+
+/* And the indexes */
+#include "mx/gen-cmd-tab.h" /* $(MX_SRCDIR) */
 
 /* And a list of things which are special to the lexer in go.c, so that we can
  * provide help and list them.
@@ -214,18 +214,16 @@ a_ctab_c_list(void *vp){
    struct n_cmd_desc const **cdpa, *cdp, **cdpa_curr;
    uz i, l, scrwid;
    NYD_IN;
+   UNUSED(vp);
 
-   i = NELEM(a_ctab_ctable) + NELEM(a_ctab_ctable_plus) +1;
+   i = NELEM(a_ctab_ctable_plus) + NELEM(a_ctab_ctable) +1;
    cdpa = n_autorec_alloc(sizeof(cdp) * i);
 
-   for(i = 0; i < NELEM(a_ctab_ctable); ++i)
-      cdpa[i] = &a_ctab_ctable[i];
-   for(l = 0; l < NELEM(a_ctab_ctable_plus); ++i, ++l)
-      cdpa[i] = &a_ctab_ctable_plus[l];
+   for(i = 0; i < NELEM(a_ctab_ctable_plus); ++i)
+      cdpa[i] = &a_ctab_ctable_plus[i];
+   for(l = 0; l < NELEM(a_ctab_ctable); ++i, ++l)
+      cdpa[i] = &a_ctab_ctable[l];
    cdpa[i] = NIL;
-
-   if(*(void**)vp == NIL)
-      su_sort_shell_vpp(S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
 
    if((fp = mx_fs_tmp_open("list", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
@@ -235,10 +233,10 @@ a_ctab_c_list(void *vp){
 
    fprintf(fp, _("Commands are:\n"));
    l = 1;
-   for(i = 0, cdpa_curr = cdpa; (cdp = *cdpa_curr++) != NULL;){
+   for(i = 0, cdpa_curr = cdpa; (cdp = *cdpa_curr++) != NIL;){
       char const *pre, *suf;
 
-      if(cdp->cd_func == NULL)
+      if(cdp->cd_func == NIL)
          pre = "[", suf = "]";
       else
          pre = suf = n_empty;
@@ -268,7 +266,7 @@ a_ctab_c_list(void *vp){
             fprintf(fp, "\n");
             ++l;
          }
-         fprintf(fp, (*cdpa_curr != NULL ? "%s%s%s, " : "%s%s%s\n"),
+         fprintf(fp, (*cdpa_curr != NIL ? "%s%s%s, " : "%s%s%s\n"),
             pre, cdp->cd_name, suf);
       }
    }
@@ -277,21 +275,9 @@ a_ctab_c_list(void *vp){
       page_or_print(fp, l);
       mx_fs_close(fp);
    }
+
    NYD_OU;
-   return 0;
-}
-
-static su_sz
-a_ctab__pcmd_cmp(void const *s1, void const *s2){
-   su_sz rv;
-   struct n_cmd_desc const *cdpa1, *cdpa2;
-   NYD2_IN;
-
-   cdpa1 = s1;
-   cdpa2 = s2;
-   rv = su_cs_cmp(cdpa1->cd_name, cdpa2->cd_name);
-   NYD2_OU;
-   return rv;
+   return n_EXIT_OK;
 }
 
 static int
@@ -301,7 +287,7 @@ a_ctab_c_help(void *vp){
    NYD_IN;
 
    /* Help for a single command? */
-   if((arg = *(char const**)vp) != NULL){
+   if((arg = *S(char const**,vp)) != NIL){
       struct n_cmd_desc const *cdp, *cdp_max;
       char const *alias_name, *alias_exp, *aepx;
 
@@ -309,24 +295,25 @@ a_ctab_c_help(void *vp){
        * Avoid self-recursion; since a commandalias can shadow a command of
        * equal name allow one level of expansion to return an equal result:
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
-      alias_name = NULL;
-      while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NULL &&
-            (alias_name == NULL || su_cs_cmp(alias_name, aepx))){
+      alias_name = NIL;
+      while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
+            (alias_name == NIL || su_cs_cmp(alias_name, aepx))){
          alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
          arg = alias_exp;
       }
 
       cdp_max = &(cdp = a_ctab_ctable)[NELEM(a_ctab_ctable)];
+      cdp = &cdp[a_CTAB_CIDX(*arg)];
+
 jredo:
       for(; cdp < cdp_max; ++cdp){
-         if(su_cs_starts_with(cdp->cd_name, arg)){
-            fputs(arg, n_stdout);
-            if(su_cs_cmp(arg, cdp->cd_name))
-               fprintf(n_stdout, " (%s)", cdp->cd_name);
-         }else
+         if(cdp->cd_func == NIL || !su_cs_starts_with(cdp->cd_name, arg))
             continue;
 
+         fputs(arg, n_stdout);
+         if(su_cs_cmp(arg, cdp->cd_name))
+            fprintf(n_stdout, " (%s)", cdp->cd_name);
 #ifdef mx_HAVE_DOCSTRINGS
          fprintf(n_stdout, ": %s%s",
             ((cdp->cd_caflags & n_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
@@ -345,7 +332,7 @@ jredo:
          goto jredo;
       }
 
-      if(alias_name != NULL){
+      if(alias_name != NIL){
          fprintf(n_stdout, "%s\n", n_shexp_quote_cp(arg, TRU1));
          rv = 0;
       }else{
@@ -428,15 +415,23 @@ n_cmd_is_valid_name(char const *cmd){
 }
 
 FL struct n_cmd_desc const *
-n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
+n_cmd_firstfit(char const *cmd){
    struct n_cmd_desc const *cdp;
+   char c, C, x;
    NYD2_IN;
 
-   for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[NELEM(a_ctab_ctable)]; ++cdp)
-      if(*cmd == *cdp->cd_name && cdp->cd_func != NULL &&
-            su_cs_starts_with(cdp->cd_name, cmd))
+   C = su_cs_to_upper(c = *cmd);
+   cdp = &a_ctab_ctable[a_CTAB_CIDX(c)];
+   c = su_cs_to_lower(c);
+
+   for(; cdp < &a_ctab_ctable[NELEM(a_ctab_ctable)]; ++cdp)
+      if(cdp->cd_func != NIL && su_cs_starts_with(cdp->cd_name, cmd))
          goto jleave;
-   cdp = NULL;
+      else if((x = *cdp->cd_name) != c && x != C)
+         break;
+
+   /* This is not called for anything in the _plus table */
+   cdp = NIL;
 jleave:
    NYD2_OU;
    return cdp;
@@ -447,7 +442,7 @@ n_cmd_default(void){
    struct n_cmd_desc const *cdp;
    NYD2_IN;
 
-   cdp = &a_ctab_ctable[0];
+   cdp = &a_ctab_ctable[a_CTAB_DEFAULT_IDX];
    NYD2_OU;
    return cdp;
 }

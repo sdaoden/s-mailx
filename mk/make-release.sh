@@ -102,11 +102,12 @@ update_stable_hook() {
    ${git} add nail.rc
 
    #
+   ${make} d-cmd-tab && ${git} add -f src/mx/gen-cmd-tab.h
+   ${make} d-cs-ctype && ${git} add -f src/su/gen-cs-ctype.h
    if [ -n "${have_perl}" ]; then
       ${make} d-okeys && ${git} add -f src/mx/gen-okeys.h
       ${make} d-tcaps && ${git} add -f src/mx/gen-tcaps.h
       ${make} d-errors && ${git} add -f src/su/gen-errors.h
-      ${make} d-cs-ctype && ${git} add -f src/su/gen-cs-ctype.h
    fi
 }
 
@@ -134,11 +135,12 @@ update_release_hook() {
    ${mv} -f nail.rcx nail.rc
    ${git} add nail.rc
 
+   ${make} d-cmd-tab-nv && ${git} add -f src/mx/gen-cmd-tab.h
+   ${make} d-cs-ctype-nv && ${git} add -f src/su/gen-cs-ctype.h
    if [ -n "${have_perl}" ]; then
       ${make} d-okeys-nv && ${git} add -f src/mx/gen-okeys.h
       ${make} d-tcaps-nv && ${git} add -f src/mx/gen-tcaps.h
       ${make} d-errors-nv && ${git} add -f src/su/gen-errors.h
-      ${make} d-cs-ctype-nv && ${git} add -f src/su/gen-cs-ctype.h
       perl mk/su-doc-strip.pl include/su/*.h && ${git} add include/su
    fi
 
