@@ -1,0 +1,46 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd1
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>
+
+origb1
+
+1:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd1
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>
+
+origb1
+
+2:0/NONE
+3:1/DESTADDRREQ
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd1
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>
+
+origb1
+
+4:0/NONE
+5:1/DESTADDRREQ
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd1
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>
+
+origb1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd2
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>
+
+origb2
+
+6:0/NONE
