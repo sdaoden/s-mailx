@@ -320,6 +320,7 @@ jrestart:
       line.s[0] = '\0';
       flags |= a_IS_EMPTY;
       cdp = n_cmd_default();
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
    (cp = line.s)[line.l] = '\0';
@@ -436,6 +437,7 @@ jrestart:
    if(*word == '\0'){
       flags |= a_IS_EMPTY;
       cdp = n_cmd_default();
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
 
