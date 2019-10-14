@@ -103,7 +103,7 @@ t_all() {
    jspawn can_send_rfc
    jspawn reply
    jspawn forward
-   jspawn record_a_resend
+   jspawn resend
    jsync
 
    # VFS
@@ -4774,29 +4774,86 @@ b6
    t_epilog "${@}"
 } # }}}
 
-t_record_a_resend() {
+t_resend() { # {{{
    t_prolog "${@}"
+   XARGS=${ARGS}
+   ARGS="${ARGS} -Sv15-compat=y"
 
-   printf '#
-         set record=%s
-         m %s\n~s Subject 1.\nHello.\n~.
-         set record-files add-file-recipients
-         m %s\n~s Subject 2.\nHello.\n~.
-         File %s
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-         set record-resent
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-      #' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
-      ${MAILX} ${ARGS}
+   t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
+   t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
 
-   check 1 0 "${MBOX}" '2632690399 252'
-   check 2 - .t.record '3337485450 456'
-   check 3 - .t.resent '1560890069 640'
+   ## Base
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y ${1}' . "du <ex1@am.ple>"
+      echo 1:$?/$^ERRNAME; echoerr 1:done
+      set fullnames escape=!
+      '${1}' 1 "du , da <ex2@am.ple>"
+      echo 2:$?/$^ERRNAME; echoerr 2:done
+      # Some errors
+      set nofullnames ea=$expandaddr expandaddr=-all
+      '${1}' ` "du <ex3@am.ple>"
+      echo 3:$?/$^ERRNAME; echoerr 3:done
+      set expandaddr=$ea
+      '${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
+      echo 4:$?/$^ERRNAME; echoerr 4:done
+      '${1}' # TODO not yet possible b5 !.
+      echo 5:$?/$^ERRNAME; echoerr 5:done
+      set expandaddr=$ea
+      '${1}' 1 2 ex6@am.ple
+      echo 6:$?/$^ERRNAME; echoerr 6:done
+      #' \
+         "${MBOX}" > ./.tall 2>./.terr
+      return ${?}
+   }
 
+   t_it resend
+   check 1 0 ./.tall '1461006932 1305'
+   if have_feat uistrings; then
+      check 2 - ./.terr '138360532 210'
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
+
+   t_it Resend
+   check 3 0 ./.tall '3674535444 958'
+   if have_feat uistrings; then
+      check 4 - ./.terr '138360532 210'
+   else
+      t_echoskip '4:[!UISTRINGS]'
+   fi
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      set record=.trec'${2}'; '${1}' 1 ex1@am.ple
+      echo 1:$?/$^ERRNAME; set record-resent; '${1}' 1 ex2@am.ple
+      echo 2:$?/$^ERRNAME; set outfolder norecord-resent; '${1}' 2 ex1@am.ple
+      echo 3:$?/$^ERRNAME; set record-resent; '${1}' 2 ex2@am.ple
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check_ex0 ${2}
+      if [ ${#} -ne 3 ]; then
+         check ${2} - ./.tall '1711347390 992'
+         check ${3}-1 - ./.trec${2} '2840978700 249'
+         check ${3}-2 - ./.tfolder/.trec${2} '3219997964 229'
+      else
+         check ${2} - ./.tall '1391418931 724'
+         check ${3}-1 - ./.trec${2} '473817710 182'
+         check ${3}-2 - ./.tfolder/.trec${2} '2174632404 162'
+      fi
+   }
+
+   t_it resend 5 6 yes
+   t_it Resend 7 8
+
+   ARGS=${XARGS}
    t_epilog "${@}"
-}
+} # }}}
 # }}}
 
 # VFS {{{

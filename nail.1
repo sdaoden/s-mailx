@@ -6818,7 +6818,8 @@ but useful for sending a message again to the same recipients.
 .Mx
 .It Ic resend
 Takes a list of messages and a name,
-and sends each message to the given, fully expanded addressee.
+and sends each message to the given addressee, which is subject to
+.Va fullnames .
 .Ql Resent-From:
 and related header fields are prepended to the new copy of the message.
 Saving in
@@ -6826,13 +6827,16 @@ Saving in
 is only performed if
 .Va record-resent
 is set.
+\*(ID\*(CM is not entered, the only supported hooks are
+.Va on-resend-enter
+and
+.Va on-resend-cleanup .
 .Pp
 This may generate the errors
 .Va ^ERR Ns -DESTADDRREQ
-if no receiver has been specified,
-.Va ^ERR Ns -PERM
-if the addressee was rejected by
-.Va expandaddr ,
+if no receiver has been specified, or was rejected by
+.Va expandaddr
+policy,
 .Va ^ERR Ns -IO
 if an I/O error occurs,
 .Va ^ERR Ns -NOTSUP
@@ -6841,8 +6845,6 @@ if a necessary character set conversion fails, and
 for other errors.
 It can also fail with errors of
 .Sx "Specifying messages" .
-Occurrence of some of the errors depend on the value of
-.Va expandaddr .
 Any error stops processing of further messages.
 .
 .Mx
