@@ -230,7 +230,7 @@ fi
 
 # Since we invoke $MAILX from within several directories we need a fully
 # qualified path.  Or at least something similar.
-{ echo ${MAILX} | ${grep} -q ^/; } || MAILX=`${pwd}`/${MAILX}
+{ echo ${MAILX} | ${grep} -q ^/; } || MAILX="${TMPDIR}"/${MAILX}
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
