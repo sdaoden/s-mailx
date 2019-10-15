@@ -107,6 +107,7 @@ t_all() {
    jsync
 
    # VFS
+   jspawn copy
    jspawn mbox
    jspawn maildir
    jsync
@@ -4274,7 +4275,7 @@ t_headerpick() {
 # }}}
 
 # Send/RFC absolute basics {{{
-t_can_send_rfc() {
+t_can_send_rfc() { # {{{
    t_prolog "${@}"
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.1 \
@@ -4352,7 +4353,7 @@ xit
    check 7 0 ./.tall '951018449 138'
 
    t_epilog "${@}"
-}
+} # }}}
 
 t_reply() { # {{{
    # Alternates and ML related address massage etc. somewhere else
@@ -4857,7 +4858,142 @@ t_resend() { # {{{
 # }}}
 
 # VFS {{{
-t_mbox() {
+t_copy() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '137107341 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   copy 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   copy .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   copy .tf1 # no auto-advance
+   echo 2:$?/$^ERRNAME
+   headers
+   copy 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   copy 1 2 .tf3
+   echo 4:$?/$^ERRNAME
+   headers
+   !chmod 0444 .tf3
+   copy 1 2 .tf3
+   echo 5:$?/$^ERRNAME
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   check 2-1 - ./.tall '1913702840 1121'
+   check 2-2 - ./.tf1 '686654461 334'
+   check 2-3 - ./.tf2 '1931512953 162'
+   check 2-4 - ./.tf3 '3642131968 344'
+   if have_feat uistrings; then
+      check 2-5 - ./.terr '2590372641 91'
+   else
+      t_echoskip '2-5:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '1477662071 346'
+
+   ##
+   t_it() {
+      t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Copy3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '2667292819 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Copy
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Copy
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Copy 2
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      Copy 3
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Copy *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>&1
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '1543702808 1617'
+   check 5-4 - ./from1 '1031912635 999'
+   check 5-5 - ./ex '2400630246 149'
+   ${rm} -f ./.tlst ./.tall ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '1031912635 999'
+   check 6-5 - .tfolder/ex '2400630246 149'
+
+   ##
+   t__x2_msg > ./.tmbox
+
+   t_it() {
+      printf '#
+         '"${1}"'
+         echo 1:$?/$^ERRNAME
+         headerpick save retain cc date from subject to
+         '"${1}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${1}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${1}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 'copy ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '3805176908 152'
+   check 7-2 - ./.tout '2447734879 1316'
+
+   t_it Copy
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '1044700686 136'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
+
+   t_epilog "${@}"
+} # }}}
+
+t_mbox() { # {{{
    t_prolog "${@}"
 
    (
@@ -5039,9 +5175,9 @@ t_mbox() {
    check 25 - ./.tinv2 '853754737 510'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_maildir() {
+t_maildir() { # {{{
    t_prolog "${@}"
 
    if have_feat maildir; then :; else
@@ -5176,7 +5312,7 @@ t_maildir() {
    check 11 - ./.t11 '642719592 302'
 
    t_epilog "${@}"
-}
+} # }}}
 # }}}
 
 # MIME and RFC basics {{{

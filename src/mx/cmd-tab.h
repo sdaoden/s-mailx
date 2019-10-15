@@ -258,7 +258,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("For [<context> (base)], [<show>] "
          "or bind <key[:,key:]> [:<data>:]"))},
 
-{ "copy", &c_copy, (A | M | TARG), 0, 0,
+{ "copy", &c_copy, (A | M | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_copy)
      DS(N_("Copy [<msglist>], but do not mark them for deletion")) },
    { "call", &c_call, (M | X | EM | TARG), 0, 0,
@@ -291,7 +291,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Show colour settings of <type> (1,8,256,all/*) or define one")) },
    { "commandalias", &c_commandalias, (M | X | TWYSH), 0, MAC, NIL
      DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
-   { "Copy", &c_Copy, (A | M | SC | TARG), 0, 0,
+   { "Copy", &c_Copy, (A | M | SC | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Copy)
      DS(N_("Like `copy', but derive filename from first sender")) },
    { "collapse", &c_collapse, (A | TMSGLST), 0, 0, NIL

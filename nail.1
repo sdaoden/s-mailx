@@ -5016,10 +5016,12 @@ hello, world
 .
 .Mx
 .It Ic Copy
-(C) Copy messages to files whose names are derived from the author of
-the respective message and do not mark them as being saved;
-otherwise identical to
-.Ic Save .
+(C) Similar to
+.Ic copy ,
+but copy the messages to a file named after the local part of the
+sender of the first message instead of taking a filename argument;
+.Va outfolder
+is inspected to decide on the actual storage location.
 .
 .Mx
 .It Ic copy

@@ -93,17 +93,17 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
       }
       cp = np->n_name;
 
-      for (cq = cp; *cq != '\0' && *cq != '@'; cq++)
+      for(cq = cp; *cq != '\0' && *cq != '@'; cq++)
          ;
       *cq = '\0';
-      if (ok_blook(outfolder)) {
+      if(ok_blook(outfolder)){
          uz i;
 
          i = su_cs_len(cp) +1;
          file = n_autorec_alloc(i + 1);
          file[0] = '+';
          su_mem_copy(file + 1, cp, i);
-      } else
+      }else
          file = cp;
    }else{
       cap = cap->ca_next;
