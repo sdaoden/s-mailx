@@ -1787,7 +1787,9 @@ VL struct message *dot; /* Pointer to current message */
 VL struct message *prevdot; /* Previous current message */
 VL struct message *message; /* The actual message structure */
 VL struct message *threadroot; /* first threaded message */
-VL int *n_msgvec; /* Folder setmsize(), list.c res. store*/
+/* getmsglist() 1st marked (for e.g. `Reply') HACK TODO (should be in a ctx) */
+VL struct message *n_msgmark1;
+VL int *n_msgvec; /* Folder setmsize(), list.c res. store */
 #ifdef mx_HAVE_IMAP
 VL int imap_created_mailbox; /* hack to get feedback from imap */
 #endif

@@ -692,9 +692,10 @@ jwhite:
          break;
       }
       if(c == 0){
-         if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0)
+         if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0){
             c = 1;
-         else{
+            n_msgmark1 = &message[n_msgvec[0] - 1];
+         }else{
 jmsglist_err:
             if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                   (n_poption & n_PO_D_V))

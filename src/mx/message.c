@@ -1303,8 +1303,11 @@ static void
 a_msg__threadmark(struct message *self, int f){
    NYD2_IN;
    if(!(self->m_flag & MHIDDEN) &&
-         (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d))
+         (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d)){
       self->m_flag |= MMARK;
+      if(n_msgmark1 == NIL)
+         n_msgmark1 = self;
+   }
 
    if((self = self->m_child) != NULL){
       goto jcall;
@@ -1312,8 +1315,11 @@ a_msg__threadmark(struct message *self, int f){
          if(self->m_child != NULL)
 jcall:
             a_msg__threadmark(self, f);
-         else
+         else{
             self->m_flag |= MMARK;
+            if(n_msgmark1 == NIL)
+               n_msgmark1 = self;
+         }
    }
    NYD2_OU;
 }
@@ -1508,6 +1514,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
    n_pstate |= n_PS_MSGLIST_DIRECT;
+   n_msgmark1 = NIL;
    a_msg_list_last_saw_d = a_msg_list_saw_d;
    a_msg_list_saw_d = FAL0;
 
@@ -1672,6 +1679,8 @@ mark(int mno, int f){
    else{
       ASSERT(!(mp->m_flag & MHIDDEN));
       mp->m_flag |= MMARK;
+      if(n_msgmark1 == NIL)
+         n_msgmark1 = mp;
    }
    NYD_OU;
 }

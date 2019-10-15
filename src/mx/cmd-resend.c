@@ -632,7 +632,8 @@ a_crese_Reply(int *msgvec, boole recipient_record){
       head.h_to = cat(head.h_to, np);
    }
 
-   mp = &message[msgvec[0] - 1];
+   mp = n_msgmark1;
+   ASSERT(mp != NIL);
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese_reedit(head.h_subject);
    a_crese_make_ref_and_cs(mp, &head);
