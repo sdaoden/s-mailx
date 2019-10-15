@@ -658,6 +658,8 @@ jredo:
                   goto jerr;
                }
                ncap.ca_arg.ca_msglist[1] = 0;
+               ASSERT(n_msgmark1 == NIL);
+               n_msgmark1 = &message[ncap.ca_arg.ca_msglist[0] - 1];
 
                /* TODO For the MSGLIST_AND_TARGET case an entirely empty input
                 * TODO results in no _TARGET argument: ensure it is there! */
