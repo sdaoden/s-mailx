@@ -1,11 +1,10 @@
 #@ mime.types(5)
-#@ This is the set of MIME types that will become compiled in.
+#@ The set of MIME types that will be built in.
 #@ Official MIME types are registered at and managed by IANA.
 #@ A more complete list of actually used MIME types can be found at
 #@ <http://svn.apache.org/viewvc/tika/trunk/tika-core/src/main/resources/\
 #@ org/apache/tika/mime/tika-mimetypes.xml>.
-#@ This adds some more, search EXTENSION comments below.
-#@ It also changes some TIKA things, search CHANGE comments below.
+#@ Here are EXTENSIONs, and some TIKA things are changed, see CHANGEs.
 #
 # Lines starting with a number sign (#) (after possible whitespace) are
 # comments and discarded, empty lines are ignored, remaining ones are
@@ -25,7 +24,7 @@
 # - Only MIME types for which we have a type constant allocated in
 #   mx/mime-types.c:enum mime_type are allowed in this file here.
 # - MIME types without any file extensions are not handled.
-# - Note that the order of types and extensions is preserved ...
+# - Note that the order of types and extensions is preserved.
 # - Note that at least one built-in type is required (empty C array)
 
 # Expected frequent use
@@ -46,8 +45,10 @@ application/xml  xml xsl xsd
 ? text/x-c++src  cpp cxx cc c++
 ? text/x-ini  ini
 ? text/x-perl  pl pm al perl
+? text/x-raku  raku rakumod
 # CHANGE (tika: text/plain)
 ? text/x-pod  pod
+? text/x-rakudoc rakudoc
 
 # EXTENSION .txz
 application/x-xz  xz txz
