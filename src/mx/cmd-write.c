@@ -83,8 +83,8 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    if(!(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
       struct mx_name *np;
 
-      if((cp = n_header_senderfield_of(message + *msgvec - 1)) == NULL ||
-            (np = lextract(cp, GTO | GSKIN)) == NULL){
+      if((cp = n_header_senderfield_of(n_msgmark1)) == NIL ||
+            (np = lextract(cp, GTO | GSKIN)) == NIL){
          n_err(_("Cannot determine message sender to %s.\n"),
             cacp->cac_desc->cad_name);
          goto jleave;

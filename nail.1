@@ -6858,9 +6858,7 @@ a non-0 exit status may cause the program to exit.
 (S) Similar to
 .Ic save,
 but saves the messages in a file named after the local part of the
-sender of the first message instead of (in
-.Va record
-and) taking a filename argument; the variable
+sender of the first message instead of taking a filename argument;
 .Va outfolder
 is inspected to decide on the actual storage location.
 .
@@ -6883,12 +6881,12 @@ If editing a
 .Mx -sx
 .Sx "primary system mailbox"
 the messages are marked for deletion.
-.Sx "Filename transformations"
-will be applied.
 To filter the saved header fields to the desired subset use the
 .Ql save
 slot of the white- and blacklisting command
 .Ic headerpick .
+Also see
+.Ic Copy .
 .
 .It Ic savediscard
 \*(OB Superseded by the multiplexer
