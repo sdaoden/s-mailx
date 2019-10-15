@@ -291,12 +291,14 @@ a_ctab_c_help(void *vp){
       struct n_cmd_desc const *cdp, *cdp_max;
       char const *alias_name, *alias_exp, *aepx;
 
-      /* Aliases take precedence.
+      /* Aliases take precedence, unless disallowed.
        * Avoid self-recursion; since a commandalias can shadow a command of
        * equal name allow one level of expansion to return an equal result:
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
       alias_name = NIL;
-      while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
+      if(*arg == '\\')
+         ++arg;
+      else while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
             (alias_name == NIL || su_cs_cmp(alias_name, aepx))){
          alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
