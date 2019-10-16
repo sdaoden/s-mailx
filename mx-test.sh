@@ -8281,6 +8281,61 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
    printf '\n%s\n\n' "${body}"
 }
 
+t__x1_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:46:25 2017
+	Subject: Bugstop: five miles out 1
+	Reply-To: mister originator1 <mr1@originator>
+	From: mister originator1 <mr1@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is1@a.list
+	In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
+	Date: Wed, 19 Jul 2017 09:22:57 -0400
+	Message-Id: <20170719132257.766AF781267-1@originator>
+	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+	Status: RO
+	
+	That's appalling, I.
+	
+	_EOT
+}
+
+t__x2_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:47:25 2017
+	Subject: Bugstop: five miles out 2
+	Reply-To: mister originator2 <mr2@originator>
+	From: mister originator2 <mr2@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is2@a.list
+	In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
+	Date: Wed, 19 Jul 2017 09:23:57 -0400
+	Message-Id: <20170719132257.766AF781267-2@originator>
+	Status: RO
+	
+	That's appalling, II.
+	
+	_EOT
+}
+
+t__x3_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:48:25 2017
+	Subject: Bugstop: five miles out 3
+	Reply-To: mister originator3 <mr3@originator>
+	From: mister originator3 <mr3@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is3@a.list
+	In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
+	Date: Wed, 19 Jul 2017 09:24:57 -0400
+	Message-Id: <20170719132257.766AF781267-3@originator>
+	Status: RO
+	
+	That's appalling, III.
+	
+	_EOT
+}
+
 t__put_subject() {
    # MIME encoding (QP) stress message subject
    printf 'Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
