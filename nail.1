@@ -275,7 +275,7 @@ and
 .Ic ~^ ) .
 .Sx "Filename transformations"
 (also see
-.Ic file )
+.Ic folder )
 will be performed, except that shell variables are not expanded.
 Shall
 .Ar file
@@ -415,7 +415,7 @@ The optional
 argument will undergo some special
 .Sx "Filename transformations"
 (as via
-.Ic file ) .
+.Ic folder ) .
 Note that
 .Ar file
 is not an argument to the flag
@@ -432,7 +432,7 @@ that starts with a hyphen-minus, prefix with a relative path, as in
 Display a summary of
 .Ic headers
 for the given
-.Ic file
+.Ic folder
 (depending on
 .Fl u ,
 .Va inbox
@@ -466,7 +466,7 @@ Display a summary of
 of all messages that match the given
 .Ar spec
 in the
-.Ic file
+.Ic folder
 found by the same algorithm used by
 .Fl H ,
 then exit.
@@ -554,7 +554,7 @@ Also see
 Any mailbox
 .Ic folder
 aka\&
-.Ic file
+.Ic folder
 opened will be in read-only mode.
 .
 .
@@ -1118,7 +1118,7 @@ usually taken out of
 Saving a copy of sent messages in a
 .Va record
 mailbox may be desirable \(en as for most mailbox
-.Ic file
+.Ic folder
 targets the value will undergo
 .Sx "Filename transformations" .
 Some introductional
@@ -1202,7 +1202,7 @@ To create file-carbon-copies the special recipient header
 .Ql Fcc:
 may be used as often as desired.
 Its entire value (or body in standard terms) is interpreted as a
-.Ic file
+.Ic folder
 target, after having been subject to
 .Sx "Filename transformations" .
 Beside using the command escape
@@ -1259,7 +1259,7 @@ of so-called variable chains which automatically pick
 or
 .Ql HOST
 context-dependent variable variants: for example addressing
-.Ql Ic File Ns \& pop3://yaa@exam.ple
+.Ql Ic Folder Ns \& pop3://yaa@exam.ple
 would find
 .Va \&\&pop3-no-apop-yaa@exam.ple ,
 .Va \&\&pop3-no-apop-exam.ple
@@ -1373,7 +1373,7 @@ mails may be read.
 When used like that the user's system
 .Va inbox
 (for more on mailbox types please see the command
-.Ic file )
+.Ic folder )
 is read in and a one line header of each message therein is displayed if
 the variable
 .Va header
@@ -1531,7 +1531,7 @@ When reading the system
 or when
 .Fl f
 (or
-.Ic file )
+.Ic folder )
 specified a mailbox explicitly prefixed with the special
 .Ql %:
 modifier (to propagate it to a
@@ -1930,7 +1930,7 @@ optional either because there also exist other ways to define the
 information in question, or because the part is protocol-specific, e.g.,
 .Ql /path
 is used by the \*(OPal Maildir
-.Ic file
+.Ic folder
 type and the IMAP protocol, but not
 by POP3.
 If as part of the URL any of
@@ -4298,7 +4298,7 @@ Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
 .Va inbox
 of that account will be activated (as via
-.Ic file ) ,
+.Ic folder ) ,
 a possibly installed
 .Va folder-hook
 will be run, and the internal variable
@@ -5515,24 +5515,84 @@ otherwise success indicating status.
 .Mx
 .It Ic File
 (Fi) Like
-.Ic file ,
+.Ic folder ,
+but open the mailbox read-only.
+.
+.Mx
+.It Ic file
+(fi) See
+.Ic folder .
+.
+.Mx
+.Mx
+.It Ic filetype , unfiletype
+\*(NQ Define, list, and remove, respectively, file handler hooks,
+which provide (shell) commands that enable \*(UA to load and save MBOX
+files from and to files with the registered file extensions, as shown
+and described for
+.Ic folder .
+The extensions are used case-insensitively, yet the auto-completion
+feature of, e.g.,
+.Ic folder
+will only work case-sensitively.
+An intermediate temporary file will be used to store the expanded data.
+The latter command will remove hooks for all given extensions, asterisk
+.Ql *
+will remove all existing handlers.
+.Pp
+When used without arguments the former shows a list of all currently
+defined file hooks, with one argument the expansion of the given alias.
+Otherwise three arguments are expected, the first specifying the file
+extension for which the hook is meant, and the second and third defining
+the load- and save commands to deal with the file type, respectively,
+both of which must read from standard input and write to standard
+output.
+Changing hooks will not affect already opened mailboxes (\*(ID except below).
+\*(ID For now too much work is done, and files are oftened read in twice
+where once would be sufficient: this can cause problems if a filetype is
+changed while such a file is opened; this was already so with the
+built-in support of .gz etc. in Heirloom, and will vanish in v15.
+\*(ID For now all handler strings are passed to the
+.Ev SHELL for evaluation purposes; in the future a
+.Ql \&!
+prefix to load and save commands may mean to bypass this shell instance:
+placing a leading space will avoid any possible misinterpretations.
+.Bd -literal -offset indent
+? filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
+    gz 'gzip -dc' 'gzip -c'  xz 'xz -dc' 'xz -zc' \e
+    zst 'zstd -dc' 'zstd -19 -zc' \e
+    zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+? set record=+sent.zst.pgp
+.Ed
+.
+.Mx
+.Mx
+.It Ic flag , unflag
+Take message lists and mark the messages as being flagged, or not being
+flagged, respectively, for urgent/special attention.
+See the section
+.Sx "Message states" .
+.
+.Mx
+.It Ic Folder
+(Fold) Like
+.Ic folder ,
 but open the mailbox read-only.
 .
 .
 .Mx
-.It Ic file
-(fi) The file command switches to a new mailbox.
-Without arguments it shows status information of the current mailbox.
-If an argument is given, it will write out changes (such as deletions)
-the user has made, open a new mailbox, update the internal variables
+.It Ic folder
+(fold) Open a new, or show status information of the current mailbox.
+If an argument is given, changes (such as deletions) will be written
+out, a new mailbox will be opened, the internal variables
 .Va mailbox-resolved
 and
-.Va mailbox-display ,
-execute an according
-.Va folder-hook ,
-if one is installed, and optionally display a summary of
+.Va mailbox-display
+will be updated, a set according
+.Va folder-hook
+is executed, and optionally a summary of
 .Ic headers
-if the variable
+is displayed if the variable
 .Va header
 is set.
 .
@@ -5543,7 +5603,7 @@ will be applied to the
 argument, and
 .Ql protocol://
 prefixes are, i.e., URL syntax is understood, e.g.,
-.Ql mbox:///tmp/mdirbox :
+.Ql mbox:///tmp/somefolder :
 if a protocol prefix is used the mailbox type is fixated and neither
 the auto-detection (read on) nor the
 .Va newfolders
@@ -5552,10 +5612,11 @@ mechanisms apply.
 be accessed securely via
 .Sx "Encrypted network communication"
 if so supported.
-Network communication socket timeouts are configurable, e.g.,
+Network communication socket timeouts are configurable via
 .Va socket-connect-timeout .
-All generated network traffic may be proxied over the SOCKS5 server given in
-.Va socks-proxy .
+All network traffic may be proxied over the SOCKS5 server given in
+.Va socks-proxy ,
+except for the DNS name lookup for the proxy itself.
 .
 .Pp
 .Dl \*(IN protocol://[user[:password]@]host[:port][/path]
@@ -5671,61 +5732,6 @@ been found, the variable
 .Va newfolders
 controls the format of mailboxes yet to be created.
 .
-.
-.Mx
-.Mx
-.It Ic filetype , unfiletype
-\*(NQ Define, list, and remove, respectively, file handler hooks,
-which provide (shell) commands that enable \*(UA to load and save MBOX
-files from and to files with the registered file extensions, as shown
-and described for
-.Ic file .
-The extensions are used case-insensitively, yet the auto-completion
-feature of, e.g.,
-.Ic file
-will only work case-sensitively.
-An intermediate temporary file will be used to store the expanded data.
-The latter command will remove hooks for all given extensions, asterisk
-.Ql *
-will remove all existing handlers.
-.Pp
-When used without arguments the former shows a list of all currently
-defined file hooks, with one argument the expansion of the given alias.
-Otherwise three arguments are expected, the first specifying the file
-extension for which the hook is meant, and the second and third defining
-the load- and save commands to deal with the file type, respectively,
-both of which must read from standard input and write to standard
-output.
-Changing hooks will not affect already opened mailboxes (\*(ID except below).
-\*(ID For now too much work is done, and files are oftened read in twice
-where once would be sufficient: this can cause problems if a filetype is
-changed while such a file is opened; this was already so with the
-built-in support of .gz etc. in Heirloom, and will vanish in v15.
-\*(ID For now all handler strings are passed to the
-.Ev SHELL for evaluation purposes; in the future a
-.Ql \&!
-prefix to load and save commands may mean to bypass this shell instance:
-placing a leading space will avoid any possible misinterpretations.
-.Bd -literal -offset indent
-? filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
-    gz 'gzip -dc' 'gzip -c'  xz 'xz -dc' 'xz -zc' \e
-    zst 'zstd -dc' 'zstd -19 -zc' \e
-    zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
-? set record=+sent.zst.pgp
-.Ed
-.
-.Mx
-.Mx
-.It Ic flag , unflag
-Take message lists and mark the messages as being flagged, or not being
-flagged, respectively, for urgent/special attention.
-See the section
-.Sx "Message states" .
-.
-.Mx
-.It Ic folder
-(fold) The same as
-.Ic file .
 .
 .Mx
 .It Ic folders
@@ -6188,7 +6194,7 @@ the error number is tracked in
 .Va \&! .
 .It Ql needs-box
 whether the command needs an active mailbox, a
-.Ic file .
+.Ic folder .
 .It Ql ok:
 indicators whether command is \&.\h'.3m'.\h'.3m'.
 .Bl -tag -compact -width ".It Ql SUBPROCESS"
@@ -7047,7 +7053,7 @@ and returns its exit status.
 .Mx
 .It Ic shortcut , unshortcut
 \*(NQ Manage the file- or pathname shortcuts as documented for
-.Ic file .
+.Ic folder .
 The latter command deletes all shortcuts given as arguments,
 or all at once when given the asterisk
 .Ql * .
@@ -9648,7 +9654,7 @@ will have the plus sign replaced with the value of this variable if set,
 otherwise the plus sign will remain unchanged when doing
 .Sx "Filename transformations" ;
 also see
-.Ic file
+.Ic folder
 for more on this topic, and know about standard imposed implications of
 .Va outfolder .
 The value supports a subset of transformations itself, and if the
@@ -9666,7 +9672,7 @@ will be updated for caching purposes.
 Names a
 .Ic define Ns d
 macro which will be called whenever a
-.Ic file
+.Ic folder
 is opened.
 The macro will also be invoked when new mail arrives,
 but message lists for commands executed from the macro
@@ -10248,7 +10254,7 @@ Error log message prefix string
 .Mx
 .It Va mailbox-display
 \*(RO The name of the current mailbox
-.Pf ( Ic file ) ,
+.Pf ( Ic folder ) ,
 possibly abbreviated for display purposes.
 .
 .Mx
@@ -10277,7 +10283,7 @@ See the section
 \*(BO By default all file and pipe message receivers (see
 .Va expandaddr )
 will be fed valid MBOX database entry message data (see
-.Ic file ,
+.Ic folder ,
 .Va mbox-rfc4155 ) ,
 and existing file targets will become extended in compliance to RFC 4155.
 If this variable is unset then a plain standalone RFC 5322 message will
@@ -11374,7 +11380,7 @@ line feed.
 .
 .It
 Upon changing the active
-.Ic file
+.Ic folder
 no summary of
 .Ic headers
 will be displayed even if
@@ -13298,7 +13304,7 @@ manages these variables, and unsets them for pipe specifications etc.)
 .Mx
 .It Ev DEAD
 The name of the (mailbox)
-.Ic file
+.Ic folder
 to use for saving aborted messages if
 .Va save
 is set; this defaults to
@@ -13428,7 +13434,7 @@ file.
 A logical subset of the special
 .Sx "Filename transformations"
 (also see
-.Ic file )
+.Ic folder )
 are supported.
 The default is
 .Pa \*(VM .
@@ -14924,7 +14930,7 @@ $ git mail-patch HEAD^ |
 .\" .Ss "Howto handle stale dotlock files" {{{
 .Ss "Howto handle stale dotlock files"
 .
-.Ic file
+.Ic folder
 sometimes fails to open MBOX mail databases because creation of
 .Mx -sx
 .Sx "dotlock files"
