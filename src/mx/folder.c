@@ -489,7 +489,16 @@ jlogname:
             who = ok_vlook(LOGNAME);
       }
 
-      if ((name = fexpand(name, fexpm)) == NULL)
+      if(!(fm & FEDIT_SYSBOX)){
+         char const *cp;
+
+         if((((cp = ok_vlook(inbox)) != NIL && *cp != '\0') ||
+                  (cp = ok_vlook(MAIL)) != NIL) &&
+               !su_cs_cmp(cp, name))
+            fm |= FEDIT_SYSBOX;
+      }
+
+      if((name = fexpand(name, fexpm)) == NIL)
          goto jem1;
    }
 

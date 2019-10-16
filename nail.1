@@ -4061,10 +4061,13 @@ it will be replaced with the expanded shortcut.
 .
 .It
 The filename is matched against the following patterns or strings:
+.
+.
 .Pp
 .Bl -hang -compact -width ".Ar %user"
 .It Ar #
 (Number sign) is expanded to the previous file.
+.
 .It Ar %
 (Percent sign) is replaced by the invoking
 .Mx -ix "primary system mailbox"
@@ -4073,28 +4076,39 @@ user's primary system mailbox, which either is the (itself expandable)
 if that is set, the standardized absolute pathname indicated by
 .Ev MAIL
 if that is set, or a built-in compile-time default otherwise.
+When opening a
+.Ic folder
+the used name is actively checked for being a primary mailbox, first
+against
+.Va \&\&inbox ,
+then against
+.Ev MAIL .
+.
 .It Ar %user
 Expands to the primary system mailbox of
 .Ar user
 (and never the value of
 .Va inbox ,
 regardless of its actual setting).
+.
 .It Ar &
 (Ampersand) is replaced with the invoking user's
 .Mx -ix "secondary mailbox"
 secondary mailbox, the
 .Ev MBOX .
+.
 .It Ar +file
 Refers to a
 .Ar file
 in the
 .Va folder
 directory (if that variable is set).
+.
 .It Ar %:filespec
 Expands to the same value as
 .Ar filespec ,
 but has special meaning when used with, e.g., the command
-.Ic file :
+.Ic folder :
 the file will be treated as a primary system mailbox by, e.g., the
 .Ic mbox
 and
@@ -4104,6 +4118,7 @@ session will be moved to the
 .Ev MBOX
 mailbox instead of simply being flagged as read.
 .El
+.
 .
 .It
 Meta expansions may be applied to the resulting filename, as allowed by
@@ -10153,10 +10168,9 @@ and the system-dependent default, and (thus) be used to replace
 when doing
 .Sx "Filename transformations" ;
 also see
-.Ic file
+.Ic folder
 for more on this topic.
 The value supports a subset of transformations itself.
-.
 .Mx
 .It Va indentprefix
 String used by the
@@ -13372,9 +13386,9 @@ Is used as the user's
 unless
 .Va inbox
 is set.
-This is assumed to be an absolute pathname.
-If this environmental fallback is also not set, a built-in compile-time
+If the environmental fallback is also not set, a built-in compile-time
 default is used.
+This is assumed to be an absolute pathname.
 .
 .Mx
 .It Ev MAILCAPS
