@@ -72,6 +72,8 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    struct n_cmd_arg_ctx *cacp;
    NYD2_IN;
 
+   n_pstate_err_no = su_ERR_NONE;
+
    cacp = vp;
    cap = cacp->cac_arg;
    last = 0;
@@ -116,10 +118,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
          /* Pipe target is special TODO hacked in later, normalize flow! */
          if((obuf = mx_fs_pipe_open(file, "w", shell, NIL, -1)) == NIL){
-            int esave;
-
-            n_perr(file, esave = su_err_no());
-            su_err_set_no(esave);
+            n_perr(file, n_pstate_err_no = su_err_no());
             goto jleave;
          }
          disp = A_("[Piped]");
@@ -137,7 +136,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
       file = savecat("file://", file);
    if((obuf = mx_fs_open_any(file, "a+", &fs)) == NIL){
-      n_perr(file, 0);
+      n_perr(file, n_pstate_err_no = su_err_no());
       goto jleave;
    }
    ASSERT((fs & n_PROTO_MASK) == n_PROTO_IMAP ||
@@ -163,7 +162,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          int xerr;
 
          if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
-            n_perr(file, xerr);
+            n_perr(file, n_pstate_err_no = xerr);
             goto jleave;
          }
       }
@@ -220,7 +219,7 @@ jsend:
 
    if (ferror(obuf)) {
 jferr:
-      n_perr(file, 0);
+      n_perr(file, n_pstate_err_no = su_err_no());
       if (!success)
          srelax_rele();
       success = FAL0;
