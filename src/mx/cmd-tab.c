@@ -640,7 +640,6 @@ jredo:
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
                ), cacp->cac_msgflag, target_argpp) < 0){
-            n_pstate_err_no = su_ERR_INVAL;/* XXX should come from getmsglist*/
             goto jerr;
          }
 
