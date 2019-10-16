@@ -6277,48 +6277,7 @@ t_quote_a_cmd_escapes() {
    t_prolog "${@}"
 
    echo 'included file' > ./.ttxt
-
-   ${cat} <<-_EOT > ./.tmbox
-	From neverneverland  Sun Jul 23 13:46:25 2017
-	Subject: Bugstop: five miles out 1
-	Reply-To: mister originator1 <mr1@originator>
-	From: mister originator1 <mr1@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is1@a.list
-	In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
-	Date: Wed, 19 Jul 2017 09:22:57 -0400
-	Message-Id: <20170719132257.766AF781267-1@originator>
-	Status: RO
-	
-	That's appalling, I.
-	
-	From neverneverland  Sun Jul 23 13:47:25 2017
-	Subject: Bugstop: five miles out 2
-	Reply-To: mister originator2 <mr2@originator>
-	From: mister originator2 <mr2@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is2@a.list
-	In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
-	Date: Wed, 19 Jul 2017 09:23:57 -0400
-	Message-Id: <20170719132257.766AF781267-2@originator>
-	Status: RO
-	
-	That's appalling, II.
-	
-	From neverneverland  Sun Jul 23 13:48:25 2017
-	Subject: Bugstop: five miles out 3
-	Reply-To: mister originator3 <mr3@originator>
-	From: mister originator3 <mr3@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is3@a.list
-	In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
-	Date: Wed, 19 Jul 2017 09:24:57 -0400
-	Message-Id: <20170719132257.766AF781267-3@originator>
-	Status: RO
-	
-	That's appalling, III.
-	
-	_EOT
+   { t__x1_msg && t__x2_msg && t__x3_msg; } > ./.tmbox
 
    printf '#
       set indentprefix=" |"
@@ -6460,13 +6419,13 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '2360425973 4484'
+   check 2 - "${MBOX}" '326143427 4622'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS]'
    fi
-   check 3 - ./.tmsg '2478660132 3205'
+   check 3 - ./.tmsg '2291587961 3343'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -6491,7 +6450,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '1372705643 4685'
+   check 4 0 "${MBOX}" '2851285356 4823'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
