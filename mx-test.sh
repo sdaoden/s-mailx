@@ -108,6 +108,7 @@ t_all() {
 
    # VFS
    jspawn copy
+   jspawn save
    jspawn mbox
    jspawn maildir
    jsync
@@ -4989,6 +4990,165 @@ t_copy() { # {{{
    check 8-1 - ./.tall '1044700686 136'
    check 8-2 - ./mr2 '2447734879 1316'
    check 8-3 - ./.tlst '3190056903 4'
+
+   t_epilog "${@}"
+} # }}}
+
+t_save() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '3634443864 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   save 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   save .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   save .tf1 # no auto-advance
+   echo 2:$?/$^ERRNAME
+   headers
+   save 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   save 1 2 .tf3
+   echo 4:$?/$^ERRNAME
+   headers
+   !chmod 0444 .tf3
+   save 1 2 .tf3
+   echo 5:$?/$^ERRNAME
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   check 2-1 - ./.tall '2335843514 1121'
+   check 2-2 - ./.tf1 '2435434321 334'
+   check 2-3 - ./.tf2 '920652966 162'
+   check 2-4 - ./.tf3 '970407001 344'
+   if have_feat uistrings; then
+      check 2-5 - ./.terr '2590372641 91'
+   else
+      t_echoskip '2-5:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '1219692400 346'
+
+   ##
+   t_it() {
+      t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Save3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '1391391227 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Save
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Save
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Save 2
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      Save 3
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Save *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>&1
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '3418590770 1617'
+   check 5-4 - ./from1 '1462882526 999'
+   check 5-5 - ./ex '2153575326 149'
+   ${rm} -f ./.tlst ./.tall ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '1462882526 999'
+   check 6-5 - .tfolder/ex '2153575326 149'
+
+   ##
+
+   t_it() {
+      t__x2_msg > ./.tmbox
+      check ${1} - ./.tmbox '561523988 397'
+
+      a='-Rf'
+      [ ${#} -gt 2 ] && a='-S MBOX=./.tmboxx'
+      [ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox'
+      printf '#
+         headers
+         '"${2}"'
+         echo 1:$?/$^ERRNAME
+         headers
+         headerpick save retain cc date from subject to
+         '"${2}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${2}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${2}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -f ${a} ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 7 'save ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '4190949581 312'
+   check 7-2 - ./.tout '2447734879 1316'
+   check 7-3 - ./.tmbox '561523988 397'
+
+   t_it 8 Save
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '2109832180 296'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
+   check 8-3 - ./.tmbox '561523988 397'
+
+   # saves in $MBOX without argument
+   t_it 9 save yes
+   check_ex0 9-estat
+   check 9-1 - ./.tall '652005824 320'
+   check 9-2 - ./.tmboxx '2447734879 1316'
+   check 9-3 - ./.tmbox '561523988 397'
+
+   # and deletes if editing a primary mailbox
+   ${rm} -f ./.tmboxx
+   t_it 10 save yes yes
+   check_ex0 10-estat
+   check 10-1 - ./.tall '652005824 320'
+   check 10-2 - ./.tmboxx '2447734879 1316'
+   [ -f ./.tmbox ]; check_exn0 10-3
 
    t_epilog "${@}"
 } # }}}

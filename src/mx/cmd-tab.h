@@ -548,10 +548,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
  0, MMNDEL, NIL
  DS(N_("Reply to originator, exclusively")) },
 
-   { "Save", &c_Save, (A | SC | TARG), 0, 0,
+   { "Save", &c_Save, (A | SC | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Save)
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "save", &c_save, (A | TARG), 0, 0,
+   { "save", &c_save, (A | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_save)
      DS(N_("Append [<msglist>] to <file>")) },
 { "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NIL
