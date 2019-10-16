@@ -1,0 +1,28 @@
+>N  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ N  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
+from1 [New file] 162 bytes
+1:0/NONE
+>S  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ N  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
+from1 [Appended] 172 bytes
+2:0/NONE
+>S  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ N  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
+from1 [Appended] 162 bytes
+3:0/NONE
+>S  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ S  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ N  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
+ex [New file] 149 bytes
+4:0/NONE
+>S  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ S  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ S  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
+from1 [Appended] 503 bytes
+5:0/NONE
+>S  1 from1@exam.ple     1996-10-02 01:50    8/162   Save1                     
+ S  2 from1@exam.ple     1996-10-02 01:50    8/162   Save2                     
+ S  3 ex@am.ple          1996-10-02 01:50    8/149   Save3                     
