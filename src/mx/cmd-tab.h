@@ -457,10 +457,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Invoke the pager on the given messages")) },
    { "more", &c_more, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Invoke the pager on the given messages")) },
-   { "Move", &c_Move, (A | M | SC | TARG), 0, 0,
+   { "Move", &c_Move, (A | M | SC | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Move)
      DS(N_("Like `move', but derive filename from first sender")) },
-   { "move", &c_move, (A | M | TARG), 0, 0,
+   { "move", &c_move, (A | M | EM | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_move)
      DS(N_("Like `copy', but mark messages for deletion")) },
 { "Mv", &c_Move, (O | A | M | SC | TARG), 0, 0,

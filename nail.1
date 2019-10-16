@@ -6461,9 +6461,10 @@ but only managing the subscription attribute of mailing lists.
 .It Ic Move
 Similar to
 .Ic move ,
-but moves the messages to a file named after the local part of the
-sender address of the first message (instead of in
-.Va record Ns ).
+but move the messages to a file named after the local part of the
+sender of the first message instead of taking a filename argument;
+.Va outfolder
+is inspected to decide on the actual storage location.
 .
 .Mx
 .It Ic move

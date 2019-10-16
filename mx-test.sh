@@ -109,6 +109,7 @@ t_all() {
    # VFS
    jspawn copy
    jspawn save
+   jspawn move
    jspawn mbox
    jspawn maildir
    jsync
@@ -5149,6 +5150,136 @@ t_save() { # {{{
    check 10-1 - ./.tall '652005824 320'
    check 10-2 - ./.tmboxx '2447734879 1316'
    [ -f ./.tmbox ]; check_exn0 10-3
+
+   t_epilog "${@}"
+} # }}}
+
+t_move() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '2967134193 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   move 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   move .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   !touch .tf2; chmod 0444 .tf2
+   move 2 .tf2
+   echo 2:$?/$^ERRNAME
+   !chmod 0644 .tf2
+   move 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   check 2-1 - ./.tall '1641443074 491'
+   check 2-2 - ./.tf1 '1473857906 162'
+   check 2-3 - ./.tf2 '331229810 162'
+   if have_feat uistrings; then
+      check 2-4 - ./.terr '1243633205 134'
+   else
+      t_echoskip '2-4:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '4294967295 0'
+
+   ##
+   t_it() {
+      t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Move3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '2826896131 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Move
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Move 2
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Move 3
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      undelete *
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Move *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>./.terr
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '419037676 870'
+   check 5-4 - ./.terr '1383646464 86'
+   check 5-5 - ./from1 '3719268580 827'
+   check 5-6 - ./ex '4262925856 149'
+   ${rm} -f ./.tlst ./.tall ./.terr ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '3719268580 827'
+   check 6-5 - .tfolder/ex '4262925856 149'
+
+   ##
+   t__x2_msg > ./.tmbox
+
+   t_it() {
+      printf '#
+         '"${1}"'
+         echo 1:$?/$^ERRNAME
+         headerpick save retain cc date from subject to
+         '"${1}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${1}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${1}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 'move ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '3805176908 152'
+   check 7-2 - ./.tout '2447734879 1316'
+
+   t_it Move
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '1044700686 136'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
 
    t_epilog "${@}"
 } # }}}
