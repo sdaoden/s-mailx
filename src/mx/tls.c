@@ -503,7 +503,7 @@ jesubcmd:
    n_err(_("`tls': invalid subcommand: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
 jesynopsis:
-   n_err(_("Synopsis: tls: <command> [<:argument:>]\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("tls"), NIL);
 jeinval:
    n_pstate_err_no = su_ERR_INVAL;
    goto jleave;

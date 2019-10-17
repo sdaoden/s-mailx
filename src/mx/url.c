@@ -31,6 +31,7 @@
 # include <su/icodec.h>
 #endif
 
+#include "mx/cmd.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-netrc.h"
 #include "mx/file-streams.h"
@@ -194,8 +195,7 @@ jleave:
    NYD_OU;
    return (vp != NIL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: urlcodec: "
-      "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("urlcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NIL;
    goto jleave;

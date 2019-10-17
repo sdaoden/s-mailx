@@ -30,6 +30,8 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
+#include "mx/cmd.h"
+
 #include "mx/cmd-shortcut.h"
 #include "su/code-in.h"
 
@@ -75,7 +77,7 @@ c_shortcut(void *vp){
 
       for(rv = 0; key != NIL; argv += 2, key = *argv){
          if((dat = argv[1]) == NIL){
-            n_err(_("Synopsis: shortcut: <shortcut> <expansion>\n"));
+            mx_cmd_print_synopsis(mx_cmd_firstfit("shortcut"), NIL);
             rv = 1;
             break;
          }

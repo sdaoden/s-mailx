@@ -1238,7 +1238,7 @@ jleave:
    return (vp == NULL);
 
 jesynopsis:
-   n_err(_("Synopsis: digmsg: <command> <-|msgno> [<:argument:>]\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("digmsg"), NIL);
    goto jeinval;
 jeinval_quote:
    emsg = V_(emsg);

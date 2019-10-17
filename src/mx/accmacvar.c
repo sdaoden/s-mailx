@@ -496,13 +496,6 @@ a_amv_mac_call(void *v, boole silent_nexist){
 
    cacp = v;
 
-   if(cacp->cac_no == 0){
-      n_err(_("Synopsis: call(_if)?: name [:<arguments>:]\n"));
-      n_pstate_err_no = su_ERR_INVAL;
-      rv = 1;
-      goto jleave;
-   }
-
    name = cacp->cac_arg->ca_arg.ca_str.s;
 
    if(UNLIKELY(cacp->cac_no > a_AMV_POSPAR_MAX)){
@@ -543,7 +536,7 @@ a_amv_mac_call(void *v, boole silent_nexist){
       (void)a_amv_mac_exec(amcap);
       rv = n_pstate_ex_no;
    }
-jleave:
+
    NYD_OU;
    return rv;
 }
@@ -2564,7 +2557,7 @@ c_define(void *v){
 
    if(args[1] == NULL || args[1][0] != '{' || args[1][1] != '\0' ||
          args[2] != NULL){
-      n_err(_("Synopsis: define: <name> {\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("define"), NIL);
       goto jleave;
    }
 
@@ -2667,7 +2660,7 @@ c_account(void *v){
 
    if(args[1] && args[1][0] == '{' && args[1][1] == '\0'){
       if(args[2] != NULL){
-         n_err(_("Synopsis: account: <name> {\n"));
+         mx_cmd_print_synopsis(mx_cmd_firstfit("account"), NIL);
          goto jleave;
       }
       if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
@@ -2779,7 +2772,7 @@ c_localopts(void *vp){
       alf = a_AMV_LF_CALL_FIXATE, alm = a_AMV_LF_CALL_MASK;
    else{
 jesynopsis:
-      n_err(_("Synopsis: localopts: [<scope|call|call-fixate>] <boolean>\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("localopts"), NIL);
       goto jleave;
    }
 
@@ -3595,7 +3588,7 @@ c_environ(void *v){
             err = 1;
       }
    }else{
-      n_err(_("Synopsis: environ: <link|set|unset> <variable>...\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("environ"), NIL);
       err = 1;
    }
    NYD_OU;
@@ -3632,6 +3625,7 @@ c_vpospar(void *v){
    else{
       n_err(_("`vpospar': invalid subcommand: %s\n"),
          n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("vpospar"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
       goto jleave;

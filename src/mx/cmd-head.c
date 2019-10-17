@@ -45,6 +45,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/termios.h"
@@ -1016,7 +1017,7 @@ c_dotmove(void *v)
 
    if (*(args = v) == '\0' || args[1] != '\0') {
 jerr:
-      n_err(_("Synopsis: dotmove: up <-> or down <+> by one message\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("dotmove"), NIL);
       rv = 1;
    } else switch (args[0]) {
    case '-':

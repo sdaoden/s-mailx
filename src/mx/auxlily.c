@@ -75,6 +75,9 @@
 #include "mx/termios.h"
 #include "mx/tty.h"
 
+#ifdef mx_HAVE_ERRORS
+# include "mx/cmd.h"
+#endif
 #ifdef mx_HAVE_IDNA
 # include "mx/iconv.h"
 #endif
@@ -1127,9 +1130,8 @@ c_errors(void *v){
    if(!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 jerr:
-   fprintf(n_stderr,
-      _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
-   v = NULL;
+   mx_cmd_print_synopsis(mx_cmd_firstfit("errors"), NIL);
+   v = NIL;
 jleave:
    NYD_OU;
    return (v == NULL) ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */

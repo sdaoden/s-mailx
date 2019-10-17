@@ -32,6 +32,8 @@
 #include <su/cs-dict.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
+
 #include "mx/cmd-filetype.h"
 #include "su/code-in.h"
 
@@ -208,8 +210,7 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
          uz l;
 
          if(argv[1] == NIL || argv[2] == NIL){
-            n_err(_("Synopsis: filetype: "
-               "<extension> <load-cmd> <save-cmd>\n"));
+            mx_cmd_print_synopsis(mx_cmd_firstfit("filetype"), NIL);
             rv = 1;
             break;
          }

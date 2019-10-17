@@ -748,7 +748,12 @@ jerr:
             (int)shin.l, shin.s);
       }
    }
-   lcap = NULL;
+
+   if((!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V)
+         ) && !su_state_has(su_STATE_REPRODUCIBLE))
+      mx_cmd_print_synopsis(mx_cmd_firstfit(cadp->cad_name), NIL);
+
+   lcap = NIL;
    goto jleave;
 }
 

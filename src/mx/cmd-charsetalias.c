@@ -30,6 +30,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
+#include "mx/cmd.h"
 #include "mx/iconv.h"
 
 #include "mx/cmd-charsetalias.h"
@@ -91,7 +92,7 @@ c_charsetalias(void *vp){
             rv = 1;
             continue;
          }else if((dat = argv[1]) == NIL){
-            n_err(_("Synopsis: charsetalias: <charset> <charset-alias>\n"));
+            mx_cmd_print_synopsis(mx_cmd_firstfit("charsetalias"), NIL);
             rv = 1;
             break;
          }else if((dat = n_iconv_normalize_name(dat)) == NIL){

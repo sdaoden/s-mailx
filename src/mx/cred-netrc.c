@@ -32,6 +32,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
@@ -42,7 +43,7 @@ su_EMPTY_FILE()
 
 /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
 * concurrently (dummy, host, user, pass), so make it a KB */
-#define a_NETRC_TOKEN_MAXLEN (1024 / 4)
+#define a_NETRC_TOKEN_MAXLEN (1024u / 4)
 
 enum a_netrc_token{
    a_NETRC_ERROR = -1,
@@ -58,7 +59,7 @@ enum a_netrc_token{
 
 struct a_netrc_node{
    struct a_netrc_node *nrc_next;
-   struct a_netrc_node *nrc_result; /* In match phase, former possible one */
+   struct a_netrc_node *nrc_last_match; /* Match phase, former possible one */
    u32 nrc_mlen; /* Length of machine name */
    u32 nrc_ulen; /* Length of user name */
    u32 nrc_plen; /* Length of password */
@@ -141,7 +142,11 @@ a_netrc_init(void){
          goto j_leave;
 
       if((fi = mx_fs_open(netrc_load, "r")) == NIL){
-         n_err(_("Cannot open %s\n"), n_shexp_quote_cp(netrc_load, FAL0));
+         char const *emsg;
+
+         emsg = su_err_doc(su_err_no());
+         n_err(_("Cannot open %s\n"),
+            n_shexp_quote_cp(netrc_load, FAL0), emsg);
          goto j_leave;
       }
 
@@ -159,11 +164,11 @@ a_netrc_init(void){
    switch((t = a_netrc__token(fi, buffer, &nl_last))){
    case a_NETRC_NONE:
       break;
-   default: /* Doesn't happen (but on error?), keep CC happy */
+   default: /* Does not happen (but on error?), keep CC happy */
    case a_NETRC_DEFAULT:
 jdef:
-      /* We ignore the default entry (require an exact host match), and we also
-       * ignore anything after such an entry (faulty syntax) */
+      /* We ignore the default entry (require an exact host match), and we
+       * also ignore anything after such an entry (faulty syntax) */
       seen_default = TRU1;
       /* FALLTHRU */
    case a_NETRC_MACHINE:
@@ -204,8 +209,8 @@ jm_h:
 
                for(i = 0; (c = getc(fi)) != EOF;)
                   if(c == '\n'){ /* xxx */
-                     /* Don't care about comments here, since we parse until
-                      * we've seen two successive newline characters */
+                     /* Do not care about comments here, since we parse until
+                      * we have seen two successive newline characters */
                      if(i)
                         break;
                      i = 1;
@@ -323,7 +328,7 @@ a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last){
             if((c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if(PCMP(cp, ==, buffer + a_NETRC_TOKEN_MAXLEN)){
+         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN])){
             rv = a_NETRC_ERROR;
             goto jleave;
          }
@@ -331,11 +336,11 @@ a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last){
    }else{
       *cp++ = c;
       while((c = getc(fi)) != EOF && !su_cs_is_white(c)){
-         /* Rverse solidus  escaping the next character is (Net)BSD syntax */
+         /* Rverse solidus escaping the next character is (Net)BSD syntax */
          if(c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if(PCMP(cp, ==, buffer + a_NETRC_TOKEN_MAXLEN)){
+         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN])){
             rv = a_NETRC_ERROR;
             goto jleave;
          }
@@ -385,7 +390,7 @@ a_netrc_match_host(struct a_netrc_node const *nrc, struct mx_url const *urlp){
    /* Cannot be an exact match, but maybe the .netrc machine starts with
     * a "*." glob, which we recognize as an extension, meaning "skip
     * a single subdomain, then match the rest" */
-   d1 = nrc->nrc_dat + 2;
+   d1 = &nrc->nrc_dat[2];
    l1 = nrc->nrc_mlen;
    if(l1 <= 2 || d1[-1] != '.' || d1[-2] != '*')
       goto jleave;
@@ -402,7 +407,7 @@ a_netrc_match_host(struct a_netrc_node const *nrc, struct mx_url const *urlp){
    }
 
    if(l2 == l1 && !su_mem_cmp(d1, d2, l1))
-      /* This matches, but we won't use it directly but watch out for an
+      /* This matches, but we will not use it directly but watch out for an
        * exact match first! */
       rv = -1;
 jleave:
@@ -414,12 +419,12 @@ static boole
 a_netrc_find_user(struct mx_url *urlp, struct a_netrc_node const *nrc){
    NYD2_IN;
 
-   for(; nrc != NIL; nrc = nrc->nrc_result)
+   for(; nrc != NIL; nrc = nrc->nrc_last_match)
       if(nrc->nrc_ulen > 0){
          /* Fake it was part of URL otherwise XXX */
          urlp->url_flags |= mx_URL_HAD_USER;
          /* That buffer will be duplicated by url_parse() in this case! */
-         urlp->url_user.s = n_UNCONST(nrc->nrc_dat + nrc->nrc_mlen +1);
+         urlp->url_user.s = UNCONST(char*,&nrc->nrc_dat[nrc->nrc_mlen +1]);
          urlp->url_user.l = nrc->nrc_ulen;
          break;
       }
@@ -433,11 +438,11 @@ a_netrc_find_pass(struct mx_url *urlp, boole user_match,
       struct a_netrc_node const *nrc){
    NYD2_IN;
 
-   for(; nrc != NIL; nrc = nrc->nrc_result){
+   for(; nrc != NIL; nrc = nrc->nrc_last_match){
       boole um;
 
       um = (nrc->nrc_ulen == urlp->url_user.l &&
-            !su_mem_cmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
+            !su_mem_cmp(&nrc->nrc_dat[nrc->nrc_mlen +1], urlp->url_user.s,
                urlp->url_user.l));
 
       if(user_match){
@@ -449,8 +454,8 @@ a_netrc_find_pass(struct mx_url *urlp, boole user_match,
          continue;
 
       /* We are responsible for duplicating this buffer! */
-      urlp->url_pass.s = savestrbuf(nrc->nrc_dat + nrc->nrc_mlen +1 +
-            nrc->nrc_ulen + 1, (urlp->url_pass.l = nrc->nrc_plen));
+      urlp->url_pass.s = savestrbuf(&nrc->nrc_dat[nrc->nrc_mlen +1 +
+            nrc->nrc_ulen + 1], (urlp->url_pass.l = nrc->nrc_plen));
       break;
    }
 
@@ -472,19 +477,28 @@ c_netrc(void *vp){
       goto jlist;
    if(argv[1] != NIL)
       goto jerr;
-   if(!su_cs_cmp_case(*argv, "show"))
+   if(su_cs_starts_with_case("show", *argv))
       goto jlist;
    load_only = TRU1;
-   if(!su_cs_cmp_case(*argv, "load"))
+   if(su_cs_starts_with_case("load", *argv))
       goto jlist;
-   if(!su_cs_cmp_case(*argv, "clear"))
+   if(su_cs_starts_with_case("clear", *argv))
       goto jclear;
 jerr:
-   n_err(_("Synopsis: netrc: (<show> or) <clear> the .netrc cache\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("netrc"), NIL);
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+
+jclear:
+   if(a_netrc_cache == a_NETRC_NODE_ERR)
+      a_netrc_cache = NIL;
+   else while((nrc = a_netrc_cache) != NIL){
+      a_netrc_cache = nrc->nrc_next;
+      su_FREE(nrc);
+   }
+   goto jleave;
 
 jlist:{
    FILE *fp;
@@ -508,12 +522,12 @@ jlist:{
    }
 
    for(l = 0, nrc = a_netrc_cache; nrc != NIL; ++l, nrc = nrc->nrc_next){
-      fprintf(fp, _("machine %s "), nrc->nrc_dat); /* XXX quote? */
+      fprintf(fp, "machine %s ", nrc->nrc_dat); /* XXX quote? */
       if(nrc->nrc_ulen > 0)
-         fprintf(fp, _("login \"%s\" "),
+         fprintf(fp, "login \"%s\" ",
             a_netrc_bsd_quote(&nrc->nrc_dat[nrc->nrc_mlen +1]));
       if(nrc->nrc_plen > 0)
-         fprintf(fp, _("password \"%s\"\n"),
+         fprintf(fp, "password \"%s\"\n",
             a_netrc_bsd_quote(&nrc->nrc_dat[nrc->nrc_mlen +1 +
                nrc->nrc_ulen +1]));
       else
@@ -522,15 +536,6 @@ jlist:{
 
    page_or_print(fp, l);
    mx_fs_close(fp);
-   }
-   goto jleave;
-
-jclear:
-   if(a_netrc_cache == a_NETRC_NODE_ERR)
-      a_netrc_cache = NIL;
-   while((nrc = a_netrc_cache) != NIL){
-      a_netrc_cache = nrc->nrc_next;
-      su_FREE(nrc);
    }
    goto jleave;
 }
@@ -555,11 +560,11 @@ mx_netrc_lookup(struct mx_url *urlp, boole only_pass){
    for(nrc = a_netrc_cache; nrc != NIL; nrc = nrc->nrc_next)
       switch(a_netrc_match_host(nrc, urlp)){
       case 1:
-         nrc->nrc_result = exact;
+         nrc->nrc_last_match = exact;
          exact = nrc;
          continue;
       case -1:
-         nrc->nrc_result = wild;
+         nrc->nrc_last_match = wild;
          wild = nrc;
          /* FALLTHRU */
       case 0:
@@ -568,12 +573,12 @@ mx_netrc_lookup(struct mx_url *urlp, boole only_pass){
 
    if(!only_pass && urlp->url_user.s == NIL){
       /* Must be an unambiguous entry of its kind */
-      if(exact != NIL && exact->nrc_result != NIL)
+      if(exact != NIL && exact->nrc_last_match != NIL)
          goto jleave;
       if(a_netrc_find_user(urlp, exact))
          goto j_user;
 
-      if(wild != NIL && wild->nrc_result != NIL)
+      if(wild != NIL && wild->nrc_last_match != NIL)
          goto jleave;
       if(!a_netrc_find_user(urlp, wild))
          goto jleave;

@@ -47,6 +47,8 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
+
 /* TODO fake */
 #include "mx/sigs.h"
 #include "su/code-in.h"
@@ -177,7 +179,7 @@ jeover:
    argv = NULL;
    goto jleave;
 jesyn:
-   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>] [uninterruptible]\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("sleep"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    argv = NULL;
    goto jleave;

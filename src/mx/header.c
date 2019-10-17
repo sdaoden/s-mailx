@@ -48,6 +48,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
@@ -2367,8 +2368,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
-      "<rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("addrcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;

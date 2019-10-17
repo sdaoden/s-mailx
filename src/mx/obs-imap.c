@@ -62,6 +62,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/iconv.h"
@@ -3003,7 +3004,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: imapcodec: <e[ncode]|d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("imapcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;

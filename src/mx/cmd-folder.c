@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 
+#include "mx/cmd.h"
 #include "mx/child.h"
 #include "mx/net-pop3.h"
 #include "mx/tty.h"
@@ -182,7 +183,7 @@ c_remove(void *v)
    NYD_IN;
 
    if (*(args = v) == NULL) {
-      n_err(_("Synopsis: remove: <mailbox>...\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("remove"), NIL);
       ec = 1;
       goto jleave;
    }
@@ -277,7 +278,7 @@ c_rename(void *v)
    ec = 1;
 
    if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      n_err(_("Synopsis: rename: <old> <new>\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("rename"), NIL);
       goto jleave;
    }
 

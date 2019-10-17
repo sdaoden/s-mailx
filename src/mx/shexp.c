@@ -55,6 +55,7 @@
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
@@ -2074,7 +2075,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("shcodec"), NIL);
    nerrn = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
