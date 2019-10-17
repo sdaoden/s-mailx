@@ -441,8 +441,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (H | I | M | TWYSH), 0, 1, NIL
-     DS(N_("<show (default)|load|save|clear> or select history <NO>")) },
+      (H | I | M | TWYSH), 0, 2, NIL
+     DS(N_("<[show]|load|save|clear>, "
+         "or [<delete>] (else re-execute) entry <NUMBER>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
 

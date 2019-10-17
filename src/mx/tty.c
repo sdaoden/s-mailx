@@ -1160,26 +1160,26 @@ a_tty_hist__query_config(void){
 
 static void
 a_tty_hist_add(char const *s, enum n_go_input_flags gif){
-   u32 l;
    struct a_tty_hist *thp, *othp, *ythp;
+   u32 l;
    NYD2_IN;
 
-   l = (u32)su_cs_len(s); /* xxx simply do not store if >= S32_MAX */
+   l = S(u32,su_cs_len(s)); /* xxx simply do not store if >= S32_MAX */
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
    if(n_psonce & n_PSO_LINE_EDITOR_INIT)
-      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
+      for(thp = a_tty.tg_hist; thp != NIL; thp = thp->th_older)
          if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
             thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
                   (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
             ythp = thp->th_younger;
-            if(othp != NULL)
+            if(othp != NIL)
                othp->th_younger = ythp;
             else
                a_tty.tg_hist_tail = ythp;
-            if(ythp != NULL)
+            if(ythp != NIL)
                ythp->th_older = othp;
             else
                a_tty.tg_hist = othp;
@@ -1190,26 +1190,26 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
       ++a_tty.tg_hist_size;
    else{
       --a_tty.tg_hist_size;
-      if((thp = a_tty.tg_hist_tail) != NULL){
-         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
-            a_tty.tg_hist = NULL;
+      if((thp = a_tty.tg_hist_tail) != NIL){
+         if((a_tty.tg_hist_tail = thp->th_younger) == NIL)
+            a_tty.tg_hist = NIL;
          else
-            a_tty.tg_hist_tail->th_older = NULL;
-         n_free(thp);
+            a_tty.tg_hist_tail->th_older = NIL;
+         su_FREE(thp);
       }
    }
 
-   thp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
    thp->th_len = l;
    thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
          (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
    su_mem_copy(thp->th_dat, s, l +1);
 jleave:
-   if((thp->th_older = a_tty.tg_hist) != NULL)
+   if((thp->th_older = a_tty.tg_hist) != NIL)
       a_tty.tg_hist->th_younger = thp;
    else
       a_tty.tg_hist_tail = thp;
-   thp->th_younger = NULL;
+   thp->th_younger = NIL;
    a_tty.tg_hist = thp;
    NYD2_OU;
 }
@@ -4339,9 +4339,10 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
 
 # ifdef mx_HAVE_HISTORY
 int
-c_history(void *v){
+c_history(void *vp){
    sz entry;
    struct a_tty_hist *thp;
+   boole dele;
    char **argv;
    NYD_IN;
 
@@ -4355,38 +4356,42 @@ c_history(void *v){
       ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
-   if(*(argv = v) == NULL)
+   if(*(argv = vp) == NIL)
       goto jlist;
-   if(argv[1] != NULL)
-      goto jerr;
-   if(!su_cs_cmp_case(*argv, "show"))
-      goto jlist;
-   if(!su_cs_cmp_case(*argv, "clear"))
-      goto jclear;
 
-   if(!su_cs_cmp_case(*argv, "load")){
-      if(!a_tty_hist_load())
-         v = NULL;
-      goto jleave;
-   }
-   if(!su_cs_cmp_case(*argv, "save")){
-      if(!a_tty_hist_save())
-         v = NULL;
-      goto jleave;
+   if((dele = su_cs_starts_with_case("delete", *argv)))
+      ++argv;
+   if(argv[1] != NIL)
+      goto jerr;
+
+   if(!dele){
+      if(su_cs_starts_with_case("clear", *argv))
+         goto jclear;
+      if(su_cs_starts_with_case("load", *argv)){
+         if(!a_tty_hist_load())
+            vp = NIL;
+         goto jleave;
+      }
+      if(su_cs_starts_with_case("save", *argv)){
+         if(!a_tty_hist_save())
+            vp = NIL;
+         goto jleave;
+      }
+      if(su_cs_starts_with_case("show", *argv))
+         goto jlist;
    }
 
    if((su_idec_sz_cp(&entry, *argv, 10, NULL
             ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) == su_IDEC_STATE_CONSUMED)
       goto jentry;
+
 jerr:
-   n_err(_("Synopsis: history: %s\n"),
-      /* Same string as in cmd-tab.h, still hoping...) */
-      _("<show (default)|load|save|clear> or select history <NO>"));
-   v = NULL;
+   mx_cmd_print_synopsis(mx_cmd_firstfit("history")/* TODO arg_ctx */, NIL);
+   vp = NIL;
 jleave:
    NYD_OU;
-   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+   return (vp == NIL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
    uz no, l, b;
@@ -4398,15 +4403,14 @@ jlist:{
    if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tmpfile"), 0);
-      v = NIL;
+      vp = NIL;
       goto jleave;
    }
 
    no = a_tty.tg_hist_size;
    l = b = 0;
 
-   for(thp = a_tty.tg_hist; thp != NULL;
-         --no, ++l, thp = thp->th_older){
+   for(thp = a_tty.tg_hist; thp != NIL; --no, ++l, thp = thp->th_older){
       char c1, c2;
 
       b += thp->th_len;
@@ -4434,11 +4438,11 @@ jlist:{
    goto jleave;
 
 jclear:
-   while((thp = a_tty.tg_hist) != NULL){
+   while((thp = a_tty.tg_hist) != NIL){
       a_tty.tg_hist = thp->th_older;
-      n_free(thp);
+      su_FREE(thp);
    }
-   a_tty.tg_hist_tail = NULL;
+   a_tty.tg_hist_tail = NIL;
    a_tty.tg_hist_size = 0;
    goto jleave;
 
@@ -4451,18 +4455,36 @@ jentry:{
       if(ep != entry)
          --ep;
       else
-         ep = (sz)a_tty.tg_hist_size - ep;
+         ep = S(sz,a_tty.tg_hist_size) - ep;
+
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
-         ASSERT(thp != NULL);
+         ASSERT(thp != NIL);
          if(ep-- == 0){
-            n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
-               n_GO_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
+            if(!dele)
+               n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
+                  n_GO_INPUT_INJECT_HISTORY), vp = thp->th_dat, thp->th_len);
+            else{
+               struct a_tty_hist *othp, *ythp;
+
+               othp = thp->th_older;
+               ythp = thp->th_younger;
+               if(othp != NIL)
+                  othp->th_younger = ythp;
+               else
+                  a_tty.tg_hist_tail = ythp;
+               if(ythp != NIL)
+                  ythp->th_older = othp;
+               else
+                  a_tty.tg_hist = othp;
+               --a_tty.tg_hist_size;
+               su_FREE(thp);
+            }
             break;
          }
       }
    }else{
       n_err(_("`history': no such entry: %" PRIdZ "\n"), entry);
-      v = NULL;
+      vp = NIL;
    }
    }
    goto jleave;
