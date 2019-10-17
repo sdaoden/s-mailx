@@ -271,7 +271,8 @@ a_ctab_c_list(void *vp){
          ++l;
          fprintf(fp, "  : %s\n", V_(cdp->cd_doc));
          ++l;
-         fprintf(fp, "  : %s\n", a_ctab_cmdinfo(cdp));
+         fprintf(fp, "  : %s\n", (cdp->cd_func != NIL ? a_ctab_cmdinfo(cdp)
+            : _("command is not compiled in")));
          ++l;
       }else
 #endif
