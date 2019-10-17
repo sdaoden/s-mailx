@@ -1493,7 +1493,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    };
 
    u32 f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
-      DBG(lstcur su_COMMA) cur,
+      ASSERT_INJ(lstcur su_COMMA) cur,
       vi_left, /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    NYD2_IN;
@@ -1525,7 +1525,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    phy_base = 0;
    phy_cur = tlp->tl_phy_cursor;
    cnt = tlp->tl_count;
-   su_DBG( lstcur = tlp->tl_lst_cursor; )
+   ASSERT_INJ( lstcur = tlp->tl_lst_cursor; )
 
    /* XXX Assume dirty screen if shrunk */
    if(cnt < tlp->tl_lst_count)

@@ -503,11 +503,11 @@ cc_flags() {
          _cc_flags_generic
       fi
 
-      feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
+      feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
       LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
    else
-      if feat_no DEBUG; then
+      if feat_no DEBUG && feat_no DEVEL; then
          CFLAGS="-DNDEBUG ${CFLAGS}"
       fi
    fi
