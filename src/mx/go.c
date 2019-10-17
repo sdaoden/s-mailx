@@ -707,9 +707,9 @@ jwhite:
 jmsglist_err:
             if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                   (n_poption & n_PO_D_V))
-               fprintf(n_stdout, _("No applicable messages\n"));
+               n_err(_("No applicable messages\n"));
             nerrn = su_ERR_NOMSG;
-           /* flags |= a_NO_ERRNO;*/
+            /* flags |= a_NO_ERRNO;*/
             break;
          }
       }

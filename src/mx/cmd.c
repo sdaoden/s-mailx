@@ -635,7 +635,7 @@ jredo:
 
                   e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
                   if(e == 0)
-                     e = su_ERR_NODATA;
+                     e = su_ERR_NOMSG;
                   n_pstate_err_no = e;
                   goto jerr;
                }
