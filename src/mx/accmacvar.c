@@ -60,6 +60,7 @@
 #include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
@@ -490,7 +491,7 @@ a_amv_mac_call(void *v, boole silent_nexist){
    struct a_amv_mac *amp;
    int rv;
    char const *name;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;
@@ -3603,7 +3604,7 @@ c_environ(void *v){
 
 FL int
 c_vpospar(void *v){
-   struct n_cmd_arg *cap;
+   struct mx_cmd_arg *cap;
    uz i;
    struct a_amv_pospar *appp;
    enum{
@@ -3614,7 +3615,7 @@ c_vpospar(void *v){
       a_QUOTE = 1u<<3
    } f;
    char const *varres;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;

@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  */
 
+struct mx_cmd_arg;
 struct su_cs_dict;
 struct quoteflt;
 
@@ -590,40 +591,6 @@ FL int c_resend(void *vp);
 FL int c_Resend(void *vp);
 
 /*
- * cmd-tab.c
- * Actual command table, `help', `list', etc., and the n_cmd_arg() parser.
- */
-
-/* Isolate the command from the arguments, return pointer to end of cmd name */
-FL char const *n_cmd_isolate_name(char const *cmd);
-
-/* Whether cmd is a valid command name (and not a modifier, for example) */
-FL boole n_cmd_is_valid_name(char const *cmd);
-
-/* First command which fits for cmd, or NULL */
-FL struct n_cmd_desc const *n_cmd_firstfit(char const *cmd);
-
-/* Get the default command for the empty line */
-FL struct n_cmd_desc const *n_cmd_default(void);
-
-/* Scan an entire command argument line, return whether result can be used,
- * otherwise no resources are allocated (in ->cac_arg).
- * For _WYSH arguments the flags _TRIM_SPACE (v15 _not_ _TRIM_IFSSPACE) and
- * _LOG are implicit, _META_SEMICOLON is starting with the last (non-optional)
- * argument, and then a trailing empty argument is ignored, too */
-FL boole n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
-
-/* Save away the data from autorec memory, and restore it to that.
- * The heap storage is a single pointer to be n_free() by users */
-FL void *n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp);
-FL struct n_cmd_arg_ctx *n_cmd_arg_restore_from_heap(void *vp);
-
-/* Scan out the list of string arguments according to rm, return -1 on error;
- * res_dat is NULL terminated unless res_size is 0 or error occurred */
-FL int /* TODO v15*/ getrawlist(boole wysh, char **res_dat, uz res_size,
-                  char const *line, uz linesize);
-
-/*
  * cmd-write.c
  */
 
@@ -1136,15 +1103,15 @@ FL void        touch(struct message *mp);
 
 /* Convert user message spec. to message numbers and store them in vector,
  * which should be capable to hold msgCount+1 entries (n_msgvec ASSERTs this).
- * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
+ * flags is cmd_arg_ctx.cac_msgflag==cmd_desc.cd_mflags_o_minargs==enum mflag.
  * If capp_or_null is not NULL then the last (string) token is stored in here
  * and not interpreted as a message specification; in addition, if only one
  * argument remains and this is the empty string, 0 is returned (*vector=0;
- * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
+ * this is used to implement CMD_ARG_DESC_MSGLIST_AND_TARGET).
  * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
  * Returns the count of messages picked up or -1 on error */
 FL int n_getmsglist(char const *buf, int *vector, int flags,
-         struct n_cmd_arg **capp_or_null);
+         struct mx_cmd_arg **capp_or_null);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);

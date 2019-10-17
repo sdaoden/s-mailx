@@ -38,6 +38,7 @@
 # endif
 #endif
 
+#include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
@@ -4478,7 +4479,7 @@ c_bind(void *v){
    union {char const *cp; char *p; char c;} c;
    boole show, aster;
    enum n_go_input_flags gif;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;
@@ -4586,7 +4587,7 @@ c_bind(void *v){
       mx_fs_close(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
-      struct n_cmd_arg *cap;
+      struct mx_cmd_arg *cap;
 
       su_mem_set(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
@@ -4611,7 +4612,7 @@ c_unbind(void *v){
    enum n_go_input_flags gif;
    boole aster;
    union {char const *cp; char *p;} c;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;

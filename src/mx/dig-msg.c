@@ -36,6 +36,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
 
@@ -1070,8 +1071,8 @@ int
 c_digmsg(void *vp){
    char const *cp, *emsg;
    struct mx_dig_msg_ctx *dmcp;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;

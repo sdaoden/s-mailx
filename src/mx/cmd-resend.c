@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"
 #include "mx/names.h"
@@ -688,8 +689,8 @@ a_crese_fwd(void *vp, boole recipient_record){
    enum gfield gf;
    boole forward_as_attachment;
    int *msgvec, rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
@@ -802,8 +803,8 @@ a_crese_resend1(void *vp, boole add_resent){
    boole mta_isexe;
    enum gfield gf;
    int *msgvec, rv, *ip;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    cacp = vp;

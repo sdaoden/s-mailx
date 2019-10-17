@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_CHARSETALIAS_H
-#define mx_CHARSETALIAS_H
+#ifndef mx_CMD_CHARSETALIAS_H
+#define mx_CMD_CHARSETALIAS_H
 
 #include <mx/nail.h>
 
@@ -33,5 +33,5 @@ EXPORT int c_uncharsetalias(void *vp);
 EXPORT char const *mx_charsetalias_expand(char const *cp, boole is_normalized);
 
 #include <su/code-ou.h>
-#endif /* mx_CHARSETALIAS_H */
+#endif /* mx_CMD_CHARSETALIAS_H */
 /* s-it-mode */

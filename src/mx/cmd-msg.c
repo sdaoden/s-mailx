@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/cmd.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
 #include "mx/termios.h"
@@ -205,8 +206,8 @@ a_cmsg_pipe1(void *vp, boole doign){
    u64 stats[1];
    char const *cmd, *cmdq;
    int *msgvec, rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    cacp = vp;
@@ -666,7 +667,7 @@ c_pdot(void *vp){
    char cbuf[su_IENC_BUFFER_SIZE], sep1, sep2;
    struct n_string s_b, *s;
    int *mlp;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
    UNUSED(vp);
 

@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_MLIST_H
-#define mx_MLIST_H
+#ifndef mx_CMD_MLIST_H
+#define mx_CMD_MLIST_H
 
 #include <mx/nail.h>
 
@@ -46,5 +46,5 @@ EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
       enum mx_mlist_type what);
 
 #include <su/code-ou.h>
-#endif /* mx_MLIST_H */
+#endif /* mx_CMD_MLIST_H */
 /* s-it-mode */

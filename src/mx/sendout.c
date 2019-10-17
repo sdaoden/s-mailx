@@ -45,6 +45,7 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cred-auth.h"
 #include "mx/file-locks.h"

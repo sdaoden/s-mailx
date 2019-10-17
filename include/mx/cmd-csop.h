@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_CSOP_H
-#define mx_CSOP_H
+#ifndef mx_CMD_CSOP_H
+#define mx_CMD_CSOP_H
 
 #include <mx/nail.h>
 #ifdef mx_HAVE_CMD_CSOP
@@ -30,5 +30,5 @@ EXPORT int c_csop(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_CSOP */
-#endif /* mx_CSOP_H */
+#endif /* mx_CMD_CSOP_H */
 /* s-it-mode */

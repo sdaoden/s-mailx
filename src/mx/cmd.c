@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ n_cmd_firstfit(): the table of commands + `help' and `list'.
- *@ And n_cmd_arg_parse(), the (new) argument list parser. TODO this is
+ *@ Implementation of cmd.h.
+ *@ TODO The new cmd_arg_parse() argument list parser is
  *@ TODO too stupid yet, however: it should fully support subcommands, too, so
  *@ TODO that, e.g., "vexpr regex" arguments can be fully prepared by the
  *@ TODO generic parser.  But at least a bit.
@@ -21,7 +21,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE cmd_tab
+#define su_FILE cmd
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -49,23 +49,23 @@
 #include "mx/tty.h"
 #include "mx/url.h"
 
-/* TODO fake */
+#include "mx/cmd.h"
 #include "su/code-in.h"
 
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
-static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
+static char const *a_cmd_cmdinfo(struct mx_cmd_desc const *cdp);
 #endif
 
 /* Print a list of all commands */
-static int a_ctab_c_list(void *vp);
+static int a_cmd_c_list(void *vp);
 
 /* `help' / `?' command */
-static int a_ctab_c_help(void *vp);
+static int a_cmd_c_help(void *vp);
 
-/* List of all commands; but first their n_cmd_arg_desc instances */
+/* List of all commands; but first their cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
-static struct n_cmd_desc const a_ctab_ctable[] = {
+static struct mx_cmd_desc const a_cmd_ctable[] = {
 #include <mx/cmd-tab.h>
 };
 
@@ -80,17 +80,17 @@ static struct n_cmd_desc const a_ctab_ctable[] = {
 #else
 # define DS(S)
 #endif
-static struct n_cmd_desc const a_ctab_ctable_plus[] = {
-   { n_ns, (int(*)(void*))-1, n_CMD_ARG_TYPE_STRING, 0, 0, NULL
+static struct mx_cmd_desc const a_cmd_ctable_plus[] = {
+   { n_ns, R(int(*)(void*),-1), mx_CMD_ARG_TYPE_STRING, 0, 0, NIL
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { n_hy, (int(*)(void*))-1, n_CMD_ARG_TYPE_WYSH, 0, 0, NULL
+   { n_hy, R(int(*)(void*),-1), mx_CMD_ARG_TYPE_WYSH, 0, 0, NIL
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
 
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *
-a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
+a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
    struct n_string rvb, *rv;
    char const *cp;
    NYD2_IN;
@@ -98,33 +98,33 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    rv = n_string_creat_auto(&rvb);
    rv = n_string_reserve(rv, 80);
 
-   switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
-   case n_CMD_ARG_TYPE_MSGLIST:
+   switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+   case mx_CMD_ARG_TYPE_MSGLIST:
       cp = N_("message-list");
       break;
-   case n_CMD_ARG_TYPE_NDMLIST:
+   case mx_CMD_ARG_TYPE_NDMLIST:
       cp = N_("message-list (without default)");
       break;
-   case n_CMD_ARG_TYPE_STRING:
-   case n_CMD_ARG_TYPE_RAWDAT:
+   case mx_CMD_ARG_TYPE_STRING:
+   case mx_CMD_ARG_TYPE_RAWDAT:
       cp = N_("string data");
       break;
-   case n_CMD_ARG_TYPE_RAWLIST:
+   case mx_CMD_ARG_TYPE_RAWLIST:
       cp = N_("old-style quoting");
       break;
-   case n_CMD_ARG_TYPE_WYRA:
+   case mx_CMD_ARG_TYPE_WYRA:
       cp = N_("`wysh' for sh(1)ell-style quoting");
       break;
-   case n_CMD_ARG_TYPE_WYSH:
-      cp = (cdp->cd_minargs == 0 && cdp->cd_maxargs == 0)
+   case mx_CMD_ARG_TYPE_WYSH:
+      cp = (cdp->cd_mflags_o_minargs == 0 && cdp->cd_mmask_o_maxargs == 0)
             ? N_("sh(1)ell-style quoting (takes no arguments)")
             : N_("sh(1)ell-style quoting");
       break;
    default:
-   case n_CMD_ARG_TYPE_ARG:{
+   case mx_CMD_ARG_TYPE_ARG:{
       u32 flags, xflags;
       uz i;
-      struct n_cmd_arg_desc const *cadp;
+      struct mx_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
 
@@ -134,29 +134,29 @@ jfakeent:
          if(i != 0)
             rv = n_string_push_c(rv, ',');
 
-         if(flags & n_CMD_ARG_DESC_OPTION)
+         if(flags & mx_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, '[');
-         if(flags & n_CMD_ARG_DESC_GREEDY)
+         if(flags & mx_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
-         switch(flags & n__CMD_ARG_DESC_TYPE_MASK){
+         switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
          default:
-         case n_CMD_ARG_DESC_SHEXP:
+         case mx_CMD_ARG_DESC_SHEXP:
             rv = n_string_push_cp(rv, _("(shell-)token"));
             break;
-         case n_CMD_ARG_DESC_MSGLIST:
+         case mx_CMD_ARG_DESC_MSGLIST:
             rv = n_string_push_cp(rv, _("(shell-)msglist"));
             break;
-         case n_CMD_ARG_DESC_NDMSGLIST:
+         case mx_CMD_ARG_DESC_NDMSGLIST:
             rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
             break;
-         case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+         case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
             rv = n_string_push_cp(rv, _("(shell-)msglist"));
             ++i;
-            xflags = n_CMD_ARG_DESC_SHEXP;
+            xflags = mx_CMD_ARG_DESC_SHEXP;
          }
-         if(flags & n_CMD_ARG_DESC_GREEDY)
+         if(flags & mx_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
-         if(flags & n_CMD_ARG_DESC_OPTION)
+         if(flags & mx_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, ']');
 
          if(xflags != flags){
@@ -171,35 +171,35 @@ jfakeent:
       rv = n_string_push_cp(rv, V_(cp));
 
    /* Note: on updates, change the manual! */
-   if(cdp->cd_caflags & n_CMD_ARG_L)
+   if(cdp->cd_caflags & mx_CMD_ARG_L)
       rv = n_string_push_cp(rv, _(" | `local'"));
-   if(cdp->cd_caflags & n_CMD_ARG_V)
+   if(cdp->cd_caflags & mx_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | `vput'"));
-   if(cdp->cd_caflags & n_CMD_ARG_EM)
+   if(cdp->cd_caflags & mx_CMD_ARG_EM)
       rv = n_string_push_cp(rv, _(" | *!*"));
 
-   if(cdp->cd_caflags & n_CMD_ARG_A)
+   if(cdp->cd_caflags & mx_CMD_ARG_A)
       rv = n_string_push_cp(rv, _(" | needs-box"));
 
-   if(cdp->cd_caflags & (n_CMD_ARG_I | n_CMD_ARG_M | n_CMD_ARG_X)){
+   if(cdp->cd_caflags & (mx_CMD_ARG_I | mx_CMD_ARG_M | mx_CMD_ARG_X)){
       rv = n_string_push_cp(rv, _(" | yay:"));
-      if(cdp->cd_caflags & n_CMD_ARG_I)
+      if(cdp->cd_caflags & mx_CMD_ARG_I)
          rv = n_string_push_cp(rv, _(" batch/interactive"));
-      if(cdp->cd_caflags & n_CMD_ARG_M)
+      if(cdp->cd_caflags & mx_CMD_ARG_M)
          rv = n_string_push_cp(rv, _(" send-mode"));
-      if(cdp->cd_caflags & n_CMD_ARG_X)
+      if(cdp->cd_caflags & mx_CMD_ARG_X)
          rv = n_string_push_cp(rv, _(" subprocess"));
    }
 
-   if(cdp->cd_caflags & (n_CMD_ARG_R | n_CMD_ARG_S)){
+   if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
       rv = n_string_push_cp(rv, _(" | nay:"));
-      if(cdp->cd_caflags & n_CMD_ARG_R)
+      if(cdp->cd_caflags & mx_CMD_ARG_R)
          rv = n_string_push_cp(rv, _(" compose-mode"));
-      if(cdp->cd_caflags & n_CMD_ARG_S)
+      if(cdp->cd_caflags & mx_CMD_ARG_S)
          rv = n_string_push_cp(rv, _(" startup"));
    }
 
-   if(cdp->cd_caflags & n_CMD_ARG_G)
+   if(cdp->cd_caflags & mx_CMD_ARG_G)
       rv = n_string_push_cp(rv, _(" | gabby"));
 
    cp = n_string_cp(rv);
@@ -209,20 +209,20 @@ jfakeent:
 #endif /* mx_HAVE_DOCSTRINGS */
 
 static int
-a_ctab_c_list(void *vp){
+a_cmd_c_list(void *vp){
    FILE *fp;
-   struct n_cmd_desc const **cdpa, *cdp, **cdpa_curr;
+   struct mx_cmd_desc const **cdpa, *cdp, **cdpa_curr;
    uz i, l, scrwid;
    NYD_IN;
    UNUSED(vp);
 
-   i = NELEM(a_ctab_ctable_plus) + NELEM(a_ctab_ctable) +1;
+   i = NELEM(a_cmd_ctable_plus) + NELEM(a_cmd_ctable) +1;
    cdpa = n_autorec_alloc(sizeof(cdp) * i);
 
-   for(i = 0; i < NELEM(a_ctab_ctable_plus); ++i)
-      cdpa[i] = &a_ctab_ctable_plus[i];
-   for(l = 0; l < NELEM(a_ctab_ctable); ++i, ++l)
-      cdpa[i] = &a_ctab_ctable[l];
+   for(i = 0; i < NELEM(a_cmd_ctable_plus); ++i)
+      cdpa[i] = &a_cmd_ctable_plus[i];
+   for(l = 0; l < NELEM(a_cmd_ctable); ++i, ++l)
+      cdpa[i] = &a_cmd_ctable[l];
    cdpa[i] = NIL;
 
    if((fp = mx_fs_tmp_open("list", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
@@ -246,10 +246,10 @@ a_ctab_c_list(void *vp){
          fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
          ++l;
          fprintf(fp, "  : %s%s\n",
-            ((cdp->cd_caflags & n_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
+            ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
             V_(cdp->cd_doc));
          ++l;
-         fprintf(fp, "  : %s\n", (cdp->cd_func != NIL ? a_ctab_cmdinfo(cdp)
+         fprintf(fp, "  : %s\n", (cdp->cd_func != NIL ? a_cmd_cmdinfo(cdp)
             : _("command is not compiled in")));
          ++l;
       }else
@@ -281,14 +281,14 @@ a_ctab_c_list(void *vp){
 }
 
 static int
-a_ctab_c_help(void *vp){
+a_cmd_c_help(void *vp){
    int rv;
    char const *arg;
    NYD_IN;
 
    /* Help for a single command? */
    if((arg = *S(char const**,vp)) != NIL){
-      struct n_cmd_desc const *cdp, *cdp_max;
+      struct mx_cmd_desc const *cdp, *cdp_max;
       char const *alias_name, *alias_exp, *aepx;
 
       /* Aliases take precedence, unless disallowed.
@@ -305,8 +305,8 @@ a_ctab_c_help(void *vp){
          arg = alias_exp;
       }
 
-      cdp_max = &(cdp = a_ctab_ctable)[NELEM(a_ctab_ctable)];
-      cdp = &cdp[a_CTAB_CIDX(*arg)];
+      cdp_max = &(cdp = a_cmd_ctable)[NELEM(a_cmd_ctable)];
+      cdp = &cdp[a_CMD_CIDX(*arg)];
 
 jredo:
       for(; cdp < cdp_max; ++cdp){
@@ -318,19 +318,19 @@ jredo:
             fprintf(n_stdout, " (%s)", cdp->cd_name);
 #ifdef mx_HAVE_DOCSTRINGS
          fprintf(n_stdout, ": %s%s",
-            ((cdp->cd_caflags & n_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
+            ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
             V_(cdp->cd_doc));
          if(n_poption & n_PO_D_V)
-            fprintf(n_stdout, "\n  : %s", a_ctab_cmdinfo(cdp));
+            fprintf(n_stdout, "\n  : %s", a_cmd_cmdinfo(cdp));
 #endif
          putc('\n', n_stdout);
          rv = 0;
          goto jleave;
       }
 
-      if(cdp_max == &a_ctab_ctable[NELEM(a_ctab_ctable)]){
+      if(cdp_max == &a_cmd_ctable[NELEM(a_cmd_ctable)]){
          cdp_max = &(cdp =
-               a_ctab_ctable_plus)[NELEM(a_ctab_ctable_plus)];
+               a_cmd_ctable_plus)[NELEM(a_cmd_ctable_plus)];
          goto jredo;
       }
 
@@ -388,8 +388,8 @@ jleave:
    return rv;
 }
 
-FL char const *
-n_cmd_isolate_name(char const *cmd){
+char const *
+mx_cmd_isolate_name(char const *cmd){
    NYD2_IN;
    while(*cmd != '\0' &&
          su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
@@ -398,8 +398,8 @@ n_cmd_isolate_name(char const *cmd){
    return n_UNCONST(cmd);
 }
 
-FL boole
-n_cmd_is_valid_name(char const *cmd){
+boole
+mx_cmd_is_valid_name(char const *cmd){
    /* Mirrors things from go.c */
    static char const a_prefixes[][8] =
          {"ignerr", "local", "wysh", "vput", "scope", "u"};
@@ -416,17 +416,17 @@ n_cmd_is_valid_name(char const *cmd){
    return (cmd != NIL);
 }
 
-FL struct n_cmd_desc const *
-n_cmd_firstfit(char const *cmd){
-   struct n_cmd_desc const *cdp;
+struct mx_cmd_desc const *
+mx_cmd_firstfit(char const *cmd){
+   struct mx_cmd_desc const *cdp;
    char c, C, x;
    NYD2_IN;
 
    C = su_cs_to_upper(c = *cmd);
-   cdp = &a_ctab_ctable[a_CTAB_CIDX(c)];
+   cdp = &a_cmd_ctable[a_CMD_CIDX(c)];
    c = su_cs_to_lower(c);
 
-   for(; cdp < &a_ctab_ctable[NELEM(a_ctab_ctable)]; ++cdp)
+   for(; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
       if(cdp->cd_func != NIL && su_cs_starts_with(cdp->cd_name, cmd))
          goto jleave;
       else if((x = *cdp->cd_name) != c && x != C)
@@ -439,24 +439,46 @@ jleave:
    return cdp;
 }
 
-FL struct n_cmd_desc const *
-n_cmd_default(void){
-   struct n_cmd_desc const *cdp;
+struct mx_cmd_desc const *
+mx_cmd_default(void){
+   struct mx_cmd_desc const *cdp;
    NYD2_IN;
 
-   cdp = &a_ctab_ctable[a_CTAB_DEFAULT_IDX];
+   cdp = &a_cmd_ctable[a_CMD_DEFAULT_IDX];
    NYD2_OU;
    return cdp;
 }
 
-FL boole
-n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
-   struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
+boole
+mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
+   char const *name, *doc;
+   boole rv;
+   NYD2_IN;
+
+   rv = TRU1;
+   name = (cdp_or_nil != NIL) ? cdp_or_nil->cd_name : su_empty;
+   if((doc = mx_cmd_get_brief_doc(cdp_or_nil)) != NIL)
+      doc = V_(doc);
+
+   if(*name != '\0'){
+      if(fp_or_nil == NIL)
+         n_err(_("Synopsis: %s: %s\n"), name, doc);
+      else
+         rv = (fprintf(fp_or_nil, _("Synopsis: %s: %s\n"), name, doc) >= 0);
+   }
+
+   NYD2_OU;
+   return rv;
+}
+
+boole
+mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
+   struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
    boole stoploop, greedyjoin;
    void const *cookie;
    uz cad_idx, parsed_args;
-   struct n_cmd_arg_desc const *cadp;
+   struct mx_cmd_arg_desc const *cadp;
    NYD_IN;
 
    ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
@@ -467,43 +489,43 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
-         ASSERT(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
+         ASSERT(cadp->cad_ent_flags[cad_idx][0] & mx__CMD_ARG_DESC_TYPE_MASK);
 
-         /* TODO n_CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         /* TODO CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
             cad_idx + 1 == cadp->cad_no);
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
+               mx_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             cad_idx + 1 == cadp->cad_no);
 
          ASSERT(!opt_seen ||
-            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
-         if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
+            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+         if(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
 
-         /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY.
-          * TODO And they may not be n_CMD_ARG_DESC_OPTION */
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
-            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+         /* TODO CMD_ARG_DESC_MSGLIST+ can only be CMD_ARG_DESC_GREEDY.
+          * TODO And they may not be CMD_ARG_DESC_OPTION */
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_NDMSGLIST) ||
-            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+               mx_CMD_ARG_DESC_NDMSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
-            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
 
-         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_NDMSGLIST) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+               mx_CMD_ARG_DESC_NDMSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
          ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
-            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+               mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
       }
    }
 #endif /* mx_HAVE_DEBUG */
@@ -533,9 +555,9 @@ jredo:
       target_argpp = NULL;
       stoploop = FAL0;
 
-      switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
+      switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
       default:
-      case n_CMD_ARG_DESC_SHEXP:{
+      case mx_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
 
@@ -547,7 +569,8 @@ jredo:
          shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
                shoup, &shin,
-               (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));
+               (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY
+                  ? &cookie : NIL));
 
          if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
             ASSERT(shs & n_SHEXP_STATE_STOP);
@@ -565,8 +588,8 @@ jredo:
          if(shs & n_SHEXP_STATE_ERR_MASK)
             goto jerr;
          if((shs & n_SHEXP_STATE_STOP) &&
-               (ncap.ca_ent_flags[0] & (n_CMD_ARG_DESC_OPTION |
-                  n_CMD_ARG_DESC_HONOUR_STOP))){
+               (ncap.ca_ent_flags[0] & (mx_CMD_ARG_DESC_OPTION |
+                  mx_CMD_ARG_DESC_HONOUR_STOP))){
             if(!(shs & n_SHEXP_STATE_OUTPUT)){
                /* We would return FAL0 for bind in "bind;echo huhu" or
                 * "reply # comment", whereas we do not for "bind" or "reply"
@@ -584,11 +607,11 @@ jredo:
             goto jerr;
          }
          }break;
-      case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+      case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
          target_argpp = &target_argp;
          /* FALLTHRU */
-      case n_CMD_ARG_DESC_MSGLIST:
-      case n_CMD_ARG_DESC_NDMSGLIST:
+      case mx_CMD_ARG_DESC_MSGLIST:
+      case mx_CMD_ARG_DESC_NDMSGLIST:
          /* TODO _MSGLIST yet at end and greedy only (fast hack).
           * TODO And consumes too much memory */
          ASSERT(shin.s[shin.l] == '\0');
@@ -601,16 +624,16 @@ jredo:
          if(ncap.ca_arg.ca_msglist[0] == 0){
             u32 e;
 
-            switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
-            case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
-            case n_CMD_ARG_DESC_MSGLIST:
+            switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
+            case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+            case mx_CMD_ARG_DESC_MSGLIST:
                if((ncap.ca_arg.ca_msglist[0] = first(cacp->cac_msgflag,
                      cacp->cac_msgmask)) == 0){
                   if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                         (n_poption & n_PO_D_V))
                      n_err(_("No applicable messages\n"));
 
-                  e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+                  e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
                   if(e == 0)
                      e = su_ERR_NODATA;
                   n_pstate_err_no = e;
@@ -631,7 +654,7 @@ jredo:
             default:
                break;
             }
-         }else if((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE
+         }else if((ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE
                ) && ncap.ca_arg.ca_msglist[1] != 0){
             if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                   (n_poption & n_PO_D_V))
@@ -649,8 +672,8 @@ jredo:
          char *cp;
          uz i;
 
-         ASSERT((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
-            ) != n_CMD_ARG_DESC_MSGLIST);
+         ASSERT((ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK
+            ) != mx_CMD_ARG_DESC_MSGLIST);
          ASSERT(lcap != NULL);
          ASSERT(target_argpp == NULL);
          i = lcap->ca_arg.ca_str.l;
@@ -683,10 +706,11 @@ jredo:
          goto jleave;
 
       if((shin.l > 0 || cookie != NULL) &&
-            (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
+            (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
          if(!greedyjoin)
-            greedyjoin = ((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY_JOIN) &&
-                     (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_SHEXP))
+            greedyjoin = ((ncap.ca_ent_flags[0] &
+                        mx_CMD_ARG_DESC_GREEDY_JOIN) &&
+                     (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP))
                   ? TRU1 : TRUM1;
          goto jredo;
       }
@@ -694,10 +718,10 @@ jredo:
 
 jloop_break:
    if(cad_idx < cadp->cad_no &&
-         !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
+         !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
       goto jerr;
 
-   lcap = (struct n_cmd_arg*)-1;
+   lcap = (struct mx_cmd_arg*)-1;
 jleave:
    NYD_OU;
    return (lcap != NULL);
@@ -711,7 +735,7 @@ jerr:
          uz i;
 
          for(i = 0; (i < cadp->cad_no &&
-               !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
+               !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i)
             ;
 
          n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
@@ -728,12 +752,12 @@ jerr:
    goto jleave;
 }
 
-FL void *
-n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
-   struct n_cmd_arg *ncap;
-   struct n_cmd_arg_ctx *ncacp;
+void *
+mx_cmd_arg_save_to_heap(struct mx_cmd_arg_ctx const *cacp){
+   struct mx_cmd_arg *ncap;
+   struct mx_cmd_arg_ctx *ncacp;
    char *buf;
-   struct n_cmd_arg const *cap;
+   struct mx_cmd_arg const *cap;
    uz len, i;
    NYD2_IN;
 
@@ -784,10 +808,10 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
    return ncacp;
 }
 
-FL struct n_cmd_arg_ctx *
-n_cmd_arg_restore_from_heap(void *vp){
-   struct n_cmd_arg *cap, *ncap;
-   struct n_cmd_arg_ctx *cacp, *rv;
+struct mx_cmd_arg_ctx *
+mx_cmd_arg_restore_from_heap(void *vp){
+   struct mx_cmd_arg *cap, *ncap;
+   struct mx_cmd_arg_ctx *cacp, *rv;
    NYD2_IN;
 
    rv = n_autorec_alloc(sizeof *rv);
@@ -818,7 +842,7 @@ n_cmd_arg_restore_from_heap(void *vp){
    return rv;
 }
 
-FL int
+int
 getrawlist(boole wysh, char **res_dat, uz res_size,
       char const *line, uz linesize){
    int res_no;

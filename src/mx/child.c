@@ -36,6 +36,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"

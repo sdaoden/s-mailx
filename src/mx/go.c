@@ -51,6 +51,7 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/cmd-commandalias.h"
 #include "mx/colour.h"
 #include "mx/dig-msg.h"
@@ -204,7 +205,6 @@ static char const * const a_go_bltin_rc_lines[] = {
 };
 
 static n_sighdl_t a_go_oldpipe;
-/* a_go_cmd_tab[] after fun protos */
 
 /* Our current execution context, and the buffer backing the outermost level */
 static struct a_go_ctx *a_go_ctx;
@@ -217,7 +217,7 @@ static union{
 } a_go__mainctx_b;
 
 /* `xcall' stack-avoidance bypass optimization.  This actually is
- * a n_cmd_arg_save_to_heap() buffer with n_cmd_arg_ctx.cac_indat misused to
+ * a cmd_arg_save_to_heap() buffer with cmd_arg_ctx.cac_indat misused to
  * point to the a_go_ctx to unroll up to */
 static void *a_go_xcall;
 
@@ -279,7 +279,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    struct n_string s_b, *s;
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
-   struct n_cmd_desc const *cdp;
+   struct mx_cmd_desc const *cdp;
    s32 nerrn, nexn;     /* TODO n_pstate_ex_no -> s64! */
    int rv, c;
    enum{
@@ -325,7 +325,7 @@ jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
       line.s[0] = '\0';
       flags |= a_IS_EMPTY;
-      cdp = n_cmd_default();
+      cdp = mx_cmd_default();
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
@@ -339,7 +339,7 @@ jrestart:
    }
 
    /* Note: adding more special treatments must be reflected in the `help' etc.
-    * output in cmd-tab.c! */
+    * output in cmd.c! */
 
    /* Ignore null commands (comments) */
    if(*cp == '#'){
@@ -354,7 +354,7 @@ jrestart:
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = n_UNCONST(n_cmd_isolate_name(cp))) == line.s &&
+   else if((cp = n_UNCONST(mx_cmd_isolate_name(cp))) == line.s &&
          (*cp == '|' || *cp == '?'))
       ++cp;
    c = (int)P2UZ(cp - line.s);
@@ -365,7 +365,7 @@ jrestart:
    line.s = cp;
 
    /* It may be a modifier.
-    * NOTE: changing modifiers must be reflected in n_cmd_is_valid_name() */
+    * NOTE: changing modifiers must be reflected in cmd_is_valid_name() */
    switch(c){
    default:
       break;
@@ -442,7 +442,7 @@ jrestart:
     * command table entry.. */
    if(*word == '\0'){
       flags |= a_IS_EMPTY;
-      cdp = n_cmd_default();
+      cdp = mx_cmd_default();
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
@@ -488,7 +488,7 @@ jrestart:
       }
    }
 
-   if((cdp = n_cmd_firstfit(word)) == NULL){
+   if((cdp = mx_cmd_firstfit(word)) == NIL){
       if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
             (flags & a_IS_SKIP ? _(" (ignored due to `if' condition)")
@@ -515,12 +515,12 @@ jexec:
     * To allow "if 0; echo no; else; echo yes;end" we need to be able to
     * perform input line sequentiation / rest injection even in whiteout
     * situations.  See if we can do that. */
-   if(UNLIKELY(flags & a_IS_SKIP) && !(cdp->cd_caflags & n_CMD_ARG_F)){
+   if(UNLIKELY(flags & a_IS_SKIP) && !(cdp->cd_caflags & mx_CMD_ARG_F)){
 jwhite:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
 
-      switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
-      case n_CMD_ARG_TYPE_WYRA:{
+      switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+      case mx_CMD_ARG_TYPE_WYRA:{
             char const *v15compat;
 
             if((v15compat = ok_vlook(v15_compat)) == su_NIL ||
@@ -528,10 +528,10 @@ jwhite:
                break;
          }
          /* FALLTHRU */
-      case n_CMD_ARG_TYPE_MSGLIST:
-      case n_CMD_ARG_TYPE_NDMLIST:
-      case n_CMD_ARG_TYPE_WYSH:
-      case n_CMD_ARG_TYPE_ARG:
+      case mx_CMD_ARG_TYPE_MSGLIST:
+      case mx_CMD_ARG_TYPE_NDMLIST:
+      case mx_CMD_ARG_TYPE_WYSH:
+      case mx_CMD_ARG_TYPE_ARG:
          for(s = n_string_creat_auto(&s_b);;){
             su_u32 shs;
 
@@ -546,9 +546,9 @@ jwhite:
             }
          }
          break;
-      case n_CMD_ARG_TYPE_RAWDAT:
-      case n_CMD_ARG_TYPE_STRING:
-      case n_CMD_ARG_TYPE_RAWLIST:
+      case mx_CMD_ARG_TYPE_RAWDAT:
+      case mx_CMD_ARG_TYPE_STRING:
+      case mx_CMD_ARG_TYPE_RAWLIST:
          break;
       }
       goto jret0;
@@ -564,23 +564,23 @@ jwhite:
    nerrn = su_ERR_INVAL;
 
    /* Process the arguments to the command, depending on the type it expects */
-   if((cdp->cd_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
+   if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
       n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
          cdp->cd_name);
       goto jleave;
    }
-   if(!(cdp->cd_caflags & n_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
+   if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
       n_err(_("May not execute `%s' while sending\n"), cdp->cd_name);
       goto jleave;
    }
-   if(cdp->cd_caflags & n_CMD_ARG_R){
+   if(cdp->cd_caflags & mx_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
          n_err(_("Cannot invoke `%s' when in compose mode\n"), cdp->cd_name);
          goto jleave;
       }
-      /* TODO Nothing should prevent n_CMD_ARG_R in conjunction with
+      /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
       if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
          n_err(_("Cannot invoke `%s' in this program state\n"),
@@ -588,27 +588,27 @@ jwhite:
          goto jleave;
       }
    }
-   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
+   if((cdp->cd_caflags & mx_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
       n_err(_("May not execute `%s' during startup\n"), cdp->cd_name);
       goto jleave;
    }
-   if(!(cdp->cd_caflags & n_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
+   if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
       n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
          cdp->cd_name);
       goto jleave;
    }
 
-   if((cdp->cd_caflags & n_CMD_ARG_A) && mb.mb_type == MB_VOID){
+   if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
       n_err(_("Cannot execute `%s' without active mailbox\n"), cdp->cd_name);
       goto jleave;
    }
-   if((cdp->cd_caflags & n_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
+   if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
       n_err(_("May not execute `%s' -- message file is read only\n"),
          cdp->cd_name);
       goto jleave;
    }
 
-   if(cdp->cd_caflags & n_CMD_ARG_O)
+   if(cdp->cd_caflags & mx_CMD_ARG_O)
       n_OBSOLETE2(_("this command will be removed"), cdp->cd_name);
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
@@ -618,19 +618,19 @@ jwhite:
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if(flags & a_WYSH){
-      switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
-      case n_CMD_ARG_TYPE_MSGLIST:
-      case n_CMD_ARG_TYPE_NDMLIST:
-      case n_CMD_ARG_TYPE_WYSH:
-      case n_CMD_ARG_TYPE_ARG:
+      switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+      case mx_CMD_ARG_TYPE_MSGLIST:
+      case mx_CMD_ARG_TYPE_NDMLIST:
+      case mx_CMD_ARG_TYPE_WYSH:
+      case mx_CMD_ARG_TYPE_ARG:
          n_OBSOLETE2(cdp->cd_name, _("`wysh' modifier redundant/needless"));
          flags ^= a_WYSH;
          /* FALLTHRU */
-      case n_CMD_ARG_TYPE_WYRA:
+      case mx_CMD_ARG_TYPE_WYRA:
          break;
-      case n_CMD_ARG_TYPE_RAWDAT:
-      case n_CMD_ARG_TYPE_STRING:
-      case n_CMD_ARG_TYPE_RAWLIST:
+      case mx_CMD_ARG_TYPE_RAWDAT:
+      case mx_CMD_ARG_TYPE_STRING:
+      case mx_CMD_ARG_TYPE_RAWLIST:
          n_err(_("`wysh' command modifier does not affect `%s'\n"),
             cdp->cd_name);
          goto jleave;
@@ -639,7 +639,7 @@ jwhite:
 
    if(flags & a_LOCAL){
       /* TODO a_LOCAL should affect !CMD_ARG_L commands if `vput' is used!! */
-      if(!(cdp->cd_caflags & n_CMD_ARG_L)){
+      if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
          n_err(_("`local' command modifier does not affect `%s'\n"),
             cdp->cd_name);
          goto jleave;
@@ -651,7 +651,7 @@ jwhite:
    }
 
    if(flags & a_VPUT){
-      if(cdp->cd_caflags & n_CMD_ARG_V){
+      if(cdp->cd_caflags & mx_CMD_ARG_V){
          char const *emsg;
 
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
@@ -687,18 +687,20 @@ jwhite:
    if(n_poption & n_PO_D_VV)
       n_err(_("COMMAND <%s> %s\n"), cdp->cd_name, line.s);
 
-   switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
-   case n_CMD_ARG_TYPE_MSGLIST:
+   switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
+   case mx_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
          goto jmsglist_err;
-      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NULL)
+            ) < 0){
          nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
       if(c == 0){
-         if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0){
+         if((n_msgvec[0] = first(cdp->cd_mflags_o_minargs,
+               cdp->cd_mmask_o_maxargs)) != 0){
             c = 1;
             n_msgmark1 = &message[n_msgvec[0] - 1];
          }else{
@@ -718,49 +720,50 @@ jmsglist_go:
          mvp = n_autorec_calloc(c +1, sizeof *mvp);
          while(c-- > 0)
             mvp[c] = n_msgvec[c];
-         if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /*XXX*/
+         if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM))/*XXX*/
             su_err_set_no(su_ERR_NONE);
          rv = (*cdp->cd_func)(mvp);
       }
       break;
 
-   case n_CMD_ARG_TYPE_NDMLIST:
+   case mx_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
          goto jmsglist_err;
-      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL)
+            ) < 0){
          nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
       goto jmsglist_go;
 
-   case n_CMD_ARG_TYPE_STRING:
+   case mx_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
       for(cp = line.s; su_cs_is_space(*cp);)
          ++cp;
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(cp);
       break;
 
-   case n_CMD_ARG_TYPE_RAWDAT:
+   case mx_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, placed in argv[] */
       argvp = argv_stack;
       if(flags & a_VPUT)
          *argvp++ = vput;
       *argvp++ = line.s;
       *argvp = NULL;
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_stack);
       break;
 
-   case n_CMD_ARG_TYPE_WYSH:
+   case mx_CMD_ARG_TYPE_WYSH:
       c = 1;
       if(0){
          /* FALLTHRU */
-   case n_CMD_ARG_TYPE_WYRA:
+   case mx_CMD_ARG_TYPE_WYRA:
          /* C99 */{
             char const *v15compat;
 
@@ -770,7 +773,7 @@ jmsglist_go:
          }
          c = (flags & a_WYSH) ? 1 : 0;
          if(0){
-   case n_CMD_ARG_TYPE_RAWLIST:
+   case mx_CMD_ARG_TYPE_RAWLIST:
             c = 0;
          }
       }
@@ -784,20 +787,18 @@ jmsglist_go:
          break;
       }
 
-      if(UCMP(32, c, <, cdp->cd_minargs)){
+      if(UCMP(32, c, <, cdp->cd_mflags_o_minargs)){
          n_err(_("`%s' requires at least %u arg(s)\n"),
-            cdp->cd_name, (u32)cdp->cd_minargs);
+            cdp->cd_name, S(u32,cdp->cd_mflags_o_minargs));
          flags |= a_NO_ERRNO;
          break;
       }
-#undef cd_minargs
-      if(UCMP(32, c, >, cdp->cd_maxargs)){
+      if(UCMP(32, c, >, cdp->cd_mmask_o_maxargs)){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
-            cdp->cd_name, (u32)cdp->cd_maxargs);
+            cdp->cd_name, S(u32,cdp->cd_mmask_o_maxargs));
          flags |= a_NO_ERRNO;
          break;
       }
-#undef cd_maxargs
 
       if(flags & a_LOCAL)
          n_pstate |= n_PS_ARGMOD_LOCAL;
@@ -806,26 +807,26 @@ jmsglist_go:
       if(flags & a_WYSH)
          n_pstate |= n_PS_ARGMOD_WYSH;
 
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_base);
       if(a_go_xcall != NULL)
          goto jret0;
       break;
 
-   case n_CMD_ARG_TYPE_ARG:{
+   case mx_CMD_ARG_TYPE_ARG:{
       /* TODO The _ARG_TYPE_ARG is preliminary, in the end we should have a
        * TODO per command-ctx carrier that also has slots for it arguments,
        * TODO and that should be passed along all the way.  No more arglists
        * TODO here, etc. */
-      struct n_cmd_arg_ctx cac;
+      struct mx_cmd_arg_ctx cac;
 
       cac.cac_desc = cdp->cd_cadp;
       cac.cac_indat = line.s;
       cac.cac_inlen = line.l;
-      cac.cac_msgflag = cdp->cd_msgflag;
-      cac.cac_msgmask = cdp->cd_msgmask;
-      if(!n_cmd_arg_parse(&cac)){
+      cac.cac_msgflag = cdp->cd_mflags_o_minargs;
+      cac.cac_msgmask = cdp->cd_mmask_o_maxargs;
+      if(!mx_cmd_arg_parse(&cac)){
          flags |= a_NO_ERRNO;
          break;
       }
@@ -836,7 +837,7 @@ jmsglist_go:
       }else
          cac.cac_vput = NULL;
 
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(&cac);
       if(a_go_xcall != NULL)
@@ -845,29 +846,29 @@ jmsglist_go:
 
    default:
       su_DBG( n_panic(_("Implementation error: unknown argument type: %d"),
-         cdp->cd_caflags & n_CMD_ARG_TYPE_MASK); )
+         cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK); )
       nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
       goto jret0;
    }
 
    if(gecp->gec_hist_flags & a_GO_HIST_ADD){
-      if(cdp->cd_caflags & n_CMD_ARG_H)
+      if(cdp->cd_caflags & mx_CMD_ARG_H)
          gecp->gec_hist_flags = a_GO_HIST_NONE;
-      else if((cdp->cd_caflags & n_CMD_ARG_G) ||
+      else if((cdp->cd_caflags & mx_CMD_ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY))
          gecp->gec_hist_flags |= a_GO_HIST_GABBY;
    }
 
    if(rv != 0){
       if(!(flags & a_NO_ERRNO)){
-         if(cdp->cd_caflags & n_CMD_ARG_EM)
+         if(cdp->cd_caflags & mx_CMD_ARG_EM)
             flags |= a_NO_ERRNO;
          else if((nerrn = su_err_no()) == 0)
             nerrn = su_ERR_INVAL;
       }/*else
          flags ^= a_NO_ERRNO;*/
-   }else if(cdp->cd_caflags & n_CMD_ARG_EM)
+   }else if(cdp->cd_caflags & mx_CMD_ARG_EM)
       flags |= a_NO_ERRNO;
    else
       nerrn = su_ERR_NONE;
@@ -909,12 +910,12 @@ jleave:
 
    if(cdp == NULL)
       goto jret0;
-   if((cdp->cd_caflags & n_CMD_ARG_P) && ok_blook(autoprint) && visible(dot))
+   if((cdp->cd_caflags & mx_CMD_ARG_P) && ok_blook(autoprint) && visible(dot))
       n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
          sizeof("\\type") -1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
-         !(cdp->cd_caflags & n_CMD_ARG_T))
+         !(cdp->cd_caflags & mx_CMD_ARG_T))
       n_pstate |= n_PS_SAW_COMMAND;
 jret0:
    rv = 0;
@@ -1155,7 +1156,7 @@ a_go_file(char const *file, boole silent_open_error){
 
    /* Being a command argument file is space-trimmed *//* TODO v15 with
     * TODO WYRALIST this is no longer necessary true, and for that we
-    * TODO don't set _PARSE_TRIM_SPACE because we cannot! -> cmd-tab.h!! */
+    * TODO don't set _PARSE_TRIM_SPACE because we cannot! -> cmd.h!! */
 #if 0
    ((ispipe = (!silent_open_error && (nlen = su_cs_len(file)) > 0 &&
          file[--nlen] == '|')))
@@ -2130,21 +2131,21 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    /* Shall this enter a `xcall' stack avoidance optimization (loop)? */
    if(a_go_xcall != NULL){
       void *vp;
-      struct n_cmd_arg_ctx *cacp;
+      struct mx_cmd_arg_ctx *cacp;
 
       if(a_go_xcall == (void*)-1)
          a_go_xcall = NULL;
       else if(((void const*)(cacp = a_go_xcall)->cac_indat) == gcp){
          /* Indicate that "our" (ex-) parent now hosts xcall optimization */
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
-         while(a_go_xcall != NULL){
+         while(a_go_xcall != NIL){
             mx_sigs_all_holdx();
 
             a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
 
             vp = a_go_xcall;
-            a_go_xcall = NULL;
-            cacp = n_cmd_arg_restore_from_heap(vp);
+            a_go_xcall = NIL;
+            cacp = mx_cmd_arg_restore_from_heap(vp);
             n_free(vp);
 
             mx_sigs_all_rele();
@@ -2343,9 +2344,9 @@ c_xcall(void *vp){
    }
 
    /* C99 */{
-      struct n_cmd_arg_ctx *cacp;
+      struct mx_cmd_arg_ctx *cacp;
 
-      cacp = n_cmd_arg_save_to_heap(vp);
+      cacp = mx_cmd_arg_save_to_heap(vp);
       cacp->cac_indat = (char*)gcp;
       a_go_xcall = cacp;
    }
@@ -2416,8 +2417,8 @@ c_readctl(void *vp){
       a_CREATE = 1u<<2,
       a_REMOVE = 1u<<3
    } f;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    if(a_stdin == NULL){

@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
@@ -68,8 +69,8 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    char const *shell, *disp;
    boole success;
    int last, *msgvec, *ip;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
@@ -82,7 +83,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    shell = NULL;
    file = NULL;
 
-   if(!(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
+   if(!(cap->ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
       struct mx_name *np;
 
       if((cp = n_header_senderfield_of(n_msgmark1)) == NIL ||
@@ -349,8 +350,8 @@ c_Decrypt(void *vp){
 FL int
 c_write(void *vp){
    int rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')

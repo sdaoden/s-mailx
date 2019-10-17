@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
@@ -111,7 +112,7 @@ struct a_msg_speclex{
    int msl_no;                /* If parsed a number TODO sz! */
    char msl__smallstrbuf[4];
    /* We directly adjust pointer in .ca_arg.ca_str.s, do not adjust .l */
-   struct n_cmd_arg *msl_cap;
+   struct mx_cmd_arg *msl_cap;
    char const *msl_input_orig;
 };
 
@@ -163,7 +164,7 @@ static char **a_msg_add_to_nmadat(char ***nmadat, uz *nmasize,
 
 /* Mark all messages that the user wanted from the command line in the message
  * structure.  Return 0 on success, -1 on error */
-static int a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f);
+static int a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f);
 
 /* Turn the character after a colon modifier into a bit value */
 static int a_msg_evalcol(int col);
@@ -255,7 +256,7 @@ a_msg_add_to_nmadat(char ***nmadat, uz *nmasize, /* TODO Vector */
 }
 
 static int
-a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
+a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    struct a_msg_speclex msl;
    enum a_msg_idfield idfield;
    uz j, nmasize;
@@ -1526,7 +1527,7 @@ touch(struct message *mp){
 
 FL int
 n_getmsglist(char const *buf, int *vector, int flags,
-   struct n_cmd_arg **capp_or_null)
+   struct mx_cmd_arg **capp_or_null)
 {
    int *ip, mc;
    struct message *mp;
@@ -1551,20 +1552,20 @@ n_getmsglist(char const *buf, int *vector, int flags,
     * TODO to getmsglist(); as of today there are multiple getmsglist() users
     * TODO though, and they need to deal with that, then, too */
    /* C99 */{
-      n_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
-         {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
-               n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
+      mx_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
+         {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+               mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
             n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
                n_SHEXP_PARSE_IGNORE_EMPTY}
-      }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
-      struct n_cmd_arg_ctx cac;
+      }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+      struct mx_cmd_arg_ctx cac;
 
-      cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
+      cac.cac_desc = mx_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
       cac.cac_indat = buf;
       cac.cac_inlen = UZ_MAX;
       cac.cac_msgflag = flags;
       cac.cac_msgmask = 0;
-      if(!n_cmd_arg_parse(&cac)){
+      if(!mx_cmd_arg_parse(&cac)){
          mc = -1;
          goto jleave;
       }else if(cac.cac_no == 0){
@@ -1573,7 +1574,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       }else{
          /* Is this indeed a (maybe optional) message list and a target? */
          if(capp_or_null != NULL){
-            struct n_cmd_arg *cap, **lcapp;
+            struct mx_cmd_arg *cap, **lcapp;
 
             if((cap = cac.cac_arg)->ca_next == NULL){
                *capp_or_null = cap;

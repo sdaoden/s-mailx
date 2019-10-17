@@ -50,6 +50,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/net-socket.h"
 #include "mx/tty.h"
@@ -384,7 +385,7 @@ FL int
 c_certsave(void *vp){
    FILE *fp;
    int *msgvec, *ip;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = vp;
