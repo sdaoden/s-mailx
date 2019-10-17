@@ -45,6 +45,7 @@ Cc: is1@a.list
 In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
 Date: Wed, 19 Jul 2017 09:22:57 -0400
 Message-Id: <20170719132257.766AF781267-1@originator>
+Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
 Status: RO
 
 That's appalling, I.
@@ -99,6 +100,7 @@ SignVarSignVar
  |In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
  |Date: Wed, 19 Jul 2017 09:22:57 -0400
  |Message-Id: <20170719132257.766AF781267-1@originator>
+ |Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
  |Status: RO
  |
  |That's appalling, I.
@@ -199,7 +201,7 @@ Interpolating: 2
 26:0/NONE
 Interpolating: 1
 27:0/NONE
-./.tmsg 130/3205
+./.tmsg 132/3343
 i ~w:0/NONE
 shell command output
 shell:0/NONE
