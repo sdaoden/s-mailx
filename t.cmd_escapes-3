@@ -55,6 +55,24 @@ Subject: Bugstop: five miles out 2
 
 That's appalling, II.
 
+14.1: ~f (!posix: headerpick: subject to)
+Subject: Bugstop: five miles out 2
+To: bugstop-commit@five.miles.out
+
+That's appalling, II.
+
+14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
+Subject: Bugstop: five miles out 3
+To: bugstop-commit@five.miles.out
+
+That's appalling, III.
+
+14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+Subject: Bugstop: five miles out 1
+To: bugstop-commit@five.miles.out
+
+That's appalling, I.
+
 15: ~f 1
 Subject: Bugstop: five miles out 1
 
@@ -102,7 +120,7 @@ SignVarSignVar
  |
  |That's appalling, III.
  |
-28-32: ~Q; 28: ~Q
+28-34: ~Q; 28: ~Q
 29: ~Q 1 3
 set quote
 30: ~Q
@@ -119,14 +137,28 @@ mister originator3 <mr3@originator> wrote:
 set quote-inject-head quote-inject-tail indentprefix
 32: ~Q
 mr2@originator |That's appalling, II.
---mister originator2unset quote stuff
+--mister originator2set noquote-inject-head noquote-inject-tail quote-add-cc
+33: ~Q 4
+ex4@am.ple wrote:
+
+ |Body
+set fullnames
+34: ~Q 5
+eximan <ex5@am.ple> wrote:
+
+ |Body
+unset fullnames, quote stuff
 22: ~R ./.ttxt
  |included file
 23: ~r ./.ttxt
 included file
 24: ~s this new subject
-26: ~U
+26.1: ~U
  |That's appalling, II.
-27: ~U 1
+26.2: ~U 1
  |That's appalling, I.
+27.1: ~u
+That's appalling, II.
+27.2: ~u 1
+That's appalling, I.
 and i ~w rite this out to ./.tmsg

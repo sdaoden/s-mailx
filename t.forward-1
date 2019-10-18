@@ -84,3 +84,39 @@ origb2
 b6-2
 
 6:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex7@am.ple
+Cc: From1 <from1@exam.ple>
+Subject: Fwd: fwd2
+
+-------- Original Message --------
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd2
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>
+Status: R
+
+origb2
+
+b7
+
+7:0/NONE
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex8@am.ple
+Cc: from1@exam.ple
+Subject: Fwd: fwd2
+
+-------- Original Message --------
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Subject: fwd2
+From: From1 <from1@exam.ple>
+To: To1 <to1@exam.ple>
+Status: R
+
+origb2
+
+b8
+
+8:0/NONE

@@ -2,7 +2,8 @@ From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: mr2@originator, bugstop-commit@five.miles.out,
  25 added ~t o <ex3@am.ple>
-Cc: is2@a.list, 10 added ~c c <ex2@am.ple>
+Cc: is2@a.list, 10 added ~c c <ex2@am.ple>, mr3@originator,
+ mister originator1 <mr1@originator>, ex4@am.ple, eximan <ex5@am.ple>
 Bcc: 9 added ~b cc <ex1@am.ple>
 Subject: 24 did new ~s ubject
 In-Reply-To: <20170719132257.766AF781267-2@originator>
@@ -68,6 +69,24 @@ Subject: Bugstop: five miles out 2
 
 That's appalling, II.
 
+14.1: ~f (!posix: headerpick: subject to)
+Subject: Bugstop: five miles out 2
+To: bugstop-commit@five.miles.out
+
+That's appalling, II.
+
+14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
+Subject: Bugstop: five miles out 3
+To: bugstop-commit@five.miles.out
+
+That's appalling, III.
+
+14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+Subject: Bugstop: five miles out 1
+To: bugstop-commit@five.miles.out
+
+That's appalling, I.
+
 15: ~f 1
 Subject: Bugstop: five miles out 1
 
@@ -115,7 +134,7 @@ SignVarSignVar
  |
  |That's appalling, III.
  |
-28-32: ~Q; 28: ~Q
+28-34: ~Q; 28: ~Q
 29: ~Q 1 3
 set quote
 30: ~Q
@@ -132,16 +151,30 @@ mister originator3 <mr3@originator> wrote:
 set quote-inject-head quote-inject-tail indentprefix
 32: ~Q
 mr2@originator |That's appalling, II.
---mister originator2unset quote stuff
+--mister originator2set noquote-inject-head noquote-inject-tail quote-add-cc
+33: ~Q 4
+ex4@am.ple wrote:
+
+ |Body
+set fullnames
+34: ~Q 5
+eximan <ex5@am.ple> wrote:
+
+ |Body
+unset fullnames, quote stuff
 22: ~R ./.ttxt
  |included file
 23: ~r ./.ttxt
 included file
 24: ~s this new subject
-26: ~U
+26.1: ~U
  |That's appalling, II.
-27: ~U 1
+26.2: ~U 1
  |That's appalling, I.
+27.1: ~u
+That's appalling, II.
+27.2: ~u 1
+That's appalling, I.
 and i ~w rite this out to ./.tmsg
 
 1
@@ -167,6 +200,12 @@ Interpolating: 1 3
 13-1:1/BADMSG
 Interpolating: 2
 14:0/NONE
+Interpolating: 2
+14.1:0/NONE
+Interpolating: 3
+14.2:0/NONE
+Interpolating: 1
+14.3:0/NONE
 Interpolating: 1
 15:0/NONE
 15.5-1:1/NOTTY
@@ -191,6 +230,10 @@ Interpolating: 1 3
 31:0/NONE
 Interpolating: 2
 32:0/NONE
+Interpolating: 4
+33:0/NONE
+Interpolating: 5
+34:0/NONE
 ./.ttxt 1/16
 22:0/NONE
 ./.ttxt 1/14
@@ -198,10 +241,14 @@ Interpolating: 2
 24:0/NONE
 25:0/NONE
 Interpolating: 2
-26:0/NONE
+26.1:0/NONE
 Interpolating: 1
-27:0/NONE
-./.tmsg 132/3343
+26.2:0/NONE
+Interpolating: 2
+27.1:0/NONE
+Interpolating: 1
+27.2:0/NONE
+./.tmsg 164/4035
 i ~w:0/NONE
 shell command output
 shell:0/NONE
