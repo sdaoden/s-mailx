@@ -1624,12 +1624,12 @@ next input line it will trigger the hook
 .Va on-main-loop-tick .
 .\" }}}
 .
-.\" .Ss "HTML mail and MIME attachments" {{{
+.\" .Ss "HTML mail and MIME attachments" {{{ review
 .Ss "HTML mail and MIME attachments"
 .
-Messages which are HTML-only become more and more common, and of course
-many messages come bundled with a bouquet of MIME (Multipurpose Internet
-Mail Extensions) parts.
+HTML-only messages become more and more common, and many messages come
+bundled with a bouquet of MIME (Multipurpose Internet Mail Extensions)
+parts and attachments.
 To get a notion of MIME types \*(UA has a default set of types built-in,
 onto which the content of
 .Sx "The mime.types files"
@@ -1637,66 +1637,56 @@ will be added (as configured and allowed by
 .Va mimetypes-load-control ) .
 Types can also become registered with the command
 .Ic mimetype .
-To improve interaction with faulty MIME part declarations which are
-often seen in real-life messages, setting
+To improve interaction with the faulty MIME part declarations of real life
 .Va mime-counter-evidence
-will allow verification of the given assertion, and possible provision
-of an alternative, better MIME type.
+will allow verification of the given assertion, and the possible
+provision of an alternative, better MIME type.
 .
 .Pp
-Whereas \*(UA \*(OPally supports a simple HTML-to-text filter for
-displaying HTML messages (indicated by
+Whereas a simple HTML-to-text filter for displaying HTML messages is
+\*(OPally supported (indicated by
 .Ql +filter-html-tagsoup
 in
 .Va features ) ,
-it cannot handle MIME types other than plain text itself.
+MIME types other than plain text cannot be handled directly.
 Instead programs need to become registered to deal with specific MIME
-types or file extensions.
-These programs may either prepare plain text versions of their input in
-order to enable \*(UA to integrate their output neatlessly in its own
-message visualization (a mode which is called
+types or file extensions, either to prepare (re-)integrable plain text
+versions of their input (a mode which is called
 .Cd copiousoutput ) ,
-or display the content themselves, for example in an external graphical
-window: such handlers will only be considered by and for the command
+or to display the content externally, for example in a graphical window:
+the latter type is only considered by and for the command
 .Ic mimeview .
 .
 .Pp
-To install a handler program for a specific MIME type an according
+To install a handler program for a MIME type an according
 .Va pipe-TYPE/SUBTYPE
-variable needs to be set; to instead define a handler for a specific
-file extension the respective
+variable needs to be set; to define a handler for a file extension
 .Va pipe-EXTENSION
-variable can be used \(en these handlers take precedence.
-\*(OPally \*(UA supports mail user agent configuration as defined in
-RFC 1524; this mechanism (see
-.Sx "The Mailcap files" )
-will be queried for display or quote handlers if none of the former two
-.\" TODO v15-compat "will be" -> "is"
-did; it will be the sole source for handlers of other purpose.
-A last source for handlers is the MIME type definition itself, if
-a type-marker has been registered with the command
-.Ic mimetype ,
-which many of the built-in MIME types do.
+can be used \(en these handlers take precedence.
+\*(OPally mail user agent configuration is supported (see
+.Sx "The Mailcap files" ) ,
+and will be queried for display or quote handlers after the former ones.
+Type-markers registered via
+.Ic mimetype
+are the last possible source for information how to handle a MIME type.
 .
 .Pp
-For example, to display a HTML message inline (converted to a more fancy
-plain text representation than the built-in filter is capable to produce)
-with either of the text-mode browsers
+For example, to display HTML messages integrated via the text browsers
 .Xr lynx 1
 or
 .Xr elinks 1 ,
-teach \*(UA about MathML documents and make it display them as plain
-text, and to open PDF attachments in an external PDF viewer,
-asynchronously and with some other magic attached:
+register a MathML MIME type and enable its plain text display, and to
+open PDF attachments in an external PDF viewer, asynchronously and with
+some other magic attached:
 .
 .Bd -literal -offset indent
-? if [ "$features" !% +filter-html-tagsoup ]
+? if "$features" !% +filter-html-tagsoup
 ?   #set pipe-text/html='?* elinks -force-html -dump 1'
 ?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
-?   #set pipe-text/html=?
+?   #set pipe-text/html=?t
 ? endif
-? mimetype ? application/mathml+xml mathml
+? mimetype ?t application/mathml+xml mathml
 ? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
@@ -6393,6 +6383,24 @@ Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 .
 .Mx
+.It Ic mailcap
+\*(OP When used without arguments or if
+.Ar show
+has been given the content of
+.Sx "The Mailcap files"
+cache is shown, (re-)initializing it first (as necessary.
+If the argument is
+.Ar load
+then the cache will only be (re-)initialized, and
+.Ar clear
+will remove its contents.
+Note that \*(UA will try to load the files only once, use
+.Ql Ic \&\&mailcap Ns \:\0\:clear
+to unlock further attempts.
+Loading and parsing can be made more
+.Va verbose .
+.
+.Mx
 .It Ic mbox
 (mb) The given message list is to be sent to the
 .Mx -sx
@@ -6436,9 +6444,8 @@ but which also reenables cache initialization via
 .
 .Mx
 .It Ic mimeview
-\*(ID Only available in interactive mode, this command allows one to
-display MIME parts which require external MIME handler programs to run
-which do not integrate in \*(UAs normal
+\*(ID Only available in interactive mode, this command allows execution
+of external MIME type handlers which do not integrate into the normal
 .Ic type
 output (see
 .Sx "HTML mail and MIME attachments" ) .
@@ -6523,6 +6530,8 @@ will remove its contents.
 Note that \*(UA will try to load the file only once, use
 .Ql Ic \&\&netrc Ns \:\0\:clear
 to unlock further attempts.
+Loading and parsing can be made more
+.Va verbose .
 See
 .Va netrc-lookup ,
 .Va netrc-pipe
@@ -10306,6 +10315,12 @@ possibly abbreviated for display purposes.
 \*(RO The fully resolved path of the current mailbox.
 .
 .Mx
+.It Va mailcap-disable
+\*(BO\*(OP Turn off consideration of MIME type handlers from,
+and implicit loading of
+.Sx "The Mailcap files" .
+.
+.Mx
 .It Va mailx-extra-rc
 An additional startup file that is loaded as the last of the
 .Sx "Resource files" .
@@ -13478,13 +13493,13 @@ This is assumed to be an absolute pathname.
 .
 .Mx
 .It Ev MAILCAPS
-\*(OP Overrides the default path search for
-.Sx "The Mailcap files" ,
-which is defined in the standard RFC 1524 as
+\*(OP Override the default path search of
+.Sx "The Mailcap files" :
+any existing file therein will be loaded in sequence, appending any
+content to the list of MIME type handler directives.
+The RFC 1524 standard imposed default value is assigned otherwise:
 .Ql ~/.mailcap:\:/etc/mailcap:\:/usr/etc/mailcap:\:/usr/local/etc/mailcap .
-.\" TODO we should have a mailcaps-default virtual RDONLY option!
-(\*(UA makes it a configuration option, however.)
-Note this is not a search path, but a path search.
+(The default value is a compile-time \*(OP.)
 .
 .Mx
 .It Ev MAILRC
@@ -13663,16 +13678,15 @@ The actual value is read from
 .It Pa ~/.mailcap
 \*(OP Personal MIME type handler definition file, see
 .Sx "The Mailcap files" .
-This location is part of the RFC 1524 standard search path, which is
-a configuration option and can be overridden via
-.Ev MAILCAPS .
+(This location is part of the RFC 1524 standard search path
+.Ev MAILCAPS . )
 .
 .Mx
 .It Pa /etc/mailcap
 \*(OP System wide MIME type handler definition file, see
 .Sx "The Mailcap files" .
-This location is part of the RFC 1524 standard search path, which is
-a configuration option and can be overridden via
+(This location is part of the RFC 1524 standard search path
+.Ev MAILCAPS . )
 .
 .Mx
 .It Pa \*(VM
@@ -13878,27 +13892,25 @@ For reading etc. messages:
 .Va pipe-EXTENSION .
 .\" }}}
 .
-.\" .Ss "The Mailcap files" {{{
+.\" .Ss "The Mailcap files" {{{ review
 .Ss "The Mailcap files"
 .
-.\" TODO MAILCAP DISABLED
-.Sy This feature is not available in v14.9.0, sorry!
-RFC 1524 defines a
+\*(OP RFC 1524 defines a
 .Dq User Agent Configuration Mechanism
-which \*(UA \*(OPally supports (see
-.Sx "HTML mail and MIME attachments" ) .
-It defines a file format to be used to inform mail user agent programs
-about the locally-installed facilities for handling various data
-formats, i.e., about commands and how they can be used to display, edit
-et cetera MIME part contents, as well as a default path search that
-includes multiple possible locations of
-.Dq mailcap
-files and the
+to be used to inform mail user agent programs about the locally
+installed facilities for handling various data formats, i.e., about
+commands and how they can be used to display, edit et cetera MIME part
+contents, as well as a default path search that includes multiple
+possible locations of resource files, and the
 .Ev MAILCAPS
-environment variable that can be used to overwrite that (repeating here
-that it is not a search path, but instead a path search specification).
-Any existing files will be loaded in sequence, appending any content to
-the list of MIME type handler directives.
+environment variable to overwrite that.
+Handlers found from doing the path search will be cached, the command
+.Ic mailcap
+operates on that cache, and the variable
+.Va mailcap-disable
+will suppress automatic loading, and usage of any mailcap handlers.
+.Sx "HTML mail and MIME attachments"
+gives a general overview of how MIME types are handled.
 .
 .Pp
 .Dq Mailcap
@@ -13906,79 +13918,70 @@ files consist of a set of newline separated entries.
 Comment lines start with a number sign
 .Ql #
 (in the first column!) and are ignored.
-Empty lines are also ignored.
-All other lines form individual entries that must adhere to the syntax
-described below.
-To extend a single entry (not comment) its line can be continued on
-follow lines if newline characters are
-.Dq escaped
-by preceding them with the reverse solidus character
-.Ql \e .
-The standard does not specify how leading whitespace of follow lines
-is to be treated, therefore \*(UA retains it.
+Empty lines are ignored.
+All other lines are interpreted as mailcap entries.
+An entry definition may be splitted over multiple lines by placing the
+reverse solidus character
+.Ql \e
+last in all but the final line.
+The standard does not specify how leading whitespace of successive lines
+is to be treated, therefore they are retained.
 .
 .Pp
 .Dq Mailcap
 entries consist of a number of semicolon
 .Ql \&;
-separated fields, and the reverse solidus
-.Ql \e
-character can be used to escape any following character including
-semicolon and itself.
+separated fields.
 The first two fields are mandatory and must occur in the specified
 order, the remaining fields are optional and may appear in any order.
-Leading and trailing whitespace of content is ignored (removed).
+Leading and trailing whitespace of field content is ignored (removed).
+The reverse solidus
+.Ql \e
+character can be used to escape any following character including
+semicolon and itself in the content of the second field, and in value
+parts of any optional key/value field.
 .
 .Pp
 The first field defines the MIME
 .Ql TYPE/SUBTYPE
-the entry is about to handle (case-insensitively, and no reverse solidus
-escaping is possible in this field).
+the entry is about to handle (case-insensitively).
 If the subtype is specified as an asterisk
 .Ql *
 the entry is meant to match all subtypes of the named type, e.g.,
 .Ql audio/*
 would match any audio type.
-The second field defines the shell command which shall be used to
-.Dq display
-MIME parts of the given type; it is implicitly called the
+The second field is the
 .Cd view
-command.
+shell command used to display MIME parts of the given type.
 .
 .Pp
-For data
-.Dq consuming
-shell commands message (MIME part) data is passed via standard input
-unless the given shell command includes one or more instances of the
-(unquoted) string
-.Ql %s ,
-in which case these instances will be replaced with a temporary filename
-and the data will have been stored in the file that is being pointed to.
-Likewise, for data
-.Dq producing
-shell commands data is assumed to be generated on standard output unless
-the given command includes (one ore multiple)
-.Ql %s .
-In any case any given
+Data consuming shell commands will be fed message (MIME part) data on
+standard input unless one or more instances of the (unquoted) string
 .Ql %s
-format is replaced with a(n already) properly quoted filename.
-Note that when a command makes use of a temporary file via
+are used: these formats will be replaced with a temporary file(name)
+that has been prefilled with the parts data.
+Data producing shell commands are expected to generata data on their
+standard output unless that format is used.
+In all cases any given
 .Ql %s
-then \*(UA will remove it again, as if the
-.Cd x-mailx-tmpfile ,
-.Cd x-mailx-tmpfile-fill
+format is replaced with a properly shell quoted filename.
+When a command requests a temporary file via
+.Ql %s
+then that will be removed again, as if the
+.Cd x-mailx-tmpfile
 and
+.Cd x-mailx-tmpfile-fill
+flags had been set; unless the command requests
+.Cd x-mailx-async
+the
 .Cd x-mailx-tmpfile-unlink
-flags had been set; see below for more.
+flag is also implied; see below for more.
 .
 .Pp
-The optional fields either define a shell command or an attribute (flag)
-value, the latter being a single word and the former being a keyword
-naming the field followed by an equals sign
-.Ql =
-succeeded by a shell command, and as usual for any
-.Dq Mailcap
-content any whitespace surrounding the equals sign will be removed, too.
+Optional fields define single-word flags (case-insensitive), or key
+/ value pairs consisting of a case-insensitive keyword, an equals sign
+.Ql = ,
+and a shell command; whitespace surrounding the equals sign is removed.
 Optional fields include the following:
 .
 .
@@ -13996,22 +13999,44 @@ field, but is to be used when the composing program needs to specify the
 header field to be applied to the composed data.
 (Currently unused.)
 .
+.Mx
+.It Cd copiousoutput
+A flag field which indicates that the output of the
+.Cd view
+command is integrable into \*(UAs normal visual display.
+It is mutually exclusive with
+.Cd needsterminal .
+.
+.It Cd description
+A textual description that describes this type of data.
+The text may optionally be enclosed within double quotation marks
+.Ql \&" .
+.
 .It Cd edit
 A program that can be used to edit a body or body part in the given
 format.
 (Currently unused.)
 .
-.It Cd print
-A program that can be used to print a message or body part in the given
-format.
-(Currently unused.)
-.
-.It Cd test
-Specifies a program to be run to test some condition, e.g., the machine
-architecture, or the window system in use, to determine whether or not
-this mailcap entry applies.
-If the test fails, a subsequent mailcap entry should be sought; also see
-.Cd x-mailx-test-once .
+.It Cd nametemplate
+This field specifies a filename format for the
+.Ql %s
+format used in the shell command fields, in which
+.Ql %s
+will be replaced by a random string.
+(The filename is also stored in and passed to subprocesses via
+.Ev MAILX_FILENAME_TEMPORARY . )
+The standard says this is
+.Dq only expected to be relevant in environments \
+  where filename extensions are meaningful ,
+and so this field is ignored unless the
+.Ql %s
+is a prefix, optionally followed by (ASCII) alphabetic and numeric
+characters, the underscore and the period.
+For example, to specify that a JPG file is to be passed to an image
+viewer with a name ending in
+.Ql .jpg ,
+.Ql nametemplate=%s.jpg
+can be used.
 .
 .Mx
 .It Cd needsterminal
@@ -14022,14 +14047,22 @@ interactive mode, in non-interactive mode this entry will be entirely
 ignored; this flag implies
 .Cd x-mailx-noquote .
 .
-.Mx
-.It Cd copiousoutput
-A flag field which indicates that the output of the
-.Cd view
-command will be an extended stream of textual output that can be
-(re)integrated into \*(UA's normal visual display.
-It is mutually exclusive with
-.Cd needsterminal .
+.It Cd print
+A program that can be used to print a message or body part in the given
+format.
+(Currently unused.)
+.
+.It Cd test
+Specifies a program to be run to test some condition, for example, the
+machine architecture, or the window system in use, to determine whether
+or not this mailcap entry applies.
+If the test fails, a subsequent mailcap entry should be sought; also see
+.Cd x-mailx-test-once .
+Standard I/O of the test program is redirected from and to
+.Pa /dev/null ,
+and the format
+.Ql %s
+is not supported (the data does not yet exist).
 .
 .It Cd textualnewlines
 A flag field which indicates that this type of data is line-oriented and
@@ -14039,28 +14072,10 @@ all newlines should be converted to canonical form (CRLF) before
 encoding, and will be in that form after decoding.
 (Currently unused.)
 .
-.It Cd nametemplate
-This field gives a filename format, in which
-.Ql %s
-will be replaced by a random string, the joined combination of which
-will be used as the filename denoted by
-.Ev MAILX_FILENAME_TEMPORARY .
-One could specify that a GIF file being passed to an image viewer should
-have a name ending in
-.Ql .gif
-by using
-.Ql nametemplate=%s.gif .
-Note that \*(UA ignores the name template unless that solely specifies
-a filename suffix that consists of (ASCII) alphabetic and numeric
-characters, the underscore and dot only.
-.
 .It Cd x11-bitmap
 Names a file, in X11 bitmap (xbm) format, which points to an appropriate
 icon to be used to visually denote the presence of this kind of data.
 This field is not used by \*(UA.
-.
-.It Cd description
-A textual description that describes this type of data.
 .
 .Mx
 .It Cd x-mailx-async
@@ -14077,14 +14092,15 @@ the standard output of the command will go to
 An extension flag field that indicates that even a
 .Cd copiousoutput
 .Cd view
-command shall not be used to generate message quotes
-(as it would be by default).
+command shall not be used when
+.Va quote Ns
+ing messages, as it would by default.
 .
 .Mx
 .It Cd x-mailx-test-once
 Extension flag which denotes whether the given
 .Cd test
-command shall be evaluated once only and the (boolean) result be cached.
+command shall be evaluated once only with its exit status being cached.
 This is handy if some global unchanging condition is to be queried, like
 .Dq running under the X Window System .
 .
@@ -14095,7 +14111,7 @@ file, the name of which is to be placed in the environment variable
 .Ev MAILX_FILENAME_TEMPORARY .
 It is an error to use this flag with commands that include a
 .Ql %s
-format.
+format (because that is implemented by means of this temporary file).
 .
 .Mx
 .It Cd x-mailx-tmpfile-fill
@@ -14114,21 +14130,18 @@ format.
 .It Cd x-mailx-tmpfile-unlink
 Extension flag field that requests that the temporary file shall be
 deleted automatically when the command loop is entered again at latest.
-(Do not use this for asynchronous handlers.)
 It is an error to use this flag with commands that include a
 .Ql %s
 format, or in conjunction with
-.Cd x-mailx-async ,
-or without also setting
+.Cd x-mailx-async .
 .Cd x-mailx-tmpfile
-or
-.Cd x-mailx-tmpfile-fill .
+is implied.
 .El
 .
 .
 .Pp
 The standard includes the possibility to define any number of additional
-entry fields, prefixed by
+fields, prefixed by
 .Ql x- .
 Flag fields apply to the entire
 .Dq Mailcap
@@ -14136,17 +14149,13 @@ entry \(em in some unusual cases, this may not be desirable, but
 differentiation can be accomplished via separate entries, taking
 advantage of the fact that subsequent entries are searched if an earlier
 one does not provide enough information.
-E.g., if a
+For example, if a
 .Cd view
 command needs to specify the
 .Cd needsterminal
 flag, but the
 .Cd compose
-command shall not, the following will help out the latter (with enabled
-.Va debug
-or an increased
-.Va verbose
-level \*(UA will show information about handler evaluation):
+command shall not, the following will help out the latter:
 .
 .Bd -literal -offset indent
 application/postscript; ps-to-terminal %s; needsterminal
@@ -14154,20 +14163,21 @@ application/postscript; ps-to-terminal %s; compose=idraw %s
 .Ed
 .
 .Pp
-In fields any occurrence of the format string
+In value parts of command fields any occurrence of the format string
 .Ql %t
 will be replaced by the
 .Ql TYPE/SUBTYPE
 specification.
-Named parameters from the
+Any named parameter from a messages'
 .Ql Content-type:
-field may be placed in the command execution line using
+field may be embedded into the command line using the format
 .Ql %{
-followed by the parameter name and a closing
+followed by the parameter name and a closing brace
 .Ql }
 character.
 The entire parameter should appear as a single command line argument,
-regardless of embedded spaces; thus:
+regardless of embedded spaces, shell quoting will be performed by the
+RFC 1524 processor, thus:
 .
 .Bd -literal -offset indent
 # Message
@@ -14182,10 +14192,9 @@ multipart/*; /usr/local/bin/showmulti \e
 .Ed
 .
 .Pp
-.\" TODO v15: Mailcap: %n,%F
 Note that \*(UA does not support handlers for multipart MIME parts as
 shown in this example (as of today).
-\*(UA does not support the additional formats
+It does not support the additional formats
 .Ql %n
 and
 .Ql %F .
@@ -14199,17 +14208,20 @@ in additional user-provided quotes:
 # Comment line
 text/richtext; richtext %s; copiousoutput
 
-text/x-perl; perl -cWT %s
+text/x-perl; perl -cWT %s; nametemplate = %s.pl
 
+# Exit EX_TEMPFAIL=75 on signal
 application/pdf; \e
   infile=%s\e; \e
     trap "rm -f ${infile}" EXIT\e; \e
     trap "exit 75" INT QUIT TERM\e; \e
-    mupdf %s; \e
-  x-mailx-async; x-mailx-tmpfile-keep
+    mupdf "${infile}"; \e
+  test = [ -n "${DISPLAY}" ]; \e
+  nametemplate = %s.pdf; x-mailx-async
+application/pdf; pdftotext -layout - -; copiousoutput
 
-application/*; echo "This is \e"%t\e" but \e
-    is 50 \e% Greek to me" \e; < %s head -c 1024 | cat -vet; \e
+application/*; echo "This is \e\e"%t\e\e" but \e
+    is 50 \e% Greek to me" \e; < %s head -c 512 | cat -vet; \e
   copiousoutput; x-mailx-noquote
 .Ed
 .
@@ -14224,7 +14236,7 @@ Further reading:
 .Va pipe-EXTENSION .
 .\" }}}
 .
-.\" .Ss "The .netrc file" {{{
+.\" .Ss "The .netrc file" {{{ review
 .Ss "The .netrc file"
 .
 The
