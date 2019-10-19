@@ -73,6 +73,7 @@
 #include "su/code-in.h"
 
 struct mx_dig_msg_ctx;
+struct mx_mimetype_handler;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -334,32 +335,6 @@ enum n_mailsend_flags{
          n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
 };
 
-enum mimecontent{
-   MIME_UNKNOWN, /* unknown content */
-   MIME_SUBHDR, /* inside a multipart subheader */
-   MIME_822, /* message/rfc822 content */
-   MIME_MESSAGE, /* other message/ content */
-   MIME_TEXT_PLAIN, /* text/plain content */
-   MIME_TEXT_HTML, /* text/html content */
-   MIME_TEXT, /* other text/ content */
-   MIME_ALTERNATIVE, /* multipart/alternative content */
-   MIME_RELATED, /* mime/related (RFC 2387) */
-   MIME_DIGEST, /* multipart/digest content */
-   MIME_SIGNED, /* multipart/signed */
-   MIME_ENCRYPTED, /* multipart/encrypted */
-   MIME_MULTI, /* other multipart/ content */
-   MIME_PKCS7, /* PKCS7 content */
-   MIME_DISCARD /* content is discarded */
-};
-
-enum mime_counter_evidence{
-   MIMECE_NONE,
-   MIMECE_SET = 1u<<0, /* *mime-counter-evidence* was set */
-   MIMECE_BIN_OVWR = 1u<<1, /* appli../octet-stream: check, ovw if possible */
-   MIMECE_ALL_OVWR = 1u<<2, /* all: check, ovw if possible */
-   MIMECE_BIN_PARSE = 1u<<3 /* appli../octet-stream: classify contents last */
-};
-
 /* Content-Transfer-Encodings as defined in RFC 2045:
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8 */
@@ -434,23 +409,6 @@ enum mime_parse_flags{
    /* In effect we parse this message for user display or quoting purposes, so
     * relaxed rules regarding content inspection may be applicable */
    MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
-};
-
-enum mime_handler_flags{
-   MIME_HDL_NULL, /* No pipe- mimetype handler, go away */
-   MIME_HDL_CMD, /* Normal command */
-   MIME_HDL_TEXT, /* @ special cmd to force treatment as text */
-   MIME_HDL_PTF, /* A special pointer-to-function handler */
-   MIME_HDL_MSG, /* Display msg (returned as command string) */
-   MIME_HDL_TYPE_MASK = 7u,
-   MIME_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD produces reintegratable text */
-   MIME_HDL_ISQUOTE = 1u<<5, /* Is quote action (we have info, keep it!) */
-   MIME_HDL_NOQUOTE = 1u<<6, /* No MIME for quoting */
-   MIME_HDL_ASYNC = 1u<<7, /* Should run asynchronously */
-   MIME_HDL_NEEDSTERM = 1u<<8, /* Takes over terminal */
-   MIME_HDL_TMPF = 1u<<9, /* Create temporary file (zero-sized) */
-   MIME_HDL_TMPF_FILL = 1u<<10, /* Fill in the msg body content */
-   MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
 enum okay{
@@ -1206,14 +1164,6 @@ struct n_go_data_ctx{
    struct su_mem_bag gdc__membag_buf[1];
 };
 
-struct mime_handler{
-   enum mime_handler_flags mh_flags;
-   struct str mh_msg; /* Message describing this command */
-   /* XXX union{} the following? */
-   char const *mh_shell_cmd; /* For MIME_HDL_CMD */
-   int (*mh_ptf)(void); /* PTF main() for MIME_HDL_PTF */
-};
-
 struct search_expr{
    /* XXX Type of search should not be evaluated but be enum */
    boole ss_field_exists; /* Only check whether field spec. exists */
@@ -1385,13 +1335,13 @@ struct mimepart{
    char const *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    char const *m_charset;
    char const *m_ct_enc; /* Content-Transfer-Encoding */
-   enum mimecontent m_mimecontent; /* ..in enum */
+   u32 m_mimetype; /* enum mx_mimetype */
    enum mime_enc m_mime_enc; /* ..in enum */
    char *m_partstring; /* Part level string */
    char *m_filename; /* ..of attachment */
    char const *m_content_description;
    char const *m_external_body_url; /* message/external-body:access-type=URL */
-   struct mime_handler *m_handler; /* MIME handler if yet classified */
+   struct mx_mimetype_handler *m_handler; /* MIME handler if yet classified */
 };
 
 struct message{

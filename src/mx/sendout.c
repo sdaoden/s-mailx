@@ -51,6 +51,7 @@
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
+#include "mx/mime-type.h"
 #include "mx/names.h"
 #include "mx/net-smtp.h"
 #include "mx/privacy.h"
@@ -488,7 +489,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    FILE *fi;
    char const *charset;
    enum conversion convert;
-   int do_iconv;
+   boole do_iconv;
    s32 err;
    NYD_IN;
 
@@ -511,12 +512,12 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       /* No MBOXO quoting here, never!! */
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = n_mimetype_classify_file(fi, (char const**)&ct,
-         &charset, &do_iconv, TRU1);
+      convert = mx_mimetype_classify_file(fi, (char const**)&ct,
+            &charset, &do_iconv, TRU1);
 
-      if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
+      if(charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
-         do_iconv = 0;
+         do_iconv = FAL0;
       if(force && do_iconv){
          convert = CONV_TOB64;
          ap->a_content_type = ct = "application/octet-stream";
@@ -756,7 +757,8 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 {
    struct mx_fs_tmp_ctx *fstcp;
    enum conversion convert;
-   int do_iconv, err;
+   int err;
+   boole do_iconv;
    char const *contenttype, *charset;
    FILE *nfo, *nfi;
 #ifdef mx_HAVE_ICONV
@@ -766,7 +768,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
    nfi = NULL;
    charset = NULL;
-   do_iconv = 0;
+   do_iconv = FAL0;
    err = su_ERR_NONE;
 
    if((nfo = mx_fs_tmp_open("infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
@@ -799,8 +801,8 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
       }else
          contenttype = "text/plain";
 
-      convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv,
-            no_mboxo);
+      convert = mx_mimetype_classify_file(fi, &contenttype, &charset,
+            &do_iconv, no_mboxo);
    }
 
 #ifdef mx_HAVE_ICONV
@@ -839,10 +841,10 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 #endif
 
 #ifdef mx_HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
-      if (su_cs_cmp_case(charset, tcs) != 0 &&
+   if(do_iconv && charset != NIL){ /*TODO charset->mimetype_classify_file*/
+      if(su_cs_cmp_case(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = su_err_no()) != su_ERR_NONE) {
+            (err = su_err_no()) != su_ERR_NONE){
 jiconv_err:
          if (err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);

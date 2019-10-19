@@ -48,6 +48,7 @@
 #include <su/mem.h>
 
 #include "mx/iconv.h"
+#include "mx/mime-type.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"
@@ -1155,14 +1156,14 @@ je_expandargv:
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
       if(qf == (char*)-1){
-         if(!n_mimetype_check_mtname(n_poption_arg_Mm)){
+         if(!mx_mimetype_is_known(n_poption_arg_Mm)){
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
             n_exit_status = n_EXIT_ERR;
             goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
-            (n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
+            (n_poption_arg_Mm = mx_mimetype_classify_filename(qf)) == NIL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;

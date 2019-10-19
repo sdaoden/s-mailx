@@ -7218,7 +7218,7 @@ t_mime_types_load_control() {
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '3998003232 3633'
+   check 2 0 ./.tout '2836681630 3667'
 
    t_epilog "${@}"
 }
