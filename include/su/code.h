@@ -608,19 +608,27 @@ do if(!(X)){\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
 
+/*! There are no bit-\c{enum}erations, but we use \c{enum}s as such, since the
+ * only other option for bit constants would be preprocessor macros.
+ * Since enumerations are expected to represent a single value, a normal
+ * integer is often used to store enumeration values.
+ * To be explicit, this macro is used instead, \a{X} is the pod, \a{Y} is the
+ * enumeration name that is actually meant. */
+#define su_BITENUM_IS(X,Y) X
+
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
  * \remarks{Identical to \r{su_BITS_RANGE_MASK().} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
 
-/* For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */
+/*! For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */
 #define su_COMMA ,
 
 /* Debug injections */
 #if defined su_HAVE_DEBUG && !defined NDEBUG
-# define su_DBG(X) X
-# define su_NDBG(X)
-# define su_DBGOR(X,Y) X
+# define su_DBG(X) X /*!< \_ */
+# define su_NDBG(X) /*!< \_ */
+# define su_DBGOR(X,Y) X /*!< \_ */
 #else
 # define su_DBG(X)
 # define su_NDBG(X) X
@@ -661,23 +669,25 @@ do{\
 #endif /* su_HAVE_DEVEL || su_HAVE_DEBUG */
 
 /* Development injections */
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */
-# define su_DVL(X) X
-# define su_NDVL(X)
-# define su_DVLOR(X,Y) X
+#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
+      || defined DOXYGEN
+# define su_DVL(X) X /*!< \_ */
+# define su_NDVL(X) /*!< \_ */
+# define su_DVLOR(X,Y) X /*!< \_ */
 #else
 # define su_DVL(X)
 # define su_NDVL(X) X
 # define su_DVLOR(X,Y) Y
 #endif
 
-/* To avoid files that are overall empty */
+/*! To avoid files that are overall empty */
 #define su_EMPTY_FILE() typedef int su_CONCAT(su_notempty_shall_b_, su_FILE);
 
 /* C field init */
-#if su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-# define su_FIELD_INITN(N) .N =
-# define su_FIELD_INITI(I) [I] =
+#if (su_C_LANG && defined __STDC_VERSION__ && \
+      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
+# define su_FIELD_INITN(N) .N = /*!< \_ */
+# define su_FIELD_INITI(I) [I] = /*!< \_ */
 #else
 # define su_FIELD_INITN(N)
 # define su_FIELD_INITI(I)
@@ -701,7 +711,7 @@ do{\
 
 /* Multithread injections */
 #ifdef su_HAVE_MT
-# define su_MT(X) X
+# define su_MT(X) X /*!< \_ */
 #else
 # define su_MT(X)
 #endif
@@ -721,17 +731,18 @@ do{\
 
 /* SMP injections */
 #ifdef su_HAVE_SMP
-# define su_SMP(X) X
+# define su_SMP(X) X /*!< \_ */
 #else
 # define su_SMP(X)
 #endif
 
 /* String stuff.
  * __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
-#if defined __STDC__ || defined __STDC_VERSION__ || su_C_LANG
-# define su_STRING(X) #X
-# define su_XSTRING(X) su_STRING(X)
-# define su_CONCAT(S1,S2) su__CONCAT_1(S1, S2)
+#if defined __STDC__ || defined __STDC_VERSION__ || su_C_LANG || \
+      defined DOXYGEN
+# define su_STRING(X) #X /*!< \_ */
+# define su_XSTRING(X) su_STRING(X) /*!< \_ */
+# define su_CONCAT(S1,S2) su__CONCAT_1(S1, S2) /*!< \_ */
 # define su__CONCAT_1(S1,S2) S1 ## S2
 #else
 # define su_STRING(X) "X"
@@ -739,27 +750,30 @@ do{\
 # define su_CONCAT(S1,S2) S1/* will no work out though */S2
 #endif
 
-/* Compare (maybe mixed-signed) integers cases to T bits, unsigned,
- * T is one of our homebrew integers, e.g., UCMP(32, su_ABS(n), >, wleft).
- * Note: does not sign-extend correctly, that is still up to the caller */
-#if su_C_LANG
+#if su_C_LANG || defined DOXYGEN
+   /*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned,
+    * \a{T} is one of our homebrew integers, e.g.,
+    * \c{UCMP(32, su_ABS(n), >, wleft)}.
+    * \remarks{Does not sign-extend correctly, this is up to the caller.} */
 # define su_UCMP(T,A,C,B) (su_S(su_ ## u ## T,A) C su_S(su_ ## u ## T,B))
 #else
 # define su_UCMP(T,A,C,B) \
       (su_S(su_NSPC(su) u ## T,A) C su_S(su_NSPC(su) u ## T,B))
 #endif
 
-/* Casts-away (*NOT* cast-away) */
+/*! Casts-away (*NOT* cast-away) */
 #define su_UNCONST(T,P) su_R(T,su_R(su_up,su_S(void const*,P)))
+/*! Casts-away (*NOT* cast-away) */
 #define su_UNVOLATILE(T,P) su_R(T,su_R(su_up,su_S(void volatile*,P)))
-/* To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
+/*! To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
 #define su_UNALIGN(T,P) su_R(T,su_R(su_up,P))
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 
 /* Avoid "may be used uninitialized" warnings */
-#if defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)
-# define su_UNINIT(N,V) su_S(void,0)
-# define su_UNINIT_DECL(V)
+#if (defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || \
+      defined DOYGEN
+# define su_UNINIT(N,V) su_S(void,0) /*!< \_ */
+# define su_UNINIT_DECL(V) /*!< \_ */
 #else
 # define su_UNINIT(N,V) N = V
 # define su_UNINIT_DECL(V) = V
@@ -768,9 +782,11 @@ do{\
 /*! Avoid "unused" warnings */
 #define su_UNUSED(X) ((void)(X))
 
-/* Variable-type size (with byte array at end) */
-#if su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+#if (su_C_LANG && defined __STDC_VERSION__ && \
+      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
+   /*! Variable-type size (with byte array at end) */
 # define su_VFIELD_SIZE(X)
+   /*! Variable-type size (with byte array at end) */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define su_VFIELD_SIZE(X) \

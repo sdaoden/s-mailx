@@ -102,6 +102,9 @@
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
 
+#undef BITENUM_IS
+#undef BITENUM_MASK
+
 #undef DBG
 #undef NDGB
 #undef DBGOR

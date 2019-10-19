@@ -136,6 +136,9 @@
 #define ASSERT_NYD su_ASSERT_NYD
 #define ASSERT_NYD_LOC su_ASSERT_NYD_LOC
 
+#define BITENUM_IS su_BITENUM_IS
+#define BITENUM_MASK su_BITENUM_MASK
+
 #define DBG su_DBG
 #define NDGB su_NDBG
 #define DBGOR su_DBGOR
