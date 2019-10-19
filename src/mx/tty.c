@@ -817,8 +817,9 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
 
-/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held! */
-static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
+/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held!
+ * Returns false on allocation failure */
+static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -980,7 +981,7 @@ a_tty_hist_load(void){
 
       while((thp = a_tty.tg_hist) != NULL){
          a_tty.tg_hist = thp->th_older;
-         n_free(thp);
+         su_FREE(thp);
       }
       a_tty.tg_hist_tail = NULL;
       a_tty.tg_hist_size = 0;
@@ -1041,7 +1042,8 @@ a_tty_hist_load(void){
             }
          }
 
-         a_tty_hist_add(cp, gif);
+         if(!a_tty_hist_add(cp, gif))
+            break;
       }
    }
 
@@ -1158,7 +1160,7 @@ a_tty_hist__query_config(void){
    return rv;
 }
 
-static void
+static boole
 a_tty_hist_add(char const *s, enum n_go_input_flags gif){
    struct a_tty_hist *thp, *othp, *ythp;
    u32 l;
@@ -1199,11 +1201,15 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
       }
    }
 
-   thp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp = su_MEM_ALLOCATE(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1,
+         1, su_MEM_ALLOC_NOMEM_OK);
+   if(thp == NIL)
+      goto j_leave;
    thp->th_len = l;
    thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
          (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
    su_mem_copy(thp->th_dat, s, l +1);
+
 jleave:
    if((thp->th_older = a_tty.tg_hist) != NIL)
       a_tty.tg_hist->th_younger = thp;
@@ -1211,7 +1217,10 @@ jleave:
       a_tty.tg_hist_tail = thp;
    thp->th_younger = NIL;
    a_tty.tg_hist = thp;
+
+j_leave:
    NYD2_OU;
+   return (thp != NIL);
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -3423,7 +3432,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
    /* C99 */{
       uz i, j;
 
-      tbcp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+      tbcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
             tbpcp->tbpc_seq_len +1 + tbpcp->tbpc_exp.l +1 +
             tbpcp->tbpc_cnv_align_mask + 1 + tbpcp->tbpc_cnv_len);
       if(tbpcp->tbpc_ltbcp != NULL){
@@ -3852,7 +3861,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
       ltbcp->tbc_next = tbcp->tbc_next;
    else
       a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
-   n_free(tbcp);
+   su_FREE(tbcp);
 
    --a_tty.tg_bind_cnt;
    a_tty.tg_bind_isdirty = TRU1;
@@ -4013,8 +4022,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      tbtp = n_alloc(sizeof *tbtp);
-      su_mem_set(tbtp, 0, sizeof *tbtp);
+      tbtp = su_CALLOC(sizeof *tbtp);
       tbtp->tbt_char = wc;
       tbtp->tbt_isseq = isseq;
 
@@ -4050,8 +4058,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      xtbtp = n_alloc(sizeof *xtbtp);
-      su_mem_set(xtbtp, 0, sizeof *xtbtp);
+      xtbtp = su_CALLOC(sizeof *xtbtp);
       xtbtp->tbt_parent = parentp;
       xtbtp->tbt_char = wc;
       xtbtp->tbt_isseq = isseq;
@@ -4073,7 +4080,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
          a_tty__bind_tree_free(tmp);
 
       tmp = tbtp->tbt_sibling;
-      n_free(tbtp);
+      su_FREE(tbtp);
       tbtp = tmp;
    }
    NYD2_OU;
@@ -4329,7 +4336,7 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
       if(temporary_addhist_hook(ticmp->ticm_name,
             ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
          mx_sigs_all_holdx();
-         a_tty_hist_add(s, gif);
+         (void)a_tty_hist_add(s, gif);
          mx_sigs_all_rele();
       }
    }
