@@ -209,7 +209,7 @@ static n_sighdl_t a_go_oldpipe;
 /* Our current execution context, and the buffer backing the outermost level */
 static struct a_go_ctx *a_go_ctx;
 
-#define a_GO_MAINCTX_NAME "Main event loop"
+#define a_GO_MAINCTX_NAME "top level/main loop"
 static union{
    u64 align;
    char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
