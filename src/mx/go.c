@@ -149,7 +149,8 @@ enum a_go_hist_flags{
    a_GO_HIST_NONE = 0,
    a_GO_HIST_ADD = 1u<<0,
    a_GO_HIST_GABBY = 1u<<1,
-   a_GO_HIST_INIT = 1u<<2
+   a_GO_HIST_GABBY_ERROR = 1u<<2,
+   a_GO_HIST_INIT = 1u<<3
 };
 
 struct a_go_eval_ctx{
@@ -872,8 +873,12 @@ jmsglist_go:
       flags |= a_NO_ERRNO;
    else
       nerrn = su_ERR_NONE;
+
 jleave:
-   nexn = rv;
+   if((nexn = rv) != 0 &&
+         (gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)
+            ) == (a_GO_HIST_ADD | a_GO_HIST_INIT))
+      gecp->gec_hist_flags |= a_GO_HIST_GABBY_ERROR;
 
    if(flags & a_IGNERR){
       if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
@@ -1524,7 +1529,10 @@ n_go_main_loop(void){ /* FIXME */
             cc = ca;
          ASSERT(cc != NULL);
          mx_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
-            (gec.gec_hist_flags & a_GO_HIST_GABBY ? n_GO_INPUT_HIST_GABBY
+            (gec.gec_hist_flags & a_GO_HIST_GABBY
+               ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE) |
+            (gec.gec_hist_flags & a_GO_HIST_GABBY_ERROR
+               ?  n_GO_INPUT_HIST_GABBY | n_GO_INPUT_HIST_ERROR
                : n_GO_INPUT_NONE)));
       }
 
@@ -1906,8 +1914,10 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    n = n_go_input(gif, prompt, &linebuf, &linesize, string, &histadd);
    if(n > 0 && *(rv = savestrbuf(linebuf, (uz)n)) != '\0' &&
          (gif & n_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
-         histadd)
+         histadd){
+      ASSERT(!(gif & n_GO_INPUT_HIST_ERROR) || (gif & n_GO_INPUT_HIST_GABBY));
       mx_tty_addhist(rv, gif);
+   }
 
    n_sigman_cleanup_ping(&sm);
 jleave:

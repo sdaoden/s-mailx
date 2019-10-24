@@ -85,7 +85,7 @@ set fullnames
 # [OPTION] Add more entries to the history as is done by default.
 # The latter will cause the built-in editor to save those entries, too.
 # (The *history-file* variable controls persistency of the history.)
-set history-gabby history-gabby-persist
+set history-gabby=all history-gabby-persist
 
 # Do not move read messages of system mailboxes to MBOX by default since this
 # is likely to be irritating for most users today; also see *keepsave*.

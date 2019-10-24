@@ -10029,25 +10029,33 @@ If this variable is set only basic US-ASCII symbols will be used.
 .
 .Mx
 .It Va history-file
-\*(OP If a line editor is available then this can be set to
-name the (expandable) path of the location of a permanent
+\*(OP The (expandable) location of a permanent
 .Ic history
-file; also see
+file for the MLE line editor
+.Pf ( Sx "On terminal control and line editor" ) .
+Also see
 .Va history-size .
 .
 .Mx
 .It Va history-gabby
-\*(BO\*(OP Add more entries to the
+\*(OP Add more entries to the MLE
 .Ic history
 as is normally done.
+A comma-separated list of case-insensitive strings can be used to
+fine-tune which gabby entries shall be allowed.
+If it contains
+.Ql errors ,
+erroneous commands will also be added.
+.Ql all
+adds all optional entries, and is the fallback chattiness identifier of
+.Va on-history-addition .
 .
 .Mx
 .It Va history-gabby-persist
-\*(BO\*(OP \*(UA's own MLE will not save the additional
+\*(BO\*(OP The
 .Va history-gabby
-entries in persistent storage unless this variable is set.
-On the other hand it will not loose the knowledge of whether
-a persistent entry was gabby or not.
+entries will not be saved in persistent storage unless this variable is set.
+The knowledge of whether a persistent entry was gabby is not lost.
 Also see
 .Va history-file .
 .
@@ -11041,14 +11049,14 @@ set on-compose-splice=ocsm
 .It Va on-history-addition
 This hook will be called if an entry is about to be added to the
 .Ic history
-of the MLE, as is documented in
+of the MLE, as documented in
 .Sx "On terminal control and line editor" .
 It will be called with three arguments: the first is the name of the
 input context (see
 .Ic bind ) ,
-the second whether the command relates to
-.Va history-gabby ,
-and the third being the complete command line to be added.
+the second is either an empty string or the matching
+.Va history-gabby
+type, and the third being the complete command line to be added.
 The entry will not be added to history if the hook uses a non-0
 .Ic return .
 \*(ID A future version will give the expanded command name as the third

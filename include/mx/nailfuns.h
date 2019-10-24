@@ -149,7 +149,7 @@ FL void temporary_compose_mode_hook_unroll(void);
 
 #ifdef mx_HAVE_HISTORY
 /* TODO *on-history-addition* */
-FL boole temporary_addhist_hook(char const *ctx, boole gabby,
+FL boole temporary_addhist_hook(char const *ctx, char const *gabby_type,
             char const *histent);
 #endif
 

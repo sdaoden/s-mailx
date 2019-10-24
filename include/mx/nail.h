@@ -262,15 +262,17 @@ enum n_go_input_flags{
    n_GO_INPUT_DELAY_INJECTIONS = 1u<<11, /* Skip go_input_inject()ions */
    n_GO_INPUT_NL_ESC = 1u<<12, /* Support "\\$" line continuation */
    n_GO_INPUT_NL_FOLLOW = 1u<<13, /* ..on such a follow line */
-   n_GO_INPUT_PROMPT_NONE = 1u<<14, /* Don't print prompt */
+   n_GO_INPUT_PROMPT_NONE = 1u<<14, /* Do not print prompt */
    n_GO_INPUT_PROMPT_EVAL = 1u<<15, /* Instead, evaluate *prompt* */
 
    /* XXX The remains are mostly hacks */
 
    n_GO_INPUT_HIST_ADD = 1u<<16, /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17, /* Consider history entry as gabby */
+   /* Command was erroneous; only in combination with _HIST_GABBY! */
+   n_GO_INPUT_HIST_ERROR = 1u<<18,
 
-   n_GO_INPUT_IGNERR = 1u<<18, /* Imply `ignerr' command modifier */
+   n_GO_INPUT_IGNERR = 1u<<19, /* Imply `ignerr' command modifier */
 
    n__GO_FREEBIT = 24
 };
@@ -887,7 +889,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_headline_bidi,
    ok_b_headline_plain,
    ok_v_history_file,
-   ok_b_history_gabby,
+   ok_v_history_gabby,
    ok_b_history_gabby_persist,
    ok_v_history_size,                  /* {notempty=1,posnum=1} */
    ok_b_hold,

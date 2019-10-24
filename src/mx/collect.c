@@ -1796,16 +1796,17 @@ jev_go:
             goto jearg;
          cp = n_var_vlook(cp, TRU1);
 jIi_putesc:
-         if(cp == NULL || *cp == '\0')
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
+         n_pstate_ex_no = 0; /* XXX */
+         if(cp == NULL || *cp == '\0'){
             break;
+         }
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
          if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                (!a_coll_putesc(cp, (c != 'I'), n_stdout) ||
                 fflush(n_stdout) == EOF))
             goto jerr;
-         n_pstate_err_no = su_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
          break;
       /* case 'M': <> 'F' */
       /* case 'm': <> 'f' */
@@ -1915,7 +1916,9 @@ jhistcont:
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
          mx_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
-            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
+            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE) |
+            (n_pstate_err_no == su_ERR_NONE ? n_GO_INPUT_NONE
+               : n_GO_INPUT_HIST_GABBY | n_GO_INPUT_HIST_ERROR)));
       }
       if(c != '\0')
          goto jcont;

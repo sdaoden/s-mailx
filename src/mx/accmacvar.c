@@ -3064,7 +3064,8 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
 
 #ifdef mx_HAVE_HISTORY
 FL boole
-temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
+temporary_addhist_hook(char const *ctx, char const *gabby_type,
+      char const *histent){
    /* XXX temporary_addhist_hook(): intermediate hack */
    struct a_amv_mac_call_args *amcap;
    s32 perrn, pexn;
@@ -3084,7 +3085,7 @@ temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
       pexn = n_pstate_ex_no;
 
       argv[0] = ctx;
-      argv[1] = gabby ? n_1 : n_0;
+      argv[1] = gabby_type;
       argv[2] = histent;
       argv[3] = NULL;
 

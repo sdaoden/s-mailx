@@ -817,6 +817,9 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
 
+/* Check whether a gabby history entry fits *history_gabby* */
+static boole a_tty_hist_is_gabby_ok(enum n_go_input_flags gif);
+
 /* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held!
  * Returns false on allocation failure */
 static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
@@ -1156,6 +1159,40 @@ a_tty_hist__query_config(void){
       rv = cp;
    if(rv != NULL)
       rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
+   NYD2_OU;
+   return rv;
+}
+
+static boole
+a_tty_hist_is_gabby_ok(enum n_go_input_flags gif){
+   char const *cp;
+   boole rv;
+   NYD2_IN;
+
+   if((cp = ok_vlook(history_gabby)) == NIL)
+      rv = FAL0;
+   else if(!(gif & n_GO_INPUT_HIST_ERROR))
+      rv = TRU1;
+   else{
+      static char const wlist[][8] = {"all", "errors\0"};
+      uz i;
+      char *buf, *e;
+
+      buf = savestr(cp);
+      while((e = su_cs_sep_c(&buf, ',', TRU1)) != NIL)
+         for(i = 0;;)
+            if(!su_cs_cmp_case(e, wlist[i])){
+               rv = TRU1;
+               goto jwl_ok;
+            }else if(++i == NELEM(wlist)){
+               n_err(_("*history-gabby*: unknown keyword: %s\n"),
+                  n_shexp_quote_cp(e, FAL0));
+               break;
+            }
+      rv = FAL0;
+jwl_ok:;
+   }
+
    NYD2_OU;
    return rv;
 }
@@ -4319,10 +4356,12 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    UNUSED(s);
    UNUSED(gif);
 
+   ASSERT(!(gif & n_GO_INPUT_HIST_ERROR) || (gif & n_GO_INPUT_HIST_GABBY));
+
 # ifdef mx_HAVE_HISTORY
    if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
          a_tty.tg_hist_size_max > 0 &&
-         (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
+         (!(gif & n_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
           !ok_blook(line_editor_disable)){
       struct a_tty_input_ctx_map const *ticmp;
 
@@ -4334,7 +4373,9 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
        * TODO which is the original unexpanded command name; i.e., one may do
        * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
-            ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
+            ((gif & n_GO_INPUT_HIST_GABBY)
+               ? ((gif & n_GO_INPUT_HIST_ERROR) ? "errors" : "all")
+               : su_empty), s)){
          mx_sigs_all_holdx();
          (void)a_tty_hist_add(s, gif);
          mx_sigs_all_rele();
