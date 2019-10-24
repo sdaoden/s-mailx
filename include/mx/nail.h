@@ -792,25 +792,25 @@ enum okeys {
    /* This is used for all macro(-local) variables etc., i.e.,
     * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
     * It is also used for the ${^.+} multiplexer */
-   ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v___special_param, /* {nolopts=1,rdonly=1,nodel=1} */
    /*__qm/__em aka ?/! should be num=1 but that more expensive than what now */
-   ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
-   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1} */
+   ok_v___qm, /* {name=?,nolopts=1,rdonly=1,nodel=1} */
+   ok_v___em, /* {name=!,nolopts=1,rdonly=1,nodel=1} */
 
-   ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_account, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
    ok_b_append,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */
-   ok_b_ask,                           /* {vip=1} */
+   ok_b_ask, /* {vip=1} */
    ok_b_askatend,
    ok_b_askattach,
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksend,                       /* {i3val=TRU1} */
-   ok_b_asksub,                        /* {i3val=TRU1} */
+   ok_b_asksend, /* {i3val=TRU1} */
+   ok_b_asksub, /* {i3val=TRU1} */
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
@@ -821,56 +821,56 @@ ok_b_autothread, /* {obsolete=1} */
 
    ok_b_bang,
 ok_b_batch_exit_on_error, /* {obsolete=1} */
-   ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
+   ok_v_bind_timeout, /* {notempty=1,posnum=1} */
 ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
-   ok_v_build_cc,                      /* {virt=VAL_BUILD_CC_ARRAY} */
-   ok_v_build_ld,                      /* {virt=VAL_BUILD_LD_ARRAY} */
-   ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
-   ok_v_build_rest,                    /* {virt=VAL_BUILD_REST_ARRAY} */
+   ok_v_build_cc, /* {virt=VAL_BUILD_CC_ARRAY} */
+   ok_v_build_ld, /* {virt=VAL_BUILD_LD_ARRAY} */
+   ok_v_build_os, /* {virt=VAL_BUILD_OS} */
+   ok_v_build_rest, /* {virt=VAL_BUILD_REST_ARRAY} */
 
-   ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
+   ok_v_COLUMNS, /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */
-   ok_v_charset_7bit,            /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
+   ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* But unused without mx_HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
-   ok_v_charset_8bit,            /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_v_charset_unknown_8bit,          /* {vip=1} */
+   ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_v_charset_unknown_8bit, /* {vip=1} */
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
-   ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
-   ok_v_crt,                           /* {posnum=1} */
-   ok_v_customhdr,                     /* {vip=1} */
+   ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
+   ok_v_contact_web, /* {virt=VAL_CONTACT_WEB} */
+   ok_v_crt, /* {posnum=1} */
+   ok_v_customhdr, /* {vip=1} */
 
-   ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
-   ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
-   ok_v_datefield_markout_older,       /* {i3val="%Y-%m-%d"} */
-   ok_b_debug,                         /* {vip=1} */
+   ok_v_DEAD, /* {notempty=1,env=1,defval=VAL_DEAD} */
+   ok_v_datefield, /* {i3val="%Y-%m-%d %H:%M"} */
+   ok_v_datefield_markout_older, /* {i3val="%Y-%m-%d"} */
+   ok_b_debug, /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_dotlock_disable,
 ok_b_dotlock_ignore_error, /* {obsolete=1} */
 
-   ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
+   ok_v_EDITOR, /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_v_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
 ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
-   ok_v_escape,                        /* {defval=n_ESCAPE} */
+   ok_v_escape, /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
-   ok_v_expandaddr_domaincheck,        /* {notempty=1} */
+   ok_v_expandaddr_domaincheck, /* {notempty=1} */
    ok_v_expandargv,
 
-   ok_v_features,                      /* {virt=VAL_FEATURES} */
+   ok_v_features, /* {virt=VAL_FEATURES} */
    ok_b_flipr,
-   ok_v_folder,                        /* {vip=1} */
-   ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
+   ok_v_folder, /* {vip=1} */
+   ok_v_folder_resolved, /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_b_followup_to_add_cc,
@@ -879,29 +879,29 @@ ok_v_encoding, /* {obsolete=1} */
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
    ok_v_forward_inject_tail,
-   ok_v_from,                          /* {vip=1} */
+   ok_v_from, /* {vip=1} */
    ok_b_fullnames,
 ok_v_fwdheading, /* {obsolete=1} */
 
-   ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
-   ok_b_header,                        /* {i3val=TRU1} */
+   ok_v_HOME, /* {vip=1,nodel=1,notempty=1,import=1} */
+   ok_b_header, /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
    ok_b_headline_plain,
    ok_v_history_file,
    ok_v_history_gabby,
    ok_b_history_gabby_persist,
-   ok_v_history_size,                  /* {notempty=1,posnum=1} */
+   ok_v_history_size, /* {notempty=1,posnum=1} */
    ok_b_hold,
-   ok_v_hostname,                      /* {vip=1} */
+   ok_v_hostname, /* {vip=1} */
 
    ok_b_idna_disable,
-   ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
-   ok_v_ifs_ws,                     /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
+   ok_v_ifs, /* {vip=1,defval=" \t\n"} */
+   ok_v_ifs_ws, /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_inbox,
-   ok_v_indentprefix,                  /* {defval="\t"} */
+   ok_v_indentprefix, /* {defval="\t"} */
 
    ok_b_keep,
    ok_b_keep_content_length,
@@ -936,7 +936,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
-   ok_v_mime_counter_evidence,         /* {posnum=1} */
+   ok_v_mime_counter_evidence, /* {posnum=1} */
    ok_v_mime_encoding,
    ok_b_mime_force_sendout,
    ok_v_mimetypes_load_control,
@@ -945,7 +945,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
    ok_b_mta_no_receiver_arguments,
-   ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
+   ok_v_mta_argv0, /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
     * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
@@ -970,8 +970,8 @@ ok_v_NAIL_HEAD, /* {name=NAIL_HEAD,obsolete=1} */
 ok_v_NAIL_HISTFILE, /* {name=NAIL_HISTFILE,obsolete=1} */
 ok_v_NAIL_HISTSIZE, /* {name=NAIL_HISTSIZE,notempty=1,num=1,obsolete=1} */
 ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
-   ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
-   ok_b_netrc_lookup,                  /* {chain=1} */
+   ok_v_NETRC, /* {env=1,notempty=1,defval=VAL_NETRC} */
+   ok_b_netrc_lookup, /* {chain=1} */
    ok_v_netrc_pipe,
    ok_v_newfolders,
    ok_v_newmail,
@@ -989,27 +989,27 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_resend_enter, /* {notempty=1} */
    ok_b_outfolder,
 
-   ok_v_PAGER,                         /* {env=1,notempty=1,defval=VAL_PAGER} */
-   ok_v_PATH,                          /* {nodel=1,import=1} */
-   ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
+   ok_v_PAGER, /* {env=1,notempty=1,defval=VAL_PAGER} */
+   ok_v_PATH, /* {nodel=1,import=1} */
+   ok_b_POSIXLY_CORRECT, /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
-   ok_v_password,                      /* {chain=1} */
+   ok_v_password, /* {chain=1} */
    ok_b_piperaw,
-   ok_v_pop3_auth,                     /* {chain=1} */
+   ok_v_pop3_auth, /* {chain=1} */
    ok_b_pop3_bulk_load,
-   ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
-   ok_b_pop3_no_apop,                  /* {chain=1} */
-   ok_b_pop3_use_starttls,             /* {chain=1} */
-   ok_b_posix,                         /* {vip=1} */
+   ok_v_pop3_keepalive, /* {notempty=1,posnum=1} */
+   ok_b_pop3_no_apop, /* {chain=1} */
+   ok_b_pop3_use_starttls, /* {chain=1} */
+   ok_b_posix, /* {vip=1} */
    ok_b_print_alternatives,
-   ok_v_prompt,                        /* {i3val="? "} */
-   ok_v_prompt2,                       /* {i3val=".. "} */
+   ok_v_prompt, /* {i3val="? "} */
+   ok_v_prompt2, /* {i3val=".. "} */
 
    ok_b_quiet,
    ok_v_quote,
    ok_b_quote_add_cc,
    ok_b_quote_as_attachment,
-   ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
+   ok_v_quote_chars, /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
    ok_v_quote_inject_head,
    ok_v_quote_inject_tail,
@@ -1022,19 +1022,19 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
 ok_v_replyto, /* {obsolete=1} */
-   ok_v_reply_to,                      /* {notempty=1} */
+   ok_v_reply_to, /* {notempty=1} */
    ok_v_reply_to_honour,
-   ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
+   ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */
 
-   ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
+   ok_v_SHELL, /* {import=1,notempty=1,defval=VAL_SHELL} */
 ok_b_SYSV3, /* {env=1,obsolete=1} */
-   ok_b_save,                          /* {i3val=TRU1} */
-   ok_v_screen,                        /* {notempty=1,posnum=1} */
+   ok_b_save, /* {i3val=TRU1} */
+   ok_v_screen, /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    /* Charset lowercase conversion handled via vip= */
-   ok_v_sendcharsets,                  /* {vip=1} */
+   ok_v_sendcharsets, /* {vip=1} */
    ok_b_sendcharsets_else_ttycharset,
-   ok_v_sender,                        /* {vip=1} */
+   ok_v_sender, /* {vip=1} */
 ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
@@ -1046,22 +1046,22 @@ ok_v_sendmail_progname, /* {obsolete=1} */
    ok_v_Sign,
    ok_v_sign,
 ok_v_signature, /* {obsolete=1} */
-   ok_b_skipemptybody,                 /* {vip=1} */
+   ok_b_skipemptybody, /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
    ok_v_smime_ca_flags,
    ok_b_smime_ca_no_defaults,
-   ok_v_smime_cipher,                  /* {chain=1} */
+   ok_v_smime_cipher, /* {chain=1} */
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
-   ok_v_smime_encrypt,                 /* {chain=1} */
+   ok_v_smime_encrypt, /* {chain=1} */
    ok_b_smime_force_encryption,
 ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
-   ok_v_smime_sign_cert,               /* {chain=1} */
-   ok_v_smime_sign_digest,             /* {chain=1} */
-   ok_v_smime_sign_include_certs,      /* {chain=1} */
-ok_v_smime_sign_message_digest,     /* {chain=1,obsolete=1} */
+   ok_v_smime_sign_cert, /* {chain=1} */
+   ok_v_smime_sign_digest, /* {chain=1} */
+   ok_v_smime_sign_include_certs, /* {chain=1} */
+ok_v_smime_sign_message_digest, /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
@@ -1071,10 +1071,10 @@ ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
 
-   ok_v_socket_connect_timeout,        /* {posnum=1} */
-   ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
+   ok_v_socket_connect_timeout, /* {posnum=1} */
+   ok_v_socks_proxy, /* {chain=1,notempty=1} */
    ok_v_spam_interface,
-   ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
+   ok_v_spam_maxsize, /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
@@ -1105,57 +1105,57 @@ ok_v_ssl_rand_egd, /* {obsolete=1} */
 ok_v_ssl_rand_file, /* {obsolete=1}*/
 ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_stealthmua,
-   ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
+   ok_v_system_mailrc, /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
-   ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
+   ok_v_TERM, /* {env=1} */
+   ok_v_TMPDIR, /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_ca_mode,
    ok_b_termcap_disable,
-   ok_v_tls_ca_dir,                    /* {chain=1} */
-   ok_v_tls_ca_file,                   /* {chain=1} */
-   ok_v_tls_ca_flags,                  /* {chain=1} */
-   ok_b_tls_ca_no_defaults,            /* {chain=1} */
+   ok_v_tls_ca_dir, /* {chain=1} */
+   ok_v_tls_ca_file, /* {chain=1} */
+   ok_v_tls_ca_flags, /* {chain=1} */
+   ok_b_tls_ca_no_defaults, /* {chain=1} */
    ok_v_tls_config_file,
-   ok_v_tls_config_module,             /* {chain=1} */
-   ok_v_tls_config_pairs,              /* {chain=1} */
+   ok_v_tls_config_module, /* {chain=1} */
+   ok_v_tls_config_pairs, /* {chain=1} */
    ok_v_tls_crl_dir,
    ok_v_tls_crl_file,
-   ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
-   ok_v_tls_fingerprint,               /* {chain=1} */
-   ok_v_tls_fingerprint_digest,        /* {chain=1} */
+   ok_v_tls_features, /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_fingerprint, /* {chain=1} */
+   ok_v_tls_fingerprint_digest, /* {chain=1} */
    ok_v_tls_rand_file,
-   ok_v_tls_verify,                    /* {chain=1} */
-   ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
+   ok_v_tls_verify, /* {chain=1} */
+   ok_v_toplines, /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
    /* Charset lowercase conversion handled via vip= */
-   ok_v_ttycharset,              /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_b_typescript_mode,               /* {vip=1} */
+   ok_v_ttycharset, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_b_typescript_mode, /* {vip=1} */
 
-   ok_v_USER,                          /* {rdonly=1,import=1} */
-   ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,                       /* {notempty=1,chain=1} */
+   ok_v_USER, /* {rdonly=1,import=1} */
+   ok_v_umask, /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
+   ok_v_user, /* {notempty=1,chain=1} */
 
-   ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
+   ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_v_v15_compat,
-   ok_b_verbose,                       /* {vip=1} */
-   ok_v_version,                       /* {virt=n_VERSION} */
-   ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
-   ok_v_version_hexnum,                /* {virt=n_VERSION_HEXNUM,posnum=1} */
-   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR,posnum=1} */
-   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR,posnum=1} */
-   ok_v_version_update,                /* {virt=n_VERSION_UPDATE,posnum=1} */
+   ok_b_verbose, /* {vip=1} */
+   ok_v_version, /* {virt=n_VERSION} */
+   ok_v_version_date, /* {virt=n_VERSION_DATE} */
+   ok_v_version_hexnum, /* {virt=n_VERSION_HEXNUM,posnum=1} */
+   ok_v_version_major, /* {virt=n_VERSION_MAJOR,posnum=1} */
+   ok_v_version_minor, /* {virt=n_VERSION_MINOR,posnum=1} */
+   ok_v_version_update, /* {virt=n_VERSION_UPDATE,posnum=1} */
 
    ok_b_writebackedited
 
 ,  /* Obsolete IMAP related non-sorted */
-ok_b_disconnected,               /* {chain=1} */
-ok_v_imap_auth,                  /* {chain=1} */
+ok_b_disconnected, /* {chain=1} */
+ok_v_imap_auth, /* {chain=1} */
 ok_v_imap_cache,
-ok_v_imap_delim,                 /* {chain=1} */
-ok_v_imap_keepalive,             /* {chain=1} */
+ok_v_imap_delim, /* {chain=1} */
+ok_v_imap_keepalive, /* {chain=1} */
 ok_v_imap_list_depth,
-ok_b_imap_use_starttls           /* {chain=1} */
+ok_b_imap_use_starttls /* {chain=1} */
 }; /* }}} */
 enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
 
