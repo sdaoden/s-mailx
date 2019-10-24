@@ -1139,12 +1139,12 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_v_v15_compat,
    ok_b_verbose, /* {vip=1} */
-   ok_v_version, /* {virt=n_VERSION} */
-   ok_v_version_date, /* {virt=n_VERSION_DATE} */
-   ok_v_version_hexnum, /* {virt=n_VERSION_HEXNUM,posnum=1} */
-   ok_v_version_major, /* {virt=n_VERSION_MAJOR,posnum=1} */
-   ok_v_version_minor, /* {virt=n_VERSION_MINOR,posnum=1} */
-   ok_v_version_update, /* {virt=n_VERSION_UPDATE,posnum=1} */
+   ok_v_version, /* {virt=mx_VERSION} */
+   ok_v_version_date, /* {virt=mx_VERSION_DATE} */
+   ok_v_version_hexnum, /* {virt=mx_VERSION_HEXNUM,posnum=1} */
+   ok_v_version_major, /* {virt=mx_VERSION_MAJOR,posnum=1} */
+   ok_v_version_minor, /* {virt=mx_VERSION_MINOR,posnum=1} */
+   ok_v_version_update, /* {virt=mx_VERSION_UPDATE,posnum=1} */
 
    ok_b_writebackedited
 
