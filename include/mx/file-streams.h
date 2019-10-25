@@ -42,7 +42,10 @@ enum mx_fs_oflags{
    mx_FS_O_REGISTER_UNLINK = 1u<<9,
    /* tmp_open(): do not release signals/unlink: !O_UNLINK! */
    mx_FS_O_HOLDSIGS = 1u<<10,
-   mx_FS_O_SUFFIX = 1u<<11 /* tmp_open() name hint is mandatory! extension! */
+   /* The name hint given to tmp_open() must be a mandatory member of the
+    * result string as a whole.  Also, the random characters are to be placed
+    * before the name hint, not after it */
+   mx_FS_O_SUFFIX = 1u<<11
 };
 
 enum mx_fs_open_state{ /* TODO add mx_fs_open_mode, too */
@@ -87,13 +90,12 @@ EXPORT FILE *mx_fs_open_any(char const *file, char const *oflags,
       enum mx_fs_open_state *fs_or_nil);
 
 /* Create a temporary file in $TMPDIR, use namehint for its name (prefix
- * unless O_SUFFIX is set in the fs_oflags oflags, in which case namehint is an
- * extension that MUST be part of aka fit in the resulting filename, otherwise
- * tmp_open() will fail), and return a stdio FILE pointer with access oflags.
+ * unless O_SUFFIX is set in the fs_oflags oflags and *namehint!=NUL),
+ * and return a stdio FILE pointer with access oflags.
  * *fstcp_or_nil may only be non-NIL under certain asserted conditions:
  * - if O_REGISTER: it is fully filled in; whether the filename is actually
- *   useful depends on the chosen UNLINK mode
- * - else if O_HOLDSIGS: filename filled in, tmp_release() is callable,
+ *   useful depends on the chosen UNLINK mode.
+ * - Else if O_HOLDSIGS: filename filled in, tmp_release() is callable,
  * - else O_UNLINK must not and O_REGISTER_UNLINK could be set (filename is
  *   filled in, tmp_release() is not callable.
  * In the latter two cases autorec memory storage will be created (on success).

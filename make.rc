@@ -415,7 +415,8 @@ OPT_USE_PKGSYS=yes
 # To ease the life of forkers and packagers "our" name can be changed.
 # The name is build by concatenating $VAL_SID and $VAL_MAILX, i.e.,
 # $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
-# than two characters and may not contain any whitespace.
+# than two characters, must fit _easily_ in NAME_MAX-1, must not contain
+# any whitespace, and must not contain multibyte sequences.
 VAL_SID=s-
 VAL_MAILX=nail
 

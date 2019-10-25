@@ -503,14 +503,14 @@ jleave:
 FILE *
 mx_fs_tmp_open(char const *namehint, u32 oflags,
       struct mx_fs_tmp_ctx **fstcp_or_nil){
-   /* The 8 is arbitrary but leaves room for a six character suffix (the
-    * POSIX minimum path length is 14, though we don't check that XXX).
-    * 8 should be more than sufficient given that we use base64url encoding
+   /* The 6 is arbitrary but leaves room for an eight character hint (the
+    * POSIX minimum path length is 14, though we do not check that XXX).
+    * 6 should be more than sufficient given that we use base64url encoding
     * for our random string */
-   enum {a_RANDCHARS = 8u};
+   enum {a_RANDCHARS = 6u, a_HINT_MIN = 8u};
 
    char *cp_base, *cp;
-   uz maxname, xlen, i;
+   uz maxname, hintlen, i;
    char const *tmpdir;
    int osoflags, fd, e;
    boole relesigs;
@@ -540,7 +540,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 
       if((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1){
          maxname = S(uz,pc);
-         if(maxname <= a_RANDCHARS + 1){
+         if(maxname < a_RANDCHARS + a_HINT_MIN){
             su_err_set_no(su_ERR_NAMETOOLONG);
             goto jleave;
          }
@@ -548,13 +548,14 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    }
 #endif
 
+   /* We are prepared to ignore the namehint .. unless we may not */
    if((oflags & mx_FS_O_SUFFIX) && *namehint != '\0'){
-      if((xlen = su_cs_len(namehint)) > maxname - a_RANDCHARS){
+      if((hintlen = su_cs_len(namehint)) >= maxname - a_RANDCHARS){
          su_err_set_no(su_ERR_NAMETOOLONG);
          goto jleave;
       }
    }else
-      xlen = 0;
+      hintlen = 0;
 
    /* Prepare the template string once, then iterate over the random range.
     * But first ensure we can report the name in !O_REGISTER cases ("hack") */
@@ -563,6 +564,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    if(!(oflags & mx_FS_O_REGISTER) && fstcp_or_nil != NIL){
       union {struct a_fs_ent *fse; void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
+      /* Store character data right after the struct */
       p.v = n_autorec_alloc(sizeof(*p.fse) + i);
       su_mem_set(p.fse, 0, sizeof(*p.fse));
       p.fse->fse_realfile = R(char*,&p.fse[1]);
@@ -571,31 +573,28 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       *fstcp_or_nil = p.fstc;
    }
 
-   cp_base =
-   cp = n_lofi_alloc(i);
+   cp_base = cp = n_lofi_alloc(i);
    cp = su_cs_pcopy(cp, tmpdir);
    *cp++ = '/';
    /* C99 */{
-      char *x;
+      uz j;
+      char *xp;
 
-      x = su_cs_pcopy(cp, VAL_UAGENT);
-      *x++ = '-';
+      /* xxx We silently assume VAL_UAGENT easily fits in NAME_MAX-1 */
+      xp = su_cs_pcopy(cp, VAL_UAGENT);
+      *xp++ = '-';
       if(!(oflags & mx_FS_O_SUFFIX))
-         x = su_cs_pcopy(x, namehint);
+         xp = su_cs_pcopy(xp, namehint);
 
-      i = P2UZ(x - cp);
-      if(i > maxname - xlen - a_RANDCHARS){
-         uz j;
+      /* Just cut off as many of VAL_UAGENT as necessary */
+      if((i = P2UZ(xp - cp)) > (j = maxname - hintlen - a_RANDCHARS))
+         xp -= i - j;
 
-         j = maxname - xlen - a_RANDCHARS;
-         x -= i - j;
-      }
+      if((oflags & mx_FS_O_SUFFIX) && hintlen > 0)
+         su_mem_copy(&xp[a_RANDCHARS], namehint, hintlen);
 
-      if((oflags & mx_FS_O_SUFFIX) && xlen > 0)
-         su_mem_copy(x + a_RANDCHARS, namehint, xlen);
-
-      x[xlen + a_RANDCHARS] = '\0';
-      cp = x;
+      xp[hintlen + a_RANDCHARS] = '\0';
+      cp = xp;
    }
 
    osoflags = O_CREAT | O_EXCL | a_FS__O_CLOEXEC;
@@ -637,6 +636,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
                    (oflags & mx_FS_O_HOLDSIGS ? a_FS_EF_HOLDSIGS : 0)),
                cp_base, 0L, NIL);
 
+            /* User arg points to registered data in this case */
             if(fstcp_or_nil != NIL){
                union {void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
@@ -669,11 +669,13 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 jleave:
    if(relesigs && (fp == NIL || !(oflags & mx_FS_O_HOLDSIGS)))
       mx_sigs_all_rele();
+
    if(fp == NIL){
       su_err_set_no(e);
       if(fstcp_or_nil != NIL)
          *fstcp_or_nil = NIL;
    }
+
    NYD_OU;
    return fp;
 
