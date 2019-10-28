@@ -4893,7 +4893,7 @@ t_copy() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    check 2-1 - ./.tall '1913702840 1121'
    check 2-2 - ./.tf1 '686654461 334'
@@ -4940,7 +4940,7 @@ t_copy() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
@@ -4952,7 +4952,7 @@ t_copy() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
@@ -5028,7 +5028,7 @@ t_save() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    check 2-1 - ./.tall '2335843514 1121'
    check 2-2 - ./.tf1 '2435434321 334'
@@ -5075,7 +5075,7 @@ t_save() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
@@ -5087,7 +5087,7 @@ t_save() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
@@ -5182,7 +5182,7 @@ t_move() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    check 2-1 - ./.tall '1641443074 491'
    check 2-2 - ./.tf1 '1473857906 162'
@@ -5228,7 +5228,7 @@ t_move() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
@@ -5241,7 +5241,7 @@ t_move() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} '$bP;d;:P' < ./.tallx >> "${ERR}" # strip "FOLDER updated." TODO
+   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
    ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
