@@ -4,6 +4,7 @@
  *@ - add an entry to nail.h:enum okeys
  *@ - run make-okey-map.pl (which is highly related..)
  *@ - update the manual!
+ *@ TODO . Drop the VIP stuff.  Allow PTF callbacks to be specified, call them.
  *@ TODO . `localopts' should act like an automatic permanent `scope' command
  *@ TODO    modifier!  We need an OnScopeLeaveEvent, then.
  *@ TODO   Also see the a_GO_SPLICE comment in go.c.
@@ -386,6 +387,9 @@ static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
 
 /* _VF_NUM / _VF_POSNUM */
 static boole a_amv_var_check_num(char const *val, boole posnum);
+
+/* Verify that the given name is an acceptable variable name */
+static boole a_amv_var_check_name(char const *name);
 
 /* Try to reverse lookup a name to an enum okeys mapping, zeroing avcp.
  * Updates .avc_name and .avc_hash; .avc_map is NULL if none found.
@@ -1246,6 +1250,25 @@ a_amv_var_check_num(char const *val, boole posnum){
       if(posnum && (ids & su_IDEC_STATE_SEEN_MINUS))
          rv = FAL0;
    }
+   NYD2_OU;
+   return rv;
+}
+
+static boole
+a_amv_var_check_name(char const *name){
+   char c;
+   boole rv;
+   char const *cp;
+   NYD2_IN;
+
+   /* Empty name not tested, as documented */
+   for(rv = TRU1, cp = name; (c = *cp) != '\0'; ++cp)
+      if(c == '=' || su_cs_is_space(c) || su_cs_is_cntrl(c)){
+         n_err(_("Variable names may not contain =, space or control "
+            "characters: %s\n"), n_shexp_quote_cp(name, TRU1));
+         rv = FAL0;
+         break;
+      }
    NYD2_OU;
    return rv;
 }
@@ -2471,21 +2494,12 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
    uz errs;
    NYD2_IN;
 
-   errs = 0;
-jouter:
-   while((cp = *ap++) != NULL){
+   for(errs = 0; (cp = *ap++) != NIL;){
       /* Isolate key */
       cp2 = varbuf = n_autorec_alloc(su_cs_len(cp) +1);
 
-      for(; (c = *cp) != '=' && c != '\0'; ++cp){
-         if(su_cs_is_cntrl(c) || su_cs_is_space(c)){
-            n_err(_("Variable name with control or space character ignored: "
-               "%s\n"), ap[-1]);
-            ++errs;
-            goto jouter;
-         }
+      for(; (c = *cp) != '=' && c != '\0'; ++cp)
          *cp2++ = c;
-      }
       *cp2 = '\0';
       if(c == '\0')
          cp = n_UNCONST(n_empty);
@@ -2494,6 +2508,9 @@ jouter:
 
       if(varbuf == cp2){
          n_err(_("Empty variable name ignored\n"));
+         ++errs;
+      }else if(!a_amv_var_check_name(varbuf)){
+         /* Log done */
          ++errs;
       }else{
          struct a_amv_var_carrier avc;
@@ -2519,6 +2536,7 @@ jouter:
             errs += !a_amv_var_set(&avc, cp, avscf);
       }
    }
+
    NYD2_OU;
    return (errs == 0);
 }
@@ -3423,6 +3441,11 @@ c_unset(void *vp){
    }
 
    for(err = 0, ap = vp; *ap != NULL; ++ap){
+      if(!a_amv_var_check_name(*ap)){
+         err |= 1;
+         continue;
+      }
+
       a_amv_var_revlookup(&avc, *ap, FAL0);
 
       err |= !a_amv_var_clear(&avc, avscf);
@@ -3444,7 +3467,8 @@ c_varshow(void *v){
 
       msgp = n_string_creat(msgp);
       for(; *ap != NULL; ++ap)
-         a_amv_var_show(*ap, n_stdout, msgp);
+         if(a_amv_var_check_name(*ap))
+            a_amv_var_show(*ap, n_stdout, msgp);
       n_string_gut(msgp);
    }
    NYD_OU;
@@ -3547,7 +3571,12 @@ c_environ(void *v){
 
    if((islnk = su_cs_starts_with_case("link", *(ap = v))) ||
          su_cs_starts_with_case("unlink", *ap)){
-      for(err = 0; *++ap != NULL;){
+      for(err = 0; *++ap != NIL;){
+         if(!a_amv_var_check_name(*ap)){
+            err = 1;
+            continue;
+         }
+
          a_amv_var_revlookup(&avc, *ap, TRU1);
 
          if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE) && (islnk ||
@@ -3582,7 +3611,12 @@ c_environ(void *v){
    }else if(su_cs_starts_with_case("set", *ap))
       err = !a_amv_var_c_set(++ap, a_AMV_VSETCLR_ENV);
    else if(su_cs_starts_with_case("unset", *ap)){
-      for(err = 0; *++ap != NULL;){
+      for(err = 0; *++ap != NIL;){
+         if(!a_amv_var_check_name(*ap)){
+            err = 1;
+            continue;
+         }
+
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
          if(!a_amv_var_clear(&avc, a_AMV_VSETCLR_ENV))
