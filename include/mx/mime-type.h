@@ -56,16 +56,21 @@ enum mx_mimetype_handler_flags{
    mx_MIMETYPE_HDL_NEEDSTERM = 1u<<8, /* Takes over terminal */
    mx_MIMETYPE_HDL_TMPF = 1u<<9, /* Create temporary file (zero-sized) */
    mx_MIMETYPE_HDL_TMPF_FILL = 1u<<10, /* Fill in the msg body content */
-   mx_MIMETYPE_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
+   mx_MIMETYPE_HDL_TMPF_UNLINK = 1u<<11, /* Delete it later again */
+
+   /* Handler with _HDL_TMPF has a .mth_tmpf_nametmpl.. */
+   mx_MIMETYPE_HDL_TMPF_NAMETMPL = 1u<<16,
+   mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX = 1u<<17 /* ..to be used as suffix */
 };
 
 struct mx_mimetype_handler{
    BITENUM_IS(u32,mx_mime_handler_flags) mth_flags;
    su_64( u8 mth__dummy[4]; )
-   struct str mth_msg; /* Message describing this command */
+   char const *mth_tmpf_nametmpl; /* Only with _HDL_TMPF_NAMETMPL */
    /* XXX union{} the following? */
    char const *mth_shell_cmd; /* For MIMETYPE_HDL_CMD */
    int (*mth_ptf)(void); /* PTF main() for MIMETYPE_HDL_PTF */
+   struct str mth_msg; /* Message describing this command */
 };
 
 /* `(un)?mimetype' commands */

@@ -1114,21 +1114,32 @@ jpipe_close:
       term_infd = mx_CHILD_FD_PASS;
       if(mthp->mth_flags & (mx_MIMETYPE_HDL_TMPF | mx_MIMETYPE_HDL_NEEDSTERM)){
          struct mx_fs_tmp_ctx *fstcp;
-         enum mx_fs_oflags of;
+         char const *pref;
+         BITENUM_IS(u32,mx_fs_oflags) of;
 
          of = mx_FS_O_RDWR | mx_FS_O_REGISTER;
+
          if(!(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF)){
             term_infd = 0;
             mthp->mth_flags |= mx_MIMETYPE_HDL_TMPF_FILL;
             of |= mx_FS_O_UNLINK;
+            pref = "mtanonfill";
          }else{
             /* (async and unlink are mutual exclusive) */
             if(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_UNLINK)
                of |= mx_FS_O_REGISTER_UNLINK;
+
+            if(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_NAMETMPL){
+               pref = mthp->mth_tmpf_nametmpl;
+               if(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX)
+                  of |= mx_FS_O_SUFFIX;
+            }else if(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_FILL)
+               pref = "mimetypefill";
+            else
+               pref = "mimetype";
          }
 
-         if((pbuf = mx_fs_tmp_open((mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_FILL
-                     ? "mimehdlfill" : "mimehdl"), of,
+         if((pbuf = mx_fs_tmp_open(pref, of,
                   (mthp->mth_flags & mx_MIMETYPE_HDL_TMPF ? &fstcp : NIL))
                ) == NIL)
             goto jesend;
