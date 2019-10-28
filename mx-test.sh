@@ -5913,7 +5913,7 @@ t_iconv_mainbody() {
       elif [ ${i} -eq 3 ]; then
          check 5-4 - ./.tout '3544755786 278'
       else
-         check 5-5 - ./.tout '3216374419 278'
+         check 5-5 - ./.tout '2381160335 278'
       fi
    else
       t_echoskip '5:[test unsupported]'
