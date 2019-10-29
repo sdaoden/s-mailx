@@ -934,16 +934,16 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       struct a_xtls_protocol const *xpp;
 
       for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;;)
-         if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name))
+         if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name)){
+            if(xpp->xp_op_no == 0 || xpp->xp_version == 0)
+               goto jenoproto;
             break;
-         else if((++xpp)->xp_last){
-            emsg = N_("TLS: %s: unsupported element: %s\n");
-            goto jxerr;
-         }
+         }else if((++xpp)->xp_last)
+            goto jenoproto;
 
       if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->xp_version)
             : SSL_CTX_set_min_proto_version(ctxp, xpp->xp_version)) != 1){
-         emsg = N_("TLS: %s: invalid protocol: %s\n");
+         emsg = N_("TLS: %s: cannot set protocol version: %s\n");
          goto jerr;
       }
 # endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
@@ -982,6 +982,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 
          for(xpp = &a_xtls_protocols[0];;){
             if(xpp->xp_ok_proto && !su_cs_cmp_case(cp, xpp->xp_name)){
+               if(xpp->xp_op_no == 0 || xpp->xp_version == 0)
+                  goto jenoproto;
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
                   opts |= xpp->xp_op_no;
@@ -989,7 +991,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
                   opts &= ~xpp->xp_op_no;
                break;
             }else if((++xpp)->xp_last){
-               emsg = N_("TLS: %s: unsupported element: %s\n");
+jenoproto:
+               emsg = N_("TLS: %s: unknown or unsupported protocol: %s\n");
                goto jxerr;
             }
          }
@@ -2022,7 +2025,8 @@ jpeer_leave:
       for(xpp = &a_xtls_protocols[1] /* [0] == ALL */;; ++xpp)
          if(xpp->xp_version == ver || xpp->xp_last){
             n_err(_("TLS connection using %s / %s\n"),
-               xpp->xp_name, SSL_get_cipher(sop->s_tls));
+               (xpp->xp_last ? n_qm : xpp->xp_name),
+               SSL_get_cipher(sop->s_tls));
             break;
          }
    }
