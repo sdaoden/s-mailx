@@ -84,7 +84,7 @@ su_EMPTY_FILE()
 #include "su/code-in.h"
 
 /* Compatibility shims which assume 0/-1 cannot really happen */
-#ifndef mx_HAVE_XTLS_CONF_CTX
+/* Always for _protocols #ifndef mx_HAVE_XTLS_CONF_CTX */
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2 0
 # endif
@@ -129,7 +129,7 @@ su_EMPTY_FILE()
 # ifndef TLS1_3_VERSION
 #  define TLS1_3_VERSION 0
 # endif
-#endif
+/* #endif */
 
 #ifdef mx_HAVE_XTLS_STACK_OF
 # define n_XTLS_STACKOF(X) STACK_OF(X)
