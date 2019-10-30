@@ -1407,14 +1407,22 @@ n_go_main_loop(void){ /* FIXME */
             gec.gec_line.l = gec.gec_line_size = 0;
          }
 
-         if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)))
-            temporary_on_xy_hook_caller("on-main-loop-tick",
-               ok_vlook(on_main_loop_tick), TRU1);
+         if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
+            /* TODO We need a regular on_tick_event, to which this one, the
+             * TODO *newmail* thing below, and possibly other caches
+             * TODO (mime.types, mta-aliases, mailcap, netrc; if not yet:
+             * TODO convert!!) can attach: they should trigger a switch and
+             * TODO update cache state only once per mainloop tick!! */
+            char const *ccp;
+
+            if((ccp = ok_vlook(on_main_loop_tick)) != NIL)
+               temporary_on_xy_hook_caller("on-main-loop-tick", ccp, TRU1);
+         }
 
          if(n_psonce & n_PSO_INTERACTIVE){
             char *cp;
 
-            if ((cp = ok_vlook(newmail)) != NULL) { /* TODO bla */
+            if ((cp = ok_vlook(newmail)) != NULL) { /* TODO on_tick_event! */
                struct stat st;
 
                if(mb.mb_type == MB_FILE){

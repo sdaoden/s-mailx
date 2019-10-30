@@ -134,7 +134,9 @@ FL int c_localopts(void *vp);
 FL int c_shift(void *vp);
 FL int c_return(void *vp);
 
-/* TODO Main loop on tick event; mx_sigs_all_holdx() is active */
+/* TODO - Main loop on tick event: mx_sigs_all_holdx() is active
+ * TODO - main.c *on-program-exit*
+ * mac must not be NIL */
 FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
       boole sigs_held);
 

@@ -1219,8 +1219,12 @@ jleave_full:
    mx_account_leave();
 
    n_psonce &= ~n_PSO_EXIT_MASK;
-   temporary_on_xy_hook_caller("on-program-exit", ok_vlook(on_program_exit),
-      FAL0);
+   /* C99 */{
+      char const *ccp;
+
+      if((ccp = ok_vlook(on_program_exit)) != NIL)
+         temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
+   }
 
    n_exit_status = i;
 
