@@ -828,8 +828,10 @@ jedar:
       goto jleave;
    }
 
-   if(!(mta_isexe = mx_sendout_mta_url(urlp)))
+   if(!(mta_isexe = mx_sendout_mta_url(urlp))){
+      n_pstate_err_no = su_ERR_INVAL;
       goto jleave;
+   }
    mta_isexe = (mta_isexe != TRU1);
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
