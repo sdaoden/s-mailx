@@ -361,8 +361,11 @@ mx_child_fork(struct mx_child_ctx *ccp){
    /* Does this child take the terminal? */
    if(ccp->cc_fds[0] == mx_CHILD_FD_PASS ||
          ccp->cc_fds[1] == mx_CHILD_FD_PASS){
-      ccp->cc_flags |= mx__CHILD_JOBCTL;
-      cep->ce_tios = TRU1;
+      /* We strip that in started childs.. */
+      if(n_psonce & n_PSO_TTYANY){
+         ccp->cc_flags |= mx__CHILD_JOBCTL;
+         cep->ce_tios = TRU1;
+      }
    }
 
    /* TODO It is actally very bad to block all the signals for such a long
@@ -454,6 +457,10 @@ jleave:
    return (ccp->cc_error == su_ERR_NONE);
 
 jkid:
+   a_child_head = NIL;
+   /* Strip tty bits, our childs will not care from our point of view */
+   n_psonce &= ~(n_PSO_TTYANY | n_PSO_INTERACTIVE);
+
    /* Close the unused end of the control pipe right now */
    if(ccp->cc_flags & mx_CHILD_SPAWN_CONTROL)
       close(S(int,ccp->cc__cpipe[0]));
