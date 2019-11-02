@@ -150,8 +150,9 @@ static boole a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend);
 
 static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 
-/*  */
-static boole a_sendout_transfer(struct sendbundle *sbp, boole *senderror);
+/* Move a message over to non-local recipients (via MTA) */
+static boole a_sendout_transfer(struct sendbundle *sbp, boole resent,
+      boole *senderror);
 
 /* Actual MTA interaction */
 static boole a_sendout_mta_start(struct sendbundle *sbp);
@@ -1300,13 +1301,62 @@ j_leave:
 }
 
 static boole
-a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
-{
+a_sendout_transfer(struct sendbundle *sbp, boole resent, boole *senderror){
    u32 cnt;
    struct mx_name *np;
+   FILE *input_save;
    boole rv;
    NYD_IN;
-   UNUSED(senderror);
+
+   rv = FAL0;
+
+   /* Do we need to create a Bcc: free overlay?
+    * TODO In v15 we would have an object tree with dump-to-wire, we have our
+    * TODO file stream which acts upon an I/O device that stores so-and-so-much
+    * TODO memory, excess in a temporary file; either each object knows its
+    * TODO offset where it placed its dump-to-wire, or we create a list overlay
+    * TODO which records these offsets.  Then, in our non-blocking eventloop
+    * TODO which writes data to the MTA child as it goes we simply not write
+    * TODO the Bcc: as necessary; how about that? */
+   input_save = sbp->sb_input;
+   if((resent || (sbp->sb_hp != NIL && sbp->sb_hp->h_bcc != NIL)) &&
+         !ok_blook(mta_bcc_ok)){
+      boole inhdr;
+      uz bufsize, bcnt, llen;
+      char *buf;
+      FILE *fp;
+
+      if((fp = mx_fs_tmp_open("mtabccok", (mx_FS_O_RDWR | mx_FS_O_REGISTER |
+               mx_FS_O_UNLINK), NIL)) == NIL){
+jewritebcc:
+         n_perr(_("Creation of *mta-write-bcc* message"), 0);
+         *senderror = TRU1;
+         goto jleave;
+      }
+      sbp->sb_input = fp;
+
+      mx_fs_linepool_aquire(&buf, &bufsize);
+      bcnt = fsize(input_save);
+      inhdr = TRU1;
+      while(fgetline(&buf, &bufsize, &bcnt, &llen, input_save, TRU1) != NIL){
+         if(inhdr){
+            if(llen == 1 && *buf == '\n')
+               inhdr = FAL0;
+            /* (We need _case for resent only) */
+            else if(su_cs_starts_with_case(buf, "bcc:"))
+               continue;
+            /* We yet do not generate that, but place the logic today */
+            else if(resent && su_cs_starts_with_case(buf, "resent-bcc:"))
+               continue;
+
+         }
+         if(fwrite(buf, 1, llen, fp) != llen)
+            goto jewritebcc;
+      }
+      mx_fs_linepool_release(buf, bufsize);
+
+      fflush_rewind(fp);
+   }
 
    rv = TRU1;
 
@@ -1351,6 +1401,13 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
 
    if(cnt > 0 && (mx_privacy_encrypt_is_forced() || !a_sendout_mta_start(sbp)))
       rv = FAL0;
+
+jleave:
+   if(input_save != sbp->sb_input){
+      mx_fs_close(sbp->sb_input);
+      rewind(sbp->sb_input = input_save);
+   }
+
    NYD_OU;
    return rv;
 }
@@ -2268,7 +2325,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          sb.sb_to = to;
          sb.sb_input = mtf;
          b = FAL0;
-         if(a_sendout_transfer(&sb, &b))
+         if(a_sendout_transfer(&sb, FAL0, &b))
             rv = OKAY;
          else if(b && _sendout_error == 0){
             _sendout_error = b;
@@ -2861,7 +2918,7 @@ jerr_o:
             sb.sb_to = to;
             /*sb.sb_input = nfi;*/
             b = FAL0;
-            if(!c || a_sendout_transfer(&sb, &b))
+            if(!c || a_sendout_transfer(&sb, TRU1, &b))
                rv = OKAY;
             else if(b && _sendout_error == 0){
                _sendout_error = b;

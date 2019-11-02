@@ -10620,7 +10620,12 @@ and without supervision unless either the
 or the
 .Va verbose
 variable is set.
-\*(OPally \*(UA can take care of expansion of the usual
+.Ql Bcc:
+headers are not passed through to MTAs as part of messages unless
+.Va mta-bcc-ok
+is set (see there); corresponding receivers are addressed by
+protocol-specific means or MTA command line options only until then.
+\*(OPally expansion of the well-known
 .Va mta-aliases
 .Pf ( Xr aliases 5 ) .
 .
@@ -10811,6 +10816,18 @@ If this variable is set then the mailwrapper (the program that is
 actually executed when calling the file-based
 .Va mta )
 will treat its contents as that name.
+.
+.Mx
+.It Va mta-bcc-ok
+\*(BO By default
+.Ql Bcc:
+header lines are not passed through since some MTAs do not remove them
+before sending them over the wire, in violation of RFC 5322.
+(For example Exim and Courier would need to be started with the
+.Fl \&\&t
+command line option to force stripping.)
+Setting this enables pass-through, therefore avoids generation of
+mutilated message versions, and \*(ID improves performance.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup

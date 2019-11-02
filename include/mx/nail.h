@@ -947,6 +947,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_mta_no_default_arguments,
    ok_b_mta_no_receiver_arguments,
    ok_v_mta_argv0, /* {notempty=1,defval=VAL_MTA_ARGV0} */
+   ok_b_mta_bcc_ok,
 
    /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
     * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */

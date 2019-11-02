@@ -38,7 +38,8 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smemdebug -Sstealthmua'
+ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
+   ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
    ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
@@ -4353,6 +4354,52 @@ echo $?/$^ERRNAME
 xit
 # '   > ./.tall 2>&1
    check 7 0 ./.tall '951018449 138'
+
+   ## *record*, *outfolder*, with and without *mta-bcc-ok*
+   ${mkdir} .tfolder
+   xfolder=`${pwd}`/.tfolder
+
+   "${cat}" <<-_EOT > .tmta.sh
+		#!${SHELL} -
+		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
+			"${cat}" && echo 'ARGS: '"\${@}" && echo) > "${MBOX}"
+	_EOT
+   chmod 0755 .tmta.sh
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfolder="${xfolder}" \
+         "${@}" \
+         -s Sub.mta-1 \
+         -b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
+         -c cc@no.1 -c cc@no.2 -c cc@no.3 \
+         to@no.1 to@no.2 to@no.3 \
+         receiver@number.1 > ./.terr 2>&1
+      return ${?}
+   }
+
+   t_it -Snomta-bcc-ok
+   check 8 0 "${MBOX}" '1365032629 292'
+   check 8-1 - .terr '4294967295 0'
+
+   t_it -Snomta-bcc-ok -Srecord=.trec9
+   check 9 0 "${MBOX}" '1365032629 292'
+   check 9-1 - .terr '4294967295 0'
+   check 9-2 - ./.trec9 '160206230 221'
+
+   t_it -Srecord=.trec10
+   check 10 0 "${MBOX}" '3085765596 326'
+   check 10-1 - .terr '4294967295 0'
+   check 10-2 - ./.trec10 '160206230 221'
+
+   t_it -Snomta-bcc-ok -Srecord=.trec11 -Soutfolder
+   check 11 0 "${MBOX}" '1365032629 292'
+   check 11-1 - .terr '4294967295 0'
+   check 11-2 - ./.tfolder/.trec11 '160206230 221'
+   # That is appends to an MBOX
+   t_it -Srecord=.trec11 -Soutfolder
+   check 12 0 "${MBOX}" '3085765596 326'
+   check 12-1 - .terr '4294967295 0'
+   check 12-2 - ./.tfolder/.trec11 '1618754846 442'
 
    t_epilog "${@}"
 } # }}}
