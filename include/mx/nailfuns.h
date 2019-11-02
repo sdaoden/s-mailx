@@ -1384,8 +1384,12 @@ FL int         sendmp(struct message *mp, FILE *obuf,
  */
 
 /* Check whether outgoing transport is via SMTP/SUBMISSION etc.
- * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file based
- * (or bad), and FAL0 if URL parsing failed */
+ * It handles all the *mta* (v15-compat: +*smtp*) cases.
+ * Returns TRU1 if yes and URL parsing succeeded, TRUM1 if *mta* is file:// or
+ * test:// based, and FAL0 on failure.
+ * TODO It will assign CPROTO_NONE and only set urlp->url_input for file-based
+ * TODO and test protos, .url_portno is 0 for the former, U16_MAX for latter.
+ * TODO Should simply leave all that up to URL, is URL_PROTO_FILExy then). */
 FL boole mx_sendout_mta_url(struct mx_url *urlp);
 
 /* For main() only: interface between the command line argument list and the
@@ -1419,8 +1423,8 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
                   char const *charset);
 
 /* Note: hp->h_to must already have undergone address massage(s), it is taken
- * as-is; h_cc and h_bcc are asserted to be NIL.  urlp should be NIL if
- * sendout_mta_url() says we are file based, otherwise... */
+ * as-is; h_cc and h_bcc are asserted to be NIL.  urlp must have undergone
+ * mx_sendout_mta_url() processing */
 FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
       struct header *hp, boole add_resent);
 

@@ -199,6 +199,7 @@ enum conversion{
 };
 
 enum cproto{
+   CPROTO_NONE,
    CPROTO_CERTINFO, /* Special dummy proto for TLS certificate info xxx */
    CPROTO_CCRED, /* Special dummy credential proto (S/MIME etc.) */
    CPROTO_SOCKS, /* Special dummy SOCKS5 proxy proto */

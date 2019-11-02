@@ -36,13 +36,13 @@ enum mx_url_flags{
 };
 #endif
 
-#ifdef mx_HAVE_NET
 struct mx_url{ /* XXX not _ctx: later object */
    char const *url_input; /* Input as given (really) */
    u32 url_flags;
    u16 url_portno; /* atoi .url_port or default, host endian */
    u8 url_cproto; /* enum cproto as given */
    u8 url_proto_len; /* Length of .url_proto (to first '\0') */
+#ifdef mx_HAVE_NET
    char url_proto[16]; /* Communication protocol as 'xy\0://\0' */
    char const *url_port; /* Port (if given) or NIL */
    struct str url_user; /* User, exactly as given / looked up */
@@ -65,8 +65,8 @@ struct mx_url{ /* XXX not _ctx: later object */
    char const *url_p_u_h_p; /* .url_proto://.url_u_h_p */
    char const *url_p_eu_h_p; /* .url_proto://.url_eu_h_p */
    char const *url_p_eu_h_p_p; /* .url_proto://.url_eu_h_p[/.url_path] */
-};
 #endif /* mx_HAVE_NET */
+};
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
  * These return a newly autorec_alloc()ated result, or NIL on length excess */
@@ -88,7 +88,7 @@ EXPORT char *mx_url_mailto_to_address(char const *mailtop);
 /* Return port for proto, or NIL if unknown.
  * Upon sucess *port_or_nil and *issnd_or_nil will be updated, if set; the
  * latter states whether protocol is of a sending type (SMTP, file etc.).
- * For file:// and test[://] this returns su_empty, in the former case
+ * For file:// and test:// this returns su_empty, in the former case
  * *port_or_nil is 0 and in the latter U16_MAX */
 EXPORT char const *mx_url_servbyname(char const *proto, u16 *port_or_nil,
       boole *issnd_or_nil);

@@ -605,14 +605,13 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
          sbp->sb_signer.l = su_cs_len(sbp->sb_signer.s = from);
    }
 
-#ifndef mx_HAVE_SMTP
-   rv = TRU1;
-#else
-   if(sbp->sb_urlp == NIL){
+   /* file:// and test:// MTAs do not need credentials */
+   if(sbp->sb_urlp->url_cproto == CPROTO_NONE){
       rv = TRU1;
       goto jleave;
    }
 
+#ifdef mx_HAVE_SMTP
    if (v15) {
       if (shost == NULL) {
          if (from == NULL)
@@ -642,9 +641,8 @@ jenofrom:
 
    rv = TRU1;
 #endif /* mx_HAVE_SMTP */
-#if defined mx_HAVE_SMIME || defined mx_HAVE_SMTP
+
 jleave:
-#endif
    NYD_OU;
    return rv;
 }
@@ -1376,50 +1374,17 @@ a_sendout_mta_start(struct sendbundle *sbp)
    boole rv, dowait;
    NYD_IN;
 
-   /* Let rv mean "is smtp-based MTA" */
-   if((mta = ok_vlook(smtp)) != NULL){
-      n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
-      /* For *smtp* the smtp:// protocol was optional; be simple: don't check
-       * that *smtp* is misused with file:// or so */
-      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
-         mta = savecat("smtp://", mta);
-      rv = TRU1;
-   }else{
-      boole issnd;
-      u16 pno;
-      char const *proto;
-
-      mta = ok_vlook(mta); /* TODO v15: what solely remains in here */
-      if((proto = ok_vlook(sendmail)) != NULL)
-         n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
-      if(proto != NULL && !su_cs_cmp(mta, VAL_MTA))
-         mta = proto;
-
-      /* TODO for now this is pretty hacky: in v15 we should simply create
-       * TODO an URL object; i.e., be able to do so, and it does it right
-       * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      if((proto = mx_url_servbyname(mta, &pno, &issnd)) != NIL){
-         if(*proto == '\0'){
-            if(pno == 0){
-               mta += sizeof("file://") -1;
-               rv = FAL0;
-            }else{
-               /* test -> stdout, test://X -> X */
-               mta += sizeof("test") -1;
-               if(mta[0] == ':' && mta[1] == '/' && mta[2] == '/')
-                  mta += 3;
-               rv = TRUM1;
-            }
-         }else if(!issnd){
-            n_err(_("*mta* does not denote a message sending protocol: %s\n"),
-               n_shexp_quote_cp(mta, FAL0));
-            rv = FAL0;
-            goto jstop;
-         }else
-            rv = TRU1;
-      }else
+   /* Let rv be: TRU1=SMTP, FAL0=file, TRUM1=test */
+   mta = sbp->sb_urlp->url_input;
+   if(sbp->sb_urlp->url_cproto == CPROTO_NONE){
+      if(sbp->sb_urlp->url_portno == 0)
          rv = FAL0;
-   }
+      else{
+         ASSERT(sbp->sb_urlp->url_portno == U16_MAX);
+         rv = TRUM1;
+      }
+   }else
+      rv = TRU1;
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGHUP);
@@ -1965,26 +1930,76 @@ jleave:
 
 FL boole
 mx_sendout_mta_url(struct mx_url *urlp){
+   /* TODO In v15 this should simply be url_creat(,ok_vlook(mta).
+    * TODO Register a "test" protocol handler, and if the protocol ends up
+    * TODO as file and the path is "test", then this is also test.
+    * TODO I.e., CPROTO_FILE and CPROTO_TEST.  Until then this is messy */
+   char const *mta;
    boole rv;
-   char const *smtp, *proto;
    NYD_IN;
 
-   if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
-      /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = mx_url_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
-            *proto == '\0'){
+   rv = FAL0;
+
+   if((mta = ok_vlook(smtp)) == NIL){
+      boole issnd;
+      u16 pno;
+      char const *proto;
+
+      mta = ok_vlook(mta);
+
+      if((proto = ok_vlook(sendmail)) != NIL){ /* v15-compat */
+         n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
+         /* But use it in favour of default value, then */
+         if(!su_cs_cmp(mta, VAL_MTA))
+            mta = proto;
+      }
+
+      if(su_cs_find_c(mta, ':') == NIL){
+         if(su_cs_cmp(mta, "test")){
+            pno = 0;
+            goto jisfile;
+         }
+         pno = U16_MAX;
+         goto jistest;
+      }else if((proto = mx_url_servbyname(mta, &pno, &issnd)) == NIL){
+         goto jemta;
+      }else if(*proto == '\0'){
+         if(pno == 0)
+            mta += sizeof("file://") -1;
+         else{
+            /* test -> stdout, test://X -> X */
+            ASSERT(pno == U16_MAX);
+jistest:
+            mta += sizeof("test") -1;
+            if(mta[0] == ':' && mta[1] == '/' && mta[2] == '/')
+               mta += 3;
+         }
+jisfile:
+         su_mem_set(urlp, 0, sizeof *urlp);
+         urlp->url_input = mta;
+         urlp->url_portno = pno;
+         urlp->url_cproto = CPROTO_NONE;
          rv = TRUM1;
          goto jleave;
-      }
+      }else if(!issnd)
+         goto jemta;
+   }else{
+      n_OBSOLETE(_("please do not use *smtp*, instead "
+         "assign a smtp:// URL to *mta*!"));
+      /* For *smtp* the smtp:// protocol was optional; be simple: do not check
+       * that *smtp* is misused with file:// or so */
+      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
+         mta = savecat("smtp://", mta);
    }
 
 #ifdef mx_HAVE_NET
-   rv = mx_url_parse(urlp, CPROTO_SMTP, smtp);
-#else
-   UNUSED(urlp);
-   rv = FAL0;
+   rv = mx_url_parse(urlp, CPROTO_SMTP, mta);
 #endif
 
+   if(!rv)
+jemta:
+      n_err(_("*mta*: invalid or unsupported value: %s\n"),
+         n_shexp_quote_cp(mta, FAL0));
 jleave:
    NYD_OU;
    return rv;
@@ -2067,10 +2082,8 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 {
 #ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
-   struct mx_url url, *urlp = &url;
-#else
-   struct mx_url *urlp = NIL;
 #endif
+   struct mx_url url, *urlp = &url;
    struct n_sigman sm;
    struct sendbundle sb;
    struct mx_name *to;
@@ -2183,7 +2196,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
-   sb.sb_urlp = mta_isexe ? NIL : urlp;
+   sb.sb_urlp = urlp;
 #ifdef mx_HAVE_NET
    sb.sb_credp = &cc;
 #endif
@@ -2811,6 +2824,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    sb.sb_credp = &cc;
 #endif
 
+   /* All the complicated address massage things happened in the callee(s) */
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */

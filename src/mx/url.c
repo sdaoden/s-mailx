@@ -267,23 +267,26 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
       boole issnd;
       u16 portno;
    } const tbl[] = {
-      { "smtp", "25", TRU1, 25},
-      { "smtps", "465", TRU1, 465},
-      { "submission", "587", TRU1, 587},
-      { "submissions", "465", TRU1, 465},
-      { "pop3", "110", FAL0, 110},
-      { "pop3s", "995", FAL0, 995},
-      { "imap", "143", FAL0, 143},
-      { "imaps", "993", FAL0, 993},
-      { "file", "", TRU1, 0},
-      { "test", "", TRU1, U16_MAX}
+      {"smtp", "25", TRU1, 25},
+      {"smtps", "465", TRU1, 465},
+      {"submission", "587", TRU1, 587},
+      {"submissions", "465", TRU1, 465},
+      {"pop3", "110", FAL0, 110},
+      {"pop3s", "995", FAL0, 995},
+      {"imap", "143", FAL0, 143},
+      {"imaps", "993", FAL0, 993},
+      {"file", "", TRU1, 0},
+      {"test", "", TRU1, U16_MAX}
    };
    char const *rv;
    uz l, i;
    NYD2_IN;
 
-   for(rv = proto; *rv != '\0'; ++rv)
-      if(*rv == ':')
+   for(rv = proto;; ++rv)
+      if(*rv == '\0'){
+         rv = NIL;
+         goto jleave;
+      }else if(*rv == ':')
          break;
    l = P2UZ(rv - proto);
 
@@ -296,6 +299,8 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
             *issnd_or_nil = tbl[i].issnd;
          break;
       }
+
+jleave:
    NYD2_OU;
    return rv;
 }
@@ -303,6 +308,8 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
 #ifdef mx_HAVE_NET /* Note: not indented for that -- later: file:// etc.! */
 boole
 mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
+   /* TODO mx_url_parse() is a terrible mess; all the substrings should be
+    * TODO accessors of an object instead */
 #if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
 # define a_ALLPROTO
 #endif
@@ -350,6 +357,8 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #define a_IFs(X,Y) a__IF(0, X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
 
    switch(cproto){
+   case CPROTO_NONE:
+      goto jleave;
    case CPROTO_CERTINFO:
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
