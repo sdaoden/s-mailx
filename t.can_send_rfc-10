@@ -1,0 +1,9 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: to@no.1, to@no.2, to@no.3, receiver@number.1
+Cc: cc@no.1, cc@no.2, cc@no.3
+Bcc: bcc@no.1, bcc@no.2, bcc@no.3
+Subject: Sub.mta-1
+
+ARGS: -i -- to@no.1 to@no.2 to@no.3 receiver@number.1 cc@no.1 cc@no.2 cc@no.3 bcc@no.1 bcc@no.2 bcc@no.3
+
