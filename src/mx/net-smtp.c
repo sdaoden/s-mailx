@@ -74,14 +74,24 @@ su_EMPTY_FILE()
 #include "su/code-in.h"
 
 enum a_netsmtp_flags{
-   a_NETSMTP_CAP_PIPELINING = 1u<<0,
+   a_NETSMTP_CAP_NONE,
 
-   a_NETSMTP_READ_CAP_IS_HOT = 1u<<30
+   a_NETSMTP_CAP_EHLO = 1u<<0, /* RFC 1869 */
+   a_NETSMTP_CAP_PIPELINING = 1u<<1, /* RFC 2920 */
+   a_NETSMTP_CAP_STARTTLS = 1u<<2, /* RFC 3207 */
+   a_NETSMTP_CAP_ALL = a_NETSMTP_CAP_EHLO |
+         a_NETSMTP_CAP_PIPELINING | a_NETSMTP_CAP_STARTTLS,
+
+   a_NETSMTP_CAP_FORCE_TLS = 1u<<13,
+   a_NETSMTP_CAP_PROP_ALL = a_NETSMTP_CAP_FORCE_TLS,
+
+   a_NETSMTP_CAP_MASK = a_NETSMTP_CAP_ALL | a_NETSMTP_CAP_PROP_ALL,
+   a_NETSMTP_CAP_READ_IS_HOT = 1u<<15
 };
 
 struct a_netsmtp_ctx{
-   u32 nsc_flags;
-   su_64( u8 nsc__pad[4]; )
+   u32 nsc_config;
+   u32 nsc_server_config;
    struct str nsc_dat;
    struct str nsc_buf;
 };
@@ -89,6 +99,9 @@ struct a_netsmtp_ctx{
 static sigjmp_buf a_netsmtp_jmp;
 
 static void a_netsmtp_onsig(int signo);
+
+/* */
+static u32 a_netsmtp_parse_config(struct mx_send_ctx *scp);
 
 /* Get the SMTP server's answer, expecting val */
 static int a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_ctx *nscp,
@@ -145,6 +158,55 @@ a_netsmtp_onsig(int signo){
    siglongjmp(a_netsmtp_jmp, 1);
 }
 
+static u32
+a_netsmtp_parse_config(struct mx_send_ctx *scp){
+   struct capdis{
+      u16 cd_on;
+      u16 cd_off;
+      char const cd_user_name[12];
+   } const cda[] = {
+      {a_NETSMTP_CAP_ALL, a_NETSMTP_CAP_MASK, "all\0"}, /* All */
+      {a_NETSMTP_CAP_EHLO, a_NETSMTP_CAP_ALL, "ehlo\0"},
+      {a_NETSMTP_CAP_PIPELINING, a_NETSMTP_CAP_PIPELINING, "pipelining\0"},
+      {a_NETSMTP_CAP_STARTTLS, a_NETSMTP_CAP_STARTTLS, "starttls\0"},
+
+      {a_NETSMTP_CAP_PROP_ALL, a_NETSMTP_CAP_PROP_ALL, "prop-all\0"},
+      {a_NETSMTP_CAP_FORCE_TLS, a_NETSMTP_CAP_FORCE_TLS, "force-tls\0"}
+   };
+   char *buf;
+   char const *ccp;
+   u32 rv, i;
+   NYD_IN;
+
+   rv = a_NETSMTP_CAP_ALL;
+
+   if((ccp = xok_vlook(smtp_config, scp->sc_urlp, OXM_ALL)) == NIL)
+      goto jleave;
+
+   for(buf = savestr(ccp); (ccp = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
+      boole minus;
+
+      if((minus = (*ccp == '-')) || *ccp == '-')
+         ++ccp;
+      for(i = 0;;)
+         if(!su_cs_cmp_case(ccp, cda[i].cd_user_name)){
+            if(minus)
+               rv &= ~cda[i].cd_off;
+            else
+               rv |= cda[i].cd_on;
+            break;
+         }else if(++i == NELEM(cda)){
+            n_err(_("*smtp-config*: unknown directive: %s\n"),
+               n_shexp_quote_cp(ccp, FAL0));
+            break;
+         }
+   }
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+
 static int
 a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_ctx *nscp, int val,
       boole ign_eof, boole want_dat){
@@ -183,9 +245,11 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_ctx *nscp, int val,
          n_err(_("SMTP: unexpected status from server: %s\n"),
             nscp->nsc_dat.s);
          goto jleave;
-      }else if(UNLIKELY(nscp->nsc_flags & a_NETSMTP_READ_CAP_IS_HOT)){
+      }else if(UNLIKELY(nscp->nsc_server_config & a_NETSMTP_CAP_READ_IS_HOT)){
          if(!su_cs_cmp(&nscp->nsc_dat.s[4], "PIPELINING"))
-            nscp->nsc_flags |= a_NETSMTP_CAP_PIPELINING;
+            nscp->nsc_server_config |= a_NETSMTP_CAP_PIPELINING;
+         else if(!su_cs_cmp(&nscp->nsc_dat.s[4], "STARTTLS"))
+            nscp->nsc_server_config |= a_NETSMTP_CAP_STARTTLS;
       }
    }while(nscp->nsc_dat.s[3] == '-');
 
@@ -221,29 +285,94 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
    struct str b64;
    struct mx_name *np;
    u8 f;
-   uz blen, cnt;
+   uz resp2_cnt, blen, cnt;
    char const *hostname;
    NYD_IN;
 
-   f = a_ERROR | a_IN_HEAD;
    hostname = n_nodename(TRU1);
+   /* With the pipelining extension we may be able to save (an) authentication
+    * roundtrip(s), too, so start counting expected 2xx responses beforehand */
+   resp2_cnt = 0;
+
    su_mem_set(nscp, 0, sizeof(*nscp));
+   nscp->nsc_config = a_netsmtp_parse_config(scp);
+
+   f = a_ERROR | a_IN_HEAD;
 
    /* Read greeting */
    a_SMTP_ANSWER(2, FAL0, FAL0);
 
+   /* The initial EHLO */
+   if(nscp->nsc_config & a_NETSMTP_CAP_EHLO){
+      int sr;
+
+      snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
+      a_SMTP_OUT(o);
+      if(!(n_poption & n_PO_D)){
+         nscp->nsc_server_config = a_NETSMTP_CAP_READ_IS_HOT |
+               a_NETSMTP_CAP_EHLO;
+         sr = a_netsmtp_read(sop, nscp, 2, FAL0, FAL0);
+         nscp->nsc_server_config ^= a_NETSMTP_CAP_READ_IS_HOT;
+      }else{
+         sr = 2;
+         nscp->nsc_server_config = a_NETSMTP_CAP_MASK;
+      }
+
+      /* Keep only user desires */
+      nscp->nsc_server_config &= nscp->nsc_config;
+
+      if(sr != 2){
+         if(sr == -1)
+            goto jleave;
+         nscp->nsc_server_config = nscp->nsc_config = a_NETSMTP_CAP_NONE;
+         /* TODO RFC 1869 gives detailed error codes etc. but of course
+          * TODO this is all we (can) do for now, anyway */
+         switch(scp->sc_credp->cc_authtype){
+         case mx_CRED_AUTHTYPE_NONE:
+            goto jhelo;
+         default:
+            n_err(_("SMTP server incapable of EHLO, "
+               "the chosen authentication is not possible\n"));
+            goto jleave;
+         }
+      }
+   }else if(scp->sc_credp->cc_authtype == mx_CRED_AUTHTYPE_NONE){
+jhelo:
+      nscp->nsc_config &= ~a_NETSMTP_CAP_ALL;
+      nscp->nsc_server_config &= ~a_NETSMTP_CAP_ALL;
+      snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
+      a_SMTP_OUT(o);
+      a_SMTP_ANSWER(2, FAL0, FAL0);
+      /* Skip TLS + Authentication */
+      goto jsend;
+   }else{
+      n_err(_("The chosen authentication is not possible with "
+         "the given *smtp-config*\n"));
+      goto jleave;
+   }
+
+   /* In a session state; if unencrypted, try to upgrade */
 #ifdef mx_HAVE_TLS
    if(!sop->s_use_tls){
-      if(xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL)){
-         snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-         a_SMTP_OUT(o);
-         a_SMTP_ANSWER(2, FAL0, FAL0);
-
+      if((nscp->nsc_config & a_NETSMTP_CAP_STARTTLS) &&
+            ((nscp->nsc_config & a_NETSMTP_CAP_FORCE_TLS) ||
+             scp->sc_credp->cc_needs_tls ||
+             (nscp->nsc_server_config & a_NETSMTP_CAP_STARTTLS) ||
+             xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL))){
          a_SMTP_OUT(NETLINE("STARTTLS"));
          a_SMTP_ANSWER(2, FAL0, FAL0);
 
          if(!(n_poption & n_PO_D) && !n_tls_open(scp->sc_urlp, sop))
             goto jleave;
+
+         /* Capabilities might have changed after STARTTLS */
+         snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
+         a_SMTP_OUT(o);
+         nscp->nsc_server_config &= ~a_NETSMTP_CAP_ALL;
+         nscp->nsc_server_config |= a_NETSMTP_CAP_READ_IS_HOT;
+         a_SMTP_ANSWER(2, FAL0, FAL0);
+         nscp->nsc_server_config ^= a_NETSMTP_CAP_READ_IS_HOT;
+         nscp->nsc_server_config &= nscp->nsc_config;
       }else if(scp->sc_credp->cc_needs_tls){
          n_err(_("SMTP authentication %s needs TLS "
                "(see manual, *smtp-use-starttls*)\n"),
@@ -252,29 +381,17 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp){ /* TODO split*/
       }
    }
 #else
-   if(scp->sc_credp->cc_needs_tls ||
+   if((nscp->nsc_config & a_NETSMTP_CAP_FORCE_TLS) ||
+         scp->sc_credp->cc_needs_tls ||
          xok_blook(smtp_use_starttls, scp->sc_urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
 #endif /* mx_HAVE_TLS */
 
-   /* Shorthand: no authentication, plain HELO? */
-   if(scp->sc_credp->cc_authtype == mx_CRED_AUTHTYPE_NONE){
-      snprintf(o, sizeof o, NETLINE("HELO %s"), hostname);
-      a_SMTP_OUT(o);
-      a_SMTP_ANSWER(2, FAL0, FAL0);
-      goto jsend;
-   }
-
-   /* We'll have to deal with authentication */
-   snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
-   a_SMTP_OUT(o);
-   nscp->nsc_flags |= a_NETSMTP_READ_CAP_IS_HOT;
-   a_SMTP_ANSWER(2, FAL0, FAL0);
-   nscp->nsc_flags &= ~a_NETSMTP_READ_CAP_IS_HOT;
-
    switch(scp->sc_credp->cc_authtype){
+   case mx_CRED_AUTHTYPE_NONE:
+      break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
       f |= a_IS_OAUTHBEARER;
       /* FALLTHRU */
@@ -323,7 +440,9 @@ jerr_cred:
             goto jleave;
       }
       a_SMTP_OUT(b64.s);
-      a_SMTP_ANSWER(2, FAL0, FAL0);
+      ++resp2_cnt;
+      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
        * message (when status was 334) */
       break;
@@ -340,12 +459,16 @@ jerr_cred:
       mx_b64_enc_buf(&b64, scp->sc_credp->cc_user.s,
          scp->sc_credp->cc_user.l, mx_B64_BUF | mx_B64_CRLF);
       a_SMTP_OUT(o);
-      a_SMTP_ANSWER(2, FAL0, FAL0);
+      ++resp2_cnt;
+      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
    case mx_CRED_AUTHTYPE_EXTERNANON:
       a_SMTP_OUT(NETLINE("AUTH EXTERNAL ="));
-      a_SMTP_ANSWER(2, FAL0, FAL0);
+      ++resp2_cnt;
+      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
    case mx_CRED_AUTHTYPE_LOGIN:
@@ -366,7 +489,9 @@ jerr_cred:
             scp->sc_credp->cc_pass.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
-      a_SMTP_ANSWER(2, FAL0, FAL0);
+      ++resp2_cnt;
+      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
 
 #ifdef mx_HAVE_MD5
@@ -380,7 +505,9 @@ jerr_cred:
             &scp->sc_credp->cc_pass, nscp->nsc_dat.s)) == NIL)
          goto jerr_cred;
       a_SMTP_OUT(cp);
-      a_SMTP_ANSWER(2, FAL0, FAL0);
+      ++resp2_cnt;
+      if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+         a_SMTP_ANSWER(2, FAL0, FAL0);
       }break;
 #endif
 
@@ -397,7 +524,9 @@ jerr_cred:
 jsend:
    snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), scp->sc_urlp->url_u_h.s);
    a_SMTP_OUT(o);
-   a_SMTP_ANSWER(2, FAL0, FAL0);
+   ++resp2_cnt;
+   if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
+      a_SMTP_ANSWER(2, FAL0, FAL0);
 
    for(np = scp->sc_to; np != NIL; np = np->n_flink){
       if(!(np->n_type & GDEL)){ /* TODO should not happen!?! */
@@ -407,16 +536,15 @@ jsend:
          else
             snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), np->n_name);
          a_SMTP_OUT(o);
-         if(scp->sc_flags & a_NETSMTP_CAP_PIPELINING)
-            ++cnt;
-         else
+         ++resp2_cnt;
+         if(!(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING))
             a_SMTP_ANSWER(2, FAL0, FAL0);
       }
    }
 
    a_SMTP_OUT(NETLINE("DATA"));
-   if(scp->sc_flags & a_NETSMTP_CAP_PIPELINING)
-      while(cnt-- > 0)
+   if(nscp->nsc_server_config & a_NETSMTP_CAP_PIPELINING)
+      while(resp2_cnt-- > 0)
          a_SMTP_ANSWER(2, FAL0, FAL0);
    a_SMTP_ANSWER(3, FAL0, FAL0);
 
