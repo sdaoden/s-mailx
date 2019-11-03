@@ -880,13 +880,14 @@ ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_v_smime_sign_include_certs, /* {chain=1} */
 ok_v_smime_sign_message_digest, /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
-   ok_v_smtp_auth,                     /* {chain=1} */
+   ok_v_smtp_auth, /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
+   ok_v_smtp_config, /* {chain=1} */
    ok_v_smtp_hostname, /* {vip=1,chain=1} */
-   ok_b_smtp_use_starttls, /* {chain=1} */
+ok_b_smtp_use_starttls, /* {chain=1,obsolete=1} */
    ok_v_SOCKS5_PROXY, /* {vip=1,import=1,notempty=1,name=SOCKS5_PROXY} */
-   ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
+   ok_v_SOURCE_DATE_EPOCH, /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_socket_connect_timeout, /* {posnum=1} */
    ok_v_socks_proxy, /* {vip=1,chain=1,notempty=1} */

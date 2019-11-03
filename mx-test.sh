@@ -9801,6 +9801,7 @@ t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
       return
    fi
 
+   extensions= #250-STARTTLS\n
    helo= mail_from= from= msgid=
 
    # SMTP net-test script {{{
@@ -9920,33 +9921,39 @@ HELO %s
 EHLO %s
 \001
 250-arch-2019
-250-STARTTLS
-250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 EXTERNAL
-250 ENHANCEDSTATUSCODES
+%s250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 EXTERNAL
+250-ENHANCEDSTATUSCODES
+250 PIPELINING
 ' \
-      "${helo}"
+      "${helo}" "${extensions}"
    }
    # }}}
 
    smtp_auth_ok() { printf '\001\n235 2.7.0 Authentication successful\n'; }
 
    # After AUTH {{{
-   smtp_mail_from() {
-      printf '\002
-MAIL FROM:<%s>
-\001
-250 2.1.0 Ok
-' \
-      "${mail_from}"
+   smtp_mail_from_to() {
+      printf '\002\nMAIL FROM:<%s>\n\001\n250 2.1.0 Ok\n' "${mail_from}"
+      printf '\002\nRCPT TO:<%s>\n\001\n250 2.1.5 Ok\n' "${@}"
+      printf '\002\nDATA\n'
    }
 
-   smtp_rcpt_to() { printf '\002\nRCPT TO:<%s>\n\001\n250 2.1.5 Ok\n' "${@}"; }
+   smtp_mail_from_to_pipelining() {
+      printf '\002\nMAIL FROM:<%s>\n' "${mail_from}"
+      printf 'RCPT TO:<%s>\n' "${@}"
+      printf 'DATA\n'
+   }
 
    smtp_data() {
-      printf '\002
-DATA
-\001
-354 End data with <CR><LF>.<CR><LF>
+      printf '\001\n'
+      if [ ${#} -gt 0 ]; then
+         printf '250 2.1.0 Ok\n'
+         while [ ${#} -gt 0 ]; do
+            printf '250 2.1.0 Ok\n'
+            shift
+         done
+      fi
+      printf '354 End data with <CR><LF>.<CR><LF>
 \002
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: %s
@@ -9959,7 +9966,7 @@ From: %s
    smtp_head_tail() { printf 'Subject: ub%s\n\n' "${msgid}"; }
 
    smtp_head_all() {
-      smtp_mail_from && smtp_rcpt_to ex@am.ple &&
+      smtp_mail_from_to ex@am.ple &&
       smtp_data && smtp_to && smtp_head_tail
    }
 
@@ -9980,42 +9987,42 @@ QUIT
    # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
 
    smtp_script smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 1 0 "${MBOX}" '4294967295 0'
 
    smtp_script_hostname smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 2 0 "${MBOX}" '4294967295 0'
 
    smtp_script_hostname_smtp_hostname smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 3 0 "${MBOX}" '4294967295 0'
 
    smtp_script_hostname_smtp_hostname_empty smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 4 0 "${MBOX}" '4294967295 0'
 
    smtp_script_from smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 5 0 "${MBOX}" '4294967295 0'
 
    smtp_script_from_hostname smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 6 0 "${MBOX}" '4294967295 0'
 
    smtp_script_from_hostname_smtp_hostname smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 7 0 "${MBOX}" '4294967295 0'
 
    smtp_script_from_hostname_smtp_hostname_empty smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls
+      -Ssmtp-auth=none -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 8 0 "${MBOX}" '4294967295 0'
    # }}}
@@ -10023,7 +10030,7 @@ QUIT
    # Real EHLO authentication types {{{
 
    smtp_script smtp \
-      -Ssmtp-auth=plain -Snosmtp-use-starttls
+      -Ssmtp-auth=plain -Ssmtp-config=-all,ehlo
    { smtp_ehlo && printf '\002
 AUTH PLAIN
 \001
@@ -10035,7 +10042,7 @@ AHN0ZWZmZW4AU3dheQ==
    check auth-1 0 "${MBOX}" '4294967295 0'
 
    smtp_script smtp \
-      -Ssmtp-auth=login -Snosmtp-use-starttls
+      -Ssmtp-auth=login -Ssmtp-config=-all,ehlo
    { smtp_ehlo && printf '\002
 AUTH LOGIN
 \001
@@ -10051,7 +10058,7 @@ U3dheQ==
    check auth-2 0 "${MBOX}" '4294967295 0'
 
    smtp_script smtp \
-      -Ssmtp-auth=oauthbearer -Snosmtp-use-starttls
+      -Ssmtp-auth=oauthbearer -Ssmtp-config=-all,ehlo
    { smtp_ehlo && printf '\002
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
@@ -10060,7 +10067,7 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 
    if have_feat md5; then
       smtp_script smtp \
-         -Ssmtp-auth=cram-md5 -Snosmtp-use-starttls
+         -Ssmtp-auth=cram-md5 -Ssmtp-config=-all,ehlo
       { smtp_ehlo && printf '\002
 AUTH CRAM-MD5
 \001
@@ -10093,7 +10100,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
       }' > .t.dat
 
    smtp_script_file .t.dat smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls &&
+      -Ssmtp-auth=none -Ssmtp-config=-all &&
    { smtp_helo && smtp_head_all && ${cat} .t.dat && smtp_quit; } |
       ../net-test .t.sh > "${MBOX}" 2>&1
    check data-1 0 "${MBOX}" '4294967295 0'
@@ -10118,36 +10125,41 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
                printf "-c ex-%s@am.ple ", i
          }'`
 
-   smtp_script smtp \
-      -Ssmtp-auth=none -Snosmtp-use-starttls \
-      ${cclist} ${tolist} &&
-   { smtp_helo && smtp_mail_from && smtp_rcpt_to $rcpt_to &&
-         smtp_data && ${awk} '
-            function doit(i, j){
-               printf j
-               lnlen = length(j)
-               for(; i <= 100; i += 2){
-                  if(i + 2 > 100){
-                     printf "ex%s@am.ple\n", (i == 100 ? "" : "-99")
-                     break
-                  }
-
-                  j = "ex-" i "@am.ple,"
-                  if((lnlen += length(j)) >= 60){
-                     lnlen = 1;
-                     j = j "\n "
-                  }else
-                     j = j " "
+   smtp_rcpt_to() {
+      smtp_script smtp \
+         -Ssmtp-auth=none -Ssmtp-config=${1} \
+         ${cclist} ${tolist} &&
+      { ${2} && ${3} $rcpt_to &&
+            eval "smtp_data ${4}" && ${awk} '
+               function doit(i, j){
                   printf j
+                  lnlen = length(j)
+                  for(; i <= 100; i += 2){
+                     if(i + 2 > 100){
+                        printf "ex%s@am.ple\n", (i == 100 ? "" : "-99")
+                        break
+                     }
+
+                     j = "ex-" i "@am.ple,"
+                     if((lnlen += length(j)) >= 60){
+                        lnlen = 1;
+                        j = j "\n "
+                     }else
+                        j = j " "
+                     printf j
+                  }
                }
-            }
-            BEGIN{
-               doit(0, "To: ")
-               doit(1, "Cc: ")
-            }' &&
-         smtp_head_tail && smtp_quit; } |
-      ../net-test .t.sh > "${MBOX}" 2>&1
+               BEGIN{
+                  doit(0, "To: ")
+                  doit(1, "Cc: ")
+               }' &&
+            smtp_head_tail && smtp_quit; } |
+         ../net-test .t.sh > "${MBOX}" 2>&1
+   }
+   smtp_rcpt_to -ehlo smtp_helo smtp_mail_from_to
    check data-2 0 "${MBOX}" '4294967295 0'
+   smtp_rcpt_to all smtp_ehlo smtp_mail_from_to_pipelining "$rcpt_to"
+   check data-3 0 "${MBOX}" '4294967295 0'
    # }}}
 
    t_epilog "${@}"
