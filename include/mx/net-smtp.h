@@ -26,7 +26,7 @@
 #include <su/code-in.h>
 
 /* Send a message via SMTP */
-EXPORT boole mx_smtp_mta(struct sendbundle *sbp);
+EXPORT boole mx_smtp_mta(struct mx_send_ctx *scp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_SMTP */

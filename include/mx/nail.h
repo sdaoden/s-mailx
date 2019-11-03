@@ -1321,13 +1321,13 @@ struct n_addrguts{
    u32 ag_n_flags; /* enum mx_name_flags of .ag_skinned */
 };
 
-struct sendbundle{
-   struct header *sb_hp;
-   struct mx_name *sb_to;
-   FILE *sb_input;
-   struct mx_url *sb_urlp; /* Or NIL for file-based MTA */
-   struct mx_cred_ctx *sb_credp; /* cred-auth.h not included */
-   struct str sb_signer; /* USER@HOST for signing+ */
+struct mx_send_ctx{
+   struct header *sc_hp;
+   struct mx_name *sc_to;
+   FILE *sc_input;
+   struct mx_url *sc_urlp; /* Or NIL for file-based MTA */
+   struct mx_cred_ctx *sc_credp; /* cred-auth.h not included */
+   struct str sc_signer; /* USER@HOST for signing+ */
 };
 
 /* For saving the current directory and later returning */
