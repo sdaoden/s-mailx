@@ -1966,7 +1966,7 @@ unusual cases become possible.
 The usual case is as short as:
 .
 .Bd -literal -offset indent
-set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
+set mta=smtp://USER:PASS@HOST smtp-config=force-tls \e
     smime-sign smime-sign-cert=+smime.pair \e
     from=myname@my.host
 .Ed
@@ -2045,7 +2045,7 @@ shortcut encpop2 pop3://pop2.exam.ple
 set pop3-use-starttls-pop2.exam.ple
 
 set mta=smtps://smtp.exam.ple:465
-set mta=smtp://smtp.exam.ple smtp-use-starttls
+set mta=smtp://smtp.exam.ple smtp-config=force-tls
 .Ed
 .
 .Pp
@@ -10654,14 +10654,15 @@ The following SMTP variants may be used:
 .Bl -bullet
 .It
 The plain SMTP protocol (RFC 5321) that normally lives on the
-server port 25 and requires setting the
-.Va smtp-use-starttls
-variable to enter a TLS encrypted session state.
+server port 25, which will \*(OPally be upgraded to a TLS encrypted
+session unless disallowed by
+.Va smtp-config ;
+upgrading can also be enforced with it.
 Assign a value like
 .Ql smtp://[user[:password]@]server[:port]
 to choose this protocol.
 .It
-The so-called SMTPS which is supposed to live on server port 465
+\*(OP The so-called SMTPS which is supposed to live on server port 465
 and is automatically TLS secured.
 Unfortunately it never became a standardized protocol and may thus not
 be supported by your hosts network service database
@@ -10677,14 +10678,11 @@ specify the port as
 however.
 .It
 The SUBMISSION protocol (RFC 6409) lives on server port 587 and
-is identically to the SMTP protocol from \*(UA's point of view;
-it requires setting
-.Va smtp-use-starttls
-to enter a TLS secured session state; e.g.,
+shares the semantics with SMTP from \*(UA's point of view:
 .Ql submission://[user[:password]@]server[:port] .
 .It
-The SUBMISSIONS protocol (RFC 8314) that lives on server port 465 and is
-TLS secured by default.
+\*(OP The SUBMISSIONS protocol (RFC 8314) that lives on server port 465
+and is TLS secured by default.
 It can be chosen by assigning a value like
 .Ql submissions://[user[:password]@]server[:port] .
 Due to the problems mentioned for SMTPS above and the fact that
@@ -11305,12 +11303,13 @@ wire, but for one MD5 does not any longer offer sufficient security,
 and then today transport is almost ever TLS secured.)
 .
 .Mx Va pop3-use-starttls
-.It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST , pop3-use-starttls
+.It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST ,\
+  pop3-use-starttls
 \*(BO\*(OP Causes \*(UA to issue a
 .Ql STLS
 command to make an unencrypted POP3 session TLS encrypted.
-This functionality is not supported by all servers,
-and is not used if the session is already encrypted by the POP3S method.
+This functionality is not supported by all servers.
+Directly using encrypted communication channels should be preferred.
 .
 .
 .Mx
@@ -12145,9 +12144,11 @@ via the mechanisms described in
 .
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
-\*(OP Variable chain that controls the SMTP
+\*(OP Variable chain that controls the used SMTP
 .Va mta
-authentication method, possible values are
+authentication method, unless disallowed via
+.Va smtp-config .
+Possible values are
 .Ql none ,
 .Ql plain
 (default),
@@ -12167,6 +12168,7 @@ There may be the \*(OPal methods
 .Ql cram-md5
 and
 .Ql gssapi .
+.Pp
 .Ql none
 and
 .Ql externanon
@@ -12188,6 +12190,68 @@ Note for
 .Va smtp-auth-USER@HOST :
 may override dependent on sender address in the variable
 .Va from . )
+.
+.
+.Mx Va smtp-config
+.It Va smtp-config-USER@HOST , smtp-config-HOST , smtp-config
+\*(OP When a SMTP based
+.Va mta
+is contacted a list of supported SMTP service extensions will
+(optionally) be announced by the server.
+This comma-separated (case-insensitive) list configures which extensions
+shall be used, and which of the available ones not.
+Order matters, whitespace is ignored, an optional plus sign
+.Ql +
+prefix enables, a hyphen-minus
+.Ql -
+prefix disables usage of an extension, for example
+.Ql -all , ehlo,+starttls .
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd all
+This special word enables or disables all extensions.
+By default all extensions are enabled.
+Disabling this also disables all the below properties.
+.It Cd ehlo
+Service Extensions (RFC 1869) added the notion of extensions to the SMTP
+protocol; when disabled, all other extensions are also disabled, but
+properties are not.
+All
+.Va smtp-auth Ns
+entication methods (but
+.Ql none )
+are SMTP extensions.
+.It Cd pipelining
+Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
+successive commands without waiting for respective server responses.
+.It Cd starttls
+Secure SMTP over TLS (RFC 3207) allows upgrading an unencrypted (SMTP
+not SMTPS) connection to use private, authenticated communication.
+This upgrading can be forced by including the below
+.Cd force-tls .
+.El
+.
+.Pp
+In addition to the SMTP extensions which correspond 1:1 to a standard,
+additional properties can be included in the list:
+.
+.Pp
+.Bl -tag -compact -width ".It Cd BaNg"
+.It Cd prop-all
+This special word enables or disables all additional properties.
+By default they are all disabled.
+.It Cd force-tls
+Enforces the TLS upgrade of
+.Cd starttls
+regardless of whether the server announced availability or not,
+as such providing a safety measure against man-in-the-middle attacks
+which try to prevent these upgrades.
+This is automatically enabled if the given authentication method
+requires TLS encryption.
+Directly using encrypted communication channels should be preferred.
+.El
+.
 .
 .Mx Va smtp-hostname
 .It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
@@ -12227,12 +12291,12 @@ If the \*(OPal IDNA support is available (see
 variable assignment is aborted when a necessary conversion fails.
 .
 .Mx Va smtp-use-starttls
-.It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls
-\*(BO\*(OP Causes \*(UA to issue a
-.Ql STARTTLS
-command to make an SMTP
-.Va mta
-session TLS encrypted, i.e., to enable transport layer security.
+.It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST ,\
+  smtp-use-starttls
+\*(BO\*(OP\*(OB Please simply include
+.Cd force-tls
+in
+.Va smtp-config .
 .
 .Mx
 .It Va socket-connect-timeout
@@ -14901,6 +14965,7 @@ Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
 IMAP session TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
+Directly using encrypted communication channels should be preferred.
 .El
 .
 .\" }}}
