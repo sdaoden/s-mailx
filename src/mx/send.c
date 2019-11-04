@@ -1442,10 +1442,10 @@ jgetname:
          goto jleave;
       }
 
-      if (*f2 == '|')
+      if(*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
-      else if ((f3 = fexpand(f2, FEXP_LOCAL | FEXP_NVAR)) == NULL)
+      else if((f3 = fexpand(f2, (FEXP_LOCAL_FILE | FEXP_NVAR))) == NIL)
          /* (Error message written by fexpand()) */
          goto jgetname;
       else

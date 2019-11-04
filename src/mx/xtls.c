@@ -465,7 +465,8 @@ a_xtls_rand_init(void){
          (cp = ok_vlook(ssl_rand_file)) != NULL){
       x = NULL;
       if(*cp != '\0'){
-         if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+         if((x = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+               ) == NIL)
             n_err(_("*tls-rand-file*: expansion of %s failed "
                   "(using default)\n"),
                n_shexp_quote_cp(cp, FAL0));
@@ -558,7 +559,8 @@ a_xtls_init(void){
          msg = "[default]";
          cp = NULL;
          flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
-      }else if((msg = cp, cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL)
+      }else if((msg = cp, cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+            FEXP_NSHELL))) != NIL)
          flags = 0;
       else{
          n_err(_("*tls-config-file*: file expansion failed: %s\n"),
@@ -1043,7 +1045,8 @@ a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    /* Certificate via ssl-cert */
    if((certchain = cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL){
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-cert*"));
-      if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+      if((cp_base = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL){
          n_err(_("*ssl-cert* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
@@ -1070,7 +1073,8 @@ a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
    /* PrivateKey via ssl-key */
    if((cp = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL){
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-key*"));
-      if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+      if((cp_base = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL){
          n_err(_("*ssl-key* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
@@ -1191,7 +1195,8 @@ jenocmd:
 
       /* Filename transformations to be applied? */
       if(f & a_EXPAND_MASK){
-         if((cp = fexpand(val, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         if((cp = fexpand(val, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+               ) == NIL){
             if(pairs == NULL)
                pairs = n_UNCONST(n_empty);
             n_err(_("*tls-config-pairs*: value expansion failed: %s: %s; "
@@ -1240,10 +1245,11 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
 
    if((ca_dir = xok_vlook(tls_ca_dir, urlp, OXM_ALL)) != NULL ||
          (ca_dir = xok_vlook(ssl_ca_dir, urlp, OXM_ALL)) != NULL)
-      ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
+      ca_dir = fexpand(ca_dir, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
    if((ca_file = xok_vlook(tls_ca_file, urlp, OXM_ALL)) != NULL ||
          (ca_file = xok_vlook(ssl_ca_file, urlp, OXM_ALL)) != NULL)
-      ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
+      ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+            FEXP_NSHELL));
 
    if((ca_dir != NULL || ca_file != NULL) &&
          SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1){
@@ -1602,7 +1608,8 @@ jloop:
    if(match != NULL)
       *match = NULL;
 jopen:
-   if ((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+   if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+         ) == NIL)
       goto jleave;
    if((fp = mx_fs_open(cp, "r")) == NIL)
       n_perr(cp, 0);
@@ -1658,8 +1665,8 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
 
    for (nfield = savestr(cfiles);
          (cfield = su_cs_sep_c(&nfield, ',', TRU1)) != NULL;) {
-      if ((x = fexpand(cfield, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-            (fp = mx_fs_open(cfield = x, "r")) == NIL){
+      if((x = fexpand(cfield, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL || (fp = mx_fs_open(cfield = x, "r")) == NIL){
          n_perr(cfiles, 0);
          goto jerr;
       }
@@ -1772,8 +1779,8 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)/*TODO nevertried*/
 jredo_v15:
    if ((crl_file = n_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
-      if ((crl_file = fexpand(crl_file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-            load_crl1(store, crl_file) != OKAY)
+      if((crl_file = fexpand(crl_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+            FEXP_NSHELL))) == NIL || load_crl1(store, crl_file) != OKAY)
          goto jleave;
       any = TRU1;
 #else
@@ -1785,8 +1792,9 @@ jredo_v15:
    if ((crl_dir = n_var_oklook(dok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       char *x;
-      if ((x = fexpand(crl_dir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
-            (dirp = opendir(crl_dir = x)) == NULL) {
+
+      if((x = fexpand(crl_dir, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL || (dirp = opendir(crl_dir = x)) == NIL){
          n_perr(crl_dir, 0);
          goto jleave;
       }
@@ -2081,10 +2089,11 @@ c_verify(void *vp)
    }
    X509_STORE_set_verify_cb_func(store, &a_xtls_verify_cb);
 
-   if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
-      ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
-   if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
-      ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
+   if((ca_dir = ok_vlook(smime_ca_dir)) != NIL)
+      ca_dir = fexpand(ca_dir, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
+   if((ca_file = ok_vlook(smime_ca_file)) != NIL)
+      ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+         FEXP_NSHELL));
 
    if((ca_dir != NULL || ca_file != NULL) &&
          X509_STORE_load_locations(store, ca_file, ca_dir) != 1){
@@ -2275,7 +2284,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    bail = FAL0;
    rv = yp = fp = bp = hp = NULL;
 
-   if ((certfile = fexpand(xcertfile, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+   if((certfile = fexpand(xcertfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+         FEXP_NSHELL))) == NIL)
       goto jleave;
 
    a_xtls_init();

@@ -1187,7 +1187,7 @@ a_go_file(char const *file, boole silent_open_error){
       if((fip = mx_fs_pipe_open(nbuf /* #if 0 above = savestrbuf(file, nlen)*/,
             "r", ok_vlook(SHELL), NIL, -1)) == NIL)
          goto jeopencheck;
-   }else if((nbuf = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL)
+   }else if((nbuf = fexpand(file, FEXP_LOCAL_FILE | FEXP_NVAR)) == NIL)
       goto jeopencheck;
    else if((fip = mx_fs_open(nbuf, "r")) == NIL){
 jeopencheck:
@@ -2523,8 +2523,8 @@ jfound:
       if((su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
-         if((emsg = fexpand(cap->ca_arg.ca_str.s, FEXP_LOCAL | FEXP_NVAR)
-               ) == NULL){
+         if((emsg = fexpand(cap->ca_arg.ca_str.s, (FEXP_LOCAL_FILE |
+               FEXP_NVAR))) == NIL){
             emsg = N_("`readctl': cannot expand filename %s\n");
             goto jeinval_quote;
          }

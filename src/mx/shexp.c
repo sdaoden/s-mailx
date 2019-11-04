@@ -982,7 +982,7 @@ fexpand(char const *name, enum fexp_mode fexpm){ /* TODO in parts: -> URL::!! */
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NIL)
+   if(!(fexpm & FEXP_SHORTCUT) || (res = mx_shortcut_expand(name)) == NIL)
       res = name;
 
 jprotonext:

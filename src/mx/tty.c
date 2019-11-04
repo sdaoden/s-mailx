@@ -1157,8 +1157,8 @@ a_tty_hist__query_config(void){
       n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));
    if((rv = ok_vlook(history_file)) == NULL)
       rv = cp;
-   if(rv != NULL)
-      rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
+   if(rv != NIL)
+      rv = fexpand(rv, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
    NYD2_OU;
    return rv;
 }

@@ -387,7 +387,7 @@ n_getdeadletter(void){
 
    bla = FAL0;
 jredo:
-   cp = fexpand(ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
+   cp = fexpand(ok_vlook(DEAD), FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL);
    if(cp == NULL || su_cs_len(cp) >= PATH_MAX){
       if(!bla){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),

@@ -276,7 +276,7 @@ and
 .Sx "Filename transformations"
 (also see
 .Ic folder )
-will be performed, except that shell variables are not expanded.
+will be performed, excluding shell globs and variable expansions.
 Shall
 .Ar file
 not be accessible but contain a
@@ -4056,9 +4056,18 @@ sequence:
 If the given name is a registered
 .Ic shortcut ,
 it will be replaced with the expanded shortcut.
+This step is mostly taken for
+.Ic folder Ns
+s only.
 .
 .It
-The filename is matched against the following patterns or strings:
+The filename is matched against the following patterns or strings.
+But for plus
+.Ar +file
+.Va folder
+expansion this step is mostly taken for
+.Ic folder Ns
+s only.
 .
 .
 .Pp
@@ -13385,6 +13394,11 @@ If the variable
 .Va debug
 is set no output will be generated, otherwise the contents of the file
 will be replaced.
+Except shell globs
+.Sx "Filename transformations"
+(also see
+.Ic folder )
+will be performed.
 .
 .Mx
 .It Ev EDITOR

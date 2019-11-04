@@ -463,11 +463,11 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    /* C99 */{
       enum fexp_mode fexpm;
 
-      if((who = mx_shortcut_expand(name)) != NULL){
-         fexpm = FEXP_NSHORTCUT/* XXX | FEXP_NSHELL*/;
+      if((who = mx_shortcut_expand(name)) != NIL){
+         fexpm = FEXP_NSHELL;
          name = who;
       }else
-         fexpm = FEXP_NSHELL;
+         fexpm = FEXP_SHORTCUT | FEXP_NSHELL;
 
       if(name[0] == '%'){
          char const *cp;

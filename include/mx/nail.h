@@ -229,31 +229,21 @@ enum fedit_mode{
 };
 
 enum fexp_mode{
-   FEXP_FULL, /* Full expansion */
-   FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide expansion */
+   FEXP_MOST,
+   FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide sh expansion */
    FEXP_SILENT = 1u<<1, /* Do not print but only return errors */
    FEXP_MULTIOK = 1u<<2, /* Expansion to many entries is ok */
    FEXP_LOCAL = 1u<<3, /* Result must be local file/maildir */
    FEXP_LOCAL_FILE = 1u<<4, /* ..must be a local file: strips protocol://! */
-   FEXP_NSHORTCUT = 1u<<5, /* Don't expand shortcuts */
+   FEXP_SHORTCUT = 1u<<5, /* Do expand shortcuts */
    FEXP_NSPECIAL = 1u<<6, /* No %,#,& specials */
    FEXP_NFOLDER = 1u<<7, /* NSPECIAL and no + folder, too */
    FEXP_NSHELL = 1u<<8, /* Do not do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1u<<9 /* ..not even $VAR expansion */
-};
-enum{
-   FEXP_MASK_LOCAL_SPECIAL = FEXP_NOPROTO | FEXP_LOCAL | FEXP_NSHORTCUT,
-   FEXP_MASK_LOCAL_FOLDER = FEXP_MASK_LOCAL_SPECIAL | FEXP_NSPECIAL,
-   FEXP_MASK_A_LOCAL = FEXP_MASK_LOCAL_FOLDER | FEXP_NSHELL,
-   FEXP_MASK_LOCAL = FEXP_MASK_LOCAL_FOLDER | FEXP_NFOLDER,
-   FEXP_MASK_LOCAL_NSHELL = FEXP_MASK_LOCAL | FEXP_NSHELL | FEXP_NVAR,
+   FEXP_NVAR = 1u<<9, /* ..not even $VAR expansion */
 
-   FEXP_MASK_LOCAL_FILE_SPECIAL = FEXP_NOPROTO | FEXP_LOCAL_FILE |
-         FEXP_NSHORTCUT,
-   FEXP_MASK_LOCAL_FILE_FOLDER = FEXP_MASK_LOCAL_FILE_SPECIAL | FEXP_NSPECIAL,
-   FEXP_MASK_A_LOCAL_FILE = FEXP_MASK_LOCAL_FILE_FOLDER | FEXP_NSHELL,
-   FEXP_MASK_LOCAL_FILE = FEXP_MASK_LOCAL_FILE_FOLDER | FEXP_NFOLDER,
-   FEXP_MASK_LOCAL_FILE_NSHELL = FEXP_MASK_LOCAL_FILE | FEXP_NSHELL | FEXP_NVAR
+   /* Actually does expand ~/ etc. */
+   FEXP_NONE = FEXP_NOPROTO | FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR,
+   FEXP_FULL = FEXP_SHORTCUT /* Full expansion */
 };
 
 enum n_go_input_flags{

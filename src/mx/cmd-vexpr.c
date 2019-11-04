@@ -537,8 +537,8 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
       }
       vcp->vc_arg = vcp->vc_argv[0];
 
-      if((vcp->vc_varres = fexpand(vcp->vc_arg, FEXP_NVAR | FEXP_NOPROTO)
-            ) == NIL){
+      if((vcp->vc_varres = fexpand(vcp->vc_arg, (/*FEXP_NOPROTO |*/
+            FEXP_LOCAL | FEXP_NVAR))) == NIL){
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
          break;

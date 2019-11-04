@@ -2,6 +2,8 @@
  *@ Implementation of cred-netrc.h.
  *@ .netrc parser quite loosely based upon NetBSD usr.bin/ftp/
  *@   $NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $
+ *@ TODO With an on_loop_tick_event, trigger cache update once per loop max.
+ *@ TODO I.e., unless *netrc-pipe* was set, auto check for updates.
  *
  * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -137,8 +139,8 @@ a_netrc_init(void){
          goto j_leave;
       }
    }else{
-      if((netrc_load = fexpand(ok_vlook(NETRC), FEXP_LOCAL | FEXP_NOPROTO)
-            ) == NIL)
+      if((netrc_load = fexpand(ok_vlook(NETRC), (FEXP_NOPROTO |
+            FEXP_LOCAL_FILE | FEXP_NSHELL))) == NIL)
          goto j_leave;
 
       if((fi = mx_fs_open(netrc_load, "r")) == NIL){

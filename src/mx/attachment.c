@@ -245,7 +245,8 @@ n_attachment_append(struct attachment *aplist, char const *file,
       char const *cp, *ncp;
 
 jrefexp:
-      if((file = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL){
+      if((file = fexpand(file, FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NVAR)
+            ) == NIL){
          aerr = n_ATTACH_ERR_OTHER;
          goto jleave;
       }

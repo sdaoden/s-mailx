@@ -1692,8 +1692,8 @@ jearg:
             /* Note this also expands things like
              *    !:vput vexpr delim random 0
              *    !< - $delim */
-            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)
-                  ) == NULL){
+            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NSHELL
+                  ))) == NIL){
                if(a_HARDERR())
                   goto jerr;
                n_pstate_err_no = su_ERR_INVAL;
@@ -1884,7 +1884,8 @@ jIi_putesc:
          /* Write the message on a file */
          if(cnt == 0)
             goto jearg;
-         if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL)
+               )) == NIL){
             n_err(_("Write what file!?\n"));
             if(a_HARDERR())
                goto jerr;
@@ -2079,7 +2080,8 @@ jreasksend:
       n_OBSOLETE(_("please use *on-compose-{leave,splice}* and/or "
          "*message-inject-tail*, not *signature*"));
 
-      if((cpq = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+      if((cpq = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL){
          n_err(_("*signature* expands to invalid file: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jerr;

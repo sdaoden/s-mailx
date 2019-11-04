@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of mta-aliases.h. XXX Support multiple files
+ *@ TODO With an on_loop_tick_event, trigger cache update once per loop max.
  *
  * Copyright (c) 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -101,7 +102,8 @@ a_mtaali_cache_check(char const *usrfile){
    NYD_IN;
 
    if((mas.mas_path =
-         fexpand(mas.mas_user = usrfile, FEXP_LOCAL | FEXP_NOPROTO)) == NIL){
+         fexpand(mas.mas_user = usrfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+            FEXP_NSHELL))) == NIL){
       rv = su_ERR_NOENT;
       goto jerr;
    }else if(stat(mas.mas_path, &mas.mas_sb) == -1){
