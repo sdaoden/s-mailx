@@ -967,25 +967,26 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
-{
+fexpand(char const *name, enum fexp_mode fexpm){ /* TODO in parts: -> URL::!! */
    struct str proto, s;
    char const *res, *cp;
    boole dyn, haveproto;
+   s32 eno;
    NYD_IN;
 
    n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
    dyn = FAL0;
+   eno = su_ERR_NONE;
 
    /* The order of evaluation is "%" and "#" expand into constants.
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NULL)
+   if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NIL)
       res = name;
 
 jprotonext:
-   UNINIT(proto.s, NULL), UNINIT(proto.l, 0);
+   UNINIT(proto.s, NIL), UNINIT(proto.l, 0);
    haveproto = FAL0;
    for(cp = res; *cp && *cp != ':'; ++cp)
       if(!su_cs_is_alnum(*cp))
@@ -1018,17 +1019,18 @@ jnext:
          }
          goto jnext;
       case '#':
-         if (res[1] != '\0')
+         if(res[1] != '\0')
             break;
-         if (prevfile[0] == '\0') {
+         if(prevfile[0] == '\0'){
             n_err(_("No previous file\n"));
-            res = NULL;
+            res = NIL;
+            eno = su_ERR_NODATA;
             goto jleave;
          }
          res = prevfile;
          goto jislocal;
       case '&':
-         if (res[1] == '\0')
+         if(res[1] == '\0')
             res = ok_vlook(MBOX);
          break;
       default:
@@ -1037,9 +1039,9 @@ jnext:
    }
 
 #ifdef mx_HAVE_IMAP
-   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
+   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL)
          == PROTO_IMAP){
-      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NULL)->s;
+      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
       dyn = TRU1;
    }
 #endif
@@ -1047,13 +1049,13 @@ jnext:
    /* POSIX: if *folder* unset or null, "+" shall be retained */
    if(!(fexpm & FEXP_NFOLDER) && *res == '+' &&
          *(cp = n_folder_query()) != '\0'){
-      res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
+      res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
       dyn = TRU1;
    }
 
    /* Do some meta expansions */
    if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
-         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NULL)
+         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NIL)
           : (su_cs_first_of(res, "{}[]*?$") != su_UZ_MAX))){
       boole doexp;
 
@@ -1062,7 +1064,7 @@ jnext:
       else{
          cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
 
-         switch(which_protocol(cp, TRU1, FAL0, NULL)){
+         switch(which_protocol(cp, TRU1, FAL0, NIL)){
          case PROTO_FILE:
          case PROTO_MAILDIR:
             doexp = TRU1;
@@ -1087,7 +1089,7 @@ jnext:
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
                   n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
                   n_SHEXP_PARSE_QUOTE_AUTO_DQ |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NULL);
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NIL);
             if(shs & n_SHEXP_STATE_STOP)
                break;
          }
@@ -1099,8 +1101,10 @@ jnext:
             res = a_shexp_tilde(res);
 
          if(!(fexpm & FEXP_NSHELL) &&
-               (res = a_shexp_globname(res, fexpm)) == NULL)
+               (res = a_shexp_globname(res, fexpm)) == NIL){
+            eno = su_ERR_INVAL; /* TODO shexp_globname needs true error! */
             goto jleave;
+         }
          dyn = TRU1;
       }/* else no tilde */
    }else if(res[0] == '~'){
@@ -1109,13 +1113,13 @@ jnext:
    }
 
 jislocal:
-   if(res != NULL && haveproto){
+   if(res != NIL && haveproto){
       res = savecat(savestrbuf(proto.s, proto.l), res);
       dyn = TRU1;
    }
 
    if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
-      switch (which_protocol(res, FAL0, FAL0, &cp)) {
+      switch(which_protocol(res, FAL0, FAL0, &cp)){
       case PROTO_MAILDIR:
          if(!(fexpm & FEXP_LOCAL_FILE)){
          /* FALLTHRU */
@@ -1130,14 +1134,18 @@ jislocal:
       default:
          n_err(_("Not a local file or directory: %s\n"),
             n_shexp_quote_cp(name, FAL0));
-         res = NULL;
+         res = NIL;
+         eno = su_ERR_INVAL;
          break;
       }
    }
 
 jleave:
-   if(res != NULL && !dyn)
+   if(res != NIL && !dyn)
       res = savestr(res);
+   if(res == NIL)
+      su_err_set_no(eno);
+
    NYD_OU;
    return UNCONST(char*,res);
 }
