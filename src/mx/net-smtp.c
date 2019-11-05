@@ -387,7 +387,7 @@ jsend:
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
    while(fgetline(&slp->sl_buf.s, &slp->sl_buf.l, &cnt, &blen, sbp->sb_input,
-         1) != NIL){
+         TRU1) != NIL){
       if(f & a_IN_HEAD){
          if(*slp->sl_buf.s == '\n')
             f &= ~(a_IN_HEAD | a_IN_BCC);
@@ -409,6 +409,8 @@ jsend:
       slp->sl_buf.s[blen + 1] = '\0';
       a_SMTP_OUT(slp->sl_buf.s);
    }
+   if(ferror(sbp->sb_input))
+      goto jleave;
    a_SMTP_OUT(NETLINE("."));
    a_SMTP_ANSWER(2, FAL0, FAL0);
 

@@ -282,34 +282,53 @@ static boole
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
-   struct mimepart *np = NULL;
-   char *boundary, *line = NULL;
-   uz linesize = 0, linelen, cnt, boundlen;
-   FILE *ibuf;
+   struct mimepart *np;
+   int part;
+   long lines;
    off_t offs;
-   int part = 0;
-   long lines = 0;
+   FILE *ibuf;
+   uz linesize, linelen, boundlen, cnt;
+   char *line, *boundary;
+   boole rv;
    NYD_IN;
 
-   if ((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NULL)
+   rv = FAL0;
+   mx_fs_linepool_aquire(&line, &linesize);
+
+   if((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NIL)
       goto jleave;
 
    boundlen = linelen;
-   if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
+   if((ibuf = setinput(&mb, R(struct message*,ip), NEED_BODY)) == NIL)
       goto jleave;
 
    cnt = ip->m_size;
-   while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0))
-      if (line[0] == '\n')
+   for(;;){
+      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, FAL0) == NIL){
+         if(ferror(ibuf)) /* XXX */
+            goto jleave;
          break;
+      }
+      if(line[0] == '\n')
+         break;
+   }
    offs = ftell(ibuf);
 
    /* TODO using part "1" for decrypted content is a hack */
-   if (ip->m_partstring == NULL)
-      ip->m_partstring = n_UNCONST("1");
-   __mime_parse_new(ip, &np, offs, NULL);
+   if(ip->m_partstring == NIL)
+      ip->m_partstring = UNCONST(char*,n_1);
+   __mime_parse_new(ip, &np, offs, NIL);
 
-   while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
+   lines = 0;
+   part = 0;
+
+   for(;;){
+      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, FAL0) == NIL){
+         if(ferror(ibuf))
+            goto jleave;
+         break;
+      }
+
       /* XXX linelen includes LF */
       if (!((lines > 0 || part == 0) && linelen > boundlen &&
             !strncmp(line, boundary, boundlen))) {
@@ -356,11 +375,12 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
       if(np->m_mimetype != mx_MIMETYPE_DISCARD)
          _mime_parse_part(zmp, np, mpf, level + 1);
 
+   rv = TRU1;
 jleave:
-   if (line != NULL)
-      n_free(line);
+   mx_fs_linepool_release(line, linesize);
+
    NYD_OU;
-   return TRU1;
+   return rv;
 }
 
 static void

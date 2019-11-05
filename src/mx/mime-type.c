@@ -299,7 +299,9 @@ a_mimetype__load_file(u32 orflags, char const *file, char **line,
       goto jleave;
    }
 
-   for(head = tail = NIL; fgetline(line, linesize, NIL, &len, fp, 0) != 0;)
+   head = tail = NIL;
+
+   while(fgetline(line, linesize, NIL, &len, fp, FAL0) != NIL)
       if((mtnp = a_mimetype_create(FAL0, orflags, *line, len)) != NIL){
          if(head == NIL)
             head = tail = mtnp;
@@ -307,12 +309,16 @@ a_mimetype__load_file(u32 orflags, char const *file, char **line,
             tail->mtn_next = mtnp;
          tail = mtnp;
       }
-   if(head != NIL){
+
+   if(ferror(fp))
+      cp = NIL;
+   else if(head != NIL){
       tail->mtn_next = a_mimetype_list;
       a_mimetype_list = head;
    }
 
    mx_fs_close(fp);
+
 jleave:
    NYD_OU;
    return (cp != NIL);

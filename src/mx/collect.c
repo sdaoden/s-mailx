@@ -103,7 +103,7 @@ static s32 a_coll_include_file(char const *name, boole indent,
 static s32 a_coll_insert_cmd(FILE *fp, char const *cmd);
 
 /* ~p command */
-static void       print_collf(FILE *collf, struct header *hp);
+static boole a_coll_print(FILE *collf, struct header *hp);
 
 /* Write a file, ex-like if f set */
 static s32 a_coll_write(char const *name, FILE *fp, int f);
@@ -219,19 +219,19 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
    rv = su_ERR_NONE;
    lc = cc = 0;
    mx_fs_linepool_aquire(&linebuf, &linesize);
-   heredb = NULL;
+   heredb = NIL;
    heredl = 0;
 
    /* The -M case is special */
-   if(name == (char*)-1){
+   if(name == R(char*,-1)){
       fbuf = n_stdin;
       name = n_hy;
-   }else if(name[0] == '-' &&
-         (name[1] == '\0' || su_cs_is_space(name[1]))){
+   }else if(name[0] == '-' && (name[1] == '\0' || su_cs_is_space(name[1]))){
       fbuf = n_stdin;
       if(name[1] == '\0'){
          if(!(n_psonce & n_PSO_INTERACTIVE)){
-            n_err(_("~< -: HERE-delimiter required in non-interactive mode\n"));
+            n_err(_("~< -: HERE-delimiter "
+               "required in non-interactive mode\n"));
             rv = su_ERR_INVAL;
             goto jleave;
          }
@@ -274,11 +274,11 @@ jdelim_empty:
 
    if(fbuf != n_stdin)
       cnt = fsize(fbuf);
-   while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NULL : &cnt),
-         &linelen, fbuf, 0) != NULL){
+   while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NIL : &cnt),
+         &linelen, fbuf, FAL0) != NIL){
       if(heredl > 0 && heredl == linelen - 1 &&
             !su_mem_cmp(heredb, linebuf, heredl)){
-         heredb = NULL;
+         heredb = NIL;
          break;
       }
 
@@ -297,15 +297,21 @@ jdelim_empty:
       cc += linelen;
       ++lc;
    }
+   if(ferror(fbuf)){
+      rv = su_ERR_IO;
+      goto jleave;
+   }
+
    if(fflush(_coll_fp)){
       rv = su_err_no();
       goto jleave;
    }
 
-   if(heredb != NULL)
+   if(heredb != NIL)
       rv = su_ERR_NOTOBACCO;
 jleave:
    mx_fs_linepool_release(linebuf, linesize);
+
    if(fbuf != NIL){
       if(fbuf != n_stdin)
          mx_fs_close(fbuf);
@@ -315,7 +321,7 @@ jleave:
 
    if(writestat)
       fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
-         n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : n_empty), lc, cc);
+         n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : su_empty), lc, cc);
    NYD_OU;
    return rv;
 }
@@ -359,49 +365,57 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    return rv;
 }
 
-static void
-print_collf(FILE *cf, struct header *hp)
-{
-   char *lbuf;
+static boole
+a_coll_print(FILE *cf, struct header *hp){
    FILE *obuf;
-   uz cnt, linesize, linelen;
+   char *linebuf;
+   uz linesize, cnt, linelen;
+   boole rv;
    NYD_IN;
+
+   rv = FAL0;
+   mx_fs_linepool_aquire(&linebuf, &linesize);
+
+   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      obuf = n_stdout;
+
+   if(fprintf(obuf, _("-------\nMessage contains:\n")) < 0)
+      goto jleave;
+
+   if(!n_puthead(TRU1, hp, obuf,
+         (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
+          GCOMMA), SEND_TODISP, CONV_NONE, NIL, NIL))
+      goto jleave;
 
    fflush_rewind(cf);
    cnt = S(uz,fsize(cf));
-
-   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("Can't create temporary file for `~p' command"), 0);
+   while(fgetline(&linebuf, &linesize, &cnt, &linelen, cf, TRU1) != NIL)
+      if(prout(linebuf, linelen, obuf) < 0)
+         goto jleave;
+   if(ferror(cf))
       goto jleave;
+
+   if(hp->h_attach != NIL){
+      if(fputs(_("-------\nAttachments:\n"), obuf) == EOF)
+         goto jleave;
+      if(n_attachment_list_print(hp->h_attach, obuf) == -1)
+         goto jleave;
    }
 
-   mx_sigs_all_holdx();
+   if(obuf != n_stdout)
+      page_or_print(obuf, 0);
 
-   fprintf(obuf, _("-------\nMessage contains:\n")); /* XXX112 */
-   n_puthead(TRU1, hp, obuf,
-      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
-       GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
-
-   lbuf = NULL;
-   linesize = 0;
-   while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
-      prout(lbuf, linelen, obuf);
-   if(lbuf != NULL)
-      n_free(lbuf);
-
-   if(hp->h_attach != NULL){
-      fputs(_("-------\nAttachments:\n"), obuf);
-      n_attachment_list_print(hp->h_attach, obuf);
-   }
-
-   mx_sigs_all_rele();
-
-   page_or_print(obuf, 0);
-
-   mx_fs_close(obuf);
+   rv = TRU1;
 jleave:
+   if(obuf != n_stdout)
+      mx_fs_close(obuf);
+   else
+      clearerr(obuf);
+
+   mx_fs_linepool_release(linebuf, linesize);
    NYD_OU;
+   return rv;
 }
 
 static s32
@@ -1814,9 +1828,8 @@ jIi_putesc:
          /* Print current state of the message without altering anything */
          if(cnt != 0)
             goto jearg;
-         print_collf(_coll_fp, hp); /* XXX pstate_err_no ++ */
-         if(ferror(_coll_fp))
-            goto jerr;
+         if(!a_coll_print(_coll_fp, hp) || ferror(_coll_fp))
+            goto jerr; /* XXX pstate_err_no ++ */
          n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;

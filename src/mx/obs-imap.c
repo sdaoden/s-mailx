@@ -3155,22 +3155,18 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    rv = STOP;
    queuefp = NULL;
    twice = FAL0;
-   buf = NULL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if((qname = imap_path_quote(mp, name)) == NULL)
       goto jleave;
 
    if (mp->mb_type == MB_CACHE) {
       queuefp = cache_queue(mp);
-      if (queuefp == NULL) {
-         buf = NULL;
+      if (queuefp == NULL)
          goto jleave;
-      }
       rv = OKAY;
    }
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
 jagain:
    size = xsize;
    cnt = fsize(fp);
@@ -3197,7 +3193,13 @@ jagain:
 
    lines = ysize = 0;
    while (size > 0) {
-      fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
+      if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1) == NIL){
+         if(ferror(fp)){
+            rv = STOP;
+            goto jleave;
+         }
+         break;
+      }
       lines++;
       ysize += buflen;
       buf[buflen - 1] = '\r';
@@ -3240,8 +3242,8 @@ jtrycreate:
 jleave:
    if(queuefp != NIL)
       mx_fs_close(queuefp);
-   if(buf != NIL)
-      n_free(buf);
+
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -3259,15 +3261,14 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
    enum okay rv;
    NYD_IN;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
    time(&tim);
    size = 0;
 
    for (flag = MNEW, state = _NLSEP;;) {
-      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
+      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
       if (bp == NULL ||
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
@@ -3282,8 +3283,13 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
          size = 0;
          flag = MNEW;
          state = _INHEAD;
-         if (bp == NULL)
+         if(bp == NIL){
+            if(ferror(fp)){
+               rv = STOP;
+               goto jleave;
+            }
             break;
+         }
          tim = unixtime(buf);
       } else
          size += buflen+1;
@@ -3328,9 +3334,10 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
          }
       }
    }
+
    rv = OKAY;
 jleave:
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -3887,10 +3894,9 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    enum okay rv = STOP;
    NYD_IN;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
-   if (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) == NULL)
+   if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) == NIL)
       goto jstop;
 
    for (bp = buf; *bp != ' '; ++bp) /* strip old tag */
@@ -3920,8 +3926,8 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
 
    size = xsize;
    ysize = lines = 0;
-   while (size > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) == NULL)
+   while(size > 0){
+      if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) == NIL)
          goto jstop;
       size -= buflen;
       buf[--buflen] = '\0';
@@ -3938,9 +3944,9 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    rv = OKAY;
 
 jstop:
-   n_free(buf);
    if(tp != NIL)
       mx_fs_close(tp);
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -4210,11 +4216,10 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
    enum okay ok = OKAY, rok = OKAY;
    NYD;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
-   while ((offs1 = ftell(fp)) >= 0 &&
-         fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL) {
+   while((offs1 = ftell(fp)) >= 0 &&
+         fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) != NIL){
       for (bp = buf; *bp != ' '; ++bp) /* strip old tag */
          ;
       while (*bp == ' ')
@@ -4305,12 +4310,14 @@ trycreate:
       if (ok == OKAY)
          goto again;
    }
-   fflush(fp);
-   rewind(fp);
+   if(ferror(fp))
+      rok = STOP;
+
+   fflush_rewind(fp);
    ftruncate(fileno(fp), 0);
    if (gotcha)
       imap_close(mp);
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
    return rok;
 }
 

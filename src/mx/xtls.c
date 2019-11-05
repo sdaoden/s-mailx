@@ -2198,7 +2198,7 @@ smime_sign(FILE *ip, char const *addr)
    }
 
    rewind(ip);
-   if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
+   if(!mx_smime_split(ip, &hp, &bp, -1, FAL0))
       goto jleave;
 
    sb = NULL;
@@ -2318,7 +2318,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
 
    rewind(ip);
-   if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
+   if(!mx_smime_split(ip, &hp, &bp, -1, FAL0))
       goto jerr1;
 
    yb = NULL;
@@ -2421,7 +2421,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
       goto jleave;
    }
 
-   if(smime_split(yp, &hp, &bp, size, 1) == STOP)
+   if(!mx_smime_split(yp, &hp, &bp, size, TRU1))
       goto jleave;
 
    if((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
@@ -2463,8 +2463,8 @@ jerr:
    mx_fs_close(bp);
    bp = NIL;
 
-   rv = smime_decrypt_assemble(m, hp, op);
-   hp = op = NIL; /* xxx closed by decrypt_assemble */
+   if((rv = mx_smime_decrypt_assemble(m, hp, op)) == NIL)
+      n_err(_("I/O error while creating decrypted message\n"));
 jleave:
    if(op != NIL)
       mx_fs_close(op);
@@ -2482,6 +2482,7 @@ jleave:
       X509_free(cert);
    if(pkey != NIL)
       EVP_PKEY_free(pkey);
+
    NYD_OU;
    return rv;
 }

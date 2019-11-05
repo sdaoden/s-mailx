@@ -166,14 +166,14 @@ EXPORT void mx_fs_linepool_cleanup(void);
 
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
  * characters.
- * line - line buffer.  *line may be NULL.
+ * line - line buffer.  *line may be NIL.
  * linesize - allocated size of line buffer.
- * count - maximum characters to read.  May be NULL.
- * llen - length_of_line(*line).
+ * count - maximum characters to read.  May be NIL.
+ * llen_or_nil - length_of_line(*line); set to 0 on entry if set.
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.
  * Manages the n_PS_READLINE_NL hack */
-EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen,
+EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen_or_nil,
       FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define fgetline(A,B,C,D,E,F)   \

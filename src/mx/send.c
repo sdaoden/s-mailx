@@ -104,8 +104,8 @@ static void          _send_al7ive_flag_tree(struct mimepart *mpp,
 /* Get a file for an attachment */
 static FILE *        newfile(struct mimepart *ip, boole volatile *ispipe);
 
-static void          pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
-                        struct quoteflt *qf, u64 *stats);
+static boole a_send_pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
+      struct quoteflt *qf, u64 *stats);
 
 /* Output a reasonable looking status field */
 static void          statusput(const struct message *mp, FILE *obuf,
@@ -554,7 +554,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       uz lcnt;
 
       lcnt = cnt;
-      if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0) == NULL)
+      if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, FAL0) == NIL)
          break;
       ++lineno;
       if (linelen == 0 || (cp = *linedat)[0] == '\n')
@@ -675,7 +675,7 @@ jhdrtrunc:
 
    quoteflt_flush(qf);
 
-   if(ferror(obuf)){
+   if(ferror(ibuf) || ferror(obuf)){
       rv = -1;
       goto jleave;
    }
@@ -1217,7 +1217,7 @@ jsend:
    quoteflt_reset(qf, pbuf);
    if((dostat & 4) && pbuf == origobuf) /* TODO */
       n_pstate |= n_PS_BASE64_STRIP_CR;
-   while (!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0)) {
+   while(!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, FAL0)){
 joutln:
       if (_out(*linedat, linelen, pbuf, convert, action, qf, stats, &outrest,
             (action & _TD_EOF ? NULL : &inrest)) < 0 || ferror(pbuf)) {
@@ -1225,6 +1225,8 @@ joutln:
          break;
       }
    }
+   if(ferror(ibuf))
+      rv = -1;
    if(eof <= FAL0 && rv >= 0 && (outrest.l != 0 || inrest.l != 0)){
       linelen = 0;
       if(eof || inrest.l == 0)
@@ -1271,8 +1273,10 @@ jend:
    if(pbuf != qbuf){
       mx_fs_pipe_close(pbuf, !(mthp->mth_flags & mx_MIMETYPE_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
-      if (rv >= 0 && qbuf != NULL && qbuf != obuf)
-         pipecpy(qbuf, obuf, origobuf, qf, stats);
+      if (rv >= 0 && qbuf != NULL && qbuf != obuf){
+         if(!a_send_pipecpy(qbuf, obuf, origobuf, qf, stats))
+            rv = -1;
+      }
    }
 
 #ifdef mx_HAVE_ICONV
@@ -1521,35 +1525,45 @@ jleave:
    return fp;
 }
 
-static void
-pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
-   u64 *stats)
-{
-   char *line;
-   uz linesize, linelen, cnt;
+static boole
+a_send_pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
+      struct quoteflt *qf, u64 *stats){
    sz all_sz, i;
+   uz linesize, linelen, cnt;
+   char *line;
+   boole rv;
    NYD_IN;
 
-   fflush(pipebuf);
-   rewind(pipebuf);
-   cnt = S(uz,fsize(pipebuf));
-   all_sz = 0;
-
+   rv = TRU1;
    mx_fs_linepool_aquire(&line, &linesize);
    quoteflt_reset(qf, outbuf);
-   while(fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NIL){
-      if((i = quoteflt_push(qf, line, linelen)) < 0)
+
+   fflush_rewind(pipebuf);
+   cnt = S(uz,fsize(pipebuf));
+   all_sz = 0;
+   while(fgetline(&line, &linesize, &cnt, &linelen, pipebuf, FAL0) != NIL){
+      if((i = quoteflt_push(qf, line, linelen)) == -1){
+         rv = FAL0;
          break;
+      }
       all_sz += i;
    }
-   if((i = quoteflt_flush(qf)) > 0)
+   if((i = quoteflt_flush(qf)) != -1){
       all_sz += i;
+      if(all_sz > 0 && outbuf == origobuf && stats != NIL)
+         *stats += all_sz;
+   }else
+      rv = FAL0;
+
    mx_fs_linepool_release(line, linesize);
 
-   if(all_sz > 0 && outbuf == origobuf && stats != NIL)
-      *stats += all_sz;
-   mx_fs_close(pipebuf);
+   if(ferror(pipebuf))
+      rv = FAL0;
+   if(!mx_fs_close(pipebuf))
+      rv = FAL0;
+
    NYD_OU;
+   return rv;
 }
 
 static void

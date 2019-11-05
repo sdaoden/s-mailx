@@ -266,6 +266,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       /* Ensure space for terminating LF, so do append it */
       if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
             ) == NIL)){
+         /* TODO We are not prepared for error here */
          if(f & a_HADONE){
             if(f & a_CREATE){
                commit.m_size += self.m_size;

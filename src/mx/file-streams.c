@@ -1043,8 +1043,8 @@ jredo:
 static uz     _length_of_line(char const *line, uz linesize);
 
 /* Read a line, one character at a time */
-static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
-                     FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
+static char *a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil,
+      FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
 
 static uz
 _length_of_line(char const *line, uz linesize)
@@ -1062,7 +1062,7 @@ _length_of_line(char const *line, uz linesize)
 }
 
 static char *
-_fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
+a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
    int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
 {
    char *rv;
@@ -1070,7 +1070,6 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
    NYD2_IN;
 
    ASSERT(*linesize == 0 || *line != NULL);
-   n_pstate &= ~n_PS_READLINE_NL;
 
    /* Always leave room for NETNL, not only \n */
    for (rv = *line;;) {
@@ -1088,7 +1087,7 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
             break;
          }
       } else {
-         if (n > 0) {
+         if (n > 0 && feof(fp)) {
             if (appendnl) {
                rv[n++] = '\n';
                rv[n] = '\0';
@@ -1100,30 +1099,35 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
          }
       }
    }
-   if (llen)
-      *llen = n;
+
+   if(llen_or_nil != NIL)
+      *llen_or_nil = n;
+
 jleave:
    NYD2_OU;
    return rv;
 }
 
 char *
-(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
+(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen_or_nil, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
    uz i_llen, size;
    char *rv;
    NYD2_IN;
 
-   if (cnt == NULL) {
-      /* Without count, we can't determine where the chars returned by fgets()
+   n_pstate &= ~n_PS_READLINE_NL;
+
+   if(llen_or_nil != NIL)
+      *llen_or_nil = 0;
+
+   if(cnt == NIL){
+      /* Without we cannot determine where the chars returned by fgets()
        * end if there's no newline.  We have to read one character by one */
-      rv = _fgetline_byone(line, linesize, llen, fp, appendnl, 0
+      rv = a_fs_fgetline_byone(line, linesize, llen_or_nil, fp, appendnl, 0
             su_DBG_LOC_ARGS_USE);
       goto jleave;
    }
-
-   n_pstate &= ~n_PS_READLINE_NL;
 
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
@@ -1143,7 +1147,17 @@ char *
             su_DBG_LOC_ARGS_ORUSE);
       size = *linesize - i_llen;
       size = (size <= *cnt) ? size : *cnt + 1;
-      if (size <= 1 || fgets(rv + i_llen, size, fp) == NULL) {
+      if (size <= 1) {
+         if (appendnl) {
+            rv[i_llen++] = '\n';
+            rv[i_llen] = '\0';
+         }
+         break;
+      } else if (fgets(rv + i_llen, size, fp) == NULL) {
+         if (!feof(fp)) {
+            rv = NULL;
+            goto jleave;
+         }
          if (appendnl) {
             rv[i_llen++] = '\n';
             rv[i_llen] = '\0';
@@ -1160,8 +1174,8 @@ char *
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
             su_DBG_LOC_ARGS_ORUSE);
 
-   if (llen)
-      *llen = i_llen;
+   if(llen_or_nil != NIL)
+      *llen_or_nil = i_llen;
 jleave:
    NYD2_OU;
    return rv;
@@ -1201,7 +1215,7 @@ jagain:
                break;
             }
          } else {
-            if (size < 0 && su_err_no() == su_ERR_INTR)
+            if (size == -1 && su_err_no() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {
@@ -1219,8 +1233,8 @@ jagain:
       /* Not reading from standard input or standard input not a terminal. We
        * read one char at a time as it is the only way to get lines with
        * embedded NUL characters in standard stdio */
-      if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
-            su_DBG_LOC_ARGS_USE) == NULL)
+      if(a_fs_fgetline_byone(linebuf, linesize, &n, ibuf, 1,
+            n su_DBG_LOC_ARGS_USE) == NIL)
          goto jleave;
    }
    if (n > 0 && (*linebuf)[n - 1] == '\n')

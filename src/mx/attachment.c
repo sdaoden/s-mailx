@@ -134,7 +134,7 @@ a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
 #ifdef mx_HAVE_ICONV
 static boole
 a_attachment_iconv(struct attachment *ap, FILE *ifp){
-   struct str oul = {NULL, 0}, inl = {NULL, 0};
+   struct str oul = {NIL, 0}, inl = {NIL, 0};
    uz cnt, lbsize;
    iconv_t icp;
    FILE *ofp;
@@ -142,18 +142,20 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
 
    hold_sigs(); /* TODO until we have signal manager (see TODO) */
 
-   ofp = NULL;
+   ofp = NIL;
 
    icp = n_iconv_open(ap->a_charset, ap->a_input_charset);
-   if(icp == (iconv_t)-1){
-      if(su_err_no() == su_ERR_INVAL)
+   if(icp == R(iconv_t,-1)){
+      s32 eno;
+
+      if((eno = su_err_no()) == su_ERR_INVAL)
          goto jeconv;
       else
-         n_perr(_("iconv_open"), 0);
+         n_perr(_("iconv_open"), eno);
       goto jerr;
    }
 
-   cnt = (uz)fsize(ifp);
+   cnt = S(uz,fsize(ifp));
 
    if((ofp = mx_fs_tmp_open("atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
@@ -162,14 +164,14 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
    }
 
    for(lbsize = 0;;){
-      if(fgetline(&inl.s, &lbsize, &cnt, &inl.l, ifp, 0) == NULL){
-         if(!cnt)
+      if(fgetline(&inl.s, &lbsize, &cnt, &inl.l, ifp, FAL0) == NIL){
+         if(!cnt || feof(ifp))
             break;
          n_perr(_("I/O read error occurred"), 0);
          goto jerr;
       }
 
-      if(n_iconv_str(icp, n_ICONV_IGN_NOREVERSE, &oul, &inl, NULL) != 0)
+      if(n_iconv_str(icp, n_ICONV_IGN_NOREVERSE, &oul, &inl, NIL) != 0)
          goto jeconv;
       if((inl.l = fwrite(oul.s, sizeof *oul.s, oul.l, ofp)) != oul.l){
          n_perr(_("I/O write error occurred"), 0);
@@ -180,17 +182,18 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
 
    ap->a_tmpf = ofp;
 jleave:
-   if(inl.s != NULL)
-      n_free(inl.s);
-   if(oul.s != NULL)
-      n_free(oul.s);
-   if(icp != (iconv_t)-1)
+   if(inl.s != NIL)
+      su_FREE(inl.s);
+   if(oul.s != NIL)
+      su_FREE(oul.s);
+   if(icp != R(iconv_t,-1))
       n_iconv_close(icp);
+
    mx_fs_close(ifp);
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
    NYD_OU;
-   return (ofp != NULL);
+   return (ofp != NIL);
 
 jeconv:
    n_err(_("Cannot convert from %s to %s\n"),
@@ -198,7 +201,7 @@ jeconv:
 jerr:
    if(ofp != NIL)
       mx_fs_close(ofp);
-   ofp = NULL;
+   ofp = NIL;
    goto jleave;
 }
 #endif /* mx_HAVE_ICONV */
@@ -572,10 +575,12 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
 
    rv = 0;
 
-   for(attno = 1, ap = aplist; ap != NULL; ++rv, ++attno, ap = ap->a_flink){
-      if(ap->a_msgno > 0)
-         fprintf(fp, "#%" PRIu32 ". message/rfc822: %u\n", attno, ap->a_msgno);
-      else{
+   for(attno = 1, ap = aplist; ap != NIL; ++rv, ++attno, ap = ap->a_flink){
+      if(ap->a_msgno > 0){
+         if(fprintf(fp, "#%" PRIu32 ". message/rfc822: %u\n", attno,
+               ap->a_msgno) < 0)
+            goto jerr;
+      }else{
          char const *incs, *oucs;
 
          if(!su_state_has(su_STATE_REPRODUCIBLE)){
@@ -584,32 +589,45 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
          }else
             incs = oucs = su_reproducible_build;
 
-         fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
-            attno, n_shexp_quote_cp(ap->a_name, FAL0),
-            n_shexp_quote_cp(ap->a_path, FAL0),
-            (ap->a_content_type != NULL
-             ? ap->a_content_type : _("unclassified content")));
+         if(fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
+               attno, n_shexp_quote_cp(ap->a_name, FAL0),
+               n_shexp_quote_cp(ap->a_path, FAL0),
+               (ap->a_content_type != NIL
+                ? ap->a_content_type : _("unclassified content"))) < 0)
+            goto jerr;
 
-         if(ap->a_conv == AC_TMPFILE)
+         if(ap->a_conv == AC_TMPFILE){
             /* I18N: input and output character set as given */
-            fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
-               incs, oucs);
-         else if(ap->a_conv == AC_FIX_INCS)
+            if(fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
+                  incs, oucs) < 0)
+               goto jerr;
+         }else if(ap->a_conv == AC_FIX_INCS){
             /* I18N: input character set as given, no conversion to apply */
-            fprintf(fp, _(", incs=%s (no conversion)"), incs);
-         else if(ap->a_conv == AC_DEFAULT){
-            if(incs != NULL)
+            if(fprintf(fp, _(", incs=%s (no conversion)"), incs) < 0)
+               goto jerr;
+         }else if(ap->a_conv == AC_DEFAULT){
+            if(incs != NIL){
                /* I18N: input character set as given, output iterates */
-               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
-            else if(ap->a_content_type == NULL ||
-                  !su_cs_cmp_case_n(ap->a_content_type, "text/", 5))
-               fprintf(fp, _(", default character set handling"));
+               if(fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs) < 0)
+                  goto jerr;
+            }else if(ap->a_content_type == NIL ||
+                  !su_cs_cmp_case_n(ap->a_content_type, "text/", 5)){
+               if(fprintf(fp, _(", default character set handling")) < 0)
+                  goto jerr;
+            }
          }
-         fprintf(fp, "]\n");
+
+         if(putc(']', fp) == EOF || putc('\n', fp) == EOF)
+            goto jerr;
       }
    }
+
+jleave:
    NYD_OU;
    return rv;
+jerr:
+   rv = -1;
+   goto jleave;
 }
 
 #include "su/code-ou.h"

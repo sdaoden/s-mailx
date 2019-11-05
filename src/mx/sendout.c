@@ -171,8 +171,8 @@ static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
-static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
-                        struct mx_name *to, int add_resent);
+static boole a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
+      struct mx_name *to, int add_resent);
 
 static u32
 a_sendout_sendwait_to_swf(void){ /* TODO should happen at var assign time */
@@ -358,8 +358,8 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    NYD2_IN;
 
    rv = su_ERR_INVAL;
-   buf = n_alloc(bufsize = SEND_LINESIZE);
-   outrest.s = inrest.s = NULL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
+   outrest.s = inrest.s = NIL;
    outrest.l = inrest.l = 0;
 
    if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
@@ -378,7 +378,7 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
             || iconvd != (iconv_t)-1
 #endif
       ){
-         if(fgetline(&buf, &bufsize, &cnt, &size, fi, 0) == NULL)
+         if(fgetline(&buf, &bufsize, &cnt, &size, fi, FAL0) == NIL)
             break;
          if(convert != CONV_TOQP && seenempty && is_head(buf, size, FAL0)){
             if(bufsize - 1 >= size + 1){
@@ -405,11 +405,11 @@ joutln:
 
    rv = ferror(fi) ? su_ERR_IO : su_ERR_NONE;
 jleave:
-   if(outrest.s != NULL)
-      n_free(outrest.s);
-   if(inrest.s != NULL)
-      n_free(inrest.s);
-   n_free(buf);
+   if(outrest.s != NIL)
+      su_FREE(outrest.s);
+   if(inrest.s != NIL)
+      su_FREE(inrest.s);
+   mx_fs_linepool_release(buf, bufsize);
 
    NYD2_OU;
    return rv;
@@ -1239,13 +1239,13 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
    uz bufsize, buflen, cnt;
    enum mx_fs_open_state fs;
-   boole rv, emptyline;
    char *buf;
+   boole rv, emptyline;
    NYD_IN;
    UNUSED(resend);
 
-   buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if((fo = mx_fs_open_any(name, "a+", &fs)) == NIL){
       n_perr(name, 0);
@@ -1266,38 +1266,54 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
       }
    }
 
-   fflush_rewind(fp);
+   if(fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime) < 0)
+      goto jleave;
+
    rv = TRU1;
 
-   fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
+   fflush_rewind(fp);
    for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
-         fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL;){
+         fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) != NIL;){
       /* Only if we are resending it can happen that we have to quote From_
        * lines here; we don't generate messages which are ambiguous ourselves.
        * xxx No longer true after (Reintroduce ^From_ MBOXO with
        * xxx *mime-encoding*=8b (too many!)[..]) */
       /*if(resend){*/
-         if(emptyline && is_head(buf, buflen, FAL0))
-            putc('>', fo);
+         if(emptyline && is_head(buf, buflen, FAL0)){
+            if(putc('>', fo) == EOF){
+               rv = FAL0;
+               break;
+            }
+         }
       /*}su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
 
       emptyline = (buflen > 0 && *buf == '\n');
-      fwrite(buf, sizeof *buf, buflen, fo);
+      if(fwrite(buf, sizeof *buf, buflen, fo) != buflen){
+         rv = FAL0;
+         break;
+      }
    }
-   if(buflen > 0 && buf[buflen - 1] != '\n')
-      putc('\n', fo);
-   putc('\n', fo);
-   fflush(fo);
-   if(ferror(fo)){
-      n_perr(name, 0);
+   if(rv){
+      if(buflen > 0 && buf[buflen - 1] != '\n'){
+         if(putc('\n', fo) == EOF)
+            rv = FAL0;
+      }
+      if(rv && (putc('\n', fo) == EOF || fflush(fo)))
+         rv = FAL0;
+   }
+
+   if(!rv){
+      n_perr(name, su_ERR_IO);
       rv = FAL0;
    }
 
 jleave:
    really_rewind(fp);
-   rv = mx_fs_close(fo);
+   if(!mx_fs_close(fo))
+      rv = FAL0;
 j_leave:
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
    return rv;
 }
@@ -1357,6 +1373,10 @@ jewritebcc:
       }
       mx_fs_linepool_release(buf, bufsize);
 
+      if(ferror(input_save)){
+         *senderror = TRU1;
+         goto jleave;
+      }
       fflush_rewind(fp);
    }
 
@@ -1724,6 +1744,8 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
             f &= ~a_LASTNL;
       }
    }
+   if(ferror(sbp->sb_input))
+      goto jefo;
    if((f & (a_ANY | a_LASTNL)) == a_ANY && putc('\n', fp) == EOF)
       goto jeno;
 
@@ -1905,23 +1927,27 @@ jleave:
    return ((m & m_ERROR) == 0);
 }
 
-static int
-infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
-   int add_resent)
+static boole
+a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
+   struct mx_name *to, int add_resent)
 {
-   uz cnt, c, bufsize = 0;
-   char *buf = NULL;
+   uz cnt, c, bufsize;
+   char *buf;
    char const *cp;
    struct mx_name *fromfield = NULL, *senderfield = NULL, *mdn;
-   int rv = 1;
+   boole rv;
    NYD_IN;
 
+   rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = mp->m_size;
 
    /* Write the Resent-Fields */
    if (add_resent) {
-      fputs("Resent-", fo);
-      mkdate(fo, "Date");
+      if(fputs("Resent-", fo) == EOF)
+         goto jleave;
+      if(mkdate(fo, "Date") == -1)
+         goto jleave;
       if ((cp = myaddrs(NULL)) != NULL) {
          if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-From:", fo,
                &fromfield))
@@ -1948,32 +1974,40 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
 
    /* Write the original headers */
    while (cnt > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
+      if(fgetline(&buf, &bufsize, &cnt, &c, fi, FAL0) == NIL){
+         if(ferror(fi))
+            goto jleave;
          break;
+      }
       if (su_cs_cmp_case_n("status:", buf, 7) &&
             su_cs_cmp_case_n("disposition-notification-to:", buf, 28) &&
-            !is_head(buf, c, FAL0))
-         fwrite(buf, sizeof *buf, c, fo);
+            !is_head(buf, c, FAL0)){
+         if(fwrite(buf, sizeof *buf, c, fo) != c)
+            goto jleave;
+      }
       if (cnt > 0 && *buf == '\n')
          break;
    }
 
    /* Write the message body */
-   while (cnt > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
+   while(cnt > 0){
+      if(fgetline(&buf, &bufsize, &cnt, &c, fi, FAL0) == NIL){
+         if(ferror(fi))
+            goto jleave;
          break;
-      if (cnt == 0 && *buf == '\n')
+      }
+      if(cnt == 0 && *buf == '\n')
          break;
-      fwrite(buf, sizeof *buf, c, fo);
+      if(fwrite(buf, sizeof *buf, c, fo) != c)
+         goto jleave;
    }
-   if (buf != NULL)
-      n_free(buf);
-   if (ferror(fo)) {
-      n_perr(_("infix_resend: temporary mail file"), 0);
-      goto jleave;
-   }
-   rv = 0;
+
+   rv = TRU1;
 jleave:
+   mx_fs_linepool_release(buf, bufsize);
+
+   if(!rv)
+      n_err(_("infix_resend: creation of temporary mail file failed\n"));
    NYD_OU;
    return rv;
 }
@@ -2388,6 +2422,9 @@ mkdate(FILE *fo, char const *field)
          tmptr->tm_year + 1900, tmptr->tm_hour,
          tmptr->tm_min, tmptr->tm_sec,
          tzdiff_hour * 100 + tzdiff_min);
+   if(rv < 0)
+      rv = -1;
+
    NYD_OU;
    return rv;
 }
@@ -2884,7 +2921,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
       _sendout_error = -1;
    }
 
-   if(infix_resend(ibuf, nfo, mp, to, add_resent) != 0){
+   if(!a_sendout_infix_resend(ibuf, nfo, mp, to, add_resent)){
 jfail_dead:
       savedeadletter(nfi, TRU1);
       n_err(_("... message not sent\n"));

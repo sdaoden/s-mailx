@@ -954,48 +954,48 @@ a_tty_hist_load(void){
    u8 version;
    uz lsize, cnt, llen;
    char *lbuf, *cp;
-   FILE *f;
-   char const *v;
+   FILE *fp;
+   char const *hfname;
    boole rv;
    NYD_IN;
 
    rv = TRU1;
 
-   if((v = a_tty_hist__query_config()) == NULL ||
+   if((hfname = a_tty_hist__query_config()) == NIL ||
          a_tty.tg_hist_size_max == 0)
       goto jleave;
 
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "r");
-   if(f == NULL){
-      int e;
 
-      e = errno;
+   if((fp = fopen(hfname, "r")) == NIL){
+      s32 eno;
+
+      eno = su_err_no();
       n_err(_("Cannot read *history-file*=%s: %s\n"),
-         n_shexp_quote_cp(v, FAL0), su_err_doc(e));
+         n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
       rv = FAL0;
       goto jrele;
    }
-   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(fp), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
 
    /* Clear old history */
    /* C99 */{
       struct a_tty_hist *thp;
 
-      while((thp = a_tty.tg_hist) != NULL){
+      while((thp = a_tty.tg_hist) != NIL){
          a_tty.tg_hist = thp->th_older;
          su_FREE(thp);
       }
-      a_tty.tg_hist_tail = NULL;
+      a_tty.tg_hist_tail = NIL;
       a_tty.tg_hist_size = 0;
    }
 
    mx_fs_linepool_aquire(&lbuf, &lsize);
 
-   cnt = (uz)fsize(f);
+   cnt = S(uz,fsize(fp));
    version = 0;
 
-   while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
+   while(fgetline(&lbuf, &lsize, &cnt, &llen, fp, FAL0) != NIL){
       cp = lbuf;
       /* Hand-edited history files may have this, probably */
       while(llen > 0 && su_cs_is_space(cp[0])){
@@ -1052,7 +1052,11 @@ a_tty_hist_load(void){
 
    mx_fs_linepool_release(lbuf, lsize);
 
-   fclose(f);
+   if(ferror(fp))
+      n_err(_("I/O error while reading *history-file*=%s\n"),
+         n_shexp_quote_cp(hfname, FAL0));
+   fclose(fp);
+
 jrele:
    mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:

@@ -116,79 +116,106 @@ n_tls_verify_decide(void){
    return rv;
 }
 
-FL enum okay
-smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
-{
-   struct myline {
-      struct myline  *ml_next;
-      uz         ml_len;
-      char           ml_buf[VFIELD_SIZE(0)];
+FL boole
+mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
+   struct myline{
+      struct myline *ml_next;
+      uz ml_len;
+      char ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
-   char *buf;
-   uz bufsize, buflen, cnt;
    int c;
-   enum okay rv = STOP;
+   uz bufsize, buflen, cnt;
+   char *buf;
+   boole rv;
    NYD_IN;
+
+   rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
+   *hp = *bp = NIL;
 
    if((*hp = mx_fs_tmp_open("smimeh", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
-      goto jetmp;
-   if((*bp = mx_fs_tmp_open("smimeb", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      mx_fs_close(*hp);
-jetmp:
-      n_perr(_("tempfile"), 0);
       goto jleave;
-   }
+   if((*bp = mx_fs_tmp_open("smimeb", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      goto jleave;
 
-   head = tail = NULL;
-   buf = n_alloc(bufsize = LINESIZE);
+   head = tail = NIL;
    cnt = (xcount < 0) ? fsize(ip) : xcount;
 
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
-         *buf != '\n') {
-      if (!su_cs_cmp_case_n(buf, "content-", 8)) {
-         if (keep)
-            fputs("X-Encoded-", *hp);
-         for (;;) {
-            struct myline *ml = n_alloc(VSTRUCT_SIZEOF(struct myline, ml_buf
-                  ) + buflen +1);
-            if (tail != NULL)
+   for(;;){
+      if(fgetline(&buf, &bufsize, &cnt, &buflen, ip, FAL0) == NIL){
+         if(ferror(ip))
+            goto jleave;
+         break;
+      }
+      if(*buf == '\n')
+         break;
+
+      if(!su_cs_cmp_case_n(buf, "content-", 8)){
+         if(keep && fputs("X-Encoded-", *hp) == EOF)
+            goto jleave;
+         for(;;){
+            struct myline *ml;
+
+            ml = n_lofi_alloc(VSTRUCT_SIZEOF(struct myline, ml_buf) +
+                  buflen +1);
+            if(tail != NIL)
                tail->ml_next = ml;
             else
                head = ml;
             tail = ml;
-            ml->ml_next = NULL;
+            ml->ml_next = NIL;
             ml->ml_len = buflen;
             su_mem_copy(ml->ml_buf, buf, buflen +1);
-            if (keep)
-               fwrite(buf, sizeof *buf, buflen, *hp);
-            c = getc(ip);
-            ungetc(c, ip);
-            if (!su_cs_is_blank(c))
+            if(keep && fwrite(buf, sizeof *buf, buflen, *hp) != buflen)
+               goto jleave;
+            if((c = getc(ip)) == EOF || ungetc(c, ip) == EOF)
+               goto jleave;
+            if(!su_cs_is_blank(c))
                break;
-            fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0);
+            if(fgetline(&buf, &bufsize, &cnt, &buflen, ip, FAL0) == NIL &&
+                  ferror(ip))
+               goto jleave;
          }
          continue;
       }
-      fwrite(buf, sizeof *buf, buflen, *hp);
+
+      if(fwrite(buf, sizeof *buf, buflen, *hp) != buflen)
+         goto jleave;
    }
    fflush_rewind(*hp);
 
-   while (head != NULL) {
-      fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp);
+   while(head != NIL){
+      if(fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp
+            ) != head->ml_len)
+         goto jleave;
       tail = head;
       head = head->ml_next;
-      n_free(tail);
+      n_lofi_free(tail);
    }
-   putc('\n', *bp);
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
-      fwrite(buf, sizeof *buf, buflen, *bp);
-   fflush_rewind(*bp);
 
-   n_free(buf);
+   if(putc('\n', *bp) == EOF)
+      goto jleave;
+   while(fgetline(&buf, &bufsize, &cnt, &buflen, ip, FAL0) != NIL){
+      if(fwrite(buf, sizeof *buf, buflen, *bp) != buflen)
+         goto jleave;
+   }
+   fflush_rewind(*bp);
+   if(ferror(ip))
+      goto jleave;
+
    rv = OKAY;
 jleave:
+   if(!rv){
+      if(*bp != NIL)
+         mx_fs_close(*bp);
+      if(*hp != NIL)
+         mx_fs_close(*hp);
+   }
+
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
    return rv;
 }
@@ -303,82 +330,98 @@ jleave:
 }
 
 FL struct message *
-smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
-{
-   u32 lastnl = 0;
-   int binary = 0;
-   char *buf = NULL;
-   uz bufsize = 0, buflen, cnt;
-   long lns = 0, octets = 0;
-   struct message *x;
+mx_smime_decrypt_assemble(struct message *mp, FILE *hp, FILE *bp){
+   boole binary, lastnl;
+   long lns, octets;
    off_t offset;
+   uz bufsize, buflen, cnt;
+   char *buf;
+   struct message *xmp;
    NYD_IN;
 
-   x = n_autorec_alloc(sizeof *x);
-   *x = *m;
+   xmp = NIL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
+
    fflush(mb.mb_otf);
    fseek(mb.mb_otf, 0L, SEEK_END);
    offset = ftell(mb.mb_otf);
+   lns = octets = 0;
+   binary = FAL0;
 
    cnt = fsize(hp);
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, hp, 0) != NULL) {
+   while(fgetline(&buf, &bufsize, &cnt, &buflen, hp, FAL0) != NIL){
       char const *cp;
-      if (buf[0] == '\n')
+
+      if(buf[0] == '\n')
          break;
-      if ((cp = n_header_get_field(buf, "content-transfer-encoding", su_NIL)
-            ) != NULL)
-         if (!su_cs_cmp_case_n(cp, "binary", 7))
-            binary = 1;
-      fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
+      if((cp = n_header_get_field(buf, "content-transfer-encoding", NIL)
+            ) != NIL)
+         if(!su_cs_cmp_case_n(cp, "binary", 7))
+            binary = TRU1;
+      if(fwrite(buf, sizeof *buf, buflen, mb.mb_otf) != buflen)
+         goto jleave;
       octets += buflen;
       ++lns;
    }
+   if(ferror(hp))
+      goto jleave;
 
-   {  struct time_current save = time_current;
+   /* C99 */{
+      struct time_current save;
+      int w;
+
+      save = time_current;
       time_current_update(&time_current, TRU1);
-      octets += mkdate(mb.mb_otf, "X-Decoding-Date");
+      if((w = mkdate(mb.mb_otf, "X-Decoding-Date")) == -1)
+         goto jleave;
+      octets += w;
       time_current = save;
    }
    ++lns;
 
    cnt = fsize(bp);
-   while (fgetline(&buf, &bufsize, &cnt, &buflen, bp, 0) != NULL) {
+   lastnl = FAL0;
+   while(fgetline(&buf, &bufsize, &cnt, &buflen, bp, FAL0) != NIL){
       lns++;
-      if (!binary && buf[buflen - 1] == '\n' && buf[buflen - 2] == '\r')
+      if(!binary && buf[buflen - 1] == '\n' && buf[buflen - 2] == '\r')
          buf[--buflen - 1] = '\n';
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
       octets += buflen;
-      if (buf[0] == '\n')
-         ++lastnl;
-      else if (buf[buflen - 1] == '\n')
-         lastnl = 1;
+      if(buf[0] == '\n')
+         lastnl = lastnl ? TRUM1 : TRU1;
       else
-         lastnl = 0;
+         lastnl = (buf[buflen - 1] == '\n');
    }
+   if(ferror(bp))
+      goto jleave;
 
-   while (!binary && lastnl < 2) {
-      putc('\n', mb.mb_otf);
-      ++lns;
-      ++octets;
-      ++lastnl;
+   if(!binary && lastnl != TRUM1){
+      for(;;){
+         if(putc('\n', mb.mb_otf) == EOF)
+            goto jleave;
+         ++lns;
+         ++octets;
+         if(lastnl)
+            break;
+         lastnl = TRU1;
+      }
    }
-
-   mx_fs_close(hp);
-   mx_fs_close(bp);
-   n_free(buf);
 
    fflush(mb.mb_otf);
-   if (ferror(mb.mb_otf)) {
-      n_perr(_("decrypted output data"), 0);
-      x = NULL;
-   }else{
-      x->m_size = x->m_xsize = octets;
-      x->m_lines = x->m_xlines = lns;
-      x->m_block = mailx_blockof(offset);
-      x->m_offset = mailx_offsetof(offset);
+   if(!ferror(mb.mb_otf)){
+      xmp = n_autorec_alloc(sizeof *xmp);
+      *xmp = *mp;
+      xmp->m_size = xmp->m_xsize = octets;
+      xmp->m_lines = xmp->m_xlines = lns;
+      xmp->m_block = mailx_blockof(offset);
+      xmp->m_offset = mailx_offsetof(offset);
    }
+
+jleave:
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
-   return x;
+   return xmp;
 }
 
 FL int

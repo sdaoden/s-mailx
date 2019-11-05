@@ -261,7 +261,7 @@ FL struct attachment *n_attachment_find(struct attachment *aplist,
 FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
                         enum n_go_input_flags gif);
 
-/* Print all attachments to fp, return number of lines written, -1 on error */
+/* Print all attachments, return number of lines written, -1 on error */
 FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
 
 /*
@@ -1376,8 +1376,9 @@ FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because
- * numeric timezones are easier to read and because $TZ isn't always set */
-FL int         mkdate(FILE *fo, char const *field);
+ * numeric timezones are easier to read and because $TZ isn't always set.
+ * Return number of bytes written of -1 */
+FL int mkdate(FILE *fo, char const *field);
 
 /* Dump the to, subject, cc header on the passed file buffer.
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
@@ -1730,8 +1731,8 @@ FL void n_tls_set_verify_level(struct mx_url const *urlp);
 FL boole n_tls_verify_decide(void);
 
 /*  */
-FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
-                  int keep);
+FL boole mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
+      boole keep);
 
 /* */
 FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
@@ -1740,9 +1741,9 @@ FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
 /*  */
 FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
 
-/*  */
-FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
-                     FILE *bp);
+/* hp and bp are NOT closed */
+FL struct message *mx_smime_decrypt_assemble(struct message *mp, FILE *hp,
+      FILE *bp);
 
 /* `certsave' */
 FL int c_certsave(void *vp);

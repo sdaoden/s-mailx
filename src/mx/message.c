@@ -1469,19 +1469,23 @@ message_match(struct message *mp, struct search_expr const *sep,
             mx_FS_O_REGISTER), NIL)) == NIL)
       goto j_leave;
 
+   mx_fs_linepool_aquire(&line, &linesize);
+
    if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
       goto jleave;
    fflush_rewind(fp);
    cnt = fsize(fp);
 
-   mx_fs_linepool_aquire(&line, &linesize);
-
-   if(!with_headers)
-      while(fgetline(&line, &linesize, &cnt, NULL, fp, 0))
+   if(!with_headers){
+      for(;;){
+         if(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) == NIL)
+            goto jleave;
          if(*line == '\n')
             break;
+      }
+   }
 
-   while(fgetline(&line, &linesize, &cnt, NULL, fp, 0)){
+   while(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) != NIL){
 #ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL){
          if(regexec(sep->ss_bodyre, line, 0,NULL, 0) == REG_NOMATCH)
@@ -1493,10 +1497,12 @@ message_match(struct message *mp, struct search_expr const *sep,
       rv = TRU1;
       break;
    }
-
-   mx_fs_linepool_release(line, linesize);
+   if(ferror(fp))
+      rv = FAL0; /* XXX This does not stop overall searching though?! */
 
 jleave:
+   mx_fs_linepool_release(line, linesize);
+
    mx_fs_close(fp);
 j_leave:
    NYD_OU;
