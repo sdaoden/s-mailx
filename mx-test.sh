@@ -519,6 +519,7 @@ jsync() {
          { read pid; read desc; } < t.${i}.id
          desc=${desc#${desc%%[! ]*}}
          desc=${desc%${desc##*[! ]}}
+         [ -s t.${i}.io ] && printf >&2 '\n'
          printf >&2 '%s!! Timeout: reaped job %s [%s]%s\n' \
             "${COLOR_ERR_ON}" ${i} "${desc}" "${COLOR_ERR_OFF}"
          TESTS_FAILED=`add ${TESTS_FAILED} 1`
