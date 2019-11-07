@@ -4453,11 +4453,8 @@ jlist:{
       goto jleave;
 
    if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("tmpfile"), 0);
-      vp = NIL;
-      goto jleave;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    no = a_tty.tg_hist_size;
    l = b = 0;
@@ -4484,8 +4481,12 @@ jlist:{
       fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
    }
 
-   page_or_print(fp, l);
-   mx_fs_close(fp);
+   if(fp != n_stdout){
+      page_or_print(fp, l);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
    }
    goto jleave;
 
@@ -4581,11 +4582,8 @@ c_bind(void *v){
       FILE *fp;
 
       if((fp = mx_fs_tmp_open("bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("tmpfile"), 0);
-         v = NULL;
-         goto jleave;
-      }
+               mx_FS_O_REGISTER), NIL)) == NIL)
+         fp = n_stdout;
 
       lns = 0;
       for(;;){
@@ -4656,9 +4654,13 @@ c_bind(void *v){
          if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
             break;
       }
-      page_or_print(fp, lns);
 
-      mx_fs_close(fp);
+      if(fp != n_stdout){
+         page_or_print(fp, lns);
+
+         mx_fs_close(fp);
+      }else
+         clearerr(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
       struct mx_cmd_arg *cap;

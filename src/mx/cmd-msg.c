@@ -194,9 +194,13 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
          mx_colour_env_gut();
    )
+
 jleave:
-   if (obuf != n_stdout)
+   if(obuf != n_stdout)
       mx_pager_close(obuf);
+   else
+      clearerr(obuf);
+
    NYD_OU;
    return rv;
 }
@@ -250,11 +254,8 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       goto jleave;
    }
    if((pbuf = mx_fs_tmp_open("toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`top': temporary pager file"), 0);
-      vp = NIL;
-      goto jleave1;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      pbuf = n_stdout;
 
    /* TODO In v15 we should query the m_message object, and directly send only
     * TODO those parts, optionally over empty-line-squeeze and quote-strip
@@ -402,15 +403,18 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_string_gut(&s);
    mx_COLOUR( mx_colour_env_gut(); )
 
-   fflush(pbuf);
-   page_or_print(pbuf, plines);
+   if(pbuf != n_stdout){
+      page_or_print(pbuf, plines);
 
-   mx_fs_close(pbuf);
-jleave1:
+      mx_fs_close(pbuf);
+   }else
+      clearerr(pbuf);
+
    mx_fs_close(iobuf);
+
 jleave:
    NYD2_OU;
-   return (vp != NULL);
+   return (vp != NIL);
 }
 
 static int

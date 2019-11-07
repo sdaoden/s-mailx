@@ -655,10 +655,8 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
    rv = FAL0;
 
    if((fp = mx_fs_tmp_open("deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`define' or `account' list: cannot create temporary file"), 0);
-      goto jleave;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    amf &= a_AMV_MF_TYPE_MASK;
    typestr = (amf & a_AMV_MF_ACCOUNT) ? "account" : "define";
@@ -687,12 +685,18 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
          }
       }
    }
-   if(mc > 0)
-      page_or_print(fp, lc);
 
-   rv = (ferror(fp) == 0);
-   mx_fs_close(fp);
-jleave:
+   if(fp != n_stdout){
+      if(mc > 0)
+         page_or_print(fp, lc);
+
+      rv = (ferror(fp) == 0);
+      mx_fs_close(fp);
+   }else{
+      clearerr(fp);
+      rv = TRU1;
+   }
+
    NYD2_OU;
    return rv;
 }
@@ -2341,10 +2345,8 @@ a_amv_var_show_all(void){
    NYD2_IN;
 
    if((fp = mx_fs_tmp_open("setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`set' list: cannot create temporary file"), 0);
-      goto jleave;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    /* We need to instantiate first-time-inits and default values here, so that
     * they will be regular members of our _vars[] table */
@@ -2375,9 +2377,13 @@ a_amv_var_show_all(void){
       i += a_amv_var_show(*cap, fp, msgp);
    n_string_gut(&msg);
 
-   page_or_print(fp, i);
-   mx_fs_close(fp);
-jleave:
+   if(fp != n_stdout){
+      page_or_print(fp, i);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
+
    NYD2_OU;
 }
 

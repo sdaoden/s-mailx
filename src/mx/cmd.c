@@ -276,8 +276,10 @@ a_cmd_c_list(void *vp){
 
    if(fp != n_stdout){
       page_or_print(fp, l);
+
       mx_fs_close(fp);
-   }
+   }else
+      clearerr(fp);
 
    NYD_OU;
    return n_EXIT_OK;

@@ -1146,18 +1146,19 @@ jlist:{
       }
 
       if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         fprintf(n_stderr, _("tmpfile"));
-         v = NIL;
-         goto jleave;
-      }
+               mx_FS_O_REGISTER), NIL)) == NIL)
+         fp = n_stdout;
 
       for(i = 0, enp = a_aux_err_head; enp != NIL; enp = enp->ae_next)
          fprintf(fp, "%4" PRIuZ "/%-3u %s\n",
             ++i, enp->ae_cnt, n_string_cp(&enp->ae_str));
 
-      page_or_print(fp, 0);
-      mx_fs_close(fp);
+      if(fp != n_stdout){
+         page_or_print(fp, 0);
+
+         mx_fs_close(fp);
+      }else
+         clearerr(fp);
    }
    /* FALLTHRU */
 
@@ -1356,8 +1357,10 @@ jputnl:
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
+
       mx_fs_close(fp);
-   }
+   }else
+      clearerr(fp);
 
    NYD_OU;
    return rv;

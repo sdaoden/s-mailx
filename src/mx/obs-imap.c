@@ -3529,10 +3529,11 @@ imap_folders(const char * volatile name, int strip)
 {
    n_sighdl_t saveint, savepipe;
    const char * volatile fold, *cp, *xsp;
-   FILE * volatile fp;
    int volatile rv = 1;
+   FILE * volatile fp;
    NYD_IN;
 
+   fp = n_stdout;
    cp = protbase(name);
    xsp = mb.mb_imap_account;
    if (xsp == NULL || su_cs_cmp(cp, xsp)) {
@@ -3545,14 +3546,9 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if(n_psonce & n_PSO_TTYOUT){
-      if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("tmpfile"), 0);
-         goto jleave;
-      }
-   } else
-      fp = stdout;
+   if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -3570,30 +3566,21 @@ imap_folders(const char * volatile name, int strip)
 
    imaplock = 0;
    if (interrupts) {
-      if(n_psonce & n_PSO_TTYOUT)
-         mx_fs_close(fp);
       rv = 0;
       goto jleave;
    }
-   fflush(fp);
 
-   if (n_psonce & n_PSO_TTYOUT) {
-      rewind(fp);
-      if (fsize(fp) > 0){
-         page_or_print(fp, 0);
-         rv = 0;
-      }else
-         n_err(_("Folder not found\n"));
-   }else
-      rv = 0;
+   if(fp != n_stdout)
+      page_or_print(fp, 0);
 
+   rv = 0;
 junroll:
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
-   if(n_psonce & n_PSO_TTYOUT)
+jleave:
+   if(fp != n_stdout)
       mx_fs_close(fp);
 
-jleave:
    NYD_OU;
    if (interrupts)
       n_go_onintr_for_imap();

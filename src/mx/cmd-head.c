@@ -1085,8 +1085,11 @@ c_from(void *vp)
    n_autorec_relax_gut();
    mx_COLOUR( mx_colour_env_gut(); )
 
-   if (obuf != n_stdout)
+   if(obuf != n_stdout)
       mx_pager_close(obuf);
+   else
+      clearerr(obuf);
+
 jleave:
    NYD_OU;
    return 0;

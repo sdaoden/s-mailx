@@ -517,11 +517,8 @@ jlist:{
       goto jleave;
 
    if((fp = mx_fs_tmp_open("netrc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-         mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("tmpfile"), 0);
-      vp = NIL;
-      goto jleave;
-   }
+         mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    for(l = 0, nrc = a_netrc_cache; nrc != NIL; ++l, nrc = nrc->nrc_next){
       fprintf(fp, "machine %s ", nrc->nrc_dat); /* XXX quote? */
@@ -536,8 +533,12 @@ jlist:{
          putc('\n', fp);
    }
 
-   page_or_print(fp, l);
-   mx_fs_close(fp);
+   if(fp != n_stdout){
+      page_or_print(fp, l);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
    }
    goto jleave;
 }

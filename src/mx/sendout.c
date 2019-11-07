@@ -1127,18 +1127,22 @@ jefile:
 
          if(fout != n_stdout)
             mx_fs_close(fout);
+         else
+            clearerr(fout);
       }
    }
 
 jleave:
    if(fp != NIL)
       mx_fs_close(fp);
+
    if(fppa != NIL){
       for(i = 0; i < pipecnt; ++i)
          if((fp = fppa[i]) != NIL)
             mx_fs_close(fp);
       n_lofi_free(fppa);
    }
+
    NYD_OU;
    return names;
 
@@ -1701,13 +1705,13 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
       a_ANY = 1u<<2,
       a_LASTNL = 1u<<3
    };
-   uz cnt, bufsize, llen;
    FILE *fp;
    s32 f;
+   uz bufsize, cnt, llen;
    char *buf;
    NYD_IN;
 
-   buf = NIL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if(*mta == '\0')
       fp = n_stdout;
@@ -1726,7 +1730,6 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
 
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
-   bufsize = 0;
    f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
 
    if((f & a_MAFC) &&
@@ -1750,14 +1753,14 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
       goto jeno;
 
 jdone:
-   if(buf != NULL)
-      n_free(buf);
-
    if(fp != n_stdout)
       mx_fs_close(fp);
    else
       clearerr(fp);
+
 jleave:
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
    return ((f & a_ERR) == 0);
 
