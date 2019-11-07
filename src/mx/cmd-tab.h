@@ -509,6 +509,14 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "move", &c_move, (A | M | EM | TARG), 0, 0,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_move)
      DS(N_("Like `copy', but mark messages for deletion")) },
+   { "mtaaliases",
+#ifdef mx_HAVE_MTA_ALIASES
+      &c_mtaaliases,
+#else
+      NIL,
+#endif
+      (M | TWYSH), 0, 1, NIL
+      DS(N_("[<show>], <load> or <clear> the *mta-aliases* cache")) },
 { "Mv", &c_Move, (O | A | M | SC | TARG), 0, 0,
  mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move)
  DS(N_("Like `move', but derive filename from first sender")) },

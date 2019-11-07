@@ -39,8 +39,8 @@ enum mx_name_flags{
          mx_NAME_ADDRSPEC_ISPIPE,
    mx_NAME_ADDRSPEC_ISNAME = 1u<<5, /* ..is an alias name */
    mx_NAME_ADDRSPEC_ISADDR = 1u<<6, /* ..is a mail network address.. */
-   mx_NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
    mx_NAME_ADDRSPEC_ISMASK = su_BITENUM_MASK(3,6),
+   mx_NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ISADDR: without domain name */
 
    /* Bits not values for easy & testing */
    mx_NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NIL) */

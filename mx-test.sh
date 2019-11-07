@@ -6637,6 +6637,7 @@ t_mta_aliases() {
    echo and, once again, check that cache is updated
    # Enclose one pipe in quotes: immense stress for our stupid address parser:(
    !echo "a10:./.tf1,|%s>./.tp1,\\"|%s > ./.tp2\\",./.tf2" >> ./.tali
+   mtaaliases load
    mail a1
 !c a2
 !:echo $?/$^ERRNAME

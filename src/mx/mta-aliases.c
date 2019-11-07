@@ -34,27 +34,45 @@ su_EMPTY_FILE()
 #include <su/cs-dict.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
+#include "mx/termios.h"
 
 #include "mx/mta-aliases.h"
 #include "su/code-in.h"
 
+enum a_mtaali_type{
+   a_MTAALI_T_NAME,
+   a_MTAALI_T_ADDR,
+   a_MTAALI_T_FILE,
+   a_MTAALI_T_PIPE
+};
+
 struct a_mtaali_g{
    char *mag_path; /* MTA alias file path, expanded (and init switch) */
-   s64 mag_mtime; /* Modification time once last read in */
-   s64 mag_size; /* Ditto, file size */
-   /* We store n_strlist values which are set to "name + NUL + boole",
-    * where the boole indicates whether name is a NAME (needs recursion) */
+   struct a_mtaali_alias *mag_aliases; /* In parse order */
+   /* We store n_strlist values which are set to "name + NUL + ENUM",
+    * where ENUM is enum a_mtaali_type (NAME needs recursion).
+    * The first entry also has memory to store the mtaali_alias */
    struct su_cs_dict mag_dict;
+};
+#define a_MTAALI_G_ERR R(char*,-1) /* .mag_path */
+
+struct a_mtaali_alias{
+   struct a_mtaali_alias *maa_next;
+   char const *maa_key;
+   /* Values are set to "name + NUL + ENUM", where ENUM is enum a_mtaali_type
+    * (NAME needs recursion).
+    * The first entry also provides memory to store the mtaali_alias */
+   struct n_strlist *maa_values;
 };
 
 struct a_mtaali_stack{
-   struct a_mtaali_g *mas_entry;
+   char const *mas_path_usr; /* Unexpanded version */
    char const *mas_path;
-   char const *mas_user;
+   struct a_mtaali_alias *mas_aliases;
    struct su_cs_dict mas_dict;
-   struct stat mas_sb;
 };
 
 struct a_mtaali_query{
@@ -68,25 +86,27 @@ static struct a_mtaali_g a_mtaali_g; /* XXX debug atexit */
 
 static void a_mtaali_gut_csd(struct su_cs_dict *csdp);
 
-static s32 a_mtaali_cache_check(char const *usrfile);
-static s32 a_mtaali_read_file(struct a_mtaali_stack *masp);
+static s32 a_mtaali_cache_init(char const *usrfile);
+static s32 a_mtaali__read_file(struct a_mtaali_stack *masp);
 
 static void a_mtaali_expand(uz lvl, char const *name,
       struct a_mtaali_query *maqp);
 
 static void
 a_mtaali_gut_csd(struct su_cs_dict *csdp){
-   struct n_strlist *slp, *tmp;
    struct su_cs_dict_view csdv;
    NYD2_IN;
 
-   su_cs_dict_view_setup(&csdv, csdp);
+   su_CS_DICT_FOREACH(csdp, &csdv){
+      union {void *v; struct a_mtaali_alias *maa; struct n_strlist *sl;} p;
 
-   su_CS_DICT_VIEW_FOREACH(&csdv){
-      for(slp = S(struct n_strlist*,su_cs_dict_view_data(&csdv));
-            slp != NIL;){
-         tmp = slp;
-         slp = slp->sl_next;
+      p.v = su_cs_dict_view_data(&csdv);
+
+      for(p.sl = p.maa->maa_values; p.sl != NIL;){
+         struct n_strlist *tmp;
+
+         tmp = p.sl;
+         p.sl = p.sl->sl_next;
          su_FREE(tmp);
       }
    }
@@ -96,48 +116,53 @@ a_mtaali_gut_csd(struct su_cs_dict *csdp){
 }
 
 static s32
-a_mtaali_cache_check(char const *usrfile){
+a_mtaali_cache_init(char const *usrfile){
    struct a_mtaali_stack mas;
    s32 rv;
    NYD_IN;
 
    if((mas.mas_path =
-         fexpand(mas.mas_user = usrfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+         fexpand(mas.mas_path_usr = usrfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
             FEXP_NSHELL))) == NIL){
       rv = su_ERR_NOENT;
       goto jerr;
-   }else if(stat(mas.mas_path, &mas.mas_sb) == -1){
-      rv = su_err_no();
-jerr:
-      n_err(_("*mta_aliases*: %s: %s\n"),
-         n_shexp_quote_cp(mas.mas_user, FAL0), su_err_doc(rv));
    }else if(a_mtaali_g.mag_path == NIL ||
-         su_cs_cmp(mas.mas_path, a_mtaali_g.mag_path) ||
-         a_mtaali_g.mag_mtime < mas.mas_sb.st_mtime ||
-         a_mtaali_g.mag_size != mas.mas_sb.st_size){
-      if((rv = a_mtaali_read_file(&mas)) == su_ERR_NONE){
-         if(a_mtaali_g.mag_path == NIL)
-            su_cs_dict_create(&a_mtaali_g.mag_dict,
-               (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE), NIL);
-         else
-            su_FREE(a_mtaali_g.mag_path);
+         a_mtaali_g.mag_path == a_MTAALI_G_ERR ||
+         su_cs_cmp(mas.mas_path, a_mtaali_g.mag_path)){
+      if((rv = a_mtaali__read_file(&mas)) != su_ERR_NONE)
+         goto jerr_nolog;
 
-         a_mtaali_g.mag_path = su_cs_dup(mas.mas_path, 0);
-         a_mtaali_g.mag_mtime = S(s64,mas.mas_sb.st_mtime);
-         a_mtaali_g.mag_size = S(s64,mas.mas_sb.st_size);
-         su_cs_dict_swap(&a_mtaali_g.mag_dict, &mas.mas_dict);
-         a_mtaali_gut_csd(&mas.mas_dict);
+      if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
+         su_FREE(a_mtaali_g.mag_path);
+         a_mtaali_gut_csd(&a_mtaali_g.mag_dict);
       }
+      a_mtaali_g.mag_path = su_cs_dup(mas.mas_path, 0);
+      a_mtaali_g.mag_aliases = mas.mas_aliases;
+      a_mtaali_g.mag_dict = mas.mas_dict;
    }else
       rv = su_ERR_NONE;
 
+jleave:
    NYD_OU;
    return rv;
+
+jerr:
+   n_err(_("*mta_aliases*: %s: %s\n"),
+      n_shexp_quote_cp(mas.mas_path_usr, FAL0), su_err_doc(rv));
+jerr_nolog:
+   if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
+      a_mtaali_gut_csd(&mas.mas_dict);
+      su_FREE(a_mtaali_g.mag_path);
+   }
+   a_mtaali_g.mag_path = a_MTAALI_G_ERR;
+   goto jleave;
 }
 
 static s32
-a_mtaali_read_file(struct a_mtaali_stack *masp){
+a_mtaali__read_file(struct a_mtaali_stack *masp){
    struct str line, l;
+   struct su_cs_dict_view csdv;
+   struct a_mtaali_alias **maapp, *maap;
    struct n_string ns, *nsp;
    struct su_cs_dict *dp;
    s32 rv;
@@ -147,17 +172,21 @@ a_mtaali_read_file(struct a_mtaali_stack *masp){
    if((afp = mx_fs_open(masp->mas_path, "r")) == NIL){
       rv = su_err_no();
       n_err(_("*mta-aliases*: cannot open %s: %s\n"),
-         n_shexp_quote_cp(masp->mas_user, FAL0), su_err_doc(rv));
+         n_shexp_quote_cp(masp->mas_path_usr, FAL0), su_err_doc(rv));
       goto jleave;
    }
 
    dp = su_cs_dict_create(&masp->mas_dict,
          (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE), NIL);
+   su_cs_dict_view_setup(&csdv, dp);
    nsp = n_string_creat_auto(&ns);
    nsp = n_string_book(nsp, 512);
 
    /* Read in the database */
-   su_mem_set(&line, 0, sizeof line);
+   mx_fs_linepool_aquire(&line.s, &line.l);
+
+   masp->mas_aliases = NIL;
+   maapp = &masp->mas_aliases;
 
    while((rv = readline_restart(afp, &line.s, &line.l, 0)) >= 0){
       /* :: According to Postfix aliases(5) */
@@ -233,7 +262,7 @@ jename:
             goto jparse_err;
          }else{
             /* Seems to be a usable name.  Parse data off */
-            struct n_strlist *head, **tailp;
+            struct n_strlist **tailp;
             struct mx_name *nphead,*np;
 
             nphead = lextract(l2.s = &nsp->s_dat[l2.l + 1], GTO | GFULL |
@@ -243,7 +272,7 @@ jename:
 jeval:
                n_err(_("*mta_aliases*: %s: ignoring empty/unsupported value: "
                      "%s: %s\n"),
-                  n_shexp_quote_cp(masp->mas_user, FAL0),
+                  n_shexp_quote_cp(masp->mas_path_usr, FAL0),
                   n_shexp_quote_cp(nsp->s_dat, FAL0),
                   n_shexp_quote_cp(l2.s, FAL0));
                continue;
@@ -255,26 +284,47 @@ jeval:
                      su_cs_starts_with(np->n_name, ":include:"))
                   goto jeval;
 
-            for(head = NIL, tailp = &head, np = nphead;
-                  np != NIL; np = np->n_flink){
+            UNINIT(tailp, NIL);
+            for(maap = NIL, np = nphead; np != NIL; np = np->n_flink){
                struct n_strlist *slp;
+               uz i;
 
-               l2.l = su_cs_len(np->n_fullname) +1;
-               slp = n_STRLIST_ALLOC(l2.l + 1);
+               i = su_cs_len(np->n_fullname) +1;
+               slp = n_STRLIST_ALLOC(i + 1 +
+                     (maap == NIL ? 2*Z_ALIGN_OVER(ALIGNOF(*maap)) : 0));
+
+               if(maap == NIL){
+                  maap = P_ALIGN(struct a_mtaali_alias*, maap,
+                        &slp->sl_dat[i +1 + 1]);
+                  maap->maa_next = NIL;
+                  tailp = &maap->maa_values;
+                  *maapp = maap;
+                  maapp = &maap->maa_next;
+               }
+
                *tailp = slp;
                slp->sl_next = NIL;
                tailp = &slp->sl_next;
-               slp->sl_len = l2.l -1;
-               su_mem_copy(slp->sl_dat, np->n_fullname, l2.l);
-               slp->sl_dat[l2.l] = ((np->n_flags & mx_NAME_ADDRSPEC_ISNAME
-                     ) != 0);
+               slp->sl_len = i -1;
+               su_mem_copy(slp->sl_dat, np->n_fullname, i);
+
+               switch(np->n_flags & mx_NAME_ADDRSPEC_ISMASK){
+               case mx_NAME_ADDRSPEC_ISFILE: c = a_MTAALI_T_FILE; break;
+               case mx_NAME_ADDRSPEC_ISPIPE: c = a_MTAALI_T_PIPE; break;
+               case mx_NAME_ADDRSPEC_ISNAME: c = a_MTAALI_T_NAME; break;
+               default:
+               case mx_NAME_ADDRSPEC_ISADDR: c = a_MTAALI_T_ADDR; break;
+               }
+               slp->sl_dat[i] = c;
             }
 
-            if((rv = su_cs_dict_insert(dp, nsp->s_dat, head)) != su_ERR_NONE){
+            if((rv = su_cs_dict_view_reset_insert(&csdv, nsp->s_dat, maap)
+                  ) != su_ERR_NONE){
                n_err(_("*mta_aliases*: failed to create storage: %s\n"),
                   su_err_doc(rv));
                goto jdone;
             }
+            maap->maa_key = su_cs_dict_view_key(&csdv);
          }
       }
 
@@ -295,8 +345,7 @@ jeval:
 jparse_done:
    rv = su_ERR_NONE;
 jdone:
-   if(line.s != NIL)
-      n_free(line.s);
+   mx_fs_linepool_release(line.s, line.l);
 
    if(rv != su_ERR_NONE)
       a_mtaali_gut_csd(dp);
@@ -308,40 +357,169 @@ jleave:
 
 jparse_err:
    n_err("*mta-aliases*: %s: %s: %s\n",
-      n_shexp_quote_cp(masp->mas_user, FAL0), V_(l.s),
+      n_shexp_quote_cp(masp->mas_path_usr, FAL0), V_(l.s),
       n_shexp_quote_cp(nsp->s_dat, FAL0));
    goto jdone;
 }
 
 static void
 a_mtaali_expand(uz lvl, char const *name, struct a_mtaali_query *maqp){
-   struct n_strlist *slp;
+   union {void *v; struct a_mtaali_alias *maa; struct n_strlist *sl;} p;
    NYD2_IN;
 
    ++lvl;
 
-   if((slp = S(struct n_strlist*,su_cs_dict_lookup(maqp->maq_dp, name))
-         ) == NIL){
+   if((p.v = su_cs_dict_lookup(maqp->maq_dp, name)) == NIL){
 jput_name:
       maqp->maq_err = su_ERR_DESTADDRREQ;
       maqp->maq_result = cat(nalloc(name, maqp->maq_type | GFULL),
             maqp->maq_result);
-   }else do{
-      /* Is it a name itself? */
-      if(slp->sl_dat[slp->sl_len + 1] != FAL0){
-         if(UCMP(z, lvl, <, n_ALIAS_MAXEXP)) /* TODO not a real error! */
-            a_mtaali_expand(lvl, slp->sl_dat, maqp);
-         else{
-            n_err(_("*mta_aliases*: stopping recursion at depth %d\n"),
-               n_ALIAS_MAXEXP);
-            goto jput_name;
-         }
-      }else
-         maqp->maq_result = cat(maqp->maq_result,
-               nalloc(slp->sl_dat, maqp->maq_type | GFULL));
-   }while((slp = slp->sl_next) != NIL);
+   }else{
+      for(p.sl = p.maa->maa_values; p.sl != NIL; p.sl = p.sl->sl_next){
+         /* Is it a name itself? */
+         if(p.sl->sl_dat[p.sl->sl_len + 1] == a_MTAALI_T_NAME){
+            if(UCMP(z, lvl, <, n_ALIAS_MAXEXP)) /* TODO not a real error! */
+               a_mtaali_expand(lvl, p.sl->sl_dat, maqp);
+            else{
+               n_err(_("*mta_aliases*: stopping recursion at depth %d\n"),
+                  n_ALIAS_MAXEXP);
+               goto jput_name;
+            }
+         }else
+            maqp->maq_result = cat(maqp->maq_result,
+                  nalloc(p.sl->sl_dat, maqp->maq_type | GFULL));
+      }
+   }
 
    NYD2_OU;
+}
+
+int
+c_mtaaliases(void *vp){
+   char const *cp;
+   boole load_only;
+   char **argv;
+   NYD_IN;
+
+   argv = vp;
+   load_only = FAL0;
+
+   if((cp = *argv) == NIL)
+      goto jlist;
+   if(argv[1] != NIL)
+      goto jerr;
+   if(su_cs_starts_with_case("show", cp))
+      goto jlist;
+   if(su_cs_starts_with_case("clear", cp))
+      goto jclear;
+   load_only = TRU1;
+   if(su_cs_starts_with_case("load", cp))
+      goto jclear;
+jerr:
+   mx_cmd_print_synopsis(mx_cmd_firstfit("mtaaliases"), NIL);
+   vp = NIL;
+jleave:
+   NYD_OU;
+   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+
+jclear:
+   if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
+      a_mtaali_gut_csd(&a_mtaali_g.mag_dict);
+      su_FREE(a_mtaali_g.mag_path);
+   }
+   a_mtaali_g.mag_path = NIL;
+   if(load_only)
+      goto jlist;
+   goto jleave;
+
+jlist:{
+   struct n_string quote; /* TODO quoting does not belong; -> RFC 822++ */
+   uz scrwid, l, lw;
+   struct n_strlist *slp;
+   struct a_mtaali_alias *maap;
+   FILE *fp;
+
+   if((cp = ok_vlook(mta_aliases)) == NIL){
+      n_err(_("`mtaaliases': *mta-aliases* not set\n"));
+      vp = NIL;
+      goto jleave;
+   }else if(a_mtaali_cache_init(cp) != su_ERR_NONE ||
+         a_mtaali_g.mag_path == a_MTAALI_G_ERR){
+      n_err(_("`mtaaliases: *mta-aliases* had no content\n"));
+      vp = NIL;
+      goto jleave;
+   }
+   if(load_only)
+      goto jleave;
+
+   if((fp = mx_fs_tmp_open("mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+         mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
+
+   n_string_creat_auto(&quote);
+   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
+   l = 0;
+   for(maap = a_mtaali_g.mag_aliases; maap != NIL; maap = maap->maa_next){
+      boole any;
+
+      /* Our reader above guarantees the name does not need to be quoted! */
+      fputs(cp = maap->maa_key, fp);
+      putc(':', fp);
+      lw = su_cs_len(cp) + 1;
+
+      any = FAL0;
+      for(slp = maap->maa_values; slp != NIL; slp = slp->sl_next){
+         uz i;
+
+         if(!any)
+            any = TRU1;
+         else{
+            putc(',', fp);
+            ++lw;
+         }
+
+         /* TODO Is it a name itself?  Otherwise we may need to apply quoting!
+          * TODO quoting does not belong; -> RFC 822++ */
+         cp = slp->sl_dat;
+         i = slp->sl_len;
+         if(cp[i + 1] != a_MTAALI_T_NAME && cp[i + 1] != a_MTAALI_T_ADDR &&
+               su_cs_first_of_cbuf_cbuf(cp, i, " \t\"#:@", 6) != UZ_MAX){
+            char c;
+
+            n_string_reserve(n_string_trunc(&quote, 0), (slp->sl_len * 2) + 2);
+            n_string_push_c(&quote, '"');
+            while((c = *cp++) != '\0'){
+               if(c == '"' || c == '\\')
+                  n_string_push_c(&quote, '\\');
+               n_string_push_c(&quote, c);
+            }
+            n_string_push_c(&quote, '"');
+            cp = n_string_cp(&quote);
+            i = quote.s_len;
+         }
+
+         if(lw + i >= scrwid){
+            fputs("\n  ", fp);
+            ++l;
+            lw = 2;
+         }
+         lw += i + 1;
+         putc(' ', fp);
+         fputs(cp, fp);
+      }
+      putc('\n', fp);
+      ++l;
+   }
+   /* n_string_gut(&quote); */
+
+   if(fp != n_stdout){
+      page_or_print(fp, l);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
+   }
+   goto jleave;
 }
 
 s32
@@ -354,7 +532,7 @@ mx_mta_aliases_expand(struct mx_name **npp){
 
    rv = su_ERR_NONE;
 
-   /* Is there the possibility we have to do anything? */
+   /* Is there a possibility that we have to do anything? */
    if((file = ok_vlook(mta_aliases)) == NIL)
       goto jleave;
 
@@ -365,14 +543,13 @@ mx_mta_aliases_expand(struct mx_name **npp){
       goto jleave;
 
    /* Then lookup the cache, creating/updating it first as necessary */
-   if((rv = a_mtaali_cache_check(file)) != su_ERR_NONE)
-      goto jleave;
-
-   if(su_cs_dict_count(maq.maq_dp = &a_mtaali_g.mag_dict) == 0){
+   if((rv = a_mtaali_cache_init(file)) != su_ERR_NONE ||
+         a_mtaali_g.mag_path == a_MTAALI_G_ERR){
       rv = su_ERR_DESTADDRREQ;
       goto jleave;
    }
 
+   maq.maq_dp = &a_mtaali_g.mag_dict;
    nphead = *npp;
    maq.maq_result = *npp = NIL;
    maq.maq_err = su_ERR_NONE;

@@ -45,6 +45,7 @@
 #include "mx/file-streams.h"
 #include "mx/mailcap.h"
 #include "mx/mime-type.h"
+#include "mx/mta-aliases.h"
 #include "mx/names.h"
 #include "mx/privacy.h"
 #include "mx/sigs.h"

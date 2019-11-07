@@ -6516,6 +6516,19 @@ Identical to
 .Ic page .
 .
 .Mx
+.It Ic mtaaliases
+\*(OP When used without arguments or if
+.Ar show
+has been given the content of the
+.Va mta-aliases
+cache is shown, (re-)initializing it first (as necessary).
+If the argument is
+.Ar load
+then the cache will only be (re-)initialized, and
+.Ar clear
+will remove its contents.
+.
+.Mx
 .It Ic netrc
 \*(OP When used without arguments or if
 .Ar show
@@ -10779,9 +10792,11 @@ necessary to explicitly specify the port as
 .
 .Mx
 .It Va mta-aliases
-\*(OP If set to a valid path pointing to a text file in MTA (Postfix)
+\*(OP If set to a path pointing to a text file in valid MTA (Postfix)
 .Xr aliases 5
-format, plain
+format, the file is loaded and cached (manageable with
+.Ic mtaaliases ) ,
+and henceforth plain
 .Ql name
 (see
 .Va expandaddr )
@@ -10797,12 +10812,10 @@ are treated as expandable aliases, and \*(ID
 directives are not supported.
 By including
 .Ql -name
-in the setting of
+in
 .Va expandaddr
 it can be asserted that only expanded names (mail addresses) are passed
-through to the MTA, hard errors occur otherwise.
-The file content is cached, but variable as well as file size and
-modification time changes will cause an update.
+through to the MTA.
 .
 .Mx
 .It Va mta-arguments
