@@ -481,10 +481,10 @@ c_netrc(void *vp){
       goto jerr;
    if(su_cs_starts_with_case("show", *argv))
       goto jlist;
+   if(su_cs_starts_with_case("clear", *argv))
+      goto jclear;
    load_only = TRU1;
    if(su_cs_starts_with_case("load", *argv))
-      goto jlist;
-   if(su_cs_starts_with_case("clear", *argv))
       goto jclear;
 jerr:
    mx_cmd_print_synopsis(mx_cmd_firstfit("netrc"), NIL);
@@ -500,6 +500,8 @@ jclear:
       a_netrc_cache = nrc->nrc_next;
       su_FREE(nrc);
    }
+   if(load_only)
+      goto jlist;
    goto jleave;
 
 jlist:{
@@ -509,7 +511,7 @@ jlist:{
    if(a_netrc_cache == NIL)
       a_netrc_init();
    if(a_netrc_cache == a_NETRC_NODE_ERR){
-      n_err(_("Interpolate what file?\n"));
+      fprintf(n_stdout, _("# `netrc': no .netrc / $NETRC data available\n"));
       vp = NIL;
       goto jleave;
    }
