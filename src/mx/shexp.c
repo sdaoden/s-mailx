@@ -967,7 +967,7 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, enum fexp_mode fexpm){ /* TODO in parts: -> URL::!! */
+fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){ /* TODO -> URL:: */
    struct str proto, s;
    char const *res, *cp;
    boole dyn, haveproto;
@@ -1151,8 +1151,8 @@ jleave:
 }
 
 FL enum n_shexp_state
-n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
-      struct str *input, void const **cookie){
+n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+      struct n_string *store, struct str *input, void const **cookie){
    /* TODO shexp_parse_token: WCHAR
     * TODO This needs to be rewritten in order to support $(( )) and $( )
     * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
@@ -1168,11 +1168,6 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
     * TODO we are reentered we simply access the fields directly.
     * TODO That is: do that, also for normal variables: like this the shell
     * TODO expression parser can be made entirely generic and placed in SU! */
-   u32 last_known_meta_trim_len;
-   char c2, c, quotec, utf[8];
-   enum n_shexp_state rv;
-   uz i, il;
-   char const *ifs, *ifs_ws, *ib_save, *ib;
    enum{
       a_NONE = 0,
       a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\u0 ..) */
@@ -1191,7 +1186,13 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       /* Remove one more byte from the input after pushing data to output */
       a_CHOP_ONE = 1u<<10,
       a_TMP = 1u<<30
-   } state;
+   };
+
+   char c2, c, quotec, utf[8];
+   enum n_shexp_state rv;
+   uz i, il;
+   u32 state, last_known_meta_trim_len;
+   char const *ifs, *ifs_ws, *ib_save, *ib;
    NYD2_IN;
 
    ASSERT((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
@@ -1916,7 +1917,8 @@ jleave_quick:
 }
 
 FL char *
-n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
+n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+      char const **cp){
    struct str input;
    struct n_string sou, *soup;
    char *rv;

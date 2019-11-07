@@ -946,7 +946,7 @@ jatt_attset:
          }
       }
    }else if(su_cs_starts_with_case("insert", cp)){
-      enum n_attach_error aerr;
+      BITENUM_IS(u32,n_attach_error) aerr;
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;

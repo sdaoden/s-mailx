@@ -233,7 +233,8 @@ FL int c_vpospar(void *v);
  * Return the new aplist aphead.
  * The newly created attachment may be stored in *newap, or NULL on error */
 FL struct attachment *n_attachment_append(struct attachment *aplist,
-                        char const *file, enum n_attach_error *aerr_or_null,
+                        char const *file,
+                        BITENUM_IS(u32,n_attach_error) *aerr_or_null,
                         struct attachment **newap_or_null);
 
 /* Shell-token parse names, and append resulting file names to aplist, return
@@ -1414,21 +1415,21 @@ FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
  * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
  * result string is terminated via \0\0 and n_PS_EXPAND_MULTIRESULT is set.
  * Returns the file name as an auto-reclaimed string */
-FL char *fexpand(char const *name, enum fexp_mode fexpm);
+FL char *fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
  * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
  * just as known from the sh(1)ell in that case */
-FL enum n_shexp_state n_shexp_parse_token(enum n_shexp_parse_flags flags,
-                        struct n_string *store, struct str *input,
-                        void const **cookie);
+FL enum n_shexp_state n_shexp_parse_token(
+      BITENUM_IS(u32,n_shexp_parse_flags) flags, struct n_string *store,
+      struct str *input, void const **cookie);
 
 /* Quick+dirty simplified : if an error occurs, returns a copy of *cp and set
  * *cp to NULL, otherwise advances *cp to over the parsed token */
-FL char *n_shexp_parse_token_cp(enum n_shexp_parse_flags flags,
-            char const **cp);
+FL char *n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+      char const **cp);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UZ_MAX su_cs_len(->s) is used.

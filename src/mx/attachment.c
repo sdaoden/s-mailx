@@ -221,7 +221,8 @@ a_attachment_yay(struct attachment const *ap){
 
 FL struct attachment *
 n_attachment_append(struct attachment *aplist, char const *file,
-      enum n_attach_error *aerr_or_null, struct attachment **newap_or_null){
+      BITENUM_IS(u32,n_attach_error) *aerr_or_null,
+      struct attachment **newap_or_null){
 #ifdef mx_HAVE_ICONV
    FILE *cnvfp;
 #endif
