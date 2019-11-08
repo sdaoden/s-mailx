@@ -67,6 +67,10 @@
  * user interface very often uses \r{su_uz} (i.e., \c{size_t}).
  * Other behaviour is explicitly declared with a "big" prefix, as in
  * "biglist", but none such object does exist at the time of this writing.
+ * }\li{
+ * \SU requires an eight (8) or more byte alignment on the stack and heap.
+ * This is because some of its facilities may use the lower (up to) three
+ * bits of pointers for internal, implementation purposes.
  * }}
  */
 
@@ -499,16 +503,24 @@ do{\
 #endif
 
 /* Basic support macros, with side effects */
-/*! \_ */
+/*! Absolute value. */
 #define su_ABS(A) ((A) < 0 ? -(A) : (A))
-/*! \_ */
+/*! Cramp \a{X} to be in between \a{A} and \a{B}, inclusive. */
 #define su_CLIP(X,A,B) (((X) <= (A)) ? (A) : (((X) >= (B)) ? (B) : (X)))
-/*! \_ */
-#define su_MAX(A,B) ((A) < (B) ? (B) : (A))
-/*! \_ */
-#define su_MIN(A,B) ((A) < (B) ? (A) : (B))
-/*! \_ */
+/*! Is power of two? */
 #define su_IS_POW2(X) ((((X) - 1) & (X)) == 0)
+/*! Maximum value. */
+#define su_MAX(A,B) ((A) < (B) ? (B) : (A))
+/*! Minimum value. */
+#define su_MIN(A,B) ((A) < (B) ? (A) : (B))
+/*! Round down \a{X} to nearest multiple of \a{BASE}. */
+#define su_ROUND_DOWN(X,BASE) (((X) / (BASE)) * (BASE))
+/*! Ditto, if \a{BASE} is a power of two. */
+#define su_ROUND_DOWN2(X,BASE) ((X) & (~((BASE) - 1)))
+/*! Round up \a{X} to nearest multiple of \a{BASE}. */
+#define su_ROUND_UP(X,BASE) ((((X) + ((BASE) - 1)) / (BASE)) * (BASE))
+/*! Ditto, if \a{BASE} is a power of two. */
+#define su_ROUND_UP2(X,BASE) (((X) + ((BASE) - 1)) & (~((BASE) - 1)))
 
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
@@ -516,22 +528,34 @@ do{\
 # define su_ALIGNOF(X) _Alignof(X)
 #else
    /*! \c{_Alignof()} if available, something hacky otherwise */
-# define su_ALIGNOF(X) ((sizeof(X) + sizeof(su_uz)) & ~(sizeof(su_uz) - 1))
+# define su_ALIGNOF(X) su_ROUND_UP2(sizeof(X), su__ZAL_L)
 #endif
+
+/*! Align a pointer \a{MEM} by the \r{su_ALIGNOF()} of \a{OTYPE}, and cast
+ * the result to \a{DTYPE}. */
+#define su_P_ALIGN(DTYPE,OTYPE,MEM) \
+   su_R(DTYPE,\
+      su_IS_POW2(su_ALIGNOF(OTYPE))\
+         ? su_ROUND_UP2(su_R(su_up,MEM), su_ALIGNOF(OTYPE))\
+         : su_ROUND_UP(su_R(su_up,MEM), su_ALIGNOF(OTYPE)))
 
 /* Roundup/align an integer;  Note: POW2 asserted in POD section below! */
 /*! Overalign an integer value to a size that cannot cause just any problem
- * for anything which does not use special alignment directives. */
-#define su_Z_ALIGN(X) ((su_S(su_uz,X) + 2*su__ZAL_L) & ~((2*su__ZAL_L) - 1))
+ * for anything which does not use special alignment directives.
+ * \remarks{It is safe to assume that \r{su_P_ALIGN()} can be used to place an
+ * object into a memory region spaced with it.} */
+#define su_Z_ALIGN_OVER(X) su_ROUND_UP2(su_S(su_uz,X), 2 * su__ZAL_L)
 
-/*! Smaller than \r{su_Z_ALIGN()}, but sufficient for basic plain-old-data. */
-#define su_Z_ALIGN_SMALL(X) ((su_S(su_uz,X) + su__ZAL_L) & ~(su__ZAL_L - 1))
+/*! Smaller than \r{su_Z_ALIGN_OVER()}, but sufficient for plain-old-data. */
+#define su_Z_ALIGN(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_L)
 
 /*! \r{su_Z_ALIGN()}, but only for pointers and \r{su_uz}. */
-#define su_Z_ALIGN_PZ(X) ((su_S(su_uz,X) + su__ZAL_S) & ~(su__ZAL_S - 1))
+#define su_Z_ALIGN_PZ(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_S)
 
-# define su__ZAL_S su_MAX(su_ALIGNOF(su_uz), su_ALIGNOF(void*))
-# define su__ZAL_L su_MAX(su__ZAL_S, su_ALIGNOF(su_u64))/* XXX FP,128bit */
+/* (These are below MCTA()d to be of equal size[, however].)
+ * _L must adhere to the minimum aligned claimed in the \mainpage */
+# define su__ZAL_S su_MAX(sizeof(su_uz), sizeof(void*))
+# define su__ZAL_L su_MAX(su__ZAL_S, sizeof(su_u64))/* XXX FP,128bit */
 
 /* Variants of ASSERT */
 #if defined NDEBUG || defined DOXYGEN
@@ -1711,6 +1735,30 @@ inline T const &get_max(T const &a, T const &b) {return su_MAX(a, b);}
 template<class T>
 inline T const &get_min(T const &a, T const &b) {return su_MIN(a, b);}
 
+/*! \copydoc{su_ROUND_DOWN()} */
+template<class T>
+inline T const &get_round_down(T const &a, T const &b){
+   return su_ROUND_DOWN(a, b);
+}
+
+/*! \copydoc{su_ROUND_DOWN2()} */
+template<class T>
+inline T const &get_round_down2(T const &a, T const &b){
+   return su_ROUND_DOWN2(a, b);
+}
+
+/*! \copydoc{su_ROUND_UP()} */
+template<class T>
+inline T const &get_round_up(T const &a, T const &b){
+   return su_ROUND_UP(a, b);
+}
+
+/*! \copydoc{su_ROUND_UP2()} */
+template<class T>
+inline T const &get_round_up2(T const &a, T const &b){
+   return su_ROUND_UP2(a, b);
+}
+
 /*! \copydoc{su_IS_POW2()} */
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
@@ -1744,8 +1792,8 @@ public:
    /*! \copydoc{su_err_number} */
    enum err_number{
 #ifdef DOXYGEN
-      err_none,      /*!< No error. */
-      err_notobacco  /*!< No such errno, fallback: no mapping exists. */
+      enone,      /*!< No error. */
+      enotobacco  /*!< No such errno, fallback: no mapping exists. */
 #else
       su__CXX_ERR_NUMBER_ENUM
 # undef su__CXX_ERR_NUMBER_ENUM

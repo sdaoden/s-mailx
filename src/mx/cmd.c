@@ -803,7 +803,7 @@ mx_cmd_arg_save_to_heap(struct mx_cmd_arg_ctx const *cacp){
       ncap->ca_arg_flags = cap->ca_arg_flags;
       su_mem_copy(ncap->ca_arg.ca_str.s = (char*)&ncap[1],
          cap->ca_arg.ca_str.s,
-         (ncap->ca_arg.ca_str.l = i = cap->ca_arg.ca_str.l) +1);
+         (i = (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1));
 
       i = Z_ALIGN(i);
       buf += sizeof(*ncap) + i;

@@ -100,7 +100,7 @@ struct a_colour_g{
    struct mx_colour_pen cg_reset; /* The reset sequence */
    struct a_colour_map
       *cg_maps[a_COLOUR_T_NONE][mx__COLOUR_CTX_MAX1][mx__COLOUR_IDS];
-   char cg__reset_buf[Z_ALIGN_SMALL(sizeof("\033[0m"))];
+   char cg__reset_buf[Z_ALIGN(sizeof("\033[0m"))];
 };
 
 /* C99: use [INDEX]={} */

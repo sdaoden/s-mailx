@@ -144,7 +144,7 @@ enum{
     *
     * \remarks{It is always impossible to allocate 0 bytes, however.
     * The minimum will be 1, then.} */
-   su_MEM_ALLOC_MIN = Z_ALIGN_SMALL(1)
+   su_MEM_ALLOC_MIN = Z_ALIGN(1)
 };
 
 /*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific.
@@ -373,10 +373,10 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
 }
 
 /*! Of heap allocations */
-#define su_mem_get_usable_size(SZ) su_Z_ALIGN_SMALL(SZ) /* XXX fake */
+#define su_mem_get_usable_size(SZ) su_Z_ALIGN(SZ) /* XXX fake */
 
 /*! Of heap allocations */
-#define su_mem_get_usable_size_32(SZ) ((su_u32)su_Z_ALIGN_SMALL(SZ))/*XXX*/
+#define su_mem_get_usable_size_32(SZ) su_S(su_u32,su_Z_ALIGN(SZ)) /*XXX*/
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 
 /*! Most options are actually boolean flags: multiple thereof can be set or

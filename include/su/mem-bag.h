@@ -59,7 +59,7 @@ struct su_mem_bag;
  * memory allocator (with \r{su_HAVE_MEM_BAG_AUTO}),
  * and/or a replacement for \c{alloca(3)} (\r{su_HAVE_MEM_BAG_LOFI}: a stack of
  * last-out, first-in memory storage).
- * In general the memory served is \r{su_Z_ALIGN_PZ()} aligned.
+ * In general the memory served is \r{su_Z_ALIGN()} aligned.
  * Allocation requests larger than about \r{su_S32_MAX} result in
  * \r{su_STATE_ERR_OVERFLOW} errors.
  *

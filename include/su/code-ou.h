@@ -76,13 +76,18 @@
 
 #undef ABS
 #undef CLIP
+#undef IS_POW2
 #undef MAX
 #undef MIN
-#undef IS_POW2
+#undef ROUND_DOWN
+#undef ROUND_DOWN2
+#undef ROUND_UP
+#undef ROUND_UP2
 
 #undef ALIGNOF
+#undef P_ALIGN
+#undef Z_ALIGN_OVER
 #undef Z_ALIGN
-#undef Z_ALIGN_SMALL
 #undef Z_ALIGN_PZ
 
 #undef ASSERT_INJ
