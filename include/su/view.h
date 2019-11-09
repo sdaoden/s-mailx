@@ -84,7 +84,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \fn{boole is_valid(void) const}:
  * A valid view points to an accessible slot of the collection instance.
  * }\li{
- * \fn{self_class &invalidate(void)}
+ * \fn{self_class &reset(void)}
  * Invalidate the position, but keep the parent collection tied.
  * }\li{
  * \fn{void const *data(void) const}:
@@ -162,6 +162,20 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \list{\li{
  * \fn{void const *key(void) const}:
  * \NIL is returned if the \fn{is_valid()} assertion triggers.
+ * }}
+ *
+ * \head2{Additions for associative views, non-constant parent}
+ *
+ * \list{\li{
+ * \fn{s32 reset_insert(void const *key, void *dat)}:
+ * Insert a new \a{key} / \a{value} pair in the parent.
+ * If \a{key} already exists -1 is returned, but \fn{is_valid()} is true just
+ * as for a successful insertion.
+ * }\li{
+ * \fn{s32 reset_replace(void const *key, void *dat)}:
+ * Insert a new, or update an existing \a{key} / \a{value} pair in the parent.
+ * If an existing \a{key} has been updated -1 is returned, but \fn{is_valid()}
+ * is true just as for insertion of a new \a{key}.
  * }}
  *
  * \head2{Additions for non-associative unidirectional views}
@@ -279,8 +293,8 @@ public:
    operator boole(void) const {return is_valid();}
 
 protected:
-   view__base &invalidate(void){
-      (void)m_view.invalidate();
+   view__base &reset(void){
+      (void)m_view.reset();
       return *this;
    }
 
@@ -352,7 +366,7 @@ public:\
    using base::is_valid;\
    using base::operator boole;\
    \
-   su__VIEW_NAME &invalidate(void) {return S(myself&,base::invalidate());}\
+   su__VIEW_NAME &reset(void) {return S(myself&,base::reset());}\
    \
    tp_const data(void) const{\
       ASSERT_RET(is_valid(), NIL);\
@@ -484,7 +498,21 @@ public:\
    }\
 /*}}}*/
 
-#define su__VIEW_IMPL_ASSOC_NONCONST
+#define su__VIEW_IMPL_ASSOC_NONCONST /*{{{*/\
+   /* err::enone or error */\
+   s32 reset_insert(key_tp_const key, tp dat){\
+      ASSERT_RET(is_setup(), err::einval);\
+      return m_view.reset_insert(key_type_traits::to_const_vp(key),\
+         type_traits::to_vp(dat));\
+   }\
+   /* err::enone or error */\
+   s32 reset_replace(key_tp_const key, tp dat){\
+      ASSERT_RET(is_setup(), err::einval);\
+      return m_view.reset_replace(key_type_traits::to_const_vp(key),\
+         type_traits::to_vp(dat));\
+   }\
+/*}}}*/
+
 #define su__VIEW_IMPL_ASSOC_CONST
 
 #define su__VIEW_IMPL_UNIDIR
@@ -507,7 +535,7 @@ public:\
    }\
    \
    boole find(tp_const dat, boole byptr=FAL0){\
-      ASSERT_RET(is_setup(), (invalidate(), FAL0));\
+      ASSERT_RET(is_setup(), (reset(), FAL0));\
       /* FIXME toolbox assert if !byptr */\
       return m_view.find(type_traits::to_const_vp(dat), byptr);\
    }\
@@ -515,7 +543,7 @@ public:\
 
 #define su__VIEW_IMPL_UNIDIR_ASSOC /*{{{*/\
    boole find(key_tp_const key){\
-      ASSERT_RET(is_setup(), (invalidate(), FAL0));\
+      ASSERT_RET(is_setup(), (reset(), FAL0));\
       return m_view.find(key_type_traits::to_const_vp(key));\
    }\
 /*}}}*/
@@ -556,7 +584,7 @@ public:\
 
 #define su__VIEW_IMPL_BIDIR_NONASSOC /*{{{*/\
    boole rfind(tp_const dat, boole byptr=FAL0){\
-      ASSERT_RET(is_setup(), (invalidate(), FAL0));\
+      ASSERT_RET(is_setup(), (reset(), FAL0));\
       /* FIXME toolbox assert if !byptr */\
       return m_view.rfind(type_traits::to_const_vp(dat), byptr);\
    }\

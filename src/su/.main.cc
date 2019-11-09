@@ -374,6 +374,68 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
       a_ERR();
    if(cs::cmp(*cdv, "v3-newnewnew"))
       a_ERR();
+
+   /* View insertion */
+   if(cdv.reset_insert("vk1", "vv1"))
+      a_ERR();
+   if(!cdv.is_valid())
+      a_ERR();
+   else{
+      if(cdp->count() != 3)
+         a_ERR();
+      if(cs::cmp(cdv.key(), "vk1"))
+         a_ERR();
+      if(cs::cmp(cdv.data(), "vv1"))
+         a_ERR();
+   }
+   if(cdv.reset_insert("vk1", "vv2") != -1)
+      a_ERR();
+   if(!cdv.is_valid())
+      a_ERR();
+   else{
+      if(cdp->count() != 3)
+         a_ERR();
+      if(cs::cmp(cdv.key(), "vk1"))
+         a_ERR();
+      if(cs::cmp(cdv.data(), "vv1"))
+         a_ERR();
+   }
+   if(cdv.reset_replace("vk1", "vv2") != -1)
+      a_ERR();
+   if(!cdv.is_valid())
+      a_ERR();
+   else{
+      if(cdp->count() != 3)
+         a_ERR();
+      if(cs::cmp(cdv.key(), "vk1"))
+         a_ERR();
+      if(cs::cmp(cdv.data(), "vv2"))
+         a_ERR();
+   }
+   if(cdv.reset_replace("vk2", "vv3") != 0)
+      a_ERR();
+   if(!cdv.is_valid())
+      a_ERR();
+   else{
+      if(cdp->count() != 4)
+         a_ERR();
+      if(cs::cmp(cdv.key(), "vk2"))
+         a_ERR();
+      if(cs::cmp(cdv.data(), "vv3"))
+         a_ERR();
+   }
+   if(cdv.reset_replace("vk2", "vv4") != -1)
+      a_ERR();
+   if(!cdv.is_valid())
+      a_ERR();
+   else{
+      if(cdp->count() != 4)
+         a_ERR();
+      if(cs::cmp(cdv.key(), "vk2"))
+         a_ERR();
+      if(cs::cmp(cdv.data(), "vv4"))
+         a_ERR();
+   }
 }
 
 static void

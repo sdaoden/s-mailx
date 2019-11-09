@@ -1964,6 +1964,11 @@ NSPC_END(su)
  * The C++ variants deduce many more things, and automatically, through
  * (specializations of) \r{type_traits}, \r{type_toolbox}, and
  * \r{auto_type_toolbox}.
+ *
+ * Because the C++ versions are template wrappers around their \c{void*} based
+ * C "supertypes", it is inefficient or even impossible to use \SU collections
+ * for plain-old-data; to overcome this restriction (some) specializations to
+ * work with POD exist.
  */
 
 /*!
