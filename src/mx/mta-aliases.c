@@ -204,6 +204,13 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
        *    A logical line starts with non-whitespace text.  A line that starts
        *    with whitespace continues a logical line. */
       if(l.s != line.s || nsp->s_len == 0){
+         if(!n_string_can_book(nsp, l.l)){
+            su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS |
+               su_STATE_ERR_NOERRNO), _("*mta-aliases*: line too long"));
+            l.s = UNCONST(char*,N_("line too long"));
+            rv = su_ERR_OVERFLOW;
+            goto jparse_err;
+         }
          nsp = n_string_push_buf(nsp, l.s, l.l);
          continue;
       }
