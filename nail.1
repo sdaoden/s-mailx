@@ -966,6 +966,11 @@ ing, which is indented by an
 that also deviates from standard imposed settings.
 .Va mime-counter-evidence
 is fully enabled, too.
+It sets
+.Va followup-to-honour
+and
+.Va reply-to-honour
+to comply with reply address desires.
 .
 .Pp
 Random remarks.
@@ -1567,6 +1572,14 @@ unless
 is set), or
 .Ic Reply Ql R
 exclusively to the sender(s).
+To comply with with the receivers desired reply address the
+.Mx -sx
+.Sx quadoption Ns
+s
+.Va followup-to-honour
+and
+.Va reply-to-honour
+should usually be set.
 The commands
 .Ic Lreply
 and
@@ -8774,7 +8787,9 @@ for a false boolean and
 .Ql y
 and
 .Ql true
-for a true boolean; a special kind of boolean string is the
+for a true boolean;
+.Mx -ix quadoption
+a special kind of boolean string is the
 .Dq quadoption ,
 which is a boolean string that can optionally be prefixed with the
 (case-insensitive) term
@@ -9791,7 +9806,10 @@ header is honoured when group-replying to a message via
 .Ic reply
 or
 .Ic Lreply .
-This is a quadoption; if set without a value it defaults to
+This is a
+.Mx -sx
+.Sx quadoption ;
+if set without a value it defaults to
 .Dq yes ,
 and see
 .Va followup-to .
@@ -11788,7 +11806,10 @@ header is honoured when replying to a message via
 .Ic reply
 or
 .Ic Lreply .
-This is a quadoption; if set without a value it defaults to
+This is a
+.Mx -sx
+.Sx quadoption ;
+if set without a value it defaults to
 .Dq yes .
 .
 .Mx

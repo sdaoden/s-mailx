@@ -95,6 +95,9 @@ set hold
 # POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
+# Honour Mail-Followup-To: headers when replying etc.
+set followup-to-honour=ask-yes
+
 # Mark messages that have been answered.
 set markanswered
 
@@ -132,6 +135,9 @@ set recipients-in-cc
 # When responding to a message, try to answer in the same character set
 # (which is subject to `charsetalias' expansion, though).
 #set reply-in-same-charset
+
+# Honour Reply-To: headers when replying etc.
+set reply-to-honour=ask-yes
 
 # [OPTION] Outgoing messages are sent in UTF-8 if possible, otherwise LATIN1.
 # Note: it is highly advisable to read the section "Character sets" of the
