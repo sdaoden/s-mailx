@@ -476,8 +476,8 @@ jwork_msg:
 
 jrecipients_done:
 
-   /* For list replies we want to automatically recognize the list address
-    * given in the List-Post: header, so that we will not throw away a possible
+   /* For list replies automatically recognize the list address given in the
+    * RFC 2369 List-Post: header, so that we will not throw away a possible
     * corresponding receiver: temporarily "`mlist' the List-Post: address" */
    if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
       struct mx_name *x;
@@ -496,15 +496,22 @@ jrecipients_done:
           * However, to avoid ambiguities with users that place themselve in
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
-          * a single address which points to the same domain as List-Post: */
-         if(rt != NULL && rt->n_flink == NULL &&
-               name_is_same_domain(x, rt))
+          * a single address which points to the same domain as List-Post:.
+          *
+          * XXX This is all due if the RFC 2369: "NO" disallows posting;
+          * XXX for us NO is a name, so we need to avoid it is passed along.
+          * XXX maybe give user feedback? */
+         if(!su_cs_cmp_case(x->n_name, "no"))
+             x = NIL;
+
+         if(rt != NIL && rt->n_flink == NIL &&
+               (x == NIL || name_is_same_domain(x, rt)))
             cp = rt->n_name; /* rt is EACM_STRICT tested */
          else
-            cp = x->n_name;
+            cp = (x == NIL) ? NIL : x->n_name;
 
          /* XXX mx_mlist_query_mp()?? */
-         if(mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
+         if(cp != NIL && mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
             head.h_list_post = cp;
       }
    }
