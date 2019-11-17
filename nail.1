@@ -9991,10 +9991,18 @@ The message thread tree structure.
 .Va headline-plain . )
 .It Ql %L
 Mailing list status: is the addressee of the message a known
+.Ql l
 .Pf ( Ic mlist )
 or
+.Ql L
 .Ic mlsubscribe Ns
 d mailing list?
+The letter
+.Ql P
+announces the presence of a RFC 2369
+.Ql List-Post:
+header, which makes a message a valuable target of
+.Ic Lreply .
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m

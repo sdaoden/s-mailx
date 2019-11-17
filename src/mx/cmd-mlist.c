@@ -549,6 +549,7 @@ mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what){
    boole cc;
    enum mx_mlist_type rv;
    NYD_IN;
+   ASSERT(what != mx_MLIST_POSSIBLY);
 
    rv = mx_MLIST_OTHER;
 
@@ -558,6 +559,7 @@ jredo:
    for(; np != NIL; np = np->n_flink){
       switch(mx_mlist_query(np->n_name, FAL0)){
       case mx_MLIST_OTHER:
+      case mx_MLIST_POSSIBLY: /* (appease $CC) */
          break;
       case mx_MLIST_KNOWN:
          if(what == mx_MLIST_KNOWN || what == mx_MLIST_OTHER){
@@ -582,6 +584,9 @@ jredo:
       np = lextract(hfield1("cc", mp), GCC | GSKIN);
       goto jredo;
    }
+
+   if(what == mx_MLIST_OTHER && mx_header_list_post_of(mp) != NIL)
+      rv = mx_MLIST_POSSIBLY;
 
 jleave:
    NYD_OU;

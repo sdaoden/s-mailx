@@ -2341,9 +2341,13 @@ c_addrcodec(void *vp){
          struct mx_name *np;
 
          if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
+            s8 mltype;
+
             cp = np->n_name;
 
-            if(mode == 1 && mx_mlist_query(cp, FAL0) != mx_MLIST_OTHER)
+            if(mode == 1 &&
+                  (mltype = mx_mlist_query(cp, FAL0)) != mx_MLIST_OTHER &&
+                  mltype != mx_MLIST_POSSIBLY)
                n_pstate_err_no = su_ERR_EXIST;
          }else{
             n_pstate_err_no = su_ERR_INVAL;
@@ -2488,6 +2492,28 @@ jbrk:
 jleave:
    NYD_OU;
    return n_UNCONST(cp);
+}
+
+FL struct mx_name *
+mx_header_list_post_of(struct message *mp){
+   char const *cp;
+   struct mx_name *rv;
+   NYD_IN;
+
+   rv = NIL;
+
+   if((cp = hfield1("list-post", mp)) != NIL){
+      if((rv = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NIL ||
+            is_addr_invalid(rv, EACM_STRICT)){
+         if(n_poption & n_PO_D_V)
+            n_err(_("Message contains invalid List-Post: header\n"));
+         rv = NIL;
+      }else if(!su_cs_cmp_case(rv->n_name, "no"))
+         rv = R(struct mx_name*,-1);
+   }
+
+   NYD_OU;
+   return rv;
 }
 
 FL struct mx_name *

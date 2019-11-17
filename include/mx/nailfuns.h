@@ -883,6 +883,11 @@ FL int c_addrcodec(void *vp);
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
 
+/* Look for a RFC 2369 List-Post: header, return NIL if none was found, -1 if
+ * the one found forbids posting to the list, a header otherwise.
+ * .n_type needs to be set to something desired still */
+FL struct mx_name *mx_header_list_post_of(struct message *mp);
+
 /* Get the sender (From: or Sender:) of this message, or NIL.
  * If gf is 0 GFULL|GSKIN is used (no senderfield beside that) */
 FL struct mx_name *mx_header_sender_of(struct message *mp, u32 gf);

@@ -2564,7 +2564,8 @@ do {\
 
             /* Automatically make MLIST_KNOWN List-Post: address */
             /* XXX mx_mlist_query_mp()?? */
-            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
+            if(((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER ||
+                     ml == mx_MLIST_POSSIBLY) &&
                   addr != NIL && !su_cs_cmp_case(addr, x->n_name))
                ml = mx_MLIST_KNOWN;
 
@@ -2577,6 +2578,7 @@ do {\
                f |= a_ANYLIST;
                goto j_mft_add;
             case mx_MLIST_OTHER:
+            case mx_MLIST_POSSIBLY:
                f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:

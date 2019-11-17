@@ -756,18 +756,20 @@ jloop:
 }
 
 boole
-name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2)
-{
-   char const *d1, *d2;
+mx_name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2){
    boole rv;
-   NYD_IN;
+   NYD2_IN;
 
-   d1 = su_cs_rfind_c(n1->n_name, '@');
-   d2 = su_cs_rfind_c(n2->n_name, '@');
+   if((rv = (n1 != NIL && n2 != NIL))){
+      char const *d1, *d2;
 
-   rv = (d1 != NULL && d2 != NULL) ? !su_cs_cmp_case(++d1, ++d2) : FAL0;
+      d1 = su_cs_rfind_c(n1->n_name, '@');
+      d2 = su_cs_rfind_c(n2->n_name, '@');
 
-   NYD_OU;
+      rv = (d1 != NIL && d2 != NIL) ? !su_cs_cmp_case(++d1, ++d2) : FAL0;
+   }
+
+   NYD2_OU;
    return rv;
 }
 

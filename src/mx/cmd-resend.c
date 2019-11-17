@@ -49,6 +49,7 @@
 #include "mx/cmd-mlist.h"
 #include "mx/names.h"
 #include "mx/url.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -481,14 +482,23 @@ jrecipients_done:
    /* For list replies automatically recognize the list address given in the
     * RFC 2369 List-Post: header, so that we will not throw away a possible
     * corresponding receiver: temporarily "`mlist' the List-Post: address" */
-   if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
-      struct mx_name *x;
+   if(hf & HF_LIST_REPLY){
+      struct mx_name *lpnp;
 
-      if((x = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NULL ||
-            is_addr_invalid(x, EACM_STRICT)){
-         if(n_poption & n_PO_D_V)
-            n_err(_("Message contains invalid List-Post: header\n"));
-      }else{
+      if((lpnp = mx_header_list_post_of(mp)) != NIL){
+         if(lpnp == R(struct mx_name*,-1)){
+            /* Default is TRU1 because if there are still other addresses that
+             * seems to be ok, otherwise we fail anyway */
+            if(mx_tty_yesorno(_("List-Post: disallows posting; "
+                  "reply nonetheless"), TRU1))
+               lpnp = NIL;
+            else{
+               n_pstate_err_no = su_ERR_DESTADDRREQ;
+               msgvec = NIL;
+               goto jleave;
+            }
+         }
+
          /* A special case has been seen on e.g. ietf-announce@ietf.org:
           * these usually post to multiple groups, with ietf-announce@
           * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
@@ -498,23 +508,20 @@ jrecipients_done:
           * However, to avoid ambiguities with users that place themselve in
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
-          * a single address which points to the same domain as List-Post:.
-          *
-          * XXX This is all due if the RFC 2369: "NO" disallows posting;
-          * XXX for us NO is a name, so we need to avoid it is passed along.
-          * XXX maybe give user feedback? */
-         if(!su_cs_cmp_case(x->n_name, "no"))
-             x = NIL;
-
+          * a single address which points to the same domain as List-Post: */
          if(rt != NIL && rt->n_flink == NIL &&
-               (x == NIL || name_is_same_domain(x, rt)))
+               (lpnp == NIL || mx_name_is_same_domain(lpnp, rt)))
             cp = rt->n_name; /* rt is EACM_STRICT tested */
          else
-            cp = (x == NIL) ? NIL : x->n_name;
+            cp = (lpnp == NIL) ? NIL : lpnp->n_name;
 
          /* XXX mx_mlist_query_mp()?? */
-         if(cp != NIL && mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
-            head.h_list_post = cp;
+         if(cp != NIL){
+            s8 mlt;
+
+            if((mlt = mx_mlist_query(cp, FAL0)) == mx_MLIST_OTHER)
+               head.h_list_post = cp;
+         }
       }
    }
 
@@ -528,17 +535,20 @@ jrecipients_done:
       head.h_to = NULL;
 j_lt_redo:
       for(tail = NULL; nhp != NULL;){
+         s8 mlt;
+
          np = nhp;
          nhp = nhp->n_flink;
 
          /* XXX mx_mlist_query_mp()?? */
-         if((cp != NULL && !su_cs_cmp_case(cp, np->n_name)) ||
-               mx_mlist_query(np->n_name, FAL0) != mx_MLIST_OTHER){
-            if((np->n_blink = tail) != NULL)
+         if((cp != NIL && !su_cs_cmp_case(cp, np->n_name)) ||
+               ((mlt = mx_mlist_query(np->n_name, FAL0)) != mx_MLIST_OTHER &&
+                mlt != mx_MLIST_POSSIBLY)){
+            if((np->n_blink = tail) != NIL)
                tail->n_flink = np;
             else
                *nhpp = np;
-            np->n_flink = NULL;
+            np->n_flink = NIL;
             tail = np;
          }
       }

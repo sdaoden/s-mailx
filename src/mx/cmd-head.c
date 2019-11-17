@@ -388,6 +388,7 @@ jmlist: /* v15compat */
          case mx_MLIST_OTHER: c = ' '; break;
          case mx_MLIST_KNOWN: c = 'l'; break;
          case mx_MLIST_SUBSCRIBED: c = 'L'; break;
+         case mx_MLIST_POSSIBLY: c = 'P'; break;
          }
          goto jputcb;
       case 'l':

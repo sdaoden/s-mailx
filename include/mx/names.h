@@ -124,7 +124,7 @@ EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
       struct mx_name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 n2 share the domain name */
-EXPORT boole name_is_same_domain(struct mx_name const *n1,
+EXPORT boole mx_name_is_same_domain(struct mx_name const *n1,
       struct mx_name const *n2);
 
 /* Check all addresses in np and delete invalid ones; if set_on_error is not
