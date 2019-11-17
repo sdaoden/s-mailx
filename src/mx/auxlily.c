@@ -930,11 +930,11 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 #endif
 
    for(i = 0; UCMP(z, i, <, s.l);){
-      char c, *cp;
-      boole fresh;
+      char *cp;
+      boole isdup;
 
       lenp = enp = a_aux_err_tail;
-      if((fresh = (enp == NIL || enp->ae_done))){
+      if(enp == NIL || enp->ae_done){
          enp = su_TCALLOC(struct a_aux_err_node, 1);
          enp->ae_cnt = 1;
          n_string_creat(&enp->ae_str);
@@ -970,12 +970,12 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          /* We need to write it out regardless of whether it is a complete line
           * or not, say (for at least `echoerrn') TODO IO errors not handled */
          if(cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)){
-            enp->ae_dumped_till = enp->ae_str.s_len;
             fprintf(n_stderr, "%s%s%s%s%s",
-               c5pref, (fresh ? lpref : su_empty),
+               c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
                &n_string_cp(&enp->ae_str)[k], c5suff,
                (cp != NIL ? "\n" : su_empty));
             fflush(n_stderr);
+            enp->ae_dumped_till = enp->ae_str.s_len;
          }
       }
 
@@ -986,14 +986,14 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       /* Check whether it is identical to the last one dumped, in which case
        * we throw it away and only increment the counter, as syslog would.
        * If not, dump it out, if not already */
-      c = FAL0;
+      isdup = FAL0;
       if(lenp != NIL){
          if(lenp != enp &&
                lenp->ae_str.s_len == enp->ae_str.s_len &&
                !su_mem_cmp(lenp->ae_str.s_dat, enp->ae_str.s_dat,
                   enp->ae_str.s_len)){
             ++lenp->ae_cnt;
-            c = TRU1;
+            isdup = TRU1;
          }
          /* Otherwise, if the last error has a count, say so, unless it would
           * soil and intermix display */
@@ -1006,15 +1006,15 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          }
       }
 
-      if(!c && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE) &&
-            enp->ae_dumped_till != enp->ae_str.s_len){
+      /* When we come here we need to write at least the/a \n! */
+      if(!isdup && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE)){
          fprintf(n_stderr, "%s%s%s%s\n",
-            c5pref, ((fresh && enp->ae_dumped_till == 0) ? lpref : su_empty),
+            c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
             &n_string_cp(&enp->ae_str)[enp->ae_dumped_till], c5suff);
          fflush(n_stderr);
       }
 
-      if(c){
+      if(isdup){
          lenp->ae_next = NIL;
          a_aux_err_tail = lenp;
          n_string_gut(&enp->ae_str);
