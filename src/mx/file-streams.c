@@ -976,6 +976,42 @@ mx_fs_linepool_release(char *dp, uz ds){
    NYD2_OU;
 }
 
+boole
+(mx_fs_linepool_book)(char **dp, uz *dsp, uz len, uz toadd
+      su_DBG_LOC_ARGS_DECL){
+   boole rv;
+   NYD2_IN;
+
+   rv = FAL0;
+
+   if(UZ_MAX - 192 <= toadd)
+      goto jeoverflow;
+   toadd = (toadd + 192) & ~127;
+
+   if(!su_mem_get_can_book(1, len, toadd))
+      goto jeoverflow;
+   len += toadd;
+
+   if(*dsp < len){
+      char *ndp;
+
+      if((ndp = su_MEM_REALLOC_LOCOR(*dp, len, su_DBG_LOC_ARGS_ORUSE)) == NIL)
+         goto jleave;
+      *dp = ndp;
+      *dsp = len;
+   }
+
+   rv = TRU1;
+jleave:
+   NYD2_OU;
+   return rv;
+
+jeoverflow:
+   su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS |
+      su_STATE_ERR_NOERRNO), _("fs_linepool_book(): buffer size overflow"));
+   goto jleave;
+}
+
 void
 mx_fs_linepool_cleanup(void){
    struct a_fs_lpool_ent *lpep, *tmp;

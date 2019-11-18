@@ -146,10 +146,19 @@ EXPORT void mx_fs_close_all(void);
 
 /* XXX Temporary (pre v15 I/O) line buffer "pool".
  * (Possibly) Get a line buffer, and release one to the pool, respectively.
- * The latter is driven by the mainloop to perform cleanups */
+ * _book() returns false for integer overflow, or if reallocation survives
+ * su_STATE_ERR_NONMEM.
+ * The last is driven by the mainloop to perform cleanups */
 EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
 EXPORT void mx_fs_linepool_release(char *dp, uz ds);
+EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd
+      su_DBG_LOC_ARGS_DECL);
 EXPORT void mx_fs_linepool_cleanup(void);
+
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define mx_fs_linepool_book(A,B,C,D) \
+   mx_fs_linepool_book(A, B, C, D  su_DBG_LOC_ARGS_INJ)
+#endif
 
 /* TODO The rest below is old-style (will vanish with I/O layer rewrite) */
 
