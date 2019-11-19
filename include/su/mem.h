@@ -163,6 +163,7 @@ enum su_mem_conf_option{
 };
 
 #ifdef su_MEM_ALLOC_DEBUG
+EXPORT boole su__mem_get_can_book(uz size, uz no);
 EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
 EXPORT boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE);
 #endif
@@ -350,6 +351,26 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
  * \brief \r{MEM_CACHE_ALLOC} support (\r{su/mem.h})
  * @{
  */
+
+/*! In a chunk used to store objects of \a{size}, which currently contains
+ * \a{no} objects, can \a{notoadd} objects be added?
+ * \remarks{Always compares against \r{su_UZ_MAX}.}
+ * \remarks{Results depend on \r{su_MEM_ALLOC_DEBUG}.} */
+INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
+   if(UZ_MAX - no <= notoadd)
+      return FAL0;
+   no += notoadd;
+   if(no == 0)
+      return TRU1;
+   no = UZ_MAX / no;
+   if(no < size || (size != 1 && no == size))
+      return FAL0;
+#ifdef su_MEM_ALLOC_DEBUG
+   if(!su__mem_get_can_book(size, no))
+      return FAL0;
+#endif
+   return TRU1;
+}
 
 /*! Of heap allocations */
 #define su_mem_get_usable_size(SZ) su_Z_ALIGN_SMALL(SZ) /* XXX fake */
