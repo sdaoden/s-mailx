@@ -56,7 +56,7 @@ c_charsetalias(void *vp){
       slp = NIL;
       rv = !(mx_xy_dump_dict("charsetalias", a_csal_dp, &slp, NIL,
                &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("charsetalias", slp));
+            mx_page_or_print_strlist("charsetalias", slp, FAL0));
    }else if(argv[1] == NIL ||
          (argv[2] == NIL && argv[0][0] == '-' && argv[0][1] == '\0')){
       if(argv[1] != NIL)

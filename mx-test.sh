@@ -6164,7 +6164,7 @@ _EOT
 		\alias - ha@m;x
 		\alias - expa@and;x
 		__EOT
-      check 3 0 "${MBOX}" '1788149870 789'
+      check 3 0 "${MBOX}" '1513155156 796'
    else
       t_echoskip '3:[!UISTRINGS]'
    fi

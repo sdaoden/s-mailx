@@ -182,7 +182,7 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 
       slp = NIL;
       rv = !(mx_xy_dump_dict("filetype", a_ft_dp, &slp, NIL, &a_ft_dump) &&
-            mx_page_or_print_strlist("filetype", slp));
+            mx_page_or_print_strlist("filetype", slp, FAL0));
       goto jleave;
    }
 

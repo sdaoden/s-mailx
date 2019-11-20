@@ -390,9 +390,12 @@ FL struct n_strlist *mx_xy_dump_dict_gen_ptf(char const *cmdname,
       char const *key, void const *dat);
 
 /* page_or_print() all members of slp, one line per node.
- * If slp is NIL print a line that no cmdname are registered */
+ * If slp is NIL print a line that no cmdname are registered.
+ * If cnt_lines is FAL0 then each slp entry is assumed to be one line without
+ * a trailing newline character, otherwise these characters are counted and
+ * a trailing such is put as necessary */
 FL boole mx_page_or_print_strlist(char const *cmdname,
-      struct n_strlist *slp);
+      struct n_strlist *slp, boole cnt_lines);
 
 /*
  * cmd-cnd.c

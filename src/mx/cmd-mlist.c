@@ -122,7 +122,7 @@ a_ml_mux(boole subscribe, char const **argv){
 #ifdef mx_HAVE_REGEX
             mx_xy_dump_dict(cmd, a_ml_re_dp, &slp, &stailp, &a_ml_dump) &&
 #endif
-            mx_page_or_print_strlist(cmd, slp));
+            mx_page_or_print_strlist(cmd, slp, FAL0));
    }else{
       if(a_ml_dp == NIL){
          a_ml_dp = su_cs_dict_set_treshold_shift(

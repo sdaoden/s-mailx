@@ -55,7 +55,7 @@ c_shortcut(void *vp){
       slp = NIL;
       rv = !(mx_xy_dump_dict("shortcut", a_scut_dp, &slp, NIL,
                &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("shortcut", slp));
+            mx_page_or_print_strlist("shortcut", slp, FAL0));
    }else if(argv[1] == NIL){
       if(a_scut_dp != NIL &&
             su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_scut_dp), key)){

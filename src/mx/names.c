@@ -980,7 +980,7 @@ c_alias(void *vp){
       dat.slp = NIL;
       rv = !(mx_xy_dump_dict("alias", a_nm_alias_dp, &dat.slp, NIL,
                &a_nm_alias_dump) &&
-            mx_page_or_print_strlist("alias", dat.slp));
+            mx_page_or_print_strlist("alias", dat.slp, FAL0));
       goto jleave;
    }
 

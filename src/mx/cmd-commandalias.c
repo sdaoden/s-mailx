@@ -56,7 +56,7 @@ c_commandalias(void *vp){
       slp = NIL;
       rv = !(mx_xy_dump_dict("commandalias", a_cmdal_dp, &slp, NIL,
                &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("commandalias", slp));
+            mx_page_or_print_strlist("commandalias", slp, FAL0));
       goto jleave;
    }
 

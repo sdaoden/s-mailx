@@ -1306,7 +1306,8 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
 }
 
 FL boole
-mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
+mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp,
+      boole cnt_lines){
    uz lines;
    FILE *fp;
    boole rv;
@@ -1319,14 +1320,37 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
       fp = n_stdout;
 
    /* Create visual result */
-   for(lines = 0; slp != NIL; ++lines, slp = slp->sl_next)
-      if(fputs(slp->sl_dat, fp) == EOF || putc('\n', fp) == EOF){
+   for(lines = 0; slp != NIL; slp = slp->sl_next){
+      if(fputs(slp->sl_dat, fp) == EOF){
          rv = FAL0;
          break;
       }
 
-   if(rv && lines == 0 && fprintf(fp, _("# no %s registered\n"), cmdname) < 0)
-      rv = FAL0;
+      if(!cnt_lines){
+jputnl:
+         if(putc('\n', fp) == EOF){
+            rv = FAL0;
+            break;
+         }
+         ++lines;
+      }else{
+         char *cp;
+         boole lastnl;
+
+         for(lastnl = FAL0, cp = slp->sl_dat; *cp != '\0'; ++cp)
+            if((lastnl = (*cp == '\n')))
+               ++lines;
+         if(!lastnl)
+            goto jputnl;
+      }
+   }
+
+   if(rv && lines == 0){
+      if(fprintf(fp, _("# `%s': no data available\n"), cmdname) < 0)
+         rv = FAL0;
+      else
+         lines = 1;
+   }
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
