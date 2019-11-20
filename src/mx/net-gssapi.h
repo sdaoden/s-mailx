@@ -270,16 +270,18 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # ifdef mx_SOURCE_NET_SMTP
    a_SMTP_OUT(out.s);
    a_SMTP_ANSWER(2, FAL0, FAL0);
+   ok = TRU1;
 # elif defined mx_SOURCE_NET_POP3
    a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
    a_POP3_ANSWER(poprv, goto jleave);
+   ok = TRU1;
 # elif defined mx_SOURCE_NET_IMAP
    IMAP_OUT(out.s, 0, goto jleave);
+   ok = TRU1;
    while(mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);
 # endif
 
-   ok = TRU1;
 jleave:
    if(f & a_F_RECV_TOK)
       gss_release_buffer(&min_stat, &recv_tok);
@@ -293,6 +295,7 @@ jleave:
       n_free(out.s);
    if(buf != NIL)
       n_lofi_free(buf);
+
    NYD_OU;
    return ok;
 }
