@@ -273,13 +273,14 @@ a_go_update_pstate(void){
 
 static boole
 a_go_evaluate(struct a_go_eval_ctx *gecp){
-   /* xxx old style(9), but also old code */
+   /* TODO old style(9), but also old code */
    /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
-    * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
+    * TODO `eval' should be a prefix, etc., a cmd_ctx should be passed along;
+    * TODO this also affects history handling, as below!  etc etc */
    struct str line;
    struct n_string s_b, *s;
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
-   char const *alias_name;
+   char const *alias_name, *emsg;
    struct mx_cmd_desc const *cdp;
    s32 nerrn, nexn;     /* TODO n_pstate_ex_no -> s64! */
    int rv, c;
@@ -415,7 +416,10 @@ jrestart:
 
    /* Lengthy history entry setup, possibly even redundant.  But having
     * normalized history entries is a good thing, and this is maybe still
-    * cheaper than parsing a StrList of words per se */
+    * cheaper than parsing a StrList of words per se
+    * TODO In v15 the history entry will be deduced from the argument vector,
+    * TODO possibly modified by the command itself, i.e., from the cmd_ctx
+    * TODO structure which is passed along.  And only if we have to do it */
    if((gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)
          ) == a_GO_HIST_ADD){
       if(line.l > 0){
@@ -444,7 +448,6 @@ jrestart:
    if(*word == '\0'){
       flags |= a_IS_EMPTY;
       cdp = mx_cmd_default();
-      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
 
@@ -504,7 +507,7 @@ jrestart:
 
 jexec:
    /* The default command is not executed in a macro or when sourcing, when
-    * have had expanded an alias etc.  To be able to deal with ";reply;~." we
+    * having expanded an alias etc.  To be able to deal with ";reply;~." we
     * need to perform the shell expansion anyway, however */
    if(UNLIKELY(flags & a_IS_EMPTY) &&
          ((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
@@ -555,57 +558,56 @@ jwhite:
       goto jret0;
    }
 
-   if(s != NULL){
+   if(s != NIL && gecp->gec_hist_flags != a_GO_HIST_NONE){
       s = n_string_push_cp(s, cdp->cd_name);
       gecp->gec_hist_cmd = n_string_cp(s);
       /* n_string_gut(n_string_drop_ownership(s)); */
-      s = NULL;
+      s = NIL;
    }
 
    nerrn = su_ERR_INVAL;
 
    /* Process the arguments to the command, depending on the type it expects */
+   UNINIT(emsg, NIL);
    if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
-      n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
-         cdp->cd_name);
-      goto jleave;
+      emsg = N_("May not execute `%s' unless interactive or in batch mode\n");
+      goto jeflags;
    }
    if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
-      n_err(_("May not execute `%s' while sending\n"), cdp->cd_name);
-      goto jleave;
+      emsg = N_("May not execute `%s' while sending\n");
+      goto jeflags;
    }
    if(cdp->cd_caflags & mx_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
-         n_err(_("Cannot invoke `%s' when in compose mode\n"), cdp->cd_name);
-         goto jleave;
+         emsg = N_("Cannot invoke `%s' when in compose mode\n");
+         goto jeflags;
       }
       /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
       if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
-         n_err(_("Cannot invoke `%s' in this program state\n"),
-            cdp->cd_name);
-         goto jleave;
+         emsg = N_("Cannot invoke `%s' in this program state\n");
+         goto jeflags;
       }
    }
    if((cdp->cd_caflags & mx_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
-      n_err(_("May not execute `%s' during startup\n"), cdp->cd_name);
-      goto jleave;
+      emsg = N_("May not execute `%s' during startup\n");
+      goto jeflags;
    }
    if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
-      n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
-         cdp->cd_name);
-      goto jleave;
+      emsg = N_("Cannot invoke `%s' from a hook running in a child process\n");
+      goto jeflags;
    }
 
    if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
-      n_err(_("Cannot execute `%s' without active mailbox\n"), cdp->cd_name);
-      goto jleave;
+      emsg = N_("Cannot execute `%s' without active mailbox\n");
+      goto jeflags;
    }
    if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
-      n_err(_("May not execute `%s' -- message file is read only\n"),
-         cdp->cd_name);
+      emsg = N_("May not execute `%s' -- message file is read only\n");
+jeflags:
+      n_err(V_(emsg), cdp->cd_name);
       goto jleave;
    }
 
@@ -641,9 +643,8 @@ jwhite:
    if(flags & a_LOCAL){
       /* TODO a_LOCAL should affect !CMD_ARG_L commands if `vput' is used!! */
       if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
-         n_err(_("`local' command modifier does not affect `%s'\n"),
-            cdp->cd_name);
-         goto jleave;
+         emsg = N_("`local' command modifier does not affect `%s'\n");
+         goto jeflags; /* above */
       }
       flags |= a_WYSH;
       n_pstate |= n_PS_ARGMOD_LOCAL; /* TODO YET useless since stripped later
@@ -653,8 +654,6 @@ jwhite:
 
    if(flags & a_VPUT){
       if(cdp->cd_caflags & mx_CMD_ARG_V){
-         char const *emsg;
-
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
          vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
