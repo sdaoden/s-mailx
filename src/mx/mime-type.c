@@ -1141,6 +1141,38 @@ jdelall:
 }
 
 boole
+mx_mimetype_is_valid(char const *name, boole t_a_subt, boole subt_wildcard_ok){
+   char c;
+   NYD2_IN;
+
+   if(t_a_subt)
+      t_a_subt = TRU1;
+
+   while((c = *name++) != '\0'){
+      /* RFC 4288, section 4.2 */
+      if(su_cs_is_alnum(c) || c == '!' ||
+            c == '#' || c == '$' || c == '&' || c == '.' ||
+            c == '+' || c == '-' || c == '^' || c == '_')
+         continue;
+
+      if(c == '/'){
+         if(t_a_subt != TRU1)
+            break;
+         t_a_subt = TRUM1;
+         continue;
+      }
+
+      if(c == '*' && t_a_subt == TRUM1 && subt_wildcard_ok)
+         /* Must be last character, then */
+         c = *name;
+      break;
+   }
+
+   NYD2_OU;
+   return (c == '\0');
+}
+
+boole
 mx_mimetype_is_known(char const *name){
    struct a_mimetype_lookup mtl;
    boole rv;

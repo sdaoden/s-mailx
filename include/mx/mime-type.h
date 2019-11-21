@@ -77,6 +77,12 @@ struct mx_mimetype_handler{
 EXPORT int c_mimetype(void *vp);
 EXPORT int c_unmimetype(void *vp);
 
+/* Check whether name is correct according to RFC 4288, 4.2.
+ * With t_a_subt, check for valid TYPE/SUBTYPE.
+ * With subt_wildcard_ok, allow * as a SUBTYPE. */
+EXPORT boole mx_mimetype_is_valid(char const *name, boole t_a_subt,
+      boole subt_wildcard_ok);
+
 /* Check whether the Content-Type name is internally known */
 EXPORT boole mx_mimetype_is_known(char const *name);
 
