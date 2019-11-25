@@ -45,8 +45,10 @@
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
-#ifdef mx_HAVE_MLE
+#ifdef mx_HAVE_COLOUR
 # include "mx/colour.h"
+#endif
+#ifdef mx_HAVE_MLE
 # include "mx/termcap.h"
 #endif
 
