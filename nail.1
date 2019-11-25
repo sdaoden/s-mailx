@@ -1902,6 +1902,10 @@ Additional variables of interest for S/MIME en- and decryption:
 .Va smime-cipher
 and
 .Va smime-encrypt-USER@HOST .
+Variables of secondary interest may be
+.Va content-description-smime-message
+and
+.Va content-description-smime-signature .
 S/MIME is available if
 .Ql +smime
 is included in
@@ -5786,6 +5790,8 @@ enclosed by the values of
 .Va forward-inject-head
 and
 .Va forward-inject-tail .
+.Va content-description-forwarded-message
+is inspected.
 The list of included headers can be filtered with the
 .Ql forward
 slot of the white- and blacklisting command
@@ -6836,7 +6842,10 @@ influence response behaviour.
 .Va quote
 as well as
 .Va quote-as-attachment
-configure whether responded-to message shall be quoted etc.; setting
+configure whether responded-to message shall be quoted etc.,
+.Va content-description-quote-attachment
+may be used.
+Setting
 .Va flipr
 will exchange this command with
 .Ic Reply .
@@ -9376,6 +9385,20 @@ adjustments dependent on the value of the environment variable
 bug reports, suggestions, or help regarding \*(UA.
 The former can be used directly:
 .Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.
+.Mx
+.Mx
+.Mx
+.Mx
+.It Va content-description-forwarded-message , \
+    content-description-quote-attachment , \
+    content-description-smime-message , \
+    content-description-smime-signature
+\*(OP(partially) Strings which will be placed in according
+.Ql Content-Description:
+headers if non-empty.
+They all have default values, for example
+.Ql Forwarded message .
 .
 .Mx
 .It Va crt
@@ -12121,6 +12144,8 @@ variable is set.
 It is recommended to sign encrypted messages, i.e., to also set the
 .Va smime-sign
 variable.
+.Va content-description-smime-message
+will be inspected for messages which become encrypted.
 .
 .Mx
 .It Va smime-force-encryption
@@ -12136,6 +12161,8 @@ that the email addresses in the certificate match those in the message
 header and that the message content has not been altered.
 It does not change the message text,
 and people will be able to read the message as usual.
+.Va content-description-smime-signature
+will be inspected.
 Also see
 .Va smime-sign-cert , smime-sign-include-certs
 and

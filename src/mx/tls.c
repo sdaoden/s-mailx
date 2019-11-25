@@ -252,8 +252,15 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
    fprintf(op, "\n--%s\n", boundary);
    fputs("Content-Type: application/pkcs7-signature; name=\"smime.p7s\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7s\"\n"
-      "Content-Description: S/MIME digital signature\n\n", op);
+      "Content-Disposition: attachment; filename=\"smime.p7s\"\n", op);
+   /* C99 */{
+      char const *cp;
+
+      if(*(cp = ok_vlook(content_description_smime_signature)) != '\0')
+         fprintf(op, "Content-Description: %s\n", cp);
+   }
+   putc('\n', op);
+
    while ((c = getc(tsp)) != EOF) {
       if (c == '-') {
          while ((c = getc(tsp)) != EOF && c != '\n');
@@ -303,8 +310,15 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 
    fputs("Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7m\"\n"
-      "Content-Description: S/MIME encrypted message\n\n", op);
+      "Content-Disposition: attachment; filename=\"smime.p7m\"\n", op);
+   /* C99 */{
+      char const *cp;
+
+      if(*(cp = ok_vlook(content_description_smime_message)) != '\0')
+         fprintf(op, "Content-Description: %s\n", cp);
+   }
+   putc('\n', op);
+
    while ((c = getc(yp)) != EOF) {
       if (c == '-') {
          while ((c = getc(yp)) != EOF && c != '\n');

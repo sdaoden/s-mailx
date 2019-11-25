@@ -743,7 +743,8 @@ jwork_msg:
    if(forward_as_attachment){
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _("Forwarded message");
+      head.h_attach->a_content_description =
+         ok_vlook(content_description_forwarded_message);
 
       if(head.h_mailx_orig_from != NIL && ok_blook(forward_add_cc)){
          gf = GCC | GSKIN;

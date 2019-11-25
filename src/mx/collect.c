@@ -2163,7 +2163,8 @@ jskiptails:
          hp->h_attach->a_blink = ap;
       hp->h_attach = ap;
       ap->a_msgno = (int)P2UZ(mp - message + 1);
-      ap->a_content_description = _("Original message content");
+      ap->a_content_description =
+            ok_vlook(content_description_quote_attachment);
    }
 
 jleave:

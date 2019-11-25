@@ -807,6 +807,15 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_colour_pager,
    ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
    ok_v_contact_web, /* {virt=VAL_CONTACT_WEB} */
+   ok_v_content_description_forwarded_message, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_FORWARDED_MESSAGE} */
+   ok_v_content_description_quote_attachment, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_QUOTE_ATTACHMENT} */
+   ok_v_content_description_smime_message, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_SMIME_MESSAGE} */
+   ok_v_content_description_smime_signature, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_SMIME_SIG} */
+
    ok_v_crt, /* {posnum=1} */
    ok_v_customhdr, /* {vip=1} */
 
