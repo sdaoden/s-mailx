@@ -1510,7 +1510,7 @@ t_shcodec() {
 
    if [ -z "${UTF8_LOCALE}" ]; then
       t_echoskip 'unicode:[no UTF-8 locale]'
-   else
+   elif have_feat multibyte-charsets; then
       ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
          ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 		#
@@ -1525,6 +1525,8 @@ t_shcodec() {
 		shcodec d $'a\U0001D542c'
 		__EOT
       check unicode 0 "${MBOX}" '1175985867 77'
+   else
+      t_echoskip 'unicode:[!MULTIBYTE-CHARSETS]'
    fi
 
    t_epilog "${@}"
@@ -5812,7 +5814,8 @@ _EOT
 t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    t_prolog "${@}"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+   if [ -n "${UTF8_LOCALE}" ] && have_feat multibyte-charsets &&
+         have_feat iconv; then
       if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
             (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
          :
@@ -5822,7 +5825,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
          return
       fi
    else
-      t_echoskip '[no UTF-8 locale or !ICONV]'
+      t_echoskip '[no UTF-8 locale or !MULTIBYTE-CHARSETS or !ICONV]'
       t_epilog "${@}"
       return
    fi
