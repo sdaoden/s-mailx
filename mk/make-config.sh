@@ -1462,9 +1462,7 @@ printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
 printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
    "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
-   printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
-else
-   printf "OPTIONAL_PS_DOTLOCK =\n" >> ${newmk}
+   printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 fi
 
 for i in \
@@ -3475,7 +3473,14 @@ printf ',"\n' >> ${h}
 # Note we cannot use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
 msg 'Creating object make rules'
-(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+
+if feat_yes DOTLOCK; then
+   printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+else
+   printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
+fi
+
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
    (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
