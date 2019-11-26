@@ -582,6 +582,7 @@ jleave:
    return cp;
 jerr:
    n_err(_("Cannot encode IMAP path %s\n  %s\n"), cp, V_(emsg));
+   UNUSED(emsg);
    goto jleave;
 }
 
@@ -790,6 +791,7 @@ jleave:
    return rv;
 jerr:
    n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
+   UNUSED(emsg);
    su_mem_copy(rv = rv_base, path, ++l_orig);
    goto jleave;
 }
