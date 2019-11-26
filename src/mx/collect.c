@@ -111,7 +111,7 @@ static s32 a_coll_write(char const *name, FILE *fp, int f);
 /* *message-inject-head* */
 static boole a_coll_message_inject_head(FILE *fp);
 
-/* If mp==NIL, we try to use hp->h_mailx_orig_from */
+/* If mp==NIL, we try to use hp->h_mailx_orig_sender */
 static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
 
 /* With bells and whistles */
@@ -487,7 +487,7 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
    struct mx_name *addcc;
    NYD_IN;
 
-   addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_from;
+   addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_sender;
 
    if(addcc != NIL){
       u32 gf;

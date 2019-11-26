@@ -398,6 +398,7 @@ jwork_msg:
    head.h_flags = hf;
    head.h_subject = a_crese_reedit(hfield1("subject", mp));
    head.h_mailx_command = (hf & HF_LIST_REPLY) ? "Lreply" : "reply";
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -438,7 +439,10 @@ jwork_msg:
 
    /* Otherwise do the normal From: / To: / Cc: dance */
 
-   cp2 = n_header_senderfield_of(mp);
+   if(head.h_mailx_orig_sender != NIL)
+      cp2 = head.h_mailx_orig_sender->n_fullname;
+   else
+      cp2 = n_header_senderfield_of(mp);
 
    /* Cc: */
    np = NULL;
@@ -663,6 +667,7 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_subject = a_crese_reedit(head.h_subject);
    a_crese_make_ref_and_cs(mp, &head);
    head.h_mailx_command = "Reply";
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -735,6 +740,7 @@ jwork_msg:
    head.h_subject = a_crese__fwdedit(head.h_subject);
    head.h_mailx_command = "forward";
    head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -746,11 +752,11 @@ jwork_msg:
       head.h_attach->a_content_description =
          ok_vlook(content_description_forwarded_message);
 
-      if(head.h_mailx_orig_from != NIL && ok_blook(forward_add_cc)){
+      if(head.h_mailx_orig_sender != NIL && ok_blook(forward_add_cc)){
          gf = GCC | GSKIN;
          if(ok_blook(fullnames))
             gf |= GFULL;
-         head.h_cc = ndup(head.h_mailx_orig_from, gf);
+         head.h_cc = ndup(head.h_mailx_orig_sender, gf);
       }
    }
 
@@ -879,6 +885,7 @@ jedar:
       head.h_to = myto;
       head.h_mailx_command = "resend";
       head.h_mailx_raw_to = myrawto;
+      head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
       head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
       head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);

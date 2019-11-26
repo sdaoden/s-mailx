@@ -1470,6 +1470,7 @@ struct header{
    struct mx_name *h_mailx_raw_to;
    struct mx_name *h_mailx_raw_cc;
    struct mx_name *h_mailx_raw_bcc;
+   struct mx_name *h_mailx_orig_sender;
    struct mx_name *h_mailx_orig_from;
    struct mx_name *h_mailx_orig_to;
    struct mx_name *h_mailx_orig_cc;

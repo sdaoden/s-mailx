@@ -3450,7 +3450,8 @@ n_header_is_known(char const *name, uz len){
       "Fcc",
       /* Mailx internal temporaries */
       "Mailx-Command",
-      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
+      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
+         "Mailx-Orig-Sender", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
       NULL
    };

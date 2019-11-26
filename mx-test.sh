@@ -8863,7 +8863,7 @@ this is content of forward 2, 2nd, with showname set
       ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '1818661134 11250'
+   check 4 - "${MBOX}" '1239382707 11787'
 
    t_epilog "${@}"
 } # }}}

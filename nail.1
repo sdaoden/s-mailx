@@ -8465,6 +8465,7 @@ transformation (e.g.,
 .Va recipients-in-cc
 etc.) took place.
 .
+.It Ql Mailx-Orig-Sender:
 .It Ql Mailx-Orig-From:
 .It Ql Mailx-Orig-To:
 .It Ql Mailx-Orig-Cc:
@@ -8472,6 +8473,8 @@ etc.) took place.
 The values of said headers of the original message which has been
 addressed by any of
 .Ic reply , forward , resend .
+The sender field is special as it is filled in with the sole sender
+according to RFC 5322 rules, it may thus be equal to the from field.
 .El
 .
 .

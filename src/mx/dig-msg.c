@@ -408,6 +408,8 @@ jdefault:
          if(hp->h_mailx_raw_cc != NULL) fputs(" Mailx-Raw-Cc", fp);
          if(hp->h_mailx_raw_bcc != NULL)
             fputs(" Mailx-Raw-Bcc", fp);
+         if(hp->h_mailx_orig_sender != NULL)
+            fputs(" Mailx-Orig-Sender", fp);
          if(hp->h_mailx_orig_from != NULL)
             fputs(" Mailx-Orig-From", fp);
          if(hp->h_mailx_orig_to != NULL)
@@ -466,6 +468,7 @@ jlist:
       a_X("Mailx-Raw-To", h_mailx_raw_to);
       a_X("Mailx-Raw-Cc", h_mailx_raw_cc);
       a_X("Mailx-Raw-Bcc", h_mailx_raw_bcc);
+      a_X("Mailx-Orig-Sender", h_mailx_orig_sender);
       a_X("Mailx-Orig-From", h_mailx_orig_from);
       a_X("Mailx-Orig-To", h_mailx_orig_to);
       a_X("Mailx-Orig-Cc", h_mailx_orig_cc);
@@ -713,6 +716,7 @@ jshow:
       a_X("Mailx-Raw-To", h_mailx_raw_to);
       a_X("Mailx-Raw-Cc", h_mailx_raw_cc);
       a_X("Mailx-Raw-Bcc", h_mailx_raw_bcc);
+      a_X("Mailx-Orig-Sender", h_mailx_orig_sender);
       a_X("Mailx-Orig-From", h_mailx_orig_from);
       a_X("Mailx-Orig-To", h_mailx_orig_to);
       a_X("Mailx-Orig-Cc", h_mailx_orig_cc);
