@@ -2459,16 +2459,26 @@ jleave:
 
 FL char *
 n_header_senderfield_of(struct message *mp){
+   struct mx_name *np;
    char *cp;
    NYD_IN;
 
-   if((cp = hfield1("from", mp)) != NULL && *cp != '\0')
-      ;
-   else if((cp = hfield1("sender", mp)) != NULL && *cp != '\0')
-      ;
-   else{
-      char *namebuf, *cp2, *linebuf;
-      uz namesize, linesize;
+   if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
+         (np = lextract(cp, GEXTRA | GSKIN)) != NIL && np->n_flink == NIL){
+      cp = savestr(cp);
+      goto jleave;
+   }
+
+   if((cp = hfield1("sender", mp)) != NIL && *cp != '\0'){
+      if((np = lextract(cp, GEXTRA | GSKIN)) != NIL){
+         cp = savestr(cp);
+         goto jleave;
+      }
+   }
+
+   /* C99 */{
+      char *linebuf, *namebuf, *cp2;
+      uz linesize, namesize;
       FILE *ibuf;
       int f1st = 1;
 
@@ -2538,6 +2548,7 @@ jout:
       n_free(namebuf);
    }
 
+jleave:
    NYD_OU;
    return cp;
 }
