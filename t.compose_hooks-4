@@ -21,7 +21,7 @@ Bcc: oce@exam.ple
 
 this is content of reply 1
 t_ocs version 0 0 1
-210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 To
 mline_res:9/0/NONE: f1@z f1@z
 mline_res:9/0/NONE: t1@z t1@z
@@ -32,6 +32,9 @@ mline_res:0/0/NONE:
 Mailx-Raw-To
 mline_res:9/0/NONE: f1@z f1@z
 mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+Mailx-Orig-Sender
+mline_res:9/0/NONE: f1@z f1@z
 mline_res:0/0/NONE: 
 Mailx-Orig-From
 mline_res:9/0/NONE: f1@z f1@z
@@ -48,7 +51,7 @@ Bcc: oce@exam.ple
 
 this is content of Reply 1 2
 t_ocs version 0 0 1
-210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 To
 mline_res:9/0/NONE: f1@z f1@z
 mline_res:14/0/NONE: f2@z du <f2@z>
@@ -59,6 +62,9 @@ mline_res:0/0/NONE:
 Mailx-Raw-To
 mline_res:9/0/NONE: f1@z f1@z
 mline_res:14/0/NONE: f2@z du <f2@z>
+mline_res:0/0/NONE: 
+Mailx-Orig-Sender
+mline_res:9/0/NONE: f1@z f1@z
 mline_res:0/0/NONE: 
 Mailx-Orig-From
 mline_res:9/0/NONE: f1@z f1@z
@@ -83,7 +89,7 @@ b1
 
 this is content of forward 1
 t_ocs version 0 0 1
-210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 To
 mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
 mline_res:0/0/NONE: 
@@ -92,6 +98,9 @@ mline_res:7/0/NONE: forward
 mline_res:0/0/NONE: 
 Mailx-Raw-To
 mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+mline_res:0/0/NONE: 
+Mailx-Orig-Sender
+mline_res:9/0/NONE: f1@z f1@z
 mline_res:0/0/NONE: 
 Mailx-Orig-From
 mline_res:9/0/NONE: f1@z f1@z
@@ -118,7 +127,7 @@ b2
 -- end of forward (19961002015007.AQACA%f2@z) --
 this is content of forward 2
 t_ocs version 0 0 1
-210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 To
 mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
 mline_res:0/0/NONE: 
@@ -127,6 +136,9 @@ mline_res:7/0/NONE: forward
 mline_res:0/0/NONE: 
 Mailx-Raw-To
 mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+mline_res:0/0/NONE: 
+Mailx-Orig-Sender
+mline_res:14/0/NONE: f2@z du <f2@z>
 mline_res:0/0/NONE: 
 Mailx-Orig-From
 mline_res:14/0/NONE: f2@z du <f2@z>
@@ -153,7 +165,7 @@ b2
 -- end of forward (19961002015007.AQACA%f2@z) --
 this is content of forward 2, 2nd, with showname set
 t_ocs version 0 0 1
-210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 To
 mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
 mline_res:0/0/NONE: 
@@ -162,6 +174,9 @@ mline_res:7/0/NONE: forward
 mline_res:0/0/NONE: 
 Mailx-Raw-To
 mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
+mline_res:0/0/NONE: 
+Mailx-Orig-Sender
+mline_res:14/0/NONE: f2@z du <f2@z>
 mline_res:0/0/NONE: 
 Mailx-Orig-From
 mline_res:14/0/NONE: f2@z du <f2@z>
@@ -214,7 +229,7 @@ mailx-subject<>
 mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
 mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 on-XY-leave, mailx-command<reply>
 mailx-from<> mailx-sender<>
 mailx-subject<>
@@ -236,7 +251,7 @@ mailx-subject<>
 mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
 mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 on-XY-leave, mailx-command<Reply>
 mailx-from<> mailx-sender<>
 mailx-subject<>
@@ -258,7 +273,7 @@ mailx-subject<>
 mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
 mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 on-XY-leave, mailx-command<forward>
 mailx-from<> mailx-sender<>
 mailx-subject<>
@@ -280,7 +295,7 @@ mailx-subject<>
 mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
 mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 on-XY-leave, mailx-command<forward>
 mailx-from<> mailx-sender<>
 mailx-subject<>
@@ -302,7 +317,7 @@ mailx-subject<>
 mailx-to<fwdex2@am.ple> mailx-cc<> mailx-bcc<>
 mailx-raw-to<fwdex2@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
 on-XY-leave, mailx-command<forward>
 mailx-from<> mailx-sender<>
 mailx-subject<>
