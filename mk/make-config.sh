@@ -283,6 +283,7 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
 #cc_no_stackprot=
+#cc_no_fortify=
 #ld_need_R_flags=
 #ld_no_bind_now=
 #ld_rpath_not_runpath=
@@ -424,6 +425,11 @@ cc_setup() {
    fi
    msg '%s' "${CC}"
    export CC
+
+   case "${CC}" in
+   *pcc*) cc_no_fortify=1;;
+   *) ;;
+   esac
 }
 
 _cc_default() {
@@ -437,6 +443,11 @@ _cc_default() {
    else
       msg 'Using C compiler ${CC}=%s' "${CC}"
    fi
+
+   case "${CC}" in
+   *pcc*) cc_no_fortify=1;;
+   *) ;;
+   esac
 }
 
 cc_create_testfile() {
@@ -613,12 +624,19 @@ _cc_flags_generic() {
       if [ -z "${cc_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
-            cc_check -D_FORTIFY_SOURCE=2
+            if [ -z "${cc_no_fortify}" ]; then
+               cc_check -D_FORTIFY_SOURCE=2
+            else
+               msg ' ! Not checking for -D_FORTIFY_SOURCE=2 compiler option,'
+               msg ' ! since that caused errors in a "similar" configuration.'
+               msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
+
+            fi
          fi
       else
          msg ' ! Not checking for -fstack-protector compiler option,'
          msg ' ! since that caused errors in a "similar" configuration.'
-         msg ' ! You may turn off OPT_AUTOCC and use your own settings, rerun'
+         msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
       fi
    fi
 
