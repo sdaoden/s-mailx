@@ -194,7 +194,8 @@ static size_t longest_distance;
 static size_t
 next_prime(size_t no){ /* blush (brute force) */
 jredo:
-   ++no;
+   if((++no & 1) == 0)
+      goto jredo;
    for(size_t i = 3; i < no; i += 2)
       if(no % i == 0)
          goto jredo;
