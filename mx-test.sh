@@ -4955,8 +4955,12 @@ t_copy() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    check 2-1 - ./.tall '1913702840 1121'
    check 2-2 - ./.tf1 '686654461 334'
    check 2-3 - ./.tf2 '1931512953 162'
@@ -5002,8 +5006,12 @@ t_copy() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
    check 5-3 - ./.tall '1543702808 1617'
@@ -5014,8 +5022,12 @@ t_copy() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
    ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
@@ -5090,8 +5102,12 @@ t_save() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    check 2-1 - ./.tall '2335843514 1121'
    check 2-2 - ./.tf1 '2435434321 334'
    check 2-3 - ./.tf2 '920652966 162'
@@ -5137,8 +5153,12 @@ t_save() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
    check 5-3 - ./.tall '3418590770 1617'
@@ -5149,8 +5169,12 @@ t_save() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
    ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
@@ -5244,8 +5268,12 @@ t_move() { # {{{
       "${MBOX}" > ./.tallx 2>./.terr
    check_ex0 2
 
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    check 2-1 - ./.tall '1641443074 491'
    check 2-2 - ./.tf1 '1473857906 162'
    check 2-3 - ./.tf2 '331229810 162'
@@ -5290,12 +5318,20 @@ t_move() { # {{{
 
    t_it 5 headers '#'
    check_ex0 5-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * > ./.tlst
    check 5-2 - ./.tlst '1058655452 9'
    check 5-3 - ./.tall '419037676 870'
-   check 5-4 - ./.terr '1383646464 86'
+   if have_feat uistrings; then
+      check 5-4 - ./.terr '1383646464 86'
+   else
+      t_echoskip '5-4:[!UISTRINGS]'
+   fi
    check 5-5 - ./from1 '3719268580 827'
    check 5-6 - ./ex '4262925856 149'
    ${rm} -f ./.tlst ./.tall ./.terr ./from1 ./ex
@@ -5303,8 +5339,12 @@ t_move() { # {{{
    ${mkdir} .tfolder
    t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
    check_ex0 6-1
-   ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}" # strip "FLD updated" TODO
-   ${sed} '$d' < ./.tallx > ./.tall # strip "FOLDER updated." TODO
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
    echo * .tfolder/* > ./.tlst
    check 6-2 - ./.tlst '1865898363 29'
    ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
