@@ -659,12 +659,6 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
-   if(ok_blook(quote_as_attachment)){
-      head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
-      head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _("Original message content");
-   }
-
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head, mp, NULL) != OKAY){
       msgvec = NULL;
