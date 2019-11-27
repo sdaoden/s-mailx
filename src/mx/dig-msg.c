@@ -175,7 +175,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
                "   attribute-set name key value (210; 505/501)\n"
                "   attribute-set-at position key value\n"
                "   insert file[=input-charset[#output-charset]] "
-                  "(210; 501/505/506)"
+                  "(210; 501/505/506)\n"
                "   insert #message-number\n"
                "   list (212; 501)\n"
                "   remove name (210; 501/506)\n"
