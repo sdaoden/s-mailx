@@ -602,7 +602,7 @@ a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct quoteflt qf;
    struct n_string s_b, *s;
    char c;
-   char const *fmt;
+   char const *fmt, *cp;
    NYD_IN;
 
    if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
@@ -616,23 +616,28 @@ jwrite_char:
          s = n_string_push_c(s, c);
       }else switch(c){
       case 'a':
-         s = n_string_push_cp(s, cfcp->cfc_addr);
+         cp = cfcp->cfc_addr;
+jwrite_cp:
+         s = n_string_push_cp(s, cp);
          break;
       case 'd':
-         s = n_string_push_cp(s, cfcp->cfc_date);
+         cp = cfcp->cfc_date;
+         goto jwrite_cp;
          break;
       case 'f':
-         s = n_string_push_cp(s, cfcp->cfc_full);
-         break;
+         cp = cfcp->cfc_full;
+         goto jwrite_cp;
       case 'i':
-         if(cfcp->cfc_msgid != NULL)
-            s = n_string_push_cp(s, cfcp->cfc_msgid);
+         if((cp = cfcp->cfc_msgid) != NIL)
+            goto jwrite_cp;
          break;
       case 'n':
-         s = n_string_push_cp(s, cfcp->cfc_cumul);
+         cp = cfcp->cfc_cumul;
+         goto jwrite_cp;
          break;
       case 'r':
-         s = n_string_push_cp(s, cfcp->cfc_real);
+         cp = cfcp->cfc_real;
+         goto jwrite_cp;
          break;
       case '\0':
          --fmt;
@@ -646,16 +651,16 @@ jwrite_char:
       }
    }
 
-   quoteflt_init(&qf, NULL, FAL0);
+   quoteflt_init(&qf, NIL, FAL0); /* XXX terrible we need wrap sauce! */
    quoteflt_reset(&qf, cfcp->cfc_fp);
    if(quoteflt_push(&qf, s->s_dat, s->s_len) < 0 || quoteflt_flush(&qf) < 0)
-      cfcp = NULL;
+      cfcp = NIL;
    quoteflt_destroy(&qf);
 
    /*n_string_gut(s);*/
 jleave:
    NYD_OU;
-   return (cfcp != NULL);
+   return (cfcp != NIL);
 }
 
 static boole
