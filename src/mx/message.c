@@ -422,7 +422,7 @@ jnumber__thr:
          break;
       case a_MSG_T_PLUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -441,7 +441,7 @@ jnumber__thr:
          goto jnumber;
       case a_MSG_T_MINUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -509,9 +509,9 @@ jnumber__thr:
       case a_MSG_T_DOLLAR:
       case a_MSG_T_UP:
       case a_MSG_T_SEMI:
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          /* FALLTHRU */
-      case a_MSG_T_DOT: /* Don't set _GABBY for dot to allow history.. */
+      case a_MSG_T_DOT:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if((msl.msl_no = i = a_msg_metamess(msl.msl_str[0], f)) < 0){
             msl.msl_no = -1;
@@ -548,7 +548,7 @@ jnumber__thr:
          break;
       case a_MSG_T_COMMA:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          if(flags & a_RANGE)
             goto jebadrange;
 
