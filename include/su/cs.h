@@ -127,13 +127,15 @@ INLINE boole su_cs_is_ctype(s32 x, u32 csct){
 /*! String comparison, byte-based, case-sensitive. */
 EXPORT sz su_cs_cmp(char const *cp1, char const *cp2);
 
-/*! \r{su_cs_cmp()}, size-cramped. */
+/*! \r{su_cs_cmp()}, size-cramped.
+ * \remarks{A \a{n} of 0 compares equal.} */
 EXPORT sz su_cs_cmp_n(char const *cp1, char const *cp2, uz n);
 
 /*! String comparison, byte-based, case-insensitive. */
 EXPORT sz su_cs_cmp_case(char const *cp1, char const *cp2);
 
-/*! \r{su_cs_cmp_case()}, size-cramped. */
+/*! \r{su_cs_cmp_case()}, size-cramped.
+ * \remarks{A \a{n} of 0 compares equal.} */
 EXPORT sz su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n);
 
 /*! Copy at most \a{n} bytes of \a{src} to \a{dst}, and return \a{dst} again.
