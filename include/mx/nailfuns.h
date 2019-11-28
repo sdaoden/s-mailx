@@ -1427,7 +1427,7 @@ FL char *fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm);
  * EQ UZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
  * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
  * just as known from the sh(1)ell in that case */
-FL enum n_shexp_state n_shexp_parse_token(
+FL BITENUM_IS(u32,n_shexp_state) n_shexp_parse_token(
       BITENUM_IS(u32,n_shexp_parse_flags) flags, struct n_string *store,
       struct str *input, void const **cookie);
 

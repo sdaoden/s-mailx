@@ -1083,7 +1083,7 @@ jnext:
          shin.l = UZ_MAX;
          shoup = n_string_creat_auto(&shou);
          for(;;){
-            enum n_shexp_state shs;
+            BITENUM_IS(u32,n_shexp_state) shs;
 
             /* TODO shexp: take care: not include backtick eval once avail! */
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
@@ -1150,7 +1150,7 @@ jleave:
    return UNCONST(char*,res);
 }
 
-FL enum n_shexp_state
+FL BITENUM_IS(u32,n_shexp_state)
 n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
       struct n_string *store, struct str *input, void const **cookie){
    /* TODO shexp_parse_token: WCHAR
@@ -1189,7 +1189,7 @@ n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
    };
 
    char c2, c, quotec, utf[8];
-   enum n_shexp_state rv;
+   BITENUM_IS(u32,n_shexp_state) rv;
    uz i, il;
    u32 state, last_known_meta_trim_len;
    char const *ifs, *ifs_ws, *ib_save, *ib;
@@ -1922,7 +1922,7 @@ n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
    struct str input;
    struct n_string sou, *soup;
    char *rv;
-   enum n_shexp_state shs;
+   BITENUM_IS(u32,n_shexp_state) shs;
    NYD2_IN;
 
    ASSERT(cp != NULL);
@@ -2045,7 +2045,7 @@ c_shcodec(void *vp){
       soup = n_shexp_quote(soup, &in, !norndtrip);
    else if(!norndtrip && su_cs_starts_with_case_n("decode", act, alen)){
       for(;;){
-         enum n_shexp_state shs;
+         BITENUM_IS(u32,n_shexp_state) shs;
 
          shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);

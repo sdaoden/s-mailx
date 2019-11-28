@@ -204,7 +204,7 @@ jredo:
          ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
          : xprompt;
    if(cp != NULL && *cp != '\0'){
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       store = n_string_push_cp(store, cp);
       in.s = n_string_cp(store);
@@ -2308,7 +2308,7 @@ a_tty_kht(struct a_tty_line *tlp){
 
       if(max > 0){
          for(;;){
-            enum n_shexp_state shs;
+            BITENUM_IS(u32,n_shexp_state) shs;
 
             exp = sub;
             shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
@@ -3545,7 +3545,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
    /* Parse the key-sequence */
    for(shin.s = n_UNCONST(tbpcp->tbpc_in_seq), shin.l = UZ_MAX;;){
       struct kse *ep;
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       shin_save = shin;
       shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |

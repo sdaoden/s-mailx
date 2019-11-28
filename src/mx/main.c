@@ -770,7 +770,7 @@ jeMmq:
                okey = a[0] = avo.avo_current_arg;
                s = NIL;
             }else{
-               enum n_shexp_state shs;
+               BITENUM_IS(u32,n_shexp_state) shs;
 
                n_autorec_relax_create();
                s = n_string_creat_auto(&s_b);

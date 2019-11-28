@@ -565,7 +565,7 @@ jredo:
       default:
       case mx_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
-         enum n_shexp_state shs;
+         BITENUM_IS(u32,n_shexp_state) shs;
 
          if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
 
@@ -941,7 +941,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
          }
 
          /* C99 */{
-            enum n_shexp_state shs;
+            BITENUM_IS(u32,n_shexp_state) shs;
 
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                   (cookie == NULL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |

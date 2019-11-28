@@ -654,7 +654,7 @@ lextract(char const *line, enum gfield ntype)
    else{
       struct str sin;
       struct n_string s_b, *s;
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       n_autorec_relax_create();
       s = n_string_creat_auto(&s_b);
