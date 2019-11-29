@@ -5256,10 +5256,12 @@ will instead open the message that is being composed.
 If a hyphen-minus is given as the optional third argument then output
 will be generated on the standard output channel instead of being
 subject to consumation by the
-.Ic read
+.Ic readsh
+(here better than
+.Ic readh
 or
-.Ic readall
-commands.
+.Ic readall )
+command.
 .Pp
 The objects may be
 .Cm remove Ns
@@ -5274,10 +5276,10 @@ and the third and all following arguments are interpreted as via
 .Bd -literal -offset indent
 ? vput = msgno; digmsg create $msgno
 ? digmsg $msgno header list;   readall x;   echon $x
-210 Subject From To Message-ID References In-Reply-To Status
-? digmsg $msgno header show Status;readall x;echon $x
-212 Status
-RO
+210 Subject From To Message-ID References In-Reply-To
+? digmsg $msgno header show Subject;readall x;echon $x
+212 Subject
+'Hello, world'
 
 ? digmsg remove $msgno
 .Ed
@@ -6756,7 +6758,8 @@ upon End-Of-File.
 .Mx
 .It Ic readctl
 \*(NQ Manages input channels for
-.Ic read
+.Ic read ,
+.Ic readsh
 and
 .Ic readall ,
 to be used to avoid complicated or impracticable code, like calling
@@ -7981,39 +7984,43 @@ ged message.
 .\" .Sh COMMAND ESCAPES {{{
 .Sh "COMMAND ESCAPES"
 .
-Command escapes are available in compose mode, and are used to perform
-special functions when composing messages.
+When composing messages command escapes are available in interactive
+mode, when explicitly requested via
+.Fl ~ ,
+as well as in batch mode
+.Pf ( Fl # ) .
+They perform special functions, like editing headers of the message
+being composed, calling normal
+.Sx COMMANDS ,
+yielding a shell, etc.
 Command escapes are only recognized at the beginning of lines, and
-consist of a trigger (escape), and a command character.
-The actual escape character can be set via the internal variable
-.Va escape ,
-it defaults to tilde
+consist of an escape followed by a command character.
+The default
+.Va escape
+character is the tilde
 .Ql ~ .
 .
 .Pp
-Command escapes ensure proper updates of the variables which represent
+Unless otherwise documented command escapes ensure proper updates of
 the error number
 .Va \&!
 and the exit status
-.Va \&?
-unless otherwise documented.
+.Va \&? .
 The variable
 .Va errexit
 controls whether a failed operation errors out message compose mode and
 causes program exit.
-.
-.Pp
-Just like normal
-.Sx COMMANDS ,
-command escapes may be prefixed by none to multiple command modifiers.
-Here they are single letters, interspersed whitespace is ignored.
+Escapes may be prefixed by none to multiple single character command
+modifiers, interspersed whitespace is ignored:
 .
 .Bl -bullet
 .It
 An effect equivalent to the command modifier
 .Cm ignerr
 can be achieved with hyphen-minus
-.Ql - .
+.Ql - ,
+overriding
+.Va errexit .
 .It
 The modifier dollar
 .Ql $
@@ -8081,8 +8088,9 @@ will be incorporated, after which the compose mode is left.
 .
 .Mx
 .It Ic ~: Ar \*(UA-command Ns \0or Ic ~_ Ar \*(UA-command
-Execute the given \*(UA command.
-Not all commands, however, are allowed.
+Can be used to execute
+.Sx COMMANDS
+(which are allowed in compose mode).
 .
 .Mx
 .It Ic ~< Ar filename
@@ -8164,17 +8172,28 @@ Also see
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
 Low-level compose mode command which shares semantics with
-.Ic digmsg .
+.Ic digmsg ,
+and therefore evaluates its command line as documented in
+.Sx "Shell-style argument quoting" .
 Does not manage the error number
 .Va \&!
 and the exit status
 .Va \&? :
 errors are handled via the protocol, and hard errors like I/O failures
 cannot be handled.
+.
+.Pp
 The protocol consists of command lines followed by (a) response line(s).
 The first field of the response line represents a status code
 which specifies whether a command was successful or not, whether result
 data is to be expected, and if, the format of the result data.
+Response data will be shell quoted as necessary for consumption by
+.Ic readsh ,
+or
+.Ic eval
+and
+.Ic vpospar ,
+to name a few.
 Error status code lines may optionally contain additional context:
 .
 .
@@ -8188,10 +8207,10 @@ Status ok; the rest of the line is optionally used for more status.
 What follows are lines of result addresses, terminated by an empty line.
 All the input, including the empty line, must be consumed before further
 commands can be issued.
-Address lines consist of two fields, first the plain network address, e.g.,
+Address lines consist of two token, first the plain network address, e.g.,
 .Ql bob@exam.ple ,
-separated by a single ASCII SP space from the full address as known, e.g.,
-.Ql (Lovely) Bob <bob@exam.ple> .
+followed by the (quoted) full address as known:
+.Ql '(Lovely) Bob <bob@exam.ple>' .
 Non-network addresses use the first field to indicate the type (hyphen-minus
 .Ql -
 for files, vertical bar
@@ -8204,7 +8223,7 @@ processing) instead, the actual value will be in the second field.
 .
 .It Ql 212
 Status ok; the rest of the line is optionally used for more status.
-What follows are lines of furtherly unspecified string content,
+What follows are lines of furtherly unspecified (quoted) string content,
 terminated by an empty line.
 All the input, including the empty line, must be consumed before further
 commands can be issued.
@@ -8234,7 +8253,14 @@ If a command indicates failure then the message will have remained
 unmodified.
 Most commands can fail with
 .Ql 500
-if required arguments are missing (false command usage).
+if required arguments are missing, or excessive arguments have been
+given (false command usage).
+(\*(ID The latter does not yet occur regulary, because as stated in
+.Sx "Shell-style argument quoting"
+our argument parser is not yet smart enough to work on subcommand base;
+for example one might get excess argument error for a three argument
+subcommand that receives four arguments, but not for a four argument
+subcommand which receives six arguments: here excess will be joined.)
 The following (case-insensitive) commands are supported:
 .
 .
@@ -8252,9 +8278,7 @@ and prints any known attributes of the first found attachment via
 upon success or
 .Ql 501
 if no such attachment can be found.
-The attributes are written as lines of keyword and value tuples, the
-keyword being separated from the rest of the line with an ASCII SP space
-character.
+The attributes are written as lines with a keyword and a value token.
 .
 .It Cm attribute-at
 This uses the same search mechanism as described for
@@ -8265,11 +8289,10 @@ and is otherwise identical to
 .It Cm attribute-set
 This uses the same search mechanism as described for
 .Cm remove ,
-and will assign the attribute given as the fourth argument, which is
-expected to be a value tuple of keyword and other data, separated by
-a ASCII SP space or TAB tabulator character.
-If the value part is empty, then the given attribute is removed, or
-reset to a default value if existence of the attribute is crucial.
+and will set the attribute given as the fourth to the value given as
+the fifth token argument.
+If the value is an empty token, then the given attribute is removed,
+or reset to a default value if existence of the attribute is crucial.
 .Pp
 It returns via
 .Ql 210
@@ -8371,7 +8394,7 @@ if no such attachment exists.
 .
 .It Cm header
 This command allows listing, inspection, and editing of message headers.
-Header name case is not normalized, and case-insensitive comparison
+Header name case is not normalized, so that case-insensitive comparison
 should be used when matching names.
 The second argument specifies the subcommand to apply, one of:
 .
@@ -8379,8 +8402,7 @@ The second argument specifies the subcommand to apply, one of:
 .Bl -hang -width ".It Cm remove"
 .It Cm insert
 Create a new or an additional instance of the header given in the third
-argument, with the header body content as given in the fourth argument
-(the remains of the line).
+argument, with the header body content as given in the fourth token.
 It may return
 .Ql 501
 if the third argument specifies a free-form header field name that is
@@ -8394,12 +8416,12 @@ to indicate prevention of excessing a single-instance header \(em note that
 can be appended to (a space separator will be added automatically first).
 .Ql To: ,
 .Ql Cc:
-or
+and
 .Ql Bcc:
 support the
 .Ql ?single
-modifier to enforce treatment as a single addressee, e.g.,
-.Ql header insert To?single: exa, <m@ple> ;
+modifier to enforce treatment as a single addressee, for example
+.Ql header insert To?single: 'exa, <m@ple>' ;
 the word
 .Ql single
 is optional.
@@ -11115,7 +11137,7 @@ The compose mode command
 has been especially designed for scriptability (via these hooks).
 The first line the hook will read on its standard input is the protocol
 version of said command escape, currently
-.Dq 0 0 1 :
+.Dq 0 0 2 :
 backward incompatible protocol changes have to be expected.
 .
 .Pp
@@ -11154,8 +11176,8 @@ define ocsm {
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" !%?case ' cc' ]
-    echo '~^h i cc Diet is your <mirr.or>'; read es;\e
+  if "$hl" !%?case ' cc'
+    echo '~^h i cc "Diet is your <mirr.or>"'; read es;\e
       vput csop es substring "${es}" 0 1
     if [ "$es" != 2 ]
       echoerr 'Cannot insert Cc: header'; echo '~x'

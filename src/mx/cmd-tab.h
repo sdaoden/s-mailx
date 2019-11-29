@@ -83,15 +83,25 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(decrypt, 1, a_cmd_cad_decrypt){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-mx_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 3, a_cmd_cad_digmsg){ /* XXX 2 OR 3 */
+/* Superset of the one in mx_dig_msg_circumflex() */
+mx_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 6, a_cmd_cad_digmsg){ /* XXX 4 OR 5 */
    {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand (/ msgno/-) */
    {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE}, /* msgno/- (/ first part of user cmd) */
    {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
-         mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_GREEDY_JOIN |
          mx_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* arg1 */
+   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+         mx_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* arg2 */
+   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+         mx_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* arg3 */
+   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+         mx_CMD_ARG_DESC_HONOUR_STOP |
+         mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_GREEDY_JOIN,
+      n_SHEXP_PARSE_TRIM_IFSSPACE} /* arg4 */
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 mx_CMD_ARG_DESC_SUBCLASS_DEF(Forward, 1, a_cmd_cad_Forward){

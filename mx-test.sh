@@ -6691,7 +6691,7 @@ t_mta_aliases() {
    mail a1
 !c a2
 !:echo $?/$^ERRNAME
-!^header insert bcc a3 a10
+!^header insert bcc "a3 a10"
 !:echo $?/$^ERRNAME
 !.
    ' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
@@ -7404,7 +7404,7 @@ _EOT
 !^header remove cc
 !^header remove subject
 !^header insert to b@b.org
-!^header insert cc a@b.org  b@b.org c@c.org
+!^header insert cc "a@b.org  b@b.org c@c.org"
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
@@ -7421,7 +7421,7 @@ my body
 !^header remove cc
 !^header remove subject
 !^header insert to b@b.org
-!^header insert cc a@b.org  b@b.org c@c.org
+!^header insert cc "a@b.org  b@b.org c@c.org"
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
@@ -7475,8 +7475,7 @@ t_cmd_escapes() {
       t__gen_msg from 'ex4@am.ple' subject sub4 &&
       t__gen_msg from 'eximan <ex5@am.ple>' subject sub5; } > ./.tmbox
 
-   # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
-   # have some in compose_edits and digmsg
+   # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
       headerpick type retain Subject
@@ -7690,6 +7689,7 @@ t_compose_edits() { # XXX very rudimentary
    # after: t_cmd_escapes
    t_prolog "${@}"
 
+   # Something to use as "editor"
    ${cat} <<-_EOT > ./.ted.sh
 	#!${SHELL}
 	${cat} <<-__EOT > \${1}
@@ -7722,11 +7722,12 @@ t_compose_edits() { # XXX very rudimentary
    check 7 - ./.tall '4294967295 0'
    ${rm} ./.tout1 ./.tout2 ./.tout3
 
-   # t_compose_hooks will test ~^ at edge
+   # Note t_compose_hooks adds ~^ stress tests
    ${mv} ./.tout ./.tout1
    ${mv} ./.tall ./.tout2
    printf '#
    mail ./.tout\n!s This subject is\nThis body is
+!^header
 !^header list
 !^header list fcc
 !^header show fcc
@@ -7749,7 +7750,7 @@ t_compose_edits() { # XXX very rudimentary
    check 8 0 ./.tout '3993703854 127'
    check 9 - ./.tout1 '4294967295 0'
    check 10 - ./.tout2 '4294967295 0'
-   check 11 - ./.tall '4280910245 300'
+   check 11 - ./.tall '1857504914 342'
 
    # < No longer in-a-row
 
@@ -7763,11 +7764,77 @@ t_compose_edits() { # XXX very rudimentary
    check 13 - ./.tall '4294967295 0'
 
    # This test assumes code of `^' and `digmsg' is shared: see t_digmsg()
+   echo 'b 1' > ./.t' x 1'
+   echo 'b 2' > ./.t' x 2'
+   printf '#
+mail ./.tatt
+!^header insert     subject      subject       
+!:set i="./.t x 1"
+!^header list
+!:echo =0
+!^attachment
+!:echo =1
+!^attachment insert "$i"
+!:echo =2
+!^attachment
+!:echo =3
+!^attachment list
+!:echo =4
+!^attachment insert '"'"'./.t x 2'"'"'
+!:echo =5
+!^attachment list
+!:echo =6
+!^attachment remove "$i"
+!:echo =7
+!^attachment list
+!:echo =8
+!^attachment insert $'"'"'\\$i'"'"'
+!:echo =10
+!^attachment list
+!:echo =11
+!^header list
+!:echo =12
+!^a a  $i
+!:echo =13
+!^a attribute-set  "$i"     filenames "  cannot wait  for you "
+!:echo =14
+!^a a  $i
+!:echo =15
+!^a attribute-set  "$i"     filename "  cannot wait  for you "
+!:echo =16
+!^a a  $i
+!:echo =17
+!^a attribute-at 2
+!:echo =18
+!^a attribute-set-at 2  "filename"   "private  eyes"
+!:echo =19
+!^a attribute-at 2
+!:echo =20
+!^a attribute-set-at 2 content-description "private c-desc"
+!:echo =21
+!^a attribute-at 2
+!:echo =22
+!^a attribute-set-at 2 content-ID "priv invd c-id"
+!:echo =23
+!^a attribute-at 2
+!:echo =24
+!^a attribute-set-at 2 content-TyPE tExT/mARkLO
+!:echo =25
+!^a attribute-at 2
+!:echo =26
+!^a attribute-set-at 2 content-TyPE ""
+!:echo =27
+!^a attribute-at 2
+!:echo =28
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
+   check 14 0 ./.tall '3491667030 1565'
+   check 15 - ./.tatt '1685063733 636'
 
    t_epilog "${@}"
 }
 
-t_digmsg() { # XXX rudimentary
+t_digmsg() { # XXX rudimentary; <> compose_edits()?
    t_prolog "${@}"
 
    printf '#
@@ -7870,7 +7937,7 @@ t_digmsg() { # XXX rudimentary
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 "$MBOX" '665881681 179'
    if have_feat uistrings; then
-      check 2 - ./.tall '2554217728 1366'
+      check 2 - ./.tall '4159482825 1372'
    else
       check 2 - ./.tall '121327235 1093'
    fi
@@ -7956,6 +8023,7 @@ t_compose_hooks() { # {{{ TODO monster
    (echo line one&&echo line two&&echo line three) > ./.treadctl
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
 
+   # Supposed to extend t_compose_edits with ~^ stress tests!
    ${cat} <<'__EOT__' > ./.trc
    define bail {
       echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -7963,7 +8031,7 @@ t_compose_hooks() { # {{{ TODO monster
    define xerr {
       vput csop es substr "$1" 0 1
       if [ "$es" != 2 ]
-         xcall bail "$2"
+         xcall bail "$2: $1"
       end
    }
    define read_mline_res {
@@ -7980,7 +8048,7 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "in_addr ($xh) 0-1"
 
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
       echo "~^header insert $xh <${xh}2@exam.ple>";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
@@ -8010,7 +8078,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
 
       #
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
       echo "~^header insert $xh <${xh}2@exam.ple>";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
@@ -8049,9 +8117,9 @@ t_compose_hooks() { # {{{ TODO monster
       end
 
       #
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
-      echo "~^header insert $xh <${xh}2@exam.ple> (comment) \"Quot(e)d\"";\
+    echo "~^header insert $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
       echo "~^header insert $xh ${xh}3@exam.ple";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
@@ -8531,7 +8599,7 @@ __EOT__
       -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3199865751 10529'
+   check 1 0 "${MBOX}" '1646284089 10565'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -8539,7 +8607,7 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '473642362 12743'
+   check 2 0 "${MBOX}" '700681006 12851'
 
    ##
 
@@ -8608,7 +8676,7 @@ __EOT__
             endif
             #
             call _work 1; echo $?
-            echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
+           echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
                read es; echo $es; vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be diet"
@@ -8620,7 +8688,7 @@ __EOT__
             endif
             #
             call _work 2; echo $?
-            echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
+           echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
                read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy"
@@ -8630,7 +8698,7 @@ __EOT__
             if [ "$es" != 2 ]
                xcall bail "be juicy2"
             endif
-            echo "~^header insert bcc juice3 <juice3@exam.ple>";\
+            echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
                read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy3"
@@ -8890,7 +8958,7 @@ this is content of forward 2, 2nd, with showname set
       ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '1239382707 11787'
+   check 4 - "${MBOX}" '1850092468 11799'
 
    t_epilog "${@}"
 } # }}}
