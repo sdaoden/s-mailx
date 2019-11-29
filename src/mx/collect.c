@@ -1285,6 +1285,9 @@ jcont:
                   flags &= ~a_NEED_INJECT_RESTART;
                   goto jinject_restart;
                }
+
+               /* We want any error to appear once for each tick */
+               n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
             }else{
                ASSERT(!(flags & a_NEED_INJECT_RESTART));
                if(n_poption & n_PO_TILDE_FLAG)
