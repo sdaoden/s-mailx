@@ -954,12 +954,12 @@ jatt_attset:
 
       hp->h_attach = n_attachment_append(hp->h_attach, cmda[1], &aerr, &ap);
       switch(aerr){
-      case n_ATTACH_ERR_FILE_OPEN: cp = "505\n"; goto jatt_ins;
-      case n_ATTACH_ERR_ICONV_FAILED: cp = "506\n"; goto jatt_ins;
-      case n_ATTACH_ERR_ICONV_NAVAIL:
-      case n_ATTACH_ERR_OTHER:
+      case n_ATTACH_ERR_FILE_OPEN: cp = "505"; goto jatt_ins;
+      case n_ATTACH_ERR_ICONV_FAILED: cp = "506"; goto jatt_ins;
+      case n_ATTACH_ERR_ICONV_NAVAIL: /* FALLTHRU */
+      case n_ATTACH_ERR_OTHER: /* FALLTHRU */
       default:
-         cp = "501\n";
+         cp = "501";
 jatt_ins:
          if(fprintf(fp, "%s %s\n", cp, cmda[1]) < 0)
             cp = NULL;
