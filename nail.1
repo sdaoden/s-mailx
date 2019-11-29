@@ -3602,7 +3602,7 @@ information which applies; a handy suggestion might thus be:
 .\" .Ss "Command modifiers" {{{
 .Ss "Command modifiers"
 .
-Commands may be prefixed by one or multiple command modifiers.
+Commands may be prefixed by none to multiple command modifiers.
 Some command modifiers can be used with a restricted set of commands
 only, the
 .Va verbose
@@ -7994,30 +7994,53 @@ Command escapes are only recognized at the beginning of lines, and
 consist of a trigger (escape), and a command character.
 The actual escape character can be set via the internal variable
 .Va escape ,
-it defaults to the tilde
+it defaults to tilde
 .Ql ~ .
-Otherwise ignored whitespace characters following the escape character
-will prevent a possible addition of the command line to the \*(OPal
-history.
 .
 .Pp
-Unless otherwise noted all compose mode command escapes ensure proper
-updates of the variables which represent the error number
+Command escapes ensure proper updates of the variables which represent
+the error number
 .Va \&!
 and the exit status
-.Va \&? .
-If the variable
+.Va \&?
+unless otherwise documented.
+The variable
 .Va errexit
-is set they will, unless stated otherwise, error out message compose mode
-and cause a program exit if an operation fails;
-an effect equivalent to the command modifier
+controls whether a failed operation errors out message compose mode and
+causes program exit.
+.
+.Pp
+Just like normal
+.Sx COMMANDS ,
+command escapes may be prefixed by none to multiple command modifiers.
+Here they are single letters, interspersed whitespace is ignored.
+.
+.Bl -bullet
+.It
+An effect equivalent to the command modifier
 .Cm ignerr
-can however be achieved by placing a hyphen-minus
-.Ql -
-after (possible whitespace following) the escape character.
-If the \*(OPal key bindings are available it is possible to create
+can be achieved with hyphen-minus
+.Ql - .
+.It
+The modifier dollar
+.Ql $
+.Ic eval Ns
+uates the remains of the line; also see
+.Sx "Shell-style argument quoting" .
+\*(ID For now the entire input line is evaluated as a whole; to avoid
+that control operators like semicolon
+.Cm \&;
+are interpreted unintentionally, they must be quoted.
+.El
+.
+.Pp
+Addition of the command line to the \*(OPal history can be prevented by
+placing whitespace directly after
+.Va escape .
+The \*(OPal key
 .Ic bind Ns
-ings specifically for the compose mode.
+ings support a compose mode specific context.
+The following command escapes are supported:
 .
 .
 .Bl -tag -width ".It Ic BaNg"

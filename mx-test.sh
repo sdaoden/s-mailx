@@ -7656,6 +7656,33 @@ and i ~w rite this out to ./.tmsg
       check 5 - ./.tall '1818580177 59'
    fi
 
+   # Modifiers and whitespace indulgence
+   printf 'body
+!:remove '"${MBOX}"'
+! :echo one
+! 		  <./.ttxts
+!               :echo two
+!   :     set i=./.ttxts
+! 	  -  	  $ 	 <  	   $i
+!:echo three
+!   :     set \\
+              	          errexit
+! 	  -  	$  <   $i
+! : echo four
+!$<  	   ./.ttxts
+! 	 :   	 echo five
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
+         -Sescape=! \
+         -Spwd="`${pwd}`" \
+         -s testsub one@to.invalid >./.tall 2>./.terr
+   check 6 4 ./.tall '686767281 95'
+   [ -f "${MBOX}" ]; check_exn0 7
+   if have_feat uistrings; then
+      check 8 - ./.terr '206149209 307'
+   else
+      t_echoskip '8:[!UISTRINGS]'
+   fi
+
    t_epilog "${@}"
 }
 

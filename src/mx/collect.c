@@ -91,6 +91,9 @@ static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
+/* Handle $ command escape modifier; cnt > 0 */
+static boole a_coll_eval_mod(char const **buf, long /* TODO uz */*cnt);
+
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
                      uz linesize);
@@ -154,6 +157,70 @@ static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
+
+static boole
+a_coll_eval_mod(char const **buf, long *cnt){
+   struct n_string store;
+   struct str input;
+   void const *cookie;
+   boole rv;
+   NYD2_IN;
+
+   ASSERT(*cnt > 0);
+
+   rv = TRU1;
+   cookie = NIL;
+   mx_fs_linepool_aquire(&input.s, &input.l);
+   n_string_take_ownership(n_string_creat(&store), input.s, input.l, 0);
+
+   input.s = UNCONST(char*,*buf);
+   input.l = S(uz,*cnt);
+   for(;;){
+      BITENUM_IS(u32,n_shexp_state) shs;
+
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG
+               /*| (cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |*/
+               /* TODO not here in old style | n_SHEXP_PARSE_IFS_VAR */
+               /* TODO SHEXP_PARSE_META_SEMICOLON ~$: needs injection stack*/),
+            &store, &input, &cookie);
+
+      /*if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
+       *   ASSERT(shs & n_SHEXP_STATE_STOP);
+       *   n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+      }*/
+
+      if(shs & n_SHEXP_STATE_ERR_MASK){
+         /* Simply ignore Unicode error, just keep the normalized \[Uu] */
+         if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
+            rv = FAL0;
+            break;
+         }
+      }
+
+      if(shs & n_SHEXP_STATE_OUTPUT){
+         if(!(shs & n_SHEXP_STATE_STOP))
+            n_string_push_c(&store, ' ');
+      }else if(store.s_len > 1)
+         n_string_trunc(&store, store.s_len - 1);
+
+      if(shs & n_SHEXP_STATE_STOP)
+         break;
+   }
+
+   if(rv && (*cnt = S(long,store.s_len)) > 0)
+      /* TODO for now just savestrbuf() the ~$ expansion; would be nice
+       * TODO if we could simply inject and redo, but that needs a inject
+       * TODO stack (manual: semicolons then could split! */
+      *buf = savestrbuf(store.s_dat, store.s_len);
+   else
+      rv = FAL0;
+
+   mx_fs_linepool_release(store.s_dat, store.s_len);
+   n_string_gut(n_string_drop_ownership(&store));
+
+   NYD2_OU;
+   return rv;
+}
 
 static void
 _execute_command(struct header *hp, char const *linebuf, uz linesize){
@@ -1129,14 +1196,19 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    enum{
       a_NONE,
       a_ERREXIT = 1u<<0,
-      a_IGNERR = 1u<<1,
+      a_IGNERR = 1u<<1, /* - modifier */
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
 
-      a_COAP_NOSIGTERM = 1u<<8,
+      a_EVAL = 1u<<8, /* $ modifier */
+
+      a_MODIFIER_MASK = a_IGNERR | a_EVAL,
+
+      a_COAP_NOSIGTERM = 1u<<9,
 
       a_NEED_INJECT_RESTART = 1u<<16,
       a_CAN_DELAY_INJECT = 1u<<17,
       a_EVER_LEFT_INPUT_LOOPS = 1u<<18,
+
       a_ROUND_MASK = a_NEED_INJECT_RESTART | a_CAN_DELAY_INJECT |
             a_EVER_LEFT_INPUT_LOOPS
    };
@@ -1148,7 +1220,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    int volatile gfield, eofcnt, getfields;
    char volatile escape;
    char *linebuf;
-   char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
+   char const *cp, * volatile coapm, * volatile ifs_saved;
    uz i, linesize;
    long cnt;
    sigset_t oset, nset;
@@ -1424,7 +1496,7 @@ jcont:
       }
       if(cp[0] != escape){
 jputline:
-         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (uz)cnt)
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != S(uz,cnt))
             goto jerr;
          /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
@@ -1438,54 +1510,73 @@ jputnl:
          continue;
       }
 
-      c = *(cp_base = ++cp);
       if(--cnt == 0)
          goto jearg;
-
-      /* Avoid history entry? */
-      while(su_cs_is_space(c)){
-         hist = a_HIST_NONE;
-         c = *(cp_base = ++cp);
-         if(--cnt == 0)
-            goto jearg;
-      }
+      c = *++cp;
 
       /* It may just be an escaped escaped character, do that quick */
       if(c == escape)
          goto jputline;
 
-      /* Avoid hard *errexit*? */
-      flags &= ~a_IGNERR;
-      if(c == '-'){
-         flags ^= a_IGNERR;
-         c = *++cp;
+      /* Skip leading whitespace, if we see any: no history entry */
+      while(su_cs_is_space(c)){
+         hist = a_HIST_NONE;
          if(--cnt == 0)
             goto jearg;
+         c = *++cp;
       }
 
-      /* Trim input, also to gain a somewhat normalized history entry */
-      ++cp;
-      if(--cnt > 0){
-         struct str x;
-
-         x.s = n_UNCONST(cp);
-         x.l = (uz)cnt;
-         n_str_trim_ifs(&x, TRU1);
-         x.s[x.l] = '\0';
-         cp = x.s;
-         cnt = (int)/*XXX*/x.l;
+      /* Avoid hard *errexit*, evaluate modifier ? */
+      flags &= ~a_MODIFIER_MASK;
+      for(;;){
+         if(c == '-')
+            flags |= a_IGNERR;
+         else if(c == '$')
+            flags |= a_EVAL;
+         else if(su_cs_is_space(c)){
+            /* Must have seen modifier, ok */;
+         }else
+            break;
+         if(--cnt == 0)
+            goto jearg;
+         c = *++cp;
       }
 
+      /* Trim whitespace, also for a somewhat normalized history entry.
+       * Also step cp over the command */
+      if(flags & a_MODIFIER_MASK){
+         while(su_cs_is_space(c)){
+            if(--cnt == 0)
+               goto jearg;
+            c = *++cp;
+         }
+      }
+      if(cnt > 0){
+         ++cp;
+         while(--cnt > 0 && su_cs_is_space(*cp))
+            ++cp;
+         while(cnt > 0 && su_cs_is_space(cp[cnt - 1]))
+            --cnt;
+         UNCONST(char*,cp)[cnt] = '\0';
+      }
+
+      /* Prepare history entry */
       if(hist != a_HIST_NONE){
          s = n_string_assign_c(s, escape);
          if(flags & a_IGNERR)
             s = n_string_push_c(s, '-');
+         if(flags & a_EVAL)
+            s = n_string_push_c(s, '$');
          s = n_string_push_c(s, c);
          if(cnt > 0){
             s = n_string_push_c(s, ' ');
             s = n_string_push_buf(s, cp, cnt);
          }
       }
+
+      /* This may be an eval request */
+      if((flags & a_EVAL) && cnt > 0 && !a_coll_eval_mod(&cp, &cnt))
+         goto jearg;
 
       /* Switch over all command escapes */
       switch(c){
@@ -1548,33 +1639,32 @@ jearg:
       case '?':
 #ifdef mx_HAVE_UISTRINGS
          fputs(_(
-"COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
-"~.            Commit and send message\n"
-"~: <command>  Execute an internal command\n"
-"~< <file>     Insert <file> (\"~<! <command>\": insert shell command)\n"
+"COMMAND ESCAPES (to be placed after a newline; excerpt).\n"
+"~: <command>  Execute command\n"
+"~< <file>     Insert <file> (also: ~<! <shellcmd>)\n"
 "~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]], #no)\n"
-"~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
+"~| <shellcmd> Pipe message through shell filter (~||: with headers)\n"
+"~^ help       Help for ^ (`digmsg') message control\n"
+"~c <users>    Add receivers to Cc: (~b: Bcc:) list\n"
 "~e, ~v        Edit message via $EDITOR / $VISUAL\n"
             ), n_stdout);
          fputs(_(
-"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
-"~f <msglist>  Like `~F', but honour `headerpick' configuration\n"
+"~F <msglist>  Insert with (~f: `headerpick'ed) headers\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
 "~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
-"~i <variable> Insert a value and a newline (`~I': insert value)\n"
-"~M <msglist>  Read in with headers, *indentprefix* (`~m': use `headerpick')\n"
-"~p            Show current message compose buffer\n"
-"~Q <msglist>  Read in using normal *quote* algorithm\n"
+"~i <variable> Insert value, (~I: do not) append a newline\n"
+"~M <msglist>  Insert with (~m: `headerpick'ed) headers, use *indentprefix*\n"
+"~p            Print message content\n"
+"~Q <msglist>  Insert with *quote* algorithm\n"
             ), n_stdout);
          fputs(_(
-"~r <file>     Insert <file> (`~R': *indentprefix* lines)\n"
-"              <file> may also be <- [HERE-DELIMITER]>\n"
+"~r <file>     Insert <file> / <- [HERE-DELIM]> (~R: use *indentprefix*)\n"
 "~s <subject>  Set Subject:\n"
-"~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in without headers (`~U': *indentprefix* lines)\n"
+"~t <users>    Add receivers to To: list\n"
+"~u <msglist>  Insert without headers (~U: use *indentprefix*)\n"
 "~w <file>     Write message onto file\n"
-"~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter (`~||': with headers)\n"
+"~x, ~q, ~.    Discard, discard and save to $DEAD, send message\n"
+"Modifiers: - (ignerr), $ (evaluate), e.g: \"~- $ @ $TMPDIR/file\"\n"
             ), n_stdout);
 #endif /* mx_HAVE_UISTRINGS */
          if(cnt != 0)
