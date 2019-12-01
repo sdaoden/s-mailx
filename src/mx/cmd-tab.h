@@ -272,7 +272,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "call_if", &c_call_if, (M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call)
      DS(N_("Call macro <name> like `call', but be silent if non-existent")) },
-   { "cd", &c_chdir, (M | X | TWYRA), 0, 1, NIL
+   { "cd", &c_chdir, (M | X | TWYSH), 0, 1, NIL
      DS(N_("Change working directory to the specified/the login directory")) },
    { "certsave",
 #ifdef mx_HAVE_TLS
@@ -282,7 +282,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
       (A | TARG), 0, MMNDEL, a_CMD_CAD_CERTSAVE
      DS(N_("Save S/MIME certificates of [<msglist>] to <file>")) },
-{ "chdir", &c_chdir, (M | TWYRA), 0, 1, NIL
+{ "chdir", &c_chdir, (M | TWYSH), 0, 1, NIL
      DS(N_("Change CWD to the specified/the login directory")) },
    { "charsetalias", &c_charsetalias, (M | TWYSH), 0, MAC, NIL
      DS(N_("Define [:<charset> <charset-alias>:]s, or list mappings")) },

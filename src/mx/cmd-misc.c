@@ -343,21 +343,22 @@ c_cwd(void *v){
 }
 
 FL int
-c_chdir(void *v)
-{
-   char **arglist = v;
+c_chdir(void *vp){
+   char **arglist;
    char const *cp;
    NYD_IN;
 
-   if(*arglist == NIL)
+   if(*(arglist = vp) == NIL)
       cp = ok_vlook(HOME);
-   else if((cp = fexpand(*arglist, (/*FEXP_NOPROTO |*/ FEXP_LOCAL |
-         FEXP_SHORTCUT))) == NIL)
+   else if((cp = fexpand(*arglist, /*FEXP_NOPROTO |*/ FEXP_LOCAL_FILE |
+         FEXP_NVAR)) == NIL)
       goto jleave;
+
    if(chdir(cp) == -1){
       n_perr(cp, 0);
       cp = NIL;
    }
+
 jleave:
    NYD_OU;
    return (cp == NIL ? n_EXIT_ERR : n_EXIT_OK);
