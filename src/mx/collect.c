@@ -1798,11 +1798,8 @@ jearg:
                }
                goto jhistcont;
             }
-            /* Note this also expands things like
-             *    !:vput vexpr delim random 0
-             *    !< - $delim */
-            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NSHELL
-                  ))) == NIL){
+            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
+                  ) == NIL){
                if(a_HARDERR())
                   goto jerr;
                n_pstate_err_no = su_ERR_INVAL;

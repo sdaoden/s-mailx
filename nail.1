@@ -8673,13 +8673,13 @@ but indent each line that has been read by
 .
 .Mx
 .It Ic ~r Ar filename Op Ar HERE-delimiter
-Read the named file, object to the usual
-.Sx "Filename transformations" ,
-into the message; if (the expanded)
+Read the named file, object to
+.Sx "Filename transformations"
+excluding shell globs and variable expansions, into the message; if
 .Ar filename
 is the hyphen-minus
 .Ql -
-then standard input is used, e.g., for pasting purposes.
+then standard input is used (for pasting, for example).
 Only in this latter mode
 .Ar HERE-delimiter
 may be given: if it is data will be read in until the given
