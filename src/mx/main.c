@@ -479,7 +479,7 @@ a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt,
       /* I18N: separating command line options */
       x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
    /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
-   fprintf(S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
+   fprintf(S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, V_(doc));
    NYD2_OU;
    return TRU1;
 }
