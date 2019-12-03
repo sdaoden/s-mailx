@@ -834,7 +834,7 @@ je_S:
          }else if((a = n_header_get_field(avo.avo_current_arg, "bcc", &suffix)
                ) != su_NIL){
             gf = GBCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
-            npp = &cc;
+            npp = &bcc;
          }else if((a = n_header_get_field(avo.avo_current_arg, "fcc", su_NIL)
                ) != su_NIL){
             gf = GBCC_IS_FCC;
