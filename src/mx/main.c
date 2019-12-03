@@ -1,38 +1,23 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Startup and initialization.
  *@ This file is also used to materialize externals.
+ *@ TODO we need a program wide global ctx; furtherly split main();
+ *@ TODO when arguments are parsed the a_main_ctx instance should be dropped
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause TODO ISC
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
 #define su_FILE main
@@ -59,9 +44,31 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-struct a_arg{
-   struct a_arg *aa_next;
-   char const *aa_file;
+struct a_main_ctx{
+   uz mc_smopts_size; /* To manage n_smopts_cnt and n_smopts */
+   char const *mc_A;
+   struct a_main_aarg *mc_a_head;
+   struct a_main_aarg *mc_a_curr;
+   struct attachment *mc_attach;
+   struct mx_name *mc_bcc;
+   struct mx_name *mc_cc;
+   char const *mc_folder;
+   char const *mc_L;
+   char const *mc_quote;
+   char const *mc_subject;
+   struct mx_name *mc_to;
+   char const *mc_u;
+   char const **mc_X;
+   uz mc_X_size;
+   uz mc_X_cnt;
+   char const **mc_Y;
+   uz mc_Y_size;
+   uz mc_Y_cnt;
+};
+
+struct a_main_aarg{
+   struct a_main_aarg *maa_next;
+   char const *maa_file;
 };
 
 /* (extern, but not with amalgamation, so define here) */
@@ -98,8 +105,7 @@ static void a_main_setup_vars(void);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int a_main_rcv_mode(boole had_A_arg, char const *folder,
-            char const *Larg, char const **Yargs, uz Yargs_cnt);
+static int a_main_rcv_mode(struct a_main_ctx *mcp);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -108,6 +114,11 @@ static void a_main_hdrstop(int signo);
 #if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
 static void a_main_memtrace(int signo);
 #endif
+
+/* The _opt_ series returns an error message or NIL */
+static char const *a_main_o_r(struct a_main_ctx *mcp, struct su_avopt *avop);
+static char const *a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop);
+static void a_main_o_s(struct a_main_ctx *mcp, struct su_avopt *avop);
 
 /* */
 static void a_main_usage(FILE *fp);
@@ -125,15 +136,13 @@ a_main_startup(void){
    n_stderr = stderr;
    dflpipe = SIG_DFL;
 
-   if((cp = su_cs_rfind_c(su_program, '/')) != NULL)
+   if((cp = su_cs_rfind_c(su_program, '/')) != NIL)
       su_program = ++cp;
    /* XXX Due to n_err() mess the su_log config only applies to EMERG yet! */
    su_state_set(su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID
          /* XXX | su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW */
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
-
-   /* Set up a reasonable environment */
 
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
     * TODO For now we get this wrong, all over the place, as this software
@@ -144,13 +153,13 @@ a_main_startup(void){
       n_psonce |= n_PSO_TTYIN;
       /* We need a writable terminal descriptor then, anyway */
       if((mx_tty_fp = fdopen(fileno(n_stdin), "w+")) != NIL)
-         setvbuf(mx_tty_fp, NULL, _IOLBF, 0);
+         setvbuf(mx_tty_fp, NIL, _IOLBF, 0);
    }
 
    if(isatty(STDOUT_FILENO))
       n_psonce |= n_PSO_TTYOUT;
    /* STDOUT is always line buffered from our point of view */
-   setvbuf(n_stdout, NULL, _IOLBF, 0);
+   setvbuf(n_stdout, NIL, _IOLBF, 0);
    if(mx_tty_fp == NIL)
       mx_tty_fp = n_stdout;
 
@@ -187,7 +196,7 @@ a_main_startup(void){
    n_locale_init();
 
 #ifdef mx_HAVE_ICONV
-   iconvd = (iconv_t)-1;
+   iconvd = R(iconv_t,-1);
 #endif
 
    /*
@@ -196,13 +205,13 @@ a_main_startup(void){
 
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
-   if((pwuid = getpwuid(n_user_id = getuid())) == NULL)
-      n_panic(_("Cannot associate a name with uid %lu"), (ul)n_user_id);
+   if((pwuid = getpwuid(n_user_id = getuid())) == NIL)
+      n_panic(_("Cannot associate a name with uid %lu"), S(ul,n_user_id));
    else{
       char const *ep;
       boole doenv;
 
-      if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
+      if(!(doenv = (ep = ok_vlook(LOGNAME)) == NIL) &&
             (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
@@ -213,7 +222,7 @@ a_main_startup(void){
       }
 
       /* BSD compat */
-      if((ep = ok_vlook(USER)) != NULL && su_cs_cmp(pwuid->pw_name, ep)){
+      if((ep = ok_vlook(USER)) != NIL && su_cs_cmp(pwuid->pw_name, ep)){
          n_err(_("Warning: $USER (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
          n_pstate |= n_PS_ROOT;
@@ -226,7 +235,7 @@ a_main_startup(void){
 
    /* This is not automated just as $TMPDIR is for the initial setting, since
     * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
-   if(n_user_id == 0 || (cp = ok_vlook(HOME)) == NULL){
+   if(n_user_id == 0 || (cp = ok_vlook(HOME)) == NIL){
       cp = pwuid->pw_dir;
       n_pstate |= n_PS_ROOT;
       ok_vset(HOME, cp);
@@ -234,6 +243,7 @@ a_main_startup(void){
    }
 
    (void)ok_blook(POSIXLY_CORRECT);
+
    NYD2_OU;
 }
 
@@ -248,6 +258,7 @@ a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
    if(oldcnt > 0)
       su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
+
    NYD2_OU;
    return newsize;
 }
@@ -263,13 +274,13 @@ a_main_setup_vars(void){
 
    /* Do not honour TMPDIR if root */
    if(n_user_id == 0)
-      ok_vset(TMPDIR, NULL);
+      ok_vset(TMPDIR, NIL);
    else
       (void)ok_vlook(TMPDIR);
 
    /* Are we in a reproducible-builds.org environment?
     * That special mode bends some settings (again) */
-   if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
+   if(ok_vlook(SOURCE_DATE_EPOCH) != NIL){
       su_state_set(su_STATE_REPRODUCIBLE);
       su_program = su_reproducible_build;
       n_pstate |= n_PS_ROOT;
@@ -280,7 +291,6 @@ a_main_setup_vars(void){
       ok_vset(log_prefix, cp);
    }
 
-
    /* Finally set our terminal dimension */
    mx_termios_controller_setup(mx_TERMIOS_SETUP_TERMSIZE);
 
@@ -290,35 +300,33 @@ a_main_setup_vars(void){
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
-      char const **Yargs, uz Yargs_cnt){
-   /* XXX a_main_rcv_mode(): use argument carrier */
+a_main_rcv_mode(struct a_main_ctx *mcp){
    n_sighdl_t prevint;
    int i;
    NYD_IN;
 
-   i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
+   i = (mcp->mc_A != NIL) ? FEDIT_ACCOUNT : FEDIT_NONE;
    if(n_poption & n_PO_QUICKRUN_MASK)
       i |= FEDIT_RDONLY;
 
-   if(folder == NULL){
-      folder = "%";
-      if(had_A_arg)
+   if(mcp->mc_folder == NIL){
+      mcp->mc_folder = "%";
+      if(i & FEDIT_ACCOUNT)
          i |= FEDIT_SYSBOX;
    }
 #ifdef mx_HAVE_IMAP
-   else if(*folder == '@'){
+   else if(*mcp->mc_folder == '@'){
       /* This must be treated specially to make possible invocation like
        * -A imap -f @mailbox */
       char const *cp;
 
       cp = n_folder_query();
-      if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
+      if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
          su_cs_pcopy_n(mailname, cp, sizeof mailname);
    }
 #endif
 
-   i = setfile(folder, i);
+   i = setfile(mcp->mc_folder, i);
    if(i < 0){
       n_exit_status = n_EXIT_ERR; /* error already reported */
       goto jquit;
@@ -328,7 +336,7 @@ a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
       n_exit_status = i;
       if(i == n_EXIT_OK && (!(n_poption & n_PO_EXISTONLY) ||
             (n_poption & n_PO_HEADERLIST)))
-         print_header_summary(Larg);
+         print_header_summary(mcp->mc_L);
       goto jquit;
    }
 
@@ -353,7 +361,7 @@ a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
    if(n_psonce & n_PSO_INTERACTIVE)
       mx_tty_init();
    /* "load()" more commands given on command line */
-   if(Yargs_cnt > 0 && !n_go_load_lines(TRU1, Yargs, Yargs_cnt))
+   if(mcp->mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
       n_exit_status = n_EXIT_ERR;
    else
       n_go_main_loop();
@@ -370,6 +378,7 @@ jquit:
       save_mbox_for_possible_quitstuff();
       quit(FAL0);
    }
+
 jleave:
    NYD_OU;
    return n_exit_status;
@@ -400,6 +409,172 @@ a_main_memtrace(int signo){
       ok_bclear(verbose);
 }
 #endif
+
+static char const *
+a_main_o_r(struct a_main_ctx *mcp, struct su_avopt *avop){
+   struct mx_name *fap;
+   char const *rv;
+   NYD2_IN;
+
+   n_poption |= n_PO_r_FLAG;
+
+   rv = NIL;
+
+   if(avop->avo_current_arg[0] == '\0')
+      goto jleave;
+
+   fap = nalloc(avop->avo_current_arg, GSKIN | GFULL | GFULLEXTRA |
+         GNOT_A_LIST | GNULL_OK | GSHEXP_PARSE_HACK);
+   if(fap == NIL || is_addr_invalid(fap, EACM_STRICT | EACM_NOLOG)){
+      rv = N_("Invalid address argument with -r");
+      goto jleave;
+   }
+
+   n_poption_arg_r = fap;
+
+   /* TODO -r options is set in n_smopts, but may
+    * TODO be overwritten by setting from= in
+    * TODO an interactive session!
+    * TODO Maybe disable setting of from?
+    * TODO Warn user?  Update manual!! */
+   avop->avo_current_arg = savecat("from=", fap->n_fullname);
+   rv = a_main_o_S(mcp, avop);
+
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+static char const *
+a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
+   struct str sin;
+   struct n_string s_b, *s;
+   boole b;
+   char const *rv, *a[2];
+   NYD2_IN;
+   UNUSED(mcp);
+
+   rv = NIL;
+
+   /* May be called from _opt_r(), for example */
+   if(avop->avo_current_opt != 'S' || ok_vlook(v15_compat) == NIL){
+      a[0] = avop->avo_current_arg;
+      s = NIL;
+   }else{
+      BITENUM_IS(u32,n_shexp_state) shs;
+
+      n_autorec_relax_create();
+      s = n_string_creat_auto(&s_b);
+      sin.s = UNCONST(char*,avop->avo_current_arg);
+      sin.l = UZ_MAX;
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IGNORE_EMPTY |
+            n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NIL);
+      if((shs & n_SHEXP_STATE_ERR_MASK) ||
+            !(shs & n_SHEXP_STATE_STOP)){
+         n_autorec_relax_gut();
+         goto je_S;
+      }
+      a[0] = n_string_cp_const(s);
+   }
+
+   a[1] = NIL;
+   n_poption |= n_PO_S_FLAG_TEMPORARY;
+   n_pstate |= n_PS_ROBOT;
+   b = (c_set(a) == n_EXIT_OK);
+   n_pstate &= ~n_PS_ROBOT;
+   n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+
+   if(s != NIL)
+      n_autorec_relax_gut();
+   if(!b && (ok_blook(errexit) || ok_blook(posix))){
+je_S:
+      rv = N_("-S failed to set variable");
+   }
+
+   NYD2_OU;
+   return rv;
+}
+
+static void
+a_main_o_s(struct a_main_ctx *mcp, struct su_avopt *avop){
+   /* Take care for Debian #419840 and strip any \r and \n */
+   uz i;
+   char *cp;
+   NYD2_IN;
+
+   n_psonce |= n_PSO_SENDMODE;
+
+   mcp->mc_subject = cp = UNCONST(char*,avop->avo_current_arg);
+
+   if((i = su_cs_first_of(cp, "\n\r")) != UZ_MAX){
+      n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
+
+      mcp->mc_subject = cp = savestr(cp);
+
+      for(cp = &cp[i]; *cp != '\0'; ++cp)
+         if(*cp == '\n' || *cp == '\r')
+            *cp = ' ';
+   }
+
+   NYD2_OU;
+}
+
+static char const *
+a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
+   struct str suffix;
+   struct mx_name **npp, *np;
+   BITENUM_IS(u32,gfield) gf;
+   char const *rv, *a;
+   NYD2_IN;
+
+   rv = NIL;
+
+   if((a = n_header_get_field(avop->avo_current_arg, "to", &suffix)) != NIL){
+      gf = GTO | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+      npp = &mcp->mc_to;
+   }else if((a = n_header_get_field(avop->avo_current_arg, "cc", &suffix)
+         ) != NIL){
+      gf = GCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+      npp = &mcp->mc_cc;
+   }else if((a = n_header_get_field(avop->avo_current_arg, "bcc", &suffix)
+         ) != NIL){
+      gf = GBCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+      npp = &mcp->mc_bcc;
+   }else if((a = n_header_get_field(avop->avo_current_arg, "fcc", su_NIL)
+         ) != NIL){
+      gf = GBCC_IS_FCC;
+      npp = &mcp->mc_bcc;
+   }else{
+      ASSERT(suffix.s == NIL);
+jeTuse:
+      rv = N_("-T: only supports to,cc,bcc (with ?single modifier) and fcc");
+      goto jleave;
+   }
+
+   if(suffix.s != NIL){
+      if(suffix.l > 0 &&
+            !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+         goto jeTuse;
+      gf |= GNOT_A_LIST;
+   }
+
+   if(!(gf & GBCC_IS_FCC))
+      np = lextract(a, gf);
+   else
+      np = nalloc_fcc(a);
+   if(np == NIL){
+      rv = N_("-T: invalid receiver (address)");
+      goto jleave;
+   }
+
+   *npp = cat(*npp, np);
+
+jleave:
+   NYD2_OU;
+   return rv;
+}
 
 static void
 a_main_usage(FILE *fp){
@@ -494,6 +669,16 @@ main(int argc, char *argv[]){
     * TODO and there should be two pools: one which is fixated() and remains,
     * TODO and one with throw away data (-X, -Y args, temporary allocs, e.g.,
     * TODO redo -S like so, etc.) */
+   enum a_rf_ids{
+      a_RF_NONE,
+      a_RF_SET = 1u<<0,
+      a_RF_SYSTEM = 1u<<1,
+      a_RF_USER = 1u<<2,
+      a_RF_BLTIN = 1u<<3,
+      a_RF_DEFAULT = a_RF_SYSTEM | a_RF_USER,
+      a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
+   };
+
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const a_sopts[] =
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
@@ -529,35 +714,18 @@ main(int argc, char *argv[]){
       "batch-mode;#;" N_("more confined non-interactive setup"),
       "end-options;.;" N_("force the end of options, and (enter) send mode"),
       "long-help;\201;" N_("this listing"),
-      NULL
+      NIL
    };
+
+   struct a_main_ctx mc;
    struct su_avopt avo;
    int i;
+   char const *emsg;
    char *cp;
-   uz Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
-   char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
-      *subject, *uarg, **Xargs, **Yargs;
-   struct attachment *attach;
-   struct mx_name *to, *cc, *bcc;
-   struct a_arg *a_head, *a_curr;
-   enum{
-      a_RF_NONE,
-      a_RF_SET = 1u<<0,
-      a_RF_SYSTEM = 1u<<1,
-      a_RF_USER = 1u<<2,
-      a_RF_BLTIN = 1u<<3,
-      a_RF_DEFAULT = a_RF_SYSTEM | a_RF_USER,
-      a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
-   } resfiles;
+   BITENUM_IS(u32,a_rf_ids) resfiles;
    NYD_IN;
 
-   a_head = NULL;
-   UNINIT(a_curr, NULL);
-   to = cc = bcc = NULL;
-   attach = NULL;
-   Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
-   Xargs = Yargs = NULL;
-   Xargs_size = Xargs_cnt = Yargs_size = Yargs_cnt = smopts_size = 0;
+   su_mem_set(&mc, 0, sizeof mc);
    resfiles = a_RF_DEFAULT;
 
    /*
@@ -571,27 +739,26 @@ main(int argc, char *argv[]){
     * XXX We could parse silently to grasp the actual mode (send, receive
     * XXX with/out -f, then use an according option array.  This would ease
     * XXX the interdependency checking necessities! */
-   su_avopt_setup(&avo, --argc, su_C(char const*const*,++argv),
-      a_sopts, a_lopts);
+   su_avopt_setup(&avo, --argc, C(char const*const*,++argv), a_sopts, a_lopts);
    while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
       switch(i){
       case 'A':
          /* Execute an account command later on */
-         Aarg = avo.avo_current_arg;
+         mc.mc_A = avo.avo_current_arg;
          break;
       case 'a':{
          /* Add an attachment */
-         struct a_arg *nap;
+         struct a_main_aarg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
-         nap = n_autorec_alloc(sizeof(struct a_arg));
-         if(a_head == NULL)
-            a_head = nap;
+         nap = n_autorec_alloc(sizeof(struct a_main_aarg));
+         if(mc.mc_a_head == NIL)
+            mc.mc_a_head = nap;
          else
-            a_curr->aa_next = nap;
-         nap->aa_next = NULL;
-         nap->aa_file = avo.avo_current_arg;
-         a_curr = nap;
+            mc.mc_a_curr->maa_next = nap;
+         nap->maa_next = NIL;
+         nap->maa_file = avo.avo_current_arg;
+         mc.mc_a_curr = nap;
          }break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
@@ -599,7 +766,7 @@ main(int argc, char *argv[]){
       case 'b':
          /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         bcc = cat(bcc, lextract(avo.avo_current_arg,
+         mc.mc_bcc = cat(mc.mc_bcc, lextract(avo.avo_current_arg,
                GBCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'C':{
@@ -619,7 +786,7 @@ main(int argc, char *argv[]){
       case 'c':
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         cc = cat(cc, lextract(avo.avo_current_arg,
+         mc.mc_cc = cat(mc.mc_cc, lextract(avo.avo_current_arg,
                GCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'D':
@@ -648,7 +815,7 @@ main(int argc, char *argv[]){
           * system mailbox.  If no argument is given, we read his mbox file.
           * Check for remaining arguments later */
          n_poption |= n_PO_f_FLAG;
-         folder = "&";
+         mc.mc_folder = "&";
          break;
       case 'H':
          /* Display summary of headers, exit */
@@ -656,12 +823,11 @@ main(int argc, char *argv[]){
          n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'h':
-      case (char)(su_u8)'\201':
+      case S(char,S(u8,'\201')):
          a_main_usage(n_stdout);
          if(i != 'h'){
             fprintf(n_stdout, "\nLong options:\n");
-            (void)su_avopt_dump_doc(&avo, &a_main_dump_doc,
-               su_S(su_up,n_stdout));
+            (void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
          }
          goto jleave;
       case 'i':
@@ -673,30 +839,33 @@ main(int argc, char *argv[]){
           * In conjunction with -e, only test the given spec for existence */
          n_poption |= n_PO_HEADERLIST;
          n_psonce &= ~n_PSO_INTERACTIVE;
-         Larg = avo.avo_current_arg;
-         if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
+         mc.mc_L = avo.avo_current_arg;
+         /* TODO list.c:listspec_check() */
+         if(*mc.mc_L == '"' || *mc.mc_L == '\''){
             uz j;
 
-            j = su_cs_len(++Larg);
+            j = su_cs_len(++mc.mc_L);
             if(j > 0){
-               cp = savestrbuf(Larg, --j);
-               Larg = cp;
+               cp = savestrbuf(mc.mc_L, --j);
+               mc.mc_L = cp;
             }
          }
          break;
       case 'M':
          /* Flag message body (standard input) with given MIME type */
-         if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf != (char*)-1))
+         if(mc.mc_quote != NIL && (!(n_poption & n_PO_Mm_FLAG) ||
+               mc.mc_quote != R(char*,-1)))
             goto jeMmq;
          n_poption_arg_Mm = avo.avo_current_arg;
-         qf = (char*)-1;
+         mc.mc_quote = R(char*,-1);
          if(0){
             /* FALLTHRU*/
       case 'm':
             /* Flag the given file with MIME type and use as message body */
-            if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf == (char*)-1))
+            if(mc.mc_quote != NIL && (!(n_poption & n_PO_Mm_FLAG) ||
+                  mc.mc_quote == R(char*,-1)))
                goto jeMmq;
-            qf = avo.avo_current_arg;
+            mc.mc_quote = avo.avo_current_arg;
          }
          n_poption |= n_PO_Mm_FLAG;
          n_psonce |= n_PSO_SENDMODE;
@@ -715,23 +884,24 @@ main(int argc, char *argv[]){
          break;
       case 'O':
          /* Additional options to pass-through to MTA TODO v15-compat legacy */
-         if(n_smopts_cnt == smopts_size)
-            smopts_size = a_main_grow_cpp(&n_smopts, smopts_size + 8,
-                  n_smopts_cnt);
+         if(n_smopts_cnt == mc.mc_smopts_size)
+            mc.mc_smopts_size = a_main_grow_cpp(&n_smopts,
+                  mc.mc_smopts_size + 8, n_smopts_cnt);
          n_smopts[n_smopts_cnt++] = avo.avo_current_arg;
          break;
       case 'q':
          /* "Quote" file: use as message body (-t without headers etc.) */
          /* XXX Traditional.  Add -Q to initialize as *quote*d content? */
-         if(qf != NULL && (n_poption & n_PO_Mm_FLAG)){
+         if(mc.mc_quote != NIL && (n_poption & n_PO_Mm_FLAG)){
 jeMmq:
             emsg = N_("Only one of -M, -m or -q may be given");
             goto jusage;
          }
          n_psonce |= n_PSO_SENDMODE;
          /* Allow, we have to special check validity of -q- later on! */
-         qf = (avo.avo_current_arg[0] == '-' && avo.avo_current_arg[1] == '\0')
-               ? (char*)-1 : avo.avo_current_arg;
+         mc.mc_quote = ((avo.avo_current_arg[0] == '-' &&
+                  avo.avo_current_arg[1] == '\0') ? R(char*,-1)
+               : avo.avo_current_arg);
          break;
       case 'R':
          /* Open folders read-only */
@@ -739,132 +909,23 @@ jeMmq:
          break;
       case 'r':
          /* Set From address. */
-         n_poption |= n_PO_r_FLAG;
-         if(avo.avo_current_arg[0] == '\0')
-            break;
-         else{
-            struct mx_name *fa;
-
-            fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA |
-                  GNOT_A_LIST | GNULL_OK | GSHEXP_PARSE_HACK);
-            if(fa == NULL || is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)){
-               emsg = N_("Invalid address argument with -r");
-               goto jusage;
-            }
-            n_poption_arg_r = fa;
-            /* TODO -r options is set in n_smopts, but may
-             * TODO be overwritten by setting from= in
-             * TODO an interactive session!
-             * TODO Maybe disable setting of from?
-             * TODO Warn user?  Update manual!! */
-            avo.avo_current_arg = savecat("from=", fa->n_fullname);
-         }
-         /* FALLTHRU */
+         if((emsg = a_main_o_r(&mc, &avo)) != NIL)
+            goto jusage;
+         break;
       case 'S':
-         {  struct str sin;
-            struct n_string s_b, *s;
-            char const *a[2];
-            boole b;
-
-            if(i != 'S' || ok_vlook(v15_compat) == su_NIL){
-               okey = a[0] = avo.avo_current_arg;
-               s = NIL;
-            }else{
-               BITENUM_IS(u32,n_shexp_state) shs;
-
-               n_autorec_relax_create();
-               s = n_string_creat_auto(&s_b);
-               sin.s = n_UNCONST(avo.avo_current_arg);
-               sin.l = UZ_MAX;
-               shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-                     n_SHEXP_PARSE_IGNORE_EMPTY |
-                     n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NULL);
-               if((shs & n_SHEXP_STATE_ERR_MASK) ||
-                     !(shs & n_SHEXP_STATE_STOP)){
-                  n_autorec_relax_gut();
-                  goto je_S;
-               }
-               okey = a[0] = n_string_cp_const(s);
-            }
-
-            a[1] = NIL;
-            n_poption |= n_PO_S_FLAG_TEMPORARY;
-            n_pstate |= n_PS_ROBOT;
-            b = (c_set(a) == 0);
-            n_pstate &= ~n_PS_ROBOT;
-            n_poption &= ~n_PO_S_FLAG_TEMPORARY;
-
-            if(s != NIL)
-               n_autorec_relax_gut();
-            if(!b && (ok_blook(errexit) || ok_blook(posix))){
-je_S:
-               emsg = N_("-S failed to set variable");
-               goto jusage;
-            }
-         }
+         /* Set variable */
+         if((emsg = a_main_o_S(&mc, &avo)) != NIL)
+            goto jusage;
          break;
       case 's':
-         /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(su_cs_first_of(subject = avo.avo_current_arg, "\n\r"
-               ) != su_UZ_MAX){
-            n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
-            for(subject = cp = savestr(avo.avo_current_arg); *cp != '\0'; ++cp)
-               if(*cp == '\n' || *cp == '\r')
-                  *cp = ' ';
-         }
-         n_psonce |= n_PSO_SENDMODE;
+         /* Subject: */
+         a_main_o_s(&mc, &avo);
          break;
-
-      case 'T':{
+      case 'T':
          /* Target mode: `digmsg header insert' from command line */
-         struct str suffix;
-         struct mx_name **npp, *np;
-         enum gfield gf;
-         char const *a;
-
-         if((a = n_header_get_field(avo.avo_current_arg, "to", &suffix)
-               ) != su_NIL){
-            gf = GTO | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
-            npp = &to;
-         }else if((a = n_header_get_field(avo.avo_current_arg, "cc", &suffix)
-               ) != su_NIL){
-            gf = GCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
-            npp = &cc;
-         }else if((a = n_header_get_field(avo.avo_current_arg, "bcc", &suffix)
-               ) != su_NIL){
-            gf = GBCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
-            npp = &bcc;
-         }else if((a = n_header_get_field(avo.avo_current_arg, "fcc", su_NIL)
-               ) != su_NIL){
-            gf = GBCC_IS_FCC;
-            npp = &bcc;
-         }else{
-            ASSERT(suffix.s == su_NIL);
-jeTuse:
-            emsg = N_("-T: only supports to,cc,bcc (with ?single modifier) "
-                  "and fcc");
+         if((emsg = a_main_o_T(&mc, &avo)) != NIL)
             goto jusage;
-         }
-
-         if(suffix.s != su_NIL){
-            if(suffix.l > 0 &&
-                  !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
-               goto jeTuse;
-            gf |= GNOT_A_LIST;
-         }
-
-         if(!(gf & GBCC_IS_FCC))
-            np = lextract(a, gf);
-         else
-            np = nalloc_fcc(a);
-         if(np == su_NIL){
-            emsg = N_("-T: invalid receiver (address)");
-            goto jusage;
-         }
-         *npp = cat(*npp, np);
-         }break;
-
+         break;
       case 't':
          /* Use the given message as send template */
          n_poption |= n_PO_t_FLAG;
@@ -872,7 +933,7 @@ jeTuse:
          break;
       case 'u':
          /* Open primary mailbox of the given user */
-         uarg = savecat("%", avo.avo_current_arg);
+         mc.mc_u = savecat("%", avo.avo_current_arg);
          break;
       case 'V':{
          struct n_string s;
@@ -887,15 +948,17 @@ jeTuse:
          break;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */
-         if(Xargs_cnt == Xargs_size)
-            Xargs_size = a_main_grow_cpp(&Xargs, Xargs_size + 8, Xargs_cnt);
-         Xargs[Xargs_cnt++] = avo.avo_current_arg;
+         if(mc.mc_X_cnt == mc.mc_X_size)
+            mc.mc_X_size = a_main_grow_cpp(&mc.mc_X, mc.mc_X_size + 8,
+                  mc.mc_X_cnt);
+         mc.mc_X[mc.mc_X_cnt++] = avo.avo_current_arg;
          break;
       case 'Y':
          /* Add to list of commands to exec after entering normal operation */
-         if(Yargs_cnt == Yargs_size)
-            Yargs_size = a_main_grow_cpp(&Yargs, Yargs_size + 8, Yargs_cnt);
-         Yargs[Yargs_cnt++] = avo.avo_current_arg;
+         if(mc.mc_Y_cnt == mc.mc_Y_size)
+            mc.mc_Y_size = a_main_grow_cpp(&mc.mc_Y, mc.mc_Y_size + 8,
+                  mc.mc_Y_cnt);
+         mc.mc_Y[mc.mc_Y_cnt++] = avo.avo_current_arg;
          break;
       case ':':
          /* Control which resource files shall be loaded */
@@ -922,9 +985,9 @@ jeTuse:
       case '#':
          /* Work in batch mode, even if non-interactive */
          if(!(n_psonce & n_PSO_INTERACTIVE))
-            setvbuf(n_stdin, NULL, _IOLBF, 0);
+            setvbuf(n_stdin, NIL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-         folder = n_path_devnull;
+         mc.mc_folder = n_path_devnull;
          n_var_setup_batch_mode();
          break;
       case '.':
@@ -941,7 +1004,7 @@ jeTuse:
          n_err(emsg, avo.avo_current_err_opt);
          if(0){
 jusage:
-            if(emsg != NULL)
+            if(emsg != NIL)
                n_err("%s\n", V_(emsg));
          }
          a_main_usage(n_stderr);
@@ -957,14 +1020,14 @@ jgetopt_done:
     * Since MTA arguments after "--" require *expandargv*, delay parsing off
     * those options until after the resource files are loaded... */
    argc = avo.avo_argc;
-   argv = su_C(char**,avo.avo_argv);
-   if((cp = argv[i = 0]) == NULL)
+   argv = C(char**,avo.avo_argv);
+   if((cp = argv[i = 0]) == NIL)
       ;
    else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* n_PO_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
    else if(n_poption & n_PO_f_FLAG){
-      folder = cp;
+      mc.mc_folder = cp;
       if((cp = argv[++i]) != NIL){
          if(cp[0] != '-' || cp[1] != '-' || cp[2] != '\0'){
             emsg = N_("More than one file given with -f");
@@ -975,9 +1038,9 @@ jgetopt_done:
    }else{
       n_psonce |= n_PSO_SENDMODE;
       for(;;){
-         to = cat(to, lextract(cp, GTO | GFULL | GNOT_A_LIST |
+         mc.mc_to = cat(mc.mc_to, lextract(cp, GTO | GFULL | GNOT_A_LIST |
                GSHEXP_PARSE_HACK));
-         if((cp = argv[++i]) == NULL)
+         if((cp = argv[++i]) == NIL)
             break;
          if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0'){
             ++i;
@@ -989,29 +1052,29 @@ jgetopt_done:
 
    /* ...BUT, since we use n_autorec_alloc() for the MTA n_smopts storage we
     * need to allocate the space for them before we fixate that storage! */
-   while(argv[i] != NULL)
+   while(argv[i] != NIL)
       ++i;
-   if(n_smopts_cnt + i > smopts_size)
-      su_DBG(smopts_size =)
+   if(n_smopts_cnt + i > mc.mc_smopts_size)
+      DBG(mc.mc_smopts_size =)
       a_main_grow_cpp(&n_smopts, n_smopts_cnt + i + 1, n_smopts_cnt);
 
    /* Check for inconsistent arguments, fix some temporaries */
    if(n_psonce & n_PSO_SENDMODE){
       /* XXX This is only because BATCH_FLAG sets *folder*=/dev/null
        * XXX in order to function.  Ideally that would not be needed */
-      if(folder != NULL && !(n_poption & n_PO_BATCH_FLAG)){
+      if(mc.mc_folder != NIL && !(n_poption & n_PO_BATCH_FLAG)){
          emsg = N_("Cannot give -f and people to send to.");
          goto jusage;
       }
-      if(uarg != NULL){
+      if(mc.mc_u != NIL){
          emsg = N_("The -u option cannot be used in send mode");
          goto jusage;
       }
-      if(!(n_poption & n_PO_t_FLAG) && to == NULL){
+      if(!(n_poption & n_PO_t_FLAG) && mc.mc_to == NIL){
          emsg = N_("Send options without primary recipient specified.");
          goto jusage;
       }
-      if((n_poption & n_PO_t_FLAG) && qf != NULL){
+      if((n_poption & n_PO_t_FLAG) && mc.mc_quote != NIL){
          emsg = N_("The -M, -m, -q and -t options are mutual exclusive.");
          goto jusage;
       }
@@ -1025,14 +1088,14 @@ jgetopt_done:
       }
 
       if(n_psonce & n_PSO_INTERACTIVE){
-         if(qf == (char*)-1){
+         if(mc.mc_quote == R(char*,-1)){
             if(!(n_poption & n_PO_Mm_FLAG))
                emsg = N_("-q can't use standard input when interactive.\n");
             goto jusage;
          }
       }
    }else{
-      if(uarg != NULL && folder != NULL){
+      if(mc.mc_u != NIL && mc.mc_folder != NIL){
          emsg = N_("The options -u and -f (and -#) are mutually exclusive");
          goto jusage;
       }
@@ -1045,8 +1108,8 @@ jgetopt_done:
             ) == (n_PO_HEADERSONLY | n_PO_HEADERLIST))
          n_OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
 
-      if(uarg != NULL)
-         folder = uarg;
+      if(mc.mc_u != NIL)
+         mc.mc_folder = mc.mc_u;
    }
 
    /*
@@ -1084,7 +1147,7 @@ jgetopt_done:
          goto jleave;
    }
 
-   if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
+   if((cp = ok_vlook(NAIL_EXTRA_RC)) != NIL)
       n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
    if((cp != NIL || (cp = ok_vlook(mailx_extra_rc)) != NIL) &&
          (cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
@@ -1097,7 +1160,7 @@ jgetopt_done:
 
    /* Additional options to pass-through to MTA, and allowed to do so? */
    i = argc;
-   if((cp = ok_vlook(expandargv)) != NULL){
+   if((cp = ok_vlook(expandargv)) != NIL){
       boole isfail, isrestrict;
 
       isfail = !su_cs_cmp_case(cp, "fail");
@@ -1106,7 +1169,7 @@ jgetopt_done:
       if((n_poption & n_PO_D_V) && !isfail && !isrestrict && *cp != '\0')
          n_err(_("Unknown *expandargv* value: %s\n"), cp);
 
-      if((cp = argv[i]) != NULL){
+      if((cp = argv[i]) != NIL){
          if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
                   !(n_psonce & n_PSO_INTERACTIVE)))){
 je_expandargv:
@@ -1116,11 +1179,11 @@ je_expandargv:
             goto jleave;
          }
          do{
-            ASSERT(n_smopts_cnt + 1 <= smopts_size);
+            ASSERT(n_smopts_cnt + 1 <= mc.mc_smopts_size);
             n_smopts[n_smopts_cnt++] = cp;
-         }while((cp = argv[++i]) != NULL);
+         }while((cp = argv[++i]) != NIL);
       }
-   }else if(argv[i] != NULL)
+   }else if(argv[i] != NIL)
       goto je_expandargv;
 
    /* We had to wait until the resource files are loaded and any command line
@@ -1132,11 +1195,11 @@ je_expandargv:
 #endif
 
    /* Now we can set the account */
-   if(Aarg != NULL){
+   if(mc.mc_A != NIL){
       char const *a[2];
 
-      a[0] = Aarg;
-      a[1] = NULL;
+      a[0] = mc.mc_A;
+      a[1] = NIL;
       if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) ||
             ok_blook(errexit) || ok_blook(posix))){
          n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
@@ -1150,22 +1213,23 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED_CONFIG;
 
    /* "load()" commands given on command line */
-   if(Xargs_cnt > 0 && !n_go_load_lines(FAL0, Xargs, Xargs_cnt))
+   if(mc.mc_X_cnt > 0 && !n_go_load_lines(FAL0, mc.mc_X, mc.mc_X_cnt))
       goto jleave_full;
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
-      if(qf == (char*)-1){
+      if(mc.mc_quote == R(char*,-1)){
          if(!mx_mimetype_is_known(n_poption_arg_Mm)){
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
             n_exit_status = n_EXIT_ERR;
             goto jleave_full;
          }
-      }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
-            (n_poption_arg_Mm = mx_mimetype_classify_filename(qf)) == NIL){
+      }else if(/* XXX only to satisfy Coverity! */mc.mc_quote != NIL &&
+            (n_poption_arg_Mm = mx_mimetype_classify_filename(mc.mc_quote)
+               ) == NIL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
-            n_shexp_quote_cp(qf, FAL0));
+            n_shexp_quote_cp(mc.mc_quote, FAL0));
          n_exit_status = n_EXIT_ERR;
          goto jleave_full;
       }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
@@ -1173,7 +1237,7 @@ je_expandargv:
    }
 
    /*
-    * We're finally completely setup and ready to go!
+    * We are finally completely setup and ready to go!
     */
    n_psonce |= n_PSO_STARTED;
 
@@ -1182,17 +1246,15 @@ je_expandargv:
       n_err("Warning -- v15-compat=yes will be default in v14.10.0!\n");
 
    if(!(n_psonce & n_PSO_SENDMODE))
-      n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg,
-            Yargs, Yargs_cnt);
+      n_exit_status = a_main_rcv_mode(&mc);
    else{
-      /* Now that full mailx(1)-style file expansion is possible handle the
-       * attachments which we had delayed due to this.
-       * This may use savestr(), but since we won't enter the command loop we
-       * don't need to care about that */
-      for(; a_head != NULL; a_head = a_head->aa_next){
-         enum n_attach_error aerr;
+      /* XXX This may use savestr(), but since we will not enter the command
+       * XXX loop we do not need to care about that */
+      for(; mc.mc_a_head != NIL; mc.mc_a_head = mc.mc_a_head->maa_next){
+         BITENUM_IS(u32,n_attach_error) aerr;
 
-         attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
+         mc.mc_attach = n_attachment_append(mc.mc_attach,
+               mc.mc_a_head->maa_file, &aerr, NIL);
          if(aerr != n_ATTACH_ERR_NONE){
             n_exit_status = n_EXIT_ERR;
             goto jleave_full;
@@ -1202,13 +1264,14 @@ je_expandargv:
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_init();
       /* "load()" more commands given on command line */
-      if(Yargs_cnt > 0 && !n_go_load_lines(TRU1, Yargs, Yargs_cnt))
+      if(mc.mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
          n_exit_status = n_EXIT_ERR;
       else
          n_mail((((n_psonce & n_PSO_INTERACTIVE
                   ) ? n_MAILSEND_HEADERS_PRINT : 0) |
                (n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0)),
-            to, cc, bcc, subject, attach, qf);
+            mc.mc_to, mc.mc_cc, mc.mc_bcc, mc.mc_subject,
+            mc.mc_attach, mc.mc_quote);
       if(n_psonce & n_PSO_INTERACTIVE)
          mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
