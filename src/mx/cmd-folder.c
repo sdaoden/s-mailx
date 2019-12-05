@@ -268,92 +268,99 @@ jleave:
 }
 
 FL int
-c_rename(void *v)
-{
-   char **args = v, *oldn, *newn;
+c_rename(void *vp){
    enum protocol oldp;
-   int ec;
+   char const **argv, *emsg, *oldn, *newn;
    NYD_IN;
 
-   ec = 1;
+   argv = vp;
 
-   if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      mx_cmd_print_synopsis(mx_cmd_firstfit("rename"), NIL);
-      goto jleave;
+   emsg = N_("file expansion failed");
+
+   if((oldn = fexpand(argv[0], FEXP_FULL)) == NIL)
+      goto jerr;
+   oldp = which_protocol(oldn, TRU1, FAL0, NIL);
+
+   if((newn = fexpand(argv[1], FEXP_FULL)) == NIL)
+      goto jerr;
+   if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
+      emsg = N_("can only rename folders of same type\n");
+      goto jerr;
    }
 
-   if ((oldn = fexpand(args[0], FEXP_FULL)) == NULL)
-      goto jleave;
-   oldp = which_protocol(oldn, TRU1, FAL0, NULL);
-   if ((newn = fexpand(args[1], FEXP_FULL)) == NULL)
-      goto jleave;
-   if(oldp != which_protocol(newn, TRU1, FAL0, NULL)) {
-      n_err(_("Can only rename folders of same type\n"));
-      goto jleave;
-   }
-   if (!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)) {
-      n_err(_("Cannot rename current mailbox %s\n"),
-         n_shexp_quote_cp(oldn, FAL0));
-      goto jleave;
+   if(!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)){
+      emsg = N_("cannot rename an open mailbox");
+      goto jerr;
    }
 
-   ec = 0;
+   emsg = NIL;
 
-   switch (oldp) {
+   switch(oldp){
    case PROTO_FILE:
-      if (link(oldn, newn) == -1) {
-         switch (su_err_no()) {
-         case su_ERR_ACCES:
-         case su_ERR_EXIST:
-         case su_ERR_NAMETOOLONG:
-         case su_ERR_NOSPC:
-         case su_ERR_XDEV:
-            n_perr(newn, 0);
-            break;
-         default:
-            n_perr(oldn, 0);
-            break;
-         }
-         ec |= 1;
-      } else if (unlink(oldn) == -1) {
-         n_perr(oldn, 0);
-         ec |= 1;
+      if(link(oldn, newn) == -1){
+         emsg = savecatsep(_("link(2) failed:"), ' ',
+               _(su_err_doc(su_err_no())));
+         goto jerrnotr;
+      }else if(unlink(oldn) == -1){
+         emsg = savecatsep(_("unlink(2) failed:"), ' ',
+               _(su_err_doc(su_err_no())));
+         goto jerrnotr;
       }
       break;
    case PROTO_MAILDIR:
+      if(1
 #ifdef mx_HAVE_MAILDIR
-      if(rename(oldn, newn) == -1){
-         n_perr(oldn, 0);
-         ec |= 1;
-      }
-#else
-      n_err(_("No Maildir directory support compiled in\n"));
-      ec |= 1;
+            && rename(oldn, newn) == -1
 #endif
+      ){
+         emsg =
+#ifdef mx_HAVE_MAILDIR
+               savecatsep(_("rename(2) failed:"), ' ',
+                  _(su_err_doc(su_err_no())))
+#else
+               _("no Maildir support available")
+#endif
+               ;
+         goto jerrnotr;
+      }
       break;
    case PROTO_POP3:
-      n_err(_("Cannot rename POP3 mailboxes\n"));
-      ec |= 1;
-      break;
+      emsg = N_("cannot rename POP3 mailboxes");
+      goto jerr;
    case PROTO_IMAP:
+      if(1
 #ifdef mx_HAVE_IMAP
-      if(imap_rename(oldn, newn) != OKAY)
-         ec |= 1;
-#else
-      n_err(_("No IMAP support compiled in\n"));
-      ec |= 1;
+            && imap_rename(oldn, newn) != OKAY
 #endif
+      ){
+         emsg =
+#ifdef mx_HAVE_IMAP
+               N_("IMAP rename failed")
+#else
+               N_("no IMAP support available")
+#endif
+               ;
+         goto jerr;
+      }
       break;
    case PROTO_UNKNOWN:
    default:
-      n_err(_("Unknown protocol in %s and %s; not renamed\n"),
-         n_shexp_quote_cp(oldn, FAL0), n_shexp_quote_cp(newn, FAL0));
-      ec |= 1;
-      break;
+      emsg = N_("unknown protocol, not renaming");
+      goto jerr;
    }
+
 jleave:
    NYD_OU;
-   return ec;
+   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+
+
+jerr:
+   emsg = V_(emsg);
+jerrnotr:
+   n_err(_("%s: `rename': %s -> %s: %s\n"),
+      n_ERROR, n_shexp_quote_cp(argv[0], FAL0),
+      n_shexp_quote_cp(argv[1], FAL0), emsg);
+   goto jleave;
 }
 
 FL int

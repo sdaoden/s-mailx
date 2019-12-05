@@ -575,7 +575,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("[<show>] or <create|set|remove> <spec> read channels"))},
    { "remove", &c_remove, (M | TWYRA), 0, MAC, NIL
      DS(N_("Remove the named folders")) },
-   { "rename", &c_rename, (M | TWYRA), 0, 2, NIL
+   { "rename", &c_rename, (M | TWYSH), 2, 2, NIL
      DS(N_("Rename <existing-folder> to <new-folder>")) },
    { "Reply", &c_Reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Reply to originator, exclusively")) },
