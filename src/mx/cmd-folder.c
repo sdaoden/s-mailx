@@ -174,97 +174,110 @@ c_noop(void *v)
 }
 
 FL int
-c_remove(void *v)
-{
-   char const *fmt;
+c_remove(void *vp){
+   struct n_string s_b, *s;
    uz fmt_len;
-   char **args, *name, *ename;
-   int ec;
+   char const *emsg, **argv, *fmt, *name;
    NYD_IN;
 
-   if (*(args = v) == NULL) {
-      mx_cmd_print_synopsis(mx_cmd_firstfit("remove"), NIL);
-      ec = 1;
-      goto jleave;
-   }
+   if(n_psonce & n_PSO_INTERACTIVE)
+      s = n_string_book(n_string_creat_auto(&s_b), 127);
+   else
+      s = NIL;
 
-   ec = 0;
+   emsg = NIL;
+   argv = vp;
+   /* I18N: remove a file (mailbox)? */
+   fmt_len = su_cs_len(fmt = _("Remove "));
 
-   fmt = _("Remove %s");
-   fmt_len = su_cs_len(fmt);
-   do {
-      if ((name = fexpand(*args, FEXP_FULL)) == NULL)
-         continue;
-      ename = n_shexp_quote_cp(name, FAL0);
-
-      if (!su_cs_cmp(name, mailname)) {
-         n_err(_("Cannot remove current mailbox %s\n"), ename);
-         ec |= 1;
-         continue;
+   do{ /* }while(*++argv != NIL); */
+      if((name = fexpand(*argv, FEXP_NVAR)) == NIL){
+         emsg = N_("file expansion failed");
+         goto jerr;
       }
-      /* C99 */{
-         boole asw;
-         char *vb;
-         uz vl;
 
-         vl = su_cs_len(ename) + fmt_len +1;
-         vb = n_autorec_alloc(vl);
-         snprintf(vb, vl, fmt, ename);
-         asw = mx_tty_yesorno(vb, TRU1);
-         if(!asw)
+      if(!su_cs_cmp(name, mailname)){
+         emsg = N_("cannot remove an open mailbox");
+         goto jerr;
+      }
+
+      if(s != NIL){
+         s = n_string_trunc(s, 0);
+         s = n_string_assign_buf(s, fmt, fmt_len);
+         s = n_string_push_cp(s, n_shexp_quote_cp(*argv, FAL0));
+         s = n_string_push_buf(s, " (", sizeof(" (") -1);
+         s = n_string_push_cp(s, n_shexp_quote_cp(name, FAL0));
+         s = n_string_push_c(s, ')');
+         if(!mx_tty_yesorno(n_string_cp(s), TRU1))
             continue;
       }
 
-      switch (which_protocol(name, TRU1, FAL0, NULL)) {
+      switch(which_protocol(name, TRU1, FAL0, NIL)){
       case PROTO_FILE:
-         if (unlink(name) == -1) {
-            int se = su_err_no();
+         if(unlink(name) == -1){
+            s32 err;
 
-            if (se == su_ERR_ISDIR) {
-               struct stat sb;
-
-               if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
-                  if (!rmdir(name))
+            if((err = su_err_no()) == su_ERR_ISDIR){
+               if(n_is_dir(name, FAL0)){
+                  if(!rmdir(name))
                      break;
-                  se = su_err_no();
+                  err = su_err_no();
                }
             }
-            n_perr(name, se);
-            ec |= 1;
+            emsg = su_err_doc(err);
+            goto jerr;
          }
          break;
       case PROTO_POP3:
-         n_err(_("Cannot remove POP3 mailbox %s\n"), ename);
-         ec |= 1;
-         break;
+         emsg = N_("cannot remove POP3 mailboxes");
+         goto jerr;
       case PROTO_MAILDIR:
+         if(1
 #ifdef mx_HAVE_MAILDIR
-         if(maildir_remove(name) != OKAY)
-            ec |= 1;
-#else
-         n_err(_("No Maildir directory support compiled in\n"));
-         ec |= 1;
+               && maildir_remove(name) != OKAY
 #endif
+         ){
+            emsg =
+#ifdef mx_HAVE_MAILDIR
+                  N_("Maildir remove failed")
+#else
+                  N_("no Maildir support available")
+#endif
+                  ;
+            goto jerr;
+         }
          break;
       case PROTO_IMAP:
+         if(1
 #ifdef mx_HAVE_IMAP
-         if(imap_remove(name) != OKAY)
-            ec |= 1;
-#else
-         n_err(_("No IMAP support compiled in\n"));
-         ec |= 1;
+               && imap_remove(name) != OKAY
 #endif
+         ){
+            emsg =
+#ifdef mx_HAVE_IMAP
+                  N_("IMAP remove failed")
+#else
+                  N_("no IMAP support available")
+#endif
+               ;
+            goto jerr;
+         }
          break;
       case PROTO_UNKNOWN:
       default:
-         n_err(_("Not removed: unknown protocol: %s\n"), ename);
-         ec |= 1;
+         emsg = N_("unknown protocol, not removing");
+jerr:
+         emsg = V_(emsg);
+         n_err(_("%s: `remove': %s: %s\n"),
+            n_ERROR, n_shexp_quote_cp(*argv, FAL0), emsg);
          break;
       }
-   } while (*++args != NULL);
-jleave:
+   }while(*++argv != NIL);
+
+   /* if(s != NIL) n_string_gut(s); */
+
    NYD_OU;
-   return ec;
+   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
 }
 
 FL int

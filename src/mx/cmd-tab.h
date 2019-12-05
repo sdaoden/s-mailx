@@ -573,7 +573,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readctl)
      DS(N_("[<show>] or <create|set|remove> <spec> read channels"))},
-   { "remove", &c_remove, (M | TWYRA), 0, MAC, NIL
+   { "remove", &c_remove, (M | TWYSH), 1, MAC, NIL
      DS(N_("Remove the named folders")) },
    { "rename", &c_rename, (M | TWYSH), 2, 2, NIL
      DS(N_("Rename <existing-folder> to <new-folder>")) },

@@ -6788,14 +6788,10 @@ hey, you
 .
 .Mx
 .It Ic remove
-Removes the named files or directories.
-.Sx "Filename transformations"
-including shell pathname wildcard pattern expansions
-.Pf ( Xr glob 7 )
-are performed on the arguments.
-If a name refer to a mailbox, e.g., a Maildir mailbox, then a mailbox
+\*(NQ Removes the named files or directories.
+If a name refers to a mailbox, say a Maildir mailbox, then a mailbox
 type specific removal will be performed, deleting the complete mailbox.
-The user is asked for confirmation in interactive mode.
+In interactive mode the user is asked for confirmation.
 .
 .Mx
 .It Ic rename
