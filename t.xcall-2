@@ -14,7 +14,7 @@ eins
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 would be err with errexit
 zwei, ?=0 !=0
 0 1 2 3 4 5 6 .
@@ -32,7 +32,7 @@ zwei, ?=0 !=0
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 drei, ?=1 !=NOSYS
 0 1 2 3 4 5 6 .
 7 8 9 10 11 12 13 14 .
@@ -49,7 +49,7 @@ drei, ?=1 !=NOSYS
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 outer 1, ?=1 !=NOSYS
 eins
 0 1 2 3 4 5 6 .
@@ -67,7 +67,7 @@ eins
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 would be err with errexit
 zwei, ?=0 !=0
 0 1 2 3 4 5 6 .
@@ -85,7 +85,7 @@ zwei, ?=0 !=0
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 drei, ?=1 !=NOSYS
 0 1 2 3 4 5 6 .
 7 8 9 10 11 12 13 14 .
@@ -102,7 +102,7 @@ drei, ?=1 !=NOSYS
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 outer 2, ?=1 !=NOSYS, could be error if xxxign non-empty
 eins
 0 1 2 3 4 5 6 .
@@ -120,7 +120,7 @@ eins
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 would be err with errexit
 zwei, ?=0 !=0
 0 1 2 3 4 5 6 .
@@ -138,7 +138,7 @@ zwei, ?=0 !=0
 95 96 97 98 99 100 101 102 .
 103 104 105 106 107 108 109 110 .
 111 ! The end for 111
-reproducible_build: Unknown command: `nonexistingcommand'
+reproducible_build: nonexistingcommand: unknown command
 drei, ?=1 !=NOSYS
 0 1 2 3 4 5 6 .
 7 8 9 10 11 12 13 14 .

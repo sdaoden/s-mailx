@@ -1,2 +1,2 @@
 one
-reproducible_build: Unknown command: `echos'
+reproducible_build: echos: unknown command
