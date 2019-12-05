@@ -932,34 +932,34 @@ t_X_errexit() {
    </dev/null ${MAILX} ${ARGS} -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '916157812 53'
+   check 1 0 "${MBOX}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '916157812 53'
+   check 2 0 "${MBOX}" '2700500141 51'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '916157812 53'
+   check 3 0 "${MBOX}" '2700500141 51'
 
    ##
 
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
-   check 4 1 "${MBOX}" '2118430867 49'
+   check 4 1 "${MBOX}" '4096689457 47'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 5 1 "${MBOX}" '2118430867 49'
+   check 5 1 "${MBOX}" '4096689457 47'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 6 1 "${MBOX}" '12955965 172'
+   check 6 1 "${MBOX}" '1669262132 170'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 7 1 "${MBOX}" '12955965 172'
+   check 7 1 "${MBOX}" '1669262132 170'
 
    ## Repeat 4-7 with ignerr set
 
@@ -968,19 +968,19 @@ t_X_errexit() {
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X'ignerr echos nono ' -X'echo two' \
       > "${BODY}" 2>&1
-   check 8 0 "${BODY}" '916157812 53'
+   check 8 0 "${BODY}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 9 0 "${BODY}" '916157812 53'
+   check 9 0 "${BODY}" '2700500141 51'
 
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 10 0 "${BODY}" '916157812 53'
+   check 10 0 "${BODY}" '2700500141 51'
 
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${BODY}" 2>&1
-   check 11 0 "${BODY}" '916157812 53'
+   check 11 0 "${BODY}" '2700500141 51'
 
    t_epilog "${@}"
 }
@@ -1003,22 +1003,22 @@ t_Y_errexit() {
    </dev/null ${MAILX} ${ARGS} -Snomemdebug \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '916157812 53'
+   check 1 0 "${MBOX}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '916157812 53'
+   check 2 0 "${MBOX}" '2700500141 51'
 
    ##
 
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > "${MBOX}" 2>&1
-   check 3 1 "${MBOX}" '2118430867 49'
+   check 3 1 "${MBOX}" '4096689457 47'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 4 1 "${MBOX}" '2118430867 49'
+   check 4 1 "${MBOX}" '4096689457 47'
 
    ## Repeat 3-4 with ignerr set
 
@@ -1027,11 +1027,11 @@ t_Y_errexit() {
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -Y'echo one' -Y'ignerr echos nono ' -Y'echo two' \
       > "${BODY}" 2>&1
-   check 5 0 "${BODY}" '916157812 53'
+   check 5 0 "${BODY}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${MBOX}" -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 6 0 "${BODY}" '916157812 53'
+   check 6 0 "${BODY}" '2700500141 51'
 
    t_epilog "${@}"
 }
@@ -3959,11 +3959,11 @@ t_xcall() {
 
       < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
          -Snomemdebug > "${MBOX}" 2>&1
-      check 2 0 "${MBOX}" '3900716531 4200'
+      check 2 0 "${MBOX}" '4036613316 4184'
 
       < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
          -Snomemdebug > "${MBOX}" 2>&1
-      check 3 1 "${MBOX}" '1006776201 2799'
+      check 3 1 "${MBOX}" '3179757785 2787'
    else
       t_echoskip '2-3:[!UISTRINGS]'
    fi

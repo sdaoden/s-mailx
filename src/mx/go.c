@@ -494,10 +494,9 @@ jrestart:
 
    if((cdp = mx_cmd_firstfit(word)) == NIL){
       if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
-         n_err(_("Unknown command%s: `%s'\n"),
-            (flags & a_IS_SKIP ? _(" (ignored due to `if' condition)")
-               : n_empty),
-            prstr(word));
+         n_err(_("%s: unknown command%s\n"),
+            prstr(word), ((flags & a_IS_SKIP)
+               ? _(" (ignored due to `if' condition)") : su_empty));
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       if(flags & a_IS_SKIP)
          goto jret0;
@@ -571,48 +570,48 @@ jwhite:
    UNINIT(emsg, NIL);
    if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
-      emsg = N_("May not execute `%s' unless interactive or in batch mode\n");
+      emsg = N_("%s: can only be used batch or interactive mode\n");
       goto jeflags;
    }
    if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
-      emsg = N_("May not execute `%s' while sending\n");
+      emsg = N_("%s: cannot be used while sending\n");
       goto jeflags;
    }
    if(cdp->cd_caflags & mx_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
-         emsg = N_("Cannot invoke `%s' when in compose mode\n");
+         emsg = N_("%s: cannot be used in compose mode\n");
          goto jeflags;
       }
       /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
       if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
-         emsg = N_("Cannot invoke `%s' in this program state\n");
+         emsg = N_("%s: cannot be used in this program state\n");
          goto jeflags;
       }
    }
    if((cdp->cd_caflags & mx_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
-      emsg = N_("May not execute `%s' during startup\n");
+      emsg = N_("%s: cannot be used during startup\n");
       goto jeflags;
    }
    if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
-      emsg = N_("Cannot invoke `%s' from a hook running in a child process\n");
+      emsg = N_("%s: cannot be used in a hook running in a child process\n");
       goto jeflags;
    }
 
    if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
-      emsg = N_("Cannot execute `%s' without active mailbox\n");
+      emsg = N_("%s: needs an active mailbox\n");
       goto jeflags;
    }
    if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
-      emsg = N_("May not execute `%s' -- message file is read only\n");
+      emsg = N_("%s: cannot be used in read-only mailbox\n");
 jeflags:
       n_err(V_(emsg), cdp->cd_name);
       goto jleave;
    }
 
    if(cdp->cd_caflags & mx_CMD_ARG_O)
-      n_OBSOLETE2(_("this command will be removed"), cdp->cd_name);
+      n_OBSOLETE2(_("command will be removed"), cdp->cd_name);
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
@@ -634,8 +633,7 @@ jeflags:
       case mx_CMD_ARG_TYPE_RAWDAT:
       case mx_CMD_ARG_TYPE_STRING:
       case mx_CMD_ARG_TYPE_RAWLIST:
-         n_err(_("`wysh' command modifier does not affect `%s'\n"),
-            cdp->cd_name);
+         n_err(_("%s: wysh: command modifier not supported\n"), cdp->cd_name);
          goto jleave;
       }
    }
@@ -643,7 +641,7 @@ jeflags:
    if(flags & a_LOCAL){
       /* TODO a_LOCAL should affect !CMD_ARG_L commands if `vput' is used!! */
       if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
-         emsg = N_("`local' command modifier does not affect `%s'\n");
+         emsg = N_("%s: local: command modifier not supported\n");
          goto jeflags; /* above */
       }
       flags |= a_WYSH;
@@ -669,7 +667,7 @@ jeflags:
          else
             emsg = NULL;
          if(emsg != NULL){
-            n_err("`%s': vput: %s: %s\n",
+            n_err("%s: vput: %s: %s\n",
                   cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
             nerrn = su_ERR_NOTSUP;
             rv = -1;
@@ -679,7 +677,9 @@ jeflags:
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
          * TODO therefore yet needs to be set again based on flags&a_VPUT! */
       }else{
-         n_err(_("`vput' prefix does not affect `%s'\n"), cdp->cd_name);
+         n_err(_("%s: %s: wysh: command modifier not supported\n"),
+            n_ERROR, cdp->cd_name);
+         mx_cmd_print_synopsis(cdp, NIL);
          flags &= ~a_VPUT;
       }
    }
@@ -782,20 +782,17 @@ jmsglist_go:
          *argvp++ = vput;
       if((c = getrawlist((c != 0), argvp,
             (n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
-         n_err(_("Invalid argument list\n"));
+         n_err(_("%s: invalid argument list\n"), cdp->cd_name);
          flags |= a_NO_ERRNO;
          break;
       }
 
-      if(UCMP(32, c, <, cdp->cd_mflags_o_minargs)){
-         n_err(_("`%s' requires at least %u arg(s)\n"),
-            cdp->cd_name, S(u32,cdp->cd_mflags_o_minargs));
-         flags |= a_NO_ERRNO;
-         break;
-      }
-      if(UCMP(32, c, >, cdp->cd_mmask_o_maxargs)){
-         n_err(_("`%s' takes no more than %u arg(s)\n"),
-            cdp->cd_name, S(u32,cdp->cd_mmask_o_maxargs));
+      if(UCMP(32, c, <, cdp->cd_mflags_o_minargs) ||
+            UCMP(32, c, >, cdp->cd_mmask_o_maxargs)){
+         n_err(_("%s: %s: takes at least %u, and no more than %u arg(s)\n"),
+            n_ERROR, cdp->cd_name, S(u32,cdp->cd_mflags_o_minargs),
+            S(u32,cdp->cd_mmask_o_maxargs));
+         mx_cmd_print_synopsis(cdp, NIL);
          flags |= a_NO_ERRNO;
          break;
       }
