@@ -3468,7 +3468,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
          goto jleave;
       a_tty_bind_del(tbpcp);
    }else if(a_tty.tg_bind_cnt == U32_MAX){
-      n_err(_("`bind': maximum number of bindings already established\n"));
+      n_err(_("bind: maximum number of bindings already established\n"));
       goto jleave;
    }
 
@@ -3554,11 +3554,11 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
          if(isbindcmd && (n_poption & n_PO_D_V))
-            n_err(_("`%s': \\uNICODE not available in locale: %s\n"),
+            n_err(_("%s: \\uNICODE not available in locale: %s\n"),
                tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       }
       if((shs & n_SHEXP_STATE_ERR_MASK) & ~n_SHEXP_STATE_ERR_UNICODE){
-         n_err(_("`%s': failed to parse key-sequence: %s\n"),
+         n_err(_("%s: failed to parse key-sequence: %s\n"),
             tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
          goto jleave;
       }
@@ -3593,7 +3593,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       vic.vic_indat = shoup->s_dat;
       if(!n_visual_info(&vic,
             n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC)){
-         n_err(_("`%s': key-sequence seems to contain invalid "
+         n_err(_("%s: key-sequence seems to contain invalid "
             "characters: %s: %s\n"),
             tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
@@ -3601,7 +3601,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       }else if(vic.vic_woulen == 0 ||
             vic.vic_woulen >= (S32_MAX - 2) / sizeof(wc_t)){
 jelen:
-         n_err(_("`%s': length of key-sequence unsupported: %s: %s\n"),
+         n_err(_("%s: length of key-sequence unsupported: %s: %s\n"),
             tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
          goto jleave;
@@ -3614,19 +3614,19 @@ jelen:
          i = --ep->cnv_len, ++ep->cnv_dat;
 #  if 0 /* ndef mx_HAVE_TERMCAP xxx User can, via *termcap*! */
          if(n_poption & n_PO_D_V)
-            n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
+            n_err(_("%s: no termcap(5)/terminfo(5) support: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
 #  endif
          if(i > a_TTY_BIND_CAPNAME_MAX){
-            n_err(_("`%s': termcap(5)/terminfo(5) name too long: %s: %s\n"),
+            n_err(_("%s: termcap(5)/terminfo(5) name too long: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
             f |= a_TTY_BIND_DEFUNCT;
          }
          while(i > 0)
             /* (We store it as char[]) */
             if((u32)ep->cnv_dat[--i] & ~0x7Fu){
-               n_err(_("`%s': invalid termcap(5)/terminfo(5) name content: "
+               n_err(_("%s: invalid termcap(5)/terminfo(5) name content: "
                   "%s: %s\n"),
                   tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
                f |= a_TTY_BIND_DEFUNCT;
@@ -3642,7 +3642,7 @@ jelen:
 
    if(head == NULL){
 jeempty:
-      n_err(_("`%s': effectively empty key-sequence: %s\n"),
+      n_err(_("%s: effectively empty key-sequence: %s\n"),
          tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       goto jleave;
    }
@@ -3778,7 +3778,7 @@ jeempty:
        * time of this writing) possible problems with newline escaping.
        * Don't care about (un)even number thereof */
       if(i > 0 && exp[i - 1] == '\\'){
-         n_err(_("`%s': reverse solidus cannot be last in expansion: %s\n"),
+         n_err(_("%s: reverse solidus cannot be last in expansion: %s\n"),
             tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
          goto jleave;
       }
@@ -3854,7 +3854,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 
          if(tq < 0 || !mx_termcap_query(tq, &tv)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': unknown or unsupported capability: %s: %s\n"),
+               n_err(_("bind: unknown or unsupported capability: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
@@ -3868,19 +3868,19 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
          i = su_cs_len(tv.tv_data.tvd_string);
          if(/*i > S32_MAX ||*/ i >= P2UZ(next - cp)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': capability expansion too long: %s: %s\n"),
+               n_err(_("bind: capability expansion too long: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(i == 0){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': empty capability expansion: %s: %s\n"),
+               n_err(_("bind: empty capability expansion: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(isfirst && !su_cs_is_cntrl(*tv.tv_data.tvd_string)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': capability expansion does not start with "
+               n_err(_("bind: capability expansion does not start with "
                   "control: %s: %s\n"), capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
@@ -4532,13 +4532,17 @@ jentry:{
                else
                   a_tty.tg_hist = othp;
                --a_tty.tg_hist_size;
+
+               fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"),
+                  entry, thp->th_dat);
+
                su_FREE(thp);
             }
             break;
          }
       }
    }else{
-      n_err(_("`history': no such entry: %" PRIdZ "\n"), entry);
+      n_err(_("history: no such entry: %" PRIdZ "\n"), entry);
       vp = NIL;
    }
    }
@@ -4571,7 +4575,7 @@ c_bind(void *v){
 
       if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
          if(!(aster = n_is_all_or_aster(c.cp)) || !show){
-            n_err(_("`bind': invalid context: %s\n"), c.cp);
+            n_err(_("bind: invalid context: %s\n"), c.cp);
             v = NIL;
             goto jleave;
          }
@@ -4699,7 +4703,7 @@ c_unbind(void *v){
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
       if(!(aster = n_is_all_or_aster(c.cp))){
-         n_err(_("`unbind': invalid context: %s\n"), c.cp);
+         n_err(_("unbind: invalid context: %s\n"), c.cp);
          v = NULL;
          goto jleave;
       }
@@ -4724,7 +4728,7 @@ jredo:
       if(UNLIKELY(!a_tty_bind_parse(FAL0, &tbpc)))
          v = NULL;
       else if(UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NULL)){
-         n_err(_("`unbind': no such `bind'ing: %s  %s\n"),
+         n_err(_("unbind: no such `bind'ing: %s  %s\n"),
             a_tty_input_ctx_maps[gif].ticm_name, c.cp);
          v = NULL;
       }else
