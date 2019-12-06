@@ -1921,81 +1921,71 @@ it is recommended to repeat any important header information in the
 message text.
 .\" }}}
 .
-.\" .Ss "On URL syntax and credential lookup" {{{
+.\" .Ss "On URL syntax and credential lookup" {{{ review
 .Ss "On URL syntax and credential lookup"
 .
-\*(IN For accessing protocol-specific resources usage of Uniform
-Resource Locators (URL, RFC 3986) has become omnipresent.
-\*(UA expects and understands URLs in a
+For accessing protocol-specific resources Uniform Resource Locators
+(URL, RFC 3986) have become omnipresent.
+Here they are expected in a
 .Dq normalized
-variant which is not used in data exchange, but only meant as a compact,
+variant, not used in data exchange, but only meant as a compact,
 easy-to-use way of defining and representing information in a well-known
 notation; as such they do not conform to any real standard.
 Optional parts are placed in brackets
 .Ql [] ,
 optional either because there also exist other ways to define the
-information in question, or because the part is protocol-specific, e.g.,
+information, or because the part is protocol specific.
 .Ql /path
-is used by the \*(OPal Maildir
+for example is used by the \*(OPal Maildir
 .Ic folder
-type and the IMAP protocol, but not
-by POP3.
-If as part of the URL any of
+type and the IMAP protocol, but not by POP3.
+If
 .Ql USER
 and
 .Ql PASSWORD
-is specified, then the URL percent encoded form must be used (RFC 3986;
-the command
-.Ic urlcodec
-can be used to perform the encoding):
+are included in an URL server specification, URL percent encoded
+(RFC 3986) forms are needed, generable with
+.Ic urlcodec .
 .
 .Pp
 .Dl PROTOCOL://[USER[:PASSWORD]@]server[:port][/path]
 .
 .Pp
-Many internal variables of \*(UA exist in multiple versions, called
-variable chains for the rest of this document: the plain
+Often
+.Sx "INTERNAL VARIABLES"
+exist in multiple versions, called
+.Dq variable chains
+in this document: the plain
 .Ql variable
 as well as
 .Ql variable-HOST
 and
 .Ql variable-USER@HOST .
-Here
+If a port was specified
 .Ql HOST
-indeed means
-.Ql server:port
-if a
-.Ql port
-had been specified in the respective URL, otherwise it refers to the plain
+really means
+.Ql server:port ,
+not
 .Ql server .
-Also,
+And this
 .Ql USER
-is not truly the
-.Ql USER
-that had been found when doing the user chain lookup as is described
-below, i.e., this
-.Ql USER
-will never be in URL percent encoded form, whether it came from an URL
-or not; i.e., variable chain name extensions of
-.Sx "INTERNAL VARIABLES"
-must not be URL percent encoded.
+is never in URL percent encoded form.
+For example, whether the hypothetical
+.Ql smtp://\:wings\:%3A\:of\:@a.dove
+including user and password was used, or whether it was
+.Ql smtp://a.dove
+and it came from a different source, to lookup the chain
+.Va tls-config-pairs
+first
+.Ql tls-\:config-\:pairs-\:wings:of@a.dove
+is looked up, then
+.Ql tls-\:config-pairs\-\:a.dove ,
+before finally looking up the plain variable.
 .
 .Pp
-For example, whether an hypothetical URL
-.Ql smtp://hey%3Ayou@our.house
-had been given that includes a user, or whether the URL was
-.Ql smtp://our.house
-and the user had been found differently, to lookup the variable chain
-.Va smtp-use-starttls
-\*(UA first looks for whether
-.Ql smtp-\:use-\:starttls-\:hey:you@our.house
-is defined, then whether
-.Ql smtp-\:use-\:starttls-\:our.house
-exists before finally ending up looking at the plain variable itself.
-.
-.Pp
-\*(UA obeys the following logic scheme when dealing with the
-necessary credential information of an account:
+The logic to collect (an
+.Ic account Ns
+s) credential information is as follows:
 .
 .Bl -bullet
 .It
@@ -2007,32 +1997,28 @@ has been given in the URL the variables
 and
 .Va user
 are looked up.
-If no such variable(s) can be found then \*(UA will,
-when enforced by the \*(OPal variables
+Afterwards, when enforced by the \*(OPal variables
 .Va netrc-lookup-HOST
 or
 .Va netrc-lookup ,
-search
 .Sx "The .netrc file"
-of the user for a
+of the user will be searched for a
 .Ql HOST
 specific entry which provides a
 .Ql login
-name: this lookup will only succeed if unambiguous (one possible matching
-entry for
+name: only unambiguous entries are used (one possible matching entry for
 .Ql HOST ) .
 .Pp
 If there is still no
 .Ql USER
-then \*(UA will fall back to the user who is supposed to run \*(UA,
-the identity of which has been fixated during \*(UA startup and is
-known to be a valid user on the current host.
+then the verified
+.Ev LOGNAME ,
+known to be a valid user on the current host, is used.
 .
 .It
-Authentication: unless otherwise noted this will lookup the
+Authentication: unless otherwise noted the chain
 .Va PROTOCOL-auth-USER@HOST , PROTOCOL-auth-HOST , PROTOCOL-auth
-variable chain, falling back to a protocol-specific default should this
-have no success.
+is checked, falling back to a protocol-specific default as necessary.
 .
 .It
 If no
@@ -2040,16 +2026,15 @@ If no
 has been given in the URL, then if the
 .Ql USER
 has been found through the \*(OPal
-.Va netrc-lookup
-that may have already provided the password, too.
-Otherwise the variable chain
+.Va netrc-lookup ,
+that may have also provided the password.
+Otherwise the chain
 .Va password-USER@HOST , password-HOST , password
-is looked up and used if existent.
-.Pp
-Afterwards the complete \*(OPal variable chain
-.Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 is looked up.
-If set, the
+.Pp
+Thereafter the (now complete) \*(OPal chain
+.Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
+is checked, if set the
 .Ic netrc
 cache is searched for a password only (multiple user accounts for
 a single machine may exist as well as a fallback entry without user
@@ -2066,7 +2051,7 @@ S/MIME verification works relative to the values found in the
 .Ql From:
 (or
 .Ql Sender: )
-header field(s), which means that the values of
+header field(s), which means the values of
 .Va smime-sign , smime-sign-cert , smime-sign-include-certs
 and
 .Va smime-sign-digest
@@ -2074,7 +2059,7 @@ will not be looked up using the
 .Ql USER
 and
 .Ql HOST
-chains from above but instead use the corresponding values from the
+chains from above, but instead use the corresponding values from the
 message that is being worked on.
 In unusual cases multiple and different
 .Ql USER
@@ -5617,15 +5602,16 @@ will be applied to the
 .Ar name
 argument, and
 .Ql protocol://
-prefixes are, i.e., URL syntax is understood, e.g.,
+prefixes are, i.e., URL (see
+.Sx "On URL syntax and credential lookup" )
+syntax is understood, e.g.,
 .Ql mbox:///tmp/somefolder :
 if a protocol prefix is used the mailbox type is fixated and neither
 the auto-detection (read on) nor the
 .Va newfolders
 mechanisms apply.
-\*(OPally URLs can also be used to access network resources, which may
-be accessed securely via
-.Sx "Encrypted network communication"
+\*(OPally URLs can be used to access network resources, securely via
+.Sx "Encrypted network communication" ,
 if so supported.
 Network communication socket timeouts are configurable via
 .Va socket-connect-timeout .
