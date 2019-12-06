@@ -174,7 +174,7 @@ jleave:
    NYD_OU;
    return (argv == NULL);
 jeover:
-   n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
+   n_err(_("sleep: argument(s) overflow(s) datatype\n"));
    n_pstate_err_no = su_ERR_OVERFLOW;
    argv = NULL;
    goto jleave;

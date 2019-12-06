@@ -287,7 +287,7 @@ a_colour_mux(char **argv){
 
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1 &&
          (*argv != NULL || !n_is_all_or_aster(argv[-1]))){
-      n_err(_("`colour': invalid colour type %s\n"),
+      n_err(_("colour: invalid colour type %s\n"),
          n_shexp_quote_cp(argv[-1], FAL0));
       rv = FAL0;
       goto jleave;
@@ -305,13 +305,13 @@ a_colour_mux(char **argv){
    regexp = NULL;
 
    if((cmip = a_colour_map_id_find(mapname = argv[0])) == NULL){
-      n_err(_("`colour': non-existing mapping: %s\n"),
+      n_err(_("colour: non-existing mapping: %s\n"),
          n_shexp_quote_cp(mapname, FAL0));
       goto jleave;
    }
 
    if(argv[1] == NULL){
-      n_err(_("`colour': %s: missing attribute argument\n"),
+      n_err(_("colour: %s: missing attribute argument\n"),
          n_shexp_quote_cp(mapname, FAL0));
       goto jleave;
    }
@@ -323,13 +323,13 @@ a_colour_mux(char **argv){
       char const *xtag;
 
       if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-         n_err(_("`colour': %s does not support preconditions\n"),
+         n_err(_("colour: %s does not support preconditions\n"),
             n_shexp_quote_cp(mapname, FAL0));
          goto jleave;
       }else if((xtag = a_colour__tag_identify(cmip, ctag, &regexp)) ==
             mx_COLOUR_TAG_ERR){
          /* I18N: ..of colour mapping */
-         n_err(_("`colour': %s: invalid precondition: %s\n"),
+         n_err(_("colour: %s: invalid precondition: %s\n"),
             n_shexp_quote_cp(mapname, FAL0), n_shexp_quote_cp(ctag, FAL0));
          goto jleave;
       }
@@ -364,7 +364,7 @@ a_colour_mux(char **argv){
 
       if(!a_colour_iso6429(ct, &cp, argv[1])){
          /* I18N: colour command: mapping: error message: user argument */
-         n_err(_("`colour': %s: %s: %s\n"), n_shexp_quote_cp(mapname, FAL0),
+         n_err(_("colour: %s: %s: %s\n"), n_shexp_quote_cp(mapname, FAL0),
             cp, n_shexp_quote_cp(argv[1], FAL0));
          goto jleave;
       }
@@ -435,7 +435,7 @@ a_colour_unmux(char **argv){
 
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1){
       if(!n_is_all_or_aster(argv[-1])){
-         n_err(_("`uncolour': invalid colour type %s\n"),
+         n_err(_("uncolour: invalid colour type %s\n"),
             n_shexp_quote_cp(argv[-1], FAL0));
          rv = FAL0;
          goto j_leave;
@@ -469,7 +469,7 @@ jredo:
          rv = FAL0;
 jemap:
          /* I18N: colour cmd, mapping and precondition (option in quotes) */
-         n_err(_("`uncolour': non-existing mapping: %s%s%s\n"),
+         n_err(_("uncolour: non-existing mapping: %s%s%s\n"),
             n_shexp_quote_cp(mapname, FAL0), (ctag == NULL ? n_empty : " "),
             (ctag == NULL ? n_empty : n_shexp_quote_cp(ctag, FAL0)));
          goto jleave;
@@ -477,13 +477,13 @@ jemap:
 
       if((xtag = ctag) != NULL){
          if(cmip->cmi_tt == a_COLOUR_TT_NONE){
-            n_err(_("`uncolour': %s does not support preconditions\n"),
+            n_err(_("uncolour: %s does not support preconditions\n"),
                n_shexp_quote_cp(mapname, FAL0));
             rv = FAL0;
             goto jleave;
          }else if((xtag = a_colour__tag_identify(cmip, ctag, NULL)) ==
                mx_COLOUR_TAG_ERR){
-            n_err(_("`uncolour': %s: invalid precondition: %s\n"),
+            n_err(_("uncolour: %s: invalid precondition: %s\n"),
                n_shexp_quote_cp(mapname, FAL0), n_shexp_quote_cp(ctag, FAL0));
             rv = FAL0;
             goto jleave;
@@ -593,7 +593,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
          if(regexpp != NULL &&
                (s = regcomp(*regexpp = n_alloc(sizeof(regex_t)), ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
-            n_err(_("`colour': invalid regular expression: %s: %s\n"),
+            n_err(_("colour: invalid regular expression: %s: %s\n"),
                n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NULL, s));
             n_free(*regexpp);
             goto jetag;

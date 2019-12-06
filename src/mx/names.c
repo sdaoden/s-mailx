@@ -1206,7 +1206,7 @@ c_alternates(void *vp){
       }
    }else{
       if(varname != NULL)
-         n_err(_("`alternates': `vput' only supported for show mode\n"));
+         n_err(_("alternates: `vput' only supported in \"show\" mode\n"));
 
       if(a_nm_a8s_dp == NIL)
          a_nm_a8s_dp = su_cs_dict_set_treshold_shift(

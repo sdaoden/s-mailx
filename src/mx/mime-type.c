@@ -353,7 +353,7 @@ a_mimetype_create(boole cmdcalled, u32 orflags, char const *line, uz len){
    if(!(orflags & (a_MIMETYPE_USR | a_MIMETYPE_SYS)) &&
          (*typ == '?' || *typ == '@')){
       if(*typ == '@') /* v15compat (plus trailing below) */
-         n_OBSOLETE2(_("`mimetype': type markers (and much more) use ? not @"),
+         n_OBSOLETE2(_("mimetype: type markers (and much more) use ? not @"),
             line);
       if(len < 2)
          goto jeinval;

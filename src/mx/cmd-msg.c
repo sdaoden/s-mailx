@@ -249,7 +249,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 
    if((iobuf = mx_fs_tmp_open("topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`top': I/O temporary file"), 0);
+      n_perr(_("top: I/O temporary file"), 0);
       vp = NIL;
       goto jleave;
    }
@@ -295,14 +295,14 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 
       rewind(iobuf);
       if(ftruncate(fileno(iobuf), 0)){
-         n_perr(_("`top': ftruncate(2)"), 0);
+         n_perr(_("top: ftruncate(2)"), 0);
          vp = NULL;
          break;
       }
 
       if(!a_cmsg_show_overview(iobuf, mp, *ip) ||
             sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
-         n_err(_("`top': failed to prepare message %d\n"), *ip);
+         n_err(_("top: failed to prepare message %d\n"), *ip);
          vp = NULL;
          break;
       }
@@ -508,7 +508,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    NYD_IN;
 
    if((msgvec = vp)[1] != 0){
-      n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
+      n_err(_("mimeview: can yet only take one message, sorry!\n"));/* TODO */
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = 1;
       goto jleave;
@@ -688,7 +688,7 @@ c_pdot(void *vp){
 
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
       if(!n_string_can_book(s, su_IENC_BUFFER_SIZE + 2u)){
-         n_err(_("`=': overflow: string too long!\n"));
+         n_err(_("=: overflow: string too long!\n"));
          n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
          goto jleave;
@@ -820,7 +820,7 @@ c_mboxit(void *v)
    NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
-      n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
+      n_err(_("mbox: can only be used in a system mailbox\n")); /* TODO */
       goto jleave;
    }
 
@@ -843,7 +843,7 @@ c_preserve(void *v)
    NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
-      fprintf(n_stdout, _("Cannot `preserve' in a system mailbox\n"));
+      fprintf(n_stdout, _("preserve: cannot be used in a system mailbox\n"));
       goto jleave;
    }
 

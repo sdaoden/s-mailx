@@ -468,7 +468,7 @@ c_headerpick(void *vp){
    }
 
    if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
-      n_err(_("`headerpick': invalid context: %s\n"), *argv);
+      n_err(_("headerpick: invalid context: %s\n"), *argv);
       goto jleave;
    }
    ++argv;
@@ -486,7 +486,7 @@ c_headerpick(void *vp){
    else if(su_cs_starts_with_case("ignore", *argv))
       retain = FAL0;
    else{
-      n_err(_("`headerpick': invalid type (retain, ignore): %s\n"), *argv);
+      n_err(_("headerpick: invalid type (retain, ignore): %s\n"), *argv);
       goto jleave;
    }
    ++argv;
@@ -515,7 +515,7 @@ c_unheaderpick(void *vp){
    argv = vp;
 
    if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
-      n_err(_("`unheaderpick': invalid context: %s\n"), *argv);
+      n_err(_("unheaderpick: invalid context: %s\n"), *argv);
       goto jleave;
    }
    ++argv;
@@ -525,7 +525,7 @@ c_unheaderpick(void *vp){
    else if(su_cs_starts_with_case("ignore", *argv))
       retain = FAL0;
    else{
-      n_err(_("`unheaderpick': invalid type (retain, ignore): %s\n"), *argv);
+      n_err(_("unheaderpick: invalid type (retain, ignore): %s\n"), *argv);
       goto jleave;
    }
    ++argv;

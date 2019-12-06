@@ -455,7 +455,7 @@ c_certsave(void *vp){
       file = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
       if((cp = fexpand(file, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
             ) == NIL || *cp == '\0'){
-         n_err(_("`certsave': file expansion failed: %s\n"),
+         n_err(_("certsave: file expansion failed: %s\n"),
             n_shexp_quote_cp(file, FAL0));
          vp = NULL;
          goto jleave;
@@ -512,7 +512,7 @@ c_tls(void *vp){
       goto jesubcmd;
    else if(su_cs_starts_with_case("fingerprint", cp)){
 #ifndef mx_HAVE_NET
-      n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
+      n_err(_("tls: fingerprint: no +sockets in *features*\n"));
       n_pstate_err_no = su_ERR_OPNOTSUPP;
       goto jleave;
 #else
@@ -552,12 +552,12 @@ jleave:
    return (vp == NULL);
 
 jeoverflow:
-   n_err(_("`tls': string length or offset overflows datatype\n"));
+   n_err(_("tls: string length or offset overflows datatype\n"));
    n_pstate_err_no = su_ERR_OVERFLOW;
    goto jleave;
 
 jesubcmd:
-   n_err(_("`tls': invalid subcommand: %s\n"),
+   n_err(_("tls: invalid subcommand: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
 jesynopsis:
    mx_cmd_print_synopsis(mx_cmd_firstfit("tls"), NIL);

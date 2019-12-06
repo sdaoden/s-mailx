@@ -63,7 +63,7 @@ c_commandalias(void *vp){
    /* Verify the name is a valid one, and not a command modifier */
    if(*key == '\0' || *mx_cmd_isolate_name(key) != '\0' ||
          !mx_cmd_is_valid_name(key)){
-      n_err(_("`commandalias': not a valid command name: %s\n"),
+      n_err(_("commandalias: not a valid command name: %s\n"),
          n_shexp_quote_cp(key, FAL0));
       rv = 1;
       goto jleave;

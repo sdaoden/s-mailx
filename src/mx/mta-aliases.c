@@ -447,12 +447,12 @@ jlist:{
    FILE *fp;
 
    if((cp = ok_vlook(mta_aliases)) == NIL){
-      n_err(_("`mtaaliases': *mta-aliases* not set\n"));
+      n_err(_("mtaaliases: *mta-aliases* not set\n"));
       vp = NIL;
       goto jleave;
    }else if(a_mtaali_cache_init(cp) != su_ERR_NONE ||
          a_mtaali_g.mag_path == a_MTAALI_G_ERR){
-      n_err(_("`mtaaliases: *mta-aliases* had no content\n"));
+      n_err(_("mtaaliases: *mta-aliases* had no content\n"));
       vp = NIL;
       goto jleave;
    }

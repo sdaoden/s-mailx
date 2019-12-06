@@ -180,7 +180,7 @@ a_cmisc_read_set(char const *cp, char const *value){
       rv = TRU1;
       goto jleave;
    }
-   n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
+   n_err("read: %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
    rv = FAL0;
 jleave:
    NYD2_OU;

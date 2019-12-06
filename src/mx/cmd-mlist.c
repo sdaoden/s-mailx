@@ -155,7 +155,7 @@ a_ml_mux(boole subscribe, char const **argv){
                goto jset_data;
             }else if(!subscribe){
 jelisted:
-               n_err(_("`%s': already listed: %s\n"),
+               n_err(_("%s: already listed: %s\n"),
                   cmd, n_shexp_quote_cp(key, FAL0));
                notrv = TRU1;
             }else{
@@ -183,7 +183,7 @@ jset_data:
                dp = a_ml_dp;
 
             if(su_cs_dict_insert(dp, key, u.vp) > 0){
-               n_err(_("`%s': failed to create storage: %s\n"),
+               n_err(_("%s: failed to create storage: %s\n"),
                   n_shexp_quote_cp(key, FAL0));
                notrv = 1;
             }
@@ -293,7 +293,7 @@ a_ml_re_clone(void const *t, u32 estate){
 
          rv.flags |= (u.flags & TRU1);
       }else{
-         n_err(_("`%s': invalid regular expression: %s: %s\n"),
+         n_err(_("%s: invalid regular expression: %s: %s\n"),
             (u.flags & TRU1 ? "mlsubscribe" : "mlist"),
             n_shexp_quote_cp(rep, FAL0), n_regex_err_to_doc(NULL, s));
          su_FREE(rv.mlrp);

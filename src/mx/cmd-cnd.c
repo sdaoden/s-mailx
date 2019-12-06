@@ -75,10 +75,9 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
       msg_or_null = _("invalid expression syntax");
 
    if(nearby_or_null != NULL)
-      n_err(_("`if' conditional: %s -- near: %s\n"),
-         msg_or_null, nearby_or_null);
+      n_err(_("if: %s -- near: %s\n"), msg_or_null, nearby_or_null);
    else
-      n_err(_("`if' conditional: %s\n"), msg_or_null);
+      n_err(_("if: %s\n"), msg_or_null);
 
    if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)){
       str_concat_cpa(&s, cicp->cic_argv_base,
@@ -356,7 +355,7 @@ jesyn_ntr:
          }
 
          if(op[1] == '@') /* v15compat */
-            n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
+            n_OBSOLETE("if++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
          rv = ((flags & (a_MOD | a_ICASE) ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
@@ -652,7 +651,7 @@ c_elif(void *v){
    NYD_IN;
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
-      n_err(_("`elif' without a matching `if'\n"));
+      n_err(_("elif: no matching `if'\n"));
       rv = 1;
    }else if(!cinp->cin_error){
       cinp->cin_go = !cinp->cin_go; /* Cause right _IF_IS_SKIP() result */
@@ -671,7 +670,7 @@ c_else(void *v){
    UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
-      n_err(_("`else' without a matching `if'\n"));
+      n_err(_("else: no matching `if'\n"));
       rv = 1;
    }else{
       cinp->cin_else = TRU1;
@@ -690,7 +689,7 @@ c_endif(void *v){
    UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL){
-      n_err(_("`endif' without a matching `if'\n"));
+      n_err(_("endif: no matching `if'\n"));
       rv = 1;
    }else{
       n_go_data->gdc_ifcond = cinp->cin_outer;

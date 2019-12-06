@@ -2337,7 +2337,7 @@ c_xcall(void *vp){
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION |
          a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD)) != a_GO_MACRO){
       if(n_poption & n_PO_D_V)
-         n_err(_("`xcall': can only be used inside a macro, using `call'\n"));
+         n_err(_("xcall: can only be used inside a macro, using `call'\n"));
       rv = c_call(vp);
       goto jleave;
    }
@@ -2384,7 +2384,7 @@ c_exit(void *vp){
       fflush(NULL);
       _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
-      n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
+      n_err(_("exit: delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_XIT;
    NYD_OU;
    return 0;
@@ -2404,7 +2404,7 @@ c_quit(void *vp){
       fflush(NULL);
       _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
-      n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
+      n_err(_("quit: delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_QUIT;
    NYD_OU;
    return 0;
@@ -2455,12 +2455,12 @@ c_readctl(void *vp){
    else if(su_cs_starts_with_case("remove", cap->ca_arg.ca_str.s))
       f = a_REMOVE;
    else{
-      emsg = N_("`readctl': invalid subcommand: %s\n");
+      emsg = N_("readctl: invalid subcommand: %s\n");
       goto jeinval_quote;
    }
 
    if(cacp->cac_no == 1){ /* TODO better option parser <> subcommand */
-      n_err(_("`readctl': %s: requires argument\n"), cap->ca_arg.ca_str.s);
+      n_err(_("readctl: %s: requires argument\n"), cap->ca_arg.ca_str.s);
       goto jeinval;
    }
    cap = cap->ca_next;
@@ -2468,7 +2468,7 @@ c_readctl(void *vp){
    /* - is special TODO unfortunately also regarding storage */
    if(cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '-'){
       if(f & (a_CREATE | a_REMOVE)){
-         n_err(_("`readctl': cannot create nor remove -\n"));
+         n_err(_("readctl: cannot create nor remove -\n"));
          goto jeinval;
       }
       n_readctl_read_overlay = a_stdin;
@@ -2486,7 +2486,7 @@ c_readctl(void *vp){
    }
 
    if(f & (a_SET | a_REMOVE)){
-      emsg = N_("`readctl': no such channel: %s\n");
+      emsg = N_("readctl: no such channel: %s\n");
       goto jeinval_quote;
    }
 
@@ -2509,7 +2509,7 @@ jfound:
       s32 fd;
 
       if(grcp != NULL){
-         n_err(_("`readctl': channel already exists: %s\n"), /* TODO reopen */
+         n_err(_("readctl: channel already exists: %s\n"), /* TODO reopen */
             n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
          n_pstate_err_no = su_ERR_EXIST;
          f = a_ERR;
@@ -2521,7 +2521,7 @@ jfound:
             ) != su_IDEC_STATE_CONSUMED){
          if((emsg = fexpand(cap->ca_arg.ca_str.s, (FEXP_LOCAL_FILE |
                FEXP_NVAR))) == NIL){
-            emsg = N_("`readctl': cannot expand filename %s\n");
+            emsg = N_("readctl: cannot expand filename %s\n");
             goto jeinval_quote;
          }
          fd = -1;
@@ -2529,7 +2529,7 @@ jfound:
          fp = mx_fs_open(emsg, "&r");
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
-         n_err(_("`readctl': create: standard descriptors are not allowed\n"));
+         n_err(_("readctl: create: standard descriptors are not allowed\n"));
          goto jeinval;
       }else{
          /* xxx Avoid */
@@ -2546,7 +2546,7 @@ jfound:
                (i -= cap->ca_arg.ca_str.l) <=
                   VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
             fclose(fp);
-            n_err(_("`readctl': failed to create storage for %s\n"),
+            n_err(_("readctl: failed to create storage for %s\n"),
                cap->ca_arg.ca_str.s);
             n_pstate_err_no = su_ERR_OVERFLOW;
             f = a_ERR;
@@ -2572,7 +2572,7 @@ jfound:
             su_mem_copy(cp, emsg, ++elen);
          }
       }else{
-         emsg = N_("`readctl': failed to create file for %s\n");
+         emsg = N_("readctl: failed to create file for %s\n");
          goto jeinval_quote;
       }
    }
@@ -2589,12 +2589,12 @@ jeinval:
 
 jshow:
    if((grcp = n_readctl_read_overlay) == NULL)
-      fprintf(n_stdout, _("`readctl': no channels registered\n"));
+      fprintf(n_stdout, _("readctl: no channels registered\n"));
    else{
       while(grcp->grc_last != NULL)
          grcp = grcp->grc_last;
 
-      fprintf(n_stdout, _("`readctl': registered channels:\n"));
+      fprintf(n_stdout, _("readctl: registered channels:\n"));
       for(; grcp != NULL; grcp = grcp->grc_next)
          fprintf(n_stdout, _("%c%s %s%s%s%s\n"),
             (grcp == n_readctl_read_overlay ? '*' : ' '),

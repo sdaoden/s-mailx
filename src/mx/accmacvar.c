@@ -2688,7 +2688,7 @@ c_account(void *v){
          goto jleave;
       }
       if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
-         n_err(_("`account': cannot use reserved name: %s\n"),
+         n_err(_("account: cannot use reserved name: %s\n"),
             ACCOUNT_NULL);
          goto jleave;
       }
@@ -2697,7 +2697,7 @@ c_account(void *v){
    }
 
    if(n_pstate & n_PS_HOOK_MASK){
-      n_err(_("`account': cannot change account from within a hook\n"));
+      n_err(_("account: cannot change account from within a hook\n"));
       goto jleave;
    }
 
@@ -2706,7 +2706,7 @@ c_account(void *v){
    amp = NULL;
    if(su_cs_cmp_case(args[0], ACCOUNT_NULL) != 0 &&
          (amp = a_amv_mac_lookup(args[0], NULL, a_AMV_MF_ACCOUNT)) == NULL){
-      n_err(_("`account': account does not exist: %s\n"), args[0]);
+      n_err(_("account: account does not exist: %s\n"), args[0]);
       goto jleave;
    }
 
@@ -2733,7 +2733,7 @@ c_account(void *v){
          /* XXX account switch incomplete, unroll? */
          mx_account_leave();
          n_PS_ROOT_BLOCK(ok_vclear(account));
-         n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
+         n_err(_("account: failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
       }
    }else
@@ -2835,7 +2835,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
       if((su_idec_s16_cp(&sib, vp, 10, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || sib < 0){
-         n_err(_("`shift': invalid argument: %s\n"), vp);
+         n_err(_("shift: invalid argument: %s\n"), vp);
          goto jleave;
       }
       i = (u16)sib;
@@ -2859,7 +2859,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
       appp = &a_amv_pospar;
 
    if(i > appp->app_count){
-      n_err(_("`shift': cannot shift %hu of %hu parameters\n"),
+      n_err(_("shift: cannot shift %hu of %hu parameters\n"),
          i, appp->app_count);
       goto jleave;
    }else{
@@ -2892,7 +2892,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
                ) == su_IDEC_STATE_CONSUMED && i >= 0)
             rv = (int)i;
          else{
-            n_err(_("`return': return value argument is invalid: %s\n"),
+            n_err(_("return: return value argument is invalid: %s\n"),
                argv[0]);
             n_pstate_err_no = su_ERR_INVAL;
             rv = 1;
@@ -2904,7 +2904,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
                   ) == su_IDEC_STATE_CONSUMED && i >= 0)
                n_pstate_err_no = i;
             else{
-               n_err(_("`return': error number argument is invalid: %s\n"),
+               n_err(_("return: error number argument is invalid: %s\n"),
                   argv[1]);
                n_pstate_err_no = su_ERR_INVAL;
                rv = 1;
@@ -3414,7 +3414,7 @@ c_set(void *vp){
          avscf = a_AMV_VSETCLR_NONE;
       else{
          if(a_amv_lopts == NULL){
-            n_err(_("`set': cannot use `local' in this context\n"));
+            n_err(_("set: cannot use `local' in this context\n"));
             err = 1;
             goto jleave;
          }
@@ -3439,7 +3439,7 @@ c_unset(void *vp){
       avscf = a_AMV_VSETCLR_NONE;
    else{
       if(a_amv_lopts == NULL){
-         n_err(_("`unset': cannot use `local' in this context\n"));
+         n_err(_("unset: cannot use `local' in this context\n"));
          err = 1;
          goto jleave;
       }
@@ -3497,12 +3497,12 @@ c_varedit(void *v){ /* TODO v15 drop */
 
       if(avc.avc_map != NULL){
          if(avc.avc_map->avm_flags & a_AMV_VF_BOOL){
-            n_err(_("`varedit': cannot edit boolean variable: %s\n"),
+            n_err(_("varedit: cannot edit boolean variable: %s\n"),
                avc.avc_name);
             continue;
          }
          if(avc.avc_map->avm_flags & a_AMV_VF_RDONLY){
-            n_err(_("`varedit': cannot edit read-only variable: %s\n"),
+            n_err(_("varedit: cannot edit read-only variable: %s\n"),
                avc.avc_name);
             continue;
          }
@@ -3512,12 +3512,12 @@ c_varedit(void *v){ /* TODO v15 drop */
 
       if((of = mx_fs_tmp_open("varedit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("`varedit': cannot create temporary file"), 0);
+         n_perr(_("varedit: cannot create temporary file"), 0);
          err = 1;
          break;
       }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
             sizeof *val != fwrite(val, su_cs_len(val), sizeof *val, of)){
-         n_perr(_("`varedit' failed to write old value to temporary file"), 0);
+         n_perr(_("varedit failed to write old value to temporary file"), 0);
          mx_fs_close(of);
          err = 1;
          continue;
@@ -3535,7 +3535,7 @@ c_varedit(void *v){ /* TODO v15 drop */
 
          l = fsize(nf);
          if(UCMP(64, l, >=, UZ_MAX -42)){
-            n_err(_("`varedit': not enough memory to store variable: %s\n"),
+            n_err(_("varedit: not enough memory to store variable: %s\n"),
                avc.avc_name);
             varres = n_empty;
             err = 1;
@@ -3545,7 +3545,7 @@ c_varedit(void *v){ /* TODO v15 drop */
                *val++ = c;
             *val++ = '\0';
             if(l != 0){
-               n_err(_("`varedit': I/O while reading new value of: %s\n"),
+               n_err(_("varedit: I/O while reading new value of: %s\n"),
                   avc.avc_name);
                err = 1;
             }
@@ -3556,7 +3556,7 @@ c_varedit(void *v){ /* TODO v15 drop */
 
          mx_fs_close(nf);
       }else{
-         n_err(_("`varedit': cannot start $EDITOR\n"));
+         n_err(_("varedit: cannot start $EDITOR\n"));
          err = 1;
          break;
       }
@@ -3593,14 +3593,14 @@ c_environ(void *v){
             }else if(avc.avc_var->av_flags &
                   (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)){
                if(n_poption & n_PO_D_V)
-                  n_err(_("`environ': link: already established: %s\n"), *ap);
+                  n_err(_("environ: link: already established: %s\n"), *ap);
                continue;
             }
             avc.avc_var->av_flags |= a_AMV_VF_EXT_LINKED;
             if(!(avc.avc_var->av_flags & a_AMV_VF_ENV))
                a_amv_var__putenv(&avc, avc.avc_var);
          }else if(!islnk){
-            n_err(_("`environ': unlink: no link established: %s\n"), *ap);
+            n_err(_("environ: unlink: no link established: %s\n"), *ap);
             err = 1;
          }else{
             char const *evp = getenv(*ap);
@@ -3608,7 +3608,7 @@ c_environ(void *v){
             if(evp != NULL)
                err |= !a_amv_var_set(&avc, evp, a_AMV_VSETCLR_ENV);
             else{
-               n_err(_("`environ': link: cannot link to non-existent: %s\n"),
+               n_err(_("environ: link: cannot link to non-existent: %s\n"),
                   *ap);
                err = 1;
             }
@@ -3664,7 +3664,7 @@ c_vpospar(void *v){
    else if(su_cs_starts_with_case("quote", cap->ca_arg.ca_str.s))
       f = a_QUOTE;
    else{
-      n_err(_("`vpospar': invalid subcommand: %s\n"),
+      n_err(_("vpospar: invalid subcommand: %s\n"),
          n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
       mx_cmd_print_synopsis(mx_cmd_firstfit("vpospar"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
@@ -3674,7 +3674,7 @@ c_vpospar(void *v){
    --cacp->cac_no;
 
    if((f & (a_CLEAR | a_QUOTE)) && cap->ca_next != NULL){
-      n_err(_("`vpospar': `%s': takes no argument\n"), cap->ca_arg.ca_str.s);
+      n_err(_("vpospar: %s: takes no argument\n"), cap->ca_arg.ca_str.s);
       n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
       goto jleave;
@@ -3688,7 +3688,7 @@ c_vpospar(void *v){
 
    if(f & (a_SET | a_CLEAR)){
       if(cacp->cac_vput != NULL)
-         n_err(_("`vpospar': `vput' only supported for `quote' subcommand\n"));
+         n_err(_("vpospar: `vput' only supported for `quote' subcommand\n"));
       if(!appp->app_not_heap && appp->app_maxcount > 0){
          for(i = appp->app_maxcount; i-- != 0;)
             n_free(n_UNCONST(appp->app_dat[i]));
@@ -3698,7 +3698,7 @@ c_vpospar(void *v){
 
       if(f & a_SET){
          if((i = cacp->cac_no) > a_AMV_POSPAR_MAX){
-            n_err(_("`vpospar': overflow: %" PRIuZ " arguments!\n"), i);
+            n_err(_("vpospar: overflow: %" PRIuZ " arguments!\n"), i);
             n_pstate_err_no = su_ERR_OVERFLOW;
             f = a_ERR;
             goto jleave;
@@ -3751,7 +3751,7 @@ c_vpospar(void *v){
 
             if(!n_string_can_book(s, in.l)){
 jeover:
-               n_err(_("`vpospar': overflow: string too long!\n"));
+               n_err(_("vpospar: overflow: string too long!\n"));
                n_pstate_err_no = su_ERR_OVERFLOW;
                f = a_ERR;
                goto jleave;

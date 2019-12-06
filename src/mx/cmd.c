@@ -744,7 +744,7 @@ jerr:
                !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i)
             ;
 
-         n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
+         n_err(_("%s: parsing stopped after %" PRIuZ " arguments "
                "(need %" PRIuZ "%s)\n"
                "     Input: %.*s\n"
                "   Stopped: %.*s\n"),
