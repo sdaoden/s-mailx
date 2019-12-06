@@ -1,0 +1,119 @@
+210 Subject 1
+210 Subject To Mailx-Command Mailx-Raw-To
+=0
+501
+=1
+210 1
+=2
+212
+'./.t x 1'
+
+=3
+212
+'./.t x 1'
+
+=4
+210 2
+=5
+212
+'./.t x 1'
+'./.t x 2'
+
+=6
+210 './.t x 1'
+=7
+212
+'./.t x 2'
+
+=8
+210 2
+=10
+212
+'./.t x 2'
+'./.t x 1'
+
+=11
+210 Subject To Mailx-Command Mailx-Raw-To
+=12
+212 './.t x 1'
+creation-name './.t x 1'
+open-path './.t x 1'
+filename '.t x 1'
+content-disposition attachment
+
+=13
+505
+=14
+212 './.t x 1'
+creation-name './.t x 1'
+open-path './.t x 1'
+filename '.t x 1'
+content-disposition attachment
+
+=15
+210 2
+=16
+212 './.t x 1'
+creation-name './.t x 1'
+open-path './.t x 1'
+filename '  cannot wait  for you '
+content-disposition attachment
+
+=17
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename '  cannot wait  for you '
+content-disposition attachment
+
+=18
+210 2
+=19
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename 'private  eyes'
+content-disposition attachment
+
+=20
+210 2
+=21
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename 'private  eyes'
+content-description 'private c-desc'
+content-disposition attachment
+
+=22
+505
+=23
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename 'private  eyes'
+content-description 'private c-desc'
+content-disposition attachment
+
+=24
+210 2
+=25
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename 'private  eyes'
+content-description 'private c-desc'
+content-type text/marklo
+content-disposition attachment
+
+=26
+210 2
+=27
+212 2
+creation-name './.t x 1'
+open-path './.t x 1'
+filename 'private  eyes'
+content-description 'private c-desc'
+content-disposition attachment
+
+=28

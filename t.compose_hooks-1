@@ -43,14 +43,14 @@ t_header ENTER
 210 From 2
 210 From 3
 210 From
-42/0/NONE: from@exam.ple diet spliced <from@exam.ple>
-31/0/NONE: from2@exam.ple <from2@exam.ple>
+44/0/NONE: from@exam.ple 'diet spliced <from@exam.ple>'
+33/0/NONE: from2@exam.ple '<from2@exam.ple>'
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
 210 From To Mailx-Command Mailx-Raw-To
 210 Sender 1
 210 Sender
-33/0/NONE: sender@exam.ple <sender@exam.ple>
+35/0/NONE: sender@exam.ple '<sender@exam.ple>'
 0/0/NONE: 
 210 From Sender To Mailx-Command Mailx-Raw-To
 210 To 2
@@ -58,8 +58,8 @@ t_header ENTER
 210 To 4
 210 To
 35/0/NONE: this-goes@nowhere this-goes@nowhere
-38/0/NONE: To@exam.ple diet spliced <To@exam.ple>
-27/0/NONE: To2@exam.ple <To2@exam.ple>
+40/0/NONE: To@exam.ple 'diet spliced <To@exam.ple>'
+29/0/NONE: To2@exam.ple '<To2@exam.ple>'
 25/0/NONE: To3@exam.ple To3@exam.ple
 0/0/NONE: 
 210 From Sender To Mailx-Command Mailx-Raw-To
@@ -67,8 +67,8 @@ t_header ENTER
 210 Cc 2
 210 Cc 3
 210 Cc
-38/0/NONE: cC@exam.ple diet spliced <cC@exam.ple>
-27/0/NONE: cC2@exam.ple <cC2@exam.ple>
+40/0/NONE: cC@exam.ple 'diet spliced <cC@exam.ple>'
+29/0/NONE: cC2@exam.ple '<cC2@exam.ple>'
 25/0/NONE: cC3@exam.ple cC3@exam.ple
 0/0/NONE: 
 210 From Sender To Cc Mailx-Command Mailx-Raw-To
@@ -76,8 +76,8 @@ t_header ENTER
 210 Bcc 2
 210 Bcc 3
 210 Bcc
-40/0/NONE: bCc@exam.ple diet spliced <bCc@exam.ple>
-29/0/NONE: bCc2@exam.ple <bCc2@exam.ple>
+42/0/NONE: bCc@exam.ple 'diet spliced <bCc@exam.ple>'
+31/0/NONE: bCc2@exam.ple '<bCc2@exam.ple>'
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
 0/0/NONE: 
 210 From Sender To Cc Bcc Mailx-Command Mailx-Raw-To
@@ -85,8 +85,8 @@ t_header ENTER
 210 Reply-To 2
 210 Reply-To 3
 210 Reply-To
-50/0/NONE: reply-To@exam.ple diet spliced <reply-To@exam.ple>
-39/0/NONE: reply-To2@exam.ple <reply-To2@exam.ple>
+52/0/NONE: reply-To@exam.ple 'diet spliced <reply-To@exam.ple>'
+41/0/NONE: reply-To2@exam.ple '<reply-To2@exam.ple>'
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
 0/0/NONE: 
 210 From Sender To Cc Bcc Reply-To Mailx-Command Mailx-Raw-To
@@ -94,8 +94,8 @@ t_header ENTER
 210 Mail-Followup-To 2
 210 Mail-Followup-To 3
 210 Mail-Followup-To
-66/0/NONE: mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple>
-55/0/NONE: mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple>
+68/0/NONE: mail-Followup-to@exam.ple 'diet spliced <mail-Followup-to@exam.ple>'
+57/0/NONE: mail-Followup-to2@exam.ple '<mail-Followup-to2@exam.ple>'
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
 0/0/NONE: 
 210 From Sender To Cc Bcc Reply-To Mail-Followup-To Mailx-Command Mailx-Raw-To
@@ -126,15 +126,15 @@ t_header ENTER
 210 Subject 1
 210 Subject 1
 210 Subject
-56/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
+58/0/NONE: '<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
 0/0/NONE: 
 210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To
 210 freeForm1 1
 210 freeForm1 2
 210 freeForm1 3
 210 freeForm1
-33/0/NONE: diet <freeForm1@exam.ple> spliced
-21/0/NONE: <freeForm12@exam.ple>
+35/0/NONE: 'diet <freeForm1@exam.ple> spliced'
+23/0/NONE: '<freeForm12@exam.ple>'
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
 210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To freeForm1
@@ -142,8 +142,8 @@ t_header ENTER
 210 freeform2 5
 210 freeform2 6
 210 freeform2
-33/0/NONE: diet <freeform2@exam.ple> spliced
-21/0/NONE: <freeform22@exam.ple>
+35/0/NONE: 'diet <freeform2@exam.ple> spliced'
+23/0/NONE: '<freeform22@exam.ple>'
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
 4/0/NONE: mail
