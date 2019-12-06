@@ -109,11 +109,13 @@ struct mx_cmd_arg_desc{
 
 /* ISO C(99) does not allow initialization of "flex array" */
 #define mx_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
+   mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(CMD, su_STRING(CMD), NO, VAR)
+#define mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(CMD,NAME,NO,VAR) \
    static struct mx_cmd_arg_desc_ ## CMD {\
       char cad_name[12];\
       u32 cad_no;\
       u32 cad_ent_flags[NO][2];\
-   } const VAR = { #CMD "\0", NO,
+   } const VAR = { NAME "\0", NO,
 #define mx_CMD_ARG_DESC_SUBCLASS_DEF_END }
 #define mx_CMD_ARG_DESC_SUBCLASS_CAST(P) su_R(struct mx_cmd_arg_desc const*,P)
 
