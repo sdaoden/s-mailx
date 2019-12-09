@@ -322,9 +322,9 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
    rv = FAL0;
 
 #ifdef mx_HAVE_TLS
-# define a_OUCH 0
-#else
 # define a_OUCH 1
+#else
+# define a_OUCH 0
 #endif
 
    /* Network protocol */
