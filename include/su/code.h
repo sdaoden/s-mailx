@@ -723,7 +723,8 @@ do{\
    /*! The offset of field \a{F} in the type \a{T}. */
 # define su_FIELD_OFFSETOF(T,F) __builtin_offsetof(T, F)
 #else
-# define su_FIELD_OFFSETOF(T,F) su_S(su_uz,su_S(su_up,&(su_S(T *,su_NIL)->F)))
+# define su_FIELD_OFFSETOF(T,F) \
+      su_S(su_uz,su_S(su_up,&(su_R(T *,0x1)->F)) - 1)
 #endif
 
 /*! Distance in between the fields \a{S}tart and \a{E}end in type \a{T}. */
