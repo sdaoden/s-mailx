@@ -354,8 +354,7 @@ jjumped:
 jsclose:
          mx_socket_close(sop);
          sofd = -1;
-      }else if(urlp->url_cproto == CPROTO_CERTINFO)
-         mx_socket_close(sop);
+      }
 
       hold_sigs();
       safe_signal(SIGINT, oint);

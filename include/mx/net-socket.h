@@ -54,6 +54,8 @@ struct mx_socket{
    void *s_tls;  /* TLS object */
 # endif
    char *s_tls_finger; /* Set to autorec! store for CPROTO_CERTINFO */
+   char *s_tls_certificate; /* Ditto */
+   char *s_tls_certchain; /* Ditto */
 #endif
    char *s_wbuf; /* for buffered writes */
    int s_wbufsize; /* allocated size of s_buf */

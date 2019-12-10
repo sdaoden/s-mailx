@@ -2108,12 +2108,14 @@ in addition will avoid additional inspection of the default pool.
 A certificate cannot be more secure than the method its CA certificate
 has been retrieved with.
 For inspection or other purposes, the certificate of a server (as seen
-when connecting to it) can be fetched like this (port can usually be the
-protocol name, too):
+when connecting to it) can be fetched with the command
+.Ic tls
+(port can usually be the protocol name, too, and
+.Va tls-verify
+is take into account here):
 .
 .Bd -literal -offset indent
-$ </dev/null openssl s_client -showcerts -connect \e
-    SERVER-URL[:PORT] 2>&1 | tee log.txt
+$ \*(uA -vX 'tls certchain SERVER-URL[:PORT]; x'
 .Ed
 .
 .Pp
@@ -2124,10 +2126,9 @@ variable chain
 .Va tls-fingerprint ,
 and verification will succeed if the fingerprint matches.
 The message digest (algorithm) can be configured via the variable chain
-.Va tls-fingerprint-digest .
-The command
+.Va tls-fingerprint-digest ;
 .Ic tls
-aids in generating fingerprints easily:
+can again be used:
 .
 .Bd -literal -offset indent
 $ \*(uA -X 'wysh set verbose; tls fingerprint SERVER-URL[:PORT]; x'
@@ -7305,7 +7306,11 @@ as necessary).
 .Mx
 .It Ic tls
 \*(NQ TLS information and management command multiplexer to aid in
-.Sx "Encrypted network communication" .
+.Sx "Encrypted network communication" ,
+mostly available only if the term
+.Ql +sockets
+is included in
+.Va features .
 Commands support
 .Cm vput
 if so documented (see
@@ -7317,13 +7322,23 @@ For example, string length overflows are caught and set
 .Va \&!
 to
 .Va ^ERR Ns -OVERFLOW .
-Note this command of course honours the overall TLS configuration.
+The TLS configuration is honoured, especially
+.Va tls-verify .
+.
 .Bd -literal -offset indent
 ? vput tls result fingerprint pop3s://ex.am.ple
 ? echo $?/$!/$^ERRNAME: $result
 .Ed
 .
 .Bl -hang -width ".It Cm random"
+.It Cm certchain
+Show the complete verified peer certificate chain.
+Includes informational fields in conjunction with
+.Va verbose .
+.It Cm certificate
+Show only the peer certificate, without any signers.
+Includes informational fields in conjunction with
+.Va verbose .
 .It Cm fingerprint
 Show the
 .Va tls-fingerprint-digest Ns
@@ -7332,10 +7347,6 @@ ed fingerprint of the certificate of the given HOST
 where the port defaults to the HTTPS port, 443).
 .Va tls-fingerprint
 is actively ignored for the runtime of this command.
-Only available if the term
-.Ql +sockets
-is included in
-.Va features .
 .El
 .
 .

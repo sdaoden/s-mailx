@@ -499,7 +499,12 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
 
 FL int
 c_tls(void *vp){
+#ifdef mx_HAVE_NET
+   struct mx_socket so;
+   struct mx_url url;
+#endif
    uz i;
+   enum {a_FPRINT, a_CERTIFICATE, a_CERTCHAIN} mode;
    char const **argv, *varname, *varres, *cp;
    NYD_IN;
 
@@ -510,31 +515,51 @@ c_tls(void *vp){
 
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
-   else if(su_cs_starts_with_case("fingerprint", cp)){
-#ifndef mx_HAVE_NET
-      n_err(_("tls: fingerprint: no +sockets in *features*\n"));
-      n_pstate_err_no = su_ERR_OPNOTSUPP;
-      goto jleave;
-#else
-      struct mx_socket so;
-      struct mx_url url;
+   else if(su_cs_starts_with_case("fingerprint", cp))
+      mode = a_FPRINT;
+   else if(su_cs_starts_with_case("certificate", cp))
+      mode = a_CERTIFICATE;
+   else if(su_cs_starts_with_case("certchain", cp))
+      mode = a_CERTCHAIN;
+   else
+      goto jesubcmd;
 
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-      if((i = su_cs_len(*++argv)) >= U32_MAX)
-         goto jeoverflow; /* TODO generic for ALL commands!! */
-      if(!mx_url_parse(&url, CPROTO_CERTINFO, *argv))
-         goto jeinval;
-      if(!mx_socket_open(&so, &url)){ /* auto-close 4 CPROTO_CERTINFO if ok */
-         n_pstate_err_no = su_err_no();
-         goto jleave;
-      }
-      if(so.s_tls_finger == NULL)
+#ifndef mx_HAVE_NET
+   n_err(_("tls: fingerprint: no +sockets in *features*\n"));
+   n_pstate_err_no = su_ERR_OPNOTSUPP;
+   goto jleave;
+#else
+   if(argv[1] == NULL || argv[2] != NULL)
+      goto jesynopsis;
+   if((i = su_cs_len(*++argv)) >= U32_MAX)
+      goto jeoverflow; /* TODO generic for ALL commands!! */
+   if(!mx_url_parse(&url, CPROTO_CERTINFO, *argv))
+      goto jeinval;
+
+   if(!mx_socket_open(&so, &url)){
+      n_pstate_err_no = su_err_no();
+      goto jleave;
+   }
+   mx_socket_close(&so);
+
+   switch(mode){
+   case a_FPRINT:
+      if(so.s_tls_finger == NIL)
          goto jeinval;
       varres = so.s_tls_finger;
+      break;
+   case a_CERTIFICATE:
+      if(so.s_tls_certificate == NIL)
+         goto jeinval;
+      varres = so.s_tls_certificate;
+      break;
+   case a_CERTCHAIN:
+      if(so.s_tls_certchain == NIL)
+         goto jeinval;
+      varres = so.s_tls_certchain;
+      break;
+   }
 #endif /* mx_HAVE_NET */
-   }else
-      goto jesubcmd;
 
    n_pstate_err_no = su_ERR_NONE;
    vp = (char*)-1;

@@ -1882,7 +1882,7 @@ mx_tls_rand_bytes(void *buf, uz blen){
 #endif /* HAVE_RANDOM == RANDOM_IMPL_TLS */
 
 FL boole
-n_tls_open(struct mx_url *urlp, struct mx_socket *sop){
+n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
@@ -2016,9 +2016,58 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){
             }else if(n_poption & n_PO_D_V)
                n_err(_("TLS fingerprint ok\n"));
             goto jpeer_leave;
-         }else if(urlp->url_cproto == CPROTO_CERTINFO)
+         }else if(urlp->url_cproto == CPROTO_CERTINFO){
+            char *xcp;
+            long i;
+            BIO *biop;
+            n_XTLS_STACKOF(X509) *certs;
+
             sop->s_tls_finger = savestrbuf(fpmdhexbuf,
                   P2UZ(cp - fpmdhexbuf));
+
+            /* For the sake of `tls cert(chain|ificate)', this too */
+
+            /*if((certs = SSL_get_peer_cert_chain(sop->s_tls)) != NIL){*/
+            if((certs =
+#if mx_HAVE_XTLS_OPENSSL >= 0x10100
+                     SSL_get0_verified_chain
+#else
+                     SSL_get_peer_cert_chain
+#endif
+                     (sop->s_tls)) != NIL){
+               if((biop = BIO_new(BIO_s_mem())) != NIL){
+                  xcp = NIL;
+                  peercert = NIL;
+
+                  for(i = 0; i < sk_X509_num(certs); ++i){
+                     peercert = sk_X509_value(certs, i);
+                     if(((n_poption & n_PO_D_V) &&
+                              X509_print(biop, peercert) == 0) ||
+                           PEM_write_bio_X509(biop, peercert) == 0){
+                        ssl_gen_err(_("Error storing certificate %d from %s"),
+                           i, urlp->url_h_p.s);
+                        peercert = NIL;
+                        break;
+                     }
+
+                     if(i == 0){
+                        i = BIO_get_mem_data(biop, &xcp);
+                        if(i > 0)
+                           sop->s_tls_certificate = savestrbuf(xcp, i);
+                        i = 0;
+                     }
+                  }
+
+                  if(peercert != NIL){
+                     i = BIO_get_mem_data(biop, &xcp);
+                     if(i > 0)
+                        sop->s_tls_certchain = savestrbuf(xcp, i);
+                  }
+
+                  BIO_free(biop);
+               }
+            }
+         }
       }
 
 jpeer_leave:
