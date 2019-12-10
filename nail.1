@@ -6535,21 +6535,21 @@ will remove its contents.
 .
 .Mx
 .It Ic netrc
-\*(OP When used without arguments or if
+\*(OP When used without arguments, or when the argument was
 .Ar show
-has been given the content of the
+the content of the
 .Pa \*(VN
-cache is shown, (re-)initializing it first (as necessary).
+cache is shown, initializing it as necessary.
 If the argument is
 .Ar load
-then the cache will only be (re-)initialized, and
+then the cache will be (re)loaded, whereas
 .Ar clear
-will remove its contents.
-Note that \*(UA will try to load the file only once, use
-.Ql Ic \&\&netrc Ns \:\0\:clear
-to unlock further attempts.
+removes it.
 Loading and parsing can be made more
 .Va verbose .
+.Ar lookup
+will query the cache for the URL given as the second argument
+.Pf ( Ql [USER@]HOST ) .
 See
 .Va netrc-lookup ,
 .Va netrc-pipe

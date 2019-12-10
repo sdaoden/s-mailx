@@ -358,7 +358,10 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 
    switch(cproto){
    case CPROTO_NONE:
-      goto jleave;
+      if(su_cs_find(data, "://") != NIL)
+         goto jeproto;
+      a_PROTOX("none", 0, (void)0);
+      break;
    case CPROTO_CERTINFO:
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
@@ -596,16 +599,21 @@ jurlp_err:
    }
 
    /* User, II
-    * If there was no user in the URL, do we have *user-HOST* or *user*? */
-   if(!(urlp->url_flags & mx_URL_HAD_USER)){
+    * If there was no user in the URL, do we have *user-HOST* or *user*?
+    * This only for protocols which want to have additional information */
+   if(cproto != CPROTO_NONE && cproto != CPROTO_CERTINFO &&
+         !(urlp->url_flags & mx_URL_HAD_USER)){
       /* *user* guaranteed non-empty */
       if((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P)
             ) == NIL){
          /* No, check whether .netrc lookup is desired */
 # ifdef mx_HAVE_NETRC
+         struct mx_netrc_entry nrce;
+
          if(ok_vlook(v15_compat) == NIL ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
-               !mx_netrc_lookup(urlp, FAL0) || urlp->url_user.s[0] == '\0')
+               !mx_netrc_lookup(&nrce, urlp) ||
+               (urlp->url_user.s = UNCONST(char*,nrce.nrce_login)) == NIL)
 # endif
             urlp->url_user.s = UNCONST(char*,ok_vlook(LOGNAME));
       }

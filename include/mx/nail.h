@@ -200,13 +200,14 @@ enum conversion{
 };
 
 enum cproto{
-   CPROTO_NONE,
-   CPROTO_CERTINFO, /* Special dummy proto for TLS certificate info xxx */
-   CPROTO_CCRED, /* Special dummy credential proto (S/MIME etc.) */
-   CPROTO_SOCKS, /* Special dummy SOCKS5 proxy proto */
+   CPROTO_NONE, /* Invalid.  But sometimes used to be able to parse an URL */
+CPROTO_IMAP,
+   CPROTO_POP3,
    CPROTO_SMTP,
-   CPROTO_POP3
-,CPROTO_IMAP
+   CPROTO_CCRED, /* Special dummy credential proto (S/MIME etc.) */
+   CPROTO_CERTINFO, /* Special dummy proto for TLS certificate info xxx */
+   CPROTO_SOCKS /* Special dummy SOCKS5 proxy proto */
+   /* We need a _DEDUCE, as default, for normal URL object */
 };
 
 /* enum n_err_number from gen-config.h, which is in sync with

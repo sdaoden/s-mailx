@@ -203,9 +203,15 @@ mx_cred_auth_lookup(struct mx_cred_ctx *ccp, struct mx_url *urlp){
       goto js2pass;
 
 #ifdef mx_HAVE_NETRC
-   if(xok_blook(netrc_lookup, urlp, OXM_ALL) && mx_netrc_lookup(urlp, TRU1)){
-      ccp->cc_pass = urlp->url_pass;
-      goto jleave;
+   if(xok_blook(netrc_lookup, urlp, OXM_ALL)){
+      struct mx_netrc_entry nrce;
+
+      if(mx_netrc_lookup(&nrce, urlp) && nrce.nrce_password != NIL){
+         urlp->url_pass.s = savestr(nrce.nrce_password);
+         urlp->url_pass.l = su_cs_len(urlp->url_pass.s);
+         ccp->cc_pass = urlp->url_pass;
+         goto jleave;
+      }
    }
 #endif
 

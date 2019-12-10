@@ -131,6 +131,7 @@ t_all() {
    jspawn alias
    jspawn charsetalias
    jspawn shortcut
+   jspawn netrc
    jsync
 
    # Operational basics with easy tests
@@ -6271,6 +6272,69 @@ t_shortcut() {
 	shortcut;x
 	__EOT
    check 1 0 "${MBOX}" '1970515669 430'
+
+   t_epilog "${@}"
+}
+
+t_netrc() {
+   t_prolog "${@}"
+
+   if have_feat netrc; then :; else
+      t_echoskip '[!NETRC]'
+      t_epilog "${@}"
+      return
+   fi
+
+   printf '# comment
+      machine x.local login a1	machine x.local login a2 password p2
+      machine	x.local	login	a3	password	"p 3"
+      machine
+      pop.x.local
+      login
+      a2
+      password
+      p2-pop!
+      machine *.x.local login a2 password p2-any!
+      machine y.local login ausr password apass
+      machine
+      z.local password
+      noupa
+      # and unused default
+      default login defacc password defpass
+   ' > ./.tnetrc
+   ${chmod} 0600 ./.tnetrc
+
+   printf 'netrc;echo =$?;netrc c;echo =$?;netr loa;echo =$?;netr s;echo =$?' |
+      NETRC=./.tnetrc ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '2911708535 542'
+
+   have_feat uistrings && i='3076722625 893' || i='3808149439 645'
+   printf '# Comment
+      echo ==host
+      netrc loo x.local
+      netrc loo y.local
+      netrc loo z.local
+      echo ==(re)load cache
+      netrc load;echo $?/$^ERRNAME
+      echo ==usr@host
+      netrc loo a1@x.local
+      netrc loo a2@x.local
+      netrc loo a3@x.local
+      netrc loo a4@x.local
+      echo ==clear cache
+      netrc clear;echo $?/$^ERRNAME
+      echo ==usr@x.host
+      netrc loo a2@pop.x.local
+      netrc loo a2@imap.x.local
+      netrc loo a2@smtp.x.local
+      echo ==usr@y.x.host
+      netrc loo a2@nono.smtp.x.local
+      echo ==[usr@]unknown-host
+      netrc loo a.local
+      netrc loo defacc@a.local
+      netrc loo a1@a.local
+   ' | NETRC=./.tnetrc ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" "${i}"
 
    t_epilog "${@}"
 }

@@ -542,8 +542,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (M | TWYSH), 0, 1, NIL
-      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
+      (M | TWYSH), 0, 2, NIL
+      DS(N_("[<show>], <load>, <clear> cache, or <lookup> [USR@]HOST")) },
    { "New", &c_unread, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mark <msglist> as not being read")) },
    { "new", &c_unread, (A | TMSGLST), 0, MMNDEL, NIL
