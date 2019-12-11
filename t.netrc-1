@@ -1,0 +1,18 @@
+machine *.x.local login a2 password p2-any!
+machine pop.x.local login a2 password p2-pop!
+machine x.local login a1
+machine x.local login a2 password p2
+machine x.local login a3 password "p 3"
+machine y.local login ausr password apass
+machine z.local password noupa
+=0
+=0
+=0
+machine *.x.local login a2 password p2-any!
+machine pop.x.local login a2 password p2-pop!
+machine x.local login a1
+machine x.local login a2 password p2
+machine x.local login a3 password "p 3"
+machine y.local login ausr password apass
+machine z.local password noupa
+=0

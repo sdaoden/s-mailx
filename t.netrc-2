@@ -1,0 +1,23 @@
+==host
+netrc: lookup: no entry for: x.local
+netrc: lookup: y.local: machine y.local login ausr password apass
+netrc: lookup: z.local: machine z.local password noupa
+==(re)load cache
+0/NONE
+==usr@host
+netrc: lookup: a1@x.local: machine x.local login a1
+netrc: lookup: a2@x.local: machine x.local login a2 password p2
+netrc: lookup: a3@x.local: machine x.local login a3 password "p 3"
+netrc: lookup: no entry for: a4@x.local
+==clear cache
+0/NONE
+==usr@x.host
+netrc: lookup: a2@pop.x.local: machine pop.x.local login a2 password p2-pop!
+netrc: lookup: a2@imap.x.local: machine *.x.local login a2 password p2-any!
+netrc: lookup: a2@smtp.x.local: machine *.x.local login a2 password p2-any!
+==usr@y.x.host
+netrc: lookup: no entry for: a2@nono.smtp.x.local
+==[usr@]unknown-host
+netrc: lookup: no entry for: a.local
+netrc: lookup: no entry for: defacc@a.local
+netrc: lookup: no entry for: a1@a.local
