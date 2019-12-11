@@ -130,24 +130,6 @@ jleave:
 }
 
 char *
-su_cs_rfind_c(char const *cp, char x){
-   char const *match, *tail;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp != NIL, match = NIL);
-
-   for(match = NIL, tail = cp;; ++tail){
-      char c;
-
-      if((c = *tail) == x)
-         match = tail;
-      if(c == '\0')
-         break;
-   }
-   NYD_OU;
-   return UNCONST(char*,match);
-}
-
-char *
 su_cs_sep_c(char **iolist, char sep, boole ignore_empty){
    char *base, c, *cp;
    NYD_IN;

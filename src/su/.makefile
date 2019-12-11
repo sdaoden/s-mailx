@@ -11,7 +11,7 @@ CFLAGS+=-Wall -pedantic -Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
 
 CSRC = avopt.c core-code.c core-errors.c \
 	cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
-		cs-tbox.c cs-tools.c \
+		cs-rfind.c cs-tbox.c cs-tools.c \
 	icodec-dec.c icodec-enc.c \
 	mem-alloc.c mem-bag.c mem-tools.c \
 	prime.c sort.c utf.c

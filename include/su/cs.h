@@ -153,6 +153,11 @@ EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 /*! \r{su_cs_dup_cbuf()}. */
 EXPORT char *su_cs_dup(char const *cp, u32 estate);
 
+#if 0
+/*! Is \a{x} the ending (sub)string of \a{cp}? */
+EXPORT boole su_cs_ends_with_case(char const *cp, char const *x);
+#endif
+
 /*! Search \a{xp} within \a{cp}, return pointer to location or \NIL.
  * Returns \a{cp} if \a{xp} is the empty buffer. */
 EXPORT char *su_cs_find(char const *cp, char const *xp);
