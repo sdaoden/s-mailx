@@ -434,6 +434,7 @@ enum prompt_exp{
 
 enum protocol{
    n_PROTO_NONE,
+   n_PROTO_EML, /* Local electronic mail file (single message, rdonly) */
    n_PROTO_FILE, /* refers to a local file */
 PROTO_FILE = n_PROTO_FILE,
    n_PROTO_POP3, /* is a pop3 server string */

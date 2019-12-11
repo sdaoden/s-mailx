@@ -392,7 +392,9 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    fs = S(enum mx_fs_open_state,p);
    switch(p){
    default:
+      err = su_ERR_OPNOTSUPP;
       goto jleave;
+
    case n_PROTO_IMAP:
 #ifdef mx_HAVE_IMAP
       file = csave;
@@ -404,6 +406,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       err = su_ERR_OPNOTSUPP;
       goto jleave;
 #endif
+
    case n_PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
       if(fs_or_nil != NIL && !access(file, F_OK))
@@ -416,13 +419,20 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       err = su_ERR_OPNOTSUPP;
       goto jleave;
 #endif
+
+   case n_PROTO_EML:
+      if(!(osflags & O_RDONLY)){
+         err = su_ERR_OPNOTSUPP;
+         goto jleave;
+      }
+      /* FALLTHRU */
    case n_PROTO_FILE:{
       struct mx_filetype ft;
 
       if(!(osflags & O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
          fs |= mx_FS_OPEN_STATE_EXISTS;
 
-      if(mx_filetype_exists(&ft, file)){
+      if(mx_filetype_exists(&ft, file)){/* TODO report real name to outside */
          flags |= a_FS_EF_HOOK;
          cload = ft.ft_load_dat;
          csave = ft.ft_save_dat;

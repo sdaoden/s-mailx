@@ -230,106 +230,133 @@ jleave:
 
 FL enum protocol
 which_protocol(char const *name, boole check_stat, boole try_hooks,
-   char const **adjusted_or_null)
+   char const **adjusted_or_nil)
 {
    /* TODO This which_protocol() sickness should be URL::new()->protocol() */
    char const *cp, *orig_name;
-   enum protocol rv = PROTO_UNKNOWN;
-   NYD_IN;
+   enum protocol rv, fixrv;
+   NYD2_IN;
+
+   rv = fixrv = PROTO_UNKNOWN;
 
    if(name[0] == '%' && name[1] == ':')
       name += 2;
    orig_name = name;
 
-   for (cp = name; *cp && *cp != ':'; cp++)
-      if (!su_cs_is_alnum(*cp))
+   for(cp = name; *cp && *cp != ':'; cp++)
+      if(!su_cs_is_alnum(*cp))
          goto jfile;
 
-   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
-      if(!strncmp(name, "file", sizeof("file") -1) ||
-            !strncmp(name, "mbox", sizeof("mbox") -1))
-         rv = PROTO_FILE;
-      else if(!strncmp(name, "maildir", sizeof("maildir") -1)){
+   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){ /* TODO lookup table */
+      boole yeshooks;
+
+      yeshooks = FAL0;
+
+      if(!su_cs_cmp_case_n(name, "file", sizeof("file") -1) ||
+            !su_cs_cmp_case_n(name, "mbox", sizeof("mbox") -1))
+         yeshooks = TRU1, rv = PROTO_FILE;
+      else if(!su_cs_cmp_case_n(name, "eml", sizeof("eml") -1))
+         yeshooks = TRU1, rv = n_PROTO_EML;
+      else if(!su_cs_cmp_case_n(name, "maildir", sizeof("maildir") -1)){
 #ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
          n_err(_("No Maildir directory support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
+      }else if(!su_cs_cmp_case_n(name, "pop3", sizeof("pop3") -1)){
 #ifdef mx_HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
+      }else if(!su_cs_cmp_case_n(name, "pop3s", sizeof("pop3s") -1)){
 #if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "imap", sizeof("imap") -1)){
+      }else if(!su_cs_cmp_case_n(name, "imap", sizeof("imap") -1)){
 #ifdef mx_HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAP support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
+      }else if(!su_cs_cmp_case_n(name, "imaps", sizeof("imaps") -1)){
 #if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAPS support compiled in\n"));
 #endif
       }
-      orig_name = &cp[3];
-      goto jleave;
-   }
 
+      orig_name = name = &cp[3];
+
+      if(yeshooks){
+         fixrv = rv;
+         goto jcheck;
+      }
+   }else{
 jfile:
-   rv = PROTO_FILE;
+      rv = PROTO_FILE;
+jcheck:
+      if(check_stat || try_hooks){
+         struct mx_filetype ft;
+         struct stat stb;
+         char *np;
+         uz i;
 
-   if(check_stat || try_hooks){
-      struct mx_filetype ft;
-      struct stat stb;
-      char *np;
-      uz i;
+         np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+         su_mem_copy(np, name, i +1);
 
-      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, i +1);
-
-      if(!stat(name, &stb)){
-         if(S_ISDIR(stb.st_mode)
+         if(!stat(name, &stb)){
+            if(S_ISDIR(stb.st_mode)
 #ifdef mx_HAVE_MAILDIR
-               && (su_mem_copy(&np[i], "/tmp", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[i], "/new", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[i], "/cur", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode))
+                  && (su_mem_copy(&np[i], "/tmp", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                  (su_mem_copy(&np[i], "/new", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                  (su_mem_copy(&np[i], "/cur", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
-               ){
+            ){
+               rv =
 #ifdef mx_HAVE_MAILDIR
-            rv = PROTO_MAILDIR;
+                     PROTO_MAILDIR
 #else
-            rv = PROTO_UNKNOWN;
+                     PROTO_UNKNOWN
+#endif
+               ;
+            }
+         }else if(try_hooks && mx_filetype_trial(&ft, name)){
+            orig_name = savecatsep(name, '.', ft.ft_ext_dat);
+            if(fixrv != PROTO_UNKNOWN)
+               rv = fixrv;
+         }else if(fixrv == PROTO_UNKNOWN &&
+               (cp = ok_vlook(newfolders)) != NIL &&
+               !su_cs_cmp_case(cp, "maildir")){
+            rv =
+#ifdef mx_HAVE_MAILDIR
+                  PROTO_MAILDIR
+#else
+                  PROTO_UNKNOWN
+#endif
+            ;
+#ifndef mx_HAVE_MAILDIR
+            n_err(_("*newfolders*: no Maildir support compiled in\n"));
 #endif
          }
-      }else if(try_hooks && mx_filetype_trial(&ft, name))
-         orig_name = savecatsep(name, '.', ft.ft_ext_dat);
-      else if((cp = ok_vlook(newfolders)) != NULL &&
-            !su_cs_cmp_case(cp, "maildir")){
-#ifdef mx_HAVE_MAILDIR
-         rv = PROTO_MAILDIR;
-#else
-         n_err(_("*newfolders*: no Maildir directory support compiled in\n"));
-#endif
-      }
 
-      n_lofi_free(np);
+         n_lofi_free(np);
+
+         if(fixrv != PROTO_UNKNOWN && fixrv != rv)
+            rv = PROTO_UNKNOWN;
+      }
    }
-jleave:
-   if(adjusted_or_null != NULL)
-      *adjusted_or_null = orig_name;
-   NYD_OU;
+
+   if(adjusted_or_nil != NIL)
+      *adjusted_or_nil = orig_name;
+
+   NYD2_OU;
    return rv;
 }
 

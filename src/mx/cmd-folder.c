@@ -213,6 +213,12 @@ c_remove(void *vp){
       }
 
       switch(which_protocol(name, TRU1, FAL0, NIL)){
+      case n_PROTO_EML:
+         if(unlink(name) == -1){
+            emsg = su_err_doc(su_err_no());
+            goto jerr;
+         }
+         break;
       case PROTO_FILE:
          if(unlink(name) == -1){
             s32 err;
@@ -309,6 +315,8 @@ c_rename(void *vp){
    emsg = NIL;
 
    switch(oldp){
+   case n_PROTO_EML:
+      /* FALLTHRU */
    case PROTO_FILE:
       if(link(oldn, newn) == -1){
          emsg = savecatsep(_("link(2) failed:"), ' ',

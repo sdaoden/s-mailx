@@ -69,7 +69,7 @@ su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 static void a_folder_info(void);
 
 /* Set up the input pointers while copying the mail file into /tmp */
-static void a_folder_mbox_setptr(FILE *ibuf, off_t offset);
+static void a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml);
 
 static boole
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
@@ -80,18 +80,18 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    boole rv;
    NYD_IN;
 
-   /* Don't realpath(3) if it's only an update request */
-   if(name != NULL){
+   /* Do not realpath(3) if it's only an update request */
+   if(name != NIL){
 #ifdef mx_HAVE_REALPATH
       char const *adjname;
       enum protocol p;
 
       p = which_protocol(name, TRU1, TRU1, &adjname);
 
-      if(p == PROTO_FILE || p == PROTO_MAILDIR){
+      if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML){
          name = adjname;
-         if (realpath(name, mailname) == NULL && su_err_no() != su_ERR_NOENT) {
-            n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
+         if(realpath(name, mailname) == NIL && su_err_no() != su_ERR_NOENT){
+            n_err(_("Cannot canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             goto jdocopy;
          }
       }else
@@ -237,10 +237,7 @@ jleave:
 }
 
 static void
-a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
-   struct message self, commit;
-   char *linebuf, *cp;
-   boole from_;
+a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
@@ -248,8 +245,14 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       a_MAYBE = 1u<<3,
       a_CREATE = 1u<<4,
       a_INHEAD = 1u<<5,
-      a_COMMIT = 1u<<6
-   } f;
+      a_COMMIT = 1u<<6,
+      a_ISEML = 1u<<16
+   };
+
+   struct message self, commit;
+   char *linebuf, *cp;
+   boole from_;
+   u32 f;
    uz filesize, linesize, cnt;
    NYD_IN;
 
@@ -259,7 +262,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    self.m_flag = MUSED | MNEW | MNEWEST;
 
    offset = ftell(mb.mb_otf);
-   f = a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0);
+   f = a_MAYBE | (iseml ? a_ISEML : (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0));
 
    mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
@@ -315,7 +318,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
        * TODO creates collection of MessageHull objects which are able to load
        * TODO their content, and normalize content, correct structural errors */
       if(UNLIKELY(cnt == 0)){
-         f |= a_MAYBE;
+         if(!(f & a_ISEML))
+            f |= a_MAYBE;
          if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
@@ -327,9 +331,9 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          goto jputln;
       }
 
-      if(UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
-            (from_ = is_head(linebuf, cnt, TRU1)) &&
-            (from_ == TRU1 || !(f & a_RFC4155))){
+      if(UNLIKELY((f & a_MAYBE) && ((from_ = ((f & a_ISEML) != 0)) ||
+               ((linebuf[0] == 'F') && (from_ = is_head(linebuf, cnt, TRU1)) &&
+                (from_ == TRU1 || !(f & a_RFC4155)))))){
          /* TODO char date[n_FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
@@ -352,7 +356,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
              * TODO (which should not exist as such btw) */
             self.m_flag = MUSED | MNEW | MNEWEST | MBADFROM_;
          }else
-            self.m_flag = MUSED | MNEW | MNEWEST;
+            self.m_flag = MUSED | MNEW | MNEWEST | (f & a_ISEML ? MNOFROM : 0);
          self.m_size = 0;
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
@@ -454,6 +458,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    struct stat stb;
    uz offset;
    char const *who, *orig_name;
+   enum protocol proto;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
    boole isdevnull = FAL0;
@@ -506,7 +511,15 @@ jlogname:
    /* For at least substdate() users TODO -> eventloop tick */
    time_current_update(&time_current, FAL0);
 
-   switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {
+   switch((proto = which_protocol(orig_name = name, TRU1, TRU1, &name))){
+   case n_PROTO_EML:
+      if(fm & ~FEDIT_RDONLY){
+         n_err(_("Sorry, for now eml:// files cannot be used like this: %s\n"),
+            orig_name);
+         goto jem1;
+      }
+      fm |= FEDIT_RDONLY;
+      /* FALLTHRU */
    case PROTO_FILE:
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
             !su_cs_cmp(name, n_path_devnull));
@@ -704,7 +717,7 @@ jlogname:
       rele_sigs();
       goto jleave;
    }
-   a_folder_mbox_setptr(ibuf, offset);
+   a_folder_mbox_setptr(ibuf, offset, (proto == n_PROTO_EML));
    setmsize(msgCount);
    if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;

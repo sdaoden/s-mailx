@@ -1179,6 +1179,15 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
    if((cp = fexpand(ccp, FEXP_NSHELL)) == NIL) /* TODO */
       goto jbail;
 
+   switch(which_protocol(ccp, FAL0, FAL0, NIL)){
+   case n_PROTO_EML:
+   case n_PROTO_POP3:
+   case n_PROTO_UNKNOWN:
+      goto jbail;
+   default:
+      break;
+   }
+
    switch(*(ccp = cp)){
    case '.':
       if(cp[1] != '/'){ /* DIRSEP */
@@ -1211,8 +1220,10 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
 #endif
                ccp = str_concat_csvl(&s, ccp, folder, nccp, NIL)->s;
                /* FALLTHRU */
-            default:
+            case n_PROTO_IMAP:
                break;
+            default:
+               goto jbail;
             }
          }
       }

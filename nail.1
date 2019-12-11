@@ -5605,50 +5605,24 @@ argument, and
 .Ql protocol://
 prefixes are, i.e., URL (see
 .Sx "On URL syntax and credential lookup" )
-syntax is understood, e.g.,
-.Ql mbox:///tmp/somefolder :
-if a protocol prefix is used the mailbox type is fixated and neither
-the auto-detection (read on) nor the
-.Va newfolders
-mechanisms apply.
-\*(OPally URLs can be used to access network resources, securely via
-.Sx "Encrypted network communication" ,
-if so supported.
-Network communication socket timeouts are configurable via
-.Va socket-connect-timeout .
-All network traffic may be proxied over the SOCKS5 server given in
-.Va socks-proxy ,
-except for the DNS name lookup for the proxy itself.
+syntax is understood, as in
+.Ql mbox:///tmp/somefolder .
+If a protocol prefix is used the mailbox type is fixated, otherwise
+opening none-existing folders uses the protocol defined in
+.Va newfolders .
 .
 .Pp
-.Dl \*(IN protocol://[user[:password]@]host[:port][/path]
-.Dl \*(OU protocol://[user@]host[:port][/path]
-.
-.Pp
-\*(OPally supported network protocols are
-.Ar pop3
-(POP3) and
-.Ar pop3s
-(POP3 with TLS encrypted transport),
-.Ar imap
+For the protocols
+.Ar mbox
 and
-.Ar imaps .
-The
-.Ar [/path]
-part is valid only for IMAP; there it defaults to
-.Ar INBOX .
-Network URLs require a special encoding as documented in the section
-.Sx "On URL syntax and credential lookup" .
-.
-.Pp
-If the resulting file protocol (MBOX database)
-.Ar name
-is located on a local filesystem then the list of all registered
+.Ar file
+(MBOX database), as well as
+.Ar eml
+(electronic mail message \*(ID read-only) the list of all registered
 .Ic filetype Ns
-s is traversed in order to see whether a transparent intermediate
-conversion step is necessary to handle the given mailbox, in which case
-\*(UA will use the found hook to load and save data into and from
-a temporary file, respectively.
+s is traversed to check whether hooks shall be used to load (and save)
+data from (and to) the given
+.Ar name .
 Changing hooks will not affect already opened mailboxes.
 For example, the following creates hooks for the
 .Xr gzip 1
@@ -5661,57 +5635,59 @@ compression tool and a combined compressed and encrypted format:
 .Ed
 .
 .Pp
+For historic reasons
 .Ic filetype Ns
-s also provide limited (case-sensitive) auto-completion capabilities.
+s provide limited (case-sensitive) auto-completion capabilities.
 For example
 .Ql mbox.gz
 will be found for
-.Ql \&? file mbox
-provided that a corresponding handler is installed.
+.Ql \&? file mbox ,
+provided that corresponding handlers are installed.
 It will neither find
 .Ql mbox.GZ
 nor
 .Ql mbox.Gz
-however, on the other hand doing an explicit
+however, but an explicit
 .Ql \&? file mbox.GZ
 will find and use the handler for
 .Ql gz .
+\*(ID The latter mode can only be used for MBOX files.
 .
 .Pp
-MBOX databases will always be protected via file-region locks
+EML files consist of only one mail message,
+\*(ID and can only be opened read-only.
+When reading MBOX files tolerant POSIX rules are used by default.
+Invalid message boundaries that can be found quite often in historic
+MBOX files will be complained about (even more with
+.Va debug ):
+in this case the method described for
+.Va mbox-rfc4155
+can be used to create a valid MBOX database from the invalid input.
+.
+.Pp
+MBOX databases and EML files will always be protected via file-region locks
 .Pf ( Xr fcntl 2 )
-during file operations in order to avoid inconsistencies due to
-concurrent modifications.
+during file operations to protect against concurrent modifications.
 .Mx -ix "dotlock files"
-\*(OP In addition mailbox files treated as the system
+\*(OP An MBOX
 .Va inbox
-.Pf ( Ev MAIL ) ,
-as well as
+.Pf ( Ev MAIL )
+or
 .Mx -sx
-.Sx "primary system mailbox" Ns
-es in general will also be protected by so-called dotlock files,
+.Sx "primary system mailbox"
+will also be protected by so-called dotlock files,
 the traditional way of mail spool file locking: for any file
 .Ql x
 a lock file
 .Ql x.lock
-will be created for the duration of the synchronization \(em
-as necessary an external privileged dotlock helper will be used
-to create the dotlock file in the same directory and with the same user
-and group identities as the file of interest.
+will be created during the synchronization, in the same directory and
+with the same user and group identities as the file of interest \(em
+as necessary created by an external privileged dotlock helper.
 .Va dotlock-disable
-can be used to turn off additional dotlock files, shall the need arise.
-There is also a related entry in the
+disables dotlock files.
+Also see
 .Sx FAQ :
 .Sx "Howto handle stale dotlock files" .
-.
-.Pp
-\*(UA by default uses tolerant POSIX rules when reading MBOX database
-files, but it will detect invalid message boundaries in this mode and
-complain (even more with
-.Va debug )
-if any is seen: in this case
-.Va mbox-rfc4155
-can be used to create a valid MBOX database from the invalid input.
 .
 .Pp
 \*(OP If no protocol has been fixated, and
@@ -5729,10 +5705,32 @@ designed so that file locking is not necessary when reading or writing
 files.
 .
 .Pp
-\*(ID If no protocol has been fixated and no existing file has
-been found, the variable
-.Va newfolders
-controls the format of mailboxes yet to be created.
+\*(OPally URLs can be used to access network resources, securely via
+.Sx "Encrypted network communication" ,
+if so supported.
+Network communication socket timeouts are configurable via
+.Va socket-connect-timeout .
+All network traffic may be proxied over a SOCKS server via
+.Va socks-proxy .
+.
+.Pp
+.Dl protocol://[user[:password]@]host[:port][/path]
+.
+.Pp
+\*(OPally supported network protocols are
+.Ar pop3
+(POP3) and
+.Ar pop3s
+(POP3 with TLS encrypted transport),
+.Ar imap
+and
+.Ar imaps .
+The
+.Ar [/path]
+part is valid only for IMAP; there it defaults to
+.Ar INBOX .
+Network URLs require a special encoding as documented in the section
+.Sx "On URL syntax and credential lookup" .
 .
 .
 .Mx

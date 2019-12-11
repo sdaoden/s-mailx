@@ -1065,8 +1065,9 @@ jnext:
          cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
 
          switch(which_protocol(cp, TRU1, FAL0, NIL)){
-         case PROTO_FILE:
-         case PROTO_MAILDIR:
+         case n_PROTO_EML:
+         case n_PROTO_FILE:
+         case n_PROTO_MAILDIR:
             doexp = TRU1;
             break;
          default:
@@ -1120,10 +1121,11 @@ jislocal:
 
    if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
       switch(which_protocol(res, FAL0, FAL0, &cp)){
-      case PROTO_MAILDIR:
+      case n_PROTO_MAILDIR:
          if(!(fexpm & FEXP_LOCAL_FILE)){
          /* FALLTHRU */
-      case PROTO_FILE:
+      case n_PROTO_FILE:
+      case n_PROTO_EML:
             if(fexpm & FEXP_LOCAL_FILE){
                res = cp;
                dyn = FAL0;
