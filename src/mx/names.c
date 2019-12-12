@@ -756,6 +756,18 @@ jloop:
 }
 
 boole
+mx_name_is_same_address(struct mx_name const *n1, struct mx_name const *n2){
+   boole rv;
+   NYD2_IN;
+
+   rv = (a_nm_is_same_name(n1->n_name, n2->n_name) &&
+         mx_name_is_same_domain(n1, n2));
+
+   NYD2_OU;
+   return rv;
+}
+
+boole
 mx_name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2){
    boole rv;
    NYD2_IN;

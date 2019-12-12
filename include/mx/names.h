@@ -123,7 +123,12 @@ EXPORT char *detract(struct mx_name *np, enum gfield ntype);
 EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
       struct mx_name *np, int comma, enum gfield gflags);
 
-/* Check whether n1 n2 share the domain name */
+/* Check whether n1 & n2 are the same address, effectively.
+ * Takes *allnet* into account */
+EXPORT boole mx_name_is_same_address(struct mx_name const *n1,
+      struct mx_name const *n2);
+
+/* Check whether n1 & n2 share the domain name */
 EXPORT boole mx_name_is_same_domain(struct mx_name const *n1,
       struct mx_name const *n2);
 
