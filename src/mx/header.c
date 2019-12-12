@@ -2526,9 +2526,9 @@ mx_header_sender_of(struct message *mp, u32 gf){
       gf = GFULL | GSKIN;
 
    if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
-         (rv = lextract(cp, gf)) != NIL && rv->n_flink == NIL)
-      cp = savestr(cp);
-   else if((cp = hfield1("sender", mp)) != NIL && *cp != '\0' &&
+         (rv = lextract(cp, gf)) != NIL && rv->n_flink == NIL){
+      ;
+   }else if((cp = hfield1("sender", mp)) != NIL && *cp != '\0' &&
          (rv = lextract(cp, gf)) != NIL)
       ;
    else
@@ -2540,21 +2540,13 @@ mx_header_sender_of(struct message *mp, u32 gf){
 
 FL char *
 n_header_senderfield_of(struct message *mp){
-   struct mx_name *np;
    char *cp;
+   struct mx_name *np;
    NYD_IN;
 
-   if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
-         (np = lextract(cp, GEXTRA | GSKIN)) != NIL && np->n_flink == NIL){
-      cp = savestr(cp);
+   if((np = mx_header_sender_of(mp, 0)) != NIL){
+      cp = np->n_fullname;
       goto jleave;
-   }
-
-   if((cp = hfield1("sender", mp)) != NIL && *cp != '\0'){
-      if((np = lextract(cp, GEXTRA | GSKIN)) != NIL){
-         cp = savestr(cp);
-         goto jleave;
-      }
    }
 
    /* C99 */{
