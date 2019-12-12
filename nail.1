@@ -1786,6 +1786,9 @@ address list of generated message can be created by setting
 This entry will be added whenever the user will be placed in the
 .Ql Mail-Followup-To:
 list, and is not a regular addressee already.
+.Va reply-to-swap-in
+tries to deal with the address rewriting that many mailing-lists nowadays
+perform to work around DKIM / DMARC etc. standard imposed problems.
 .\" }}}
 .
 .\" .Ss "Signed and encrypted messages with S/MIME" {{{
@@ -11975,6 +11978,24 @@ This is a
 .Sx quadoption ;
 if set without a value it defaults to
 .Dq yes .
+.
+.Mx
+.It Va reply-to-swap-in
+Standards like DKIM and (in conjunction with) DMARC brought address
+rewriting of sender addresses like
+.Ql Name via List <list@address> ,
+with the original sender address being often placed in
+.Ql Reply-To: .
+If this is set and a
+.Ql Reply-To:
+exists then it is used in place of the pretended sender.
+It works independently from
+.Va reply-to-honour .
+The optional value offers more fine-grained control about when swapping
+shall be used, it is a comma-separated list strings, for now supported is
+.Va mlist ,
+which will cause swapping if the sender is a mailing-list as defined by
+.Ic mlist .
 .
 .Mx
 .It Va rfc822-body-from_

@@ -1000,9 +1000,10 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto, /* {obsolete=1} */
+ok_v_replyto, /* {obsolete=1,notempty=1} */
    ok_v_reply_to, /* {notempty=1} */
    ok_v_reply_to_honour,
+   ok_v_reply_to_swap_in,
    ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */
 
    ok_v_SHELL, /* {import=1,notempty=1,defval=VAL_SHELL} */
@@ -1049,7 +1050,6 @@ ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
-
    ok_v_socket_connect_timeout, /* {posnum=1} */
    ok_v_socks_proxy, /* {chain=1,notempty=1} */
    ok_v_spam_interface,
