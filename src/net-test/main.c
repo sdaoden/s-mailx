@@ -317,6 +317,7 @@ jerr:
 static int
 a_connection(int sofd, struct a_comm *commp){
    char b[a_LINE_BUF], rb[a_LINE_BUF], *rbp, *bp;
+   union {struct a_dat *d; struct a_comm *c;} p;
    fd_set fds;
    struct timeval tv;
    int rv, i, rnl_pend;
@@ -379,11 +380,16 @@ a_connection(int sofd, struct a_comm *commp){
 
                dp->d_dat += ssz;
                if((dp->d_len -= ssz) == 0){
-                  if((dp = dp->d_next) == NULL){
+                  p.d = dp;
+                  dp = dp->d_next;
+                  free(p.d);
+
+                  if((commp->c_lines = dp) == NULL){
+                     p.c = commp;
                      commp = commp->c_next;
+                     free(p.c);
                      break;
-                  }else
-                     commp->c_lines = dp;
+                  }
                }
             }
          }else{
@@ -454,18 +460,25 @@ jcln_lndone:
                         goto jleave;
                      }
 
-                     if((dp = dp->d_next) == NULL){
+                     p.d = dp;
+                     dp = dp->d_next;
+                     free(p.d);
+
+                     if((commp->c_lines = dp) == NULL){
                         if(*bp != '\0'){
                            fprintf(stderr, "NET_TEST ERROR: client sent "
                               "excess data <%s>\n",bp);
                            goto jleave;
                         }
+
+                        p.c = commp;
                         commp = commp->c_next;
+                        free(p.c);
+
                         rbp = rb;
                         break;
                      }
                      rbp = rb;
-                     commp->c_lines = dp;
                   }else if(*bp == '\012'){
 jclerr_nl:
                      fprintf(stderr, "NET_TEST ERROR: client sent "
@@ -490,6 +503,27 @@ jclerr_nl:
 
    rv = 1;
 jleave:
+   if(commp != NULL){
+      i = errno;
+      if(rv != 0){
+         rv = 0;
+         i = 0;
+      }
+
+      do{
+         while((p.d = commp->c_lines) != NULL){
+            commp->c_lines = p.d->d_next;
+            free(p.d);
+         }
+
+         p.c = commp;
+         commp = p.c->c_next;
+         free(p.c);
+      }while(commp != NULL);
+
+      errno = i;
+   }
+
    return rv;
 }
 
