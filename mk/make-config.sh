@@ -3444,6 +3444,10 @@ CC=`squeeze_ws "${CC}"`
 CFLAGS=`squeeze_ws "${CFLAGS}"`
 LDLAGS=`squeeze_ws "${LDFLAGS}"`
 LIBS=`squeeze_ws "${LIBS}"`
+# $MAKEFLAGS often contain job-related things which hinders reproduceability.
+# For at least GNU make(1) we can separate those and our regular configuration
+# options by searching for the -- terminator
+COMMLINE=`printf '%s' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
 COMMLINE=`squeeze_ws "${COMMLINE}"`
 
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
