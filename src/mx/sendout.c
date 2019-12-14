@@ -2482,10 +2482,11 @@ do {\
    fromasender = mft = NIL;
    rv = FAL0;
 
-   if(nosend_msg == TRUM1 &&
-         fputs(_("# Message will be discarded unless file is saved\n"),
+   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+      if(fputs(_("# Message will be discarded unless file is saved\n"),
             fo) == EOF)
-      goto jleave;
+         goto jleave;
+   }
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
       stealthmua = !su_cs_cmp(addr, "noagent") ? -1 : 1;
@@ -2651,10 +2652,11 @@ j_mft_add:
       }
    }
 
-   if(nosend_msg == TRUM1 &&
-         fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
+   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+      if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
-      goto jleave;
+         goto jleave;
+   }
 
 #if 1
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
@@ -2733,12 +2735,13 @@ jto_fmt:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
-         if(nosend_msg == TRUM1 &&
-               fputs(_("# Removing or modifying In-Reply-To: "
+         if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+            if(fputs(_("# Removing or modifying In-Reply-To: "
                      "breaks the old, and starts a new thread.\n"
                   "# Assigning hyphen-minus - creates a thread of only the "
                      "replied-to message\n"), fo) == EOF)
-            goto jleave;
+               goto jleave;
+         }
          if(!a_sendout_put_addrline("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;
@@ -2848,6 +2851,9 @@ jto_fmt:
          goto jleave;
    rv = TRU1;
 jleave:
+   if(nosend_msg == TRUM1)
+      hp->h_flags |= HF_USER_EDITED;
+
    NYD_OU;
    return rv;
 #undef a_PUT_CC_BCC_FCC

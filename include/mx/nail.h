@@ -1436,7 +1436,8 @@ enum header_flags{
    HF_LIST_REPLY = 1u<<0,
    HF_MFT_SENDER = 1u<<1, /* Add ourselves to Mail-Followup-To: */
    HF_RECIPIENT_RECORD = 1u<<10, /* Save message in file named after rec. */
-   HF__NEXT_SHIFT = 11u
+   HF_USER_EDITED = 1u<<11,
+   HF__NEXT_SHIFT = 16u
 };
 
 /* Structure used to pass about the current state of a message (header) */
