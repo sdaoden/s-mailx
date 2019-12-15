@@ -69,25 +69,29 @@ Subject: Bugstop: five miles out 2
 
 That's appalling, II.
 
-14.1: ~f (!posix: headerpick: subject to)
+14.1: ~f (!posix: injections; headerpick: subject to)
+-------- Original Message --------
 Subject: Bugstop: five miles out 2
 To: bugstop-commit@five.miles.out
 
 That's appalling, II.
 
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
+-------- Original Message --------
 Subject: Bugstop: five miles out 3
 To: bugstop-commit@five.miles.out
 
 That's appalling, III.
 
 14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+-------- Original Message --------
 Subject: Bugstop: five miles out 1
 To: bugstop-commit@five.miles.out
 
 That's appalling, I.
 
 15: ~f 1
+-------- Original Message --------
 Subject: Bugstop: five miles out 1
 
 That's appalling, I.
@@ -96,6 +100,7 @@ That's appalling, I.
 16, 17: ~I Sign, ~i Sign
 SignVarSignVar
 18: ~M
+-------- Original Message --------
  |From neverneverland  Sun Jul 23 13:47:25 2017
  |Subject: Bugstop: five miles out 2
  |Reply-To: mister originator2 <mr2@originator>
@@ -110,6 +115,7 @@ SignVarSignVar
  |That's appalling, II.
  |
 19: ~M 1
+-------- Original Message --------
  |From neverneverland  Sun Jul 23 13:46:25 2017
  |Subject: Bugstop: five miles out 1
  |Reply-To: mister originator1 <mr1@originator>
@@ -125,11 +131,13 @@ SignVarSignVar
  |That's appalling, I.
  |
 20: ~m
+-------- Original Message --------
  |Subject: Bugstop: five miles out 2
  |
  |That's appalling, II.
  |
 21: ~m 3
+-------- Original Message --------
  |Subject: Bugstop: five miles out 3
  |
  |That's appalling, III.
@@ -168,12 +176,16 @@ unset fullnames, quote stuff
 included file
 24: ~s this new subject
 26.1: ~U
+-------- Original Message --------
  |That's appalling, II.
 26.2: ~U 1
+-------- Original Message --------
  |That's appalling, I.
 27.1: ~u
+-------- Original Message --------
 That's appalling, II.
 27.2: ~u 1
+-------- Original Message --------
 That's appalling, I.
 and i ~w rite this out to ./.tmsg
 
@@ -248,7 +260,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./.tmsg 164/4035
+./.tmsg 176/4467
 i ~w:0/NONE
 shell command output
 shell:0/NONE
