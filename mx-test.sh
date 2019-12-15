@@ -7542,6 +7542,7 @@ t_cmd_escapes() {
    # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
+      set forward-inject-head quote-inject-head
       headerpick type retain Subject
       headerpick forward retain Subject To
       reply 2
@@ -7579,8 +7580,8 @@ t_cmd_escapes() {
 !:echo 13-1:$?/$^ERRNAME; set posix
 14: ~f (headerpick: subject)
 !f
-!:echo 14:$?/$^ERRNAME; unset posix
-14.1: ~f (!posix: headerpick: subject to)
+!:echo 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
+14.1: ~f (!posix: injections; headerpick: subject to)
 !f
 !:echo 14.1:$?/$^ERRNAME; set forward-add-cc
 14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
@@ -7681,13 +7682,13 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '1742333334 5604'
+   check 2 - "${MBOX}" '1820203910 6036'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS]'
    fi
-   check 3 - ./.tmsg '1237056298 4035'
+   check 3 - ./.tmsg '2308114568 4467'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7712,7 +7713,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '430234709 5805'
+   check 4 0 "${MBOX}" '2359405542 6237'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else

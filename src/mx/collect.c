@@ -61,6 +61,7 @@
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char const *cfc_fmt;
    FILE *cfc_fp;
+   char const *cfc_indent_prefix;
    struct message *cfc_mp;
    char *cfc_cumul;
    char *cfc_addr;
@@ -78,6 +79,18 @@ struct a_coll_ocs_arg{
    sz coa_pipe[2]; /* ..backing .coa_stdin */
    s8 *coa_senderr; /* Set to 1 on failure */
    char coa_cmd[VFIELD_SIZE(0)];
+};
+
+struct a_coll_quote_ctx{
+   struct su_mem_bag *cqc_membag_persist; /* Or NIL */
+   FILE *cqc_fp;
+   struct header *cqc_hp;
+   struct n_ignore const *cqc_quoteitp; /* Or NIL */
+   boole cqc_is_forward; /* Forwarding rather than quoting */
+   u8 cqc__pad[3];
+   enum sendaction cqc_action;
+   char const *cqc_indent_prefix;
+   struct message *cqc_mp;
 };
 
 /* The following hookiness with global variables is so that on receipt of an
@@ -118,8 +131,7 @@ static boole a_coll_message_inject_head(FILE *fp);
 static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
 
 /* With bells and whistles */
-static boole a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
-      FILE *fp, struct header *hp, struct message *mp, boole isfwd);
+static boole a_coll_quote_message(struct a_coll_quote_ctx *cqcp);
 
 /* *{forward,quote}-inject-{head,tail}*.
  * fmt may be NULL or the empty string, in which case no output is produced */
@@ -568,24 +580,24 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
 }
 
 static boole
-a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
-      FILE *fp, struct header *hp, struct message *mp, boole isfwd){
+a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
-   struct n_ignore const *quoteitp;
-   enum sendaction action;
    boole rv;
    NYD_IN;
 
    rv = FAL0;
-   action = SEND_QUOTE;
-   quoteitp = n_IGNORE_ALL;
 
-   if(isfwd){
+   if(cqcp->cqc_is_forward){
       char const *cp_v15compat;
 
-      if(ok_blook(forward_add_cc))
-         a_collect_add_sender_to_cc(hp, mp);
+      if(cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+      }
 
       if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
          n_OBSOLETE(_("please use *forward-inject-head* instead of "
@@ -593,48 +605,50 @@ a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
       if((cp = ok_vlook(forward_inject_head)) == NIL &&
             (cp = cp_v15compat) == NIL)
          cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
-      quoteitp = n_IGNORE_FWD;
    }else if((cp = ok_vlook(quote)) == NIL){
       rv = TRU1;
       goto jleave;
    }else{
-      if(hp != NIL && ok_blook(quote_add_cc)){
-         if(membag_persist_or_nil)
-            su_mem_bag_push(n_go_data->gdc_membag, membag_persist_or_nil);
-         a_collect_add_sender_to_cc(hp, mp);
-         if(membag_persist_or_nil)
-            su_mem_bag_pop(n_go_data->gdc_membag, membag_persist_or_nil);
+      if(cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
       }
 
+      if(cqcp->cqc_quoteitp == NIL)
+         cqcp->cqc_quoteitp = n_IGNORE_ALL;
       if(!su_cs_cmp(cp, "noheading"))
          ;
       else if(!su_cs_cmp(cp, "headers"))
-         quoteitp = n_IGNORE_TYPE;
+         cqcp->cqc_quoteitp = n_IGNORE_TYPE;
       else if(!su_cs_cmp(cp, "allheaders")){
-         quoteitp = NULL;
-         action = SEND_QUOTE_ALL;
+         cqcp->cqc_quoteitp = NIL;
+         cqcp->cqc_action = SEND_QUOTE_ALL;
       }
 
       if((cp = ok_vlook(quote_inject_head)) == NIL)
          cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
    }
 
-   /* We we pass through our formatter? */
+   /* We pass through our formatter? */
    if((cfc.cfc_fmt = cp) != NIL){
       /* TODO In v15 [-textual_-]sender_info() should only create a list
        * TODO of matching header objects, and the formatter should simply
        * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
        * TODO For now fully initialize this thing once (grrrr!!) */
-      cfc.cfc_fp = fp;
-      cfc.cfc_mp = mp;
-      n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
+      cfc.cfc_fp = cqcp->cqc_fp;
+      cfc.cfc_indent_prefix = NIL;/*cqcp->cqc_indent_prefix;*/
+      cfc.cfc_mp = cqcp->cqc_mp;
+      n_header_textual_sender_info(cfc.cfc_mp = cqcp->cqc_mp, &cfc.cfc_cumul,
          &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NIL);
-      cfc.cfc_date = n_header_textual_date_info(mp, NIL);
+      cfc.cfc_date = n_header_textual_date_info(cqcp->cqc_mp, NIL);
       /* C99 */{
          struct mx_name *np;
          char const *msgid;
 
-         if((msgid = hfield1("message-id", mp)) != NIL &&
+         if((msgid = hfield1("message-id", cqcp->cqc_mp)) != NIL &&
                (np = lextract(msgid, GREF)) != NIL)
             msgid = np->n_name;
          else
@@ -642,20 +656,21 @@ a_coll_quote_message(struct su_mem_bag *membag_persist_or_nil,
          cfc.cfc_msgid = msgid;
       }
 
-      if(!a_coll__fmt_inj(&cfc) || fflush(fp))
+      if(!a_coll__fmt_inj(&cfc) || fflush(cqcp->cqc_fp))
          goto jleave;
    }
 
-   if(sendmp(mp, fp, quoteitp, (isfwd ? NIL : ok_vlook(indentprefix)), action,
-         NIL) < 0)
+   if(sendmp(cqcp->cqc_mp, cqcp->cqc_fp, cqcp->cqc_quoteitp,
+         cqcp->cqc_indent_prefix, cqcp->cqc_action, NIL) < 0)
       goto jleave;
 
-   if(isfwd){
+   if(cqcp->cqc_is_forward){
       if((cp = ok_vlook(forward_inject_tail)) == NIL)
           cp = n_FORWARD_INJECT_TAIL;
    }else if((cp = ok_vlook(quote_inject_tail)) == NIL)
        cp = n_QUOTE_INJECT_TAIL;
-   if((cfc.cfc_fmt = cp) != NIL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+   if((cfc.cfc_fmt = cp) != NIL &&
+         (!a_coll__fmt_inj(&cfc) || fflush(cqcp->cqc_fp)))
       goto jleave;
 
    rv = TRU1;
@@ -718,7 +733,7 @@ jwrite_cp:
       }
    }
 
-   quoteflt_init(&qf, NIL, FAL0); /* XXX terrible we need wrap sauce! */
+   quoteflt_init(&qf, cfcp->cfc_indent_prefix, FAL0); /* XXX terrible wrap */
    quoteflt_reset(&qf, cfcp->cfc_fp);
    if(quoteflt_push(&qf, s->s_dat, s->s_len) < 0 || quoteflt_flush(&qf) < 0)
       cfcp = NIL;
@@ -921,16 +936,10 @@ jout:
 
 static s32
 a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
-   struct su_mem_bag *membag, *membag_persist, membag__buf[1];
-   struct n_ignore const *itp;
-   char const *tabst;
-   enum sendaction action;
+   struct a_coll_quote_ctx cqc;
+   struct su_mem_bag membag;
    int rv, *msgvec;
    NYD_IN;
-
-   membag = su_mem_bag_create(&membag__buf[0], 0);
-   membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
-   su_mem_bag_push(n_go_data->gdc_membag, membag);
 
    if((rv = n_getmsglist(ms, n_msgvec, 0, NIL)) < 0){
       rv = n_pstate_err_no; /* XXX not really, should be handled there! */
@@ -947,66 +956,53 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    }
 
    msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
-   while(rv-- > 0)
-      msgvec[rv] = n_msgvec[rv];
+   su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
 
-   action = SEND_QUOTE_ALL;
-   tabst = (f == 'f' || f == 'F' || f == 'u') ? NIL : ok_vlook(indentprefix);
+   su_mem_set(&cqc, 0, sizeof cqc);
+   cqc.cqc_membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
+   su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
+   cqc.cqc_fp = fp;
+   cqc.cqc_hp = hp;
+   cqc.cqc_is_forward = (f != 'Q');
+   cqc.cqc_action = SEND_QUOTE_ALL;
+   cqc.cqc_indent_prefix = ((f == 'f' || f == 'F' || f == 'u') ? NIL
+         : ok_vlook(indentprefix));
    if(f == 'u' || f == 'U'){
       if(f == 'U')
-         action = SEND_QUOTE;
-      itp = n_IGNORE_ALL;
-   }else if(su_cs_is_upper(f))
-      itp = NIL;
-   else if((f == 'f' || f == 'F') && !ok_blook(posix))
-      itp = n_IGNORE_FWD;
+         cqc.cqc_action = SEND_QUOTE;
+      cqc.cqc_quoteitp = n_IGNORE_ALL;
+   }else if(su_cs_is_upper(f)){
+      ;
+   }else if((f == 'f' || f == 'F') && !ok_blook(posix))
+      cqc.cqc_quoteitp = n_IGNORE_FWD;
    else
-      itp = n_IGNORE_TYPE;
+      cqc.cqc_quoteitp = n_IGNORE_TYPE;
 
    rv = 0;
-   if(f != 'Q')
-      f = ok_blook(forward_add_cc) ? '1' : '\0';
-
    fprintf(n_stdout, A_("Interpolating:"));
    n_autorec_relax_create();
 
    for(; *msgvec != 0; ++msgvec){
-      struct message *mp;
-
-      mp = &message[*msgvec - 1];
-      touch(mp);
+      cqc.cqc_mp = &message[*msgvec - 1];
+      touch(cqc.cqc_mp);
 
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
-      if(f == 'Q'){
-         if(!a_coll_quote_message(membag_persist, fp, hp, mp, FAL0)){
-            rv = su_ERR_IO;
-            break;
-         }
-      }else{
-         if(f != '\0'){
-            su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
-            a_collect_add_sender_to_cc(hp, mp);
-            su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
-         }
 
-         if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
-            n_perr(_("forward: temporary mail file"), 0);
-            rv = su_ERR_IO;
-            break;
-         }
+      if(!a_coll_quote_message(&cqc)){
+         rv = su_ERR_IO;
+         break;
       }
-
       n_autorec_relax_unroll();
    }
 
    n_autorec_relax_gut();
    fprintf(n_stdout, "\n");
 
-jleave:
-   su_mem_bag_pop(n_go_data->gdc_membag, membag);
-   su_mem_bag_gut(membag);
+   su_mem_bag_pop(n_go_data->gdc_membag, &membag);
+   su_mem_bag_gut(&membag);
 
+jleave:
    NYD_OU;
    return rv;
 }
@@ -1308,10 +1304,25 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if(mp != NIL && !a_coll_quote_message(NIL, _coll_fp,
-               (((msf & n_MAILSEND_IS_FWD) != 0) ? hp : NIL), mp,
-               ((msf & n_MAILSEND_IS_FWD) != 0)))
-            goto jerr;
+         if(mp != NIL){
+            struct a_coll_quote_ctx cqc;
+
+            su_mem_set(&cqc, 0, sizeof cqc);
+            cqc.cqc_fp = _coll_fp;
+            if(msf & n_MAILSEND_IS_FWD){
+               cqc.cqc_hp = hp;
+               cqc.cqc_quoteitp = n_IGNORE_FWD;
+               cqc.cqc_is_forward = TRU1;
+            }else{
+               cqc.cqc_quoteitp = n_IGNORE_ALL;
+               cqc.cqc_indent_prefix = ok_vlook(indentprefix);
+            }
+            cqc.cqc_action = SEND_QUOTE;
+            cqc.cqc_mp = mp;
+
+            if(!a_coll_quote_message(&cqc))
+               goto jerr;
+         }
       }
 
       if (quotefile != NULL) {

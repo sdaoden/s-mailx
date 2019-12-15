@@ -8559,7 +8559,11 @@ offers a pipe-based editing approach.
 .It Ic ~F Ar messages
 Read the named messages into the message being sent, including all
 message headers and MIME parts, and honouring
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 If no messages are specified, read in the current message, the
 .Dq dot .
 .
@@ -8576,7 +8580,11 @@ Strips down the list of header fields according to the
 white- and blacklist selection of
 .Ic headerpick ,
 and honours
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -8637,7 +8645,11 @@ indented by
 If no messages are specified, read the current message, the
 .Dq dot .
 Honours
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 .
 .Mx
 .It Ic ~m Ar messages
@@ -8651,7 +8663,11 @@ Strips down the list of header fields according to the
 white- and blacklist selection of
 .Ic headerpick .
 Honours
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 For MIME multipart messages,
 only the first displayable part is included.
 .
@@ -8718,13 +8734,21 @@ Add the given name(s) to the direct recipient list.
 Read in the given / current message(s) excluding all headers, indented by
 .Va indentprefix .
 Honours
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 .
 .Mx
 .It Ic ~u Ar messages
 Read in the given / current message(s), excluding all headers.
 Honours
-.Va forward-add-cc .
+.Va forward-add-cc
+as well as
+.Va forward-inject-head
+and
+.Va forward-inject-tail .
 .
 .Mx
 .It Ic ~v
@@ -9904,9 +9928,14 @@ and if so configured the output will be folded according to
 .Va quote-fold ;
 for more please refer to
 .Va quote-inject-head .
-These variables are ignored if the
+Injections will not be performed by
+.Ic forward
+if the variable
 .Va forward-as-attachment
-variable is set.
+is set \(em the
+.Sx "COMMAND ESCAPES"
+.Ic ~F , ~f , ~M , ~m , ~U , ~u
+always inject.
 .
 .
 .Mx
