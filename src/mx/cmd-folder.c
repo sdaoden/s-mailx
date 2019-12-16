@@ -397,13 +397,15 @@ c_folders(void *v){ /* TODO fexpand*/
    int rv;
    NYD_IN;
 
-   rv = 1;
+   rv = n_EXIT_ERR;
 
-   if(*(argv = v) != NULL){
+   if(*(argv = v) != NIL){
       if((cp = fexpand(*argv, fexp)) == NIL)
          goto jleave;
-   }else
-      cp = n_folder_query();
+   }else if(*(cp = n_folder_query()) == '\0'){
+      n_err(_("folders: *folder* not set, or not resolvable\n"));
+      goto jleave;
+   }
 
 #ifdef mx_HAVE_IMAP
    if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
@@ -416,7 +418,7 @@ c_folders(void *v){ /* TODO fexpand*/
       cc.cc_cmd = ok_vlook(LISTER);
       cc.cc_args[0] = cp;
       if(mx_child_run(&cc) && cc.cc_exit_status == 0)
-         rv = 0;
+         rv = n_EXIT_OK;
    }
 
 jleave:

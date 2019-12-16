@@ -5608,7 +5608,9 @@ prefixes are, i.e., URL (see
 syntax is understood, as in
 .Ql mbox:///tmp/somefolder .
 If a protocol prefix is used the mailbox type is fixated, otherwise
-opening none-existing folders uses the protocol defined in
+opening none-existing
+.Ic folders
+uses the protocol defined in
 .Va newfolders .
 .
 .Pp
@@ -5735,9 +5737,11 @@ Network URLs require a special encoding as documented in the section
 .
 .Mx
 .It Ic folders
-With no arguments, list the names of the folders in the folder directory.
-With an existing folder as an argument,
-lists the names of folders below the named folder.
+Lists the names of all folders below the given argument or
+.Va folder .
+For file-based protocols
+.Ev LISTER
+will be used for display purposes.
 .
 .Mx
 .Mx

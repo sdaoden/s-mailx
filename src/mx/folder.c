@@ -1056,7 +1056,7 @@ n_folder_query(void){
 
    /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
-      if((rv = ok_vlook(folder_resolved)) != NULL)
+      if((rv = ok_vlook(folder_resolved)) != NIL)
          break;
 
       /* POSIX says:
@@ -1065,18 +1065,20 @@ n_folder_query(void){
        * And:
        *    If folder is unset or set to null, [.] filenames beginning with
        *    '+' shall refer to files in the current directory.
-       * We may have the result already */
-      rv = n_empty;
+       * We may have the result already.
+       * P.S.: that "or set to null" seems to be a POSIX bug, V10 mail and BSD
+       * Mail since 1982 work differently, follow suit */
+      rv = su_empty;
       err = FAL0;
 
-      if((cp = ok_vlook(folder)) == NULL)
+      if((cp = ok_vlook(folder)) == NIL)
          goto jset;
 
       /* Expand the *folder*; skip %: prefix for simplicity of use */
       if(cp[0] == '%' && cp[1] == ':')
          cp += 2;
       if((err = (cp = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
-            ) == NULL) || *cp == '\0')
+            ) == NIL) /*|| *cp == '\0'*/)
          goto jset;
       else{
          uz i;
@@ -1093,7 +1095,7 @@ n_folder_query(void){
 
       switch((proto = which_protocol(cp, FAL0, FAL0, &adjcp))){
       case PROTO_POP3:
-         n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
+         n_err(_("*folder*: cannot use the POP3 protocol\n"));
          err = TRU1;
          goto jset;
       case PROTO_IMAP:
@@ -1118,9 +1120,11 @@ n_folder_query(void){
 
          home = ok_vlook(HOME);
          l1 = su_cs_len(home);
+         ASSERT(l1 > 0); /* (checked VIP variable) */
          l2 = su_cs_len(cp);
 
          s = n_string_reserve(s, l1 + 1 + l2 +1);
+
          if(cp != adjcp){
             uz i;
 
@@ -1128,39 +1132,42 @@ n_folder_query(void){
             cp += i;
             l2 -= i;
          }
+
          s = n_string_push_buf(s, home, l1);
-         s = n_string_push_c(s, '/');
-         s = n_string_push_buf(s, cp, l2);
+         if(l2 > 0){
+            s = n_string_push_c(s, '/');
+            s = n_string_push_buf(s, cp, l2);
+         }
          cp = n_string_cp(s);
          s = n_string_drop_ownership(s);
       }
 
-      /* TODO Since our visual mailname is resolved via realpath(3) if available
+      /* TODO Since visual mailname is resolved via realpath(3) if available
        * TODO to avoid that we loose track of our currently open folder in case
        * TODO we chdir away, but still checks the leading path portion against
-       * TODO n_folder_query() to be able to abbreviate to the +FOLDER syntax if
+       * TODO folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
 #ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
-      ASSERT(s->s_len == 0 && s->s_dat == NULL);
+      ASSERT(s->s_len == 0 && s->s_dat == NIL);
 # ifndef mx_HAVE_REALPATH_NULL
       s = n_string_reserve(s, PATH_MAX +1);
 # endif
 
-      if((s->s_dat = realpath(cp, s->s_dat)) != NULL){
+      if((s->s_dat = realpath(cp, s->s_dat)) != NIL){
 # ifdef mx_HAVE_REALPATH_NULL
          n_string_cp(s = n_string_assign_cp(s, cp = s->s_dat));
-         (free)(cp);
+         free(cp);
 # endif
          rv = s->s_dat;
       }else if(su_err_no() == su_ERR_NOENT)
          rv = cp;
       else{
-         n_err(_("Can't canonicalize *folder*: %s\n"),
+         n_err(_("Cannot canonicalize *folder*: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          err = TRU1;
-         rv = n_empty;
+         rv = su_empty;
       }
       s = n_string_drop_ownership(s);
 #endif /* mx_HAVE_REALPATH */
@@ -1184,8 +1191,9 @@ jset:
 
    if(err){
       n_err(_("*folder* is not resolvable, using CWD\n"));
-      ASSERT(rv != NULL && *rv == '\0');
+      ASSERT(rv != NIL && *rv == '\0');
    }
+
    NYD_OU;
    return rv;
 }
