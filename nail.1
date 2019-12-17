@@ -14974,8 +14974,10 @@ local cache this query would have to be performed whenever \*(UA is
 invoked (in interactive sessions situation may differ).
 .
 .Pp
-\*(UA does not support OAuth.
-Because of this it is necessary to declare \*(UA a
+\*(UA does not directly support OAuth.
+It, however, supports XOAUTH2 / OAUTHBEARER, see
+.Sx "But, how about XOAUTH2 / OAUTHBEARER?"
+If that is not used it is necessary to declare \*(UA a
 .Dq less secure app
 (on the providers account web page) in order to read and send mail.
 However, it also seems possible to take the following steps instead:
@@ -15002,35 +15004,30 @@ use that special password instead of the real Google account password in
 Following up
 .Sx "I cannot login to Google mail \&(via OAuth\&)"
 one OAuth-based authentication method is available:
-the OAuth 2.0 bearer token usage as standardized in RFC 6750,
-also known as XOAUTH2 and OAUTHBEARER, allows fetching a temporary
-access token via the web that can locally be used as a
+the OAuth 2.0 bearer token usage as standardized in RFC 6750 (according
+SASL mechanism in RFC 7628), also known as XOAUTH2 and OAUTHBEARER,
+allows fetching a temporary access token via the web that can locally be
+used as a
 .Va password .
 The protocol is simple and extendable, token updates or even password
 changes via a simple TLS secured server login would be possible in
 theory, but today a web browser and an external support tool are
 prerequisites for using this authentication method.
-The token times out and must be refreshed via the web periodically; in
-Kerberos / GSSAPI the local programs
-.Xr kinit 1
-and
-.Xr kdestroy 1
-offer user local control, the latter also while offline.
+The token times out and must be periodically refreshed via the web.
 .
 .Pp
-Before being able to use OAUTHBEARER, some hurdles must be taken.
-Using GMail as an example, an application (a simple name) needs to be
-registered, for which credentials need to be created.
-This configuration step generates a
+Some hurdles must be taken before being able to use this method.
+Using GMail as an example, an application (that is a name) must be
+registered, for which credentials, a
 .Dq client ID
 and a
-.Dq client secret .
-These two strings need to be saved locally in a secure way.
-For GMail these initial configuration steps can be performed via
-.Lk https://developers.google.com/identity/protocols/OAuth2 .
-Thereafter access tokens can be requested, the program available for
-download do do this for a GMail account is
-.Lk https://github.com/google/\:gmail-oauth2-tools/\:blob/\:\
+.Dq client secret ,
+need to be created, and saved locally in a secure way.
+These initial configuration steps can be performed at
+.Lk https://console.developers.google.com/apis/credentials .
+Thereafter access tokens can be requested;
+a python program to do this for GMail accounts is
+.Lk https://github.com/google/\:gmail-oauth2-tools/\:raw/\:\
 master/\:python/\:oauth2.py :
 .
 .Bd -literal -offset indent
@@ -15043,14 +15040,18 @@ To authorize token, visit this url and follow the directions:
   Refresh Token: ...
   Access Token: ...
   Access Token Expiration Seconds: 3600
-$ # The last three are the actual token responses.
-$ # To refresh the granted token:
+$ # (The last three are the actual token responses.)
+$ # Thereafter access tokens can be generated/refreshed:
 $ python oauth2.py --user=EMAIL \e
   --client-id=THE-ID --client-secret=THE-SECRET \e
   --refresh-token=THE-REFRESH-TOKEN
 .Ed
 .
 .Pp
+The generated refresh token must also be stored locally.
+This procedure can be re-read at
+.Lk https://github.com/google/\:gmail-oauth2-tools/\:wiki/\:\
+OAuth2DotPyRunThrough .
 \*(UA does not (yet) offer the possibility to (lazy) expand aka run
 shell commandos which are embedded in variable content, or periodically
 run some command, therefore keeping an access token up-to-date from
@@ -15060,6 +15061,21 @@ or (for sending only)
 .Va on-compose-splice .
 For more on authentication please see the section
 .Sx "On URL syntax and credential lookup" .
+.
+.Bd -literal -offset indent
+set on-main-loop-tick=o-m-l-t
+define o-m-l-t {
+  # Remarks: in fact this needs to run only "once an hour"
+  vput ! password python oauth2.py --user=EMAIL \e
+      --client-id=THE-ID --client-secret=THE-SECRET \e
+      --refresh-token=THE-REFRESH-TOKEN |\e
+    sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
+  vput csop password trim "$password"
+  \if -n "$verbose"
+    \echo password is <$password>
+  \fi
+}
+.Ed
 .\" }}}
 .
 .\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{
