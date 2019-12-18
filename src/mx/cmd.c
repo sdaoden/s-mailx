@@ -127,19 +127,22 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
    default:
    case mx_CMD_ARG_TYPE_ARG:{
       u32 flags, xflags;
-      uz i;
+      uz i, ol;
       struct mx_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
 
-      for(cadp = cdp->cd_cadp, i = 0; i < cadp->cad_no; ++i){
+      for(cadp = cdp->cd_cadp, ol = i = 0; i < cadp->cad_no; ++i){
          xflags = flags = cadp->cad_ent_flags[i][0];
 jfakeent:
-         if(i != 0)
-            rv = n_string_push_c(rv, ',');
-
-         if(flags & mx_CMD_ARG_DESC_OPTION)
+         if(flags & mx_CMD_ARG_DESC_OPTION){
+            ++ol;
             rv = n_string_push_c(rv, '[');
+         }
+         if(i != 0){
+            rv = n_string_push_c(rv, ',');
+            rv = n_string_push_c(rv, ' ');
+         }
          if(flags & mx_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
          switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
@@ -160,18 +163,18 @@ jfakeent:
          }
          if(flags & mx_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
-         if(flags & mx_CMD_ARG_DESC_OPTION)
-            rv = n_string_push_c(rv, ']');
 
          if(xflags != flags){
             flags = xflags;
             goto jfakeent;
          }
       }
-      cp = NULL;
+      while(ol-- > 0)
+         rv = n_string_push_c(rv, ']');
+      cp = NIL;
       }break;
    }
-   if(cp != NULL)
+   if(cp != NIL)
       rv = n_string_push_cp(rv, V_(cp));
 
    /* Note: on updates, change the manual! */
