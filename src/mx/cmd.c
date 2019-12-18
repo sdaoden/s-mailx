@@ -482,9 +482,11 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 
 boole
 mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
+   enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1};
+
    struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
-   boole stoploop, greedyjoin;
+   u8 f;
    void const *cookie;
    uz cad_idx, parsed_args;
    struct mx_cmd_arg_desc const *cadp;
@@ -548,7 +550,7 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
 
    cookie = NULL;
    parsed_args = 0;
-   greedyjoin = FAL0;
+   f = a_NONE;
 
    /* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
     * TODO those use getmsglist() and that needs to deal with that situation.
@@ -562,7 +564,7 @@ jredo:
       su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
          sizeof ncap.ca_ent_flags);
       target_argpp = NULL;
-      stoploop = FAL0;
+      f &= ~a_STOPLOOP;
 
       switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
       default:
@@ -610,7 +612,7 @@ jredo:
             }
 
             /* Succeed if we had any arg */
-            stoploop = TRU1;
+            f |= a_STOPLOOP;
          }else if(!(shs & n_SHEXP_STATE_OUTPUT)){
             ASSERT(0);
             goto jerr;
@@ -672,12 +674,12 @@ jredo:
             goto jerr;
          }
          shin.l = 0;
-         stoploop = TRU1; /* XXX Asserted to be last above! */
+         f |= a_STOPLOOP; /* XXX Asserted to be last above! */
          break;
       }
       ++parsed_args;
 
-      if(greedyjoin == TRU1){ /* TODO speed this up! */
+      if(f & a_GREEDYJOIN){ /* TODO speed this up! */
          char *cp;
          uz i;
 
@@ -711,24 +713,27 @@ jredo:
          }
       }
 
-      if(stoploop)
+      if(f & a_STOPLOOP)
          goto jleave;
 
       if((shin.l > 0 || cookie != NULL) &&
             (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY)){
-         if(!greedyjoin)
-            greedyjoin = ((ncap.ca_ent_flags[0] &
-                        mx_CMD_ARG_DESC_GREEDY_JOIN) &&
-                     (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP))
-                  ? TRU1 : TRUM1;
+         if(!(f & a_GREEDYJOIN) && ((ncap.ca_ent_flags[0] &
+                  mx_CMD_ARG_DESC_GREEDY_JOIN) &&
+               (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_SHEXP)))
+            f |= a_GREEDYJOIN;
          goto jredo;
       }
    }
 
 jloop_break:
-   if(cad_idx < cadp->cad_no &&
-         !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
+   if(cad_idx < cadp->cad_no){
+      if(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
+         goto jerr;
+   }else if(!(f & a_STOPLOOP) && shin.l > 0){
+      n_pstate_err_no = su_ERR_2BIG;
       goto jerr;
+   }
 
    lcap = (struct mx_cmd_arg*)-1;
 jleave:
@@ -736,11 +741,11 @@ jleave:
    return (lcap != NULL);
 
 jerr:
-   if(n_pstate_err_no == su_ERR_NONE){
-      n_pstate_err_no = su_ERR_INVAL;
-
-      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+   if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
             (n_poption & n_PO_D_V)){
+      if(n_pstate_err_no != su_ERR_NONE)
+         n_err(_("%s: %s\n"), cadp->cad_name, su_err_doc(n_pstate_err_no));
+      else{
          uz i;
 
          for(i = 0; (i < cadp->cad_no &&
@@ -752,15 +757,17 @@ jerr:
                "     Input: %.*s\n"
                "   Stopped: %.*s\n"),
             cadp->cad_name, parsed_args,
-               i, (i == cadp->cad_no ? n_empty : "+"),
-            (int)shin_orig.l, shin_orig.s,
-            (int)shin.l, shin.s);
+               i, (i == cadp->cad_no ? su_empty : "+"),
+            S(int,shin_orig.l), shin_orig.s,
+            S(int,shin.l), shin.s);
       }
+
+      if(!su_state_has(su_STATE_REPRODUCIBLE))
+         mx_cmd_print_synopsis(mx_cmd_firstfit(cadp->cad_name), NIL);
    }
 
-   if((!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V)
-         ) && !su_state_has(su_STATE_REPRODUCIBLE))
-      mx_cmd_print_synopsis(mx_cmd_firstfit(cadp->cad_name), NIL);
+   if(n_pstate_err_no == su_ERR_NONE)
+      n_pstate_err_no = su_ERR_INVAL;
 
    lcap = NIL;
    goto jleave;
