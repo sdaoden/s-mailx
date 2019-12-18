@@ -344,8 +344,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Define a <macro> or show the currently defined ones")) },
    { "digmsg", &c_digmsg, (G | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_digmsg)
-     DS(N_("<create|remove> <-|msgno> | <-|msgno> <cmd>: "
-         "message dig object control"))},
+     DS(N_("<create|remove> <-|msgno> [<->] | <-|msgno> <cmd>: "
+         "message access"))},
    { "disconnect",
 #ifdef mx_HAVE_IMAP
       &c_disconnect,
