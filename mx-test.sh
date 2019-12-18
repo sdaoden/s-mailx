@@ -8040,7 +8040,7 @@ define omlt {
    echo four
    echo --bye;xit' |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
-   check 1 0 ./.tall '367031402 108'
+   check 1 0 ./.tall '3697651500 130'
 
    t_epilog "${@}"
 }
