@@ -7743,6 +7743,22 @@ Character set agnostic string functions have no notion of locale
 settings and character sets.
 .
 .Bl -hang -width ".It Cm random"
+.It Cm date-utc
+Outputs the current date and time in UTC (Coordinated Universal Time)
+with values named such that
+.Ql vput vexpr x date-utc; eval wysh set $x
+creates accessible variables.
+.It Cm date-stamp-utc
+Outputs a RFC 3339 internet date/time format of UTC.
+.It Cm epoch
+The seconds and nanoseconds since the Unix epoch (1970-01-01T00:00:00)
+named
+.Ql epoch_sec
+and
+.Ql epoch_nsec
+such that
+.Ql vput vexpr x epoch; eval wysh set $x
+creates accessible variables.
 .It Cm file-expand
 Performs the usual
 .Sx "Filename transformations"
@@ -7754,9 +7770,26 @@ on the argument, then call
 .Xr stat 2
 and
 .Xr lstat 2 ,
-respectively, in order to echo some stat fields such that
-.Ql vput vexpr v file-stat FILE; eval wysh set $v
+respectively, and output values such that
+.Ql vput vexpr x file-stat FILE; eval wysh set $x
 creates accessible variables.
+The variable
+.Ql st_type
+uses solidus
+.Ql /
+to denote directories, commercial at
+.Ql @
+for links, number sign
+.Ql #
+for block devices, percent sign
+.Ql %
+for for character devices, vertical bar
+.Ql |
+for FIFOs, equal sign
+.Ql =
+for sockets, and the period
+.Ql \&.
+for the rest.
 .It Cm random
 Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
@@ -15022,10 +15055,10 @@ registered, for which credentials, a
 .Dq client ID
 and a
 .Dq client secret ,
-need to be created, and saved locally in a secure way.
+need to be created and saved locally (in a secure way).
 These initial configuration steps can be performed at
 .Lk https://console.developers.google.com/apis/credentials .
-Thereafter access tokens can be requested;
+Thereafter a refresh token can be requested;
 a python program to do this for GMail accounts is
 .Lk https://github.com/google/\:gmail-oauth2-tools/\:raw/\:\
 master/\:python/\:oauth2.py :
@@ -15040,40 +15073,50 @@ To authorize token, visit this url and follow the directions:
   Refresh Token: ...
   Access Token: ...
   Access Token Expiration Seconds: 3600
-$ # (The last three are the actual token responses.)
-$ # Thereafter access tokens can be generated/refreshed:
-$ python oauth2.py --user=EMAIL \e
-  --client-id=THE-ID --client-secret=THE-SECRET \e
-  --refresh-token=THE-REFRESH-TOKEN
+$ # Of which the last three are actual token responses.
+$ # Thereafter access tokens can regulary be refreshed
+$ # via the created refresh token (read on)
 .Ed
 .
 .Pp
-The generated refresh token must also be stored locally.
-This procedure can be re-read at
+The generated refresh token must also be saved locally (securely).
+The procedure as a whole can be read at
 .Lk https://github.com/google/\:gmail-oauth2-tools/\:wiki/\:\
 OAuth2DotPyRunThrough .
-\*(UA does not (yet) offer the possibility to (lazy) expand aka run
-shell commandos which are embedded in variable content, or periodically
-run some command, therefore keeping an access token up-to-date from
-within it can only be performed by setting the hook
+Since periodic timers are not yet supported, keeping an access token
+up-to-date (from within \*(UA) can only be performed via the hook
 .Va on-main-loop-tick ,
 or (for sending only)
-.Va on-compose-splice .
-For more on authentication please see the section
-.Sx "On URL syntax and credential lookup" .
+.Va on-compose-enter
+(for more on authentication please see the section
+.Sx "On URL syntax and credential lookup" ) :
 .
 .Bd -literal -offset indent
-set on-main-loop-tick=o-m-l-t
+set on-main-loop-tick=o-m-l-t on-compose-enter=o-c-e
 define o-m-l-t {
-  # Remarks: in fact this needs to run only "once an hour"
-  vput ! password python oauth2.py --user=EMAIL \e
-      --client-id=THE-ID --client-secret=THE-SECRET \e
-      --refresh-token=THE-REFRESH-TOKEN |\e
-    sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
-  vput csop password trim "$password"
-  \if -n "$verbose"
-    \echo password is <$password>
-  \fi
+  xcall update_access_token
+}
+define o-c-e {
+  xcall update_access_token
+}
+
+set access_token_=0
+define update_access_token {
+  local set i epoch_sec epoch_nsec
+  vput vexpr i epoch
+  eval set $i # set epoch_sec/_nsec of vexpr epoch
+  vput vexpr i + $access_token_ 2100
+  if $epoch_sec -ge $i
+    vput ! password python oauth2.py --user=EMAIL \e
+        --client-id=THE-ID --client-secret=THE-SECRET \e
+        --refresh-token=THE-REFRESH-TOKEN |\e
+      sed '1b PASS;d; :PASS s/^.\e{1,\e}:\e(.\e{1,\e}\e)$/\e1/'
+    vput csop password trim "$password"
+    if -n "$verbose"
+      echo password is <$password>
+    endif
+    set access_token_=$epoch_sec
+  endif
 }
 .Ed
 .\" }}}
