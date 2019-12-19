@@ -6,9 +6,11 @@ in omlt: 2
 three
 in omlt: 3
 calling bla
+in omlt: 4
 bla1
 bla2
-in omlt: 4
-four
 in omlt: 5
+four
+in omlt: 6
 --bye
+in omlt: 7
