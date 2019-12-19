@@ -1,2 +1,3 @@
 reproducible_build: 10: Invalid message number
+reproducible_build: save: Bad message
 reproducible_build: .tf3: Permission denied

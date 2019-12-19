@@ -6,6 +6,7 @@ reproducible_build: ... message not sent
 3:done
 4:done
 reproducible_build: No recipient specified.
+reproducible_build: Synopsis: Forward: Like `forward', but derive filename from <address>
 5:done
 6:done
 7:done
