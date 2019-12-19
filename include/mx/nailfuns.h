@@ -558,8 +558,9 @@ FL int c_echoerr(void *v);
 FL int c_echon(void *v);
 FL int c_echoerrn(void *v);
 
-/* `read' */
+/* `read', `readsh' */
 FL int c_read(void *vp);
+FL int c_readsh(void *vp);
 
 /* `readall' */
 FL int c_readall(void *vp);

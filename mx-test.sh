@@ -98,6 +98,7 @@ t_all() {
    jspawn vpospar
    jspawn atxplode
    jspawn read
+   jspawn readsh
    jspawn headerpick # so we have a notion that it works a bit
    jsync
 
@@ -4166,6 +4167,31 @@ t_read() {
    readctl remove .temptynl;echo $?/$^ERRNAME
 	__EOT
    check readall 0 "${MBOX}" '4113506527 405'
+
+   t_epilog "${@}"
+}
+
+t_readsh() { # TODO not enough
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' > .tin
+   from@exam.ple    ' diet spliced <from@exam.ple>   '    'a' 
+   from@exam.ple ' diet spliced <from@exam.ple>   ' 'a'  
+   from@exam.ple ' diet spliced <from@exam.ple>   ''a'  
+   from@exam.ple' diet spliced <from@exam.ple>   ''a'  
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      ${MAILX} ${ARGS} -X'readctl create ./.tin' > "${MBOX}" 2>&1
+   commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+   readsh a b c;x
+   readsh a b c;x
+   readsh a b c;x
+   readsh a b c;x
+   unset a b c;read a b c;x
+   readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '2955084684 291'
 
    t_epilog "${@}"
 }

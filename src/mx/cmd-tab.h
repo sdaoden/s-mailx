@@ -577,7 +577,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 { "reply", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Reply to originator and recipients of <msglist>")) },
    { "read", &c_read, (G | M | X | EM | TWYSH), 1, MAC, NIL
-     DS(N_("Read a line from standard input into <variable>(s)")) },
+     DS(N_("Read a line into <variable>(s), split at $ifs")) },
+   { "readsh", &c_readsh, (G | M | X | EM | TWYSH), 1, MAC, NIL
+     DS(N_("Read a line input into <variable>(s), split at shell tokens")) },
    { "readall", &c_readall, (G | M | X | EM | TWYSH), 1, 1, NIL
      DS(N_("Read anything from standard input until EOF into <variable>")) },
    { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,

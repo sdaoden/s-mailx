@@ -5244,7 +5244,7 @@ will be generated on the standard output channel instead of being
 subject to consumation by the
 .Ic readsh
 (here better than
-.Ic readh
+.Ic read
 or
 .Ic readall )
 command.
@@ -6721,6 +6721,19 @@ hey2.0,:"'you    ",:world!:mars.:
 ? echo $?/$^ERRNAME / <$a><$b><$c>
 0/NONE / <hey2.0,><"'you    ",><world!:mars.:><><>
 .Ed
+.
+.Mx
+.It Ic readsh
+\*(NQ Like
+.Ic read ,
+but splits on shell token boundaries (see
+.Sx "Shell-style argument quoting" )
+rather than at
+.Va ifs .
+\*(ID Could become a
+.Ic commandalias ,
+maybe
+.Ql read --tokenize -- .
 .
 .Mx
 .It Ic readall
