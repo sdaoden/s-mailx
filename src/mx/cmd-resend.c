@@ -717,8 +717,11 @@ a_crese_fwd(void *vp, boole recipient_record){
    rv = n_EXIT_ERR;
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
-      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+            (n_poption & n_PO_D_V)){
          n_err(_("No recipient specified.\n"));
+         mx_cmd_print_synopsis(mx_cmd_firstfit(cacp->cac_desc->cad_name), NIL);
+      }
       su_err_set_no(n_pstate_err_no = su_ERR_DESTADDRREQ);
       goto j_leave;
    }

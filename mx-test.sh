@@ -4724,7 +4724,7 @@ b8
    t_it forward
    check 1 0 ./.tall '2356713156 2219'
    if have_feat uistrings; then
-      check 2 - ./.terr '693399532 265'
+      check 2 - ./.terr '3273108824 335'
    else
       t_echoskip '2:[!UISTRINGS]'
    fi
@@ -4732,7 +4732,7 @@ b8
    t_it Forward
    check 3 0 ./.tall '2356713156 2219'
    if have_feat uistrings; then
-      check 4 - ./.terr '693399532 265'
+      check 4 - ./.terr '447176534 355'
    else
       t_echoskip '4:[!UISTRINGS]'
    fi
@@ -4967,7 +4967,7 @@ t_copy() { # {{{
    check 2-3 - ./.tf2 '1931512953 162'
    check 2-4 - ./.tf3 '3642131968 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '2590372641 91'
+      check 2-5 - ./.terr '4090528730 129'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5114,7 +5114,7 @@ t_save() { # {{{
    check 2-3 - ./.tf2 '920652966 162'
    check 2-4 - ./.tf3 '970407001 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '2590372641 91'
+      check 2-5 - ./.terr '2470478847 129'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5279,7 +5279,7 @@ t_move() { # {{{
    check 2-2 - ./.tf1 '1473857906 162'
    check 2-3 - ./.tf2 '331229810 162'
    if have_feat uistrings; then
-      check 2-4 - ./.terr '1243633205 134'
+      check 2-4 - ./.terr '3780692935 172'
    else
       t_echoskip '2-4:[!UISTRINGS]'
    fi
