@@ -1,0 +1,6 @@
+62/NONE / <from@exam.ple>< diet spliced <from@exam.ple>   ><a>
+57/NONE / <from@exam.ple>< diet spliced <from@exam.ple>   ><a>
+56/NONE / <from@exam.ple>< diet spliced <from@exam.ple>   a><>
+55/NONE / <from@exam.ple diet spliced <from@exam.ple>   a><><>
+-1/NONE / <><><>
+readctl remove:0/NONE
