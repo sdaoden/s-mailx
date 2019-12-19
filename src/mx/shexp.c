@@ -1361,6 +1361,8 @@ jrestart:
          }
          /* A comment may it be if no token has yet started */
          else if(c == '#' && (state & a_NTOKEN)){
+            ib += il;
+            il = 0;
             rv |= n_SHEXP_STATE_STOP;
             /*last_known_meta_trim_len = U32_MAX;*/
             goto jleave;
@@ -1881,19 +1883,28 @@ jleave:
    if(state & a_CHOP_ONE)
       ++ib, --il;
 
-   if(flags & n_SHEXP_PARSE_TRIM_SPACE){
-      for(; il > 0; ++ib, --il){
-         if(!su_cs_is_space(*ib))
-            break;
-         rv |= n_SHEXP_STATE_WS_TRAIL;
+   if(il > 0){
+      if(flags & n_SHEXP_PARSE_TRIM_SPACE){
+         for(; il > 0; ++ib, --il){
+            if(!su_cs_is_space(*ib))
+               break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
       }
-   }
 
-   if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
-      for(; il > 0; ++ib, --il){
-         if(su_cs_find_c(ifs_ws, *ib) == NULL)
-            break;
-         rv |= n_SHEXP_STATE_WS_TRAIL;
+      if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
+         for(; il > 0; ++ib, --il){
+            if(su_cs_find_c(ifs_ws, *ib) == NIL)
+               break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
+      }
+
+      /* At the start of the next token: if this is a comment, simply throw
+       * away all the following data! */
+      if(il > 0 && *ib == '#'){
+         ib += il;
+         il = 0;
       }
    }
 
