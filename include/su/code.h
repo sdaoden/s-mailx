@@ -443,23 +443,33 @@ do{\
 # ifdef DOXYGEN
 #  define su_INLINE inline /*!< \_ */
 #  define su_SINLINE inline /*!< \_ */
-# elif su_CC_CLANG || su_CC_GCC || su_CC_PCC
+# elif su_CC_GCC
+   /* After lots of trouble with OpenBSD/gcc 4.2.1 and SunOS/gcc 3.4.3 */
+#  if !su_CC_VCHECK_GCC(3, 2) /* Unsure: only used C++ at that time */
+#   define su_INLINE extern __inline
+#   define su_SINLINE static __inline
+#  elif !su_CC_VCHECK_GCC(4, 3)
+#   define su_INLINE extern __inline __attribute__((always_inline))
+#   define su_SINLINE static __inline __attribute__((always_inline))
+   /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
+#  elif !su_CC_VCHECK_GCC(8, 3) || !defined __OPTIMIZE__ ||\
+      !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 199901L
+#   define su_INLINE extern __inline __attribute__((gnu_inline))
+#   define su_SINLINE static __inline __attribute__((gnu_inline))
+#  elif !defined NDEBUG || !defined __OPTIMIZE__
+#   define su_INLINE static inline
+#   define su_SINLINE static inline
+#  else
+#   define su_INLINE inline
+#   define su_SINLINE static inline
+#  endif
+# elif su_CC_CLANG || su_CC_PCC
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-    /* That gcc is totally weird */
-#   if su_OS_OPENBSD && su_CC_GCC
-#    define su_INLINE extern __inline __attribute__((gnu_inline))
-#    define su_SINLINE static __inline __attribute__((gnu_inline))
-    /* All CCs coming here know __OPTIMIZE__ */
-#   elif !defined NDEBUG || !defined __OPTIMIZE__
+#   if !defined NDEBUG || !defined __OPTIMIZE__
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-     /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
-#    if su_CC_GCC && defined __OPTIMIZE_SIZE__
-#     define su_INLINE inline __attribute__((always_inline))
-#    else
-#     define su_INLINE inline
-#    endif
+#    define su_INLINE inline
 #    define su_SINLINE static inline
 #   endif
 #  else
