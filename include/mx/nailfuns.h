@@ -76,7 +76,8 @@ struct quoteflt;
  *    if the file is not already at EOF, and the file is one capable of
  *    seeking, the file offset of the underlying open file description shall
  *    be set to the file position of the stream */
-#if defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
+#if !su_OS_OPENBSD &&\
+   defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
 # define n_real_seek(FP,OFF,WH) (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF)
 # define really_rewind(stream) \
 do{\
