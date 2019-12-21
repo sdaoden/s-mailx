@@ -208,12 +208,13 @@ struct ssl_method { /* TODO v15 obsolete */
 
 struct a_xtls_protocol{
    char const xp_name[8];
-   sl xp_op_no;               /* SSL_OP_NO_* bit */
-   u16 xp_version;            /* *_VERSION number */
-   boole xp_ok_minmaxproto;   /* Valid for {Min,Max}Protocol= */
-   boole xp_ok_proto;         /* Valid for Protocol= */
+   sl xp_op_no; /* SSL_OP_NO_* bit */
+   u16 xp_version; /* *_VERSION number */
+   boole xp_ok_minmaxproto; /* Valid for {Min,Max}Protocol= */
+   boole xp_ok_proto; /* Valid for Protocol= */
    boole xp_last;
-   u8 xp__dummy[3];
+   boole xp_is_all; /* The special "ALL" */
+   u8 xp__dummy[2];
 };
 
 struct a_xtls_cipher{
@@ -244,14 +245,14 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
  * Ensure array size by adding \0 to longest entry.
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
 static struct a_xtls_protocol const a_xtls_protocols[] = {
-   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, {0}},
-   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, FAL0, {0}},
-   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, TRU1, {0}}
+   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, FAL0, TRU1, {0}},
+   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1,TRU1,FAL0,FAL0,{0}},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
+   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
+   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
+   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, FAL0, FAL0, {0}},
+   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, TRU1, FAL0, {0}}
 };
 
 /* Supported S/MIME cipher algorithms */
@@ -982,7 +983,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 
          for(xpp = &a_xtls_protocols[0];;){
             if(xpp->xp_ok_proto && !su_cs_cmp_case(cp, xpp->xp_name)){
-               if(xpp->xp_op_no == 0 || xpp->xp_version == 0)
+               if((xpp->xp_op_no == 0 || xpp->xp_version == 0) &&
+                     !xpp->xp_is_all)
                   goto jenoproto;
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
