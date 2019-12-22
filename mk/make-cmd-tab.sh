@@ -78,8 +78,8 @@ fi
       print "#define a_CMD_DEFAULT_IDX " defidx
       print "#define a_CMD_COUNT " cnt
 
-      printf("static %s const a_cmd__cidx[128] = {\n#define a_X %s",
-         t, "a_CMD_COUNT")
+      printf("static %s const %s[128] = {\n#undef a_X\n#define a_X %s",
+         t, "a_cmd__cidx", "a_CMD_COUNT")
       for(i = 1; i <= 128; ++i){
          if(i == 1 || i % (V ? 5 : 10) == 0){
             printf("\n   ")

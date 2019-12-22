@@ -163,6 +163,7 @@ a_termios_onsig(int sig){
    if(sig == a_TERMIOS_SIGWINCH)
       goto jsigwinch;
 
+#undef a_X
 #define a_X(N,X,Y) \
    case SIG ## N: oact = a_termios_g.tiosg_o ## X; jobsig = Y; break;
 
