@@ -657,10 +657,16 @@ check() {
       fi
 
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
-            command -v diff >/dev/null 2>&1 &&
-            (git rev-parse --verify test-out) >/dev/null 2>&1 &&
-            git show test-out:"${x}" > ../"${x}".old 2>/dev/null; then
-         diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            command -v diff >/dev/null 2>&1; then
+         y=test-out
+         if (git rev-parse --verify $i) >/dev/null 2>&1; then :; else
+            y=refs/remotes/origin/test-out
+            (git rev-parse --verify $y) >/dev/null 2>&1 || y=
+         fi
+         if [ -n "${y}" ] &&
+               git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+            diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+         fi
       fi
    fi
 }
