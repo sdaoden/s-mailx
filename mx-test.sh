@@ -3,6 +3,8 @@
 #@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ --no-jobs can be used to prevent spawning concurrent tests.
+#@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
+#@             (then grep for ^ERROR, for example).
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -201,6 +203,8 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
                           checkout with the [test-out] branch available,
                           it will also create file differences
  --no-jobs                do not spawn multiple jobs simultaneously
+ --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
+                          (for example to: grep ^ERROR)
 
 The last invocation style will compile and test as many different
 configurations as possible.
@@ -209,11 +213,18 @@ _EOT
    exit 1
 }
 
-NOJOBS= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
-if [ "${1}" = --no-jobs ]; then
-   NOJOBS=y
-   shift
-fi
+NOJOBS= NOCOLOUR= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+while [ ${#} -gt 0 ]; do
+   if [ "${1}" = --no-jobs ]; then
+      NOJOBS=y
+      shift
+   elif [ "${1}" = --no-colour ]; then
+      NOCOLOUR=y
+      shift
+   else
+      break
+   fi
+done
 
 if [ "${1}" = --check-only ]; then
    [ ${#} -eq 2 ] || usage
@@ -690,6 +701,8 @@ check_exn0() {
 # }}}
 
 color_init() {
+   [ -n "${NOCOLOUR}" ] && return
+   [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
    if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
          >/dev/null 2>&1; then
       COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
@@ -9916,6 +9929,10 @@ cc_all_configs() {
       MAXJOBS='-j '${MAXJOBS}
    else
       MAXJOBS=
+   fi
+   if [ -n "${NOCOLOUR}" ] || [ -n "${MAILX_CC_TEST_NO_COLOUR}" ]; then
+      MAILX_CC_TEST_NO_COLOUR=1
+      export MAILX_CC_TEST_NO_COLOUR
    fi
 
    < ${CONF} ${awk} '
