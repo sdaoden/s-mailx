@@ -4254,6 +4254,7 @@ t_headerpick() {
 
    #
    if have_feat uistrings; then
+      have_feat regex && i='3515512395 2378' || i='4201290332 2378'
       </dev/null ${MAILX} ${ARGS} -Y '#
 \headerpick type retain \
    bcc cc date from sender subject to \
@@ -4300,7 +4301,7 @@ t_headerpick() {
 \headerpick
 \echo --- $?/$^ERRNAME, 20
 #  ' >./.tall 2>&1
-      check 2 0 ./.tall '3515512395 2378'
+      check 2 0 ./.tall "${i}"
    else
       t_echoskip '2:[!UISTRINGS]'
    fi
