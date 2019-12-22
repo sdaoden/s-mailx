@@ -350,27 +350,8 @@ do{\
 #  endif
 # endif
 
-#elif defined __GNUC__ /* __clang__ */
-# undef su_CC_GCC
-# undef su_CC_VCHECK_GCC
-# define su_CC_GCC 1
-# define su_CC_VCHECK_GCC(X,Y) \
-      (__GNUC__ +0 > (X) || (__GNUC__ +0 == (X) && __GNUC_MINOR__ +0 >= (Y)))
-# define su_CC_EXTEN __extension__
-# define su_CC_PACKED __attribute__((packed))
-# if !defined su_CC_BOM &&\
-      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
-      defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-
-#elif defined __PCC__ /* __GNUC__ */
+/* __GNUC__ after some other Unix compilers which also define __GNUC__ */
+#elif defined __PCC__ /* __clang__ */
 # undef su_CC_PCC
 # undef su_CC_VCHECK_PCC
 # define su_CC_PCC 1
@@ -400,6 +381,26 @@ do{\
 # define su_CC_TINYC 1
 # define su_CC_EXTEN /* __extension__ (ignored) */
 # define su_CC_PACKED __attribute__((packed))
+
+#elif defined __GNUC__ /* __TINYC__ */
+# undef su_CC_GCC
+# undef su_CC_VCHECK_GCC
+# define su_CC_GCC 1
+# define su_CC_VCHECK_GCC(X,Y) \
+      (__GNUC__ +0 > (X) || (__GNUC__ +0 == (X) && __GNUC_MINOR__ +0 >= (Y)))
+# define su_CC_EXTEN __extension__
+# define su_CC_PACKED __attribute__((packed))
+# if !defined su_CC_BOM &&\
+      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
+      defined __ORDER_BIG_ENDIAN
+#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#   define su_CC_BOM su_CC_BOM_LITTLE
+#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#   define su_CC_BOM su_CC_BOM_BIG
+#  else
+#   error Unsupported __BYTE_ORDER__
+#  endif
+# endif
 
 #elif !defined su_CC_IGNORE_UNKNOWN
 # error SU: This compiler is not yet supported.
