@@ -5,6 +5,8 @@
 #@ --no-jobs can be used to prevent spawning concurrent tests.
 #@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
 #@             (then grep for ^ERROR, for example).
+#@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
+#@ grep ^ERROR handling.
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -666,6 +668,11 @@ check() {
          if [ -n "${y}" ] &&
                git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
             diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            if [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
+               while read l; do
+                  printf 'ERROR-DIFF  %s\n' "${l}"
+               done < ../"${x}".diff
+            fi
          fi
       fi
    fi
