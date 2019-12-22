@@ -10059,9 +10059,9 @@ cc_all_configs() {
          continue
       fi
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
-      printf "\n\n##########\n${MAKE} config $c\n"
-      printf "\n\n##########\n${MAKE} config $c\n" >&2
-      ${SHELL} -c "cd .. && ${MAKE} config ${c}"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n" >&2
+      ${SHELL} -c "cd .. && ${MAKE} ${MAXJOBS} config ${c}"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
