@@ -4993,7 +4993,7 @@ t_copy() { # {{{
    check 2-3 - ./.tf2 '1931512953 162'
    check 2-4 - ./.tf3 '3642131968 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '4090528730 129'
+      check 2-5 - ./.terr '2617612897 112'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5140,7 +5140,7 @@ t_save() { # {{{
    check 2-3 - ./.tf2 '920652966 162'
    check 2-4 - ./.tf3 '970407001 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '2470478847 129'
+      check 2-5 - ./.terr '45116475 112'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5305,7 +5305,7 @@ t_move() { # {{{
    check 2-2 - ./.tf1 '1473857906 162'
    check 2-3 - ./.tf2 '331229810 162'
    if have_feat uistrings; then
-      check 2-4 - ./.terr '3780692935 172'
+      check 2-4 - ./.terr '602144474 155'
    else
       t_echoskip '2-4:[!UISTRINGS]'
    fi
@@ -6019,11 +6019,7 @@ t_iconv_mainbody() {
    check_exn0 3
    check 3 - "${MBOX}" '3559538297 250'
    if have_feat uistrings; then
-      if have_feat docstrings; then # xxx should not be like that
-         check 4 - ./.terr '2579894983 148'
-      else
-         check 4 - ./.terr '271380835 121'
-      fi
+      check 4 - ./.terr '271380835 121'
    else
       t_echoskip '4:[!UISTRINGS]'
    fi
@@ -7355,7 +7351,7 @@ t_mime_types_load_control() {
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '2836681630 3667'
+   check 2 0 ./.tout '2184535740 3640'
 
    t_epilog "${@}"
 }
@@ -7768,7 +7764,7 @@ and i ~w rite this out to ./.tmsg
    check 6 4 ./.tall '686767281 95'
    [ -f "${MBOX}" ]; check_exn0 7
    if have_feat uistrings; then
-      check 8 - ./.terr '206149209 307'
+      check 8 - ./.terr '1304637795 199'
    else
       t_echoskip '8:[!UISTRINGS]'
    fi
