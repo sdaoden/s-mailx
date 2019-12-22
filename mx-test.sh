@@ -4749,7 +4749,7 @@ b8
 
    t_it forward
    check 1 0 ./.tall '2356713156 2219'
-   if have_feat uistrings; then
+   if have_feat uistrings && have_feat docstrings; then
       check 2 - ./.terr '3273108824 335'
    else
       t_echoskip '2:[!UISTRINGS]'
@@ -4757,7 +4757,7 @@ b8
 
    t_it Forward
    check 3 0 ./.tall '2356713156 2219'
-   if have_feat uistrings; then
+   if have_feat uistrings && have_feat docstrings; then
       check 4 - ./.terr '447176534 355'
    else
       t_echoskip '4:[!UISTRINGS]'
@@ -8023,11 +8023,8 @@ t_digmsg() { # XXX rudimentary; <> compose_edits()?
       ' "${cat}" "${sed}" |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 "$MBOX" '665881681 179'
-   if have_feat uistrings; then
-      check 2 - ./.tall '4159482825 1372'
-   else
-      check 2 - ./.tall '121327235 1093'
-   fi
+   have_feat uistrings && i='4159482825 1372' || i='2254509488 1103'
+   check 2 - ./.tall "${i}"
    check 3 - ./.tfcc '3993703854 127'
    check 4 - ./.tempty '4294967295 0'
    check 5 - ./.tcat '2157992522 256'
