@@ -1,3 +1,3 @@
 reproducible_build: 10: Invalid message number
-reproducible_build: copy: Bad message
-reproducible_build: .tf3: Permission denied
+reproducible_build: copy: BADMSG
+reproducible_build: .tf3: ACCES

@@ -1,4 +1,4 @@
 reproducible_build: 10: Invalid message number
-reproducible_build: move: Bad message
-reproducible_build: .tf2: Permission denied
+reproducible_build: move: BADMSG
+reproducible_build: .tf2: ACCES
 reproducible_build: No applicable messages
