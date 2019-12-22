@@ -91,6 +91,7 @@
 #undef Z_ALIGN_PZ
 
 #undef ASSERT_INJ
+#undef ASSERT_INJOR
 #undef ASSERT_NB
 #undef ASSERT
 #undef ASSERT_LOC

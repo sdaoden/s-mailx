@@ -129,6 +129,7 @@
 
 /* ASSERT series */
 #define ASSERT_INJ su_ASSERT_INJ
+#define ASSERT_INJOR su_ASSERT_INJOR
 #define ASSERT_NB su_ASSERT_NB
 #define ASSERT su_ASSERT
 #define ASSERT_LOC su_ASSERT_LOC

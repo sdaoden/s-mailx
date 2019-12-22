@@ -560,6 +560,7 @@ do{\
 /* Variants of ASSERT */
 #if defined NDEBUG || defined DOXYGEN
 # define su_ASSERT_INJ(X) /*!< Injection! */
+# define su_ASSERT_INJOR(X,Y) Y /*!< Injection! */
 # define su_ASSERT_NB(X) ((void)0) /*!< No block. */
 # define su_ASSERT(X) do{}while(0) /*!< \_ */
 # define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
@@ -577,6 +578,7 @@ do{\
 # define su_ASSERT_NYD_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
 #else
 # define su_ASSERT_INJ(X) X
+# define su_ASSERT_INJOR(X,Y) X
 
 # define su_ASSERT_NB(X) \
    su_R(void,((X) ? su_TRU1 \
