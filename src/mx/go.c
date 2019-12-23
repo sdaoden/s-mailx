@@ -1274,6 +1274,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    su_mem_set(&gec, 0, sizeof gec);
    if(gif & n_GO_INPUT_IGNERR)
       gec.gec_ignerr = TRU1;
+   mx_fs_linepool_aquire(&gec.gec_line.s, &gec.gec_line.l);
 
    osigmask = gcp->gc_osigmask;
    hadint = FAL0;
@@ -1303,8 +1304,8 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
       mx_sigs_all_rele();
       n = n_go_input(gif, NULL, &gec.gec_line.s, &gec.gec_line.l, NULL, NULL);
       mx_sigs_all_holdx();
-      gec.gec_line_size = (u32)gec.gec_line.l;
-      gec.gec_line.l = (u32)n;
+      gec.gec_line_size = S(u32,gec.gec_line.l);
+      gec.gec_line.l = S(u32,n);
 
       if(n < 0)
          break;
@@ -1325,11 +1326,11 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
       (f & a_RETOK ? 0 : a_GO_CLEANUP_ERROR) |
       (hadint ? a_GO_CLEANUP_SIGINT : 0) | a_GO_CLEANUP_HOLDALLSIGS);
 
-   if(gec.gec_line.s != NULL)
-      n_free(gec.gec_line.s);
+   mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
 
    if(soldhdl != SIG_IGN)
       safe_signal(SIGINT, soldhdl);
+
    NYD2_OU;
    mx_sigs_all_rele();
    if(hadint){
@@ -1396,15 +1397,8 @@ n_go_main_loop(void){ /* FIXME */
       /* TODO This condition test may not be here: if the condition is not true
        * TODO a recursive mainloop object without that cruft should be used!! */
       if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
-         if(a_go_ctx->gc_inject == su_NIL){
+         if(a_go_ctx->gc_inject == su_NIL)
             mx_fs_linepool_cleanup();
-
-            if (gec.gec_line.l > LINESIZE * 3) {
-               n_free(gec.gec_line.s);
-               gec.gec_line.s = NULL;
-               gec.gec_line.l = gec.gec_line_size = 0;
-            }
-         }
 
          /* TODO We need a regular on_tick_event, to which this one, the
           * TODO *newmail* thing below, and possibly other caches
@@ -1485,7 +1479,8 @@ n_go_main_loop(void){ /* FIXME */
       /* Read a line of commands and handle end of file specially */
       n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
 
-      gec.gec_line.l = gec.gec_line_size;
+      mx_fs_linepool_aquire(&gec.gec_line.s, &gec.gec_line.l);
+      gec.gec_line_size = S(u32,gec.gec_line.l);
       /* C99 */{
          boole histadd;
 
@@ -1500,8 +1495,8 @@ n_go_main_loop(void){ /* FIXME */
 
          gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
       }
-      gec.gec_line_size = (u32)gec.gec_line.l;
-      gec.gec_line.l = (u32)n;
+      gec.gec_line_size = S(u32,gec.gec_line.l);
+      gec.gec_line.l = S(u32,n);
 
       if (n < 0) {
          if (!(n_pstate & n_PS_ROBOT) &&
@@ -1509,6 +1504,7 @@ n_go_main_loop(void){ /* FIXME */
                ++eofcnt < 4) {
             fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
             n_go_input_clearerr();
+            mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
             continue;
          }
          break;
@@ -1544,6 +1540,8 @@ n_go_main_loop(void){ /* FIXME */
                : n_GO_INPUT_NONE)));
       }
 
+      mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
+
       switch(n_pstate & n_PS_ERR_EXIT_MASK){
       case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
       case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
@@ -1558,9 +1556,6 @@ n_go_main_loop(void){ /* FIXME */
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
-
-   if (gec.gec_line.s != NULL)
-      n_free(gec.gec_line.s);
 
    mx_sigs_all_rele();
    NYD_OU;
@@ -1907,9 +1902,8 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    int n;
    NYD2_IN;
 
-   linesize = 0;
-   linebuf = NULL;
-   rv = NULL;
+   mx_fs_linepool_aquire(&linebuf, &linesize);
+   rv = NIL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
    case 0:
@@ -1928,9 +1922,9 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    }
 
    n_sigman_cleanup_ping(&sm);
+
 jleave:
-   if(linebuf != NULL)
-      n_free(linebuf);
+   mx_fs_linepool_release(linebuf, linesize);
    NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -2324,6 +2318,7 @@ c_eval(void *vp){
    if(n_poption & n_PO_D_VV)
       n_err(_("EVAL %" PRIuZ " bytes <%s>\n"), gec.gec_line.l, gec.gec_line.s);
    (void)/* XXX */a_go_evaluate(&gec);
+
    NYD_OU;
    return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
 }

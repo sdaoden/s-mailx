@@ -171,18 +171,17 @@ a_cmisc_read(void * volatile vp, boole atifs){
    struct n_sigman sm;
    struct str trim;
    struct n_string s_b, *s;
-   char *linebuf;
-   uz linesize, i;
    int rv;
    char const *ifs, **argv, *cp;
+   char *linebuf;
+   uz linesize, i;
    NYD2_IN;
 
    s = n_string_creat_auto(&s_b);
    s = n_string_reserve(s, 64 -1);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
 
    ifs = atifs ? ok_vlook(ifs) : NIL; /* (ifs has default value) */
-   linesize = 0;
-   linebuf = NIL;
    argv = vp;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -264,8 +263,7 @@ jsh_redo:
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(linebuf != NIL)
-      n_free(linebuf);
+   mx_fs_linepool_release(linebuf, linesize);
 
    NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);

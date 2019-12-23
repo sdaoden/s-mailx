@@ -714,9 +714,9 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    boole rv;
    NYD2_IN;
 
-   su_mem_set(&line, 0, sizeof line);
+   mx_fs_linepool_aquire(&line.s, &line.l);
    rv = FAL0;
-   amp = NULL;
+   amp = NIL;
 
    /* TODO We should have our input state machine which emits Line events,
     * TODO and hook different consumers dependent on our content, as stated
@@ -799,9 +799,9 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    /* Create entry, replace a yet existing one as necessary */
    a_amv_mac_lookup(name, amp, amf | a_AMV_MF_UNDEF);
    rv = TRU1;
+
 jleave:
-   if(line.s != NULL)
-      n_free(line.s);
+   mx_fs_linepool_release(line.s, line.l);
    NYD2_OU;
    return rv;
 
