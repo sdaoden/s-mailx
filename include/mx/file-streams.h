@@ -155,7 +155,7 @@ EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
 EXPORT void mx_fs_linepool_release(char *dp, uz ds);
 EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd
       su_DBG_LOC_ARGS_DECL);
-EXPORT void mx_fs_linepool_cleanup(void);
+EXPORT void mx_fs_linepool_cleanup(boole completely);
 
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define mx_fs_linepool_book(A,B,C,D) \

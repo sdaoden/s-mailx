@@ -1025,22 +1025,34 @@ jeoverflow:
 }
 
 void
-mx_fs_linepool_cleanup(void){
-   struct a_fs_lpool_ent *lpep, *tmp;
+mx_fs_linepool_cleanup(boole completely){
+   struct a_fs_lpool_ent *lpep, *tmp, *keep;
    NYD2_IN;
 
-   lpep = a_fs_lpool_used;
-   a_fs_lpool_used = NIL;
+   if(!completely)
+      completely = 3; /* XXX magic */
+   else
+      completely = FAL0;
+
+   lpep = a_fs_lpool_free;
+   a_fs_lpool_free = keep = NIL;
 jredo:
    while((tmp = lpep) != NIL){
       lpep = lpep->fsle_last;
-      if(tmp->fsle_dat != NIL)
-         su_FREE(tmp->fsle_dat);
-      su_FREE(tmp);
+
+      if(completely && tmp->fsle_size <= LINESIZE * 2){
+         --completely;
+         tmp->fsle_last = a_fs_lpool_free;
+         a_fs_lpool_free = tmp;
+      }else{
+         if(tmp->fsle_dat != NIL)
+            su_FREE(tmp->fsle_dat);
+         su_FREE(tmp);
+      }
    }
 
-   if((lpep = a_fs_lpool_free) != NIL){
-      a_fs_lpool_free = NIL;
+   if((lpep = a_fs_lpool_used) != NIL){
+      a_fs_lpool_used = NIL;
       goto jredo;
    }
    NYD2_OU;

@@ -1398,7 +1398,7 @@ n_go_main_loop(void){ /* FIXME */
        * TODO a recursive mainloop object without that cruft should be used!! */
       if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
          if(a_go_ctx->gc_inject == su_NIL)
-            mx_fs_linepool_cleanup();
+            mx_fs_linepool_cleanup(FAL0);
 
          /* TODO We need a regular on_tick_event, to which this one, the
           * TODO *newmail* thing below, and possibly other caches
@@ -1556,6 +1556,8 @@ n_go_main_loop(void){ /* FIXME */
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
+
+   mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();
    NYD_OU;
