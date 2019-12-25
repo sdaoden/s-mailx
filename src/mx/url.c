@@ -322,9 +322,9 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
    rv = FAL0;
 
 #ifdef mx_HAVE_TLS
-# define a_OUCH 1
-#else
 # define a_OUCH 0
+#else
+# define a_OUCH 1
 #endif
 
    /* Network protocol */
@@ -333,7 +333,7 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
    su_mem_copy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
-   if(a_OUCH){ Z; }
+   if(!a_OUCH){ Z; }
 #define a_PRIVPROTOX(X,Y,Z) \
    do{ a_PROTOX(X, Y, Z); }while(0)
 
