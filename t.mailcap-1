@@ -1,0 +1,92 @@
+application/*;\
+  echo "This is \\"%t\\" but      is 50 \% Greek to me" \; < %s head -c 1024 | cat -vet;\
+  description = " this is\;a \"wildcard\" match, no trailing quote!";\
+  copiousoutput; x-mailx-noquote
+application/atomicmail; atomicmail %s;\
+  needsterminal
+application/pdf; /Applications/Preview.app/Contents/MacOS/Preview %s;\
+  nametemplate = %s.pdf;\
+  test = [ "${OSTYPE}" = darwin ]
+application/pdf;\
+  infile=%s\;    trap "rm -f ${infile}" EXIT\;    trap "exit 75" INT QUIT TERM\;    mupdf "${infile}";\
+  nametemplate = %s.pdf;\
+  test = [ -n "${DISPLAY}" ];\
+  x-mailx-async
+application/pdf; pdftotext -layout %s -;\
+  nametemplate = %s.pdf;\
+  copiousoutput
+audio/*; showaudio;\
+  compose = %n
+bummer/hummer; :
+default/*; cat %s;\
+  copiousoutput
+image/*; showpicture %s
+image/jpeg; showpicture -viewer xv %s
+message/partial; showpartial %s %{id} %{number} %{total}
+text/html; lynx -dump %s;\
+  nametemplate = %s.html;\
+  copiousoutput
+text/plain; xy iso-8859-1 %s;\
+  test = test "`echo %{charset} | tr A-Z a-z`" = iso-8859-1;\
+  copiousoutput
+text/richtext; xy iso-8859-1 -e richtext -p %s;\
+  test = test "`echo %{charset} | tr A-Z a-z`"  = iso-8859-1;\
+  copiousoutput
+x-be2/*; the-cmd %s;\
+  compose = compose-cmd -d %s;\
+  composetyped = composetyped-cmd -dd %s;\
+  description = a\;desc;\
+  edit = edit-cmd -ddd %s;\
+  nametemplate = %s.be2;\
+  print = print-cmd %s;\
+  test = this is "a" test;\
+  x11-bitmap = x11-bitmap.bpm;\
+  copiousoutput; textualnewlines; x-mailx-noquote; x-mailx-test-once
+=1/0
+=2/0
+=3/0
+application/*;\
+  echo "This is \\"%t\\" but      is 50 \% Greek to me" \; < %s head -c 1024 | cat -vet;\
+  description = " this is\;a \"wildcard\" match, no trailing quote!";\
+  copiousoutput; x-mailx-noquote
+application/atomicmail; atomicmail %s;\
+  needsterminal
+application/pdf; /Applications/Preview.app/Contents/MacOS/Preview %s;\
+  nametemplate = %s.pdf;\
+  test = [ "${OSTYPE}" = darwin ]
+application/pdf;\
+  infile=%s\;    trap "rm -f ${infile}" EXIT\;    trap "exit 75" INT QUIT TERM\;    mupdf "${infile}";\
+  nametemplate = %s.pdf;\
+  test = [ -n "${DISPLAY}" ];\
+  x-mailx-async
+application/pdf; pdftotext -layout %s -;\
+  nametemplate = %s.pdf;\
+  copiousoutput
+audio/*; showaudio;\
+  compose = %n
+bummer/hummer; :
+default/*; cat %s;\
+  copiousoutput
+image/*; showpicture %s
+image/jpeg; showpicture -viewer xv %s
+message/partial; showpartial %s %{id} %{number} %{total}
+text/html; lynx -dump %s;\
+  nametemplate = %s.html;\
+  copiousoutput
+text/plain; xy iso-8859-1 %s;\
+  test = test "`echo %{charset} | tr A-Z a-z`" = iso-8859-1;\
+  copiousoutput
+text/richtext; xy iso-8859-1 -e richtext -p %s;\
+  test = test "`echo %{charset} | tr A-Z a-z`"  = iso-8859-1;\
+  copiousoutput
+x-be2/*; the-cmd %s;\
+  compose = compose-cmd -d %s;\
+  composetyped = composetyped-cmd -dd %s;\
+  description = a\;desc;\
+  edit = edit-cmd -ddd %s;\
+  nametemplate = %s.be2;\
+  print = print-cmd %s;\
+  test = this is "a" test;\
+  x11-bitmap = x11-bitmap.bpm;\
+  copiousoutput; textualnewlines; x-mailx-noquote; x-mailx-test-once
+=4/0

@@ -1,0 +1,22 @@
+reproducible_build: $MAILCAPS: ./.tmailcap: application/*: unclosed quoted description: description =  this is;a "wildcard" match, no trailing quote!
+reproducible_build: $MAILCAPS: ./.tmailcap: skip due to error: no MIME TYPE: 
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown flag: \ needsterminal
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown string/command: \compose = idraw %s
+reproducible_build: $MAILCAPS: ./.tmailcap: missing SUBTYPE, assuming /* (any): x-be2
+reproducible_build: $MAILCAPS: ./.tmailcap: application/*: ignored unknown string/command: ; description = "catch-all buddy"
+reproducible_build: $MAILCAPS: ./.tmailcap: audio/*: unsupported format %n
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown string/command: label = "PS File"
+reproducible_build: $MAILCAPS: ./.tmailcap: application/andrew-inset: ignored unknown string/command: label = "Andrew i/d"
+reproducible_build: $MAILCAPS: ./.tmailcap: text/richtext: unclosed %{ format: rich %s %{not-closed
+reproducible_build: $MAILCAPS: ./.tmailcap: missing SUBTYPE, assuming /* (any): default
+reproducible_build: $MAILCAPS: ./.tmailcap: application/*: unclosed quoted description: description =  this is;a "wildcard" match, no trailing quote!
+reproducible_build: $MAILCAPS: ./.tmailcap: skip due to error: no MIME TYPE: 
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown flag: \ needsterminal
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown string/command: \compose = idraw %s
+reproducible_build: $MAILCAPS: ./.tmailcap: missing SUBTYPE, assuming /* (any): x-be2
+reproducible_build: $MAILCAPS: ./.tmailcap: application/*: ignored unknown string/command: ; description = "catch-all buddy"
+reproducible_build: $MAILCAPS: ./.tmailcap: audio/*: unsupported format %n
+reproducible_build: $MAILCAPS: ./.tmailcap: application/postscript: ignored unknown string/command: label = "PS File"
+reproducible_build: $MAILCAPS: ./.tmailcap: application/andrew-inset: ignored unknown string/command: label = "Andrew i/d"
+reproducible_build: $MAILCAPS: ./.tmailcap: text/richtext: unclosed %{ format: rich %s %{not-closed
+reproducible_build: $MAILCAPS: ./.tmailcap: missing SUBTYPE, assuming /* (any): default
