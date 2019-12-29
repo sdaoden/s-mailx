@@ -1361,8 +1361,8 @@ INLINE u32 su_state_get(void){
 /*! Interaction with the SU library (global) state machine:
  * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
 INLINE boole su_state_has(uz flags){
-   uz f = flags & su__STATE_GLOBAL_MASK;
-   return ((su__state & f) == f);
+   flags &= su__STATE_GLOBAL_MASK;
+   return ((su__state & flags) == flags);
 }
 
 /*! \_ */
@@ -1391,9 +1391,10 @@ EXPORT s32 su_err_no(void);
 /*! \_ */
 EXPORT s32 su_err_set_no(s32 eno);
 
-/*! Return string(s) describing C error number eno.
- * This is effectively identical to \r{su_err_name()} if the compile-time
- * option \r{su_HAVE_DOCSTRINGS} is missing. */
+/*! Return string(s) describing C error number \a{eno}.
+ * Effectively identical to \r{su_err_name()} if either the compile-time
+ * option \r{su_HAVE_DOCSTRINGS} is missing (always), or when
+ *  \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
 /*! \_ */

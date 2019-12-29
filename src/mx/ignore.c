@@ -34,8 +34,8 @@
 #include "su/code-in.h"
 
 struct a_ignore_type{
-   u32 it_count;     /* Entries in .it_ht (and .it_re) */
-   boole it_all;       /* _All_ fields ought to be _type_ (ignore/retain) */
+   u32 it_count; /* Entries in .it_ht (and .it_re) */
+   boole it_all; /* _All_ fields ought to be _type_ (ignore/retain) */
    u8 it__dummy[3];
    struct a_ignore_field{
       struct a_ignore_field *if_next;
@@ -53,9 +53,9 @@ struct a_ignore_type{
 struct n_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
-   boole i_auto;       /* In auto-reclaimed, not heap memory */
-   boole i_bltin;      /* Is a built-in n_IGNORE* type */
-   u8 i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
+   boole i_auto; /* In auto-reclaimed, not heap memory */
+   boole i_bltin; /* Is a built-in n_IGNORE* type */
+   u8 i_ibm_idx; /* If .i_bltin: a_ignore_bltin_map[] idx */
    u8 i__dummy[5];
 };
 
@@ -65,13 +65,13 @@ struct a_ignore_bltin_map{
 };
 
 static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
-   {n_IGNORE_TYPE, "type\0"},
-   {n_IGNORE_SAVE, "save\0"},
+   {n_IGNORE_TYPE, "type"},
+   {n_IGNORE_SAVE, "save"},
    {n_IGNORE_FWD, "forward\0"},
-   {n_IGNORE_TOP, "top\0"},
+   {n_IGNORE_TOP, "top"},
 
    {n_IGNORE_TYPE, "print\0"},
-   {n_IGNORE_FWD, "fwd\0"}
+   {n_IGNORE_FWD, "fwd"}
 };
 #ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "n_ignore is defined locally" */
 CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
@@ -82,14 +82,15 @@ CTAV(n__IGNORE_MAX == 3);
 #endif
 
 static struct n_ignore *a_ignore_bltin[n__IGNORE_MAX + 1];
+
 /* Almost everyone uses `ignore'/`retain', put _TYPE in BSS */
 static struct n_ignore a_ignore_type;
 
 /* Return real self, which is xself unless that is one of the built-in specials,
- * in which case NULL is returned if nonexistent and docreate is false.
+ * in which case NIL is returned if nonexistent and docreate is false.
  * The other statics assume self has been resolved (unless noted) */
 static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
-                           boole docreate);
+      boole docreate);
 
 /* Lookup whether a mapping is contained: TRU1=retained, TRUM1=ignored.
  * If retain is _not_ TRUM1 then only the retained/ignored slot is inspected,
@@ -97,7 +98,7 @@ static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
  * text-compared against len bytes of dat.
  * Note it doesn't handle the .it_all "all fields" condition */
 static boole a_ignore_lookup(struct n_ignore const *self, boole retain,
-               char const *dat, uz len);
+      char const *dat, uz len);
 
 /* Delete all retain( else ignor)ed members */
 static void a_ignore_del_allof(struct n_ignore *ip, boole retain);
@@ -107,16 +108,16 @@ static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
 /* Logic behind `headerpick T T' (a.k.a. `retain'+) */
 static boole a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
-               boole retain);
+      boole retain);
 
 static void a_ignore__show(struct n_ignore const *ip, boole retain);
 
 /* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
 static boole a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
-               boole retain);
+      boole retain);
 
 static boole a_ignore__delone(struct n_ignore *ip, boole retain,
-               char const *field);
+      char const *field);
 
 static struct n_ignore *
 a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
@@ -125,20 +126,21 @@ a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
    NYD2_IN;
 
    self = xself;
-   suip = -(up)self - n__IGNORE_ADJUST;
+   suip = -R(up,self) - n__IGNORE_ADJUST;
 
    if(suip <= n__IGNORE_MAX){
-      if((self = a_ignore_bltin[suip]) == NULL && docreate){
+      if((self = a_ignore_bltin[suip]) == NIL && docreate){
          if(xself == n_IGNORE_TYPE){
             self = &a_ignore_type;
             /* LIB: su_mem_set(self, 0, sizeof *self);*/
          }else
             self = n_ignore_new(FAL0);
          self->i_bltin = TRU1;
-         self->i_ibm_idx = (u8)suip;
+         self->i_ibm_idx = S(u8,suip);
          a_ignore_bltin[suip] = self;
       }
    }
+
    NYD2_OU;
    return self;
 }
@@ -158,20 +160,20 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
       len = su_cs_len(dat);
    hi = su_cs_hash_case_cbuf(dat, len) % NELEM(self->i_retain.it_ht);
 
-   /* Again: doesn't handle .it_all conditions! */
+   /* Again: does not handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
    if(retain && self->i_retain.it_count > 0){
       rv = TRU1;
-      for(ifp = self->i_retain.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
+      for(ifp = self->i_retain.it_ht[hi]; ifp != NIL; ifp = ifp->if_next)
          if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
                ifp->if_field[len] == '\0')
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
          dat = savestrbuf(dat, len);
-      for(irp = self->i_retain.it_re; irp != NULL; irp = irp->ir_next)
+      for(irp = self->i_retain.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
-               ? (regexec(&irp->ir_regex, dat, 0,NULL, 0) != REG_NOMATCH)
+               ? (regexec(&irp->ir_regex, dat, 0,NIL, 0) != REG_NOMATCH)
                : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
                   irp->ir_input[len] == '\0')))
             goto jleave;
@@ -179,16 +181,16 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
       rv = (retain == TRUM1) ? TRUM1 : FAL0;
    }else if((retain == TRUM1 || !retain) && self->i_ignore.it_count > 0){
       rv = TRUM1;
-      for(ifp = self->i_ignore.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
+      for(ifp = self->i_ignore.it_ht[hi]; ifp != NIL; ifp = ifp->if_next)
          if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
                ifp->if_field[len] == '\0')
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
          dat = savestrbuf(dat, len);
-      for(irp = self->i_ignore.it_re; irp != NULL; irp = irp->ir_next)
+      for(irp = self->i_ignore.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
-               ? (regexec(&irp->ir_regex, dat, 0,NULL, 0) != REG_NOMATCH)
+               ? (regexec(&irp->ir_regex, dat, 0,NIL, 0) != REG_NOMATCH)
                : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
                   irp->ir_input[len] == '\0')))
             goto jleave;
@@ -196,6 +198,7 @@ a_ignore_lookup(struct n_ignore const *self, boole retain,
       rv = (retain == TRUM1) ? TRU1 : FAL0;
    }else
       rv = FAL0;
+
 jleave:
    NYD2_OU;
    return rv;
@@ -216,24 +219,24 @@ a_ignore_del_allof(struct n_ignore *ip, boole retain){
       uz i;
 
       for(i = 0; i < NELEM(itp->it_ht); ++i)
-         for(ifp = itp->it_ht[i]; ifp != NULL;){
+         for(ifp = itp->it_ht[i]; ifp != NIL;){
             struct a_ignore_field *x;
 
             x = ifp;
             ifp = ifp->if_next;
-            n_free(x);
+            su_FREE(x);
          }
    }
 
 #ifdef mx_HAVE_REGEX
-   for(irp = itp->it_re; irp != NULL;){
+   for(irp = itp->it_re; irp != NIL;){
       struct a_ignore_re *x;
 
       x = irp;
       irp = irp->ir_next;
       regfree(&x->ir_regex);
       if(!ip->i_auto)
-         n_free(x);
+         su_FREE(x);
    }
 #endif
 
@@ -250,9 +253,10 @@ a_ignore_resolve_bltin(char const *cp){
       if(!su_cs_cmp_case(cp, ibmp->ibm_name))
          break;
       else if(++ibmp == &a_ignore_bltin_map[NELEM(a_ignore_bltin_map)]){
-         ibmp = NULL;
+         ibmp = NIL;
          break;
       }
+
    NYD2_OU;
    return ibmp;
 }
@@ -263,10 +267,10 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
    boole rv;
    NYD2_IN;
 
-   ip = a_ignore_resolve_self(ip, rv = (*list != NULL));
+   ip = a_ignore_resolve_self(ip, rv = (*list != NIL));
 
    if(!rv){
-      if(ip != NULL && ip->i_bltin)
+      if(ip != NIL && ip->i_bltin)
          a_ignore__show(ip, retain);
       rv = TRU1;
    }else{
@@ -286,6 +290,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
             break;
          }
    }
+
    NYD2_OU;
    return rv;
 }
@@ -320,9 +325,9 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
 
    ring = n_autorec_alloc((itp->it_count +1) * sizeof *ring);
    for(ap = ring, i = 0; i < NELEM(itp->it_ht); ++i)
-      for(ifp = itp->it_ht[i]; ifp != NULL; ifp = ifp->if_next)
+      for(ifp = itp->it_ht[i]; ifp != NIL; ifp = ifp->if_next)
          *ap++ = ifp->if_field;
-   *ap = NULL;
+   *ap = NIL;
 
    su_sort_shell_vpp(su_S(void const**,ring), P2UZ(ap - ring),
       su_cs_toolbox_case.tb_compare);
@@ -332,23 +337,25 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
       (retain ? "retain" : "ignore"));
    sw = mx_termios_dimen.tiosd_width;
 
-   for(ap = ring; *ap != NULL; ++ap){
+   for(ap = ring; *ap != NIL; ++ap){
       /* These fields are all ASCII, no visual width needed */
       uz len;
+      char const *cp;
 
-      len = su_cs_len(*ap) + 1;
+      cp = n_shexp_quote_cp(*ap, FAL0);
+      len = su_cs_len(cp) + 1;
       if(UCMP(z, len, >=, sw - i)){
          fputs(" \\\n ", n_stdout);
          i = 1;
       }
       i += len;
       putc(' ', n_stdout);
-      fputs(*ap, n_stdout);
+      fputs(cp, n_stdout);
    }
 
    /* Regular expression in FIFO order */
 #ifdef mx_HAVE_REGEX
-   for(irp = itp->it_re; irp != NULL; irp = irp->ir_next){
+   for(irp = itp->it_re; irp != NIL; irp = irp->ir_next){
       uz len;
       char const *cp;
 
@@ -365,6 +372,7 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
 #endif
 
    putc('\n', n_stdout);
+
 jleave:
    fflush(n_stdout);
    NYD2_OU;
@@ -377,14 +385,14 @@ a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, boole retain){
    boole rv;
    NYD2_IN;
 
-   ip = a_ignore_resolve_self(ip, rv = (*list != NULL));
+   ip = a_ignore_resolve_self(ip, rv = (*list != NIL));
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 
    if(itp->it_count == 0 && !itp->it_all)
       n_err(_("No fields currently being %s\n"),
          (retain ? _("retained") : _("ignored")));
-   else
-      while((cp = *list++) != NULL)
+   else{
+      while((cp = *list++) != NIL)
          if(cp[0] == '*' && cp[1] == '\0')
             a_ignore_del_allof(ip, retain);
          else if(!a_ignore__delone(ip, retain, cp)){
@@ -392,6 +400,8 @@ a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, boole retain){
                (retain ? _("retained") : _("ignored")), cp);
             rv = FAL0;
          }
+   }
+
    NYD2_OU;
    return rv;
 }
@@ -407,7 +417,7 @@ a_ignore__delone(struct n_ignore *ip, boole retain, char const *field){
    if(n_is_maybe_regex(field)){
       struct a_ignore_re **lirp, *irp;
 
-      for(irp = *(lirp = &itp->it_re); irp != NULL;
+      for(irp = *(lirp = &itp->it_re); irp != NIL;
             lirp = &irp->ir_next, irp = irp->ir_next)
          if(!su_cs_cmp(field, irp->ir_input)){
             *lirp = irp->ir_next;
@@ -416,33 +426,33 @@ a_ignore__delone(struct n_ignore *ip, boole retain, char const *field){
 
             regfree(&irp->ir_regex);
             if(!ip->i_auto)
-               n_free(irp);
+               su_FREE(irp);
             --itp->it_count;
             goto jleave;
          }
    }else
 #endif /* mx_HAVE_REGEX */
-   {
+        {
       struct a_ignore_field **ifpp, *ifp;
       u32 hi;
 
       hi = su_cs_hash_case_cbuf(field, UZ_MAX) % NELEM(itp->it_ht);
 
-      for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
+      for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NIL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
          if(!su_cs_cmp_case(ifp->if_field, field)){
             *ifpp = ifp->if_next;
             if(!ip->i_auto)
-               n_free(ifp);
+               su_FREE(ifp);
             --itp->it_count;
            goto jleave;
          }
    }
 
-   ip = NULL;
+   ip = NIL;
 jleave:
    NYD_OU;
-   return (ip != NULL);
+   return (ip != NIL);
 }
 
 FL int
@@ -457,7 +467,7 @@ c_headerpick(void *vp){
    argv = vp;
 
    /* Without arguments, show all settings of all contexts */
-   if(*argv == NULL){
+   if(*argv == NIL){
       rv = 0;
       for(ibmp = &a_ignore_bltin_map[0];
             ibmp <= &a_ignore_bltin_map[n__IGNORE_MAX]; ++ibmp){
@@ -467,14 +477,14 @@ c_headerpick(void *vp){
       goto jleave;
    }
 
-   if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
+   if((ibmp = a_ignore_resolve_bltin(*argv)) == NIL){
       n_err(_("headerpick: invalid context: %s\n"), *argv);
       goto jleave;
    }
    ++argv;
 
    /* With only <context>, show all settings of it */
-   if(*argv == NULL){
+   if(*argv == NIL){
       rv = 0;
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, TRU1);
       rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, FAL0);
@@ -492,12 +502,13 @@ c_headerpick(void *vp){
    ++argv;
 
    /* With only <context> and <type>, show its settings */
-   if(*argv == NULL){
+   if(*argv == NIL){
       rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
       goto jleave;
    }
 
    rv = !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, retain);
+
 jleave:
    NYD_OU;
    return rv;
@@ -514,7 +525,7 @@ c_unheaderpick(void *vp){
    rv = 1;
    argv = vp;
 
-   if((ibmp = a_ignore_resolve_bltin(*argv)) == NULL){
+   if((ibmp = a_ignore_resolve_bltin(*argv)) == NIL){
       n_err(_("unheaderpick: invalid context: %s\n"), *argv);
       goto jleave;
    }
@@ -531,6 +542,7 @@ c_unheaderpick(void *vp){
    ++argv;
 
    rv = !a_ignore_delcmd_mux(ibmp->ibm_ip, argv, retain);
+
 jleave:
    NYD_OU;
    return rv;
@@ -542,6 +554,7 @@ c_retain(void *vp){
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -552,6 +565,7 @@ c_ignore(void *vp){
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -562,6 +576,7 @@ c_unretain(void *vp){
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -572,6 +587,7 @@ c_unignore(void *vp){
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -582,6 +598,7 @@ c_saveretain(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_SAVE, v, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -592,6 +609,7 @@ c_saveignore(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_SAVE, v, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -602,6 +620,7 @@ c_unsaveretain(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_SAVE, v, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -612,6 +631,7 @@ c_unsaveignore(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_SAVE, v, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -622,6 +642,7 @@ c_fwdretain(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_FWD, v, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -632,6 +653,7 @@ c_fwdignore(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_addcmd_mux(n_IGNORE_FWD, v, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -642,6 +664,7 @@ c_unfwdretain(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_FWD, v, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -652,6 +675,7 @@ c_unfwdignore(void *v){ /* TODO v15 drop */
    NYD_IN;
 
    rv = !a_ignore_delcmd_mux(n_IGNORE_FWD, v, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -661,8 +685,10 @@ n_ignore_new(boole isauto){
    struct n_ignore *self;
    NYD_IN;
 
-   self = isauto ? n_autorec_calloc(1, sizeof *self) : n_calloc(1,sizeof *self);
+   self = isauto ? n_autorec_calloc(1, sizeof *self)
+         : su_CALLOC_N(1, sizeof *self);
    self->i_auto = isauto;
+
    NYD_OU;
    return self;
 }
@@ -670,10 +696,12 @@ n_ignore_new(boole isauto){
 FL void
 n_ignore_del(struct n_ignore *self){
    NYD_IN;
+
    a_ignore_del_allof(self, TRU1);
    a_ignore_del_allof(self, FAL0);
    if(!self->i_auto)
-      n_free(self);
+      su_FREE(self);
+
    NYD_OU;
 }
 
@@ -683,9 +711,10 @@ n_ignore_is_any(struct n_ignore const *self){
    NYD_IN;
 
    self = a_ignore_resolve_self(n_UNCONST(self), FAL0);
-   rv = (self != NULL &&
+   rv = (self != NIL &&
          (self->i_retain.it_count != 0 || self->i_retain.it_all ||
           self->i_ignore.it_count != 0 || self->i_ignore.it_all));
+
    NYD_OU;
    return rv;
 }
@@ -745,7 +774,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
 
    if(itp->it_count == U32_MAX){
       n_err(_("Header selection size limit reached, cannot insert: %.*s\n"),
-         (int)MIN(len, S32_MAX), dat);
+         S(int,MIN(len, S32_MAX)), dat);
       rv = FAL0;
       goto jleave;
    }
@@ -758,7 +787,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
       uz i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
-      irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
+      irp = self->i_auto ? n_autorec_alloc(i) : su_ALLOC(i);
       su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
@@ -766,27 +795,27 @@ n_ignore_insert(struct n_ignore *self, boole retain,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(irp->ir_input, FAL0),
-            n_regex_err_to_doc(NULL, s));
+            n_regex_err_to_doc(NIL, s));
          if(!self->i_auto)
-            n_free(irp);
+            su_FREE(irp);
          rv = FAL0;
          goto jleave;
       }
 
-      irp->ir_next = NULL;
-      if((x = itp->it_re_tail) != NULL)
+      irp->ir_next = NIL;
+      if((x = itp->it_re_tail) != NIL)
          x->ir_next = irp;
       else
          itp->it_re = irp;
       itp->it_re_tail = irp;
    }else
 #endif /* mx_HAVE_REGEX */
-   {
+        {
       u32 hi;
       uz i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
-      ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
+      ifp = self->i_auto ? n_autorec_alloc(i) : su_ALLOC(i);
       su_mem_copy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
       hi = su_cs_hash_case_cbuf(dat, len) % NELEM(itp->it_ht);
@@ -794,6 +823,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
       itp->it_ht[hi] = ifp;
    }
    ++itp->it_count;
+
 jleave:
    NYD_OU;
    return rv;
@@ -807,7 +837,7 @@ n_ignore_lookup(struct n_ignore const *self, char const *dat, uz len){
    if(self == n_IGNORE_ALL)
       rv = TRUM1;
    else if(len == 0 ||
-         (self = a_ignore_resolve_self(n_UNCONST(self), FAL0)) == NULL)
+         (self = a_ignore_resolve_self(n_UNCONST(self), FAL0)) == NIL)
       rv = FAL0;
    else if(self->i_retain.it_all)
       rv = TRU1;
@@ -815,6 +845,7 @@ n_ignore_lookup(struct n_ignore const *self, char const *dat, uz len){
       rv = TRUM1;
    else
       rv = a_ignore_lookup(self, TRUM1, dat, len);
+
    NYD_OU;
    return rv;
 }

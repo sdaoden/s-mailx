@@ -891,6 +891,8 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    mx_fs_linepool_aquire(&s_b.s, &s_b.l);
    if(s_b.l < a_X)
       s_b.l = a_X;
+#undef a_X
+
    for(i = s_b.l;; s_b.l = ++i /* xxx could wrap, maybe */){
 #ifdef mx_HAVE_N_VA_COPY
       va_list vac;

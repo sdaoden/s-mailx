@@ -56,6 +56,7 @@ static u8 const a_icod_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
 };
 
+#undef a_X
 #define a_X(X) (U64_MAX / (X))
 static u64 const a_icod_cutlimit[35] = {
    a_X( 2), a_X( 3), a_X( 4), a_X( 5), a_X( 6), a_X( 7), a_X( 8),

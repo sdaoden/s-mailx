@@ -3,6 +3,10 @@
 #@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ --no-jobs can be used to prevent spawning concurrent tests.
+#@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
+#@             (then grep for ^ERROR, for example).
+#@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
+#@ grep ^ERROR handling.
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -201,6 +205,8 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
                           checkout with the [test-out] branch available,
                           it will also create file differences
  --no-jobs                do not spawn multiple jobs simultaneously
+ --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
+                          (for example to: grep ^ERROR)
 
 The last invocation style will compile and test as many different
 configurations as possible.
@@ -209,11 +215,18 @@ _EOT
    exit 1
 }
 
-NOJOBS= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
-if [ "${1}" = --no-jobs ]; then
-   NOJOBS=y
-   shift
-fi
+NOJOBS= NOCOLOUR= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+while [ ${#} -gt 0 ]; do
+   if [ "${1}" = --no-jobs ]; then
+      NOJOBS=y
+      shift
+   elif [ "${1}" = --no-colour ]; then
+      NOCOLOUR=y
+      shift
+   else
+      break
+   fi
+done
 
 if [ "${1}" = --check-only ]; then
    [ ${#} -eq 2 ] || usage
@@ -646,10 +659,21 @@ check() {
       fi
 
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
-            command -v diff >/dev/null 2>&1 &&
-            (git rev-parse --verify test-out) >/dev/null 2>&1 &&
-            git show test-out:"${x}" > ../"${x}".old 2>/dev/null; then
-         diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            command -v diff >/dev/null 2>&1; then
+         y=test-out
+         if (git rev-parse --verify $i) >/dev/null 2>&1; then :; else
+            y=refs/remotes/origin/test-out
+            (git rev-parse --verify $y) >/dev/null 2>&1 || y=
+         fi
+         if [ -n "${y}" ] &&
+               git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+            diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            if [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
+               while read l; do
+                  printf 'ERROR-DIFF  %s\n' "${l}"
+               done < ../"${x}".diff
+            fi
+         fi
       fi
    fi
 }
@@ -690,6 +714,8 @@ check_exn0() {
 # }}}
 
 color_init() {
+   [ -n "${NOCOLOUR}" ] && return
+   [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
    if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
          >/dev/null 2>&1; then
       COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
@@ -4254,6 +4280,7 @@ t_headerpick() {
 
    #
    if have_feat uistrings; then
+      have_feat regex && i='3515512395 2378' || i='4201290332 2378'
       </dev/null ${MAILX} ${ARGS} -Y '#
 \headerpick type retain \
    bcc cc date from sender subject to \
@@ -4300,7 +4327,7 @@ t_headerpick() {
 \headerpick
 \echo --- $?/$^ERRNAME, 20
 #  ' >./.tall 2>&1
-      check 2 0 ./.tall '3515512395 2378'
+      check 2 0 ./.tall "${i}"
    else
       t_echoskip '2:[!UISTRINGS]'
    fi
@@ -4749,7 +4776,7 @@ b8
 
    t_it forward
    check 1 0 ./.tall '2356713156 2219'
-   if have_feat uistrings; then
+   if have_feat uistrings && have_feat docstrings; then
       check 2 - ./.terr '3273108824 335'
    else
       t_echoskip '2:[!UISTRINGS]'
@@ -4757,7 +4784,7 @@ b8
 
    t_it Forward
    check 3 0 ./.tall '2356713156 2219'
-   if have_feat uistrings; then
+   if have_feat uistrings && have_feat docstrings; then
       check 4 - ./.terr '447176534 355'
    else
       t_echoskip '4:[!UISTRINGS]'
@@ -4993,7 +5020,7 @@ t_copy() { # {{{
    check 2-3 - ./.tf2 '1931512953 162'
    check 2-4 - ./.tf3 '3642131968 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '4090528730 129'
+      check 2-5 - ./.terr '2617612897 112'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5140,7 +5167,7 @@ t_save() { # {{{
    check 2-3 - ./.tf2 '920652966 162'
    check 2-4 - ./.tf3 '970407001 344'
    if have_feat uistrings; then
-      check 2-5 - ./.terr '2470478847 129'
+      check 2-5 - ./.terr '45116475 112'
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5305,7 +5332,7 @@ t_move() { # {{{
    check 2-2 - ./.tf1 '1473857906 162'
    check 2-3 - ./.tf2 '331229810 162'
    if have_feat uistrings; then
-      check 2-4 - ./.terr '3780692935 172'
+      check 2-4 - ./.terr '602144474 155'
    else
       t_echoskip '2-4:[!UISTRINGS]'
    fi
@@ -6019,11 +6046,7 @@ t_iconv_mainbody() {
    check_exn0 3
    check 3 - "${MBOX}" '3559538297 250'
    if have_feat uistrings; then
-      if have_feat docstrings; then # xxx should not be like that
-         check 4 - ./.terr '2579894983 148'
-      else
-         check 4 - ./.terr '271380835 121'
-      fi
+      check 4 - ./.terr '271380835 121'
    else
       t_echoskip '4:[!UISTRINGS]'
    fi
@@ -7355,7 +7378,7 @@ t_mime_types_load_control() {
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '2836681630 3667'
+   check 2 0 ./.tout '2184535740 3640'
 
    t_epilog "${@}"
 }
@@ -7768,7 +7791,7 @@ and i ~w rite this out to ./.tmsg
    check 6 4 ./.tall '686767281 95'
    [ -f "${MBOX}" ]; check_exn0 7
    if have_feat uistrings; then
-      check 8 - ./.terr '206149209 307'
+      check 8 - ./.terr '1304637795 199'
    else
       t_echoskip '8:[!UISTRINGS]'
    fi
@@ -8027,11 +8050,8 @@ t_digmsg() { # XXX rudimentary; <> compose_edits()?
       ' "${cat}" "${sed}" |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 "$MBOX" '665881681 179'
-   if have_feat uistrings; then
-      check 2 - ./.tall '4159482825 1372'
-   else
-      check 2 - ./.tall '121327235 1093'
-   fi
+   have_feat uistrings && i='4159482825 1372' || i='2254509488 1103'
+   check 2 - ./.tall "${i}"
    check 3 - ./.tfcc '3993703854 127'
    check 4 - ./.tempty '4294967295 0'
    check 5 - ./.tcat '2157992522 256'
@@ -9923,6 +9943,10 @@ cc_all_configs() {
    else
       MAXJOBS=
    fi
+   if [ -n "${NOCOLOUR}" ] || [ -n "${MAILX_CC_TEST_NO_COLOUR}" ]; then
+      MAILX_CC_TEST_NO_COLOUR=1
+      export MAILX_CC_TEST_NO_COLOUR
+   fi
 
    < ${CONF} ${awk} '
       BEGIN{
@@ -10065,9 +10089,9 @@ cc_all_configs() {
          continue
       fi
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
-      printf "\n\n##########\n${MAKE} config $c\n"
-      printf "\n\n##########\n${MAKE} config $c\n" >&2
-      ${SHELL} -c "cd .. && ${MAKE} config ${c}"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n" >&2
+      ${SHELL} -c "cd .. && ${MAKE} ${MAXJOBS} config ${c}"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
