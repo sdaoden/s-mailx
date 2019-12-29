@@ -1286,42 +1286,6 @@ FL struct mimepart * mime_parse_msg(struct message *mp,
                         enum mime_parse_flags mpf);
 
 /*
- * mime-types.c
- */
-
-/* `(un)?mimetype' commands */
-FL int         c_mimetype(void *v);
-FL int         c_unmimetype(void *v);
-
-/* Check whether the Content-Type name is internally known */
-FL boole n_mimetype_check_mtname(char const *name);
-
-/* Return a Content-Type matching the name, or NULL if none could be found */
-FL char *n_mimetype_classify_filename(char const *name);
-
-/* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * set to *charset-7bit* or charset_iter_or_fallback() if NULL.
- * no_mboxo states whether 7BIT/8BIT is acceptible if only existence of
- * a ^From_ would otherwise enforce QP/BASE64
- * TODO this should take a carrier and only fill that in with what has been
- * TODO detected/classified, and suggest hints; rest up to caller!
- * TODO This is not only more correct (no_mboxo crux++), it simplifies a lot */
-FL enum conversion n_mimetype_classify_file(FILE *fp, char const **contenttype,
-      char const **charset, int *do_iconv, boole no_mboxo);
-
-/* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const.  for_user_context rather maps 1:1 to
- * MIME_PARSE_FOR_USER_CONTEXT */
-FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp,
-                        boole for_user_context);
-
-/* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
- * mhp is anyway initialized (mh_flags, mh_msg) */
-FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
-                              struct mimepart const *mpp,
-                              enum sendaction action);
-
-/*
  * path.c
  */
 
@@ -1574,7 +1538,8 @@ FL struct str *n_str_add_buf(struct str *self, char const *buf, uz buflen
 /* Remove leading and trailing su_cs_is_space()s and *ifs-ws*, respectively.
  * The ->s and ->l of the string will be adjusted, but no NUL termination will
  * be applied to a possibly adjusted buffer!
- * If dofaults is set, " \t\n" is always trimmed (in addition) */
+ * If dofaults is set, " \t\n" is always trimmed (in addition).
+ * Note trimming does not copy, it only adjusts the pointer/length */
 FL struct str *n_str_trim(struct str *self, enum n_str_trim_flags stf);
 FL struct str *n_str_trim_ifs(struct str *self, boole dodefaults);
 

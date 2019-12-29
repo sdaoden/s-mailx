@@ -73,6 +73,7 @@
 #include "su/code-in.h"
 
 struct mx_dig_msg_ctx;
+struct mx_mimetype_handler;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -334,32 +335,6 @@ enum n_mailsend_flags{
          n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
 };
 
-enum mimecontent{
-   MIME_UNKNOWN, /* unknown content */
-   MIME_SUBHDR, /* inside a multipart subheader */
-   MIME_822, /* message/rfc822 content */
-   MIME_MESSAGE, /* other message/ content */
-   MIME_TEXT_PLAIN, /* text/plain content */
-   MIME_TEXT_HTML, /* text/html content */
-   MIME_TEXT, /* other text/ content */
-   MIME_ALTERNATIVE, /* multipart/alternative content */
-   MIME_RELATED, /* mime/related (RFC 2387) */
-   MIME_DIGEST, /* multipart/digest content */
-   MIME_SIGNED, /* multipart/signed */
-   MIME_ENCRYPTED, /* multipart/encrypted */
-   MIME_MULTI, /* other multipart/ content */
-   MIME_PKCS7, /* PKCS7 content */
-   MIME_DISCARD /* content is discarded */
-};
-
-enum mime_counter_evidence{
-   MIMECE_NONE,
-   MIMECE_SET = 1u<<0, /* *mime-counter-evidence* was set */
-   MIMECE_BIN_OVWR = 1u<<1, /* appli../octet-stream: check, ovw if possible */
-   MIMECE_ALL_OVWR = 1u<<2, /* all: check, ovw if possible */
-   MIMECE_BIN_PARSE = 1u<<3 /* appli../octet-stream: classify contents last */
-};
-
 /* Content-Transfer-Encodings as defined in RFC 2045:
  * - Quoted-Printable, section 6.7
  * - Base64, section 6.8 */
@@ -434,23 +409,6 @@ enum mime_parse_flags{
    /* In effect we parse this message for user display or quoting purposes, so
     * relaxed rules regarding content inspection may be applicable */
    MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
-};
-
-enum mime_handler_flags{
-   MIME_HDL_NULL, /* No pipe- mimetype handler, go away */
-   MIME_HDL_CMD, /* Normal command */
-   MIME_HDL_TEXT, /* @ special cmd to force treatment as text */
-   MIME_HDL_PTF, /* A special pointer-to-function handler */
-   MIME_HDL_MSG, /* Display msg (returned as command string) */
-   MIME_HDL_TYPE_MASK = 7u,
-   MIME_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD produces reintegratable text */
-   MIME_HDL_ISQUOTE = 1u<<5, /* Is quote action (we have info, keep it!) */
-   MIME_HDL_NOQUOTE = 1u<<6, /* No MIME for quoting */
-   MIME_HDL_ASYNC = 1u<<7, /* Should run asynchronously */
-   MIME_HDL_NEEDSTERM = 1u<<8, /* Takes over terminal */
-   MIME_HDL_TMPF = 1u<<9, /* Create temporary file (zero-sized) */
-   MIME_HDL_TMPF_FILL = 1u<<10, /* Fill in the msg body content */
-   MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
 enum okay{
@@ -925,12 +883,30 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_log_prefix, /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
    ok_v_MAIL, /* {env=1} */
+   ok_v_MAILCAPS, /* {import=1,defval=VAL_MAILCAPS} */
    ok_v_MAILRC, /* {import=1,notempty=1,defval=VAL_MAILRC} */
    ok_b_MAILX_NO_SYSTEM_RC, /* {name=MAILX_NO_SYSTEM_RC,import=1} */
    ok_v_MBOX, /* {env=1,notempty=1,defval=VAL_MBOX} */
    ok_v_mailbox_resolved, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailbox_display, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_b_mailcap_disable,
    ok_v_mailx_extra_rc, /* {notempty=1} */
+   /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
+    * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
+ok_v_mailx_command, /* {rdonly=1,nodel=1} */
+ok_v_mailx_subject, /* {rdonly=1,nodel=1} */
+ok_v_mailx_from, /* {rdonly=1,nodel=1} */
+ok_v_mailx_sender, /* {rdonly=1,nodel=1} */
+ok_v_mailx_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_bcc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_bcc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_from, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_bcc, /* {rdonly=1,nodel=1} */
    ok_b_markanswered,
    ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
    ok_b_mbox_rfc4155,
@@ -952,23 +928,6 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_mta_no_receiver_arguments,
    ok_v_mta_argv0, /* {notempty=1,defval=VAL_MTA_ARGV0} */
    ok_b_mta_bcc_ok,
-
-   /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
-    * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
-ok_v_mailx_command,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_subject,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_from,                    /* {rdonly=1,nodel=1} */
-ok_v_mailx_sender,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_to,                      /* {rdonly=1,nodel=1} */
-ok_v_mailx_cc,                      /* {rdonly=1,nodel=1} */
-ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
 ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,env=1,notempty=1,obsolete=1} */
 ok_b_NAIL_NO_SYSTEM_RC, /* {name=NAIL_NO_SYSTEM_RC,import=1,obsolete=1} */
@@ -1191,6 +1150,7 @@ struct n_strlist{
    n_autorec_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
    n_lofi_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
 
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
@@ -1204,14 +1164,6 @@ struct n_go_data_ctx{
     /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
 #endif
    struct su_mem_bag gdc__membag_buf[1];
-};
-
-struct mime_handler{
-   enum mime_handler_flags mh_flags;
-   struct str mh_msg; /* Message describing this command */
-   /* XXX union{} the following? */
-   char const *mh_shell_cmd; /* For MIME_HDL_CMD */
-   int (*mh_ptf)(void); /* PTF main() for MIME_HDL_PTF */
 };
 
 struct search_expr{
@@ -1385,13 +1337,13 @@ struct mimepart{
    char const *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    char const *m_charset;
    char const *m_ct_enc; /* Content-Transfer-Encoding */
-   enum mimecontent m_mimecontent; /* ..in enum */
+   u32 m_mimetype; /* enum mx_mimetype */
    enum mime_enc m_mime_enc; /* ..in enum */
    char *m_partstring; /* Part level string */
    char *m_filename; /* ..of attachment */
    char const *m_content_description;
    char const *m_external_body_url; /* message/external-body:access-type=URL */
-   struct mime_handler *m_handler; /* MIME handler if yet classified */
+   struct mx_mimetype_handler *m_handler; /* MIME handler if yet classified */
 };
 
 struct message{

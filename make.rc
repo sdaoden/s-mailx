@@ -283,6 +283,16 @@ VAL_IDNA=idnkit,idn2,idn
 # search is performed locally.
 OPT_IMAP_SEARCH=yes
 
+# Support for RFC 1524 a.k.a mailcap files can be made available.
+# The search order when looking up MIME type handlers for display /
+# quoting purposes is then *pipe-EXTENSION*, *pipe-TYPE/SUBTYPE*,
+# mailcap entry, `mimetype's type-marker extension.
+# For other purposes mailcap entries are used exclusively.
+# RFC 1524 specifies the default $VAL_MAILCAPS path search as follows,
+# and it specifies the $MAILCAPS environment variable to override it.
+OPT_MAILCAP=yes
+VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
+
 # Whether support for Maildir E-mail directories shall be enabled.
 OPT_MAILDIR=yes
 
@@ -415,7 +425,8 @@ OPT_USE_PKGSYS=yes
 # To ease the life of forkers and packagers "our" name can be changed.
 # The name is build by concatenating $VAL_SID and $VAL_MAILX, i.e.,
 # $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
-# than two characters and may not contain any whitespace.
+# than two characters, must fit _easily_ in NAME_MAX-1, must not contain
+# any whitespace, and must not contain multibyte sequences.
 VAL_SID=s-
 VAL_MAILX=nail
 

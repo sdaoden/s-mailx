@@ -52,17 +52,17 @@ LC_ALL=C
          j = substr(t, j + 1)
          l = length(j)
          if(!p_a[t])
-            mt = "_MT_" mt
+            mt = "a_MIMETYPE_" mt
          else{
             tm = p_a[t]
             if(tm ~ /^\?t?$/)
-               mt = "_MT_" mt " | a_MT_TM_PLAIN"
+               mt = "a_MIMETYPE_" mt " | a_MIMETYPE_TM_PLAIN"
             else if(tm ~ /^\?h$/)
-               mt = "_MT_" mt " | a_MT_TM_SOUP_h"
+               mt = "a_MIMETYPE_" mt " | a_MIMETYPE_TM_SOUP_h"
             else if(tm ~ /^\?H$/)
-               mt = "_MT_" mt " | a_MT_TM_SOUP_H"
+               mt = "a_MIMETYPE_" mt " | a_MIMETYPE_TM_SOUP_H"
             else if(tm ~ /^\?q$/)
-               mt = "_MT_" mt " | a_MT_TM_QUIET"
+               mt = "a_MIMETYPE_" mt " | a_MIMETYPE_TM_QUIET"
          }
          print "   {" mt ", " l ", \"" j e_a[t] "\"},"
       }

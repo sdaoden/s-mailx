@@ -46,6 +46,7 @@
 
 #include "mx/cmd-charsetalias.h"
 #include "mx/file-streams.h"
+#include "mx/mime-type.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -101,7 +102,8 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL)
       ip->m_ct_type_plain = _mime_parse_ct_plain_from_ct(ip->m_ct_type);
-   else if (ip->m_parent != NULL && ip->m_parent->m_mimecontent == MIME_DIGEST)
+   else if(ip->m_parent != NIL &&
+         ip->m_parent->m_mimetype == mx_MIMETYPE_DIGEST)
       ip->m_ct_type_plain = "message/rfc822";
    else
       ip->m_ct_type_plain = "text/plain";
@@ -127,15 +129,15 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    if ((cp = hfield1("content-description", (struct message*)ip)) != NULL)
       ip->m_content_description = cp;
 
-   if ((ip->m_mimecontent = n_mimetype_classify_part(ip,
-         ((mpf & MIME_PARSE_FOR_USER_CONTEXT) != 0))) == MIME_822) {
+   if((ip->m_mimetype = mx_mimetype_classify_part(ip,
+         ((mpf & MIME_PARSE_FOR_USER_CONTEXT) != 0))) == mx_MIMETYPE_822){
       /* TODO (v15) HACK: message/rfc822 is treated special, that this one is
        * TODO too stupid to apply content-decoding when (falsely) applied */
       if (ip->m_mime_enc != MIMEE_8B && ip->m_mime_enc != MIMEE_7B) {
          n_err(_("Pre-v15 %s cannot handle (falsely) encoded message/rfc822\n"
             "  (not 7bit or 8bit)!  Interpreting as text/plain!\n"),
             n_uagent);
-         ip->m_mimecontent = MIME_TEXT_PLAIN;
+         ip->m_mimetype = mx_MIMETYPE_TEXT_PLAIN;
       }
    }
 
@@ -150,9 +152,9 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          n_err(_("MIME content too deeply nested\n"));
          goto jleave;
       }
-      switch (ip->m_mimecontent) {
-      case MIME_PKCS7:
-         if (mpf & MIME_PARSE_DECRYPT) {
+      switch(ip->m_mimetype){
+      case mx_MIMETYPE_PKCS7:
+         if(mpf & MIME_PARSE_DECRYPT){
 #ifdef mx_HAVE_TLS
             _mime_parse_pkcs7(zmp, ip, mpf, level);
             if (ip->m_content_info & CI_ENCRYPTED_OK)
@@ -166,16 +168,16 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          break;
       default:
          break;
-      case MIME_ALTERNATIVE:
-      case MIME_RELATED: /* TODO /related yet handled like /alternative */
-      case MIME_DIGEST:
-      case MIME_SIGNED:
-      case MIME_ENCRYPTED:
-      case MIME_MULTI:
+      case mx_MIMETYPE_ALTERNATIVE:
+      case mx_MIMETYPE_RELATED: /* TODO /related yet handled EQ /alternative */
+      case mx_MIMETYPE_DIGEST:
+      case mx_MIMETYPE_SIGNED:
+      case mx_MIMETYPE_ENCRYPTED:
+      case mx_MIMETYPE_MULTI:
          if (!_mime_parse_multipart(zmp, ip, mpf, level))
             goto jleave;
          break;
-      case MIME_822:
+      case mx_MIMETYPE_822:
          _mime_parse_rfc822(zmp, ip, mpf, level);
          break;
       }
@@ -350,8 +352,8 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
       __mime_parse_end(&np, offs, lines);
    }
 
-   for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
-      if (np->m_mimecontent != MIME_DISCARD)
+   for(np = ip->m_multipart; np != NIL; np = np->m_nextpart)
+      if(np->m_mimetype != mx_MIMETYPE_DISCARD)
          _mime_parse_part(zmp, np, mpf, level + 1);
 
 jleave:
@@ -385,8 +387,8 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
          snprintf((*np)->m_partstring, i, "%s.%u", ip->m_partstring, *part);
       else
          snprintf((*np)->m_partstring, i, "%u", *part);
-   } else
-      (*np)->m_mimecontent = MIME_DISCARD;
+   }else
+      (*np)->m_mimetype = mx_MIMETYPE_DISCARD;
    (*np)->m_parent = ip;
 
    if (ip->m_multipart) {
