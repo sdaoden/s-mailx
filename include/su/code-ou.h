@@ -19,9 +19,7 @@
 # error su/code-ou.h is useless if su/code-in.h has not been included
 #endif
 #undef su_CODE_IN_H
-
 /* LANG */
-
 #undef C_LANG
 #undef C_DECL_BEGIN
 #undef C_DECL_END
@@ -29,11 +27,9 @@
 #undef NSPC_END
 #undef NSPC_USE
 #undef NSPC
-
 #if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
 # undef CLASS_NO_COPY
 # undef SELFTHIS_RET
-
 # undef PUB
 # undef PRO
 # undef PRI
@@ -42,38 +38,27 @@
 # undef OVR
 # undef OVRX
 #endif
-
 #undef S
 #undef R
 #undef C
-
 #undef NIL
-
 #undef SHADOW
-
 #undef EXPORT
 #undef EXPORT_DATA
 #undef IMPORT
 #undef IMPORT_DATA
-
 #undef CTA
 #undef LCTA
 #undef CTAV
 #undef LCTAV
 #undef MCTA
-
 /* CC */
-
 #undef PACKED
-
 #undef INLINE
 #undef SINLINE
-
 #undef LIKELY
 #undef UNLIKELY
-
 /* SUPPORT MACROS+ */
-
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -83,13 +68,11 @@
 #undef ROUND_DOWN2
 #undef ROUND_UP
 #undef ROUND_UP2
-
 #undef ALIGNOF
 #undef P_ALIGN
 #undef Z_ALIGN_OVER
 #undef Z_ALIGN
 #undef Z_ALIGN_PZ
-
 #undef ASSERT_INJ
 #undef ASSERT_INJOR
 #undef ASSERT_NB
@@ -107,27 +90,21 @@
 #undef ASSERT_NYD_EXEC_LOC
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
-
 #undef BITENUM_IS
 #undef BITENUM_MASK
-
 #undef DBG
 #undef NDGB
 #undef DBGOR
 #undef DVL
 #undef NDVL
 #undef DVLOR
-
 #undef FIELD_INITN
 #undef FIELD_INITI
 #undef FIELD_OFFSETOF
 #undef FIELD_RANGEOF
 #undef FIELD_SIZEOF
-
 #undef MT
-
 #undef NELEM
-
 #undef NYD_OU_LABEL
 #undef NYD_IN
 #undef NYD_OU
@@ -135,11 +112,8 @@
 #undef NYD2_IN
 #undef NYD2_OU
 #undef NYD2
-
 #undef P2UZ
-
 #undef PCMP
-
 #ifdef mx_SOURCE
 # undef A_
 #endif
@@ -148,92 +122,68 @@
 # undef N_
 # undef V_
 #endif
-
 #undef SMP
-
 #undef UCMP
-
 #undef UNCONST
 #undef UNVOLATILE
 #undef UNALIGN
-
 #undef UNINIT
 #undef UNINIT_DECL
-
 #undef UNUSED
-
 #undef VFIELD_SIZE
 #undef VSTRUCT_SIZEOF
-
 /* POD TYPE SUPPORT (only if !C++) */
-
 #if defined su_HEADER ||\
    ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
 # undef ul
 # undef ui
 # undef us
 # undef uc
-
 # undef sl
 # undef si
 # undef ss
 # undef sc
-
 # undef u8
 # undef s8
-
 # undef u16
 # undef s16
-
 # undef u32
 # undef s32
-
 # undef u64
 # undef s64
-
 # undef uz
 # undef sz
-
 # undef up
 # undef sp
-
 # undef FAL0
 # undef TRU1
 # undef TRU2
 # undef TRUM1
 # undef boole
 #endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
-
 #undef U8_MAX
 #undef S8_MIN
 #undef S8_MAX
-
 #undef U16_MAX
 #undef S16_MIN
 #undef S16_MAX
-
 #undef U32_MAX
 #undef S32_MIN
 #undef S32_MAX
-
 #undef U64_MAX
 #undef S64_MIN
 #undef S64_MAX
 #undef U64_C
 #undef S64_C
-
 #undef UZ_MAX
 #undef SZ_MIN
 #undef SZ_MAX
 #undef UZ_BITS
-
 /* MEMORY */
-
 #undef su_ALLOCATE
 #undef su_ALLOCATE_LOC
 #undef su_REALLOCATE
 #undef su_REALLOCATE_LOC
-
 #undef su_ALLOC
 #undef su_ALLOC_LOC
 #undef su_ALLOC_LOCOR
@@ -273,7 +223,6 @@
 #undef su_FREE
 #undef su_FREE_LOC
 #undef su_FREE_LOCOR
-
 #if !su_C_LANG
 # undef su_NEW
 # undef su_NEW_LOC
@@ -297,7 +246,6 @@
 # undef su_DEL_HEAP_PRIVATE_LOC
 # undef su_DEL_HEAP_PRIVATE_LOCOR
 #endif /* !C_LANG */
-
 #ifdef su_MEM_BAG_SELF
 # ifdef su_HAVE_MEM_BAG_AUTO
 #  undef su_AUTO_ALLOC
@@ -343,10 +291,8 @@
 #  undef su_LOFI_FREE_LOCOR
 # endif /* su_HAVE_MEM_BAG_LOFI */
 #endif /* su_MEM_BAG_SELF */
-
 #undef su_HEADER
 #undef su_CXX_HEADER
 #undef mx_HEADER
 #undef rf_HEADER
-
 /* s-it-mode */

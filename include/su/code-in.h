@@ -22,9 +22,7 @@
 # error su/code-ou.h must be included before including su/code-in.h again
 #endif
 #define su_CODE_IN_H
-
 /* LANG */
-
 #undef C_LANG
 #undef C_DECL_BEGIN
 #undef C_DECL_END
@@ -35,11 +33,9 @@
 #define NSPC_END su_NSPC_END
 #define NSPC_USE su_NSPC_USE
 #define NSPC su_NSPC
-
 #if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
 # define CLASS_NO_COPY su_CLASS_NO_COPY
 # define SELFTHIS_RET su_SELFTHIS_RET
-
 # define PUB su_PUB
 # define PRO su_PRO
 # define PRI su_PRI
@@ -48,15 +44,11 @@
 # define OVR su_OVR
 # define OVRX su_OVRX
 #endif
-
 #define S su_S
 #define R su_R
 #define C su_C
-
 #define NIL su_NIL
-
 #define SHADOW su_SHADOW
-
 #if defined su_HEADER || defined su_CXX_HEADER
 # ifdef su_SOURCE
 #  define EXPORT su_EXPORT
@@ -85,23 +77,17 @@
 # define IMPORT su_IMPORT
 # define IMPORT_DATA su_IMPORT_DATA
 #endif
-
 #define CTA su_CTA
 #define LCTA su_LCTA
 #define CTAV su_CTAV
 #define LCTAV su_LCTAV
 #define MCTA su_MCTA
-
 /* CC */
-
 #define INLINE su_INLINE
 #define SINLINE su_SINLINE
-
 #define LIKELY su_LIKELY
 #define UNLIKELY su_UNLIKELY
-
 /* SUPPORT MACROS+ */
-
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -120,13 +106,11 @@
 #define ROUND_DOWN2 su_ROUND_DOWN2
 #define ROUND_UP su_ROUND_UP
 #define ROUND_UP2 su_ROUND_UP2
-
 #define ALIGNOF su_ALIGNOF
 #define P_ALIGN su_P_ALIGN
 #define Z_ALIGN_OVER su_Z_ALIGN_OVER
 #define Z_ALIGN su_Z_ALIGN
 #define Z_ALIGN_PZ su_Z_ALIGN_PZ
-
 /* ASSERT series */
 #define ASSERT_INJ su_ASSERT_INJ
 #define ASSERT_INJOR su_ASSERT_INJOR
@@ -145,27 +129,21 @@
 #define ASSERT_NYD_EXEC_LOC su_ASSERT_NYD_EXEC_LOC
 #define ASSERT_NYD su_ASSERT_NYD
 #define ASSERT_NYD_LOC su_ASSERT_NYD_LOC
-
 #define BITENUM_IS su_BITENUM_IS
 #define BITENUM_MASK su_BITENUM_MASK
-
 #define DBG su_DBG
 #define NDGB su_NDBG
 #define DBGOR su_DBGOR
 #define DVL su_DVL
 #define NDVL su_NDVL
 #define DVLOR su_DVLOR
-
 #define FIELD_INITN su_FIELD_INITN
 #define FIELD_INITI su_FIELD_INITI
 #define FIELD_OFFSETOF su_FIELD_OFFSETOF
 #define FIELD_RANGEOF su_FIELD_RANGEOF
 #define FIELD_SIZEOF su_FIELD_SIZEOF
-
 #define MT su_MT
-
 #define NELEM su_NELEM
-
 /* Not-Yet-Dead macros TODO stubs */
 #undef NYD_IN
 #undef NYD_OU
@@ -173,7 +151,6 @@
 #undef NYD2_IN
 #undef NYD2_OU
 #undef NYD2
-
 #define NYD_OU_LABEL su_NYD_OU_LABEL
 #if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
    /**/
@@ -217,11 +194,8 @@
 # define NYD2_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
 # define NYD2 do{}while(0)
 #endif
-
 #define P2UZ su_P2UZ
-
 #define PCMP su_PCMP
-
 /* Translation: may NOT set errno! */
 #undef _
 #undef N_
@@ -243,23 +217,16 @@
 # define N_(S) S
 # define V_(S) S
 #endif
-
 #define SMP su_SMP
-
 #define UCMP su_UCMP
-
 #define UNCONST su_UNCONST
 #define UNVOLATILE su_UNVOLATILE
 #define UNALIGN su_UNALIGN
-
 #define UNINIT su_UNINIT
 #define UNINIT_DECL su_UNINIT_DECL
-
 #define UNUSED su_UNUSED
-
 #define VFIELD_SIZE su_VFIELD_SIZE
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
-
 /* POD TYPE SUPPORT (only if !C++) */
 #if defined su_HEADER ||\
    ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
@@ -267,67 +234,51 @@
 # define ui su_ui
 # define us su_us
 # define uc su_uc
-
 # define sl su_sl
 # define si su_si
 # define ss su_ss
 # define sc su_sc
-
 # define u8 su_u8
 # define s8 su_s8
-
 # define u16 su_u16
 # define s16 su_s16
-
 # define u32 su_u32
 # define s32 su_s32
-
 # define u64 su_u64
 # define s64 su_s64
-
 # define uz su_uz
 # define sz su_sz
-
 # define up su_up
 # define sp su_sp
-
 # define FAL0 su_FAL0
 # define TRU1 su_TRU1
 # define TRU2 su_TRU2
 # define TRUM1 su_TRUM1
 # define boole su_boole
 #endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
-
 #define U8_MAX su_U8_MAX
 #define S8_MIN su_S8_MIN
 #define S8_MAX su_S8_MAX
-
 #define U16_MAX su_U16_MAX
 #define S16_MIN su_S16_MIN
 #define S16_MAX su_S16_MAX
-
 #define U32_MAX su_U32_MAX
 #define S32_MIN su_S32_MIN
 #define S32_MAX su_S32_MAX
-
 #define U64_MAX su_U64_MAX
 #define S64_MIN su_S64_MIN
 #define S64_MAX su_S64_MAX
 #define U64_C su_U64_C
 #define S64_C su_S64_C
-
 #define UZ_MAX su_UZ_MAX
 #define SZ_MIN su_SZ_MIN
 #define SZ_MAX su_SZ_MAX
 #define UZ_BITS su_UZ_BITS
-
 /* MEMORY */
-
 #define su_ALLOCATE su_MEM_ALLOCATE
 #define su_ALLOCATE_LOC su_MEM_ALLOCATE_LOC
 #define su_REALLOCATE su_MEM_REALLOCATE
 #define su_REALLOCATE_LOC su_MEM_REALLOCATE_LOC
-
 #define su_ALLOC su_MEM_ALLOC
 #define su_ALLOC_LOC su_MEM_ALLOC_LOC
 #define su_ALLOC_LOCOR su_MEM_ALLOC_LOCOR
@@ -367,7 +318,6 @@
 #define su_FREE su_MEM_FREE
 #define su_FREE_LOC su_MEM_FREE_LOC
 #define su_FREE_LOCOR su_MEM_FREE_LOCOR
-
 #if !su_C_LANG
 # define su_NEW su_MEM_NEW
 # define su_NEW_LOC su_MEM_NEW_LOC
@@ -391,7 +341,6 @@
 # define su_DEL_HEAP_PRIVATE_LOC su_MEM_DEL_HEAP_PRIVATE_LOC
 # define su_DEL_HEAP_PRIVATE_LOCOR su_MEM_DEL_HEAP_PRIVATE_LOCOR
 #endif /* !C_LANG */
-
 #ifdef su_MEM_BAG_SELF
 # ifdef su_HAVE_MEM_BAG_AUTO
 #  define su_AUTO_ALLOC su_MEM_BAG_SELF_AUTO_ALLOC
@@ -437,5 +386,4 @@
 #  define su_LOFI_FREE_LOCOR su_MEM_BAG_SELF_LOFI_FREE_LOCOR
 # endif /* su_HAVE_MEM_BAG_LOFI */
 #endif /* su_MEM_BAG_SELF */
-
 /* s-it-mode */
