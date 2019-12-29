@@ -1140,20 +1140,24 @@ mx_alias_is_valid_name(char const *name){
    boole rv;
    NYD2_IN;
 
-   for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
+   for(rv = TRU1, cp = name; (c = *cp) != '\0'; ++cp){
       /* User names, plus things explicitly mentioned in Postfix aliases(5).
-       * As extensions allow high-bit bytes, exclamation mark and period:
-       *    [[:alnum:]_#:@!.-]+ */
+       * Plus extensions.  On change adjust *mta-aliases* and impl., too */
       /* TODO alias_is_valid_name(): locale dependent validity check,
-       * TODO with Unicode prefix valid UTF-8!
-       * TODO no support for trailing $ yet, as says Linux usernames! */
-      if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
-            c != '#' && c != ':' && c != '@' &&
-            /* Extensions */
-            !(S(u8,c) & 0x80) && c != '!' && c != '.'){
-         rv = FAL0;
-         break;
+       * TODO with Unicode prefix valid UTF-8! */
+      if(!su_cs_is_alnum(c) && c != '_'){
+         if(cp == name ||
+               (c != '-' &&
+               /* Extensions, but mentioned by Postfix */
+               c != '#' && c != ':' && c != '@' &&
+               /* Extensions */
+               c != '!' && c != '.' && !(S(u8,c) & 0x80) &&
+               !(c == '$' && cp[1] == '\0'))){
+            rv = FAL0;
+            break;
+         }
       }
+   }
    NYD2_OU;
    return rv;
 }

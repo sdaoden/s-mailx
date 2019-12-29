@@ -217,6 +217,7 @@ jename:
             goto jparse_err;
          }
          while((c = *++l2.s) != '\0')
+            /* On change adjust `alias' and impl., too */
             if(!su_cs_is_alnum(c) && c != '_' && c != '-'){
                if(c == '$' && *l2.s == '\0')
                   break;

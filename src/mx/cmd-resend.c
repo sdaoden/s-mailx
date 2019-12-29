@@ -377,16 +377,17 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct header head;
    struct message *mp;
    char const *cp, *cp2;
-   enum gfield gf;
    struct mx_name *rt, *mft, *np;
+   enum gfield gf;
    NYD2_IN;
+
+   n_autorec_relax_create();
 
    n_pstate_err_no = su_ERR_NONE;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
 jwork_msg:
-   n_autorec_relax_create();
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp);
@@ -571,14 +572,15 @@ j_lt_redo:
    if(n_mail1((n_MAILSEND_HEADERS_PRINT |
             (hf & HF_RECIPIENT_RECORD ? n_MAILSEND_RECORD_RECIPIENT : 0)),
          &head, mp, NULL) != OKAY){
-      msgvec = NULL;
+      msgvec = NIL;
       goto jleave;
    }
+
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
-   n_autorec_relax_gut();
 
 jskip_to_next:
+
    if(*++msgvec != 0){
       /* TODO message (error) ring.., less sleep */
       if(n_psonce & n_PSO_INTERACTIVE){
@@ -587,12 +589,15 @@ jskip_to_next:
          fflush(n_stdout);
          n_msleep(1000, FAL0);
       }
+      n_autorec_relax_unroll();
       goto jwork_msg;
    }
 
 jleave:
+   n_autorec_relax_gut();
+
    NYD2_OU;
-   return (msgvec == NULL);
+   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
 static int
@@ -623,6 +628,8 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    int *ap;
    enum gfield gf;
    NYD2_IN;
+
+   n_pstate_err_no = su_ERR_NONE;
 
    su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
@@ -661,21 +668,23 @@ a_crese_Reply(int *msgvec, boole recipient_record){
 
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head, mp, NULL) != OKAY){
-      msgvec = NULL;
+      msgvec = NIL;
       goto jleave;
    }
 
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+
 jleave:
    NYD2_OU;
-   return (msgvec == NULL);
+   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
 static int
 a_crese_fwd(void *vp, boole recipient_record){
    struct header head;
    struct message *mp;
+   struct mx_name *recp;
    enum gfield gf;
    boole forward_as_attachment;
    int *msgvec, rv;
@@ -683,33 +692,38 @@ a_crese_fwd(void *vp, boole recipient_record){
    struct n_cmd_arg_ctx *cacp;
    NYD2_IN;
 
+   n_pstate_err_no = su_ERR_NONE;
+
    cacp = vp;
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
-   rv = 1;
+   rv = n_EXIT_ERR;
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
          n_err(_("No recipient specified.\n"));
-      n_pstate_err_no = su_ERR_DESTADDRREQ;
-      goto jleave;
+      su_err_set_no(n_pstate_err_no = su_ERR_DESTADDRREQ);
+      goto j_leave;
    }
 
    forward_as_attachment = ok_blook(forward_as_attachment);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
+   recp = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
 
-   su_mem_set(&head, 0, sizeof head);
-   head.h_to = lextract(cap->ca_arg.ca_str.s,
-         (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)));
+   n_autorec_relax_create();
 
+jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp);
+
+   su_mem_set(&head, 0, sizeof head);
+   head.h_to = ndup(recp, (GTO | gf));
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese__fwdedit(head.h_subject);
    head.h_mailx_command = "forward";
-   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -721,11 +735,28 @@ a_crese_fwd(void *vp, boole recipient_record){
       head.h_attach->a_content_description = _("Forwarded message");
    }
 
-   rv = (n_mail1((n_MAILSEND_IS_FWD |
+   if(n_mail1((n_MAILSEND_IS_FWD |
             (recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head,
-         (forward_as_attachment ? NULL : mp), NULL) != OKAY); /* reverse! */
+         (forward_as_attachment ? NIL : mp), NIL) != OKAY)
+      goto jleave;
+
+   if(*++msgvec != 0){
+      /* TODO message (error) ring.., less sleep */
+      if(n_psonce & n_PSO_INTERACTIVE){
+         fprintf(n_stdout,
+            _("Waiting a second before proceeding to the next message..\n"));
+         fflush(n_stdout);
+         n_msleep(1000, FAL0);
+      }
+      n_autorec_relax_unroll();
+      goto jwork_msg;
+   }
+
+   rv = n_EXIT_OK;
 jleave:
+   n_autorec_relax_gut();
+j_leave:
    NYD2_OU;
    return rv;
 }

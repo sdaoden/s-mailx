@@ -474,73 +474,74 @@ a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
    NYD_IN;
 
    rv = FAL0;
+   action = SEND_QUOTE;
+   quoteitp = n_IGNORE_ALL;
 
-   if(isfwd || (cp = ok_vlook(quote)) != NULL){
-      quoteitp = n_IGNORE_ALL;
-      action = SEND_QUOTE;
+   if(isfwd){
+      char const *cp_v15compat;
 
-      if(isfwd){
-         char const *cp_v15compat;
-
-         if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
-            n_OBSOLETE(_("please use *forward-inject-head* instead of "
-               "*fwdheading*"));
-         if((cp = ok_vlook(forward_inject_head)) == NULL &&
-               (cp = cp_v15compat) == NULL)
-            cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
-         quoteitp = n_IGNORE_FWD;
-      }else{
-         if(!su_cs_cmp(cp, "noheading")){
-            cp = NULL;
-         }else if(!su_cs_cmp(cp, "headers")){
-            quoteitp = n_IGNORE_TYPE;
-            cp = NULL;
-         }else if(!su_cs_cmp(cp, "allheaders")){
-            quoteitp = NULL;
-            action = SEND_QUOTE_ALL;
-            cp = NULL;
-         }else if((cp = ok_vlook(quote_inject_head)) == NULL)
-            cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
-      }
-      /* We we pass through our formatter? */
-      if((cfc.cfc_fmt = cp) != NULL){
-         /* TODO In v15 [-textual_-]sender_info() should only create a list
-          * TODO of matching header objects, and the formatter should simply
-          * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
-          * TODO For now fully initialize this thing once (grrrr!!) */
-         cfc.cfc_fp = fp;
-         cfc.cfc_mp = mp;
-         n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
-            &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NULL);
-         cfc.cfc_date = n_header_textual_date_info(mp, NULL);
-         /* C99 */{
-            struct mx_name *np;
-            char const *msgid;
-
-            if((msgid = hfield1("message-id", mp)) != NULL &&
-                  (np = lextract(msgid, GREF)) != NULL)
-               msgid = np->n_name;
-            else
-               msgid = NULL;
-            cfc.cfc_msgid = msgid;
-         }
-
-         if(!a_coll__fmt_inj(&cfc) || fflush(fp))
-            goto jleave;
+      if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
+         n_OBSOLETE(_("please use *forward-inject-head* instead of "
+            "*fwdheading*"));
+      if((cp = ok_vlook(forward_inject_head)) == NIL &&
+            (cp = cp_v15compat) == NIL)
+         cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
+      quoteitp = n_IGNORE_FWD;
+   }else if((cp = ok_vlook(quote)) == NIL){
+      rv = TRU1;
+      goto jleave;
+   }else{
+      if(!su_cs_cmp(cp, "noheading"))
+         ;
+      else if(!su_cs_cmp(cp, "headers"))
+         quoteitp = n_IGNORE_TYPE;
+      else if(!su_cs_cmp(cp, "allheaders")){
+         quoteitp = NULL;
+         action = SEND_QUOTE_ALL;
       }
 
-      if(sendmp(mp, fp, quoteitp, (isfwd ? NULL : ok_vlook(indentprefix)),
-            action, NULL) < 0)
-         goto jleave;
+      if((cp = ok_vlook(quote_inject_head)) == NIL)
+         cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
+   }
 
-      if(isfwd){
-         if((cp = ok_vlook(forward_inject_tail)) == NULL)
-             cp = n_FORWARD_INJECT_TAIL;
-      }else if(cp != NULL && (cp = ok_vlook(quote_inject_tail)) == NULL)
-          cp = n_QUOTE_INJECT_TAIL;
-      if((cfc.cfc_fmt = cp) != NULL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+   /* We we pass through our formatter? */
+   if((cfc.cfc_fmt = cp) != NIL){
+      /* TODO In v15 [-textual_-]sender_info() should only create a list
+       * TODO of matching header objects, and the formatter should simply
+       * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
+       * TODO For now fully initialize this thing once (grrrr!!) */
+      cfc.cfc_fp = fp;
+      cfc.cfc_mp = mp;
+      n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
+         &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NIL);
+      cfc.cfc_date = n_header_textual_date_info(mp, NIL);
+      /* C99 */{
+         struct mx_name *np;
+         char const *msgid;
+
+         if((msgid = hfield1("message-id", mp)) != NIL &&
+               (np = lextract(msgid, GREF)) != NIL)
+            msgid = np->n_name;
+         else
+            msgid = NIL;
+         cfc.cfc_msgid = msgid;
+      }
+
+      if(!a_coll__fmt_inj(&cfc) || fflush(fp))
          goto jleave;
    }
+
+   if(sendmp(mp, fp, quoteitp, (isfwd ? NIL : ok_vlook(indentprefix)), action,
+         NIL) < 0)
+      goto jleave;
+
+   if(isfwd){
+      if((cp = ok_vlook(forward_inject_tail)) == NIL)
+          cp = n_FORWARD_INJECT_TAIL;
+   }else if((cp = ok_vlook(quote_inject_tail)) == NIL)
+       cp = n_QUOTE_INJECT_TAIL;
+   if((cfc.cfc_fmt = cp) != NIL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+      goto jleave;
 
    rv = TRU1;
 jleave:
