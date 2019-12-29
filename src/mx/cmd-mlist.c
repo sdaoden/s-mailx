@@ -122,7 +122,7 @@ a_ml_mux(boole subscribe, char const **argv){
 #ifdef mx_HAVE_REGEX
             mx_xy_dump_dict(cmd, a_ml_re_dp, &slp, &stailp, &a_ml_dump) &&
 #endif
-            mx_page_or_print_strlist(cmd, slp));
+            mx_page_or_print_strlist(cmd, slp, FAL0));
    }else{
       if(a_ml_dp == NIL){
          a_ml_dp = su_cs_dict_set_treshold_shift(
@@ -155,7 +155,7 @@ a_ml_mux(boole subscribe, char const **argv){
                goto jset_data;
             }else if(!subscribe){
 jelisted:
-               n_err(_("`%s': already listed: %s\n"),
+               n_err(_("%s: already listed: %s\n"),
                   cmd, n_shexp_quote_cp(key, FAL0));
                notrv = TRU1;
             }else{
@@ -183,7 +183,7 @@ jset_data:
                dp = a_ml_dp;
 
             if(su_cs_dict_insert(dp, key, u.vp) > 0){
-               n_err(_("`%s': failed to create storage: %s\n"),
+               n_err(_("%s: failed to create storage: %s\n"),
                   n_shexp_quote_cp(key, FAL0));
                notrv = 1;
             }
@@ -293,7 +293,7 @@ a_ml_re_clone(void const *t, u32 estate){
 
          rv.flags |= (u.flags & TRU1);
       }else{
-         n_err(_("`%s': invalid regular expression: %s: %s\n"),
+         n_err(_("%s: invalid regular expression: %s: %s\n"),
             (u.flags & TRU1 ? "mlsubscribe" : "mlist"),
             n_shexp_quote_cp(rep, FAL0), n_regex_err_to_doc(NULL, s));
          su_FREE(rv.mlrp);
@@ -549,6 +549,7 @@ mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what){
    boole cc;
    enum mx_mlist_type rv;
    NYD_IN;
+   ASSERT(what != mx_MLIST_POSSIBLY);
 
    rv = mx_MLIST_OTHER;
 
@@ -558,6 +559,7 @@ jredo:
    for(; np != NIL; np = np->n_flink){
       switch(mx_mlist_query(np->n_name, FAL0)){
       case mx_MLIST_OTHER:
+      case mx_MLIST_POSSIBLY: /* (appease $CC) */
          break;
       case mx_MLIST_KNOWN:
          if(what == mx_MLIST_KNOWN || what == mx_MLIST_OTHER){
@@ -582,6 +584,9 @@ jredo:
       np = lextract(hfield1("cc", mp), GCC | GSKIN);
       goto jredo;
    }
+
+   if(what == mx_MLIST_OTHER && mx_header_list_post_of(mp) != NIL)
+      rv = mx_MLIST_POSSIBLY;
 
 jleave:
    NYD_OU;

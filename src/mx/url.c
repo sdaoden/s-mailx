@@ -31,6 +31,7 @@
 # include <su/icodec.h>
 #endif
 
+#include "mx/cmd.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-netrc.h"
 #include "mx/file-streams.h"
@@ -194,8 +195,7 @@ jleave:
    NYD_OU;
    return (vp != NIL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: urlcodec: "
-      "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("urlcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NIL;
    goto jleave;
@@ -267,23 +267,26 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
       boole issnd;
       u16 portno;
    } const tbl[] = {
-      { "smtp", "25", TRU1, 25},
-      { "smtps", "465", TRU1, 465},
-      { "submission", "587", TRU1, 587},
-      { "submissions", "465", TRU1, 465},
-      { "pop3", "110", FAL0, 110},
-      { "pop3s", "995", FAL0, 995},
-      { "imap", "143", FAL0, 143},
-      { "imaps", "993", FAL0, 993},
-      { "file", "", TRU1, 0},
-      { "test", "", TRU1, U16_MAX}
+      {"smtp", "25", TRU1, 25},
+      {"smtps", "465", TRU1, 465},
+      {"submission", "587", TRU1, 587},
+      {"submissions", "465", TRU1, 465},
+      {"pop3", "110", FAL0, 110},
+      {"pop3s", "995", FAL0, 995},
+      {"imap", "143", FAL0, 143},
+      {"imaps", "993", FAL0, 993},
+      {"file", "", TRU1, 0},
+      {"test", "", TRU1, U16_MAX}
    };
    char const *rv;
    uz l, i;
    NYD2_IN;
 
-   for(rv = proto; *rv != '\0'; ++rv)
-      if(*rv == ':')
+   for(rv = proto;; ++rv)
+      if(*rv == '\0'){
+         rv = NIL;
+         goto jleave;
+      }else if(*rv == ':')
          break;
    l = P2UZ(rv - proto);
 
@@ -296,6 +299,8 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
             *issnd_or_nil = tbl[i].issnd;
          break;
       }
+
+jleave:
    NYD2_OU;
    return rv;
 }
@@ -303,6 +308,8 @@ mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil){
 #ifdef mx_HAVE_NET /* Note: not indented for that -- later: file:// etc.! */
 boole
 mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
+   /* TODO mx_url_parse() is a terrible mess; all the substrings should be
+    * TODO accessors of an object instead */
 #if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
 # define a_ALLPROTO
 #endif
@@ -321,31 +328,40 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 
    rv = FAL0;
 
+#ifdef mx_HAVE_TLS
+# define a_OUCH 0
+#else
+# define a_OUCH 1
+#endif
+
    /* Network protocol */
 #define a_PROTOX(X,Y,Z) \
    urlp->url_portno = Y;\
    su_mem_copy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
-   do{ Z; }while(0)
+   if(!a_OUCH){ Z; }
 #define a_PRIVPROTOX(X,Y,Z) \
    do{ a_PROTOX(X, Y, Z); }while(0)
-#define a__IF(X,Y,Z)  \
+
+#define a__IF(T,X,Y,Z)  \
    if(!su_cs_cmp_case_n(data, X "://", sizeof(X "://") -1)){\
+      if(a_OUCH && T)\
+         goto jeproto;\
       a_PROTOX(X, Y, Z);\
       data += sizeof(X "://") -1;\
       goto juser;\
    }
-#define a_IF(X,Y) a__IF(X, Y, (void)0)
-#ifdef mx_HAVE_TLS
-# define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_REQUIRED)
-# define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
-#else
-# define a_IFS(X,Y) goto jeproto;
-# define a_IFs(X,Y) a_IF(X, Y)
-#endif
+#define a_IF(X,Y) a__IF(0, X, Y, (void)0)
+#define a_IFS(X,Y) a__IF(1, X, Y, urlp->url_flags |= mx_URL_TLS_REQUIRED)
+#define a_IFs(X,Y) a__IF(0, X, Y, urlp->url_flags |= mx_URL_TLS_OPTIONAL)
 
    switch(cproto){
+   case CPROTO_NONE:
+      if(su_cs_find(data, "://") != NIL)
+         goto jeproto;
+      a_PROTOX("none", 0, (void)0);
+      break;
    case CPROTO_CERTINFO:
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
@@ -402,8 +418,8 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #else
       goto jeproto;
 #endif
-#ifdef mx_HAVE_IMAP
    case CPROTO_IMAP:
+#ifdef mx_HAVE_IMAP
       a_IFS("imaps", 993)
       a_IFs("imap", 143)
       a_PROTOX("imap", 143, urlp->url_flags |= mx_URL_TLS_OPTIONAL);
@@ -413,6 +429,7 @@ mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data){
 #endif
    }
 
+#undef a_OUCH
 #undef a_PRIVPROTOX
 #undef a_PROTOX
 #undef a__IF
@@ -582,16 +599,21 @@ jurlp_err:
    }
 
    /* User, II
-    * If there was no user in the URL, do we have *user-HOST* or *user*? */
-   if(!(urlp->url_flags & mx_URL_HAD_USER)){
+    * If there was no user in the URL, do we have *user-HOST* or *user*?
+    * This only for protocols which want to have additional information */
+   if(cproto != CPROTO_NONE && cproto != CPROTO_CERTINFO &&
+         !(urlp->url_flags & mx_URL_HAD_USER)){
       /* *user* guaranteed non-empty */
       if((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P)
             ) == NIL){
          /* No, check whether .netrc lookup is desired */
 # ifdef mx_HAVE_NETRC
+         struct mx_netrc_entry nrce;
+
          if(ok_vlook(v15_compat) == NIL ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
-               !mx_netrc_lookup(urlp, FAL0) || urlp->url_user.s[0] == '\0')
+               !mx_netrc_lookup(&nrce, urlp) ||
+               (urlp->url_user.s = UNCONST(char*,nrce.nrce_login)) == NIL)
 # endif
             urlp->url_user.s = UNCONST(char*,ok_vlook(LOGNAME));
       }

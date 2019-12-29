@@ -40,8 +40,13 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
+#endif
 
-struct mx_socket{ /* data associated with a socket */
+struct mx_socket;
+
+#ifdef mx_HAVE_NET
+/* Data associated with a socket */
+struct mx_socket{
    int s_fd; /* file descriptor */
 #ifdef mx_HAVE_TLS
    int s_use_tls; /* TLS is used */
@@ -49,6 +54,8 @@ struct mx_socket{ /* data associated with a socket */
    void *s_tls;  /* TLS object */
 # endif
    char *s_tls_finger; /* Set to autorec! store for CPROTO_CERTINFO */
+   char *s_tls_certificate; /* Ditto */
+   char *s_tls_certchain; /* Ditto */
 #endif
    char *s_wbuf; /* for buffered writes */
    int s_wbufsize; /* allocated size of s_buf */

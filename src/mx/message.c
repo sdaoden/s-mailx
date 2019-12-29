@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
@@ -111,7 +112,7 @@ struct a_msg_speclex{
    int msl_no;                /* If parsed a number TODO sz! */
    char msl__smallstrbuf[4];
    /* We directly adjust pointer in .ca_arg.ca_str.s, do not adjust .l */
-   struct n_cmd_arg *msl_cap;
+   struct mx_cmd_arg *msl_cap;
    char const *msl_input_orig;
 };
 
@@ -163,7 +164,7 @@ static char **a_msg_add_to_nmadat(char ***nmadat, uz *nmasize,
 
 /* Mark all messages that the user wanted from the command line in the message
  * structure.  Return 0 on success, -1 on error */
-static int a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f);
+static int a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f);
 
 /* Turn the character after a colon modifier into a bit value */
 static int a_msg_evalcol(int col);
@@ -255,7 +256,7 @@ a_msg_add_to_nmadat(char ***nmadat, uz *nmasize, /* TODO Vector */
 }
 
 static int
-a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
+a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    struct a_msg_speclex msl;
    enum a_msg_idfield idfield;
    uz j, nmasize;
@@ -321,8 +322,10 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
       case a_MSG_T_NUMBER:
          n_pstate |= n_PS_MSGLIST_GABBY;
 jnumber:
-         if(!a_msg_check(msl.msl_no, f))
+         if(!a_msg_check(msl.msl_no, f)){
+            i = su_ERR_BADMSG;
             goto jerr;
+         }
 
          if(flags & a_RANGE){
             flags ^= a_RANGE;
@@ -395,6 +398,7 @@ jnumber__thr:
                         goto jnumber__thr;
                      }
                      id = N_("Range crosses multiple threads\n");
+                     i = su_ERR_INVAL;
                      goto jerrmsg;
                   }
                   i = (int)P2UZ(mx - message + 1);
@@ -418,7 +422,7 @@ jnumber__thr:
          break;
       case a_MSG_T_PLUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -428,6 +432,7 @@ jnumber__thr:
                ++i;
             if(i > msgCount){
                id = N_("Referencing beyond last message\n");
+               i = su_ERR_BADMSG;
                goto jerrmsg;
             }
          }while(message[i - 1].m_flag == MHIDDEN ||
@@ -436,7 +441,7 @@ jnumber__thr:
          goto jnumber;
       case a_MSG_T_MINUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -446,6 +451,7 @@ jnumber__thr:
                --i;
             if(i <= 0){
                id = N_("Referencing before first message\n");
+               i = su_ERR_BADMSG;
                goto jerrmsg;
             }
          }while(message[i - 1].m_flag == MHIDDEN ||
@@ -467,6 +473,7 @@ jnumber__thr:
                if(colresult == 0){
                   if(flags & a_LOG)
                      n_err(_("Unknown colon modifier: %s\n"), msl.msl_str);
+                  i = su_ERR_INVAL;
                   goto jerr;
                }
                if(colresult == a_MSG_S_DELETED){
@@ -497,16 +504,20 @@ jnumber__thr:
          if(flags & a_LOG)
             n_err(_("Optional selector not available: %s\n"), msl.msl_str);
 #endif
+         i = su_ERR_INVAL;
          goto jerr;
       case a_MSG_T_DOLLAR:
       case a_MSG_T_UP:
       case a_MSG_T_SEMI:
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          /* FALLTHRU */
-      case a_MSG_T_DOT: /* Don't set _GABBY for dot to allow history.. */
+      case a_MSG_T_DOT:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         if((msl.msl_no = a_msg_metamess(msl.msl_str[0], f)) == -1)
+         if((msl.msl_no = i = a_msg_metamess(msl.msl_str[0], f)) < 0){
+            msl.msl_no = -1;
+            i = -i;
             goto jerr;
+         }
          goto jnumber;
       case a_MSG_T_BACK:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
@@ -537,7 +548,7 @@ jnumber__thr:
          break;
       case a_MSG_T_COMMA:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -567,6 +578,7 @@ jnumber__thr:
                id = savestr(cp);
             else{
                id = N_("Message-ID of parent of \"dot\" is indeterminable\n");
+               i = su_ERR_CANCELED;
                goto jerrmsg;
             }
          }else if(flags & a_LOG)
@@ -575,6 +587,7 @@ jnumber__thr:
       case a_MSG_T_ERROR:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
+         i = su_ERR_INVAL;
          goto jerr;
       }
 
@@ -589,6 +602,7 @@ jnumber__thr:
    }
    if(flags & a_RANGE){
       id = N_("Missing second range argument\n");
+      i = su_ERR_INVAL;
       goto jerrmsg;
    }
 
@@ -778,8 +792,10 @@ jnamesearch_sepfree:
 #endif
          n_lofi_free(sep);
       }
-      if(flags & a_ERROR)
+      if(flags & a_ERROR){
+         i = su_ERR_INVAL;
          goto jerr;
+      }
    }
 
    /* If any colon modifiers were given, go through and mark any messages which
@@ -821,6 +837,7 @@ jcolonmod_mark:
    /* It shall be an error if ` didn't match anything, and nothing else did */
    if((flags & (a_TBACK | a_ANY)) == a_TBACK){
       id = N_("No previously marked messages\n");
+      i = su_ERR_BADMSG;
       goto jerrmsg;
    }else if(!(flags & a_ANY))
       goto jenoapp;
@@ -834,13 +851,16 @@ jleave:
 
 jebadrange:
    id = N_("Invalid range endpoint\n");
+   i = su_ERR_INVAL;
    goto jerrmsg;
 jenoapp:
    id = N_("No applicable messages\n");
+   i = su_ERR_NOMSG;
 jerrmsg:
    if(flags & a_LOG)
       n_err(V_(id));
 jerr:
+   n_pstate_err_no = i;
    flags |= a_ERROR;
    goto jleave;
 }
@@ -963,8 +983,10 @@ jshexp_err:
 jmtop:
             n_err(_("Missing )\n"));
             n_err(_("P.S.: message specifications are now shell tokens, "
-               "making it necessary to enclose IMAP search expressions "
-               "in (single) quotes, e.g., '(from \"me\")'\n"));
+                  "making it necessary\n"
+               "to escape/shell quote parenthesis, e.g., '(from \"me\")'\n"
+               "Please read the manual section "
+                  "\"Shell-style argument quoting\"\n"));
             rv = a_MSG_T_ERROR;
             goto jleave;
          }
@@ -1217,94 +1239,96 @@ a_msg_unmark(int mesg){
 }
 
 static int
-a_msg_metamess(int meta, int f)
-{
-   int c, m;
+a_msg_metamess(int meta, int f){
    struct message *mp;
+   int c, m;
+   char const *emsg;
    NYD2_IN;
 
-   c = meta;
-   switch (c) {
+   emsg = NIL;
+
+   switch((c = meta)){
    case '^': /* First 'good' message left */
       mp = mb.mb_threaded ? threadroot : message;
-      while (PCMP(mp, <, message + msgCount)) {
-         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (u32)f) {
-            c = (int)P2UZ(mp - message + 1);
+      while(PCMP(mp, <, message + msgCount)){
+         if(!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == S(u32,f)){
+            c = S(int,P2UZ(mp - message + 1));
             goto jleave;
          }
-         if (mb.mb_threaded) {
-            mp = next_in_thread(mp);
-            if (mp == NULL)
+         if(mb.mb_threaded){
+            if((mp = next_in_thread(mp)) == NIL)
                break;
-         } else
+         }else
             ++mp;
       }
-      if (!(n_pstate & n_PS_HOOK_MASK))
-         n_err(_("No applicable messages\n"));
-      goto jem1;
+      emsg = N_("No applicable messages\n");
+      c = -su_ERR_NOMSG;
+      break;
 
    case '$': /* Last 'good message left */
       mp = mb.mb_threaded
-            ? this_in_thread(threadroot, -1) : message + msgCount - 1;
-      while (mp >= message) {
-         if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (u32)f) {
-            c = (int)P2UZ(mp - message + 1);
+            ? this_in_thread(threadroot, -1) : &message[msgCount - 1];
+      while(mp >= message){
+         if(!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == S(u32,f)){
+            c = S(int,P2UZ(mp - message + 1));
             goto jleave;
          }
-         if (mb.mb_threaded) {
-            mp = prev_in_thread(mp);
-            if (mp == NULL)
+         if(mb.mb_threaded){
+            if((mp = prev_in_thread(mp)) == NIL)
                break;
-         } else
+         }else
             --mp;
       }
-      if (!(n_pstate & n_PS_HOOK_MASK))
-         n_err(_("No applicable messages\n"));
-      goto jem1;
+      emsg = N_("No applicable messages\n");
+      c = -su_ERR_NOMSG;
+      break;
 
-   case '.':
-      /* Current message */
-      m = dot - message + 1;
-      if ((dot->m_flag & MHIDDEN) || (dot->m_flag & MDELETED) != (u32)f) {
-         n_err(_("%d: inappropriate message\n"), m);
-         goto jem1;
-      }
+   case '.': /* Current message */
+      m = S(int,P2UZ(dot - message + 1));
+      if((dot->m_flag & MHIDDEN) || (dot->m_flag & MDELETED) != S(u32,f))
+         goto jeinappr;
       c = m;
       break;
 
-   case ';':
-      /* Previously current message */
-      if (prevdot == NULL) {
-         n_err(_("No previously current message\n"));
-         goto jem1;
+   case ';': /* Previously current message */
+      if(prevdot == NIL){
+         emsg = N_("No previously current message\n");
+         c = -su_ERR_BADMSG;
+         break;
       }
-      m = prevdot - message + 1;
-      if ((prevdot->m_flag & MHIDDEN) ||
-            (prevdot->m_flag & MDELETED) != (u32)f) {
+      m = S(int,P2UZ(prevdot - message + 1));
+      if((prevdot->m_flag & MHIDDEN) ||
+            (prevdot->m_flag & MDELETED) != S(u32,f)){
+jeinappr:
          n_err(_("%d: inappropriate message\n"), m);
-         goto jem1;
+         c = -su_ERR_BADMSG;
+         goto jleave;
       }
       c = m;
       break;
 
    default:
-      n_err(_("Unknown selector: %c\n"), c);
-      goto jem1;
+      n_err(_("Unknown message specifier: %c\n"), c);
+      c = -su_ERR_INVAL;
+      break;
    }
+
+   if(emsg != NIL && !(n_pstate & n_PS_HOOK_MASK))
+      n_err(V_(emsg));
 jleave:
    NYD2_OU;
    return c;
-jem1:
-   c = -1;
-   goto jleave;
 }
 
 static void
 a_msg__threadmark(struct message *self, int f){
    NYD2_IN;
    if(!(self->m_flag & MHIDDEN) &&
-         (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d))
+         (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d)){
       self->m_flag |= MMARK;
+      if(n_msgmark1 == NIL)
+         n_msgmark1 = self;
+   }
 
    if((self = self->m_child) != NULL){
       goto jcall;
@@ -1312,8 +1336,11 @@ a_msg__threadmark(struct message *self, int f){
          if(self->m_child != NULL)
 jcall:
             a_msg__threadmark(self, f);
-         else
+         else{
             self->m_flag |= MMARK;
+            if(n_msgmark1 == NIL)
+               n_msgmark1 = self;
+         }
    }
    NYD2_OU;
 }
@@ -1442,19 +1469,23 @@ message_match(struct message *mp, struct search_expr const *sep,
             mx_FS_O_REGISTER), NIL)) == NIL)
       goto j_leave;
 
+   mx_fs_linepool_aquire(&line, &linesize);
+
    if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
       goto jleave;
    fflush_rewind(fp);
    cnt = fsize(fp);
 
-   mx_fs_linepool_aquire(&line, &linesize);
-
-   if(!with_headers)
-      while(fgetline(&line, &linesize, &cnt, NULL, fp, 0))
+   if(!with_headers){
+      for(;;){
+         if(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) == NIL)
+            goto jleave;
          if(*line == '\n')
             break;
+      }
+   }
 
-   while(fgetline(&line, &linesize, &cnt, NULL, fp, 0)){
+   while(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) != NIL){
 #ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL){
          if(regexec(sep->ss_bodyre, line, 0,NULL, 0) == REG_NOMATCH)
@@ -1466,10 +1497,12 @@ message_match(struct message *mp, struct search_expr const *sep,
       rv = TRU1;
       break;
    }
-
-   mx_fs_linepool_release(line, linesize);
+   if(ferror(fp))
+      rv = FAL0; /* XXX This does not stop overall searching though?! */
 
 jleave:
+   mx_fs_linepool_release(line, linesize);
+
    mx_fs_close(fp);
 j_leave:
    NYD_OU;
@@ -1500,7 +1533,7 @@ touch(struct message *mp){
 
 FL int
 n_getmsglist(char const *buf, int *vector, int flags,
-   struct n_cmd_arg **capp_or_null)
+   struct mx_cmd_arg **capp_or_null)
 {
    int *ip, mc;
    struct message *mp;
@@ -1508,6 +1541,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
    n_pstate |= n_PS_MSGLIST_DIRECT;
+   n_msgmark1 = NIL;
    a_msg_list_last_saw_d = a_msg_list_saw_d;
    a_msg_list_saw_d = FAL0;
 
@@ -1524,20 +1558,20 @@ n_getmsglist(char const *buf, int *vector, int flags,
     * TODO to getmsglist(); as of today there are multiple getmsglist() users
     * TODO though, and they need to deal with that, then, too */
    /* C99 */{
-      n_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
-         {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
-               n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
+      mx_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
+         {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+               mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
             n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
                n_SHEXP_PARSE_IGNORE_EMPTY}
-      }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
-      struct n_cmd_arg_ctx cac;
+      }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+      struct mx_cmd_arg_ctx cac;
 
-      cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
+      cac.cac_desc = mx_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
       cac.cac_indat = buf;
       cac.cac_inlen = UZ_MAX;
       cac.cac_msgflag = flags;
       cac.cac_msgmask = 0;
-      if(!n_cmd_arg_parse(&cac)){
+      if(!mx_cmd_arg_parse(&cac)){
          mc = -1;
          goto jleave;
       }else if(cac.cac_no == 0){
@@ -1546,7 +1580,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       }else{
          /* Is this indeed a (maybe optional) message list and a target? */
          if(capp_or_null != NULL){
-            struct n_cmd_arg *cap, **lcapp;
+            struct mx_cmd_arg *cap, **lcapp;
 
             if((cap = cac.cac_arg)->ca_next == NULL){
                *capp_or_null = cap;
@@ -1672,6 +1706,8 @@ mark(int mno, int f){
    else{
       ASSERT(!(mp->m_flag & MHIDDEN));
       mp->m_flag |= MMARK;
+      if(n_msgmark1 == NIL)
+         n_msgmark1 = mp;
    }
    NYD_OU;
 }

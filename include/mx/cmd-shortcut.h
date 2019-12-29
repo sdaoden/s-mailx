@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_SHORTCUT_H
-#define mx_SHORTCUT_H
+#ifndef mx_CMD_SHORTCUT_H
+#define mx_CMD_SHORTCUT_H
 
 #include <mx/nail.h>
 
@@ -32,5 +32,5 @@ EXPORT int c_unshortcut(void *vp);
 EXPORT char const *mx_shortcut_expand(char const *str);
 
 #include <su/code-ou.h>
-#endif /* mx_SHORTCUT_H */
+#endif /* mx_CMD_SHORTCUT_H */
 /* s-it-mode */

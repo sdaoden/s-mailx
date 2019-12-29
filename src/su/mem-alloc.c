@@ -274,6 +274,26 @@ a_mema_release_free(void){
 
 #ifdef su_MEM_ALLOC_DEBUG
 boole
+su__mem_get_can_book(uz size, uz no){
+   boole rv;
+   NYD2_IN;
+
+   rv = FAL0;
+
+   if(UZ_MAX - a_MEMA_HOPE_SIZE_ADD < size)
+      goto jleave;
+   size += a_MEMA_HOPE_SIZE_ADD;
+
+   if(UZ_MAX / no <= size)
+      goto jleave;
+
+   rv = TRU1;
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
+boole
 su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
    union a_mema_ptr p, xp;
    boole anybad, isbad;

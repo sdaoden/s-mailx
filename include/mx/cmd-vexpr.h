@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_VEXPR_H
-#define mx_VEXPR_H
+#ifndef mx_CMD_VEXPR_H
+#define mx_CMD_VEXPR_H
 
 #include <mx/nail.h>
 #ifdef mx_HAVE_CMD_VEXPR
@@ -30,5 +30,5 @@ EXPORT int c_vexpr(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_VEXPR */
-#endif /* mx_VEXPR_H */
+#endif /* mx_CMD_VEXPR_H */
 /* s-it-mode */

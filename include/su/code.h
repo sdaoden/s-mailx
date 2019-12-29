@@ -224,26 +224,8 @@ do{\
 #   error Unsupported __BYTE_ORDER__
 #  endif
 # endif
-#elif defined __GNUC__ /* __clang__ */
-# undef su_CC_GCC
-# undef su_CC_VCHECK_GCC
-# define su_CC_GCC 1
-# define su_CC_VCHECK_GCC(X,Y) \
-      (__GNUC__ +0 > (X) || (__GNUC__ +0 == (X) && __GNUC_MINOR__ +0 >= (Y)))
-# define su_CC_EXTEN __extension__
-# define su_CC_PACKED __attribute__((packed))
-# if !defined su_CC_BOM &&\
-      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
-      defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-#elif defined __PCC__ /* __GNUC__ */
+/* __GNUC__ after some other Unix compilers which also define __GNUC__ */
+#elif defined __PCC__ /* __clang__ */
 # undef su_CC_PCC
 # undef su_CC_VCHECK_PCC
 # define su_CC_PCC 1
@@ -271,6 +253,25 @@ do{\
 # define su_CC_TINYC 1
 # define su_CC_EXTEN /* __extension__ (ignored) */
 # define su_CC_PACKED __attribute__((packed))
+#elif defined __GNUC__ /* __TINYC__ */
+# undef su_CC_GCC
+# undef su_CC_VCHECK_GCC
+# define su_CC_GCC 1
+# define su_CC_VCHECK_GCC(X,Y) \
+      (__GNUC__ +0 > (X) || (__GNUC__ +0 == (X) && __GNUC_MINOR__ +0 >= (Y)))
+# define su_CC_EXTEN __extension__
+# define su_CC_PACKED __attribute__((packed))
+# if !defined su_CC_BOM &&\
+      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
+      defined __ORDER_BIG_ENDIAN
+#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#   define su_CC_BOM su_CC_BOM_LITTLE
+#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#   define su_CC_BOM su_CC_BOM_BIG
+#  else
+#   error Unsupported __BYTE_ORDER__
+#  endif
+# endif
 #elif !defined su_CC_IGNORE_UNKNOWN
 # error SU: This compiler is not yet supported.
 # error SU: To continue with your CFLAGS etc., define su_CC_IGNORE_UNKNOWN.
@@ -307,23 +308,33 @@ do{\
 # ifdef DOXYGEN
 #  define su_INLINE inline
 #  define su_SINLINE inline
-# elif su_CC_CLANG || su_CC_GCC || su_CC_PCC
+# elif su_CC_GCC
+   /* After lots of trouble with OpenBSD/gcc 4.2.1 and SunOS/gcc 3.4.3 */
+#  if !su_CC_VCHECK_GCC(3, 2) /* Unsure: only used C++ at that time */
+#   define su_INLINE extern __inline
+#   define su_SINLINE static __inline
+#  elif !su_CC_VCHECK_GCC(4, 3)
+#   define su_INLINE extern __inline __attribute__((always_inline))
+#   define su_SINLINE static __inline __attribute__((always_inline))
+   /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
+#  elif !su_CC_VCHECK_GCC(8, 3) || !defined __OPTIMIZE__ ||\
+      !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 199901L
+#   define su_INLINE extern __inline __attribute__((gnu_inline))
+#   define su_SINLINE static __inline __attribute__((gnu_inline))
+#  elif !defined NDEBUG || !defined __OPTIMIZE__
+#   define su_INLINE static inline
+#   define su_SINLINE static inline
+#  else
+#   define su_INLINE inline
+#   define su_SINLINE static inline
+#  endif
+# elif su_CC_CLANG || su_CC_PCC
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-    /* That gcc is totally weird */
-#   if su_OS_OPENBSD && su_CC_GCC
-#    define su_INLINE extern __inline __attribute__((gnu_inline))
-#    define su_SINLINE static __inline __attribute__((gnu_inline))
-    /* All CCs coming here know __OPTIMIZE__ */
-#   elif !defined NDEBUG || !defined __OPTIMIZE__
+#   if !defined NDEBUG || !defined __OPTIMIZE__
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-     /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
-#    if su_CC_GCC && defined __OPTIMIZE_SIZE__
-#     define su_INLINE inline __attribute__((always_inline))
-#    else
-#     define su_INLINE inline
-#    endif
+#    define su_INLINE inline
 #    define su_SINLINE static inline
 #   endif
 #  else
@@ -365,25 +376,37 @@ do{\
 /* Basic support macros, with side effects */
 #define su_ABS(A) ((A) < 0 ? -(A) : (A))
 #define su_CLIP(X,A,B) (((X) <= (A)) ? (A) : (((X) >= (B)) ? (B) : (X)))
+#define su_IS_POW2(X) ((((X) - 1) & (X)) == 0)
 #define su_MAX(A,B) ((A) < (B) ? (B) : (A))
 #define su_MIN(A,B) ((A) < (B) ? (A) : (B))
-#define su_IS_POW2(X) ((((X) - 1) & (X)) == 0)
+#define su_ROUND_DOWN(X,BASE) (((X) / (BASE)) * (BASE))
+#define su_ROUND_DOWN2(X,BASE) ((X) & (~((BASE) - 1)))
+#define su_ROUND_UP(X,BASE) ((((X) + ((BASE) - 1)) / (BASE)) * (BASE))
+#define su_ROUND_UP2(X,BASE) (((X) + ((BASE) - 1)) & (~((BASE) - 1)))
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
 # include <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
-# define su_ALIGNOF(X) ((sizeof(X) + sizeof(su_uz)) & ~(sizeof(su_uz) - 1))
+# define su_ALIGNOF(X) su_ROUND_UP2(sizeof(X), su__ZAL_L)
 #endif
+#define su_P_ALIGN(DTYPE,OTYPE,MEM) \
+   su_R(DTYPE,\
+      su_IS_POW2(su_ALIGNOF(OTYPE))\
+         ? su_ROUND_UP2(su_R(su_up,MEM), su_ALIGNOF(OTYPE))\
+         : su_ROUND_UP(su_R(su_up,MEM), su_ALIGNOF(OTYPE)))
 /* Roundup/align an integer;  Note: POW2 asserted in POD section below! */
-#define su_Z_ALIGN(X) ((su_S(su_uz,X) + 2*su__ZAL_L) & ~((2*su__ZAL_L) - 1))
-#define su_Z_ALIGN_SMALL(X) ((su_S(su_uz,X) + su__ZAL_L) & ~(su__ZAL_L - 1))
-#define su_Z_ALIGN_PZ(X) ((su_S(su_uz,X) + su__ZAL_S) & ~(su__ZAL_S - 1))
-# define su__ZAL_S su_MAX(su_ALIGNOF(su_uz), su_ALIGNOF(void*))
-# define su__ZAL_L su_MAX(su__ZAL_S, su_ALIGNOF(su_u64))/* XXX FP,128bit */
+#define su_Z_ALIGN_OVER(X) su_ROUND_UP2(su_S(su_uz,X), 2 * su__ZAL_L)
+#define su_Z_ALIGN(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_L)
+#define su_Z_ALIGN_PZ(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_S)
+/* (These are below MCTA()d to be of equal size[, however].)
+ * _L must adhere to the minimum aligned claimed in the \mainpage */
+# define su__ZAL_S su_MAX(sizeof(su_uz), sizeof(void*))
+# define su__ZAL_L su_MAX(su__ZAL_S, sizeof(su_u64))/* XXX FP,128bit */
 /* Variants of ASSERT */
 #if defined NDEBUG || defined DOXYGEN
 # define su_ASSERT_INJ(X)
+# define su_ASSERT_INJOR(X,Y) Y
 # define su_ASSERT_NB(X) ((void)0)
 # define su_ASSERT(X) do{}while(0)
 # define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0)
@@ -401,6 +424,7 @@ do{\
 # define su_ASSERT_NYD_LOC(X,FNAME,LNNO) do{}while(0)
 #else
 # define su_ASSERT_INJ(X) X
+# define su_ASSERT_INJOR(X,Y) X
 # define su_ASSERT_NB(X) \
    su_R(void,((X) ? su_TRU1 \
       : su_assert(su_STRING(X), __FILE__, __LINE__, su_FUN, su_TRU1), su_FAL0))
@@ -447,8 +471,8 @@ do if(!(X)){\
    goto su_NYD_OU_LABEL;\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
+#define su_BITENUM_IS(X,Y) X
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
-/* For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */
 #define su_COMMA ,
 /* Debug injections */
 #if defined su_HAVE_DEBUG && !defined NDEBUG
@@ -492,7 +516,8 @@ do{\
 # define su_DBG_LOC_ARGS_UNUSED() do{}while(0)
 #endif /* su_HAVE_DEVEL || su_HAVE_DEBUG */
 /* Development injections */
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */
+#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
+      || defined DOXYGEN
 # define su_DVL(X) X
 # define su_NDVL(X)
 # define su_DVLOR(X,Y) X
@@ -501,10 +526,10 @@ do{\
 # define su_NDVL(X) X
 # define su_DVLOR(X,Y) Y
 #endif
-/* To avoid files that are overall empty */
 #define su_EMPTY_FILE() typedef int su_CONCAT(su_notempty_shall_b_, su_FILE);
 /* C field init */
-#if su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+#if (su_C_LANG && defined __STDC_VERSION__ && \
+      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
 # define su_FIELD_INITN(N) .N =
 # define su_FIELD_INITI(I) [I] =
 #else
@@ -516,7 +541,8 @@ do{\
       su_CC_VCHECK_PCC(1, 2) || defined DOXYGEN
 # define su_FIELD_OFFSETOF(T,F) __builtin_offsetof(T, F)
 #else
-# define su_FIELD_OFFSETOF(T,F) su_S(su_uz,su_S(su_up,&(su_S(T *,su_NIL)->F)))
+# define su_FIELD_OFFSETOF(T,F) \
+      su_S(su_uz,su_S(su_up,&(su_R(T *,0x1)->F)) - 1)
 #endif
 #define su_FIELD_RANGEOF(T,S,E) \
       (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S))
@@ -541,7 +567,8 @@ do{\
 #endif
 /* String stuff.
  * __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
-#if defined __STDC__ || defined __STDC_VERSION__ || su_C_LANG
+#if defined __STDC__ || defined __STDC_VERSION__ || su_C_LANG || \
+      defined DOXYGEN
 # define su_STRING(X) #X
 # define su_XSTRING(X) su_STRING(X)
 # define su_CONCAT(S1,S2) su__CONCAT_1(S1, S2)
@@ -551,23 +578,19 @@ do{\
 # define su_XSTRING STRING
 # define su_CONCAT(S1,S2) S1/* will no work out though */S2
 #endif
-/* Compare (maybe mixed-signed) integers cases to T bits, unsigned,
- * T is one of our homebrew integers, e.g., UCMP(32, su_ABS(n), >, wleft).
- * Note: does not sign-extend correctly, that is still up to the caller */
-#if su_C_LANG
+#if su_C_LANG || defined DOXYGEN
 # define su_UCMP(T,A,C,B) (su_S(su_ ## u ## T,A) C su_S(su_ ## u ## T,B))
 #else
 # define su_UCMP(T,A,C,B) \
       (su_S(su_NSPC(su) u ## T,A) C su_S(su_NSPC(su) u ## T,B))
 #endif
-/* Casts-away (*NOT* cast-away) */
 #define su_UNCONST(T,P) su_R(T,su_R(su_up,su_S(void const*,P)))
 #define su_UNVOLATILE(T,P) su_R(T,su_R(su_up,su_S(void volatile*,P)))
-/* To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
 #define su_UNALIGN(T,P) su_R(T,su_R(su_up,P))
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 /* Avoid "may be used uninitialized" warnings */
-#if defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)
+#if (defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || \
+      defined DOYGEN
 # define su_UNINIT(N,V) su_S(void,0)
 # define su_UNINIT_DECL(V)
 #else
@@ -575,8 +598,8 @@ do{\
 # define su_UNINIT_DECL(V) = V
 #endif
 #define su_UNUSED(X) ((void)(X))
-/* Variable-type size (with byte array at end) */
-#if su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+#if (su_C_LANG && defined __STDC_VERSION__ && \
+      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
 # define su_VFIELD_SIZE(X)
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
@@ -935,8 +958,8 @@ INLINE u32 su_state_get(void){
    return (su__state & su__STATE_GLOBAL_MASK);
 }
 INLINE boole su_state_has(uz flags){
-   uz f = flags & su__STATE_GLOBAL_MASK;
-   return ((su__state & f) == f);
+   flags &= su__STATE_GLOBAL_MASK;
+   return ((su__state & flags) == flags);
 }
 INLINE void su_state_set(uz flags){
    MT( su__glock(su__GLOCK_STATE); )
@@ -1202,6 +1225,22 @@ template<class T>
 inline T const &get_max(T const &a, T const &b) {return su_MAX(a, b);}
 template<class T>
 inline T const &get_min(T const &a, T const &b) {return su_MIN(a, b);}
+template<class T>
+inline T const &get_round_down(T const &a, T const &b){
+   return su_ROUND_DOWN(a, b);
+}
+template<class T>
+inline T const &get_round_down2(T const &a, T const &b){
+   return su_ROUND_DOWN2(a, b);
+}
+template<class T>
+inline T const &get_round_up(T const &a, T const &b){
+   return su_ROUND_UP(a, b);
+}
+template<class T>
+inline T const &get_round_up2(T const &a, T const &b){
+   return su_ROUND_UP2(a, b);
+}
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 /* BASIC TYPE TRAITS }}} */
 /* BASIC C++ INTERFACE (SYMBOLS) {{{ */
@@ -1221,8 +1260,8 @@ class err{
 public:
    enum err_number{
 #ifdef DOXYGEN
-      err_none,
-      err_notobacco
+      enone,
+      enotobacco
 #else
       su__CXX_ERR_NUMBER_ENUM
 # undef su__CXX_ERR_NUMBER_ENUM

@@ -55,6 +55,7 @@
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-shortcut.h"
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
@@ -966,25 +967,26 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
-{
+fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){ /* TODO -> URL:: */
    struct str proto, s;
    char const *res, *cp;
    boole dyn, haveproto;
+   s32 eno;
    NYD_IN;
 
    n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
    dyn = FAL0;
+   eno = su_ERR_NONE;
 
    /* The order of evaluation is "%" and "#" expand into constants.
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NULL)
+   if(!(fexpm & FEXP_SHORTCUT) || (res = mx_shortcut_expand(name)) == NIL)
       res = name;
 
 jprotonext:
-   UNINIT(proto.s, NULL), UNINIT(proto.l, 0);
+   UNINIT(proto.s, NIL), UNINIT(proto.l, 0);
    haveproto = FAL0;
    for(cp = res; *cp && *cp != ':'; ++cp)
       if(!su_cs_is_alnum(*cp))
@@ -1017,17 +1019,18 @@ jnext:
          }
          goto jnext;
       case '#':
-         if (res[1] != '\0')
+         if(res[1] != '\0')
             break;
-         if (prevfile[0] == '\0') {
+         if(prevfile[0] == '\0'){
             n_err(_("No previous file\n"));
-            res = NULL;
+            res = NIL;
+            eno = su_ERR_NODATA;
             goto jleave;
          }
          res = prevfile;
          goto jislocal;
       case '&':
-         if (res[1] == '\0')
+         if(res[1] == '\0')
             res = ok_vlook(MBOX);
          break;
       default:
@@ -1036,9 +1039,9 @@ jnext:
    }
 
 #ifdef mx_HAVE_IMAP
-   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
+   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL)
          == PROTO_IMAP){
-      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NULL)->s;
+      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
       dyn = TRU1;
    }
 #endif
@@ -1046,13 +1049,13 @@ jnext:
    /* POSIX: if *folder* unset or null, "+" shall be retained */
    if(!(fexpm & FEXP_NFOLDER) && *res == '+' &&
          *(cp = n_folder_query()) != '\0'){
-      res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
+      res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
       dyn = TRU1;
    }
 
    /* Do some meta expansions */
    if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
-         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NULL)
+         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NIL)
           : (su_cs_first_of(res, "{}[]*?$") != su_UZ_MAX))){
       boole doexp;
 
@@ -1061,9 +1064,10 @@ jnext:
       else{
          cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
 
-         switch(which_protocol(cp, TRU1, FAL0, NULL)){
-         case PROTO_FILE:
-         case PROTO_MAILDIR:
+         switch(which_protocol(cp, TRU1, FAL0, NIL)){
+         case n_PROTO_EML:
+         case n_PROTO_FILE:
+         case n_PROTO_MAILDIR:
             doexp = TRU1;
             break;
          default:
@@ -1080,13 +1084,13 @@ jnext:
          shin.l = UZ_MAX;
          shoup = n_string_creat_auto(&shou);
          for(;;){
-            enum n_shexp_state shs;
+            BITENUM_IS(u32,n_shexp_state) shs;
 
             /* TODO shexp: take care: not include backtick eval once avail! */
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
                   n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
                   n_SHEXP_PARSE_QUOTE_AUTO_DQ |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NULL);
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NIL);
             if(shs & n_SHEXP_STATE_STOP)
                break;
          }
@@ -1098,8 +1102,10 @@ jnext:
             res = a_shexp_tilde(res);
 
          if(!(fexpm & FEXP_NSHELL) &&
-               (res = a_shexp_globname(res, fexpm)) == NULL)
+               (res = a_shexp_globname(res, fexpm)) == NIL){
+            eno = su_ERR_INVAL; /* TODO shexp_globname needs true error! */
             goto jleave;
+         }
          dyn = TRU1;
       }/* else no tilde */
    }else if(res[0] == '~'){
@@ -1108,17 +1114,18 @@ jnext:
    }
 
 jislocal:
-   if(res != NULL && haveproto){
+   if(res != NIL && haveproto){
       res = savecat(savestrbuf(proto.s, proto.l), res);
       dyn = TRU1;
    }
 
    if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
-      switch (which_protocol(res, FAL0, FAL0, &cp)) {
-      case PROTO_MAILDIR:
+      switch(which_protocol(res, FAL0, FAL0, &cp)){
+      case n_PROTO_MAILDIR:
          if(!(fexpm & FEXP_LOCAL_FILE)){
          /* FALLTHRU */
-      case PROTO_FILE:
+      case n_PROTO_FILE:
+      case n_PROTO_EML:
             if(fexpm & FEXP_LOCAL_FILE){
                res = cp;
                dyn = FAL0;
@@ -1129,21 +1136,25 @@ jislocal:
       default:
          n_err(_("Not a local file or directory: %s\n"),
             n_shexp_quote_cp(name, FAL0));
-         res = NULL;
+         res = NIL;
+         eno = su_ERR_INVAL;
          break;
       }
    }
 
 jleave:
-   if(res != NULL && !dyn)
+   if(res != NIL && !dyn)
       res = savestr(res);
+   if(res == NIL)
+      su_err_set_no(eno);
+
    NYD_OU;
    return UNCONST(char*,res);
 }
 
-FL enum n_shexp_state
-n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
-      struct str *input, void const **cookie){
+FL BITENUM_IS(u32,n_shexp_state)
+n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+      struct n_string *store, struct str *input, void const **cookie){
    /* TODO shexp_parse_token: WCHAR
     * TODO This needs to be rewritten in order to support $(( )) and $( )
     * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
@@ -1159,11 +1170,6 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
     * TODO we are reentered we simply access the fields directly.
     * TODO That is: do that, also for normal variables: like this the shell
     * TODO expression parser can be made entirely generic and placed in SU! */
-   u32 last_known_meta_trim_len;
-   char c2, c, quotec, utf[8];
-   enum n_shexp_state rv;
-   uz i, il;
-   char const *ifs, *ifs_ws, *ib_save, *ib;
    enum{
       a_NONE = 0,
       a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\u0 ..) */
@@ -1182,7 +1188,13 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       /* Remove one more byte from the input after pushing data to output */
       a_CHOP_ONE = 1u<<10,
       a_TMP = 1u<<30
-   } state;
+   };
+
+   char c2, c, quotec, utf[8];
+   BITENUM_IS(u32,n_shexp_state) rv;
+   uz i, il;
+   u32 state, last_known_meta_trim_len;
+   char const *ifs, *ifs_ws, *ib_save, *ib;
    NYD2_IN;
 
    ASSERT((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
@@ -1349,6 +1361,8 @@ jrestart:
          }
          /* A comment may it be if no token has yet started */
          else if(c == '#' && (state & a_NTOKEN)){
+            ib += il;
+            il = 0;
             rv |= n_SHEXP_STATE_STOP;
             /*last_known_meta_trim_len = U32_MAX;*/
             goto jleave;
@@ -1869,19 +1883,28 @@ jleave:
    if(state & a_CHOP_ONE)
       ++ib, --il;
 
-   if(flags & n_SHEXP_PARSE_TRIM_SPACE){
-      for(; il > 0; ++ib, --il){
-         if(!su_cs_is_space(*ib))
-            break;
-         rv |= n_SHEXP_STATE_WS_TRAIL;
+   if(il > 0){
+      if(flags & n_SHEXP_PARSE_TRIM_SPACE){
+         for(; il > 0; ++ib, --il){
+            if(!su_cs_is_space(*ib))
+               break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
       }
-   }
 
-   if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
-      for(; il > 0; ++ib, --il){
-         if(su_cs_find_c(ifs_ws, *ib) == NULL)
-            break;
-         rv |= n_SHEXP_STATE_WS_TRAIL;
+      if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
+         for(; il > 0; ++ib, --il){
+            if(su_cs_find_c(ifs_ws, *ib) == NIL)
+               break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
+      }
+
+      /* At the start of the next token: if this is a comment, simply throw
+       * away all the following data! */
+      if(il > 0 && *ib == '#'){
+         ib += il;
+         il = 0;
       }
    }
 
@@ -1907,11 +1930,12 @@ jleave_quick:
 }
 
 FL char *
-n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
+n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+      char const **cp){
    struct str input;
    struct n_string sou, *soup;
    char *rv;
-   enum n_shexp_state shs;
+   BITENUM_IS(u32,n_shexp_state) shs;
    NYD2_IN;
 
    ASSERT(cp != NULL);
@@ -2034,7 +2058,7 @@ c_shcodec(void *vp){
       soup = n_shexp_quote(soup, &in, !norndtrip);
    else if(!norndtrip && su_cs_starts_with_case_n("decode", act, alen)){
       for(;;){
-         enum n_shexp_state shs;
+         BITENUM_IS(u32,n_shexp_state) shs;
 
          shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);
@@ -2074,7 +2098,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("shcodec"), NIL);
    nerrn = su_ERR_INVAL;
    vp = NULL;
    goto jleave;

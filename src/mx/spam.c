@@ -174,7 +174,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    /* Check and setup the desired spam interface */
    if ((cp = ok_vlook(spam_interface)) == NULL) {
-      n_err(_("`%s': no *spam-interface* set\n"), _spam_cmds[sa]);
+      n_err(_("%s: no *spam-interface* set\n"), _spam_cmds[sa]);
       goto jleave;
 #ifdef mx_HAVE_SPAM_SPAMC
    } else if (!su_cs_cmp_case(cp, "spamc")) {
@@ -187,7 +187,7 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
    } else {
-      n_err(_("`%s': unknown / unsupported *spam-interface*: %s\n"),
+      n_err(_("%s: unknown / unsupported *spam-interface*: %s\n"),
          _spam_cmds[sa], cp);
       goto jleave;
    }
@@ -213,7 +213,7 @@ _spam_action(enum spam_action sa, int *ip)
 
       if (vc.vc_mp->m_size > maxsize) {
          if (vc.vc_verbose)
-            n_err(_("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
+            n_err(_("%s: message %lu exceeds maxsize (%lu > %lu), skip\n"),
                _spam_cmds[sa], (ul)vc.vc_mno, (ul)(uz)vc.vc_mp->m_size,
                (ul)maxsize);
          else if (vc.vc_progress) {
@@ -224,7 +224,7 @@ _spam_action(enum spam_action sa, int *ip)
          ++skipped;
       } else {
          if (vc.vc_verbose)
-            n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul)vc.vc_mno);
+            n_err(_("%s: message %lu\n"), _spam_cmds[sa], (ul)vc.vc_mno);
          else if (vc.vc_progress) {
             fprintf(n_stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
@@ -275,7 +275,7 @@ _spamc_setup(struct spam_vc *vcp)
 # ifdef SPAM_SPAMC_PATH
       cp = SPAM_SPAMC_PATH;
 # else
-      n_err(_("`%s': *spamc-command* is not set\n"),
+      n_err(_("%s: *spamc-command* is not set\n"),
          _spam_cmds[vcp->vc_action]);
       goto jleave;
 # endif
@@ -406,7 +406,7 @@ _spamfilter_setup(struct spam_vc *vcp)
 jonecmd:
       if (cp == NULL) {
 jecmd:
-         n_err(_("`%s': *%s* is not set\n"), _spam_cmds[vcp->vc_action], var);
+         n_err(_("%s: *%s* is not set\n"), _spam_cmds[vcp->vc_action], var);
          goto jleave;
       }
       sfp->f_super.cf_cmd = savestr(cp);
@@ -430,7 +430,7 @@ jecmd:
 
       var = su_cs_find_c(cp, ';');
       if (var == NULL) {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: missing semicolon;: %s\n"),
+         n_err(_("%s: *spamfilter-rate-scanscore*: missing semicolon;: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
@@ -440,12 +440,12 @@ jecmd:
                   su_IDEC_MODE_LIMIT_32BIT, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
-         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group: %s\n"),
+         n_err(_("%s: *spamfilter-rate-scanscore*: bad group: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
       if (sfp->f_score_grpno >= SPAM_FILTER_MATCHES) {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: "
+         n_err(_("%s: *spamfilter-rate-scanscore*: "
             "group %u excesses limit %u\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno,
             SPAM_FILTER_MATCHES);
@@ -454,14 +454,14 @@ jecmd:
 
       if ((s = regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE))
             != 0) {
-         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
+         n_err(_("%s: invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
             _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
             n_regex_err_to_doc(NULL, s));
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
          regfree(&sfp->f_score_regex);
-         n_err(_("`%s': *spamfilter-rate-scanscore*: no group %u: %s\n"),
+         n_err(_("%s: *spamfilter-rate-scanscore*: no group %u: %s\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno, cp);
          goto jleave;
       }
@@ -521,7 +521,7 @@ _spamfilter_interact(struct spam_vc *vcp)
    if (sfp->f_score_grpno == 0)
       goto jleave;
    if (sfp->f_super.cf_result == NULL) {
-      n_err(_("`%s': *spamfilter-rate-scanscore*: filter does not "
+      n_err(_("%s: *spamfilter-rate-scanscore*: filter does not "
          "produce output!\n"));
       goto jleave;
    }
@@ -530,7 +530,7 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
-      n_err(_("`%s': *spamfilter-rate-scanscore* "
+      n_err(_("%s: *spamfilter-rate-scanscore* "
          "does not match filter output!\n"),
          _spam_cmds[vcp->vc_action]);
       sfp->f_score_grpno = 0;

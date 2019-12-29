@@ -45,6 +45,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/termios.h"
@@ -387,6 +388,7 @@ jmlist: /* v15compat */
          case mx_MLIST_OTHER: c = ' '; break;
          case mx_MLIST_KNOWN: c = 'l'; break;
          case mx_MLIST_SUBSCRIBED: c = 'L'; break;
+         case mx_MLIST_POSSIBLY: c = 'P'; break;
          }
          goto jputcb;
       case 'l':
@@ -1016,7 +1018,7 @@ c_dotmove(void *v)
 
    if (*(args = v) == '\0' || args[1] != '\0') {
 jerr:
-      n_err(_("Synopsis: dotmove: up <-> or down <+> by one message\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("dotmove"), NIL);
       rv = 1;
    } else switch (args[0]) {
    case '-':
@@ -1084,8 +1086,11 @@ c_from(void *vp)
    n_autorec_relax_gut();
    mx_COLOUR( mx_colour_env_gut(); )
 
-   if (obuf != n_stdout)
+   if(obuf != n_stdout)
       mx_pager_close(obuf);
+   else
+      clearerr(obuf);
+
 jleave:
    NYD_OU;
    return 0;

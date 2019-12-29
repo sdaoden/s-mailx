@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/cmd.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
 #include "mx/termios.h"
@@ -193,9 +194,13 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
          mx_colour_env_gut();
    )
+
 jleave:
-   if (obuf != n_stdout)
+   if(obuf != n_stdout)
       mx_pager_close(obuf);
+   else
+      clearerr(obuf);
+
    NYD_OU;
    return rv;
 }
@@ -205,8 +210,8 @@ a_cmsg_pipe1(void *vp, boole doign){
    u64 stats[1];
    char const *cmd, *cmdq;
    int *msgvec, rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    cacp = vp;
@@ -244,16 +249,13 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 
    if((iobuf = mx_fs_tmp_open("topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`top': I/O temporary file"), 0);
+      n_perr(_("top: I/O temporary file"), 0);
       vp = NIL;
       goto jleave;
    }
    if((pbuf = mx_fs_tmp_open("toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("`top': temporary pager file"), 0);
-      vp = NIL;
-      goto jleave1;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      pbuf = n_stdout;
 
    /* TODO In v15 we should query the m_message object, and directly send only
     * TODO those parts, optionally over empty-line-squeeze and quote-strip
@@ -293,14 +295,14 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 
       rewind(iobuf);
       if(ftruncate(fileno(iobuf), 0)){
-         n_perr(_("`top': ftruncate(2)"), 0);
+         n_perr(_("top: ftruncate(2)"), 0);
          vp = NULL;
          break;
       }
 
       if(!a_cmsg_show_overview(iobuf, mp, *ip) ||
             sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
-         n_err(_("`top': failed to prepare message %d\n"), *ip);
+         n_err(_("top: failed to prepare message %d\n"), *ip);
          vp = NULL;
          break;
       }
@@ -401,15 +403,18 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_string_gut(&s);
    mx_COLOUR( mx_colour_env_gut(); )
 
-   fflush(pbuf);
-   page_or_print(pbuf, plines);
+   if(pbuf != n_stdout){
+      page_or_print(pbuf, plines);
 
-   mx_fs_close(pbuf);
-jleave1:
+      mx_fs_close(pbuf);
+   }else
+      clearerr(pbuf);
+
    mx_fs_close(iobuf);
+
 jleave:
    NYD2_OU;
-   return (vp != NULL);
+   return (vp != NIL);
 }
 
 static int
@@ -503,7 +508,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    NYD_IN;
 
    if((msgvec = vp)[1] != 0){
-      n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
+      n_err(_("mimeview: can yet only take one message, sorry!\n"));/* TODO */
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = 1;
       goto jleave;
@@ -666,7 +671,7 @@ c_pdot(void *vp){
    char cbuf[su_IENC_BUFFER_SIZE], sep1, sep2;
    struct n_string s_b, *s;
    int *mlp;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
    UNUSED(vp);
 
@@ -683,7 +688,7 @@ c_pdot(void *vp){
 
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
       if(!n_string_can_book(s, su_IENC_BUFFER_SIZE + 2u)){
-         n_err(_("`=': overflow: string too long!\n"));
+         n_err(_("=: overflow: string too long!\n"));
          n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
          goto jleave;
@@ -815,7 +820,7 @@ c_mboxit(void *v)
    NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
-      n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
+      n_err(_("mbox: can only be used in a system mailbox\n")); /* TODO */
       goto jleave;
    }
 
@@ -838,7 +843,7 @@ c_preserve(void *v)
    NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
-      fprintf(n_stdout, _("Cannot `preserve' in a system mailbox\n"));
+      fprintf(n_stdout, _("preserve: cannot be used in a system mailbox\n"));
       goto jleave;
    }
 

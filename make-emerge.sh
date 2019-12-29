@@ -7,15 +7,14 @@
 ## Upon interest see mk/make-config.sh, the source of all this!
 
 # For heaven's sake auto-redirect on SunOS/Solaris
-if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
-      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+if [ -z "${__MAKE_EMERGE_UP}" ] && [ -d /usr/xpg4 ]; then
+   __MAKE_EMERGE_UP=y
+   PATH=/usr/xpg4/bin:${PATH}
    SHELL=/usr/xpg4/bin/sh
-   export SHELL
+   export __MAKE_EMERGE_UP PATH SHELL
+   echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
    exec /usr/xpg4/bin/sh "${0}" "${@}"
 fi
-[ -n "${SHELL}" ] || SHELL=/bin/sh
-export SHELL
-
 
 config_exit() {
    exit ${1}
@@ -45,11 +44,6 @@ oneslash() {
 [ ${#} -eq 0 ] || syno
 
 SU_FIND_COMMAND_INCLUSION=1 . ${0%/*}/mk/su-find-command.sh
-
-# Rude simple, we should test for Solaris, but who runs this script?
-if [ -d /usr/xpg4 ]; then
-   PATH=/usr/xpg4/bin:${PATH}
-fi
 
 thecmd_testandset_fail awk awk
 thecmd_testandset_fail cp cp

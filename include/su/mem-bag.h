@@ -66,10 +66,16 @@ EXPORT struct su_mem_bag *su_mem_bag_push(struct su_mem_bag *self,
       struct su_mem_bag *that_one);
 EXPORT struct su_mem_bag *su_mem_bag_pop(struct su_mem_bag *self,
       struct su_mem_bag *that_one);
-INLINE struct su_mem_bag *
-su_mem_bag_top(struct su_mem_bag *self){
+INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
    ASSERT_RET(self != NIL, NIL);
-   ASSERT_RET(self->mb_outer == NIL, su_mem_bag_top(self->mb_outer));
+#if ASSERT_INJOR(1, 0)
+   if(self->mb_outer != NIL){
+      ASSERT_EXEC(self->mb_outer == NIL, (void)0);
+      do
+         self = self->mb_outer;
+      while(self->mb_outer != NIL);
+   }
+#endif
    return (self->mb_top != NIL) ? self->mb_top : self;
 }
 /*

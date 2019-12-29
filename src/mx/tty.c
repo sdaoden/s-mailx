@@ -33,19 +33,22 @@
 # include <su/cs.h>
 # include <su/utf.h>
 
-# ifdef mx_HAVE_KEY_BINDINGS
+# if defined mx_HAVE_HISTORY || defined mx_HAVE_KEY_BINDINGS
 #  include <su/icodec.h>
 # endif
 #endif
 
+#include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
-#ifdef mx_HAVE_MLE
+#ifdef mx_HAVE_COLOUR
 # include "mx/colour.h"
+#endif
+#ifdef mx_HAVE_MLE
 # include "mx/termcap.h"
 #endif
 
@@ -201,7 +204,7 @@ jredo:
          ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
          : xprompt;
    if(cp != NULL && *cp != '\0'){
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       store = n_string_push_cp(store, cp);
       in.s = n_string_cp(store);
@@ -816,8 +819,12 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
 
-/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held! */
-static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
+/* Check whether a gabby history entry fits *history_gabby* */
+static boole a_tty_hist_is_gabby_ok(enum n_go_input_flags gif);
+
+/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held!
+ * Returns false on allocation failure */
+static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -949,48 +956,48 @@ a_tty_hist_load(void){
    u8 version;
    uz lsize, cnt, llen;
    char *lbuf, *cp;
-   FILE *f;
-   char const *v;
+   FILE *fp;
+   char const *hfname;
    boole rv;
    NYD_IN;
 
    rv = TRU1;
 
-   if((v = a_tty_hist__query_config()) == NULL ||
+   if((hfname = a_tty_hist__query_config()) == NIL ||
          a_tty.tg_hist_size_max == 0)
       goto jleave;
 
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "r");
-   if(f == NULL){
-      int e;
 
-      e = errno;
+   if((fp = fopen(hfname, "r")) == NIL){
+      s32 eno;
+
+      eno = su_err_no();
       n_err(_("Cannot read *history-file*=%s: %s\n"),
-         n_shexp_quote_cp(v, FAL0), su_err_doc(e));
+         n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
       rv = FAL0;
       goto jrele;
    }
-   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
+   (void)mx_file_lock(fileno(fp), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
 
    /* Clear old history */
    /* C99 */{
       struct a_tty_hist *thp;
 
-      while((thp = a_tty.tg_hist) != NULL){
+      while((thp = a_tty.tg_hist) != NIL){
          a_tty.tg_hist = thp->th_older;
-         n_free(thp);
+         su_FREE(thp);
       }
-      a_tty.tg_hist_tail = NULL;
+      a_tty.tg_hist_tail = NIL;
       a_tty.tg_hist_size = 0;
    }
 
    mx_fs_linepool_aquire(&lbuf, &lsize);
 
-   cnt = (uz)fsize(f);
+   cnt = S(uz,fsize(fp));
    version = 0;
 
-   while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
+   while(fgetline(&lbuf, &lsize, &cnt, &llen, fp, FAL0) != NIL){
       cp = lbuf;
       /* Hand-edited history files may have this, probably */
       while(llen > 0 && su_cs_is_space(cp[0])){
@@ -1040,13 +1047,18 @@ a_tty_hist_load(void){
             }
          }
 
-         a_tty_hist_add(cp, gif);
+         if(!a_tty_hist_add(cp, gif))
+            break;
       }
    }
 
    mx_fs_linepool_release(lbuf, lsize);
 
-   fclose(f);
+   if(ferror(fp))
+      n_err(_("I/O error while reading *history-file*=%s\n"),
+         n_shexp_quote_cp(hfname, FAL0));
+   fclose(fp);
+
 jrele:
    mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
@@ -1151,34 +1163,68 @@ a_tty_hist__query_config(void){
       n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));
    if((rv = ok_vlook(history_file)) == NULL)
       rv = cp;
-   if(rv != NULL)
-      rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
+   if(rv != NIL)
+      rv = fexpand(rv, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
    NYD2_OU;
    return rv;
 }
 
-static void
-a_tty_hist_add(char const *s, enum n_go_input_flags gif){
-   u32 l;
-   struct a_tty_hist *thp, *othp, *ythp;
+static boole
+a_tty_hist_is_gabby_ok(enum n_go_input_flags gif){
+   char const *cp;
+   boole rv;
    NYD2_IN;
 
-   l = (u32)su_cs_len(s); /* xxx simply do not store if >= S32_MAX */
+   if((cp = ok_vlook(history_gabby)) == NIL)
+      rv = FAL0;
+   else if(!(gif & n_GO_INPUT_HIST_ERROR))
+      rv = TRU1;
+   else{
+      static char const wlist[][8] = {"all", "errors\0"};
+      uz i;
+      char *buf, *e;
+
+      buf = savestr(cp);
+      while((e = su_cs_sep_c(&buf, ',', TRU1)) != NIL)
+         for(i = 0;;)
+            if(!su_cs_cmp_case(e, wlist[i])){
+               rv = TRU1;
+               goto jwl_ok;
+            }else if(++i == NELEM(wlist)){
+               n_err(_("*history-gabby*: unknown keyword: %s\n"),
+                  n_shexp_quote_cp(e, FAL0));
+               break;
+            }
+      rv = FAL0;
+jwl_ok:;
+   }
+
+   NYD2_OU;
+   return rv;
+}
+
+static boole
+a_tty_hist_add(char const *s, enum n_go_input_flags gif){
+   struct a_tty_hist *thp, *othp, *ythp;
+   u32 l;
+   NYD2_IN;
+
+   l = S(u32,su_cs_len(s)); /* xxx simply do not store if >= S32_MAX */
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
    if(n_psonce & n_PSO_LINE_EDITOR_INIT)
-      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
+      for(thp = a_tty.tg_hist; thp != NIL; thp = thp->th_older)
          if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
             thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
                   (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
             ythp = thp->th_younger;
-            if(othp != NULL)
+            if(othp != NIL)
                othp->th_younger = ythp;
             else
                a_tty.tg_hist_tail = ythp;
-            if(ythp != NULL)
+            if(ythp != NIL)
                ythp->th_older = othp;
             else
                a_tty.tg_hist = othp;
@@ -1189,28 +1235,35 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
       ++a_tty.tg_hist_size;
    else{
       --a_tty.tg_hist_size;
-      if((thp = a_tty.tg_hist_tail) != NULL){
-         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
-            a_tty.tg_hist = NULL;
+      if((thp = a_tty.tg_hist_tail) != NIL){
+         if((a_tty.tg_hist_tail = thp->th_younger) == NIL)
+            a_tty.tg_hist = NIL;
          else
-            a_tty.tg_hist_tail->th_older = NULL;
-         n_free(thp);
+            a_tty.tg_hist_tail->th_older = NIL;
+         su_FREE(thp);
       }
    }
 
-   thp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp = su_MEM_ALLOCATE(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1,
+         1, su_MEM_ALLOC_NOMEM_OK);
+   if(thp == NIL)
+      goto j_leave;
    thp->th_len = l;
    thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
          (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
    su_mem_copy(thp->th_dat, s, l +1);
+
 jleave:
-   if((thp->th_older = a_tty.tg_hist) != NULL)
+   if((thp->th_older = a_tty.tg_hist) != NIL)
       a_tty.tg_hist->th_younger = thp;
    else
       a_tty.tg_hist_tail = thp;
-   thp->th_younger = NULL;
+   thp->th_younger = NIL;
    a_tty.tg_hist = thp;
+
+j_leave:
    NYD2_OU;
+   return (thp != NIL);
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -1492,7 +1545,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    };
 
    u32 f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
-      DBG(lstcur su_COMMA) cur,
+      ASSERT_INJ(lstcur su_COMMA) cur,
       vi_left, /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    NYD2_IN;
@@ -1524,7 +1577,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    phy_base = 0;
    phy_cur = tlp->tl_phy_cursor;
    cnt = tlp->tl_count;
-   su_DBG( lstcur = tlp->tl_lst_cursor; )
+   ASSERT_INJ( lstcur = tlp->tl_lst_cursor; )
 
    /* XXX Assume dirty screen if shrunk */
    if(cnt < tlp->tl_lst_count)
@@ -2255,7 +2308,7 @@ a_tty_kht(struct a_tty_line *tlp){
 
       if(max > 0){
          for(;;){
-            enum n_shexp_state shs;
+            BITENUM_IS(u32,n_shexp_state) shs;
 
             exp = sub;
             shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
@@ -2977,7 +3030,9 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
    mbstate_t ps[2];
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    sz rv;
+# ifdef mx_HAVE_KEY_BINDINGS
    struct a_tty_bind_tree *tbtp;
+# endif
    wchar_t wc;
    enum a_tty_bind_flags tbf;
    enum {a_NONE, a_WAS_HERE = 1<<0, a_BUFMODE = 1<<1, a_MAYBEFUN = 1<<2,
@@ -3413,14 +3468,14 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
          goto jleave;
       a_tty_bind_del(tbpcp);
    }else if(a_tty.tg_bind_cnt == U32_MAX){
-      n_err(_("`bind': maximum number of bindings already established\n"));
+      n_err(_("bind: maximum number of bindings already established\n"));
       goto jleave;
    }
 
    /* C99 */{
       uz i, j;
 
-      tbcp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+      tbcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
             tbpcp->tbpc_seq_len +1 + tbpcp->tbpc_exp.l +1 +
             tbpcp->tbpc_cnv_align_mask + 1 + tbpcp->tbpc_cnv_len);
       if(tbpcp->tbpc_ltbcp != NULL){
@@ -3490,7 +3545,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
    /* Parse the key-sequence */
    for(shin.s = n_UNCONST(tbpcp->tbpc_in_seq), shin.l = UZ_MAX;;){
       struct kse *ep;
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       shin_save = shin;
       shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
@@ -3499,11 +3554,11 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
          if(isbindcmd && (n_poption & n_PO_D_V))
-            n_err(_("`%s': \\uNICODE not available in locale: %s\n"),
+            n_err(_("%s: \\uNICODE not available in locale: %s\n"),
                tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       }
       if((shs & n_SHEXP_STATE_ERR_MASK) & ~n_SHEXP_STATE_ERR_UNICODE){
-         n_err(_("`%s': failed to parse key-sequence: %s\n"),
+         n_err(_("%s: failed to parse key-sequence: %s\n"),
             tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
          goto jleave;
       }
@@ -3538,7 +3593,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       vic.vic_indat = shoup->s_dat;
       if(!n_visual_info(&vic,
             n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC)){
-         n_err(_("`%s': key-sequence seems to contain invalid "
+         n_err(_("%s: key-sequence seems to contain invalid "
             "characters: %s: %s\n"),
             tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
@@ -3546,7 +3601,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       }else if(vic.vic_woulen == 0 ||
             vic.vic_woulen >= (S32_MAX - 2) / sizeof(wc_t)){
 jelen:
-         n_err(_("`%s': length of key-sequence unsupported: %s: %s\n"),
+         n_err(_("%s: length of key-sequence unsupported: %s: %s\n"),
             tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
          goto jleave;
@@ -3559,19 +3614,19 @@ jelen:
          i = --ep->cnv_len, ++ep->cnv_dat;
 #  if 0 /* ndef mx_HAVE_TERMCAP xxx User can, via *termcap*! */
          if(n_poption & n_PO_D_V)
-            n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
+            n_err(_("%s: no termcap(5)/terminfo(5) support: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
          f |= a_TTY_BIND_DEFUNCT;
 #  endif
          if(i > a_TTY_BIND_CAPNAME_MAX){
-            n_err(_("`%s': termcap(5)/terminfo(5) name too long: %s: %s\n"),
+            n_err(_("%s: termcap(5)/terminfo(5) name too long: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
             f |= a_TTY_BIND_DEFUNCT;
          }
          while(i > 0)
             /* (We store it as char[]) */
             if((u32)ep->cnv_dat[--i] & ~0x7Fu){
-               n_err(_("`%s': invalid termcap(5)/terminfo(5) name content: "
+               n_err(_("%s: invalid termcap(5)/terminfo(5) name content: "
                   "%s: %s\n"),
                   tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
                f |= a_TTY_BIND_DEFUNCT;
@@ -3587,7 +3642,7 @@ jelen:
 
    if(head == NULL){
 jeempty:
-      n_err(_("`%s': effectively empty key-sequence: %s\n"),
+      n_err(_("%s: effectively empty key-sequence: %s\n"),
          tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       goto jleave;
    }
@@ -3723,7 +3778,7 @@ jeempty:
        * time of this writing) possible problems with newline escaping.
        * Don't care about (un)even number thereof */
       if(i > 0 && exp[i - 1] == '\\'){
-         n_err(_("`%s': reverse solidus cannot be last in expansion: %s\n"),
+         n_err(_("%s: reverse solidus cannot be last in expansion: %s\n"),
             tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
          goto jleave;
       }
@@ -3799,7 +3854,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 
          if(tq < 0 || !mx_termcap_query(tq, &tv)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': unknown or unsupported capability: %s: %s\n"),
+               n_err(_("bind: unknown or unsupported capability: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
@@ -3813,19 +3868,19 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
          i = su_cs_len(tv.tv_data.tvd_string);
          if(/*i > S32_MAX ||*/ i >= P2UZ(next - cp)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': capability expansion too long: %s: %s\n"),
+               n_err(_("bind: capability expansion too long: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(i == 0){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': empty capability expansion: %s: %s\n"),
+               n_err(_("bind: empty capability expansion: %s: %s\n"),
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
          }else if(isfirst && !su_cs_is_cntrl(*tv.tv_data.tvd_string)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': capability expansion does not start with "
+               n_err(_("bind: capability expansion does not start with "
                   "control: %s: %s\n"), capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
@@ -3849,7 +3904,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
       ltbcp->tbc_next = tbcp->tbc_next;
    else
       a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
-   n_free(tbcp);
+   su_FREE(tbcp);
 
    --a_tty.tg_bind_cnt;
    a_tty.tg_bind_isdirty = TRU1;
@@ -4010,8 +4065,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      tbtp = n_alloc(sizeof *tbtp);
-      su_mem_set(tbtp, 0, sizeof *tbtp);
+      tbtp = su_CALLOC(sizeof *tbtp);
       tbtp->tbt_char = wc;
       tbtp->tbt_isseq = isseq;
 
@@ -4047,8 +4101,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      xtbtp = n_alloc(sizeof *xtbtp);
-      su_mem_set(xtbtp, 0, sizeof *xtbtp);
+      xtbtp = su_CALLOC(sizeof *xtbtp);
       xtbtp->tbt_parent = parentp;
       xtbtp->tbt_char = wc;
       xtbtp->tbt_isseq = isseq;
@@ -4070,7 +4123,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
          a_tty__bind_tree_free(tmp);
 
       tmp = tbtp->tbt_sibling;
-      n_free(tbtp);
+      su_FREE(tbtp);
       tbtp = tmp;
    }
    NYD2_OU;
@@ -4309,10 +4362,12 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
    UNUSED(s);
    UNUSED(gif);
 
+   ASSERT(!(gif & n_GO_INPUT_HIST_ERROR) || (gif & n_GO_INPUT_HIST_GABBY));
+
 # ifdef mx_HAVE_HISTORY
    if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
          a_tty.tg_hist_size_max > 0 &&
-         (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
+         (!(gif & n_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
           !ok_blook(line_editor_disable)){
       struct a_tty_input_ctx_map const *ticmp;
 
@@ -4324,9 +4379,11 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
        * TODO which is the original unexpanded command name; i.e., one may do
        * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
-            ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
+            ((gif & n_GO_INPUT_HIST_GABBY)
+               ? ((gif & n_GO_INPUT_HIST_ERROR) ? "errors" : "all")
+               : su_empty), s)){
          mx_sigs_all_holdx();
-         a_tty_hist_add(s, gif);
+         (void)a_tty_hist_add(s, gif);
          mx_sigs_all_rele();
       }
    }
@@ -4336,9 +4393,10 @@ mx_tty_addhist(char const *s, enum n_go_input_flags gif){
 
 # ifdef mx_HAVE_HISTORY
 int
-c_history(void *v){
+c_history(void *vp){
    sz entry;
    struct a_tty_hist *thp;
+   boole dele;
    char **argv;
    NYD_IN;
 
@@ -4352,38 +4410,42 @@ c_history(void *v){
       ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
-   if(*(argv = v) == NULL)
+   if(*(argv = vp) == NIL)
       goto jlist;
-   if(argv[1] != NULL)
-      goto jerr;
-   if(!su_cs_cmp_case(*argv, "show"))
-      goto jlist;
-   if(!su_cs_cmp_case(*argv, "clear"))
-      goto jclear;
 
-   if(!su_cs_cmp_case(*argv, "load")){
-      if(!a_tty_hist_load())
-         v = NULL;
-      goto jleave;
-   }
-   if(!su_cs_cmp_case(*argv, "save")){
-      if(!a_tty_hist_save())
-         v = NULL;
-      goto jleave;
+   if((dele = su_cs_starts_with_case("delete", *argv)))
+      ++argv;
+   if(argv[1] != NIL)
+      goto jerr;
+
+   if(!dele){
+      if(su_cs_starts_with_case("clear", *argv))
+         goto jclear;
+      if(su_cs_starts_with_case("load", *argv)){
+         if(!a_tty_hist_load())
+            vp = NIL;
+         goto jleave;
+      }
+      if(su_cs_starts_with_case("save", *argv)){
+         if(!a_tty_hist_save())
+            vp = NIL;
+         goto jleave;
+      }
+      if(su_cs_starts_with_case("show", *argv))
+         goto jlist;
    }
 
    if((su_idec_sz_cp(&entry, *argv, 10, NULL
             ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) == su_IDEC_STATE_CONSUMED)
       goto jentry;
+
 jerr:
-   n_err(_("Synopsis: history: %s\n"),
-      /* Same string as in cmd-tab.h, still hoping...) */
-      _("<show (default)|load|save|clear> or select history <NO>"));
-   v = NULL;
+   mx_cmd_print_synopsis(mx_cmd_firstfit("history")/* TODO arg_ctx */, NIL);
+   vp = NIL;
 jleave:
    NYD_OU;
-   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+   return (vp == NIL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
    uz no, l, b;
@@ -4393,17 +4455,13 @@ jlist:{
       goto jleave;
 
    if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("tmpfile"), 0);
-      v = NIL;
-      goto jleave;
-   }
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    no = a_tty.tg_hist_size;
    l = b = 0;
 
-   for(thp = a_tty.tg_hist; thp != NULL;
-         --no, ++l, thp = thp->th_older){
+   for(thp = a_tty.tg_hist; thp != NIL; --no, ++l, thp = thp->th_older){
       char c1, c2;
 
       b += thp->th_len;
@@ -4425,17 +4483,21 @@ jlist:{
       fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
    }
 
-   page_or_print(fp, l);
-   mx_fs_close(fp);
+   if(fp != n_stdout){
+      page_or_print(fp, l);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
    }
    goto jleave;
 
 jclear:
-   while((thp = a_tty.tg_hist) != NULL){
+   while((thp = a_tty.tg_hist) != NIL){
       a_tty.tg_hist = thp->th_older;
-      n_free(thp);
+      su_FREE(thp);
    }
-   a_tty.tg_hist_tail = NULL;
+   a_tty.tg_hist_tail = NIL;
    a_tty.tg_hist_size = 0;
    goto jleave;
 
@@ -4448,18 +4510,40 @@ jentry:{
       if(ep != entry)
          --ep;
       else
-         ep = (sz)a_tty.tg_hist_size - ep;
+         ep = S(sz,a_tty.tg_hist_size) - ep;
+
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
-         ASSERT(thp != NULL);
+         ASSERT(thp != NIL);
          if(ep-- == 0){
-            n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
-               n_GO_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
+            if(!dele)
+               n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
+                  n_GO_INPUT_INJECT_HISTORY), vp = thp->th_dat, thp->th_len);
+            else{
+               struct a_tty_hist *othp, *ythp;
+
+               othp = thp->th_older;
+               ythp = thp->th_younger;
+               if(othp != NIL)
+                  othp->th_younger = ythp;
+               else
+                  a_tty.tg_hist_tail = ythp;
+               if(ythp != NIL)
+                  ythp->th_older = othp;
+               else
+                  a_tty.tg_hist = othp;
+               --a_tty.tg_hist_size;
+
+               fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"),
+                  entry, thp->th_dat);
+
+               su_FREE(thp);
+            }
             break;
          }
       }
    }else{
-      n_err(_("`history': no such entry: %" PRIdZ "\n"), entry);
-      v = NULL;
+      n_err(_("history: no such entry: %" PRIdZ "\n"), entry);
+      vp = NIL;
    }
    }
    goto jleave;
@@ -4476,23 +4560,23 @@ c_bind(void *v){
    union {char const *cp; char *p; char c;} c;
    boole show, aster;
    enum n_go_input_flags gif;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;
    gif = 0;
 
-   if(cacp->cac_no <= 1)
+   if(cacp->cac_no == 0)
       aster = show = TRU1;
    else{
       c.cp = cacp->cac_arg->ca_arg.ca_str.s;
-      show = !su_cs_cmp_case(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
+      show = (cacp->cac_no == 1);
       aster = FAL0;
 
       if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
          if(!(aster = n_is_all_or_aster(c.cp)) || !show){
-            n_err(_("`bind': invalid context: %s\n"), c.cp);
-            v = NULL;
+            n_err(_("bind: invalid context: %s\n"), c.cp);
+            v = NIL;
             goto jleave;
          }
          gif = 0;
@@ -4504,11 +4588,8 @@ c_bind(void *v){
       FILE *fp;
 
       if((fp = mx_fs_tmp_open("bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("tmpfile"), 0);
-         v = NULL;
-         goto jleave;
-      }
+               mx_FS_O_REGISTER), NIL)) == NIL)
+         fp = n_stdout;
 
       lns = 0;
       for(;;){
@@ -4579,12 +4660,16 @@ c_bind(void *v){
          if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
             break;
       }
-      page_or_print(fp, lns);
 
-      mx_fs_close(fp);
+      if(fp != n_stdout){
+         page_or_print(fp, lns);
+
+         mx_fs_close(fp);
+      }else
+         clearerr(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
-      struct n_cmd_arg *cap;
+      struct mx_cmd_arg *cap;
 
       su_mem_set(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
@@ -4609,7 +4694,7 @@ c_unbind(void *v){
    enum n_go_input_flags gif;
    boole aster;
    union {char const *cp; char *p;} c;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;
@@ -4618,7 +4703,7 @@ c_unbind(void *v){
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
       if(!(aster = n_is_all_or_aster(c.cp))){
-         n_err(_("`unbind': invalid context: %s\n"), c.cp);
+         n_err(_("unbind: invalid context: %s\n"), c.cp);
          v = NULL;
          goto jleave;
       }
@@ -4643,7 +4728,7 @@ jredo:
       if(UNLIKELY(!a_tty_bind_parse(FAL0, &tbpc)))
          v = NULL;
       else if(UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NULL)){
-         n_err(_("`unbind': no such `bind'ing: %s  %s\n"),
+         n_err(_("unbind: no such `bind'ing: %s  %s\n"),
             a_tty_input_ctx_maps[gif].ticm_name, c.cp);
          v = NULL;
       }else

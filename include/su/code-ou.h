@@ -61,14 +61,20 @@
 /* SUPPORT MACROS+ */
 #undef ABS
 #undef CLIP
+#undef IS_POW2
 #undef MAX
 #undef MIN
-#undef IS_POW2
+#undef ROUND_DOWN
+#undef ROUND_DOWN2
+#undef ROUND_UP
+#undef ROUND_UP2
 #undef ALIGNOF
+#undef P_ALIGN
+#undef Z_ALIGN_OVER
 #undef Z_ALIGN
-#undef Z_ALIGN_SMALL
 #undef Z_ALIGN_PZ
 #undef ASSERT_INJ
+#undef ASSERT_INJOR
 #undef ASSERT_NB
 #undef ASSERT
 #undef ASSERT_LOC
@@ -84,6 +90,8 @@
 #undef ASSERT_NYD_EXEC_LOC
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
+#undef BITENUM_IS
+#undef BITENUM_MASK
 #undef DBG
 #undef NDGB
 #undef DBGOR

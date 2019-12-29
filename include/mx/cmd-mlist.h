@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_MLIST_H
-#define mx_MLIST_H
+#ifndef mx_CMD_MLIST_H
+#define mx_CMD_MLIST_H
 
 #include <mx/nail.h>
 
@@ -25,9 +25,10 @@
 #include <su/code-in.h>
 
 enum mx_mlist_type{
-   mx_MLIST_OTHER = 0, /* Normal address */
-   mx_MLIST_KNOWN = 1, /* A known `mlist' */
-   mx_MLIST_SUBSCRIBED = -1 /* A `mlsubscribe'd list */
+   mx_MLIST_OTHER, /* Normal address */
+   mx_MLIST_POSSIBLY, /* Has a List-Post: header, but not know otherwise */
+   mx_MLIST_KNOWN, /* A known `mlist' */
+   mx_MLIST_SUBSCRIBED /* A `mlsubscribe'd list */
 };
 
 /* `(un)?ml(ist|subscribe)' */
@@ -36,15 +37,17 @@ EXPORT int c_unmlist(void *vp);
 EXPORT int c_mlsubscribe(void *vp);
 EXPORT int c_unmlsubscribe(void *vp);
 
-/* Whether a name is a (wanted) list;
- * give MLIST_OTHER to the latter to search for any, in which case all
- * receivers are searched until EOL or _SUBSCRIBED is seen.
- * XXX the latter possibly belongs to message or header */
+/* Whether a name is a known (or subscribed_only) list */
 EXPORT enum mx_mlist_type mx_mlist_query(char const *name,
       boole subscribed_only);
+
+/* Give MLIST_OTHER to search for any kind of list, in which case all receivers
+ * are searched until EOL or _SUBSCRIBED is seen.
+ * _POSSIBLY may not be searched for; it return _POSSIBLY for _OTHER, though.
+ * XXX possibly belongs to message or header specific code */
 EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
       enum mx_mlist_type what);
 
 #include <su/code-ou.h>
-#endif /* mx_MLIST_H */
+#endif /* mx_CMD_MLIST_H */
 /* s-it-mode */

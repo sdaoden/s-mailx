@@ -44,10 +44,12 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"
 #include "mx/names.h"
 #include "mx/url.h"
+#include "mx/tty.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -199,27 +201,36 @@ a_crese_mail_followup_to(struct message *mp){
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np){
-   boole once;
+   enum{
+      a_NONE,
+      a_ONCE = 1u<<0,
+      a_LIST_CLASSIFIED = 1u<<1,
+      a_SEEN_TO = 1u<<2
+   };
+
+   struct mx_name *np_orig;
+   u32 f;
    NYD2_IN;
    UNUSED(mp);
 
    if(np == hp->h_to)
-      hp->h_to = NULL;
+      hp->h_to = NIL;
    if(np == hp->h_cc)
-      hp->h_cc = NULL;
+      hp->h_cc = NIL;
 
    /* We may find that in the end To: is empty but Cc: is not, in which case we
     * upgrade Cc: to To: and jump back and redo the thing slightly different */
-   once = FAL0;
+   f = a_NONE;
+   np_orig = np;
 jredo:
-   while(np != NULL){
+   while(np != NIL){
       enum gfield gf;
       struct mx_name *nnp, **xpp, *xp;
 
       nnp = np;
       np = np->n_flink;
 
-      if(once){
+      if(f & a_ONCE){
          gf = GTO;
          xpp = &hp->h_to;
       }else{
@@ -228,47 +239,74 @@ jredo:
       }
 
       /* Try primary, then secondary */
-      for(xp = hp->h_mailx_orig_to; xp != NULL; xp = xp->n_flink)
-         if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
+      for(xp = hp->h_mailx_orig_to; xp != NIL; xp = xp->n_flink)
+         if(!su_cs_cmp_case(xp->n_name, nnp->n_name)){
+            if(!(f & a_LIST_CLASSIFIED)){
+               f |= a_SEEN_TO;
+               goto jclass_ok;
+            }
             goto jlink;
+         }
 
-      if(once){
+      if(f & a_ONCE){
          gf = GCC;
          xpp = &hp->h_cc;
       }
 
-      for(xp = hp->h_mailx_orig_cc; xp != NULL; xp = xp->n_flink)
+      for(xp = hp->h_mailx_orig_cc; xp != NIL; xp = xp->n_flink)
          if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
             goto jlink;
 
       /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
-       * To: due to lack of a better place */
-      gf = GTO;
-      xpp = &hp->h_to;
+       * To: due to lack of a better place.  But only if To: is not empty after
+       * all formerly present receivers have been worked, to avoid that yet
+       * unaddressed receivers propagate to To: whereas formerly addressed ones
+       * end in Cc: */
+      if(f & a_LIST_CLASSIFIED){
+         if(f & a_SEEN_TO){
+            gf = GCC;
+            xpp = &hp->h_cc;
+         }else{
+            gf = GTO;
+            xpp = &hp->h_to;
+         }
+      }
+
 jlink:
+      if(!(f & a_LIST_CLASSIFIED))
+         continue;
+
       /* Link it at the end to not loose original sort order */
-      if((xp = *xpp) != NULL)
-         while(xp->n_flink != NULL)
+      if((xp = *xpp) != NIL)
+         while(xp->n_flink != NIL)
             xp = xp->n_flink;
 
-      if((nnp->n_blink = xp) != NULL)
+      if((nnp->n_blink = xp) != NIL)
          xp->n_flink = nnp;
       else
          *xpp = nnp;
-      nnp->n_flink = NULL;
+      nnp->n_flink = NIL;
       nnp->n_type = (nnp->n_type & ~GMASK) | gf;
    }
 
+   /* Include formerly unaddressed receivers at the right place */
+   if(!(f & a_LIST_CLASSIFIED)){
+jclass_ok:
+      f |= a_LIST_CLASSIFIED;
+      np = np_orig;
+      goto jredo;
+   }
+
    /* If afterwards only Cc: data remains, upgrade all of it to To: */
-   if(hp->h_to == NULL){
+   if(hp->h_to == NIL){
       np = hp->h_cc;
-      hp->h_cc = NULL;
-      if(!once){
-         hp->h_to = NULL;
-         once = TRU1;
+      hp->h_cc = NIL;
+      if(!(f & a_ONCE)){
+         f |= a_ONCE;
+         hp->h_to = NIL;
          goto jredo;
       }else
-         for(hp->h_to = np; np != NULL; np = np->n_flink)
+         for(hp->h_to = np; np != NIL; np = np->n_flink)
             np->n_type = (np->n_type & ~GMASK) | GTO;
    }
    NYD2_OU;
@@ -341,16 +379,17 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct header head;
    struct message *mp;
    char const *cp, *cp2;
-   enum gfield gf;
    struct mx_name *rt, *mft, *np;
+   enum gfield gf;
    NYD2_IN;
+
+   n_autorec_relax_create();
 
    n_pstate_err_no = su_ERR_NONE;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
 jwork_msg:
-   n_autorec_relax_create();
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp);
@@ -359,6 +398,7 @@ jwork_msg:
    head.h_flags = hf;
    head.h_subject = a_crese_reedit(hfield1("subject", mp));
    head.h_mailx_command = (hf & HF_LIST_REPLY) ? "Lreply" : "reply";
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -399,7 +439,10 @@ jwork_msg:
 
    /* Otherwise do the normal From: / To: / Cc: dance */
 
-   cp2 = n_header_senderfield_of(mp);
+   if(head.h_mailx_orig_sender != NIL)
+      cp2 = head.h_mailx_orig_sender->n_fullname;
+   else
+      cp2 = n_header_senderfield_of(mp);
 
    /* Cc: */
    np = NULL;
@@ -440,17 +483,26 @@ jwork_msg:
 
 jrecipients_done:
 
-   /* For list replies we want to automatically recognize the list address
-    * given in the List-Post: header, so that we will not throw away a possible
+   /* For list replies automatically recognize the list address given in the
+    * RFC 2369 List-Post: header, so that we will not throw away a possible
     * corresponding receiver: temporarily "`mlist' the List-Post: address" */
-   if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
-      struct mx_name *x;
+   if(hf & HF_LIST_REPLY){
+      struct mx_name *lpnp;
 
-      if((x = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NULL ||
-            is_addr_invalid(x, EACM_STRICT)){
-         if(n_poption & n_PO_D_V)
-            n_err(_("Message contains invalid List-Post: header\n"));
-      }else{
+      if((lpnp = mx_header_list_post_of(mp)) != NIL){
+         if(lpnp == R(struct mx_name*,-1)){
+            /* Default is TRU1 because if there are still other addresses that
+             * seems to be ok, otherwise we fail anyway */
+            if(mx_tty_yesorno(_("List-Post: disallows posting; "
+                  "reply nonetheless"), TRU1))
+               lpnp = NIL;
+            else{
+               n_pstate_err_no = su_ERR_DESTADDRREQ;
+               msgvec = NIL;
+               goto jleave;
+            }
+         }
+
          /* A special case has been seen on e.g. ietf-announce@ietf.org:
           * these usually post to multiple groups, with ietf-announce@
           * in List-Post:, but with Reply-To: set to ietf@ietf.org (since
@@ -461,15 +513,19 @@ jrecipients_done:
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
           * a single address which points to the same domain as List-Post: */
-         if(rt != NULL && rt->n_flink == NULL &&
-               name_is_same_domain(x, rt))
+         if(rt != NIL && rt->n_flink == NIL &&
+               (lpnp == NIL || mx_name_is_same_domain(lpnp, rt)))
             cp = rt->n_name; /* rt is EACM_STRICT tested */
          else
-            cp = x->n_name;
+            cp = (lpnp == NIL) ? NIL : lpnp->n_name;
 
          /* XXX mx_mlist_query_mp()?? */
-         if(mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
-            head.h_list_post = cp;
+         if(cp != NIL){
+            s8 mlt;
+
+            if((mlt = mx_mlist_query(cp, FAL0)) == mx_MLIST_OTHER)
+               head.h_list_post = cp;
+         }
       }
    }
 
@@ -483,17 +539,20 @@ jrecipients_done:
       head.h_to = NULL;
 j_lt_redo:
       for(tail = NULL; nhp != NULL;){
+         s8 mlt;
+
          np = nhp;
          nhp = nhp->n_flink;
 
          /* XXX mx_mlist_query_mp()?? */
-         if((cp != NULL && !su_cs_cmp_case(cp, np->n_name)) ||
-               mx_mlist_query(np->n_name, FAL0) != mx_MLIST_OTHER){
-            if((np->n_blink = tail) != NULL)
+         if((cp != NIL && !su_cs_cmp_case(cp, np->n_name)) ||
+               ((mlt = mx_mlist_query(np->n_name, FAL0)) != mx_MLIST_OTHER &&
+                mlt != mx_MLIST_POSSIBLY)){
+            if((np->n_blink = tail) != NIL)
                tail->n_flink = np;
             else
                *nhpp = np;
-            np->n_flink = NULL;
+            np->n_flink = NIL;
             tail = np;
          }
       }
@@ -528,14 +587,15 @@ j_lt_redo:
    if(n_mail1((n_MAILSEND_HEADERS_PRINT |
             (hf & HF_RECIPIENT_RECORD ? n_MAILSEND_RECORD_RECIPIENT : 0)),
          &head, mp, NULL) != OKAY){
-      msgvec = NULL;
+      msgvec = NIL;
       goto jleave;
    }
+
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
-   n_autorec_relax_gut();
 
 jskip_to_next:
+
    if(*++msgvec != 0){
       /* TODO message (error) ring.., less sleep */
       if(n_psonce & n_PSO_INTERACTIVE){
@@ -544,12 +604,15 @@ jskip_to_next:
          fflush(n_stdout);
          n_msleep(1000, FAL0);
       }
+      n_autorec_relax_unroll();
       goto jwork_msg;
    }
 
 jleave:
+   n_autorec_relax_gut();
+
    NYD2_OU;
-   return (msgvec == NULL);
+   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
 static int
@@ -581,6 +644,8 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    enum gfield gf;
    NYD2_IN;
 
+   n_pstate_err_no = su_ERR_NONE;
+
    su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -596,11 +661,13 @@ a_crese_Reply(int *msgvec, boole recipient_record){
       head.h_to = cat(head.h_to, np);
    }
 
-   mp = &message[msgvec[0] - 1];
+   mp = n_msgmark1;
+   ASSERT(mp != NIL);
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese_reedit(head.h_subject);
    a_crese_make_ref_and_cs(mp, &head);
    head.h_mailx_command = "Reply";
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -615,63 +682,68 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
-   if(ok_blook(quote_as_attachment)){
-      head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
-      head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _("Original message content");
-   }
-
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head, mp, NULL) != OKAY){
-      msgvec = NULL;
+      msgvec = NIL;
       goto jleave;
    }
 
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+
 jleave:
    NYD2_OU;
-   return (msgvec == NULL);
+   return (msgvec == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
 static int
 a_crese_fwd(void *vp, boole recipient_record){
    struct header head;
    struct message *mp;
+   struct mx_name *recp;
    enum gfield gf;
    boole forward_as_attachment;
    int *msgvec, rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
+
+   n_pstate_err_no = su_ERR_NONE;
 
    cacp = vp;
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
-   rv = 1;
+   rv = n_EXIT_ERR;
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
-      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+            (n_poption & n_PO_D_V)){
          n_err(_("No recipient specified.\n"));
-      n_pstate_err_no = su_ERR_DESTADDRREQ;
-      goto jleave;
+         mx_cmd_print_synopsis(mx_cmd_firstfit(cacp->cac_desc->cad_name), NIL);
+      }
+      su_err_set_no(n_pstate_err_no = su_ERR_DESTADDRREQ);
+      goto j_leave;
    }
 
    forward_as_attachment = ok_blook(forward_as_attachment);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
+   recp = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
 
-   su_mem_set(&head, 0, sizeof head);
-   head.h_to = lextract(cap->ca_arg.ca_str.s,
-         (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)));
+   n_autorec_relax_create();
 
+jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp);
+
+   su_mem_set(&head, 0, sizeof head);
+   head.h_to = ndup(recp, (GTO | gf));
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese__fwdedit(head.h_subject);
    head.h_mailx_command = "forward";
-   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -680,14 +752,39 @@ a_crese_fwd(void *vp, boole recipient_record){
    if(forward_as_attachment){
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _("Forwarded message");
+      head.h_attach->a_content_description =
+         ok_vlook(content_description_forwarded_message);
+
+      if(head.h_mailx_orig_sender != NIL && ok_blook(forward_add_cc)){
+         gf = GCC | GSKIN;
+         if(ok_blook(fullnames))
+            gf |= GFULL;
+         head.h_cc = ndup(head.h_mailx_orig_sender, gf);
+      }
    }
 
-   rv = (n_mail1((n_MAILSEND_IS_FWD |
+   if(n_mail1((n_MAILSEND_IS_FWD |
             (recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head,
-         (forward_as_attachment ? NULL : mp), NULL) != OKAY); /* reverse! */
+         (forward_as_attachment ? NIL : mp), NIL) != OKAY)
+      goto jleave;
+
+   if(*++msgvec != 0){
+      /* TODO message (error) ring.., less sleep */
+      if(n_psonce & n_PSO_INTERACTIVE){
+         fprintf(n_stdout,
+            _("Waiting a second before proceeding to the next message..\n"));
+         fflush(n_stdout);
+         n_msleep(1000, FAL0);
+      }
+      n_autorec_relax_unroll();
+      goto jwork_msg;
+   }
+
+   rv = n_EXIT_OK;
 jleave:
+   n_autorec_relax_gut();
+j_leave:
    NYD2_OU;
    return rv;
 }
@@ -723,14 +820,14 @@ jleave:
 
 static int
 a_crese_resend1(void *vp, boole add_resent){
-   struct mx_url url;
+   struct mx_url url, *urlp = &url;
    struct header head;
    struct mx_name *myto, *myrawto;
    boole mta_isexe;
    enum gfield gf;
    int *msgvec, rv, *ip;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
    cacp = vp;
@@ -747,8 +844,10 @@ jedar:
       goto jleave;
    }
 
-   if(!(mta_isexe = mx_sendout_mta_url(&url)))
+   if(!(mta_isexe = mx_sendout_mta_url(urlp))){
+      n_pstate_err_no = su_ERR_INVAL;
       goto jleave;
+   }
    mta_isexe = (mta_isexe != TRU1);
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
@@ -789,13 +888,13 @@ jedar:
       head.h_to = myto;
       head.h_mailx_command = "resend";
       head.h_mailx_raw_to = myrawto;
+      head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
       head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
       head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
-      if(n_resend_msg(mp, (mta_isexe ? NIL : &url), &head, add_resent
-            ) != OKAY){
+      if(n_resend_msg(mp, urlp, &head, add_resent) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
       }
@@ -821,7 +920,7 @@ c_reply(void *vp){
 }
 
 FL int
-c_replyall(void *vp){
+c_replyall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -831,7 +930,7 @@ c_replyall(void *vp){
 }
 
 FL int
-c_replysender(void *vp){
+c_replysender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -871,7 +970,7 @@ c_followup(void *vp){
 }
 
 FL int
-c_followupall(void *vp){
+c_followupall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -881,7 +980,7 @@ c_followupall(void *vp){
 }
 
 FL int
-c_followupsender(void *vp){
+c_followupsender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
@@ -896,6 +995,16 @@ c_Followup(void *vp){
    NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('R'))(vp, TRU1);
+   NYD_OU;
+   return rv;
+}
+
+FL int
+c_Lfollowup(void *vp){
+   int rv;
+   NYD_IN;
+
+   rv = a_crese_list_reply(vp, HF_LIST_REPLY | HF_RECIPIENT_RECORD);
    NYD_OU;
    return rv;
 }

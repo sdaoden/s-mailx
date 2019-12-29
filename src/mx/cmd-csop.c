@@ -35,6 +35,8 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
+
 #include "mx/cmd-csop.h"
 #include "su/code-in.h"
 
@@ -373,7 +375,7 @@ c_csop(void *vp){
       ASSERT(0);
       break;
    case a_CSOP_ERR_SYNOPSIS:
-      n_err(_("Synopsis: csop: <operator> <:argument:>\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("csop"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       goto jenum;
    case a_CSOP_ERR_SUBCMD:

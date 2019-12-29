@@ -75,6 +75,9 @@
 #include "mx/termios.h"
 #include "mx/tty.h"
 
+#ifdef mx_HAVE_ERRORS
+# include "mx/cmd.h"
+#endif
 #ifdef mx_HAVE_IDNA
 # include "mx/iconv.h"
 #endif
@@ -227,106 +230,133 @@ jleave:
 
 FL enum protocol
 which_protocol(char const *name, boole check_stat, boole try_hooks,
-   char const **adjusted_or_null)
+   char const **adjusted_or_nil)
 {
    /* TODO This which_protocol() sickness should be URL::new()->protocol() */
    char const *cp, *orig_name;
-   enum protocol rv = PROTO_UNKNOWN;
-   NYD_IN;
+   enum protocol rv, fixrv;
+   NYD2_IN;
+
+   rv = fixrv = PROTO_UNKNOWN;
 
    if(name[0] == '%' && name[1] == ':')
       name += 2;
    orig_name = name;
 
-   for (cp = name; *cp && *cp != ':'; cp++)
-      if (!su_cs_is_alnum(*cp))
+   for(cp = name; *cp && *cp != ':'; cp++)
+      if(!su_cs_is_alnum(*cp))
          goto jfile;
 
-   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
-      if(!strncmp(name, "file", sizeof("file") -1) ||
-            !strncmp(name, "mbox", sizeof("mbox") -1))
-         rv = PROTO_FILE;
-      else if(!strncmp(name, "maildir", sizeof("maildir") -1)){
+   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){ /* TODO lookup table */
+      boole yeshooks;
+
+      yeshooks = FAL0;
+
+      if(!su_cs_cmp_case_n(name, "file", sizeof("file") -1) ||
+            !su_cs_cmp_case_n(name, "mbox", sizeof("mbox") -1))
+         yeshooks = TRU1, rv = PROTO_FILE;
+      else if(!su_cs_cmp_case_n(name, "eml", sizeof("eml") -1))
+         yeshooks = TRU1, rv = n_PROTO_EML;
+      else if(!su_cs_cmp_case_n(name, "maildir", sizeof("maildir") -1)){
 #ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
          n_err(_("No Maildir directory support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
+      }else if(!su_cs_cmp_case_n(name, "pop3", sizeof("pop3") -1)){
 #ifdef mx_HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
+      }else if(!su_cs_cmp_case_n(name, "pop3s", sizeof("pop3s") -1)){
 #if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "imap", sizeof("imap") -1)){
+      }else if(!su_cs_cmp_case_n(name, "imap", sizeof("imap") -1)){
 #ifdef mx_HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAP support compiled in\n"));
 #endif
-      }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
+      }else if(!su_cs_cmp_case_n(name, "imaps", sizeof("imaps") -1)){
 #if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAPS support compiled in\n"));
 #endif
       }
-      orig_name = &cp[3];
-      goto jleave;
-   }
 
+      orig_name = name = &cp[3];
+
+      if(yeshooks){
+         fixrv = rv;
+         goto jcheck;
+      }
+   }else{
 jfile:
-   rv = PROTO_FILE;
+      rv = PROTO_FILE;
+jcheck:
+      if(check_stat || try_hooks){
+         struct mx_filetype ft;
+         struct stat stb;
+         char *np;
+         uz i;
 
-   if(check_stat || try_hooks){
-      struct mx_filetype ft;
-      struct stat stb;
-      char *np;
-      uz i;
+         np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+         su_mem_copy(np, name, i +1);
 
-      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, i +1);
-
-      if(!stat(name, &stb)){
-         if(S_ISDIR(stb.st_mode)
+         if(!stat(name, &stb)){
+            if(S_ISDIR(stb.st_mode)
 #ifdef mx_HAVE_MAILDIR
-               && (su_mem_copy(&np[i], "/tmp", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[i], "/new", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[i], "/cur", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode))
+                  && (su_mem_copy(&np[i], "/tmp", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                  (su_mem_copy(&np[i], "/new", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                  (su_mem_copy(&np[i], "/cur", 5),
+                     !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
-               ){
+            ){
+               rv =
 #ifdef mx_HAVE_MAILDIR
-            rv = PROTO_MAILDIR;
+                     PROTO_MAILDIR
 #else
-            rv = PROTO_UNKNOWN;
+                     PROTO_UNKNOWN
+#endif
+               ;
+            }
+         }else if(try_hooks && mx_filetype_trial(&ft, name)){
+            orig_name = savecatsep(name, '.', ft.ft_ext_dat);
+            if(fixrv != PROTO_UNKNOWN)
+               rv = fixrv;
+         }else if(fixrv == PROTO_UNKNOWN &&
+               (cp = ok_vlook(newfolders)) != NIL &&
+               !su_cs_cmp_case(cp, "maildir")){
+            rv =
+#ifdef mx_HAVE_MAILDIR
+                  PROTO_MAILDIR
+#else
+                  PROTO_UNKNOWN
+#endif
+            ;
+#ifndef mx_HAVE_MAILDIR
+            n_err(_("*newfolders*: no Maildir support compiled in\n"));
 #endif
          }
-      }else if(try_hooks && mx_filetype_trial(&ft, name))
-         orig_name = savecatsep(name, '.', ft.ft_ext_dat);
-      else if((cp = ok_vlook(newfolders)) != NULL &&
-            !su_cs_cmp_case(cp, "maildir")){
-#ifdef mx_HAVE_MAILDIR
-         rv = PROTO_MAILDIR;
-#else
-         n_err(_("*newfolders*: no Maildir directory support compiled in\n"));
-#endif
-      }
 
-      n_lofi_free(np);
+         n_lofi_free(np);
+
+         if(fixrv != PROTO_UNKNOWN && fixrv != rv)
+            rv = PROTO_UNKNOWN;
+      }
    }
-jleave:
-   if(adjusted_or_null != NULL)
-      *adjusted_or_null = orig_name;
-   NYD_OU;
+
+   if(adjusted_or_nil != NIL)
+      *adjusted_or_nil = orig_name;
+
+   NYD2_OU;
    return rv;
 }
 
@@ -384,7 +414,7 @@ n_getdeadletter(void){
 
    bla = FAL0;
 jredo:
-   cp = fexpand(ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
+   cp = fexpand(ok_vlook(DEAD), FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL);
    if(cp == NULL || su_cs_len(cp) >= PATH_MAX){
       if(!bla){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
@@ -416,10 +446,10 @@ n_nodename(boole mayoverride){
 #endif
    NYD2_IN;
 
-   if(su_state_has(su_STATE_REPRODUCIBLE))
-      hn = n_UNCONST(su_reproducible_build);
-   else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
+   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
+   }else if(su_state_has(su_STATE_REPRODUCIBLE)){
+      hn = n_UNCONST(su_reproducible_build);
    }else if((hn = sys_hostname) == NULL){
       boole lofi;
 
@@ -861,6 +891,8 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    mx_fs_linepool_aquire(&s_b.s, &s_b.l);
    if(s_b.l < a_X)
       s_b.l = a_X;
+#undef a_X
+
    for(i = s_b.l;; s_b.l = ++i /* xxx could wrap, maybe */){
 #ifdef mx_HAVE_N_VA_COPY
       va_list vac;
@@ -907,6 +939,11 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    /* We have the prepared error message, take it over line-by-line, possibly
     * completing partly prepared one first */
    n_pstate |= n_PS_ERRORS_PROMPT;
+   if(n_pstate & n_PS_ERRORS_NEED_PRINT_ONCE){
+      n_pstate ^= n_PS_ERRORS_NEED_PRINT_ONCE;
+      allow_multiple = TRU1;
+   }
+
    lpref = ok_vlook(log_prefix);
 #ifdef mx_HAVE_COLOUR
    if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
@@ -925,11 +962,11 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 #endif
 
    for(i = 0; UCMP(z, i, <, s.l);){
-      char c, *cp;
-      boole fresh;
+      char *cp;
+      boole isdup;
 
       lenp = enp = a_aux_err_tail;
-      if((fresh = (enp == NIL || enp->ae_done))){
+      if(enp == NIL || enp->ae_done){
          enp = su_TCALLOC(struct a_aux_err_node, 1);
          enp->ae_cnt = 1;
          n_string_creat(&enp->ae_str);
@@ -965,12 +1002,12 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          /* We need to write it out regardless of whether it is a complete line
           * or not, say (for at least `echoerrn') TODO IO errors not handled */
          if(cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)){
-            enp->ae_dumped_till = enp->ae_str.s_len;
             fprintf(n_stderr, "%s%s%s%s%s",
-               c5pref, (fresh ? lpref : su_empty),
+               c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
                &n_string_cp(&enp->ae_str)[k], c5suff,
                (cp != NIL ? "\n" : su_empty));
             fflush(n_stderr);
+            enp->ae_dumped_till = enp->ae_str.s_len;
          }
       }
 
@@ -981,14 +1018,14 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       /* Check whether it is identical to the last one dumped, in which case
        * we throw it away and only increment the counter, as syslog would.
        * If not, dump it out, if not already */
-      c = FAL0;
+      isdup = FAL0;
       if(lenp != NIL){
          if(lenp != enp &&
                lenp->ae_str.s_len == enp->ae_str.s_len &&
                !su_mem_cmp(lenp->ae_str.s_dat, enp->ae_str.s_dat,
                   enp->ae_str.s_len)){
             ++lenp->ae_cnt;
-            c = TRU1;
+            isdup = TRU1;
          }
          /* Otherwise, if the last error has a count, say so, unless it would
           * soil and intermix display */
@@ -1001,15 +1038,15 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          }
       }
 
-      if(!c && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE) &&
-            enp->ae_dumped_till != enp->ae_str.s_len){
+      /* When we come here we need to write at least the/a \n! */
+      if(!isdup && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE)){
          fprintf(n_stderr, "%s%s%s%s\n",
-            c5pref, ((fresh && enp->ae_dumped_till == 0) ? lpref : su_empty),
+            c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
             &n_string_cp(&enp->ae_str)[enp->ae_dumped_till], c5suff);
          fflush(n_stderr);
       }
 
-      if(c){
+      if(isdup){
          lenp->ae_next = NIL;
          a_aux_err_tail = lenp;
          n_string_gut(&enp->ae_str);
@@ -1081,7 +1118,7 @@ n_alert(char const *format, ...){
    n_verrx(TRU1, format, ap);
    va_end(ap);
 
-   n_err("\n");
+   n_errx(TRU1, "\n");
    NYD2_OU;
 }
 
@@ -1122,9 +1159,8 @@ c_errors(void *v){
    if(!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 jerr:
-   fprintf(n_stderr,
-      _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
-   v = NULL;
+   mx_cmd_print_synopsis(mx_cmd_firstfit("errors"), NIL);
+   v = NIL;
 jleave:
    NYD_OU;
    return (v == NULL) ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */
@@ -1139,18 +1175,19 @@ jlist:{
       }
 
       if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         fprintf(n_stderr, _("tmpfile"));
-         v = NIL;
-         goto jleave;
-      }
+               mx_FS_O_REGISTER), NIL)) == NIL)
+         fp = n_stdout;
 
       for(i = 0, enp = a_aux_err_head; enp != NIL; enp = enp->ae_next)
          fprintf(fp, "%4" PRIuZ "/%-3u %s\n",
             ++i, enp->ae_cnt, n_string_cp(&enp->ae_str));
 
-      page_or_print(fp, 0);
-      mx_fs_close(fp);
+      if(fp != n_stdout){
+         page_or_print(fp, 0);
+
+         mx_fs_close(fp);
+      }else
+         clearerr(fp);
    }
    /* FALLTHRU */
 
@@ -1242,6 +1279,8 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    su_CS_DICT_FOREACH(dp, &dv)
       *xcpp++ = su_cs_dict_view_key(&dv);
    if(cnt > 1)
+      /* This works even for case-insensitive keys because cs_dict will store
+       * keys in lowercase-normalized versions, then */
       su_sort_shell_vpp(su_S(void const**,cpp), cnt, su_cs_toolbox.tb_compare);
 
    for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
@@ -1299,7 +1338,8 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
 }
 
 FL boole
-mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
+mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp,
+      boole cnt_lines){
    uz lines;
    FILE *fp;
    boole rv;
@@ -1312,19 +1352,44 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
       fp = n_stdout;
 
    /* Create visual result */
-   for(lines = 0; slp != NIL; ++lines, slp = slp->sl_next)
-      if(fputs(slp->sl_dat, fp) == EOF || putc('\n', fp) == EOF){
+   for(lines = 0; slp != NIL; slp = slp->sl_next){
+      if(fputs(slp->sl_dat, fp) == EOF){
          rv = FAL0;
          break;
       }
 
-   if(rv && lines == 0 && fprintf(fp, _("# no %s registered\n"), cmdname) < 0)
-      rv = FAL0;
+      if(!cnt_lines){
+jputnl:
+         if(putc('\n', fp) == EOF){
+            rv = FAL0;
+            break;
+         }
+         ++lines;
+      }else{
+         char *cp;
+         boole lastnl;
+
+         for(lastnl = FAL0, cp = slp->sl_dat; *cp != '\0'; ++cp)
+            if((lastnl = (*cp == '\n')))
+               ++lines;
+         if(!lastnl)
+            goto jputnl;
+      }
+   }
+
+   if(rv && lines == 0){
+      if(fprintf(fp, _("# `%s': no data available\n"), cmdname) < 0)
+         rv = FAL0;
+      else
+         lines = 1;
+   }
 
    if(fp != n_stdout){
       page_or_print(fp, lines);
+
       mx_fs_close(fp);
-   }
+   }else
+      clearerr(fp);
 
    NYD_OU;
    return rv;

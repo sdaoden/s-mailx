@@ -73,6 +73,7 @@
 #include "su/code-in.h"
 
 struct mx_dig_msg_ctx;
+struct mx_mimetype_handler;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -142,7 +143,7 @@ enum expand_addr_flags{
    EAF_FAIL = 1u<<1, /* "fail" */
    EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
    EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
-   EAF_NAMEHOSTEX = 1u<<4, /* "namehostex": expand local user names */
+   EAF_NAMETOADDR = 1u<<4, /* "nametoaddr": expand valid name to NAME@HOST */
    EAF_SHEXP_PARSE = 1u<<5, /* shexp_parse() the address first is allowed */
    /* Bits reused by enum expand_addr_check_mode! */
    EAF_FCC = 1u<<8, /* +"fcc" umbrella */
@@ -184,81 +185,6 @@ enum expand_addr_check_mode{
    EACM_DOMAINCHECK = 1u<<18 /* Honour it! */
 };
 
-enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
-   * TODO i rather see the mechanism that is used in c_bind() extended and used
-   * TODO anywhere, i.e. n_cmd_arg_parse().
-   * TODO Note we may NOT support arguments with su_cs_len()>=U32_MAX (?) */
-   n_CMD_ARG_TYPE_MSGLIST = 0, /* Message list type */
-   n_CMD_ARG_TYPE_NDMLIST = 1, /* Message list, no defaults */
-   n_CMD_ARG_TYPE_RAWDAT = 2, /* The plain string in an argv[] */
-     n_CMD_ARG_TYPE_STRING = 3, /* A pure string TODO obsolete */
-   n_CMD_ARG_TYPE_WYSH = 4, /* getrawlist(), sh(1) compatible */
-      n_CMD_ARG_TYPE_RAWLIST = 5, /* getrawlist(), old style TODO obsolete */
-     n_CMD_ARG_TYPE_WYRA = 6, /* _RAWLIST or _WYSH (with `wysh') TODO obs. */
-   n_CMD_ARG_TYPE_ARG = 7, /* n_cmd_arg_desc/n_cmd_arg() new-style */
-   n_CMD_ARG_TYPE_MASK = 7, /* Mask of the above */
-
-   n_CMD_ARG_A = 1u<<4, /* Needs an active mailbox */
-   n_CMD_ARG_F = 1u<<5, /* Is a conditional command */
-   n_CMD_ARG_G = 1u<<6, /* Is supposed to produce "gabby" history */
-   n_CMD_ARG_H = 1u<<7, /* Never place in `history' */
-   n_CMD_ARG_I = 1u<<8, /* Interactive command bit */
-   n_CMD_ARG_L = 1u<<9, /* Supports `local' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_M = 1u<<10, /* Legal from send mode bit */
-   n_CMD_ARG_O = 1u<<11, /* n_OBSOLETE()d command */
-   n_CMD_ARG_P = 1u<<12, /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<13, /* Forbidden in compose mode recursion */
-   n_CMD_ARG_SC = 1u<<14, /* Forbidden pre-n_PSO_STARTED_CONFIG */
-   n_CMD_ARG_S = 1u<<15, /* Forbidden pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<16, /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<17, /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<18, /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<19, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
-   n_CMD_ARG_EM = 1u<<30 /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
-};
-
-enum n_cmd_arg_desc_flags{
-   /* - A type */
-   n_CMD_ARG_DESC_SHEXP = 1u<<0, /* sh(1)ell-style token */
-   /* TODO All MSGLIST arguments can only be used last and are always greedy
-    * TODO (but MUST be _GREEDY, and MUST NOT be _OPTION too!).
-    * MSGLIST_AND_TARGET may create a NULL target */
-   n_CMD_ARG_DESC_MSGLIST = 1u<<1,  /* Message specification(s) */
-   n_CMD_ARG_DESC_NDMSGLIST = 1u<<2,
-   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<3,
-
-   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_SHEXP |
-         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST |
-         n_CMD_ARG_DESC_MSGLIST_AND_TARGET,
-
-   /* - Optional flags */
-   /* It is not an error if an optional argument is missing; once an argument
-    * has been declared optional only optional arguments may follow */
-   n_CMD_ARG_DESC_OPTION = 1u<<16,
-   /* GREEDY: parse as many of that type as possible; must be last entry */
-   n_CMD_ARG_DESC_GREEDY = 1u<<17,
-   /* If greedy, join all given arguments separated by ASCII SP right away */
-   n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
-   /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
-   n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
-   /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
-   n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
-
-   n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP |
-         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
-
-   /* We may include something for n_pstate_err_no */
-   n_CMD_ARG_DESC_ERRNO_SHIFT = 21u,
-   n_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
-};
-#define n_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
-   (((u32)(ENO)) << n_CMD_ARG_DESC_ERRNO)
-#define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
-   (((u32)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
-      n_CMD_ARG_DESC_ERRNO_MASK)
-
 enum conversion{
    CONV_NONE, /* no conversion */
    CONV_7BIT, /* no conversion, is 7bit */
@@ -274,12 +200,14 @@ enum conversion{
 };
 
 enum cproto{
-   CPROTO_CERTINFO, /* Special dummy proto for TLS certificate info xxx */
-   CPROTO_CCRED, /* Special dummy credential proto (S/MIME etc.) */
-   CPROTO_SOCKS, /* Special dummy SOCKS5 proxy proto */
+   CPROTO_NONE, /* Invalid.  But sometimes used to be able to parse an URL */
+CPROTO_IMAP,
+   CPROTO_POP3,
    CPROTO_SMTP,
-   CPROTO_POP3
-,CPROTO_IMAP
+   CPROTO_CCRED, /* Special dummy credential proto (S/MIME etc.) */
+   CPROTO_CERTINFO, /* Special dummy proto for TLS certificate info xxx */
+   CPROTO_SOCKS /* Special dummy SOCKS5 proxy proto */
+   /* We need a _DEDUCE, as default, for normal URL object */
 };
 
 /* enum n_err_number from gen-config.h, which is in sync with
@@ -303,17 +231,21 @@ enum fedit_mode{
 };
 
 enum fexp_mode{
-   FEXP_FULL, /* Full expansion */
-   FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide expansion */
-   FEXP_SILENT = 1u<<1, /* Don't print but only return errors */
+   FEXP_MOST,
+   FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide sh expansion */
+   FEXP_SILENT = 1u<<1, /* Do not print but only return errors */
    FEXP_MULTIOK = 1u<<2, /* Expansion to many entries is ok */
    FEXP_LOCAL = 1u<<3, /* Result must be local file/maildir */
    FEXP_LOCAL_FILE = 1u<<4, /* ..must be a local file: strips protocol://! */
-   FEXP_NSHORTCUT = 1u<<5, /* Don't expand shortcuts */
+   FEXP_SHORTCUT = 1u<<5, /* Do expand shortcuts */
    FEXP_NSPECIAL = 1u<<6, /* No %,#,& specials */
    FEXP_NFOLDER = 1u<<7, /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1u<<8, /* Don't do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1u<<9 /* ..not even $VAR expansion */
+   FEXP_NSHELL = 1u<<8, /* Do not do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1u<<9, /* ..not even $VAR expansion */
+
+   /* Actually does expand ~/ etc. */
+   FEXP_NONE = FEXP_NOPROTO | FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR,
+   FEXP_FULL = FEXP_SHORTCUT /* Full expansion */
 };
 
 enum n_go_input_flags{
@@ -337,15 +269,17 @@ enum n_go_input_flags{
    n_GO_INPUT_DELAY_INJECTIONS = 1u<<11, /* Skip go_input_inject()ions */
    n_GO_INPUT_NL_ESC = 1u<<12, /* Support "\\$" line continuation */
    n_GO_INPUT_NL_FOLLOW = 1u<<13, /* ..on such a follow line */
-   n_GO_INPUT_PROMPT_NONE = 1u<<14, /* Don't print prompt */
+   n_GO_INPUT_PROMPT_NONE = 1u<<14, /* Do not print prompt */
    n_GO_INPUT_PROMPT_EVAL = 1u<<15, /* Instead, evaluate *prompt* */
 
    /* XXX The remains are mostly hacks */
 
    n_GO_INPUT_HIST_ADD = 1u<<16, /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17, /* Consider history entry as gabby */
+   /* Command was erroneous; only in combination with _HIST_GABBY! */
+   n_GO_INPUT_HIST_ERROR = 1u<<18,
 
-   n_GO_INPUT_IGNERR = 1u<<18, /* Imply `ignerr' command modifier */
+   n_GO_INPUT_IGNERR = 1u<<19, /* Imply `ignerr' command modifier */
 
    n__GO_FREEBIT = 24
 };
@@ -400,32 +334,6 @@ enum n_mailsend_flags{
 
    n_MAILSEND_ALL = n_MAILSEND_IS_FWD | n_MAILSEND_HEADERS_PRINT |
          n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
-};
-
-enum mimecontent{
-   MIME_UNKNOWN, /* unknown content */
-   MIME_SUBHDR, /* inside a multipart subheader */
-   MIME_822, /* message/rfc822 content */
-   MIME_MESSAGE, /* other message/ content */
-   MIME_TEXT_PLAIN, /* text/plain content */
-   MIME_TEXT_HTML, /* text/html content */
-   MIME_TEXT, /* other text/ content */
-   MIME_ALTERNATIVE, /* multipart/alternative content */
-   MIME_RELATED, /* mime/related (RFC 2387) */
-   MIME_DIGEST, /* multipart/digest content */
-   MIME_SIGNED, /* multipart/signed */
-   MIME_ENCRYPTED, /* multipart/encrypted */
-   MIME_MULTI, /* other multipart/ content */
-   MIME_PKCS7, /* PKCS7 content */
-   MIME_DISCARD /* content is discarded */
-};
-
-enum mime_counter_evidence{
-   MIMECE_NONE,
-   MIMECE_SET = 1u<<0, /* *mime-counter-evidence* was set */
-   MIMECE_BIN_OVWR = 1u<<1, /* appli../octet-stream: check, ovw if possible */
-   MIMECE_ALL_OVWR = 1u<<2, /* all: check, ovw if possible */
-   MIMECE_BIN_PARSE = 1u<<3 /* appli../octet-stream: classify contents last */
 };
 
 /* Content-Transfer-Encodings as defined in RFC 2045:
@@ -504,23 +412,6 @@ enum mime_parse_flags{
    MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
 };
 
-enum mime_handler_flags{
-   MIME_HDL_NULL, /* No pipe- mimetype handler, go away */
-   MIME_HDL_CMD, /* Normal command */
-   MIME_HDL_TEXT, /* @ special cmd to force treatment as text */
-   MIME_HDL_PTF, /* A special pointer-to-function handler */
-   MIME_HDL_MSG, /* Display msg (returned as command string) */
-   MIME_HDL_TYPE_MASK = 7u,
-   MIME_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD produces reintegratable text */
-   MIME_HDL_ISQUOTE = 1u<<5, /* Is quote action (we have info, keep it!) */
-   MIME_HDL_NOQUOTE = 1u<<6, /* No MIME for quoting */
-   MIME_HDL_ASYNC = 1u<<7, /* Should run asynchronously */
-   MIME_HDL_NEEDSTERM = 1u<<8, /* Takes over terminal */
-   MIME_HDL_TMPF = 1u<<9, /* Create temporary file (zero-sized) */
-   MIME_HDL_TMPF_FILL = 1u<<10, /* Fill in the msg body content */
-   MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
-};
-
 enum okay{
    STOP = 0,
    OKAY = 1
@@ -543,6 +434,7 @@ enum prompt_exp{
 
 enum protocol{
    n_PROTO_NONE,
+   n_PROTO_EML, /* Local electronic mail file (single message, rdonly) */
    n_PROTO_FILE, /* refers to a local file */
 PROTO_FILE = n_PROTO_FILE,
    n_PROTO_POP3, /* is a pop3 server string */
@@ -723,13 +615,14 @@ enum n_program_option{
    n_PO_QUICKRUN_MASK = n_PO_EXISTONLY | n_PO_HEADERSONLY | n_PO_HEADERLIST,
    n_PO_E_FLAG = 1u<<7, /* -E / *skipemptybody* */
    n_PO_F_FLAG = 1u<<8, /* -F */
-   n_PO_Mm_FLAG = 1u<<9, /* -M or -m (plus n_poption_arg_Mm) */
-   n_PO_R_FLAG = 1u<<10, /* -R */
-   n_PO_r_FLAG = 1u<<11, /* -r (plus n_poption_arg_r) */
-   n_PO_S_FLAG_TEMPORARY = 1u<<12, /* -S about to set a variable */
-   n_PO_t_FLAG = 1u<<13, /* -t */
-   n_PO_TILDE_FLAG = 1u<<14, /* -~ */
-   n_PO_BATCH_FLAG = 1u<<15, /* -# */
+   n_PO_f_FLAG = 1u<<9, /* -f [and file on command line] */
+   n_PO_Mm_FLAG = 1u<<10, /* -M or -m (plus n_poption_arg_Mm) */
+   n_PO_R_FLAG = 1u<<11, /* -R */
+   n_PO_r_FLAG = 1u<<12, /* -r (plus n_poption_arg_r) */
+   n_PO_S_FLAG_TEMPORARY = 1u<<13, /* -S about to set a variable */
+   n_PO_t_FLAG = 1u<<14, /* -t */
+   n_PO_TILDE_FLAG = 1u<<15, /* -~ */
+   n_PO_BATCH_FLAG = 1u<<16, /* -# */
 
    /* Some easy-access shortcut; the V bits must be contiguous! */
    n_PO_V_MASK = n_PO_V | n_PO_VV | n_PO_VVV,
@@ -740,13 +633,19 @@ enum n_program_option{
 
 #define n_OBSOLETE(X) \
 do{\
-   if(n_poption & n_PO_D_V)\
+   static boole su_CONCAT(a__warned__, __LINE__);\
+   if(!su_CONCAT(a__warned__, __LINE__)){\
+      su_CONCAT(a__warned__, __LINE__) = TRU1;\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
+   }\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
 do{\
-   if(n_poption & n_PO_D_V)\
+   static boole su_CONCAT(a__warned__, __LINE__);\
+   if(!su_CONCAT(a__warned__, __LINE__)){\
+      su_CONCAT(a__warned__, __LINE__) = TRU1;\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
+   }\
 }while(0)
 
 /* Program state bits which may regulary fluctuate */
@@ -793,6 +692,10 @@ do{\
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17, /* Last fexpand() with MULTIOK had .. */
    n_PS_ERRORS_PROMPT = 1u<<18, /* New error to be reported in prompt */
+   /* In the interactive mainloop, we want any error to appear once for each
+    * tick, even if it is the same as in the tick before and would normally be
+    * suppressed */
+   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<19,
 
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
@@ -854,25 +757,25 @@ enum okeys {
    /* This is used for all macro(-local) variables etc., i.e.,
     * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
     * It is also used for the ${^.+} multiplexer */
-   ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v___special_param, /* {nolopts=1,rdonly=1,nodel=1} */
    /*__qm/__em aka ?/! should be num=1 but that more expensive than what now */
-   ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
-   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1} */
+   ok_v___qm, /* {name=?,nolopts=1,rdonly=1,nodel=1} */
+   ok_v___em, /* {name=!,nolopts=1,rdonly=1,nodel=1} */
 
-   ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_account, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
 ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
    ok_b_append,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */
-   ok_b_ask,                           /* {vip=1} */
+   ok_b_ask, /* {vip=1} */
    ok_b_askatend,
    ok_b_askattach,
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksend,                       /* {i3val=TRU1} */
-   ok_b_asksub,                        /* {i3val=TRU1} */
+   ok_b_asksend, /* {i3val=TRU1} */
+   ok_b_asksub, /* {i3val=TRU1} */
    ok_v_attrlist,
    ok_v_autobcc,
    ok_v_autocc,
@@ -883,86 +786,96 @@ ok_b_autothread, /* {obsolete=1} */
 
    ok_b_bang,
 ok_b_batch_exit_on_error, /* {obsolete=1} */
-   ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
+   ok_v_bind_timeout, /* {notempty=1,posnum=1} */
 ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
-   ok_v_build_cc,                      /* {virt=VAL_BUILD_CC_ARRAY} */
-   ok_v_build_ld,                      /* {virt=VAL_BUILD_LD_ARRAY} */
-   ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
-   ok_v_build_rest,                    /* {virt=VAL_BUILD_REST_ARRAY} */
+   ok_v_build_cc, /* {virt=VAL_BUILD_CC_ARRAY} */
+   ok_v_build_ld, /* {virt=VAL_BUILD_LD_ARRAY} */
+   ok_v_build_os, /* {virt=VAL_BUILD_OS} */
+   ok_v_build_rest, /* {virt=VAL_BUILD_REST_ARRAY} */
 
-   ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
+   ok_v_COLUMNS, /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */
-   ok_v_charset_7bit,            /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
+   ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* But unused without mx_HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
-   ok_v_charset_8bit,            /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_v_charset_unknown_8bit,          /* {vip=1} */
+   ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_v_charset_unknown_8bit, /* {vip=1} */
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
-   ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
-   ok_v_crt,                           /* {posnum=1} */
-   ok_v_customhdr,                     /* {vip=1} */
+   ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
+   ok_v_contact_web, /* {virt=VAL_CONTACT_WEB} */
+   ok_v_content_description_forwarded_message, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_FORWARDED_MESSAGE} */
+   ok_v_content_description_quote_attachment, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_QUOTE_ATTACHMENT} */
+   ok_v_content_description_smime_message, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_SMIME_MESSAGE} */
+   ok_v_content_description_smime_signature, /* {\ } */
+      /* {defval=mx_CONTENT_DESC_SMIME_SIG} */
 
-   ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
-   ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
-   ok_v_datefield_markout_older,       /* {i3val="%Y-%m-%d"} */
-   ok_b_debug,                         /* {vip=1} */
+   ok_v_crt, /* {posnum=1} */
+   ok_v_customhdr, /* {vip=1} */
+
+   ok_v_DEAD, /* {notempty=1,env=1,defval=VAL_DEAD} */
+   ok_v_datefield, /* {i3val="%Y-%m-%d %H:%M"} */
+   ok_v_datefield_markout_older, /* {i3val="%Y-%m-%d"} */
+   ok_b_debug, /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_dotlock_disable,
 ok_b_dotlock_ignore_error, /* {obsolete=1} */
 
-   ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
+   ok_v_EDITOR, /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_v_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
 ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
-   ok_v_escape,                        /* {defval=n_ESCAPE} */
+   ok_v_escape, /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
-   ok_v_expandaddr_domaincheck,        /* {notempty=1} */
+   ok_v_expandaddr_domaincheck, /* {notempty=1} */
    ok_v_expandargv,
 
-   ok_v_features,                      /* {virt=VAL_FEATURES} */
+   ok_v_features, /* {virt=VAL_FEATURES} */
    ok_b_flipr,
-   ok_v_folder,                        /* {vip=1} */
-   ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
+   ok_v_folder, /* {vip=1} */
+   ok_v_folder_resolved, /* {rdonly=1,nodel=1} */
    ok_v_folder_hook,
    ok_b_followup_to,
    ok_b_followup_to_add_cc,
    ok_v_followup_to_honour,
+   ok_b_forward_add_cc,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
    ok_v_forward_inject_tail,
-   ok_v_from,                          /* {vip=1} */
+   ok_v_from, /* {vip=1} */
    ok_b_fullnames,
 ok_v_fwdheading, /* {obsolete=1} */
 
-   ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
-   ok_b_header,                        /* {i3val=TRU1} */
+   ok_v_HOME, /* {vip=1,nodel=1,notempty=1,import=1} */
+   ok_b_header, /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
    ok_b_headline_plain,
    ok_v_history_file,
-   ok_b_history_gabby,
+   ok_v_history_gabby,
    ok_b_history_gabby_persist,
-   ok_v_history_size,                  /* {notempty=1,posnum=1} */
+   ok_v_history_size, /* {notempty=1,posnum=1} */
    ok_b_hold,
-   ok_v_hostname,                      /* {vip=1} */
+   ok_v_hostname, /* {vip=1} */
 
    ok_b_idna_disable,
-   ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
-   ok_v_ifs_ws,                     /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
+   ok_v_ifs, /* {vip=1,defval=" \t\n"} */
+   ok_v_ifs_ws, /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_inbox,
-   ok_v_indentprefix,                  /* {defval="\t"} */
+   ok_v_indentprefix, /* {defval="\t"} */
 
    ok_b_keep,
    ok_b_keep_content_length,
@@ -980,24 +893,42 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_line_editor_no_defaults,
    ok_v_log_prefix, /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
-   ok_v_MAIL,                          /* {env=1} */
-   ok_v_MAILRC,                  /* {import=1,notempty=1,defval=VAL_MAILRC} */
-   ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
-   ok_v_MBOX,                          /* {env=1,notempty=1,defval=VAL_MBOX} */
-   ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_v_mailx_extra_rc,
+   ok_v_MAIL, /* {env=1} */
+   ok_v_MAILCAPS, /* {import=1,defval=VAL_MAILCAPS} */
+   ok_v_MAILRC, /* {import=1,notempty=1,defval=VAL_MAILRC} */
+   ok_b_MAILX_NO_SYSTEM_RC, /* {name=MAILX_NO_SYSTEM_RC,import=1} */
+   ok_v_MBOX, /* {env=1,notempty=1,defval=VAL_MBOX} */
+   ok_v_mailbox_resolved, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_display, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_b_mailcap_disable,
+   ok_v_mailx_extra_rc, /* {notempty=1} */
+   /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
+    * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
+ok_v_mailx_command, /* {rdonly=1,nodel=1} */
+ok_v_mailx_subject, /* {rdonly=1,nodel=1} */
+ok_v_mailx_from, /* {rdonly=1,nodel=1} */
+ok_v_mailx_sender, /* {rdonly=1,nodel=1} */
+ok_v_mailx_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_bcc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_raw_bcc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_from, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_to, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_cc, /* {rdonly=1,nodel=1} */
+ok_v_mailx_orig_bcc, /* {rdonly=1,nodel=1} */
    ok_b_markanswered,
-   ok_b_mbox_fcc_and_pcc,              /* {i3val=1} */
+   ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
    ok_b_mbox_rfc4155,
-   ok_b_memdebug,                      /* {vip=1} */
+   ok_b_memdebug, /* {vip=1} */
    ok_b_message_id_disable,
    ok_v_message_inject_head,
    ok_v_message_inject_tail,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
-   ok_v_mime_counter_evidence,         /* {posnum=1} */
+   ok_v_mime_counter_evidence, /* {posnum=1} */
    ok_v_mime_encoding,
    ok_b_mime_force_sendout,
    ok_v_mimetypes_load_control,
@@ -1006,33 +937,17 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
    ok_b_mta_no_receiver_arguments,
-   ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
+   ok_v_mta_argv0, /* {notempty=1,defval=VAL_MTA_ARGV0} */
+   ok_b_mta_bcc_ok,
 
-   /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
-    * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
-ok_v_mailx_command,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_subject,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_from,                    /* {rdonly=1,nodel=1} */
-ok_v_mailx_sender,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_to,                      /* {rdonly=1,nodel=1} */
-ok_v_mailx_cc,                      /* {rdonly=1,nodel=1} */
-ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
-
-ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,obsolete=1} */
+ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,env=1,notempty=1,obsolete=1} */
 ok_b_NAIL_NO_SYSTEM_RC, /* {name=NAIL_NO_SYSTEM_RC,import=1,obsolete=1} */
 ok_v_NAIL_HEAD, /* {name=NAIL_HEAD,obsolete=1} */
 ok_v_NAIL_HISTFILE, /* {name=NAIL_HISTFILE,obsolete=1} */
 ok_v_NAIL_HISTSIZE, /* {name=NAIL_HISTSIZE,notempty=1,num=1,obsolete=1} */
 ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
-   ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
-   ok_b_netrc_lookup,                  /* {chain=1} */
+   ok_v_NETRC, /* {env=1,notempty=1,defval=VAL_NETRC} */
+   ok_b_netrc_lookup, /* {chain=1} */
    ok_v_netrc_pipe,
    ok_v_newfolders,
    ok_v_newmail,
@@ -1050,26 +965,27 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_resend_enter, /* {notempty=1} */
    ok_b_outfolder,
 
-   ok_v_PAGER,                         /* {env=1,notempty=1,defval=VAL_PAGER} */
-   ok_v_PATH,                          /* {nodel=1,import=1} */
-   ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
+   ok_v_PAGER, /* {env=1,notempty=1,defval=VAL_PAGER} */
+   ok_v_PATH, /* {nodel=1,import=1} */
+   ok_b_POSIXLY_CORRECT, /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
-   ok_v_password,                      /* {chain=1} */
+   ok_v_password, /* {chain=1} */
    ok_b_piperaw,
-   ok_v_pop3_auth,                     /* {chain=1} */
+   ok_v_pop3_auth, /* {chain=1} */
    ok_b_pop3_bulk_load,
-   ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
-   ok_b_pop3_no_apop,                  /* {chain=1} */
-   ok_b_pop3_use_starttls,             /* {chain=1} */
-   ok_b_posix,                         /* {vip=1} */
+   ok_v_pop3_keepalive, /* {notempty=1,posnum=1} */
+   ok_b_pop3_no_apop, /* {chain=1} */
+   ok_b_pop3_use_starttls, /* {chain=1} */
+   ok_b_posix, /* {vip=1} */
    ok_b_print_alternatives,
-   ok_v_prompt,                        /* {i3val="? "} */
-   ok_v_prompt2,                       /* {i3val=".. "} */
+   ok_v_prompt, /* {i3val="? "} */
+   ok_v_prompt2, /* {i3val=".. "} */
 
    ok_b_quiet,
    ok_v_quote,
+   ok_b_quote_add_cc,
    ok_b_quote_as_attachment,
-   ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
+   ok_v_quote_chars, /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
    ok_v_quote_inject_head,
    ok_v_quote_inject_tail,
@@ -1082,19 +998,19 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
 ok_v_replyto, /* {obsolete=1} */
-   ok_v_reply_to,                      /* {notempty=1} */
+   ok_v_reply_to, /* {notempty=1} */
    ok_v_reply_to_honour,
-   ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
+   ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */
 
-   ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
+   ok_v_SHELL, /* {import=1,notempty=1,defval=VAL_SHELL} */
 ok_b_SYSV3, /* {env=1,obsolete=1} */
-   ok_b_save,                          /* {i3val=TRU1} */
-   ok_v_screen,                        /* {notempty=1,posnum=1} */
+   ok_b_save, /* {i3val=TRU1} */
+   ok_v_screen, /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    /* Charset lowercase conversion handled via vip= */
-   ok_v_sendcharsets,                  /* {vip=1} */
+   ok_v_sendcharsets, /* {vip=1} */
    ok_b_sendcharsets_else_ttycharset,
-   ok_v_sender,                        /* {vip=1} */
+   ok_v_sender, /* {vip=1} */
 ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
@@ -1106,22 +1022,22 @@ ok_v_sendmail_progname, /* {obsolete=1} */
    ok_v_Sign,
    ok_v_sign,
 ok_v_signature, /* {obsolete=1} */
-   ok_b_skipemptybody,                 /* {vip=1} */
+   ok_b_skipemptybody, /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
    ok_v_smime_ca_flags,
    ok_b_smime_ca_no_defaults,
-   ok_v_smime_cipher,                  /* {chain=1} */
+   ok_v_smime_cipher, /* {chain=1} */
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
-   ok_v_smime_encrypt,                 /* {chain=1} */
+   ok_v_smime_encrypt, /* {chain=1} */
    ok_b_smime_force_encryption,
 ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
-   ok_v_smime_sign_cert,               /* {chain=1} */
-   ok_v_smime_sign_digest,             /* {chain=1} */
-   ok_v_smime_sign_include_certs,      /* {chain=1} */
-ok_v_smime_sign_message_digest,     /* {chain=1,obsolete=1} */
+   ok_v_smime_sign_cert, /* {chain=1} */
+   ok_v_smime_sign_digest, /* {chain=1} */
+   ok_v_smime_sign_include_certs, /* {chain=1} */
+ok_v_smime_sign_message_digest, /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
@@ -1131,10 +1047,10 @@ ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
 
-   ok_v_socket_connect_timeout,        /* {posnum=1} */
-   ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
+   ok_v_socket_connect_timeout, /* {posnum=1} */
+   ok_v_socks_proxy, /* {chain=1,notempty=1} */
    ok_v_spam_interface,
-   ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
+   ok_v_spam_maxsize, /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
@@ -1165,57 +1081,57 @@ ok_v_ssl_rand_egd, /* {obsolete=1} */
 ok_v_ssl_rand_file, /* {obsolete=1}*/
 ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_stealthmua,
-   ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
+   ok_v_system_mailrc, /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
-   ok_v_TERM,                          /* {env=1} */
-   ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
+   ok_v_TERM, /* {env=1} */
+   ok_v_TMPDIR, /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
    ok_b_termcap_ca_mode,
    ok_b_termcap_disable,
-   ok_v_tls_ca_dir,                    /* {chain=1} */
-   ok_v_tls_ca_file,                   /* {chain=1} */
-   ok_v_tls_ca_flags,                  /* {chain=1} */
-   ok_b_tls_ca_no_defaults,            /* {chain=1} */
+   ok_v_tls_ca_dir, /* {chain=1} */
+   ok_v_tls_ca_file, /* {chain=1} */
+   ok_v_tls_ca_flags, /* {chain=1} */
+   ok_b_tls_ca_no_defaults, /* {chain=1} */
    ok_v_tls_config_file,
-   ok_v_tls_config_module,             /* {chain=1} */
-   ok_v_tls_config_pairs,              /* {chain=1} */
+   ok_v_tls_config_module, /* {chain=1} */
+   ok_v_tls_config_pairs, /* {chain=1} */
    ok_v_tls_crl_dir,
    ok_v_tls_crl_file,
-   ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
-   ok_v_tls_fingerprint,               /* {chain=1} */
-   ok_v_tls_fingerprint_digest,        /* {chain=1} */
+   ok_v_tls_features, /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_fingerprint, /* {chain=1} */
+   ok_v_tls_fingerprint_digest, /* {chain=1} */
    ok_v_tls_rand_file,
-   ok_v_tls_verify,                    /* {chain=1} */
-   ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
+   ok_v_tls_verify, /* {chain=1} */
+   ok_v_toplines, /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
    /* Charset lowercase conversion handled via vip= */
-   ok_v_ttycharset,              /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_b_typescript_mode,               /* {vip=1} */
+   ok_v_ttycharset, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_b_typescript_mode, /* {vip=1} */
 
-   ok_v_USER,                          /* {rdonly=1,import=1} */
-   ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,                       /* {notempty=1,chain=1} */
+   ok_v_USER, /* {rdonly=1,import=1} */
+   ok_v_umask, /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
+   ok_v_user, /* {notempty=1,chain=1} */
 
-   ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
+   ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_v_v15_compat,
-   ok_b_verbose,                       /* {vip=1} */
-   ok_v_version,                       /* {virt=n_VERSION} */
-   ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
-   ok_v_version_hexnum,                /* {virt=n_VERSION_HEXNUM,posnum=1} */
-   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR,posnum=1} */
-   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR,posnum=1} */
-   ok_v_version_update,                /* {virt=n_VERSION_UPDATE,posnum=1} */
+   ok_b_verbose, /* {vip=1} */
+   ok_v_version, /* {virt=mx_VERSION} */
+   ok_v_version_date, /* {virt=mx_VERSION_DATE} */
+   ok_v_version_hexnum, /* {virt=mx_VERSION_HEXNUM,posnum=1} */
+   ok_v_version_major, /* {virt=mx_VERSION_MAJOR,posnum=1} */
+   ok_v_version_minor, /* {virt=mx_VERSION_MINOR,posnum=1} */
+   ok_v_version_update, /* {virt=mx_VERSION_UPDATE,posnum=1} */
 
    ok_b_writebackedited
 
 ,  /* Obsolete IMAP related non-sorted */
-ok_b_disconnected,               /* {chain=1} */
-ok_v_imap_auth,                  /* {chain=1} */
+ok_b_disconnected, /* {chain=1} */
+ok_v_imap_auth, /* {chain=1} */
 ok_v_imap_cache,
-ok_v_imap_delim,                 /* {chain=1} */
-ok_v_imap_keepalive,             /* {chain=1} */
+ok_v_imap_delim, /* {chain=1} */
+ok_v_imap_keepalive, /* {chain=1} */
 ok_v_imap_list_depth,
-ok_b_imap_use_starttls           /* {chain=1} */
+ok_b_imap_use_starttls /* {chain=1} */
 }; /* }}} */
 enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
 
@@ -1245,62 +1161,7 @@ struct n_strlist{
    n_autorec_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
    n_lofi_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
-
-struct n_cmd_arg_desc{
-   char cad_name[12]; /* Name of command */
-   u32 cad_no; /* Number of entries in cad_ent_flags */
-   /* [enum n_cmd_arg_desc_flags,arg-dep] */
-   u32 cad_ent_flags[VFIELD_SIZE(0)][2];
-};
-/* ISO C(99) doesn't allow initialization of "flex array" */
-#define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
-   static struct n_cmd_arg_desc_ ## CMD {\
-      char cad_name[12];\
-      u32 cad_no;\
-      u32 cad_ent_flags[NO][2];\
-   } const VAR = { #CMD "\0", NO,
-#define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
-#define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
-
-struct n_cmd_arg_ctx{
-   struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
-   char const *cac_indat; /* Input that shall be parsed */
-   uz cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
-   u32 cac_msgflag; /* Input (option): required flags of messages */
-   u32 cac_msgmask; /* Input (option): relevant flags of messages */
-   uz cac_no; /* Output: number of parsed arguments */
-   struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
-   char const *cac_vput; /* "Output": vput prefix used: varname */
-};
-
-struct n_cmd_arg{
-   struct n_cmd_arg *ca_next;
-   char const *ca_indat; /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
-   uz ca_inlen; /*[PRIV] of .ca_indat of this arg (no NUL) */
-   u32 ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
-   u32 ca_arg_flags; /* [Output: _WYSH: copy of parse result flags] */
-   u8 ca__dummy[4];
-   union{
-      struct str ca_str; /* _CMD_ARG_DESC_SHEXP */
-      int *ca_msglist; /* _CMD_ARG_DESC_MSGLIST+ */
-   } ca_arg; /* Output: parsed result */
-};
-
-struct n_cmd_desc{
-   char const *cd_name; /* Name of command */
-   int (*cd_func)(void*); /* Implementor of command */
-   enum n_cmd_arg_flags cd_caflags;
-   u32 cd_msgflag; /* Required flags of msgs */
-   u32 cd_msgmask; /* Relevant flags of msgs */
-   /* XXX requires cmd-tab.h initializer changes u8 cd__pad[4];*/
-   struct n_cmd_arg_desc const *cd_cadp;
-#ifdef mx_HAVE_DOCSTRINGS
-   char const *cd_doc; /* One line doc for command */
-#endif
-};
-/* Yechh, can't initialize unions */
-#define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
-#define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
+#define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
 
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
@@ -1314,14 +1175,6 @@ struct n_go_data_ctx{
     /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
 #endif
    struct su_mem_bag gdc__membag_buf[1];
-};
-
-struct mime_handler{
-   enum mime_handler_flags mh_flags;
-   struct str mh_msg; /* Message describing this command */
-   /* XXX union{} the following? */
-   char const *mh_shell_cmd; /* For MIME_HDL_CMD */
-   int (*mh_ptf)(void); /* PTF main() for MIME_HDL_PTF */
 };
 
 struct search_expr{
@@ -1495,13 +1348,13 @@ struct mimepart{
    char const *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    char const *m_charset;
    char const *m_ct_enc; /* Content-Transfer-Encoding */
-   enum mimecontent m_mimecontent; /* ..in enum */
+   u32 m_mimetype; /* enum mx_mimetype */
    enum mime_enc m_mime_enc; /* ..in enum */
    char *m_partstring; /* Part level string */
    char *m_filename; /* ..of attachment */
    char const *m_content_description;
    char const *m_external_body_url; /* message/external-body:access-type=URL */
-   struct mime_handler *m_handler; /* MIME handler if yet classified */
+   struct mx_mimetype_handler *m_handler; /* MIME handler if yet classified */
 };
 
 struct message{
@@ -1583,7 +1436,8 @@ enum header_flags{
    HF_LIST_REPLY = 1u<<0,
    HF_MFT_SENDER = 1u<<1, /* Add ourselves to Mail-Followup-To: */
    HF_RECIPIENT_RECORD = 1u<<10, /* Save message in file named after rec. */
-   HF__NEXT_SHIFT = 11u
+   HF_USER_EDITED = 1u<<11,
+   HF__NEXT_SHIFT = 16u
 };
 
 /* Structure used to pass about the current state of a message (header) */
@@ -1619,6 +1473,7 @@ struct header{
    struct mx_name *h_mailx_raw_to;
    struct mx_name *h_mailx_raw_cc;
    struct mx_name *h_mailx_raw_bcc;
+   struct mx_name *h_mailx_orig_sender;
    struct mx_name *h_mailx_orig_from;
    struct mx_name *h_mailx_orig_to;
    struct mx_name *h_mailx_orig_cc;
@@ -1782,7 +1637,9 @@ VL struct message *dot; /* Pointer to current message */
 VL struct message *prevdot; /* Previous current message */
 VL struct message *message; /* The actual message structure */
 VL struct message *threadroot; /* first threaded message */
-VL int *n_msgvec; /* Folder setmsize(), list.c res. store*/
+/* getmsglist() 1st marked (for e.g. `Reply') HACK TODO (should be in a ctx) */
+VL struct message *n_msgmark1;
+VL int *n_msgvec; /* Folder setmsize(), list.c res. store */
 #ifdef mx_HAVE_IMAP
 VL int imap_created_mailbox; /* hack to get feedback from imap */
 #endif

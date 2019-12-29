@@ -82,7 +82,7 @@
  */
 
 ==========================================================================
-The GSSAPI code is partially derived from sample code in:
+GSSAPI code:
 
 /*
  * Partially derived from sample code in:
@@ -115,7 +115,7 @@ The GSSAPI code is partially derived from sample code in:
  */
 
 ==========================================================================
-The MD5 code is derived from RFC 1321:
+MD5 code is derived from RFC 1321:
 
 Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.

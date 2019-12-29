@@ -99,8 +99,10 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
       # Parse the file and generate dependencies
       for(any = 0;;){
          po_i = getline < farr[no]
-         if(po_i == 0)
+         if(po_i == 0){
+            close(farr[no])
             break
+         }
          if(po_i == -1)
             exit(1)
 

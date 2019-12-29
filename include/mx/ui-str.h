@@ -51,6 +51,8 @@ typedef char wc_t; /* Yep: really 8-bit char */
 # define n_WC_C(X) X
 #endif
 
+struct n_visual_info_ctx;
+
 struct n_visual_info_ctx{
    char const *vic_indat; /*I Input data */
    uz vic_inlen; /*I If UZ_MAX, su_cs_len(.vic_indat) */

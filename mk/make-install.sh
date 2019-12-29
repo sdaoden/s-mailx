@@ -32,7 +32,7 @@ __copychownfile() {
 __stripfile() {
    _file=${1}
    if [ "${OPT_DEBUG}" != 0 ]; then :;
-   elif [ -n "${HAVE_STRIP}" ]; then
+   elif [ -n "${strip}" ]; then
       ${strip} "${_file}"
    fi
 }

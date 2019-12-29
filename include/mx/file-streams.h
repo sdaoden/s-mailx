@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_fs_tmp_ctx;
+
 enum mx_fs_oflags{
    mx_FS_O_RDONLY = 1u<<0,
    mx_FS_O_WRONLY = 1u<<1,
@@ -40,7 +42,10 @@ enum mx_fs_oflags{
    mx_FS_O_REGISTER_UNLINK = 1u<<9,
    /* tmp_open(): do not release signals/unlink: !O_UNLINK! */
    mx_FS_O_HOLDSIGS = 1u<<10,
-   mx_FS_O_SUFFIX = 1u<<11 /* tmp_open() name hint is mandatory! extension! */
+   /* The name hint given to tmp_open() must be a mandatory member of the
+    * result string as a whole.  Also, the random characters are to be placed
+    * before the name hint, not after it */
+   mx_FS_O_SUFFIX = 1u<<11
 };
 
 enum mx_fs_open_state{ /* TODO add mx_fs_open_mode, too */
@@ -85,13 +90,12 @@ EXPORT FILE *mx_fs_open_any(char const *file, char const *oflags,
       enum mx_fs_open_state *fs_or_nil);
 
 /* Create a temporary file in $TMPDIR, use namehint for its name (prefix
- * unless O_SUFFIX is set in the fs_oflags oflags, in which case namehint is an
- * extension that MUST be part of aka fit in the resulting filename, otherwise
- * tmp_open() will fail), and return a stdio FILE pointer with access oflags.
+ * unless O_SUFFIX is set in the fs_oflags oflags and *namehint!=NUL),
+ * and return a stdio FILE pointer with access oflags.
  * *fstcp_or_nil may only be non-NIL under certain asserted conditions:
  * - if O_REGISTER: it is fully filled in; whether the filename is actually
- *   useful depends on the chosen UNLINK mode
- * - else if O_HOLDSIGS: filename filled in, tmp_release() is callable,
+ *   useful depends on the chosen UNLINK mode.
+ * - Else if O_HOLDSIGS: filename filled in, tmp_release() is callable,
  * - else O_UNLINK must not and O_REGISTER_UNLINK could be set (filename is
  *   filled in, tmp_release() is not callable.
  * In the latter two cases autorec memory storage will be created (on success).
@@ -144,23 +148,32 @@ EXPORT void mx_fs_close_all(void);
 
 /* XXX Temporary (pre v15 I/O) line buffer "pool".
  * (Possibly) Get a line buffer, and release one to the pool, respectively.
- * The latter is driven by the mainloop to perform cleanups */
+ * _book() returns false for integer overflow, or if reallocation survives
+ * su_STATE_ERR_NONMEM.
+ * The last is driven by the mainloop to perform cleanups */
 EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
 EXPORT void mx_fs_linepool_release(char *dp, uz ds);
-EXPORT void mx_fs_linepool_cleanup(void);
+EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd
+      su_DBG_LOC_ARGS_DECL);
+EXPORT void mx_fs_linepool_cleanup(boole completely);
+
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define mx_fs_linepool_book(A,B,C,D) \
+   mx_fs_linepool_book(A, B, C, D  su_DBG_LOC_ARGS_INJ)
+#endif
 
 /* TODO The rest below is old-style (will vanish with I/O layer rewrite) */
 
 /* fgets() replacement to handle lines of arbitrary size and with embedded \0
  * characters.
- * line - line buffer.  *line may be NULL.
+ * line - line buffer.  *line may be NIL.
  * linesize - allocated size of line buffer.
- * count - maximum characters to read.  May be NULL.
- * llen - length_of_line(*line).
+ * count - maximum characters to read.  May be NIL.
+ * llen_or_nil - length_of_line(*line); set to 0 on entry if set.
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.
  * Manages the n_PS_READLINE_NL hack */
-EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen,
+EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen_or_nil,
       FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define fgetline(A,B,C,D,E,F)   \

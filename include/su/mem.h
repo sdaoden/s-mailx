@@ -60,7 +60,7 @@ CTA((su_STATE_ERR_MASK & ~0xFF00u) == 0,
    "Reuse of low order bits impossible, or mask excesses storage");
 #endif
 enum{
-   su_MEM_ALLOC_MIN = Z_ALIGN_SMALL(1)
+   su_MEM_ALLOC_MIN = Z_ALIGN(1)
 };
 enum su_mem_conf_option{
    su_MEM_CONF_NONE,
@@ -74,6 +74,7 @@ enum su_mem_conf_option{
    su__MEM_CONF_MAX = su_MEM_CONF_LINGER_FREE_RELEASE
 };
 #ifdef su_MEM_ALLOC_DEBUG
+EXPORT boole su__mem_get_can_book(uz size, uz no);
 EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
 EXPORT boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE);
 #endif
@@ -181,8 +182,23 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 # define su_MEM_TREALLOCF_LOCOR(T,OVP,F,NO) su_MEM_TREALLOCF(T, OVP, NO, F)
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
 #endif /* !su_HAVE_DBG_LOC_ARGS */
-#define su_mem_get_usable_size(SZ) su_Z_ALIGN_SMALL(SZ) /* XXX fake */
-#define su_mem_get_usable_size_32(SZ) ((su_u32)su_Z_ALIGN_SMALL(SZ))/*XXX*/
+INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
+   if(UZ_MAX - no <= notoadd)
+      return FAL0;
+   no += notoadd;
+   if(no == 0)
+      return TRU1;
+   no = UZ_MAX / no;
+   if(no < size || (size != 1 && no == size))
+      return FAL0;
+#ifdef su_MEM_ALLOC_DEBUG
+   if(!su__mem_get_can_book(size, no))
+      return FAL0;
+#endif
+   return TRU1;
+}
+#define su_mem_get_usable_size(SZ) su_Z_ALIGN(SZ) /* XXX fake */
+#define su_mem_get_usable_size_32(SZ) su_S(su_u32,su_Z_ALIGN(SZ)) /*XXX*/
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 EXPORT void su_mem_set_conf(u32 mco, uz val);
 INLINE boole su_mem_check(void){

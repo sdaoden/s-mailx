@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_child_ctx;
+
 /* */
 #define mx_CHILD_MAXARGS 3 /* xxx vector */
 
@@ -89,7 +91,9 @@ EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
 
 /* Fork a child process, "enable" the below functions upon success.
  * With SPAWN_CONTROL the parent will linger until the child has called
- * in_child_setup() or even (with SPAWN_CONTROL_LINGER) until it execve's */
+ * in_child_setup() or even (with SPAWN_CONTROL_LINGER) until it execve's.
+ * Childs can start childs themselves, but note we do not care about termios
+ * XXX or child handling no more in recursive levels */
 EXPORT boole mx_child_fork(struct mx_child_ctx *ccp);
 
 /* Setup an image in the child; signals are still blocked before that! */

@@ -11,7 +11,7 @@
 #@   removed, but trailing whitespace before "escaped newlines" is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.15 / 2019-08-17
+#@ S-nail v14.9.16 / 2019-12-29
 
 ## Variables
 
@@ -83,7 +83,7 @@ set fullnames
 # [OPTION] Add more entries to the history as is done by default.
 # The latter will cause the built-in editor to save those entries, too.
 # (The *history-file* variable controls persistency of the history.)
-set history-gabby history-gabby-persist
+set history-gabby=all history-gabby-persist
 
 # Do not move read messages of system mailboxes to MBOX by default since this
 # is likely to be irritating for most users today; also see *keepsave*.
@@ -92,6 +92,9 @@ set hold
 # Quote the original message in replies with "> " as usual on the Internet.
 # POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
 set indentprefix="> "
+
+# Honour Mail-Followup-To: headers when replying etc.
+set followup-to-honour=ask-yes
 
 # Mark messages that have been answered.
 set markanswered
@@ -131,6 +134,9 @@ set recipients-in-cc
 # (which is subject to `charsetalias' expansion, though).
 #set reply-in-same-charset
 
+# Honour Reply-To: headers when replying etc.
+set reply-to-honour=ask-yes
+
 # [OPTION] Outgoing messages are sent in UTF-8 if possible, otherwise LATIN1.
 # Note: it is highly advisable to read the section "Character sets" of the
 # manual in order to understand all the possibilities that exist to fine-tune
@@ -160,7 +166,7 @@ set showto
 
 # Only include the selected header fields when printing messages
 # `headerpick' is not portable, so use the standard `retain'
-retain from_ date from to cc subject message-id mail-followup-to reply-to
+retain date sender from to cc subject message-id mail-followup-to reply-to
 #headerpick type retain from_ date from to cc subject \
 #   message-id mail-followup-to reply-to
 # ...when forwarding messages

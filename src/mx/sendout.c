@@ -45,13 +45,16 @@
 #include <su/mem.h>
 
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cred-auth.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/iconv.h"
+#include "mx/mime-type.h"
 #include "mx/names.h"
 #include "mx/net-smtp.h"
+#include "mx/privacy.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
@@ -144,12 +147,13 @@ static struct mx_name *a_sendout_file_a_pipe(struct mx_name *names, FILE *fo,
                      boole *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static boole        mightrecord(FILE *fp, struct mx_name *to, boole resend);
+static boole a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend);
 
 static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 
-/*  */
-static boole a_sendout_transfer(struct sendbundle *sbp, boole *senderror);
+/* Move a message over to non-local recipients (via MTA) */
+static boole a_sendout_transfer(struct sendbundle *sbp, boole resent,
+      boole *senderror);
 
 /* Actual MTA interaction */
 static boole a_sendout_mta_start(struct sendbundle *sbp);
@@ -167,8 +171,8 @@ static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
-static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
-                        struct mx_name *to, int add_resent);
+static boole a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
+      struct mx_name *to, int add_resent);
 
 static u32
 a_sendout_sendwait_to_swf(void){ /* TODO should happen at var assign time */
@@ -354,8 +358,8 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    NYD2_IN;
 
    rv = su_ERR_INVAL;
-   buf = n_alloc(bufsize = SEND_LINESIZE);
-   outrest.s = inrest.s = NULL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
+   outrest.s = inrest.s = NIL;
    outrest.l = inrest.l = 0;
 
    if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
@@ -374,7 +378,7 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
             || iconvd != (iconv_t)-1
 #endif
       ){
-         if(fgetline(&buf, &bufsize, &cnt, &size, fi, 0) == NULL)
+         if(fgetline(&buf, &bufsize, &cnt, &size, fi, FAL0) == NIL)
             break;
          if(convert != CONV_TOQP && seenempty && is_head(buf, size, FAL0)){
             if(bufsize - 1 >= size + 1){
@@ -401,11 +405,11 @@ joutln:
 
    rv = ferror(fi) ? su_ERR_IO : su_ERR_NONE;
 jleave:
-   if(outrest.s != NULL)
-      n_free(outrest.s);
-   if(inrest.s != NULL)
-      n_free(inrest.s);
-   n_free(buf);
+   if(outrest.s != NIL)
+      su_FREE(outrest.s);
+   if(inrest.s != NIL)
+      su_FREE(inrest.s);
+   mx_fs_linepool_release(buf, bufsize);
 
    NYD2_OU;
    return rv;
@@ -485,7 +489,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    FILE *fi;
    char const *charset;
    enum conversion convert;
-   int do_iconv;
+   boole do_iconv;
    s32 err;
    NYD_IN;
 
@@ -508,12 +512,12 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       /* No MBOXO quoting here, never!! */
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = n_mimetype_classify_file(fi, (char const**)&ct,
-         &charset, &do_iconv, TRU1);
+      convert = mx_mimetype_classify_file(fi, (char const**)&ct,
+            &charset, &do_iconv, TRU1);
 
-      if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
+      if(charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
-         do_iconv = 0;
+         do_iconv = FAL0;
       if(force && do_iconv){
          convert = CONV_TOB64;
          ap->a_content_type = ct = "application/octet-stream";
@@ -604,14 +608,13 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
          sbp->sb_signer.l = su_cs_len(sbp->sb_signer.s = from);
    }
 
-#ifndef mx_HAVE_SMTP
-   rv = TRU1;
-#else
-   if(sbp->sb_urlp == NIL){
+   /* file:// and test:// MTAs do not need credentials */
+   if(sbp->sb_urlp->url_cproto == CPROTO_NONE){
       rv = TRU1;
       goto jleave;
    }
 
+#ifdef mx_HAVE_SMTP
    if (v15) {
       if (shost == NULL) {
          if (from == NULL)
@@ -641,9 +644,8 @@ jenofrom:
 
    rv = TRU1;
 #endif /* mx_HAVE_SMTP */
-#if defined mx_HAVE_SMIME || defined mx_HAVE_SMTP
+
 jleave:
-#endif
    NYD_OU;
    return rv;
 }
@@ -755,7 +757,8 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 {
    struct mx_fs_tmp_ctx *fstcp;
    enum conversion convert;
-   int do_iconv, err;
+   int err;
+   boole do_iconv;
    char const *contenttype, *charset;
    FILE *nfo, *nfi;
 #ifdef mx_HAVE_ICONV
@@ -765,7 +768,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
    nfi = NULL;
    charset = NULL;
-   do_iconv = 0;
+   do_iconv = FAL0;
    err = su_ERR_NONE;
 
    if((nfo = mx_fs_tmp_open("infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
@@ -798,8 +801,8 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
       }else
          contenttype = "text/plain";
 
-      convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv,
-            no_mboxo);
+      convert = mx_mimetype_classify_file(fi, &contenttype, &charset,
+            &do_iconv, no_mboxo);
    }
 
 #ifdef mx_HAVE_ICONV
@@ -838,10 +841,10 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 #endif
 
 #ifdef mx_HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
-      if (su_cs_cmp_case(charset, tcs) != 0 &&
+   if(do_iconv && charset != NIL){ /*TODO charset->mimetype_classify_file*/
+      if(su_cs_cmp_case(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = su_err_no()) != su_ERR_NONE) {
+            (err = su_err_no()) != su_ERR_NONE){
 jiconv_err:
          if (err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
@@ -1083,7 +1086,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          FILE *fout;
          char const *fname, *fnameq;
 
-         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NIL)
+         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NIL) /* TODO */
             goto jerror;
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
@@ -1124,18 +1127,22 @@ jefile:
 
          if(fout != n_stdout)
             mx_fs_close(fout);
+         else
+            clearerr(fout);
       }
    }
 
 jleave:
    if(fp != NIL)
       mx_fs_close(fp);
+
    if(fppa != NIL){
       for(i = 0; i < pipecnt; ++i)
          if((fp = fppa[i]) != NIL)
             mx_fs_close(fp);
       n_lofi_free(fppa);
    }
+
    NYD_OU;
    return names;
 
@@ -1150,17 +1157,15 @@ jerror:
 }
 
 static boole
-mightrecord(FILE *fp, struct mx_name *to, boole resend){
-   char *cp;
+a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
    char const *ccp;
+   char *cp;
    boole rv;
    NYD2_IN;
 
    rv = TRU1;
 
-   if(n_poption & n_PO_D)
-      ccp = NULL;
-   else if(to != NULL){
+   if(to != NIL){
       ccp = cp = savestr(to->n_name);
       while(*cp != '\0' && *cp != '@')
          ++cp;
@@ -1168,61 +1173,78 @@ mightrecord(FILE *fp, struct mx_name *to, boole resend){
    }else
       ccp = ok_vlook(record);
 
-   if(ccp != NULL){
-      if((cp = fexpand(ccp, FEXP_NSHELL)) == NULL)
-         goto jbail;
+   if(ccp == NIL)
+      goto jleave;
 
-      switch(*(ccp = cp)){
-      case '.':
-         if(cp[1] != '/'){ /* DIRSEP */
-      default:
-            if(ok_blook(outfolder)){
-               struct str s;
-               char const *nccp, *folder;
+   if((cp = fexpand(ccp, FEXP_NSHELL)) == NIL) /* TODO */
+      goto jbail;
 
-               switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
-               case PROTO_FILE:
-                  ccp = "file://";
-                  if(0){
-                  /* FALLTHRU */
-               case PROTO_MAILDIR:
+   switch(which_protocol(ccp, FAL0, FAL0, NIL)){
+   case n_PROTO_EML:
+   case n_PROTO_POP3:
+   case n_PROTO_UNKNOWN:
+      goto jbail;
+   default:
+      break;
+   }
+
+   switch(*(ccp = cp)){
+   case '.':
+      if(cp[1] != '/'){ /* DIRSEP */
+   default:
+         if(ok_blook(outfolder)){
+            struct str s;
+            char const *nccp, *folder;
+
+            switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
+            case PROTO_FILE:
+               ccp = "file://";
+               if(0){
+               /* FALLTHRU */
+            case PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
-                     ccp = "maildir://";
+                  ccp = "maildir://";
 #else
-                     n_err(_("*record*: *outfolder*: no Maildir directory "
-                        "support compiled in\n"));
-                     goto jbail;
+                  n_err(_("*record*: *outfolder*: no Maildir directory "
+                     "support compiled in\n"));
+                  goto jbail;
 #endif
-                  }
-                  folder = n_folder_query();
-#ifdef mx_HAVE_IMAP
-                  if(which_protocol(folder, FAL0, FAL0, NULL) == PROTO_IMAP){
-                     n_err(_("*record*: *outfolder* set, *folder* is IMAP "
-                        "based: only one protocol per file is possible\n"));
-                     goto jbail;
-                  }
-#endif
-                  ccp = str_concat_csvl(&s, ccp, folder, nccp, NULL)->s;
-                  /* FALLTHRU */
-               default:
-                  break;
                }
+               folder = n_folder_query();
+#ifdef mx_HAVE_IMAP
+               if(which_protocol(folder, FAL0, FAL0, NIL) == PROTO_IMAP){
+                  n_err(_("*record*: *outfolder* set, *folder* is IMAP "
+                     "based: only one protocol per file is possible\n"));
+                  goto jbail;
+               }
+#endif
+               ccp = str_concat_csvl(&s, ccp, folder, nccp, NIL)->s;
+               /* FALLTHRU */
+            case n_PROTO_IMAP:
+               break;
+            default:
+               goto jbail;
             }
          }
-         /* FALLTHRU */
-      case '/':
-         break;
       }
-
-      if(!a_sendout__savemail(ccp, fp, resend)){
-jbail:
-         n_err(_("Failed to save message in %s - message not sent\n"),
-            n_shexp_quote_cp(ccp, FAL0));
-         n_exit_status |= n_EXIT_ERR;
-         savedeadletter(fp, 1);
-         rv = FAL0;
-      }
+      /* FALLTHRU */
+   case '/':
+      break;
    }
+
+   if(n_poption & n_PO_D_VV)
+      n_err(_(">>> Writing message via %s\n"), n_shexp_quote_cp(ccp, FAL0));
+
+   if(!(n_poption & n_PO_D) && !a_sendout__savemail(ccp, fp, resend)){
+jbail:
+      n_err(_("Failed to save message in %s - message not sent\n"),
+         n_shexp_quote_cp(ccp, FAL0));
+      n_exit_status |= n_EXIT_ERR;
+      savedeadletter(fp, 1);
+      rv = FAL0;
+   }
+
+jleave:
    NYD2_OU;
    return rv;
 }
@@ -1232,13 +1254,13 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
    uz bufsize, buflen, cnt;
    enum mx_fs_open_state fs;
-   boole rv, emptyline;
    char *buf;
+   boole rv, emptyline;
    NYD_IN;
    UNUSED(resend);
 
-   buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if((fo = mx_fs_open_any(name, "a+", &fs)) == NIL){
       n_perr(name, 0);
@@ -1259,69 +1281,135 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
       }
    }
 
-   fflush_rewind(fp);
+   if(fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime) < 0)
+      goto jleave;
+
    rv = TRU1;
 
-   fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
+   fflush_rewind(fp);
    for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
-         fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL;){
+         fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) != NIL;){
       /* Only if we are resending it can happen that we have to quote From_
        * lines here; we don't generate messages which are ambiguous ourselves.
        * xxx No longer true after (Reintroduce ^From_ MBOXO with
        * xxx *mime-encoding*=8b (too many!)[..]) */
       /*if(resend){*/
-         if(emptyline && is_head(buf, buflen, FAL0))
-            putc('>', fo);
+         if(emptyline && is_head(buf, buflen, FAL0)){
+            if(putc('>', fo) == EOF){
+               rv = FAL0;
+               break;
+            }
+         }
       /*}su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
 
       emptyline = (buflen > 0 && *buf == '\n');
-      fwrite(buf, sizeof *buf, buflen, fo);
+      if(fwrite(buf, sizeof *buf, buflen, fo) != buflen){
+         rv = FAL0;
+         break;
+      }
    }
-   if(buflen > 0 && buf[buflen - 1] != '\n')
-      putc('\n', fo);
-   putc('\n', fo);
-   fflush(fo);
-   if(ferror(fo)){
-      n_perr(name, 0);
+   if(rv){
+      if(buflen > 0 && buf[buflen - 1] != '\n'){
+         if(putc('\n', fo) == EOF)
+            rv = FAL0;
+      }
+      if(rv && (putc('\n', fo) == EOF || fflush(fo)))
+         rv = FAL0;
+   }
+
+   if(!rv){
+      n_perr(name, su_ERR_IO);
       rv = FAL0;
    }
 
 jleave:
    really_rewind(fp);
-   rv = mx_fs_close(fo);
+   if(!mx_fs_close(fo))
+      rv = FAL0;
 j_leave:
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
    return rv;
 }
 
 static boole
-a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
-{
+a_sendout_transfer(struct sendbundle *sbp, boole resent, boole *senderror){
    u32 cnt;
    struct mx_name *np;
+   FILE *input_save;
    boole rv;
    NYD_IN;
-   UNUSED(senderror);
+
+   rv = FAL0;
+
+   /* Do we need to create a Bcc: free overlay?
+    * TODO In v15 we would have an object tree with dump-to-wire, we have our
+    * TODO file stream which acts upon an I/O device that stores so-and-so-much
+    * TODO memory, excess in a temporary file; either each object knows its
+    * TODO offset where it placed its dump-to-wire, or we create a list overlay
+    * TODO which records these offsets.  Then, in our non-blocking eventloop
+    * TODO which writes data to the MTA child as it goes we simply not write
+    * TODO the Bcc: as necessary; how about that? */
+   input_save = sbp->sb_input;
+   if((resent || (sbp->sb_hp != NIL && sbp->sb_hp->h_bcc != NIL)) &&
+         !ok_blook(mta_bcc_ok)){
+      boole inhdr;
+      uz bufsize, bcnt, llen;
+      char *buf;
+      FILE *fp;
+
+      if((fp = mx_fs_tmp_open("mtabccok", (mx_FS_O_RDWR | mx_FS_O_REGISTER |
+               mx_FS_O_UNLINK), NIL)) == NIL){
+jewritebcc:
+         n_perr(_("Creation of *mta-write-bcc* message"), 0);
+         *senderror = TRU1;
+         goto jleave;
+      }
+      sbp->sb_input = fp;
+
+      mx_fs_linepool_aquire(&buf, &bufsize);
+      bcnt = fsize(input_save);
+      inhdr = TRU1;
+      while(fgetline(&buf, &bufsize, &bcnt, &llen, input_save, TRU1) != NIL){
+         if(inhdr){
+            if(llen == 1 && *buf == '\n')
+               inhdr = FAL0;
+            /* (We need _case for resent only) */
+            else if(su_cs_starts_with_case(buf, "bcc:"))
+               continue;
+            /* We yet do not generate that, but place the logic today */
+            else if(resent && su_cs_starts_with_case(buf, "resent-bcc:"))
+               continue;
+
+         }
+         if(fwrite(buf, 1, llen, fp) != llen)
+            goto jewritebcc;
+      }
+      mx_fs_linepool_release(buf, bufsize);
+
+      if(ferror(input_save)){
+         *senderror = TRU1;
+         goto jleave;
+      }
+      fflush_rewind(fp);
+   }
 
    rv = TRU1;
 
-   for (cnt = 0, np = sbp->sb_to; np != NULL;) {
-      char const k[] = "smime-encrypt-", *cp;
-      uz nl = strlen(np->n_name);
-      char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
-      memcpy(vs, k, sizeof(k) -1);
-      memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
+   for(cnt = 0, np = sbp->sb_to; np != NIL;){
+      FILE *ef;
 
-      if ((cp = n_var_vlook(vs, FAL0)) != NULL) {
-#ifdef mx_HAVE_SMIME
-         FILE *ef;
+      if((ef = mx_privacy_encrypt_try(sbp->sb_input, np->n_name)
+            ) != R(FILE*,-1)){
+         if(ef != NIL){
+            struct mx_name *nsave;
+            FILE *fisave;
 
-         if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
-            FILE *fisave = sbp->sb_input;
-            struct mx_name *nsave = sbp->sb_to;
+            fisave = sbp->sb_input;
+            nsave = sbp->sb_to;
 
-            sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
+            sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GFULLEXTRA | GSKIN));
             sbp->sb_input = ef;
             if(!a_sendout_mta_start(sbp))
                rv = FAL0;
@@ -1329,35 +1417,34 @@ a_sendout_transfer(struct sendbundle *sbp, boole *senderror)
             sbp->sb_input = fisave;
 
             mx_fs_close(ef);
-         } else {
-#else
-            n_err(_("No S/MIME support compiled in\n"));
-            rv = FAL0;
-#endif
+         }else{
             n_err(_("Message not sent to: %s\n"), np->n_name);
             _sendout_error = TRU1;
-#ifdef mx_HAVE_SMIME
          }
-#endif
          rewind(sbp->sb_input);
 
-         if (np->n_flink != NULL)
+         if(np->n_flink != NIL)
             np->n_flink->n_blink = np->n_blink;
-         if (np->n_blink != NULL)
+         if(np->n_blink != NIL)
             np->n_blink->n_flink = np->n_flink;
-         if (np == sbp->sb_to)
+         if(np == sbp->sb_to)
             sbp->sb_to = np->n_flink;
          np = np->n_flink;
-      } else {
+      }else{
          ++cnt;
          np = np->n_flink;
       }
-      n_lofi_free(vs);
    }
 
-   if (cnt > 0 && (ok_blook(smime_force_encryption) ||
-         !a_sendout_mta_start(sbp)))
+   if(cnt > 0 && (mx_privacy_encrypt_is_forced() || !a_sendout_mta_start(sbp)))
       rv = FAL0;
+
+jleave:
+   if(input_save != sbp->sb_input){
+      mx_fs_close(sbp->sb_input);
+      rewind(sbp->sb_input = input_save);
+   }
+
    NYD_OU;
    return rv;
 }
@@ -1371,50 +1458,17 @@ a_sendout_mta_start(struct sendbundle *sbp)
    boole rv, dowait;
    NYD_IN;
 
-   /* Let rv mean "is smtp-based MTA" */
-   if((mta = ok_vlook(smtp)) != NULL){
-      n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
-      /* For *smtp* the smtp:// protocol was optional; be simple: don't check
-       * that *smtp* is misused with file:// or so */
-      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
-         mta = savecat("smtp://", mta);
-      rv = TRU1;
-   }else{
-      boole issnd;
-      u16 pno;
-      char const *proto;
-
-      mta = ok_vlook(mta); /* TODO v15: what solely remains in here */
-      if((proto = ok_vlook(sendmail)) != NULL)
-         n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
-      if(proto != NULL && !su_cs_cmp(mta, VAL_MTA))
-         mta = proto;
-
-      /* TODO for now this is pretty hacky: in v15 we should simply create
-       * TODO an URL object; i.e., be able to do so, and it does it right
-       * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      if((proto = mx_url_servbyname(mta, &pno, &issnd)) != NIL){
-         if(*proto == '\0'){
-            if(pno == 0){
-               mta += sizeof("file://") -1;
-               rv = FAL0;
-            }else{
-               /* test -> stdout, test://X -> X */
-               mta += sizeof("test") -1;
-               if(mta[0] == ':' && mta[1] == '/' && mta[2] == '/')
-                  mta += 3;
-               rv = TRUM1;
-            }
-         }else if(!issnd){
-            n_err(_("*mta* does not denote a message sending protocol: %s\n"),
-               n_shexp_quote_cp(mta, FAL0));
-            rv = FAL0;
-            goto jstop;
-         }else
-            rv = TRU1;
-      }else
+   /* Let rv be: TRU1=SMTP, FAL0=file, TRUM1=test */
+   mta = sbp->sb_urlp->url_input;
+   if(sbp->sb_urlp->url_cproto == CPROTO_NONE){
+      if(sbp->sb_urlp->url_portno == 0)
          rv = FAL0;
-   }
+      else{
+         ASSERT(sbp->sb_urlp->url_portno == U16_MAX);
+         rv = TRUM1;
+      }
+   }else
+      rv = TRU1;
 
    sigemptyset(&nset);
    sigaddset(&nset, SIGHUP);
@@ -1433,7 +1487,8 @@ a_sendout_mta_start(struct sendbundle *sbp)
    if(rv != TRU1){
       char const *mta_base;
 
-      if((mta = fexpand(mta_base = mta, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+      if((mta = fexpand(mta_base = mta, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
+            FEXP_NSHELL))) == NIL){
          n_err(_("*mta* variable file expansion failure: %s\n"),
             n_shexp_quote_cp(mta_base, FAL0));
          goto jstop;
@@ -1661,13 +1716,13 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
       a_ANY = 1u<<2,
       a_LASTNL = 1u<<3
    };
-   uz cnt, bufsize, llen;
    FILE *fp;
    s32 f;
+   uz bufsize, cnt, llen;
    char *buf;
    NYD_IN;
 
-   buf = NIL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if(*mta == '\0')
       fp = n_stdout;
@@ -1686,7 +1741,6 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
 
    fflush_rewind(sbp->sb_input);
    cnt = fsize(sbp->sb_input);
-   bufsize = 0;
    f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
 
    if((f & a_MAFC) &&
@@ -1704,18 +1758,20 @@ a_sendout_mta_test(struct sendbundle *sbp, char const *mta)
             f &= ~a_LASTNL;
       }
    }
+   if(ferror(sbp->sb_input))
+      goto jefo;
    if((f & (a_ANY | a_LASTNL)) == a_ANY && putc('\n', fp) == EOF)
       goto jeno;
 
 jdone:
-   if(buf != NULL)
-      n_free(buf);
-
    if(fp != n_stdout)
       mx_fs_close(fp);
    else
       clearerr(fp);
+
 jleave:
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
    return ((f & a_ERR) == 0);
 
@@ -1885,23 +1941,27 @@ jleave:
    return ((m & m_ERROR) == 0);
 }
 
-static int
-infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
-   int add_resent)
+static boole
+a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
+   struct mx_name *to, int add_resent)
 {
-   uz cnt, c, bufsize = 0;
-   char *buf = NULL;
+   uz cnt, c, bufsize;
+   char *buf;
    char const *cp;
    struct mx_name *fromfield = NULL, *senderfield = NULL, *mdn;
-   int rv = 1;
+   boole rv;
    NYD_IN;
 
+   rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = mp->m_size;
 
    /* Write the Resent-Fields */
    if (add_resent) {
-      fputs("Resent-", fo);
-      mkdate(fo, "Date");
+      if(fputs("Resent-", fo) == EOF)
+         goto jleave;
+      if(mkdate(fo, "Date") == -1)
+         goto jleave;
       if ((cp = myaddrs(NULL)) != NULL) {
          if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-From:", fo,
                &fromfield))
@@ -1928,58 +1988,116 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
 
    /* Write the original headers */
    while (cnt > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
+      if(fgetline(&buf, &bufsize, &cnt, &c, fi, FAL0) == NIL){
+         if(ferror(fi))
+            goto jleave;
          break;
+      }
       if (su_cs_cmp_case_n("status:", buf, 7) &&
             su_cs_cmp_case_n("disposition-notification-to:", buf, 28) &&
-            !is_head(buf, c, FAL0))
-         fwrite(buf, sizeof *buf, c, fo);
+            !is_head(buf, c, FAL0)){
+         if(fwrite(buf, sizeof *buf, c, fo) != c)
+            goto jleave;
+      }
       if (cnt > 0 && *buf == '\n')
          break;
    }
 
    /* Write the message body */
-   while (cnt > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
+   while(cnt > 0){
+      if(fgetline(&buf, &bufsize, &cnt, &c, fi, FAL0) == NIL){
+         if(ferror(fi))
+            goto jleave;
          break;
-      if (cnt == 0 && *buf == '\n')
+      }
+      if(cnt == 0 && *buf == '\n')
          break;
-      fwrite(buf, sizeof *buf, c, fo);
+      if(fwrite(buf, sizeof *buf, c, fo) != c)
+         goto jleave;
    }
-   if (buf != NULL)
-      n_free(buf);
-   if (ferror(fo)) {
-      n_perr(_("infix_resend: temporary mail file"), 0);
-      goto jleave;
-   }
-   rv = 0;
+
+   rv = TRU1;
 jleave:
+   mx_fs_linepool_release(buf, bufsize);
+
+   if(!rv)
+      n_err(_("infix_resend: creation of temporary mail file failed\n"));
    NYD_OU;
    return rv;
 }
 
 FL boole
 mx_sendout_mta_url(struct mx_url *urlp){
+   /* TODO In v15 this should simply be url_creat(,ok_vlook(mta).
+    * TODO Register a "test" protocol handler, and if the protocol ends up
+    * TODO as file and the path is "test", then this is also test.
+    * TODO I.e., CPROTO_FILE and CPROTO_TEST.  Until then this is messy */
+   char const *mta;
    boole rv;
-   char const *smtp, *proto;
    NYD_IN;
 
-   if((smtp = ok_vlook(smtp)) == NIL){ /* TODO v15 url_creat(,ok_vlook(mta)*/
-      /* *smtp* OBSOLETE message in mta_start() */
-      if((proto = mx_url_servbyname(smtp = ok_vlook(mta), NIL, NIL)) == NIL ||
-            *proto == '\0'){
+   rv = FAL0;
+
+   if((mta = ok_vlook(smtp)) == NIL){
+      boole issnd;
+      u16 pno;
+      char const *proto;
+
+      mta = ok_vlook(mta);
+
+      if((proto = ok_vlook(sendmail)) != NIL){ /* v15-compat */
+         n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
+         /* But use it in favour of default value, then */
+         if(!su_cs_cmp(mta, VAL_MTA))
+            mta = proto;
+      }
+
+      if(su_cs_find_c(mta, ':') == NIL){
+         if(su_cs_cmp(mta, "test")){
+            pno = 0;
+            goto jisfile;
+         }
+         pno = U16_MAX;
+         goto jistest;
+      }else if((proto = mx_url_servbyname(mta, &pno, &issnd)) == NIL){
+         goto jemta;
+      }else if(*proto == '\0'){
+         if(pno == 0)
+            mta += sizeof("file://") -1;
+         else{
+            /* test -> stdout, test://X -> X */
+            ASSERT(pno == U16_MAX);
+jistest:
+            mta += sizeof("test") -1;
+            if(mta[0] == ':' && mta[1] == '/' && mta[2] == '/')
+               mta += 3;
+         }
+jisfile:
+         su_mem_set(urlp, 0, sizeof *urlp);
+         urlp->url_input = mta;
+         urlp->url_portno = pno;
+         urlp->url_cproto = CPROTO_NONE;
          rv = TRUM1;
          goto jleave;
-      }
+      }else if(!issnd)
+         goto jemta;
+   }else{
+      n_OBSOLETE(_("please do not use *smtp*, instead "
+         "assign a smtp:// URL to *mta*!"));
+      /* For *smtp* the smtp:// protocol was optional; be simple: do not check
+       * that *smtp* is misused with file:// or so */
+      if(mx_url_servbyname(mta, NIL, NIL) == NIL)
+         mta = savecat("smtp://", mta);
    }
 
 #ifdef mx_HAVE_NET
-   rv = mx_url_parse(urlp, CPROTO_SMTP, smtp);
-#else
-   UNUSED(urlp);
-   rv = FAL0;
+   rv = mx_url_parse(urlp, CPROTO_SMTP, mta);
 #endif
 
+   if(!rv)
+jemta:
+      n_err(_("*mta*: invalid or unsupported value: %s\n"),
+         n_shexp_quote_cp(mta, FAL0));
 jleave:
    NYD_OU;
    return rv;
@@ -2060,9 +2178,11 @@ FL enum okay
 n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    char const *quotefile)
 {
-   struct n_sigman sm;
+#ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
-   struct mx_url url;
+#endif
+   struct mx_url url, *urlp = &url;
+   struct n_sigman sm;
    struct sendbundle sb;
    struct mx_name *to;
    boole dosign, mta_isexe;
@@ -2095,12 +2215,18 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO -C headers can be managed (removed etc.) via ~^, too, but the
     * TODO *customhdr* ones are fixated at this very place here, no sooner! */
 
-   dosign = TRUM1;
-
    /* */
+#ifdef mx_HAVE_PRIVACY
+   dosign = TRUM1;
+#else
+   dosign = FAL0;
+#endif
+
    if(n_psonce & n_PSO_INTERACTIVE){
+#ifdef mx_HAVE_PRIVACY
       if(ok_blook(asksign))
          dosign = mx_tty_yesorno(_("Sign this message"), TRU1);
+#endif
    }
 
    if(fsize(mtf) == 0){
@@ -2116,13 +2242,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          n_err(_("Null message body; hope that's ok\n"));
    }
 
-   if (dosign == TRUM1)
-      dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
-#ifndef mx_HAVE_SMIME
-   if (dosign) {
-      n_err(_("No S/MIME support compiled in\n"));
-      goto jleave;
-   }
+#ifdef mx_HAVE_PRIVACY
+   if(dosign == TRUM1)
+      dosign = mx_privacy_sign_is_desired(); /* TODO USER@HOST, *from*++!!! */
 #endif
 
    /* XXX Update time_current again; once n_collect() offers editing of more
@@ -2139,8 +2261,8 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO header fields ONCE, call that ONCE after user editing etc. has
     * TODO completed (one edit cycle) */
 
-   if(!(mta_isexe = mx_sendout_mta_url(&url)))
-      goto jleave;
+   if(!(mta_isexe = mx_sendout_mta_url(urlp)))
+      goto jfail_dead;
    mta_isexe = (mta_isexe != TRU1);
 
    /* Take the user names from the combined to and cc lists and do all the
@@ -2174,8 +2296,10 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
-   sb.sb_urlp = mta_isexe ? NIL : &url;
+   sb.sb_urlp = urlp;
+#ifdef mx_HAVE_NET
    sb.sb_credp = &cc;
+#endif
 
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
@@ -2216,9 +2340,9 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    mtf = nmtf;
 
    /*  */
-#ifdef mx_HAVE_SMIME
-   if (dosign) {
-      if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
+#ifdef mx_HAVE_PRIVACY
+   if(dosign){
+      if((nmtf = mx_privacy_sign(mtf, sb.sb_signer.s)) == NIL)
          goto jfail_dead;
       mx_fs_close(mtf);
       mtf = nmtf;
@@ -2243,16 +2367,16 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
       to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       cnt = count(to);
 
-      if (((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
-            !mightrecord(mtf, (msf & n_MAILSEND_RECORD_RECIPIENT ? to : NULL),
-               FAL0))
+      if(((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
+            !a_sendout_mightrecord(mtf,
+               (msf & n_MAILSEND_RECORD_RECIPIENT ? to : NIL), FAL0))
          goto jleave;
       if (cnt > 0) {
          sb.sb_hp = hp;
          sb.sb_to = to;
          sb.sb_input = mtf;
          b = FAL0;
-         if(a_sendout_transfer(&sb, &b))
+         if(a_sendout_transfer(&sb, FAL0, &b))
             rv = OKAY;
          else if(b && _sendout_error == 0){
             _sendout_error = b;
@@ -2312,6 +2436,9 @@ mkdate(FILE *fo, char const *field)
          tmptr->tm_year + 1900, tmptr->tm_hour,
          tmptr->tm_min, tmptr->tm_sec,
          tzdiff_hour * 100 + tzdiff_min);
+   if(rv < 0)
+      rv = -1;
+
    NYD_OU;
    return rv;
 }
@@ -2355,10 +2482,11 @@ do {\
    fromasender = mft = NIL;
    rv = FAL0;
 
-   if(nosend_msg == TRUM1 &&
-         fputs(_("# Message will be discarded unless file is saved\n"),
+   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+      if(fputs(_("# Message will be discarded unless file is saved\n"),
             fo) == EOF)
-      goto jleave;
+         goto jleave;
+   }
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
       stealthmua = !su_cs_cmp(addr, "noagent") ? -1 : 1;
@@ -2448,7 +2576,8 @@ do {\
 
             /* Automatically make MLIST_KNOWN List-Post: address */
             /* XXX mx_mlist_query_mp()?? */
-            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
+            if(((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER ||
+                     ml == mx_MLIST_POSSIBLY) &&
                   addr != NIL && !su_cs_cmp_case(addr, x->n_name))
                ml = mx_MLIST_KNOWN;
 
@@ -2461,6 +2590,7 @@ do {\
                f |= a_ANYLIST;
                goto j_mft_add;
             case mx_MLIST_OTHER:
+            case mx_MLIST_POSSIBLY:
                f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:
@@ -2522,10 +2652,11 @@ j_mft_add:
       }
    }
 
-   if(nosend_msg == TRUM1 &&
-         fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
+   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+      if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
-      goto jleave;
+         goto jleave;
+   }
 
 #if 1
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
@@ -2604,12 +2735,13 @@ jto_fmt:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
-         if(nosend_msg == TRUM1 &&
-               fputs(_("# Removing or modifying In-Reply-To: "
+         if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+            if(fputs(_("# Removing or modifying In-Reply-To: "
                      "breaks the old, and starts a new thread.\n"
                   "# Assigning hyphen-minus - creates a thread of only the "
                      "replied-to message\n"), fo) == EOF)
-            goto jleave;
+               goto jleave;
+         }
          if(!a_sendout_put_addrline("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;
@@ -2719,6 +2851,9 @@ jto_fmt:
          goto jleave;
    rv = TRU1;
 jleave:
+   if(nosend_msg == TRUM1)
+      hp->h_flags |= HF_USER_EDITED;
+
    NYD_OU;
    return rv;
 #undef a_PUT_CC_BCC_FCC
@@ -2728,8 +2863,10 @@ FL enum okay
 n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    boole add_resent)
 {
-   struct n_sigman sm;
+#ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
+#endif
+   struct n_sigman sm;
    struct sendbundle sb;
    FILE * volatile ibuf, *nfo, * volatile nfi;
    struct mx_fs_tmp_ctx *fstcp;
@@ -2794,8 +2931,11 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    sb.sb_to = to;
    sb.sb_input = nfi;
    sb.sb_urlp = urlp;
+#ifdef mx_HAVE_NET
    sb.sb_credp = &cc;
+#endif
 
+   /* All the complicated address massage things happened in the callee(s) */
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
@@ -2803,7 +2943,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
       _sendout_error = -1;
    }
 
-   if(infix_resend(ibuf, nfo, mp, to, add_resent) != 0){
+   if(!a_sendout_infix_resend(ibuf, nfo, mp, to, add_resent)){
 jfail_dead:
       savedeadletter(nfi, TRU1);
       n_err(_("... message not sent\n"));
@@ -2836,11 +2976,11 @@ jerr_o:
       c = (count(to) > 0);
 
       if(b || c){
-         if(!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)){
+         if(!ok_blook(record_resent) || a_sendout_mightrecord(nfi, NIL, TRU1)){
             sb.sb_to = to;
             /*sb.sb_input = nfi;*/
             b = FAL0;
-            if(!c || a_sendout_transfer(&sb, &b))
+            if(!c || a_sendout_transfer(&sb, TRU1, &b))
                rv = OKAY;
             else if(b && _sendout_error == 0){
                _sendout_error = b;

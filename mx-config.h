@@ -23,28 +23,43 @@
 
 #define ACCOUNT_NULL "null" /* Name of "null" account */
 #define n_ALIAS_MAXEXP 25 /* Maximum expansion of aliases */
+
+#define mx_CONTENT_DESC_FORWARDED_MESSAGE "Forwarded message"
+#define mx_CONTENT_DESC_QUOTE_ATTACHMENT "Original message content"
+#define mx_CONTENT_DESC_SMIME_MESSAGE "S/MIME encrypted message"
+#define mx_CONTENT_DESC_SMIME_SIG "S/MIME digital signature"
+
 /* Protocol version for *on-compose-splice** -- update manual on change! */
-#define mx_DIG_MSG_PLUMBING_VERSION "0 0 1"
+#define mx_DIG_MSG_PLUMBING_VERSION "0 0 2"
 #define mx_DOTLOCK_TRIES 5 /* Number of open(2) calls for dotlock */
+
 #define n_ERROR "ERROR" /* Is-error?  Also as n_error[] */
-#define mx_ERRORS_MAX 5000 /* Error queue size (s32) TODO configurable */
+#define mx_ERRORS_MAX 8000 /* Error queue size (s32) TODO configurable */
 #define n_ESCAPE "~" /* Default escape for sending (POSIX standard) */
+
 #define mx_FILE_LOCK_TRIES 10 /* Maximum tries before file_lock() fails */
 #define mx_FILE_LOCK_MILLIS 200 /* If UZ_MAX, fall back to that */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
-#define n_FORWARD_INJECT_TAIL NULL /* DOC! */
+#define n_FORWARD_INJECT_TAIL NIL /* DOC! */
 #define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */
 #define mx_FS_TMP_OPEN_TRIES 10 /* Maximum number of fs_tmp_open() tries */
+
 #define n_IMAP_DELIM "/." /* Directory separator ([0] == replacer, too) */
+
 #define n_LINE_EDITOR_CPL_WORD_BREAKS "\"'@=;|:"
 /* Fallback in case the systems reports an empty hostname (?) */
 #define n_LOCALHOST_DEFAULT_NAME "localhost.localdomain"
+
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512 /* Maximum list of raw strings TODO dyn vector! */
+
 #define n_PATH_DEVNULL "/dev/null" /* Note: manual uses /dev/null as such */
+
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
-#define n_QUOTE_INJECT_TAIL NULL /* DOC! */
+#define n_QUOTE_INJECT_TAIL NIL /* DOC! */
+
 #define REFERENCES_MAX 20 /* Maximum entries in References: */
+
 #define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
 
 /* * */

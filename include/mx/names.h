@@ -26,6 +26,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_name;
+
 enum mx_name_flags{
    mx_NAME_SKINNED = 1u<<0, /* Has been skin()ned */
    mx_NAME_IDNA = 1u<<1, /* IDNA has been applied */
@@ -37,8 +39,8 @@ enum mx_name_flags{
          mx_NAME_ADDRSPEC_ISPIPE,
    mx_NAME_ADDRSPEC_ISNAME = 1u<<5, /* ..is an alias name */
    mx_NAME_ADDRSPEC_ISADDR = 1u<<6, /* ..is a mail network address.. */
-   mx_NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
    mx_NAME_ADDRSPEC_ISMASK = su_BITENUM_MASK(3,6),
+   mx_NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ISADDR: without domain name */
 
    /* Bits not values for easy & testing */
    mx_NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NIL) */
@@ -122,7 +124,7 @@ EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
       struct mx_name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 n2 share the domain name */
-EXPORT boole name_is_same_domain(struct mx_name const *n1,
+EXPORT boole mx_name_is_same_domain(struct mx_name const *n1,
       struct mx_name const *n2);
 
 /* Check all addresses in np and delete invalid ones; if set_on_error is not

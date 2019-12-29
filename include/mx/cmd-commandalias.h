@@ -16,8 +16,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_COMMANDALIAS_H
-#define mx_COMMANDALIAS_H
+#ifndef mx_CMD_COMMANDALIAS_H
+#define mx_CMD_COMMANDALIAS_H
 
 #include <mx/nail.h>
 
@@ -34,5 +34,5 @@ EXPORT char const *mx_commandalias_exists(char const *name,
       char const **expansion_or_nil);
 
 #include <su/code-ou.h>
-#endif /* mx_COMMANDALIAS_H */
+#endif /* mx_CMD_COMMANDALIAS_H */
 /* s-it-mode */

@@ -61,8 +61,9 @@ struct su__cs_dict_node{
 /* "The const is preserved logically" */
 EXPORT struct su__cs_dict_node *su__cs_dict_lookup(
       struct su_cs_dict const *self, char const *key, void *lookarg_or_nil);
+/* *lookarg_or_nil is always updated */
 EXPORT s32 su__cs_dict_insrep(struct su_cs_dict *self, char const *key,
-      void *value, boole replace);
+      void *value, up replace_and_view_or_nil);
 #if DVLOR(1, 0)
 EXPORT void su__cs_dict_stats(struct su_cs_dict const *self);
 #endif
@@ -198,7 +199,7 @@ INLINE boole su_cs_dict_view_is_valid(struct su_cs_dict_view const *self){
    ASSERT(self);
    return (self->csdv_node != NIL);
 }
-INLINE struct su_cs_dict_view *su_cs_dict_view_invalidate(
+INLINE struct su_cs_dict_view *su_cs_dict_view_reset(
       struct su_cs_dict_view *self){
    ASSERT(self);
    self->csdv_node = NIL;
@@ -244,6 +245,18 @@ INLINE struct su_cs_dict_view *su_cs_dict_view_next(
 }
 EXPORT boole su_cs_dict_view_find(struct su_cs_dict_view *self,
       char const *key);
+INLINE s32 su_cs_dict_view_reset_insert(struct su_cs_dict_view *self,
+      char const *key, void *value){
+   ASSERT(self);
+   ASSERT_RET(key != NIL, 0);
+   return su__cs_dict_insrep(self->csdv_parent, key, value, FAL0 | R(up,self));
+}
+INLINE s32 su_cs_dict_view_reset_replace(struct su_cs_dict_view *self,
+      char const *key, void *value){
+   ASSERT(self);
+   ASSERT_RET(key != NIL, 0);
+   return su__cs_dict_insrep(self->csdv_parent, key, value, TRU1 | R(up,self));
+}
 EXPORT struct su_cs_dict_view *su_cs_dict_view_remove(
       struct su_cs_dict_view *self);
 INLINE sz su_cs_dict_view_cmp(struct su_cs_dict_view const *self,
@@ -281,8 +294,8 @@ class cs_dict : private su_cs_dict{
          return su_cs_dict_view_parent(this) == su_cs_dict_view_parent(&t);
       }
       boole is_valid(void) const {return su_cs_dict_view_is_valid(this);}
-      gview &invalidate(void){
-         SELFTHIS_RET(su_cs_dict_view_invalidate(this));
+      gview &reset(void){
+         SELFTHIS_RET(su_cs_dict_view_reset(this));
       }
       char const *key(void) const {return su_cs_dict_view_key(this);}
       void *data(void) {return su_cs_dict_view_data(this);}
@@ -293,6 +306,12 @@ class cs_dict : private su_cs_dict{
       gview &next(void) {SELFTHIS_RET(su_cs_dict_view_next(this));}
       boole find(void const *key){
          return su_cs_dict_view_find(this, S(char const*,key));
+      }
+      s32 reset_insert(void const *key, void *value){
+         return su_cs_dict_view_reset_insert(this, S(char const*,key), value);
+      }
+      s32 reset_replace(void const *key, void *value){
+         return su_cs_dict_view_reset_replace(this, S(char const*,key), value);
       }
       gview &remove(void) {SELFTHIS_RET(su_cs_dict_view_remove(this));}
       sz cmp(gview const &t) const {return su_cs_dict_view_cmp(this, &t);}

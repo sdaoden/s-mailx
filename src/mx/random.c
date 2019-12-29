@@ -202,13 +202,13 @@ jleave:
 
 su_SINLINE u8
 a_rand_get8(void){
-   u8 si, sj;
+   u8 i, j;
 
-   si = a_rand->a._dat[++a_rand->a._i];
-   sj = a_rand->a._dat[a_rand->a._j += si];
-   a_rand->a._dat[a_rand->a._i] = sj;
-   a_rand->a._dat[a_rand->a._j] = si;
-   return a_rand->a._dat[S(u8,si + sj)];
+   i = a_rand->a._dat[++a_rand->a._i];
+   j = a_rand->a._dat[a_rand->a._j += i];
+   a_rand->a._dat[a_rand->a._i] = j;
+   a_rand->a._dat[a_rand->a._j] = i;
+   return a_rand->a._dat[S(u8,i + j)];
 }
 
 static u32

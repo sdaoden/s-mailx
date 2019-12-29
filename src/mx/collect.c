@@ -61,6 +61,7 @@
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char const *cfc_fmt;
    FILE *cfc_fp;
+   char const *cfc_indent_prefix;
    struct message *cfc_mp;
    char *cfc_cumul;
    char *cfc_addr;
@@ -80,6 +81,18 @@ struct a_coll_ocs_arg{
    char coa_cmd[VFIELD_SIZE(0)];
 };
 
+struct a_coll_quote_ctx{
+   struct su_mem_bag *cqc_membag_persist; /* Or NIL */
+   FILE *cqc_fp;
+   struct header *cqc_hp;
+   struct n_ignore const *cqc_quoteitp; /* Or NIL */
+   boole cqc_is_forward; /* Forwarding rather than quoting */
+   u8 cqc__pad[3];
+   enum sendaction cqc_action;
+   char const *cqc_indent_prefix;
+   struct message *cqc_mp;
+};
+
 /* The following hookiness with global variables is so that on receipt of an
  * interrupt signal, the partial message can be salted away on *DEAD* */
 
@@ -90,6 +103,9 @@ static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
+
+/* Handle $ command escape modifier; cnt > 0 */
+static boole a_coll_eval_mod(char const **buf, long /* TODO uz */*cnt);
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
@@ -103,7 +119,7 @@ static s32 a_coll_include_file(char const *name, boole indent,
 static s32 a_coll_insert_cmd(FILE *fp, char const *cmd);
 
 /* ~p command */
-static void       print_collf(FILE *collf, struct header *hp);
+static boole a_coll_print(FILE *collf, struct header *hp);
 
 /* Write a file, ex-like if f set */
 static s32 a_coll_write(char const *name, FILE *fp, int f);
@@ -111,8 +127,11 @@ static s32 a_coll_write(char const *name, FILE *fp, int f);
 /* *message-inject-head* */
 static boole a_coll_message_inject_head(FILE *fp);
 
+/* If mp==NIL, we try to use hp->h_mailx_orig_sender */
+static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
+
 /* With bells and whistles */
-static boole a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd);
+static boole a_coll_quote_message(struct a_coll_quote_ctx *cqcp);
 
 /* *{forward,quote}-inject-{head,tail}*.
  * fmt may be NULL or the empty string, in which case no output is produced */
@@ -136,7 +155,7 @@ static s32 a_coll_pipe(char const *cmd);
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
-static s32 a_coll_forward(char const *ms, FILE *fp, int f);
+static s32 a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -150,6 +169,70 @@ static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
+
+static boole
+a_coll_eval_mod(char const **buf, long *cnt){
+   struct n_string store;
+   struct str input;
+   void const *cookie;
+   boole rv;
+   NYD2_IN;
+
+   ASSERT(*cnt > 0);
+
+   rv = TRU1;
+   cookie = NIL;
+   mx_fs_linepool_aquire(&input.s, &input.l);
+   n_string_take_ownership(n_string_creat(&store), input.s, input.l, 0);
+
+   input.s = UNCONST(char*,*buf);
+   input.l = S(uz,*cnt);
+   for(;;){
+      BITENUM_IS(u32,n_shexp_state) shs;
+
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG
+               /*| (cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |*/
+               /* TODO not here in old style | n_SHEXP_PARSE_IFS_VAR */
+               /* TODO SHEXP_PARSE_META_SEMICOLON ~$: needs injection stack*/),
+            &store, &input, &cookie);
+
+      /*if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
+       *   ASSERT(shs & n_SHEXP_STATE_STOP);
+       *   n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+      }*/
+
+      if(shs & n_SHEXP_STATE_ERR_MASK){
+         /* Simply ignore Unicode error, just keep the normalized \[Uu] */
+         if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
+            rv = FAL0;
+            break;
+         }
+      }
+
+      if(shs & n_SHEXP_STATE_OUTPUT){
+         if(!(shs & n_SHEXP_STATE_STOP))
+            n_string_push_c(&store, ' ');
+      }else if(store.s_len > 1)
+         n_string_trunc(&store, store.s_len - 1);
+
+      if(shs & n_SHEXP_STATE_STOP)
+         break;
+   }
+
+   if(rv && (*cnt = S(long,store.s_len)) > 0)
+      /* TODO for now just savestrbuf() the ~$ expansion; would be nice
+       * TODO if we could simply inject and redo, but that needs a inject
+       * TODO stack (manual: semicolons then could split! */
+      *buf = savestrbuf(store.s_dat, store.s_len);
+   else
+      rv = FAL0;
+
+   mx_fs_linepool_release(store.s_dat, store.s_len);
+   n_string_gut(n_string_drop_ownership(&store));
+
+   NYD2_OU;
+   return rv;
+}
 
 static void
 _execute_command(struct header *hp, char const *linebuf, uz linesize){
@@ -215,19 +298,19 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
    rv = su_ERR_NONE;
    lc = cc = 0;
    mx_fs_linepool_aquire(&linebuf, &linesize);
-   heredb = NULL;
+   heredb = NIL;
    heredl = 0;
 
    /* The -M case is special */
-   if(name == (char*)-1){
+   if(name == R(char*,-1)){
       fbuf = n_stdin;
       name = n_hy;
-   }else if(name[0] == '-' &&
-         (name[1] == '\0' || su_cs_is_space(name[1]))){
+   }else if(name[0] == '-' && (name[1] == '\0' || su_cs_is_space(name[1]))){
       fbuf = n_stdin;
       if(name[1] == '\0'){
          if(!(n_psonce & n_PSO_INTERACTIVE)){
-            n_err(_("~< -: HERE-delimiter required in non-interactive mode\n"));
+            n_err(_("~< -: HERE-delimiter "
+               "required in non-interactive mode\n"));
             rv = su_ERR_INVAL;
             goto jleave;
          }
@@ -270,11 +353,11 @@ jdelim_empty:
 
    if(fbuf != n_stdin)
       cnt = fsize(fbuf);
-   while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NULL : &cnt),
-         &linelen, fbuf, 0) != NULL){
+   while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NIL : &cnt),
+         &linelen, fbuf, FAL0) != NIL){
       if(heredl > 0 && heredl == linelen - 1 &&
             !su_mem_cmp(heredb, linebuf, heredl)){
-         heredb = NULL;
+         heredb = NIL;
          break;
       }
 
@@ -293,15 +376,21 @@ jdelim_empty:
       cc += linelen;
       ++lc;
    }
+   if(ferror(fbuf)){
+      rv = su_ERR_IO;
+      goto jleave;
+   }
+
    if(fflush(_coll_fp)){
       rv = su_err_no();
       goto jleave;
    }
 
-   if(heredb != NULL)
+   if(heredb != NIL)
       rv = su_ERR_NOTOBACCO;
 jleave:
    mx_fs_linepool_release(linebuf, linesize);
+
    if(fbuf != NIL){
       if(fbuf != n_stdin)
          mx_fs_close(fbuf);
@@ -311,7 +400,7 @@ jleave:
 
    if(writestat)
       fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
-         n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : n_empty), lc, cc);
+         n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : su_empty), lc, cc);
    NYD_OU;
    return rv;
 }
@@ -355,49 +444,57 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    return rv;
 }
 
-static void
-print_collf(FILE *cf, struct header *hp)
-{
-   char *lbuf;
+static boole
+a_coll_print(FILE *cf, struct header *hp){
    FILE *obuf;
-   uz cnt, linesize, linelen;
+   char *linebuf;
+   uz linesize, cnt, linelen;
+   boole rv;
    NYD_IN;
+
+   rv = FAL0;
+   mx_fs_linepool_aquire(&linebuf, &linesize);
+
+   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      obuf = n_stdout;
+
+   if(fprintf(obuf, _("-------\nMessage contains:\n")) < 0)
+      goto jleave;
+
+   if(!n_puthead(TRU1, hp, obuf,
+         (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
+          GCOMMA), SEND_TODISP, CONV_NONE, NIL, NIL))
+      goto jleave;
 
    fflush_rewind(cf);
    cnt = S(uz,fsize(cf));
-
-   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
-      n_perr(_("Can't create temporary file for `~p' command"), 0);
+   while(fgetline(&linebuf, &linesize, &cnt, &linelen, cf, TRU1) != NIL)
+      if(prout(linebuf, linelen, obuf) < 0)
+         goto jleave;
+   if(ferror(cf))
       goto jleave;
+
+   if(hp->h_attach != NIL){
+      if(fputs(_("-------\nAttachments:\n"), obuf) == EOF)
+         goto jleave;
+      if(n_attachment_list_print(hp->h_attach, obuf) == -1)
+         goto jleave;
    }
 
-   mx_sigs_all_holdx();
+   if(obuf != n_stdout)
+      page_or_print(obuf, 0);
 
-   fprintf(obuf, _("-------\nMessage contains:\n")); /* XXX112 */
-   n_puthead(TRU1, hp, obuf,
-      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
-       GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
-
-   lbuf = NULL;
-   linesize = 0;
-   while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
-      prout(lbuf, linelen, obuf);
-   if(lbuf != NULL)
-      n_free(lbuf);
-
-   if(hp->h_attach != NULL){
-      fputs(_("-------\nAttachments:\n"), obuf);
-      n_attachment_list_print(hp->h_attach, obuf);
-   }
-
-   mx_sigs_all_rele();
-
-   page_or_print(obuf, 0);
-
-   mx_fs_close(obuf);
+   rv = TRU1;
 jleave:
+   if(obuf != n_stdout)
+      mx_fs_close(obuf);
+   else
+      clearerr(obuf);
+
+   mx_fs_linepool_release(linebuf, linesize);
    NYD_OU;
+   return rv;
 }
 
 static s32
@@ -464,83 +561,117 @@ a_coll_message_inject_head(FILE *fp){
    return rv;
 }
 
+static void
+a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
+   struct mx_name *addcc;
+   NYD_IN;
+
+   addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_sender;
+
+   if(addcc != NIL){
+      u32 gf;
+
+      gf = GCC | GSKIN;
+      if(ok_blook(fullnames))
+         gf |= GFULL;
+      hp->h_cc = cat(hp->h_cc, ndup(addcc, gf));
+   }
+   NYD_OU;
+}
+
 static boole
-a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
+a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
-   struct n_ignore const *quoteitp;
-   enum sendaction action;
    boole rv;
    NYD_IN;
 
    rv = FAL0;
 
-   if(isfwd || (cp = ok_vlook(quote)) != NULL){
-      quoteitp = n_IGNORE_ALL;
-      action = SEND_QUOTE;
+   if(cqcp->cqc_is_forward){
+      char const *cp_v15compat;
 
-      if(isfwd){
-         char const *cp_v15compat;
-
-         if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
-            n_OBSOLETE(_("please use *forward-inject-head* instead of "
-               "*fwdheading*"));
-         if((cp = ok_vlook(forward_inject_head)) == NULL &&
-               (cp = cp_v15compat) == NULL)
-            cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
-         quoteitp = n_IGNORE_FWD;
-      }else{
-         if(!su_cs_cmp(cp, "noheading")){
-            cp = NULL;
-         }else if(!su_cs_cmp(cp, "headers")){
-            quoteitp = n_IGNORE_TYPE;
-            cp = NULL;
-         }else if(!su_cs_cmp(cp, "allheaders")){
-            quoteitp = NULL;
-            action = SEND_QUOTE_ALL;
-            cp = NULL;
-         }else if((cp = ok_vlook(quote_inject_head)) == NULL)
-            cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
-      }
-      /* We we pass through our formatter? */
-      if((cfc.cfc_fmt = cp) != NULL){
-         /* TODO In v15 [-textual_-]sender_info() should only create a list
-          * TODO of matching header objects, and the formatter should simply
-          * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
-          * TODO For now fully initialize this thing once (grrrr!!) */
-         cfc.cfc_fp = fp;
-         cfc.cfc_mp = mp;
-         n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
-            &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NULL);
-         cfc.cfc_date = n_header_textual_date_info(mp, NULL);
-         /* C99 */{
-            struct mx_name *np;
-            char const *msgid;
-
-            if((msgid = hfield1("message-id", mp)) != NULL &&
-                  (np = lextract(msgid, GREF)) != NULL)
-               msgid = np->n_name;
-            else
-               msgid = NULL;
-            cfc.cfc_msgid = msgid;
-         }
-
-         if(!a_coll__fmt_inj(&cfc) || fflush(fp))
-            goto jleave;
+      if(cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
       }
 
-      if(sendmp(mp, fp, quoteitp, (isfwd ? NULL : ok_vlook(indentprefix)),
-            action, NULL) < 0)
-         goto jleave;
+      if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
+         n_OBSOLETE(_("please use *forward-inject-head* instead of "
+            "*fwdheading*"));
+      if((cp = ok_vlook(forward_inject_head)) == NIL &&
+            (cp = cp_v15compat) == NIL)
+         cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
+   }else if((cp = ok_vlook(quote)) == NIL){
+      rv = TRU1;
+      goto jleave;
+   }else{
+      if(cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
+         if(cqcp->cqc_membag_persist != NIL)
+            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+      }
 
-      if(isfwd){
-         if((cp = ok_vlook(forward_inject_tail)) == NULL)
-             cp = n_FORWARD_INJECT_TAIL;
-      }else if(cp != NULL && (cp = ok_vlook(quote_inject_tail)) == NULL)
-          cp = n_QUOTE_INJECT_TAIL;
-      if((cfc.cfc_fmt = cp) != NULL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+      if(cqcp->cqc_quoteitp == NIL)
+         cqcp->cqc_quoteitp = n_IGNORE_ALL;
+      if(!su_cs_cmp(cp, "noheading"))
+         ;
+      else if(!su_cs_cmp(cp, "headers"))
+         cqcp->cqc_quoteitp = n_IGNORE_TYPE;
+      else if(!su_cs_cmp(cp, "allheaders")){
+         cqcp->cqc_quoteitp = NIL;
+         cqcp->cqc_action = SEND_QUOTE_ALL;
+      }
+
+      if((cp = ok_vlook(quote_inject_head)) == NIL)
+         cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
+   }
+
+   /* We pass through our formatter? */
+   if((cfc.cfc_fmt = cp) != NIL){
+      /* TODO In v15 [-textual_-]sender_info() should only create a list
+       * TODO of matching header objects, and the formatter should simply
+       * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
+       * TODO For now fully initialize this thing once (grrrr!!) */
+      cfc.cfc_fp = cqcp->cqc_fp;
+      cfc.cfc_indent_prefix = NIL;/*cqcp->cqc_indent_prefix;*/
+      cfc.cfc_mp = cqcp->cqc_mp;
+      n_header_textual_sender_info(cfc.cfc_mp = cqcp->cqc_mp, &cfc.cfc_cumul,
+         &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NIL);
+      cfc.cfc_date = n_header_textual_date_info(cqcp->cqc_mp, NIL);
+      /* C99 */{
+         struct mx_name *np;
+         char const *msgid;
+
+         if((msgid = hfield1("message-id", cqcp->cqc_mp)) != NIL &&
+               (np = lextract(msgid, GREF)) != NIL)
+            msgid = np->n_name;
+         else
+            msgid = NIL;
+         cfc.cfc_msgid = msgid;
+      }
+
+      if(!a_coll__fmt_inj(&cfc) || fflush(cqcp->cqc_fp))
          goto jleave;
    }
+
+   if(sendmp(cqcp->cqc_mp, cqcp->cqc_fp, cqcp->cqc_quoteitp,
+         cqcp->cqc_indent_prefix, cqcp->cqc_action, NIL) < 0)
+      goto jleave;
+
+   if(cqcp->cqc_is_forward){
+      if((cp = ok_vlook(forward_inject_tail)) == NIL)
+          cp = n_FORWARD_INJECT_TAIL;
+   }else if((cp = ok_vlook(quote_inject_tail)) == NIL)
+       cp = n_QUOTE_INJECT_TAIL;
+   if((cfc.cfc_fmt = cp) != NIL &&
+         (!a_coll__fmt_inj(&cfc) || fflush(cqcp->cqc_fp)))
+      goto jleave;
 
    rv = TRU1;
 jleave:
@@ -553,7 +684,7 @@ a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct quoteflt qf;
    struct n_string s_b, *s;
    char c;
-   char const *fmt;
+   char const *fmt, *cp;
    NYD_IN;
 
    if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
@@ -567,23 +698,28 @@ jwrite_char:
          s = n_string_push_c(s, c);
       }else switch(c){
       case 'a':
-         s = n_string_push_cp(s, cfcp->cfc_addr);
+         cp = cfcp->cfc_addr;
+jwrite_cp:
+         s = n_string_push_cp(s, cp);
          break;
       case 'd':
-         s = n_string_push_cp(s, cfcp->cfc_date);
+         cp = cfcp->cfc_date;
+         goto jwrite_cp;
          break;
       case 'f':
-         s = n_string_push_cp(s, cfcp->cfc_full);
-         break;
+         cp = cfcp->cfc_full;
+         goto jwrite_cp;
       case 'i':
-         if(cfcp->cfc_msgid != NULL)
-            s = n_string_push_cp(s, cfcp->cfc_msgid);
+         if((cp = cfcp->cfc_msgid) != NIL)
+            goto jwrite_cp;
          break;
       case 'n':
-         s = n_string_push_cp(s, cfcp->cfc_cumul);
+         cp = cfcp->cfc_cumul;
+         goto jwrite_cp;
          break;
       case 'r':
-         s = n_string_push_cp(s, cfcp->cfc_real);
+         cp = cfcp->cfc_real;
+         goto jwrite_cp;
          break;
       case '\0':
          --fmt;
@@ -597,16 +733,16 @@ jwrite_char:
       }
    }
 
-   quoteflt_init(&qf, NULL, FAL0);
+   quoteflt_init(&qf, cfcp->cfc_indent_prefix, FAL0); /* XXX terrible wrap */
    quoteflt_reset(&qf, cfcp->cfc_fp);
    if(quoteflt_push(&qf, s->s_dat, s->s_len) < 0 || quoteflt_flush(&qf) < 0)
-      cfcp = NULL;
+      cfcp = NIL;
    quoteflt_destroy(&qf);
 
    /*n_string_gut(s);*/
 jleave:
    NYD_OU;
-   return (cfcp != NULL);
+   return (cfcp != NIL);
 }
 
 static boole
@@ -799,66 +935,73 @@ jout:
 }
 
 static s32
-a_coll_forward(char const *ms, FILE *fp, int f)
-{
-   int *msgvec, rv = 0;
-   struct n_ignore const *itp;
-   char const *tabst;
-   enum sendaction action;
+a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
+   struct a_coll_quote_ctx cqc;
+   struct su_mem_bag membag;
+   int rv, *msgvec;
    NYD_IN;
 
-   if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
-      rv = su_ERR_NOENT; /* XXX not really, should be handled there! */
+   if((rv = n_getmsglist(ms, n_msgvec, 0, NIL)) < 0){
+      rv = n_pstate_err_no; /* XXX not really, should be handled there! */
       goto jleave;
    }
-   if (rv == 0) {
-      *n_msgvec = first(0, MMNORM);
-      if (*n_msgvec == 0) {
+   if(rv == 0){
+      *n_msgvec = first(0, MMNORM); /* TODO integrate mode into getmsglist */
+      if(*n_msgvec == 0){
          n_err(_("No appropriate messages\n"));
-         rv = su_ERR_NOENT;
+         rv = su_ERR_NOMSG;
          goto jleave;
       }
       rv = 1;
    }
+
    msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
-   while(rv-- > 0)
-      msgvec[rv] = n_msgvec[rv];
+   su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
+
+   su_mem_set(&cqc, 0, sizeof cqc);
+   cqc.cqc_membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
+   su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
+   cqc.cqc_fp = fp;
+   cqc.cqc_hp = hp;
+   cqc.cqc_is_forward = (f != 'Q');
+   cqc.cqc_action = SEND_QUOTE_ALL;
+   cqc.cqc_indent_prefix = ((f == 'f' || f == 'F' || f == 'u') ? NIL
+         : ok_vlook(indentprefix));
+   if(f == 'u' || f == 'U'){
+      if(f == 'U')
+         cqc.cqc_action = SEND_QUOTE;
+      cqc.cqc_quoteitp = n_IGNORE_ALL;
+   }else if(su_cs_is_upper(f)){
+      ;
+   }else if((f == 'f' || f == 'F') && !ok_blook(posix))
+      cqc.cqc_quoteitp = n_IGNORE_FWD;
+   else
+      cqc.cqc_quoteitp = n_IGNORE_TYPE;
+
    rv = 0;
-
-   if (f == 'f' || f == 'F' || f == 'u')
-      tabst = NULL;
-   else
-      tabst = ok_vlook(indentprefix);
-   if (f == 'u' || f == 'U')
-      itp = n_IGNORE_ALL;
-   else
-      itp = su_cs_is_upper(f) ? NULL : n_IGNORE_TYPE;
-   action = (su_cs_is_upper(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
-
    fprintf(n_stdout, A_("Interpolating:"));
-   srelax_hold();
-   for(; *msgvec != 0; ++msgvec){
-      struct message *mp;
+   n_autorec_relax_create();
 
-      mp = &message[*msgvec - 1];
-      touch(mp);
+   for(; *msgvec != 0; ++msgvec){
+      cqc.cqc_mp = &message[*msgvec - 1];
+      touch(cqc.cqc_mp);
 
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
-      if(f == 'Q'){
-         if(!a_coll_quote_message(fp, mp, FAL0)){
-            rv = su_ERR_IO;
-            break;
-         }
-      }else if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
-         n_perr(_("forward: temporary mail file"), 0);
+
+      if(!a_coll_quote_message(&cqc)){
          rv = su_ERR_IO;
          break;
       }
-      srelax();
+      n_autorec_relax_unroll();
    }
-   srelax_rele();
+
+   n_autorec_relax_gut();
    fprintf(n_stdout, "\n");
+
+   su_mem_bag_pop(n_go_data->gdc_membag, &membag);
+   su_mem_bag_gut(&membag);
+
 jleave:
    NYD_OU;
    return rv;
@@ -1049,14 +1192,19 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    enum{
       a_NONE,
       a_ERREXIT = 1u<<0,
-      a_IGNERR = 1u<<1,
+      a_IGNERR = 1u<<1, /* - modifier */
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
 
-      a_COAP_NOSIGTERM = 1u<<8,
+      a_EVAL = 1u<<8, /* $ modifier */
+
+      a_MODIFIER_MASK = a_IGNERR | a_EVAL,
+
+      a_COAP_NOSIGTERM = 1u<<9,
 
       a_NEED_INJECT_RESTART = 1u<<16,
       a_CAN_DELAY_INJECT = 1u<<17,
       a_EVER_LEFT_INPUT_LOOPS = 1u<<18,
+
       a_ROUND_MASK = a_NEED_INJECT_RESTART | a_CAN_DELAY_INJECT |
             a_EVER_LEFT_INPUT_LOOPS
    };
@@ -1068,7 +1216,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    int volatile gfield, eofcnt, getfields;
    char volatile escape;
    char *linebuf;
-   char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
+   char const *cp, * volatile coapm, * volatile ifs_saved;
    uz i, linesize;
    long cnt;
    sigset_t oset, nset;
@@ -1156,9 +1304,25 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp,
-               ((msf & n_MAILSEND_IS_FWD) != 0)))
-            goto jerr;
+         if(mp != NIL){
+            struct a_coll_quote_ctx cqc;
+
+            su_mem_set(&cqc, 0, sizeof cqc);
+            cqc.cqc_fp = _coll_fp;
+            if(msf & n_MAILSEND_IS_FWD){
+               cqc.cqc_hp = hp;
+               cqc.cqc_quoteitp = n_IGNORE_FWD;
+               cqc.cqc_is_forward = TRU1;
+            }else{
+               cqc.cqc_quoteitp = n_IGNORE_ALL;
+               cqc.cqc_indent_prefix = ok_vlook(indentprefix);
+            }
+            cqc.cqc_action = SEND_QUOTE;
+            cqc.cqc_mp = mp;
+
+            if(!a_coll_quote_message(&cqc))
+               goto jerr;
+         }
       }
 
       if (quotefile != NULL) {
@@ -1285,6 +1449,9 @@ jcont:
                   flags &= ~a_NEED_INJECT_RESTART;
                   goto jinject_restart;
                }
+
+               /* We want any error to appear once for each tick */
+               n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
             }else{
                ASSERT(!(flags & a_NEED_INJECT_RESTART));
                if(n_poption & n_PO_TILDE_FLAG)
@@ -1340,7 +1507,7 @@ jcont:
       }
       if(cp[0] != escape){
 jputline:
-         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (uz)cnt)
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != S(uz,cnt))
             goto jerr;
          /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
@@ -1354,54 +1521,73 @@ jputnl:
          continue;
       }
 
-      c = *(cp_base = ++cp);
       if(--cnt == 0)
          goto jearg;
-
-      /* Avoid history entry? */
-      while(su_cs_is_space(c)){
-         hist = a_HIST_NONE;
-         c = *(cp_base = ++cp);
-         if(--cnt == 0)
-            goto jearg;
-      }
+      c = *++cp;
 
       /* It may just be an escaped escaped character, do that quick */
       if(c == escape)
          goto jputline;
 
-      /* Avoid hard *errexit*? */
-      flags &= ~a_IGNERR;
-      if(c == '-'){
-         flags ^= a_IGNERR;
-         c = *++cp;
+      /* Skip leading whitespace, if we see any: no history entry */
+      while(su_cs_is_space(c)){
+         hist = a_HIST_NONE;
          if(--cnt == 0)
             goto jearg;
+         c = *++cp;
       }
 
-      /* Trim input, also to gain a somewhat normalized history entry */
-      ++cp;
-      if(--cnt > 0){
-         struct str x;
-
-         x.s = n_UNCONST(cp);
-         x.l = (uz)cnt;
-         n_str_trim_ifs(&x, TRU1);
-         x.s[x.l] = '\0';
-         cp = x.s;
-         cnt = (int)/*XXX*/x.l;
+      /* Avoid hard *errexit*, evaluate modifier ? */
+      flags &= ~a_MODIFIER_MASK;
+      for(;;){
+         if(c == '-')
+            flags |= a_IGNERR;
+         else if(c == '$')
+            flags |= a_EVAL;
+         else if(su_cs_is_space(c)){
+            /* Must have seen modifier, ok */;
+         }else
+            break;
+         if(--cnt == 0)
+            goto jearg;
+         c = *++cp;
       }
 
+      /* Trim whitespace, also for a somewhat normalized history entry.
+       * Also step cp over the command */
+      if(flags & a_MODIFIER_MASK){
+         while(su_cs_is_space(c)){
+            if(--cnt == 0)
+               goto jearg;
+            c = *++cp;
+         }
+      }
+      if(cnt > 0){
+         ++cp;
+         while(--cnt > 0 && su_cs_is_space(*cp))
+            ++cp;
+         while(cnt > 0 && su_cs_is_space(cp[cnt - 1]))
+            --cnt;
+         UNCONST(char*,cp)[cnt] = '\0';
+      }
+
+      /* Prepare history entry */
       if(hist != a_HIST_NONE){
          s = n_string_assign_c(s, escape);
          if(flags & a_IGNERR)
             s = n_string_push_c(s, '-');
+         if(flags & a_EVAL)
+            s = n_string_push_c(s, '$');
          s = n_string_push_c(s, c);
          if(cnt > 0){
             s = n_string_push_c(s, ' ');
             s = n_string_push_buf(s, cp, cnt);
          }
       }
+
+      /* This may be an eval request */
+      if((flags & a_EVAL) && cnt > 0 && !a_coll_eval_mod(&cp, &cnt))
+         goto jearg;
 
       /* Switch over all command escapes */
       switch(c){
@@ -1464,33 +1650,32 @@ jearg:
       case '?':
 #ifdef mx_HAVE_UISTRINGS
          fputs(_(
-"COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
-"~.            Commit and send message\n"
-"~: <command>  Execute an internal command\n"
-"~< <file>     Insert <file> (\"~<! <command>\": insert shell command)\n"
+"COMMAND ESCAPES (to be placed after a newline; excerpt).\n"
+"~: <command>  Execute command\n"
+"~< <file>     Insert <file> (also: ~<! <shellcmd>)\n"
 "~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]], #no)\n"
-"~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
+"~| <shellcmd> Pipe message through shell filter (~||: with headers)\n"
+"~^ help       Help for ^ (`digmsg') message control\n"
+"~c <users>    Add receivers to Cc: (~b: Bcc:) list\n"
 "~e, ~v        Edit message via $EDITOR / $VISUAL\n"
             ), n_stdout);
          fputs(_(
-"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
-"~f <msglist>  Like `~F', but honour `headerpick' configuration\n"
+"~F <msglist>  Insert with (~f: `headerpick'ed) headers\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
 "~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
-"~i <variable> Insert a value and a newline (`~I': insert value)\n"
-"~M <msglist>  Read in with headers, *indentprefix* (`~m': use `headerpick')\n"
-"~p            Show current message compose buffer\n"
-"~Q <msglist>  Read in using normal *quote* algorithm\n"
+"~i <variable> Insert value, (~I: do not) append a newline\n"
+"~M <msglist>  Insert with (~m: `headerpick'ed) headers, use *indentprefix*\n"
+"~p            Print message content\n"
+"~Q <msglist>  Insert with *quote* algorithm\n"
             ), n_stdout);
          fputs(_(
-"~r <file>     Insert <file> (`~R': *indentprefix* lines)\n"
-"              <file> may also be <- [HERE-DELIMITER]>\n"
+"~r <file>     Insert <file> / <- [HERE-DELIM]> (~R: use *indentprefix*)\n"
 "~s <subject>  Set Subject:\n"
-"~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in without headers (`~U': *indentprefix* lines)\n"
+"~t <users>    Add receivers to To: list\n"
+"~u <msglist>  Insert without headers (~U: use *indentprefix*)\n"
 "~w <file>     Write message onto file\n"
-"~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter (`~||': with headers)\n"
+"~x, ~q, ~.    Discard, discard and save to $DEAD, send message\n"
+"Modifiers: - (ignerr), $ (evaluate), e.g: \"~- $ @ $TMPDIR/file\"\n"
             ), n_stdout);
 #endif /* mx_HAVE_UISTRINGS */
          if(cnt != 0)
@@ -1624,11 +1809,8 @@ jearg:
                }
                goto jhistcont;
             }
-            /* Note this also expands things like
-             *    !:vput vexpr delim random 0
-             *    !< - $delim */
-            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)
-                  ) == NULL){
+            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
+                  ) == NIL){
                if(a_HARDERR())
                   goto jerr;
                n_pstate_err_no = su_ERR_INVAL;
@@ -1681,10 +1863,9 @@ jev_go:
       case 'Q':
       case 'U':
       case 'u':
-         /* Interpolate the named messages, if we are in receiving mail mode.
-          * Does the standard list processing garbage.  If ~f is given, we
-          * don't shift over */
-         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == su_ERR_NONE)
+         /* Interpolate the named messages */
+         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, hp, c)
+               ) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;
@@ -1697,6 +1878,11 @@ jev_go:
          /* Grab extra headers */
          if(cnt != 0)
             goto jearg;
+         if(!(n_psonce & n_PSO_INTERACTIVE)){
+            n_pstate_err_no = su_ERR_NOTTY;
+            n_pstate_ex_no = 1;
+            break;
+         }
          do
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
@@ -1707,6 +1893,11 @@ jev_go:
          /* Grab a bunch of headers */
          if(cnt != 0)
             goto jearg;
+         if(!(n_psonce & n_PSO_INTERACTIVE)){
+            n_pstate_err_no = su_ERR_NOTTY;
+            n_pstate_ex_no = 1;
+            break;
+         }
          do
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),
@@ -1722,16 +1913,17 @@ jev_go:
             goto jearg;
          cp = n_var_vlook(cp, TRU1);
 jIi_putesc:
-         if(cp == NULL || *cp == '\0')
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
+         n_pstate_ex_no = 0; /* XXX */
+         if(cp == NULL || *cp == '\0'){
             break;
+         }
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
          if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                (!a_coll_putesc(cp, (c != 'I'), n_stdout) ||
                 fflush(n_stdout) == EOF))
             goto jerr;
-         n_pstate_err_no = su_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
          break;
       /* case 'M': <> 'F' */
       /* case 'm': <> 'f' */
@@ -1739,9 +1931,8 @@ jIi_putesc:
          /* Print current state of the message without altering anything */
          if(cnt != 0)
             goto jearg;
-         print_collf(_coll_fp, hp); /* XXX pstate_err_no ++ */
-         if(ferror(_coll_fp))
-            goto jerr;
+         if(!a_coll_print(_coll_fp, hp) || ferror(_coll_fp))
+            goto jerr; /* XXX pstate_err_no ++ */
          n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
@@ -1809,7 +2000,8 @@ jIi_putesc:
          /* Write the message on a file */
          if(cnt == 0)
             goto jearg;
-         if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL)
+               )) == NIL){
             n_err(_("Write what file!?\n"));
             if(a_HARDERR())
                goto jerr;
@@ -1841,7 +2033,9 @@ jhistcont:
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
          mx_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
-            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
+            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE) |
+            (n_pstate_err_no == su_ERR_NONE ? n_GO_INPUT_NONE
+               : n_GO_INPUT_HIST_GABBY | n_GO_INPUT_HIST_ERROR)));
       }
       if(c != '\0')
          goto jcont;
@@ -2002,7 +2196,8 @@ jreasksend:
       n_OBSOLETE(_("please use *on-compose-{leave,splice}* and/or "
          "*message-inject-tail*, not *signature*"));
 
-      if((cpq = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+      if((cpq = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL){
          n_err(_("*signature* expands to invalid file: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jerr;
@@ -2071,7 +2266,8 @@ jskiptails:
          hp->h_attach->a_blink = ap;
       hp->h_attach = ap;
       ap->a_msgno = (int)P2UZ(mp - message + 1);
-      ap->a_content_description = _("Original message content");
+      ap->a_content_description =
+            ok_vlook(content_description_quote_attachment);
    }
 
 jleave:

@@ -3,7 +3,19 @@
  *@ According to RFC 4954 (SMTP), RFC 5034 (POP3), RFC 4422/4959 (IMAP).
  *
  * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-4-Clause
+ * SPDX-License-Identifier: ISC
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 /*
  * Partially derived from sample code in:
@@ -48,6 +60,8 @@
 #else
 # include <gssapi.h>
 #endif
+
+#include <su/cs.h>
 
 #elif a_NET_GSSAPI_H == 1
 # undef a_NET_GSSAPI_H
@@ -117,21 +131,17 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       goto jleave;
    }
 
-   send_tok.value = buf = n_lofi_alloc(
-         (send_tok.length = urlp->url_host.l + 5) +1);
-   /* C99 */{
-      uz i;
-
+   su_cs_pcopy(su_cs_pcopy(
+      send_tok.value = buf = n_lofi_alloc(
+            (send_tok.length = urlp->url_host.l + 5) +1),
 # ifdef mx_SOURCE_NET_SMTP
-      su_mem_copy(send_tok.value, "smtp@", i = 5);
+      "smtp@"
 # elif defined mx_SOURCE_NET_POP3
-      su_mem_copy(send_tok.value, "pop@", i = 4);
+      "pop@"
 # elif defined mx_SOURCE_NET_IMAP
-      su_mem_copy(send_tok.value, "imap@", i = 5);
+      "imap@"
 # endif
-      su_mem_copy(&S(char*,send_tok.value)[i], urlp->url_host.s,
-         urlp->url_host.l +1);
-   }
+      ), urlp->url_host.s);
 
    maj_stat = gss_import_name(&min_stat, &send_tok,
          GSS_C_NT_HOSTBASED_SERVICE, &target_name);
@@ -201,7 +211,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # elif defined mx_SOURCE_NET_POP3
       a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
       a_POP3_ANSWER(poprv, goto jleave);
-      in.l = su_cs_len(in.s = a_pop3_realdat);
+      in.l = su_cs_len(in.s = UNCONST(char*,a_pop3_realdat));
 # elif defined mx_SOURCE_NET_IMAP
       IMAP_OUT(out.s, 0, goto jleave);
       imap_answer(mp, 1);
@@ -260,16 +270,18 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 # ifdef mx_SOURCE_NET_SMTP
    a_SMTP_OUT(out.s);
    a_SMTP_ANSWER(2, FAL0, FAL0);
+   ok = TRU1;
 # elif defined mx_SOURCE_NET_POP3
    a_POP3_OUT(poprv, out.s, MB_COMD, goto jleave);
    a_POP3_ANSWER(poprv, goto jleave);
+   ok = TRU1;
 # elif defined mx_SOURCE_NET_IMAP
    IMAP_OUT(out.s, 0, goto jleave);
+   ok = TRU1;
    while(mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 1);
 # endif
 
-   ok = TRU1;
 jleave:
    if(f & a_F_RECV_TOK)
       gss_release_buffer(&min_stat, &recv_tok);
@@ -283,6 +295,7 @@ jleave:
       n_free(out.s);
    if(buf != NIL)
       n_lofi_free(buf);
+
    NYD_OU;
    return ok;
 }
@@ -320,12 +333,13 @@ su_CONCAT(su_FILE,_gss__error1)(char const *s, OM_uint32 code, int typ){
    NYD2_OU;
 }
 
+   /* Cleanup, and re-enable for amalgamation */
 # ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
+#  undef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 #  undef GSS_C_NT_HOSTBASED_SERVICE
 # endif
 
-#else
-# error a_NET_GSSAPI_H included thrice already
+# undef a_NET_GSSAPI_H
 #endif
 #endif /* mx_HAVE_GSSAPI */
 /* s-it-mode */

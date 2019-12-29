@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"
@@ -68,9 +69,11 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    char const *shell, *disp;
    boole success;
    int last, *msgvec, *ip;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
+
+   n_pstate_err_no = su_ERR_NONE;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -80,28 +83,28 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    shell = NULL;
    file = NULL;
 
-   if(!(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
+   if(!(cap->ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
       struct mx_name *np;
 
-      if((cp = n_header_senderfield_of(message + *msgvec - 1)) == NULL ||
-            (np = lextract(cp, GTO | GSKIN)) == NULL){
+      if((cp = n_header_senderfield_of(n_msgmark1)) == NIL ||
+            (np = lextract(cp, GTO | GSKIN)) == NIL){
          n_err(_("Cannot determine message sender to %s.\n"),
             cacp->cac_desc->cad_name);
          goto jleave;
       }
       cp = np->n_name;
 
-      for (cq = cp; *cq != '\0' && *cq != '@'; cq++)
+      for(cq = cp; *cq != '\0' && *cq != '@'; cq++)
          ;
       *cq = '\0';
-      if (ok_blook(outfolder)) {
+      if(ok_blook(outfolder)){
          uz i;
 
          i = su_cs_len(cp) +1;
          file = n_autorec_alloc(i + 1);
          file[0] = '+';
          su_mem_copy(file + 1, cp, i);
-      } else
+      }else
          file = cp;
    }else{
       cap = cap->ca_next;
@@ -116,10 +119,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
          /* Pipe target is special TODO hacked in later, normalize flow! */
          if((obuf = mx_fs_pipe_open(file, "w", shell, NIL, -1)) == NIL){
-            int esave;
-
-            n_perr(file, esave = su_err_no());
-            su_err_set_no(esave);
+            n_perr(file, n_pstate_err_no = su_err_no());
             goto jleave;
          }
          disp = A_("[Piped]");
@@ -137,7 +137,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
       file = savecat("file://", file);
    if((obuf = mx_fs_open_any(file, "a+", &fs)) == NIL){
-      n_perr(file, 0);
+      n_perr(file, n_pstate_err_no = su_err_no());
       goto jleave;
    }
    ASSERT((fs & n_PROTO_MASK) == n_PROTO_IMAP ||
@@ -163,7 +163,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          int xerr;
 
          if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
-            n_perr(file, xerr);
+            n_perr(file, n_pstate_err_no = xerr);
             goto jleave;
          }
       }
@@ -220,7 +220,7 @@ jsend:
 
    if (ferror(obuf)) {
 jferr:
-      n_perr(file, 0);
+      n_perr(file, n_pstate_err_no = su_err_no());
       if (!success)
          srelax_rele();
       success = FAL0;
@@ -350,8 +350,8 @@ c_Decrypt(void *vp){
 FL int
 c_write(void *vp){
    int rv;
-   struct n_cmd_arg *cap;
-   struct n_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')

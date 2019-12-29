@@ -541,17 +541,19 @@ ndup(struct mx_name *np, enum gfield ntype)
 
    nnp = n_autorec_alloc(sizeof *np);
    nnp->n_flink = nnp->n_blink = NULL;
-   nnp->n_type = ntype;
+   nnp->n_type = ntype & ~(GFULL | GFULLEXTRA);
    nnp->n_flags = np->n_flags | mx_NAME_NAME_SALLOC;
    nnp->n_name = savestr(np->n_name);
 
-   if (np->n_name == np->n_fullname || !(ntype & (GFULL | GSKIN))) {
+   if(np->n_name == np->n_fullname || !(ntype & GFULL)){
+      ASSERT((ntype & GFULL) || !(ntype & GFULLEXTRA));
       nnp->n_fullname = nnp->n_name;
       nnp->n_fullextra = NULL;
-   } else {
+   }else{
       nnp->n_fullname = savestr(np->n_fullname);
-      nnp->n_fullextra = (np->n_fullextra == NULL) ? NULL
-            : savestr(np->n_fullextra);
+      nnp->n_fullextra = (!(ntype & GFULLEXTRA) || np->n_fullextra == NIL)
+            ? NIL : savestr(np->n_fullextra);
+      nnp->n_type = ntype;
    }
 
 jleave:
@@ -652,7 +654,7 @@ lextract(char const *line, enum gfield ntype)
    else{
       struct str sin;
       struct n_string s_b, *s;
-      enum n_shexp_state shs;
+      BITENUM_IS(u32,n_shexp_state) shs;
 
       n_autorec_relax_create();
       s = n_string_creat_auto(&s_b);
@@ -754,18 +756,20 @@ jloop:
 }
 
 boole
-name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2)
-{
-   char const *d1, *d2;
+mx_name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2){
    boole rv;
-   NYD_IN;
+   NYD2_IN;
 
-   d1 = su_cs_rfind_c(n1->n_name, '@');
-   d2 = su_cs_rfind_c(n2->n_name, '@');
+   if((rv = (n1 != NIL && n2 != NIL))){
+      char const *d1, *d2;
 
-   rv = (d1 != NULL && d2 != NULL) ? !su_cs_cmp_case(++d1, ++d2) : FAL0;
+      d1 = su_cs_rfind_c(n1->n_name, '@');
+      d2 = su_cs_rfind_c(n2->n_name, '@');
 
-   NYD_OU;
+      rv = (d1 != NIL && d2 != NIL) ? !su_cs_cmp_case(++d1, ++d2) : FAL0;
+   }
+
+   NYD2_OU;
    return rv;
 }
 
@@ -978,7 +982,7 @@ c_alias(void *vp){
       dat.slp = NIL;
       rv = !(mx_xy_dump_dict("alias", a_nm_alias_dp, &dat.slp, NIL,
                &a_nm_alias_dump) &&
-            mx_page_or_print_strlist("alias", dat.slp));
+            mx_page_or_print_strlist("alias", dat.slp, FAL0));
       goto jleave;
    }
 
@@ -1140,20 +1144,24 @@ mx_alias_is_valid_name(char const *name){
    boole rv;
    NYD2_IN;
 
-   for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
+   for(rv = TRU1, cp = name; (c = *cp) != '\0'; ++cp){
       /* User names, plus things explicitly mentioned in Postfix aliases(5).
-       * As extensions allow high-bit bytes, exclamation mark and period:
-       *    [[:alnum:]_#:@!.-]+ */
+       * Plus extensions.  On change adjust *mta-aliases* and impl., too */
       /* TODO alias_is_valid_name(): locale dependent validity check,
-       * TODO with Unicode prefix valid UTF-8!
-       * TODO no support for trailing $ yet, as says Linux usernames! */
-      if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
-            c != '#' && c != ':' && c != '@' &&
-            /* Extensions */
-            !(S(u8,c) & 0x80) && c != '!' && c != '.'){
-         rv = FAL0;
-         break;
+       * TODO with Unicode prefix valid UTF-8! */
+      if(!su_cs_is_alnum(c) && c != '_'){
+         if(cp == name ||
+               (c != '-' &&
+               /* Extensions, but mentioned by Postfix */
+               c != '#' && c != ':' && c != '@' &&
+               /* Extensions */
+               c != '!' && c != '.' && !(S(u8,c) & 0x80) &&
+               !(c == '$' && cp[1] == '\0'))){
+            rv = FAL0;
+            break;
+         }
       }
+   }
    NYD2_OU;
    return rv;
 }
@@ -1198,7 +1206,7 @@ c_alternates(void *vp){
       }
    }else{
       if(varname != NULL)
-         n_err(_("`alternates': `vput' only supported for show mode\n"));
+         n_err(_("alternates: `vput' only supported in \"show\" mode\n"));
 
       if(a_nm_a8s_dp == NIL)
          a_nm_a8s_dp = su_cs_dict_set_treshold_shift(

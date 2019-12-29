@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 
+#include "mx/cmd.h"
 #include "mx/child.h"
 #include "mx/net-pop3.h"
 #include "mx/tty.h"
@@ -173,186 +174,214 @@ c_noop(void *v)
 }
 
 FL int
-c_remove(void *v)
-{
-   char const *fmt;
+c_remove(void *vp){
+   struct n_string s_b, *s;
    uz fmt_len;
-   char **args, *name, *ename;
-   int ec;
+   char const *emsg, **argv, *fmt, *name;
    NYD_IN;
 
-   if (*(args = v) == NULL) {
-      n_err(_("Synopsis: remove: <mailbox>...\n"));
-      ec = 1;
-      goto jleave;
-   }
+   if(n_psonce & n_PSO_INTERACTIVE)
+      s = n_string_book(n_string_creat_auto(&s_b), 127);
+   else
+      s = NIL;
 
-   ec = 0;
+   emsg = NIL;
+   argv = vp;
+   /* I18N: remove a file (mailbox)? */
+   fmt_len = su_cs_len(fmt = _("Remove "));
 
-   fmt = _("Remove %s");
-   fmt_len = su_cs_len(fmt);
-   do {
-      if ((name = fexpand(*args, FEXP_FULL)) == NULL)
-         continue;
-      ename = n_shexp_quote_cp(name, FAL0);
-
-      if (!su_cs_cmp(name, mailname)) {
-         n_err(_("Cannot remove current mailbox %s\n"), ename);
-         ec |= 1;
-         continue;
+   do{ /* }while(*++argv != NIL); */
+      if((name = fexpand(*argv, FEXP_NVAR)) == NIL){
+         emsg = N_("file expansion failed");
+         goto jerr;
       }
-      /* C99 */{
-         boole asw;
-         char *vb;
-         uz vl;
 
-         vl = su_cs_len(ename) + fmt_len +1;
-         vb = n_autorec_alloc(vl);
-         snprintf(vb, vl, fmt, ename);
-         asw = mx_tty_yesorno(vb, TRU1);
-         if(!asw)
+      if(!su_cs_cmp(name, mailname)){
+         emsg = N_("cannot remove an open mailbox");
+         goto jerr;
+      }
+
+      if(s != NIL){
+         s = n_string_trunc(s, 0);
+         s = n_string_assign_buf(s, fmt, fmt_len);
+         s = n_string_push_cp(s, n_shexp_quote_cp(*argv, FAL0));
+         s = n_string_push_buf(s, " (", sizeof(" (") -1);
+         s = n_string_push_cp(s, n_shexp_quote_cp(name, FAL0));
+         s = n_string_push_c(s, ')');
+         if(!mx_tty_yesorno(n_string_cp(s), TRU1))
             continue;
       }
 
-      switch (which_protocol(name, TRU1, FAL0, NULL)) {
+      switch(which_protocol(name, TRU1, FAL0, NIL)){
+      case n_PROTO_EML:
+         if(unlink(name) == -1){
+            emsg = su_err_doc(su_err_no());
+            goto jerr;
+         }
+         break;
       case PROTO_FILE:
-         if (unlink(name) == -1) {
-            int se = su_err_no();
+         if(unlink(name) == -1){
+            s32 err;
 
-            if (se == su_ERR_ISDIR) {
-               struct stat sb;
-
-               if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
-                  if (!rmdir(name))
+            if((err = su_err_no()) == su_ERR_ISDIR){
+               if(n_is_dir(name, FAL0)){
+                  if(!rmdir(name))
                      break;
-                  se = su_err_no();
+                  err = su_err_no();
                }
             }
-            n_perr(name, se);
-            ec |= 1;
+            emsg = su_err_doc(err);
+            goto jerr;
          }
          break;
       case PROTO_POP3:
-         n_err(_("Cannot remove POP3 mailbox %s\n"), ename);
-         ec |= 1;
-         break;
+         emsg = N_("cannot remove POP3 mailboxes");
+         goto jerr;
       case PROTO_MAILDIR:
+         if(1
 #ifdef mx_HAVE_MAILDIR
-         if(maildir_remove(name) != OKAY)
-            ec |= 1;
-#else
-         n_err(_("No Maildir directory support compiled in\n"));
-         ec |= 1;
+               && maildir_remove(name) != OKAY
 #endif
+         ){
+            emsg =
+#ifdef mx_HAVE_MAILDIR
+                  N_("Maildir remove failed")
+#else
+                  N_("no Maildir support available")
+#endif
+                  ;
+            goto jerr;
+         }
          break;
       case PROTO_IMAP:
+         if(1
 #ifdef mx_HAVE_IMAP
-         if(imap_remove(name) != OKAY)
-            ec |= 1;
-#else
-         n_err(_("No IMAP support compiled in\n"));
-         ec |= 1;
+               && imap_remove(name) != OKAY
 #endif
+         ){
+            emsg =
+#ifdef mx_HAVE_IMAP
+                  N_("IMAP remove failed")
+#else
+                  N_("no IMAP support available")
+#endif
+               ;
+            goto jerr;
+         }
          break;
       case PROTO_UNKNOWN:
       default:
-         n_err(_("Not removed: unknown protocol: %s\n"), ename);
-         ec |= 1;
+         emsg = N_("unknown protocol, not removing");
+jerr:
+         emsg = V_(emsg);
+         n_err(_("%s: `remove': %s: %s\n"),
+            n_ERROR, n_shexp_quote_cp(*argv, FAL0), emsg);
          break;
       }
-   } while (*++args != NULL);
-jleave:
+   }while(*++argv != NIL);
+
+   /* if(s != NIL) n_string_gut(s); */
+
    NYD_OU;
-   return ec;
+   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
 }
 
 FL int
-c_rename(void *v)
-{
-   char **args = v, *oldn, *newn;
+c_rename(void *vp){
    enum protocol oldp;
-   int ec;
+   char const **argv, *emsg, *oldn, *newn;
    NYD_IN;
 
-   ec = 1;
+   argv = vp;
 
-   if (args[0] == NULL || args[1] == NULL || args[2] != NULL) {
-      n_err(_("Synopsis: rename: <old> <new>\n"));
-      goto jleave;
+   emsg = N_("file expansion failed");
+
+   if((oldn = fexpand(argv[0], FEXP_FULL)) == NIL)
+      goto jerr;
+   oldp = which_protocol(oldn, TRU1, FAL0, NIL);
+
+   if((newn = fexpand(argv[1], FEXP_FULL)) == NIL)
+      goto jerr;
+   if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
+      emsg = N_("can only rename folders of same type\n");
+      goto jerr;
    }
 
-   if ((oldn = fexpand(args[0], FEXP_FULL)) == NULL)
-      goto jleave;
-   oldp = which_protocol(oldn, TRU1, FAL0, NULL);
-   if ((newn = fexpand(args[1], FEXP_FULL)) == NULL)
-      goto jleave;
-   if(oldp != which_protocol(newn, TRU1, FAL0, NULL)) {
-      n_err(_("Can only rename folders of same type\n"));
-      goto jleave;
-   }
-   if (!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)) {
-      n_err(_("Cannot rename current mailbox %s\n"),
-         n_shexp_quote_cp(oldn, FAL0));
-      goto jleave;
+   if(!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)){
+      emsg = N_("cannot rename an open mailbox");
+      goto jerr;
    }
 
-   ec = 0;
+   emsg = NIL;
 
-   switch (oldp) {
+   switch(oldp){
+   case n_PROTO_EML:
+      /* FALLTHRU */
    case PROTO_FILE:
-      if (link(oldn, newn) == -1) {
-         switch (su_err_no()) {
-         case su_ERR_ACCES:
-         case su_ERR_EXIST:
-         case su_ERR_NAMETOOLONG:
-         case su_ERR_NOSPC:
-         case su_ERR_XDEV:
-            n_perr(newn, 0);
-            break;
-         default:
-            n_perr(oldn, 0);
-            break;
-         }
-         ec |= 1;
-      } else if (unlink(oldn) == -1) {
-         n_perr(oldn, 0);
-         ec |= 1;
+      if(link(oldn, newn) == -1){
+         emsg = savecatsep(_("link(2) failed:"), ' ',
+               _(su_err_doc(su_err_no())));
+         goto jerrnotr;
+      }else if(unlink(oldn) == -1){
+         emsg = savecatsep(_("unlink(2) failed:"), ' ',
+               _(su_err_doc(su_err_no())));
+         goto jerrnotr;
       }
       break;
    case PROTO_MAILDIR:
+      if(1
 #ifdef mx_HAVE_MAILDIR
-      if(rename(oldn, newn) == -1){
-         n_perr(oldn, 0);
-         ec |= 1;
-      }
-#else
-      n_err(_("No Maildir directory support compiled in\n"));
-      ec |= 1;
+            && rename(oldn, newn) == -1
 #endif
+      ){
+         emsg =
+#ifdef mx_HAVE_MAILDIR
+               savecatsep(_("rename(2) failed:"), ' ',
+                  _(su_err_doc(su_err_no())))
+#else
+               _("no Maildir support available")
+#endif
+               ;
+         goto jerrnotr;
+      }
       break;
    case PROTO_POP3:
-      n_err(_("Cannot rename POP3 mailboxes\n"));
-      ec |= 1;
-      break;
+      emsg = N_("cannot rename POP3 mailboxes");
+      goto jerr;
    case PROTO_IMAP:
+      if(1
 #ifdef mx_HAVE_IMAP
-      if(imap_rename(oldn, newn) != OKAY)
-         ec |= 1;
-#else
-      n_err(_("No IMAP support compiled in\n"));
-      ec |= 1;
+            && imap_rename(oldn, newn) != OKAY
 #endif
+      ){
+         emsg =
+#ifdef mx_HAVE_IMAP
+               N_("IMAP rename failed")
+#else
+               N_("no IMAP support available")
+#endif
+               ;
+         goto jerr;
+      }
       break;
    case PROTO_UNKNOWN:
    default:
-      n_err(_("Unknown protocol in %s and %s; not renamed\n"),
-         n_shexp_quote_cp(oldn, FAL0), n_shexp_quote_cp(newn, FAL0));
-      ec |= 1;
-      break;
+      emsg = N_("unknown protocol, not renaming");
+      goto jerr;
    }
+
 jleave:
    NYD_OU;
-   return ec;
+   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+
+
+jerr:
+   emsg = V_(emsg);
+jerrnotr:
+   n_err(_("%s: `rename': %s -> %s: %s\n"),
+      n_ERROR, n_shexp_quote_cp(argv[0], FAL0),
+      n_shexp_quote_cp(argv[1], FAL0), emsg);
+   goto jleave;
 }
 
 FL int
@@ -368,13 +397,15 @@ c_folders(void *v){ /* TODO fexpand*/
    int rv;
    NYD_IN;
 
-   rv = 1;
+   rv = n_EXIT_ERR;
 
-   if(*(argv = v) != NULL){
+   if(*(argv = v) != NIL){
       if((cp = fexpand(*argv, fexp)) == NIL)
          goto jleave;
-   }else
-      cp = n_folder_query();
+   }else if(*(cp = n_folder_query()) == '\0'){
+      n_err(_("folders: *folder* not set, or not resolvable\n"));
+      goto jleave;
+   }
 
 #ifdef mx_HAVE_IMAP
    if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
@@ -387,7 +418,7 @@ c_folders(void *v){ /* TODO fexpand*/
       cc.cc_cmd = ok_vlook(LISTER);
       cc.cc_args[0] = cp;
       if(mx_child_run(&cc) && cc.cc_exit_status == 0)
-         rv = 0;
+         rv = n_EXIT_OK;
    }
 
 jleave:

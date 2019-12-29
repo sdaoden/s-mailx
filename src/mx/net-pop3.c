@@ -226,7 +226,7 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       break;
 #endif
    default:
-      rv = FAL0;
+      rv = STOP;
       break;
    }
 
@@ -424,6 +424,7 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
       goto j_leave;
    }
    cnt += a_MAX;
+#undef a_MAX
 
    cp = n_lofi_alloc(cnt);
 
@@ -473,17 +474,16 @@ jretry:
       if((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
 
+      while(blen > 0 && (a_pop3_dat.s[blen - 1] == NETNL[0] ||
+            a_pop3_dat.s[blen - 1] == NETNL[1]))
+         a_pop3_dat.s[--blen] = '\0';
+
       if(n_poption & n_PO_D_VV)
          n_err(">>> SERVER: %s\n", a_pop3_dat.s);
 
       switch(*a_pop3_dat.s){
       case '+':
-         while(blen > 0 &&
-               (a_pop3_dat.s[blen - 1] == NETNL[0] ||
-                a_pop3_dat.s[blen - 1] == NETNL[1]))
-            a_pop3_dat.s[--blen] = '\0';
-
-         if(blen == 0)
+         if(blen == 1)
             a_pop3_realdat = su_empty;
          else{
             for(a_pop3_realdat = a_pop3_dat.s;
@@ -499,10 +499,6 @@ jretry:
       case '-':
          rv = STOP;
          mp->mb_active = MB_NONE;
-         while(blen > 0 &&
-               (a_pop3_dat.s[blen - 1] == NETNL[0] ||
-                a_pop3_dat.s[blen - 1] == NETNL[1]))
-            a_pop3_dat.s[--blen] = '\0';
          n_err(_("POP3 error: %s\n"), a_pop3_dat.s);
          break;
       default:
@@ -795,16 +791,22 @@ jretry:
    size = 0;
    lines = 0;
    while(mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0){
-      if(line[0] == '.' && line[1] == NETNL[0] && line[2] == NETNL[1] &&
-            line[3] == '\0'){
-         mp->mb_active &= ~MB_MULT;
-         break;
-      }
+      while(linelen > 0 && (line[linelen - 1] == NETNL[0] ||
+            line[linelen - 1] == NETNL[1]))
+         line[--linelen] = '\0';
+
+      if(n_poption & n_PO_D_VVV)
+         n_err(">>> SERVER: %s\n", line);
+
       if(line[0] == '.'){
-         lp = line + 1;
+         if(*(lp = &line[1]) == '\0'){
+            mp->mb_active &= ~MB_MULT;
+            break;
+         }
          --linelen;
       }else
          lp = line;
+
       /* TODO >>
        * Need to mask 'From ' lines. This cannot be done properly
        * since some servers pass them as 'From ' and others as
@@ -820,27 +822,20 @@ jretry:
        * TODO i have *never* seen the latter?!?!?
        * TODO <<
        */
-      /* Since we simply copy over data without doing any transfer
-       * encoding reclassification/adjustment we *have* to perform
-       * RFC 4155 compliant From_ quoting here */
+      /* TODO Since we simply copy over data without doing any transfer
+       * TODO encoding reclassification/adjustment we *have* to perform
+       * TODO RFC 4155 compliant From_ quoting here TODO REALLY NOT! */
       if(emptyline && is_head(lp, linelen, FAL0)){
          putc('>', mp->mb_otf);
          ++size;
       }
-      lines++;
-      if(lp[linelen-1] == NETNL[1] &&
-            (linelen == 1 || lp[linelen-2] == NETNL[0])){
-         emptyline = linelen <= 2;
-         if(linelen > 2)
-            fwrite(lp, 1, linelen - 2, mp->mb_otf);
-         putc('\n', mp->mb_otf);
-         size += linelen - 1;
-      }else{
-         emptyline = 0;
+      if(!(emptyline = (linelen == 0)))
          fwrite(lp, 1, linelen, mp->mb_otf);
-         size += linelen;
-      }
+      putc('\n', mp->mb_otf);
+      size += ++linelen;
+      ++lines;
    }
+
    if(!emptyline){
       /* TODO This is very ugly; but some POP3 daemons don't end a
        * TODO message with NETNL NETNL, and we need \n\n for mbox format.
@@ -848,14 +843,16 @@ jretry:
        * TODO when send.c stuff or with MBOX handling, even though THIS
        * TODO line is solely a property of the MBOX database format! */
       putc('\n', mp->mb_otf);
-      ++lines;
       ++size;
+      ++lines;
    }
+
+   fflush(mp->mb_otf);
+
    m->m_size = size;
    m->m_lines = lines;
    m->m_block = mailx_blockof(offset);
    m->m_offset = mailx_offsetof(offset);
-   fflush(mp->mb_otf);
 
    switch(need){
    case NEED_HEADER:

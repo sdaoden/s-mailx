@@ -296,9 +296,10 @@ jjumped:
    safe_signal(SIGHUP, ohup);
    rele_sigs();
 
-   if (sofd < 0) {
-      if (errval != 0) {
-         n_perr(_("Could not connect"), errval);
+   if(sofd < 0){
+      if(errval != 0){
+         if(!(n_poption & n_PO_D_V))
+            n_perr(_("Could not connect(2)"), errval);
          su_err_set_no(errval);
       }
       goto jleave;
@@ -353,8 +354,7 @@ jjumped:
 jsclose:
          mx_socket_close(sop);
          sofd = -1;
-      }else if(urlp->url_cproto == CPROTO_CERTINFO)
-         mx_socket_close(sop);
+      }
 
       hold_sigs();
       safe_signal(SIGINT, oint);
@@ -392,54 +392,57 @@ a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
       uz cnt;
       int i, soe;
 
+      /* Always select(2) even if it succeeds right aways, since on at least
+       * SunOS/Solaris 5.9 SPARC it will cause failures (busy resources) */
       if(connect(fd, soap, soapl) && (i = su_err_no()) != su_ERR_INPROGRESS){
          rv = i;
          goto jerr_noerrno;
-      }
-
-      show_progress = ((n_poption & n_PO_D_V) ||
+      }else{
+         show_progress = ((n_poption & n_PO_D_V) ||
                ((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)));
 
-      FD_ZERO(&fdset);
-      FD_SET(fd, &fdset);
-      /* C99 */{
-         char const *cp;
+         FD_ZERO(&fdset);
+         FD_SET(fd, &fdset);
+         /* C99 */{
+            char const *cp;
 
-         if((cp = ok_vlook(socket_connect_timeout)) == NULL ||
-               (su_idec_uz_cp(&cnt, cp, 0, NULL), cnt < 2))
-            cnt = 42; /* XXX mx-config.h */
+            if((cp = ok_vlook(socket_connect_timeout)) == NIL ||
+                  (su_idec_uz_cp(&cnt, cp, 0, NIL), cnt < 2))
+               cnt = 42; /* XXX mx-config.h */
 
-         if(show_progress){
-            tv.tv_sec = 2;
-            cnt >>= 1;
-         }else{
-            tv.tv_sec = (long)cnt; /* XXX */
-            cnt = 1;
+            if(show_progress){
+               tv.tv_sec = 2;
+               cnt >>= 1;
+            }else{
+               tv.tv_sec = (long)cnt; /* XXX */
+               cnt = 1;
+            }
          }
-      }
+
 jrewait:
-      tv.tv_usec = 0;
-      if((soe = select(fd + 1, NULL, &fdset, NULL, &tv)) == 1){
-         i = rv;
-         sol = sizeof rv;
-         getsockopt(fd, SOL_SOCKET, SO_ERROR, &rv, &sol);
-         fcntl(fd, F_SETFL, i);
-         if(show_progress)
-            n_err(" ");
-      }else if(soe == 0){
-         if(show_progress && --cnt > 0){
-            n_err(".");
-            tv.tv_sec = 2;
-            goto jrewait;
-         }
-         n_err(_(" timeout\n"));
-         close(fd);
-         rv = su_ERR_TIMEDOUT;
-      }else
-         goto jerr;
+         tv.tv_usec = 0;
+         if((soe = select(fd + 1, NIL, &fdset, NIL, &tv)) == 1){
+            i = rv;
+            sol = sizeof rv;
+            getsockopt(fd, SOL_SOCKET, SO_ERROR, &rv, &sol);
+            fcntl(fd, F_SETFL, i);
+            if(show_progress == TRUM1)
+               n_err(" ");
+         }else if(soe == 0){
+            if(show_progress && --cnt > 0){
+               show_progress = TRUM1;
+               n_err(".");
+               tv.tv_sec = 2;
+               goto jrewait;
+            }
+            n_err(_(" timeout\n"));
+            close(fd);
+            rv = su_ERR_TIMEDOUT;
+         }else
+            goto jerr;
+      }
    }else
 #endif /* mx_HAVE_NONBLOCKSOCK */
-
          if(!connect(fd, soap, soapl))
       rv = su_ERR_NONE;
    else{
@@ -450,9 +453,11 @@ jerr:
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
-      n_perr(_("connect(2) failed:"), rv);
+      if(n_poption & n_PO_D_V)
+         n_perr(_("connect(2) failed:"), rv);
       close(fd);
    }
+
    NYD_OU;
    return rv;
 }
@@ -506,11 +511,8 @@ mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
          goto jleave;
       }
 
-      if (n_poption & n_PO_D_V)
-         n_err(_("Connecting via *socks-proxy* to %s:%s ...\n"),
-            urlp->url_host.s,
-            (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
-
+      if(n_poption & n_PO_D_V)
+         n_err(_("Connecting to *socks-proxy*=%s\n"), cp);
       if(!a_netso_open(sop, &url2)){
          n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
          goto jleave;
@@ -541,6 +543,10 @@ jesocksreplymsg:
       }
 
       /* RFC 1928: CONNECT request */
+      if(n_poption & n_PO_D_V)
+         n_err(_("Through *socks-proxy*, connecting to %s:%s ...\n"),
+            urlp->url_host.s,
+            (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
       pbuf[0] = 0x05; /* VER: protocol version: X'05' */
       pbuf[1] = 0x01; /* CMD: CONNECT X'01' */
       pbuf[2] = 0x00; /* RESERVED */

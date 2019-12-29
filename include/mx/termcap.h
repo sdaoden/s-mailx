@@ -30,7 +30,11 @@
 
 #define mx_HEADER
 #include <su/code-in.h>
+#endif
 
+struct mx_termcap_value;
+
+#ifdef mx_HAVE_TCAP
 enum mx_termcap_captype{
    mx_TERMCAP_CAPTYPE_NONE,
    /* Internally we share the bitspace, so ensure no value ends up as 0 */
@@ -214,6 +218,7 @@ EXPORT s32 mx_termcap_query_for_name(char const *name,
 EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # endif
 
+#include <su/code-ou.h>
 #endif /* mx_HAVE_TCAP */
 
 #ifndef mx_TERMCAP_RESUME
@@ -221,6 +226,5 @@ EXPORT char const *mx_termcap_name_of_query(enum mx_termcap_query query);
 # define mx_TERMCAP_SUSPEND(CPL) do{;}while(0);
 #endif
 
-#include <su/code-ou.h>
 #endif /* mx_TERMCAP_H */
 /* s-it-mode */

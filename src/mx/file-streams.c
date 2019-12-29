@@ -392,7 +392,9 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    fs = S(enum mx_fs_open_state,p);
    switch(p){
    default:
+      err = su_ERR_OPNOTSUPP;
       goto jleave;
+
    case n_PROTO_IMAP:
 #ifdef mx_HAVE_IMAP
       file = csave;
@@ -404,6 +406,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       err = su_ERR_OPNOTSUPP;
       goto jleave;
 #endif
+
    case n_PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
       if(fs_or_nil != NIL && !access(file, F_OK))
@@ -416,13 +419,20 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       err = su_ERR_OPNOTSUPP;
       goto jleave;
 #endif
+
+   case n_PROTO_EML:
+      if(!(osflags & O_RDONLY)){
+         err = su_ERR_OPNOTSUPP;
+         goto jleave;
+      }
+      /* FALLTHRU */
    case n_PROTO_FILE:{
       struct mx_filetype ft;
 
       if(!(osflags & O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
          fs |= mx_FS_OPEN_STATE_EXISTS;
 
-      if(mx_filetype_exists(&ft, file)){
+      if(mx_filetype_exists(&ft, file)){/* TODO report real name to outside */
          flags |= a_FS_EF_HOOK;
          cload = ft.ft_load_dat;
          csave = ft.ft_save_dat;
@@ -503,14 +513,14 @@ jleave:
 FILE *
 mx_fs_tmp_open(char const *namehint, u32 oflags,
       struct mx_fs_tmp_ctx **fstcp_or_nil){
-   /* The 8 is arbitrary but leaves room for a six character suffix (the
-    * POSIX minimum path length is 14, though we don't check that XXX).
-    * 8 should be more than sufficient given that we use base64url encoding
+   /* The 6 is arbitrary but leaves room for an eight character hint (the
+    * POSIX minimum path length is 14, though we do not check that XXX).
+    * 6 should be more than sufficient given that we use base64url encoding
     * for our random string */
-   enum {a_RANDCHARS = 8u};
+   enum {a_RANDCHARS = 6u, a_HINT_MIN = 8u};
 
    char *cp_base, *cp;
-   uz maxname, xlen, i;
+   uz maxname, hintlen, i;
    char const *tmpdir;
    int osoflags, fd, e;
    boole relesigs;
@@ -540,7 +550,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 
       if((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1){
          maxname = S(uz,pc);
-         if(maxname <= a_RANDCHARS + 1){
+         if(maxname < a_RANDCHARS + a_HINT_MIN){
             su_err_set_no(su_ERR_NAMETOOLONG);
             goto jleave;
          }
@@ -548,13 +558,14 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    }
 #endif
 
+   /* We are prepared to ignore the namehint .. unless we may not */
    if((oflags & mx_FS_O_SUFFIX) && *namehint != '\0'){
-      if((xlen = su_cs_len(namehint)) > maxname - a_RANDCHARS){
+      if((hintlen = su_cs_len(namehint)) >= maxname - a_RANDCHARS){
          su_err_set_no(su_ERR_NAMETOOLONG);
          goto jleave;
       }
    }else
-      xlen = 0;
+      hintlen = 0;
 
    /* Prepare the template string once, then iterate over the random range.
     * But first ensure we can report the name in !O_REGISTER cases ("hack") */
@@ -563,6 +574,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    if(!(oflags & mx_FS_O_REGISTER) && fstcp_or_nil != NIL){
       union {struct a_fs_ent *fse; void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
+      /* Store character data right after the struct */
       p.v = n_autorec_alloc(sizeof(*p.fse) + i);
       su_mem_set(p.fse, 0, sizeof(*p.fse));
       p.fse->fse_realfile = R(char*,&p.fse[1]);
@@ -571,31 +583,28 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       *fstcp_or_nil = p.fstc;
    }
 
-   cp_base =
-   cp = n_lofi_alloc(i);
+   cp_base = cp = n_lofi_alloc(i);
    cp = su_cs_pcopy(cp, tmpdir);
    *cp++ = '/';
    /* C99 */{
-      char *x;
+      uz j;
+      char *xp;
 
-      x = su_cs_pcopy(cp, VAL_UAGENT);
-      *x++ = '-';
+      /* xxx We silently assume VAL_UAGENT easily fits in NAME_MAX-1 */
+      xp = su_cs_pcopy(cp, VAL_UAGENT);
+      *xp++ = '-';
       if(!(oflags & mx_FS_O_SUFFIX))
-         x = su_cs_pcopy(x, namehint);
+         xp = su_cs_pcopy(xp, namehint);
 
-      i = P2UZ(x - cp);
-      if(i > maxname - xlen - a_RANDCHARS){
-         uz j;
+      /* Just cut off as many of VAL_UAGENT as necessary */
+      if((i = P2UZ(xp - cp)) > (j = maxname - hintlen - a_RANDCHARS))
+         xp -= i - j;
 
-         j = maxname - xlen - a_RANDCHARS;
-         x -= i - j;
-      }
+      if((oflags & mx_FS_O_SUFFIX) && hintlen > 0)
+         su_mem_copy(&xp[a_RANDCHARS], namehint, hintlen);
 
-      if((oflags & mx_FS_O_SUFFIX) && xlen > 0)
-         su_mem_copy(x + a_RANDCHARS, namehint, xlen);
-
-      x[xlen + a_RANDCHARS] = '\0';
-      cp = x;
+      xp[hintlen + a_RANDCHARS] = '\0';
+      cp = xp;
    }
 
    osoflags = O_CREAT | O_EXCL | a_FS__O_CLOEXEC;
@@ -637,6 +646,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
                    (oflags & mx_FS_O_HOLDSIGS ? a_FS_EF_HOLDSIGS : 0)),
                cp_base, 0L, NIL);
 
+            /* User arg points to registered data in this case */
             if(fstcp_or_nil != NIL){
                union {void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
@@ -669,11 +679,13 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 jleave:
    if(relesigs && (fp == NIL || !(oflags & mx_FS_O_HOLDSIGS)))
       mx_sigs_all_rele();
+
    if(fp == NIL){
       su_err_set_no(e);
       if(fstcp_or_nil != NIL)
          *fstcp_or_nil = NIL;
    }
+
    NYD_OU;
    return fp;
 
@@ -976,23 +988,71 @@ mx_fs_linepool_release(char *dp, uz ds){
    NYD2_OU;
 }
 
-void
-mx_fs_linepool_cleanup(void){
-   struct a_fs_lpool_ent *lpep, *tmp;
+boole
+(mx_fs_linepool_book)(char **dp, uz *dsp, uz len, uz toadd
+      su_DBG_LOC_ARGS_DECL){
+   boole rv;
    NYD2_IN;
 
-   lpep = a_fs_lpool_used;
-   a_fs_lpool_used = NIL;
+   rv = FAL0;
+
+   if(UZ_MAX - 192 <= toadd)
+      goto jeoverflow;
+   toadd = (toadd + 192) & ~127;
+
+   if(!su_mem_get_can_book(1, len, toadd))
+      goto jeoverflow;
+   len += toadd;
+
+   if(*dsp < len){
+      char *ndp;
+
+      if((ndp = su_MEM_REALLOC_LOCOR(*dp, len, su_DBG_LOC_ARGS_ORUSE)) == NIL)
+         goto jleave;
+      *dp = ndp;
+      *dsp = len;
+   }
+
+   rv = TRU1;
+jleave:
+   NYD2_OU;
+   return rv;
+
+jeoverflow:
+   su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS |
+      su_STATE_ERR_NOERRNO), _("fs_linepool_book(): buffer size overflow"));
+   goto jleave;
+}
+
+void
+mx_fs_linepool_cleanup(boole completely){
+   struct a_fs_lpool_ent *lpep, *tmp, *keep;
+   NYD2_IN;
+
+   if(!completely)
+      completely = 3; /* XXX magic */
+   else
+      completely = FAL0;
+
+   lpep = a_fs_lpool_free;
+   a_fs_lpool_free = keep = NIL;
 jredo:
    while((tmp = lpep) != NIL){
       lpep = lpep->fsle_last;
-      if(tmp->fsle_dat != NIL)
-         su_FREE(tmp->fsle_dat);
-      su_FREE(tmp);
+
+      if(completely && tmp->fsle_size <= LINESIZE * 2){
+         --completely;
+         tmp->fsle_last = a_fs_lpool_free;
+         a_fs_lpool_free = tmp;
+      }else{
+         if(tmp->fsle_dat != NIL)
+            su_FREE(tmp->fsle_dat);
+         su_FREE(tmp);
+      }
    }
 
-   if((lpep = a_fs_lpool_free) != NIL){
-      a_fs_lpool_free = NIL;
+   if((lpep = a_fs_lpool_used) != NIL){
+      a_fs_lpool_used = NIL;
       goto jredo;
    }
    NYD2_OU;
@@ -1005,8 +1065,8 @@ jredo:
 static uz     _length_of_line(char const *line, uz linesize);
 
 /* Read a line, one character at a time */
-static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
-                     FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
+static char *a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil,
+      FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
 
 static uz
 _length_of_line(char const *line, uz linesize)
@@ -1024,7 +1084,7 @@ _length_of_line(char const *line, uz linesize)
 }
 
 static char *
-_fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
+a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
    int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
 {
    char *rv;
@@ -1032,7 +1092,6 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
    NYD2_IN;
 
    ASSERT(*linesize == 0 || *line != NULL);
-   n_pstate &= ~n_PS_READLINE_NL;
 
    /* Always leave room for NETNL, not only \n */
    for (rv = *line;;) {
@@ -1050,7 +1109,7 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
             break;
          }
       } else {
-         if (n > 0) {
+         if (n > 0 && feof(fp)) {
             if (appendnl) {
                rv[n++] = '\n';
                rv[n] = '\0';
@@ -1062,30 +1121,35 @@ _fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
          }
       }
    }
-   if (llen)
-      *llen = n;
+
+   if(llen_or_nil != NIL)
+      *llen_or_nil = n;
+
 jleave:
    NYD2_OU;
    return rv;
 }
 
-FL char *
-(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
+char *
+(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen_or_nil, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
    uz i_llen, size;
    char *rv;
    NYD2_IN;
 
-   if (cnt == NULL) {
-      /* Without count, we can't determine where the chars returned by fgets()
+   n_pstate &= ~n_PS_READLINE_NL;
+
+   if(llen_or_nil != NIL)
+      *llen_or_nil = 0;
+
+   if(cnt == NIL){
+      /* Without we cannot determine where the chars returned by fgets()
        * end if there's no newline.  We have to read one character by one */
-      rv = _fgetline_byone(line, linesize, llen, fp, appendnl, 0
+      rv = a_fs_fgetline_byone(line, linesize, llen_or_nil, fp, appendnl, 0
             su_DBG_LOC_ARGS_USE);
       goto jleave;
    }
-
-   n_pstate &= ~n_PS_READLINE_NL;
 
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
@@ -1105,7 +1169,17 @@ FL char *
             su_DBG_LOC_ARGS_ORUSE);
       size = *linesize - i_llen;
       size = (size <= *cnt) ? size : *cnt + 1;
-      if (size <= 1 || fgets(rv + i_llen, size, fp) == NULL) {
+      if (size <= 1) {
+         if (appendnl) {
+            rv[i_llen++] = '\n';
+            rv[i_llen] = '\0';
+         }
+         break;
+      } else if (fgets(rv + i_llen, size, fp) == NULL) {
+         if (!feof(fp)) {
+            rv = NULL;
+            goto jleave;
+         }
          if (appendnl) {
             rv[i_llen++] = '\n';
             rv[i_llen] = '\0';
@@ -1122,14 +1196,14 @@ FL char *
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
             su_DBG_LOC_ARGS_ORUSE);
 
-   if (llen)
-      *llen = i_llen;
+   if(llen_or_nil != NIL)
+      *llen_or_nil = i_llen;
 jleave:
    NYD2_OU;
    return rv;
 }
 
-FL int
+int
 (readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
    su_DBG_LOC_ARGS_DECL)
 {
@@ -1163,7 +1237,7 @@ jagain:
                break;
             }
          } else {
-            if (size < 0 && su_err_no() == su_ERR_INTR)
+            if (size == -1 && su_err_no() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {
@@ -1181,8 +1255,8 @@ jagain:
       /* Not reading from standard input or standard input not a terminal. We
        * read one char at a time as it is the only way to get lines with
        * embedded NUL characters in standard stdio */
-      if (_fgetline_byone(linebuf, linesize, &n, ibuf, 1, n
-            su_DBG_LOC_ARGS_USE) == NULL)
+      if(a_fs_fgetline_byone(linebuf, linesize, &n, ibuf, 1,
+            n su_DBG_LOC_ARGS_USE) == NIL)
          goto jleave;
    }
    if (n > 0 && (*linebuf)[n - 1] == '\n')
@@ -1193,7 +1267,7 @@ jleave:
    return rv;
 }
 
-FL off_t
+off_t
 fsize(FILE *iob)
 {
    struct stat sbuf;

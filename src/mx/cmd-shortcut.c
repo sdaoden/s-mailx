@@ -30,6 +30,8 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
+#include "mx/cmd.h"
+
 #include "mx/cmd-shortcut.h"
 #include "su/code-in.h"
 
@@ -53,7 +55,7 @@ c_shortcut(void *vp){
       slp = NIL;
       rv = !(mx_xy_dump_dict("shortcut", a_scut_dp, &slp, NIL,
                &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("shortcut", slp));
+            mx_page_or_print_strlist("shortcut", slp, FAL0));
    }else if(argv[1] == NIL){
       if(a_scut_dp != NIL &&
             su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_scut_dp), key)){
@@ -75,7 +77,7 @@ c_shortcut(void *vp){
 
       for(rv = 0; key != NIL; argv += 2, key = *argv){
          if((dat = argv[1]) == NIL){
-            n_err(_("Synopsis: shortcut: <shortcut> <expansion>\n"));
+            mx_cmd_print_synopsis(mx_cmd_firstfit("shortcut"), NIL);
             rv = 1;
             break;
          }

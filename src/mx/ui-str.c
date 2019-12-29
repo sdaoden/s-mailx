@@ -440,11 +440,11 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
     * TODO some special treatment for UTF-8 (take it from S-CText too then) */
    char const *inp, *maxp;
    char *outp;
-   DBG( uz msz; )
+   ASSERT_INJ( uz msz; )
    NYD_IN;
 
    out->s =
-   outp = n_alloc(su_DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
+   outp = n_alloc(ASSERT_INJ( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 

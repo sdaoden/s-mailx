@@ -47,6 +47,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 /* v15compat: csop.h */
 #include "mx/cmd-csop.h"
 #include "mx/random.h"
@@ -74,7 +75,10 @@ enum a_vexpr_cmd{
    a_VEXPR_CMD_NUM__MAX,
 
    a_VEXPR_CMD_AGN__MIN = a_VEXPR_CMD_NUM__MAX,
-   a_VEXPR_CMD_AGN_FILE_EXPAND = a_VEXPR_CMD_AGN__MIN,
+   a_VEXPR_CMD_AGN_DATE_UTC = a_VEXPR_CMD_AGN__MIN,
+   a_VEXPR_CMD_AGN_DATE_STAMP_UTC,
+   a_VEXPR_CMD_AGN_EPOCH,
+   a_VEXPR_CMD_AGN_FILE_EXPAND,
    a_VEXPR_CMD_AGN_FILE_STAT,
    a_VEXPR_CMD_AGN_FILE_LSTAT,
    a_VEXPR_CMD_AGN_RANDOM,
@@ -182,6 +186,9 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
    {a_X(a_VEXPR_CMD_NUM_URSHIFT, a_VEXPR_MOD_SATURATED), ">>>"},
    {a_X(a_VEXPR_CMD_NUM_PBASE, a_VEXPR_MOD_SATURATED), "pbase\0"},
 
+   {a_X(a_VEXPR_CMD_AGN_DATE_UTC, 0), "date-utc"},
+   {a_X(a_VEXPR_CMD_AGN_DATE_STAMP_UTC, 0), "date-stamp-utc"},
+   {a_X(a_VEXPR_CMD_AGN_EPOCH, 0), "epoch"},
    {a_X(a_VEXPR_CMD_AGN_FILE_EXPAND, 0), "file-expand\0"},
    {a_X(a_VEXPR_CMD_AGN_FILE_STAT, 0), "file-stat"},
    {a_X(a_VEXPR_CMD_AGN_FILE_LSTAT, 0), "file-lstat"},
@@ -502,10 +509,99 @@ jleave:
 
 static void
 a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
+   struct stat st;
+   struct n_string s_b, *s;
    NYD2_IN;
 
    switch(vcp->vc_cmderr){
+   case a_VEXPR_CMD_AGN_DATE_UTC:
+      if(vcp->vc_argv[0] != NIL){
+         vcp->vc_flags |= a_VEXPR_ERR;
+         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
+      }else{
+         struct time_current tc;
+
+         time_current_update(&tc, TRU1);
+
+         s = n_string_book(n_string_creat_auto(&s_b), 31);
+
+         s = n_string_push_cp(s, "dutc_year=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_year + 1900, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "dutc_month=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mon + 1, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "dutc_month=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mday, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "dutc_hour=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_hour, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "dutc_min=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_min, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "dutc_sec=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_sec, 10));
+
+         vcp->vc_varres = n_string_cp(s);
+         /* n_string_gut(n_string_drop_ownership(s)); */
+      }
+      break;
+
    default:
+   case a_VEXPR_CMD_AGN_DATE_STAMP_UTC:
+      if(vcp->vc_argv[0] != NIL){
+         vcp->vc_flags |= a_VEXPR_ERR;
+         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
+      }else{
+         struct time_current tc;
+
+         time_current_update(&tc, TRU1);
+         (void)snprintf(vcp->vc_iencbuf, sizeof(vcp->vc_iencbuf),
+            "%04u-%02u-%02uT%02u:%02u:%02uZ",
+            tc.tc_gm.tm_year + 1900, tc.tc_gm.tm_mon + 1, tc.tc_gm.tm_mday,
+            tc.tc_gm.tm_hour, tc.tc_gm.tm_min, tc.tc_gm.tm_sec);
+
+         vcp->vc_varres = vcp->vc_iencbuf;
+      }
+      break;
+
+   case a_VEXPR_CMD_AGN_EPOCH:
+      if(vcp->vc_argv[0] != NIL){
+         vcp->vc_flags |= a_VEXPR_ERR;
+         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
+      }else{
+         struct n_timespec const *tsp;
+
+         tsp = n_time_now(TRU1);
+
+         s = n_string_book(n_string_creat_auto(&s_b), 31);
+
+         s = n_string_push_cp(s, "epoch_sec=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_sec, 10));
+         s = n_string_push_c(s, ' ');
+
+         s = n_string_push_cp(s, "epoch_nsec=");
+         s = n_string_push_cp(s,
+               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_nsec, 10));
+
+         vcp->vc_varres = n_string_cp(s);
+         /* n_string_gut(n_string_drop_ownership(s)); */
+      }
+      break;
+
    case a_VEXPR_CMD_AGN_FILE_EXPAND:
       if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] != NIL){
          vcp->vc_flags |= a_VEXPR_ERR;
@@ -525,8 +621,6 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
       vcp->vc_flags |= a_VEXPR_MOD_MASK;
       /* FALLTHRU */
    case a_VEXPR_CMD_AGN_FILE_STAT:{
-      struct stat st;
-      struct n_string s_b, *s;
       char c;
 
       if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] != NIL){
@@ -536,8 +630,8 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
       }
       vcp->vc_arg = vcp->vc_argv[0];
 
-      if((vcp->vc_varres = fexpand(vcp->vc_arg, FEXP_NVAR | FEXP_NOPROTO)
-            ) == NIL){
+      if((vcp->vc_varres = fexpand(vcp->vc_arg, (/*FEXP_NOPROTO |*/
+            FEXP_LOCAL | FEXP_NVAR))) == NIL){
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
          break;
@@ -746,7 +840,7 @@ a_vexpr__regex_replace(void *uservp){
    struct str templ;
    struct n_string s_b;
    char *rv;
-   enum n_shexp_state shs;
+   BITENUM_IS(u32,n_shexp_state) shs;
    NYD2_IN;
 
    templ.s = S(char*,uservp);
@@ -858,7 +952,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
       ASSERT(0);
       break;
    case a_VEXPR_ERR_SYNOPSIS:
-      n_err(_("Synopsis: vexpr: <operator> <:argument:>\n"));
+      mx_cmd_print_synopsis(mx_cmd_firstfit("vexpr"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       goto jenum;
    case a_VEXPR_ERR_SUBCMD:

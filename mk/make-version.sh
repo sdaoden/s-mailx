@@ -8,7 +8,7 @@ LC_ALL=C
 
 query() {
    VERSION="`< ${CWDDIR}include/mx/gen-version.h ${sed} \
-         -e '/ n_VERSION /b X' -e d -e ':X' \
+         -e '/ mx_VERSION /b X' -e d -e ':X' \
          -e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
    echo $VERSION
 }
@@ -53,12 +53,13 @@ create() {
 
    trap "${rm} -f ./version.tmp" 0 1 2 15
 
-   printf > ./version.tmp "#define n_VERSION \"v${VERSION}\"\n"
-   printf >> ./version.tmp "#define n_VERSION_DATE \"`date -u +'%Y-%m-%d'`\"\n"
-   printf >> ./version.tmp "#define n_VERSION_MAJOR \"${vmaj}\"\n"
-   printf >> ./version.tmp "#define n_VERSION_MINOR \"${vmin}\"\n"
-   printf >> ./version.tmp "#define n_VERSION_UPDATE \"${vupd}\"\n"
-   printf >> ./version.tmp "#define n_VERSION_HEXNUM \"0x%02X%03X%03X\"\n" \
+   printf > ./version.tmp "#define mx_VERSION \"v${VERSION}\"\n"
+   printf >> ./version.tmp "#define mx_VERSION_DATE \"%s\"\n" \
+      "`date -u +'%Y-%m-%d'`"
+   printf >> ./version.tmp "#define mx_VERSION_MAJOR \"${vmaj}\"\n"
+   printf >> ./version.tmp "#define mx_VERSION_MINOR \"${vmin}\"\n"
+   printf >> ./version.tmp "#define mx_VERSION_UPDATE \"${vupd}\"\n"
+   printf >> ./version.tmp "#define mx_VERSION_HEXNUM \"0x%02X%03X%03X\"\n" \
       "${vmaj}" "${vmin}" "${vupd}"
    ${cmp} ./version.tmp ${CWDDIR}include/mx/gen-version.h >/dev/null 2>&1 &&
       exit

@@ -496,11 +496,14 @@ jleave:
       }
 
       if(emsg != NIL){
+         boole b;
+
          a_DOMSG();
+         b = ((fdls & mx_FILE_DOTLOCK_STATE_ABANDON) != 0);
          n_err(_(". failed\n%s%s"), V_(emsg),
-            ((fdls & mx_FILE_DOTLOCK_STATE_ABANDON) ? su_empty
-               : _("Trying different policy ")));
-         didmsg = TRU1;
+            (b ? su_empty : _("Trying different policy ")));
+         if(b)
+            didmsg = TRU1;
          emsg = NIL;
       }
 

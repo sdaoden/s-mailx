@@ -62,6 +62,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/cmd.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/iconv.h"
@@ -235,7 +236,7 @@ static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
                      struct mx_url *urlp);
 static int _imap_setfile1(char const *who, struct mx_url *urlp,
             enum fedit_mode fm, int transparent);
-static int        imap_fetchdata(struct mailbox *mp, struct message *m,
+static void       imap_fetchdata(struct mailbox *mp, struct message *m,
                      uz expected, int need, const char *head,
                      uz headsize, long headlines);
 static void       imap_putstr(struct mailbox *mp, struct message *m,
@@ -581,6 +582,7 @@ jleave:
    return cp;
 jerr:
    n_err(_("Cannot encode IMAP path %s\n  %s\n"), cp, V_(emsg));
+   UNUSED(emsg);
    goto jleave;
 }
 
@@ -789,6 +791,7 @@ jleave:
    return rv;
 jerr:
    n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
+   UNUSED(emsg);
    su_mem_copy(rv = rv_base, path, ++l_orig);
    goto jleave;
 }
@@ -2148,28 +2151,38 @@ jleave:
    return rv;
 }
 
-static int
+static void
 imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
    int need, const char *head, uz headsize, long headlines)
 {
-   char *line = NULL, *lp;
-   uz linesize = 0, linelen, size = 0;
-   int emptyline = 0, lines = 0, excess = 0;
+   char *line, *lp;
+   uz linesize, linelen, size = 0;
+   int emptyline = 0, lines = 0;
    off_t offset;
    NYD_IN;
+
+   mx_fs_linepool_aquire(&line, &linesize);
 
    fseek(mp->mb_otf, 0L, SEEK_END);
    offset = ftell(mp->mb_otf);
 
-   if (head)
+   if(head)
       fwrite(head, 1, headsize, mp->mb_otf);
 
-   while (mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0) {
+   while(expected > 0 &&
+         mx_socket_getline(&line, &linesize, &linelen, mp->mb_sock) > 0){
       lp = line;
-      if (linelen > expected) {
-         excess = linelen - expected;
-         linelen = expected;
-      }
+      if(linelen > expected)
+         lp[linelen = expected] = '\0';
+      expected -= linelen;
+
+      while(linelen > 0 && (lp[linelen - 1] == NETNL[0] ||
+            lp[linelen - 1] == NETNL[1]))
+         lp[--linelen] = '\0';
+
+      if(n_poption & n_PO_D_VVV)
+         n_err(">>> SERVER: %s\n", lp);
+
       /* TODO >>
        * Need to mask 'From ' lines. This cannot be done properly
        * since some servers pass them as 'From ' and others as
@@ -2182,47 +2195,37 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
        * If the line is the first line of the message header, it
        * is likely a real 'From ' line. In this case, it is just
        * ignored since it violates all standards.
-       * TODO can the latter *really* happen??
+       * TODO i have *never* seen the latter?!?!?
        * TODO <<
        */
-      /* Since we simply copy over data without doing any transfer
-       * encoding reclassification/adjustment we *have* to perform
-       * RFC 4155 compliant From_ quoting here */
-      if (emptyline && is_head(lp, linelen, FAL0)) {
+      /* TODO Since we simply copy over data without doing any transfer
+       * TODO encoding reclassification/adjustment we *have* to perform
+       * TODO RFC 4155 compliant From_ quoting here TODO REALLY NOT! */
+      if(emptyline && is_head(lp, linelen, FAL0)){
          fputc('>', mp->mb_otf);
          ++size;
       }
-      emptyline = 0;
-      if (lp[linelen-1] == '\n' && (linelen == 1 || lp[linelen-2] == '\r')) {
-         if (linelen > 2) {
-            fwrite(lp, 1, linelen - 2, mp->mb_otf);
-            size += linelen - 1;
-         } else {
-            emptyline = 1;
-            ++size;
-         }
-         fputc('\n', mp->mb_otf);
-      } else {
+      if(!(emptyline = (linelen == 0)))
          fwrite(lp, 1, linelen, mp->mb_otf);
-         size += linelen;
-      }
+      putc('\n', mp->mb_otf);
+      size += ++linelen;
       ++lines;
-      if ((expected -= linelen) <= 0)
-         break;
    }
-   if (!emptyline) {
+
+   if(!emptyline){
       /* TODO This is very ugly; but some IMAP daemons don't end a
        * TODO message with \r\n\r\n, and we need \n\n for mbox format.
        * TODO That is to say we do it wrong here in order to get it right
        * TODO when send.c stuff or with MBOX handling, even though THIS
        * TODO line is solely a property of the MBOX database format! */
       fputc('\n', mp->mb_otf);
-      ++lines;
       ++size;
+      ++lines;
    }
+
    fflush(mp->mb_otf);
 
-   if (m != NULL) {
+   if(m != NIL){
       m->m_size = size + headsize;
       m->m_lines = lines + headlines;
       m->m_block = mailx_blockof(offset);
@@ -2238,9 +2241,9 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
          break;
       }
    }
-   n_free(line);
+
+   mx_fs_linepool_release(line, linesize);
    NYD_OU;
-   return excess;
 }
 
 static void
@@ -3003,7 +3006,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: imapcodec: <e[ncode]|d[ecode]> <rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("imapcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
@@ -3154,22 +3157,18 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    rv = STOP;
    queuefp = NULL;
    twice = FAL0;
-   buf = NULL;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if((qname = imap_path_quote(mp, name)) == NULL)
       goto jleave;
 
    if (mp->mb_type == MB_CACHE) {
       queuefp = cache_queue(mp);
-      if (queuefp == NULL) {
-         buf = NULL;
+      if (queuefp == NULL)
          goto jleave;
-      }
       rv = OKAY;
    }
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
 jagain:
    size = xsize;
    cnt = fsize(fp);
@@ -3196,7 +3195,13 @@ jagain:
 
    lines = ysize = 0;
    while (size > 0) {
-      fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
+      if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1) == NIL){
+         if(ferror(fp)){
+            rv = STOP;
+            goto jleave;
+         }
+         break;
+      }
       lines++;
       ysize += buflen;
       buf[buflen - 1] = '\r';
@@ -3239,8 +3244,8 @@ jtrycreate:
 jleave:
    if(queuefp != NIL)
       mx_fs_close(queuefp);
-   if(buf != NIL)
-      n_free(buf);
+
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -3258,15 +3263,14 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
    enum okay rv;
    NYD_IN;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
    time(&tim);
    size = 0;
 
    for (flag = MNEW, state = _NLSEP;;) {
-      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
+      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
       if (bp == NULL ||
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
@@ -3281,8 +3285,13 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
          size = 0;
          flag = MNEW;
          state = _INHEAD;
-         if (bp == NULL)
+         if(bp == NIL){
+            if(ferror(fp)){
+               rv = STOP;
+               goto jleave;
+            }
             break;
+         }
          tim = unixtime(buf);
       } else
          size += buflen+1;
@@ -3327,9 +3336,10 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
          }
       }
    }
+
    rv = OKAY;
 jleave:
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -3521,10 +3531,11 @@ imap_folders(const char * volatile name, int strip)
 {
    n_sighdl_t saveint, savepipe;
    const char * volatile fold, *cp, *xsp;
-   FILE * volatile fp;
    int volatile rv = 1;
+   FILE * volatile fp;
    NYD_IN;
 
+   fp = n_stdout;
    cp = protbase(name);
    xsp = mb.mb_imap_account;
    if (xsp == NULL || su_cs_cmp(cp, xsp)) {
@@ -3537,14 +3548,9 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if(n_psonce & n_PSO_TTYOUT){
-      if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("tmpfile"), 0);
-         goto jleave;
-      }
-   } else
-      fp = stdout;
+   if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -3562,30 +3568,21 @@ imap_folders(const char * volatile name, int strip)
 
    imaplock = 0;
    if (interrupts) {
-      if(n_psonce & n_PSO_TTYOUT)
-         mx_fs_close(fp);
       rv = 0;
       goto jleave;
    }
-   fflush(fp);
 
-   if (n_psonce & n_PSO_TTYOUT) {
-      rewind(fp);
-      if (fsize(fp) > 0){
-         page_or_print(fp, 0);
-         rv = 0;
-      }else
-         n_err(_("Folder not found\n"));
-   }else
-      rv = 0;
+   if(fp != n_stdout)
+      page_or_print(fp, 0);
 
+   rv = 0;
 junroll:
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
-   if(n_psonce & n_PSO_TTYOUT)
+jleave:
+   if(fp != n_stdout)
       mx_fs_close(fp);
 
-jleave:
    NYD_OU;
    if (interrupts)
       n_go_onintr_for_imap();
@@ -3886,10 +3883,9 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    enum okay rv = STOP;
    NYD_IN;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
-   if (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) == NULL)
+   if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) == NIL)
       goto jstop;
 
    for (bp = buf; *bp != ' '; ++bp) /* strip old tag */
@@ -3919,8 +3915,8 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
 
    size = xsize;
    ysize = lines = 0;
-   while (size > 0) {
-      if (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) == NULL)
+   while(size > 0){
+      if(fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) == NIL)
          goto jstop;
       size -= buflen;
       buf[--buflen] = '\0';
@@ -3937,9 +3933,9 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    rv = OKAY;
 
 jstop:
-   n_free(buf);
    if(tp != NIL)
       mx_fs_close(tp);
+   mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
    return rv;
 }
@@ -4209,11 +4205,10 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
    enum okay ok = OKAY, rok = OKAY;
    NYD;
 
-   buf = n_alloc(bufsize = LINESIZE);
-   buflen = 0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
-   while ((offs1 = ftell(fp)) >= 0 &&
-         fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL) {
+   while((offs1 = ftell(fp)) >= 0 &&
+         fgetline(&buf, &bufsize, &cnt, &buflen, fp, FAL0) != NIL){
       for (bp = buf; *bp != ' '; ++bp) /* strip old tag */
          ;
       while (*bp == ' ')
@@ -4304,12 +4299,14 @@ trycreate:
       if (ok == OKAY)
          goto again;
    }
-   fflush(fp);
-   rewind(fp);
+   if(ferror(fp))
+      rok = STOP;
+
+   fflush_rewind(fp);
    ftruncate(fileno(fp), 0);
    if (gotcha)
       imap_close(mp);
-   n_free(buf);
+   mx_fs_linepool_release(buf, bufsize);
    return rok;
 }
 

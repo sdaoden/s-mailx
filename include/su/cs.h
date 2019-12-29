@@ -73,6 +73,9 @@ EXPORT sz su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n);
 EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 EXPORT char *su_cs_dup(char const *cp, u32 estate);
+#if 0
+EXPORT boole su_cs_ends_with_case(char const *cp, char const *x);
+#endif
 EXPORT char *su_cs_find(char const *cp, char const *xp);
 EXPORT char *su_cs_find_c(char const *cp, char xc);
 EXPORT char *su_cs_find_case(char const *cp, char const *xp);

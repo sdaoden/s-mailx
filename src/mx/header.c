@@ -48,6 +48,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
@@ -1351,6 +1352,48 @@ is_head(char const *linebuf, uz linelen, boole check_rfc4155)
    return rv;
 }
 
+FL char const *
+mx_header_is_valid(char const *name, boole lead_ws, struct str *cramp_or_nil){
+   char const *cp;
+   NYD_IN;
+
+   cp = name;
+
+   if(lead_ws){
+      while(su_cs_is_blank(*cp))
+         ++cp;
+      name = cp;
+   }
+
+   if(cramp_or_nil != NIL)
+      cramp_or_nil->s = UNCONST(char*,name);
+
+   while(fieldnamechar(*cp))
+      ++cp;
+   if(cp == name){
+      name = NIL;
+      goto jleave;
+   }
+
+   if(cramp_or_nil != NIL)
+      cramp_or_nil->l = P2UZ(cp - name);
+
+   while(su_cs_is_blank(*cp))
+      ++cp;
+   if(*cp != ':'){
+      name = NIL;
+      goto jleave;
+   }
+
+   while(su_cs_is_blank(*++cp))
+      ;
+   name = cp;
+
+jleave:
+   NYD_OU;
+   return name;
+}
+
 FL boole
 n_header_put4compose(FILE *fp, struct header *hp){
    boole rv;
@@ -1520,37 +1563,28 @@ jeseek:
       }
       /* A free-form header; a_gethfield() did some verification already.. */
       else{
+         struct str hfield;
          struct n_header_field *hfp;
-         u32 nl, bl;
-         char const *nstart;
+         uz bl;
 
-         for(nstart = cp = linebuf;; ++cp)
-            if(!fieldnamechar(*cp))
-               break;
-         nl = (u32)P2UZ(cp - nstart);
-
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         if(*cp++ != ':'){
+         if((cp = mx_header_is_valid(linebuf, FAL0, &hfield)) == NIL){
 jebadhead:
             n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
          }
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         bl = (u32)su_cs_len(cp) +1;
+         bl = su_cs_len(cp) +1;
 
          ++seenfields;
          *hftail =
          hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
-               hf_dat) + nl +1 + bl);
+               hf_dat) + hfield.l +1 + bl);
             hftail = &hfp->hf_next;
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl;
-         hfp->hf_bl = bl - 1;
-         su_mem_copy(hfp->hf_dat, nstart, nl);
-            hfp->hf_dat[nl++] = '\0';
-            su_mem_copy(hfp->hf_dat + nl, cp, bl);
+         hfp->hf_next = NIL;
+         hfp->hf_nl = S(u32,hfield.l);
+         hfp->hf_bl = S(u32,bl - 1);
+         su_mem_copy(hfp->hf_dat, hfield.s, hfield.l);
+            hfp->hf_dat[hfield.l++] = '\0';
+            su_mem_copy(&hfp->hf_dat[hfield.l], cp, bl);
       }
    }
 
@@ -1775,7 +1809,7 @@ expandaddr_to_eaf(void){ /* TODO should happen at var assignment time */
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
       {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
       {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
-      {"namehostex\0", FAL0, EAF_NONE, EAF_NAMEHOSTEX},
+      {"nametoaddr\0", FAL0, EAF_NONE, EAF_NAMETOADDR},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"fcc", TRU1, EAF_NONE, EAF_FCC}, /* Fcc: only */
@@ -1827,6 +1861,12 @@ jandor:
             }else if(!su_cs_cmp_case(cp, "noalias")){ /* TODO v15 OBSOLETE */
                n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
+               break;
+            }else if(!su_cs_cmp_case(cp, "namehostex")){ /* TODO v15 OBSOLETE*/
+               n_OBSOLETE(_("*expandaddr*: "
+                  "weird namehostex renamed to nametoaddr, "
+                  "sorry for the inconvenience!"));
+               rv |= EAF_NAMETOADDR;
                break;
             }
          }
@@ -1922,7 +1962,7 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
       cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       break;
    case mx_NAME_ADDRSPEC_ISNAME:
-      if((eaf & EAF_NAMEHOSTEX) &&
+      if((eaf & EAF_NAMETOADDR) &&
             (!su_cs_cmp(np->n_name, ok_vlook(LOGNAME)) ||
                getpwnam(np->n_name) != NIL)){
          np->n_flags ^= mx_NAME_ADDRSPEC_ISADDR | mx_NAME_ADDRSPEC_ISNAME;
@@ -2301,9 +2341,13 @@ c_addrcodec(void *vp){
          struct mx_name *np;
 
          if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
+            s8 mltype;
+
             cp = np->n_name;
 
-            if(mode == 1 && mx_mlist_query(cp, FAL0) != mx_MLIST_OTHER)
+            if(mode == 1 &&
+                  (mltype = mx_mlist_query(cp, FAL0)) != mx_MLIST_OTHER &&
+                  mltype != mx_MLIST_POSSIBLY)
                n_pstate_err_no = su_ERR_EXIST;
          }else{
             n_pstate_err_no = su_ERR_INVAL;
@@ -2328,8 +2372,7 @@ jleave:
    NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
-   n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
-      "<rest-of-line>\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("addrcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
@@ -2451,25 +2494,72 @@ jleave:
    return n_UNCONST(cp);
 }
 
+FL struct mx_name *
+mx_header_list_post_of(struct message *mp){
+   char const *cp;
+   struct mx_name *rv;
+   NYD_IN;
+
+   rv = NIL;
+
+   if((cp = hfield1("list-post", mp)) != NIL){
+      if((rv = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NIL ||
+            is_addr_invalid(rv, EACM_STRICT)){
+         if(n_poption & n_PO_D_V)
+            n_err(_("Message contains invalid List-Post: header\n"));
+         rv = NIL;
+      }else if(!su_cs_cmp_case(rv->n_name, "no"))
+         rv = R(struct mx_name*,-1);
+   }
+
+   NYD_OU;
+   return rv;
+}
+
+FL struct mx_name *
+mx_header_sender_of(struct message *mp, u32 gf){
+   struct mx_name *rv;
+   char const *cp;
+   NYD_IN;
+
+   if(gf == 0)
+      gf = GFULL | GSKIN;
+
+   if((cp = hfield1("from", mp)) != NIL && *cp != '\0' &&
+         (rv = lextract(cp, gf)) != NIL && rv->n_flink == NIL){
+      ;
+   }else if((cp = hfield1("sender", mp)) != NIL && *cp != '\0' &&
+         (rv = lextract(cp, gf)) != NIL)
+      ;
+   else
+      rv = NIL;
+
+   NYD_OU;
+   return rv;
+}
+
 FL char *
 n_header_senderfield_of(struct message *mp){
    char *cp;
+   struct mx_name *np;
    NYD_IN;
 
-   if((cp = hfield1("from", mp)) != NULL && *cp != '\0')
-      ;
-   else if((cp = hfield1("sender", mp)) != NULL && *cp != '\0')
-      ;
-   else{
-      char *namebuf, *cp2, *linebuf;
-      uz namesize, linesize;
+   if((np = mx_header_sender_of(mp, 0)) != NIL){
+      cp = np->n_fullname;
+      goto jleave;
+   }
+
+   /* C99 */{
+      char *linebuf, *namebuf, *cp2;
+      uz linesize, namesize;
       FILE *ibuf;
       int f1st = 1;
 
       mx_fs_linepool_aquire(&linebuf, &linesize);
+      mx_fs_linepool_aquire(&namebuf, &namesize);
 
       /* And fallback only works for MBOX */
-      namebuf = n_alloc(namesize = 1);
+      namebuf = n_realloc(namebuf, namesize = LINESIZE);
       namebuf[0] = 0;
       if (mp->m_flag & MNOFROM)
          goto jout;
@@ -2528,10 +2618,11 @@ jout:
             *cp == '\0')
          cp = savestr(namebuf);
 
+      mx_fs_linepool_release(namebuf, namesize);
       mx_fs_linepool_release(linebuf, linesize);
-      n_free(namebuf);
    }
 
+jleave:
    NYD_OU;
    return cp;
 }
@@ -3351,7 +3442,8 @@ n_header_is_known(char const *name, uz len){
       "Fcc",
       /* Mailx internal temporaries */
       "Mailx-Command",
-      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
+      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
+         "Mailx-Orig-Sender", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
       NULL
    };
@@ -3369,69 +3461,50 @@ n_header_is_known(char const *name, uz len){
 }
 
 FL boole
-n_header_add_custom(struct n_header_field **hflp, char const *dat,
-      boole heap){
+n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
+   struct str hname;
    uz i;
-   u32 nl, bl;
+   u32 bl;
    char const *cp;
    struct n_header_field *hfp;
    NYD_IN;
 
-   hfp = NULL;
+   hfp = NIL;
 
    /* For (-C) convenience, allow leading WS */
-   while(su_cs_is_blank(*dat))
-      ++dat;
-
-   /* Isolate the header field from the body */
-   for(cp = dat;; ++cp){
-      if(fieldnamechar(*cp))
-         continue;
-      if(*cp == '\0'){
-         if(cp == dat)
-            goto jename;
-      }else if(*cp != ':' && !su_cs_is_blank(*cp)){
-jename:
-         cp = N_("Invalid custom header (not \"field: body\"): %s\n");
-         goto jerr;
-      }
-      break;
+   if((cp = mx_header_is_valid(dat, TRU1, &hname)) == NIL){
+      cp = N_("Invalid custom header (not valid \"field: body\"): %s\n");
+      goto jerr;
    }
-   nl = (u32)P2UZ(cp - dat);
-   if(nl == 0)
-      goto jename;
 
    /* Verify the custom header does not use standard/managed field name */
-   if(n_header_is_known(dat, nl) != NULL){
+   if(n_header_is_known(hname.s, hname.l) != NIL){
       cp = N_("Custom headers cannot use standard header names: %s\n");
       goto jerr;
    }
 
    /* Skip on over to the body */
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   if(*cp++ != ':')
-      goto jename;
-   while(su_cs_is_blank(*cp))
-      ++cp;
-   bl = (u32)su_cs_len(cp);
+   bl = S(u32,su_cs_len(cp));
+   while(bl > 0 && su_cs_is_space(cp[bl - 1]))
+      --bl;
    for(i = bl++; i-- != 0;)
       if(su_cs_is_cntrl(cp[i])){
          cp = N_("Invalid custom header: contains control characters: %s\n");
          goto jerr;
       }
 
-   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
+   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + hname.l +1 + bl +1;
    *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
    hfp->hf_next = NULL;
-   hfp->hf_nl = nl;
+   hfp->hf_nl = hname.l;
    hfp->hf_bl = bl - 1;
-   su_mem_copy(hfp->hf_dat, dat, nl);
-      hfp->hf_dat[nl++] = '\0';
-      su_mem_copy(hfp->hf_dat + nl, cp, bl);
+   su_mem_copy(hfp->hf_dat, hname.s, hname.l);
+      hfp->hf_dat[hname.l++] = '\0';
+      su_mem_copy(&hfp->hf_dat[hname.l], cp, bl);
+
 jleave:
    NYD_OU;
-   return (hfp != NULL);
+   return (hfp != NIL);
 
 jerr:
    n_err(V_(cp), n_shexp_quote_cp(dat, FAL0));

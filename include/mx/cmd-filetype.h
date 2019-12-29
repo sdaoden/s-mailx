@@ -16,13 +16,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_FILETYPE_H
-#define mx_FILETYPE_H
+#ifndef mx_CMD_FILETYPE_H
+#define mx_CMD_FILETYPE_H
 
 #include <mx/nail.h>
 
 #define mx_HEADER
 #include <su/code-in.h>
+
+struct mx_filetype;
 
 struct mx_filetype{
    char const *ft_ext_dat; /* Extension this handles, without first period */
@@ -50,5 +52,5 @@ EXPORT boole mx_filetype_exists(struct mx_filetype *res_or_nil,
       char const *file);
 
 #include <su/code-ou.h>
-#endif /* mx_FILETYPE_H */
+#endif /* mx_CMD_FILETYPE_H */
 /* s-it-mode */

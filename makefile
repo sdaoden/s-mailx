@@ -3,8 +3,9 @@
 #@ See the file INSTALL if you need help.
 
 .PHONY: ohno tangerine citron \
-	all config build install uninstall clean distclean test \
-	devel odevel
+	all config build install uninstall clean distclean \
+	devel odevel \
+	test testnj
 .NOTPARALLEL:
 .WAIT: # Luckily BSD make supports specifying this as target, too
 
@@ -56,6 +57,18 @@ testnj:
 	@$(__prestop); cd "$(OBJDIR)" &&\
 	LC_ALL=C $(MAKE) -f mk-config.mk testnj
 
+d-cmd-tab:
+	sh mk/make-cmd-tab.sh
+d-cmd-tab-nv:
+	sh mk/make-cmd-tab.sh noverbose
+d-cs-ctype:
+	sh mk/su-make-cs-ctype.sh
+d-cs-ctype-nv:
+	sh mk/su-make-cs-ctype.sh noverbose
+d-errors:
+	sh mk/su-make-errors.sh
+d-errors-nv:
+	sh mk/su-make-errors.sh noverbose
 d-okeys:
 	perl mk/make-okey-map.pl
 d-okeys-nv:
@@ -64,14 +77,6 @@ d-tcaps:
 	perl mk/make-tcap-map.pl
 d-tcaps-nv:
 	perl mk/make-tcap-map.pl noverbose
-d-errors:
-	sh mk/su-make-errors.sh
-d-errors-nv:
-	sh mk/su-make-errors.sh noverbose
-d-cs-ctype:
-	sh mk/su-make-cs-ctype.sh
-d-cs-ctype-nv:
-	sh mk/su-make-cs-ctype.sh noverbose
 
 d-dox:
 	doxygen mk/su-doxygen.rc

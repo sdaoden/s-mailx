@@ -47,6 +47,8 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/cmd.h"
+
 /* TODO fake */
 #include "mx/sigs.h"
 #include "su/code-in.h"
@@ -56,7 +58,7 @@
  * TODO and a half week to convert this codebase to SysV style signal handling,
  * TODO meaning no SA_RESTART and EINTR in a lot of places and error reporting
  * TODO up the chain.   I failed miserably, not only because S/MIME / SSL but
- * TODO also because of general frustration.  Directly after v14.9 i will strip
+ * TODO also because of general frustration.  Directly after v14.10 i will strip
  * TODO ANYTHING off the codebase (socket stuff etc.) and keep only the very
  * TODO core, doing namespace and type cleanup and convert this core to a clean
  * TODO approach, from which i plan to start this thing anew.
@@ -172,12 +174,12 @@ jleave:
    NYD_OU;
    return (argv == NULL);
 jeover:
-   n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
+   n_err(_("sleep: argument(s) overflow(s) datatype\n"));
    n_pstate_err_no = su_ERR_OVERFLOW;
    argv = NULL;
    goto jleave;
 jesyn:
-   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>] [uninterruptible]\n"));
+   mx_cmd_print_synopsis(mx_cmd_firstfit("sleep"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    argv = NULL;
    goto jleave;

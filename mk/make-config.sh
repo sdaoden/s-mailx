@@ -5,17 +5,26 @@ LC_ALL=C
 export LC_ALL
 
 # For heaven's sake auto-redirect on SunOS/Solaris
-if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
-      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
-   SHELL=/usr/xpg4/bin/sh
-   export SHELL
-   exec /usr/xpg4/bin/sh "${0}" "${@}"
+if [ -z "${__MAKE_CONFIG_UP}" ] && [ -d /usr/xpg4 ]; then
+   __MAKE_CONFIG_UP=y
+   PATH=/usr/xpg4/bin:${PATH}
+   export __MAKE_CONFIG_UP PATH
+
+   if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ]; then
+      SHELL=/usr/xpg4/bin/sh
+      export SHELL
+      echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
+      exec /usr/xpg4/bin/sh "${0}" "${@}"
+   fi
 fi
-[ -n "${SHELL}" ] || SHELL=/bin/sh
-export SHELL
+
+if [ -z "${SHELL}" ]; then
+   SHELL=/bin/sh
+   export SHELL
+fi
 
 # The feature set, to be kept in sync with make.rc
-# If no documentation given, the option is used as such; if doc is a hyphen,
+# If no documentation given, the option is used as such; if doc is '-',
 # entry is suppressed when configuration overview is printed, and also in the
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
@@ -30,6 +39,7 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    IDNA='Internationalized Domain Names for Applications (encode only)' \
    IMAP_SEARCH='IMAP-style search expressions' \
+   MAILCAP='MIME type handlers defined via mailcap file(s)' \
    MAILDIR='Maildir E-mail directories' \
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
@@ -88,6 +98,8 @@ option_reset() {
    set -- ${OPTIONS}
    for i
    do
+      eval j=\$OPT_${i}
+      [ -n "${j}" ] && eval SAVE_OPT_${i}=${j}
       eval OPT_${i}=0
    done
 }
@@ -99,6 +111,21 @@ option_maximal() {
       eval OPT_${i}=1
    done
    OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+}
+
+option_restore() {
+   any=
+   set -- ${OPTIONS}
+   for i
+   do
+      eval j=\$SAVE_OPT_${i}
+      if [ -n "${j}" ]; then
+         msg_nonl "${any}${i}=${j}"
+         any=', '
+         eval OPT_${i}=${j}
+      fi
+   done
+   [ -n "${any}" ] && msg_nonl ' ... '
 }
 
 option_setup() {
@@ -169,6 +196,7 @@ option_setup() {
          ;;
       esac
       msg_nonl "CONFIG=${CONFIG} ... "
+      option_restore
    fi
 }
 
@@ -254,7 +282,8 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
-#cc_force_no_stackprot=
+#cc_no_stackprot=
+#cc_no_fortify=
 #ld_need_R_flags=
 #ld_no_bind_now=
 #ld_rpath_not_runpath=
@@ -276,6 +305,8 @@ os_early_setup() {
          msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
          config_exit 1
       fi
+      # xpg4/bin was already added at top, but we need it first and it will be
+      # cleaned up via path_check along the way
       PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
       [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
       export PATH
@@ -357,7 +388,7 @@ _os_setup_sunos() {
          export CC CFLAGS LDFLAGS
          OPT_AUTOCC=0 ld_need_R_flags=-R
       else
-         cc_maxopt=2 cc_force_no_stackprot=1
+         cc_maxopt=2 cc_no_stackprot=1
       fi
    fi
 }
@@ -394,6 +425,11 @@ cc_setup() {
    fi
    msg '%s' "${CC}"
    export CC
+
+   case "${CC}" in
+   *pcc*) cc_no_fortify=1;;
+   *) ;;
+   esac
 }
 
 _cc_default() {
@@ -407,6 +443,11 @@ _cc_default() {
    else
       msg 'Using C compiler ${CC}=%s' "${CC}"
    fi
+
+   case "${CC}" in
+   *pcc*) cc_no_fortify=1;;
+   *) ;;
+   esac
 }
 
 cc_create_testfile() {
@@ -469,16 +510,16 @@ cc_flags() {
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
          #if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-         #   cc_force_no_stackprot=1
+         #   cc_no_stackprot=1
          #fi
          _cc_flags_generic
       fi
 
-      feat_no DEBUG && _CFLAGS="-DNDEBUG ${_CFLAGS}"
+      feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG ${_CFLAGS}"
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
       LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
    else
-      if feat_no DEBUG; then
+      if feat_no DEBUG && feat_no DEVEL; then
          CFLAGS="-DNDEBUG ${CFLAGS}"
       fi
    fi
@@ -579,16 +620,23 @@ _cc_flags_generic() {
       cc_check -Wstrict-overflow=5
    fi
 
-   if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
-      if [ -z "${cc_force_no_stackprot}" ]; then
+   if feat_yes AUTOCC_STACKPROT; then
+      if [ -z "${cc_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
-            cc_check -D_FORTIFY_SOURCE=2
+            if [ -z "${cc_no_fortify}" ]; then
+               cc_check -D_FORTIFY_SOURCE=2
+            else
+               msg ' ! Not checking for -D_FORTIFY_SOURCE=2 compiler option,'
+               msg ' ! since that caused errors in a "similar" configuration.'
+               msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
+
+            fi
          fi
       else
          msg ' ! Not checking for -fstack-protector compiler option,'
          msg ' ! since that caused errors in a "similar" configuration.'
-         msg ' ! You may turn off OPT_AUTOCC and use your own settings, rerun'
+         msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
       fi
    fi
 
@@ -897,7 +945,14 @@ option_join_rc() {
             sub(/^[^=]*=/, "", LINE)
             sub(/^"*/, "", LINE)
             sub(/"*$/, "", LINE)
-            gsub(/"/, "\\\\\"", LINE)
+            # Sun xpg4/bin/awk expands those twice:
+            #  Notice that backslash escapes are interpreted twice, once in
+            #  lexical processing of the string and once in processing the
+            #  regular expression.
+               i = "\""
+               gsub(/"/, "\\\\\"", i)
+               i = (i == "\134\"")
+            gsub(/"/, (i ? "\\\\\"" : "\134\""), LINE)
             print LINE
          }'`
       fi
@@ -1150,9 +1205,7 @@ without_check() {
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
          echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
-         echo "${libs}" >> ${lib}
          INCS="${INCS} ${incs}"
-         echo "${incs}" >> ${inc}
       fi
       msg 'yes (deduced)'
       echo "${define}" >> ${h}
@@ -1205,9 +1258,7 @@ _link_mayrun() {
       msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
-      echo "${libs}" >> ${lib}
       INCS="${INCS} ${incs}"
-      echo "${incs}" >> ${inc}
       eval have_${variable}=yes
       return 0
    else
@@ -1255,9 +1306,9 @@ string_to_char_array() {
    }'
 }
 
-squeeze_em() {
-   < "${1}" > "${2}" ${awk} \
-   'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
+squeeze_ws() {
+   echo "${*}" |
+   ${sed} -e 's/^[ 	]\{1,\}//' -e 's/[ 	]\{1,\}$//' -e 's/[ 	]\{1,\}/ /g'
 }
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
@@ -1342,9 +1393,8 @@ thecmd_testandset_fail cmp cmp
 thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
-# pwd(1) is needed - either for make-emerge.sh, or for ourselves
-#[ -n "${CWDDIR}" ] ||
-   thecmd_testandset_fail pwd pwd
+# We always need pwd(1), for at least mx-test.sh
+thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1357,7 +1407,7 @@ PATH=${__PATH}
 thecmd_testandset_fail MAKE make
 make=${MAKE}
 export MAKE
-thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
+thecmd_testandset strip strip
 
 # For ./mx-test.sh only
 thecmd_testandset_fail cksum cksum
@@ -1383,20 +1433,18 @@ fi
 if [ -z "${TOPDIR}" ]; then
    TOPDIR=${CWDDIR}
 fi
-INCDIR="${TOPDIR}"include/
-SRCDIR="${TOPDIR}"src/
+   INCDIR="${TOPDIR}"include/
+   SRCDIR="${TOPDIR}"src/
 
 MX_CWDDIR=${CWDDIR}
-MX_INCDIR=${INCDIR}
-MX_SRCDIR=${SRCDIR}
-
+   MX_INCDIR=${INCDIR}
+   MX_SRCDIR=${SRCDIR}
 PS_DOTLOCK_CWDDIR=${CWDDIR}
-PS_DOTLOCK_INCDIR=${INCDIR}
-PS_DOTLOCK_SRCDIR=${SRCDIR}
-
+   PS_DOTLOCK_INCDIR=${INCDIR}
+   PS_DOTLOCK_SRCDIR=${SRCDIR}
 SU_CWDDIR=${CWDDIR}
-SU_INCDIR=${INCDIR}
-SU_SRCDIR=${SRCDIR}
+   SU_INCDIR=${INCDIR}
+   SU_SRCDIR=${SRCDIR}
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -1432,9 +1480,7 @@ printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
 printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
    "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
-   printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
-else
-   printf "OPTIONAL_PS_DOTLOCK =\n" >> ${newmk}
+   printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 fi
 
 for i in \
@@ -1480,35 +1526,13 @@ cc_flags
 
 for i in \
       COMMLINE \
+      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
+      CC CFLAGS LDFLAGS \
       INCS LIBS \
+      OSFULLSPEC \
       ; do
    eval j="\$${i}"
    printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
-done
-
-MX_CFLAGS=${CFLAGS}
-
-PS_DOTLOCK_CFLAGS=${CFLAGS}
-PS_DOTLOCK_INCS=${INCS}
-PS_DOTLOCK_LDFLAGS=${LDFLAGS}
-
-SU_CFLAGS=${CFLAGS}
-SU_CXXFLAGS=
-SU_INCS=${INCS}
-
-for i in \
-      CC CFLAGS LDFLAGS \
-      PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
-      OSFULLSPEC \
-         MX_CFLAGS \
-         PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS \
-         SU_CFLAGS SU_CXXFLAGS SU_INCS \
-      ; do
-   eval j=\$${i}
-   if [ -n "${j}" ]; then
-      printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
-   fi
 done
 
 # Note that makefile reads and eval'uates one line of this file, whereas other
@@ -1528,6 +1552,8 @@ else
    echo 'Shiny configuration..'
 fi
 
+### WE ARE STARTING OVER ###
+
 # Time to redefine helper 1
 config_exit() {
    ${rm} -f ${h} ${mk}
@@ -1544,13 +1570,11 @@ ${mv} -f ${newmk} ${mk}
 
 tmp3=${tmp0}3$$
 log="${OBJDIR}"/mk-config.log
-lib="${OBJDIR}"/mk-config.lib
-inc="${OBJDIR}"/mk-config.inc
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+   ${rm} -f ${oldh} ${h} ${oldmk} ${mk}; exit 1" \
       HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
@@ -1572,8 +1596,6 @@ msg_nonl() {
 # !!
 exec 5>&2 > ${log} 2>&1
 
-echo "${LIBS}" > ${lib}
-echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
@@ -1588,14 +1610,14 @@ ${cat} > ${makefile} << \!
 
 echo '#define VAL_BUILD_OS "'"${OS_ORIG_CASE}"'"' >> ${h}
 
-[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
-
 printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
 
-if [ -n "${OS_DEFINES}" ]; then
-   printf '#ifdef su_SOURCE\n'"${OS_DEFINES}"'#endif /* su_SOURCE */\n\n' \
-       >> ${h}
-fi
+[ -n "${OS_DEFINES}" ] && printf \
+'#if defined mx_SOURCE || defined mx_EXT_SOURCE || defined su_SOURCE
+'"${OS_DEFINES}"'
+#endif /* mx_SOURCE || mx_EXT_SOURCE || su_SOURCE */
+
+' >> ${h}
 
 ## SU
 
@@ -1978,9 +2000,6 @@ int main(void){
 
 ##
 
-# The random check has been moved to below TLS detection due to multiple choice
-# selection for PRG sources
-
 link_check putc_unlocked 'putc_unlocked(3)' '#define mx_HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void){
@@ -2102,22 +2121,15 @@ int main(void){
    fi
 fi
 
-## Now it is the time to fork away the BASE_ series
+### FORK AWAY SHARED BASE SERIES ###
 
-${rm} -f ${tmp}
-squeeze_em ${inc} ${tmp}
-${mv} ${tmp} ${inc}
-squeeze_em ${lib} ${tmp}
-${mv} ${tmp} ${lib}
-
-echo "BASE_LIBS = `${cat} ${lib}`" >> ${mk}
-echo 'PS_DOTLOCK_LIBS = $(BASE_LIBS)' >> ${mk}
-echo 'SU_LIBS = $(BASE_LIBS)' >> ${mk}
-echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
-echo 'PS_DOTLOCK_INCS = $(BASE_INCS)' >> ${mk}
-echo 'SU_INCS = $(BASE_INCS)' >> ${mk}
+BASE_CFLAGS=${CFLAGS}
+BASE_INCS=`squeeze_ws "${INCS}"`
+BASE_LDFLAGS=${LDFLAGS}
+BASE_LIBS=`squeeze_ws "${LIBS}"`
 
 ## The remains are expected to be used only by the main MUA binary!
+## (And possibly by test programs)
 
 OPT_LOCALES=0
 link_check setlocale 'setlocale(3)' '#define mx_HAVE_SETLOCALE' << \!
@@ -2844,7 +2856,7 @@ else
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
 printf '#ifdef mx_SOURCE\n' >> ${h}
-printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#define VAL_TLS_FEATURES ",'"${VAL_TLS_FEATURES}"',"\n' >> ${h}
 printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
@@ -3346,6 +3358,7 @@ feat_def DOCSTRINGS
 feat_def ERRORS
 feat_def IMAP
 feat_def IMAP_SEARCH
+feat_def MAILCAP
 feat_def MAILDIR
 feat_def MD5 # XXX only sockets
 feat_def MTA_ALIASES
@@ -3376,16 +3389,33 @@ feat_def NOMEMDBG 0
 
 ## Summarizing
 
-${rm} -f ${tmp}
-squeeze_em ${inc} ${tmp}
-${mv} ${tmp} ${inc}
-squeeze_em ${lib} ${tmp}
-${mv} ${tmp} ${lib}
+INCS=`squeeze_ws "${INCS}"`
+LIBS=`squeeze_ws "${LIBS}"`
 
-echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo 'MX_LIBS = $(LIBS)' >> ${mk}
-echo "INCS = `${cat} ${inc}`" >> ${mk}
-echo 'MX_INCS = $(INCS)' >> ${mk}
+MX_CFLAGS=${CFLAGS}
+   MX_INCS=${INCS}
+   MX_LDFLAGS=${LDFLAGS}
+   MX_LIBS=${LIBS}
+SU_CFLAGS=${BASE_CFLAGS}
+   SU_CXXFLAGS=
+   SU_INCS=${BASE_INCS}
+   SU_LDFLAGS=${BASE_LDFLAGS}
+   SU_LIBS=${BASE_LIBS}
+PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
+   PS_DOTLOCK_INCS=${BASE_INCS}
+   PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
+   PS_DOTLOCK_LIBS=${BASE_LIBS}
+
+for i in \
+      CC \
+      MX_CFLAGS MX_INCS MX_LDFLAGS MX_LIBS \
+      PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS PS_DOTLOCK_LIBS \
+      SU_CFLAGS SU_CXXFLAGS SU_INCS SU_LDFLAGS SU_LIBS \
+      ; do
+   eval j=\$${i}
+   printf -- "${i} = ${j}\n" >> ${mk}
+done
+
 echo >> ${mk}
 
 # mk-config.h (which becomes mx/gen-config.h)
@@ -3409,11 +3439,22 @@ elif (${CC} -v) >/dev/null 2>&1; then
       END{gsub(/"/, "", l); print "\\\\n" l}
    '`
 fi
+
+CC=`squeeze_ws "${CC}"`
+CFLAGS=`squeeze_ws "${CFLAGS}"`
+LDLAGS=`squeeze_ws "${LDFLAGS}"`
+LIBS=`squeeze_ws "${LIBS}"`
+# $MAKEFLAGS often contain job-related things which hinders reproduceability.
+# For at least GNU make(1) we can separate those and our regular configuration
+# options by searching for the -- terminator
+COMMLINE=`printf '%s' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
+COMMLINE=`squeeze_ws "${COMMLINE}"`
+
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
    printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
    i=`string_to_char_array "${i}"`
    printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
-i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "\`${cat} ${lib}\`"`
+i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "${LIBS}"`
    printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
    i=`string_to_char_array "${i}"`
    printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
@@ -3425,7 +3466,7 @@ i=${COMMLINE}
 # Throw away all temporaries
 ${rm} -rf ${tmp0}.* ${tmp0}*
 
-# Create the string that is used by *features* and `version'.
+# Create the string that is used by *features* and the version command.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
 echo 'The following features are included (+) or not (-):' > ${tmp}
@@ -3448,13 +3489,20 @@ done
 #exec 5>&1 >>${h}
 #${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
 #   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
-printf '"\n' >> ${h}
+printf ',"\n' >> ${h}
 
 # Create the real mk-config.mk
 # Note we cannot use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
 msg 'Creating object make rules'
-(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+
+if feat_yes DOTLOCK; then
+   printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+else
+   printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
+fi
+
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
    (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
@@ -3463,7 +3511,7 @@ if feat_no AMALGAMATION; then
 else
    (cd "${SRCDIR}"; COUNT_MODE=0 ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
    mx_obj=mx-main.o
-   printf 'mx-main.o: gen-mime-types.h' >> ${mk}
+   printf 'mx-main.o: gen-bltin-rc.h gen-mime-types.h' >> ${mk}
 
    printf '\n#endif /* mx_SOURCE */\n' >> ${h}
    printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
@@ -3530,6 +3578,9 @@ fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
 msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
+if feat_yes MAILCAP; then
+   msg ' . Built-in $MAILCAPS path search: %s' "${VAL_MAILCAPS}"
+fi
 
 msg ''
 if [ -n "${have_fnmatch}" ] && [ -n "${have_fchdir}" ]; then

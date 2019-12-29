@@ -90,20 +90,30 @@
 /* SUPPORT MACROS+ */
 #undef ABS
 #undef CLIP
+#undef IS_POW2
 #undef MAX
 #undef MIN
-#undef IS_POW2
+#undef ROUND_DOWN
+#undef ROUND_DOWN2
+#undef ROUND_UP
+#undef ROUND_UP2
 #define ABS su_ABS
 #define CLIP su_CLIP
+#define IS_POW2 su_IS_POW2
 #define MAX su_MAX
 #define MIN su_MIN
-#define IS_POW2 su_IS_POW2
+#define ROUND_DOWN su_ROUND_DOWN
+#define ROUND_DOWN2 su_ROUND_DOWN2
+#define ROUND_UP su_ROUND_UP
+#define ROUND_UP2 su_ROUND_UP2
 #define ALIGNOF su_ALIGNOF
+#define P_ALIGN su_P_ALIGN
+#define Z_ALIGN_OVER su_Z_ALIGN_OVER
 #define Z_ALIGN su_Z_ALIGN
-#define Z_ALIGN_SMALL su_Z_ALIGN_SMALL
 #define Z_ALIGN_PZ su_Z_ALIGN_PZ
 /* ASSERT series */
 #define ASSERT_INJ su_ASSERT_INJ
+#define ASSERT_INJOR su_ASSERT_INJOR
 #define ASSERT_NB su_ASSERT_NB
 #define ASSERT su_ASSERT
 #define ASSERT_LOC su_ASSERT_LOC
@@ -119,6 +129,8 @@
 #define ASSERT_NYD_EXEC_LOC su_ASSERT_NYD_EXEC_LOC
 #define ASSERT_NYD su_ASSERT_NYD
 #define ASSERT_NYD_LOC su_ASSERT_NYD_LOC
+#define BITENUM_IS su_BITENUM_IS
+#define BITENUM_MASK su_BITENUM_MASK
 #define DBG su_DBG
 #define NDGB su_NDBG
 #define DBGOR su_DBGOR

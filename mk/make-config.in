@@ -7,7 +7,7 @@ SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK)
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
-	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
+	$(ECHO_LINK)$(CC) $(MX_LDFLAGS) -o $(@) $(OBJ) $(MX_LIBS)
 	$(SIZE_CHECK)
 
 $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
@@ -15,9 +15,13 @@ $(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
 		$(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
 
-gen-mime-types.h: $(TOPDIR)mime.types
+gen-bltin-rc.h: $(TOPDIR)nail.rc
 	$(ECHO_GEN) . ./mk-config.env; \
-	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(TOPDIR)"mime.types "$(@)"
+	$(SHELL) "$(TOPDIR)"mk/make-bltin-rc.sh "$(TOPDIR)"nail.rc "$(@)"
+
+gen-mime-types.h: $(CWDDIR)mime.types
+	$(ECHO_GEN) . ./mk-config.env; \
+	$(SHELL) "$(TOPDIR)"mk/make-mime-types.sh "$(CWDDIR)"mime.types "$(@)"
 
 uman.1: $(TOPDIR)nail.1
 	$(ECHO_GEN) . ./mk-config.env; \
@@ -36,7 +40,9 @@ uninstall:
 
 clean:
 	$(ECHO_CMD)\
-	$(rm) -f $(OBJ) "$(VAL_UAGENT)" ./gen-mime-types.h ./uman.1 ./urc.rc;\
+	$(rm) -f $(OBJ) "$(VAL_UAGENT)" \
+		./gen-bltin-rc.h ./gen-mime-types.h \
+		./uman.1 ./urc.rc;\
 	\
 	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
 		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK)";\
@@ -44,8 +50,7 @@ clean:
 
 distclean: clean
 	$(ECHO_CMD)\
-	$(rm) -f mk-*;\
-	cd .. && $(rm) -r "$(OBJDIR)";\
+	cd .. && $(rm) -rf "$(OBJDIR)";\
 	if [ -f "$(CWDDIR)include/mx/config.h" ]; then \
 		$(rm) -f "$(CWDDIR)include/mx/config.h" \
 			"$(CWDDIR)include/mx/gen-config.h";\

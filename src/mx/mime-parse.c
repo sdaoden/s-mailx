@@ -46,6 +46,7 @@
 
 #include "mx/cmd-charsetalias.h"
 #include "mx/file-streams.h"
+#include "mx/mime-type.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -101,7 +102,8 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL)
       ip->m_ct_type_plain = _mime_parse_ct_plain_from_ct(ip->m_ct_type);
-   else if (ip->m_parent != NULL && ip->m_parent->m_mimecontent == MIME_DIGEST)
+   else if(ip->m_parent != NIL &&
+         ip->m_parent->m_mimetype == mx_MIMETYPE_DIGEST)
       ip->m_ct_type_plain = "message/rfc822";
    else
       ip->m_ct_type_plain = "text/plain";
@@ -127,15 +129,15 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    if ((cp = hfield1("content-description", (struct message*)ip)) != NULL)
       ip->m_content_description = cp;
 
-   if ((ip->m_mimecontent = n_mimetype_classify_part(ip,
-         ((mpf & MIME_PARSE_FOR_USER_CONTEXT) != 0))) == MIME_822) {
+   if((ip->m_mimetype = mx_mimetype_classify_part(ip,
+         ((mpf & MIME_PARSE_FOR_USER_CONTEXT) != 0))) == mx_MIMETYPE_822){
       /* TODO (v15) HACK: message/rfc822 is treated special, that this one is
        * TODO too stupid to apply content-decoding when (falsely) applied */
       if (ip->m_mime_enc != MIMEE_8B && ip->m_mime_enc != MIMEE_7B) {
          n_err(_("Pre-v15 %s cannot handle (falsely) encoded message/rfc822\n"
             "  (not 7bit or 8bit)!  Interpreting as text/plain!\n"),
             n_uagent);
-         ip->m_mimecontent = MIME_TEXT_PLAIN;
+         ip->m_mimetype = mx_MIMETYPE_TEXT_PLAIN;
       }
    }
 
@@ -150,9 +152,9 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          n_err(_("MIME content too deeply nested\n"));
          goto jleave;
       }
-      switch (ip->m_mimecontent) {
-      case MIME_PKCS7:
-         if (mpf & MIME_PARSE_DECRYPT) {
+      switch(ip->m_mimetype){
+      case mx_MIMETYPE_PKCS7:
+         if(mpf & MIME_PARSE_DECRYPT){
 #ifdef mx_HAVE_TLS
             _mime_parse_pkcs7(zmp, ip, mpf, level);
             if (ip->m_content_info & CI_ENCRYPTED_OK)
@@ -166,16 +168,16 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
          break;
       default:
          break;
-      case MIME_ALTERNATIVE:
-      case MIME_RELATED: /* TODO /related yet handled like /alternative */
-      case MIME_DIGEST:
-      case MIME_SIGNED:
-      case MIME_ENCRYPTED:
-      case MIME_MULTI:
+      case mx_MIMETYPE_ALTERNATIVE:
+      case mx_MIMETYPE_RELATED: /* TODO /related yet handled EQ /alternative */
+      case mx_MIMETYPE_DIGEST:
+      case mx_MIMETYPE_SIGNED:
+      case mx_MIMETYPE_ENCRYPTED:
+      case mx_MIMETYPE_MULTI:
          if (!_mime_parse_multipart(zmp, ip, mpf, level))
             goto jleave;
          break;
-      case MIME_822:
+      case mx_MIMETYPE_822:
          _mime_parse_rfc822(zmp, ip, mpf, level);
          break;
       }
@@ -250,7 +252,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    to = hfield1("to", zmp);
    cc = hfield1("cc", zmp);
 
-   if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
+   if ((xmp = smime_decrypt(&m, to, cc, FAL0)) != NULL) {
       np = n_autorec_calloc(1, sizeof *np);
       np->m_flag = xmp->m_flag;
       np->m_content_info = xmp->m_content_info | CI_ENCRYPTED | CI_ENCRYPTED_OK;
@@ -280,34 +282,53 @@ static boole
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
-   struct mimepart *np = NULL;
-   char *boundary, *line = NULL;
-   uz linesize = 0, linelen, cnt, boundlen;
-   FILE *ibuf;
+   struct mimepart *np;
+   int part;
+   long lines;
    off_t offs;
-   int part = 0;
-   long lines = 0;
+   FILE *ibuf;
+   uz linesize, linelen, boundlen, cnt;
+   char *line, *boundary;
+   boole rv;
    NYD_IN;
 
-   if ((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NULL)
+   rv = FAL0;
+   mx_fs_linepool_aquire(&line, &linesize);
+
+   if((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NIL)
       goto jleave;
 
    boundlen = linelen;
-   if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
+   if((ibuf = setinput(&mb, R(struct message*,ip), NEED_BODY)) == NIL)
       goto jleave;
 
    cnt = ip->m_size;
-   while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0))
-      if (line[0] == '\n')
+   for(;;){
+      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, FAL0) == NIL){
+         if(ferror(ibuf)) /* XXX */
+            goto jleave;
          break;
+      }
+      if(line[0] == '\n')
+         break;
+   }
    offs = ftell(ibuf);
 
    /* TODO using part "1" for decrypted content is a hack */
-   if (ip->m_partstring == NULL)
-      ip->m_partstring = n_UNCONST("1");
-   __mime_parse_new(ip, &np, offs, NULL);
+   if(ip->m_partstring == NIL)
+      ip->m_partstring = UNCONST(char*,n_1);
+   __mime_parse_new(ip, &np, offs, NIL);
 
-   while (fgetline(&line, &linesize, &cnt, &linelen, ibuf, 0)) {
+   lines = 0;
+   part = 0;
+
+   for(;;){
+      if(fgetline(&line, &linesize, &cnt, &linelen, ibuf, FAL0) == NIL){
+         if(ferror(ibuf))
+            goto jleave;
+         break;
+      }
+
       /* XXX linelen includes LF */
       if (!((lines > 0 || part == 0) && linelen > boundlen &&
             !strncmp(line, boundary, boundlen))) {
@@ -350,15 +371,16 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
       __mime_parse_end(&np, offs, lines);
    }
 
-   for (np = ip->m_multipart; np != NULL; np = np->m_nextpart)
-      if (np->m_mimecontent != MIME_DISCARD)
+   for(np = ip->m_multipart; np != NIL; np = np->m_nextpart)
+      if(np->m_mimetype != mx_MIMETYPE_DISCARD)
          _mime_parse_part(zmp, np, mpf, level + 1);
 
+   rv = TRU1;
 jleave:
-   if (line != NULL)
-      n_free(line);
+   mx_fs_linepool_release(line, linesize);
+
    NYD_OU;
-   return TRU1;
+   return rv;
 }
 
 static void
@@ -385,8 +407,8 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
          snprintf((*np)->m_partstring, i, "%s.%u", ip->m_partstring, *part);
       else
          snprintf((*np)->m_partstring, i, "%u", *part);
-   } else
-      (*np)->m_mimecontent = MIME_DISCARD;
+   }else
+      (*np)->m_mimetype = mx_MIMETYPE_DISCARD;
    (*np)->m_parent = ip;
 
    if (ip->m_multipart) {

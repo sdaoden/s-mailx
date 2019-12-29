@@ -69,7 +69,7 @@ su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 static void a_folder_info(void);
 
 /* Set up the input pointers while copying the mail file into /tmp */
-static void a_folder_mbox_setptr(FILE *ibuf, off_t offset);
+static void a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml);
 
 static boole
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
@@ -80,18 +80,18 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    boole rv;
    NYD_IN;
 
-   /* Don't realpath(3) if it's only an update request */
-   if(name != NULL){
+   /* Do not realpath(3) if it's only an update request */
+   if(name != NIL){
 #ifdef mx_HAVE_REALPATH
       char const *adjname;
       enum protocol p;
 
       p = which_protocol(name, TRU1, TRU1, &adjname);
 
-      if(p == PROTO_FILE || p == PROTO_MAILDIR){
+      if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML){
          name = adjname;
-         if (realpath(name, mailname) == NULL && su_err_no() != su_ERR_NOENT) {
-            n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
+         if(realpath(name, mailname) == NIL && su_err_no() != su_ERR_NOENT){
+            n_err(_("Cannot canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             goto jdocopy;
          }
       }else
@@ -237,10 +237,7 @@ jleave:
 }
 
 static void
-a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
-   struct message self, commit;
-   char *linebuf, *cp;
-   boole from_;
+a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
@@ -248,8 +245,14 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       a_MAYBE = 1u<<3,
       a_CREATE = 1u<<4,
       a_INHEAD = 1u<<5,
-      a_COMMIT = 1u<<6
-   } f;
+      a_COMMIT = 1u<<6,
+      a_ISEML = 1u<<16
+   };
+
+   struct message self, commit;
+   char *linebuf, *cp;
+   boole from_;
+   u32 f;
    uz filesize, linesize, cnt;
    NYD_IN;
 
@@ -259,13 +262,14 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    self.m_flag = MUSED | MNEW | MNEWEST;
 
    offset = ftell(mb.mb_otf);
-   f = a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0);
+   f = a_MAYBE | (iseml ? a_ISEML : (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0));
 
    mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
       /* Ensure space for terminating LF, so do append it */
       if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
             ) == NIL)){
+         /* TODO We are not prepared for error here */
          if(f & a_HADONE){
             if(f & a_CREATE){
                commit.m_size += self.m_size;
@@ -314,7 +318,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
        * TODO creates collection of MessageHull objects which are able to load
        * TODO their content, and normalize content, correct structural errors */
       if(UNLIKELY(cnt == 0)){
-         f |= a_MAYBE;
+         if(!(f & a_ISEML))
+            f |= a_MAYBE;
          if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
@@ -326,9 +331,9 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          goto jputln;
       }
 
-      if(UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
-            (from_ = is_head(linebuf, cnt, TRU1)) &&
-            (from_ == TRU1 || !(f & a_RFC4155))){
+      if(UNLIKELY((f & a_MAYBE) && ((from_ = ((f & a_ISEML) != 0)) ||
+               ((linebuf[0] == 'F') && (from_ = is_head(linebuf, cnt, TRU1)) &&
+                (from_ == TRU1 || !(f & a_RFC4155)))))){
          /* TODO char date[n_FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
@@ -351,7 +356,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
              * TODO (which should not exist as such btw) */
             self.m_flag = MUSED | MNEW | MNEWEST | MBADFROM_;
          }else
-            self.m_flag = MUSED | MNEW | MNEWEST;
+            self.m_flag = MUSED | MNEW | MNEWEST | (f & a_ISEML ? MNOFROM : 0);
          self.m_size = 0;
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
@@ -453,6 +458,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    struct stat stb;
    uz offset;
    char const *who, *orig_name;
+   enum protocol proto;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
    boole isdevnull = FAL0;
@@ -463,11 +469,11 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    /* C99 */{
       enum fexp_mode fexpm;
 
-      if((who = mx_shortcut_expand(name)) != NULL){
-         fexpm = FEXP_NSHORTCUT/* XXX | FEXP_NSHELL*/;
+      if((who = mx_shortcut_expand(name)) != NIL){
+         fexpm = FEXP_NSHELL;
          name = who;
       }else
-         fexpm = FEXP_NSHELL;
+         fexpm = FEXP_SHORTCUT | FEXP_NSHELL;
 
       if(name[0] == '%'){
          char const *cp;
@@ -489,14 +495,31 @@ jlogname:
             who = ok_vlook(LOGNAME);
       }
 
-      if ((name = fexpand(name, fexpm)) == NULL)
+      if(!(fm & FEDIT_SYSBOX)){
+         char const *cp;
+
+         if((((cp = ok_vlook(inbox)) != NIL && *cp != '\0') ||
+                  (cp = ok_vlook(MAIL)) != NIL) &&
+               !su_cs_cmp(cp, name))
+            fm |= FEDIT_SYSBOX;
+      }
+
+      if((name = fexpand(name, fexpm)) == NIL)
          goto jem1;
    }
 
    /* For at least substdate() users TODO -> eventloop tick */
    time_current_update(&time_current, FAL0);
 
-   switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {
+   switch((proto = which_protocol(orig_name = name, TRU1, TRU1, &name))){
+   case n_PROTO_EML:
+      if(fm & ~FEDIT_RDONLY){
+         n_err(_("Sorry, for now eml:// files cannot be used like this: %s\n"),
+            orig_name);
+         goto jem1;
+      }
+      fm |= FEDIT_RDONLY;
+      /* FALLTHRU */
    case PROTO_FILE:
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
             !su_cs_cmp(name, n_path_devnull));
@@ -694,7 +717,7 @@ jlogname:
       rele_sigs();
       goto jleave;
    }
-   a_folder_mbox_setptr(ibuf, offset);
+   a_folder_mbox_setptr(ibuf, offset, (proto == n_PROTO_EML));
    setmsize(msgCount);
    if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;
@@ -1033,7 +1056,7 @@ n_folder_query(void){
 
    /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
-      if((rv = ok_vlook(folder_resolved)) != NULL)
+      if((rv = ok_vlook(folder_resolved)) != NIL)
          break;
 
       /* POSIX says:
@@ -1042,18 +1065,20 @@ n_folder_query(void){
        * And:
        *    If folder is unset or set to null, [.] filenames beginning with
        *    '+' shall refer to files in the current directory.
-       * We may have the result already */
-      rv = n_empty;
+       * We may have the result already.
+       * P.S.: that "or set to null" seems to be a POSIX bug, V10 mail and BSD
+       * Mail since 1982 work differently, follow suit */
+      rv = su_empty;
       err = FAL0;
 
-      if((cp = ok_vlook(folder)) == NULL)
+      if((cp = ok_vlook(folder)) == NIL)
          goto jset;
 
       /* Expand the *folder*; skip %: prefix for simplicity of use */
       if(cp[0] == '%' && cp[1] == ':')
          cp += 2;
       if((err = (cp = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
-            ) == NULL) || *cp == '\0')
+            ) == NIL) /*|| *cp == '\0'*/)
          goto jset;
       else{
          uz i;
@@ -1070,7 +1095,7 @@ n_folder_query(void){
 
       switch((proto = which_protocol(cp, FAL0, FAL0, &adjcp))){
       case PROTO_POP3:
-         n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
+         n_err(_("*folder*: cannot use the POP3 protocol\n"));
          err = TRU1;
          goto jset;
       case PROTO_IMAP:
@@ -1095,9 +1120,11 @@ n_folder_query(void){
 
          home = ok_vlook(HOME);
          l1 = su_cs_len(home);
+         ASSERT(l1 > 0); /* (checked VIP variable) */
          l2 = su_cs_len(cp);
 
          s = n_string_reserve(s, l1 + 1 + l2 +1);
+
          if(cp != adjcp){
             uz i;
 
@@ -1105,39 +1132,42 @@ n_folder_query(void){
             cp += i;
             l2 -= i;
          }
+
          s = n_string_push_buf(s, home, l1);
-         s = n_string_push_c(s, '/');
-         s = n_string_push_buf(s, cp, l2);
+         if(l2 > 0){
+            s = n_string_push_c(s, '/');
+            s = n_string_push_buf(s, cp, l2);
+         }
          cp = n_string_cp(s);
          s = n_string_drop_ownership(s);
       }
 
-      /* TODO Since our visual mailname is resolved via realpath(3) if available
+      /* TODO Since visual mailname is resolved via realpath(3) if available
        * TODO to avoid that we loose track of our currently open folder in case
        * TODO we chdir away, but still checks the leading path portion against
-       * TODO n_folder_query() to be able to abbreviate to the +FOLDER syntax if
+       * TODO folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
 #ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
-      ASSERT(s->s_len == 0 && s->s_dat == NULL);
+      ASSERT(s->s_len == 0 && s->s_dat == NIL);
 # ifndef mx_HAVE_REALPATH_NULL
       s = n_string_reserve(s, PATH_MAX +1);
 # endif
 
-      if((s->s_dat = realpath(cp, s->s_dat)) != NULL){
+      if((s->s_dat = realpath(cp, s->s_dat)) != NIL){
 # ifdef mx_HAVE_REALPATH_NULL
          n_string_cp(s = n_string_assign_cp(s, cp = s->s_dat));
-         (free)(cp);
+         free(cp);
 # endif
          rv = s->s_dat;
       }else if(su_err_no() == su_ERR_NOENT)
          rv = cp;
       else{
-         n_err(_("Can't canonicalize *folder*: %s\n"),
+         n_err(_("Cannot canonicalize *folder*: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          err = TRU1;
-         rv = n_empty;
+         rv = su_empty;
       }
       s = n_string_drop_ownership(s);
 #endif /* mx_HAVE_REALPATH */
@@ -1161,8 +1191,9 @@ jset:
 
    if(err){
       n_err(_("*folder* is not resolvable, using CWD\n"));
-      ASSERT(rv != NULL && *rv == '\0');
+      ASSERT(rv != NIL && *rv == '\0');
    }
+
    NYD_OU;
    return rv;
 }

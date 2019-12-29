@@ -61,7 +61,8 @@ static char const *a_cmisc_bangexp(char const *cp);
 /* c_n?echo(), c_n?echoerr() */
 static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 
-/* c_read() */
+/* c_read(), c_readsh() */
+static int a_cmisc_read(void *vp, boole atifs);
 static boole a_cmisc_read_set(char const *cp, char const *value);
 
 /* c_version() */
@@ -131,7 +132,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){
    for(ap = argv; *ap != NULL; ++ap){
       if(ap != argv)
          s = n_string_push_c(s, ' ');
-      if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
+      if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)
          cp = *ap;
       s = n_string_push_cp(s, cp);
    }
@@ -165,6 +166,110 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){
    return rv;
 }
 
+static int
+a_cmisc_read(void * volatile vp, boole atifs){
+   struct n_sigman sm;
+   struct str trim;
+   struct n_string s_b, *s;
+   int rv;
+   char const *ifs, **argv, *cp;
+   char *linebuf;
+   uz linesize, i;
+   NYD2_IN;
+
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 64 -1);
+   mx_fs_linepool_aquire(&linebuf, &linesize);
+
+   ifs = atifs ? ok_vlook(ifs) : NIL; /* (ifs has default value) */
+   argv = vp;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      n_pstate_err_no = su_ERR_INTR;
+      rv = -1;
+      goto jleave;
+   }
+
+   n_pstate_err_no = su_ERR_NONE;
+   rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
+            ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
+         n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
+         n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
+         NIL, &linebuf, &linesize, NIL, NIL);
+   if(rv < 0){
+      if(!n_go_input_is_eof())
+         n_pstate_err_no = su_ERR_BADF;
+      goto jleave;
+   }else if(rv == 0){
+      if(n_go_input_is_eof()){
+         rv = -1;
+         goto jleave;
+      }
+   }else{
+      trim.s = linebuf;
+      trim.l = rv;
+
+      for(; *argv != NIL; ++argv){
+         if(trim.l == 0 || (atifs && n_str_trim_ifs(&trim, FAL0)->l == 0))
+            break;
+
+         /* The last variable gets the remaining line less trailing IFS-WS */
+         if(atifs){
+            if(argv[1] == NIL){
+jitall:
+               s = n_string_assign_buf(s, trim.s, trim.l);
+               trim.l = 0;
+            }else for(cp = trim.s, i = 1;; ++cp, ++i){
+               if(su_cs_find_c(ifs, *cp) != NIL){
+                  s = n_string_assign_buf(s, trim.s, i - 1);
+                  trim.s += i;
+                  trim.l -= i;
+                  break;
+               }
+
+               if(i == trim.l)
+                  goto jitall;
+            }
+         }else{
+            s = n_string_trunc(s, 0);
+jsh_redo:
+            if(n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+                     n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_SPACE |
+                     n_SHEXP_PARSE_TRIM_IFSSPACE), s, &trim, NIL
+                  ) & n_SHEXP_STATE_STOP)
+               trim.l = 0;
+            else if(argv[1] == NIL)
+               goto jsh_redo;
+         }
+
+         if(!a_cmisc_read_set(*argv, n_string_cp(s))){
+            n_pstate_err_no = su_ERR_NOTSUP;
+            rv = -1;
+            break;
+         }
+      }
+   }
+
+   /* Set the remains to the empty string */
+   for(; *argv != NIL; ++argv)
+      if(!a_cmisc_read_set(*argv, su_empty)){
+         n_pstate_err_no = su_ERR_NOTSUP;
+         rv = -1;
+         break;
+      }
+
+   n_sigman_cleanup_ping(&sm);
+jleave:
+   mx_fs_linepool_release(linebuf, linesize);
+
+   NYD2_OU;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
+   return rv;
+}
+
 static boole
 a_cmisc_read_set(char const *cp, char const *value){
    boole rv;
@@ -180,8 +285,10 @@ a_cmisc_read_set(char const *cp, char const *value){
       rv = TRU1;
       goto jleave;
    }
-   n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
+
+   n_err("read: %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
    rv = FAL0;
+
 jleave:
    NYD2_OU;
    return rv;
@@ -196,6 +303,7 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
    cp1 = s1;
    cp2 = s2;
    rv = su_cs_cmp(&cp1[1], &cp2[1]);
+
    NYD2_OU;
    return rv;
 }
@@ -343,23 +451,25 @@ c_cwd(void *v){
 }
 
 FL int
-c_chdir(void *v)
-{
-   char **arglist = v;
+c_chdir(void *vp){
+   char **arglist;
    char const *cp;
    NYD_IN;
 
-   if (*arglist == NULL)
+   if(*(arglist = vp) == NIL)
       cp = ok_vlook(HOME);
-   else if ((cp = fexpand(*arglist, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+   else if((cp = fexpand(*arglist, /*FEXP_NOPROTO |*/ FEXP_LOCAL_FILE |
+         FEXP_NVAR)) == NIL)
       goto jleave;
-   if (chdir(cp) == -1) {
+
+   if(chdir(cp) == -1){
       n_perr(cp, 0);
-      cp = NULL;
+      cp = NIL;
    }
+
 jleave:
    NYD_OU;
-   return (cp == NULL);
+   return (cp == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
 FL int
@@ -368,6 +478,7 @@ c_echo(void *v){
    NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -378,6 +489,7 @@ c_echoerr(void *v){
    NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -388,6 +500,7 @@ c_echon(void *v){
    NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -398,99 +511,30 @@ c_echoerrn(void *v){
    NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, FAL0);
+
    NYD_OU;
    return rv;
 }
 
 FL int
-c_read(void * volatile vp){
-   struct n_sigman sm;
-   struct str trim;
-   struct n_string s_b, *s;
-   char *linebuf;
-   uz linesize, i;
+c_read(void *vp){
    int rv;
-   char const *ifs, **argv, *cp;
    NYD2_IN;
 
-   s = n_string_creat_auto(&s_b);
-   s = n_string_reserve(s, 64 -1);
+   rv = a_cmisc_read(vp, TRU1);
 
-   ifs = ok_vlook(ifs);
-   linesize = 0;
-   linebuf = NULL;
-   argv = vp;
-
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
-   case 0:
-      break;
-   default:
-      n_pstate_err_no = su_ERR_INTR;
-      rv = -1;
-      goto jleave;
-   }
-
-   n_pstate_err_no = su_ERR_NONE;
-   rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
-            ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
-         n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
-         n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
-         NULL, &linebuf, &linesize, NULL, NULL);
-   if(rv < 0){
-      if(!n_go_input_is_eof())
-         n_pstate_err_no = su_ERR_BADF;
-      goto jleave;
-   }else if(rv == 0){
-      if(n_go_input_is_eof()){
-         rv = -1;
-         goto jleave;
-      }
-   }else{
-      trim.s = linebuf;
-      trim.l = rv;
-
-      for(; *argv != NULL; ++argv){
-         if(trim.l == 0 || n_str_trim_ifs(&trim, FAL0)->l == 0)
-            break;
-
-         /* The last variable gets the remaining line less trailing IFS-WS */
-         if(argv[1] == NULL){
-jitall:
-            s = n_string_assign_buf(s, trim.s, trim.l);
-            trim.l = 0;
-         }else for(cp = trim.s, i = 1;; ++cp, ++i){
-            if(su_cs_find_c(ifs, *cp) != NULL){
-               s = n_string_assign_buf(s, trim.s, i - 1);
-               trim.s += i;
-               trim.l -= i;
-               break;
-            }
-            if(i == trim.l)
-               goto jitall;
-         }
-
-         if(!a_cmisc_read_set(*argv, n_string_cp(s))){
-            n_pstate_err_no = su_ERR_NOTSUP;
-            rv = -1;
-            break;
-         }
-      }
-   }
-
-   /* Set the remains to the empty string */
-   for(; *argv != NULL; ++argv)
-      if(!a_cmisc_read_set(*argv, n_empty)){
-         n_pstate_err_no = su_ERR_NOTSUP;
-         rv = -1;
-         break;
-      }
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if(linebuf != NULL)
-      n_free(linebuf);
    NYD2_OU;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
+   return rv;
+}
+
+FL int
+c_readsh(void *vp){
+   int rv;
+   NYD2_IN;
+
+   rv = a_cmisc_read(vp, FAL0);
+
+   NYD2_OU;
    return rv;
 }
 
@@ -567,8 +611,9 @@ c_readall(void * vp){ /* TODO 64-bit retval */
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(linebuf != NULL)
+   if(linebuf != NIL)
       n_free(linebuf);
+
    NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -675,6 +720,7 @@ c_version(void *vp){
          rv = 1;
       }
    }
+
    NYD_OU;
    return rv;
 }

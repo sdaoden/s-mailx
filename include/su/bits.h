@@ -25,9 +25,10 @@ C_DECL_BEGIN
 #define su_BITS_TO_UZ(BITS) (su_BITS_ROUNDUP(BITS) / su_UZ_BITS)
 #define su_BITS_WHICH_OFF(BIT) ((BIT) / su_UZ_BITS)
 #define su_BITS_WHICH_BIT(BIT) ((BIT) & (su_UZ_BITS - 1))
-#define su_BITS_TOPOFF(BITS) (su_BITS_TO_UZ(BITS) - 1)
-#define su_BITS_TOPBITNO(BITS) (su_UZ_BITS - (su_BITS_ROUNDUP(BITS) - (BITS)))
-#define su_BITS_TOPMASK(BITS) (su_UZ_MAX >> (su_BITS_ROUNDUP(BITS) - (BITS)))
+#define su_BITS_TOP_OFF(BITS) (su_BITS_TO_UZ(BITS) - 1)
+#define su_BITS_TOP_BITNO(BITS) (su_UZ_BITS - (su_BITS_ROUNDUP(BITS) - (BITS)))
+#define su_BITS_TOP_MASK(BITS) (su_UZ_MAX >> (su_BITS_ROUNDUP(BITS) - (BITS)))
+#define su_BITS_RANGE_MASK(LO,HI) su_BITENUM_MASK(LO, HI)
 INLINE boole su_bits_test(uz x, uz bit){
    ASSERT_RET(bit < UZ_BITS, FAL0);
    return ((x & (1lu << bit)) != 0);

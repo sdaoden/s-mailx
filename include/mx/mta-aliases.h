@@ -27,6 +27,9 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+/* `mtaaliases' */
+EXPORT int c_mtaaliases(void *vp);
+
 /* Expand all names from *npp which are still of type mx_NAME_ADDRSPEC_ISNAME,
  * iff *mta-aliases* is set.
  * Return ERR_NONE when processing completed normally, ERR_NOENT if the file

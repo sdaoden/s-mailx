@@ -695,7 +695,7 @@ __mime_param_join(struct mime_param_builder *head)
 {
    char nobuf[16];
    struct mime_param_builder *np;
-   uz i, ll;  DBG( uz len_max; )
+   uz i, ll;  ASSERT_INJ( uz len_max; )
    struct str *result;
    char *cp;
    enum {
@@ -722,7 +722,7 @@ __mime_param_join(struct mime_param_builder *head)
    }
    if (f & _ISENC)
       i += head->mpb_charset_len; /* sizeof("''") -1 covered by \"\" above */
-   su_DBG( len_max = i; )
+   ASSERT_INJ( len_max = i; )
    head->mpb_rv = TRU1;
 
    result = head->mpb_result;

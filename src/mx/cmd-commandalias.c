@@ -30,6 +30,8 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
+#include "mx/cmd.h"
+
 #include "mx/cmd-commandalias.h"
 #include "su/code-in.h"
 
@@ -54,14 +56,14 @@ c_commandalias(void *vp){
       slp = NIL;
       rv = !(mx_xy_dump_dict("commandalias", a_cmdal_dp, &slp, NIL,
                &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("commandalias", slp));
+            mx_page_or_print_strlist("commandalias", slp, FAL0));
       goto jleave;
    }
 
    /* Verify the name is a valid one, and not a command modifier */
-   if(*key == '\0' || *n_cmd_isolate_name(key) != '\0' ||
-         !n_cmd_is_valid_name(key)){
-      n_err(_("`commandalias': not a valid command name: %s\n"),
+   if(*key == '\0' || *mx_cmd_isolate_name(key) != '\0' ||
+         !mx_cmd_is_valid_name(key)){
+      n_err(_("commandalias: not a valid command name: %s\n"),
          n_shexp_quote_cp(key, FAL0));
       rv = 1;
       goto jleave;

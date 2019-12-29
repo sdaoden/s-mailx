@@ -7,7 +7,7 @@ use utf8;
 my $IN = 'include/mx/nail.h';
 my $OUT = 'src/mx/gen-okeys.h';
 
-# We use `vexpr' for hashing
+# We use `csop' for hashing
 my $MAILX = 'LC_ALL=C s-nail -#:/';
 
 # Acceptable "longest distance" from hash-modulo-index to key
@@ -194,7 +194,8 @@ static size_t longest_distance;
 static size_t
 next_prime(size_t no){ /* blush (brute force) */
 jredo:
-   ++no;
+   if((++no & 1) == 0)
+      goto jredo;
    for(size_t i = 3; i < no; i += 2)
       if(no % i == 0)
          goto jredo;
@@ -268,7 +269,7 @@ sub hash_em{
    die "hash_em: open: $^E"
       unless my $pid = open2 *RFD, *WFD, $MAILX;
    foreach my $e (@ENTS){
-      print WFD "vexpr hash32 $e->{name}\n";
+      print WFD "csop hash32 $e->{name}\n";
       my $h = <RFD>;
       chomp $h;
       $e->{hash} = $h
@@ -284,7 +285,7 @@ sub dump_map{
 
    # Dump the names sequentially (in input order), create our map entry along
    print F 'static char const a_amv_var_names[] = {', "\n";
-   my ($i, $alen) = (0, 0);
+   my ($i, $alen, $obsolete_any) = (0, 0, 0);
    my (%virts, %defvals, %i3vals, %chains);
    foreach my $e (@ENTS){
       $e->{keyoff} = $alen;
@@ -326,7 +327,10 @@ sub dump_map{
          $chains{$k} = $e;
          push @fa, 'a_AMV_VF_CHAIN'
       }
-      if($e->{obsolete}) {push @fa, 'a_AMV_VF_OBSOLETE'}
+      if($e->{obsolete}){
+         $obsolete_any = 1;
+         push @fa, 'a_AMV_VF_OBSOLETE'
+      }
       $e->{flags} = \@fa;
       my $f = join('|', @fa);
       $f = ', ' . $f if length $f;
@@ -335,7 +339,9 @@ sub dump_map{
       ++$i;
       $alen += $l + 1
    }
-   print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}U\n\n";
+   print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}u\n";
+   print F "#define a_AMV_VAR_HAS_OBSOLETE\n" if $obsolete_any != 0;
+   print F "\n";
 
    # Create the management map
    print F 'CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";
@@ -353,6 +359,7 @@ sub dump_map{
    # The rest not to be injected for this generator script
    print F <<_EOT;
 #ifndef a__CREATE_OKEY_MAP_PL
+# undef a_X
 # ifdef mx_HAVE_PUTENV
 #  define a_X(X) X
 # else

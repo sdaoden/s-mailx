@@ -3,6 +3,10 @@
 #@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ --no-jobs can be used to prevent spawning concurrent tests.
+#@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
+#@             (then grep for ^ERROR, for example).
+#@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
+#@ grep ^ERROR handling.
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -24,9 +28,9 @@ while true; do
       echo >&2 'configuration script can figure out, even if used to test'
       echo >&2 'a different binary than the one that would be produced!'
       echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.env.)'
-      echo >&2 'Hit RETURN to run "make config CONFIG=null'
+      echo >&2 'Hit RETURN to run "make config"'
       read l
-      make config CONFIG=null
+      make config
    fi
 done
 . ./mk-config.env
@@ -38,10 +42,12 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-Sv15-compat -:/ -Sdotlock-disable -Sexpandaddr=restrict -Smemdebug'
-   ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
+ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
+   ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
+   ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
+   ARGS="${ARGS}"' -Smailcap-disable'
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
-   ARGS="${ARGS}"' -#'
+   ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
 BODY=./.cc-body.txt
@@ -49,7 +55,7 @@ MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
-TMPDIR=`pwd`
+TMPDIR=`${pwd}`
 
 # When testing mass mail/loops, maximum number of receivers/loops.
 # TODO note we do not gracefully handle ARG_MAX excess yet!
@@ -59,8 +65,7 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
-# In debug built the value is doubled (due to memory checks).
-JOBWAIT=66
+JOBWAIT=42
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -75,9 +80,11 @@ t_all() {
    jspawn X_errexit
    jspawn Y_errexit
    jspawn S_freeze
+   jspawn f_batch_order
    jspawn input_inject_semicolon_seq
    jspawn wysh
    jspawn commandalias # test now, save space later on!
+   jspawn posix_abbrev
    jsync
 
    # Basics
@@ -95,13 +102,21 @@ t_all() {
    jspawn vpospar
    jspawn atxplode
    jspawn read
+   jspawn readsh
+   jspawn headerpick # so we have a notion that it works a bit
    jsync
 
    # Send/RFC absolute basics
    jspawn can_send_rfc
+   jspawn reply
+   jspawn forward
+   jspawn resend
    jsync
 
    # VFS
+   jspawn copy
+   jspawn save
+   jspawn move
    jspawn mbox
    jspawn maildir
    jsync
@@ -121,13 +136,13 @@ t_all() {
    jspawn alias
    jspawn charsetalias
    jspawn shortcut
+   jspawn netrc
    jsync
 
    # Operational basics with easy tests
    jspawn expandaddr # (after t_alias)
    jspawn mta_aliases # (after t_expandaddr)
    jspawn filetype
-   jspawn record_a_resend
    jspawn e_H_L_opts
    jspawn q_t_etc_opts
    jspawn message_injections
@@ -138,7 +153,7 @@ t_all() {
 
    # Around state machine, after basics
    jspawn alternates
-   jspawn quote_a_cmd_escapes
+   jspawn cmd_escapes
    jspawn compose_edits
    jspawn digmsg
    jspawn on_main_loop_tick
@@ -150,9 +165,11 @@ t_all() {
    jspawn mass_recipients
    jspawn lreply_futh_rth_etc
    jspawn pipe_handlers
+   jspawn mailcap
    jsync
 
-   # Rest
+   # Unclassified rest
+   jspawn top
    jspawn s_mime
    jspawn z
    jsync
@@ -176,9 +193,9 @@ unset POSIXLY_CORRECT LOGNAME USER
 # usage {{{
 usage() {
    ${cat} >&2 <<_EOT
-Synopsis: mx-test.sh [--no-jobs] --check-only s-mailx-binary
-Synopsis: mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
-Synopsis: mx-test.sh [--no-jobs]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
 
  --check-only EXE         run the test series, exit success or error;
                           if run in a git(1) checkout then failed tests
@@ -188,18 +205,28 @@ Synopsis: mx-test.sh [--no-jobs]
                           checkout with the [test-out] branch available,
                           it will also create file differences
  --no-jobs                do not spawn multiple jobs simultaneously
+ --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
+                          (for example to: grep ^ERROR)
 
 The last invocation style will compile and test as many different
 configurations as possible.
+OBJDIR= may be set to the location of the built objects etc.
 _EOT
    exit 1
 }
 
-NOJOBS= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
-if [ "${1}" = --no-jobs ]; then
-   NOJOBS=y
-   shift
-fi
+NOJOBS= NOCOLOUR= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+while [ ${#} -gt 0 ]; do
+   if [ "${1}" = --no-jobs ]; then
+      NOJOBS=y
+      shift
+   elif [ "${1}" = --no-colour ]; then
+      NOCOLOUR=y
+      shift
+   else
+      break
+   fi
+done
 
 if [ "${1}" = --check-only ]; then
    [ ${#} -eq 2 ] || usage
@@ -222,7 +249,9 @@ else
 fi
 # }}}
 
-MAILX=`${pwd}`/${MAILX}
+# Since we invoke $MAILX from within several directories we need a fully
+# qualified path.  Or at least something similar.
+{ echo ${MAILX} | ${grep} -q ^/; } || MAILX="${TMPDIR}"/${MAILX}
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
@@ -312,7 +341,8 @@ else
       fi
 
       # The actual hardware
-      if ( ${MAKE} -j 10 --version ) >/dev/null 2>&1; then
+      printf 'all:\n' > .t.mk.io
+      if ( ${MAKE} -j 10 -f .t.mk.io ) >/dev/null 2>&1; then
          if command -v nproc >/dev/null 2>&1; then
             i=`nproc 2>/dev/null`
             [ ${?} -eq 0 ] && MAXJOBS=${i}
@@ -413,6 +443,10 @@ jspawn() {
       printf ' [%s=%s]' ${JOBS} "${1}"
    else
       JOBS=1
+      # Assume problems exist, do not let user hanging on terminal
+      if [ -n "${RUN_TEST}" ]; then
+         printf '... [%s]\n' "${1}"
+      fi
    fi
 
    (
@@ -500,6 +534,7 @@ jsync() {
          { read pid; read desc; } < t.${i}.id
          desc=${desc#${desc%%[! ]*}}
          desc=${desc%${desc##*[! ]}}
+         [ -s t.${i}.io ] && printf >&2 '\n'
          printf >&2 '%s!! Timeout: reaped job %s [%s]%s\n' \
             "${COLOR_ERR_ON}" ${i} "${desc}" "${COLOR_ERR_OFF}"
          TESTS_FAILED=`add ${TESTS_FAILED} 1`
@@ -624,10 +659,21 @@ check() {
       fi
 
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
-            command -v diff >/dev/null 2>&1 &&
-            (git rev-parse --verify test-out) >/dev/null 2>&1 &&
-            git show test-out:"${x}" > ../"${x}".old 2>/dev/null; then
-         diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            command -v diff >/dev/null 2>&1; then
+         y=test-out
+         if (git rev-parse --verify $i) >/dev/null 2>&1; then :; else
+            y=refs/remotes/origin/test-out
+            (git rev-parse --verify $y) >/dev/null 2>&1 || y=
+         fi
+         if [ -n "${y}" ] &&
+               git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+            diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+            if [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
+               while read l; do
+                  printf 'ERROR-DIFF  %s\n' "${l}"
+               done < ../"${x}".diff
+            fi
+         fi
       fi
    fi
 }
@@ -668,7 +714,10 @@ check_exn0() {
 # }}}
 
 color_init() {
-   if (command -v tput && tput setaf 1 && tput sgr0) >/dev/null 2>&1; then
+   [ -n "${NOCOLOUR}" ] && return
+   [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
+   if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
+         >/dev/null 2>&1; then
       COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
       COLOR_WARN_ON=`tput setaf 3``tput bold`  COLOR_WARN_OFF=`tput sgr0`
       COLOR_OK_ON=`tput setaf 2`  COLOR_OK_OFF=`tput sgr0`
@@ -697,7 +746,7 @@ fi
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
-      ${grep} +${1} ) >/dev/null 2>&1
+      ${grep} +${1}, ) >/dev/null 2>&1
 }
 # }}}
 
@@ -897,7 +946,7 @@ t_X_errexit() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -911,34 +960,34 @@ t_X_errexit() {
    </dev/null ${MAILX} ${ARGS} -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '916157812 53'
+   check 1 0 "${MBOX}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '916157812 53'
+   check 2 0 "${MBOX}" '2700500141 51'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '916157812 53'
+   check 3 0 "${MBOX}" '2700500141 51'
 
    ##
 
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
-   check 4 1 "${MBOX}" '2118430867 49'
+   check 4 1 "${MBOX}" '4096689457 47'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 5 1 "${MBOX}" '2118430867 49'
+   check 5 1 "${MBOX}" '4096689457 47'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 6 1 "${MBOX}" '12955965 172'
+   check 6 1 "${MBOX}" '1669262132 170'
 
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 7 1 "${MBOX}" '12955965 172'
+   check 7 1 "${MBOX}" '1669262132 170'
 
    ## Repeat 4-7 with ignerr set
 
@@ -947,19 +996,19 @@ t_X_errexit() {
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X'ignerr echos nono ' -X'echo two' \
       > "${BODY}" 2>&1
-   check 8 0 "${BODY}" '916157812 53'
+   check 8 0 "${BODY}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 9 0 "${BODY}" '916157812 53'
+   check 9 0 "${BODY}" '2700500141 51'
 
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 10 0 "${BODY}" '916157812 53'
+   check 10 0 "${BODY}" '2700500141 51'
 
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${BODY}" 2>&1
-   check 11 0 "${BODY}" '916157812 53'
+   check 11 0 "${BODY}" '2700500141 51'
 
    t_epilog "${@}"
 }
@@ -968,7 +1017,7 @@ t_Y_errexit() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -982,22 +1031,22 @@ t_Y_errexit() {
    </dev/null ${MAILX} ${ARGS} -Snomemdebug \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '916157812 53'
+   check 1 0 "${MBOX}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '916157812 53'
+   check 2 0 "${MBOX}" '2700500141 51'
 
    ##
 
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > "${MBOX}" 2>&1
-   check 3 1 "${MBOX}" '2118430867 49'
+   check 3 1 "${MBOX}" '4096689457 47'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
-   check 4 1 "${MBOX}" '2118430867 49'
+   check 4 1 "${MBOX}" '4096689457 47'
 
    ## Repeat 3-4 with ignerr set
 
@@ -1006,11 +1055,11 @@ t_Y_errexit() {
    </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -Y'echo one' -Y'ignerr echos nono ' -Y'echo two' \
       > "${BODY}" 2>&1
-   check 5 0 "${BODY}" '916157812 53'
+   check 5 0 "${BODY}" '2700500141 51'
 
    </dev/null ${MAILX} ${ARGS} -Y'source '"${MBOX}" -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
-   check 6 0 "${BODY}" '916157812 53'
+   check 6 0 "${BODY}" '2700500141 51'
 
    t_epilog "${@}"
 }
@@ -1112,6 +1161,25 @@ t_S_freeze() {
    fi
 
    TERM=$oterm
+   t_epilog "${@}"
+}
+
+t_f_batch_order() {
+   t_prolog "${@}"
+
+   t__gen_msg subject f-batch-order > "${MBOX}"
+
+   # This would exit 64 (EX_USAGE) from ? to [fbddb3b3] (FIX: -f: add
+   # n_PO_f_FLAG to avoid that command line order matters)
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -R -f -# \
+      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
+   check 1 0 ./.tall '1690247457 86'
+
+   # And this ever worked (hopefully)
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -R -# -f \
+      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
+   check 2 0 ./.tall '1690247457 86'
+
    t_epilog "${@}"
 }
 
@@ -1244,6 +1312,55 @@ t_commandalias() {
 	__EOT
 
    check 1 0 "${MBOX}" '1638809585 36'
+
+   t_epilog "${@}"
+}
+
+t_posix_abbrev() {
+   t_prolog "${@}"
+
+   # In POSIX C181 standard order
+   </dev/null ${MAILX} ${ARGS} \
+      -Y 'echon alias/a\ ; ? a; echon group/g\ ; ?g' \
+      -Y 'echon alternates/alt\ ; ? alt' \
+      -Y 'echon chdir/ch\ ; ? ch' \
+      -Y 'echon copy/c\ ; ? c; echon Copy/C\ ; ?C' \
+      -Y 'echon delete/d\ ; ? d' \
+      -Y 'echon discard/di\ ; ? di; echon ignore/ig\ ; ?ig' \
+      -Y 'echon echo/ec\ ; ? ec' \
+      -Y 'echon edit/e\ ; ? e' \
+      -Y 'echon exit/ex\ ; ? ex; echon xit/x\ ; ?x' \
+      -Y 'echon file/fi\ ; ? fi; echon folder/fold\ ; ?  fold' \
+      -Y 'echon followup/fo\ ; ? fo; echon Followup/F\ ; ?F' \
+      -Y 'echon from/f\ ; ? f' \
+      -Y 'echon headers/h\ ; ? h' \
+      -Y 'echon help/hel\ ; ? hel' \
+      -Y 'echon hold/ho\ ; ? ho; echon preserve/pre\ ; ? pre' \
+      -Y 'echon if/i\ ; ? i; echon else/el\ ; ? el; echon endif/en\ ; ? en' \
+      -Y 'echon list/l\ ; ? l' \
+      -Y 'echon mail/m\ ; ? m' \
+      -Y 'echon mbox/mb\ ; ? mb' \
+      -Y 'echon next/n\ ; ? n' \
+      -Y 'echon pipe/pi\ ; ? pi' \
+      -Y 'echon Print/P\ ; ? P; echon Type/T\ ; ? T' \
+      -Y 'echon print/p\ ; ? p; echon type/t\ ; ? t' \
+      -Y 'echon quit/q\ ; ? q' \
+      -Y 'echon Reply/R\ ; ? R' \
+      -Y 'echon reply/r\ ; ? r' \
+      -Y 'echon retain/ret\ ; ? ret' \
+      -Y 'echon save/s\ ; ? s; echon Save/S\ ; ? S' \
+      -Y 'echon set/se\ ; ? se' \
+      -Y 'echon shell/sh\ ; ? sh' \
+      -Y 'echon size/si\ ; ? si' \
+      -Y 'echon source/so\ ; ? so' \
+      -Y 'echon touch/tou\ ; ? tou' \
+      -Y 'echon unalias/una\ ; ? una' \
+      -Y 'echon undelete/u\ ; ? u' \
+      -Y 'echon unset/uns\ ; ? uns' \
+      -Y 'echon visual/v\ ; ? v' \
+      -Y 'echon write/w\ ; ? w' \
+      | ${sed} -e 's/:.*$//' > "${MBOX}"
+   check 1 0 "${MBOX}" '1012680481 968'
 
    t_epilog "${@}"
 }
@@ -1421,7 +1538,7 @@ t_shcodec() {
 
    if [ -z "${UTF8_LOCALE}" ]; then
       t_echoskip 'unicode:[no UTF-8 locale]'
-   else
+   elif have_feat multibyte-charsets; then
       ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
          ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 		#
@@ -1436,6 +1553,8 @@ t_shcodec() {
 		shcodec d $'a\U0001D542c'
 		__EOT
       check unicode 0 "${MBOX}" '1175985867 77'
+   else
+      t_echoskip 'unicode:[!MULTIBYTE-CHARSETS]'
    fi
 
    t_epilog "${@}"
@@ -2910,7 +3029,7 @@ t_ifelse() {
 
       check regex 0 "${MBOX}" '1115671789 95'
    else
-      t_echoskip 'regex:[no regex option]'
+      t_echoskip 'regex:[!REGEX]'
    fi
 
    t_epilog "${@}"
@@ -3386,7 +3505,7 @@ t_addrcodec() {
 
       check idna 0 "${MBOX}" '498775983 326'
    else
-      t_echoskip 'idna:[no IDNA option]'
+      t_echoskip 'idna:[!IDNA]'
    fi
 
    t_epilog "${@}"
@@ -3396,7 +3515,7 @@ t_csop() {
    t_prolog "${@}"
 
    if have_feat cmd-csop; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_CSOP]'
       t_epilog "${@}"
       return
    fi
@@ -3472,7 +3591,7 @@ t_vexpr() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3632,71 +3751,6 @@ t_vexpr() {
 
    check numeric 0 "${MBOX}" '163128733 2519'
 
-   # v15compat: vexpr byte ops <> csop compat: drop this!
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	commandalias x echo '$?/$^ERRNAME :$res:'
-	echo ' #-2'
-	vput vexpr res find you y;x
-	vput vexpr res find you o;x
-	vput vexpr res find you u;x
-	vput vexpr res find you yo;x
-	vput vexpr res find you ou;x
-	vput vexpr res find you you;x
-	echo ' #-1'
-	vput vexpr res find you Y;x
-	vput vexpr res find? you Y;x
-	vput vexpr res find? you O;x
-	vput vexpr res find? you U;x
-	vput vexpr res find? you yO;x
-	vput vexpr res find? you oU;x
-	vput vexpr res find? you YoU;x
-	echo ' #0'
-	vput vexpr res find 'bananarama' 'nana';x
-	vput vexpr res find 'bananarama' 'bana';x
-	vput vexpr res find 'bananarama' 'Bana';x
-	vput vexpr res find 'bananarama' 'rama';x
-	echo ' #1'
-	vput vexpr res ifind 'bananarama' 'nana';x
-	vput vexpr res ifind 'bananarama' 'bana';x
-	vput vexpr res ifind 'bananarama' 'Bana';x
-	vput vexpr res ifind 'bananarama' 'rama';x
-	echo ' #2'
-	vput vexpr res substring 'bananarama' 1;x
-	vput vexpr res substring 'bananarama' 3;x
-	vput vexpr res substring 'bananarama' 5;x
-	vput vexpr res substring 'bananarama' 7;x
-	vput vexpr res substring 'bananarama' 9;x
-	vput vexpr res substring 'bananarama' 10;x
-	vput vexpr res substring 'bananarama' 1 3;x
-	vput vexpr res substring 'bananarama' 3 3;x
-	vput vexpr res substring 'bananarama' 5 3;x
-	vput vexpr res substring 'bananarama' 7 3;x
-	vput vexpr res substring 'bananarama' 9 3;x
-	vput vexpr res substring 'bananarama' 10 3;x
-	echo ' #3'
-	vput vexpr res substring 'bananarama' -1;x
-	vput vexpr res substring 'bananarama' -3;x
-	vput vexpr res substring 'bananarama' -5;x
-	vput vexpr res substring 'bananarama' -7;x
-	vput vexpr res substring 'bananarama' -9;x
-	vput vexpr res substring 'bananarama' -10;x
-	vput vexpr res substring 'bananarama' 1 -3;x
-	vput vexpr res substring 'bananarama' 3 -3;x
-	vput vexpr res substring 'bananarama' 5 -3;x
-	vput vexpr res substring 'bananarama' 7 -3;x
-	vput vexpr res substring 'bananarama' 9 -3;x
-	vput vexpr res substring 'bananarama' 10 -3;x
-	echo ' #4'
-	vput vexpr res trim 'Cocoon  Cocoon';x
-	vput vexpr res trim '  Cocoon  Cocoon 	  ';x
-	vput vexpr res trim-front 'Cocoon  Cocoon';x
-	vput vexpr res trim-front '  Cocoon  Cocoon 	  ';x
-	vput vexpr res trim-end 'Cocoon  Cocoon';x
-	vput vexpr res trim-end '  Cocoon  Cocoon 	  ';x
-	__EOT
-
-   check byte 0 "${MBOX}" '1892119538 755'
-
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		commandalias x echo '$?/$^ERRNAME :$res:'
@@ -3721,20 +3775,20 @@ t_vexpr() {
 		vput vexpr res regex 'bananarama' 'Bana';x
 		vput vexpr res regex 'bananarama' 'rama';x
 		echo ' #1'
-		vput vexpr res iregex 'bananarama' 'nana';x
-		vput vexpr res iregex 'bananarama' 'bana';x
-		vput vexpr res iregex 'bananarama' 'Bana';x
-		vput vexpr res iregex 'bananarama' 'rama';x
+		vput vexpr res regex? 'bananarama' 'nana';x
+		vput vexpr res regex? 'bananarama' 'bana';x
+		vput vexpr res regex? 'bananarama' 'Bana';x
+		vput vexpr res regex? 'bananarama' 'rama';x
 		echo ' #2'
 		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
 		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
 		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0';x
 		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #3'
-		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
-		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
-		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0';x
-		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0';x
+		vput vexpr res regex? 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
+		vput vexpr res regex? 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
+		vput vexpr res regex? 'bananarama' 'Bana(.+)' '\$1\$0';x
+		vput vexpr res regex? 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #4'
 		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
          '\$1\${2}\$4\${3}rama';x
@@ -3747,7 +3801,7 @@ t_vexpr() {
 
       check regex 0 "${MBOX}" '2831099111 542'
    else
-      t_echoskip 'regex:[no regex option]'
+      t_echoskip 'regex:[!REGEX]'
    fi
 
    t_epilog "${@}"
@@ -3757,7 +3811,7 @@ t_call_ret() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3840,7 +3894,7 @@ t_xcall() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -3933,13 +3987,13 @@ t_xcall() {
 
       < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
          -Snomemdebug > "${MBOX}" 2>&1
-      check 2 0 "${MBOX}" '3900716531 4200'
+      check 2 0 "${MBOX}" '4036613316 4184'
 
       < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
          -Snomemdebug > "${MBOX}" 2>&1
-      check 3 1 "${MBOX}" '1006776201 2799'
+      check 3 1 "${MBOX}" '3179757785 2787'
    else
-      t_echoskip '2-3:[test unsupported]'
+      t_echoskip '2-3:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"
@@ -4142,10 +4196,148 @@ t_read() {
 
    t_epilog "${@}"
 }
+
+t_readsh() { # TODO not enough
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' > .tin
+   from@exam.ple    ' diet spliced <from@exam.ple>   '    'a' 
+   from@exam.ple ' diet spliced <from@exam.ple>   ' 'a'  
+   from@exam.ple ' diet spliced <from@exam.ple>   ''a'  
+   from@exam.ple' diet spliced <from@exam.ple>   ''a'  
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      ${MAILX} ${ARGS} -X'readctl create ./.tin' > "${MBOX}" 2>&1
+   commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+   readsh a b c;x
+   readsh a b c;x
+   readsh a b c;x
+   readsh a b c;x
+   unset a b c;read a b c;x
+   readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '2955084684 291'
+
+   t_epilog "${@}"
+}
+
+t_headerpick() {
+   t_prolog "${@}"
+
+   t__x1_msg > ./.tmbox
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Rf -Y '# Do not care much on error UISTRINGS
+\echo --- 1
+\headerpick
+\echo --- $?/$^ERRNAME, 2
+\type
+\echo --- $?/$^ERRNAME, 3
+\if "$features" !% +uistrings,
+   \echoerr reproducible_build: Invalid field name cannot be ignored: ba:l
+\endif
+\headerpick type ignore \
+   from_ mail-followup-to in-reply-to DATE MESSAGE-ID STATUS ba:l
+\echo --- $?/$^ERRNAME, 4
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 5
+\type
+\echo --- $?/$^ERRNAME, 6
+\unheaderpick type ignore from_ DATE STATUS
+\echo --- $?/$^ERRNAME, 7
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 8
+\type
+\echo --- $?/$^ERRNAME, 9
+\if "$features" =% +uistrings,
+   \unheaderpick type ignore from_ ba:l
+   \wysh set x=$? y=$^ERRNAME
+\else
+   \echoerr reproducible_build: Field not ignored: from_
+   \echoerr reproducible_build: Field not ignored: ba:l
+   \set x=1 y=INVAL
+\endif
+\echo --- $x/$y, 10
+\unheaderpick type ignore *
+\echo --- $?/$^ERRNAME, 11
+\if "$features" !% +uistrings,
+   \echo "#headerpick type retain currently covers no fields"
+   \echo "#headerpick type ignore currently covers no fields"
+\endif
+\headerpick
+\echo --- $?/$^ERRNAME, 12
+\type
+\echo --- $?/$^ERRNAME, 13 ---
+#  ' ./.tmbox >./.tall 2>&1
+   check 1 0 ./.tall '2481904228 2273'
+
+   #
+   if have_feat uistrings; then
+      have_feat regex && i='3515512395 2378' || i='4201290332 2378'
+      </dev/null ${MAILX} ${ARGS} -Y '#
+\headerpick type retain \
+   bcc cc date from sender subject to \
+   message-id mail-followup-to reply-to user-agent
+\echo --- $?/$^ERRNAME, 1
+\headerpick forward retain \
+   cc date from message-id list-id sender subject to \
+   mail-followup-to reply-to
+\echo --- $?/$^ERRNAME, 2
+\headerpick save ignore ^Original-.*$ ^X-.*$ ^DKIM.*$
+\echo --- $?/$^ERRNAME, 3
+\headerpick top retain To Cc
+\echo --- $?/$^ERRNAME, 4 ---
+\headerpick
+\echo --- $?/$^ERRNAME, 5
+\headerpick type
+\echo --- $?/$^ERRNAME, 6
+\headerpick forward
+\echo --- $?/$^ERRNAME, 7
+\headerpick save
+\echo --- $?/$^ERRNAME, 8
+\headerpick top
+\echo --- $?/$^ERRNAME, 9 ---
+\unheaderpick type retain message-id mail-followup-to reply-to user-agent
+\echo --- $?/$^ERRNAME, 10
+\unheaderpick save ignore ^X-.*$ ^DKIM.*$
+\echo --- $?/$^ERRNAME, 11
+\unheaderpick forward retain *
+\echo --- $?/$^ERRNAME, 12 ---
+\headerpick
+\echo --- $?/$^ERRNAME, 13
+\headerpick type
+\echo --- $?/$^ERRNAME, 14
+\headerpick save
+\echo --- $?/$^ERRNAME, 15 --
+\unheaderpick type retain *
+\echo --- $?/$^ERRNAME, 16
+\unheaderpick forward retain *
+\echo --- $?/$^ERRNAME, 17
+\unheaderpick save ignore *
+\echo --- $?/$^ERRNAME, 18
+\unheaderpick top retain *
+\echo --- $?/$^ERRNAME, 19 --
+\headerpick
+\echo --- $?/$^ERRNAME, 20
+#  ' >./.tall 2>&1
+      check 2 0 ./.tall "${i}"
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
+
+   t_epilog "${@}"
+}
 # }}}
 
 # Send/RFC absolute basics {{{
-t_can_send_rfc() {
+t_can_send_rfc() { # {{{
    t_prolog "${@}"
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s Sub.1 \
@@ -4210,12 +4402,1045 @@ t_can_send_rfc() {
    check 6 0 "${MBOX}" '3006460737 138'
    check 6-err - .terr '4294967295 0'
 
+   # Command
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -Y '#
+mail hey@exam.ple
+~s Subject 1
+Body1
+~.
+echo $?/$^ERRNAME
+xit
+# '   > ./.tall 2>&1
+   check 7 0 ./.tall '951018449 138'
+
+   ## *record*, *outfolder*, with and without *mta-bcc-ok*
+   ${mkdir} .tfolder
+   xfolder=`${pwd}`/.tfolder
+
+   "${cat}" <<-_EOT > .tmta.sh
+		#!${SHELL} -
+		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
+			"${cat}" && echo 'ARGS: '"\${@}" && echo) > "${MBOX}"
+	_EOT
+   chmod 0755 .tmta.sh
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfolder="${xfolder}" \
+         "${@}" \
+         -s Sub.mta-1 \
+         -b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
+         -c cc@no.1 -c cc@no.2 -c cc@no.3 \
+         to@no.1 to@no.2 to@no.3 \
+         receiver@number.1 > ./.terr 2>&1
+      return ${?}
+   }
+
+   t_it -Snomta-bcc-ok
+   check 8 0 "${MBOX}" '1365032629 292'
+   check 8-1 - .terr '4294967295 0'
+
+   t_it -Snomta-bcc-ok -Srecord=.trec9
+   check 9 0 "${MBOX}" '1365032629 292'
+   check 9-1 - .terr '4294967295 0'
+   check 9-2 - ./.trec9 '160206230 221'
+
+   t_it -Srecord=.trec10
+   check 10 0 "${MBOX}" '3085765596 326'
+   check 10-1 - .terr '4294967295 0'
+   check 10-2 - ./.trec10 '160206230 221'
+
+   t_it -Snomta-bcc-ok -Srecord=.trec11 -Soutfolder
+   check 11 0 "${MBOX}" '1365032629 292'
+   check 11-1 - .terr '4294967295 0'
+   check 11-2 - ./.tfolder/.trec11 '160206230 221'
+   # That is appends to an MBOX
+   t_it -Srecord=.trec11 -Soutfolder
+   check 12 0 "${MBOX}" '3085765596 326'
+   check 12-1 - .terr '4294967295 0'
+   check 12-2 - ./.tfolder/.trec11 '1618754846 442'
+
    t_epilog "${@}"
-}
+} # }}}
+
+t_reply() { # {{{
+   # Alternates and ML related address massage etc. somewhere else
+   t_prolog "${@}"
+   XARGS=${ARGS} # TODO v15-compat
+   ARGS="${ARGS} -Sv15-compat=y"
+
+   t__gen_msg subject reply from 1 to 2 cc 2 > "${MBOX}"
+
+   ## Base (does not test "recipient record")
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y "${2}${1}"'
+r1
+~.
+      echo 1:$?/$^ERRNAME
+      set fullnames escape=!; '${1}'
+r2 fullnames
+!.
+      echo 2:$?/$^ERRNAME
+      set recipients-in-cc nofullnames; '${1}'
+r3 recipients-in-cc
+!.
+      echo 3:$?/$^ERRNAME
+      unset recipients-in-cc; '${1}'
+r4
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it reply
+   check 1 0 ./.tall '4164251531 851'
+   t_it Reply
+   check 2 0 ./.tall '3034955332 591'
+   t_it reply 'set flipr;'
+   check 3 0 ./.tall '3034955332 591'
+   t_it Reply 'set flipr;'
+   check 4 0 ./.tall '4164251531 851'
+
+   ## Dig the errors
+   t__gen_msg subject reply-no-addr > ./.tnoaddr
+
+   # MBOX will deduce addressee from From_ line..
+   </dev/null ${MAILX} ${ARGS} -R -Sescape=! \
+      -Y '#
+   File ./.tnoaddr; reply # Takes addressee from From_ line :(
+body1
+!.
+   echo 1:$?/$^ERRNAME
+   File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+body2
+!.
+   echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
+   echo 3:$?/$^ERRNAME; reply # cannot test IO,NOTSUP,INVAL
+body3
+!.
+   echo 4:$?/$^ERRNAME
+   #' \
+      > ./.tall 2>./.terr
+   check 5 0 ./.tall '3088217220 382'
+   if have_feat uistrings; then
+      check 6 - ./.terr '2514745519 544'
+   else
+      t_echoskip '6:[!UISTRINGS]'
+   fi
+
+   # ..but Maildir will not
+   if have_feat maildir; then
+      ${mkdir} -p .tdir .tdir/tmp .tdir/cur .tdir/new
+      ${sed} 1d < ./.tnoaddr > .tdir/new/sillyname
+
+      </dev/null ${MAILX} ${ARGS} -R -Sescape=! \
+         -Y '#
+      File ./.tdir; reply
+body1
+!.
+      echo 1:$?/$^ERRNAME
+      File '"${MBOX}"'; set ea=$expandaddr expandaddr=-all; reply
+body2
+!.
+      echo 2:$?/$^ERRNAME; set expandaddr=$ea; reply 10 # BADMSG
+      echo 3:$?/$^ERRNAME;reply # cannot test IO,NOTSUP,INVAL
+body3
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         > ./.tall 2>./.terr
+      check 7 0 ./.tall '3631170341 244'
+      if have_feat uistrings; then
+         check 8 - ./.terr '1074346767 629'
+      else
+         t_echoskip '8:[!UISTRINGS]'
+      fi
+   fi
+
+   ## Ensure action on multiple messages
+   t__gen_msg subject reply2 from from2@exam.ple body body2 >> "${MBOX}"
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! \
+      -Y '#
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody1
+!.
+      echo 2:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${3} 0 ./.tall '283309820 502'
+      if [ ${#} -eq 4 ]; then
+         echo * > ./.tlst
+         check ${3}-1 - ./.tlst '1649520021 12'
+         check ${3}-2 - ./from1 '1501109193 347'
+         check ${3}-3 - ./from2 '2154231432 137'
+      fi
+   }
+
+   t_it reply Reply 9
+   t_it respond Respond 10
+   t_it followup Followup 11 yes
+   ${rm} -f from1 from2
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody3
+!.
+      echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+repbody4
+!.
+repbody5
+!.
+      echo 3:$?/$^ERRNAME; '${2}' 1 2
+Repbody6
+!.
+      echo 4:$?/$^ERRNAME; set outfolder norecord
+      '${1}' 1 2
+repbody1
+!.
+repbody2
+!.
+      echo 1:$?/$^ERRNAME; '${2}' 1 2
+Repbody3
+!.
+      echo 2:$?/$^ERRNAME; set record=.trec'${4}'; '${1}' 1 2
+repbody4
+!.
+repbody5
+!.
+      echo 3:$?/$^ERRNAME; '${2}' 1 2
+Repbody6
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${3} 0 ./.tall '3410330303 2008'
+      if [ ${#} -ne 5 ]; then
+         check ${4} - ./.trec${4} '3044885336 484'
+         check ${4}-1 - ./.tfolder/.trec${4} '3044885336 484'
+      else
+         [ -f ./.trec${4} ]; check_exn0 ${4}
+         echo * > ./.tlst
+         check ${4}-1 - ./.tlst '1649520021 12'
+         check ${4}-2 - ./from1 '2668975631 694'
+         check ${4}-3 - ./from2 '225462887 274'
+         [ -f ./.tfolder/.trec${4} ]; check_exn0 ${4}-4
+         ( cd .tfolder && echo * > ./.tlst )
+         check ${4}-5 - ./.tfolder/.tlst '1649520021 12'
+         check ${4}-6 - ./.tfolder/from1 '2668975631 694'
+         check ${4}-7 - ./.tfolder/from2 '225462887 274'
+      fi
+   }
+
+   t_it reply Reply 12 13
+   t_it respond Respond 14 15
+   t_it followup Followup 16 17 yes
+   #${rm} -f from1 from2
+
+   ## Quoting (if not cmd_escapes related)
+   ${rm} -f "${MBOX}"
+   t__x2_msg > ./.tmbox
+
+   printf '#
+      set indentprefix=" |" quote
+      reply
+b1
+!.
+      set quote=noheading quote-inject-head
+      reply
+b2
+!.
+      headerpick type retain cc date from message-id reply-to subject to
+      set quote=headers
+      reply
+b3
+!.
+      set quote=allheaders
+      reply
+b4
+!.
+      set quote-inject-head=%% quote-inject-tail=%% quote=headers
+      reply
+b5
+!.
+      set quote \\
+         quote-inject-head='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"' \\
+         quote-inject-tail='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"'
+      reply
+b6
+!.
+      set showname datefield=%%y nodatefield-markout-older indentprefix=\\ :
+      reply
+b7
+!.
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
+         -Sescape=! -Sindentprefix=' >' \
+         ./.tmbox >./.tall 2>&1
+   check_ex0 18-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check 18 - "${MBOX}" '4192298831 3932'
+
+   # quote-as-attachment, fullnames
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! \
+         -S quote-as-attachment \
+         -Y reply -Y yb1 -Y !. \
+         -Y 'unset quote-as-attachment' \
+         -Y 'reply;yb2' -Y !. \
+         -Y 'set quote-as-attachment fullnames' \
+         -Y ';reply;yb3' -Y !. \
+         ./.tmbox >./.tall 2>&1
+   check 19 0 ./.tall '2774517283 2571'
+
+   ARGS=${XARGS} # TODO v15-compat
+   t_epilog "${@}"
+} # }}}
+
+t_forward() { # {{{
+   t_prolog "${@}"
+   XARGS=${ARGS}
+   ARGS="${ARGS} -Sv15-compat=y"
+
+   t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
+   t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
+
+   ## Base (does not test "recipient record")
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y ${1}' . "du <ex1@am.ple>"
+b1
+~.
+      echo 1:$?/$^ERRNAME; echoerr 1:done
+      set fullnames escape=!
+      '${1}' 1 "du <ex2@am.ple>"
+b2 fullnames
+!.
+      echo 2:$?/$^ERRNAME; echoerr 2:done
+      # Some errors
+      set nofullnames ea=$expandaddr expandaddr=-all
+      '${1}' ` "du <ex3@am.ple>"
+b3
+!.
+      echo 3:$?/$^ERRNAME; echoerr 3:done
+      set expandaddr=$ea
+      '${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
+b4
+!.
+      echo 4:$?/$^ERRNAME; echoerr 4:done
+      '${1}' # TODO not yet possible b5 !.
+      echo 5:$?/$^ERRNAME; echoerr 5:done
+      set expandaddr=$ea
+      '${1}' 1 2 ex6@am.ple
+b6-1
+!.
+b6-2
+!.
+      echo 6:$?/$^ERRNAME; echoerr 6:done
+      set forward-add-cc fullnames
+      '${1}' . ex7@am.ple
+b7
+!.
+      echo 7:$?/$^ERRNAME; echoerr 7:done
+      set nofullnames
+      '${1}' . ex8@am.ple
+b8
+!.
+      echo 8:$?/$^ERRNAME; echoerr 8:done
+      #' \
+         "${MBOX}" > ./.tall 2>./.terr
+      return ${?}
+   }
+
+   t_it forward
+   check 1 0 ./.tall '2356713156 2219'
+   if have_feat uistrings && have_feat docstrings; then
+      check 2 - ./.terr '3273108824 335'
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
+
+   t_it Forward
+   check 3 0 ./.tall '2356713156 2219'
+   if have_feat uistrings && have_feat docstrings; then
+      check 4 - ./.terr '447176534 355'
+   else
+      t_echoskip '4:[!UISTRINGS]'
+   fi
+   ${rm} -f ex*
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      '${1}' 1 ex1@am.ple
+b1
+!.
+      echo 1:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 1 ex2@am.ple
+b2
+!.
+      echo 2:$?/$^ERRNAME; set outfolder norecord; '${1}' 2 ex1@am.ple
+b3
+!.
+      echo 3:$?/$^ERRNAME; set record=.trec'${2}'; '${1}' 2 ex2@am.ple
+b4
+!.
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check ${2} 0 ./.tall '3180366037 1212'
+      if [ ${#} -ne 4 ]; then
+         check ${3}-1 - ./.trec${2} '1769129556 304'
+         check ${3}-2 - ./.tfolder/.trec${2} '2335391111 284'
+      else
+         [ -f ./.trec${2} ]; check_exn0 ${3}
+         echo * > ./.tlst
+         check ${3}-1 - ./.tlst '2020171298 8'
+         check ${3}-2 - ./ex1 '1512529673 304'
+         check ${3}-3 - ./ex2 '1769129556 304'
+         [ -f ./.tfolder/.trec${2} ]; check_exn0 ${3}-4
+         ( cd .tfolder && echo * > ./.tlst )
+         check ${3}-5 - ./.tfolder/.tlst '2020171298 8'
+         check ${3}-6 - ./.tfolder/ex1 '2016773910 284'
+         check ${3}-7 - ./.tfolder/ex2 '2335391111 284'
+      fi
+   }
+
+   t_it forward 5 6
+   t_it Forward 7 8 yes
+   #${rm} -f ex*
+
+   ## Injections, headerpick selection
+   ${rm} -f "${MBOX}"
+   t__x2_msg > ./.tmbox
+
+   printf '#
+      set quote=noheading forward-inject-head
+      forward 1 ex1@am.ple
+b1
+!.
+      headerpick forward retain cc from subject to
+      forward 1 ex1@am.ple
+b2
+!.
+      unheaderpick forward retain *
+      forward 1 ex1@am.ple
+b3
+!.
+      headerpick forward ignore in-reply-to reply-to message-id status
+      set forward-inject-head=%% forward-inject-tail=%%
+      forward 1 ex1@am.ple
+b4
+!.
+      set forward-inject-head='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"' \\
+         forward-inject-tail='"\$'"'\\
+            (%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
+            \\n'"'"'
+      forward 1 ex1@am.ple
+b5
+!.
+      set showname datefield=%%y nodatefield-markout-older
+      forward 1 ex1@am.ple
+b6
+!.
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
+         -Sescape=! \
+         ./.tmbox >./.tall 2>&1
+   check_ex0 9-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check 9 - "${MBOX}" '2976943913 2916'
+
+   # forward-as-attachment
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! \
+         -S forward-inject-head=.head. \
+         -S forward-inject-tail=.tail. \
+         -S forward-as-attachment \
+         -Y 'headerpick forward retain subject to from' \
+         -Y 'forward ex1@am.ple' -Y b1 -Y !. \
+         -Y 'unset forward-as-attachment' \
+         -Y 'forward ex1@am.ple;b2' -Y !. \
+         ./.tmbox >./.tall 2>&1
+   check 10 0 ./.tall '799103633 1250'
+
+   ARGS=${XARGS}
+   t_epilog "${@}"
+} # }}}
+
+t_resend() { # {{{
+   t_prolog "${@}"
+   XARGS=${ARGS}
+   ARGS="${ARGS} -Sv15-compat=y"
+
+   t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
+   t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
+
+   ## Base
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf \
+         -Y ${1}' . "du <ex1@am.ple>"
+      echo 1:$?/$^ERRNAME; echoerr 1:done
+      set fullnames escape=!
+      '${1}' 1 "du , da <ex2@am.ple>"
+      echo 2:$?/$^ERRNAME; echoerr 2:done
+      # Some errors
+      set nofullnames ea=$expandaddr expandaddr=-all
+      '${1}' ` "du <ex3@am.ple>"
+      echo 3:$?/$^ERRNAME; echoerr 3:done
+      set expandaddr=$ea
+      '${1}' ` ex4-nono@am.ple ex4@am.ple # the first is a non-match msglist
+      echo 4:$?/$^ERRNAME; echoerr 4:done
+      '${1}' # TODO not yet possible b5 !.
+      echo 5:$?/$^ERRNAME; echoerr 5:done
+      set expandaddr=$ea
+      '${1}' 1 2 ex6@am.ple
+      echo 6:$?/$^ERRNAME; echoerr 6:done
+      #' \
+         "${MBOX}" > ./.tall 2>./.terr
+      return ${?}
+   }
+
+   t_it resend
+   check 1 0 ./.tall '1461006932 1305'
+   if have_feat uistrings; then
+      check 2 - ./.terr '138360532 210'
+   else
+      t_echoskip '2:[!UISTRINGS]'
+   fi
+
+   t_it Resend
+   check 3 0 ./.tall '3674535444 958'
+   if have_feat uistrings; then
+      check 4 - ./.terr '138360532 210'
+   else
+      t_echoskip '4:[!UISTRINGS]'
+   fi
+
+   ## *record*, *outfolder* (reuses $MBOX)
+   ${mkdir} .tfolder
+
+   t_it() {
+      </dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Sfolder=`${pwd}`/.tfolder \
+      -Y '#
+      set record=.trec'${2}'; '${1}' 1 ex1@am.ple
+      echo 1:$?/$^ERRNAME; set record-resent; '${1}' 1 ex2@am.ple
+      echo 2:$?/$^ERRNAME; set outfolder norecord-resent; '${1}' 2 ex1@am.ple
+      echo 3:$?/$^ERRNAME; set record-resent; '${1}' 2 ex2@am.ple
+      echo 4:$?/$^ERRNAME
+      #' \
+         "${MBOX}" > ./.tall 2>&1
+      check_ex0 ${2}
+      if [ ${#} -ne 3 ]; then
+         check ${2} - ./.tall '1711347390 992'
+         check ${3}-1 - ./.trec${2} '2840978700 249'
+         check ${3}-2 - ./.tfolder/.trec${2} '3219997964 229'
+      else
+         check ${2} - ./.tall '1391418931 724'
+         check ${3}-1 - ./.trec${2} '473817710 182'
+         check ${3}-2 - ./.tfolder/.trec${2} '2174632404 162'
+      fi
+   }
+
+   t_it resend 5 6 yes
+   t_it Resend 7 8
+
+   ARGS=${XARGS}
+   t_epilog "${@}"
+} # }}}
 # }}}
 
 # VFS {{{
-t_mbox() {
+t_copy() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '137107341 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   copy 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   copy .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   copy .tf1 # no auto-advance
+   echo 2:$?/$^ERRNAME
+   headers
+   copy 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   copy 1 2 .tf3
+   echo 4:$?/$^ERRNAME
+   headers
+   !chmod 0444 .tf3
+   copy 1 2 .tf3
+   echo 5:$?/$^ERRNAME
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   check 2-1 - ./.tall '1913702840 1121'
+   check 2-2 - ./.tf1 '686654461 334'
+   check 2-3 - ./.tf2 '1931512953 162'
+   check 2-4 - ./.tf3 '3642131968 344'
+   if have_feat uistrings; then
+      check 2-5 - ./.terr '2617612897 112'
+   else
+      t_echoskip '2-5:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '1477662071 346'
+
+   ##
+   t_it() {
+      t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Copy3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '2667292819 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Copy
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Copy
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Copy 2
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      Copy 3
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Copy *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>&1
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '1543702808 1617'
+   check 5-4 - ./from1 '1031912635 999'
+   check 5-5 - ./ex '2400630246 149'
+   ${rm} -f ./.tlst ./.tall ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '1031912635 999'
+   check 6-5 - .tfolder/ex '2400630246 149'
+
+   ##
+   t__x2_msg > ./.tmbox
+
+   t_it() {
+      printf '#
+         '"${1}"'
+         echo 1:$?/$^ERRNAME
+         headerpick save retain cc date from subject to
+         '"${1}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${1}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${1}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 'copy ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '3805176908 152'
+   check 7-2 - ./.tout '2447734879 1316'
+
+   t_it Copy
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '1044700686 136'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
+
+   t_epilog "${@}"
+} # }}}
+
+t_save() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '3634443864 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   save 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   save .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   save .tf1 # no auto-advance
+   echo 2:$?/$^ERRNAME
+   headers
+   save 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   save 1 2 .tf3
+   echo 4:$?/$^ERRNAME
+   headers
+   !chmod 0444 .tf3
+   save 1 2 .tf3
+   echo 5:$?/$^ERRNAME
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   check 2-1 - ./.tall '2335843514 1121'
+   check 2-2 - ./.tf1 '2435434321 334'
+   check 2-3 - ./.tf2 '920652966 162'
+   check 2-4 - ./.tf3 '970407001 344'
+   if have_feat uistrings; then
+      check 2-5 - ./.terr '45116475 112'
+   else
+      t_echoskip '2-5:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '1219692400 346'
+
+   ##
+   t_it() {
+      t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Save3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '1391391227 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Save
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Save
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Save 2
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      Save 3
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Save *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>&1
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '3418590770 1617'
+   check 5-4 - ./from1 '1462882526 999'
+   check 5-5 - ./ex '2153575326 149'
+   ${rm} -f ./.tlst ./.tall ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '1462882526 999'
+   check 6-5 - .tfolder/ex '2153575326 149'
+
+   ##
+
+   t_it() {
+      t__x2_msg > ./.tmbox
+      check ${1} - ./.tmbox '561523988 397'
+
+      a='-Rf'
+      [ ${#} -gt 2 ] && a='-S MBOX=./.tmboxx'
+      [ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox'
+      printf '#
+         headers
+         '"${2}"'
+         echo 1:$?/$^ERRNAME
+         headers
+         headerpick save retain cc date from subject to
+         '"${2}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${2}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${2}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -f ${a} ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 7 'save ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '4190949581 312'
+   check 7-2 - ./.tout '2447734879 1316'
+   check 7-3 - ./.tmbox '561523988 397'
+
+   t_it 8 Save
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '2109832180 296'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
+   check 8-3 - ./.tmbox '561523988 397'
+
+   # saves in $MBOX without argument
+   t_it 9 save yes
+   check_ex0 9-estat
+   check 9-1 - ./.tall '652005824 320'
+   check 9-2 - ./.tmboxx '2447734879 1316'
+   check 9-3 - ./.tmbox '561523988 397'
+
+   # and deletes if editing a primary mailbox
+   ${rm} -f ./.tmboxx
+   t_it 10 save yes yes
+   check_ex0 10-estat
+   check 10-1 - ./.tall '652005824 320'
+   check 10-2 - ./.tmboxx '2447734879 1316'
+   [ -f ./.tmbox ]; check_exn0 10-3
+
+   t_epilog "${@}"
+} # }}}
+
+t_move() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+   t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+   check 1 - "${MBOX}" '2967134193 324' # for flag test
+
+   ##
+   </dev/null ${MAILX} ${ARGS} -f \
+      -Y '#
+   headers
+   move 10 .tf1
+   echo 0:$?/$^ERRNAME
+   headers
+   move .tf1
+   echo 1:$?/$^ERRNAME
+   headers
+   !touch .tf2; chmod 0444 .tf2
+   move 2 .tf2
+   echo 2:$?/$^ERRNAME
+   !chmod 0644 .tf2
+   move 2 .tf2
+   echo 3:$?/$^ERRNAME
+   headers
+   #' \
+      "${MBOX}" > ./.tallx 2>./.terr
+   check_ex0 2
+
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   check 2-1 - ./.tall '1641443074 491'
+   check 2-2 - ./.tf1 '1473857906 162'
+   check 2-3 - ./.tf2 '331229810 162'
+   if have_feat uistrings; then
+      check 2-4 - ./.terr '602144474 155'
+   else
+      t_echoskip '2-4:[!UISTRINGS]'
+   fi
+
+   ##
+   check 3 - "${MBOX}" '4294967295 0'
+
+   ##
+   t_it() {
+      t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+      t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+      t__gen_msg subject Move3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+      check ${1} - "${MBOX}" '2826896131 473' # for flag test
+
+      </dev/null ${MAILX} ${ARGS} -f \
+         -Y "${3}"'
+      '"${2}"'
+      Move
+      echo 1:$?/$^ERRNAME
+      '"${2}"'
+      Move 2
+      echo 2:$?/$^ERRNAME
+      '"${2}"'
+      Move 3
+      echo 3:$?/$^ERRNAME
+      '"${2}"'
+      undelete *
+      echo 4:$?/$^ERRNAME
+      '"${2}"'
+      Move *
+      echo 5:$?/$^ERRNAME
+      '"${2}"'
+      #' \
+         "${MBOX}" > ./.tallx 2>./.terr
+      return ${?}
+   }
+
+   t_it 5 headers '#'
+   check_ex0 5-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * > ./.tlst
+   check 5-2 - ./.tlst '1058655452 9'
+   check 5-3 - ./.tall '419037676 870'
+   if have_feat uistrings; then
+      check 5-4 - ./.terr '1383646464 86'
+   else
+      t_echoskip '5-4:[!UISTRINGS]'
+   fi
+   check 5-5 - ./from1 '3719268580 827'
+   check 5-6 - ./ex '4262925856 149'
+   ${rm} -f ./.tlst ./.tall ./.terr ./from1 ./ex
+
+   ${mkdir} .tfolder
+   t_it 6 '#' 'set outfolder folder='"`${pwd}`"'/.tfolder'
+   check_ex0 6-1
+   if have_feat uistrings; then # TODO
+      ${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+      ${sed} '$d' < ./.tallx > ./.tall
+   else
+      ${mv} ./.tallx ./.tall
+   fi
+   echo * .tfolder/* > ./.tlst
+   check 6-2 - ./.tlst '1865898363 29'
+   ${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
+   check 6-4 - .tfolder/from1 '3719268580 827'
+   check 6-5 - .tfolder/ex '4262925856 149'
+
+   ##
+   t__x2_msg > ./.tmbox
+
+   t_it() {
+      printf '#
+         '"${1}"'
+         echo 1:$?/$^ERRNAME
+         headerpick save retain cc date from subject to
+         '"${1}"'
+         echo 2:$?/$^ERRNAME
+         unheaderpick save retain *
+         '"${1}"'
+         echo 3:$?/$^ERRNAME
+         headerpick save ignore status in-reply-to
+         '"${1}"'
+         echo 4:$?/$^ERRNAME
+      #' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>&1
+      return ${?}
+   }
+
+   t_it 'move ./.tout'
+   check_ex0 7-estat
+   check 7-1 - ./.tall '3805176908 152'
+   check 7-2 - ./.tout '2447734879 1316'
+
+   t_it Move
+   check_ex0 8-estat
+   echo * > ./.tlst
+   check 8-1 - ./.tall '1044700686 136'
+   check 8-2 - ./mr2 '2447734879 1316'
+   check 8-3 - ./.tlst '3190056903 4'
+
+   t_epilog "${@}"
+} # }}}
+
+t_mbox() { # {{{
    t_prolog "${@}"
 
    (
@@ -4397,13 +5622,13 @@ t_mbox() {
    check 25 - ./.tinv2 '853754737 510'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_maildir() {
+t_maildir() { # {{{
    t_prolog "${@}"
 
    if have_feat maildir; then :; else
-      t_echoskip '[no maildir option]'
+      t_echoskip '[!MAILDIR]'
       t_epilog "${@}"
       return
    fi
@@ -4534,7 +5759,7 @@ t_maildir() {
    check 11 - ./.t11 '642719592 302'
 
    t_epilog "${@}"
-}
+} # }}}
 # }}}
 
 # MIME and RFC basics {{{
@@ -4674,7 +5899,7 @@ _EOT
          -Smta=test://"$MBOX" -Rf ./.trebox
       check 8 0 "${MBOX}" '3499372945 285'
    else
-      t_echoskip '8:[no iconv option]'
+      t_echoskip '8:[!ICONV]'
    fi
 
    t_epilog "${@}"
@@ -4683,17 +5908,18 @@ _EOT
 t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    t_prolog "${@}"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+   if [ -n "${UTF8_LOCALE}" ] && have_feat multibyte-charsets &&
+         have_feat iconv; then
       if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
             (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
          :
       else
-         t_echoskip '[iconv(1) missing conversion]'
+         t_echoskip '[ICONV/iconv(1):missing conversion(s)]'
          t_epilog "${@}"
          return
       fi
    else
-      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_echoskip '[no UTF-8 locale or !MULTIBYTE-CHARSETS or !ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4744,7 +5970,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 4 - ./.txlog '4083300132 2030'
    else
-      t_echoskip '1-4:[ISO-2022-JP unsupported]'
+      t_echoskip '1-4:[ICONV/iconv(1):ISO-2022-JP unsupported]'
    fi
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
@@ -4793,7 +6019,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 8 - ./.txlog '3192017734 1983'
    else
-      t_echoskip '5-8:[EUC-JP unsupported]'
+      t_echoskip '5-8:[ICONV/iconv(1):EUC-JP unsupported]'
    fi
 
    t_epilog "${@}"
@@ -4803,7 +6029,7 @@ t_iconv_mainbody() {
    t_prolog "${@}"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then :; else
-      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_echoskip '[no UTF-8 locale or !ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4820,13 +6046,9 @@ t_iconv_mainbody() {
    check_exn0 3
    check 3 - "${MBOX}" '3559538297 250'
    if have_feat uistrings; then
-      if have_feat docstrings; then # xxx should not be like that
-         check 4 - ./.terr '2579894983 148'
-      else
-         check 4 - ./.terr '271380835 121'
-      fi
+      check 4 - ./.terr '271380835 121'
    else
-      t_echoskip '4:[test unsupported]'
+      t_echoskip '4:[!UISTRINGS]'
    fi
 
    # The different iconv(3) implementations use different replacement sequence
@@ -4842,9 +6064,9 @@ t_iconv_mainbody() {
       elif [ ${i} -eq 12 ]; then
          check 5-3 - ./.tout '1959197095 283' # XXX old (before test MTA)
       elif [ ${i} -eq 3 ]; then
-         check 5-4 - ./.tout '3896050050 278'
+         check 5-4 - ./.tout '3544755786 278'
       else
-         check 5-5 - ./.tout '3216374419 278'
+         check 5-5 - ./.tout '2381160335 278'
       fi
    else
       t_echoskip '5:[test unsupported]'
@@ -4877,7 +6099,7 @@ t_mime_force_sendout() {
    t_prolog "${@}"
 
    if have_feat iconv; then :; else
-      t_echoskip '[option iconv missing, unsupported]'
+      t_echoskip '[!ICONV]'
       t_epilog "${@}"
       return
    fi
@@ -4941,7 +6163,7 @@ t_C_opt_customhdr() {
       this-goes@nowhere >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3555856637 241'
+   check 1 0 "${MBOX}" '2535463301 238'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.
@@ -4964,7 +6186,7 @@ t_C_opt_customhdr() {
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '1826639044 1102'
+   check 2 0 "${MBOX}" '544085062 1086'
 
    t_epilog "${@}"
 }
@@ -5003,8 +6225,8 @@ _EOT
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		commandalias x echo '$?/$^ERRNAME'
 		echo 1
-		alias :abra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
-		alias :abra!; x
+		alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+		alias a:bra!; x
 		alias ha@m  ham-expansion  ha@m '';x
 		alias ha@m;x
 		alias beb@ra  ceb@ra beb@ra1;x
@@ -5014,16 +6236,16 @@ _EOT
 		alias deb@ris   '';x
 		alias deb@ris;x
 		echo 2
-		alias - :abra!;x
+		alias - a:bra!;x
 		alias - ha@m;x
 		alias - beb@ra;x
 		alias - ceb@ra;x
 		alias - deb@ris;x
 		echo 3
 		unalias ha@m;x
-		alias - :abra!;x
+		alias - a:bra!;x
 		unalias beb@ra;x
-		alias - :abra!;x
+		alias - a:bra!;x
 		echo 4
 		unalias*;x;alias;x
 		echo 5
@@ -5038,9 +6260,9 @@ _EOT
 		\alias - ha@m;x
 		\alias - expa@and;x
 		__EOT
-      check 3 0 "${MBOX}" '1072772360 789'
+      check 3 0 "${MBOX}" '1513155156 796'
    else
-      t_echoskip '3:[test unsupported]'
+      t_echoskip '3:[!UISTRINGS]'
    fi
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
@@ -5102,6 +6324,69 @@ t_shortcut() {
 
    t_epilog "${@}"
 }
+
+t_netrc() {
+   t_prolog "${@}"
+
+   if have_feat netrc; then :; else
+      t_echoskip '[!NETRC]'
+      t_epilog "${@}"
+      return
+   fi
+
+   printf '# comment
+      machine x.local login a1	machine x.local login a2 password p2
+      machine	x.local	login	a3	password	"p 3"
+      machine
+      pop.x.local
+      login
+      a2
+      password
+      p2-pop!
+      machine *.x.local login a2 password p2-any!
+      machine y.local login ausr password apass
+      machine
+      z.local password
+      noupa
+      # and unused default
+      default login defacc password defpass
+   ' > ./.tnetrc
+   ${chmod} 0600 ./.tnetrc
+
+   printf 'netrc;echo =$?;netrc c;echo =$?;netr loa;echo =$?;netr s;echo =$?' |
+      NETRC=./.tnetrc ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '2911708535 542'
+
+   have_feat uistrings && i='3076722625 893' || i='3808149439 645'
+   printf '# Comment
+      echo ==host
+      netrc loo x.local
+      netrc loo y.local
+      netrc loo z.local
+      echo ==(re)load cache
+      netrc load;echo $?/$^ERRNAME
+      echo ==usr@host
+      netrc loo a1@x.local
+      netrc loo a2@x.local
+      netrc loo a3@x.local
+      netrc loo a4@x.local
+      echo ==clear cache
+      netrc clear;echo $?/$^ERRNAME
+      echo ==usr@x.host
+      netrc loo a2@pop.x.local
+      netrc loo a2@imap.x.local
+      netrc loo a2@smtp.x.local
+      echo ==usr@y.x.host
+      netrc loo a2@nono.smtp.x.local
+      echo ==[usr@]unknown-host
+      netrc loo a.local
+      netrc loo defacc@a.local
+      netrc loo a1@a.local
+   ' | NETRC=./.tnetrc ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" "${i}"
+
+   t_epilog "${@}"
+}
 # }}}
 
 # Operational basics with easy tests {{{
@@ -5112,7 +6397,7 @@ t_expandaddr() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -5406,7 +6691,7 @@ t_mta_aliases() {
    t_prolog "${@}"
 
    if have_feat mta-aliases; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!MTA_ALIASES]'
       t_epilog "${@}"
       return
    fi
@@ -5442,15 +6727,20 @@ t_mta_aliases() {
    ## xxx The following are actually *expandaddr* tests!!
 
    # May not send plain names over SMTP!
-   echo | ${MAILX} ${ARGS} -Smta=smtp://laber.backe \
-      -Smta-aliases=./.tali \
-      -b a3 -c a2 a1 > ./.tall 2>&1
-   check_exn0 3
-   check 4 - "${MBOX}" '1172368381 238'
-   if have_feat uistrings; then
+   mtaali=
+   if have_feat smtp; then
+      echo | ${MAILX} ${ARGS} \
+         -Smta=smtp://laber.backe -Ssmtp-auth=none \
+         -Smta-aliases=./.tali \
+         -b a3 -c a2 a1 > ./.tall 2>&1
+      check_exn0 3
+      check 4 - "${MBOX}" '1172368381 238'
+      mtaali=1
+   fi
+   if [ -n "${mtaali}" ] && have_feat uistrings; then
       check 5 - .tall '771616226 179'
    else
-      t_echoskip '5:[test unsupported]'
+      t_echoskip '5:[!SMTP/!UISTRINGS]'
    fi
 
    # xxx for false-positive SMTP test we would need some mocking
@@ -5463,7 +6753,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 8 - .tall '2834389894 178'
    else
-      t_echoskip '8:[test unsupported]'
+      t_echoskip '8:[!UISTRINGS]'
    fi
 
    echo | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
@@ -5474,7 +6764,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 10 - .tall '2136559508 69'
    else
-      t_echoskip '10:[test unsupported]'
+      t_echoskip '10:[!UISTRINGS]'
    fi
 
    echo 'a9:nine@nine.nine' >> ./.tali
@@ -5503,6 +6793,7 @@ t_mta_aliases() {
    echo and, once again, check that cache is updated
    # Enclose one pipe in quotes: immense stress for our stupid address parser:(
    !echo "a10:./.tf1,|%s>./.tp1,\\"|%s > ./.tp2\\",./.tf2" >> ./.tali
+   mtaaliases load
    mail a1
 !c a2
 !:echo $?/$^ERRNAME
@@ -5513,7 +6804,7 @@ t_mta_aliases() {
    mail a1
 !c a2
 !:echo $?/$^ERRNAME
-!^header insert bcc a3 a10
+!^header insert bcc "a3 a10"
 !:echo $?/$^ERRNAME
 !.
    ' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
@@ -5523,7 +6814,7 @@ t_mta_aliases() {
    if have_feat uistrings; then
       check 14 - .tall '1795496020 473'
    else
-      t_echoskip '14:[test unsupported]'
+      t_echoskip '14:[!UISTRINGS]'
    fi
    check 15 - .tf1 '3056269950 249'
    check 16 - .tp1 '3056269950 249'
@@ -5576,30 +6867,6 @@ t_filetype() {
    } > ./.t.out 2>&1
    check 4 - ./.t.mbox '2687765142 27092'
    check 5 - ./.t.out '2230192693 173'
-
-   t_epilog "${@}"
-}
-
-t_record_a_resend() {
-   t_prolog "${@}"
-
-   printf '
-         set record=%s
-         m %s\n~s Subject 1.\nHello.\n~.
-         set record-files add-file-recipients
-         m %s\n~s Subject 2.\nHello.\n~.
-         File %s
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-         set record-resent
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
-      ${MAILX} ${ARGS}
-
-   check 1 0 "${MBOX}" '2632690399 252'
-   check 2 - .t.record '3337485450 456'
-   check 3 - .t.resent '1560890069 640'
 
    t_epilog "${@}"
 }
@@ -5746,8 +7013,7 @@ t_message_injections() {
 
    echo some-body | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
+      -Smessage-inject-tail="`${cat} ./.tmysig`"'\ntail-inject' \
       ex@am.ple > ./.tall 2>&1
    check 1 0 "${MBOX}" '701778583 143'
    check 2 - .tall '4294967295 0' # empty file
@@ -5763,8 +7029,7 @@ t_message_injections() {
 	_EOT
    < ./.template ${MAILX} ${ARGS} -t -Smta=test://"$MBOX" \
       -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
+      -Smessage-inject-tail="`${cat} ./.tmysig`\n"'tail-inject' \
       > ./.tall 2>&1
    check 3 0 "${MBOX}" '2189109479 207'
    check 4 - .tall '4294967295 0' # empty file
@@ -5773,7 +7038,7 @@ t_message_injections() {
 }
 
 t_attachments() {
-   # Relatively Simple, if we need more here, place in a later vim fold!
+   # TODO More should be in compose mode stuff aka digmsg
    t_prolog "${@}"
 
    ${cat} <<-_EOT  > ./.tx
@@ -5814,7 +7079,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 2 - .tall '1928331872 720'
    else
-      t_echoskip '2:[test unsupported]'
+      t_echoskip '2:[!UISTRINGS]'
    fi
 
    ${rm} "${MBOX}"
@@ -5868,7 +7133,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 4 - .tall '2526106274 1910'
    else
-      t_echoskip '4:[test unsupported]'
+      t_echoskip '4:[!UISTRINGS]'
    fi
 
    ${rm} "${MBOX}"
@@ -5903,7 +7168,51 @@ reply 1 2
    if have_feat uistrings; then
       check 6 - .tall '1210753005 508'
    else
-      t_echoskip '6:[test unsupported]'
+      t_echoskip '6:[!UISTRINGS]'
+   fi
+
+   ##
+
+   # Content-ID:
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -Sstealthmua=noagent -Shostname \
+      -a ./.t1 -a './.t 2' \
+      -a ./.t3 -a './.t 4' \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 7 0 .tall '1003537919 1262'
+
+   # input charset
+   </dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
+      -a ./.t1=ascii -a './.t 2'=LATin1 \
+      -a ./.t3=UTF-8 -a './.t 4'=- \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 8 0 .tall '361641281 921'
+
+   # input+output charset, no iconv
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -a ./.t1=ascii#- -a './.t 2'=LATin1#- \
+      -a ./.t3=UTF-8#- -a './.t 4'=utf8#- \
+      -s Y \
+      ex@am.ple > ./.tall 2>&1
+   check 9 0 .tall '1357456844 933'
+
+   if have_feat iconv; then
+      printf 'ein \303\244ffchen und ein pferd\n' > .t10-f1
+      if (< .t10-f1 iconv -f ascii -t utf8) >/dev/null 2>&1; then
+         </dev/null ${MAILX} ${ARGS} --set mta=test \
+            --set stealthmua=noagent --set hostname \
+            --attach ./.t1=-#utf8 \
+            --attach ./.t10-f1=utf8#latin1 \
+            --subject Y \
+            ex@am.ple > ./.tall 2>&1
+         check 10 0 .tall '1257664842 877'
+      else
+         t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
+      fi
+   else
+      t_echoskip '10:[!ICONV]'
    fi
 
    t_epilog "${@}"
@@ -6013,7 +7322,7 @@ t_rfc2231() {
    if have_feat uistrings; then
       check 5 - ./.terr '3713266499 473'
    else
-      t_echoskip '5:[test unsupported]'
+      t_echoskip '5:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"
@@ -6023,7 +7332,7 @@ t_mime_types_load_control() {
    t_prolog "${@}"
 
    if have_feat uistrings; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS]'
       t_epilog "${@}"
       return
    fi
@@ -6069,7 +7378,7 @@ t_mime_types_load_control() {
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '3998003232 3633'
+   check 2 0 ./.tout '2184535740 3640'
 
    t_epilog "${@}"
 }
@@ -6183,7 +7492,7 @@ _EOT
    if have_feat uistrings; then
       check 2 - .tall '1878598364 505'
    else
-      t_echoskip '2:[test unsupported]'
+      t_echoskip '2:[!UISTRINGS]'
    fi
 
    # Automatic alternates, also from command line (freezing etc.)
@@ -6204,34 +7513,34 @@ _EOT
 
    printf '#
    reply
-!h
-b@b.org
-a@b.org  b@b.org c@c.org
-
-
+!^header remove to
+!^header remove cc
+!^header remove subject
+!^header insert to b@b.org
+!^header insert cc "a@b.org  b@b.org c@c.org"
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
          -Rf ./.tin > ./.tall 2>&1
    check 3 0 "${MBOX}" '3184203976 265'
-   check 4 - .tall '4294967295 0'
+   check 4 - .tall '3604001424 44'
 
    # same, per command
    printf '#
    set from=a@b.org,b@b.org,c@c.org sender=a@b.org
    reply
-!h
-b@b.org
-a@b.org  b@b.org c@c.org
-
-
+!^header remove to
+!^header remove cc
+!^header remove subject
+!^header insert to b@b.org
+!^header insert cc "a@b.org  b@b.org c@c.org"
 my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! \
          -Rf ./.tin > ./.tall 2>&1
    check 5 0 "${MBOX}" '98184290 530'
-   check 6 - .tall '4294967295 0'
+   check 6 - .tall '3604001424 44'
 
    # And more, with/out -r
    # TODO -r should be the Sender:, which should automatically propagate to
@@ -6269,156 +7578,166 @@ my body
    t_epilog "${@}"
 }
 
-t_quote_a_cmd_escapes() {
+t_cmd_escapes() {
    # quote and cmd escapes because this (since Mail times) is worked in the
    # big collect() monster of functions
    t_prolog "${@}"
 
    echo 'included file' > ./.ttxt
+   { t__x1_msg && t__x2_msg && t__x3_msg &&
+      t__gen_msg from 'ex4@am.ple' subject sub4 &&
+      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5; } > ./.tmbox
 
-   ${cat} <<-_EOT > ./.tmbox
-	From neverneverland  Sun Jul 23 13:46:25 2017
-	Subject: Bugstop: five miles out 1
-	Reply-To: mister originator1 <mr1@originator>
-	From: mister originator1 <mr1@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is1@a.list
-	In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
-	Date: Wed, 19 Jul 2017 09:22:57 -0400
-	Message-Id: <20170719132257.766AF781267-1@originator>
-	Status: RO
-	
-	That's appalling, I.
-	
-	From neverneverland  Sun Jul 23 13:47:25 2017
-	Subject: Bugstop: five miles out 2
-	Reply-To: mister originator2 <mr2@originator>
-	From: mister originator2 <mr2@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is2@a.list
-	In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
-	Date: Wed, 19 Jul 2017 09:23:57 -0400
-	Message-Id: <20170719132257.766AF781267-2@originator>
-	Status: RO
-	
-	That's appalling, II.
-	
-	From neverneverland  Sun Jul 23 13:48:25 2017
-	Subject: Bugstop: five miles out 3
-	Reply-To: mister originator3 <mr3@originator>
-	From: mister originator3 <mr3@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is3@a.list
-	In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
-	Date: Wed, 19 Jul 2017 09:24:57 -0400
-	Message-Id: <20170719132257.766AF781267-3@originator>
-	Status: RO
-	
-	That's appalling, III.
-	
-	_EOT
-
-   printf '#
-      set indentprefix=" |"
-      set quote
-      reply 2
-!.
-      set quote=noheading
-      reply 2
-!.
-      headerpick type retain cc date from message-id reply-to subject to
-      set quote=headers
-      reply 2
-!.
-      set quote=allheaders
-      reply 2
-!.
-   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
-         -Sescape=! -Sindentprefix=' >' \
-         ./.tmbox >./.tall 2>&1
-   check_ex0 1-estat
-   ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '1960457897 2031'
-
-   # ~@ is tested with other attachment stuff, ~^ is in compose_hooks; we also
-   # have some in compose_edits and digmsg
-   ${rm} "${MBOX}"
+   # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
       set Sign=SignVar sign=signvar DEAD=./.ttxt
+      set forward-inject-head quote-inject-head
       headerpick type retain Subject
+      headerpick forward retain Subject To
       reply 2
 !!1 Not escaped.  And shell test last, right before !..
+!:echo 1
 !:   echo 2 only echoed via colon
+!:echo 2:$?/$^ERRNAME
 !_  echo 3 only echoed via underscore
+!:echo 3:$?/$^ERRNAME
 !< ./.ttxt
+!:echo 4:$?/$^ERRNAME
 !<! echo 5 shell echo included
+!:echo 5:$?/$^ERRNAME
 !| echo 6 pipecmd-pre; cat; echo 6 pipecmd-post
+!:echo 6:$?/$^ERRNAME
 7 and 8 are ~A and ~a:
 !A
+!:echo 7:$?/$^ERRNAME
 !a
+!:echo 8:$?/$^ERRNAME
 !b 9 added ~b cc <ex1@am.ple>
+!:echo 9:$?/$^ERRNAME
 !c 10 added ~c c <ex2@am.ple>
+!:echo 10:$?/$^ERRNAME
 11 next ~d / $DEAD
 !d
+!:echo 11:$?/$^ERRNAME
 12: ~F
 !F
+!:echo 12:$?/$^ERRNAME
 13: ~F 1 3
 !F 1 3
+!:echo 13:$?/$^ERRNAME
+!F 1000
+!:echo 13-1:$?/$^ERRNAME; set posix
 14: ~f (headerpick: subject)
 !f
+!:echo 14:$?/$^ERRNAME; unset posix forward-inject-head quote-inject-head
+14.1: ~f (!posix: injections; headerpick: subject to)
+!f
+!:echo 14.1:$?/$^ERRNAME; set forward-add-cc
+14.2: ~f (!posix: headerpick: subject to; forward-add-cc adds mr3)
+!f 3
+!:echo 14.2:$?/$^ERRNAME; set fullnames
+14.3: ~f (!posix: headerpick: subject to; forward-add-cc adds mr1 fullname)
+!f 1
+!:echo 14.3:$?/$^ERRNAME; set nofullnames noforward-add-cc posix
 15: ~f 1
 !f 1
+!:echo 15:$?/$^ERRNAME
+15.5: nono: ~H, ~h
+!H
+!:echo 15.5-1:$?/$^ERRNAME
+!h
+!:echo 15.5-2:$?/$^ERRNAME
 16, 17: ~I Sign, ~i Sign
 !I Sign
+!:echo 16:$?/$^ERRNAME
 !i Sign
+!:echo 17:$?/$^ERRNAME
 18: ~M
 !M
+!:echo 18:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 19: ~M 1
 !M 1
+!:echo 19:$?/$^ERRNAME
 20: ~m
 !m
+!:echo 20:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 21: ~m 3
 !m 3
-28-32: ~Q; 28: ~Q
+!:echo 21:$?/$^ERRNAME
+28-34: ~Q; 28: ~Q
 !Q
+!:echo 28:$?/$^ERRNAME
 29: ~Q 1 3
 !Q 1 3
+!:echo 29:$?/$^ERRNAME
 set quote
 !:set quote
 30: ~Q
 !Q
+!:echo 30:$?/$^ERRNAME
 31: ~Q 1 3
 !Q 1 3
+!:echo 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
 !:wysh set quote-inject-head=%%a quote-inject-tail=--%%r
 32: ~Q
 !Q
-unset quote stuff
-!:unset quote quote-inject-head quote-inject-tail
+!:echo 32:$?/$^ERRNAME
+set noquote-inject-head noquote-inject-tail quote-add-cc
+!:set noquote-inject-head noquote-inject-tail quote-add-cc
+33: ~Q 4
+!Q 4
+!:echo 33:$?/$^ERRNAME
+set fullnames
+!:set fullnames
+34: ~Q 5
+!Q 5
+!:echo 34:$?/$^ERRNAME
+unset fullnames, quote stuff
+!:unset quote quote-add-cc fullnames
 22: ~R ./.ttxt
 !R ./.ttxt
+!:echo 22:$?/$^ERRNAME
 23: ~r ./.ttxt
 !r ./.ttxt
+!:echo 23:$?/$^ERRNAME
 24: ~s this new subject
 !s 24 did new ~s ubject
+!:echo 24:$?/$^ERRNAME
 !t 25 added ~t o <ex3@am.ple>
-26: ~U
+!:echo 25:$?/$^ERRNAME
+26.1: ~U
 !U
-27: ~U 1
+!:echo 26.1:$?/$^ERRNAME
+26.2: ~U 1
 !U 1
+!:echo 26.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
+27.1: ~u
+!u
+!:echo 27.1:$?/$^ERRNAME
+27.2: ~u 1
+!u 1
+!:echo 27.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 and i ~w rite this out to ./.tmsg
 !w ./.tmsg
+!:echo i ~w:$?/$^ERRNAME
 !:wysh set x=$escape;set escape=~
 ~!echo shell command output
+~:echo shell:$?/$^ERRNAME
 ~:wysh set escape=$x
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' |' \
-         ./.tmbox >./.tall 2>&1
+         ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '209404720 4092'
-   check 3 - ./.tmsg '2771314896 3186'
+   check 2 - "${MBOX}" '1820203910 6036'
+   if have_feat uistrings; then
+      check 2-err - ./.terr '3575876476 49'
+   else
+      t_echoskip '2-err:[!UISTRINGS]'
+   fi
+   check 3 - ./.tmsg '2308114568 4467'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -6443,20 +7762,48 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '3995224952 4293'
+   check 4 0 "${MBOX}" '2359405542 6237'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
       check 5 - ./.tall '1818580177 59'
    fi
 
+   # Modifiers and whitespace indulgence
+   printf 'body
+!:remove '"${MBOX}"'
+! :echo one
+! 		  <./.ttxts
+!               :echo two
+!   :     set i=./.ttxts
+! 	  -  	  $ 	 <  	   $i
+!:echo three
+!   :     set \\
+              	          errexit
+! 	  -  	$  <   $i
+! : echo four
+!$<  	   ./.ttxts
+! 	 :   	 echo five
+   ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
+         -Sescape=! \
+         -Spwd="`${pwd}`" \
+         -s testsub one@to.invalid >./.tall 2>./.terr
+   check 6 4 ./.tall '686767281 95'
+   [ -f "${MBOX}" ]; check_exn0 7
+   if have_feat uistrings; then
+      check 8 - ./.terr '1304637795 199'
+   else
+      t_echoskip '8:[!UISTRINGS]'
+   fi
+
    t_epilog "${@}"
 }
 
 t_compose_edits() { # XXX very rudimentary
-   # after: t_quote_a_cmd_escapes
+   # after: t_cmd_escapes
    t_prolog "${@}"
 
+   # Something to use as "editor"
    ${cat} <<-_EOT > ./.ted.sh
 	#!${SHELL}
 	${cat} <<-__EOT > \${1}
@@ -6489,11 +7836,12 @@ t_compose_edits() { # XXX very rudimentary
    check 7 - ./.tall '4294967295 0'
    ${rm} ./.tout1 ./.tout2 ./.tout3
 
-   # t_compose_hooks will test ~^ at edge
+   # Note t_compose_hooks adds ~^ stress tests
    ${mv} ./.tout ./.tout1
    ${mv} ./.tall ./.tout2
    printf '#
    mail ./.tout\n!s This subject is\nThis body is
+!^header
 !^header list
 !^header list fcc
 !^header show fcc
@@ -6516,7 +7864,7 @@ t_compose_edits() { # XXX very rudimentary
    check 8 0 ./.tout '3993703854 127'
    check 9 - ./.tout1 '4294967295 0'
    check 10 - ./.tout2 '4294967295 0'
-   check 11 - ./.tall '4280910245 300'
+   check 11 - ./.tall '1857504914 342'
 
    # < No longer in-a-row
 
@@ -6530,11 +7878,77 @@ t_compose_edits() { # XXX very rudimentary
    check 13 - ./.tall '4294967295 0'
 
    # This test assumes code of `^' and `digmsg' is shared: see t_digmsg()
+   echo 'b 1' > ./.t' x 1'
+   echo 'b 2' > ./.t' x 2'
+   printf '#
+mail ./.tatt
+!^header insert     subject      subject       
+!:set i="./.t x 1"
+!^header list
+!:echo =0
+!^attachment
+!:echo =1
+!^attachment insert "$i"
+!:echo =2
+!^attachment
+!:echo =3
+!^attachment list
+!:echo =4
+!^attachment insert '"'"'./.t x 2'"'"'
+!:echo =5
+!^attachment list
+!:echo =6
+!^attachment remove "$i"
+!:echo =7
+!^attachment list
+!:echo =8
+!^attachment insert $'"'"'\\$i'"'"'
+!:echo =10
+!^attachment list
+!:echo =11
+!^header list
+!:echo =12
+!^a a  $i
+!:echo =13
+!^a attribute-set  "$i"     filenames "  cannot wait  for you "
+!:echo =14
+!^a a  $i
+!:echo =15
+!^a attribute-set  "$i"     filename "  cannot wait  for you "
+!:echo =16
+!^a a  $i
+!:echo =17
+!^a attribute-at 2
+!:echo =18
+!^a attribute-set-at 2  "filename"   "private  eyes"
+!:echo =19
+!^a attribute-at 2
+!:echo =20
+!^a attribute-set-at 2 content-description "private c-desc"
+!:echo =21
+!^a attribute-at 2
+!:echo =22
+!^a attribute-set-at 2 content-ID "priv invd c-id"
+!:echo =23
+!^a attribute-at 2
+!:echo =24
+!^a attribute-set-at 2 content-TyPE tExT/mARkLO
+!:echo =25
+!^a attribute-at 2
+!:echo =26
+!^a attribute-set-at 2 content-TyPE ""
+!:echo =27
+!^a attribute-at 2
+!:echo =28
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
+   check 14 0 ./.tall '3491667030 1565'
+   check 15 - ./.tatt '1685063733 636'
 
    t_epilog "${@}"
 }
 
-t_digmsg() { # XXX rudimentary
+t_digmsg() { # XXX rudimentary; <> compose_edits()?
    t_prolog "${@}"
 
    printf '#
@@ -6636,11 +8050,8 @@ t_digmsg() { # XXX rudimentary
       ' "${cat}" "${sed}" |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 "$MBOX" '665881681 179'
-   if have_feat uistrings; then
-      check 2 - ./.tall '2554217728 1366'
-   else
-      check 2 - ./.tall '121327235 1093'
-   fi
+   have_feat uistrings && i='4159482825 1372' || i='2254509488 1103'
+   check 2 - ./.tall "${i}"
    check 3 - ./.tfcc '3993703854 127'
    check 4 - ./.tempty '4294967295 0'
    check 5 - ./.tcat '2157992522 256'
@@ -6650,6 +8061,12 @@ t_digmsg() { # XXX rudimentary
 
 t_on_main_loop_tick() {
    t_prolog "${@}"
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[!CMD_VEXPR]'
+      t_epilog "${@}"
+      return
+   fi
 
    printf '#
    echo hello; set i=1
@@ -6669,7 +8086,7 @@ define omlt {
    echo four
    echo --bye;xit' |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
-   check 1 0 ./.tall '367031402 108'
+   check 1 0 ./.tall '3697651500 130'
 
    t_epilog "${@}"
 }
@@ -6709,7 +8126,7 @@ t_compose_hooks() { # {{{ TODO monster
 
    if have_feat uistrings &&
          have_feat cmd-csop && have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!UISTRINGS/!CMD_CSOP/!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -6717,6 +8134,7 @@ t_compose_hooks() { # {{{ TODO monster
    (echo line one&&echo line two&&echo line three) > ./.treadctl
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
 
+   # Supposed to extend t_compose_edits with ~^ stress tests!
    ${cat} <<'__EOT__' > ./.trc
    define bail {
       echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -6724,7 +8142,7 @@ t_compose_hooks() { # {{{ TODO monster
    define xerr {
       vput csop es substr "$1" 0 1
       if [ "$es" != 2 ]
-         xcall bail "$2"
+         xcall bail "$2: $1"
       end
    }
    define read_mline_res {
@@ -6741,7 +8159,7 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header list"; read hl; echo $hl;\
          call xerr "$hl" "in_addr ($xh) 0-1"
 
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
       echo "~^header insert $xh <${xh}2@exam.ple>";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
@@ -6771,7 +8189,7 @@ t_compose_hooks() { # {{{ TODO monster
       end
 
       #
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
       echo "~^header insert $xh <${xh}2@exam.ple>";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
@@ -6810,9 +8228,9 @@ t_compose_hooks() { # {{{ TODO monster
       end
 
       #
-      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+      echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
-      echo "~^header insert $xh <${xh}2@exam.ple> (comment) \"Quot(e)d\"";\
+    echo "~^header insert $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
       echo "~^header insert $xh ${xh}3@exam.ple";\
          read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
@@ -7292,7 +8710,7 @@ __EOT__
       -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3199865751 10529'
+   check 1 0 "${MBOX}" '1646284089 10565'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -7300,7 +8718,7 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '473642362 12743'
+   check 2 0 "${MBOX}" '700681006 12851'
 
    ##
 
@@ -7369,7 +8787,7 @@ __EOT__
             endif
             #
             call _work 1; echo $?
-            echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
+           echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
                read es; echo $es; vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be diet"
@@ -7381,7 +8799,7 @@ __EOT__
             endif
             #
             call _work 2; echo $?
-            echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
+           echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
                read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy"
@@ -7391,7 +8809,7 @@ __EOT__
             if [ "$es" != 2 ]
                xcall bail "be juicy2"
             endif
-            echo "~^header insert bcc juice3 <juice3@exam.ple>";\
+            echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
                read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy3"
@@ -7522,7 +8940,7 @@ __EOT__
 
    ${rm} "${MBOX}"
    printf '#
-      set from="f1@z
+      set from="f1@z"
       m t1@z
 b1
 !.
@@ -7530,7 +8948,9 @@ b1
       m t2@z
 b2
 !.
-      ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Snomemdebug -Sescape=!
+      ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Snomemdebug -Sescape=! \
+         > ./.tnotes 2>&1
+   check_ex0 4-intro-estat
 
    printf '
       echo start: $? $! $^ERRNAME
@@ -7646,10 +9066,10 @@ this is content of forward 2, 2nd, with showname set
             on-compose-enter=t_oce on-compose-leave=t_ocl \
                on-compose-cleanup=t_occ \
             on-resend-enter=t_oce on-resend-cleanup=t_occ
-      ' > ./.tnotes 2>&1
+      ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '1818661134 11250'
+   check 4 - "${MBOX}" '1850092468 11799'
 
    t_epilog "${@}"
 } # }}}
@@ -7658,7 +9078,7 @@ t_mass_recipients() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -7834,6 +9254,7 @@ t_lreply_futh_rth_etc() {
 	   # fails because of missing recipients: we need to read EOF next, thus
 	   # place this in _Ls last; and second for the succeeding cases EOF is
 	   # not what these should read, so go over the backside and splice it in!
+	   # (A shame we do not have redirection++ as a Bourne/K/POSIX shell!)
 	   call _Ls "$@"
 	   echo -----After Lreply $1.$2: $?/$^ERRNAME
 	}
@@ -7864,7 +9285,7 @@ t_lreply_futh_rth_etc() {
 	call tweak set recipients-in-cc
 	call x 7
 	# While here, test that *fullnames* works (also here)
-	set fullnames
+	call tweak set fullnames
 	reply 1
 	This message should have *fullnames* in the header.
 	!.
@@ -7878,9 +9299,9 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '564303313 39797'
+      check 1 - "${MBOX}" '2954356452 39829'
    else
-      t_echoskip '1:[test unsupported]'
+      t_echoskip '1:[!UISTRINGS]'
    fi
 
    ##
@@ -7949,7 +9370,7 @@ t_pipe_handlers() {
    t_prolog "${@}"
 
    if have_feat cmd-vexpr; then :; else
-      t_echoskip '[test unsupported]'
+      t_echoskip '[!CMD_VEXPR]'
       t_epilog "${@}"
       return
    fi
@@ -8043,14 +9464,165 @@ t_pipe_handlers() {
 
    t_epilog "${@}"
 }
+
+t_mailcap() {
+   t_prolog "${@}"
+
+   if have_feat mailcap; then :; else
+      t_echoskip '[!MAILCAP]'
+      t_epilog "${@}"
+      return
+   fi
+
+   ${cat} <<-'_EOT' > ./.tmailcap
+text/html; lynx -dump %s; copiousoutput; nametemplate=%s.html
+application/pdf; /Applications/Preview.app/Contents/MacOS/Preview %s;\
+  nametemplate=%s.pdf;\
+  test = [ "${OSTYPE}" = darwin ]
+application/pdf;\
+  infile=%s\;\
+    trap "rm -f ${infile}" EXIT\;\
+    trap "exit 75" INT QUIT TERM\;\
+    mupdf "${infile}";\
+  test = [ -n "${DISPLAY}" ];\
+  nametemplate = %s.pdf; x-mailx-async
+application/pdf; pdftotext -layout %s -; nametemplate=%s.pdf; copiousoutput
+application/*; echo "This is \\"%t\\" but \
+     is 50 \% Greek to me" \; < %s head -c 1024 | cat -vet; \
+     description=" this is\;a \"wildcard\" match, no trailing quote!    ;\
+   copiousoutput; x-mailx-noquote
+
+    
+                                     ;
+bummer/hummer;;
+application/postscript; ps-to-terminal %s;\ needsterminal
+application/postscript; ps-to-terminal %s; \compose=idraw %s
+x-be2; the-cmd %s; \
+  print=print-cmd %s ; \
+            copiousoutput             ;         \
+  compose=compose-cmd -d %s ; \
+                   textualnewlines;    \
+  composetyped = composetyped-cmd -dd %s ; \
+    x-mailx-noquote ;\
+  edit=edit-cmd -ddd %s; \
+  description = a\;desc;\
+  nametemplate=%s.be2;\
+  test                       =                 this is "a" test ;  \
+    x-mailx-test-once ;\
+  x11-bitmap = x11-bitmap.bpm;;;;;
+application/*; echo "is \"%t\" \
+  50 \% Greek" \; cat %s; copiousoutput; \; description="catch-all buddy";
+audio/*; showaudio;compose=%n
+image/jpeg; showpicture -viewer xv %s
+image/*; showpicture %s
+message/partial; showpartial %s %{id} %{number} %{total}
+application/postscript ; lpr %s ; label="PS File";\
+	compose="getx PS %s"
+application/atomicmail; atomicmail %s ; needsterminal
+application/andrew-inset;     ezview %s ; copiousoutput;\
+   edit=ez -d %s; compose="ez -d %s"; label="Andrew i/d"
+text/richtext; xy iso-8859-1 -e richtext -p %s; \
+   test=test "`echo %{charset} | tr A-Z a-z`"  = iso-8859-1; copiousoutput
+text/plain; xy iso-8859-1 %s;\
+   test=test "`echo %{charset} | tr A-Z a-z`" = iso-8859-1; copiousoutput
+text/richtext; rich %s %{not-closed; copiousoutput
+default; cat %s; copiousoutput
+_EOT
+   ${chmod} 0644 ./.tmailcap
+
+   printf 'm;echo =1/$?;m c;echo =2/$?;
+         mailca loa;echo =3/$?;mailc s;echo =4/$?' |
+      MAILCAPS=./.tmailcap ${MAILX} -X'commandalias m mailcap' ${ARGS} \
+         > ./.tall 2>./.terr
+   check 1 0 ./.tall '2012114724 3064'
+   check 2 - ./.terr '3903313993 2338'
+
+   ##
+
+   echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 "${MBOX}"
+   check 3 0 "${MBOX}" '4224630386 228'
+
+   printf '#
+text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
+      test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
+text/plain; echo p-2-1\\;< %%s cat\\;echo p-2-2;\\
+      test=echo Y >> ./.terrmc\\;[ -z "$XY" ]
+text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
+         </dev/null cat %%s\\;echo p-3-2\\; } > ./.tx\\; mv -f ./.tx ./.tasy;\\
+      test=[ -n "$XY" ];nametemplate=%%s.txt;x-mailx-async
+text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
+   ' > ./.tmailcap
+
+   </dev/null MAILCAPS=./.tmailcap ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '#
+\mailcap
+\echo =1
+\mimeview
+\echo =2
+\environ set XY=yes
+\mimeview
+\echo =3
+\type
+\echo =4
+' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 4 0 ./.tall '1446638436 1286'
+   check 5 - ./.terr '4294967295 0'
+   check 6 - ./.terrmc '2376112102 6'
+   check 7 - ./.tasy '3913344578 37' async
+
+   t_epilog "${@}"
+}
 # }}}
 
-# Rest {{{
+# Unclassified rest {{{
+t_top() {
+   t_prolog "${@}"
+
+   t__gen_msg subject top1 to 1 from 1 cc 1 body 'body1-1
+body1-2
+
+body1-3
+body1-4
+
+
+body1-5
+'     > "${MBOX}"
+   t__gen_msg subject top2 to 1 from 1 cc 1 body 'body2-1
+body2-2
+
+
+body2-3
+
+
+body2-4
+body2-5
+'     >> "${MBOX}"
+
+   ${MAILX} ${ARGS} -Rf -Y '#
+\top 1
+\echo --- $?/$^ERRNAME, 1; \set toplines=10
+\top 1
+\echo --- $?/$^ERRNAME, 2; \set toplines=5
+\headerpick top retain subject # For top
+\headerpick type retain to subject # For Top
+\top 1
+\echo --- $?/$^ERRNAME, 3; \set topsqueeze
+\top 1 2
+\echo --- $?/$^ERRNAME, 4
+\Top 1
+\echo --- $?/$^ERRNAME, 5
+#  ' "${MBOX}" > ./.tall 2>&1
+   check 1 0 ./.tall '2556125754 705'
+
+   t_epilog "${@}"
+}
+
 t_s_mime() {
    t_prolog "${@}"
 
    if have_feat smime; then :; else
-      t_echoskip '[no S/MIME option]'
+      t_echoskip '[!SMIME]'
       t_epilog "${@}"
       return
    fi
@@ -8185,6 +9757,100 @@ t_z() {
 }
 
 # Test support {{{
+t__gen_msg() {
+   t___header() {
+      printf '%s: ' ${1}
+      case "${3}" in
+      [0-9]*)
+         ___hi=1
+         while [ ${___hi} -le ${3} ]; do
+            [ ${___hi} -gt 1 ] && printf ', '
+            printf '%s%s <%s%s@exam.ple>' ${1} ${___hi} ${2} ${___hi}
+            ___hi=`add ${___hi} 1`
+         done
+         ;;
+      *)
+         printf '%s' "${3}"
+         ;;
+      esac
+      printf '\n'
+   }
+
+   printf 'From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+'
+
+   body=Body
+   while [ ${#} -ge 2 ]; do
+      case "${1}" in
+      from) t___header From from "${2}";;
+      to) t___header To to "${2}";;
+      cc) t___header Cc cc "${2}";;
+      bcc) t___header Bcc bcc "${2}";;
+      subject) printf 'Subject: %s\n' "${2}";;
+      body) body="${2}";;
+      esac
+      shift 2
+   done
+
+   printf '\n%s\n\n' "${body}"
+}
+
+t__x1_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:46:25 2017
+	Subject: Bugstop: five miles out 1
+	Reply-To: mister originator1 <mr1@originator>
+	From: mister originator1 <mr1@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is1@a.list
+	In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
+	Date: Wed, 19 Jul 2017 09:22:57 -0400
+	Message-Id: <20170719132257.766AF781267-1@originator>
+	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+	Status: RO
+	
+	That's appalling, I.
+	
+	_EOT
+}
+
+t__x2_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:47:25 2017
+	Subject: Bugstop: five miles out 2
+	Reply-To: mister originator2 <mr2@originator>
+	From: mister originator2 <mr2@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is2@a.list
+	In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
+	Date: Wed, 19 Jul 2017 09:23:57 -0400
+	Message-Id: <20170719132257.766AF781267-2@originator>
+	Status: RO
+	
+	That's appalling, II.
+	
+	_EOT
+}
+
+t__x3_msg() {
+   ${cat} <<-_EOT
+	From neverneverland  Sun Jul 23 13:48:25 2017
+	Subject: Bugstop: five miles out 3
+	Reply-To: mister originator3 <mr3@originator>
+	From: mister originator3 <mr3@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is3@a.list
+	In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
+	Date: Wed, 19 Jul 2017 09:24:57 -0400
+	Message-Id: <20170719132257.766AF781267-3@originator>
+	Status: RO
+	
+	That's appalling, III.
+	
+	_EOT
+}
+
 t__put_subject() {
    # MIME encoding (QP) stress message subject
    printf 'Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
@@ -8277,10 +9943,15 @@ cc_all_configs() {
    else
       MAXJOBS=
    fi
+   if [ -n "${NOCOLOUR}" ] || [ -n "${MAILX_CC_TEST_NO_COLOUR}" ]; then
+      MAILX_CC_TEST_NO_COLOUR=1
+      export MAILX_CC_TEST_NO_COLOUR
+   fi
 
    < ${CONF} ${awk} '
       BEGIN{
          ALWAYS = "OPT_AUTOCC=1 OPT_AMALGAMATION=1"
+         NOTME["OPT_AUTOCC_STACKPROT"] = 1
          NOTME["OPT_ALWAYS_UNICODE_LOCALE"] = 1
          NOTME["OPT_CROSS_BUILD"] = 1
          NOTME["OPT_AUTOCC"] = 1
@@ -8289,7 +9960,6 @@ cc_all_configs() {
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
-         NOTME["OPT_FORCED_STACKPROT"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
 
          #OPTVALS
@@ -8315,7 +9985,7 @@ cc_all_configs() {
       /^[ 	]*VAL_/{
          sub(/^[ 	]*/, "")
          val = substr($0, index($0, "=") + 1)
-         if(val ~ /^\"/){
+         if(val ~ /^"/){
             val = substr(val, 2)
             val = substr(val, 1, length(val) - 1)
          }
@@ -8406,14 +10076,22 @@ cc_all_configs() {
          print "CONFIG=DEVEL OPT_AUTOCC=1"
          print "CONFIG=ODEVEL OPT_AUTOCC=1"
 
+         print split_here
+
          onepass("OPT_DEBUG=1")
          onepass("")
       }
    ' | while read c; do
+      if [ "$c" = split_here ]; then
+         printf 'Predefined configs done, now OPT_ combinations\n'
+         printf 'Predefined configs done, now OPT_ combinations\n' >&2
+         ${SHELL} -c "cd ../ && ${MAKE} distclean"
+         continue
+      fi
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
-      printf "\n\n##########\n$c\n"
-      printf "\n\n##########\n$c\n" >&2
-      ${SHELL} -c "cd .. && ${MAKE} ${c} config"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n"
+      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n" >&2
+      ${SHELL} -c "cd .. && ${MAKE} ${MAXJOBS} config ${c}"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
@@ -8432,7 +10110,6 @@ if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
    cc_all_configs
 else
    if have_feat debug; then
-      JOBWAIT=`add ${JOBWAIT} ${JOBWAIT}`
       if have_feat devel; then
          JOBSYNC=1
          DUMPERR=y

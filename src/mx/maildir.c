@@ -461,72 +461,80 @@ jleave:
 static boole
 a_maildir_readin(char const *name, struct message *mp){
    long size, lines;
-   boole b;
-   char *buf;
-   uz cnt, buflen, bufsize;
    off_t offset;
-   FILE *fp;
    char const *emsg;
+   FILE *fp;
+   uz bufsize, cnt, buflen;
+   char *buf;
+   boole rv, b;
    NYD_IN;
+
+   rv = FAL0;
+   mx_fs_linepool_aquire(&buf, &bufsize);
 
    if((fp = mx_fs_open(mp->m_maildir_file, "r")) == NIL){
       emsg = _("Cannot read %s for message %lu\n");
       goto jerr;
    }
+   emsg = _("I/O error reading %s for message %lu\n");
 
    offset = ftell(mb.mb_otf);
    cnt = fsize(fp);
 
-   mx_fs_linepool_aquire(&buf, &bufsize);
-   buflen = 0;
    b = FAL0;
    size = lines = 0;
-   while(fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NIL){
+   while(fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1) != NIL){
       /* Since we simply copy over data without doing any transfer
        * encoding reclassification/adjustment we *have* to perform
        * RFC 4155 compliant From_ quoting here */
       if(b && is_head(buf, buflen, FAL0)){
-         putc('>', mb.mb_otf);
+         if(putc('>', mb.mb_otf) == EOF)
+            goto jerr;
          ++size;
       }
-      size += fwrite(buf, 1, buflen, mb.mb_otf);
+      if(fwrite(buf, 1, buflen, mb.mb_otf) != buflen)
+         goto jerr;
+      size += buflen;
       b = (*buf == '\n');
       ++lines;
    }
-   mx_fs_linepool_release(buf, bufsize);
+   if(ferror(fp))
+      goto jerr;
 
    if(!b){
       /* TODO we need \n\n for mbox format.
        * TODO That is to say we do it wrong here in order to get it right
        * TODO when send.c stuff or with MBOX handling, even though THIS
        * TODO line is solely a property of the MBOX database format! */
-      putc('\n', mb.mb_otf);
+      if(putc('\n', mb.mb_otf) == EOF)
+         goto jerr;
       ++lines;
       ++size;
    }
-   b = (fflush(mb.mb_otf) != EOF);
 
-   mx_fs_close(fp);
-
-   if(!b){
-      emsg = _("I/O error reading %s for message %lu\n");
-      goto jleave;
-   }
+   if(fflush(mb.mb_otf) == EOF)
+      goto jerr;
 
    mp->m_size = mp->m_xsize = size;
    mp->m_lines = mp->m_xlines = lines;
    mp->m_block = mailx_blockof(offset);
    mp->m_offset = mailx_offsetof(offset);
    substdate(mp);
+
+   rv = TRU1;
 jleave:
+   if(fp != NIL)
+      mx_fs_close(fp);
+
+   mx_fs_linepool_release(buf, bufsize);
+
    NYD_OU;
-   return b;
+   return rv;
 
 jerr:
    n_err(emsg,
       n_shexp_quote_cp(savecatsep(name, '/', mp->m_maildir_file), FAL0),
       S(ul,P2UZ(mp - message + 1)));
-   b = FAL0;
    goto jleave;
 }
 
@@ -980,6 +988,7 @@ maildir_setfile(char const *who, char const * volatile name,
       emsg = N_("Cannot enter maildir://%s\n");
 jerr:
       n_err(V_(emsg), n_shexp_quote_cp(name, FAL0));
+      UNUSED(emsg);
       mb.mb_type = MB_VOID;
       *mailname = '\0';
       msgCount = 0;
@@ -1113,7 +1122,7 @@ maildir_append(char const *name, FILE *fp, long offset)
 
    n_autorec_relax_create();
    for (flag = MNEW, state = _NLSEP;;) {
-      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1);
+      bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
       if (bp == NULL ||
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
@@ -1132,8 +1141,13 @@ maildir_append(char const *name, FILE *fp, long offset)
          state = _INHEAD;
          flag = MNEW;
 
-         if (bp == NULL)
+         if(bp == NIL){
+            if(ferror(fp)){
+               rv = STOP;
+               goto jfree;
+            }
             break;
+         }
       } else
          size += buflen;
       offs += buflen;

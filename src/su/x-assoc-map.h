@@ -88,7 +88,7 @@ struct a_LA{
    uz la_khash;
 };
 
-/* force: ignore FROZEN state */
+/* force: ignore FROZEN state.  Return -1 if we did resize, successfully */
 SINLINE s32 a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount);
 static s32 a_FUN(resize)(struct a_T *self, u32 xcount);
 
@@ -111,7 +111,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
    u64 s;
    NYD2_IN;
 
-   rv = 0;
+   rv = su_ERR_NONE;
 
    if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
       s = self->a_T_F(size);
@@ -122,6 +122,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
          rv = a_FUN(resize)(self, xcount);
    }else
       ASSERT(xcount == 0 || self->a_T_F(size) > 0);
+
    NYD2_OU;
    return rv;
 }
@@ -176,8 +177,10 @@ a_FUN(resize)(struct a_T *self, u32 xcount){
             break;
       }
 
-      if(size == nsize)
-         goto jleave0;
+      if(size == nsize){
+         rv = su_ERR_NONE;
+         goto jleave;
+      }
    }
 
    /* Try to allocate new array, give up on failure */
@@ -213,8 +216,7 @@ a_FUN(resize)(struct a_T *self, u32 xcount){
    if(arr != NIL)
       su_FREE(arr);
 
-jleave0:
-   rv = 0;
+   rv = -1;
 jleave:
    NYD_OU;
    return rv;
@@ -227,7 +229,7 @@ a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags){
    ASSERT(self);
 
    /* Clear old elements first if there are any, and if necessary */
-   rv = 0;
+   rv = su_ERR_NONE;
 jerr:
    if(self->a_T_F(count) > 0){
       if(self->a_T_F(flags) & a_T_PUBNAME(OWNS))
@@ -251,7 +253,7 @@ jerr:
    /* We actually ignore a resize failure if we do have some backing store to
     * put elements into! */
    rv = a_FUN(check_resize)(self, TRU1, t->a_T_F(count));
-   if(rv != 0 && self->a_T_F(array) == NIL)
+   if(rv > su_ERR_NONE && self->a_T_F(array) == NIL)
       goto jleave;
 
    /* C99 */{
@@ -285,7 +287,7 @@ jerr:
       }
    }
 
-   ASSERT(rv == 0);
+   ASSERT(rv == su_ERR_NONE);
 jleave:
    NYD_OU;
    return rv;
@@ -344,7 +346,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap,
 #  error
 # endif
 
-   rv = 0;
+   rv = su_ERR_NONE;
 jleave:
    *res = np;
    NYD_OU;
@@ -357,7 +359,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
    s32 rv;
    NYD_IN;
 
-   rv = 0;
+   rv = su_ERR_NONE;
    flags = self->a_T_F(flags);
 
    if(flags & a_T_PUBNAME(OWNS)){
@@ -389,6 +391,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
    }
 
    np->a_N_F(data) = value;
+
    NYD_OU;
    return rv;
 }
@@ -406,6 +409,7 @@ a_FUN(remove)(struct a_T *self, struct a_N *np, struct a_LA *lap){
    else
       *lap->la_slot = np->a_N_F(next);
    a_N_FREE(self, np);
+
    NYD_OU;
    return self;
 }
@@ -492,15 +496,17 @@ jleave:
 
 s32
 a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
-      boole replace){
+      up replace_and_view_or_nil){
    struct a_LA la;
    struct a_N *np;
    s32 rv;
+   struct a_V *viewp;
    u16 flags;
    NYD_IN;
    ASSERT(self);
 
    flags = self->a_T_F(flags);
+   viewp = R(struct a_V*,replace_and_view_or_nil & ~TRU1);
 
    /* Ensure this basic precondition */
    if(value == NIL &&
@@ -512,7 +518,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
    /* But on error we will put new node in case we are empty, so create some
     * array space right away */
    if(UNLIKELY(self->a_T_F(size) == 0) &&
-         (rv = a_FUN(resize)(self, 1)) != 0)
+         (rv = a_FUN(resize)(self, 1)) > su_ERR_NONE)
       goto jleave;
 
    /* Try to find a yet existing key */
@@ -529,21 +535,36 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
 
    /* Is it an insertion of something new? */
    if(LIKELY(np == NIL)){
-      if(UNLIKELY((rv = a_FUN(node_new)(self, &np, &la, key, value)) != 0))
+      if(UNLIKELY((rv = a_FUN(node_new)(self, &np, &la, key, value)
+            ) != su_ERR_NONE))
          goto jleave;
       /* Never grow array storage if no other node is in this slot.
        * And do not fail if a resize fails at this point, it would only be
        * expensive and of no value, especially as it seems the user is
        * ignoring ENOMEM++ */
-      if(UNLIKELY(np->a_N_F(next) != NIL))
-         /*rv = */a_FUN(check_resize)(self, FAL0, self->a_T_F(count));
+      if(UNLIKELY(np->a_N_F(next) != NIL)){
+         /* If we did resize and we have to know the node location, it seems
+          * easiest and most efficient to simply perform another lookup */
+         if(a_FUN(check_resize)(self, FAL0, self->a_T_F(count)
+               ) < su_ERR_NONE && viewp != NIL)
+            np = a_T_PRISYM(lookup)(self, key, &la);
+      }
    }else{
-      if(LIKELY(replace) && ((rv = a_FUN(replace)(self, np, value)) != 0))
+      if(LIKELY(replace_and_view_or_nil & TRU1) &&
+            ((rv = a_FUN(replace)(self, np, value)) != su_ERR_NONE))
          goto jleave;
       rv = -1;
    }
 
 jleave:
+   if(UNLIKELY(viewp != NIL)){
+      if(LIKELY(rv <= su_ERR_NONE)){
+         viewp->a_V_F(node) = *la.la_slot;
+         viewp->a_V_F(index) = la.la_slotidx;
+      }else
+         viewp->a_V_F(node) = NIL;
+   }
+
    NYD_OU;
    return rv;
 }
@@ -671,8 +692,9 @@ a_T_PUBSYM(create_copy)(struct a_T *self, struct a_T const *t){
 
    su_mem_set(self, 0, sizeof *self);
 
-   ASSERT_JUMP(t != NIL, su_NYD_OU_LABEL);
+   ASSERT_NYD(t != NIL);
    (void)a_FUN(assign)(self, t, TRU1);
+
    NYD_OU;
    return self;
 }
@@ -722,6 +744,7 @@ a_T_PUBSYM(clear)(struct a_T *self){
       self->a_T_F(array) = NIL;
       self->a_T_F(size) = 0;
    }
+
    NYD_OU;
    return self;
 }
@@ -758,6 +781,7 @@ a_T_PUBSYM(clear_elems)(struct a_T *self){
          }while(np != NIL);
       }
    }
+
    NYD_OU;
    return self;
 }
@@ -772,6 +796,7 @@ a_T_PUBSYM(swap)(struct a_T *self, struct a_T *t){
    tmp = *self;
    *self = *t;
    *t = tmp;
+
    NYD_OU;
    return self;
 }
@@ -783,6 +808,7 @@ a_T_PUBSYM(balance)(struct a_T *self){
 
    self->a_T_F(flags) &= ~a_T_PUBNAME(FROZEN);
    (void)a_FUN(check_resize)(self, TRU1, self->a_T_F(count));
+
    NYD_OU;
    return self;
 }
@@ -798,6 +824,7 @@ a_T_PUBSYM(remove)(struct a_T *self, a_TK const *key){
    np = a_T_PRISYM(lookup)(self, key, &la);
    if(LIKELY(np != NIL))
       self = a_FUN(remove)(self, np, &la);
+
    NYD_OU;
    return (np != NIL);
 }
@@ -883,6 +910,7 @@ a_V_PUBSYM(find)(struct a_V *self, a_TK const *key){
       self->a_V_F(index) = la.la_slotidx;
       self->a_V_F(next_node) = NIL;
    }
+
    NYD_OU;
    return (np != NIL);
 }
@@ -926,6 +954,7 @@ a_V_PUBSYM(remove)(struct a_V *self){
       self->a_V_F(index) = idx;
    }
    self->a_V_F(next_node) = NIL;
+
    NYD_OU;
    return self;
 }
