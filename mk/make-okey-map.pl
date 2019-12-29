@@ -284,7 +284,7 @@ sub dump_map{
 
    # Dump the names sequentially (in input order), create our map entry along
    print F 'static char const a_amv_var_names[] = {', "\n";
-   my ($i, $alen) = (0, 0);
+   my ($i, $alen, $obsolete_any) = (0, 0, 0);
    my (%virts, %defvals, %i3vals, %chains);
    foreach my $e (@ENTS){
       $e->{keyoff} = $alen;
@@ -326,7 +326,10 @@ sub dump_map{
          $chains{$k} = $e;
          push @fa, 'a_AMV_VF_CHAIN'
       }
-      if($e->{obsolete}) {push @fa, 'a_AMV_VF_OBSOLETE'}
+      if($e->{obsolete}){
+         $obsolete_any = 1;
+         push @fa, 'a_AMV_VF_OBSOLETE'
+      }
       $e->{flags} = \@fa;
       my $f = join('|', @fa);
       $f = ', ' . $f if length $f;
@@ -335,7 +338,9 @@ sub dump_map{
       ++$i;
       $alen += $l + 1
    }
-   print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}U\n\n";
+   print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}u\n";
+   print F "#define a_AMV_VAR_HAS_OBSOLETE\n" if $obsolete_any != 0;
+   print F "\n";
 
    # Create the management map
    print F 'CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";

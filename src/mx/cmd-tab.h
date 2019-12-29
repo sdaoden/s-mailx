@@ -326,11 +326,12 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "followup", &c_followup, (A | I | R | SC | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Like `reply', but derive filename from first sender")) },
-   { "followupall", &c_followupall, (A | I | R | SC | TMSGLST), 0, MMNDEL, NULL
-     DS(N_("Like `reply', but derive filename from first sender")) },
-   { "followupsender", &c_followupsender, (A | I | R | SC | TMSGLST),
-      0, MMNDEL, NULL
-     DS(N_("Like `Followup', but always reply to the sender only")) },
+{ "followupall", &c_followupall, (O | A | I | R | SC | TMSGLST),
+   0, MMNDEL, NULL
+  DS(N_("Like `reply', but derive filename from first sender")) },
+{ "followupsender", &c_followupsender, (O | A | I | R | SC | TMSGLST),
+   0, MMNDEL, NULL
+  DS(N_("Like `Followup', but always reply to the sender only")) },
    { "folder", &c_file, (M | T | TWYRA), 0, 1, NULL
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1, NULL
@@ -349,18 +350,19 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Like `Reply', but derive filename from first sender")) },
    { "reply", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "replyall", &c_replyall, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
-     DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "replysender", &c_replysender, (A | I | R | SC | EM | TMSGLST),
-         0, MMNDEL, NULL
-     DS(N_("Reply to originator, exclusively")) },
+{ "replyall", &c_replyall, (O | A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
+   DS(N_("Reply to originator and recipients of <msglist>")) },
+{ "replysender", &c_replysender, (O | A | I | R | SC | EM | TMSGLST),
+   0, MMNDEL, NULL
+   DS(N_("Reply to originator, exclusively")) },
    { "respond", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originators and recipients of <msglist>")) },
-   { "respondall", &c_replyall, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
-     DS(N_("Reply to originators and recipients of <msglist>")) },
-   { "respondsender", &c_replysender, (A | I | R | SC | EM | TMSGLST),
-         0, MMNDEL, NULL
-     DS(N_("Reply to originator, exclusively")) },
+{ "respondall", &c_replyall, (O | A | I | R | SC | EM | TMSGLST),
+   0, MMNDEL, NULL
+   DS(N_("Reply to originators and recipients of <msglist>")) },
+{ "respondsender", &c_replysender, (O | A | I | R | SC | EM | TMSGLST),
+   0, MMNDEL, NULL
+   DS(N_("Reply to originator, exclusively")) },
    { "resend", &c_resend, (A | R | SC | EM | TARG), 0, MMNDEL,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_resend)
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },

@@ -55,6 +55,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/sort.h>
@@ -431,6 +432,11 @@ static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
 static boole a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
+
+/* */
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+static void a_amv_var_obsolete(char const *name);
+#endif
 
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
@@ -1602,7 +1608,17 @@ jerr:
    avp = NULL;
 jleave:
    avcp->avc_var = avp;
+
 j_leave:
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+   if(UNLIKELY((avmp = avcp->avc_map) != NIL &&
+         (avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0)){
+      if((n_poption & n_PO_D_V) || /* TODO v15compat: only if PO_D_V! */
+            (avp != NIL && avp != R(struct a_amv_var*,-1)))
+         a_amv_var_obsolete(avcp->avc_name);
+   }
+#endif
+
    if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
          UNLIKELY(n_poption & n_PO_VVV) &&
          avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
@@ -1889,44 +1905,49 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    boole rv;
    NYD2_IN;
 
-   if(value == NULL){
+   if(value == NIL){
       rv = a_amv_var_clear(avcp, avscf);
       goto jleave;
    }
 
-   if((avmp = avcp->avc_map) != NULL){
+   if((avmp = avcp->avc_map) != NIL){
+      u32 f;
+
       rv = FAL0;
+      f = avmp->avm_flags;
+
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+      if(UNLIKELY((f & a_AMV_VF_OBSOLETE) != 0))/* TODO v15compat only D_V */
+         a_amv_var_obsolete(avcp->avc_name);
+#endif
 
       /* Validity checks */
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_RDONLY) != 0 &&
-            !(n_pstate & n_PS_ROOT))){
+      if(UNLIKELY((f & a_AMV_VF_RDONLY) != 0 && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable is read-only: %s\n");
          goto jeavmp;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
+      if(UNLIKELY((f & a_AMV_VF_NOTEMPTY) && *value == '\0')){
          value = N_("Variable must not be empty: %s\n");
          goto jeavmp;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
-            !a_amv_var_check_num(value, FAL0))){
+      if(UNLIKELY((f & a_AMV_VF_NUM) && !a_amv_var_check_num(value, FAL0))){
          value = N_("Variable value not a number or out of range: %s\n");
          goto jeavmp;
       }
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_POSNUM) &&
-            !a_amv_var_check_num(value, TRU1))){
+      if(UNLIKELY((f & a_AMV_VF_POSNUM) && !a_amv_var_check_num(value, TRU1))){
          value = _("Variable value not a number, negative, "
                "or out of range: %s\n");
          goto jeavmp;
       }
 
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
+      if(UNLIKELY((f & a_AMV_VF_IMPORT) != 0 &&
             !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");
          goto jeavmp;
       }
 
       /* Any more complicated inter-dependency? */
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
+      if(UNLIKELY((f & a_AMV_VF_VIP) != 0 &&
             !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &value))){
          value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
@@ -1935,7 +1956,7 @@ jeavmp:
       }
 
       /* Transformations */
-      if(UNLIKELY(avmp->avm_flags & a_AMV_VF_LOWER)){
+      if(UNLIKELY(f & a_AMV_VF_LOWER)){
          char c;
 
          oval = savestr(value);
@@ -1943,10 +1964,6 @@ jeavmp:
          for(; (c = *oval) != '\0'; ++oval)
             *oval = su_cs_to_lower(c);
       }
-
-      /* Obsoletion warning */
-      if(UNLIKELY((avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0))
-         n_OBSOLETE2(_("variable superseded or obsoleted"), avcp->avc_name);
    }
 
    /* Lookup possibly existing var.  For */
@@ -2110,8 +2127,15 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
    f = 0;
 
    if(LIKELY((avmp = avcp->avc_map) != NULL)){
-      if(UNLIKELY(((f = avmp->avm_flags) & a_AMV_VF_NODEL) != 0 &&
-            !(n_pstate & n_PS_ROOT))){
+      f = avmp->avm_flags;
+
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+      if(UNLIKELY((f & a_AMV_VF_OBSOLETE) != 0))/* TODO v15compat only D_V */
+         a_amv_var_obsolete(avcp->avc_name);
+#endif
+
+      /* Validity checks */
+      if(UNLIKELY((f & a_AMV_VF_NODEL) != 0 && !(n_pstate & n_PS_ROOT))){
          n_err(_("Variable may not be unset: %s\n"), avcp->avc_name);
          goto jleave;
       }
@@ -2504,6 +2528,25 @@ jouter:
    NYD2_OU;
    return (errs == 0);
 }
+
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+static void
+a_amv_var_obsolete(char const *name){
+   static struct su_cs_dict a_csd__obsol, *a_csd_obsol;
+   NYD2_IN;
+
+   if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
+      a_csd_obsol = su_cs_dict_set_treshold_shift(
+            su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
+               su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+
+   if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
+      su_cs_dict_insert(a_csd_obsol, name, NIL);
+      n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
+   }
+   NYD2_OU;
+}
+#endif
 
 FL int
 c_define(void *v){
