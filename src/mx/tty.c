@@ -311,7 +311,7 @@ jleave:
  * (inspired from NetBSDs sh(1) and dash(1)s hetio.c).
  *
  * Only used in interactive mode.
- * TODO . This code should be splitted in funs/raw input/bind modules.
+ * TODO . This code should be split in funs/raw input/bind modules.
  * TODO . We work with wide characters, but not for buffer takeovers and
  * TODO   cell2save()ings.  This should be changed.  For the former the buffer
  * TODO   thus needs to be converted to wide first, and then simply be fed in.
@@ -822,7 +822,7 @@ static char const *a_tty_hist__query_config(void);
 /* Check whether a gabby history entry fits *history_gabby* */
 static boole a_tty_hist_is_gabby_ok(enum n_go_input_flags gif);
 
-/* (Definetely) Add an entry TODO yet assumes sigs_all_hild() is held!
+/* (Definitily) Add an entry TODO yet assumes sigs_all_hild() is held!
  * Returns false on allocation failure */
 static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif

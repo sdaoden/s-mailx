@@ -392,7 +392,7 @@ a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
       uz cnt;
       int i, soe;
 
-      /* Always select(2) even if it succeeds right aways, since on at least
+      /* Always select(2) even if it succeeds right away, since on at least
        * SunOS/Solaris 5.9 SPARC it will cause failures (busy resources) */
       if(connect(fd, soap, soapl) && (i = su_err_no()) != su_ERR_INPROGRESS){
          rv = i;

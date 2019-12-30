@@ -192,7 +192,7 @@ _spam_action(enum spam_action sa, int *ip)
       goto jleave;
    }
 
-   /* *spam-maxsize* we do handle ourselfs instead */
+   /* *spam-maxsize* we do handle ourselves instead */
    if ((cp = ok_vlook(spam_maxsize)) == NULL ||
          (su_idec_u32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
       maxsize = SPAM_MAXSIZE;

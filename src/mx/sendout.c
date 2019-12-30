@@ -437,7 +437,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       goto jleave;
    }
 
-   /* If we don't apply charset conversion at all (fixed input=ouput charset)
+   /* If we don't apply charset conversion at all (fixed input=output charset)
     * we also simply copy over, since it's the users desire */
    if (ap->a_conv == AC_FIX_INCS) {
       ap->a_charset = ap->a_input_charset;
@@ -2527,7 +2527,7 @@ do {\
       /* Mail-Followup-To: TODO factor out this huge block of code.
        * TODO Also, this performs multiple expensive list operations, which
        * TODO hopefully can be heavily optimized later on! */
-      /* Place ourselfs in there if any non-subscribed list is an addressee */
+      /* Place ourselves in there if any non-subscribed list is an addressee */
       if((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NIL ||
             ok_blook(followup_to)){
          enum{
@@ -2556,7 +2556,7 @@ do {\
             }
          }
 
-         /* But for that, we have to remove all incarnations of ourselfs first.
+         /* But for that, we have to remove all incarnations of ourselves first.
           * TODO It is total crap that we have alternates_remove(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
@@ -2625,7 +2625,7 @@ j_mft_add:
                   (np = fromasender) != NIL && np != R(struct mx_name*,0x1)){
                *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
 
-               /* Place ourselfs in the Cc: if we will be a member of M-F-T:,
+               /* Place ourselves in the Cc: if we will be a member of M-F-T:,
                 * and we are not subscribed (and are no addressee yet)? */
                /* TODO This entire block is much to expensive and should
                 * TODO be somewhere else (like name_unite(), or so) */

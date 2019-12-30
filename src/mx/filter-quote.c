@@ -426,7 +426,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len)
       goto jleave;
 
    /* Bypass? TODO Finally, this filter simply should not be used, then
-    * (TODO It supercedes prefix_write() or something) */
+    * (TODO It supersedes prefix_write() or something) */
    if (self->qf_bypass) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;

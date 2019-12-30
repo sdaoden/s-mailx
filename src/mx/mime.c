@@ -259,7 +259,7 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
    }else
 #endif /* mx_HAVE_ICONV */
    /* Else, if we will modify the data bytes and thus introduce the potential
-    * of messing up multibyte sequences which become splitted over buffer
+    * of messing up multibyte sequences which become split over buffer
     * boundaries TODO and unless we don't have our filter chain which will
     * TODO make these hacks go by, buffer data until we see a NL */
          if((flags & (TD_ISPR | TD_DELCTRL)) && outrest != NULL &&
@@ -339,7 +339,7 @@ mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
     * TODO   Somewhen, the following should produce smooth stuff:
     * TODO   '  "Hallo\"," Dr. Backe "Bl\"ö\"d" (Gell) <ha@llöch.en>
     * TODO    "Nochm\"a\"l"<ta@tu.da>(Dümm)'
-    * TODO NOT MULTIBYTE SAFE IF AN ENCODED WORD HAS TO BE SPLITTED!
+    * TODO NOT MULTIBYTE SAFE IF AN ENCODED WORD HAS TO BE SPLIT!
     * TODO  To be better we had to mbtowc_l() (non-std! and no locale!!) and
     * TODO   work char-wise!  ->  S-CText..
     * TODO  The real problem for STD compatibility is however that "in" is
@@ -368,7 +368,7 @@ mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
       _8BIT       = 1<<(_RND_SHIFT+2),    /* High bit set */
       _ENCODE     = 1<<(_RND_SHIFT+3),    /* Need encoding */
       _ENC_B64    = 1<<(_RND_SHIFT+4),    /* - let it be base64 */
-      _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily rised limit */
+      _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily raised limit */
    } flags;
    char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
    u32 cset7_len, cset8_len;
@@ -404,7 +404,7 @@ mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
    if(colp == NULL || (col = *colp) == 0)
       col = sizeof("Mail-Followup-To: ") -1; /* TODO dreadful thing */
 
-   /* The user may specify empy quoted-strings or comments, keep them! */
+   /* The user may specify empty quoted-strings or comments, keep them! */
    if(wbot == upper) {
       if(flags & _MSH_NOTHING){
          flags &= ~_MSH_NOTHING;

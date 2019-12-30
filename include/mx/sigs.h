@@ -51,7 +51,7 @@ FL void n_raise(int signo);
 /* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
 FL n_sighdl_t safe_signal(int signum, n_sighdl_t handler);
 
-/* Provide reproducable non-restartable signal handler installation */
+/* Provide reproducible non-restartable signal handler installation */
 FL n_sighdl_t n_signal(int signo, n_sighdl_t hdl);
 
 /* Block all signals except some fatal trap ones and SIGCHLD.

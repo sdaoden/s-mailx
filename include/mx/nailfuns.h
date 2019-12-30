@@ -70,7 +70,7 @@ struct quoteflt;
 
 /* There are problems with dup()ing of file-descriptors for child processes.
  * We have to somehow accomplish that the FILE* fp makes itself comfortable
- * with the *real* offset of the underlaying file descriptor.
+ * with the *real* offset of the underlying file descriptor.
  * POSIX Issue 7 overloaded fflush(3): if used on a readable stream, then
  *
  *    if the file is not already at EOF, and the file is one capable of
@@ -931,7 +931,7 @@ FL char *n_header_textual_date_info(struct message *mp,
 
 /* Create ready-to-go sender name of a message in *cumulation_or_null, the
  * addresses only in *addr_or_null, the real names only in *name_real_or_null,
- * and the full names in *name_full_or_null, taking acount for *showname*.
+ * and the full names in *name_full_or_null, taking account for *showname*.
  * If *is_to_or_null is set, *showto* and n_is_myname() are taken into account
  * when choosing which names to use.
  * The list as such is returned, or NULL if there is really none (empty strings

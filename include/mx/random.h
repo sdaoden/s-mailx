@@ -34,7 +34,7 @@
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL then we produce
- * a reproducable string by using and managing that counter instead */
+ * a reproducible string by using and managing that counter instead */
 EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
 EXPORT char *mx_random_create_cp(uz len, u32 *reprocnt_or_nil);
 

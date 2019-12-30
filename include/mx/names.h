@@ -46,7 +46,7 @@ enum mx_name_flags{
    mx_NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NIL) */
    mx_NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
    mx_NAME_ADDRSPEC_ERR_CHAR = 1u<<11, /* Invalid character */
-   mx_NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA convertion failed */
+   mx_NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA conversion failed */
    mx_NAME_ADDRSPEC_ERR_NAME = 1u<<13, /* Alias with invalid content */
    mx_NAME_ADDRSPEC_INVALID = mx_NAME_ADDRSPEC_ERR_EMPTY |
          mx_NAME_ADDRSPEC_ERR_ATSEQ | mx_NAME_ADDRSPEC_ERR_CHAR |

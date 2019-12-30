@@ -509,7 +509,7 @@ jrecipients_done:
           * -announce@ is only used for announcements, say).
           * So our desire is to honour this request and actively overwrite
           * List-Post: for our purpose; but only if its a single address.
-          * However, to avoid ambiguities with users that place themselve in
+          * However, to avoid ambiguities with users that place themselves in
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
           * a single address which points to the same domain as List-Post: */

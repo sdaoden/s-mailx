@@ -109,7 +109,7 @@ main(int argc, char **argv){
    sigset_t nset, oset;
    enum mx_file_dotlock_state fdls;
 
-   /* We're a dumb helper, ensure as much as we can noone else uses us */
+   /* We're a dumb helper, ensure as much as we can no one else uses us */
    if(argc != 12 ||
          strcmp(argv[ 0], VAL_PS_DOTLOCK) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||

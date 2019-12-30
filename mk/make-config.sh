@@ -1765,7 +1765,7 @@ then
    :
 else
    msg 'ERROR: we require user and group info / database searches.'
-   msg 'That much Unix we indulge ourselfs.'
+   msg 'That much Unix we indulge ourselves.'
    config_exit 1
 fi
 
@@ -1875,7 +1875,7 @@ then
    :
 else
    msg 'ERROR: we require termios.h and the tc[gs]etattr() family of functions.'
-   msg 'That much Unix we indulge ourselfs.'
+   msg 'That much Unix we indulge ourselves.'
    config_exit 1
 fi
 

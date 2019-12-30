@@ -73,9 +73,7 @@
 .Op : Ns Fl c Ar cc-addr Ns \&:
 .Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S\0 Ns Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op Fl s Ar subject
 .Op : Ns Fl T Ar """field:\0addr""" Ns \&:
 .Op : Ns Fl X Ar cmd Ns \&:
@@ -93,9 +91,7 @@
 .Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op Fl u Ar user
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
@@ -110,9 +106,7 @@
 .Fl f
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
 .Op Ar file
@@ -200,7 +194,7 @@ controls sourcing of the user's personal file
 .Pa \*(ur .
 The (original, unmodified) system resource file content is also
 available in the binary itself, and can be sourced without accessing
-the fileystem via
+the filesystem via
 .Ql x .
 The letters
 .Ql -
@@ -2099,7 +2093,7 @@ when connecting to it) can be fetched with the command
 .Ic tls
 (port can usually be the protocol name, too, and
 .Va tls-verify
-is take into account here):
+is taken into account here):
 .
 .Bd -literal -offset indent
 $ \*(uA -vX 'tls certchain SERVER-URL[:PORT]; x'
@@ -7141,7 +7135,7 @@ message list.
 .Mx
 .It Ic sleep
 \*(NQ Sleep for the specified number of seconds (and optionally
-milliseconds), by default interruptable.
+milliseconds), by default interruptible.
 If a third argument is given the sleep will be uninterruptible,
 otherwise the error number
 .Va \&!
@@ -7930,7 +7924,7 @@ No special handling of compressed files is performed.
 .Pp
 In interactive mode the user is consecutively asked for the filenames of
 the processed parts.
-For convience saving of each part may be skipped by giving an empty
+For convinience saving of each part may be skipped by giving an empty
 value, the same result as writing it to
 .Pa /dev/null .
 Shell piping the part content by specifying a leading vertical bar
@@ -11254,7 +11248,7 @@ define ocsm {
       vput csop es substring "${es}" 0 1
     if "$es" != 2
       echoerr 'Cannot insert Cc: header'; echo '~x'
-      # (no xit, macro finishs anyway)
+      # (no xit, macro finishes anyway)
     endif
   endif
 }
@@ -13760,7 +13754,7 @@ likewise for
 .Ev LV
 will optionally be set to
 .Ql -c .
-Alse see
+Also see
 .Va colour-pager .
 .
 .Mx
@@ -13892,7 +13886,7 @@ The data sink
 .
 .Mx
 .It Pa ~/.rnd
-\*(OP Possible location for persistant random entropy seed storage, see
+\*(OP Possible location for persistent random entropy seed storage, see
 .Va tls-rand-file .
 .El
 .\" }}}
@@ -14097,7 +14091,7 @@ Comment lines start with a number sign
 (in the first column!) and are ignored.
 Empty lines are ignored.
 All other lines are interpreted as mailcap entries.
-An entry definition may be splitted over multiple lines by placing the
+An entry definition may be split over multiple lines by placing the
 reverse solidus character
 .Ql \e
 last in all but the final line.
@@ -14427,7 +14421,7 @@ The default location
 may be overridden by the
 .Ev NETRC
 environment variable.
-As long as syntax contraints are honoured the file source may be
+As long as syntax constraints are honoured the file source may be
 replaced with the output of the shell command set in
 .Va netrc-pipe ,
 to load an encrypted file, for example.

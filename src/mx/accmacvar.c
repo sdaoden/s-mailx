@@ -1365,7 +1365,7 @@ jno_special_param:
    }
 
    /* Not a known key, but it may be a chain extension of one.
-    * We possibly wanna know for a variety of reasons */
+    * We possibly want to know for a variety of reasons */
    if(try_harder && a_amv_var_revlookup_chain(avcp, name))
       goto jleave;
 
@@ -1704,7 +1704,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    struct a_amv_var_map const *avmp;
    NYD2_IN;
 
-   /* Not function local, TODO but lazy evaluted for now */
+   /* Not function local, TODO but lazy evaluated for now */
    if(avcp->avc_special_prop == a_AMV_VST_QM){
       avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
       avcp->avc_okey = ok_v___qm;

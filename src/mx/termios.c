@@ -8,10 +8,10 @@
  *@ TODO   be a public struct with a lifetime, and activate/suspend methods.
  *@ TODO   It shall be up to the callers how this is managed, we can emit some
  *@ TODO   state events to let them decide for good.
- *@ TODO   Handling childs which take over terminal via HANDS_OFF is bad:
+ *@ TODO   Handling children which take over terminal via HANDS_OFF is bad:
  *@ TODO   instead, we need to have a notion of background and foreground,
  *@ TODO   and ensure the terminal is in normal mode when going backward.
- *@ TODO   What the childs do is up to them, managing them in stack: impossible
+ *@ TODO   What children do is up to them, managing them in stack: impossible
  *
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

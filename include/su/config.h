@@ -1,5 +1,5 @@
 /*@ (Yet) Manual config.h.
- *@ XXX Should be splitted into gen-config.h and config.h.
+ *@ XXX Should be split into gen-config.h and config.h.
  *
  * Copyright (c) 2001 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

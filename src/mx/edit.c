@@ -88,7 +88,7 @@ edit1(int *msgvec, int viored)
       fp = n_run_editor(fp, -1/*mp->m_size TODO */, viored,
             ((mb.mb_perm & MB_EDIT) == 0 || !wb), NULL, mp,
             (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint, NULL);
-      ++mp->m_size; /* And readd it TODO */
+      ++mp->m_size; /* And re-add it TODO */
 
       if (fp != NULL) {
          fseek(mb.mb_otf, 0L, SEEK_END);

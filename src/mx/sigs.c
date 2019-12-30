@@ -84,7 +84,7 @@
  * TODO   mask back to the saved original one for them, before exec.
  * TODO - Except for job control related (<-> interactive) ignore any signals
  * TODO   while we are "behind" a child that occupies the terminal.  For those,
- * TODO   perform proper terminal attribute handling.  For childs that don't
+ * TODO   perform proper terminal attribute handling.  For children that do not
  * TODO   occupy the terminal we "are the shell" and should therefore manage
  * TODO   them accordingly, including termination request as necessary.
  * TODO   And if we have a worker in a pipeline, we need to manage it and deal

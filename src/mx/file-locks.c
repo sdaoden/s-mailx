@@ -245,7 +245,7 @@ jenametool:
       /* But fall through and try it with normal privileges! */
    }
 
-   /* So let's try and call it ourselfs!  Note we do not block signals just
+   /* So let's try and call it ourselves!  Note we do not block signals just
     * like our privsep child does, the user will anyway be able to remove his
     * file again, and if we are in -u/$USER mode then we are allowed to access
     * the user's box: shall we leave behind a stale dotlock then at least we

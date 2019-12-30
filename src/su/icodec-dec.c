@@ -132,8 +132,8 @@ jnumber_sign_rescan:
 
                /* We do not interpret this as BASE#number at all if either we
                 * did not get a valid base or if the first char is not valid
-                * according to base, to comply to the latest interpretion of
-                * "prefix", see comment for standard prefixes below */
+                * according to base, to comply to the latest interpretation
+                * of "prefix", see comment for standard prefixes below */
                if(base < 2 || base > 36 ||
                      (a_icod_atoi[S(u8,c3)] >= base &&
                         !(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)))

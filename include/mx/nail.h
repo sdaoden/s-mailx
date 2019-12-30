@@ -139,7 +139,7 @@ enum n_announce_flags{
 
 enum expand_addr_flags{
    EAF_NONE = 0, /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interactive / -[~#]) */
    EAF_FAIL = 1u<<1, /* "fail" */
    EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
    EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
@@ -160,7 +160,7 @@ enum expand_addr_flags{
     * TODO remove invalid headers.  However, this code path does not know
     * TODO about keeping track of senderrors unless a pointer has been passed,
     * TODO but which it doesn't for ~e, and shall not, too.  Thus, invalid
-    * TODO addresses may be automatically removed, silently, and noone will
+    * TODO addresses may be automatically removed, silently, and no one will
     * TODO ever know, in particular not regarding "failinvaddr".
     * TODO The hacky solution is this bit -- which can ONLY be used for fields
     * TODO which will be subject to namelist_vaporise_head() later on!! --,

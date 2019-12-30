@@ -89,7 +89,7 @@ enum a_termcap_flags{
    a_TERMCAP_F_ALTERN = 1u<<6, /* Not available, but has alternative */
    a_TERMCAP_F_NOENT = 1u<<7, /* Not available */
 
-   /* _cmd() argument interpretion (_T_STR) */
+   /* _cmd() argument interpretation (_T_STR) */
    a_TERMCAP_F_ARG_IDX1 = 1u<<11, /* Argument 1 used, and is an index */
    a_TERMCAP_F_ARG_IDX2 = 1u<<12,
    a_TERMCAP_F_ARG_CNT = 1u<<13, /* .., and is a count */

@@ -485,7 +485,7 @@ jskipfullextra:
          /* The domain name was IDNA and has been converted.  We also have to
           * ensure that the domain name in .n_fullname is replaced with the
           * converted version, since MIME doesn't perform encoding of addrs */
-         /* TODO This definetely doesn't belong here! */
+         /* TODO This definitily doesn't belong here! */
          uz l = ag.ag_iaddr_start,
             lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
          in.s = n_lofi_alloc(l + ag.ag_slen + lsuff +1);
@@ -921,7 +921,7 @@ elide(struct mx_name *names)
       goto jleave;
    np->n_flink = NULL;
 
-   /* Create a temporay array and sort that */
+   /* Create a temporary array and sort that */
    nparr = n_lofi_alloc(sizeof(*nparr) * i);
 
    for(i = 0, np = nlist; np != NULL; np = np->n_flink)

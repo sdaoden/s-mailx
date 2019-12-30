@@ -86,7 +86,7 @@ EXPORT int c_urlcodec(void *vp);
 EXPORT char *mx_url_mailto_to_address(char const *mailtop);
 
 /* Return port for proto, or NIL if unknown.
- * Upon sucess *port_or_nil and *issnd_or_nil will be updated, if set; the
+ * Upon success *port_or_nil and *issnd_or_nil will be updated, if set; the
  * latter states whether protocol is of a sending type (SMTP, file etc.).
  * For file:// and test:// this returns su_empty, in the former case
  * *port_or_nil is 0 and in the latter U16_MAX */

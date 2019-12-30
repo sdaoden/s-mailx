@@ -41,7 +41,7 @@ su_EMPTY_FILE()
 #include "mx/colour.h"
 #include "su/code-in.h"
 
-/* Not needed publically, but extends a public set */
+/* Not needed publicly, but extends a public set */
 #define mx_COLOUR_TAG_ERR ((char*)-1)
 #define a_COLOUR_TAG_IS_SPECIAL(P) (P2UZ(P) >= P2UZ(-3))
 

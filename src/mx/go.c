@@ -274,7 +274,7 @@ a_go_update_pstate(void){
 static boole
 a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* TODO old style(9), but also old code */
-   /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
+   /* TODO a_go_evaluate() should be split in multiple subfunctions,
     * TODO `eval' should be a prefix, etc., a cmd_ctx should be passed along;
     * TODO this also affects history handling, as below!  etc etc */
    struct str line;

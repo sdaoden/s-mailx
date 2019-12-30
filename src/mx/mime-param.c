@@ -588,7 +588,7 @@ jneed_enc:
              * Instead of throwing away that work just recurse if some fancy
              * magic condition is true */
              /* *However*, many tested MUAs fail to deal with parameters that
-              * are splitted across "too many" fields, including ones that
+              * are split across "too many" fields, including ones that
               * misread RFC 2231 to allow only one digit, i.e., a maximum of
               * ten.  This is plain wrong, but that won't help their users */
             if (P2UZ(bp - buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
@@ -622,7 +622,7 @@ jneed_enc:
       /* If all available space has been consumed we must split.
        * Due to compatibility reasons we must take care not to break up
        * multibyte sequences -- even though RFC 2231 rather implies that the
-       * splitted value should be joined (after percent encoded fields have
+       * split value should be joined (after percent encoded fields have
        * been percent decoded) and the resulting string be treated in the
        * specified character set / language, MUAs have been seen which apply
        * the RFC 2047 encoded-words-are-atomic even to RFC 2231 values, even

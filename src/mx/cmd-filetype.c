@@ -288,7 +288,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_push_buf(s, a_ft_OBSOLETE_xz.ft_ext_dat,
          a_ft_OBSOLETE_xz.ft_ext_len);
    if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE("auto .xz support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .xz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_xz;
       goto jleave;
@@ -298,7 +298,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_push_buf(s, a_ft_OBSOLETE_gz.ft_ext_dat,
          a_ft_OBSOLETE_gz.ft_ext_len);
    if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE("auto .gz support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .gz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_gz;
       goto jleave;
@@ -308,7 +308,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_push_buf(s, a_ft_OBSOLETE_bz2.ft_ext_dat,
          a_ft_OBSOLETE_bz2.ft_ext_len);
    if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE("auto .bz2 support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .bz2 support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_bz2;
       goto jleave;
@@ -360,17 +360,17 @@ mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file){
       goto jleave;
 
    if(!su_cs_cmp_case(lext, "xz")){
-      n_OBSOLETE("auto .xz support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .xz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_xz;
       goto jleave;
    }else if(!su_cs_cmp_case(lext, "gz")){
-      n_OBSOLETE("auto .gz support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .gz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_gz;
       goto jleave;
    }else if(!su_cs_cmp_case(lext, "bz2")){
-      n_OBSOLETE("auto .bz2 support vanishs, please use `filetype' command");
+      n_OBSOLETE("auto .bz2 support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_bz2;
       goto jleave;

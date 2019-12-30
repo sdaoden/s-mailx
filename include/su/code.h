@@ -229,7 +229,7 @@
 #  define su_NSPC(X) /**/::
 # endif
 
-   /* Disable copy-construction and assigment of class */
+   /* Disable copy-construction and assignment of class */
 # define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &);
    /* If C++ class inherits from a C class, and the C class "return self", we
     * have to waste a return register even if self==this */
@@ -478,8 +478,8 @@ do{\
 #   define su_SINLINE static __inline
 #  endif
 # else
-#  define su_INLINE static /* TODO __attribute__((unused)) alikes? */
-#  define su_SINLINE static /* TODO __attribute__((unused)) alikes? */
+#  define su_INLINE static /* TODO __attribute__((unused)) alike? */
+#  define su_SINLINE static /* TODO __attribute__((unused)) alike? */
 #  undef su_HAVE_INLINE
 # endif
 #else
@@ -1307,7 +1307,7 @@ union su__bom_union{
    u16 bu_val;
 };
 
-/* Known endianess bom versions, see su_bom_little, su_bom_big */
+/* Known endianness bom versions, see su_bom_little, su_bom_big */
 EXPORT_DATA union su__bom_union const su__bom_little;
 EXPORT_DATA union su__bom_union const su__bom_big;
 
