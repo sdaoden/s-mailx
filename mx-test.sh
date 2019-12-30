@@ -716,11 +716,22 @@ check_exn0() {
 color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
-   if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
-         >/dev/null 2>&1; then
-      COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
-      COLOR_WARN_ON=`tput setaf 3``tput bold`  COLOR_WARN_OFF=`tput sgr0`
-      COLOR_OK_ON=`tput setaf 2`  COLOR_OK_OFF=`tput sgr0`
+   if (command -v stty && command -v tput && stty -a) >/dev/null 2>&1; then
+      sgr0=`tput sgr0 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf1=`tput setaf 1 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf2=`tput setaf 2 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf3=`tput setaf 3 2>/dev/null`
+      [ $? -eq 0 ] || return
+      b=`tput bold 2>/dev/null`
+      [ $? -eq 0 ] || return
+
+      COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
+      COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
+      COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
+      unset saf1 saf2 saf3 b
    fi
 }
 
