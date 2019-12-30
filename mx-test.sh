@@ -4390,7 +4390,7 @@ t_can_send_rfc() { # {{{
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
 			"${cat}" && echo pardauz && echo) > "${MBOX}"
 	_EOT
-   chmod 0755 .tmta.sh
+   ${chmod} 0755 .tmta.sh
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.mta-1 \
       receiver@number.1 > ./.terr 2>&1
@@ -4423,7 +4423,7 @@ xit
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
 			"${cat}" && echo 'ARGS: '"\${@}" && echo) > "${MBOX}"
 	_EOT
-   chmod 0755 .tmta.sh
+   ${chmod} 0755 .tmta.sh
 
    t_it() {
       </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfolder="${xfolder}" \
@@ -5002,7 +5002,7 @@ t_copy() { # {{{
    copy 1 2 .tf3
    echo 4:$?/$^ERRNAME
    headers
-   !chmod 0444 .tf3
+   !'"${chmod}"' 0444 .tf3
    copy 1 2 .tf3
    echo 5:$?/$^ERRNAME
    #' \
@@ -5149,7 +5149,7 @@ t_save() { # {{{
    save 1 2 .tf3
    echo 4:$?/$^ERRNAME
    headers
-   !chmod 0444 .tf3
+   !'"${chmod}"' 0444 .tf3
    save 1 2 .tf3
    echo 5:$?/$^ERRNAME
    #' \
@@ -5311,10 +5311,10 @@ t_move() { # {{{
    move .tf1
    echo 1:$?/$^ERRNAME
    headers
-   !touch .tf2; chmod 0444 .tf2
+   !touch .tf2; '"${chmod}"' 0444 .tf2
    move 2 .tf2
    echo 2:$?/$^ERRNAME
-   !chmod 0644 .tf2
+   !'"${chmod}"' 0644 .tf2
    move 2 .tf2
    echo 3:$?/$^ERRNAME
    headers
@@ -6403,7 +6403,7 @@ t_expandaddr() {
    fi
 
    echo "${cat}" > ./.tcat
-   chmod 0755 ./.tcat
+   ${chmod} 0755 ./.tcat
 
    #
    </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
@@ -7817,7 +7817,7 @@ t_compose_edits() { # XXX very rudimentary
 	__EOT
 	exit 0
 	_EOT
-   chmod 0755 .ted.sh
+   ${chmod} 0755 .ted.sh
 
    # > All these are in-a-row!
 
