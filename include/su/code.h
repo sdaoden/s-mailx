@@ -470,8 +470,9 @@ do{\
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-#    define su_INLINE inline
-#    define su_SINLINE static inline
+     /* clang does not like inline with <-O2 */
+#    define su_INLINE inline __attribute__((always_inline))
+#    define su_SINLINE static inline __attribute__((always_inline))
 #   endif
 #  else
 #   define su_INLINE static __inline
@@ -534,7 +535,8 @@ do{\
 #define su_ROUND_UP2(X,BASE) (((X) + ((BASE) - 1)) & (~((BASE) - 1)))
 
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+/* Commented out: "_Alignof() applied to an expression is a GNU extension" */
+#if 0 && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
 # include <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
