@@ -1453,8 +1453,8 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #endif
 
 #if DVLOR(1, 0)
+EXPORT void su_nyd_set_disabled(boole disabled);
 EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
-EXPORT void su_nyd_stop(void);
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif

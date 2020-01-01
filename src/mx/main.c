@@ -134,7 +134,6 @@ a_main_startup(void){
    n_stdin = stdin;
    n_stdout = stdout;
    n_stderr = stderr;
-   dflpipe = SIG_DFL;
 
    if((cp = su_cs_rfind_c(su_program, '/')) != NIL)
       su_program = ++cp;
@@ -176,12 +175,13 @@ a_main_startup(void){
    n_go_init();
 
    if(n_psonce & n_PSO_INTERACTIVE)
-      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+      safe_signal(SIGPIPE, SIG_IGN);
 
 #if DVLOR(1, 0)
 # if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
    safe_signal(SIGUSR1, &a_main_memtrace);
 # endif
+   safe_signal(SIGUSR2, &mx__nyd_oncrash);
    safe_signal(SIGABRT, &mx__nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &mx__nyd_oncrash);

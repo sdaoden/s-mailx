@@ -319,6 +319,11 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
 
 #if DVLOR(1, 0)
 void
+su_nyd_set_disabled(boole disabled){
+   a_core_nyd_skip = (disabled != FAL0);
+}
+
+void
 su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
    if(!a_core_nyd_skip){
       struct a_core_nyd_info *cnip;
@@ -335,11 +340,6 @@ su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
       cnip->cni_level = ((act == 0) ? a_core_nyd_level /* TODO spinlock */
             : (act == 1) ? ++a_core_nyd_level : a_core_nyd_level--);
    }
-}
-
-void
-su_nyd_stop(void){
-   a_core_nyd_skip = TRU1;
 }
 
 void

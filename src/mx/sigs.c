@@ -113,7 +113,7 @@ a_sigs_dummyhdl(int sig){
    UNUSED(sig);
 }
 
-FL int
+int
 c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigset_t nset, oset;
    struct sigaction nact, oact;
@@ -185,7 +185,7 @@ jesyn:
    goto jleave;
 }
 
-FL void
+void
 n_raise(int signo)
 {
    NYD2_IN;
@@ -195,7 +195,7 @@ n_raise(int signo)
    NYD2_OU;
 }
 
-FL n_sighdl_t
+n_sighdl_t
 safe_signal(int signum, n_sighdl_t handler)
 {
    struct sigaction nact, oact;
@@ -210,7 +210,7 @@ safe_signal(int signum, n_sighdl_t handler)
    return rv;
 }
 
-FL n_sighdl_t
+n_sighdl_t
 n_signal(int signo, n_sighdl_t hdl){
    struct sigaction nact, oact;
    NYD2_IN;
@@ -223,7 +223,7 @@ n_signal(int signo, n_sighdl_t hdl){
    return hdl;
 }
 
-FL void
+void
 mx_sigs_all_hold(s32 sigadjust, ...){
    sigset_t unbl, *ossp;
    boole nounbl, anyunbl;
@@ -272,13 +272,13 @@ mx_sigs_all_hold(s32 sigadjust, ...){
       sigprocmask(SIG_UNBLOCK, &unbl, NIL);
 }
 
-FL void
+void
 mx_sigs_all_rele(void){
    if(--a_sigs_all_depth == 0)
       sigprocmask(SIG_SETMASK, &a_sigs_all_oset, NIL);
 }
 
-FL void
+void
 hold_sigs(void)
 {
    NYD2_IN;
@@ -292,7 +292,7 @@ hold_sigs(void)
    NYD2_OU;
 }
 
-FL void
+void
 rele_sigs(void)
 {
    NYD2_IN;
@@ -311,7 +311,7 @@ n__sigman_hdl(int signo){
    siglongjmp(n__sigman->sm_jump, 1);
 }
 
-FL int
+int
 n__sigman_enter(struct n_sigman *self, int flags){
    /* TODO no error checking when installing sighdls */
    int rv;
@@ -355,7 +355,7 @@ n__sigman_enter(struct n_sigman *self, int flags){
    return rv;
 }
 
-FL void
+void
 n_sigman_cleanup_ping(struct n_sigman *self){
    u32 f;
    NYD2_IN;
@@ -379,7 +379,7 @@ n_sigman_cleanup_ping(struct n_sigman *self){
    NYD2_OU;
 }
 
-FL void
+void
 n_sigman_leave(struct n_sigman *self,
       enum n_sigman_flags reraise_flags){
    u32 f;
@@ -436,7 +436,7 @@ n_sigman_leave(struct n_sigman *self,
    }
 }
 
-FL int
+int
 n_sigman_peek(void){
    int rv;
    NYD2_IN;
@@ -445,7 +445,7 @@ n_sigman_peek(void){
    return rv;
 }
 
-FL void
+void
 n_sigman_consume(void){
    NYD2_IN;
    NYD2_OU;
@@ -458,25 +458,17 @@ a_sigs_nyd__dump(su_up cookie, char const *buf, su_uz blen){
    write((int)cookie, buf, blen);
 }
 
-FL void
-mx__nyd_oncrash(int signo)
-{
+void
+mx__nyd_oncrash(int signo){
    char pathbuf[PATH_MAX], s2ibuf[32], *cp;
-   struct sigaction xact;
-   sigset_t xset;
    int fd;
    uz i, fnl;
    char const *tmpdir;
 
-   su_nyd_stop();
+   su_nyd_set_disabled(TRU1);
 
    LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
       "System limits too low for fixed-size buffer operation");
-
-   xact.sa_handler = SIG_DFL;
-   sigemptyset(&xact.sa_mask);
-   xact.sa_flags = 0;
-   sigaction(signo, &xact, NULL);
 
    i = su_cs_len(tmpdir = ok_vlook(TMPDIR));
    fnl = sizeof(VAL_UAGENT) -1;
@@ -496,25 +488,30 @@ mx__nyd_oncrash(int signo)
       fd = STDERR_FILENO;
 
 # undef _X
-# define _X(X) (X), sizeof(X) -1
-   write(fd, _X("\n\nNYD: program dying due to signal "));
+# define _X(X) X, sizeof(X) -1
+   if(signo == SIGUSR2)
+      write(fd, _X("\n\nNYD: program chirp list"));
+   else
+      write(fd, _X("\n\nNYD: program dying due to signal "));
 
-   cp = s2ibuf + sizeof(s2ibuf) -1;
-   *cp = '\0';
-   i = signo;
-   do {
-      *--cp = "0123456789"[i % 10];
-      i /= 10;
-   } while (i != 0);
-   write(fd, cp, P2UZ((s2ibuf + sizeof(s2ibuf) -1) - cp));
+   if(signo != SIGUSR2){
+      cp = &s2ibuf[sizeof(s2ibuf) -1];
+      *cp = '\0';
+      i = signo;
+      do{
+         *--cp = "0123456789"[i % 10];
+         i /= 10;
+      }while(i != 0);
+      write(fd, cp, P2UZ(&s2ibuf[sizeof(s2ibuf) -1] - cp));
+   }
 
    write(fd, _X(":\n"));
 
-   su_nyd_dump(&a_sigs_nyd__dump, (su_uz)(su_u32)fd);
+   su_nyd_dump(&a_sigs_nyd__dump, S(uz,S(u32,fd)));
 
-   write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
+   write(fd, _X("-----\nCome up to the lab and see what's on the slab\n"));
 
-   if (fd != STDERR_FILENO) {
+   if(fd != STDERR_FILENO){
       write(STDERR_FILENO, _X("Crash NYD listing written to "));
       write(STDERR_FILENO, pathbuf, fnl);
       write(STDERR_FILENO, _X("\n"));
@@ -523,12 +520,25 @@ mx__nyd_oncrash(int signo)
       close(fd);
    }
 
-   sigemptyset(&xset);
-   sigaddset(&xset, signo);
-   sigprocmask(SIG_UNBLOCK, &xset, NULL);
-   n_raise(signo);
-   for (;;)
-      _exit(n_EXIT_ERR);
+   if(signo != SIGUSR2){
+      struct sigaction xact;
+      sigset_t xset;
+
+      xact.sa_handler = SIG_DFL;
+      sigemptyset(&xact.sa_mask);
+      xact.sa_flags = 0;
+      sigaction(signo, &xact, NIL);
+
+      sigemptyset(&xset);
+      sigaddset(&xset, signo);
+      sigprocmask(SIG_UNBLOCK, &xset, NIL);
+
+      n_raise(signo);
+
+      for(;;)
+         _exit(n_EXIT_ERR);
+   }else
+      su_nyd_set_disabled(FAL0);
 }
 #endif /* DVLOR(1,0) */
 

@@ -1192,19 +1192,6 @@ struct search_expr{
 #endif
 };
 
-/* This is somewhat temporary for pre v15 */
-struct n_sigman{
-   u32 sm_flags; /* enum n_sigman_flags */
-   int sm_signo;
-   struct n_sigman *sm_outer;
-   n_sighdl_t sm_ohup;
-   n_sighdl_t sm_oint;
-   n_sighdl_t sm_oquit;
-   n_sighdl_t sm_oterm;
-   n_sighdl_t sm_opipe;
-   sigjmp_buf sm_jump;
-};
-
 struct n_timespec{
    s64 ts_sec;
    sz ts_nsec;
@@ -1652,7 +1639,6 @@ VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
 VL volatile int interrupts; /* TODO rid! */
-VL n_sighdl_t dflpipe;
 
 /*
  * Finally, let's include the function prototypes XXX embed

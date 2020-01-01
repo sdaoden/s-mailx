@@ -1,37 +1,20 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Signal handling and commands heavily related with signals.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause TODO ISC
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifndef mx_SIGS_H
 #define mx_SIGS_H
@@ -42,29 +25,42 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+/* This is somewhat temporary for pre v15 */
+struct n_sigman{
+   u32 sm_flags; /* enum n_sigman_flags */
+   int sm_signo;
+   struct n_sigman *sm_outer;
+   n_sighdl_t sm_ohup;
+   n_sighdl_t sm_oint;
+   n_sighdl_t sm_oquit;
+   n_sighdl_t sm_oterm;
+   n_sighdl_t sm_opipe;
+   sigjmp_buf sm_jump;
+};
+
 /* `sleep' */
-FL int c_sleep(void *v);
+EXPORT int c_sleep(void *v);
 
 /* */
-FL void n_raise(int signo);
+EXPORT void n_raise(int signo);
 
 /* Provide BSD-like signal() on all systems TODO v15 -> SysV -> n_signal() */
-FL n_sighdl_t safe_signal(int signum, n_sighdl_t handler);
+EXPORT n_sighdl_t safe_signal(int signum, n_sighdl_t handler);
 
 /* Provide reproducible non-restartable signal handler installation */
-FL n_sighdl_t n_signal(int signo, n_sighdl_t hdl);
+EXPORT n_sighdl_t n_signal(int signo, n_sighdl_t hdl);
 
 /* Block all signals except some fatal trap ones and SIGCHLD.
  * sigadjust starts an optional 0 terminated list of signal adjustments:
  * a positive one will be sigdelset()ted, a negative one will be added.
  * Adjusts the list if already active */
-FL void mx_sigs_all_hold(s32 sigadjust, ...);
+EXPORT void mx_sigs_all_hold(s32 sigadjust, ...);
 #define mx_sigs_all_holdx() mx_sigs_all_hold(0)
-FL void mx_sigs_all_rele(void);
+EXPORT void mx_sigs_all_rele(void);
 
 /* Hold HUP/QUIT/INT */
-FL void hold_sigs(void);
-FL void rele_sigs(void);
+EXPORT void hold_sigs(void);
+EXPORT void rele_sigs(void);
 
 /* Call _ENTER_SWITCH() with the according flags, it'll take care for the rest
  * and also set the jump buffer - it returns 0 if anything went fine and
@@ -86,17 +82,18 @@ FL void rele_sigs(void);
    n__sigman_enter(S, __x__);\
 }while(0); switch((S)->sm_signo)
 
-FL int n__sigman_enter(struct n_sigman *self, int flags);
-FL void n_sigman_cleanup_ping(struct n_sigman *self);
-FL void n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
+EXPORT int n__sigman_enter(struct n_sigman *self, int flags);
+EXPORT void n_sigman_cleanup_ping(struct n_sigman *self);
+EXPORT void n_sigman_leave(struct n_sigman *self, enum n_sigman_flags flags);
 
 /* Pending signal or 0? */
-FL int n_sigman_peek(void);
-FL void n_sigman_consume(void);
+EXPORT int n_sigman_peek(void);
+EXPORT void n_sigman_consume(void);
 
-/* Not-Yet-Dead debug information (handler installation in main.c) */
+/* Not-Yet-Dead debug information (handler installation in main.c).
+ * Does not crash for SIGUSR2 */
 #if su_DVLOR(1, 0)
-FL void mx__nyd_oncrash(int signo);
+EXPORT void mx__nyd_oncrash(int signo);
 #endif
 
 #include <su/code-ou.h>
