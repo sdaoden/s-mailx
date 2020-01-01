@@ -125,8 +125,6 @@ struct mx_mimetype_handler;
  * Types
  */
 
-typedef void (*n_sighdl_t)(int);
-
 enum n_announce_flags{
    n_ANNOUNCE_NONE = 0, /* Only housekeeping */
    n_ANNOUNCE_MAIN_CALL = 1u<<0, /* POSIX covered startup call */

@@ -363,7 +363,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "draft", &c_draft, (A | M | TMSGLST), 0, 0, NIL
      DS(N_("Mark <msglist> as draft")) },
 
-{ "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NIL
+{ "edit", &c_edit, (G | A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
    { "echo", &c_echo, (G | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },

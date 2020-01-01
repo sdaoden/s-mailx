@@ -634,29 +634,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * edit.c
- */
-
-/* Edit a message list */
-FL int         c_editor(void *v);
-
-/* Invoke the visual editor on a message list */
-FL int         c_visual(void *v);
-
-/* Run an editor on either size bytes of the file fp (or until EOF if size is
- * negative) or on the message mp, and return a new file or NULL on error of if
- * the user didn't perform any edits (not possible in pipe mode).
- * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
- * from within compose mode, and giving TRUM1 to n_puthead().
- * Signals must be handled by the caller.
- * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
- * which case pipecmd must have been given */
-FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
-                  struct header *hp, struct message *mp,
-                  enum sendaction action, n_sighdl_t oldint,
-                  char const *pipecmd);
-
-/*
  * folder.c
  */
 

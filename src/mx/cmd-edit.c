@@ -34,8 +34,9 @@
  * SUCH DAMAGE.
  */
 #undef su_FILE
-#define su_FILE edit
+#define su_FILE cmd_edit
 #define mx_SOURCE
+#define mx_SOURCE_CMD_EDIT
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -47,14 +48,15 @@
 #include "mx/tty.h"
 
 /* TODO fake */
+#include "mx/cmd-edit.h"
 #include "su/code-in.h"
 
 /* Edit a message by writing the message into a funnily-named file (which
  * should not exist) and forking an editor on it */
-static int edit1(int *msgvec, int viored);
+static int a_edit1(int *msgvec, int viored);
 
 static int
-edit1(int *msgvec, int viored)
+a_edit1(int *msgvec, int viored)
 {
    int c, i;
    FILE *fp = NULL;
@@ -119,37 +121,37 @@ edit1(int *msgvec, int viored)
 
       safe_signal(SIGINT, sigint);
    }
+
    NYD_OU;
    return 0;
 }
 
-FL int
-c_editor(void *v)
-{
-   int *msgvec = v, rv;
+int
+c_edit(void *vp){
+   int rv;
    NYD_IN;
 
-   rv = edit1(msgvec, 'e');
+   rv = a_edit1(vp, 'e');
+
    NYD_OU;
    return rv;
 }
 
-FL int
-c_visual(void *v)
-{
-   int *msgvec = v, rv;
+int
+c_visual(void *vp){
+   int rv;
    NYD_IN;
 
-   rv = edit1(msgvec, 'v');
+   rv = a_edit1(vp, 'v');
+
    NYD_OU;
    return rv;
 }
 
-FL FILE *
+FILE *
 n_run_editor(FILE *fp, off_t size, int viored, boole readonly,/* TODO condom */
-   struct header *hp, struct message *mp, enum sendaction action,
-   n_sighdl_t oldint, char const *pipecmd)
-{
+      struct header *hp, struct message *mp, enum sendaction action,
+      n_sighdl_t oldint, char const *pipecmd){
    struct stat statb;
    struct mx_child_ctx cc;
    sigset_t cset;
@@ -171,15 +173,15 @@ jetempo:
       goto jleave;
    }
 
-   if(hp != NULL){
-      ASSERT(mp == NULL);
+   if(hp != NIL){
+      ASSERT(mp == NIL);
       if(!n_header_put4compose(nf_tmp, hp))
          goto jleave;
    }
 
-   if(mp != NULL){
-      ASSERT(hp == NULL);
-      if(sendmp(mp, nf_tmp, NULL, NULL, action, NULL) < 0){
+   if(mp != NIL){
+      ASSERT(hp == NIL);
+      if(sendmp(mp, nf_tmp, NIL, NIL, action, NIL) < 0){
          n_err(_("Failed to prepare editable message\n"));
          goto jleave;
       }
@@ -197,7 +199,7 @@ jetempo:
 
    fflush(nf_tmp);
 
-   if((t = (fp != NULL && ferror(fp))) == 0 && (t = ferror(nf_tmp)) == 0){
+   if((t = (fp != NIL && ferror(fp))) == 0 && (t = ferror(nf_tmp)) == 0){
       if(viored != '|'){
          if(!fstat(fileno(nf_tmp), &statb))
             modtime = statb.st_mtime, modsize = statb.st_size;

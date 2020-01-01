@@ -47,6 +47,7 @@
 #include <su/utf.h>
 
 #include "mx/child.h"
+#include "mx/cmd-edit.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"

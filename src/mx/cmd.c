@@ -35,6 +35,7 @@
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-commandalias.h"
 #include "mx/cmd-csop.h"
+#include "mx/cmd-edit.h"
 #include "mx/cmd-filetype.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cmd-shortcut.h"

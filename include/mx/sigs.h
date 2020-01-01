@@ -25,6 +25,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+typedef void (*n_sighdl_t)(int);
+
 /* This is somewhat temporary for pre v15 */
 struct n_sigman{
    u32 sm_flags; /* enum n_sigman_flags */
