@@ -833,8 +833,6 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "vpospar", &c_vpospar, (G | M | V | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
-{ "varedit", &c_varedit, (O | G | I | M | S | TWYSH), 1, MAC, NIL
- DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
 
    { "write", &c_write, (A | TARG), 0, 0,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_write)
