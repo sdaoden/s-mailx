@@ -5,7 +5,7 @@
  *@ TODO but only for cleanup purposes.  No stack at all, that is to say!
  *@ TODO (Note we yet use autorec memory, so with JUMPS this needs care!)
  *
- * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -11,7 +11,7 @@
 #@ or
 #@    MAKE=/usr/bin/make thecmd_testandset_fail MAKE make
 #
-# 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 # Thanks to Robert Elz (kre).
 # Public Domain
 

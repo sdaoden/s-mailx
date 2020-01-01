@@ -4,7 +4,7 @@
  *@ own M(ailx) L(ine) E(ditor), change the file layout a bit and place those
  *@ one after the other below the other externals.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

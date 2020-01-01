@@ -2,7 +2,7 @@
  *@ Implementation of GSS-API authentication.
  *@ According to RFC 4954 (SMTP), RFC 5034 (POP3), RFC 4422/4959 (IMAP).
  *
- * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
