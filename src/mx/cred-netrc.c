@@ -434,9 +434,12 @@ a_netrc_dump(char const *cmdname, char const *key, void const *dat){
    }
 
    s = n_string_push_c(s, '\n');
+
    n_string_cp(s);
 
-   slp = R(struct n_strlist*,s->s_dat);
+   slp = R(struct n_strlist*,S(void*,s->s_dat));
+   /* xxx Should we assert alignment constraint of slp is satisfied?
+    * xxx Should be, heap memory with alignment < sizeof(void*) bitter? */
    slp->sl_next = NIL;
    slp->sl_len = s->s_len;
    n_string_drop_ownership(s);
