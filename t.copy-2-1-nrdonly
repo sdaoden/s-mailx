@@ -1,0 +1,23 @@
+>N  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+0:1/BADMSG
+>N  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+.tf1 [New file] 162 bytes
+1:0/NONE
+>R  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+.tf1 [Appended] 172 bytes
+2:0/NONE
+>R  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+.tf2 [New file] 162 bytes
+3:0/NONE
+>R  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ R  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+.tf3 [New file] 344 bytes
+4:0/NONE
+>R  1 from1@exam.ple     1996-10-02 01:50    8/162   Copy1                     
+ R  2 from1@exam.ple     1996-10-02 01:50    8/162   Copy2                     
+.tf3 [Appended] 344 bytes
+5:0/NONE

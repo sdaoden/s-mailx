@@ -1,0 +1,11 @@
+>N  1 from1@exam.ple     1996-10-02 01:50    8/162   Move1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Move2                     
+0:1/BADMSG
+>N  1 from1@exam.ple     1996-10-02 01:50    8/162   Move1                     
+ N  2 from1@exam.ple     1996-10-02 01:50    8/162   Move2                     
+.tf1 [New file] 162 bytes
+1:0/NONE
+>N  2 from1@exam.ple     1996-10-02 01:50    8/162   Move2                     
+.tf2 [Appended] 162 bytes
+2:0/NONE
+3:1/BADMSG
