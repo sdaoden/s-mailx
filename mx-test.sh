@@ -716,7 +716,9 @@ check_exn0() {
 color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
-   if (command -v stty && command -v tput && stty -a) >/dev/null 2>&1; then
+   # We do not want color for "make test > .LOG"!
+   if (command -v stty && command -v tput) >/dev/null 2>&1 &&
+         (<&1 >/dev/null stty -a) 2>/dev/null; then
       sgr0=`tput sgr0 2>/dev/null`
       [ $? -eq 0 ] || return
       saf1=`tput setaf 1 2>/dev/null`
