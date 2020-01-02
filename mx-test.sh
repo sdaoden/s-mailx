@@ -9564,7 +9564,8 @@ text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
 text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
    ' > ./.tmailcap
 
-   </dev/null MAILCAPS=./.tmailcap ${MAILX} ${ARGS} -Snomailcap-disable \
+   </dev/null MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
       -Y '#
 \mailcap
 \echo =1
