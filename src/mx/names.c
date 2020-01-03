@@ -408,7 +408,7 @@ nalloc(char const *str, enum gfield ntype)
          goto jleave;
       }
    }
-   ntype &= ~(GNOT_A_LIST | GNULL_OK | GMAILTO_URI); /* (all this a hack is) */
+   ntype &= ~(GNOT_A_LIST | GNULL_OK); /* (all this a hack is) */
    str = ag.ag_input; /* Take the possibly reordered thing */
 
    if (!(ag.ag_n_flags & mx_NAME_NAME_SALLOC)) {

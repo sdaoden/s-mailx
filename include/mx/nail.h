@@ -1424,10 +1424,9 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    /* All given input (nalloc() etc.) to be interpreted as a single address */
    GNOT_A_LIST = 1u<<21,
    GNULL_OK = 1u<<22, /* NULL return OK for nalloc()+ */
-   GMAILTO_URI = 1u<<23, /* RFC 6068-style */
    /* HACK: support "|bla", i.e., anything enclosed in quotes; e.g., used for
     * MTA alias parsing */
-   GQUOTE_ENCLOSED_OK = 1u<<24
+   GQUOTE_ENCLOSED_OK = 1u<<23
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 
