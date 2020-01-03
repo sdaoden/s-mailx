@@ -158,7 +158,9 @@ enum a_amv_var_lookup_flags{
     * $TMPDIR is set to non-existent we can use the VAL_TMPDIR config default,
     * but if this also fails (filesystem read-only for example), then all bets
     * are off, and we must not enter an endless loop */
-   a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO = 1u<<30
+   a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO = 1u<<29,
+   /* #ifndef a_AMV_VAR_HAS_OBSOLETE temporarily defined to _VLOOK_NONE! */
+   a_AMV_VLOOK_LOG_OBSOLETE = 1u<<30
 };
 
 enum a_amv_var_setclr_flags{
@@ -317,6 +319,11 @@ struct a_amv_var_carrier{
 /* Include constant make-okey-map.pl output, and the generated version data */
 #include "mx/gen-version.h" /* - */
 #include "mx/gen-okeys.h" /* $(MX_SRCDIR) */
+
+/* As above */
+#ifndef a_AMV_VAR_HAS_OBSOLETE
+# define a_AMV_VLOOK_LOG_OBSOLETE a_AMV_VLOOK_NONE
+#endif
 
 /* As promised above, CTAs to protect our structures */
 CTA(a_AMV_VAR_NAME_KEY_MAXOFF <= U16_MAX,
@@ -1633,11 +1640,10 @@ jleave:
 j_leave:
 #ifdef a_AMV_VAR_HAS_OBSOLETE
    if(UNLIKELY((avmp = avcp->avc_map) != NIL &&
-         (avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0)){
-      if((n_poption & n_PO_D_V) || /* TODO v15compat: only if PO_D_V! */
-            (avp != NIL && avp != R(struct a_amv_var*,-1)))
-         a_amv_var_obsolete(avcp->avc_name);
-   }
+         (avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0) &&
+         ((avlf & a_AMV_VLOOK_LOG_OBSOLETE) ||
+            (avp != NIL && avp != R(struct a_amv_var*,-1))))
+      a_amv_var_obsolete(avcp->avc_name);
 #endif
 
    if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
@@ -3276,7 +3282,8 @@ n_var_vlook(char const *vokey, boole try_getenv){
    default: /* silence CC */
    case a_AMV_VSC_NONE:
       rv = NULL;
-      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL))
+      if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_LOCAL |
+            (try_getenv ? a_AMV_VLOOK_LOG_OBSOLETE : a_AMV_VLOOK_NONE))))
          rv = avc.avc_var->av_value;
       /* Only check the environment for something that is otherwise unknown */
       else if(try_getenv && avc.avc_map == NULL &&
@@ -3585,7 +3592,8 @@ c_environ(void *v){
 
          a_amv_var_revlookup(&avc, *ap, TRU1);
 
-         if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE) && (islnk ||
+         if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_NONE |
+               a_AMV_VLOOK_LOG_OBSOLETE)) && (islnk ||
                (avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED))){
             if(!islnk){
                avc.avc_var->av_flags &= ~a_AMV_VF_EXT_LINKED;
@@ -3776,6 +3784,8 @@ jleave:
    NYD_OU;
    return (f & a_ERR) ? 1 : 0;
 }
+
+#undef a_AMV_VLOOK_LOG_OBSOLETE
 
 #include "su/code-ou.h"
 /* s-it-mode */

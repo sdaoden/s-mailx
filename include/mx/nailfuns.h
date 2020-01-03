@@ -189,7 +189,8 @@ FL boole n_var_okclear(enum okeys okey);
 #define ok_vclear(C) n_var_okclear(su_CONCAT(ok_v_, C))
 
 /* Variable option key lookup/(un)set/clear.
- * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey.
+ * If try_getenv is true we will getenv(3) _if_ vokey is not a known enum okey;
+ * it will also cause obsoletion messages only for doing lookup (once).
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * ${@} in double-quotes, in order to provide sh(1)ell compatible behaviour;
  * it returns whether there are any elements in argv (*cookie) */
