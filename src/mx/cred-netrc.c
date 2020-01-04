@@ -337,7 +337,7 @@ a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last){
             if((c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN])){
+         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN -1])){
             rv = a_NETRC_ERROR;
             goto jleave;
          }
@@ -349,7 +349,7 @@ a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last){
          if(c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN])){
+         if(PCMP(cp, ==, &buffer[a_NETRC_TOKEN_MAXLEN -1])){
             rv = a_NETRC_ERROR;
             goto jleave;
          }
