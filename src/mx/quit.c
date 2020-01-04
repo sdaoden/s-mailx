@@ -211,14 +211,20 @@ edstop(void) /* TODO oh my god */
          goto jleave;
       }
       if((ibuf = mx_fs_open_any(mailname, "r", NIL)) == NIL){
+jemailname:
          n_perr(mailname, 0);
          goto jleave;
       }
 
       mx_file_lock(fileno(ibuf), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
-      fseek(ibuf, (long)mailsize, SEEK_SET);
-      while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
-         putc(c, obuf);
+      if(fseek(ibuf, (long)mailsize, SEEK_SET) == -1)
+         goto jemailname;
+      while((c = getc(ibuf)) != EOF){ /* xxx bytewise??? */
+         if(putc(c, obuf) == EOF)
+            goto jemailname;
+      }
+      if(ferror(ibuf))
+         goto jemailname;
       mx_fs_close(ibuf);
       ibuf = obuf;
       fflush_rewind(obuf);
