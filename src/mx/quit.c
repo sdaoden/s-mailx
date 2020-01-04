@@ -387,7 +387,6 @@ quit(boole hold_sigs_on)
    fbuf = mx_fs_open_any(mailname, "r+", NIL);
    if(fbuf == NIL){
       if(su_err_no() != su_ERR_NOENT)
-jnewmail:
          fprintf(n_stdout, _("Thou hast new mail.\n"));
       rv = TRU1;
       goto jleave;
@@ -409,13 +408,20 @@ jnewmail:
       fprintf(n_stdout, _("New mail has arrived.\n"));
       rbuf = mx_fs_tmp_open("quit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL);
-      if(rbuf == NIL || fbuf == NIL)
-         goto jnewmail;
-      fseek(fbuf, (long)mailsize, SEEK_SET);
+      if(rbuf == NIL){
+jerbuf:
+         n_perr(_("temporary MBOX creation"), 0);
+         rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
+         goto jleave;
+      }
+      if(fseek(fbuf, (long)mailsize, SEEK_SET) == -1)
+         goto jerbuf;
       for(lastnl = FAL0; (c = getc(fbuf)) != EOF && putc(c, rbuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
       if(lastnl != TRU2)
          putc('\n', rbuf);
+      if(ferror(fbuf) || ferror(rbuf))
+         goto jerbuf;
       fflush_rewind(rbuf);
    }
 
