@@ -1119,7 +1119,8 @@ jerr:
    if((n_poption & n_PO_D_V) ||
          (!(n_psonce & n_PSO_STARTED) &&
           !(gcp->gc_flags & (a_GO_SPLICE | a_GO_MACRO)) &&
-          !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK)))
+          (gcp->gc_outer == NIL ||
+            !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK))))
       /* I18N: file inclusion, macro etc. evaluation has been stopped */
       n_alert(_("Stopped %s %s due to errors%s"),
          (n_psonce & n_PSO_STARTED
