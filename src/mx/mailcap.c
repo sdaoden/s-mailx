@@ -145,55 +145,54 @@ static char const *a_mailcap_expand_formats(char const *format,
 static void
 a_mailcap_create(void){
    struct a_mailcap_load_stack mcls;
-   char *cp, *cp_base;
+   char *cp_base, *cp;
    NYD_IN;
-
-   su_mem_set(&mcls, 0, sizeof mcls);
 
    a_mailcap_dp = su_cs_dict_set_treshold_shift(
             su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
          a_MAILCAP_CSD_TRESHOLD_SHIFT);
 
-   n_string_book(n_string_creat(&mcls.mcls_hdl_buf), 256); /* ovflw not yet */
+   if(*(cp_base = UNCONST(char*,ok_vlook(MAILCAPS))) == '\0')
+      goto jleave;
 
-   if(*(cp_base = UNCONST(char*,ok_vlook(MAILCAPS))) != '\0'){
-      mx_fs_linepool_aquire(&mcls.mcls_dat.s, &mcls.mcls_dat.l);
-      DBG(mcls.mcls_conti_dat.s = NIL);
+   su_mem_set(&mcls, 0, sizeof mcls);
+   mx_fs_linepool_aquire(&mcls.mcls_dat.s, &mcls.mcls_dat.l);
+   n_string_book(n_string_creat(&mcls.mcls_hdl_buf), 248); /* ovflw not yet */
 
-      for(cp_base = savestr(cp_base);
-            (cp = su_cs_sep_c(&cp_base, ':', TRU1)) != NIL;){
-         if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-               ) == NIL)
-            continue;
+   for(cp_base = savestr(cp_base);
+         (cp = su_cs_sep_c(&cp_base, ':', TRU1)) != NIL;){
+      if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
+            ) == NIL)
+         continue;
 
-         mcls.mcls_name_quoted = n_shexp_quote_cp(cp, FAL0);
-         if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, "r")) == NIL){
-            s32 eno;
+      mcls.mcls_name_quoted = n_shexp_quote_cp(cp, FAL0);
+      if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, "r")) == NIL){
+         s32 eno;
 
-            if((eno = su_err_no()) != su_ERR_NOENT)
-               n_err(_("$MAILCAPS: cannot open %s: %s\n"),
-                  mcls.mcls_name_quoted, su_err_doc(eno));
-            continue;
-         }
-
-         if(!a_mailcap__load_file(&mcls))
-            cp = NIL;
-
-         mx_fs_close(mcls.mcls_fp);
-
-         if(cp == NIL){
-            a_mailcap_gut(FAL0);
-            break;
-         }
+         if((eno = su_err_no()) != su_ERR_NOENT)
+            n_err(_("$MAILCAPS: cannot open %s: %s\n"),
+               mcls.mcls_name_quoted, su_err_doc(eno));
+         continue;
       }
 
-      if(mcls.mcls_conti_dat.s != NIL)
-         mx_fs_linepool_release(mcls.mcls_conti_dat.s, mcls.mcls_conti_dat.l);
-      mx_fs_linepool_release(mcls.mcls_dat.s, mcls.mcls_dat.l);
+      if(!a_mailcap__load_file(&mcls))
+         cp = NIL;
+
+      mx_fs_close(mcls.mcls_fp);
+
+      if(cp == NIL){
+         a_mailcap_gut(FAL0);
+         break;
+      }
    }
+
+   if(mcls.mcls_conti_dat.s != NIL)
+      mx_fs_linepool_release(mcls.mcls_conti_dat.s, mcls.mcls_conti_dat.l);
+   mx_fs_linepool_release(mcls.mcls_dat.s, mcls.mcls_dat.l);
 
    n_string_gut(&mcls.mcls_hdl_buf);
 
+jleave:
    NYD_OU;
 }
 
