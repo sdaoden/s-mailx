@@ -731,7 +731,7 @@ a_mimetype_classify_o_s_part(u32 mce, struct mimepart *mpp,
    int lc, c;
    uz cnt, lsz;
    FILE *ibuf;
-   off_t start_off;
+   long start_off;
    boole did_inrest;
    enum a_mimetype_class mtc;
    enum mx_mimetype mt;
@@ -748,10 +748,11 @@ a_mimetype_classify_o_s_part(u32 mce, struct mimepart *mpp,
     * TODO directly using fseek() on mb.mb_itf -- the v15 rewrite will change
     * TODO all of this, and until then doing it like this is the only option
     * TODO to integrate nicely into whoever calls us */
-   start_off = ftell(mb.mb_itf);
+   if((start_off = ftell(mb.mb_itf)) == -1)
+      goto jleave;
    if((ibuf = setinput(&mb, R(struct message*,mpp), NEED_BODY)) == NIL){
 jos_leave:
-      fseek(mb.mb_itf, start_off, SEEK_SET);
+      (void)fseek(mb.mb_itf, start_off, SEEK_SET);
       goto jleave;
    }
    cnt = mpp->m_size;
