@@ -4515,22 +4515,30 @@ jentry:{
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
          ASSERT(thp != NIL);
          if(ep-- == 0){
-            if(!dele)
+            struct a_tty_hist *othp, *ythp;
+
+            othp = thp->th_older;
+            ythp = thp->th_younger;
+            if(othp != NIL)
+               othp->th_younger = ythp;
+            else
+               a_tty.tg_hist_tail = ythp;
+            if(ythp != NIL)
+               ythp->th_older = othp;
+            else
+               a_tty.tg_hist = othp;
+
+            if(!dele){ /* XXX c_history(): needless double relinking done */
+               if((thp->th_older = a_tty.tg_hist) != NIL)
+                  a_tty.tg_hist->th_younger = thp;
+               else
+                  a_tty.tg_hist_tail = thp;
+               thp->th_younger = NIL;
+                a_tty.tg_hist = thp;
+
                n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
                   n_GO_INPUT_INJECT_HISTORY), vp = thp->th_dat, thp->th_len);
-            else{
-               struct a_tty_hist *othp, *ythp;
-
-               othp = thp->th_older;
-               ythp = thp->th_younger;
-               if(othp != NIL)
-                  othp->th_younger = ythp;
-               else
-                  a_tty.tg_hist_tail = ythp;
-               if(ythp != NIL)
-                  ythp->th_older = othp;
-               else
-                  a_tty.tg_hist = othp;
+            }else{
                --a_tty.tg_hist_size;
 
                fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"),
