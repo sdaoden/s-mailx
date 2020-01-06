@@ -1216,8 +1216,11 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
    if(n_psonce & n_PSO_LINE_EDITOR_INIT)
       for(thp = a_tty.tg_hist; thp != NIL; thp = thp->th_older)
          if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
+            /* XXX Do not propagate an existing non-gabby entry to gabby */
             thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+                  (((gif & n_GO_INPUT_HIST_GABBY) &&
+                     (thp->th_flags & a_TTY_HIST_GABBY)
+                   ) ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
             ythp = thp->th_younger;
             if(othp != NIL)
