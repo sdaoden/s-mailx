@@ -160,36 +160,37 @@ set showto
 # place anything specific in its own file, and then
 #   set mailx-extra-rc=~/.my-file"
 # in $MAILRC (usually ~/.mailrc).
+# The below use the \ command modifier to avoid `commandalias' checks
 
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
 # (These mappings are not applied to character sets specified by other
 # variables, e.g., *sendcharsets*).
-#charsetalias iso-8859-1 latin1  latin1 cp1252
+#\charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-# `headerpick' is not portable, so use the standard `retain'
+# (`headerpick' is not portable, so use the standard `retain')
 retain date sender from to cc subject message-id mail-followup-to reply-to
-#headerpick type retain from_ date from to cc subject \
+#\headerpick type retain from_ date sender from to cc subject \
 #   message-id mail-followup-to reply-to
-# ...when forwarding messages
-#headerpick forward retain subject date from to cc
-# ...and do not include these when saving message, etc.
-#if [ "$features" =@ +regex ]
-#  headerpick save ignore '^Original-.*$' '^X-.*$'
-#end
+# - when forwarding messages
+#\headerpick forward retain subject date sender from to cc
+# - and do not include these when saving message, etc.
+#\if "$features" =@ +regex
+#  \headerpick save ignore '^Original-.*$' '^X-.*$'
+#\end
 
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1).
-#if [ "$features" !@ +filter-html-tagsoup ]
-#   set pipe-text/html='@* lynx -stdin -dump -force_html'
-#endif
+#\if "$features" !@ +filter-html-tagsoup
+#   \set pipe-text/html='?* lynx -stdin -dump -force_html'
+#\endif
 
 # "External body", URL type supported only.
-#wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+#\wysh set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
 # PDF display, asynchronous display: via `mimeview' command only.
-#wysh set pipe-application/pdf='@=&@\
+#\wysh set pipe-application/pdf='?=&@\
 #   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf "${MAILX_FILENAME_TEMPORARY}"'
@@ -197,30 +198,30 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 ## Gimmicks
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode).
-#if terminal && [ "$features" =@ +key-bindings ]
+#\if terminal && "$features" =@ +key-bindings
 #   \bind base $'\e',d mle-snarf-word-fwd
 #   \bind base $'\e',$'\c?' mle-snarf-word-bwd
 #   \bind base $'\e',f mle-go-word-fwd
 #   \bind base $'\e',b mle-go-word-bwd
 #   \bind base $'\cL' mle-clear-screen
 #   \bind compose :kf1 ~v
-#endif
+#\endif
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode).
-#if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
-#   colour 256 mle-position fg=202
-#   colour 256 mle-prompt fg=203
-#   colour 256 mle-error bg=124
-#   colour iso mle-position ft=bold
-#   colour iso mle-prompt fg=brown
-#   colour iso mle-error bg=red
-#   colour mono mle-position ft=reverse
-#   colour mono mle-prompt ft=bold
-#   colour mono mle-error ft=reverse
-#endif
+#\if terminal && "$features" =@ +mle && "$features" =@ +colour
+#   \colour 256 mle-position fg=202
+#   \colour 256 mle-prompt fg=203
+#   \colour 256 mle-error bg=124
+#   \colour iso mle-position ft=bold
+#   \colour iso mle-prompt fg=brown
+#   \colour iso mle-error bg=red
+#   \colour mono mle-position ft=reverse
+#   \colour mono mle-prompt ft=bold
+#   \colour mono mle-error ft=reverse
+#\endif
 
 # Install file-extension handlers to handle MBOXes in various formats.
-#filetype \
+#\filetype \
 #   bz2 'bzip2 -dc' 'bzip2 -zc' \
 #   gpg 'gpg -d' 'gpg -e' \
 #   gz 'gzip -dc' 'gzip -c' \
@@ -233,8 +234,8 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 # This undesired event can be prevented as follows, the (possibly) resulting
 # octet-stream message data can be read nonetheless via
 # *mime-counter-evidence*=0b1111:
-#if ! terminal && [ "$LOGNAME" == root ]
-#   set mime-force-sendout
-#endif
+#\if ! terminal && "$LOGNAME" == root
+#   \set mime-force-sendout
+#\endif
 
 # s-it-mode
