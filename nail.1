@@ -4806,16 +4806,15 @@ or
 also show all currently defined mappings).
 .
 .Pp
-Otherwise the second argument defines the mappable slot, and the third
+Otherwise the second argument defines the mappable slot, the third
 argument a (comma-separated list of) colour and font attribute
-specification(s), and the optional fourth argument can be used to
-specify a precondition: if conditioned mappings exist they are tested in
-(creation) order unless a (case-insensitive) match has been found, and
-the default mapping (if any has been established) will only be chosen as
-a last resort.
-The types of available preconditions depend on the mappable slot (see
-.Sx "Coloured display"
-for some examples), the following of which exist:
+specification(s), and the optionally supported fourth argument can be
+used to specify a precondition: if conditioned mappings exist they are
+tested in (creation) order unless a (case-insensitive) match has been
+found, and the default mapping (if any has been established) will only
+be chosen as a last resort.
+The types of available preconditions depend on the mappable slot,
+the following of which exist:
 .
 .Pp
 Mappings prefixed with
@@ -5467,7 +5466,7 @@ of the evaluated command; also see
 define xxx {
   echo "xxx arg <$1>"
   shift
-  if [ $# -gt 0 ]
+  if $# -gt 0
     \excall xxx "$@"
   endif
 }
@@ -8893,14 +8892,13 @@ and
 for a true boolean;
 .Mx -ix quadoption
 a special kind of boolean string is the
-.Dq quadoption ,
-which is a boolean string that can optionally be prefixed with the
-(case-insensitive) term
+.Dq quadoption :
+it can optionally be prefixed with the (case-insensitive) term
 .Ql ask- ,
 as in
-.Ql ask-yes ,
-which causes prompting of the user in interactive mode, with the given
-boolean as the default value.
+.Ql ask-yes ;
+in interactive mode the user will be prompted, otherwise the actual
+boolean is used.
 .
 .Pp
 Variable chains extend a plain
@@ -9049,8 +9047,7 @@ The error number may be set with the command
 \*(RO This is a multiplexer variable which performs dynamic expansion of
 the requested state or condition, of which there are:
 .
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
+.Bl -tag -width ".It Va BaNg"
 .Mx
 .Mx
 .Mx
@@ -12932,7 +12929,8 @@ plus
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
 Note that \*(UA does not actually care about the terminal beside that,
-but always emits ANSI / ISO 6429 escape sequences.
+but always emits ANSI / ISO 6429 escape sequences; also see
+.Ic colour .
 .
 .It Cd cr
 .Cd carriage_return :
@@ -13052,8 +13050,7 @@ The CA certificate pool built into the TLS library can be disabled via
 .Va tls-ca-no-defaults ,
 further fine-tuning is possible via
 .Va tls-ca-flags .
-Note the directory search variant requires the certificate files to
-adhere special filename conventions, please see
+The directory search requires special filename conventions, please see
 .Xr SSL_CTX_load_verify_locations 3
 and
 .Xr verify 1
