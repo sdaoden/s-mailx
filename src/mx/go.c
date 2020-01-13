@@ -1499,13 +1499,13 @@ n_go_main_loop(void){ /* FIXME */
       gec.gec_line_size = S(u32,gec.gec_line.l);
       gec.gec_line.l = S(u32,n);
 
-      if (n < 0) {
-         if (!(n_pstate & n_PS_ROBOT) &&
+      if(n < 0){
+         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
+         if(!(n_pstate & n_PS_ROBOT) &&
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
-               ++eofcnt < 4) {
+               ++eofcnt < 4){
             fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
             n_go_input_clearerr();
-            mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
             continue;
          }
          break;

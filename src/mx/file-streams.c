@@ -1051,10 +1051,12 @@ jredo:
       }
    }
 
+   /* Only called from go_main_loop(), save to throw the hulls away */
    if((lpep = a_fs_lpool_used) != NIL){
       a_fs_lpool_used = NIL;
       goto jredo;
    }
+
    NYD2_OU;
 }
 
