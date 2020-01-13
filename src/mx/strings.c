@@ -447,14 +447,14 @@ jleave:
 FL struct n_string *
 n__string_clear(struct n_string *self){
    NYD_IN;
-   ASSERT(self != NULL);
+   ASSERT(self != NIL);
+   ASSERT(self->s_dat != NIL);
 
-   if(self->s_size != 0){
-      if(!self->s_auto)
-         su_MEM_FREE(self->s_dat);
-      self->s_len = self->s_auto = self->s_size = 0;
-      self->s_dat = NIL;
-   }
+   if(!self->s_auto)
+      su_FREE(self->s_dat);
+   self->s_dat = NIL;
+   self->s_len = self->s_size = 0;
+
    NYD_OU;
    return self;
 }
