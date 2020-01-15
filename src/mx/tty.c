@@ -346,13 +346,6 @@ jleave:
  * To simplify our live, use savestr() buffers for all other needed memory */
 
 # ifdef mx_HAVE_KEY_BINDINGS
-   /* Default *bind-timeout* key-sequence continuation timeout, in tenths of
-    * a second.  Must fit in 8-bit!  Update the manual upon change! */
-#  define a_TTY_BIND_TIMEOUT 2
-#  define a_TTY_BIND_TIMEOUT_MAX S8_MAX
-
-CTAV(a_TTY_BIND_TIMEOUT_MAX <= U8_MAX);
-
    /* We have a chicken-and-egg problem with `bind' and our termcap layer,
     * because we may not initialize the latter automatically to allow users to
     * specify *termcap-disable* and let it mean exactly that.
@@ -550,8 +543,8 @@ struct a_tty_bind_tree{
    struct a_tty_bind_tree *tbt_parent;
    struct a_tty_bind_ctx *tbt_bind; /* NULL for intermediates */
    wchar_t tbt_char; /* acter this level represents */
-   boole tbt_isseq; /* Belongs to multibyte sequence */
-   boole tbt_isseq_trail; /* ..is trailing byte of it */
+   boole tbt_ismbseq; /* Belongs to multibyte sequence */
+   boole tbt_ismbseq_trail; /* ..is trailing byte of it */
    u8 tbt__dummy[2];
 };
 # endif /* mx_HAVE_KEY_BINDINGS */
@@ -617,8 +610,9 @@ struct a_tty_line{
    /* Input processing */
 # ifdef mx_HAVE_KEY_BINDINGS
    wchar_t tl_bind_takeover; /* Leftover byte to consume next */
-   u8 tl_bind_timeout; /* In-seq. inter-byte-timer, in 1/10th secs */
-   u8 tl__bind_pad1[3];
+   u8 tl_bind_inter_byte_timeout; /* In 1/10th secs */
+   u8 tl_bind_inter_key_timeout; /*  ^ */
+   u8 tl__bind_pad1[2];
    char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
    char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
    struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
@@ -827,7 +821,8 @@ static boole a_tty_hist_is_gabby_ok(enum n_go_input_flags gif);
 static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
-/* Adjust an active raw mode to use / not use a timeout */
+/* Adjust an active raw mode to use / not use a timeout.
+ * If enable is TRUM1 we are in a multibyte sequence */
 # ifdef mx_HAVE_KEY_BINDINGS
 static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable);
 # endif
@@ -918,7 +913,7 @@ static void a_tty__bind_tree_add(u32 hmap_idx,
                struct a_tty_bind_ctx *tbcp);
 static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
                struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp,
-               wchar_t wc, boole isseq);
+               wchar_t wc, boole ismbseq);
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
@@ -1279,9 +1274,12 @@ a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable){
 
    if(enable){
       tiosc = mx_TERMIOS_CMD_RAW_TIMEOUT;
-      if((i = tlp->tl_bind_timeout) == 0)
-         i = a_TTY_BIND_TIMEOUT;
+      if(enable == TRUM1)
+         i = tlp->tl_bind_inter_byte_timeout;
+      else if((i = tlp->tl_bind_inter_key_timeout) == 0)
+         goto jntimeout;
    }else{
+jntimeout:
       tiosc = mx_TERMIOS_CMD_RAW;
       i = 1;
    }
@@ -3110,9 +3108,11 @@ jinput_loop:
                    * all driven by an event_loop */
 # ifdef mx_HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
-                  if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
-                        !tbtp->tbt_isseq_trail){
-                     a_tty_term_rawmode_timeout(tlp, TRU1);
+
+                  if(isp != NIL){
+                     tbtp = isp->tbtp;
+                     a_tty_term_rawmode_timeout(tlp, (tbtp->tbt_ismbseq &&
+                        !tbtp->tbt_ismbseq_trail) ? TRUM1 : TRU1);
                      flags |= a_TIMEOUT;
                   }
 jread_again:
@@ -3146,11 +3146,11 @@ jread_again:
                      }
 
                      /* Or, maybe there is a second path without a timeout;
-                      * this should be covered by .tbt_isseq_trail, but then
+                      * this should be covered by .tbt_ismbseq_trail, but then
                       * again a single-layer implementation cannot "know" */
                      for(xtbtp = tbtp; (xtbtp = xtbtp->tbt_sibling) != NIL;)
                         if(xtbtp->tbt_char == tbtp->tbt_char){
-                           ASSERT(!xtbtp->tbt_isseq);
+                           ASSERT(!xtbtp->tbt_ismbseq);
                            break;
                         }
                      /* So -- lay down on a blocking read(2)? */
@@ -3259,13 +3259,13 @@ jread_again:
                    * bindings like \e,d etc. to succeed: users are so used to
                    * them that a timeout cannot be the mechanism to catch up!
                    * A single-layer implementation cannot "know" */
-                  if((tbtp = isp->tbtp)->tbt_isseq && (isp->last == NULL ||
-                        !(xtbtp = isp->last->tbtp)->tbt_isseq ||
-                        xtbtp->tbt_isseq_trail)){
+                  if((tbtp = isp->tbtp)->tbt_ismbseq && (isp->last == NIL ||
+                        !(xtbtp = isp->last->tbtp)->tbt_ismbseq ||
+                        xtbtp->tbt_ismbseq_trail)){
                      for(xtbtp = (tbtp = isp->tbtp);
-                           (xtbtp = xtbtp->tbt_sibling) != NULL;)
+                           (xtbtp = xtbtp->tbt_sibling) != NIL;)
                         if(xtbtp->tbt_char == tbtp->tbt_char){
-                           ASSERT(!xtbtp->tbt_isseq);
+                           ASSERT(!xtbtp->tbt_ismbseq);
                            break;
                         }
                      if(xtbtp != NULL){
@@ -3986,11 +3986,11 @@ a_tty__bind_tree_add(u32 hmap_idx,
                *u.cp != '\0'; ++u.cp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
          ASSERT(ntbtp != NIL);
-         ntbtp->tbt_isseq_trail = TRU1;
+         ntbtp->tbt_ismbseq_trail = TRU1;
          entlen &= S32_MAX;
       }else{
          /* struct{s32 buf_len_iscap; wc_t buf[]+NUL;} */
-         boole isseq;
+         boole ismbseq;
 
          u.wp = S(wchar_t const*,&UNALIGN(s32 const*,cnvdat)[1]);
 
@@ -4026,12 +4026,12 @@ a_tty__bind_tree_add(u32 hmap_idx,
             }
          }
 
-         isseq = (u.wp[1] != '\0');
+         ismbseq = (u.wp[1] != '\0');
          for(; *u.wp != '\0'; ++u.wp)
-            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, isseq);
-         if(isseq){
-            ASSERT(ntbtp != NULL);
-            ntbtp->tbt_isseq_trail = TRU1;
+            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, ismbseq);
+         if(ismbseq){
+            ASSERT(ntbtp != NIL);
+            ntbtp->tbt_ismbseq_trail = TRU1;
          }
       }
 
@@ -4048,7 +4048,7 @@ a_tty__bind_tree_add(u32 hmap_idx,
 
 static struct a_tty_bind_tree *
 a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
-      struct a_tty_bind_tree *parentp, wchar_t wc, boole isseq){
+      struct a_tty_bind_tree *parentp, wchar_t wc, boole ismbseq){
    boole any;
    struct a_tty_bind_tree *tbtp, *xtbtp;
    NYD2_IN;
@@ -4068,13 +4068,13 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
       }
       any = TRU1;
 
-      if(tbtp->tbt_isseq == isseq)
+      if(tbtp->tbt_ismbseq == ismbseq)
          goto jleave;
 
-      /* isseq MUST be linked before !isseq, so record this "parent"
+      /* ismbseq MUST be linked before !ismbseq, so record this "parent"
        * sibling, but continue searching for now.
        * Otherwise it is impossible that we will find what we look for */
-      if(isseq){
+      if(ismbseq){
 #if ASSERT_INJOR(1, 0)
          while((tbtp = tbtp->tbt_sibling) != NIL)
             ASSERT(tbtp->tbt_char != wc);
@@ -4086,7 +4086,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
    tbtp = su_CALLOC(sizeof *tbtp);
    tbtp->tbt_parent = parentp;
    tbtp->tbt_char = wc;
-   tbtp->tbt_isseq = isseq;
+   tbtp->tbt_ismbseq = ismbseq;
 
    if(xtbtp == NIL){
       tbtp->tbt_sibling = *treep;
@@ -4280,19 +4280,38 @@ int
 
 # ifdef mx_HAVE_KEY_BINDINGS
    /* C99 */{
-      char const *cp;
+      char const *name, *cp;
+      u8 *destp;
 
-      if((cp = ok_vlook(bind_timeout)) != NULL){
-         u64 uib;
+      destp = &tl.tl_bind_inter_byte_timeout;
+      name = "byte";
+      cp = ok_vlook(bind_inter_byte_timeout);
 
-         su_idec_u64_cp(&uib, cp, 0, NULL);
+jbind_timeout_redo:
+      if(cp != NIL){
+         uz const uit_max = 100u * U8_MAX;
+         u32 is;
+         uz uit;
 
-         if(uib > 0 &&
-               /* Convert to tenths of a second, unfortunately */
-               (uib = (uib + 99) / 100) <= a_TTY_BIND_TIMEOUT_MAX)
-            tl.tl_bind_timeout = (u8)uib;
-         else if(n_poption & n_PO_D_V)
-            n_err(_("Ignoring invalid *bind-timeout*: %s\n"), cp);
+         /* TODO generic variable `set' should have capability to ensure
+          * TODO integer limits upon assignment */
+         if(((is = su_idec_uz_cp(&uit, cp, 0, NIL)) & su_IDEC_STATE_EMASK) ||
+               !(is & su_IDEC_STATE_CONSUMED) || uit > uit_max){
+            if(n_poption & n_PO_D_V)
+               n_err(_("*bind-inter-%s-timeout* invalid, using %" PRIuZ
+                  ": %s\n"), name, uit_max, cp);
+            uit = uit_max;
+         }
+
+         /* Convert to the tenths of seconds that we need to use */
+         *destp = S(u8,(uit + 99) / 100);
+      }
+
+      if(destp == &tl.tl_bind_inter_byte_timeout){
+         destp = &tl.tl_bind_inter_key_timeout;
+         name = "key";
+         cp = ok_vlook(bind_inter_key_timeout);
+         goto jbind_timeout_redo;
       }
    }
 

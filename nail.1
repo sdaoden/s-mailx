@@ -4535,25 +4535,35 @@ context which is used in all not otherwise documented situations, and
 which applies to compose mode only.
 .
 .Pp
-.Dq Keys
-which form the binding are specified as a comma-separated list of
-byte-sequences, where each list entry corresponds to one key(press).
+Bindings are specified as a comma-separated list of byte-sequences,
+where each list entry corresponds to one
+.Dq key
+(press).
+Byte sequence boundaries will be forcefully terminated after
+.Va bind-inter-byte-timeout
+milliseconds, whereas key sequences can be timed out via
+.Va bind-inter-key-timeout .
 A list entry may, indicated by a leading colon character
 .Ql \&: ,
 also refer to the name of a terminal capability; several dozen names
-will be compiled in and may be specified either by their
+are compiled in and may be specified either by their
 .Xr terminfo 5 ,
 or, if existing, by their
 .Xr termcap 5
 name, regardless of the actually used \*(OPal terminal control library.
-It is possible to use any capability, as long as the name is resolvable
-by the \*(OPal control library or was defined via the internal variable
+But any capability may be used, as long as the name is resolvable by the
+\*(OPal control library, or was defined via the internal variable
 .Va termcap .
-Input sequences are not case-normalized, so that an exact match is
-required to update or remove a binding.
+Input sequences are not case-normalized, an exact match is required to
+update or remove a binding.
+It is advisable to use an initial escape or other control character (like
+.Ql \ecA )
+for user (as opposed to purely terminal capability based) bindings in
+order to avoid ambiguities; it also reduces search time.
 Examples:
 .
 .Bd -literal -offset indent
+? bind base a,b echo one
 ? bind base $'\eE',d mle-snarf-word-fwd # Esc(ape)
 ? bind base $'\eE',$'\ec?' mle-snarf-word-bwd # Esc,Delete
 ? bind default $'\ecA',:khome,w 'echo Editable binding@'
@@ -4564,8 +4574,8 @@ Examples:
 .
 .Pp
 Note that the entire comma-separated list is first parsed (over) as a
-shell-token with whitespace as the field separator, before being parsed
-and expanded for real with comma as the field separator, therefore
+shell-token with whitespace as the field separator, then parsed and
+expanded for real with comma as the field separator, therefore
 whitespace needs to be properly quoted, see
 .Sx "Shell-style argument quoting" .
 Using Unicode reverse solidus escape sequences renders a binding
@@ -4674,16 +4684,6 @@ finally
 The same for the left cursor key,
 .Cd kcub1 :
 .Cd KLFT , KLFT3 , KLFT4 , KLFT5 , KLFT6 , KLFT7 , KLFT8 .
-.
-.Pp
-It is advisable to use an initial escape or other control character (like
-.Ql \ecA )
-for bindings which describe user key combinations (as opposed to purely
-terminal capability based ones), in order to avoid ambiguities whether
-input belongs to key sequences or not; it also reduces search time.
-Adjusting
-.Va bind-timeout
-may help shall keys and sequences be falsely recognized.
 .
 .
 .Mx
@@ -9340,15 +9340,43 @@ If this variable is not set no reverse solidus stripping is performed.
 .
 .Mx
 .It Va bind-timeout
-\*(OP Terminals generate multi-byte sequences for certain forms of
-input, for example for function and other special keys.
-Some terminals however do not write these multi-byte sequences as
-a whole, but byte-by-byte, and the latter is what \*(UA actually reads.
+\*(OB Predecessor of
+.Va bind-inter-byte-timeout .
+\*(ID Setting this automatically sets the successor.
+.
+.Mx
+.It Va bind-inter-byte-timeout
+\*(OP Terminals may generate multi-byte sequences for special function
+keys, for example, but these sequences may not become read as a unit.
+And multi-byte sequences can be defined freely via
+.Ic bind .
 This variable specifies the timeout in milliseconds that the MLE (see
 .Sx "On terminal control and line editor" )
 waits for more bytes to arrive unless it considers a sequence
 .Dq complete .
-The default is 200.
+The default is 200, the maximum is about 10 seconds.
+In the following example the comments state which sequences are
+affected by this timeout:
+.Bd -literal -offset indent
+? bind base abc echo 0 # abc
+? bind base ab,c echo 1 # ab
+? bind base abc,d echo 2 # abc
+? bind base ac,d echo 3 # ac
+? bind base a,b,c echo 4
+? bind base a,b,c,d echo 5
+? bind base a,b,cc,dd echo 6 # cc and dd
+.Ed
+.
+.Mx
+.It Va bind-inter-key-timeout
+\*(OP Multi-key
+.Ic bind
+sequences do not time out by default.
+If this variable is set, then the current key sequence is forcefully
+terminated once the timeout (in milliseconds) triggers.
+The value should be (maybe significantly) larger than
+.Va bind-inter-byte-timeout ,
+but may not excess the maximum, too.
 .
 .Mx
 .It Va bsdcompat

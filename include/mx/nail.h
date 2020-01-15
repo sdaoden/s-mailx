@@ -784,7 +784,10 @@ ok_b_autothread, /* {obsolete=1} */
 
    ok_b_bang,
 ok_b_batch_exit_on_error, /* {obsolete=1} */
-   ok_v_bind_timeout, /* {notempty=1,posnum=1} */
+ok_v_bind_timeout, /* {vip=1,obsolete=1,notempty=1,posnum=1} */
+   ok_v_bind_inter_byte_timeout, /* {\ } */
+      /* {notempty=1,posnum=1,defval=mx_BIND_INTER_BYTE_TIMEOUT} */
+   ok_v_bind_inter_key_timeout, /* {notempty=1,posnum=1} */
 ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
