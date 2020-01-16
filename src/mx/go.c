@@ -1389,6 +1389,7 @@ n_go_main_loop(void){ /* FIXME */
 
    for (eofcnt = 0;; gec.gec_ever_seen = TRU1) {
       interrupts = 0;
+      DVL(su_nyd_reset_level(1);)
 
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
