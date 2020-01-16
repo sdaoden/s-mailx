@@ -324,6 +324,12 @@ su_nyd_set_disabled(boole disabled){
 }
 
 void
+su_nyd_reset_level(u32 nlvl){
+   if(nlvl < a_core_nyd_level)
+      a_core_nyd_level = nlvl;
+}
+
+void
 su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
    if(!a_core_nyd_skip){
       struct a_core_nyd_info *cnip;

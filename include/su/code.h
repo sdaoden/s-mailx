@@ -759,8 +759,8 @@ do{\
 /*! Members in constant array */
 #define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
-/* NYD comes from code-{in,ou}.h (support function below).
- * Instrumented functions will always have one label for goto: purposes */
+/*! NYD comes from code-{in,ou}.h (support function below).
+ * Instrumented functions will always have one label for goto: purposes. */
 #define su_NYD_OU_LABEL su__nydou
 
 /*! Pointer to size_t */
@@ -1453,8 +1453,20 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #endif
 
 #if DVLOR(1, 0)
+/*! When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
 EXPORT void su_nyd_set_disabled(boole disabled);
+
+/*! In event-loop driven software that uses long jumps it may be desirable to
+ * reset the recursion level at times.  \a{nlvl} is only honoured when smaller
+ * than the current recursion level. */
+EXPORT void su_nyd_reset_level(u32 nlvl);
+
+/*! Not-yet-dead chirp.
+ * Normally used from the support macros in code-{in,ou}.h. */
 EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+
+/*! Dump all existing not-yet-dead entries via \a{ptf}.
+ * \a{buf} is NUL terminated despite \a{blen} being passed, too. */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif
