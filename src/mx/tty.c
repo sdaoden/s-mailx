@@ -914,6 +914,8 @@ static void a_tty__bind_tree_add(u32 hmap_idx,
 static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
                struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp,
                wchar_t wc, boole ismbseq);
+static void a_tty__bind_tree_dump(struct a_tty_bind_tree const *tbtp,
+      char const *indent);
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* mx_HAVE_KEY_BINDINGS */
 
@@ -3939,6 +3941,19 @@ a_tty_bind_tree_build(void){
                a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
    }
 
+   if(n_poption & n_PO_D_VVV){
+      n_err(_("`bind': key binding tree:\n"));
+
+      for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
+         uz j;
+
+         n_err("  - %s:\n", a_tty_input_ctx_maps[i].ticm_name);
+
+         for(j = 0; j < a_TTY_PRIME; ++j)
+            a_tty__bind_tree_dump(a_tty.tg_bind_tree[i][j], "    ");
+      }
+   }
+
    a_tty.tg_bind_isbuild = TRU1;
    NYD2_OU;
 }
@@ -4099,6 +4114,31 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
 jleave:
    NYD2_OU;
    return tbtp;
+}
+
+static void
+a_tty__bind_tree_dump(struct a_tty_bind_tree const *tbtp, char const *indent){
+   NYD2_IN;
+
+   for(; tbtp != NIL; tbtp = tbtp->tbt_sibling){
+      /* C99 */{
+         char const *s1, *s2, *s3;
+
+         if(tbtp->tbt_bind == NIL)
+            s1 = s2 = s3 = su_empty;
+         else
+            s1 = "(", s2 = tbtp->tbt_bind->tbc_exp, s3 = ")";
+         n_err("%s%c 0x%04X/%c %s%s%s\n", indent,
+            (tbtp->tbt_ismbseq ? ':' : '.'), tbtp->tbt_char,
+            (su_cs_is_print(tbtp->tbt_char) ? S(char,tbtp->tbt_char) : ' '),
+            s1, s2, s3);
+      }
+
+      if(tbtp->tbt_childs != NIL)
+         a_tty__bind_tree_dump(tbtp->tbt_childs, savecat(indent, "  "));
+   }
+
+   NYD2_OU;
 }
 
 static void

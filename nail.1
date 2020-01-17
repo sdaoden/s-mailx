@@ -4583,6 +4583,13 @@ defunctional if the locale does not support Unicode (see
 .Sx "Character sets" ) ,
 and using terminal capabilities does so if no (corresponding) terminal
 control support is (currently) available.
+Adding, deleting or modifying a key binding invalidates the internal
+prebuilt lookup tree, it will be recreated as necessary: this process
+will be visualized in most
+.Va verbose
+as well as in
+.Va debug
+mode.
 .
 .Pp
 The following terminal capability names are built-in and can be used in
@@ -15150,25 +15157,32 @@ define update_access_token {
 .Ed
 .\" }}}
 .
-.\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{
+.\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{ review
 .Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
 .
-It can happen that the terminal library (see
+Two thinkable situations: the first is a shadowed sequence; setting
+.Va debug ,
+or the most possible
+.Va verbose
+mode, causes a printout of the
+.Ic bind
+tree after that is built; being a cache, this happens only upon startup
+or after modifying bindings.
+.
+.Pp
+Or second, terminal libraries (see
 .Sx "On terminal control and line editor",
 .Ic bind ,
 .Va termcap )
-reports different codes than the terminal really sends, in which case
-\*(UA will tell that a key binding is functional, but will not be able to
-recognize it because the received data does not match anything expected.
-Especially without the \*(OPal terminal capability library support one
-reason for this may be that the (possibly even non-existing) keypad
-is not turned on and the resulting layout reports the keypad control
-codes for the normal keyboard keys.
-The
+may report different codes than the terminal really sends, rendering
+bindings disfunctional because expected and received data do not match; the
 .Va verbose
 listing of
 .Ic bind Ns
 ings will show the byte sequences that are expected.
+(One common source of problems is that the \(em possibly even
+non-existing \(em keypad is not turned on, and the resulting layout
+reports the keypad control codes for the normal keyboard keys.)
 .
 .Pp
 To overcome the situation use for example the program
