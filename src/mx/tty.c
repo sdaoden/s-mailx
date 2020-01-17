@@ -3993,7 +3993,9 @@ a_tty__bind_tree_add(u32 hmap_idx,
 
          u.wp = (wchar_t const*)&UNALIGN(s32 const*,cnvdat)[1];
 
-         /* May be a special shortcut function? */
+         /* May be a special shortcut function?
+          * Since bind_tree_build() is easy and clones over CTX_BASE to the
+          * "real" contexts: do not put the same shortcut several times */
          if(ntbtp == NULL && (tbcp->tbc_flags & a_TTY_BIND_MLE1CNTRL)){
             char *cp;
             u32 ctx, fun;
@@ -4008,7 +4010,8 @@ a_tty__bind_tree_add(u32 hmap_idx,
                   if(*cp == '\0'){
                      *cp = (char)*u.wp;
                      break;
-                  }
+                  }else if(*cp == S(char,*u.wp))
+                     break;
             }else if(fun == a_TTY_BIND_FUN_PROMPT_CHAR){
                for(cp = &a_tty.tg_bind_shcut_prompt_char[ctx][0];
                      PCMP(cp, <, &a_tty.tg_bind_shcut_prompt_char[ctx]
@@ -4017,7 +4020,8 @@ a_tty__bind_tree_add(u32 hmap_idx,
                   if(*cp == '\0'){
                      *cp = (char)*u.wp;
                      break;
-                  }
+                  }else if(*cp == S(char,*u.wp))
+                     break;
             }
          }
 
