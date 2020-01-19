@@ -4046,74 +4046,53 @@ a_tty__bind_tree_add(u32 hmap_idx,
 static struct a_tty_bind_tree *
 a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
       struct a_tty_bind_tree *parentp, wchar_t wc, boole isseq){
+   boole any;
    struct a_tty_bind_tree *tbtp, *xtbtp;
    NYD2_IN;
 
-   if(parentp == NULL){
+   if(parentp == NIL)
       treep += wc % a_TTY_PRIME;
+   else
+      treep = &parentp->tbt_childs;
 
-      /* Having no parent also means that the tree slot is possibly empty */
-      for(tbtp = *treep; tbtp != NULL;
-            parentp = tbtp, tbtp = tbtp->tbt_sibling){
-         if(tbtp->tbt_char != wc)
-            continue;
-         if(tbtp->tbt_isseq == isseq)
-            goto jleave;
-         /* isseq MUST be linked before !isseq, so record this "parent"
-          * sibling, but continue searching for now.
-          * Otherwise it is impossible that we'll find what we look for */
-         if(isseq){
-#ifdef mx_HAVE_DEBUG
-            while((tbtp = tbtp->tbt_sibling) != NULL)
-               ASSERT(tbtp->tbt_char != wc);
-#endif
+   /* Having no parent also means that the tree slot is possibly empty */
+   for(any = FAL0, xtbtp = NIL, tbtp = *treep; tbtp != NIL;
+         xtbtp = tbtp, tbtp = tbtp->tbt_sibling){
+      if(tbtp->tbt_char != wc){
+         if(any)
             break;
-         }
+         continue;
       }
+      any = TRU1;
 
-      tbtp = su_CALLOC(sizeof *tbtp);
-      tbtp->tbt_char = wc;
-      tbtp->tbt_isseq = isseq;
+      if(tbtp->tbt_isseq == isseq)
+         goto jleave;
 
-      if(parentp == NULL){
-         tbtp->tbt_sibling = *treep;
-         *treep = tbtp;
-      }else{
-         tbtp->tbt_sibling = parentp->tbt_sibling;
-         parentp->tbt_sibling = tbtp;
-      }
-   }else{
-      if((tbtp = *(treep = &parentp->tbt_childs)) != NULL){
-         for(;; tbtp = xtbtp){
-            if(tbtp->tbt_char == wc){
-               if(tbtp->tbt_isseq == isseq)
-                  goto jleave;
-               /* isseq MUST be linked before, so it is impossible that we'll
-                * find what we look for */
-               if(isseq){
-#ifdef mx_HAVE_DEBUG
-                  while((tbtp = tbtp->tbt_sibling) != NULL)
-                     ASSERT(tbtp->tbt_char != wc);
+      /* isseq MUST be linked before !isseq, so record this "parent"
+       * sibling, but continue searching for now.
+       * Otherwise it is impossible that we will find what we look for */
+      if(isseq){
+#if ASSERT_INJOR(1, 0)
+         while((tbtp = tbtp->tbt_sibling) != NIL)
+            ASSERT(tbtp->tbt_char != wc);
 #endif
-                  tbtp = NULL;
-                  break;
-               }
-            }
-
-            if((xtbtp = tbtp->tbt_sibling) == NULL){
-               treep = &tbtp->tbt_sibling;
-               break;
-            }
-         }
+         break;
       }
-
-      xtbtp = su_CALLOC(sizeof *xtbtp);
-      xtbtp->tbt_parent = parentp;
-      xtbtp->tbt_char = wc;
-      xtbtp->tbt_isseq = isseq;
-      tbtp = xtbtp;
-      *treep = tbtp;
    }
+
+   tbtp = su_CALLOC(sizeof *tbtp);
+   tbtp->tbt_parent = parentp;
+   tbtp->tbt_char = wc;
+   tbtp->tbt_isseq = isseq;
+
+   if(xtbtp == NIL){
+      tbtp->tbt_sibling = *treep;
+      *treep = tbtp;
+   }else{
+      tbtp->tbt_sibling = xtbtp->tbt_sibling;
+      xtbtp->tbt_sibling = tbtp;
+   }
+
 jleave:
    NYD2_OU;
    return tbtp;
