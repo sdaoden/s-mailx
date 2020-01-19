@@ -3928,8 +3928,7 @@ a_tty_bind_tree_build(void){
       for(tbcp = a_tty.tg_bind[n_GO_INPUT_CTX_BASE]; tbcp != NULL;
             tbcp = tbcp->tbc_next)
          if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
-            a_tty__bind_tree_add(n_GO_INPUT_CTX_BASE,
-               &a_tty.tg_bind_tree[i][0], tbcp);
+            a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
 
       if(i != n_GO_INPUT_CTX_BASE)
          for(tbcp = a_tty.tg_bind[i]; tbcp != NULL; tbcp = tbcp->tbc_next)
@@ -3967,9 +3966,8 @@ a_tty__bind_tree_add(u32 hmap_idx,
    char const *cnvdat;
    struct a_tty_bind_tree *ntbtp;
    NYD2_IN;
-   UNUSED(hmap_idx);
 
-   ntbtp = NULL;
+   ntbtp = NIL;
 
    for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len; cnvlen > 0;){
       union {wchar_t const *wp; char const *cp;} u;
@@ -3981,44 +3979,44 @@ a_tty__bind_tree_add(u32 hmap_idx,
       if(entlen & S32_MIN){
          /* struct{s32 buf_len_iscap; s32 cap_len; char buf[]+NUL;}
           * Note that empty capabilities result in DEFUNCT */
-         for(u.cp = (char const*)&UNALIGN(s32 const*,cnvdat)[2];
+         for(u.cp = S(char const*,&UNALIGN(s32 const*,cnvdat)[2]);
                *u.cp != '\0'; ++u.cp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
-         ASSERT(ntbtp != NULL);
+         ASSERT(ntbtp != NIL);
          ntbtp->tbt_isseq_trail = TRU1;
          entlen &= S32_MAX;
       }else{
          /* struct{s32 buf_len_iscap; wc_t buf[]+NUL;} */
          boole isseq;
 
-         u.wp = (wchar_t const*)&UNALIGN(s32 const*,cnvdat)[1];
+         u.wp = S(wchar_t const*,&UNALIGN(s32 const*,cnvdat)[1]);
 
          /* May be a special shortcut function?
           * Since bind_tree_build() is easy and clones over CTX_BASE to the
           * "real" contexts: do not put the same shortcut several times */
-         if(ntbtp == NULL && (tbcp->tbc_flags & a_TTY_BIND_MLE1CNTRL)){
+         if(ntbtp == NIL && (tbcp->tbc_flags & a_TTY_BIND_MLE1CNTRL)){
             char *cp;
-            u32 ctx, fun;
+            u32 fun;
 
-            ctx = tbcp->tbc_flags & n__GO_INPUT_CTX_MASK;
             fun = tbcp->tbc_flags & a_TTY__BIND_FUN_MASK;
 
             if(fun == a_TTY_BIND_FUN_CANCEL){
-               for(cp = &a_tty.tg_bind_shcut_cancel[ctx][0];
-                     PCMP(cp, <, &a_tty.tg_bind_shcut_cancel[ctx]
-                        [NELEM(a_tty.tg_bind_shcut_cancel[ctx]) - 1]); ++cp)
+               for(cp = &a_tty.tg_bind_shcut_cancel[hmap_idx][0];
+                     PCMP(cp, <, &a_tty.tg_bind_shcut_cancel[hmap_idx][
+                        NELEM(a_tty.tg_bind_shcut_cancel[hmap_idx]) - 1]);
+                     ++cp)
                   if(*cp == '\0'){
-                     *cp = (char)*u.wp;
+                     *cp = S(char,*u.wp);
                      break;
                   }else if(*cp == S(char,*u.wp))
                      break;
             }else if(fun == a_TTY_BIND_FUN_PROMPT_CHAR){
-               for(cp = &a_tty.tg_bind_shcut_prompt_char[ctx][0];
-                     PCMP(cp, <, &a_tty.tg_bind_shcut_prompt_char[ctx]
-                        [NELEM(a_tty.tg_bind_shcut_prompt_char[ctx]) - 1]);
+               for(cp = &a_tty.tg_bind_shcut_prompt_char[hmap_idx][0];
+                     PCMP(cp, <, &a_tty.tg_bind_shcut_prompt_char[hmap_idx][
+                        NELEM(a_tty.tg_bind_shcut_prompt_char[hmap_idx]) - 1]);
                      ++cp)
                   if(*cp == '\0'){
-                     *cp = (char)*u.wp;
+                     *cp = S(char,*u.wp);
                      break;
                   }else if(*cp == S(char,*u.wp))
                      break;
@@ -4039,8 +4037,9 @@ a_tty__bind_tree_add(u32 hmap_idx,
    }
 
    /* Should have been rendered defunctional at first instead */
-   ASSERT(ntbtp != NULL);
+   ASSERT(ntbtp != NIL);
    ntbtp->tbt_bind = tbcp;
+
    NYD2_OU;
 }
 
