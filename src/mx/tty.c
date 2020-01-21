@@ -3759,22 +3759,25 @@ jeempty:
    if(isbindcmd){
       char *exp;
 
-      exp = tbpcp->tbpc_exp.s;
-
-      i = tbpcp->tbpc_exp.l;
-      if(i > 0 && exp[i - 1] == '@'){
+      if((i = tbpcp->tbpc_exp.l) > 0){
+         if((exp = tbpcp->tbpc_exp.s)[i - 1] == '@'){
 #if 0 /* xxx no: allow trailing whitespace, as in 'echo du @' .. */
-         while(--i > 0)
-            if(!su_cs_is_space(exp[i - 1]))
-               break;
+            while(--i > 0)
+               if(!su_cs_is_space(exp[i - 1]))
+                  break;
 #else
-         --i;
+            --i;
 #endif
-         if(i == 0)
-            goto jeempty;
+            if(i == 0)
+               goto jeempty;
 
-         exp[tbpcp->tbpc_exp.l = i] = '\0';
-         tbpcp->tbpc_flags |= a_TTY_BIND_NOCOMMIT;
+            exp[tbpcp->tbpc_exp.l = i] = '\0';
+            tbpcp->tbpc_flags |= a_TTY_BIND_NOCOMMIT;
+         }else{
+            n_str_trim(&tbpcp->tbpc_exp, n_STR_TRIM_BOTH);
+            i = tbpcp->tbpc_exp.l;
+            exp = tbpcp->tbpc_exp.s;
+         }
       }
 
       /* Reverse solidus cannot be placed last in expansion to avoid (at the
