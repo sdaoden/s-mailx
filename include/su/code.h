@@ -1176,6 +1176,19 @@ enum su_log_level{
    su_LOG_INFO, /*!< Informational */
    su_LOG_DEBUG /*!< Debug-level message */
 };
+enum{
+   su__LOG_MAX = su_LOG_DEBUG,
+   su__LOG_SHIFT = 8,
+   su__LOG_MASK = (1u << su__LOG_SHIFT) - 1
+};
+MCTA(1u<<su__LOG_SHIFT > su__LOG_MAX, "Bit ranges may not overlap")
+
+/*! Flags that can be ORd to \r{su_log_level}. */
+enum su_log_flags{
+   /*! In environments where \r{su_log_write()} is (also) hooked to an output
+    * channel, do not log the message through that. */
+   su_LOG_F_CORE = 1u<<(su__LOG_SHIFT+0)
+};
 
 /*! Adjustment possibilities for the global log domain (e.g,
  * \r{su_log_write()}), to be set via \r{su_state_set()}, to be queried via
@@ -1277,8 +1290,9 @@ enum su__state_flags{
    su__STATE_GLOBAL_MASK = 0x00FFFFFFu & ~(su__STATE_LOG_MASK |
          (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
-MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
-MCTA(((uz)su_STATE_ERR_MASK & ~0xFF00) == 0, "Bits excess documented bounds")
+MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK),
+   "Bit ranges may not overlap")
+MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
 
 #ifdef su_HAVE_MT
 enum su__glock_type{
@@ -1433,12 +1447,15 @@ INLINE void su_log_unlock(void){
 }
 
 /*! Log functions of various sort.
+ * \a{lvl} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
- * If \r{su_program} is set, it will be prepended to messages.TODO 1perLn */
-EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
+ * If \r{su_program} is set, it will be prepended to messages. */
+EXPORT void su_log_write(BITENUM_IS(u32,su_log_level) lvl,
+      char const *fmt, ...);
 
 /*! See \r{su_log_write()}.  The \a{vp} is a \c{&va_list}. */
-EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
+EXPORT void su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl,
+      char const *fmt, void *vp);
 
 /*! Like perror(3). */
 EXPORT void su_perr(char const *msg, s32 eno_or_0);
@@ -1863,6 +1880,11 @@ public:
       debug = su_LOG_DEBUG /*!< \copydoc{su_LOG_DEBUG} */
    };
 
+   /*! \copydoc{su_log_flags} */
+   enum flags{
+      f_core = su_LOG_F_CORE, /*!< \copydoc{su_LOG_F_CORE} */
+   };
+
    // Log functions of various sort.
    // Regardless of the level these also log if state_debug|state_verbose.
    // The vp is a &va_list
@@ -1905,11 +1927,11 @@ public:
    static void unlock(void) {su_log_unlock();}
 
    /*! \copydoc{su_log_write()} */
-   static void write(level lvl, char const *fmt, ...);
+   static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
 
    /*! \copydoc{su_log_vwrite()} */
-   static void vwrite(level lvl, char const *fmt, void *vp){
-      su_log_vwrite(S(enum su_log_level,lvl), fmt, vp);
+   static void vwrite(BITENUM_IS(u32,level) lvl, char const *fmt, void *vp){
+      su_log_vwrite(lvl, fmt, vp);
    }
 
    /*! \copydoc{su_perr()} */

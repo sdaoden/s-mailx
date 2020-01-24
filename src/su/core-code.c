@@ -39,8 +39,7 @@
 #include "su/code-in.h"
 
 #define a_PRIMARY_DOLOG(LVL) \
-   ((S(u32,LVL) /*& su__STATE_LOG_MASK*/) <= \
-         (su__state & su__STATE_LOG_MASK) ||\
+   ((LVL & su__LOG_MASK) <= (su__state & su__STATE_LOG_MASK) ||\
       (su__state & su__STATE_D_V))
 
 #if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
@@ -89,7 +88,8 @@ char const *su_program;
  * TODO We need some _USECASE_ hook to store readily prepared lines then.
  * TODO Also, our log does not yet prepend "su_progam: " to each output line,
  * TODO because of all that (port FmtEncCtx, use rounds!!) */
-su_SINLINE void a_evlog(enum su_log_level lvl, char const *fmt, va_list ap);
+su_SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
+      va_list ap);
 
 /* */
 #if DVLOR(1, 0)
@@ -98,7 +98,7 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
 #endif
 
 su_SINLINE void
-a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
+a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
 #ifdef su_USECASE_MX
 # ifndef mx_HAVE_AMALGAMATION
    /*extern*/ void n_err(char const *fmt, ...);
@@ -107,11 +107,17 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
 #endif
    char buf[su_IENC_BUFFER_SIZE];
    char const *cp, *xfmt;
+   u32 f;
 
+   f = lvl & ~su__LOG_MASK;
+   lvl &= su__LOG_MASK;
+
+   if(!(f & su_LOG_F_CORE)){
 #ifdef su_USECASE_MX
-   if(lvl != su_LOG_EMERG)
-      goto jnostd;
+      if(lvl != su_LOG_EMERG)
+         goto jnostd;
 #endif
+   }
 
    /* TODO ensure each line has the prefix */
    if(su_program != NIL){
@@ -127,7 +133,7 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
 
    if(su_state_has(su_STATE_LOG_SHOW_LEVEL))
       fprintf(stderr, "[%s] ",
-         a_core_lvlnames[S(u32,lvl) /*& su__STATE_LOG_MASK*/]);
+         a_core_lvlnames[lvl]);
 
    vfprintf(stderr, fmt, ap);
 
@@ -286,7 +292,7 @@ su_err_no_via_errno(void){
 }
 
 void
-su_log_write(enum su_log_level lvl, char const *fmt, ...){
+su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
    va_list va;
    NYD_IN;
 
@@ -299,7 +305,7 @@ su_log_write(enum su_log_level lvl, char const *fmt, ...){
 }
 
 void
-su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp){
+su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, void *vp){
    NYD_IN;
 
    if(a_PRIMARY_DOLOG(lvl))

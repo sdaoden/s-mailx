@@ -33,12 +33,12 @@ NSPC_USE(su)
 // code.h
 
 STA void
-log::write(level lvl, char const *fmt, ...){ // XXX unroll
+log::write(BITENUM_IS(u32,level) lvl, char const *fmt, ...){ // XXX unroll
    va_list va;
    NYD_IN;
 
    va_start(va, fmt);
-   su_log_vwrite(S(enum su_log_level,lvl), fmt, &va);
+   su_log_vwrite(lvl, fmt, &va);
    va_end(va);
    NYD_OU;
 }
