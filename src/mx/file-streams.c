@@ -969,6 +969,8 @@ mx_fs_linepool_aquire(char **dpp, uz *dsp){
    *dpp = lpep->fsle_dat;
    lpep->fsle_dat = NIL;
    *dsp = lpep->fsle_size;
+   lpep->fsle_size = 0;
+
    NYD2_OU;
 }
 
@@ -985,6 +987,7 @@ mx_fs_linepool_release(char *dp, uz ds){
    a_fs_lpool_free = lpep;
    lpep->fsle_dat = dp;
    lpep->fsle_size = ds;
+
    NYD2_OU;
 }
 
@@ -1038,15 +1041,18 @@ mx_fs_linepool_cleanup(boole completely){
    a_fs_lpool_free = keep = NIL;
 jredo:
    while((tmp = lpep) != NIL){
+      void *vp;
+
       lpep = lpep->fsle_last;
 
-      if(completely && tmp->fsle_size <= LINESIZE * 2){
+      if((vp = tmp->fsle_dat) != NIL && completely &&
+            tmp->fsle_size <= LINESIZE * 2){
          --completely;
          tmp->fsle_last = a_fs_lpool_free;
          a_fs_lpool_free = tmp;
       }else{
-         if(tmp->fsle_dat != NIL)
-            su_FREE(tmp->fsle_dat);
+         if(vp != NIL)
+            su_FREE(vp);
          su_FREE(tmp);
       }
    }
