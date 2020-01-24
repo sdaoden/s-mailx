@@ -308,7 +308,6 @@ jleave:
 
 /*
  * MLE: the Mailx-Line-Editor, our homebrew editor
- * (inspired from NetBSDs sh(1) and dash(1)s hetio.c).
  *
  * Only used in interactive mode.
  * TODO . This code should be split in funs/raw input/bind modules.
@@ -325,18 +324,6 @@ jleave:
  * TODO    uses SA_RESTART), which currently does a tremendous amount of work.
  * TODO    With double-buffer, it could simply write through the prepared one.
  * TODO . No BIDI support.
- * TODO . `bind': we currently use only one lookup tree.
- * TODO   For graceful behaviour (in conjunction with mx_HAVE_TERMCAP) we
- * TODO   need a lower level tree, which possibly combines bytes into "symbolic
- * TODO   wchar_t values", into "keys" that is, as applicable, and an upper
- * TODO   layer which only works on "keys" in order to possibly combine them
- * TODO   into key sequences.  We can reuse existent tree code for that.
- * TODO   We need an additional hashmap which maps termcap/terminfo names to
- * TODO   (their byte representations and) a dynamically assigned unique
- * TODO   "symbolic wchar_t value".  This implies we may have incompatibilities
- * TODO   when __STDC_ISO_10646__ is not defined.  Also we do need takeover-
- * TODO   bytes storage, but it can be a string_creat_auto in the line struct.
- * TODO   Until then we can run into ambiguities; in rare occasions.
  */
 #ifdef mx_HAVE_MLE
 /* To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
@@ -479,6 +466,15 @@ enum a_tty_hist_flags{
 CTA(a_TTY_HIST_CTX_MASK < a_TTY_HIST_GABBY, "Enumeration value overlap");
 # endif
 
+# ifdef mx_HAVE_KEY_BINDINGS
+enum a_tty_term_timeout_mode{
+   a_TTY_TTM_NONE,
+   a_TTY_TTM_MBSEQ,
+   a_TTY_TTM_KEY,
+   a_TTY_TTM_KEY_AFTER_MBSEQ
+};
+# endif
+
 enum a_tty_visual_flags{
    a_TTY_VF_NONE,
    a_TTY_VF_MOD_CURSOR = 1u<<0, /* Cursor moved */
@@ -543,9 +539,8 @@ struct a_tty_bind_tree{
    struct a_tty_bind_tree *tbt_parent;
    struct a_tty_bind_ctx *tbt_bind; /* NULL for intermediates */
    wchar_t tbt_char; /* acter this level represents */
-   boole tbt_ismbseq; /* Belongs to multibyte sequence */
-   boole tbt_ismbseq_trail; /* ..is trailing byte of it */
-   u8 tbt__dummy[2];
+   boole tbt_ismbseq; /* Is a follow-up byte of a multibyte sequence */
+   u8 tbt__dummy[3];
 };
 # endif /* mx_HAVE_KEY_BINDINGS */
 
@@ -821,10 +816,10 @@ static boole a_tty_hist_is_gabby_ok(enum n_go_input_flags gif);
 static boole a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
-/* Adjust an active raw mode to use / not use a timeout.
- * If enable is TRUM1 we are in a multibyte sequence */
+/* Adjust an active raw mode to use / not use a timeout */
 # ifdef mx_HAVE_KEY_BINDINGS
-static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable);
+static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp,
+      enum a_tty_term_timeout_mode ttm);
 # endif
 
 /* 0-X (2), U8_MAX == \t / HT */
@@ -1269,17 +1264,21 @@ j_leave:
 
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
-a_tty_term_rawmode_timeout(struct a_tty_line *tlp, boole enable){
+a_tty_term_rawmode_timeout(struct a_tty_line *tlp,
+      enum a_tty_term_timeout_mode ttm){
    u32 tiosc;
-   u8 i;
+   u8 i, j;
    NYD2_IN;
 
-   if(enable){
+   if(ttm != a_TTY_TTM_NONE){
       tiosc = mx_TERMIOS_CMD_RAW_TIMEOUT;
-      if(enable == TRUM1)
-         i = tlp->tl_bind_inter_byte_timeout;
-      else if((i = tlp->tl_bind_inter_key_timeout) == 0)
+      i = j = tlp->tl_bind_inter_byte_timeout;
+      if(ttm == a_TTY_TTM_MBSEQ){
+         /* If that is 0, whee, that is fast */
+      }else if((i = tlp->tl_bind_inter_key_timeout) == 0)
          goto jntimeout;
+      else if(ttm == a_TTY_TTM_KEY_AFTER_MBSEQ && i > j)
+         i -= j;
    }else{
 jntimeout:
       tiosc = mx_TERMIOS_CMD_RAW;
@@ -1480,7 +1479,7 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
    boole rv;
    NYD2_IN;
 
-   if(tlp->tl_vi_flags & a_TTY_VF_BELL){
+   if(tlp->tl_vi_flags & a_TTY_VF_BELL){ /* XXX visual bell?? */
       tlp->tl_vi_flags |= a_TTY_VF_SYNC;
       if(putc('\a', mx_tty_fp) == EOF)
          goto jerr;
@@ -2120,7 +2119,7 @@ a_tty_ksnarfw(struct a_tty_line *tlp, boole fwd){
 
    if((tlp->tl_count = cnt) != (tlp->tl_cursor = cur)){
       cnt -= cur;
-      su_mem_move(&tcap[0], &tcap[i], cnt * sizeof(*tcap)); /* FIXME*/
+      su_mem_move(&tcap[0], &tcap[i], cnt * sizeof(*tcap));
    }
 
    f = a_TTY_VF_MOD_CURSOR | a_TTY_VF_MOD_CONTENT;
@@ -2941,9 +2940,10 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
       break;
 
    case a_X(PASTE):
-      if(tlp->tl_pastebuf.l > 0)
+      if(tlp->tl_pastebuf.l > 0){
          *len = (tlp->tl_defc = tlp->tl_pastebuf).l;
-      else
+         rv = a_TTY_FUN_STATUS_RESTART;
+      }else
          tlp->tl_vi_flags |= a_TTY_VF_BELL;
       break;
 
@@ -3032,339 +3032,327 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
     * buffer" -> a_BUFMODE, and only otherwise read(2) it */
    mbstate_t ps[2];
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
-   sz rv;
 # ifdef mx_HAVE_KEY_BINDINGS
    struct a_tty_bind_tree *tbtp;
 # endif
    wchar_t wc;
-   enum a_tty_bind_flags tbf;
-   enum {a_NONE, a_WAS_HERE = 1<<0, a_BUFMODE = 1<<1, a_MAYBEFUN = 1<<2,
-      a_TIMEOUT = 1<<3, a_TIMEOUT_EXPIRED = 1<<4,
-         a_TIMEOUT_MASK = a_TIMEOUT | a_TIMEOUT_EXPIRED,
-      a_READ_LOOP_MASK = ~(a_WAS_HERE | a_MAYBEFUN | a_TIMEOUT_MASK)
-   } flags;
+   BITENUM_IS(u32,a_tty_bind_flags) tbf;
+   boole timeout;
+   sz rv;
    NYD_IN;
 
    UNINIT(rv, 0);
 # ifdef mx_HAVE_KEY_BINDINGS
    ASSERT(tlp->tl_bind_takeover == '\0');
 # endif
+
 jrestart:
    su_mem_set(ps, 0, sizeof ps);
-   flags = a_NONE;
+   timeout = FAL0;
    tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
+
+   /* Treat buffer take-over mode specially, that simplifies the below */
+   if(UNLIKELY(len != 0)){
+      /* Ensure we have valid pointers, and room for grow */
+      a_tty_check_grow(tlp, S(u32,len)  su_DBG_LOC_ARGS_USE);
+
+      for(;;){
+         ASSERT(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NIL);
+         ASSERT(tlp->tl_defc.l >= len);
+         cbufp =
+            cbuf = tlp->tl_defc.s + (tlp->tl_defc.l - len);
+         cbufp += len;
+
+         rv = S(sz,mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]));
+         if(rv <= 0){
+            /* Error during buffer take-over can only result in a hard reset */
+            a_tty_fun(tlp, a_TTY_BIND_FUN_FULLRESET, &len);
+            goto jrestart;
+         }
+
+         if(a_tty_kother(tlp, wc)){
+            /* ?? */
+         }
+
+         if((len -= S(uz,rv)) == 0){
+            /* Buffer mode completed */
+            tlp->tl_defc.s = NIL;
+            tlp->tl_defc.l = 0;
+            break;
+         }
+
+         /* Ensure more room -- should normally be a no-op */
+         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+      }
+      goto jrestart;
+   }
 
 jinput_loop:
    for(;;){
-      if(len != 0)
-         flags |= a_BUFMODE;
+# ifdef mx_HAVE_KEY_BINDINGS
+      enum a_tty_term_timeout_mode ttm;
+      struct inseq{
+         struct inseq *last;
+         struct inseq *next;
+         struct a_tty_bind_tree *tbtp;
+      } *isp_head, *isp;
 
-      /* Ensure we have valid pointers, and room for grow */
-      a_tty_check_grow(tlp, ((flags & a_BUFMODE) ? (u32)len : 1)
-         su_DBG_LOC_ARGS_USE);
+      isp_head = isp = NIL;
+      UNINIT(ttm, a_TTY_TTM_NONE);
+# endif
 
-      /* Handle visual state flags, except in buffer mode */
-      if(!(flags & a_BUFMODE) && (tlp->tl_vi_flags & a_TTY_VF_ALL_MASK))
+      /* Handle visual state flags */
+      if(tlp->tl_vi_flags & a_TTY_VF_ALL_MASK)
          if(!a_tty_vi_refresh(tlp)){
             rv = -1;
             goto jleave;
          }
 
-      /* Ready for messing around.
-       * Normal read(2)?  Else buffer mode: speed this one up */
-      if(!(flags & a_BUFMODE)){
-         cbufp =
-         cbuf = cbuf_base;
-      }else{
-         ASSERT(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NULL);
-         ASSERT(tlp->tl_defc.l >= len);
-         cbufp =
-         cbuf = tlp->tl_defc.s + (tlp->tl_defc.l - len);
-         cbufp += len;
-      }
+      cbufp = cbuf = cbuf_base;
 
-      /* Read in the next complete multibyte character */
-      /* C99 */{
+      for(;;){
+         /* Ensure we have valid pointers, and room for grow */
+         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+         timeout = FAL0;
+
 # ifdef mx_HAVE_KEY_BINDINGS
-         struct a_tty_bind_tree *xtbtp;
-         struct inseq{
-            struct inseq *last;
-            struct inseq *next;
-            struct a_tty_bind_tree *tbtp;
-         } *isp_head, *isp;
-
-         isp_head = isp = NULL;
+         if(tlp->tl_bind_takeover != '\0'){
+            wc = tlp->tl_bind_takeover;
+            tlp->tl_bind_takeover = '\0';
+         }else
 # endif
-
-         for(flags &= a_READ_LOOP_MASK;;){
+         {
+            /* Let me at least once dream of iomon(itor), timer with
+             * one-shot, enwrapped with key_event and key_sequence_event,
+             * all driven by an event_loop */
 # ifdef mx_HAVE_KEY_BINDINGS
-            if(!(flags & a_BUFMODE) && tlp->tl_bind_takeover != '\0'){
-               wc = tlp->tl_bind_takeover;
-               tlp->tl_bind_takeover = '\0';
-            }else
-# endif
-            {
-               if(!(flags & a_BUFMODE)){
-                  /* Let me at least once dream of iomon(itor), timer with
-                   * one-shot, enwrapped with key_event and key_sequence_event,
-                   * all driven by an event_loop */
-# ifdef mx_HAVE_KEY_BINDINGS
-                  flags &= ~a_TIMEOUT_MASK;
-
-                  if(isp != NIL){
-                     tbtp = isp->tbtp;
-                     a_tty_term_rawmode_timeout(tlp, (tbtp->tbt_ismbseq &&
-                        !tbtp->tbt_ismbseq_trail) ? TRUM1 : TRU1);
-                     flags |= a_TIMEOUT;
-                  }
 jread_again:
-# endif
-                  while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
-                     /* TODO Currently a noop due to SA_RESTART */
-                     if(su_err_no() != su_ERR_INTR ||
-                           ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
-                              !a_tty_vi_refresh(tlp)))
+            if(isp == NIL)
+               timeout = FAL0;
+            else{
+               /* If the current isp has childs with and without ismbseq then
+                * we will restart waiting for the normal key.
+                * Otherwise check which timeout to use at first */
+               if(timeout){
+                  ASSERT(ttm == a_TTY_TTM_MBSEQ);
+                  ttm = a_TTY_TTM_KEY_AFTER_MBSEQ;
+               }else{
+                  ASSERT(!timeout);
+                  ttm = a_TTY_TTM_KEY;
+                  for(tbtp = isp->tbtp->tbt_childs; tbtp != NIL;
+                        tbtp = tbtp->tbt_sibling)
+                     if(tbtp->tbt_ismbseq){
+                        ttm = a_TTY_TTM_MBSEQ;
                         break;
-                  }
+                     }
+               }
+
+               timeout = TRU1;
+               a_tty_term_rawmode_timeout(tlp, ttm);
+            }
+# endif /* mx_HAVE_KEY_BINDINGS */
+
+            while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
+               /* TODO Currently a noop due to SA_RESTART */
+               if(su_err_no() != su_ERR_INTR ||
+                     ((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
+                      !a_tty_vi_refresh(tlp)))
+                  break;
+            }
 
 # ifdef mx_HAVE_KEY_BINDINGS
-                  if(flags & a_TIMEOUT)
-                     a_tty_term_rawmode_timeout(tlp, FAL0);
+            if(timeout)
+               a_tty_term_rawmode_timeout(tlp, a_TTY_TTM_NONE);
 # endif
 
-                  if(rv < 0)
-                     goto jleave;
+            if(rv < 0)
+               goto jleave;
 # ifdef mx_HAVE_KEY_BINDINGS
-                  /* Timeout expiration */
-                  else if(rv == 0){
-                     ASSERT(flags & a_TIMEOUT);
-                     ASSERT(isp != NIL);
+            /* Timeout expiration */
+            else if(rv == 0){
+               ASSERT(timeout);
+               ASSERT(isp != NIL);
 
-                     /* Something "atomic" broke.  Maybe the current one can
-                      * also be terminated already, itself? xxx really? */
-                     if((tbtp = isp->tbtp)->tbt_bind != NIL){
-                        tlp->tl_bind_takeover = wc;
-                        goto jhave_bind;
-                     }
-
-                     /* Or, maybe there is a second path without a timeout;
-                      * this should be covered by .tbt_ismbseq_trail, but then
-                      * again a single-layer implementation cannot "know" */
-                     for(xtbtp = tbtp; (xtbtp = xtbtp->tbt_sibling) != NIL;)
-                        if(xtbtp->tbt_char == tbtp->tbt_char){
-                           ASSERT(!xtbtp->tbt_ismbseq);
-                           break;
-                        }
-                     /* So -- lay down on a blocking read(2)? */
-                     if(xtbtp != NIL){
-                        flags &= ~a_TIMEOUT;
+               /* If we were waiting for a tbt_ismbseq to be continued, maybe
+                * there is a normal key child also */
+               if(ttm == a_TTY_TTM_MBSEQ){
+                  for(tbtp = isp->tbtp->tbt_childs; tbtp != NIL;
+                        tbtp = tbtp->tbt_sibling)
+                     if(!tbtp->tbt_ismbseq)
                         goto jread_again;
-                     }
-                     goto jtake_over;
-                  }
-# endif /* mx_HAVE_KEY_BINDINGS */
-
-                  /* As a special case, simulate EOF via EOT (which can happen
-                   * via type-ahead as when typing "yes\n^@" during sleep of
-                   *    $ sleep 5; mail -s byjove $LOGNAME */
-                  if(*cbufp == '\0'){
-                     ASSERT((n_psonce & n_PSO_INTERACTIVE) &&
-                        !(n_pstate & n_PS_ROBOT));
-                     *cbuf = '\x04';
-                  }
-                  ++cbufp;
                }
 
-               rv = (sz)mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]);
-               if(rv <= 0){
-                  /* Any error during buffer mode can only result in a hard
-                   * reset;  Otherwise, if it's a hard error, or if too many
-                   * redundant shift sequences overflow our buffer: perform
-                   * hard reset */
-                  if((flags & a_BUFMODE) || rv == -1 ||
-                        sizeof cbuf_base == P2UZ(cbufp - cbuf)){
-                     a_tty_fun(tlp, a_TTY_BIND_FUN_FULLRESET, &len);
-                     goto jrestart;
-                  }
-                  /* Otherwise, due to the way we deal with the buffer, we need
-                   * to restore the mbstate_t from before this conversion */
-                  ps[0] = ps[1];
-                  continue;
-               }
-               cbufp = cbuf;
-               ps[1] = ps[0];
-            }
-
-            /* Normal read(2)ing is subject to detection of key-bindings */
-# ifdef mx_HAVE_KEY_BINDINGS
-            if(!(flags & a_BUFMODE)){
-               /* Check for special bypass functions before we try to embed
-                * this character into the tree */
-               if(su_cs_is_ascii(wc)){
-                  char c;
-                  char const *cp;
-
-                  for(c = (char)wc, cp = &(*tlp->tl_bind_shcut_prompt_char)[0];
-                        *cp != '\0'; ++cp){
-                     if(c == *cp){
-                        wc = a_tty_vinuni(tlp);
-                        break;
-                     }
-                  }
-                  if(wc == '\0'){
-                     tlp->tl_vi_flags |= a_TTY_VF_BELL;
-                     goto jinput_loop;
-                  }
-               }
-               if(su_cs_is_ascii(wc))
-                  flags |= a_MAYBEFUN;
-               else
-                  flags &= ~a_MAYBEFUN;
-
-               /* Search for this character in the bind tree */
-               tbtp = (isp != NULL) ? isp->tbtp->tbt_childs
-                     : (*tlp->tl_bind_tree_hmap)[wc % a_TTY_PRIME];
-               for(; tbtp != NULL; tbtp = tbtp->tbt_sibling){
-                  if(tbtp->tbt_char == wc){
-                     struct inseq *nisp;
-
-                     /* If this one cannot continue we're likely finished! */
-                     if(tbtp->tbt_childs == NULL){
-                        ASSERT(tbtp->tbt_bind != NULL);
-                        tbf = tbtp->tbt_bind->tbc_flags;
-                        goto jmle_fun;
-                     }
-
-                     /* This needs to read more characters */
-                     nisp = n_autorec_alloc(sizeof *nisp);
-                     if((nisp->last = isp) == NULL)
-                        isp_head = nisp;
-                     else
-                        isp->next = nisp;
-                     nisp->next = NULL;
-                     nisp->tbtp = tbtp;
-                     isp = nisp;
-                     flags &= ~a_WAS_HERE;
-                     break;
-                  }
-               }
-               if(tbtp != NULL)
-                  continue;
-
-               /* Was there a binding active, but couldn't be continued? */
-               if(isp != NULL){
-                  /* A binding had a timeout, it didn't expire, but we saw
-                   * something non-expected.  Something "atomic" broke.
-                   * Maybe there is a second path without a timeout, that
-                   * continues like we've seen it.  I.e., it may just have been
-                   * the user, typing too fast.  We definitely want to allow
-                   * bindings like \e,d etc. to succeed: users are so used to
-                   * them that a timeout cannot be the mechanism to catch up!
-                   * A single-layer implementation cannot "know" */
-                  if((tbtp = isp->tbtp)->tbt_ismbseq && (isp->last == NIL ||
-                        !(xtbtp = isp->last->tbtp)->tbt_ismbseq ||
-                        xtbtp->tbt_ismbseq_trail)){
-                     for(xtbtp = (tbtp = isp->tbtp);
-                           (xtbtp = xtbtp->tbt_sibling) != NIL;)
-                        if(xtbtp->tbt_char == tbtp->tbt_char){
-                           ASSERT(!xtbtp->tbt_ismbseq);
-                           break;
-                        }
-                     if(xtbtp != NULL){
-                        isp->tbtp = xtbtp;
-                        tlp->tl_bind_takeover = wc;
-                        continue;
-                     }
-                  }
-
-                  /* Check for CANCEL shortcut now */
-                  if(flags & a_MAYBEFUN){
-                     char c;
-                     char const *cp;
-
-                     for(c = (char)wc, cp = &(*tlp->tl_bind_shcut_cancel)[0];
-                           *cp != '\0'; ++cp)
-                        if(c == *cp){
-                           tbf = a_TTY_BIND_FUN_INTERNAL |
-                                 a_TTY_BIND_FUN_CANCEL;
-                           goto jmle_fun;
-                        }
-                  }
-
-                  /* So: maybe the current sequence can be terminated here? */
-                  if((tbtp = isp->tbtp)->tbt_bind != NULL){
-jhave_bind:
-                     tbf = tbtp->tbt_bind->tbc_flags;
-jmle_fun:
-                     if(tbf & a_TTY_BIND_FUN_INTERNAL){
-                        switch(a_tty_fun(tlp, tbf, &len)){
-                        case a_TTY_FUN_STATUS_OK:
-                           goto jinput_loop;
-                        case a_TTY_FUN_STATUS_COMMIT:
-                           goto jdone;
-                        case a_TTY_FUN_STATUS_RESTART:
-                           goto jrestart;
-                        case a_TTY_FUN_STATUS_END:
-                           rv = -1;
-                           goto jleave;
-                        }
-                        ASSERT(0);
-                     }else if(tbtp->tbt_bind->tbc_flags & a_TTY_BIND_NOCOMMIT){
-                        struct a_tty_bind_ctx *tbcp;
-
-                        tbcp = tbtp->tbt_bind;
-                        su_mem_copy(tlp->tl_defc.s = n_autorec_alloc(
-                              (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
-                           tbcp->tbc_exp, tbcp->tbc_exp_len +1);
-                        goto jrestart;
-                     }else{
-                        cbufp = tbtp->tbt_bind->tbc_exp;
-                        goto jinject_input;
-                     }
-                  }
+               /* Maybe that can be terminated here? */
+               if((tbtp = isp->tbtp)->tbt_bind != NIL){
+                  tlp->tl_bind_takeover = wc;
+                  goto jhave_bind;
                }
 
-               /* Otherwise take over all chars "as is" */
-jtake_over:
-               for(; isp_head != NULL; isp_head = isp_head->next)
-                  if(a_tty_kother(tlp, isp_head->tbtp->tbt_char)){
-                     /* FIXME */
-                  }
-               /* And the current one too */
-               goto jkother;
+               /* Key timeout, take over all sequence bytes as-is */
+               wc = '\0';
+               goto jtake_over;
             }
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-            if((flags & a_BUFMODE) && (len -= (uz)rv) == 0){
-               /* Buffer mode completed */
-               tlp->tl_defc.s = NULL;
-               tlp->tl_defc.l = 0;
-               flags &= ~a_BUFMODE;
+            /* As a special case, simulate EOF via EOT (which can happen via
+             * type-ahead, for example when typing "yes\n^@" during sleep of
+             *    $ sleep 5; mail -s byjove $LOGNAME */
+            if(*cbufp == '\0'){
+               ASSERT((n_psonce & n_PSO_INTERACTIVE) &&
+                  !(n_pstate & n_PS_ROBOT));
+               *cbuf = '\x04';
             }
-            break;
+            ++cbufp;
+
+            rv = S(sz,mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]));
+            if(rv <= 0){
+               /* If it is a hard error, or if too many redundant shift
+                * sequences overflow our buffer: perform hard reset */
+               if(rv == -1 || sizeof cbuf_base == P2UZ(cbufp - cbuf)){
+                  a_tty_fun(tlp, a_TTY_BIND_FUN_FULLRESET, &len);
+                  goto jrestart;
+               }
+               /* Otherwise, due to the way we deal with the buffer, we need
+                * to restore the mbstate_t from before this conversion */
+               ps[0] = ps[1];
+               continue;
+            }
+            cbufp = cbuf;
+            ps[1] = ps[0];
          }
 
-# ifndef mx_HAVE_KEY_BINDINGS
-         /* Don't interpret control bytes during buffer mode.
-          * Otherwise, if it's a control byte check whether it is a MLE
+         /* We have read a complete (multibyte) character into wc. */
+
+# ifdef mx_HAVE_KEY_BINDINGS
+         timeout = FAL0;
+
+         /* Check for special bypass input function first */
+         if(su_cs_is_ascii(wc)){
+            char const *cp;
+            char c;
+
+            for(c = S(char,wc), cp = &(*tlp->tl_bind_shcut_prompt_char)[0];
+                  *cp != '\0'; ++cp)
+               if(c == *cp){
+                  wc = a_tty_vinuni(tlp);
+                  break;
+               }
+            if(wc == '\0'){
+               tlp->tl_vi_flags |= a_TTY_VF_BELL;
+               goto jinput_loop;
+            }
+         }
+
+         /* Does (the final) wc exist in the applicable bind tree?
+          * Does it (possibly) want more input? */
+         tbtp = (isp != NIL) ? isp->tbtp->tbt_childs
+               : (*tlp->tl_bind_tree_hmap)[wc % a_TTY_PRIME];
+         for(; tbtp != NIL; tbtp = tbtp->tbt_sibling){
+            if(tbtp->tbt_char == wc){
+               struct inseq *nisp;
+
+               if(ttm != a_TTY_TTM_MBSEQ && tbtp->tbt_ismbseq)
+                  continue;
+
+               /* If this one cannot continue we are likely finished! */
+               if(tbtp->tbt_childs == NIL){
+                  ASSERT(tbtp->tbt_bind != NIL);
+                  tbf = tbtp->tbt_bind->tbc_flags;
+                  goto jmle_fun;
+               }
+
+               /* Defer decision, try to read more characters */
+               nisp = n_autorec_alloc(sizeof *nisp);
+               if((nisp->last = isp) == NIL)
+                  isp_head = nisp;
+               else
+                  isp->next = nisp;
+               nisp->next = NIL;
+               nisp->tbtp = tbtp;
+               isp = nisp;
+               break;
+            }
+         }
+         if(tbtp != NIL)
+            goto jread_again;
+
+         /* The special cancel bypass input function is inferior to key-
+          * sequence continuation, so test it thereafter */
+         if(su_cs_is_ascii(wc)){
+            char const *cp;
+            char c;
+
+            for(c = S(char,wc), cp = &(*tlp->tl_bind_shcut_cancel)[0];
+                  *cp != '\0'; ++cp)
+               if(c == *cp){
+                  tbf = a_TTY_BIND_FUN_INTERNAL | a_TTY_BIND_FUN_CANCEL;
+                  goto jmle_fun;
+               }
+         }
+
+         /* We know the wc read last has no binding.
+          * If there was a partial binding active already, finalize it if
+          * possible, otherwise take over all its characters.  And wc */
+         if(isp != NIL){
+            /* Can it be terminated? */
+            if((tbtp = isp->tbtp)->tbt_bind != NIL){
+jhave_bind:
+               tbf = tbtp->tbt_bind->tbc_flags;
+jmle_fun:
+               if(tbf & a_TTY_BIND_FUN_INTERNAL){
+                  switch(a_tty_fun(tlp, tbf, &len)){
+                  case a_TTY_FUN_STATUS_OK:
+                     goto jinput_loop;
+                  case a_TTY_FUN_STATUS_COMMIT:
+                     goto jdone;
+                  case a_TTY_FUN_STATUS_RESTART:
+                     goto jrestart;
+                  case a_TTY_FUN_STATUS_END:
+                     rv = -1;
+                     goto jleave;
+                  }
+                  ASSERT(0);
+               }else if(tbtp->tbt_bind->tbc_flags & a_TTY_BIND_NOCOMMIT){
+                  struct a_tty_bind_ctx *tbcp;
+
+                  tbcp = tbtp->tbt_bind;
+                  su_mem_copy(tlp->tl_defc.s = n_autorec_alloc(
+                        (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
+                     tbcp->tbc_exp, tbcp->tbc_exp_len +1);
+                  goto jrestart;
+               }else{
+                  cbufp = tbtp->tbt_bind->tbc_exp;
+                  goto jinject_input;
+               }
+            }
+         }
+
+         /* We need to take over all the sequence "as is" */
+jtake_over:
+         for(isp = isp_head; isp != NIL; isp = isp->next)
+            if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
+               /* FIXME */
+            }
+
+# else /* mx_HAVE_KEY_BINDINGS */
+         /* if it is a control byte check whether it is a MLE
           * function.  Remarks: initially a complete duplicate to be able to
           * switch(), later converted to simply iterate over (an #ifdef'd
           * subset of) the MLE base_tuple table in order to have "a SPOF" */
-         if(cbuf == cbuf_base && su_cs_is_ascii(wc) &&
-               su_cs_is_cntrl((unsigned char)wc)){
+         if(su_cs_is_ascii(wc) && su_cs_is_cntrl(S(unsigned char,wc))){
             struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
             char c;
 
-            c = (char)wc ^ 0x40;
+            c = S(char,wc) ^ 0x40;
             tbbtp = a_tty_bind_base_tuples;
             tbbtp_max = &tbbtp[NELEM(a_tty_bind_base_tuples)];
 jbuiltin_redo:
             for(; tbbtp < tbbtp_max; ++tbbtp){
                /* Assert default_tuple table is properly subset'ed */
-               ASSERT(tbbtp->tbdt_iskey);
+               ASSERT(tbbtp->tbbt_iskey);
                if(tbbtp->tbbt_ckey == c){
                   if(tbbtp->tbbt_exp[0] == '\0'){
-                     tbf = a_TTY_BIND_FUN_EXPAND((u8)tbbtp->tbbt_exp[1]);
+                     tbf = a_TTY_BIND_FUN_EXPAND(S(u8,tbbtp->tbbt_exp[1]));
                      switch(a_tty_fun(tlp, tbf, &len)){
                      case a_TTY_FUN_STATUS_OK:
                         goto jinput_loop;
@@ -3383,25 +3371,22 @@ jbuiltin_redo:
                   }
                }
             }
-            if(tbbtp ==
-                  &a_tty_bind_base_tuples[NELEM(a_tty_bind_base_tuples)]){
+            if(tbbtp == &a_tty_bind_base_tuples[
+                  NELEM(a_tty_bind_base_tuples)]){
                tbbtp = a_tty_bind_default_tuples;
                tbbtp_max = &tbbtp[NELEM(a_tty_bind_default_tuples)];
                goto jbuiltin_redo;
             }
          }
-#  endif /* !mx_HAVE_KEY_BINDINGS */
+#endif /* !mx_HAVE_KEY_BINDINGS */
 
-# ifdef mx_HAVE_KEY_BINDINGS
-jkother:
-# endif
-         if(a_tty_kother(tlp, wc)){
-            /* Don't clear the history during buffer mode.. */
+         if(wc != '\0' && a_tty_kother(tlp, wc)){
 # ifdef mx_HAVE_HISTORY
-            if(!(flags & a_BUFMODE) && cbuf == cbuf_base)
-               tlp->tl_hist = NULL;
+            if(cbuf == cbuf_base)
+               tlp->tl_hist = NIL;
 # endif
          }
+         break;
       }
    }
 
@@ -3429,9 +3414,9 @@ jinject_input:{
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
    mx_sigs_all_rele(); /* XXX v15 drop */
-   if(histok_or_null != NULL)
+   if(histok_or_null != NIL)
       *histok_or_null = FAL0;
-   rv = (sz)--i;
+   rv = S(sz,--i);
    }
    goto jleave;
 }
@@ -3824,7 +3809,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
    char capname[a_TTY_BIND_CAPNAME_MAX +1];
    struct mx_termcap_value tv;
    uz len;
-   boole isfirst; /* TODO For now: first char must be control! */
+   boole isfirst; /* TODO For now: first char must be control! TODO why? ;} */
    char *cp, *next;
    NYD2_IN;
 
@@ -3989,6 +3974,7 @@ a_tty__bind_tree_add(u32 hmap_idx,
 
    for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len; cnvlen > 0;){
       union {wchar_t const *wp; char const *cp;} u;
+      boole ismbseq_x, ismbseq;
       s32 entlen;
 
       /* {s32 buf_len_iscap;} */
@@ -3997,16 +3983,14 @@ a_tty__bind_tree_add(u32 hmap_idx,
       if(entlen & S32_MIN){
          /* struct{s32 buf_len_iscap; s32 cap_len; char buf[]+NUL;}
           * Note that empty capabilities result in DEFUNCT */
-         for(u.cp = S(char const*,&UNALIGN(s32 const*,cnvdat)[2]);
-               *u.cp != '\0'; ++u.cp)
-            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
+         for(ismbseq = FAL0,
+                  u.cp = S(char const*,&UNALIGN(s32 const*,cnvdat)[2]);
+               *u.cp != '\0'; ismbseq = TRU1, ++u.cp)
+            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, ismbseq);
          ASSERT(ntbtp != NIL);
-         ntbtp->tbt_ismbseq_trail = TRU1;
          entlen &= S32_MAX;
       }else{
          /* struct{s32 buf_len_iscap; wc_t buf[]+NUL;} */
-         boole ismbseq;
-
          u.wp = S(wchar_t const*,&UNALIGN(s32 const*,cnvdat)[1]);
 
          /* May be a special shortcut function?
@@ -4041,13 +4025,9 @@ a_tty__bind_tree_add(u32 hmap_idx,
             }
          }
 
-         ismbseq = (u.wp[1] != '\0');
-         for(; *u.wp != '\0'; ++u.wp)
+         ismbseq_x = (u.wp[1] != '\0');
+         for(ismbseq = FAL0; *u.wp != '\0'; ismbseq = ismbseq_x, ++u.wp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, ismbseq);
-         if(ismbseq){
-            ASSERT(ntbtp != NIL);
-            ntbtp->tbt_ismbseq_trail = TRU1;
-         }
       }
 
       cnvlen -= entlen;
@@ -4064,6 +4044,7 @@ a_tty__bind_tree_add(u32 hmap_idx,
 static struct a_tty_bind_tree *
 a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
       struct a_tty_bind_tree *parentp, wchar_t wc, boole ismbseq){
+   /* XXX bind_tree_add_wc: yet appends; alphasort? balanced tree? */
    boole any;
    struct a_tty_bind_tree *tbtp, *xtbtp;
    NYD2_IN;
