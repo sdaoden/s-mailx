@@ -464,19 +464,26 @@ mx__nyd_oncrash(int signo){
    int fd;
    uz i, fnl;
    char const *tmpdir;
+   u32 poption_save;
 
    su_nyd_set_disabled(TRU1);
 
    LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
       "System limits too low for fixed-size buffer operation");
 
-   i = su_cs_len(tmpdir = ok_vlook(TMPDIR));
+   poption_save = n_poption; /* XXX sigh */
+   n_poption &= ~n_PO_D_V;
+
+      i = su_cs_len(tmpdir = ok_vlook(TMPDIR));
+
+   n_poption = poption_save;
+
    fnl = sizeof(VAL_UAGENT) -1;
 
-   if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {
+   if(i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)){
       (cp = pathbuf)[0] = '.';
       i = 1;
-   } else
+   }else
       su_mem_copy(cp = pathbuf, tmpdir, i);
    cp[i++] = '/'; /* xxx pathsep */
    su_mem_copy(cp += i, VAL_UAGENT, fnl);
@@ -484,7 +491,7 @@ mx__nyd_oncrash(int signo){
    su_mem_copy(cp += fnl, ".dat", sizeof(".dat"));
    fnl = i + sizeof(".dat") -1;
 
-   if ((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+   if((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
       fd = STDERR_FILENO;
 
 # undef _X
@@ -537,8 +544,9 @@ mx__nyd_oncrash(int signo){
 
       for(;;)
          _exit(n_EXIT_ERR);
-   }else
-      su_nyd_set_disabled(FAL0);
+   }
+
+   su_nyd_set_disabled(FAL0);
 }
 #endif /* DVLOR(1,0) */
 
