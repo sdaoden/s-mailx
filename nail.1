@@ -2975,39 +2975,31 @@ criterion then the last of those criteria is used.
 .El
 .\" }}}
 .
-.\" .Ss "On terminal control and line editor" {{{
+.\" .Ss "On terminal control and line editor" {{{ review
 .Ss "On terminal control and line editor"
 .
-\*(OP Terminal control will be realized through one of the standard
+\*(OP Terminal control through one of the standard
 .Ux
-libraries, either the
-.Lb libtermcap ,
-or, alternatively, the
+libraries,
+.Lb libtermcap
+or
 .Lb libterminfo ,
-both of which will be initialized to work with the environment variable
-.Ev TERM .
-Terminal control will enhance or enable interactive usage aspects, see
+may be available.
+For the
+.Ev TERM Ns
+inal defined in the environment interactive usage aspects, for example
 .Sx "Coloured display" ,
-and extend behaviour of the Mailx-Line-Editor (MLE), which may learn the
-byte-sequences of keys like the cursor- and function-keys.
-.
-.Pp
-The internal variable
+and insight of cursor and function keys for the Mailx-Line-Editor
+(MLE), will be enhanced or enabled.
+Library interaction can be disabled on a per-invocation basis via
+.Va termcap-disable ,
+whereas the internal variable
 .Va termcap
-can be used to overwrite settings or to learn (correct(ed)) keycodes.
-Actual library interaction can be disabled completely by setting
-.Va termcap-disable ;
-.Va termcap
-will be queried regardless, which is true even if the \*(OPal library
-support has not been enabled at configuration time as long as some other
-\*(OP which (may) query terminal control sequences has been enabled.
-\*(UA can be told to enter an alternative exclusive screen, the
-so-called ca-mode, by setting
-.Va termcap-ca-mode ;
-this requires sufficient terminal support, and the used
-.Ev PAGER
-may also need special configuration, dependent on the value of
-.Va crt .
+is always used as a preferred source of terminal capabilities.
+(For a usage example see the
+.Sx FAQ
+entry
+.Sx "Not \(dqdefunctional\(dq, but the editor key does not work" . )
 .
 .Pp
 \*(OP The built-in Mailx-Line-Editor (MLE) should work in all
@@ -3019,7 +3011,7 @@ had been removed from ISO C, but was included in
 Usage of a line editor in interactive mode can be prevented by setting
 .Va line-editor-disable .
 Especially if the \*(OPal terminal control support is missing setting
-entries in the internal variable
+entries in
 .Va termcap
 will help shall the MLE misbehave, see there for more.
 The MLE can support a little bit of
@@ -3042,7 +3034,7 @@ and
 .Va history-size .
 There also exists the macro hook
 .Va on-history-addition
-which can be used to apply fine control on what enters history.
+which can be used to apply finer control on what enters history.
 .
 .Pp
 The MLE supports a set of editing and control commands.
@@ -13010,8 +13002,12 @@ Many more capabilities which describe key-sequences are documented for
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode
-terminal capabilities, see
-.Va termcap .
+.Va termcap Ns
+abilities in order to enter an alternative exclusive screen, the
+so-called ca-mode; this usually requires special configuration of the
+.Ev PAGER ,
+also dependent on the value of
+.Va crt .
 .Sy Note
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
