@@ -33,9 +33,7 @@
 # include <su/cs.h>
 # include <su/utf.h>
 
-# if defined mx_HAVE_HISTORY || defined mx_HAVE_KEY_BINDINGS
-#  include <su/icodec.h>
-# endif
+# include <su/icodec.h>
 #endif
 
 #include "mx/cmd.h"
@@ -2880,8 +2878,9 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
       a_tty_ksnarf(tlp, TRU1, (tlp->tl_count == 0));
       break;
 
-   case a_X(HIST_FWD):{
+   case a_X(HIST_FWD):
 # ifdef mx_HAVE_HISTORY
+   /* C99 */{
          boole isfwd = TRU1;
 
          if(0){
@@ -2896,8 +2895,8 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
             break;
          }
          goto jreset;
-# endif
       }
+# endif
       tlp->tl_vi_flags |= a_TTY_VF_BELL;
       break;
 
