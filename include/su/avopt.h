@@ -70,6 +70,55 @@ struct su_avopt;
  * \r{su_avopt::avo_current_err_opt}.
  * }}
  *
+ * \cb{
+ *   #define N_(X) X
+ *   static char const a_sopts[] = "::A:h#";
+ *   static char const * const a_lopts[] = {
+ *      "resource-files:;:;" N_("control loading of resource files"),
+ *      "account:;A;" N_("execute an `account' command"),
+ *      "batch-mode;#;" N_("more confined non-interactive setup"),
+ *      "long-help;\201;" N_("this listing"),
+ *      NIL
+ *   };
+ *
+ *   struct su_avopt avo;
+ *   char const *emsg;
+ *   s8 i;
+ *
+ *   su_avopt_setup(&avo, --argc, su_C(char const*const*,++argv),
+ *      a_sopts, a_lopts);
+ *   while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
+ *      switch(i){
+ *      case 'A':
+ *         "account_name" = avo.avo_current_arg;
+ *         break;
+ *      case 'h':
+ *      case su_S(char,su_S(su_u8,'\201')):
+ *         a_main_usage(n_stdout);
+ *         if(i != 'h'){
+ *            fprintf(n_stdout, "\nLong options:\n");
+ *            su_avopt_dump_doc(&avo, &a_main_dump_doc, su_S(su_up,n_stdout));
+ *         }
+ *         exit(0);
+ *      case '#':
+ *         n_var_setup_batch_mode();
+ *         break;
+ *      case su_AVOPT_STATE_ERR_ARG:
+ *         emsg = su_avopt_fmt_err_arg;
+ *         if(0){
+ *            // FALLTHRU
+ *      case su_AVOPT_STATE_ERR_OPT:
+ *            emsg = su_avopt_fmt_err_opt;
+ *         }
+ *         fprintf(stderr, emsg, avo.avo_current_err_opt);
+ *         exit(1);
+ *      }
+ *   }
+ *
+ *   argc = avo.avo_argc;
+ *   argv = su_C(char**,avo.avo_argv);
+ * }
+ *
  * \remarks{Since the return value of \r{su_avopt_parse()} and
  * \r{su_avopt::avo_current_opt} are both \r{su_s8}, the entire range of bytes
  * with the high bit set is available to provide short option equivalences for
