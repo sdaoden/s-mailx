@@ -683,7 +683,7 @@ main(int argc, char *argv[]){
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
       "resource-files:;:;" N_("control loading of resource files"),
-      "account:;A;" N_("execute an `account command'"),
+      "account:;A;" N_("execute an `account' command"),
          "attach:;a;" N_("attach a file to message to be sent"),
       "bcc:;b;" N_("add blind carbon copy recipient"),
       "custom-header:;C;" N_("create custom header (\"header-field: body\")"),
