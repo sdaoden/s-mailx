@@ -155,8 +155,9 @@ static struct mx_flthtml_tag const a_flthtml_tags[] = {
    a_X("H5", a_FLTHTML_SA_NEEDSEP), /*a_X("/H5", '\n'),*/
    a_X("H6", a_FLTHTML_SA_NEEDSEP), /*a_X("/H6", '\n'),*/
 
-   a_X("STYLE", a_FLTHTML_SA_IGN),
    a_X("SCRIPT", a_FLTHTML_SA_IGN),
+   a_X("STYLE", a_FLTHTML_SA_IGN),
+   a_X("XML", a_FLTHTML_SA_IGN)
 
 # undef a_X
 # undef a_XC
