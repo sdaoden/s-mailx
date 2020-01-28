@@ -3289,59 +3289,50 @@ move the cursor forward one screen width.
 .El
 .\" }}}
 .
-.\" .Ss "Coloured display" {{{
+.\" .Ss "Coloured display" {{{ review
 .Ss "Coloured display"
 .
-\*(OP \*(UA can be configured to support a coloured display and font
-attributes by emitting ANSI aka ISO 6429 SGR (select graphic
-rendition) escape sequences.
+\*(OP Colours and font attributes through ANSI a.k.a. ISO 6429 SGR
+(select graphic rendition) escape sequences are optionally supported.
 Usage of colours and font attributes solely depends upon the
-capability of the detected terminal type that is defined by the
-environment variable
-.Ev TERM
-and which can be fine-tuned by the user via the internal variable
+capability of the detected terminal type
+.Pf ( Ev TERM ) ,
+and as fine-tuned through
 .Va termcap .
+Colours and font attributes can be managed with the multiplexer command
+.Ic colour ,
+and
+.Ic uncolour
+removes the given mappings.
+Setting
+.Va colour-disable
+suppresses usage of colour and font attribute sequences, while leaving
+established mappings unchanged.
 .
 .Pp
-On top of what \*(UA knows about the terminal the boolean variable
-.Va colour-pager
-defines whether the actually applicable colour and font attribute
-sequences should also be generated when output is going to be paged
-through the external program defined by the environment variable
+Whether actually applicable colour and font attribute sequences should
+also be generated when output is going to be paged through the external
 .Ev PAGER
 (also see
 .Va crt Ns
-).
-This is not enabled by default because different pager programs need
-different command line switches or other configuration in order to
-support those sequences.
-\*(UA however knows about some widely used pagers and in a clean
+) depends upon the setting of
+.Va colour-pager ,
+because pagers usually need to be configured in order to support ISO
+escape sequences.
+Knowledge of some widely used pagers is however built-in, and in a clean
 environment it is often enough to simply set
 .Va colour-pager ;
 please refer to that variable for more on this topic.
 .
 .Pp
-Colours and font attributes can be managed with the multiplexer command
-.Ic colour ,
-and
-.Ic uncolour
-can be used to remove mappings of a given colour type.
-If the variable
-.Va colour-disable
-is set then any active usage of colour and font attribute sequences
-is suppressed without affecting possibly established
-.Ic colour
-mappings.
-Since colours are available if any of the standard I/O descriptors it
-opened on a terminal, it might make sense to conditionalize the colour
-setup by encapsulating it with
+It might make sense to conditionalize colour setup on interactive mode via
 .Ic if
 .Pf ( Ql terminal
 indeed means
 .Dq interactive ) :
 .
 .Bd -literal -offset indent
-if terminal && [ "$features" =% +colour ]
+if terminal && "$features" =% +colour
   colour iso view-msginfo ft=bold,fg=green
   colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
