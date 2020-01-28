@@ -4489,8 +4489,8 @@ bindings upon program startup, however: please use
 for this purpose instead.
 .
 .Pp
-With zero arguments, or with a context name the former command shows all
-key bindings (of the given context; an asterisk
+With zero arguments, or with a context name the former command shows
+all key bindings (of the given context; an asterisk
 .Ql *
 will iterate over all contexts); a more verbose listing will be
 produced if either of
@@ -4498,11 +4498,13 @@ produced if either of
 or
 .Va verbose
 are set.
-With two or more arguments a binding is (re)established:
-the first argument is the context to which the binding shall apply,
-the second argument is a comma-separated list of the
+With two or more arguments a specific binding is shown, or
+(re)established: the first argument is the context to which the binding
+shall apply, the second argument is a comma-separated list of the
 .Dq keys
-which form the binding, and any remaining arguments form the expansion.
+which form the binding.
+Further arguments will be joined to form the expansion, and cause the
+binding to be created or updated.
 To indicate that a binding shall not be auto-committed, but that the
 expansion shall instead be furtherly editable by the user, a commercial at
 .Ql @

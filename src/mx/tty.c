@@ -887,15 +887,20 @@ static boole a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp,
       boole replace);
 
 /* Shared implementation to parse `bind' and `unbind' "key-sequence" and
- * "expansion" command line arguments into something that we can work with */
-static boole a_tty_bind_parse(boole isbindcmd,
-      struct a_tty_bind_parse_ctx *tbpcp);
+ * "expansion" command line arguments into something that we can work with.
+ * If isbindcmd==TRUM1 we allow empty sequences, if and only if a binding yet
+ * exists -- supposed to be used for a subsequent _bind_show(), then */
+static boole a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp,
+      boole isbindcmd);
 
 /* Lazy resolve a termcap(5)/terminfo(5) (or *termcap*!) capability */
 static void a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp);
 
 /* Delete an existing binding */
 static void a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp);
+
+/* Return number of lines printed */
+static u32 a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp);
 
 /* Life cycle of all input node trees */
 static void a_tty_bind_tree_build(void);
@@ -3457,7 +3462,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 
    rv = FAL0;
 
-   if(!a_tty_bind_parse(TRU1, tbpcp))
+   if(!a_tty_bind_parse(tbpcp, TRU1))
       goto jleave;
 
    /* Since we use a single buffer for it all, need to replace as such */
@@ -3516,7 +3521,7 @@ jleave:
 }
 
 static boole
-a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
+a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
    enum{a_TRUE_RV = a_TTY__BIND_LAST<<1};
 
    struct n_visual_info_ctx vic;
@@ -3755,6 +3760,12 @@ jeempty:
    if(isbindcmd){
       char *exp;
 
+      if(isbindcmd == TRUM1){
+         if(tbpcp->tbpc_tbcp != NIL)
+            f |= a_TRUE_RV;
+         goto jleave;
+      }
+
       if((i = tbpcp->tbpc_exp.l) > 0){
          if((exp = tbpcp->tbpc_exp.s)[i - 1] == '@'){
 #if 0 /* xxx no: allow trailing whitespace, as in 'echo du @' .. */
@@ -3895,6 +3906,78 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
    }
 
    NYD2_OU;
+}
+
+static u32
+a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){
+   u32 rv, flags;
+   NYD2_IN;
+
+   rv = 0;
+
+   /* Print the bytes of resolved terminal capabilities, then */
+   if((n_poption & n_PO_D_V) &&
+         (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)
+          ) == a_TTY_BIND_RESOLVE){
+      char cbuf[8], c;
+      union {wchar_t const *wp; char const *cp;} u;
+      s32 entlen;
+      u32 cnvlen;
+      char const *cnvdat, *bsep, *cbufp;
+
+      putc('#', fp);
+      putc(' ', fp);
+
+      cbuf[0] = '=', cbuf[2] = '\0';
+      for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len;
+            cnvlen > 0;){
+         if(cnvdat != tbcp->tbc_cnv)
+            putc(',', fp);
+
+         /* {s32 buf_len_iscap;} */
+         entlen = *UNALIGN(s32 const*,cnvdat);
+         if(entlen & S32_MIN){
+            /* struct{s32 buf_len_iscap; s32 cap_len;
+             * char buf[]+NUL;} */
+            for(bsep = su_empty,
+                     u.cp = S(char const*,
+                           &UNALIGN(s32 const*,cnvdat)[2]);
+                  (c = *u.cp) != '\0'; ++u.cp){
+               if(su_cs_is_ascii(c) && !su_cs_is_cntrl(c))
+                  cbuf[1] = c, cbufp = cbuf;
+               else
+                  cbufp = su_empty;
+               fprintf(fp, "%s\\x%02X%s", bsep, S(u32,S(u8,c)), cbufp);
+               bsep = " ";
+            }
+            entlen &= S32_MAX;
+         }else
+            putc('-', fp);
+
+         cnvlen -= entlen;
+         cnvdat += entlen;
+      }
+
+      fputs("\n  ", fp);
+      rv = 1;
+   }
+
+   flags = tbcp->tbc_flags;
+   fprintf(fp, "%sbind %s %s %s%s%s\n",
+      ((flags & a_TTY_BIND_DEFUNCT)
+      /* I18N: `bind' sequence not working, either because it is
+       * I18N: using Unicode and that is not available in the locale,
+       * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
+         ? _("# <Defunctional> ") : su_empty),
+      a_tty_input_ctx_maps[flags & n__GO_INPUT_CTX_MASK].ticm_name,
+      tbcp->tbc_seq, n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
+      (flags & a_TTY_BIND_NOCOMMIT ? n_at : su_empty),
+      (!(n_poption & n_PO_D_VV) ? su_empty
+         : (flags & a_TTY_BIND_FUN_INTERNAL ? _(" # MLE internal") : su_empty))
+      );
+
+   NYD2_OU;
+   return ++rv;
 }
 
 static void
@@ -4605,9 +4688,6 @@ jentry:{
 # ifdef mx_HAVE_KEY_BINDINGS
 int
 c_bind(void *vp){
-   /* TODO `bind': since empty expansions are forbidden it would be nice to
-    * TODO be able to say "bind base a,b,c" and see the expansion of only
-    * TODO that (just like we do for `alias', `commandalias' etc.!) */
    struct a_tty_bind_ctx *tbcp;
    union {char const *cp; char *p; char c;} c;
    boole show, aster;
@@ -4646,70 +4726,8 @@ c_bind(void *vp){
 
       lns = 0;
       for(;;){
-         for(tbcp = a_tty.tg_bind[gif]; tbcp != NIL;
-               ++lns, tbcp = tbcp->tbc_next){
-            /* Print the bytes of resolved terminal capabilities, then */
-            if((n_poption & n_PO_D_V) &&
-                  (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)
-                  ) == a_TTY_BIND_RESOLVE){
-               char cbuf[8];
-               union {wchar_t const *wp; char const *cp;} u;
-               s32 entlen;
-               u32 cnvlen;
-               char const *cnvdat, *bsep, *cbufp;
-
-               putc('#', fp);
-               putc(' ', fp);
-
-               cbuf[0] = '=', cbuf[2] = '\0';
-               for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len;
-                     cnvlen > 0;){
-                  if(cnvdat != tbcp->tbc_cnv)
-                     putc(',', fp);
-
-                  /* {s32 buf_len_iscap;} */
-                  entlen = *UNALIGN(s32 const*,cnvdat);
-                  if(entlen & S32_MIN){
-                     /* struct{s32 buf_len_iscap; s32 cap_len;
-                      * char buf[]+NUL;} */
-                     for(bsep = su_empty,
-                              u.cp = S(char const*,
-                                    &UNALIGN(s32 const*,cnvdat)[2]);
-                           (c.c = *u.cp) != '\0'; ++u.cp){
-                        if(su_cs_is_ascii(c.c) && !su_cs_is_cntrl(c.c))
-                           cbuf[1] = c.c, cbufp = cbuf;
-                        else
-                           cbufp = su_empty;
-                        fprintf(fp, "%s\\x%02X%s",
-                           bsep, S(u32,S(u8,c.c)), cbufp);
-                        bsep = " ";
-                     }
-                     entlen &= S32_MAX;
-                  }else
-                     putc('-', fp);
-
-                  cnvlen -= entlen;
-                  cnvdat += entlen;
-               }
-
-               fputs("\n  ", fp);
-               ++lns;
-            }
-
-            fprintf(fp, "%sbind %s %s %s%s%s\n",
-               ((tbcp->tbc_flags & a_TTY_BIND_DEFUNCT)
-               /* I18N: `bind' sequence not working, either because it is
-                * I18N: using Unicode and that is not available in the locale,
-                * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
-                  ? _("# <Defunctional> ") : su_empty),
-               a_tty_input_ctx_maps[gif].ticm_name, tbcp->tbc_seq,
-               n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
-               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? n_at : su_empty),
-               (!(n_poption & n_PO_D_VV) ? su_empty
-                  : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL
-                     ? _(" # MLE internal") : su_empty))
-               );
-         }
+         for(tbcp = a_tty.tg_bind[gif]; tbcp != NIL; tbcp = tbcp->tbc_next)
+            lns += a_tty_bind_show(tbcp, fp);
          if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
             break;
       }
@@ -4725,15 +4743,28 @@ c_bind(void *vp){
       struct mx_cmd_arg *cap;
 
       su_mem_set(&tbpc, 0, sizeof tbpc);
+      tbpc.tbpc_flags = gif;
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
       tbpc.tbpc_in_seq = (cap = cacp->cac_arg->ca_next)->ca_arg.ca_str.s;
+
       if((cap = cap->ca_next) != NIL){
          tbpc.tbpc_exp.s = cap->ca_arg.ca_str.s;
          tbpc.tbpc_exp.l = cap->ca_arg.ca_str.l;
+
+         if(!a_tty_bind_create(&tbpc, TRU1))
+            vp = NIL;
+      }else{
+         if(!a_tty_bind_parse(&tbpc, TRUM1) || tbpc.tbpc_tbcp == NIL){
+            ASSERT(gif != R(BITENUM_IS(u32,n_go_input_flags),-1));
+            n_err(_("bind: no such `bind'ing to show: %s %s\n"),
+               a_tty_input_ctx_maps[gif].ticm_name,
+               n_shexp_quote_cp(tbpc.tbpc_in_seq, FAL0));
+            vp = NIL;
+         }else{
+            a_tty_bind_show(tbpc.tbpc_tbcp, n_stdout);
+            clearerr(n_stdout);
+         }
       }
-      tbpc.tbpc_flags = gif;
-      if(!a_tty_bind_create(&tbpc, TRU1))
-         vp = NIL;
    }
 
 jleave:
@@ -4780,7 +4811,7 @@ jredo:
       tbpc.tbpc_in_seq = c.cp;
       tbpc.tbpc_flags = gif;
 
-      if(UNLIKELY(!a_tty_bind_parse(FAL0, &tbpc)))
+      if(UNLIKELY(!a_tty_bind_parse(&tbpc, FAL0)))
          vp = NIL;
       else if(UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NIL)){
          n_err(_("unbind: no such `bind'ing: %s  %s\n"),
