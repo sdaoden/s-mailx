@@ -302,8 +302,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (M | TWYSH), 1, 4, NIL
-     DS(N_("Show colour settings of <type> (1,8,256,all/*) or define one")) },
+      (M | TWYSH), 0, 4, NIL
+     DS(N_("Show colour settings [of <type> (1,8,256,all/*)], "
+         "or define one")) },
    { "commandalias", &c_commandalias, (M | X | TWYSH), 0, MAC, NIL
      DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
    { "connect",

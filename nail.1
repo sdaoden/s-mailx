@@ -4786,29 +4786,28 @@ The latter command undoes collapsing.
 .It Ic colour , uncolour
 \*(OP\*(NQ Manage colour mappings of and for a
 .Sx "Coloured display" .
-The type of colour is given as the (case-insensitive) first argument,
-which must be one of
+Without arguments the former shows all currently defined mappings.
+Otherwise a colour type is expected (case-insensitively),
+it must be one of
 .Ql 256
 for 256-colour terminals,
 .Ql 8 ,
 .Ql ansi
 or
 .Ql iso
-for the standard 8-colour ANSI / ISO 6429 colour palette and
+for the standard 8-colour ANSI / ISO 6429 colour palette, and
 .Ql 1
 or
 .Ql mono
-for monochrome terminals.
-Monochrome terminals cannot deal with colours, but only (some) font
-attributes.
-.
-.Pp
+for monochrome terminals, which only support (some) font attributes.
 Without further arguments the list of all currently defined mappings
-for the given colour type is shown (as a special case giving
+of the given type is shown (here the special
 .Ql all
 or
 .Ql *
-will show the mappings of all types).
+also show all currently defined mappings).
+.
+.Pp
 Otherwise the second argument defines the mappable slot, and the third
 argument a (comma-separated list of) colour and font attribute
 specification(s), and the optional fourth argument can be used to
@@ -4816,7 +4815,7 @@ specify a precondition: if conditioned mappings exist they are tested in
 (creation) order unless a (case-insensitive) match has been found, and
 the default mapping (if any has been established) will only be chosen as
 a last resort.
-The types of precondition available depend on the mappable slot (see
+The types of available preconditions depend on the mappable slot (see
 .Sx "Coloured display"
 for some examples), the following of which exist:
 .

@@ -27,6 +27,7 @@
 
 struct mx_colour_env;
 
+/* Injection, if mx_HAVE_COLOUR */
 #define mx_COLOUR(X) X
 
 /* We do have several contexts of colour IDs; since only one of them can be
@@ -58,11 +59,9 @@ enum mx_colour_id{
    mx__COLOUR_IDS = mx_COLOUR_ID_VIEW_PARTINFO + 1
 };
 
-/* Colour preconditions, let's call them tags, cannot be an enum because for
- * message display they are the actual header name of the current header.
- * Thus let's use constants of pseudo pointers */
-#define mx_COLOUR_TAG_SUM_DOT ((char*)-2)
-#define mx_COLOUR_TAG_SUM_OLDER ((char*)-3)
+/* Some non-string colour precondition constants, let us call them tags */
+#define mx_COLOUR_TAG_SUM_DOT R(char*,-2)
+#define mx_COLOUR_TAG_SUM_OLDER R(char*,-3)
 
 enum mx_colour_get_flags{
    mx_COLOUR_GET_FORCED = 1u<<0, /* Act even if COLOUR_IS_ACTIVE() is false */
@@ -84,6 +83,14 @@ struct mx_colour_pen;
 /* `(un)?colour' */
 EXPORT int c_colour(void *v);
 EXPORT int c_uncolour(void *v);
+
+/* TODO All the colour (pen etc. ) interfaces below have to vanish.
+ * TODO What we need here is a series of query functions which take context,
+ * TODO like a message* for the _VIEW_ series, and which return a 64-bit
+ * TODO flag carrier which returns font-attributes as well as foreground and
+ * TODO background colours (at least 24-bit each).
+ * TODO And the actual drawing stuff is up to the backend, maybe in termios,
+ * TODO or better termcap, or in ui-str.  I do not know */
 
 /* An execution context is teared down, and it finds to have a colour stack.
  * Signals are blocked */
@@ -113,10 +120,6 @@ EXPORT void mx_colour_pen_put(struct mx_colour_pen *self);
 
 /* Get an escape sequence (or NIL, if self is, or no colour there is) */
 EXPORT struct str const *mx_colour_pen_to_str(struct mx_colour_pen *self);
-
-/*
- * NEW STYLE TODO
- */
 
 /* Get terminal reset control sequence (or NIL if no colour there is).
  * The return value is "volatile" to colour change commands */
