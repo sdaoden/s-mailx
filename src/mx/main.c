@@ -397,16 +397,13 @@ a_main_hdrstop(int signo){
 #if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
 static void
 a_main_memtrace(int signo){
-   u32 oopt;
+   enum su_log_level lvl;
    UNUSED(signo);
 
+   lvl = su_log_get_level();
+   su_log_set_level(su_LOG_INFO);
    su_mem_trace();
-   oopt = n_poption;
-   if(!(oopt & n_PO_V))
-      ok_bset(verbose);
-   su_mem_trace();
-   if(!(oopt & n_PO_V))
-      ok_bclear(verbose);
+   su_log_set_level(lvl);
 }
 #endif
 

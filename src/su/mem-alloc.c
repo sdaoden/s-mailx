@@ -335,6 +335,7 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
       su_log_write(((a_mema_conf & su_MEM_CONF_ON_ERROR_EMERG)
             ? su_LOG_EMERG : su_LOG_CRIT) | su_LOG_F_CORE,
          "SU memory check: errors encountered");
+
    NYD2_OU;
    return anybad;
 }
@@ -353,7 +354,7 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
 
       masp = &a_mema_stats[mark];
 
-      su_log_write(su_LOG_INFO,
+      su_log_write(su_LOG_INFO | su_LOG_F_CORE,
          "MARK \"%s\" MEMORY:\n"
          "   Count cur/peek/all: %7" PRIu64 "/%7" PRIu64 "/%10" PRIu64 "\n"
          "  Memory cur/peek/all: %7" PRIu64 "/%7" PRIu64 "/%10" PRIu64 "\n\n",
@@ -369,7 +370,7 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
          ++xp.map_hc;
          a_MEMA_HOPE_GET_TRACE(map_hc, xp, isbad);
          anybad |= isbad;
-         su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO),
+         su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
             "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "\n",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
@@ -381,7 +382,8 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
    }
 
    if(a_mema_free_list != NIL){
-      su_log_write(su_LOG_INFO, "Freed memory lingering for release:\n");
+      su_log_write(su_LOG_INFO | su_LOG_F_CORE,
+         "Freed memory lingering for release:\n");
 
       for(p.map_hc = a_mema_free_list; p.map_hc != NIL;
             p.map_hc = p.map_hc->mahc_next){
@@ -389,13 +391,14 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
          ++xp.map_hc;
          a_MEMA_HOPE_GET_TRACE(map_hc, xp, isbad);
          anybad |= isbad;
-         su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO),
+         su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
             "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "\n",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
             p.map_c->mac_file, p.map_c->mac_line);
       }
    }
+
    NYD2_OU;
    return anybad;
 }
