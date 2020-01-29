@@ -81,16 +81,10 @@ d-tcaps-nv:
 d-dox:
 	doxygen mk/su-doxygen.rc
 d-gettext:
-	(cd src/mx &&\
-	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
+	LC_ALL=C xgettext --sort-by-file --strict --add-location \
 		--from-code=UTF-8 --keyword --keyword=_ --keyword=N_ \
 		--add-comments=I18N --foreign-user \
-		-o messages.pot *.c *.h) &&\
-	(cd src/mx &&\
-	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
-		--from-code=UTF-8 --keyword --keyword=_ --keyword=N_ \
-		--add-comments=I18N --foreign-user \
-		-o messages.pot *.h)
+		-o messages.pot src/mx/*.c src/mx/*.h src/su/*.c src/su/*.h
 
 _prego = if CWDDIR="$(CWDDIR)" TOPDIR="$(TOPDIR)" \
 		SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
