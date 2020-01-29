@@ -893,12 +893,14 @@ a_mimetype_pipe_check(struct mx_mimetype_handler *mthp){
    else if(*cp++ != '?' && cp[-1] != '@'/* v15compat */){
       rv |= mx_MIMETYPE_HDL_CMD;
       goto jleave;
-   }else if(*cp == '\0'){
+   }else{
       if(cp[-1] == '@')
          n_OBSOLETE2(_("*pipe-TYPE/SUBTYPE*+': type markers (and much more) "
             "use ? not @"), mthp->mth_shell_cmd);
-      rv |= mx_MIMETYPE_HDL_TEXT;
-      goto jleave;
+      if(*cp == '\0'){
+         rv |= mx_MIMETYPE_HDL_TEXT;
+         goto jleave;
+      }
    }
 
 jnextc:

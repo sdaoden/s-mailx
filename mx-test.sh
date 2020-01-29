@@ -6142,7 +6142,7 @@ t_binary_mainbody() {
 
    printf 'p\necho\necho writing now\nwrite ./.twrite\n' |
       ${MAILX} ${ARGS} -Rf \
-         -Spipe-application/octet-stream="@* ${cat} > ./.tcat" \
+         -Spipe-application/octet-stream="?* ${cat} > ./.tcat" \
          "${MBOX}" >./.tall 2>&1
    check 3 0 ./.tall '733582513 319'
    check 4 - ./.tcat '3817108933 15'
