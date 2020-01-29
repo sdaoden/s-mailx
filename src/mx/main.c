@@ -943,7 +943,7 @@ jeMmq:
          }goto jleave;
       case 'v':
          /* Be verbose */
-         ok_bset(verbose);
+         ok_vset(verbose, su_empty);
          break;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */

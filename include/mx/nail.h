@@ -628,6 +628,8 @@ enum n_program_option{
    n_PO_D_VV = n_PO_D | n_PO_VV | n_PO_VVV,
    n_PO_D_VVV = n_PO_D | n_PO_VVV
 };
+MCTA(n_PO_V << 1 == n_PO_VV, "PO_V* must be successive")
+MCTA(n_PO_VV << 1 == n_PO_VVV, "PO_V* must be successive")
 
 #define n_OBSOLETE(X) \
 do{\
@@ -1115,7 +1117,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
 
    ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_v_v15_compat,
-   ok_b_verbose, /* {vip=1} */
+   ok_v_verbose, /* {vip=1,posnum=1} */
    ok_v_version, /* {virt=mx_VERSION} */
    ok_v_version_date, /* {virt=mx_VERSION_DATE} */
    ok_v_version_hexnum, /* {virt=mx_VERSION_HEXNUM,posnum=1} */

@@ -347,12 +347,14 @@ except it places the argument in the list of carbon copies.
 .
 .Mx
 .It Fl d , Fl Fl debug
-Almost enable a sandbox mode with the internal variable
+Enter a debug-only sandbox mode by setting the internal variable
 .Va debug ;
 the same can be achieved via
 .Ql Fl S Va \&\&debug
 or
 .Ql Ic set Va \&\&debug .
+Also see
+.Fl v .
 .
 .Mx
 .It Fl E , Fl Fl discard-empty-messages
@@ -751,10 +753,12 @@ will also show the list of
 .Mx
 .It Fl v , Fl Fl verbose
 .Ic set Ns
-ting the internal variable
+s the internal variable
 .Va verbose
-enables display of some informational context messages.
-(Will increase the level of verbosity when used multiple times.)
+to enable logging of informational context messages.
+(Increases level of verbosity when used multiple times.)
+Also see
+.Fl d .
 .
 .Mx
 .It Fl X Ar cmd , Fl Fl startup-cmd Ns =..
@@ -9598,11 +9602,13 @@ The default is
 .
 .Mx
 .It Va debug
-\*(BO Enables debug messages, disables the actual delivery of messages,
-and also implies
+\*(BO (Almost) Enter a debug-only sandbox mode which generates many
+log messages, disables the actual delivery of messages, and also implies
 .Pf no Va record
 as well as
 .Pf no Va save .
+Also see
+.Va verbose .
 .
 .Mx
 .It Va disposition-notification-send
@@ -13487,15 +13493,16 @@ doing things, respectively.
 .
 .Mx
 .It Va verbose
-\*(BO This setting, also controllable via the command line option
-.Fl v ,
-causes more verbosity.
-Even though marked \*(BO this option may be set up to three times in
-order to increase the level of verbosity, higher levels show details of
-the actual message delivery, protocol conversations and even variable
-lookups; a single
-.Ic unset Va verbose
-is sufficient to disable verbosity as such.
+Verbose mode enables logging of informational context messages.
+Historically a \*(BO variable, this can either be set multiple times
+(what the command line option
+.Fl v
+uses), or be assigned a numeric value in order to increase verbosity.
+Assigning the value 0 disables verbosity and thus (almost) equals
+.Ic unset .
+The maximum number is 3.
+Also see
+.Va debug .
 .
 .Mx
 .Mx

@@ -1169,10 +1169,24 @@ jefrom:
             umask((mode_t)uib);
          }
          break;
-      case ok_b_verbose:{
+      case ok_v_verbose:{
          u32 i;
 
-         i = ((n_poption << 1) | n_PO_V) & n_PO_V_MASK;
+         /* Initially a boolean variable, we want to keep compat forever */
+         if(**val != '\0'){
+            u64 uib;
+
+            su_idec_u64_cp(&uib, *val, 0, NIL);
+            if(uib == 0)
+               goto jverbose_clear;
+            uib = MIN(uib, 3);
+            i = n_PO_V;
+            while(--uib != 0)
+               i |= i << 1; /* header MCTA()s they are successive */
+         }else
+            i = ((n_poption << 1) | n_PO_V);
+
+         i &= n_PO_V_MASK;
          n_poption &= ~n_PO_V_MASK;
          n_poption |= i;
          if(!(n_poption & n_PO_D))
@@ -1222,7 +1236,8 @@ jefrom:
       case ok_b_skipemptybody:
          n_poption &= ~n_PO_E_FLAG;
          break;
-      case ok_b_verbose:
+      case ok_v_verbose:
+jverbose_clear:
          n_poption &= ~n_PO_V_MASK;
          if(!(n_poption & n_PO_D))
             su_log_set_level(n_LOG_LEVEL);
