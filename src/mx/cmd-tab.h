@@ -381,7 +381,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC, NIL
-     DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
+     DS(N_("<link|unlink|set|unset> (an) environment <variable>(s)")) },
    { "errors",
 #ifdef mx_HAVE_ERRORS
       &c_errors,

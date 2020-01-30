@@ -5383,20 +5383,20 @@ conditional execution block.
 .
 .Mx
 .It Ic environ
-\*(NQ \*(UA has a strict notion about which variables are
+\*(NQ There is a strict separation in between
 .Sx "INTERNAL VARIABLES"
-and which are managed in the program
-.Sx ENVIRONMENT .
-Since some of the latter are a vivid part of \*(UAs functioning,
-however, they are transparently integrated into the normal handling of
-internal variables via
+and the program
+.Sx ENVIRONMENT ,
+which is inherited by child processes.
+Some variables of the latter are however vivid for program operation,
+their purpose is known, therefore they have been integrated
+transparently into handling of the former, as accessible via
 .Ic set
 and
 .Ic unset .
-To integrate other environment variables of choice into this
-transparent handling, and also to export internal variables into the
-process environment where they normally are not, a
-.Ql link
+To integrate any other environment variable, and/or to export internal
+variables into the process environment where they normally are not, a
+.Cm link
 needs to become established with this command, for example
 .
 .Pp
@@ -5405,34 +5405,32 @@ needs to become established with this command, for example
 .Pp
 Afterwards changing such variables with
 .Ic set
-will cause automatic updates of the program environment, and therefore
-be inherited by newly created child processes.
+will cause automatic updates of the environment, too.
 Sufficient system support provided (it was in BSD as early as 1987, and
 is standardized since Y2K) removing such variables with
 .Ic unset
-will remove them also from the program environment, but in any way
-the knowledge they ever have been
-.Ql link Ns
+will remove them also from the environment, but in any way the knowledge
+they ever have been
+.Cm link Ns
 ed will be lost.
-Note that this implies that
+This implies that
 .Ic localopts
 may cause loss of such links.
 .
 .Pp
-The command
-.Ql unlink
-will remove an existing link, but leaves the variables as such intact.
-Additionally the subcommands
-.Ql set
+The subcommand
+.Cm unlink
+removes an existing link without otherwise touching variables, the
+.Cm set
 and
-.Ql unset
-are provided, which work exactly the same as the documented commands
+.Cm unset
+subcommands are identical to
 .Ic set
 and
 .Ic unset ,
-but (additionally un)link the variable(s) with the program environment
-and thus immediately export them to, or remove them from (if possible),
-respectively, the program environment.
+but additionally update the program environment accordingly; removing
+a variable breaks any freely established
+.Cm link .
 .
 .
 .Mx
