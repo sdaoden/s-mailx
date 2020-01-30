@@ -38,10 +38,6 @@
 /*#include "su/code.h"*/
 #include "su/code-in.h"
 
-#define a_PRIMARY_DOLOG(LVL) \
-   ((LVL & su__LOG_MASK) <= (su__state & su__STATE_LOG_MASK) ||\
-      (su__state & su__STATE_D_V))
-
 #if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
 struct a_core_nyd_info{
    char const *cni_file;
@@ -119,7 +115,7 @@ a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
 #endif
    }
 
-   /* TODO ensure each line has the prefix */
+   /* TODO ensure each line has the prefix; use FormatEncodeCtx */
    if(su_program != NIL){
       if(su_state_has(su_STATE_LOG_SHOW_PID)){
          cp = su_ienc_u32(buf, getpid(), 10);
@@ -261,7 +257,7 @@ su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
    else if((state & xerr) || su_state_has(xerr))
       lvl = su_LOG_ALERT;
 
-   if(a_PRIMARY_DOLOG(lvl))
+   if(su_log_would_write(lvl))
 jdolog:
       su_log_write(lvl, V_(introp), V_(msg_or_nil));
 
@@ -296,7 +292,7 @@ su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
    va_list va;
    NYD_IN;
 
-   if(a_PRIMARY_DOLOG(lvl)){
+   if(su_log_would_write(lvl)){
       va_start(va, fmt);
       a_evlog(lvl, fmt, va);
       va_end(va);
@@ -308,7 +304,7 @@ void
 su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, void *vp){
    NYD_IN;
 
-   if(a_PRIMARY_DOLOG(lvl))
+   if(su_log_would_write(lvl))
       a_evlog(lvl, fmt, *S(va_list*,vp));
    NYD_OU;
 }

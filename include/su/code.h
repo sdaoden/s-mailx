@@ -1430,20 +1430,17 @@ INLINE enum su_log_level su_log_get_level(void){
 
 /*! \_ */
 INLINE void su_log_set_level(enum su_log_level nlvl){
-   MT( su__glock(su__GLOCK_STATE); )
-   su__state = (su__state & su__STATE_GLOBAL_MASK) |
-         (S(uz,nlvl) & su__STATE_LOG_MASK);
-   MT( su__gunlock(su__GLOCK_STATE); )
+   uz lvl;
+   /*MT( su__glock(su__GLOCK_STATE); )*/
+   lvl = S(uz,nlvl) & su__STATE_LOG_MASK;
+   su__state = (su__state & su__STATE_GLOBAL_MASK) | lvl;
+   /*MT( su__gunlock(su__GLOCK_STATE); )*/
 }
 
-/*! SMP lock the global log domain. */
-INLINE void su_log_lock(void){
-   MT( su__glock(su__GLOCK_LOG); )
-}
-
-/*! SMP unlock the global log domain. */
-INLINE void su_log_unlock(void){
-   MT( su__gunlock(su__GLOCK_LOG); )
+/*! \_ */
+INLINE boole su_log_would_write(enum su_log_level lvl){
+   return ((S(u32,lvl) & su__LOG_MASK) <= (su__state & su__STATE_LOG_MASK) ||
+      (su__state & su__STATE_D_V));
 }
 
 /*! Log functions of various sort.
@@ -1459,6 +1456,16 @@ EXPORT void su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl,
 
 /*! Like perror(3). */
 EXPORT void su_perr(char const *msg, s32 eno_or_0);
+
+/*! SMP lock the global log domain. */
+INLINE void su_log_lock(void){
+   MT( su__glock(su__GLOCK_LOG); )
+}
+
+/*! SMP unlock the global log domain. */
+INLINE void su_log_unlock(void){
+   MT( su__gunlock(su__GLOCK_LOG); )
+}
 
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
@@ -1920,11 +1927,10 @@ public:
          su_state_clear(su_STATE_LOG_SHOW_PID);
    }
 
-   /*! \copydoc{su_log_lock()} */
-   static void lock(void) {su_log_lock();}
-
-   /*! \copydoc{su_log_unlock()} */
-   static void unlock(void) {su_log_unlock();}
+   /*! \copydoc{su_log_would_write()} */
+   static boole would_write(level lvl){
+      return su_log_would_write(S(su_log_level,lvl));
+   }
 
    /*! \copydoc{su_log_write()} */
    static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
@@ -1936,6 +1942,12 @@ public:
 
    /*! \copydoc{su_perr()} */
    static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
+
+   /*! \copydoc{su_log_lock()} */
+   static void lock(void) {su_log_lock();}
+
+   /*! \copydoc{su_log_unlock()} */
+   static void unlock(void) {su_log_unlock();}
 };
 
 /*! \_ */
