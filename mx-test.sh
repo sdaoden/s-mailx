@@ -9355,7 +9355,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '2954356452 39829'
+      check 1 - "${MBOX}" '1909184320 39820'
    else
       t_echoskip '1:[!UISTRINGS]'
    fi

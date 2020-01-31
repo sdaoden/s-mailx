@@ -673,12 +673,6 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
    head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
-   if(ok_blook(recipients_in_cc)){
-      a_crese_polite_rt_mft_move(mp, &head, head.h_to);
-
-      head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-      head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
-   }
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
