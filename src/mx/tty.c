@@ -3111,7 +3111,6 @@ jinput_loop:
       } *isp_head, *isp;
 
       isp_head = isp = NIL;
-      UNINIT(ttm, a_TTY_TTM_NONE);
 # endif
 
       /* Handle visual state flags */
@@ -3132,6 +3131,7 @@ jinput_loop:
          if(tlp->tl_bind_takeover != '\0'){
             wc = tlp->tl_bind_takeover;
             tlp->tl_bind_takeover = '\0';
+            UNINIT(ttm, a_TTY_TTM_NONE);
          }else
 # endif
          {
@@ -3140,9 +3140,10 @@ jinput_loop:
              * all driven by an event_loop */
 # ifdef mx_HAVE_KEY_BINDINGS
 jread_again:
-            if(isp == NIL)
+            if(isp == NIL){
                timeout = FAL0;
-            else{
+               ttm = a_TTY_TTM_NONE;
+            }else{
                /* If the current isp has childs with and without ismbseq then
                 * we will restart waiting for the normal key.
                 * Otherwise check which timeout to use at first */
