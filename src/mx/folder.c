@@ -2,7 +2,7 @@
  *@ Folder (mailbox) initialization, newmail announcement and related.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -301,7 +301,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
          break;
       }
 
-      /* Normalize away line endings, we will place (readd) \n */
+      /* Normalize away line endings, we will place (readded) \n */
       if(cnt >= 2 && linebuf[cnt - 2] == '\r')
          linebuf[--cnt] = '\0';
       linebuf[--cnt] = '\0';

@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Spam related facilities.
  *
- * Copyright (c) 2013 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2013 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -192,7 +192,7 @@ _spam_action(enum spam_action sa, int *ip)
       goto jleave;
    }
 
-   /* *spam-maxsize* we do handle ourselfs instead */
+   /* *spam-maxsize* we do handle ourselves instead */
    if ((cp = ok_vlook(spam_maxsize)) == NULL ||
          (su_idec_u32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
       maxsize = SPAM_MAXSIZE;

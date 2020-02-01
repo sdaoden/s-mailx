@@ -3,7 +3,7 @@
  *@ TODO It should be solely that, parsing etc. should be in header.c,
  *@ TODO or rfc5322.c or something like this.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -46,7 +46,7 @@ enum mx_name_flags{
    mx_NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NIL) */
    mx_NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
    mx_NAME_ADDRSPEC_ERR_CHAR = 1u<<11, /* Invalid character */
-   mx_NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA convertion failed */
+   mx_NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA conversion failed */
    mx_NAME_ADDRSPEC_ERR_NAME = 1u<<13, /* Alias with invalid content */
    mx_NAME_ADDRSPEC_INVALID = mx_NAME_ADDRSPEC_ERR_EMPTY |
          mx_NAME_ADDRSPEC_ERR_ATSEQ | mx_NAME_ADDRSPEC_ERR_CHAR |
@@ -123,7 +123,12 @@ EXPORT char *detract(struct mx_name *np, enum gfield ntype);
 EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
       struct mx_name *np, int comma, enum gfield gflags);
 
-/* Check whether n1 n2 share the domain name */
+/* Check whether n1 & n2 are the same address, effectively.
+ * Takes *allnet* into account */
+EXPORT boole mx_name_is_same_address(struct mx_name const *n1,
+      struct mx_name const *n2);
+
+/* Check whether n1 & n2 share the domain name */
 EXPORT boole mx_name_is_same_domain(struct mx_name const *n1,
       struct mx_name const *n2);
 

@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ File- and pipe streams, as well as temporary file creation.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -55,7 +55,7 @@ enum mx_fs_open_state{ /* TODO add mx_fs_open_mode, too */
 };
 MCTA(n_PROTO_MASK < mx_FS_OPEN_STATE_EXISTS, "Bit carrier ranges overlap")
 
-/* Note: actually publically visible part of larger internal struct */
+/* Note: actually publicly visible part of larger internal struct */
 struct mx_fs_tmp_ctx{
    char const *fstc_filename;
 };
@@ -126,9 +126,9 @@ EXPORT boole mx_fs_pipe_cloexec(sz fd[2]);
  * mode can be r, W (newfd1 must be set, maybe to CHILD_FD_PASS or
  * CHILD_FD_NULL) or w (newfd1 is implicitly CHILD_FD_PASS).
  * In CHILD_FD_PASS cases pipe_close() must be called with waiting enabled,
- * whic is asserted!  Note that child.h is NOT included.
+ * which is asserted!  Note that child.h is NOT included.
  * env_addon may be NIL, otherwise it is expected to be a NIL terminated
- * array of "K=V" strings to be placed into the childs environment
+ * array of "K=V" strings to be placed into the children's environment
  * TODO v15 hack: If cmd==(char*)-1 then shell is indeed expected to be a PTF
  * TODO v15 hack: :P that will be called from within the child process */
 EXPORT FILE *mx_fs_pipe_open(char const *cmd, char const *mode,

@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Random string creation.
  *
- * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -34,7 +34,7 @@
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL then we produce
- * a reproducable string by using and managing that counter instead */
+ * a reproducible string by using and managing that counter instead */
 EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
 EXPORT char *mx_random_create_cp(uz len, u32 *reprocnt_or_nil);
 

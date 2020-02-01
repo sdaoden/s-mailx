@@ -2,7 +2,7 @@
  *@ String support routines.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -447,14 +447,14 @@ jleave:
 FL struct n_string *
 n__string_clear(struct n_string *self){
    NYD_IN;
-   ASSERT(self != NULL);
+   ASSERT(self != NIL);
+   ASSERT(self->s_dat != NIL);
 
-   if(self->s_size != 0){
-      if(!self->s_auto)
-         su_MEM_FREE(self->s_dat);
-      self->s_len = self->s_auto = self->s_size = 0;
-      self->s_dat = NIL;
-   }
+   if(!self->s_auto)
+      su_FREE(self->s_dat);
+   self->s_dat = NIL;
+   self->s_len = self->s_size = 0;
+
    NYD_OU;
    return self;
 }

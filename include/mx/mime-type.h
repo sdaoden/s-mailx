@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ MIME types: handlers, `mimetype', etc.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -101,7 +101,7 @@ EXPORT char *mx_mimetype_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
  * set to *charset-7bit* or charset_iter_or_fallback() if NIL.
- * no_mboxo states whether 7BIT/8BIT is acceptible if only existence of
+ * no_mboxo states whether 7BIT/8BIT is acceptable if only existence of
  * a ^From_ would otherwise enforce QP/BASE64 */
 /* TODO this should take a carrier and only fill that in with what has been
  * TODO detected/classified, and suggest hints; rest up to caller!

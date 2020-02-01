@@ -9,7 +9,7 @@
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
  *
- * Copyright (c) 2001 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -124,7 +124,7 @@
 #  define su_NSPC_USE(X) /**/
 #  define su_NSPC(X) /**/::
 # endif
-   /* Disable copy-construction and assigment of class */
+   /* Disable copy-construction and assignment of class */
 # define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &);
    /* If C++ class inherits from a C class, and the C class "return self", we
     * have to waste a return register even if self==this */
@@ -334,16 +334,17 @@ do{\
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-#    define su_INLINE inline
-#    define su_SINLINE static inline
+     /* clang does not like inline with <-O2 */
+#    define su_INLINE inline __attribute__((always_inline))
+#    define su_SINLINE static inline __attribute__((always_inline))
 #   endif
 #  else
 #   define su_INLINE static __inline
 #   define su_SINLINE static __inline
 #  endif
 # else
-#  define su_INLINE static /* TODO __attribute__((unused)) alikes? */
-#  define su_SINLINE static /* TODO __attribute__((unused)) alikes? */
+#  define su_INLINE static /* TODO __attribute__((unused)) alike? */
+#  define su_SINLINE static /* TODO __attribute__((unused)) alike? */
 #  undef su_HAVE_INLINE
 # endif
 #else
@@ -384,7 +385,8 @@ do{\
 #define su_ROUND_UP(X,BASE) ((((X) + ((BASE) - 1)) / (BASE)) * (BASE))
 #define su_ROUND_UP2(X,BASE) (((X) + ((BASE) - 1)) & (~((BASE) - 1)))
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+/* Commented out: "_Alignof() applied to an expression is a GNU extension" */
+#if 0 && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
 # include <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
@@ -554,8 +556,6 @@ do{\
 # define su_MT(X)
 #endif
 #define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
-/* NYD comes from code-{in,ou}.h (support function below).
- * Instrumented functions will always have one label for goto: purposes */
 #define su_NYD_OU_LABEL su__nydou
 #define su_P2UZ(X) su_S(su_uz,(su_up)(X))
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
@@ -874,6 +874,15 @@ enum su_log_level{
    su_LOG_INFO,
    su_LOG_DEBUG
 };
+enum{
+   su__LOG_MAX = su_LOG_DEBUG,
+   su__LOG_SHIFT = 8,
+   su__LOG_MASK = (1u << su__LOG_SHIFT) - 1
+};
+MCTA(1u<<su__LOG_SHIFT > su__LOG_MAX, "Bit ranges may not overlap")
+enum su_log_flags{
+   su_LOG_F_CORE = 1u<<(su__LOG_SHIFT+0)
+};
 enum su_state_log_flags{
    su_STATE_LOG_SHOW_LEVEL = 1u<<4,
    su_STATE_LOG_SHOW_PID = 1u<<5
@@ -909,8 +918,9 @@ enum su__state_flags{
    su__STATE_GLOBAL_MASK = 0x00FFFFFFu & ~(su__STATE_LOG_MASK |
          (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
-MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
-MCTA(((uz)su_STATE_ERR_MASK & ~0xFF00) == 0, "Bits excess documented bounds")
+MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK),
+   "Bit ranges may not overlap")
+MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
 #ifdef su_HAVE_MT
 enum su__glock_type{
    su__GLOCK_STATE,
@@ -931,7 +941,7 @@ union su__bom_union{
    char bu_buf[2];
    u16 bu_val;
 };
-/* Known endianess bom versions, see su_bom_little, su_bom_big */
+/* Known endianness bom versions, see su_bom_little, su_bom_big */
 EXPORT_DATA union su__bom_union const su__bom_little;
 EXPORT_DATA union su__bom_union const su__bom_big;
 /* (Not yet) Internal enum su_state_* bit carrier */
@@ -983,20 +993,27 @@ INLINE enum su_log_level su_log_get_level(void){
    return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
 }
 INLINE void su_log_set_level(enum su_log_level nlvl){
-   MT( su__glock(su__GLOCK_STATE); )
-   su__state = (su__state & su__STATE_GLOBAL_MASK) |
-         (S(uz,nlvl) & su__STATE_LOG_MASK);
-   MT( su__gunlock(su__GLOCK_STATE); )
+   uz lvl;
+   /*MT( su__glock(su__GLOCK_STATE); )*/
+   lvl = S(uz,nlvl) & su__STATE_LOG_MASK;
+   su__state = (su__state & su__STATE_GLOBAL_MASK) | lvl;
+   /*MT( su__gunlock(su__GLOCK_STATE); )*/
 }
+INLINE boole su_log_would_write(enum su_log_level lvl){
+   return ((S(u32,lvl) & su__LOG_MASK) <= (su__state & su__STATE_LOG_MASK) ||
+      (su__state & su__STATE_D_V));
+}
+EXPORT void su_log_write(BITENUM_IS(u32,su_log_level) lvl,
+      char const *fmt, ...);
+EXPORT void su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl,
+      char const *fmt, void *vp);
+EXPORT void su_perr(char const *msg, s32 eno_or_0);
 INLINE void su_log_lock(void){
    MT( su__glock(su__GLOCK_LOG); )
 }
 INLINE void su_log_unlock(void){
    MT( su__gunlock(su__GLOCK_LOG); )
 }
-EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
-EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
-EXPORT void su_perr(char const *msg, s32 eno_or_0);
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 EXPORT void su_assert(char const *expr, char const *file, u32 line,
       char const *fun, boole crash);
@@ -1004,8 +1021,9 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 # define su_assert(EXPR,FILE,LINE,FUN,CRASH)
 #endif
 #if DVLOR(1, 0)
+EXPORT void su_nyd_set_disabled(boole disabled);
+EXPORT void su_nyd_reset_level(u32 nlvl);
 EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
-EXPORT void su_nyd_stop(void);
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif
@@ -1286,6 +1304,9 @@ public:
       info = su_LOG_INFO,
       debug = su_LOG_DEBUG
    };
+   enum flags{
+      f_core = su_LOG_F_CORE,
+   };
    // Log functions of various sort.
    // Regardless of the level these also log if state_debug|state_verbose.
    // The vp is a &va_list
@@ -1309,13 +1330,16 @@ public:
       else
          su_state_clear(su_STATE_LOG_SHOW_PID);
    }
-   static void lock(void) {su_log_lock();}
-   static void unlock(void) {su_log_unlock();}
-   static void write(level lvl, char const *fmt, ...);
-   static void vwrite(level lvl, char const *fmt, void *vp){
-      su_log_vwrite(S(enum su_log_level,lvl), fmt, vp);
+   static boole would_write(level lvl){
+      return su_log_would_write(S(su_log_level,lvl));
+   }
+   static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
+   static void vwrite(BITENUM_IS(u32,level) lvl, char const *fmt, void *vp){
+      su_log_vwrite(lvl, fmt, vp);
    }
    static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
+   static void lock(void) {su_log_lock();}
+   static void unlock(void) {su_log_unlock();}
 };
 class state{
 public:

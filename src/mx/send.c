@@ -2,7 +2,7 @@
  *@ Message content preparation (sendmp()).
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -72,7 +72,7 @@ static FILE *        _pipefile(struct mx_mimetype_handler *mhp,
                         struct mimepart const *mpp, FILE **qbuf,
                         char const *tmpname, int term_infd);
 
-/* Call mime_write() as approbiate and adjust statistics */
+/* Call mime_write() as appropriate and adjust statistics */
 su_SINLINE sz _out(char const *buf, uz len, FILE *fp,
       enum conversion convert, enum sendaction action, struct quoteflt *qf,
       u64 *stats, struct str *outrest, struct str *inrest);
@@ -884,7 +884,7 @@ jalter_redo:
                default:
                   if (!(np->m_flag & MDISPLAY))
                      break;
-                  /* This thing we gonna do */
+                  /* This thing we are going to do */
                   quoteflt_flush(qf);
                   if ((flags & _HADPART) && action == SEND_QUOTE)
                      /* XXX (void)*/a_send_out_nl(obuf, stats);

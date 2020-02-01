@@ -4,7 +4,7 @@
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
  *@ TODO su_program: if set, the PID should be logged, too!
  *
- * Copyright (c) 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -37,11 +37,6 @@
 
 /*#include "su/code.h"*/
 #include "su/code-in.h"
-
-#define a_PRIMARY_DOLOG(LVL) \
-   ((S(u32,LVL) /*& su__STATE_LOG_MASK*/) <= \
-         (su__state & su__STATE_LOG_MASK) ||\
-      (su__state & su__STATE_D_V))
 
 #if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
 struct a_core_nyd_info{
@@ -89,7 +84,8 @@ char const *su_program;
  * TODO We need some _USECASE_ hook to store readily prepared lines then.
  * TODO Also, our log does not yet prepend "su_progam: " to each output line,
  * TODO because of all that (port FmtEncCtx, use rounds!!) */
-su_SINLINE void a_evlog(enum su_log_level lvl, char const *fmt, va_list ap);
+su_SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
+      va_list ap);
 
 /* */
 #if DVLOR(1, 0)
@@ -98,7 +94,7 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
 #endif
 
 su_SINLINE void
-a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
+a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
 #ifdef su_USECASE_MX
 # ifndef mx_HAVE_AMALGAMATION
    /*extern*/ void n_err(char const *fmt, ...);
@@ -107,13 +103,19 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
 #endif
    char buf[su_IENC_BUFFER_SIZE];
    char const *cp, *xfmt;
+   u32 f;
 
+   f = lvl & ~su__LOG_MASK;
+   lvl &= su__LOG_MASK;
+
+   if(!(f & su_LOG_F_CORE)){
 #ifdef su_USECASE_MX
-   if(lvl != su_LOG_EMERG)
-      goto jnostd;
+      if(lvl != su_LOG_EMERG)
+         goto jnostd;
 #endif
+   }
 
-   /* TODO ensure each line has the prefix */
+   /* TODO ensure each line has the prefix; use FormatEncodeCtx */
    if(su_program != NIL){
       if(su_state_has(su_STATE_LOG_SHOW_PID)){
          cp = su_ienc_u32(buf, getpid(), 10);
@@ -127,7 +129,7 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
 
    if(su_state_has(su_STATE_LOG_SHOW_LEVEL))
       fprintf(stderr, "[%s] ",
-         a_core_lvlnames[S(u32,lvl) /*& su__STATE_LOG_MASK*/]);
+         a_core_lvlnames[lvl]);
 
    vfprintf(stderr, fmt, ap);
 
@@ -255,7 +257,7 @@ su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
    else if((state & xerr) || su_state_has(xerr))
       lvl = su_LOG_ALERT;
 
-   if(a_PRIMARY_DOLOG(lvl))
+   if(su_log_would_write(lvl))
 jdolog:
       su_log_write(lvl, V_(introp), V_(msg_or_nil));
 
@@ -286,11 +288,11 @@ su_err_no_via_errno(void){
 }
 
 void
-su_log_write(enum su_log_level lvl, char const *fmt, ...){
+su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
    va_list va;
    NYD_IN;
 
-   if(a_PRIMARY_DOLOG(lvl)){
+   if(su_log_would_write(lvl)){
       va_start(va, fmt);
       a_evlog(lvl, fmt, va);
       va_end(va);
@@ -299,10 +301,10 @@ su_log_write(enum su_log_level lvl, char const *fmt, ...){
 }
 
 void
-su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp){
+su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, void *vp){
    NYD_IN;
 
-   if(a_PRIMARY_DOLOG(lvl))
+   if(su_log_would_write(lvl))
       a_evlog(lvl, fmt, *S(va_list*,vp));
    NYD_OU;
 }
@@ -318,6 +320,17 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
 }
 
 #if DVLOR(1, 0)
+void
+su_nyd_set_disabled(boole disabled){
+   a_core_nyd_skip = (disabled != FAL0);
+}
+
+void
+su_nyd_reset_level(u32 nlvl){
+   if(nlvl < a_core_nyd_level)
+      a_core_nyd_level = nlvl;
+}
+
 void
 su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
    if(!a_core_nyd_skip){
@@ -335,11 +348,6 @@ su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
       cnip->cni_level = ((act == 0) ? a_core_nyd_level /* TODO spinlock */
             : (act == 1) ? ++a_core_nyd_level : a_core_nyd_level--);
    }
-}
-
-void
-su_nyd_stop(void){
-   a_core_nyd_skip = TRU1;
 }
 
 void

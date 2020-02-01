@@ -9,7 +9,7 @@
  *@ TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
  *@ TODO Interlocking and non-well-formed data will break us down
  *
- * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -155,8 +155,9 @@ static struct mx_flthtml_tag const a_flthtml_tags[] = {
    a_X("H5", a_FLTHTML_SA_NEEDSEP), /*a_X("/H5", '\n'),*/
    a_X("H6", a_FLTHTML_SA_NEEDSEP), /*a_X("/H6", '\n'),*/
 
-   a_X("STYLE", a_FLTHTML_SA_IGN),
    a_X("SCRIPT", a_FLTHTML_SA_IGN),
+   a_X("STYLE", a_FLTHTML_SA_IGN),
+   a_X("XML", a_FLTHTML_SA_IGN)
 
 # undef a_X
 # undef a_XC

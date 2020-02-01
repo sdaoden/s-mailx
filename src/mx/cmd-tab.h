@@ -9,7 +9,7 @@
  *@ The default command needs a --MKTAB-DFL-- comment suffix to command name.
  *@ The parsed content must be within --MKTAB-START-- and --MKTAB-END--.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -302,8 +302,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (M | TWYSH), 1, 4, NIL
-     DS(N_("Show colour settings of <type> (1,8,256,all/*) or define one")) },
+      (M | TWYSH), 0, 4, NIL
+     DS(N_("Show colour settings [of <type> (1,8,256,all/*)], "
+         "or define one")) },
    { "commandalias", &c_commandalias, (M | X | TWYSH), 0, MAC, NIL
      DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
    { "connect",
@@ -363,7 +364,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "draft", &c_draft, (A | M | TMSGLST), 0, 0, NIL
      DS(N_("Mark <msglist> as draft")) },
 
-{ "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NIL
+{ "edit", &c_edit, (G | A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
    { "echo", &c_echo, (G | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },
@@ -380,7 +381,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC, NIL
-     DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
+     DS(N_("<link|unlink|set|unset> (an) environment <variable>(s)")) },
    { "errors",
 #ifdef mx_HAVE_ERRORS
       &c_errors,
@@ -833,8 +834,6 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "vpospar", &c_vpospar, (G | M | V | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
-{ "varedit", &c_varedit, (O | G | I | M | S | TWYSH), 1, MAC, NIL
- DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
 
    { "write", &c_write, (A | TARG), 0, 0,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_write)

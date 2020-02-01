@@ -1,6 +1,6 @@
 .\"@ nail.1 - S-nail(1) reference manual.
 .\"
-.\" Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+.\" Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 .\" SPDX-License-Identifier: ISC
 .\"
 .\" Permission to use, copy, modify, and/or distribute this software for any
@@ -15,9 +15,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\"@ S-nail v14.9.16 / 2019-12-29
-.Dd December 29, 2019
-.ds VV \\%v14.9.16
+.\"@ S-nail v14.9.17 / 2020-02-01
+.Dd February 01, 2020
+.ds VV \\%v14.9.17
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -425,6 +425,8 @@
 .Mx -anchor-spass Va "autosort"
 .Mx -anchor-spass Va "bang"
 .Mx -anchor-spass Va "bind-timeout"
+.Mx -anchor-spass Va "bind-inter-byte-timeout"
+.Mx -anchor-spass Va "bind-inter-key-timeout"
 .Mx -anchor-spass Va "bsdcompat"
 .Mx -anchor-spass Va "bsdflags"
 .Mx -anchor-spass Va "bsdheadline"
@@ -578,6 +580,7 @@
 .Mx -anchor-spass Va "reply-strings"
 .Mx -anchor-spass Va "reply-to"
 .Mx -anchor-spass Va "reply-to-honour"
+.Mx -anchor-spass Va "reply-to-swap-in"
 .Mx -anchor-spass Va "rfc822-body-from_"
 .Mx -anchor-spass Va "save"
 .Mx -anchor-spass Va "screen"
@@ -726,9 +729,7 @@
 .Op : Ns Fl c Ar cc-addr Ns \&:
 .Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S\0 Ns Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op Fl s Ar subject
 .Op : Ns Fl T Ar """field:\0addr""" Ns \&:
 .Op : Ns Fl X Ar cmd Ns \&:
@@ -746,9 +747,7 @@
 .Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op Fl u Ar user
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
@@ -763,9 +762,7 @@
 .Fl f
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
-.Oo : Ns
-.Fl S Ar var Ns Op Ns = Ns Ar value Ns
-.Pf \&: Oc
+.Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
 .Op Ar file
@@ -841,7 +838,7 @@ controls sourcing of the user's personal file
 .Pa \*(ur .
 The (original, unmodified) system resource file content is also
 available in the binary itself, and can be sourced without accessing
-the fileystem via
+the filesystem via
 .Ql x .
 The letters
 .Ql -
@@ -986,12 +983,14 @@ except it places the argument in the list of carbon copies.
 .Ic set .
 .Mx
 .It Fl d , Fl Fl debug
-Almost enable a sandbox mode with the internal variable
+Enter a debug-only sandbox mode by setting the internal variable
 .Va debug ;
 the same can be achieved via
 .Ql Fl S Va \&\&debug
 or
 .Ql Ic set Va \&\&debug .
+Also see
+.Fl v .
 .Mx
 .It Fl E , Fl Fl discard-empty-messages
 .Ic set
@@ -1363,10 +1362,12 @@ will also show the list of
 .Mx
 .It Fl v , Fl Fl verbose
 .Ic set Ns
-ting the internal variable
+s the internal variable
 .Va verbose
-enables display of some informational context messages.
-(Will increase the level of verbosity when used multiple times.)
+to enable logging of informational context messages.
+(Increases level of verbosity when used multiple times.)
+Also see
+.Fl d .
 .Mx
 .It Fl X Ar cmd , Fl Fl startup-cmd Ns =..
 Add the given (or multiple for a multiline argument)
@@ -2327,6 +2328,9 @@ address list of generated message can be created by setting
 This entry will be added whenever the user will be placed in the
 .Ql Mail-Followup-To:
 list, and is not a regular addressee already.
+.Va reply-to-swap-in
+tries to deal with the address rewriting that many mailing-lists nowadays
+perform to work around DKIM / DMARC etc. standard imposed problems.
 .Ss "Signed and encrypted messages with S/MIME"
 \*(OP S/MIME provides two central mechanisms:
 message signing and message encryption.
@@ -2608,7 +2612,7 @@ when connecting to it) can be fetched with the command
 .Ic tls
 (port can usually be the protocol name, too, and
 .Va tls-verify
-is take into account here):
+is taken into account here):
 .Bd -literal -offset indent
 $ \*(uA -vX 'tls certchain SERVER-URL[:PORT]; x'
 .Ed
@@ -3417,35 +3421,28 @@ If the previous command line contained more than one independent
 criterion then the last of those criteria is used.
 .El
 .Ss "On terminal control and line editor"
-\*(OP Terminal control will be realized through one of the standard
+\*(OP Terminal control through one of the standard
 .Ux
-libraries, either the
-.Lb libtermcap ,
-or, alternatively, the
+libraries,
+.Lb libtermcap
+or
 .Lb libterminfo ,
-both of which will be initialized to work with the environment variable
-.Ev TERM .
-Terminal control will enhance or enable interactive usage aspects, see
+may be available.
+For the
+.Ev TERM Ns
+inal defined in the environment interactive usage aspects, for example
 .Sx "Coloured display" ,
-and extend behaviour of the Mailx-Line-Editor (MLE), which may learn the
-byte-sequences of keys like the cursor- and function-keys.
-.Pp
-The internal variable
+and insight of cursor and function keys for the Mailx-Line-Editor
+(MLE), will be enhanced or enabled.
+Library interaction can be disabled on a per-invocation basis via
+.Va termcap-disable ,
+whereas the internal variable
 .Va termcap
-can be used to overwrite settings or to learn (correct(ed)) keycodes.
-Actual library interaction can be disabled completely by setting
-.Va termcap-disable ;
-.Va termcap
-will be queried regardless, which is true even if the \*(OPal library
-support has not been enabled at configuration time as long as some other
-\*(OP which (may) query terminal control sequences has been enabled.
-\*(UA can be told to enter an alternative exclusive screen, the
-so-called ca-mode, by setting
-.Va termcap-ca-mode ;
-this requires sufficient terminal support, and the used
-.Ev PAGER
-may also need special configuration, dependent on the value of
-.Va crt .
+is always used as a preferred source of terminal capabilities.
+(For a usage example see the
+.Sx FAQ
+entry
+.Sx "Not \(dqdefunctional\(dq, but the editor key does not work" . )
 .Pp
 \*(OP The built-in Mailx-Line-Editor (MLE) should work in all
 environments which comply to the ISO C standard
@@ -3456,7 +3453,7 @@ had been removed from ISO C, but was included in
 Usage of a line editor in interactive mode can be prevented by setting
 .Va line-editor-disable .
 Especially if the \*(OPal terminal control support is missing setting
-entries in the internal variable
+entries in
 .Va termcap
 will help shall the MLE misbehave, see there for more.
 The MLE can support a little bit of
@@ -3478,7 +3475,7 @@ and
 .Va history-size .
 There also exists the macro hook
 .Va on-history-addition
-which can be used to apply fine control on what enters history.
+which can be used to apply finer control on what enters history.
 .Pp
 The MLE supports a set of editing and control commands.
 By default (as) many (as possible) of these will be assigned to a set of
@@ -3693,53 +3690,44 @@ move the cursor forward one screen width.
 .Ql SIGQUIT .
 .El
 .Ss "Coloured display"
-\*(OP \*(UA can be configured to support a coloured display and font
-attributes by emitting ANSI aka ISO 6429 SGR (select graphic
-rendition) escape sequences.
+\*(OP Colours and font attributes through ANSI a.k.a. ISO 6429 SGR
+(select graphic rendition) escape sequences are optionally supported.
 Usage of colours and font attributes solely depends upon the
-capability of the detected terminal type that is defined by the
-environment variable
-.Ev TERM
-and which can be fine-tuned by the user via the internal variable
+capability of the detected terminal type
+.Pf ( Ev TERM ) ,
+and as fine-tuned through
 .Va termcap .
-.Pp
-On top of what \*(UA knows about the terminal the boolean variable
-.Va colour-pager
-defines whether the actually applicable colour and font attribute
-sequences should also be generated when output is going to be paged
-through the external program defined by the environment variable
-.Ev PAGER
-(also see
-.Va crt Ns
-).
-This is not enabled by default because different pager programs need
-different command line switches or other configuration in order to
-support those sequences.
-\*(UA however knows about some widely used pagers and in a clean
-environment it is often enough to simply set
-.Va colour-pager ;
-please refer to that variable for more on this topic.
-.Pp
 Colours and font attributes can be managed with the multiplexer command
 .Ic colour ,
 and
 .Ic uncolour
-can be used to remove mappings of a given colour type.
-If the variable
+removes the given mappings.
+Setting
 .Va colour-disable
-is set then any active usage of colour and font attribute sequences
-is suppressed without affecting possibly established
-.Ic colour
-mappings.
-Since colours are available if any of the standard I/O descriptors it
-opened on a terminal, it might make sense to conditionalize the colour
-setup by encapsulating it with
+suppresses usage of colour and font attribute sequences, while leaving
+established mappings unchanged.
+.Pp
+Whether actually applicable colour and font attribute sequences should
+also be generated when output is going to be paged through the external
+.Ev PAGER
+(also see
+.Va crt Ns
+) depends upon the setting of
+.Va colour-pager ,
+because pagers usually need to be configured in order to support ISO
+escape sequences.
+Knowledge of some widely used pagers is however built-in, and in a clean
+environment it is often enough to simply set
+.Va colour-pager ;
+please refer to that variable for more on this topic.
+.Pp
+It might make sense to conditionalize colour setup on interactive mode via
 .Ic if
 .Pf ( Ql terminal
 indeed means
 .Dq interactive ) :
 .Bd -literal -offset indent
-if terminal && [ "$features" =% +colour ]
+if terminal && "$features" =% +colour
   colour iso view-msginfo ft=bold,fg=green
   colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
@@ -4771,8 +4759,8 @@ bindings upon program startup, however: please use
 .Va line-editor-no-defaults
 for this purpose instead.
 .Pp
-With zero arguments, or with a context name the former command shows all
-key bindings (of the given context; an asterisk
+With zero arguments, or with a context name the former command shows
+all key bindings (of the given context; an asterisk
 .Ql *
 will iterate over all contexts); a more verbose listing will be
 produced if either of
@@ -4780,11 +4768,13 @@ produced if either of
 or
 .Va verbose
 are set.
-With two or more arguments a binding is (re)established:
-the first argument is the context to which the binding shall apply,
-the second argument is a comma-separated list of the
+With two or more arguments a specific binding is shown, or
+(re)established: the first argument is the context to which the binding
+shall apply, the second argument is a comma-separated list of the
 .Dq keys
-which form the binding, and any remaining arguments form the expansion.
+which form the binding.
+Further arguments will be joined to form the expansion, and cause the
+binding to be created or updated.
 To indicate that a binding shall not be auto-committed, but that the
 expansion shall instead be furtherly editable by the user, a commercial at
 .Ql @
@@ -4807,24 +4797,34 @@ context which is used in all not otherwise documented situations, and
 .Ql compose ,
 which applies to compose mode only.
 .Pp
-.Dq Keys
-which form the binding are specified as a comma-separated list of
-byte-sequences, where each list entry corresponds to one key(press).
+Bindings are specified as a comma-separated list of byte-sequences,
+where each list entry corresponds to one
+.Dq key
+(press).
+Byte sequence boundaries will be forcefully terminated after
+.Va bind-inter-byte-timeout
+milliseconds, whereas key sequences can be timed out via
+.Va bind-inter-key-timeout .
 A list entry may, indicated by a leading colon character
 .Ql \&: ,
 also refer to the name of a terminal capability; several dozen names
-will be compiled in and may be specified either by their
+are compiled in and may be specified either by their
 .Xr terminfo 5 ,
 or, if existing, by their
 .Xr termcap 5
 name, regardless of the actually used \*(OPal terminal control library.
-It is possible to use any capability, as long as the name is resolvable
-by the \*(OPal control library or was defined via the internal variable
+But any capability may be used, as long as the name is resolvable by the
+\*(OPal control library, or was defined via the internal variable
 .Va termcap .
-Input sequences are not case-normalized, so that an exact match is
-required to update or remove a binding.
+Input sequences are not case-normalized, an exact match is required to
+update or remove a binding.
+It is advisable to use an initial escape or other control character (like
+.Ql \ecA )
+for user (as opposed to purely terminal capability based) bindings in
+order to avoid ambiguities; it also reduces search time.
 Examples:
 .Bd -literal -offset indent
+? bind base a,b echo one
 ? bind base $'\eE',d mle-snarf-word-fwd # Esc(ape)
 ? bind base $'\eE',$'\ec?' mle-snarf-word-bwd # Esc,Delete
 ? bind default $'\ecA',:khome,w 'echo Editable binding@'
@@ -4834,8 +4834,8 @@ Examples:
 .Ed
 .Pp
 Note that the entire comma-separated list is first parsed (over) as a
-shell-token with whitespace as the field separator, before being parsed
-and expanded for real with comma as the field separator, therefore
+shell-token with whitespace as the field separator, then parsed and
+expanded for real with comma as the field separator, therefore
 whitespace needs to be properly quoted, see
 .Sx "Shell-style argument quoting" .
 Using Unicode reverse solidus escape sequences renders a binding
@@ -4843,6 +4843,13 @@ defunctional if the locale does not support Unicode (see
 .Sx "Character sets" ) ,
 and using terminal capabilities does so if no (corresponding) terminal
 control support is (currently) available.
+Adding, deleting or modifying a key binding invalidates the internal
+prebuilt lookup tree, it will be recreated as necessary: this process
+will be visualized in most
+.Va verbose
+as well as in
+.Va debug
+mode.
 .Pp
 The following terminal capability names are built-in and can be used in
 .Xr terminfo 5
@@ -4941,15 +4948,6 @@ finally
 The same for the left cursor key,
 .Cd kcub1 :
 .Cd KLFT , KLFT3 , KLFT4 , KLFT5 , KLFT6 , KLFT7 , KLFT8 .
-.Pp
-It is advisable to use an initial escape or other control character (like
-.Ql \ecA )
-for bindings which describe user key combinations (as opposed to purely
-terminal capability based ones), in order to avoid ambiguities whether
-input belongs to key sequences or not; it also reduces search time.
-Adjusting
-.Va bind-timeout
-may help shall keys and sequences be falsely recognized.
 .Mx
 .It Ic call
 \*(NQ Calls the given macro, which must have been created via
@@ -5039,38 +5037,36 @@ The latter command undoes collapsing.
 .It Ic colour , uncolour
 \*(OP\*(NQ Manage colour mappings of and for a
 .Sx "Coloured display" .
-The type of colour is given as the (case-insensitive) first argument,
-which must be one of
+Without arguments the former shows all currently defined mappings.
+Otherwise a colour type is expected (case-insensitively),
+it must be one of
 .Ql 256
 for 256-colour terminals,
 .Ql 8 ,
 .Ql ansi
 or
 .Ql iso
-for the standard 8-colour ANSI / ISO 6429 colour palette and
+for the standard 8-colour ANSI / ISO 6429 colour palette, and
 .Ql 1
 or
 .Ql mono
-for monochrome terminals.
-Monochrome terminals cannot deal with colours, but only (some) font
-attributes.
-.Pp
+for monochrome terminals, which only support (some) font attributes.
 Without further arguments the list of all currently defined mappings
-for the given colour type is shown (as a special case giving
+of the given type is shown (here the special
 .Ql all
 or
 .Ql *
-will show the mappings of all types).
-Otherwise the second argument defines the mappable slot, and the third
+also show all currently defined mappings).
+.Pp
+Otherwise the second argument defines the mappable slot, the third
 argument a (comma-separated list of) colour and font attribute
-specification(s), and the optional fourth argument can be used to
-specify a precondition: if conditioned mappings exist they are tested in
-(creation) order unless a (case-insensitive) match has been found, and
-the default mapping (if any has been established) will only be chosen as
-a last resort.
-The types of precondition available depend on the mappable slot (see
-.Sx "Coloured display"
-for some examples), the following of which exist:
+specification(s), and the optionally supported fourth argument can be
+used to specify a precondition: if conditioned mappings exist they are
+tested in (creation) order unless a (case-insensitive) match has been
+found, and the default mapping (if any has been established) will only
+be chosen as a last resort.
+The types of available preconditions depend on the mappable slot,
+the following of which exist:
 .Pp
 Mappings prefixed with
 .Ql mle-
@@ -5591,53 +5587,51 @@ block is executed.
 conditional execution block.
 .Mx
 .It Ic environ
-\*(NQ \*(UA has a strict notion about which variables are
+\*(NQ There is a strict separation in between
 .Sx "INTERNAL VARIABLES"
-and which are managed in the program
-.Sx ENVIRONMENT .
-Since some of the latter are a vivid part of \*(UAs functioning,
-however, they are transparently integrated into the normal handling of
-internal variables via
+and the program
+.Sx ENVIRONMENT ,
+which is inherited by child processes.
+Some variables of the latter are however vivid for program operation,
+their purpose is known, therefore they have been integrated
+transparently into handling of the former, as accessible via
 .Ic set
 and
 .Ic unset .
-To integrate other environment variables of choice into this
-transparent handling, and also to export internal variables into the
-process environment where they normally are not, a
-.Ql link
+To integrate any other environment variable, and/or to export internal
+variables into the process environment where they normally are not, a
+.Cm link
 needs to become established with this command, for example
 .Pp
 .Dl environ link PERL5LIB TZ
 .Pp
 Afterwards changing such variables with
 .Ic set
-will cause automatic updates of the program environment, and therefore
-be inherited by newly created child processes.
+will cause automatic updates of the environment, too.
 Sufficient system support provided (it was in BSD as early as 1987, and
 is standardized since Y2K) removing such variables with
 .Ic unset
-will remove them also from the program environment, but in any way
-the knowledge they ever have been
-.Ql link Ns
+will remove them also from the environment, but in any way the knowledge
+they ever have been
+.Cm link Ns
 ed will be lost.
-Note that this implies that
+This implies that
 .Ic localopts
 may cause loss of such links.
 .Pp
-The command
-.Ql unlink
-will remove an existing link, but leaves the variables as such intact.
-Additionally the subcommands
-.Ql set
+The subcommand
+.Cm unlink
+removes an existing link without otherwise touching variables, the
+.Cm set
 and
-.Ql unset
-are provided, which work exactly the same as the documented commands
+.Cm unset
+subcommands are identical to
 .Ic set
 and
 .Ic unset ,
-but (additionally un)link the variable(s) with the program environment
-and thus immediately export them to, or remove them from (if possible),
-respectively, the program environment.
+but additionally update the program environment accordingly; removing
+a variable breaks any freely established
+.Cm link .
 .Mx
 .It Ic errors
 \*(OP Since \*(UA uses the console as a user interface it can happen
@@ -5668,7 +5662,7 @@ of the evaluated command; also see
 define xxx {
   echo "xxx arg <$1>"
   shift
-  if [ $# -gt 0 ]
+  if $# -gt 0
     \excall xxx "$@"
   endif
 }
@@ -7216,7 +7210,7 @@ message list.
 .Mx
 .It Ic sleep
 \*(NQ Sleep for the specified number of seconds (and optionally
-milliseconds), by default interruptable.
+milliseconds), by default interruptible.
 If a third argument is given the sleep will be uninterruptible,
 otherwise the error number
 .Va \&!
@@ -7934,7 +7928,7 @@ No special handling of compressed files is performed.
 .Pp
 In interactive mode the user is consecutively asked for the filenames of
 the processed parts.
-For convience saving of each part may be skipped by giving an empty
+For convinience saving of each part may be skipped by giving an empty
 value, the same result as writing it to
 .Pa /dev/null .
 Shell piping the part content by specifying a leading vertical bar
@@ -8806,14 +8800,13 @@ and
 for a true boolean;
 .Mx -ix quadoption
 a special kind of boolean string is the
-.Dq quadoption ,
-which is a boolean string that can optionally be prefixed with the
-(case-insensitive) term
+.Dq quadoption :
+it can optionally be prefixed with the (case-insensitive) term
 .Ql ask- ,
 as in
-.Ql ask-yes ,
-which causes prompting of the user in interactive mode, with the given
-boolean as the default value.
+.Ql ask-yes ;
+in interactive mode the user will be prompted, otherwise the actual
+boolean is used.
 .Pp
 Variable chains extend a plain
 .Ql variable
@@ -8947,8 +8940,7 @@ The error number may be set with the command
 .It Va ^
 \*(RO This is a multiplexer variable which performs dynamic expansion of
 the requested state or condition, of which there are:
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
+.Bl -tag -width ".It Va BaNg"
 .Mx
 .Mx
 .Mx
@@ -9206,15 +9198,41 @@ one of the compose mode
 If this variable is not set no reverse solidus stripping is performed.
 .Mx
 .It Va bind-timeout
-\*(OP Terminals generate multi-byte sequences for certain forms of
-input, for example for function and other special keys.
-Some terminals however do not write these multi-byte sequences as
-a whole, but byte-by-byte, and the latter is what \*(UA actually reads.
+\*(OB Predecessor of
+.Va bind-inter-byte-timeout .
+\*(ID Setting this automatically sets the successor.
+.Mx
+.It Va bind-inter-byte-timeout
+\*(OP Terminals may generate multi-byte sequences for special function
+keys, for example, but these sequences may not become read as a unit.
+And multi-byte sequences can be defined freely via
+.Ic bind .
 This variable specifies the timeout in milliseconds that the MLE (see
 .Sx "On terminal control and line editor" )
 waits for more bytes to arrive unless it considers a sequence
 .Dq complete .
-The default is 200.
+The default is 200, the maximum is about 10 seconds.
+In the following example the comments state which sequences are
+affected by this timeout:
+.Bd -literal -offset indent
+? bind base abc echo 0 # abc
+? bind base ab,c echo 1 # ab
+? bind base abc,d echo 2 # abc
+? bind base ac,d echo 3 # ac
+? bind base a,b,c echo 4
+? bind base a,b,c,d echo 5
+? bind base a,b,cc,dd echo 6 # cc and dd
+.Ed
+.Mx
+.It Va bind-inter-key-timeout
+\*(OP Multi-key
+.Ic bind
+sequences do not time out by default.
+If this variable is set, then the current key sequence is forcefully
+terminated once the timeout (in milliseconds) triggers.
+The value should be (maybe significantly) larger than
+.Va bind-inter-byte-timeout ,
+but may not excess the maximum, too.
 .Mx
 .It Va bsdcompat
 \*(BO Sets some cosmetical features to traditional BSD style;
@@ -9426,11 +9444,13 @@ The default is
 .Ql %Y-%m-%d .
 .Mx
 .It Va debug
-\*(BO Enables debug messages, disables the actual delivery of messages,
-and also implies
+\*(BO (Almost) Enter a debug-only sandbox mode which generates many
+log messages, disables the actual delivery of messages, and also implies
 .Pf no Va record
 as well as
 .Pf no Va save .
+Also see
+.Va verbose .
 .Mx
 .It Va disposition-notification-send
 \*(BO\*(OP Emit a
@@ -10973,7 +10993,7 @@ define ocsm {
       vput csop es substring "${es}" 0 1
     if "$es" != 2
       echoerr 'Cannot insert Cc: header'; echo '~x'
-      # (no xit, macro finishs anyway)
+      # (no xit, macro finishes anyway)
     endif
   endif
 }
@@ -11608,6 +11628,23 @@ This is a
 .Sx quadoption ;
 if set without a value it defaults to
 .Dq yes .
+.Mx
+.It Va reply-to-swap-in
+Standards like DKIM and (in conjunction with) DMARC brought address
+rewriting of sender addresses like
+.Ql Name via List <list@address> ,
+with the original sender address being often placed in
+.Ql Reply-To: .
+If this is set and a
+.Ql Reply-To:
+exists then it is used in place of the pretended sender.
+It works independently from
+.Va reply-to-honour .
+The optional value offers more fine-grained control about when swapping
+shall be used, it is a comma-separated list strings, for now supported is
+.Va mlist ,
+which will cause swapping if the sender is a mailing-list as defined by
+.Ic mlist .
 .Mx
 .It Va rfc822-body-from_
 \*(BO This variable can be used to force displaying a so-called
@@ -12465,7 +12502,8 @@ plus
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
 Note that \*(UA does not actually care about the terminal beside that,
-but always emits ANSI / ISO 6429 escape sequences.
+but always emits ANSI / ISO 6429 escape sequences; also see
+.Ic colour .
 .It Cd cr
 .Cd carriage_return :
 move to the first column in the current row.
@@ -12537,8 +12575,12 @@ Many more capabilities which describe key-sequences are documented for
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode
-terminal capabilities, see
-.Va termcap .
+.Va termcap Ns
+abilities in order to enter an alternative exclusive screen, the
+so-called ca-mode; this usually requires special configuration of the
+.Ev PAGER ,
+also dependent on the value of
+.Va crt .
 .Sy Note
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
@@ -12564,8 +12606,7 @@ The CA certificate pool built into the TLS library can be disabled via
 .Va tls-ca-no-defaults ,
 further fine-tuning is possible via
 .Va tls-ca-flags .
-Note the directory search variant requires the certificate files to
-adhere special filename conventions, please see
+The directory search requires special filename conventions, please see
 .Xr SSL_CTX_load_verify_locations 3
 and
 .Xr verify 1
@@ -12993,15 +13034,16 @@ This manual uses \*(IN and \*(OU to refer to the new and the old way of
 doing things, respectively.
 .Mx
 .It Va verbose
-\*(BO This setting, also controllable via the command line option
-.Fl v ,
-causes more verbosity.
-Even though marked \*(BO this option may be set up to three times in
-order to increase the level of verbosity, higher levels show details of
-the actual message delivery, protocol conversations and even variable
-lookups; a single
-.Ic unset Va verbose
-is sufficient to disable verbosity as such.
+Verbose mode enables logging of informational context messages.
+Historically a \*(BO variable, this can either be set multiple times
+(what the command line option
+.Fl v
+uses), or be assigned a numeric value in order to increase verbosity.
+Assigning the value 0 disables verbosity and thus (almost) equals
+.Ic unset .
+The maximum number is 3.
+Also see
+.Va debug .
 .Mx
 .Mx
 .Mx
@@ -13257,7 +13299,7 @@ likewise for
 .Ev LV
 will optionally be set to
 .Ql -c .
-Alse see
+Also see
 .Va colour-pager .
 .Mx
 .It Ev PATH
@@ -13368,7 +13410,7 @@ The data sink
 .Xr null 4 .
 .Mx
 .It Pa ~/.rnd
-\*(OP Possible location for persistant random entropy seed storage, see
+\*(OP Possible location for persistent random entropy seed storage, see
 .Va tls-rand-file .
 .El
 .Ss "Resource files"
@@ -13546,7 +13588,7 @@ Comment lines start with a number sign
 (in the first column!) and are ignored.
 Empty lines are ignored.
 All other lines are interpreted as mailcap entries.
-An entry definition may be splitted over multiple lines by placing the
+An entry definition may be split over multiple lines by placing the
 reverse solidus character
 .Ql \e
 last in all but the final line.
@@ -13842,7 +13884,7 @@ The default location
 may be overridden by the
 .Ev NETRC
 environment variable.
-As long as syntax contraints are honoured the file source may be
+As long as syntax constraints are honoured the file source may be
 replaced with the output of the shell command set in
 .Va netrc-pipe ,
 to load an encrypted file, for example.
@@ -14470,22 +14512,28 @@ define update_access_token {
 }
 .Ed
 .Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
-It can happen that the terminal library (see
+Two thinkable situations: the first is a shadowed sequence; setting
+.Va debug ,
+or the most possible
+.Va verbose
+mode, causes a printout of the
+.Ic bind
+tree after that is built; being a cache, this happens only upon startup
+or after modifying bindings.
+.Pp
+Or second, terminal libraries (see
 .Sx "On terminal control and line editor",
 .Ic bind ,
 .Va termcap )
-reports different codes than the terminal really sends, in which case
-\*(UA will tell that a key binding is functional, but will not be able to
-recognize it because the received data does not match anything expected.
-Especially without the \*(OPal terminal capability library support one
-reason for this may be that the (possibly even non-existing) keypad
-is not turned on and the resulting layout reports the keypad control
-codes for the normal keyboard keys.
-The
+may report different codes than the terminal really sends, rendering
+bindings disfunctional because expected and received data do not match; the
 .Va verbose
 listing of
 .Ic bind Ns
 ings will show the byte sequences that are expected.
+(One common source of problems is that the \(em possibly even
+non-existing \(em keypad is not turned on, and the resulting layout
+reports the keypad control codes for the normal keyboard keys.)
 .Pp
 To overcome the situation use for example the program
 .Xr cat 1

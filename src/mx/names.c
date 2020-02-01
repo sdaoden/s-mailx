@@ -3,7 +3,7 @@
  *@ XXX Use a su_cs_set for alternates stuff?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause XXX ISC once yank stuff+ changed
  */
 /*
@@ -408,7 +408,7 @@ nalloc(char const *str, enum gfield ntype)
          goto jleave;
       }
    }
-   ntype &= ~(GNOT_A_LIST | GNULL_OK | GMAILTO_URI); /* (all this a hack is) */
+   ntype &= ~(GNOT_A_LIST | GNULL_OK); /* (all this a hack is) */
    str = ag.ag_input; /* Take the possibly reordered thing */
 
    if (!(ag.ag_n_flags & mx_NAME_NAME_SALLOC)) {
@@ -485,7 +485,7 @@ jskipfullextra:
          /* The domain name was IDNA and has been converted.  We also have to
           * ensure that the domain name in .n_fullname is replaced with the
           * converted version, since MIME doesn't perform encoding of addrs */
-         /* TODO This definetely doesn't belong here! */
+         /* TODO This definitily doesn't belong here! */
          uz l = ag.ag_iaddr_start,
             lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
          in.s = n_lofi_alloc(l + ag.ag_slen + lsuff +1);
@@ -756,6 +756,18 @@ jloop:
 }
 
 boole
+mx_name_is_same_address(struct mx_name const *n1, struct mx_name const *n2){
+   boole rv;
+   NYD2_IN;
+
+   rv = (a_nm_is_same_name(n1->n_name, n2->n_name) &&
+         mx_name_is_same_domain(n1, n2));
+
+   NYD2_OU;
+   return rv;
+}
+
+boole
 mx_name_is_same_domain(struct mx_name const *n1, struct mx_name const *n2){
    boole rv;
    NYD2_IN;
@@ -921,7 +933,7 @@ elide(struct mx_name *names)
       goto jleave;
    np->n_flink = NULL;
 
-   /* Create a temporay array and sort that */
+   /* Create a temporary array and sort that */
    nparr = n_lofi_alloc(sizeof(*nparr) * i);
 
    for(i = 0, np = nlist; np != NULL; np = np->n_flink)

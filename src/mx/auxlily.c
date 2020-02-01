@@ -2,7 +2,7 @@
  *@ Auxiliary functions that don't fit anywhere else.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -889,11 +889,12 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 # define a_X MIN(LINESIZE, 1024)
 #endif
    mx_fs_linepool_aquire(&s_b.s, &s_b.l);
+   i = 0;
    if(s_b.l < a_X)
-      s_b.l = a_X;
+      i = s_b.l = a_X;
 #undef a_X
 
-   for(i = s_b.l;; s_b.l = ++i /* xxx could wrap, maybe */){
+   for(;; s_b.l = ++i /* xxx could wrap, maybe */){
 #ifdef mx_HAVE_N_VA_COPY
       va_list vac;
 
@@ -902,7 +903,9 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 # define vac ap
 #endif
 
-      s_b.s = su_MEM_REALLOC(s_b.s, s_b.l);
+      if(i != 0)
+         s_b.s = su_MEM_REALLOC(s_b.s, s_b.l);
+
       i = vsnprintf(s_b.s, s_b.l, format, vac);
 
 #ifdef mx_HAVE_N_VA_COPY
@@ -944,22 +947,32 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       allow_multiple = TRU1;
    }
 
-   lpref = ok_vlook(log_prefix);
-#ifdef mx_HAVE_COLOUR
-   if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
-      struct str const *pref, *suff;
-      struct mx_colour_pen *cp;
+   /* C99 */{
+      u32 poption_save;
 
-      if((cp = mx_colour_get_pen(mx_COLOUR_GET_FORCED,
-               mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_ERROR, NIL)
-               ) != NIL && (pref = mx_colour_pen_get_cseq(cp)) != NIL &&
-            (suff = mx_colour_get_reset_cseq(mx_COLOUR_GET_FORCED)
-                  ) != NIL){
-         c5pref = pref->s;
-         c5suff = suff->s;
+      poption_save = n_poption; /* XXX sigh */
+      n_poption &= ~n_PO_D_V;
+
+      lpref = ok_vlook(log_prefix);
+
+#ifdef mx_HAVE_COLOUR
+      if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
+         struct str const *pref, *suff;
+         struct mx_colour_pen *cp;
+
+         if((cp = mx_colour_get_pen(mx_COLOUR_GET_FORCED,
+                  mx_COLOUR_CTX_MLE, mx_COLOUR_ID_MLE_ERROR, NIL)
+                  ) != NIL && (pref = mx_colour_pen_get_cseq(cp)) != NIL &&
+               (suff = mx_colour_get_reset_cseq(mx_COLOUR_GET_FORCED)
+                     ) != NIL){
+            c5pref = pref->s;
+            c5suff = suff->s;
+         }
       }
-   }
 #endif
+
+      n_poption = poption_save;
+   }
 
    for(i = 0; UCMP(z, i, <, s.l);){
       char *cp;

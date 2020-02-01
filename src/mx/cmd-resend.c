@@ -2,7 +2,7 @@
  *@ All sorts of `reply', `resend', `forward', and similar user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -57,14 +57,20 @@
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
 
-/* Fetch these headers, as appropriate */
-static struct mx_name *a_crese_reply_to(struct message *mp);
+/* Fetch these headers, as appropriate; *the_rt will be set to Reply-To:
+ * regardless of whether Reply-To: will be honoured or not */
+static struct mx_name *a_crese_reply_to(struct message *mp,
+      struct mx_name **the_rt);
 static struct mx_name *a_crese_mail_followup_to(struct message *mp);
 
 /* We honoured Reply-To: and/or Mail-Followup-To:, but *recipients-in-cc* is
  * set so try to keep "secondary" addressees in Cc:, if possible, */
 static void a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np);
+
+/* *reply-to-swap-in* */
+static boole a_crese_do_rt_swap_in(struct header *hp, struct mx_name *the_rt);
+static void a_crese_rt_swap_in(struct header *hp, struct mx_name *the_rt);
 
 /* References and charset, as appropriate */
 static void a_crese_make_ref_and_cs(struct message *mp, struct header *head);
@@ -120,26 +126,28 @@ a_crese_reedit(char const *subj){
 }
 
 static struct mx_name *
-a_crese_reply_to(struct message *mp){
-   char const *cp, *cp2;
+a_crese_reply_to(struct message *mp, struct mx_name **the_rt){
+   char const *cp;
    struct mx_name *rt, *np;
    enum gfield gf;
    NYD2_IN;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-   rt = NULL;
+   rt = NIL;
 
-   if((cp = ok_vlook(reply_to_honour)) != NULL &&
-         (cp2 = hfield1("reply-to", mp)) != NULL &&
-         (rt = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
-            ) != NULL){
+   if((cp = hfield1("reply-to", mp)) != NIL)
+      rt = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NIL);
+
+   *the_rt = rt;
+
+   if((cp = ok_vlook(reply_to_honour)) != NIL && rt != NIL){
       char *lp;
       uz l;
       char const *tr;
 
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Reply-To: header contains:"));
-         for(np = rt; np != NULL; np = np->n_flink)
+         for(np = rt; np != NIL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
          putc('\n', n_stdout);
       }
@@ -148,12 +156,14 @@ a_crese_reply_to(struct message *mp){
       l = su_cs_len(tr) + su_cs_len(rt->n_name) + 3 +1;
       lp = n_lofi_alloc(l);
 
-      snprintf(lp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
+      snprintf(lp, l, tr, rt->n_name, (rt->n_flink != NIL ? "..." : su_empty));
       if(n_quadify(cp, UZ_MAX, lp, TRU1) <= FAL0)
-         rt = NULL;
+         rt = NIL;
 
       n_lofi_free(lp);
-   }
+   }else
+      rt = NIL;
+
    NYD2_OU;
    return rt;
 }
@@ -312,6 +322,79 @@ jclass_ok:
    NYD2_OU;
 }
 
+static boole
+a_crese_do_rt_swap_in(struct header *hp, struct mx_name *the_rt){
+   struct mx_name *np;
+   char const *rtsi;
+   boole rv;
+   NYD2_IN;
+
+   rv = FAL0;
+
+   if(the_rt != NIL && (rtsi = ok_vlook(reply_to_swap_in)) != NIL &&
+         (np = hp->h_mailx_orig_sender) != NIL){
+
+      rv = TRU1;
+
+      if(*rtsi != '\0'){
+         char *cp;
+
+         for(cp = savestr(rtsi); (rtsi = su_cs_sep_c(&cp, ',', TRU1)) != NIL;)
+            if(!su_cs_cmp_case(rtsi, "mlist")){
+               if(mx_mlist_query(np->n_name, FAL0) == mx_MLIST_OTHER)
+                  rv = FAL0;
+            }else
+               n_err(_("*reply-to-swap-in*: unknown value: %s\n"),
+                  n_shexp_quote_cp(rtsi, FAL0));
+      }
+   }
+
+   NYD2_OU;
+   return rv;
+}
+
+static void
+a_crese_rt_swap_in(struct header *hp, struct mx_name *the_rt){
+   NYD2_IN;
+
+   if(a_crese_do_rt_swap_in(hp, the_rt)){
+      boole any;
+      struct mx_name *np, **xnpp, *xnp;
+
+      np = hp->h_mailx_orig_sender;
+
+      for(xnpp = &hp->h_from, any = FAL0;;){
+         for(xnp = *xnpp; xnp != NIL; xnp = xnp->n_flink)
+            if(mx_name_is_same_address(xnp, np)){
+               xnp->n_fullname = the_rt->n_fullname;
+               xnp->n_name = the_rt->n_name;
+               any = TRU1;
+            }
+         if(xnpp == &hp->h_from)
+            xnpp = &hp->h_sender;
+         else if(xnpp == &hp->h_sender)
+            xnpp = &hp->h_to;
+         else if(xnpp == &hp->h_to)
+            xnpp = &hp->h_cc;
+         else if(xnpp == &hp->h_cc)
+            xnpp = &hp->h_bcc;
+         else if(xnpp == &hp->h_bcc)
+            xnpp = &hp->h_reply_to;
+         else if(xnpp == &hp->h_reply_to)
+            xnpp = &hp->h_mft;
+         else
+            break;
+      }
+
+      if(any){
+         np = ndup(np, GCC | GSKIN);
+         hp->h_cc = cat(hp->h_cc, np);
+      }
+   }
+
+   NYD2_OU;
+}
+
 static void
 a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 {
@@ -379,7 +462,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct header head;
    struct message *mp;
    char const *cp, *cp2;
-   struct mx_name *rt, *mft, *np;
+   struct mx_name *rt, *the_rt, *mft, *np;
    enum gfield gf;
    NYD2_IN;
 
@@ -408,12 +491,12 @@ jwork_msg:
     * if honoured, take precedence over anything else.  We will join the
     * resulting list together if so desired.
     * So if we shall honour R-T: or M-F-T:, then these are our receivers! */
-   rt = a_crese_reply_to(mp);
+   rt = a_crese_reply_to(mp, &the_rt);
    mft = a_crese_mail_followup_to(mp);
 
-   if(rt != NULL || mft != NULL){
+   if(rt != NIL || mft != NIL){
       np = cat(rt, mft);
-      if(mft != NULL)
+      if(mft != NIL)
          head.h_mft = n_namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
 
       /* Optionally do not propagate a receiver that originally was in
@@ -482,6 +565,7 @@ jwork_msg:
    head.h_to = np;
 
 jrecipients_done:
+   a_crese_rt_swap_in(&head, the_rt);
 
    /* For list replies automatically recognize the list address given in the
     * RFC 2369 List-Post: header, so that we will not throw away a possible
@@ -509,7 +593,7 @@ jrecipients_done:
           * -announce@ is only used for announcements, say).
           * So our desire is to honour this request and actively overwrite
           * List-Post: for our purpose; but only if its a single address.
-          * However, to avoid ambiguities with users that place themselve in
+          * However, to avoid ambiguities with users that place themselves in
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
           * a single address which points to the same domain as List-Post: */
@@ -649,18 +733,6 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
-   for(ap = msgvec; *ap != 0; ++ap){
-      struct mx_name *np;
-
-      mp = &message[*ap - 1];
-      touch(mp);
-      setdot(mp);
-
-      if((np = a_crese_reply_to(mp)) == NULL)
-         np = lextract(n_header_senderfield_of(mp), GTO | gf);
-      head.h_to = cat(head.h_to, np);
-   }
-
    mp = n_msgmark1;
    ASSERT(mp != NIL);
    head.h_subject = hfield1("subject", mp);
@@ -673,12 +745,32 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
    head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
-   if(ok_blook(recipients_in_cc)){
-      a_crese_polite_rt_mft_move(mp, &head, head.h_to);
+   for(ap = msgvec; *ap != 0; ++ap){
+      struct mx_name *np, *the_rt;
 
-      head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-      head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
+      mp = &message[*ap - 1];
+      touch(mp);
+      setdot(mp);
+
+      if((np = a_crese_reply_to(mp, &the_rt)) == NIL)
+         np = lextract(n_header_senderfield_of(mp), GTO | gf);
+
+      if(a_crese_do_rt_swap_in(&head, the_rt)){
+         struct mx_name *np_save;
+
+         for(np_save = np; np != NIL; np = np->n_flink)
+            if(mx_name_is_same_address(np, head.h_mailx_orig_sender)){
+               np->n_fullname = the_rt->n_fullname;
+               np->n_name = the_rt->n_name;
+            }
+         np = np_save;
+      }
+
+      head.h_to = cat(head.h_to, np);
    }
+
+   mp = n_msgmark1;
+
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 

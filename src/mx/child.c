@@ -7,7 +7,7 @@
  *@ TODO . we would need full and true job control handling
  *@ TODO   But at least notion of background and foreground, see termios.c!
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -58,7 +58,7 @@ struct a_child_ent{
 
 static struct a_child_ent *a_child_head;
 
-/* Cleanup internal structures which have been rendered obsolete (childs have
+/* Cleanup internal structures which have been rendered obsolete (children have
  * terminated) in the meantime; returns list to be freed.
  * Note: signals including SIGCHLD need to be blocked when calling this */
 static struct a_child_ent *a_child_manager_cleanup(void);
@@ -361,14 +361,14 @@ mx_child_fork(struct mx_child_ctx *ccp){
    /* Does this child take the terminal? */
    if(ccp->cc_fds[0] == mx_CHILD_FD_PASS ||
          ccp->cc_fds[1] == mx_CHILD_FD_PASS){
-      /* We strip that in started childs.. */
+      /* We strip that in started children.. */
       if(n_psonce & n_PSO_TTYANY){
          ccp->cc_flags |= mx__CHILD_JOBCTL;
          cep->ce_tios = TRU1;
       }
    }
 
-   /* TODO It is actally very bad to block all the signals for such a long
+   /* TODO It is actually very bad to block all the signals for such a long
     * TODO time, especially when taking into account on what is done in here */
    mx_sigs_all_hold(SIGCHLD, 0);
 
@@ -445,7 +445,7 @@ jlink_child:
       break;
    }
 
-   /* Free all stale childs */
+   /* Free all stale children */
    while(nlp != NIL){
       cep = nlp;
       nlp = nlp->ce_link;
@@ -458,7 +458,7 @@ jleave:
 
 jkid:
    a_child_head = NIL;
-   /* Strip tty bits, our childs will not care from our point of view */
+   /* Strip tty bits, our children will not care from our point of view */
    n_psonce &= ~(n_PSO_TTYANY | n_PSO_INTERACTIVE);
 
    /* Close the unused end of the control pipe right now */
@@ -585,7 +585,7 @@ mx_child_wait(struct mx_child_ctx *ccp){
    ASSERT(ccp);
    ASSERT(ccp->cc_pid > 0);
 
-   /* TODO Unless we place childs which take the terminal in their own
+   /* TODO Unless we place children which take the terminal in their own
     * TODO thing (setsid();setlogin();ioctl(fd, TIOCSCTTY)), that is
     * TODO CHLD:setpgid(0,0); PAREN:setpgid(CHILD,0),
     * TODO tcsetpgrp(STDIN_FILENO,CHILD)

@@ -7,7 +7,7 @@
  *@ - update the *termcap* member documentation on changes!
  *@ Bug: in case of clashes of two-letter names terminfo(5) wins.
  *
- * Copyright (c) 2016 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -89,7 +89,7 @@ enum a_termcap_flags{
    a_TERMCAP_F_ALTERN = 1u<<6, /* Not available, but has alternative */
    a_TERMCAP_F_NOENT = 1u<<7, /* Not available */
 
-   /* _cmd() argument interpretion (_T_STR) */
+   /* _cmd() argument interpretation (_T_STR) */
    a_TERMCAP_F_ARG_IDX1 = 1u<<11, /* Argument 1 used, and is an index */
    a_TERMCAP_F_ARG_IDX2 = 1u<<12,
    a_TERMCAP_F_ARG_CNT = 1u<<13, /* .., and is a count */

@@ -4,7 +4,7 @@
  *@ TODO we need a program wide global ctx; furtherly split main();
  *@ TODO when arguments are parsed the a_main_ctx instance should be dropped
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -134,7 +134,6 @@ a_main_startup(void){
    n_stdin = stdin;
    n_stdout = stdout;
    n_stderr = stderr;
-   dflpipe = SIG_DFL;
 
    if((cp = su_cs_rfind_c(su_program, '/')) != NIL)
       su_program = ++cp;
@@ -176,12 +175,13 @@ a_main_startup(void){
    n_go_init();
 
    if(n_psonce & n_PSO_INTERACTIVE)
-      safe_signal(SIGPIPE, dflpipe = SIG_IGN);
+      safe_signal(SIGPIPE, SIG_IGN);
 
 #if DVLOR(1, 0)
 # if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
    safe_signal(SIGUSR1, &a_main_memtrace);
 # endif
+   safe_signal(SIGUSR2, &mx__nyd_oncrash);
    safe_signal(SIGABRT, &mx__nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &mx__nyd_oncrash);
@@ -397,16 +397,13 @@ a_main_hdrstop(int signo){
 #if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
 static void
 a_main_memtrace(int signo){
-   u32 oopt;
+   enum su_log_level lvl;
    UNUSED(signo);
 
+   lvl = su_log_get_level();
+   su_log_set_level(su_LOG_INFO);
    su_mem_trace();
-   oopt = n_poption;
-   if(!(oopt & n_PO_V))
-      ok_bset(verbose);
-   su_mem_trace();
-   if(!(oopt & n_PO_V))
-      ok_bclear(verbose);
+   su_log_set_level(lvl);
 }
 #endif
 
@@ -686,7 +683,7 @@ main(int argc, char *argv[]){
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
       "resource-files:;:;" N_("control loading of resource files"),
-      "account:;A;" N_("execute an `account command'"),
+      "account:;A;" N_("execute an `account' command"),
          "attach:;a;" N_("attach a file to message to be sent"),
       "bcc:;b;" N_("add blind carbon copy recipient"),
       "custom-header:;C;" N_("create custom header (\"header-field: body\")"),
@@ -946,7 +943,7 @@ jeMmq:
          }goto jleave;
       case 'v':
          /* Be verbose */
-         ok_bset(verbose);
+         ok_vset(verbose, su_empty);
          break;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */

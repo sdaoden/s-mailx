@@ -3,7 +3,7 @@
  *@ TODO Should be split in myriads of FEATURE-GROUP.h headers.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
@@ -70,7 +70,7 @@ struct quoteflt;
 
 /* There are problems with dup()ing of file-descriptors for child processes.
  * We have to somehow accomplish that the FILE* fp makes itself comfortable
- * with the *real* offset of the underlaying file descriptor.
+ * with the *real* offset of the underlying file descriptor.
  * POSIX Issue 7 overloaded fflush(3): if used on a readable stream, then
  *
  *    if the file is not already at EOF, and the file is one capable of
@@ -189,7 +189,8 @@ FL boole n_var_okclear(enum okeys okey);
 #define ok_vclear(C) n_var_okclear(su_CONCAT(ok_v_, C))
 
 /* Variable option key lookup/(un)set/clear.
- * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey.
+ * If try_getenv is true we will getenv(3) _if_ vokey is not a known enum okey;
+ * it will also cause obsoletion messages only for doing lookup (once).
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * ${@} in double-quotes, in order to provide sh(1)ell compatible behaviour;
  * it returns whether there are any elements in argv (*cookie) */
@@ -215,9 +216,6 @@ FL int c_unset(void *vp);
 
 /* `varshow' */
 FL int c_varshow(void *v);
-
-/* Ditto: `varedit' */
-FL int c_varedit(void *v);
 
 /* `environ' */
 FL int c_environ(void *v);
@@ -636,29 +634,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * edit.c
- */
-
-/* Edit a message list */
-FL int         c_editor(void *v);
-
-/* Invoke the visual editor on a message list */
-FL int         c_visual(void *v);
-
-/* Run an editor on either size bytes of the file fp (or until EOF if size is
- * negative) or on the message mp, and return a new file or NULL on error of if
- * the user didn't perform any edits (not possible in pipe mode).
- * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
- * from within compose mode, and giving TRUM1 to n_puthead().
- * Signals must be handled by the caller.
- * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
- * which case pipecmd must have been given */
-FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
-                  struct header *hp, struct message *mp,
-                  enum sendaction action, n_sighdl_t oldint,
-                  char const *pipecmd);
-
-/*
  * folder.c
  */
 
@@ -931,7 +906,7 @@ FL char *n_header_textual_date_info(struct message *mp,
 
 /* Create ready-to-go sender name of a message in *cumulation_or_null, the
  * addresses only in *addr_or_null, the real names only in *name_real_or_null,
- * and the full names in *name_full_or_null, taking acount for *showname*.
+ * and the full names in *name_full_or_null, taking account for *showname*.
  * If *is_to_or_null is set, *showto* and n_is_myname() are taken into account
  * when choosing which names to use.
  * The list as such is returned, or NULL if there is really none (empty strings

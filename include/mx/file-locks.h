@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ File locking, also via so-called dotlock files.
  *
- * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -37,7 +37,7 @@ enum mx_file_dotlock_state{
    mx_FILE_DOTLOCK_STATE_CANT_CHDIR, /* Failed to chdir(2) into desired path */
    mx_FILE_DOTLOCK_STATE_NAMETOOLONG, /* Lock file name would be too long */
    mx_FILE_DOTLOCK_STATE_ROFS, /* Read-only filesys (no error, mailbox RO) */
-   mx_FILE_DOTLOCK_STATE_NOPERM, /* No permission to creat lock file */
+   mx_FILE_DOTLOCK_STATE_NOPERM, /* No permission to create lock file */
    mx_FILE_DOTLOCK_STATE_NOEXEC, /* Privilege separated dotlocker not found */
    mx_FILE_DOTLOCK_STATE_PRIVFAILED, /* Rising privileges failed in privsep */
    mx_FILE_DOTLOCK_STATE_EXIST, /* Lock file already exists, stale lock? */
@@ -65,10 +65,10 @@ struct mx_file_dotlock_info{
 EXPORT boole mx_file_lock(int fd, enum mx_file_lock_type flt,
       off_t off, off_t len, uz pollmsecs); /* XXX off_t -> s64 */
 
-/* Aquire a flt mx_file_lock().
+/* Acquire a flt mx_file_lock().
  * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
  * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used.
- * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be aquired,
+ * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be acquired,
  * NIL if not, with err_no being usable.
  * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
  * returned upon success which keeps the link in between us and the

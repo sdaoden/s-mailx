@@ -3,7 +3,7 @@
  *@ TODO quotation filter: anticipate in future data: don't break if only WS
  *@ TODO or a LF escaping \ follows on the line (simply reuse the latter).
  *
- * Copyright (c) 2012/3 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012/3 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -426,7 +426,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len)
       goto jleave;
 
    /* Bypass? TODO Finally, this filter simply should not be used, then
-    * (TODO It supercedes prefix_write() or something) */
+    * (TODO It supersedes prefix_write() or something) */
    if (self->qf_bypass) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;

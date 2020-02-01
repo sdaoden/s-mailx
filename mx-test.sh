@@ -54,7 +54,7 @@ BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
-#UTF8_LOCALE= autodetected unless set
+#UTF8_LOCALE= HONOURS_READONLY= autodetected unless set
 TMPDIR=`${pwd}`
 
 # When testing mass mail/loops, maximum number of receivers/loops.
@@ -256,7 +256,7 @@ RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-# We want an UTF-8 locale {{{
+# We want an UTF-8 locale, and HONOURS_READONLY {{{
 if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
@@ -306,7 +306,25 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    else
       echo 'No Unicode locale found, disabling Unicode tests'
    fi
+
+   if [ -z "${HONOURS_READONLY}" ]; then
+      trap "${rm} -f ./.tisrdonly" EXIT
+      trap "exit 1" HUP INT TERM
+      printf '' > ./.tisrdonly
+      ${chmod} 0444 ./.tisrdonly
+      if (printf 'no\n' > ./.tisrdonly) >/dev/null 2>&1 &&
+            test -s ./.tisrdonly; then
+         HONOURS_READONLY=
+      else
+         HONOURS_READONLY=yes
+      fi
+      ${rm} -f ./.tisrdonly
+      trap '' EXIT
+      trap '' HUP INT TERM
+   fi
 fi
+
+export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
@@ -716,11 +734,24 @@ check_exn0() {
 color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
-   if (command -v tput && tput sgr0 && tput setaf 1 && tput sgr0) \
-         >/dev/null 2>&1; then
-      COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
-      COLOR_WARN_ON=`tput setaf 3``tput bold`  COLOR_WARN_OFF=`tput sgr0`
-      COLOR_OK_ON=`tput setaf 2`  COLOR_OK_OFF=`tput sgr0`
+   # We do not want color for "make test > .LOG"!
+   if (command -v stty && command -v tput) >/dev/null 2>&1 &&
+         (<&1 >/dev/null stty -a) 2>/dev/null; then
+      sgr0=`tput sgr0 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf1=`tput setaf 1 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf2=`tput setaf 2 2>/dev/null`
+      [ $? -eq 0 ] || return
+      saf3=`tput setaf 3 2>/dev/null`
+      [ $? -eq 0 ] || return
+      b=`tput bold 2>/dev/null`
+      [ $? -eq 0 ] || return
+
+      COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
+      COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
+      COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
+      unset saf1 saf2 saf3 b
    fi
 }
 
@@ -4390,7 +4421,7 @@ t_can_send_rfc() { # {{{
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
 			"${cat}" && echo pardauz && echo) > "${MBOX}"
 	_EOT
-   chmod 0755 .tmta.sh
+   ${chmod} 0755 .tmta.sh
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.mta-1 \
       receiver@number.1 > ./.terr 2>&1
@@ -4423,7 +4454,7 @@ xit
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
 			"${cat}" && echo 'ARGS: '"\${@}" && echo) > "${MBOX}"
 	_EOT
-   chmod 0755 .tmta.sh
+   ${chmod} 0755 .tmta.sh
 
    t_it() {
       </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfolder="${xfolder}" \
@@ -5002,7 +5033,7 @@ t_copy() { # {{{
    copy 1 2 .tf3
    echo 4:$?/$^ERRNAME
    headers
-   !chmod 0444 .tf3
+   !'"${chmod}"' 0444 .tf3
    copy 1 2 .tf3
    echo 5:$?/$^ERRNAME
    #' \
@@ -5015,12 +5046,21 @@ t_copy() { # {{{
    else
       ${mv} ./.tallx ./.tall
    fi
-   check 2-1 - ./.tall '1913702840 1121'
+   if [ -n "${HONOURS_READONLY}" ]; then
+      n2_1=2-1 cs2_1='1913702840 1121'
+      n2_4=2-4 cs2_4='3642131968 344'
+      n2_5=2-5 cs2_5='2617612897 112'
+   else
+      n2_1=2-1-nrdonly cs2_1='1962556153 1146'
+      n2_4=2-4-nrdonly cs2_4='3733058190 688'
+      n2_5=2-5-nrdonly cs2_5='3989834342 80'
+   fi
+   check ${n2_1} - ./.tall "${cs2_1}"
    check 2-2 - ./.tf1 '686654461 334'
    check 2-3 - ./.tf2 '1931512953 162'
-   check 2-4 - ./.tf3 '3642131968 344'
+   check ${n2_4} - ./.tf3 "${cs2_4}"
    if have_feat uistrings; then
-      check 2-5 - ./.terr '2617612897 112'
+      check ${n2_5} - ./.terr "${cs2_5}"
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5149,7 +5189,7 @@ t_save() { # {{{
    save 1 2 .tf3
    echo 4:$?/$^ERRNAME
    headers
-   !chmod 0444 .tf3
+   !'"${chmod}"' 0444 .tf3
    save 1 2 .tf3
    echo 5:$?/$^ERRNAME
    #' \
@@ -5162,12 +5202,21 @@ t_save() { # {{{
    else
       ${mv} ./.tallx ./.tall
    fi
-   check 2-1 - ./.tall '2335843514 1121'
+   if [ -n "${HONOURS_READONLY}" ]; then
+      n2_1=2-1 cs2_1='2335843514 1121'
+      n2_4=2-4 cs2_4='970407001 344'
+      n2_5=2-5 cs2_5='45116475 112'
+   else
+      n2_1=2-1-nrdonly cs2_1='1736244784 1146'
+      n2_4=2-4-nrdonly cs2_4='3903872811 688'
+      n2_5=2-5-nrdonly cs2_5='720724138 80'
+   fi
+   check ${n2_1} - ./.tall "${cs2_1}"
    check 2-2 - ./.tf1 '2435434321 334'
    check 2-3 - ./.tf2 '920652966 162'
-   check 2-4 - ./.tf3 '970407001 344'
+   check ${n2_4} - ./.tf3 "${cs2_4}"
    if have_feat uistrings; then
-      check 2-5 - ./.terr '45116475 112'
+      check ${n2_5} - ./.terr "${cs2_5}"
    else
       t_echoskip '2-5:[!UISTRINGS]'
    fi
@@ -5311,10 +5360,10 @@ t_move() { # {{{
    move .tf1
    echo 1:$?/$^ERRNAME
    headers
-   !touch .tf2; chmod 0444 .tf2
+   !touch .tf2; '"${chmod}"' 0444 .tf2
    move 2 .tf2
    echo 2:$?/$^ERRNAME
-   !chmod 0644 .tf2
+   !'"${chmod}"' 0644 .tf2
    move 2 .tf2
    echo 3:$?/$^ERRNAME
    headers
@@ -5328,11 +5377,18 @@ t_move() { # {{{
    else
       ${mv} ./.tallx ./.tall
    fi
-   check 2-1 - ./.tall '1641443074 491'
+   if [ -n "${HONOURS_READONLY}" ]; then
+      n2_1=2-1 cs2_1='1641443074 491'
+      n2_4=2-4 cs2_4='602144474 155'
+   else
+      n2_1=2-1-nrdonly cs2_1='3045412111 492'
+      n2_4=2-4-nrdonly cs2_4='2197157669 201'
+   fi
+   check ${n2_1} - ./.tall "${cs2_1}"
    check 2-2 - ./.tf1 '1473857906 162'
    check 2-3 - ./.tf2 '331229810 162'
    if have_feat uistrings; then
-      check 2-4 - ./.terr '602144474 155'
+      check ${n2_4} - ./.terr "${cs2_4}"
    else
       t_echoskip '2-4:[!UISTRINGS]'
    fi
@@ -6086,7 +6142,7 @@ t_binary_mainbody() {
 
    printf 'p\necho\necho writing now\nwrite ./.twrite\n' |
       ${MAILX} ${ARGS} -Rf \
-         -Spipe-application/octet-stream="@* ${cat} > ./.tcat" \
+         -Spipe-application/octet-stream="?* ${cat} > ./.tcat" \
          "${MBOX}" >./.tall 2>&1
    check 3 0 ./.tall '733582513 319'
    check 4 - ./.tcat '3817108933 15'
@@ -6403,7 +6459,7 @@ t_expandaddr() {
    fi
 
    echo "${cat}" > ./.tcat
-   chmod 0755 ./.tcat
+   ${chmod} 0755 ./.tcat
 
    #
    </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://"$MBOX" -ssub \
@@ -7817,7 +7873,7 @@ t_compose_edits() { # XXX very rudimentary
 	__EOT
 	exit 0
 	_EOT
-   chmod 0755 .ted.sh
+   ${chmod} 0755 .ted.sh
 
    # > All these are in-a-row!
 
@@ -9299,7 +9355,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '2954356452 39829'
+      check 1 - "${MBOX}" '1909184320 39820'
    else
       t_echoskip '1:[!UISTRINGS]'
    fi
@@ -9553,7 +9609,8 @@ text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
 text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
    ' > ./.tmailcap
 
-   </dev/null MAILCAPS=./.tmailcap ${MAILX} ${ARGS} -Snomailcap-disable \
+   </dev/null MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
       -Y '#
 \mailcap
 \echo =1

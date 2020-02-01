@@ -3,7 +3,7 @@
  *@ TODO This needs a complete rewrite, with carriers, etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -47,6 +47,7 @@
 #include <su/utf.h>
 
 #include "mx/child.h"
+#include "mx/cmd-edit.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"

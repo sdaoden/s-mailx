@@ -4,7 +4,7 @@
  *@ TODO vector of NIL terminated {char const *mode;sz fd_result;} structs,
  *@ TODO and create all desired copies; drop HOLDSIGS, then, too!
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -969,6 +969,8 @@ mx_fs_linepool_aquire(char **dpp, uz *dsp){
    *dpp = lpep->fsle_dat;
    lpep->fsle_dat = NIL;
    *dsp = lpep->fsle_size;
+   lpep->fsle_size = 0;
+
    NYD2_OU;
 }
 
@@ -985,6 +987,7 @@ mx_fs_linepool_release(char *dp, uz ds){
    a_fs_lpool_free = lpep;
    lpep->fsle_dat = dp;
    lpep->fsle_size = ds;
+
    NYD2_OU;
 }
 
@@ -1038,23 +1041,28 @@ mx_fs_linepool_cleanup(boole completely){
    a_fs_lpool_free = keep = NIL;
 jredo:
    while((tmp = lpep) != NIL){
+      void *vp;
+
       lpep = lpep->fsle_last;
 
-      if(completely && tmp->fsle_size <= LINESIZE * 2){
+      if((vp = tmp->fsle_dat) != NIL && completely &&
+            tmp->fsle_size <= LINESIZE * 2){
          --completely;
          tmp->fsle_last = a_fs_lpool_free;
          a_fs_lpool_free = tmp;
       }else{
-         if(tmp->fsle_dat != NIL)
-            su_FREE(tmp->fsle_dat);
+         if(vp != NIL)
+            su_FREE(vp);
          su_FREE(tmp);
       }
    }
 
+   /* Only called from go_main_loop(), save to throw the hulls away */
    if((lpep = a_fs_lpool_used) != NIL){
       a_fs_lpool_used = NIL;
       goto jredo;
    }
+
    NYD2_OU;
 }
 

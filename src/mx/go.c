@@ -7,7 +7,7 @@
  *@ TODO   (Including sh(1)ell HERE strings and such.)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
@@ -274,7 +274,7 @@ a_go_update_pstate(void){
 static boole
 a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* TODO old style(9), but also old code */
-   /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
+   /* TODO a_go_evaluate() should be split in multiple subfunctions,
     * TODO `eval' should be a prefix, etc., a cmd_ctx should be passed along;
     * TODO this also affects history handling, as below!  etc etc */
    struct str line;
@@ -1119,7 +1119,8 @@ jerr:
    if((n_poption & n_PO_D_V) ||
          (!(n_psonce & n_PSO_STARTED) &&
           !(gcp->gc_flags & (a_GO_SPLICE | a_GO_MACRO)) &&
-          !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK)))
+          (gcp->gc_outer == NIL ||
+            !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK))))
       /* I18N: file inclusion, macro etc. evaluation has been stopped */
       n_alert(_("Stopped %s %s due to errors%s"),
          (n_psonce & n_PSO_STARTED
@@ -1388,6 +1389,7 @@ n_go_main_loop(void){ /* FIXME */
 
    for (eofcnt = 0;; gec.gec_ever_seen = TRU1) {
       interrupts = 0;
+      DVL(su_nyd_reset_level(1);)
 
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
@@ -1498,13 +1500,13 @@ n_go_main_loop(void){ /* FIXME */
       gec.gec_line_size = S(u32,gec.gec_line.l);
       gec.gec_line.l = S(u32,n);
 
-      if (n < 0) {
-         if (!(n_pstate & n_PS_ROBOT) &&
+      if(n < 0){
+         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
+         if(!(n_pstate & n_PS_ROBOT) &&
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
-               ++eofcnt < 4) {
+               ++eofcnt < 4){
             fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
             n_go_input_clearerr();
-            mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
             continue;
          }
          break;

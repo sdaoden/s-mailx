@@ -6,7 +6,7 @@
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ with a symlink-resolved target and with SIGPIPE being ignored.
  *
- * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -109,7 +109,7 @@ main(int argc, char **argv){
    sigset_t nset, oset;
    enum mx_file_dotlock_state fdls;
 
-   /* We're a dumb helper, ensure as much as we can noone else uses us */
+   /* We're a dumb helper, ensure as much as we can no one else uses us */
    if(argc != 12 ||
          strcmp(argv[ 0], VAL_PS_DOTLOCK) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||

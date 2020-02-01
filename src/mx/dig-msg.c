@@ -8,7 +8,7 @@
  *@ XXX - Multiple objects per message could be possible (a_dmsg_find()),
  *@ XXX   except in compose mode
  *
- * Copyright (c) 2016 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -1131,7 +1131,7 @@ c_digmsg(void *vp){
          FILE *fp;
 
          if((fp = setinput(&mb, dmcp->dmc_mp, NEED_HEADER)) == NIL){
-            /* XXX Should have paniced before.. */
+            /* XXX Should have panicked before.. */
             n_free(dmcp);
             emsg = N_("digmsg: create: mailbox I/O error for message: %s\n");
             goto jeinval_quote;

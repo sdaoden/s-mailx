@@ -16,7 +16,7 @@
  *@ TODO   Global -> Scope -> Local, all "overlay" objects.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -158,7 +158,9 @@ enum a_amv_var_lookup_flags{
     * $TMPDIR is set to non-existent we can use the VAL_TMPDIR config default,
     * but if this also fails (filesystem read-only for example), then all bets
     * are off, and we must not enter an endless loop */
-   a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO = 1u<<30
+   a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO = 1u<<29,
+   /* #ifndef a_AMV_VAR_HAS_OBSOLETE temporarily defined to _VLOOK_NONE! */
+   a_AMV_VLOOK_LOG_OBSOLETE = 1u<<30
 };
 
 enum a_amv_var_setclr_flags{
@@ -317,6 +319,11 @@ struct a_amv_var_carrier{
 /* Include constant make-okey-map.pl output, and the generated version data */
 #include "mx/gen-version.h" /* - */
 #include "mx/gen-okeys.h" /* $(MX_SRCDIR) */
+
+/* As above */
+#ifndef a_AMV_VAR_HAS_OBSOLETE
+# define a_AMV_VLOOK_LOG_OBSOLETE a_AMV_VLOOK_NONE
+#endif
 
 /* As promised above, CTAs to protect our structures */
 CTA(a_AMV_VAR_NAME_KEY_MAXOFF <= U16_MAX,
@@ -1097,6 +1104,11 @@ jefrom:
       case ok_b_ask:
          ok_bset(asksub);
          break;
+      case ok_v_bind_timeout: /* v15-compat: drop this */
+         n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, "
+            "doing this for you");
+         n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
+         break;
       case ok_b_debug:
          n_poption |= n_PO_D;
          su_log_set_level(su_LOG_DEBUG);
@@ -1157,10 +1169,24 @@ jefrom:
             umask((mode_t)uib);
          }
          break;
-      case ok_b_verbose:{
+      case ok_v_verbose:{
          u32 i;
 
-         i = ((n_poption << 1) | n_PO_V) & n_PO_V_MASK;
+         /* Initially a boolean variable, we want to keep compat forever */
+         if(**val != '\0'){
+            u64 uib;
+
+            su_idec_u64_cp(&uib, *val, 0, NIL);
+            if(uib == 0)
+               goto jverbose_clear;
+            uib = MIN(uib, 3);
+            i = n_PO_V;
+            while(--uib != 0)
+               i |= i << 1; /* header MCTA()s they are successive */
+         }else
+            i = ((n_poption << 1) | n_PO_V);
+
+         i &= n_PO_V_MASK;
          n_poption &= ~n_PO_V_MASK;
          n_poption |= i;
          if(!(n_poption & n_PO_D))
@@ -1210,7 +1236,8 @@ jefrom:
       case ok_b_skipemptybody:
          n_poption &= ~n_PO_E_FLAG;
          break;
-      case ok_b_verbose:
+      case ok_v_verbose:
+jverbose_clear:
          n_poption &= ~n_PO_V_MASK;
          if(!(n_poption & n_PO_D))
             su_log_set_level(n_LOG_LEVEL);
@@ -1365,7 +1392,7 @@ jno_special_param:
    }
 
    /* Not a known key, but it may be a chain extension of one.
-    * We possibly wanna know for a variety of reasons */
+    * We possibly want to know for a variety of reasons */
    if(try_harder && a_amv_var_revlookup_chain(avcp, name))
       goto jleave;
 
@@ -1633,11 +1660,10 @@ jleave:
 j_leave:
 #ifdef a_AMV_VAR_HAS_OBSOLETE
    if(UNLIKELY((avmp = avcp->avc_map) != NIL &&
-         (avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0)){
-      if((n_poption & n_PO_D_V) || /* TODO v15compat: only if PO_D_V! */
-            (avp != NIL && avp != R(struct a_amv_var*,-1)))
-         a_amv_var_obsolete(avcp->avc_name);
-   }
+         (avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0) &&
+         ((avlf & a_AMV_VLOOK_LOG_OBSOLETE) ||
+            (avp != NIL && avp != R(struct a_amv_var*,-1))))
+      a_amv_var_obsolete(avcp->avc_name);
 #endif
 
    if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
@@ -1704,7 +1730,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    struct a_amv_var_map const *avmp;
    NYD2_IN;
 
-   /* Not function local, TODO but lazy evaluted for now */
+   /* Not function local, TODO but lazy evaluated for now */
    if(avcp->avc_special_prop == a_AMV_VST_QM){
       avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
       avcp->avc_okey = ok_v___qm;
@@ -3276,7 +3302,8 @@ n_var_vlook(char const *vokey, boole try_getenv){
    default: /* silence CC */
    case a_AMV_VSC_NONE:
       rv = NULL;
-      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL))
+      if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_LOCAL |
+            (try_getenv ? a_AMV_VLOOK_LOG_OBSOLETE : a_AMV_VLOOK_NONE))))
          rv = avc.avc_var->av_value;
       /* Only check the environment for something that is otherwise unknown */
       else if(try_getenv && avc.avc_map == NULL &&
@@ -3482,92 +3509,6 @@ c_varshow(void *v){
 }
 
 FL int
-c_varedit(void *v){ /* TODO v15 drop */
-   struct a_amv_var_carrier avc;
-   FILE *of, *nf;
-   char *val, **argv;
-   int err;
-   n_sighdl_t sigint;
-   NYD_IN;
-
-   sigint = safe_signal(SIGINT, SIG_IGN);
-
-   for(err = 0, argv = v; *argv != NULL; ++argv){
-      a_amv_var_revlookup(&avc, *argv, TRU1);
-
-      if(avc.avc_map != NULL){
-         if(avc.avc_map->avm_flags & a_AMV_VF_BOOL){
-            n_err(_("varedit: cannot edit boolean variable: %s\n"),
-               avc.avc_name);
-            continue;
-         }
-         if(avc.avc_map->avm_flags & a_AMV_VF_RDONLY){
-            n_err(_("varedit: cannot edit read-only variable: %s\n"),
-               avc.avc_name);
-            continue;
-         }
-      }
-
-      a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE);
-
-      if((of = mx_fs_tmp_open("varedit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
-         n_perr(_("varedit: cannot create temporary file"), 0);
-         err = 1;
-         break;
-      }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
-            sizeof *val != fwrite(val, su_cs_len(val), sizeof *val, of)){
-         n_perr(_("varedit failed to write old value to temporary file"), 0);
-         mx_fs_close(of);
-         err = 1;
-         continue;
-      }
-
-      fflush_rewind(of);
-      nf = n_run_editor(of, (off_t)-1, 'e', FAL0, NULL,NULL, SEND_MBOX, sigint,
-            NULL);
-      mx_fs_close(of);
-
-      if(nf != NULL){
-         int c;
-         char const *varres;
-         off_t l;
-
-         l = fsize(nf);
-         if(UCMP(64, l, >=, UZ_MAX -42)){
-            n_err(_("varedit: not enough memory to store variable: %s\n"),
-               avc.avc_name);
-            varres = n_empty;
-            err = 1;
-         }else{
-            varres = val = n_autorec_alloc(l +1);
-            for(; l > 0 && (c = getc(nf)) != EOF; --l)
-               *val++ = c;
-            *val++ = '\0';
-            if(l != 0){
-               n_err(_("varedit: I/O while reading new value of: %s\n"),
-                  avc.avc_name);
-               err = 1;
-            }
-         }
-
-         if(!a_amv_var_set(&avc, varres, a_AMV_VSETCLR_NONE))
-            err = 1;
-
-         mx_fs_close(nf);
-      }else{
-         n_err(_("varedit: cannot start $EDITOR\n"));
-         err = 1;
-         break;
-      }
-   }
-
-   safe_signal(SIGINT, sigint);
-   NYD_OU;
-   return err;
-}
-
-FL int
 c_environ(void *v){
    struct a_amv_var_carrier avc;
    int err;
@@ -3585,7 +3526,8 @@ c_environ(void *v){
 
          a_amv_var_revlookup(&avc, *ap, TRU1);
 
-         if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE) && (islnk ||
+         if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_NONE |
+               a_AMV_VLOOK_LOG_OBSOLETE)) && (islnk ||
                (avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED))){
             if(!islnk){
                avc.avc_var->av_flags &= ~a_AMV_VF_EXT_LINKED;
@@ -3776,6 +3718,8 @@ jleave:
    NYD_OU;
    return (f & a_ERR) ? 1 : 0;
 }
+
+#undef a_AMV_VLOOK_LOG_OBSOLETE
 
 #include "su/code-ou.h"
 /* s-it-mode */

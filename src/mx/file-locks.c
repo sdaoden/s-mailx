@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of file-locks.h.
  *
- * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -245,7 +245,7 @@ jenametool:
       /* But fall through and try it with normal privileges! */
    }
 
-   /* So let's try and call it ourselfs!  Note we do not block signals just
+   /* So let's try and call it ourselves!  Note we do not block signals just
     * like our privsep child does, the user will anyway be able to remove his
     * file again, and if we are in -u/$USER mode then we are allowed to access
     * the user's box: shall we leave behind a stale dotlock then at least we

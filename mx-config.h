@@ -3,7 +3,7 @@
  *@ This is included (as mx/config.h) after all the (system) headers.
  *@ TODO It is a wild name convention mess, to say the least.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -59,6 +59,9 @@
 #define n_QUOTE_INJECT_TAIL NIL /* DOC! */
 
 #define REFERENCES_MAX 20 /* Maximum entries in References: */
+
+/* *bind-inter-byte-timeout* default -- update manual on change! */
+#define mx_BIND_INTER_BYTE_TIMEOUT "200"
 
 #define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
 

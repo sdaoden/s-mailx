@@ -5,7 +5,7 @@
  *@ TODO that, e.g., "vexpr regex" arguments can be fully prepared by the
  *@ TODO generic parser.  But at least a bit.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -35,6 +35,7 @@
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-commandalias.h"
 #include "mx/cmd-csop.h"
+#include "mx/cmd-edit.h"
 #include "mx/cmd-filetype.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cmd-shortcut.h"

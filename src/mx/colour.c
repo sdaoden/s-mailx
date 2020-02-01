@@ -1,11 +1,15 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of colour.h.
- *@ TODO mx_colour_env should be objects, mx_COLOUR_IS_ACTIVE() should take
- *@ TODO such an object!  We still should work together with n_go_data,
- *@ TODO but only for cleanup purposes.  No stack at all, that is to say!
- *@ TODO (Note we yet use autorec memory, so with JUMPS this needs care!)
+ *@ TODO As stated in header:
+ *@ TODO All the colour (pen etc. ) interfaces below have to vanish.
+ *@ TODO What we need here is a series of query functions which take context,
+ *@ TODO like a message* for the _VIEW_ series, and which return a 64-bit
+ *@ TODO flag carrier which returns font-attributes as well as foreground and
+ *@ TODO background colours (at least 24-bit each).
+ *@ TODO And the actual drawing stuff is up to the backend, maybe in termios,
+ *@ TODO or better termcap, or in ui-str.  I do not know.
  *
- * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -41,7 +45,7 @@ su_EMPTY_FILE()
 #include "mx/colour.h"
 #include "su/code-in.h"
 
-/* Not needed publically, but extends a public set */
+/* Not needed publicly, but extends a public set */
 #define mx_COLOUR_TAG_ERR ((char*)-1)
 #define a_COLOUR_TAG_IS_SPECIAL(P) (P2UZ(P) >= P2UZ(-3))
 
@@ -285,8 +289,10 @@ a_colour_mux(char **argv){
    enum a_colour_type ct;
    NYD2_IN;
 
-   if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1 &&
-         (*argv != NULL || !n_is_all_or_aster(argv[-1]))){
+   if(*argv == NIL)
+      ct = R(enum a_colour_type,-1);
+   else if((ct = a_colour_type_find(*argv++)) == R(enum a_colour_type,-1) &&
+         (*argv != NIL || !n_is_all_or_aster(argv[-1]))){
       n_err(_("colour: invalid colour type %s\n"),
          n_shexp_quote_cp(argv[-1], FAL0));
       rv = FAL0;
@@ -296,7 +302,7 @@ a_colour_mux(char **argv){
    if(!a_colour_g.cg_is_init)
       a_colour_init();
 
-   if(*argv == NULL){
+   if(*argv == NIL){
       rv = a_colour__show(ct);
       goto jleave;
    }

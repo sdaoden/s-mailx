@@ -3,7 +3,7 @@
  *@ TODO Mostly a hackery, we need RFC compliant parsers instead.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
@@ -2088,22 +2088,12 @@ jredo_uri:
    }
 
    if(!(flags & a_DOSKIN)){
-      su_ASSERT(!(gfield & GMAILTO_URI));
       /*agp->ag_iaddr_start = 0;*/
       agp->ag_iaddr_aend = agp->ag_ilen;
       agp->ag_skinned = n_UNCONST(name); /* (mx_NAME_SALLOC not set) */
       agp->ag_slen = agp->ag_ilen;
       agp->ag_n_flags = mx_NAME_SKINNED;
       goto jcheck;
-   }
-
-   if(gfield & GMAILTO_URI){
-      su_ASSERT(gfield & GNOT_A_LIST);
-      if(*(cp = name) == '<' && cp[agp->ag_ilen - 1] == '>'){
-         name = mx_url_mailto_to_address(savestrbuf(++cp, agp->ag_ilen - 2));
-         gfield &= ~GMAILTO_URI;
-         goto jredo_uri;
-      }
    }
 
    /* We will skin that thing */
@@ -2496,20 +2486,36 @@ jleave:
 
 FL struct mx_name *
 mx_header_list_post_of(struct message *mp){
-   char const *cp;
+   char *cp;
    struct mx_name *rv;
    NYD_IN;
 
    rv = NIL;
 
-   if((cp = hfield1("list-post", mp)) != NIL){
-      if((rv = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NIL ||
-            is_addr_invalid(rv, EACM_STRICT)){
-         if(n_poption & n_PO_D_V)
-            n_err(_("Message contains invalid List-Post: header\n"));
-         rv = NIL;
-      }else if(!su_cs_cmp_case(rv->n_name, "no"))
-         rv = R(struct mx_name*,-1);
+   /* RFC 2369 says this is a potential list, in preference order */
+   if((cp = hfield1("list-post", mp)) != NIL &&
+         (rv = lextract(cp, GEXTRA)) != NIL){
+      do{
+         uz i;
+
+         if(*(cp = rv->n_name) == '<' && cp[i = su_cs_len(cp) -1] == '>'){
+            ++cp;
+            cp[--i] = '\0';
+            if((cp = mx_url_mailto_to_address(cp)) != NIL){
+               rv = n_extract_single(cp, GEXTRA);
+
+               if(rv != NIL && is_addr_invalid(rv, EACM_STRICT)){
+                  if(n_poption & n_PO_D_V)
+                     n_err(_("Invalid List-Post: header: %s\n"),
+                        n_shexp_quote_cp(cp, FAL0));
+               }
+               break;
+            }
+         }else if(!su_cs_cmp_case(rv->n_name, "no")){
+            rv = R(struct mx_name*,-1);
+            break;
+         }
+      }while((rv = rv->n_flink) != NIL);
    }
 
    NYD_OU;

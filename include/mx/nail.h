@@ -3,7 +3,7 @@
  *@ TODO Should be split in myriads of FEATURE-GROUP.h headers.  Sort.  def.h.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
@@ -125,8 +125,6 @@ struct mx_mimetype_handler;
  * Types
  */
 
-typedef void (*n_sighdl_t)(int);
-
 enum n_announce_flags{
    n_ANNOUNCE_NONE = 0, /* Only housekeeping */
    n_ANNOUNCE_MAIN_CALL = 1u<<0, /* POSIX covered startup call */
@@ -139,7 +137,7 @@ enum n_announce_flags{
 
 enum expand_addr_flags{
    EAF_NONE = 0, /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_RESTRICT = 1u<<0, /* "restrict" (do unless interactive / -[~#]) */
    EAF_FAIL = 1u<<1, /* "fail" */
    EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
    EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
@@ -160,7 +158,7 @@ enum expand_addr_flags{
     * TODO remove invalid headers.  However, this code path does not know
     * TODO about keeping track of senderrors unless a pointer has been passed,
     * TODO but which it doesn't for ~e, and shall not, too.  Thus, invalid
-    * TODO addresses may be automatically removed, silently, and noone will
+    * TODO addresses may be automatically removed, silently, and no one will
     * TODO ever know, in particular not regarding "failinvaddr".
     * TODO The hacky solution is this bit -- which can ONLY be used for fields
     * TODO which will be subject to namelist_vaporise_head() later on!! --,
@@ -630,6 +628,8 @@ enum n_program_option{
    n_PO_D_VV = n_PO_D | n_PO_VV | n_PO_VVV,
    n_PO_D_VVV = n_PO_D | n_PO_VVV
 };
+MCTA(n_PO_V << 1 == n_PO_VV, "PO_V* must be successive")
+MCTA(n_PO_VV << 1 == n_PO_VVV, "PO_V* must be successive")
 
 #define n_OBSOLETE(X) \
 do{\
@@ -786,7 +786,10 @@ ok_b_autothread, /* {obsolete=1} */
 
    ok_b_bang,
 ok_b_batch_exit_on_error, /* {obsolete=1} */
-   ok_v_bind_timeout, /* {notempty=1,posnum=1} */
+ok_v_bind_timeout, /* {vip=1,obsolete=1,notempty=1,posnum=1} */
+   ok_v_bind_inter_byte_timeout, /* {\ } */
+      /* {notempty=1,posnum=1,defval=mx_BIND_INTER_BYTE_TIMEOUT} */
+   ok_v_bind_inter_key_timeout, /* {notempty=1,posnum=1} */
 ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
@@ -997,9 +1000,10 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto, /* {obsolete=1} */
+ok_v_replyto, /* {obsolete=1,notempty=1} */
    ok_v_reply_to, /* {notempty=1} */
    ok_v_reply_to_honour,
+   ok_v_reply_to_swap_in,
    ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */
 
    ok_v_SHELL, /* {import=1,notempty=1,defval=VAL_SHELL} */
@@ -1046,7 +1050,6 @@ ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
-
    ok_v_socket_connect_timeout, /* {posnum=1} */
    ok_v_socks_proxy, /* {chain=1,notempty=1} */
    ok_v_spam_interface,
@@ -1114,7 +1117,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
 
    ok_v_VISUAL, /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_v_v15_compat,
-   ok_b_verbose, /* {vip=1} */
+   ok_v_verbose, /* {vip=1,posnum=1} */
    ok_v_version, /* {virt=mx_VERSION} */
    ok_v_version_date, /* {virt=mx_VERSION_DATE} */
    ok_v_version_hexnum, /* {virt=mx_VERSION_HEXNUM,posnum=1} */
@@ -1190,19 +1193,6 @@ struct search_expr{
    regex_t ss__fieldre_buf;
    regex_t ss__bodyre_buf;
 #endif
-};
-
-/* This is somewhat temporary for pre v15 */
-struct n_sigman{
-   u32 sm_flags; /* enum n_sigman_flags */
-   int sm_signo;
-   struct n_sigman *sm_outer;
-   n_sighdl_t sm_ohup;
-   n_sighdl_t sm_oint;
-   n_sighdl_t sm_oquit;
-   n_sighdl_t sm_oterm;
-   n_sighdl_t sm_opipe;
-   sigjmp_buf sm_jump;
 };
 
 struct n_timespec{
@@ -1424,10 +1414,9 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    /* All given input (nalloc() etc.) to be interpreted as a single address */
    GNOT_A_LIST = 1u<<21,
    GNULL_OK = 1u<<22, /* NULL return OK for nalloc()+ */
-   GMAILTO_URI = 1u<<23, /* RFC 6068-style */
    /* HACK: support "|bla", i.e., anything enclosed in quotes; e.g., used for
     * MTA alias parsing */
-   GQUOTE_ENCLOSED_OK = 1u<<24
+   GQUOTE_ENCLOSED_OK = 1u<<23
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 
@@ -1653,7 +1642,6 @@ VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
 VL volatile int interrupts; /* TODO rid! */
-VL n_sighdl_t dflpipe;
 
 /*
  * Finally, let's include the function prototypes XXX embed

@@ -7,7 +7,7 @@
 #@    printf "%s: <%s><%s><%s><%s><%s>\n" "$#" "${1}" "${2}" "${3}" "$4" "$5"
 #
 # 2017 Robert Elz (kre).
-# 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 # Public Domain
 
 # Though slower use a subshell version instead of properly restoring $IFS

@@ -43,7 +43,7 @@ echo '#!/bin/sh -' > "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo '#@ Uninstall script for '"${VAL_UAGENT}" >> \
    "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
-echo 'DESTDIR="${DESTDIR}"' >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+echo 'DESTDIR="'${DESTDIR}'"' >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo 'DESTDIR=' >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 

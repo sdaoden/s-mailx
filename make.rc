@@ -180,7 +180,7 @@ OPT_ALWAYS_UNICODE_LOCALE=`\
 # This allows the compiler to perform more optimizations, and also
 # reduces the management overhead of the runtime linker.  In theory.
 # (Note this meant as a pure optimization, the make(1)file system will
-# offer no source dependeny tracking in this mode.)
+# offer no source dependency tracking in this mode.)
 OPT_AMALGAMATION=no
 
 # Shall the build try to automatically detect a compiler and detect and
@@ -437,7 +437,7 @@ VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
 # Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
-# These are definetely only useful for debugging.
+# These are definitily only useful for debugging.
 # Also, external libraries are often problematic (e.g., ncursesw), and
 # ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
 # Can be "require"d.

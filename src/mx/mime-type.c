@@ -3,7 +3,7 @@
  *@ "Keep in sync with" ../../mime.types.
  *@ TODO With an on_loop_tick_event, trigger cache update once per loop max.
  *
- * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -731,7 +731,7 @@ a_mimetype_classify_o_s_part(u32 mce, struct mimepart *mpp,
    int lc, c;
    uz cnt, lsz;
    FILE *ibuf;
-   off_t start_off;
+   long start_off;
    boole did_inrest;
    enum a_mimetype_class mtc;
    enum mx_mimetype mt;
@@ -748,10 +748,11 @@ a_mimetype_classify_o_s_part(u32 mce, struct mimepart *mpp,
     * TODO directly using fseek() on mb.mb_itf -- the v15 rewrite will change
     * TODO all of this, and until then doing it like this is the only option
     * TODO to integrate nicely into whoever calls us */
-   start_off = ftell(mb.mb_itf);
+   if((start_off = ftell(mb.mb_itf)) == -1)
+      goto jleave;
    if((ibuf = setinput(&mb, R(struct message*,mpp), NEED_BODY)) == NIL){
 jos_leave:
-      fseek(mb.mb_itf, start_off, SEEK_SET);
+      (void)fseek(mb.mb_itf, start_off, SEEK_SET);
       goto jleave;
    }
    cnt = mpp->m_size;
@@ -892,12 +893,14 @@ a_mimetype_pipe_check(struct mx_mimetype_handler *mthp){
    else if(*cp++ != '?' && cp[-1] != '@'/* v15compat */){
       rv |= mx_MIMETYPE_HDL_CMD;
       goto jleave;
-   }else if(*cp == '\0'){
+   }else{
       if(cp[-1] == '@')
          n_OBSOLETE2(_("*pipe-TYPE/SUBTYPE*+': type markers (and much more) "
             "use ? not @"), mthp->mth_shell_cmd);
-      rv |= mx_MIMETYPE_HDL_TEXT;
-      goto jleave;
+      if(*cp == '\0'){
+         rv |= mx_MIMETYPE_HDL_TEXT;
+         goto jleave;
+      }
    }
 
 jnextc:
