@@ -2,7 +2,7 @@
  *@ See cmd.c and cmd-tab.h for more */
 
 #define a_CMD_DEFAULT_IDX 95
-#define a_CMD_COUNT 205
+#define a_CMD_COUNT 204
 static u8 const a_cmd__cidx[128] = {
 #undef a_X
 #define a_X a_CMD_COUNT
@@ -24,13 +24,13 @@ static u8 const a_cmd__cidx[128] = {
    /* 0x4A */ a_X, a_X, 76, 80, 97,
    /* 0x4F */ a_X, 101, a_X, 116, 127,
    /* 0x54 */ 153, 180, a_X, a_X, a_X,
-   /* 0x59 */ a_X, 203, a_X, a_X, a_X,
+   /* 0x59 */ a_X, 202, a_X, a_X, a_X,
    /* 0x5E */ a_X, a_X, a_X, 4, 9,
    /* 0x63 */ 10, 25, 36, 49, 65,
    /* 0x68 */ 67, 72, a_X, a_X, 77,
    /* 0x6D */ 81, 95, a_X, 102, 108,
    /* 0x72 */ 109, 128, 154, 160, 193,
-   /* 0x77 */ 200, 201, a_X, 204, a_X,
+   /* 0x77 */ 199, 200, a_X, 203, a_X,
    /* 0x7C */ 3, a_X, a_X, a_X,
 #undef a_X
 };
