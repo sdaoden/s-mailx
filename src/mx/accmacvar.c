@@ -1104,6 +1104,11 @@ jefrom:
       case ok_b_ask:
          ok_bset(asksub);
          break;
+      case ok_v_bind_timeout: /* v15-compat: drop this */
+         n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, "
+            "doing this for you");
+         n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
+         break;
       case ok_b_debug:
          n_poption |= n_PO_D;
          su_log_set_level(su_LOG_DEBUG);

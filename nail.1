@@ -2975,39 +2975,31 @@ criterion then the last of those criteria is used.
 .El
 .\" }}}
 .
-.\" .Ss "On terminal control and line editor" {{{
+.\" .Ss "On terminal control and line editor" {{{ review
 .Ss "On terminal control and line editor"
 .
-\*(OP Terminal control will be realized through one of the standard
+\*(OP Terminal control through one of the standard
 .Ux
-libraries, either the
-.Lb libtermcap ,
-or, alternatively, the
+libraries,
+.Lb libtermcap
+or
 .Lb libterminfo ,
-both of which will be initialized to work with the environment variable
-.Ev TERM .
-Terminal control will enhance or enable interactive usage aspects, see
+may be available.
+For the
+.Ev TERM Ns
+inal defined in the environment interactive usage aspects, for example
 .Sx "Coloured display" ,
-and extend behaviour of the Mailx-Line-Editor (MLE), which may learn the
-byte-sequences of keys like the cursor- and function-keys.
-.
-.Pp
-The internal variable
+and insight of cursor and function keys for the Mailx-Line-Editor
+(MLE), will be enhanced or enabled.
+Library interaction can be disabled on a per-invocation basis via
+.Va termcap-disable ,
+whereas the internal variable
 .Va termcap
-can be used to overwrite settings or to learn (correct(ed)) keycodes.
-Actual library interaction can be disabled completely by setting
-.Va termcap-disable ;
-.Va termcap
-will be queried regardless, which is true even if the \*(OPal library
-support has not been enabled at configuration time as long as some other
-\*(OP which (may) query terminal control sequences has been enabled.
-\*(UA can be told to enter an alternative exclusive screen, the
-so-called ca-mode, by setting
-.Va termcap-ca-mode ;
-this requires sufficient terminal support, and the used
-.Ev PAGER
-may also need special configuration, dependent on the value of
-.Va crt .
+is always used as a preferred source of terminal capabilities.
+(For a usage example see the
+.Sx FAQ
+entry
+.Sx "Not \(dqdefunctional\(dq, but the editor key does not work" . )
 .
 .Pp
 \*(OP The built-in Mailx-Line-Editor (MLE) should work in all
@@ -3019,7 +3011,7 @@ had been removed from ISO C, but was included in
 Usage of a line editor in interactive mode can be prevented by setting
 .Va line-editor-disable .
 Especially if the \*(OPal terminal control support is missing setting
-entries in the internal variable
+entries in
 .Va termcap
 will help shall the MLE misbehave, see there for more.
 The MLE can support a little bit of
@@ -3042,7 +3034,7 @@ and
 .Va history-size .
 There also exists the macro hook
 .Va on-history-addition
-which can be used to apply fine control on what enters history.
+which can be used to apply finer control on what enters history.
 .
 .Pp
 The MLE supports a set of editing and control commands.
@@ -4497,8 +4489,8 @@ bindings upon program startup, however: please use
 for this purpose instead.
 .
 .Pp
-With zero arguments, or with a context name the former command shows all
-key bindings (of the given context; an asterisk
+With zero arguments, or with a context name the former command shows
+all key bindings (of the given context; an asterisk
 .Ql *
 will iterate over all contexts); a more verbose listing will be
 produced if either of
@@ -4506,11 +4498,13 @@ produced if either of
 or
 .Va verbose
 are set.
-With two or more arguments a binding is (re)established:
-the first argument is the context to which the binding shall apply,
-the second argument is a comma-separated list of the
+With two or more arguments a specific binding is shown, or
+(re)established: the first argument is the context to which the binding
+shall apply, the second argument is a comma-separated list of the
 .Dq keys
-which form the binding, and any remaining arguments form the expansion.
+which form the binding.
+Further arguments will be joined to form the expansion, and cause the
+binding to be created or updated.
 To indicate that a binding shall not be auto-committed, but that the
 expansion shall instead be furtherly editable by the user, a commercial at
 .Ql @
@@ -4535,25 +4529,35 @@ context which is used in all not otherwise documented situations, and
 which applies to compose mode only.
 .
 .Pp
-.Dq Keys
-which form the binding are specified as a comma-separated list of
-byte-sequences, where each list entry corresponds to one key(press).
+Bindings are specified as a comma-separated list of byte-sequences,
+where each list entry corresponds to one
+.Dq key
+(press).
+Byte sequence boundaries will be forcefully terminated after
+.Va bind-inter-byte-timeout
+milliseconds, whereas key sequences can be timed out via
+.Va bind-inter-key-timeout .
 A list entry may, indicated by a leading colon character
 .Ql \&: ,
 also refer to the name of a terminal capability; several dozen names
-will be compiled in and may be specified either by their
+are compiled in and may be specified either by their
 .Xr terminfo 5 ,
 or, if existing, by their
 .Xr termcap 5
 name, regardless of the actually used \*(OPal terminal control library.
-It is possible to use any capability, as long as the name is resolvable
-by the \*(OPal control library or was defined via the internal variable
+But any capability may be used, as long as the name is resolvable by the
+\*(OPal control library, or was defined via the internal variable
 .Va termcap .
-Input sequences are not case-normalized, so that an exact match is
-required to update or remove a binding.
+Input sequences are not case-normalized, an exact match is required to
+update or remove a binding.
+It is advisable to use an initial escape or other control character (like
+.Ql \ecA )
+for user (as opposed to purely terminal capability based) bindings in
+order to avoid ambiguities; it also reduces search time.
 Examples:
 .
 .Bd -literal -offset indent
+? bind base a,b echo one
 ? bind base $'\eE',d mle-snarf-word-fwd # Esc(ape)
 ? bind base $'\eE',$'\ec?' mle-snarf-word-bwd # Esc,Delete
 ? bind default $'\ecA',:khome,w 'echo Editable binding@'
@@ -4564,8 +4568,8 @@ Examples:
 .
 .Pp
 Note that the entire comma-separated list is first parsed (over) as a
-shell-token with whitespace as the field separator, before being parsed
-and expanded for real with comma as the field separator, therefore
+shell-token with whitespace as the field separator, then parsed and
+expanded for real with comma as the field separator, therefore
 whitespace needs to be properly quoted, see
 .Sx "Shell-style argument quoting" .
 Using Unicode reverse solidus escape sequences renders a binding
@@ -4573,6 +4577,13 @@ defunctional if the locale does not support Unicode (see
 .Sx "Character sets" ) ,
 and using terminal capabilities does so if no (corresponding) terminal
 control support is (currently) available.
+Adding, deleting or modifying a key binding invalidates the internal
+prebuilt lookup tree, it will be recreated as necessary: this process
+will be visualized in most
+.Va verbose
+as well as in
+.Va debug
+mode.
 .
 .Pp
 The following terminal capability names are built-in and can be used in
@@ -4674,16 +4685,6 @@ finally
 The same for the left cursor key,
 .Cd kcub1 :
 .Cd KLFT , KLFT3 , KLFT4 , KLFT5 , KLFT6 , KLFT7 , KLFT8 .
-.
-.Pp
-It is advisable to use an initial escape or other control character (like
-.Ql \ecA )
-for bindings which describe user key combinations (as opposed to purely
-terminal capability based ones), in order to avoid ambiguities whether
-input belongs to key sequences or not; it also reduces search time.
-Adjusting
-.Va bind-timeout
-may help shall keys and sequences be falsely recognized.
 .
 .
 .Mx
@@ -9340,15 +9341,43 @@ If this variable is not set no reverse solidus stripping is performed.
 .
 .Mx
 .It Va bind-timeout
-\*(OP Terminals generate multi-byte sequences for certain forms of
-input, for example for function and other special keys.
-Some terminals however do not write these multi-byte sequences as
-a whole, but byte-by-byte, and the latter is what \*(UA actually reads.
+\*(OB Predecessor of
+.Va bind-inter-byte-timeout .
+\*(ID Setting this automatically sets the successor.
+.
+.Mx
+.It Va bind-inter-byte-timeout
+\*(OP Terminals may generate multi-byte sequences for special function
+keys, for example, but these sequences may not become read as a unit.
+And multi-byte sequences can be defined freely via
+.Ic bind .
 This variable specifies the timeout in milliseconds that the MLE (see
 .Sx "On terminal control and line editor" )
 waits for more bytes to arrive unless it considers a sequence
 .Dq complete .
-The default is 200.
+The default is 200, the maximum is about 10 seconds.
+In the following example the comments state which sequences are
+affected by this timeout:
+.Bd -literal -offset indent
+? bind base abc echo 0 # abc
+? bind base ab,c echo 1 # ab
+? bind base abc,d echo 2 # abc
+? bind base ac,d echo 3 # ac
+? bind base a,b,c echo 4
+? bind base a,b,c,d echo 5
+? bind base a,b,cc,dd echo 6 # cc and dd
+.Ed
+.
+.Mx
+.It Va bind-inter-key-timeout
+\*(OP Multi-key
+.Ic bind
+sequences do not time out by default.
+If this variable is set, then the current key sequence is forcefully
+terminated once the timeout (in milliseconds) triggers.
+The value should be (maybe significantly) larger than
+.Va bind-inter-byte-timeout ,
+but may not excess the maximum, too.
 .
 .Mx
 .It Va bsdcompat
@@ -12975,8 +13004,12 @@ Many more capabilities which describe key-sequences are documented for
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode
-terminal capabilities, see
-.Va termcap .
+.Va termcap Ns
+abilities in order to enter an alternative exclusive screen, the
+so-called ca-mode; this usually requires special configuration of the
+.Ev PAGER ,
+also dependent on the value of
+.Va crt .
 .Sy Note
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
@@ -15122,25 +15155,32 @@ define update_access_token {
 .Ed
 .\" }}}
 .
-.\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{
+.\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{ review
 .Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
 .
-It can happen that the terminal library (see
+Two thinkable situations: the first is a shadowed sequence; setting
+.Va debug ,
+or the most possible
+.Va verbose
+mode, causes a printout of the
+.Ic bind
+tree after that is built; being a cache, this happens only upon startup
+or after modifying bindings.
+.
+.Pp
+Or second, terminal libraries (see
 .Sx "On terminal control and line editor",
 .Ic bind ,
 .Va termcap )
-reports different codes than the terminal really sends, in which case
-\*(UA will tell that a key binding is functional, but will not be able to
-recognize it because the received data does not match anything expected.
-Especially without the \*(OPal terminal capability library support one
-reason for this may be that the (possibly even non-existing) keypad
-is not turned on and the resulting layout reports the keypad control
-codes for the normal keyboard keys.
-The
+may report different codes than the terminal really sends, rendering
+bindings disfunctional because expected and received data do not match; the
 .Va verbose
 listing of
 .Ic bind Ns
 ings will show the byte sequences that are expected.
+(One common source of problems is that the \(em possibly even
+non-existing \(em keypad is not turned on, and the resulting layout
+reports the keypad control codes for the normal keyboard keys.)
 .
 .Pp
 To overcome the situation use for example the program
