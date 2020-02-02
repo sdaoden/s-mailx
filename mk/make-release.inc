@@ -242,8 +242,8 @@ announcement_prepare() {
    fi
    anntxt=y
 
-   if `${git} cat-file -e ${relbr}:NEWS 2>/dev/null`; then
-      ${git} show ${relbr}:NEWS > "${TMPDIR}/.${PROGRAM}-${REL}.news"
+   if `${git} cat-file -e ${relbrname}:NEWS 2>/dev/null`; then
+      ${git} show ${relbrname}:NEWS > "${TMPDIR}/.${PROGRAM}-${REL}.news"
    else
       printf '' > "${TMPDIR}/.${PROGRAM}-${REL}.news"
    fi
