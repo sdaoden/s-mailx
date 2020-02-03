@@ -965,12 +965,10 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
    cqc.cqc_is_forward = (f != 'Q');
-   cqc.cqc_action = SEND_QUOTE_ALL;
-   cqc.cqc_indent_prefix = ((f == 'f' || f == 'F' || f == 'u') ? NIL
+   cqc.cqc_action = (f == 'F' || f == 'M') ? SEND_QUOTE_ALL : SEND_QUOTE;
+   cqc.cqc_indent_prefix = ((f == 'F' || f == 'f' || f == 'u') ? NIL
          : ok_vlook(indentprefix));
-   if(f == 'u' || f == 'U'){
-      if(f == 'U')
-         cqc.cqc_action = SEND_QUOTE;
+   if(f == 'U' || f == 'u'){
       cqc.cqc_quoteitp = n_IGNORE_ALL;
    }else if(su_cs_is_upper(f)){
       ;
