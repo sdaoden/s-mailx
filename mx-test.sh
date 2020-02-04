@@ -45,7 +45,7 @@ fi
 ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
    ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
-   ARGS="${ARGS}"' -Smailcap-disable'
+   ARGS="${ARGS}"' -Smailcap-disable -Smimetypes-load-control='
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
    ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
@@ -9854,6 +9854,17 @@ t_z() {
 
 # Test support {{{
 t__gen_msg() {
+   t___gen_msg '' "${@}"
+}
+
+t__gen_mimemsg() {
+   t___gen_msg 1 "${@}"
+}
+
+t___gen_msg() {
+   ismime=${1}
+   shift
+
    t___header() {
       printf '%s: ' ${1}
       case "${3}" in
@@ -9889,7 +9900,38 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
       shift 2
    done
 
-   printf '\n%s\n\n' "${body}"
+   if [ -z "${ismime}" ]; then
+      printf '\n%s\n\n' "${body}"
+   else
+      printf 'MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%%bo@oo>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+%s
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>%s<BR></BODY></HTML>
+
+--=BOUNDIN=--
+
+--=BOUNDOUT=
+Content-Type: text/plain
+
+Golden Brown
+--=BOUNDOUT=--
+
+' "${body}" "${body}"
+   fi
 }
 
 t__x1_msg() {
