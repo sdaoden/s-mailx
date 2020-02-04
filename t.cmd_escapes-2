@@ -188,6 +188,82 @@ That's appalling, II.
 -------- Original Message --------
 That's appalling, I.
 and i ~w rite this out to ./.tmsg
+50:F
+-------- Original Message --------
+=46rom reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: ex6@am.ple
+Subject: sub6
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo>
+Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
+Status: R
+
+Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
+
+
+Content-Type: text/plain; charset=3Dutf-8
+Content-Transfer-Encoding: 8-bit
+
+Body
+
+Content-Type: text/html; charset=3Dutf-8
+Content-Transfer-Encoding: 8-bit
+
+Body
+Content-Type: text/plain
+
+Golden Brown
+51:f
+-------- Original Message --------
+Subject: sub6
+
+
+
+Body
+52:M
+-------- Original Message --------
+ |From reproducible_build Wed Oct  2 01:50:07 1996
+ |Date: Wed, 02 Oct 1996 01:50:07 +0000
+ |From: ex6@am.ple
+ |Subject: sub6
+ |MIME-Version: 1.0
+ |Message-ID: <20200204225307.FaKeD%bo@oo>
+ |Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
+ |Status: R
+ |
+ |Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
+ |
+
+ |Content-Type: text/plain; charset=3Dutf-8
+ |Content-Transfer-Encoding: 8-bit
+ |
+ |Body
+
+ |Content-Type: text/html; charset=3Dutf-8
+ |Content-Transfer-Encoding: 8-bit
+ |
+ |Body
+ |Content-Type: text/plain
+ |
+ |Golden Brown
+53:m
+-------- Original Message --------
+ |Subject: sub6
+ |
+ |
+ |
+ |Body
+54:Q
+ex6@am.ple wrote:
+
+ |Body
+55:U
+-------- Original Message --------
+ |Body
+56:u
+-------- Original Message --------
+Body
 
 1
 2 only echoed via colon
@@ -264,3 +340,17 @@ Interpolating: 1
 i ~w:0/NONE
 shell command output
 shell:0/NONE
+Interpolating: 6
+50 was F:0/NONE
+Interpolating: 6
+51 was f:0/NONE
+Interpolating: 6
+52 was M:0/NONE
+Interpolating: 6
+53 was m:0/NONE
+Interpolating: 6
+54 was Q:0/NONE
+Interpolating: 6
+55 was U:0/NONE
+Interpolating: 6
+56 was u:0/NONE
