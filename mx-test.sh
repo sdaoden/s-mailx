@@ -7642,7 +7642,8 @@ t_cmd_escapes() {
    echo 'included file' > ./.ttxt
    { t__x1_msg && t__x2_msg && t__x3_msg &&
       t__gen_msg from 'ex4@am.ple' subject sub4 &&
-      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5; } > ./.tmbox
+      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
+      t__gen_mimemsg from 'ex6@am.ple' subject sub6; } > ./.tmbox
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
@@ -7781,13 +7782,34 @@ and i ~w rite this out to ./.tmsg
 ~!echo shell command output
 ~:echo shell:$?/$^ERRNAME
 ~:wysh set escape=$x
+50:F
+!F 6
+!:echo 50 was F:$?/$^ERRNAME
+51:f
+!f 6
+!:echo 51 was f:$?/$^ERRNAME
+52:M
+!M 6
+!:echo 52 was M:$?/$^ERRNAME
+53:m
+!m 6
+!:echo 53 was m:$?/$^ERRNAME; set quote
+54:Q
+!Q 6
+!:echo 54 was Q:$?/$^ERRNAME
+55:U
+!U 6
+!:echo 55 was U:$?/$^ERRNAME
+56:u
+!u 6
+!:echo 56 was u:$?/$^ERRNAME
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' |' \
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '1820203910 6036'
+   check 2 - "${MBOX}" '3223357496 7674'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
@@ -7818,7 +7840,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '2359405542 6237'
+   check 4 0 "${MBOX}" '1367172713 7875'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
