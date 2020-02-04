@@ -640,7 +640,7 @@ _cc_flags_generic() {
       fi
    fi
 
-   # LD (+ dependend CC)
+   # LD (+ dependent CC)
 
    if feat_yes ASAN_ADDRESS; then
       _ccfg=${_CFLAGS}

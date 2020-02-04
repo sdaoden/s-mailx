@@ -533,7 +533,7 @@ struct a_tty_bind_parse_ctx{
 /* Input character tree */
 struct a_tty_bind_tree{
    struct a_tty_bind_tree *tbt_sibling; /* s at same level */
-   struct a_tty_bind_tree *tbt_childs; /* Sequence continues.. here */
+   struct a_tty_bind_tree *tbt_children; /* Sequence continues.. here */
    struct a_tty_bind_tree *tbt_parent;
    struct a_tty_bind_ctx *tbt_bind; /* NIL for intermediates */
    wchar_t tbt_char; /* acter this level represents */
@@ -3144,8 +3144,8 @@ jread_again:
                timeout = FAL0;
                ttm = a_TTY_TTM_NONE;
             }else{
-               /* If the current isp has childs with and without ismbseq then
-                * we will restart waiting for the normal key.
+               /* If the current isp has children with and without ismbseq
+                * then we will restart waiting for the normal key.
                 * Otherwise check which timeout to use at first */
                if(timeout){
                   ASSERT(ttm == a_TTY_TTM_MBSEQ);
@@ -3153,7 +3153,7 @@ jread_again:
                }else{
                   ASSERT(!timeout);
                   ttm = a_TTY_TTM_KEY;
-                  for(tbtp = isp->tbtp->tbt_childs; tbtp != NIL;
+                  for(tbtp = isp->tbtp->tbt_children; tbtp != NIL;
                         tbtp = tbtp->tbt_sibling)
                      if(tbtp->tbt_ismbseq){
                         ttm = a_TTY_TTM_MBSEQ;
@@ -3190,7 +3190,7 @@ jread_again:
                /* If we were waiting for a tbt_ismbseq to be continued, maybe
                 * there is a normal key child also */
                if(ttm == a_TTY_TTM_MBSEQ){
-                  for(tbtp = isp->tbtp->tbt_childs; tbtp != NIL;
+                  for(tbtp = isp->tbtp->tbt_children; tbtp != NIL;
                         tbtp = tbtp->tbt_sibling)
                      if(!tbtp->tbt_ismbseq)
                         goto jread_again;
@@ -3259,7 +3259,7 @@ jread_again:
 
          /* Does (the final) wc exist in the applicable bind tree?
           * Does it (possibly) want more input? */
-         tbtp = (isp != NIL) ? isp->tbtp->tbt_childs
+         tbtp = (isp != NIL) ? isp->tbtp->tbt_children
                : (*tlp->tl_bind_tree_hmap)[wc % a_TTY_PRIME];
          for(; tbtp != NIL; tbtp = tbtp->tbt_sibling){
             if(tbtp->tbt_char == wc){
@@ -3269,7 +3269,7 @@ jread_again:
                   continue;
 
                /* If this one cannot continue we are likely finished! */
-               if(tbtp->tbt_childs == NIL){
+               if(tbtp->tbt_children == NIL){
                   ASSERT(tbtp->tbt_bind != NIL);
                   tbf = tbtp->tbt_bind->tbc_flags;
                   goto jmle_fun;
@@ -4147,7 +4147,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
    if(parentp == NIL)
       treep += wc % a_TTY_PRIME;
    else
-      treep = &parentp->tbt_childs;
+      treep = &parentp->tbt_children;
 
    /* Having no parent also means that the tree slot is possibly empty */
    for(any = FAL0, xtbtp = NIL, tbtp = *treep; tbtp != NIL;
@@ -4210,8 +4210,8 @@ a_tty__bind_tree_dump(struct a_tty_bind_tree const *tbtp, char const *indent){
             s1, s2, s3);
       }
 
-      if(tbtp->tbt_childs != NIL)
-         a_tty__bind_tree_dump(tbtp->tbt_childs, savecat(indent, "  "));
+      if(tbtp->tbt_children != NIL)
+         a_tty__bind_tree_dump(tbtp->tbt_children, savecat(indent, "  "));
    }
 
    NYD2_OU;
@@ -4224,7 +4224,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
    while(tbtp != NIL){
       struct a_tty_bind_tree *tmp;
 
-      if((tmp = tbtp->tbt_childs) != NIL)
+      if((tmp = tbtp->tbt_children) != NIL)
          a_tty__bind_tree_free(tmp);
 
       tmp = tbtp->tbt_sibling;
