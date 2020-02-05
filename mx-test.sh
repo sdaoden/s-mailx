@@ -7721,14 +7721,9 @@ t_cmd_escapes() {
 21: ~m 3
 !m 3
 !:echo 21:$?/$^ERRNAME
-28-34: ~Q; 28: ~Q
-!Q
-!:echo 28:$?/$^ERRNAME
-29: ~Q 1 3
-!Q 1 3
-!:echo 29:$?/$^ERRNAME
-set quote
-!:set quote
+!: # Initially ~Q was _exactly_ like
+28,29 nothing, 30-34: ~Q
+!:echo quote=<$quote>
 30: ~Q
 !Q
 !:echo 30:$?/$^ERRNAME
@@ -7809,13 +7804,13 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '3223357496 7674'
+   check 2 - "${MBOX}" '774822337 7613'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS]'
    fi
-   check 3 - ./.tmsg '2308114568 4467'
+   check 3 - ./.tmsg '1991699357 4453'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7840,7 +7835,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '1367172713 7875'
+   check 4 0 "${MBOX}" '2120083250 7814'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else

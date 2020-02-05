@@ -88,7 +88,8 @@ struct a_coll_quote_ctx{
    struct header *cqc_hp;
    struct n_ignore const *cqc_quoteitp; /* Or NIL */
    boole cqc_is_forward; /* Forwarding rather than quoting */
-   u8 cqc__pad[3];
+   boole cqc_do_quote; /* Forced ~Q, not initial reply */
+   u8 cqc__pad[2];
    enum sendaction cqc_action;
    char const *cqc_indent_prefix;
    struct message *cqc_mp;
@@ -606,7 +607,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       if((cp = ok_vlook(forward_inject_head)) == NIL &&
             (cp = cp_v15compat) == NIL)
          cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
-   }else if((cp = ok_vlook(quote)) == NIL){
+   }else if((cp = ok_vlook(quote)) == NIL && !cqcp->cqc_do_quote){
       rv = TRU1;
       goto jleave;
    }else{
@@ -620,7 +621,8 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
 
       if(cqcp->cqc_quoteitp == NIL)
          cqcp->cqc_quoteitp = n_IGNORE_ALL;
-      if(!su_cs_cmp(cp, "noheading"))
+
+      if(cp == NIL || !su_cs_cmp(cp, "noheading"))
          ;
       else if(!su_cs_cmp(cp, "headers"))
          cqcp->cqc_quoteitp = n_IGNORE_TYPE;
@@ -964,7 +966,10 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
-   cqc.cqc_is_forward = (f != 'Q');
+   if(f != 'Q')
+      cqc.cqc_is_forward = TRU1;
+   else
+      cqc.cqc_do_quote = TRU1;
    cqc.cqc_action = (f == 'F' || f == 'M') ? SEND_QUOTE_ALL : SEND_QUOTE;
    cqc.cqc_indent_prefix = ((f == 'F' || f == 'f' || f == 'u') ? NIL
          : ok_vlook(indentprefix));
