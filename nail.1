@@ -541,16 +541,16 @@ opened will be in read-only mode.
 .
 .Mx
 .It Fl r Ar from-addr , Fl Fl from-address Ns =..
-Whereas the source address that appears in the
+The RFC 5321 reverse-path used for relaying and delegating messages to
+its destination(s), for example to report delivery errors, is normally
+derived from the address which appears in the
 .Va from
-header of a message (or in the
-.Va sender
-header if the former contains multiple addresses) is honoured by the
-built-in SMTP transport, it is not used by a file-based
+header (or, if that contains multiple addresses, in
+.Va sender ) .
+A file-based aka local executable
 .Va mta
-(Mail-Transfer-Agent) for the RFC 5321 reverse-path used for relaying
-and delegating a message to its destination(s), for delivery errors
-etc., but it instead uses the local identity of the initiating user.
+(Mail-Transfer-Agent), however, instead uses the local identity of the
+initiating user.
 .
 .Pp
 When this command line option is used the given single addressee
@@ -10014,6 +10014,11 @@ According to that RFC setting the
 variable is required if
 .Va \&\&from
 contains more than one address.
+\*(ID Please expect automatic management of the
+.Va from
+and
+.Va sender
+relationship.
 Dependent on the context these addresses are handled as if they were in
 the list of
 .Ic alternates .
@@ -10023,15 +10028,15 @@ If a file-based MTA is used, then
 .Va \&\&from
 (or, if that contains multiple addresses,
 .Va sender )
-can nonetheless be used the envelope sender address at the MTA protocol
-level (the RFC 5321 reverse-path), either via the
+can nonetheless be used as the envelope sender address at the MTA
+protocol level (the RFC 5321 reverse-path), either via the
 .Fl r
 command line option (without argument; see there for more), or by setting
 .Va r-option-implicit .
 .
 .Pp
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine) then either this variable or
+a dialup machine), then either this variable or
 .Va hostname
 (\*(IN a SMTP-based
 .Va mta
@@ -11978,20 +11983,21 @@ if set without a value it defaults to
 .
 .Mx
 .It Va reply-to-swap-in
-Standards like DKIM and (in conjunction with) DMARC brought address
-rewriting of sender addresses like
+Standards like DKIM and (in conjunction with) DMARC caused many
+.Sx "Mailing lists"
+to use sender address rewriting in the style of
 .Ql Name via List <list@address> ,
-with the original sender address being often placed in
+where the original sender address often being placed in
 .Ql Reply-To: .
 If this is set and a
 .Ql Reply-To:
-exists then it is used in place of the pretended sender.
-It works independently from
+exists then that is used in place of the pretended sender.
+This works independently from
 .Va reply-to-honour .
-The optional value offers more fine-grained control about when swapping
-shall be used, it is a comma-separated list strings, for now supported is
+The optional value, a comma-separated list of strings, offers more
+fine-grained control on when swapping shall be used; for now supported is
 .Va mlist ,
-which will cause swapping if the sender is a mailing-list as defined by
+here swapping occurs if the sender is a mailing-list as defined by
 .Ic mlist .
 .
 .Mx
@@ -12104,6 +12110,11 @@ responsible for the actual transmission of the message.
 This field should normally not be used unless the
 .Va from
 field contains more than one address, on which case it is required.
+\*(ID Please expect automatic management of the
+.Va from
+and
+.Va sender
+relationship.
 Dependent on the context this address is handled as if it were in
 the list of
 .Ic alternates .
@@ -12351,21 +12362,18 @@ a variable is set.
 so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
 .Pp
-For signing and decryption purposes it is possible to use encrypted
-keys, and the pseudo-host(s)
+Password-encrypted keys may be used for signing and decryption.
+Automated password lookup is possible via the
+.Dq pseudo-hosts
 .Ql USER@HOST.smime-cert-key
-for the private key
-(and
+for the private key, and
 .Ql USER@HOST.smime-cert-cert
-for the certificate stored in the same file)
-will be used for performing any necessary password lookup,
-therefore the lookup can be automated via the mechanisms described in
-.Sx "On URL syntax and credential lookup" .
+for the certificate stored in the same file.
 For example, the hypothetical address
 .Ql bob@exam.ple
 could be driven with a private key / certificate pair path defined in
 .Va \&\&smime-sign-cert-bob@exam.ple ,
-and needed passwords would then be looked up via the pseudo hosts
+and the needed passwords would then be looked up as
 .Ql bob@exam.ple.smime-cert-key
 and
 .Ql bob@exam.ple.smime-cert-cert .
@@ -12375,6 +12383,8 @@ will be tried as a fallback to provide the necessary
 .Ql USER@HOST .
 To include intermediate certificates, use
 .Va smime-sign-include-certs .
+The possible password sources are documented in
+.Sx "On URL syntax and credential lookup" .
 .
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
@@ -15610,6 +15620,9 @@ mail, was written in 1978 by Kurt Shoens and developed as part of the
 .Bx
 .Ux
 distribution until 1995.
+This manual page is derived from
+.Dq The Mail Reference Manual
+that Kurt Shoens wrote for Mail 1.3, included in 3BSD in 1980.
 The common
 .Ux
 and
@@ -15626,9 +15639,6 @@ noticeably by Christos Zoulas in
 Based upon this Nail, later Heirloom Mailx, was developed by Gunnar
 Ritter in the years 2000 until 2008.
 Since 2012 S-nail is maintained by Steffen Nurpmeso.
-This man page is derived from
-.Dq The Mail Reference Manual
-that was originally written by Kurt Shoens.
 .
 .Pp
 Electronic mail exchange in general is a concept even older.
