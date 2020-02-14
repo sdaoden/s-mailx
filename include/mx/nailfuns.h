@@ -407,8 +407,8 @@ FL int c_elif(void *v);
 FL int c_else(void *v);
 FL int c_endif(void *v);
 
-/* Whether an `if' block is in a whiteout condition */
-FL boole n_cnd_if_is_skip(void);
+/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1) */
+FL boole n_cnd_if_exists(void);
 
 /* An execution context is teared down, and it finds to have an if stack */
 FL void n_cnd_if_stack_del(struct n_go_data_ctx *gdcp);

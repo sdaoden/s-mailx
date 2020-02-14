@@ -305,7 +305,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = n_EXIT_OK;
 
-   flags = ((n_cnd_if_is_skip() ? a_IS_SKIP : a_NONE) |
+   flags = ((n_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    rv = 1;
    nerrn = su_ERR_NONE;
@@ -1872,7 +1872,8 @@ jforce_stdin:
 jhave_dat:
    if(n_poption & n_PO_D_VVV)
       n_err(_("%s%s %d bytes <%s>\n"),
-         iftype, (n_cnd_if_is_skip() ? "?whiteout" : su_empty), n, *linebuf);
+         iftype, (n_cnd_if_exists() == TRUM1 ? "?whiteout" : su_empty),
+         n, *linebuf);
 jleave:
    if (n_pstate & n_PS_PSTATE_PENDMASK)
       a_go_update_pstate();

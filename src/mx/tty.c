@@ -186,10 +186,16 @@ jredo:
    }
 #endif
 
-   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_is_skip()){
-      if(store->s_len != 0)
-         store = n_string_push_c(store, '#');
-      store = n_string_push_cp(store, _("WHITEOUT: NEED `endif'"));
+   if(!(gif & n_GO_INPUT_NL_FOLLOW)){
+      boole x;
+
+      if((x = n_cnd_if_exists())){
+         if(store->s_len != 0)
+            store = n_string_push_c(store, '#');
+         if(x == TRUM1)
+            store = n_string_push_cp(store, _("WHITEOUT#"));
+         store = n_string_push_cp(store, _("NEED `endif'"));
+      }
    }
 
    if((poff = store->s_len) != 0){
