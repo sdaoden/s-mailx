@@ -970,6 +970,7 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
 
    ok_v_PAGER, /* {env=1,notempty=1,defval=VAL_PAGER} */
    ok_v_PATH, /* {nodel=1,import=1} */
+   /* XXX POSIXLY_CORRECT->posix: needs initial call via main()! */
    ok_b_POSIXLY_CORRECT, /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
    ok_v_password, /* {chain=1} */
@@ -1048,10 +1049,11 @@ ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_smtp_hostname,                 /* {vip=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
+   ok_v_SOCKS5_PROXY, /* {vip=1,import=1,notempty=1,name=SOCKS5_PROXY} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_socket_connect_timeout, /* {posnum=1} */
-   ok_v_socks_proxy, /* {chain=1,notempty=1} */
+   ok_v_socks_proxy, /* {vip=1,chain=1,notempty=1} */
    ok_v_spam_interface,
    ok_v_spam_maxsize, /* {notempty=1,posnum=1} */
    ok_v_spamc_command,

@@ -242,7 +242,12 @@ a_main_startup(void){
       n_pstate &= ~n_PS_ROOT;
    }
 
+   /* XXX Perform lookup of environmental VIP variables which have a mapping
+    * XXX This should be local to the variable handling stuff or so! */
    (void)ok_blook(POSIXLY_CORRECT);
+#ifdef mx_HAVE_NET
+   (void)ok_vlook(SOCKS5_PROXY);
+#endif
 
    NYD2_OU;
 }

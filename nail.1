@@ -11607,12 +11607,9 @@ requires \*(IN.
 .It Va posix
 \*(BO This flag enables POSIX mode, which changes behaviour of \*(UA
 where that deviates from standardized behaviour.
-It will be set implicitly before the
-.Sx "Resource files"
-are loaded if the environment variable
-.Ev POSIXLY_CORRECT
-is set, and adjusting any of those two will be reflected by the other
-one implicitly.
+It is automatically squared with the environment variable
+.Ev POSIXLY_CORRECT ,
+changing the one will adjust the other.
 The following behaviour is covered and enforced by this mechanism:
 .
 .Pp
@@ -12599,6 +12596,9 @@ establishing a socket connection before forcing
 are proxied through it, except for the single DNS name lookup necessary
 to resolve the proxy URL (unnecessary when given an already resolved IP
 address).
+It is automatically squared with the environment variable
+.Ev SOCKS5_PROXY ,
+changing the one will adjust the other.
 This example creates a local SOCKS5 proxy on port 10000 that forwards to
 the machine
 .Ql HOST
@@ -13819,9 +13819,8 @@ looking for commands, for example
 .
 .Mx
 .It Ev POSIXLY_CORRECT
-This variable is automatically looked for upon startup, see
-.Va posix
-for more.
+This environment entry is automatically squared with
+.Va posix .
 .
 .Mx
 .It Ev SHELL
@@ -13833,6 +13832,11 @@ the
 .Sx "COMMAND ESCAPES"
 and when starting subprocesses.
 A default shell is used if this environment variable is not defined.
+.
+.Mx
+.It Ev SOCKS5_PROXY
+This environment entry is automatically squared with
+.Va socks-proxy .
 .
 .Mx
 .It Ev SOURCE_DATE_EPOCH

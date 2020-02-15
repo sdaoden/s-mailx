@@ -1174,6 +1174,14 @@ jefrom:
       case ok_b_skipemptybody:
          n_poption |= n_PO_E_FLAG;
          break;
+      case ok_v_SOCKS5_PROXY: /* <-> *socks-proxy* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vset(socks_proxy, *val));
+         break;
+      case ok_v_socks_proxy: /* <-> $SOCKS5_PROXY */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vset(SOCKS5_PROXY, *val));
+         break;
       case ok_b_typescript_mode:
          ok_bset(colour_disable);
          ok_bset(line_editor_disable);
@@ -1252,6 +1260,14 @@ jefrom:
          break;
       case ok_b_skipemptybody:
          n_poption &= ~n_PO_E_FLAG;
+         break;
+      case ok_v_SOCKS5_PROXY: /* <-> *socks-proxy* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vclear(socks_proxy));
+         break;
+      case ok_v_socks_proxy: /* <-> $SOCKS5_PROXY */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vclear(SOCKS5_PROXY));
          break;
       case ok_v_verbose:
          n_poption &= ~n_PO_V_MASK;
