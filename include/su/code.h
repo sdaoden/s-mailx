@@ -143,20 +143,20 @@
 
 /* OS {{{ */
 
-#define su_OS_CYGWIN 0     /*!< \_ */
-#define su_OS_DARWIN 0     /*!< \_ */
-#define su_OS_DRAGONFLY 0  /*!< \_ */
-#define su_OS_EMX 0        /*!< \_ */
-#define su_OS_FREEBSD 0    /*!< \_ */
-#define su_OS_LINUX 0      /*!< \_ */
-#define su_OS_MINIX 0      /*!< \_ */
-#define su_OS_MSDOS 0      /*!< \_ */
-#define su_OS_NETBSD 0     /*!< \_ */
-#define su_OS_OPENBSD 0    /*!< \_ */
-#define su_OS_SOLARIS 0    /*!< \_ */
-#define su_OS_SUNOS 0      /*!< \_ */
-#define su_OS_WIN32 0      /*!< \_ */
-#define su_OS_WIN64 0      /*!< \_ */
+#define su_OS_CYGWIN 0 /*!< \_ */
+#define su_OS_DARWIN 0 /*!< \_ */
+#define su_OS_DRAGONFLY 0 /*!< \_ */
+#define su_OS_EMX 0 /*!< \_ */
+#define su_OS_FREEBSD 0 /*!< \_ */
+#define su_OS_LINUX 0 /*!< \_ */
+#define su_OS_MINIX 0 /*!< \_ */
+#define su_OS_MSDOS 0 /*!< \_ */
+#define su_OS_NETBSD 0 /*!< \_ */
+#define su_OS_OPENBSD 0 /*!< \_ */
+#define su_OS_SOLARIS 0 /*!< \_ */
+#define su_OS_SUNOS 0 /*!< \_ */
+#define su_OS_WIN32 0 /*!< \_ */
+#define su_OS_WIN64 0 /*!< \_ */
 
 #if 0
 #elif defined __CYGWIN__
