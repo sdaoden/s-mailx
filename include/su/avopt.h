@@ -47,6 +47,12 @@ struct su_avopt;
  * instead of only setting \r{su_avopt::avo_current_long_idx} and returning
  * \r{su_AVOPT_STATE_LONG}.
  * }\li{
+ * If long options are used, documentation strings can be included, and dumped
+ * via \r{su_avopt_dump_doc()}.
+ * They can be appended after a \c{;} suffix that follows the possibly empty
+ * short option mapping.
+ * See below for examples.
+ * }\li{
  * This implementation always differentiates in between
  * \r{su_AVOPT_STATE_ERR_OPT} and \r{su_AVOPT_STATE_ERR_ARG} errors.
  * A leading colon \c{:} in the short option string is thus treated as a normal
