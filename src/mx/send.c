@@ -1148,6 +1148,7 @@ jpipe_close:
             tmpname = fstcp->fstc_filename; /* In autorec storage! */
 
          if(mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_FILL){
+            action = SEND_TOPIPE;
             if(term_infd == 0)
                term_infd = fileno(pbuf);
             goto jsend;
