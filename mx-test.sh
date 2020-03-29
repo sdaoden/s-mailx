@@ -9615,6 +9615,7 @@ _EOT
    echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 "${MBOX}"
    check 3 0 "${MBOX}" '4224630386 228'
 
+   # I hate it: directly uses cat(1) and mv(1) ..
    printf '#
 text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
       test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
@@ -9644,6 +9645,67 @@ text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
    check 5 - ./.terr '4294967295 0'
    check 6 - ./.terrmc '2376112102 6'
    check 7 - ./.tasy '3913344578 37' async
+
+   # "Binary data"; ensure all possible temporary file / nametemplate
+   # etc. paths are taken: avoid 2nd e7a60732c1906aefe4755fd61c5ffa81eeca0af0
+
+   ${rm} -f "${MBOX}"
+   printf 'dubo€om' > ./.tatt.pdf
+   printf 'du' | ${MAILX} ${ARGS} -a ./.tatt.pdf -s test "${MBOX}"
+   check 8 0 "${MBOX}" '3444709420 644'
+
+   printf '#
+# stdin
+application/pdf; echo p-1-1\\;cat\\;echo p-1-2;  test=[ "$XY" = "" ]
+# tmpfile, no template
+application/pdf; echo p-2-1\\;< %%s cat\\;echo p-2-2;  test  =  [ "$XY" = two ]
+# tmpfile, template
+application/pdf; echo p-3-1\\;< %%s cat\\;echo p-3-2; test=[ "$XY" = three ];\\
+   nametemplate=%%s.txt
+# tmpfile, template, async
+application/pdf; { file=%%s \\; echo p-4-1 = ${file##*.}\\;\\
+         </dev/null cat %%s\\;echo p-4-2\\; } > ./.tx\\; mv -f ./.tx ./.tasy;\\
+      test=[ "$XY" = four ]  ; nametemplate  =   %%s.txt  ; x-mailx-async
+# copious,stdin
+application/pdf; echo p-5-1\\;cat\\;echo p-5-2;  test=[ "$XY" = 1 ];\\
+   copiousoutput
+# copious, tmpfile, no template
+application/pdf; echo p-6-1\\;< %%s cat\\;echo p-6-2;  test = [ "$XY" = 2 ];\\
+   copiousoutput
+# copious, tmpfile, template
+application/pdf; echo p-7-1\\;< %%s cat\\;echo p-7-2;test = [ "$XY" = 3 ];\\
+   nametemplate=%%s.txt; copiousoutput
+   ' > ./.tmailcap
+
+   </dev/null XY= MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '#
+\echo =1
+\mimeview
+\echo =2
+\environ set XY=two
+\mimeview
+\echo =3
+\environ set XY=three
+\mimeview
+\echo =4
+\environ set XY=four
+\mimeview
+\echo =5
+\environ set XY=1
+\type
+\echo =6
+\environ set XY=2
+\type
+\echo =7
+\environ set XY=3
+\type
+\echo =8
+' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 9 0 ./.tall '2494652433 3767'
+   check 10 - ./.terr '4294967295 0'
+   check 11 - ./.tasy '842146666 27' async
 
    t_epilog "${@}"
 }
