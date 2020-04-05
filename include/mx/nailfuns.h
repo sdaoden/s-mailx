@@ -706,7 +706,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
             uz len);
 
 /* Read a complete line of input, with editing if interactive and possible.
- * If string is set it is used as the initial line content if in interactive
+ * string_or_nil is the optional initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * If histok_or_nil is set it will be updated to FAL0 if input shall not be
  * placed in history.
@@ -714,20 +714,18 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * Note: may use the currently `source'd file stream instead of stdin!
  * Manages the n_PS_READLINE_NL hack
  * TODO We need an OnReadLineCompletedEvent and drop this function */
-FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, uz *linesize, char const *string,
+FL int n_go_input(enum n_go_input_flags gif, char const *prompt_or_nil,
+         char **linebuf, uz *linesize, char const *string_or_nil,
          boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
 
-/* Read a line of input, with editing if interactive and possible, return it
- * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during n_PS_ROBOT).
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility */
-FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
-            char const *string);
+/* Like go_input(), but return savestr()d result or NIL in case of errors or if
+ * an empty line would be returned.
+ * This may only be called from toplevel (not during n_PS_ROBOT) */
+FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt_or_nil,
+            char const *string_or_nil);
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
@@ -1412,6 +1410,11 @@ FL BITENUM_IS(u32,n_shexp_state) n_shexp_parse_token(
  * *cp to NULL, otherwise advances *cp to over the parsed token */
 FL char *n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
       char const **cp);
+
+/* Another variant of parse_token_cp(): unquote the argument, ensure the result
+ * is "alone": after WS/IFS trimming STATE_STOP must be set, returns TRUM1 if
+ * not, TRU1 if STATE_OUTPUT is set, TRU2 if not, FAL0 on error */
+FL boole n_shexp_unquote_one(struct n_string *store, char const *input);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UZ_MAX su_cs_len(->s) is used.
