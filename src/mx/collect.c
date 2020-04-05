@@ -1792,15 +1792,7 @@ jearg:
       case 'r':
             /* Invoke a file: Search for the file name, then open it and copy
              * the contents to _coll_fp */
-            if(cnt == 0){
-               n_err(_("Interpolate what file?\n"));
-               if(a_HARDERR())
-                  goto jerr;
-               n_pstate_err_no = su_ERR_NOENT;
-               n_pstate_ex_no = 1;
-               break;
-            }
-            if(*cp == '!' && c == '<'){
+            if(cnt > 0 && c == '<' && *cp == '!'){
                /* TODO hist. normalization */
                if((n_pstate_err_no = a_coll_insert_cmd(_coll_fp, ++cp)
                      ) != su_ERR_NONE){
@@ -1812,16 +1804,38 @@ jearg:
                   break;
                }
                goto jhistcont;
-            }
-            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
-                  ) == NIL){
-               if(a_HARDERR())
-                  goto jerr;
-               n_pstate_err_no = su_ERR_INVAL;
-               n_pstate_ex_no = 1;
-               break;
+            }else if(c != '<' && *cp == '-' &&
+                  (cp[1] == '\0' || su_cs_is_space(cp[1]))){
+               /* xxx ugly special treatment for HERE-delimiter stuff */
+            }else{
+               struct n_string s2, *s2p = &s2;
+
+               s2p = n_string_creat_auto(s2p);
+
+               if(n_shexp_unquote_one(s2p, cp) != TRU1){
+                  n_err(_("Interpolate what file?\n"));
+                  if(a_HARDERR())
+                     goto jerr;
+                  n_pstate_err_no = su_ERR_NOENT;
+                  n_pstate_ex_no = 1;
+                  break;
+               }
+
+               cp = n_string_cp(s2p);
+
+               if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
+                     ) == NIL){
+                  if(a_HARDERR())
+                     goto jerr;
+                  n_pstate_err_no = su_ERR_INVAL;
+                  n_pstate_ex_no = 1;
+                  break;
+               }
+
+               /*n_string_gut(s2p);*/
             }
          }
+
          /* XXX race, and why not test everywhere, then? */
          if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
@@ -1831,6 +1845,7 @@ jearg:
             n_pstate_ex_no = 1;
             break;
          }
+
          if((n_pstate_err_no = a_coll_include_file(cp, (c == 'R'), TRU1)
                ) != su_ERR_NONE){
             if(ferror(_coll_fp))
