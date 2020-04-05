@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  */
 
+struct mx_attachment;
 struct mx_cmd_arg;
 struct su_cs_dict;
 struct quoteflt;
@@ -222,47 +223,6 @@ FL int c_environ(void *v);
 
 /* `vpospar' */
 FL int c_vpospar(void *v);
-
-/*
- * attachment.c
- * xxx Interface quite sick
- */
-
-/* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed.
- * Return the new aplist aphead.
- * The newly created attachment may be stored in *newap, or NULL on error */
-FL struct attachment *n_attachment_append(struct attachment *aplist,
-                        char const *file,
-                        BITENUM_IS(u32,n_attach_error) *aerr_or_null,
-                        struct attachment **newap_or_null);
-
-/* Shell-token parse names, and append resulting file names to aplist, return
- * (new) aplist head */
-FL struct attachment *n_attachment_append_list(struct attachment *aplist,
-                        char const *names);
-
-/* Remove ap from aplist, and return the new aplist head */
-FL struct attachment *n_attachment_remove(struct attachment *aplist,
-                        struct attachment *ap);
-
-/* Find by file-name.  If any path component exists in name then an exact match
- * of the creation-path is used directly; if instead the basename of that path
- * matches all attachments are traversed to find an exact match first, the
- * first of all basename matches is returned as a last resort;
- * If no path component exists the filename= parameter is searched (and also
- * returned) in preference over the basename, otherwise likewise.
- * If name is in fact a message number the first match is taken.
- * If stat_or_null is given: FAL0 on NULL return, TRU1 for exact/single match,
- * TRUM1 for ambiguous matches */
-FL struct attachment *n_attachment_find(struct attachment *aplist,
-                        char const *name, boole *stat_or_null);
-
-/* Interactively edit the attachment list, return updated list */
-FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
-                        enum n_go_input_flags gif);
-
-/* Print all attachments, return number of lines written, -1 on error */
-FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
 
 /*
  * auxlily.c
@@ -1344,7 +1304,7 @@ FL boole mx_sendout_mta_url(struct mx_url *urlp);
  * mail1 routine which does all the dirty work */
 FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
       struct mx_name *cc, struct mx_name *bcc, char const *subject,
-      struct attachment *attach, char const *quotefile);
+      struct mx_attachment *attach, char const *quotefile);
 
 /* `mail' and `Mail' commands, respectively */
 FL int c_sendmail(void *v);

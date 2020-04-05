@@ -24,6 +24,8 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_mimetype_handler;
+
 enum mx_mimetype{
    mx_MIMETYPE_UNKNOWN, /* unknown */
    mx_MIMETYPE_SUBHDR, /* inside a multipart subheader */

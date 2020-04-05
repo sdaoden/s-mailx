@@ -32,6 +32,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/attachments.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
@@ -49,7 +50,7 @@ struct a_main_ctx{
    char const *mc_A;
    struct a_main_aarg *mc_a_head;
    struct a_main_aarg *mc_a_curr;
-   struct attachment *mc_attach;
+   struct mx_attachment *mc_attach;
    struct mx_name *mc_bcc;
    struct mx_name *mc_cc;
    char const *mc_folder;
@@ -1255,11 +1256,11 @@ je_expandargv:
       /* XXX This may use savestr(), but since we will not enter the command
        * XXX loop we do not need to care about that */
       for(; mc.mc_a_head != NIL; mc.mc_a_head = mc.mc_a_head->maa_next){
-         BITENUM_IS(u32,n_attach_error) aerr;
+         BITENUM_IS(u32,mx_attachments_error) aerr;
 
-         mc.mc_attach = n_attachment_append(mc.mc_attach,
+         mc.mc_attach = mx_attachments_append(mc.mc_attach,
                mc.mc_a_head->maa_file, &aerr, NIL);
-         if(aerr != n_ATTACH_ERR_NONE){
+         if(aerr != mx_ATTACHMENTS_ERR_NONE){
             n_exit_status = n_EXIT_ERR;
             goto jleave_full;
          }

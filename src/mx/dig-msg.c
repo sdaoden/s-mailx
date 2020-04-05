@@ -36,6 +36,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/attachments.h"
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/mime-type.h"
@@ -797,7 +798,7 @@ static boole
 a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp,
       struct mx_cmd_arg *args){
    boole status;
-   struct attachment *ap;
+   struct mx_attachment *ap;
    char const *cp;
    struct header *hp;
    NYD2_IN;
@@ -816,8 +817,8 @@ a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp,
       if(args == NIL || args->ca_next != NIL)
          goto jecmd;
 
-      if((ap = n_attachment_find(hp->h_attach, cp = args->ca_arg.ca_str.s, NIL)
-            ) == NIL)
+      cp = args->ca_arg.ca_str.s;
+      if((ap = mx_attachments_find(hp->h_attach, cp, NIL)) == NIL)
          goto j501;
 
 jatt_att:
@@ -868,7 +869,7 @@ jatt_att:
       if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
-      if((ap = n_attachment_find(hp->h_attach, cp, NIL)) == NIL)
+      if((ap = mx_attachments_find(hp->h_attach, cp, NIL)) == NIL)
          goto j501;
 
 jatt_attset:
@@ -957,20 +958,20 @@ jatt_attset:
          goto jatt_attset;
       goto j501;
    }else if(su_cs_starts_with_case("insert", cp)){
-      BITENUM_IS(u32,n_attach_error) aerr;
+      BITENUM_IS(u32,mx_attach_error) aerr;
 
       if(args == NIL || args->ca_next != NIL)
          goto jecmd;
       if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
-      hp->h_attach = n_attachment_append(hp->h_attach, args->ca_arg.ca_str.s,
+      hp->h_attach = mx_attachments_append(hp->h_attach, args->ca_arg.ca_str.s,
             &aerr, &ap);
       switch(aerr){
-      case n_ATTACH_ERR_FILE_OPEN: cp = "505"; goto jatt__ins;
-      case n_ATTACH_ERR_ICONV_FAILED: cp = "506"; goto jatt__ins;
-      case n_ATTACH_ERR_ICONV_NAVAIL: /* FALLTHRU */
-      case n_ATTACH_ERR_OTHER: /* FALLTHRU */
+      case mx_ATTACHMENTS_ERR_FILE_OPEN: cp = "505"; goto jatt__ins;
+      case mx_ATTACHMENTS_ERR_ICONV_FAILED: cp = "506"; goto jatt__ins;
+      case mx_ATTACHMENTS_ERR_ICONV_NAVAIL: /* FALLTHRU */
+      case mx_ATTACHMENTS_ERR_OTHER: /* FALLTHRU */
       default:
          cp = "501";
 jatt__ins:
@@ -978,7 +979,7 @@ jatt__ins:
                ) < 0)
             cp = NIL;
          break;
-      case n_ATTACH_ERR_NONE:{
+      case mx_ATTACHMENTS_ERR_NONE:{
          uz i;
 
          for(i = 0; ap != NIL; ++i, ap = ap->a_blink)
@@ -1007,13 +1008,13 @@ jdefault:
       if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
          goto j505r;
 
-      if((ap = n_attachment_find(hp->h_attach, cp = args->ca_arg.ca_str.s,
-            &status)) == NIL)
+      cp = args->ca_arg.ca_str.s;
+      if((ap = mx_attachments_find(hp->h_attach, cp, &status)) == NIL)
          goto j501;
       if(status == TRUM1)
          goto j506;
 
-      hp->h_attach = n_attachment_remove(hp->h_attach, ap);
+      hp->h_attach = mx_attachments_remove(hp->h_attach, ap);
       if(fprintf(fp, "210 %s\n", a_DMSG_QUOTE(cp)) < 0)
          cp = NIL;
    }else if(su_cs_starts_with_case("remove-at", cp)){
@@ -1032,7 +1033,7 @@ jdefault:
       for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink)
          ;
       if(ap != NIL){
-         hp->h_attach = n_attachment_remove(hp->h_attach, ap);
+         hp->h_attach = mx_attachments_remove(hp->h_attach, ap);
          if(fprintf(fp, "210 %s\n", cp) < 0)
             cp = NIL;
       }else
