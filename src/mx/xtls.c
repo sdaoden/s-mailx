@@ -421,7 +421,7 @@ static EVP_CIPHER const * _smime_cipher(char const *name);
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
-                     boole dowarn, char const **match);
+                     boole dowarn, char const **match, boole fallback_from);
 static char const * _smime_sign_include_certs(char const *name);
 static boole     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
@@ -1569,7 +1569,7 @@ jleave:
 
 static FILE *
 smime_sign_cert(char const *xname, char const *xname2, boole dowarn,
-   char const **match)
+   char const **match, boole fallback_from)
 {
    char *vn;
    int vs;
@@ -1603,19 +1603,26 @@ jloop:
       }
    }
 
-   if ((cp = ok_vlook(smime_sign_cert)) == NULL)
+   /* It is the default *smime-sign-cert* / *from* pair */
+   if((cp = ok_vlook(smime_sign_cert)) == NIL)
       goto jerr;
-   if(match != NULL)
-      *match = NULL;
+
+   if(match != NIL){
+      name = fallback_from ? myorigin(NIL) : NIL;
+      *match = (name == NIL) ? NIL : savestr(name);
+   }
+
 jopen:
    if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
          ) == NIL)
       goto jleave;
    if((fp = mx_fs_open(cp, "r")) == NIL)
       n_perr(cp, 0);
+
 jleave:
    NYD_OU;
    return fp;
+
 jerr:
    if (dowarn)
       n_err(_("Could not find a certificate for %s%s%s\n"),
@@ -2208,12 +2215,16 @@ smime_sign(FILE *ip, char const *addr)
    boole bail = FAL0;
    NYD_IN;
 
+   /* TODO smime_sign(): addr should vanish, it is either *from* aka *sender*
+    * TODO or what we parsed as From:/Sender: from a template.  This latter
+    * TODO should set *from* / *sender* in a scope, we should use *sender*:
+    * TODO *sender* should be set to the real *from*! */
    ASSERT(addr != NULL);
    rv = sfp = fp = bp = hp = NULL;
 
    a_xtls_init();
 
-   if ((fp = smime_sign_cert(addr, NULL, 1, NULL)) == NULL)
+   if ((fp = smime_sign_cert(addr, NIL, 1, NIL, FAL0)) == NIL)
       goto jleave;
 
    if ((pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb,
@@ -2445,7 +2456,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
 
    a_xtls_init();
 
-   if((op = smime_sign_cert(to, cc, 0, &myaddr)) != NULL){
+   if((op = smime_sign_cert(to, cc, 0, &myaddr, TRU1)) != NULL){
       pkey = PEM_read_PrivateKey(op, NULL, &ssl_password_cb,
             savecat(myaddr, ".smime-cert-key"));
       if(pkey == NULL){

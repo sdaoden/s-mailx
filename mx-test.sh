@@ -9686,12 +9686,16 @@ t_s_mime() {
 
    ${cat} <<-_EOT > ./.t.conf
 		[req]
-		default_bits = 1024
-		default_keyfile = keyfile.pem
+		x509_extensions = extensions
 		distinguished_name = req_distinguished_name
 		attributes = req_attributes
 		prompt = no
-		output_password =
+		output_password = Pacem_in_terris
+
+		[extensions]
+		basicConstraints = CA:FALSE
+		# Needs a CA for that keyUsage = digitalSignature
+		extendedKeyUsage = emailProtection
 
 		[req_distinguished_name]
 		C = GB
@@ -9699,92 +9703,127 @@ t_s_mime() {
 		L = rainbow
 		O = S-nail
 		OU = S-nail.smime
-		CN = S-nail.test
+		CN = S-nail.test2
 		emailAddress = test@localhost
 
 		[req_attributes]
-		challengePassword =
+		challengePassword = hi ca it is me me me
 	_EOT
-   openssl req -x509 -nodes -days 3650 -config ./.t.conf \
-      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
-   check_ex0 0
-   ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
-   # Sign/verify
-   echo bla | ${MAILX} ${ARGS} \
-      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
-      -Ssmime-sign-digest=sha1 \
-      -s 'S/MIME test' ./.VERIFY
-   check_ex0 1-estat
-   ${awk} '
-      BEGIN{ skip=0 }
-      /^Content-Description: /{ skip = 2; print; next }
-      /^$/{ if(skip) --skip }
-      { if(!skip) print }
-   ' \
-      < ./.VERIFY > "${MBOX}"
-   check 1 - "${MBOX}" '335634014 644'
+   doit() {
+      _z=${1}
 
-   printf 'verify\nx\n' |
-   ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
-      -R -f ./.VERIFY >>${ERR} 2>&1
-   check_ex0 2
+      if [ "${_z}" = 0 ]; then
+         _pass= _osslreq=-nodes _ossl=
+      else
+         _pass=Pacem_in_terris _osslreq= _ossl='-passin pass:'${_pass}
+      fi
 
-   openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
-   check_ex0 3
+      ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
 
-   # (signing +) encryption / decryption
+      openssl req ${_osslreq} ${_ossl} -x509 -days 3650 -config ./.t.conf \
+         -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
+      check_ex0 ${_z}
+      _z=`add ${_z} 1`
 
-   echo bla |
-   ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Ssmime-sign-digest=sha1 \
-      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
-      -s 'S/MIME test' recei@ver.com
-   check_ex0 4-estat
-   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 4 - "${MBOX}" '2359655411 336'
+      ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
-   printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
-   ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-ca-file=./.tcert.pem \
-      -Ssmime-sign-cert=./.tpair.pem \
-      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check_ex0 5-estat
-   ${awk} '
-      BEGIN{ skip=0 }
-      /^Content-Description: /{ skip = 2; print; next }
-      /^$/{ if(skip) --skip }
-      { if(!skip) print }
-   ' \
-      < ./.DECRYPT > "${MBOX}"
-   check 5 - "${MBOX}" '2602978204 940'
+      # Sign/verify
+      echo bla | ${MAILX} ${ARGS} \
+         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign-digest=sha1 \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z}-estat
+      ${awk} '
+         BEGIN{ skip=0 }
+         /^Content-Description: /{ skip = 2; print; next }
+         /^$/{ if(skip) --skip }
+         { if(!skip) print }
+      ' \
+         < ./.VERIFY > "${MBOX}"
+      check ${_z} - "${MBOX}" '335634014 644'
+      _z=`add ${_z} 1`
 
-   (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
-         openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
-   check_ex0 6
+      printf 'verify\nx\n' |
+      ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
+         -R -f ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z} # XXX pipe
+      _z=`add ${_z} 1`
 
-   ${rm} ./.ENCRYPT
-   echo bla | ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Sfrom=test@localhost \
-      -s 'S/MIME test' recei@ver.com
-   check_ex0 7-estat
-   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 7 - "${MBOX}" '2359655411 336'
+      openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z}
+      _z=`add ${_z} 1`
 
-   ${rm} ./.DECRYPT
-   printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-sign-cert=./.tpair.pem \
-      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check 8 0 ./.DECRYPT '2453471323 431'
+      # (signing +) encryption / decryption
+      echo bla |
+      ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Ssmime-sign-digest=sha1 \
+         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' recei@ver.com
+      check_ex0 ${_z}-estat
+      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2359655411 336'
+      _z=`add ${_z} 1`
 
-   openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT >>${ERR} 2>&1
-   check_ex0 9
+      printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
+      ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-ca-file=./.tcert.pem \
+         -Ssmime-sign-cert=./.tpair.pem \
+         -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+      check_ex0 ${_z}-estat
+      ${awk} '
+         BEGIN{ skip=0 }
+         /^Content-Description: /{ skip = 2; print; next }
+         /^$/{ if(skip) --skip }
+         { if(!skip) print }
+      ' \
+         < ./.DECRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2602978204 940'
+      _z=`add ${_z} 1`
+
+      (openssl smime -decrypt ${_ossl} -inkey ./.tkey.pem -in ./.ENCRYPT |
+            openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
+      check_ex0 ${_z} # XXX pipe..
+      _z=`add ${_z} 1`
+
+      ${rm} ./.ENCRYPT
+      echo bla | ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' recei@ver.com
+      check_ex0 ${_z}-estat
+      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2359655411 336'
+      _z=`add ${_z} 1`
+
+      ${rm} ./.DECRYPT
+      # Note: deduce from *sign-cert*, not from *from*!
+      printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-sign-cert-recei@ver.com=./.tpair.pem \
+         -S password-recei@ver.com.smime-cert-key=${_pass} \
+         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+      check ${_z} 0 ./.DECRYPT '2453471323 431'
+      _z=`add ${_z} 1`
+
+      openssl smime ${_ossl} -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT \
+         >>${ERR} 2>&1
+      check_ex0 ${_z}
+
+      unset _z _pass _osslreq _ossl
+   }
+
+   doit 0
+   doit 10
 
    t_epilog "${@}"
 }

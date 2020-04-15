@@ -1869,7 +1869,7 @@ is available, all that needs to be done is to set some variables:
 .Bd -literal -offset indent
 ? set smime-sign-cert=ME@exam.ple.paired \e
     smime-sign-digest=SHA512 \e
-    smime-sign
+    smime-sign from=myname@my.host
 .Ed
 .
 .Pp
@@ -2049,6 +2049,8 @@ and
 .Ql HOST
 chains from above, but instead use the corresponding values from the
 message that is being worked on.
+If no address matches we assume and use the setting of
+.Va from .
 In unusual cases multiple and different
 .Ql USER
 and
@@ -2059,7 +2061,8 @@ The usual case is as short as:
 .
 .Bd -literal -offset indent
 set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
-    smime-sign smime-sign-cert=+smime.pair
+    smime-sign smime-sign-cert=+smime.pair \e
+    from=myname@my.host
 .Ed
 .
 .Pp
@@ -12304,8 +12307,9 @@ will be inspected for messages which become encrypted.
 .
 .Mx
 .It Va smime-sign
-\*(BO\*(OP S/MIME sign outgoing messages with the user's private key
-and include the user's certificate as a MIME attachment.
+\*(BO\*(OP S/MIME sign outgoing messages with the user's
+.Pf ( Va from )
+private key and include the users certificate as a MIME attachment.
 Signing a message enables a recipient to verify that the sender used
 a valid certificate,
 that the email addresses in the certificate match those in the message
@@ -12331,7 +12335,7 @@ is always derived from the value of
 .Va from
 (or, if that contains multiple addresses,
 .Va sender ) .
-For the purpose of encryption the recipient's public encryption key
+For the purpose of encryption the recipients public encryption key
 (certificate) is expected; the command
 .Ic certsave
 can be used to save certificates of signed messages (the section
@@ -12347,7 +12351,7 @@ and
 of the message, which are searched for addresses for which such
 a variable is set.
 \*(UA always uses the first address that matches,
-so if the same message is sent to more than one of the user's addresses
+so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
 .Pp
 For signing and decryption purposes it is possible to use encrypted
@@ -12366,8 +12370,12 @@ could be driven with a private key / certificate pair path defined in
 .Va \&\&smime-sign-cert-bob@exam.ple ,
 and needed passwords would then be looked up via the pseudo hosts
 .Ql bob@exam.ple.smime-cert-key
-(and
-.Ql bob@exam.ple.smime-cert-cert ) .
+and
+.Ql bob@exam.ple.smime-cert-cert .
+When decrypting the value of
+.Va from
+will be tried as a fallback to provide the necessary
+.Ql USER@HOST .
 To include intermediate certificates, use
 .Va smime-sign-include-certs .
 .
@@ -14953,7 +14961,7 @@ is of interest for verification only):
 ? set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
     smime-sign-cert=ME@HERE.com.paired \e
     smime-sign-digest=SHA512 \e
-    smime-sign
+    smime-sign from=myname@my.host
 .Ed
 .
 .\" }}}
