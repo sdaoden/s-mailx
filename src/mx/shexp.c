@@ -1398,11 +1398,11 @@ jrestart:
 
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){*/
+            /*if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))*/{
                if(!(flags & n_SHEXP_PARSE_META_KEEP))
                   state |= a_CHOP_ONE;
                ++il, --ib;
-          /*  }*/
+            }
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ',' && (flags &

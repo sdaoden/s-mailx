@@ -587,8 +587,9 @@ mx_termios_cmd(u32 tiosc, uz a1){
       (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
          mx_TERMIOS_STATE_RESUME, 0);
 
-   /* XXX if(rv)*/
+   /* XXX if(rv)*/{
       tiosep->tiose_suspended = FAL0;
+   }
 
    if(tiosep_2free != NIL)
       tiosep_2free->tiose_prev = a_termios_g.tiosg_pend_free;
