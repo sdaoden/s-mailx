@@ -731,7 +731,7 @@ enum n_program_state_once{
 
    /* "Later" */
    n_PSO_t_FLAG_DONE = 1u<<15,
-   n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
+   n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
    n_PSO_LINE_EDITOR_INIT = 1u<<18,
    n_PSO_RANDOM_INIT = 1u<<19,
@@ -1141,7 +1141,8 @@ ok_b_imap_use_starttls /* {chain=1} */
 enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
 
 /* Forwards */
-struct mx_name; /* -> names.h */
+struct mx_attachment;
+struct mx_name;
 
 struct str{
    char *s; /* the string's content */
@@ -1451,7 +1452,7 @@ struct header{
    struct mx_name *h_bcc; /* Blind carbon copies */
    struct mx_name *h_fcc; /* Fcc: file carbon copies to */
    struct mx_name *h_ref; /* References (possibly overridden) */
-   struct attachment *h_attach; /* MIME attachments */
+   struct mx_attachment *h_attach; /* MIME attachments */
    struct mx_name *h_reply_to; /* overridden "Reply-To:" field */
    struct mx_name *h_message_id; /* overridden "Message-ID:" field */
    struct mx_name *h_in_reply_to;/* overridden "In-Reply-To:" field */
@@ -1481,39 +1482,6 @@ struct n_addrguts{
    uz ag_slen; /* su_cs_len() of .ag_skinned */
    uz ag_sdom_start; /* Start of domain in .ag_skinned, */
    u32 ag_n_flags; /* enum mx_name_flags of .ag_skinned */
-};
-
-/* MIME attachments */
-enum attach_conv{
-   AC_DEFAULT, /* _get_lc() -> _iter_*() */
-   AC_FIX_INCS, /* "charset=".a_input_charset (nocnv) */
-   AC_TMPFILE /* attachment.a_tmpf is converted */
-};
-
-enum n_attach_error{
-   n_ATTACH_ERR_NONE,
-   n_ATTACH_ERR_FILE_OPEN,
-   n_ATTACH_ERR_ICONV_FAILED,
-   n_ATTACH_ERR_ICONV_NAVAIL,
-   n_ATTACH_ERR_OTHER
-};
-
-struct attachment{
-   struct attachment *a_flink; /* Forward link in list. */
-   struct attachment *a_blink; /* Backward list link */
-   char const *a_path_user; /* Path as given (maybe including iconv spec) */
-   char const *a_path; /* Path as opened */
-   char const *a_path_bname; /* Basename of path as opened */
-   char const *a_name; /* File name to be stored (EQ a_path_bname) */
-   char const *a_content_type; /* content type */
-   char const *a_content_disposition; /* content disposition */
-   struct mx_name *a_content_id; /* content id */
-   char const *a_content_description; /* content description */
-   char const *a_input_charset; /* Interpretation depends on .a_conv */
-   char const *a_charset; /* ... */
-   FILE *a_tmpf; /* If AC_TMPFILE */
-   enum attach_conv a_conv; /* User chosen conversion */
-   int a_msgno; /* message number */
 };
 
 struct sendbundle{

@@ -1,40 +1,23 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Handling of attachments.
+ *@ Implementation of attachments.h.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE attachment
+#define su_FILE attachments
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
@@ -49,34 +32,36 @@
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/sigs.h"
+#include "mx/tty.h"
 
+#include "mx/attachments.h"
 /* TODO fake */
 #include "su/code-in.h"
 
-/* We use calloc() for struct attachment */
-CTAV(AC_DEFAULT == 0);
+/* We use calloc() for struct mx_attachment */
+CTAV(mx_ATTACHMENTS_CONV_DEFAULT == 0);
 
 /* Return >=0 if file denotes a valid message number */
-static int a_attachment_is_msg(char const *file);
+static int a_attachments_is_msg(char const *file);
 
 /* Fill in some basic attachment fields */
-static struct attachment *a_attachment_setup_base(struct attachment *ap,
-                           char const *file);
+static struct mx_attachment *a_attachments_setup_base(
+      struct mx_attachment *ap, char const *file);
 
 /* Setup ap to point to a message */
-static struct attachment *a_attachment_setup_msg(struct attachment *ap,
-                           char const *msgcp, int msgno);
+static struct mx_attachment *a_attachments_setup_msg(struct mx_attachment *ap,
+      char const *msgcp, int msgno);
 
 /* Try to create temporary charset converted version */
 #ifdef mx_HAVE_ICONV
-static boole a_attachment_iconv(struct attachment *ap, FILE *ifp);
+static boole a_attachments_iconv(struct mx_attachment *ap, FILE *ifp);
 #endif
 
 /* */
-static void a_attachment_yay(struct attachment const *ap);
+static void a_attachments_yay(struct mx_attachment const *ap);
 
 static int
-a_attachment_is_msg(char const *file){
+a_attachments_is_msg(char const *file){
    int rv;
    NYD2_IN;
 
@@ -87,26 +72,28 @@ a_attachment_is_msg(char const *file){
 
       /* TODO Message numbers should be uz, and 0 may be a valid one */
       if(file[2] == '\0' && file[1] == '.'){
-         if(dot != NULL)
+         if(dot != NIL)
             rv = (int)P2UZ(dot - message + 1);
-      }else if((su_idec_uz_cp(&ib, &file[1], 10, NULL
+      }else if((su_idec_uz_cp(&ib, &file[1], 10, NIL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || ib == 0 ||
             UCMP(z, ib, >, msgCount))
          rv = -1;
       else
-         rv = (int)ib;
+         rv = S(int,ib);
    }
+
    NYD2_OU;
    return rv;
 }
 
-static struct attachment *
-a_attachment_setup_base(struct attachment *ap, char const *file){
+static struct mx_attachment *
+a_attachments_setup_base(struct mx_attachment *ap, char const *file){
    NYD2_IN;
-   ap->a_input_charset = ap->a_charset = NULL;
+
+   ap->a_input_charset = ap->a_charset = NIL;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = file;
-   if((file = su_cs_rfind_c(file, '/')) != NULL)
+   if((file = su_cs_rfind_c(file, '/')) != NIL)
       ap->a_path_bname = ap->a_name = ++file;
    else
       file = ap->a_name;
@@ -114,26 +101,30 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
    ap->a_content_disposition = "attachment";
    ap->a_content_description = NIL;
    ap->a_content_id = NIL;
+
    NYD2_OU;
    return ap;
 }
 
-static struct attachment *
-a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
+static struct mx_attachment *
+a_attachments_setup_msg(struct mx_attachment *ap, char const *msgcp,
+      int msgno){
    NYD2_IN;
+
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = msgcp;
    ap->a_msgno = msgno;
    ap->a_content_type =
    ap->a_content_description =
-   ap->a_content_disposition = NULL;
-   ap->a_content_id = NULL;
+   ap->a_content_disposition = NIL;
+   ap->a_content_id = NIL;
+
    NYD2_OU;
    return ap;
 }
 
 #ifdef mx_HAVE_ICONV
 static boole
-a_attachment_iconv(struct attachment *ap, FILE *ifp){
+a_attachments_iconv(struct mx_attachment *ap, FILE *ifp){
    struct str oul = {NIL, 0}, inl = {NIL, 0};
    uz cnt, lbsize;
    iconv_t icp;
@@ -207,8 +198,9 @@ jerr:
 #endif /* mx_HAVE_ICONV */
 
 static void
-a_attachment_yay(struct attachment const *ap){
+a_attachments_yay(struct mx_attachment const *ap){
    NYD2_IN;
+
    if(ap->a_msgno > 0)
       fprintf(n_stdout, _("Added message/rfc822 attachment for message #%u\n"),
          ap->a_msgno);
@@ -216,50 +208,51 @@ a_attachment_yay(struct attachment const *ap){
       fprintf(n_stdout, _("Added attachment %s (%s)\n"),
          n_shexp_quote_cp(ap->a_name, FAL0),
          n_shexp_quote_cp(ap->a_path_user, FAL0));
+
    NYD2_OU;
 }
 
-FL struct attachment *
-n_attachment_append(struct attachment *aplist, char const *file,
-      BITENUM_IS(u32,n_attach_error) *aerr_or_null,
-      struct attachment **newap_or_null){
+struct mx_attachment *
+mx_attachments_append(struct mx_attachment *aplist, char const *file,
+      BITENUM_IS(u32,mx_attachments_error) *aerr_or_nil,
+      struct mx_attachment **newap_or_nil){
 #ifdef mx_HAVE_ICONV
    FILE *cnvfp;
 #endif
    int msgno;
    char const *file_user, *incs, *oucs;
-   struct attachment *nap, *ap;
-   enum n_attach_error aerr;
+   struct mx_attachment *nap, *ap;
+   enum mx_attachments_error aerr;
    NYD_IN;
 
 #ifdef mx_HAVE_ICONV
-   cnvfp = NULL;
+   cnvfp = NIL;
 #endif
-   aerr = n_ATTACH_ERR_NONE;
-   nap = NULL;
-   incs = oucs = NULL;
+   aerr = mx_ATTACHMENTS_ERR_NONE;
+   nap = NIL;
+   incs = oucs = NIL;
 
    if(*file == '\0'){
-      aerr = n_ATTACH_ERR_OTHER;
+      aerr = mx_ATTACHMENTS_ERR_OTHER;
       goto jleave;
    }
    file_user = savestr(file); /* TODO recreate after fexpand()!?! */
 
-   if((msgno = a_attachment_is_msg(file)) < 0){
+   if((msgno = a_attachments_is_msg(file)) < 0){
       int e;
       char const *cp, *ncp;
 
 jrefexp:
       if((file = fexpand(file, (FEXP_NONE | FEXP_LOCAL_FILE))) == NIL){
-         aerr = n_ATTACH_ERR_OTHER;
+         aerr = mx_ATTACHMENTS_ERR_OTHER;
          goto jleave;
       }
 
 #ifndef mx_HAVE_ICONV
-      if(oucs != NULL && oucs != (char*)-1){
+      if(oucs != NIL && oucs != (char*)-1){
          n_err(_("No iconv support, cannot do %s\n"),
             n_shexp_quote_cp(file_user, FAL0));
-         aerr = n_ATTACH_ERR_ICONV_NAVAIL;
+         aerr = mx_ATTACHMENTS_ERR_ICONV_NAVAIL;
          goto jleave;
       }
 #endif
@@ -274,7 +267,7 @@ jrefexp:
 
          /* It may not have worked because of a character-set specification,
           * so try to extract that and retry once */
-         if(incs == NULL && (cp = su_cs_rfind_c(file, '=')) != NULL){
+         if(incs == NIL && (cp = su_cs_rfind_c(file, '=')) != NIL){
             uz i;
             char *nfp, c;
 
@@ -284,12 +277,12 @@ jrefexp:
                if(!su_cs_is_alnum(c) && !su_cs_is_punct(c))
                   break;
                else if(c == '#'){
-                  if(incs == NULL){
+                  if(incs == NIL){
                      i = P2UZ(cp - ncp);
                      if(i == 0 || (i == 1 && ncp[0] == '-'))
                         incs = (char*)-1;
                      else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))
-                           ) == NULL){
+                           ) == NIL){
                         e = su_ERR_INVAL;
                         goto jerr_fopen;
                      }
@@ -304,11 +297,11 @@ jrefexp:
                if(i == 0 || (i == 1 && ncp[0] == '-'))
                   xp = (char*)-1;
                else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))
-                     ) == NULL){
+                     ) == NIL){
                   e = su_ERR_INVAL;
                   goto jerr_fopen;
                }
-               if(incs == NULL)
+               if(incs == NIL)
                   incs = xp;
                else
                   oucs = xp;
@@ -320,37 +313,37 @@ jrefexp:
 jerr_fopen:
          n_err(_("Failed to access attachment %s: %s\n"),
             n_shexp_quote_cp(file, FAL0), su_err_doc(e));
-         aerr = n_ATTACH_ERR_FILE_OPEN;
+         aerr = mx_ATTACHMENTS_ERR_FILE_OPEN;
          goto jleave;
       }
    }
 
-   nap = a_attachment_setup_base(n_autorec_calloc(1, sizeof *nap), file);
+   nap = a_attachments_setup_base(n_autorec_calloc(1, sizeof *nap), file);
    nap->a_path_user = file_user;
    if(msgno >= 0)
-      nap = a_attachment_setup_msg(nap, file, msgno);
+      nap = a_attachments_setup_msg(nap, file, msgno);
    else{
-      nap->a_input_charset = (incs == NULL || incs == (char*)-1)
+      nap->a_input_charset = (incs == NIL || incs == (char*)-1)
             ? savestr(ok_vlook(ttycharset)) : incs;
 #ifdef mx_HAVE_ICONV
-      if(cnvfp != NULL){
+      if(cnvfp != NIL){
          nap->a_charset = oucs;
-         if(!a_attachment_iconv(nap, cnvfp)){
-            nap = NULL;
-            aerr = n_ATTACH_ERR_ICONV_FAILED;
+         if(!a_attachments_iconv(nap, cnvfp)){
+            nap = NIL;
+            aerr = mx_ATTACHMENTS_ERR_ICONV_FAILED;
             goto jleave;
          }
-         nap->a_conv = AC_TMPFILE;
+         nap->a_conv = mx_ATTACHMENTS_CONV_TMPFILE;
       }else
 #endif
-            if(incs != NULL && oucs == NULL)
-         nap->a_conv = AC_FIX_INCS;
+            if(incs != NIL && oucs == NIL)
+         nap->a_conv = mx_ATTACHMENTS_CONV_FIX_INCS;
       else
-         nap->a_conv = AC_DEFAULT;
+         nap->a_conv = mx_ATTACHMENTS_CONV_DEFAULT;
    }
 
-   if(aplist != NULL){
-      for(ap = aplist; ap->a_flink != NULL; ap = ap->a_flink)
+   if(aplist != NIL){
+      for(ap = aplist; ap->a_flink != NIL; ap = ap->a_flink)
          ;
       ap->a_flink = nap;
       nap->a_blink = ap;
@@ -358,16 +351,17 @@ jerr_fopen:
       aplist = nap;
 
 jleave:
-   if(aerr_or_null != NULL)
-      *aerr_or_null = aerr;
-   if(newap_or_null != NULL)
-      *newap_or_null = nap;
+   if(aerr_or_nil != NIL)
+      *aerr_or_nil = aerr;
+   if(newap_or_nil != NIL)
+      *newap_or_nil = nap;
+
    NYD_OU;
    return aplist;
 }
 
-FL struct attachment *
-n_attachment_append_list(struct attachment *aplist, char const *names){
+struct mx_attachment *
+mx_attachments_append_list(struct mx_attachment *aplist, char const *names){
    struct str shin;
    struct n_string shou, *shoup;
    NYD_IN;
@@ -375,76 +369,79 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
    shoup = n_string_creat_auto(&shou);
 
    for(shin.s = n_UNCONST(names), shin.l = UZ_MAX;;){
-      struct attachment *nap;
+      struct mx_attachment *nap;
       BITENUM_IS(u32,n_shexp_state) shs;
 
       shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
             n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
             n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY),
-            shoup, &shin, NULL);
+            shoup, &shin, NIL);
       if(shs & n_SHEXP_STATE_ERR_MASK)
          break;
 
       if(shs & n_SHEXP_STATE_OUTPUT){
-         aplist = n_attachment_append(aplist, n_string_cp(shoup), NULL, &nap);
-         if(nap != NULL){
+         aplist = mx_attachments_append(aplist, n_string_cp(shoup), NIL, &nap);
+         if(nap != NIL){
             if(n_psonce & n_PSO_INTERACTIVE)
-               a_attachment_yay(nap);
+               a_attachments_yay(nap);
          }
       }
 
       if(shs & n_SHEXP_STATE_STOP)
          break;
    }
+
    n_string_gut(shoup);
+
    NYD_OU;
    return aplist;
 }
 
-FL struct attachment *
-n_attachment_remove(struct attachment *aplist, struct attachment *ap){
-   struct attachment *bap, *fap;
+struct mx_attachment *
+mx_attachments_remove(struct mx_attachment *aplist, struct mx_attachment *ap){
+   struct mx_attachment *bap, *fap;
    NYD_IN;
 
 #ifdef mx_HAVE_DEVEL
-   for(bap = aplist; aplist != NULL && aplist != ap; aplist = aplist->a_flink)
+   for(bap = aplist; aplist != NIL && aplist != ap; aplist = aplist->a_flink)
       ;
-   ASSERT(aplist != NULL);
+   ASSERT(aplist != NIL);
    aplist = bap;
 #endif
 
    if(ap == aplist){
-      if((aplist = ap->a_flink) != NULL)
-         aplist->a_blink = NULL;
+      if((aplist = ap->a_flink) != NIL)
+         aplist->a_blink = NIL;
    }else{
       bap = ap->a_blink;
       fap = ap->a_flink;
-      if(bap != NULL)
+      if(bap != NIL)
          bap->a_flink = fap;
-      if(fap != NULL)
+      if(fap != NIL)
          fap->a_blink = bap;
    }
 
-   if(ap->a_conv == AC_TMPFILE)
+   if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
       mx_fs_close(ap->a_tmpf);
+
    NYD_OU;
    return aplist;
 }
 
-FL struct attachment *
-n_attachment_find(struct attachment *aplist, char const *name,
-      boole *stat_or_null){
+struct mx_attachment *
+mx_attachments_find(struct mx_attachment *aplist, char const *name,
+      boole *stat_or_nil){
    int msgno;
    char const *bname;
    boole status, sym;
-   struct attachment *saved;
+   struct mx_attachment *saved;
    NYD_IN;
 
-   saved = NULL;
+   saved = NIL;
    status = FAL0;
 
-   if((bname = su_cs_rfind_c(name, '/')) != NULL){
-      for(++bname; aplist != NULL; aplist = aplist->a_flink)
+   if((bname = su_cs_rfind_c(name, '/')) != NIL){
+      for(++bname; aplist != NIL; aplist = aplist->a_flink)
          if(!su_cs_cmp(name, aplist->a_path)){
             status = TRU1;
             /* Exact match with path components: done */
@@ -456,8 +453,8 @@ n_attachment_find(struct attachment *aplist, char const *name,
             }else
                status = TRUM1;
          }
-   }else if((msgno = a_attachment_is_msg(name)) < 0){
-      for(sym = FAL0; aplist != NULL; aplist = aplist->a_flink){
+   }else if((msgno = a_attachments_is_msg(name)) < 0){
+      for(sym = FAL0; aplist != NIL; aplist = aplist->a_flink){
          if(!su_cs_cmp(name, aplist->a_name)){
             if(!status || !sym){
                saved = aplist;
@@ -471,104 +468,79 @@ n_attachment_find(struct attachment *aplist, char const *name,
          status = status ? TRUM1 : TRU1;
       }
    }else{
-      for(; aplist != NULL; aplist = aplist->a_flink){
+      for(; aplist != NIL; aplist = aplist->a_flink){
          if(aplist->a_msgno > 0 && aplist->a_msgno == msgno){
             status = TRU1;
             goto jleave;
          }
       }
    }
-   if(saved != NULL)
+   if(saved != NIL)
       aplist = saved;
 
 jleave:
-   if(stat_or_null != NULL)
-      *stat_or_null = status;
+   if(stat_or_nil != NIL)
+      *stat_or_nil = status;
+
    NYD_OU;
    return aplist;
 }
 
-FL struct attachment *
-n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
+struct mx_attachment *
+mx_attachments_list_edit(struct mx_attachment *aplist,
+      BITENUM_IS(u32,n_go_input_flags) gif){
+   /* Modify already present ones? Append some more? */
    char prefix[32];
-   struct str shin;
+   char const *inidat;
    struct n_string shou, *shoup;
-   struct attachment *naplist, *ap;
+   struct mx_attachment *naplist, *ap;
    u32 attno;
    NYD_IN;
 
-   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
-         ) == n_PSO_INTERACTIVE){
-      n_psonce |= n_PSO_ATTACH_QUOTE_NOTED;
-      fprintf(n_stdout,
-         _("# Only supports sh(1)ell-style quoting for file names\n"));
-   }
-
    shoup = n_string_creat_auto(&shou);
-
-   /* Modify already present ones?  Append some more? */
    attno = 1;
 
-   for(naplist = NULL;;){
+   for(naplist = NIL;;){
       snprintf(prefix, sizeof prefix, A_("#%" PRIu32 " filename: "), attno);
 
-      if(aplist != NULL){
+      if(aplist != NIL){
          /* TODO If we would create .a_path_user in append() after any
           * TODO expansion then we could avoid closing+rebuilding the temporary
           * TODO file if the new user input matches the original value! */
-         if(aplist->a_conv == AC_TMPFILE)
+         if(aplist->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
             mx_fs_close(aplist->a_tmpf);
-         shin.s = n_shexp_quote_cp(aplist->a_path_user, FAL0);
+         inidat = n_shexp_quote_cp(aplist->a_path_user, FAL0);
       }else
-         shin.s = n_UNCONST(n_empty);
+         inidat = su_empty;
 
-      ap = NULL;
-      if((shin.s = n_go_input_cp(gif, prefix, shin.s)) != NULL){
-         BITENUM_IS(u32,n_shexp_state) shs;
-#ifdef mx_HAVE_UISTRINGS
-         char const *s_save;
+      ap = NIL;
+      if(mx_tty_getfilename(shoup, gif, prefix, inidat) != TRU1)
+         break;
 
-         s_save = shin.s;
-#endif
-         shin.l = UZ_MAX;
-         shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
-               n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
-               n_SHEXP_PARSE_IGNORE_EMPTY),
-               shoup, &shin, NULL);
-#ifdef mx_HAVE_UISTRINGS
-         if(!(shs & n_SHEXP_STATE_STOP))
-            n_err(_("# May be given one argument a time only: %s\n"),
-               n_shexp_quote_cp(s_save, FAL0));
-#endif
-         if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
-                  n_SHEXP_STATE_ERR_MASK)
-               ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
-            break;
-
-         naplist = n_attachment_append(naplist, n_string_cp(shoup), NULL, &ap);
-         if(ap != NULL){
-            if(n_psonce & n_PSO_INTERACTIVE)
-               a_attachment_yay(ap);
-            ++attno;
-         }
+      naplist = mx_attachments_append(naplist, n_string_cp(shoup), NIL, &ap);
+      if(ap != NIL){
+         if(n_psonce & n_PSO_INTERACTIVE)
+            a_attachments_yay(ap);
+         ++attno;
       }
 
-      if(aplist != NULL){
+      if(aplist != NIL){
          aplist = aplist->a_flink;
          /* In non-interactive or batch mode an empty line ends processing */
          if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG))
             continue;
       }
-      if(ap == NULL)
+      if(ap == NIL)
          break;
    }
+
    NYD_OU;
    return naplist;
 }
 
-FL sz
-n_attachment_list_print(struct attachment const *aplist, FILE *fp){
-   struct attachment const *ap;
+sz
+mx_attachments_list_print(struct mx_attachment const *aplist, FILE *fp){
+   struct mx_attachment const *ap;
    u32 attno;
    sz rv;
    NYD_IN;
@@ -596,16 +568,16 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
                 ? ap->a_content_type : _("unclassified content"))) < 0)
             goto jerr;
 
-         if(ap->a_conv == AC_TMPFILE){
+         if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
             /* I18N: input and output character set as given */
             if(fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
                   incs, oucs) < 0)
                goto jerr;
-         }else if(ap->a_conv == AC_FIX_INCS){
+         }else if(ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS){
             /* I18N: input character set as given, no conversion to apply */
             if(fprintf(fp, _(", incs=%s (no conversion)"), incs) < 0)
                goto jerr;
-         }else if(ap->a_conv == AC_DEFAULT){
+         }else if(ap->a_conv == mx_ATTACHMENTS_CONV_DEFAULT){
             if(incs != NIL){
                /* I18N: input character set as given, output iterates */
                if(fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs) < 0)

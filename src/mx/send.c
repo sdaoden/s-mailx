@@ -1433,35 +1433,25 @@ newfile(struct mimepart *ip, boole volatile *ispipe)
 
       shoup = n_string_creat_auto(&shou);
 
-      /* TODO Generic function which asks for filename.
-       * TODO If the current part is the first textpart the target
+      /* TODO If the current part is the first textpart the target
        * TODO is implicit from outer `write' etc! */
       /* I18N: Filename input prompt with file type indication */
       str_concat_csvl(&prompt, _("Enter filename for part "),
          (ip->m_partstring != NULL ? ip->m_partstring : n_qm),
          " (", ip->m_ct_type_plain, "): ", NULL);
 jgetname:
-      f2 = n_go_input_cp(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_HIST_ADD,
-            prompt.s, ((f != (char*)-1 && f != NULL)
-               ? n_shexp_quote_cp(f, FAL0) : NULL));
-      if(f2 != NULL){
-         in.s = n_UNCONST(f2);
-         in.l = UZ_MAX;
-         if((n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
-                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
-                  n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY),
-                  shoup, &in, NULL
-               ) & (n_SHEXP_STATE_STOP |
-                  n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)
-               ) != (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT))
-            goto jgetname;
-         f2 = n_string_cp(shoup);
+      while(mx_tty_getfilename(shoup,
+            (n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_HIST_ADD), prompt.s,
+            ((f != R(char*,-1) && f != NIL) ? n_shexp_quote_cp(f, FAL0) : NIL
+            )) < TRU1){
       }
-      if (f2 == NULL || *f2 == '\0') {
-         if (n_poption & n_PO_D_V)
+
+      f2 = n_string_cp(shoup);
+      if(*f2 == '\0') {
+         if(n_poption & n_PO_D_V)
             n_err(_("... skipping this\n"));
          n_string_gut(shoup);
-         fp = NULL;
+         fp = NIL;
          goto jleave;
       }
 

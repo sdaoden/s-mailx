@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/attachments.h"
 #include "mx/cmd.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"

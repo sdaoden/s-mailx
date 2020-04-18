@@ -46,6 +46,7 @@
 #include <su/mem.h>
 #include <su/utf.h>
 
+#include "mx/attachments.h"
 #include "mx/child.h"
 #include "mx/cmd-edit.h"
 #include "mx/dig-msg.h"
@@ -244,12 +245,12 @@ _execute_command(struct header *hp, char const *linebuf, uz linesize){
     * TODO of the current `file' (mailbox that is) object, because the
     * TODO codebase doesn't deal with that at all; so, until some far
     * TODO later time, copy the name of the path, and warn the user if it
-    * TODO changed; we COULD use the AC_TMPFILE attachment type, i.e.,
+    * TODO changed; COULD use ATTACHMENTS_CONV_TMPFILE attachment type, i.e.,
     * TODO copy the message attachments over to temporary files, but that
     * TODO would require more changes so that the user still can recognize
     * TODO in `~@' etc. that its a rfc822 message attachment; see below */
    struct n_sigman sm;
-   struct attachment *ap;
+   struct mx_attachment *ap;
    char * volatile mnbuf;
    NYD_IN;
 
@@ -265,13 +266,13 @@ _execute_command(struct header *hp, char const *linebuf, uz linesize){
       goto jleave;
    }
 
-   /* If the above todo is worked, remove or outsource to attachment.c! */
-   if(hp != NULL && (ap = hp->h_attach) != NULL) do
+   /* If the above todo is worked, remove or outsource to attachments.c! */
+   if(hp != NIL && (ap = hp->h_attach) != NIL) do
       if(ap->a_msgno){
          mnbuf = su_cs_dup(mailname, 0);
          break;
       }
-   while((ap = ap->a_flink) != NULL);
+   while((ap = ap->a_flink) != NIL);
 
    n_go_command(n_GO_INPUT_CTX_COMPOSE, linebuf);
 
@@ -480,7 +481,7 @@ a_coll_print(FILE *cf, struct header *hp){
    if(hp->h_attach != NIL){
       if(fputs(_("-------\nAttachments:\n"), obuf) == EOF)
          goto jleave;
-      if(n_attachment_list_print(hp->h_attach, obuf) == -1)
+      if(mx_attachments_list_print(hp->h_attach, obuf) == -1)
          goto jleave;
    }
 
@@ -1688,15 +1689,15 @@ jearg:
          n_pstate_ex_no = 0;
          break;
       case '@':{
-         struct attachment *aplist;
+         struct mx_attachment *aplist;
 
          /* Edit the attachment list */
          aplist = hp->h_attach;
-         hp->h_attach = NULL;
+         hp->h_attach = NIL;
          if(cnt != 0)
-            hp->h_attach = n_attachment_append_list(aplist, cp);
+            hp->h_attach = mx_attachments_append_list(aplist, cp);
          else
-            hp->h_attach = n_attachment_list_edit(aplist,
+            hp->h_attach = mx_attachments_list_edit(aplist,
                   n_GO_INPUT_CTX_COMPOSE);
          n_pstate_err_no = su_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
@@ -1792,15 +1793,7 @@ jearg:
       case 'r':
             /* Invoke a file: Search for the file name, then open it and copy
              * the contents to _coll_fp */
-            if(cnt == 0){
-               n_err(_("Interpolate what file?\n"));
-               if(a_HARDERR())
-                  goto jerr;
-               n_pstate_err_no = su_ERR_NOENT;
-               n_pstate_ex_no = 1;
-               break;
-            }
-            if(*cp == '!' && c == '<'){
+            if(cnt > 0 && c == '<' && *cp == '!'){
                /* TODO hist. normalization */
                if((n_pstate_err_no = a_coll_insert_cmd(_coll_fp, ++cp)
                      ) != su_ERR_NONE){
@@ -1812,16 +1805,38 @@ jearg:
                   break;
                }
                goto jhistcont;
-            }
-            if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
-                  ) == NIL){
-               if(a_HARDERR())
-                  goto jerr;
-               n_pstate_err_no = su_ERR_INVAL;
-               n_pstate_ex_no = 1;
-               break;
+            }else if(c != '<' && *cp == '-' &&
+                  (cp[1] == '\0' || su_cs_is_space(cp[1]))){
+               /* xxx ugly special treatment for HERE-delimiter stuff */
+            }else{
+               struct n_string s2, *s2p = &s2;
+
+               s2p = n_string_creat_auto(s2p);
+
+               if(n_shexp_unquote_one(s2p, cp) != TRU1){
+                  n_err(_("Interpolate what file?\n"));
+                  if(a_HARDERR())
+                     goto jerr;
+                  n_pstate_err_no = su_ERR_NOENT;
+                  n_pstate_ex_no = 1;
+                  break;
+               }
+
+               cp = n_string_cp(s2p);
+
+               if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
+                     ) == NIL){
+                  if(a_HARDERR())
+                     goto jerr;
+                  n_pstate_err_no = su_ERR_INVAL;
+                  n_pstate_ex_no = 1;
+                  break;
+               }
+
+               /*n_string_gut(s2p);*/
             }
          }
+
          /* XXX race, and why not test everywhere, then? */
          if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
@@ -1831,6 +1846,7 @@ jearg:
             n_pstate_ex_no = 1;
             break;
          }
+
          if((n_pstate_err_no = a_coll_include_file(cp, (c == 'R'), TRU1)
                ) != su_ERR_NONE){
             if(ferror(_coll_fp))
@@ -2137,7 +2153,7 @@ jout:
       }
 
       if(ok_blook(askattach))
-         hp->h_attach = n_attachment_list_edit(hp->h_attach,
+         hp->h_attach = mx_attachments_list_edit(hp->h_attach,
                n_GO_INPUT_CTX_COMPOSE);
 
       if(ok_blook(asksend)){
@@ -2262,14 +2278,14 @@ jskiptails:
       goto jerr;
    rewind(_coll_fp);
 
-   if(mp != NULL && ok_blook(quote_as_attachment)){
-      struct attachment *ap;
+   if(mp != NIL && ok_blook(quote_as_attachment)){
+      struct mx_attachment *ap;
 
       ap = n_autorec_calloc(1, sizeof *ap);
-      if((ap->a_flink = hp->h_attach) != NULL)
+      if((ap->a_flink = hp->h_attach) != NIL)
          hp->h_attach->a_blink = ap;
       hp->h_attach = ap;
-      ap->a_msgno = (int)P2UZ(mp - message + 1);
+      ap->a_msgno = S(int,P2UZ(mp - message + 1));
       ap->a_content_description =
             ok_vlook(content_description_quote_attachment);
    }
