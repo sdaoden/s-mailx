@@ -1398,11 +1398,11 @@ jrestart:
 
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){*/
+            /*if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))*/{
                if(!(flags & n_SHEXP_PARSE_META_KEEP))
                   state |= a_CHOP_ONE;
                ++il, --ib;
-          /*  }*/
+            }
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ',' && (flags &
@@ -1954,6 +1954,40 @@ n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
    rv = n_string_cp(soup);
    /*n_string_gut(n_string_drop_ownership(soup));*/
    NYD2_OU;
+   return rv;
+}
+
+FL boole
+n_shexp_unquote_one(struct n_string *store, char const *input){
+   struct str dat;
+   BITENUM_IS(u32,n_shexp_state) shs;
+   boole rv;
+   NYD_IN;
+
+   dat.s = UNCONST(char*,input);
+   dat.l = UZ_MAX;
+   shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+         n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
+         n_SHEXP_PARSE_IGNORE_EMPTY),
+         store, &dat, NIL);
+
+#ifdef mx_HAVE_UISTRINGS
+   if(!(shs & n_SHEXP_STATE_STOP))
+      n_err(_("# Only one (shell-quoted) argument is expected: %s\n"), input);
+#endif
+
+   if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
+            n_SHEXP_STATE_ERR_MASK)
+         ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
+      rv = FAL0;
+   else if(!(shs & n_SHEXP_STATE_STOP))
+      rv = TRUM1;
+   else if(shs & n_SHEXP_STATE_OUTPUT)
+      rv = TRU1;
+   else
+      rv = TRU2;
+
+   NYD_OU;
    return rv;
 }
 

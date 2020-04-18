@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  */
 
+struct mx_attachment;
 struct mx_cmd_arg;
 struct su_cs_dict;
 struct quoteflt;
@@ -224,47 +225,6 @@ FL int c_environ(void *v);
 FL int c_vpospar(void *v);
 
 /*
- * attachment.c
- * xxx Interface quite sick
- */
-
-/* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed.
- * Return the new aplist aphead.
- * The newly created attachment may be stored in *newap, or NULL on error */
-FL struct attachment *n_attachment_append(struct attachment *aplist,
-                        char const *file,
-                        BITENUM_IS(u32,n_attach_error) *aerr_or_null,
-                        struct attachment **newap_or_null);
-
-/* Shell-token parse names, and append resulting file names to aplist, return
- * (new) aplist head */
-FL struct attachment *n_attachment_append_list(struct attachment *aplist,
-                        char const *names);
-
-/* Remove ap from aplist, and return the new aplist head */
-FL struct attachment *n_attachment_remove(struct attachment *aplist,
-                        struct attachment *ap);
-
-/* Find by file-name.  If any path component exists in name then an exact match
- * of the creation-path is used directly; if instead the basename of that path
- * matches all attachments are traversed to find an exact match first, the
- * first of all basename matches is returned as a last resort;
- * If no path component exists the filename= parameter is searched (and also
- * returned) in preference over the basename, otherwise likewise.
- * If name is in fact a message number the first match is taken.
- * If stat_or_null is given: FAL0 on NULL return, TRU1 for exact/single match,
- * TRUM1 for ambiguous matches */
-FL struct attachment *n_attachment_find(struct attachment *aplist,
-                        char const *name, boole *stat_or_null);
-
-/* Interactively edit the attachment list, return updated list */
-FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
-                        enum n_go_input_flags gif);
-
-/* Print all attachments, return number of lines written, -1 on error */
-FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
-
-/*
  * auxlily.c
  */
 
@@ -407,8 +367,8 @@ FL int c_elif(void *v);
 FL int c_else(void *v);
 FL int c_endif(void *v);
 
-/* Whether an `if' block is in a whiteout condition */
-FL boole n_cnd_if_is_skip(void);
+/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1) */
+FL boole n_cnd_if_exists(void);
 
 /* An execution context is teared down, and it finds to have an if stack */
 FL void n_cnd_if_stack_del(struct n_go_data_ctx *gdcp);
@@ -706,7 +666,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
             uz len);
 
 /* Read a complete line of input, with editing if interactive and possible.
- * If string is set it is used as the initial line content if in interactive
+ * string_or_nil is the optional initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
  * If histok_or_nil is set it will be updated to FAL0 if input shall not be
  * placed in history.
@@ -714,20 +674,18 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * Note: may use the currently `source'd file stream instead of stdin!
  * Manages the n_PS_READLINE_NL hack
  * TODO We need an OnReadLineCompletedEvent and drop this function */
-FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, uz *linesize, char const *string,
+FL int n_go_input(enum n_go_input_flags gif, char const *prompt_or_nil,
+         char **linebuf, uz *linesize, char const *string_or_nil,
          boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
 
-/* Read a line of input, with editing if interactive and possible, return it
- * savestr()d or NULL in case of errors or if an empty line would be returned.
- * This may only be called from toplevel (not during n_PS_ROBOT).
- * If string is set it is used as the initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility */
-FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
-            char const *string);
+/* Like go_input(), but return savestr()d result or NIL in case of errors or if
+ * an empty line would be returned.
+ * This may only be called from toplevel (not during n_PS_ROBOT) */
+FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt_or_nil,
+            char const *string_or_nil);
 
 /* Deal with loading of resource files and dealing with a stack of files for
  * the source command */
@@ -1346,7 +1304,7 @@ FL boole mx_sendout_mta_url(struct mx_url *urlp);
  * mail1 routine which does all the dirty work */
 FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
       struct mx_name *cc, struct mx_name *bcc, char const *subject,
-      struct attachment *attach, char const *quotefile);
+      struct mx_attachment *attach, char const *quotefile);
 
 /* `mail' and `Mail' commands, respectively */
 FL int c_sendmail(void *v);
@@ -1412,6 +1370,11 @@ FL BITENUM_IS(u32,n_shexp_state) n_shexp_parse_token(
  * *cp to NULL, otherwise advances *cp to over the parsed token */
 FL char *n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
       char const **cp);
+
+/* Another variant of parse_token_cp(): unquote the argument, ensure the result
+ * is "alone": after WS/IFS trimming STATE_STOP must be set, returns TRUM1 if
+ * not, TRU1 if STATE_OUTPUT is set, TRU2 if not, FAL0 on error */
+FL boole n_shexp_unquote_one(struct n_string *store, char const *input);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
  * ->s may be NULL if ->l is 0, if ->l EQ UZ_MAX su_cs_len(->s) is used.

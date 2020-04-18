@@ -613,8 +613,9 @@ _cc_flags_generic() {
       cc_check -Wno-unused-value
    fi
 
-   cc_check -fno-unwind-tables
    cc_check -fno-asynchronous-unwind-tables
+   cc_check -fno-common
+   cc_check -fno-unwind-tables
    cc_check -fstrict-aliasing
    if cc_check -fstrict-overflow && feat_yes DEVEL; then
       cc_check -Wstrict-overflow=5
@@ -640,7 +641,7 @@ _cc_flags_generic() {
       fi
    fi
 
-   # LD (+ dependend CC)
+   # LD (+ dependent CC)
 
    if feat_yes ASAN_ADDRESS; then
       _ccfg=${_CFLAGS}

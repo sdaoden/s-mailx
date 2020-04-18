@@ -1270,8 +1270,13 @@ nexttoken(char const *cp)
 }
 
 FL char const *
-myaddrs(struct header *hp) /* TODO */
+myaddrs(struct header *hp) /* TODO vanish! */
 {
+   /* TODO myaddrs()+myorigin() should vanish, these should simply be *from*
+    * TODO and *sender*, respectively.  So either it is *from* or *sender*,
+    * TODO or what we parsed as From:/Sender: from a template.  This latter
+    * TODO should set *from* / *sender* in a scope, we should use *sender*:
+    * TODO *sender* should be set to the real *from*! */
    boole issnd;
    struct mx_name *np;
    char const *rv, *mta;
@@ -1317,7 +1322,7 @@ jnodename:{
 }
 
 FL char const *
-myorigin(struct header *hp) /* TODO */
+myorigin(struct header *hp) /* TODO vanish! see myaddrs() */
 {
    char const *rv = NULL, *ccp;
    struct mx_name *np;

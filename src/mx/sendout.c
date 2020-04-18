@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/attachments.h"
 #include "mx/child.h"
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
@@ -114,9 +115,9 @@ static boole        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
 static s32 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static s32 a_sendout_attach_file(struct header *hp, struct attachment *ap,
+static s32 a_sendout_attach_file(struct header *hp, struct mx_attachment *ap,
       FILE *fo, boole force);
-static s32 a_sendout__attach_file(struct header *hp, struct attachment *ap,
+static s32 a_sendout__attach_file(struct header *hp, struct mx_attachment *ap,
       FILE *f, boole force);
 
 /* There are non-local receivers, collect credentials etc. */
@@ -124,7 +125,7 @@ static boole        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         boole signing_caps);
 
 /* Attach a message to the file buffer */
-static s32 a_sendout_attach_msg(struct header *hp, struct attachment *ap,
+static s32 a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap,
                FILE *fo);
 
 /* Generate the body of a MIME multipart message */
@@ -416,7 +417,7 @@ jleave:
 }
 
 static s32
-a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
+a_sendout_attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    boole force)
 {
    /* TODO of course, the MIME classification needs to performed once
@@ -430,7 +431,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    err = su_ERR_NONE;
 
    /* Is this already in target charset?  Simply copy over */
-   if(ap->a_conv == AC_TMPFILE){
+   if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       err = a_sendout__attach_file(hp, ap, fo, force);
       mx_fs_close(ap->a_tmpf);
       su_DBG( ap->a_tmpf = NIL; )
@@ -439,7 +440,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
 
    /* If we don't apply charset conversion at all (fixed input=output charset)
     * we also simply copy over, since it's the users desire */
-   if (ap->a_conv == AC_FIX_INCS) {
+   if (ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS) {
       ap->a_charset = ap->a_input_charset;
       err = a_sendout__attach_file(hp, ap, fo, force);
       goto jleave;
@@ -470,7 +471,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
          err = su_ERR_IO;
          break;
       }
-      if (ap->a_conv != AC_DEFAULT) {
+      if (ap->a_conv != mx_ATTACHMENTS_CONV_DEFAULT) {
          err = su_ERR_ILSEQ;
          break;
       }
@@ -483,7 +484,7 @@ jleave:
 }
 
 static s32
-a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
+a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    boole force)
 {
    FILE *fi;
@@ -496,7 +497,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    err = su_ERR_NONE;
 
    /* Either charset-converted temporary file, or plain path */
-   if (ap->a_conv == AC_TMPFILE) {
+   if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       fi = ap->a_tmpf;
       ASSERT(ftell(fi) == 0);
    }else if((fi = mx_fs_open(ap->a_path, "r")) == NIL){
@@ -515,8 +516,8 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       convert = mx_mimetype_classify_file(fi, (char const**)&ct,
             &charset, &do_iconv, TRU1);
 
-      if(charset == NULL || ap->a_conv == AC_FIX_INCS ||
-            ap->a_conv == AC_TMPFILE)
+      if(charset == NIL || ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS ||
+            ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
          do_iconv = FAL0;
       if(force && do_iconv){
          convert = CONV_TOB64;
@@ -578,7 +579,7 @@ jerr_header:
 
    err = a_sendout_body(fo, fi, convert);
 jerr_fclose:
-   if(ap->a_conv != AC_TMPFILE)
+   if(ap->a_conv != mx_ATTACHMENTS_CONV_TMPFILE)
       mx_fs_close(fi);
 
 jleave:
@@ -651,7 +652,7 @@ jleave:
 }
 
 static s32
-a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
+a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
 {
    struct message *mp;
    char const *ccp;
@@ -702,7 +703,7 @@ static s32
 make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    char const *contenttype, char const *charset, boole force)
 {
-   struct attachment *att;
+   struct mx_attachment *att;
    s32 err;
    NYD_IN;
 
@@ -2105,7 +2106,7 @@ jleave:
 
 FL int
 n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
-   struct mx_name *bcc, char const *subject, struct attachment *attach,
+   struct mx_name *bcc, char const *subject, struct mx_attachment *attach,
    char const *quotefile)
 {
    struct header head;

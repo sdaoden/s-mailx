@@ -701,11 +701,13 @@ c_endif(void *v){
 }
 
 FL boole
-n_cnd_if_is_skip(void){
+n_cnd_if_exists(void){
    boole rv;
    NYD2_IN;
 
-   rv = a_CCND_IF_IS_SKIP();
+   if((rv = a_CCND_IF_IS_ACTIVE()) && a_CCND_IF_IS_SKIP())
+      rv = TRUM1;
+
    NYD2_OU;
    return rv;
 }

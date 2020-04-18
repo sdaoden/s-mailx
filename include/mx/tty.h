@@ -42,6 +42,12 @@ EXPORT char *mx_tty_getuser(char const *query);
 EXPORT char *mx_tty_getpass(char const *query);
 #endif
 
+/* Via go_input_cp(); handles shell unquoting and returns the status of
+ * n_shexp_unquote_one() (so TRU2 for empty input) */
+EXPORT boole mx_tty_getfilename(struct n_string *store,
+      BITENUM_IS(u32,n_go_input_flags) gif, char const *prompt_or_nil,
+      char const *init_content_or_nil);
+
 /* Create the prompt and return its visual width in columns, which may be 0
  * if evaluation is disabled etc.  The data is placed in store.
  * xprompt is inspected only if prompt is enabled and no *prompt* evaluation

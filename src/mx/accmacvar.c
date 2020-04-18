@@ -1096,6 +1096,25 @@ jefrom:
             }
          }
          break;
+      case ok_v_verbose:{
+         u64 uib;
+
+         /* Initially a boolean variable, we want to keep compat forever */
+         if(**val != '\0')
+            su_idec_u64_cp(&uib, *val, 0, NIL);
+         else switch(n_poption & n_PO_V_MASK){
+         case 0: uib = 1; break;
+         case n_PO_V: uib = 2; break;
+         default: uib = 3; break;
+         }
+
+         switch(uib){
+         case 0: *val = su_empty; break;
+         case 1: *val = n_1; break;
+         case 2: *val = "2"; break;
+         default: *val = "3"; break;
+         }
+         }break;
       }
    }else if(avvm == a_AMV_VIP_SET_POST){
       switch(okey){
@@ -1155,6 +1174,14 @@ jefrom:
       case ok_b_skipemptybody:
          n_poption |= n_PO_E_FLAG;
          break;
+      case ok_v_SOCKS5_PROXY: /* <-> *socks-proxy* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vset(socks_proxy, *val));
+         break;
+      case ok_v_socks_proxy: /* <-> $SOCKS5_PROXY */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vset(SOCKS5_PROXY, *val));
+         break;
       case ok_b_typescript_mode:
          ok_bset(colour_disable);
          ok_bset(line_editor_disable);
@@ -1170,27 +1197,25 @@ jefrom:
          }
          break;
       case ok_v_verbose:{
+         /* Work out what the PRE VIP did */
          u32 i;
 
          /* Initially a boolean variable, we want to keep compat forever */
-         if(**val != '\0'){
-            u64 uib;
+         i = 0;
+         switch(**val){
+         default: i |= n_PO_VVV; /* FALLTHRU */
+         case '2': i |= n_PO_VV; /* FALLTHRU */
+         case '1': i |= n_PO_V; /* FALLTHRU */
+         case '\0': break;
+         }
 
-            su_idec_u64_cp(&uib, *val, 0, NIL);
-            if(uib == 0)
-               goto jverbose_clear;
-            uib = MIN(uib, 3);
-            i = n_PO_V;
-            while(--uib != 0)
-               i |= i << 1; /* header MCTA()s they are successive */
+         if(i != 0){
+            n_poption &= ~n_PO_V_MASK;
+            n_poption |= i;
+            if(!(n_poption & n_PO_D))
+               su_log_set_level(su_LOG_INFO);
          }else
-            i = ((n_poption << 1) | n_PO_V);
-
-         i &= n_PO_V_MASK;
-         n_poption &= ~n_PO_V_MASK;
-         n_poption |= i;
-         if(!(n_poption & n_PO_D))
-            su_log_set_level(su_LOG_INFO);
+            ok_vclear(verbose);
          }break;
       }
    }else{
@@ -1236,8 +1261,15 @@ jefrom:
       case ok_b_skipemptybody:
          n_poption &= ~n_PO_E_FLAG;
          break;
+      case ok_v_SOCKS5_PROXY: /* <-> *socks-proxy* */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vclear(socks_proxy));
+         break;
+      case ok_v_socks_proxy: /* <-> $SOCKS5_PROXY */
+         if(!(n_pstate & n_PS_ROOT))
+            n_PS_ROOT_BLOCK(ok_vclear(SOCKS5_PROXY));
+         break;
       case ok_v_verbose:
-jverbose_clear:
          n_poption &= ~n_PO_V_MASK;
          if(!(n_poption & n_PO_D))
             su_log_set_level(n_LOG_LEVEL);

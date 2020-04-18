@@ -15,9 +15,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\"@ S-nail v14.9.17 / 2020-02-01
-.Dd February 01, 2020
-.ds VV \\%v14.9.17
+.\"@ S-nail v14.9.18 / 2020-04-18
+.Dd April 18, 2020
+.ds VV \\%v14.9.18
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -679,6 +679,7 @@
 .Mx -anchor-spass Ev "PATH"
 .Mx -anchor-spass Ev "POSIXLY_CORRECT"
 .Mx -anchor-spass Ev "SHELL"
+.Mx -anchor-spass Ev "SOCKS5_PROXY"
 .Mx -anchor-spass Ev "SOURCE_DATE_EPOCH"
 .Mx -anchor-spass Ev "TERM"
 .Mx -anchor-spass Ev "TMPDIR"
@@ -1161,16 +1162,16 @@ aka\&
 opened will be in read-only mode.
 .Mx
 .It Fl r Ar from-addr , Fl Fl from-address Ns =..
-Whereas the source address that appears in the
+The RFC 5321 reverse-path used for relaying and delegating messages to
+its destination(s), for example to report delivery errors, is normally
+derived from the address which appears in the
 .Va from
-header of a message (or in the
-.Va sender
-header if the former contains multiple addresses) is honoured by the
-built-in SMTP transport, it is not used by a file-based
+header (or, if that contains multiple addresses, in
+.Va sender ) .
+A file-based aka local executable
 .Va mta
-(Mail-Transfer-Agent) for the RFC 5321 reverse-path used for relaying
-and delegating a message to its destination(s), for delivery errors
-etc., but it instead uses the local identity of the initiating user.
+(Mail-Transfer-Agent), however, instead uses the local identity of the
+initiating user.
 .Pp
 When this command line option is used the given single addressee
 .Ar from-addr
@@ -2401,7 +2402,7 @@ is available, all that needs to be done is to set some variables:
 .Bd -literal -offset indent
 ? set smime-sign-cert=ME@exam.ple.paired \e
     smime-sign-digest=SHA512 \e
-    smime-sign
+    smime-sign from=myname@my.host
 .Ed
 .Pp
 Variables of interest for S/MIME in general are
@@ -2568,6 +2569,8 @@ and
 .Ql HOST
 chains from above, but instead use the corresponding values from the
 message that is being worked on.
+If no address matches we assume and use the setting of
+.Va from .
 In unusual cases multiple and different
 .Ql USER
 and
@@ -2577,7 +2580,8 @@ unusual cases become possible.
 The usual case is as short as:
 .Bd -literal -offset indent
 set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
-    smime-sign smime-sign-cert=+smime.pair
+    smime-sign smime-sign-cert=+smime.pair \e
+    from=myname@my.host
 .Ed
 .Pp
 The section
@@ -7928,7 +7932,7 @@ No special handling of compressed files is performed.
 .Pp
 In interactive mode the user is consecutively asked for the filenames of
 the processed parts.
-For convinience saving of each part may be skipped by giving an empty
+For convenience saving of each part may be skipped by giving an empty
 value, the same result as writing it to
 .Pa /dev/null .
 Shell piping the part content by specifying a leading vertical bar
@@ -8640,9 +8644,9 @@ prefaced by the message header fields
 and followed by the attachment list, if any.
 .Mx
 .It Ic ~Q
-Read in the given / current message(s) according to the algorithm of
-.Va quote ,
-honouring
+Read in the given / current message(s) using the algorithm of
+.Va quote
+(except that is implicitly assumed, even if not set), honouring
 .Va quote-add-cc .
 .Mx
 .It Ic ~q
@@ -9818,6 +9822,11 @@ According to that RFC setting the
 variable is required if
 .Va \&\&from
 contains more than one address.
+\*(ID Please expect automatic management of the
+.Va from
+and
+.Va sender
+relationship.
 Dependent on the context these addresses are handled as if they were in
 the list of
 .Ic alternates .
@@ -9826,14 +9835,14 @@ If a file-based MTA is used, then
 .Va \&\&from
 (or, if that contains multiple addresses,
 .Va sender )
-can nonetheless be used the envelope sender address at the MTA protocol
-level (the RFC 5321 reverse-path), either via the
+can nonetheless be used as the envelope sender address at the MTA
+protocol level (the RFC 5321 reverse-path), either via the
 .Fl r
 command line option (without argument; see there for more), or by setting
 .Va r-option-implicit .
 .Pp
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine) then either this variable or
+a dialup machine), then either this variable or
 .Va hostname
 (\*(IN a SMTP-based
 .Va mta
@@ -11288,12 +11297,9 @@ requires \*(IN.
 .It Va posix
 \*(BO This flag enables POSIX mode, which changes behaviour of \*(UA
 where that deviates from standardized behaviour.
-It will be set implicitly before the
-.Sx "Resource files"
-are loaded if the environment variable
-.Ev POSIXLY_CORRECT
-is set, and adjusting any of those two will be reflected by the other
-one implicitly.
+It is automatically squared with the environment variable
+.Ev POSIXLY_CORRECT ,
+changing the one will adjust the other.
 The following behaviour is covered and enforced by this mechanism:
 .Pp
 .Bl -bullet -compact
@@ -11630,20 +11636,21 @@ if set without a value it defaults to
 .Dq yes .
 .Mx
 .It Va reply-to-swap-in
-Standards like DKIM and (in conjunction with) DMARC brought address
-rewriting of sender addresses like
+Standards like DKIM and (in conjunction with) DMARC caused many
+.Sx "Mailing lists"
+to use sender address rewriting in the style of
 .Ql Name via List <list@address> ,
-with the original sender address being often placed in
+where the original sender address often being placed in
 .Ql Reply-To: .
 If this is set and a
 .Ql Reply-To:
-exists then it is used in place of the pretended sender.
-It works independently from
+exists then that is used in place of the pretended sender.
+This works independently from
 .Va reply-to-honour .
-The optional value offers more fine-grained control about when swapping
-shall be used, it is a comma-separated list strings, for now supported is
+The optional value, a comma-separated list of strings, offers more
+fine-grained control on when swapping shall be used; for now supported is
 .Va mlist ,
-which will cause swapping if the sender is a mailing-list as defined by
+here swapping occurs if the sender is a mailing-list as defined by
 .Ic mlist .
 .Mx
 .It Va rfc822-body-from_
@@ -11749,6 +11756,11 @@ responsible for the actual transmission of the message.
 This field should normally not be used unless the
 .Va from
 field contains more than one address, on which case it is required.
+\*(ID Please expect automatic management of the
+.Va from
+and
+.Va sender
+relationship.
 Dependent on the context this address is handled as if it were in
 the list of
 .Ic alternates .
@@ -11928,8 +11940,9 @@ will be inspected for messages which become encrypted.
 \*(BO\*(OP Causes \*(UA to refuse sending unencrypted messages.
 .Mx
 .It Va smime-sign
-\*(BO\*(OP S/MIME sign outgoing messages with the user's private key
-and include the user's certificate as a MIME attachment.
+\*(BO\*(OP S/MIME sign outgoing messages with the user's
+.Pf ( Va from )
+private key and include the users certificate as a MIME attachment.
 Signing a message enables a recipient to verify that the sender used
 a valid certificate,
 that the email addresses in the certificate match those in the message
@@ -11954,7 +11967,7 @@ is always derived from the value of
 .Va from
 (or, if that contains multiple addresses,
 .Va sender ) .
-For the purpose of encryption the recipient's public encryption key
+For the purpose of encryption the recipients public encryption key
 (certificate) is expected; the command
 .Ic certsave
 can be used to save certificates of signed messages (the section
@@ -11970,29 +11983,32 @@ and
 of the message, which are searched for addresses for which such
 a variable is set.
 \*(UA always uses the first address that matches,
-so if the same message is sent to more than one of the user's addresses
+so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
 .Pp
-For signing and decryption purposes it is possible to use encrypted
-keys, and the pseudo-host(s)
+Password-encrypted keys may be used for signing and decryption.
+Automated password lookup is possible via the
+.Dq pseudo-hosts
 .Ql USER@HOST.smime-cert-key
-for the private key
-(and
+for the private key, and
 .Ql USER@HOST.smime-cert-cert
-for the certificate stored in the same file)
-will be used for performing any necessary password lookup,
-therefore the lookup can be automated via the mechanisms described in
-.Sx "On URL syntax and credential lookup" .
+for the certificate stored in the same file.
 For example, the hypothetical address
 .Ql bob@exam.ple
 could be driven with a private key / certificate pair path defined in
 .Va \&\&smime-sign-cert-bob@exam.ple ,
-and needed passwords would then be looked up via the pseudo hosts
+and the needed passwords would then be looked up as
 .Ql bob@exam.ple.smime-cert-key
-(and
-.Ql bob@exam.ple.smime-cert-cert ) .
+and
+.Ql bob@exam.ple.smime-cert-cert .
+When decrypting the value of
+.Va from
+will be tried as a fallback to provide the necessary
+.Ql USER@HOST .
 To include intermediate certificates, use
 .Va smime-sign-include-certs .
+The possible password sources are documented in
+.Sx "On URL syntax and credential lookup" .
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
@@ -12201,6 +12217,9 @@ establishing a socket connection before forcing
 are proxied through it, except for the single DNS name lookup necessary
 to resolve the proxy URL (unnecessary when given an already resolved IP
 address).
+It is automatically squared with the environment variable
+.Ev SOCKS5_PROXY ,
+changing the one will adjust the other.
 This example creates a local SOCKS5 proxy on port 10000 that forwards to
 the machine
 .Ql HOST
@@ -13308,9 +13327,8 @@ looking for commands, for example
 .Ql /bin:/usr/bin:/usr/local/bin .
 .Mx
 .It Ev POSIXLY_CORRECT
-This variable is automatically looked for upon startup, see
-.Va posix
-for more.
+This environment entry is automatically squared with
+.Va posix .
 .Mx
 .It Ev SHELL
 The shell to use for the commands
@@ -13321,6 +13339,10 @@ the
 .Sx "COMMAND ESCAPES"
 and when starting subprocesses.
 A default shell is used if this environment variable is not defined.
+.Mx
+.It Ev SOCKS5_PROXY
+This environment entry is automatically squared with
+.Va socks-proxy .
 .Mx
 .It Ev SOURCE_DATE_EPOCH
 Specifies a time in seconds since the Unix epoch (1970-01-01) to be
@@ -14331,7 +14353,7 @@ is of interest for verification only):
 ? set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
     smime-sign-cert=ME@HERE.com.paired \e
     smime-sign-digest=SHA512 \e
-    smime-sign
+    smime-sign from=myname@my.host
 .Ed
 .Ss "Using CRLs with S/MIME or TLS"
 \*(OP Certification authorities (CAs) issue certificate revocation
@@ -14526,7 +14548,7 @@ Or second, terminal libraries (see
 .Ic bind ,
 .Va termcap )
 may report different codes than the terminal really sends, rendering
-bindings disfunctional because expected and received data do not match; the
+bindings dysfunctional because expected and received data do not match; the
 .Va verbose
 listing of
 .Ic bind Ns
@@ -14883,6 +14905,9 @@ mail, was written in 1978 by Kurt Shoens and developed as part of the
 .Bx
 .Ux
 distribution until 1995.
+This manual page is derived from
+.Dq The Mail Reference Manual
+that Kurt Shoens wrote for Mail 1.3, included in 3BSD in 1980.
 The common
 .Ux
 and
@@ -14899,9 +14924,6 @@ noticeably by Christos Zoulas in
 Based upon this Nail, later Heirloom Mailx, was developed by Gunnar
 Ritter in the years 2000 until 2008.
 Since 2012 S-nail is maintained by Steffen Nurpmeso.
-This man page is derived from
-.Dq The Mail Reference Manual
-that was originally written by Kurt Shoens.
 .Pp
 Electronic mail exchange in general is a concept even older.
 The earliest well documented electronic mail system was part of the

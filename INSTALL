@@ -251,19 +251,17 @@ Thank you!
 ----------------------------------------
 
 - All systems:
-  * I have turned off -Wstrict-overflow warnings unless we are debug
-    enabled (talking about OPT_AUTOCC=yes here): too noisy on some gcc.
+  * Running the tests on a NFS filesystem may cause false negatives.
+    (Seen on the SunOS 5.11 OpenCSW machines, in [pipe_handlers]
+    failure due to hard link count mismatch since NFS links the file
+    to some other name, too, and that lingers too long, reproducibly).
 
-  * There are warnings on unused returns from some I/O functions.
-    These will vanish after the large v15 I/O and MIME rewrite.
-
-  * Some "XYZ may be used uninitialized" warnings are logically false.
-
-  * Running the tests on a NFS filesystem might cause some false
-    negatives.  (Seen on the SunOS 5.11 OpenCSW machines, in
-    [pipe_handlers] failure due to hard link count mismatch since NFS
-    links the file to some other name, too, and that lingers too long,
-    reproducibly).
+  * Various warnings for diverse compiler versions etc.  This is a race
+    which cannot be won, so i make the software compile and test under
+    each compiler version i get my fingers at, and of course i fix bugs
+    when i see them.
+    The warnings on unused returns from some I/O functions will vanish
+    after the large v15 I/O and MIME rewrite.
 
 - All 32-bit systems:
   * There _may_ be warnings about format strings, like, e.g.,
@@ -284,11 +282,29 @@ Development:
 
 Frequently:
 
-. ArchLinux <https://www.archlinux.org/> (x86-64).
+. AlpineLinux <https://www.alpinelinux.org> (x86-64: edge).
 
-. FreeBSD <https://www.freebsd.org/> (11.3-RC2/x86; 12.1/x86).
+. ArchLinux <https://www.archlinux.org/> (<2019>,current).
 
-. OpenBSD <https://www.openbsd.org/> (6.5/x86; 6.6/x86).
+. FreeBSD <https://www.freebsd.org/> (x86: 11.{2,3-RC2},12.1).
+  - v11. series test errors: see DragonFly.
+
+. OpenBSD <https://www.openbsd.org/> (x86: 6.[456]).
+
+Pre-release, and other landmarks:
+
+. DragonFly BSD <https://www.dragonflybsd.org/> (5.{6.1,8.0}).
+  - The tests [iconv_mbyte_base64]-{4,8} fail because the C function
+    iswprint(3) falsely claims that U+FF08 and U+FF09 (FULLWIDTH
+    LEFT and RIGHT PARENTHESIS, respectively) are not printable,
+    causing replacements.  This is a known bug, see
+      <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
+
+. NetBSD <https://www.netbsd.org/> (amd64: 9.0).
+
+. OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
+  @ Thanks to Jean-Marc Pigeon for generously providing access to
+    a VZGOT on the most "beefy" machine i have ever worked on! ^_^
 
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
@@ -311,26 +327,6 @@ Frequently:
 
   - SunOS 5.10 and 5.11 NFS fails [pipe_handlers] tests 5, 6 and 7,
     as said in "All systems" above.
-
-Pre-release, and other landmarks:
-
-. AlpineLinux <https://www.alpinelinux.org> (edge/x86-64).
-
-. DragonFly BSD <https://www.dragonflybsd.org/> (5.6.1/x86-64).
-  - The tests [iconv_mbyte_base64]-{4,8} fail because the C function
-    iswprint(3) falsely claims that U+FF08 and U+FF09 (FULLWIDTH
-    LEFT and RIGHT PARENTHESIS, respectively) are not printable,
-    causing replacements.  This is a known bug, see
-      <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
-
-. NetBSD <https://www.netbsd.org/> (8.0_RC1/i386).
-  - Still not have setup all my environment after having lost all,
-    so not tested recently.
-  (- Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.))
-
-. OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
-  @ Thanks to Jean-Marc Pigeon for generously providing access to
-    a VZGOT on the most "beefy" machine i have ever worked on! ^_^
 
 . Void Linux <https://www.voidlinux.org/> (x86)
   - Still not have setup all my environment after having lost all,

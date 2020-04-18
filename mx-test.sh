@@ -45,7 +45,7 @@ fi
 ARGS='-Sv15-compat -:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok'
    ARGS="${ARGS}"' -Smemdebug -Sstealthmua'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
-   ARGS="${ARGS}"' -Smailcap-disable'
+   ARGS="${ARGS}"' -Smailcap-disable -Smimetypes-load-control='
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
    ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
@@ -7642,7 +7642,8 @@ t_cmd_escapes() {
    echo 'included file' > ./.ttxt
    { t__x1_msg && t__x2_msg && t__x3_msg &&
       t__gen_msg from 'ex4@am.ple' subject sub4 &&
-      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5; } > ./.tmbox
+      t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
+      t__gen_mimemsg from 'ex6@am.ple' subject sub6; } > ./.tmbox
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
@@ -7720,14 +7721,9 @@ t_cmd_escapes() {
 21: ~m 3
 !m 3
 !:echo 21:$?/$^ERRNAME
-28-34: ~Q; 28: ~Q
-!Q
-!:echo 28:$?/$^ERRNAME
-29: ~Q 1 3
-!Q 1 3
-!:echo 29:$?/$^ERRNAME
-set quote
-!:set quote
+!: # Initially ~Q was _exactly_ like
+28,29 nothing, 30-34: ~Q
+!:echo quote=<$quote>
 30: ~Q
 !Q
 !:echo 30:$?/$^ERRNAME
@@ -7781,19 +7777,40 @@ and i ~w rite this out to ./.tmsg
 ~!echo shell command output
 ~:echo shell:$?/$^ERRNAME
 ~:wysh set escape=$x
+50:F
+!F 6
+!:echo 50 was F:$?/$^ERRNAME
+51:f
+!f 6
+!:echo 51 was f:$?/$^ERRNAME
+52:M
+!M 6
+!:echo 52 was M:$?/$^ERRNAME
+53:m
+!m 6
+!:echo 53 was m:$?/$^ERRNAME; set quote
+54:Q
+!Q 6
+!:echo 54 was Q:$?/$^ERRNAME
+55:U
+!U 6
+!:echo 55 was U:$?/$^ERRNAME
+56:u
+!u 6
+!:echo 56 was u:$?/$^ERRNAME
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
          -Sescape=! -Sindentprefix=' |' \
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '1820203910 6036'
+   check 2 - "${MBOX}" '774822337 7613'
    if have_feat uistrings; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS]'
    fi
-   check 3 - ./.tmsg '2308114568 4467'
+   check 3 - ./.tmsg '1991699357 4453'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7818,7 +7835,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '2359405542 6237'
+   check 4 0 "${MBOX}" '2120083250 7814'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
@@ -9598,6 +9615,7 @@ _EOT
    echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 "${MBOX}"
    check 3 0 "${MBOX}" '4224630386 228'
 
+   # I hate it: directly uses cat(1) and mv(1) ..
    printf '#
 text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
       test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
@@ -9627,6 +9645,67 @@ text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
    check 5 - ./.terr '4294967295 0'
    check 6 - ./.terrmc '2376112102 6'
    check 7 - ./.tasy '3913344578 37' async
+
+   # "Binary data"; ensure all possible temporary file / nametemplate
+   # etc. paths are taken: avoid 2nd e7a60732c1906aefe4755fd61c5ffa81eeca0af0
+
+   ${rm} -f "${MBOX}"
+   printf 'dubo€om' > ./.tatt.pdf
+   printf 'du' | ${MAILX} ${ARGS} -a ./.tatt.pdf -s test "${MBOX}"
+   check 8 0 "${MBOX}" '3444709420 644'
+
+   printf '#
+# stdin
+application/pdf; echo p-1-1\\;cat\\;echo p-1-2;  test=[ "$XY" = "" ]
+# tmpfile, no template
+application/pdf; echo p-2-1\\;< %%s cat\\;echo p-2-2;  test  =  [ "$XY" = two ]
+# tmpfile, template
+application/pdf; echo p-3-1\\;< %%s cat\\;echo p-3-2; test=[ "$XY" = three ];\\
+   nametemplate=%%s.txt
+# tmpfile, template, async
+application/pdf; { file=%%s \\; echo p-4-1 = ${file##*.}\\;\\
+         </dev/null cat %%s\\;echo p-4-2\\; } > ./.tx\\; mv -f ./.tx ./.tasy;\\
+      test=[ "$XY" = four ]  ; nametemplate  =   %%s.txt  ; x-mailx-async
+# copious,stdin
+application/pdf; echo p-5-1\\;cat\\;echo p-5-2;  test=[ "$XY" = 1 ];\\
+   copiousoutput
+# copious, tmpfile, no template
+application/pdf; echo p-6-1\\;< %%s cat\\;echo p-6-2;  test = [ "$XY" = 2 ];\\
+   copiousoutput
+# copious, tmpfile, template
+application/pdf; echo p-7-1\\;< %%s cat\\;echo p-7-2;test = [ "$XY" = 3 ];\\
+   nametemplate=%%s.txt; copiousoutput
+   ' > ./.tmailcap
+
+   </dev/null XY= MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '#
+\echo =1
+\mimeview
+\echo =2
+\environ set XY=two
+\mimeview
+\echo =3
+\environ set XY=three
+\mimeview
+\echo =4
+\environ set XY=four
+\mimeview
+\echo =5
+\environ set XY=1
+\type
+\echo =6
+\environ set XY=2
+\type
+\echo =7
+\environ set XY=3
+\type
+\echo =8
+' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 9 0 ./.tall '2494652433 3767'
+   check 10 - ./.terr '4294967295 0'
+   check 11 - ./.tasy '842146666 27' async
 
    t_epilog "${@}"
 }
@@ -9686,12 +9765,16 @@ t_s_mime() {
 
    ${cat} <<-_EOT > ./.t.conf
 		[req]
-		default_bits = 1024
-		default_keyfile = keyfile.pem
+		x509_extensions = extensions
 		distinguished_name = req_distinguished_name
 		attributes = req_attributes
 		prompt = no
-		output_password =
+		output_password = Pacem_in_terris
+
+		[extensions]
+		basicConstraints = CA:FALSE
+		# Needs a CA for that keyUsage = digitalSignature
+		extendedKeyUsage = emailProtection
 
 		[req_distinguished_name]
 		C = GB
@@ -9699,92 +9782,127 @@ t_s_mime() {
 		L = rainbow
 		O = S-nail
 		OU = S-nail.smime
-		CN = S-nail.test
+		CN = S-nail.test2
 		emailAddress = test@localhost
 
 		[req_attributes]
-		challengePassword =
+		challengePassword = hi ca it is me me me
 	_EOT
-   openssl req -x509 -nodes -days 3650 -config ./.t.conf \
-      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
-   check_ex0 0
-   ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
-   # Sign/verify
-   echo bla | ${MAILX} ${ARGS} \
-      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
-      -Ssmime-sign-digest=sha1 \
-      -s 'S/MIME test' ./.VERIFY
-   check_ex0 1-estat
-   ${awk} '
-      BEGIN{ skip=0 }
-      /^Content-Description: /{ skip = 2; print; next }
-      /^$/{ if(skip) --skip }
-      { if(!skip) print }
-   ' \
-      < ./.VERIFY > "${MBOX}"
-   check 1 - "${MBOX}" '335634014 644'
+   doit() {
+      _z=${1}
 
-   printf 'verify\nx\n' |
-   ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
-      -R -f ./.VERIFY >>${ERR} 2>&1
-   check_ex0 2
+      if [ "${_z}" = 0 ]; then
+         _pass= _osslreq=-nodes _ossl=
+      else
+         _pass=Pacem_in_terris _osslreq= _ossl='-passin pass:'${_pass}
+      fi
 
-   openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
-   check_ex0 3
+      ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
 
-   # (signing +) encryption / decryption
+      openssl req ${_osslreq} ${_ossl} -x509 -days 3650 -config ./.t.conf \
+         -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
+      check_ex0 ${_z}
+      _z=`add ${_z} 1`
 
-   echo bla |
-   ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Ssmime-sign-digest=sha1 \
-      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
-      -s 'S/MIME test' recei@ver.com
-   check_ex0 4-estat
-   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 4 - "${MBOX}" '2359655411 336'
+      ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
-   printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
-   ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-ca-file=./.tcert.pem \
-      -Ssmime-sign-cert=./.tpair.pem \
-      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check_ex0 5-estat
-   ${awk} '
-      BEGIN{ skip=0 }
-      /^Content-Description: /{ skip = 2; print; next }
-      /^$/{ if(skip) --skip }
-      { if(!skip) print }
-   ' \
-      < ./.DECRYPT > "${MBOX}"
-   check 5 - "${MBOX}" '2602978204 940'
+      # Sign/verify
+      echo bla | ${MAILX} ${ARGS} \
+         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign-digest=sha1 \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z}-estat
+      ${awk} '
+         BEGIN{ skip=0 }
+         /^Content-Description: /{ skip = 2; print; next }
+         /^$/{ if(skip) --skip }
+         { if(!skip) print }
+      ' \
+         < ./.VERIFY > "${MBOX}"
+      check ${_z} - "${MBOX}" '335634014 644'
+      _z=`add ${_z} 1`
 
-   (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
-         openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
-   check_ex0 6
+      printf 'verify\nx\n' |
+      ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
+         -R -f ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z} # XXX pipe
+      _z=`add ${_z} 1`
 
-   ${rm} ./.ENCRYPT
-   echo bla | ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Sfrom=test@localhost \
-      -s 'S/MIME test' recei@ver.com
-   check_ex0 7-estat
-   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-   check 7 - "${MBOX}" '2359655411 336'
+      openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
+      check_ex0 ${_z}
+      _z=`add ${_z} 1`
 
-   ${rm} ./.DECRYPT
-   printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-      -Smta=test://./.ENCRYPT \
-      -Ssmime-sign-cert=./.tpair.pem \
-      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-   check 8 0 ./.DECRYPT '2453471323 431'
+      # (signing +) encryption / decryption
+      echo bla |
+      ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Ssmime-sign-digest=sha1 \
+         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' recei@ver.com
+      check_ex0 ${_z}-estat
+      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2359655411 336'
+      _z=`add ${_z} 1`
 
-   openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT >>${ERR} 2>&1
-   check_ex0 9
+      printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
+      ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-ca-file=./.tcert.pem \
+         -Ssmime-sign-cert=./.tpair.pem \
+         -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+      check_ex0 ${_z}-estat
+      ${awk} '
+         BEGIN{ skip=0 }
+         /^Content-Description: /{ skip = 2; print; next }
+         /^$/{ if(skip) --skip }
+         { if(!skip) print }
+      ' \
+         < ./.DECRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2602978204 940'
+      _z=`add ${_z} 1`
+
+      (openssl smime -decrypt ${_ossl} -inkey ./.tkey.pem -in ./.ENCRYPT |
+            openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
+      check_ex0 ${_z} # XXX pipe..
+      _z=`add ${_z} 1`
+
+      ${rm} ./.ENCRYPT
+      echo bla | ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Sfrom=test@localhost \
+         -S password-test@localhost.smime-cert-key=${_pass} \
+         -s 'S/MIME test' recei@ver.com
+      check_ex0 ${_z}-estat
+      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+      check ${_z} - "${MBOX}" '2359655411 336'
+      _z=`add ${_z} 1`
+
+      ${rm} ./.DECRYPT
+      # Note: deduce from *sign-cert*, not from *from*!
+      printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
+         -Smta=test://./.ENCRYPT \
+         -Ssmime-sign-cert-recei@ver.com=./.tpair.pem \
+         -S password-recei@ver.com.smime-cert-key=${_pass} \
+         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+      check ${_z} 0 ./.DECRYPT '2453471323 431'
+      _z=`add ${_z} 1`
+
+      openssl smime ${_ossl} -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT \
+         >>${ERR} 2>&1
+      check_ex0 ${_z}
+
+      unset _z _pass _osslreq _ossl
+   }
+
+   doit 0
+   doit 10
 
    t_epilog "${@}"
 }
@@ -9815,6 +9933,17 @@ t_z() {
 
 # Test support {{{
 t__gen_msg() {
+   t___gen_msg '' "${@}"
+}
+
+t__gen_mimemsg() {
+   t___gen_msg 1 "${@}"
+}
+
+t___gen_msg() {
+   ismime=${1}
+   shift
+
    t___header() {
       printf '%s: ' ${1}
       case "${3}" in
@@ -9850,7 +9979,38 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
       shift 2
    done
 
-   printf '\n%s\n\n' "${body}"
+   if [ -z "${ismime}" ]; then
+      printf '\n%s\n\n' "${body}"
+   else
+      printf 'MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%%bo@oo>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+%s
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>%s<BR></BODY></HTML>
+
+--=BOUNDIN=--
+
+--=BOUNDOUT=
+Content-Type: text/plain
+
+Golden Brown
+--=BOUNDOUT=--
+
+' "${body}" "${body}"
+   fi
 }
 
 t__x1_msg() {
