@@ -24,31 +24,31 @@ NOTES, ChangeLog (packager-affine)
 
 - Warning: we _will_ have v15-compat=yes as a default in v14.10!
 
-- Fix for `~f'#?, `~m'#?, `~Q'#?, `~U'#? and `~u'#?:
+- Fix for `~f'#327, `~m'#333, `~Q'#335, `~U'#341 and `~u'#342:
   no longer include all MIME parts (bug since at least v14.9.16).
 
-- Fix for handling of "The Mailcap files"#?:
+- Fix for handling of "The Mailcap files"#36:
   a single copiousoutput/x-mailx-tmpfile-fill|nametemplate
   combination was falsely handled, mostly affecting binary file
   formats (which got broken by applied character set conversion).
 
 - Fix for automatic S/MIME encrypted key / certificate password
   lookup: used $LOGNAME@[no hostname].smime-cert-key as
-  a fallback, instead of using the value of *from*#?.
+  a fallback, instead of using the value of *from*#430.
   (Noctambule)
 
-- `~R'#? and `~r'#?, as well as all prompts which expect
+- `~R'#337 and `~r'#338, as well as all prompts which expect
   file names and did not yet do so, expect shell-quoted names.
-  (See "Shell-style argument quoting"#?.)
+  (See "Shell-style argument quoting"#23.)
 
 ChangeLog
 ^^^^^^^^^
 
-- `~Q'#? now acts as if *quote*#? is set.
+- `~Q'#335 now acts as if *quote*#518 is set.
   Does not really make sense otherwise.
 
-- New environment variable $SOCKS5_PROXY#? is tight together
-  with *socks-proxy*#?: setting the one affects the other.
+- New environment variable $SOCKS5_PROXY#633 is tight together
+  with *socks-proxy*#567: setting the one affects the other.
   This $SOCKS5_PROXY is introduced by FreeBSD to affect all
   programs which are capable to proxy via SOCKS5 (it seems).
   (Kyle Evans)
@@ -539,10 +539,10 @@ NOTES, ChangeLog (packager-affine)
   that a TLS secured channel is active, when using this method.
   (We now *verbose*#605 log the used TLS version and cipher, too.)
 
-- *imap-delim*#664 works again as advertised!  This was broken in
+- *imap-delim*#665 works again as advertised!  This was broken in
   [1b9897a9] ((BWDIC!) Fix *imap-delim* behaviour.., 2017-07-01),
   and i think i was pretty much irritated by then.  Sorry!!
-  While here, take *imap-delim* into account for `imapcodec'#660.
+  While here, take *imap-delim* into account for `imapcodec'#661.
   (Ralph Keller).
 
 ChangeLog
@@ -1146,14 +1146,14 @@ ChangeLog
     x -> q -> q -> quit
 
 - *editalong*#410 can have a value, say "set editalong=v" and it
-  will startup $VISUAL#637 not $EDITOR#615.
+  will startup $VISUAL#638 not $EDITOR#615.
 
 - Path separators are now normalized, thus all places, including
   MLE tab-expansion ("On terminal control and line editor"#17),
   can expand something like "///t*////t*".
 
 - -E#64 flag will not be obsoleted.
-  -D#62 flag has been reintroduced (sets *disconnected*#661 right
+  -D#62 flag has been reintroduced (sets *disconnected*#662 right
   away, was not reinstantiated with the rest of the IMAP support.)
 
 git(1) shortlog: Steffen Nurpmeso (71)
@@ -1330,7 +1330,7 @@ NOTES, ChangeLog (packager-affine)
             EE19 E1C1 F2F7 054F 8D39  54D8 3089 64B5 1883 A0DD
     uid                  Steffen Nurpmeso <steffen@sdaoden.eu>
 
-- $TMPDIR#635 no longer honoured for root runs.  (Solar Designer)
+- $TMPDIR#636 no longer honoured for root runs.  (Solar Designer)
 
 - *mime-encoding*#471 defaults to quoted-printable again.  (Cág)
 
@@ -1747,7 +1747,7 @@ NOTES, ChangeLog (packager-affine)
   o The LD_LIBRARY_PATH etc. building processes will skip any path
     which contains the string "fakeroot".  (Hilko Bengen)
 
-  o We honour a set $SOURCE_DATE_EPOCH#633 environment variable to
+  o We honour a set $SOURCE_DATE_EPOCH#634 environment variable to
     an extend that allows reproducible tests, which is why the
     repository gained a [test-out] branch with some expected plain
     text outputs.  (reproducible-builds.org; Colin Watson)
@@ -2043,7 +2043,7 @@ NOTES, ChangeLog (packager-affine)
 - All commands with the string "codec" in their name use different
   argument quoting, namely none at all, please read
   "Raw data arguments for codec commands"#25.
-  This means that `urlcodec'#298 (and `imapcodec'#660) has
+  This means that `urlcodec'#298 (and `imapcodec'#661) has
   slightly changed semantics.
   And, while here: there is a new `shcodec'#270, too.
 
@@ -2152,7 +2152,7 @@ NOTES, ChangeLog (packager-affine)
 
 - `mimeview'#226 must now be used explicitly to look at any
   non-text MIME part, for normal display etc. purposes we only
-  support "copiousoutput"#648 MIME handlers.
+  support "copiousoutput"#649 MIME handlers.
 
 - New *socks-proxy*#567 can be used to proxy all network traffic
   over a SOCKS5 proxy.  (Gaetan Bisson)
