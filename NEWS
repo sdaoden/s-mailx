@@ -6,6 +6,71 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.18 ("It is spring time, what a bliss"), 2020-04-18
+--------------------------------------------------------
+
+Some bugfixes and tweaks that accumulated over the months.
+
+Credits, in order of commit appearance: Jens Schleusener,
+Noctambule, Kyle Evans.
+
+It is courtesy to give a special credit to Coverity.com.
+(<https://scan.coverity.com/projects/s-nail>, project 444.)
+
+We welcome Noctambule and Kyle Evans in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Warning: we _will_ have v15-compat=yes as a default in v14.10!
+
+- Fix for `~f'#?, `~m'#?, `~Q'#?, `~U'#? and `~u'#?:
+  no longer include all MIME parts (bug since at least v14.9.16).
+
+- Fix for handling of "The Mailcap files"#?:
+  a single copiousoutput/x-mailx-tmpfile-fill|nametemplate
+  combination was falsely handled, mostly affecting binary file
+  formats (which got broken by applied character set conversion).
+
+- Fix for automatic S/MIME encrypted key / certificate password
+  lookup: used $LOGNAME@[no hostname].smime-cert-key as
+  a fallback, instead of using the value of *from*#?.
+  (Noctambule)
+
+- `~R'#? and `~r'#?, as well as all prompts which expect
+  file names and did not yet do so, expect shell-quoted names.
+  (See "Shell-style argument quoting"#?.)
+
+ChangeLog
+^^^^^^^^^
+
+- `~Q'#? now acts as if *quote*#? is set.
+  Does not really make sense otherwise.
+
+- New environment variable $SOCKS5_PROXY#? is tight together
+  with *socks-proxy*#?: setting the one affects the other.
+  This $SOCKS5_PROXY is introduced by FreeBSD to affect all
+  programs which are capable to proxy via SOCKS5 (it seems).
+  (Kyle Evans)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (26):
+064bb677 FIX: ~[fmQUu]: do NOT include all MIME parts (at least [f96fa233],
+        14.9.16)
+20f23be2 Some: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
+4b72acf2 Tweak (fix) the *verbose* boolean->value change: now graceful
+e7a60732 send.c:sendpart(): FIX
+        copiousoutput/x-mailx-tmpfile-fill|nametemplate combi!!
+06863d8e FIX: try *from*/From: last when searching S/MIME key++ *password*
+        (Noctambule)
+86130e70 THANKS: Noctambule
+bfbbb57c (BWDIC!) ~Q: assume *quote* is set, even if it is not..
+a85038c4 Add $SOCKS5_PROXY <-> *socks-proxy* mapping (Kyle Evans)
+eceb320b THANKS: Kyle Evans
+36f8552b (BWDIC!) ~R,~r: expect shell-quoted names!
+
 v14.9.17 ("To bind, or not to bind.."), 2020-02-02
 --------------------------------------------------
 
@@ -90,42 +155,7 @@ ChangeLog
   when `reply'#258ing (or `Reply'#256ing) to such a message.
   It tries to move the HUMAN into responsibility.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (65):
-236c0f64 Many: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
-bcc2c626 mx-test.sh: oops, use ${chmod} not chmod (Johannes Schöpfer)
-c33e3725 mx-test.sh: fix invocations by root/on fs without rdonly (Johannes
-        Schöpfer)
-812e96a6 Dramatically improve obsoleted warnings of variables (Russell Bell)
-5118dd9d mx_header_list_post_of(): fix RFC 2369 compliance (a bit)
-7be1fa12 c_history(): fix: NUMBER: relink selected as new head as documented!
-187346a5 a_tty_hist_add(): fix: do not propagate existing non-gabby entry to
-        gabby!
-e354b759 nail.rc: fix: ouch! Used old syntax!!!
-350e4be5 a_tty_{bind_tree_build,_bind_tree_add}(): FIX: add shortcut to
-        correct context!
-3c52d169 a_tty__bind_tree_add_wc(): FIX: shadow bindings (Koichi Murase)..
-4a17872e THANKS: Koichi Murase
-8b1189d4 a_tty_bind_parse(): trim non-editable bindings once again, reject
-        empty ones..
-e3d14f38 Drop `varedit'
-2d2afc55 HTML filter: ignore <xml></xml> that Microsoft word generates..
-8cef8b82 (BWDIC!) MLE: split *bind-timeout* into
-        *bind-inter-{byte,key}-timeout*
-48d26434 `bind': with -vvv or -d, dump the built lookup tree
-549445b1 Review `bind' tree resolving..
-202a1d79 Compile with !KEY_BINDINGS && !HISTORY; fix tcc(1) warning
-2e94731f TTY: review, mostly style stuff, though
-31916973 nail.1: review "On terminal control and line editor"
-223d5ea0 `bind': show binding expansion if no arguments are given..
-dc41cf6f `colour': show all mappings when used without arguments
-814d19c5 nail.1: review "Coloured display"
-d12838f5 Turn *verbose* into a numeric variable
-d103c6ea (BWDIC!) `Reply': _never_ honour *recipients-in-cc* for this one!
-ad828272 Add *reply-to-swap-in* to aid DKIM/DMARC sauce a bit
-437828c8 CID 1415138: ninitialized variable
+git(1) shortlog: Steffen Nurpmeso (65)
 
 v14.9.16 ("Message of Winter, your hopes shall be crushed"), 2019-12-29
 -----------------------------------------------------------------------
@@ -149,8 +179,6 @@ Arnout Engelen, elo, and Benjamin A. Wong in THANKS.
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Warning: we _will_ have v15-compat=yes as a default in v14.10!
 
 - Renamed *expandaddr*#415 namehostex to nametoaddr.  (Better.)
 
