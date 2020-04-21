@@ -660,7 +660,7 @@ jeflags:
          line.s = n_UNCONST(emsg);
          if(emsg == NULL)
             emsg = N_("could not parse input token");
-         else if(!n_shexp_is_valid_varname(vput))
+         else if(!n_shexp_is_valid_varname(vput, FAL0))
             emsg = N_("not a valid variable name");
          else if(!n_var_is_user_writable(vput))
             emsg = N_("either not a user writable, or a boolean variable");

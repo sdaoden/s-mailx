@@ -396,7 +396,7 @@ static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
 static boole a_amv_var_check_num(char const *val, boole posnum);
 
 /* Verify that the given name is an acceptable variable name */
-static boole a_amv_var_check_name(char const *name);
+static boole a_amv_var_check_name(char const *name, boole environ);
 
 /* Try to reverse lookup a name to an enum okeys mapping, zeroing avcp.
  * Updates .avc_name and .avc_hash; .avc_map is NULL if none found.
@@ -1318,20 +1318,28 @@ a_amv_var_check_num(char const *val, boole posnum){
 }
 
 static boole
-a_amv_var_check_name(char const *name){
+a_amv_var_check_name(char const *name, boole environ){
    char c;
-   boole rv;
    char const *cp;
+   boole rv;
    NYD2_IN;
 
+   rv = TRU1;
+
    /* Empty name not tested, as documented */
-   for(rv = TRU1, cp = name; (c = *cp) != '\0'; ++cp)
+   for(cp = name; (c = *cp) != '\0'; ++cp)
       if(c == '=' || su_cs_is_space(c) || su_cs_is_cntrl(c)){
          n_err(_("Variable names may not contain =, space or control "
             "characters: %s\n"), n_shexp_quote_cp(name, TRU1));
          rv = FAL0;
-         break;
+         goto jleave;
       }
+
+   if(rv && environ && !(rv = n_shexp_is_valid_varname(name, TRU1)))
+      n_err(_("Invalid environment variable: %s\n"),
+         n_shexp_quote_cp(name, TRU1));
+
+jleave:
    NYD2_OU;
    return rv;
 }
@@ -2573,7 +2581,8 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
       if(varbuf == cp2){
          n_err(_("Empty variable name ignored\n"));
          ++errs;
-      }else if(!a_amv_var_check_name(varbuf)){
+      }else if(!a_amv_var_check_name(varbuf,
+            ((avscf & a_AMV_VSETCLR_ENV) != 0))){
          /* Log done */
          ++errs;
       }else{
@@ -3506,7 +3515,7 @@ c_unset(void *vp){
    }
 
    for(err = 0, ap = vp; *ap != NULL; ++ap){
-      if(!a_amv_var_check_name(*ap)){
+      if(!a_amv_var_check_name(*ap, FAL0)){
          err |= 1;
          continue;
       }
@@ -3532,7 +3541,7 @@ c_varshow(void *v){
 
       msgp = n_string_creat(msgp);
       for(; *ap != NULL; ++ap)
-         if(a_amv_var_check_name(*ap))
+         if(a_amv_var_check_name(*ap, FAL0))
             a_amv_var_show(*ap, n_stdout, msgp);
       n_string_gut(msgp);
    }
@@ -3551,7 +3560,7 @@ c_environ(void *v){
    if((islnk = su_cs_starts_with_case("link", *(ap = v))) ||
          su_cs_starts_with_case("unlink", *ap)){
       for(err = 0; *++ap != NIL;){
-         if(!a_amv_var_check_name(*ap)){
+         if(!a_amv_var_check_name(*ap, TRU1)){
             err = 1;
             continue;
          }
@@ -3592,7 +3601,7 @@ c_environ(void *v){
       err = !a_amv_var_c_set(++ap, a_AMV_VSETCLR_ENV);
    else if(su_cs_starts_with_case("unset", *ap)){
       for(err = 0; *++ap != NIL;){
-         if(!a_amv_var_check_name(*ap)){
+         if(!a_amv_var_check_name(*ap, TRU1)){
             err = 1;
             continue;
          }

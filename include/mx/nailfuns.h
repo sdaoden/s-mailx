@@ -1388,9 +1388,9 @@ FL struct n_string *n_shexp_quote(struct n_string *store,
                      struct str const *input, boole rndtrip);
 FL char *n_shexp_quote_cp(char const *cp, boole rndtrip);
 
-/* Can name be used as a variable name?  I.e., this returns false for special
- * parameter names like $# etc. */
-FL boole n_shexp_is_valid_varname(char const *name);
+/* Can name be used as a variable name (for the process environment)?
+ * I.e., this returns false for special parameter names like $# etc. */
+FL boole n_shexp_is_valid_varname(char const *name, boole environ);
 
 /* `shcodec' */
 FL int c_shcodec(void *vp);
