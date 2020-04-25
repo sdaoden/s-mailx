@@ -97,19 +97,6 @@ struct mx_mimetype_handler;
 
 /* CC */
 
-/* Suppress some technical warnings via #pragma's unless developing.
- * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
-#ifndef mx_HAVE_DEVEL
-# if su_CC_VCHECK_CLANG(3, 4)
-#  pragma clang diagnostic ignored "-Wassign-enum"
-#  pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
-#  pragma clang diagnostic ignored "-Wformat"
-# elif su_CC_VCHECK_GCC(4, 7)
-#  pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#  pragma GCC diagnostic ignored "-Wformat"
-# endif
-#endif
-
 #undef mx_HAVE_NATCH_CHAR
 #if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
       defined mx_HAVE_WCWIDTH
