@@ -210,7 +210,7 @@
    /* Casts */
 # define su_S(T,I) ((T)(I)) /*!< \_ */
 # define su_R(T,I) ((T)(I)) /*!< \_ */
-# define su_C(T,I) ((T)(I)) /*!< \_ */
+# define su_C(T,I) ((T)su_R(su_up,I)) /*!< \_ */
 
 # define su_NIL ((void*)0) /*!< \_ */
 #else
