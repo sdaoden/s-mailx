@@ -55,7 +55,7 @@ su_EMPTY_FILE()
 #include "mx/cred-md5.h"
 #include "su/code-in.h"
 
-#ifndef mx_HAVE_XTLS_MD5
+#ifndef mx_XTLS_HAVE_MD5
 /* RFC 1321, MD5.C: */
 #define UINT4B_MAX	0xFFFFFFFFul
 
@@ -373,7 +373,7 @@ mx_md5_final(unsigned char digest[mx_MD5_DIGEST_SIZE], mx_md5_t *context)
 # undef GG
 # undef HH
 # undef II
-#endif /* mx_HAVE_XTLS_MD5 */
+#endif /* mx_XTLS_HAVE_MD5 */
 
 char *
 mx_md5_tohex(char hex[mx_MD5_TOHEX_SIZE], void const *vp){
