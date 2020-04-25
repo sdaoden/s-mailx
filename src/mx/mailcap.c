@@ -864,13 +864,13 @@ a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
       uz i, lo, lx;
       char const *buf;
 
-      if(S(void*,mchp) != dat)
+      if(S(void const*,mchp) != dat)
          s = n_string_push_c(s, '\n');
 
       lo = i = su_cs_len(key);
       s = n_string_push_buf(s, key, i);
 
-      buf = S(char*,&mchp[1]);
+      buf = S(char const*,&mchp[1]);
       for(i = a_MAILCAP_SF_CMD; i < NELEM(sfa); ++i)
          if(i == a_MAILCAP_SF_CMD || mchp->mch_sfields[i] > 0)
             a_mailcap__dump_kv(i, s, &lo, sfa[i], &buf[mchp->mch_sfields[i]]);
