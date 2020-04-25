@@ -396,7 +396,7 @@ static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
 static boole a_amv_var_check_num(char const *val, boole posnum);
 
 /* Verify that the given name is an acceptable variable name */
-static boole a_amv_var_check_name(char const *name, boole environ);
+static boole a_amv_var_check_name(char const *name, boole forenviron);
 
 /* Try to reverse lookup a name to an enum okeys mapping, zeroing avcp.
  * Updates .avc_name and .avc_hash; .avc_map is NULL if none found.
@@ -1318,7 +1318,7 @@ a_amv_var_check_num(char const *val, boole posnum){
 }
 
 static boole
-a_amv_var_check_name(char const *name, boole environ){
+a_amv_var_check_name(char const *name, boole forenviron){
    char c;
    char const *cp;
    boole rv;
@@ -1335,7 +1335,7 @@ a_amv_var_check_name(char const *name, boole environ){
          goto jleave;
       }
 
-   if(rv && environ && !(rv = n_shexp_is_valid_varname(name, TRU1)))
+   if(rv && forenviron && !(rv = n_shexp_is_valid_varname(name, TRU1)))
       n_err(_("Invalid environment variable: %s\n"),
          n_shexp_quote_cp(name, TRU1));
 

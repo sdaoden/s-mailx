@@ -43,7 +43,7 @@ documentation and/or software.
 
 #include <mx/nail.h>
 #ifdef mx_HAVE_MD5
-#ifdef mx_HAVE_XTLS_MD5
+#ifdef mx_XTLS_HAVE_MD5
 # include <openssl/md5.h>
 #endif
 
@@ -57,7 +57,7 @@ documentation and/or software.
 #define mx_MD5_TOHEX_SIZE 32u
 
 /* MD5 (RFC 1321) related facilities */
-#ifdef mx_HAVE_XTLS_MD5
+#ifdef mx_XTLS_HAVE_MD5
 # define mx_md5_t MD5_CTX
 # define mx_md5_init MD5_Init
 # define mx_md5_update MD5_Update
@@ -80,7 +80,7 @@ typedef struct{
 EXPORT void mx_md5_init(mx_md5_t *);
 EXPORT void mx_md5_update(mx_md5_t *, unsigned char *, unsigned int);
 EXPORT void mx_md5_final(unsigned char[mx_MD5_DIGEST_SIZE], mx_md5_t *);
-#endif /* mx_HAVE_XTLS_MD5 */
+#endif /* mx_XTLS_HAVE_MD5 */
 
 /* Store the MD5 checksum as a hexadecimal string in *hex*, *not* terminated,
  * using lowercase ASCII letters as defined in RFC 2195 */

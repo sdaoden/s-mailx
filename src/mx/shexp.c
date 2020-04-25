@@ -2043,7 +2043,7 @@ n_shexp_quote_cp(char const *cp, boole rndtrip){
 }
 
 FL boole
-n_shexp_is_valid_varname(char const *name, boole environ){
+n_shexp_is_valid_varname(char const *name, boole forenviron){
    char lc, c;
    boole rv;
    NYD2_IN;
@@ -2051,7 +2051,7 @@ n_shexp_is_valid_varname(char const *name, boole environ){
    rv = FAL0;
    lc = '\0';
 
-   if(!environ){
+   if(!forenviron){
       for(; (c = *name++) != '\0'; lc = c)
          if(!a_SHEXP_ISVARC(c))
             goto jleave;
