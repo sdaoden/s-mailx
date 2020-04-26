@@ -85,6 +85,13 @@ n_iconv_normalize_name(char const *cset){
 
       cset = cp;
    }
+
+   /* And some names just cannot be used as such */
+   if((!su_cs_cmp_case(cset, "unknown-8bit") ||
+            !su_cs_cmp_case(cset, "binary")) &&
+         (cset = ok_vlook(charset_unknown_8bit)) == NIL)
+      cset = ok_vlook(CHARSET_8BIT_OKEY);
+
 jleave:
    NYD2_OU;
    return n_UNCONST(cset);
@@ -114,10 +121,8 @@ n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
    NYD_IN;
 
-   if((!su_cs_cmp_case(fromcode, "unknown-8bit") ||
-            !su_cs_cmp_case(fromcode, "binary")) &&
-         (fromcode = ok_vlook(charset_unknown_8bit)) == NULL)
-      fromcode = ok_vlook(CHARSET_8BIT_OKEY);
+   tocode = n_iconv_normalize_name(tocode);
+   fromcode = n_iconv_normalize_name(fromcode);
 
    id = iconv_open(tocode, fromcode);
 

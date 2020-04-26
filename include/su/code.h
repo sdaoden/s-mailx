@@ -107,7 +107,7 @@
    /* Casts */
 # define su_S(T,I) ((T)(I))
 # define su_R(T,I) ((T)(I))
-# define su_C(T,I) ((T)(I))
+# define su_C(T,I) ((T)su_R(su_up,I))
 # define su_NIL ((void*)0)
 #else
 # define su_C_LANG 0

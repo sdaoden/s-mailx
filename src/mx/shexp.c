@@ -78,6 +78,10 @@
 #define a_SHEXP_ISVARC_BAD1ST(C) (su_cs_is_digit(C)) /* (Assumed below!) */
 #define a_SHEXP_ISVARC_BADNST(C) ((C) == '-')
 
+#define a_SHEXP_ISENVVARC(C) (su_cs_is_alnum(C) || (C) == '_')
+#define a_SHEXP_ISENVVARC_BAD1ST(C) su_cs_is_digit(C)
+#define a_SHEXP_ISENVVARC_BADNST(C) (FAL0)
+
 enum a_shexp_quote_flags{
    a_SHEXP_QUOTE_NONE,
    a_SHEXP_QUOTE_ROUNDTRIP = 1u<<0, /* Result won't be consumed immediately */
@@ -2039,20 +2043,31 @@ n_shexp_quote_cp(char const *cp, boole rndtrip){
 }
 
 FL boole
-n_shexp_is_valid_varname(char const *name){
+n_shexp_is_valid_varname(char const *name, boole forenviron){
    char lc, c;
    boole rv;
    NYD2_IN;
 
    rv = FAL0;
+   lc = '\0';
 
-   for(lc = '\0'; (c = *name++) != '\0'; lc = c)
-      if(!a_SHEXP_ISVARC(c))
+   if(!forenviron){
+      for(; (c = *name++) != '\0'; lc = c)
+         if(!a_SHEXP_ISVARC(c))
+            goto jleave;
+         else if(lc == '\0' && a_SHEXP_ISVARC_BAD1ST(c))
+            goto jleave;
+      if(a_SHEXP_ISVARC_BADNST(lc))
          goto jleave;
-      else if(lc == '\0' && a_SHEXP_ISVARC_BAD1ST(c))
+   }else{
+      for(; (c = *name++) != '\0'; lc = c)
+         if(!a_SHEXP_ISENVVARC(c))
+            goto jleave;
+         else if(lc == '\0' && a_SHEXP_ISENVVARC_BAD1ST(c))
+            goto jleave;
+      if(a_SHEXP_ISENVVARC_BADNST(lc))
          goto jleave;
-   if(a_SHEXP_ISVARC_BADNST(lc))
-      goto jleave;
+   }
 
    rv = TRU1;
 jleave:

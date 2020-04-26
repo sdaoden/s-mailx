@@ -275,7 +275,7 @@ a_cmisc_read_set(char const *cp, char const *value){
    boole rv;
    NYD2_IN;
 
-   if(!n_shexp_is_valid_varname(cp))
+   if(!n_shexp_is_valid_varname(cp, FAL0))
       value = N_("not a valid variable name");
    else if(!n_var_is_user_writable(cp))
       value = N_("variable is read-only");

@@ -415,7 +415,7 @@ a_netrc_dump(char const *cmdname, char const *key, void const *dat){
 
    for(nrcep = S(struct a_netrc_entry const*,dat); nrcep != NIL;
          nrcep = nrcep->nrce_next){
-      if(S(void*,nrcep) != dat)
+      if(S(void const*,nrcep) != dat)
          s = n_string_push_c(s, '\n');
 
       s = n_string_push_buf(s, "machine ", sizeof("machine ") -1);

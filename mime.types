@@ -1,10 +1,8 @@
 #@ mime.types(5)
 #@ The set of MIME types that will be built in.
-#@ Official MIME types are registered at and managed by IANA.
-#@ A more complete list of actually used MIME types can be found at
-#@ <http://svn.apache.org/viewvc/tika/trunk/tika-core/src/main/resources/\
-#@ org/apache/tika/mime/tika-mimetypes.xml>.
-#@ Here are EXTENSIONs, and some TIKA things are changed, see CHANGEs.
+#@ Official MIME types are registered at and managed by IANA, see
+#@    <https://www.iana.org/assignments/media-types/media-types.xhtml>
+#@ In here are EXTENSIONs and CHANGEs, though.
 #
 # Lines starting with a number sign (#) (after possible whitespace) are
 # comments and discarded, empty lines are ignored, remaining ones are
@@ -100,11 +98,13 @@ application/x-xfig  fig
 application/xml-dtd  dtd
 application/xquery  xq xquery
 application/xslt+xml  xslt
+audio/aac  aac
 audio/basic  au snd
 audio/midi  mid midi kar rmi
-audio/mp4  mp4a m4a m4b
+audio/mp4  mp4 mp4a m4a m4b
 audio/mpeg  mpga mp2 mp2a mp3 m2a m3a
 audio/ogg  oga ogg
+audio/opus  opus
 audio/speex  spx
 audio/x-flac  flac
 audio/x-mpegurl  m3u

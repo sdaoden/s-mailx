@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ OpenSSL client implementation according to: John Viega, Matt Messier,
  *@ Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
- *@ TODO This needs an overhaul -- there _are_ stack leaks!?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -48,7 +47,7 @@
 #endif
 
 su_EMPTY_FILE()
-#ifdef mx_HAVE_XTLS
+#ifdef mx_HAVE_XTLS /* Shorthand for mx_HAVE_TLS==mx_TLS_IMPL{...} */
 #include <sys/socket.h>
 
 #include <openssl/crypto.h>
@@ -61,8 +60,11 @@ su_EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef mx_HAVE_XTLS_CONFIG
+#ifdef mx_XTLS_HAVE_CONFIG
 # include <openssl/conf.h>
+#endif
+#ifdef mx_XTLS_HAVE_SET_RESEED_DEFAULTS
+# include <openssl/rand_drbg.h>
 #endif
 
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
@@ -84,7 +86,7 @@ su_EMPTY_FILE()
 #include "su/code-in.h"
 
 /* Compatibility shims which assume 0/-1 cannot really happen */
-/* Always for _protocols #ifndef mx_HAVE_XTLS_CONF_CTX */
+/* Always for _protocols #ifndef mx_XTLS_HAVE_CONF_CTX */
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2 0
 # endif
@@ -131,13 +133,13 @@ su_EMPTY_FILE()
 # endif
 /* #endif */
 
-#ifdef mx_HAVE_XTLS_STACK_OF
-# define n_XTLS_STACKOF(X) STACK_OF(X)
+#ifdef mx_XTLS_HAVE_STACK_OF
+# define a_XTLS_STACKOF(X) STACK_OF(X)
 #else
-# define n_XTLS_STACKOF(X) /*X*/STACK
+# define a_XTLS_STACKOF(X) /*X*/STACK
 #endif
 
-#ifdef mx_HAVE_TLS_RAND_FILE
+#ifdef mx_XTLS_HAVE_RAND_FILE
 # if OPENSSL_VERSION_NUMBER + 0 >= 0x0090581fL
 #  define a_XTLS_RAND_LOAD_FILE_MAXBYTES -1
 # else
@@ -145,13 +147,15 @@ su_EMPTY_FILE()
 # endif
 #endif
 
-/* Compatibility sighs (that sigh is _really_ a cute one) */
-#if mx_HAVE_XTLS_OPENSSL >= 0x10100
+/* More cute compatibility sighs */
+#if mx_HAVE_XTLS >= 0x10100
 # define a_xtls_X509_get_notBefore X509_get0_notBefore
 # define a_xtls_X509_get_notAfter X509_get0_notAfter
+# define a_xtls_SSL_get_verified_chain SSL_get0_verified_chain
 #else
 # define a_xtls_X509_get_notBefore X509_get_notBefore
 # define a_xtls_X509_get_notAfter X509_get_notAfter
+# define a_xtls_SSL_get_verified_chain SSL_get_peer_cert_chain
 #endif
 
 /* X509_STORE_set_flags */
@@ -193,7 +197,7 @@ enum a_xtls_state{
    a_XTLS_S_RAND_INIT = 1u<<2,
    a_XTLS_S_CONF_LOAD = 1u<<3,
 
-#if mx_HAVE_XTLS_OPENSSL < 0x10100
+#if mx_HAVE_XTLS < 0x10100
    a_XTLS_S_EXIT_HDL = 1u<<8,
    a_XTLS_S_ALGO_LOAD = 1u<<9,
 #endif
@@ -288,7 +292,7 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
 /* Supported S/MIME message digest algorithms.
  * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
-#ifdef mx_HAVE_XTLS_BLAKE2
+#ifdef mx_XTLS_HAVE_BLAKE2
    {"BLAKE2b512\0", &EVP_blake2b512},
    {"BLAKE2s256", &EVP_blake2s256},
 # ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
@@ -297,7 +301,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 # endif
 #endif
 
-#ifdef mx_HAVE_XTLS_SHA3
+#ifdef mx_XTLS_HAVE_SHA3
    {"SHA3-512\0", &EVP_sha3_512},
    {"SHA3-384", &EVP_sha3_384},
    {"SHA3-256", &EVP_sha3_256},
@@ -360,16 +364,21 @@ static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
 static uz a_xtls_state;
 static uz a_xtls_msgno;
 
+#if mx_HAVE_XTLS >= 0x30000
+   DEFINE_STACK_OF(GENERAL_NAME)
+   DEFINE_STACK_OF(X509)
+#endif
+
 /* Special pre-PRNG PRNG init */
-#ifdef a_XTLS_S_RAND_DRBG_INIT
-su_SINLINE void a_xtls_rand_drbg_init(void);
+#ifdef mx_XTLS_HAVE_SET_RESEED_DEFAULTS
+SINLINE void a_xtls_rand_drbg_init(void);
 #else
 # define a_xtls_rand_drbg_init() \
    do {a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;} while(0)
 #endif
 
 /* PRNG init */
-#ifdef mx_HAVE_TLS_RAND_FILE
+#ifdef mx_XTLS_HAVE_RAND_FILE
 static void a_xtls_rand_init(void);
 #else
 # define a_xtls_rand_init() \
@@ -379,12 +388,12 @@ static void a_xtls_rand_init(void);
 /* Library init */
 static void a_xtls_init(void);
 
-#if mx_HAVE_XTLS_OPENSSL < 0x10100
+#if mx_HAVE_XTLS < 0x10100
 # ifdef mx_HAVE_TLS_ALL_ALGORITHMS
 static void a_xtls__load_algos(void);
 #  define a_xtls_load_algos a_xtls__load_algos
 # endif
-# if defined mx_HAVE_XTLS_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
+# if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void a_xtls_atexit(void);
 # endif
 #endif
@@ -416,14 +425,14 @@ static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
       struct mx_url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
-                     n_XTLS_STACKOF(X509) *chain, X509_STORE *store);
+                     a_XTLS_STACKOF(X509) *chain, X509_STORE *store);
 static EVP_CIPHER const * _smime_cipher(char const *name);
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      boole dowarn, char const **match, boole fallback_from);
 static char const * _smime_sign_include_certs(char const *name);
-static boole     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
+static boole     _smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
 static EVP_MD const *a_xtls_smime_sign_digest(char const *name,
                         char const **digname);
@@ -432,15 +441,15 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
-#ifdef a_XTLS_S_RAND_DRBG_INIT
-su_SINLINE void
+#ifdef mx_XTLS_HAVE_SET_RESEED_DEFAULTS
+SINLINE void
 a_xtls_rand_drbg_init(void){
    (void)RAND_DRBG_set_reseed_defaults(0, 0, 0, 0); /* (does not fail here) */
    a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;
 }
 #endif
 
-#ifdef mx_HAVE_TLS_RAND_FILE
+#ifdef mx_XTLS_HAVE_RAND_FILE
 static void
 a_xtls_rand_init(void){
 # define a_XTLS_RAND_ENTROPY 32
@@ -452,7 +461,7 @@ a_xtls_rand_init(void){
    a_xtls_rand_drbg_init();
    a_xtls_state |= a_XTLS_S_RAND_INIT;
 
-# ifdef mx_HAVE_XTLS_CONFIG
+# ifdef mx_XTLS_HAVE_CONFIG
    if(!(a_xtls_state & a_XTLS_S_INIT))
       a_xtls_init();
 # endif
@@ -520,11 +529,11 @@ jleave:
             "\"$ dd if=/dev/urandom of=FILE bs=1024 count=1\"\n"));
    NYD2_OU;
 }
-#endif /* mx_HAVE_TLS_RAND_FILE */
+#endif /* mx_XTLS_HAVE_RAND_FILE */
 
 static void
 a_xtls_init(void){
-#ifdef mx_HAVE_XTLS_CONFIG
+#ifdef mx_XTLS_HAVE_CONFIG
    char const *cp;
 #endif
    NYD2_IN;
@@ -532,7 +541,7 @@ a_xtls_init(void){
    if(a_xtls_state & a_XTLS_S_INIT)
       goto jleave;
 
-#if mx_HAVE_XTLS_OPENSSL >= 0x10100
+#if mx_HAVE_XTLS >= 0x10100
    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
       OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 # ifdef mx_HAVE_TLS_ALL_ALGORITHMS
@@ -549,7 +558,7 @@ a_xtls_init(void){
    a_xtls_rand_drbg_init();
 
    /* Load openssl.cnf or whatever was given in *tls-config-file* */
-#ifdef mx_HAVE_XTLS_CONFIG
+#ifdef mx_XTLS_HAVE_CONFIG
    if((cp = ok_vlook(tls_config_file)) != NULL ||
          (cp = ok_vlook(ssl_config_file)) != NULL){
       char const *msg;
@@ -570,7 +579,7 @@ a_xtls_init(void){
 
       if(CONF_modules_load_file(cp, n_uagent, flags) == 1){
          a_xtls_state |= a_XTLS_S_CONF_LOAD;
-# if mx_HAVE_XTLS_OPENSSL < 0x10100
+# if mx_HAVE_XTLS < 0x10100
          if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
             a_xtls_state |= a_XTLS_S_EXIT_HDL;
             atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
@@ -583,15 +592,16 @@ jefile:;
       }else
          ssl_gen_err(_("TLS CONF_modules_load_file() load error"));
    }
-#endif /* mx_HAVE_XTLS_CONFIG */
+#endif /* mx_XTLS_HAVE_CONFIG */
 
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
+
 jleave:
    NYD2_OU;
 }
 
-#if mx_HAVE_XTLS_OPENSSL < 0x10100
+#if mx_HAVE_XTLS < 0x10100
 # ifdef mx_HAVE_TLS_ALL_ALGORITHMS
 static void
 a_xtls__load_algos(void){
@@ -609,11 +619,12 @@ a_xtls__load_algos(void){
 }
 # endif
 
-# if defined mx_HAVE_XTLS_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
+# if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void
 a_xtls_atexit(void){
    NYD2_IN;
-#  ifdef mx_HAVE_XTLS_CONFIG
+
+#  ifdef mx_XTLS_HAVE_CONFIG
    if(a_xtls_state & a_XTLS_S_CONF_LOAD)
       CONF_modules_free();
 #  endif
@@ -622,10 +633,11 @@ a_xtls_atexit(void){
    if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
       EVP_cleanup();
 #  endif
+
    NYD2_OU;
 }
 # endif
-#endif /* mx_HAVE_XTLS_OPENSSL < 0x10100 */
+#endif /* mx_HAVE_XTLS < 0x10100 */
 
 static boole
 a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, uz blen)
@@ -769,7 +781,7 @@ jouter:
    NYD2_OU;
 }
 
-#ifdef mx_HAVE_XTLS_CONF_CTX
+#ifdef mx_XTLS_HAVE_CONF_CTX
 static void *
 a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp){
    char const *cp;
@@ -780,7 +792,7 @@ a_xtls_conf_setup(SSL_CTX *ctxp, struct mx_url const *urlp){
 
    if((cp = xok_vlook(tls_config_module, urlp, OXM_ALL)) != NULL ||
          (cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
-# ifdef mx_HAVE_XTLS_CTX_CONFIG
+# ifdef mx_XTLS_HAVE_CTX_CONFIG
       if(!(a_xtls_state & a_XTLS_S_CONF_LOAD)){
          n_err(_("*tls-config-module*: no *tls-config-file* loaded: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
@@ -862,8 +874,8 @@ a_xtls_conf_finish(void **confp, boole error){
    return rv;
 }
 
-#else /* mx_HAVE_XTLS_CONF_CTX */
-# ifdef mx_HAVE_XTLS_CTX_CONFIG
+#else /* mx_XTLS_HAVE_CONF_CTX */
+# ifdef mx_XTLS_HAVE_CTX_CONFIG
 #  error SSL_CTX_config(3) support unexpected without SSL_CONF_CTX support
 # endif
 
@@ -906,7 +918,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Ciphersuites")){
-# ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
+# ifdef mx_XTLS_HAVE_SET_CIPHERSUITES
       if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
@@ -929,7 +941,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 # endif
    }else if((emsg = NULL, !su_cs_cmp_case(cmd, xcmd = "MaxProtocol")) ||
          (emsg = (char*)-1, !su_cs_cmp_case(cmd, xcmd = "MinProtocol"))){
-# ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
+# ifndef mx_XTLS_HAVE_SET_MIN_PROTO_VERSION
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
@@ -949,7 +961,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("TLS: %s: cannot set protocol version: %s\n");
          goto jerr;
       }
-# endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
+# endif /* !mx_XTLS_HAVE_SET_MIN_PROTO_VERSION */
    }else if(!su_cs_cmp_case(cmd, xcmd = "Options")){
       if(su_cs_cmp_case(value, "Bugs")){
          emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
@@ -1032,7 +1044,7 @@ a_xtls_conf_finish(void **confp, boole error){
    *confp = NULL;
    return TRU1;
 }
-#endif /* !mx_HAVE_XTLS_CONF_CTX */
+#endif /* !mx_XTLS_HAVE_CONF_CTX */
 
 static boole
 a_xtls_obsolete_conf_vars(void *confp, struct mx_url const *urlp){
@@ -1251,17 +1263,25 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
             FEXP_NSHELL));
 
-   if((ca_dir != NULL || ca_file != NULL) &&
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1){
-      char const *m1, *m2, *m3;
+   if(ca_file != NIL &&
+#if mx_HAVE_XTLS >= 0x30000
+         SSL_CTX_load_verify_file(ctxp, ca_file)
+#else
+         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
+#endif
+            != 1){
+      ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
+      goto jleave;
+   }
 
-      if(ca_dir != NULL){
-         m1 = ca_dir;
-         m2 = (ca_file != NULL) ? _(" or ") : n_empty;
-      }else
-         m1 = m2 = n_empty;
-      m3 = (ca_file != NULL) ? ca_file : n_empty;
-      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+   if(ca_dir != NIL &&
+#if mx_HAVE_XTLS >= 0x30000
+         SSL_CTX_load_verify_dir(ctxp, ca_dir)
+#else
+         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
+#endif
+            != 1){
+      ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
 
@@ -1297,7 +1317,7 @@ static boole
 a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
       struct mx_url const *urlp){
    char data[256];
-   n_XTLS_STACKOF(GENERAL_NAME) *gens;
+   a_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
    X509_NAME *subj;
    boole rv;
@@ -1338,7 +1358,7 @@ jleave:
 }
 
 static int
-smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
+smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
    X509_STORE *store)
 {
    char data[LINESIZE], *sender, *to, *cc, *cnttype;
@@ -1348,8 +1368,8 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
    off_t size;
    BIO *fb, *pb;
    PKCS7 *pkcs7;
-   n_XTLS_STACKOF(X509) *certs;
-   n_XTLS_STACKOF(GENERAL_NAME) *gens;
+   a_XTLS_STACKOF(X509) *certs;
+   a_XTLS_STACKOF(GENERAL_NAME) *gens;
    X509 *cert;
    X509_NAME *subj;
    GENERAL_NAME *gen;
@@ -1660,7 +1680,7 @@ jleave:
 }
 
 static boole
-_smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
+_smime_sign_include_chain_creat(a_XTLS_STACKOF(X509) **chain,
    char const *cfiles, char const *addr)
 {
    X509 *tmp;
@@ -1872,12 +1892,14 @@ mx_tls_rand_bytes(void *buf, uz blen){
           * 20190104180735.GA25041@roeckx.be), so we have not that many options
           * on what to do.  Since OSs will try hard to serve, a simple sleep
           * may be it, so do that */
-#if !defined mx_HAVE_XTLS_RESSL && !defined mx_HAVE_TLS_RAND_FILE
+#if mx_HAVE_TLS != mx_TLS_IMPL_RESSL && !defined mx_XTLS_HAVE_RAND_FILE
          n_err(_("TLS RAND_bytes(3ssl) failed (missing entropy?), "
             "waiting a bit\n"));
+         /* Around ~Y2K+1 anything <= was a busy loop iirc, so give pad */
          n_msleep(250, FAL0);
          continue;
 #endif
+         /* FALLTHRU */
       case 1:
          break;
       }
@@ -1917,7 +1939,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
       }
    }
 
-   if((ctxp = SSL_CTX_new(n_XTLS_CLIENT_METHOD())) == NULL){
+   if((ctxp = SSL_CTX_new(mx_XTLS_CLIENT_METHOD())) == NULL){
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto j_leave;
    }
@@ -2027,7 +2049,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
             char *xcp;
             long i;
             BIO *biop;
-            n_XTLS_STACKOF(X509) *certs;
+            a_XTLS_STACKOF(X509) *certs;
 
             sop->s_tls_finger = savestrbuf(fpmdhexbuf,
                   P2UZ(cp - fpmdhexbuf));
@@ -2035,13 +2057,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
             /* For the sake of `tls cert(chain|ificate)', this too */
 
             /*if((certs = SSL_get_peer_cert_chain(sop->s_tls)) != NIL){*/
-            if((certs =
-#if mx_HAVE_XTLS_OPENSSL >= 0x10100
-                     SSL_get0_verified_chain
-#else
-                     SSL_get_peer_cert_chain
-#endif
-                     (sop->s_tls)) != NIL){
+            if((certs = a_xtls_SSL_get_verified_chain(sop->s_tls)) != NIL){
                if((biop = BIO_new(BIO_s_mem())) != NIL){
                   xcp = NIL;
                   peercert = NIL;
@@ -2151,17 +2167,25 @@ c_verify(void *vp)
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
          FEXP_NSHELL));
 
-   if((ca_dir != NULL || ca_file != NULL) &&
-         X509_STORE_load_locations(store, ca_file, ca_dir) != 1){
-      char const *m1, *m2, *m3;
+   if(ca_file != NIL &&
+#if mx_HAVE_XTLS >= 0x30000
+         X509_STORE_load_file(store, ca_file)
+#else
+         X509_STORE_load_locations(store, ca_file, NIL)
+#endif
+            != 1){
+      ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
+      goto jleave;
+   }
 
-      if(ca_dir != NULL){
-         m1 = ca_dir;
-         m2 = (ca_file != NULL) ? _(" or ") : n_empty;
-      }else
-         m1 = m2 = n_empty;
-      m3 = (ca_file != NULL) ? ca_file : n_empty;
-      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+   if(ca_dir != NIL &&
+#if mx_HAVE_XTLS >= 0x30000
+         X509_STORE_load_path(store, ca_dir)
+#else
+         X509_STORE_load_locations(store, NIL, ca_dir)
+#endif
+            != 1){
+      ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
 
@@ -2206,7 +2230,7 @@ smime_sign(FILE *ip, char const *addr)
 {
    FILE *rv, *sfp, *fp, *bp, *hp;
    X509 *cert = NULL;
-   n_XTLS_STACKOF(X509) *chain = NULL;
+   a_XTLS_STACKOF(X509) *chain = NIL;
    EVP_PKEY *pkey = NULL;
    BIO *bb, *sb;
    PKCS7 *pkcs7;
@@ -2335,7 +2359,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    X509 *cert;
    PKCS7 *pkcs7;
    BIO *bb, *yb;
-   n_XTLS_STACKOF(X509) *certs;
+   a_XTLS_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
    boole bail;
@@ -2557,7 +2581,7 @@ smime_certsave(struct message *m, int n, FILE *op)
    off_t size;
    BIO *fb, *pb;
    PKCS7 *pkcs7;
-   n_XTLS_STACKOF(X509) *certs, *chain = NULL;
+   a_XTLS_STACKOF(X509) *certs, *chain = NIL;
    X509 *cert;
    enum okay rv = STOP;
    NYD_IN;

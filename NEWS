@@ -6,6 +6,31 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.19 ("Tufted titmouse (Indianermeise)"), 2020-04-26
+--------------------------------------------------------
+
+Fixing an unknown-8bit/iconv(1/3) misbehaviour when displaying
+mails, and making this MUA ready for OpenSSL 3.0.
+
+Credits, in order of commit appearance: Anirudh Oppiliappan and
+Claus Assmann.
+
+We welcome Anirudh Oppiliappan and Claus Assmann in THANKS.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (14):
+623b64e6 Fix: ensure `environ'ment vars are sh(1) compatible! (Anirudh
+        Oppiliappan)
+f5e202a5 THANKS: Anirudh Oppiliappan
+6fa32bdc Fix: a_crese_make_ref_and_cs(): *reply-in-same-charset*: "handle
+        unknown-8bit"
+a9ec20d6 Fix: "revert" [ab0cd3b8] from 2017-10-20.. (Claus Assmann)..
+eb2db180 THANKS: Claus Assmann
+b0d0920a mime.types: add audio/{aac,opus}, adjust audio/mp4
+bc89c8ff Adjustments for OpenSSL 3.0 (and cpp namespace cleanup)
+
 v14.9.18 ("It is spring time, what a bliss"), 2020-04-18
 --------------------------------------------------------
 
@@ -53,23 +78,7 @@ ChangeLog
   programs which are capable to proxy via SOCKS5 (it seems).
   (Kyle Evans)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (26):
-064bb677 FIX: ~[fmQUu]: do NOT include all MIME parts (at least [f96fa233],
-        14.9.16)
-20f23be2 Some: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
-4b72acf2 Tweak (fix) the *verbose* boolean->value change: now graceful
-e7a60732 send.c:sendpart(): FIX
-        copiousoutput/x-mailx-tmpfile-fill|nametemplate combi!!
-06863d8e FIX: try *from*/From: last when searching S/MIME key++ *password*
-        (Noctambule)
-86130e70 THANKS: Noctambule
-bfbbb57c (BWDIC!) ~Q: assume *quote* is set, even if it is not..
-a85038c4 Add $SOCKS5_PROXY <-> *socks-proxy* mapping (Kyle Evans)
-eceb320b THANKS: Kyle Evans
-36f8552b (BWDIC!) ~R,~r: expect shell-quoted names!
+git(1) shortlog: Steffen Nurpmeso (26)
 
 v14.9.17 ("To bind, or not to bind.."), 2020-02-02
 --------------------------------------------------

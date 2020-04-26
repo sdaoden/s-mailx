@@ -96,7 +96,7 @@
 # endif
 #endif
 
-/* Supported IDNA implementations TODO should not be here!?! */
+/* Supported [mx_HAVE_]IDNA implementations TODO should not be here!?! */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
 #define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
@@ -158,6 +158,14 @@
 
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE 420000
+
+/* Supported [mx_HAVE_]TLS implementations TODO should not be here!?!
+ * In addition mx_HAVE_XTLS is defined if it is OpenSSL/derivate, and set to
+ * "a version number", then (or 0 if not tested) */
+#define mx_TLS_IMPL_OPENSSL 1
+#define mx_TLS_IMPL_RESSL 2
+
+/* ... */
 
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX

@@ -445,15 +445,14 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
       else
          break;
    }
-   n->n_blink = NULL;
+   n->n_blink = NIL;
    head->h_ref = n;
-   if (ok_blook(reply_in_same_charset) &&
-         (ccp = hfield1("content-type", mp)) != NULL){
-      if((head->h_charset = ccp = mime_param_get("charset", ccp)) != NULL){
-         ccp = mx_charsetalias_expand(ccp, FAL0);
-         head->h_charset = ccp;
-      }
-   }
+
+   if(ok_blook(reply_in_same_charset) &&
+         (ccp = hfield1("content-type", mp)) != NIL &&
+         (ccp = mime_param_get("charset", ccp)) != NIL)
+      head->h_charset = mx_charsetalias_expand(ccp, FAL0);
+
 jleave:
    NYD2_OU;
 }

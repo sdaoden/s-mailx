@@ -83,8 +83,7 @@ static boole           _name_highbit(struct mx_name *np);
 #endif
 
 /* fwrite(3) while checking for displayability */
-static sz          _fwrite_td(struct str const *input,
-                           boole failiconv, enum tdflags flags,
+static sz          _fwrite_td(struct str const *input, enum tdflags flags,
                            struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
@@ -157,7 +156,7 @@ __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static sz
-_fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
+_fwrite_td(struct str const *input, enum tdflags flags,
    struct str *outrest, struct quoteflt *qf)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
@@ -177,7 +176,6 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
    struct str in, out;
    sz rv;
    NYD_IN;
-   UNUSED(failiconv);
    UNUSED(outrest);
 
    in = *input;
@@ -226,8 +224,7 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
       }
 #endif
 
-      if((err = n_iconv_str(iconvd,
-            (failiconv ? n_ICONV_NONE : n_ICONV_UNIDEFAULT),
+      if((err = n_iconv_str(iconvd, n_ICONV_UNIDEFAULT,
             &out, &in, &in)) != 0){
          if(err != su_ERR_INVAL)
             n_iconv_reset(iconvd);
@@ -1386,7 +1383,7 @@ jeb64:
       }
 jqpb64_dec:
       if ((xsize = out.l) != 0)
-         xsize = _fwrite_td(&out, FAL0, (dflags & ~_TD_BUFCOPY), outrest, qf);
+         xsize = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), outrest, qf);
       break;
    case CONV_TOB64:
       /* TODO hack which is necessary unless this is a filter based approach
@@ -1447,7 +1444,7 @@ jqpb64_enc:
       xsize = mime_write_tohdr_a(&in, f, &col, a_MIME_SH_NONE);
       }break;
    default:
-      xsize = _fwrite_td(&in, TRU1, dflags, NULL, qf);
+      xsize = _fwrite_td(&in, dflags, NULL, qf);
       break;
    }
 

@@ -11,7 +11,7 @@
 #@   removed, but trailing whitespace before "escaped newlines" is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.18 / 2020-04-18
+#@ S-nail v14.9.19 / 2020-04-26
 
 ## Variables
 

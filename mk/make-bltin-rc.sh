@@ -35,7 +35,7 @@ LC_ALL=C
    }
    {
       sub("^[[:space:]]*", "")
-      print "{\"" quote(dat $0) "\"},"
+      print "/*{*/\"" quote(dat $0) "\"/*}*/,"
       ++lines;
       dat = ""
       next

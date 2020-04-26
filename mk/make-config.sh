@@ -2524,57 +2524,69 @@ if feat_yes TLS; then # {{{
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
    # time: we need to test it first in order to get things right
    if compile_check _xtls 'TLS (LibreSSL)' \
-      '#define mx_HAVE_TLS
-      #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_RESSL
-      #define mx_HAVE_XTLS_OPENSSL 0' << \!
+      '#define mx_HAVE_TLS mx_TLS_IMPL_RESSL
+      #define mx_HAVE_XTLS 0 /* 0 for LibreSSL */' << \!
 #include <openssl/opensslv.h>
 #ifdef LIBRESSL_VERSION_NUMBER
 #else
 # error nope
 #endif
+int nonempty;
 !
    then
       ossl_v1_1=
       VAL_TLS_FEATURES=libressl,-tls-rand-file
-   # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
+   # TODO BORINGSSL, generalize this mess!
+   elif compile_check _xtls 'TLS (OpenSSL >= v3.0.0)' \
+      '#define mx_HAVE_TLS mx_TLS_IMPL_OPENSSL
+      #define mx_HAVE_XTLS 0x30000' << \!
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER + 0 >= 0x30000000L
+#else
+# error nope
+#endif
+int nonempty;
+!
+   then
+      ossl_v1_1=1
+      VAL_TLS_FEATURES=libssl-0x30000,-tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL >= v1.1.1)' \
-      '#define mx_HAVE_TLS
-      #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10101' << \!
+      '#define mx_HAVE_TLS mx_TLS_IMPL_OPENSSL
+      #define mx_HAVE_XTLS 0x10101' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x1010100fL
 #else
 # error nope
 #endif
+int nonempty;
 !
    then
       ossl_v1_1=1
       VAL_TLS_FEATURES=libssl-0x10100,-tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
-      '#define mx_HAVE_TLS
-      #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10100
-      #define mx_HAVE_TLS_RAND_FILE' << \!
+      '#define mx_HAVE_TLS mx_TLS_IMPL_OPENSSL
+      #define mx_HAVE_XTLS 0x10100
+      #define mx_XTLS_HAVE_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
 # error nope
 #endif
+int nonempty;
 !
    then
       ossl_v1_1=1
       VAL_TLS_FEATURES=libssl-0x10100,+tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL)' \
-      '#define mx_HAVE_TLS
-      #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10000
-      #define mx_HAVE_TLS_RAND_FILE' << \!
+      '#define mx_HAVE_TLS mx_TLS_IMPL_OPENSSL
+      #define mx_HAVE_XTLS 0x10000
+      #define mx_XTLS_HAVE_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
 # error nope
 #endif
+int nonempty;
 !
    then
       ossl_v1_1=
@@ -2586,10 +2598,10 @@ if feat_yes TLS; then # {{{
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
          without_check 1 xtls 'TLS new style TLS_client_method(3ssl)' \
-            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
       elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
-            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2610,7 +2622,7 @@ int main(void){
       then
          :
       elif link_check xtls 'TLS old style SSLv23_client_method(3ssl)' \
-            '#define n_XTLS_CLIENT_METHOD SSLv23_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD SSLv23_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2638,10 +2650,10 @@ int main(void){
 
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check 1 xtls_stack_of 'TLS STACK_OF()' \
-            '#define mx_HAVE_XTLS_STACK_OF'
-      elif compile_check xtls_stack_of 'TLS STACK_OF()' \
-            '#define mx_HAVE_XTLS_STACK_OF' << \!
+         without_check 1 xtls_stack_of '*SSL STACK_OF()' \
+            '#define mx_XTLS_HAVE_STACK_OF'
+      elif compile_check xtls_stack_of '*SSL STACK_OF()' \
+            '#define mx_XTLS_HAVE_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2661,16 +2673,18 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check 1 xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
-            '#define mx_HAVE_XTLS_CONFIG'
+            '#define mx_XTLS_HAVE_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       elif link_check xtls_conf \
             'TLS OpenSSL_modules_load_file(3ssl) support' \
-            '#define mx_HAVE_XTLS_CONFIG' << \!
+            '#define mx_XTLS_HAVE_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
    CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
+#if mx_HAVE_XTLS < 0x10100
    CONF_modules_free();
+#endif
    return 0;
 }
 !
@@ -2682,14 +2696,14 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check 1 xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
-            '#define mx_HAVE_XTLS_CONF_CTX'
+            '#define mx_XTLS_HAVE_CONF_CTX'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
-         '#define mx_HAVE_XTLS_CONF_CTX' << \!
+         '#define mx_XTLS_HAVE_CONF_CTX' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
-   SSL_CTX *ctx = SSL_CTX_new(n_XSSL_CLIENT_METHOD());
+   SSL_CTX *ctx = SSL_CTX_new(mx_XTLS_CLIENT_METHOD());
    SSL_CONF_CTX *cctx = SSL_CONF_CTX_new();
 
    SSL_CONF_CTX_set_flags(cctx,
@@ -2711,11 +2725,11 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check 1 xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
-            '#define mx_HAVE_XTLS_CTX_CONFIG'
+            '#define mx_XTLS_HAVE_CTX_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
             link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
-               '#define mx_HAVE_XTLS_CTX_CONFIG' << \!
+               '#define mx_XTLS_HAVE_CTX_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2732,11 +2746,11 @@ int main(void){
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
          without_check 1 xtls_set_maxmin_proto \
             'TLS SSL_CTX_set_min_proto_version(3ssl)' \
-            '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION'
+            '#define mx_XTLS_HAVE_SET_MIN_PROTO_VERSION'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
       elif link_check xtls_set_maxmin_proto \
          'TLS SSL_CTX_set_min_proto_version(3ssl)' \
-         '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION' << \!
+         '#define mx_XTLS_HAVE_SET_MIN_PROTO_VERSION' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2754,11 +2768,11 @@ int main(void){
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
          without_check 1 xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-            '#define mx_HAVE_XTLS_SET_CIPHERSUITES'
+            '#define mx_XTLS_HAVE_SET_CIPHERSUITES'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
       elif link_check xtls_set_ciphersuites \
          'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-         '#define mx_HAVE_XTLS_SET_CIPHERSUITES' << \!
+         '#define mx_XTLS_HAVE_SET_CIPHERSUITES' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2771,7 +2785,7 @@ int main(void){
       else
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-ciphersuites"
       fi
-   fi # feat_yes SSL }}}
+   fi # feat_yes TLS }}}
 
    if feat_yes TLS; then # digest etc algorithms {{{
       if feat_yes TLS_ALL_ALGORITHMS; then
@@ -2784,7 +2798,9 @@ int main(void){
 int main(void){
    OpenSSL_add_all_algorithms();
    EVP_get_cipherbyname("two cents i never exist");
+#if mx_HAVE_XTLS < 0x10100
    EVP_cleanup();
+#endif
    return 0;
 }
 !
@@ -2801,7 +2817,7 @@ int main(void){
 
       # Blake
       link_check tls_blake2 'TLS: BLAKE2 digests' \
-            '#define mx_HAVE_XTLS_BLAKE2' << \!
+            '#define mx_XTLS_HAVE_BLAKE2' << \!
 #include <openssl/evp.h>
 int main(void){
    EVP_blake2b512();
@@ -2811,7 +2827,8 @@ int main(void){
 !
 
       # SHA-3
-      link_check tls_sha3 'TLS: SHA-3 digests' '#define mx_HAVE_XTLS_SHA3' << \!
+      link_check tls_sha3 'TLS: SHA-3 digests' \
+            '#define mx_XTLS_HAVE_SHA3' << \!
 #include <openssl/evp.h>
 int main(void){
    EVP_sha3_512();
@@ -2823,7 +2840,7 @@ int main(void){
 !
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check tls_md5 'TLS: MD5 digest' '#define mx_HAVE_XTLS_MD5' << \!
+         run_check tls_md5 'TLS: MD5 digest' '#define mx_XTLS_HAVE_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2895,7 +2912,7 @@ val_random_tls() {
       # Avoid reseeding, all we need is a streamy random producer
       link_check xtls_rand_drbg_set_reseed_defaults \
          'RAND_DRBG_set_reseed_defaults(3ssl)' \
-         '#define mx_HAVE_XTLS_SET_RESEED_DEFAULTS' << \!
+         '#define mx_XTLS_HAVE_SET_RESEED_DEFAULTS' << \!
 #include <openssl/rand_drbg.h>
 int main(void){
    return (RAND_DRBG_set_reseed_defaults(0, 0, 0, 0) != 0);
