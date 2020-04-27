@@ -1267,7 +1267,7 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
 #if mx_HAVE_XTLS >= 0x30000
          SSL_CTX_load_verify_file(ctxp, ca_file)
 #else
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
+         SSL_CTX_load_verify_locations(ctxp, ca_file, NIL)
 #endif
             != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
@@ -1278,7 +1278,7 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
 #if mx_HAVE_XTLS >= 0x30000
          SSL_CTX_load_verify_dir(ctxp, ca_dir)
 #else
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
+         SSL_CTX_load_verify_locations(ctxp, NIL, ca_dir)
 #endif
             != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
