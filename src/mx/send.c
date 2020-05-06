@@ -115,6 +115,54 @@ static void          xstatusput(const struct message *mp, FILE *obuf,
 
 static void          put_from_(FILE *fp, struct mimepart *ip, u64 *stats);
 
+su_SINLINE sz
+_out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
+   sendaction action, struct quoteflt *qf, u64 *stats, struct str *outrest,
+   struct str *inrest)
+{
+   sz size = 0, n;
+   int flags;
+   NYD_IN;
+
+   /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
+    * TODO subclass should detect From_ cases and either re-encode the part
+    * TODO in question, or perform From_ quoting as necessary!?!?!?  How?!? */
+   /* C99 */{
+      boole from_;
+
+      if((action == SEND_MBOX || action == SEND_DECRYPT) &&
+            (from_ = is_head(buf, len, TRU1))){
+         if(from_ != TRUM1 || (mb.mb_active & MB_BAD_FROM_) ||
+               ok_blook(mbox_rfc4155)){
+            putc('>', fp);
+            ++size;
+         }
+      }
+   }
+
+   flags = ((int)action & _TD_EOF);
+   action &= ~_TD_EOF;
+   n = mime_write(buf, len, fp,
+         action == SEND_MBOX ? CONV_NONE : convert,
+         flags | ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
+            action == SEND_TODISP_PARTS ||
+            action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+         ?  TD_ISPR | TD_ICONV
+         : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
+               action == SEND_TOFILE)
+            ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
+         qf, outrest, inrest);
+   if (n < 0)
+      size = n;
+   else if (n > 0) {
+      size += n;
+      if (stats != NULL)
+         *stats += size;
+   }
+   NYD_OU;
+   return size;
+}
+
 static void
 _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    struct n_ignore const *doitp, int level, struct quoteflt *qf, u64 *stats)
@@ -386,54 +434,6 @@ jerror:
 jleave:
    NYD_OU;
    return rbuf;
-}
-
-su_SINLINE sz
-_out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
-   sendaction action, struct quoteflt *qf, u64 *stats, struct str *outrest,
-   struct str *inrest)
-{
-   sz size = 0, n;
-   int flags;
-   NYD_IN;
-
-   /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
-    * TODO subclass should detect From_ cases and either re-encode the part
-    * TODO in question, or perform From_ quoting as necessary!?!?!?  How?!? */
-   /* C99 */{
-      boole from_;
-
-      if((action == SEND_MBOX || action == SEND_DECRYPT) &&
-            (from_ = is_head(buf, len, TRU1))){
-         if(from_ != TRUM1 || (mb.mb_active & MB_BAD_FROM_) ||
-               ok_blook(mbox_rfc4155)){
-            putc('>', fp);
-            ++size;
-         }
-      }
-   }
-
-   flags = ((int)action & _TD_EOF);
-   action &= ~_TD_EOF;
-   n = mime_write(buf, len, fp,
-         action == SEND_MBOX ? CONV_NONE : convert,
-         flags | ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
-            action == SEND_TODISP_PARTS ||
-            action == SEND_QUOTE || action == SEND_QUOTE_ALL)
-         ?  TD_ISPR | TD_ICONV
-         : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
-               action == SEND_TOFILE)
-            ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
-         qf, outrest, inrest);
-   if (n < 0)
-      size = n;
-   else if (n > 0) {
-      size += n;
-      if (stats != NULL)
-         *stats += size;
-   }
-   NYD_OU;
-   return size;
 }
 
 static boole
