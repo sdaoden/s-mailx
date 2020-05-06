@@ -969,6 +969,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    NYD2_IN;
 
    ok = TRU1;
+   emsg = NIL;
 
    if(avvm == a_AMV_VIP_SET_PRE){
       switch(okey){
@@ -987,24 +988,23 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          struct n_header_field *hflp, **hflpp, *hfp;
 
          buf = savestr(*val);
-         hflp = NULL;
+         hflp = NIL;
          hflpp = &hflp;
 
          while((vp = su_cs_sep_escable_c(&buf, ',', TRU1)) != NULL){
             if(!n_header_add_custom(hflpp, vp, TRU1)){
                emsg = N_("Invalid *customhdr* entry: %s\n");
-               ok = FAL0;
                break;
             }
             hflpp = &(*hflpp)->hf_next;
          }
 
-         hflpp = ok ? &n_customhdr_list : &hflp;
+         hflpp = (emsg == NIL) ? &n_customhdr_list : &hflp;
          while((hfp = *hflpp) != NULL){
             *hflpp = hfp->hf_next;
             n_free(hfp);
          }
-         if(!ok)
+         if(emsg)
             goto jerr;
          n_customhdr_list = hflp;
          }break;
