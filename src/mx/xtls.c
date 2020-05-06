@@ -2303,17 +2303,18 @@ smime_sign(FILE *ip, char const *addr)
 
 #ifdef PKCS7_PARTIAL
    if((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb,
-         (PKCS7_DETACHED | PKCS7_PARTIA))) == NIL){
+         (PKCS7_DETACHED | PKCS7_PARTIAL))) == NIL){
       ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
-   if(PKCS7_sign_add_signer(pkcs7, cert, pkey, md, _X) == NIL){
+   if(PKCS7_sign_add_signer(pkcs7, cert, pkey, md,
+         (PKCS7_DETACHED | PKCS7_PARTIAL)) == NIL){
       ssl_gen_err(_("Error setting PKCS#7 signing object signer"));
       bail = TRU1;
       goto jerr;
    }
-   if(!PKCS7_final(pkcs7, bb, _X)){
+   if(!PKCS7_final(pkcs7, bb, (PKCS7_DETACHED | PKCS7_PARTIAL))){
       ssl_gen_err(_("Error finalizing the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
