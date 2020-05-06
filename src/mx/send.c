@@ -603,14 +603,14 @@ jhdrpush:
             hlp = n_string_push_buf(hlp, cp, (u32)linelen);
             hlp = n_string_push_c(hlp, '\n');
          }else{
-            boole lblank, isblank;
+            boole lblank, xblank;
 
             for(lblank = FAL0, lcnt = 0; lcnt < linelen; ++cp, ++lcnt){
                char c8;
 
                c8 = *cp;
-               if(!(isblank = su_cs_is_blank(c8)) || !lblank){
-                  if((lblank = isblank))
+               if(!(xblank = su_cs_is_blank(c8)) || !lblank){
+                  if((lblank = xblank))
                      c8 = ' ';
                   hlp = n_string_push_c(hlp, c8);
                }

@@ -2862,6 +2862,7 @@ jinput_loop:
       } *isp_head, *isp;
 
       isp_head = isp = NIL;
+      UNINIT(ttm, a_TTY_TTM_NONE);
 # endif
 
       /* Handle visual state flags */
@@ -2882,7 +2883,6 @@ jinput_loop:
          if(tlp->tl_bind_takeover != '\0'){
             wc = tlp->tl_bind_takeover;
             tlp->tl_bind_takeover = '\0';
-            UNINIT(ttm, a_TTY_TTM_NONE);
          }else
 # endif
          {

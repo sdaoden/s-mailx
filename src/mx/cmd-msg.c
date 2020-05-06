@@ -119,6 +119,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          ? SEND_MBOX : donotdecode
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
+   UNINIT(cp, NIL);
 
    if(dopipe){
       if((obuf = mx_fs_pipe_open(cmd, "w", ok_vlook(SHELL), NIL, -1)) == NIL){

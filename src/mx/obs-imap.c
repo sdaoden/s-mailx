@@ -254,7 +254,7 @@ static enum okay  imap_delete(struct mailbox *mp, int n, struct message *m,
 static enum okay  imap_close(struct mailbox *mp);
 static enum okay  imap_update(struct mailbox *mp);
 static enum okay  imap_store(struct mailbox *mp, struct message *m, int n,
-                     int c, const char *sp, int needstat);
+                     int c, const char *xsp, int needstat);
 static enum okay  imap_unstore(struct message *m, int n, const char *flag);
 static const char *tag(int new);
 static char *     imap_putflags(int f);
@@ -1885,9 +1885,11 @@ _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
    if (ok_vlook(v15_compat) != su_NIL)
       rv = mx_cred_auth_lookup(ccredp, urlp);
    else {
-      char *var, *old,
-         *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
-               : urlp->url_u_h_p.s);
+      char *xuhp, *var, *old;
+
+      *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
+            : urlp->url_u_h_p.s);
+      UNINIT(old, NIL);
 
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
@@ -2859,8 +2861,8 @@ jleave:
 }
 
 static enum okay
-imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
-   int needstat)
+imap_store(struct mailbox *mp, struct message *m, int n, int c,
+   const char *xsp, int needstat)
 {
    char o[LINESIZE];
    FILE *queuefp = NULL;

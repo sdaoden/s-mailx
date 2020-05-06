@@ -1154,7 +1154,8 @@ a_go_file(char const *file, boole silent_open_error){
    FILE *fip;
    NYD_IN;
 
-   fip = NULL;
+   fip = NIL;
+   UNINIT(nbuf, NIL);
 
    /* Being a command argument file is space-trimmed *//* TODO v15 with
     * TODO WYRALIST this is no longer necessary true, and for that we

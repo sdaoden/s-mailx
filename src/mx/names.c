@@ -287,6 +287,8 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
    ASSERT_NYD(a_nm_alias_dp != NIL);
    ASSERT(mx_alias_is_valid_name(name));
 
+   UNINIT(slp_base, NIL);
+
    if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){ /* TODO not a real error!! */
       n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
       slp_next = NIL;

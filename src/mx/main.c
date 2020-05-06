@@ -732,6 +732,7 @@ main(int argc, char *argv[]){
 
    su_mem_set(&mc, 0, sizeof mc);
    resfiles = a_RF_DEFAULT;
+   UNINIT(emsg, NIL);
 
    /*
     * Start our lengthy setup, finalize by setting n_PSO_STARTED

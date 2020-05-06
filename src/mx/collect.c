@@ -303,6 +303,7 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
    mx_fs_linepool_aquire(&linebuf, &linesize);
    heredb = NIL;
    heredl = 0;
+   UNINIT(indb, NIL);
 
    /* The -M case is special */
    if(name == R(char*,-1)){

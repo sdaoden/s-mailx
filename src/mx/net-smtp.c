@@ -81,11 +81,11 @@ static sigjmp_buf a_netsmtp_jmp;
 static void a_netsmtp_onsig(int signo);
 
 /* Get the SMTP server's answer, expecting val */
-static int a_netsmtp_read(struct mx_socket *sp, struct a_netsmtp_line *slp,
+static int a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp,
       int val, boole ign_eof, boole want_dat);
 
 /* Talk to a SMTP server */
-static boole a_netsmtp_talk(struct mx_socket *sp, struct sendbundle *sbp);
+static boole a_netsmtp_talk(struct mx_socket *sop, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
 # include <mx/net-gssapi.h>

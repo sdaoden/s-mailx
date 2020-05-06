@@ -421,7 +421,7 @@ static boole a_xtls_config_pairs(void *confp, struct mx_url const *urlp);
 static boole a_xtls_load_verifications(SSL_CTX *ctxp,
       struct mx_url const *urlp);
 
-static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
+static boole a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
       struct mx_url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
