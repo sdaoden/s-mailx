@@ -649,7 +649,8 @@ a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, uz blen)
 
    mbp = BIO_new(BIO_s_mem());
 
-   if (ASN1_TIME_print(mbp, atp) && (l = BIO_get_mem_data(mbp, &mcp)) > 0)
+   if (ASN1_TIME_print(mbp, C(ASN1_TIME*,atp)) &&
+         (l = BIO_get_mem_data(mbp, &mcp)) > 0)
       snprintf(bdat, blen, "%.*s", (int)l, mcp);
    else {
       snprintf(bdat, blen, _("Bogus certificate date: %.*s"),
@@ -1750,8 +1751,13 @@ a_xtls_smime_sign_digest(char const *name, char const **digname){
    if((cp = ok_vlook(smime_sign_digest)) != NULL ||
          (cp = ok_vlook(smime_sign_message_digest)/* v15 */) != NULL)
 jhave_name:
-      if(a_xtls_digest_find(cp, &digest, digname))
+      if(a_xtls_digest_find(cp, &digest, digname)){
+#ifndef PKCS7_PARTIAL
+         n_err(_("WARNING: old OpenSSL version, *smime-sign-digest*=%s "
+            "ignored!\n"), digname);
+#endif
          goto jleave;
+      }
 
    digest = a_XTLS_SMIME_DEFAULT_DIGEST();
    *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
@@ -2295,24 +2301,30 @@ smime_sign(FILE *ip, char const *addr)
       goto jerr;
    }
 
-#undef _X
-#define _X  PKCS7_DETACHED | PKCS7_PARTIAL
-   if ((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb, _X)) == NULL) {
+#ifdef PKCS7_PARTIAL
+   if((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb,
+         (PKCS7_DETACHED | PKCS7_PARTIA))) == NIL){
       ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
-   if (PKCS7_sign_add_signer(pkcs7, cert, pkey, md, _X) == NULL) {
+   if(PKCS7_sign_add_signer(pkcs7, cert, pkey, md, _X) == NIL){
       ssl_gen_err(_("Error setting PKCS#7 signing object signer"));
       bail = TRU1;
       goto jerr;
    }
-   if (!PKCS7_final(pkcs7, bb, _X)) {
+   if(!PKCS7_final(pkcs7, bb, _X)){
       ssl_gen_err(_("Error finalizing the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
-#undef _X
+#else
+   if((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NIL){
+      ssl_gen_err(_("Error creating the PKCS#7 signing object"));
+      bail = TRU1;
+      goto jerr;
+   }
+#endif /* !PKCS7_PARTIAL */
 
    if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
       ssl_gen_err(_("Error writing signed S/MIME data"));
