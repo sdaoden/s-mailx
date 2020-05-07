@@ -231,6 +231,11 @@ big_balls() {
       ${cat} "${PROGRAM}-${REL}.tar.xz.asc" >> "${PROGRAM}-${REL}.cksum"
       ${gpg} --detach-sign --armor "${PROGRAM}-${REL}.tar.gz"
       ${cat} "${PROGRAM}-${REL}.tar.gz.asc" >> "${PROGRAM}-${REL}.cksum"
+
+      [ -f "${PROGRAM}".cat1 ] &&
+         < "${PROGRAM}".cat1 ${xz} -e -C sha256 > "${PROGRAM}-${REL}.cat1.xz"
+      [ -f "${PROGRAM}".xcat1 ] &&
+         < "${PROGRAM}".xcat1 ${xz} -e -C sha256 > "${PROGRAM}-${REL}.xcat1.xz"
       )
    else
       bigballs=
@@ -435,6 +440,11 @@ upload() (
          echo "-rm ${PROGRAM}-latest.txt"
          echo "-ln -s ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
       fi
+
+      [ -f "${PROGRAM}"-${REL}.cat1.xz ] &&
+         echo "-put ${PROGRAM}-${REL}.cat1.xz"
+      [ -f "${PROGRAM}"-${REL}.xcat1.xz ] &&
+         echo "-put ${PROGRAM}-${REL}.xcat1.xz"
 
       echo "-chmod 0644 ${PROGRAM}-${REL}.*"
    } |

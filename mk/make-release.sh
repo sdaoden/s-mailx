@@ -126,7 +126,14 @@ update_release_hook() {
    ${mv} -f nail.1x nail.1
    # And generate the HTML manual, while here
    if [ -z "${grappa}" ] && command -v ${roff} >/dev/null 2>&1; then
+      echo 'nail.1: creating HTML manual'
       < nail.1 MDOCMX_ENABLE=1 ${roff} -Thtml -mdoc > /tmp/nail-manual.html
+      echo 'nail.1: creating ASCII cat1 in '"${TMPDIR}"
+      < nail.1 MDOCMX_ENABLE= ${roff} -Tascii -mdoc > "${TMPDIR}"/s-nail.cat1
+      echo 'nail.1: creating mdocmx ASCII xcat1 in '"${TMPDIR}"
+      < nail.1 MDOCMX_ENABLE=1 GROFF_NO_SGR=1 \
+            ${roff} -Tascii -dmx-toc-force=tree -dmx-debug=1 -mdoc |
+         col -b > "${TMPDIR}"/s-nail.xcat1
    fi
    ${git} add nail.1
 
