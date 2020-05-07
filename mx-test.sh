@@ -7375,10 +7375,10 @@ t_rfc2231() {
    \\xit
    ' | ${MAILX} ${ARGS} -Rf ./.tinv > ./.tall 2> ./.terr
    check 4 0 ./.tall '1842050412 902'
-   if have_feat uistrings; then
+   if have_feat uistrings && have_feat iconv; then
       check 5 - ./.terr '3713266499 473'
    else
-      t_echoskip '5:[!UISTRINGS]'
+      t_echoskip '5:[!UISTRINGS or !ICONV]'
    fi
 
    t_epilog "${@}"
@@ -7805,10 +7805,11 @@ and i ~w rite this out to ./.tmsg
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
    check 2 - "${MBOX}" '774822337 7613'
-   if have_feat uistrings; then
+
+   if have_feat uistrings && have_feat iconv; then
       check 2-err - ./.terr '3575876476 49'
    else
-      t_echoskip '2-err:[!UISTRINGS]'
+      t_echoskip '2-err:[!UISTRINGS or !ICONV]'
    fi
    check 3 - ./.tmsg '1991699357 4453'
 
@@ -9842,7 +9843,7 @@ t_s_mime() {
          -Ssmime-sign-digest=sha1 \
          -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' recei@ver.com
+         -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
       check ${_z} - "${MBOX}" '2359655411 336'
@@ -9878,7 +9879,7 @@ t_s_mime() {
          -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
          -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' recei@ver.com
+         -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
       check ${_z} - "${MBOX}" '2359655411 336'
