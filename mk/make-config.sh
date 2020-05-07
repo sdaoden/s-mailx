@@ -2224,23 +2224,23 @@ int main(void){
    oul = sizeof oub;
    oubp = oub;
 
-   if((id = iconv_open("ascii", "utf-8")) == (iconv_t)-1)
+   if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
      return 1;
    if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
-      return 1;
+      return 14;
    iconv_close(id);
 
    *oubp = '\0';
    oul = (size_t)(oubp - oub);
    if(oul == 0)
-      return 1;
+      return 14;
    /* Character-wise replacement? */
    if(oul == 1){
       if(oub[0] == '?')
          return 2;
       if(oub[0] == '*')
          return 3;
-      return 1;
+      return 14;
    }
    /* Byte-wise replacement? */
    if(oul == sizeof("\342\200\223") -1){
@@ -2248,11 +2248,12 @@ int main(void){
          return 12;
       if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
          return 13;
-      return 1;
+      return 14;
    }
    return 0;
 }
 !
+
    < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
          '#define mx_HAVE_ICONV' ||
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
@@ -2262,6 +2263,10 @@ int main(void){
    if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
+      1)
+         msg 'WARN: disabling ICONV due to faulty conversion/restrictions'
+         feat_bail_required ICONV
+         ;;
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
       12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
