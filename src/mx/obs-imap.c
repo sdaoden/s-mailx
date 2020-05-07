@@ -1887,7 +1887,7 @@ _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
    else {
       char *xuhp, *var, *old;
 
-      *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
+      xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
             : urlp->url_u_h_p.s);
       UNINIT(old, NIL);
 
