@@ -12402,6 +12402,9 @@ If possible the standard RFC 5751 will be violated by using
 instead of the mandated
 .Ql SHA1
 due to security concerns.
+This variable is ignored for very old (released before 2010)
+cryptographic libraries which do not offer the necessary interface:
+it will be logged if that happened.
 .Pp
 \*(UA will try to add built-in support for the following message
 digests, names are case-insensitive:
