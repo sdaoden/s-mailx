@@ -4,6 +4,30 @@
 #@ The "grappa" mode needs a current_version() hook, which has to set $VERSION
 #@ to the current program version, expected as MAJOR.MINOR.UPDATE[-whatever]
 
+# Program stuff
+: ${awk:=awk}
+: ${cat:=cat}
+: ${cmp:=cmp}
+: ${date:=date}
+: ${git:=git}
+: ${grep:=grep}
+: ${make:=make}
+: ${mv:=mv}
+: ${SHELL:=sh}
+: ${sed:=sed}
+
+# Non-"grappa" only
+: ${gzip:=gzip}
+: ${openssl:=openssl}
+: ${gpg:=gpg}
+: ${rm:=rm}
+: ${roff:=s-roff} # optional (command(1) tested)
+: ${sftp:=sftp}
+: ${tar:=tar}
+: ${xz:=xz}
+
+##  --  >8  --  8<  --  ##
+
 : ${PROGRAM:?"Need \$PROGRAM"}
 : ${UPROGRAM:?"Need \$UPROGRAM"}
 # For announcement only.
@@ -17,28 +41,6 @@
 : ${ACCOUNT:?"May need mailx(1) -A \$ACCOUNT"}
 : ${MAILTO:?"May need \$MAILTO for announcement"}
 : ${MAILBCC:?"May need \$MAILBCC for announcement"}
-
-# Program stuff
-: ${awk:=awk}
-: ${cat:=cat}
-: ${cmp:=cmp}
-: ${date:=date}
-: ${git:=git}
-: ${grep:=grep}
-: ${make:=make}
-: ${mv:=mv}
-: ${SHELL:=sh}
-: ${sed:=sed}
-
-# non-grappa only
-: ${gzip:=gzip}
-: ${openssl:=openssl}
-: ${gpg:=gpg}
-: ${rm:=rm}
-: ${roff:=s-roff} # optional (command(1) tested)
-: ${sftp:=sftp}
-: ${tar:=tar}
-: ${xz:=xz}
 
 ##  --  >8  --  8<  --  ##
 
@@ -346,7 +348,7 @@ announcement_prepare() {
          res = res s
       $0 = any ? res : s
    }
-   /^[[:space:]]*s-.*-mode[[:space:]]*$/{
+   /^[ 	]*s-.*-mode[ 	]*$/{
       exit 0
    }
    /^(NOTES|ChangeLog)/{
@@ -377,14 +379,14 @@ announcement_prepare() {
       # Ideally the anchors have been automatically expanded by
       # make-news-anchors.sh before.
       while(match(s,
-            /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+/))
+            /(^|\(|[ 	]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.0-9a-zA-Z]+|\$[_0-9a-zA-Z]+)#[0-9]+/))
       {
          pre = (RSTART > 1) ? substr(s, 1, RSTART - 1) : ""
          mat = substr(s, RSTART, RLENGTH)
          s = substr(s, RSTART + RLENGTH)
 
          # Unfortunately groups are not supported
-         if(match(mat, /^(\(|[[:space:]]+)/) != 0 && RLENGTH > 0){
+         if(match(mat, /^(\(|[ 	]+)/) != 0 && RLENGTH > 0){
             pre = pre substr(mat, 1, RLENGTH)
             mat = substr(mat, RSTART + RLENGTH)
          }

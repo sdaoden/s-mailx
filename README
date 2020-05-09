@@ -153,9 +153,9 @@ And then, assuming the last had been done:
     iterate their package can create local "packager releases" with the
     "grappa" mode of the script mk/make-release.sh.  With it, they can
     track the stable/ branch of desire, and have a [myrelease] branch
-    where the local releases are made.  In order to get the very same
-    file modifications that are made in the official [release/] they
-    need an installed perl(1).  For example:
+    where the local releases are made.  This needs an installed s-nail,
+    git(1), quite some other commands (mk/make-release.inc head, section
+    "# Program stuff"), and optionally perl(1).  For example:
 
       $ git fetch
       $ git checkout stable/stable
