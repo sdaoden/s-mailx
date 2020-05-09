@@ -114,9 +114,10 @@ update_stable_hook() {
 update_release_hook() {
    #
    echo 'nail.1: stripping MKREL etc.'
-   ${sed} -E -e '/^\.\\"--MKREL-(START|END)--/d' \
+   ${sed} -e '/^\.\\"--MKREL-START--/d' \
+      -e '/^\.\\"--MKREL-END--/d' \
       -e '/--BEGINSTRIP--/,$ {' \
-         -e '/^\.[[:space:]]*$/d' -e '/^\.[[:space:]]*\\"/d' \
+         -e '/^\.[ 	]*$/d' -e '/^\.[ 	]*\\"/d' \
       -e '}' \
       -e '/^\.$/d' \
       < nail.1 > nail.1x
@@ -131,7 +132,8 @@ update_release_hook() {
 
    #
    echo 'nail.rc: stripping MKREL etc.'
-   ${sed} -Ee '/^#--MKREL-(START|END)--/d' < nail.rc > nail.rcx
+   ${sed} -e '/^#--MKREL-START--/d' -e '/^#--MKREL-END--/d' \
+      < nail.rc > nail.rcx
    ${mv} -f nail.rcx nail.rc
    ${git} add nail.rc
 
@@ -144,6 +146,8 @@ update_release_hook() {
       perl mk/su-doc-strip.pl include/su/*.h && ${git} add include/su
    fi
 
+   # Solaris /bin/sh may expand ^ things
+   fs=`${git} grep -l '^su_USECASE_MX_DISABLED'`
    ${git} rm -f .gitignore .mailmap TODO \
       \
       mk/make-news-anchors.sh mk/make-release.* \
@@ -152,7 +156,7 @@ update_release_hook() {
       \
       mk/su-doc-strip.pl mk/su-doxygen.rc mk/su-make-cs-ctype.sh \
       \
-      `${git} grep -l ^su_USECASE_MX_DISABLED`
+      ${fs}
 }
 
 . .git/make-release.inc

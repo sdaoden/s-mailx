@@ -33,9 +33,9 @@ fi
       lc = ""
    }
 
-   /^[[:space:]]*\/\* --MKTAB-START-- \*\/[[:space:]]*$/{hot = 1}
-   /^[[:space:]]*\/\* --MKTAB-END-- \*\/[[:space:]]*$/{hot = 0}
-   /^[[:space:]]*{[[:space:]]*"/{
+   /^[ 	]*\/\* --MKTAB-START-- \*\/[ 	]*$/{hot = 1}
+   /^[ 	]*\/\* --MKTAB-END-- \*\/[ 	]*$/{hot = 0}
+   /^[ 	]*\{[ 	]*"/{
       i = index($0, "\"")
       x = substr($0, i + 1)
       i = index(x, "\"")
@@ -56,7 +56,7 @@ fi
          abc[lc = c] = cnt
       }
 
-      if($0 ~ /\/\*[[:space:]]*--MKTAB-DFL--[[:space:]]*\*\//){
+      if($0 ~ /\/\*[ 	]*--MKTAB-DFL--[ 	]*\*\//){
          if(V)
             print "DEFAULT COMMAND IS <" x "> at " cnt >> "/dev/stderr"
          defidx = cnt
