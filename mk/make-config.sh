@@ -1631,13 +1631,14 @@ fi
 printf '#define su_PAGE_SIZE %su\n' "${i}" >> ${h}
 
 # Generate SU <> OS error number mappings
-dump_test_program=0
-(
-   feat_yes DEVEL && NV= || NV=noverbose
-   SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
-      ${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} config
-) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
-dump_test_program=1
+msg_nonl ' . OS error mapping table generated ... '
+feat_yes DEVEL && NV= || NV=noverbose
+SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" rm="${rm}" sort="${sort}" \
+      ${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} compile_time || {
+   msg 'no'
+   config_exit 1
+}
+msg 'yes'
 
 ## /SU
 
