@@ -86,7 +86,7 @@ BEGIN{hot = 0}
       gsub("\\\\", "\\e", mat)
 
       ano = got = 0
-      while(getline < anchorfile){
+      while((getline < anchorfile) > 0){
          if(t == 1){
             if($2 != "Cm" && $2 != "Ic")
                continue

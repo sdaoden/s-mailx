@@ -277,12 +277,12 @@ announcement_prepare() {
                next
             }
             /-----SIGNATURES-----/{
-               while(getline sl < SIGS)
+               while((getline sl < SIGS) > 0)
                   print sl
                next
             }
             /-----NEWS-----/{
-               while(getline sl < NEWS)
+               while((getline sl < NEWS) > 0)
                   print sl
                next
             }
@@ -293,7 +293,7 @@ announcement_prepare() {
          < .git/make-release.txt ${awk} \
                -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
             /-----NEWS-----/{
-               while(getline sl < NEWS)
+               while((getline sl < NEWS) > 0)
                   print sl
                next
             }

@@ -181,7 +181,7 @@ compile_time() {
          unavail = 0
          max = 0
          oscnt = 0
-         while(getline dl < dat){
+         while((getline dl < dat) > 0){
             split(dl, ia)
 
             ++oscnt

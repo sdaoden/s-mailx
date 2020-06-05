@@ -268,10 +268,10 @@ END{
     # If we are about to produce a TOC, intercept ".Mx -toc" lines and replace
     # them with the desired TOC content
     if(!TOC){
-      while(getline < mx_fo)
+      while((getline < mx_fo) > 0)
         print
     }else{
-      while(getline < mx_fo){
+      while((getline < mx_fo) > 0){
         if($0 ~ /^[[:space:]]*\.[[:space:]]*Mx[[:space:]]+-toc[[:space:]]*/){
           print ".Sh \"\\*[mx-toc-name]\""
           if(mx_sh_cnt > 0){
@@ -752,7 +752,7 @@ function line_nlcont_done(){
       if(mx_nlcont)
         fatal(EX_DATAERR, "Line continuation too complicated for mdocmx(1)")
       print >> mx_fo
-      while(getline && $0 !~ /^\.\.$/)
+      while(getline > 0 && $0 !~ /^\.\.$/)
         print >> mx_fo
     }else if($0 ~ /\\$/)
       line_nlcont_add(NLCONT_MX_CHECK_LINE)
