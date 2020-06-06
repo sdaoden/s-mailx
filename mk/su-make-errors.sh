@@ -174,7 +174,7 @@ compile_time() {
    j=\'
    ${awk} -v verb="${VERB}" -v input="${ERRORS}" -v dat="${TARGET}.txt" '
       BEGIN{
-         verb = verb ? "   " : ""
+         verb = (verb != 0) ? "   " : ""
 
          # Read in our OS data
 
