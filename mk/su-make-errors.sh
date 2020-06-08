@@ -25,7 +25,7 @@ export LC_ALL MAXDISTANCE_PENALTY VERB MAILX IN XOUT
 : ${rm:=rm}
 : ${sort:=sort}
 
-# The set of errors we support
+# The set of errors we support {{{
 ERRORS="\
    NONE='No error' \
    2BIG='Argument list too long' \
@@ -110,6 +110,7 @@ ERRORS="\
    XDEV='Cross-device link' \
 "
 export ERRORS
+# }}}
 
 error_parse() {
    j=\'
@@ -134,7 +135,7 @@ error_parse() {
    '
 }
 
-compile_time() {
+compile_time() { # {{{
    [ -n "${TARGET}" ] || {
       echo >&2 'Invalid usage'
       exit 1
@@ -330,7 +331,7 @@ compile_time() {
 
    ${rm} "${TARGET}".*
    exit 0
-}
+} # }}}
 
 if [ ${#} -ne 0 ]; then
    if [ "${1}" = noverbose ]; then
