@@ -1136,6 +1136,7 @@ jagain:
 
             mx_child_ctx_setup(&cc);
             cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+            cc.cc_fds[0] = cc.cc_fds[1] = mx_CHILD_FD_NULL;
             cc.cc_cmd = ok_vlook(SHELL);
             cc.cc_args[0] = "-c";
             cc.cc_args[1] = &R(char const*,&p.mch[1]
