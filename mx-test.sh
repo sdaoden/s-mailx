@@ -1068,6 +1068,32 @@ t_X_errexit() {
       > "${BODY}" 2>&1
    check 11 0 "${BODY}" '2700500141 51'
 
+   # Ensure "good-injection" in a deeper indirection does not cause trouble
+   # This actually only works with MLE and HISTORY, and TODO needs a pseudo TTY
+   # interaction so that we DO initialize our line editor...
+   ${cat} <<- '__EOT' > "${BODY}"
+	define oha {
+	   return 0
+	}
+	define x {
+	  eval set $xarg
+	  echoes time
+	  return 0
+	}
+	__EOT
+
+   printf 'source %s\ncall x\necho au' "${BODY}"  |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > "${MBOX}" 2>&1
+   check 12 1 "${MBOX}" '2908921993 44'
+
+   printf 'source %s\nset on-history-addition=oha\ncall x\necho au' "${BODY}" |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > "${MBOX}" 2>&1
+   check 13 1 "${MBOX}" '2908921993 44'
+
+   printf 'source %s\ncall x\necho au' "${BODY}" |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=nowhere > "${MBOX}" 2>&1
+   check 14 0 "${MBOX}" '2049365617 47'
+
    t_epilog "${@}"
 }
 
