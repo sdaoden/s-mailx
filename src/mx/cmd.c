@@ -294,7 +294,12 @@ static int
 a_cmd_c_help(void *vp){
    int rv;
    char const *arg;
+   FILE *fp;
    NYD_IN;
+
+   if((fp = mx_fs_tmp_open("help", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
    /* Help for a single command? */
    if((arg = *S(char const**,vp)) != NIL){
@@ -311,7 +316,7 @@ a_cmd_c_help(void *vp){
       else while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NIL &&
             (alias_name == NIL || su_cs_cmp(alias_name, aepx))){
          alias_name = aepx;
-         fprintf(n_stdout, "%s -> ", arg);
+         fprintf(fp, "%s -> ", arg);
          arg = alias_exp;
       }
 
@@ -323,17 +328,17 @@ jredo:
          if(cdp->cd_func == NIL || !su_cs_starts_with(cdp->cd_name, arg))
             continue;
 
-         fputs(arg, n_stdout);
+         fputs(arg, fp);
          if(su_cs_cmp(arg, cdp->cd_name))
-            fprintf(n_stdout, " (%s)", cdp->cd_name);
+            fprintf(fp, " (%s)", cdp->cd_name);
 #ifdef mx_HAVE_DOCSTRINGS
-         fprintf(n_stdout, ": %s%s",
+         fprintf(fp, ": %s%s",
             ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty),
             V_(cdp->cd_doc));
          if(n_poption & n_PO_D_V)
-            fprintf(n_stdout, "\n  : %s", a_cmd_cmdinfo(cdp));
+            fprintf(fp, "\n  : %s", a_cmd_cmdinfo(cdp));
 #endif
-         putc('\n', n_stdout);
+         putc('\n', fp);
          rv = 0;
          goto jleave;
       }
@@ -345,7 +350,7 @@ jredo:
       }
 
       if(alias_name != NIL){
-         fprintf(n_stdout, "%s\n", n_shexp_quote_cp(arg, TRU1));
+         fprintf(fp, "%s\n", n_shexp_quote_cp(arg, TRU1));
          rv = 0;
       }else{
          n_err(_("Unknown command: `%s'\n"), arg);
@@ -354,11 +359,11 @@ jredo:
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
 #ifdef mx_HAVE_UISTRINGS
-      fputs(su_program, n_stdout);
+      fputs(su_program, fp);
       fputs(_(
          " commands -- <msglist> denotes message specification tokens, e.g.,\n"
          "1-5, :n, @f@Ulf or . (current, the \"dot\"), separated by *ifs*:\n"),
-         n_stdout);
+         fp);
       fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
@@ -367,7 +372,7 @@ jredo:
 "headers                header summary ... for messages surrounding \"dot\"\n"
 "search <msglist>       ... for the given expression list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
-         n_stdout);
+         fp);
 
       fputs(_(
 "\n"
@@ -377,7 +382,7 @@ jredo:
 "Reply <msglist>        reply to message sender(s) only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
 "Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
-         n_stdout);
+         fp);
 
       fputs(_(
 "\n"
@@ -388,12 +393,20 @@ jredo:
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
 "list                   show all commands (reacts upon *verbose*)\n"),
-         n_stdout);
+         fp);
 #endif /* mx_HAVE_UISTRINGS */
 
-      rv = (ferror(n_stdout) != 0);
+      rv = (ferror(fp) != 0);
    }
+
 jleave:
+   if(fp != n_stdout){
+      page_or_print(fp, 0);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
+
    NYD_OU;
    return rv;
 }
