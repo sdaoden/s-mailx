@@ -443,7 +443,8 @@ static void a_amv_var_show_all(void);
 static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
-static boole a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
+static boole a_amv_var_c_set(char **ap,
+      BITENUM_IS(u32,a_amv_var_setclr_flags) avscf);
 
 /* */
 #ifdef a_AMV_VAR_HAS_OBSOLETE
@@ -2562,7 +2563,7 @@ jleave:
 }
 
 static boole
-a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
+a_amv_var_c_set(char **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
    char *cp, *cp2, *varbuf, c;
    uz errs;
    NYD2_IN;
@@ -2575,7 +2576,7 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
          *cp2++ = c;
       *cp2 = '\0';
       if(c == '\0')
-         cp = n_UNCONST(n_empty);
+         cp = UNCONST(char*,n_empty);
       else
          ++cp;
 
@@ -2588,7 +2589,9 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
          ++errs;
       }else{
          struct a_amv_var_carrier avc;
-         boole isunset;
+         u8 loflags_;
+         BITENUM_IS(u32,a_amv_var_setclr_flags) avscf_;
+         boole isunset, xreset;
 
          if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o'))){
             if(c != '\0')
@@ -2599,15 +2602,23 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
 
          a_amv_var_revlookup(&avc, varbuf, TRU1);
 
-         if((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NULL){
-            if(n_poption & n_PO_D_V)
-               n_err(_("Builtin variable not overwritten by `local': %s\n"),
-                  varbuf);
-            ++errs;
-         }else if(isunset)
+         if((xreset = ((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NIL))){
+            ASSERT(a_amv_lopts != NIL);
+            avscf_ = avscf;
+            avscf ^= a_AMV_VSETCLR_LOCAL;
+            loflags_ = a_amv_lopts->as_loflags;
+            a_amv_lopts->as_loflags = a_AMV_LF_SCOPE;
+         }
+
+         if(isunset)
             errs += !a_amv_var_clear(&avc, avscf);
          else
             errs += !a_amv_var_set(&avc, cp, avscf);
+
+         if(xreset){
+            avscf = avscf_;
+            a_amv_lopts->as_loflags = loflags_;
+         }
       }
    }
 
@@ -3199,6 +3210,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type,
       n_pstate_err_no = perrn;
       n_pstate_ex_no =  pexn;
    }
+
    NYD_OU;
    return rv;
 }
@@ -3501,9 +3513,11 @@ jleave:
 FL int
 c_unset(void *vp){
    struct a_amv_var_carrier avc;
+   u8 loflags_;
+   boole xreset;
    char **ap;
    int err;
-   enum a_amv_var_setclr_flags avscf;
+   BITENUM_IS(u32,a_amv_var_setclr_flags) avscf, avscf_;
    NYD_IN;
 
    if(!(n_pstate & n_PS_ARGMOD_LOCAL))
@@ -3525,8 +3539,22 @@ c_unset(void *vp){
 
       a_amv_var_revlookup(&avc, *ap, FAL0);
 
+      if((xreset = ((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NIL))){
+         ASSERT(a_amv_lopts != NIL);
+         avscf_ = avscf;
+         avscf ^= a_AMV_VSETCLR_LOCAL;
+         loflags_ = a_amv_lopts->as_loflags;
+         a_amv_lopts->as_loflags = a_AMV_LF_SCOPE;
+      }
+
       err |= !a_amv_var_clear(&avc, avscf);
+
+      if(xreset){
+         avscf = avscf_;
+         a_amv_lopts->as_loflags = loflags_;
+      }
    }
+
 jleave:
    NYD_OU;
    return err;

@@ -3619,9 +3619,10 @@ d macro or an
 definition.
 Specifying it implies the modifier
 .Cm wysh .
-Block-scope settings will not be inherited by macros deeper in the
+Local variables will not be inherited by macros deeper in the
 .Ic call
-chain, and will be garbage collected once the current block is left.
+chain, and all local settings will be garbage collected once the local
+scope is left.
 To record and unroll changes in the global scope use the command
 .Ic localopts .
 .
@@ -7001,9 +7002,9 @@ currently known variables, being more verbose if either of
 or
 .Va verbose
 is set.
-Remarks: this list mode will not automatically link-in known
+Remarks: this list mode will not automatically link-in (known)
 .Sx ENVIRONMENT
-variables, but only explicit addressing will do so, examples are
+variables, this only happens for explicit addressing, examples are
 .Ic varshow ,
 using a variable in an
 .Ic if
@@ -7011,7 +7012,7 @@ condition or a string passed to
 .Ic echo ,
 explicit
 .Ic \&\&set Ns
-ting, as well as some program-internal use cases.
+ting, as well as some program-internal use cases (look-ups).
 .
 .Pp
 Otherwise the given variables (and arguments) are set or adjusted.
@@ -7049,12 +7050,16 @@ environment requires corresponding system support) \(em use the command
 for further environmental control.
 If the command modifier
 .Cm local
-has been used to alter the command to work in block-scope all variables
-have values (may they be empty), and creation of names which shadow
-.Sx "INTERNAL VARIABLES"
-is actively prevented (\*(ID shadowing of linked
-.Sx ENVIRONMENT
-variables and free-form versions of variable chains is not yet detected).
+has been used to enforce local scoping then the given user variables
+will be garbage collected when the local scope is left;
+for
+.Sx "INTERNAL VARIABLES" ,
+however,
+.Cm local
+behaves the same as if
+.Ic localopts
+would have been set (temporarily), which means that changes are
+inherited by deeper scopes.
 Also see
 .Ic varshow
 and the sections

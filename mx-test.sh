@@ -3213,46 +3213,73 @@ t_local() {
    t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	define du2 {
-	   echo du2-1 du=$du
-	   local set du=$1
-	   echo du2-2 du=$du
-	   local unset du
-	   echo du2-3 du=$du
-	}
-	define du {
-	   local set du=dudu
-	   echo du-1 du=$du
-	   call du2 du2du2
-	   echo du-2 du=$du
-	   local set nodu
-	   echo du-3 du=$du
-	}
-	define ich {
-	   echo ich-1 du=$du
-	   call du
-	   echo ich-2 du=$du
-	}
-	define wir {
-	   localopts $1
-	   set du=wirwir
-	   echo wir-1 du=$du
-	   call ich
-	   echo wir-2 du=$du
-	}
-	echo ------- global-1 du=$du
-	call ich
-	echo ------- global-2 du=$du
-	set du=global
-	call ich
-	echo ------- global-3 du=$du
-	call wir on
-	echo ------- global-4 du=$du
-	call wir off
-	echo ------- global-5 du=$du
-	__EOT
-
+		define du2 {
+		   echo du2-1 du=$du
+		   local set du=$1
+		   echo du2-2 du=$du
+		   local unset du
+		   echo du2-3 du=$du
+		}
+		define du {
+		   local set du=dudu
+		   echo du-1 du=$du
+		   call du2 du2du2
+		   echo du-2 du=$du
+		   local set nodu
+		   echo du-3 du=$du
+		}
+		define ich {
+		   echo ich-1 du=$du
+		   call du
+		   echo ich-2 du=$du
+		}
+		define wir {
+		   localopts $1
+		   set du=wirwir
+		   echo wir-1 du=$du
+		   call ich
+		   echo wir-2 du=$du
+		}
+		echo ------- global-1 du=$du
+		call ich
+		echo ------- global-2 du=$du
+		set du=global
+		call ich
+		echo ------- global-3 du=$du
+		call wir on
+		echo ------- global-4 du=$du
+		call wir off
+		echo ------- global-5 du=$du
+		__EOT
    check 1 0 "${MBOX}" '2411598140 641'
+
+   #
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+      define z {
+         echo z-1: x=$x y=$y z=$z crt=$crt
+         local set z=1 y=2 crt=10
+         echo z-2: x=$x y=$y z=$z crt=$crt
+      }
+      define y {
+         echo y-1: x=$x y=$y z=$z crt=$crt
+         local set x=2 y=1 crt=5
+         echo y-2: x=$x y=$y z=$z crt=$crt
+         call z
+         echo y-3: x=$x y=$y z=$z crt=$crt
+      }
+      define x {
+         echo x-1: x=$x y=$y z=$z crt=$crt
+         local set x=1 crt=1
+         echo x-2: x=$x y=$y z=$z crt=$crt
+         call y
+         echo x-3: x=$x y=$y z=$z crt=$crt
+      }
+      set crt
+      echo global-1: x=$x y=$y z=$z crt=$crt
+      call x
+      echo global-2: x=$x y=$y z=$z crt=$crt
+		__EOT
+   check 2 0 "${MBOX}" '2560788669 216'
 
    t_epilog "${@}"
 }
