@@ -1966,7 +1966,7 @@ unusual cases become possible.
 The usual case is as short as:
 .
 .Bd -literal -offset indent
-set mta=smtp://USER:PASS@HOST smtp-config=force-tls \e
+set mta=smtp://USER:PASS@HOST smtp-config=-starttls \e
     smime-sign smime-sign-cert=+smime.pair \e
     from=myname@my.host
 .Ed
@@ -2045,7 +2045,8 @@ shortcut encpop2 pop3://pop2.exam.ple
 set pop3-use-starttls-pop2.exam.ple
 
 set mta=smtps://smtp.exam.ple:465
-set mta=smtp://smtp.exam.ple smtp-config=force-tls
+# Automatically upgrades unless smtp-config=-starttls
+set mta=smtp://smtp.exam.ple
 .Ed
 .
 .Pp
@@ -10655,8 +10656,7 @@ The following SMTP variants may be used:
 The plain SMTP protocol (RFC 5321) that normally lives on the
 server port 25, which will \*(OPally be upgraded to a TLS encrypted
 session unless disallowed by
-.Va smtp-config ;
-upgrading can also be enforced with it.
+.Va smtp-config .
 Assign a value like
 .Ql smtp://[user[:password]@]server[:port]
 to choose this protocol.
@@ -12153,8 +12153,7 @@ via the mechanisms described in
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
 \*(OP\*(OB Please use the authentication slots of
-.Va smtp-config
-as necessary.
+.Va smtp-config .
 .
 .
 .Mx Va smtp-config
@@ -12179,51 +12178,31 @@ choose new-style SMTP configuration.
 .It Cd all
 This special word enables or disables all extensions.
 By default, or when set to the empty string, all extensions are enabled.
-Disabling it also disables all the below properties and authentication
-mechanisms.
+Disabling it also disables all the below authentication mechanisms.
 .It Cd ehlo
 Service Extensions (RFC 1869) added the notion of extensions to the SMTP
-protocol; when disabled, all other extensions are also disabled, but
-properties are not.
-All authentication methods are SMTP extensions.
+protocol; when disabled, all other extensions are also disabled (for
+.Cd auth
+only the master switch is toggled, not the individual mechanisms).
 .It Cd pipelining
 Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
 successive commands without waiting for respective server responses.
 .It Cd starttls
 Secure SMTP over TLS (RFC 3207) allows upgrading an unencrypted (SMTP
 not SMTPS) connection to use private, authenticated communication.
-This upgrading can be forced by including the property
-.Cd force-tls .
+To improve security and provide a safety measure against
+man-in-the-middle attacks this is always performed \(em even if the
+server does not announce it \(em unless explicitly turned off.
+Directly using encrypted communication channels should be preferred, as
+it saves network traffic.
 .It Cd auth
 Authentication (RFC 4954) allows account credentials to be passed.
 This word disables all authentication mechanisms, but enables only those
-which can be managed automatically without external help; e.g., GSSAPI
-requires an externally granted ticket to exist, and is therefore
+which can be managed automatically without external help; for example
+GSSAPI requires an externally granted ticket to exist, and is therefore
 excluded by the default automatic selection, as is EXTERNAL etc.: these
 mechanisms have to be enabled explicitly.
 The default selection depends upon the (im- or explicit) presence of TLS.
-.El
-.
-.Pp
-In addition to the SMTP extensions which correspond 1:1 to a standard,
-additional properties can be included in the list.
-Properties contemplating an extension enable that when enabled, but do
-not disable it when disabled.
-.
-.Pp
-.Bl -tag -compact -width ".It Cd BaNg"
-.It Cd props
-This special word enables or disables all additional properties.
-By default they are all disabled.
-.It Cd force-tls
-Enforces the TLS upgrade of a non-secured connection via
-.Cd starttls
-regardless of whether the server announced availability or not,
-as such providing a safety measure against man-in-the-middle attacks
-which try to prevent these upgrades.
-This is automatically enabled if any of the given authentication
-methods requires TLS encryption.
-Directly using encrypted communication channels should be preferred.
 .El
 .
 .Pp
@@ -12349,10 +12328,9 @@ variable assignment is aborted when a necessary conversion fails.
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST ,\
   smtp-use-starttls
-\*(BO\*(OP\*(OB Please simply include
-.Cd force-tls
-in
+\*(BO\*(OP\*(OB Please use
 .Va smtp-config .
+(Forcing TLS has become a default setting.)
 .
 .Mx
 .It Va socket-connect-timeout
