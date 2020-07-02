@@ -1,0 +1,10 @@
+global-1: x= y= z= crt=
+x-1: x= y= z= crt=
+x-2: x=1 y= z= crt=1
+y-1: x= y= z= crt=1
+y-2: x=2 y=1 z= crt=5
+z-1: x= y= z= crt=5
+z-2: x= y=2 z=1 crt=10
+y-3: x=2 y=1 z= crt=5
+x-3: x=1 y= z= crt=1
+global-2: x= y= z= crt=
