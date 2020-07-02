@@ -1519,6 +1519,11 @@ n_go_main_loop(void){ /* FIXME */
       mx_sigs_all_holdx();
 
       n_pstate &= ~n_PS_ERRORS_NEED_PRINT_ONCE;
+      switch(n_pstate & n_PS_ERR_EXIT_MASK){
+      case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
+      case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
+      default: break;
+      }
 
       if(gec.gec_hist_flags & a_GO_HIST_ADD){
          char const *cc, *ca;
@@ -1545,24 +1550,16 @@ n_go_main_loop(void){ /* FIXME */
 
       mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
 
-      switch(n_pstate & n_PS_ERR_EXIT_MASK){
-      case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
-      case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
-      default: break;
-      }
-      if(n_psonce & n_PSO_EXIT_MASK)
-         break;
-
-      if(!rv)
+      if((n_psonce & n_PSO_EXIT_MASK) || !rv)
          break;
    }
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
-
    mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();
+
    NYD_OU;
    return rv;
 }
