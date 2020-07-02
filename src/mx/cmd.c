@@ -387,7 +387,7 @@ jredo:
 "quit                   quit and apply changes to the current mailbox\n"
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
-"list [<anything>]      all available commands [in search order]\n"),
+"list                   show all commands (reacts upon *verbose*)\n"),
          n_stdout);
 #endif /* mx_HAVE_UISTRINGS */
 
