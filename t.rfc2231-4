@@ -3,6 +3,7 @@ From a@b.invalid Wed May 15 12:43:00 2018
 MIME-Version: 1.0
 Status: R
 
+
 [-- #1.1 4/88 text/plain, utf-8 --]
 Content-Transfer-Encoding: quoted-printable
 
@@ -19,6 +20,7 @@ From a@b.invalid Wed May 15 12:43:00 2018
 MIME-Version: 1.0
 Status: R
 
+
 [-- #1.1 4/88 text/plain, utf-8 --]
 Content-Transfer-Encoding: quoted-printable
 
@@ -34,6 +36,7 @@ bar
 From a@b.invalid Wed May 15 12:43:00 2018
 MIME-Version: 1.0
 Status: R
+
 
 [-- #1.1 4/88 text/plain, utf-8 --]
 Content-Transfer-Encoding: quoted-printable

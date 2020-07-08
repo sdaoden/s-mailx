@@ -97,7 +97,7 @@ SignVarSignVar
  |Date: Wed, 19 Jul 2017 09:23:57 -0400
  |Message-Id: <20170719132257.766AF781267-2@originator>
  |Status: RO
- |
+
  |That's appalling, II.
  |
 19: ~M 1
@@ -113,19 +113,19 @@ SignVarSignVar
  |Message-Id: <20170719132257.766AF781267-1@originator>
  |Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
  |Status: RO
- |
+
  |That's appalling, I.
  |
 20: ~m
 -------- Original Message --------
  |Subject: Bugstop: five miles out 2
- |
+
  |That's appalling, II.
  |
 21: ~m 3
 -------- Original Message --------
  |Subject: Bugstop: five miles out 3
- |
+
  |That's appalling, III.
  |
 28,29 nothing, 30-34: ~Q

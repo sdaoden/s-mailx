@@ -6,16 +6,18 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
+
+[-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
 
+
+[-- #1.2 6/132 --]
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tatt.pdf"
 
-
-[-- #1.2 6/132 --]
 p-1-1
 dubo€omp-1-2
 =2
@@ -26,16 +28,18 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
+
+[-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
 
+
+[-- #1.2 6/132 --]
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tatt.pdf"
 
-
-[-- #1.2 6/132 --]
 p-2-1
 dubo€omp-2-2
 =3
@@ -46,16 +50,18 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
+
+[-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
 
+
+[-- #1.2 6/132 --]
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tatt.pdf"
 
-
-[-- #1.2 6/132 --]
 p-3-1
 dubo€omp-3-2
 =4
@@ -66,16 +72,18 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
+
+[-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
 Content-Disposition: inline
 
+
+[-- #1.2 6/132 --]
 Content-Type: application/pdf
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tatt.pdf"
 
-
-[-- #1.2 6/132 --]
 =5
 [-- Message  1 -- 25 lines, 644 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
@@ -84,6 +92,7 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 Status: R
+
 
 [-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
@@ -108,6 +117,7 @@ MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 Status: R
 
+
 [-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: quoted-printable
@@ -130,6 +140,7 @@ Subject: test
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 Status: R
+
 
 [-- #1.1 6/120 --]
 Content-Type: text/plain; charset=us-ascii

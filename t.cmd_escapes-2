@@ -111,7 +111,7 @@ SignVarSignVar
  |Date: Wed, 19 Jul 2017 09:23:57 -0400
  |Message-Id: <20170719132257.766AF781267-2@originator>
  |Status: RO
- |
+
  |That's appalling, II.
  |
 19: ~M 1
@@ -127,19 +127,19 @@ SignVarSignVar
  |Message-Id: <20170719132257.766AF781267-1@originator>
  |Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
  |Status: RO
- |
+
  |That's appalling, I.
  |
 20: ~m
 -------- Original Message --------
  |Subject: Bugstop: five miles out 2
- |
+
  |That's appalling, II.
  |
 21: ~m 3
 -------- Original Message --------
  |Subject: Bugstop: five miles out 3
- |
+
  |That's appalling, III.
  |
 28,29 nothing, 30-34: ~Q
@@ -197,8 +197,8 @@ Message-ID: <20200204225307.FaKeD%bo@oo>
 Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
 Status: R
 
-Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
 
+Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
 
 Content-Type: text/plain; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
@@ -209,14 +209,17 @@ Content-Type: text/html; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
 
 Body
-Content-Type: text/plain
+
+Content-Type: text/troff
 
 Golden Brown
+
+Content-Type: text/x-uuencode
+
+Aprendimos a quererte
 51:f
 -------- Original Message --------
 Subject: sub6
-
-
 
 Body
 52:M
@@ -229,28 +232,31 @@ Body
  |Message-ID: <20200204225307.FaKeD%bo@oo>
  |Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
  |Status: R
- |
+
+
  |Content-Type: multipart/alternative; boundary=3D=3DBOUNDIN=3D
- |
 
  |Content-Type: text/plain; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
- |
+
  |Body
 
  |Content-Type: text/html; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
- |
+
  |Body
- |Content-Type: text/plain
- |
+
+ |Content-Type: text/troff
+
  |Golden Brown
+
+ |Content-Type: text/x-uuencode
+
+ |Aprendimos a quererte
 53:m
 -------- Original Message --------
  |Subject: sub6
- |
- |
- |
+
  |Body
 54:Q
 ex6@am.ple wrote:
@@ -331,7 +337,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./.tmsg 174/4453
+./.tmsg 174/4445
 i ~w:0/NONE
 shell command output
 shell:0/NONE

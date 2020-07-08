@@ -5,15 +5,17 @@ Subject: subject2
 MIME-Version: 1.0
 Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
 
+
+[-- #1.1 5/78 7bit --]
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
+
+[-- #1.2 172/12961 --]
 Content-Type: image/jpeg
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="snailmail.jpg"
 
-
-[-- #1.2 172/12961 --]
 C=image/jpeg
 C-E=image/jpeg
 E-B-U=
