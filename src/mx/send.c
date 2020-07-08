@@ -77,8 +77,8 @@ su_SINLINE sz _out(char const *buf, uz len, FILE *fp,
       enum conversion convert, enum sendaction action, struct quoteflt *qf,
       u64 *stats, struct str *outrest, struct str *inrest);
 
-/* Simply (!) print out a LF */
-static boole a_send_out_nl(FILE *fp, u64 *stats);
+/* Simply (!) print out a LF (via qf if not NIL) */
+static boole a_send_out_nl(FILE *fp, struct quoteflt *qf, u64 *stats);
 
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
@@ -88,7 +88,7 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
                         char **linedat, uz *linesize,
-                        u64 *stats, int level);
+                        u64 *stats, int level, boole *anyoutput/* XXX fake*/);
 
 /* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
  * and check whether there are any such down mpp, which is a .m_multipart of
@@ -438,13 +438,15 @@ jleave:
 }
 
 static boole
-a_send_out_nl(FILE *fp, u64 *stats){
-   struct quoteflt *qf;
+a_send_out_nl(FILE *fp, struct quoteflt *qf, u64 *stats){
    boole rv;
    NYD2_IN;
 
-   quoteflt_reset(qf = quoteflt_dummy(), fp);
-   rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL) > 0);
+   if(qf == NIL)
+      qf = quoteflt_dummy();
+
+   quoteflt_reset(qf, fp);
+   rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NIL,NIL) > 0);
    quoteflt_flush(qf);
    NYD2_OU;
    return rv;
@@ -473,11 +475,13 @@ static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct n_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action,
-   char **linedat, uz *linesize, u64 * volatile stats, int level)
+   char **linedat, uz *linesize, u64 * volatile stats, int volatile level,
+   boole *anyoutput)
 {
    int volatile rv = 0;
    struct mx_mimetype_handler mth_stack, * volatile mthp;
    struct str outrest, inrest;
+   boole hany, hign;
    enum sendaction oaction;
    char *cp;
    char const * volatile tmpname = NULL;
@@ -494,13 +498,61 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    UNINIT(term_infd, 0);
    UNINIT(cnt, 0);
    oaction = action;
+   hany = hign = FAL0;
 
    quoteflt_reset(qf, obuf);
 
-#if 0 /* TODO PART_INFO should be displayed here!! search PART_INFO */
-   if(ip->m_mimetype != mx_MIMETYPE_DISCARD && level > 0)
-      _print_part_info(obuf, ip, doitp, level, qf, stats);
-#endif
+   if((ibuf = setinput(&mb, R(struct message*,ip), NEED_BODY)) == NIL){
+      rv = -1;
+      goto jleave;
+   }
+
+   cnt = ip->m_size;
+   dostat = 0;
+
+   if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
+         action == SEND_TODISP_PARTS ||
+         action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+         action == SEND_TOSRCH){
+      dostat |= 4;
+
+      if(ip->m_mimetype != mx_MIMETYPE_DISCARD && level != 0 &&
+            action != SEND_QUOTE && action != SEND_QUOTE_ALL){
+         _print_part_info(obuf, ip, doitp, level, qf, stats);
+         hany = TRU1;
+      }
+      if(ip->m_parent != NIL && ip->m_parent->m_mimetype == mx_MIMETYPE_822){
+         ASSERT(ip->m_flag & MNOFROM);
+         hign = TRU1;
+      }
+   }
+
+   if(ip->m_mimetype == mx_MIMETYPE_DISCARD)
+      goto jheaders_skip;
+   else if(!hign && ip->m_mimetype == mx_MIMETYPE_822){
+      switch(action){
+      case SEND_TODISP:
+      case SEND_TODISP_ALL:
+      case SEND_QUOTE:
+      case SEND_QUOTE_ALL:
+         if(ok_blook(rfc822_body_from_)){
+            if(!qf->qf_bypass){
+               uz i;
+
+               i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix, qf->qf_pfix_len,
+                     obuf);
+               if(i == qf->qf_pfix_len && stats != NIL)
+                  *stats += i;
+            }
+            put_from_(obuf, ip->m_multipart, stats);
+            hany = TRU1;
+         }
+         break;
+      default:
+         dostat |= 16;
+         break;
+      }
+   }
 
    if (ip->m_mimetype == mx_MIMETYPE_PKCS7) {
       if (ip->m_multipart &&
@@ -508,52 +560,38 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          goto jheaders_skip;
    }
 
-   dostat = 0;
-   if (level == 0 && action != SEND_TODISP_PARTS) {
-      if (doitp != NULL) {
-         if (!n_ignore_is_ign(doitp, "status", 6))
-            dostat |= 1;
-         if (!n_ignore_is_ign(doitp, "x-status", 8))
-            dostat |= 2;
-      } else
-         dostat = 3;
-   }
-
-   if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL) {
-      rv = -1;
-      goto jleave;
-   }
-
-   if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
-         action == SEND_TODISP_PARTS ||
-         action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-         action == SEND_TOSRCH)
-      dostat |= 4;
-
-   cnt = ip->m_size;
-
-   if(ip->m_mimetype == mx_MIMETYPE_DISCARD)
-      goto jheaders_skip;
-
-   if (!(ip->m_flag & MNOFROM))
-      while (cnt && (c = getc(ibuf)) != EOF) {
-         cnt--;
-         if (c == '\n')
+   if(!(ip->m_flag & MNOFROM))
+      while(cnt > 0 && (c = getc(ibuf)) != EOF){
+         --cnt;
+         if(c == '\n')
             break;
       }
+
+   if(!hign && level == 0 && action != SEND_TODISP_PARTS){
+      if(doitp != NIL){
+         if(!n_ignore_is_ign(doitp, "status", 6))
+            dostat |= 1;
+         if(!n_ignore_is_ign(doitp, "x-status", 8))
+            dostat |= 2;
+      }else
+         dostat |= 3;
+   }
+
+jhdr_redo:
    convert = (dostat & 4) ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
    /* C99 */{
    struct n_string hl, *hlp;
-   uz lineno = 0;
-   boole hstop/*see below, hany*/;
+   uz lineno;
+   boole hstop;
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
    hlp = n_string_reserve(hlp, MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
+   lineno = 0;
 
-   for(hstop = /*see below hany =*/ FAL0; !hstop;){
+   for(hstop = FAL0; !hstop;){
       uz lcnt;
 
       lcnt = cnt;
@@ -629,7 +667,7 @@ jhdrput:
          uz i;
 
          i = P2UZ(cp - hlp->s_dat);
-         if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
+         if(hign || (doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
                (action == SEND_MBOX &&
@@ -640,6 +678,8 @@ jhdrput:
       }
 
       /* Dump it */
+      if(!hany && (dostat & 4) && level > 0)
+         a_send_out_nl(obuf, NIL, stats);
       mx_COLOUR(
          if(mx_COLOUR_IS_ACTIVE())
             mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
@@ -651,9 +691,8 @@ jhdrput:
             mx_colour_reset();
       )
       if(dostat & 4)
-         _out("\n", sizeof("\n") -1, obuf, convert, action, qf, stats,
-            NULL,NULL);
-      /*see below hany = TRU1;*/
+         a_send_out_nl(obuf, qf, stats);
+      hany = TRU1;
 
 jhdrtrunc:
       hlp = n_string_trunc(hlp, 0);
@@ -662,18 +701,41 @@ jhdrtrunc:
    if(hlp->s_len > 0)
       goto jhdrput;
 
-   /* We've reached end of headers, so eventually force out status: field and
-    * note that we are no longer in header fields */
+   if(hign || (!hany && (dostat & (1 | 2)))){
+      a_send_out_nl(obuf, qf, stats);
+      if(hign)
+         goto jheaders_skip;
+   }
+
+   /* We have reached end of headers, so eventually force out status: field
+    * and note that we are no longer in header fields */
    if(dostat & 1){
       statusput(zmp, obuf, qf, stats);
-      /*see below hany = TRU1;*/
+      hany = TRU1;
    }
    if(dostat & 2){
       xstatusput(zmp, obuf, qf, stats);
-      /*see below hany = TRU1;*/
+      hany = TRU1;
    }
-   if(/* TODO PART_INFO hany && */ doitp != n_IGNORE_ALL)
-      _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if((hany /*&& doitp != n_IGNORE_ALL*/) ||
+         (oaction == SEND_DECRYPT && ip->m_parent != NIL &&
+          ip != ip->m_multipart) ||
+         ((oaction == SEND_QUOTE || oaction == SEND_QUOTE_ALL) &&
+          level != 0 && *anyoutput &&
+           (ip->m_mimetype != mx_MIMETYPE_DISCARD &&
+            ip->m_mimetype != mx_MIMETYPE_PKCS7 &&
+            ip->m_mimetype != mx_MIMETYPE_PKCS7 &&
+            ip->m_mimetype != mx_MIMETYPE_ALTERNATIVE &&
+            ip->m_mimetype != mx_MIMETYPE_RELATED &&
+            ip->m_mimetype != mx_MIMETYPE_DIGEST &&
+            ip->m_mimetype != mx_MIMETYPE_MULTI &&
+            ip->m_mimetype != mx_MIMETYPE_SIGNED &&
+            ip->m_mimetype != mx_MIMETYPE_ENCRYPTED))){
+         if(ip->m_mimetype != mx_MIMETYPE_822 || (dostat & 16)){
+            /*XXX (void)*/a_send_out_nl(obuf, NIL, stats);
+            hany = TRU1;
+         }
+      }
    } /* C99 */
 
    quoteflt_flush(qf);
@@ -683,8 +745,14 @@ jhdrtrunc:
       goto jleave;
    }
 
+   *anyoutput = hany;
 jheaders_skip:
    su_mem_set(mthp = &mth_stack, 0, sizeof mth_stack);
+
+   if(oaction == SEND_MBOX){
+      convert = CONV_NONE;
+      goto jsend;
+   }
 
    switch (ip->m_mimetype) {
    case mx_MIMETYPE_822:
@@ -695,26 +763,20 @@ jheaders_skip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         if (ok_blook(rfc822_body_from_)) {
-            if (!qf->qf_bypass) {
-               uz i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
-                     qf->qf_pfix_len, obuf);
-               if (i == qf->qf_pfix_len && stats != NULL)
-                  *stats += i;
-            }
-            put_from_(obuf, ip->m_multipart, stats);
+         if(!(dostat & 16)){ /* XXX */
+            dostat |= 16;
+            goto jhdr_redo;
          }
-         /* FALLTHRU */
+         goto jmulti;
       case SEND_TOSRCH:
+         goto jmulti;
       case SEND_DECRYPT:
          goto jmulti;
       case SEND_TOFILE:
       case SEND_TOPIPE:
          put_from_(obuf, ip->m_multipart, stats);
          /* FALLTHRU */
-      case SEND_MBOX:
-      case SEND_RFC822:
-      case SEND_SHOW:
+      default:
          break;
       }
       break;
@@ -764,8 +826,8 @@ jheaders_skip:
          goto jleave;
       break;
    case mx_MIMETYPE_PKCS7:
-      if(oaction != SEND_MBOX && oaction != SEND_RFC822 &&
-            oaction != SEND_SHOW && ip->m_multipart != NIL)
+      if(oaction != SEND_RFC822 && oaction != SEND_SHOW &&
+            ip->m_multipart != NIL)
          goto jmulti;
       /* FALLTHRU */
    default:
@@ -796,7 +858,6 @@ jheaders_skip:
                if(mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT)
                   goto jleave;
                else{
-                  _print_part_info(obuf, ip, doitp, level, qf, stats);
                   /* Because: interactive OR batch mode, so */
                   if(!mx_tty_yesorno(_("Run MIME handler for this part?"),
                         su_state_has(su_STATE_REPRODUCIBLE)))
@@ -811,13 +872,7 @@ jheaders_skip:
             break;
          }
          break;
-      case SEND_TOFILE:
-      case SEND_TOPIPE:
-      case SEND_TOSRCH:
-      case SEND_DECRYPT:
-      case SEND_MBOX:
-      case SEND_RFC822:
-      case SEND_SHOW:
+      default:
          break;
       }
       break;
@@ -858,15 +913,11 @@ jheaders_skip:
             goto jalter_leave;
          }
 
-         for (np = ip->m_multipart;;) {
+         for(np = ip->m_multipart;;){
 jalter_redo:
-            for (; np != NULL; np = np->m_nextpart) {
-               if (action != SEND_QUOTE && np->m_ct_type_plain != NULL) {
-                  if (flags & _NEEDNL)
-                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats,
-                        NULL, NULL);
-                  _print_part_info(obuf, np, doitp, level, qf, stats);
-               }
+            level = -ABS(level);
+            for(; np != NIL; np = np->m_nextpart){
+               level = -ABS(level);
                flags |= _NEEDNL;
 
                switch(np->m_mimetype){
@@ -876,6 +927,7 @@ jalter_redo:
                case mx_MIMETYPE_SIGNED:
                case mx_MIMETYPE_ENCRYPTED:
                case mx_MIMETYPE_MULTI:
+                  np->m_flag &= ~MDISPLAY;
                   mpsp = n_autorec_alloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
@@ -885,16 +937,26 @@ jalter_redo:
                   flags &= ~_NEEDNL;
                   goto jalter_redo;
                default:
-                  if (!(np->m_flag & MDISPLAY))
+                  if(!(np->m_flag & MDISPLAY)){
+                     if(np->m_mimetype != mx_MIMETYPE_DISCARD &&
+                           (action == SEND_TODISP ||
+                            action == SEND_TODISP_ALL ||
+                            action == SEND_TODISP_PARTS))
+                        _print_part_info(obuf, np, doitp, level, qf, stats);
                      break;
+                  }
+
                   /* This thing we are going to do */
                   quoteflt_flush(qf);
-                  if ((flags & _HADPART) && oaction == SEND_QUOTE)
-                     /* XXX (void)*/a_send_out_nl(obuf, stats);
                   flags |= _HADPART;
                   flags &= ~_NEEDNL;
+                  rv = ABS(level) + 1;
+                  if(level < 0){
+                     level = -level;
+                     rv = -rv;
+                  }
                   rv = sendpart(zmp, np, obuf, doitp, qf, oaction,
-                        linedat, linesize, stats, level + 1);
+                        linedat, linesize, stats, rv, anyoutput);
                   quoteflt_reset(qf, origobuf);
                   if (rv < 0)
                      curr = &outermost; /* Cause overall loop termination */
@@ -939,6 +1001,7 @@ jmulti:
                NULL,NULL);
          }
 
+         level = -ABS(level);
          for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
             boole volatile ispipe;
 
@@ -972,36 +1035,21 @@ jmulti:
                   }
                }
                break;
-            case SEND_TODISP:
-            case SEND_TODISP_ALL:
-               if(ip->m_mimetype != mx_MIMETYPE_ALTERNATIVE &&
-                     ip->m_mimetype != mx_MIMETYPE_RELATED &&
-                     ip->m_mimetype != mx_MIMETYPE_DIGEST &&
-                     ip->m_mimetype != mx_MIMETYPE_SIGNED &&
-                     ip->m_mimetype != mx_MIMETYPE_ENCRYPTED &&
-                     ip->m_mimetype != mx_MIMETYPE_MULTI)
-                  break;
-               _print_part_info(obuf, np, doitp, level, qf, stats);
-               break;
-            case SEND_TODISP_PARTS:
-            case SEND_QUOTE:
-            case SEND_QUOTE_ALL:
-            case SEND_MBOX:
-            case SEND_RFC822:
-            case SEND_SHOW:
-            case SEND_TOSRCH:
-            case SEND_DECRYPT:
-            case SEND_TOPIPE:
+            default:
                break;
             }
 
             quoteflt_flush(qf);
-            if((oaction == SEND_QUOTE || oaction == SEND_QUOTE_ALL) &&
-                  np->m_multipart == NIL && ip->m_parent != NIL)
-               /*XXX (void)*/a_send_out_nl(obuf, stats);
-            if(sendpart(zmp, np, obuf, doitp, qf, oaction, linedat, linesize,
-                  stats, level+1) < 0)
-               rv = -1;
+            {
+               int nlvl = ABS(level) + 1;
+               if(level < 0){
+                  level = -level;
+                  nlvl = -nlvl;
+               }
+               if(sendpart(zmp, np, obuf, doitp, qf, oaction, linedat,
+                     linesize, stats, nlvl, anyoutput) < 0)
+                  rv = -1;
+            }
             quoteflt_reset(qf, origobuf);
 
             if(oaction == SEND_QUOTE){
@@ -1019,9 +1067,7 @@ jpipe_close:
             }
          }
          goto jleave;
-      case SEND_MBOX:
-      case SEND_RFC822:
-      case SEND_SHOW:
+      default:
          break;
       }
       break;
@@ -1106,6 +1152,7 @@ jpipe_close:
       if(!(mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT)){
          if(oaction != SEND_TODISP_PARTS)
             goto jmthp_default;
+         /* FIXME Ach, what a hack!  We need filters.. v15! */
          if(convert != CONV_FROMB64_T)
             action = SEND_TOPIPE;
       }
@@ -1221,8 +1268,10 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
-   if((dostat & 4) && pbuf == origobuf) /* TODO */
-      n_pstate |= n_PS_BASE64_STRIP_CR;
+   if(dostat & 4){
+      if(pbuf == origobuf) /* TODO */
+         n_pstate |= n_PS_BASE64_STRIP_CR;
+   }
    while(!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, FAL0)){
 joutln:
       if (_out(*linedat, linelen, pbuf, convert, action, qf, stats, &outrest,
@@ -1253,6 +1302,10 @@ joutln:
 
    quoteflt_flush(qf);
 
+   if(!(qf->qf_bypass = save_qf_bypass))
+      *anyoutput = TRU1;
+   stats = save_stats;
+
    if (rv >= 0 && (mthp->mth_flags & mx_MIMETYPE_HDL_TMPF_FILL)) {
       mthp->mth_flags &= ~mx_MIMETYPE_HDL_TMPF_FILL;
       fflush(pbuf);
@@ -1269,10 +1322,6 @@ joutln:
    if (inrest.s != NULL)
       n_free(inrest.s);
 
-   if (pbuf != origobuf) {
-      qf->qf_bypass = save_qf_bypass;
-      stats = save_stats;
-   }
    }
 
 jend:
@@ -1280,6 +1329,7 @@ jend:
       mx_fs_pipe_close(pbuf, !(mthp->mth_flags & mx_MIMETYPE_HDL_ASYNC));
       safe_signal(SIGPIPE, oldpipe);
       if (rv >= 0 && qbuf != NULL && qbuf != obuf){
+         *anyoutput = TRU1;
          if(!a_send_pipecpy(qbuf, obuf, origobuf, qf, stats))
             rv = -1;
       }
@@ -1644,6 +1694,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 {
    struct n_sigman linedat_protect;
    struct quoteflt qf;
+   boole anyoutput;
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
@@ -1756,8 +1807,9 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 
+   anyoutput = FAL0;
    rv = sendpart(mp, ip, obuf, doitp, &qf, action, &linedat, &linesize,
-         stats, 0);
+         stats, 0, &anyoutput);
 
    n_sigman_cleanup_ping(&linedat_protect);
 jleave:

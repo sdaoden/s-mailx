@@ -4826,7 +4826,7 @@ b7
          ./.tmbox >./.tall 2>&1
    check_ex0 18-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 18 - "${MBOX}" '4192298831 3932'
+   check 18 - "${MBOX}" '385267528 3926'
 
    # quote-as-attachment, fullnames
    </dev/null ${MAILX} ${ARGS} -Rf \
@@ -4842,6 +4842,7 @@ b7
 
    # Moreover, quoting of several parts with all*
    t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
+   check 20 0 ./.tmbox '1874764424 668'
 
    </dev/null ${MAILX} ${ARGS} -Rf \
          -Sescape=! -Sindentprefix=' |' \
@@ -4851,7 +4852,7 @@ b7
          -Y reply -Y !. \
          -Y xit \
          ./.tmbox >./.tall 2>&1
-   check 20 0 ./.tall '3824912218 772'
+   check 21 0 ./.tall '946925637 1105'
 
    ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
@@ -7481,7 +7482,7 @@ t_rfc2231() {
    \\type 1 2 3
    \\xit
    ' | ${MAILX} ${ARGS} -Rf ./.tinv > ./.tall 2> ./.terr
-   check 4 0 ./.tall '1842050412 902'
+   check 4 0 ./.tall '4094731083 905'
    if have_feat uistrings && have_feat iconv; then
       check 5 - ./.terr '3713266499 473'
    else
@@ -7536,12 +7537,12 @@ t_mime_types_load_control() {
          > ./.tout 2>&1
    check_ex0 1-estat
    ${cat} "${MBOX}" >> ./.tout
-   check 1 - ./.tout '919615295 2440'
+   check 1 - ./.tout '2128819500 2441'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '2184535740 3640'
+   check 2 0 ./.tout '1125106528 3642'
 
    t_epilog "${@}"
 }
@@ -7752,6 +7753,7 @@ t_cmd_escapes() {
       t__gen_msg from 'ex4@am.ple' subject sub4 &&
       t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
       t__gen_mimemsg from 'ex6@am.ple' subject sub6; } > ./.tmbox
+   check 1 - ./.tmbox '517368276 2182'
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
@@ -7912,14 +7914,14 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '774822337 7613'
+   check 2 - "${MBOX}" '3877629593 7699'
 
    if have_feat uistrings && have_feat iconv; then
       check 2-err - ./.terr '3575876476 49'
    else
       t_echoskip '2-err:[!UISTRINGS or !ICONV]'
    fi
-   check 3 - ./.tmsg '1991699357 4453'
+   check 3 - ./.tmsg '3502750368 4445'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7944,7 +7946,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '2120083250 7814'
+   check 4 0 "${MBOX}" '115245837 7900'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
@@ -9581,7 +9583,7 @@ t_pipe_handlers() {
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tax 2>&1;'"${mv}"' ./.tax ./.tay' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
-   check 4 - "${BODY}" '2275717813 469'
+   check 4 - "${BODY}" '2036666633 493'
    check 4-hdl - ./.tay '144517347 151' async
 
    # Keep $MBOX..
@@ -9604,7 +9606,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 5 0 "${BODY}" '79260249 637'
+      check 5 0 "${BODY}" '4260004050 661'
 
       # Fill in ourselfs, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
@@ -9622,7 +9624,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 6 0 "${BODY}" '79260249 637'
+      check 6 0 "${BODY}" '4260004050 661'
 
       # And the same, via copiousoutput (fake)
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
@@ -9641,7 +9643,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 7 0 "${BODY}" '686281717 676'
+      check 7 0 "${BODY}" '709946464 677'
    fi
 
    t_epilog "${@}"
@@ -9812,7 +9814,7 @@ application/pdf; echo p-7-1\\;< %%s cat\\;echo p-7-2;test = [ "$XY" = 3 ];\\
 \echo =8
 ' \
       -Rf "${MBOX}" > ./.tall 2>./.terr
-   check 9 0 ./.tall '2494652433 3767'
+   check 9 0 ./.tall '2388630345 3850'
    check 10 - ./.terr '4294967295 0'
    check 11 - ./.tasy '842146666 27' async
 
@@ -10113,9 +10115,14 @@ Content-Transfer-Encoding: 8-bit
 --=BOUNDIN=--
 
 --=BOUNDOUT=
-Content-Type: text/plain
+Content-Type: text/troff
 
 Golden Brown
+
+--=BOUNDOUT=
+Content-Type: text/x-uuencode
+
+Aprendimos a quererte
 --=BOUNDOUT=--
 
 ' "${body}" "${body}"
