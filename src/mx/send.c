@@ -493,6 +493,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    UNINIT(term_infd, 0);
    UNINIT(cnt, 0);
+   oaction = action;
 
    quoteflt_reset(qf, obuf);
 
@@ -684,7 +685,6 @@ jhdrtrunc:
 
 jheaders_skip:
    su_mem_set(mthp = &mth_stack, 0, sizeof mth_stack);
-   oaction = action;
 
    switch (ip->m_mimetype) {
    case mx_MIMETYPE_822:
