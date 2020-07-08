@@ -2794,14 +2794,14 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
     * buffer", and only otherwise read(2) it */
-   mbstate_t ps[2];
-   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
 # ifdef mx_HAVE_KEY_BINDINGS
    struct a_tty_bind_tree *tbtp;
+   boole timeout;
 # endif
+   mbstate_t ps[2];
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    wchar_t wc;
    BITENUM_IS(u32,a_tty_bind_flags) tbf;
-   boole timeout;
    sz rv;
    NYD_IN;
 
@@ -2812,7 +2812,6 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
 
 jrestart:
    su_mem_set(ps, 0, sizeof ps);
-   timeout = FAL0;
    tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
 
    /* Treat buffer take-over mode specially, that simplifies the below */
