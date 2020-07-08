@@ -629,8 +629,12 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
          ;
       else if(!su_cs_cmp(cp, "headers"))
          cqcp->cqc_quoteitp = n_IGNORE_TYPE;
+      /* TODO *quote*=all* series should separate the bodies visually */
       else if(!su_cs_cmp(cp, "allheaders")){
          cqcp->cqc_quoteitp = NIL;
+         cqcp->cqc_action = SEND_QUOTE_ALL;
+      }else if(!su_cs_cmp(cp, "allbodies")){
+         cqcp->cqc_quoteitp = n_IGNORE_ALL;
          cqcp->cqc_action = SEND_QUOTE_ALL;
       }
 

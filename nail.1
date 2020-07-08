@@ -11756,26 +11756,28 @@ The default is
 .
 .Mx
 .It Va quote
-If set messages processed by
-.Ic followup ,
+If set messages processed by variants of
+.Ic followup
+and
 .Ic reply
-and variants will be prefixed with the quoted original message,
-the lines of which prefixed by
+will start with the original message, lines of which prefixed by
 .Va indentprefix ,
 taking into account
 .Va quote-chars
 and
 .Va quote-fold .
-No headers will be quoted when set without value or if the value is
+No headers will be quoted when set without value or for
 .Ql noheading ,
-if it is
+for
 .Ql headers
 the
 .Ql type
 .Ic headerpick
-selection will be included in the quotation,
-whereas all headers and all MIME parts are included for
-.Ql allheaders .
+selection will be included in the quote,
+.Ql allbodies
+embeds the (body) contents of all MIME parts, and
+.Ql allheaders
+als includes all headers.
 The quoted message will be enclosed by the expansions of
 .Va quote-inject-head
 and

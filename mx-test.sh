@@ -4840,6 +4840,19 @@ b7
          ./.tmbox >./.tall 2>&1
    check 19 0 ./.tall '2774517283 2571'
 
+   # Moreover, quoting of several parts with all*
+   t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
+
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! -Sindentprefix=' |' \
+         -Y 'set quote=allheaders' \
+         -Y reply -Y !. \
+         -Y 'set quote=allbodies' \
+         -Y reply -Y !. \
+         -Y xit \
+         ./.tmbox >./.tall 2>&1
+   check 20 0 ./.tall '3824912218 772'
+
    ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
 } # }}}
