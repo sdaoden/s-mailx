@@ -679,7 +679,7 @@ check() {
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
             command -v diff >/dev/null 2>&1; then
          y=test-out
-         if (git rev-parse --verify $i) >/dev/null 2>&1; then :; else
+         if (git rev-parse --verify $y) >/dev/null 2>&1; then :; else
             y=refs/remotes/origin/test-out
             (git rev-parse --verify $y) >/dev/null 2>&1 || y=
          fi
