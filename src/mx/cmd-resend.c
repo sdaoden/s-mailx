@@ -216,7 +216,9 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       a_NONE,
       a_ONCE = 1u<<0,
       a_LIST_CLASSIFIED = 1u<<1,
-      a_SEEN_TO = 1u<<2
+      a_SEEN_TO = 1u<<2,
+      a_ORIG_SEARCHED = 1u<<3,
+      a_ORIG_FOUND = 1u<<4
    };
 
    struct mx_name *np_orig;
@@ -251,7 +253,7 @@ jredo:
 
       /* Try primary, then secondary */
       for(xp = hp->h_mailx_orig_to; xp != NIL; xp = xp->n_flink)
-         if(!su_cs_cmp_case(xp->n_name, nnp->n_name)){
+         if(mx_name_is_same_address(xp, nnp)){
             if(!(f & a_LIST_CLASSIFIED)){
                f |= a_SEEN_TO;
                goto jclass_ok;
@@ -265,19 +267,36 @@ jredo:
       }
 
       for(xp = hp->h_mailx_orig_cc; xp != NIL; xp = xp->n_flink)
-         if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
+         if(mx_name_is_same_address(xp, nnp))
             goto jlink;
 
       /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
        * To: due to lack of a better place.  But only if To: is not empty after
        * all formerly present receivers have been worked, to avoid that yet
        * unaddressed receivers propagate to To: whereas formerly addressed ones
-       * end in Cc: */
+       * end in Cc: .. */
       if(f & a_LIST_CLASSIFIED){
          if(f & a_SEEN_TO){
+            /* .. with one exception: if we know the original sender, and if
+             * that no longer is a receiver, then assume the original sender
+             * desires to redirect to a different address */
+            if(!(f & a_ORIG_SEARCHED)){
+               f |= a_ORIG_SEARCHED;
+               if(hp->h_mailx_orig_sender != NIL){
+                  for(xp = np_orig; xp != NIL; xp = xp->n_flink)
+                     if(mx_name_is_same_address(xp, hp->h_mailx_orig_sender)){
+                        f |= a_ORIG_FOUND;
+                        break;
+                     }
+               }
+            }
+
+            if(!(f & a_ORIG_FOUND))
+               goto juseto;
             gf = GCC;
             xpp = &hp->h_cc;
          }else{
+juseto:
             gf = GTO;
             xpp = &hp->h_to;
          }
