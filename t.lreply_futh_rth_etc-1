@@ -738,7 +738,8 @@ This is text of "Lreply 6.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out, is@a.list
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -829,7 +830,8 @@ This is text of "Reply 7.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out, is@a.list
+To: bugstop@five.miles.out
+Cc: is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -871,8 +873,8 @@ This is text of "Lreply 7.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mister originator2 <mr2@originator>, bugstop@five.miles.out,
- is@a.list
+To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+Cc: is@a.list
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -887,8 +889,8 @@ This message should have *fullnames* in the header.
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out, is@a.list
-Cc: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -984,8 +986,8 @@ This is text of "Reply 8.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out, is@a.list
-Cc: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -1028,8 +1030,8 @@ This is text of "Lreply 8.3".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: mr2@originator, bugstop@five.miles.out, is@a.list
-Cc: laber@backe.eu
+To: mr2@originator, bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
@@ -1121,8 +1123,8 @@ This is text of "Reply 9.4".
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: laber@backe.eu
-To: bugstop@five.miles.out, is@a.list
-Cc: laber@backe.eu
+To: bugstop@five.miles.out
+Cc: is@a.list, laber@backe.eu
 Subject: Re: Bugstop: five miles out 1
 In-Reply-To: <20170719132257.766AF781267@originator>
 References: <20170719132257.766AF781267@originator>
