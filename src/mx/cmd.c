@@ -978,7 +978,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
             }
 
             if(shs & n_SHEXP_STATE_ERR_MASK){
-               /* Simply ignore Unicode error, just keep the normalized \[Uu] */
+               /* Ignore Unicode error, just keep the normalized \[Uu] */
                if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
                   res_no = -1;
                   break;

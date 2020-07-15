@@ -890,7 +890,8 @@ dequeue1(struct mailbox *mp)
    if (fp != NULL && fsize(fp) > 0) {
       if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
             != OKAY) {
-         n_err(_("Cannot select \"%s\" for dequeuing.\n"), mp->mb_imap_mailbox);
+         n_err(_("Cannot select \"%s\" for dequeuing.\n"),
+            mp->mb_imap_mailbox);
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||

@@ -460,7 +460,8 @@ _EOT
    @skeys = sort keys %defvals;
 
    print F "\n";
-   print F 'static struct a_amv_var_defval const a_amv_var_defvals[] = {', "\n";
+   print F 'static struct a_amv_var_defval const a_amv_var_defvals[] = {',
+      "\n";
    foreach(@skeys){
       my $e = $defvals{$_};
       print F "${S}{", $e->{enum}, ', {0,}, ',

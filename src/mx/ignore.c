@@ -86,7 +86,7 @@ static struct n_ignore *a_ignore_bltin[n__IGNORE_MAX + 1];
 /* Almost everyone uses `ignore'/`retain', put _TYPE in BSS */
 static struct n_ignore a_ignore_type;
 
-/* Return real self, which is xself unless that is one of the built-in specials,
+/* Return real self, which is xself unless that is a built-in special,
  * in which case NIL is returned if nonexistent and docreate is false.
  * The other statics assume self has been resolved (unless noted) */
 static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
@@ -731,7 +731,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
    boole rv;
    NYD_IN;
 
-   retain = !!retain; /* Make it true bool, TRUM1 has special _lookup meaning */
+   retain = !!retain; /* Make true bool, TRUM1 has special _lookup meaning */
    rv = FAL0;
    self = a_ignore_resolve_self(self, TRU1);
 

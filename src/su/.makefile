@@ -22,9 +22,11 @@ CXXSRC = cxx-core.cc \
 
 .SUFFIXES: .o .c .cc .y
 .cc.o:
-	$(CXX) -Dsu_USECASE_SU -I../../src -I../../include $(CXXFLAGS) -o $(@) -c $(<)
+	$(CXX) -Dsu_USECASE_SU -I../../src -I../../include \
+		$(CXXFLAGS) -o $(@) -c $(<)
 .c.o:
-	$(CC) -Dsu_USECASE_SU -I../../src -I../../include $(CFLAGS) -o $(@) -c $(<)
+	$(CC) -Dsu_USECASE_SU -I../../src -I../../include \
+		$(CFLAGS) -o $(@) -c $(<)
 .cc .c .y: ;
 
 COBJ = $(CSRC:.c=.o)

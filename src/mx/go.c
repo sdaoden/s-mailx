@@ -124,8 +124,8 @@ enum a_go_flags{
     * back in n_go_macro(), that enters a for(;;) loop that directly calls
     * c_call() -- our `xcall' stack avoidance optimization --, yet this call
     * will itself end up in a new n_go_macro(), and if that again ends up with
-    * `xcall' this should teardown and leave its own n_go_macro(), unrolling the
-    * stack "up to the barrier level", but which effectively still is the
+    * `xcall' this should teardown and leave its own n_go_macro(), unrolling
+    * the stack "up to the barrier level", but which effectively still is the
     * n_go_macro() that lost its a_go_input and is looping the `xcall'
     * optimization loop.  If no `xcall' is desired that loop is simply left and
     * the _event_loop() of the outer a_go_ctx will perform a loop tick and
@@ -136,7 +136,7 @@ enum a_go_flags{
 };
 
 enum a_go_cleanup_mode{
-   a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all contexts except outermost */
+   a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all ctxs except outermost */
    a_GO_CLEANUP_TEARDOWN = 1u<<1,   /* Teardown current context */
    a_GO_CLEANUP_LOOPTICK = 1u<<2,   /* Normal looptick cleanup */
    a_GO_CLEANUP_MODE_MASK = su_BITENUM_MASK(0, 2),
@@ -638,7 +638,7 @@ jeflags:
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
-    * TODO argument state should be property of a per-command carrier instead */
+    * TODO argument state should be property of a per-cmd carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if(flags & a_WYSH){
@@ -1291,7 +1291,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    n_sighdl_t soldhdl;
    struct a_go_eval_ctx gec;
    enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
-   volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
+   volatile int hadint;/* TODO get rid of shitty signal stuff (see signal.c) */
    sigset_t osigmask;
    NYD2_IN;
 
@@ -1420,7 +1420,7 @@ n_go_main_loop(void){ /* FIXME */
          a_go_cleanup(a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
       /* TODO This condition test may not be here: if the condition is not true
-       * TODO a recursive mainloop object without that cruft should be used!! */
+       * TODO a recursive mainloop object without that cruft should be used! */
       if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
          if(a_go_ctx->gc_inject == su_NIL)
             mx_fs_linepool_cleanup(FAL0);
@@ -1868,8 +1868,8 @@ jforce_stdin:
       if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
          break;
 
-      /* Definitely outside of quotes, thus the quoting rules are so that an
-       * uneven number of successive reverse solidus at EOL is a continuation */
+      /* Definitely outside of quotes, thus quoting rules are so that an uneven
+       * number of successive reverse solidus at EOL is a continuation */
       if(n > 1){
          uz i, j;
 
@@ -2319,7 +2319,7 @@ FL int
 c_eval(void *vp){
    /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
     * TODO ARGV with shell rules, but if that is not possible then simply
-    * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
+    * TODO adjust argv/argc of "the CmdCtx" that we will have exec real cmd */
    struct a_go_eval_ctx gec;
    struct n_string s_b, *s;
    uz i, j;

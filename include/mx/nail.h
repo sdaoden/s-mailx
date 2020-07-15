@@ -247,7 +247,7 @@ enum n_go_input_flags{
    n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
    /* `xcall' is `call' (at the level where this is set): to be set when
     * teardown of top level has undesired effects, e.g., for `account's and
-    * folder hooks etc., where we do not to loose our `localopts' unroll list */
+    * folder hooks etc., if we do not want to loose `localopts' unroll list */
    n_GO_INPUT_NO_XCALL = 1u<<9,
 
    n_GO_INPUT_FORCE_STDIN = 1u<<10, /* Even in macro, use stdin (`read')! */
@@ -1555,7 +1555,7 @@ VL u32 n_psonce; /* Bits of enum n_program_state_once */
 VL u32 n_pstate; /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
- * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+ * TODO status and may-place-in-history bit, need to manage global bypass.. */
 #ifdef mx_HAVE_ERRORS
 VL s32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
 #endif

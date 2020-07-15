@@ -590,7 +590,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       char *cp, c;
       uz i;
 
-      /* Can this be a valid list of headers?  However, with regular expressions
+      /* Can this be a valid list of headers? However, with regular expressions
        * simply use the input as such if it appears to be a regex */
 #ifdef mx_HAVE_REGEX
       if(n_is_maybe_regex(ctag)){

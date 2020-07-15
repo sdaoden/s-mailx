@@ -582,7 +582,8 @@ jenc_retry:
             j = xout->l;
          }
          /* (Avoid trigraphs in the RFC 2047 placeholder..) */
-         i = j + (flags & _8BIT ? cset8_len : cset7_len) + sizeof("=!!B!!=") -1;
+         i = j + (flags & _8BIT ? cset8_len : cset7_len) +
+               sizeof("=!!B!!=") -1;
          if (*wcur != '\0')
             ++i;
 
@@ -591,7 +592,7 @@ jenc_retry_same:
           * longer (just like RFC 5322's "a line SHOULD fit in 78 but MAY be
           * 998 characters long"), so we cannot use the _OVERLONG mechanism,
           * even though all tested mailers seem to support it */
-         if (i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ a_MAXCOL)) {
+         if(i + col <= (/*flags & _OVERLONG ? MIME_LINELEN_MAX :*/ a_MAXCOL)){
             if(flags & _MSH_NOTHING){
                flags &= ~_MSH_NOTHING;
                putc((msh == a_MIME_SH_COMMENT ? '(' : '"'), fo);
@@ -1141,11 +1142,11 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
           * TODO translated strings because of errors! */
          if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
-            convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NULL);
+            convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NIL);
             out = n_str_add(out, &cin);
             if (convert) {/* su_ERR_INVAL at EOS */
                n_iconv_reset(fhicd);
-               out = n_str_add_buf(out, n_qm, 1); /* TODO unicode replacement */
+               out = n_str_add_buf(out, n_qm, 1);/* TODO unicode replacement */
             }
             n_free(cin.s);
          } else

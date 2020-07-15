@@ -76,7 +76,7 @@ else
   if [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
     exec /usr/xpg4/bin/sh "${0}" "${@}"
   else
-    synopsis 1 'Not a sh(1)ell with "set -C" (for safe temporary file creation)'
+    synopsis 1 'sh(1)ell without "set -C" (for safe temporary file creation)'
   fi
 fi
 
@@ -118,7 +118,7 @@ i=`expr ${OPTIND} - 1`
 # pipe case that our END{} handler will generate when we had to perform any
 # preprocessing, and that in turn would result in a dangling temporary file!
 # Thus the only sane option seems to be to always create the temporary file,
-# whether we need it or not, not to exec(1) awk(1) but keep on running the shell
+# whether we need it or not, not to exec(1) awk(1) but keep on running shell
 # in order to remove the temporary after awk(1) has finished, whichever way.
 
 find_tmpdir() {

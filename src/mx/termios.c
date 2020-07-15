@@ -378,8 +378,8 @@ mx_termios_controller_setup(enum mx_termios_setup what){
             su_idec_u32_cp(&c, cp, 0, NIL);
 
          if(l == 0 || c == 0){
-            /* In non-interactive mode, stop now, except for the documented case
-             * that both are set but not both have been usable */
+            /* In non-interactive mode, stop now, except for the documented
+             * case that both are set but not both have been usable */
             if(!(n_psonce & n_PSO_INTERACTIVE) &&
                   !((n_psonce & n_PSO_TTYANY) &&
                      (n_poption & n_PO_BATCH_FLAG)) &&

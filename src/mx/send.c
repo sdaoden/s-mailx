@@ -685,7 +685,7 @@ jhdrput:
             mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
       )
       *cp = ':';
-      _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NULL,NULL);
+      _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NIL,NIL);
       mx_COLOUR(
          if(mx_COLOUR_IS_ACTIVE())
             mx_colour_reset();
@@ -1253,7 +1253,7 @@ jsend:
       __sendp_sig = 0;
       __sendp_opipe = safe_signal(SIGPIPE, &__sendp_onsig);
       if (sigsetjmp(__sendp_actjmp, 1)) {
-         n_pstate &= ~n_PS_BASE64_STRIP_CR;/* (but protected by outer sigman) */
+         n_pstate &= ~n_PS_BASE64_STRIP_CR;/* (but outer sigman protected) */
          if (outrest.s != NULL)
             n_free(outrest.s);
          if (inrest.s != NULL)

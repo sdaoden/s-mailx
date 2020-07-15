@@ -173,7 +173,7 @@ static int a_msg_evalcol(int col);
  * MDELETED the message has to be undeleted */
 static boole a_msg_check(int mno, int f);
 
-/* Scan out a single lexical item and return its token number, updating *mslp */
+/* Scan out a single lexical item and return its token number, update *mslp */
 static int a_msg_scan(struct a_msg_speclex *mslp);
 
 /* See if the passed name sent the passed message */

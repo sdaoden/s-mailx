@@ -1989,7 +1989,7 @@ a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
          goto jleave;
    }
 
-   if ((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+   if((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NIL)
       goto jleave;
    if (!_check_dispo_notif(mdn, NULL, fo))
       goto jleave;
@@ -2564,7 +2564,7 @@ do {\
             }
          }
 
-         /* But for that, we have to remove all incarnations of ourselves first.
+         /* But for that, remove all incarnations of ourselves first.
           * TODO It is total crap that we have alternates_remove(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
@@ -2715,13 +2715,13 @@ jto_fmt:
             if (sublen > 0 &&
                   xmime_write(sub, sublen, fo,
                      (!nodisp ? CONV_NONE : CONV_TOHDR),
-                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
+                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
                goto jleave;
          }
          /* This may be, e.g., a Fwd: XXX yes, unfortunately we do like that */
          else if (*sub != '\0') {
-            if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
+            if(xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
                goto jleave;
          }
       }

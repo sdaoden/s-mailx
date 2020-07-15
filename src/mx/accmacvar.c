@@ -517,7 +517,8 @@ a_amv_mac_call(void *v, boole silent_nexist){
    }else if(UNLIKELY((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)
          ) == NULL)){
       if(!silent_nexist)
-         n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
+         n_err(_("Undefined macro called: %s\n"),
+            n_shexp_quote_cp(name, FAL0));
       n_pstate_err_no = su_ERR_NOENT;
       rv = 1;
    }else{
@@ -1573,7 +1574,8 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
       /* Global variable map */
       avpp = &a_amv_vars[avcp->avc_prime];
 
-      for(lavp = NULL, avp = *avpp; avp != NULL; lavp = avp, avp = avp->av_link)
+      for(lavp = NULL, avp = *avpp; avp != NULL;
+            lavp = avp, avp = avp->av_link)
          if(!su_cs_cmp(avp->av_name, avcp->avc_name)){
             /* Relink as head, hope it "sorts on usage" over time.
              * The code relies on this behaviour! */
@@ -2113,7 +2115,8 @@ joval_and_go:
       if(avscf & a_AMV_VSETCLR_LOCAL){
          if((avpp = *a_amv_lopts->as_amcap->amca_local_vars) == NULL)
             avpp = *(a_amv_lopts->as_amcap->amca_local_vars =
-                  n_calloc(1, sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
+                  n_calloc(1,
+                     sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
          avpp += avcp->avc_prime;
       }else
          avpp = &a_amv_vars[avcp->avc_prime];
@@ -2246,8 +2249,8 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
       /* This may be a clearance request from the command line, via -S, and we
        * need to keep track of that!  Unfortunately we are not prepared for
        * this, really, so we need to create a fake entry that is known and
-       * handled correctly by the lowermost variable layer!
-       * However, all this cannot happen for plain unset of `local' variables */
+       * handled correctly by the lowermost variable layer!  However, all
+       * this cannot happen for plain unset of `local' variables */
       if(avscf & a_AMV_VSETCLR_LOCAL)
          goto jleave;
       if(UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&

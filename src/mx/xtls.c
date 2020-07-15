@@ -711,7 +711,8 @@ a_xtls_verify_cb(int success, X509_STORE_CTX *store)
       a_xtls_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
-      X509_STORE_CTX_get_error_depth(store), (success ? n_empty : V_(n_error)));
+      X509_STORE_CTX_get_error_depth(store),
+      (success ? su_empty : V_(n_error)));
 
    if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
       X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);

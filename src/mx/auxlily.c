@@ -823,7 +823,8 @@ n_msleep(uz millis, boole ignint){
 
       while((i = nanosleep(&ts, &trem)) != 0 && ignint)
          ts = trem;
-      rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
+      rv = (i == 0) ? 0
+            : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
 #elif defined mx_HAVE_SLEEP

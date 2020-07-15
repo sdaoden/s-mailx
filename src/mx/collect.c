@@ -1088,7 +1088,7 @@ jleave:
 
 static int
 a_coll_ocs__mac(void){
-   /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
+   /* Execs in a fork(2)ed child  TODO if remains, global MASKs for those! */
    setvbuf(n_stdin, NULL, _IOLBF, 0);
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYANY);
@@ -1310,7 +1310,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             hp);
       }
 
-      /* TODO Mm: nope since it may require turning this into a multipart one */
+      /* TODO Mm: nope: it may require turning this into a multipart one */
       if(!(n_poption & (n_PO_Mm_FLAG | n_PO_t_FLAG))){
          if(!a_coll_message_inject_head(_coll_fp))
             goto jerr;
@@ -1970,7 +1970,7 @@ jIi_putesc:
          if(cnt != 0)
             goto jearg;
          /* If we are running a splice hook, assume it quits on its own now,
-          * otherwise we (no true out-of-band IPC to signal this state, XXX sic)
+          * otherwise we (no true out-of-band IPC to signal this state, XXX)
           * have to SIGTERM it in order to stop this wild beast */
          flags |= a_COAP_NOSIGTERM;
          ++_coll_hadintr;
@@ -2077,7 +2077,7 @@ jout:
       union {int (*ptf)(void); char const *sh;} u;
       char const *cmd;
 
-      /* Reset *escape* and more to their defaults.  On change update manual! */
+      /* Reset *escape* and more to their defaults. On change update manual! */
       if(ifs_saved == NULL)
          ifs_saved = savestr(ok_vlook(ifs));
       ok_vclear(ifs);
@@ -2334,7 +2334,7 @@ jerr:
 
    ASSERT(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?
-    * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
+    * TODO This is no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
    if(*checkaddr_err != 0){
       if(*checkaddr_err == 111)
          n_err(_("Compose mode splice hook failure\n"));

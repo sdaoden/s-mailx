@@ -721,7 +721,7 @@ a_T_PUBSYM(assign)(struct a_T *self, struct a_T const *t){ /* XXX inline */
 }
 
 s32
-a_T_PUBSYM(assign_elems)(struct a_T *self, struct a_T const *t){ /* XXX inline*/
+a_T_PUBSYM(assign_elems)(struct a_T *self, struct a_T const *t){/* XXX inline*/
    s32 rv;
    NYD_IN;
    ASSERT(self);

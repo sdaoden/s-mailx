@@ -451,23 +451,23 @@ _cc_default() {
 }
 
 cc_create_testfile() {
-   ${cat} > ${tmp}.c <<-\!
-		#include <stdio.h>
-		#include <string.h>
-		static void doit(char const *s);
-		int
-		main(int argc, char **argv){
-		   (void)argc;
-		   (void)argv;
-		   doit("Hello world");
-		   return 0;
-		}
-		static void
-		doit(char const *s){
-		   char buf[12];
-		   memcpy(buf, s, strlen(s) +1);
-		   puts(s);
-		}
+   ${cat} > ${tmp}.c <<\!
+#include <stdio.h>
+#include <string.h>
+static void doit(char const *s);
+int
+main(int argc, char **argv){
+   (void)argc;
+   (void)argv;
+   doit("Hello world");
+   return 0;
+}
+static void
+doit(char const *s){
+   char buf[12];
+   memcpy(buf, s, strlen(s) +1);
+   puts(s);
+}
 !
 }
 
@@ -1876,7 +1876,7 @@ int main(void){
 then
    :
 else
-   msg 'ERROR: we require termios.h and the tc[gs]etattr() family of functions.'
+   msg 'ERROR: we require termios.h and the tc[gs]etattr() function family.'
    msg 'That much Unix we indulge ourselves.'
    config_exit 1
 fi
@@ -2002,7 +2002,8 @@ int main(void){
 
 ##
 
-link_check putc_unlocked 'putc_unlocked(3)' '#define mx_HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked(3)' \
+   '#define mx_HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void){
    putc_unlocked('@', stdout);
@@ -2196,7 +2197,8 @@ int main(void){
 }
 !
 
-link_check dirent_d_type 'struct dirent.d_type' '#define mx_HAVE_DIRENT_TYPE' << \!
+link_check dirent_d_type 'struct dirent.d_type' \
+   '#define mx_HAVE_DIRENT_TYPE' << \!
 #include <dirent.h>
 int main(void){
    struct dirent de;
@@ -3148,7 +3150,7 @@ int main(void){
       fprintf(stderr, "idn_encodename failed: %s\n", idn_result_tostring(r));
       return 1;
    }
-   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name, sizeof(local_name));
+   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name,sizeof(local_name));
    if (r != idn_success) {
       fprintf(stderr, "idn_decodename failed: %s\n", idn_result_tostring(r));
       return 1;
@@ -3594,13 +3596,15 @@ msg ''
 while read l; do msg "${l}"; done < ${tmp}
 
 msg 'Setup:'
-msg ' . System-wide resource file: %s/%s' "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
+msg ' . System-wide resource file: %s/%s' \
+   "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
 msg ' . bindir: %s' "${VAL_BINDIR}"
 if feat_yes DOTLOCK; then
    msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
 fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
-msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' \
+   "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
 if feat_yes MAILCAP; then
    msg ' . Built-in $MAILCAPS path search: %s' "${VAL_MAILCAPS}"

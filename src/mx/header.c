@@ -841,8 +841,8 @@ jnode_redo:
          }
       }
 
-      /* Make ranges contiguous: ensure a continuous range of atoms is converted
-       * to a SPECIAL one if at least one of them requires it */
+      /* Make ranges contiguous: ensure a continuous range of atoms is
+       * converted to a SPECIAL one if at least one of them requires it */
       for(tp = thead; tp != NULL; tp = tp->t_next){
          if(tp->t_f & a_T_SPECIAL){
             tcurr = tp;

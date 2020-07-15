@@ -258,7 +258,7 @@ static enum okay  imap_store(struct mailbox *mp, struct message *m, int n,
 static enum okay  imap_unstore(struct message *m, int n, const char *flag);
 static const char *tag(int new);
 static char *     imap_putflags(int f);
-static void       imap_getflags(const char *cp, char const **xp, enum mflag *f);
+static void       imap_getflags(const char *cp, char const **xp,enum mflag *f);
 static enum okay  imap_append1(struct mailbox *mp, const char *name, FILE *fp,
                      off_t off1, long xsize, enum mflag flag, time_t t);
 static enum okay  imap_append0(struct mailbox *mp, const char *name, FILE *fp,
@@ -552,11 +552,12 @@ imap_path_encode(char const *cp, boole *err_or_null){
          be16p = be16p_base;
 
          for(; utf32 >= 3; be16p += 3, utf32 -= 3){
-            out.s[out.l+0] = mb64ct[                            be16p[0] >> 2 ];
-            out.s[out.l+1] = mb64ct[((be16p[0] & 0x03) << 4) | (be16p[1] >> 4)];
-            out.s[out.l+2] = mb64ct[((be16p[1] & 0x0F) << 2) | (be16p[2] >> 6)];
-            out.s[out.l+3] = mb64ct[  be16p[2] & 0x3F];
+            uz i = out.l;
             out.l += 4;
+            out.s[i + 0] = mb64ct[                            be16p[0] >> 2 ];
+            out.s[i + 1] = mb64ct[((be16p[0] & 0x03) << 4) | (be16p[1] >> 4)];
+            out.s[i + 2] = mb64ct[((be16p[1] & 0x0F) << 2) | (be16p[2] >> 6)];
+            out.s[i + 3] = mb64ct[  be16p[2] & 0x3F];
          }
          if(utf32 > 0){
             out.s[out.l + 0] = mb64ct[be16p[0] >> 2];

@@ -1079,7 +1079,7 @@ c_from(void *vp)
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf,
       (obuf != n_stdout)); )
    n_autorec_relax_create();
-   for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
+   for(n = 0, ip = msgvec; *ip != 0; ++ip){ /* TODO join into _print_head() */
       a_chead_print_head((uz)n++, S(uz,*ip), obuf, mb.mb_threaded, FAL0);
       n_autorec_relax_unroll();
    }
