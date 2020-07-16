@@ -881,7 +881,7 @@ ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_v_smime_sign_include_certs, /* {chain=1} */
 ok_v_smime_sign_message_digest, /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
-   ok_v_smtp_auth, /* {chain=1} */
+ok_v_smtp_auth, /* {chain=1,obsolete=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_smtp_config, /* {chain=1} */
