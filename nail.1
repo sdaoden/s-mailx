@@ -12170,15 +12170,13 @@ prefix enables, a hyphen-minus
 .Ql -
 prefix disables usage of an extension, for example
 .Ql -all , ehlo,+starttls,   gssapi .
-\*(ID Until v15 this variable must be set (at least empty) in order to
-choose new-style SMTP configuration.
 .
 .Pp
 .Bl -tag -compact -width ".It Cd BaNg"
 .It Cd all
 This special word enables or disables all extensions.
-By default, or when set to the empty string, all extensions are enabled.
 Disabling it also disables all the below authentication mechanisms.
+If unset or empty all available extensions are enabled.
 .It Cd ehlo
 Service Extensions (RFC 1869) added the notion of extensions to the SMTP
 protocol; when disabled, all other extensions are also disabled (for
@@ -12188,12 +12186,13 @@ only the master switch is toggled, not the individual mechanisms).
 Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
 successive commands without waiting for respective server responses.
 .It Cd starttls
-Secure SMTP over TLS (RFC 3207) allows upgrading an unencrypted (SMTP
-not SMTPS) connection to use private, authenticated communication.
+Secure SMTP over TLS (Transport Layer Security, RFC 3207) allows
+upgrading an unencrypted (SMTP not SMTPS) connection to use private,
+authenticated communication.
 To improve security and provide a safety measure against
 man-in-the-middle attacks this is always performed \(em even if the
 server does not announce it \(em unless explicitly turned off.
-Directly using encrypted communication channels should be preferred, as
+Directly using encrypted transport channels should be preferred, as
 it saves network traffic.
 .It Cd auth
 Authentication (RFC 4954) allows account credentials to be passed.
@@ -12210,23 +12209,25 @@ If multiple
 .Cd auth Ns
 entication mechanisms are available, an automatic selection of the
 .Dq best
-method is performed, preferring non-automatic mechanisms.
-The used list can be fine-tuned, and if the result does not equal
-.Cd allmechs
-then the list will be taken as-is, even if some members would otherwise
-be excluded by the automatic selection, e.g., because they transmit
-passwords in clear and the connection is not secured.
-.Cd auth
-will be implied unless the fine-tuned list is empty.
+method is performed, preferring the non-automatic mechanisms.
+The used list can be fine-tuned, any non-empty list implies
+.Cd auth .
 For example,
-.Ql smtp-config=-allmechs,gssapi,external,plain
+.Ql smtp-config=-allmechs,\:gssapi,\:external,\:plain
 will favour external over gssapi, and use plain as a last resort only.
+Beware, in the following example
+.Ql plain
+would still be used as a last ressort, sending credentials in clear
+(unless the transport is of an encrypted type):
+.Ql smtp-config=-all,\:ehlo,\:gssapi,\:plain .
 The following mechanisms are known:
 .
 .Pp
 .Bl -tag -compact -width ".It Cd BaNg"
 .It Cd allmechs
-Special word which covers all authentication methods.
+Special word which covers all authentication methods (where
+.Dq all
+means all for disabling, and all supported ones for enabling).
 .It Cd cram-md5
 \*(OP Challenge-Response authentication mechanism (CRAM; included in
 RFC 2195), needs

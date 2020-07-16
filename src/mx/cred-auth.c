@@ -44,70 +44,17 @@ su_EMPTY_FILE()
 enum a_credauth_flags{
    a_CREDAUTH_NONE,
    a_CREDAUTH_AUTO = 1u<<0,
-   a_CREDAUTH_AUTO_NOTLS = 1u<<1,
-   a_CREDAUTH_NEED_TLS = 1u<<2,
-   a_CREDAUTH_PASS_CLEARTXT = 1u<<3,
-   a_CREDAUTH_PASS_REQ = 1u<<4,
-   a_CREDAUTH_USER_REQ = 1u<<5,
+   a_CREDAUTH_NEED_TLS = 1u<<1,
+   a_CREDAUTH_PASS_CLEARTXT = 1u<<2,
+   a_CREDAUTH_PASS_REQ = 1u<<3,
+   a_CREDAUTH_USER_REQ = 1u<<4,
    a_CREDAUTH_UNAVAIL = 1u<<15
-};
-
-/* Bitmasks of what really is available */
-enum a_credauth_proto_realtypes{
-   a_CREDAUTH_PROTO_REALTYPES_IMAP =
-#ifdef mx_HAVE_MD5
-         mx_CRED_AUTHTYPE_CRAM_MD5 |
-#endif
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
-#endif
-#ifdef mx_HAVE_GSSAPI
-         mx_CRED_AUTHTYPE_GSSAPI |
-#endif
-         mx_CRED_AUTHTYPE_LOGIN |
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_OAUTHBEARER
-#endif
-         mx_CRED_AUTHTYPE_NONE,
-
-   a_CREDAUTH_PROTO_REALTYPES_POP3 =
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
-#endif
-#ifdef mx_HAVE_GSSAPI
-         mx_CRED_AUTHTYPE_GSSAPI |
-#endif
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_OAUTHBEARER |
-#endif
-         mx_CRED_AUTHTYPE_PLAIN,
-
-   a_CREDAUTH_PROTO_REALTYPES_SMTP =
-#ifdef mx_HAVE_MD5
-         mx_CRED_AUTHTYPE_CRAM_MD5 |
-#endif
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
-#endif
-#ifdef mx_HAVE_GSSAPI
-         mx_CRED_AUTHTYPE_GSSAPI |
-#endif
-         mx_CRED_AUTHTYPE_LOGIN |
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_OAUTHBEARER |
-#endif
-         mx_CRED_AUTHTYPE_PLAIN |
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_XOAUTH2 |
-#endif
-         mx_CRED_AUTHTYPE_NONE
 };
 
 static struct mx_cred_authtype_info const
       a_credauth_info[mx_CRED_AUTHTYPE_MECH_COUNT] = {
    {mx_CRED_AUTHTYPE_CRAM_MD5,
-      (a_CREDAUTH_AUTO | a_CREDAUTH_AUTO_NOTLS | a_CREDAUTH_PASS_REQ |
-         a_CREDAUTH_USER_REQ
+      (a_CREDAUTH_AUTO | a_CREDAUTH_PASS_REQ | a_CREDAUTH_USER_REQ
 #ifndef mx_HAVE_MD5
          | a_CREDAUTH_UNAVAIL
 #endif
@@ -161,7 +108,8 @@ static struct mx_cred_authtype_info const
       ), TRU1, TRU1, "XOAUTH2", "XOAUTH2"}
 };
 
-/* Automatic selection order arrays for with TLS / without TLS */
+/* Automatic selection order arrays for with TLS / without TLS.
+ * Iteration stops either for [x]==_NONE || x == MECH_COUNT */
 CTAV(CPROTO_NONE == 0);
 CTAV(CPROTO_IMAP == 1);
 CTAV(CPROTO_POP3 == 2);
@@ -178,11 +126,13 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
       mx_CRED_AUTHTYPE_GSSAPI,
 #endif
       mx_CRED_AUTHTYPE_LOGIN,
-      /*mx_CRED_AUTHTYPE_XOAUTH2,*/ mx_CRED_AUTHTYPE_OAUTHBEARER,
+#ifdef mx_HAVE_TLS
+      /*FIXME mx_CRED_AUTHTYPE_XOAUTH2,*/ mx_CRED_AUTHTYPE_OAUTHBEARER,
+#endif
 #ifdef mx_HAVE_MD5
       mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
-      mx_CRED_AUTHTYPE_NONE,
+      mx_CRED_AUTHTYPE_NONE
    },
    { /* POP3 */
 #ifdef mx_HAVE_TLS
@@ -191,9 +141,11 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
 #ifdef mx_HAVE_GSSAPI
       mx_CRED_AUTHTYPE_GSSAPI,
 #endif
-      /*mx_CRED_AUTHTYPE_XOAUTH2,*/ mx_CRED_AUTHTYPE_OAUTHBEARER,
+#ifdef mx_HAVE_TLS
+      /*FIXME mx_CRED_AUTHTYPE_XOAUTH2,*/ mx_CRED_AUTHTYPE_OAUTHBEARER,
+#endif
       mx_CRED_AUTHTYPE_PLAIN,
-      mx_CRED_AUTHTYPE_NONE,
+      mx_CRED_AUTHTYPE_NONE
    },
    { /* SMTP */
 #ifdef mx_HAVE_TLS
@@ -203,13 +155,15 @@ static u8 const a_credauth_select[CPROTO_SMTP][mx_CRED_AUTHTYPE_MECH_COUNT] = {
       mx_CRED_AUTHTYPE_GSSAPI,
 #endif
       mx_CRED_AUTHTYPE_PLAIN,
+#ifdef mx_HAVE_TLS
       mx_CRED_AUTHTYPE_XOAUTH2, mx_CRED_AUTHTYPE_OAUTHBEARER,
+#endif
 #ifdef mx_HAVE_MD5
       mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
-      mx_CRED_AUTHTYPE_LOGIN,
+      mx_CRED_AUTHTYPE_LOGIN
 #if !defined mx_HAVE_TLS || !defined mx_HAVE_GSSAPI || !defined mx_HAVE_MD5
-      mx_CRED_AUTHTYPE_NONE,
+      ,mx_CRED_AUTHTYPE_NONE
 #endif
    }
 };
@@ -223,12 +177,14 @@ static u8 const a_credauth_select_notls[CPROTO_SMTP]
 #ifdef mx_HAVE_MD5
       mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
+      mx_CRED_AUTHTYPE_LOGIN,
       mx_CRED_AUTHTYPE_NONE,
    },
    { /* POP3 */
 #ifdef mx_HAVE_GSSAPI
       mx_CRED_AUTHTYPE_GSSAPI,
 #endif
+      mx_CRED_AUTHTYPE_PLAIN,
       mx_CRED_AUTHTYPE_NONE,
    },
    { /* SMTP */
@@ -238,29 +194,11 @@ static u8 const a_credauth_select_notls[CPROTO_SMTP]
 #ifdef mx_HAVE_MD5
       mx_CRED_AUTHTYPE_CRAM_MD5,
 #endif
+      mx_CRED_AUTHTYPE_PLAIN,
+      mx_CRED_AUTHTYPE_LOGIN,
       mx_CRED_AUTHTYPE_NONE,
    }
 };
-
-/* temporary (we'll have file://..) */
-static char *a_credauth_last_at_before_slash(char const *cp);
-
-static char *
-a_credauth_last_at_before_slash(char const *cp){
-   char const *xcp;
-   char c;
-   NYD2_IN;
-
-   for(xcp = cp; (c = *xcp) != '\0'; ++xcp)
-      if(c == '/')
-         break;
-   while(xcp > cp && *--xcp != '@')
-      ;
-   if(*xcp != '@')
-      xcp = NIL;
-   NYD2_OU;
-   return UNCONST(char*,xcp);
-}
 
 boole
 mx_cred_auth_lookup(struct mx_cred_ctx *credp, struct mx_url *urlp){
@@ -286,21 +224,12 @@ mx_cred_auth_lookup(struct mx_cred_ctx *credp, struct mx_url *urlp){
    case CPROTO_SMTP:
 #ifdef mx_HAVE_SMTP
       pstr = "smtp";
-      /* C99 */{
-      boole spc; /* v15-compat */
-
-      if((spc = mx_smtp_parse_config(credp, urlp))){
-         if(spc == TRUM1){
-            authokey = ok_v_smtp_auth;
-            authmask = mx_CRED_PROTO_AUTHTYPES_SMTP;
-            authdef = "plain";
-            break;
-         }
-         issetup = TRU1;
-         ware = credp->cc_config;
-         break;
+      if(!mx_smtp_parse_config(credp, urlp)){
+         credp = NIL;
+         goto jleave;
       }
-      }
+      issetup = TRU1;
+      break;
 #else
       credp = NIL;
       goto jleave;
@@ -427,203 +356,6 @@ jleave:
    return (credp != NIL);
 }
 
-boole
-mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp, enum cproto cproto,
-   char const *addr)
-{
-   char const *pname, *pxstr, *authdef, *s;
-   uz pxlen, addrlen, i;
-   char *vbuf = NULL;
-   u32 authmask;
-   enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
-      ware = NONE;
-   boole addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
-   NYD_IN;
-
-   n_OBSOLETE(_("Use of old-style credentials, which will vanish in v15!\n"
-      "  Please read the manual section "
-         "\"On URL syntax and credential lookup\""));
-
-   su_mem_set(ccp, 0, sizeof *ccp);
-
-   switch (cproto) {
-   default:
-   case CPROTO_SMTP:
-#ifdef mx_HAVE_SMTP
-      pname = "SMTP";
-      pxstr = "smtp-auth";
-      pxlen = sizeof("smtp-auth") -1;
-      authmask = mx_CRED_AUTHTYPE_PLAIN | mx_CRED_AUTHTYPE_LOGIN |
-            mx_CRED_AUTHTYPE_CRAM_MD5 | mx_CRED_AUTHTYPE_GSSAPI;
-      authdef = "none";
-      addr_is_nuser = TRU1;
-      break;
-#else
-      ccp = NULL;
-      goto jleave;
-#endif
-   case CPROTO_POP3:
-#ifdef mx_HAVE_POP3
-      pname = "POP3";
-      pxstr = "pop3-auth";
-      pxlen = sizeof("pop3-auth") -1;
-      authmask = mx_CRED_AUTHTYPE_PLAIN;
-      authdef = "plain";
-      break;
-#else
-      ccp = NULL;
-      goto jleave;
-#endif
-   case CPROTO_IMAP:
-#ifdef mx_HAVE_IMAP
-      pname = "IMAP";
-      pxstr = "imap-auth";
-      pxlen = sizeof("imap-auth") -1;
-      authmask = mx_CRED_AUTHTYPE_LOGIN |
-            mx_CRED_AUTHTYPE_CRAM_MD5 | mx_CRED_AUTHTYPE_GSSAPI;
-      authdef = "login";
-      break;
-#else
-      ccp = NULL;
-      goto jleave;
-#endif
-   }
-
-   ccp->cc_cproto = cproto;
-   addrlen = su_cs_len(addr);
-   vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
-   su_mem_copy(vbuf, pxstr, pxlen);
-
-   /* Authentication type */
-   vbuf[pxlen] = '-';
-   su_mem_copy(vbuf + pxlen + 1, addr, addrlen +1);
-   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
-      vbuf[pxlen] = '\0';
-      if ((s = n_var_vlook(vbuf, FAL0)) == NULL)
-         s = n_UNCONST(authdef);
-   }
-
-   if (!su_cs_cmp_case(s, "none")) {
-      ccp->cc_auth = "NONE";
-      ccp->cc_authtype = 0;
-      /*ware = NONE;*/
-   } else if (!su_cs_cmp_case(s, "plain")) {
-      ccp->cc_auth = "PLAIN";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_PLAIN;
-      ware = REQ_PASS | REQ_USER;
-   } else if (!su_cs_cmp_case(s, "login")) {
-      ccp->cc_auth = "LOGIN";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_LOGIN;
-      ware = REQ_PASS | REQ_USER;
-   } else if (!su_cs_cmp_case(s, "cram-md5")) {
-      ccp->cc_auth = "CRAM-MD5";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_CRAM_MD5;
-      ware = REQ_PASS | REQ_USER;
-   } else if (!su_cs_cmp_case(s, "gssapi")) {
-      ccp->cc_auth = "GSS-API";
-      ccp->cc_authtype = mx_CRED_AUTHTYPE_GSSAPI;
-      ware = REQ_USER;
-   } /* no else */
-
-   /* Verify method */
-   if (!(ccp->cc_authtype & authmask)) {
-      n_err(_("Unsupported %s authentication method: %s\n"), pname, s);
-      ccp = NULL;
-      goto jleave;
-   }
-# ifndef mx_HAVE_MD5
-   if (ccp->cc_authtype == mx_CRED_AUTHTYPE_CRAM_MD5) {
-      n_err(_("No CRAM-MD5 support compiled in\n"));
-      ccp = NULL;
-      goto jleave;
-   }
-# endif
-# ifndef mx_HAVE_GSSAPI
-   if (ccp->cc_authtype == mx_CRED_AUTHTYPE_GSSAPI) {
-      n_err(_("No GSS-API support compiled in\n"));
-      ccp = NULL;
-      goto jleave;
-   }
-# endif
-
-   /* User name */
-   if (!(ware & (WANT_USER | REQ_USER)))
-      goto jpass;
-
-   if(!addr_is_nuser){
-      if((s = a_credauth_last_at_before_slash(addr)) != NIL){
-         char *cp;
-
-         cp = savestrbuf(addr, P2UZ(s - addr));
-
-         if((ccp->cc_user.s = mx_url_xdec(cp)) == NIL){
-            n_err(_("String is not properly URL percent encoded: %s\n"), cp);
-            ccp = NULL;
-            goto jleave;
-         }
-         ccp->cc_user.l = su_cs_len(ccp->cc_user.s);
-      } else if (ware & REQ_USER)
-         goto jgetuser;
-      goto jpass;
-   }
-
-   su_mem_copy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
-   i += pxlen;
-   su_mem_copy(vbuf + i, addr, addrlen +1);
-   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
-      vbuf[--i] = '\0';
-      if ((s = n_var_vlook(vbuf, FAL0)) == NULL && (ware & REQ_USER)) {
-         if((s = mx_tty_getuser(NIL)) == NIL){
-jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
-             * TODO even better: introduce "PROTO-user" and "PROTO-pass" and
-             * TODO check that first, then! change control flow, grow vbuf */
-            n_err(_("A user is necessary for %s authentication\n"), pname);
-            ccp = NULL;
-            goto jleave;
-         }
-      }
-   }
-   ccp->cc_user.l = su_cs_len(ccp->cc_user.s = savestr(s));
-
-   /* Password */
-jpass:
-   if (!(ware & (WANT_PASS | REQ_PASS)))
-      goto jleave;
-
-   if (!addr_is_nuser) {
-      su_mem_copy(vbuf, "password-", i = sizeof("password-") -1);
-   } else {
-      su_mem_copy(vbuf + pxlen, "-password-", i = sizeof("-password-") -1);
-      i += pxlen;
-   }
-   su_mem_copy(vbuf + i, addr, addrlen +1);
-   if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
-      vbuf[--i] = '\0';
-      if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
-            (ware & REQ_PASS)){
-         if((s = mx_tty_getpass(savecat(pname, _(" requires a password: ")))
-               ) == NIL){
-            n_err(_("A password is necessary for %s authentication\n"),
-               pname);
-            ccp = NIL;
-            goto jleave;
-         }
-      }
-   }
-   if (s != NULL)
-      ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
-
-jleave:
-   if(vbuf != NULL)
-      n_lofi_free(vbuf);
-   if (ccp != NULL && (n_poption & n_PO_D_VV))
-      n_err(_("Credentials: host %s, user %s, pass %s\n"),
-         addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
-         (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
-   NYD_OU;
-   return (ccp != NULL);
-}
-
 struct mx_cred_authtype_info const *
 mx_cred_auth_type_find_name(char const *name, boole usr){
    struct mx_cred_authtype_info const *caip, *caipmax;
@@ -692,26 +424,30 @@ mx_cred_auth_type_verify_bits(struct mx_cred_authtype_verify_ctx *cavcp,
    switch(cavcp->cavc_proto){
    case CPROTO_IMAP:
       bits &= (atmask = mx_CRED_PROTO_AUTHTYPES_IMAP);
-      atrealmask = a_CREDAUTH_PROTO_REALTYPES_IMAP;
+      atrealmask = mx_CRED_PROTO_AUTHTYPES_AVAILABLE_IMAP;
       pstr = "IMAP";
       break;
    case CPROTO_POP3:
       bits &= (atmask = mx_CRED_PROTO_AUTHTYPES_POP3);
-      atrealmask = a_CREDAUTH_PROTO_REALTYPES_POP3;
+      atrealmask = mx_CRED_PROTO_AUTHTYPES_AVAILABLE_POP3;
       pstr = "POP3";
       break;
    case CPROTO_SMTP:
       bits &= (atmask = mx_CRED_PROTO_AUTHTYPES_SMTP);
-      atrealmask = a_CREDAUTH_PROTO_REALTYPES_SMTP;
+      /* "none" maybe valid for SMTP */
+      if(bits == mx_CRED_AUTHTYPE_NONE)
+         goto jleave;
+      atrealmask = mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP;
       pstr = "SMTP";
       break;
    default:
-      bits = 0;
-      goto jleave;
+      bits = mx_CRED_AUTHTYPE_NONE;
+      pstr = su_empty;
+      goto jerr;
    }
 
-   if(bits == 0)
-      goto jleave;
+   if(bits == mx_CRED_AUTHTYPE_NONE)
+      goto jerr;
 
    for(cavcp->cavc_cnt = i = 0; i < NELEM(a_credauth_info); ++i){
       struct mx_cred_authtype_info const *caip;
@@ -720,7 +456,7 @@ mx_cred_auth_type_verify_bits(struct mx_cred_authtype_verify_ctx *cavcp,
       if(bits & caip->cai_type){
          if(!(caip->cai_flags & a_CREDAUTH_UNAVAIL)){
             if(caip->cai_flags & a_CREDAUTH_NEED_TLS){
-               if(!(maybe_tls)){
+               if(!maybe_tls){
                   if(n_poption & n_PO_D_V)
                      n_err(_("%s: %s (%s) needs TLS, connection will not "
                            "use it: disabled\n"),
@@ -744,6 +480,7 @@ jxor:
    if((bits & atmask) == atrealmask)
       rv = TRUM1;
    else if(bits == mx_CRED_AUTHTYPE_NONE){
+jerr:
       n_err(_("%s: no usable authentication types (remain)\n"), pstr);
       rv = FAL0;
    }
