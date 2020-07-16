@@ -235,8 +235,6 @@ static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
-static boole     _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
-                     struct mx_url *urlp);
 static int _imap_setfile1(char const *who, struct mx_url *urlp,
             enum fedit_mode fm, int transparent);
 static void       imap_fetchdata(struct mailbox *mp, struct message *m,
@@ -1904,48 +1902,10 @@ imap_setfile(char const * volatile who, const char *xserver,
       rv = 1;
       goto jleave;
    }
-   if (ok_vlook(v15_compat) == NIL && url.url_pass.s != NIL)
-      n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
    rv = _imap_setfile1(who, &url, fm, 0);
 jleave:
-   NYD_OU;
-   return rv;
-}
-
-static boole
-_imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
-   struct mx_url *urlp)
-{
-   boole rv = FAL0;
-   NYD_IN;
-
-   if (ok_vlook(v15_compat) != su_NIL)
-      rv = mx_cred_auth_lookup(ccredp, urlp);
-   else {
-      char *xuhp, *var, *old;
-
-      xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
-            : urlp->url_u_h_p.s);
-      UNINIT(old, NIL);
-
-      if ((var = mbp->mb_imap_pass) != NULL) {
-         var = savecat("password-", xuhp);
-         if ((old = n_UNCONST(n_var_vlook(var, FAL0))) != NULL)
-            old = su_cs_dup(old, 0);
-         n_var_vset(var, (up)mbp->mb_imap_pass);
-      }
-      rv = mx_cred_auth_lookup_old(ccredp, CPROTO_IMAP, xuhp);
-      if (var != NULL) {
-         if (old != NULL) {
-            n_var_vset(var, (up)old);
-            n_free(old);
-         } else
-            n_var_vclear(var);
-      }
-   }
-
    NYD_OU;
    return rv;
 }
@@ -1999,7 +1959,7 @@ jduppass:
       n_free(mb.mb_imap_pass);
       mb.mb_imap_pass = NULL;
    }
-   if (!_imap_getcred(&mb, &ccred, urlp)) {
+   if(!mx_cred_auth_lookup(&ccred, urlp)){
       rv = -1;
       goto jleave;
    }
@@ -3400,9 +3360,6 @@ imap_append(const char *xserver, FILE *fp, long offset)
 
    if(!mx_url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
-   if(ok_vlook(v15_compat) == NIL &&
-         (!(url.url_flags & mx_URL_HAD_USER) || url.url_pass.s != NIL))
-      n_err(_("New-style URL used without *v15-compat* being set!\n"));
    ASSERT(url.url_path.s != NULL);
 
    imaplock = 1;
@@ -3424,7 +3381,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
 
       su_mem_set(&mx, 0, sizeof mx);
 
-      if (!_imap_getcred(&mx, &ccred, &url))
+      if(!mx_cred_auth_lookup(&ccred, &url))
          goto jleave;
 
       imap_delim_init(&mx, &url);

@@ -1019,18 +1019,8 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
 
    if(!mx_url_parse(&pc.pc_url, CPROTO_POP3, server))
       goto jleave;
-   if(ok_vlook(v15_compat) == NIL && pc.pc_url.url_pass.s != NIL){
-      n_err(_("POP3: new-style URL used without *v15-compat* being set: %s\n"),
-         n_shexp_quote_cp(server, FAL0));
-      goto jleave;
-   }
 
-   if(!((ok_vlook(v15_compat) != NIL)
-         ? mx_cred_auth_lookup(&pc.pc_cred, &pc.pc_url)
-         : mx_cred_auth_lookup_old(&pc.pc_cred, CPROTO_POP3,
-            ((pc.pc_url.url_flags & mx_URL_HAD_USER)
-             ? pc.pc_url.url_eu_h_p.s
-             : pc.pc_url.url_u_h_p.s))))
+   if(!mx_cred_auth_lookup(&pc.pc_cred, &pc.pc_url))
       goto jleave;
 
    if(!quit(FAL0))

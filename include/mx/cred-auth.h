@@ -44,7 +44,7 @@ enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_XOAUTH2 = 1u<<7
 };
 enum{
-   /* The additional bits will be set by auth_authtype_verify_bits() */
+   /* These additional bits will be set by auth_authtype_verify_bits() */
    mx_CRED_AUTHTYPE_MULTI = 1u<<8, /* Multiple types are set */
    mx_CRED_AUTHTYPE_NEED_TLS = 1u<<9, /* TLS is requirement for 1+ mech */
 
@@ -54,6 +54,9 @@ enum{
    mx_CRED_AUTHTYPE_MASK = (1u<<(mx_CRED_AUTHTYPE_LASTBIT+1)) - 1
 };
 
+/* Authentication types per proto, overall (all supported).
+ * The _AUTO_ variants can be fully managed without external help (for example
+ * GSSAPI needs a ticket, EXTERNAL need a client certificate, etc.) */
 enum mx_cred_proto_authtypes{
    mx_CRED_PROTO_AUTHTYPES_IMAP =
          mx_CRED_AUTHTYPE_CRAM_MD5 |
@@ -61,17 +64,23 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_LOGIN |
          mx_CRED_AUTHTYPE_OAUTHBEARER,
+
       /*mx_CRED_PROTO_AUTHTYPES_AUTO_IMAP*/
       /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_IMAP*/
+
       mx_CRED_PROTO_AUTHTYPES_DEFAULT_IMAP = mx_CRED_AUTHTYPE_LOGIN,
+
    mx_CRED_PROTO_AUTHTYPES_POP3 =
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_OAUTHBEARER |
          mx_CRED_AUTHTYPE_PLAIN,
+
       mx_CRED_PROTO_AUTHTYPES_DEFAULT_POP3 = mx_CRED_AUTHTYPE_PLAIN,
+
       /*mx_CRED_PROTO_AUTHTYPES_AUTO_POP3*/
       /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP*/
+
    mx_CRED_PROTO_AUTHTYPES_SMTP =
          mx_CRED_AUTHTYPE_CRAM_MD5 |
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
@@ -80,18 +89,71 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_OAUTHBEARER |
          mx_CRED_AUTHTYPE_PLAIN |
          mx_CRED_AUTHTYPE_XOAUTH2,
+
       mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP =
             mx_CRED_AUTHTYPE_CRAM_MD5 |
             mx_CRED_AUTHTYPE_LOGIN |
             mx_CRED_AUTHTYPE_PLAIN,
+
       mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP =
             mx_CRED_AUTHTYPE_CRAM_MD5,
+
       mx_CRED_PROTO_AUTHTYPES_DEFAULT_SMTP = mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP
 };
 
+/* Authentication types per proto, truly available */
+enum mx_cred_proto_authtypes_available{
+   mx_CRED_PROTO_AUTHTYPES_AVAILABLE_IMAP =
+#ifdef mx_HAVE_MD5
+         mx_CRED_AUTHTYPE_CRAM_MD5 |
+#endif
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+#endif
+#ifdef mx_HAVE_GSSAPI
+         mx_CRED_AUTHTYPE_GSSAPI |
+#endif
+         mx_CRED_AUTHTYPE_LOGIN |
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_OAUTHBEARER |
+#endif
+         mx_CRED_AUTHTYPE_NONE,
+
+   mx_CRED_PROTO_AUTHTYPES_AVAILABLE_POP3 =
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+#endif
+#ifdef mx_HAVE_GSSAPI
+         mx_CRED_AUTHTYPE_GSSAPI |
+#endif
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_OAUTHBEARER |
+#endif
+         mx_CRED_AUTHTYPE_PLAIN,
+
+   mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP =
+#ifdef mx_HAVE_MD5
+         mx_CRED_AUTHTYPE_CRAM_MD5 |
+#endif
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
+#endif
+#ifdef mx_HAVE_GSSAPI
+         mx_CRED_AUTHTYPE_GSSAPI |
+#endif
+         mx_CRED_AUTHTYPE_LOGIN |
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_OAUTHBEARER |
+#endif
+         mx_CRED_AUTHTYPE_PLAIN |
+#ifdef mx_HAVE_TLS
+         mx_CRED_AUTHTYPE_XOAUTH2 |
+#endif
+         mx_CRED_AUTHTYPE_NONE
+};
+
 struct mx_cred_ctx{
-   /* TODO cc_auth, cc_authtype and cc_needs_tls are obsolete
-    * TODO If .cc_auth!=NIL then old style config is used */
+   /* FIXME cc_auth, cc_authtype and cc_needs_tls are obsolete */
 char const *cc_auth; /* v15-compat Authentication type as string */
 u32 cc_authtype; /* v15-compat Desired cred_authtype */
 boole cc_needs_tls; /* v15-compat .cc_authtype requires TLS transport */
@@ -119,13 +181,11 @@ struct mx_cred_authtype_verify_ctx{
 };
 
 /* Zero ccp and lookup credentials for communicating with urlp.
- * The former will call protocol specific _config() function if possible: if
- * so, that should not use URL except for using it to lookup variable chains.
+ * It will call protocol specific _config() function if possible: the callee
+ * should not use URL except for using it to lookup variable chains.
  * Return whether credentials are available and valid (for chosen auth) */
 EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *credp,
       struct mx_url *urlp);
-EXPORT boole mx_cred_auth_lookup_old(struct mx_cred_ctx *ccp,/* v15-compat */
-      enum cproto cproto, char const *addr);
 
 /* Find a (usr config, else official) type name.  Return it or NIL,
  * or -1 if name is "allmechs" (only with usr config).

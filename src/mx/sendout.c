@@ -600,15 +600,13 @@ jleave:
 
 static boole
 a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
-   boole v15, rv;
+   boole rv;
    char *shost, *from;
    NYD_IN;
 
    rv = FAL0;
-   v15 = (ok_vlook(v15_compat) != NIL);
-   shost = (v15 ? ok_vlook(smtp_hostname) : NIL);
-   from = ((sign_caps || !v15 || shost == NIL)
-         ? skin(myorigin(scp->sc_hp)) : NIL);
+   shost = ok_vlook(smtp_hostname);
+   from = ((sign_caps || shost == NIL) ? skin(myorigin(scp->sc_hp)) : NIL);
 
    if(sign_caps){
       if(from == NIL){
@@ -627,35 +625,21 @@ a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps){
    }
 
 #ifdef mx_HAVE_SMTP
-   if(v15){
-      if(shost == NIL){
-         if(from == NIL)
-            goto jenofrom;
-         scp->sc_urlp->url_u_h.l = su_cs_len(scp->sc_urlp->url_u_h.s = from);
-      }else
-         __sendout_ident = scp->sc_urlp->url_u_h.s;
-      if(!mx_cred_auth_lookup(scp->sc_credp, scp->sc_urlp))
-         goto jleave;
-   }else{
-      if((scp->sc_urlp->url_flags & mx_URL_HAD_USER) ||
-            scp->sc_urlp->url_pass.s != NIL){
-         n_err(_("New-style URL used without *v15-compat* being set\n"));
-         goto jleave;
-      }
-      /* TODO part of the entire myorigin() disaster, get rid of this! */
-      if (from == NULL) {
-jenofrom:
+   if(shost == NIL){
+      if(from == NIL){
          n_err(_("Your configuration requires a *from* address, "
             "but none was given\n"));
          goto jleave;
       }
-      if(!mx_cred_auth_lookup_old(scp->sc_credp, CPROTO_SMTP, from))
-         goto jleave;
       scp->sc_urlp->url_u_h.l = su_cs_len(scp->sc_urlp->url_u_h.s = from);
-   }
+   }else
+      __sendout_ident = scp->sc_urlp->url_u_h.s;
+
+   if(!mx_cred_auth_lookup(scp->sc_credp, scp->sc_urlp))
+      goto jleave;
 
    rv = TRU1;
-#endif /* mx_HAVE_SMTP */
+#endif
 
 jleave:
    NYD_OU;

@@ -10061,7 +10061,7 @@ U3dheQ==
    check auth-2 0 "${MBOX}" '4294967295 0'
 
    if false && have_feat tls; then # TODO TLS-NET-SERV
-      smtp_script smtp -Ssmtp-config=-all,ehlo,xoauth2
+      smtp_script smtp -Ssmtp-config=-all,ehlo,starttls,xoauth2
       { smtp_ehlo && printf '\002
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
@@ -10072,7 +10072,7 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
    fi
 
    if have_feat md5; then
-      smtp_script smtp -Ssmtp-config=-all,ehlo,cram-md5
+      smtp_script smtp -Ssmtp-config=-all,ehlo,,cram-md5
       { smtp_ehlo && printf '\002
 AUTH CRAM-MD5
 \001
@@ -10164,7 +10164,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
       smtp_mail_from_to '' \
       smtp_quit
    check data-2 0 "${MBOX}" '4294967295 0'
-   smtp_rcpt_to all,-allmechs \
+   smtp_rcpt_to all,-starttls,-allmechs \
       smtp_ehlo \
       smtp_mail_from_to_pipelining "$rcpt_to" \
       smtp_quit_pipelining
