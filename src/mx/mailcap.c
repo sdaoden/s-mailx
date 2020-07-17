@@ -77,9 +77,10 @@ enum a_mailcap_flags{
    a_MAILCAP_F_TESTONCE = mx_MIMETYPE_HDL_MAX << 2,
    a_MAILCAP_F_TEST_ONCE_DONE = mx_MIMETYPE_HDL_MAX << 3,
    a_MAILCAP_F_TEST_ONCE_SUCCESS = mx_MIMETYPE_HDL_MAX << 4,
-   a_MAILCAP_F_HAS_S_FORMAT = mx_MIMETYPE_HDL_MAX << 5 /* Somewhere a %s */
+   a_MAILCAP_F_HAS_S_FORMAT = mx_MIMETYPE_HDL_MAX << 5, /* Somewhere a %s */
+   a_MAILCAP_F_LAST_RESORT = mx_MIMETYPE_HDL_MAX << 6
 };
-enum {a_MAILCAP_F_MAX = a_MAILCAP_F_HAS_S_FORMAT};
+enum {a_MAILCAP_F_MAX = a_MAILCAP_F_LAST_RESORT};
 CTA(a_MAILCAP_F_MAX <= S32_MAX,
    "a_mailcap_hdl.mch_flags bit range excessed");
 
@@ -673,7 +674,8 @@ a_mailcap__parse_flag(struct a_mailcap_load_stack *mclsp, char *flag){
       {a_MAILCAP_F_TESTONCE, "x-mailx-test-once"},
       {mx_MIMETYPE_HDL_TMPF, "x-mailx-tmpfile"},
       {mx_MIMETYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
-      {mx_MIMETYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"}
+      {mx_MIMETYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
+      {a_MAILCAP_F_LAST_RESORT, "x-mailx-last-resort"}
    };
    boole rv;
    NYD2_IN;
@@ -843,6 +845,7 @@ a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
       {mx_MIMETYPE_HDL_NEEDSTERM, " needsterminal"},
       {a_MAILCAP_F_TEXTUALNEWLINES, " textualnewlines\0"},
       {mx_MIMETYPE_HDL_ASYNC, " x-mailx-async"},
+      {a_MAILCAP_F_LAST_RESORT, " x-mailx-last-resort"},
       {mx_MIMETYPE_HDL_NOQUOTE, " x-mailx-noquote"},
       {a_MAILCAP_F_TESTONCE, " x-mailx-test-once"},
       {mx_MIMETYPE_HDL_TMPF, " x-mailx-tmpfile"},
@@ -1086,21 +1089,24 @@ mx_mailcap_handler(struct mx_mimetype_handler *mthp, char const *ct,
       enum sendaction action, struct mimepart const *mpp){
    union {void *v; char const *c; struct a_mailcap_hdl *mch;} p;
    boole wildcard;
+   struct a_mailcap_hdl *mchp;
    NYD_IN;
    UNUSED(mpp);
 
+   mchp = NIL;
+
    /* For now we support that only, too */
-   ASSERT_NYD_EXEC(action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+   ASSERT_NYD(action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
       action == SEND_TODISP || action == SEND_TODISP_ALL ||
-      action == SEND_TODISP_PARTS, mthp = NIL);
+      action == SEND_TODISP_PARTS);
 
    if(ok_blook(mailcap_disable))
-      goto jleave0;
+      goto jleave;
 
    if(a_mailcap_dp == NIL)
       a_mailcap_create();
    if(su_cs_dict_count(a_mailcap_dp) == 0)
-      goto jleave0;
+      goto jleave;
 
    /* Walk over the list of handlers and check whether one fits */
    wildcard = FAL0;
@@ -1185,6 +1191,8 @@ jagain:
             mthp->mth_tmpf_nametmpl[1] == 's');
          mthp->mth_tmpf_nametmpl += 2;
       }
+
+      mchp = p.mch;
       goto jleave;
    }
 
@@ -1208,11 +1216,10 @@ jagain:
          goto jagain;
    }
 
-jleave0:
-   mthp = NIL;
 jleave:
    NYD_OU;
-   return (mthp != NIL);
+   return (mchp == NIL ? FAL0
+      : (mchp->mch_flags & a_MAILCAP_F_LAST_RESORT ? TRUM1 : TRU1));
 }
 
 #include "su/code-ou.h"

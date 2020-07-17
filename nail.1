@@ -14347,6 +14347,11 @@ format, or in conjunction with
 .Cd x-mailx-async .
 .Cd x-mailx-tmpfile
 is implied.
+.
+.Mx
+.It Cd x-mailx-last-resort
+An extension flag that indicates that this handler shall only be used
+as a last resort, when no other source provides a MIME handler.
 .El
 .
 .
@@ -14433,7 +14438,7 @@ application/pdf; pdftotext -layout - -; copiousoutput
 
 application/*; echo "This is \e\e"%t\e\e" but \e
     is 50 \e% Greek to me" \e; < %s head -c 512 | cat -vet; \e
-  copiousoutput; x-mailx-noquote
+  copiousoutput; x-mailx-noquote; x-mailx-last-resort
 .Ed
 .
 .Pp

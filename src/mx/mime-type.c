@@ -1439,7 +1439,7 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
    su_mem_set(mthp, 0, sizeof *mthp);
    buf = NIL;
-   rv = mx_MIMETYPE_HDL_NIL;
+   xrv = rv = mx_MIMETYPE_HDL_NIL;
 
    if(action != SEND_QUOTE && action != SEND_QUOTE_ALL &&
          action != SEND_TODISP && action != SEND_TODISP_ALL &&
@@ -1491,14 +1491,20 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
    /* III. RFC 1524 / Mailcap lookup */
 #ifdef mx_HAVE_MAILCAP
-   if(mx_mailcap_handler(mthp, cs, action, mpp)){
+   switch(mx_mailcap_handler(mthp, cs, action, mpp)){
+   case TRU1:
       rv = mthp->mth_flags;
       goto jleave;
+   case TRUM1:
+      xrv = mthp->mth_flags; /* "Use at last-resort" handler */
+      break;
+   default:
+      break;
    }
 #endif
 
    /* IV. and final: `mimetype' type-marker extension induced handler */
-   if(a_mimetype_by_name(&mtl, cs) != NIL)
+   if(a_mimetype_by_name(&mtl, cs) != NIL){
       switch(mtl.mtl_node->mtn_flags & a_MIMETYPE__TM_MARKMASK){
 #ifndef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MIMETYPE_TM_SOUP_H:
@@ -1526,6 +1532,11 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
       default:
          break;
       }
+   }
+
+   /* Last-resort, anyone? */
+   if(xrv != mx_MIMETYPE_HDL_NIL)
+      rv = xrv;
 
 jleave:
    if(buf != NIL)
