@@ -1863,9 +1863,12 @@ jforce_stdin:
    if(n < 0)
       goto jleave;
 
+   (*linebuf)[*linesize = n] = '\0';
+
    if(f & a_USE_MLE)
       n_pstate |= n_PS_READLINE_NL;
-   (*linebuf)[*linesize = n] = '\0';
+   else if(n == 0 || su_cs_is_space(**linebuf))
+      f &= ~a_HISTOK;
 
 jhave_dat:
    if(n_poption & n_PO_D_VVV)

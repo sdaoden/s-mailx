@@ -3155,10 +3155,15 @@ jbuiltin_redo:
       }
    }
 
+jdone:
    /* We have a completed input line, convert the struct cell data to its
     * plain character equivalent */
-jdone:
    rv = a_tty_cell2dat(tlp);
+
+   if(histok_or_null != NIL &&
+         (rv <= 0 || su_cs_is_space(tlp->tl_line.cbuf[0])))
+      *histok_or_null = FAL0;
+
 jleave:
    putc('\n', mx_tty_fp);
    fflush(mx_tty_fp);
@@ -3179,6 +3184,7 @@ jinject_input:{
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
    mx_sigs_all_rele(); /* XXX v15 drop */
+
    if(histok_or_null != NIL)
       *histok_or_null = FAL0;
    rv = S(sz,--i);
