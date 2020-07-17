@@ -1,15 +1,3 @@
-text/plain; echo p-1-1\;< %s cat\;echo p-1-2;\
-  test = echo X >> ./.terrmc\; [ -n "$XY" ];\
-  x-mailx-test-once
-text/plain; echo p-2-1\;< %s cat\;echo p-2-2;\
-  test = echo Y >> ./.terrmc\;[ -z "$XY" ]
-text/plain;\
-  { file=%s\; echo p-3-1 = ${file##*.}\;         </dev/null cat %s\;echo p-3-2\; } > ./.tx\; mv -f ./.tx ./.tasy;\
-  nametemplate = %s.txt;\
-  test = [ -n "$XY" ];\
-  x-mailx-async
-text/plain; echo p-4-1\;cat\;echo p-4-2;\
-  copiousoutput
 =1
 [-- Message  1 -- 9 lines, 228 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
