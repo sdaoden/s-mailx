@@ -158,6 +158,38 @@ su_EMPTY_FILE()
 # define a_xtls_SSL_get_verified_chain SSL_get_peer_cert_chain
 #endif
 
+#if mx_HAVE_XTLS >= 0x30000
+# define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
+   SSL_CTX_load_verify_file(CTXP, FILE)
+# define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
+   SSL_CTX_load_verify_dir(ctxp, ca_dir)
+
+# define a_xtls_X509_STORE_load_file(STORE,FILE) \
+   X509_STORE_load_file(STORE, FILE)
+# define a_xtls_X509_STORE_load_path(STORE,PATH) \
+   X509_STORE_load_path(STORE, PATH)
+
+# define a_xtls_SSL_get_peer_certificate(TLSP) \
+   SSL_get0_peer_certificate(TLSP)
+# define a_xtls_SSL_get_peer_certificate__FREE(CERT)
+
+#else
+# define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
+   SSL_CTX_load_verify_locations(CTXP, FILE, NIL)
+# define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
+   SSL_CTX_load_verify_locations(CTXP, NIL, DIR)
+
+# define a_xtls_X509_STORE_load_file(STORE,FILE) \
+   X509_STORE_load_locations(STORE, FILE, NIL)
+# define a_xtls_X509_STORE_load_path(STORE,PATH) \
+   X509_STORE_load_locations(STORE, NIL, PATH)
+
+# define a_xtls_SSL_get_peer_certificate(TLSP) \
+   SSL_get_peer_certificate(TLSP)
+# define a_xtls_SSL_get_peer_certificate__FREE(CERT) \
+   X509_free(CERT)
+#endif /* mx_HAVE_XTLS >= 0x30000 */
+
 /* X509_STORE_set_flags */
 #undef a_XTLS_X509_V_ANY
 #ifndef X509_V_FLAG_NO_ALT_CHAINS
@@ -1264,24 +1296,12 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
             FEXP_NSHELL));
 
-   if(ca_file != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         SSL_CTX_load_verify_file(ctxp, ca_file)
-#else
-         SSL_CTX_load_verify_locations(ctxp, ca_file, NIL)
-#endif
-            != 1){
+   if(ca_file != NIL && a_xtls_SSL_CTX_load_verify_file(ctxp, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
       goto jleave;
    }
 
-   if(ca_dir != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         SSL_CTX_load_verify_dir(ctxp, ca_dir)
-#else
-         SSL_CTX_load_verify_locations(ctxp, NIL, ca_dir)
-#endif
-            != 1){
+   if(ca_dir != NIL && a_xtls_SSL_CTX_load_verify_dir(ctxp, ca_dir) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
@@ -2003,7 +2023,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
       boole stay;
       X509 *peercert;
 
-      if((peercert = SSL_get_peer_certificate(sop->s_tls)) == NULL){
+      if((peercert = a_xtls_SSL_get_peer_certificate(sop->s_tls)) == NIL){
          n_err(_("TLS: no certificate from peer: %s\n"), urlp->url_h_p.s);
          goto jerr2;
       }
@@ -2100,7 +2120,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
       }
 
 jpeer_leave:
-      X509_free(peercert);
+      a_xtls_SSL_get_peer_certificate__FREE(peercert);
       if(!stay)
          goto jerr2;
    }
@@ -2173,24 +2193,12 @@ c_verify(void *vp)
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
          FEXP_NSHELL));
 
-   if(ca_file != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         X509_STORE_load_file(store, ca_file)
-#else
-         X509_STORE_load_locations(store, ca_file, NIL)
-#endif
-            != 1){
+   if(ca_file != NIL && a_xtls_X509_STORE_load_file(store, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
       goto jleave;
    }
 
-   if(ca_dir != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         X509_STORE_load_path(store, ca_dir)
-#else
-         X509_STORE_load_locations(store, NIL, ca_dir)
-#endif
-            != 1){
+   if(ca_dir != NIL && a_xtls_X509_STORE_load_path(store, ca_dir) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
