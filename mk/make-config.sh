@@ -756,18 +756,6 @@ config_exit() {
    exit ${1}
 }
 
-msg() {
-   fmt=${1}
-   shift
-   printf >&2 -- "${fmt}\n" "${@}"
-}
-
-msg_nonl() {
-   fmt=${1}
-   shift
-   printf >&2 -- "${fmt}" "${@}"
-}
-
 # Our feature check environment
 _feats_eval_done=0
 
@@ -970,7 +958,7 @@ option_evaluate() {
    # Set booleans to 0 or 1, or require, set _feats_eval_done=1
    ${rm} -f ${newenv} ${newmk}
 
-   exec 5<&0 6>&1 <${tmp} >${newenv}
+   exec 7<&0 8>&1 <${tmp} >${newenv}
    while read line; do
       z=
       if [ -n "${good_shell}" ]; then
@@ -1012,7 +1000,7 @@ option_evaluate() {
       printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
-   exec 0<&5 1>&6 5<&- 6<&-
+   exec 0<&7 1>&8 7<&- 8<&-
 
    _feats_eval_done=1
 }
@@ -1148,7 +1136,7 @@ cc_check() {
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
-   ) >/dev/null 2>&1
+   ) >/dev/null
    if [ $? -eq 0 ]; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1167,7 +1155,7 @@ ld_check() {
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
-   ) >/dev/null 2>&1
+   ) >/dev/null
    if [ $? -eq 0 ]; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1314,6 +1302,18 @@ squeeze_ws() {
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
 
+msg() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}\n" "${@}"
+}
+
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}" "${@}"
+}
+
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
 os_early_setup
@@ -1358,6 +1358,24 @@ if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
    msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
    exit 1
 fi
+
+# !!
+log="${OBJDIR}"/mk-config.log
+exec 5>&2 > ${log} 2>&1
+
+msg() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}\n" "${@}"
+   printf -- "${fmt}\n" "${@}" >&5
+}
+
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}" "${@}"
+   printf -- "${fmt}" "${@}" >&5
+}
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1570,7 +1588,6 @@ ${mv} -f ${newmk} ${mk}
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
-log="${OBJDIR}"/mk-config.log
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
@@ -1594,8 +1611,6 @@ msg_nonl() {
    printf -- "${fmt}" "${@}" >&5
 }
 
-# !!
-exec 5>&2 > ${log} 2>&1
 
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
