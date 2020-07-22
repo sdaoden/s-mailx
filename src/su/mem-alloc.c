@@ -413,6 +413,7 @@ su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 #endif
    void *rv;
    NYD_IN;
+   su_DBG_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no; )
    if(UNLIKELY(size == 0))
@@ -494,6 +495,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 #endif
    void *rv;
    NYD_IN;
+   su_DBG_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no su_COMMA orig_sz = 0; )
    if(UNLIKELY(size == 0))
@@ -600,6 +602,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 void
 su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
+   su_DBG_LOC_ARGS_UNUSED();
 
    if(LIKELY(ovp != NIL)){
 #ifdef su_MEM_ALLOC_DEBUG
