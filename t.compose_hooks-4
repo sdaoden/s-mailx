@@ -22,26 +22,26 @@ Bcc: oce@exam.ple
 this is content of reply 1
 t_ocs version 0 0 2
 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-To
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:9/0/NONE: t1@z t1@z
-mline_res:0/0/NONE: 
-Mailx-Command
-mline_res:5/0/NONE: reply
-mline_res:0/0/NONE: 
-Mailx-Raw-To
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:9/0/NONE: t1@z t1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-Sender
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-From
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-To
-mline_res:9/0/NONE: t1@z t1@z
-mline_res:0/0/NONE: 
+To ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:9/0/NONE: t1@z t1@z
+  mline_res:0/0/NONE: 
+Mailx-Command ->
+  mline_res:5/0/NONE: reply
+  mline_res:0/0/NONE: 
+Mailx-Raw-To ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:9/0/NONE: t1@z t1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-Sender ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-From ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-To ->
+  mline_res:9/0/NONE: t1@z t1@z
+  mline_res:0/0/NONE: 
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -52,26 +52,26 @@ Bcc: oce@exam.ple
 this is content of Reply 1 2
 t_ocs version 0 0 2
 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-To
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Command
-mline_res:5/0/NONE: Reply
-mline_res:0/0/NONE: 
-Mailx-Raw-To
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Orig-Sender
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-From
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-To
-mline_res:9/0/NONE: t1@z t1@z
-mline_res:0/0/NONE: 
+To ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Command ->
+  mline_res:5/0/NONE: Reply
+  mline_res:0/0/NONE: 
+Mailx-Raw-To ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Orig-Sender ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-From ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-To ->
+  mline_res:9/0/NONE: t1@z t1@z
+  mline_res:0/0/NONE: 
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -90,24 +90,24 @@ b1
 this is content of forward 1
 t_ocs version 0 0 2
 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-To
-mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
-mline_res:0/0/NONE: 
-Mailx-Command
-mline_res:7/0/NONE: forward
-mline_res:0/0/NONE: 
-Mailx-Raw-To
-mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
-mline_res:0/0/NONE: 
-Mailx-Orig-Sender
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-From
-mline_res:9/0/NONE: f1@z f1@z
-mline_res:0/0/NONE: 
-Mailx-Orig-To
-mline_res:9/0/NONE: t1@z t1@z
-mline_res:0/0/NONE: 
+To ->
+  mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Command ->
+  mline_res:7/0/NONE: forward
+  mline_res:0/0/NONE: 
+Mailx-Raw-To ->
+  mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Orig-Sender ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-From ->
+  mline_res:9/0/NONE: f1@z f1@z
+  mline_res:0/0/NONE: 
+Mailx-Orig-To ->
+  mline_res:9/0/NONE: t1@z t1@z
+  mline_res:0/0/NONE: 
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -128,24 +128,24 @@ b2
 this is content of forward 2
 t_ocs version 0 0 2
 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-To
-mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
-mline_res:0/0/NONE: 
-Mailx-Command
-mline_res:7/0/NONE: forward
-mline_res:0/0/NONE: 
-Mailx-Raw-To
-mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
-mline_res:0/0/NONE: 
-Mailx-Orig-Sender
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Orig-From
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Orig-To
-mline_res:9/0/NONE: t2@z t2@z
-mline_res:0/0/NONE: 
+To ->
+  mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Command ->
+  mline_res:7/0/NONE: forward
+  mline_res:0/0/NONE: 
+Mailx-Raw-To ->
+  mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Orig-Sender ->
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Orig-From ->
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Orig-To ->
+  mline_res:9/0/NONE: t2@z t2@z
+  mline_res:0/0/NONE: 
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
@@ -166,24 +166,24 @@ b2
 this is content of forward 2, 2nd, with showname set
 t_ocs version 0 0 2
 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-To
-mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
-mline_res:0/0/NONE: 
-Mailx-Command
-mline_res:7/0/NONE: forward
-mline_res:0/0/NONE: 
-Mailx-Raw-To
-mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
-mline_res:0/0/NONE: 
-Mailx-Orig-Sender
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Orig-From
-mline_res:16/0/NONE: f2@z 'du <f2@z>'
-mline_res:0/0/NONE: 
-Mailx-Orig-To
-mline_res:9/0/NONE: t2@z t2@z
-mline_res:0/0/NONE: 
+To ->
+  mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Command ->
+  mline_res:7/0/NONE: forward
+  mline_res:0/0/NONE: 
+Mailx-Raw-To ->
+  mline_res:27/0/NONE: fwdex2@am.ple fwdex2@am.ple
+  mline_res:0/0/NONE: 
+Mailx-Orig-Sender ->
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Orig-From ->
+  mline_res:16/0/NONE: f2@z 'du <f2@z>'
+  mline_res:0/0/NONE: 
+Mailx-Orig-To ->
+  mline_res:9/0/NONE: t2@z t2@z
+  mline_res:0/0/NONE: 
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Resent-Date: Wed, 02 Oct 1996 01:50:07 +0000
