@@ -101,27 +101,31 @@ static int a_crese_resend1(void *v, boole add_resent);
 
 static char *
 a_crese_reedit(char const *subj){
+   static char const a_re[] = "Re: ";
    char *newsubj;
    NYD2_IN;
 
-   newsubj = NULL;
+   newsubj = NIL;
 
-   if(subj != NULL && *subj != '\0'){
+   if(subj != NIL && *subj != '\0'){
       struct str in, out;
       uz i;
       char const *cp;
 
-      in.l = su_cs_len(in.s = n_UNCONST(subj));
+      in.l = su_cs_len(in.s = UNCONST(char*,subj));
       mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
       i = su_cs_len(cp = subject_re_trim(out.s)) +1;
       /* RFC mandates english "Re: " */
-      newsubj = n_autorec_alloc(sizeof("Re: ") -1 + i);
-      su_mem_copy(newsubj, "Re: ", sizeof("Re: ") -1);
-      su_mem_copy(&newsubj[sizeof("Re: ") -1], cp, i);
+      newsubj = n_autorec_alloc(sizeof(a_re) -1 + i);
+      su_mem_copy(newsubj, a_re, sizeof(a_re) -1);
+      su_mem_copy(&newsubj[sizeof(a_re) -1], cp, i);
 
       n_free(out.s);
-   }
+   }else if(n_psonce & n_PSO_INTERACTIVE)
+      newsubj = savecatsep(savestrbuf(a_re, sizeof(a_re) - 1 -1), ' ',
+            _("(no subject)"));
+
    NYD2_OU;
    return newsubj;
 }

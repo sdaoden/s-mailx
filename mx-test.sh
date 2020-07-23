@@ -7635,8 +7635,8 @@ t_compose_hooks() { # {{{ TODO monster
       return
    fi
 
-   (echo line one&&echo line two&&echo line three) > ./.treadctl
-   (echo echo four&&echo echo five&&echo echo six) > ./.tattach
+   { echo line one&&echo line two&&echo line three; } > ./.treadctl
+   { echo echo four&&echo echo five&&echo echo six; } > ./.tattach
 
    # Supposed to extend t_compose_edits with ~^ stress tests!
    ${cat} <<'__EOT__' > ./.trc
@@ -8498,23 +8498,23 @@ this is content of forward 2, 2nd, with showname set
          }
          define xerr {
             vput csop es substr "$1" 0 1
-            if [ "$es" != 2 ]
+            if "$es" != 2
                xcall bail "$2"
             end
          }
          define read_mline_res {
             read hl; set len=$? es=$! en=$^ERRNAME;\
-               echo mline_res:$len/$es/$^ERRNAME: $hl
-            if [ $es -ne $^ERR-NONE ]
+               echo \ \ mline_res:$len/$es/$^ERRNAME: $hl
+            if $es -ne $^ERR-NONE
                xcall bail read_mline_res
-            elif [ $len -ne 0 ]
+            elif $len -ne 0
                \xcall read_mline_res
             end
          }
          define work_hl {
             echo "~^header show $1"; read es;\
-               call xerr $es "work_hl $1"; echo $1; call read_mline_res
-            if [ $# -gt 1 ]
+               call xerr $es "work_hl $1"; echo $1" ->"; call read_mline_res
+            if $# -gt 1
                shift
                xcall work_hl "$@"
             end
@@ -8573,7 +8573,7 @@ this is content of forward 2, 2nd, with showname set
       ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '1850092468 11799'
+   check 4 - "${MBOX}" '3215954113 12017'
 
    t_epilog "${@}"
 } # }}}
