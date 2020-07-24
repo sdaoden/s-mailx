@@ -15,7 +15,7 @@
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
 i=
-while true; do
+while :; do
    if [ -f ./mk-config.env ]; then
       break
    elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.env ]; then
@@ -215,7 +215,9 @@ _EOT
    exit 1
 }
 
-NOJOBS= NOCOLOUR= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+CHECK_ONLY= RUN_TEST= MAILX=
+DEVELDIFF= DUMPERR= GIT_REPO=
+MAXJOBS=1 NOCOLOUR= NOJOBS=
 while [ ${#} -gt 0 ]; do
    if [ "${1}" = --no-jobs ]; then
       NOJOBS=y
@@ -336,7 +338,7 @@ ESTAT=0
 TEST_NAME=
 
 trap "${rm} -rf ./t.*.d ./t.*.io ./t.*.result; jobreaper_stop" EXIT
-trap "exit 1" HUP INT TERM
+trap "exit 1" HUP INT QUIT TERM
 
 # JOBS {{{
 if [ -n "${NOJOBS}" ]; then
@@ -629,6 +631,10 @@ t_echook() {
 
 t_echoerr() {
    ESTAT=1
+   t_echo0err "${@}"
+}
+
+t_echo0err() {
    [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
    printf "${__i__}"'%sERROR: %s%s\n' \
       "${COLOR_ERR_ON}" "${*}" "${COLOR_ERR_OFF}"
@@ -679,6 +685,7 @@ check() {
    csum="`${cksum} < "${f}" | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
       t_echook "${tid}"
+      check__runx=${DEVELDIFF}
    else
       ESTAT=1
       t_echoerr "${tid}: checksum mismatch (got ${csum})"
@@ -705,13 +712,19 @@ check() {
             y=refs/remotes/origin/test-out
             (git rev-parse --verify $y) >/dev/null 2>&1 || y=
          fi
-         if [ -n "${y}" ] &&
-               git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
-            diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
-            if [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
-               while read l; do
-                  printf 'ERROR-DIFF  %s\n' "${l}"
-               done < ../"${x}".diff
+         if [ -n "${y}" ]; then
+            if git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+               diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+               if [ ${?} -eq 0 ]; then
+                  [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+                     ${rm} -f ../"${x}" ../"${x}".old ../"${x}".diff
+               elif [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
+                  while read l; do
+                     printf 'ERROR-DIFF  %s\n' "${l}"
+                  done < ../"${x}".diff
+               fi
+            else
+               t_echo0err "${tid}: misses [test-out] template"
             fi
          fi
       fi
@@ -10495,10 +10508,13 @@ else
    if have_feat debug; then
       if have_feat devel; then
          JOBSYNC=1
+         DEVELDIFF=y
          DUMPERR=y
          ARGS="${ARGS} -Smemdebug"
       fi
    elif have_feat devel; then
+      DEVELDIFF=y
+      DUMPERR=y
       LOOPS_MAX=${LOOPS_BIG}
    fi
    color_init
