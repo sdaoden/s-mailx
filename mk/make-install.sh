@@ -53,7 +53,7 @@ __mkdir "${VAL_MANDIR}/man1"
 __mkdir "${VAL_SYSCONFDIR}"
 
 __stripfile "${OBJDIR}"/"${VAL_UAGENT}"
-__copyfile 0555 "${OBJDIR}"/"${VAL_UAGENT}" "${VAL_BINDIR}"/"${VAL_UAGENT}"
+__copyfile 0755 "${OBJDIR}"/"${VAL_UAGENT}" "${VAL_BINDIR}"/"${VAL_UAGENT}"
 __copyfile 0444 "${OBJDIR}"/uman.1 "${VAL_MANDIR}"/man1/"${VAL_UAGENT}".1
 if [ -f "${DESTDIR}${VAL_SYSCONFDIR}/${VAL_SYSCONFRC}" ]; then :; else
    __copyfile 0444 "${OBJDIR}"/urc.rc "${VAL_SYSCONFDIR}/${VAL_SYSCONFRC}"
@@ -79,7 +79,7 @@ if [ "${OPT_DOTLOCK}" != 0 ]; then
 fi;
 
 if [ -z "${DESTDIR}" ]; then
-   __copyfile 0555 "${OBJDIR}/${VAL_UAGENT}-uninstall.sh" \
+   __copyfile 0755 "${OBJDIR}/${VAL_UAGENT}-uninstall.sh" \
       "${VAL_BINDIR}/${VAL_UAGENT}-uninstall.sh"
 else
    echo "rm -f \"\${DESTDIR}${VAL_BINDIR}/${VAL_UAGENT}\"-uninstall.sh" >> \
