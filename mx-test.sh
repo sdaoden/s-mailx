@@ -178,8 +178,11 @@ t_all() { # {{{
 
    # Unclassified rest
    jspawn top
-   jspawn s_mime
    jspawn z
+   jsync
+
+   # OPT_TLS (basics, like S/MIME)
+   jspawn s_mime
    jsync
 
    ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
@@ -237,6 +240,7 @@ _EOT
 CHECK= RUN_TEST= MAILX=
 DEVELDIFF= DUMPERR= GIT_REPO=
 MAXJOBS=1 NOCOLOUR= NOJOBS=
+
 while [ ${#} -gt 0 ]; do
    if [ "${1}" = --no-jobs ]; then
       NOJOBS=y
@@ -286,7 +290,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
-            ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
+            (</dev/null "${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          # C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
          # so here political friction for some decades, too
@@ -373,11 +377,11 @@ COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
-${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.tls.db
+${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 trap "
    jobreaper_stop
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 
@@ -9357,7 +9361,7 @@ application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
 # }}}
 
 # Unclassified rest {{{
-t_top() {
+t_top() { # {{{
    t_prolog "${@}"
 
    t__gen_msg subject top1 to 1 from 1 cc 1 body 'body1-1
@@ -9368,7 +9372,8 @@ body1-4
 
 
 body1-5
-'     > "${MBOX}"
+'     > ./t.mbox
+
    t__gen_msg subject top2 to 1 from 1 cc 1 body 'body2-1
 body2-2
 
@@ -9378,7 +9383,7 @@ body2-3
 
 body2-4
 body2-5
-'     >> "${MBOX}"
+'     >> ./t.mbox
 
    ${MAILX} ${ARGS} -Rf -Y '#
 \top 1
@@ -9393,13 +9398,37 @@ body2-5
 \echo --- $?/$^ERRNAME, 4
 \Top 1
 \echo --- $?/$^ERRNAME, 5
-#  ' "${MBOX}" > ./.tall 2>&1
-   check 1 0 ./.tall '2556125754 705'
+#  ' ./t.mbox > ./t1 2>&1
+   check 1 0 ./t1 '2556125754 705'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_s_mime() {
+# xxx Note: t_z() was the first test (series) written.  Today many
+# xxx aspects are (better) covered by other tests above, some are not.
+# xxx At some future date and time, convert the last remains not covered
+# xxx elsewhere to a real t_* test and drop it
+t_z() { # {{{
+   t_prolog "${@}"
+
+   # Test for [260e19d] (Juergen Daubert)
+   echo body | ${MAILX} ${ARGS} ./t1
+   check 4 0 ./t1 '2948857341 94'
+
+   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
+   ${awk} 'BEGIN{
+      for(i = 0; i < 10000; ++i)
+         printf "\xC3\xBC"
+         #printf "\xF0\x90\x87\x90"
+      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject ./t7
+   check 7 0 ./t7 '1707496413 61812'
+
+   t_epilog "${@}"
+} # }}}
+# }}}
+
+# OPT_TLS (basics, like S/MIME) {{{
+t_s_mime() { # {{{
    t_prolog "${@}"
 
    if have_feat smime; then :; else
@@ -9408,60 +9437,35 @@ t_s_mime() {
       return
    fi
 
-   ${cat} <<-_EOT > ./.t.conf
-		[req]
-		x509_extensions = extensions
-		distinguished_name = req_distinguished_name
-		attributes = req_attributes
-		prompt = no
-		output_password = Pacem_in_terris
-
-		[extensions]
-		basicConstraints = CA:FALSE
-		# Needs a CA for that keyUsage = digitalSignature
-		extendedKeyUsage = emailProtection
-
-		[req_distinguished_name]
-		C = GB
-		ST = Over the
-		L = rainbow
-		O = S-nail
-		OU = S-nail.smime
-		CN = S-nail.test2
-		emailAddress = test@localhost
-
-		[req_attributes]
-		challengePassword = hi ca it is me me me
-	_EOT
+   if t__tls_certs; then :; else
+      t_echoskip '[!TLS certificate setup]'
+      t_epilog "${@}"
+      return
+   fi
 
    doit() {
       _z=${1}
 
       if [ "${_z}" = 0 ]; then
          _pass=
-         _osslreq=-nodes
          _ossl=
+         _f=client
       else
-         _pass=Pacem_in_terris
+         _pass=client-key-pass
          _osslreq=
          _ossl='-passin pass:'${_pass}
+         _f=client-pass
       fi
 
-      ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
-
-      openssl req ${_osslreq} ${_ossl} -x509 -days 3650 -config ./.t.conf \
-         -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
-      check_ex0 ${_z}
       _z=`add ${_z} 1`
-
-      ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
       # Sign/verify
       echo bla | ${MAILX} ${ARGS} \
-         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
+         -Sfrom=test@localhost \
          -Ssmime-sign-digest=sha1 \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' ./.VERIFY >>${ERR} 2>&1
+         -s 'S/MIME test' ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${awk} '
          BEGIN{ skip=0 }
@@ -9469,42 +9473,44 @@ t_s_mime() {
          /^$/{ if(skip) --skip }
          { if(!skip) print }
       ' \
-         < ./.VERIFY > "${MBOX}"
-      check ${_z} - "${MBOX}" '335634014 644'
+         < ./t${1}.VERIFY > ./t${_z}
+      check ${_z} - ./t${_z} '335634014 644'
       _z=`add ${_z} 1`
 
       printf 'verify\nx\n' |
-      ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
-         -R -f ./.VERIFY >>${ERR} 2>&1
+      ${MAILX} ${ARGS} -Ssmime-ca-file=./ca.pem -Serrexit \
+         -R -f ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z} # XXX pipe
       _z=`add ${_z} 1`
 
-      openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
+      openssl smime -verify -CAfile ./ca.pem \
+         -in ./t${1}.VERIFY >>${ERR} 2>&1
       check_ex0 ${_z}
       _z=`add ${_z} 1`
 
       # (signing +) encryption / decryption
       echo bla |
       ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Smta=test://t${1}.ENCRYPT \
+         -Ssmime-force-encryption \
+         -Ssmime-encrypt-recei@ver.com=./client2-cert.pem \
          -Ssmime-sign-digest=sha1 \
-         -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+         -Ssmime-sign -Ssmime-sign-cert=./${_f}-pair.pem \
+         -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
-      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2359655411 336'
+      ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2359655411 336'
       _z=`add ${_z} 1`
 
-      printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
+      printf 'decrypt ./t%s.DECRYPT\nfi ./t%s.DECRYPT\nverify\nx\n' \
+         "${1}" "${1}" |
       ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-ca-file=./.tcert.pem \
-         -Ssmime-sign-cert=./.tpair.pem \
-         -Sfrom=test@localhost \
-         -S password-test@localhost.smime-cert-key=${_pass} \
-         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
+         -Smta=test://./t${1}.ENCRYPT \
+         -Ssmime-ca-file=./ca.pem \
+         -Ssmime-sign-cert=./client2-pair.pem \
+         -Serrexit -R -f ./t${1}.ENCRYPT >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${awk} '
          BEGIN{ skip=0 }
@@ -9512,39 +9518,38 @@ t_s_mime() {
          /^$/{ if(skip) --skip }
          { if(!skip) print }
       ' \
-         < ./.DECRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2602978204 940'
+         < ./t${1}.DECRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2602978204 940'
       _z=`add ${_z} 1`
 
-      (openssl smime -decrypt ${_ossl} -inkey ./.tkey.pem -in ./.ENCRYPT |
-            openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1
+      { openssl smime -decrypt -inkey ./client2-key.pem \
+            -in ./t${1}.ENCRYPT |
+         openssl smime -verify -CAfile ./ca.pem; } >>${ERR} 2>&1
       check_ex0 ${_z} # XXX pipe..
       _z=`add ${_z} 1`
 
-      ${rm} ./.ENCRYPT
+      ${rm} ./t${1}.ENCRYPT
       echo bla | ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+         -Smta=test://t${1}.ENCRYPT \
+         -Ssmime-force-encryption \
+         -Ssmime-encrypt-recei@ver.com=./client2-cert.pem \
          -Sfrom=test@localhost \
-         -S password-test@localhost.smime-cert-key=${_pass} \
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
-      ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
-      check ${_z} - "${MBOX}" '2359655411 336'
+      ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
+      check ${_z} - ./t${_z} '2359655411 336'
       _z=`add ${_z} 1`
 
-      ${rm} ./.DECRYPT
       # Note: deduce from *sign-cert*, not from *from*!
-      printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-         -Smta=test://./.ENCRYPT \
-         -Ssmime-sign-cert-recei@ver.com=./.tpair.pem \
-         -S password-recei@ver.com.smime-cert-key=${_pass} \
-         -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
-      check ${_z} 0 ./.DECRYPT '2453471323 431'
+      printf 'decrypt ./t%s\nx\n' "${_z}" |
+         ${MAILX} ${ARGS} \
+         -Ssmime-sign-cert-recei@ver.com=./client2-pair.pem \
+         -Serrexit -R -f ./t${1}.ENCRYPT >>${ERR} 2>&1
+      check ${_z} 0 ./t${_z} '2453471323 431'
       _z=`add ${_z} 1`
 
-      openssl smime ${_ossl} -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT \
-         >>${ERR} 2>&1
+      openssl smime ${_ossl} -decrypt -inkey ./client2-key.pem \
+         -in ./t${1}.ENCRYPT >>${ERR} 2>&1
       check_ex0 ${_z}
 
       unset _z _pass _osslreq _ossl
@@ -9554,30 +9559,7 @@ t_s_mime() {
    doit 10
 
    t_epilog "${@}"
-}
-
-# xxx Note: t_z() was the first test (series) written.  Today many
-# xxx aspects are (better) covered by other tests above, some are not.
-# xxx At some future date and time, convert the last remains not covered
-# xxx elsewhere to a real t_* test and drop it
-t_z() {
-   t_prolog "${@}"
-
-   # Test for [260e19d] (Juergen Daubert)
-   echo body | ${MAILX} ${ARGS} "${MBOX}"
-   check 4 0 "${MBOX}" '2948857341 94'
-
-   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   ${rm} "${MBOX}"
-   ${awk} 'BEGIN{
-      for(i = 0; i < 10000; ++i)
-         printf "\xC3\xBC"
-         #printf "\xF0\x90\x87\x90"
-      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
-   check 7 0 "${MBOX}" '1707496413 61812'
-
-   t_epilog "${@}"
-}
+} # }}}
 # }}}
 
 # OPT_NET_TEST {{{
@@ -10157,7 +10139,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
                   doit(1, "Cc: ")
                }' &&
             smtp_head_tail && ${5}; } |
-         ../net-test .t.sh > "${MBOX}" 2>&1
+         ../net-test .t.sh > "${MBOX}" 2>>${ERR}
    }
    smtp_rcpt_to -ehlo \
       smtp_helo \
@@ -10176,6 +10158,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 # }}}
 
 # Test support {{{
+# Message generation and other header/message content {{{
 t__gen_msg() {
    t___gen_msg '' "${@}"
 }
@@ -10399,6 +10382,7 @@ t__put_body() {
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '
 }
+# }}}
 
 t__net_script() {
    file=${1}
@@ -10415,6 +10399,304 @@ t__net_script() {
 		_EOT
    ${chmod} 0755 ${file}
 }
+
+# TLS keys and certificates {{{
+t__tls_certs() {
+   if have_feat tls; then :; else
+      return 1
+   fi
+
+   __tls_certs_harderr=
+   while :; do
+      [ -d ../t.tls.db ] && {
+         t__tls__copy
+         return ${?}
+      }
+      [  -n "${__tls_cert_harderr}" ] && return 1
+      if ${mkdir} ../t.tls.db 2>/dev/null; then
+         t__tls__create 2>>${ERR} 1>&2 || {
+            e=${?}
+            ${rm} -rf ../t.tls.db
+            return ${e}
+         }
+      else
+         __tls_certs_harderr=1
+      fi
+   done
+}
+
+t__tls__create() (
+   cd ../t.tls.db
+
+   ${cat} <<-_EOT > ./t-root-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = ROOT-CA-ST
+		L = ROOT-CA-L
+		O = ROOT-CA-O
+		OU = ROOT-CA-OU
+		CN = ROOT-CA-CN
+		emailAddress = test@root-ca.example
+		# At one time AlpineLinux OpenSSL required that:
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		# PKIX recommendation
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-root2-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = ROOT2-CA-ST
+		L = ROOT2-CA-L
+		O = ROOT2-CA-O
+		OU = ROOT2-CA-OU
+		CN = ROOT2-CA-CN
+		emailAddress = test@root2-ca.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		# PKIX recommendation
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-ca.cnf
+		extensions = ext_v3_ca
+		[req]
+		x509_extensions = ext_v3_ca
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = CA-ST
+		L = CA-L
+		O = CA-O
+		OU = CA-OU
+		CN = CA-CN
+		emailAddress = test@ca.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		# Extensions for a typical CA
+		[ext_v3_ca]
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid:always,issuer
+		basicConstraints = critical,CA:true
+	_EOT
+
+   ${cat} <<-_EOT > ./t-srv.cnf
+		extensions = ext_srv_cert
+		[req]
+		x509_extensions = ext_srv_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = SERV-ST
+		L = SERV-L
+		O = SERV-O
+		OU = SERV-OU
+		CN = localhost
+		emailAddress = test@srv.example
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_srv_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,serverAuth,emailProtection
+		subjectKeyIdentifier = hash
+		authorityKeyIdentifier = keyid,issuer
+	_EOT
+
+   ${cat} <<-_EOT > ./t.cnf
+		extensions = ext_usr_cert
+		[req]
+		x509_extensions = ext_usr_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = Over the
+		L = rainbow
+		O = S-mailx
+		OU = S-mailx.tls
+		CN = S-mailx.test3
+		emailAddress = test@localhost
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_usr_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,clientAuth,emailProtection
+		subjectKeyIdentifier = hash
+	_EOT
+
+   ${cat} <<-_EOT > ./t2.cnf
+		extensions = ext_usr_cert
+		[req]
+		x509_extensions = ext_usr_cert
+		distinguished_name = req_distinguished_name
+		attributes = req_attributes
+		prompt = no
+		[req_distinguished_name]
+		C = IT
+		ST = Over the
+		L = rainbow
+		O = S-mailx2
+		OU = S-mailx2.tls
+		CN = S-mailx2.test3
+		emailAddress = test2@localhost
+		[req_attributes]
+		challengePassword = hi ca it is me me me
+		[ext_usr_cert]
+		basicConstraints = CA:FALSE
+		extendedKeyUsage = critical,clientAuth,emailProtection
+		subjectKeyIdentifier = hash
+	_EOT
+
+   ## Root CA
+   openssl req -newkey rsa:1024 \
+      -config t-root-ca.cnf -nodes \
+      -keyout root-ca-key.pem -out root-ca-req.pem || exit 1
+   openssl x509 -req -in root-ca-req.pem \
+      -extfile t-root-ca.cnf \
+      -signkey root-ca-key.pem \
+      -out root-ca-cert.pem || exit 2
+
+   ## Root CA 2
+   openssl req -newkey rsa:1024 \
+      -config t-root2-ca.cnf -nodes \
+      -keyout root2-ca-key.pem -out root2-ca-req.pem || exit 1
+   openssl x509 -req -in root2-ca-req.pem \
+      -extfile t-root2-ca.cnf \
+      -signkey root2-ca-key.pem \
+      -out root2-ca-cert.pem || exit 2
+
+   ${cat} root-ca-cert.pem root2-ca-cert.pem > ca.pem
+
+   ## Server CA, sign with root CA
+   openssl req -newkey rsa:1024 \
+      -config t-ca.cnf -nodes \
+      -keyout server-ca-key.pem -out server-ca-req.pem || exit 3
+   openssl x509 -req -in server-ca-req.pem \
+      -extfile t-ca.cnf \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out server-ca-cert.pem || exit 4
+
+   ## Server certificate, sign with server CA
+   openssl req -newkey rsa:1024 \
+      -config t-srv.cnf -nodes \
+      -keyout server-key.pem -out server-req.pem || exit 5
+   openssl x509 -req -in server-req.pem \
+      -extfile t-srv.cnf \
+      -CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
+      -out server-cert.pem || exit 6
+   ${cat} server-cert.pem \
+      server-ca-cert.pem \
+      > server-chain.pem
+
+   # Same, password protected
+   openssl req -newkey rsa:1024 \
+      -config t.cnf \
+      -passout pass:server-key-pass \
+      -keyout server-pass-key.pem -out server-pass-req.pem || exit 7
+   openssl x509 -req -in server-pass-req.pem \
+      -extfile t.cnf \
+      -CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
+      -out server-pass-cert.pem || exit 8
+   ${cat} \
+      server-pass-cert.pem \
+      server-ca-cert.pem \
+      > server-pass-chain.pem
+
+   ##
+   openssl dhparam -check -text -5 512 -out dh512.pem || exit 9
+
+   ## Client certificate
+   openssl req -newkey rsa:1024 \
+      -config t.cnf -nodes \
+      -keyout client-key.pem -out client-req.pem || exit 10
+   openssl x509 -req -in client-req.pem \
+      -extfile t.cnf \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out client-cert.pem || exit 11
+   ${cat} \
+      client-key.pem client-cert.pem \
+      > client-pair.pem
+   ${cat} \
+      client-cert.pem \
+      root-ca-cert.pem \
+      > client-chain.pem
+
+   # With password
+   openssl req -newkey rsa:1024 \
+      -config t.cnf \
+      -passout pass:client-key-pass \
+      -keyout client-pass-key.pem -out client-pass-req.pem || exit 12
+   openssl x509 -req -in client-pass-req.pem \
+      -extfile t.cnf \
+      -passin pass:client-key-pass \
+      -CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
+      -out client-pass-cert.pem || exit 13
+   ${cat} \
+      client-pass-key.pem client-pass-cert.pem \
+      > client-pass-pair.pem
+   ${cat} \
+      client-pass-cert.pem \
+      root-ca-cert.pem \
+      > client-pass-chain.pem
+
+   ## Client 2 certificate
+   openssl req -newkey rsa:1024 \
+      -config t2.cnf -nodes \
+      -keyout client2-key.pem -out client2-req.pem || exit 10
+   openssl x509 -req -in client2-req.pem \
+      -extfile t2.cnf \
+      -CA root2-ca-cert.pem -CAkey root2-ca-key.pem -CAcreateserial \
+      -out client2-cert.pem || exit 11
+   ${cat} \
+      client2-key.pem client2-cert.pem \
+      > client2-pair.pem
+   ${cat} \
+      client2-cert.pem \
+      root2-ca-cert.pem \
+      > client2-chain.pem
+
+   printf '' > .t_tls_is_setup
+)
+
+t__tls__copy() {
+   while :; do
+      [ -f ../t.tls.db/.t_tls_is_setup ] && break
+      if [ -z "${SUBSECOND_SLEEP}" ]; then
+         sleep 1 &
+      else
+         sleep .25 &
+      fi
+      wait ${!}
+   done
+   ${cp} -f ../t.tls.db/*.* .
+}
+# }}}
 # }}}
 
 # Test all configs TODO does not cover all *combinations*, stupid!
