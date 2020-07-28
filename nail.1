@@ -5858,20 +5858,19 @@ will replace the list of entries with the content of
 .Va history-file ,
 and
 .Cm save
-will dump the current list to said file, replacing former content.
+will dump all entries to said file, replacing former content, and
 .Cm clear
-will delete all history entries.
+will delete all entries.
 The argument can also be a signed decimal
 .Ar NUMBER ,
 which will select and evaluate the respective history entry, and move it
 to the top of the history; a negative number is used as an offset to the
 current command so that
 .Ql -1
-will select the last command, the history top.
-An entry may be deleted by giving
+will select the last command, the history top, whereas
 .Cm delete
-followed by a
-.Ar NUMBER .
+will delete all given entries
+.Pf ( Ar :NUMBER: ) .
 Also see
 .Sx "On terminal control and line editor" .
 .
