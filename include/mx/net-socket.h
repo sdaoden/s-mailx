@@ -85,7 +85,7 @@ INLINE struct mx_socket *mx_socket_reset_write_buf(struct mx_socket *self){
    return self;
 }
 
-INLINE boole mx_socket_reset_io_buf(struct mx_socket *self){
+INLINE struct mx_socket *mx_socket_reset_io_buf(struct mx_socket *self){
    self = mx_socket_reset_read_buf(self);
    self = mx_socket_reset_write_buf(self);
    return self;
