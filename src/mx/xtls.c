@@ -2012,6 +2012,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
 #endif
 
    SSL_set_fd(sop->s_tls, sop->s_fd);
+   mx_socket_reset_io_buf(sop);
 
    if(SSL_connect(sop->s_tls) < 0){
       ssl_gen_err(_("could not initiate TLS connection"));
