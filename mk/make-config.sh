@@ -2752,10 +2752,12 @@ int nonempty;
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
          without_check 1 xtls 'TLS new style TLS_client_method(3ssl)' \
-            '#define mx_XTLS_CLIENT_METHOD TLS_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD TLS_client_method
+            #define mx_XTLS_SERVER_METHOD TLS_server_method' \
             '-lssl -lcrypto'
       elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
-            '#define mx_XTLS_CLIENT_METHOD TLS_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD TLS_client_method
+            #define mx_XTLS_SERVER_METHOD TLS_server_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2776,7 +2778,8 @@ int main(void){
       then
          :
       elif link_check xtls 'TLS old style SSLv23_client_method(3ssl)' \
-            '#define mx_XTLS_CLIENT_METHOD SSLv23_client_method' \
+            '#define mx_XTLS_CLIENT_METHOD SSLv23_client_method
+            #define mx_XTLS_SERVER_METHOD SSLv23_server_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
