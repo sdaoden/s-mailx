@@ -481,7 +481,9 @@ jxor:
       rv = TRUM1;
    else if(bits == mx_CRED_AUTHTYPE_NONE){
 jerr:
-      n_err(_("%s: no usable authentication types (remain)\n"), pstr);
+      n_err(_("%s: no usable authentication types (remain%s)\n"),
+         pstr, (n_poption & n_PO_D_V ? su_empty
+            : _("; *verbose* for reasons")));
       rv = FAL0;
    }
 
