@@ -9573,23 +9573,23 @@ t_net_pop3() { # {{{ TODO TLS tests, then also EXTERN*
    fi
 
    pop3_logged_in() { # {{{
-      printf '\001
+      printf '\002
 +OK Logged in.
-\002
+\001
 STAT
-\001
+\002
 +OK 2 506
-\002
+\001
 LIST 1
-\001
+\002
 +OK 1 258
-\002
+\001
 LIST 2
-\001
-+OK 2 248
 \002
-TOP 1 0
++OK 2 248
 \001
+TOP 1 0
+\002
 +OK
 Return-Path: <steffen@kdc.localdomain>
 Delivered-To: root@localhost
@@ -9600,9 +9600,9 @@ Subject: The GSSAPI dance is done!
 Message-ID: <20190816174620.LeViGqO2@kdc.localdomain>
 
 .
-\002
-TOP 2 0
 \001
+TOP 2 0
+\002
 +OK
 Return-Path: <steffen@kdc.localdomain>
 Delivered-To: root@localhost
@@ -9613,22 +9613,23 @@ Subject: Hi from FreeBSD
 Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
 
 .
-\002
-QUIT
 \001
+QUIT
+\002
 +OK Logging out.
 '
    } # }}}
 
+   # Authentication types {{{
    t__net_script .t.sh pop3 \
       -Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
-   { printf '\001
+   { printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
-\002
-USER steffen
 \001
-+OK
+USER steffen
 \002
++OK
+\001
 PASS Sway
 ' &&
       pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
@@ -9637,9 +9638,9 @@ PASS Sway
    if have_feat md5; then
       t__net_script .t.sh pop3 \
          -Spop3-auth=plain -Snopop3-use-starttls
-      { printf '\001
+      { printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
-\002
+\001
 APOP steffen 4f66ea9bf092117b009b9f8d928c656d
 ' &&
          pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
@@ -9661,6 +9662,7 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
    else
       t_echoskip '3:[false/TODO/!TLS]'
    fi
+   # }}}
 
    t_epilog "${@}"
 } # }}}
@@ -9675,23 +9677,31 @@ t_net_imap() { # {{{ TODO TLS tests, then also EXTERN*
    fi
 
    imap_hello() { # {{{
-      printf '\001
+      printf '\002
 * OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL] Dovecot ready.
-\002
-T1 CAPABILITY
 \001
+T1 CAPABILITY
+\002
 * CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL
 T1 OK Pre-login capabilities listed, post-login capabilities have more.
 '
    } # }}}
 
    imap_logged_in() { # {{{
-      printf '\001
-* CAPABILITY IMAP4rev1 SASL-IR
-T2 OK Logged in
-\002
-T3 EXAMINE "INBOX"
+      __xno1__=2
+      [ ${#} -eq 1 ] && __xno1__=${1}
+
+      __xno2__=`add ${__xno1__} 1`
+      __xno3__=`add ${__xno2__} 1`
+      __xno4__=`add ${__xno3__} 1`
+      __xno5__=`add ${__xno4__} 1`
+      __xno6__=`add ${__xno5__} 1`
+
+      printf '\002
+T%s OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAME SPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY LITERAL+ NOTIFY SPECIAL-USE] Logged in
 \001
+T%s EXAMINE "INBOX"
+\002
 * FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)
 * OK [PERMANENTFLAGS ()] Read-only mailbox.
 * 2 EXISTS
@@ -9699,22 +9709,22 @@ T3 EXAMINE "INBOX"
 * OK [UNSEEN 2] First unseen.
 * OK [UIDVALIDITY 1565715806] UIDs valid
 * OK [UIDNEXT 38] Predicted next UID
-T3 OK [READ-ONLY] Examine completed (0.001 + 0.000 secs).
-\002
-T4 FETCH 1:2 (FLAGS UID)
+T%s OK [READ-ONLY] Examine completed (0.001 + 0.000 secs).
 \001
+T%s FETCH 1:2 (FLAGS UID)
+\002
 * 1 FETCH (FLAGS (\\Seen) UID 36)
 * 2 FETCH (FLAGS () UID 37)
-T4 OK Fetch completed (0.001 + 0.000 secs).
-\002
-T5 FETCH 1:2 (RFC822.SIZE INTERNALDATE)
+T%s OK Fetch completed (0.001 + 0.000 secs).
 \001
+T%s FETCH 1:2 (RFC822.SIZE INTERNALDATE)
+\002
 * 1 FETCH (RFC822.SIZE 258 INTERNALDATE "16-Aug-2019 19:46:20 +0200")
 * 2 FETCH (RFC822.SIZE 248 INTERNALDATE "17-Aug-2019 23:21:27 +0200")
-T5 OK Fetch completed (0.001 + 0.000 secs).
-\002
-T6 UID FETCH 36:37 (RFC822.HEADER)
+T%s OK Fetch completed (0.001 + 0.000 secs).
 \001
+T%s UID FETCH 36:37 (RFC822.HEADER)
+\002
 * 1 FETCH (UID 36 RFC822.HEADER {253}
 Return-Path: <steffen@kdc.localdomain>
 Delivered-To: root@localhost
@@ -9735,17 +9745,23 @@ Subject: Hi from FreeBSD
 Message-ID: <20190817212125.28sI5X7c@kdc.localdomain>
 
 )
-T6 OK Fetch completed (0.001 + 0.000 secs).
-\002
-T7 LOGOUT
+T%s OK Fetch completed (0.001 + 0.000 secs).
 \001
+T%s LOGOUT
+\002
 * BYE Logging out
-'
+' \
+      "${__xno1__}" \
+      "${__xno2__}" "${__xno2__}" \
+      "${__xno3__}" "${__xno3__}" \
+      "${__xno4__}" "${__xno4__}" \
+      "${__xno5__}" "${__xno5__}" \
+      "${__xno6__}"
    } # }}}
 
    t__net_script .t.sh imap \
       -Simap-auth=login -Snoimap-use-starttls
-   { imap_hello && printf '\002
+   { imap_hello && printf '\001
 T2 LOGIN "steffen" "Sway"
 ' &&
       imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
@@ -9766,15 +9782,15 @@ T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
    if have_feat md5; then
       t__net_script .t.sh imap \
          -Simap-auth=cram-md5 -Snoimap-use-starttls
-      { imap_hello && printf '\002
+      { imap_hello && printf '\001
 T2 AUTHENTICATE CRAM-MD5
-\001
-+ PDAzMjYxNTc5NDU2Mzc3MTAuMTU2NzI5NDU0MUBhcmNoLTIwMTk+
 \002
++ PDAzMjYxNTc5NDU2Mzc3MTAuMTU2NzI5NDU0MUBhcmNoLTIwMTk+
+\001
 c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
 ' &&
          imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-      check 3 0 "${MBOX}" '4233548649 160'
+      check 2 0 "${MBOX}" '4233548649 160'
    else
       t_echoskip '2:[!MD5]'
    fi
@@ -9894,48 +9910,47 @@ Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
 
    # HE-EH-LOs {{{
    smtp_helo() {
-      printf '\001
+      printf '\002
 220 arch-2019 ESMTP Postfix
-\002
-HELO %s
 \001
-250 arch-2019
+HELO %s
+\002
+250 arch-2019, hi dude
 ' \
       "${helo}"
    }
 
    smtp_ehlo() {
+      [ ${#} -eq 0 ] && printf '\002\n220 arch-2019 ESMTP Postfix\n'
       printf '\001
-220 arch-2019 ESMTP Postfix
-\002
 EHLO %s
-\001
-250-arch-2019
-%s250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 OAUTHBEARER EXTERNAL
+\002
+250-arch-2019, hi dude
+250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 OAUTHBEARER EXTERNAL
 250-ENHANCEDSTATUSCODES
-250 PIPELINING
 ' \
-      "${helo}" "${extensions}"
+      "${helo}"
+      printf '250 PIPELINING\n'
    }
    # }}}
 
-   smtp_auth_ok() { printf '\001\n235 2.7.0 Authentication successful\n'; }
+   smtp_auth_ok() { printf '\002\n235 2.7.0 Authentication successful\n'; }
 
    # After AUTH {{{
    smtp_mail_from_to() {
-      printf '\002\nMAIL FROM:<%s>\n\001\n250 2.1.0 Ok\n' "${mail_from}"
-      printf '\002\nRCPT TO:<%s>\n\001\n250 2.1.5 Ok\n' "${@}"
-      printf '\002\nDATA\n'
+      printf '\001\nMAIL FROM:<%s>\n\002\n250 2.1.0 Ok\n' "${mail_from}"
+      printf '\001\nRCPT TO:<%s>\n\002\n250 2.1.5 Ok\n' "${@}"
+      printf '\001\nDATA\n'
    }
 
    smtp_mail_from_to_pipelining() {
-      printf '\002\nMAIL FROM:<%s>\n' "${mail_from}"
+      printf '\001\nMAIL FROM:<%s>\n' "${mail_from}"
       printf 'RCPT TO:<%s>\n' "${@}"
       printf 'DATA\n'
    }
 
    smtp_data() {
-      printf '\001\n'
+      printf '\002\n'
       if [ ${#} -gt 0 ]; then
          printf '250 2.1.0 Ok\n'
          while [ ${#} -gt 0 ]; do
@@ -9943,7 +9958,7 @@ EHLO %s
             shift
          done
       fi
-      printf '354 End data with <CR><LF>.<CR><LF>\n\002\n'
+      printf '354 End data with <CR><LF>.<CR><LF>\n\001\n'
       smtp_date_from
    }
 
@@ -9962,11 +9977,11 @@ EHLO %s
 
    smtp_quit() {
       printf '.
-\001
-250 2.0.0 Ok: queued as 78FFC20305
 \002
-QUIT
+250 2.0.0 Ok: queued as 78FFC20305
 \001
+QUIT
+\002
 221 2.0.0 Bye
 '
    }
@@ -9974,7 +9989,7 @@ QUIT
    smtp_quit_pipelining() {
       printf '.
 QUIT
-\001
+\002
 250 2.0.0 Ok: queued as 78FFC20305
 221 2.0.0 Bye
 '
@@ -9984,7 +9999,6 @@ QUIT
    # }}}
 
    # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
-
    smtp_script smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check 1 0 "${MBOX}" '4294967295 0'
@@ -10021,22 +10035,22 @@ QUIT
    # Real EHLO authentication types {{{
 
    smtp_script smtp -Ssmtp-config=-all,ehlo,plain
-   { smtp_ehlo && printf '\002
+   { smtp_ehlo && printf '\001
 AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
 ' &&
       smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
    check auth-1 0 "${MBOX}" '4294967295 0'
 
    smtp_script smtp -Ssmtp-config=-all,ehlo,login
-   { smtp_ehlo && printf '\002
+   { smtp_ehlo && printf '\001
 AUTH LOGIN
-\001
+\002
 334 VXNlcm5hbWU6
-\002
-c3RlZmZlbg==
 \001
-334 UGFzc3dvcmQ6
+c3RlZmZlbg==
 \002
+334 UGFzc3dvcmQ6
+\001
 U3dheQ==
 ' &&
       smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
@@ -10055,11 +10069,11 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 
    if have_feat md5; then
       smtp_script smtp -Ssmtp-config=-all,ehlo,,cram-md5
-      { smtp_ehlo && printf '\002
+      { smtp_ehlo && printf '\001
 AUTH CRAM-MD5
-\001
-334 PDM2MzI5MzIyMDE2MDM5NDUuMTU2NzQ1NTkxOUBhcmNoLTIwMTk+
 \002
+334 PDM2MzI5MzIyMDE2MDM5NDUuMTU2NzQ1NTkxOUBhcmNoLTIwMTk+
+\001
 c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 ' &&
          smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
@@ -10070,7 +10084,6 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
    # }}}
 
    # Some data feeding {{{
-
    # body data
    ${awk} '
       BEGIN{
@@ -10389,9 +10402,12 @@ t__net_script() {
    proto=${2}
    shift 2
 
+   t__tls_certs
+
    ${cat} <<-_EOT > ${file}
 		#!${SHELL} -
 		</dev/null ${MAILX} -# ${ARGS} \\
+			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
 			-Suser=steffen -Spassword=Sway \\
 			${@} \\
 			-Y 'File ${proto}://localhost:'\${1} \\
