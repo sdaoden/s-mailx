@@ -675,7 +675,8 @@ jeavail:
       /* We do not take into account the TLS state for URL here!
        * "none" is valid for SMTP */
       if((rv = mx_cred_auth_type_verify_bits(&cavc,
-            ((flags & a_NETSMTP_EXT_STARTTLS) != 0)))){
+            ((urlp->url_flags & mx_URL_TLS_REQUIRED) != 0 ||
+             (flags & a_NETSMTP_EXT_STARTTLS) != 0)))){
          flags |= cavc.cavc_mechplusbits & mx_CRED_AUTHTYPE_MASK;
          if((flags & mx_CRED_PROTO_AUTHTYPES_SMTP) != mx_CRED_AUTHTYPE_NONE)
             flags |= a_NETSMTP_EXT_AUTH;
