@@ -7,6 +7,7 @@
 #@             (then grep for ^ERROR, for example).
 #@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
 #@ grep ^ERROR handling.
+#@ And setting MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw.
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -207,10 +208,13 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
  --no-jobs                do not spawn multiple jobs simultaneously
  --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
                           (for example to: grep ^ERROR)
+                          $MAILX_CC_ALL_TESTS_DUMPER in addition for even
+                          easier grep ^ERROR handling.
 
 The last invocation style will compile and test as many different
 configurations as possible.
 OBJDIR= may be set to the location of the built objects etc.
+$MAILX_CC_TEST_NO_CLEANUP skips deletion of test data.
 _EOT
    exit 1
 }
@@ -337,7 +341,11 @@ COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
-trap "${rm} -rf ./t.*.d ./t.*.io ./t.*.result; jobreaper_stop" EXIT
+trap "
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result
+   jobreaper_stop
+" EXIT
 trap "exit 1" HUP INT QUIT TERM
 
 # JOBS {{{
@@ -576,7 +584,9 @@ jsync() {
          ESTAT=1
       fi
    done
-   ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
+
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
 
    JOBS=0
 }
@@ -10528,12 +10538,12 @@ else
       jobreaper_stop
    else
       MAXJOBS=1
-      #jobreaper_start
+      jobreaper_start
       while [ ${#} -gt 0 ]; do
          jspawn ${1}
          shift
       done
-      #jobreaper_stop
+      jobreaper_stop
    fi
 
 fi
