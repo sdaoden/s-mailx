@@ -3117,11 +3117,12 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
                }
             }
 
-            if((cp = realname(np2->n_fullname)) == NULL)
+            if((cp = realname(np2->n_fullname)) == NULL || *cp == '\0')
                cp = np2->n_name;
             sp1 = n_string_push_cp(sp1, cp);
             if(sp2 != NULL)
-               sp2 = n_string_push_cp(sp2, np2->n_fullname);
+               sp2 = n_string_push_cp(sp2, (*np2->n_fullname == '\0'
+                     ? np2->n_name : np2->n_fullname));
          }
 
          n_string_cp(sp1);
