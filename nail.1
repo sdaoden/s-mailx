@@ -12181,7 +12181,8 @@ If unset or empty all available extensions are enabled.
 Service Extensions (RFC 1869) added the notion of extensions to the SMTP
 protocol; when disabled, all other extensions are also disabled (for
 .Cd auth
-only the master switch is toggled, not the individual mechanisms).
+only the master switch is toggled, not the individual mechanisms),
+enabling any extension (re-)implies this.
 .It Cd pipelining
 Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
 successive commands without waiting for respective server responses.
@@ -12219,7 +12220,7 @@ Beware, in the following example
 .Ql plain
 would still be used as a last ressort, sending credentials in clear
 (unless the transport is of an encrypted type):
-.Ql smtp-config=-all,\:ehlo,\:gssapi,\:plain .
+.Ql smtp-config=-all,,\:gssapi,\:plain .
 The following mechanisms are known:
 .
 .Pp
