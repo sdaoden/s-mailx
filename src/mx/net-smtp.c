@@ -591,13 +591,14 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
    } const cda[] = {
       {a_NETSMTP_EXT_ALL, a_NETSMTP_ALL_MASK, "all"},
       {a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_ALL, "ehlo"},
-      {a_NETSMTP_EXT_PIPELINING, a_NETSMTP_EXT_PIPELINING, "pipelining\0"},
+      {a_NETSMTP_EXT_PIPELINING | a_NETSMTP_EXT_EHLO,
+         a_NETSMTP_EXT_PIPELINING, "pipelining\0"},
       /* User desire to use STARTTLS for us always means: force it!
        * As of today (June 2020) all servers are expected to be TLS aware */
-      {a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS_IFF,
+      {a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS_IFF | a_NETSMTP_EXT_EHLO,
          a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS, "starttls"},
       {(a_NETSMTP_EXT_AUTH | (mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP &
-            mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP)),
+            mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP) | a_NETSMTP_EXT_EHLO),
          (a_NETSMTP_EXT_AUTH | mx_CRED_PROTO_AUTHTYPES_SMTP), "auth"},
       /* The rest comes in via mx_cred_proto_authtypes */
    };
@@ -647,7 +648,8 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
                   if(minus)
                      flags &= ~mx_CRED_PROTO_AUTHTYPES_SMTP;
                   else
-                     flags |= mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP;
+                     flags |= a_NETSMTP_EXT_AUTH | a_NETSMTP_EXT_EHLO |
+                           mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP;
                }else{
                   u32 b;
 
@@ -655,7 +657,7 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
                   if(minus)
                      flags &= ~b;
                   else
-                     flags |= b | a_NETSMTP_EXT_AUTH;
+                     flags |= b | a_NETSMTP_EXT_AUTH | a_NETSMTP_EXT_EHLO;
                }
             }else
 jeavail:
@@ -679,14 +681,17 @@ jeavail:
              (flags & a_NETSMTP_EXT_STARTTLS) != 0)))){
          flags |= cavc.cavc_mechplusbits & mx_CRED_AUTHTYPE_MASK;
          if((flags & mx_CRED_PROTO_AUTHTYPES_SMTP) != mx_CRED_AUTHTYPE_NONE)
-            flags |= a_NETSMTP_EXT_AUTH;
+            flags |= a_NETSMTP_EXT_AUTH | a_NETSMTP_EXT_EHLO;
          /*if(rv == TRUM1)
           * flags |= a_NETSMTP_AUTH_ALLMECHS;*/
          if(flags & mx_CRED_AUTHTYPE_NEED_TLS)
-            flags |= a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS;
+            flags |= a_NETSMTP_EXT_STARTTLS | a_NETSMTP_EXT_EHLO |
+                  a_NETSMTP_FORCE_TLS;
          rv = TRU1;
       }
    }
+
+   ASSERT(!(flags & a_NETSMTP_EXT_ALL) || (flags & a_NETSMTP_EXT_EHLO));
 
    if(!a_NETSMTP_FORCE_TLS_IFF && rv && (flags & a_NETSMTP_FORCE_TLS)){
       n_err(_("*smtp-config*: starttls: no TLS support compiled in\n"));
