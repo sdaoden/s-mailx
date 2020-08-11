@@ -227,10 +227,13 @@ a_netsmtp_parse_caps(struct a_netsmtp_ctx *nscp, char const *cp){
 
       for(buf = savestr(&cp[sizeof("AUTH ") -1]);
             (cp = su_cs_sep_c(&buf, ' ', TRU1)) != NIL;){
-         if((caip = mx_cred_auth_type_find_name(cp, FAL0)) != NIL)
+         if((caip = mx_cred_auth_type_find_name(cp, FAL0)) != NIL){
             nscp->nsc_server_config |= caip->cai_type;
+            if(caip->cai_type == mx_CRED_AUTHTYPE_EXTERNAL)
+               nscp->nsc_server_config |= mx_CRED_AUTHTYPE_EXTERNANON;
+         }
          else if(n_poption & n_PO_D_V)
-            n_err("SMTP: authentication: skipping %s\n", cp);
+            n_err("SMTP: SERVER: authentication: skipping %s\n", cp);
       }
       nscp->nsc_server_config |= a_NETSMTP_EXT_AUTH;
    }
@@ -493,7 +496,8 @@ jerr_cred:
 #endif
    }
 
-   /* Complete authentication */
+   /* Complete authentication; since we assume everything is fine, just
+    * pipeline the final 2 "success" answer of the server already */
    ++resp2_cnt;
    if(!(nscp->nsc_server_config & a_NETSMTP_EXT_PIPELINING))
       a_SMTP_ANSWER(2, FAL0, FAL0);
