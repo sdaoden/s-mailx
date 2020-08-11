@@ -36,12 +36,17 @@ enum mx_cred_authtype{
    mx_CRED_AUTHTYPE_ERROR = mx_CRED_AUTHTYPE_NONE,
    mx_CRED_AUTHTYPE_CRAM_MD5 = 1u<<0,
    mx_CRED_AUTHTYPE_EXTERNAL = 1u<<1,
+      /* Note! This de-facto is EXTERNAL, but find_name("EXTERNAL") will not
+       * return this one as part of a mask, but only EXTERNAL.  Therefore, if
+       * for example a server capability announcement is parsed, callees are
+       * responsible to ensure that EXTERNANON is also included! */
       mx_CRED_AUTHTYPE_EXTERNANON = 1u<<2,
    mx_CRED_AUTHTYPE_GSSAPI = 1u<<3,
    mx_CRED_AUTHTYPE_LOGIN = 1u<<4, /* SMTP: SASL, IMAP: IMAP login */
+   /* OAUTHBEARER (RFC 7628) and XOAUTH2 (early-shoot usage) share logic */
    mx_CRED_AUTHTYPE_OAUTHBEARER = 1u<<5,
-   mx_CRED_AUTHTYPE_PLAIN = 1u<<6, /* POP3: APOP is covered by this */
-   mx_CRED_AUTHTYPE_XOAUTH2 = 1u<<7
+      mx_CRED_AUTHTYPE_XOAUTH2 = 1u<<6,
+   mx_CRED_AUTHTYPE_PLAIN = 1u<<7 /* POP3: APOP is covered by this */
 };
 enum{
    /* These additional bits will be set by auth_authtype_verify_bits() */
@@ -86,9 +91,8 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_LOGIN |
-         mx_CRED_AUTHTYPE_OAUTHBEARER |
-         mx_CRED_AUTHTYPE_PLAIN |
-         mx_CRED_AUTHTYPE_XOAUTH2,
+         mx_CRED_AUTHTYPE_OAUTHBEARER | mx_CRED_AUTHTYPE_XOAUTH2,
+         mx_CRED_AUTHTYPE_PLAIN,
 
       mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP =
             mx_CRED_AUTHTYPE_CRAM_MD5 |
@@ -101,7 +105,8 @@ enum mx_cred_proto_authtypes{
       mx_CRED_PROTO_AUTHTYPES_DEFAULT_SMTP = mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP
 };
 
-/* Authentication types per proto, truly available */
+/* Authentication types per proto, truly available.
+ * Ugly, but configure-time evaluation as well as an external symbol: worse! */
 enum mx_cred_proto_authtypes_available{
    mx_CRED_PROTO_AUTHTYPES_AVAILABLE_IMAP =
 #ifdef mx_HAVE_MD5
@@ -143,12 +148,9 @@ enum mx_cred_proto_authtypes_available{
 #endif
          mx_CRED_AUTHTYPE_LOGIN |
 #ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_OAUTHBEARER |
+         mx_CRED_AUTHTYPE_OAUTHBEARER | mx_CRED_AUTHTYPE_XOAUTH2 |
 #endif
          mx_CRED_AUTHTYPE_PLAIN |
-#ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_XOAUTH2 |
-#endif
          mx_CRED_AUTHTYPE_NONE
 };
 
@@ -189,6 +191,7 @@ EXPORT boole mx_cred_auth_lookup(struct mx_cred_ctx *credp,
 
 /* Find a (usr config, else official) type name.  Return it or NIL,
  * or -1 if name is "allmechs" (only with usr config).
+ * (Recall the EXTERNAL/EXTERNANON problem, as above.)
  * The latter finds a type, and returns it or NIL (unsupported) */
 EXPORT struct mx_cred_authtype_info const *mx_cred_auth_type_find_name(
       char const *name, boole usr);

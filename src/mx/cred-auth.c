@@ -67,12 +67,13 @@ static struct mx_cred_authtype_info const
 #endif
       ), FAL0, TRU1, "EXTERNAL", "EXTERNAL"},
 
-   {mx_CRED_AUTHTYPE_EXTERNANON,
-      (a_CREDAUTH_NEED_TLS
+      /* (Almost EQ EXTERNAL) */
+      {mx_CRED_AUTHTYPE_EXTERNANON,
+         (a_CREDAUTH_NEED_TLS
 #ifndef mx_HAVE_TLS
-         | a_CREDAUTH_UNAVAIL
+            | a_CREDAUTH_UNAVAIL
 #endif
-      ), FAL0, TRU1, "EXTERNANON", "EXTERNAL"},
+         ), FAL0, TRU1, "EXTERNANON", "EXTERNAL"},
 
    {mx_CRED_AUTHTYPE_GSSAPI,
       (a_CREDAUTH_USER_REQ
@@ -94,18 +95,19 @@ static struct mx_cred_authtype_info const
 #endif
       ), TRU1, TRU1, "OAUTHBEARER\0", "OAUTHBEARER\0"},
 
+      /* (Almost EQ OAUTHBEARER) */
+      {mx_CRED_AUTHTYPE_XOAUTH2,
+         (a_CREDAUTH_NEED_TLS | a_CREDAUTH_PASS_CLEARTXT |
+            a_CREDAUTH_PASS_REQ | a_CREDAUTH_USER_REQ
+#ifndef mx_HAVE_TLS
+            | a_CREDAUTH_UNAVAIL
+#endif
+         ), TRU1, TRU1, "XOAUTH2", "XOAUTH2"},
+
    {mx_CRED_AUTHTYPE_PLAIN,
       (a_CREDAUTH_AUTO | a_CREDAUTH_PASS_CLEARTXT | a_CREDAUTH_PASS_REQ |
          a_CREDAUTH_USER_REQ),
-      TRU1, FAL0, "PLAIN", "PLAIN"},
-
-   {mx_CRED_AUTHTYPE_XOAUTH2,
-      (a_CREDAUTH_NEED_TLS | a_CREDAUTH_PASS_CLEARTXT | a_CREDAUTH_PASS_REQ |
-         a_CREDAUTH_USER_REQ
-#ifndef mx_HAVE_TLS
-         | a_CREDAUTH_UNAVAIL
-#endif
-      ), TRU1, TRU1, "XOAUTH2", "XOAUTH2"}
+      TRU1, FAL0, "PLAIN", "PLAIN"}
 };
 
 /* Automatic selection order arrays for with TLS / without TLS.
@@ -530,9 +532,20 @@ mx_cred_auth_type_select(enum cproto proto, u32 mechplusbits,
 
    for(i = mx_CRED_AUTHTYPE_NONE;;)
       if(mechplusbits & (rv = (*mp)[i])){
-         if(n_poption & n_PO_D_V)
-            n_err(_("%s: authentication: selecting %s\n"),
-               pstr, mx_cred_auth_type_find_type(rv)->cai_name);
+         if(n_poption & n_PO_D_V){
+            char const *sep, *cp;
+            struct mx_cred_authtype_info const *caip;
+
+            caip = mx_cred_auth_type_find_type(rv);
+            sep = cp = su_empty;
+            if(su_cs_cmp(caip->cai_user_name, caip->cai_name)){
+               sep = " -> ";
+               cp = caip->cai_name;
+            }
+
+            n_err(_("%s: authentication: selecting %s%s%s\n"),
+               pstr, caip->cai_user_name, sep, cp);
+         }
          break;
       }else if(rv == mx_CRED_AUTHTYPE_NONE ||
             ++i == mx_CRED_AUTHTYPE_MECH_COUNT){
