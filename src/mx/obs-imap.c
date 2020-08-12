@@ -99,7 +99,7 @@ su_EMPTY_FILE()
  * TODO This entire module needs MASSIVE work! */
 #define IMAP_OUT(X,Y,ACTION)  IMAP_XOUT(X, Y, ACTION, return STOP)
 #define IMAP_XOUT(X,Y,ACTIONERR,ACTIONBAIL) \
-{\
+do{\
    if (mp->mb_type != MB_CACHE) {\
       if (imap_finish(mp) == STOP) {\
          ACTIONBAIL;\
@@ -114,7 +114,7 @@ su_EMPTY_FILE()
       if (queuefp != NULL)\
          fputs(X, queuefp);\
    }\
-}
+}while(0); /* XXX semicolon does not belong */
 
 static struct record {
    struct record  *rec_next;
@@ -221,6 +221,7 @@ static void       imapalarm(int s);
 static enum okay  imap_preauth(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccred);
 static enum okay  imap_capability(struct mailbox *mp);
+static boole a_imap_capability_parse(struct mailbox *mp, char const *cp);
 static enum okay a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccredp);
 #ifdef mx_HAVE_MD5
@@ -973,6 +974,7 @@ imap_answer(struct mailbox *mp, int errprnt)
    rv = OKAY;
    if (mp->mb_type == MB_CACHE)
       goto jleave;
+
    rv = STOP;
 jagain:
    if (mx_socket_getline(&imapbuf, &imapbufsize, NULL, mp->mb_sock) > 0) {
@@ -999,6 +1001,7 @@ jagain:
             expunged_messages++;
          }
       }
+
       complete = 0;
       if (response_type == RESPONSE_TAGGED) {
          if (su_cs_cmp_case(responded_tag, tag(0)) == 0)
@@ -1006,8 +1009,10 @@ jagain:
          else
             goto jagain;
       }
+
       switch (response_status) {
       case RESPONSE_PREAUTH:
+         response_status = RESPONSE_OK;
          mp->mb_active &= ~MB_PREAUTH;
          /*FALLTHRU*/
       case RESPONSE_OK:
@@ -1031,15 +1036,41 @@ jstop:
          goto jstop;
       case RESPONSE_OTHER:
          rv = OKAY;
+         if((mp->mb_active & MB_MAY_SEE_CAPS) &&
+               response_other == CAPABILITY_DATA)
+jparse_cap:
+            rv = a_imap_capability_parse(mp, responded_text) ? OKAY : STOP;
          break;
       }
-      if (response_status != RESPONSE_OTHER &&
-            su_cs_cmp_case_n(responded_text, "[ALERT] ", 8) == 0)
-         n_err(_("IMAP alert: %s"), &responded_text[8]);
-      if (complete == 3)
-         mp->mb_active &= ~MB_COMD;
-   } else
+
+      if(response_status != RESPONSE_OTHER && responded_text[0] == '['){
+         ++responded_text;
+
+         if(!su_cs_cmp_case_n(responded_text, "ALERT] ", 7))
+            n_err(_("IMAP alert: %s"), &responded_text[8]);
+         else if(response_status == RESPONSE_OK &&
+               (mp->mb_active & MB_MAY_SEE_CAPS)){
+            static char const a_cap[] = "CAPABILITY ";
+
+            if(!su_cs_cmp_case_n(responded_text, a_cap, sizeof(a_cap) -1)){
+               char *cp, *xcp;
+
+               cp = &responded_text[sizeof(a_cap) -1];
+
+               if((xcp = su_cs_find_c(cp, ']')) != NIL){
+                  *xcp = '\0';
+                  responded_text = cp;
+                  goto jparse_cap;
+               }
+            }
+         }
+      }
+
+      if(complete == 3)
+         mp->mb_active &= ~(MB_COMD | MB_MAY_SEE_CAPS);
+   }else
       mp->mb_active = MB_NONE;
+
 jleave:
    NYD2_OU;
    return rv;
@@ -1376,69 +1407,93 @@ imap_preauth(struct mailbox *mp, struct mx_url *urlp,
 {
    NYD;
 
-   mp->mb_active |= MB_PREAUTH;
+   mp->mb_active |= MB_PREAUTH | MB_MAY_SEE_CAPS;
    imap_answer(mp, 1);
 
 #ifdef mx_HAVE_TLS
-   if(!mp->mb_sock->s_use_tls){
-      if(xok_blook(imap_use_starttls, urlp, OXM_ALL)){
-         FILE *queuefp = NULL;
-         char o[LINESIZE];
+   if(mp->mb_sock->s_use_tls){
+      if(mp->mb_flags & MB_SEEN_CAPS)
+         return OKAY;
+   }else if(xok_blook(imap_use_starttls, urlp, OXM_ALL)){
+      FILE *queuefp = NULL;
+      char o[LINESIZE];
 
-         snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
-         IMAP_OUT(o, MB_COMD, return STOP)
-         IMAP_ANSWER()
-         if(!n_tls_open(urlp, mp->mb_sock))
-            return STOP;
-      }else if(ccred->cc_needs_tls){
-         n_err(_("IMAP authentication %s needs TLS "
-            "(*imap-use-starttls* set?)\n"),
-            ccred->cc_auth);
+      snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
+      IMAP_OUT(o, MB_COMD, return STOP)
+      IMAP_ANSWER()
+      if(!n_tls_open(urlp, mp->mb_sock))
          return STOP;
-      }
+   }else if(ccred->cc_needs_tls){
+      n_err(_("IMAP authentication %s needs TLS "
+         "(*imap-use-starttls* set?)\n"),
+         ccred->cc_auth);
+      return STOP;
    }
-#else
+
+#else /* mx_HAVE_TLS */
    if(ccred->cc_needs_tls || xok_blook(imap_use_starttls, urlp, OXM_ALL)){
       n_err(_("No TLS support compiled in\n"));
       return STOP;
    }
 #endif
 
-   imap_capability(mp);
-   return OKAY;
+   return imap_capability(mp);
 }
 
 static enum okay
 imap_capability(struct mailbox *mp)
 {
    char o[LINESIZE];
-   FILE *queuefp = NULL;
-   enum okay ok = STOP;
-   const char *cp;
+   FILE *queuefp;
+   enum okay ok;
    NYD;
 
-   snprintf(o, sizeof o, "%s CAPABILITY\r\n", tag(1));
-   IMAP_OUT(o, MB_COMD, return STOP)
-   while (mp->mb_active & MB_COMD) {
+   queuefp = NIL;
+   ok = STOP;
+
+   mp->mb_active |= MB_MAY_SEE_CAPS;
+   snprintf(o, sizeof o, "%s CAPABILITY" NETNL, tag(1));
+   IMAP_XOUT(o, MB_COMD, goto jleave, goto jleave);
+   while(mp->mb_active & MB_COMD)
       ok = imap_answer(mp, 0);
-      if (response_status == RESPONSE_OTHER &&
-            response_other == CAPABILITY_DATA) {
-         cp = responded_other_text;
-         while (*cp) {
-            while (su_cs_is_space(*cp))
-               ++cp;
-            if (strncmp(cp, "UIDPLUS", 7) == 0 && su_cs_is_space(cp[7]))
-               /* RFC 2359 */
-               mp->mb_flags |= MB_UIDPLUS;
-            else if(strncmp(cp, "SASL-IR ", 7) == 0 && su_cs_is_space(cp[7]))
-               /* RFC 4959 */
-               mp->mb_flags |= MB_SASL_IR;
-            while (*cp && !su_cs_is_space(*cp))
-               ++cp;
-         }
+jleave:
+   return ok;
+}
+
+static boole
+a_imap_capability_parse(struct mailbox *mp, char const *cp){
+   NYD_IN;
+
+   mp->mb_flags = MB_SEEN_CAPS;
+
+   for(;;){
+      u32 l, f;
+
+      while(su_cs_is_space(*cp))
+         ++cp;
+      if(*cp == '\0')
+         break;
+
+      /* RFC 2359 */
+      if(!su_cs_cmp_n(cp, "UIDPLUS", l = 7))
+         f = MB_UIDPLUS;
+      /* RFC 4959 */
+      else if(!su_cs_cmp_n(cp, "SASL-IR", l = 7))
+         f = MB_SASL_IR;
+      else
+         f = l = 0;
+      cp += l;
+
+      if(l != 0 && (*cp == '\0' || su_cs_is_space(*cp)))
+         mp->mb_flags |= f;
+      else{
+         while(!su_cs_is_space(*cp) && *cp != '\0')
+            ++cp;
       }
    }
-   return ok;
+
+   NYD_OU;
+   return TRU1;
 }
 
 static enum okay
@@ -1450,34 +1505,38 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
 
    if(!(mp->mb_active & MB_PREAUTH))
       rv = OKAY;
-   else switch(ccredp->cc_authtype){
-   case mx_CRED_AUTHTYPE_LOGIN:
-      rv = imap_login(mp, ccredp);
-      break;
-   case mx_CRED_AUTHTYPE_OAUTHBEARER:
-      rv = a_imap_oauthbearer(mp, ccredp);
-      break;
-   case mx_CRED_AUTHTYPE_EXTERNAL:
-   case mx_CRED_AUTHTYPE_EXTERNANON:
-      rv = a_imap_external(mp, ccredp);
-      break;
+   else{
+      mp->mb_active |= MB_MAY_SEE_CAPS;
+
+      switch(ccredp->cc_authtype){
+      case mx_CRED_AUTHTYPE_LOGIN:
+         rv = imap_login(mp, ccredp);
+         break;
+      case mx_CRED_AUTHTYPE_OAUTHBEARER:
+         rv = a_imap_oauthbearer(mp, ccredp);
+         break;
+      case mx_CRED_AUTHTYPE_EXTERNAL:
+      case mx_CRED_AUTHTYPE_EXTERNANON:
+         rv = a_imap_external(mp, ccredp);
+         break;
 #ifdef mx_HAVE_MD5
-   case mx_CRED_AUTHTYPE_CRAM_MD5:
-      rv = imap_cram_md5(mp, ccredp);
-      break;
+      case mx_CRED_AUTHTYPE_CRAM_MD5:
+         rv = imap_cram_md5(mp, ccredp);
+         break;
 #endif
 #ifdef mx_HAVE_GSSAPI
-   case mx_CRED_AUTHTYPE_GSSAPI:
-      rv = OKAY;
-      if(n_poption & n_PO_D)
-         n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, urlp, ccredp, mp))
-         rv = STOP;
-      break;
+      case mx_CRED_AUTHTYPE_GSSAPI:
+         rv = OKAY;
+         if(n_poption & n_PO_D)
+            n_err(_(">>> We would perform GSS-API authentication now\n"));
+         else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, urlp, ccredp, mp))
+            rv = STOP;
+         break;
 #endif
-   default:
-      rv = STOP;
-      break;
+      default:
+         rv = STOP;
+         break;
+      }
    }
 
    NYD_OU;
@@ -1592,6 +1651,24 @@ jerr_cred:
 
    IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
    rv = imap_answer(mp, 1);
+   /* TODO xoauth2/oauthbearer error response (see RFC 7628)
+    * After base64-decoding, this becomes (formatted for clarity):
+    * {
+    *   "status":"401",
+    *   "schemes":"bearer",
+    *   "scope":"https://mail.google.com/"
+    * }
+    * The SASL protocol requires clients to send an empty response to this
+    * challenge.
+    *
+    * C: A01 AUTHENTICATE XOAUTH2 dXNlcj1zb21ldXNlckBleGFtcGxlLmNvbQ
+    * FhdXRoPUJlYXJlciB5YTI5LnZGOWRmdDRxbVRjMk52YjNSbGNrQmhkSFJoZG1s
+    * emRHRXVZMjl0Q2cBAQ==
+    * S: + eyJzdGF0dXMiOiI0MDEiLCJzY2hlbWVzIjoiYmVhcmVyIG1hYyIsInNjb
+    * 3BlIjoiaHR0cHM6Ly9tYWlsLmdvb2dsZS5jb20vIn0K
+    * C:
+    * S: A01 NO SASL authentication failed
+    */
    if(rv == STOP)
       goto jleave;
 
@@ -1702,10 +1779,13 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    }
 
    while(mp->mb_active & MB_COMD)
-      rv = imap_answer(mp, 1);
+      if((rv = imap_answer(mp, 1)) == STOP)
+         break;
+
 jleave:
    if(cp != NIL)
       n_lofi_free(cp);
+
    NYD_OU;
    return rv;
 }

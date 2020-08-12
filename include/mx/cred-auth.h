@@ -71,7 +71,7 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_LOGIN |
-         mx_CRED_AUTHTYPE_OAUTHBEARER,
+         mx_CRED_AUTHTYPE_OAUTHBEARER | mx_CRED_AUTHTYPE_XOAUTH2,
 
    mx_CRED_PROTO_AUTHTYPES_POP3 =
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
@@ -103,7 +103,7 @@ enum mx_cred_proto_authtypes_available{
 #endif
          mx_CRED_AUTHTYPE_LOGIN |
 #ifdef mx_HAVE_TLS
-         mx_CRED_AUTHTYPE_OAUTHBEARER |
+         mx_CRED_AUTHTYPE_OAUTHBEARER | mx_CRED_AUTHTYPE_XOAUTH2 |
 #endif
          mx_CRED_AUTHTYPE_NONE,
 
