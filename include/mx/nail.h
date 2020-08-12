@@ -1041,12 +1041,13 @@ struct time_current{ /* TODO s64, etc. */
 
 struct mailbox{
    enum{
-      MB_NONE = 000, /* no reply expected */
-      MB_COMD = 001, /* command reply expected */
-      MB_MULT = 002, /* multiline reply expected */
-      MB_PREAUTH = 004, /* not in authenticated state */
-      MB_BYE = 010, /* may accept a BYE state */
-      MB_BAD_FROM_ = 1<<4 /* MBOX with invalid From_ seen & logged */
+      MB_NONE = 0, /* no reply expected */
+      MB_COMD = 1u<<0, /* command reply expected */
+      MB_MULT = 1u<<1, /* multiline reply expected */
+      MB_PREAUTH = 1u<<2, /* not in authenticated state */
+      MB_MAY_SEE_CAPS = 1u<<3, /* response may bring capabilities */
+      MB_BYE = 1u<<4, /* may accept a BYE state */
+      MB_BAD_FROM_ = 1<<5 /* MBOX with invalid From_ seen & logged */
    } mb_active;
    FILE *mb_itf; /* temp file with messages, read open */
    FILE *mb_otf; /* same, write open */
@@ -1066,9 +1067,10 @@ MB_CACHE, /* IMAP cache */
    int mb_threaded; /* mailbox has been threaded */
 #ifdef mx_HAVE_IMAP
    enum mbflags{
-      MB_NOFLAGS = 000,
-      MB_UIDPLUS = 001, /* supports IMAP UIDPLUS */
-      MB_SASL_IR = 002  /* supports RFC 4959 SASL-IR */
+      MB_NOFLAGS = 0,
+      MB_SEEN_CAPS = 1u<<0, /* Have parsed CAPABILITIES */
+      MB_UIDPLUS = 1u<<1, /* Supports IMAP UIDPLUS */
+      MB_SASL_IR = 1u<<2  /* Supports RFC 4959 SASL-IR */
    } mb_flags;
    u64 mb_uidvalidity; /* IMAP unique identifier validity */
    char *mb_imap_account; /* name of current IMAP account */
