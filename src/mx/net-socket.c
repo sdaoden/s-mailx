@@ -672,8 +672,8 @@ mx_socket_close(struct mx_socket *sop)
 
          sop->s_tls = NULL;
          sop->s_use_tls = 0;
-         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
-            ;
+         if(SSL_shutdown(s_tls) == 0) /* XXX proper error handling;signals! */
+            SSL_shutdown(s_tls);
          SSL_free(s_tls);
       }
 # endif
