@@ -92,7 +92,7 @@ static boole a_netso_open(struct mx_socket *sop, struct mx_url *urlp);
 static int a_netso_open_tls_maybe(struct mx_socket *sop, struct mx_url *urlp);
 #endif
 
-/* */
+/* This closes the socket in case of errors */
 static int a_netso_connect(int fd, struct sockaddr *soap, uz soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
@@ -219,48 +219,64 @@ jpseudo_jump:
       errval = 0;
       goto jjumped;
    }
-   if (n_poption & n_PO_D_V)
+   if(n_poption & n_PO_D_V)
       n_err(_("done\n"));
 
-   for (res = res0; res != NULL && sofd < 0; res = res->ai_next) {
-      if (n_poption & n_PO_D_V) {
-         if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
-               NULL, 0, NI_NUMERICHOST))
+   for(res = res0; res != NULL && sofd < 0; res = res->ai_next){
+      if(n_poption & n_PO_D_V){
+         if(getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
+               NIL, 0, NI_NUMERICHOST))
             su_mem_copy(hbuf, "unknown host", sizeof("unknown host"));
          n_err(_("%sConnecting to %s:%s ... "),
                (res == res0 ? n_empty : "\n"), hbuf, serv);
       }
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if(sofd >= 0 &&
-            (errval = a_netso_connect(sofd, res->ai_addr, res->ai_addrlen)
-               ) != su_ERR_NONE)
-         sofd = -1;
+      if(sofd >= 0){
+         if((errval = a_netso_connect(sofd, res->ai_addr, res->ai_addrlen)
+               ) == su_ERR_NONE){
+            u16 p;
+            void *vp;
+
+            vp = res->ai_addr;
+# ifdef INET6_ADDRSTRLEN
+            if(res->ai_family == AF_INET6)
+               p = S(struct sockaddr_in6*,vp)->sin6_port;
+            else
+# endif
+                 if(res->ai_family == AF_INET)
+               p = R(struct sockaddr_in*,vp)->sin_port;
+            else
+               p = 0;
+            p = ntohs(p);
+            urlp->url_portno = p;
+            break;
+         }
+         sofd = -1; /* (FD was closed) */
+      }
    }
 
 jjumped:
-   if (res0 != NULL) {
+   if(res0 != NIL){
       freeaddrinfo(res0);
       res0 = NULL;
    }
 
 #else /* mx_HAVE_GETADDRINFO */
-   if (serv == urlp->url_proto) {
-      if ((ep = getservbyname(n_UNCONST(serv), "tcp")) != NULL)
+   if(serv == urlp->url_proto){
+      if((ep = getservbyname(UNCONST(char*,serv), "tcp")) != NULL)
          urlp->url_portno = ntohs(ep->s_port);
-      else {
-         if (n_poption & n_PO_D_V)
+      else{
+         if(n_poption & n_PO_D_V)
             n_err(_("failed\n"));
-         if ((serv = mx_url_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
+         if((serv = mx_url_servbyname(urlp->url_proto, &urlp->url_portno, NIL)
                ) != NIL && *serv != '\0')
-            n_err(_("  Unknown service: %s\n"), urlp->url_proto);
-            n_err(_("  Trying standard protocol port %s\n"), serv);
-            n_err(_("  If that succeeds consider including the "
-               "port in the URL!\n"));
-         else {
-            n_err(_("  Unknown service: %s\n"), urlp->url_proto);
-            n_err(_("  Including a port number in the URL may "
-               "circumvent this problem\n"));
+            n_err(_("  Unknown service %s, trying protocol standard port %s\n"
+                  "  Upon success consider including that port in the URL!\n"),
+               urlp->url_proto, serv);
+         else{
+            n_err(_("  Unknown service: %s, including a port number may "
+                  "succeed\n"), urlp->url_proto);
             ASSERT(sofd == -1 && errval == 0);
             goto jjumped;
          }

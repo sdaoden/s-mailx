@@ -10125,8 +10125,21 @@ AUTH EXTERNAL c3RlZmZlbg==
 ' &&
          smtp_auth_ok && smtp_go; } | ../net-test -U -S t.sh > ./tauth-8 2>&1
       check auth-8 0 ./tauth-8 '4294967295 0'
+
+      smtp_script smtps -Ssmtp-config=-all,oauthbearer
+      { smtp_ehlo && printf '\001
+AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWFyZXIgU3dheQEB
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-9 2>&1
+      check auth-9 0 ./tauth-9 '4294967295 0'
    else
-      t_echoskip 'auth-{5-8}:[!TLS]'
+      # Why not that instead?
+      smtp_script smtp -Ssmtp-config=-all,xoauth2
+      { smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
+            ../net-test -s t.sh > ./tauth-5 2>>${ERR}
+      check_exn0 auth-5 8
+
+      t_echoskip 'auth-{6-9}:[!TLS]'
    fi
    # }}}
 
