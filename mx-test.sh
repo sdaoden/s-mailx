@@ -15849,7 +15849,7 @@ t_s_mime() { #{{{
 #}}}
 
 # OPT_NET_TEST {{{
-t_net_pop3() { #{{{ TODO TLS tests, then also EXTERN*
+t_net_pop3() { #{{{ TODO TLS tests OAUTH etc, then also EXTERN*
 	t_prolog "$@"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
