@@ -9865,7 +9865,7 @@ application/pdf; echo p-7-1\\;< %%s %s\\;echo p-7-2;test = [ "$XY" = 3 ];\\
    check 10 - ./.terr '4294967295 0'
    check 11 - ./.tasy '842146666 27' async
 
-   # x-mailx-last-resort
+   # x-mailx-last-resort, x-mailx-ignore
 
    ${rm} -f "${MBOX}"
    printf 'in a pdf\n' > ./.tatt.pdf
@@ -9874,6 +9874,8 @@ application/pdf; echo p-7-1\\;< %%s %s\\;echo p-7-2;test = [ "$XY" = 3 ];\\
 
    printf '#
 # stdin
+application/pdf;echo hidden;x-mailx-ignore
+application/pdf;echo hidden;copiousoutput;x-mailx-ignore
 application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
    ' "${cat}" > ./.tmailcap
 
