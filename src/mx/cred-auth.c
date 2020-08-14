@@ -283,7 +283,7 @@ mx_cred_auth_lookup(struct mx_cred_ctx *credp, struct mx_url *urlp){
          caip = &a_credauth_info[ware];
          if(!su_cs_cmp_case(s, caip->cai_user_name)){
             credp->cc_auth = caip->cai_name;
-            credp->cc_authtype = caip->cai_type;
+            credp->cc_authtype = caip->cai_type;/* FIXME DROP*/
             if((ware = caip->cai_flags) & a_CREDAUTH_NEED_TLS)
                credp->cc_needs_tls = TRU1;
 
