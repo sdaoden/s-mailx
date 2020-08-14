@@ -9798,7 +9798,7 @@ c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
    t_epilog "${@}"
 } # }}}
 
-t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
+t_net_smtp() { # {{{
    t_prolog "${@}"
 
    if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
@@ -9807,8 +9807,11 @@ t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
       return
    fi
 
-   extensions= #250-STARTTLS\n
+   t__tls_certs
+
    helo= mail_from= from= msgid=
+
+   have_feat tls && ext_tls=250-STARTTLS || ext_tls=
 
    # SMTP net-test script {{{
    smtp__script() {
@@ -9816,15 +9819,16 @@ t_net_smtp() { # {{{ TODO TLS tests, then also EXTERN*
       proto=${2}
       shift 2
 
-      ${cat} <<-_EOT > ./.t.sh
+      ${cat} <<-_EOT > ./t.sh
 		#!${SHELL} -
 		<"${file}" ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
 			-Suser=steffen -Spassword=Sway -s ub \\
 			-S 'mta=${proto}://localhost:'\${1} \\
 			${@} \\
 			ex@am.ple
 		_EOT
-      ${chmod} 0755 ./.t.sh
+      ${chmod} 0755 ./t.sh
    }
 
    smtp_script_file() {
@@ -9930,6 +9934,7 @@ EHLO %s
 250-ENHANCEDSTATUSCODES
 ' \
       "${helo}"
+      [ ${#} -eq 0 ] && [ -n "${ext_tls}" ] && printf '%s\n' "${ext_tls}"
       printf '250 PIPELINING\n'
    }
    # }}}
@@ -10000,36 +10005,36 @@ QUIT
 
    # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
    smtp_script smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t1 2>&1
+   check 1 0 ./t1 '4294967295 0'
 
    smtp_script_hostname smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t2 2>&1
+   check 2 0 ./t2 '4294967295 0'
 
    smtp_script_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t3 2>&1
+   check 3 0 ./t3 '4294967295 0'
 
    smtp_script_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 4 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t4 2>&1
+   check 4 0 ./t4 '4294967295 0'
 
    smtp_script_from smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 5 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t5 2>&1
+   check 5 0 ./t5 '4294967295 0'
 
    smtp_script_from_hostname smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 6 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t6 2>&1
+   check 6 0 ./t6 '4294967295 0'
 
    smtp_script_from_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 7 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t7 2>&1
+   check 7 0 ./t7 '4294967295 0'
 
    smtp_script_from_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
-   { smtp_helo && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check 8 0 "${MBOX}" '4294967295 0'
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t8 2>&1
+   check 8 0 ./t8 '4294967295 0'
    # }}}
 
    # Real EHLO authentication types {{{
@@ -10037,8 +10042,8 @@ QUIT
    { smtp_ehlo && printf '\001
 AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
 ' &&
-      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check auth-1 0 "${MBOX}" '4294967295 0'
+      smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-1 2>&1
+   check auth-1 0 ./tauth-1 '4294967295 0'
 
    smtp_script smtp -Ssmtp-config=-all,ehlo,login
    { smtp_ehlo && printf '\001
@@ -10052,18 +10057,18 @@ c3RlZmZlbg==
 \001
 U3dheQ==
 ' &&
-      smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-   check auth-2 0 "${MBOX}" '4294967295 0'
+      smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-2 2>&1
+   check auth-2 0 ./tauth-2 '4294967295 0'
 
-   if false && have_feat tls; then # TODO TLS-NET-SERV
-      smtp_script smtp -Ssmtp-config=-all,ehlo,starttls,xoauth2
-      { smtp_ehlo && printf '\002
+   if have_feat tls; then
+      smtp_script smtps -Ssmtp-config=-all,ehlo,xoauth2
+      { smtp_ehlo && printf '\001
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-         smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-      check auth-3 0 "${MBOX}" '4294967295 0'
+         smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-3 2>&1
+      check auth-3 0 ./tauth-3 '4294967295 0'
    else
-      t_echoskip 'auth-3:[false/TODO/!TLS]'
+      t_echoskip 'auth-3:[!TLS]'
    fi
 
    if have_feat md5; then
@@ -10075,10 +10080,53 @@ AUTH CRAM-MD5
 \001
 c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 ' &&
-         smtp_auth_ok && smtp_go; } | ../net-test .t.sh > "${MBOX}" 2>&1
-      check auth-4 0 "${MBOX}" '4294967295 0'
+         smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-4 2>&1
+      check auth-4 0 ./tauth-4 '4294967295 0'
    else
       t_echoskip 'auth-4:[!MD5]'
+   fi
+
+   # STARTTLS, and more TLS AUTH things
+   if have_feat tls; then
+      smtp_script smtp -Ssmtp-config=-all,xoauth2
+      { smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
+            ../net-test -s t.sh > ./tauth-5 2>>${ERR}
+      check_exn0 auth-5 8
+
+      smtp_script smtp -Ssmtp-config=-all,starttls,xoauth2
+      { smtp_ehlo && printf '\001
+STARTTLS
+\003
+220 2.0.0 Ready to start TLS
+' &&
+         smtp_ehlo 0 && printf '\001
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -s t.sh > ./tauth-6 2>&1
+      check auth-6 0 ./tauth-6 '4294967295 0'
+
+      smtp_script smtp -Ssmtp-config=-all,starttls,externanon \
+         -Stls-config-pairs=Certificate=client-pair.pem
+      { smtp_ehlo && printf '\001
+STARTTLS
+\003
+220 2.0.0 Ready to start TLS
+' &&
+         smtp_ehlo 0 && printf '\001
+AUTH EXTERNAL =
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -U -s t.sh > ./tauth-7 2>&1
+      check auth-7 0 ./tauth-7 '4294967295 0'
+
+      smtp_script smtps -Ssmtp-config=-all,external \
+         -Stls-config-pairs=Certificate=client-pair.pem
+      { smtp_ehlo && printf '\001
+AUTH EXTERNAL c3RlZmZlbg==
+' &&
+         smtp_auth_ok && smtp_go; } | ../net-test -U -S t.sh > ./tauth-8 2>&1
+      check auth-8 0 ./tauth-8 '4294967295 0'
+   else
+      t_echoskip 'auth-{5-8}:[!TLS]'
    fi
    # }}}
 
@@ -10096,12 +10144,12 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
          }
          if(lnlen > 0)
             printf "\n"
-      }' > .t.dat
+      }' > ./t.dat
 
-   smtp_script_file .t.dat smtp -Ssmtp-config=-all &&
-   { smtp_helo && smtp_head_all && ${cat} .t.dat && smtp_quit; } |
-      ../net-test .t.sh > "${MBOX}" 2>&1
-   check data-1 0 "${MBOX}" '4294967295 0'
+   smtp_script_file ./t.dat smtp -Ssmtp-config=-all &&
+   { smtp_helo && smtp_head_all && ${cat} ./t.dat && smtp_quit; } |
+      ../net-test t.sh > ./tdata-1 2>&1
+   check data-1 0 ./tdata-1 '4294967295 0'
 
    # more RCPT TO:<>
    rcpt_to=`${awk} '
@@ -10151,18 +10199,20 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
                   doit(1, "Cc: ")
                }' &&
             smtp_head_tail && ${5}; } |
-         ../net-test .t.sh > "${MBOX}" 2>>${ERR}
+         ../net-test t.sh > ./${6} 2>>${ERR}
    }
    smtp_rcpt_to -ehlo \
       smtp_helo \
       smtp_mail_from_to '' \
-      smtp_quit
-   check data-2 0 "${MBOX}" '4294967295 0'
+      smtp_quit \
+      tdata-2
+   check data-2 0 ./tdata-2 '4294967295 0'
    smtp_rcpt_to all,-starttls,-allmechs \
       smtp_ehlo \
       smtp_mail_from_to_pipelining "$rcpt_to" \
-      smtp_quit_pipelining
-   check data-3 0 "${MBOX}" '4294967295 0'
+      smtp_quit_pipelining \
+      tdata-3
+   check data-3 0 ./tdata-3 '4294967295 0'
    # }}}
 
    t_epilog "${@}"
