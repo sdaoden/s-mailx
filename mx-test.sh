@@ -14551,9 +14551,9 @@ QUIT
 '
 	} #}}}
 
+
 	# Authentication types {{{
-	t__net_script .t.sh pop3 \
-		-Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
+	t__net_script t.sh pop3 -Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
 	{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \001
@@ -14563,35 +14563,46 @@ USER steffen
 \001
 PASS Sway
 ' &&
-		pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-	check 1 0 "${MBOX}" '3754674759 160'
+		pop3_logged_in; } | ../net-test t.sh > ./t1 2>${E0}
+	cke0 1 0 ./t1 '3754674759 160'
 
 	if have_feat md5; then
-		t__net_script .t.sh pop3 \
-			-Spop3-auth=plain -Snopop3-use-starttls
+		t__net_script t.sh pop3 -Spop3-auth=plain -Snopop3-use-starttls
 		{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \001
 APOP steffen 4f66ea9bf092117b009b9f8d928c656d
 ' &&
-			pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '3754674759 160'
+			pop3_logged_in; } | ../net-test t.sh > ./t2 2>${E0}
+		cke0 2 0 ./t2 '3754674759 160'
 	else
 		t_echoskip '2:[!MD5]'
 	fi
 
-	if false && have_feat tls; then # TODO TLS-NET-SERV
-		t__net_script .t.sh pop3 \
-			-Spop3-auth=xoauth2 -Snopop3-use-starttls
-		{ printf '\001
+	if have_feat tls; then
+		t__net_script t.sh pop3s -Spop3-auth=xoauth2 -Spop3-use-starttls
+		{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
-\002
+\001
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-			pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 3 0 "${MBOX}" '3754674759 160'
+			pop3_logged_in; } | ../net-test -S t.sh > ./t3 2>${E0}
+		cke0 3 0 ./t3 '3754674759 160'
+
+		t__net_script t.sh pop3 -Spop3-auth=xoauth2 -Spop3-use-starttls
+		{ printf '\002
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\001
+STLS
+\003
++OK Begin TLS negotiation now.
+\001
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+			pop3_logged_in; } | ../net-test -s t.sh > ./t4 2>${E0}
+		cke0 4 0 ./t4 '3754674759 160'
 	else
-		t_echoskip '3:[false/TODO/!TLS]'
+		t_echoskip '{3,4}:[!TLS]'
 	fi
 	#}}}
 
