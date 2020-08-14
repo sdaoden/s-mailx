@@ -319,8 +319,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
          HONOURS_READONLY=yes
       fi
       ${rm} -f ./.tisrdonly
-      trap '' EXIT
-      trap '' HUP INT TERM
+      trap '' EXIT HUP INT TERM
    fi
 fi
 
@@ -328,7 +327,7 @@ export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
-JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
+JOBS=0 JOBLIST= JOBDESC= JOBMON= JOBREAPER= JOBSYNC=
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
@@ -344,9 +343,7 @@ if [ -n "${NOJOBS}" ]; then
    jobs_max() { :; }
 else
    jobs_max() {
-      # Do only use half of the CPUs, since we live in pipes or do a lot of
-      # shell stuff, and i have seen lesser timeouts like this (on SunOS 5.9)
-      # ..the user desired variant
+      # The user desired variant
       if ( echo "${MAKEFLAGS}" | ${grep} -- -j ) >/dev/null 2>&1; then
          i=`echo "${MAKEFLAGS}" |
                ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
@@ -392,15 +389,23 @@ else
    }
 fi
 
+if (set -m >/dev/null 2>&1); then
+   JOBMON=y
+else
+   echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
+   echo >&2 'Failing (hanging) tests could leave stale processes around!'
+fi
+
 jobreaper_start() {
    ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
 
+   printf 'Starting job reaper (timeout of %s seconds)\n' ${JOBWAIT}
    i=
-   trap 'i=1' USR1
-   printf 'Starting job reaper\n'
-   (
+   trap 'i=1' USR1 # "reaper is up"
+   (  # .. which is actually a notify timer only
       parent=${$}
       sleeper= int=0 hot=0
+      trap '' EXIT HUP INT QUIT
       trap '
          [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
          int=1 hot=1
@@ -429,20 +434,22 @@ jobreaper_start() {
    ) </dev/null & #>/dev/null 2>&1 &
    JOBREAPER=${!}
 
+   j=
    if [ ${?} -eq 0 ]; then
       while :; do
          if [ -n "${i}" ]; then
             trap '' USR1
             return
          fi
-         printf '.. waiting for job reaper to come up\n'
+         printf '..%s waiting for job reaper to come up\n' "${j}"
+         j=' still'
          sleep 1 &
          wait ${!}
       done
    fi
 
    JOBREAPER=
-   printf '%s!! Cannot start wild job reaper%s\n' \
+   printf '%s!! Cannot start the wild job reaper!%s\n' \
       "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
 }
 
@@ -461,19 +468,23 @@ jspawn() {
       printf ' [%s=%s]' ${JOBS} "${1}"
    else
       JOBS=1
-      # Assume problems exist, do not let user hanging on terminal
+      # Assume problems exist, do not let user keep hanging on terminal
       if [ -n "${RUN_TEST}" ]; then
          printf '... [%s]\n' "${1}"
       fi
    fi
 
-   (
+   [ -n "${JOBMON}" ] && set -m >/dev/null 2>&1
+   (  # Place the job in its own directory to ease file management
+      trap '' EXIT HUP INT QUIT TERM USR1 USR2
       ${mkdir} t.${JOBS}.d && cd t.${JOBS}.d &&
          eval t_${1} ${JOBS} ${1} &&
          ${rm} -f ../t.${JOBS}.id
    ) > t.${JOBS}.io </dev/null & # 2>&1 </dev/null &
-   JOBLIST="${JOBLIST} ${!}"
-   printf '%s\n%s\n' ${!} ${1} > t.${JOBS}.id
+   i=${!}
+   [ -n "${JOBMON}" ] && set +m >/dev/null 2>&1
+   JOBLIST="${JOBLIST} ${i}"
+   printf '%s\n%s\n' ${i} ${1} > t.${JOBS}.id
 
    # ..until we should sync or reach the maximum concurrent number
    [ ${JOBS} -lt ${MAXJOBS} ] && return
@@ -523,8 +534,13 @@ jsync() {
          while [ ${i} -lt ${JOBS} ]; do
             i=`add ${i} 1`
             if [ -f t.${i}.id ] &&
-                  read pid < t.${i}.id >/dev/null 2>&1; then
-               kill -KILL ${pid}
+                  read pid < t.${i}.id >/dev/null 2>&1 &&
+                  kill -0 ${pid} >/dev/null 2>&1; then
+               j=${pid}
+               [ -n "${JOBMON}" ] && j=-${j}
+               kill -KILL ${j} >/dev/null 2>&1
+            else
+               ${rm} -f t.${i}.id
             fi
          done
       fi
@@ -717,12 +733,17 @@ check_exn0() {
    # $1=test name [$2=status]
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
+   [ ${#} -gt 2 ] && __expect__=${3} || __expect__=
 
    TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
 
    if [ ${__qm__} -eq 0 ]; then
       ESTAT=1
       t_echoerr "${1}: unexpected 0 exit status: ${__qm__}"
+      TESTS_FAILED=`add ${TESTS_FAILED} 1`
+   elif [ -n "${__expect__}" ] && [ ${__expect__} -ne ${__qm__} ]; then
+      ESTAT=1
+      t_echoerr "${1}: unexpected exit status: ${__qm__} != ${__expected__}"
       TESTS_FAILED=`add ${TESTS_FAILED} 1`
    else
       t_echook "${1}"
