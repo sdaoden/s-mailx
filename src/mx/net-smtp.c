@@ -246,15 +246,16 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
-      a_IN_HEAD = 1u<<2,
-      a_IN_BCC = 1u<<3
+      a_IS_XOAUTH2 = 1u<<2,
+      a_IN_HEAD = 1u<<3,
+      a_IN_BCC = 1u<<4
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
    struct str b64;
    struct mx_name *np;
    u8 f;
-   uz resp2_cnt, blen, i;
+   uz resp2_cnt, blen, i, j;
    char const *hostname;
    NYD_IN;
 
@@ -387,23 +388,32 @@ check smtputf8 and check against line length maximum!!
    case mx_CRED_AUTHTYPE_NONE:
       break;
    case mx_CRED_AUTHTYPE_OAUTHBEARER:
-   case mx_CRED_AUTHTYPE_XOAUTH2: /* TODO XOAUTH2 == OAUTHBEARER */
       f |= a_IS_OAUTHBEARER;
+      /* FALLTHRU */
+      if(0){
+   case mx_CRED_AUTHTYPE_XOAUTH2:
+         f |= a_IS_XOAUTH2;
+      }
       /* FALLTHRU */
    case mx_CRED_AUTHTYPE_PLAIN:
       /* Calculate required storage */
-      i = scp->sc_credp->cc_user.l;
 #define a_MAX \
-   (2 + sizeof("AUTH XOAUTH2 " "user=\001auth=Bearer \001\001" NETNL))
+   (2 + sizeof("AUTH OAUTHBEARER " \
+      "n,a=,\001host=\001port=65535\001auth=Bearer \001\001" NETNL))
 
-      if(scp->sc_credp->cc_pass.l >= UZ_MAX - a_MAX ||
-            i >= UZ_MAX - a_MAX - scp->sc_credp->cc_pass.l){
+      i = scp->sc_credp->cc_user.l;
+      if(scp->sc_credp->cc_pass.l >= (j = UZ_MAX - a_MAX) ||
+            i >= (j -= scp->sc_credp->cc_pass.l) ||
+            ((f & a_IS_OAUTHBEARER) &&
+               (scp->sc_urlp->url_host.l >= j ||
+                i >= (j -= scp->sc_urlp->url_host.l)))){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
       }
       i += scp->sc_credp->cc_pass.l;
-
+      if(f & a_IS_OAUTHBEARER)
+         i += scp->sc_urlp->url_host.l;
       i += a_MAX;
       if((i = mx_b64_enc_calc_size(i)) == UZ_MAX)
          goto jerr_cred;
@@ -413,17 +423,23 @@ jerr_cred:
 
       /* Then create login query */
       /* C99 */{
-         int j;
          char const *authfmt;
 
          if(f & a_IS_OAUTHBEARER){
+            authfmt = NETLINE("AUTH OAUTHBEARER %s");
+            j = snprintf(o, sizeof o,
+                  "n,a=%s,\001host=%s\001port=%hu\001auth=Bearer %s\001\001",
+                  scp->sc_credp->cc_user.s, scp->sc_urlp->url_host.s,
+                  scp->sc_urlp->url_portno, scp->sc_credp->cc_pass.s);
+         }else if(f & a_IS_XOAUTH2){
             authfmt = NETLINE("AUTH XOAUTH2 %s");
             j = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
-               scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
+                  scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
          }else{
             authfmt = NETLINE("AUTH PLAIN %s");
             j = snprintf(o, sizeof o, "%c%s%c%s",
-               '\0', scp->sc_credp->cc_user.s, '\0', scp->sc_credp->cc_pass.s);
+                  '\0', scp->sc_credp->cc_user.s,
+                  '\0', scp->sc_credp->cc_pass.s);
          }
 
          if(mx_b64_enc_buf(&b64, o, j, mx_B64_AUTO_ALLOC) == NIL)
@@ -501,7 +517,7 @@ jerr_cred:
    ++resp2_cnt;
    if(!(nscp->nsc_server_config & a_NETSMTP_EXT_PIPELINING))
       a_SMTP_ANSWER(2, FAL0, FAL0);
-   /* TODO OAUTHBEARER ERROR: send empty message to gain actual error
+   /* TODO OAUTHBEARER/XOAUTH2 ERROR: send empty message to gain actual error
     * message (when status was 334) */
 
 jsend:
