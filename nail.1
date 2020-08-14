@@ -12245,10 +12245,9 @@ on the transport layer, therefore not automatic.
 Needs a
 .Va user .
 .It Cd externanon
-\*(OP Likewise, but does not need a user.
-This is usually the way to go since tested servers do not actually
-follow RFC 4422 aka RFC 4954, and fail if additional credentials are
-passed.
+\*(OP Likewise, but an empty user name is passed, as it is expected
+that the server extracts the name from the certificate.
+Not compliant with RFC 4422 / RFC 4954, but has been seen in the wild.
 .It Cd gssapi
 \*(OP The Kerberos V5 ("GSSAPI") mechanism (RFC 4752).
 Needs an external ticket (to be granted by
@@ -12272,8 +12271,8 @@ Needs
 .Va user
 and
 .Va password .
-The password here is a bearer token, not the real password,
-therefore this mechanism is not automatic.
+The password here is a temporary bearer token, not the real password,
+and therefore this mechanism is not automatic.
 Also see the
 .Sx FAQ
 entry
@@ -12285,7 +12284,7 @@ One packet roundtrip, needs
 and
 .Va password .
 .It Cd xoauth2
-A popular slightly modified variant of
+A popular slightly different variant of the later standardized
 .Cd oauthbearer .
 .El
 .
