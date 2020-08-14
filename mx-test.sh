@@ -14618,26 +14618,106 @@ t_net_imap() { #{{{ TODO TLS tests, then also EXTERN*
 		return
 	fi
 
-	imap_hello() { # {{{
+t_echoskip '[FIXME BROKEN]'
+t_epilog "${@}"
+return
+
+
+
+	imap_cap_tls=
+	have_feat tls && imap_cap_tls=' STARTTLS'
+	imap_cap_saslir=' SASL_IR'
+	imap_pre_cap='IMAP4rev1 LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ '\
+'AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL'
+	imap_post_cap='IMAP4rev1 LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY '\
+'THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL'\
+'CATENATE UNSELECT CHILDREN NAMESPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 '\
+'CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS '\
+'BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY LITERAL+ NOTIFY SPECIAL-USE'
+
+
+#CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1
+#XYZZY SASL-IR AUTH=XOAUTH2 AUTH=PLAIN AUTH=PLAIN-CLIENTTOKEN AUTH=OAUTHBEARER
+#AUTH=XOAUTH
+#
+#CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN
+#X-GM-EXT-1 UIDPLUS COMPRESS=DEFLATE ENABLE MOVE CONDSTORE ESEARCH UTF8=ACCEPT
+#LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-
+#USE APPENDLIMIT=35651584
+
+
+
+	imap__cap() {
+		ih_c1=$imap_cap_tls
+		ih_c2=$imap_cap_saslir
+		while [ $# -gt 0 ]; do
+			case $1 in
+			tls) ih_c1=;;
+			saslir) ih_c2=;;
+			esac
+		done
+		ih_cap="$ih_c1$ih_c2"
+	}
+
+	imap_plain_hello() { # {{{
+		imap__cap "$@"
+		ih_cap=$imap_pre_cap$ih_cap
+
 		printf '\002
-* OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL] Dovecot ready.
+* OK [CAPABILITY %s] Dovecot ready.
 \001
 T1 CAPABILITY
 \002
-* CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE LITERAL+ STARTTLS AUTH=PLAIN AUTH=LOGIN AUTH=CRAM-MD5 AUTH=GSSAPI AUTH=XOAUTH2 AUTH=EXTERNAL
+* CAPABILITY %s
 T1 OK Pre-login capabilities listed, post-login capabilities have more.
-'
+' \
+		"${ih_cap}" "${ih_cap}"
+	} # }}}
+
+	imap_hello() { # {{{
+		imap__cap "$@"
+		ih_cap=$imap_pre_cap$ih_cap
+
+		printf '\002
+* OK [CAPABILITY %s] Dovecot ready.
+T1 CAPABILITY
+\002
+* CAPABILITY %s
+T1 OK Pre-login capabilities listed, post-login capabilities have more.
+' \
+		"${ih_cap}" "${ih_cap}"
+	}
+
+	imap_hello_tls() {
+		imap__cap "$@"
+		c1=$imap_pre_cap$ih_cap
+		imap__cap tls "$@"
+		ih_cap=$imap_pre_cap$ih_cap
+
+		printf '\002
+* OK [CAPABILITY %s] Dovecot ready.
+\001
+T1 STARTTLS
+\003
+T1 OK Begin TLS negotiation now.
+\001
+T2 CAPABILITY
+\002
+* CAPABILITY %s
+T2 OK Pre-login capabilities listed, post-login capabilities have more.
+' \
+		"${c1}" "${ih_cap}"
 	} # }}}
 
 	imap_logged_in() { #{{{
 		__xno1__=2
 		[ ${#} -eq 1 ] && __xno1__=${1}
 
-		__xno2__=`add ${__xno1__} 1`
-		__xno3__=`add ${__xno2__} 1`
-		__xno4__=`add ${__xno3__} 1`
-		__xno5__=`add ${__xno4__} 1`
-		__xno6__=`add ${__xno5__} 1`
+		__xno2__=$(add ${__xno1__} 1)
+		__xno3__=$(add ${__xno2__} 1)
+		__xno4__=$(add ${__xno3__} 1)
+		__xno5__=$(add ${__xno4__} 1)
+		__xno6__=$(add ${__xno5__} 1)
 
 		printf '\002
 T%s OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAME SPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY LITERAL+ NOTIFY SPECIAL-USE] Logged in
@@ -14701,29 +14781,44 @@ T%s LOGOUT
 		"${__xno6__}"
 	} #}}}
 
-	t__net_script .t.sh imap \
-		-Simap-auth=login -Snoimap-use-starttls
+
+
+
+
+	t__net_script t.sh imaps -Simap-auth=external -Stls-config-pairs=Certificate=client-pair.pem -vv
+	{ imap_hello && printf '\001
+T2 AUTHENTICATE EXTERNAL
+\002
++
+\001
+steffen
+' &&
+		imap_logged_in; } | ../net-test -v -S -U t.sh > ./t6 2>${E0}
+		cke0 6 0 ./t6 '4233548649 160'
+
+
+
+
+t_epilog "${@}"
+return
+
+
+
+
+
+
+
+
+
+	t__net_script t.sh imap -Simap-auth=login -Snoimap-use-starttls
 	{ imap_hello && printf '\001
 T2 LOGIN "steffen" "Sway"
 ' &&
-		imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-	check 1 0 "${MBOX}" '4233548649 160'
-
-	if false && have_feat tls; then # TODO TLS-NET-SERV
-		t__net_script .t.sh imap \
-			-Simap-auth=oauthbearer -Snoimap-use-starttls
-		{ imap_hello && printf '\002
-T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
-' &&
-			imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '4233548649 160'
-	else
-		t_echoskip '2:[false/TODO/!TLS]'
-	fi
+		imap_logged_in; } | ../net-test t.sh > ./t1 2>${E0}
+	cke0 1 0 ./t1 '4233548649 160'
 
 	if have_feat md5; then
-		t__net_script .t.sh imap \
-			-Simap-auth=cram-md5 -Snoimap-use-starttls
+		t__net_script t.sh imap -Simap-auth=cram-md5 -Snoimap-use-starttls
 		{ imap_hello && printf '\001
 T2 AUTHENTICATE CRAM-MD5
 \002
@@ -14731,10 +14826,62 @@ T2 AUTHENTICATE CRAM-MD5
 \001
 c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
 ' &&
-			imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '4233548649 160'
+		imap_logged_in; } | ../net-test t.sh > ./t2 2>${E0}
+		cke0 2 0 ./t2 '4233548649 160'
 	else
 		t_echoskip '2:[!MD5]'
+	fi
+
+	if have_feat tls; then
+		t__net_script t.sh imaps -Simap-auth=xoauth2 -Simap-use-starttls
+		{ imap_hello && printf '\001
+T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+			imap_logged_in; } | ../net-test -S t.sh > ./t3 2>&1
+		check 3 0 ./t3 '4233548649 160'
+
+		t__net_script t.sh imap -Simap-auth=xoauth2 -Simap-use-starttls
+		{ imap_hello_tls && printf '\001
+T3 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+			imap_logged_in 3; } | ../net-test -s t.sh > ./t4 2>${E0}
+		cke0 4 0 ./t4 '4233548649 160'
+
+		t__net_script t.sh imap -Simap-auth=external -Simap-use-starttls -Stls-config-pairs=Certificate=client-pair.pem
+		{ { imap_hello_tls && printf '\001
+T3 AUTHENTICATE EXTERNAL steffen
+' &&
+			imap_logged_in 3; } | ../net-test -s -U t.sh; } > ./t5 2>${E0}
+		cke0 5 0 ./t5 '4233548649 160'
+
+		t__net_script t.sh imaps -Simap-auth=external -Stls-config-pairs=Certificate=client-pair.pem
+		{ imap_hello && printf '\001
+T2 AUTHENTICATE EXTERNAL
+\002
++
+\001
+steffen
+' &&
+			imap_logged_in; } | ../net-test -S -U t.sh > ./t6 2>${E0}
+		cke0 6 0 ./t6 '4233548649 160'
+
+		t__net_script t.sh imaps -Simap-auth=externanon -Stls-config-pairs=Certificate=client-pair.pem
+		{ { imap_hello && printf '\001
+T2 AUTHENTICATE EXTERNAL =
+' &&
+			imap_logged_in; } | ../net-test -S -U t.sh; } > ./t7 2>${E0}
+		cke0 7 0 ./t7 '4233548649 160'
+
+		t__net_script t.sh imap -Simap-auth=oauthbearer -Simap-use-starttls
+		{ imap_hello_tls && printf '\001
+T3 AUTHENTICATE OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWFyZXIgU3dheQEB
+' &&
+			imap_logged_in 3; } | ../net-test -s ./t.sh > ./t8 2>${E0}
+		cke0 8 0 ./t8 '4233548649 160'
+
+
+	else
+		t_echoskip '{3-8}:[!TLS]'
 	fi
 
 	t_epilog "${@}"
