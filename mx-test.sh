@@ -15735,11 +15735,11 @@ t_s_mime() { #{{{
 
 # OPT_NET_TEST {{{
 t_net_pop3() { #{{{ TODO TLS tests, then also EXTERN*
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
 		t_echoskip '[!NET_TEST or !POP3]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
@@ -15792,8 +15792,7 @@ QUIT
 	} #}}}
 
 	# Authentication types {{{
-	t__net_script .t.sh pop3 \
-		-Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
+	t__net_script t.sh pop3 -Spop3-auth=plain -Spop3-no-apop -Snopop3-use-starttls
 	{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \001
@@ -15803,46 +15802,58 @@ USER steffen
 \001
 PASS Sway
 ' &&
-		pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-	check 1 0 "${MBOX}" '3754674759 160'
+		pop3_logged_in; } | ../net-test t.sh > ./t1 2>$E0
+	cke0 1 0 ./t1 '3754674759 160'
 
-	if have_feat tls_md5; then
-		t__net_script t.sh pop3 -Spop3-auth=plain -Snopop3-use-starttls
+	if have_feat tls-md5; then
+		t__net_script t.sh pop3 -Spop3-auth=plain
 		{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \001
 APOP steffen 4f66ea9bf092117b009b9f8d928c656d
 ' &&
-			pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '3754674759 160'
+			pop3_logged_in; } | ../net-test t.sh > ./t2 2>$E0
+		cke0 2 0 ./t2 '3754674759 160'
 	else
-		t_echoskip '2:[!TLS_MD5]'
+		t_echoskip '2:[!TLS-MD5]'
 	fi
 
-	if false && have_feat tls; then # TODO TLS-NET-SERV
-		t__net_script .t.sh pop3 \
-			-Spop3-auth=xoauth2 -Snopop3-use-starttls
-		{ printf '\001
+	if have_feat tls; then
+		t__net_script t.sh pop3s -Spop3-auth=xoauth2 -Spop3-use-starttls
+		{ printf '\002
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
-\002
+\001
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-			pop3_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 3 0 "${MBOX}" '3754674759 160'
+			pop3_logged_in; } | ../net-test -S t.sh > ./t3 2>$E0
+		cke0 3 0 ./t3 '3754674759 160'
+
+		t__net_script t.sh pop3 -Spop3-auth=xoauth2 -Spop3-use-starttls
+		{ printf '\002
++OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
+\001
+STLS
+\003
++OK Begin TLS negotiation now.
+\001
+AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
+' &&
+			pop3_logged_in; } | ../net-test -s t.sh > ./t4 2>$E0
+		cke0 4 0 ./t4 '3754674759 160'
 	else
-		t_echoskip '3:[false/TODO/!TLS]'
+		t_echoskip '{3,4}:[!TLS]'
 	fi
 	#}}}
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_net_imap() { #{{{ TODO TLS tests, then also EXTERN*
-	t_prolog "${@}"
+	t_prolog "$@"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
 		t_echoskip '[!NET_TEST or !IMAP]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
@@ -15859,13 +15870,13 @@ T1 OK Pre-login capabilities listed, post-login capabilities have more.
 
 	imap_logged_in() { #{{{
 		__xno1__=2
-		[ ${#} -eq 1 ] && __xno1__=${1}
+		[ $# -eq 1 ] && __xno1__=$1
 
-		__xno2__=`add ${__xno1__} 1`
-		__xno3__=`add ${__xno2__} 1`
-		__xno4__=`add ${__xno3__} 1`
-		__xno5__=`add ${__xno4__} 1`
-		__xno6__=`add ${__xno5__} 1`
+		__xno2__=`add $__xno1__ 1`
+		__xno3__=`add $__xno2__ 1`
+		__xno4__=`add $__xno3__ 1`
+		__xno5__=`add $__xno4__ 1`
+		__xno6__=`add $__xno5__ 1`
 
 		printf '\002
 T%s OK [CAPABILITY IMAP4rev1 SASL-IR LOGIN-REFERRALS ID ENABLE IDLE SORT SORT=DISPLAY THREAD=REFERENCES THREAD=REFS THREAD=ORDEREDSUBJECT MULTIAPPEND URL-PARTIAL CATENATE UNSELECT CHILDREN NAME SPACE UIDPLUS LIST-EXTENDED I18NLEVEL=1 CONDSTORE QRESYNC ESEARCH ESORT SEARCHRES WITHIN CONTEXT=SEARCH LIST-STATUS BINARY MOVE SNIPPET=FUZZY PREVIEW=FUZZY LITERAL+ NOTIFY SPECIAL-USE] Logged in
@@ -15921,20 +15932,13 @@ T%s LOGOUT
 \002
 * BYE Logging out
 ' \
-		"${__xno1__}" \
-		"${__xno2__}" "${__xno2__}" \
-		"${__xno3__}" "${__xno3__}" \
-		"${__xno4__}" "${__xno4__}" \
-		"${__xno5__}" "${__xno5__}" \
-		"${__xno6__}"
+		"$__xno1__" \
+		"$__xno2__" "$__xno2__" \
+		"$__xno3__" "$__xno3__" \
+		"$__xno4__" "$__xno4__" \
+		"$__xno5__" "$__xno5__" \
+		"$__xno6__"
 	} #}}}
-
-# cksum
-# 4233548649 160
-# is
-
-# O  1 steffen@kdc.locald 2019-08-16           /258   The GSSAPI dance is done! 
-#>U  2 steffen@kdc.locald 2019-08-17           /248   Hi from FreeBSD           
 
 	t__net_script t.sh imap -Simap-auth=plain -Snoimap-use-starttls
 	{ imap_hello && printf '\001
@@ -15943,27 +15947,25 @@ T2 AUTHENTICATE PLAIN AHN0ZWZmZW4AU3dheQ==
 		imap_logged_in; } | ../net-test t.sh > ./t0 2>$E0
 	cke0 0 0 ./t0 '4233548649 160'
 
-	t__net_script .t.sh imap \
-		-Simap-auth=login -Snoimap-use-starttls
+	t__net_script t.sh imap -Simap-auth=login -Snoimap-use-starttls
 	{ imap_hello && printf '\001
 T2 LOGIN "steffen" "Sway"
 ' &&
-		imap_logged_in; } | ../net-test .t.sh > "$MBOX" 2>&1
+		imap_logged_in; } | ../net-test t.sh > "$MBOX" 2>$E0
 	cke0 1 0 "$MBOX" '4233548649 160'
 
 	if false && have_feat tls; then # TODO TLS-NET-SERV
-		t__net_script .t.sh imap \
-			-Simap-auth=oauthbearer -Snoimap-use-starttls
+		t__net_script t.sh imap -Simap-auth=oauthbearer -Snoimap-use-starttls
 		{ imap_hello && printf '\002
 T2 AUTHENTICATE XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-			imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '4233548649 160'
+			imap_logged_in; } | ../net-test t.sh > "$MBOX" 2>$E0
+		cke0 2 0 "$MBOX" '4233548649 160'
 	else
 		t_echoskip '2:[false/TODO/!TLS]'
 	fi
 
-	if have_feat tls_md5; then
+	if have_feat tls-md5; then
 		t__net_script t.sh imap -Simap-auth=cram-md5 -Snoimap-use-starttls
 		{ imap_hello && printf '\001
 T2 AUTHENTICATE CRAM-MD5
@@ -15972,21 +15974,21 @@ T2 AUTHENTICATE CRAM-MD5
 \001
 c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
 ' &&
-			imap_logged_in; } | ../net-test .t.sh > "${MBOX}" 2>&1
-		check 2 0 "${MBOX}" '4233548649 160'
+			imap_logged_in; } | ../net-test t.sh > "$MBOX" 2>$E0
+		cke0 3 0 "$MBOX" '4233548649 160'
 	else
-		t_echoskip '2:[!TLS_MD5]'
+		t_echoskip '3:[!TLS-MD5]'
 	fi
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 
 t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
-	t_prolog "${@}"
+	t_prolog "$@"
 
-	if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
+	if [ -n "$TESTS_NET_TEST" ] && have_feat smtp; then :; else
 		t_echoskip '[!NET_TEST or !SMTP]'
-		t_epilog "${@}"
+		t_epilog "$@"
 		return
 	fi
 
@@ -15998,31 +16000,31 @@ t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
 
 	# SMTP net-test script {{{
 	smtp__script() {
-		file=${1}
-		proto=${2}
+		file=$1
+		proto=$2
 		shift 2
 
-		${cat} <<-_EOT > ./t.sh
-		#!${SHELL} -
-		<"${file}" LC_ALL=C ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+		$cat <<-_EOT > ./t.sh
+		#!$SHELL -
+		<"$file" LC_ALL=C $MAILX $ARGS -Sstealthmua=noagent \\
 			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
 			-Suser=steffen -Spassword=Sway -s ub \\
-			-S 'mta=${proto}://localhost:'\${1} \\
-			${@} \\
+			-S 'mta=$proto://localhost:'\$1 \\
+			$@ \\
 			ex@am.ple
 		_EOT
-		${chmod} 0755 ./t.sh
+		$chmod 0755 ./t.sh
 	}
 
 	smtp_script_file() {
-		file=${1}
+		file=$1
 		shift
 		helo=reproducible_build
-		mail_from=reproducible_build@${helo}
-		from=${mail_from}
+		mail_from=reproducible_build@$helo
+		from=$mail_from
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@reproducible_build%reproducible_build>'
-		smtp__script ${file} "$@"
+		smtp__script "$file" "$@"
 	}
 
 	smtp_script() {
@@ -16031,8 +16033,8 @@ Message-ID: <19961002015007.AQAAAgAA@reproducible_build%reproducible_build>'
 
 	smtp_script_hostname() {
 		helo=am.ple
-		mail_from=reproducible_build@${helo}
-		from=${mail_from}
+		mail_from=reproducible_build@$helo
+		from=$mail_from
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@reproducible_build%am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple
@@ -16041,7 +16043,7 @@ Message-ID: <19961002015007.AQAAAgAA@reproducible_build%am.ple>'
 	smtp_script_hostname_smtp_hostname() {
 		helo=am.ple
 		mail_from=steffen@am2.ple2
-		from=reproducible_build@${helo}
+		from=reproducible_build@$helo
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
 		smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=am2.ple2
@@ -16050,7 +16052,7 @@ Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
 	smtp_script_hostname_smtp_hostname_empty() {
 		helo=am.ple
 		mail_from=steffen@am.ple
-		from=reproducible_build@${helo}
+		from=reproducible_build@$helo
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen%am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple -Ssmtp-hostname=
@@ -16059,7 +16061,7 @@ Message-ID: <19961002015007.AQAAAgAA@steffen%am.ple>'
 	smtp_script_from() {
 		helo=reproducible_build
 		mail_from=steffen.ex@am.ple
-		from=${mail_from}
+		from=$mail_from
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 		smtp__script /dev/null "$@" -Sfrom=${from}
@@ -16068,11 +16070,10 @@ Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 	smtp_script_from_hostname() {
 		helo=am2.ple2
 		mail_from=steffen.ex@am.ple
-		from=${mail_from}
+		from=$mail_from
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
-		smtp__script /dev/null "$@" \
-			-Sfrom=${mail_from} -Shostname=am2.ple2
+		smtp__script /dev/null "$@" -Sfrom=$mail_from -Shostname=am2.ple2
 	}
 
 	smtp_script_from_hostname_smtp_hostname() {
@@ -16081,8 +16082,7 @@ Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
 		from=steffen.ex@am.ple
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen%am3.ple3>'
-		smtp__script /dev/null "$@" -Sfrom=${from} \
-			-Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
+		smtp__script /dev/null "$@" -Sfrom=$from -Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
 	}
 
 	smtp_script_from_hostname_smtp_hostname_empty() {
@@ -16091,8 +16091,7 @@ Message-ID: <19961002015007.AQAAAgAA@steffen%am3.ple3>'
 		from=steffen.ex@am.ple
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
-		smtp__script /dev/null "$@" -Sfrom=${from} \
-			-Shostname=am2.ple2 -Ssmtp-hostname=
+		smtp__script /dev/null "$@" -Sfrom=$from -Shostname=am2.ple2 -Ssmtp-hostname=
 	}
 
 	smtp_script_from_hostname_smtp_from() {
@@ -16101,8 +16100,7 @@ Message-ID: <19961002015007.AQAAAgAA@steffen%am2.ple2>'
 		from=steffen.ex@am.ple
 		msgid='
 Message-ID: <19961002015007.AQAAAgAA@steffen.ex%am.ple>'
-		smtp__script /dev/null "$@" -Shostname=am.ple \
-			-Sfrom=${from} -Ssmtp-from=steffen2@am2.ple2
+		smtp__script /dev/null "$@" -Shostname=am.ple -Sfrom=$from -Ssmtp-from=steffen2@am2.ple2
 	}
 	#}}}
 
@@ -16115,11 +16113,11 @@ HELO %s
 \002
 250 arch-2019, hi dude
 ' \
-		"${helo}"
+		"$helo"
 	}
 
 	smtp_ehlo() {
-		[ ${#} -eq 0 ] && printf '\002\n220 arch-2019 ESMTP Postfix\n'
+		[ $# -eq 0 ] && printf '\002\n220 arch-2019 ESMTP Postfix\n'
 		printf '\001
 EHLO %s
 \002
@@ -16127,8 +16125,8 @@ EHLO %s
 250-AUTH PLAIN LOGIN CRAM-MD5 XOAUTH2 OAUTHBEARER EXTERNAL
 250-ENHANCEDSTATUSCODES
 ' \
-		"${helo}"
-		[ ${#} -eq 0 ] && [ -n "${ext_tls}" ] && printf '%s\n' "${ext_tls}"
+		"$helo"
+		[ $# -eq 0 ] && [ -n "$ext_tls" ] && printf '%s\n' "$ext_tls"
 		printf '250-8BITMIME\n250 PIPELINING\n'
 	}
 	#}}}
@@ -16137,25 +16135,25 @@ EHLO %s
 
 	# After AUTH {{{
 	smtp_mail_from_to() {
-		printf '\001\nMAIL FROM:<%s>\n\002\n250 2.1.0 Ok\n' "${mail_from}"
-		printf '\001\nRCPT TO:<%s>\n\002\n250 2.1.5 Ok\n' "${@}"
+		printf '\001\nMAIL FROM:<%s>\n\002\n250 2.1.0 Ok\n' "$mail_from"
+		printf '\001\nRCPT TO:<%s>\n\002\n250 2.1.5 Ok\n' "$@"
 		printf '\001\nDATA\n'
 	}
 
 	mail_from_8bitmime=
 	smtp_mail_from_to_pipelining() {
 		__mftp__=
-		[ -n "${mail_from_8bitmime}" ] && __mftp__=' BODY='${mail_from_8bitmime}
-		printf '\001\nMAIL FROM:<%s>%s\n' "${mail_from}" "${__mftp__}"
-		printf 'RCPT TO:<%s>\n' "${@}"
+		[ -n "$mail_from_8bitmime" ] && __mftp__=' BODY='$mail_from_8bitmime
+		printf '\001\nMAIL FROM:<%s>%s\n' "$mail_from" "$__mftp__"
+		printf 'RCPT TO:<%s>\n' "$@"
 		printf 'DATA\n'
 	}
 
 	smtp_data() {
 		printf '\002\n'
-		if [ ${#} -gt 0 ]; then
+		if [ $# -gt 0 ]; then
 			printf '250 2.1.0 Ok\n'
-			while [ ${#} -gt 0 ]; do
+			while [ $# -gt 0 ]; do
 				printf '250 2.1.0 Ok\n'
 				shift
 			done
@@ -16165,13 +16163,12 @@ EHLO %s
 	}
 
 	smtp_date_from() {
-		printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nAuthor: %s\nFrom: %s\n' \
-			"${from}" "${from}"
+		printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nAuthor: %s\nFrom: %s\n' "$from" "$from"
 	}
 
 	smtp_to() { printf 'To: ex@am.ple\n'; }
 
-	smtp_head_tail() { printf 'Subject: ub%s%s\n\n' "${msgid}" "${head_tail}"; }
+	smtp_head_tail() { printf 'Subject: ub%s%s\n\n' "$msgid" "$head_tail"; }
 
 	smtp_head_all() {
 		smtp_mail_from_to ex@am.ple &&
@@ -16203,39 +16200,39 @@ QUIT
 
 	# Check the *from* / *hostname* / *smtp-from* .. interaction {{{
 	smtp_script smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t1 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t1 2>$E0
 	ck0e0 1 0 ./t1
 
 	smtp_script_hostname smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t2 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t2 2>$E0
 	ck0e0 2 0 ./t2
 
 	smtp_script_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t3 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t3 2>$E0
 	ck0e0 3 0 ./t3
 
 	smtp_script_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t4 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t4 2>$E0
 	ck0e0 4 0 ./t4
 
 	smtp_script_from smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t5 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t5 2>$E0
 	ck0e0 5 0 ./t5
 
 	smtp_script_from_hostname smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t6 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t6 2>$E0
 	ck0e0 6 0 ./t6
 
 	smtp_script_from_hostname_smtp_hostname smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t7 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t7 2>$E0
 	ck0e0 7 0 ./t7
 
 	smtp_script_from_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t8 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t8 2>$E0
 	ck0e0 8 0 ./t8
 
 	smtp_script_from_hostname_smtp_from smtp -Ssmtp-config=-ehlo
-	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t9 2>${E0}
+	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t9 2>$E0
 	ck0e0 9 0 ./t9
 	#}}}
 
@@ -16244,7 +16241,7 @@ QUIT
 	{ smtp_ehlo && printf '\001
 AUTH PLAIN AHN0ZWZmZW4AU3dheQ==
 ' &&
-		smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-1 2>${E0}
+		smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-1 2>$E0
 	ck0e0 auth-1 0 ./tauth-1
 
 	smtp_script smtp -Ssmtp-config=-all,ehlo,login
@@ -16259,7 +16256,7 @@ c3RlZmZlbg==
 \001
 U3dheQ==
 ' &&
-		smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-2 2>${E0}
+		smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-2 2>$E0
 	ck0e0 auth-2 0 ./tauth-2
 
 	if have_feat tls; then
@@ -16267,7 +16264,7 @@ U3dheQ==
 		{ smtp_ehlo && printf '\001
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-3 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-3 2>$E0
 		ck0e0 auth-3 0 ./tauth-3
 	else
 		t_echoskip 'auth-3:[!TLS]'
@@ -16282,16 +16279,15 @@ AUTH CRAM-MD5
 \001
 c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-4 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test t.sh > ./tauth-4 2>$E0
 		ck0e0 auth-4 0 ./tauth-4
 	else
-		t_echoskip 'auth-4:[!TLS_MD5]'
+		t_echoskip 'auth-4:[!TLS-MD5]'
 	fi
 
 	# STARTTLS, and more TLS AUTH things
 	smtp_script smtp -Ssmtp-config=-all,xoauth2
-	{ smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
-			../net-test -s t.sh > ./tauth-5 2>${EX}
+	{ smtp_ehlo && printf '\001\nNOT REACHED\n'; } | ../net-test -s t.sh > ./tauth-5 2>$EX
 	ck0 auth-5 8 ./tauth-5 '3338365820 164'
 
 	if have_feat tls; then
@@ -16304,7 +16300,7 @@ STARTTLS
 			smtp_ehlo 0 && printf '\001
 AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test -s t.sh > ./tauth-6 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test -s t.sh > ./tauth-6 2>$E0
 		ck0e0 auth-6 0 ./tauth-6
 
 		smtp_script smtp -Ssmtp-config=-all,starttls,externanon \
@@ -16317,7 +16313,7 @@ STARTTLS
 			smtp_ehlo 0 && printf '\001
 AUTH EXTERNAL =
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test -U -s t.sh > ./tauth-7 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test -U -s t.sh > ./tauth-7 2>$E0
 		ck0e0 auth-7 0 ./tauth-7
 
 		smtp_script smtps -Ssmtp-config=-all,external \
@@ -16325,14 +16321,14 @@ AUTH EXTERNAL =
 		{ smtp_ehlo && printf '\001
 AUTH EXTERNAL c3RlZmZlbg==
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test -U -S t.sh > ./tauth-8 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test -U -S t.sh > ./tauth-8 2>$E0
 		ck0e0 auth-8 0 ./tauth-8
 
 		smtp_script smtps -Ssmtp-config=-all,oauthbearer
 		{ smtp_ehlo && printf '\001
 AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWFyZXIgU3dheQEB
 ' &&
-			smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-9 2>${E0}
+			smtp_auth_ok && smtp_go; } | ../net-test -S t.sh > ./tauth-9 2>$E0
 		ck0e0 auth-9 0 ./tauth-9
 	else
 		t_echoskip 'auth-{6-9}:[!TLS]'
@@ -16341,7 +16337,7 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 
 	# Some data feeding {{{
 	# body data
-	${awk} '
+	$awk '
 		BEGIN{
 			for(lnlen = i = 0; i < 9999; ++i){
 				j = "[" i "]"
@@ -16357,11 +16353,11 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 
 	smtp_script_file ./t.dat smtp -Ssmtp-config=-all &&
 	{ smtp_helo && smtp_head_all && ${cat} ./t.dat && smtp_quit; } |
-		../net-test t.sh > ./tdata-1 2>${E0}
+		../net-test t.sh > ./tdata-1 2>$E0
 	ck0e0 data-1 0 ./tdata-1
 
 	# more RCPT TO:<>
-	rcpt_to=$(${awk} '
+	rcpt_to=$($awk '
 			BEGIN{
 				for(i = 0; i < 100; i += 2)
 					printf "ex-" i "@am.ple "
@@ -16369,27 +16365,27 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 				for(i = 1; i < 100; i += 2)
 					printf "ex-" i "@am.ple "
 			}')
-	tolist=$(${awk} '
+	tolist=$($awk '
 			BEGIN{
 				for(i = 0; i < 100; i += 2)
 					printf "ex-%s@am.ple ", i
 			}')
-	cclist=$(${awk} '
+	cclist=$($awk '
 			BEGIN{
 				for(i = 1; i < 100; i += 2)
 					printf "-c ex-%s@am.ple ", i
 			}')
 
 	smtp_rcpt_to() {
-		__srt_file__=${7} __srt_xfile__=:
-		if [ -z "${__srt_file__}" ]; then
+		__srt_file__=$7 __srt_xfile__=:
+		if [ -z "$__srt_file__" ]; then
 			__srt_file__=/dev/null
 		else
-			__srt_xfile__="${cat} \"${__srt_file__}\""
+			__srt_xfile__="$cat \"$__srt_file__\""
 		fi
-		smtp_script_file ${__srt_file__} smtp -Ssmtp-config=${1} ${8} ${cclist} ${tolist} &&
-		{ ${2} && ${3} $rcpt_to &&
-				eval "smtp_data ${4}" && ${awk} '
+		smtp_script_file "$__srt_file__" smtp -Ssmtp-config="$1" $8 $cclist $tolist &&
+		{ $2 && $3 $rcpt_to &&
+				eval "smtp_data $4" && $awk '
 					function doit(i, j){
 						printf j
 						lnlen = length(j)
@@ -16412,8 +16408,8 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 						doit(0, "To: ")
 						doit(1, "Cc: ")
 					}' &&
-				smtp_head_tail && eval ${__srt_xfile__} && ${5}; } |
-			../net-test t.sh > ./${6} 2>${E0}
+				smtp_head_tail && eval $__srt_xfile__ && $5; } |
+			../net-test t.sh > ./$6 2>$E0
 	}
 
 	smtp_rcpt_to -ehlo \
@@ -16452,7 +16448,7 @@ Content-Transfer-Encoding: 8bit'
 	fi
 	#}}}
 
-	t_epilog "${@}"
+	t_epilog "$@"
 } #}}}
 #}}}
 
@@ -16775,19 +16771,18 @@ __EOT
 } #}}}
 
 t__net_script() {
-	file=${1}
-	proto=${2}
+	file=$1 proto=$2
 	shift 2
 
 	t__tls_certs
 
-	${cat} <<-_EOT > ${file}
-		#!${SHELL} -
-		</dev/null ${MAILX} -# ${ARGS} \\
-			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem -Suser=steffen -Spassword=Sway ${@} \\
-			-Y 'File ${proto}://localhost:'\${1} -Y 'h;q'
-		_EOT
-	${chmod} 0755 ${file}
+	$cat <<_EOT > $file
+#!$SHELL -
+</dev/null $MAILX -# $ARGS \\
+	-S tls-ca-no-defaults -S tls-ca-file=./ca.pem -Suser=steffen -Spassword=Sway $@ \\
+	-Y 'File $proto://localhost:'\$1 -Y 'h;q'
+_EOT
+	$chmod 0755 $file
 }
 
 # TLS keys and certificates {{{
