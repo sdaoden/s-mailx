@@ -218,11 +218,12 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       break;
 #ifdef mx_HAVE_GSSAPI
    case mx_CRED_AUTHTYPE_GSSAPI:
-      if(n_poption & n_PO_D)
+      if(n_poption & n_PO_D){
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, &pcp->pc_url,
-            &pcp->pc_cred, mp))
-         goto jleave;
+         rv = OKAY;
+      }else
+         rv = su_CONCAT(su_FILE,_gss)(mp->mb_sock, &pcp->pc_url, &pcp->pc_cred,
+               mp) ? OKAY : STOP;
       break;
 #endif
    default:
