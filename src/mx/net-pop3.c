@@ -407,6 +407,7 @@ jleave:
 
 static enum okay
 a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
+   struct str s;
    char *cp;
    uz cnt;
    enum okay rv;
@@ -415,10 +416,14 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    rv = STOP;
 
    /* Calculate required storage */
-   cnt = pcp->pc_cred.cc_user.l;
 #define a_MAX \
    (sizeof("AUTH EXTERNAL ") -1 + sizeof(NETNL) -1 +1)
 
+   cnt = 0;
+   if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+      cnt = pcp->pc_cred.cc_user.l;
+      cnt = b64_encode_calc_size(cnt);
+   }
    if(cnt >= UZ_MAX - a_MAX){
       n_err(_("Credentials overflow buffer sizes\n"));
       goto j_leave;
@@ -426,18 +431,20 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    cnt += a_MAX;
 #undef a_MAX
 
-   cp = n_lofi_alloc(cnt);
+   cp = n_lofi_alloc(cnt +1);
 
    su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
       sizeof(NETLINE("AUTH EXTERNAL")));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   if(pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON)
-      cnt = 0;
-   else
-      su_mem_copy(&cp[0], pcp->pc_cred.cc_user.s,
-         cnt = pcp->pc_cred.cc_user.l);
+   cnt = 0;
+   if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+      s.s = cp;
+      b64_encode_buf(&s, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l,
+         B64_BUF);
+      cnt = s.l;
+   }
    su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
