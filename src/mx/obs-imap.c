@@ -1598,6 +1598,7 @@ jleave:
 
 static enum okay
 a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
+   struct str s;
    uz cnt;
    boole nsaslir;
    char *cp;
@@ -1608,6 +1609,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    rv = STOP;
    queuefp = NIL;
    cp = NIL;
+
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
 
    if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
@@ -1616,17 +1618,22 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    }
 
    /* Calculate required storage */
-   cnt = ccp->cc_user.l;
 #define a_MAX \
    (sizeof("T1 ") -1 +\
    sizeof("AUTHENTICATE EXTERNAL ") -1 +\
     sizeof(NETNL) -1 +1)
 
+   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
+      ccp->cc_user.s = UNCONST(char*,"=");
+      cnt = ccp->cc_user.l = !nsaslir;
+   }else{
+      cnt = ccp->cc_user.l;
+      cnt = b64_encode_calc_size(cnt);
+   }
    if(cnt >= UZ_MAX - a_MAX){
       n_err(_("Credentials overflow buffer sizes\n"));
       goto jleave;
    }
-
    cnt += a_MAX;
 #undef a_MAX
 
@@ -1644,8 +1651,14 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
 
    if(!nsaslir){
-      su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
-      cnt += ccp->cc_user.l;
+      if(ccp->cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+         s.s = &cp[++cnt];
+         b64_encode_buf(&s, ccp->cc_user.s, ccp->cc_user.l, B64_BUF);
+         cnt += s.l;
+      }else{
+         su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
+         cnt += ccp->cc_user.l;
+      }
    }
    su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
 
@@ -1658,8 +1671,15 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
       if(response_type != RESPONSE_CONT)
          goto jleave;
 
-      su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
-      su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
+      if(ccp->cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+         s.s = &cp[cnt = 0];
+         b64_encode_buf(&s, ccp->cc_user.s, ccp->cc_user.l, B64_BUF);
+         cnt = s.l;
+      }else{
+         su_mem_copy(&cp[0], ccp->cc_user.s, ccp->cc_user.l);
+         cnt = ccp->cc_user.l;
+      }
+      su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
 
       IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    }
