@@ -131,17 +131,24 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       goto jleave;
    }
 
+# ifdef mx_SOURCE_NET_SMTP
+#  define a_N "smtp@"
+#  define a_L 5
+# elif defined mx_SOURCE_NET_POP3
+#  define a_N "pop@"
+#  define a_L 4
+# elif defined mx_SOURCE_NET_IMAP
+#  define a_N "imap@"
+#  define a_L 5
+# endif
+
    su_cs_pcopy(su_cs_pcopy(
       send_tok.value = buf = n_lofi_alloc(
-            (send_tok.length = urlp->url_host.l + 5) +1),
-# ifdef mx_SOURCE_NET_SMTP
-      "smtp@"
-# elif defined mx_SOURCE_NET_POP3
-      "pop@"
-# elif defined mx_SOURCE_NET_IMAP
-      "imap@"
-# endif
-      ), urlp->url_host.s);
+         (send_tok.length = urlp->url_host.l + a_L) +1), a_N),
+      urlp->url_host.s);
+
+# undef a_N
+# undef a_L
 
    maj_stat = gss_import_name(&min_stat, &send_tok,
          GSS_C_NT_HOSTBASED_SERVICE, &target_name);
