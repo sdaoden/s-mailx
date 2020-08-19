@@ -4207,7 +4207,7 @@ hook is called once they are left, also for program exit.
 Without arguments a listing of all defined accounts is shown.
 With one argument the given account is activated: the system
 .Va inbox
-of that account will be activated (as via
+of that account will be changed to (as via
 .Ic folder ) ,
 a possibly installed
 .Va folder-hook
@@ -4225,7 +4225,7 @@ as well as things like
 .Va tls-config-pairs
 .Pf ( Sx "Encrypted network communication" ) ,
 and protocol specifics like
-.Va imap-auth , pop3-auth , smtp-auth .
+.Va imap-auth , pop3-auth , smtp-config .
 .Bd -literal -offset indent
 account myisp {
   set folder=~/mail inbox=+syste.mbox record=+sent.mbox
@@ -7454,7 +7454,7 @@ and
 .Ql +?saturated
 are therefore identical.
 In saturated mode overflow errors and division and modulo by zero are no
-longer reported via the exit status, but the result will linger at the
+longer reported via the return status, but the result will linger at the
 minimum or maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
@@ -7767,7 +7767,7 @@ character is the tilde
 Unless otherwise documented command escapes ensure proper updates of
 the error number
 .Va \&!
-and the exit status
+and the exit/return status
 .Va \&? .
 The variable
 .Va errexit
@@ -9768,9 +9768,9 @@ command line option (without argument; see there for more), or by setting
 .
 .Pp
 If the machine's hostname is not valid at the Internet (for example at
-a dialup machine) then either this variable or
-.Va hostname ;
-(a SMTP-based
+a dialup machine) either this or
+.Va hostname
+(and a SMTP-based
 .Va mta
 adds even more fine-tuning capabilities with
 .Va smtp-hostname )
@@ -11255,10 +11255,6 @@ need a
 .Va user ,
 the remains also require a
 .Va password .
-.Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422, and fail if additional credentials are actually passed.
 Unless
 .Va pop3-no-apop
 is set the
@@ -12270,7 +12266,7 @@ Needs
 .Va user
 and
 .Va password .
-The password here is a temporary bearer token, not the real password,
+The password is a temporary bearer token, not the real password,
 and therefore this mechanism is not automatic.
 Also see the
 .Sx FAQ
@@ -14946,9 +14942,7 @@ and
 .Ql external ,
 which only need the former.
 .Ql externanon
-solely builds upon the credentials passed via a client certificate,
-and is usually the way to go since tested servers do not actually follow
-RFC 4422, and fail if additional credentials are actually passed.
+only uses data from the client certificate.
 .
 .Mx
 .It Va imap-cache

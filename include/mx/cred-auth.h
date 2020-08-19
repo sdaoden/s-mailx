@@ -55,13 +55,16 @@ enum{
 
    mx_CRED_AUTHTYPE_MECH_MASK = mx_CRED_AUTHTYPE_MULTI - 1,
    mx_CRED_AUTHTYPE_MECH_COUNT = 8,
+   /* Authentication mech types which may be chosen automatically */
+   mx_CRED_AUTHTYPE_MECH_AUTO_MASK = mx_CRED_AUTHTYPE_CRAM_MD5 |
+         mx_CRED_AUTHTYPE_LOGIN |
+         mx_CRED_AUTHTYPE_PLAIN,
+
    mx_CRED_AUTHTYPE_LASTBIT = 9,
    mx_CRED_AUTHTYPE_MASK = (1u<<(mx_CRED_AUTHTYPE_LASTBIT+1)) - 1
 };
 
-/* Authentication types per proto, overall (all supported).
- * The _AUTO_ variants can be fully managed without external help (for example
- * GSSAPI needs a ticket, EXTERNAL need a client certificate, etc.) */
+/* Authentication types per proto, overall (all supported). */
 enum mx_cred_proto_authtypes{
    mx_CRED_PROTO_AUTHTYPES_IMAP =
          mx_CRED_AUTHTYPE_CRAM_MD5 |
@@ -70,21 +73,11 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_LOGIN |
          mx_CRED_AUTHTYPE_OAUTHBEARER,
 
-      /*mx_CRED_PROTO_AUTHTYPES_AUTO_IMAP*/
-      /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_IMAP*/
-
-      mx_CRED_PROTO_AUTHTYPES_DEFAULT_IMAP = mx_CRED_AUTHTYPE_LOGIN,
-
    mx_CRED_PROTO_AUTHTYPES_POP3 =
          mx_CRED_AUTHTYPE_EXTERNAL | mx_CRED_AUTHTYPE_EXTERNANON |
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_OAUTHBEARER |
          mx_CRED_AUTHTYPE_PLAIN,
-
-      mx_CRED_PROTO_AUTHTYPES_DEFAULT_POP3 = mx_CRED_AUTHTYPE_PLAIN,
-
-      /*mx_CRED_PROTO_AUTHTYPES_AUTO_POP3*/
-      /*mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP*/
 
    mx_CRED_PROTO_AUTHTYPES_SMTP =
          mx_CRED_AUTHTYPE_CRAM_MD5 |
@@ -92,17 +85,7 @@ enum mx_cred_proto_authtypes{
          mx_CRED_AUTHTYPE_GSSAPI |
          mx_CRED_AUTHTYPE_LOGIN |
          mx_CRED_AUTHTYPE_OAUTHBEARER | mx_CRED_AUTHTYPE_XOAUTH2 |
-         mx_CRED_AUTHTYPE_PLAIN,
-
-      mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP =
-            mx_CRED_AUTHTYPE_CRAM_MD5 |
-            mx_CRED_AUTHTYPE_LOGIN |
-            mx_CRED_AUTHTYPE_PLAIN,
-
-      mx_CRED_PROTO_AUTHTYPES_AUTO_NOTLS_SMTP =
-            mx_CRED_AUTHTYPE_CRAM_MD5,
-
-      mx_CRED_PROTO_AUTHTYPES_DEFAULT_SMTP = mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP
+         mx_CRED_AUTHTYPE_PLAIN
 };
 
 /* Authentication types per proto, truly available.

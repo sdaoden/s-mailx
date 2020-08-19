@@ -78,6 +78,10 @@ enum a_netsmtp_flags{
          mx_CRED_PROTO_AUTHTYPES_SMTP,
    a_NETSMTP_ALL_AVAILABLE_MASK = a_NETSMTP_EXT_ALL | a_NETSMTP_FORCE_TLS_IFF |
          mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP,
+   a_NETSMTP_ALL_AVAILABLE_AUTO_MASK = a_NETSMTP_EXT_ALL |
+         a_NETSMTP_FORCE_TLS_IFF |
+         (mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP &
+            mx_CRED_AUTHTYPE_MECH_AUTO_MASK),
 
    /* Temporary or calculated */
    a_NETSMTP_EXT_READ_IS_HOT = 1u<<a_X(15)
@@ -617,8 +621,9 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
        * As of today (June 2020) all servers are expected to be TLS aware */
       {a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS_IFF | a_NETSMTP_EXT_EHLO,
          a_NETSMTP_EXT_STARTTLS | a_NETSMTP_FORCE_TLS, "starttls"},
-      {(a_NETSMTP_EXT_AUTH | (mx_CRED_PROTO_AUTHTYPES_AUTO_SMTP &
-            mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP) | a_NETSMTP_EXT_EHLO),
+      {(a_NETSMTP_EXT_AUTH | (mx_CRED_PROTO_AUTHTYPES_SMTP &
+            mx_CRED_PROTO_AUTHTYPES_AVAILABLE_SMTP &
+            mx_CRED_AUTHTYPE_MECH_AUTO_MASK) | a_NETSMTP_EXT_EHLO),
          (a_NETSMTP_EXT_AUTH | mx_CRED_PROTO_AUTHTYPES_SMTP), "auth"},
       /* The rest comes in via mx_cred_proto_authtypes */
    };
@@ -638,7 +643,7 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
          "(please adjust *smtp-config* as necessary)");
 
    rv = TRU1;
-   flags = a_NETSMTP_ALL_AVAILABLE_MASK;
+   flags = a_NETSMTP_ALL_AVAILABLE_AUTO_MASK;
 
    if((config = xok_vlook(smtp_config, urlp, OXM_ALL)) == NIL)
       goto jleave;
