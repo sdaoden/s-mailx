@@ -2064,8 +2064,8 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
          if(n_poption & n_PO_D_V)
             n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
          if(fprnt != NULL){
-            if(!(stay = !su_cs_cmp(fprnt, fpmdhexbuf))){
-               n_err(_("TLS fingerprint does not match: %s\n"
+            if(!(stay = !su_cs_cmp_case(fprnt, fpmdhexbuf))){
+               n_err(_("TLS fingerprint mismatch: %s\n"
                      "  Expected: %s\n  Detected: %s\n"),
                   urlp->url_h_p.s, fprnt, fpmdhexbuf);
                stay = n_tls_verify_decide();
