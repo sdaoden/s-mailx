@@ -229,8 +229,8 @@ static enum okay  imap_cram_md5(struct mailbox *mp,
       struct mx_cred_ctx *ccred);
 #endif
 static enum okay  imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred);
-static enum okay a_imap_oauthbearer(struct mailbox *mp,
-      struct mx_cred_ctx *ccp);
+static enum okay a_imap_oauthbearer(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccp, boole is_xoauth2);
 static enum okay a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp);
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
@@ -1513,7 +1513,9 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
          rv = imap_login(mp, ccredp);
          break;
       case mx_CRED_AUTHTYPE_OAUTHBEARER:
-         rv = a_imap_oauthbearer(mp, ccredp);
+      case mx_CRED_AUTHTYPE_XOAUTH2:
+         rv = a_imap_oauthbearer(mp, urlp, ccredp,
+               (ccredp->cc_authtype != mx_CRED_AUTHTYPE_OAUTHBEARER));
          break;
       case mx_CRED_AUTHTYPE_EXTERNAL:
       case mx_CRED_AUTHTYPE_EXTERNANON:
@@ -1590,10 +1592,11 @@ jleave:
 }
 
 static enum okay
-a_imap_oauthbearer(struct mailbox *mp, struct mx_cred_ctx *ccp){
+a_imap_oauthbearer(struct mailbox *mp, struct mx_url *urlp,
+      struct mx_cred_ctx *ccp, boole is_xoauth2){
    struct str b64;
-   int i;
-   uz cnt;
+   union {uz u; int s; char const *tp;} j;
+   uz i;
    boole nsaslir;
    char *cp;
    FILE *queuefp;
@@ -1604,72 +1607,71 @@ a_imap_oauthbearer(struct mailbox *mp, struct mx_cred_ctx *ccp){
    queuefp = NIL;
    cp = NIL;
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
+   nsaslir = 1;
 
    /* Calculate required storage */
-   cnt = ccp->cc_user.l;
 #define a_MAX \
-   (sizeof("T1 ") -1 +\
-   sizeof("AUTHENTICATE XOAUTH2 ") -1 +\
-    2 + sizeof("user=\001auth=Bearer \001\001") -1 +\
-    sizeof(NETNL) -1 +1)
+   (2 + sizeof("T1 AUTHENTICATE OAUTHBEARER " \
+      "n,a=,\001host=\001port=65535\001auth=Bearer \001\001" NETNL))
 
-   if(ccp->cc_pass.l >= UZ_MAX - a_MAX ||
-         cnt >= UZ_MAX - a_MAX - ccp->cc_pass.l){
+   i = ccp->cc_user.l;
+   if(ccp->cc_pass.l >= (j.u = UZ_MAX - a_MAX) ||
+         i >= (j.u -= ccp->cc_pass.l) ||
+         (!is_xoauth2 && (urlp->url_host.l >= j.u ||
+             i >= (j.u -= urlp->url_host.l)))){
 jerr_cred:
       n_err(_("Credentials overflow buffer sizes\n"));
       goto jleave;
    }
-   cnt += ccp->cc_pass.l;
+   i += ccp->cc_pass.l;
 
-   cnt += a_MAX;
-#undef a_MAX
-   if((cnt = mx_b64_enc_calc_size(cnt)) == UZ_MAX)
+   if(!is_xoauth2)
+      i += urlp->url_host.l;
+
+   i += a_MAX;
+   if((i = mx_b64_enc_calc_size(i)) == UZ_MAX)
       goto jerr_cred;
+#undef a_MAX
 
-   cp = n_lofi_alloc(cnt +1);
+   cp = n_lofi_alloc(i);
 
-   /* Then create login query */
-   i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
-         ccp->cc_user.s, ccp->cc_pass.s);
-   if(mx_b64_enc_buf(&b64, cp, i, mx_B64_AUTO_ALLOC) == NIL)
+   /* Credential string */
+   if(!is_xoauth2)
+      j.s = snprintf(cp, i,
+            "n,a=%s,\001host=%s\001port=%hu\001auth=Bearer %s\001\001",
+            ccp->cc_user.s, urlp->url_host.s, urlp->url_portno,
+            ccp->cc_pass.s);
+   else
+      j.s = snprintf(cp, i, "user=%s\001auth=Bearer %s\001\001",
+            ccp->cc_user.s, ccp->cc_pass.s);
+
+   if(mx_b64_enc_buf(&b64, cp, j.s, mx_B64_AUTO_ALLOC) == NIL)
       goto jleave;
-   else{
-      char const *tp;
 
-      tp = tag(TRU1);
-      cnt = su_cs_len(tp);
-      su_mem_copy(cp, tp, cnt);
+   /* The login command */
+   j.tp = tag(TRU1);
+   i = su_cs_len(j.tp);
+   su_mem_copy(cp, j.tp, i);
+
+   /* C99 */{
+      char const *mech, oa[] = " AUTHENTICATE OAUTHBEARER ",
+            xoa[] = " AUTHENTICATE XOAUTH2 ";
+
+      if(!is_xoauth2)
+         mech = oa, j.u = sizeof(oa);
+      else
+         mech = xoa, j.u = sizeof(xoa);
+      su_mem_copy(&cp[i], mech, j.u /*-1*/);
+      i += j.u -1 - 1;
    }
-   su_mem_copy(&cp[cnt], " AUTHENTICATE XOAUTH2 ",
-      sizeof(" AUTHENTICATE XOAUTH2 ") /*-1*/);
-   cnt += sizeof(" AUTHENTICATE XOAUTH2 ") -1 - 1;
    if(!nsaslir){
-      su_mem_copy(&cp[++cnt], b64.s, b64.l);
-      cnt += b64.l;
+      su_mem_copy(&cp[++i], b64.s, b64.l);
+      i += b64.l;
    }
-   su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
+   su_mem_copy(&cp[i], NETNL, sizeof(NETNL));
 
    IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
-   rv = imap_answer(mp, 1);
-   /* TODO xoauth2/oauthbearer error response (see RFC 7628)
-    * After base64-decoding, this becomes (formatted for clarity):
-    * {
-    *   "status":"401",
-    *   "schemes":"bearer",
-    *   "scope":"https://mail.google.com/"
-    * }
-    * The SASL protocol requires clients to send an empty response to this
-    * challenge.
-    *
-    * C: A01 AUTHENTICATE XOAUTH2 dXNlcj1zb21ldXNlckBleGFtcGxlLmNvbQ
-    * FhdXRoPUJlYXJlciB5YTI5LnZGOWRmdDRxbVRjMk52YjNSbGNrQmhkSFJoZG1s
-    * emRHRXVZMjl0Q2cBAQ==
-    * S: + eyJzdGF0dXMiOiI0MDEiLCJzY2hlbWVzIjoiYmVhcmVyIG1hYyIsInNjb
-    * 3BlIjoiaHR0cHM6Ly9tYWlsLmdvb2dsZS5jb20vIn0K
-    * C:
-    * S: A01 NO SASL authentication failed
-    */
-   if(rv == STOP)
+   if((rv = imap_answer(mp, 1)) == STOP)
       goto jleave;
 
    if(nsaslir){
@@ -1683,9 +1685,11 @@ jerr_cred:
 
    while(mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
+
 jleave:
    if(cp != NIL)
       n_lofi_free(cp);
+
    NYD_OU;
    return rv;
 }
