@@ -9651,7 +9651,7 @@ APOP steffen 4f66ea9bf092117b009b9f8d928c656d
 
    if false && have_feat tls; then # TODO TLS-NET-SERV
       t__net_script .t.sh pop3 \
-         -Spop3-auth=oauthbearer -Snopop3-use-starttls
+         -Spop3-auth=xoauth2 -Snopop3-use-starttls
       { printf '\001
 +OK Dovecot ready. <314.1.5d6ad59f.Rq8miBAdE0uUT/0GGKg2bA==@arch-2019>
 \002
