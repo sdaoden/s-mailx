@@ -63,7 +63,7 @@ su_EMPTY_FILE()
 #include "mx/sigs.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+# include "mx/cred-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #include "mx/net-pop3.h"
@@ -120,7 +120,7 @@ static enum okay a_pop3_delete(struct mailbox *mp, int n);
 static enum okay a_pop3_update(struct mailbox *mp);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 /* Indirect POP3 I/O */
@@ -971,7 +971,7 @@ a_pop3_update(struct mailbox *mp){
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 #undef a_POP3_OUT
