@@ -36,6 +36,7 @@ su_EMPTY_FILE()
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
+#include "mx/cred-oauthbearer.h"
 #include "mx/file-streams.h"
 #include "mx/mime-enc.h"
 #include "mx/names.h"
@@ -250,9 +251,8 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/
    enum{
       a_ERROR = 1u<<0,
       a_IS_OAUTHBEARER = 1u<<1,
-      a_IS_XOAUTH2 = 1u<<2,
-      a_IN_HEAD = 1u<<3,
-      a_IN_BCC = 1u<<4
+      a_IN_HEAD = 1u<<2,
+      a_IN_BCC = 1u<<3
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
@@ -391,68 +391,66 @@ check smtputf8 and check against line length maximum!!
       goto jleave;
    case mx_CRED_AUTHTYPE_NONE:
       break;
-   case mx_CRED_AUTHTYPE_OAUTHBEARER:
-      f |= a_IS_OAUTHBEARER;
-      /* FALLTHRU */
-      if(0){
-   case mx_CRED_AUTHTYPE_XOAUTH2:
-         f |= a_IS_XOAUTH2;
-      }
-      /* FALLTHRU */
    case mx_CRED_AUTHTYPE_PLAIN:
       /* Calculate required storage */
-#define a_MAX \
-   (2 + sizeof("AUTH OAUTHBEARER " \
-      "n,a=,\001host=\001port=65535\001auth=Bearer \001\001" NETNL))
+#define a_MAX (2 + sizeof("AUTH PLAIN " NETNL))
 
       i = scp->sc_credp->cc_user.l;
       if(scp->sc_credp->cc_pass.l >= (j = UZ_MAX - a_MAX) ||
-            i >= (j -= scp->sc_credp->cc_pass.l) ||
-            ((f & a_IS_OAUTHBEARER) &&
-               (scp->sc_urlp->url_host.l >= j ||
-                i >= (j -= scp->sc_urlp->url_host.l)))){
+            i >= (j -= scp->sc_credp->cc_pass.l)){
 jerr_cred:
-         n_err(_("Credentials overflow buffer sizes\n"));
+         n_err(_("Credentials overflow buffer size, or I/O error\n"));
          goto jleave;
       }
       i += scp->sc_credp->cc_pass.l;
-      if(f & a_IS_OAUTHBEARER)
-         i += scp->sc_urlp->url_host.l;
       i += a_MAX;
       if((i = mx_b64_enc_calc_size(i)) == UZ_MAX)
          goto jerr_cred;
       if(i >= sizeof(o))
          goto jerr_cred;
+
 #undef a_MAX
 
-      /* Then create login query */
       /* C99 */{
-         char const *authfmt;
+         int s;
 
-         if(f & a_IS_OAUTHBEARER){
-            authfmt = NETLINE("AUTH OAUTHBEARER %s");
-            j = snprintf(o, sizeof o,
-                  "n,a=%s,\001host=%s\001port=%hu\001auth=Bearer %s\001\001",
-                  scp->sc_credp->cc_user.s, scp->sc_urlp->url_host.s,
-                  scp->sc_urlp->url_portno, scp->sc_credp->cc_pass.s);
-         }else if(f & a_IS_XOAUTH2){
-            authfmt = NETLINE("AUTH XOAUTH2 %s");
-            j = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
-                  scp->sc_credp->cc_user.s, scp->sc_credp->cc_pass.s);
-         }else{
-            authfmt = NETLINE("AUTH PLAIN %s");
-            j = snprintf(o, sizeof o, "%c%s%c%s",
-                  '\0', scp->sc_credp->cc_user.s,
-                  '\0', scp->sc_credp->cc_pass.s);
-         }
+         if((s = snprintf(o, sizeof o, "%c%s%c%s",
+               '\0', scp->sc_credp->cc_user.s,
+               '\0', scp->sc_credp->cc_pass.s)) < 0)
+            goto jerr_cred;
 
-         if(mx_b64_enc_buf(&b64, o, j, mx_B64_AUTO_ALLOC) == NIL)
-            goto jleave;
-         snprintf(o, sizeof o, authfmt, b64.s);
-         b64.s = o;
+         if(mx_b64_enc_buf(&b64, o, s, mx_B64_AUTO_ALLOC) == NIL)
+            goto jerr_cred;
+
+         if(snprintf(o, sizeof o, NETLINE("AUTH PLAIN %s"), b64.s) < 0)
+            goto jerr_cred;
       }
-      a_SMTP_OUT(b64.s);
+      a_SMTP_OUT(o);
       break;
+
+   case mx_CRED_AUTHTYPE_OAUTHBEARER:
+      f |= a_IS_OAUTHBEARER;
+      /* FALLTHRU */
+   case mx_CRED_AUTHTYPE_XOAUTH2:{
+      char const *mech, oa[] = "AUTH OAUTHBEARER ", xoa[] = "AUTH XOAUTH2 ";
+
+      if(f & a_IS_OAUTHBEARER)
+         mech = oa, i = sizeof(oa) -1;
+      else
+         mech = xoa, i = sizeof(xoa) -1;
+
+      if(!mx_oauthbearer_create_icr(&b64, i,
+            scp->sc_urlp, scp->sc_credp, ((f & a_IS_OAUTHBEARER) == 0)))
+         goto jerr_cred;
+
+      su_mem_copy(&b64.s[0], mech, i);
+      if((i = (b64.l < sizeof(o))))
+         su_mem_copy(o, b64.s, b64.l +1);
+
+      n_lofi_free(b64.s);
+
+      a_SMTP_OUT(o);
+      }break;
 
    case mx_CRED_AUTHTYPE_EXTERNAL:
 #define a_MAX (sizeof("AUTH EXTERNAL " NETNL))
