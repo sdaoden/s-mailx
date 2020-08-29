@@ -1,6 +1,11 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of GSS-API authentication.
  *@ According to RFC 4954 (SMTP), RFC 5034 (POP3), RFC 4422/4959 (IMAP).
+ *@ TODO for now this is a shared implementation which requires different
+ *@ TODO prototypes, and it also performs I/O via proto-impl specific I/O
+ *@ TODO macros: it therefore uses a header injection approach.
+ *@ TODO Ideally it would take a protocol indicating argument and an I/O
+ *@ TODO stream, and would be a generic implementation instead.
  *
  * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -27,7 +32,7 @@
  */
 /*
  * Copyright 1994 by OpenVision Technologies, Inc.
- * 
+ *
  * Permission to use, copy, modify, distribute, and sell this software
  * and its documentation for any purpose is hereby granted without fee,
  * provided that the above copyright notice appears in all copies and
@@ -37,7 +42,7 @@
  * without specific, written prior permission. OpenVision makes no
  * representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied warranty.
- * 
+ *
  * OPENVISION DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
  * EVENT SHALL OPENVISION BE LIABLE FOR ANY SPECIAL, INDIRECT OR
@@ -47,8 +52,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 #ifdef mx_HAVE_GSSAPI
-#ifndef a_NET_GSSAPI_H
-# define a_NET_GSSAPI_H 1
+#ifndef a_CRED_GSSAPI_H
+# define a_CRED_GSSAPI_H 1
 
 #ifndef GSSAPI_REG_INCLUDE
 # include <gssapi/gssapi.h>
@@ -65,9 +70,9 @@
 
 #include "mx/compat.h"
 
-#elif a_NET_GSSAPI_H == 1
-# undef a_NET_GSSAPI_H
-# define a_NET_GSSAPI_H 2
+#elif a_CRED_GSSAPI_H == 1
+# undef a_CRED_GSSAPI_H
+# define a_CRED_GSSAPI_H 2
 
 /* */
 static boole su_CONCAT(su_FILE,_gss)(struct mx_socket *sp, struct mx_url *urlp,
@@ -85,7 +90,7 @@ static void su_CONCAT(su_FILE,_gss__error)(char const *s, OM_uint32 maj_stat,
 static void su_CONCAT(su_FILE,_gss__error1)(char const *s, OM_uint32 code,
       int typ);
 
-#elif a_NET_GSSAPI_H == 2
+#elif a_CRED_GSSAPI_H == 2
 
 static boole
 su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
@@ -348,7 +353,7 @@ su_CONCAT(su_FILE,_gss__error1)(char const *s, OM_uint32 code, int typ){
 #  undef GSS_C_NT_HOSTBASED_SERVICE
 # endif
 
-# undef a_NET_GSSAPI_H
+# undef a_CRED_GSSAPI_H
 #endif
 #endif /* mx_HAVE_GSSAPI */
 /* s-it-mode */
