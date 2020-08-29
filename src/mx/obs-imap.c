@@ -75,7 +75,7 @@ su_EMPTY_FILE()
 #include "mx/ui-str.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+# include "mx/cred-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 /* TODO fake */
@@ -294,7 +294,7 @@ static char *     imap_strex(char const *cp, char const **xp);
 static enum okay  check_expunged(void);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 static char *
@@ -437,7 +437,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 FL char const *
