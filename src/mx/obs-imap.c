@@ -66,6 +66,7 @@ su_EMPTY_FILE()
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
+#include "mx/cred-oauthbearer.h"
 #include "mx/iconv.h"
 #include "mx/file-streams.h"
 #include "mx/mime-enc.h"
@@ -1594,101 +1595,48 @@ jleave:
 static enum okay
 a_imap_oauthbearer(struct mailbox *mp, struct mx_url *urlp,
       struct mx_cred_ctx *ccp, boole is_xoauth2){
-   struct str b64;
-   union {uz u; int s; char const *tp;} j;
-   uz i;
-   boole nsaslir;
-   char *cp;
+   struct str s;
+   uz i, j;
+   char const *tagp, *mech, oa[] = " AUTHENTICATE OAUTHBEARER ",
+      xoa[] = " AUTHENTICATE XOAUTH2 ";
    FILE *queuefp;
    enum okay rv;
    NYD_IN;
 
    rv = STOP;
    queuefp = NIL;
-   cp = NIL;
-   nsaslir = !(mp->mb_flags & MB_SASL_IR);
-   nsaslir = 1;
 
-   /* Calculate required storage */
-#define a_MAX \
-   (2 + sizeof("T1 AUTHENTICATE OAUTHBEARER " \
-      "n,a=,\001host=\001port=65535\001auth=Bearer \001\001" NETNL))
-
-   i = ccp->cc_user.l;
-   if(ccp->cc_pass.l >= (j.u = UZ_MAX - a_MAX) ||
-         i >= (j.u -= ccp->cc_pass.l) ||
-         (!is_xoauth2 && (urlp->url_host.l >= j.u ||
-             i >= (j.u -= urlp->url_host.l)))){
-jerr_cred:
-      n_err(_("Credentials overflow buffer sizes\n"));
-      goto jleave;
-   }
-   i += ccp->cc_pass.l;
-
+   tagp = tag(TRU1);
+   i = su_cs_len(tagp);
    if(!is_xoauth2)
-      i += urlp->url_host.l;
-
-   i += a_MAX;
-   if((i = mx_b64_enc_calc_size(i)) == UZ_MAX)
-      goto jerr_cred;
-#undef a_MAX
-
-   cp = n_lofi_alloc(i);
-
-   /* Credential string */
-   if(!is_xoauth2)
-      j.s = snprintf(cp, i,
-            "n,a=%s,\001host=%s\001port=%hu\001auth=Bearer %s\001\001",
-            ccp->cc_user.s, urlp->url_host.s, urlp->url_portno,
-            ccp->cc_pass.s);
+      mech = oa, j = sizeof(oa) -1;
    else
-      j.s = snprintf(cp, i, "user=%s\001auth=Bearer %s\001\001",
-            ccp->cc_user.s, ccp->cc_pass.s);
+      mech = xoa, j = sizeof(xoa) -1;
 
-   if(mx_b64_enc_buf(&b64, cp, j.s, mx_B64_AUTO_ALLOC) == NIL)
+   if(!mx_oauthbearer_create_icr(&s, i + j, urlp, ccp, is_xoauth2))
       goto jleave;
 
-   /* The login command */
-   j.tp = tag(TRU1);
-   i = su_cs_len(j.tp);
-   su_mem_copy(cp, j.tp, i);
+   su_mem_copy(s.s, tagp, i);
+   su_mem_copy(&s.s[i], mech, j);
 
-   /* C99 */{
-      char const *mech, oa[] = " AUTHENTICATE OAUTHBEARER ",
-            xoa[] = " AUTHENTICATE XOAUTH2 ";
-
-      if(!is_xoauth2)
-         mech = oa, j.u = sizeof(oa);
-      else
-         mech = xoa, j.u = sizeof(xoa);
-      su_mem_copy(&cp[i], mech, j.u /*-1*/);
-      i += j.u -1 - 1;
+   /* TODO Do not handle here, but in config stuff */
+   if(!(mp->mb_flags & MB_SASL_IR)){
+      n_err(_("Server does not support Initial Client Response, "
+         "OAUTHBEARER/XOAUTH2 not possible\n"));
+      goto jleave;
    }
-   if(!nsaslir){
-      su_mem_copy(&cp[++i], b64.s, b64.l);
-      i += b64.l;
-   }
-   su_mem_copy(&cp[i], NETNL, sizeof(NETNL));
 
-   IMAP_XOUT(cp, (nsaslir ? 0 : MB_COMD), goto jleave, goto jleave);
+   IMAP_XOUT(s.s, MB_COMD, goto jleave, goto jleave);
    if((rv = imap_answer(mp, 1)) == STOP)
       goto jleave;
 
-   if(nsaslir){
-      if(response_type != RESPONSE_CONT)
-         goto jleave;
-
-      su_mem_copy(cp, b64.s, b64.l);
-      su_mem_copy(&cp[b64.l], NETNL, sizeof(NETNL));
-      IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
-   }
-
+   /* TODO RFC 7628 MUSTs dummy client response after error */
    while(mp->mb_active & MB_COMD)
       rv = imap_answer(mp, 1);
 
 jleave:
-   if(cp != NIL)
-      n_lofi_free(cp);
+   if(s.s != NIL)
+      n_lofi_free(s.s);
 
    NYD_OU;
    return rv;
