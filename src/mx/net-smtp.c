@@ -44,7 +44,7 @@ su_EMPTY_FILE()
 #include "mx/net-socket.h"
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/net-gssapi.h" /* $(MX_SRCDIR) */
+# include "mx/cred-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #include "mx/net-smtp.h"
@@ -112,7 +112,7 @@ static boole a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp,
       struct a_netsmtp_ctx *nscp);
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 /* Indirect SMTP I/O; manual claims log happens for 2x*verbose*! */
@@ -598,7 +598,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include <mx/net-gssapi.h>
+# include <mx/cred-gssapi.h>
 #endif
 
 #undef a_SMTP_OUT
