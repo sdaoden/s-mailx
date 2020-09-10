@@ -651,8 +651,9 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       cfc.cfc_fp = cqcp->cqc_fp;
       cfc.cfc_indent_prefix = NIL;/*cqcp->cqc_indent_prefix;*/
       cfc.cfc_mp = cqcp->cqc_mp;
-      n_header_textual_sender_info(cfc.cfc_mp = cqcp->cqc_mp, &cfc.cfc_cumul,
-         &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NIL);
+      n_header_textual_sender_info(cfc.cfc_mp = cqcp->cqc_mp,
+         (cqcp->cqc_do_quote ? NIL : cqcp->cqc_hp),
+         &cfc.cfc_cumul, &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NIL);
       cfc.cfc_date = n_header_textual_date_info(cqcp->cqc_mp, NIL);
       /* C99 */{
          struct mx_name *np;
@@ -1321,8 +1322,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
             su_mem_set(&cqc, 0, sizeof cqc);
             cqc.cqc_fp = _coll_fp;
+            cqc.cqc_hp = hp;
             if(msf & n_MAILSEND_IS_FWD){
-               cqc.cqc_hp = hp;
                cqc.cqc_quoteitp = n_IGNORE_FWD;
                cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
             }else{

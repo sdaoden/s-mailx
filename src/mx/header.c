@@ -3068,19 +3068,23 @@ jredo_localtime:
 }
 
 FL struct mx_name *
-n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
-      char **addr_or_null, char **name_real_or_null, char **name_full_or_null,
-      boole *is_to_or_null){
+n_header_textual_sender_info(struct message *mp, struct header *hp_or_nil,
+      char **cumulation_or_null, char **addr_or_null, char **name_real_or_null,
+      char **name_full_or_null, boole *is_to_or_null){
    struct n_string s_b1, s_b2, *sp1, *sp2;
+   char *cp;
    struct mx_name *np, *np2;
    boole isto, b;
-   char *cp;
    NYD_IN;
 
-   cp = n_header_senderfield_of(mp);
    isto = FAL0;
 
-   if((np = lextract(cp, GFULL | GSKIN)) != NULL){
+   if((hp_or_nil != NIL &&
+            ((np = hp_or_nil->h_mailx_orig_sender) != NIL ||
+             (np = hp_or_nil->h_mailx_orig_from) != NIL ||
+             (np = hp_or_nil->h_sender) != NIL ||
+             (np = hp_or_nil->h_from) != NIL)) ||
+         (np = lextract(n_header_senderfield_of(mp), GFULL | GSKIN)) != NIL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
             np->n_flink == NULL && mx_name_is_mine(np->n_name)){
          if((cp = hfield1("to", mp)) != NULL &&
@@ -3152,8 +3156,9 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
          *name_full_or_null = cp;
    }
 
-   if(is_to_or_null != NULL)
+   if(is_to_or_null != NIL)
       *is_to_or_null = isto;
+
    NYD_OU;
    return np;
 }
