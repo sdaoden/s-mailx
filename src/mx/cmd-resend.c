@@ -332,7 +332,10 @@ a_crese_do_rt_swap_in(struct header *hp, struct mx_name *the_rt){
 
    rv = FAL0;
 
-   if(the_rt != NIL && (rtsi = ok_vlook(reply_to_swap_in)) != NIL &&
+   /* We only swap in Reply-To: if it contains only one address, because
+    * otherwise the From:/Sender: ambiguation comes into play */
+   if(the_rt != NIL && the_rt->n_flink == NIL &&
+         (rtsi = ok_vlook(reply_to_swap_in)) != NIL &&
          (np = hp->h_mailx_orig_sender) != NIL){
 
       rv = TRU1;
@@ -481,11 +484,12 @@ jwork_msg:
    head.h_flags = hf;
    head.h_subject = a_crese_reedit(hfield1("subject", mp));
    head.h_mailx_command = (hf & HF_LIST_REPLY) ? "Lreply" : "reply";
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
+   /* XXX Why did i do it so, no fallback to n_header_senderfield_of()? */
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
    /* First of all check for Reply-To: then Mail-Followup-To:, because these,
     * if honoured, take precedence over anything else.  We will join the
@@ -739,11 +743,11 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_subject = a_crese_reedit(head.h_subject);
    a_crese_make_ref_and_cs(mp, &head);
    head.h_mailx_command = "Reply";
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
    for(ap = msgvec; *ap != 0; ++ap){
       struct mx_name *np, *the_rt;
@@ -835,11 +839,11 @@ jwork_msg:
    head.h_subject = a_crese__fwdedit(head.h_subject);
    head.h_mailx_command = "forward";
    head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
-   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
-   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
-   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
-   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
-   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
+   head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
    if(forward_as_attachment){
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
@@ -980,11 +984,11 @@ jedar:
       head.h_to = myto;
       head.h_mailx_command = "resend";
       head.h_mailx_raw_to = myrawto;
-      head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | gf);
-      head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
-      head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
-      head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
-      head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
+      head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
+      head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT|GFULL|gf);
+      head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
+      head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
+      head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
       if(n_resend_msg(mp, urlp, &head, add_resent) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
