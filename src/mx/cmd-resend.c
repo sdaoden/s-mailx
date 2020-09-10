@@ -389,6 +389,7 @@ a_crese_rt_swap_in(struct header *hp, struct mx_name *the_rt){
       struct mx_name *np, **xnpp, *xnp;
 
       np = hp->h_mailx_orig_sender;
+      hp->h_mailx_orig_sender = the_rt; /* Unambiguous! */
 
       for(xnpp = &hp->h_from, any = FAL0;;){
          for(xnp = *xnpp; xnp != NIL; xnp = xnp->n_flink)

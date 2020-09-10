@@ -158,7 +158,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    /* C99 */{
       boole isto;
 
-      n_header_textual_sender_info(mp, &cp, NULL, NULL, NULL, &isto);
+      n_header_textual_sender_info(mp, NIL, &cp, NULL, NULL, NULL, &isto);
       name = cp;
       if(isto)
          flags |= _ISTO;

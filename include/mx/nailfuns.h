@@ -879,6 +879,7 @@ FL char *n_header_textual_date_info(struct message *mp,
  * TODO n_header_textual_sender_info(): should only create a list of matching
  * TODO name objects, which the user can iterate over and o->to_str().. */
 FL struct mx_name *n_header_textual_sender_info(struct message *mp,
+                  struct header *hp_or_nil,
                   char **cumulation_or_null, char **addr_or_null,
                   char **name_real_or_null, char **name_full_or_null,
                   boole *is_to_or_null);
