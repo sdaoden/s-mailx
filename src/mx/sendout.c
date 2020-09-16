@@ -3096,9 +3096,9 @@ j_mft_add:
    }
 
    if(w & (GREF | GREF_IRT)){
-      if((np = hp->h_in_reply_to) == NULL)
-         hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
-      if(np != NULL){
+      if((np = hp->h_in_reply_to) == NIL)
+         np = mx_header_setup_in_reply_to(hp);
+      if(np != NIL){
          if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
                !(hp->h_flags & HF_USER_EDITED)){
             if(fputs(_("# Removing or modifying In-Reply-To: "

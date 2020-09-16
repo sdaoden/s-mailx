@@ -13176,6 +13176,8 @@ define t_oce {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
+		digmsg - hea show maIlx-editeD-SENDER;\
+		digmsg - hea show maIlx-editeD-origiN;\
 		digmsg remove -;ec "$?/$!/$^ERRNAME"
 	digmsg create -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;readall x;echon "$x";\
@@ -13204,6 +13206,8 @@ define t_ocl {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
+		digmsg - hea show maIlx-editeD-SENDER;\
+		digmsg - hea show maIlx-editeD-origiN;\
 		digmsg remove -;ec "$?/$!/$^ERRNAME"
 	digmsg create -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;readall x;echon "$x";\
@@ -13228,6 +13232,8 @@ define t_occ {
 		digmsg - hea show mailx-orig-tO;\
 		digmsg - hea show mailx-orig-Cc;\
 		digmsg - hea show mailx-oriG-bcc;\
+		digmsg - hea show maIlx-editeD-SENDER;\
+		digmsg - hea show maIlx-editeD-origiN;\
 		digmsg remove -;ec "$?/$!/$^ERRNAME"
 	# ditto digmsg create -;ec "$?/$!/$^ERRNAME";\
 		digmsg - hea list;readall x;echon "$x";\

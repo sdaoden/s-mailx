@@ -1622,10 +1622,10 @@ ndup(struct mx_name *np, enum gfield ntype){
 	struct mx_name *nnp;
 	NYD_IN;
 
-#if 0
-	if(ntype & (GTO | GCC | GBCC | GIDENT))
-		ntype |= GFULL | GSKIN;
-#endif
+	if(np == NIL){
+		nnp = NIL;
+		goto jleave;
+	}
 
 	if(!(np->n_flags & mx_NAME_SKINNED)){
 		nnp = a_nm_alloc(np->n_name, ntype);
@@ -2194,8 +2194,9 @@ cat(struct mx_name *n1, struct mx_name *n2){
 		goto jleave;
 
 	tail = n1;
-	if(n2 == NIL || (n2->n_type & GDEL))
+	if(n2 == NIL)
 		goto jleave;
+	ASSERT(!(n2->n_type & GDEL));
 
 	while(tail->n_flink != NIL)
 		tail = tail->n_flink;
