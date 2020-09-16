@@ -3445,6 +3445,7 @@ jleave:
 FL char const *
 n_header_is_known(char const *name, uz len){
    static char const * const names[] = {
+      /* RFC 5322 header names common here */
       "Bcc", "Cc", "From",
       "In-Reply-To", "Mail-Followup-To",
       "Message-ID", "References", "Reply-To",
@@ -3456,7 +3457,15 @@ n_header_is_known(char const *name, uz len){
       "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
          "Mailx-Orig-Sender", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
-      NULL
+      /* Rest of RFC 5322 standard headers, almost never seen here.
+       * As documented for *customhdr*, allow Comments:, Keywords: */
+      /*"Comments",*/ "Date",
+      /*"Keywords",*/ "Received",
+      "Resent-Bcc", "Resent-Cc", "Resent-Date",
+         "Resent-From", "Resent-Message-ID", "Resent-Reply-To",
+         "Resent-Sender", "Resent-To",
+      "Return-Path",
+      NIL
    };
    char const * const *rv;
    NYD_IN;
@@ -3464,9 +3473,10 @@ n_header_is_known(char const *name, uz len){
    if(len == UZ_MAX)
       len = su_cs_len(name);
 
-   for(rv = names; *rv != NULL; ++rv)
+   for(rv = names; *rv != NIL; ++rv)
       if(!su_cs_cmp_case_n(*rv, name, len))
          break;
+
    NYD_OU;
    return *rv;
 }

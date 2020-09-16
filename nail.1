@@ -8461,7 +8461,8 @@ is optional.
 is returned upon success, followed by the name of the header and the list
 position of the newly inserted instance.
 The list position is always 1 for single-instance header fields.
-All free-form header fields are managed in a single list.
+All free-form header fields are managed in a single list; also see
+.Va customhdr .
 .
 .It Cm list
 Without a third argument a list of all yet existing headers is given via
@@ -9551,7 +9552,11 @@ forwarded messages.
 A custom header consists of the field name followed by a colon
 .Ql \&:
 and the field content body.
-Standard header field names cannot be overwritten by a custom header.
+Standard header field names cannot be overwritten by a custom header,
+with the exception of
+.Ql Comments:
+and
+.Ql Keywords: .
 Different to the command line option
 .Fl C
 the variable value is interpreted as a comma-separated list of custom
