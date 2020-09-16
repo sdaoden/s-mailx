@@ -1812,11 +1812,7 @@ n_header_textual_sender_info(struct message *mp, struct header *hp_or_nil,
 
    isto = FAL0;
 
-   if((hp_or_nil != NIL &&
-            ((np = hp_or_nil->h_mailx_orig_sender) != NIL ||
-             (np = hp_or_nil->h_mailx_orig_from) != NIL ||
-             (np = hp_or_nil->h_sender) != NIL ||
-             (np = hp_or_nil->h_from) != NIL)) ||
+   if((hp_or_nil != NIL && (np = hp_or_nil->h_mailx_eded_sender) != NIL) ||
          (np = mx_name_parse(n_header_senderfield_of(mp), GIDENT)) != NIL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
             np->n_flink == NULL && mx_name_is_metoo_cp(np->n_name, TRU1)){
@@ -1963,44 +1959,185 @@ jleave:
    return rv;
 }
 
-#ifdef mx_HAVE_XTLS
-FL char *
-getsender(struct message *mp){
-   char *cp;
-   struct mx_name *np;
-   NYD2_IN;
-
-   if((cp = hfield1("from", mp)) == NIL ||
-         (np = mx_name_parse(cp, GIDENT)) == NIL)
-      cp = NIL;
-   else if(np->n_flink == NIL)
-      cp = np->n_name;
-   else{
-      cp = hfield1("sender", mp);
-      if(cp != NIL){
-         np = mx_name_parse(cp, GIDENT);
-         cp = (np != NIL && np->n_flink == NIL) ? np->n_name : NIL;
-      }
-   }
-
-   NYD2_OU;
-   return cp;
-}
-#endif
-
-FL struct mx_name *
-n_header_setup_in_reply_to(struct header *hp){
+FL void
+mx_header_setup_references(struct header *hp, struct message *mp){
+   uz i;
+   uz oldmsgidlen, reflen, oldreflen;
+   char *oldmsgid, *oldref, *newref;
    struct mx_name *np;
    NYD_IN;
 
-   np = NULL;
+   np = NIL;
 
-   if(hp != NULL)
-      if((np = hp->h_in_reply_to) == NULL && (np = hp->h_ref) != NULL)
-         while(np->n_flink != NULL)
-            np = np->n_flink;
+   if((oldmsgid = hfield1("message-id", mp)) == NIL || *oldmsgid == '\0'){
+      hp->h_ref = NIL;
+      goto jleave;
+   }
+   oldmsgidlen = su_cs_len(oldmsgid);
+
+   if((oldref = hfield1("references", mp)) != NIL){
+      oldreflen = su_cs_len(oldref);
+   }else
+      oldreflen = 0;
+
+   reflen = oldreflen + 2 + oldmsgidlen +1;
+   newref = su_LOFI_ALLOC(reflen);
+
+   if(oldref != NIL){
+      su_mem_copy(newref, oldref, oldreflen +1);
+      newref[oldreflen++] = ',';
+      newref[oldreflen++] = ' ';
+   }
+   su_mem_copy(&newref[oldreflen], oldmsgid, oldmsgidlen +1);
+
+   np = extract(newref, GREF);
+
+   su_LOFI_FREE(newref);
+
+   /* Limit number of references TODO better on parser side */
+   while(np->n_flink != NIL)
+      np = np->n_flink;
+   for(i = 1; i <= REFERENCES_MAX; ++i){
+      if(np->n_blink != NIL)
+         np = np->n_blink;
+      else
+         break;
+   }
+   np->n_blink = NIL;
+
+jleave:
+   hp->h_ref = np;
    NYD_OU;
+}
+
+FL struct mx_name *
+mx_header_setup_in_reply_to(struct header *hp){
+   struct mx_name *np;
+   NYD2_IN;
+
+   np = NIL;
+
+   if(hp != NIL){
+      if((np = hp->h_in_reply_to) == NIL && (np = hp->h_ref) != NIL)
+         while(np->n_flink != NIL)
+            np = np->n_flink;
+
+      hp->h_in_reply_to = np;
+   }
+
+   NYD2_OU;
    return np;
+}
+
+FL void
+mx_header_setup_pseudo_orig(struct header *hp, struct message *mp){
+   NYD2_IN;
+
+   hp->h_mailx_orig_sender = mx_name_parse(n_header_senderfield_of(mp), GIDENT);
+   hp->h_mailx_orig_from = mx_name_parse(hfield1("from", mp), GIDENT);
+   hp->h_mailx_orig_to = mx_name_parse(hfield1("to", mp), GTO);
+   hp->h_mailx_orig_cc = mx_name_parse(hfield1("cc", mp), GCC);
+   hp->h_mailx_orig_bcc = mx_name_parse(hfield1("bcc", mp), GBCC);
+
+   hp->h_mailx_eded_sender = ndup(hp->h_mailx_orig_sender, GIDENT);
+   hp->h_mailx_eded_origin = ndup(hp->h_mailx_orig_from, GIDENT);
+
+   NYD2_OU;
+}
+
+FL struct mx_name *
+mx_header_get_reply_to(struct message *mp, struct header *hp_or_nil,
+      boole append){
+   struct n_string promptb, *p;
+   char const *cp;
+   struct mx_name *rt, *np;
+   NYD_IN;
+
+   rt = NIL;
+
+   if((cp = ok_vlook(reply_to_honour)) == NIL)
+      goto jleave;
+
+   rt = checkaddrs(mx_name_parse(hfield1("reply-to", mp), GIDENT),
+         EACM_STRICT | EACM_NONAME, NIL);
+   if(rt == NIL)
+      goto jleave;
+
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
+      p = n_string_reserve(n_string_creat(p = &promptb), 1024 -1);
+
+/* FIXME: if reply_to: equals from: simply use from! */
+      p = n_string_push_cp(p, _("Honour Reply-To: "));
+      for(np = rt; np != NIL; np = np->n_flink){
+         if(np != rt)
+            p = n_string_push_buf(p, ", ", 2);
+         p = n_string_push_cp(p, np->n_fullname);
+      }
+   }else
+      p = NIL;
+
+   if(n_quadify(cp, UZ_MAX, (p != NIL ? n_string_cp(p) : NIL), TRU1
+         ) <= FAL0)
+      rt = NIL;
+
+   if(p != NIL)
+      n_string_gut(p);
+
+   /* A Reply-To: "replaces" the content of From: */
+   if(rt != NIL && hp_or_nil != NIL){
+      if(!append)
+         hp_or_nil->h_mailx_eded_origin = NIL;
+      hp_or_nil->h_mailx_eded_origin = cat(hp_or_nil->h_mailx_eded_origin,
+            ndup(rt, rt->n_type));
+
+      if(!append && rt->n_flink == NIL)
+         hp_or_nil->h_mailx_eded_sender = ndup(rt, rt->n_type);
+   }
+
+jleave:
+   NYD_OU;
+   return rt;
+}
+
+FL struct mx_name *
+mx_header_get_mail_followup_to(struct message *mp){
+   struct n_string promptb, *p;
+   char const *cp;
+   struct mx_name *mft, *np;
+   NYD_IN;
+
+   mft = NIL;
+
+   if((cp = ok_vlook(followup_to_honour)) == NIL)
+      goto jleave;
+
+   mft = checkaddrs(mx_name_parse(hfield1("mail-followup-to", mp), GIDENT),
+         EACM_STRICT, NIL);
+   if(mft == NIL)
+      goto jleave;
+
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
+      p = n_string_reserve(n_string_creat(p = &promptb), 1024 -1);
+
+      p = n_string_push_cp(p, _("Honour Mail-Followup-To: "));
+      for(np = mft; np != NIL; np = np->n_flink){
+         if(np != mft)
+            p = n_string_push_buf(p, ", ", 2);
+         p = n_string_push_cp(p, np->n_fullname);
+      }
+   }else
+      p = NIL;
+
+   if(n_quadify(cp, UZ_MAX, (p != NIL ? n_string_cp(p) : NIL), TRU1
+         ) <= FAL0)
+      mft = NIL;
+
+   if(p != NIL)
+      n_string_gut(p);
+
+jleave:
+   NYD_OU;
+   return mft;
 }
 
 FL int
@@ -2218,6 +2355,7 @@ n_header_is_known(char const *name, uz len){
       "Fcc",
       /* Mailx internal temporaries */
       "Mailx-Command",
+      "Mailx-Edited-Origin", "Mailx-Edited-Sender",
       "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
          "Mailx-Orig-Sender", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
