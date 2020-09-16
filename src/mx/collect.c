@@ -138,7 +138,7 @@ static s32 a_coll_write(char const *name, FILE *fp, int f);
 /* *message-inject-head* */
 static boole a_coll_message_inject_head(FILE *fp);
 
-/* If mp==NIL, we try to use hp->h_mailx_orig_sender */
+/* If mp==NIL, we try to use hp->h_mailx_eded_sender */
 static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
 
 /* With bells and whistles */
@@ -519,7 +519,10 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
    struct mx_name *addcc;
    NYD_IN;
 
-   addcc = (mp != NIL) ? mx_header_sender_of(mp, 0) : hp->h_mailx_orig_sender;
+   if(mp == NIL)
+      addcc = hp->h_mailx_eded_sender;
+   else if((addcc = mx_header_get_reply_to(mp, NIL, FAL0)) == NIL)
+      addcc = mx_header_sender_of(mp, 0);
 
    if(addcc != NIL){
       u32 gf;
@@ -537,6 +540,7 @@ static boole
 a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
+   struct su_mem_bag *mbp;
    boole rv;
    NYD_IN;
 
@@ -546,11 +550,11 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       char const *cp_v15compat;
 
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
-         if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         if((mbp = cqcp->cqc_membag_persist) != NIL)
+            su_mem_bag_push(mx_go_data->gdc_membag, mbp);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
-         if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         if(mbp != NIL)
+            su_mem_bag_pop(mx_go_data->gdc_membag, mbp);
       }
 
       if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
@@ -564,11 +568,11 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       goto jleave;
    }else{
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
-         if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         if((mbp = cqcp->cqc_membag_persist) != NIL)
+            su_mem_bag_push(mx_go_data->gdc_membag, mbp);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
-         if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+         if(mbp != NIL)
+            su_mem_bag_pop(mx_go_data->gdc_membag, mbp);
       }
 
       if(cqcp->cqc_quoteitp == NIL)
@@ -794,7 +798,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    if(hp != NIL){
       hp->h_flags |= HF_COMPOSE_MODE;
       if(hp->h_in_reply_to == NIL)
-         hp->h_in_reply_to = n_header_setup_in_reply_to(hp);
+         mx_header_setup_in_reply_to(hp);
    }
 
    rewind(_coll_fp);

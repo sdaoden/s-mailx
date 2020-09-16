@@ -1407,7 +1407,10 @@ smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
    a_xtls_msgno = (uz)n;
 
    for (;;) {
-      sender = getsender(m);
+      struct mx_name *np;
+
+      np = mx_header_sender_of(m, GSKIN);
+      sender = (np != NIL) ? np->n_name : NIL;
       to = hfield1("to", m);
       cc = hfield1("cc", m);
       cnttype = hfield1("content-type", m);

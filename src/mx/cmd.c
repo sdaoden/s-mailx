@@ -41,6 +41,7 @@
 #include "mx/cmd-fop.h"
 #include "mx/cmd-misc.h"
 #include "mx/cmd-mlist.h"
+#include "mx/cmd-resend.h"
 #include "mx/cmd-shortcut.h"
 #include "mx/cmd-spam.h"
 #include "mx/cmd-vexpr.h"

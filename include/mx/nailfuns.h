@@ -490,33 +490,6 @@ FL int c_draft(void *v);
 FL int c_undraft(void *v);
 
 /*
- * cmd-resend.c
- */
-
-/* All thinkable sorts of `reply' / `respond' and `followup'.. */
-FL int c_reply(void *vp);
-FL int c_replyall(void *vp); /* v15-compat */
-FL int c_replysender(void *vp); /* v15-compat */
-FL int c_Reply(void *vp);
-FL int c_followup(void *vp);
-FL int c_followupall(void *vp); /* v15-compat */
-FL int c_followupsender(void *vp); /* v15-compat */
-FL int c_Followup(void *vp);
-
-/* ..and a mailing-list reply and followup */
-FL int c_Lreply(void *vp);
-FL int c_Lfollowup(void *vp);
-
-/* 'forward' / `Forward' */
-FL int c_forward(void *vp);
-FL int c_Forward(void *vp);
-
-/* Resend a message list to a third person.
- * The latter does not add the Resent-* header series */
-FL int c_resend(void *vp);
-FL int c_Resend(void *vp);
-
-/*
  * cmd-write.c
  */
 
@@ -748,13 +721,22 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct mx_name const *check_from_and_sender(struct mx_name const *fromfield,
                         struct mx_name const *senderfield);
 
-#ifdef mx_HAVE_XTLS
-FL char *      getsender(struct message *m);
-#endif
+/* Setup References: of hp according to mp */
+FL void mx_header_setup_references(struct header *hp, struct message *mp);
 
-/* This returns NULL if hp is NULL or when no information is available.
- * hp remains unchanged (->h_in_reply_to is not set!)  */
-FL struct mx_name *n_header_setup_in_reply_to(struct header *hp);
+/* Setup In-Reply-To:, and return it.  Maybe requires setup references */
+FL struct mx_name *mx_header_setup_in_reply_to(struct header *hp);
+
+/* This also sets the _eded_ series to the _orig_ counterpart */
+FL void mx_header_setup_pseudo_orig(struct header *hp, struct message *mp);
+
+/* Query Reply-To: according to *reply-to-honour*, return it.
+ * Replaces or "append"s pseudo _eded_s as appropriate if hp_or_nil is set! */
+FL struct mx_name *mx_header_get_reply_to(struct message *mp,
+      struct header *hp_or_nil, boole append);
+
+/* Query Mail-Followup-To: according to *followup-to-honour*, return it */
+FL struct mx_name *mx_header_get_mail_followup_to(struct message *mp);
 
 /* Fill in / reedit the desired header fields */
 FL int grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,

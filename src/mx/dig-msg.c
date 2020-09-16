@@ -553,6 +553,8 @@ jcmd_list: jdefault:{ /* {{{ */
       a_X(mailx_orig_to, Mailx-Orig-To);
       a_X(mailx_orig_cc, Mailx-Orig-Cc);
       a_X(mailx_orig_bcc, Mailx-Orig-Bcc)
+      a_X(mailx_eded_sender, Mailx-Edited-Sender);
+      a_X(mailx_eded_origin, Mailx-Edited-Origin);
 
       if((hp->h_flags & HF_CMD_MASK) != HF_NONE &&
             fputs(" " su_STRING(Mailx-Command), fp) == EOF){
@@ -618,6 +620,8 @@ jlist:
       a_X(Mailx-Orig-To, mailx_orig_to);
       a_X(Mailx-Orig-Cc, mailx_orig_cc);
       a_X(Mailx-Orig-Bcc, mailx_orig_bcc);
+      a_X(Mailx-Edited-Sender, mailx_eded_sender);
+      a_X(Mailx-Edited-Origin, mailx_eded_origin);
 
       if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
          np = ((hp->h_flags & HF_CMD_MASK) != HF_NONE)
@@ -904,6 +908,8 @@ jshow:
    a_X(Mailx-Orig-To, mailx_orig_to);
    a_X(Mailx-Orig-Cc, mailx_orig_cc);
    a_X(Mailx-Orig-Bcc, mailx_orig_bcc);
+   a_X(Mailx-Edited-Sender, mailx_eded_sender);
+   a_X(Mailx-Edited-Origin, mailx_eded_origin);
 
    if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
       if((i = hp->h_flags & HF_CMD_MASK) == HF_NONE)
