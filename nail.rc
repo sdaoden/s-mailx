@@ -93,8 +93,9 @@ set hold
 # POSIX mandates tabulator ("set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
-# Honour Mail-Followup-To: headers when replying etc.
-set followup-to-honour=ask-yes
+# Honour Mail-Followup-To: headers when replying etc., and generate these
+# headers when sending messages to known mailing-lists.
+set followup-to-honour=ask-yes followup-to
 
 # Mark messages that have been answered.
 set markanswered
@@ -314,8 +315,8 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 #  umask=
 #
 ## Some mailing lists
-#\mlist '@xyz-editor\.xyz$'  '@xyzf\.xyz$'
-#\mlsubscribe '^xfans@xfans\.xyz$'
+#\mlist list.one@exam.ple  '@xyz-editor\.xyz$' '@xyzf\.xyz$'
+#\mlsubscribe list.two@exam.ple  '^xfans@xfans\.xyz$'
 #
 ## A real life example of a very huge free mail provider
 ## Instead of directly placing content inside `account',
