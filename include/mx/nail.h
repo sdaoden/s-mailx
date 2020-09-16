@@ -1196,15 +1196,18 @@ struct header{
    char const *h_list_post; /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
    struct n_header_field *h_custom_headers; /* (Cached result) */
-   /* Raw/original versions of the header(s). If any */
-   struct mx_name *h_mailx_raw_to;
-   struct mx_name *h_mailx_raw_cc;
-   struct mx_name *h_mailx_raw_bcc;
+   /* Raw/original versions of the header(s). If any.
+    * The "edited" originator (Sender + From <-> Reply-To) only for reply+ */
    struct mx_name *h_mailx_orig_sender;
    struct mx_name *h_mailx_orig_from;
    struct mx_name *h_mailx_orig_to;
    struct mx_name *h_mailx_orig_cc;
    struct mx_name *h_mailx_orig_bcc;
+   struct mx_name *h_mailx_eded_sender;
+   struct mx_name *h_mailx_eded_origin;
+   struct mx_name *h_mailx_raw_to;
+   struct mx_name *h_mailx_raw_cc;
+   struct mx_name *h_mailx_raw_bcc;
 };
 
 struct n_addrguts{

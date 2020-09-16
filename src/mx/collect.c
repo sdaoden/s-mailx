@@ -158,7 +158,7 @@ static s32 a_coll_write(char const *name, FILE *fp, boole show_name);
 /* *message-inject-head* */
 static boole a_coll_message_inject_head(FILE *fp);
 
-/* If mp==NIL, we try to use hp->h_mailx_orig_sender */
+/* If mp==NIL, we try to use hp->h_mailx_eded_sender */
 static void a_collect_add_sender_to_cc(struct header *hp, struct message *mp);
 
 /* With bells and whistles */
@@ -608,7 +608,10 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
 	struct mx_name *addcc;
 	NYD_IN;
 
-	addcc = (mp != NIL) ? mx_header_sender_of(mp) : hp->h_mailx_orig_sender;
+	if(mp == NIL)
+		addcc = hp->h_mailx_eded_sender;
+	else if((addcc = mx_header_get_reply_to(mp, NIL, FAL0)) == NIL)
+		addcc = mx_header_sender_of(mp);
 
 	if(addcc != NIL)
 		hp->h_cc = cat(hp->h_cc, ndup(addcc, GCC));
@@ -863,7 +866,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd){ /* TODO errret */
 	if(hp != NIL){
 		hp->h_flags |= HF_COMPOSE_MODE;
 		if(hp->h_in_reply_to == NIL)
-			hp->h_in_reply_to = n_header_setup_in_reply_to(hp);
+			mx_header_setup_in_reply_to(hp);
 	}
 
 	rewind(a_coll->cc_fp);
