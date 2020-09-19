@@ -1320,7 +1320,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             if(msf & n_MAILSEND_IS_FWD){
                cqc.cqc_hp = hp;
                cqc.cqc_quoteitp = n_IGNORE_FWD;
-               cqc.cqc_is_forward = TRU1;
+               cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
             }else{
                cqc.cqc_quoteitp = n_IGNORE_ALL;
                cqc.cqc_indent_prefix = ok_vlook(indentprefix);
