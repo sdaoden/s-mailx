@@ -88,9 +88,10 @@ struct a_coll_quote_ctx{
    FILE *cqc_fp;
    struct header *cqc_hp;
    struct n_ignore const *cqc_quoteitp; /* Or NIL */
+   boole cqc_add_cc; /* Honour *{forward,quote}-add-cc* (not initial quote)? */
    boole cqc_is_forward; /* Forwarding rather than quoting */
    boole cqc_do_quote; /* Forced ~Q, not initial reply */
-   u8 cqc__pad[2];
+   u8 cqc__pad[1];
    enum sendaction cqc_action;
    char const *cqc_indent_prefix;
    struct message *cqc_mp;
@@ -595,7 +596,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    if(cqcp->cqc_is_forward){
       char const *cp_v15compat;
 
-      if(cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
+      if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
             su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
@@ -613,7 +614,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       rv = TRU1;
       goto jleave;
    }else{
-      if(cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
+      if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
             su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
@@ -968,6 +969,7 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
+   cqc.cqc_add_cc = TRU1;
    if(f != 'Q')
       cqc.cqc_is_forward = TRU1;
    else
