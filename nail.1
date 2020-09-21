@@ -792,8 +792,11 @@ and
 are looked up, and acted upon.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
-$ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' |\e
-  LC_ALL=C \*(uA -d#:x -X'alias bob bob@exam.ple'
+$ for name in bob alice@exam.ple lisa@exam.ple; do
+    printf 'mail %s\en~s ubject\enText\en~.\en' "${name}"
+  done |
+  LC_ALL=C \*(uA -#:x -Smta=test \e
+    -X'alias bob bob@exam.ple'
 .Ed
 .
 .Mx
@@ -860,11 +863,11 @@ delivery.
 standard, but
 .Va posix ,
 one of the
-.Sx "INTERNAL VARIABLES"
-(or its
+.Sx "INTERNAL VARIABLES" ,
+or its
 .Sx ENVIRONMENT Ns
 al equivalent
-.Ev POSIXLY_CORRECT ) ,
+.Ev POSIXLY_CORRECT ,
 needs to be set to adjust behaviour to be almost on par.
 Almost, because there is one important difference: POSIX
 .Sx "Shell-style argument quoting"
