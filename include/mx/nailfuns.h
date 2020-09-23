@@ -147,8 +147,7 @@ FL boole temporary_folder_hook_check(boole nmail);
 FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
 
 /* TODO v15 drop Invoke compose hook macname */
-FL void temporary_compose_mode_hook_call(char const *macname,
-            void (*hook_pre)(void *), void *hook_arg);
+FL void temporary_compose_mode_hook_call(char const *macname);
 FL void temporary_compose_mode_hook_unroll(void);
 
 #ifdef mx_HAVE_HISTORY
@@ -589,9 +588,6 @@ FL int c_write(void *vp);
 /*
  * collect.c
  */
-
-/* temporary_compose_mode_hook_call() etc. setter hook */
-FL void n_temporary_compose_hook_varset(void *arg);
 
 /* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */

@@ -2407,8 +2407,8 @@ jleave:
 
       mx_fs_close(mtf);
 
-      if((cp = ok_vlook(on_compose_cleanup)) != NULL)
-         temporary_compose_mode_hook_call(cp, NULL, NULL);
+      if((cp = ok_vlook(on_compose_cleanup)) != NIL)
+         temporary_compose_mode_hook_call(cp);
    }
 
    temporary_compose_mode_hook_unroll();
@@ -2937,10 +2937,9 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    /* C99 */{
       char const *cp;
 
-      if((cp = ok_vlook(on_resend_enter)) != NULL){
+      if((cp = ok_vlook(on_resend_enter)) != NIL){
          /*setup_from_and_sender(hp);*/
-         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
-            hp);
+         temporary_compose_mode_hook_call(cp);
       }
    }
 
@@ -3016,8 +3015,8 @@ jleave:
       mx_fs_close(nfi);
 
       if(ibuf != NULL){
-         if((cp = ok_vlook(on_resend_cleanup)) != NULL)
-            temporary_compose_mode_hook_call(cp, NULL, NULL);
+         if((cp = ok_vlook(on_resend_cleanup)) != NIL)
+            temporary_compose_mode_hook_call(cp);
 
          temporary_compose_mode_hook_unroll();
       }

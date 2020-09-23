@@ -785,10 +785,9 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
    if(do_delayed_due_t){
       char const *cp;
 
-      if((cp = ok_vlook(on_compose_enter)) != NULL){
+      if((cp = ok_vlook(on_compose_enter)) != NIL){
          setup_from_and_sender(hp);
-         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
-            hp);
+         temporary_compose_mode_hook_call(cp);
       }
 
       if(!a_coll_message_inject_head(nf))
@@ -1103,7 +1102,7 @@ a_coll_ocs__mac(void){
       ok_vset(log_prefix, buf);
    }
    /* TODO If that uses `!' it will effectively SIG_IGN SIGINT, ...and such */
-   temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
+   temporary_compose_mode_hook_call(a_coll_ocs__macname);
    return 0;
 }
 
@@ -1115,7 +1114,7 @@ a_coll_ocs__finalize(void *vp){
    struct a_coll_ocs_arg **coapp, *coap;
    NYD2_IN;
 
-   temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
+   temporary_compose_mode_hook_call(R(char*,-1));
 
    coap = *(coapp = vp);
    *coapp = (struct a_coll_ocs_arg*)-1;
@@ -1139,62 +1138,6 @@ a_coll_ocs__finalize(void *vp){
    safe_signal(SIGPIPE, opipe);
    safe_signal(SIGINT, oint);
    mx_sigs_all_rele();
-   NYD2_OU;
-}
-
-FL void
-n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
-   struct header *hp;
-   char const *val;
-   NYD2_IN;
-
-   hp = arg;
-
-   if((val = hp->h_subject) == NULL)
-      val = n_empty;
-   ok_vset(mailx_subject, val);
-   if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_from, val);
-   if((val = detract(hp->h_sender, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_sender, val);
-   if((val = detract(hp->h_to, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_to, val);
-   if((val = detract(hp->h_cc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_cc, val);
-   if((val = detract(hp->h_bcc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_bcc, val);
-
-   if((val = hp->h_mailx_command) == NULL)
-      val = n_empty;
-   ok_vset(mailx_command, val);
-
-   if((val = detract(hp->h_mailx_raw_to, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_raw_to, val);
-   if((val = detract(hp->h_mailx_raw_cc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_raw_cc, val);
-   if((val = detract(hp->h_mailx_raw_bcc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_raw_bcc, val);
-
-   if((val = detract(hp->h_mailx_orig_from, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_orig_from, val);
-   if((val = detract(hp->h_mailx_orig_to, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_orig_to, val);
-   if((val = detract(hp->h_mailx_orig_cc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_orig_cc, val);
-   if((val = detract(hp->h_mailx_orig_bcc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(mailx_orig_bcc, val);
    NYD2_OU;
 }
 
@@ -1305,10 +1248,9 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
       /* Execute compose-enter; delayed for -t mode */
       if(!(n_poption & n_PO_t_FLAG) &&
-            (cp = ok_vlook(on_compose_enter)) != NULL){
+            (cp = ok_vlook(on_compose_enter)) != NIL){
          setup_from_and_sender(hp);
-         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
-            hp);
+         temporary_compose_mode_hook_call(cp);
       }
 
       /* TODO Mm: nope: it may require turning this into a multipart one */
@@ -2118,7 +2060,7 @@ jout:
          close(S(int,coap->coa_pipe[1]));
          coap->coa_pipe[1] = -1;
 
-         temporary_compose_mode_hook_call(NULL, NULL, NULL);
+         temporary_compose_mode_hook_call(NIL);
          n_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYANY)),
             &a_coll_ocs__finalize, &coap);
@@ -2196,10 +2138,9 @@ jreasksend:
    }
 
    /* Execute compose-leave */
-   if((cp = ok_vlook(on_compose_leave)) != NULL){
+   if((cp = ok_vlook(on_compose_leave)) != NIL){
       setup_from_and_sender(hp);
-      temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
-         hp);
+      temporary_compose_mode_hook_call(cp);
    }
 
    /* Add automatic receivers */
