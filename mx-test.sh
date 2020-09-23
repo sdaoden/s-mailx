@@ -8148,57 +8148,75 @@ t_compose_hooks() { # {{{ TODO monster
       call t_attach
    }
    define t_oce {
-      echo on-compose-enter, mailx-command<$mailx-command>
+      echo on-compose-enter
       alternates alter1@exam.ple alter2@exam.ple
       alternates
       set autocc='alter1@exam.ple alter2@exam.ple'
-      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-      echo mailx-subject<$mailx-subject>
-      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-         mailx-raw-bcc<$mailx-raw-bcc>
-      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
-         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
       digmsg create - -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;\
+         digmsg - header show mailX-command;\
+         digmsg - header show sUbject;\
+         digmsg - header show tO;\
+         digmsg - header show Cc;\
+         digmsg - header show bCc;\
+         digmsg - header show Mailx-raw-to;\
+         digmsg - header show mailX-raw-cc;\
+         digmsg - header show maiLx-raw-bcc;\
+         digmsg - header show maIlx-orig-sender;\
+         digmsg - header show mAilx-orig-from;\
+         digmsg - header show mailx-orig-tO;\
+         digmsg - header show mailx-orig-Cc;\
+         digmsg - header show mailx-oriG-bcc;\
          digmsg remove -;echo $?/$!/$^ERRNAME
       digmsg create -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;readall x;echon $x;\
          digmsg remove -;echo $?/$!/$^ERRNAME
    }
    define t_ocl {
-      echo on-compose-leave, mailx-command<$mailx-command>
+      echo on-compose-leave
       vput alternates al
       eval alternates $al alter3@exam.ple alter4@exam.ple
       alternates
       set autobcc='alter3@exam.ple alter4@exam.ple'
-      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-      echo mailx-subject<$mailx-subject>
-      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-         mailx-raw-bcc<$mailx-raw-bcc>
-      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
-         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
       digmsg create - -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;\
+         digmsg - header show mailX-command;\
+         digmsg - header show sUbject;\
+         digmsg - header show tO;\
+         digmsg - header show Cc;\
+         digmsg - header show bCc;\
+         digmsg - header show Mailx-raw-to;\
+         digmsg - header show mailX-raw-cc;\
+         digmsg - header show maiLx-raw-bcc;\
+         digmsg - header show maIlx-orig-sender;\
+         digmsg - header show mAilx-orig-from;\
+         digmsg - header show mailx-orig-tO;\
+         digmsg - header show mailx-orig-Cc;\
+         digmsg - header show mailx-oriG-bcc;\
          digmsg remove -;echo $?/$!/$^ERRNAME
       digmsg create -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;readall x;echon $x;\
          digmsg remove -;echo $?/$!/$^ERRNAME
    }
    define t_occ {
-      echo on-compose-cleanup, mailx-command<$mailx-command>
+      echo on-compose-cleanup
       unalternates *
       alternates
-      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-      echo mailx-subject<$mailx-subject>
-      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-         mailx-raw-bcc<$mailx-raw-bcc>
-      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
-         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
       # XXX error message variable digmsg create - -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;\
+         digmsg - header show mailX-command;\
+         digmsg - header show sUbject;\
+         digmsg - header show tO;\
+         digmsg - header show Cc;\
+         digmsg - header show bCc;\
+         digmsg - header show Mailx-raw-to;\
+         digmsg - header show mailX-raw-cc;\
+         digmsg - header show maiLx-raw-bcc;\
+         digmsg - header show maIlx-orig-sender;\
+         digmsg - header show mAilx-orig-from;\
+         digmsg - header show mailx-orig-tO;\
+         digmsg - header show mailx-orig-Cc;\
+         digmsg - header show mailx-oriG-bcc;\
          digmsg remove -;echo $?/$!/$^ERRNAME
       # ditto digmsg create -;echo $?/$!/$^ERRNAME;\
          digmsg - header list;readall x;echon $x;\
@@ -8214,7 +8232,7 @@ __EOT__
       -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '1646284089 10565'
+   check 1 0 "${MBOX}" '509867960 10290'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -8222,7 +8240,7 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '700681006 12851'
+   check 2 0 "${MBOX}" '1717229097 12672'
 
    ##
 
@@ -8230,11 +8248,6 @@ __EOT__
    # readctl in child. ~r as HERE document
    ${rm} "${MBOX}"
    printf 'm ex@am.ple\nbody\n!.
-      echon ${mailx-command}${mailx-subject}
-      echon ${mailx-from}${mailx-sender}
-      echon ${mailx-to}${mailx-cc}${mailx-bcc}
-      echon ${mailx-raw-to}${mailx-raw-cc}${mailx-raw-bcc}
-      echon ${mailx-orig-from}${mailx-orig-to}${mailx-orig-gcc}${mailx-orig-bcc}
       var t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
    ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=test://"$MBOX" \
@@ -8388,47 +8401,71 @@ __EOT__
             echoerr IT IS WRONG IF YOU SEE THIS
          }
          define t_oce {
-            echo on-compose-enter, mailx-command<$mailx-command>
+            echo on-compose-enter
             set t_oce autobcc=oce@exam.ple
             alternates alter1@exam.ple alter2@exam.ple
             alternates
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
          }
          define t_ocl {
-            echo on-compose-leave, mailx-command<$mailx-command>
+            echo on-compose-leave
             set t_ocl autocc=ocl@exam.ple
             unalternates *
             alternates alter3@exam.ple alter4@exam.ple
             alternates
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
          }
          define t_occ {
-            echo on-compose-cleanup, mailx-command<$mailx-command>
+            echo on-compose-cleanup
             set t_occ autocc=occ@exam.ple
             unalternates *
             alternates
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            # XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
          }
          set on-compose-splice=t_ocs \
             on-compose-splice-shell="read ver;echo t_ocs-shell;\
@@ -8438,7 +8475,7 @@ __EOT__
       ' > ./.tnotes 2>&1
    check_ex0 3-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 3 - "${MBOX}" '3986011319 2437'
+   check 3 - "${MBOX}" '668295135 2414'
 
    # Reply, forward, resend, Resend
 
@@ -8531,49 +8568,77 @@ this is content of forward 2, 2nd, with showname set
             echoerr IT IS WRONG IF YOU SEE THIS
          }
          define t_oce {
-            echo on-XY-enter, mailx-command<$mailx-command>
+            echo on-XY-enter
             set t_oce autobcc=oce@exam.ple
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
          }
          define t_ocl {
-            echo on-XY-leave, mailx-command<$mailx-command>
+            echo on-XY-leave
             set t_ocl autocc=ocl@exam.ple
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
          }
          define t_occ {
-            echo on-XY-cleanup, mailx-command<$mailx-command>
+            echo on-XY-cleanup
             set t_occ autocc=occ@exam.ple
-            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
-            echo mailx-subject<$mailx-subject>
-            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
-               mailx-raw-bcc<$mailx-raw-bcc>
-            echo mailx-orig-from<$mailx-orig-from> \
-               mailx-orig-to<$mailx-orig-to> \
-               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+            # XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
+               digmsg - header list;\
+               digmsg - header show mailX-command;\
+               digmsg - header show sUbject;\
+               digmsg - header show tO;\
+               digmsg - header show Cc;\
+               digmsg - header show bCc;\
+               digmsg - header show Mailx-raw-to;\
+               digmsg - header show mailX-raw-cc;\
+               digmsg - header show maiLx-raw-bcc;\
+               digmsg - header show maIlx-orig-sender;\
+               digmsg - header show mAilx-orig-from;\
+               digmsg - header show mailx-orig-tO;\
+               digmsg - header show mailx-orig-Cc;\
+               digmsg - header show mailx-oriG-bcc;\
+               digmsg remove -;echo $?/$!/$^ERRNAME
+         }
+         define t_oce_r { # XXX use normal callbacks
+            echo on-resend-enter
+            set t_oce autobcc=oce@exam.ple
          }
          set on-compose-splice=t_ocs \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
                on-compose-cleanup=t_occ \
-            on-resend-enter=t_oce on-resend-cleanup=t_occ
+            on-resend-enter=t_oce_r on-resend-cleanup=t_occ
       ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '3215954113 12017'
+   check 4 - "${MBOX}" '201529117 10360'
 
    t_epilog "${@}"
 } # }}}
