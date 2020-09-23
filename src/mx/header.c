@@ -2576,7 +2576,7 @@ n_header_senderfield_of(struct message *mp){
       mx_fs_linepool_aquire(&linebuf, &linesize);
       mx_fs_linepool_aquire(&namebuf, &namesize);
 
-      /* And fallback only works for MBOX */
+      /* TODO And fallback only works for MBOX -> VFS!! */
       namebuf = n_realloc(namebuf, namesize = LINESIZE);
       namebuf[0] = 0;
       if (mp->m_flag & MNOFROM)

@@ -899,22 +899,6 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mailbox_display, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_mailcap_disable,
    ok_v_mailx_extra_rc, /* {notempty=1} */
-   /* TODO drop all those _v_mailx which are now accessible via `digmsg'!
-    * TODO Documentation yet removed, n_temporary_compose_hook_varset() not */
-ok_v_mailx_command, /* {rdonly=1,nodel=1} */
-ok_v_mailx_subject, /* {rdonly=1,nodel=1} */
-ok_v_mailx_from, /* {rdonly=1,nodel=1} */
-ok_v_mailx_sender, /* {rdonly=1,nodel=1} */
-ok_v_mailx_to, /* {rdonly=1,nodel=1} */
-ok_v_mailx_cc, /* {rdonly=1,nodel=1} */
-ok_v_mailx_bcc, /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_to, /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_cc, /* {rdonly=1,nodel=1} */
-ok_v_mailx_raw_bcc, /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_from, /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_to, /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_cc, /* {rdonly=1,nodel=1} */
-ok_v_mailx_orig_bcc, /* {rdonly=1,nodel=1} */
    ok_b_markanswered,
    ok_b_mbox_fcc_and_pcc, /* {i3val=1} */
    ok_b_mbox_rfc4155,

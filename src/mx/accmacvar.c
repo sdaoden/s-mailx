@@ -234,8 +234,6 @@ struct a_amv_mac_call_args{
    char const *amca_name; /* For MACKY_MACK, this is *0*! */
    struct a_amv_mac *amca_amp; /* "const", but for am_refcnt */
    struct a_amv_var **amca_unroller;
-   void (*amca_hook_pre)(void *);
-   void *amca_hook_arg;
    u8 amca_loflags;
    boole amca_ps_hook_mask;
    boole amca_no_xcall; /* XXX We want n_GO_INPUT_NO_XCALL for this */
@@ -584,8 +582,6 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    losp->as_loflags = amcap->amca_loflags;
 
    a_amv_lopts = losp;
-   if(amcap->amca_hook_pre != NULL)
-      n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
    rv = n_go_macro((n_GO_INPUT_NONE |
             (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0) |
             (amcap->amca_ignerr ? n_GO_INPUT_IGNERR : 0)),
@@ -3120,8 +3116,7 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 }
 
 FL void
-temporary_compose_mode_hook_call(char const *macname,
-      void (*hook_pre)(void *), void *hook_arg){
+temporary_compose_mode_hook_call(char const *macname){
    /* TODO compose_mode_hook_call() temporary, v15: generalize; see a_GO_SPLICE
     * TODO comment in go.c for the right way of doing things! */
    static struct a_amv_lostack *cmh_losp;
@@ -3129,23 +3124,21 @@ temporary_compose_mode_hook_call(char const *macname,
    struct a_amv_mac *amp;
    NYD_IN;
 
-   amp = NULL;
+   amp = NIL;
 
-   if(macname == (char*)-1){
+   if(macname == R(char*,-1)){
       a_amv_mac__finalize(cmh_losp);
-      cmh_losp = NULL;
-   }else if(macname != NULL &&
-         (amp = a_amv_mac_lookup(macname, NULL, a_AMV_MF_NONE)) == NULL)
+      cmh_losp = NIL;
+   }else if(macname != NIL &&
+         (amp = a_amv_mac_lookup(macname, NIL, a_AMV_MF_NONE)) == NIL)
       n_err(_("Cannot call *on-compose-**: macro does not exist: %s\n"),
          macname);
    else{
       amcap = n_lofi_calloc(sizeof *amcap);
-      amcap->amca_name = (macname != NULL) ? macname
+      amcap->amca_name = (macname != NIL) ? macname
             : "*on-compose-splice(-shell)?*";
       amcap->amca_amp = amp;
       amcap->amca_unroller = &a_amv_compose_lopts;
-      amcap->amca_hook_pre = hook_pre;
-      amcap->amca_hook_arg = hook_arg;
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
       amcap->amca_ps_hook_mask = TRU1;
       amcap->amca_no_xcall = TRU1;
@@ -3161,6 +3154,7 @@ temporary_compose_mode_hook_call(char const *macname,
          a_amv_lopts = cmh_losp;
       }
    }
+
    NYD_OU;
 }
 
