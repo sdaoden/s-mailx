@@ -454,36 +454,57 @@ t_attach ENTER
 0/0/NONE: 
 t_attach LEAVE
 
-on-compose-enter, mailx-command<mail>
+on-compose-enter
 alternates alter1@exam.ple alter2@exam.ple
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<this-goes@nowhere> mailx-cc<> mailx-bcc<>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To
+212 Mailx-Command
+mail
+
+501 Subject
+211 To
+this-goes@nowhere this-goes@nowhere
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 0/0/NONE
 210 To Mailx-Command Mailx-Raw-To
 0/0/NONE
-0/0/NONE
-210 To Mailx-Command Mailx-Raw-To
-0/0/NONE
-on-compose-leave, mailx-command<mail>
+on-compose-leave
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<> mailx-cc<> mailx-bcc<>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 Mailx-Command Mailx-Raw-To
+212 Mailx-Command
+mail
+
+501 Subject
+501 To
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 0/0/NONE
 210 Mailx-Command Mailx-Raw-To
 0/0/NONE
-0/0/NONE
-210 Mailx-Command Mailx-Raw-To
-0/0/NONE
-on-compose-cleanup, mailx-command<mail>
+on-compose-cleanup
 # no alternates registered
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<> mailx-cc<> mailx-bcc<>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>

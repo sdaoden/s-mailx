@@ -223,167 +223,340 @@ start: 0 0 NONE
 File: 0 0 NONE
 
 
-on-XY-enter, mailx-command<reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+reply
+
+501 Subject
+211 To
+f1@z f1@z
+t1@z t1@z
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+f1@z f1@z
+t1@z t1@z
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-leave
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+reply
+
+501 Subject
+211 To
+f1@z f1@z
+t1@z t1@z
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+f1@z f1@z
+t1@z t1@z
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+on-XY-cleanup
 reply 1: 0 0 NONE
 
 
-on-XY-enter, mailx-command<Reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+Reply
+
+501 Subject
+211 To
+f1@z f1@z
+f2@z 'du <f2@z>'
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+f1@z f1@z
+f2@z 'du <f2@z>'
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<Reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<Reply>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
-mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-leave
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+Reply
+
+501 Subject
+211 To
+f1@z f1@z
+f2@z 'du <f2@z>'
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+f1@z f1@z
+f2@z 'du <f2@z>'
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+on-XY-cleanup
 Reply 1 2: 0 0 NONE
 
 
-on-XY-enter, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex@am.ple fwdex@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex@am.ple fwdex@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-leave
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex@am.ple fwdex@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex@am.ple fwdex@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f1@z f1@z
+
+211 Mailx-Orig-From
+f1@z f1@z
+
+211 Mailx-Orig-To
+t1@z t1@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+on-XY-cleanup
 forward 1: 0 0 NONE
 
 
-on-XY-enter, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex@am.ple fwdex@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex@am.ple fwdex@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-From
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-To
+t2@z t2@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-leave
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex@am.ple fwdex@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex@am.ple fwdex@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-From
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-To
+t2@z t2@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+on-XY-cleanup
 forward 2: 0 0 NONE
 
 
-on-XY-enter, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex2@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex2@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex2@am.ple fwdex2@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex2@am.ple fwdex2@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-From
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-To
+t2@z t2@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex2@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex2@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<forward>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<fwdex2@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<fwdex2@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-leave
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To
+212 Mailx-Command
+forward
+
+501 Subject
+211 To
+fwdex2@am.ple fwdex2@am.ple
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+fwdex2@am.ple fwdex2@am.ple
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+211 Mailx-Orig-Sender
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-From
+f2@z 'du <f2@z>'
+
+211 Mailx-Orig-To
+t2@z t2@z
+
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
+on-XY-cleanup
 forward 2, 2nd: 0 0 NONE
 
 
-on-XY-enter, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-enter, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-resend-enter
+on-XY-cleanup
+on-resend-enter
+on-XY-cleanup
 resend 1 2: 0 0 NONE
 
 
-on-XY-enter, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-enter, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<resend>
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
-mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-resend-enter
+on-XY-cleanup
+on-resend-enter
+on-XY-cleanup
 Resend 1 2: 0 0 NONE
 
 

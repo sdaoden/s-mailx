@@ -298,36 +298,72 @@ echo six
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 
-on-compose-enter, mailx-command<mail>
+on-compose-enter
 alternates alter1@exam.ple alter2@exam.ple
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<this-goes@nowhere> mailx-cc<> mailx-bcc<>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To
+212 Mailx-Command
+mail
+
+501 Subject
+211 To
+this-goes@nowhere this-goes@nowhere
+
+501 Cc
+501 Bcc
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 0/0/NONE
 210 To Mailx-Command Mailx-Raw-To
 0/0/NONE
-0/0/NONE
-210 To Mailx-Command Mailx-Raw-To
-0/0/NONE
-on-compose-leave, mailx-command<mail>
+on-compose-leave
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
-mailx-from<from@exam.ple from2@exam.ple from3@exam.ple> mailx-sender<sender@exam.ple>
-mailx-subject<<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple>
-mailx-to<this-goes@nowhere To@exam.ple To2@exam.ple To3@exam.ple> mailx-cc<cC@exam.ple cC2@exam.ple cC3@exam.ple> mailx-bcc<bCc@exam.ple bCc2@exam.ple bCc3@exam.ple>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To freeForm1 freeform2
+212 Mailx-Command
+mail
+
+212 Subject
+'<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
+
+211 To
+this-goes@nowhere this-goes@nowhere
+To@exam.ple 'diet spliced <To@exam.ple>'
+To2@exam.ple '<To2@exam.ple>'
+To3@exam.ple To3@exam.ple
+
+211 Cc
+cC@exam.ple 'diet spliced <cC@exam.ple>'
+cC2@exam.ple '<cC2@exam.ple>'
+cC3@exam.ple cC3@exam.ple
+
+211 Bcc
+bCc@exam.ple 'diet spliced <bCc@exam.ple>'
+bCc2@exam.ple '<bCc2@exam.ple>'
+bCc3@exam.ple bCc3@exam.ple
+
+211 Mailx-Raw-To
+this-goes@nowhere this-goes@nowhere
+
+501 Mailx-Raw-Cc
+501 Mailx-Raw-Bcc
+501 Mailx-Orig-Sender
+501 Mailx-Orig-From
+501 Mailx-Orig-To
+501 Mailx-Orig-Cc
+501 Mailx-Orig-Bcc
+0/0/NONE
 0/0/NONE
 210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To freeForm1 freeform2
 0/0/NONE
-0/0/NONE
-210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To freeForm1 freeform2
-0/0/NONE
-on-compose-cleanup, mailx-command<mail>
+on-compose-cleanup
 # no alternates registered
-mailx-from<from@exam.ple from2@exam.ple from3@exam.ple> mailx-sender<sender@exam.ple>
-mailx-subject<<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple>
-mailx-to<this-goes@nowhere To@exam.ple To2@exam.ple To3@exam.ple> mailx-cc<cC@exam.ple cC2@exam.ple cC3@exam.ple> mailx-bcc<bCc@exam.ple bCc2@exam.ple bCc3@exam.ple>
-mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
