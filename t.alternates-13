@@ -1,7 +1,6 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: a@b.example
-Sender: a@b.example
 To: b@b.example
 Cc: a@b.example, c@c.example
 Subject: -Sfrom + -r ++ test
@@ -10,6 +9,7 @@ Subject: -Sfrom + -r ++ test
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: a@b.example
+Sender: a2@b.example
 To: b@b.example
 Cc: a@b.example, c@c.example
 Subject: -Sfrom + -r ++ test
