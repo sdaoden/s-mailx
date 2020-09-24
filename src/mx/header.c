@@ -3157,8 +3157,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 }
 
 FL void
-setup_from_and_sender(struct header *hp)
-{
+setup_from_and_sender(struct header *hp){
    char const *addr;
    struct mx_name *np;
    NYD_IN;
@@ -3167,17 +3166,27 @@ setup_from_and_sender(struct header *hp)
     * want -r to be honoured in favour of *from* in order to have
     * a behaviour that is compatible with what users would expect from e.g.
     * postfix(1) */
-   if ((np = hp->h_from) != NULL ||
-         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
+   if((np = hp->h_from) != NIL ||
+         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NIL)){
       ;
-   } else if ((addr = myaddrs(hp)) != NULL)
+   }else if((addr = myaddrs(hp)) != NIL)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+
    hp->h_from = np;
 
-   if ((np = hp->h_sender) != NULL) {
+   /* RFC 5322 says
+    *  If the originator of the message can be indicated by a single mailbox
+    *  and the author and transmitter are identical, the "Sender:" field SHOULD
+    *  NOT be used.  Otherwise, both fields SHOULD appear. */
+   if((np = hp->h_sender) != NIL){
       ;
-   } else if ((addr = ok_vlook(sender)) != NULL)
+   }else if((addr = ok_vlook(sender)) != NIL)
       np = n_extract_single(addr, GEXTRA | GFULL | GFULLEXTRA);
+
+   if(np != NIL && hp->h_from != NIL && hp->h_from->n_flink == NIL &&
+         mx_name_is_same_address(hp->h_from, np))
+      np = NIL;
+
    hp->h_sender = np;
 
    NYD_OU;

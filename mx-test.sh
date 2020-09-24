@@ -4491,6 +4491,20 @@ xit
    check 12-1 - .terr '4294967295 0'
    check 12-2 - ./.tfolder/.trec11 '1618754846 442'
 
+   ### More RFC cases
+
+   ## From: and Sender:
+   </dev/null ${MAILX} ${ARGS} -s ubject \
+      -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
+      to@exam.ple > "${MBOX}" 2>&1
+   check 13 0 "${MBOX}" '143390417 169'
+
+   # ..if From: is single mailbox and Sender: is same, no Sender:
+   </dev/null ${MAILX} ${ARGS} -s ubject \
+      -S from=a@b.org -S sender=a@b.org \
+      to@exam.ple > "${MBOX}" 2>&1
+   check 14 0 "${MBOX}" '1604962737 135'
+
    t_epilog "${@}"
 } # }}}
 
@@ -7598,7 +7612,7 @@ my body
    check 5 0 "${MBOX}" '98184290 530'
    check 6 - .tall '3604001424 44'
 
-   # And more, with/out -r
+   # And more, with/out -r (and that Sender: vanishs as necessary)
    # TODO -r should be the Sender:, which should automatically propagate to
    # TODO From: if possible and/or necessary.  It should be possible to
    # TODO suppres -r stuff from From: and Sender:, but fallback to special -r
@@ -7611,16 +7625,17 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 7 0 "${MBOX}" '2052716617 201'
-   check 8 - .tout '2052716617 201'
+   check 7 0 "${MBOX}" '4275947318 181'
+   check 8 - .tout '4275947318 181'
    check 9 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
       -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a2@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 10 0 "${MBOX}" '3213404599 382'
-   check 11 - .tout '3213404599 382'
+   check 10 0 "${MBOX}" '1189494079 383'
+   check 11 - .tout '1189494079 383'
    check 12 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
@@ -7628,7 +7643,7 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       b@b.example >./.tall 2>&1
-   check 13 0 "${MBOX}" '337984804 609'
+   check 13 0 "${MBOX}" '2253033142 610'
    check 14 - .tall '4294967295 0'
 
    t_epilog "${@}"
