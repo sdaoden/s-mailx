@@ -739,6 +739,8 @@ enum n_program_state_once{
  * - import= implies env
  * - num and posnum are mutual exclusive
  * - most default VAL_ues come from in from build system via ./make.rc
+ * - Other i3val=s and/or defval=s are imposed by POSIX: we do not (or only
+ *   additionally "trust" the system-wide RC file to establish the settings
  * (Keep in SYNC: nail.h:okeys, nail.rc, nail.1:"Initial settings") */
 enum okeys {
    /* This is used for all macro(-local) variables etc., i.e.,

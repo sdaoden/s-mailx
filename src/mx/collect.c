@@ -2169,7 +2169,8 @@ jout:
          ifs_saved = coapm = NULL;
          coap = NULL;
 
-         fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* XXX112 */
+         fprintf(n_stdout,
+            _("-------\n(Preliminary) Envelope contains:\n")); /* XXX */
          if(!n_puthead(TRU1, hp, n_stdout,
                GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
                GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
