@@ -10966,30 +10966,30 @@ through to the MTA.
 .It Va mta-arguments
 Arguments to pass through to a file-based
 .Va mta
-can be given via this variable, which is parsed according to
+(Mail-Transfer-Agent), parsed according to
 .Sx "Shell-style argument quoting"
-into an array of arguments, and which will be joined onto MTA options
-from other sources, and then passed individually to the MTA:
+into an array of arguments which will be joined onto MTA options
+from other sources, for example
 .Ql \&? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
 .
 .Mx
 .It Va mta-no-default-arguments
-\*(BO Unless this variable is set \*(UA will pass some well known
-standard command line options to a file-based
+\*(BO Avoids passing standard command line options to a file-based
 .Va mta
-(Mail-Transfer-Agent), see there for more.
+(please see there).
 .
 .Mx
 .It Va mta-no-receiver-arguments
-\*(BO By default a file-based
-.Va mta
-will be passed all receiver addresses on the command line.
-Some MTAs impose special behaviour on such arguments, so setting this
-variable will suppress them altogether.
-This can make it necessary to pass a
+\*(BO By default all receiver addresses will be passed as command line
+options to a file-based
+.Va mta .
+Setting this variable disables this behaviour to aid those MTAs which
+employ special treatment of such arguments.
+Doing so can make it necessary to pass a
 .Fl \&\&t
 via
-.Va mta-arguments .
+.Va mta-arguments ,
+to testify the MTA that it should use the passed message as a template.
 .
 .Mx
 .It Va mta-argv0
@@ -11006,10 +11006,10 @@ will treat its contents as that name.
 .
 .Mx
 .It Va mta-bcc-ok
-\*(BO By default
+\*(BO In violation of RFC 5322 some MTAs do not remove
 .Ql Bcc:
-header lines are not passed through since some MTAs do not remove them
-before sending them over the wire, in violation of RFC 5322.
+header lines from transported messages after having noted the respective
+receivers for addressing purposes.
 (The MTAs Exim and Courier for example require the command line option
 .Fl \&\&t
 to enforce removal.)
