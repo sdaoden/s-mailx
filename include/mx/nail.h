@@ -763,7 +763,7 @@ ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksend, /* {i3val=TRU1} */
+   ok_b_asksend,
    ok_b_asksub, /* {i3val=TRU1} */
    ok_v_attrlist,
    ok_v_autobcc,
