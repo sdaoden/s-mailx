@@ -41,12 +41,6 @@
 #   other Mail(1) / mailx(1) / mail(1) programs.
 # - Availability of entries marked [OPTION] is a compile-time decision.
 
-# If threaded mode is activated, automatically collapse thread.
-set autocollapse
-
-# Enter threaded mode automatically.
-#set autosort=thread
-
 # Append rather than prepend when writing to mbox automatically.
 # Has no effect unless *hold* is unset (it is set below).
 # This is a traditional entry and should usually be set.
@@ -55,41 +49,43 @@ set append
 # Confirm sending of messages:
 set asksend
 
-# Uncomment this in order to get coloured output in $PAGER (if possible).
+# If threaded mode is activated, automatically collapse thread.
+# And enter threaded mode automatically.
+set autocollapse
+#set autosort=thread
+
+# Uncomment for coloured output in $PAGER (if possible).
 #set colour-pager
-# If your $PAGER is less(1) or lv(1) you will usually be served with
+# If $PAGER is less(1) or lv(1) this usually serves well:
 #  ? set PAGER=less; environ unset LESS
 #  ? set PAGER=lv; environ unset LV
 
-# Assume a CRT-like terminal and invoke $PAGER if output does not fit on
-# the screen.  (Set crt=0 to always page; value treated as number of lines.)
+# Use $PAGER if output is too long for a CRT-like screen.
+# (crt=0 always pages; value defines the number of lines.)
 set crt
 
-# When entering compose mode, directly startup into $EDITOR, as via `~e'.
-# If the value is "v", startup into $VISUAL instead, as via `~v'.
-#set editalong=v
+# Directly enter $EDITOR in compose mode, as via `~e'.
+# Assign "v" for $VISUAL, as via `~v'.
+set editalong=v
 
-# When spawning an editor in compose mode (`~e', `~v', *editalong*), allow
-# editing of headers.
+# Allow editing (`~e', `~v', *editalong*) of headers in compose mode.
 set editheaders
 
-# Startup into interactive mode even if the (given) mailbox is empty.
+# Enter interactive mode even if (the given) mailbox is empty.
 set emptystart
 
-# When `reply'ing etc. name parts and comments are stripped from receiver
-# addresses unless this variable is set.
+# Do not strip name parts and comments from addresses (when replying etc).
 set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
-# The latter will cause the built-in editor to save those entries, too.
-# (The *history-file* variable controls persistency of the history.)
+# With a *history-file* the latter saves them to permanent storage.
 set history-gabby=all history-gabby-persist
 
 # Do not move read messages of system mailboxes to MBOX by default since this
 # is likely to be irritating for most users today; also see *keepsave*.
 set hold
 
-# Quote the original message in replies with "> " as usual on the Internet.
+# Reply *quote* original messages with "> ".
 # POSIX mandates tabulator ("set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
@@ -102,7 +98,6 @@ set markanswered
 
 # Try to circumvent false or missing MIME Content-Type descriptions.
 # Do set a value for extended behaviour (see the manual).
-#set mime-counter-evidence
 set mime-counter-evidence=0b1111
 
 # Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
@@ -132,7 +127,7 @@ set quote
 set recipients-in-cc
 
 # When responding to a message, try to answer in the same character set
-# (which is subject to `charsetalias' expansion, though).
+# (subject to `charsetalias' expansion).
 #set reply-in-same-charset
 
 # Honour Reply-To: headers when replying etc.
@@ -155,12 +150,10 @@ set showto
 ## }}}
 ## Commands {{{
 
-# Most commands are not portable to other Mail(1) / mailx(1) / mail(1)
-# programs, which is why most commands are commented out.  To remain portable,
-# place anything specific in its own file, and then
+# Unportable commands are commented out; when placed in specific file,
 #   set mailx-extra-rc=~/.my-file"
-# in $MAILRC (usually ~/.mailrc).
-# The \ command modifier that avoids `commandalias' expansions is not portable.
+# in $MAILRC (usually ~/.mailrc) will load them.
+# Command modifiers are not portable.
 
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
 # (These mappings are not applied to character sets specified by other
@@ -168,7 +161,6 @@ set showto
 #\charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-# (`headerpick' is not portable, so use the standard `retain')
 retain date sender from to cc subject message-id mail-followup-to reply-to
 #\headerpick type retain from_ date sender from to cc subject \
 #   message-id mail-followup-to reply-to
@@ -181,7 +173,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 
 ## }}}
 ## Some pipe-TYPE/SUBTYPE entries {{{
-# (Non-optional feature, different to ~/.mailcap)
+# (Non-optional feature, different to ~/.mailcap support)
 
 # HTML as text, inline display via lynx(1).
 #\if "$features" !@ ,+filter-html-tagsoup,
@@ -239,7 +231,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 # that sending fails because of invalid (according to locale) character input.
 # This undesired event can be prevented as follows, the (possibly) resulting
 # octet-stream message data can be read nonetheless via
-# *mime-counter-evidence*=0b1111:
+# *mime-counter-evidence*=0b1111; better would be $UID -eq 0:
 #\if ! terminal && "$LOGNAME" == root
 #   \set mime-force-sendout
 #\endif
@@ -247,7 +239,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 ## }}}
 ## Example configurations (on top of defaults above) {{{
 
-## Request strict TLL transport layer security checks
+## Request strict TLS transport layer security checks
 #\set tls-verify=strict
 #
 ## Where are the up-to-date TLS certificates?
@@ -275,14 +267,14 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 ##     MinProtocol=TLSv1.1
 #\if "$tls-features" =% ,+ctx-set-maxmin-proto,
 #   \set tls-config-pairs='\
-#      CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
+#      CipherString = TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
 #      Curves=P-521:P-384:P-256,\
-#      MinProtocol=TLSv1.2'
+#      MinProtocol = TLSv1.2'
 #\else
 #   \set tls-config-pairs='\
-#      CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
-#      Curves=P-521:P-384:P-256,\
-#      Protocol=-ALL\, +TLSv1.2\, +TLSv1.3'
+#      CipherString = TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
+#      Curves = P-521:P-384:P-256,\
+#      Protocol = -ALL\, +TLSv1.2\, +TLSv1.3'
 #\endif
 #
 ## Default directory where we act in (relative to $HOME)
@@ -293,7 +285,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 #   record=+sent.mbox record-files record-resent
 #
 ## Make "file mymbox" and "file myrec" go to..
-#\shortcut mymbox %:+mbox.mbox  myrec +sent.mbox
+#\shortcut  mymbox %:+mbox.mbox  myrec +sent.mbox
 #
 ## Not really optional as it is needed for, e.g., S/MIME
 #\set from='Your Name <address@exam.ple>'
@@ -304,14 +296,22 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 ##\set mta=(smtps?|submissions?)://[USER[:PASS]@]SERVER[:PORT]
 #\set mta=test
 #
-## More settings which extend the section Variables from above
 #\set \
+#  append asksend autocollapse autosort=thread \
 #  colour-pager crt= \
-#  followup-to forward-add-cc fullnames \
-#  history-file=+.mailx-hist history-size=-1 history-gabby=all \
-#  mime-counter-evidence=0b1111 \
+#  editalong=v editheaders emptystart \
+#  followup-to followup-to-add-cc followup-to-honour=ask-yes \
+#     forward-add-cc fullnames \
+#  header history-file=+.mailx-hist history-size=-1 history-gabby=all \
+#     hold \
+#  indentprefix='> ' \
+#  keep keepsave \
+#  markanswered mime-counter-evidence=0b1111 \
+#  outfolder \
 #  prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
-#  quote-add-cc \
+#  quote=allbodies quote-add-cc \
+#  recipients-in-cc reply-to-honour=ask-yes reply-to-swap-in=mlist \
+#  sendcharsets=utf-8,iso-8859-1 showname showto \
 #  umask=
 #
 ## Some mailing lists
