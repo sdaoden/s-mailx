@@ -10801,15 +10801,12 @@ and without supervision unless either the
 or the
 .Va verbose
 variable is set.
-.Ql Bcc:
-headers are not passed through to MTAs as part of messages unless
-.Va mta-bcc-ok
-is set (see there); corresponding receivers are addressed by
-protocol-specific means or MTA command line options only until then.
-\*(OPally expansion of the well-known
-.Va mta-aliases
-.Pf ( Xr aliases 5 )
-can also be directly performed by \*(UA.
+Also see
+.Va mta-bcc-ok .
+\*(OPally expansion of
+.Xr aliases 5
+can be performed by setting
+.Va mta-aliases .
 .
 .Pp
 For testing purposes there is the
@@ -11013,11 +11010,12 @@ will treat its contents as that name.
 .Ql Bcc:
 header lines are not passed through since some MTAs do not remove them
 before sending them over the wire, in violation of RFC 5322.
-(For example Exim and Courier would need to be started with the
+(The MTAs Exim and Courier for example require the command line option
 .Fl \&\&t
-command line option to force stripping.)
-Setting this enables pass-through, therefore avoids generation of
-mutilated message versions, and \*(ID improves performance.
+to enforce removal.)
+Unless this is set corresponding receivers are addressed by
+protocol-specific means or MTA command line options only, the header
+itself is stripped before being sent over the wire.
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
