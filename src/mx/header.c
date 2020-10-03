@@ -2560,7 +2560,7 @@ n_header_senderfield_of(struct message *mp){
    struct mx_name *np;
    NYD_IN;
 
-   if((np = mx_header_sender_of(mp, 0)) != NIL){
+   if((np = mx_header_sender_of(mp, GFULL | GSKIN)) != NIL){
       cp = np->n_fullname;
       goto jleave;
    }
