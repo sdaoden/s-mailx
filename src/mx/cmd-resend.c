@@ -55,8 +55,8 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-/* Modify subject we reply to to begin with Re: if it does not already */
-static char *a_crese_reedit(char const *subj);
+/* Modify subject to begin with Re:/Fwd: if it does not already */
+static char *a_crese_sub_edit(struct message *mp, boole isfwd);
 
 /* Fetch these headers, as appropriate; *the_rt will be set to Reply-To:
  * regardless of whether Reply-To: will be honoured or not */
@@ -93,38 +93,33 @@ static int a_crese_Reply(int *msgvec, boole recipient_record);
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
 static int a_crese_fwd(void *vp, boole recipient_record);
 
-/* Modify the subject we are replying to to begin with Fwd: */
-static char *a_crese__fwdedit(char *subj);
-
 /* Do the real work of resending */
 static int a_crese_resend1(void *v, boole add_resent);
 
 static char *
-a_crese_reedit(char const *subj){
-   static char const a_re[] = "Re: ";
+a_crese_sub_edit(struct message *mp, boole isfwd){
    char *newsubj;
+   BITENUM_IS(u32,mx_header_subject_edit_flags) hsef;
+   char const *subj;
    NYD2_IN;
 
-   newsubj = NIL;
+   subj = hfield1("subject", mp);
+   if(subj == NIL)
+      subj = su_empty;
+   if((n_psonce & n_PSO_INTERACTIVE) && *subj == '\0')
+      subj = _("(no subject)");
 
-   if(subj != NIL && *subj != '\0'){
-      struct str in, out;
-      uz i;
-      char const *cp;
+   if(isfwd)
+      hsef = mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
+            mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
+            mx_HEADER_SUBJECT_EDIT_PREPEND_FWD;
+   else
+      hsef = mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
+            mx_HEADER_SUBJECT_EDIT_TRIM_RE |
+            mx_HEADER_SUBJECT_EDIT_PREPEND_RE;
 
-      in.l = su_cs_len(in.s = UNCONST(char*,subj));
-      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-
-      i = su_cs_len(cp = subject_re_trim(out.s)) +1;
-      /* RFC mandates english "Re: " */
-      newsubj = n_autorec_alloc(sizeof(a_re) -1 + i);
-      su_mem_copy(newsubj, a_re, sizeof(a_re) -1);
-      su_mem_copy(&newsubj[sizeof(a_re) -1], cp, i);
-
-      n_free(out.s);
-   }else if(n_psonce & n_PSO_INTERACTIVE)
-      newsubj = savecatsep(savestrbuf(a_re, sizeof(a_re) - 1 -1), ' ',
-            _("(no subject)"));
+   if(*(newsubj = mx_header_subject_edit(subj, hsef)) == '\0')
+      newsubj = NIL;
 
    NYD2_OU;
    return newsubj;
@@ -506,8 +501,7 @@ jwork_msg:
 
    su_mem_set(&head, 0, sizeof head);
    head.h_flags = hf;
-   head.h_subject = a_crese_reedit(hfield1("subject", mp));
-   head.h_mailx_command = (hf & HF_LIST_REPLY) ? "Lreply" : "reply";
+   head.h_subject = a_crese_sub_edit(mp, FAL0);
    /* XXX Why did i do it so, no fallback to n_header_senderfield_of()? */
    head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
@@ -743,7 +737,7 @@ a_crese_reply(int *msgvec, boole recipient_record){
    NYD2_IN;
 
    rv = a_crese_list_reply(msgvec,
-         (recipient_record ? HF_RECIPIENT_RECORD : HF_NONE));
+         HF_CMD_reply | (recipient_record ? HF_RECIPIENT_RECORD : HF_NONE));
    NYD2_OU;
    return rv;
 }
@@ -756,17 +750,17 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    enum gfield gf;
    NYD2_IN;
 
+   su_mem_set(&head, 0, sizeof head);
+
    n_pstate_err_no = su_ERR_NONE;
 
-   su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    mp = n_msgmark1;
    ASSERT(mp != NIL);
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = a_crese_reedit(head.h_subject);
+   head.h_flags = HF_CMD_Reply;
+   head.h_subject = a_crese_sub_edit(mp, FAL0);
    a_crese_make_ref_and_cs(mp, &head);
-   head.h_mailx_command = "Reply";
    head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | GFULL | gf);
@@ -858,10 +852,9 @@ jwork_msg:
    setdot(mp);
 
    su_mem_set(&head, 0, sizeof head);
+   head.h_flags = HF_CMD_forward;
    head.h_to = ndup(recp, (GTO | gf));
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = a_crese__fwdedit(head.h_subject);
-   head.h_mailx_command = "forward";
+   head.h_subject = a_crese_sub_edit(mp, TRU1);
    head.h_mailx_raw_to = n_namelist_dup(recp, GTO | gf);
    head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | GFULL | gf);
@@ -907,35 +900,6 @@ jleave:
 j_leave:
    NYD2_OU;
    return rv;
-}
-
-static char *
-a_crese__fwdedit(char *subj){
-   struct str in, out;
-   char *newsubj;
-   NYD2_IN;
-
-   newsubj = NULL;
-
-   if(subj == NULL || *subj == '\0')
-      goto jleave;
-
-   in.s = subj;
-   in.l = su_cs_len(subj);
-   mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-
-   newsubj = n_autorec_alloc(out.l + 6);
-   if(!su_cs_cmp_case_n(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND */
-      su_mem_copy(newsubj, out.s, out.l +1);
-   else{
-      su_mem_copy(newsubj, "Fwd: ", 5); /* TODO ..a la subject_re_trim()! */
-      su_mem_copy(&newsubj[5], out.s, out.l +1);
-   }
-
-   n_free(out.s);
-jleave:
-   NYD2_OU;
-   return newsubj;
 }
 
 static int
@@ -1005,8 +969,8 @@ jedar:
       setdot(mp);
 
       su_mem_set(&head, 0, sizeof head);
+      head.h_flags = HF_CMD_resend;
       head.h_to = myto;
-      head.h_mailx_command = "resend";
       head.h_mailx_raw_to = myrawto;
       head.h_mailx_orig_sender = mx_header_sender_of(mp, GIDENT | GFULL | gf);
       head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT|GFULL|gf);
@@ -1074,7 +1038,7 @@ c_Lreply(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_crese_list_reply(vp, HF_LIST_REPLY);
+   rv = a_crese_list_reply(vp, HF_CMD_Lreply | HF_LIST_REPLY);
    NYD_OU;
    return rv;
 }
@@ -1124,7 +1088,8 @@ c_Lfollowup(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_crese_list_reply(vp, HF_LIST_REPLY | HF_RECIPIENT_RECORD);
+   rv = a_crese_list_reply(vp,
+         HF_CMD_Lreply | HF_LIST_REPLY | HF_RECIPIENT_RECORD);
    NYD_OU;
    return rv;
 }
