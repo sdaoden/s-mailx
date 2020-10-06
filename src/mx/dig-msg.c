@@ -47,6 +47,19 @@
 
 #define a_DMSG_QUOTE(S) n_shexp_quote_cp(S, FAL0)
 
+/**/
+CTAV(HF_CMD_TO_OFF(HF_CMD_forward) == 0);
+CTAV(HF_CMD_TO_OFF(HF_CMD_mail) == 1);
+CTAV(HF_CMD_TO_OFF(HF_CMD_Lreply) == 2);
+CTAV(HF_CMD_TO_OFF(HF_CMD_Reply) == 3);
+CTAV(HF_CMD_TO_OFF(HF_CMD_reply) == 4);
+CTAV(HF_CMD_TO_OFF(HF_CMD_resend) == 5);
+CTAV(HF_CMD_TO_OFF(HF_CMD_MASK) == 6);
+
+static char const a_dmsg_hf_cmd[7][8] = {
+   "forward\0", "mail", "Lreply", "Reply", "reply", "resend", ""
+};
+
 struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */
 struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx; /* Or NIL XXX HACK*/
 
@@ -410,7 +423,6 @@ jdefault:
          a_X(ref, References);
          a_X(in_reply_to, In-Reply-To);
 
-         a_X(mailx_command, Mailx-Command);
          a_X(mailx_raw_to, Mailx-Raw-To);
          a_X(mailx_raw_cc, Mailx-Raw-Cc);
          a_X(mailx_raw_bcc, Mailx-Raw-Bcc);
@@ -419,6 +431,12 @@ jdefault:
          a_X(mailx_orig_to, Mailx-Orig-To);
          a_X(mailx_orig_cc, Mailx-Orig-Cc);
          a_X(mailx_orig_bcc, Mailx-Orig-Bcc);
+
+         if((hp->h_flags & HF_CMD_MASK) != HF_NONE &&
+               fputs(" " su_STRING(Mailx-Command), fp) == EOF){
+            cp = NIL;
+            goto jleave;
+         }
 
 #undef a_X
 
@@ -483,7 +501,8 @@ jlist:
 #undef a_X
 
       if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
-         np = (hp->h_mailx_command != NIL) ? R(struct mx_name*,-1) : NIL;
+         np = ((hp->h_flags & HF_CMD_MASK) != HF_NONE)
+               ? R(struct mx_name*,-1) : NIL;
          goto jlist;
       }
 
@@ -741,9 +760,10 @@ jshow:
 #undef a_X
 
       if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
-         if(hp->h_mailx_command == NIL)
+         if((i = hp->h_flags & HF_CMD_MASK) == HF_NONE)
             goto j501cp;
-         if(fprintf(fp, "212 %s\n%s\n\n", cp, hp->h_mailx_command) < 0)
+         if(fprintf(fp, "212 %s\n%s\n\n", cp, a_dmsg_hf_cmd[HF_CMD_TO_OFF(i)]
+               ) < 0)
             cp = NIL;
          goto jleave;
       }

@@ -784,15 +784,13 @@ c_sort(void *vp)
             break;
          default:
          case SORT_SUBJECT:
-            if ((cp = hfield1("subject", mp)) != NULL) {
-               in.s = cp;
-               in.l = su_cs_len(in.s);
-               mime_fromhdr(&in, &out, TD_ICONV);
-               ms[n].ms_u.ms_char = su_cs_dup(subject_re_trim(out.s), 0);
-               n_free(out.s);
-               makelow(ms[n].ms_u.ms_char);
-            } else
-               ms[n].ms_u.ms_char = su_cs_dup(n_empty, 0);
+            if((cp = hfield1("subject", mp)) != NIL)
+               cp = mx_header_subject_edit(cp,
+                     (mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
+                      mx_HEADER_SUBJECT_EDIT_TRIM_ALL));
+            else
+               cp = UNCONST(char*,su_empty);
+            makelow(ms[n].ms_u.ms_char = su_cs_dup(cp, 0));
             break;
          }
          ms[n++].ms_n = i;

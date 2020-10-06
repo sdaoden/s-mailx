@@ -59,7 +59,7 @@ static int        _screen;
 /* Print out the header of a specific message.
  * time_current must be up-to-date when this is called.
  * a_chead__hprf: handle *headline*
- * a_chead__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
+ * a_chead__subject: -1 if Subject: yet seen, otherwise ALLOC()d Subject:
  * a_chead__putindent: print out the indenting in threaded display
  * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
@@ -507,56 +507,51 @@ jmlist: /* v15compat */
    mx_COLOUR( mx_colour_reset(); )
    putc('\n', f);
 
-   if (subjline != NULL && subjline != (char*)-1)
-      n_free(subjline);
+   if(subjline != NIL && subjline != R(char*,-1))
+      su_FREE(subjline);
+
    NYD2_OU;
 }
 
 static char *
 a_chead__subject(struct message *mp, boole threaded,
-   boole subject_thread_compress, uz yetprinted)
-{
+      boole subject_thread_compress, uz yetprinted){
    struct str in, out;
    char *rv, *ms;
    NYD2_IN;
 
-   rv = (char*)-1;
+   rv = R(char*,-1);
 
-   if ((ms = hfield1("subject", mp)) == NULL)
+   if((ms = hfield1("subject", mp)) == NIL)
       goto jleave;
 
    in.l = su_cs_len(in.s = ms);
    mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
    rv = ms = out.s;
 
-   if (!threaded || !subject_thread_compress || mp->m_level == 0)
+   if(!threaded || !subject_thread_compress || mp->m_level == 0)
       goto jleave;
 
    /* In a display thread - check whether this message uses the same
-    * Subject: as it's parent or elder neighbour, suppress printing it if
+    * Subject: as its parent or elder neighbour, suppress printing it if
     * this is the case.  To extend this a bit, ignore any leading Re: or
     * Fwd: plus follow-up WS.  Ignore invisible messages along the way */
-   ms = n_UNCONST(subject_re_trim(n_UNCONST(ms)));
+   ms = mx_header_subject_edit(ms, mx_HEADER_SUBJECT_EDIT_TRIM_ALL);
 
-   for (; (mp = prev_in_thread(mp)) != NULL && yetprinted-- > 0;) {
+   for(; (mp = prev_in_thread(mp)) != NIL && yetprinted-- > 0;){
       char *os;
 
-      if (visible(mp) && (os = hfield1("subject", mp)) != NULL) {
-         struct str oout;
-         int x;
-
-         in.l = su_cs_len(in.s = os);
-         mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
-         x = su_cs_cmp_case(ms, subject_re_trim(oout.s));
-         n_free(oout.s);
-
-         if (!x) {
-            n_free(out.s);
-            rv = (char*)-1;
+      if(visible(mp) && (os = hfield1("subject", mp)) != NIL){
+         if(!su_cs_cmp_case(ms, mx_header_subject_edit(os,
+               mx_HEADER_SUBJECT_EDIT_DECODE_MIME |
+               mx_HEADER_SUBJECT_EDIT_TRIM_ALL))){
+            su_FREE(out.s);
+            rv = R(char*,-1);
          }
          break;
       }
    }
+
 jleave:
    NYD2_OU;
    return rv;

@@ -7368,7 +7368,7 @@ t_compose_edits() { # XXX very rudimentary
    check 8 0 ./.tout '3993703854 127'
    check 9 - ./.tout1 '4294967295 0'
    check 10 - ./.tout2 '4294967295 0'
-   check 11 - ./.tall '1857504914 342'
+   check 11 - ./.tall '2590918935 342'
 
    # < No longer in-a-row
 
@@ -7446,7 +7446,7 @@ mail ./.tatt
 !:echo =28
 !.
    ' | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
-   check 14 0 ./.tall '3491667030 1565'
+   check 14 0 ./.tall '2014982482 1565'
    check 15 - ./.tatt '1685063733 636'
 
    t_epilog "${@}"
@@ -7554,7 +7554,7 @@ t_digmsg() { # XXX rudimentary; <> compose_edits()?
       ' "${cat}" "${sed}" |
       ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Sescape=! >./.tall 2>&1
    check 1 0 "$MBOX" '665881681 179'
-   have_feat uistrings && i='4159482825 1372' || i='2254509488 1103'
+   have_feat uistrings && i='2440609179 1372' || i='1351535321 1103'
    check 2 - ./.tall "${i}"
    check 3 - ./.tfcc '3993703854 127'
    check 4 - ./.tempty '4294967295 0'
@@ -8232,7 +8232,7 @@ __EOT__
       -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '509867960 10290'
+   check 1 0 "${MBOX}" '521009371 10290'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -8240,7 +8240,7 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=test://"$MBOX" \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '1717229097 12672'
+   check 2 0 "${MBOX}" '196776664 12672'
 
    ##
 
@@ -8475,7 +8475,7 @@ __EOT__
       ' > ./.tnotes 2>&1
    check_ex0 3-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 3 - "${MBOX}" '668295135 2414'
+   check 3 - "${MBOX}" '2127682860 2414'
 
    # Reply, forward, resend, Resend
 
@@ -8638,7 +8638,7 @@ this is content of forward 2, 2nd, with showname set
       ' >> ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '201529117 10360'
+   check 4 - "${MBOX}" '785169254 10360'
 
    t_epilog "${@}"
 } # }}}
@@ -8899,27 +8899,27 @@ t_lreply_futh_rth_etc() {
    printf 'reply 1\nthread\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf ./.tmbox > .tall 2>&1
-   check 2 0 "${MBOX}" '841868335 433'
+   check 2 0 "${MBOX}" '1088906529 434'
    check 3 - .tall '4294967295 0'
 
    printf 'reply 1\nnew <- thread!\n!||%s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 4 0 "${MBOX}" '3136957908 771'
+   check 4 0 "${MBOX}" '3484120084 773'
    check 5 - .tall '4294967295 0'
 
    printf 'reply 2\nold <- new <- thread!\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 6 0 "${MBOX}" '3036449053 1231'
+   check 6 0 "${MBOX}" '928408901 1234'
    check 7 - .tall '4294967295 0'
 
    printf 'reply 3\nnew <- old <- new <- thread!\n!|| %s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 8 0 "${MBOX}" '2069841383 1583'
+   check 8 0 "${MBOX}" '1855390020 1587'
    check 9 - .tall '4294967295 0'
 
    # And follow-up testing whether changing In-Reply-To: to - starts a new
@@ -8929,7 +8929,7 @@ t_lreply_futh_rth_etc() {
          "${sed}" 's/^In-Reply-To:.*$/In-Reply-To:-/' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://"$MBOX" -Sreply-to-honour \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
-   check 10 0 "${MBOX}" '3155846378 2047'
+   check 10 0 "${MBOX}" '433886680 2052'
    check 11 - .tall '4294967295 0'
 
    t_epilog "${@}"
