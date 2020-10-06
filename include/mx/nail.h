@@ -276,6 +276,29 @@ enum n_go_input_inject_flags{
    n_GO_INPUT_INJECT_HISTORY = 1u<<1 /* Allow history addition */
 };
 
+enum mx_header_subject_edit_flags{
+   mx_HEADER_SUBJECT_EDIT_NONE = 0,
+   /* Whether MIME decoding has to be performed first.
+    * The data will be stored in auto-reclaimed memory */
+   mx_HEADER_SUBJECT_EDIT_DECODE_MIME = 1u<<0,
+   /* Without _DECODE_MIME and/or any _PREPEND bit this flag ensures that the
+    * returned subject resides in detached auto-reclaimed storage */
+   mx_HEADER_SUBJECT_EDIT_DUP = 1u<<1,
+
+   /* What is to be trimmed */
+   mx_HEADER_SUBJECT_EDIT_TRIM_RE = 1u<<8,
+   mx_HEADER_SUBJECT_EDIT_TRIM_FWD = 1u<<9,
+   mx_HEADER_SUBJECT_EDIT_TRIM_ALL = mx_HEADER_SUBJECT_EDIT_TRIM_RE |
+         mx_HEADER_SUBJECT_EDIT_TRIM_FWD,
+
+   /* Whether the according prefix should be prepended.
+    * This will create and return an auto-reclaimed copy */
+   mx_HEADER_SUBJECT_EDIT_PREPEND_RE = 1u<<16,
+   mx_HEADER_SUBJECT_EDIT_PREPEND_FWD = 2u<<16,
+   mx_HEADER_SUBJECT_EDIT__PREPEND_MASK = mx_HEADER_SUBJECT_EDIT_PREPEND_RE |
+         mx_HEADER_SUBJECT_EDIT_PREPEND_FWD
+};
+
 enum n_header_extract_flags{
    n_HEADER_EXTRACT_NONE,
    n_HEADER_EXTRACT_EXTENDED = 1u<<0,
@@ -1403,12 +1426,22 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
 
 enum header_flags{
    HF_NONE = 0,
-   HF_LIST_REPLY = 1u<<0,
-   HF_MFT_SENDER = 1u<<1, /* Add ourselves to Mail-Followup-To: */
+
+   HF_CMD_forward = 1u<<0,
+   HF_CMD_mail = 2u<<0,
+   HF_CMD_Lreply = 3u<<0,
+   HF_CMD_Reply = 4u<<0,
+   HF_CMD_reply = 5u<<0,
+   HF_CMD_resend = 6u<<0,
+   HF_CMD_MASK = 7u<<0,
+
+   HF_LIST_REPLY = 1u<<8, /* `Lreply' (special address massage needed) */
+   HF_MFT_SENDER = 1u<<9, /* Add ourselves to Mail-Followup-To: */
    HF_RECIPIENT_RECORD = 1u<<10, /* Save message in file named after rec. */
-   HF_USER_EDITED = 1u<<11,
+   HF_USER_EDITED = 1u<<11, /* User has edited the template at least once */
    HF__NEXT_SHIFT = 16u
 };
+#define HF_CMD_TO_OFF(CMD) ((CMD) - 1)
 
 /* Structure used to pass about the current state of a message (header) */
 struct n_header_field{
@@ -1419,7 +1452,7 @@ struct n_header_field{
 };
 
 struct header{
-   u32 h_flags; /* enum header_flags bits */
+   BITENUM_IS(u32,header_flags) h_flags;
    u32 h_dummy;
    char *h_subject; /* Subject string */
    char const *h_charset; /* preferred charset */
@@ -1439,7 +1472,6 @@ struct header{
    struct n_header_field *h_user_headers;
    struct n_header_field *h_custom_headers; /* (Cached result) */
    /* Raw/original versions of the header(s). If any */
-   char const *h_mailx_command;
    struct mx_name *h_mailx_raw_to;
    struct mx_name *h_mailx_raw_cc;
    struct mx_name *h_mailx_raw_bcc;

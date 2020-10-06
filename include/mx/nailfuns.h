@@ -832,9 +832,10 @@ FL struct mx_name *mx_header_sender_of(struct message *mp, u32 gf);
  * The return value may be empty and needs lextract()ion */
 FL char *n_header_senderfield_of(struct message *mp);
 
-/* Trim away all leading Re: etc., return pointer to plain subject.
- * Note it doesn't perform any MIME decoding by itself */
-FL char const *subject_re_trim(char const *cp);
+/* Trim and possibly edit the Subject: sp according to hsef.
+ * The return value may logically cast away "const", give _DUP to be safe */
+FL char *mx_header_subject_edit(char const *subp,
+      BITENUM_IS(u32,mx_header_subject_edit_flags) hsef);
 
 FL int         msgidcmp(char const *s1, char const *s2);
 

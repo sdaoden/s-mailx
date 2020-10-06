@@ -856,17 +856,23 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    if(nf != NULL){
       if(hp != NULL){
          /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
-         if(!a_coll_makeheader(nf, hp, NULL, FAL0))
+         if(!a_coll_makeheader(nf, hp, NIL, FAL0))
             rv = su_ERR_INVAL;
-         /* Break the thread if In-Reply-To: has been modified */
-         if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
-               su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
-                  saved_in_reply_to->n_fullname))){
-               hp->h_ref = NULL;
-               /* Create a thread of only the replied-to message if it is - */
-               if(hp->h_in_reply_to != NULL &&
-                     !su_cs_cmp(hp->h_in_reply_to->n_fullname, n_hy))
-                  hp->h_in_reply_to = hp->h_ref = saved_in_reply_to;
+         else{
+            if(pipecmd == NIL)
+               hp->h_flags |= HF_USER_EDITED;
+
+            /* Break thread if In-Reply-To: has been modified XXX not here! */
+            if(hp->h_in_reply_to == NIL || (saved_in_reply_to != NIL &&
+                  su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
+                     saved_in_reply_to->n_fullname))){
+                  hp->h_ref = NIL;
+
+                  /* Create thread of only replied-to message if it is - */
+                  if(hp->h_in_reply_to != NIL &&
+                        !su_cs_cmp(hp->h_in_reply_to->n_fullname, n_hy))
+                     hp->h_in_reply_to = hp->h_ref = saved_in_reply_to;
+            }
          }
       }else{
          fseek(nf, 0L, SEEK_END);
