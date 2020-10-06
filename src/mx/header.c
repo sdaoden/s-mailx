@@ -1520,10 +1520,34 @@ jeseek:
             goto jebadhead;
       }else if((val = n_header_get_field(linebuf, "subject", NULL)) != NULL){
          ++seenfields;
-         for (cp = val; su_cs_is_blank(*cp); ++cp)
+         for(cp = val; su_cs_is_blank(*cp); ++cp)
             ;
-         hq->h_subject = (hq->h_subject != NULL)
+         cp = hq->h_subject = (hq->h_subject != NIL)
                ? savecatsep(hq->h_subject, ' ', cp) : savestr(cp);
+
+         /* But after conscious user edit perform a subject cleanup */
+         if(!(hp->h_flags & HF_USER_EDITED)){
+            BITENUM_IS(u32,mx_header_subject_edit_flags) hsef;
+
+            switch(hp->h_flags & HF_CMD_MASK){
+            default:
+               hsef = HF_NONE;
+               break;
+            case HF_CMD_forward:
+               hsef = mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
+                     mx_HEADER_SUBJECT_EDIT_PREPEND_FWD;
+               break;
+            case HF_CMD_Lreply:
+            case HF_CMD_Reply:
+            case HF_CMD_reply:
+               hsef = mx_HEADER_SUBJECT_EDIT_TRIM_RE |
+                     mx_HEADER_SUBJECT_EDIT_PREPEND_RE;
+               break;
+            }
+
+            if(hsef != HF_NONE)
+               hp->h_subject = mx_header_subject_edit(cp, hsef);
+         }
       }
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
@@ -2645,65 +2669,134 @@ jleave:
    return cp;
 }
 
-FL char const *
-subject_re_trim(char const *s){
+FL char *
+mx_header_subject_edit(char const *subp,
+      BITENUM_IS(u32,mx_header_subject_edit_flags) hsef){
    struct{
       u8 len;
-      char  dat[7];
-   }const *pp, ignored[] = { /* Update *reply-strings* manual upon change! */
+      char dat[7];
+   } const *pp, *base,
+         re_ign[] = { /* Update *reply-strings* manual upon change! */
       {3, "re:"},
       {3, "aw:"}, {5, "antw:"}, /* de */
       {3, "wg:"}, /* Seen too often in the wild */
       {0, ""}
+   },
+         fwd_ign[] = {
+      {4, "fwd:"},
+      {0, ""}
    };
 
-   boole any;
-   char *re_st, *re_st_x;
-   char const *orig_s;
+   struct str in, out;
+   char *re_st_base, *re_st, *re_st_x;
    uz re_l;
+   boole any;
+   BITENUM_IS(u32,mx_header_subject_edit_flags) hsef_any;
    NYD_IN;
 
-   any = FAL0;
-   orig_s = s;
-   re_st = NULL;
-   UNINIT(re_l, 0);
-
-   if((re_st_x = ok_vlook(reply_strings)) != NULL &&
-         (re_l = su_cs_len(re_st_x)) > 0){
-      re_st = n_lofi_alloc(++re_l * 2);
-      su_mem_copy(re_st, re_st_x, re_l);
+   if(subp == NIL){
+      subp = su_empty;
+      hsef &= ~mx_HEADER_SUBJECT_EDIT_DECODE_MIME;
+      goto jprepend;
    }
 
-jouter:
-   while(*s != '\0'){
-      while(su_cs_is_space(*s))
-         ++s;
+   if(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME){
+      in.l = su_cs_len(in.s = UNCONST(char*,subp));
+      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+      subp = re_st = n_autorec_alloc(out.l +1);
+      su_mem_copy(re_st, out.s, out.l +1);
+      n_free(out.s);
+   }
 
-      for(pp = ignored; pp->len > 0; ++pp)
-         if(su_cs_starts_with_case(s, pp->dat)){
-            s += pp->len;
+   if(!(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_ALL))
+      goto jprepend;
+
+   hsef_any = mx_HEADER_SUBJECT_EDIT_NONE;
+   re_st_base = re_st = NIL;
+   UNINIT(re_l, 0);
+
+   if(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_RE){
+      hsef ^= mx_HEADER_SUBJECT_EDIT_TRIM_RE;
+      hsef_any |= mx_HEADER_SUBJECT_EDIT_TRIM_RE;
+      base = re_ign;
+
+      if((re_st_x = ok_vlook(reply_strings)) != NIL &&
+            (re_l = su_cs_len(re_st_x)) > 0){
+         /* To avoid too much noise on buffers, just allocate a buffer twice
+          * as large and use the tail as a cs_sep_c() buffer */
+         re_st = re_st_base = n_lofi_alloc(++re_l * 2); /* XXX overflow */
+         su_mem_copy(re_st, re_st_x, re_l);
+      }
+   }else /*if(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_FWD)*/{
+      hsef ^= mx_HEADER_SUBJECT_EDIT_TRIM_FWD;
+      hsef_any |= mx_HEADER_SUBJECT_EDIT_TRIM_FWD;
+      base = fwd_ign;
+   }
+
+   any = FAL0;
+jouter:
+   while(*subp != '\0'){
+      while(su_cs_is_space(*subp))
+         ++subp;
+
+      for(pp = base; pp->len > 0; ++pp)
+         if(su_cs_starts_with_case(subp, pp->dat)){
+            subp += pp->len;
             any = TRU1;
             goto jouter;
          }
 
-      if(re_st != NULL){
+      if(re_st != NIL){
          char *cp;
 
          su_mem_copy(re_st_x = &re_st[re_l], re_st, re_l);
-         while((cp = su_cs_sep_c(&re_st_x, ',', TRU1)) != NULL)
-            if(su_cs_starts_with_case(s, cp)){
-               s += su_cs_len(cp);
+         while((cp = su_cs_sep_c(&re_st_x, ',', TRU1)) != NIL)
+            if(su_cs_starts_with_case(subp, cp)){
+               subp += su_cs_len(cp);
                any = TRU1;
                goto jouter;
             }
       }
+
       break;
    }
 
-   if(re_st != NULL)
-      n_lofi_free(re_st);
+   if(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_FWD){
+      hsef ^= mx_HEADER_SUBJECT_EDIT_TRIM_FWD;
+      hsef_any |= mx_HEADER_SUBJECT_EDIT_TRIM_FWD;
+      base = fwd_ign;
+      re_st = NIL;
+      any = FAL0;
+      goto jouter;
+   }
+
+   /* May have seen "Re: Fwd: Re:" with _ALL -- this was trimmed to "Re:"! */
+   if(any && (hsef_any & (mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
+            mx_HEADER_SUBJECT_EDIT_TRIM_RE)
+         ) == (mx_HEADER_SUBJECT_EDIT_TRIM_FWD |
+            mx_HEADER_SUBJECT_EDIT_TRIM_RE)){
+      hsef |= mx_HEADER_SUBJECT_EDIT_TRIM_FWD;
+      hsef_any = mx_HEADER_SUBJECT_EDIT_TRIM_RE;
+      base = re_ign;
+      re_st = re_st_base;
+      any = FAL0;
+      goto jouter;
+   }
+
+   if(re_st_base != NIL)
+      n_lofi_free(re_st_base);
+
+jprepend:
+   /* Anything trimmed, we may need to prepend, too */
+   if(*subp != '\0' && (hsef & mx_HEADER_SUBJECT_EDIT__PREPEND_MASK))
+      subp = savecatsep(((hsef & mx_HEADER_SUBJECT_EDIT_PREPEND_RE)
+            ? "Re:" : "Fwd:"), ' ', subp);
+   else if((hsef & mx_HEADER_SUBJECT_EDIT_DUP) &&
+         !(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME))
+      subp = savestr(subp);
+
    NYD_OU;
-   return any ? s : orig_s;
+   return UNCONST(char*,subp);
 }
 
 FL int

@@ -931,7 +931,7 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
    NYD_IN;
 
    su_mem_set(&head, 0, sizeof head);
-   head.h_mailx_command = "mail";
+   head.h_flags = HF_CMD_mail;
    if((head.h_to = lextract(str, GTO |
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, head.h_to->n_type);
@@ -2139,7 +2139,7 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
 
    fullnames = ok_blook(fullnames);
 
-   head.h_mailx_command = "mail";
+   head.h_flags = HF_CMD_mail;
    if((head.h_to = to) != NULL){
       if(!fullnames)
          head.h_to = to = a_sendout_fullnames_cleanup(to);
@@ -2708,32 +2708,14 @@ jto_fmt:
    if(!ok_blook(bsdcompat) && !ok_blook(bsdorder))
       a_PUT_CC_BCC_FCC();
 
-   if ((w & GSUBJECT) && (hp->h_subject != NULL || nosend_msg == TRUM1)) {
-      if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
+   if((w & GSUBJECT) && ((hp->h_subject != NIL && *hp->h_subject != '\0') ||
+         nosend_msg == TRUM1)){
+      if(fwrite("Subject: ", sizeof(char), 9, fo) != 9 ||
+            (hp->h_subject != NIL &&
+             xmime_write(hp->h_subject, su_cs_len(hp->h_subject), fo,
+               (!nodisp ? CONV_NONE : CONV_TOHDR),
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0))
          goto jleave;
-      if (hp->h_subject != NULL) {
-         uz sublen;
-         char const *sub;
-
-         sublen = su_cs_len(sub = subject_re_trim(hp->h_subject));
-
-         /* Trimmed something, (re-)add Re: */
-         if (sub != hp->h_subject) {
-            if (fwrite("Re: ", 1, 4, fo) != 4) /* RFC mandates eng. "Re: " */
-               goto jleave;
-            if (sublen > 0 &&
-                  xmime_write(sub, sublen, fo,
-                     (!nodisp ? CONV_NONE : CONV_TOHDR),
-                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
-               goto jleave;
-         }
-         /* This may be, e.g., a Fwd: XXX yes, unfortunately we do like that */
-         else if (*sub != '\0') {
-            if(xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
-               goto jleave;
-         }
-      }
       ++gotcha;
       putc('\n', fo);
    }
@@ -2866,11 +2848,9 @@ jto_fmt:
    if (gotcha && (w & GNL))
       if (putc('\n', fo) == EOF)
          goto jleave;
+
    rv = TRU1;
 jleave:
-   if(nosend_msg == TRUM1)
-      hp->h_flags |= HF_USER_EDITED;
-
    NYD_OU;
    return rv;
 #undef a_PUT_CC_BCC_FCC
