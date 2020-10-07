@@ -306,13 +306,14 @@ enum n_header_extract_flags{
    n_HEADER_EXTRACT__MODE_MASK = n_HEADER_EXTRACT_EXTENDED |
          n_HEADER_EXTRACT_FULL,
 
+   n_HEADER_EXTRACT_COMPOSE_MODE = 1u<<8, /* Extracting during compose mode */
    /* Prefill the receivers with the already existing content of the given
     * struct header arguent */
-   n_HEADER_EXTRACT_PREFILL_RECEIVERS = 1u<<8,
+   n_HEADER_EXTRACT_PREFILL_RECEIVERS = 1u<<9,
    /* Understand and ignore shell-style comments */
-   n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<9,
+   n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<10,
    /* Ignore a MBOX From_ line _silently */
-   n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<10
+   n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<11
 };
 
 /* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
@@ -1438,7 +1439,8 @@ enum header_flags{
    HF_LIST_REPLY = 1u<<8, /* `Lreply' (special address massage needed) */
    HF_MFT_SENDER = 1u<<9, /* Add ourselves to Mail-Followup-To: */
    HF_RECIPIENT_RECORD = 1u<<10, /* Save message in file named after rec. */
-   HF_USER_EDITED = 1u<<11, /* User has edited the template at least once */
+   HF_COMPOSE_MODE = 1u<<11, /* XXX not here Header in compose-mode */
+   HF_USER_EDITED = 1u<<12, /* User has edited the template at least once */
    HF__NEXT_SHIFT = 16u
 };
 #define HF_CMD_TO_OFF(CMD) ((CMD) - 1)

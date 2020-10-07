@@ -2499,7 +2499,8 @@ do {\
    fromasender = mft = NIL;
    rv = FAL0;
 
-   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+   if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+         !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# Message will be discarded unless file is saved\n"),
             fo) == EOF)
          goto jleave;
@@ -2669,47 +2670,25 @@ j_mft_add:
       }
    }
 
-   if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+   if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+         !(hp->h_flags & HF_USER_EDITED)){
       if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
          goto jleave;
    }
 
-#if 1
-   if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
-      if (!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
+   if((w & GTO) && (hp->h_to != NULL || (nosend_msg &&
+         (hp->h_flags & HF_COMPOSE_MODE)))) {
+      if(!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
          goto jleave;
       ++gotcha;
    }
-#else
-   /* TODO Thought about undisclosed recipients:;, but would be such a fake
-    * TODO given that we cannot handle group addresses.  Ridiculous */
-   if (w & GTO) {
-      struct mx_name *xto;
-
-      if ((xto = hp->h_to) != NULL) {
-         char const ud[] = "To: Undisclosed recipients:;\n" /* TODO groups */;
-
-         if (count_nonlocal(xto) != 0 || ok_blook(add_file_recipients) ||
-               (hp->h_cc != NULL && count_nonlocal(hp->h_cc) > 0))
-            goto jto_fmt;
-         if (fwrite(ud, 1, sizeof(ud) -1, fo) != sizeof(ud) -1)
-            goto jleave;
-         ++gotcha;
-      } else if (nosend_msg == TRUM1) {
-jto_fmt:
-         if (!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
-            goto jleave;
-         ++gotcha;
-      }
-   }
-#endif
 
    if(!ok_blook(bsdcompat) && !ok_blook(bsdorder))
       a_PUT_CC_BCC_FCC();
 
    if((w & GSUBJECT) && ((hp->h_subject != NIL && *hp->h_subject != '\0') ||
-         nosend_msg == TRUM1)){
+         (nosend_msg && (hp->h_flags & HF_COMPOSE_MODE)))){
       if(fwrite("Subject: ", sizeof(char), 9, fo) != 9 ||
             (hp->h_subject != NIL &&
              xmime_write(hp->h_subject, su_cs_len(hp->h_subject), fo,
@@ -2734,7 +2713,8 @@ jto_fmt:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
-         if(nosend_msg == TRUM1 && !(hp->h_flags & HF_USER_EDITED)){
+         if(nosend_msg && (hp->h_flags & HF_COMPOSE_MODE) &&
+               !(hp->h_flags & HF_USER_EDITED)){
             if(fputs(_("# Removing or modifying In-Reply-To: "
                      "breaks the old, and starts a new thread.\n"
                   "# Assigning hyphen-minus - creates a thread of only the "

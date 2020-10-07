@@ -1433,6 +1433,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    char *linebuf, *colon;
    uz linesize, seenfields = 0;
    int c;
+   boole clear_ref;
    long lc;
    off_t firstoff;
    char const *val, *cp;
@@ -1465,6 +1466,7 @@ jeseek:
    }
 
    /* TODO yippieia, cat(check(lextract)) :-) */
+   clear_ref = TRU1;
    while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       struct mx_name *np;
 
@@ -1570,6 +1572,19 @@ jeseek:
                   NULL);
             ++seenfields;
             hq->h_in_reply_to = np;
+
+            /* Break thread if In-Reply-To: has been modified */
+            if((clear_ref = (np == NIL)) || (hp->h_in_reply_to != NIL &&
+                  su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
+                     np->n_fullname))){
+               clear_ref = TRU1;
+
+               /* Create thread of only replied-to message if it is - */
+               if(np != NIL && !su_cs_cmp(np->n_fullname, n_hy)){
+                  clear_ref = TRUM1;
+                  hq->h_in_reply_to = hp->h_in_reply_to;
+               }
+            }
          }else
             goto jebadhead;
       }else if((val = n_header_get_field(linebuf, "references", NULL)
@@ -1650,7 +1665,9 @@ jebadhead:
 
       if(hef & n_HEADER_EXTRACT__MODE_MASK){
          hp->h_fcc = hq->h_fcc;
-         if(hef & n_HEADER_EXTRACT_FULL)
+         if(clear_ref)
+            hp->h_ref = (clear_ref != TRUM1) ? NIL : hq->h_in_reply_to;
+         else if(hef & n_HEADER_EXTRACT_FULL)
             hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;

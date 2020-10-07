@@ -775,7 +775,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    n_header_extract(((do_delayed_due_t
             ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECEIVERS
-            : n_HEADER_EXTRACT_EXTENDED) |
+            : n_HEADER_EXTRACT_EXTENDED | n_HEADER_EXTRACT_COMPOSE_MODE) |
          n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS), fp, hp, checkaddr_err);
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
@@ -819,7 +819,6 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    struct n_sigman sm;
    FILE *nf;
    n_sighdl_t volatile sigint;
-   struct mx_name *saved_in_reply_to;
    boole saved_filrec;
    s32 volatile rv;
    NYD_IN;
@@ -840,14 +839,10 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    if(!saved_filrec)
       ok_bset(add_file_recipients);
 
-   saved_in_reply_to = NULL;
-   if(hp != NULL){
-      struct mx_name *np;
-
-      if((np = hp->h_in_reply_to) == NULL)
-         hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
-      if(np != NULL)
-         saved_in_reply_to = ndup(np, np->n_type);
+   if(hp != NIL){
+      hp->h_flags |= HF_COMPOSE_MODE;
+      if(hp->h_in_reply_to == NIL)
+         hp->h_in_reply_to = n_header_setup_in_reply_to(hp);
    }
 
    rewind(_coll_fp);
@@ -856,24 +851,10 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    if(nf != NULL){
       if(hp != NULL){
          /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
-         if(!a_coll_makeheader(nf, hp, NIL, FAL0))
+         if(a_coll_makeheader(nf, hp, NIL, FAL0))
+            hp->h_flags |= HF_USER_EDITED;
+         else
             rv = su_ERR_INVAL;
-         else{
-            if(pipecmd == NIL)
-               hp->h_flags |= HF_USER_EDITED;
-
-            /* Break thread if In-Reply-To: has been modified XXX not here! */
-            if(hp->h_in_reply_to == NIL || (saved_in_reply_to != NIL &&
-                  su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
-                     saved_in_reply_to->n_fullname))){
-                  hp->h_ref = NIL;
-
-                  /* Create thread of only replied-to message if it is - */
-                  if(hp->h_in_reply_to != NIL &&
-                        !su_cs_cmp(hp->h_in_reply_to->n_fullname, n_hy))
-                     hp->h_in_reply_to = hp->h_ref = saved_in_reply_to;
-            }
-         }
       }else{
          fseek(nf, 0L, SEEK_END);
          mx_fs_close(_coll_fp);
@@ -886,8 +867,13 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 jleave:
    if(!saved_filrec)
       ok_bclear(add_file_recipients);
+
+   if(hp != NIL)
+      hp->h_flags &= ~HF_COMPOSE_MODE;
+
    if(sigint != SIG_ERR)
       safe_signal(SIGINT, sigint);
+
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -1822,7 +1808,7 @@ jearg:
             goto jearg;
 jev_go:
          if((n_pstate_err_no = a_coll_edit(c,
-                ((c == '|' || ok_blook(editheaders)) ? hp : NULL), cp)
+                ((c == '|' || ok_blook(editheaders)) ? hp : NIL), cp)
                ) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
