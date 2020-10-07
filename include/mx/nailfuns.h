@@ -1326,9 +1326,9 @@ FL int mkdate(FILE *fo, char const *field);
 
 /* Dump the to, subject, cc header on the passed file buffer.
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
- * editing a message (yet we're stupid and cannot do it any better) - if it is
- * TRUM1 then we're really in compose mode and will produce some fields for
- * easier filling in (see n_run_editor() proto for this hack) */
+ * editing a message (yet we are stupid and cannot do it any better).
+ * If hp->h_flags&HF_COMPOSE_MODE then we are really in compose mode and
+ * produce some fields for easier filling in */
 FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,

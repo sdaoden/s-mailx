@@ -36,7 +36,7 @@ EXPORT int c_visual(void *v);
  * negative) or on the message mp, and return a new file or NIL on error of if
  * the user did not perform any edits (not possible in pipe mode).
  * For now we ASSERT that mp==NIL if hp!=NIL, treating this as a special call
- * from within compose mode, and giving TRUM1 to n_puthead().
+ * from within compose mode.
  * Signals must be handled by the caller.
  * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
  * which case pipecmd must have been given */
