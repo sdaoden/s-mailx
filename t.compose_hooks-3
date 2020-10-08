@@ -8,7 +8,7 @@ Bcc: juicy juice spliced <juice@exam.ple>, juice4@exam.ple, oce@exam.ple
 body
 t_ocs-shell
 t_ocs
-210 To Mailx-Command Mailx-Raw-To
+210 To Mailx-Raw-To Mailx-Command
 10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 112
 210 Cc 1
 210 Cc 2
@@ -46,7 +46,7 @@ readctl remove:0/NONE
 on-compose-enter
 alternates alter1@exam.ple alter2@exam.ple
 0/0/NONE
-210 To Mailx-Command Mailx-Raw-To
+210 To Mailx-Raw-To Mailx-Command
 212 Mailx-Command
 mail
 
@@ -70,7 +70,7 @@ ex@am.ple ex@am.ple
 on-compose-leave
 alternates alter3@exam.ple alter4@exam.ple
 0/0/NONE
-210 To Cc Bcc Mailx-Command Mailx-Raw-To
+210 To Cc Bcc Mailx-Raw-To Mailx-Command
 212 Mailx-Command
 mail
 

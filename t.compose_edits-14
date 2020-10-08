@@ -1,5 +1,5 @@
 210 Subject 1
-210 Subject To Mailx-Command Mailx-Raw-To
+210 Subject To Mailx-Raw-To Mailx-Command
 =0
 501
 =1
@@ -33,7 +33,7 @@
 './.t x 1'
 
 =11
-210 Subject To Mailx-Command Mailx-Raw-To
+210 Subject To Mailx-Raw-To Mailx-Command
 =12
 212 './.t x 1'
 creation-name './.t x 1'

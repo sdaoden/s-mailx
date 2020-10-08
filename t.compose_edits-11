@@ -1,12 +1,12 @@
-210 Subject To Mailx-Command Mailx-Raw-To
-210 Subject To Mailx-Command Mailx-Raw-To
+210 Subject To Mailx-Raw-To Mailx-Command
+210 Subject To Mailx-Raw-To Mailx-Command
 501 Fcc
 501 Fcc
 210 To
 210 Fcc 1
 210 Fcc 2
 210 Fcc 3
-210 Subject Fcc Mailx-Command Mailx-Raw-To
+210 Subject Fcc Mailx-Raw-To Mailx-Command
 211 Fcc
 - ./.tout
 - .tout1
@@ -23,4 +23,4 @@
 211 Fcc
 - ./.tout
 
-210 Subject Fcc Mailx-Command Mailx-Raw-To
+210 Subject Fcc Mailx-Raw-To Mailx-Command
