@@ -9719,7 +9719,8 @@ _EOT
       MAILCAPS=./.tmailcap ${MAILX} -X'commandalias m mailcap' ${ARGS} \
          > ./.tall 2>./.terr
    check 1 0 ./.tall '2012114724 3064'
-   check 2 - ./.terr '3903313993 2338'
+   have_feat uistrings && i='3903313993 2338' || i='4294967295 0'
+   check 2 - ./.terr "${i}"
 
    ##
 
