@@ -786,6 +786,7 @@ jleave:
    return rv;
 
 jerr:
+   UNUSED(emsg);
    n_err(_("$MAILCAPS: %s: %s: %s\n"),
       mclsp->mcls_name_quoted, mclsp->mcls_type_subtype, V_(emsg));
    goto jleave;
