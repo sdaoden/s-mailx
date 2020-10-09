@@ -9968,9 +9968,11 @@ and see
 .
 .Mx
 .It Va forward-add-cc
-\*(BO Whether the sender of a message quoted via
-.Ic ~Q
-shall be added to the messages'
+\*(BO Whether senders of messages forwarded via
+.Ic ~F , ~f , ~m , ~U
+or
+.Ic ~u
+shall be made members of the carbon copies
 .Ql Cc:
 list.
 .
@@ -11775,9 +11777,9 @@ one of the
 .
 .Mx
 .It Va quote-add-cc
-\*(BO Whether the sender of a message quoted via
+\*(BO Whether senders of messages quoted via
 .Ic ~Q
-shall be added to the messages'
+shall be made members of the carbon copies
 .Ql Cc:
 list.
 .
