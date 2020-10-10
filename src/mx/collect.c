@@ -52,6 +52,7 @@
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"
+#include "mx/ignore.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
@@ -87,7 +88,7 @@ struct a_coll_quote_ctx{
    struct su_mem_bag *cqc_membag_persist; /* Or NIL */
    FILE *cqc_fp;
    struct header *cqc_hp;
-   struct n_ignore const *cqc_quoteitp; /* Or NIL */
+   struct mx_ignore const *cqc_quoteitp; /* Or NIL */
    boole cqc_add_cc; /* Honour *{forward,quote}-add-cc* (not initial quote)? */
    boole cqc_is_forward; /* Forwarding rather than quoting */
    boole cqc_do_quote; /* Forced ~Q, not initial reply */
@@ -623,18 +624,18 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       }
 
       if(cqcp->cqc_quoteitp == NIL)
-         cqcp->cqc_quoteitp = n_IGNORE_ALL;
+         cqcp->cqc_quoteitp = mx_IGNORE_ALL;
 
       if(cp == NIL || !su_cs_cmp(cp, "noheading"))
          ;
       else if(!su_cs_cmp(cp, "headers"))
-         cqcp->cqc_quoteitp = n_IGNORE_TYPE;
+         cqcp->cqc_quoteitp = mx_IGNORE_TYPE;
       /* TODO *quote*=all* series should separate the bodies visually */
       else if(!su_cs_cmp(cp, "allheaders")){
          cqcp->cqc_quoteitp = NIL;
          cqcp->cqc_action = SEND_QUOTE_ALL;
       }else if(!su_cs_cmp(cp, "allbodies")){
-         cqcp->cqc_quoteitp = n_IGNORE_ALL;
+         cqcp->cqc_quoteitp = mx_IGNORE_ALL;
          cqcp->cqc_action = SEND_QUOTE_ALL;
       }
 
@@ -974,13 +975,13 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    cqc.cqc_indent_prefix = ((f == 'F' || f == 'f' || f == 'u') ? NIL
          : ok_vlook(indentprefix));
    if(f == 'U' || f == 'u'){
-      cqc.cqc_quoteitp = n_IGNORE_ALL;
+      cqc.cqc_quoteitp = mx_IGNORE_ALL;
    }else if(su_cs_is_upper(f)){
       ;
    }else if((f == 'f' || f == 'F') && !ok_blook(posix))
-      cqc.cqc_quoteitp = n_IGNORE_FWD;
+      cqc.cqc_quoteitp = mx_IGNORE_FWD;
    else
-      cqc.cqc_quoteitp = n_IGNORE_TYPE;
+      cqc.cqc_quoteitp = mx_IGNORE_TYPE;
 
    rv = 0;
    fprintf(n_stdout, A_("Interpolating:"));
@@ -1258,10 +1259,10 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             cqc.cqc_fp = _coll_fp;
             cqc.cqc_hp = hp;
             if(msf & n_MAILSEND_IS_FWD){
-               cqc.cqc_quoteitp = n_IGNORE_FWD;
+               cqc.cqc_quoteitp = mx_IGNORE_FWD;
                cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
             }else{
-               cqc.cqc_quoteitp = n_IGNORE_ALL;
+               cqc.cqc_quoteitp = mx_IGNORE_ALL;
                cqc.cqc_indent_prefix = ok_vlook(indentprefix);
             }
             cqc.cqc_action = SEND_QUOTE;
