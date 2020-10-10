@@ -37,6 +37,7 @@
 
 struct mx_attachment;
 struct mx_cmd_arg;
+struct mx_ignore;
 struct su_cs_dict;
 struct quoteflt;
 
@@ -914,55 +915,6 @@ FL boole n_header_add_custom(struct n_header_field **hflp, char const *dat,
             boole heap);
 
 /*
- * ignore.c
- */
-
-/* `(un)?headerpick' */
-FL int c_headerpick(void *vp);
-FL int c_unheaderpick(void *vp);
-
-/* TODO Compat variants of the c_(un)?h*() series,
- * except for `retain' and `ignore', which are standardized */
-FL int c_retain(void *vp);
-FL int c_ignore(void *vp);
-FL int c_unretain(void *vp);
-FL int c_unignore(void *vp);
-
-FL int         c_saveretain(void *v);
-FL int         c_saveignore(void *v);
-FL int         c_unsaveretain(void *v);
-FL int         c_unsaveignore(void *v);
-
-FL int         c_fwdretain(void *v);
-FL int         c_fwdignore(void *v);
-FL int         c_unfwdretain(void *v);
-FL int         c_unfwdignore(void *v);
-
-/* Ignore object lifecycle.  (Most of the time this interface deals with
- * special n_IGNORE_* objects, e.g., n_IGNORE_TYPE, though.)
- * isauto: whether auto-reclaimed storage is to be used for allocations;
- * if so, _del() needn't be called */
-FL struct n_ignore *n_ignore_new(boole isauto);
-FL void n_ignore_del(struct n_ignore *self);
-
-/* Are there just _any_ user settings covered by self? */
-FL boole n_ignore_is_any(struct n_ignore const *self);
-
-/* Set an entry to retain (or ignore).
- * Returns FAL0 if dat is not a valid header field name or an invalid regular
- * expression, TRU1 if insertion took place, and TRUM1 if already set */
-FL boole n_ignore_insert(struct n_ignore *self, boole retain,
-            char const *dat, uz len);
-#define n_ignore_insert_cp(SELF,RT,CP) n_ignore_insert(SELF, RT, CP, UZ_MAX)
-
-/* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
-FL boole n_ignore_lookup(struct n_ignore const *self, char const *dat,
-            uz len);
-#define n_ignore_lookup_cp(SELF,CP) n_ignore_lookup(SELF, CP, UZ_MAX)
-#define n_ignore_is_ign(SELF,FDAT,FLEN) \
-   (n_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)
-
-/*
  * imap-search.c
  */
 
@@ -1287,7 +1239,7 @@ FL void        restorequitflags(int);
  * stats[1] is character count.  stats may be NULL.  Note that stats[0] is
  * valid for SEND_MBOX only */
 FL int         sendmp(struct message *mp, FILE *obuf,
-                  struct n_ignore const *doitp,
+                  struct mx_ignore const *doitp,
                   char const *prefix, enum sendaction action, u64 *stats);
 
 /*

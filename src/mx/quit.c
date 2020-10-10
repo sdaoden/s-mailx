@@ -46,6 +46,7 @@
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/ignore.h"
 #include "mx/net-pop3.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
@@ -608,12 +609,12 @@ makembox(void) /* TODO oh my god (also error reporting) */
          ++mcount;
 #ifdef mx_HAVE_IMAP
          if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
-               !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(mbox)){
+               !mx_ignore_is_any(mx_IGNORE_SAVE) && imap_thisaccount(mbox)){
             if(imap_copy(mp, P2UZ(mp - message + 1), mbox) == STOP)
                goto jcopyerr;
          }else
 #endif
-         if (sendmp(mp, obuf, n_IGNORE_SAVE, NULL, SEND_MBOX, NULL) < 0) {
+         if(sendmp(mp, obuf, mx_IGNORE_SAVE, NIL, SEND_MBOX, NIL) < 0){
 #ifdef mx_HAVE_IMAP
 jcopyerr:
 #endif

@@ -316,25 +316,6 @@ enum n_header_extract_flags{
    n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<11
 };
 
-/* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
- * _ALL is very special in that it doesn't have a backing object.
- * Go over enum to avoid cascads of (different) CC warnings for used CTA()s */
-#define n_IGNORE_ALL ((struct n_ignore*)n__IGNORE_ALL)
-#define n_IGNORE_TYPE ((struct n_ignore*)n__IGNORE_TYPE)
-#define n_IGNORE_SAVE ((struct n_ignore*)n__IGNORE_SAVE)
-#define n_IGNORE_FWD ((struct n_ignore*)n__IGNORE_FWD)
-#define n_IGNORE_TOP ((struct n_ignore*)n__IGNORE_TOP)
-
-enum{
-   n__IGNORE_ALL = -2,
-   n__IGNORE_TYPE = -3,
-   n__IGNORE_SAVE = -4,
-   n__IGNORE_FWD = -5,
-   n__IGNORE_TOP = -6,
-   n__IGNORE_ADJUST = 3,
-   n__IGNORE_MAX = 6 - n__IGNORE_ADJUST
-};
-
 enum n_mailsend_flags{
    n_MAILSEND_NONE,
    n_MAILSEND_IS_FWD = 1u<<0,

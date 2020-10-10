@@ -47,6 +47,7 @@
 #include "mx/cmd.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
+#include "mx/ignore.h"
 #include "mx/termios.h"
 
 /* TODO fake */
@@ -63,7 +64,7 @@ static int     _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
 static int a_cmsg_pipe1(void *vp, boole doign);
 
 /* `top' / `Top' */
-static int a_cmsg_top(void *vp, struct n_ignore const *itp);
+static int a_cmsg_top(void *vp, struct mx_ignore const *itp);
 
 /* Delete the indicated messages.  Set dot to some nice place afterwards */
 static int     delm(int *msgvec);
@@ -175,7 +176,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      if(sendmp(mp, obuf, (doign ? n_IGNORE_TYPE : NULL), NULL, action, mstats
+      if(sendmp(mp, obuf, (doign ? mx_IGNORE_TYPE : NIL), NIL, action, mstats
             ) < 0){
          rv = 1;
          break;
@@ -239,7 +240,7 @@ jleave:
 }
 
 static int
-a_cmsg_top(void *vp, struct n_ignore const *itp){
+a_cmsg_top(void *vp, struct mx_ignore const *itp){
    struct n_string s;
    int *msgvec, *ip;
    enum{a_NONE, a_SQUEEZE = 1u<<0,
@@ -525,8 +526,8 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;
-   else if(sendmp(mp, n_stdout, n_IGNORE_TYPE, NULL, SEND_TODISP_PARTS,
-         NULL) < 0)
+   else if(sendmp(mp, n_stdout, mx_IGNORE_TYPE, NIL, SEND_TODISP_PARTS,
+         NIL) < 0)
       n_pstate_err_no = su_ERR_IO;
    else
       n_pstate_err_no = su_ERR_NONE;
@@ -561,18 +562,18 @@ c_Pipe(void *vp){
 
 FL int
 c_top(void *v){
-   struct n_ignore *itp;
+   struct mx_ignore *itp;
    int rv;
    NYD_IN;
 
-   if(n_ignore_is_any(n_IGNORE_TOP))
-      itp = n_IGNORE_TOP;
+   if(mx_ignore_is_any(mx_IGNORE_TOP))
+      itp = mx_IGNORE_TOP;
    else{
-      itp = n_ignore_new(TRU1);
-      n_ignore_insert(itp, TRU1, "from", sizeof("from") -1);
-      n_ignore_insert(itp, TRU1, "to", sizeof("to") -1);
-      n_ignore_insert(itp, TRU1, "cc", sizeof("cc") -1);
-      n_ignore_insert(itp, TRU1, "subject", sizeof("subject") -1);
+      itp = mx_ignore_new(TRU1);
+      mx_ignore_insert(itp, TRU1, "from", sizeof("from") -1);
+      mx_ignore_insert(itp, TRU1, "to", sizeof("to") -1);
+      mx_ignore_insert(itp, TRU1, "cc", sizeof("cc") -1);
+      mx_ignore_insert(itp, TRU1, "subject", sizeof("subject") -1);
    }
 
    rv = !a_cmsg_top(v, itp);
@@ -585,7 +586,7 @@ c_Top(void *v){
    int rv;
    NYD_IN;
 
-   rv = !a_cmsg_top(v, n_IGNORE_TYPE);
+   rv = !a_cmsg_top(v, mx_IGNORE_TYPE);
    NYD_OU;
    return rv;
 }

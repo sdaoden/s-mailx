@@ -50,6 +50,7 @@
 /* TODO but only for creating chain! */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
+#include "mx/ignore.h"
 #include "mx/mime-type.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
@@ -63,7 +64,7 @@ static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
 static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
-                        struct n_ignore const *doitp, int level,
+                        struct mx_ignore const *doitp, int level,
                         struct quoteflt *qf, u64 *stats);
 
 /* Create a pipe; if mpp is not NULL, place some n_PIPEENV_* environment
@@ -85,7 +86,7 @@ static void          _send_onpipe(int signo);
 
 /* Send one part */
 static int           sendpart(struct message *zmp, struct mimepart *ip,
-                        FILE *obuf, struct n_ignore const *doitp,
+                        FILE *obuf, struct mx_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
                         char **linedat, uz *linesize,
                         u64 *stats, int level, boole *anyoutput/* XXX fake*/);
@@ -160,7 +161,7 @@ _out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
 
 static void
 _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
-   struct n_ignore const *doitp, int level, struct quoteflt *qf, u64 *stats)
+   struct mx_ignore const *doitp, int level, struct quoteflt *qf, u64 *stats)
 {
    char buf[64];
    struct str ti, to;
@@ -202,7 +203,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
     if((cp = mpp->m_ct_type_usr_ovwr) != NULL){
       _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       want_ct = TRU1;
-   }else if((want_ct = n_ignore_is_ign(doitp,
+   }else if((want_ct = mx_ignore_is_ign(doitp,
          "content-type", sizeof("content-type") -1)))
       cp = mpp->m_ct_type_plain;
    if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
@@ -223,7 +224,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
    if(mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL &&
          (!su_cs_cmp_case(cp, "7bit") ||
-          n_ignore_is_ign(doitp, "content-transfer-encoding",
+          mx_ignore_is_ign(doitp, "content-transfer-encoding",
             sizeof("content-transfer-encoding") -1))){
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
@@ -270,7 +271,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    /* Content-Description */
-   if (n_ignore_is_ign(doitp, "content-description", 19) &&
+   if (mx_ignore_is_ign(doitp, "content-description", 19) &&
          (cp = mpp->m_content_description) != NULL && *cp != '\0') {
       if (cpre != NULL)
          _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -290,7 +291,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    /* Filename */
-   if (n_ignore_is_ign(doitp, "content-disposition", 19) &&
+   if (mx_ignore_is_ign(doitp, "content-disposition", 19) &&
          mpp->m_filename != NULL && *mpp->m_filename != '\0') {
       if (cpre != NULL)
          _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -468,7 +469,7 @@ __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 
 static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
-   struct n_ignore const *doitp, struct quoteflt *qf,
+   struct mx_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action,
    char **linedat, uz *linesize, u64 * volatile stats, int volatile level,
    boole *anyoutput)
@@ -540,9 +541,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    if(!hign && level == 0 && action != SEND_TODISP_PARTS){
       if(doitp != NIL){
-         if(!n_ignore_is_ign(doitp, "status", 6))
+         if(!mx_ignore_is_ign(doitp, "status", 6))
             dostat |= 1;
-         if(!n_ignore_is_ign(doitp, "x-status", 8))
+         if(!mx_ignore_is_ign(doitp, "x-status", 8))
             dostat |= 2;
       }else
          dostat |= 3;
@@ -638,7 +639,8 @@ jhdrput:
          uz i;
 
          i = P2UZ(cp - hlp->s_dat);
-         if(hign || (doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
+         if(hign || (doitp != NULL &&
+                  mx_ignore_is_ign(doitp, hlp->s_dat, i)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
                (action == SEND_MBOX &&
@@ -688,7 +690,7 @@ jhdrtrunc:
       xstatusput(zmp, obuf, qf, stats);
       hany = TRU1;
    }
-   if((hany /*&& doitp != n_IGNORE_ALL*/) ||
+   if((hany /*&& doitp != IGNORE_ALL*/) ||
          (oaction == SEND_DECRYPT && ip->m_parent != NIL &&
           ip != ip->m_multipart) ||
          ((oaction == SEND_QUOTE || oaction == SEND_QUOTE_ALL) &&
@@ -1063,7 +1065,7 @@ jpipe_close:
    }
 
    /* Copy out message body */
-   if (doitp == n_IGNORE_ALL && level == 0) /* skip final blank line */
+   if (doitp == mx_IGNORE_ALL && level == 0) /* skip final blank line */
       --cnt;
    switch (ip->m_mime_enc) {
    case MIMEE_BIN:
@@ -1641,7 +1643,7 @@ put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
 }
 
 FL int
-sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
+sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
    char const *prefix, enum sendaction action, u64 *stats)
 {
    struct n_sigman linedat_protect;
@@ -1698,9 +1700,9 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    }
 #endif
 
-   nozap = (doitp != n_IGNORE_ALL && doitp != n_IGNORE_FWD &&
+   nozap = (doitp != mx_IGNORE_ALL && doitp != mx_IGNORE_FWD &&
          action != SEND_RFC822 &&
-         !n_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
+         !mx_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
    if (mp->m_flag & (MNOFROM | MBADFROM_)) {
       if (nozap)
          size = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
