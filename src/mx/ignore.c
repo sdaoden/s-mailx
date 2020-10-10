@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `headerpick', `retain' and `ignore', and `un..' variants.
+ *@ Implementation of ignore.h.
  *
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -30,7 +30,7 @@
 
 #include "mx/termios.h"
 
-/* TODO fake */
+#include "mx/ignore.h"
 #include "su/code-in.h"
 
 struct a_ignore_type{
@@ -50,46 +50,46 @@ struct a_ignore_type{
 #endif
 };
 
-struct n_ignore{
+struct mx_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
    boole i_auto; /* In auto-reclaimed, not heap memory */
-   boole i_bltin; /* Is a built-in n_IGNORE* type */
+   boole i_bltin; /* Is a built-in IGNORE* type */
    u8 i_ibm_idx; /* If .i_bltin: a_ignore_bltin_map[] idx */
    u8 i__dummy[5];
 };
 
 struct a_ignore_bltin_map{
-   struct n_ignore *ibm_ip;
+   struct mx_ignore *ibm_ip;
    char const ibm_name[8];
 };
 
 static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
-   {n_IGNORE_TYPE, "type"},
-   {n_IGNORE_SAVE, "save"},
-   {n_IGNORE_FWD, "forward\0"},
-   {n_IGNORE_TOP, "top"},
+   {mx_IGNORE_TYPE, "type"},
+   {mx_IGNORE_SAVE, "save"},
+   {mx_IGNORE_FWD, "forward\0"},
+   {mx_IGNORE_TOP, "top"},
 
-   {n_IGNORE_TYPE, "print\0"},
-   {n_IGNORE_FWD, "fwd"}
+   {mx_IGNORE_TYPE, "print\0"},
+   {mx_IGNORE_FWD, "fwd"}
 };
-#ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "n_ignore is defined locally" */
-CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
-CTAV(-n__IGNORE_SAVE - n__IGNORE_ADJUST == 1);
-CTAV(-n__IGNORE_FWD - n__IGNORE_ADJUST == 2);
-CTAV(-n__IGNORE_TOP - n__IGNORE_ADJUST == 3);
-CTAV(n__IGNORE_MAX == 3);
+#ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "mx_ignore is defined locally" */
+CTAV(-mx__IGNORE_TYPE - mx__IGNORE_ADJUST == 0);
+CTAV(-mx__IGNORE_SAVE - mx__IGNORE_ADJUST == 1);
+CTAV(-mx__IGNORE_FWD - mx__IGNORE_ADJUST == 2);
+CTAV(-mx__IGNORE_TOP - mx__IGNORE_ADJUST == 3);
+CTAV(mx__IGNORE_MAX == 3);
 #endif
 
-static struct n_ignore *a_ignore_bltin[n__IGNORE_MAX + 1];
+static struct mx_ignore *a_ignore_bltin[mx__IGNORE_MAX + 1];
 
 /* Almost everyone uses `ignore'/`retain', put _TYPE in BSS */
-static struct n_ignore a_ignore_type;
+static struct mx_ignore a_ignore_type;
 
 /* Return real self, which is xself unless that is a built-in special,
  * in which case NIL is returned if nonexistent and docreate is false.
  * The other statics assume self has been resolved (unless noted) */
-static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
+static struct mx_ignore *a_ignore_resolve_self(struct mx_ignore *xself,
       boole docreate);
 
 /* Lookup whether a mapping is contained: TRU1=retained, TRUM1=ignored.
@@ -97,44 +97,44 @@ static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
  * and regular expressions are not executed but instead their .ir_input is
  * text-compared against len bytes of dat.
  * Note it doesn't handle the .it_all "all fields" condition */
-static boole a_ignore_lookup(struct n_ignore const *self, boole retain,
+static boole a_ignore_lookup(struct mx_ignore const *self, boole retain,
       char const *dat, uz len);
 
 /* Delete all retain( else ignor)ed members */
-static void a_ignore_del_allof(struct n_ignore *ip, boole retain);
+static void a_ignore_del_allof(struct mx_ignore *ip, boole retain);
 
 /* Try to map a string to one of the built-in types */
 static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
 /* Logic behind `headerpick T T' (a.k.a. `retain'+) */
-static boole a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
+static boole a_ignore_addcmd_mux(struct mx_ignore *ip, char const **list,
       boole retain);
 
-static void a_ignore__show(struct n_ignore const *ip, boole retain);
+static void a_ignore__show(struct mx_ignore const *ip, boole retain);
 
 /* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
-static boole a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
+static boole a_ignore_delcmd_mux(struct mx_ignore *ip, char const **list,
       boole retain);
 
-static boole a_ignore__delone(struct n_ignore *ip, boole retain,
+static boole a_ignore__delone(struct mx_ignore *ip, boole retain,
       char const *field);
 
-static struct n_ignore *
-a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
+static struct mx_ignore *
+a_ignore_resolve_self(struct mx_ignore *xself, boole docreate){
    up suip;
-   struct n_ignore *self;
+   struct mx_ignore *self;
    NYD2_IN;
 
    self = xself;
-   suip = -R(up,self) - n__IGNORE_ADJUST;
+   suip = -R(up,self) - mx__IGNORE_ADJUST;
 
-   if(suip <= n__IGNORE_MAX){
+   if(suip <= mx__IGNORE_MAX){
       if((self = a_ignore_bltin[suip]) == NIL && docreate){
-         if(xself == n_IGNORE_TYPE){
+         if(xself == mx_IGNORE_TYPE){
             self = &a_ignore_type;
             /* LIB: su_mem_set(self, 0, sizeof *self);*/
          }else
-            self = n_ignore_new(FAL0);
+            self = mx_ignore_new(FAL0);
          self->i_bltin = TRU1;
          self->i_ibm_idx = S(u8,suip);
          a_ignore_bltin[suip] = self;
@@ -146,7 +146,7 @@ a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
 }
 
 static boole
-a_ignore_lookup(struct n_ignore const *self, boole retain,
+a_ignore_lookup(struct mx_ignore const *self, boole retain,
       char const *dat, uz len){
    boole rv;
 #ifdef mx_HAVE_REGEX
@@ -205,7 +205,7 @@ jleave:
 }
 
 static void
-a_ignore_del_allof(struct n_ignore *ip, boole retain){
+a_ignore_del_allof(struct mx_ignore *ip, boole retain){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
@@ -262,7 +262,7 @@ a_ignore_resolve_bltin(char const *cp){
 }
 
 static boole
-a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
+a_ignore_addcmd_mux(struct mx_ignore *ip, char const **list, boole retain){
    char const **ap;
    boole rv;
    NYD2_IN;
@@ -275,7 +275,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
       rv = TRU1;
    }else{
       for(ap = list; *ap != 0; ++ap)
-         switch(n_ignore_insert_cp(ip, retain, *ap)){
+         switch(mx_ignore_insert_cp(ip, retain, *ap)){
          case FAL0:
             n_err(_("Invalid field name cannot be %s: %s\n"),
                (retain ? _("retained") : _("ignored")), *ap);
@@ -296,7 +296,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
 }
 
 static void
-a_ignore__show(struct n_ignore const *ip, boole retain){
+a_ignore__show(struct mx_ignore const *ip, boole retain){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
@@ -379,7 +379,7 @@ jleave:
 }
 
 static boole
-a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, boole retain){
+a_ignore_delcmd_mux(struct mx_ignore *ip, char const **list, boole retain){
    char const *cp;
    struct a_ignore_type *itp;
    boole rv;
@@ -407,7 +407,7 @@ a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, boole retain){
 }
 
 static boole
-a_ignore__delone(struct n_ignore *ip, boole retain, char const *field){
+a_ignore__delone(struct mx_ignore *ip, boole retain, char const *field){
    struct a_ignore_type *itp;
    NYD_IN;
 
@@ -455,7 +455,7 @@ jleave:
    return (ip != NIL);
 }
 
-FL int
+int
 c_headerpick(void *vp){
    boole retain;
    struct a_ignore_bltin_map const *ibmp;
@@ -470,7 +470,7 @@ c_headerpick(void *vp){
    if(*argv == NIL){
       rv = 0;
       for(ibmp = &a_ignore_bltin_map[0];
-            ibmp <= &a_ignore_bltin_map[n__IGNORE_MAX]; ++ibmp){
+            ibmp <= &a_ignore_bltin_map[mx__IGNORE_MAX]; ++ibmp){
          rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, TRU1);
          rv |= !a_ignore_addcmd_mux(ibmp->ibm_ip, argv, FAL0);
       }
@@ -514,7 +514,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_unheaderpick(void *vp){
    boole retain;
    struct a_ignore_bltin_map const *ibmp;
@@ -548,141 +548,141 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_retain(void *vp){
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_TYPE, vp, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_ignore(void *vp){
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_TYPE, vp, FAL0);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_TYPE, vp, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unretain(void *vp){
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, TRU1);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_TYPE, vp, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unignore(void *vp){
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_TYPE, vp, FAL0);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_TYPE, vp, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_saveretain(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_SAVE, v, TRU1);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_SAVE, v, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_saveignore(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_SAVE, v, FAL0);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_SAVE, v, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unsaveretain(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_SAVE, v, TRU1);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_SAVE, v, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unsaveignore(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_SAVE, v, FAL0);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_SAVE, v, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_fwdretain(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_FWD, v, TRU1);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_FWD, v, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_fwdignore(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_addcmd_mux(n_IGNORE_FWD, v, FAL0);
+   rv = !a_ignore_addcmd_mux(mx_IGNORE_FWD, v, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unfwdretain(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_FWD, v, TRU1);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_FWD, v, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_unfwdignore(void *v){ /* TODO v15 drop */
    int rv;
    NYD_IN;
 
-   rv = !a_ignore_delcmd_mux(n_IGNORE_FWD, v, FAL0);
+   rv = !a_ignore_delcmd_mux(mx_IGNORE_FWD, v, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL struct n_ignore *
-n_ignore_new(boole isauto){
-   struct n_ignore *self;
+struct mx_ignore *
+mx_ignore_new(boole isauto){
+   struct mx_ignore *self;
    NYD_IN;
 
    self = isauto ? n_autorec_calloc(1, sizeof *self)
@@ -693,8 +693,8 @@ n_ignore_new(boole isauto){
    return self;
 }
 
-FL void
-n_ignore_del(struct n_ignore *self){
+void
+mx_ignore_del(struct mx_ignore *self){
    NYD_IN;
 
    a_ignore_del_allof(self, TRU1);
@@ -705,8 +705,8 @@ n_ignore_del(struct n_ignore *self){
    NYD_OU;
 }
 
-FL boole
-n_ignore_is_any(struct n_ignore const *self){
+boole
+mx_ignore_is_any(struct mx_ignore const *self){
    boole rv;
    NYD_IN;
 
@@ -719,8 +719,8 @@ n_ignore_is_any(struct n_ignore const *self){
    return rv;
 }
 
-FL boole
-n_ignore_insert(struct n_ignore *self, boole retain,
+boole
+mx_ignore_insert(struct mx_ignore *self, boole retain,
       char const *dat, uz len){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
@@ -829,15 +829,16 @@ jleave:
    return rv;
 }
 
-FL boole
-n_ignore_lookup(struct n_ignore const *self, char const *dat, uz len){
+boole
+mx_ignore_lookup(struct mx_ignore const *self, char const *dat, uz len){
    boole rv;
    NYD_IN;
 
-   if(self == n_IGNORE_ALL)
+   if(self == mx_IGNORE_ALL)
       rv = TRUM1;
    else if(len == 0 ||
-         (self = a_ignore_resolve_self(n_UNCONST(self), FAL0)) == NIL)
+         (self = a_ignore_resolve_self(UNCONST(struct mx_ignore*,self), FAL0)
+            ) == NIL)
       rv = FAL0;
    else if(self->i_retain.it_all)
       rv = TRU1;
