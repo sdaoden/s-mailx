@@ -47,6 +47,7 @@
 #include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/ignore.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -54,11 +55,11 @@
 
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
-static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
+static int a_cwrite_save1(void *vp, struct mx_ignore const *itp,
             int convert, boole domark, boole domove);
 
 static int
-a_cwrite_save1(void *vp, struct n_ignore const *itp,
+a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    int convert, boole domark, boole domove)
 {
    u64 mstats[1], tstats[2];
@@ -181,7 +182,7 @@ jsend:
       mp = &message[*ip - 1];
 #ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
-            !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(file)){
+            !mx_ignore_is_any(mx_IGNORE_SAVE) && imap_thisaccount(file)){
          if(imap_copy(mp, P2UZ(mp - message + 1), file) == STOP){
             success = FAL0;
             goto jferr;
@@ -272,7 +273,7 @@ c_save(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
    NYD_OU;
    return rv;
 }
@@ -282,7 +283,7 @@ c_Save(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
    NYD_OU;
    return rv;
 }
@@ -292,7 +293,7 @@ c_copy(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
    NYD_OU;
    return rv;
 }
@@ -302,7 +303,7 @@ c_Copy(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
    NYD_OU;
    return rv;
 }
@@ -312,7 +313,7 @@ c_move(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
    NYD_OU;
    return rv;
 }
@@ -322,7 +323,7 @@ c_Move(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
    NYD_OU;
    return rv;
 }
@@ -332,7 +333,7 @@ c_decrypt(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
    NYD_OU;
    return rv;
 }
@@ -342,7 +343,7 @@ c_Decrypt(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
    NYD_OU;
    return rv;
 }
@@ -358,7 +359,7 @@ c_write(void *vp){
       cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
             cap->ca_arg.ca_str.l = su_cs_len(n_path_devnull));
 
-   rv = a_cwrite_save1(vp, n_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
    NYD_OU;
    return rv;
 }

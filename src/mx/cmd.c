@@ -44,6 +44,7 @@
 #include "mx/cred-netrc.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
+#include "mx/ignore.h"
 #include "mx/mailcap.h"
 #include "mx/mime-type.h"
 #include "mx/mta-aliases.h"
