@@ -434,6 +434,9 @@ static boole a_amv_var_clear(struct a_amv_var_carrier *avcp,
 
 static boole a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
+/* For showing "all", instantiate first-time-inits and default values here */
+static void a_amv_var_show_instantiate_all(void);
+
 /* List all variables */
 static void a_amv_var_show_all(void);
 
@@ -2404,6 +2407,20 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
 }
 
 static void
+a_amv_var_show_instantiate_all(void){
+   uz i;
+   NYD2_IN;
+
+   for(i = a_AMV_VAR_I3VALS_CNT; i-- > 0;)
+      n_var_oklook(a_amv_var_i3vals[i].avdv_okey);
+
+   for(i = a_AMV_VAR_DEFVALS_CNT; i-- > 0;)
+      n_var_oklook(a_amv_var_defvals[i].avdv_okey);
+
+   NYD2_OU;
+}
+
+static void
 a_amv_var_show_all(void){
    struct n_string msg, *msgp;
    FILE *fp;
@@ -2412,16 +2429,11 @@ a_amv_var_show_all(void){
    char const **vacp, **cap;
    NYD2_IN;
 
+   a_amv_var_show_instantiate_all();
+
    if((fp = mx_fs_tmp_open("setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
-
-   /* We need to instantiate first-time-inits and default values here, so that
-    * they will be regular members of our _vars[] table */
-   for(i = a_AMV_VAR_I3VALS_CNT; i-- > 0;)
-      n_var_oklook(a_amv_var_i3vals[i].avdv_okey);
-   for(i = a_AMV_VAR_DEFVALS_CNT; i-- > 0;)
-      n_var_oklook(a_amv_var_defvals[i].avdv_okey);
 
    for(no = i = 0; i < a_AMV_PRIME; ++i)
       for(avp = a_amv_vars[i]; avp != NULL; avp = avp->av_link)
@@ -2521,7 +2533,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       }
 
       if(i > 0)
-         msgp = n_string_push_cp(msgp, "\n  ");
+         msgp = n_string_push_cp(msgp, ":\n  ");
    }
 
    /* (Read-only variables are generally shown via comments..) */
@@ -2530,7 +2542,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
       if(!isset){
          if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
             msgp = n_string_push_cp(msgp, "boolean; ");
-         msgp = n_string_push_cp(msgp, "variable not set: ");
+         msgp = n_string_push_cp(msgp, "unset: ");
          msgp = n_string_push_cp(msgp, n_shexp_quote_cp(name, FAL0));
          goto jleave;
       }
@@ -3566,23 +3578,44 @@ jleave:
 }
 
 FL int
-c_varshow(void *v){
-   char **ap;
+c_varshow(void *vp){
+   struct n_string msg, *msgp = &msg;
+   char const **ap, *cp;
+   uz i, no;
+   FILE *fp;
    NYD_IN;
 
-   if(*(ap = v) == NULL)
-      v = NULL;
-   else{
-      struct n_string msg, *msgp = &msg;
+   if((fp = mx_fs_tmp_open("varshow", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
 
-      msgp = n_string_creat(msgp);
-      for(; *ap != NULL; ++ap)
-         if(a_amv_var_check_name(*ap, FAL0))
-            a_amv_var_show(*ap, n_stdout, msgp);
-      n_string_gut(msgp);
+   msgp = n_string_creat(msgp);
+   i = 0;
+
+   if(*(ap = vp) == NIL){
+      a_amv_var_show_instantiate_all();
+
+      for(no = n_OKEYS_FIRST; no <= n_OKEYS_MAX; ++no){
+         cp = &a_amv_var_names[a_amv_var_map[no].avm_keyoff];
+         i += a_amv_var_show(cp, fp, msgp);
+      }
+   }else{
+      for(; (cp = *ap) != NIL; ++ap)
+         if(a_amv_var_check_name(cp, FAL0))
+            i += a_amv_var_show(cp, fp, msgp);
    }
+
+   n_string_gut(msgp);
+
+   if(fp != n_stdout){
+      page_or_print(fp, i);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
+
    NYD_OU;
-   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+   return 0;
 }
 
 FL int

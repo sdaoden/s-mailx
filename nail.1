@@ -6846,8 +6846,8 @@ is set.
 Remarks: this list mode will not automatically link-in (known)
 .Sx ENVIRONMENT
 variables, this only happens for explicit addressing, examples are
-.Ic varshow ,
-using a variable in an
+.Ic varshow
+(with arguments), using a variable in an
 .Ic if
 condition or a string passed to
 .Ic echo ,
@@ -7399,11 +7399,11 @@ subcommand, shall the URL be displayed.)
 .
 .Mx
 .It Ic varshow
-\*(NQ This command produces the same output as the listing mode of
-.Ic set ,
-including
+\*(NQ Produces the same output as
+.Ic set
+in listing mode (including
 .Va verbose Ns
-ity adjustments, but only for the given variables.
+ity adjustments), but shows all, or only the given variables.
 .
 .Mx
 .It Ic verify
@@ -8644,11 +8644,11 @@ except that the message is not saved at all.
 .\" .Sh INTERNAL VARIABLES {{{
 .Sh "INTERNAL VARIABLES"
 .
-Internal \*(UA variables are controlled via the
+These are controlled with the
 .Ic set
 and
 .Ic unset
-commands; prefixing a variable name with the string
+commands; prefixing a variable name with
 .Ql no
 and calling
 .Ic set
@@ -8659,17 +8659,15 @@ and
 .Ql set nocrt
 do the same thing.
 .Ic varshow
-will give more insight on the given variable(s), and
-.Ic set ,
-when called without arguments, will show a listing of all variables.
-Both commands support a more
+shows a listing of all or the given variables, and using
+.Ic set
+without arguments lists all presently set ones; both support a deteailed
 .Va verbose
 listing mode.
-Some well-known variables will also become inherited from the
-program
-.Sx ENVIRONMENT
-implicitly, others can be imported explicitly with the command
-.Ic environ
+Some well-known variables are implicitly inherited from the program
+.Sx ENVIRONMENT ,
+others can be imported explicitly with
+.Ic environ ,
 and henceforth share said properties.
 .
 .Pp

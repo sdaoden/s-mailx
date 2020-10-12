@@ -751,7 +751,7 @@ enum n_program_state_once{
  *   additionally "trust" the system-wide RC file to establish the settings
  * - code assumes (in conjunction with make-okey-map.pl) case-insensitive sort!
  * (Keep in SYNC: nail.h:okeys, nail.rc, nail.1:"Initial settings") */
-enum okeys {
+enum okeys{
    /* This is used for all macro(-local) variables etc., i.e.,
     * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
     * It is also used for the ${^.+} multiplexer */
@@ -1121,7 +1121,10 @@ ok_v_imap_keepalive, /* {chain=1} */
 ok_v_imap_list_depth,
 ok_b_imap_use_starttls /* {chain=1} */
 }; /* }}} */
-enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
+enum{
+   n_OKEYS_FIRST = ok_v_account, /* Truly accessible first */
+   n_OKEYS_MAX = ok_b_imap_use_starttls
+};
 
 /* Forwards */
 struct mx_attachment;
