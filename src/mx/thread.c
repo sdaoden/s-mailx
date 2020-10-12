@@ -677,7 +677,6 @@ c_sort(void *vp)
       {"thread", SORT_THREAD, NULL}
    };
 
-   struct str in, out;
    char *_args[2], *cp, **args = vp;
    int msgvec[2], i, n;
    int (*func)(void const *, void const *);
