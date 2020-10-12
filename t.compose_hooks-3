@@ -103,9 +103,9 @@ ex@am.ple ex@am.ple
 0/0/NONE
 on-compose-cleanup
 # no alternates registered
-#variable not set: t_oce
-#variable not set: t_ocs
-#variable not set: t_ocs_sh
-#variable not set: t_ocl
-#variable not set: t_occ
-#variable not set: autocc
+#unset: t_oce
+#unset: t_ocs
+#unset: t_ocs_sh
+#unset: t_ocl
+#unset: t_occ
+#unset: autocc
