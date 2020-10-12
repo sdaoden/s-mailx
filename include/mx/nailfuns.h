@@ -216,7 +216,7 @@ FL int c_set(void *vp);
 FL int c_unset(void *vp);
 
 /* `varshow' */
-FL int c_varshow(void *v);
+FL int c_varshow(void *vp);
 
 /* `environ' */
 FL int c_environ(void *v);
