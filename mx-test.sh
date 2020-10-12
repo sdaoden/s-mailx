@@ -2650,7 +2650,7 @@ t_environ() {
 	varshow EK1 EK2 EK3 EK4 NEK5
 	__EOT
 
-   check 1 0 "${MBOX}" '1685686686 1342'
+   check 1 0 "${MBOX}" '2826722558 1100'
 
 t_epilog "${@}"
 return
@@ -8248,7 +8248,7 @@ __EOT__
    # readctl in child. ~r as HERE document
    ${rm} "${MBOX}"
    printf 'm ex@am.ple\nbody\n!.
-      var t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
+      varshow t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
    ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=test://"$MBOX" \
       -X'
@@ -8475,7 +8475,7 @@ __EOT__
       ' > ./.tnotes 2>&1
    check_ex0 3-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 3 - "${MBOX}" '2127682860 2414'
+   check 3 - "${MBOX}" '3524594623 2348'
 
    # Reply, forward, resend, Resend
 

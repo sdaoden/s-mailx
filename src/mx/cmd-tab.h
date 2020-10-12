@@ -811,8 +811,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 { "visual", &c_visual, (A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
-   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC, NIL
-     DS(N_("Show some information about the given <variables>")) },
+   { "varshow", &c_varshow, (G | M | X | TWYSH), 0, MAC, NIL
+     DS(N_("Show (*verbose*) informations about all/the given <variables>")) },
    { "verify",
 #ifdef mx_HAVE_XTLS
       &c_verify,
