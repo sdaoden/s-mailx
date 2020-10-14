@@ -2996,13 +2996,14 @@ tag(int new)
 
 FL int
 c_imapcodec(void *vp){
-   boole err;
    uz alen;
+   boole cm_local, err;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
 
    argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    act = *argv;
    for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
@@ -3029,10 +3030,10 @@ c_imapcodec(void *vp){
       vp = NULL;
    }
 
-   if(varname != NULL){
-      if(!n_var_vset(varname, (up)varres)){
+   if(varname != NIL){
+      if(!n_var_vset(varname, R(up,varres), cm_local)){
          n_pstate_err_no = su_ERR_NOTSUP;
-         vp = NULL;
+         vp = NIL;
       }
    }else{
       struct str in, out;
@@ -4423,7 +4424,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
    ok_bclear(disconnected);
-   n_var_vclear(savecat("disconnected-", url.url_u_h_p.s));
+   n_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL), FAL0);
 
    if (mb.mb_type == MB_CACHE) {
       enum fedit_mode fm = FEDIT_NONE;

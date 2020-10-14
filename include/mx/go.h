@@ -40,7 +40,8 @@ enum mx_go_input_flags{
    mx__GO_INPUT_CTX_MAX1 = mx_GO_INPUT_CTX_COMPOSE + 1,
 
    mx_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
-   /* `xcall' is `call' (at the level where this is set): to be set when
+   /* `xcall' should work like `call' (except that rest of function is not
+    * evaluated, and only at the level where this is set): to be set when
     * teardown of top level has undesired effects, e.g., for `account's and
     * folder hooks etc., if we do not want to loose `localopts' unroll list */
    mx_GO_INPUT_NO_XCALL = 1u<<9,

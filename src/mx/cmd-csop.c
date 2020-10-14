@@ -88,10 +88,11 @@ CTA(((S(u32,a_CSOP_CMD__MAX | a_CSOP_ERR__MAX) << a_CSOP__FSHIFT) &
 struct a_csop_ctx{
    u32 csc_flags;
    u8 csc_cmderr; /* On input, a_vexpr_cmd, on output (maybe) a_vexpr_err */
-   u8 csc__pad[3];
+   boole csc_cm_local; /* `local' command modifier */
+   u8 csc__pad[2];
    char const **csc_argv;
    char const *csc_cmd_name;
-   char const *csc_varname; /* VPUT support */
+   char const *csc_varname; /* `vput' command modifier */
    char const *csc_varres;
    char const *csc_arg; /* The current arg (_ERR: which caused failure) */
    s64 csc_lhv;
@@ -308,6 +309,7 @@ c_csop(void *vp){
    DVL( su_mem_set(&csc, 0xAA, sizeof csc); )
    csc.csc_flags = a_CSOP_ERR;
    csc.csc_cmderr = a_CSOP_ERR_SUBCMD;
+   csc.csc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
    csc.csc_argv = S(char const**,vp);
    csc.csc_varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *csc.csc_argv++ : NIL;
    csc.csc_arg =
@@ -432,7 +434,8 @@ jestr:
          n_pstate_err_no = su_err_no();
          f |= a_CSOP_ERR;
       }
-   }else if(!n_var_vset(csc.csc_varname, S(up,csc.csc_varres))){
+   }else if(!n_var_vset(csc.csc_varname, S(up,csc.csc_varres),
+         csc.csc_cm_local)){
       n_pstate_err_no = su_ERR_NOTSUP;
       f |= a_CSOP_ERR;
    }

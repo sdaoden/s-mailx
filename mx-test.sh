@@ -99,6 +99,7 @@ t_all() {
    jspawn localopts
    jspawn local
    jspawn environ
+   jspawn loptlocenv
    jspawn macro_param_shift
    jspawn addrcodec
    jspawn csop
@@ -1726,7 +1727,7 @@ t_shcodec() {
    t_epilog "${@}"
 }
 
-t_ifelse() {
+t_ifelse() { # {{{
    t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=X > "${MBOX}"
@@ -2481,13 +2482,13 @@ t_ifelse() {
    fi
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_localopts() {
+t_localopts() { # {{{
    t_prolog "${@}"
 
    # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
 	define t2 {
 	   echo in: t2
 	   set t2=t2
@@ -2568,41 +2569,43 @@ t_localopts() {
    call lly
 	__EOT
 
-   check 1 0 "${MBOX}" '4016155249 1246'
+   check 1 0 ./t1 '4016155249 1246'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_local() {
+t_local() { # {{{
    t_prolog "${@}"
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
 		define du2 {
-		   echo du2-1 du=$du
-		   local set du=$1
-		   echo du2-2 du=$du
-		   local unset du
-		   echo du2-3 du=$du
+			echo du2-1 du=$du
+			local set du=$1
+			echo du2-2 du=$du
+			local unset du
+			echon du2-3\ <$du>\ ; varshow du
+			local set du=$1
+			echo du2-4 du=$du
+			local set nodu
+			echon du2-5\ <$du>\ ; varshow du
 		}
 		define du {
-		   local set du=dudu
-		   echo du-1 du=$du
-		   call du2 du2du2
-		   echo du-2 du=$du
-		   local set nodu
-		   echo du-3 du=$du
+			local set du=dudu
+			echo du-1 du=$du
+			call du2 du2du2
+			echo du-2 du=$du
 		}
 		define ich {
-		   echo ich-1 du=$du
-		   call du
-		   echo ich-2 du=$du
+			echo ich-1 du=$du
+			call du
+			echo ich-2 du=$du
 		}
 		define wir {
-		   localopts $1
-		   set du=wirwir
-		   echo wir-1 du=$du
-		   call ich
-		   echo wir-2 du=$du
+			localopts $1
+			set du=wirwir
+			echo wir-1 du=$du
+			call ich
+			echo wir-2 du=$du
 		}
 		echo ------- global-1 du=$du
 		call ich
@@ -2615,43 +2618,43 @@ t_local() {
 		call wir off
 		echo ------- global-5 du=$du
 		__EOT
-   check 1 0 "${MBOX}" '2411598140 641'
+   check 1 0 ./t1 '291008203 807'
 
    #
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-      define z {
-         echo z-1: x=$x y=$y z=$z crt=$crt
-         local set z=1 y=2 crt=10
-         echo z-2: x=$x y=$y z=$z crt=$crt
-      }
-      define y {
-         echo y-1: x=$x y=$y z=$z crt=$crt
-         local set x=2 y=1 crt=5
-         echo y-2: x=$x y=$y z=$z crt=$crt
-         call z
-         echo y-3: x=$x y=$y z=$z crt=$crt
-      }
-      define x {
-         echo x-1: x=$x y=$y z=$z crt=$crt
-         local set x=1 crt=1
-         echo x-2: x=$x y=$y z=$z crt=$crt
-         call y
-         echo x-3: x=$x y=$y z=$z crt=$crt
-      }
-      set crt
-      echo global-1: x=$x y=$y z=$z crt=$crt
-      call x
-      echo global-2: x=$x y=$y z=$z crt=$crt
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>&1
+		define z {
+			echo z-1: x=$x y=$y z=$z crt=$crt
+			local set z=1 y=2 crt=10
+			echo z-2: x=$x y=$y z=$z crt=$crt
+		}
+		define y {
+			echo y-1: x=$x y=$y z=$z crt=$crt
+			local set x=2 y=1 crt=5
+			echo y-2: x=$x y=$y z=$z crt=$crt
+			call z
+			echo y-3: x=$x y=$y z=$z crt=$crt
+		}
+		define x {
+			echo x-1: x=$x y=$y z=$z crt=$crt
+			local set x=1 crt=1
+			echo x-2: x=$x y=$y z=$z crt=$crt
+			call y
+			echo x-3: x=$x y=$y z=$z crt=$crt
+		}
+		set crt
+		echo global-1: x=$x y=$y z=$z crt=$crt
+		call x
+		echo global-2: x=$x y=$y z=$z crt=$crt
 		__EOT
-   check 2 0 "${MBOX}" '2560788669 216'
+   check 2 0 ./t2 '2560788669 216'
 
    t_epilog "${@}"
-}
+} # }}}
 
-t_environ() {
+t_environ() { # {{{
    t_prolog "${@}"
 
-   ${cat} <<- '__EOT' | EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>&1
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	varshow EK1 EK2 EK3 EK4 NEK5
@@ -2690,74 +2693,218 @@ t_environ() {
 	varshow EK1 EK2 EK3 EK4 NEK5
 	__EOT
 
-   check 1 0 "${MBOX}" '2826722558 1100'
+   check 1 0 ./t1 '2826722558 1100'
 
-t_epilog "${@}"
-return
+   #
 
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>&1
 	define l4 {
-	   echo '-------> L4 (environ unlink EK1, own localopts)'
-	   localopts yes
-	   environ unlink EK1
-	   set LK1=LK1_L4 EK1=EK1_L4
-		echo "we: L4: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L4: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   echo '-------< L4'
+		echo --l4-in;show
+		localopts yes
+		environ unlink LK1
+		set LK1=LK1_L4 noEK1
+		echo --l4-ou;show
 	}
 	define l3 {
-	   echo '-------> L3'
-	   set LK1=LK1_L3 EK1=EK1_L3
-		echo "we: L3-pre: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L3-pre: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   call l4
-		echo "we: L3-post: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L3-post: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   echo '-------< L3'
+		echo --l3-in;show
+		set LK1=LK1_L3 EK1=EK1_L3
+		echo --l3-mid;show
+		call l4
+		echo --l3-preou;show
+		xcall l4
 	}
 	define l2 {
-	   echo '-------> L2'
-	   set LK1=LK1_L2 EK1=EK1_L2
-		echo "we: L2-pre: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L2-pre: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   call l3
-		echo "we: L2-post: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L2-post: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   echo '-------< L2'
+		echo --l2-in;show
+		set LK1=LK1_L2 EK1=EK1_L2
+		echo --l2-mid;show
+		call l3
+		echo --l2-ou;show
 	}
 	define l1 {
-	   echo '-------> L1 (environ link EK1; localopts call-fixate)'
-	   localopts call-fixate yes
-	   set LK1=LK1_L1 EK1=EK1_L1
-	   environ link EK1
-		echo "we: L1-pre: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L1-pre: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   call l2
-		echo "we: L1-post: LK1<$LK1> EK1<$EK1>"
-		!echo "shell: L1-post: LK1<$LK1> EK1<$EK1>"
-		varshow LK1 EK1
-	   echo '-------< L1'
+		echo --l1-in;show
+		localopts call-fixate yes
+		set LK1=LK1_L1 EK1=EK1_L1
+		environ link LK1
+		echo --l1-mid;show
+		call l2
+		echo --l1-ou;show
 	}
-	echo "we: outer-pre: LK1<$LK1> EK1<$EK1>"
-	!echo "shell: outer-pre: LK1<$LK1> EK1<$EK1>"
-	varshow LK1 EK1
+	commandalias show \
+		'echo LK1=$LK1 EK1=$EK1;\
+		varshow LK1 EK1;\
+		!echo shell" LK1<$LK1> EK1<$EK1>"'
+		environ set EK1=EV1 noLK1
+		environ link LK1
+	echo --toplevel-in; show
 	call l1
-	echo "we: outer-post: LK1<$LK1> EK1<$EK1>"
-	!echo "shell: outer-post: LK1<$LK1> EK1<$EK1>"
-	varshow LK1 EK1
+	echo --toplevel-ou; show
 	__EOT
 
-   check 2 0 "${MBOX}" '1903030743 1131'
+   check_ex0 2-estat
+   have_feat uistrings && ck='2411360456 1550' || ck='25013986 1482'
+   check 2 - ./t2 "${ck}"
+
+   # Rather redundant, but came up during tests so let's use it
+   #
+   if have_feat cmd-vexpr; then
+      ${cat} <<- '__EOT' > ./t3_4_5.dat
+	set recu=0
+	define du {
+		echon 1 only env (outer) du=$du:; var du; !echo sh=$du
+		local set du=au
+		echon 2 only local (au) du=$du:; var du; !echo sh=$du
+		environ link du
+		echon 3 also env linked du=$du:; var du; !echo sh=$du
+		vput vexpr recu + $recu 1
+		if $recu -eq 1
+			echo ----------------RECURSION STARTS
+			call du
+			echon ----------------RECURSION ENDS: du=$du:; var du; !echo sh=$du
+		end
+		local unset du
+		echon 4 local ($recu) unset du=$du:; var du; !echo sh=$du
+		vput vexpr recu + $recu 1
+		set du=updated$recu
+		echon 5 updated ($recu) du=$du:; var du; !echo sh=$du
+	}
+	echon outer-1 du=$du:; var du; !echo sh=$du
+	call du
+	echon outer-2 du=$du:; var du; !echo sh=$du
+		__EOT
+
+      < ./t3_4_5.dat du=outer ${MAILX} ${ARGS} > ./t3 2>&1
+      check 3 0 ./t3 '3778746136 711'
+
+      unset du
+      < ./t3_4_5.dat ${MAILX} ${ARGS} > ./t4 2>&1
+      check_ex0 4-estat
+      have_feat uistrings && ck='1967950703 693' || ck='1243820518 559'
+      check 4 - ./t4 "${ck}"
+
+      < ./t3_4_5.dat ${MAILX} ${ARGS} -Y 'set du=via-y' > ./t5 2>&1
+      check 5 0 ./t5 '3094640490 700'
+   else
+      t_echoskip '3-5:[!CMD_VEXPR]'
+   fi
+
+   # lookup
+
+   unset du
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t6 2>&1
+	commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
+	environ lookup du
+	x
+	vput environ d1 lookup du
+	x
+	environ set du=1
+	environ lookup du
+	x
+	vput environ d1 lookup du
+	x
+	vput environ d+ lookup du
+	x
+	__EOT
+
+   check_ex0 6-estat
+   have_feat uistrings && ck='2303278002 242' || ck='3150923704 217'
+   check 6 - ./t6 "${ck}"
 
    t_epilog "${@}"
-}
+} # }}}
+
+t_loptlocenv() { # 1 combined 4 :) {{{
+   t_prolog "${@}"
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[!CMD_VEXPR]'
+      t_epilog "${@}"
+      return
+   fi
+
+   ${cat} <<- '__EOT' > t.rc
+	set _x=x
+	# We torture the unroll stack a bit more with that
+	if "$features" =% +cmd-vexpr,
+		set _y
+	endif
+	define r5 {
+		# Break a link, too
+		local environ unlink zz; local set zz=BLA
+		echon 'ln-broken: '; varshow zz; !echo ln-broken, shell" zz=$zz"
+	}
+	define r4 {
+		if $# -eq 1
+			echo --r4-${1}-in;show
+			call r5
+			echon 'ln-restored: '; varshow zz; !echo ln-restored, shell" zz=$zz"
+		endif
+		local environ unset zz
+		local set noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
+		if -Z _y || [ $# -eq 2 && "$2" -ge 50 ]
+			echo --r4-${1}-ou;show
+			return
+		endif
+		local vput vexpr i + "$2" 1
+		eval ${_x}call r4 $1 $i
+	}
+	define r3 {
+		echo --r3-in;show
+		local set asksub toplines=21 xy=huhu yz=vu zz=uv _S_MAILX_TEST=wadde
+		echo --r3-mid;show
+		call r4 1
+		set _x=
+		echo --r3-mid-2;show
+		call r4 2
+		echo --r3-ou;show
+	}
+	define r2 {
+		echo --r2-in;show
+		local unset asksub toplines xy yz _S_MAILX_TEST
+		echo --r2-prexcall;show
+		xcall r3
+	}
+	define r1 {
+		localopts on
+		echo --r1-in;show
+		set asksub=du toplines=10 xy=bye yz=cry zz=yrc _S_MAILX_TEST=gelle
+		echo --r1-mid;show
+		call r2
+		echo --r1-ou;show
+	}
+	define r0 {
+		echo --r0-in;show
+		unset asksub
+		echo --r0-mi;show
+		call r1
+		echo --r0-ou;show
+	}
+	commandalias show \
+		'echo as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
+		varshow asksub toplines xy yz zz _S_MAILX_TEST;\
+		!echo shell" a=$ask tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST"'
+	echo 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
+	varshow asksub toplines xy yz _S_MAILX_TEST
+	if $? -ne 0; echo Error; else; echo OK; endif
+	set asksub toplines=4 xy=hi _S_MAILX_TEST=trabbel
+	environ set yz=fi
+	environ link zz
+	echo --toplevel-in; show
+	call r0
+	echo --toplevel-ou; show
+	__EOT
+
+   </dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u \
+      -X echo\ --Xcommline\;show > ./t1 2>&1
+   check 1 0 ./t1 '2212856329 3957'
+
+   </dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u \
+      -X echo\ --Xcommline\;show \
+      -S noasksub -S toplines=7 \
+      > ./t2 2>&1
+   check 2 0 ./t2 '1797343641 4007'
+
+   t_epilog "${@}"
+} # }}}
 
 t_macro_param_shift() {
    t_prolog "${@}"

@@ -139,13 +139,14 @@ char *
 
 int
 c_urlcodec(void *vp){
-   boole ispath;
    uz alen;
+   boole cm_local, ispath;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    act = *argv;
    for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
@@ -176,7 +177,7 @@ c_urlcodec(void *vp){
    }
 
    if(varname != NIL){
-      if(!n_var_vset(varname, (up)varres)){
+      if(!n_var_vset(varname, R(up,varres), cm_local)){
          n_pstate_err_no = su_ERR_NOTSUP;
          cp = NIL;
       }

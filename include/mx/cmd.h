@@ -40,8 +40,8 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 
    mx_CMD_ARG_A = 1u<<4, /* Needs an active mailbox */
    mx_CMD_ARG_F = 1u<<5, /* Is a conditional command */
-   mx_CMD_ARG_G = 1u<<6, /* Is supposed to produce "gabby" history */
-   mx_CMD_ARG_H = 1u<<7, /* Never place in `history' */
+   mx_CMD_ARG_G = 1u<<6,/* Supports `global' prefix (only WYSH/WYRA) */
+   mx_CMD_ARG_HGABBY = 1u<<7, /* Is supposed to produce "gabby" history */
    mx_CMD_ARG_I = 1u<<8, /* Interactive command bit */
    mx_CMD_ARG_L = 1u<<9, /* Supports `local' prefix (only WYSH/WYRA) */
    mx_CMD_ARG_M = 1u<<10, /* Legal from send mode bit */
@@ -50,10 +50,14 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    mx_CMD_ARG_R = 1u<<13, /* Forbidden in compose mode recursion */
    mx_CMD_ARG_SC = 1u<<14, /* Forbidden pre-n_PSO_STARTED_CONFIG */
    mx_CMD_ARG_S = 1u<<15, /* Forbidden pre-n_PSO_STARTED (POSIX) */
-   mx_CMD_ARG_T = 1u<<16, /* Is a transparent command */
+   mx_CMD_ARG_T = 1u<<16, /* Transparent command (<> PS_SAW_COMMAND) */
    mx_CMD_ARG_V = 1u<<17, /* Supports `vput' prefix (only WYSH/WYRA) */
    mx_CMD_ARG_W = 1u<<18, /* Invalid when read only bit */
    mx_CMD_ARG_X = 1u<<19, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+
+   /* TODO Never place in `history': should be replaced by cmd_ctx flag stating
+    * TODO do not place "this" invocation in history! */
+   mx_CMD_ARG_NOHIST = 1u<<29,
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    mx_CMD_ARG_EM = 1u<<30 /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
@@ -125,9 +129,11 @@ struct mx_cmd_arg_ctx{
    uz cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
    u32 cac_msgflag; /* Input (option): required flags of messages */
    u32 cac_msgmask; /* Input (option): relevant flags of messages */
-   uz cac_no; /* Output: number of parsed arguments */
+   u32 cac_no; /* Output: number of parsed arguments */
+   boole cac_cm_local; /* "Output": `local' command modifier was set */
+   u8 cac__pad[3];
    struct mx_cmd_arg *cac_arg; /* Output: parsed arguments */
-   char const *cac_vput; /* "Output": vput prefix used: varname */
+   char const *cac_vput; /* "Output": `vput' command modifier used: varname */
 };
 
 struct mx_cmd_arg{
