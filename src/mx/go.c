@@ -88,6 +88,9 @@ enum a_go_flags{
          /* a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD | */
          a_GO_SPLICE,
 
+   a_GO_TYPE_MACRO_MASK = a_GO_MACRO | a_GO_MACRO_X_OPTION |
+         a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD,
+
    a_GO_FORCE_EOF = 1u<<14, /* go_input() shall return EOF next */
    a_GO_IS_EOF = 1u<<15,
 
@@ -103,9 +106,11 @@ enum a_go_flags{
    /* This context has inherited the entire data context from its parent */
    a_GO_DATACTX_INHERITED = 1u<<19,
 
-   a_GO_XCALL_IS_CALL = 1u<<24, /* GO_INPUT_NO_XCALL */
+   /* GO_INPUT_NO_XCALL: `xcall' should be like `call' (except rest of macro is
+    * not evaluated) */
+   a_GO_XCALL_IS_CALL = 1u<<24,
    /* `xcall' optimization barrier: go_macro() has been finished with a `xcall'
-    * request, and `xcall' set this in the parent _go_input of the said
+    * request, and "`xcall' set this in the parent" _go_input of the said
     * go_macro() to indicate a barrier: we teardown the _go_input of the
     * go_macro() away after leaving its _event_loop(), but then, back in
     * go_macro(), that enters a for(;;) loop that directly calls c_call() --
@@ -163,13 +168,16 @@ struct a_go_input_inject{
 struct a_go_ctx{
    struct a_go_ctx *gc_outer;
    sigset_t gc_osigmask;
-   u32 gc_flags; /* enum _go_flags */
+   BITENUM_IS(u32,a_go_flags) gc_flags;
    u32 gc_loff; /* Pseudo (macro): index in .gc_lines */
    char **gc_lines; /* Pseudo content, lines unfolded */
    FILE *gc_file; /* File we were in, if applicable */
    struct a_go_input_inject *gc_inject; /* To be consumed first */
    void (*gc_on_finalize)(void *);
    void *gc_finalize_arg;
+   /* When `xcall' is used to replace the running macro we `localopts' must be
+    * carried over to the macro running next: stored here */
+   void *gc_xcall_lopts;
    sigjmp_buf gc_eloop_jmp; /* TODO one day...  for _event_loop() */
    /* SPLICE hacks: saved stdin/stdout, saved pstate */
    FILE *gc_splice_stdin;
@@ -572,6 +580,11 @@ jwhite:
 
    /* Process the arguments to the command, depending on the type it expects */
    UNINIT(emsg, NIL);
+
+   if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
+      emsg = N_("%s: needs an active mailbox\n");
+      goto jeflags;
+   }
    if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
       emsg = N_("%s: can only be used batch or interactive mode\n");
@@ -581,6 +594,12 @@ jwhite:
       emsg = N_("%s: cannot be used while sending\n");
       goto jeflags;
    }
+   if((cdp->cd_caflags & mx_CMD_ARG_NEEDMAC) &&
+         ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO)){
+      emsg = N_("%s: can only be used in a macro\n");
+      goto jeflags;
+   }
+
    if(cdp->cd_caflags & mx_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
@@ -594,6 +613,7 @@ jwhite:
          goto jeflags;
       }
    }
+
    if((cdp->cd_caflags & mx_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
       emsg = N_("%s: cannot be used during startup\n");
       goto jeflags;
@@ -602,15 +622,11 @@ jwhite:
       emsg = N_("%s: cannot be used in a hook running in a child process\n");
       goto jeflags;
    }
-
-   if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
-      emsg = N_("%s: needs an active mailbox\n");
-      goto jeflags;
-   }
    if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
       emsg = N_("%s: cannot be used in read-only mailbox\n");
 jeflags:
       n_err(V_(emsg), cdp->cd_name);
+      nerrn = su_ERR_OPNOTSUPP;
       goto jleave;
    }
 
@@ -656,11 +672,16 @@ jeflags:
    }
 
    if(flags & a_LOCAL){
-      /* TODO a_LOCAL should affect !CMD_ARG_L commands if `vput' is used!! */
-      if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
-         emsg = N_("%s: local: command modifier not supported\n");
+      /* `local' is always allowed if `vput' is! */
+      if(!(flags & a_VPUT) && !(cdp->cd_caflags & mx_CMD_ARG_L)){
+         emsg = N_("%s: command modifier `local' not supported\n");
          goto jeflags; /* above */
       }
+      if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+         emsg = N_("%s: cannot use `local' modifier in this context\n");
+         goto jeflags; /* above */
+      }
+
       flags |= a_WYSH;
       n_pstate |= n_PS_ARGMOD_LOCAL; /* TODO YET useless since stripped later
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
@@ -694,7 +715,7 @@ jeflags:
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
          * TODO therefore yet needs to be set again based on flags&a_VPUT! */
       }else{
-         n_err(_("%s: %s: wysh: command modifier not supported\n"),
+         n_err(_("%s: %s: vput: command modifier not supported\n"),
             n_ERROR, cdp->cd_name);
          mx_cmd_print_synopsis(cdp, NIL);
          flags &= ~a_VPUT;
@@ -848,8 +869,14 @@ jmsglist_go:
       if(flags & a_VPUT){
          cac.cac_vput = vput;
          /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_VPUT; */
-      }else
-         cac.cac_vput = NULL;
+         if(flags & a_LOCAL){
+            cac.cac_cm_local = TRU1;
+            /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_LOCAL; */
+         }
+      }else{
+         ASSERT(cac.cac_cm_local == FAL0);
+         ASSERT(cac.cac_vput == NIL);
+      }
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
@@ -859,7 +886,7 @@ jmsglist_go:
       }break;
 
    default:
-      su_DBG( n_panic(_("Implementation error: unknown argument type: %d"),
+      DBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK); )
       nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
@@ -1007,7 +1034,7 @@ jrestart:
       mx_cnd_if_stack_del(&gcp->gc_data);
 
       if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
-            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NIL &&
+            !(gcp->gc_flags & a_GO_FORCE_EOF) &&
             !(n_psonce & n_PSO_EXIT_MASK)){
          n_err(_("Unmatched `if' at end of %s%s\n"),
             (gcp->gc_outer == NIL ? su_empty
@@ -1024,6 +1051,7 @@ jrestart:
       ASSERT(!(gcp->gc_flags & a_GO_TYPE_MASK));
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
          if(a_go_xcall != NIL){
+            ASSERT(a_go_xcall != R(void*,-1));
             su_FREE(a_go_xcall);
             a_go_xcall = NIL;
          }
@@ -2184,7 +2212,8 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
    n_pstate |= n_PS_ROBOT;
    rv = a_go_event_loop(gcp, gif);
 
-   /* Shall this enter a `xcall' stack avoidance optimization (loop)? */
+   /* Shall this enter a `xcall' stack avoidance optimization (loop) after
+    * being teared down? */
    if(a_go_xcall != NIL){
       void *vp;
       struct mx_cmd_arg_ctx *cacp;
@@ -2198,16 +2227,18 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
          while(a_go_xcall != NIL){
             mx_sigs_all_holdx();
 
-            a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
-
             vp = a_go_xcall;
             a_go_xcall = NIL;
             cacp = mx_cmd_arg_restore_from_heap(vp);
             su_FREE(vp);
 
+            a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
+            vp = a_go_ctx->gc_xcall_lopts;
+            a_go_ctx->gc_xcall_lopts = NIL;
+
             mx_sigs_all_rele();
 
-            (void)c_call(cacp);
+            (void)mx_xcall(cacp, vp);
          }
          rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) == 0);
          a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
@@ -2378,42 +2409,41 @@ c_xcall(void *vp){
    NYD2_IN;
 
    /* The context can only be a macro context, except that possibly a single
-    * level of `eval' (TODO: yet) was used to double-expand our arguments */
+    * level of `eval' (FIXME yet) was used to double-expand our arguments */
    if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
       gcp = gcp->gc_outer;
+
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION |
          a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD)) != a_GO_MACRO){
       if(n_poption & n_PO_D_V)
          n_err(_("xcall: can only be used inside a macro, using `call'\n"));
       rv = c_call(vp);
-      goto jleave;
-   }
-
-   /* Try to roll up the stack as much as possible.
-    * See a_GO_XCALL_LOOP flag description for more */
-   if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
-      if(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP)
-         gcp = gcp->gc_outer;
    }else{
-      /* Otherwise this macro is "invoked from the top level", in which case we
-       * silently act as if we were `call'... */
-      rv = c_call(vp);
-      /* ...which means we must ensure the rest of the macro that was us
-       * does not become evaluated! */
-      a_go_xcall = R(void*,-1);
-      goto jleave;
+      /* Try to roll up the stack as much as possible.
+       * See a_GO_XCALL_LOOP flag description for more */
+      /* xxx this gc_outer!=NIL should be redundant! assert it? */
+      mx_go_input_force_eof();
+
+      if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
+         struct mx_cmd_arg_ctx *cacp;
+         struct a_go_ctx *my, *outer;
+
+         if((outer = (my = gcp)->gc_outer)->gc_flags & a_GO_XCALL_LOOP)
+            gcp = outer;
+         outer->gc_xcall_lopts = mx_xcall_exchange_lopts(my->gc_finalize_arg);
+
+         cacp = mx_cmd_arg_save_to_heap(vp);
+         cacp->cac_indat = S(char*,S(void*,gcp));
+         a_go_xcall = cacp;
+
+         rv = 0;
+      }else{
+         /* This mostly means we are being invoked from the outermost aka first
+          * level of a hook or `account', so silently act like `call', then */
+         rv = c_call(vp);
+      }
    }
 
-   /* C99 */{
-      struct mx_cmd_arg_ctx *cacp;
-
-      cacp = mx_cmd_arg_save_to_heap(vp);
-      cacp->cac_indat = S(char*,S(void*,gcp));
-      a_go_xcall = cacp;
-   }
-
-   rv = 0;
-jleave:
    NYD2_OU;
    return rv;
 }

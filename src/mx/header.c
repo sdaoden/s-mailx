@@ -2416,12 +2416,14 @@ c_addrcodec(void *vp){
    struct n_string s_b, *s;
    uz alen;
    int mode;
+   boole cm_local;
    char const **argv, *varname, *act, *cp;
    NYD_IN;
 
    s = n_string_creat_auto(&s_b);
    argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    act = *argv;
    for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
@@ -2519,23 +2521,23 @@ c_addrcodec(void *vp){
    }else
       goto jesynopsis;
 
-   if(varname == NULL){
+   if(varname == NIL){
       if(fprintf(n_stdout, "%s\n", cp) < 0){
          n_pstate_err_no = su_err_no();
-         vp = NULL;
+         vp = NIL;
       }
-   }else if(!n_var_vset(varname, (up)cp)){
+   }else if(!n_var_vset(varname, R(up,cp), cm_local)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
 
 jleave:
    NYD_OU;
-   return (vp != NULL ? 0 : 1);
+   return (vp != NIL ? 0 : 1);
 jesynopsis:
    mx_cmd_print_synopsis(mx_cmd_firstfit("addrcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
-   vp = NULL;
+   vp = NIL;
    goto jleave;
 }
 

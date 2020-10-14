@@ -2084,13 +2084,14 @@ c_shcodec(void *vp){
    struct n_string sou_b, *soup;
    s32 nerrn;
    uz alen;
-   boole norndtrip;
+   boole cm_local, norndtrip;
    char const **argv, *varname, *act, *cp;
    NYD_IN;
 
    soup = n_string_creat_auto(&sou_b);
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    act = *argv;
    for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
@@ -2126,11 +2127,11 @@ c_shcodec(void *vp){
    }else
       goto jesynopsis;
 
-   if(varname != NULL){
+   if(varname != NIL){
       cp = n_string_cp(soup);
-      if(!n_var_vset(varname, (up)cp)){
+      if(!n_var_vset(varname, R(up,cp), cm_local)){
          nerrn = su_ERR_NOTSUP;
-         vp = NULL;
+         vp = NIL;
       }
    }else{
       struct str out;

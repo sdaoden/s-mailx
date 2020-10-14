@@ -18,7 +18,7 @@
 ## Variables {{{
 
 # The standard POSIX 2008/Cor 2-2016 mandates the following initial settings
-# which are established independendly from this file:
+# for built-in internal variables (established independendly from this file):
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,

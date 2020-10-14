@@ -185,6 +185,8 @@ jfakeent:
       rv = n_string_push_cp(rv, V_(cp));
 
    /* Note: on updates, change the manual! */
+   if(cdp->cd_caflags & mx_CMD_ARG_G)
+      rv = n_string_push_cp(rv, _(" | `global'"));
    if(cdp->cd_caflags & mx_CMD_ARG_L)
       rv = n_string_push_cp(rv, _(" | `local'"));
    if(cdp->cd_caflags & mx_CMD_ARG_V)
@@ -208,13 +210,15 @@ jfakeent:
    if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
       rv = n_string_push_cp(rv, _(" | nay:"));
       if(cdp->cd_caflags & mx_CMD_ARG_R)
-         rv = n_string_push_cp(rv, _(" compose-mode"));
+         rv = n_string_push_cp(rv, _(" compose mode"));
       if(cdp->cd_caflags & mx_CMD_ARG_S)
          rv = n_string_push_cp(rv, _(" startup"));
    }
 
-   if(cdp->cd_caflags & mx_CMD_ARG_G)
-      rv = n_string_push_cp(rv, _(" | gabby"));
+   if(cdp->cd_caflags & mx_CMD_ARG_HGABBY)
+      rv = n_string_push_cp(rv, _(" | history:gabby"));
+   if(cdp->cd_caflags & mx_CMD_ARG_NOHIST)
+      rv = n_string_push_cp(rv, _(" | history:ignored"));
 
    cp = n_string_cp(rv);
    NYD2_OU;
@@ -431,7 +435,7 @@ boole
 mx_cmd_is_valid_name(char const *cmd){
    /* Mirrors things from go.c */
    static char const a_prefixes[][8] =
-         {"ignerr", "local", "wysh", "vput", "scope", "u"};
+         {"global", "ignerr", "local", "wysh", "u", "vput"};
    uz i;
    NYD2_IN;
 
@@ -566,7 +570,9 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
    shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
    cacp->cac_no = 0;
-   cacp->cac_arg = lcap = NULL;
+   cacp->cac_cm_local = FAL0;
+   cacp->cac_arg = lcap = NIL;
+   cacp->cac_vput = NIL;
 
    cookie = NULL;
    parsed_args = 0;

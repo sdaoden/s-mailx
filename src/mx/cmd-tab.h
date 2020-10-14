@@ -214,7 +214,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define A mx_CMD_ARG_A
 #define F mx_CMD_ARG_F
 #define G mx_CMD_ARG_G
-#define H mx_CMD_ARG_H
+#define HG mx_CMD_ARG_HGABBY
 #define I mx_CMD_ARG_I
 #define L mx_CMD_ARG_L
 #define M mx_CMD_ARG_M
@@ -229,16 +229,17 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define V mx_CMD_ARG_V
 #define W mx_CMD_ARG_W
 #define X mx_CMD_ARG_X
+#define NOHIST mx_CMD_ARG_NOHIST
 #define EM mx_CMD_ARG_EM
 
    /* --MKTAB-START-- */
 
    { "!", &c_shell, (M | SC | V | X | EM | TRAWDAT), 0, 0, NIL
      DS(N_("Execute <shell-command>")) },
-   { "=", &c_pdot, (A | G | V | X | EM | TARG), 0, MMNDEL,
+   { "=", &c_pdot, (A | HG | V | X | EM | TARG), 0, MMNDEL,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pdot)
      DS(N_("Show message number of [<msglist>] (or the \"dot\")")) },
-   { "?", &a_cmd_c_help, (G | M | X | TWYSH), 0, 1, NIL
+   { "?", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL
      DS(N_("Show help [[Option] for the given command]]")) },
    { "|", &c_pipe, (A | TARG), 0, MMNDEL,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pipe)
@@ -248,7 +249,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Show all (or <alias>), or append to <alias> :<data>:")) },
    { "account", &c_account, (M | TWYSH), 0, MAC, NIL
      DS(N_("Create or select <account>, or list all accounts")) },
-   { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0, NIL
+   { "addrcodec", &c_addrcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
     DS(N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))},
    { "alternates", &c_alternates, (M | V | TWYSH), 0, MAC, NIL
      DS(N_("Show or define alternate <address-list> for the invoking user")) },
@@ -326,7 +327,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (G | M | V | X | EM | TWYSH), 2, MAC, NIL
+      (HG | M | V | X | EM | TWYSH), 2, MAC, NIL
       DS(N_("C-style byte string <operation>s on given :<argument>:")) },
    { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0, NIL
      DS(N_("Print current working directory (CWD)")) },
@@ -343,7 +344,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Like `copy', but decrypt first, if encrypted")) },
    { "define", &c_define, (M | X | TWYSH), 0, 2, NIL
      DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "digmsg", &c_digmsg, (G | M | X | EM | TARG), 0, 0,
+   { "digmsg", &c_digmsg, (HG | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_digmsg)
      DS(N_("<create|remove> <-|msgno> [<->] | <-|msgno> <cmd>: "
          "message access"))},
@@ -364,33 +365,33 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "draft", &c_draft, (A | M | TMSGLST), 0, 0, NIL
      DS(N_("Mark <msglist> as draft")) },
 
-{ "edit", &c_edit, (G | A | I | S | TMSGLST), 0, MMNORM, NIL
+{ "edit", &c_edit, (HG | A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
-   { "echo", &c_echo, (G | M | V | X | EM | TWYSH), 0, MAC, NIL
+   { "echo", &c_echo, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },
-   { "echoerr", &c_echoerr, (G | M | V | X | EM | TWYSH), 0, MAC, NIL
+   { "echoerr", &c_echoerr, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, and a trailing newline, to standard error")) },
-   { "echon", &c_echon, (G | M | V | X | EM | TWYSH), 0, MAC, NIL
+   { "echon", &c_echon, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments to standard output, without a trailing newline")) },
-   { "echoerrn", &c_echoerrn, (G | M | V| X | EM | TWYSH), 0, MAC, NIL
+   { "echoerrn", &c_echoerrn, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
-{ "else", &c_else, (G | F | M | X | TWYSH), 0, 0, NIL
+{ "else", &c_else, (HG | F | M | X | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "elif", &c_elif, (G | F | M | X | TWYRA), 1, MAC, NIL
+   { "elif", &c_elif, (HG | F | M | X | TWYRA), 1, MAC, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0, NIL
+   { "endif", &c_endif, (HG | F | M | X | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC, NIL
-     DS(N_("<link|unlink|set|unset> (an) environment <variable>(s)")) },
+   { "environ", &c_environ, (HG | L | M | V | X | EM | TWYSH), 2, MAC, NIL
+     DS(N_("<link|unlink|set|unset> :<variable>:, or [vput] lookup <var>")) },
    { "errors",
 #ifdef mx_HAVE_ERRORS
       &c_errors,
 #else
       NIL,
 #endif
-      (H | I | M | TWYSH), 0, 1, NIL
+      (I | M | NOHIST | TWYSH), 0, 1, NIL
      DS(N_("Either [<show>] or <clear> the error message ring")) },
-   { "eval", &c_eval, (G | M | X | EM | TWYSH), 1, MAC, NIL
+   { "eval", &c_eval, (HG | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Construct command from :<arguments>:, reuse its $? and $!")) },
    { "exit", &c_exit, (M | X | TWYSH), 0, 1, NIL
      DS(N_("Immediately return [<status>] to the shell without saving")) },
@@ -444,7 +445,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
    { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC, NIL
      DS(N_("Header selection: [<context> [<type> [<header-list>]]]"))},
-   { "help", &a_cmd_c_help, (G | M | X | TWYSH), 0, 1, NIL
+   { "help", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL
      DS(N_("Show help [[Option] for the given command]]")) },
    { "history",
 #ifdef mx_HAVE_HISTORY
@@ -452,7 +453,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (H | I | M | TWYSH), 0, MAC, NIL
+      (I | M | NOHIST | TWYSH), 0, MAC, NIL
      DS(N_("<[show]|load|save|clear>, "
          "<delete> :<NO>:, or re-eval entry <NO>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NIL
@@ -476,14 +477,14 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (G | M | V | X | TRAWDAT), 0, 0, NIL
+      (HG | M | V | X | TRAWDAT), 0, 0, NIL
      DS(N_("IMAP mailbox name <e[ncode]|d[ecode]> <rest-of-line>")) },
 
    { "Lfollowup", &c_Lfollowup, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mailing-list followup to the given <msglist>")) },
    { "list", &a_cmd_c_list, (M | TWYSH), 0, 0, NIL
      DS(N_("List all commands (in lookup order)")) },
-   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 2, NIL
+   { "localopts", &c_localopts, (M | X | NOHIST | TWYSH), 1, 2, NIL
      DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
    { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mailing-list reply to the given <msglist>")) },
@@ -577,13 +578,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 { "reply", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "read", &c_read, (G | M | X | EM | TWYSH), 1, MAC, NIL
+   { "read", &c_read, (HG | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Read a line into <variable>(s), split at $ifs")) },
-   { "readsh", &c_readsh, (G | M | X | EM | TWYSH), 1, MAC, NIL
+   { "readsh", &c_readsh, (HG | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Read a line input into <variable>(s), split at shell tokens")) },
-   { "readall", &c_readall, (G | M | X | EM | TWYSH), 1, 1, NIL
+   { "readall", &c_readall, (HG | M | X | EM | TWYSH), 1, 1, NIL
      DS(N_("Read anything from standard input until EOF into <variable>")) },
-   { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,
+   { "readctl", &c_readctl, (HG | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readctl)
      DS(N_("[<show>] or <create|set|remove> <spec> read channels"))},
    { "remove", &c_remove, (M | TWYSH), 1, MAC, NIL
@@ -624,7 +625,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "save", &c_save, (A | EM | TARG), 0, 0,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_save)
      DS(N_("Append [<msglist>] to <file>")) },
-{ "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NIL
+{ "set", &c_set, (HG | L | M | X | TWYRA), 0, MAC, NIL
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "search", &c_from, (A | TMSGLST), 0, MMNORM, NIL
      DS(N_("Search for <msglist>, type matching headers")) },
@@ -634,7 +635,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Mark <msglist> as seen")) },
 { "shell", &c_dosh, (I | S | EM | TWYSH), 0, 0, NIL
      DS(N_("Invoke an interactive shell")) },
-   { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0, NIL
+   { "shcodec", &c_shcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
      DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
    { "shift", &c_shift, (M | X | TWYSH), 0, 1, NIL
      DS(N_("In a `call'ed macro, shift positional parameters")) },
@@ -646,7 +647,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Like `type', but show raw message content of <msglist>")) },
    { "size", &c_messize, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Show size in bytes for <msglist>")) },
-   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 3, NIL
+   { "sleep", &c_sleep, (M | X | EM | NOHIST | TWYSH), 1, 3, NIL
      DS(N_("Sleep for <seconds> [<milliseconds>]"))},
 { "source", &c_source, (M | TWYSH), 1, 1, NIL
      DS(N_("Read commands from <file>")) },
@@ -719,7 +720,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (G | V | EM | TWYSH), 1, MAC, NIL
+      (HG | V | EM | TWYSH), 1, MAC, NIL
      DS(N_("TLS information and management: <command> [<:argument:>]")) },
    { "Top", &c_Top, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Like `top', but bypass `ignore' / `retain'")) },
@@ -788,13 +789,13 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Mark <msglist> as not being read")) },
    { "unretain", &c_unretain, (M | TWYRA), 0, MAC, NIL
      DS(N_("Un`retain' <header-list>")) },
-   { "unset", &c_unset, (G | L | M | X | TWYSH), 1, MAC, NIL
+   { "unset", &c_unset, (HG | L | M | X | TWYSH), 1, MAC, NIL
      DS(N_("Unset <option-list>")) },
    { "unshortcut", &c_unshortcut, (M | TWYSH), 1, MAC, NIL
      DS(N_("Delete <shortcut-list> (* for all)")) },
    { "unsort", &c_unthread, (A | TMSGLST), 0, 0, NIL
      DS(N_("Disable sorted or threaded mode")) },
-   { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0, NIL
+   { "urlcodec", &c_urlcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
 { "unfwdignore", &c_unfwdignore, (O | M | TRAWLST), 0, MAC, NIL
  DS(N_("Obsoleted by `unheaderpick'")) },
@@ -811,7 +812,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 { "visual", &c_visual, (A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
-   { "varshow", &c_varshow, (G | M | X | TWYSH), 0, MAC, NIL
+   { "varshow", &c_varshow, (HG | M | X | TWYSH), 0, MAC, NIL
      DS(N_("Show (*verbose*) informations about all/the given <variables>")) },
    { "verify",
 #ifdef mx_HAVE_XTLS
@@ -821,7 +822,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
       (A | TMSGLST), 0, 0, NIL
      DS(N_("Verify <msglist>")) },
-   { "version", &c_version, (H | M | V | X | TWYSH), 0, 0, NIL
+   { "version", &c_version, (M | V | X | NOHIST | TWYSH), 0, 0, NIL
      DS(N_("Show the version and feature set of the program")) },
    { "vexpr",
 #ifdef mx_HAVE_CMD_VEXPR
@@ -829,9 +830,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (G | M | V | X | EM | TWYSH), 1, MAC, NIL
+      (HG | M | V | X | EM | TWYSH), 1, MAC, NIL
       DS(N_("Evaluate [according to] <operator> [any :<argument>:]")) },
-   { "vpospar", &c_vpospar, (G | M | V | X | EM | TARG), 0, 0,
+   { "vpospar", &c_vpospar, (HG | M | V | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
 
@@ -867,7 +868,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #undef A
 #undef F
 #undef G
-#undef H
+#undef HG
 #undef I
 #undef L
 #undef M
@@ -882,6 +883,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #undef V
 #undef W
 #undef X
+#undef NOHIST
 #undef EM
 
 #endif /* mx_CMD_TAB_H */

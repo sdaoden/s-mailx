@@ -1208,6 +1208,7 @@ c_alternates(void *vp){
    struct n_string s_b, *s;
    struct n_strlist *slp;
    int rv;
+   boole cm_local;
    char const **argv, *varname, *key;
    NYD_IN;
 
@@ -1215,6 +1216,7 @@ c_alternates(void *vp){
 
    argv = S(char const**,vp);
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    if((key = *argv) == NIL){
       slp = NIL;
@@ -1232,7 +1234,7 @@ c_alternates(void *vp){
          key = n_string_cp(s);
 
          if(varname != NIL){
-            if(!n_var_vset(varname, S(up,key))){
+            if(!n_var_vset(varname, R(up,key), cm_local)){
                n_pstate_err_no = su_ERR_NOTSUP;
                rv = 1;
             }

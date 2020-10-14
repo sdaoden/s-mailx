@@ -131,6 +131,7 @@ sub create_c_tool{
 #include <string.h>
 
 #define NELEM(A) (sizeof(A) / sizeof(A[0]))
+#define BITENUM_IS(P,E) P
 
 #define u32 uint32_t
 #define u16 uint16_t
@@ -140,28 +141,33 @@ enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
 
    /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
-   a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
-   a_AMV_VF_CHAIN = 1u<<1,    /* Is variable chain (-USER{,@HOST} variants) */
-   a_AMV_VF_VIRT = 1u<<2,     /* "Stateless" automatic variable */
-   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
-   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
-   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from env (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_BOOL = 1u<<0, /* ok_b_* */
+   a_AMV_VF_CHAIN = 1u<<1, /* Has -HOST and/or -USER@HOST variants */
+   a_AMV_VF_VIRT = 1u<<2, /* "Stateless" automatic variable */
+   a_AMV_VF_VIP = 1u<<3, /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4, /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5, /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6, /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7, /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8, /* Import ONLY from env (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9, /* Update environment on change */
    a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
    a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
-   a_AMV_VF_NUM = 1u<<12,     /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<13,  /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<14,   /* Values will be stored in lowercase version */
+   /* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
+   a_AMV_VF_NUM = 1u<<12, /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<13, /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<14, /* Values will be stored in lowercase version */
    a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 
    /* Extended flags, not part of struct a_amv_var_map.avm_flags */
-   a_AMV_VF_EXT_LOCAL = 1u<<23,        /* `local' */
-   a_AMV_VF_EXT_LINKED = 1u<<24,       /* `environ' link'ed */
-   a_AMV_VF_EXT_FROZEN = 1u<<25,       /* Has been set by -S,.. */
+   /* Indicates the instance is actually a variant of a _VF_CHAIN, it thus uses
+    * the a_amv_var_map of the base variable, but it is not the base itself and
+    * therefore care must be taken */
+   a_AMV_VF_EXT_CHAIN = 1u<<22,
+   a_AMV_VF_EXT_LOCAL = 1u<<23, /* `local' */
+   a_AMV_VF_EXT_LINKED = 1u<<24, /* `environ' link'ed */
+   a_AMV_VF_EXT_FROZEN = 1u<<25, /* Has been set by -S,.. */
    a_AMV_VF_EXT_FROZEN_UNSET = 1u<<26, /* ..and was used to unset a variable */
    a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
    a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1
@@ -170,13 +176,13 @@ enum a_amv_var_flags{
 struct a_amv_var_map{
    u32 avm_hash;
    u16 avm_keyoff;
-   u16 avm_flags; /* enum a_amv_var_flags */
+   BITENUM_IS(u16,a_amv_var_flags) avm_flags;
 };
 
 struct a_amv_var_chain_map_bsrch{
    char avcmb_prefix[4];
    u16 avcmb_chain_map_off;
-   u16 avcmb_chain_map_eokey; /* This is an enum okey */
+   u16 avcmb_chain_map_eokey; /* This is an enum okeys */
 };
 
 struct a_amv_var_chain_map{
