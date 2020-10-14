@@ -152,10 +152,11 @@ struct a_vexpr_ctx{
    u32 vc_flags;
    u8 vc_cmderr; /* On input, a_vexpr_cmd, on output (maybe) a_vexpr_err */
    u8 vc_pbase;
-   u8 vc__pad[2];
+   boole vc_cm_local; /* `local' command modifier */
+   u8 vc__pad[1];
    char const **vc_argv;
    char const *vc_cmd_name;
-   char const *vc_varname; /* VPUT support */
+   char const *vc_varname; /* `vput' command modifier */
    char const *vc_varres;
    char const *vc_arg; /* The current arg (_ERR: which caused failure) */
    s64 vc_lhv;
@@ -877,6 +878,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
    /*DVL(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
    vc.vc_flags = a_VEXPR_ERR | a_VEXPR_ISNUM;
    vc.vc_cmderr = a_VEXPR_ERR_SUBCMD;
+   vc.vc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
    vc.vc_argv = S(char const**,vp);
    vc.vc_varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *vc.vc_argv++ : NIL;
    vc.vc_varres = su_empty;
@@ -1058,7 +1060,7 @@ jestr:
          n_pstate_err_no = su_err_no();
          f |= a_VEXPR_ERR;
       }
-   }else if(!n_var_vset(vc.vc_varname, S(up,vc.vc_varres))){
+   }else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){
       n_pstate_err_no = su_ERR_NOTSUP;
       f |= a_VEXPR_ERR;
    }

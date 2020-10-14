@@ -511,13 +511,15 @@ c_tls(void *vp){
 #endif
    uz i;
    enum {a_FPRINT, a_CERTIFICATE, a_CERTCHAIN} mode;
+   boole cm_local;
    char const **argv, *varname, *varres, *cp;
    NYD_IN;
 
    argv = vp;
-   vp = NULL; /* -> return value (boolean) */
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
-   varres = n_empty;
+   vp = NIL; /* -> return value (boolean) */
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+   varres = su_empty;
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
@@ -568,19 +570,20 @@ c_tls(void *vp){
 #endif /* mx_HAVE_NET */
 
    n_pstate_err_no = su_ERR_NONE;
-   vp = (char*)-1;
+   vp = R(char*,-1);
 jleave:
-   if(varname == NULL){
+   if(varname == NIL){
       if(fprintf(n_stdout, "%s\n", varres) < 0){
          n_pstate_err_no = su_err_no();
-         vp = NULL;
+         vp = NIL;
       }
-   }else if(!n_var_vset(varname, (up)varres)){
+   }else if(!n_var_vset(varname, R(up,varres), cm_local)){
       n_pstate_err_no = su_ERR_NOTSUP;
-      vp = NULL;
+      vp = NIL;
    }
+
    NYD_OU;
-   return (vp == NULL);
+   return (vp == NIL);
 
 jeoverflow:
    n_err(_("tls: string length or offset overflows datatype\n"));
