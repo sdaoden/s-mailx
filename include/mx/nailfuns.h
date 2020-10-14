@@ -122,11 +122,13 @@ do{\
  * accmacvar.c
  */
 
-/* Macros: `define', `undefine', `call', `call_if' */
-FL int c_define(void *v);
-FL int c_undefine(void *v);
-FL int c_call(void *v);
-FL int c_call_if(void *v);
+/* Macros: `define', `undefine', `call', hook for c_xcall(), `call_if' */
+FL int c_define(void *vp);
+FL int c_undefine(void *vp);
+FL int c_call(void *vp);
+FL void *mx_xcall_exchange_lopts(void *vp);
+FL int mx_xcall(void *vp, void *lospopts);
+FL int c_call_if(void *vp);
 
 /* Accounts: `account', `unaccount' */
 FL void mx_account_leave(void);
@@ -195,17 +197,18 @@ FL boole n_var_okclear(enum okeys okey);
  * it will also cause obsoletion messages only for doing lookup (once).
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * ${@} in double-quotes, in order to provide sh(1)ell compatible behaviour;
- * it returns whether there are any elements in argv (*cookie) */
+ * it returns whether there are any elements in argv (*cookie).
+ * Calling vset with val==NIL is a clear request; local specifies whether the
+ * `local' command modifier is active */
 FL char const *n_var_vlook(char const *vokey, boole try_getenv);
 FL boole n_var_vexplode(void const **cookie);
-FL boole n_var_vset(char const *vokey, up val);
-FL boole n_var_vclear(char const *vokey);
+FL boole n_var_vset(char const *vokey, up val, boole local);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
 #ifdef mx_HAVE_NET
 FL char *n_var_xoklook(enum okeys okey, struct mx_url const *urlp,
-            enum okey_xlook_mode oxm);
+      enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
 # define xok_blook(C,URL,M) xok_BLOOK(su_CONCAT(ok_b_, C), URL, M)
