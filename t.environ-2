@@ -1,0 +1,76 @@
+reproducible_build: environ: link: cannot link to non-existent: LK1
+--toplevel-in
+LK1= EK1=EV1
+#unset: LK1
+environ set EK1=EV1
+shell LK1<> EK1<EV1>
+--l1-in
+LK1= EK1=EV1
+#unset: LK1
+environ set EK1=EV1
+shell LK1<> EK1<EV1>
+--l1-mid
+LK1=LK1_L1 EK1=EK1_L1
+environ set LK1=LK1_L1
+environ set EK1=EK1_L1
+shell LK1<LK1_L1> EK1<EK1_L1>
+--l2-in
+LK1=LK1_L1 EK1=EK1_L1
+environ set LK1=LK1_L1
+environ set EK1=EK1_L1
+shell LK1<LK1_L1> EK1<EK1_L1>
+--l2-mid
+LK1=LK1_L2 EK1=EK1_L2
+environ set LK1=LK1_L2
+environ set EK1=EK1_L2
+shell LK1<LK1_L2> EK1<EK1_L2>
+--l3-in
+LK1=LK1_L2 EK1=EK1_L2
+environ set LK1=LK1_L2
+environ set EK1=EK1_L2
+shell LK1<LK1_L2> EK1<EK1_L2>
+--l3-mid
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l4-in
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l4-ou
+LK1=LK1_L4 EK1=
+set LK1=LK1_L4
+#unset: EK1
+shell LK1<LK1_L3> EK1<>
+--l3-preou
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l4-in
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l4-ou
+LK1=LK1_L4 EK1=
+set LK1=LK1_L4
+#unset: EK1
+shell LK1<LK1_L3> EK1<>
+--l2-ou
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l1-ou
+LK1=LK1_L1 EK1=EK1_L1
+environ set LK1=LK1_L1
+environ set EK1=EK1_L1
+shell LK1<LK1_L1> EK1<EK1_L1>
+--toplevel-ou
+LK1=LK1_L1 EK1=EK1_L1
+environ set LK1=LK1_L1
+environ set EK1=EK1_L1
+shell LK1<LK1_L1> EK1<EK1_L1>

@@ -1,0 +1,7 @@
+1/NOENT; du=; d1=:#unset: du
+1/NOENT; du=; d1=:#unset: du
+1
+0/NONE; du=1; d1=:environ set du=1
+0/NONE; du=1; d1=1:environ set du=1
+reproducible_build: ERROR: environ: vput: not a valid variable name: d+
+-1/NOTSUP; du=1; d1=1:environ set du=1

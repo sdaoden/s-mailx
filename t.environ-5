@@ -1,0 +1,27 @@
+outer-1 du=via-y:set du=via-y
+sh=
+1 only env (outer) du=via-y:set du=via-y
+sh=
+2 only local (au) du=au:set du=au
+sh=
+3 also env linked du=au:set du=au
+sh=via-y
+----------------RECURSION STARTS
+1 only env (outer) du=via-y:environ set du=via-y
+sh=via-y
+2 only local (au) du=au:set du=au
+sh=via-y
+3 also env linked du=au:set du=au
+sh=via-y
+4 local (2) unset du=via-y:environ set du=via-y
+sh=via-y
+5 updated (3) du=updated3:environ set du=updated3
+sh=updated3
+----------------RECURSION ENDS: du=au:set du=au
+sh=updated3
+4 local (3) unset du=updated3:environ set du=updated3
+sh=updated3
+5 updated (4) du=updated4:environ set du=updated4
+sh=updated4
+outer-2 du=updated4:environ set du=updated4
+sh=updated4

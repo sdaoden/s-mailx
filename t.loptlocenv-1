@@ -1,0 +1,187 @@
+test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST
+set asksub
+set toplines=5
+#unset: xy
+#unset: yz
+#unset: _S_MAILX_TEST
+OK
+--toplevel-in
+as=1 tl=4 xy=hi yz=fi zz=if MT=trabbel
+set asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+--r0-in
+as=1 tl=4 xy=hi yz=fi zz=if MT=trabbel
+set asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+--r0-mi
+as= tl=4 xy=hi yz=fi zz=if MT=trabbel
+#boolean; unset: asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+--r1-in
+as= tl=4 xy=hi yz=fi zz=if MT=trabbel
+#boolean; unset: asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+reproducible_build: Ignoring value of boolean variable: asksub: du
+--r1-mid
+as=1 tl=10 xy=bye yz=cry zz=yrc MT=gelle
+set asksub
+set toplines=10
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+set _S_MAILX_TEST=gelle
+shell a= tl= xy= yz=cry zz=yrc MT=gelle
+--r2-in
+as=1 tl=10 xy=bye yz=cry zz=yrc MT=gelle
+set asksub
+set toplines=10
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+set _S_MAILX_TEST=gelle
+shell a= tl= xy= yz=cry zz=yrc MT=gelle
+--r2-prexcall
+as= tl=5 xy=bye yz=cry zz=yrc MT=
+#boolean; unset: asksub
+set toplines=5
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+#unset: _S_MAILX_TEST
+shell a= tl= xy= yz=cry zz=yrc MT=
+--r3-in
+as= tl=5 xy=bye yz=cry zz=yrc MT=
+#boolean; unset: asksub
+set toplines=5
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+#unset: _S_MAILX_TEST
+shell a= tl= xy= yz=cry zz=yrc MT=
+--r3-mid
+as=1 tl=21 xy=huhu yz=vu zz=uv MT=wadde
+set asksub
+set toplines=21
+set xy=huhu
+set yz=vu
+set zz=uv
+set _S_MAILX_TEST=wadde
+shell a= tl= xy= yz=cry zz=yrc MT=wadde
+--r4-1-in
+as=1 tl=21 xy=bye yz=cry zz=yrc MT=wadde
+set asksub
+set toplines=21
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+set _S_MAILX_TEST=wadde
+shell a= tl= xy= yz=cry zz=yrc MT=wadde
+ln-broken: set zz=BLA
+ln-broken, shell zz=yrc
+ln-restored: environ set zz=yrc
+ln-restored, shell zz=yrc
+--r4-1-ou
+as= tl=5 xy=bye yz=YZ! zz=!ZY MT=
+#boolean; unset: asksub
+set toplines=5
+set xy=bye
+set yz=YZ!
+set zz=!ZY
+#unset: _S_MAILX_TEST
+shell a= tl= xy= yz=cry zz= MT=
+--r3-mid-2
+as=1 tl=21 xy=huhu yz=vu zz=uv MT=wadde
+set asksub
+set toplines=21
+set xy=huhu
+set yz=vu
+set zz=uv
+set _S_MAILX_TEST=wadde
+shell a= tl= xy= yz=cry zz=yrc MT=wadde
+--r4-2-in
+as=1 tl=21 xy=bye yz=cry zz=yrc MT=wadde
+set asksub
+set toplines=21
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+set _S_MAILX_TEST=wadde
+shell a= tl= xy= yz=cry zz=yrc MT=wadde
+ln-broken: set zz=BLA
+ln-broken, shell zz=yrc
+ln-restored: environ set zz=yrc
+ln-restored, shell zz=yrc
+--r4-2-ou
+as= tl=5 xy=bye yz=YZ! zz=!ZY MT=
+#boolean; unset: asksub
+set toplines=5
+set xy=bye
+set yz=YZ!
+set zz=!ZY
+#unset: _S_MAILX_TEST
+shell a= tl= xy= yz=cry zz= MT=
+--r3-ou
+as=1 tl=21 xy=huhu yz=vu zz=uv MT=wadde
+set asksub
+set toplines=21
+set xy=huhu
+set yz=vu
+set zz=uv
+set _S_MAILX_TEST=wadde
+shell a= tl= xy= yz=cry zz=yrc MT=wadde
+--r1-ou
+as=1 tl=10 xy=bye yz=cry zz=yrc MT=gelle
+set asksub
+set toplines=10
+set xy=bye
+environ set yz=cry
+environ set zz=yrc
+set _S_MAILX_TEST=gelle
+shell a= tl= xy= yz=cry zz=yrc MT=gelle
+--r0-ou
+as= tl=4 xy=hi yz=fi zz=if MT=trabbel
+#boolean; unset: asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+--toplevel-ou
+as= tl=4 xy=hi yz=fi zz=if MT=trabbel
+#boolean; unset: asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel
+--Xcommline
+as= tl=4 xy=hi yz=fi zz=if MT=trabbel
+#boolean; unset: asksub
+set toplines=4
+set xy=hi
+environ set yz=fi
+environ set zz=if
+set _S_MAILX_TEST=trabbel
+shell a= tl= xy= yz=fi zz=if MT=trabbel

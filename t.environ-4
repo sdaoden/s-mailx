@@ -1,0 +1,29 @@
+outer-1 du=:#unset: du
+sh=
+1 only env (outer) du=:#unset: du
+sh=
+2 only local (au) du=au:set du=au
+sh=
+reproducible_build: environ: link: cannot link to non-existent: du
+3 also env linked du=au:set du=au
+sh=
+----------------RECURSION STARTS
+1 only env (outer) du=:#unset: du
+sh=
+2 only local (au) du=au:set du=au
+sh=
+reproducible_build: environ: link: cannot link to non-existent: du
+3 also env linked du=au:set du=au
+sh=
+4 local (2) unset du=:#unset: du
+sh=
+5 updated (3) du=updated3:set du=updated3
+sh=
+----------------RECURSION ENDS: du=au:set du=au
+sh=
+4 local (3) unset du=updated3:set du=updated3
+sh=
+5 updated (4) du=updated4:set du=updated4
+sh=
+outer-2 du=updated4:set du=updated4
+sh=
