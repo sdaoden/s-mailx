@@ -381,7 +381,7 @@ _EOT
       $last_pbeg = $i = 0;
       foreach my $e (sort keys %chains){
          $e = $chains{$e};
-         print F "${S}{$e->{keyoff}, $e->{enum}},\n";
+         print F "${S}{$e->{keyoff}u, $e->{enum}},\n";
          die "Chains need length of at least 4 bytes: $e->{name}"
             if length $e->{name} < 4;
          my $p = substr $e->{name}, 0, 4;
@@ -400,7 +400,7 @@ _EOT
       print F 'static struct a_amv_var_chain_map_bsrch const ',
          'a_amv_var_chain_map_bsrch[] = {', "\n";
       foreach my $e (@prefixes){
-         print F "${S}{\"$e->[0]\", $e->[1], $e->[2]},\n"
+         print F "${S}{\"$e->[0]\", $e->[1]u, $e->[2]},\n"
       }
       print F '};', "\n";
       print F '#define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT ',
@@ -433,7 +433,7 @@ _EOT
          "\"$e->{name}\"};\n\n"
    }
 
-   print F "\n";
+   print F "\n" unless @skeys;
    print F 'static struct a_amv_var_virt const a_amv_var_virts[] = {', "\n";
    foreach(@skeys){
       my $e = $virts{$_};
