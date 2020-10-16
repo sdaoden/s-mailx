@@ -2,7 +2,7 @@
 #@ The set of MIME types that will be built in.
 #@ Official MIME types are registered at and managed by IANA, see
 #@    <https://www.iana.org/assignments/media-types/media-types.xhtml>
-#@ In here are EXTENSIONs and CHANGEs, though.
+#@ In here are EXTensions and CHANGEs, though.
 #
 # Lines starting with a number sign (#) (after possible whitespace) are
 # comments and discarded, empty lines are ignored, remaining ones are
@@ -20,7 +20,7 @@
 # Syntax restrictions:
 # - Comments must be lines of their own.
 # - Only MIME types for which we have a type constant allocated in
-#   mx/mime-types.c:enum mime_type are allowed in this file here.
+#   src/mx/mime-type.c:enum a_mimetype are allowed in this file here.
 # - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved.
 # - Note that at least one built-in type is required (empty C array)
@@ -48,17 +48,17 @@ application/xml  xml xsl xsd
 ? text/x-pod  pod
 ? text/x-rakudoc rakudoc
 
-# EXTENSION .txz
+# EXT .txz
 application/x-xz  xz txz
-# EXTENSION
+# EXT
 application/x-lzma  lzma tlz
 application/zstd  zst tzst
 application/gzip  tgz gz emz
-# EXTENSION
+# EXT
 application/x-lz4  lz4
 application/x-tar  tar
 application/x-bzip2  bz2 tbz2 boz
-# EXTENSIONs
+# EXTs
 application/x-lzip  lz
 application/zip  zip
 
@@ -124,17 +124,17 @@ message/rfc822  eml mime mht mhtml
 ? text/csv  csv
 ? text/sgml  sgml sgm
 ? text/x-assembly  s S asm
-# (Note that the tuple extensions will never match since text/plain wins!)
+# (Note tuple extensions will never match since text/plain wins!)
 ? text/x-asciidoc  asciidoc adoc ad ad.txt adoc.txt
 ? text/x-csharp  cs
-# (I have assembler .cgi's written myself, don't "? " mark that one)
+# (I have assembler CGI's written myself, do not "? " mark that one)
 text/x-cgi  cgi
 ? text/x-d  d
 ? text/x-go  go
 ? text/x-java  java
 text/x-jsp  jsp
 ? text/x-lex  l
-# EXTENSION nim
+# EXT nim
 ? text/x-nim  nim
 # CHANGE (tika: text/plain)
 ? text/x-m4  m4
