@@ -2,6 +2,8 @@
 require 5.008_001;
 use utf8;
 #@ Parse 'enum okeys' from nail.h and create gen-okeys.h.
+#@ Just like enum okeys it has to create case-insensitive sorted entries!
+#
 # Public Domain
 
 my $IN = 'include/mx/nail.h';
@@ -379,7 +381,7 @@ _EOT
       $last_pstr = "";
       $last_pend = "n_OKEYS_MAX";
       $last_pbeg = $i = 0;
-      foreach my $e (sort keys %chains){
+      foreach my $e (sort {CORE::fc($a) cmp CORE::fc($b)} keys %chains){
          $e = $chains{$e};
          print F "${S}{$e->{keyoff}u, $e->{enum}},\n";
          die "Chains need length of at least 4 bytes: $e->{name}"
@@ -412,8 +414,7 @@ _EOT
    # which cannot be initialized in a conforming way :(
    print F '/* Unfortunately init of varsized buffer impossible: ' .
       'define "subclass"es */' . "\n";
-   my @skeys = sort keys %virts;
-
+   my @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %virts;
    foreach(@skeys){
       my $e = $virts{$_};
       $e->{vname} = $1 if $e->{enum} =~ /ok_._(.*)/;
@@ -444,8 +445,7 @@ _EOT
    print F '#define a_AMV_VAR_VIRTS_CNT ', scalar @skeys, "\n";
 
    # First-time-init values
-   @skeys = sort keys %i3vals;
-
+   @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %i3vals;
    print F "\n";
    print F 'static struct a_amv_var_defval const a_amv_var_i3vals[] = {', "\n";
    foreach(@skeys){
@@ -457,8 +457,7 @@ _EOT
    print F '#define a_AMV_VAR_I3VALS_CNT ', scalar @skeys, "\n";
 
    # Default values
-   @skeys = sort keys %defvals;
-
+   @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %defvals;
    print F "\n";
    print F 'static struct a_amv_var_defval const a_amv_var_defvals[] = {',
       "\n";
