@@ -997,7 +997,7 @@ option_evaluate() {
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
       printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
+      printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
    exec 0<&7 1>&8 7<&- 8<&-
@@ -1475,7 +1475,7 @@ msg 'done'
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
-printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT; " >> ${newenv}
+printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT\n" >> ${newenv}
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -1496,7 +1496,7 @@ printf \
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
 printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
-printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK\n' \
    "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
    printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
@@ -1513,7 +1513,7 @@ for i in \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
+   printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -1551,12 +1551,8 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j="\$${i}"
-   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
+   printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
 done
-
-# Note that makefile reads and eval'uates one line of this file, whereas other
-# consumers source it via .(1)
-printf "\n" >> ${newenv}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
