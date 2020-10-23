@@ -1119,11 +1119,13 @@ ok_v_imap_cache,
 ok_v_imap_delim, /* {chain=1} */
 ok_v_imap_keepalive, /* {chain=1} */
 ok_v_imap_list_depth,
-ok_b_imap_use_starttls /* {chain=1} */
+ok_b_imap_use_starttls, /* {chain=1} */
+
+   ok_v__S_MAILX_TEST /* {name=_S_MAILX_TEST,env=1} */
 }; /* }}} */
 enum{
    n_OKEYS_FIRST = ok_v_account, /* Truly accessible first */
-   n_OKEYS_MAX = ok_b_imap_use_starttls
+   n_OKEYS_MAX = ok_v__S_MAILX_TEST
 };
 
 /* Forwards */
