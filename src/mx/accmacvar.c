@@ -286,7 +286,8 @@ struct a_amv_var_chain_map{
    u16 avcm_keyoff;
    u16 avcm_okey;
 };
-CTA(n_OKEYS_MAX <= U16_MAX, "Enumeration excesses storage datatype");
+/* Not <= because we have _S_MAILX_TEST */
+CTA(n_OKEYS_MAX < U16_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_var_virt{
    u32 avv_okey;
@@ -3595,7 +3596,7 @@ c_varshow(void *vp){
    if(*(ap = vp) == NIL){
       a_amv_var_show_instantiate_all();
 
-      for(no = n_OKEYS_FIRST; no <= n_OKEYS_MAX; ++no){
+      for(no = n_OKEYS_FIRST; no < n_OKEYS_MAX; ++no){
          cp = &a_amv_var_names[a_amv_var_map[no].avm_keyoff];
          i += a_amv_var_show(cp, fp, msgp);
       }
