@@ -192,7 +192,7 @@ unset POSIXLY_CORRECT LOGNAME USER
 
 # usage {{{
 usage() {
-   ${cat} >&2 <<_EOT
+   ${cat} >&2 <<'_EOT'
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
