@@ -53,6 +53,7 @@ NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
    ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
+# XXX BODY,MBOX,ERR: leading dot reminiscent
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
@@ -184,8 +185,7 @@ t_all() {
 
 ## Now it is getting really weird. You have been warned.
 # Setup and support {{{
-export ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR  \
-   MAKE awk cat cksum rm sed grep
+export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR
 
 LC_ALL=C LANG=C
 TZ=UTC
@@ -361,6 +361,7 @@ COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
+${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.tls.db
 trap "
    jobreaper_stop
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
@@ -1192,14 +1193,12 @@ t_Y_errexit() {
 
 t_S_freeze() {
    t_prolog "${@}"
-   oterm=$TERM
-   unset TERM
 
    # Test basic assumption
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} \
       -X'echo asksub<$asksub> dietcurd<$dietcurd>' \
-      -Xx > "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '270686329 21'
+      -Xx > ./t1 2>&1
+   check 1 0 ./t1 '270686329 21'
 
    #
    ${cat} <<- '__EOT' > "${BODY}"
@@ -1207,22 +1206,24 @@ t_S_freeze() {
 	set asksub
 	echo asksub<$asksub>
 	__EOT
+
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
       -Snoasksub -Sasksub -Snoasksub \
       -X'echo asksub<$asksub>' -X'set asksub' -X'echo asksub<$asksub>' \
-      -Xx > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '3182942628 37'
+      -Xx > ./t2 2>&1
+   check 2 0 ./t2 '3182942628 37'
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo asksub<$asksub>
 	unset asksub
 	echo asksub<$asksub>
 	__EOT
+
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
       -Snoasksub -Sasksub \
       -X'echo asksub<$asksub>' -X'unset asksub' -X'echo asksub<$asksub>' \
-      -Xx > "${MBOX}" 2>&1
-   check 3 0 "${MBOX}" '2006554293 39'
+      -Xx > ./t3 2>&1
+   check 3 0 ./t3 '2006554293 39'
 
    #
    ${cat} <<- '__EOT' > "${BODY}"
@@ -1230,63 +1231,63 @@ t_S_freeze() {
 	set dietcurd=cherry
 	echo dietcurd<$dietcurd>
 	__EOT
+
    </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
       -Sdietcurd=strawberry -Snodietcurd -Sdietcurd=vanilla \
       -X'echo dietcurd<$dietcurd>' -X'unset dietcurd' \
          -X'echo dietcurd<$dietcurd>' \
-      -Xx > "${MBOX}" 2>&1
-   check 4 0 "${MBOX}" '1985768109 65'
+      -Xx > ./t4 2>&1
+   check 4 0 ./t4 '1985768109 65'
 
-   ${cat} <<- '__EOT' > "${BODY}"
+   ${cat} <<- '__EOT' > ./t.rc
 	echo dietcurd<$dietcurd>
 	unset dietcurd
 	echo dietcurd<$dietcurd>
 	__EOT
-   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
       -Sdietcurd=strawberry -Snodietcurd \
       -X'echo dietcurd<$dietcurd>' -X'set dietcurd=vanilla' \
          -X'echo dietcurd<$dietcurd>' \
-      -Xx > "${MBOX}" 2>&1
-   check 5 0 "${MBOX}" '151574279 51'
+      -Xx > ./t5 2>&1
+   check 5 0 ./t5 '151574279 51'
 
-   # TODO once we have a detached one with env=1..
-   if [ -n "`</dev/null ${MAILX} ${ARGS} -X'!echo \$TERM' -Xx`" ]; then
-      t_echoskip 's_freeze-{6,7}:[shell sets $TERM]'
-   else
-      ${cat} <<- '__EOT' > "${BODY}"
-		!echo "shell says TERM<$TERM>"
-	echo TERM<$TERM>
-		!echo "shell says TERM<$TERM>"
-	set TERM=cherry
-		!echo "shell says TERM<$TERM>"
-	echo TERM<$TERM>
-		!echo "shell says TERM<$TERM>"
-		__EOT
-      </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
-         -STERM=strawberry -SnoTERM -STERM=vanilla \
-         -X'echo mail<$TERM>' -X'unset TERM' \
-         -X'!echo "shell says TERM<$TERM>"' -X'echo TERM<$TERM>' \
-         -Xx > "${MBOX}" 2>&1
-   check 6 0 "${MBOX}" '1211476036 167'
-
-      ${cat} <<- '__EOT' > "${BODY}"
-		!echo "shell says TERM<$TERM>"
-	echo TERM<$TERM>
-		!echo "shell says TERM<$TERM>"
-	set TERM=cherry
-		!echo "shell says TERM<$TERM>"
-	echo TERM<$TERM>
-		!echo "shell says TERM<$TERM>"
+   ${cat} <<- '__EOT' > ./t.rc
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	echo _S_MAILX_TEST<$_S_MAILX_TEST>
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	set _S_MAILX_TEST=cherry
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	echo _S_MAILX_TEST<$_S_MAILX_TEST>
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
 	__EOT
-      </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
-         -STERM=strawberry -SnoTERM \
-         -X'echo TERM<$TERM>' -X'set TERM=vanilla' \
-         -X'!echo "shell says TERM<$TERM>"' -X'echo TERM<$TERM>' \
-         -Xx > "${MBOX}" 2>&1
-      check 7 0 "${MBOX}" '3365080441 132'
-   fi
 
-   TERM=$oterm
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
+      -S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST -S_S_MAILX_TEST=vanilla \
+      -X'echo mail<$_S_MAILX_TEST>' -X'unset _S_MAILX_TEST' \
+      -X'!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"' \
+      -X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' \
+      -Xx > ./t6 2>&1
+   check 6 0 ./t6 '3512312216 239'
+
+   ${cat} <<- '__EOT' > ./t.rc
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	echo _S_MAILX_TEST<$_S_MAILX_TEST>
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	set _S_MAILX_TEST=cherry
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	echo _S_MAILX_TEST<$_S_MAILX_TEST>
+	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+	__EOT
+
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
+      -S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST \
+      -X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' -X'set _S_MAILX_TEST=vanilla' \
+      -X'!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"' \
+      -X'echo _S_MAILX_TEST<$_S_MAILX_TEST>' \
+      -Xx > ./t7 2>&1
+   check 7 0 ./t7 '167059161 213'
+
    t_epilog "${@}"
 }
 
