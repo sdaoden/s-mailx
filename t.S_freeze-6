@@ -1,9 +1,9 @@
-shell says TERM<vanilla>
-TERM<vanilla>
-shell says TERM<vanilla>
-shell says TERM<vanilla>
-TERM<vanilla>
-shell says TERM<vanilla>
+shell says _S_MAILX_TEST<vanilla>
+_S_MAILX_TEST<vanilla>
+shell says _S_MAILX_TEST<vanilla>
+shell says _S_MAILX_TEST<vanilla>
+_S_MAILX_TEST<vanilla>
+shell says _S_MAILX_TEST<vanilla>
 mail<vanilla>
-shell says TERM<>
-TERM<>
+shell says _S_MAILX_TEST<>
+_S_MAILX_TEST<>
