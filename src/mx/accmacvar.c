@@ -2063,7 +2063,8 @@ jeavmp:
    avp = avcp->avc_var;
 
    /* A `local' setting is never covered by `localopts' nor frozen */
-   if(avscf & a_AMV_VSETCLR_LOCAL)
+   if((avscf & a_AMV_VSETCLR_LOCAL) ||
+         (avp != NIL && (avp->av_flags & a_AMV_VF_EXT_LOCAL)))
       goto jislocal;
 
    /* If this setting had been established via -S and we still have not reached
