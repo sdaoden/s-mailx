@@ -436,7 +436,7 @@ jobreaper_start() {
       ' TERM
 
       # traps are setup, notify parent that we are up and running
-      kill -USR1 ${parent}
+      kill -USR1 ${parent} >/dev/null 2>&1
 
       while :; do
          int=0
@@ -521,7 +521,7 @@ jsync() {
       timeout= alldone=
 
       trap 'timeout=1' USR1
-      kill -USR1 ${JOBREAPER}
+      kill -USR1 ${JOBREAPER} >/dev/null 2>&1
 
       loops=0
       while [ -z "${timeout}" ]; do
@@ -545,7 +545,7 @@ jsync() {
          wait ${!}
       done
 
-      kill -USR2 ${JOBREAPER}
+      kill -USR2 ${JOBREAPER} >/dev/null 2>&1
       trap '' USR1
 
       [ -n "${timeout}" ] && jtimeout
@@ -790,17 +790,17 @@ color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
    # We do not want color for "make test > .LOG"!
-   if (command -v stty && command -v tput) >/dev/null 2>&1 &&
+   if command -v stty >/dev/null 2>&1 && command -v tput >/dev/null 2>&1 &&
          (<&1 >/dev/null stty -a) 2>/dev/null; then
-      sgr0=`tput sgr0 2>/dev/null`
+      { sgr0=`tput sgr0`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf1=`tput setaf 1 2>/dev/null`
+      { saf1=`tput setaf 1`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf2=`tput setaf 2 2>/dev/null`
+      { saf2=`tput setaf 2`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf3=`tput setaf 3 2>/dev/null`
+      { saf3=`tput setaf 3`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      b=`tput bold 2>/dev/null`
+      { b=`tput bold`; } 2>/dev/null
       [ $? -eq 0 ] || return
 
       COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
