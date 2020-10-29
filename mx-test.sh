@@ -454,9 +454,13 @@ jobreaper_start() {
 }
 
 jobreaper_stop() {
-   if [ -n "${JOBREAPER}" ]; then
-      kill -TERM ${JOBREAPER}
-      JOBREAPER=
+   [ -n "${JOBREAPER}" ] && kill -TERM ${JOBREAPER} >/dev/null 2>&1
+   JOBREAPER=
+   if [ ${JOBS} -gt 0 ]; then
+      echo 'Cleaning up running jobs'
+      jtimeout
+      wait ${JOBLIST}
+      JOBLIST=
    fi
 }
 
@@ -529,21 +533,7 @@ jsync() {
       kill -USR2 ${JOBREAPER}
       trap '' USR1
 
-      if [ -n "${timeout}" ]; then
-         i=0
-         while [ ${i} -lt ${JOBS} ]; do
-            i=`add ${i} 1`
-            if [ -f t.${i}.id ] &&
-                  read pid < t.${i}.id >/dev/null 2>&1 &&
-                  kill -0 ${pid} >/dev/null 2>&1; then
-               j=${pid}
-               [ -n "${JOBMON}" ] && j=-${j}
-               kill -KILL ${j} >/dev/null 2>&1
-            else
-               ${rm} -f t.${i}.id
-            fi
-         done
-      fi
+      [ -n "${timeout}" ] && jtimeout
    fi
 
    # Now collect the zombies
@@ -587,6 +577,22 @@ jsync() {
    ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
 
    JOBS=0
+}
+
+jtimeout() {
+   i=0
+   while [ ${i} -lt ${JOBS} ]; do
+      i=`add ${i} 1`
+      if [ -f t.${i}.id ] &&
+            read pid < t.${i}.id >/dev/null 2>&1 &&
+            kill -0 ${pid} >/dev/null 2>&1; then
+         j=${pid}
+         [ -n "${JOBMON}" ] && j=-${j}
+         kill -KILL ${j} >/dev/null 2>&1
+      else
+         ${rm} -f t.${i}.id
+      fi
+   done
 }
 # }}}
 
