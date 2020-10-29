@@ -154,9 +154,9 @@ eximan <ex5@am.ple> wrote:
 
  |Body
 unset fullnames, quote stuff
-22: ~R ./.ttxt
+22: ~R ./t.txt
  |included file
-23: ~r ./.ttxt
+23: ~r ./t.txt
 included file
 24: ~s this new subject
 26.1: ~U
@@ -171,4 +171,4 @@ That's appalling, II.
 27.2: ~u 1
 -------- Original Message --------
 That's appalling, I.
-and i ~w rite this out to ./.tmsg
+and i ~w rite this out to ./t3

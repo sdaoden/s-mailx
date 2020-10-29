@@ -1,1 +1,1 @@
-reproducible_build: ./.tfile: *expandaddr* does not allow file target
+reproducible_build: ./t.file: *expandaddr* does not allow file target

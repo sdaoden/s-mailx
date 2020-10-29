@@ -12,14 +12,14 @@ This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t1"
+Content-Disposition: attachment; filename="tx.a1"
 Content-ID: <19961002015007.AwAEAAAA@reproducible_build>
 
 att1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t 2"
+Content-Disposition: attachment; filename="tx a2"
 Content-ID: <19961002015007.BQAGAAAA@reproducible_build>
 
 att2-1
@@ -28,7 +28,7 @@ att2-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t3"
+Content-Disposition: attachment; filename="txa3"
 Content-ID: <19961002015007.BwAIAAAA@reproducible_build>
 
 att3-1
@@ -37,7 +37,7 @@ att3-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t 4"
+Content-Disposition: attachment; filename="tx a4"
 Content-ID: <19961002015007.CQAKAAAA@reproducible_build>
 
 att4-1

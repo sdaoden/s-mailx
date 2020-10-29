@@ -5,10 +5,10 @@ Subject: attachment-test
 
 -------
 Attachments:
-#1: .t1 [./.t1 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2: '.t 2' ['./.t 2' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#3: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#4: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: tx.a1 [./tx.a1 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#2: 'tx a2' ['./tx a2' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#3: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#4: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 -------
 Message contains:
 To: ex@am.ple
@@ -16,5 +16,5 @@ Subject: attachment-test
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
-#2: '.t 2' ['./.t 2' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#2: 'tx a2' ['./tx a2' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]

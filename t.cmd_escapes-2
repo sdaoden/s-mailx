@@ -168,9 +168,9 @@ eximan <ex5@am.ple> wrote:
 
  |Body
 unset fullnames, quote stuff
-22: ~R ./.ttxt
+22: ~R ./t.txt
  |included file
-23: ~r ./.ttxt
+23: ~r ./t.txt
 included file
 24: ~s this new subject
 26.1: ~U
@@ -185,7 +185,7 @@ That's appalling, II.
 27.2: ~u 1
 -------- Original Message --------
 That's appalling, I.
-and i ~w rite this out to ./.tmsg
+and i ~w rite this out to ./t3
 50:F
 -------- Original Message --------
 =46rom reproducible_build Wed Oct  2 01:50:07 1996
@@ -274,7 +274,7 @@ Body
 2:0/NONE
 3 only echoed via underscore
 3:0/NONE
-./.ttxt 1/14
+./t.txt 1/14
 4:0/NONE
 CMD 1/22
 5:0/NONE
@@ -283,7 +283,7 @@ CMD 1/22
 8:0/NONE
 9:0/NONE
 10:0/NONE
-./.ttxt 1/14
+./t.txt 1/14
 11:0/NONE
 Interpolating: 2
 12:0/NONE
@@ -323,9 +323,9 @@ Interpolating: 4
 33:0/NONE
 Interpolating: 5
 34:0/NONE
-./.ttxt 1/16
+./t.txt 1/16
 22:0/NONE
-./.ttxt 1/14
+./t.txt 1/14
 23:0/NONE
 24:0/NONE
 25:0/NONE
@@ -337,7 +337,7 @@ Interpolating: 2
 27.1:0/NONE
 Interpolating: 1
 27.2:0/NONE
-./.tmsg 174/4445
+./t3 174/4442
 i ~w:0/NONE
 shell command output
 shell:0/NONE

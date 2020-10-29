@@ -12,7 +12,7 @@ This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=utf8
-Content-Disposition: attachment; filename=".t1"
+Content-Disposition: attachment; filename="tx.a1"
 Content-ID: <19961002015007.AwAEAAAA@reproducible_build>
 
 att1
@@ -20,7 +20,7 @@ att1
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=latin1
 Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment; filename=".t10-f1"
+Content-Disposition: attachment; filename="txa10"
 Content-ID: <19961002015007.BQAGAAAA@reproducible_build>
 
 ein =E4ffchen und ein pferd

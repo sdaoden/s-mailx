@@ -5,9 +5,9 @@ Subject: This the subject is
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #2. message/rfc822: 2
-#3: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #4. message/rfc822: 1
 -------
 Message contains:
@@ -16,7 +16,7 @@ Subject: This the subject is
 
 -------
 Attachments:
-#1: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #2. message/rfc822: 2
 -------
 Message contains:
@@ -25,9 +25,9 @@ Subject: Subject two
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #2. message/rfc822: 2
-#3: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #4. message/rfc822: 1
 -------
 Message contains:
@@ -41,9 +41,9 @@ Subject: Subject three
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #2. message/rfc822: 2
-#3: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #4. message/rfc822: 1
 -------
 Message contains:
@@ -52,7 +52,7 @@ Subject: Subject three
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 -------
 Message contains:
 To: ex@amp.ple
@@ -60,9 +60,9 @@ Subject: Subject Four
 
 -------
 Attachments:
-#1: .t3 [./.t3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#1: txa3 [./txa3 -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #2. message/rfc822: 2
-#3: '.t 4' ['./.t 4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
+#3: 'tx a4' ['./tx a4' -- unclassified content, incs=reproducible_build -> oucs=*sendcharsets*]
 #4. message/rfc822: 1
 -------
 Message contains:

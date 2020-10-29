@@ -157,56 +157,56 @@ t_attach ENTER
 501
 210 1
 212
-17/0/NONE: ./.treadctl=ascii
+17/0/NONE: ./t.readctl=ascii
 0/0/NONE: 
-212 ./.treadctl
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
-18/0/NONE: filename .treadctl
+212 ./t.readctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
+18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
-212 .treadctl
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
-18/0/NONE: filename .treadctl
+212 t.readctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
+18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 1
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
-18/0/NONE: filename .treadctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
+18/0/NONE: filename t.readctl
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 210 1
 210 1
 210 1
-212 ./.treadctl
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
+212 ./t.readctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
 13/0/NONE: filename rctl
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
-212 .treadctl
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
+212 t.readctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
 13/0/NONE: filename rctl
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 rctl
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
 13/0/NONE: filename rctl
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 1
-31/0/NONE: creation-name ./.treadctl=ascii
-21/0/NONE: open-path ./.treadctl
+31/0/NONE: creation-name ./t.readctl=ascii
+21/0/NONE: open-path ./t.readctl
 13/0/NONE: filename rctl
 22/0/NONE: content-description Au
 20/0/NONE: content-id 10.du@ich
@@ -214,43 +214,43 @@ t_attach ENTER
 0/0/NONE: 
 210 2
 212
-17/0/NONE: ./.treadctl=ascii
-17/0/NONE: ./.tattach=latin1
+17/0/NONE: ./t.readctl=ascii
+17/0/NONE: ./t.attach=latin1
 0/0/NONE: 
-212 ./.tattach
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
-17/0/NONE: filename .tattach
+212 ./t.attach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
+17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
-212 .tattach
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
-17/0/NONE: filename .tattach
+212 t.attach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
+17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 2
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
-17/0/NONE: filename .tattach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
+17/0/NONE: filename t.attach
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 210 2
 210 2
 210 2
 210 2
-212 ./.tattach
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
+212 ./t.attach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
 12/0/NONE: filename tat
 23/0/NONE: content-description Au2
 20/0/NONE: content-id 20.du@wir
 29/0/NONE: content-type application/x-sh
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
-212 .tattach
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
+212 t.attach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
 12/0/NONE: filename tat
 23/0/NONE: content-description Au2
 20/0/NONE: content-id 20.du@wir
@@ -258,8 +258,8 @@ t_attach ENTER
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 tat
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
 12/0/NONE: filename tat
 23/0/NONE: content-description Au2
 20/0/NONE: content-id 20.du@wir
@@ -267,8 +267,8 @@ t_attach ENTER
 30/0/NONE: content-disposition attachment
 0/0/NONE: 
 212 2
-31/0/NONE: creation-name ./.tattach=latin1
-20/0/NONE: open-path ./.tattach
+31/0/NONE: creation-name ./t.attach=latin1
+20/0/NONE: open-path ./t.attach
 12/0/NONE: filename tat
 23/0/NONE: content-description Au2
 20/0/NONE: content-id 20.du@wir

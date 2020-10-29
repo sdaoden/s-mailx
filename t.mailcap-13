@@ -1,5 +1,5 @@
 =1
-[-- Message  1 -- 23 lines, 579 bytes --]:
+[-- Message  1 -- 23 lines, 578 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: test
@@ -12,15 +12,15 @@ Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
 
-[-- #1.2 5/112 7bit --]
+[-- #1.2 5/111 7bit --]
 Content-Type: application/pdf; charset=us-ascii
-Content-Disposition: attachment; filename=".tatt.pdf"
+Content-Disposition: attachment; filename="tatt.pdf"
 
 pre
 in a pdf
 post
 =2
-[-- Message  1 -- 23 lines, 579 bytes --]:
+[-- Message  1 -- 23 lines, 578 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: test
@@ -33,12 +33,12 @@ Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
 
-[-- #1.2 5/112 7bit --]
+[-- #1.2 5/111 7bit --]
 Content-Type: application/pdf; charset=us-ascii
-Content-Disposition: attachment; filename=".tatt.pdf"
+Content-Disposition: attachment; filename="tatt.pdf"
 
 =3
-[-- Message  1 -- 23 lines, 579 bytes --]:
+[-- Message  1 -- 23 lines, 578 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: test
@@ -53,13 +53,13 @@ Content-Disposition: inline
 
 du
 
-[-- #1.2 5/112 7bit --]
+[-- #1.2 5/111 7bit --]
 Content-Type: application/pdf; charset=us-ascii
-Content-Disposition: attachment; filename=".tatt.pdf"
+Content-Disposition: attachment; filename="tatt.pdf"
 
 in a pdf
 =4
-[-- Message  1 -- 23 lines, 579 bytes --]:
+[-- Message  1 -- 23 lines, 578 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Subject: test
@@ -72,9 +72,9 @@ Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
 
-[-- #1.2 5/112 7bit --]
+[-- #1.2 5/111 7bit --]
 Content-Type: application/pdf; charset=us-ascii
-Content-Disposition: attachment; filename=".tatt.pdf"
+Content-Disposition: attachment; filename="tatt.pdf"
 
 pre
 in a pdf

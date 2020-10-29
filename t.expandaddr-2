@@ -1,2 +1,2 @@
-reproducible_build: ./.tfile: *expandaddr* does not allow file target
-reproducible_build: '| ./.tcat > ./.tpipe': *expandaddr* does not allow command pipe target
+reproducible_build: ./t.file: *expandaddr* does not allow file target
+reproducible_build: '| ./t.cat > ./t.pipe': *expandaddr* does not allow command pipe target

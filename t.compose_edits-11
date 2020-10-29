@@ -8,19 +8,19 @@
 210 Fcc 3
 210 Subject Fcc Mailx-Raw-To Mailx-Command
 211 Fcc
-- ./.tout
-- .tout1
-- ./.tout2
+- ./t8
+- t9-x
+- ./t10-x
 
 210 Fcc
 210 Fcc
 211 Fcc
-- ./.tout
+- ./t8
 
 210 Fcc
 501 Fcc
 210 Fcc 1
 211 Fcc
-- ./.tout
+- ./t8
 
 210 Subject Fcc Mailx-Raw-To Mailx-Command

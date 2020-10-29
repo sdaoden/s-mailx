@@ -1,4 +1,4 @@
-reproducible_build: .tfile1: *expandaddr* does not allow file target
-reproducible_build: .tfile2: *expandaddr* does not allow file target
+reproducible_build: t.file1: *expandaddr* does not allow file target
+reproducible_build: t.file2: *expandaddr* does not allow file target
 reproducible_build: Some addressees were classified as "hard error"
 reproducible_build: ... message not sent

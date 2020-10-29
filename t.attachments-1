@@ -10,7 +10,7 @@ This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t3"
+Content-Disposition: attachment; filename="txa3"
 
 att3-1
 att3-2
@@ -18,7 +18,7 @@ att3-4
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t 2"
+Content-Disposition: attachment; filename="tx a2"
 
 att2-1
 att2-2

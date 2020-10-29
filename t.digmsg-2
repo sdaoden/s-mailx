@@ -4,7 +4,7 @@
 'This subject is'
 
 211 To
-- ./.tout
+- ./t1
 
 210 To
 210 Subject Mailx-Raw-To Mailx-Command
@@ -19,7 +19,7 @@
 --four
 210 Subject Fcc Mailx-Raw-To Mailx-Command
 211 Fcc
-- ./.tbox
+- ./t3
 
 --five
 210 Fcc

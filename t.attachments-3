@@ -10,7 +10,7 @@ This is a multi-part message in MIME format.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t 4"
+Content-Disposition: attachment; filename="tx a4"
 
 att4-1
 att4-2
@@ -48,7 +48,7 @@ This is a multi-part message in MIME format.
 
 --=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename=".t3"
+Content-Disposition: attachment; filename="txa3"
 
 att3-1
 att3-2
