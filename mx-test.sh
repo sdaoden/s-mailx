@@ -7,7 +7,10 @@
 #@             (then grep for ^ERROR, for example).
 #@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
 #@ grep ^ERROR handling.
-#@ And setting MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw.
+#@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
+#@ this works with --run-test only.
+#@ Ditto, $JOBWAIT is taken from environment when found.
+#
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -66,7 +69,7 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
-JOBWAIT=42
+: ${JOBWAIT:=42}
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -214,7 +217,9 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
 The last invocation style will compile and test as many different
 configurations as possible.
 OBJDIR= may be set to the location of the built objects etc.
-$MAILX_CC_TEST_NO_CLEANUP skips deletion of test data.
+$MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
+one test, aka --run-test).
+Finally $JOBWAIT could be set to a different timeout.
 _EOT
    exit 1
 }
@@ -10521,6 +10526,7 @@ else
          DEVELDIFF=y
          DUMPERR=y
          ARGS="${ARGS} -Smemdebug"
+         JOBWAIT=`add $JOBWAIT $JOBWAIT`
       fi
    elif have_feat devel; then
       DEVELDIFF=y
