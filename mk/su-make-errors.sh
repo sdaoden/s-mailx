@@ -1,5 +1,6 @@
 #!/bin/sh -
 #@ Either create src/su/gen-errors.h, or, at compile time, the OS<>SU map.
+#
 # Public Domain
 
 IN="${SRCDIR}"su/gen-errors.h
@@ -138,6 +139,7 @@ compile_time() {
       echo >&2 'Invalid usage'
       exit 1
    }
+   set -e
 
    {
       printf '#include <errno.h>\nsu_ERROR_START\n'
@@ -170,7 +172,7 @@ compile_time() {
       ' |
       ${sort} -n > "${TARGET}".txt
 
-   # EBCDIC/ASCII: we use \134 for \
+   # EBCDIC/ASCII: we use \134 for reverse solidus \
    j=\'
    ${awk} -v verb="${VERB}" -v input="${ERRORS}" -v dat="${TARGET}.txt" '
       BEGIN{
@@ -185,7 +187,7 @@ compile_time() {
             split(dl, ia)
 
             ++oscnt
-            osnoa[oscnt] = osonoa[oscnt] = ia[1]
+            osnoa[oscnt] = ia[1]
             osnaa[oscnt] = ia[2]
 
             if(ia[1] < 0)
@@ -217,20 +219,28 @@ compile_time() {
 
          # Dump C table
 
-         unavail = 0
          cnt = 0
          print "#define su__ERR_NUMBER_ENUM_C \134"
 
          print verb "su_ERR_NONE = 0,\134"
          ++cnt
 
+         # Since our final table is searched with binary sort,
+         # place the non-available backward counting once last
+         unavail = j = k = 0
          for(i = 1; i <= oscnt; ++i){
-            if(osnoa[i] < 0){
+            if(osnoa[i] >= 0){
+               map[osnaa[i]] = osnoa[i]
+               print verb "su_ERR_" osnaa[i] " = " osnoa[i] ",\134"
+               ++cnt
+            }else{
                ++unavail
-               osnoa[i] = "(su__ERR_NUMBER_MAX - " unavail ")"
+               the_unavail[unavail] = "su_ERR_" osnaa[i] " = " \
+                     "(su__ERR_NUMBER_MAX - " unavail ")"
             }
-            map[osnaa[i]] = osnoa[i]
-            print verb "su_ERR_" osnaa[i] " = " osnoa[i] ",\134"
+         }
+         for(i = unavail; i >= 1; --i){
+            print verb the_unavail[i] ",\134"
             ++cnt
          }
 
@@ -244,13 +254,28 @@ compile_time() {
          print "#ifdef __cplusplus"
          print "# define su__CXX_ERR_NUMBER_ENUM \134"
          print verb "enone = su_ERR_NONE,\134"
-         for(i = 1; i <= oscnt; ++i)
-            print verb "e" tolower(osnaa[i]) " = su_ERR_" osnaa[i] ",\134"
+
+         unavail = 0
+         for(i = 1; i <= oscnt; ++i){
+            if(osnoa[i] >= 0)
+               print verb "e" tolower(osnaa[i]) " = su_ERR_" osnaa[i] ",\134"
+            else{
+               ++unavail
+               the_unavail[unavail] = "e" tolower(osnaa[i]) " = su_ERR_" \
+                     osnaa[i]
+            }
+         }
+         for(i = unavail; i >= 1; --i){
+            print verb the_unavail[i] ",\134"
+            ++cnt
+         }
          print verb "enotobacco = su_ERR_NOTOBACCO,\134"
          print verb "e__number = su__ERR_NUMBER"
+
          print "#endif /* __cplusplus */"
 
          # And our OS errno -> name map offset table
+         # (This "OS" however includes the unavail ones)
 
          voidoff = 0
          for(mapoff = 0;; ++mapoff){
@@ -265,7 +290,6 @@ compile_time() {
                d = substr(v, doff + 2, length(v) - doff - 1)
                v = substr(v, 1, doff - 1)
             }
-
             mapo[v] = mapoff
             if(v == "NOTOBACCO")
                voidoff = mapoff
@@ -277,15 +301,24 @@ compile_time() {
          print verb "a_X(0, 0) \134"
          ++uniq
 
-         mapx[0] = 1
+         unavail = 0
+         mapdups[0] = 1
          for(i = 1; i <= oscnt; ++i){
-            if(osonoa[i] < 0)
+            if(osnoa[i] < 0){
+               the_unavail[++unavail] = i
                continue
-            if(mapx[osnoa[i]])
+            }
+            if(mapdups[osnoa[i]])
                continue
-            mapx[osnoa[i]] = 1
-            ++uniq
+            mapdups[osnoa[i]] = 1
             print verb "a_X(" osnoa[i] ", " mapo[osnaa[i]] ") \134"
+            ++uniq
+         }
+
+         for(i = unavail; i >= 1; --i){
+            print verb "a_X(" "su__ERR_NUMBER_MAX - " i ", " \
+                  mapo[osnaa[the_unavail[i]]] ")\134"
+            ++uniq
          }
 
          print verb "a_X(su__ERR_NUMBER_MAX, " voidoff ") \134"
