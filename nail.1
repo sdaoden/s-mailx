@@ -8837,24 +8837,20 @@ the requested state or condition, of which there are:
 .It Va ^ERR , ^ERRDOC , ^ERRNAME
 The number, documentation, and name of the current
 .Xr errno 3 ,
-respectively, which is usually set after an error occurred.
-The documentation is an \*(OP, the name is used if not available.
-\*(ID This machinery is new and is usually reliable only if a command
-explicitly states that it manages the variable
-.Va \&! ,
-which is effectively identical to
-.Va \&\&^ERR .
-Each of those variables can be suffixed with a hyphen minus followed by
+respectively, usually set after an error occurred.
+The former as shown is identical to
+.Va \&! .
+Documentation is an \*(OP, the name is used as a fallback.
+Each of these can be suffixed with a hyphen minus followed by
 a name or number, in which case the expansion refers to the given error.
-Note this is a direct mapping of (a subset of) the system error values:
+Note this is a direct mapping of (a subset of) the system error values,
+with (high numbered) fallbacks for unsupported constants:
 .Bd -literal -offset indent
 define work {
   eval echo \e$1: \e$^ERR-$1:\e
     \e$^ERRNAME-$1: \e$^ERRDOC-$1
   vput vexpr i + "$1" 1
-  if [ $i -lt 16 ]
-    \excall work $i
-  end
+  if $i -lt 16; \excall work $i; end
 }
 call work 0
 .Ed
