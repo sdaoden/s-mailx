@@ -593,6 +593,8 @@ _cc_flags_generic() {
          cc_check -Wbad-function-cast
          cc_check -Wcast-align
          cc_check -Wcast-qual
+         cc_check -Wformat-security # -Wformat via -Wall
+            cc_check -Wformat-signedness
          cc_check -Winit-self
          cc_check -Wmissing-prototypes
          cc_check -Wshadow
@@ -631,7 +633,6 @@ _cc_flags_generic() {
                msg ' ! Not checking for -D_FORTIFY_SOURCE=2 compiler option,'
                msg ' ! since that caused errors in a "similar" configuration.'
                msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
-
             fi
          fi
       else
