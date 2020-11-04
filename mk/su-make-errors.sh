@@ -296,6 +296,7 @@ compile_time() {
          }
 
          uniq = 0
+         print "#define su__ERR_NUMBER_VOIDOFF " voidoff
          print "#define su__ERR_NUMBER_TO_MAPOFF \134"
 
          print verb "a_X(0, 0) \134"
@@ -321,10 +322,9 @@ compile_time() {
             ++uniq
          }
 
-         print verb "a_X(su__ERR_NUMBER_MAX, " voidoff ") \134"
+         print verb "a_X(su__ERR_NUMBER_MAX, su__ERR_NUMBER_VOIDOFF) \134"
          ++uniq
          print verb "/* " uniq " unique members */"
-         print "#define su__ERR_NUMBER_VOIDOFF " voidoff
       }
    ' >> "${TARGET}"
 
