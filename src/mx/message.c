@@ -1450,11 +1450,14 @@ message_append(struct message *mp){
 FL void
 message_append_null(void){
    NYD_IN;
+
    if(msgCount == 0)
-      message_append(NULL);
-   setdot(message);
+      message_append(NIL);
+
+   setdot(message, FAL0);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
+
    NYD_OU;
 }
 
@@ -1514,14 +1517,19 @@ j_leave:
 }
 
 FL struct message *
-setdot(struct message *mp){
+setdot(struct message *mp, boole set_ps_did_print_dot){
    NYD_IN;
+
    if(dot != mp){
       prevdot = dot;
       n_pstate &= ~n_PS_DID_PRINT_DOT;
    }
-   dot = mp;
-   uncollapse1(dot, 0);
+
+   uncollapse1(dot = mp, 0);
+
+   if(set_ps_did_print_dot)
+      n_pstate |= n_PS_DID_PRINT_DOT;
+
    NYD_OU;
    return dot;
 }

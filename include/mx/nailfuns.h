@@ -1000,7 +1000,7 @@ FL boole      message_match(struct message *mp, struct search_expr const *sep,
                boole with_headers);
 
 /*  */
-FL struct message * setdot(struct message *mp);
+FL struct message *setdot(struct message *mp, boole set_ps_did_print_dot);
 
 /* Touch the named message by setting its MTOUCH flag.  Touched messages have
  * the effect of not being sent back to the system mailbox on exit */

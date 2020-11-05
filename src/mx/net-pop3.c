@@ -734,7 +734,7 @@ a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    }
    n_autorec_relax_gut();
 
-   setdot(message);
+   setdot(message, FAL0);
 jleave:
    NYD_OU;
 }

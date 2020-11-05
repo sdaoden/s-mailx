@@ -878,7 +878,7 @@ _headers(int msgspec) /* TODO rework v15 */
             }else if(flag == 0){
 jdot_unsort:
                needdot = FAL0;
-               setdot(mp);
+               setdot(mp, FAL0);
             }
          }
          ++flag;
@@ -886,7 +886,7 @@ jdot_unsort:
          n_autorec_relax_unroll();
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
-         setdot(lastmq);
+         setdot(lastmq, FAL0);
       n_autorec_relax_gut();
       mx_COLOUR( mx_colour_env_gut(); )
    } else { /* threaded */
@@ -934,8 +934,7 @@ jdot_unsort:
                      goto jdot_sort;
                }else if(flag == 0){
 jdot_sort:
-                  needdot = FAL0;
-                  setdot(mp);
+                  setdot(mp, needdot = FAL0);
                }
             }
             a_chead_print_head(flag, P2UZ(mp - message + 1), n_stdout,
@@ -945,7 +944,7 @@ jdot_sort:
          }
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
-         setdot(lastmq);
+         setdot(lastmq, FAL0);
       n_autorec_relax_gut();
       mx_COLOUR( mx_colour_env_gut(); )
    }
@@ -1005,32 +1004,32 @@ c_Scroll(void *v)
 }
 
 FL int
-c_dotmove(void *v)
-{
+c_dotmove(void *vp){
+   int rv, msgvec[2];
    char const *args;
-   int msgvec[2], rv;
    NYD_IN;
 
-   if (*(args = v) == '\0' || args[1] != '\0') {
+   if(*(args = vp) == '\0' || args[1] != '\0'){
 jerr:
       mx_cmd_print_synopsis(mx_cmd_firstfit("dotmove"), NIL);
-      rv = 1;
-   } else switch (args[0]) {
+      rv = n_EXIT_ERR;
+   }else switch(args[0]){
    case '-':
    case '+':
-      if (msgCount == 0) {
+      if(msgCount == 0){
          fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
-      } else if (n_getmsglist(n_UNCONST(/*TODO*/args), msgvec, 0, NULL) > 0) {
-         setdot(message + msgvec[0] - 1);
+      }else if(n_getmsglist(UNCONST(char*,/*TODO*/args), msgvec, 0, NIL) > 0){
+         setdot(&message[msgvec[0] - 1], FAL0);
          msgvec[1] = 0;
          rv = c_headers(msgvec);
-      } else
-         rv = 1;
+      }else
+         rv = n_EXIT_ERR;
       break;
    default:
       goto jerr;
    }
+
    NYD_OU;
    return rv;
 }
@@ -1069,7 +1068,7 @@ c_from(void *vp)
    /* Update dot before display so that the dotmark etc. are correct */
    for (ip = msgvec; ip[1] != 0; ++ip)
       ;
-   setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1]);
+   setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1], FAL0);
 
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf,
       (obuf != n_stdout)); )

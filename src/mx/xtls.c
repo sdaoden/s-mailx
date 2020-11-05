@@ -2220,8 +2220,10 @@ c_verify(void *vp)
 
    srelax_hold();
    for (ip = msgvec; *ip != 0; ++ip) {
-      struct message *mp = message + *ip - 1;
-      setdot(mp);
+      struct message *mp;
+
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
       ec |= smime_verify(mp, *ip, NULL, store);
       srelax();
    }
