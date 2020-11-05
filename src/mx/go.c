@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
+ *@ TODO - everything should take a_go_ctx* and work through it.
  *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
  *@ TODO - sigs_hold_all() most often on, especially robot mode: TERRIBLE!
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
@@ -105,16 +106,17 @@ enum a_go_flags{
    a_GO_FORCE_EOF = 1u<<14,    /* go_input() shall return EOF next */
    a_GO_IS_EOF = 1u<<15,
 
-   a_GO_SUPER_MACRO = 1u<<16, /* *Not* inheriting n_PS_SOURCING state */
+   /* We are down the call chain of a .. robot (Combinable) */
+   a_GO_MACRO_ROBOT = 1u<<16,
+   a_GO_FILE_ROBOT = 1u<<17,
    /* This context has inherited the memory bag from its parent.
     * In practice only used for resource file loading and -X args, which enter
     * a top level n_go_main_loop() and should (re)use the in practice already
     * allocated memory bag of the global context.
     * The bag memory is reset after use. */
-   a_GO_MEMBAG_INHERITED = 1u<<17,
-
+   a_GO_MEMBAG_INHERITED = 1u<<18,
    /* This context has inherited the entire data context from its parent */
-   a_GO_DATACTX_INHERITED = 1u<<18,
+   a_GO_DATACTX_INHERITED = 1u<<19,
 
    a_GO_XCALL_IS_CALL = 1u<<24,  /* n_GO_INPUT_NO_XCALL */
    /* `xcall' optimization barrier: n_go_macro() has been finished with
@@ -221,7 +223,7 @@ static union{
 /* `xcall' stack-avoidance bypass optimization.  This actually is
  * a cmd_arg_save_to_heap() buffer with cmd_arg_ctx.cac_indat misused to
  * point to the a_go_ctx to unroll up to */
-static void *a_go_xcall;
+static void *a_go_xcall; /* XXX without global data! store in context! */
 
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
@@ -229,7 +231,7 @@ static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 static void a_go_update_pstate(void);
 
 /* Evaluate a single command */
-static boole a_go_evaluate(struct a_go_eval_ctx *gecp);
+static boole a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp);
 
 /* Branch here on hangup signal and simulate "exit" */
 static void a_go_hangup(int s);
@@ -237,10 +239,10 @@ static void a_go_hangup(int s);
 /* The following gets called on receipt of an interrupt */
 static void a_go_onintr(int s);
 
-/* Cleanup current execution context, update the program state.
- * If _CLEANUP_ERROR is set then we don't alert and error out if the stack
- * doesn't exist at all, unless _CLEANUP_HOLDALLSIGS we sigs_all_hold() */
-static void a_go_cleanup(enum a_go_cleanup_mode gcm);
+/* Cleanup gcp (current execution context; xxx update the program state).
+ * If _CLEANUP_ERROR is set then we do not alert and error out if the stack
+ * does not exist at all, unless _CLEANUP_HOLDALLSIGS we sigs_all_hold() */
+static void a_go_cleanup(struct a_go_ctx *gcp, enum a_go_cleanup_mode gcm);
 
 /* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
  * Returns FAL0 if file is somehow not usable (unless silent_open_error) or
@@ -273,7 +275,7 @@ a_go_update_pstate(void){
 }
 
 static boole
-a_go_evaluate(struct a_go_eval_ctx *gecp){
+a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
    /* TODO old style(9), but also old code */
    /* TODO a_go_evaluate() should be split in multiple subfunctions,
     * TODO `eval' should be a prefix, etc., a cmd_ctx should be passed along;
@@ -292,7 +294,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_NOALIAS = 1u<<5, /* "No alias!" expansion modifier */
       a_IGNERR = 1u<<6, /* ignerr modifier prefix */
       a_LOCAL = 1u<<7, /* local modifier prefix */
-      a_SCOPE = 1u<<8, /* TODO scope modifier prefix */
+      a_GLOBAL = 1u<<8, /* TODO global modifier prefix */
       a_U = 1u<<9, /* TODO UTF-8 modifier prefix */
       a_VPUT = 1u<<10, /* vput modifier prefix */
       a_WYSH = 1u<<11, /* XXX v15+ drop wysh modifier prefix */
@@ -372,21 +374,21 @@ jrestart:
    switch(c){
    default:
       break;
+   /*case sizeof("global") -1:*/
    case sizeof("ignerr") -1:
       if(!su_cs_cmp_case(word, "ignerr")){
          flags |= a_NOPREFIX | a_IGNERR;
          goto jrestart;
       }
+      if(!su_cs_cmp_case(word, "global")){
+         n_err(_("Ignoring yet unused `global' command modifier!"));
+         flags |= a_NOPREFIX | a_GLOBAL;
+         goto jrestart;
+      }
       break;
-   /*case sizeof("scope") -1:*/
    case sizeof("local") -1:
       if(!su_cs_cmp_case(word, "local")){
          flags |= a_NOPREFIX | a_LOCAL;
-         goto jrestart;
-      }else if(!su_cs_cmp_case(word, "scope")){
-         /* This will be an extended per-command `localopts' */
-         n_err(_("Ignoring yet unused `scope' command modifier!"));
-         flags |= a_NOPREFIX | a_SCOPE;
          goto jrestart;
       }
       break;
@@ -593,8 +595,8 @@ jwhite:
          goto jeflags;
       }
       /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
-       * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
-      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
+       * TODO n_PS_ROBOT; see a.._may_yield_control()! */
+      if((n_pstate & n_PS_ROBOT) && !n_go_may_yield_control()){
          emsg = N_("%s: cannot be used in this program state\n");
          goto jeflags;
       }
@@ -872,9 +874,9 @@ jmsglist_go:
    }
 
    if(gecp->gec_hist_flags & a_GO_HIST_ADD){
-      if(cdp->cd_caflags & mx_CMD_ARG_H)
+      if(cdp->cd_caflags & mx_CMD_ARG_NOHIST)
          gecp->gec_hist_flags = a_GO_HIST_NONE;
-      else if((cdp->cd_caflags & mx_CMD_ARG_G) ||
+      else if((cdp->cd_caflags & mx_CMD_ARG_HGABBY) ||
             (n_pstate & n_PS_MSGLIST_GABBY))
          gecp->gec_hist_flags |= a_GO_HIST_GABBY;
    }
@@ -937,9 +939,10 @@ jleave:
       n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
          sizeof("\\type") -1);
 
-   if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
-         !(cdp->cd_caflags & mx_CMD_ARG_T))
+   if(!(cdp->cd_caflags & mx_CMD_ARG_T) && !(gcp->gc_flags & a_GO_FILE) &&
+         !(n_pstate & n_PS_HOOK_MASK))
       n_pstate |= n_PS_SAW_COMMAND;
+
 jret0:
    rv = 0;
 jret:
@@ -970,7 +973,11 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 
    mx_termios_cmdx(mx_TERMIOS_CMD_RESET);
 
-   a_go_cleanup(a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
+   /* TODO Each event_loop yet has its own INT layer, therefore when we come
+    * TODO here to UNWIND we are, effectively, already at outermost layer :( */
+   ASSERT(a_go_ctx->gc_outer == NIL);
+   a_go_cleanup(a_go_ctx,
+      a_GO_CLEANUP_UNWIND | /* XXX FAKE */a_GO_CLEANUP_HOLDALLSIGS);
 
    if(interrupts != 1)
       n_err_sighdl(_("Interrupt\n"));
@@ -979,16 +986,14 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 }
 
 static void
-a_go_cleanup(enum a_go_cleanup_mode gcm){
+a_go_cleanup(struct a_go_ctx *gcp, enum a_go_cleanup_mode gcm){
    /* Signals blocked */
-   struct a_go_ctx *gcp;
    NYD_IN;
 
    if(!(gcm & a_GO_CLEANUP_HOLDALLSIGS))
       mx_sigs_all_holdx();
-jrestart:
-   gcp = a_go_ctx;
 
+jrestart:
    /* Free input injections of this level first */
    if(!(gcm & a_GO_CLEANUP_LOOPTICK)){
       struct a_go_input_inject **giipp, *giip;
@@ -1017,7 +1022,7 @@ jrestart:
             (gcp->gc_outer == NIL ? su_empty
              : ((gcp->gc_flags & a_GO_MACRO
               ? (gcp->gc_flags & a_GO_MACRO_CMD ? _(" command") : _(" macro"))
-              : _(" `source'd file")))),
+              : _(" `source'd or resource file")))),
             gcp->gc_name);
          gcm |= a_GO_CLEANUP_ERROR;
       }
@@ -1025,6 +1030,7 @@ jrestart:
 
    /* Work the actual context (according to cleanup mode) */
    if(gcp->gc_outer == NULL){
+      ASSERT(!(gcp->gc_flags & a_GO_TYPE_MASK));
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
          if(a_go_xcall != NULL){
             n_free(a_go_xcall);
@@ -1032,19 +1038,17 @@ jrestart:
          }
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          n_pstate &= ~n_PS_ERR_EXIT_MASK;
-         mx_fs_close_all();
-      }else{
-         if(!(n_pstate & n_PS_SOURCING))
-            mx_fs_close_all();
       }
+
+      mx_fs_close_all();
 
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
       su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
-      n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
-      ASSERT(a_go_xcall == NULL);
+      n_pstate &= ~n_PS_ROBOT;
+      ASSERT(a_go_xcall == NIL);
       ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
-      ASSERT(gcp->gc_on_finalize == NULL);
+      ASSERT(gcp->gc_on_finalize == NIL);
       mx_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NIL); )
 
       if(gcm & a_GO_CLEANUP_ERROR)
@@ -1087,7 +1091,7 @@ jrestart:
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
 
 jstackpop:
-   /* Update a_go_ctx and n_go_data, n_pstate ... */
+   /* xxx Update a_go_ctx and n_go_data, n_pstate ... */
    a_go_ctx = gcp->gc_outer;
    ASSERT(a_go_ctx != NULL);
    /* C99 */{
@@ -1100,12 +1104,8 @@ jstackpop:
       n_go_data = &x->gc_data;
    }
 
-   if((a_go_ctx->gc_flags & (a_GO_MACRO | a_GO_SUPER_MACRO)) ==
-         (a_GO_MACRO | a_GO_SUPER_MACRO)){
-      n_pstate &= ~n_PS_SOURCING;
-      ASSERT(n_pstate & n_PS_ROBOT);
-   }else if(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK))
-      n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
+   if(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK))
+      n_pstate &= ~n_PS_ROBOT;
    else
       ASSERT(n_pstate & n_PS_ROBOT);
 
@@ -1117,12 +1117,15 @@ jstackpop:
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP_ERROR;
       goto jerr;
    }
+
 jleave:
    if(gcp->gc_flags & a_GO_FREE)
       n_free(gcp);
 
-   if(UNLIKELY((gcm & a_GO_CLEANUP_UNWIND) && gcp != a_go_ctx))
+   if(UNLIKELY(gcm & a_GO_CLEANUP_UNWIND) && UNLIKELY(gcp != a_go_ctx)){
+      gcp = a_go_ctx;
       goto jrestart;
+   }
 
 jxleave:
    NYD_OU;
@@ -1232,12 +1235,13 @@ jeopencheck:
    gcp->gc_osigmask = osigmask;
    gcp->gc_file = fip;
    gcp->gc_flags = (ispipe ? a_GO_FREE | a_GO_PIPE : a_GO_FREE | a_GO_FILE) |
-         (a_go_ctx->gc_flags & a_GO_SUPER_MACRO ? a_GO_SUPER_MACRO : 0);
+         (a_go_ctx->gc_flags & a_GO_MACRO_ROBOT ? a_GO_MACRO_ROBOT : 0) |
+         a_GO_FILE_ROBOT;
    su_mem_copy(gcp->gc_name, nbuf, nlen);
 
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
-   n_pstate |= n_PS_SOURCING | n_PS_ROBOT;
+   n_pstate |= n_PS_ROBOT;
    if(!a_go_event_loop(gcp, n_GO_INPUT_NONE | n_GO_INPUT_NL_ESC))
       fip = NULL;
 jleave:
@@ -1265,15 +1269,13 @@ a_go_load(struct a_go_ctx *gcp){
    gcp->gc_outer = a_go_ctx;
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
-/* FIXME won't work for now (n_PS_ROBOT needs n_PS_SOURCING sofar)
-   n_pstate |= n_PS_ROBOT |
-         (gcp->gc_flags & a_GO_MACRO_X_OPTION ? 0 : n_PS_SOURCING);
-*/
-   n_pstate |= n_PS_ROBOT | n_PS_SOURCING;
+
+   n_pstate |= n_PS_ROBOT;
 
    mx_sigs_all_rele();
 
-   n_go_main_loop();
+   n_go_main_loop(FAL0);
+
    NYD2_OU;
    return (((n_psonce & n_PSO_EXIT_MASK) |
       (n_pstate & n_PS_ERR_EXIT_MASK)) == 0);
@@ -1336,7 +1338,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
 
       mx_sigs_all_rele();
       ASSERT(gec.gec_hist_flags == a_GO_HIST_NONE);
-      if(!a_go_evaluate(&gec))
+      if(!a_go_evaluate(gcp, &gec))
          f &= ~a_RETOK;
       mx_sigs_all_holdx();
 
@@ -1345,8 +1347,10 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          break;
    }
 
-jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
-   a_go_cleanup(a_GO_CLEANUP_TEARDOWN |
+jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE!
+   * TODO We would need a way to drop all the stack in one go, however,
+   * TODO and yet assert condition that UNWIND is only set for outermost */
+   a_go_cleanup(gcp, a_GO_CLEANUP_TEARDOWN |
       (f & a_RETOK ? 0 : a_GO_CLEANUP_ERROR) |
       (hadint ? a_GO_CLEANUP_SIGINT : 0) | a_GO_CLEANUP_HOLDALLSIGS);
 
@@ -1388,7 +1392,7 @@ n_go_init(void){
 }
 
 FL boole
-n_go_main_loop(void){ /* FIXME */
+n_go_main_loop(boole main_call){ /* FIXME */
    struct a_go_eval_ctx gec;
    int n, eofcnt;
    boole volatile rv;
@@ -1396,10 +1400,10 @@ n_go_main_loop(void){ /* FIXME */
 
    rv = TRU1;
 
-   if (!(n_pstate & n_PS_SOURCING)) {
-      if (safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
+   if(main_call){
+      if(safe_signal(SIGINT, SIG_IGN) != SIG_IGN)
          safe_signal(SIGINT, &a_go_onintr);
-      if (safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
+      if(safe_signal(SIGHUP, SIG_IGN) != SIG_IGN)
          safe_signal(SIGHUP, &a_go_hangup);
    }
    a_go_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -1417,11 +1421,12 @@ n_go_main_loop(void){ /* FIXME */
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
           * TODO in fact all other conditions would be an error, no? */
-         a_go_cleanup(a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
+         a_go_cleanup(a_go_ctx,
+            a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
       /* TODO This condition test may not be here: if the condition is not true
        * TODO a recursive mainloop object without that cruft should be used! */
-      if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
+      if(!(n_pstate & n_PS_ROBOT)){
          if(a_go_ctx->gc_inject == su_NIL)
             mx_fs_linepool_cleanup(FAL0);
 
@@ -1510,8 +1515,8 @@ n_go_main_loop(void){ /* FIXME */
          boole histadd;
 
          histadd = ((n_psonce & n_PSO_INTERACTIVE) &&
-               !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)) &&
-                a_go_ctx->gc_inject == su_NIL); /* xxx really injection? */
+               !(n_pstate & n_PS_ROBOT) &&
+                a_go_ctx->gc_inject == NIL); /* xxx really injection? */
          mx_sigs_all_rele();
          ASSERT(!gec.gec_ignerr);
          n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
@@ -1537,7 +1542,7 @@ n_go_main_loop(void){ /* FIXME */
 
       n_pstate &= ~n_PS_HOOK_MASK;
       mx_sigs_all_rele();
-      rv = a_go_evaluate(&gec);
+      rv = a_go_evaluate(a_go_ctx, &gec);
       mx_sigs_all_holdx();
 
       n_pstate &= ~n_PS_ERRORS_NEED_PRINT_ONCE;
@@ -1576,8 +1581,8 @@ n_go_main_loop(void){ /* FIXME */
          break;
    }
 
-   a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
-      (rv ? 0 : a_GO_CLEANUP_ERROR));
+   a_go_cleanup(a_go_ctx, (a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
+      (rv ? 0 : a_GO_CLEANUP_ERROR)));
    mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();
@@ -1759,8 +1764,8 @@ jinject:
 
 jforce_stdin:
    n_pstate &= ~n_PS_READLINE_NL;
-   iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
-          : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
+   /* xxx once differentiated further if we `source'd */
+   iftype = (n_psonce & n_PSO_STARTED) ? "READ" : "LOAD";
    if(!(n_pstate & n_PS_ROBOT) &&
          (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
             (n_PSO_INTERACTIVE | n_PSO_STARTED))
@@ -1908,7 +1913,8 @@ jleave:
       if(f & a_DIG_MSG_OVERLAY)
          mx_dig_msg_read_overlay = NIL;
       if(a_go_ctx->gc_flags & a_GO_SPLICE)
-         a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
+         a_go_cleanup(a_go_ctx,
+            a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
    }
 
    if(histok_or_nil != NIL && !(f & a_HISTOK))
@@ -2016,12 +2022,12 @@ n_go_load_lines(boole injectit, char const **lines, uz cnt){
       lines = C(char const**,a_go_bltin_rc_lines);
       cnt = a_GO_BLTIN_RC_LINES_CNT;
       gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_BLTIN_RC |
-            a_GO_SUPER_MACRO | a_GO_MACRO_FREE_DATA;
+            a_GO_MACRO_ROBOT | a_GO_MACRO_FREE_DATA;
       nofail = TRUM1;
    }else if(!injectit){
       su_mem_copy(gcp->gc_name, a_name_x, sizeof a_name_x);
       gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_X_OPTION |
-            a_GO_SUPER_MACRO | a_GO_MACRO_FREE_DATA;
+            a_GO_MACRO_ROBOT | a_GO_MACRO_FREE_DATA;
       nofail = FAL0;
    }else
       nofail = TRU1;
@@ -2155,8 +2161,8 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
    gcp->gc_flags = a_GO_FREE | a_GO_MACRO | a_GO_MACRO_FREE_DATA |
-         ((!(a_go_ctx->gc_flags & a_GO_TYPE_MASK) ||
-            (a_go_ctx->gc_flags & a_GO_SUPER_MACRO)) ? a_GO_SUPER_MACRO : 0) |
+         a_GO_MACRO_ROBOT |
+         ((a_go_ctx->gc_flags & a_GO_FILE_ROBOT) ? a_GO_FILE_ROBOT : 0) |
          ((gif & n_GO_INPUT_NO_XCALL) ? a_GO_XCALL_IS_CALL : 0);
    gcp->gc_lines = lines;
    gcp->gc_on_finalize = on_finalize;
@@ -2223,8 +2229,8 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
    gcp->gc_flags = a_GO_FREE | a_GO_MACRO | a_GO_MACRO_CMD |
-         ((!(a_go_ctx->gc_flags & a_GO_TYPE_MASK) ||
-            (a_go_ctx->gc_flags & a_GO_SUPER_MACRO)) ? a_GO_SUPER_MACRO : 0);
+         ((a_go_ctx->gc_flags & a_GO_MACRO_ROBOT) ? a_GO_MACRO_ROBOT : 0) |
+         ((a_go_ctx->gc_flags & a_GO_FILE_ROBOT) ? a_GO_FILE_ROBOT : 0);
    gcp->gc_lines = (void*)&gcp->gc_name[ial];
    su_mem_copy(gcp->gc_lines[0] = &gcp->gc_name[0], cmd, i);
    gcp->gc_lines[1] = NULL;
@@ -2277,7 +2283,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
 
 FL void
 n_go_splice_hack_remove_after_jump(void){
-   a_go_cleanup(a_GO_CLEANUP_TEARDOWN);
+   a_go_cleanup(a_go_ctx, a_GO_CLEANUP_TEARDOWN);
 }
 
 FL boole
@@ -2345,7 +2351,7 @@ c_eval(void *vp){
    gec.gec_line.l = s->s_len;
    if(n_poption & n_PO_D_VV)
       n_err(_("EVAL %" PRIuZ " bytes <%s>\n"), gec.gec_line.l, gec.gec_line.s);
-   (void)/* XXX */a_go_evaluate(&gec);
+   (void)/* XXX */a_go_evaluate(a_go_ctx, &gec);
 
    NYD_OU;
    return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);

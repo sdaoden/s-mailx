@@ -1040,6 +1040,45 @@ t_X_Y_opt_input_go_stack() {
    ${MAILX} ${ARGS} -RX'call      ;echo $?' -Xx >> ./.tall 2>&1
    check cmdline 0 ./.tall '1867586969 8'
 
+   # Recursion via `source'
+   ${cat} > ./t11-1.rc <<- '_EOT'; \
+      ${cat} > ./t11-2.rc <<- '_EOT'; \
+      ${cat} > ./t11-3.rc <<- '_EOT'; \
+      ${cat} > ./t11-4.rc <<- '_EOT'
+	define r1 {
+		echo r1: $*
+		source ./t11-2.rc
+		eval $1 r2 "$@"
+	}
+	_EOT
+	define r2 {
+		echo r2: $*
+		source ./t11-3.rc
+		eval $1 r3 "$@"
+	}
+	_EOT
+	define r3 {
+		echo r3: $*
+		source ./t11-4.rc
+		eval $1 r4 "$@"
+	}
+	_EOT
+	define r4 {
+		echo r4: $*
+	}
+	_EOT
+
+   printf '#
+      echo round 1: call
+      source ./t11-1.rc
+      call r1 call
+      echo round 2: xcall
+      source ./t11-1.rc
+      call r1 xcall
+      echo alive and well
+   #' | ${MAILX} ${ARGS} > ./t11 2>&1
+   check 11 0 ./t11 '2740730424 120'
+
    t_epilog "${@}"
 }
 
@@ -1299,13 +1338,13 @@ t_f_batch_order() {
    # This would exit 64 (EX_USAGE) from ? to [fbddb3b3] (FIX: -f: add
    # n_PO_f_FLAG to avoid that command line order matters)
    </dev/null ${MAILX} ${NOBATCH_ARGS} -R -f -# \
-      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
-   check 1 0 ./.tall '1690247457 86'
+      -Y 'echo du;h;echo da;x' "${MBOX}" > ./t1 2>&1
+   check 1 0 ./t1 '1690247457 86'
 
-   # And this ever worked (hopefully)
+   # And this always worked (hopefully)
    </dev/null ${MAILX} ${NOBATCH_ARGS} -R -# -f \
-      -Y 'echo du;h;echo da;x' "${MBOX}" >./.tall 2>&1
-   check 2 0 ./.tall '1690247457 86'
+      -Y 'echo du;h;echo da;x' "${MBOX}" > ./t2 2>&1
+   check 2 0 ./t2 '1690247457 86'
 
    t_epilog "${@}"
 }
