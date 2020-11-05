@@ -126,24 +126,26 @@ c_File(void *v)
 }
 
 FL int
-c_newmail(void *v)
-{
-   int val = 1, mdot;
+c_newmail(void *vp){
+   int val, mdot;
    NYD_IN;
-   UNUSED(v);
+   UNUSED(vp);
 
-   if (n_pstate & n_PS_HOOK_MASK)
+   val = 1;
+
+   if(n_pstate & n_PS_HOOK_MASK)
       n_err(_("Cannot call `newmail' from within a hook\n"));
 #ifdef mx_HAVE_IMAP
    else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
       ;
 #endif
-   else if ((val = setfile(mailname,
+   else if((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
          ) == 0) {
       mdot = getmdot(1);
-      setdot(message + mdot - 1);
+      setdot(&message[mdot - 1], FAL0);
    }
+
    NYD_OU;
    return val;
 }

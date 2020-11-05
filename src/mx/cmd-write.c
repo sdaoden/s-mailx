@@ -259,13 +259,14 @@ jferr:
    }
 
    if (domove && last && success) {
-      setdot(message + last - 1);
+      setdot(&message[last - 1], FAL0);
       last = first(0, MDELETED);
-      setdot(message + (last != 0 ? last - 1 : 0));
+      setdot(&message[last != 0 ? last - 1 : 0], FAL0);
    }
+
 jleave:
    NYD2_OU;
-   return (success == FAL0);
+   return (success ? n_EXIT_OK : n_EXIT_ERR);
 }
 
 FL int

@@ -668,7 +668,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
       else
          n_free(omessage);
    }
-   setdot(message);
+   setdot(message, FAL0);
    rv = OKAY;
 jleave:
    NYD_OU;

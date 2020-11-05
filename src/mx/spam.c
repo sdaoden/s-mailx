@@ -231,7 +231,7 @@ _spam_action(enum spam_action sa, int *ip)
             fflush(n_stdout);
          }
 
-         setdot(vc.vc_mp);
+         setdot(vc.vc_mp, FAL0);
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
             n_err(_("%s`%s': cannot load message %lu: %s\n"),
                vc.vc_esep, _spam_cmds[sa], (ul)vc.vc_mno,

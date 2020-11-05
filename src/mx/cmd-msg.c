@@ -163,10 +163,9 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
    rv = 0;
    n_autorec_relax_create();
    for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
-      mp = message + *ip - 1;
+      mp = &message[*ip - 1];
       touch(mp);
-      setdot(mp);
-      n_pstate |= n_PS_DID_PRINT_DOT;
+      setdot(mp, TRU1);
       uncollapse1(mp, 1);
       if(!dopipe && ip != msgvec && fprintf(obuf, "\n") < 0){
          rv = 1;
@@ -291,8 +290,7 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
 
       mp = &message[*ip - 1];
       touch(mp);
-      setdot(mp);
-      n_pstate |= n_PS_DID_PRINT_DOT;
+      setdot(mp, TRU1);
       uncollapse1(mp, 1);
 
       rewind(iobuf);
@@ -435,15 +433,16 @@ delm(int *msgvec)
       last = *ip;
    }
    if (last != 0) {
-      setdot(message + last - 1);
+      setdot(&message[last - 1], FAL0);
       last = first(0, MDELETED);
       if (last != 0) {
-         setdot(message + last - 1);
+         setdot(&message[last - 1], FAL0);
          rv = 0;
       } else {
-         setdot(message);
+         setdot(message, FAL0);
       }
    }
+
    NYD_OU;
    return rv;
 }
@@ -518,8 +517,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
 
    mp = &message[*msgvec - 1];
    touch(mp);
-   setdot(mp);
-   n_pstate |= n_PS_DID_PRINT_DOT;
+   setdot(mp, TRU1);
    uncollapse1(mp, 1);
 
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0); )
@@ -615,7 +613,7 @@ c_next(void *v)
       do {
          mp = message + *ip2 - 1;
          if (!(mp->m_flag & MMNDEL)) {
-            setdot(mp);
+            setdot(mp, FAL0);
             goto jhitit;
          }
          if (*ip2 != 0)
@@ -656,7 +654,7 @@ jateof:
       rv = 0;
       goto jleave;
    }
-   setdot(mp);
+   setdot(mp, FAL0);
 
    /* Print dot */
 jhitit:
@@ -785,7 +783,7 @@ c_undelete(void *v)
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
       touch(mp);
-      setdot(mp);
+      setdot(mp, FAL0);
       if (mp->m_flag & (MDELETED | MSAVED))
          mp->m_flag &= ~(MDELETED | MSAVED);
       else
@@ -800,212 +798,231 @@ c_undelete(void *v)
 }
 
 FL int
-c_stouch(void *v)
-{
-   int *msgvec = v, *ip;
+c_stouch(void *vp){
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(message + *ip - 1);
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      setdot(&message[*ip - 1], TRU1);
       dot->m_flag |= MTOUCH;
       dot->m_flag &= ~MPRESERVE;
-      n_pstate |= n_PS_DID_PRINT_DOT;
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_mboxit(void *v)
-{
-   int *msgvec = v, *ip;
+c_mboxit(void *vp){
+   int *msgvec, *ip;
    NYD_IN;
 
-   if (n_pstate & n_PS_EDIT) {
+   if(n_pstate & n_PS_EDIT){
       n_err(_("mbox: can only be used in a system mailbox\n")); /* TODO */
       goto jleave;
    }
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(message + *ip - 1);
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      setdot(&message[*ip - 1], TRU1);
       dot->m_flag |= MTOUCH | MBOX;
       dot->m_flag &= ~MPRESERVE;
-      n_pstate |= n_PS_DID_PRINT_DOT;
    }
+
 jleave:
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_preserve(void *v)
-{
-   int *msgvec = v, *ip, mesg, rv = 1;
+c_preserve(void *vp){
    struct message *mp;
+   int rv, *msgvec, *ip;
    NYD_IN;
 
-   if (n_pstate & n_PS_EDIT) {
+   rv = n_EXIT_ERR;
+   if(n_pstate & n_PS_EDIT){
       fprintf(n_stdout, _("preserve: cannot be used in a system mailbox\n"));
       goto jleave;
    }
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      mesg = *ip;
-      mp = message + mesg - 1;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
       mp->m_flag |= MPRESERVE;
       mp->m_flag &= ~MBOX;
-      setdot(mp);
-      n_pstate |= n_PS_DID_PRINT_DOT;
+      setdot(mp, TRU1);
    }
-   rv = 0;
+
+   rv = n_EXIT_OK;
 jleave:
    NYD_OU;
    return rv;
 }
 
 FL int
-c_unread(void *v)
-{
+c_unread(void *vp){
    struct message *mp;
-   int *msgvec = v, *ip;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
       mp = &message[*ip - 1];
-      setdot(mp);
+      setdot(mp, TRU1);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
 #ifdef mx_HAVE_IMAP
-      if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
+      if(mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
          imap_unread(mp, *ip); /* TODO return? */
 #endif
-      n_pstate |= n_PS_DID_PRINT_DOT;
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_seen(void *v)
-{
-   int *msgvec = v, *ip;
+c_seen(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      struct message *mp = message + *ip - 1;
-      setdot(mp);
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
       touch(mp);
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_flag(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_flag(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (!(m->m_flag & (MFLAG | MFLAGGED)))
-         m->m_flag |= MFLAG | MFLAGGED;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(!(mp->m_flag & (MFLAG | MFLAGGED)))
+         mp->m_flag |= MFLAG | MFLAGGED;
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_unflag(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_unflag(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (m->m_flag & (MFLAG | MFLAGGED)) {
-         m->m_flag &= ~(MFLAG | MFLAGGED);
-         m->m_flag |= MUNFLAG;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(mp->m_flag & (MFLAG | MFLAGGED)) {
+         mp->m_flag &= ~(MFLAG | MFLAGGED);
+         mp->m_flag |= MUNFLAG;
       }
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_answered(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_answered(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (!(m->m_flag & (MANSWER | MANSWERED)))
-         m->m_flag |= MANSWER | MANSWERED;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(!(mp->m_flag & (MANSWER | MANSWERED)))
+         mp->m_flag |= MANSWER | MANSWERED;
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_unanswered(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_unanswered(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (m->m_flag & (MANSWER | MANSWERED)) {
-         m->m_flag &= ~(MANSWER | MANSWERED);
-         m->m_flag |= MUNANSWER;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(mp->m_flag & (MANSWER | MANSWERED)) {
+         mp->m_flag &= ~(MANSWER | MANSWERED);
+         mp->m_flag |= MUNANSWER;
       }
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_draft(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_draft(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (!(m->m_flag & (MDRAFT | MDRAFTED)))
-         m->m_flag |= MDRAFT | MDRAFTED;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(!(mp->m_flag & (MDRAFT | MDRAFTED)))
+         mp->m_flag |= MDRAFT | MDRAFTED;
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 FL int
-c_undraft(void *v)
-{
-   struct message *m;
-   int *msgvec = v, *ip;
+c_undraft(void *vp){
+   struct message *mp;
+   int *msgvec, *ip;
    NYD_IN;
 
-   for (ip = msgvec; *ip != 0; ++ip) {
-      m = message + *ip - 1;
-      setdot(m);
-      if (m->m_flag & (MDRAFT | MDRAFTED)) {
-         m->m_flag &= ~(MDRAFT | MDRAFTED);
-         m->m_flag |= MUNDRAFT;
+   msgvec = vp;
+
+   for(ip = msgvec; *ip != 0; ++ip){
+      mp = &message[*ip - 1];
+      setdot(mp, FAL0);
+      if(mp->m_flag & (MDRAFT | MDRAFTED)){
+         mp->m_flag &= ~(MDRAFT | MDRAFTED);
+         mp->m_flag |= MUNDRAFT;
       }
    }
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
 #include "su/code-ou.h"

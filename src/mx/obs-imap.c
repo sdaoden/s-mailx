@@ -1886,7 +1886,7 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
    if (nmail || transparent)
       transflags(omessage, omsgCount, transparent);
    else
-      setdot(message);
+      setdot(message, FAL0);
    NYD_OU;
 }
 
@@ -4565,7 +4565,7 @@ transflags(struct message *omessage, long omsgCount, int transparent)
          ++nmp;
    }
    dot = newdot;
-   setdot(newdot);
+   setdot(newdot, FAL0);
    prevdot = newprevdot;
    n_free(omessage);
    NYD_OU;
