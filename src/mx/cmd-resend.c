@@ -497,7 +497,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
 jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
-   setdot(mp);
+   setdot(mp, FAL0);
 
    su_mem_set(&head, 0, sizeof head);
    head.h_flags = hf;
@@ -772,7 +772,7 @@ a_crese_Reply(int *msgvec, boole recipient_record){
 
       mp = &message[*ap - 1];
       touch(mp);
-      setdot(mp);
+      setdot(mp, FAL0);
 
       if((np = a_crese_reply_to(mp, &the_rt)) == NIL)
          np = lextract(n_header_senderfield_of(mp), GTO | gf);
@@ -849,7 +849,7 @@ a_crese_fwd(void *vp, boole recipient_record){
 jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
-   setdot(mp);
+   setdot(mp, FAL0);
 
    su_mem_set(&head, 0, sizeof head);
    head.h_flags = HF_CMD_forward;
@@ -966,7 +966,7 @@ jedar:
 
       mp = &message[*ip - 1];
       touch(mp);
-      setdot(mp);
+      setdot(mp, FAL0);
 
       su_mem_set(&head, 0, sizeof head);
       head.h_flags = HF_CMD_resend;
