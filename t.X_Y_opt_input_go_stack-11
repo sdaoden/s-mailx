@@ -1,0 +1,11 @@
+round 1: call
+r1: call
+r2: call
+r3: call
+r4: call
+round 2: xcall
+r1: xcall
+r2: xcall
+r3: xcall
+r4: xcall
+alive and well
