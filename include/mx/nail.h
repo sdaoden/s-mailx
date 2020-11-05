@@ -659,10 +659,9 @@ do{\
    n_PS_ERR_QUIT = 1u<<1, /* ..ditto: -> n_PSO_QUIT */
    n_PS_ERR_EXIT_MASK = n_PS_ERR_XIT | n_PS_ERR_QUIT,
 
-   n_PS_SOURCING = 1u<<2, /* During load() or `source' */
-   n_PS_ROBOT = 1u<<3, /* .. even more robotic */
-   n_PS_COMPOSE_MODE = 1u<<4, /* State machine recursed */
-   n_PS_COMPOSE_FORKHOOK = 1u<<5, /* A hook running in a subprocess */
+   n_PS_ROBOT = 1u<<2, /* State machine in a macro/non-interactive chain */
+   n_PS_COMPOSE_MODE = 1u<<3, /* State machine recursed */
+   n_PS_COMPOSE_FORKHOOK = 1u<<4, /* A hook running in a subprocess */
 
    n_PS_HOOK_NEWMAIL = 1u<<7,
    n_PS_HOOK = 1u<<8,
@@ -670,7 +669,9 @@ do{\
 
    n_PS_EDIT = 1u<<9, /* Current mailbox no "system mailbox" */
    n_PS_SETFILE_OPENED = 1u<<10, /* (hack) setfile() opened a new box */
-   n_PS_SAW_COMMAND = 1u<<11, /* ..after mailbox switch */
+   /* After mailbox switch or `newmail': we have seen any command; if not set,
+    * `next' will select message number 1 instead of "next good after dot" */
+   n_PS_SAW_COMMAND = 1u<<11,
    n_PS_DID_PRINT_DOT = 1u<<12, /* Current message has been printed */
 
    n_PS_SIGWINCH_PEND = 1u<<13, /* Need update of $COLUMNS/$LINES */

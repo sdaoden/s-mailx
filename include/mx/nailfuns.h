@@ -644,7 +644,7 @@ FL void n_go_init(void);
 
 /* Interpret user commands.  If stdin is not a tty, print no prompt; return
  * whether last processed command returned error; this is *only* for main()! */
-FL boole n_go_main_loop(void);
+FL boole n_go_main_loop(boole main_call);
 
 /* Actual cmd input */
 

@@ -379,7 +379,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
    if(mcp->mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
       n_exit_status = n_EXIT_ERR;
    else
-      n_go_main_loop();
+      n_go_main_loop(TRU1);
 
    if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
