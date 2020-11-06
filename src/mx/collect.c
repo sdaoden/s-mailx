@@ -44,14 +44,18 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/utf.h>
 
 #include "mx/attachments.h"
 #include "mx/child.h"
 #include "mx/cmd-edit.h"
+#include "mx/cmd-misc.h"
+#include "mx/compat.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
 #include "mx/filter-quote.h"
+#include "mx/go.h"
 #include "mx/ignore.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
@@ -203,7 +207,7 @@ a_coll_eval_mod(char const **buf, long *cnt){
 
       /*if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
        *   ASSERT(shs & n_SHEXP_STATE_STOP);
-       *   n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+       *   mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
       }*/
 
       if(shs & n_SHEXP_STATE_ERR_MASK){
@@ -276,7 +280,7 @@ _execute_command(struct header *hp, char const *linebuf, uz linesize){
       }
    while((ap = ap->a_flink) != NIL);
 
-   n_go_command(n_GO_INPUT_CTX_COMPOSE, linebuf);
+   mx_go_command(mx_GO_INPUT_CTX_COMPOSE, linebuf);
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -476,7 +480,7 @@ a_coll_print(FILE *cf, struct header *hp){
    fflush_rewind(cf);
    cnt = S(uz,fsize(cf));
    while(fgetline(&linebuf, &linesize, &cnt, &linelen, cf, TRU1) != NIL)
-      if(prout(linebuf, linelen, obuf) < 0)
+      if(mx_makeprint_write_fp(linebuf, linelen, obuf) < 0)
          goto jleave;
    if(ferror(cf))
       goto jleave;
@@ -599,10 +603,10 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
 
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
       }
 
       if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
@@ -617,10 +621,10 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    }else{
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
       }
 
       if(cqcp->cqc_quoteitp == NIL)
@@ -962,8 +966,8 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
 
    su_mem_set(&cqc, 0, sizeof cqc);
-   cqc.cqc_membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
-   su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
+   cqc.cqc_membag_persist = su_mem_bag_top(mx_go_data->gdc_membag);
+   su_mem_bag_push(mx_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
    cqc.cqc_add_cc = TRU1;
@@ -1004,7 +1008,7 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    n_autorec_relax_gut();
    fprintf(n_stdout, "\n");
 
-   su_mem_bag_pop(n_go_data->gdc_membag, &membag);
+   su_mem_bag_pop(mx_go_data->gdc_membag, &membag);
    su_mem_bag_gut(&membag);
 
 jleave:
@@ -1237,7 +1241,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    if (!sigsetjmp(_coll_jmp, 1)) {
       /* Ask for some headers first, as necessary */
       if(getfields)
-         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
+         grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
       /* Execute compose-enter; delayed for -t mode */
       if(!(n_poption & n_PO_t_FLAG) &&
@@ -1287,7 +1291,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
-            if(n_go_input_have_injections()){
+            if(mx_go_input_have_injections()){
                flags |= a_NEED_INJECT_RESTART;
                flags &= ~a_CAN_DELAY_INJECT;
             }else{
@@ -1335,17 +1339,17 @@ jcont:
       /* No command escapes, interrupts not expected? */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         /* Need to go over n_go_input() to handle injections nonetheless */
-         enum n_go_input_flags gif;
+         /* Need to go over mx_go_input() to handle injections nonetheless */
+         BITENUM_IS(u32,mx_go_input_flags) gif;
 
          ASSERT(!(flags & a_NEED_INJECT_RESTART));
-         for(gif = n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_DELAY_INJECTIONS;;){
-            cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, NULL);
+         for(gif = mx_GO_INPUT_CTX_COMPOSE | mx_GO_INPUT_DELAY_INJECTIONS;;){
+            cnt = mx_go_input(gif, su_empty, &linebuf, &linesize, NIL, NIL);
             if(cnt < 0){
-               if(!n_go_input_is_eof())
+               if(!mx_go_input_is_eof())
                   goto jerr;
-               if(n_go_input_have_injections()){
-                  gif &= ~n_GO_INPUT_DELAY_INJECTIONS;
+               if(mx_go_input_have_injections()){
+                  gif &= ~mx_GO_INPUT_DELAY_INJECTIONS;
                   continue;
                }
                break;
@@ -1378,22 +1382,22 @@ jcont:
       enum {a_HIST_NONE, a_HIST_ADD = 1u<<0, a_HIST_GABBY = 1u<<1} hist;
 
       /* C99 */{
-         enum n_go_input_flags gif;
+         BITENUM_IS(u32,mx_go_input_flags) gif;
          boole histadd;
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
          histadd = (s != NIL);
-         gif = n_GO_INPUT_CTX_COMPOSE;
+         gif = mx_GO_INPUT_CTX_COMPOSE;
          if(flags & a_CAN_DELAY_INJECT)
-            gif |= n_GO_INPUT_DELAY_INJECTIONS;
+            gif |= mx_GO_INPUT_DELAY_INJECTIONS;
 
          if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
             ASSERT(!(flags & a_NEED_INJECT_RESTART));
          }else{
             if(n_psonce & n_PSO_INTERACTIVE){
-               gif |= n_GO_INPUT_NL_ESC;
+               gif |= mx_GO_INPUT_NL_ESC;
                if(UNLIKELY((flags & a_NEED_INJECT_RESTART) &&
-                     !n_go_input_have_injections())){
+                     !mx_go_input_have_injections())){
                   flags &= ~a_NEED_INJECT_RESTART;
                   goto jinject_restart;
                }
@@ -1403,15 +1407,15 @@ jcont:
             }else{
                ASSERT(!(flags & a_NEED_INJECT_RESTART));
                if(n_poption & n_PO_TILDE_FLAG)
-                  gif |= n_GO_INPUT_NL_ESC;
+                  gif |= mx_GO_INPUT_NL_ESC;
             }
          }
 
-         cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
+         cnt = mx_go_input(gif, n_empty, &linebuf, &linesize, NIL, &histadd);
          hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
 
-      if(cnt < 0){ /* TODO n_go_input_is_eof()!  Could be error!! */
+      if(cnt < 0){ /* TODO mx_go_input_is_eof()!  Could be error!! */
          if(coap != NIL)
             break;
 
@@ -1424,7 +1428,7 @@ jcont:
             continue;
          }
 
-         if((flags & a_CAN_DELAY_INJECT) && n_go_input_have_injections()){
+         if((flags & a_CAN_DELAY_INJECT) && mx_go_input_have_injections()){
             flags &= ~a_CAN_DELAY_INJECT;
             continue;
          }
@@ -1433,7 +1437,7 @@ jcont:
                ok_blook(ignoreeof) && ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
-            n_go_input_clearerr();
+            mx_go_input_clearerr();
             continue;
          }
          break;
@@ -1565,6 +1569,7 @@ jearg:
          if(cnt == 0 || coap != NULL)
             goto jearg;
          else{
+            /* TODO should NOT call c_shell() directly */
             char const *argv[2];
 
             argv[0] = cp;
@@ -1641,7 +1646,7 @@ jearg:
             hp->h_attach = mx_attachments_append_list(aplist, cp);
          else
             hp->h_attach = mx_attachments_list_edit(aplist,
-                  n_GO_INPUT_CTX_COMPOSE);
+                  mx_GO_INPUT_CTX_COMPOSE);
          n_pstate_err_no = su_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
          }break;
@@ -1847,7 +1852,7 @@ jev_go:
             break;
          }
          do
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
+            grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
@@ -1862,7 +1867,7 @@ jev_go:
             break;
          }
          do
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
+            grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),
               (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while(hp->h_to == NULL);
@@ -1995,10 +2000,10 @@ jhistcont:
          /* Do not add *escape* to the history in order to allow history search
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
-         mx_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
-            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE) |
-            (n_pstate_err_no == su_ERR_NONE ? n_GO_INPUT_NONE
-               : n_GO_INPUT_HIST_GABBY | n_GO_INPUT_HIST_ERROR)));
+         mx_tty_addhist(&n_string_cp(s)[1], (mx_GO_INPUT_CTX_COMPOSE |
+            (hist & a_HIST_GABBY ? mx_GO_INPUT_HIST_GABBY : mx_GO_INPUT_NONE) |
+            (n_pstate_err_no == su_ERR_NONE ? mx_GO_INPUT_NONE
+               : mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_ERROR)));
       }
       if(c != '\0')
          goto jcont;
@@ -2033,8 +2038,7 @@ jout:
       }
 
       i = su_cs_len(cp) +1;
-      coap = n_lofi_alloc(VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
-            ) + i);
+      coap = su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct a_coll_ocs_arg,coa_cmd) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NIL;
       coap->coa_senderr = checkaddr_err;
@@ -2054,7 +2058,7 @@ jout:
          coap->coa_pipe[1] = -1;
 
          temporary_compose_mode_hook_call(NIL);
-         n_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
+         mx_go_splice_hack(coap->coa_cmd, coap->coa_stdin, coap->coa_stdout,
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYANY)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
@@ -2092,12 +2096,12 @@ jout:
          if(ok_blook(askbcc))
             gfield |= GBCC;
          if(gfield != GNONE)
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, gfield, 1);
+            grab_headers(mx_GO_INPUT_CTX_COMPOSE, hp, gfield, 1);
       }
 
       if(ok_blook(askattach))
          hp->h_attach = mx_attachments_list_edit(hp->h_attach,
-               n_GO_INPUT_CTX_COMPOSE);
+               mx_GO_INPUT_CTX_COMPOSE);
 
       if(ok_blook(asksend)){
          boole b;
@@ -2113,10 +2117,10 @@ jout:
             goto jerr;
 
 jreasksend:
-         if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
+         if(mx_go_input(mx_GO_INPUT_CTX_COMPOSE | mx_GO_INPUT_NL_ESC,
                _("Send this message [yes/no, empty: recompose]? "),
                &linebuf, &linesize, NULL, NULL) < 0){
-            if(!n_go_input_is_eof())
+            if(!mx_go_input_is_eof())
                goto jerr;
             cp = n_1;
          }
@@ -2250,7 +2254,7 @@ jerr:
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1){
       if(!(flags & a_COAP_NOSIGTERM))
          mx_fs_pipe_signal(coap->coa_stdout, SIGTERM);
-      n_go_splice_hack_remove_after_jump();
+      mx_go_splice_hack_remove_after_jump();
       coap = NULL;
    }
    if(ifs_saved != NULL){

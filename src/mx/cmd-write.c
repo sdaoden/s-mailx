@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/file-locks.h"
@@ -102,7 +103,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
          uz i;
 
          i = su_cs_len(cp) +1;
-         file = n_autorec_alloc(i + 1);
+         file = su_AUTO_ALLOC(i + 1);
          file[0] = '+';
          su_mem_copy(file + 1, cp, i);
       }else
@@ -177,7 +178,7 @@ jsend:
    imap_created_mailbox = 0;
 #endif
 
-   n_autorec_relax_create();
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
 #ifdef mx_HAVE_IMAP
@@ -202,7 +203,7 @@ jsend:
          if(convert == SEND_MBOX)
             n_folder_mbox_prepare_append(obuf, NIL);
       }
-      n_autorec_relax_unroll();
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
 
       touch(mp);
       if (domark)
@@ -215,7 +216,7 @@ jsend:
       tstats[0] += mstats[0];
       tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
    fflush(obuf);
 
@@ -223,7 +224,7 @@ jsend:
 jferr:
       n_perr(file, n_pstate_err_no = su_err_no());
       if (!success)
-         srelax_rele();
+         su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
       success = FAL0;
    }
    if(shell != NIL){

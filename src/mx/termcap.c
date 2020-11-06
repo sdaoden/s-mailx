@@ -41,11 +41,13 @@ su_EMPTY_FILE()
 # endif
 # include <term.h>
 #endif
+#undef lines /* xxx */
 
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 
@@ -919,8 +921,7 @@ mx_termcap_query(enum mx_termcap_query query, struct mx_termcap_value *tvp){
          goto jleave;
 #ifdef mx_HAVE_TERMCAP
       nlen = su_cs_len(ndat) +1;
-      teep = n_alloc(VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
-            nlen);
+      teep = n_alloc(VSTRUCT_SIZEOF(struct a_termcap_ext_ent,tee_name) + nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;
       a_termcap_g->tg_ext_ents = teep;

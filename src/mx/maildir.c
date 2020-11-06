@@ -56,6 +56,7 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/prime.h>
 
+#include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 

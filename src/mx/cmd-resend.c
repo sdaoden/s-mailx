@@ -48,6 +48,8 @@
 #include "mx/cmd.h"
 #include "mx/cmd-charsetalias.h"
 #include "mx/cmd-mlist.h"
+#include "mx/compat.h"
+#include "mx/mime-param.h"
 #include "mx/names.h"
 #include "mx/url.h"
 #include "mx/tty.h"
@@ -472,7 +474,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 
    if(ok_blook(reply_in_same_charset) &&
          (ccp = hfield1("content-type", mp)) != NIL &&
-         (ccp = mime_param_get("charset", ccp)) != NIL)
+         (ccp = mx_mime_param_get("charset", ccp)) != NIL)
       head->h_charset = mx_charsetalias_expand(ccp, FAL0);
 
 jleave:

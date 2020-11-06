@@ -31,9 +31,11 @@
 #include <su/avopt.h>
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/attachments.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
@@ -178,7 +180,7 @@ a_main_startup(void){
 
    /* Now that the basic I/O is accessible, initialize our main machinery,
     * input, loop, child, termios, whatever */
-   n_go_init();
+   mx_go_init();
 
    if(n_psonce & n_PSO_INTERACTIVE)
       safe_signal(SIGPIPE, SIG_IGN);
@@ -199,7 +201,7 @@ a_main_startup(void){
 
    /*  --  >8  --  8<  --  */
 
-   n_locale_init();
+   mx_locale_init();
 
 #ifdef mx_HAVE_ICONV
    iconvd = R(iconv_t,-1);
@@ -273,7 +275,7 @@ a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
    char const **newcpp;
    NYD2_IN;
 
-   newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
+   newcpp = su_AUTO_ALLOC(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
@@ -376,10 +378,10 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 
    /* Enter the command loop */
    /* "load()" more commands given on command line */
-   if(mcp->mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
+   if(mcp->mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
       n_exit_status = n_EXIT_ERR;
    else
-      n_go_main_loop(TRU1);
+      mx_go_main_loop(TRU1);
 
    if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
@@ -473,7 +475,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
    }else{
       BITENUM_IS(u32,n_shexp_state) shs;
 
-      n_autorec_relax_create();
+      su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
       s = n_string_creat_auto(&s_b);
       sin.s = UNCONST(char*,avop->avo_current_arg);
       sin.l = UZ_MAX;
@@ -483,7 +485,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
             n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NIL);
       if((shs & n_SHEXP_STATE_ERR_MASK) ||
             !(shs & n_SHEXP_STATE_STOP)){
-         n_autorec_relax_gut();
+         su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
          goto je_S;
       }
       a[0] = n_string_cp_const(s);
@@ -497,7 +499,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
    n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
    if(s != NIL)
-      n_autorec_relax_gut();
+      su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
    if(!b && (ok_blook(errexit) || ok_blook(posix))){
 je_S:
       rv = N_("-S failed to set variable");
@@ -773,7 +775,7 @@ main(int argc, char *argv[]){
          struct a_main_aarg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
-         nap = n_autorec_alloc(sizeof(struct a_main_aarg));
+         nap = su_AUTO_ALLOC(sizeof(struct a_main_aarg));
          if(mc.mc_a_head == NIL)
             mc.mc_a_head = nap;
          else
@@ -960,7 +962,7 @@ jeMmq:
       case 'V':{
          struct n_string s;
 
-         fputs(n_string_cp_const(n_version(
+         fputs(n_string_cp_const(mx_version(
             n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
          n_exit_status = n_EXIT_OK;
          }goto jleave;
@@ -1071,7 +1073,7 @@ jgetopt_done:
    }
    argc = i;
 
-   /* ...BUT, since we use n_autorec_alloc() for the MTA n_smopts storage we
+   /* ...BUT, since we use su_AUTO_ALLOC() for the MTA n_smopts storage we
     * need to allocate the space for them before we fixate that storage! */
    while(argv[i] != NIL)
       ++i;
@@ -1144,7 +1146,7 @@ jgetopt_done:
    a_main_setup_vars();
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
-   su_mem_bag_fixate(n_go_data->gdc_membag);
+   su_mem_bag_fixate(mx_go_data->gdc_membag);
 
    /* load() any resource files */
    if(resfiles & a_RF_MASK){
@@ -1157,16 +1159,16 @@ jgetopt_done:
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
-               !n_go_load_rc(ok_vlook(system_mailrc)))
+               !mx_go_load_rc(ok_vlook(system_mailrc)))
             goto jleave;
       }
 
       if((resfiles & a_RF_USER) &&
             (cp = fexpand(ok_vlook(MAILRC), (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-               FEXP_NSHELL))) != NIL && !n_go_load_rc(cp))
+               FEXP_NSHELL))) != NIL && !mx_go_load_rc(cp))
          goto jleave;
 
-      if((resfiles & a_RF_BLTIN) && !n_go_load_lines(FAL0, NIL, 0))
+      if((resfiles & a_RF_BLTIN) && !mx_go_load_lines(FAL0, NIL, 0))
          goto jleave;
    }
 
@@ -1174,7 +1176,7 @@ jgetopt_done:
       n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
    if((cp != NIL || (cp = ok_vlook(mailx_extra_rc)) != NIL) &&
          (cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-            ) != NIL && !n_go_load_rc(cp))
+            ) != NIL && !mx_go_load_rc(cp))
       goto jleave;
 
    /* Cause possible umask(2) to be applied, now that any setting is
@@ -1246,20 +1248,20 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED_CONFIG;
 
    /* "load()" commands given on command line */
-   if(mc.mc_X_cnt > 0 && !n_go_load_lines(FAL0, mc.mc_X, mc.mc_X_cnt))
+   if(mc.mc_X_cnt > 0 && !mx_go_load_lines(FAL0, mc.mc_X, mc.mc_X_cnt))
       goto jleave_full;
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
       if(mc.mc_quote == R(char*,-1)){
-         if(!mx_mimetype_is_known(n_poption_arg_Mm)){
+         if(!mx_mime_type_is_known(n_poption_arg_Mm)){
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
             n_exit_status = n_EXIT_ERR;
             goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */mc.mc_quote != NIL &&
-            (n_poption_arg_Mm = mx_mimetype_classify_filename(mc.mc_quote)
+            (n_poption_arg_Mm = mx_mime_type_classify_filename(mc.mc_quote)
                ) == NIL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(mc.mc_quote, FAL0));
@@ -1291,7 +1293,7 @@ je_expandargv:
       }
 
       /* "load()" more commands given on command line */
-      if(mc.mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
+      if(mc.mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
          n_exit_status = n_EXIT_ERR;
       else
          n_mail((((n_psonce & n_PSO_INTERACTIVE
@@ -1339,7 +1341,7 @@ jleave:
 
 #ifdef su_HAVE_DEBUG
    /* xxx call atexit handlers here */
-   su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
+   su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif
 

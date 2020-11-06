@@ -34,6 +34,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/child.h"
@@ -209,7 +210,7 @@ jenotinput:
 
          llen = (f & a_LOGIN) ? su_cs_len(login) : 0;
          plen = (f & a_PASSWORD) ? su_cs_len(password) : 0;
-         nrcep = su_ALLOC(VSTRUCT_SIZEOF(struct a_netrc_entry, nrce_dat) +
+         nrcep = su_ALLOC(VSTRUCT_SIZEOF(struct a_netrc_entry,nrce_dat) +
                llen +1 + plen +1);
          if(nrcep == NIL)
             goto jerrdoc;
@@ -469,7 +470,7 @@ a_netrc_bsd_quote(char const *v){
    if(quotes)
       i += 2;
 
-   rv = n_autorec_alloc(i +1);
+   rv = su_AUTO_ALLOC(i +1);
 
    i = 0;
    if(quotes)

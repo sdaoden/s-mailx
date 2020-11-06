@@ -63,6 +63,8 @@
 
 #include <su/cs.h>
 
+#include "mx/compat.h"
+
 #elif a_NET_GSSAPI_H == 1
 # undef a_NET_GSSAPI_H
 # define a_NET_GSSAPI_H 2
@@ -196,8 +198,8 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
          n_free(out.s);
       }
 
-      if(b64_encode_buf(&out, send_tok.value, send_tok.length,
-            B64_SALLOC | B64_CRLF) == NIL)
+      if(mx_b64_enc_buf(&out, send_tok.value, send_tok.length,
+            mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
       gss_release_buffer(&min_stat, &send_tok);
       f &= ~a_F_SEND_TOK;
@@ -229,7 +231,7 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
 
       out.s = NIL;
       f |= a_F_OUTBUF;
-      if(!b64_decode(&out, &in)){
+      if(!mx_b64_dec(&out, &in)){
          n_err(_("Invalid base64 encoding from GSSAPI server\n"));
          goto jleave;
       }
@@ -270,8 +272,8 @@ su_CONCAT(su_FILE,_gss)(struct mx_socket *sop, struct mx_url *urlp,
       su_CONCAT(su_FILE,_gss__error)("wrapping data", maj_stat, min_stat);
       goto jleave;
    }
-   if(b64_encode_buf(&out, recv_tok.value, recv_tok.length,
-         B64_SALLOC | B64_CRLF) == NIL)
+   if(mx_b64_enc_buf(&out, recv_tok.value, recv_tok.length,
+         mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
       goto jleave;
 
 # ifdef mx_SOURCE_NET_SMTP

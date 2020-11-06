@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause TODO ISC
+ * SPDX-License-Identifier: BSD-3-Clause TODO rewrite, ISC
  */
 /*
  * Redistribution and use in source and binary forms, with or without
@@ -43,17 +43,33 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_visual_info_ctx;
+
+enum mx_visual_info_flags{
+   mx_VISUAL_INFO_NONE,
+   mx_VISUAL_INFO_ONE_CHAR = 1u<<0, /* Step only one char, then return */
+   mx_VISUAL_INFO_SKIP_ERRORS = 1u<<1, /* Treat via replacement, step byte */
+   mx_VISUAL_INFO_WIDTH_QUERY = 1u<<2, /* Detect visual character widths */
+
+   /* Rest only with mx_HAVE_C90AMEND1, mutual with _ONE_CHAR */
+   mx_VISUAL_INFO_WOUT_CREATE = 1u<<8, /* Use/create .vic_woudat */
+   mx_VISUAL_INFO_WOUT_AUTO_ALLOC = 1u<<9, /* ..AUTO_ALLOC() it first */
+   /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
+   mx_VISUAL_INFO_WOUT_PRINTABLE = 1u<<10,
+
+   n__VISUAL_INFO_FLAGS = mx_VISUAL_INFO_WOUT_CREATE |
+         mx_VISUAL_INFO_WOUT_AUTO_ALLOC | mx_VISUAL_INFO_WOUT_PRINTABLE
+};
+
 #ifdef mx_HAVE_C90AMEND1
 typedef wchar_t wc_t;
-# define n_WC_C(X) L ## X
+# define mx_WC_C(X) L ## X
 #else
 typedef char wc_t; /* Yep: really 8-bit char */
-# define n_WC_C(X) X
+# define mx_WC_C(X) X
 #endif
 
-struct n_visual_info_ctx;
-
-struct n_visual_info_ctx{
+struct mx_visual_info_ctx{
    char const *vic_indat; /*I Input data */
    uz vic_inlen; /*I If UZ_MAX, su_cs_len(.vic_indat) */
    char const *vic_oudat; /*O remains */
@@ -64,7 +80,7 @@ struct n_visual_info_ctx{
    wc_t *vic_woudat; /*[O] if so requested */
    uz vic_woulen; /*[O] entries in .vic_woudat, if used */
    wc_t vic_waccu; /*O The last wchar_t/char processed (if any) */
-   enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
+   BITENUM_IS(u32,mx_visual_info_flags) vic_flags; /*O Copy of parse flags */
    /* TODO bidi */
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
@@ -73,29 +89,31 @@ struct n_visual_info_ctx{
 };
 
 /* setlocale(3), *ttycharset* etc. */
-EXPORT void n_locale_init(void);
+EXPORT void mx_locale_init(void);
 
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
  * vicp must be zeroed before first use */
-EXPORT boole n_visual_info(struct n_visual_info_ctx *vicp,
-      enum n_visual_info_flags vif);
+EXPORT boole mx_visual_info(struct mx_visual_info_ctx *vicp,
+      BITENUM_IS(u32,mx_visual_info_flags) vif);
 
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
  * safely placed in a buffer (field width) of maxlen bytes */
-EXPORT uz field_detect_clip(uz maxlen, char const *buf, uz blen);
+EXPORT uz mx_field_detect_clip(uz maxlen, char const *buf, uz blen);
 
-/* Place cp in a autorec_alloc()ed buffer, column-aligned.
+/* Place cp in a AUTO_ALLOC()ed buffer, column-aligned.
  * For header display only */
-EXPORT char *colalign(char const *cp, int col, int fill,
+EXPORT char *mx_colalign(char const *cp, int col, int fill,
       int *cols_decr_used_or_nil);
 
 /* Convert a string to a displayable one;
- * prstr() returns the result savestr()d, prout() writes it */
-EXPORT void makeprint(struct str const *in, struct str *out);
-EXPORT uz delctrl(char *cp, uz len);
-EXPORT char *prstr(char const *s);
-EXPORT int prout(char const *s, uz sz, FILE *fp);
+ * _cp() returns the result savestr()d, _write_cp() writes it */
+EXPORT void mx_makeprint(struct str const *in, struct str *out);
+EXPORT char *mx_makeprint_cp(char const *cp);
+EXPORT int mx_makeprint_write_fp(char const *s, uz sz, FILE *fp);
+
+/* Only remove (remaining) control characters, reterminate, return length */
+EXPORT uz mx_del_cntrl(char *cp, uz len);
 
 #include <su/code-ou.h>
 #endif /* mx_UI_STR_H */

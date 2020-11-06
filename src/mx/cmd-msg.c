@@ -46,6 +46,7 @@
 
 #include "mx/cmd.h"
 #include "mx/colour.h"
+#include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/ignore.h"
 #include "mx/termios.h"

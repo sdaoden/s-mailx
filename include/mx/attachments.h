@@ -21,6 +21,8 @@
 
 #include <mx/nail.h>
 
+#include <mx/go.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -93,7 +95,7 @@ EXPORT struct mx_attachment *mx_attachments_find(struct mx_attachment *aplist,
 
 /* Interactively edit the attachment list, return updated list */
 EXPORT struct mx_attachment *mx_attachments_list_edit(
-      struct mx_attachment *aplist, BITENUM_IS(u32,n_go_input_flags) gif);
+      struct mx_attachment *aplist, BITENUM_IS(u32,mx_go_input_flags) gif);
 
 /* Print all attachments, return number of lines written, -1 on error */
 EXPORT sz mx_attachments_list_print(struct mx_attachment const *aplist,

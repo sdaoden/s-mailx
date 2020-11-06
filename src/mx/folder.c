@@ -47,6 +47,7 @@
 #include <su/mem.h>
 
 #include "mx/cmd-shortcut.h"
+#include "mx/compat.h"
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
@@ -162,7 +163,7 @@ jdocopy:
       j = sizeof(displayname) / 3 - 3;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
-      j = field_detect_clip(sizeof(displayname) / 3, mailp, i);
+      j = mx_field_detect_clip(sizeof(displayname) / 3, mailp, i);
       i = j + __narrow_suffix(mailp + j, i - j,
          sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif

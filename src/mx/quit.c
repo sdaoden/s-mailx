@@ -43,6 +43,7 @@
 
 #include <utime.h>
 
+#include "mx/compat.h"
 #include "mx/dig-msg.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"

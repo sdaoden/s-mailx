@@ -636,9 +636,9 @@ do if(!(X)){\
  * only other option for bit constants would be preprocessor macros.
  * Since enumerations are expected to represent a single value, a normal
  * integer is often used to store enumeration values.
- * To be explicit, this macro is used instead, \a{X} is the pod, \a{Y} is the
- * enumeration name that is actually meant. */
-#define su_BITENUM_IS(X,Y) X
+ * This macro is used instead to be explicit, \a{X} is the pod, \a{Y} is the
+ * name of the enumeration that is meant. */
+#define su_BITENUM_IS(X,Y) X /* enum X */
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}

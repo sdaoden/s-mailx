@@ -26,6 +26,7 @@
 #endif
 
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
@@ -134,13 +135,13 @@ jislink:
    if(lstat(cp = fdi.fdi_file_name, &stb) == -1)
       goto jmsg;
    if(S_ISLNK(stb.st_mode)){
-      /* Use n_autorec_alloc() and hope we stay in built-in buffer.. */
+      /* Use AUTO_ALLOC() and hope we stay in built-in buffer.. */
       char *x;
       uz i;
       sz sr;
 
       for(x = NIL, i = PATH_MAX;; i += PATH_MAX){
-         x = n_autorec_alloc(i +1);
+         x = su_AUTO_ALLOC(i +1);
          sr = readlink(cp, x, i);
          if(sr <= 0){
             fdls = mx_FILE_DOTLOCK_STATE_FISHY | mx_FILE_DOTLOCK_STATE_ABANDON;
@@ -192,7 +193,7 @@ jenametool:
          if(UCMP(z, NAME_MAX - 1, <, i))
             goto jenametool;
 # ifdef mx_HAVE_PATHCONF
-      }else if(pc - 1 >= i)
+      }else if(pc - 1 >= S(long,i))
          break;
       else
          goto jenametool;

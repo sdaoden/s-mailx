@@ -36,6 +36,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
@@ -274,7 +275,7 @@ jchild:{
       for(ai = 0; env_addon[ai] != NIL; ++ai)
          ;
       ai_orig = ai;
-      env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
+      env = su_LOFI_ALLOC(sizeof(*env) * (ei + ai +1));
       su_mem_copy(env, environ, sizeof(*env) * ei);
 
       /* Replace all those keys that yet exist */

@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `commandalias'.
+ *@ Spam related facilities.
  *
- * Copyright (c) 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2013 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -16,23 +16,23 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_CMD_COMMANDALIAS_H
-#define mx_CMD_COMMANDALIAS_H
+#ifndef mx_CMD_SPAM_H
+#define mx_CMD_SPAM_H
 
 #include <mx/nail.h>
+#ifdef mx_HAVE_SPAM
 
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Whether a `commandalias' name exists, returning name or NIL, pointing
- * expansion_or_nil to expansion if set: both point into internal storage */
-EXPORT char const *mx_commandalias_exists(char const *name,
-      char const **expansion_or_nil);
-
-/* `(un)?commandalias' */
-EXPORT int c_commandalias(void *vp);
-EXPORT int c_uncommandalias(void *vp);
+EXPORT int c_spam_clear(void *vp);
+EXPORT int c_spam_set(void *vp);
+EXPORT int c_spam_forget(void *vp);
+EXPORT int c_spam_ham(void *vp);
+EXPORT int c_spam_rate(void *vp);
+EXPORT int c_spam_spam(void *vp);
 
 #include <su/code-ou.h>
-#endif /* mx_CMD_COMMANDALIAS_H */
+#endif /* mx_HAVE_SPAM */
+#endif /* mx_CMD_SPAM_H */
 /* s-it-mode */

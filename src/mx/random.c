@@ -45,6 +45,9 @@
 # include <su/prime.h>
 #endif
 
+#include "mx/compat.h"
+#include "mx/mime-enc.h"
+
 /* Already: #include "mx/random.h" */
 #include "su/code-in.h"
 
@@ -343,7 +346,8 @@ jinc1:
 
    oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
    b64.s = oudat;
-   b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
+   mx_b64_enc_buf(&b64, indat, inlen,
+      mx_B64_BUF | mx_B64_RFC4648URL | mx_B64_NOPAD);
    ASSERT(b64.l >= len);
    su_mem_copy(dat, b64.s, len);
    dat[len] = '\0';

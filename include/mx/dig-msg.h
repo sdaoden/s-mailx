@@ -50,7 +50,7 @@ struct mx_dig_msg_ctx{
    struct su_mem_bag dmc__membag_buf[1];
 };
 
-/* This is a bit hairy */
+/* This is a bit hairy (it requires mx/go.h, which is NOT included) */
 #define mx_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
 do{\
    union {struct mx_dig_msg_ctx *dmc; void *v; u8 *b;} __p__;\
@@ -59,7 +59,7 @@ do{\
    do *--__p__.b = 0; while(__p__.dmc != DMCP);\
    (DMCP)->dmc_flags = mx_DIG_MSG_COMPOSE;\
    (DMCP)->dmc_hp = HP;\
-   (DMCP)->dmc_membag = su_mem_bag_top(n_go_data->gdc_membag);\
+   (DMCP)->dmc_membag = su_mem_bag_top(mx_go_data->gdc_membag);\
 }while(0)
 
 #define mx_DIG_MSG_COMPOSE_GUT(DMCP) \

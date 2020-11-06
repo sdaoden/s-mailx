@@ -1,37 +1,20 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Miscellaneous user commands, like `echo', `pwd', etc.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
 #define su_FILE cmd_misc
@@ -48,10 +31,12 @@
 #include <su/sort.h>
 
 #include "mx/child.h"
+#include "mx/compat.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/sigs.h"
 
-/* TODO fake */
+#include "mx/cmd-misc.h"
 #include "su/code-in.h"
 
 /* Expand the shell escape by expanding unescaped !'s into the last issued
@@ -97,16 +82,19 @@ a_cmisc_bangexp(char const *cp){
       }
    }
 
-   if(last_bang.s != NULL)
+   if(last_bang.s != NIL)
       n_free(last_bang.s);
+
    last_bang.s = n_string_cp(bang);
    last_bang.l = bang->s_len;
+   cp = last_bang.s;
+
    bang = n_string_drop_ownership(bang);
    n_string_gut(bang);
 
-   cp = last_bang.s;
    if(changed)
       fprintf(n_stdout, "!%s\n", cp);
+
 jleave:
    NYD_OU;
    return cp;
@@ -121,7 +109,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
    NYD2_IN;
 
    argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
    s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
 #ifdef mx_HAVE_ERRORS
    doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
@@ -129,7 +117,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
    doerr = FAL0;
 #endif
 
-   for(ap = argv; *ap != NULL; ++ap){
+   for(ap = argv; *ap != NIL; ++ap){
       if(ap != argv)
          s = n_string_push_c(s, ' ');
       /* TODO -t/-T en/disable if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)
@@ -141,7 +129,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
       s = n_string_push_c(s, '\n');
    cp = n_string_cp(s);
 
-   if(varname == NULL){
+   if(varname == NIL){
       s32 e;
 
       e = su_ERR_NONE;
@@ -161,8 +149,9 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
       rv = -1;
    }else{
       n_pstate_err_no = su_ERR_NONE;
-      rv = (int)s->s_len;
+      rv = S(int,s->s_len);
    }
+
    NYD2_OU;
    return rv;
 }
@@ -195,17 +184,17 @@ a_cmisc_read(void * volatile vp, boole atifs){
    }
 
    n_pstate_err_no = su_ERR_NONE;
-   rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
-            ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
-         n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
-         n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
+   rv = mx_go_input(((n_pstate & n_PS_COMPOSE_MODE
+            ? mx_GO_INPUT_CTX_COMPOSE : mx_GO_INPUT_CTX_DEFAULT) |
+         mx_GO_INPUT_FORCE_STDIN | mx_GO_INPUT_NL_ESC |
+         mx_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
          NIL, &linebuf, &linesize, NIL, NIL);
    if(rv < 0){
-      if(!n_go_input_is_eof())
+      if(!mx_go_input_is_eof())
          n_pstate_err_no = su_ERR_BADF;
       goto jleave;
    }else if(rv == 0){
-      if(n_go_input_is_eof()){
+      if(mx_go_input_is_eof()){
          rv = -1;
          goto jleave;
       }
@@ -319,8 +308,8 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
    return rv;
 }
 
-FL int
-c_shell(void *v){
+int
+c_shell(void *vp){
    struct mx_child_ctx cc;
    sigset_t mask;
    int rv;
@@ -329,7 +318,7 @@ c_shell(void *v){
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
-   argv = v;
+   argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
    varres = n_empty;
    fp = NIL;
@@ -396,12 +385,12 @@ c_shell(void *v){
    return rv;
 }
 
-FL int
-c_dosh(void *v){
+int
+c_dosh(void *vp){
    struct mx_child_ctx cc;
    int rv;
    NYD_IN;
-   UNUSED(v);
+   UNUSED(vp);
 
    mx_child_ctx_setup(&cc);
    cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
@@ -420,8 +409,8 @@ c_dosh(void *v){
    return rv;
 }
 
-FL int
-c_cwd(void *v){
+int
+c_cwd(void *vp){
    struct n_string s_b, *s;
    uz l;
    char const *varname;
@@ -434,7 +423,7 @@ c_cwd(void *v){
    for(;; l += PATH_MAX){
       s = n_string_resize(n_string_trunc(s, 0), l);
 
-      if(getcwd(s->s_dat, s->s_len) == NULL){
+      if(getcwd(s->s_dat, s->s_len) == NIL){
          int e;
 
          e = su_err_no();
@@ -457,11 +446,12 @@ c_cwd(void *v){
       }
       break;
    }
+
    NYD_OU;
-   return (v == NULL);
+   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
-FL int
+int
 c_chdir(void *vp){
    char **arglist;
    char const *cp;
@@ -483,51 +473,51 @@ jleave:
    return (cp == NIL ? n_EXIT_ERR : n_EXIT_OK);
 }
 
-FL int
-c_echo(void *v){
+int
+c_echo(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cmisc_echo(v, n_stdout, TRU1);
+   rv = a_cmisc_echo(vp, n_stdout, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
-c_echoerr(void *v){
+int
+c_echoerr(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cmisc_echo(v, n_stderr, TRU1);
+   rv = a_cmisc_echo(vp, n_stderr, TRU1);
 
    NYD_OU;
    return rv;
 }
 
-FL int
-c_echon(void *v){
+int
+c_echon(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cmisc_echo(v, n_stdout, FAL0);
+   rv = a_cmisc_echo(vp, n_stdout, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
-c_echoerrn(void *v){
+int
+c_echoerrn(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_cmisc_echo(v, n_stderr, FAL0);
+   rv = a_cmisc_echo(vp, n_stderr, FAL0);
 
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_read(void *vp){
    int rv;
    NYD2_IN;
@@ -538,7 +528,7 @@ c_read(void *vp){
    return rv;
 }
 
-FL int
+int
 c_readsh(void *vp){
    int rv;
    NYD2_IN;
@@ -549,8 +539,8 @@ c_readsh(void *vp){
    return rv;
 }
 
-FL int
-c_readall(void * vp){ /* TODO 64-bit retval */
+int
+c_readall(void *vp){ /* TODO 64-bit retval */
    struct n_sigman sm;
    struct n_string s_b, *s;
    char *linebuf;
@@ -563,7 +553,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
    s = n_string_reserve(s, 64 -1);
 
    linesize = 0;
-   linebuf = NULL;
+   linebuf = NIL;
    argv = vp;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -578,13 +568,13 @@ c_readall(void * vp){ /* TODO 64-bit retval */
    n_pstate_err_no = su_ERR_NONE;
 
    for(;;){
-      rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
-               ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
-            n_GO_INPUT_FORCE_STDIN | /*n_GO_INPUT_NL_ESC |*/
-            n_GO_INPUT_PROMPT_NONE),
-            NULL, &linebuf, &linesize, NULL, NULL);
+      rv = mx_go_input(((n_pstate & n_PS_COMPOSE_MODE
+               ? mx_GO_INPUT_CTX_COMPOSE : mx_GO_INPUT_CTX_DEFAULT) |
+            mx_GO_INPUT_FORCE_STDIN | /*mx_GO_INPUT_NL_ESC |*/
+            mx_GO_INPUT_PROMPT_NONE),
+            NIL, &linebuf, &linesize, NIL, NIL);
       if(rv < 0){
-         if(!n_go_input_is_eof()){
+         if(!mx_go_input_is_eof()){
             n_pstate_err_no = su_ERR_BADF;
             goto jleave;
          }
@@ -597,7 +587,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
          linebuf[rv++] = '\n'; /* Replace NUL with it */
 
       if(UNLIKELY(rv == 0)){ /* xxx will not get*/
-         if(n_go_input_is_eof()){
+         if(mx_go_input_is_eof()){
             if(s->s_len == 0){
                rv = -1;
                goto jleave;
@@ -630,26 +620,7 @@ jleave:
    return rv;
 }
 
-FL struct n_string *
-n_version(struct n_string *s){
-   NYD_IN;
-   s = n_string_push_cp(s, n_uagent);
-   s = n_string_push_c(s, ' ');
-   s = n_string_push_cp(s, ok_vlook(version));
-   s = n_string_push_c(s, ',');
-   s = n_string_push_c(s, ' ');
-   s = n_string_push_cp(s, ok_vlook(version_date));
-   s = n_string_push_c(s, ' ');
-   s = n_string_push_c(s, '(');
-   s = n_string_push_cp(s, _("built for "));
-   s = n_string_push_cp(s, ok_vlook(build_os));
-   s = n_string_push_c(s, ')');
-   s = n_string_push_c(s, '\n');
-   NYD_OU;
-   return s;
-}
-
-FL int
+int
 c_version(void *vp){
    struct utsname ut;
    struct n_string s_b, *s;
@@ -663,7 +634,7 @@ c_version(void *vp){
    s = n_string_book(s, 1024);
 
    /* First two lines */
-   s = n_version(s);
+   s = mx_version(s);
    s = n_string_push_cp(s, _("Features included (+) or not (-):\n"));
 
    /* Some lines with the features.
@@ -673,7 +644,7 @@ c_version(void *vp){
    su_mem_copy(iop, cp, i);
 
    arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
-   for(i = 0; (cp = su_cs_sep_c(&iop, ',', TRU1)) != NULL; ++i)
+   for(i = 0; (cp = su_cs_sep_c(&iop, ',', TRU1)) != NIL; ++i)
       arr[i] = cp;
    su_sort_shell_vpp(su_S(void const**,arr), i, &a_cmisc_version_cmp);
 

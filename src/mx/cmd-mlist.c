@@ -36,6 +36,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/names.h"
 
@@ -295,7 +296,7 @@ a_ml_re_clone(void const *t, u32 estate){
       }else{
          n_err(_("%s: invalid regular expression: %s: %s\n"),
             (u.flags & TRU1 ? "mlsubscribe" : "mlist"),
-            n_shexp_quote_cp(rep, FAL0), n_regex_err_to_doc(NULL, s));
+            n_shexp_quote_cp(rep, FAL0), n_regex_err_to_doc(NIL, s));
          su_FREE(rv.mlrp);
          su_err_set_no(su_ERR_INVAL);
          rv.vp = NIL;
@@ -511,7 +512,7 @@ mx_mlist_query(char const *name, boole subscribed_only){
       rv = mx_MLIST_SUBSCRIBED;
 jregex_redo:
       if((mlrp = *lpp) != NIL){
-         do if(regexec(&mlrp->mlr_regex, name, 0,NULL, 0) != REG_NOMATCH){
+         do if(regexec(&mlrp->mlr_regex, name, 0,NIL, 0) != REG_NOMATCH){
             /* Relink head */
             if(mlrp != *lpp){
                lstnp = mlrp->mlr_last;

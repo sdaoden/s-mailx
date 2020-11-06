@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `commandalias'.
+ *@ Commands: conditional constructs.
  *
- * Copyright (c) 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -16,23 +16,28 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef mx_CMD_COMMANDALIAS_H
-#define mx_CMD_COMMANDALIAS_H
+#ifndef mx_CMD_CND_H
+#define mx_CMD_CND_H
 
-#include <mx/nail.h>
+#include <su/code.h>
 
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Whether a `commandalias' name exists, returning name or NIL, pointing
- * expansion_or_nil to expansion if set: both point into internal storage */
-EXPORT char const *mx_commandalias_exists(char const *name,
-      char const **expansion_or_nil);
+struct mx_go_data_ctx;
 
-/* `(un)?commandalias' */
-EXPORT int c_commandalias(void *vp);
-EXPORT int c_uncommandalias(void *vp);
+/* if.elif.else.endif conditional execution */
+EXPORT int c_if(void *vp);
+EXPORT int c_elif(void *vp);
+EXPORT int c_else(void *vp);
+EXPORT int c_endif(void *vp);
+
+/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1) */
+EXPORT boole mx_cnd_if_exists(void);
+
+/* An execution context is teared down, and it finds to have an if stack */
+EXPORT void mx_cnd_if_stack_del(struct mx_go_data_ctx *gdcp);
 
 #include <su/code-ou.h>
-#endif /* mx_CMD_COMMANDALIAS_H */
+#endif /* mx_CMD_CND_H */
 /* s-it-mode */

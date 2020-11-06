@@ -27,8 +27,10 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/sigs.h"
@@ -97,7 +99,7 @@ a_attachments_setup_base(struct mx_attachment *ap, char const *file){
       ap->a_path_bname = ap->a_name = ++file;
    else
       file = ap->a_name;
-   ap->a_content_type = mx_mimetype_classify_filename(file);
+   ap->a_content_type = mx_mime_type_classify_filename(file);
    ap->a_content_disposition = "attachment";
    ap->a_content_description = NIL;
    ap->a_content_id = NIL;
@@ -318,7 +320,7 @@ jerr_fopen:
       }
    }
 
-   nap = a_attachments_setup_base(n_autorec_calloc(1, sizeof *nap), file);
+   nap = a_attachments_setup_base(su_AUTO_CALLOC(sizeof *nap), file);
    nap->a_path_user = file_user;
    if(msgno >= 0)
       nap = a_attachments_setup_msg(nap, file, msgno);
@@ -488,7 +490,7 @@ jleave:
 
 struct mx_attachment *
 mx_attachments_list_edit(struct mx_attachment *aplist,
-      BITENUM_IS(u32,n_go_input_flags) gif){
+      BITENUM_IS(u32,mx_go_input_flags) gif){
    /* Modify already present ones? Append some more? */
    char prefix[32];
    char const *inidat;

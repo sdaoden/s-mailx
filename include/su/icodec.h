@@ -238,7 +238,8 @@ enum su_ienc_mode{
 };
 
 /*! Encode an integer value according to base (2-36) and \r{su_ienc_mode}
- * \a{ienc_mode}, return pointer to starting byte or \NIL on error */
+ * \a{ienc_mode}, return pointer to starting byte or \NIL on error.
+ * An error only happens for an invalid base. */
 EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
       u32 ienc_mode);
 

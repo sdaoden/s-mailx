@@ -74,6 +74,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/file-streams.h"
 #include "mx/names.h"

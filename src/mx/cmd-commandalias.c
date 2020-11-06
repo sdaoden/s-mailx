@@ -42,6 +42,21 @@
 
 static struct su_cs_dict *a_cmdal_dp, a_cmdal__d; /* XXX atexit _gut() (DVL) */
 
+char const *
+mx_commandalias_exists(char const *name, char const **expansion_or_nil){
+   char const *dat;
+   NYD_IN;
+
+   if(a_cmdal_dp == NIL ||
+         (dat = S(char*,su_cs_dict_lookup(a_cmdal_dp, name))) == NIL)
+      name = NIL;
+   else if(expansion_or_nil != NIL)
+      *expansion_or_nil = dat;
+
+   NYD_OU;
+   return name;
+}
+
 int
 c_commandalias(void *vp){
    struct su_cs_dict_view dv;
@@ -118,22 +133,9 @@ c_uncommandalias(void *vp){
    NYD_IN;
 
    rv = !mx_unxy_dict("commandalias", a_cmdal_dp, vp);
+
    NYD_OU;
    return rv;
-}
-
-char const *
-mx_commandalias_exists(char const *name, char const **expansion_or_nil){
-   char const *dat;
-   NYD_IN;
-
-   if(a_cmdal_dp == NIL ||
-         (dat = S(char*,su_cs_dict_lookup(a_cmdal_dp, name))) == NIL)
-      name = NIL;
-   else if(expansion_or_nil != NIL)
-      *expansion_or_nil = dat;
-   NYD_OU;
-   return name;
 }
 
 #include "su/code-ou.h"

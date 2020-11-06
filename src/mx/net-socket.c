@@ -662,15 +662,15 @@ mx_socket_close(struct mx_socket *sop)
    if (i <= 0)
       i = 0;
    else {
-      if (sop->s_onclose != NULL)
+      if (sop->s_onclose != NIL)
          (*sop->s_onclose)();
-      if (sop->s_wbuf != NULL)
-         n_free(sop->s_wbuf);
+      if (sop->s_wbuf != NIL)
+         su_FREE(sop->s_wbuf);
 # ifdef mx_HAVE_XTLS
       if (sop->s_use_tls) {
          void *s_tls = sop->s_tls;
 
-         sop->s_tls = NULL;
+         sop->s_tls = NIL;
          sop->s_use_tls = 0;
          if(SSL_shutdown(s_tls) == 0) /* XXX proper error handling;signals! */
             SSL_shutdown(s_tls);
@@ -679,6 +679,7 @@ mx_socket_close(struct mx_socket *sop)
 # endif
       i = close(i);
    }
+
    NYD_OU;
    return i;
 }
@@ -707,7 +708,7 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
 
       if (sop->s_wbuf == NULL) {
          sop->s_wbufsize = 4096;
-         sop->s_wbuf = n_alloc(sop->s_wbufsize);
+         sop->s_wbuf = su_ALLOC(sop->s_wbufsize);
          sop->s_wbufpos = 0;
       }
       while (sop->s_wbufpos + size > sop->s_wbufsize) {
