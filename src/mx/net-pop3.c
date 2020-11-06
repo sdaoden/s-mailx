@@ -662,7 +662,7 @@ a_pop3_list(struct mailbox *mp, int n, uz *size){
    enum okay rv;
    NYD_IN;
 
-   snprintf(o, sizeof o, "LIST %u" NETNL, n);
+   snprintf(o, sizeof o, "LIST %d" NETNL, n);
    a_POP3_OUT(rv, o, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
@@ -777,10 +777,10 @@ a_pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need){
 jretry:
    switch(need){
    case NEED_HEADER:
-      snprintf(o, sizeof o, "TOP %u 0" NETNL, number);
+      snprintf(o, sizeof o, "TOP %d 0" NETNL, number);
       break;
    case NEED_BODY:
-      snprintf(o, sizeof o, "RETR %u" NETNL, number);
+      snprintf(o, sizeof o, "RETR %d" NETNL, number);
       break;
    case NEED_UNSPEC:
       n_panic("net-pop3.c bug\n");
@@ -907,7 +907,7 @@ a_pop3_delete(struct mailbox *mp, int n){
    enum okay rv;
    NYD_IN;
 
-   snprintf(o, sizeof o, "DELE %u" NETNL, n);
+   snprintf(o, sizeof o, "DELE %d" NETNL, n);
    a_POP3_OUT(rv, o, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 jleave:

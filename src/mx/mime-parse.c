@@ -231,7 +231,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
       i += 20;
       np->m_partstring = n_autorec_alloc(i);
       if(ip->m_partstring != NIL)
-         snprintf(np->m_partstring, i, "%s.%u", ip->m_partstring, 1);
+         snprintf(np->m_partstring, i, "%s.%d", ip->m_partstring, 1);
       else{
          np->m_partstring[0] = '1';
          np->m_partstring[1] = '\0';
@@ -416,9 +416,9 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
       i += 20;
       (*np)->m_partstring = n_autorec_alloc(i);
       if (ip->m_partstring)
-         snprintf((*np)->m_partstring, i, "%s.%u", ip->m_partstring, *part);
+         snprintf((*np)->m_partstring, i, "%s.%d", ip->m_partstring, *part);
       else
-         snprintf((*np)->m_partstring, i, "%u", *part);
+         snprintf((*np)->m_partstring, i, "%d", *part);
    }else
       (*np)->m_mimetype = mx_MIMETYPE_DISCARD;
    (*np)->m_parent = ip;

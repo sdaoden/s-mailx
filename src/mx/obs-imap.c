@@ -2385,7 +2385,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    else {
       if (check_expunged() == STOP)
          goto out;
-      snprintf(o, sizeof o, "%s FETCH %u (%s)\r\n", tag(1), number, item);
+      snprintf(o, sizeof o, "%s FETCH %d (%s)\r\n", tag(1), number, item);
    }
    IMAP_OUT(o, MB_COMD, goto out)
    for (;;) {
@@ -2526,7 +2526,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
    else {
       if (check_expunged() == STOP)
          return STOP;
-      snprintf(o, sizeof o, "%s FETCH %u:%u (RFC822.HEADER)\r\n",
+      snprintf(o, sizeof o, "%s FETCH %d:%d (RFC822.HEADER)\r\n",
          tag(1), bot, topp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
@@ -2893,11 +2893,12 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c,
       return STOP;
    if (m->m_uid)
       snprintf(o, sizeof o, "%s UID STORE %" PRIu64 " %cFLAGS (%s)\r\n",
-         tag(1), m->m_uid, c, xsp);
+         tag(1), m->m_uid, S(char,c), xsp);
    else {
       if (check_expunged() == STOP)
          return STOP;
-      snprintf(o, sizeof o, "%s STORE %u %cFLAGS (%s)\r\n", tag(1), n, c, xsp);
+      snprintf(o, sizeof o, "%s STORE %d %cFLAGS (%s)\r\n",
+         tag(1), n, S(char,c), xsp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
    if (needstat)
@@ -2962,13 +2963,14 @@ imap_unstore(struct message *m, int n, const char *flag)
 static const char *
 tag(int new)
 {
-   static char ts[20];
+   static char ts[24];
    static long n;
    NYD2_IN;
 
-   if (new)
+   if(new)
       ++n;
-   snprintf(ts, sizeof ts, "T%lu", n);
+   snprintf(ts, sizeof ts, "T%ld", n);
+
    NYD2_OU;
    return ts;
 }
@@ -3665,7 +3667,7 @@ again:
    else {
       if (check_expunged() == STOP)
          goto out;
-      snprintf(o, sizeof o, "%s COPY %u %s\r\n", tag(1), n, qname);
+      snprintf(o, sizeof o, "%s COPY %d %s\r\n", tag(1), n, qname);
    }
    IMAP_OUT(o, MB_COMD, goto out)
    while (mp->mb_active & MB_COMD)

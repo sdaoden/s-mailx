@@ -569,7 +569,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
 
          time_current_update(&tc, TRU1);
          (void)snprintf(vcp->vc_iencbuf, sizeof(vcp->vc_iencbuf),
-            "%04u-%02u-%02uT%02u:%02u:%02uZ",
+            "%04d-%02d-%02dT%02d:%02d:%02dZ",
             tc.tc_gm.tm_year + 1900, tc.tc_gm.tm_mon + 1, tc.tc_gm.tm_mday,
             tc.tc_gm.tm_hour, tc.tc_gm.tm_min, tc.tc_gm.tm_sec);
 
@@ -1041,9 +1041,10 @@ jestr:
 
          if(fprintf(n_stdout,
                   "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
-                  binabuf, vc.vc_lhv, vc.vc_lhv, vc.vc_lhv) < 0 ||
-               ((f & a_VEXPR_PBASE) &&
-                  fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
+                  binabuf, S(u64,vc.vc_lhv), S(u64,vc.vc_lhv), vc.vc_lhv
+                     ) < 0 ||
+                  ((f & a_VEXPR_PBASE) &&
+                     fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
             n_pstate_err_no = su_err_no();
             f |= a_VEXPR_ERR;
          }

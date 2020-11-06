@@ -1935,8 +1935,10 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
             cs = _("%s contains invalid byte %s\n");
 
          c = mx_name_flags_get_err_wc(f);
-         snprintf(cbuf, sizeof cbuf,
-            (ok8bit && c >= 040 && c <= 0177 ? "'%c'" : fmt), c);
+         if(ok8bit && c >= 040 && c <= 0177)
+            snprintf(cbuf, sizeof cbuf, "'%c'", S(char,c));
+         else
+            snprintf(cbuf, sizeof cbuf, fmt, c);
          goto jprint;
       }
       goto jleave;

@@ -202,7 +202,7 @@ a_attachments_yay(struct mx_attachment const *ap){
    NYD2_IN;
 
    if(ap->a_msgno > 0)
-      fprintf(n_stdout, _("Added message/rfc822 attachment for message #%u\n"),
+      fprintf(n_stdout, _("Added message/rfc822 attachment for message #%d\n"),
          ap->a_msgno);
    else
       fprintf(n_stdout, _("Added attachment %s (%s)\n"),
@@ -549,7 +549,7 @@ mx_attachments_list_print(struct mx_attachment const *aplist, FILE *fp){
 
    for(attno = 1, ap = aplist; ap != NIL; ++rv, ++attno, ap = ap->a_flink){
       if(ap->a_msgno > 0){
-         if(fprintf(fp, "#%" PRIu32 ". message/rfc822: %u\n", attno,
+         if(fprintf(fp, "#%" PRIu32 ". message/rfc822: %d\n", attno,
                ap->a_msgno) < 0)
             goto jerr;
       }else{
