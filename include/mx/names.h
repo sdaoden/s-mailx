@@ -119,9 +119,9 @@ EXPORT struct mx_name *n_extract_single(char const *line, enum gfield ntype);
 /* Turn a list of names into a string of the same names */
 EXPORT char *detract(struct mx_name *np, enum gfield ntype);
 
-/* Get a lextract() list via n_go_input_cp(), reassigning to *np* */
-EXPORT struct mx_name *grab_names(enum n_go_input_flags gif, char const *field,
-      struct mx_name *np, int comma, enum gfield gflags);
+/* Get a lextract() list via go_input_cp(), reassigning to *np* */
+EXPORT struct mx_name *grab_names(u32/*mx_go_input_flags*/ gif,
+      char const *field, struct mx_name *np, int comma, enum gfield gflags);
 
 /* Check whether n1 & n2 are the same address, effectively.
  * Takes *allnet* into account */

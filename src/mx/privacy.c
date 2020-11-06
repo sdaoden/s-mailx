@@ -29,6 +29,7 @@ su_EMPTY_FILE()
 #if defined mx_HAVE_XTLS
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/privacy.h"
 #include "su/code-in.h"
@@ -95,7 +96,7 @@ mx_privacy_encrypt_try(FILE *ip, char const *to){
    NYD_IN;
 
    nl = su_cs_len(to);
-   vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
+   vs = su_LOFI_ALLOC(sizeof(k)-1 + nl +1);
    su_mem_copy(vs, k, sizeof(k) -1);
    su_mem_copy(&vs[sizeof(k) -1], to, nl +1);
 
@@ -110,7 +111,8 @@ mx_privacy_encrypt_try(FILE *ip, char const *to){
 
    rv = R(FILE*,-1);
 jleave:
-   n_lofi_free(vs);
+   su_LOFI_FREE(vs);
+
    NYD_OU;
    return rv;
 }

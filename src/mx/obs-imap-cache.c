@@ -53,6 +53,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/url.h"

@@ -48,6 +48,8 @@
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
+#include "mx/compat.h"
+#include "mx/mime.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
@@ -357,7 +359,7 @@ jputcb:
             i -= 3;
          }
          n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : n_empty),
-               colalign(name, i, n, &wleft));
+               mx_colalign(name, i, n, &wleft));
          if (n < 0)
             wleft = 0;
          else if (flags & _ISTO)
@@ -454,7 +456,7 @@ jmlist: /* v15compat */
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
             n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
-                  colalign(subjline, ABS(n), n, &wleft));
+                  mx_colalign(subjline, ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;
          }
@@ -526,7 +528,8 @@ a_chead__subject(struct message *mp, boole threaded,
       goto jleave;
 
    in.l = su_cs_len(in.s = ms);
-   mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
+   mx_mime_display_from_header(&in, &out,
+      mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
    rv = ms = out.s;
 
    if(!threaded || !subject_thread_compress || mp->m_level == 0)

@@ -33,17 +33,22 @@
 #include <su/sort.h>
 
 #include "mx/cmd-charsetalias.h"
+#include "mx/cmd-cnd.h"
 #include "mx/cmd-commandalias.h"
 #include "mx/cmd-csop.h"
 #include "mx/cmd-edit.h"
 #include "mx/cmd-filetype.h"
+#include "mx/cmd-misc.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cmd-shortcut.h"
+#include "mx/cmd-spam.h"
 #include "mx/cmd-vexpr.h"
 #include "mx/colour.h"
+#include "mx/compat.h"
 #include "mx/cred-netrc.h"
 #include "mx/dig-msg.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/ignore.h"
 #include "mx/mailcap.h"
 #include "mx/mime-type.h"
@@ -600,7 +605,7 @@ jredo:
 
          if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
             ASSERT(shs & n_SHEXP_STATE_STOP);
-            n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
+            mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
             shin.l = 0;
          }
 
@@ -975,7 +980,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
 
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
                ASSERT(shs & n_SHEXP_STATE_STOP);
-               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+               mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
             }
 
             if(shs & n_SHEXP_STATE_ERR_MASK){

@@ -43,10 +43,12 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/file-streams.h"
+#include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/net-pop3.h"
 #include "mx/termios.h"
@@ -245,12 +247,13 @@ a_msg_add_to_nmadat(char ***nmadat, uz *nmasize, /* TODO Vector */
 
       i = *nmasize << 1;
       *nmasize = i;
-      narr = n_autorec_alloc(i * sizeof *np);
+      narr = su_AUTO_ALLOC(i * sizeof *np);
       su_mem_copy(narr, *nmadat, i >>= 1);
       *nmadat = narr;
       np = &narr[idx];
    }
    *np++ = string;
+
    NYD2_OU;
    return np;
 }
@@ -303,7 +306,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    msl.msl_input_orig = orig;
 
    np = nmadat =
-   nmadat_lofi = n_lofi_alloc((nmasize = 64) * sizeof *np); /* TODO vector */
+   nmadat_lofi = su_LOFI_ALLOC((nmasize = 64) * sizeof *np); /* TODO vector */
    UNINIT(beg, 0);
    UNINIT(idfield, a_MSG_ID_REFERENCES);
    a_msg_threadflag = FAL0;
@@ -640,7 +643,7 @@ jevalcol_err:
       /* XXX Like many other things around here: this should be outsourced */
       if(np > nmadat){
          j = P2UZ(np - nmadat) * sizeof(*sep);
-         sep = n_lofi_alloc(j);
+         sep = su_LOFI_ALLOC(j);
          su_mem_set(sep, 0, j);
 
          for(j = 0, nq = nmadat; *nq != NULL; ++j, ++nq){
@@ -746,7 +749,8 @@ jat_where_default:
 #endif
       if(ok_blook(allnet))
          flags |= a_ALLNET;
-      n_autorec_relax_create();
+
+      su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
       for(i = 0; i < msgCount; ++i){
          if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
             continue;
@@ -780,9 +784,9 @@ jat_where_default:
             mark(i + 1, f);
             flags |= a_ANY;
          }
-         n_autorec_relax_unroll();
+         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
       }
-      n_autorec_relax_gut();
+      su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
 jnamesearch_sepfree:
       if(sep != NULL){
@@ -794,7 +798,7 @@ jnamesearch_sepfree:
                regfree(sep[j].ss_bodyre);
          }
 #endif
-         n_lofi_free(sep);
+         su_LOFI_FREE(sep);
       }
       if(flags & a_ERROR){
          i = su_ERR_INVAL;
@@ -849,7 +853,8 @@ jcolonmod_mark:
    ASSERT(!(flags & a_ERROR));
 jleave:
    if(flags & a_ALLOC)
-      n_lofi_free(nmadat_lofi);
+      su_LOFI_FREE(nmadat_lofi);
+
    NYD_OU;
    return (flags & a_ERROR) ? -1 : 0;
 
@@ -1179,23 +1184,24 @@ a_msg_match_dash(struct message *mp, char const *str){
       uz l;
 
       l = P2UZ(hfield - str);
-      hfield = n_lofi_alloc(l +1);
+      hfield = su_LOFI_ALLOC(l +1);
       su_mem_copy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
-      n_lofi_free(hfield);
-      hfield = n_UNCONST(str + l + 1);
+      su_LOFI_FREE(hfield);
+      hfield = UNCONST(char*,str + l + 1);
    }else{
-      hfield = n_UNCONST(str);
+      hfield = UNCONST(char*,str);
       hbody = hfield1("subject", mp);
    }
-   if(hbody == NULL)
+   if(hbody == NIL)
       goto jleave;
 
    in.l = su_cs_len(in.s = hbody);
-   mime_fromhdr(&in, &out, TD_ICONV);
+   mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
    rv = substr(out.s, hfield);
-   n_free(out.s);
+   su_FREE(out.s);
+
 jleave:
    NYD2_OU;
    return rv;
@@ -1419,31 +1425,36 @@ get_body(struct message *mp){
 FL void
 message_reset(void){
    NYD_IN;
-   if(message != NULL){
-      n_free(message);
-      message = NULL;
+
+   if(message != NIL){
+      su_FREE(message);
+      message = NIL;
    }
    msgCount = 0;
    a_msg_mem_space = 0;
+
    NYD_OU;
 }
 
 FL void
 message_append(struct message *mp){
    NYD_IN;
+
    if(UCMP(z, msgCount + 1, >=, a_msg_mem_space)){
       /* XXX remove _mem_space magics (or use s_Vector) */
       a_msg_mem_space = ((a_msg_mem_space >= 128 &&
                a_msg_mem_space <= 1000000)
             ? a_msg_mem_space << 1 : a_msg_mem_space + 64);
-      message = n_realloc(message, a_msg_mem_space * sizeof(*message));
+      message = su_REALLOC(message, a_msg_mem_space * sizeof(*message));
    }
+
    if(msgCount > 0){
-      if(mp != NULL)
+      if(mp != NIL)
          message[msgCount - 1] = *mp;
       else
          su_mem_set(&message[msgCount - 1], 0, sizeof *message);
    }
+
    NYD_OU;
 }
 
@@ -1537,9 +1548,11 @@ setdot(struct message *mp, boole set_ps_did_print_dot){
 FL void
 touch(struct message *mp){
    NYD_IN;
+
    mp->m_flag |= MTOUCH;
    if(!(mp->m_flag & MREAD))
       mp->m_flag |= MREAD | MSTATUS;
+
    NYD_OU;
 }
 

@@ -11143,8 +11143,8 @@ etc.
 .
 .Mx
 .It Va on-main-loop-tick
-This hook will be called whenever the program's main event loop is
-about to read the next input line.
+This hook will be called each time before the main event loop will read
+an input line.
 Note variable and other changes it performs are not scoped as via
 .Ic localopts !
 .
@@ -12444,8 +12444,7 @@ The process environment of the hooks will have the variable
 set.
 Note that spam score support for
 .Ic spamrate
-is not supported unless the \*(OPtional regular expression support is
-available and the
+is not supported unless
 .Va spamfilter-rate-scanscore
 variable is set.
 .El
@@ -12504,20 +12503,21 @@ contains examples for some programs.
 .
 .Mx
 .It Va spamfilter-rate-scanscore
-\*(OP Because of the generic nature of the
+\*(OP Spam scores are not supported for the
 .Ql filter
 .Va spam-interface
-spam scores are not supported for it by default, but if the \*(OPnal
-regular expression support is available then setting this variable can
-be used to overcome this restriction.
-It is interpreted as follows: first a number (digits) is parsed that
-must be followed by a semicolon
+unless set.
+If the \*(OPnal regular expression support is available then it will be
+interpreted as a number, followed by semicolon
 .Ql \&;
 and an extended regular expression.
-Then the latter is used to parse the first output line of the
+The first output line of the
 .Va spamfilter-rate
-hook, and, in case the evaluation is successful, the group that has been
-specified via the number is interpreted as a floating point scan score.
+hook is then evaluated accordingly: upon success the regex group given
+by the number is interpreted as a floating point scan score.
+For example
+.Ql -S spamfilter-rate-scanscore="1;^(.+)$"
+simply interprets the entire output line as one.
 .
 .Mx
 .It Va stealthmua

@@ -26,6 +26,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/sort.h>
 
 #include "mx/termios.h"
@@ -323,7 +324,7 @@ a_ignore__show(struct mx_ignore const *ip, boole retain){
       goto jleave;
    }while(0);
 
-   ring = n_autorec_alloc((itp->it_count +1) * sizeof *ring);
+   ring = su_AUTO_ALLOC((itp->it_count +1) * sizeof *ring);
    for(ap = ring, i = 0; i < NELEM(itp->it_ht); ++i)
       for(ifp = itp->it_ht[i]; ifp != NIL; ifp = ifp->if_next)
          *ap++ = ifp->if_field;
@@ -685,8 +686,7 @@ mx_ignore_new(boole isauto){
    struct mx_ignore *self;
    NYD_IN;
 
-   self = isauto ? n_autorec_calloc(1, sizeof *self)
-         : su_CALLOC_N(1, sizeof *self);
+   self = isauto ? su_AUTO_CALLOC(sizeof *self) : su_CALLOC(sizeof *self);
    self->i_auto = isauto;
 
    NYD_OU;
@@ -786,8 +786,8 @@ mx_ignore_insert(struct mx_ignore *self, boole retain,
       int s;
       uz i;
 
-      i = VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
-      irp = self->i_auto ? n_autorec_alloc(i) : su_ALLOC(i);
+      i = VSTRUCT_SIZEOF(struct a_ignore_re,ir_input) + ++len;
+      irp = self->i_auto ? su_AUTO_ALLOC(i) : su_ALLOC(i);
       su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
@@ -814,8 +814,8 @@ mx_ignore_insert(struct mx_ignore *self, boole retain,
       u32 hi;
       uz i;
 
-      i = VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
-      ifp = self->i_auto ? n_autorec_alloc(i) : su_ALLOC(i);
+      i = VSTRUCT_SIZEOF(struct a_ignore_field,if_field) + len + 1;
+      ifp = self->i_auto ? su_AUTO_ALLOC(i) : su_ALLOC(i);
       su_mem_copy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
       hi = su_cs_hash_case_cbuf(dat, len) % NELEM(itp->it_ht);

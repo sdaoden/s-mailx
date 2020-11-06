@@ -30,6 +30,7 @@
 
 #ifdef mx_HAVE_MLE
 # include <su/cs.h>
+# include <su/mem-bag.h>
 # include <su/utf.h>
 
 # include <su/icodec.h>
@@ -40,8 +41,10 @@
 #endif
 
 #include "mx/cmd.h"
+#include "mx/compat.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
@@ -189,7 +192,7 @@ enum a_tty_bind_flags{
    a_TTY__BIND_LAST = 1u<<28
 };
 # ifdef mx_HAVE_KEY_BINDINGS
-CTA(S(u32,a_TTY_BIND_RESOLVE) >= S(u32,n__GO_INPUT_CTX_MAX1),
+CTA(S(u32,a_TTY_BIND_RESOLVE) >= S(u32,mx__GO_INPUT_CTX_MAX1),
    "Bit carrier lower boundary must be raised to avoid value sharing");
 # endif
 CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
@@ -209,10 +212,10 @@ enum a_tty_fun_status{
 
 # ifdef mx_HAVE_HISTORY
 enum a_tty_hist_flags{
-   a_TTY_HIST_CTX_DEFAULT = n_GO_INPUT_CTX_DEFAULT,
-   a_TTY_HIST_CTX_COMPOSE = n_GO_INPUT_CTX_COMPOSE,
-   a_TTY_HIST_CTX_MASK = n__GO_INPUT_CTX_MASK,
-   /* Cannot use enum n_go_input_flags for the rest, need to stay in 8-bit */
+   a_TTY_HIST_CTX_DEFAULT = mx_GO_INPUT_CTX_DEFAULT,
+   a_TTY_HIST_CTX_COMPOSE = mx_GO_INPUT_CTX_COMPOSE,
+   a_TTY_HIST_CTX_MASK = mx__GO_INPUT_CTX_MASK,
+   /* Cannot use enum mx_go_input_flags for the rest, need to stay in 8-bit */
    a_TTY_HIST_GABBY = 1u<<7,
    a_TTY_HIST__MAX = a_TTY_HIST_GABBY
 };
@@ -282,7 +285,7 @@ struct a_tty_bind_parse_ctx{
    u32 tbpc_seq_len;
    u32 tbpc_cnv_len;
    u32 tbpc_cnv_align_mask; /* For creating a_tty_bind_ctx.tbc_cnv */
-   u32 tbpc_flags; /* n_go_input_flags | a_tty_bind_flags */
+   u32 tbpc_flags; /* mx_go_input_flags | a_tty_bind_flags */
 };
 
 /* Input character tree */
@@ -319,15 +322,15 @@ struct a_tty_global{
    boole tg_bind_isbuild;
 #  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
    u8 tg_bind__dummy[2];
-   char tg_bind_shcut_cancel[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-   char tg_bind_shcut_prompt_char[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-   struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
-   struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
+   char tg_bind_shcut_cancel[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   char tg_bind_shcut_prompt_char[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   struct a_tty_bind_ctx *tg_bind[mx__GO_INPUT_CTX_MAX1];
+   struct a_tty_bind_tree *tg_bind_tree[mx__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
 # endif
 };
 # ifdef mx_HAVE_KEY_BINDINGS
-CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
-   su_FIELD_SIZEOF(struct a_tty_global, tg_bind__dummy) == 2,
+CTA(mx__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
+   su_FIELD_SIZEOF(struct a_tty_global,tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
 CTA(a_TTY_SHCUT_MAX > 1,
    "Users need at least one shortcut, plus NUL terminator");
@@ -346,7 +349,7 @@ CTA(U8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 
 #if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 struct a_tty_input_ctx_map{
-   BITENUM_IS(u32,n_go_input_flags) ticm_ctx;
+   BITENUM_IS(u32,mx_go_input_flags) ticm_ctx;
    char const ticm_name[12]; /* Name of `bind' context */
 };
 #endif
@@ -392,7 +395,7 @@ struct a_tty_line{
    u32 tl_phy_cursor; /* Physical cursor position */
    boole tl_quote_rndtrip; /* For _kht() expansion */
    u8 tl__pad2[3];
-   BITENUM_IS(u32,n_go_input_flags) tl_goinflags;
+   BITENUM_IS(u32,mx_go_input_flags) tl_goinflags;
    u32 tl_prompt_length; /* Preclassified (TODO needed as tty_cell) */
    u32 tl_prompt_width;
    su_64( u8 tl__pad3[4]; )
@@ -406,14 +409,14 @@ struct a_tty_line{
 
 # if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 /* C99: use [INDEX]={} */
-CTAV(n_GO_INPUT_CTX_BASE == 0);
-CTAV(n_GO_INPUT_CTX_DEFAULT == 1);
-CTAV(n_GO_INPUT_CTX_COMPOSE == 2);
+CTAV(mx_GO_INPUT_CTX_BASE == 0);
+CTAV(mx_GO_INPUT_CTX_DEFAULT == 1);
+CTAV(mx_GO_INPUT_CTX_COMPOSE == 2);
 static struct a_tty_input_ctx_map const
-      a_tty_input_ctx_maps[n__GO_INPUT_CTX_MAX1] = {
-   FIELD_INITI(n_GO_INPUT_CTX_BASE){n_GO_INPUT_CTX_BASE, "base"},
-   FIELD_INITI(n_GO_INPUT_CTX_DEFAULT){n_GO_INPUT_CTX_DEFAULT, "default"},
-   FIELD_INITI(n_GO_INPUT_CTX_COMPOSE){n_GO_INPUT_CTX_COMPOSE, "compose"}
+      a_tty_input_ctx_maps[mx__GO_INPUT_CTX_MAX1] = {
+   FIELD_INITI(mx_GO_INPUT_CTX_BASE){mx_GO_INPUT_CTX_BASE, "base"},
+   FIELD_INITI(mx_GO_INPUT_CTX_DEFAULT){mx_GO_INPUT_CTX_DEFAULT, "default"},
+   FIELD_INITI(mx_GO_INPUT_CTX_COMPOSE){mx_GO_INPUT_CTX_COMPOSE, "compose"}
 };
 #endif
 
@@ -568,12 +571,12 @@ static boole a_tty_hist_list(void);
 static boole a_tty_hist_sel_or_del(char const **vec, boole dele);
 
 /* Check whether a gabby history entry fits *history_gabby* */
-static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,n_go_input_flags) gif);
+static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif);
 
 /* (Definitely) Add an entry TODO yet assumes sigs_all_hold() is held!
  * Returns false on allocation failure */
 static boole a_tty_hist_add(char const *s,
-      BITENUM_IS(u32,n_go_input_flags) gif);
+      BITENUM_IS(u32,mx_go_input_flags) gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -641,7 +644,7 @@ static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
 
 # ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
-static BITENUM_IS(u32,n_go_input_flags) a_tty_bind_ctx_find(char const *name);
+static BITENUM_IS(u32,mx_go_input_flags) a_tty_bind_ctx_find(char const *name);
 
 /* Create (or replace, if allowed) a binding */
 static boole a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp,
@@ -771,7 +774,7 @@ a_tty_hist_load(void){
          continue;
 
       /* C99 */{
-         BITENUM_IS(u32,n_go_input_flags) gif;
+         BITENUM_IS(u32,mx_go_input_flags) gif;
 
          if(version == 2){
             if(llen <= 2){
@@ -782,23 +785,23 @@ a_tty_hist_load(void){
             switch(*cp++){
             default:
             case 'd':
-               gif = n_GO_INPUT_CTX_DEFAULT; /* == a_TTY_HIST_CTX_DEFAULT */
+               gif = mx_GO_INPUT_CTX_DEFAULT; /* == a_TTY_HIST_CTX_DEFAULT */
                break;
             case 'c':
-               gif = n_GO_INPUT_CTX_COMPOSE; /* == a_TTY_HIST_CTX_COMPOSE */
+               gif = mx_GO_INPUT_CTX_COMPOSE; /* == a_TTY_HIST_CTX_COMPOSE */
                break;
             }
 
             if(*cp++ == '*')
-               gif |= n_GO_INPUT_HIST_GABBY;
+               gif |= mx_GO_INPUT_HIST_GABBY;
 
             while(*cp == ' ')
                ++cp;
          }else{
-            gif = n_GO_INPUT_CTX_DEFAULT;
+            gif = mx_GO_INPUT_CTX_DEFAULT;
             if(cp[0] == '*'){
                ++cp;
-               gif |= n_GO_INPUT_HIST_GABBY;
+               gif |= mx_GO_INPUT_HIST_GABBY;
             }
          }
 
@@ -1072,8 +1075,8 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
          thp->th_younger = NIL;
           a_tty.tg_hist = thp;
 
-         n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
-            n_GO_INPUT_INJECT_HISTORY), thp->th_dat, thp->th_len);
+         mx_go_input_inject((mx_GO_INPUT_INJECT_COMMIT |
+            mx_GO_INPUT_INJECT_HISTORY), thp->th_dat, thp->th_len);
          break;
       }else{
          --a_tty.tg_hist_size;
@@ -1092,14 +1095,14 @@ j_leave:
 }
 
 static boole
-a_tty_hist_is_gabby_ok(BITENUM_IS(u32,n_go_input_flags) gif){
+a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif){
    char const *cp;
    boole rv;
    NYD2_IN;
 
    if((cp = ok_vlook(history_gabby)) == NIL)
       rv = FAL0;
-   else if(!(gif & n_GO_INPUT_HIST_ERROR))
+   else if(!(gif & mx_GO_INPUT_HIST_ERROR))
       rv = TRU1;
    else{
       static char const wlist[][8] = {"all", "errors\0"};
@@ -1126,7 +1129,7 @@ jwl_ok:;
 }
 
 static boole
-a_tty_hist_add(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
+a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
    struct a_tty_hist *thp, *othp, *ythp;
    u32 l;
    NYD2_IN;
@@ -1140,7 +1143,7 @@ a_tty_hist_add(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
          if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
             /* xxx Do not propagate an existing non-gabby entry to gabby */
             thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-                  (((gif & n_GO_INPUT_HIST_GABBY) &&
+                  (((gif & mx_GO_INPUT_HIST_GABBY) &&
                      (thp->th_flags & a_TTY_HIST_GABBY)
                    ) ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
@@ -1170,13 +1173,13 @@ a_tty_hist_add(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
       }
    }
 
-   thp = su_MEM_ALLOCATE(VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1,
+   thp = su_MEM_ALLOCATE(VSTRUCT_SIZEOF(struct a_tty_hist,th_dat) + l +1,
          1, su_MEM_ALLOC_NOMEM_OK);
    if(thp == NIL)
       goto j_leave;
    thp->th_len = l;
    thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+         (gif & mx_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
    su_mem_copy(thp->th_dat, s, l +1);
 
 jleave:
@@ -2208,8 +2211,8 @@ a_tty_kht(struct a_tty_line *tlp){
    orig = exp;
 
    membag = su_mem_bag_create(&membag__buf[0], 0);
-   membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
-   su_mem_bag_push(n_go_data->gdc_membag, membag);
+   membag_persist = su_mem_bag_top(mx_go_data->gdc_membag);
+   su_mem_bag_push(mx_go_data->gdc_membag, membag);
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2390,9 +2393,9 @@ jset:
    tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
-   su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
+   su_mem_bag_push(mx_go_data->gdc_membag, membag_persist);
    orig.s = su_MEM_BAG_SELF_AUTO_ALLOC(orig.l + 5 +1);
-   su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
+   su_mem_bag_pop(mx_go_data->gdc_membag, membag_persist);
    if((rv = S(u32,bot.l)) > 0)
       su_mem_copy(orig.s, bot.s, rv);
    if(preexp.l > 0){
@@ -2411,7 +2414,7 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   su_mem_bag_pop(n_go_data->gdc_membag, membag);
+   su_mem_bag_pop(mx_go_data->gdc_membag, membag);
    su_mem_bag_gut(membag);
    tlp->tl_vi_flags |= f;
 
@@ -2419,7 +2422,7 @@ jleave:
    return rv;
 
 jmulti:{
-      struct n_visual_info_ctx vic;
+      struct mx_visual_info_ctx vic;
       struct str input;
       wc_t c2, c1;
       boole isfirst;
@@ -2485,7 +2488,7 @@ jmulti:{
          su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = sub.s;
          vic.vic_inlen = sub.l;
-         c2 = n_visual_info(&vic, n_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
+         c2 = mx_visual_info(&vic, mx_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
                : S(u8,*sub.s);
 #ifdef mx_HAVE_C90AMEND1
          c2 = towlower(c2);
@@ -2501,7 +2504,7 @@ jmulti:{
          }else if(locolen > 0){
             for(i = 0; i < locolen; ++i)
                if(lococp[i] != sub.s[i]){
-                  i = field_detect_clip(i, lococp, i);
+                  i = mx_field_detect_clip(i, lococp, i);
                   locolen = i;
                   break;
                }
@@ -2514,8 +2517,8 @@ jmulti:{
          su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = shoup->s_dat;
          vic.vic_inlen = shoup->s_len;
-         if(!n_visual_info(&vic,
-               n_VISUAL_INFO_SKIP_ERRORS | n_VISUAL_INFO_WIDTH_QUERY))
+         if(!mx_visual_info(&vic,
+               mx_VISUAL_INFO_SKIP_ERRORS | mx_VISUAL_INFO_WIDTH_QUERY))
             vic.vic_vi_width = shoup->s_len;
 
          /* Put on screen.  Indent follow lines of same sort slot.
@@ -2579,9 +2582,9 @@ jsep:
       ++lncnt;
 
       if(fp != mx_tty_fp){
-         su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
+         su_mem_bag_push(mx_go_data->gdc_membag, membag_persist);
          page_or_print(fp, lncnt);
-         su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
+         su_mem_bag_pop(mx_go_data->gdc_membag, membag_persist);
 
          mx_fs_close(fp);
       }
@@ -2624,13 +2627,15 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
       uz i;
 
       i = thp->th_len;
-      if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE){
+      if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK
+            ) == mx_GO_INPUT_CTX_COMPOSE){
          ++i;
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             ++i;
       }
-      tlp->tl_defc.s = cp = n_autorec_alloc(i + 1 +1);
-      if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE){
+      tlp->tl_defc.s = cp = n_autorec_alloc(i + 2 +1);
+      if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK
+            ) == mx_GO_INPUT_CTX_COMPOSE){
          if((*cp = ok_vlook(escape)[0]) == '\0')
             *cp = n_ESCAPE[0];
          ++cp;
@@ -2671,7 +2676,8 @@ a_tty_khist(struct a_tty_line *tlp, boole fwd){
 
    while((thp = fwd ? thp->th_younger : thp->th_older) != NIL){
       /* Applicable to input context?  Compose mode swallows anything */
-      if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE)
+      if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK
+            ) == mx_GO_INPUT_CTX_COMPOSE)
          break;
       if((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
          break;
@@ -2707,7 +2713,7 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
     * xxx when searching the history.  Alternatively we would need to have
     * xxx context-specific history search hooks which would do the search,
     * xxx which is overkill for our sole special case compose mode */
-   if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE)
+   if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK) == mx_GO_INPUT_CTX_COMPOSE)
       xoff = 1;
    else
       xoff = 0;
@@ -3353,7 +3359,7 @@ jinject_input:{
 
    mx_sigs_all_holdx(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
-   n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
+   mx_go_input_inject(mx_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = su_cs_len(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
@@ -3371,9 +3377,9 @@ jinject_input:{
 }
 
 # ifdef mx_HAVE_KEY_BINDINGS
-static BITENUM_IS(u32,n_go_input_flags)
+static BITENUM_IS(u32,mx_go_input_flags)
 a_tty_bind_ctx_find(char const *name){
-   BITENUM_IS(u32,n_go_input_flags) rv;
+   BITENUM_IS(u32,mx_go_input_flags) rv;
    struct a_tty_input_ctx_map const *ticmp;
    NYD2_IN;
 
@@ -3384,7 +3390,7 @@ a_tty_bind_ctx_find(char const *name){
    }while(PCMP(++ticmp, <,
       &a_tty_input_ctx_maps[NELEM(a_tty_input_ctx_maps)]));
 
-   rv = R(BITENUM_IS(u32,n_go_input_flags),-1);
+   rv = R(BITENUM_IS(u32,mx_go_input_flags),-1);
 jleave:
    NYD2_OU;
    return rv;
@@ -3414,16 +3420,16 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
    /* C99 */{
       uz i, j;
 
-      tbcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+      tbcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_tty_bind_ctx,tbc__buf) +
             tbpcp->tbpc_seq_len +1 + tbpcp->tbpc_exp.l +1 +
             tbpcp->tbpc_cnv_align_mask + 1 + tbpcp->tbpc_cnv_len);
       if(tbpcp->tbpc_ltbcp != NIL){
          tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
          tbpcp->tbpc_ltbcp->tbc_next = tbcp;
       }else{
-         BITENUM_IS(u32,n_go_input_flags) gif;
+         BITENUM_IS(u32,mx_go_input_flags) gif;
 
-         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+         gif = tbpcp->tbpc_flags & mx__GO_INPUT_CTX_MASK;
          tbcp->tbc_next = a_tty.tg_bind[gif];
          a_tty.tg_bind[gif] = tbcp;
       }
@@ -3460,7 +3466,7 @@ static boole
 a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
    enum{a_TRUE_RV = a_TTY__BIND_LAST<<1};
 
-   struct n_visual_info_ctx vic;
+   struct mx_visual_info_ctx vic;
    struct str shin_save, shin;
    struct n_string shou, *shoup;
    uz i;
@@ -3478,7 +3484,7 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
    LCTA(UCMP(64, a_TRUE_RV, <, U32_MAX),
       "Flag bits excess storage datatype");
 
-   f = n_GO_INPUT_NONE;
+   f = mx_GO_INPUT_NONE;
    shoup = n_string_creat_auto(&shou);
    head = tail = NIL;
 
@@ -3531,8 +3537,8 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
       su_mem_set(&vic, 0, sizeof vic);
       vic.vic_inlen = shoup->s_len;
       vic.vic_indat = shoup->s_dat;
-      if(!n_visual_info(&vic,
-            n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC)){
+      if(!mx_visual_info(&vic,
+            mx_VISUAL_INFO_WOUT_CREATE | mx_VISUAL_INFO_WOUT_AUTO_ALLOC)){
          n_err(_("%s: key-sequence seems to contain invalid "
             "characters: %s: %s\n"),
             tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
@@ -3676,9 +3682,9 @@ jeempty:
 
       /* Search for a yet existing identical mapping */
       /* C99 */{
-         BITENUM_IS(u32,n_go_input_flags) gif;
+         BITENUM_IS(u32,mx_go_input_flags) gif;
 
-         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+         gif = tbpcp->tbpc_flags & mx__GO_INPUT_CTX_MASK;
 
          for(ltbcp = NIL, tbcp = a_tty.tg_bind[gif]; tbcp != NIL;
                ltbcp = tbcp, tbcp = tbcp->tbc_next)
@@ -3905,7 +3911,7 @@ a_tty_bind_show(struct a_tty_bind_ctx *tbcp, FILE *fp){
        * I18N: using Unicode and that is not available in the locale,
        * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
          ? _("# <Defunctional> ") : su_empty),
-      a_tty_input_ctx_maps[flags & n__GO_INPUT_CTX_MASK].ticm_name,
+      a_tty_input_ctx_maps[flags & mx__GO_INPUT_CTX_MASK].ticm_name,
       tbcp->tbc_seq, n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
       (flags & a_TTY_BIND_NOCOMMIT ? n_at : su_empty),
       (!(n_poption & n_PO_D_VV) ? su_empty
@@ -3926,7 +3932,8 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
    if((ltbcp = tbpcp->tbpc_ltbcp) != NIL)
       ltbcp->tbc_next = tbcp->tbc_next;
    else
-      a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
+      a_tty.tg_bind[tbpcp->tbpc_flags & mx__GO_INPUT_CTX_MASK
+            ] = tbcp->tbc_next;
    su_FREE(tbcp);
 
    --a_tty.tg_bind_cnt;
@@ -3939,18 +3946,18 @@ a_tty_bind_tree_build(void){
    uz i;
    NYD2_IN;
 
-   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
+   for(i = 0; i < mx__GO_INPUT_CTX_MAX1; ++i){
       struct a_tty_bind_ctx *tbcp;
-      LCTAV(n_GO_INPUT_CTX_BASE == 0);
+      LCTAV(mx_GO_INPUT_CTX_BASE == 0);
 
       /* Somewhat wasteful, but easier to handle: simply clone the entire
        * primary key onto the secondary one, then only modify it */
-      for(tbcp = a_tty.tg_bind[n_GO_INPUT_CTX_BASE]; tbcp != NIL;
+      for(tbcp = a_tty.tg_bind[mx_GO_INPUT_CTX_BASE]; tbcp != NIL;
             tbcp = tbcp->tbc_next)
          if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
             a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
 
-      if(i != n_GO_INPUT_CTX_BASE)
+      if(i != mx_GO_INPUT_CTX_BASE)
          for(tbcp = a_tty.tg_bind[i]; tbcp != NIL; tbcp = tbcp->tbc_next)
             if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
                a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
@@ -3959,7 +3966,7 @@ a_tty_bind_tree_build(void){
    if(n_poption & n_PO_D_VVV){
       n_err(_("`bind': key binding tree:\n"));
 
-      for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
+      for(i = 0; i < mx__GO_INPUT_CTX_MAX1; ++i){
          uz j;
 
          n_err("  - %s:\n", a_tty_input_ctx_maps[i].ticm_name);
@@ -3983,7 +3990,7 @@ a_tty_bind_tree_teardown(void){
    su_mem_set(&a_tty.tg_bind_shcut_prompt_char[0], 0,
       sizeof(a_tty.tg_bind_shcut_prompt_char));
 
-   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i)
+   for(i = 0; i < mx__GO_INPUT_CTX_MAX1; ++i)
       for(j = 0; j < a_TTY_PRIME; ++j)
          a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
    su_mem_set(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
@@ -4192,9 +4199,9 @@ mx_tty_init(void){
     * can't perform automatic init since the user may have disallowed so */
    /* C99 */{ /* TODO outsource into own file */
       struct a_tty_bind_ctx *tbcp;
-      BITENUM_IS(u32,n_go_input_flags) gif;
+      BITENUM_IS(u32,mx_go_input_flags) gif;
 
-      for(gif = 0; gif < n__GO_INPUT_CTX_MAX1; ++gif)
+      for(gif = 0; gif < mx__GO_INPUT_CTX_MAX1; ++gif)
          for(tbcp = a_tty.tg_bind[gif]; tbcp != NIL; tbcp = tbcp->tbc_next)
             if((tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)
                   ) == a_TTY_BIND_RESOLVE)
@@ -4213,7 +4220,7 @@ mx_tty_init(void){
 
       tbbtp = a_tty_bind_base_tuples;
       tbbtp_max = &tbbtp[NELEM(a_tty_bind_base_tuples)];
-      flags = n_GO_INPUT_CTX_BASE;
+      flags = mx_GO_INPUT_CTX_BASE;
 jbuiltin_redo:
       for(; tbbtp < tbbtp_max; ++tbbtp){
          su_mem_set(&tbpc, 0, sizeof tbpc);
@@ -4232,10 +4239,10 @@ jbuiltin_redo:
          /* ..but don't want to overwrite any user settings */
          a_tty_bind_create(&tbpc, FAL0);
       }
-      if(flags == n_GO_INPUT_CTX_BASE){
+      if(flags == mx_GO_INPUT_CTX_BASE){
          tbbtp = a_tty_bind_default_tuples;
          tbbtp_max = &tbbtp[NELEM(a_tty_bind_default_tuples)];
-         flags = n_GO_INPUT_CTX_DEFAULT;
+         flags = mx_GO_INPUT_CTX_DEFAULT;
          goto jbuiltin_redo;
       }
    }
@@ -4260,7 +4267,7 @@ mx_tty_destroy(boole xit_fastpath){
 
 # if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
    if(!xit_fastpath)
-      n_go_command(n_GO_INPUT_NONE, "unbind * *");
+      mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
 # endif
 
 # ifdef mx_HAVE_DEBUG
@@ -4274,7 +4281,7 @@ jleave:
 }
 
 int
-(mx_tty_readline)(BITENUM_IS(u32,n_go_input_flags) gif, char const *prompt,
+(mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    /* XXX split mx_tty_readline, it is huge */
@@ -4368,11 +4375,11 @@ jbind_timeout_redo:
       a_tty_bind_tree_teardown();
    if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
       a_tty_bind_tree_build();
-   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & n__GO_INPUT_CTX_MASK];
+   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & mx__GO_INPUT_CTX_MASK];
    tl.tl_bind_shcut_cancel =
-         &a_tty.tg_bind_shcut_cancel[gif & n__GO_INPUT_CTX_MASK];
+         &a_tty.tg_bind_shcut_cancel[gif & mx__GO_INPUT_CTX_MASK];
    tl.tl_bind_shcut_prompt_char =
-         &a_tty.tg_bind_shcut_prompt_char[gif & n__GO_INPUT_CTX_MASK];
+         &a_tty.tg_bind_shcut_prompt_char[gif & mx__GO_INPUT_CTX_MASK];
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 # ifdef mx_HAVE_COLOUR
@@ -4380,7 +4387,7 @@ jbind_timeout_redo:
    tl.tl_pos = pos;
 # endif
 
-   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+   if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
       if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt,
@@ -4413,17 +4420,17 @@ jbind_timeout_redo:
 }
 
 void
-mx_tty_addhist(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
+mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);
 
-   ASSERT(!(gif & n_GO_INPUT_HIST_ERROR) || (gif & n_GO_INPUT_HIST_GABBY));
+   ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) || (gif & mx_GO_INPUT_HIST_GABBY));
 
 # ifdef mx_HAVE_HISTORY
    if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
          a_tty.tg_hist_size_max > 0 &&
-         (!(gif & n_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
+         (!(gif & mx_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
           !ok_blook(line_editor_disable)){
       struct a_tty_input_ctx_map const *ticmp;
 
@@ -4435,8 +4442,8 @@ mx_tty_addhist(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
        * TODO which is the original unexpanded command name; i.e., one may do
        * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
-            ((gif & n_GO_INPUT_HIST_GABBY)
-               ? ((gif & n_GO_INPUT_HIST_ERROR) ? "errors" : "all")
+            ((gif & mx_GO_INPUT_HIST_GABBY)
+               ? ((gif & mx_GO_INPUT_HIST_ERROR) ? "errors" : "all")
                : su_empty), s)){
          mx_sigs_all_holdx();
          (void)a_tty_hist_add(s, gif);
@@ -4499,7 +4506,7 @@ c_bind(void *vp){
    struct a_tty_bind_ctx *tbcp;
    union {char const *cp; char *p; char c;} c;
    boole show, aster;
-   BITENUM_IS(u32,n_go_input_flags) gif;
+   BITENUM_IS(u32,mx_go_input_flags) gif;
    struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
@@ -4514,7 +4521,7 @@ c_bind(void *vp){
       aster = FAL0;
 
       if((gif = a_tty_bind_ctx_find(c.cp)
-            ) == R(BITENUM_IS(u32,n_go_input_flags),-1)){
+            ) == R(BITENUM_IS(u32,mx_go_input_flags),-1)){
          if(!(aster = n_is_all_or_aster(c.cp)) || !show){
             n_err(_("bind: invalid context: %s\n"), c.cp);
             vp = NIL;
@@ -4536,7 +4543,7 @@ c_bind(void *vp){
       for(;;){
          for(tbcp = a_tty.tg_bind[gif]; tbcp != NIL; tbcp = tbcp->tbc_next)
             lns += a_tty_bind_show(tbcp, fp);
-         if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
+         if(!aster || ++gif >= mx__GO_INPUT_CTX_MAX1)
             break;
       }
 
@@ -4563,7 +4570,7 @@ c_bind(void *vp){
             vp = NIL;
       }else{
          if(!a_tty_bind_parse(&tbpc, TRUM1) || tbpc.tbpc_tbcp == NIL){
-            ASSERT(gif != R(BITENUM_IS(u32,n_go_input_flags),-1));
+            ASSERT(gif != R(BITENUM_IS(u32,mx_go_input_flags),-1));
             n_err(_("bind: no such `bind'ing to show: %s %s\n"),
                a_tty_input_ctx_maps[gif].ticm_name,
                n_shexp_quote_cp(tbpc.tbpc_in_seq, FAL0));
@@ -4584,7 +4591,7 @@ int
 c_unbind(void *vp){
    struct a_tty_bind_parse_ctx tbpc;
    struct a_tty_bind_ctx *tbcp;
-   BITENUM_IS(u32,n_go_input_flags) gif;
+   BITENUM_IS(u32,mx_go_input_flags) gif;
    boole aster;
    union {char const *cp; char *p;} c;
    struct mx_cmd_arg_ctx *cacp;
@@ -4595,13 +4602,13 @@ c_unbind(void *vp){
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)
-         ) == R(BITENUM_IS(u32,n_go_input_flags),-1)){
+         ) == R(BITENUM_IS(u32,mx_go_input_flags),-1)){
       if(!(aster = n_is_all_or_aster(c.cp))){
          n_err(_("unbind: invalid context: %s\n"), c.cp);
          vp = NIL;
          goto jleave;
       }
-      gif = n_GO_INPUT_NONE;
+      gif = mx_GO_INPUT_NONE;
    }
 
    c.cp = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
@@ -4629,7 +4636,7 @@ jredo:
          a_tty_bind_del(&tbpc);
    }
 
-   if(aster && ++gif < n__GO_INPUT_CTX_MAX1)
+   if(aster && ++gif < mx__GO_INPUT_CTX_MAX1)
       goto jredo;
 
 jleave:
@@ -4659,7 +4666,7 @@ mx_tty_destroy(boole xit_fastpath){
 # endif /* 0 */
 
 int
-(mx_tty_readline)(BITENUM_IS(u32,n_go_input_flags) gif, char const *prompt,
+(mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    struct n_string xprompt;
@@ -4667,7 +4674,7 @@ int
    NYD_IN;
    UNUSED(histok_or_nil);
 
-   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+   if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
       if(mx_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
          fwrite(xprompt.s_dat, 1, xprompt.s_len, mx_tty_fp);
          fflush(mx_tty_fp);
@@ -4680,7 +4687,7 @@ int
 }
 
 void
-mx_tty_addhist(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
+mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
    NYD_IN;
    UNUSED(s);
    UNUSED(gif);

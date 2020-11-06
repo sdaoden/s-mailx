@@ -63,6 +63,7 @@
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/iconv.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
@@ -236,8 +237,8 @@ struct a_amv_mac_call_args{
    struct a_amv_var **amca_unroller;
    u8 amca_loflags;
    boole amca_ps_hook_mask;
-   boole amca_no_xcall; /* XXX We want n_GO_INPUT_NO_XCALL for this */
-   boole amca_ignerr; /* XXX Use n_GO_INPUT_IGNERR for evaluating commands */
+   boole amca_no_xcall; /* XXX We want GO_INPUT_NO_XCALL for this */
+   boole amca_ignerr; /* XXX Use GO_INPUT_IGNERR for evaluating commands */
    u8 amca__pad[4];
    struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NULL */
    struct a_amv_pospar amca_pospar;
@@ -586,9 +587,9 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    losp->as_loflags = amcap->amca_loflags;
 
    a_amv_lopts = losp;
-   rv = n_go_macro((n_GO_INPUT_NONE |
-            (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0) |
-            (amcap->amca_ignerr ? n_GO_INPUT_IGNERR : 0)),
+   rv = mx_go_macro((mx_GO_INPUT_NONE |
+            (amcap->amca_no_xcall ? mx_GO_INPUT_NO_XCALL : 0) |
+            (amcap->amca_ignerr ? mx_GO_INPUT_IGNERR : 0)),
          amp->am_name, args_base, &a_amv_mac__finalize, losp);
    NYD2_OU;
    return rv;
@@ -736,8 +737,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       u32 leaspc;
       char *cp;
 
-      n.i = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, n_empty,
-            &line.s, &line.l, NULL, NULL);
+      n.i = mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC,
+            su_empty, &line.s, &line.l, NIL, NIL);
       if(n.ui == 0)
          continue;
       if(n.i < 0){
@@ -1158,7 +1159,7 @@ jefrom:
       case ok_v_LANG:
       case ok_v_LC_ALL:
       case ok_v_LC_CTYPE:
-         n_locale_init();
+         mx_locale_init();
          break;
 #endif
       case ok_b_memdebug:
@@ -2981,7 +2982,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    if(a_amv_lopts != NULL){
       char const **argv;
 
-      n_go_input_force_eof();
+      mx_go_input_force_eof();
       n_pstate_err_no = su_ERR_NONE;
       rv = 0;
 

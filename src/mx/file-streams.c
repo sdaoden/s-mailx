@@ -32,6 +32,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
@@ -581,7 +582,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       union {struct a_fs_ent *fse; void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
       /* Store character data right after the struct */
-      p.v = n_autorec_alloc(sizeof(*p.fse) + i);
+      p.v = su_AUTO_ALLOC(sizeof(*p.fse) + i);
       su_mem_set(p.fse, 0, sizeof(*p.fse));
       p.fse->fse_realfile = R(char*,&p.fse[1]);
       if(oflags & mx_FS_O_HOLDSIGS) /* Enable tmp_release() nonetheless? */
@@ -589,7 +590,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       *fstcp_or_nil = p.fstc;
    }
 
-   cp_base = cp = n_lofi_alloc(i);
+   cp_base = cp = su_LOFI_ALLOC(i);
    cp = su_cs_pcopy(cp, tmpdir);
    *cp++ = '/';
    /* C99 */{
@@ -684,7 +685,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       (void)fchmod(fd, S_IWUSR | S_IRUSR);
    }
 
-   n_lofi_free(cp_base);
+   su_LOFI_FREE(cp_base);
 
 jleave:
    if(relesigs && (fp == NIL || !(oflags & mx_FS_O_HOLDSIGS)))
@@ -701,7 +702,7 @@ jleave:
 
 jfree:
    if((cp = cp_base) != NIL)
-      n_lofi_free(cp);
+      su_LOFI_FREE(cp);
    goto jleave;
 }
 

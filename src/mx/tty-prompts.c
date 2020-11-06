@@ -27,7 +27,9 @@
 #include <su/mem.h>
 
 #include "mx/cmd.h"
+#include "mx/cmd-cnd.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
@@ -59,7 +61,7 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
       prompt = savecatsep(prompt, ' ', quest);
 
       mx_fs_linepool_aquire(&ldat, &lsize);
-      while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+      while(mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, prompt,
                &ldat, &lsize, NIL,NIL) >= 0){
          boole x;
 
@@ -88,7 +90,7 @@ mx_tty_getuser(char const * volatile query) /* TODO v15-compat obsolete */
       query = _("User: ");
 
    mx_fs_linepool_aquire(&ldat, &lsize);
-   if(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
+   if(mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, query,
          &ldat, &lsize, NIL, NIL) >= 0)
       user = savestr(ldat);
    else
@@ -133,7 +135,7 @@ mx_tty_getpass(char const *query){
 
 boole
 mx_tty_getfilename(struct n_string *store,
-      BITENUM_IS(u32,n_go_input_flags) gif,
+      BITENUM_IS(u32,mx_go_input_flags) gif,
       char const *prompt_or_nil, char const *init_content_or_nil){
    char const *cp;
    boole rv;
@@ -147,7 +149,7 @@ mx_tty_getfilename(struct n_string *store,
    }
 
    store = n_string_trunc(store, 0);
-   if((cp = n_go_input_cp(gif, prompt_or_nil, init_content_or_nil)) != NIL)
+   if((cp = mx_go_input_cp(gif, prompt_or_nil, init_content_or_nil)) != NIL)
       rv = n_shexp_unquote_one(store, cp);
    else
       rv = TRU2;
@@ -158,8 +160,8 @@ mx_tty_getfilename(struct n_string *store,
 
 u32
 mx_tty_create_prompt(struct n_string *store, char const *xprompt,
-      BITENUM_IS(u32,n_go_input_flags) gif){
-   struct n_visual_info_ctx vic;
+      BITENUM_IS(u32,mx_go_input_flags) gif){
+   struct mx_visual_info_ctx vic;
    struct str in, out;
    u32 pwidth, poff;
    char const *cp;
@@ -177,15 +179,15 @@ mx_tty_create_prompt(struct n_string *store, char const *xprompt,
 jredo:
    n_string_trunc(store, 0);
 
-   if(gif & n_GO_INPUT_PROMPT_NONE){
+   if(gif & mx_GO_INPUT_PROMPT_NONE){
       pwidth = poff = 0;
       goto jleave;
    }
 
-   if(!(gif & n_GO_INPUT_NL_FOLLOW)){
+   if(!(gif & mx_GO_INPUT_NL_FOLLOW)){
       boole x;
 
-      if((x = n_cnd_if_exists())){
+      if((x = mx_cnd_if_exists())){
          if(store->s_len != 0)
             store = n_string_push_c(store, '#');
          if(x == TRUM1)
@@ -200,8 +202,8 @@ jredo:
       store = n_string_push_c(store, ' ');
    }
 
-   cp = (gif & n_GO_INPUT_PROMPT_EVAL)
-         ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
+   cp = (gif & mx_GO_INPUT_PROMPT_EVAL)
+         ? (gif & mx_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
          : xprompt;
    if(cp != NIL && *cp != '\0'){
       BITENUM_IS(u32,n_shexp_state) shs;
@@ -220,7 +222,7 @@ jredo:
          store = n_string_take_ownership(store, out.s, out.l +1, out.l);
 jeeval:
          n_err(_("*prompt2?* evaluation failed, actively unsetting it\n"));
-         if(gif & n_GO_INPUT_NL_FOLLOW)
+         if(gif & mx_GO_INPUT_NL_FOLLOW)
             ok_vclear(prompt2);
          else
             ok_vclear(prompt);
@@ -228,16 +230,16 @@ jeeval:
       }
 
       if(!store->s_auto)
-         n_free(out.s);
+         su_FREE(out.s);
    }
 
    /* Make all printable TODO not know, we want to pass through ESC/CSI! */
 #if 0
    in.s = n_string_cp(store);
    in.l = store->s_len;
-   makeprint(&in, &out);
+   mx_makeprint(&in, &out);
    store = n_string_assign_buf(store, out.s, out.l);
-   n_free(out.s);
+   su_FREE(out.s);
 #endif
 
    /* We need the visual width.. */
@@ -266,8 +268,8 @@ jeeval:
          store = n_string_cut(store, i, 2);
          vic.vic_indat = &n_string_cp(store)[i];
          vic.vic_inlen = store->s_len - i;
-      }else if(!n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY |
-            n_VISUAL_INFO_ONE_CHAR)){
+      }else if(!mx_visual_info(&vic, mx_VISUAL_INFO_WIDTH_QUERY |
+            mx_VISUAL_INFO_ONE_CHAR)){
          n_err(_("Character set error in evaluation of *prompt2?*\n"));
          goto jeeval;
       }else{

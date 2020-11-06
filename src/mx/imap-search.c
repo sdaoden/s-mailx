@@ -53,8 +53,11 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
+#include "mx/compat.h"
 #include "mx/file-streams.h"
+#include "mx/mime.h"
 #include "mx/names.h"
 
 /* TODO fake */
@@ -699,20 +702,20 @@ jleave:
 }
 
 static boole
-matchfield(struct message *m, char const *field, void const *what)
-{
+matchfield(struct message *m, char const *field, void const *what){
    struct str in, out;
-   boole rv = FAL0;
+   boole rv;
    NYD_IN;
 
-   if ((in.s = hfieldX(field, m)) == NULL)
-      goto jleave;
+   rv = FAL0;
 
-   in.l = su_cs_len(in.s);
-   mime_fromhdr(&in, &out, TD_ICONV);
-   rv = substr(out.s, what);
-   n_free(out.s);
-jleave:
+   if((in.s = hfieldX(field, m)) != NIL){
+      in.l = su_cs_len(in.s);
+      mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
+      rv = substr(out.s, what);
+      su_FREE(out.s);
+   }
+
    NYD_OU;
    return rv;
 }
@@ -753,8 +756,10 @@ mkenvelope(struct mx_name *np)
 
    in.s = np->n_fullname;
    in.l = su_cs_len(in.s);
-   mime_fromhdr(&in, &out, TD_ICONV);
-   rp = ip = n_lofi_alloc(su_cs_len(out.s) + 1);
+   mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
+
+   rp = ip = su_LOFI_ALLOC(su_cs_len(out.s) + 1);
+
    for (cp = out.s; *cp; cp++) {
       switch (*cp) {
       case '"':
@@ -801,9 +806,11 @@ jdfl:
    }
 jdone:
    *rp = '\0';
-   if (hadphrase)
+   if(hadphrase)
       realnam = ip;
-   n_free(out.s);
+
+   su_FREE(out.s);
+
    localpart = savestr(np->n_name);
    if ((cp = su_cs_rfind_c(localpart, '@')) != NULL) {
       *cp = '\0';
@@ -811,13 +818,15 @@ jdone:
    }else
       domainpart = NULL;
 
-   ep = n_autorec_alloc(epsize = su_cs_len(np->n_fullname) * 2 + 40);
+   ep = su_AUTO_ALLOC(epsize = su_cs_len(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
       realnam ? _imap_quotestr(realnam) : "NIL",
       /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
       _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
-   n_lofi_free(ip);
+
+   su_LOFI_FREE(ip);
+
    NYD_OU;
    return ep;
 }

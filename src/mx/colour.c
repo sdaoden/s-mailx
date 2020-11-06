@@ -37,7 +37,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
+#include "mx/go.h"
 #include "mx/sigs.h"
 #include "mx/termcap.h"
 
@@ -375,9 +377,9 @@ a_colour_mux(char **argv){
          goto jleave;
       }
 
-      tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag))
+      tl = (ctag != NIL && !a_COLOUR_TAG_IS_SPECIAL(ctag))
             ? su_cs_len(ctag) : 0;
-      cmp = n_alloc(VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = su_ALLOC(VSTRUCT_SIZEOF(struct a_colour_map,cm_buf) +
             tl +1 + (usrl = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
 
       /* .cm_buf stuff */
@@ -597,11 +599,11 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
          int s;
 
          if(regexpp != NULL &&
-               (s = regcomp(*regexpp = n_alloc(sizeof(regex_t)), ctag,
+               (s = regcomp(*regexpp = su_ALLOC(sizeof(regex_t)), ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             n_err(_("colour: invalid regular expression: %s: %s\n"),
-               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NULL, s));
-            n_free(*regexpp);
+               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NIL, s));
+            su_FREE(*regexpp);
             goto jetag;
          }
       }else
@@ -609,7 +611,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       {
          /* Normalize to lowercase and strip any whitespace before use */
          i = su_cs_len(ctag);
-         cp = n_autorec_alloc(i +1);
+         cp = su_AUTO_ALLOC(i +1);
 
          for(i = 0; (c = *ctag++) != '\0';){
             boole isblspc = su_cs_is_space(c);
@@ -705,15 +707,17 @@ a_colour_map_find(enum mx_colour_ctx cctx, enum mx_colour_id cid,
 static void
 a_colour_map_unref(struct a_colour_map *self){
    NYD2_IN;
+
    if(--self->cm_refcnt == 0){
 #ifdef mx_HAVE_REGEX
-      if(self->cm_regex != NULL){
+      if(self->cm_regex != NIL){
          regfree(self->cm_regex);
-         n_free(self->cm_regex);
+         su_FREE(self->cm_regex);
       }
 #endif
-      n_free(self);
+      su_FREE(self);
    }
+
    NYD2_OU;
 }
 
@@ -737,12 +741,11 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    /* 0/1 indicate usage, thereafter possibly 256 color sequences */
    cfg[0] = cfg[1] = 0;
 
-   /* Since we use autorec_alloc(), reuse the su_cs_sep_c() buffer also for the
+   /* Since we use AUTO_ALLOC(), reuse the su_cs_sep_c() buffer also for the
     * return value, ensure we have enough room for that */
    /* C99 */{
       uz i = su_cs_len(spec) +1;
-      xspec = n_autorec_alloc(MAX(i,
-            sizeof("\033[1;4;7;38;5;255;48;5;255m")));
+      xspec = su_AUTO_ALLOC(MAX(i, sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       su_mem_copy(xspec, spec, i);
       spec = xspec;
    }
@@ -817,7 +820,7 @@ jiter_colour:
          goto jbail;
    }
 
-   /* Restore our autorec_alloc() buffer, create return value */
+   /* Restore our AUTO_ALLOC() buffer, create return value */
    xspec = n_UNCONST(spec);
    if(ftno > 0 || cfg[0] || cfg[1]){ /* TODO unite/share colour setters */
       xspec[0] = '\033';
@@ -891,7 +894,7 @@ c_uncolour(void *v){
 }
 
 void
-mx_colour_stack_del(struct n_go_data_ctx *gdcp){
+mx_colour_stack_del(struct mx_go_data_ctx *gdcp){
    struct mx_colour_env *vp, *cep;
    NYD_IN;
 
@@ -926,22 +929,22 @@ mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp, boole pager_used){
       a_colour_init();
 
    /* TODO reset the outer level?  Iff ce_outfp==fp? */
-   cep = n_autorec_alloc(sizeof *cep);
-   cep->ce_last = n_go_data->gdc_colour;
+   cep = su_AUTO_ALLOC(sizeof *cep);
+   cep->ce_last = mx_go_data->gdc_colour;
    cep->ce_enabled = FAL0;
    cep->ce_ctx = cctx;
    cep->ce_ispipe = pager_used;
    cep->ce_outfp = fp;
    cep->ce_current = NULL;
-   n_go_data->gdc_colour_active = FAL0;
-   n_go_data->gdc_colour = cep;
+   mx_go_data->gdc_colour_active = FAL0;
+   mx_go_data->gdc_colour = cep;
 
    if(ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager)))
       goto jleave;
    if(a_colour_g.cg_type == a_COLOUR_T_NONE || !a_colour_termcap_init())
       goto jleave;
 
-   n_go_data->gdc_colour_active = cep->ce_enabled = TRU1;
+   mx_go_data->gdc_colour_active = cep->ce_enabled = TRU1;
 jleave:
    NYD_OU;
 }
@@ -955,9 +958,9 @@ mx_colour_env_gut(void){
       goto jleave;
 
    /* TODO v15: Could happen because of jump, causing _stack_del().. */
-   if((cep = n_go_data->gdc_colour) == NULL)
+   if((cep = mx_go_data->gdc_colour) == NULL)
       goto jleave;
-   n_go_data->gdc_colour_active = ((n_go_data->gdc_colour = cep->ce_last
+   mx_go_data->gdc_colour_active = ((mx_go_data->gdc_colour = cep->ce_last
          ) != NULL && cep->ce_last->ce_enabled);
 
    if(cep->ce_current != NULL){
@@ -978,7 +981,7 @@ mx_colour_put(enum mx_colour_id cid, char const *ctag){
    if(mx_COLOUR_IS_ACTIVE()){
       struct mx_colour_env *cep;
 
-      cep = n_go_data->gdc_colour;
+      cep = mx_go_data->gdc_colour;
 
       if(cep->ce_current != NULL)
          fwrite(a_colour_g.cg_reset.cp_dat.s, a_colour_g.cg_reset.cp_dat.l, 1,
@@ -997,7 +1000,7 @@ mx_colour_reset(void){
    if(mx_COLOUR_IS_ACTIVE()){
       struct mx_colour_env *cep;
 
-      cep = n_go_data->gdc_colour;
+      cep = mx_go_data->gdc_colour;
 
       if(cep->ce_current != NULL){
          cep->ce_current = NULL;
@@ -1028,7 +1031,7 @@ mx_colour_pen_create(enum mx_colour_id cid, char const *ctag){
    NYD_IN;
 
    if(mx_COLOUR_IS_ACTIVE() &&
-         (cmp = a_colour_map_find(n_go_data->gdc_colour->ce_ctx, cid, ctag)
+         (cmp = a_colour_map_find(mx_go_data->gdc_colour->ce_ctx, cid, ctag)
           ) != NULL){
       union {void *vp; char *cp; struct mx_colour_pen *cpp;} u;
 
@@ -1047,7 +1050,7 @@ mx_colour_pen_put(struct mx_colour_pen *self){
       union {void *vp; char *cp; struct a_colour_map *cmp;} u;
       struct mx_colour_env *cep;
 
-      cep = n_go_data->gdc_colour;
+      cep = mx_go_data->gdc_colour;
       u.vp = self;
 
       if(u.cmp != cep->ce_current){

@@ -53,6 +53,7 @@
 #include <su/cs.h>
 #include <su/sort.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/utf.h>
 
 #include "mx/cmd.h"
@@ -138,7 +139,7 @@ static char *a_shexp_findmail(char const *user, boole force);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
- * n_autorec_alloc()ed string */
+ * AUTO_ALLOC()ed string */
 static char *a_shexp_tilde(char const *s);
 
 /* Perform fnmatch(3).  May return NULL on error */
@@ -193,11 +194,12 @@ a_shexp_findmail(char const *user, boole force){
       ulen = su_cs_len(user) +1;
       i = sizeof(VAL_MAIL) -1 + 1 + ulen;
 
-      rv = n_autorec_alloc(i);
+      rv = su_AUTO_ALLOC(i);
       su_mem_copy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
       su_mem_copy(&rv[++i], user, ulen);
    }
+
 jleave:
    NYD2_OU;
    return rv;
@@ -230,7 +232,7 @@ a_shexp_tilde(char const *s){
    }
 
    nl = su_cs_len(np);
-   rv = n_autorec_alloc(nl + 1 + rl +1);
+   rv = su_AUTO_ALLOC(nl + 1 + rl +1);
    su_mem_copy(rv, np, nl);
    if(rl > 0){
       su_mem_copy(rv + nl, rp, rl);
@@ -252,14 +254,14 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    void *lofi_snap;
    NYD_IN;
 
-   lofi_snap = n_lofi_snap_create();
+   lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
 
    su_mem_set(&sgc, 0, sizeof sgc);
    /* C99 */{
       uz i;
 
       sgc.sgc_patlen = i = su_cs_len(name);
-      sgc.sgc_patdat = cp = n_lofi_alloc(++i);
+      sgc.sgc_patdat = cp = su_LOFI_ALLOC(++i);
       su_mem_copy(cp, name, i);
       sgc.sgc_outer = n_string_book(n_string_creat(&outer), i);
    }
@@ -291,14 +293,14 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
          l += xslp->sl_len + 1;
       }
 
-      sorta = n_lofi_alloc(sizeof(*sorta) * no);
+      sorta = su_LOFI_ALLOC(sizeof(*sorta) * no);
 
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
       su_sort_shell_vpp(su_S(void const**,sorta), no, &a_shexp__globsort);
 
-      cp = n_autorec_alloc(++l);
+      cp = su_AUTO_ALLOC(++l);
       l = 0;
       for(i = 0; i < no; ++i){
          xslp = sorta[i];
@@ -308,7 +310,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       }
       cp[l] = '\0';
 
-      /*n_lofi_free(sorta);*/
+      /*su_LOFI_FREE(sorta);*/
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = UNCONST(char*,N_("File pattern matches multiple results"));
@@ -316,7 +318,8 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    }
 
 jleave:
-   n_lofi_snap_unroll(lofi_snap);
+   su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
+
    NYD_OU;
    return cp;
 
@@ -459,7 +462,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          }
 
       if(need){
-         ncp = n_lofi_alloc(i +1);
+         ncp = su_LOFI_ALLOC(i +1);
          for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
             switch(*myp){
             case '\'': case '"': case '\\': case '$':
@@ -621,7 +624,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
     * XXX the "most fancy" quoting necessary, and directly does that.
     * XXX As a result of this, T_REVSOL and T_DOUBLE are not even considered.
     * XXX Otherwise we rather have to convert to wide first and act on that,
-    * XXX e.g., call visual_info(n_VISUAL_INFO_WOUT_CREATE) on entire input */
+    * XXX e.g., call visual_info(VISUAL_INFO_WOUT_CREATE) on entire input */
 #undef a_SHEXP_QUOTE_RECURSE /* XXX (Needs complete revisit, then) */
 #ifdef a_SHEXP_QUOTE_RECURSE
 # define jrecurse jrecurse
@@ -629,7 +632,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #else
 # define jrecurse jstep
 #endif
-   struct n_visual_info_ctx vic;
+   struct mx_visual_info_ctx vic;
    union {struct a_shexp_quote_lvl *head; struct n_string *store;} u;
    u32 flags;
    uz il;
@@ -691,8 +694,8 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
          su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = ib;
          vic.vic_inlen = il;
-         n_visual_info(&vic,
-            n_VISUAL_INFO_ONE_CHAR | n_VISUAL_INFO_SKIP_ERRORS);
+         mx_visual_info(&vic,
+            mx_VISUAL_INFO_ONE_CHAR | mx_VISUAL_INFO_SKIP_ERRORS);
 #endif
          /* xxx check whether resulting \u would be ASCII */
          if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP) ||
@@ -899,8 +902,8 @@ jpush:
             su_mem_set(&vic, 0, sizeof vic);
             vic.vic_indat = ib;
             vic.vic_inlen = il;
-            n_visual_info(&vic,
-               n_VISUAL_INFO_ONE_CHAR | n_VISUAL_INFO_SKIP_ERRORS);
+            mx_visual_info(&vic,
+               mx_VISUAL_INFO_ONE_CHAR | mx_VISUAL_INFO_SKIP_ERRORS);
 
             /* Work this substring as sensitive as possible */
             il -= vic.vic_oulen;
@@ -2134,12 +2137,12 @@ c_shcodec(void *vp){
 
       in.s = n_string_cp(soup);
       in.l = soup->s_len;
-      makeprint(&in, &out);
+      mx_makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          nerrn = su_err_no();
          vp = NULL;
       }
-      n_free(out.s);
+      su_FREE(out.s);
    }
 
 jleave:

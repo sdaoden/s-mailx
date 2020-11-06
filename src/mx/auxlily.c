@@ -71,7 +71,9 @@
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
 #include "mx/colour.h"
+#include "mx/compat.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/termios.h"
 #include "mx/tty.h"
 
@@ -125,6 +127,27 @@ a_aux_pager_get(char const **env_addon){
    }
    NYD_OU;
    return rv;
+}
+
+FL struct n_string *
+mx_version(struct n_string *s){
+   NYD2_IN;
+
+   s = n_string_push_cp(s, n_uagent);
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version));
+   s = n_string_push_c(s, ',');
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version_date));
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_c(s, '(');
+   s = n_string_push_cp(s, _("built for "));
+   s = n_string_push_cp(s, ok_vlook(build_os));
+   s = n_string_push_c(s, ')');
+   s = n_string_push_c(s, '\n');
+
+   NYD2_OU;
+   return s;
 }
 
 FL uz
@@ -183,7 +206,7 @@ page_or_print(FILE *fp, uz lines)
 
    fflush_rewind(fp);
 
-   if (n_go_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
+   if(mx_go_may_yield_control() && (cp = ok_vlook(crt)) != NIL){
       uz rows;
 
       if(*cp == '\0')

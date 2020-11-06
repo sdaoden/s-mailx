@@ -47,11 +47,15 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
+#include "mx/compat.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
+#include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
@@ -1363,7 +1367,8 @@ is_head(char const *linebuf, uz linelen, boole check_rfc4155)
 }
 
 FL char const *
-mx_header_is_valid(char const *name, boole lead_ws, struct str *cramp_or_nil){
+mx_header_is_valid_name(char const *name, boole lead_ws,
+      struct str *cramp_or_nil){
    char const *cp;
    NYD_IN;
 
@@ -1403,6 +1408,119 @@ jleave:
    NYD_OU;
    return name;
 }
+
+#ifdef mx_HAVE_ICONV
+FL boole
+mx_header_needs_mime(struct header *hp){
+   /* TODO In the end this should be nothing than
+    * TODO header_iterator=header.begin(); h_i; ++h_i
+    * TODO  if(h_i.body().needs_mime())
+    * TODO Until then try to inite*/
+   char const *bodies[2 + 2 + 1 + 1 +1], **cpp, *cp;
+   struct mx_name *np;
+   boole rv;
+   NYD_IN;
+
+   rv = FAL0;
+
+   /* C99 */{
+      struct n_header_field *hfp, *chlp[3]; /* TODO . JOINED AFTER COMPOSE! */
+      u32 i;
+
+      chlp[0] = n_poption_arg_C;
+      chlp[1] = n_customhdr_list;
+      chlp[2] = hp->h_user_headers;
+
+      for(i = 0; i < NELEM(chlp); ++i)
+         if((hfp = chlp[i]) != NIL)
+            do if(mx_mime_header_needs_mime(&hfp->hf_dat[hfp->hf_nl +1])){
+               rv = TRU1;
+               goto jleave;
+            }while((hfp = hfp->hf_next) != NIL);
+   }
+
+   /*s_mem_set(bodies, 0, sizeof(bodies));*/
+   cpp = &bodies[0];
+
+   if((np = hp->h_sender) != NIL){
+      *cpp++ = np->n_name;
+      *cpp++ = np->n_fullname;
+   }else if((cp = ok_vlook(sender)) != NIL)
+      *cpp++ = cp;
+
+   if((np = hp->h_reply_to) != NIL){
+      *cpp++ = np->n_name;
+      *cpp++ = np->n_fullname;
+   }else{
+      if((cp = ok_vlook(replyto)) != NIL){
+         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+         *cpp++ = cp;
+      }
+      if((cp = ok_vlook(reply_to)) != NIL)
+         *cpp++ = cp;
+   }
+
+   if((cp = hp->h_subject) != NIL)
+      *cpp++ = cp;
+
+   if((np = hp->h_from) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }else if((cp = myaddrs(NIL)) != NIL)
+      *cpp++ = cp;
+
+   if((np = hp->h_mft) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }
+
+   if((np = hp->h_to) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }
+
+   if((np = hp->h_cc) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }
+
+   if((np = hp->h_bcc) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }
+
+   /* */
+   ASSERT(cpp < &bodies[NELEM(bodies)]);
+   *cpp = NIL;
+   for(cpp = &bodies[0]; (cp = *cpp++) != NIL;)
+      if((rv = mx_mime_header_needs_mime(cp)))
+         break;
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+#endif /* mx_HAVE_ICONV */
 
 FL boole
 n_header_put4compose(FILE *fp, struct header *hp){
@@ -1616,7 +1734,7 @@ jeseek:
          struct n_header_field *hfp;
          uz bl;
 
-         if((cp = mx_header_is_valid(linebuf, FAL0, &hfield)) == NIL){
+         if((cp = mx_header_is_valid_name(linebuf, FAL0, &hfield)) == NIL){
 jebadhead:
             n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
@@ -1625,8 +1743,8 @@ jebadhead:
 
          ++seenfields;
          *hftail =
-         hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
-               hf_dat) + hfield.l +1 + bl);
+         hfp = su_AUTO_ALLOC(VSTRUCT_SIZEOF(struct n_header_field,hf_dat) +
+               hfield.l +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NIL;
          hfp->hf_nl = S(u32,hfield.l);
@@ -2438,7 +2556,7 @@ realname(char const *name)
          if (cstart != NULL) {
             /* More than one comment in address, doesn't make sense to display
              * it without context.  Return the entire field */
-            cp = mime_fromaddr(name);
+            cp = mx_mime_fromaddr(name);
             goto jleave;
          }
          cstart = cp++;
@@ -2472,16 +2590,17 @@ jbrk:
       if (*name == '<') {
          /* If name contains only a route-addr, the surrounding angle brackets
           * don't serve any useful purpose when displaying, so remove */
-         cp = prstr(skin(name));
+         cp = mx_makeprint_cp(skin(name));
       } else
-         cp = mime_fromaddr(name);
+         cp = mx_mime_fromaddr(name);
       goto jleave;
    }
 
    /* Strip quotes. Note that quotes that appear within a MIME encoded word are
     * not stripped. The idea is to strip only syntactical relevant things (but
     * this is not necessarily the most sensible way in practice) */
-   rp = rname = n_lofi_alloc(P2UZ(cend - cstart +1));
+   rp = rname = su_LOFI_ALLOC(P2UZ(cend - cstart +1));
+
    quoted = 0;
    for (cp = cstart; cp < cend; ++cp) {
       if (*cp == '(' && !quoted) {
@@ -2504,10 +2623,13 @@ jbrk:
    *rp = '\0';
    in.s = rname;
    in.l = rp - rname;
-   mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-   n_lofi_free(rname);
+
+   mx_mime_display_from_header(&in, &out,
+      mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
    rname = savestr(out.s);
-   n_free(out.s);
+   su_FREE(out.s);
+
+   su_LOFI_FREE(rname);
 
    while (su_cs_is_blank(*rname))
       ++rname;
@@ -2516,7 +2638,7 @@ jbrk:
    while (PCMP(--rp, >=, rname) && su_cs_is_blank(*rp))
       *rp = '\0';
    if (rp == rname) {
-      cp = mime_fromaddr(name);
+      cp = mx_mime_fromaddr(name);
       goto jleave;
    }
 
@@ -2531,7 +2653,7 @@ jbrk:
          ++nogood;
       else
          ++good;
-   cp = (good * 3 < nogood) ? prstr(skin(name)) : rname;
+   cp = (good * 3 < nogood) ? mx_makeprint_cp(skin(name)) : rname;
 jleave:
    NYD_OU;
    return n_UNCONST(cp);
@@ -2719,10 +2841,11 @@ mx_header_subject_edit(char const *subp,
 
    if(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME){
       in.l = su_cs_len(in.s = UNCONST(char*,subp));
-      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-      subp = re_st = n_autorec_alloc(out.l +1);
+      mx_mime_display_from_header(&in, &out,
+         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+      subp = re_st = su_AUTO_ALLOC(out.l +1);
       su_mem_copy(re_st, out.s, out.l +1);
-      n_free(out.s);
+      su_FREE(out.s);
    }
 
    if(!(hsef & mx_HEADER_SUBJECT_EDIT_TRIM_ALL))
@@ -3375,8 +3498,8 @@ n_header_setup_in_reply_to(struct header *hp){
 }
 
 FL int
-grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
-      int subjfirst)
+grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
+      enum gfield gflags, int subjfirst)
 {
    /* TODO grab_headers: again, check counts etc. against RFC;
     * TODO (now assumes check_from_and_sender() is called afterwards ++ */
@@ -3390,7 +3513,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
    if (gflags & GTO)
       hp->h_to = grab_names(gif, "To: ", hp->h_to, comma, GTO | GFULL);
    if (subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
+      hp->h_subject = mx_go_input_cp(gif, "Subject: ", hp->h_subject);
    if (gflags & GCC)
       hp->h_cc = grab_names(gif, "Cc: ", hp->h_cc, comma, GCC | GFULL);
    if (gflags & GBCC)
@@ -3419,7 +3542,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
    }
 
    if (!subjfirst && (gflags & GSUBJECT))
-      hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
+      hp->h_subject = mx_go_input_cp(gif, "Subject: ", hp->h_subject);
 
    NYD_OU;
    return errs;
@@ -3537,9 +3660,9 @@ n_header_match(struct message *mp, struct search_expr const *sep){
             continue;
          out.s = np->n_name;
       }else{
-         np = NULL;
+         np = NIL;
          in.l = su_cs_len(in.s);
-         mime_fromhdr(&in, &out, TD_ICONV);
+         mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
       }
 
 jnext_name:
@@ -3619,7 +3742,7 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
    hfp = NIL;
 
    /* For (-C) convenience, allow leading WS */
-   if((cp = mx_header_is_valid(dat, TRU1, &hname)) == NIL){
+   if((cp = mx_header_is_valid_name(dat, TRU1, &hname)) == NIL){
       cp = N_("Invalid custom header (not valid \"field: body\"): %s\n");
       goto jerr;
    }
@@ -3640,8 +3763,8 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
          goto jerr;
       }
 
-   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + hname.l +1 + bl +1;
-   *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
+   i = VSTRUCT_SIZEOF(struct n_header_field,hf_dat) + hname.l +1 + bl +1;
+   *hflp = hfp = heap ? su_ALLOC(i) : su_AUTO_ALLOC(i);
    hfp->hf_next = NULL;
    hfp->hf_nl = hname.l;
    hfp->hf_bl = bl - 1;

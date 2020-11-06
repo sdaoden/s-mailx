@@ -35,10 +35,12 @@ su_EMPTY_FILE()
 #include "su/cs.h"
 #include "su/cs-dict.h"
 #include "su/mem.h"
+#include "su/mem-bag.h"
 
 #include "mx/child.h"
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
+#include "mx/mime-param.h"
 #include "mx/mime-type.h"
 
 #include "mx/mailcap.h"
@@ -73,13 +75,13 @@ enum {a_MAILCAP_SF_MAX = a_MAILCAP_SF_X11_BITMAP + 1};
    ((X) == a_MAILCAP_SF_CMD /*|| (X) == a_MAILCAP_SF_TEST*/)
 
 enum a_mailcap_handler_flags{
-   a_MAILCAP_F_TEXTUALNEWLINES = mx_MIMETYPE_HDL_MAX << 1,
-   a_MAILCAP_F_TESTONCE = mx_MIMETYPE_HDL_MAX << 2,
-   a_MAILCAP_F_TEST_ONCE_DONE = mx_MIMETYPE_HDL_MAX << 3,
-   a_MAILCAP_F_TEST_ONCE_SUCCESS = mx_MIMETYPE_HDL_MAX << 4,
-   a_MAILCAP_F_HAS_S_FORMAT = mx_MIMETYPE_HDL_MAX << 5, /* Somewhere a %s */
-   a_MAILCAP_F_LAST_RESORT = mx_MIMETYPE_HDL_MAX << 6,
-   a_MAILCAP_F_IGNORE = mx_MIMETYPE_HDL_MAX << 7
+   a_MAILCAP_F_TEXTUALNEWLINES = mx_MIME_TYPE_HDL_MAX << 1,
+   a_MAILCAP_F_TESTONCE = mx_MIME_TYPE_HDL_MAX << 2,
+   a_MAILCAP_F_TEST_ONCE_DONE = mx_MIME_TYPE_HDL_MAX << 3,
+   a_MAILCAP_F_TEST_ONCE_SUCCESS = mx_MIME_TYPE_HDL_MAX << 4,
+   a_MAILCAP_F_HAS_S_FORMAT = mx_MIME_TYPE_HDL_MAX << 5, /* Somewhere a %s */
+   a_MAILCAP_F_LAST_RESORT = mx_MIME_TYPE_HDL_MAX << 6,
+   a_MAILCAP_F_IGNORE = mx_MIME_TYPE_HDL_MAX << 7
 };
 enum {a_MAILCAP_F_MAX = a_MAILCAP_F_IGNORE};
 CTA(a_MAILCAP_F_MAX <= S32_MAX,
@@ -87,7 +89,7 @@ CTA(a_MAILCAP_F_MAX <= S32_MAX,
 
 struct a_mailcap_hdl{
    struct a_mailcap_hdl *mch_next;
-   BITENUM_IS(u32,mx_mimetype_handler_flags) mch_flags;
+   BITENUM_IS(u32,a_mailcap_handler_flags) mch_flags;
    u8 mch__pad[2];
    /* All strings are placed in successive memory after "self".
     * Since mch_cmd always exists 0 is the invalid offset for the rest.
@@ -112,21 +114,21 @@ struct a_mailcap_load_stack{
 };
 
 struct a_mailcap_flags{
-   BITENUM_IS(u32,mx_mimetype_handler_flags) mcf_flags;
+   BITENUM_IS(u32,a_mailcap_handler_flags) mcf_flags;
    char mcf_name[28];
 };
 
 static struct a_mailcap_flags const a_mailcap_flags[] = {
    /* In manual order */
-   {mx_MIMETYPE_HDL_COPIOUSOUTPUT, "copiousoutput"},
-   {mx_MIMETYPE_HDL_NEEDSTERM, "needsterminal"},
+   {mx_MIME_TYPE_HDL_COPIOUSOUTPUT, "copiousoutput"},
+   {mx_MIME_TYPE_HDL_NEEDSTERM, "needsterminal"},
    {a_MAILCAP_F_TEXTUALNEWLINES, "textualnewlines"},
-   {mx_MIMETYPE_HDL_ASYNC, "x-mailx-async"},
-   {mx_MIMETYPE_HDL_NOQUOTE, "x-mailx-noquote"},
+   {mx_MIME_TYPE_HDL_ASYNC, "x-mailx-async"},
+   {mx_MIME_TYPE_HDL_NOQUOTE, "x-mailx-noquote"},
    {a_MAILCAP_F_TESTONCE, "x-mailx-test-once"},
-   {mx_MIMETYPE_HDL_TMPF, "x-mailx-tmpfile"},
-   {mx_MIMETYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
-   {mx_MIMETYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
+   {mx_MIME_TYPE_HDL_TMPF, "x-mailx-tmpfile"},
+   {mx_MIME_TYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
+   {mx_MIME_TYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
    {a_MAILCAP_F_LAST_RESORT, "x-mailx-last-resort"},
    {a_MAILCAP_F_IGNORE, "x-mailx-ignore"}
 };
@@ -386,7 +388,7 @@ jesubtype:
 
          /* And unite for the real one */
          key = savecatsep(cp, '/', cp2);
-         if(!mx_mimetype_is_valid(key, TRU1, TRU1)){
+         if(!mx_mime_type_is_valid(key, TRU1, TRU1)){
             cp = key;
             key = UNCONST(char*,N_("invalid MIME type"));
             goto jerr;
@@ -592,7 +594,7 @@ jfmt:{
    /* C99 */{
       uz i;
 
-      lbuf = n_lofi_alloc(s->l * 2);
+      lbuf = su_LOFI_ALLOC(s->l * 2);
       i = P2UZ(cp3 - s->s);
       su_mem_copy(lbuf, s->s, i);
       cp3 = &lbuf[i];
@@ -675,7 +677,7 @@ jquote:
       lbuf, P2UZ(cp3 - lbuf)), '\0');
 
 jfmt_leave:
-   n_lofi_free(lbuf);
+   su_LOFI_FREE(lbuf);
    }
    goto jleave;
 }
@@ -724,26 +726,26 @@ a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp,
 
    f = mclsp->mcls_hdl.mch_flags;
 
-   if(f & (mx_MIMETYPE_HDL_TMPF_FILL | mx_MIMETYPE_HDL_TMPF_UNLINK))
-      f |= mx_MIMETYPE_HDL_TMPF;
+   if(f & (mx_MIME_TYPE_HDL_TMPF_FILL | mx_MIME_TYPE_HDL_TMPF_UNLINK))
+      f |= mx_MIME_TYPE_HDL_TMPF;
 
-   if(f & mx_MIMETYPE_HDL_ASYNC){
-      if(f & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
+   if(f & mx_MIME_TYPE_HDL_ASYNC){
+      if(f & mx_MIME_TYPE_HDL_COPIOUSOUTPUT){
          emsg = N_("cannot use x-mailx-async and copiousoutput");
          goto jerr;
       }
-      if(f & mx_MIMETYPE_HDL_TMPF_UNLINK){
+      if(f & mx_MIME_TYPE_HDL_TMPF_UNLINK){
          emsg = N_("cannot use x-mailx-async and x-mailx-tmpfile-unlink");
          goto jerr;
       }
    }
 
-   if(f & mx_MIMETYPE_HDL_NEEDSTERM){
-      if(f & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
+   if(f & mx_MIME_TYPE_HDL_NEEDSTERM){
+      if(f & mx_MIME_TYPE_HDL_COPIOUSOUTPUT){
          emsg = N_("cannot use needsterminal and copiousoutput");
          goto jerr;
       }
-      if(f & mx_MIMETYPE_HDL_ASYNC){
+      if(f & mx_MIME_TYPE_HDL_ASYNC){
          emsg = N_("cannot use needsterminal and x-mailx-async");
          goto jerr;
       }
@@ -753,14 +755,14 @@ a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp,
 
    if(mclsp->mcls_hdl.mch_sfields[a_MAILCAP_SF_NAMETEMPLATE] != 0){
       if(f & a_MAILCAP_F_HAS_S_FORMAT)
-         f |= mx_MIMETYPE_HDL_TMPF_NAMETMPL |
-               mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX;
+         f |= mx_MIME_TYPE_HDL_TMPF_NAMETMPL |
+               mx_MIME_TYPE_HDL_TMPF_NAMETMPL_SUFFIX;
       else
          n_err(_("$MAILCAPS: %s: %s: no %%s format, ignoring nametemplate\n"),
             mclsp->mcls_name_quoted, mclsp->mcls_type_subtype);
    }
 
-   if(f & mx_MIMETYPE_HDL_TMPF){
+   if(f & mx_MIME_TYPE_HDL_TMPF){
       /* Not with any %s */
       if(f & a_MAILCAP_F_HAS_S_FORMAT){
          emsg = N_("cannot use x-mailx-tmpfile if formats use %s");
@@ -999,7 +1001,7 @@ a_mailcap_expand_formats(char const *format, struct mimepart const *mpp,
             xp = su_cs_find_c(cp, '}');
             ASSERT(xp != NIL); /* (parser) */
             xp = savestrbuf(cp, P2UZ(xp - cp));
-            if((xp = mime_param_get(xp, mpp->m_ct_type)) != NIL){
+            if((xp = mx_mime_param_get(xp, mpp->m_ct_type)) != NIL){
                /* XXX Maybe we should simply shell quote that thing? */
                while((c = *xp++) != '\0'){
                   if(c != '\'')
@@ -1079,7 +1081,7 @@ jlist:
 }
 
 boole
-mx_mailcap_handler(struct mx_mimetype_handler *mthp, char const *ct,
+mx_mailcap_handler(struct mx_mime_type_handler *mthp, char const *ct,
       enum sendaction action, struct mimepart const *mpp){
    union {void *v; char const *c; struct a_mailcap_hdl *mch;} p;
    boole wildcard;
@@ -1115,18 +1117,18 @@ jagain:
          continue;
 
       if(action == SEND_TODISP || action == SEND_TODISP_ALL){
-         /*if(f & mx_MIMETYPE_HDL_ASYNC)
+         /*if(f & mx_MIME_TYPE_HDL_ASYNC)
           *   continue;*/
-         if(!(f & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
+         if(!(f & mx_MIME_TYPE_HDL_COPIOUSOUTPUT))
             continue;
       }else if(action == SEND_QUOTE || action == SEND_QUOTE_ALL){
-         if(f & mx_MIMETYPE_HDL_NOQUOTE)
+         if(f & mx_MIME_TYPE_HDL_NOQUOTE)
             continue;
-         /*if(f & mx_MIMETYPE_HDL_ASYNC)
+         /*if(f & mx_MIME_TYPE_HDL_ASYNC)
           *   continue;*/
-         if(f & mx_MIMETYPE_HDL_NEEDSTERM) /* XXX for now */
+         if(f & mx_MIME_TYPE_HDL_NEEDSTERM) /* XXX for now */
             continue;
-         if(!(f & mx_MIMETYPE_HDL_COPIOUSOUTPUT)) /* xxx for now */
+         if(!(f & mx_MIME_TYPE_HDL_COPIOUSOUTPUT)) /* xxx for now */
             continue;
       }else{
          /* `mimeview' */
@@ -1163,11 +1165,11 @@ jagain:
 
       /* That one shall be it */
       if(f & a_MAILCAP_F_HAS_S_FORMAT){
-         f |= mx_MIMETYPE_HDL_TMPF | mx_MIMETYPE_HDL_TMPF_FILL;
-         if(!(f & mx_MIMETYPE_HDL_ASYNC))
-            f |= mx_MIMETYPE_HDL_TMPF_UNLINK;
+         f |= mx_MIME_TYPE_HDL_TMPF | mx_MIME_TYPE_HDL_TMPF_FILL;
+         if(!(f & mx_MIME_TYPE_HDL_ASYNC))
+            f |= mx_MIME_TYPE_HDL_TMPF_UNLINK;
       }
-      f |= mx_MIMETYPE_HDL_CMD;
+      f |= mx_MIME_TYPE_HDL_CMD;
       mthp->mth_flags = f;
 
       /* XXX We could use a different policy where the handler has a callback
@@ -1199,7 +1201,7 @@ jagain:
       uz i;
 
       wildcard = TRU1;
-      cp = n_lofi_alloc((i = P2UZ(p.c - ct)) + 2 +1);
+      cp = su_LOFI_ALLOC((i = P2UZ(p.c - ct)) + 2 +1);
 
       su_mem_copy(cp, ct, i);
       cp[i++] = '/';
@@ -1207,7 +1209,7 @@ jagain:
       cp[i++] = '\0';
       p.v = su_cs_dict_lookup(a_mailcap_dp, cp);
 
-      n_lofi_free(cp);
+      su_LOFI_FREE(cp);
 
       if(p.v != NIL)
          goto jagain;

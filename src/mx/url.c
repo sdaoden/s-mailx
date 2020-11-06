@@ -32,6 +32,7 @@
 #endif
 
 #include "mx/cmd.h"
+#include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-netrc.h"
 #include "mx/file-streams.h"
@@ -182,8 +183,8 @@ c_urlcodec(void *vp){
    }else{
       struct str in, out;
 
-      in.l = su_cs_len(in.s = n_UNCONST(varres));
-      makeprint(&in, &out);
+      in.l = su_cs_len(in.s = UNCONST(char*,varres));
+      mx_makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_no();
          vp = NIL;

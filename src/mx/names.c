@@ -48,7 +48,10 @@
 #include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/compat.h"
+#include "mx/go.h"
 #include "mx/iconv.h"
+#include "mx/mime.h"
 #include "mx/mta-aliases.h"
 
 #include "mx/names.h"
@@ -358,7 +361,7 @@ a_nm_alias_dump(char const *cmdname, char const *key, void const *dat){
 
    s = n_string_creat_auto(&s_b);
    s = n_string_resize(s, 511);
-   s = n_string_trunc(s, VSTRUCT_SIZEOF(struct n_strlist, sl_dat)); /* gross */
+   s = n_string_trunc(s, VSTRUCT_SIZEOF(struct n_strlist,sl_dat)); /* gross */
 
    s = n_string_push_cp(s, cmdname);
    s = n_string_push_c(s, ' ');
@@ -375,7 +378,7 @@ a_nm_alias_dump(char const *cmdname, char const *key, void const *dat){
 
    slp = C(struct n_strlist*,S(void const*,n_string_cp(s)));
    slp->sl_next = NIL;
-   slp->sl_len = s->s_len - VSTRUCT_SIZEOF(struct n_strlist, sl_dat);
+   slp->sl_len = s->s_len - VSTRUCT_SIZEOF(struct n_strlist,sl_dat);
 
    NYD2_OU;
    return slp;
@@ -454,8 +457,10 @@ nalloc(char const *str, enum gfield ntype)
 
          if (s == 0 || str[--s] != '<' || str[e++] != '>')
             goto jskipfullextra;
+
          i = ag.ag_ilen - e;
-         in.s = n_lofi_alloc(s + 1 + i +1);
+         in.s = su_LOFI_ALLOC(s + 1 + i +1);
+
          while(s > 0 && su_cs_is_blank(str[s - 1]))
             --s;
          su_mem_copy(in.s, str, s);
@@ -471,7 +476,9 @@ nalloc(char const *str, enum gfield ntype)
          }
          s += i;
          in.s[in.l = s] = '\0';
-         mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
+
+         mx_mime_display_from_header(&in, &out,
+            mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */);
 
          for (cp = out.s, i = out.l; i > 0 && su_cs_is_space(*cp); --i, ++cp)
             ;
@@ -479,8 +486,9 @@ nalloc(char const *str, enum gfield ntype)
             --i;
          np->n_fullextra = savestrbuf(cp, i);
 
-         n_lofi_free(in.s);
-         n_free(out.s);
+         su_FREE(out.s);
+
+         su_LOFI_FREE(in.s);
       }
 jskipfullextra:
 
@@ -496,9 +504,13 @@ jskipfullextra:
           * ensure that the domain name in .n_fullname is replaced with the
           * converted version, since MIME doesn't perform encoding of addrs */
          /* TODO This definitily doesn't belong here! */
-         uz l = ag.ag_iaddr_start,
-            lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
-         in.s = n_lofi_alloc(l + ag.ag_slen + lsuff +1);
+         uz l, lsuff;
+
+         l = ag.ag_iaddr_start;
+         lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
+
+         in.s = su_LOFI_ALLOC(l + ag.ag_slen + lsuff +1);
+
          su_mem_copy(in.s, str, l);
          su_mem_copy(in.s + l, ag.ag_skinned, ag.ag_slen);
          l += ag.ag_slen;
@@ -508,11 +520,14 @@ jskipfullextra:
          in.l = l;
       }
 #endif
-      mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
+
+      mx_mime_display_from_header(&in, &out,
+         mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */);
       np->n_fullname = savestr(out.s);
-      n_free(out.s);
+      su_FREE(out.s);
+
 #ifdef mx_HAVE_IDNA
-      if (ag.ag_n_flags & mx_NAME_IDNA)
+      if(ag.ag_n_flags & mx_NAME_IDNA)
          n_lofi_free(in.s);
 #endif
    }
@@ -750,14 +765,14 @@ jleave:
 }
 
 struct mx_name *
-grab_names(enum n_go_input_flags gif, char const *field, struct mx_name *np,
-      int comma, enum gfield gflags)
+grab_names(u32/*mx_go_input_flags*/ gif, char const *field,
+      struct mx_name *np, int comma, enum gfield gflags)
 {
    struct mx_name *nq;
    NYD_IN;
 
 jloop:
-   np = lextract(n_go_input_cp(gif, field, detract(np, comma)), gflags);
+   np = lextract(mx_go_input_cp(gif, field, detract(np, comma)), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
       if (is_addr_invalid(nq, EACM_NONE))
          goto jloop;

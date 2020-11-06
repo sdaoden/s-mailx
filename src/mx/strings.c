@@ -48,6 +48,8 @@
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 

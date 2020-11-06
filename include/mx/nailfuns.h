@@ -37,6 +37,7 @@
 
 struct mx_attachment;
 struct mx_cmd_arg;
+struct mx_go_data_ctx;
 struct mx_ignore;
 struct su_cs_dict;
 struct quoteflt;
@@ -228,6 +229,10 @@ FL int c_vpospar(void *v);
  * auxlily.c
  */
 
+/* Generic support for the shared initial version line, which
+ * appends to s the UA name, version etc., and a \n LF */
+FL struct n_string *mx_version(struct n_string *s);
+
 /* Compute *screen* size */
 FL uz n_screensize(void);
 
@@ -363,22 +368,6 @@ FL boole mx_page_or_print_strlist(char const *cmdname,
       struct n_strlist *slp, boole cnt_lines);
 
 /*
- * cmd-cnd.c
- */
-
-/* if.elif.else.endif conditional execution */
-FL int c_if(void *v);
-FL int c_elif(void *v);
-FL int c_else(void *v);
-FL int c_endif(void *v);
-
-/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1) */
-FL boole n_cnd_if_exists(void);
-
-/* An execution context is teared down, and it finds to have an if stack */
-FL void n_cnd_if_stack_del(struct n_go_data_ctx *gdcp);
-
-/*
  * cmd-folder.c
  */
 
@@ -500,41 +489,6 @@ FL int c_draft(void *v);
 FL int c_undraft(void *v);
 
 /*
- * cmd-misc.c
- */
-
-/* `!': process a shell escape by saving signals, ignoring signals and sh -c */
-FL int c_shell(void *v);
-
-/* `shell': fork an interactive shell */
-FL int c_dosh(void *v);
-
-/* `cwd': print user's working directory */
-FL int c_cwd(void *v);
-
-/* `chdir': change user's working directory */
-FL int c_chdir(void *v);
-
-/* `echo' series: expand file names like echo (to stdout/stderr, with/out
- * trailing newline) */
-FL int c_echo(void *v);
-FL int c_echoerr(void *v);
-FL int c_echon(void *v);
-FL int c_echoerrn(void *v);
-
-/* `read', `readsh' */
-FL int c_read(void *vp);
-FL int c_readsh(void *vp);
-
-/* `readall' */
-FL int c_readall(void *vp);
-
-/* `version', and generic support for the shared initial version line, which
- * appends to sp the UA name, version etc., and a \n LF */
-FL struct n_string *n_version(struct n_string *sp);
-FL int c_version(void *vp);
-
-/*
  * cmd-resend.c
  */
 
@@ -634,107 +588,6 @@ FL char const *n_folder_query(void);
 FL int n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null);
 
 /*
- * go.c
- * Program input of all sorts, input lexing, event loops, command evaluation.
- * Also alias handling.
- */
-
-/* Setup the run environment; this i *only* for main() */
-FL void n_go_init(void);
-
-/* Interpret user commands.  If stdin is not a tty, print no prompt; return
- * whether last processed command returned error; this is *only* for main()! */
-FL boole n_go_main_loop(boole main_call);
-
-/* Actual cmd input */
-
-/* */
-FL void n_go_input_clearerr(void);
-
-/* Force n_go_input() to read EOF next */
-FL void n_go_input_force_eof(void);
-
-/* Returns true if force_eof() has been set -- it is set automatically if
- * an input context enters EOF state (rather than error, as in ferror(3)) */
-FL boole n_go_input_is_eof(void);
-
-/* Are there any go_input_inject()ions pending? */
-FL boole n_go_input_have_injections(void);
-
-/* Force n_go_input() to read that buffer next.
- * If n_GO_INPUT_INJECT_COMMIT is not set the line editor is reentered with buf
- * as the default/initial line content */
-FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
-            uz len);
-
-/* Read a complete line of input, with editing if interactive and possible.
- * string_or_nil is the optional initial line content if in interactive
- * mode, otherwise this argument is ignored for reproducibility.
- * If histok_or_nil is set it will be updated to FAL0 if input shall not be
- * placed in history.
- * Return number of octets or a value <0 on error.
- * Note: may use the currently `source'd file stream instead of stdin!
- * Manages the n_PS_READLINE_NL hack
- * TODO We need an OnReadLineCompletedEvent and drop this function */
-FL int n_go_input(enum n_go_input_flags gif, char const *prompt_or_nil,
-         char **linebuf, uz *linesize, char const *string_or_nil,
-         boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Like go_input(), but return savestr()d result or NIL in case of errors or if
- * an empty line would be returned.
- * This may only be called from toplevel (not during n_PS_ROBOT) */
-FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt_or_nil,
-            char const *string_or_nil);
-
-/* Deal with loading of resource files and dealing with a stack of files for
- * the source command */
-
-/* Load a file of user system startup resources.
- * *Only* for main(), returns whether program shall continue */
-FL boole n_go_load_rc(char const *name);
-
-/* "Load" or go_inject() command line option "cmd" arguments in order.
- * *Only* for main(), returns whether program shall continue unless injectit is
- * set, in which case this function does not fail.
- * If lines is NIL the builtin RC file is used, and errors are ignored */
-FL boole n_go_load_lines(boole injectit, char const **lines, uz cnt);
-
-/* Pushdown current input file and switch to a new one. */
-FL int c_source(void *v);
-FL int c_source_if(void *v);
-
-/* Evaluate a complete macro / a single command.  For the former lines will
- * be free()d, for the latter cmd will always be duplicated internally */
-FL boole n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
-            void (*on_finalize)(void*), void *finalize_arg);
-FL boole n_go_command(enum n_go_input_flags gif, char const *cmd);
-
-/* XXX See a_GO_SPLICE in source */
-FL void n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
-         u32 new_psonce, void (*on_finalize)(void*), void *finalize_arg);
-FL void n_go_splice_hack_remove_after_jump(void);
-
-/* XXX Hack: may we release our (interactive) (terminal) control to a different
- * XXX program, e.g., a $PAGER? */
-FL boole n_go_may_yield_control(void);
-
-/* `eval' */
-FL int c_eval(void *vp);
-
-/* `xcall' */
-FL int c_xcall(void *vp);
-
-/* `exit' and `quit' commands */
-FL int c_exit(void *vp);
-FL int c_quit(void *vp);
-
-/* `readctl' */
-FL int c_readctl(void *vp);
-
-/*
  * header.c
  */
 
@@ -754,8 +607,13 @@ FL boole      is_head(char const *linebuf, uz linelen,
 /* Return pointer to first non-header, non-space character, or NIL if invalid.
  * If lead_ws is true leading whitespace is allowed and skipped.
  * If cramp_or_nil is not NIL it will be set to the valid header name itself */
-FL char const *mx_header_is_valid(char const *name, boole lead_ws,
+FL char const *mx_header_is_valid_name(char const *name, boole lead_ws,
       struct str *cramp_or_nil);
+
+/* */
+#ifdef mx_HAVE_ICONV
+FL boole mx_header_needs_mime(struct header *hp);
+#endif
 
 /* Print hp "to user interface" fp for composing purposes xxx what a sigh */
 FL boole n_header_put4compose(FILE *fp, struct header *hp);
@@ -898,8 +756,8 @@ FL char *      getsender(struct message *m);
 FL struct mx_name *n_header_setup_in_reply_to(struct header *hp);
 
 /* Fill in / reedit the desired header fields */
-FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
-                  enum gfield gflags, int subjfirst);
+FL int grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
+      enum gfield gflags, int subjfirst);
 
 /* Check whether sep->ss_sexpr (or ->ss_sregex) matches any header of mp.
  * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
@@ -936,42 +794,6 @@ FL enum okay maildir_append(char const *name, FILE *fp, long offset);
 
 FL enum okay maildir_remove(char const *name);
 #endif /* mx_HAVE_MAILDIR */
-
-/*
- * (Former memory.c, now SU TODO get rid of compat macros)
- * Heap memory and automatically reclaimed storage, plus pseudo "alloca"
- *
- */
-
-/* Generic heap memory */
-#define n_alloc su_MEM_ALLOC
-#define n_realloc su_MEM_REALLOC
-#define n_calloc(NO,SZ) su_MEM_CALLOC_N(SZ, NO)
-#define n_free su_MEM_FREE
-
-/* Auto-reclaimed storage */
-#define n_autorec_relax_create() \
-      su_mem_bag_auto_relax_create(n_go_data->gdc_membag)
-#define n_autorec_relax_gut() \
-      su_mem_bag_auto_relax_gut(n_go_data->gdc_membag)
-#define n_autorec_relax_unroll() \
-      su_mem_bag_auto_relax_unroll(n_go_data->gdc_membag)
-/* (Even older obsolete names!) */
-#define srelax_hold n_autorec_relax_create
-#define srelax_rele n_autorec_relax_gut
-#define srelax n_autorec_relax_unroll
-
-#define n_autorec_alloc su_MEM_BAG_SELF_AUTO_ALLOC
-#define n_autorec_calloc(NO,SZ) su_MEM_BAG_SELF_AUTO_CALLOC_N(SZ, NO)
-
-/* Pseudo alloca (and also auto-reclaimed) */
-#define n_lofi_alloc su_MEM_BAG_SELF_LOFI_ALLOC
-#define n_lofi_calloc su_MEM_BAG_SELF_LOFI_CALLOC
-#define n_lofi_free su_MEM_BAG_SELF_LOFI_FREE
-
-#define n_lofi_snap_create() su_mem_bag_lofi_snap_create(n_go_data->gdc_membag)
-#define n_lofi_snap_unroll(COOKIE) \
-   su_mem_bag_lofi_snap_unroll(n_go_data->gdc_membag, COOKIE)
 
 /*
  * message.c
@@ -1023,163 +845,6 @@ FL int         first(int f, int m);
 
 /* Mark the named message by setting its mark bit */
 FL void        mark(int mesg, int f);
-
-/*
- * mime.c
- */
-
-/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
- * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
- * The returned boolean indicates charset_iter_is_valid().
- * Without mx_HAVE_ICONV, this "iterates" over *ttycharset* only */
-FL boole      charset_iter_reset(char const *a_charset_to_try_first);
-FL boole      charset_iter_next(void);
-FL boole      charset_iter_is_valid(void);
-FL char const * charset_iter(void);
-
-/* And this is (xxx temporary?) which returns the iterator if that is valid and
- * otherwise either *charset-8bit* or *ttycharset*, dep. on mx_HAVE_ICONV */
-FL char const * charset_iter_or_fallback(void);
-
-FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
-FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
-
-/* Check whether our headers will need MIME conversion */
-#ifdef mx_HAVE_ICONV
-FL char const * need_hdrconv(struct header *hp);
-#endif
-
-/* Convert header fields from RFC 1522 format */
-FL void        mime_fromhdr(struct str const *in, struct str *out,
-                  enum tdflags flags);
-
-/* Interpret MIME strings in parts of an address field */
-FL char *      mime_fromaddr(char const *name);
-
-/* fwrite(3) performing the given MIME conversion */
-FL sz     mime_write(char const *ptr, uz size, FILE *f,
-                  enum conversion convert, enum tdflags dflags,
-                  struct quoteflt *qf, struct str *outrest,
-                  struct str *inrest);
-FL sz     xmime_write(char const *ptr, uz size, /* TODO LEGACY */
-                  FILE *f, enum conversion convert, enum tdflags dflags,
-                  struct str *outrest, struct str *inrest);
-
-/*
- * mime-enc.c
- * Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047):
- * - Quoted-Printable, section 6.7
- * - Base64, section 6.8
- * TODO For now this is pretty mixed up regarding this external interface
- * TODO (and due to that the code is, too).
- * TODO In v15.0 CTE will be filter based, and explicit conversion will
- * TODO gain clear error codes
- */
-
-/* Default MIME Content-Transfer-Encoding: as via *mime-encoding*.
- * Cannot be MIMEE_BIN nor MIMEE_7B (i.e., only B64, QP, 8B) */
-FL enum mime_enc mime_enc_target(void);
-
-/* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
-FL enum mime_enc mime_enc_from_ctehead(char const *hbody);
-
-/* XXX Try to get rid of that */
-FL char const * mime_enc_from_conversion(enum conversion const convert);
-
-/* How many characters of (the complete body) ln need to be quoted.
- * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
-FL uz      mime_enc_mustquote(char const *ln, uz lnlen,
-                  enum mime_enc_flags flags);
-
-/* How much space is necessary to encode len bytes in QP, worst case.
- * Includes room for terminator, UZ_MAX on overflow */
-FL uz      qp_encode_calc_size(uz len);
-
-/* If flags includes QP_ISHEAD these assume "word" input and use special
- * quoting rules in addition; soft line breaks are not generated.
- * Otherwise complete input lines are assumed and soft line breaks are
- * generated as necessary.  Return NULL on error (overflow) */
-FL struct str * qp_encode(struct str *out, struct str const *in,
-                  enum qpflags flags);
-#ifdef notyet
-FL struct str * qp_encode_cp(struct str *out, char const *cp,
-                  enum qpflags flags);
-FL struct str * qp_encode_buf(struct str *out, void const *vp, uz vp_len,
-                  enum qpflags flags);
-#endif
-
-/* The buffers of out and *rest* will be managed via n_realloc().
- * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
- * Return FAL0 on error; caller is responsible to free buffers */
-FL boole      qp_decode_header(struct str *out, struct str const *in);
-FL boole      qp_decode_part(struct str *out, struct str const *in,
-                  struct str *outrest, struct str *inrest_or_null);
-
-/* How much space is necessary to encode len bytes in Base64, worst case.
- * Includes room for (CR/LF/CRLF and) terminator, UZ_MAX on overflow */
-FL uz      b64_encode_calc_size(uz len);
-
-/* Note these simply convert all the input (if possible), including the
- * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
- * if B64_MULTILINE is set).
- * Thus, in the B64_BUF case, better call b64_encode_calc_size() first.
- * Return NULL on error (overflow; cannot happen for B64_BUF) */
-FL struct str * b64_encode(struct str *out, struct str const *in,
-                  enum b64flags flags);
-FL struct str * b64_encode_buf(struct str *out, void const *vp, uz vp_len,
-                  enum b64flags flags);
-#ifdef notyet
-FL struct str * b64_encode_cp(struct str *out, char const *cp,
-                  enum b64flags flags);
-#endif
-
-/* The _{header,part}() variants are failure tolerant, the latter requires
- * outrest to be set; due to the odd 4:3 relation inrest_or_null should be
- * given, _then_, it is an error if it is needed but not set.
- * TODO pre v15 callers should ensure that no endless loop is entered because
- * TODO the inrest cannot be converted and ends up as inrest over and over:
- * TODO give NULL to stop such loops.
- * The buffers of out and possibly *rest* will be managed via n_realloc().
- * Returns FAL0 on error; caller is responsible to free buffers.
- * XXX FAL0 is effectively not returned for _part*() variants,
- * XXX (instead replacement characters are produced for invalid data.
- * XXX _Unless_ operation could EOVERFLOW.)
- * XXX I.e. this is bad and is tolerant for text and otherwise not */
-FL boole      b64_decode(struct str *out, struct str const *in);
-FL boole      b64_decode_header(struct str *out, struct str const *in);
-FL boole      b64_decode_part(struct str *out, struct str const *in,
-                  struct str *outrest, struct str *inrest_or_null);
-
-/*
- * mime-param.c
- */
-
-/* Get a mime style parameter from a header body */
-FL char *      mime_param_get(char const *param, char const *headerbody);
-
-/* Format parameter name to have value, autorec_alloc() it or NULL in result.
- * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
- * which it will if the created param requires more than MIME_LINELEN bytes;
- * there is never a trailing newline character */
-/* TODO mime_param_create() should return a StrList<> or something.
- * TODO in fact it should take a HeaderField* and append HeaderFieldParam*! */
-FL s8       mime_param_create(struct str *result, char const *name,
-                  char const *value);
-
-/* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * autorec_alloc()ed copy of it; store su_cs_len() in *len if set */
-FL char *      mime_param_boundary_get(char const *headerbody, uz *len);
-
-/* Create a autorec_alloc()ed MIME boundary */
-FL char *      mime_param_boundary_create(void);
-
-/*
- * mime-parse.c
- */
-
-/* Create MIME part object tree for and of mp */
-FL struct mimepart * mime_parse_msg(struct message *mp,
-                        enum mime_parse_flags mpf);
 
 /*
  * path.c
@@ -1349,20 +1014,6 @@ FL boole n_shexp_is_valid_varname(char const *name, boole forenviron);
 
 /* `shcodec' */
 FL int c_shcodec(void *vp);
-
-/*
- * spam.c
- */
-
-#ifdef mx_HAVE_SPAM
-/* Direct mappings of the various spam* commands */
-FL int c_spam_clear(void *v);
-FL int c_spam_set(void *v);
-FL int c_spam_forget(void *v);
-FL int c_spam_ham(void *v);
-FL int c_spam_rate(void *v);
-FL int c_spam_spam(void *v);
-#endif
 
 /*
  * strings.c
@@ -1694,7 +1345,7 @@ FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
  */
 
 #ifdef mx_HAVE_IMAP
-FL void n_go_onintr_for_imap(void);
+FL void mx_go_onintr_for_imap(void);
 
 /* The former returns the input again if no conversion is necessary */
 FL char const *imap_path_encode(char const *path, boole *err_or_null);

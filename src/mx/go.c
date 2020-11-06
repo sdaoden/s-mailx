@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Program input of all sorts, input lexing, event loops, command evaluation.
+ *@ Implementation of go.h.
  *@ TODO - everything should take a_go_ctx* and work through it.
  *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
  *@ TODO - sigs_hold_all() most often on, especially robot mode: TERRIBLE!
@@ -7,37 +7,20 @@
  *@ TODO   example to handle injections, and also `readctl' channels!
  *@ TODO   (Including sh(1)ell HERE strings and such.)
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause TODO ISC
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
 #define su_FILE go
@@ -51,9 +34,11 @@
 #include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/child.h"
 #include "mx/cmd.h"
+#include "mx/cmd-cnd.h"
 #include "mx/cmd-commandalias.h"
 #include "mx/colour.h"
 #include "mx/dig-msg.h"
@@ -63,21 +48,21 @@
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 
-/* TODO fake */
+#include "mx/go.h"
 #include "su/code-in.h"
 
 enum a_go_flags{
    a_GO_NONE,
-   a_GO_FREE = 1u<<0,         /* Structure was allocated, n_free() it */
-   a_GO_PIPE = 1u<<1,         /* Open on a pipe */
-   a_GO_FILE = 1u<<2,         /* Loading or sourcing a file */
-   a_GO_MACRO = 1u<<3,        /* Running a macro */
-   a_GO_MACRO_FREE_DATA = 1u<<4, /* Lines are allocated, n_free() once done */
+   a_GO_FREE = 1u<<0, /* Structure was allocated, FREE() it */
+   a_GO_PIPE = 1u<<1, /* Open on a pipe */
+   a_GO_FILE = 1u<<2, /* Loading or sourcing a file */
+   a_GO_MACRO = 1u<<3, /* Running a macro */
+   a_GO_MACRO_FREE_DATA = 1u<<4, /* Lines are allocated, FREE() once done */
    /* TODO For simplicity this is yet _MACRO plus specialization overlay
     * TODO (_X_OPTION, _BLTIN_RC, _CMD) -- should be types on their own! */
    a_GO_MACRO_X_OPTION = 1u<<5, /* Macro indeed command line -X option */
    a_GO_MACRO_BLTIN_RC = 1u<<6, /* Macro indeed command line -:x option */
-   a_GO_MACRO_CMD = 1u<<7,    /* Macro indeed single-line: ~:COMMAND */
+   a_GO_MACRO_CMD = 1u<<7, /* Macro indeed single-line: ~:COMMAND */
    /* TODO a_GO_SPLICE: the right way to support *on-compose-splice(-shell)?*
     * TODO would be a command_loop object that emits an on_read_line event, and
     * TODO have a special handler for the compose mode; with that, then,
@@ -85,8 +70,8 @@ enum a_go_flags{
     * TODO and _evaluate() would be the standard impl.,
     * TODO whereas the COMMAND ESCAPE switch in collect.c would be another one.
     * TODO With this generic accmacvar.c:temporary_compose_mode_hook_call()
-    * TODO could be dropped, and n_go_macro() could become extended,
-    * TODO and/or we would add a n_go_anything(), which would allow special
+    * TODO could be dropped, and go_macro() could become extended,
+    * TODO and/or we would add a go_anything(), which would allow special
     * TODO input handlers, special I/O input and output, special `localopts'
     * TODO etc., to be glued to the new execution context.  And all I/O all
     * TODO over this software should not use stdin/stdout, but CTX->in/out.
@@ -103,7 +88,7 @@ enum a_go_flags{
          /* a_GO_MACRO_X_OPTION | a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD | */
          a_GO_SPLICE,
 
-   a_GO_FORCE_EOF = 1u<<14,    /* go_input() shall return EOF next */
+   a_GO_FORCE_EOF = 1u<<14, /* go_input() shall return EOF next */
    a_GO_IS_EOF = 1u<<15,
 
    /* We are down the call chain of a .. robot (Combinable) */
@@ -111,41 +96,41 @@ enum a_go_flags{
    a_GO_FILE_ROBOT = 1u<<17,
    /* This context has inherited the memory bag from its parent.
     * In practice only used for resource file loading and -X args, which enter
-    * a top level n_go_main_loop() and should (re)use the in practice already
+    * a top level go_main_loop() and should (re)use the in practice already
     * allocated memory bag of the global context.
-    * The bag memory is reset after use. */
+    * The bag memory is reset after used */
    a_GO_MEMBAG_INHERITED = 1u<<18,
    /* This context has inherited the entire data context from its parent */
    a_GO_DATACTX_INHERITED = 1u<<19,
 
-   a_GO_XCALL_IS_CALL = 1u<<24,  /* n_GO_INPUT_NO_XCALL */
-   /* `xcall' optimization barrier: n_go_macro() has been finished with
-    * a `xcall' request, and `xcall' set this in the parent a_go_input of the
-    * said n_go_macro() to indicate a barrier: we teardown the a_go_input of
-    * the n_go_macro() away after leaving its _event_loop(), but then,
-    * back in n_go_macro(), that enters a for(;;) loop that directly calls
-    * c_call() -- our `xcall' stack avoidance optimization --, yet this call
-    * will itself end up in a new n_go_macro(), and if that again ends up with
-    * `xcall' this should teardown and leave its own n_go_macro(), unrolling
-    * the stack "up to the barrier level", but which effectively still is the
-    * n_go_macro() that lost its a_go_input and is looping the `xcall'
-    * optimization loop.  If no `xcall' is desired that loop is simply left and
-    * the _event_loop() of the outer a_go_ctx will perform a loop tick and
-    * clear this bit again OR become teardown itself */
-   a_GO_XCALL_LOOP = 1u<<25,  /* `xcall' optimization barrier level */
+   a_GO_XCALL_IS_CALL = 1u<<24, /* GO_INPUT_NO_XCALL */
+   /* `xcall' optimization barrier: go_macro() has been finished with a `xcall'
+    * request, and `xcall' set this in the parent _go_input of the said
+    * go_macro() to indicate a barrier: we teardown the _go_input of the
+    * go_macro() away after leaving its _event_loop(), but then, back in
+    * go_macro(), that enters a for(;;) loop that directly calls c_call() --
+    * our `xcall' stack avoidance optimization --, yet this call will itself
+    * end up in a new go_macro(), and if that again ends up with `xcall' this
+    * should teardown and leave its own go_macro(), unrolling the stack "up to
+    * the barrier level", but which effectively still is the go_macro() that
+    * lost its _go_input and is looping the `xcall' optimization loop.  If no
+    * `xcall' is desired that loop is simply left and the _event_loop() of the
+    * outer _go_ctx will perform a loop tick and clear this bit again OR become
+    * teardown itself */
+   a_GO_XCALL_LOOP = 1u<<25,
    a_GO_XCALL_LOOP_ERROR = 1u<<26, /* .. state machine error transporter */
    a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR
 };
 
 enum a_go_cleanup_mode{
-   a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all ctxs except outermost */
-   a_GO_CLEANUP_TEARDOWN = 1u<<1,   /* Teardown current context */
-   a_GO_CLEANUP_LOOPTICK = 1u<<2,   /* Normal looptick cleanup */
+   a_GO_CLEANUP_UNWIND = 1u<<0, /* Teardown all ctxs except outermost */
+   a_GO_CLEANUP_TEARDOWN = 1u<<1, /* Teardown current context */
+   a_GO_CLEANUP_LOOPTICK = 1u<<2, /* Normal looptick cleanup */
    a_GO_CLEANUP_MODE_MASK = su_BITENUM_MASK(0, 2),
 
-   a_GO_CLEANUP_ERROR = 1u<<8,      /* Error occurred on level */
-   a_GO_CLEANUP_SIGINT = 1u<<9,     /* Interrupt signal received */
-   a_GO_CLEANUP_HOLDALLSIGS = 1u<<10 /* sigs_all_hol() active TODO */
+   a_GO_CLEANUP_ERROR = 1u<<8, /* Error occurred on level */
+   a_GO_CLEANUP_SIGINT = 1u<<9, /* Interrupt signal received */
+   a_GO_CLEANUP_HOLDALLSIGS = 1u<<10 /* sigs_all_hold() active TODO */
 };
 
 enum a_go_hist_flags{
@@ -163,7 +148,7 @@ struct a_go_eval_ctx{
    boole gec_ignerr; /* Implicit `ignerr' prefix */
    u8 gec__dummy[1];
    u8 gec_hist_flags; /* enum a_go_hist_flags */
-   char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
+   char const *gec_hist_cmd; /* If _GO_HIST_ADD only, cmd and args */
    char const *gec_hist_args;
 };
 
@@ -178,29 +163,29 @@ struct a_go_input_inject{
 struct a_go_ctx{
    struct a_go_ctx *gc_outer;
    sigset_t gc_osigmask;
-   u32 gc_flags;           /* enum a_go_flags */
-   u32 gc_loff;            /* Pseudo (macro): index in .gc_lines */
-   char **gc_lines;           /* Pseudo content, lines unfolded */
-   FILE *gc_file;             /* File we were in, if applicable */
+   u32 gc_flags; /* enum _go_flags */
+   u32 gc_loff; /* Pseudo (macro): index in .gc_lines */
+   char **gc_lines; /* Pseudo content, lines unfolded */
+   FILE *gc_file; /* File we were in, if applicable */
    struct a_go_input_inject *gc_inject; /* To be consumed first */
    void (*gc_on_finalize)(void *);
    void *gc_finalize_arg;
-   sigjmp_buf gc_eloop_jmp;   /* TODO one day...  for _event_loop() */
+   sigjmp_buf gc_eloop_jmp; /* TODO one day...  for _event_loop() */
    /* SPLICE hacks: saved stdin/stdout, saved pstate */
    FILE *gc_splice_stdin;
    FILE *gc_splice_stdout;
    u32 gc_splice_psonce;
    u8 gc_splice__dummy[4];
-   struct n_go_data_ctx gc_data;
+   struct mx_go_data_ctx gc_data;
    char gc_name[VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
 struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    struct a_go_readctl_ctx *grc_last;
    struct a_go_readctl_ctx *grc_next;
-   char const *grc_expand;          /* If filename based, expanded string */
+   char const *grc_expand; /* If filename based, expanded string */
    FILE *grc_fp;
-   s32 grc_fd;                   /* Based upon file-descriptor */
+   s32 grc_fd; /* Based upon file-descriptor */
    char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
 };
 
@@ -216,18 +201,20 @@ static struct a_go_ctx *a_go_ctx;
 #define a_GO_MAINCTX_NAME "top level/main loop"
 static union{
    u64 align;
-   char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          sizeof(a_GO_MAINCTX_NAME)];
 } a_go__mainctx_b;
 
 /* `xcall' stack-avoidance bypass optimization.  This actually is
  * a cmd_arg_save_to_heap() buffer with cmd_arg_ctx.cac_indat misused to
- * point to the a_go_ctx to unroll up to */
+ * point to the _go_ctx to unroll up to */
 static void *a_go_xcall; /* XXX without global data! store in context! */
 
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
-/* n_PS_STATE_PENDMASK requires some actions */
+struct mx_go_data_ctx *mx_go_data;
+
+/* PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
 
 /* Evaluate a single command */
@@ -242,7 +229,8 @@ static void a_go_onintr(int s);
 /* Cleanup gcp (current execution context; xxx update the program state).
  * If _CLEANUP_ERROR is set then we do not alert and error out if the stack
  * does not exist at all, unless _CLEANUP_HOLDALLSIGS we sigs_all_hold() */
-static void a_go_cleanup(struct a_go_ctx *gcp, enum a_go_cleanup_mode gcm);
+static void a_go_cleanup(struct a_go_ctx *gcp,
+      BITENUM_IS(u32,a_go_cleanup_mode) gcm);
 
 /* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
  * Returns FAL0 if file is somehow not usable (unless silent_open_error) or
@@ -253,7 +241,8 @@ static boole a_go_file(char const *file, boole silent_open_error);
 static boole a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
-static boole a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
+static boole a_go_event_loop(struct a_go_ctx *gcp,
+      BITENUM_IS(u32,mx_go_input_flags) gif);
 
 static void
 a_go_update_pstate(void){
@@ -264,13 +253,14 @@ a_go_update_pstate(void){
    n_pstate &= ~n_PS_PSTATE_PENDMASK;
 
    if(act){
-      char buf[32];
+      char iencbuf[su_IENC_BUFFER_SIZE], *cp;
 
-      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_real_width);
-      ok_vset(COLUMNS, buf);
-      snprintf(buf, sizeof buf, "%u", mx_termios_dimen.tiosd_real_height);
-      ok_vset(LINES, buf);
+      cp = su_ienc_u32(iencbuf, mx_termios_dimen.tiosd_real_width, 10);
+      ok_vset(COLUMNS, cp);
+      cp = su_ienc_u32(iencbuf, mx_termios_dimen.tiosd_real_height, 10);
+      ok_vset(LINES, cp);
    }
+
    NYD_OU;
 }
 
@@ -305,25 +295,26 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
    } flags;
    NYD_IN;
 
+   /* Take care not to overwrite existing exit status */
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = n_EXIT_OK;
 
-   flags = ((n_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
+   flags = ((mx_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    rv = 1;
    nerrn = su_ERR_NONE;
    nexn = n_EXIT_OK;
-   cdp = NULL;
-   vput = NULL;
-   alias_name = NULL;
+   cdp = NIL;
+   vput = NIL;
+   alias_name = NIL;
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    ASSERT(line.s[line.l] == '\0');
 
    if(line.l > 0 && su_cs_is_space(line.s[0]))
       gecp->gec_hist_flags = a_GO_HIST_NONE;
    else if(gecp->gec_hist_flags & a_GO_HIST_ADD)
-      gecp->gec_hist_cmd = gecp->gec_hist_args = NULL;
-   s = NULL;
+      gecp->gec_hist_cmd = gecp->gec_hist_args = NIL;
+   s = NIL;
 
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
@@ -343,8 +334,8 @@ jrestart:
       flags |= a_NOALIAS;
    }
 
-   /* Note: adding more special treatments must be reflected in the `help' etc.
-    * output in cmd.c! */
+   /* Note: adding more special treatments must be reflected in the `help'
+    * etc. output in cmd.c! */
 
    /* Ignore null commands (comments) */
    if(*cp == '#'){
@@ -359,11 +350,11 @@ jrestart:
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = n_UNCONST(mx_cmd_isolate_name(cp))) == line.s &&
+   else if((cp = UNCONST(char*,mx_cmd_isolate_name(cp))) == line.s &&
          (*cp == '|' || *cp == '?'))
       ++cp;
-   c = (int)P2UZ(cp - line.s);
-   word = UCMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
+   c = S(int,P2UZ(cp - line.s));
+   word = UCMP(z, c, <, sizeof _wordbuf) ? _wordbuf : su_AUTO_ALLOC(c +1);
    su_mem_copy(word, line.s, c);
    word[c] = '\0';
    line.l -= c;
@@ -437,10 +428,12 @@ jrestart:
 
       if(flags & a_NOALIAS)
          s = n_string_push_c(s, '\\');
-      if(flags & a_IGNERR)
-         s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
       if(flags & a_WYSH)
          s = n_string_push_buf(s, "wysh ", sizeof("wysh ") -1);
+      if(flags & a_IGNERR)
+         s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
+      if(flags & a_LOCAL)
+         s = n_string_push_buf(s, "local ", sizeof("local ") -1);
       if(flags & a_VPUT)
          s = n_string_push_buf(s, "vput ", sizeof("vput ") -1);
       gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
@@ -467,23 +460,23 @@ jrestart:
        * equal name allow one level of expansion to return an equal result:
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit".
        * P.S.: should also work for "help x" ... */
-      if(alias_name != NULL && !su_cs_cmp(word, alias_name))
+      if(alias_name != NIL && !su_cs_cmp(word, alias_name))
          flags |= a_NOALIAS;
 
-      if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
+      if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NIL){
          uz i;
 
-         if(s != NULL){
+         if(s != NIL){
             s = n_string_push_cp(s, word);
             gecp->gec_hist_cmd = n_string_cp(s);
-            s = NULL;
+            s = NIL;
          }
 
          /* And join arguments onto alias expansion */
          alias_name = word;
          i = strlen(alias_exp);
          cp = line.s;
-         line.s = n_autorec_alloc(i + 1 + line.l +1);
+         line.s = su_AUTO_ALLOC(i + 1 + line.l +1);
          su_mem_copy(line.s, alias_exp, i);
          if(line.l > 0){
             line.s[i++] = ' ';
@@ -498,7 +491,7 @@ jrestart:
    if((cdp = mx_cmd_firstfit(word)) == NIL){
       if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
          n_err(_("%s: unknown command%s\n"),
-            prstr(word), ((flags & a_IS_SKIP)
+            mx_makeprint_cp(word), ((flags & a_IS_SKIP)
                ? _(" (ignored due to `if' condition)") : su_empty));
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       if(flags & a_IS_SKIP)
@@ -529,8 +522,7 @@ jwhite:
       case mx_CMD_ARG_TYPE_WYRA:{
             char const *v15compat;
 
-            if((v15compat = ok_vlook(v15_compat)) == su_NIL ||
-                  *v15compat == '\0')
+            if((v15compat = ok_vlook(v15_compat)) == NIL || *v15compat == '\0')
                break;
          }
          /* FALLTHRU */
@@ -542,12 +534,13 @@ jwhite:
 
          emsg = line.s;
          for(once = FAL0, s = n_string_creat_auto(&s_b);; once = TRU1){
-            su_u32 shs;
+            u32 shs;
 
             shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON |
                      n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_TRIM_SPACE |
                      n_SHEXP_PARSE_TRIM_IFSSPACE), s, &line,
-                  NULL);
+                  NIL);
+
             if(!once && (flags & a_IS_EMPTY) && s->s_len != 0)
                n_err(_("The empty (default) command is ignored here, "
                      "but has arguments: %s\n"), emsg);
@@ -555,7 +548,7 @@ jwhite:
                break;
             if(shs & n_SHEXP_STATE_META_SEMICOLON){
                ASSERT(shs & n_SHEXP_STATE_STOP);
-               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, line.s, line.l);
+               mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, line.s, line.l);
                break;
             }
          }
@@ -596,7 +589,7 @@ jwhite:
       }
       /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT; see a.._may_yield_control()! */
-      if((n_pstate & n_PS_ROBOT) && !n_go_may_yield_control()){
+      if((n_pstate & n_PS_ROBOT) && !mx_go_may_yield_control()){
          emsg = N_("%s: cannot be used in this program state\n");
          goto jeflags;
       }
@@ -638,7 +631,7 @@ jeflags:
    }
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
-    * TODO doesn't use any of those list commands which strip this mask,
+    * TODO does not use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
     * TODO argument state should be property of a per-cmd carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
@@ -681,18 +674,18 @@ jeflags:
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= P2UZ(emsg - line.s);
-         line.s = n_UNCONST(emsg);
-         if(emsg == NULL)
+         line.s = UNCONST(char*,emsg);
+         if(emsg == NIL)
             emsg = N_("could not parse input token");
          else if(!n_shexp_is_valid_varname(vput, FAL0))
             emsg = N_("not a valid variable name");
          else if(!n_var_is_user_writable(vput))
             emsg = N_("either not a user writable, or a boolean variable");
          else
-            emsg = NULL;
-         if(emsg != NULL){
-            n_err("%s: vput: %s: %s\n",
-                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
+            emsg = NIL;
+         if(emsg != NIL){
+            n_err("%s: %s: vput: %s: %s\n",
+               n_ERROR, cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
             nerrn = su_ERR_NOTSUP;
             rv = -1;
             goto jleave;
@@ -714,9 +707,9 @@ jeflags:
    switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
    case mx_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
-      if(n_msgvec == NULL)
+      if(n_msgvec == NIL)
          goto jmsglist_err;
-      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NULL)
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL)
             ) < 0){
          nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
@@ -741,7 +734,7 @@ jmsglist_go:
       /* C99 */{
          int *mvp;
 
-         mvp = n_autorec_calloc(c +1, sizeof *mvp);
+         mvp = su_AUTO_CALLOC_N(sizeof *mvp, c +1);
          while(c-- > 0)
             mvp[c] = n_msgvec[c];
          if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM))/*XXX*/
@@ -752,7 +745,7 @@ jmsglist_go:
 
    case mx_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
-      if(n_msgvec == NULL)
+      if(n_msgvec == NIL)
          goto jmsglist_err;
       if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL)
             ) < 0){
@@ -777,7 +770,7 @@ jmsglist_go:
       if(flags & a_VPUT)
          *argvp++ = vput;
       *argvp++ = line.s;
-      *argvp = NULL;
+      *argvp = NIL;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_stack);
@@ -791,8 +784,7 @@ jmsglist_go:
          /* C99 */{
             char const *v15compat;
 
-            if((v15compat = ok_vlook(v15_compat)) != su_NIL &&
-                  *v15compat != '\0')
+            if((v15compat = ok_vlook(v15_compat)) != NIL && *v15compat != '\0')
                flags |= a_WYSH;
          }
          c = (flags & a_WYSH) ? 1 : 0;
@@ -801,7 +793,8 @@ jmsglist_go:
             c = 0;
          }
       }
-      argvp = argv_base = n_autorec_alloc(sizeof(*argv_base) * n_MAXARGC);
+
+      argvp = argv_base = su_AUTO_ALLOC(sizeof(*argv_base) * n_MAXARGC);
       if(flags & a_VPUT)
          *argvp++ = vput;
       if((c = getrawlist((c != 0), argvp,
@@ -821,17 +814,17 @@ jmsglist_go:
          break;
       }
 
+      if(flags & a_WYSH)
+         n_pstate |= n_PS_ARGMOD_WYSH;
       if(flags & a_LOCAL)
          n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
-      if(flags & a_WYSH)
-         n_pstate |= n_PS_ARGMOD_WYSH;
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_base);
-      if(a_go_xcall != NULL)
+      if(a_go_xcall != NIL)
          goto jret0;
       break;
 
@@ -861,7 +854,7 @@ jmsglist_go:
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(&cac);
-      if(a_go_xcall != NULL)
+      if(a_go_xcall != NIL)
          goto jret0;
       }break;
 
@@ -901,18 +894,12 @@ jleave:
       gecp->gec_hist_flags |= a_GO_HIST_GABBY_ERROR;
 
    if(flags & a_IGNERR){
+      /* Take care not to overwrite existing exit status */
       if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
          n_exit_status = n_EXIT_OK;
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
    }else if(rv != 0){
-      boole bo;
-
-      if((bo = ok_blook(batch_exit_on_error))){
-         n_OBSOLETE(_("please use *errexit*, not *batch-exit-on-error*"));
-         if(!(n_poption & n_PO_BATCH_FLAG))
-            bo = FAL0;
-      }
-      if(ok_blook(errexit) || bo) /* TODO v15: drop bo */
+      if(ok_blook(errexit))
          n_pstate |= n_PS_ERR_QUIT;
       else if(ok_blook(posix)){
          if(n_psonce & n_PSO_STARTED)
@@ -933,10 +920,10 @@ jleave:
       }
    }
 
-   if(cdp == NULL)
+   if(cdp == NIL)
       goto jret0;
    if((cdp->cd_caflags & mx_CMD_ARG_P) && ok_blook(autoprint) && visible(dot))
-      n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
+      mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, "\\type",
          sizeof("\\type") -1);
 
    if(!(cdp->cd_caflags & mx_CMD_ARG_T) && !(gcp->gc_flags & a_GO_FILE) &&
@@ -949,6 +936,7 @@ jret:
    if(!(flags & a_NO_ERRNO))
       n_pstate_err_no = nerrn;
    n_pstate_ex_no = nexn;
+
    NYD_OU;
    return (rv == 0);
 }
@@ -962,8 +950,10 @@ a_go_hangup(int s){
 }
 
 #ifdef mx_HAVE_IMAP
-FL void n_go_onintr_for_imap(void){a_go_onintr(0);}
+EXPORT void mx_go_onintr_for_imap(void);
+void mx_go_onintr_for_imap(void){a_go_onintr(0);}
 #endif
+
 static void
 a_go_onintr(int s){ /* TODO block signals while acting */
    NYD; /* Signal handler */
@@ -986,7 +976,7 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 }
 
 static void
-a_go_cleanup(struct a_go_ctx *gcp, enum a_go_cleanup_mode gcm){
+a_go_cleanup(struct a_go_ctx *gcp, BITENUM_IS(u32,a_go_cleanup_mode) gcm){
    /* Signals blocked */
    NYD_IN;
 
@@ -998,9 +988,9 @@ jrestart:
    if(!(gcm & a_GO_CLEANUP_LOOPTICK)){
       struct a_go_input_inject **giipp, *giip;
 
-      for(giipp = &gcp->gc_inject; (giip = *giipp) != NULL;){
+      for(giipp = &gcp->gc_inject; (giip = *giipp) != NIL;){
          *giipp = giip->gii_next;
-         n_free(giip);
+         su_FREE(giip);
       }
    }
 
@@ -1014,27 +1004,28 @@ jrestart:
    if(gcp->gc_data.gdc_ifcond != NIL &&
          ((gcp->gc_outer == NIL && (gcm & a_GO_CLEANUP_UNWIND)) ||
             !(gcm & a_GO_CLEANUP_LOOPTICK))){
-      n_cnd_if_stack_del(&gcp->gc_data);
+      mx_cnd_if_stack_del(&gcp->gc_data);
+
       if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
-            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL &&
+            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NIL &&
             !(n_psonce & n_PSO_EXIT_MASK)){
          n_err(_("Unmatched `if' at end of %s%s\n"),
             (gcp->gc_outer == NIL ? su_empty
              : ((gcp->gc_flags & a_GO_MACRO
-              ? (gcp->gc_flags & a_GO_MACRO_CMD ? _(" command") : _(" macro"))
-              : _(" `source'd or resource file")))),
+              ? (gcp->gc_flags & a_GO_MACRO_CMD ? _("command ") : _("macro "))
+              : _("`source'd or resource file")))),
             gcp->gc_name);
          gcm |= a_GO_CLEANUP_ERROR;
       }
    }
 
    /* Work the actual context (according to cleanup mode) */
-   if(gcp->gc_outer == NULL){
+   if(gcp->gc_outer == NIL){
       ASSERT(!(gcp->gc_flags & a_GO_TYPE_MASK));
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
-         if(a_go_xcall != NULL){
-            n_free(a_go_xcall);
-            a_go_xcall = NULL;
+         if(a_go_xcall != NIL){
+            su_FREE(a_go_xcall);
+            a_go_xcall = NIL;
          }
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          n_pstate &= ~n_PS_ERR_EXIT_MASK;
@@ -1043,7 +1034,7 @@ jrestart:
       mx_fs_close_all();
 
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
-      su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+      DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
       n_pstate &= ~n_PS_ROBOT;
       ASSERT(a_go_xcall == NIL);
@@ -1056,7 +1047,7 @@ jrestart:
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
-      su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+      DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
       goto jxleave;
    }else if(gcp->gc_flags & a_GO_SPLICE){ /* TODO Temporary hack */
       n_stdin = gcp->gc_splice_stdin;
@@ -1070,13 +1061,13 @@ jrestart:
       if(gcp->gc_flags & a_GO_MACRO_FREE_DATA){
          char **lp;
 
-         while(*(lp = &gcp->gc_lines[gcp->gc_loff]) != NULL){
-            n_free(*lp);
+         while(*(lp = &gcp->gc_lines[gcp->gc_loff]) != NIL){
+            su_FREE(*lp);
             ++gcp->gc_loff;
          }
          /* Part of gcp's memory chunk, then */
          if(!(gcp->gc_flags & a_GO_MACRO_CMD))
-            n_free(gcp->gc_lines);
+            su_FREE(gcp->gc_lines);
       }
    }else if(gcp->gc_flags & a_GO_PIPE)
       /* XXX command manager should -TERM then -KILL instead of hoping
@@ -1091,17 +1082,17 @@ jrestart:
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
 
 jstackpop:
-   /* xxx Update a_go_ctx and n_go_data, n_pstate ... */
+   /* xxx Update a_go_ctx and go_data, n_pstate ... */
    a_go_ctx = gcp->gc_outer;
-   ASSERT(a_go_ctx != NULL);
+   ASSERT(a_go_ctx != NIL);
    /* C99 */{
       struct a_go_ctx *x;
 
       for(x = a_go_ctx; x->gc_flags & a_GO_DATACTX_INHERITED;){
          x = x->gc_outer;
-         ASSERT(x != NULL);
+         ASSERT(x != NIL);
       }
-      n_go_data = &x->gc_data;
+      mx_go_data = &x->gc_data;
    }
 
    if(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK))
@@ -1109,7 +1100,7 @@ jstackpop:
    else
       ASSERT(n_pstate & n_PS_ROBOT);
 
-   if(gcp->gc_on_finalize != NULL)
+   if(gcp->gc_on_finalize != NIL)
       (*gcp->gc_on_finalize)(gcp->gc_finalize_arg);
 
    if(gcm & a_GO_CLEANUP_ERROR){
@@ -1120,9 +1111,11 @@ jstackpop:
 
 jleave:
    if(gcp->gc_flags & a_GO_FREE)
-      n_free(gcp);
+      su_FREE(gcp);
 
    if(UNLIKELY(gcm & a_GO_CLEANUP_UNWIND) && UNLIKELY(gcp != a_go_ctx)){
+      /* TODO GO_CLEANUP_UNWIND is a fake yet: gcp should be NIL on entry then,
+       * TODO and we should do the right thing, then (see notes around) */
       gcp = a_go_ctx;
       goto jrestart;
    }
@@ -1145,19 +1138,18 @@ jerr:
          (!(n_psonce & n_PSO_STARTED) &&
           !(gcp->gc_flags & (a_GO_SPLICE | a_GO_MACRO)) &&
           (gcp->gc_outer == NIL ||
-            !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK))))
+           !(gcp->gc_outer->gc_flags & a_GO_TYPE_MASK))))
       /* I18N: file inclusion, macro etc. evaluation has been stopped */
       n_alert(_("Stopped %s %s due to errors%s"),
          (n_psonce & n_PSO_STARTED
           ? (gcp->gc_flags & a_GO_SPLICE ? _("spliced in program")
-          : (gcp->gc_flags & a_GO_MACRO
-             ? (gcp->gc_flags & a_GO_MACRO_CMD
-                ? _("evaluating command") : _("evaluating macro"))
-             : (gcp->gc_flags & a_GO_PIPE
-                ? _("executing `source'd pipe")
-                : (gcp->gc_flags & a_GO_FILE
-                  ? _("loading `source'd file") : _(a_GO_MAINCTX_NAME))))
-          )
+            : (gcp->gc_flags & a_GO_MACRO
+               ? (gcp->gc_flags & a_GO_MACRO_CMD
+                  ? _("evaluating command") : _("evaluating macro"))
+               : (gcp->gc_flags & a_GO_PIPE
+                  ? _("executing `source'd pipe")
+                  : (gcp->gc_flags & a_GO_FILE
+                     ? _("loading `source'd file") : _(a_GO_MAINCTX_NAME)))))
           : (((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_BLTIN_RC)
                ) == a_GO_MACRO)
              ? ((gcp->gc_flags & a_GO_MACRO_X_OPTION)
@@ -1165,7 +1157,7 @@ jerr:
                 : _("evaluating macro"))
              : _("loading initialization resource"))),
          n_shexp_quote_cp(gcp->gc_name, FAL0),
-         (n_poption & n_PO_D ? n_empty : _(" (enable *debug* for trace)")));
+         (n_poption & n_PO_D ? su_empty : _(" (enable *debug* for trace)")));
    goto jleave;
 }
 
@@ -1217,15 +1209,15 @@ jeopencheck:
       if(!silent_open_error || (n_poption & n_PO_D_V))
          n_perr(nbuf, 0);
       if(silent_open_error)
-         fip = (FILE*)-1;
+         fip = R(FILE*,-1);
       goto jleave;
    }
 
-   sigprocmask(SIG_BLOCK, NULL, &osigmask);
+   sigprocmask(SIG_BLOCK, NIL, &osigmask);
 
-   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          (nlen = su_cs_len(nbuf) +1));
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -1240,13 +1232,14 @@ jeopencheck:
    su_mem_copy(gcp->gc_name, nbuf, nlen);
 
    a_go_ctx = gcp;
-   n_go_data = &gcp->gc_data;
+   mx_go_data = &gcp->gc_data;
    n_pstate |= n_PS_ROBOT;
-   if(!a_go_event_loop(gcp, n_GO_INPUT_NONE | n_GO_INPUT_NL_ESC))
-      fip = NULL;
+   if(!a_go_event_loop(gcp, mx_GO_INPUT_NONE | mx_GO_INPUT_NL_ESC))
+      fip = NIL;
+
 jleave:
    NYD_OU;
-   return (fip != NULL);
+   return (fip != NIL);
 }
 
 static boole
@@ -1257,7 +1250,7 @@ a_go_load(struct a_go_ctx *gcp){
    ASSERT(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK));
 
    gcp->gc_flags |= a_GO_MEMBAG_INHERITED;
-   gcp->gc_data.gdc_membag = n_go_data->gdc_membag;
+   gcp->gc_data.gdc_membag = mx_go_data->gdc_membag;
 
    mx_sigs_all_holdx();
 
@@ -1268,13 +1261,13 @@ a_go_load(struct a_go_ctx *gcp){
     *    the start-up file. */
    gcp->gc_outer = a_go_ctx;
    a_go_ctx = gcp;
-   n_go_data = &gcp->gc_data;
+   mx_go_data = &gcp->gc_data;
 
    n_pstate |= n_PS_ROBOT;
 
    mx_sigs_all_rele();
 
-   n_go_main_loop(FAL0);
+   mx_go_main_loop(FAL0);
 
    NYD2_OU;
    return (((n_psonce & n_PSO_EXIT_MASK) |
@@ -1289,7 +1282,7 @@ a_go__eloopint(int sig){ /* TODO one day, we don't need it no more */
 }
 
 static boole
-a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
+a_go_event_loop(struct a_go_ctx *gcp, BITENUM_IS(u32,mx_go_input_flags) gif){
    n_sighdl_t soldhdl;
    struct a_go_eval_ctx gec;
    enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
@@ -1298,7 +1291,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    NYD2_IN;
 
    su_mem_set(&gec, 0, sizeof gec);
-   if(gif & n_GO_INPUT_IGNERR)
+   if(gif & mx_GO_INPUT_IGNERR)
       gec.gec_ignerr = TRU1;
    mx_fs_linepool_aquire(&gec.gec_line.s, &gec.gec_line.l);
 
@@ -1322,13 +1315,13 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
 
       if(f & a_TICKED){
          su_mem_bag_reset(gcp->gc_data.gdc_membag);
-         su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+         DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
       }
 
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
       mx_sigs_all_rele();
-      n = n_go_input(gif, NULL, &gec.gec_line.s, &gec.gec_line.l, NULL, NULL);
+      n = mx_go_input(gif, NIL, &gec.gec_line.s, &gec.gec_line.l, NIL, NIL);
       mx_sigs_all_holdx();
       gec.gec_line_size = S(u32,gec.gec_line.l);
       gec.gec_line.l = S(u32,n);
@@ -1342,7 +1335,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          f &= ~a_RETOK;
       mx_sigs_all_holdx();
 
-      if(!(f & a_RETOK) || a_go_xcall != NULL ||
+      if(!(f & a_RETOK) || a_go_xcall != NIL ||
             (n_psonce & n_PSO_EXIT_MASK) || (n_pstate & n_PS_ERR_EXIT_MASK))
          break;
    }
@@ -1362,21 +1355,21 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE!
    NYD2_OU;
    mx_sigs_all_rele();
    if(hadint){
-      sigprocmask(SIG_SETMASK, &osigmask, NULL);
+      sigprocmask(SIG_SETMASK, &osigmask, NIL);
       n_raise(SIGINT);
    }
    return (f & a_RETOK);
 }
 
-FL void
-n_go_init(void){
+void
+mx_go_init(void){
    struct a_go_ctx *gcp;
    NYD2_IN;
 
-   ASSERT(n_stdin != NULL);
+   ASSERT(n_stdin != NIL);
 
-   gcp = (void*)a_go__mainctx_b.uf;
-   su_DBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
+   gcp = S(void*,a_go__mainctx_b.uf);
+   DBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
       su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -1384,15 +1377,16 @@ n_go_init(void){
    su_mem_copy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
 
    a_go_ctx = gcp;
-   n_go_data = &gcp->gc_data;
+   mx_go_data = &gcp->gc_data;
 
    mx_termios_controller_setup(mx_TERMIOS_SETUP_STARTUP);
    mx_child_controller_setup();
+
    NYD2_OU;
 }
 
-FL boole
-n_go_main_loop(boole main_call){ /* FIXME */
+boole
+mx_go_main_loop(boole main_call){ /* FIXME */
    struct a_go_eval_ctx gec;
    int n, eofcnt;
    boole volatile rv;
@@ -1414,9 +1408,9 @@ n_go_main_loop(boole main_call){ /* FIXME */
    (void)sigsetjmp(a_go_srbuf, 1); /* FIXME get rid */
    mx_sigs_all_holdx();
 
-   for (eofcnt = 0;; gec.gec_ever_seen = TRU1) {
+   for(eofcnt = 0;; gec.gec_ever_seen = TRU1){
       interrupts = 0;
-      DVL(su_nyd_reset_level(1);)
+      DVL( su_nyd_reset_level(1); )
 
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
@@ -1427,7 +1421,7 @@ n_go_main_loop(boole main_call){ /* FIXME */
       /* TODO This condition test may not be here: if the condition is not true
        * TODO a recursive mainloop object without that cruft should be used! */
       if(!(n_pstate & n_PS_ROBOT)){
-         if(a_go_ctx->gc_inject == su_NIL)
+         if(a_go_ctx->gc_inject == NIL)
             mx_fs_linepool_cleanup(FAL0);
 
          /* TODO We need a regular on_tick_event, to which this one, the
@@ -1443,10 +1437,10 @@ n_go_main_loop(boole main_call){ /* FIXME */
          }
 
          /* Do not check newmail with active injections, wait for prompt */
-         if(a_go_ctx->gc_inject == su_NIL && (n_psonce & n_PSO_INTERACTIVE)){
+         if(a_go_ctx->gc_inject == NIL && (n_psonce & n_PSO_INTERACTIVE)){
             char *cp;
 
-            if ((cp = ok_vlook(newmail)) != NULL) { /* TODO on_tick_event! */
+            if((cp = ok_vlook(newmail)) != NIL){ /* TODO -> on_tick_event! */
                struct stat st;
 
                if(mb.mb_type == MB_FILE){
@@ -1483,7 +1477,7 @@ n_go_main_loop(boole main_call){ /* FIXME */
                   }
                }else{
 #if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
-                  n = (cp != NULL && su_cs_cmp(cp, "nopoll"));
+                  n = (cp != NIL && su_cs_cmp(cp, "nopoll"));
 #endif
 
 #ifdef mx_HAVE_MAILDIR
@@ -1495,9 +1489,9 @@ n_go_main_loop(boole main_call){ /* FIXME */
 #ifdef mx_HAVE_IMAP
                   if(mb.mb_type == MB_IMAP){
                      if(!n)
-                        n = (cp != NULL && su_cs_cmp(cp, "noimap"));
+                        n = (cp != NIL && su_cs_cmp(cp, "noimap"));
 
-                     if(imap_newmail(n) > (cp == NULL))
+                     if(imap_newmail(n) > (cp == NIL))
                         goto Jnewmail;
                   }
 #endif
@@ -1519,8 +1513,8 @@ n_go_main_loop(boole main_call){ /* FIXME */
                 a_go_ctx->gc_inject == NIL); /* xxx really injection? */
          mx_sigs_all_rele();
          ASSERT(!gec.gec_ignerr);
-         n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
-               &gec.gec_line.s, &gec.gec_line.l, NULL, &histadd);
+         n = mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, NIL,
+               &gec.gec_line.s, &gec.gec_line.l, NIL, &histadd);
          mx_sigs_all_holdx();
 
          gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
@@ -1534,7 +1528,7 @@ n_go_main_loop(boole main_call){ /* FIXME */
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
                ++eofcnt < 4){
             fprintf(n_stdout, _("*ignoreeof* set, use `quit' to quit.\n"));
-            n_go_input_clearerr();
+            mx_go_input_clearerr();
             continue;
          }
          break;
@@ -1562,17 +1556,17 @@ n_go_main_loop(boole main_call){ /* FIXME */
           * TODO addhist, see *on-history-addition* for the why of this */
          cc = gec.gec_hist_cmd;
          ca = gec.gec_hist_args;
-         if(cc != NULL && ca != NULL)
+         if(cc != NIL && ca != NIL)
             cc = savecatsep(cc, ' ', ca);
-         else if(ca != NULL)
+         else if(ca != NIL)
             cc = ca;
-         ASSERT(cc != NULL);
-         mx_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
+         ASSERT(cc != NIL);
+         mx_tty_addhist(cc, (mx_GO_INPUT_CTX_DEFAULT |
             (gec.gec_hist_flags & a_GO_HIST_GABBY
-               ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE) |
+               ? mx_GO_INPUT_HIST_GABBY : mx_GO_INPUT_NONE) |
             (gec.gec_hist_flags & a_GO_HIST_GABBY_ERROR
-               ?  n_GO_INPUT_HIST_GABBY | n_GO_INPUT_HIST_ERROR
-               : n_GO_INPUT_NONE)));
+               ?  mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_ERROR
+               : mx_GO_INPUT_NONE)));
       }
 
       mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
@@ -1591,102 +1585,110 @@ n_go_main_loop(boole main_call){ /* FIXME */
    return rv;
 }
 
-FL void
-n_go_input_clearerr(void){
+void
+mx_go_input_clearerr(void){
    FILE *fp;
    NYD2_IN;
 
-   fp = NULL;
+   fp = NIL;
 
    if(!(a_go_ctx->gc_flags & (a_GO_FORCE_EOF |
          a_GO_PIPE | a_GO_MACRO | a_GO_SPLICE)))
       fp = a_go_ctx->gc_file;
 
-   if(fp != NULL){
+   if(fp != NIL){
       a_go_ctx->gc_flags &= ~a_GO_IS_EOF;
       clearerr(fp);
    }
+
    NYD2_OU;
 }
 
-FL void
-n_go_input_force_eof(void){
+void
+mx_go_input_force_eof(void){ /* xxx inline */
    NYD2_IN;
+
    a_go_ctx->gc_flags |= a_GO_FORCE_EOF;
+
    NYD2_OU;
 }
 
-FL boole
-n_go_input_is_eof(void){
+boole
+mx_go_input_is_eof(void){ /* xxx inline */
    boole rv;
    NYD2_IN;
 
    rv = ((a_go_ctx->gc_flags & a_GO_IS_EOF) != 0);
+
    NYD2_OU;
    return rv;
 }
 
-FL boole
-n_go_input_have_injections(void){
+boole
+mx_go_input_have_injections(void){ /* xxx inline */
    boole rv;
    NYD2_IN;
 
-   rv = (a_go_ctx->gc_inject != NULL);
+   rv = (a_go_ctx->gc_inject != NIL);
+
    NYD2_OU;
    return rv;
 }
 
-FL void
-n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
-      uz len){
+void
+mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags) giif,
+      char const *buf, uz len){
    NYD_IN;
 
    if(len == UZ_MAX)
       len = su_cs_len(buf);
 
-   if(UZ_MAX - VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
+   if(UZ_MAX - VSTRUCT_SIZEOF(struct a_go_input_inject,gii_dat) -1 > len &&
          len > 0){
-      struct a_go_input_inject *giip,  **giipp;
+      struct a_go_input_inject *giip, **giipp;
 
       mx_sigs_all_holdx();
 
-      giip = n_alloc(VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat
-            ) + 1 + len +1);
+      giip = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_input_inject,gii_dat) +
+            1 + len +1);
       giipp = &a_go_ctx->gc_inject;
       giip->gii_next = *giipp;
-      giip->gii_commit = ((giif & n_GO_INPUT_INJECT_COMMIT) != 0);
-      giip->gii_no_history = ((giif & n_GO_INPUT_INJECT_HISTORY) == 0);
+      giip->gii_commit = ((giif & mx_GO_INPUT_INJECT_COMMIT) != 0);
+      giip->gii_no_history = ((giif & mx_GO_INPUT_INJECT_HISTORY) == 0);
       su_mem_copy(&giip->gii_dat[0], buf, len);
       giip->gii_dat[giip->gii_len = len] = '\0';
       *giipp = giip;
 
       mx_sigs_all_rele();
    }
+
    NYD_OU;
 }
 
-FL int
-(n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
-      uz *linesize, char const *string, boole *histok_or_nil
+int
+(mx_go_input)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
+      char **linebuf, uz *linesize, char const *string, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
-   /* TODO readline: linebuf pool!; n_go_input should return s64.
+   /* TODO readline: linebuf pool!; mx_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
     * TODO and consumed by OnLineCompletedEvent listeners */
-   struct n_string xprompt;
-   FILE *ifile;
-   char const *iftype;
-   struct a_go_input_inject *giip;
-   int nold, n;
-   enum{
+   enum af_{
       a_NONE,
       a_HISTOK = 1u<<0,
       a_USE_PROMPT = 1u<<1,
       a_USE_MLE = 1u<<2,
       a_DIG_MSG_OVERLAY = 1u<<16
-   } f;
+   };
+
+   struct n_string xprompt;
+   FILE *ifile;
+   char const *iftype;
+   struct a_go_input_inject *giip;
+   int nold, n;
+   BITENUM_IS(u32, af_) f;
    NYD2_IN;
 
-   if(!(gif & n_GO_INPUT_HOLDALLSIGS))
+   if(!(gif & mx_GO_INPUT_HOLDALLSIGS))
       mx_sigs_all_holdx();
 
    f = a_NONE;
@@ -1697,28 +1699,28 @@ FL int
       goto jleave;
    }
 
-   if(gif & n_GO_INPUT_FORCE_STDIN)
+   if(gif & mx_GO_INPUT_FORCE_STDIN)
       goto jforce_stdin;
 
    /* Special case macro mode: never need to prompt, lines have always been
     * unfolded already; TODO we need on_line_completed event and producers! */
    if(a_go_ctx->gc_flags & a_GO_MACRO){
-      if(*linebuf != NULL)
-         n_free(*linebuf);
+      if(*linebuf != NIL)
+         su_FREE(*linebuf);
 
-      /* Injection in progress?  Don't care about the autocommit state here */
-      if(!(gif & n_GO_INPUT_DELAY_INJECTIONS) &&
-            (giip = a_go_ctx->gc_inject) != NULL){
+      /* Injection in progress?  Do not care about the autocommit state here */
+      if(!(gif & mx_GO_INPUT_DELAY_INJECTIONS) &&
+            (giip = a_go_ctx->gc_inject) != NIL){
          a_go_ctx->gc_inject = giip->gii_next;
 
          /* Simply "reuse" allocation, copy string to front of it */
 jinject:
          *linesize = giip->gii_len;
-         *linebuf = (char*)giip;
+         *linebuf = S(char*,S(void*,giip));
          su_mem_move(*linebuf, giip->gii_dat, giip->gii_len +1);
          iftype = "INJECTION";
       }else{
-         if((*linebuf = a_go_ctx->gc_lines[a_go_ctx->gc_loff]) == NULL){
+         if((*linebuf = a_go_ctx->gc_lines[a_go_ctx->gc_loff]) == NIL){
             *linesize = 0;
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
             n = -1;
@@ -1735,29 +1737,29 @@ jinject:
                ? "COMMAND-LINE"
                : (a_go_ctx->gc_flags & a_GO_MACRO_CMD) ? "CMD" : "MACRO");
       }
-      n = (int)*linesize;
+      n = S(int,*linesize);
       n_pstate |= n_PS_READLINE_NL;
       goto jhave_dat;
    }
 
-   if(!(gif & n_GO_INPUT_DELAY_INJECTIONS)){
+   if(!(gif & mx_GO_INPUT_DELAY_INJECTIONS)){
       /* Injection in progress? */
       struct a_go_input_inject **giipp;
 
       giipp = &a_go_ctx->gc_inject;
 
-      if((giip = *giipp) != NULL){
+      if((giip = *giipp) != NIL){
          *giipp = giip->gii_next;
 
          if(giip->gii_commit){
-            if(*linebuf != NULL)
-               n_free(*linebuf);
+            if(*linebuf != NIL)
+               su_FREE(*linebuf);
             if(!giip->gii_no_history)
                f |= a_HISTOK;
             goto jinject; /* (above) */
          }else{
             string = savestrbuf(giip->gii_dat, giip->gii_len);
-            n_free(giip);
+            su_FREE(giip);
          }
       }
    }
@@ -1770,35 +1772,35 @@ jforce_stdin:
          (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
             (n_PSO_INTERACTIVE | n_PSO_STARTED))
       f |= a_HISTOK;
-   if(!(f & a_HISTOK) || (gif & n_GO_INPUT_FORCE_STDIN))
-      gif |= n_GO_INPUT_PROMPT_NONE;
+   if(!(f & a_HISTOK) || (gif & mx_GO_INPUT_FORCE_STDIN))
+      gif |= mx_GO_INPUT_PROMPT_NONE;
    else{
       f |= a_USE_PROMPT;
       if(!ok_blook(line_editor_disable))
          f |= a_USE_MLE;
       else
          (void)n_string_creat_auto(&xprompt);
-      if(prompt == NULL)
-         gif |= n_GO_INPUT_PROMPT_EVAL;
+      if(prompt == NIL)
+         gif |= mx_GO_INPUT_PROMPT_EVAL;
    }
 
    /* Ensure stdout is flushed first anyway (partial lines, maybe?) */
-   if((gif & n_GO_INPUT_PROMPT_NONE) && !(f & a_USE_MLE))
+   if((gif & mx_GO_INPUT_PROMPT_NONE) && !(f & a_USE_MLE))
       fflush(n_stdout);
 
-   if(gif & n_GO_INPUT_FORCE_STDIN){
+   if(gif & mx_GO_INPUT_FORCE_STDIN){
       struct a_go_readctl_ctx *grcp;
       struct mx_dig_msg_ctx *dmcp;
 
       if((dmcp = mx_dig_msg_read_overlay) != NIL){
          ifile = dmcp->dmc_fp;
          f |= a_DIG_MSG_OVERLAY;
-      }else if((grcp = n_readctl_read_overlay) == NULL ||
-            (ifile = grcp->grc_fp) == NULL)
+      }else if((grcp = n_readctl_read_overlay) == NIL ||
+            (ifile = grcp->grc_fp) == NIL)
          ifile = n_stdin;
    }else
       ifile = a_go_ctx->gc_file;
-   if(ifile == NULL){
+   if(ifile == NIL){
       ASSERT((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          (a_go_ctx->gc_flags & a_GO_MACRO));
       ifile = n_stdin;
@@ -1807,16 +1809,16 @@ jforce_stdin:
    for(nold = n = 0;;){
       if(f & a_USE_MLE){
          ASSERT(ifile == n_stdin);
-         if(string != NULL && (n = (int)su_cs_len(string)) > 0){
+         if(string != NIL && (n = S(int,su_cs_len(string))) > 0){
             if(*linesize > 0)
                *linesize += n +1;
             else
-               *linesize = (uz)n + LINESIZE +1;
+               *linesize = S(uz,n) + LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
                   su_DBG_LOC_ARGS_ORUSE);
-           su_mem_copy(*linebuf, string, (uz)n +1);
+           su_mem_copy(*linebuf, string, S(uz,n) +1);
          }
-         string = NULL;
+         string = NIL;
 
          mx_sigs_all_rele();
 
@@ -1830,7 +1832,7 @@ jforce_stdin:
       }else{
          mx_sigs_all_rele();
 
-         if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+         if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
             mx_tty_create_prompt(&xprompt, prompt, gif);
 
             if(xprompt.s_len > 0){
@@ -1866,11 +1868,11 @@ jforce_stdin:
          break;
 
       /* POSIX says:
-       * TODO This does not take care for current shell quote mode!
+       * TODO We do NOT KNOW, thus no care for current shell quote mode!
        * TODO Thus "echo '\<NEWLINE HERE> bla' will never work
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
-      if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
+      if(!(gif & mx_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
          break;
 
       /* Definitely outside of quotes, thus quoting rules are so that an uneven
@@ -1878,14 +1880,14 @@ jforce_stdin:
       if(n > 1){
          uz i, j;
 
-         for(j = 1, i = (uz)n - 1; i-- > 0; ++j)
+         for(j = 1, i = S(uz,n) - 1; i-- > 0; ++j)
             if((*linebuf)[i] != '\\')
                break;
          if(!(j & 1))
             break;
       }
       (*linebuf)[nold = --n] = '\0';
-      gif |= n_GO_INPUT_NL_FOLLOW;
+      gif |= mx_GO_INPUT_NL_FOLLOW;
    }
    if(n < 0)
       goto jleave;
@@ -1900,8 +1902,9 @@ jforce_stdin:
 jhave_dat:
    if(n_poption & n_PO_D_VVV)
       n_err(_("%s%s %d bytes <%s>\n"),
-         iftype, (n_cnd_if_exists() == TRUM1 ? "?whiteout" : su_empty),
+         iftype, (mx_cnd_if_exists() == TRUM1 ? "?whiteout" : su_empty),
          n, *linebuf);
+
 jleave:
    if (n_pstate & n_PS_PSTATE_PENDMASK)
       a_go_update_pstate();
@@ -1920,14 +1923,15 @@ jleave:
    if(histok_or_nil != NIL && !(f & a_HISTOK))
       *histok_or_nil = FAL0;
 
-   if(!(gif & n_GO_INPUT_HOLDALLSIGS))
+   if(!(gif & mx_GO_INPUT_HOLDALLSIGS))
       mx_sigs_all_rele();
+
    NYD2_OU;
    return n;
 }
 
-FL char *
-n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
+char *
+mx_go_input_cp(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char const *string){
    struct n_sigman sm;
    boole histadd;
@@ -1947,11 +1951,12 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    }
 
    histadd = TRU1;
-   n = n_go_input(gif, prompt, &linebuf, &linesize, string, &histadd);
-   if(n > 0 && *(rv = savestrbuf(linebuf, (uz)n)) != '\0' &&
-         (gif & n_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
+   n = mx_go_input(gif, prompt, &linebuf, &linesize, string, &histadd);
+   if(n > 0 && *(rv = savestrbuf(linebuf, S(uz,n))) != '\0' &&
+         (gif & mx_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
          histadd){
-      ASSERT(!(gif & n_GO_INPUT_HIST_ERROR) || (gif & n_GO_INPUT_HIST_GABBY));
+      ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) ||
+         (gif & mx_GO_INPUT_HIST_GABBY));
       mx_tty_addhist(rv, gif);
    }
 
@@ -1959,13 +1964,14 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
 
 jleave:
    mx_fs_linepool_release(linebuf, linesize);
+
    NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
-FL boole
-n_go_load_rc(char const *name){
+boole
+mx_go_load_rc(char const *name){
    struct a_go_ctx *gcp;
    uz i;
    FILE *fip;
@@ -1982,8 +1988,8 @@ n_go_load_rc(char const *name){
    }
 
    i = su_cs_len(name) +1;
-   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + i);
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) + i);
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
 
    gcp->gc_file = fip;
    gcp->gc_flags = a_GO_FREE | a_GO_FILE;
@@ -1992,19 +1998,20 @@ n_go_load_rc(char const *name){
    if(n_poption & n_PO_D_VV)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(gcp->gc_name, FAL0));
    rv = a_go_load(gcp);
+
 jleave:
    NYD_OU;
    return rv;
 }
 
-FL boole
-n_go_load_lines(boole injectit, char const **lines, uz cnt){
+boole
+mx_go_load_lines(boole injectit, char const **lines, uz cnt){
    static char const a_name_x[] = "-X", a_name_bltin[] = "builtin RC file";
 
    union{
       boole rv;
       u64 align;
-      char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+      char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
             MAX(sizeof(a_name_x), sizeof(a_name_bltin))];
    } b;
    char const *srcp, *xsrcp;
@@ -2014,8 +2021,8 @@ n_go_load_lines(boole injectit, char const **lines, uz cnt){
    struct a_go_ctx *gcp;
    NYD_IN;
 
-   gcp = (void*)b.uf;
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp = S(void*,b.uf);
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
 
    if(lines == NIL){
       su_mem_copy(gcp->gc_name, a_name_bltin, sizeof a_name_bltin);
@@ -2040,10 +2047,10 @@ n_go_load_lines(boole injectit, char const **lines, uz cnt){
     * the entire lines array and set _MACRO_FREE_DATA.
     * Likewise, for injections, we need to reverse the order. */
    imax = cnt + 1;
-   gcp->gc_lines = n_alloc(sizeof(*gcp->gc_lines) * imax);
+   gcp->gc_lines = su_ALLOC(sizeof(*gcp->gc_lines) * imax);
 
    /* For each of the input lines.. */
-   for(i = len = 0, cp = NULL; cnt > 0;){
+   for(i = len = 0, cp = NIL; cnt > 0;){
       boole keep;
       uz j;
 
@@ -2074,17 +2081,17 @@ n_go_load_lines(boole injectit, char const **lines, uz cnt){
       }
 
       /* Strip any leading WS from follow lines, then */
-      if(cp != NULL)
+      if(cp != NIL)
          while(j > 0 && su_cs_is_space(*srcp))
             ++srcp, --j;
 
       if(j > 0){
          if(i + 2 >= imax){ /* TODO need a vector (main.c, here, ++) */
             imax += 4;
-            gcp->gc_lines = n_realloc(gcp->gc_lines, sizeof(*gcp->gc_lines) *
+            gcp->gc_lines = su_REALLOC(gcp->gc_lines, sizeof(*gcp->gc_lines) *
                   imax);
          }
-         gcp->gc_lines[i] = cp = n_realloc(cp, len + j +1);
+         gcp->gc_lines[i] = cp = su_REALLOC(cp, len + j +1);
          su_mem_copy(&cp[len], srcp, j);
          cp[len += j] = '\0';
 
@@ -2092,67 +2099,70 @@ n_go_load_lines(boole injectit, char const **lines, uz cnt){
             ++i;
       }
       if(!keep)
-         cp = NULL, len = 0;
+         cp = NIL, len = 0;
    }
-   if(cp != NULL){
+   if(cp != NIL){
       ASSERT(i + 1 < imax);
       gcp->gc_lines[i++] = cp;
    }
-   gcp->gc_lines[i] = NULL;
+   gcp->gc_lines[i] = NIL;
 
    if(!injectit)
       b.rv = a_go_load(gcp);
    else{
       while(i > 0){
-         n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, cp = gcp->gc_lines[--i],
+         mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, cp = gcp->gc_lines[--i],
             UZ_MAX);
-         n_free(cp);
+         su_FREE(cp);
       }
-      n_free(gcp->gc_lines);
+      su_FREE(gcp->gc_lines);
       ASSERT(nofail);
    }
 
    if(nofail)
       /* Program exit handling is a total mess! */
       b.rv = ((n_psonce & n_PSO_EXIT_MASK) == 0);
+
    NYD_OU;
    return b.rv;
 }
 
-FL int
-c_source(void *v){
+int
+c_source(void *vp){
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*(char**)v, FAL0) == TRU1) ? 0 : 1;
+   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+
    NYD_OU;
    return rv;
 }
 
-FL int
-c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
+int
+c_source_if(void *vp){ /* XXX obsolete?, support file tests in `if' etc.! */
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*(char**)v, TRU1) == TRU1) ? 0 : 1;
+   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+
    NYD_OU;
    return rv;
 }
 
-FL boole
-n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
-      void (*on_finalize)(void*), void *finalize_arg){
+boole
+mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
+      char **lines, void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
    uz i;
    int rv;
    sigset_t osigmask;
    NYD_IN;
 
-   sigprocmask(SIG_BLOCK, NULL, &osigmask);
+   sigprocmask(SIG_BLOCK, NIL, &osigmask);
 
-   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          (i = su_cs_len(name) +1));
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -2163,27 +2173,28 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp->gc_flags = a_GO_FREE | a_GO_MACRO | a_GO_MACRO_FREE_DATA |
          a_GO_MACRO_ROBOT |
          ((a_go_ctx->gc_flags & a_GO_FILE_ROBOT) ? a_GO_FILE_ROBOT : 0) |
-         ((gif & n_GO_INPUT_NO_XCALL) ? a_GO_XCALL_IS_CALL : 0);
+         ((gif & mx_GO_INPUT_NO_XCALL) ? a_GO_XCALL_IS_CALL : 0);
    gcp->gc_lines = lines;
    gcp->gc_on_finalize = on_finalize;
    gcp->gc_finalize_arg = finalize_arg;
    su_mem_copy(gcp->gc_name, name, i);
 
    a_go_ctx = gcp;
-   n_go_data = &gcp->gc_data;
+   mx_go_data = &gcp->gc_data;
    n_pstate |= n_PS_ROBOT;
    rv = a_go_event_loop(gcp, gif);
 
    /* Shall this enter a `xcall' stack avoidance optimization (loop)? */
-   if(a_go_xcall != NULL){
+   if(a_go_xcall != NIL){
       void *vp;
       struct mx_cmd_arg_ctx *cacp;
 
-      if(a_go_xcall == (void*)-1)
-         a_go_xcall = NULL;
-      else if(((void const*)(cacp = a_go_xcall)->cac_indat) == gcp){
+      if(a_go_xcall == R(void*,-1))
+         a_go_xcall = NIL;
+      else if(S(void const*,(cacp = a_go_xcall)->cac_indat) == gcp){
          /* Indicate that "our" (ex-) parent now hosts xcall optimization */
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
+
          while(a_go_xcall != NIL){
             mx_sigs_all_holdx();
 
@@ -2192,7 +2203,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
             vp = a_go_xcall;
             a_go_xcall = NIL;
             cacp = mx_cmd_arg_restore_from_heap(vp);
-            n_free(vp);
+            su_FREE(vp);
 
             mx_sigs_all_rele();
 
@@ -2202,25 +2213,26 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
          a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
       }
    }
+
    NYD_OU;
    return rv;
 }
 
-FL boole
-n_go_command(enum n_go_input_flags gif, char const *cmd){
+boole
+mx_go_command(BITENUM_IS(u32,mx_go_input_flags) gif, char const *cmd){
    struct a_go_ctx *gcp;
    boole rv;
    uz i, ial;
    sigset_t osigmask;
    NYD_IN;
 
-   sigprocmask(SIG_BLOCK, NULL, &osigmask);
+   sigprocmask(SIG_BLOCK, NIL, &osigmask);
 
    i = su_cs_len(cmd) +1;
    ial = Z_ALIGN(i);
-   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          ial + 2*sizeof(char*));
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -2233,29 +2245,30 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
          ((a_go_ctx->gc_flags & a_GO_FILE_ROBOT) ? a_GO_FILE_ROBOT : 0);
    gcp->gc_lines = (void*)&gcp->gc_name[ial];
    su_mem_copy(gcp->gc_lines[0] = &gcp->gc_name[0], cmd, i);
-   gcp->gc_lines[1] = NULL;
+   gcp->gc_lines[1] = NIL;
 
    a_go_ctx = gcp;
-   n_go_data = &gcp->gc_data;
+   mx_go_data = &gcp->gc_data;
    n_pstate |= n_PS_ROBOT;
    rv = a_go_event_loop(gcp, gif);
+
    NYD_OU;
    return rv;
 }
 
-FL void
-n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
+void
+mx_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
       u32 new_psonce, void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
    uz i;
    sigset_t osigmask;
    NYD_IN;
 
-   sigprocmask(SIG_BLOCK, NULL, &osigmask);
+   sigprocmask(SIG_BLOCK, NIL, &osigmask);
 
-   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          (i = su_cs_len(cmd) +1));
-   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));
 
    mx_sigs_all_holdx();
 
@@ -2274,20 +2287,21 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    n_stdout = new_stdout;
    n_psonce = new_psonce;
    a_go_ctx = gcp;
-   /* Do NOT touch n_go_data! */
+   /* Do NOT touch go_data! */
    n_pstate |= n_PS_ROBOT;
 
    mx_sigs_all_rele();
+
    NYD_OU;
 }
 
-FL void
-n_go_splice_hack_remove_after_jump(void){
+void
+mx_go_splice_hack_remove_after_jump(void){
    a_go_cleanup(a_go_ctx, a_GO_CLEANUP_TEARDOWN);
 }
 
-FL boole
-n_go_may_yield_control(void){ /* TODO this is a terrible hack */
+boole
+mx_go_may_yield_control(void){ /* TODO this is a terrible hack */
    struct a_go_ctx *gcp;
    boole rv;
    NYD2_IN;
@@ -2310,7 +2324,7 @@ n_go_may_yield_control(void){ /* TODO this is a terrible hack */
     * TODO . not when there are pipes involved, we neither handle job control,
     * TODO   nor process groups, that is, controlling terminal acceptably
     * . not when sourcing a file */
-   for(gcp = a_go_ctx; gcp != NULL; gcp = gcp->gc_outer){
+   for(gcp = a_go_ctx; gcp != NIL; gcp = gcp->gc_outer){
       if(gcp->gc_flags & (a_GO_PIPE | a_GO_FILE | a_GO_SPLICE))
          goto jleave;
    }
@@ -2321,7 +2335,7 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_eval(void *vp){
    /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
     * TODO ARGV with shell rules, but if that is not possible then simply
@@ -2334,13 +2348,13 @@ c_eval(void *vp){
 
    argv = vp;
 
-   for(j = i = 0; (cp = argv[i]) != NULL; ++i)
+   for(j = i = 0; (cp = argv[i]) != NIL; ++i)
       j += su_cs_len(cp);
 
    s = n_string_creat_auto(&s_b);
    s = n_string_reserve(s, j);
 
-   for(i = 0; (cp = argv[i]) != NULL; ++i){
+   for(i = 0; (cp = argv[i]) != NIL; ++i){
       if(i > 0)
          s = n_string_push_c(s, ' ');
       s = n_string_push_cp(s, cp);
@@ -2354,10 +2368,10 @@ c_eval(void *vp){
    (void)/* XXX */a_go_evaluate(a_go_ctx, &gec);
 
    NYD_OU;
-   return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
+   return (a_go_xcall != NIL ? n_EXIT_OK : n_pstate_ex_no);
 }
 
-FL int
+int
 c_xcall(void *vp){
    int rv;
    struct a_go_ctx *gcp;
@@ -2377,7 +2391,7 @@ c_xcall(void *vp){
 
    /* Try to roll up the stack as much as possible.
     * See a_GO_XCALL_LOOP flag description for more */
-   if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NULL){
+   if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
       if(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP)
          gcp = gcp->gc_outer;
    }else{
@@ -2385,8 +2399,8 @@ c_xcall(void *vp){
        * silently act as if we were `call'... */
       rv = c_call(vp);
       /* ...which means we must ensure the rest of the macro that was us
-       * doesn't become evaluated! */
-      a_go_xcall = (void*)-1;
+       * does not become evaluated! */
+      a_go_xcall = R(void*,-1);
       goto jleave;
    }
 
@@ -2394,64 +2408,69 @@ c_xcall(void *vp){
       struct mx_cmd_arg_ctx *cacp;
 
       cacp = mx_cmd_arg_save_to_heap(vp);
-      cacp->cac_indat = (char*)gcp;
+      cacp->cac_indat = S(char*,S(void*,gcp));
       a_go_xcall = cacp;
    }
+
    rv = 0;
 jleave:
    NYD2_OU;
    return rv;
 }
 
-FL int
+int
 c_exit(void *vp){
    char const **argv;
    NYD_IN;
 
-   if(*(argv = vp) != NULL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NULL) &
+   if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
       n_exit_status |= n_EXIT_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
-      fflush(NULL);
+      fflush(NIL);
       _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
       n_err(_("exit: delayed until compose mode is left\n")); /* XXX ..log? */
+
    n_psonce |= n_PSO_XIT;
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
-FL int
+int
 c_quit(void *vp){
    char const **argv;
    NYD_IN;
 
-   if(*(argv = vp) != NULL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NULL) &
+   if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
       n_exit_status |= n_EXIT_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
-      fflush(NULL);
+      fflush(NIL);
       _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
       n_err(_("quit: delayed until compose mode is left\n")); /* XXX ..log? */
+
    n_psonce |= n_PSO_QUIT;
+
    NYD_OU;
-   return 0;
+   return n_EXIT_OK;
 }
 
-FL int
+int
 c_readctl(void *vp){
    /* TODO We would need OnForkEvent and then simply remove some internal
-    * TODO management; we don't have this, therefore we need global
-    * TODO n_readctl_read_overlay to be accessible via =NULL, and to make that
+    * TODO management; we do not have this, therefore we need global
+    * TODO n_readctl_read_overlay to be accessible via =NIL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
    static union{
       u64 alignme;
-      u8 buf[VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+      u8 buf[VSTRUCT_SIZEOF(struct a_go_readctl_ctx,grc_name)+1 +1];
    } a;
    static struct a_go_readctl_ctx *a_stdin;
 
@@ -2468,8 +2487,8 @@ c_readctl(void *vp){
    struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
-   if(a_stdin == NULL){
-      a_stdin = (struct a_go_readctl_ctx*)(void*)a.buf;
+   if(a_stdin == NIL){
+      a_stdin = S(struct a_go_readctl_ctx*,S(void*,a.buf));
       a_stdin->grc_name[0] = '-';
       n_readctl_read_overlay = a_stdin;
    }
@@ -2509,11 +2528,11 @@ c_readctl(void *vp){
    }
 
    /* Try to find a yet existing instance */
-   if((grcp = n_readctl_read_overlay) != NULL){
-      for(; grcp != NULL; grcp = grcp->grc_next)
+   if((grcp = n_readctl_read_overlay) != NIL){
+      for(; grcp != NIL; grcp = grcp->grc_next)
          if(!su_cs_cmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
-      for(grcp = n_readctl_read_overlay; (grcp = grcp->grc_last) != NULL;)
+      for(grcp = n_readctl_read_overlay; (grcp = grcp->grc_last) != NIL;)
          if(!su_cs_cmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
    }
@@ -2530,18 +2549,18 @@ jfound:
       if(n_readctl_read_overlay == grcp)
          n_readctl_read_overlay = a_stdin;
 
-      if(grcp->grc_last != NULL)
+      if(grcp->grc_last != NIL)
          grcp->grc_last->grc_next = grcp->grc_next;
-      if(grcp->grc_next != NULL)
+      if(grcp->grc_next != NIL)
          grcp->grc_next->grc_last = grcp->grc_last;
       fclose(grcp->grc_fp);
-      n_free(grcp);
+      su_FREE(grcp);
    }else{
       FILE *fp;
       uz elen;
       s32 fd;
 
-      if(grcp != NULL){
+      if(grcp != NIL){
          n_err(_("readctl: channel already exists: %s\n"), /* TODO reopen */
             n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
          n_pstate_err_no = su_ERR_EXIST;
@@ -2549,7 +2568,7 @@ jfound:
          goto jleave;
       }
 
-      if((su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NULL
+      if((su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NIL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
          if((emsg = fexpand(cap->ca_arg.ca_str.s, (FEXP_LOCAL_FILE |
@@ -2576,12 +2595,12 @@ jfound:
          fp = fdopen(fd, "r");
       }
 
-      if(fp != NULL){
+      if(fp != NIL){
          uz i;
 
          if((i = UZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
                (i -= cap->ca_arg.ca_str.l) <=
-                  VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
+                  VSTRUCT_SIZEOF(struct a_go_readctl_ctx,grc_name) +2){
             fclose(fp);
             n_err(_("readctl: failed to create storage for %s\n"),
                cap->ca_arg.ca_str.s);
@@ -2590,10 +2609,10 @@ jfound:
             goto jleave;
          }
 
-         grcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
+         grcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_readctl_ctx,grc_name) +
                cap->ca_arg.ca_str.l +1 + elen +1);
-         grcp->grc_last = NULL;
-         if((grcp->grc_next = n_readctl_read_overlay) != NULL)
+         grcp->grc_last = NIL;
+         if((grcp->grc_next = n_readctl_read_overlay) != NIL)
             grcp->grc_next->grc_last = grcp;
          n_readctl_read_overlay = grcp;
          grcp->grc_fp = fp;
@@ -2601,7 +2620,7 @@ jfound:
          su_mem_copy(grcp->grc_name, cap->ca_arg.ca_str.s,
             cap->ca_arg.ca_str.l +1);
          if(elen == 0)
-            grcp->grc_expand = NULL;
+            grcp->grc_expand = NIL;
          else{
             char *cp;
 
@@ -2616,7 +2635,8 @@ jfound:
 
 jleave:
    NYD_OU;
-   return (f & a_ERR) ? 1 : 0;
+   return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+
 jeinval_quote:
    n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
 jeinval:
@@ -2625,21 +2645,21 @@ jeinval:
    goto jleave;
 
 jshow:
-   if((grcp = n_readctl_read_overlay) == NULL)
+   if((grcp = n_readctl_read_overlay) == NIL)
       fprintf(n_stdout, _("readctl: no channels registered\n"));
    else{
-      while(grcp->grc_last != NULL)
+      while(grcp->grc_last != NIL)
          grcp = grcp->grc_last;
 
       fprintf(n_stdout, _("readctl: registered channels:\n"));
-      for(; grcp != NULL; grcp = grcp->grc_next)
+      for(; grcp != NIL; grcp = grcp->grc_next)
          fprintf(n_stdout, _("%c%s %s%s%s%s\n"),
             (grcp == n_readctl_read_overlay ? '*' : ' '),
             (grcp->grc_fd != -1 ? _("descriptor") : _("name")),
             n_shexp_quote_cp(grcp->grc_name, FAL0),
-            (grcp->grc_expand != NULL ? " (" : n_empty),
-            (grcp->grc_expand != NULL ? grcp->grc_expand : n_empty),
-            (grcp->grc_expand != NULL ? ")" : n_empty));
+            (grcp->grc_expand != NIL ? " (" : su_empty),
+            (grcp->grc_expand != NIL ? grcp->grc_expand : su_empty),
+            (grcp->grc_expand != NIL ? ")" : su_empty));
    }
    f = a_NONE;
    goto jleave;
