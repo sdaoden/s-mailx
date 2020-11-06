@@ -62,11 +62,11 @@ n_iconv_normalize_name(char const *cset){
 
    /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
     * and we perform some slight content testing, too */
-   for(any = FAL0, cp = n_UNCONST(cset); (c = *cp) != '\0'; ++cp){
+   for(any = FAL0, cp = UNCONST(char*,cset); (c = *cp) != '\0'; ++cp){
       if(!su_cs_is_alnum(c) && !su_cs_is_punct(c)){
          n_err(_("Invalid character set name %s\n"),
             n_shexp_quote_cp(cset, FAL0));
-         cset = NULL;
+         cset = NIL;
          goto jleave;
       }else if(c == '/')
          break;
@@ -94,7 +94,7 @@ n_iconv_normalize_name(char const *cset){
 
 jleave:
    NYD2_OU;
-   return n_UNCONST(cset);
+   return UNCONST(char*,cset);
 }
 
 boole
@@ -111,6 +111,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    do if((rv = !su_cs_cmp_case(cset, *--npp)))
       break;
    while((rv = (npp != &names[0])));
+
    NYD2_OU;
    return rv;
 }
@@ -135,7 +136,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * not perform this as an optimization above since iconv() can otherwise be
     * used to check the validity of the input even with identical encoding
     * names */
-   if (id == (iconv_t)-1 && !su_cs_cmp_case(tocode, fromcode))
+   if(id == R(iconv_t,-1) && !su_cs_cmp_case(tocode, fromcode))
       su_err_set_no(su_ERR_NONE);
 
 jleave:
@@ -146,16 +147,20 @@ jleave:
 void
 n_iconv_close(iconv_t cd){
    NYD_IN;
+
    iconv_close(cd);
    if(cd == iconvd)
-      iconvd = (iconv_t)-1;
+      iconvd = R(iconv_t,-1);
+
    NYD_OU;
 }
 
 void
 n_iconv_reset(iconv_t cd){
    NYD_IN;
-   iconv(cd, NULL, NULL, NULL, NULL);
+
+   iconv(cd, NIL, NIL, NIL, NIL);
+
    NYD_OU;
 }
 
@@ -181,7 +186,7 @@ n_iconv_reset(iconv_t cd){
 
 int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
-   char const **inb, uz *inbleft, char **outb, uz *outbleft){
+      char const **inb, uz *inbleft, char **outb, uz *outbleft){
    int err;
    NYD2_IN;
 
@@ -193,7 +198,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
 
       if((i = iconv(cd, a_X(inb), inbleft, outb, outbleft)) == 0)
          break;
-      if(i != (uz)-1){
+      if(UCMP(z, i, !=, -1)){
          if(!(icf & n_ICONV_IGN_NOREVERSE)){
             err = su_ERR_NOENT;
             goto jleave;
@@ -206,6 +211,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
 
       if(!(icf & n_ICONV_IGN_ILSEQ) || err != su_ERR_ILSEQ)
          goto jleave;
+
       if(*inbleft > 0){
          ++(*inb);
          --(*inbleft);
@@ -229,6 +235,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          goto jleave;
       }
    }
+
    err = 0;
 jleave:
    n_iconv_err_no = err;
@@ -239,7 +246,7 @@ jleave:
 
 int
 n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
-      struct str *out, struct str const *in, struct str *in_rest_or_null){
+      struct str *out, struct str const *in, struct str *in_rest_or_nil){
    struct n_string s_b, *s;
    char const *ib;
    int err;
@@ -268,7 +275,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       else{
          u64 xnol;
 
-         xnol = (u64)(nol << 1) - (nol >> 4);
+         xnol = S(u64,nol << 1) - (nol >> 4);
          if(!n_string_can_book(s, xnol)){
             xnol = ol + 64;
             if(!n_string_can_book(s, xnol)){
@@ -276,7 +283,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
                goto jleave;
             }
          }
-         nol = (uz)xnol;
+         nol = S(uz,xnol);
       }
       s = n_string_resize(s, nol);
 
@@ -289,9 +296,9 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
          break;
    }
 
-   if(in_rest_or_null != NULL){
-      in_rest_or_null->s = n_UNCONST(ib);
-      in_rest_or_null->l = il;
+   if(in_rest_or_nil != NIL){
+      in_rest_or_nil->s = UNCONST(char*,ib);
+      in_rest_or_nil->l = il;
    }
 
 jleave:
@@ -299,6 +306,7 @@ jleave:
    out->l = s->s_len;
    s = n_string_drop_ownership(s);
    /* n_string_gut(s)*/
+
 j_leave:
    NYD2_OU;
    return err;
@@ -312,23 +320,24 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    char *rv;
    NYD2_IN;
 
-   rv = NULL;
-   if(tocode == NULL)
+   rv = NIL;
+   if(tocode == NIL)
       tocode = ok_vlook(ttycharset);
-   if(fromcode == NULL)
+   if(fromcode == NIL)
       fromcode = "utf-8";
 
-   if((icd = iconv_open(tocode, fromcode)) == (iconv_t)-1)
+   if((icd = iconv_open(tocode, fromcode)) == R(iconv_t,-1))
       goto jleave;
 
-   in.l = su_cs_len(in.s = n_UNCONST(input)); /* logical */
-   out.s = NULL, out.l = 0;
-   if(!n_iconv_str(icd, icf, &out, &in, NULL))
+   in.l = su_cs_len(in.s = UNCONST(char*,input)); /* logical */
+   out.s = NIL, out.l = 0;
+   if(!n_iconv_str(icd, icf, &out, &in, NIL))
       rv = savestrbuf(out.s, out.l);
-   if(out.s != NULL)
-      n_free(out.s);
+   if(out.s != NIL)
+      su_FREE(out.s);
 
    iconv_close(icd);
+
 jleave:
    NYD2_OU;
    return rv;

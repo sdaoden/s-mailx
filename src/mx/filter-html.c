@@ -47,6 +47,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/utf.h>
 
 #include "mx/sigs.h"
@@ -397,7 +398,7 @@ a_flthtml_dump_hrefs(struct mx_flthtml *self){
          if(w < 0)
             self->fh_flags |= a_FLTHTML_ERROR;
       }
-      n_free(hhp);
+      su_FREE(hhp);
    }
 
    self->fh_flags |= (putc('\n', self->fh_os) == EOF)
@@ -996,8 +997,8 @@ jimg_put:
       if(param.s != NIL && *param.s != '#'){
          struct mx_flthtml_href *hhp;
 
-         hhp = n_alloc(
-               VSTRUCT_SIZEOF(struct mx_flthtml_href, fhh_dat) + param.l +1);
+         hhp = su_ALLOC(VSTRUCT_SIZEOF(struct mx_flthtml_href,fhh_dat) +
+               param.l +1);
          hhp->fhh_next = self->fh_hrefs;
          hhp->fhh_no = ++self->fh_href_no;
          hhp->fhh_len = S(u32,param.l);
@@ -1145,7 +1146,7 @@ a_flthtml_add_data(struct mx_flthtml *self, char const *dat, uz len){
    if((cp = self->fh_curr) != NIL)
       cp_max = self->fh_bmax;
    else{
-      cp = self->fh_curr = self->fh_bdat = n_alloc(LINESIZE);
+      cp = self->fh_curr = self->fh_bdat = su_ALLOC(LINESIZE);
       cp_max = self->fh_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
    }
    hot = (cp != self->fh_bdat);
@@ -1284,7 +1285,7 @@ jdo_c:
                i = P2UZ(cp - self->fh_bdat);
                m = P2UZ(self->fh_bmax - self->fh_bdat) + LINESIZE;
 
-               cp = self->fh_bdat = n_realloc(self->fh_bdat, m);
+               cp = self->fh_bdat = su_REALLOC(self->fh_bdat, m);
                self->fh_bmax = cp_max = &cp[m -1];
                self->fh_curr = (cp += i);
             }
@@ -1376,13 +1377,13 @@ mx_flthtml_reset(struct mx_flthtml *self, FILE *f){
 
    while((hfhp = self->fh_hrefs) != NIL){
       self->fh_hrefs = hfhp->fhh_next;
-      n_free(hfhp);
+      su_FREE(hfhp);
    }
 
    if(self->fh_bdat != NIL)
-      n_free(self->fh_bdat);
+      su_FREE(self->fh_bdat);
    if(self->fh_line != NIL)
-      n_free(self->fh_line);
+      su_FREE(self->fh_line);
 
    su_mem_set(self, 0, sizeof *self);
 
@@ -1390,7 +1391,7 @@ mx_flthtml_reset(struct mx_flthtml *self, FILE *f){
       u32 sw;
 
       sw = MAX(a_FLTHTML_MINLEN, mx_termios_dimen.tiosd_width);
-      self->fh_line = n_alloc(S(uz,sw) * n_mb_cur_max +1);
+      self->fh_line = su_ALLOC(S(uz,sw) * n_mb_cur_max +1);
       self->fh_lmax = sw;
 
       if(n_psonce & n_PSO_UNICODE) /* TODO not truly generic */

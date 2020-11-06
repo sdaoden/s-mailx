@@ -49,9 +49,11 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
+#include "mx/mime-param.h"
 #include "mx/net-socket.h"
 #include "mx/tty.h"
 #include "mx/url.h"
@@ -158,7 +160,7 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
          for(;;){
             struct myline *ml;
 
-            ml = n_lofi_alloc(VSTRUCT_SIZEOF(struct myline, ml_buf) +
+            ml = su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct myline,ml_buf) +
                   buflen +1);
             if(tail != NIL)
                tail->ml_next = ml;
@@ -192,7 +194,7 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
          goto jleave;
       tail = head;
       head = head->ml_next;
-      n_lofi_free(tail);
+      su_LOFI_FREE(tail);
    }
 
    if(putc('\n', *bp) == EOF)
@@ -245,7 +247,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
       lastc = c;
    }
 
-   boundary = mime_param_boundary_create();
+   boundary = mx_mime_param_boundary_create();
    fprintf(op, "Content-Type: multipart/signed;\n"
       " protocol=\"application/pkcs7-signature\"; micalg=%s;\n"
       " boundary=\"%s\"\n\n", message_digest, boundary);
@@ -427,7 +429,7 @@ mx_smime_decrypt_assemble(struct message *mp, FILE *hp, FILE *bp){
 
    fflush(mb.mb_otf);
    if(!ferror(mb.mb_otf)){
-      xmp = n_autorec_alloc(sizeof *xmp);
+      xmp = su_AUTO_ALLOC(sizeof *xmp);
       *xmp = *mp;
       xmp->m_size = xmp->m_xsize = octets;
       xmp->m_lines = xmp->m_xlines = lns;

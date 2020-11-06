@@ -21,6 +21,8 @@
 
 #include <mx/nail.h>
 
+#include <mx/go.h>
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -45,7 +47,7 @@ EXPORT char *mx_tty_getpass(char const *query);
 /* Via go_input_cp(); handles shell unquoting and returns the status of
  * n_shexp_unquote_one() (so TRU2 for empty input) */
 EXPORT boole mx_tty_getfilename(struct n_string *store,
-      BITENUM_IS(u32,n_go_input_flags) gif, char const *prompt_or_nil,
+      BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt_or_nil,
       char const *init_content_or_nil);
 
 /* Create the prompt and return its visual width in columns, which may be 0
@@ -53,7 +55,7 @@ EXPORT boole mx_tty_getfilename(struct n_string *store,
  * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
  * takes place */
 EXPORT u32 mx_tty_create_prompt(struct n_string *store, char const *xprompt,
-      BITENUM_IS(u32,n_go_input_flags) gif);
+      BITENUM_IS(u32,mx_go_input_flags) gif);
 
 /* MLE */
 
@@ -70,7 +72,7 @@ EXPORT void mx_tty_destroy(boole xit_fastpath);
  * If n>0 assumes that *linebuf has n bytes of default content.
  * histok_or_nil like for go_input().
  * Only the _CTX_ bits in lif are used */
-EXPORT int mx_tty_readline(BITENUM_IS(u32,n_go_input_flags) gif,
+EXPORT int mx_tty_readline(BITENUM_IS(u32,mx_go_input_flags) gif,
       char const *prompt, char **linebuf, uz *linesize, uz n,
       boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
@@ -80,10 +82,10 @@ EXPORT int mx_tty_readline(BITENUM_IS(u32,n_go_input_flags) gif,
 
 /* Add a line (most likely as returned by tty_readline()) to the history.
  * Whether and how an entry is added for real depends on gif, e.g.,
- * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
+ * GO_INPUT_HIST_GABBY / *history-gabby* relation.
  * Empty strings are never stored */
 EXPORT void mx_tty_addhist(char const *s,
-      BITENUM_IS(u32,n_go_input_flags) gif);
+      BITENUM_IS(u32,mx_go_input_flags) gif);
 
 #ifdef mx_HAVE_HISTORY
 EXPORT int c_history(void *vp);

@@ -51,6 +51,9 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_MD5
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
+
+#include "mx/mime-enc.h"
 
 #include "mx/cred-md5.h"
 #include "su/code-in.h"
@@ -410,26 +413,26 @@ mx_md5_cram_string(struct str const *user, struct str const *pass,
 
    in.s = UNCONST(char*,b64);
    in.l = su_cs_len(in.s);
-   if(!b64_decode(&out, &in))
+   if(!mx_b64_dec(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){
-      n_free(out.s);
+      su_FREE(out.s);
       out.s = NIL;
       goto jleave;
    }
 
    mx_md5_hmac(S(uc*,out.s), out.l, S(uc*,pass->s), pass->l, digest);
-   n_free(out.s);
-   cp = mx_md5_tohex(n_autorec_alloc(mx_MD5_TOHEX_SIZE +1), digest);
+   su_FREE(out.s);
+   cp = mx_md5_tohex(su_AUTO_ALLOC(mx_MD5_TOHEX_SIZE +1), digest);
 
    in.l = user->l + mx_MD5_TOHEX_SIZE +1;
-   in.s = n_lofi_alloc(user->l + 1 + mx_MD5_TOHEX_SIZE +1);
+   in.s = su_LOFI_ALLOC(user->l + 1 + mx_MD5_TOHEX_SIZE +1);
    su_mem_copy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
    su_mem_copy(&in.s[user->l + 1], cp, mx_MD5_TOHEX_SIZE);
-   if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NIL)
+   if(mx_b64_enc(&out, &in, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
       out.s = NIL;
-   n_lofi_free(in.s);
+   su_LOFI_FREE(in.s);
 
 jleave:
    NYD_OU;

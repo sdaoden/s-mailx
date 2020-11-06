@@ -67,13 +67,13 @@
 #include <mx/config.h>
 
 #include <su/code.h>
-#include <su/mem-bag.h> /* TODO should not be needed */
 
 /* TODO fake */
 #include "su/code-in.h"
 
 struct mx_dig_msg_ctx;
-struct mx_mimetype_handler;
+struct mx_go_data_ctx;
+struct mx_mime_type_handler;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
@@ -101,9 +101,6 @@ struct mx_mimetype_handler;
 #if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
       defined mx_HAVE_WCWIDTH
 # define mx_HAVE_NATCH_CHAR
-# define n_NATCH_CHAR(X) X
-#else
-# define n_NATCH_CHAR(X)
 #endif
 
 #define n_UNCONST(X) su_UNCONST(void*,X) /* TODO */
@@ -234,48 +231,6 @@ enum fexp_mode{
    FEXP_FULL = FEXP_SHORTCUT /* Full expansion */
 };
 
-enum n_go_input_flags{
-   n_GO_INPUT_NONE,
-   n_GO_INPUT_CTX_BASE = 0, /* Generic shared base: don't use! */
-   n_GO_INPUT_CTX_DEFAULT = 1, /* Default input */
-   n_GO_INPUT_CTX_COMPOSE = 2, /* Compose mode input */
-   n__GO_INPUT_CTX_MASK = 3,
-   /* _MASK is not a valid index here, but the lower bits are not misused,
-    * therefore -- to save space! -- indexing is performed via "& _MASK".
-    * This is CTA()d!  For actual spacing of arrays we use _MAX1 instead */
-   n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
-
-   n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
-   /* `xcall' is `call' (at the level where this is set): to be set when
-    * teardown of top level has undesired effects, e.g., for `account's and
-    * folder hooks etc., if we do not want to loose `localopts' unroll list */
-   n_GO_INPUT_NO_XCALL = 1u<<9,
-
-   n_GO_INPUT_FORCE_STDIN = 1u<<10, /* Even in macro, use stdin (`read')! */
-   n_GO_INPUT_DELAY_INJECTIONS = 1u<<11, /* Skip go_input_inject()ions */
-   n_GO_INPUT_NL_ESC = 1u<<12, /* Support "\\$" line continuation */
-   n_GO_INPUT_NL_FOLLOW = 1u<<13, /* ..on such a follow line */
-   n_GO_INPUT_PROMPT_NONE = 1u<<14, /* Do not print prompt */
-   n_GO_INPUT_PROMPT_EVAL = 1u<<15, /* Instead, evaluate *prompt* */
-
-   /* XXX The remains are mostly hacks */
-
-   n_GO_INPUT_HIST_ADD = 1u<<16, /* Add the result to history list */
-   n_GO_INPUT_HIST_GABBY = 1u<<17, /* Consider history entry as gabby */
-   /* Command was erroneous; only in combination with _HIST_GABBY! */
-   n_GO_INPUT_HIST_ERROR = 1u<<18,
-
-   n_GO_INPUT_IGNERR = 1u<<19, /* Imply `ignerr' command modifier */
-
-   n__GO_FREEBIT = 24
-};
-
-enum n_go_input_inject_flags{
-   n_GO_INPUT_INJECT_NONE = 0,
-   n_GO_INPUT_INJECT_COMMIT = 1u<<0, /* Auto-commit input */
-   n_GO_INPUT_INJECT_HISTORY = 1u<<1 /* Allow history addition */
-};
-
 enum mx_header_subject_edit_flags{
    mx_HEADER_SUBJECT_EDIT_NONE = 0,
    /* Whether MIME decoding has to be performed first.
@@ -325,82 +280,6 @@ enum n_mailsend_flags{
 
    n_MAILSEND_ALL = n_MAILSEND_IS_FWD | n_MAILSEND_HEADERS_PRINT |
          n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
-};
-
-/* Content-Transfer-Encodings as defined in RFC 2045:
- * - Quoted-Printable, section 6.7
- * - Base64, section 6.8 */
-#define QP_LINESIZE (4 * 19) /* Max. compliant QP linesize */
-
-#define B64_LINESIZE (4 * 19) /* Max. compliant Base64 linesize */
-#define B64_ENCODE_INPUT_PER_LINE ((B64_LINESIZE / 4) * 3)
-
-enum mime_enc{
-   MIMEE_NONE, /* message is not in MIME format */
-   MIMEE_BIN, /* message is in binary encoding */
-   MIMEE_8B, /* message is in 8bit encoding */
-   MIMEE_7B, /* message is in 7bit encoding */
-   MIMEE_QP, /* message is quoted-printable */
-   MIMEE_B64 /* message is in base64 encoding */
-};
-
-/* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
-enum mime_enc_flags{
-   MIMEEF_NONE,
-   MIMEEF_SALLOC = 1u<<0, /* Use n_autorec_alloc(), not n_realloc().. */
-   /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
-   MIMEEF_BUF = 1u<<1,
-   MIMEEF_CRLF = 1u<<2, /* (encode) Append "\r\n" to lines */
-   MIMEEF_LF = 1u<<3, /* (encode) Append "\n" to lines */
-   /* (encode) If one of _CRLF/_LF is set, honour *_LINESIZE+[+[+]] and
-    * inject the desired line-ending whenever a linewrap is desired */
-   MIMEEF_MULTILINE = 1u<<4,
-   /* (encode) Quote with header rules, do not generate soft NL breaks?
-    * For mustquote(), specifies whether special RFC 2047 header rules
-    * should be used instead */
-   MIMEEF_ISHEAD = 1u<<5,
-   /* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in
-    * that characters which would not be reported as "must-quote" when
-    * detecting whether quoting is necessary at all will be reported as
-    * "must-quote" if they have to be encoded in an encoded word */
-   MIMEEF_ISENCWORD = 1u<<6,
-   __MIMEEF_LAST = 6u
-};
-
-enum qpflags{
-   QP_NONE = MIMEEF_NONE,
-   QP_SALLOC = MIMEEF_SALLOC,
-   QP_BUF = MIMEEF_BUF,
-   QP_ISHEAD = MIMEEF_ISHEAD,
-   QP_ISENCWORD = MIMEEF_ISENCWORD
-};
-
-enum b64flags{
-   B64_NONE = MIMEEF_NONE,
-   B64_SALLOC = MIMEEF_SALLOC,
-   B64_BUF = MIMEEF_BUF,
-   B64_CRLF = MIMEEF_CRLF,
-   B64_LF = MIMEEF_LF,
-   B64_MULTILINE = MIMEEF_MULTILINE,
-   /* Not used, but for clarity only */
-   B64_ISHEAD = MIMEEF_ISHEAD,
-   B64_ISENCWORD = MIMEEF_ISENCWORD,
-   /* Special version of Base64, "Base64URL", according to RFC 4648.
-    * Only supported for encoding! */
-   B64_RFC4648URL = 1u<<(__MIMEEF_LAST+1),
-   /* Don't use any ("=") padding;
-    * may NOT be used with any of _CRLF, _LF or _MULTILINE */
-   B64_NOPAD = 1u<<(__MIMEEF_LAST+2)
-};
-
-enum mime_parse_flags{
-   MIME_PARSE_NONE,
-   MIME_PARSE_DECRYPT = 1u<<0,
-   MIME_PARSE_PARTS = 1u<<1,
-   MIME_PARSE_SHALLOW = 1u<<2,
-   /* In effect we parse this message for user display or quoting purposes, so
-    * relaxed rules regarding content inspection may be applicable */
-   MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
 };
 
 enum okay{
@@ -567,33 +446,6 @@ enum n_tls_verify_level{
    n_TLS_VERIFY_STRICT
 };
 #endif
-
-enum tdflags{
-   TD_NONE, /* no display conversion */
-   TD_ISPR = 1<<0, /* use isprint() checks */
-   TD_ICONV = 1<<1, /* use iconv() */
-   TD_DELCTRL = 1<<2, /* delete control characters */
-
-   /* NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and
-    * enum sendaction, and may thus NOT clash with their bit range! */
-   _TD_EOF = 1<<14, /* EOF seen, last round! */
-   _TD_BUFCOPY = 1<<15 /* Buffer may be constant, copy it */
-};
-
-enum n_visual_info_flags{
-   n_VISUAL_INFO_NONE,
-   n_VISUAL_INFO_ONE_CHAR = 1u<<0, /* Step only one char, then return */
-   n_VISUAL_INFO_SKIP_ERRORS = 1u<<1, /* Treat via replacement, step byte */
-   n_VISUAL_INFO_WIDTH_QUERY = 1u<<2, /* Detect visual character widths */
-
-   /* Rest only with mx_HAVE_C90AMEND1, mutual with _ONE_CHAR */
-   n_VISUAL_INFO_WOUT_CREATE = 1u<<8, /* Use/create .vic_woudat */
-   n_VISUAL_INFO_WOUT_SALLOC = 1u<<9, /* ..autorec_alloc() it first */
-   /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
-   n_VISUAL_INFO_WOUT_PRINTABLE = 1u<<10,
-   n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |
-         n_VISUAL_INFO_WOUT_SALLOC | n_VISUAL_INFO_WOUT_PRINTABLE
-};
 
 enum n_program_option{
    n_PO_D = 1u<<0, /* -d / *debug* */
@@ -784,7 +636,6 @@ ok_b_autothread, /* {obsolete=1} */
    ok_v_autosort,
 
    ok_b_bang,
-ok_b_batch_exit_on_error, /* {obsolete=1} */
 ok_v_bind_timeout, /* {vip=1,obsolete=1,notempty=1,posnum=1} */
    ok_v_bind_inter_byte_timeout, /* {\ } */
       /* {notempty=1,posnum=1,defval=mx_BIND_INTER_BYTE_TIMEOUT} */
@@ -1151,26 +1002,12 @@ struct n_strlist{
    char sl_dat[VFIELD_SIZE(0)];
 };
 #define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
-   n_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   su_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_AUTO_ALLOC(SZ) \
-   n_autorec_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   su_AUTO_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
-   n_lofi_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
-
-struct n_go_data_ctx{
-   struct su_mem_bag *gdc_membag;
-   void *gdc_ifcond; /* Saved state of conditional stack */
-#ifdef mx_HAVE_COLOUR
-   struct mx_colour_env *gdc_colour;
-   boole gdc_colour_active;
-   u8 gdc__colour_pad[7];
-# define mx_COLOUR_IS_ACTIVE() \
-   (/*n_go_data->gc_data.gdc_colour != su_NIL &&*/\
-    /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
-#endif
-   struct su_mem_bag gdc__membag_buf[1];
-};
 
 struct search_expr{
    /* XXX Type of search should not be evaluated but be enum */
@@ -1330,13 +1167,13 @@ struct mimepart{
    char const *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
    char const *m_charset;
    char const *m_ct_enc; /* Content-Transfer-Encoding */
-   u32 m_mimetype; /* enum mx_mimetype */
-   enum mime_enc m_mime_enc; /* ..in enum */
+   u32/*enum mx_mime_type*/ m_mime_type;
+   u32/*enum mx_mime_enc*/ m_mime_enc;
    char *m_partstring; /* Part level string */
    char *m_filename; /* ..of attachment */
    char const *m_content_description;
    char const *m_external_body_url; /* message/external-body:access-type=URL */
-   struct mx_mimetype_handler *m_handler; /* MIME handler if yet classified */
+   struct mx_mime_type_handler *m_handler; /* MIME handler if yet classified */
 };
 
 struct message{
@@ -1562,7 +1399,6 @@ VL char const **n_smopts; /* MTA options from command line */
 VL uz n_smopts_cnt; /* Entries in n_smopts */
 
 /* The current execution data context */
-VL struct n_go_data_ctx *n_go_data;
 VL u32 n_psonce; /* Bits of enum n_program_state_once */
 VL u32 n_pstate; /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a

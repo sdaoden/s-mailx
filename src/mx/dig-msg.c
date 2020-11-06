@@ -35,10 +35,12 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/attachments.h"
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
+#include "mx/go.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
 
@@ -66,7 +68,7 @@ struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx; /* Or NIL XXX HACK*/
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
- * On oexcl success *dmcp will be n_alloc()ated with .dmc_msgno and .dmc_mp
+ * On oexcl success *dmcp will be ALLOC()ated with .dmc_msgno and .dmc_mp
  * etc. set; but not linked into mb.mb_digmsg and .dmc_fp not created etc. */
 static s32 a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp,
       boole oexcl);
@@ -118,7 +120,7 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
       goto jleave;
    }
 
-   *dmcpp = dmcp = n_calloc(1, Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
+   *dmcpp = dmcp = su_CALLOC(Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
    dmcp->dmc_flags = mx_DIG_MSG_OWN_MEMBAG |
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
@@ -385,7 +387,7 @@ jins_505:
 
          nl = su_cs_len(cp = args->ca_arg.ca_str.s) +1;
          bl = su_cs_len(a3p->ca_arg.ca_str.s) +1;
-         *hfpp = hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
+         *hfpp = hfp = su_AUTO_ALLOC(VSTRUCT_SIZEOF(struct n_header_field,
                hf_dat) + nl + bl);
          hfp->hf_next = NIL;
          hfp->hf_nl = nl - 1;
@@ -935,7 +937,7 @@ jatt_attset:
                for(cp2 = UNCONST(char*,cp); (c = *cp++) != '\0';)
                   *cp2++ = su_cs_to_lower(c);
 
-               if(!mx_mimetype_is_valid(ap->a_content_type, TRU1, FAL0)){
+               if(!mx_mime_type_is_valid(ap->a_content_type, TRU1, FAL0)){
                   ap->a_content_type = NIL;
                   goto j505;
                }
@@ -1104,8 +1106,9 @@ mx_dig_msg_on_mailbox_close(struct mailbox *mbp){ /* XXX HACK <- event! */
          fclose(dmcp->dmc_fp);
       if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
          su_mem_bag_gut(dmcp->dmc_membag);
-      n_free(dmcp);
+      su_FREE(dmcp);
    }
+
    NYD_OU;
 }
 
@@ -1154,17 +1157,17 @@ c_digmsg(void *vp){
 
          if((fp = setinput(&mb, dmcp->dmc_mp, NEED_HEADER)) == NIL){
             /* XXX Should have panicked before.. */
-            n_free(dmcp);
+            su_FREE(dmcp);
             emsg = N_("digmsg: create: mailbox I/O error for message: %s\n");
             goto jeinval_quote;
          }
 
-         su_mem_bag_push(n_go_data->gdc_membag, dmcp->dmc_membag);
+         su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
          /* XXX n_header_extract error!! */
          n_header_extract((n_HEADER_EXTRACT_FULL |
                n_HEADER_EXTRACT_PREFILL_RECEIVERS |
                n_HEADER_EXTRACT_IGNORE_FROM_), fp, dmcp->dmc_hp, NIL);
-         su_mem_bag_pop(n_go_data->gdc_membag, dmcp->dmc_membag);
+         su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
       }
 
       if(cacp->cac_no == 3)
@@ -1235,7 +1238,7 @@ jeremove:
       if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
          dmcp->dmc_flags = mx_DIG_MSG_COMPOSE;
       else
-         n_free(dmcp);
+         su_FREE(dmcp);
    }else{
       switch(a_dmsg_find(cp, &dmcp, FAL0)){
       case su_ERR_INVAL:
@@ -1254,11 +1257,11 @@ jeremove:
          ftruncate(fileno(dmcp->dmc_fp), 0);
       }
 
-      su_mem_bag_push(n_go_data->gdc_membag, dmcp->dmc_membag);
+      su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
       if(!a_dmsg_cmd(dmcp->dmc_fp, dmcp, cap,
             ((cap != NIL) ? cap->ca_next : NIL)))
          vp = NIL;
-      su_mem_bag_pop(n_go_data->gdc_membag, dmcp->dmc_membag);
+      su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
 
       if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
          rewind(dmcp->dmc_fp);
