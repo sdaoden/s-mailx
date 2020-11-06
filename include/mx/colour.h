@@ -22,6 +22,8 @@
 #include <mx/nail.h>
 #ifdef mx_HAVE_COLOUR
 
+#include "mx/go.h" /* For mx_COLOUR_IS_ACTIVE() TODO */
+
 #define mx_HEADER
 #include <su/code-in.h>
 
@@ -94,7 +96,7 @@ EXPORT int c_uncolour(void *v);
 
 /* An execution context is teared down, and it finds to have a colour stack.
  * Signals are blocked */
-EXPORT void mx_colour_stack_del(struct n_go_data_ctx *gdcp);
+EXPORT void mx_colour_stack_del(struct mx_go_data_ctx *gdcp);
 
 /* We want coloured output (in this autorec memory cycle), pager_used is used
  * to test whether *colour-pager* is to be inspected, if fp is given, the reset

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Commands: conditional constructs.
+ *@ Implementation of cmd-cnd.h.
  *
  * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -27,67 +27,70 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
-/* TODO fake */
+#include "mx/go.h"
+
+#include "mx/cmd-cnd.h"
 #include "su/code-in.h"
 
-#define a_CCND_IF_IS_ACTIVE() (n_go_data->gdc_ifcond != su_NIL)
+#define a_CCND_IF_IS_ACTIVE() (mx_go_data->gdc_ifcond != NIL)
 #define a_CCND_IF_IS_SKIP() \
    (a_CCND_IF_IS_ACTIVE() &&\
-      (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
-       !((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_go))
+      (R(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_noop ||\
+       !R(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_go))
 
 struct a_ccnd_if_node{
    struct a_ccnd_if_node *cin_outer;
-   boole cin_error;    /* Bad expression, skip entire if..endif */
-   boole cin_noop;     /* Outer stack !cin_go, entirely no-op */
-   boole cin_go;       /* Green light */
-   boole cin_else;     /* In `else' clause */
+   boole cin_error; /* Bad expression, skip entire if..endif */
+   boole cin_noop; /* Outer stack !cin_go, entirely no-op */
+   boole cin_go; /* Green light */
+   boole cin_else; /* In `else' clause */
    u8 cin__dummy[4];
 };
 
 struct a_ccnd_if_ctx{
    char const * const *cic_argv_base;
-   char const * const *cic_argv_max;   /* BUT: .cic_argv MUST be terminated! */
+   char const * const *cic_argv_max; /* BUT: .cic_argv MUST be terminated! */
    char const * const *cic_argv;
 };
 
 /* */
 static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
-               char const *msg_or_null, char const *nearby_or_null);
+      char const *msg_or_nil, char const *nearby_or_nil);
 
-/* noop and (1) don't work for real, only syntax-check and
+/* No-op and (1) do not work for real, only syntax-check and
  * (2) non-error return is ignored */
 static s8 a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop);
-static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level,
-               boole noop);
+static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop);
 
 /* Shared `if' / `elif' implementation */
-static int a_ccnd_if(void *v, boole iselif);
+static int a_ccnd_if(void *vp, boole iselif);
 
 static void
-a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
-      char const *nearby_or_null){
+a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_nil,
+      char const *nearby_or_nil){
    struct str s;
    NYD2_IN;
 
-   if(msg_or_null == NULL)
-      msg_or_null = _("invalid expression syntax");
+   if(msg_or_nil == NIL)
+      msg_or_nil = _("invalid expression syntax");
 
-   if(nearby_or_null != NULL)
-      n_err(_("if: %s -- near: %s\n"), msg_or_null, nearby_or_null);
+   if(nearby_or_nil != NIL)
+      n_err(_("if: %s -- near: %s\n"), msg_or_nil, nearby_or_nil);
    else
-      n_err(_("if: %s\n"), msg_or_null);
+      n_err(_("if: %s\n"), msg_or_nil);
 
    if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)){
       str_concat_cpa(&s, cicp->cic_argv_base,
-         (*cicp->cic_argv_base != NULL ? " " : n_empty));
+         (*cicp->cic_argv_base != NIL ? " " : su_empty));
       n_err(_("   Expression: %s\n"), s.s);
 
       str_concat_cpa(&s, cicp->cic_argv,
-         (*cicp->cic_argv != NULL ? " " : n_empty));
+         (*cicp->cic_argv != NIL ? " " : su_empty));
       n_err(_("   Stopped at: %s\n"), s.s);
    }
+
    NYD2_OU;
 }
 
@@ -100,7 +103,7 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    NYD2_IN;
 
    rv = -1;
-   emsg = NULL;
+   emsg = NIL;
    argv = cicp->cic_argv;
    argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
@@ -108,7 +111,7 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    if(UNLIKELY(argc != 1 && argc != 3 &&
          (argc != 2 || !(n_pstate & n_PS_ARGMOD_WYSH)))){
 jesyn:
-      if(emsg != NULL)
+      if(emsg != NIL)
          emsg = V_(emsg);
 #ifdef mx_HAVE_REGEX
 jesyn_ntr:
@@ -135,8 +138,8 @@ jesyn_ntr:
                   goto jesyn;
             }
 
-            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
-            rv = (lhv != NULL);
+            lhv = noop ? NIL : n_var_vlook(cp, TRU1);
+            rv = (lhv != NIL);
             break;
          }
          /* FALLTHRU */
@@ -177,7 +180,7 @@ jesyn_ntr:
             rv = TRU1;
          else{
             lhv = n_var_vlook(argv[1], TRU1);
-            rv = (c == 'N') ? (lhv != su_NIL) : (lhv == su_NIL);
+            rv = (c == 'N') ? (lhv != NIL) : (lhv == NIL);
          }
          break;
       case 'n':
@@ -217,7 +220,7 @@ jesyn_ntr:
                   goto jesyn;
             }
 
-            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+            lhv = noop ? NIL : n_var_vlook(cp, TRU1);
          }else
             goto jesyn;
       }
@@ -245,7 +248,7 @@ jesyn_ntr:
          if(flags == a_NONE)
             flags = a_ICASE;
       }else
-      if((cp = su_cs_find_c(op, '?')) != su_NIL){
+      if((cp = su_cs_find_c(op, '?')) != NIL){
          if(cp[1] == '\0')
             flags |= a_MOD;
          else if(su_cs_starts_with_case("case", &cp[1]))
@@ -294,15 +297,18 @@ jesyn_ntr:
 
       /* The right hand side may also be a variable, more syntax checking */
       emsg = N_("invalid right hand side");
-      if((rhv = argv[2]) == NULL /* Can't happen */)
+      if((rhv = argv[2]) == NIL /* Can't happen */)
          goto jesyn;
 
       if(!(n_pstate & n_PS_ARGMOD_WYSH)){
          if(*rhv == '$'){/* v15compat */
             if(*++rhv == '\0')
                goto jesyn;
-            else if(*rhv == '{'){
-               uz i = su_cs_len(rhv);
+
+            if(*rhv == '{'){
+               uz i;
+
+               i = su_cs_len(rhv);
 
                if(i > 0 && rhv[i - 1] == '}')
                   rhv = savestrbuf(++rhv, i -= 2);
@@ -311,19 +317,17 @@ jesyn_ntr:
                   goto jesyn;
                }
             }
-            if(noop)
-               rhv = NULL;
-            else
-               rhv = n_var_vlook(cp = rhv, TRU1);
+
+            rhv = noop ? NIL : n_var_vlook(cp = rhv, TRU1);
          }
       }
 
       /* A null value is treated as the empty string */
-      emsg = NULL;
-      if(lhv == NULL)
-         lhv = n_UNCONST(su_empty);
-      if(rhv == NULL)
-         rhv = n_UNCONST(su_empty);
+      emsg = NIL;
+      if(lhv == NIL)
+         lhv = UNCONST(char*,su_empty);
+      if(rhv == NIL)
+         rhv = UNCONST(char*,su_empty);
 
 #ifdef mx_HAVE_REGEX
       if(op[1] == '~'){
@@ -338,14 +342,16 @@ jesyn_ntr:
          if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
                (flags & (a_MOD | a_ICASE) ? REG_ICASE : 0))) != 0){
             emsg = savecat(_("invalid regular expression: "),
-                  n_regex_err_to_doc(NULL, s));
+                  n_regex_err_to_doc(NIL, s));
             goto jesyn_ntr;
          }
+
          if(!noop)
-            rv = (regexec(&re, lhv, 0,NULL, 0) == REG_NOMATCH) ^ (c == '=');
+            rv = (regexec(&re, lhv, 0,NIL, 0) == REG_NOMATCH) ^ (c == '=');
+
          regfree(&re);
       }else
-#endif
+#endif /* mx_HAVE_REGEX */
             if(noop){
          ;
       }else if(op[1] == '%' || op[1] == '@'){
@@ -357,7 +363,7 @@ jesyn_ntr:
          if(op[1] == '@') /* v15compat */
             n_OBSOLETE("if++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
          rv = ((flags & (a_MOD | a_ICASE) ? su_cs_find_case(lhv, rhv)
-               : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
+               : su_cs_find(lhv, rhv)) == NIL) ^ (c == '=');
       }else if(c == '-'){
          u32 lhvis, rhvis;
          s64 lhvi, rhvi;
@@ -374,8 +380,8 @@ jesyn_ntr:
          rhvis = lhvis = (flags & (a_MOD | a_SATURATED)
                   ? su_IDEC_MODE_LIMIT_NOERROR : su_IDEC_MODE_NONE) |
                su_IDEC_MODE_SIGNED_TYPE;
-         lhvis = su_idec_cp(&lhvi, lhv, 0, lhvis, su_NIL);
-         rhvis = su_idec_cp(&rhvi, rhv, 0, rhvis, su_NIL);
+         lhvis = su_idec_cp(&lhvi, lhv, 0, lhvis, NIL);
+         rhvis = su_idec_cp(&rhvi, rhv, 0, rhvis, NIL);
 
          if((lhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                   ) != su_IDEC_STATE_CONSUMED ||
@@ -417,6 +423,7 @@ jesyn_ntr:
 
    if(noop && rv < 0)
       rv = TRU1;
+
 jleave:
    NYD2_OU;
    return rv;
@@ -428,9 +435,9 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop){
    uz i;
    char unary, c;
    enum{
-      a_FIRST = 1<<0,
-      a_END_OK = 1<<1,
-      a_NEED_LIST = 1<<2,
+      a_FIRST = 1u<<0,
+      a_END_OK = 1u<<1,
+      a_NEED_LIST = 1u<<2,
 
       a_CANNOT_UNARY = a_NEED_LIST,
       a_CANNOT_OBRACK = a_NEED_LIST,
@@ -444,11 +451,11 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop){
    rv = -1;
    state = a_FIRST;
    unary = '\0';
-   emsg = NULL;
+   emsg = NIL;
 
    for(;;){
       arg0 = *(argv = cicp->cic_argv);
-      if(arg0 == NULL){
+      if(arg0 == NIL){
          if(!(state & a_END_OK)){
             emsg = N_("missing expression (premature end)");
             goto jesyn;
@@ -535,7 +542,7 @@ jneed_cond:
          }
 
          for(i = 0;; ++i){
-            if((arg0 = argv[i]) == NULL)
+            if((arg0 = argv[i]) == NIL)
                break;
             c = *arg0;
             if(c == '!' && arg0[1] == '\0')
@@ -571,7 +578,7 @@ jleave:
    NYD2_OU;
    return rv;
 jesyn:
-   if(emsg == NULL)
+   if(emsg == NIL)
       emsg = N_("invalid grouping");
    a_ccnd_oif_error(cicp, V_(emsg), arg0);
    rv = -1;
@@ -588,18 +595,18 @@ a_ccnd_if(void *v, boole iselif){
    NYD_IN;
 
    if(!iselif){
-      cinp = n_alloc(sizeof *cinp);
-      cinp->cin_outer = n_go_data->gdc_ifcond;
+      cinp = su_ALLOC(sizeof *cinp);
+      cinp->cin_outer = mx_go_data->gdc_ifcond;
    }else{
-      cinp = n_go_data->gdc_ifcond;
-      ASSERT(cinp != NULL);
+      cinp = mx_go_data->gdc_ifcond;
+      ASSERT(cinp != NIL);
    }
    cinp->cin_error = FAL0;
    cinp->cin_noop = a_CCND_IF_IS_SKIP();
    cinp->cin_go = TRU1;
    cinp->cin_else = FAL0;
    if(!iselif)
-      n_go_data->gdc_ifcond = cinp;
+      mx_go_data->gdc_ifcond = cinp;
 
    if(cinp->cin_noop){
       rv = 0;
@@ -607,14 +614,15 @@ a_ccnd_if(void *v, boole iselif){
    }
 
    /* For heaven's sake, support comments _today_ TODO wyshlist.. */
-   for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
+   for(argc = 0, argv = v; argv[argc] != NIL; ++argc)
       if(argv[argc][0] == '#'){
-         char const **nav = n_autorec_alloc(sizeof(char*) * (argc + 1));
          uz i;
+         char const **nav;
 
+         nav = su_AUTO_ALLOC(sizeof(char*) * (argc + 1));
          for(i = 0; i < argc; ++i)
             nav[i] = argv[i];
-         nav[i] = NULL;
+         nav[i] = NIL;
          argv = nav;
          break;
       }
@@ -623,53 +631,56 @@ a_ccnd_if(void *v, boole iselif){
    xrv = a_ccnd_oif_group(&cic, 0, FAL0);
 
    if(xrv >= 0){
-      cinp->cin_go = (boole)xrv;
+      cinp->cin_go = S(boole,xrv);
       rv = 0;
    }else{
       cinp->cin_error = cinp->cin_noop = TRU1;
       rv = 1;
    }
+
 jleave:
    NYD_OU;
    return rv;
 }
 
-FL int
-c_if(void *v){
+int
+c_if(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_ccnd_if(v, FAL0);
+   rv = a_ccnd_if(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
-c_elif(void *v){
+int
+c_elif(void *vp){
    struct a_ccnd_if_node *cinp;
    int rv;
    NYD_IN;
 
-   if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
+   if((cinp = mx_go_data->gdc_ifcond) == NIL || cinp->cin_else){
       n_err(_("elif: no matching `if'\n"));
       rv = 1;
    }else if(!cinp->cin_error){
       cinp->cin_go = !cinp->cin_go; /* Cause right _IF_IS_SKIP() result */
-      rv = a_ccnd_if(v, TRU1);
+      rv = a_ccnd_if(vp, TRU1);
    }else
       rv = 0;
+
    NYD_OU;
    return rv;
 }
 
-FL int
-c_else(void *v){
+int
+c_else(void *vp){
    int rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
-   UNUSED(v);
+   UNUSED(vp);
 
-   if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
+   if((cinp = mx_go_data->gdc_ifcond) == NIL || cinp->cin_else){
       n_err(_("else: no matching `if'\n"));
       rv = 1;
    }else{
@@ -677,31 +688,33 @@ c_else(void *v){
       cinp->cin_go = !cinp->cin_go;
       rv = 0;
    }
+
    NYD_OU;
    return rv;
 }
 
-FL int
-c_endif(void *v){
+int
+c_endif(void *vp){
    int rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
-   UNUSED(v);
+   UNUSED(vp);
 
-   if((cinp = n_go_data->gdc_ifcond) == NULL){
+   if((cinp = mx_go_data->gdc_ifcond) == NIL){
       n_err(_("endif: no matching `if'\n"));
       rv = 1;
    }else{
-      n_go_data->gdc_ifcond = cinp->cin_outer;
-      n_free(cinp);
+      mx_go_data->gdc_ifcond = cinp->cin_outer;
+      su_FREE(cinp);
       rv = 0;
    }
+
    NYD_OU;
    return rv;
 }
 
-FL boole
-n_cnd_if_exists(void){
+boole
+mx_cnd_if_exists(void){
    boole rv;
    NYD2_IN;
 
@@ -712,18 +725,19 @@ n_cnd_if_exists(void){
    return rv;
 }
 
-FL void
-n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
+void
+mx_cnd_if_stack_del(struct mx_go_data_ctx *gdcp){
    struct a_ccnd_if_node *vp, *cinp;
    NYD2_IN;
 
    vp = gdcp->gdc_ifcond;
-   gdcp->gdc_ifcond = NULL;
+   gdcp->gdc_ifcond = NIL;
 
-   while((cinp = vp) != NULL){
+   while((cinp = vp) != NIL){
       vp = cinp->cin_outer;
-      n_free(cinp);
+      su_FREE(cinp);
    }
+
    NYD2_OU;
 }
 

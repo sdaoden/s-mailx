@@ -57,9 +57,11 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/file-streams.h"
+#include "mx/mime-enc.h"
 #include "mx/names.h"
 #include "mx/sigs.h"
 #include "mx/net-socket.h"
@@ -268,7 +270,7 @@ jerr_cred:
       cnt += sbp->sb_credp->cc_pass.l;
 
       cnt += a_MAX;
-      if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
+      if((cnt = mx_b64_enc_calc_size(cnt)) == UZ_MAX)
          goto jerr_cred;
       if(cnt >= sizeof(o))
          goto jerr_cred;
@@ -280,7 +282,7 @@ jerr_cred:
 
          i = snprintf(o, sizeof o, "user=%s\001auth=Bearer %s\001\001",
             sbp->sb_credp->cc_user.s, sbp->sb_credp->cc_pass.s);
-         if(b64_encode_buf(&b64, o, i, B64_SALLOC) == NIL)
+         if(mx_b64_enc_buf(&b64, o, i, mx_B64_AUTO_ALLOC) == NIL)
             goto jleave;
          snprintf(o, sizeof o, NETLINE("AUTH XOAUTH2 %s"), b64.s);
          b64.s = o;
@@ -292,7 +294,8 @@ jerr_cred:
 
          i = snprintf(o, sizeof o, "%c%s%c%s",
             '\0', sbp->sb_credp->cc_user.s, '\0', sbp->sb_credp->cc_pass.s);
-         if(b64_encode_buf(&b64, o, i, B64_SALLOC | B64_CRLF) == NIL)
+         if(mx_b64_enc_buf(&b64, o, i, mx_B64_AUTO_ALLOC | mx_B64_CRLF
+               ) == NIL)
             goto jleave;
       }
       a_SMTP_OUT(b64.s);
@@ -303,15 +306,15 @@ jerr_cred:
 
    case mx_CRED_AUTHTYPE_EXTERNAL:
 #define a_MAX (sizeof("AUTH EXTERNAL " NETNL))
-      cnt = b64_encode_calc_size(sbp->sb_credp->cc_user.l);
+      cnt = mx_b64_enc_calc_size(sbp->sb_credp->cc_user.l);
       if(/*cnt == UZ_MAX ||*/ cnt >= sizeof(o) - a_MAX)
          goto jerr_cred;
 #undef a_MAX
 
       su_mem_copy(o, "AUTH EXTERNAL ", sizeof("AUTH EXTERNAL ") -1);
       b64.s = &o[sizeof("AUTH EXTERNAL ") -1];
-      b64_encode_buf(&b64, sbp->sb_credp->cc_user.s, sbp->sb_credp->cc_user.l,
-         B64_BUF | B64_CRLF);
+      mx_b64_enc_buf(&b64, sbp->sb_credp->cc_user.s,
+            sbp->sb_credp->cc_user.l, mx_B64_BUF | mx_B64_CRLF);
       a_SMTP_OUT(o);
       a_SMTP_ANSWER(2, FAL0, FAL0);
       break;
@@ -322,21 +325,21 @@ jerr_cred:
       break;
 
    case mx_CRED_AUTHTYPE_LOGIN:
-      if(b64_encode_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
-            b64_encode_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
+      if(mx_b64_enc_calc_size(sbp->sb_credp->cc_user.l) == UZ_MAX ||
+            mx_b64_enc_calc_size(sbp->sb_credp->cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
       a_SMTP_OUT(NETLINE("AUTH LOGIN"));
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
-      if(b64_encode_buf(&b64, sbp->sb_credp->cc_user.s,
-            sbp->sb_credp->cc_user.l, B64_SALLOC | B64_CRLF) == NIL)
+      if(mx_b64_enc_buf(&b64, sbp->sb_credp->cc_user.s,
+            sbp->sb_credp->cc_user.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
-      if(b64_encode_buf(&b64, sbp->sb_credp->cc_pass.s,
-            sbp->sb_credp->cc_pass.l, B64_SALLOC | B64_CRLF) == NIL)
+      if(mx_b64_enc_buf(&b64, sbp->sb_credp->cc_pass.s,
+            sbp->sb_credp->cc_pass.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
       a_SMTP_OUT(b64.s);
       a_SMTP_ANSWER(2, FAL0, FAL0);

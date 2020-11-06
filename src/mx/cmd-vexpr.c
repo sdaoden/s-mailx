@@ -46,6 +46,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 /* v15compat: csop.h */
@@ -740,9 +741,9 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
 
       /* XXX using su_cs_len for `vexpr makeprint' is wrong for UTF-16 */
       sin.l = su_cs_len(sin.s = UNCONST(char*,vcp->vc_arg));
-      makeprint(&sin, &sout);
+      mx_makeprint(&sin, &sout);
       vcp->vc_varres = savestrbuf(sout.s, sout.l);
-      n_free(sout.s);
+      su_FREE(sout.s);
       }break;
    /* TODO `vexpr': (wide) string length, find, etc!! */
 #ifdef mx_HAVE_REGEX

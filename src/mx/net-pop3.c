@@ -54,9 +54,11 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 
+#include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/cred-md5.h"
 #include "mx/file-streams.h"
+#include "mx/mime-enc.h"
 #include "mx/net-socket.h"
 #include "mx/sigs.h"
 
@@ -379,7 +381,7 @@ jerr_cred:
 
    cnt += a_MAX;
 #undef a_MAX
-   if((cnt = b64_encode_calc_size(cnt)) == UZ_MAX)
+   if((cnt = mx_b64_enc_calc_size(cnt)) == UZ_MAX)
       goto jerr_cred;
 
    cp = n_lofi_alloc(cnt +1);
@@ -387,7 +389,7 @@ jerr_cred:
    /* Then create login query */
    i = snprintf(cp, cnt +1, "user=%s\001auth=Bearer %s\001\001",
       pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_pass.s);
-   if(b64_encode_buf(&b64, cp, i, B64_SALLOC) == NIL)
+   if(mx_b64_enc_buf(&b64, cp, i, mx_B64_AUTO_ALLOC) == NIL)
       goto jleave;
 
    cnt = sizeof("AUTH XOAUTH2 ") -1;
@@ -423,7 +425,7 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    cnt = 0;
    if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
       cnt = pcp->pc_cred.cc_user.l;
-      cnt = b64_encode_calc_size(cnt);
+      cnt = mx_b64_enc_calc_size(cnt);
    }
    if(cnt >= UZ_MAX - a_MAX){
       n_err(_("Credentials overflow buffer sizes\n"));
@@ -442,8 +444,8 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    cnt = 0;
    if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
       s.s = cp;
-      b64_encode_buf(&s, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l,
-         B64_BUF);
+      mx_b64_enc_buf(&s, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l,
+         mx_B64_BUF);
       cnt = s.l;
    }
    su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));

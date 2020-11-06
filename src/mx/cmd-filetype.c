@@ -31,6 +31,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 
@@ -104,6 +105,7 @@ a_ft_clone(void const *t, u32 estate){
       su_mem_copy(rv->ftd_save.s = cp, tp->ftd_save.s,
          (rv->ftd_save.l = tp->ftd_save.l) +1);
    }
+
    NYD_OU;
    return rv;
 }
@@ -114,6 +116,7 @@ a_ft_delete(void *self){
    NYD_IN;
 
    su_FREE(self);
+
    NYD_OU;
 }
 #endif
@@ -125,6 +128,7 @@ a_ft_assign(void *self, void const *t, u32 estate){
 
    if((rv = a_ft_clone(t, estate)) != NIL)
       su_FREE(self);
+
    NYD_OU;
    return rv;
 }
@@ -242,6 +246,7 @@ c_unfiletype(void *vp){
    NYD_IN;
 
    rv = !mx_unxy_dict("filetype", a_ft_dp, vp);
+
    NYD_OU;
    return rv;
 }
@@ -384,7 +389,7 @@ mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file){
 #undef a_X2
 #define a_X2 "file-hook-save-"
       l = su_cs_len(lext);
-      vbuf = n_lofi_alloc(l + MAX(sizeof(a_X1), sizeof(a_X2)));
+      vbuf = su_LOFI_ALLOC(l + MAX(sizeof(a_X1), sizeof(a_X2)));
 
       su_mem_copy(vbuf, a_X1, sizeof(a_X1) -1);
       su_mem_copy(&vbuf[sizeof(a_X1) -1], lext, l);
@@ -396,9 +401,9 @@ mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file){
       vbuf[sizeof(a_X2) -1 + l] = '\0';
       csave = n_var_vlook(vbuf, FAL0);
 
+      su_LOFI_FREE(vbuf);
 #undef a_X2
 #undef a_X1
-      n_lofi_free(vbuf);
 
       if((csave != NIL) | (cload != NIL)){
          n_OBSOLETE("*file-hook-{load,save}-EXTENSION* will vanish, "

@@ -49,6 +49,7 @@
 #include <su/mem.h>
 #include <su/prime.h>
 
+#include "mx/compat.h"
 #include "mx/names.h"
 
 /* TODO fake */
