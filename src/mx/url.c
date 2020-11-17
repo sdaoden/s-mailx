@@ -490,7 +490,8 @@ juser:
          if(urlp->url_user_enc.l != l ||
                su_mem_cmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
-            n_err(_("Incorrect URL percent encoding: %s\n"), ub);
+            n_err(_("Not URL percent encoded (use `urlcodec enc'): %s\n"),
+               ub);
             d = NIL;
          }
       }else
