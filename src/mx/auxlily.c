@@ -85,11 +85,6 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-/* */
-#ifdef mx_HAVE_ERRORS
-CTAV(mx_ERRORS_MAX > 1);
-#endif
-
 /* The difference in between mx_HAVE_ERRORS and not, is size of queue only */
 struct a_aux_err_node{
    struct a_aux_err_node *ae_next;
@@ -875,6 +870,9 @@ n_verr(char const *format, va_list ap){
 FL void
 n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    mx_COLOUR( static uz c5recur; ) /* *termcap* recursion */
+#ifdef mx_HAVE_ERRORS
+   u32 errlim;
+#endif
    struct str s_b, s;
    struct a_aux_err_node *lenp, *enp;
    sz i;
@@ -958,6 +956,10 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       n_poption &= ~n_PO_D_V;
 
       lpref = ok_vlook(log_prefix);
+
+#ifdef mx_HAVE_ERRORS
+      su_idec_u32_cp(&errlim, ok_vlook(errors_limit), 0, NIL);
+#endif
 
 #ifdef mx_HAVE_COLOUR
       if(c5recur == 1 && (n_psonce & n_PSO_TTYANY)){
@@ -1072,11 +1074,15 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       }
 
 #ifdef mx_HAVE_ERRORS
-      if(n_pstate_err_cnt < mx_ERRORS_MAX){
+      if(n_pstate_err_cnt < errlim){
          ++n_pstate_err_cnt;
          continue;
       }
-      a_aux_err_head = (lenp = a_aux_err_head)->ae_next;
+
+      ASSERT(a_aux_err_head != NIL);
+      lenp = a_aux_err_head;
+      if((a_aux_err_head = lenp->ae_next) == NIL)
+         a_aux_err_tail = NIL;
 #else
       a_aux_err_head = a_aux_err_tail = enp;
 #endif

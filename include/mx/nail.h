@@ -829,6 +829,7 @@ ok_b_dotlock_ignore_error, /* {obsolete=1} */
    ok_b_emptystart,
 ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
+   ok_v_errors_limit, /* {notempty=1,posnum=1,defval=VAL_ERRORS_LIMIT} */
    ok_v_escape, /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
    ok_v_expandaddr_domaincheck, /* {notempty=1} */
@@ -1559,9 +1560,11 @@ VL u32 n_pstate; /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
  * TODO status and may-place-in-history bit, need to manage global bypass.. */
+
 #ifdef mx_HAVE_ERRORS
-VL s32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
+VL u32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
 #endif
+
 /* TODO n_pstate_err_no: this should contain the error number in the lower
  * TODO bits, and a suberror in the high bits: offer accessor/setter macros.
  * TODO Like this we could use $^ERR-SUBNO or so to access these from outer

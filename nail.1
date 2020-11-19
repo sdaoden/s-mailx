@@ -5385,16 +5385,16 @@ a variable breaks any freely established
 .
 .Mx
 .It Ic errors
-\*(OP Since \*(UA uses the console as a user interface it can happen
-that messages scroll by too fast to become recognized.
-Therefore an error log queue is available which can be managed by
-.Ic errors :
+\*(OP As console user interfaces at times scroll error messages by too
+fast and/or out of scope, data can additionally be sent to an error queue
+manageable by this command:
 .Ar show
 or no argument will display and clear the queue,
 .Ar clear
-will only clear the queue.
-The queue is finite: if its maximum size is reached any new message
-replaces the eldest.
+will only clear it.
+As the queue becomes filled with
+.Va errors-limit
+entries the eldest entries are being dropped.
 There are also the variables
 .Va ^ERRQUEUE-COUNT
 and
@@ -9660,6 +9660,12 @@ but which use a different modifier for ignoring the error.
 Please refer to the variable
 .Va \&?
 for more on this topic.
+.
+.Mx
+.It Va errors-limit
+\*(OP Maximum number of entries in the
+.Ic errors
+queue.
 .
 .Mx
 .It Va escape

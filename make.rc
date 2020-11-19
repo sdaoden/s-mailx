@@ -240,7 +240,9 @@ OPT_DOTLOCK=yes
 # or $PAGERs are started and clear errors off the screen.
 # If enabled errors will be duplicated to an error queue as they happen
 # and the `errors' command will show them when asked to.
+# VAL_ERRORS_LIMIT will be the default value of *errors-limit*.
 OPT_ERRORS=yes
+VAL_ERRORS_LIMIT=8000
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
