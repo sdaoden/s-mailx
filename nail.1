@@ -3438,8 +3438,8 @@ information which applies; a handy suggestion might thus be:
 .\" .Ss "Command modifiers" {{{
 .Ss "Command modifiers"
 .
-Commands may be prefixed by none to multiple command modifiers.
-If given multiple modifiers order is insignificant unless noted otherwise.
+Commands may be prefixed by one to multiple (case-insensitive)
+command modifiers, the order of which is insignificant.
 Some modifiers can be used with a restricted set of commands only, the
 .Va verbose
 version of
@@ -3449,16 +3449,16 @@ will (\*(OPally) show which modifiers apply.
 .Bl -tag -width ".It Fl BaNgG"
 .Mx
 .It Cm \e
-The reverse solidus, to be placed first, prevents
+The reverse solidus prevents
 .Ic commandalias
-expansions on the remains of the command, for example
+expansion (which may contain additional modifiers), for example
 .Ql \eecho
+(or
+.Ql \e echo )
 will always evaluate the command
 .Ic echo ,
 even if an (command)alias of the same name exists.
-.Ic \&\&commandalias
-content may itself contain further command modifiers, including
-an initial reverse solidus to prevent further expansions.
+Need not be whitespace-separated from other modifiers or command names.
 .
 .Mx
 .It Cm global
