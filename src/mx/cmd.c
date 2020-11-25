@@ -189,22 +189,28 @@ jfakeent:
       rv = n_string_push_cp(rv, _(" | `global'"));
    if(cdp->cd_caflags & mx_CMD_ARG_L)
       rv = n_string_push_cp(rv, _(" | `local'"));
+   if(cdp->cd_caflags & mx_CMD_ARG_U)
+      rv = n_string_push_cp(rv, _(" | `u'"));
+
    if(cdp->cd_caflags & mx_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | `vput'"));
    if(cdp->cd_caflags & mx_CMD_ARG_EM)
       rv = n_string_push_cp(rv, _(" | *!*"));
 
-   if(cdp->cd_caflags & mx_CMD_ARG_A)
-      rv = n_string_push_cp(rv, _(" | needs-box"));
 
-   if(cdp->cd_caflags & (mx_CMD_ARG_I | mx_CMD_ARG_M | mx_CMD_ARG_X)){
+   if(cdp->cd_caflags & (mx_CMD_ARG_A | mx_CMD_ARG_I | mx_CMD_ARG_M |
+         mx_CMD_ARG_X | mx_CMD_ARG_NEEDMAC)){
       rv = n_string_push_cp(rv, _(" | yay:"));
+      if(cdp->cd_caflags & mx_CMD_ARG_A)
+         rv = n_string_push_cp(rv, _(" active-mailbox"));
       if(cdp->cd_caflags & mx_CMD_ARG_I)
          rv = n_string_push_cp(rv, _(" batch/interactive"));
       if(cdp->cd_caflags & mx_CMD_ARG_M)
          rv = n_string_push_cp(rv, _(" send-mode"));
       if(cdp->cd_caflags & mx_CMD_ARG_X)
          rv = n_string_push_cp(rv, _(" subprocess"));
+      if(cdp->cd_caflags & mx_CMD_ARG_NEEDMAC)
+         rv = n_string_push_cp(rv, _(" macro/account"));
    }
 
    if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
@@ -213,6 +219,8 @@ jfakeent:
          rv = n_string_push_cp(rv, _(" compose mode"));
       if(cdp->cd_caflags & mx_CMD_ARG_S)
          rv = n_string_push_cp(rv, _(" startup"));
+      if(cdp->cd_caflags & mx_CMD_ARG_W)
+         rv = n_string_push_cp(rv, _(" read-only-mailbox"));
    }
 
    if(cdp->cd_caflags & mx_CMD_ARG_HGABBY)
@@ -598,6 +606,7 @@ jredo:
          struct n_string shou, *shoup;
          BITENUM_IS(u32,n_shexp_state) shs;
 
+jshexp_restart:
          if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
 
          shoup = n_string_creat_auto(&shou);
@@ -640,8 +649,10 @@ jredo:
             /* Succeed if we had any arg */
             f |= a_STOPLOOP;
          }else if(!(shs & n_SHEXP_STATE_OUTPUT)){
-            ASSERT(0);
-            goto jerr;
+            /* Can happen at least now that eval is a modifier, for "eval $1
+             * echo au" where $1 does not exist and thus expand to nothing.
+             * We simply treat it as if it was not given at all */
+            goto jshexp_restart;
          }
          }break;
       case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
@@ -1015,6 +1026,69 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
 jleave:
    NYD_OU;
    return res_no;
+}
+
+boole
+mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
+   mx_CMD_ARG_DESC_SUBCLASS_DEF(eval, 1, a_cmd_cad_eval){
+      {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
+         mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
+   }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+   static struct mx_cmd_desc const a_cmd_eval = {
+      "eval", R(int(*)(void*),-1), mx_CMD_ARG_TYPE_ARG, 0, 0,
+      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_eval), NIL
+   };
+
+   struct mx_cmd_arg_ctx cac;
+   struct n_string as_b, *asp;
+   struct mx_cmd_arg *cap;
+   uz i, j;
+   boole rv;
+   NYD_IN;
+
+   rv = FAL0;
+
+   while(cnt > 0){
+      cac.cac_desc = a_cmd_eval.cd_cadp;
+      cac.cac_indat = io->s;
+      cac.cac_inlen = io->l;
+      cac.cac_msgflag = cac.cac_msgmask = 0;
+      if(!mx_cmd_arg_parse(&cac))
+         goto jleave;
+
+      for(i = 0, cap = cac.cac_arg; cap != NIL; cap = cap->ca_next)
+         i += cap->ca_arg.ca_str.l + 1;
+      if(prefix_or_nil != NIL)
+         i += (j = su_cs_len(prefix_or_nil) +1);
+      else
+         j = 0;
+
+      asp = n_string_creat_auto(&as_b);
+      asp = n_string_reserve(asp, i);
+
+      for(cap = cac.cac_arg; cap != NIL; cap = cap->ca_next){
+         if(asp->s_len > 0)
+            asp = n_string_push_c(asp, ' ');
+         asp = n_string_push_buf(asp, cap->ca_arg.ca_str.s,
+               cap->ca_arg.ca_str.l);
+      }
+
+      if(--cnt == 0 && j > 0){
+         asp = n_string_unshift_buf(asp, prefix_or_nil, j);
+         asp->s_dat[--j] = ' ';
+      }
+
+      io->s = n_string_cp(asp);
+      io->l = asp->s_len;
+      /* n_string_gut(n_string_drop_ownership(asp)); */
+   }
+
+   rv = TRU1;
+jleave:
+   NYD_OU;
+   return rv;
 }
 
 #include "su/code-ou.h"

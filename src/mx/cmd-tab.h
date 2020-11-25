@@ -229,6 +229,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define V mx_CMD_ARG_V
 #define W mx_CMD_ARG_W
 #define X mx_CMD_ARG_X
+#define NMAC mx_CMD_ARG_NEEDMAC
 #define NOHIST mx_CMD_ARG_NOHIST
 #define EM mx_CMD_ARG_EM
 
@@ -391,8 +392,6 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
       (I | M | NOHIST | TWYSH), 0, 1, NIL
      DS(N_("Either [<show>] or <clear> the error message ring")) },
-   { "eval", &c_eval, (HG | M | X | EM | TWYSH), 1, MAC, NIL
-     DS(N_("Construct command from :<arguments>:, reuse its $? and $!")) },
    { "exit", &c_exit, (M | X | TWYSH), 0, 1, NIL
      DS(N_("Immediately return [<status>] to the shell without saving")) },
 
@@ -484,7 +483,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Mailing-list followup to the given <msglist>")) },
    { "list", &a_cmd_c_list, (M | TWYSH), 0, 0, NIL
      DS(N_("List all commands (in lookup order)")) },
-   { "localopts", &c_localopts, (M | X | NOHIST | TWYSH), 1, 2, NIL
+   { "localopts", &c_localopts, (M | X | NMAC | NOHIST | TWYSH), 1, 2, NIL
      DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
    { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mailing-list reply to the given <msglist>")) },
@@ -605,7 +604,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Reply to originators and recipients of <msglist>")) },
    { "retain", &c_retain, (M | TWYRA), 0, MAC, NIL
      DS(N_("Add <header-list> to retained list, or show that list")) },
-   { "return", &c_return, (M | X | EM | TWYSH), 0, 2, NIL
+   { "return", &c_return, (M | X | EM | NMAC |TWYSH), 0, 2, NIL
      DS(N_("Return control from macro [<return value> [<exit status>]]"))},
 { "replyall", &c_replyall, (O | A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
  DS(N_("Reply to originator and recipients of <msglist>")) },
@@ -883,6 +882,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #undef V
 #undef W
 #undef X
+#undef NMAC
 #undef NOHIST
 #undef EM
 

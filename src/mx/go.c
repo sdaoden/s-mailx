@@ -274,32 +274,40 @@ a_go_update_pstate(void){
 
 static boole
 a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
-   /* TODO old style(9), but also old code */
-   /* TODO a_go_evaluate() should be split in multiple subfunctions,
-    * TODO `eval' should be a prefix, etc., a cmd_ctx should be passed along;
-    * TODO this also affects history handling, as below!  etc etc */
+   /* TODO a_go_evaluate(): old style(9), but also old code */
+   /* TODO a_go_evaluate(): should be split in multiple subfunctions!!
+    * TODO All commands should take a_cmd_ctx argument, also to do a much
+    * TODO better history handling, now below!  etc (cmd_arg parser able to
+    * TODO deal with subcommands of multiplexers directly) etc etc */
+   enum a_flags{
+      a_NONE = 0,
+      /* Alias recursion counter bits */
+      a_ALIAS_MASK = su_BITENUM_MASK(0, 2),
+
+      /* Modifiers */
+      a_NOALIAS = 1u<<4,
+      a_IGNERR = 1u<<5,
+      a_LOCAL = 1u<<6,
+      a_GLOBAL = 1u<<7, /* TODO global modifier */
+      a_U = 1u<<8, /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<9,
+      a_WYSH = 1u<<10, /* XXX v15+ drop wysh modifier prefix */
+      /*a_MODE_MASK = su_BITENUM_MASK(4, 10),*/
+
+      a_NO_ERRNO = 1u<<16, /* Do not set n_pstate_err_no */
+      a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
+      a_IS_EMPTY = 1u<<18 /* The empty command */
+   };
+
    struct str line;
    struct n_string s_b, *s;
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name, *emsg;
    struct mx_cmd_desc const *cdp;
-   s32 nerrn, nexn;     /* TODO n_pstate_ex_no -> s64! */
+   s32 nerrn, nexn; /* TODO n_pstate_ex_no -> s64! */
    int rv, c;
-   enum{
-      a_NONE = 0,
-      a_ALIAS_MASK = su_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
-      a_NOALIAS = 1u<<4, /* "No alias!" expansion modifier */
-      a_IGNERR = 1u<<5, /* ignerr modifier prefix */
-      a_LOCAL = 1u<<6, /* local modifier prefix */
-      a_GLOBAL = 1u<<7, /* TODO global modifier prefix */
-      a_U = 1u<<8, /* TODO UTF-8 modifier prefix */
-      a_VPUT = 1u<<9, /* vput modifier prefix */
-      a_WYSH = 1u<<10, /* XXX v15+ drop wysh modifier prefix */
-      a_MODE_MASK = su_BITENUM_MASK(4, 10),
-      a_NO_ERRNO = 1u<<16, /* Don't set n_pstate_err_no */
-      a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
-      a_IS_EMPTY = 1u<<18 /* The empty command */
-   } flags;
+   u32 eval_cnt;
+   BITENUM_IS(u32,a_flags) flags;
    NYD_IN;
 
    /* Take care not to overwrite existing exit status */
@@ -308,6 +316,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
 
    flags = ((mx_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
+   eval_cnt = 0;
    rv = 1;
    nerrn = su_ERR_NONE;
    nexn = n_EXIT_OK;
@@ -396,13 +405,17 @@ jrestart:
          goto jrestart;
       }
       break;
+   case sizeof("eval") -1:
    /*case sizeof("vput") -1:*/
-   case sizeof("wysh") -1:
-      if(!su_cs_cmp_case(word, "wysh")){
-         flags |= a_WYSH;
+   /*case sizeof("wysh") -1:*/
+      if(!su_cs_cmp_case(word, "eval")){
+         ++eval_cnt;
          goto jrestart;
       }else if(!su_cs_cmp_case(word, "vput")){
          flags |= a_VPUT;
+         goto jrestart;
+      }else if(!su_cs_cmp_case(word, "wysh")){
+         flags |= a_WYSH;
          goto jrestart;
       }
       break;
@@ -434,7 +447,13 @@ jrestart:
 
       if(flags & a_NOALIAS)
          s = n_string_push_c(s, '\\');
-      if(flags & a_WYSH)
+      if(eval_cnt > 0){
+         u32 i;
+
+         for(i = eval_cnt; i-- > 0;)
+            s = n_string_push_buf(s, "eval ", sizeof("eval ") -1);
+      }
+      if(flags & a_WYSH)/* v15-compat */
          s = n_string_push_buf(s, "wysh ", sizeof("wysh ") -1);
       if(flags & a_IGNERR)
          s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
@@ -442,7 +461,18 @@ jrestart:
          s = n_string_push_buf(s, "local ", sizeof("local ") -1);
       if(flags & a_VPUT)
          s = n_string_push_buf(s, "vput ", sizeof("vput ") -1);
+
+      /* Fixate content! */
       gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
+   }
+
+   if(eval_cnt > 0){
+      if(!mx_cmd_eval(&line, eval_cnt, word)){
+         flags |= a_NO_ERRNO;
+         goto jleave;
+      }
+      eval_cnt = 0;
+      goto jrestart;
    }
 
    /* Look up the command; if not found, bitch.  An empty cmd maps to the first
@@ -2365,51 +2395,15 @@ jleave:
 }
 
 int
-c_eval(void *vp){
-   /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
-    * TODO ARGV with shell rules, but if that is not possible then simply
-    * TODO adjust argv/argc of "the CmdCtx" that we will have exec real cmd */
-   struct a_go_eval_ctx gec;
-   struct n_string s_b, *s;
-   uz i, j;
-   char const **argv, *cp;
-   NYD_IN;
-
-   argv = vp;
-
-   for(j = i = 0; (cp = argv[i]) != NIL; ++i)
-      j += su_cs_len(cp);
-
-   s = n_string_creat_auto(&s_b);
-   s = n_string_reserve(s, j);
-
-   for(i = 0; (cp = argv[i]) != NIL; ++i){
-      if(i > 0)
-         s = n_string_push_c(s, ' ');
-      s = n_string_push_cp(s, cp);
-   }
-
-   su_mem_set(&gec, 0, sizeof gec);
-   gec.gec_line.s = n_string_cp(s);
-   gec.gec_line.l = s->s_len;
-   if(n_poption & n_PO_D_VV)
-      n_err(_("EVAL %" PRIuZ " bytes <%s>\n"), gec.gec_line.l, gec.gec_line.s);
-   (void)/* XXX */a_go_evaluate(a_go_ctx, &gec);
-
-   NYD_OU;
-   return (a_go_xcall != NIL ? n_EXIT_OK : n_pstate_ex_no);
-}
-
-int
 c_xcall(void *vp){
    int rv;
    struct a_go_ctx *gcp;
    NYD2_IN;
 
-   /* The context can only be a macro context, except that possibly a single
-    * level of `eval' (FIXME yet) was used to double-expand our arguments */
-   if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
-      gcp = gcp->gc_outer;
+   gcp = a_go_ctx;
+
+   /* Only top level object it can be */
+   ASSERT(!(gcp->gc_flags & a_GO_MACRO_CMD));
 
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION |
          a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD)) != a_GO_MACRO){

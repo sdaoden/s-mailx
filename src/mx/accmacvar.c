@@ -3036,12 +3036,7 @@ c_localopts(void *vp){
    int rv;
    NYD_IN;
 
-   rv = 1;
-
-   if(a_amv_lopts == NIL){
-      n_err(_("Cannot use `localopts' in this context\n"));
-      goto jleave;
-   }
+   rv = n_EXIT_ERR;
 
    if((argv = vp)[1] == NIL || su_cs_starts_with_case("scope", (++argv)[-1]))
       alf = alm = a_AMV_LF_SCOPE;
@@ -3068,7 +3063,7 @@ jesynopsis:
    if(rv > FAL0)
       a_amv_lopts->as_loflags |= alf;
 
-   rv = 0;
+   rv = n_EXIT_OK;
 jleave:
    NYD_OU;
    return rv;
@@ -3131,47 +3126,41 @@ jleave:
 
 FL int
 c_return(void *vp){ /* TODO the exit status should be m_si64! */
+   char const **argv;
    int rv;
    NYD_IN;
 
-   if(a_amv_lopts != NIL){
-      char const **argv;
+   mx_go_input_force_eof();
 
-      mx_go_input_force_eof();
-      n_pstate_err_no = su_ERR_NONE;
-      rv = 0;
+   n_pstate_err_no = su_ERR_NONE;
+   rv = n_EXIT_OK;
 
-      if((argv = vp)[0] != NIL){
-         s32 i;
+   if((argv = vp)[0] != NIL){
+      s32 i;
 
-         if((su_idec_s32_cp(&i, argv[0], 10, NIL
+      if((su_idec_s32_cp(&i, argv[0], 10, NIL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) == su_IDEC_STATE_CONSUMED && i >= 0)
+         rv = S(int,i);
+      else{
+         n_err(_("return: return value argument is invalid: %s\n"),
+            argv[0]);
+         n_pstate_err_no = su_ERR_INVAL;
+         rv = n_EXIT_ERR;
+      }
+
+      if(argv[1] != NIL){
+         if((su_idec_s32_cp(&i, argv[1], 10, NIL
                   ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                ) == su_IDEC_STATE_CONSUMED && i >= 0)
-            rv = S(int,i);
+            n_pstate_err_no = i;
          else{
-            n_err(_("return: return value argument is invalid: %s\n"),
-               argv[0]);
+            n_err(_("return: error number argument is invalid: %s\n"),
+               argv[1]);
             n_pstate_err_no = su_ERR_INVAL;
-            rv = 1;
-         }
-
-         if(argv[1] != NIL){
-            if((su_idec_s32_cp(&i, argv[1], 10, NIL
-                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-                  ) == su_IDEC_STATE_CONSUMED && i >= 0)
-               n_pstate_err_no = i;
-            else{
-               n_err(_("return: error number argument is invalid: %s\n"),
-                  argv[1]);
-               n_pstate_err_no = su_ERR_INVAL;
-               rv = 1;
-            }
+            rv = n_EXIT_ERR;
          }
       }
-   }else{
-      n_err(_("Can only use `return' in a macro\n"));
-      n_pstate_err_no = su_ERR_OPNOTSUPP;
-      rv = 1;
    }
 
    NYD_OU;
@@ -3274,6 +3263,7 @@ jleave:
 FL void
 temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
    NYD_IN;
+
    if(a_amv_folder_hook_lopts != NIL){
       void *save = a_amv_lopts;
 

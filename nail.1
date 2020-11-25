@@ -907,7 +907,7 @@ The file mode creation mask can be managed with
 Files and shell pipe output can be
 .Ic source Ns
 d for
-.Ic eval Ns
+.Cm eval Ns
 uation, also during startup from within the
 .Sx "Resource files" .
 Informational context can be available by
@@ -3461,6 +3461,28 @@ even if an (command)alias of the same name exists.
 Need not be whitespace-separated from other modifiers or command names.
 .
 .Mx
+.It Cm eval
+Construct a command by concatenating arguments, expanded according to
+.Sx "Shell-style argument quoting" ,
+thereafter separated with a single space character.
+.Bd -literal -offset indent
+define xxx {
+  echo "xxx arg <$1>"
+  shift
+  if $# -gt 0
+    \excall xxx "$@"
+  endif
+}
+define yyy {
+  eval "$@ ' ball"
+}
+call yyy '\ecall xxx' "b\e$'\et'u ' "
+call xxx arg <b      u>
+call xxx arg <  >
+call xxx arg <ball>
+.Ed
+.
+.Mx
 .It Cm global
 \*(ID Does yet not implement any functionality.
 When supported, apply changes in global scope despite any established
@@ -3864,7 +3886,7 @@ unchanged: like this the effect of the actual codec is visible without
 any noise of possible shell quoting rules etc., i.e., the user can input
 one-to-one the desired or questionable data.
 To gain a level of expansion, the entire command line can be
-.Ic eval Ns
+.Cm eval Ns
 uated first, for example
 .
 .Bd -literal -offset indent
@@ -5351,33 +5373,6 @@ There are also the variables
 .Va ^ERRQUEUE-COUNT
 and
 .Va ^ERRQUEUE-EXISTS .
-.
-.Mx
-.It Ic eval
-\*(NQ Construct a command by concatenating the arguments, separated with
-a single space character, and then evaluate the result.
-This command passes through the exit status
-.Va \&?
-and error number
-.Va \&!
-of the evaluated command; also see
-.Ic call .
-.Bd -literal -offset indent
-define xxx {
-  echo "xxx arg <$1>"
-  shift
-  if $# -gt 0
-    \excall xxx "$@"
-  endif
-}
-define yyy {
-  eval "$@ ' ball"
-}
-call yyy '\ecall xxx' "b\e$'\et'u ' "
-call xxx arg <b      u>
-call xxx arg <  >
-call xxx arg <ball>
-.Ed
 .
 .Mx
 .It Ic exit
@@ -7673,7 +7668,7 @@ I.e., the subcommands
 and
 .Ql quote
 can be used (in conjunction with
-.Ic eval )
+.Cm eval )
 to (re)create an argument stack from and to a single variable losslessly.
 .
 .Bd -literal -offset indent
@@ -7845,8 +7840,8 @@ overriding
 .It
 The modifier dollar
 .Ql $
-.Ic eval Ns
-uates the remains of the line; also see
+.Cm eval Ns
+uates the remains of the line as often as it is used; also see
 .Sx "Shell-style argument quoting" .
 \*(ID For now the entire input line is evaluated as a whole; to avoid
 that control operators like semicolon
@@ -8011,9 +8006,9 @@ data is to be expected, and if, the format of the result data.
 Response data will be shell quoted as necessary for consumption by
 .Ic readsh ,
 or
-.Ic eval
+.Ic vpospar
 and
-.Ic vpospar ,
+.Cm eval ,
 to name a few.
 Error status code lines may optionally contain additional context:
 .
@@ -9282,7 +9277,7 @@ adjustments dependent on the value of the environment variable
 \*(RO Addresses for contact per email and web, respectively, for
 bug reports, suggestions, or anything else regarding \*(UA.
 The former can be used directly:
-.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Cm eval Ns \| Ic mail Ns \| $contact-mail .
 .
 .Mx
 .Mx
@@ -15170,7 +15165,7 @@ Please report bugs to the
 .Va contact-mail
 address, for example from within \*(uA:
 .\" v15-compat: drop eval as `mail' will expand variable?
-.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Cm eval Ns \| Ic mail Ns \| $contact-mail .
 Including the
 .Va verbose
 output of the command
