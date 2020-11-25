@@ -288,15 +288,14 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
    enum{
       a_NONE = 0,
       a_ALIAS_MASK = su_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
-      a_NOPREFIX = 1u<<4, /* Modifier prefix not allowed right now */
-      a_NOALIAS = 1u<<5, /* "No alias!" expansion modifier */
-      a_IGNERR = 1u<<6, /* ignerr modifier prefix */
-      a_LOCAL = 1u<<7, /* local modifier prefix */
-      a_GLOBAL = 1u<<8, /* TODO global modifier prefix */
-      a_U = 1u<<9, /* TODO UTF-8 modifier prefix */
-      a_VPUT = 1u<<10, /* vput modifier prefix */
-      a_WYSH = 1u<<11, /* XXX v15+ drop wysh modifier prefix */
-      a_MODE_MASK = su_BITENUM_MASK(5, 11),
+      a_NOALIAS = 1u<<4, /* "No alias!" expansion modifier */
+      a_IGNERR = 1u<<5, /* ignerr modifier prefix */
+      a_LOCAL = 1u<<6, /* local modifier prefix */
+      a_GLOBAL = 1u<<7, /* TODO global modifier prefix */
+      a_U = 1u<<8, /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<9, /* vput modifier prefix */
+      a_WYSH = 1u<<10, /* XXX v15+ drop wysh modifier prefix */
+      a_MODE_MASK = su_BITENUM_MASK(4, 10),
       a_NO_ERRNO = 1u<<16, /* Don't set n_pstate_err_no */
       a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
       a_IS_EMPTY = 1u<<18 /* The empty command */
@@ -335,22 +334,21 @@ jrestart:
    }
    (cp = line.s)[line.l] = '\0';
 
-   /* No-expansion modifier? */
-   if(!(flags & a_NOPREFIX) && *cp == '\\'){
+   /* No-expansion modifier?  Handle quick and dirty, interferes with below */
+   if(UNLIKELY(*cp == '\\')){
       line.s = ++cp;
       --line.l;
       flags |= a_NOALIAS;
+      goto jrestart;
    }
 
    /* Note: adding more special treatments must be reflected in the `help'
     * etc. output in cmd.c! */
-
-   /* Ignore null commands (comments) */
+   /* Ignore null commands (comments) directly, no shell stuff etc. */
    if(*cp == '#'){
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jret0;
    }
-
    /* Handle ! differently to get the correct lexical conventions */
    if(*cp == '!')
       ++cp;
@@ -368,7 +366,7 @@ jrestart:
    line.l -= c;
    line.s = cp;
 
-   /* It may be a modifier.
+   /* It may be a(ny other) modifier.
     * NOTE: changing modifiers must be reflected in cmd_is_valid_name() */
    switch(c){
    default:
@@ -376,35 +374,35 @@ jrestart:
    /*case sizeof("global") -1:*/
    case sizeof("ignerr") -1:
       if(!su_cs_cmp_case(word, "ignerr")){
-         flags |= a_NOPREFIX | a_IGNERR;
+         flags |= a_IGNERR;
          goto jrestart;
       }
       if(!su_cs_cmp_case(word, "global")){
          n_err(_("Ignoring yet unused `global' command modifier!"));
-         flags |= a_NOPREFIX | a_GLOBAL;
+         flags |= a_GLOBAL;
          goto jrestart;
       }
       break;
    case sizeof("local") -1:
       if(!su_cs_cmp_case(word, "local")){
-         flags |= a_NOPREFIX | a_LOCAL;
+         flags |= a_LOCAL;
          goto jrestart;
       }
       break;
    case sizeof("u") -1:
       if(!su_cs_cmp_case(word, "u")){
          n_err(_("Ignoring yet unused `u' command modifier!"));
-         flags |= a_NOPREFIX | a_U;
+         flags |= a_U;
          goto jrestart;
       }
       break;
    /*case sizeof("vput") -1:*/
    case sizeof("wysh") -1:
       if(!su_cs_cmp_case(word, "wysh")){
-         flags |= a_NOPREFIX | a_WYSH;
+         flags |= a_WYSH;
          goto jrestart;
       }else if(!su_cs_cmp_case(word, "vput")){
-         flags |= a_NOPREFIX | a_VPUT;
+         flags |= a_VPUT;
          goto jrestart;
       }
       break;
@@ -462,7 +460,7 @@ jrestart:
 
       expcnt = (flags & a_ALIAS_MASK);
       ++expcnt;
-      flags = (flags & ~(a_ALIAS_MASK | a_NOPREFIX)) | expcnt;
+      flags = (flags & ~a_ALIAS_MASK) | expcnt;
 
       /* Avoid self-recursion; since a commandalias can shadow a command of
        * equal name allow one level of expansion to return an equal result:
