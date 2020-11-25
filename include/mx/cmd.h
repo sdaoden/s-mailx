@@ -40,7 +40,7 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 
    mx_CMD_ARG_A = 1u<<4, /* Needs an active mailbox */
    mx_CMD_ARG_F = 1u<<5, /* Is a conditional command */
-   mx_CMD_ARG_G = 1u<<6,/* Supports `global' prefix (only WYSH/WYRA) */
+   mx_CMD_ARG_G = 1u<<6,/* Supports `global' prefix */
    mx_CMD_ARG_HGABBY = 1u<<7, /* Is supposed to produce "gabby" history */
    mx_CMD_ARG_I = 1u<<8, /* Interactive command bit */
    mx_CMD_ARG_L = 1u<<9, /* Supports `local' prefix (only WYSH/WYRA) */
@@ -51,9 +51,11 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    mx_CMD_ARG_SC = 1u<<14, /* Forbidden pre-n_PSO_STARTED_CONFIG */
    mx_CMD_ARG_S = 1u<<15, /* Forbidden pre-n_PSO_STARTED (POSIX) */
    mx_CMD_ARG_T = 1u<<16, /* Transparent command (<> PS_SAW_COMMAND) */
-   mx_CMD_ARG_V = 1u<<17, /* Supports `vput' prefix (only WYSH/WYRA) */
-   mx_CMD_ARG_W = 1u<<18, /* Invalid when read only bit */
-   mx_CMD_ARG_X = 1u<<19, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   mx_CMD_ARG_U = 1u<<17, /* Supports `u' prefix */
+   mx_CMD_ARG_V = 1u<<18, /* Supports `vput' prefix */
+   mx_CMD_ARG_W = 1u<<19, /* Invalid when read only bit */
+   mx_CMD_ARG_X = 1u<<20, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   mx_CMD_ARG_NEEDMAC = 1u<<21, /* Only within a macro/account */
 
    /* TODO Never place in `history': should be replaced by cmd_ctx flag stating
     * TODO do not place "this" invocation in history! */
@@ -210,6 +212,11 @@ EXPORT struct mx_cmd_arg_ctx *mx_cmd_arg_restore_from_heap(void *vp);
  * res_dat is NULL terminated unless res_size is 0 or error occurred */
 EXPORT int /* TODO v15*/ getrawlist(boole wysh, char **res_dat, uz res_size,
                   char const *line, uz linesize);
+
+/* Logic behind `eval' and `~ $', cnt is number of expansions to be performed.
+ * *io will be set to AUTO_ALLOC() result upon success, optionally prepended by
+ * prefix_or_nil and an ASCII SPC */
+EXPORT boole mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_H */

@@ -82,6 +82,7 @@ MEMTESTER=
 
 t_all() { # {{{
    # Absolute Basics
+   jspawn eval
    jspawn X_Y_opt_input_go_stack
    jspawn X_errexit
    jspawn Y_errexit
@@ -853,6 +854,27 @@ have_feat() {
 # }}}
 
 # Absolute Basics {{{
+t_eval() { # {{{
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1
+set i=du
+echo 1:
+echo $i
+echo '$i'
+eval echo '$i'
+echo 2:
+echo "\"'$i'\""
+eval echo "\"'$i'\""
+eval eval echo "\"'$i'\""
+eval eval eval eval echo "\"'$i'\""
+	__EOT
+
+   check 1 0 ./t1 '847277817 33'
+
+   t_epilog "${@}"
+} # }}}
+
 t_X_Y_opt_input_go_stack() { # {{{
    t_prolog "${@}"
 
@@ -7447,25 +7469,37 @@ and i ~w rite this out to ./t3
    have_feat uistrings && ck='2336041127 212' || ck='1818580177 59'
    check 5 - ./t5 "${ck}"
 
-   # Modifiers and whitespace indulgence
-   printf 'body
-! :echo one
-! 		  <./t.nosuch
-!               :echo two
-!   :     set i=./t.nosuch
-! 	  -  	  $ 	 <  	   $i
-!:echo three
-!   :     set \\
-              	          errexit
-! 	  -  	$  <   $i
-! : echo four
-!$<  	   ./t.nosuch
-! 	 :   	 echo five
-   ' | ${MAILX} ${ARGS} -Smta=test://t7 \
-         -Sescape=! \
-         -Spwd="`${pwd}`" \
+   # Modifiers and whitespace indulgence; first matches t_eval():1
+   #
+   ${cat} <<- '__EOT' | \
+      ${MAILX} ${ARGS} -Smta=test://t7 -Sescape=! -Spwd="`${pwd}`" \
          -s testsub one@to.invalid >./t6 2>./t8
-   check 6 4 ./t6 '947657872 103'
+		body
+		!:set i=du
+		!:echo 1:
+		! : echo $i
+		!  :  echo '$i'
+		!$:echo '$i'
+		!:echo 2:
+		!:echo "\"'$i'\""
+		!$:echo "\"'$i'\""
+		!$$:echo "\"'$i'\""
+		! 	  $   $  $  $ : echo "\"'$i'\""
+		! :echo one
+		! 		  <./t.nosuch
+		!               :echo two
+		!   :     set i=./t.nosuch
+		! 	  -  	  $ 	 <  	   $i
+		!:echo three
+		!   :     set \
+		              	          errexit
+		! 	  -  	$  <   $i
+		!-$: echo four
+		!$<  	   ./t.nosuch
+		! 	 :   	 echo five
+		__EOT
+
+   check 6 4 ./t6 '892731775 136'
    [ -f ./t7 ]; check_exn0 7
    if have_feat uistrings; then
       check 8 - ./t8 '472073999 207'

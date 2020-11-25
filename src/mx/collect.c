@@ -49,6 +49,7 @@
 
 #include "mx/attachments.h"
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/cmd-edit.h"
 #include "mx/cmd-misc.h"
 #include "mx/compat.h"
@@ -113,9 +114,6 @@ static sigjmp_buf       _coll_jmp;        /* To get back to work */
 static sigjmp_buf       _coll_abort;      /* To end collection with error */
 static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
-/* Handle $ command escape modifier; cnt > 0 */
-static boole a_coll_eval_mod(char const **buf, long /* TODO uz */*cnt);
-
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
                      uz linesize);
@@ -178,70 +176,6 @@ static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
-
-static boole
-a_coll_eval_mod(char const **buf, long *cnt){
-   struct n_string store;
-   struct str input;
-   void const *cookie;
-   boole rv;
-   NYD2_IN;
-
-   ASSERT(*cnt > 0);
-
-   rv = TRU1;
-   cookie = NIL;
-   mx_fs_linepool_aquire(&input.s, &input.l);
-   n_string_take_ownership(n_string_creat(&store), input.s, input.l, 0);
-
-   input.s = UNCONST(char*,*buf);
-   input.l = S(uz,*cnt);
-   for(;;){
-      BITENUM_IS(u32,n_shexp_state) shs;
-
-      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG
-               /*| (cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |*/
-               /* TODO not here in old style | n_SHEXP_PARSE_IFS_VAR */
-               /* TODO SHEXP_PARSE_META_SEMICOLON ~$: needs injection stack*/),
-            &store, &input, &cookie);
-
-      /*if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
-       *   ASSERT(shs & n_SHEXP_STATE_STOP);
-       *   mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
-      }*/
-
-      if(shs & n_SHEXP_STATE_ERR_MASK){
-         /* Simply ignore Unicode error, just keep the normalized \[Uu] */
-         if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
-            rv = FAL0;
-            break;
-         }
-      }
-
-      if(shs & n_SHEXP_STATE_OUTPUT){
-         if(!(shs & n_SHEXP_STATE_STOP))
-            n_string_push_c(&store, ' ');
-      }else if(store.s_len > 1)
-         n_string_trunc(&store, store.s_len - 1);
-
-      if(shs & n_SHEXP_STATE_STOP)
-         break;
-   }
-
-   if(rv && (*cnt = S(long,store.s_len)) > 0)
-      /* TODO for now just savestrbuf() the ~$ expansion; would be nice
-       * TODO if we could simply inject and redo, but that needs a inject
-       * TODO stack (manual: semicolons then could split! */
-      *buf = savestrbuf(store.s_dat, store.s_len);
-   else
-      rv = FAL0;
-
-   mx_fs_linepool_release(store.s_dat, store.s_len);
-   n_string_gut(n_string_drop_ownership(&store));
-
-   NYD2_OU;
-   return rv;
-}
 
 static void
 _execute_command(struct header *hp, char const *linebuf, uz linesize){
@@ -1379,6 +1313,7 @@ jcont:
       flags |= a_ERREXIT;
 
    for(;;){
+      u32 eval_cnt;
       enum {a_HIST_NONE, a_HIST_ADD = 1u<<0, a_HIST_GABBY = 1u<<1} hist;
 
       /* C99 */{
@@ -1490,13 +1425,15 @@ jputnl:
       }
 
       /* Avoid hard *errexit*, evaluate modifier ? */
+      eval_cnt = 0;
       flags &= ~a_MODIFIER_MASK;
       for(;;){
          if(c == '-')
             flags |= a_IGNERR;
-         else if(c == '$')
+         else if(c == '$'){
             flags |= a_EVAL;
-         else if(su_cs_is_space(c)){
+            ++eval_cnt;
+         }else if(su_cs_is_space(c)){
             /* Must have seen modifier, ok */;
          }else
             break;
@@ -1528,8 +1465,10 @@ jputnl:
          s = n_string_assign_c(s, escape);
          if(flags & a_IGNERR)
             s = n_string_push_c(s, '-');
-         if(flags & a_EVAL)
-            s = n_string_push_c(s, '$');
+         if(flags & a_EVAL){
+            for(i = eval_cnt; i-- != 0;)
+               s = n_string_push_c(s, '$');
+         }
          s = n_string_push_c(s, c);
          if(cnt > 0){
             s = n_string_push_c(s, ' ');
@@ -1538,8 +1477,16 @@ jputnl:
       }
 
       /* This may be an eval request */
-      if((flags & a_EVAL) && cnt > 0 && !a_coll_eval_mod(&cp, &cnt))
-         goto jearg;
+      if((flags & a_EVAL) && cnt > 0){
+         struct str io;
+
+         io.s = UNCONST(char*,cp);
+         io.l = S(uz,cnt);
+         if(!mx_cmd_eval(&io, eval_cnt, NIL))
+            goto jearg;
+         cp = io.s;
+         cnt = S(long,io.l);
+      }
 
       /* Switch over all command escapes */
       switch(c){
