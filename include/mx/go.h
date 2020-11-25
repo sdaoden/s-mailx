@@ -168,9 +168,6 @@ EXPORT void mx_go_splice_hack_remove_after_jump(void);
  * XXX program, e.g., a $PAGER? */
 EXPORT boole mx_go_may_yield_control(void);
 
-/* `eval' */
-EXPORT int c_eval(void *vp);
-
 /* `xcall' */
 EXPORT int c_xcall(void *vp);
 
