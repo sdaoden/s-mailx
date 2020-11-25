@@ -3524,15 +3524,15 @@ t_xcall() { # {{{
 	define work {
 		echon "$1 "
 		vput vexpr i + $1 1
-		if [ $i -le "$max" ]
+		if $i -le "$max"
 			vput vexpr j '&' $i 7
-			if [ $j -eq 7 ]
+			if $j -eq 7
 				echo .
 			end
 			\xcall work $i $2
 		end
 		echo ! The end for $1/$2
-		if [ "$2" != "" ]
+		if "$2" != ""
 			return $i $^ERR-BUSY
 		end
 	}
@@ -3540,67 +3540,65 @@ t_xcall() { # {{{
 		\xcall work 0 $2
 	}
 	call work 0
-	echo ?=$? !=$!
+	echo 1: ?=$? !=$!
 	call xwork
-	echo ?=$? !=$!
+	echo 2: ?=$? !=$!
 	xcall xwork
-	echo ?=$? !=$^ERRNAME
+	echo 3: ?=$? !=$^ERRNAME
 	#
 	call work 0 yes
-	echo ?=$? !=$^ERRNAME
+	echo 4: ?=$? !=$^ERRNAME
 	call xwork 0 yes
-	echo ?=$? !=$^ERRNAME
+	echo 5: ?=$? !=$^ERRNAME
 	__EOT
 
    i=${?}
    if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
       check_ex0 1-${LOOPS_BIG} ${i}
-      check 1-${LOOPS_BIG} - ./t1 '1069764187 47161'
+      check 1-${LOOPS_BIG} - ./t1 '2492586545 47176'
    else
       check_ex0 1-${LOOPS_SMALL} ${i}
-      check 1-${LOOPS_SMALL} - ./t1 '859201011 3894'
+      check 1-${LOOPS_SMALL} - ./t1 '2786527999 3909'
    fi
 
    ##
 
    if have_feat uistrings; then
       ${cat} <<- '__EOT' > ./t.in
-			define __w {
-				echon "$1 "
-				vput vexpr i + $1 1
-				if [ $i -le 111 ]
-					vput vexpr j '&' $i 7
-					if [ $j -eq 7 ]
-						echo .
-					end
+			\define __w {
+				\echon "$1 "
+				local \ vput vexpr i + $1 1
+				\if $i -le 111
+					\local vput vexpr j '&' $i 7
+					\if $j -eq 7; \echo .; \end
 					\xcall __w $i $2
-				end
-				echo ! The end for $1
-				if [ $2 -eq 0 ]
+				\end
+				\echo ! The end for $1
+				\if $2 -eq 0
 					nonexistingcommand
-					echo would be err with errexit
-					return
-				end
-				echo calling exit
-				exit
+					\echo would be err with errexit
+					\return
+				\end
+				\echo calling exit
+				\exit
 			}
-			define work {
-				echo eins
-				call __w 0 0
-				echo zwei, ?=$? !=$!
-				localopts yes; set errexit
-				ignerr call __w 0 0
-				echo drei, ?=$? !=$^ERRNAME
-				call __w 0 $1
-				echo vier, ?=$? !=$^ERRNAME, this is an error
+			\define work {
+				\echo eins
+				\call __w 0 0
+				\echo zwei, ?=$? !=$!
+				\local set errexit
+				\ignerr call __w 0 0
+				\echo drei, ?=$? !=$^ERRNAME
+				\call __w 0 $1
+				\echo vier, ?=$? !=$^ERRNAME, this is an error
 			}
-			ignerr call work 0
-			echo outer 1, ?=$? !=$^ERRNAME
-			xxxign call work 0
-			echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-			call work 1
-			echo outer 3, ?=$? !=$^ERRNAME
-			echo this is definitely an error
+			\ignerr call work 0
+			\echo outer 1, ?=$? !=$^ERRNAME
+			xxxign \call work 0
+			\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+			\call work 1
+			\echo outer 3, ?=$? !=$^ERRNAME
+			\echo this is definitely an error
 			__EOT
 
       < ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
