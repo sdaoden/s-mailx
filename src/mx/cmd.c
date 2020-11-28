@@ -811,45 +811,46 @@ jerr:
 }
 
 void *
-mx_cmd_arg_save_to_heap(struct mx_cmd_arg_ctx const *cacp){
+mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
    struct mx_cmd_arg *ncap;
    struct mx_cmd_arg_ctx *ncacp;
    char *buf;
    struct mx_cmd_arg const *cap;
    uz len, i;
+   struct su_mem_bag *mbp;
    NYD2_IN;
 
-   /* For simplicity, save it all in once chunk, so that it can be thrown away
-    * with a simple n_free() from whoever is concerned */
+   mbp = vp;
+
+   /* For simplicity, save it all in once chunk xxx no longer necessary! */
    len = sizeof *cacp;
-   for(cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
+   for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
       i = cap->ca_arg.ca_str.l +1;
       i = Z_ALIGN(i);
       len += sizeof(*cap) + i;
    }
-   if(cacp->cac_vput != NULL)
+   if(cacp->cac_vput != NIL)
       len += su_cs_len(cacp->cac_vput) +1;
 
-   ncacp = n_alloc(len);
+   ncacp = su_MEM_BAG_AUTO_ALLOCATE(mbp, sizeof(char), len,
+         su_MEM_BAG_ALLOC_MUSTFAIL);
    *ncacp = *cacp;
-   buf = (char*)&ncacp[1];
+   buf = R(char*,&ncacp[1]);
 
-   for(ncap = NULL, cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
-      void *vp;
-
+   for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
       vp = buf;
-      su_DBG( su_mem_set(vp, 0, sizeof *ncap); )
+      DBG( su_mem_set(vp, 0, sizeof *ncap); )
 
-      if(ncap == NULL)
+      if(ncap == NIL)
          ncacp->cac_arg = vp;
       else
          ncap->ca_next = vp;
       ncap = vp;
-      ncap->ca_next = NULL;
+      ncap->ca_next = NIL;
       ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
       ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
       ncap->ca_arg_flags = cap->ca_arg_flags;
-      su_mem_copy(ncap->ca_arg.ca_str.s = (char*)&ncap[1],
+      su_mem_copy(ncap->ca_arg.ca_str.s = R(char*,&ncap[1]),
          cap->ca_arg.ca_str.s,
          (i = (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1));
 
@@ -857,47 +858,14 @@ mx_cmd_arg_save_to_heap(struct mx_cmd_arg_ctx const *cacp){
       buf += sizeof(*ncap) + i;
    }
 
-   if(cacp->cac_vput != NULL){
+   if(cacp->cac_vput != NIL){
       ncacp->cac_vput = buf;
       su_mem_copy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
    }else
-      ncacp->cac_vput = NULL;
+      ncacp->cac_vput = NIL;
+
    NYD2_OU;
    return ncacp;
-}
-
-struct mx_cmd_arg_ctx *
-mx_cmd_arg_restore_from_heap(void *vp){
-   struct mx_cmd_arg *cap, *ncap;
-   struct mx_cmd_arg_ctx *cacp, *rv;
-   NYD2_IN;
-
-   rv = n_autorec_alloc(sizeof *rv);
-   cacp = vp;
-   *rv = *cacp;
-
-   for(ncap = NULL, cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
-      vp = n_autorec_alloc(sizeof(*ncap) + cap->ca_arg.ca_str.l +1);
-      su_DBG( su_mem_set(vp, 0, sizeof *ncap); )
-
-      if(ncap == NULL)
-         rv->cac_arg = vp;
-      else
-         ncap->ca_next = vp;
-      ncap = vp;
-      ncap->ca_next = NULL;
-      ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
-      ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
-      ncap->ca_arg_flags = cap->ca_arg_flags;
-      su_mem_copy(ncap->ca_arg.ca_str.s = (char*)&ncap[1],
-         cap->ca_arg.ca_str.s,
-         (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1);
-   }
-
-   if(cacp->cac_vput != NULL)
-      rv->cac_vput = savestr(cacp->cac_vput);
-   NYD2_OU;
-   return rv;
 }
 
 int

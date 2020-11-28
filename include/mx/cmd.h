@@ -203,10 +203,9 @@ EXPORT boole mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil,
  * argument, and then a trailing empty argument is ignored, too */
 EXPORT boole mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp);
 
-/* Save away the data from autorec memory, and restore it to that.
- * The heap storage is a single pointer to be n_free() by users */
-EXPORT void *mx_cmd_arg_save_to_heap(struct mx_cmd_arg_ctx const *cacp);
-EXPORT struct mx_cmd_arg_ctx *mx_cmd_arg_restore_from_heap(void *vp);
+/* Save away the data from/to AUTO memory to mem_bag vp */
+EXPORT void *mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp,
+      void *vp);
 
 /* Scan out the list of string arguments according to rm, return -1 on error;
  * res_dat is NULL terminated unless res_size is 0 or error occurred */

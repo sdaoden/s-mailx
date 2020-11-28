@@ -124,7 +124,10 @@ enum a_go_flags{
     * teardown itself */
    a_GO_XCALL_LOOP = 1u<<25,
    a_GO_XCALL_LOOP_ERROR = 1u<<26, /* .. state machine error transporter */
-   a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR
+   /* For "this" level: `xcall' seen; for parent: XCALL_LOOP entered */
+   a_GO_XCALL_SEEN = 1u<<27,
+   a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR |
+         a_GO_XCALL_SEEN
 };
 
 enum a_go_cleanup_mode{
@@ -173,11 +176,16 @@ struct a_go_ctx{
    char **gc_lines; /* Pseudo content, lines unfolded */
    FILE *gc_file; /* File we were in, if applicable */
    struct a_go_input_inject *gc_inject; /* To be consumed first */
-   void (*gc_on_finalize)(void *);
+   void (*gc_on_finalize)(void*);
    void *gc_finalize_arg;
-   /* When `xcall' is used to replace the running macro we `localopts' must be
-    * carried over to the macro running next: stored here */
+   /* When `xcall' is used to replace the running macro its `localopts' are
+    * reparented to the ctx that drives the XCALL_LOOP.
+    * Also the cmd_arg_ctx to be passed to the newly to be called macro, and
+    * the name of the original (the replaced) macro (for $0).
+    * All this data is stored in the mem_bag of the XCALL_LOOP driver */
    void *gc_xcall_lopts;
+   char *gc_xcall_callee;
+   struct mx_cmd_arg_ctx *gc_xcall_cacp;
    sigjmp_buf gc_eloop_jmp; /* TODO one day...  for _event_loop() */
    /* SPLICE hacks: saved stdin/stdout, saved pstate */
    FILE *gc_splice_stdin;
@@ -212,11 +220,6 @@ static union{
    char uf[VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          sizeof(a_GO_MAINCTX_NAME)];
 } a_go__mainctx_b;
-
-/* `xcall' stack-avoidance bypass optimization.  This actually is
- * a cmd_arg_save_to_heap() buffer with cmd_arg_ctx.cac_indat misused to
- * point to the _go_ctx to unroll up to */
-static void *a_go_xcall; /* XXX without global data! store in context! */
 
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
@@ -873,7 +876,7 @@ jmsglist_go:
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_base);
-      if(a_go_xcall != NIL)
+      if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
          goto jret0;
       break;
 
@@ -909,7 +912,7 @@ jmsglist_go:
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(&cac);
-      if(a_go_xcall != NIL)
+      if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
          goto jret0;
       }break;
 
@@ -1078,11 +1081,6 @@ jrestart:
    if(gcp->gc_outer == NIL){
       ASSERT(!(gcp->gc_flags & a_GO_TYPE_MASK));
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
-         if(a_go_xcall != NIL){
-            ASSERT(a_go_xcall != R(void*,-1));
-            su_FREE(a_go_xcall);
-            a_go_xcall = NIL;
-         }
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          n_pstate &= ~n_PS_ERR_EXIT_MASK;
       }
@@ -1093,8 +1091,7 @@ jrestart:
       DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
       n_pstate &= ~n_PS_ROBOT;
-      ASSERT(a_go_xcall == NIL);
-      ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
+      ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK & ~a_GO_XCALL_SEEN));
       ASSERT(gcp->gc_on_finalize == NIL);
       mx_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NIL); )
 
@@ -1391,7 +1388,7 @@ a_go_event_loop(struct a_go_ctx *gcp, BITENUM_IS(u32,mx_go_input_flags) gif){
          f &= ~a_RETOK;
       mx_sigs_all_holdx();
 
-      if(!(f & a_RETOK) || a_go_xcall != NIL ||
+      if(!(f & a_RETOK) || (gcp->gc_flags & a_GO_XCALL_SEEN) ||
             (n_psonce & n_PSO_EXIT_MASK) || (n_pstate & n_PS_ERR_EXIT_MASK))
          break;
    }
@@ -2183,28 +2180,6 @@ mx_go_load_lines(boole injectit, char const **lines, uz cnt){
    return b.rv;
 }
 
-int
-c_source(void *vp){
-   int rv;
-   NYD_IN;
-
-   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
-
-   NYD_OU;
-   return rv;
-}
-
-int
-c_source_if(void *vp){ /* XXX obsolete?, support file tests in `if' etc.! */
-   int rv;
-   NYD_IN;
-
-   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
-
-   NYD_OU;
-   return rv;
-}
-
 boole
 mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
       char **lines, void (*on_finalize)(void*), void *finalize_arg){
@@ -2240,37 +2215,40 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
    n_pstate |= n_PS_ROBOT;
    rv = a_go_event_loop(gcp, gif);
 
-   /* Shall this enter a `xcall' stack avoidance optimization (loop) after
-    * being teared down? */
-   if(a_go_xcall != NIL){
-      void *vp;
-      struct mx_cmd_arg_ctx *cacp;
+   /* Shall this (aka its parent!) enter a `xcall' stack avoidance
+    * optimization (loop) after being teared down?
+    * This goes in line with code from c_xcall() */
+   if((a_go_ctx->gc_flags & (a_GO_XCALL_LOOP | a_GO_XCALL_SEEN)
+         ) == a_GO_XCALL_SEEN){
+      for(;;){
+         void *lopts;
+         struct mx_cmd_arg_ctx *cacp;
 
-      if(a_go_xcall == R(void*,-1))
-         a_go_xcall = NIL;
-      else if(S(void const*,(cacp = a_go_xcall)->cac_indat) == gcp){
-         /* Indicate that "our" (ex-) parent now hosts xcall optimization */
-         a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
+         mx_sigs_all_holdx();
 
-         while(a_go_xcall != NIL){
-            mx_sigs_all_holdx();
-
-            vp = a_go_xcall;
-            a_go_xcall = NIL;
-            cacp = mx_cmd_arg_restore_from_heap(vp);
-            su_FREE(vp);
-
-            a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
-            vp = a_go_ctx->gc_xcall_lopts;
+         cacp = a_go_ctx->gc_xcall_cacp;
+         lopts = a_go_ctx->gc_xcall_lopts;
+         DBG(
             a_go_ctx->gc_xcall_lopts = NIL;
+            a_go_ctx->gc_xcall_cacp = NIL;
+         )
 
-            mx_sigs_all_rele();
+         if(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN))
+            break;
+         a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
+         a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN);
 
-            (void)mx_xcall(cacp, vp);
-         }
-         rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) == 0);
-         a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
+         mx_sigs_all_rele();
+
+         (void)mx_xcall(cacp, lopts);
       }
+
+      rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) == 0);
+      a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
+      a_go_ctx->gc_xcall_callee = NIL;
+      su_mem_bag_auto_relax_gut(a_go_ctx->gc_data.gdc_membag);
+
+      mx_sigs_all_rele();
    }
 
    NYD_OU;
@@ -2394,6 +2372,86 @@ jleave:
    return rv;
 }
 
+boole
+mx_go_ctx_is_macro(void){ /* XXX public ctx, inline */
+   boole rv;
+   NYD2_IN;
+
+   rv = ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) == a_GO_MACRO);
+
+   NYD2_OU;
+   return rv;
+}
+
+char const *
+mx_go_ctx_name(void){ /* XXX public ctx, inline */
+   char const *rv;
+   struct a_go_ctx *gcp;
+   NYD2_IN;
+
+   switch((gcp = a_go_ctx)->gc_flags &
+         (a_GO_TYPE_MASK | a_GO_TYPE_MACRO_MASK)){
+   default:
+      rv = NIL;
+      break;
+   case a_GO_MACRO:
+   case a_GO_FILE:
+      rv = gcp->gc_name;
+      break;
+   }
+
+   NYD2_OU;
+   return rv;
+}
+
+char const *
+mx_go_ctx_parent_name(void){ /* XXX public ctx, inline */
+   struct a_go_ctx *gcp;
+   char const *rv;
+   NYD2_IN;
+
+   rv = NIL;
+
+   if((gcp = a_go_ctx->gc_outer) != NIL)
+      switch(gcp->gc_flags & (a_GO_TYPE_MASK | a_GO_TYPE_MACRO_MASK)){
+      case a_GO_MACRO:
+      case a_GO_FILE:
+         rv = (gcp->gc_xcall_callee != NIL) ? gcp->gc_xcall_callee
+               : gcp->gc_name;
+         break;
+         /* FALLTHRU */
+      default:
+         if(gcp->gc_xcall_callee != NIL)
+            rv = gcp->gc_xcall_callee;
+         break;
+      }
+
+   NYD2_OU;
+   return rv;
+}
+
+int
+c_source(void *vp){
+   int rv;
+   NYD_IN;
+
+   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+
+   NYD_OU;
+   return rv;
+}
+
+int
+c_source_if(void *vp){ /* XXX obsolete?, support file tests in `if' etc.! */
+   int rv;
+   NYD_IN;
+
+   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+
+   NYD_OU;
+   return rv;
+}
+
 int
 c_xcall(void *vp){
    int rv;
@@ -2405,33 +2463,54 @@ c_xcall(void *vp){
    /* Only top level object it can be */
    ASSERT(!(gcp->gc_flags & a_GO_MACRO_CMD));
 
-   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION |
-         a_GO_MACRO_BLTIN_RC | a_GO_MACRO_CMD)) != a_GO_MACRO){
+   if((gcp->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
       if(n_poption & n_PO_D_V)
          n_err(_("xcall: can only be used inside a macro, using `call'\n"));
+      ASSERT(gcp->gc_outer == NIL ||
+         !(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP_MASK));
       rv = c_call(vp);
    }else{
       /* Try to roll up the stack as much as possible.
        * See a_GO_XCALL_LOOP flag description for more */
-      /* xxx this gc_outer!=NIL should be redundant! assert it? */
       mx_go_input_force_eof();
 
+      /* xxx this gc_outer!=NIL should be redundant! assert it? */
       if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
-         struct mx_cmd_arg_ctx *cacp;
+         uz i;
          struct a_go_ctx *my, *outer;
 
-         if((outer = (my = gcp)->gc_outer)->gc_flags & a_GO_XCALL_LOOP)
-            gcp = outer;
-         outer->gc_xcall_lopts = mx_xcall_exchange_lopts(my->gc_finalize_arg);
+         /* xxx It is an ugly optimization, but for now worth the effort.
+          * xxx `xcall' should become hollow when we have loops etc. ???
+          * xxx Anyhow, save away the name of the current level, and of course
+          * xxx its `localopts', to be used by deeper levels of recursion.
+          * xxx Setup is a bit weird and shared in between c_xcall() and
+          * xxx go_macro(), which will enter the `xcall' loop soon */
+         gcp->gc_flags |= a_GO_XCALL_SEEN;
 
-         cacp = mx_cmd_arg_save_to_heap(vp);
-         cacp->cac_indat = S(char*,S(void*,gcp));
-         a_go_xcall = cacp;
+         /* Create an auto-relaxation level, and hope it is the first so we
+          * can effectively throw away all memory whenever we `xcall' here */
+         if((outer = (my = gcp)->gc_outer)->gc_flags & a_GO_XCALL_LOOP)
+            su_mem_bag_auto_relax_unroll((gcp = outer)->gc_data.gdc_membag);
+         else
+            su_mem_bag_auto_relax_create(outer->gc_data.gdc_membag);
+
+         outer->gc_flags |= a_GO_XCALL_SEEN;
+         outer->gc_xcall_lopts = mx_xcall_exchange_lopts(my->gc_finalize_arg);
+         i = su_cs_len(my->gc_name) +1;
+         outer->gc_xcall_callee =
+               su_MEM_BAG_AUTO_ALLOCATE(outer->gc_data.gdc_membag,
+                  sizeof(char), i, su_MEM_BAG_ALLOC_MUSTFAIL);
+         su_mem_copy(outer->gc_xcall_callee, my->gc_name, i);
+         outer->gc_xcall_cacp = mx_cmd_arg_save_to_bag(vp,
+               outer->gc_data.gdc_membag);
 
          rv = 0;
       }else{
          /* This mostly means we are being invoked from the outermost aka first
-          * level of a hook or `account', so silently act like `call', then */
+          * level of a hook or `account', so silently act like a `call' that
+          * does not return, then */
+         ASSERT(gcp->gc_outer == NIL ||
+            !(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP));
          rv = c_call(vp);
       }
    }

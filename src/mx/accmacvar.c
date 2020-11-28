@@ -326,6 +326,9 @@ static struct a_amv_mac *a_amv_macs[a_AMV_PRIME]; /* TODO dynamically spaced */
 
 /* Unroll list of currently running macro stack (XXX grrr global byypass) */
 static struct a_amv_lostack *a_amv_lopts;
+#define a_AMV_HAVE_LOPTS_AKA_LOCAL() /* TODO */\
+   (/*mx_go_ctx_is_macro() || a_amv_folder_hooks_lopts != NIL || */\
+   /*a_amv_compose_lopts != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
 
@@ -543,7 +546,7 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
       su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
-      if(a_amv_lopts != NIL)
+      if(a_AMV_HAVE_LOPTS_AKA_LOCAL())
          amcap->amca_loflags = (a_amv_lopts->as_loflags & a_AMV_LF_CALL_MASK
                ) >> a_AMV_LF_CALL_TO_SCOPE_SHIFT;
       if(argc > 0){
@@ -1585,7 +1588,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
 
       /* Optionally macro-`local' non-built-in variables first */
       if(avlf & a_AMV_VLOOK_LOCAL){
-         if(a_amv_lopts != NIL && /* XXX "we are in macro" :( */
+         if(a_AMV_HAVE_LOPTS_AKA_LOCAL() &&
                (avpp = *a_amv_lopts->as_amcap->amca_local_vars) != NIL){
             avpp += avcp->avc_prime;
 
@@ -1981,9 +1984,8 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
                rv = argv[avcp->avc_special_prop - 1];
          }else if(ismacky)
             rv = amcap->amca_name;
-         else
-            rv = (a_amv_lopts->as_up != NIL
-                  ? a_amv_lopts->as_up->as_amcap->amca_name : su_empty);
+         else if((rv = mx_go_ctx_parent_name()) == NIL)
+            rv = su_empty;
          goto jleave;
       }
       /* MACKY_MACK does not know about [*@#] */
@@ -2183,7 +2185,7 @@ jeavmp:
    }
 
    /* Optionally cover by `localopts' */
-   if(UNLIKELY(a_amv_lopts != NIL) &&
+   if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) &&
          (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
       ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
       ASSERT(avp == NIL || !(avp->av_flags & a_AMV_VF_EXT_LOCAL));
@@ -2437,7 +2439,7 @@ jerr_env_unset:
       avp->av_flags = f;
    }
 
-   if(UNLIKELY(a_amv_lopts != NIL) &&
+   if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) &&
          (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
       ASSERT(!(avp->av_flags & a_AMV_VF_EXT_LOCAL));
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var,
@@ -3093,9 +3095,10 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    }
 
    /* If in in a macro/xy */
-   if(a_amv_lopts != NIL){
+   if(mx_go_ctx_is_macro()){
       struct a_amv_mac const *amp;
       struct a_amv_mac_call_args *amcap;
+      ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
 
       /* Explicitly do allow `vpospar' created things! */
       amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
@@ -3561,7 +3564,7 @@ n_var_vexplode(void const **cookie){
    struct a_amv_pospar *appp;
    NYD_IN;
 
-   appp = (a_amv_lopts != NIL) ? &a_amv_lopts->as_amcap->amca_pospar
+   appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? &a_amv_lopts->as_amcap->amca_pospar
          : &a_amv_pospar;
    *cookie = (appp->app_count > 0) ? &appp->app_dat[appp->app_idx] : NIL;
 
@@ -3811,7 +3814,8 @@ c_environ(void *vp){
                   a_amv_var__putenv(&avc, avc.avc_var);
 
 jlopts_check:
-               if(UNLIKELY(a_amv_lopts != NIL) && (avc.avc_map == NIL ||
+               if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) &&
+                     (avc.avc_map == NIL ||
                       !(avc.avc_map->avm_flags & a_AMV_VF_NOLOPTS))){
                   f2 = avc.avc_var->av_flags;
                   ASSERT(!(f2 & a_AMV_VF_EXT_LOCAL));
@@ -3914,7 +3918,7 @@ c_vpospar(void *v){
    cap = cap->ca_next;
 
    /* If in a macro, we need to overwrite the local instead of global argv */
-   appp = (a_amv_lopts != NIL) ? &a_amv_lopts->as_amcap->amca_pospar
+   appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? &a_amv_lopts->as_amcap->amca_pospar
          : &a_amv_pospar;
 
    if(f & (a_SET | a_CLEAR)){
