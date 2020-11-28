@@ -188,6 +188,7 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
    a_XSU("lsquo", "'", 0x2018), a_XSU("rsquo", "'", 0x2019),
    a_XSU("ldquo", "\"", 0x201C), a_XSU("rdquo", "\"", 0x201D),
    a_XSU("uarr", "^|", 0x2191), a_XSU("darr", "|v", 0x2193),
+   a_XU("bull", '.', 0x2022),
 
    a_XSU("euro", "EUR", 0x20AC),
    a_XSU("infin", "INFY", 0x221E),
