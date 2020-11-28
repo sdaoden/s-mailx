@@ -146,10 +146,6 @@ EXPORT boole mx_go_load_rc(char const *name);
  * If lines is NIL the builtin RC file is used, and errors are ignored */
 EXPORT boole mx_go_load_lines(boole injectit, char const **lines, uz cnt);
 
-/* `source' and consorts */
-EXPORT int c_source(void *vp);
-EXPORT int c_source_if(void *vp);
-
 /* Evaluate a complete macro / a single command.  For the former lines will
  * be free()d, for the latter cmd will always be duplicated internally */
 EXPORT boole mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif,
@@ -167,6 +163,19 @@ EXPORT void mx_go_splice_hack_remove_after_jump(void);
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
 EXPORT boole mx_go_may_yield_control(void);
+
+/* Whether the current go context is a macro */
+EXPORT boole mx_go_ctx_is_macro(void);
+
+/* The name or identifier of the current go context, as well as the callee of
+ * the current go context, or NIL if unknown or target context neither of
+ * macro or file */
+EXPORT char const *mx_go_ctx_name(void);
+EXPORT char const *mx_go_ctx_parent_name(void);
+
+/* `source' and consorts */
+EXPORT int c_source(void *vp);
+EXPORT int c_source_if(void *vp);
 
 /* `xcall' */
 EXPORT int c_xcall(void *vp);
