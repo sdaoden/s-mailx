@@ -102,7 +102,6 @@ t_all() { # {{{
    jspawn environ
    jspawn loptlocenv
    jspawn macro_param_shift
-   jspawn addrcodec
    jspawn csop
    jspawn vexpr
    jspawn call_ret
@@ -111,10 +110,11 @@ t_all() { # {{{
    jspawn atxplode
    jspawn read
    jspawn readsh
-   jspawn headerpick # so we have a notion that it works a bit
    jsync
 
    # Send/RFC absolute basics
+   jspawn addrcodec
+   jspawn headerpick # (Just so we have a notion that it works a bit .. now)
    jspawn can_send_rfc
    jspawn reply
    jspawn forward
@@ -2625,10 +2625,9 @@ t_local() { # {{{
 			echo ich-2 du=$du
 		}
 		define wir {
-			localopts $1
 			set du=wirwir
 			echo wir-1 du=$du
-			call ich
+			eval $1 call ich
 			echo wir-2 du=$du
 		}
 		echo ------- global-1 du=$du
@@ -2637,9 +2636,9 @@ t_local() { # {{{
 		set du=global
 		call ich
 		echo ------- global-3 du=$du
-		call wir on
+		local call wir local
 		echo ------- global-4 du=$du
-		call wir off
+		call wir
 		echo ------- global-5 du=$du
 		__EOT
    check 1 0 ./t1 '291008203 807'
@@ -2724,18 +2723,18 @@ t_environ() { # {{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>&1
 	define l4 {
 		echo --l4-in;show
-		localopts yes
-		environ unlink LK1
-		set LK1=LK1_L4 noEK1
+		eval $1 environ unlink LK1
+		eval $1 environ unset EK1
+		local set LK1=LK1_L4
 		echo --l4-ou;show
 	}
 	define l3 {
 		echo --l3-in;show
 		set LK1=LK1_L3 EK1=EK1_L3
 		echo --l3-mid;show
-		call l4
+		call l4 local
 		echo --l3-preou;show
-		xcall l4
+		local xcall l4
 	}
 	define l2 {
 		echo --l2-in;show
@@ -2746,11 +2745,10 @@ t_environ() { # {{{
 	}
 	define l1 {
 		echo --l1-in;show
-		localopts call-fixate yes
-		set LK1=LK1_L1 EK1=EK1_L1
+		environ set LK1=LK1_L1 EK1=EK1_L1
 		environ link LK1
 		echo --l1-mid;show
-		call l2
+		local call l2
 		echo --l1-ou;show
 	}
 	commandalias show \
@@ -2888,18 +2886,19 @@ t_loptlocenv() { # 1 combined 4 :) {{{
 		xcall r3
 	}
 	define r1 {
-		localopts on
 		echo --r1-in;show
-		set asksub=du toplines=10 xy=bye yz=cry zz=yrc _S_MAILX_TEST=gelle
+		set xy=bye
+		local set asksub=du toplines=10 _S_MAILX_TEST=gelle
+		local environ set yz=cry zz=yrc
 		echo --r1-mid;show
-		call r2
+		local call r2
 		echo --r1-ou;show
 	}
 	define r0 {
 		echo --r0-in;show
 		unset asksub
 		echo --r0-mi;show
-		call r1
+		local call r1
 		echo --r0-ou;show
 	}
 	commandalias show \
@@ -2937,10 +2936,8 @@ t_macro_param_shift() { # {{{
 	define t2 {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-	   localopts on
-	   set ignerr=$1
+	   local set ignerr=$1
 	   shift
-	   localopts off
 	   echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
 	   if [ $# > 1 ] || [ $ignerr == '' ]
 	      shift 2
@@ -2973,186 +2970,6 @@ t_macro_param_shift() { # {{{
 	__EOT
 
    check 1 0 ./t1 '1402489146 1682'
-
-   t_epilog "${@}"
-} # }}}
-
-t_addrcodec() { # {{{
-   t_prolog "${@}"
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
-	commandalias x echo '$?/$^ERRNAME $res'
-	vput addrcodec res e 1 <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 2 . <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3 Sauer Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 8 \
-		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 12 Dr.     Sauer  (Ma)   Braten    Dr.   (u) <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 15 \
-		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 16 \
-		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 17 \
-		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 18 \
-		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	vput addrcodec res ++e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res \
-	   +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	x
-	eval vput addrcodec res d $res
-	x
-	#
-	vput addrcodec res s \
-		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
-	x
-	#
-	# Fix for [f3852f88]
-	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	x
-	eval vput addrcodec res d $res
-	x
-	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	x
-	eval vput addrcodec res d $res
-	x
-	__EOT
-
-   check 1 0 ./t1 '1047317989 2612'
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>&1
-	commandalias x echo '$?/$^ERRNAME $res'
-   mlist isa1@list
-   mlsubscribe isa2@list
-   #
-   vput addrcodec res skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-   x
-   vput addrcodec res skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-   x
-   vput addrcodec res skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-   x
-   vput addrcodec res skinlist Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-   x
-   vput addrcodec res skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-   x
-   vput addrcodec res skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-   x
-	__EOT
-
-   check 2 0 ./t2 '1391779299 104'
-
-   if have_feat idna; then
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>&1
-		commandalias x echo '$?/$^ERRNAME $res'
-      vput addrcodec res e    (heu) <du@blödiän> "stroh" du   
-      x
-      eval vput addrcodec res d $res
-      x
-      vput addrcodec res e       <du@blödiän>   du     
-      x
-      eval vput addrcodec res d $res
-      x
-      vput addrcodec res e     du    <du@blödiän>   
-      x
-      eval vput addrcodec res d $res
-      x
-      vput addrcodec res e        <du@blödiän>    
-      x
-      eval vput addrcodec res d $res
-      x
-      vput addrcodec res e        du@blödiän    
-      x
-      eval vput addrcodec res d $res
-      x
-		__EOT
-
-      check idna 0 ./tidna '498775983 326'
-   else
-      t_echoskip 'idna:[!IDNA]'
-   fi
 
    t_epilog "${@}"
 } # }}}
@@ -3545,13 +3362,14 @@ t_xcall() { # {{{
       ${MAILX} ${ARGS} -Snomemdebug -Smax=${LOOPS_MAX} > ./t1 2>&1
 	define work {
 		echon "$1 "
-		local vput vexpr i + $1 1
+      \if "$3" == ""; local set l=local; else; local set l=;\endif
+		eval $l vput vexpr i + $1 1
 		if $i -le "$max"
-			local vput vexpr j & $i 7
+			eval $l vput vexpr j & $i 7
 			if $j -eq 7
 				echo .
 			end
-			\xcall work $i $2
+			eval $l \xcall work \"$i\" \"$2\" $l
 		end
 		echo ! The end for $1/$2
 		if "$2" != ""
@@ -3565,10 +3383,10 @@ t_xcall() { # {{{
 	echo 1: ?=$? !=$!
 	call xwork
 	echo 2: ?=$? !=$!
-	xcall xwork
+	local xcall xwork
 	echo 3: ?=$? !=$^ERRNAME
 	#
-	call work 0 yes
+	local call work 0 yes
 	echo 4: ?=$? !=$^ERRNAME
 	call xwork 0 yes
 	echo 5: ?=$? !=$^ERRNAME
@@ -3587,41 +3405,41 @@ t_xcall() { # {{{
 
    if have_feat uistrings; then
       ${cat} <<- '__EOT' > ./t.in
-			\define __w {
-				\echon "$1 "
-				local \ vput vexpr i + $1 1
-				\if $i -le 111
-					\local vput vexpr j & $i 7
-					\if $j -eq 7; \echo .; \end
-					\xcall __w $i $2
-				\end
-				\echo ! The end for $1
-				\if $2 -eq 0
-					nonexistingcommand
-					\echo would be err with errexit
-					\return
-				\end
-				\echo calling exit
-				\exit
-			}
-			\define work {
-				\echo eins
-				\call __w 0 0
-				\echo zwei, ?=$? !=$!
-				\local set errexit
-				\ignerr call __w 0 0
-				\echo drei, ?=$? !=$^ERRNAME
-				\call __w 0 $1
-				\echo vier, ?=$? !=$^ERRNAME, this is an error
-			}
-			\ignerr call work 0
-			\echo outer 1, ?=$? !=$^ERRNAME
-			xxxign \call work 0
-			\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-			\call work 1
-			\echo outer 3, ?=$? !=$^ERRNAME
-			\echo this is definitely an error
-			__EOT
+		\define __w {
+			\echon "$1 "
+			local \ vput vexpr i + $1 1
+			\if $i -le 111
+				\local vput vexpr j & $i 7
+				\if $j -eq 7; \echo .; \end
+				\xcall __w $i $2
+			\end
+			\echo ! The end for $1
+			\if $2 -eq 0
+				nonexistingcommand
+				\echo would be err with errexit
+				\return
+			\end
+			\echo calling exit
+			\exit
+		}
+		\define work {
+			\echo eins
+			\call __w 0 0
+			\echo zwei, ?=$? !=$!
+			\local set errexit
+			\ignerr call __w 0 0
+			\echo drei, ?=$? !=$^ERRNAME
+			\call __w 0 $1
+			\echo vier, ?=$? !=$^ERRNAME, this is an error
+		}
+		\ignerr call work 0
+		\echo outer 1, ?=$? !=$^ERRNAME
+		xxxign \call work 0
+		\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+		\call work 1
+		\echo outer 3, ?=$? !=$^ERRNAME
+		\echo this is definitely an error
+		__EOT
 
       < ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
          -Snomemdebug > ./t2 2>&1
@@ -3861,6 +3679,191 @@ t_readsh() { # {{{ TODO not enough
 
    t_epilog "${@}"
 } # }}}
+# }}}
+
+# Send/RFC absolute basics {{{
+t_addrcodec() { # {{{
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
+	commandalias x echo '$?/$^ERRNAME $res'
+	vput addrcodec res e 1 <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res e 2 . <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res e 3 Sauer Dr. <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	#
+	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 8 \
+		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 12 Dr.     Sauer  (Ma)   Braten    Dr.   (u) <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 15 \
+		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 16 \
+		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 17 \
+		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 18 \
+		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	x
+	eval vput addrcodec res d $res
+	x
+	#
+	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	x
+	vput addrcodec res ++e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
+	x
+	eval vput addrcodec res d $res
+	x
+	#
+	vput addrcodec res \
+	   +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	x
+	eval vput addrcodec res d $res
+	x
+	#
+	vput addrcodec res s \
+		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+	x
+	#
+	# Fix for [f3852f88]
+	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	x
+	eval vput addrcodec res d $res
+	x
+	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	x
+	eval vput addrcodec res d $res
+	x
+	__EOT
+
+   check 1 0 ./t1 '1047317989 2612'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>&1
+	commandalias x echo '$?/$^ERRNAME $res'
+   mlist isa1@list
+   mlsubscribe isa2@list
+   #
+   vput addrcodec res skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+   x
+   vput addrcodec res skinlist \
+      Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+   x
+   vput addrcodec res skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+   x
+   vput addrcodec res skinlist \
+      Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+   x
+   vput addrcodec res skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+   x
+   vput addrcodec res skinlist \
+      Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+   x
+	__EOT
+
+   check 2 0 ./t2 '1391779299 104'
+
+   if have_feat idna; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>&1
+		commandalias x echo '$?/$^ERRNAME $res'
+      vput addrcodec res e    (heu) <du@blödiän> "stroh" du   
+      x
+      eval vput addrcodec res d $res
+      x
+      vput addrcodec res e       <du@blödiän>   du     
+      x
+      eval vput addrcodec res d $res
+      x
+      vput addrcodec res e     du    <du@blödiän>   
+      x
+      eval vput addrcodec res d $res
+      x
+      vput addrcodec res e        <du@blödiän>    
+      x
+      eval vput addrcodec res d $res
+      x
+      vput addrcodec res e        du@blödiän    
+      x
+      eval vput addrcodec res d $res
+      x
+		__EOT
+
+      check idna 0 ./tidna '498775983 326'
+   else
+      t_echoskip 'idna:[!IDNA]'
+   fi
+
+   t_epilog "${@}"
+} # }}}
 
 t_headerpick() { # {{{
    t_prolog "${@}"
@@ -3974,9 +3977,7 @@ t_headerpick() { # {{{
 
    t_epilog "${@}"
 } # }}}
-# }}}
 
-# Send/RFC absolute basics {{{
 t_can_send_rfc() { # {{{
    t_prolog "${@}"
 
@@ -5220,8 +5221,7 @@ t_mbox() { # {{{
 
    printf \
       'define mboxfix {
-         \\localopts yes; \\set mbox-rfc4155;\\File "${1}";\\
-            \\eval copy * "${2}"
+         \\local set mbox-rfc4155; \\File "${1}"; \\eval copy * "${2}"
       }
       call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
    check_ex0 14-estat
@@ -8381,7 +8381,7 @@ __EOT__
 
    # Some state machine stress, shell compose hook, localopts for hook, etc.
    # readctl in child. ~r as HERE document
-   printf 'm ex@am.ple\nbody\n!.
+   printf 'local mail ex@am.ple\nbody\n!.
       varshow t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
    ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=test://t3 \
@@ -8917,10 +8917,11 @@ t_lreply_futh_rth_etc() { # {{{
 	   echo -----After Lreply $1.$2: $?/$^ERRNAME
 	}
 	define x {
-	   localopts call-fixate yes
-	   call r $1
-	   call R $1 1; call R $1 2; call R $1 3; call R $1 4
-	   call L $1 1; call L $1 2; call L $1 3
+	   commandalias lc '\local call'
+	   lc r $1
+	   lc R $1 1; lc R $1 2; lc R $1 3; lc R $1 4
+	   lc L $1 1; lc L $1 2; lc L $1 3
+	   uncommandalias lc
 	}
 	define tweak {
 	   echo;echo '===== CHANGING === '"$*"' =====';echo
