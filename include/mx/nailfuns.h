@@ -150,9 +150,10 @@ FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
 FL boole temporary_folder_hook_check(boole nmail);
 FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
 
-/* TODO v15 drop Invoke compose hook macname */
+/* TODO v15 drop Invoke compose hook macname
+ * _hook_control(): local argument only of interest for enable=!FAL0 */
+FL void temporary_compose_mode_hook_control(boole enable, boole local);
 FL void temporary_compose_mode_hook_call(char const *macname);
-FL void temporary_compose_mode_hook_unroll(void);
 
 #ifdef mx_HAVE_HISTORY
 /* TODO *on-history-addition* */
@@ -936,7 +937,7 @@ FL int c_Sendmail(void *v);
 /* Mail a message on standard input to the people indicated in the passed
  * header, applying all the address massages first.  (Internal interface) */
 FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
-               struct message *quote, char const *quotefile);
+      struct message *quote, char const *quotefile, boole local);
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because
@@ -958,7 +959,7 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
  * as-is; h_cc and h_bcc are asserted to be NIL.  urlp must have undergone
  * mx_sendout_mta_url() processing */
 FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
-      struct header *hp, boole add_resent);
+      struct header *hp, boole add_resent, boole local);
 
 /* *save* / $DEAD */
 FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);

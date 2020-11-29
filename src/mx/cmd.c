@@ -216,7 +216,7 @@ jfakeent:
    if(cdp->cd_caflags & (mx_CMD_ARG_R | mx_CMD_ARG_S)){
       rv = n_string_push_cp(rv, _(" | nay:"));
       if(cdp->cd_caflags & mx_CMD_ARG_R)
-         rv = n_string_push_cp(rv, _(" compose mode"));
+         rv = n_string_push_cp(rv, _(" compose-mode"));
       if(cdp->cd_caflags & mx_CMD_ARG_S)
          rv = n_string_push_cp(rv, _(" startup"));
       if(cdp->cd_caflags & mx_CMD_ARG_W)
@@ -225,7 +225,7 @@ jfakeent:
 
    if(cdp->cd_caflags & mx_CMD_ARG_HGABBY)
       rv = n_string_push_cp(rv, _(" | history:gabby"));
-   if(cdp->cd_caflags & mx_CMD_ARG_NOHIST)
+   if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
       rv = n_string_push_cp(rv, _(" | history:ignored"));
 
    cp = n_string_cp(rv);
@@ -874,7 +874,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
    int res_no;
    NYD_IN;
 
-   n_pstate &= ~n_PS_ARGLIST_MASK;
+   n_pstate &= ~n_PS_MSGLIST_MASK;
 
    if(res_size == 0){
       res_no = -1;

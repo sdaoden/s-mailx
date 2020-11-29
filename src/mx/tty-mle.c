@@ -639,7 +639,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
       enum a_tty_bind_flags tbf, uz *len);
 
 /* Readline core */
-static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
+static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL);
 
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -1075,8 +1075,8 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
          thp->th_younger = NIL;
           a_tty.tg_hist = thp;
 
-         mx_go_input_inject((mx_GO_INPUT_INJECT_COMMIT |
-            mx_GO_INPUT_INJECT_HISTORY), thp->th_dat, thp->th_len);
+         mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT,
+            thp->th_dat, thp->th_len);
          break;
       }else{
          --a_tty.tg_hist_size;
@@ -2633,14 +2633,20 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             ++i;
       }
-      tlp->tl_defc.s = cp = n_autorec_alloc(i + 2 +1);
+
+      tlp->tl_defc.s = cp = su_AUTO_ALLOC(i + 2 +1);
+
+      /* Compose mode is tricky and not yet truly supported TODO
+       * TODO .. in that only non-compose mode commands will work */
       if((tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK
             ) == mx_GO_INPUT_CTX_COMPOSE){
          if((*cp = ok_vlook(escape)[0]) == '\0')
             *cp = n_ESCAPE[0];
          ++cp;
-         if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
+         if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE)){
             *cp++ = ':';
+            *cp++ = ' ';
+         }
       }
       su_mem_copy(cp, thp->th_dat, thp->th_len +1);
       rv = tlp->tl_defc.l = i;
@@ -2653,6 +2659,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
    }
 
    tlp->tl_vi_flags |= f;
+
    NYD2_OU;
    return rv;
 }
@@ -2685,6 +2692,7 @@ a_tty_khist(struct a_tty_line *tlp, boole fwd){
 
 jleave:
    rv = a_tty__khist_shared(tlp, thp);
+
    NYD2_OU;
    return rv;
 }
@@ -2969,7 +2977,7 @@ jreset:
 }
 
 static sz
-a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
+a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
@@ -3344,9 +3352,9 @@ jdone:
     * plain character equivalent */
    rv = a_tty_cell2dat(tlp);
 
-   if(histok_or_null != NIL &&
+   if(histok_or_nil != NIL &&
          (rv <= 0 || su_cs_is_space(tlp->tl_line.cbuf[0])))
-      *histok_or_null = FAL0;
+      *histok_or_nil = FAL0;
 
 jleave:
    putc('\n', mx_tty_fp);
@@ -3369,8 +3377,8 @@ jinject_input:{
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
    mx_sigs_all_rele(); /* XXX v15 drop */
 
-   if(histok_or_null != NIL)
-      *histok_or_null = FAL0;
+   if(histok_or_nil != NIL)
+      *histok_or_nil = FAL0;
    rv = S(sz,--i);
    }
    goto jleave;

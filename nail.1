@@ -1237,6 +1237,15 @@ only provide the hooks
 and
 .Va on-resend-cleanup ,
 which are pretty restricted due to the nature of the operation.)
+.
+.Pp
+.Sx COMMANDS
+which enter compose mode support
+.Cm local ,
+one of the
+.Sx "Command modifiers" ,
+to apply changes, also those done by compose hooks, in local scope only,
+meaning that covered changes will be reverted once compose mode is left.
 .\" }}}
 .
 .\" .Ss "On reading mail, and more on interactive mode" {{{
@@ -3501,15 +3510,51 @@ one of the
 .Sx "INTERNAL VARIABLES" ,
 will be set to the real exit status of the command regardless.
 .
+.
 .Mx
 .It Cm local
 When supported, apply changes only in local scope.
 The commands
-.Ic set
+.Ic set , unset , call
 and
-.Ic unset
-also overload this meaning for built-in
-.Sx "INTERNAL VARIABLES" .
+.Ic xcall
+overload this meaning for built-in
+.Sx ENVIRONMENT
+and
+.Sx "INTERNAL VARIABLES" :
+changes will leave local scope down the call chain, but their former
+state is restored once the
+.Dq covered scope
+is left.
+The covered scope of a
+.Ic define Ns
+d macro ends when execution is passed up to the callee, an
+.Ic account
+is left once a different account is activated, and some macros, notably
+.Va folder-hook Ns s ,
+use their own specific notion of covered scope, here it will be extended
+until the folder is left again.
+.
+.Pp
+This extended local scoping stacks up: for example, if
+.Ql macro1
+has it enabled and calls
+.Ql macro2
+normally, then all changes done by
+.Ql macro2
+or deeper in the call chain will still be reverted once the scope of
+.Ql macro1
+is left.
+Caveats: if in this example
+.Ql macro2
+changes to a different
+.Ic account
+which sets some variables that are already covered by local scoping,
+their scope will be extended, and in fact leaving the
+.Ic account
+will (thus) restore settings in (likely) global scope which actually
+were defined in a local, macro private context!
+.
 .
 .Mx
 .It Cm u
@@ -4144,9 +4189,9 @@ Accounts are special incarnations of
 .Ic define Ns d
 macros and group commands and variable settings which together usually
 arrange the environment for the purpose of creating an email account.
-Different to normal macros settings which are covered by
-.Ic localopts
-\(en here by default enabled! \(en will not be reverted before the
+Accounts by default use
+.Cm local
+scoping, and covered settings will not be reverted before the
 .Ic account
 is changed again.
 The special account
@@ -4606,6 +4651,9 @@ is the last command of the current macro, consider to use the command
 .Ic xcall ,
 which will first release all resources of the current macro before
 replacing the current macro with the called one.
+Both commands support
+.Cm local
+scoping.
 .
 .
 .Mx
@@ -5037,30 +5085,12 @@ A defined macro can be invoked explicitly by using the
 .Ic call_if
 and
 .Ic xcall
-commands, or implicitly if a macro hook is triggered, for example a
+commands, optionally with
+.Cm local
+scoping, or implicitly if a macro hook is triggered, for example a
 .Va folder-hook .
 Execution of a macro body can be stopped from within by calling
 .Ic return .
-.
-.Pp
-Temporary macro block-scope variables can be created or deleted with the
-.Cm local
-command modifier in conjunction with the commands
-.Ic set
-and
-.Ic unset ,
-respectively.
-To enforce unrolling of changes made to (global)
-.Sx "INTERNAL VARIABLES"
-the command
-.Ic localopts
-can be used instead; its covered scope depends on how (i.e.,
-.Dq as what :
-normal macro, folder hook, hook,
-.Ic account
-switch) the macro is invoked.
-.
-.Pp
 Inside a
 .Ic call Ns
 ed macro, the given positional parameters are implicitly local
@@ -5331,11 +5361,9 @@ variable already exists (see
 .Ic if ) ,
 the environment value is synchronized immediately, if it only exists in
 the environment instead an internal variable is created.
-All these changes can be covered via
-.Ic localopts ;
+All these changes can be scoped via
 .Cm local
-is supported but overloaded to be identical in effect (truly local
-variables of equal names continue to shadow resolvable ones).
+(truly local variables of equal names continue to shadow resolvable ones).
 The subcommand
 .Cm lookup
 looks up the given variable in the process environment; it supports
@@ -6062,76 +6090,14 @@ The command produces
 entries.
 .El
 .
-.
-.Mx
 .It Ic localopts
-Enforce change localization of
-.Sx "INTERNAL VARIABLES" ,
-.Pf ( Ic environ
-resolved) as well as freely
-.Ic set
-user variables, meaning their former state is restored once the
-.Dq covered scope
-is left.
-The covered scope of an
-.Ic account
-is left once a different account is activated, and some macros, notably
-.Va folder-hook Ns s ,
-use their own specific notion of covered scope, here it will be extended
-until the folder is left again.
-For built-in variables the modifier
+\*(OB Please just use the
 .Cm local
-(where applicable) behaves like a per-call
-.Ic localopts .
-.
-.Pp
-Localization stacks up: for example, if
-.Ql macro1
-enables it and calls
-.Ql macro2 ,
-which explicitly resets localization, then all changes done by
-.Ql macro2
-or deeper in the call chain will still be reverted once the scope of
-.Ql macro1
-is left.
-(Caveats: if in this example
-.Ql macro2
-changes to a different
-.Ic account
-which sets some variables that are already covered by localizations,
-their scope will be extended, and in fact leaving the
-.Ic account
-will (thus) restore settings in (likely) global scope which actually
-were defined in a local, macro private context!)
-.
-.Pp
-One or two arguments may be passed, the optional attribute
-.Cm \&\&scope ,
-which refers to the current scope and is thus the default,
-.Cm call ,
-which causes any
-.Ic call Ns
-ed macro to be started with localization enabled by default, as well as
-.Cm call-fixate ,
-which fixates localization in called macros: this ensures that any
-change made in deeper levels have been reverted when the current scope
-regains control.
-The latter two are mutually exclusive, and neither affects
-.Ic xcall .
-The second argument is interpreted as a boolean and defines whether the
-given attribute shall be turned on or off.
-.
-.Bd -literal -offset indent
-define temporary_settings {
-  set possibly_global_option1
-  localopts on
-  set localized_option1
-  set localized_option2
-  localopts scope off
-  set possibly_global_option2
-}
-.Ed
-.
+modifier, as in
+.Ql local set ,
+.Ql local environ set
+or
+.Ql local call .
 .
 .Mx
 .Mx
@@ -6823,7 +6789,6 @@ condition or an argument to
 explicit
 .Ic \&\&set Ns
 ting, as well as some program-internal use cases (look-ups) do this.
-.
 .Pp
 Otherwise given
 .Ql name Ns
@@ -6840,31 +6805,17 @@ equals calling
 .Ic \&\&unset
 .Pf ( Ql unset name ) ,
 which erases all given variable names.
-They both support the command modifier
-.Cm local :
-its meaning is overloaded in that any argument that indeed is a
-built-in variable will be covered by
-.Ic localopts
-instead of being shadowed by a truly
-.Dq local
-variable.
-.
+They both support
+.Cm local
+scoping.
 .Bd -literal -offset indent
 ? set indentprefix=' -> '
 ? set atab=$'\t' aspace=' ' zero=0 noprompt
-
-# For built-in variables, "local" equal "localopts"!
-? define _mbf {
+? define mboxfix {
+  local set mbox-rfc4155
   File "${1}"; copy * "${2}"
 }
-? define mboxfix1 {
-  local set mbox-rfc4155; xcall _mbf "${@}"
-}
-? define mboxfix2 {
-  localopts yes; set mbox-rfc4155; xcall _mbf "$@"
-}
 .Ed
-.
 .
 .Mx
 .It Ic shcodec
@@ -6917,11 +6868,6 @@ or 1 if no argument has been given.
 It is an error if the value exceeds the number of positional parameters.
 If the given number is 0, no action is performed, successfully.
 The stack as such can be managed via
-.Ic vpospar .
-Note this command will fail in
-.Ic account
-and hook macros unless the positional parameter stack has been
-explicitly created in the current context via
 .Ic vpospar .
 .
 .Mx
@@ -7742,7 +7688,8 @@ reasons).
 is that the new macro is executed in place of the current one, which
 will not regain control: all resources of the current macro will be
 released first, except the re-parented settings covered by
-.Ic localopts .
+.Cm local
+scoping.
 If this command is not used from within a
 .Ic call Ns
 ed macro it will silently be (a more expensive variant of)
@@ -8896,7 +8843,10 @@ string if the macro is running from top-level.
 For the \*(OPal regular expression search and replace operator of
 .Ic vexpr
 this expands to the entire matching expression.
-It represents the program name in global context.
+It represents the program name in global context, and
+.Dq compose mode
+in
+.Sx "Compose mode" .
 .
 .Mx
 .It Va 1
@@ -9667,9 +9617,9 @@ is opened.
 The macro will also be invoked when new mail arrives,
 but message lists for commands executed from the macro
 only include newly arrived messages then.
-.Ic localopts
-are activated by default in a folder hook, causing the covered settings
-to be reverted once the folder is left again.
+.Cm local
+scoping is activated by default in a folder hook, causing the covered
+settings to be reverted once the folder is left again.
 .Pp
 The specialized form will override the generic one if
 .Ql FOLDER
@@ -10891,8 +10841,8 @@ directory rather than relative to the current directory.
 .It Va on-account-cleanup-ACCOUNT , Va on-account-cleanup
 Macro hook which will be called once an
 .Ic account
-is left, as the very last step before unrolling per-account
-.Ic localopts .
+is left, as the very last step before unrolling the per-account scope
+.Cm local .
 This hook is run even in case of fatal errors, including those generated
 by switching to the account as such, and it is advisable to perform only
 absolutely necessary actions, like cleaning up
@@ -10904,7 +10854,8 @@ The specialized form is used in favour of the generic one if found.
 .It Va on-compose-cleanup
 Macro hook which will be called after the message has been sent (or not,
 in case of failures), as the very last step before unrolling compose mode
-.Ic localopts .
+.Ic local
+scope.
 This hook is run even in case of fatal errors, and it is advisable to
 perform only absolutely necessary actions, like cleaning up
 .Ic alternates ,
@@ -10914,9 +10865,7 @@ For compose mode hooks that may affect the message content please see
 .Va on-compose-enter , on-compose-leave , on-compose-splice .
 \*(ID This hook exists because
 .Ic alias , alternates , commandalias , shortcut ,
-to name a few, are neither covered by
-.Ic localopts
-nor by
+to name a few, are not yet covered by
 .Cm local :
 changes applied in compose mode will continue to be in effect thereafter.
 .
@@ -10932,9 +10881,6 @@ one of the
 .Sx "COMMAND ESCAPES" .
 Context about the message being worked on can be queried via
 .Ic digmsg .
-.Ic localopts
-are enabled for these hooks, and changes on variables will be forgotten
-after the message has been sent.
 .Va on-compose-cleanup
 can be used to perform other necessary cleanup steps.
 .
@@ -10988,11 +10934,8 @@ d macro, but which is restricted to a small set of commands (the
 output of for example
 .Ic list
 will indicate said capability).
-.Ic localopts
-are enabled for these hooks (in the parent process), causing any setting
-to be forgotten after the message has been sent;
 .Va on-compose-cleanup
-can be used to perform other cleanup as necessary.
+can be used to perform cleanup as necessary.
 .
 .Pp
 During execution of these hooks \*(UA will temporarily forget whether it
@@ -11088,7 +11031,7 @@ etc.
 This hook will be called each time before the main event loop will read
 an input line.
 Note variable and other changes it performs are not scoped as via
-.Ic localopts !
+.Cm local !
 .
 .Mx
 .It Va on-program-exit
@@ -13226,9 +13169,7 @@ or
 .Ic unset
 the process environment is updated automatically, for example;
 this includes change scope coverage via
-.Cm local
-and
-.Ic localopts .
+.Cm local .
 (Removal requires sufficient system support: available in BSD since
 1987, standardized since Y2K.)
 The list of resolved built-in variables follows, the command

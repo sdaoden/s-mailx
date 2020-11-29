@@ -1564,7 +1564,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
    struct message *mp;
    NYD_IN;
 
-   n_pstate &= ~n_PS_ARGLIST_MASK;
+   n_pstate &= ~n_PS_MSGLIST_MASK;
    n_pstate |= n_PS_MSGLIST_DIRECT;
    n_msgmark1 = NIL;
    a_msg_list_last_saw_d = a_msg_list_saw_d;

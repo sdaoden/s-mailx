@@ -126,8 +126,9 @@ enum a_go_flags{
    a_GO_XCALL_LOOP_ERROR = 1u<<26, /* .. state machine error transporter */
    /* For "this" level: `xcall' seen; for parent: XCALL_LOOP entered */
    a_GO_XCALL_SEEN = 1u<<27,
+   a_GO_XCALL_SEEN_LOCAL = 1u<<28,
    a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR |
-         a_GO_XCALL_SEEN
+         a_GO_XCALL_SEEN | a_GO_XCALL_SEEN_LOCAL
 };
 
 enum a_go_cleanup_mode{
@@ -634,7 +635,7 @@ jwhite:
    if(cdp->cd_caflags & mx_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
-         emsg = N_("%s: cannot be used in compose mode\n");
+         emsg = N_("%s: compose mode can be entered once only\n");
          goto jeflags;
       }
       /* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
@@ -693,6 +694,7 @@ jeflags:
          flags ^= a_WYSH;
          /* FALLTHRU */
       case mx_CMD_ARG_TYPE_WYRA:
+         n_pstate |= n_PS_ARGMOD_WYSH;
          break;
       case mx_CMD_ARG_TYPE_RAWDAT:
       case mx_CMD_ARG_TYPE_STRING:
@@ -708,15 +710,14 @@ jeflags:
          emsg = N_("%s: command modifier `local' not supported\n");
          goto jeflags; /* above */
       }
-      if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+      if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO &&
+            !(cdp->cd_caflags & mx_CMD_ARG_L_NOMAC)){
          emsg = N_("%s: cannot use `local' modifier in this context\n");
          goto jeflags; /* above */
       }
 
       flags |= a_WYSH;
-      n_pstate |= n_PS_ARGMOD_LOCAL; /* TODO YET useless since stripped later
-         * TODO on in getrawlist() etc., i.e., the argument vector producers,
-         * TODO therefore yet needs to be set again based on flags&a_LOCAL! */
+      n_pstate |= n_PS_ARGMOD_LOCAL | n_PS_ARGMOD_WYSH;
    }
 
    if(flags & a_VPUT){
@@ -742,9 +743,7 @@ jeflags:
             rv = -1;
             goto jleave;
          }
-         n_pstate |= n_PS_ARGMOD_VPUT; /* TODO YET useless since stripped later
-         * TODO on in getrawlist() etc., i.e., the argument vector producers,
-         * TODO therefore yet needs to be set again based on flags&a_VPUT! */
+         n_pstate |= n_PS_ARGMOD_VPUT;
       }else{
          n_err(_("%s: %s: vput: command modifier not supported\n"),
             n_ERROR, cdp->cd_name);
@@ -782,6 +781,7 @@ jmsglist_err:
             break;
          }
       }
+
 jmsglist_go:
       /* C99 */{
          int *mvp;
@@ -789,9 +789,11 @@ jmsglist_go:
          mvp = su_AUTO_CALLOC_N(sizeof *mvp, c +1);
          while(c-- > 0)
             mvp[c] = n_msgvec[c];
+
          if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM))/*XXX*/
             su_err_set_no(su_ERR_NONE);
          rv = (*cdp->cd_func)(mvp);
+         ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
       }
       break;
 
@@ -811,9 +813,11 @@ jmsglist_go:
       /* Just the straight string, old style, with leading blanks removed */
       for(cp = line.s; su_cs_is_space(*cp);)
          ++cp;
+
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(cp);
+      ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
       break;
 
    case mx_CMD_ARG_TYPE_RAWDAT:
@@ -823,9 +827,11 @@ jmsglist_go:
          *argvp++ = vput;
       *argvp++ = line.s;
       *argvp = NIL;
+
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_stack);
+      ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
       break;
 
    case mx_CMD_ARG_TYPE_WYSH:
@@ -839,7 +845,9 @@ jmsglist_go:
             if((v15compat = ok_vlook(v15_compat)) != NIL && *v15compat != '\0')
                flags |= a_WYSH;
          }
-         c = (flags & a_WYSH) ? 1 : 0;
+
+         if((c = (flags & a_WYSH) ? 1 : 0))
+            n_pstate |= n_PS_ARGMOD_WYSH;
          if(0){
    case mx_CMD_ARG_TYPE_RAWLIST:
             c = 0;
@@ -849,6 +857,7 @@ jmsglist_go:
       argvp = argv_base = su_AUTO_ALLOC(sizeof(*argv_base) * n_MAXARGC);
       if(flags & a_VPUT)
          *argvp++ = vput;
+
       if((c = getrawlist((c != 0), argvp,
             (n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
          n_err(_("%s: invalid argument list\n"), cdp->cd_name);
@@ -865,13 +874,6 @@ jmsglist_go:
          flags |= a_NO_ERRNO;
          break;
       }
-
-      if(flags & a_WYSH)
-         n_pstate |= n_PS_ARGMOD_WYSH;
-      if(flags & a_LOCAL)
-         n_pstate |= n_PS_ARGMOD_LOCAL;
-      if(flags & a_VPUT)
-         n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
@@ -897,17 +899,10 @@ jmsglist_go:
          break;
       }
 
-      if(flags & a_VPUT){
+      if(flags & a_LOCAL)
+         cac.cac_cm_local = TRU1;
+      if(flags & a_VPUT)
          cac.cac_vput = vput;
-         /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_VPUT; */
-         if(flags & a_LOCAL){
-            cac.cac_cm_local = TRU1;
-            /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_LOCAL; */
-         }
-      }else{
-         ASSERT(cac.cac_cm_local == FAL0);
-         ASSERT(cac.cac_vput == NIL);
-      }
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
@@ -925,7 +920,7 @@ jmsglist_go:
    }
 
    if(gecp->gec_hist_flags & a_GO_HIST_ADD){
-      if(cdp->cd_caflags & mx_CMD_ARG_NOHIST)
+      if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
          gecp->gec_hist_flags = a_GO_HIST_NONE;
       else if((cdp->cd_caflags & mx_CMD_ARG_HGABBY) ||
             (n_pstate & n_PS_MSGLIST_GABBY))
@@ -2235,8 +2230,11 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name,
 
          if(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN))
             break;
+         if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN_LOCAL)
+            n_pstate |= n_PS_ARGMOD_LOCAL;
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
-         a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN);
+         a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN |
+               a_GO_XCALL_SEEN_LOCAL);
 
          mx_sigs_all_rele();
 
@@ -2495,6 +2493,8 @@ c_xcall(void *vp){
             su_mem_bag_auto_relax_create(outer->gc_data.gdc_membag);
 
          outer->gc_flags |= a_GO_XCALL_SEEN;
+         if(n_pstate & n_PS_ARGMOD_LOCAL)
+            outer->gc_flags |= a_GO_XCALL_SEEN_LOCAL;
          outer->gc_xcall_lopts = mx_xcall_exchange_lopts(my->gc_finalize_arg);
          i = su_cs_len(my->gc_name) +1;
          outer->gc_xcall_callee =
