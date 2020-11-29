@@ -217,6 +217,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define HG mx_CMD_ARG_HGABBY
 #define I mx_CMD_ARG_I
 #define L mx_CMD_ARG_L
+#define LNMAC mx_CMD_ARG_L_NOMAC
 #define M mx_CMD_ARG_M
 #define O mx_CMD_ARG_O
 #define P mx_CMD_ARG_P
@@ -230,7 +231,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define W mx_CMD_ARG_W
 #define X mx_CMD_ARG_X
 #define NMAC mx_CMD_ARG_NEEDMAC
-#define NOHIST mx_CMD_ARG_NOHIST
+#define NOHIST mx_CMD_ARG_NO_HISTORY
 #define EM mx_CMD_ARG_EM
 
    /* --MKTAB-START-- */
@@ -278,10 +279,10 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
       (A | TMSGLST), 0, 0, NIL
      DS(N_("Read specified <message list> into the IMAP cache")) },
-   { "call", &c_call, (M | X | EM | TARG), 0, 0,
+   { "call", &c_call, (L | LNMAC | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call)
      DS(N_("Call macro <name> [:<arg>:]")) },
-   { "call_if", &c_call_if, (M | X | EM | TARG), 0, 0,
+   { "call_if", &c_call_if, (L | LNMAC | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call)
      DS(N_("Call macro <name> like `call', but be silent if non-existent")) },
    { "cd", &c_chdir, (M | X | TWYSH), 0, 1, NIL
@@ -395,7 +396,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "exit", &c_exit, (M | X | TWYSH), 0, 1, NIL
      DS(N_("Immediately return [<status>] to the shell without saving")) },
 
-{ "Followup", &c_Followup, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+{ "Followup", &c_Followup, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Like `Reply', but derive filename from first sender")) },
 { "from", &c_from, (A | TMSGLST), 0, MMNORM, NIL
      DS(N_("Type (matching) headers of <msglist> (a search specification)")) },
@@ -408,7 +410,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
       "or list file handlers"))},
    { "flag", &c_flag, (A | M | TMSGLST), 0, 0, NIL
      DS(N_("(Un)Flag <msglist> (for special attention)")) },
-{ "followup", &c_followup, (A | I | R | SC | TMSGLST), 0, MMNDEL, NIL
+{ "followup", &c_followup, (A | I | L | LNMAC | R | SC | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Like `reply', but derive filename from first sender")) },
    { "Folder", &c_File, (M | T | TWYRA), 0, 1, NIL
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
@@ -416,17 +419,17 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1, NIL
      DS(N_("List mailboxes below the given or the global folder")) },
-   { "Forward", &c_Forward, (A | I | R | SC | EM | TARG), 0, MMNDEL,
-     mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward)
+   { "Forward", &c_Forward, (A | I | L | LNMAC | R | SC | EM | TARG),
+      0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward)
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "forward", &c_forward, (A | I | R | SC | EM | TARG), 0, MMNDEL,
-     mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_forward)
+   { "forward", &c_forward, (A | I | L | LNMAC | R | SC | EM | TARG),
+      0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_forward)
      DS(N_("Forward <message> to <address>")) },
-{ "followupall", &c_followupall, (O | A | I | R | SC | TMSGLST),
+{ "followupall", &c_followupall, (O | A | I | L | LNMAC | R | SC | TMSGLST),
  0, MMNDEL, NIL
  DS(N_("Like `reply', but derive filename from first sender")) },
-{ "followupsender", &c_followupsender, (O | A | I | R | SC | TMSGLST),
- 0, MMNDEL, NIL
+{ "followupsender", &c_followupsender,
+ (O | A | I | L | LNMAC | R | SC | TMSGLST), 0, MMNDEL, NIL
  DS(N_("Like `Followup', but always reply to the sender only")) },
 { "fwddiscard", &c_fwdignore, (O | M | TRAWLST), 0, MAC, NIL
  DS(N_("Obsoleted by `headerpick'")) },
@@ -483,14 +486,17 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Mailing-list followup to the given <msglist>")) },
    { "list", &a_cmd_c_list, (M | TWYSH), 0, 0, NIL
      DS(N_("List all commands (in lookup order)")) },
-   { "localopts", &c_localopts, (M | X | NMAC | NOHIST | TWYSH), 1, 2, NIL
-     DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
-   { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+{ "localopts", &c_localopts, (O | M | X | NMAC | NOHIST | TWYSH), 1, 2, NIL
+  DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
+   { "Lreply", &c_Lreply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Mailing-list reply to the given <msglist>")) },
 
-   { "Mail", &c_Sendmail, (I | M | R | SC | EM | TSTRING), 0, 0, NIL
+   { "Mail", &c_Sendmail, (I | L | LNMAC | M | R | SC | EM | TSTRING),
+      0, 0, NIL
      DS(N_("Like `mail', but derive filename from first recipient")) },
-   { "mail", &c_sendmail, (I | M | R | SC | EM | TSTRING), 0, 0, NIL
+   { "mail", &c_sendmail, (I | L | LNMAC | M | R | SC | EM | TSTRING),
+      0, 0, NIL
      DS(N_("Compose mail; recipients may be given as arguments")) },
    { "mailcap",
 #ifdef mx_HAVE_MAILCAP
@@ -575,7 +581,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "quit", &c_quit, TWYSH, 0, 1, NIL
      DS(N_("Exit session with [<status>], saving messages as necessary")) },
 
-{ "reply", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+{ "reply", &c_reply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Reply to originator and recipients of <msglist>")) },
    { "read", &c_read, (HG | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Read a line into <variable>(s), split at $ifs")) },
@@ -590,32 +597,36 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Remove the named folders")) },
    { "rename", &c_rename, (M | TWYSH), 2, 2, NIL
      DS(N_("Rename <existing-folder> to <new-folder>")) },
-   { "Reply", &c_Reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+   { "Reply", &c_Reply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Reply to originator, exclusively")) },
-   { "Resend", &c_Resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+   { "Resend", &c_Resend, (A | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Resend)
      DS(N_("Like `resend', but do not add Resent-* header lines")) },
-   { "resend", &c_resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+   { "resend", &c_resend, (A | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_resend)
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "Respond", &c_Reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+   { "Respond", &c_Reply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Reply to originator, exclusively")) },
-   { "respond", &c_reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
+   { "respond", &c_reply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
+      0, MMNDEL, NIL
      DS(N_("Reply to originators and recipients of <msglist>")) },
    { "retain", &c_retain, (M | TWYRA), 0, MAC, NIL
      DS(N_("Add <header-list> to retained list, or show that list")) },
    { "return", &c_return, (M | X | EM | NMAC |TWYSH), 0, 2, NIL
      DS(N_("Return control from macro [<return value> [<exit status>]]"))},
-{ "replyall", &c_replyall, (O | A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
- DS(N_("Reply to originator and recipients of <msglist>")) },
-{ "replysender", &c_replysender, (O | A | I | R | SC | EM | TMSGLST),
+{ "replyall", &c_replyall, (O | A | I | L | LNMAC | R | SC | EM | TMSGLST),
  0, MMNDEL, NIL
+ DS(N_("Reply to originator and recipients of <msglist>")) },
+{ "replysender", &c_replysender,
+ (O | A | I | L | LNMAC | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
  DS(N_("Reply to originator, exclusively")) },
-{ "respondall", &c_replyall, (O | A | I | R | SC | EM | TMSGLST),
+{ "respondall", &c_replyall, (O | A | I | L | LNMAC | R | SC | EM | TMSGLST),
  0, MMNDEL, NIL
  DS(N_("Reply to originators and recipients of <msglist>")) },
-{ "respondsender", &c_replysender, (O | A | I | R | SC | EM | TMSGLST),
- 0, MMNDEL, NIL
+{ "respondsender", &c_replysender,
+ (O | A | I | L | LNMAC | R | SC | EM | TMSGLST), 0, MMNDEL, NIL
  DS(N_("Reply to originator, exclusively")) },
 
    { "Save", &c_Save, (A | SC | EM | TARG), 0, 0,
@@ -841,7 +852,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 { "xit", &c_exit, (M | X | TWYSH), 0, 1, NIL
      DS(N_("Immediately return [<status>] to the shell without saving")) },
-   { "xcall", &c_xcall, (M | X | EM | TARG), 0, 0,
+   { "xcall", &c_xcall, (L | LNMAC | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_call)
      DS(N_("Replace currently executing macro with macro <name> [:<arg>:]")) },
 
@@ -870,6 +881,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #undef HG
 #undef I
 #undef L
+#undef LNMAC
 #undef M
 #undef O
 #undef P

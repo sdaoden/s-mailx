@@ -48,23 +48,24 @@ enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    mx_CMD_ARG_G = 1u<<6,/* Supports `global' prefix */
    mx_CMD_ARG_HGABBY = 1u<<7, /* Is supposed to produce "gabby" history */
    mx_CMD_ARG_I = 1u<<8, /* Interactive command bit */
-   mx_CMD_ARG_L = 1u<<9, /* Supports `local' prefix (only WYSH/WYRA) */
-   mx_CMD_ARG_M = 1u<<10, /* Legal from send mode bit */
-   mx_CMD_ARG_O = 1u<<11, /* n_OBSOLETE()d command */
-   mx_CMD_ARG_P = 1u<<12, /* Autoprint dot after command */
-   mx_CMD_ARG_R = 1u<<13, /* Forbidden in compose mode recursion */
-   mx_CMD_ARG_SC = 1u<<14, /* Forbidden pre-n_PSO_STARTED_CONFIG */
-   mx_CMD_ARG_S = 1u<<15, /* Forbidden pre-n_PSO_STARTED (POSIX) */
-   mx_CMD_ARG_T = 1u<<16, /* Transparent command (<> PS_SAW_COMMAND) */
-   mx_CMD_ARG_U = 1u<<17, /* Supports `u' prefix */
-   mx_CMD_ARG_V = 1u<<18, /* Supports `vput' prefix */
-   mx_CMD_ARG_W = 1u<<19, /* Invalid when read only bit */
-   mx_CMD_ARG_X = 1u<<20, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   mx_CMD_ARG_NEEDMAC = 1u<<21, /* Only within a macro/account */
+   mx_CMD_ARG_L = 1u<<9, /* Supports `local' prefix */
+   mx_CMD_ARG_L_NOMAC = 1u<<10, /* .. and in all scopes, not only in macro */
+   mx_CMD_ARG_M = 1u<<11, /* Legal from send mode bit */
+   mx_CMD_ARG_O = 1u<<12, /* n_OBSOLETE()d command */
+   mx_CMD_ARG_P = 1u<<13, /* Autoprint dot after command */
+   mx_CMD_ARG_R = 1u<<14, /* Enters compose mode (enterable once only) */
+   mx_CMD_ARG_SC = 1u<<15, /* Forbidden pre-n_PSO_STARTED_CONFIG */
+   mx_CMD_ARG_S = 1u<<16, /* Forbidden pre-n_PSO_STARTED (POSIX) */
+   mx_CMD_ARG_T = 1u<<17, /* Transparent command (<> PS_SAW_COMMAND) */
+   mx_CMD_ARG_U = 1u<<18, /* Supports `u' prefix */
+   mx_CMD_ARG_V = 1u<<19, /* Supports `vput' prefix */
+   mx_CMD_ARG_W = 1u<<20, /* Invalid when read only bit */
+   mx_CMD_ARG_X = 1u<<21, /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   mx_CMD_ARG_NEEDMAC = 1u<<22, /* Only within a macro/account */
 
    /* TODO Never place in `history': should be replaced by cmd_ctx flag stating
     * TODO do not place "this" invocation in history! */
-   mx_CMD_ARG_NOHIST = 1u<<29,
+   mx_CMD_ARG_NO_HISTORY = 1u<<29,
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    mx_CMD_ARG_EM = 1u<<30 /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
