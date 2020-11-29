@@ -529,18 +529,19 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<13, /* Need update of $COLUMNS/$LINES */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = su_BITENUM_MASK(14, 16),
+   n_PS_ARGLIST_MASK = su_BITENUM_MASK(14, 18),
+   n_PS_MSGLIST_MASK = su_BITENUM_MASK(17, 18),
    n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<14, /* n_getmsglist() saw something gabby */
-   n_PS_MSGLIST_DIRECT = 1u<<15, /* A msg was directly chosen by number */
+   n_PS_MSGLIST_GABBY = 1u<<17, /* n_getmsglist() saw something gabby */
+   n_PS_MSGLIST_DIRECT = 1u<<18, /* A msg was directly chosen by number */
 
-   n_PS_EXPAND_MULTIRESULT = 1u<<17, /* Last fexpand() with MULTIOK had .. */
+   n_PS_EXPAND_MULTIRESULT = 1u<<19, /* Last fexpand() with MULTIOK had .. */
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
     * suppressed */
-   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<19,
+   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<20,
 
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */

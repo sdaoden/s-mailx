@@ -488,11 +488,13 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    char const *cp, *cp2;
    struct mx_name *rt, *the_rt, *mft, *np;
    enum gfield gf;
+   boole local;
    NYD2_IN;
 
    n_autorec_relax_create();
 
    n_pstate_err_no = su_ERR_NONE;
+   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -694,7 +696,7 @@ j_lt_redo:
 
    if(n_mail1((n_MAILSEND_HEADERS_PRINT |
             (hf & HF_RECIPIENT_RECORD ? n_MAILSEND_RECORD_RECIPIENT : 0)),
-         &head, mp, NULL) != OKAY){
+         &head, mp, NIL, local) != OKAY){
       msgvec = NIL;
       goto jleave;
    }
@@ -750,11 +752,13 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    struct message *mp;
    int *ap;
    enum gfield gf;
+   boole local;
    NYD2_IN;
 
    su_mem_set(&head, 0, sizeof head);
 
    n_pstate_err_no = su_ERR_NONE;
+   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -799,7 +803,7 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
-            n_MAILSEND_HEADERS_PRINT), &head, mp, NULL) != OKAY){
+            n_MAILSEND_HEADERS_PRINT), &head, mp, NIL, local) != OKAY){
       msgvec = NIL;
       goto jleave;
    }
@@ -822,9 +826,11 @@ a_crese_fwd(void *vp, boole recipient_record){
    int *msgvec, rv;
    struct mx_cmd_arg *cap;
    struct mx_cmd_arg_ctx *cacp;
+   boole local;
    NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
+   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -881,7 +887,7 @@ jwork_msg:
    if(n_mail1((n_MAILSEND_IS_FWD |
             (recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
             n_MAILSEND_HEADERS_PRINT), &head,
-         (forward_as_attachment ? NIL : mp), NIL) != OKAY)
+         (forward_as_attachment ? NIL : mp), NIL, local) != OKAY)
       goto jleave;
 
    if(*++msgvec != 0){
@@ -914,8 +920,10 @@ a_crese_resend1(void *vp, boole add_resent){
    int *msgvec, rv, *ip;
    struct mx_cmd_arg *cap;
    struct mx_cmd_arg_ctx *cacp;
+   boole local;
    NYD2_IN;
 
+   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
    cacp = vp;
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
@@ -980,7 +988,7 @@ jedar:
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
-      if(n_resend_msg(mp, urlp, &head, add_resent) != OKAY){
+      if(n_resend_msg(mp, urlp, &head, add_resent, local) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
       }
