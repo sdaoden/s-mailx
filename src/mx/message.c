@@ -468,11 +468,15 @@ jnumber__thr:
             np = a_msg_add_to_nmadat(&nmadat, &nmasize, np,
                   savestr(msl.msl_str));
          else{
+            if(cp[1] == '\0')
+               goto jevalcol_err;
             while(*++cp != '\0'){
                colresult = a_msg_evalcol(*cp);
                if(colresult == 0){
+jevalcol_err:
                   if(flags & a_LOG)
-                     n_err(_("Unknown colon modifier: %s\n"), msl.msl_str);
+                     n_err(_("Unknown or empty colon modifier: %s\n"),
+                        msl.msl_str);
                   i = su_ERR_INVAL;
                   goto jerr;
                }
