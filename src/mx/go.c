@@ -534,12 +534,20 @@ jwhite:
       case mx_CMD_ARG_TYPE_MSGLIST:
       case mx_CMD_ARG_TYPE_NDMLIST:
       case mx_CMD_ARG_TYPE_WYSH:
-      case mx_CMD_ARG_TYPE_ARG:
-         for(s = n_string_creat_auto(&s_b);;){
+      case mx_CMD_ARG_TYPE_ARG:{
+         boole once;
+
+         emsg = line.s;
+         for(once = FAL0, s = n_string_creat_auto(&s_b);; once = TRU1){
             su_u32 shs;
 
-            shs = n_shexp_parse_token(n_SHEXP_PARSE_META_SEMICOLON, s, &line,
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON |
+                     n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_TRIM_SPACE |
+                     n_SHEXP_PARSE_TRIM_IFSSPACE), s, &line,
                   NULL);
+            if(!once && (flags & a_IS_EMPTY) && s->s_len != 0)
+               n_err(_("The empty (default) command is ignored here, "
+                     "but has arguments: %s\n"), emsg);
             if(line.l == 0)
                break;
             if(shs & n_SHEXP_STATE_META_SEMICOLON){
@@ -548,7 +556,7 @@ jwhite:
                break;
             }
          }
-         break;
+         }break;
       case mx_CMD_ARG_TYPE_RAWDAT:
       case mx_CMD_ARG_TYPE_STRING:
       case mx_CMD_ARG_TYPE_RAWLIST:
