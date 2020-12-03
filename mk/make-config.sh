@@ -1544,13 +1544,13 @@ printf "\n" >> ${newenv}
 # all those parameters are still the same.. or something has actually changed
 config_updated=
 if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
-   echo 'Configuration is up-to-date'
+   msg 'Configuration is up-to-date'
    exit 0
 elif [ -f ${env} ]; then
    config_updated=1
-   echo 'Configuration has been updated..'
+   msg 'Configuration has been updated..'
 else
-   echo 'Shiny configuration..'
+   msg 'Shiny configuration..'
 fi
 
 ### WE ARE STARTING OVER ###
