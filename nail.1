@@ -3623,23 +3623,24 @@ A command line is parsed from left to right and an input token is
 completed whenever an unquoted, otherwise ignored, metacharacter is seen.
 Metacharacters are vertical bar
 .Cm \&| ,
-ampersand
-.Cm & ,
 semicolon
 .Cm \&; ,
 as well as all characters from the variable
 .Va ifs ,
 and / or
 .Cm space , tabulator , newline .
-The additional metacharacters left and right parenthesis
+The additional metacharacters ampersand
+.Cm & ,
+left and right parenthesis
 .Cm \&( , \&)
 and less-than and greater-than signs
 .Cm < , >
 that the
 .Ev SHELL
 supports are not used, and are treated as ordinary characters: for one
-these characters are a vivid part of email addresses, and it seems
-highly unlikely that their function will become meaningful to \*(UA.
+these characters (but the first) are vivid parts of email addresses or
+.Sx "Filename transformations" ,
+and it is unlikely that their function will become meaningful to \*(UA.
 .
 .Bd -filled -offset indent
 .Sy Compatibility note:
@@ -3684,9 +3685,7 @@ enclosing the name is supported (i.e., to subdivide a token).
 Whereas the metacharacters
 .Cm space , tabulator , newline
 only complete an input token, vertical bar
-.Cm \&| ,
-ampersand
-.Cm &
+.Cm \&|
 and semicolon
 .Cm \&;
 also act as control operators and perform control functions.
@@ -7476,8 +7475,7 @@ as well as for the bitwise operators logical or (vertical bar
 .Ql | ,
 to be quoted) ,
 bitwise and (ampersand
-.Ql \&& ,
-to be quoted) ,
+.Ql \&& ) ,
 bitwise xor (circumflex
 .Ql ^ ) ,
 the bitwise signed left- and right shifts
