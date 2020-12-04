@@ -1384,18 +1384,6 @@ jrestart:
                ++il, --ib;
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
-         }else if(c == '&' && (flags & n_SHEXP_PARSE_META_AMPERSAND)){
-            rv |= n_SHEXP_STATE_META_AMPERSAND;
-
-            /* The parsed sequence may be _the_ output, so ensure we don't
-             * include the metacharacter, then. */
-            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){
-               if(!(flags & n_SHEXP_PARSE_META_KEEP))
-                  state |= a_CHOP_ONE;
-               ++il, --ib;
-            }
-            /*last_known_meta_trim_len = U32_MAX;*/
-            break;
          }else if(c == ';' && (flags & n_SHEXP_PARSE_META_SEMICOLON)){
             rv |= n_SHEXP_STATE_META_SEMICOLON | n_SHEXP_STATE_STOP;
             if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
