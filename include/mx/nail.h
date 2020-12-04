@@ -363,13 +363,13 @@ enum n_shexp_parse_flags{
 
    /* Recognize metacharacters to separate tokens */
    n_SHEXP_PARSE_META_VERTBAR = 1u<<21,
-   n_SHEXP_PARSE_META_AMPERSAND = 1u<<22,
+   /*n_SHEXP_PARSE_META_AMPERSAND = 1u<<22, * NEVER for this mailer! */
    /* Interpret ; as a sequencing operator, go_input_inject() remainder */
    n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
    n_SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
-         n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
+         /*n_SHEXP_PARSE_META_AMPERSAND |*/ n_SHEXP_PARSE_META_SEMICOLON,
 
    /* Keep the metacharacter (or IFS character), do not skip over it */
    n_SHEXP_PARSE_META_KEEP = 1u<<24,
@@ -391,11 +391,11 @@ enum n_shexp_state{
    n_SHEXP_STATE_WS_LEAD = 1u<<5, /* _TRIM_{IFS,}SPACE: seen.. */
    n_SHEXP_STATE_WS_TRAIL = 1u<<6, /* .. leading / trailing WS */
    n_SHEXP_STATE_META_VERTBAR = 1u<<7, /* Metacharacter | follows/ed */
-   n_SHEXP_STATE_META_AMPERSAND = 1u<<8, /* Metacharacter & follows/ed */
+   /*n_SHEXP_STATE_META_AMPERSAND = 1u<<8, NEVER! Metacharacter & follows/ed */
    n_SHEXP_STATE_META_SEMICOLON = 1u<<9, /* Metacharacter ; follows/ed */
 
    n_SHEXP_STATE_META_MASK = n_SHEXP_STATE_META_VERTBAR |
-         n_SHEXP_STATE_META_AMPERSAND | n_SHEXP_STATE_META_SEMICOLON,
+         /*n_SHEXP_STATE_META_AMPERSAND |*/ n_SHEXP_STATE_META_SEMICOLON,
 
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16, /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17, /* Valid \[Uu] and !n_PSO_UNICODE */

@@ -3465,13 +3465,13 @@ t_call_ret() { # {{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > ./t1 2>&1
 	define w1 {
 		echon ">$1 "
-		vput vexpr i + $1 1
+		local vput vexpr i + $1 1
 		if $i -le 42
-			vput vexpr j '&' $i 7
+			local vput vexpr j & $i 7
 			if $j -eq 7; echo .; end
 			call w1 $i
 			set i=$? k=$!
-			vput vexpr j '&' $i 7
+			local vput vexpr j & $i 7
 			echon "<$1/$i/$k "
 			if $j -eq 7; echo .; end
 		else
@@ -3482,10 +3482,10 @@ t_call_ret() { # {{{
 	# Transport $?/$! up the call chain
 	define w2 {
 		echon ">$1 "
-		vput vexpr i + $1 1
+		local vput vexpr i + $1 1
 		if $1 -lt 42
 			call w2 $i
-			set i=$? j=$! k=$^ERRNAME
+			local set i=$? j=$! k=$^ERRNAME
 			echon "<$1/$i/$k "
 			return $i $j
 		else
@@ -3497,11 +3497,11 @@ t_call_ret() { # {{{
 	# Up and down it goes
 	define w3 {
 		echon ">$1/$2 "
-		vput vexpr i + $1 1
+		local vput vexpr i + $1 1
 		if $1 -lt 42
 			call w3 $i $2
-			set i=$? j=$!
-			vput vexpr k - $1 $2
+			local set i=$? j=$!
+			local vput vexpr k - $1 $2
 			if $k -eq 21
 				vput vexpr i + $1 1
 				vput vexpr j + $2 1
@@ -3545,9 +3545,9 @@ t_xcall() { # {{{
       ${MAILX} ${ARGS} -Snomemdebug -Smax=${LOOPS_MAX} > ./t1 2>&1
 	define work {
 		echon "$1 "
-		vput vexpr i + $1 1
+		local vput vexpr i + $1 1
 		if $i -le "$max"
-			vput vexpr j '&' $i 7
+			local vput vexpr j & $i 7
 			if $j -eq 7
 				echo .
 			end
@@ -3591,7 +3591,7 @@ t_xcall() { # {{{
 				\echon "$1 "
 				local \ vput vexpr i + $1 1
 				\if $i -le 111
-					\local vput vexpr j '&' $i 7
+					\local vput vexpr j & $i 7
 					\if $j -eq 7; \echo .; \end
 					\xcall __w $i $2
 				\end
