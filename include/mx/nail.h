@@ -632,7 +632,7 @@ MCTA(n_PO_V << 1 == n_PO_VV, "PO_V* must be successive")
 MCTA(n_PO_VV << 1 == n_PO_VVV, "PO_V* must be successive")
 
 #define n_OBSOLETE(X) \
-do{\
+do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    static boole su_CONCAT(a__warned__, __LINE__);\
    if(!su_CONCAT(a__warned__, __LINE__)){\
       su_CONCAT(a__warned__, __LINE__) = TRU1;\
@@ -640,7 +640,7 @@ do{\
    }\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
-do{\
+do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    static boole su_CONCAT(a__warned__, __LINE__);\
    if(!su_CONCAT(a__warned__, __LINE__)){\
       su_CONCAT(a__warned__, __LINE__) = TRU1;\

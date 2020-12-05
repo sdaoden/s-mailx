@@ -2621,14 +2621,16 @@ a_amv_var_obsolete(char const *name){
    static struct su_cs_dict a_csd__obsol, *a_csd_obsol;
    NYD2_IN;
 
-   if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
-      a_csd_obsol = su_cs_dict_set_treshold_shift(
-            su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
-               su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+   if(!su_state_has(su_STATE_REPRODUCIBLE)){
+      if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
+         a_csd_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
+                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
 
-   if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
-      su_cs_dict_insert(a_csd_obsol, name, NIL);
-      n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
+      if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
+         su_cs_dict_insert(a_csd_obsol, name, NIL);
+         n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
+      }
    }
    NYD2_OU;
 }

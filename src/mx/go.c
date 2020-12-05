@@ -619,7 +619,8 @@ jeflags:
       goto jleave;
    }
 
-   if(cdp->cd_caflags & mx_CMD_ARG_O){ /* XXX Remove this! -> in commands! */
+   if((cdp->cd_caflags & mx_CMD_ARG_O) && /* XXX Remove! -> within command! */
+         !su_state_has(su_STATE_REPRODUCIBLE)){
       static struct su_cs_dict a_go__obsol, *a_go_obsol;
 
       if(UNLIKELY(a_go_obsol == NIL)) /* XXX atexit cleanup */
