@@ -47,6 +47,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 
@@ -618,8 +619,20 @@ jeflags:
       goto jleave;
    }
 
-   if(cdp->cd_caflags & mx_CMD_ARG_O)
-      n_OBSOLETE2(_("command will be removed"), cdp->cd_name);
+   if(cdp->cd_caflags & mx_CMD_ARG_O){ /* XXX Remove this! -> in commands! */
+      static struct su_cs_dict a_go__obsol, *a_go_obsol;
+
+      if(UNLIKELY(a_go_obsol == NIL)) /* XXX atexit cleanup */
+         a_go_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_go__obsol, (su_CS_DICT_POW2_SPACED |
+                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+
+      if(UNLIKELY(!su_cs_dict_has_key(a_go_obsol, cdp->cd_name))){
+         su_cs_dict_insert(a_go_obsol, cdp->cd_name, NIL);
+         n_err(_("Obsoletion warning: command will be removed: %s\n"),
+            cdp->cd_name);
+      }
+   }
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
