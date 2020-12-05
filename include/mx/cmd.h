@@ -24,6 +24,11 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_cmd_arg_desc; /* Command argument definition context, constant */
+struct mx_cmd_arg_ctx; /* Argument parser control context */
+struct mx_cmd_arg; /* Argument parser in/output */
+struct mx_cmd_desc; /* Command implementation, constant */
+
 enum mx_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    * TODO i rather see the mechanism that is used in c_bind() extended and used
    * TODO anywhere, i.e. n_cmd_arg_parse().
@@ -79,6 +84,9 @@ enum mx_cmd_arg_desc_flags{
          mx_CMD_ARG_DESC_MSGLIST_AND_TARGET,
 
    /* - Optional flags */
+
+   /* Needs su_avopt pass (-o --ptions -- delimiter support) */
+   mx_CMD_ARG_DESC_NEEDS_AVOPT = 1u<<15, /* TODO */
    /* It is not an error if an optional argument is missing; once an argument
     * has been declared optional only optional arguments may follow */
    mx_CMD_ARG_DESC_OPTION = 1u<<16,
@@ -91,17 +99,19 @@ enum mx_cmd_arg_desc_flags{
    /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
    mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
 
-   mx__CMD_ARG_DESC_FLAG_MASK = mx_CMD_ARG_DESC_OPTION |
+   mx__CMD_ARG_DESC_FLAG_MASK = mx_CMD_ARG_DESC_NEEDS_AVOPT |
+         mx_CMD_ARG_DESC_OPTION |
          mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_GREEDY_JOIN |
          mx_CMD_ARG_DESC_HONOUR_STOP |
          mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
 
-   /* We may include something for n_pstate_err_no */
+   /* We may include an error number for n_pstate_err_no shall the argument
+    * constraints not be satisfied (and no other error is reported) */
    mx_CMD_ARG_DESC_ERRNO_SHIFT = 21u,
    mx_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
 };
 #define mx_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
-   (S(u32,ENO) << mx_CMD_ARG_DESC_ERRNO)
+   ((S(u32,ENO) & mx_CMD_ARG_DESC_ERRNO_MASK) << mx_CMD_ARG_DESC_ERRNO_SHIFT)
 #define mx_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
    ((S(u32,FLAGCARRIER) >> mx_CMD_ARG_DESC_ERRNO_SHIFT) &\
       mx_CMD_ARG_DESC_ERRNO_MASK)
@@ -144,7 +154,8 @@ struct mx_cmd_arg{
    uz ca_inlen; /*[PRIV] of .ca_indat of this arg (no NUL) */
    u32 ca_ent_flags[2]; /* Copy of cmd_arg_desc.cad_ent_flags[X] */
    u32 ca_arg_flags; /* [Output: _WYSH: copy of parse result flags] */
-   u8 ca__dummy[4];
+   boole is_option; /* With "cmd line options": an option (TRUM1: -- delim) */
+   u8 ca__dummy[3];
    union{
       struct str ca_str; /* _CMD_ARG_DESC_SHEXP */
       int *ca_msglist; /* _CMD_ARG_DESC_MSGLIST+ */
@@ -157,7 +168,7 @@ struct mx_cmd_desc{
    enum mx_cmd_arg_flags cd_caflags;
    u32 cd_mflags_o_minargs; /* Message flags or min. args WYSH/WYRA/RAWLIST */
    u32 cd_mmask_o_maxargs; /* Ditto, mask or max. args */
-   /* XXX requires cmd.h initializer changes u8 cd__pad[4];*/
+   /* XXX requires cmd.h initializer changes u8 cd__pad[3];*/
    struct mx_cmd_arg_desc const *cd_cadp;
 #ifdef mx_HAVE_DOCSTRINGS
    char const *cd_doc; /* One line doc for command */
