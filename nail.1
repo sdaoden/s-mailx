@@ -5295,24 +5295,32 @@ being draft, respectively, as documented in the section
 .
 .Mx
 .It Ic echo
-\*(NQ(ec) Echoes arguments to standard output and writes a trailing
-newline, whereas the otherwise identical
-.Ic echon
-does not.
+\*(NQ(ec) Print the given strings, equivalent to the shell utility
+.Xr echo 1 ,
+that is,
 .Sx "Shell-style argument quoting"
-is used,
-.Sx "Filename transformations"
-are applied to the expanded arguments.
-This command also supports
+expansion is performed and, different to the otherwise identical
+.Ic echon ,
+a trailing newline is echoed.
 .Cm vput
 as documented in
-.Sx "Command modifiers" ,
-and manages the error number
-.Va \&! :
-if data is stored in a variable then the return value reflects the
-length of the result string in case of success and is
+.Sx "Command modifiers"
+is supported, and the error number
+.Va \&!
+is managed: if data is stored in a variable then the return value
+reflects the length of the result string in case of success and is
 .Ql -1
 on error.
+.Pp
+.Sy Remarks:
+this command traditionally (in BSD Mail) also performed
+.Sx "Filename transformations" ,
+which is standard incompatible and hard to handle because quoting
+transformation patterns is not possible; the subcommand
+.Cm file-expand
+of
+.Ic vexpr
+can be used to expand filenames.
 .
 .Mx
 .It Ic echoerr

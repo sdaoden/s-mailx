@@ -113,7 +113,7 @@ jleave:
 }
 
 static int
-a_cmisc_echo(void *vp, FILE *fp, boole donl){
+a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
    struct n_string s_b, *s;
    int rv;
    boole doerr;
@@ -132,8 +132,9 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){
    for(ap = argv; *ap != NULL; ++ap){
       if(ap != argv)
          s = n_string_push_c(s, ' ');
-      if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)
-         cp = *ap;
+      /* TODO -t/-T en/disable if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)
+       *   cp = *ap;*/
+      cp = *ap;
       s = n_string_push_cp(s, cp);
    }
    if(donl)
