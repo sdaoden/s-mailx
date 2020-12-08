@@ -6246,7 +6246,7 @@ t_expandaddr() { # {{{
       -c '\$this' -b '\$this' '\$this' \
       > ./t56 2>&1
    check 55 4 ./t.mbox '473729143 1070'
-   check 56 - ./t56 '1144578880 139'
+   check 56 - ./t56 '3680176617 141'
 
    </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
       -Sthis=taddr@exam.ple -Sexpandaddr=shquote \
@@ -6365,6 +6365,21 @@ t_expandaddr() { # {{{
 	_EOT
    check 85 0 ./t.mbox '1670655701 410'
    check 86 - ./t86 '4294967295 0'
+
+   #
+	printf 'To: <reproducible_build>' |
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t87.mbox -t -ssub \
+         -Sexpandaddr=nametoaddr \
+         > ./t88 2>&1
+   check 87 0 ./t87.mbox '1288059511 146'
+   check 88 - ./t88 '4294967295 0'
+
+	printf 'To: <reproducible_build>' |
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t89.mbox -t -ssub \
+         -Sexpandaddr=nametoaddr -Shostname=nowhere \
+         > ./t90 2>&1
+   check 89 0 ./t89.mbox '1230259124 168'
+   check 90 - ./t90 '4294967295 0'
 
    t_epilog "${@}"
 } # }}}

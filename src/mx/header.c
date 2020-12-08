@@ -2089,7 +2089,7 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
          }else if(f & mx_NAME_ADDRSPEC_ERR_ATSEQ)
             cs = _("%s contains invalid %s sequence\n");
          else if(f & mx_NAME_ADDRSPEC_ERR_NAME)
-            cs = _("%s is an invalid alias name\n");
+            cs = _("%s is an invalid name (alias)\n");
          else
             cs = _("%s contains invalid byte %s\n");
 
