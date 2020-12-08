@@ -1045,6 +1045,7 @@ jput_quote_esc:
             break;
          flags &= ~a_IN_AT;
       }
+
       if(c.c != '\0')
          agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
                mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
@@ -1053,15 +1054,19 @@ jput_quote_esc:
           * it to a n_nodename() address if the name is a valid user */
 jinsert_domain:
          if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
-               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>' &&
-               (!su_cs_cmp(addr, ok_vlook(LOGNAME)) ||
-                getpwnam(addr) != NULL)){
+               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>'){
+            if(su_cs_cmp(addr, ok_vlook(LOGNAME)) && getpwnam(addr) == NIL){
+               agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+                     mx_NAME_ADDRSPEC_ERR_NAME, '*');
+               goto jleave;
+            }
+
             /* XXX However, if hostname is set to the empty string this
              * XXX indicates that the used *mta* will perform the
              * XXX auto-expansion instead.  Not so with `addrcodec' though */
             agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR;
             if(!issingle_hack &&
-                  (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
+                  (cp = ok_vlook(hostname)) != NIL && *cp == '\0')
                agp->ag_n_flags |= mx_NAME_ADDRSPEC_WITHOUT_DOMAIN;
             else{
                c.ui32 = su_cs_len(cp = n_nodename(TRU1));
