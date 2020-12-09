@@ -334,7 +334,7 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
    if(anybad)
       su_log_write(((a_mema_conf & su_MEM_CONF_ON_ERROR_EMERG)
             ? su_LOG_EMERG : su_LOG_CRIT) | su_LOG_F_CORE,
-         "SU memory check: errors encountered");
+         "SU memory check: errors encountered\n");
 
    NYD2_OU;
    return anybad;
