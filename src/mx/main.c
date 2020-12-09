@@ -532,6 +532,8 @@ a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
    char const *rv, *a;
    NYD2_IN;
 
+   n_psonce |= n_PSO_SENDMODE;
+
    rv = NIL;
 
    if((a = n_header_get_field(avop->avo_current_arg, "to", &suffix)) != NIL){
