@@ -6,6 +6,119 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.20 ("Sombre Tit (Trauermeise)"), 2020-12-12
+-------------------------------------------------
+
+Fixes things like TLS over SOCKS and too many other bugs.
+We have some new things, too.
+
+Credits, in order of commit appearance: Roberto Ricci,
+Aharon Robbins, Kevin McCarthy, Predrag Punosevac,
+Paride Legovini, Olav Mørkrid, Ron Varburg, Jürgen Daubert,
+Russell Bell, and Geoff Clare.
+
+It is courtesy to give a special credit to Coverity.com, even
+though it only found false positives.
+(https://scan.coverity.com/projects/s-nail, project 444.)
+
+We welcome Roberto Ricci, Ron Varburg and Geoff Clare in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
++ FreeBSD, DragonFlyBSD, (NetBSD): there are bugs in BSD make and
+  FreeBSD-derived sh(1)ells regarding sh(1) monitor mode that is
+  now used in mx-test.sh ("make test").
+  Please pass in JOBMON=n on make(1) command line, or use
+  a different shell (and make).
+
+  (You could also pass in a different JOBWAIT= now.)
+
++ Binaries are now installed 0755 not 0555.  (Jürgen Daubert)
+
++ On SunOS/Solaris we now use the normal $CC detection algorithm.
+  (No longer forcefully overwrite, prefer open source compilers.)
+
+- TLS connections can now be proxied via *socks-proxy*#?.
+
+- `echo'#? no longer performs "Filename transformations"#?.
+  Introduced in BSD Mail in 1988, but bad.
+  Just use `vexpr'#? file-expand.
+
+- `local'#? now works like `localopts'#? when used
+  with `set'#? and `unset'#?.
+  This is true for built-in variables only, of course, using
+  `local' for those was forbidden in the past, i think.
+  Note that `localopts' will be obsoleted in v14.10, we will only
+  use modifiers in the future.
+
+ChangeLog
+^^^^^^^^^
+
+- EXTERNAL authentication over IMAP and POP3 was fixed.
+
+- *tls-fingerprint*#? is now tested case-insensitively.
+
+- *quote*#? gained an "allbodies" keyword.
+
+- "The Mailcap files"#? gained "x-mailx-last-resort" and
+  "x-mailx-ignore" flags.  (Latter: Russell Bell)
+
+- `history'#? "delete" can now delete multiple entries per
+  invocation.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (110):
+2322f84f src/mx/sendout.c: do not cmp_case() charset names, *always* iconv(3)!
+5b352bd9 mk/su-make-errors.sh: allow cross-compile ((Jörg Schilling,) Roberto
+        Ricci)..
+8c30d8b6 THANKS: Roberto Ricci
+2fda49bb AWK stuff: fix error detection for getline() use cases (Aharon
+        Robbins)
+182197e4 mx_mailcap_handler(): fix: redirect test= FDs 0/1 from/to NULL as
+        documented
+c81c2945 n_go_main_loop(): fix: do not loose exit status with
+        *on-history-addition*..
+d21d947d Fix quoting "all" with mailcap MIME handler..
+98ebf224 Fix still weird history handling, honour all "leading spaces avoids"
+e85ccb01 Be truly OPENSSL_NO_DEPRECATED_3_0 clean
+0952dfa0 Fix: allow TLS connections via *socks-proxy*
+c5ec13c2 n_tls_open(): call mx_socket_reset_io_buf() (Kevin McCarthy)..
+6d3f2b3b mx_socket_close(): no SSL_shutdown() loop, twice at most (Predrag
+        Punosevac)
+7644c74d FIX POP3 auth=EXTERNAL (missing Base64 encoding)
+4dc11e10 FIX IMAP auth=EXTERNAL (missing Base64 encoding)
+913f3431 net-gssapi.h: fix tok.length for POP3
+0db181af a_pop3_login(): FIX: honour return of GSSAPI (never seen $CC warning;
+        bad code!)
+51be2077 n_tls_open(): fix: compare fingerprints case-insensitively!
+e2151b7c setup_from_and_sender(): if Sender: EQ From:, do not create it
+d0054612 nail.1: fix three typos, and a ' in column 0 (Paride Legovini)
+8764ce6f mx_url_parse(): refer to `urlcodec' in error message (Olav Mørkrid)
+43cfcf3a (BWDIC!) `echo': no more filename transformations (use "vexpr
+        file-expand")
+c68a9854 a_main_o_T(): fix: did not set SENDMODE
+581e8efd a_tty__khist_shared(): fix off-by-one
+be4f1265 Add devel-only d-cross-build (Roberto Ricci)..
+786aba0e a_cmd_c_help(): `list' long lost its argument (Ron Varburg)
+847abaa5 THANKS: Ron Varburg
+b7febd4c a_cmd_c_help(): use page_or_print() for output (Ron Varburg)
+ad4836b5 local: for `(un)?set', work like localopts!
+981a5463 *quote*: add "allbodies" keyword
+6e649e0f mailcap: add "x-mailx-last-resort" flag support
+0a3832c6 mk/make-install.sh: install binaries 0755 not 0555..
+4369b12d mk/make-config.sh: more human friendly $OBJDIR/mk-config.env layout
+a387de2d nail.1: -#: individual send to multiple receivers (Olav Mørkrid)
+217ce17b mx-test.sh: try to inherit $JOBWAIT from environ
+2450769f `history': allow multiple arguments to `delete'
+6048b12b mailcap: add "x-mailx-ignore" flag (Russell Bell)
+82666999 *asksend*: indicate that envelope is pre-refinement (Geoff Clare)
+d64a86f9 THANKS: Geoff Clare
+85603805 *asksend*: no longer enabled by default (Geoff Clare)
+02effec6 mk-config.sh: SunOS/Solaris: normal $CC algo, favour OpenSource CCs
+
 v14.9.19 ("Tufted titmouse (Indianermeise)"), 2020-04-26
 --------------------------------------------------------
 
@@ -17,19 +130,7 @@ Claus Assmann.
 
 We welcome Anirudh Oppiliappan and Claus Assmann in THANKS.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (14):
-623b64e6 Fix: ensure `environ'ment vars are sh(1) compatible! (Anirudh
-        Oppiliappan)
-f5e202a5 THANKS: Anirudh Oppiliappan
-6fa32bdc Fix: a_crese_make_ref_and_cs(): *reply-in-same-charset*: "handle
-        unknown-8bit"
-a9ec20d6 Fix: "revert" [ab0cd3b8] from 2017-10-20.. (Claus Assmann)..
-eb2db180 THANKS: Claus Assmann
-b0d0920a mime.types: add audio/{aac,opus}, adjust audio/mp4
-bc89c8ff Adjustments for OpenSSL 3.0 (and cpp namespace cleanup)
+git(1) shortlog: Steffen Nurpmeso (14)
 
 v14.9.18 ("It is spring time, what a bliss"), 2020-04-18
 --------------------------------------------------------
