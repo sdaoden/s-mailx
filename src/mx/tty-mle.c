@@ -2454,7 +2454,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             ++i;
       }
-      tlp->tl_defc.s = cp = n_autorec_alloc(i +1);
+      tlp->tl_defc.s = cp = n_autorec_alloc(i + 1 +1);
       if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE){
          if((*cp = ok_vlook(escape)[0]) == '\0')
             *cp = n_ESCAPE[0];
