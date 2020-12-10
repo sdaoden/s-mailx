@@ -23,6 +23,9 @@ available on OpenPGP key servers, my website and download area.
 Release balls and OpenPGP signatures (.asc) can be downloaded via
 HTTPS/HTTP at \https?://ftp.sdaoden.eu.  Copies of the signatures
 can also be found at the end of this message.
+Preformatted manual pages are available at the same location as
+NAME.cat1.xz and NAME.xcat1.xz (the latter with mdocmx links but
+filtered via col -b).
 
 -----CHECKSUMS-----
 
