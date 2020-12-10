@@ -311,6 +311,10 @@ Pre-release, and other landmarks:
     their Solaris build cluster!
     (Sparc and x86 machines with SunOS 5.9, 5.10 and 5.11.)
 
+  - We yet favoured Sun's compiler, but now use the default algorithm
+    which goes for $CC/$CFLAGS if set before searching default
+    open-source compilers, before trying special SUN flags.
+
   * The original Sun roff (aka AT&T ditroff) is not capable to display
     the manual.  We offer preformatted manual pages, please see the
     actual release announcement for details.
@@ -323,8 +327,8 @@ Pre-release, and other landmarks:
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       you have to overwrite the symbol with __builtin_va_start,
-      e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+      This will not work with OPT_AUTOCC.
 
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).

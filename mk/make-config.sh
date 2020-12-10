@@ -282,6 +282,7 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
+#cc_os_search=
 #cc_no_stackprot=
 #cc_no_fortify=
 #ld_need_R_flags=
@@ -323,17 +324,10 @@ os_setup() {
       LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${DYLD_LIBRARY_PATH}
    elif [ ${OS} = sunos ]; then
       msg ' . have special SunOS / Solaris "setup" rules ...'
+      cc_os_search=_cc_os_sunos
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      if feat_yes AUTOCC && acmd_set CC cc; then
-         msg ' . have special UnixWare environmental rules ...'
-         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
-
-         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
-         export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 ld_need_R_flags=-R
-      fi
+      cc_os_search=_cc_os_unixware
    elif [ -n "${VERBOSE}" ]; then
       msg ' . no special treatment for this system necessary or known'
    fi
@@ -379,18 +373,9 @@ _os_setup_sunos() {
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
-   if feat_yes AUTOCC; then
-      if acmd_set CC cc; then
-         feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
-
-         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
-         export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 ld_need_R_flags=-R
-      else
-         cc_maxopt=2 cc_no_stackprot=1
-      fi
-   fi
+   msg 'Whatever $CC, turning off stack protection (see INSTALL)!'
+   cc_maxopt=2 cc_no_stackprot=1
+   return 1
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
@@ -416,6 +401,9 @@ cc_setup() {
          acmd_set CC tcc || acmd_set CC pcc ||
          acmd_set CC c89 || acmd_set CC c99; then
       :
+
+   elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
+      :
    else
       msg 'boing booom tschak'
       msg 'ERROR: I cannot find a compiler!'
@@ -430,6 +418,35 @@ cc_setup() {
    *pcc*) cc_no_fortify=1;;
    *) ;;
    esac
+}
+
+_cc_os_unixware() {
+   if feat_yes AUTOCC && acmd_set CC cc; then
+      msg ' . have special UnixWare environmental rules ...'
+      feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      export CC CFLAGS LDFLAGS
+      OPT_AUTOCC=0 ld_need_R_flags=-R
+      return 0
+   fi
+   return 1
+}
+
+_cc_os_sunos() {
+   if feat_yes AUTOCC && acmd_set CC cc; then
+      feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
+
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      export CC CFLAGS LDFLAGS
+      OPT_AUTOCC=0 ld_need_R_flags=-R
+      return 0
+   else
+      : # cc_maxopt=2 cc_no_stackprot=1
+   fi
+   return 1
 }
 
 _cc_default() {
