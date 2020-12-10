@@ -276,20 +276,28 @@ Thank you!
     with gcc(1) and clang(1): with OPT_AUTOCC pass
     "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 in $CFLAGS.
 
+- BSD make, AND FreeBSD-derived sh(1):
+  * bmake(1) cannot drive "make test" that uses sh(1) "set -m" when
+    parallel (-j) building was used.
+    You could give "make testnj" a spin, but ymmv, especially with
+    FreeBSD derived /bin/sh, which also has problems with monitoring.
+    For those you should pass JOBMON=n.
+
 Development:
 
-. CRUX Linux <https://www.crux.nu/> (3.5/x86-64).
+. CRUX Linux <https://www.crux.nu/> (x86-64: 3.6 (3.[56]).
 
 Frequently:
 
 . AlpineLinux <https://www.alpinelinux.org> (x86-64: edge).
 
-. ArchLinux <https://www.archlinux.org/> (<2019>,current).
+. ArchLinux <https://www.archlinux.org/> (current).
 
-. FreeBSD <https://www.freebsd.org/> (x86: 11.{2,3-RC2},12.1).
+. FreeBSD <https://www.freebsd.org/> (x86: latest (11.2,12.1)).
   - v11. series test errors: see DragonFly.
+  - BSD make -j / sh(1) issue, as above.
 
-. OpenBSD <https://www.openbsd.org/> (x86: 6.[456]).
+. OpenBSD <https://www.openbsd.org/> (x86: latest (6.[4-8])).
 
 Pre-release, and other landmarks:
 
@@ -299,8 +307,10 @@ Pre-release, and other landmarks:
     LEFT and RIGHT PARENTHESIS, respectively) are not printable,
     causing replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
+  - BSD make -j / sh(1) issue, as above.
 
 . NetBSD <https://www.netbsd.org/> (amd64: 9.0).
+  - BSD make -j issue, as above.
 
 . OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
   @ Thanks to Jean-Marc Pigeon for generously providing access to
@@ -311,7 +321,7 @@ Pre-release, and other landmarks:
     their Solaris build cluster!
     (Sparc and x86 machines with SunOS 5.9, 5.10 and 5.11.)
 
-  - We yet favoured Sun's compiler, but now use the default algorithm
+  * We yet favoured Sun's compiler, but now use the default algorithm
     which goes for $CC/$CFLAGS if set before searching default
     open-source compilers, before trying special SUN flags.
 
@@ -332,6 +342,10 @@ Pre-release, and other landmarks:
 
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).
+
+.  SunOS schillix 5.11 schillix-on i86pc i386 i86pc
+   - reply-21 fails with iconv(3) error "Cannot convert from utf-8 to
+     646", which is an iconv(3) error (should just do it).
 
 . Void Linux <https://www.voidlinux.org/> (x86)
   - Still not have setup all my environment after having lost all,
