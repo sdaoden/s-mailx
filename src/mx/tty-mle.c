@@ -1008,21 +1008,19 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
    }
 
    lp_base = lp = su_LOFI_TALLOC(sz, ++entry);
+   rv = FAL0;
 
    for(; *vec != NIL; ++vec){
       if((su_idec_sz_cp(lp, *vec, 10, NIL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) == su_IDEC_STATE_CONSUMED)
          ++lp;
-      else{
+      else
          n_err(_("history: not a number, or no such entry: %s\n"), *vec);
-         rv = FAL0;
-      }
    }
    *lp = 0;
 
    if(lp == lp_base){
-      ASSERT(rv == FAL0);
       if(!dele)
          rv = TRUM1;
       goto jleave;
