@@ -1052,6 +1052,7 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
       for(thp = a_tty.tg_hist; ep-- != 0; thp = thp->th_older)
          ASSERT(thp != NIL);
 
+      ASSERT(thp != NIL);
       othp = thp->th_older;
       ythp = thp->th_younger;
       if(othp != NIL)
