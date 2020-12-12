@@ -128,7 +128,7 @@ static void             _lookup(struct message *m, struct mitem *mi,
 static void             _makethreads(struct message *m, u32 cnt, int nmail);
 static int              _colpt(int *msgvec, int cl);
 static void             _colps(struct message *b, int cl);
-static void             _colpm(struct message *m, int cl, int *cc, int *uc);
+static void             _colpm(struct message *m, int cl, int *cc, int *uncc);
 
 static u32
 _mhash(char const *cp, u32 mprime)

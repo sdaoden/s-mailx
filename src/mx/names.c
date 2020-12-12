@@ -72,7 +72,8 @@ static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d; /* XXX atexit gut()..*/
 static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX .. (DVL()) */
 
 /* Same name, while taking care for *allnet*? */
-static boole a_nm_is_same_name(char const *n1, char const *n2);
+static boole a_nm_is_same_name(char const *n1, char const *n2,
+      boole *isall_or_nil);
 
 /* Mark all (!file, !pipe) nodes with the given name */
 static struct mx_name *a_nm_namelist_mark_name(struct mx_name *np,
@@ -104,12 +105,19 @@ static struct n_strlist *a_nm_a8s_dump(char const *cmdname, char const *key,
       void const *dat);
 
 static boole
-a_nm_is_same_name(char const *n1, char const *n2){
-   boole rv;
+a_nm_is_same_name(char const *n1, char const *n2, boole *isall_or_nil){
    char c1, c2, c1r, c2r;
+   boole rv;
    NYD2_IN;
 
-   if(ok_blook(allnet)){
+   rv = ok_blook(allnet);
+
+   if(isall_or_nil != NIL)
+      *isall_or_nil = rv;
+
+   if(!rv)
+      rv = !su_cs_cmp_case(n1, n2);
+   else{
       for(;; ++n1, ++n2){
          c1 = *n1;
          c1 = su_cs_to_lower(c1);
@@ -126,8 +134,8 @@ a_nm_is_same_name(char const *n1, char const *n2){
             break;
          }
       }
-   }else
-      rv = !su_cs_cmp_case(n1, n2);
+   }
+
    NYD2_OU;
    return rv;
 }
@@ -141,7 +149,7 @@ a_nm_namelist_mark_name(struct mx_name *np, char const *name){
       if(!(p->n_type & GDEL) &&
             !(p->n_flags & (S(u32,S32_MIN) | mx_NAME_ADDRSPEC_ISFILE |
                mx_NAME_ADDRSPEC_ISPIPE)) &&
-            a_nm_is_same_name(p->n_name, name))
+            a_nm_is_same_name(p->n_name, name, NIL))
          p->n_flags |= S(u32,S32_MIN);
    NYD2_OU;
    return np;
@@ -287,6 +295,8 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
    ASSERT_NYD(a_nm_alias_dp != NIL);
    ASSERT(mx_alias_is_valid_name(name));
 
+   UNINIT(slp_base, NIL);
+
    if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){ /* TODO not a real error!! */
       n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
       slp_next = NIL;
@@ -318,7 +328,7 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
 
       /* Here we should allow to expand to itself if only person in alias */
       if(metoo || slp_base->sl_next == NIL ||
-            !a_nm_is_same_name(slp->sl_dat, logname)){
+            !a_nm_is_same_name(slp->sl_dat, logname, NIL)){
          /* Use .n_name if .n_fullname is not set */
          if(*(ccp = &slp->sl_dat[slp->sl_len + 2]) == '\0')
             ccp = slp->sl_dat;
@@ -757,11 +767,11 @@ jloop:
 
 boole
 mx_name_is_same_address(struct mx_name const *n1, struct mx_name const *n2){
-   boole rv;
+   boole isall, rv;
    NYD2_IN;
 
-   rv = (a_nm_is_same_name(n1->n_name, n2->n_name) &&
-         mx_name_is_same_domain(n1, n2));
+   rv = (a_nm_is_same_name(n1->n_name, n2->n_name, &isall) &&
+         (isall || mx_name_is_same_domain(n1, n2)));
 
    NYD2_OU;
    return rv;
@@ -1337,7 +1347,7 @@ mx_name_is_mine(char const *name){
    struct mx_name *xp;
    NYD_IN;
 
-   if(a_nm_is_same_name(ok_vlook(LOGNAME), name))
+   if(a_nm_is_same_name(ok_vlook(LOGNAME), name, NIL))
       goto jleave;
 
    if(a_nm_a8s_dp != NIL){
@@ -1345,13 +1355,13 @@ mx_name_is_mine(char const *name){
          if(su_cs_dict_has_key(a_nm_a8s_dp, name))
             goto jleave;
       }else su_CS_DICT_FOREACH(a_nm_a8s_dp, &dv)
-         if(a_nm_is_same_name(name, su_cs_dict_view_key(&dv)))
+         if(a_nm_is_same_name(name, su_cs_dict_view_key(&dv), NIL))
             goto jleave;
    }
 
    for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
-      if(a_nm_is_same_name(xp->n_name, name))
+      if(a_nm_is_same_name(xp->n_name, name, NIL))
          goto jleave;
 
    /* C99 */{
@@ -1361,18 +1371,18 @@ mx_name_is_mine(char const *name){
          n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
          for(xp = lextract(v15compat, GEXTRA | GSKIN); xp != NULL;
                xp = xp->n_flink)
-            if(a_nm_is_same_name(xp->n_name, name))
+            if(a_nm_is_same_name(xp->n_name, name, NIL))
                goto jleave;
       }
    }
 
    for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
-      if(a_nm_is_same_name(xp->n_name, name))
+      if(a_nm_is_same_name(xp->n_name, name, NIL))
          goto jleave;
 
    if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL &&
-         a_nm_is_same_name(xp->n_name, name))
+         a_nm_is_same_name(xp->n_name, name, NIL))
       goto jleave;
 
    name = NIL;

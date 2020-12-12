@@ -443,7 +443,8 @@ static void a_amv_var_show_all(void);
 static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
-static boole a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
+static boole a_amv_var_c_set(char **ap,
+      BITENUM_IS(u32,a_amv_var_setclr_flags) avscf);
 
 /* */
 #ifdef a_AMV_VAR_HAS_OBSOLETE
@@ -516,7 +517,8 @@ a_amv_mac_call(void *v, boole silent_nexist){
    }else if(UNLIKELY((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)
          ) == NULL)){
       if(!silent_nexist)
-         n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
+         n_err(_("Undefined macro called: %s\n"),
+            n_shexp_quote_cp(name, FAL0));
       n_pstate_err_no = su_ERR_NOENT;
       rv = 1;
    }else{
@@ -969,6 +971,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    NYD2_IN;
 
    ok = TRU1;
+   emsg = NIL;
 
    if(avvm == a_AMV_VIP_SET_PRE){
       switch(okey){
@@ -987,24 +990,23 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          struct n_header_field *hflp, **hflpp, *hfp;
 
          buf = savestr(*val);
-         hflp = NULL;
+         hflp = NIL;
          hflpp = &hflp;
 
          while((vp = su_cs_sep_escable_c(&buf, ',', TRU1)) != NULL){
             if(!n_header_add_custom(hflpp, vp, TRU1)){
                emsg = N_("Invalid *customhdr* entry: %s\n");
-               ok = FAL0;
                break;
             }
             hflpp = &(*hflpp)->hf_next;
          }
 
-         hflpp = ok ? &n_customhdr_list : &hflp;
+         hflpp = (emsg == NIL) ? &n_customhdr_list : &hflp;
          while((hfp = *hflpp) != NULL){
             *hflpp = hfp->hf_next;
             n_free(hfp);
          }
-         if(!ok)
+         if(emsg)
             goto jerr;
          n_customhdr_list = hflp;
          }break;
@@ -1572,7 +1574,8 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
       /* Global variable map */
       avpp = &a_amv_vars[avcp->avc_prime];
 
-      for(lavp = NULL, avp = *avpp; avp != NULL; lavp = avp, avp = avp->av_link)
+      for(lavp = NULL, avp = *avpp; avp != NULL;
+            lavp = avp, avp = avp->av_link)
          if(!su_cs_cmp(avp->av_name, avcp->avc_name)){
             /* Relink as head, hope it "sorts on usage" over time.
              * The code relies on this behaviour! */
@@ -2063,7 +2066,8 @@ jeavmp:
    avp = avcp->avc_var;
 
    /* A `local' setting is never covered by `localopts' nor frozen */
-   if(avscf & a_AMV_VSETCLR_LOCAL)
+   if((avscf & a_AMV_VSETCLR_LOCAL) ||
+         (avp != NIL && (avp->av_flags & a_AMV_VF_EXT_LOCAL)))
       goto jislocal;
 
    /* If this setting had been established via -S and we still have not reached
@@ -2111,7 +2115,8 @@ joval_and_go:
       if(avscf & a_AMV_VSETCLR_LOCAL){
          if((avpp = *a_amv_lopts->as_amcap->amca_local_vars) == NULL)
             avpp = *(a_amv_lopts->as_amcap->amca_local_vars =
-                  n_calloc(1, sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
+                  n_calloc(1,
+                     sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
          avpp += avcp->avc_prime;
       }else
          avpp = &a_amv_vars[avcp->avc_prime];
@@ -2244,8 +2249,8 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
       /* This may be a clearance request from the command line, via -S, and we
        * need to keep track of that!  Unfortunately we are not prepared for
        * this, really, so we need to create a fake entry that is known and
-       * handled correctly by the lowermost variable layer!
-       * However, all this cannot happen for plain unset of `local' variables */
+       * handled correctly by the lowermost variable layer!  However, all
+       * this cannot happen for plain unset of `local' variables */
       if(avscf & a_AMV_VSETCLR_LOCAL)
          goto jleave;
       if(UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
@@ -2561,7 +2566,7 @@ jleave:
 }
 
 static boole
-a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
+a_amv_var_c_set(char **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
    char *cp, *cp2, *varbuf, c;
    uz errs;
    NYD2_IN;
@@ -2574,7 +2579,7 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
          *cp2++ = c;
       *cp2 = '\0';
       if(c == '\0')
-         cp = n_UNCONST(n_empty);
+         cp = UNCONST(char*,n_empty);
       else
          ++cp;
 
@@ -2587,7 +2592,9 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
          ++errs;
       }else{
          struct a_amv_var_carrier avc;
-         boole isunset;
+         u8 loflags_;
+         BITENUM_IS(u32,a_amv_var_setclr_flags) avscf_;
+         boole isunset, xreset;
 
          if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o'))){
             if(c != '\0')
@@ -2598,15 +2605,23 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
 
          a_amv_var_revlookup(&avc, varbuf, TRU1);
 
-         if((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NULL){
-            if(n_poption & n_PO_D_V)
-               n_err(_("Builtin variable not overwritten by `local': %s\n"),
-                  varbuf);
-            ++errs;
-         }else if(isunset)
+         if((xreset = ((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NIL))){
+            ASSERT(a_amv_lopts != NIL);
+            avscf_ = avscf;
+            avscf ^= a_AMV_VSETCLR_LOCAL;
+            loflags_ = a_amv_lopts->as_loflags;
+            a_amv_lopts->as_loflags = a_AMV_LF_SCOPE;
+         }
+
+         if(isunset)
             errs += !a_amv_var_clear(&avc, avscf);
          else
             errs += !a_amv_var_set(&avc, cp, avscf);
+
+         if(xreset){
+            avscf = avscf_;
+            a_amv_lopts->as_loflags = loflags_;
+         }
       }
    }
 
@@ -2620,14 +2635,16 @@ a_amv_var_obsolete(char const *name){
    static struct su_cs_dict a_csd__obsol, *a_csd_obsol;
    NYD2_IN;
 
-   if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
-      a_csd_obsol = su_cs_dict_set_treshold_shift(
-            su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
-               su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+   if(!su_state_has(su_STATE_REPRODUCIBLE)){
+      if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
+         a_csd_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
+                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
 
-   if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
-      su_cs_dict_insert(a_csd_obsol, name, NIL);
-      n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
+      if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
+         su_cs_dict_insert(a_csd_obsol, name, NIL);
+         n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
+      }
    }
    NYD2_OU;
 }
@@ -3196,6 +3213,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type,
       n_pstate_err_no = perrn;
       n_pstate_ex_no =  pexn;
    }
+
    NYD_OU;
    return rv;
 }
@@ -3498,9 +3516,11 @@ jleave:
 FL int
 c_unset(void *vp){
    struct a_amv_var_carrier avc;
+   u8 loflags_;
+   boole xreset;
    char **ap;
    int err;
-   enum a_amv_var_setclr_flags avscf;
+   BITENUM_IS(u32,a_amv_var_setclr_flags) avscf, avscf_;
    NYD_IN;
 
    if(!(n_pstate & n_PS_ARGMOD_LOCAL))
@@ -3522,8 +3542,22 @@ c_unset(void *vp){
 
       a_amv_var_revlookup(&avc, *ap, FAL0);
 
+      if((xreset = ((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NIL))){
+         ASSERT(a_amv_lopts != NIL);
+         avscf_ = avscf;
+         avscf ^= a_AMV_VSETCLR_LOCAL;
+         loflags_ = a_amv_lopts->as_loflags;
+         a_amv_lopts->as_loflags = a_AMV_LF_SCOPE;
+      }
+
       err |= !a_amv_var_clear(&avc, avscf);
+
+      if(xreset){
+         avscf = avscf_;
+         a_amv_lopts->as_loflags = loflags_;
+      }
    }
+
 jleave:
    NYD_OU;
    return err;

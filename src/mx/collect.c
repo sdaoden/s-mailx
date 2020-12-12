@@ -88,9 +88,10 @@ struct a_coll_quote_ctx{
    FILE *cqc_fp;
    struct header *cqc_hp;
    struct n_ignore const *cqc_quoteitp; /* Or NIL */
+   boole cqc_add_cc; /* Honour *{forward,quote}-add-cc* (not initial quote)? */
    boole cqc_is_forward; /* Forwarding rather than quoting */
    boole cqc_do_quote; /* Forced ~Q, not initial reply */
-   u8 cqc__pad[2];
+   u8 cqc__pad[1];
    enum sendaction cqc_action;
    char const *cqc_indent_prefix;
    struct message *cqc_mp;
@@ -303,6 +304,7 @@ a_coll_include_file(char const *name, boole indent, boole writestat){
    mx_fs_linepool_aquire(&linebuf, &linesize);
    heredb = NIL;
    heredl = 0;
+   UNINIT(indb, NIL);
 
    /* The -M case is special */
    if(name == R(char*,-1)){
@@ -594,7 +596,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    if(cqcp->cqc_is_forward){
       char const *cp_v15compat;
 
-      if(cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
+      if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
             su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
@@ -612,7 +614,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
       rv = TRU1;
       goto jleave;
    }else{
-      if(cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
+      if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
             su_mem_bag_push(n_go_data->gdc_membag, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
@@ -627,8 +629,12 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
          ;
       else if(!su_cs_cmp(cp, "headers"))
          cqcp->cqc_quoteitp = n_IGNORE_TYPE;
+      /* TODO *quote*=all* series should separate the bodies visually */
       else if(!su_cs_cmp(cp, "allheaders")){
          cqcp->cqc_quoteitp = NIL;
+         cqcp->cqc_action = SEND_QUOTE_ALL;
+      }else if(!su_cs_cmp(cp, "allbodies")){
+         cqcp->cqc_quoteitp = n_IGNORE_ALL;
          cqcp->cqc_action = SEND_QUOTE_ALL;
       }
 
@@ -967,6 +973,7 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    su_mem_bag_push(n_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
+   cqc.cqc_add_cc = TRU1;
    if(f != 'Q')
       cqc.cqc_is_forward = TRU1;
    else
@@ -1081,7 +1088,7 @@ jleave:
 
 static int
 a_coll_ocs__mac(void){
-   /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
+   /* Execs in a fork(2)ed child  TODO if remains, global MASKs for those! */
    setvbuf(n_stdin, NULL, _IOLBF, 0);
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYANY);
@@ -1303,7 +1310,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             hp);
       }
 
-      /* TODO Mm: nope since it may require turning this into a multipart one */
+      /* TODO Mm: nope: it may require turning this into a multipart one */
       if(!(n_poption & (n_PO_Mm_FLAG | n_PO_t_FLAG))){
          if(!a_coll_message_inject_head(_coll_fp))
             goto jerr;
@@ -1317,7 +1324,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
             if(msf & n_MAILSEND_IS_FWD){
                cqc.cqc_hp = hp;
                cqc.cqc_quoteitp = n_IGNORE_FWD;
-               cqc.cqc_is_forward = TRU1;
+               cqc.cqc_add_cc = cqc.cqc_is_forward = TRU1;
             }else{
                cqc.cqc_quoteitp = n_IGNORE_ALL;
                cqc.cqc_indent_prefix = ok_vlook(indentprefix);
@@ -1963,7 +1970,7 @@ jIi_putesc:
          if(cnt != 0)
             goto jearg;
          /* If we are running a splice hook, assume it quits on its own now,
-          * otherwise we (no true out-of-band IPC to signal this state, XXX sic)
+          * otherwise we (no true out-of-band IPC to signal this state, XXX)
           * have to SIGTERM it in order to stop this wild beast */
          flags |= a_COAP_NOSIGTERM;
          ++_coll_hadintr;
@@ -2070,7 +2077,7 @@ jout:
       union {int (*ptf)(void); char const *sh;} u;
       char const *cmd;
 
-      /* Reset *escape* and more to their defaults.  On change update manual! */
+      /* Reset *escape* and more to their defaults. On change update manual! */
       if(ifs_saved == NULL)
          ifs_saved = savestr(ok_vlook(ifs));
       ok_vclear(ifs);
@@ -2162,7 +2169,8 @@ jout:
          ifs_saved = coapm = NULL;
          coap = NULL;
 
-         fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* XXX112 */
+         fprintf(n_stdout,
+            _("-------\n(Preliminary) Envelope contains:\n")); /* XXX */
          if(!n_puthead(TRU1, hp, n_stdout,
                GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
                GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
@@ -2327,7 +2335,7 @@ jerr:
 
    ASSERT(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?
-    * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
+    * TODO This is no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
    if(*checkaddr_err != 0){
       if(*checkaddr_err == 111)
          n_err(_("Compose mode splice hook failure\n"));

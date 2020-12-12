@@ -42,13 +42,6 @@ odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
 	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk all
-d-b:
-	@$(_prestop);\
-	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk all
-d-v:
-	@$(_prestop);\
-	$${SHELL} "$${TOPDIR}"mk/make-version.sh create
 
 # The test should inherit the user runtime environment!
 test:
@@ -57,6 +50,20 @@ testnj:
 	@$(__prestop); cd "$(OBJDIR)" &&\
 	LC_ALL=C $(MAKE) -f mk-config.mk testnj
 
+## The rest is developer stuff
+
+d-cross-build:
+	@DEVEL_ORIG_CC=$(CC); export DEVEL_ORIG_CC; \
+	$(MAKE) OPT_CROSS_BUILD=y OPT_DEVEL=1 VERBOSE=1 \
+		CC="$(TOPDIR)"mk/pcb-cc.sh config;\
+	$(MAKE) distclean
+d-b:
+	@$(_prestop);\
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
+	LC_ALL=C $${MAKE} -f mk-config.mk all
+d-v:
+	@$(_prestop);\
+	$${SHELL} "$${TOPDIR}"mk/make-version.sh create
 d-cmd-tab:
 	sh mk/make-cmd-tab.sh
 d-cmd-tab-nv:

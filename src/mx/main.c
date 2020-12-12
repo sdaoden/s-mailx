@@ -532,6 +532,8 @@ a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
    char const *rv, *a;
    NYD2_IN;
 
+   n_psonce |= n_PSO_SENDMODE;
+
    rv = NIL;
 
    if((a = n_header_get_field(avop->avo_current_arg, "to", &suffix)) != NIL){
@@ -732,6 +734,7 @@ main(int argc, char *argv[]){
 
    su_mem_set(&mc, 0, sizeof mc);
    resfiles = a_RF_DEFAULT;
+   UNINIT(emsg, NIL);
 
    /*
     * Start our lengthy setup, finalize by setting n_PSO_STARTED

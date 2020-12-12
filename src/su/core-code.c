@@ -97,8 +97,8 @@ su_SINLINE void
 a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
 #ifdef su_USECASE_MX
 # ifndef mx_HAVE_AMALGAMATION
-   /*extern*/ void n_err(char const *fmt, ...);
-   /*extern*/ void n_verr(char const *fmt, va_list ap);
+   /*extern*/ void n_err(char const *, ...);
+   /*extern*/ void n_verr(char const *, va_list);
 # endif
 #endif
    char buf[su_IENC_BUFFER_SIZE];

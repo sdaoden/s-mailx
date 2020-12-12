@@ -1,5 +1,6 @@
 #!/bin/sh -
 #@ Either create src/su/gen-errors.h, or, at compile time, the OS<>SU map.
+#
 # Public Domain
 
 IN="${SRCDIR}"su/gen-errors.h
@@ -20,8 +21,11 @@ LC_ALL=C
 export LC_ALL MAXDISTANCE_PENALTY VERB MAILX IN XOUT
 
 : ${awk:=awk}
+# Compile-time only
+: ${rm:=rm}
+: ${sort:=sort}
 
-# The set of errors we support
+# The set of errors we support {{{
 ERRORS="\
    NONE='No error' \
    2BIG='Argument list too long' \
@@ -106,6 +110,7 @@ ERRORS="\
    XDEV='Cross-device link' \
 "
 export ERRORS
+# }}}
 
 error_parse() {
    j=\'
@@ -122,7 +127,7 @@ error_parse() {
                d = substr(v, doff + 2, length(v) - doff - 1)
                v = substr(v, 1, doff - 1)
             }
-            if(!incnone && v == "NONE")
+            if(!incnone && (v == "NONE" || v == "NOTOBACCO"))
                continue
             print dodoc ? d : v
          }
@@ -130,164 +135,203 @@ error_parse() {
    '
 }
 
-config() {
+compile_time() { # {{{
    [ -n "${TARGET}" ] || {
       echo >&2 'Invalid usage'
       exit 1
    }
-   # Note this may be ISO C89, so we cannot
-   cat <<__EOT__
-   #include <ctype.h>
-   #include <errno.h>
-   #include <limits.h>
-   #include <stdio.h>
-   #include <stdlib.h>
-   #include <string.h>
-   #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-   # include <stdint.h>
-   #else
-   # include <inttypes.h>
-   #endif
-   #include <${IN}>
-   #ifdef UINT32_MAX
-   typedef uint32_t u32;
-   typedef int32_t s32;
-   #elif ULONG_MAX == 0xFFFFFFFFu
-   typedef unsigned long int u32;
-   typedef signed long int s32;
-   #else
-   typedef unsigned int u32;
-   typedef signed int s32;
-   #endif
-   struct a_in {struct a_in *next; char const *name; s32 no; u32 uno;};
-   static int a_sortin(void const *a, void const *b){
-      return (*(struct a_in const* const *)a)->uno -
-         (*(struct a_in const* const *)b)->uno;
-   }
-   int main(void){
-      struct a_in *head, *tail, *np, **nap;
-      u32 maxsub, umax;
-      s32 xavail = 0, total = 1, imin = 0, imax = 0, voidoff = 0, i, j;
-      FILE *ofp = fopen("${TARGET}", "a");
-      if(ofp == NULL){
-         fprintf(stderr, "ERROR: cannot open output\n");
-         return 1;
-      }
+   set -e
 
-      /* Create a list of all errors */
-      head = tail = (struct a_in*)malloc(sizeof *head);
-      head->next = NULL; head->name = "su_ERR_NONE"; head->no = 0;
-__EOT__
-   for n in `error_parse 0 0`; do
-      cat <<__EOT__
-      ++total;
-      #ifdef E${n}
-      i = E${n};
-      #else
-      i = --xavail;
-      #endif
-      if(imin > i) {imin = i;} if(imax < i) {imax = i;}
-      np = (struct a_in*)malloc(sizeof *np);
-      np->next = NULL; np->name = "su_ERR_${n}"; np->no = i;
-      tail->next = np; tail = np;
-__EOT__
-   done
-   cat <<__EOT__
-      /* The unsigned type used for storage */
+   {
+      printf '#include <errno.h>\nsu_ERROR_START\n'
+      for n in `error_parse 0 0`; do
+         printf '#ifdef E%s\nE%s %s\n#else\n-1 %s\n#endif\n' $n $n $n $n
+      done
+   } > "${TARGET}".c
 
-      fputs("#define su__ERR_NUMBER_TYPE ", ofp);
-      if((u32)imax <= 0xFFu && (u32)-imin <= 0xFFu){
-         fputs("u8\n", ofp);
-         maxsub = 0xFFu;
-      }else if(((u32)imax <= 0xFFFFu && (u32)-imin <= 0xFFFFu)){
-         fputs("u16\n", ofp);
-         maxsub = 0xFFFFu;
-      }else{
-         fputs("u32\n", ofp);
-         maxsub = 0xFFFFFFFFu;
-      }
-
-      /* Now that we know the storage type, create the unsigned numbers */
-      for(umax = 0, np = head; np != NULL; np = np->next){
-         if(np->no < 0)
-            np->uno = maxsub + np->no + 1;
-         else
-            np->uno = np->no;
-         if(np->uno > umax)
-            umax = np->uno;
-      }
-      if(umax <= (u32)imax){
-         fprintf(stderr, "ERROR: errno ranges overlap\n");
-         return 1;
-      }
-
-      /* Sort this list */
-
-      nap = (struct a_in**)malloc(sizeof(*nap) * (unsigned)total);
-      for(i = 0, np = head; np != NULL; ++i, np = np->next)
-         nap[i] = np;
-      if(i != total){
-         fprintf(stderr, "ERROR: implementation error i != total\n");
-         return 1;
-      }
-      qsort(nap, (u32)i, sizeof *nap, &a_sortin);
-
-      /* The enumeration of numbers */
-
-      fputs("#define su__ERR_NUMBER_ENUM_C \\\\\\n", ofp);
-      for(i = 0; i < total; ++i)
-         fprintf(ofp, "   %s = %lu,\\\\\\n",
-            nap[i]->name, (unsigned long)nap[i]->uno);
-      fprintf(ofp, "   su__ERR_NUMBER = %ld\\n", (long)total);
-
-      fputs("#ifdef __cplusplus\n# define su__CXX_ERR_NUMBER_ENUM \\\\\\n",
-         ofp);
-      for(i = 0; i < total; ++i){
-         char b[64], *cbp = b;
-         char const *cp;
-         cp = &nap[i]->name[sizeof("su_") -1];
-         *cbp++ = 'e';
-         for(cp += sizeof("ERR_") -1; *cp != '\0'; ++cp)
-            *cbp++ = tolower(*cp);
-         *cbp = '\0';
-         fprintf(ofp, "   %s = %s,\\\\\\n", b, nap[i]->name);
-      }
-      fprintf(ofp,
-         "   e__number = su__ERR_NUMBER\\n#endif /* __cplusplus */\n");
-
-      /* The binary search mapping table from OS error value to our internal
-       * a_corerr_map[] error description table */
-      fprintf(ofp, "#define su__ERR_NUMBER_TO_MAPOFF \\\\\\n");
-      for(xavail = 0, i = 0; i < total; ++i){
-         if(i == 0 || nap[i]->no != nap[i - 1]->no){
-            for(j = 0; a_names_alphasort[j] != NULL; ++j){
-               if(!strcmp(&nap[i]->name[sizeof("su_ERR_") -1],
-                     a_names_alphasort[j]))
-                  break;
-            }
-            fprintf(ofp, "\ta_X(%lu, %lu) %s%s%s\\\\\\n",
-               (unsigned long)nap[i]->uno, (long)(u32)j,
-               ((${VERB}) ? "/* " : ""), ((${VERB}) ? nap[i]->name : ""),
-                  ((${VERB}) ? " */ " : ""));
-            if(!strcmp("su_ERR_NOTOBACCO", nap[i]->name))
-               voidoff = j;
-            ++xavail;
+   # The problem is that at least (some versions of) gcc mangle output.
+   # Ensure we get both arguments on one line.
+   # While here sort numerically.
+   "${CC}" -E "${TARGET}".c |
+      ${awk} '
+         BEGIN{hot=0; conti=0}
+         /^[ 	]*$/{next}
+         /^[ 	]*#/{next}
+         /^su_ERROR_START$/{hot=1; next}
+         {
+            if(!hot)
+               next
+            printf "%s ", $1
+            if(conti){
+               printf "\n"
+               conti = 0
+            }else if($2 != "")
+               printf $2 "\n"
+            else
+               conti = 1
          }
-      }
-      fprintf(ofp, "\\t/* %ld unique members */\\n", (long)xavail);
-      fprintf(ofp, "#define su__ERR_NUMBER_VOIDOFF %ld\\n", (long)voidoff);
-      fclose(ofp);
+      ' |
+      ${sort} -n > "${TARGET}".txt
 
-      while((np = head) != NULL){
-         head = np->next;
-         free(np);
+   # EBCDIC/ASCII: we use \134 for reverse solidus \
+   j=\'
+   ${awk} -v verb="${VERB}" -v input="${ERRORS}" -v dat="${TARGET}.txt" '
+      BEGIN{
+         verb = (verb != 0) ? "   " : ""
+
+         # Read in our OS data
+
+         unavail = 0
+         max = 0
+         oscnt = 0
+         while((getline dl < dat) > 0){
+            split(dl, ia)
+
+            ++oscnt
+            osnoa[oscnt] = ia[1]
+            osnaa[oscnt] = ia[2]
+
+            if(ia[1] < 0)
+               ++unavail
+            else{
+               if(ia[1] > max)
+                  max = ia[1]
+            }
+         }
+         close(dat)
+
+         # Maximum error number defines the datatype to use.
+         # We need a value for NOTOBACCO, we warp all non-available errors to
+         # numbers too high to be regular errors, counting backwards
+
+         i = max + unavail + 1
+         if(i >= 65535){
+            t = "u32"
+            max = "0xFFFFFFFFu"
+         }else if(i >= 255){
+            t = "u16"
+            max = "0xFFFFu"
+         }else{
+            t = "u8"
+            max = "0xFFu"
+         }
+         print "#define su__ERR_NUMBER_TYPE " t
+         print "#define su__ERR_NUMBER_MAX " max
+
+         # Dump C table
+
+         cnt = 0
+         print "#define su__ERR_NUMBER_ENUM_C \134"
+
+         print verb "su_ERR_NONE = 0,\134"
+         ++cnt
+
+         # Since our final table is searched with binary sort,
+         # place the non-available backward counting once last
+         unavail = j = k = 0
+         for(i = 1; i <= oscnt; ++i){
+            if(osnoa[i] >= 0){
+               map[osnaa[i]] = osnoa[i]
+               print verb "su_ERR_" osnaa[i] " = " osnoa[i] ",\134"
+               ++cnt
+            }else{
+               ++unavail
+               the_unavail[unavail] = "su_ERR_" osnaa[i] " = " \
+                     "(su__ERR_NUMBER_MAX - " unavail ")"
+            }
+         }
+         for(i = unavail; i >= 1; --i){
+            print verb the_unavail[i] ",\134"
+            ++cnt
+         }
+
+         print verb "su_ERR_NOTOBACCO = su__ERR_NUMBER_MAX,\134"
+         ++cnt
+
+         print verb "su__ERR_NUMBER = " cnt
+
+         # The C++ mapping table
+
+         print "#ifdef __cplusplus"
+         print "# define su__CXX_ERR_NUMBER_ENUM \134"
+         print verb "enone = su_ERR_NONE,\134"
+
+         unavail = 0
+         for(i = 1; i <= oscnt; ++i){
+            if(osnoa[i] >= 0)
+               print verb "e" tolower(osnaa[i]) " = su_ERR_" osnaa[i] ",\134"
+            else{
+               ++unavail
+               the_unavail[unavail] = "e" tolower(osnaa[i]) " = su_ERR_" \
+                     osnaa[i]
+            }
+         }
+         for(i = unavail; i >= 1; --i){
+            print verb the_unavail[i] ",\134"
+            ++cnt
+         }
+         print verb "enotobacco = su_ERR_NOTOBACCO,\134"
+         print verb "e__number = su__ERR_NUMBER"
+
+         print "#endif /* __cplusplus */"
+
+         # And our OS errno -> name map offset table
+         # (This "OS" however includes the unavail ones)
+
+         voidoff = 0
+         for(mapoff = 0;; ++mapoff){
+            voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
+            if(voff == 0)
+               break
+
+            v = substr(input, voff, RLENGTH)
+            input = substr(input, voff + RLENGTH)
+            doff = index(v, "=")
+            if(doff > 0){
+               d = substr(v, doff + 2, length(v) - doff - 1)
+               v = substr(v, 1, doff - 1)
+            }
+            mapo[v] = mapoff
+            if(v == "NOTOBACCO")
+               voidoff = mapoff
+         }
+
+         uniq = 0
+         print "#define su__ERR_NUMBER_VOIDOFF " voidoff
+         print "#define su__ERR_NUMBER_TO_MAPOFF \134"
+
+         print verb "a_X(0, 0) \134"
+         ++uniq
+
+         unavail = 0
+         mapdups[0] = 1
+         for(i = 1; i <= oscnt; ++i){
+            if(osnoa[i] < 0){
+               the_unavail[++unavail] = i
+               continue
+            }
+            if(mapdups[osnoa[i]])
+               continue
+            mapdups[osnoa[i]] = 1
+            print verb "a_X(" osnoa[i] ", " mapo[osnaa[i]] ") \134"
+            ++uniq
+         }
+
+         for(i = unavail; i >= 1; --i){
+            print verb "a_X(" "su__ERR_NUMBER_MAX - " i ", " \
+                  mapo[osnaa[the_unavail[i]]] ")\134"
+            ++uniq
+         }
+
+         print verb "a_X(su__ERR_NUMBER_MAX, su__ERR_NUMBER_VOIDOFF) \134"
+         ++uniq
+         print verb "/* " uniq " unique members */"
       }
-      free(nap);
-      return 0;
-   }
-__EOT__
+   ' >> "${TARGET}"
+
+   ${rm} "${TARGET}".*
    exit 0
-}
+} # }}}
 
 if [ ${#} -ne 0 ]; then
    if [ "${1}" = noverbose ]; then
@@ -298,7 +342,7 @@ if [ ${#} -ne 0 ]; then
 fi
 
 if [ ${#} -eq 1 ]; then
-   [ "${1}" = config ] && config
+   [ "${1}" = compile_time ] && compile_time
 elif [ ${#} -eq 0 ]; then
    # Now start perl(1) without PERL5OPT set to avoid multibyte sequence errors
    PERL5OPT= PERL5LIB= exec perl -x "${0}"
@@ -492,23 +536,6 @@ sub dump_map{
    die "$ENV{XOUT}: open: $^E" unless open F, '>', $ENV{XOUT};
    print F '/*@ ', scalar basen($ENV{XOUT}), ', generated by ',
       scalar basen($0), ".\n *@ See core-errors.c for more */\n\n";
-
-   print F '#ifndef su_SOURCE /* For compile-time tools only */', "\n",
-      'static char const * const a_names_alphasort[] = {';
-   ($i, $alen) = (0, 0);
-   foreach my $e (@ENTS){
-      $i = 1 + 3 + length $e->{name};
-      if($alen == 0 || $alen + $i > 75){
-         print F "\n${S}";
-         $alen = length $S
-      }else{
-         print F ' ';
-         ++$i
-      }
-      $alen += $i;
-      print F "\"$e->{name}\","
-   }
-   print F " NULL\n};\n#endif /* !su_SOURCE */\n\n";
 
    ($i, $alen) = (0, 0);
    print F '#ifdef su_SOURCE', "\n",

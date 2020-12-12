@@ -765,13 +765,15 @@ n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
    char const *wdn, *mn;
    struct tm const *tmp;
    NYD_IN;
+   LCTA(FIELD_SIZEOF(struct time_current,tc_ctime) == sizeof(buf),
+      "Buffers should have equal size");
 
-   if((tmp = localtime_or_nil) == NULL){
+   if((tmp = localtime_or_nil) == NIL){
       time_t t;
 
       t = (time_t)secsepoch;
 jredo:
-      if((tmp = localtime(&t)) == NULL){
+      if((tmp = localtime(&t)) == NIL){
          /* TODO error log */
          t = 0;
          goto jredo;
@@ -804,6 +806,7 @@ jredo:
 
    (void)snprintf(buf, sizeof buf, "%3s %3s%3d %.2d:%.2d:%.2d %d",
          wdn, mn, md, th, tm, ts, y);
+
    NYD_OU;
    return buf;
 }
@@ -823,7 +826,8 @@ n_msleep(uz millis, boole ignint){
 
       while((i = nanosleep(&ts, &trem)) != 0 && ignint)
          ts = trem;
-      rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
+      rv = (i == 0) ? 0
+            : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
 #elif defined mx_HAVE_SLEEP

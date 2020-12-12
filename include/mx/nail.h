@@ -97,19 +97,6 @@ struct mx_mimetype_handler;
 
 /* CC */
 
-/* Suppress some technical warnings via #pragma's unless developing.
- * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
-#ifndef mx_HAVE_DEVEL
-# if su_CC_VCHECK_CLANG(3, 4)
-#  pragma clang diagnostic ignored "-Wassign-enum"
-#  pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
-#  pragma clang diagnostic ignored "-Wformat"
-# elif su_CC_VCHECK_GCC(4, 7)
-#  pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#  pragma GCC diagnostic ignored "-Wformat"
-# endif
-#endif
-
 #undef mx_HAVE_NATCH_CHAR
 #if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
       defined mx_HAVE_WCWIDTH
@@ -260,7 +247,7 @@ enum n_go_input_flags{
    n_GO_INPUT_HOLDALLSIGS = 1u<<8, /* sigs_all_hold() active TODO */
    /* `xcall' is `call' (at the level where this is set): to be set when
     * teardown of top level has undesired effects, e.g., for `account's and
-    * folder hooks etc., where we do not to loose our `localopts' unroll list */
+    * folder hooks etc., if we do not want to loose `localopts' unroll list */
    n_GO_INPUT_NO_XCALL = 1u<<9,
 
    n_GO_INPUT_FORCE_STDIN = 1u<<10, /* Even in macro, use stdin (`read')! */
@@ -632,7 +619,7 @@ MCTA(n_PO_V << 1 == n_PO_VV, "PO_V* must be successive")
 MCTA(n_PO_VV << 1 == n_PO_VVV, "PO_V* must be successive")
 
 #define n_OBSOLETE(X) \
-do{\
+do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    static boole su_CONCAT(a__warned__, __LINE__);\
    if(!su_CONCAT(a__warned__, __LINE__)){\
       su_CONCAT(a__warned__, __LINE__) = TRU1;\
@@ -640,7 +627,7 @@ do{\
    }\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
-do{\
+do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    static boole su_CONCAT(a__warned__, __LINE__);\
    if(!su_CONCAT(a__warned__, __LINE__)){\
       su_CONCAT(a__warned__, __LINE__) = TRU1;\
@@ -752,6 +739,9 @@ enum n_program_state_once{
  * - import= implies env
  * - num and posnum are mutual exclusive
  * - most default VAL_ues come from in from build system via ./make.rc
+ * - Other i3val=s and/or defval=s are imposed by POSIX: we do not (or only
+ *   additionally "trust" the system-wide RC file to establish the settings
+ * - code assumes (in conjunction with make-okey-map.pl) case-insensitive sort!
  * (Keep in SYNC: nail.h:okeys, nail.rc, nail.1:"Initial settings") */
 enum okeys {
    /* This is used for all macro(-local) variables etc., i.e.,
@@ -774,7 +764,7 @@ ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksend, /* {i3val=TRU1} */
+   ok_b_asksend,
    ok_b_asksub, /* {i3val=TRU1} */
    ok_v_attrlist,
    ok_v_autobcc,
@@ -1568,7 +1558,7 @@ VL u32 n_psonce; /* Bits of enum n_program_state_once */
 VL u32 n_pstate; /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
- * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+ * TODO status and may-place-in-history bit, need to manage global bypass.. */
 #ifdef mx_HAVE_ERRORS
 VL s32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
 #endif

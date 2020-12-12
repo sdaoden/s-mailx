@@ -28,11 +28,15 @@
 
 #include <su/mem.h>
 
-#if defined mx_HAVE_MLE
+#ifdef mx_HAVE_MLE
 # include <su/cs.h>
 # include <su/utf.h>
 
 # include <su/icodec.h>
+
+# ifdef mx_HAVE_HISTORY
+#  include <su/sort.h>
+# endif
 #endif
 
 #include "mx/cmd.h"
@@ -557,6 +561,12 @@ static boole a_tty_hist_save(void);
 /* Initialize .tg_hist_size_max and return desired history file, or NIL */
 static char const *a_tty_hist__query_config(void);
 
+/* (More) Actions of `history'.
+ * Return TRUM1 if synopsis shall be shown */
+static boole a_tty_hist_clear(void);
+static boole a_tty_hist_list(void);
+static boole a_tty_hist_sel_or_del(char const **vec, boole dele);
+
 /* Check whether a gabby history entry fits *history_gabby* */
 static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,n_go_input_flags) gif);
 
@@ -911,6 +921,173 @@ a_tty_hist__query_config(void){
       rv = fexpand(rv, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
 
    NYD2_OU;
+   return rv;
+}
+
+static boole
+a_tty_hist_clear(void){
+   struct a_tty_hist *thp;
+   NYD_IN;
+
+   while((thp = a_tty.tg_hist) != NIL){
+      a_tty.tg_hist = thp->th_older;
+      su_FREE(thp);
+   }
+   a_tty.tg_hist_tail = NIL;
+   a_tty.tg_hist_size = 0;
+
+   NYD_OU;
+   return TRU1;
+}
+
+static boole
+a_tty_hist_list(void){
+   struct a_tty_hist *thp;
+   uz no, l, b;
+   FILE *fp;
+   NYD_IN;
+
+   if(a_tty.tg_hist == NIL)
+      goto jleave;
+
+   if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+            mx_FS_O_REGISTER), NIL)) == NIL)
+      fp = n_stdout;
+
+   no = a_tty.tg_hist_size;
+   l = b = 0;
+
+   for(thp = a_tty.tg_hist; thp != NIL; --no, ++l, thp = thp->th_older){
+      char c1, c2;
+
+      b += thp->th_len;
+
+      switch(thp->th_flags & a_TTY_HIST_CTX_MASK){
+      default:
+      case a_TTY_HIST_CTX_DEFAULT:
+         c1 = 'd';
+         break;
+      case a_TTY_HIST_CTX_COMPOSE:
+         c1 = 'c';
+         break;
+      }
+      c2 = (thp->th_flags & a_TTY_HIST_GABBY) ? '*' : ' ';
+
+      if(n_poption & n_PO_D_V)
+         fprintf(fp, "# Length +%" PRIu32 ", total %" PRIuZ "\n",
+            thp->th_len, b);
+      fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
+   }
+
+   if(fp != n_stdout){
+      page_or_print(fp, l);
+
+      mx_fs_close(fp);
+   }else
+      clearerr(fp);
+
+jleave:
+   NYD_OU;
+   return TRU1;
+}
+
+static boole
+a_tty_hist_sel_or_del(char const **vec, boole dele){
+   struct a_tty_hist *thp, *othp, *ythp;
+   boole rv;
+   sz *lp_base, *lp, entry, delcnt, ep;
+   NYD_IN;
+   LCTAV(sizeof(sz) == sizeof(void*));
+
+   for(entry = 0; vec[entry] != NIL; ++entry)
+      ;
+
+   if(entry == 0 || (!dele && entry > 1)){
+      rv = TRUM1;
+      goto j_leave;
+   }
+
+   lp_base = lp = su_LOFI_TALLOC(sz, ++entry);
+   rv = FAL0;
+
+   for(; *vec != NIL; ++vec){
+      if((su_idec_sz_cp(lp, *vec, 10, NIL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) == su_IDEC_STATE_CONSUMED)
+         ++lp;
+      else
+         n_err(_("history: not a number, or no such entry: %s\n"), *vec);
+   }
+   *lp = 0;
+
+   if(lp == lp_base){
+      if(!dele)
+         rv = TRUM1;
+      goto jleave;
+   }
+
+   su_sort_shell_vpp(C(void const**,&lp_base[0]), entry -1, NIL);
+
+   rv = TRU1;
+
+   for(delcnt = 0, lp = lp_base; *lp != 0; ++lp){
+      if(delcnt != 0 && entry == *lp)
+         continue;
+      entry = *lp;
+      ep = (entry < 0) ? -entry : entry;
+      ep -= delcnt++;
+
+      if(ep == 0 || UCMP(z, ep, >, a_tty.tg_hist_size)){
+         n_err(_("history: not a number, or no such entry: %" PRIdZ "\n"),
+            *lp);
+         rv = FAL0;
+         continue;
+      }
+
+      if(entry < 0)
+         --ep;
+      else
+         ep = S(sz,a_tty.tg_hist_size) - ep;
+
+      for(thp = a_tty.tg_hist; ep-- != 0; thp = thp->th_older)
+         ASSERT(thp != NIL);
+
+      ASSERT(thp != NIL);
+      othp = thp->th_older;
+      ythp = thp->th_younger;
+      if(othp != NIL)
+         othp->th_younger = ythp;
+      else
+         a_tty.tg_hist_tail = ythp;
+      if(ythp != NIL)
+         ythp->th_older = othp;
+      else
+         a_tty.tg_hist = othp;
+
+      if(!dele){ /* XXX c_history(): needless double relinking done */
+         if((thp->th_older = a_tty.tg_hist) != NIL)
+            a_tty.tg_hist->th_younger = thp;
+         else
+            a_tty.tg_hist_tail = thp;
+         thp->th_younger = NIL;
+          a_tty.tg_hist = thp;
+
+         n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
+            n_GO_INPUT_INJECT_HISTORY), thp->th_dat, thp->th_len);
+         break;
+      }else{
+         --a_tty.tg_hist_size;
+         fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"),
+            entry, thp->th_dat);
+         su_FREE(thp);
+      }
+   }
+
+jleave:
+   su_LOFI_FREE(lp_base);
+
+j_leave:
+   NYD_OU;
    return rv;
 }
 
@@ -2454,7 +2631,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             ++i;
       }
-      tlp->tl_defc.s = cp = n_autorec_alloc(i +1);
+      tlp->tl_defc.s = cp = n_autorec_alloc(i + 1 +1);
       if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE){
          if((*cp = ok_vlook(escape)[0]) == '\0')
             *cp = n_ESCAPE[0];
@@ -2794,14 +2971,14 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
     * buffer", and only otherwise read(2) it */
-   mbstate_t ps[2];
-   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
 # ifdef mx_HAVE_KEY_BINDINGS
    struct a_tty_bind_tree *tbtp;
+   boole timeout;
 # endif
+   mbstate_t ps[2];
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    wchar_t wc;
    BITENUM_IS(u32,a_tty_bind_flags) tbf;
-   boole timeout;
    sz rv;
    NYD_IN;
 
@@ -2812,7 +2989,6 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
 
 jrestart:
    su_mem_set(ps, 0, sizeof ps);
-   timeout = FAL0;
    tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
 
    /* Treat buffer take-over mode specially, that simplifies the below */
@@ -2862,6 +3038,7 @@ jinput_loop:
       } *isp_head, *isp;
 
       isp_head = isp = NIL;
+      UNINIT(ttm, a_TTY_TTM_NONE);
 # endif
 
       /* Handle visual state flags */
@@ -2882,7 +3059,6 @@ jinput_loop:
          if(tlp->tl_bind_takeover != '\0'){
             wc = tlp->tl_bind_takeover;
             tlp->tl_bind_takeover = '\0';
-            UNINIT(ttm, a_TTY_TTM_NONE);
          }else
 # endif
          {
@@ -3155,10 +3331,15 @@ jbuiltin_redo:
       }
    }
 
+jdone:
    /* We have a completed input line, convert the struct cell data to its
     * plain character equivalent */
-jdone:
    rv = a_tty_cell2dat(tlp);
+
+   if(histok_or_null != NIL &&
+         (rv <= 0 || su_cs_is_space(tlp->tl_line.cbuf[0])))
+      *histok_or_null = FAL0;
+
 jleave:
    putc('\n', mx_tty_fp);
    fflush(mx_tty_fp);
@@ -3179,6 +3360,7 @@ jinject_input:{
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
    mx_sigs_all_rele(); /* XXX v15 drop */
+
    if(histok_or_null != NIL)
       *histok_or_null = FAL0;
    rv = S(sz,--i);
@@ -4273,15 +4455,14 @@ mx_tty_addhist(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
 # ifdef mx_HAVE_HISTORY
 int
 c_history(void *vp){
-   sz entry;
-   struct a_tty_hist *thp;
-   boole dele;
-   char **argv;
+   char const **argv;
+   boole x;
    NYD_IN;
 
    if(ok_blook(line_editor_disable)){
       n_err(_("history: *line-editor-disable* is set\n"));
-      goto jerr;
+      x = FAL0;
+      goto jleave;
    }
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
@@ -4289,151 +4470,30 @@ c_history(void *vp){
       ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
+   x = TRUM1;
    if(*(argv = vp) == NIL)
-      goto jlist;
-
-   if((dele = su_cs_starts_with_case("delete", *argv)))
-      ++argv;
-   if(argv[1] != NIL)
-      goto jerr;
-
-   if(!dele){
+      x = a_tty_hist_list();
+   else if(su_cs_starts_with_case("delete", *argv))
+      x = a_tty_hist_sel_or_del(++argv, TRU1);
+   else if(argv[1] == NIL){
       if(su_cs_starts_with_case("clear", *argv))
-         goto jclear;
-      if(su_cs_starts_with_case("load", *argv)){
-         if(!a_tty_hist_load())
-            vp = NIL;
-         goto jleave;
-      }
-      if(su_cs_starts_with_case("save", *argv)){
-         if(!a_tty_hist_save())
-            vp = NIL;
-         goto jleave;
-      }
-      if(su_cs_starts_with_case("show", *argv))
-         goto jlist;
+         x = a_tty_hist_clear();
+      else if(su_cs_starts_with_case("load", *argv))
+         x = a_tty_hist_load();
+      else if(su_cs_starts_with_case("save", *argv))
+         x = a_tty_hist_save();
+      else if(su_cs_starts_with_case("show", *argv))
+         x = a_tty_hist_list();
+      else
+         x = a_tty_hist_sel_or_del(argv, FAL0);
    }
 
-   if((su_idec_sz_cp(&entry, *argv, 10, NIL
-            ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-         ) == su_IDEC_STATE_CONSUMED)
-      goto jentry;
+   if(x < FAL0)
+      mx_cmd_print_synopsis(mx_cmd_firstfit("history")/* TODO arg_ctx */, NIL);
 
-jerr:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("history")/* TODO arg_ctx */, NIL);
-   vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
-
-jlist:{
-   uz no, l, b;
-   FILE *fp;
-
-   if(a_tty.tg_hist == NIL)
-      goto jleave;
-
-   if((fp = mx_fs_tmp_open("hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
-      fp = n_stdout;
-
-   no = a_tty.tg_hist_size;
-   l = b = 0;
-
-   for(thp = a_tty.tg_hist; thp != NIL; --no, ++l, thp = thp->th_older){
-      char c1, c2;
-
-      b += thp->th_len;
-
-      switch(thp->th_flags & a_TTY_HIST_CTX_MASK){
-      default:
-      case a_TTY_HIST_CTX_DEFAULT:
-         c1 = 'd';
-         break;
-      case a_TTY_HIST_CTX_COMPOSE:
-         c1 = 'c';
-         break;
-      }
-      c2 = (thp->th_flags & a_TTY_HIST_GABBY) ? '*' : ' ';
-
-      if(n_poption & n_PO_D_V)
-         fprintf(fp, "# Length +%" PRIu32 ", total %" PRIuZ "\n",
-            thp->th_len, b);
-      fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
-   }
-
-   if(fp != n_stdout){
-      page_or_print(fp, l);
-
-      mx_fs_close(fp);
-   }else
-      clearerr(fp);
-   }
-   goto jleave;
-
-jclear:
-   while((thp = a_tty.tg_hist) != NIL){
-      a_tty.tg_hist = thp->th_older;
-      su_FREE(thp);
-   }
-   a_tty.tg_hist_tail = NIL;
-   a_tty.tg_hist_size = 0;
-   goto jleave;
-
-jentry:{
-   sz ep;
-
-   ep = (entry < 0) ? -entry : entry;
-
-   if(ep != 0 && UCMP(z, ep, <=, a_tty.tg_hist_size)){
-      if(ep != entry)
-         --ep;
-      else
-         ep = S(sz,a_tty.tg_hist_size) - ep;
-
-      for(thp = a_tty.tg_hist;; thp = thp->th_older){
-         ASSERT(thp != NIL);
-         if(ep-- == 0){
-            struct a_tty_hist *othp, *ythp;
-
-            othp = thp->th_older;
-            ythp = thp->th_younger;
-            if(othp != NIL)
-               othp->th_younger = ythp;
-            else
-               a_tty.tg_hist_tail = ythp;
-            if(ythp != NIL)
-               ythp->th_older = othp;
-            else
-               a_tty.tg_hist = othp;
-
-            if(!dele){ /* XXX c_history(): needless double relinking done */
-               if((thp->th_older = a_tty.tg_hist) != NIL)
-                  a_tty.tg_hist->th_younger = thp;
-               else
-                  a_tty.tg_hist_tail = thp;
-               thp->th_younger = NIL;
-                a_tty.tg_hist = thp;
-
-               n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
-                  n_GO_INPUT_INJECT_HISTORY), vp = thp->th_dat, thp->th_len);
-            }else{
-               --a_tty.tg_hist_size;
-
-               fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"),
-                  entry, thp->th_dat);
-
-               su_FREE(thp);
-            }
-            break;
-         }
-      }
-   }else{
-      n_err(_("history: no such entry: %" PRIdZ "\n"), entry);
-      vp = NIL;
-   }
-   }
-   goto jleave;
+   return (x <= FAL0 ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 # endif /* mx_HAVE_HISTORY */
 

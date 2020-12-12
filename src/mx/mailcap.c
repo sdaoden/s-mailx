@@ -72,14 +72,16 @@ enum {a_MAILCAP_SF_MAX = a_MAILCAP_SF_X11_BITMAP + 1};
 #define a_MAILCAP_SFIELD_SUPPORTED(X) \
    ((X) == a_MAILCAP_SF_CMD /*|| (X) == a_MAILCAP_SF_TEST*/)
 
-enum a_mailcap_flags{
+enum a_mailcap_handler_flags{
    a_MAILCAP_F_TEXTUALNEWLINES = mx_MIMETYPE_HDL_MAX << 1,
    a_MAILCAP_F_TESTONCE = mx_MIMETYPE_HDL_MAX << 2,
    a_MAILCAP_F_TEST_ONCE_DONE = mx_MIMETYPE_HDL_MAX << 3,
    a_MAILCAP_F_TEST_ONCE_SUCCESS = mx_MIMETYPE_HDL_MAX << 4,
-   a_MAILCAP_F_HAS_S_FORMAT = mx_MIMETYPE_HDL_MAX << 5 /* Somewhere a %s */
+   a_MAILCAP_F_HAS_S_FORMAT = mx_MIMETYPE_HDL_MAX << 5, /* Somewhere a %s */
+   a_MAILCAP_F_LAST_RESORT = mx_MIMETYPE_HDL_MAX << 6,
+   a_MAILCAP_F_IGNORE = mx_MIMETYPE_HDL_MAX << 7
 };
-enum {a_MAILCAP_F_MAX = a_MAILCAP_F_HAS_S_FORMAT};
+enum {a_MAILCAP_F_MAX = a_MAILCAP_F_IGNORE};
 CTA(a_MAILCAP_F_MAX <= S32_MAX,
    "a_mailcap_hdl.mch_flags bit range excessed");
 
@@ -107,6 +109,26 @@ struct a_mailcap_load_stack{
     * in .mcls_hdl_buf */
    struct a_mailcap_hdl mcls_hdl;
    struct n_string mcls_hdl_buf;
+};
+
+struct a_mailcap_flags{
+   BITENUM_IS(u32,mx_mimetype_handler_flags) mcf_flags;
+   char mcf_name[28];
+};
+
+static struct a_mailcap_flags const a_mailcap_flags[] = {
+   /* In manual order */
+   {mx_MIMETYPE_HDL_COPIOUSOUTPUT, "copiousoutput"},
+   {mx_MIMETYPE_HDL_NEEDSTERM, "needsterminal"},
+   {a_MAILCAP_F_TEXTUALNEWLINES, "textualnewlines"},
+   {mx_MIMETYPE_HDL_ASYNC, "x-mailx-async"},
+   {mx_MIMETYPE_HDL_NOQUOTE, "x-mailx-noquote"},
+   {a_MAILCAP_F_TESTONCE, "x-mailx-test-once"},
+   {mx_MIMETYPE_HDL_TMPF, "x-mailx-tmpfile"},
+   {mx_MIMETYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
+   {mx_MIMETYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
+   {a_MAILCAP_F_LAST_RESORT, "x-mailx-last-resort"},
+   {a_MAILCAP_F_IGNORE, "x-mailx-ignore"}
 };
 
 static struct su_cs_dict *a_mailcap_dp, a_mailcap__d; /* XXX atexit _gut() */
@@ -660,32 +682,20 @@ jfmt_leave:
 
 static boole
 a_mailcap__parse_flag(struct a_mailcap_load_stack *mclsp, char *flag){
-   static struct{
-      BITENUM_IS(u32,mx_mimetype_handler_flags) flags;
-      char name[28];
-   } const *fap, fa[] = {
-      /* In manual order */
-      {mx_MIMETYPE_HDL_COPIOUSOUTPUT, "copiousoutput"},
-      {mx_MIMETYPE_HDL_NEEDSTERM, "needsterminal"},
-      {a_MAILCAP_F_TEXTUALNEWLINES, "textualnewlines"},
-      {mx_MIMETYPE_HDL_ASYNC, "x-mailx-async"},
-      {mx_MIMETYPE_HDL_NOQUOTE, "x-mailx-noquote"},
-      {a_MAILCAP_F_TESTONCE, "x-mailx-test-once"},
-      {mx_MIMETYPE_HDL_TMPF, "x-mailx-tmpfile"},
-      {mx_MIMETYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
-      {mx_MIMETYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"}
-   };
+   struct a_mailcap_flags const *fap;
    boole rv;
    NYD2_IN;
 
    rv = FAL0;
 
-   for(fap = fa; fap < &fa[NELEM(fa)]; ++fap)
-      if(!su_cs_cmp_case(flag, fap->name)){
-         if((n_poption & n_PO_D_V) && (mclsp->mcls_hdl.mch_flags & fap->flags))
+   for(fap = &a_mailcap_flags[0];
+         fap < &a_mailcap_flags[NELEM(a_mailcap_flags)]; ++fap)
+      if(!su_cs_cmp_case(flag, fap->mcf_name)){
+         if((n_poption & n_PO_D_V) &&
+               (mclsp->mcls_hdl.mch_flags & fap->mcf_flags))
             n_err(_("$MAILCAPS: %s: %s: multiple %s flags\n"),
                mclsp->mcls_name_quoted, mclsp->mcls_type_subtype, flag);
-         mclsp->mcls_hdl.mch_flags |= fap->flags;
+         mclsp->mcls_hdl.mch_flags |= fap->mcf_flags;
          goto jleave;
       }
 
@@ -784,6 +794,7 @@ jleave:
    return rv;
 
 jerr:
+   UNUSED(emsg);
    n_err(_("$MAILCAPS: %s: %s: %s\n"),
       mclsp->mcls_name_quoted, mclsp->mcls_type_subtype, V_(emsg));
    goto jleave;
@@ -835,21 +846,6 @@ a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
    };
 #undef a_X
 
-   static struct{
-      u32 a_f;
-      char a_n[28];
-   } const fa[] = {
-      {mx_MIMETYPE_HDL_COPIOUSOUTPUT, " copiousoutput"},
-      {mx_MIMETYPE_HDL_NEEDSTERM, " needsterminal"},
-      {a_MAILCAP_F_TEXTUALNEWLINES, " textualnewlines\0"},
-      {mx_MIMETYPE_HDL_ASYNC, " x-mailx-async"},
-      {mx_MIMETYPE_HDL_NOQUOTE, " x-mailx-noquote"},
-      {a_MAILCAP_F_TESTONCE, " x-mailx-test-once"},
-      {mx_MIMETYPE_HDL_TMPF, " x-mailx-tmpfile"},
-      {mx_MIMETYPE_HDL_TMPF_FILL, " x-mailx-tmpfile-fill"},
-      {mx_MIMETYPE_HDL_TMPF_UNLINK, " x-mailx-tmpfile-unlink\0"}
-   };
-
    struct n_string s_b, *s;
    struct a_mailcap_hdl const *mchp;
    struct n_strlist *slp;
@@ -878,19 +874,20 @@ a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
       if(mchp->mch_flags != 0){
          a_MAILCAP_DUMP_SEP_INJ(boole any = FAL0, (void)0);
 
-         for(i = 0; i < NELEM(fa); ++i){
-            if(mchp->mch_flags & fa[i].a_f){
+         for(i = 0; i < NELEM(a_mailcap_flags); ++i){
+            if(mchp->mch_flags & a_mailcap_flags[i].mcf_flags){
                uz j;
 
                s = n_string_push_c(s, ';');
                ++lo;
-               j = su_cs_len(fa[i].a_n);
+               j = su_cs_len(a_mailcap_flags[i].mcf_name);
                if(a_MAILCAP_DUMP_SEP_INJ(!any, FAL0) || lo + j >= 76){
                   s = n_string_push_buf(s, "\\\n ", sizeof("\\\n ") -1);
                   lo = 1;
                }
                lx = s->s_len;
-               s = n_string_push_buf(s, fa[i].a_n, j);
+               s = n_string_push_c(s, ' ');
+               s = n_string_push_buf(s, a_mailcap_flags[i].mcf_name, j);
                lo += s->s_len - lx;
                a_MAILCAP_DUMP_SEP_INJ(any = TRU1, (void)0);
             }
@@ -1086,21 +1083,24 @@ mx_mailcap_handler(struct mx_mimetype_handler *mthp, char const *ct,
       enum sendaction action, struct mimepart const *mpp){
    union {void *v; char const *c; struct a_mailcap_hdl *mch;} p;
    boole wildcard;
+   struct a_mailcap_hdl *mchp;
    NYD_IN;
    UNUSED(mpp);
 
+   mchp = NIL;
+
    /* For now we support that only, too */
-   ASSERT_NYD_EXEC(action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+   ASSERT_NYD(action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
       action == SEND_TODISP || action == SEND_TODISP_ALL ||
-      action == SEND_TODISP_PARTS, mthp = NIL);
+      action == SEND_TODISP_PARTS);
 
    if(ok_blook(mailcap_disable))
-      goto jleave0;
+      goto jleave;
 
    if(a_mailcap_dp == NIL)
       a_mailcap_create();
    if(su_cs_dict_count(a_mailcap_dp) == 0)
-      goto jleave0;
+      goto jleave;
 
    /* Walk over the list of handlers and check whether one fits */
    wildcard = FAL0;
@@ -1110,6 +1110,9 @@ jagain:
       u32 f;
 
       f = p.mch->mch_flags;
+
+      if(f & a_MAILCAP_F_IGNORE)
+         continue;
 
       if(action == SEND_TODISP || action == SEND_TODISP_ALL){
          /*if(f & mx_MIMETYPE_HDL_ASYNC)
@@ -1136,6 +1139,7 @@ jagain:
 
             mx_child_ctx_setup(&cc);
             cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+            cc.cc_fds[0] = cc.cc_fds[1] = mx_CHILD_FD_NULL;
             cc.cc_cmd = ok_vlook(SHELL);
             cc.cc_args[0] = "-c";
             cc.cc_args[1] = &R(char const*,&p.mch[1]
@@ -1184,6 +1188,8 @@ jagain:
             mthp->mth_tmpf_nametmpl[1] == 's');
          mthp->mth_tmpf_nametmpl += 2;
       }
+
+      mchp = p.mch;
       goto jleave;
    }
 
@@ -1207,11 +1213,10 @@ jagain:
          goto jagain;
    }
 
-jleave0:
-   mthp = NIL;
 jleave:
    NYD_OU;
-   return (mthp != NIL);
+   return (mchp == NIL ? FAL0
+      : (mchp->mch_flags & a_MAILCAP_F_LAST_RESORT ? TRUM1 : TRU1));
 }
 
 #include "su/code-ou.h"

@@ -218,11 +218,12 @@ a_pop3_login(struct mailbox *mp, struct a_pop3_ctx *pcp){
       break;
 #ifdef mx_HAVE_GSSAPI
    case mx_CRED_AUTHTYPE_GSSAPI:
-      if(n_poption & n_PO_D)
+      if(n_poption & n_PO_D){
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if(!su_CONCAT(su_FILE,_gss)(mp->mb_sock, &pcp->pc_url,
-            &pcp->pc_cred, mp))
-         goto jleave;
+         rv = OKAY;
+      }else
+         rv = su_CONCAT(su_FILE,_gss)(mp->mb_sock, &pcp->pc_url, &pcp->pc_cred,
+               mp) ? OKAY : STOP;
       break;
 #endif
    default:
@@ -407,6 +408,7 @@ jleave:
 
 static enum okay
 a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
+   struct str s;
    char *cp;
    uz cnt;
    enum okay rv;
@@ -415,10 +417,14 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    rv = STOP;
 
    /* Calculate required storage */
-   cnt = pcp->pc_cred.cc_user.l;
 #define a_MAX \
    (sizeof("AUTH EXTERNAL ") -1 + sizeof(NETNL) -1 +1)
 
+   cnt = 0;
+   if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+      cnt = pcp->pc_cred.cc_user.l;
+      cnt = b64_encode_calc_size(cnt);
+   }
    if(cnt >= UZ_MAX - a_MAX){
       n_err(_("Credentials overflow buffer sizes\n"));
       goto j_leave;
@@ -426,18 +432,20 @@ a_pop3_auth_external(struct mailbox *mp, struct a_pop3_ctx const *pcp){
    cnt += a_MAX;
 #undef a_MAX
 
-   cp = n_lofi_alloc(cnt);
+   cp = n_lofi_alloc(cnt +1);
 
    su_mem_copy(cp, NETLINE("AUTH EXTERNAL"),
       sizeof(NETLINE("AUTH EXTERNAL")));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
-   if(pcp->pc_cred.cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON)
-      cnt = 0;
-   else
-      su_mem_copy(&cp[0], pcp->pc_cred.cc_user.s,
-         cnt = pcp->pc_cred.cc_user.l);
+   cnt = 0;
+   if(pcp->pc_cred.cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+      s.s = cp;
+      b64_encode_buf(&s, pcp->pc_cred.cc_user.s, pcp->pc_cred.cc_user.l,
+         B64_BUF);
+      cnt = s.l;
+   }
    su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
    a_POP3_OUT(rv, cp, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
@@ -654,7 +662,7 @@ a_pop3_list(struct mailbox *mp, int n, uz *size){
    enum okay rv;
    NYD_IN;
 
-   snprintf(o, sizeof o, "LIST %u" NETNL, n);
+   snprintf(o, sizeof o, "LIST %d" NETNL, n);
    a_POP3_OUT(rv, o, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 
@@ -769,10 +777,10 @@ a_pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need){
 jretry:
    switch(need){
    case NEED_HEADER:
-      snprintf(o, sizeof o, "TOP %u 0" NETNL, number);
+      snprintf(o, sizeof o, "TOP %d 0" NETNL, number);
       break;
    case NEED_BODY:
-      snprintf(o, sizeof o, "RETR %u" NETNL, number);
+      snprintf(o, sizeof o, "RETR %d" NETNL, number);
       break;
    case NEED_UNSPEC:
       n_panic("net-pop3.c bug\n");
@@ -899,7 +907,7 @@ a_pop3_delete(struct mailbox *mp, int n){
    enum okay rv;
    NYD_IN;
 
-   snprintf(o, sizeof o, "DELE %u" NETNL, n);
+   snprintf(o, sizeof o, "DELE %d" NETNL, n);
    a_POP3_OUT(rv, o, MB_COMD, goto jleave);
    a_POP3_ANSWER(rv, goto jleave);
 jleave:

@@ -1128,7 +1128,7 @@ maildir_append(char const *name, FILE *fp, long offset)
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
              is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
-            if ((rv = maildir_append1(tsp, name, fp, off1, size, flag)) == STOP)
+            if((rv = maildir_append1(tsp, name, fp, off1, size, flag)) == STOP)
                goto jfree;
             n_autorec_relax_unroll();
             if (fseek(fp, offs + buflen, SEEK_SET) == -1) {

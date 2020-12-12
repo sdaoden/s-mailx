@@ -180,7 +180,7 @@ static enum mx_mimetype a_mimetype_classify_o_s_part(u32 mce,
  * to the defined trigger characters; upon entry MIMETYPE_HDL_NIL is set, and
  * that is not changed if mthp does not apply */
 static BITENUM_IS(u32,mx_mimetype_handler_flags) a_mimetype_pipe_check(
-      struct mx_mimetype_handler *mthp);
+      struct mx_mimetype_handler *mthp, enum sendaction action);
 
 static void
 a_mimetype_init(void){
@@ -880,7 +880,8 @@ jleave:
 }
 
 static BITENUM_IS(u32,mx_mimetype_handler_flags)
-a_mimetype_pipe_check(struct mx_mimetype_handler *mthp){
+a_mimetype_pipe_check(struct mx_mimetype_handler *mthp,
+      enum sendaction action){
    char const *cp;
    BITENUM_IS(u32,mx_mimetype_handler_flags) rv_orig, rv;
    NYD2_IN;
@@ -934,7 +935,7 @@ jnextc:
       rv |= mx_MIMETYPE_HDL_TMPF;
 
    /* Exceptions */
-   if(rv & mx_MIMETYPE_HDL_ISQUOTE){
+   if(action == SEND_QUOTE || action == SEND_QUOTE_ALL){
       if(rv & mx_MIMETYPE_HDL_NOQUOTE)
          goto jerr;
       /* Cannot fetch data back from asynchronous process */
@@ -1438,11 +1439,10 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
    su_mem_set(mthp, 0, sizeof *mthp);
    buf = NIL;
+   xrv = rv = mx_MIMETYPE_HDL_NIL;
 
-   rv = mx_MIMETYPE_HDL_NIL;
-   if(action == SEND_QUOTE || action == SEND_QUOTE_ALL) /* TODO  rude */
-      rv |= mx_MIMETYPE_HDL_ISQUOTE; /* TODO HACK (even for no reason) */
-   else if(action != SEND_TODISP && action != SEND_TODISP_ALL &&
+   if(action != SEND_QUOTE && action != SEND_QUOTE_ALL &&
+         action != SEND_TODISP && action != SEND_TODISP_ALL &&
          action != SEND_TODISP_PARTS)
       goto jleave;
 
@@ -1469,7 +1469,7 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
          *cp = su_cs_to_lower(*cp);
 
       if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
-         rv = a_mimetype_pipe_check(mthp);
+         rv = a_mimetype_pipe_check(mthp, action);
          goto jleave;
       }
    }
@@ -1485,20 +1485,26 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
    /* II.: *pipe-TYPE/SUBTYPE* */
    if((mthp->mth_shell_cmd = n_var_vlook(buf, FAL0)) != NIL){
-      rv = a_mimetype_pipe_check(mthp);
+      rv = a_mimetype_pipe_check(mthp, action);
       goto jleave;
    }
 
    /* III. RFC 1524 / Mailcap lookup */
 #ifdef mx_HAVE_MAILCAP
-   if(mx_mailcap_handler(mthp, cs, action, mpp)){
+   switch(mx_mailcap_handler(mthp, cs, action, mpp)){
+   case TRU1:
       rv = mthp->mth_flags;
       goto jleave;
+   case TRUM1:
+      xrv = mthp->mth_flags; /* "Use at last-resort" handler */
+      break;
+   default:
+      break;
    }
 #endif
 
    /* IV. and final: `mimetype' type-marker extension induced handler */
-   if(a_mimetype_by_name(&mtl, cs) != NIL)
+   if(a_mimetype_by_name(&mtl, cs) != NIL){
       switch(mtl.mtl_node->mtn_flags & a_MIMETYPE__TM_MARKMASK){
 #ifndef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MIMETYPE_TM_SOUP_H:
@@ -1526,6 +1532,11 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
       default:
          break;
       }
+   }
+
+   /* Last-resort, anyone? */
+   if(xrv != mx_MIMETYPE_HDL_NIL)
+      rv = xrv;
 
 jleave:
    if(buf != NIL)

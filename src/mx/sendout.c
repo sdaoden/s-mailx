@@ -519,6 +519,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
       if(charset == NIL || ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS ||
             ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
          do_iconv = FAL0;
+
       if(force && do_iconv){
          convert = CONV_TOB64;
          ap->a_content_type = ct = "application/octet-stream";
@@ -564,7 +565,9 @@ jerr_header:
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
    if (do_iconv) {
-      if (su_cs_cmp_case(charset, ap->a_input_charset) &&
+      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
+       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
+      if (/*su_cs_cmp_case(charset, ap->a_input_charset) &&*/
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
                ) == (iconv_t)-1 && (err = su_err_no()) != 0) {
          if (err == su_ERR_INVAL)
@@ -820,10 +823,12 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
    tcs = ok_vlook(ttycharset);
 
-   if ((convhdr = need_hdrconv(hp))) {
-      if (iconvd != (iconv_t)-1) /* XXX  */
+   if((convhdr = need_hdrconv(hp))){
+      if(iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
-      if (su_cs_cmp_case(convhdr, tcs) != 0 &&
+      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
+       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
+      if(/*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE)
          goto jiconv_err;
@@ -843,7 +848,9 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
 #ifdef mx_HAVE_ICONV
    if(do_iconv && charset != NIL){ /*TODO charset->mimetype_classify_file*/
-      if(su_cs_cmp_case(charset, tcs) != 0 &&
+      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
+       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
+      if(/*su_cs_cmp_case(charset, tcs) != 0 &&*/
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE){
 jiconv_err:
@@ -1982,7 +1989,7 @@ a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
          goto jleave;
    }
 
-   if ((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NULL)
+   if((mdn = n_UNCONST(check_from_and_sender(fromfield, senderfield))) == NIL)
       goto jleave;
    if (!_check_dispo_notif(mdn, NULL, fo))
       goto jleave;
@@ -2557,7 +2564,7 @@ do {\
             }
          }
 
-         /* But for that, we have to remove all incarnations of ourselves first.
+         /* But for that, remove all incarnations of ourselves first.
           * TODO It is total crap that we have alternates_remove(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
@@ -2708,13 +2715,13 @@ jto_fmt:
             if (sublen > 0 &&
                   xmime_write(sub, sublen, fo,
                      (!nodisp ? CONV_NONE : CONV_TOHDR),
-                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
+                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
                goto jleave;
          }
          /* This may be, e.g., a Fwd: XXX yes, unfortunately we do like that */
          else if (*sub != '\0') {
-            if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
+            if(xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NIL,NIL) < 0)
                goto jleave;
          }
       }

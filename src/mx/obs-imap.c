@@ -254,11 +254,11 @@ static enum okay  imap_delete(struct mailbox *mp, int n, struct message *m,
 static enum okay  imap_close(struct mailbox *mp);
 static enum okay  imap_update(struct mailbox *mp);
 static enum okay  imap_store(struct mailbox *mp, struct message *m, int n,
-                     int c, const char *sp, int needstat);
+                     int c, const char *xsp, int needstat);
 static enum okay  imap_unstore(struct message *m, int n, const char *flag);
 static const char *tag(int new);
 static char *     imap_putflags(int f);
-static void       imap_getflags(const char *cp, char const **xp, enum mflag *f);
+static void       imap_getflags(const char *cp, char const **xp,enum mflag *f);
 static enum okay  imap_append1(struct mailbox *mp, const char *name, FILE *fp,
                      off_t off1, long xsize, enum mflag flag, time_t t);
 static enum okay  imap_append0(struct mailbox *mp, const char *name, FILE *fp,
@@ -552,11 +552,12 @@ imap_path_encode(char const *cp, boole *err_or_null){
          be16p = be16p_base;
 
          for(; utf32 >= 3; be16p += 3, utf32 -= 3){
-            out.s[out.l+0] = mb64ct[                            be16p[0] >> 2 ];
-            out.s[out.l+1] = mb64ct[((be16p[0] & 0x03) << 4) | (be16p[1] >> 4)];
-            out.s[out.l+2] = mb64ct[((be16p[1] & 0x0F) << 2) | (be16p[2] >> 6)];
-            out.s[out.l+3] = mb64ct[  be16p[2] & 0x3F];
+            uz i = out.l;
             out.l += 4;
+            out.s[i + 0] = mb64ct[                            be16p[0] >> 2 ];
+            out.s[i + 1] = mb64ct[((be16p[0] & 0x03) << 4) | (be16p[1] >> 4)];
+            out.s[i + 2] = mb64ct[((be16p[1] & 0x0F) << 2) | (be16p[2] >> 6)];
+            out.s[i + 3] = mb64ct[  be16p[2] & 0x3F];
          }
          if(utf32 > 0){
             out.s[out.l + 0] = mb64ct[be16p[0] >> 2];
@@ -1598,6 +1599,7 @@ jleave:
 
 static enum okay
 a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
+   struct str s;
    uz cnt;
    boole nsaslir;
    char *cp;
@@ -1608,6 +1610,7 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    rv = STOP;
    queuefp = NIL;
    cp = NIL;
+
    nsaslir = !(mp->mb_flags & MB_SASL_IR);
 
    if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
@@ -1616,17 +1619,22 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    }
 
    /* Calculate required storage */
-   cnt = ccp->cc_user.l;
 #define a_MAX \
    (sizeof("T1 ") -1 +\
    sizeof("AUTHENTICATE EXTERNAL ") -1 +\
     sizeof(NETNL) -1 +1)
 
+   if(ccp->cc_authtype == mx_CRED_AUTHTYPE_EXTERNANON){
+      ccp->cc_user.s = UNCONST(char*,"=");
+      cnt = ccp->cc_user.l = !nsaslir;
+   }else{
+      cnt = ccp->cc_user.l;
+      cnt = b64_encode_calc_size(cnt);
+   }
    if(cnt >= UZ_MAX - a_MAX){
       n_err(_("Credentials overflow buffer sizes\n"));
       goto jleave;
    }
-
    cnt += a_MAX;
 #undef a_MAX
 
@@ -1644,8 +1652,14 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
    cnt += sizeof(" AUTHENTICATE EXTERNAL ") -1 - 1;
 
    if(!nsaslir){
-      su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
-      cnt += ccp->cc_user.l;
+      if(ccp->cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+         s.s = &cp[++cnt];
+         b64_encode_buf(&s, ccp->cc_user.s, ccp->cc_user.l, B64_BUF);
+         cnt += s.l;
+      }else{
+         su_mem_copy(&cp[++cnt], ccp->cc_user.s, ccp->cc_user.l);
+         cnt += ccp->cc_user.l;
+      }
    }
    su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
 
@@ -1658,8 +1672,15 @@ a_imap_external(struct mailbox *mp, struct mx_cred_ctx *ccp){
       if(response_type != RESPONSE_CONT)
          goto jleave;
 
-      su_mem_copy(cp, ccp->cc_user.s, ccp->cc_user.l);
-      su_mem_copy(&cp[ccp->cc_user.l], NETNL, sizeof(NETNL));
+      if(ccp->cc_authtype != mx_CRED_AUTHTYPE_EXTERNANON){
+         s.s = &cp[cnt = 0];
+         b64_encode_buf(&s, ccp->cc_user.s, ccp->cc_user.l, B64_BUF);
+         cnt = s.l;
+      }else{
+         su_mem_copy(&cp[0], ccp->cc_user.s, ccp->cc_user.l);
+         cnt = ccp->cc_user.l;
+      }
+      su_mem_copy(&cp[cnt], NETNL, sizeof(NETNL));
 
       IMAP_XOUT(cp, MB_COMD, goto jleave, goto jleave);
    }
@@ -1885,9 +1906,11 @@ _imap_getcred(struct mailbox *mbp, struct mx_cred_ctx *ccredp,
    if (ok_vlook(v15_compat) != su_NIL)
       rv = mx_cred_auth_lookup(ccredp, urlp);
    else {
-      char *var, *old,
-         *xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
-               : urlp->url_u_h_p.s);
+      char *xuhp, *var, *old;
+
+      xuhp = ((urlp->url_flags & mx_URL_HAD_USER) ? urlp->url_eu_h_p.s
+            : urlp->url_u_h_p.s);
+      UNINIT(old, NIL);
 
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
@@ -2362,7 +2385,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    else {
       if (check_expunged() == STOP)
          goto out;
-      snprintf(o, sizeof o, "%s FETCH %u (%s)\r\n", tag(1), number, item);
+      snprintf(o, sizeof o, "%s FETCH %d (%s)\r\n", tag(1), number, item);
    }
    IMAP_OUT(o, MB_COMD, goto out)
    for (;;) {
@@ -2503,7 +2526,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
    else {
       if (check_expunged() == STOP)
          return STOP;
-      snprintf(o, sizeof o, "%s FETCH %u:%u (RFC822.HEADER)\r\n",
+      snprintf(o, sizeof o, "%s FETCH %d:%d (RFC822.HEADER)\r\n",
          tag(1), bot, topp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
@@ -2859,8 +2882,8 @@ jleave:
 }
 
 static enum okay
-imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
-   int needstat)
+imap_store(struct mailbox *mp, struct message *m, int n, int c,
+   const char *xsp, int needstat)
 {
    char o[LINESIZE];
    FILE *queuefp = NULL;
@@ -2870,11 +2893,12 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
       return STOP;
    if (m->m_uid)
       snprintf(o, sizeof o, "%s UID STORE %" PRIu64 " %cFLAGS (%s)\r\n",
-         tag(1), m->m_uid, c, xsp);
+         tag(1), m->m_uid, S(char,c), xsp);
    else {
       if (check_expunged() == STOP)
          return STOP;
-      snprintf(o, sizeof o, "%s STORE %u %cFLAGS (%s)\r\n", tag(1), n, c, xsp);
+      snprintf(o, sizeof o, "%s STORE %d %cFLAGS (%s)\r\n",
+         tag(1), n, S(char,c), xsp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
    if (needstat)
@@ -2939,13 +2963,14 @@ imap_unstore(struct message *m, int n, const char *flag)
 static const char *
 tag(int new)
 {
-   static char ts[20];
+   static char ts[24];
    static long n;
    NYD2_IN;
 
-   if (new)
+   if(new)
       ++n;
-   snprintf(ts, sizeof ts, "T%lu", n);
+   snprintf(ts, sizeof ts, "T%ld", n);
+
    NYD2_OU;
    return ts;
 }
@@ -3642,7 +3667,7 @@ again:
    else {
       if (check_expunged() == STOP)
          goto out;
-      snprintf(o, sizeof o, "%s COPY %u %s\r\n", tag(1), n, qname);
+      snprintf(o, sizeof o, "%s COPY %d %s\r\n", tag(1), n, qname);
    }
    IMAP_OUT(o, MB_COMD, goto out)
    while (mp->mb_active & MB_COMD)

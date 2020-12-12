@@ -47,6 +47,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 
@@ -123,8 +124,8 @@ enum a_go_flags{
     * back in n_go_macro(), that enters a for(;;) loop that directly calls
     * c_call() -- our `xcall' stack avoidance optimization --, yet this call
     * will itself end up in a new n_go_macro(), and if that again ends up with
-    * `xcall' this should teardown and leave its own n_go_macro(), unrolling the
-    * stack "up to the barrier level", but which effectively still is the
+    * `xcall' this should teardown and leave its own n_go_macro(), unrolling
+    * the stack "up to the barrier level", but which effectively still is the
     * n_go_macro() that lost its a_go_input and is looping the `xcall'
     * optimization loop.  If no `xcall' is desired that loop is simply left and
     * the _event_loop() of the outer a_go_ctx will perform a loop tick and
@@ -135,7 +136,7 @@ enum a_go_flags{
 };
 
 enum a_go_cleanup_mode{
-   a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all contexts except outermost */
+   a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all ctxs except outermost */
    a_GO_CLEANUP_TEARDOWN = 1u<<1,   /* Teardown current context */
    a_GO_CLEANUP_LOOPTICK = 1u<<2,   /* Normal looptick cleanup */
    a_GO_CLEANUP_MODE_MASK = su_BITENUM_MASK(0, 2),
@@ -534,12 +535,20 @@ jwhite:
       case mx_CMD_ARG_TYPE_MSGLIST:
       case mx_CMD_ARG_TYPE_NDMLIST:
       case mx_CMD_ARG_TYPE_WYSH:
-      case mx_CMD_ARG_TYPE_ARG:
-         for(s = n_string_creat_auto(&s_b);;){
+      case mx_CMD_ARG_TYPE_ARG:{
+         boole once;
+
+         emsg = line.s;
+         for(once = FAL0, s = n_string_creat_auto(&s_b);; once = TRU1){
             su_u32 shs;
 
-            shs = n_shexp_parse_token(n_SHEXP_PARSE_META_SEMICOLON, s, &line,
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON |
+                     n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_TRIM_SPACE |
+                     n_SHEXP_PARSE_TRIM_IFSSPACE), s, &line,
                   NULL);
+            if(!once && (flags & a_IS_EMPTY) && s->s_len != 0)
+               n_err(_("The empty (default) command is ignored here, "
+                     "but has arguments: %s\n"), emsg);
             if(line.l == 0)
                break;
             if(shs & n_SHEXP_STATE_META_SEMICOLON){
@@ -548,7 +557,7 @@ jwhite:
                break;
             }
          }
-         break;
+         }break;
       case mx_CMD_ARG_TYPE_RAWDAT:
       case mx_CMD_ARG_TYPE_STRING:
       case mx_CMD_ARG_TYPE_RAWLIST:
@@ -610,13 +619,26 @@ jeflags:
       goto jleave;
    }
 
-   if(cdp->cd_caflags & mx_CMD_ARG_O)
-      n_OBSOLETE2(_("command will be removed"), cdp->cd_name);
+   if((cdp->cd_caflags & mx_CMD_ARG_O) && /* XXX Remove! -> within command! */
+         !su_state_has(su_STATE_REPRODUCIBLE)){
+      static struct su_cs_dict a_go__obsol, *a_go_obsol;
+
+      if(UNLIKELY(a_go_obsol == NIL)) /* XXX atexit cleanup */
+         a_go_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_go__obsol, (su_CS_DICT_POW2_SPACED |
+                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+
+      if(UNLIKELY(!su_cs_dict_has_key(a_go_obsol, cdp->cd_name))){
+         su_cs_dict_insert(a_go_obsol, cdp->cd_name, NIL);
+         n_err(_("Obsoletion warning: command will be removed: %s\n"),
+            cdp->cd_name);
+      }
+   }
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
-    * TODO argument state should be property of a per-command carrier instead */
+    * TODO argument state should be property of a per-cmd carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if(flags & a_WYSH){
@@ -1154,7 +1176,8 @@ a_go_file(char const *file, boole silent_open_error){
    FILE *fip;
    NYD_IN;
 
-   fip = NULL;
+   fip = NIL;
+   UNINIT(nbuf, NIL);
 
    /* Being a command argument file is space-trimmed *//* TODO v15 with
     * TODO WYRALIST this is no longer necessary true, and for that we
@@ -1268,7 +1291,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    n_sighdl_t soldhdl;
    struct a_go_eval_ctx gec;
    enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
-   volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
+   volatile int hadint;/* TODO get rid of shitty signal stuff (see signal.c) */
    sigset_t osigmask;
    NYD2_IN;
 
@@ -1397,7 +1420,7 @@ n_go_main_loop(void){ /* FIXME */
          a_go_cleanup(a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
       /* TODO This condition test may not be here: if the condition is not true
-       * TODO a recursive mainloop object without that cruft should be used!! */
+       * TODO a recursive mainloop object without that cruft should be used! */
       if(!(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
          if(a_go_ctx->gc_inject == su_NIL)
             mx_fs_linepool_cleanup(FAL0);
@@ -1518,6 +1541,11 @@ n_go_main_loop(void){ /* FIXME */
       mx_sigs_all_holdx();
 
       n_pstate &= ~n_PS_ERRORS_NEED_PRINT_ONCE;
+      switch(n_pstate & n_PS_ERR_EXIT_MASK){
+      case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
+      case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
+      default: break;
+      }
 
       if(gec.gec_hist_flags & a_GO_HIST_ADD){
          char const *cc, *ca;
@@ -1544,24 +1572,16 @@ n_go_main_loop(void){ /* FIXME */
 
       mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
 
-      switch(n_pstate & n_PS_ERR_EXIT_MASK){
-      case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
-      case n_PS_ERR_QUIT: n_psonce |= n_PSO_QUIT; break;
-      default: break;
-      }
-      if(n_psonce & n_PSO_EXIT_MASK)
-         break;
-
-      if(!rv)
+      if((n_psonce & n_PSO_EXIT_MASK) || !rv)
          break;
    }
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
-
    mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();
+
    NYD_OU;
    return rv;
 }
@@ -1848,8 +1868,8 @@ jforce_stdin:
       if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
          break;
 
-      /* Definitely outside of quotes, thus the quoting rules are so that an
-       * uneven number of successive reverse solidus at EOL is a continuation */
+      /* Definitely outside of quotes, thus quoting rules are so that an uneven
+       * number of successive reverse solidus at EOL is a continuation */
       if(n > 1){
          uz i, j;
 
@@ -1865,9 +1885,12 @@ jforce_stdin:
    if(n < 0)
       goto jleave;
 
+   (*linebuf)[*linesize = n] = '\0';
+
    if(f & a_USE_MLE)
       n_pstate |= n_PS_READLINE_NL;
-   (*linebuf)[*linesize = n] = '\0';
+   else if(n == 0 || su_cs_is_space(**linebuf))
+      f &= ~a_HISTOK;
 
 jhave_dat:
    if(n_poption & n_PO_D_VVV)
@@ -2296,7 +2319,7 @@ FL int
 c_eval(void *vp){
    /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
     * TODO ARGV with shell rules, but if that is not possible then simply
-    * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
+    * TODO adjust argv/argc of "the CmdCtx" that we will have exec real cmd */
    struct a_go_eval_ctx gec;
    struct n_string s_b, *s;
    uz i, j;

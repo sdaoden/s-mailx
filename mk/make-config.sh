@@ -282,6 +282,7 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
+#cc_os_search=
 #cc_no_stackprot=
 #cc_no_fortify=
 #ld_need_R_flags=
@@ -323,17 +324,10 @@ os_setup() {
       LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${DYLD_LIBRARY_PATH}
    elif [ ${OS} = sunos ]; then
       msg ' . have special SunOS / Solaris "setup" rules ...'
+      cc_os_search=_cc_os_sunos
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      if feat_yes AUTOCC && acmd_set CC cc; then
-         msg ' . have special UnixWare environmental rules ...'
-         feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
-
-         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
-         export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 ld_need_R_flags=-R
-      fi
+      cc_os_search=_cc_os_unixware
    elif [ -n "${VERBOSE}" ]; then
       msg ' . no special treatment for this system necessary or known'
    fi
@@ -379,18 +373,9 @@ _os_setup_sunos() {
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
-   if feat_yes AUTOCC; then
-      if acmd_set CC cc; then
-         feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
-
-         CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-         LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
-         export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 ld_need_R_flags=-R
-      else
-         cc_maxopt=2 cc_no_stackprot=1
-      fi
-   fi
+   msg 'Whatever $CC, turning off stack protection (see INSTALL)!'
+   cc_maxopt=2 cc_no_stackprot=1
+   return 1
 }
 
 # Check out compiler ($CC) and -flags ($CFLAGS)
@@ -416,6 +401,9 @@ cc_setup() {
          acmd_set CC tcc || acmd_set CC pcc ||
          acmd_set CC c89 || acmd_set CC c99; then
       :
+
+   elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
+      :
    else
       msg 'boing booom tschak'
       msg 'ERROR: I cannot find a compiler!'
@@ -430,6 +418,35 @@ cc_setup() {
    *pcc*) cc_no_fortify=1;;
    *) ;;
    esac
+}
+
+_cc_os_unixware() {
+   if feat_yes AUTOCC && acmd_set CC cc; then
+      msg ' . have special UnixWare environmental rules ...'
+      feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
+
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      export CC CFLAGS LDFLAGS
+      OPT_AUTOCC=0 ld_need_R_flags=-R
+      return 0
+   fi
+   return 1
+}
+
+_cc_os_sunos() {
+   if feat_yes AUTOCC && acmd_set CC cc; then
+      feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
+
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      export CC CFLAGS LDFLAGS
+      OPT_AUTOCC=0 ld_need_R_flags=-R
+      return 0
+   else
+      : # cc_maxopt=2 cc_no_stackprot=1
+   fi
+   return 1
 }
 
 _cc_default() {
@@ -451,23 +468,23 @@ _cc_default() {
 }
 
 cc_create_testfile() {
-   ${cat} > ${tmp}.c <<-\!
-		#include <stdio.h>
-		#include <string.h>
-		static void doit(char const *s);
-		int
-		main(int argc, char **argv){
-		   (void)argc;
-		   (void)argv;
-		   doit("Hello world");
-		   return 0;
-		}
-		static void
-		doit(char const *s){
-		   char buf[12];
-		   memcpy(buf, s, strlen(s) +1);
-		   puts(s);
-		}
+   ${cat} > ${tmp}.c <<\!
+#include <stdio.h>
+#include <string.h>
+static void doit(char const *s);
+int
+main(int argc, char **argv){
+   (void)argc;
+   (void)argv;
+   doit("Hello world");
+   return 0;
+}
+static void
+doit(char const *s){
+   char buf[12];
+   memcpy(buf, s, strlen(s) +1);
+   puts(s);
+}
 !
 }
 
@@ -593,6 +610,8 @@ _cc_flags_generic() {
          cc_check -Wbad-function-cast
          cc_check -Wcast-align
          cc_check -Wcast-qual
+         cc_check -Wformat-security # -Wformat via -Wall
+            cc_check -Wformat-signedness
          cc_check -Winit-self
          cc_check -Wmissing-prototypes
          cc_check -Wshadow
@@ -631,7 +650,6 @@ _cc_flags_generic() {
                msg ' ! Not checking for -D_FORTIFY_SOURCE=2 compiler option,'
                msg ' ! since that caused errors in a "similar" configuration.'
                msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
-
             fi
          fi
       else
@@ -754,18 +772,6 @@ unset t1
 
 config_exit() {
    exit ${1}
-}
-
-msg() {
-   fmt=${1}
-   shift
-   printf >&2 -- "${fmt}\n" "${@}"
-}
-
-msg_nonl() {
-   fmt=${1}
-   shift
-   printf >&2 -- "${fmt}" "${@}"
 }
 
 # Our feature check environment
@@ -970,7 +976,7 @@ option_evaluate() {
    # Set booleans to 0 or 1, or require, set _feats_eval_done=1
    ${rm} -f ${newenv} ${newmk}
 
-   exec 5<&0 6>&1 <${tmp} >${newenv}
+   exec 7<&0 8>&1 <${tmp} >${newenv}
    while read line; do
       z=
       if [ -n "${good_shell}" ]; then
@@ -1009,10 +1015,10 @@ option_evaluate() {
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
       printf -- "${i} = ${j}\n" >> ${newmk}
-      printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`"
+      printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`"
       eval "${i}=\"${j}\""
    done
-   exec 0<&5 1>&6 5<&- 6<&-
+   exec 0<&7 1>&8 7<&- 8<&-
 
    _feats_eval_done=1
 }
@@ -1148,7 +1154,7 @@ cc_check() {
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
-   ) >/dev/null 2>&1
+   ) >/dev/null
    if [ $? -eq 0 ]; then
       _CFLAGS="${_CFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1167,7 +1173,7 @@ ld_check() {
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
-   ) >/dev/null 2>&1
+   ) >/dev/null
    if [ $? -eq 0 ]; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1314,6 +1320,18 @@ squeeze_ws() {
 
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
 
+msg() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}\n" "${@}"
+}
+
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}" "${@}"
+}
+
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
 os_early_setup
@@ -1358,6 +1376,24 @@ if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
    msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
    exit 1
 fi
+
+# !!
+log="${OBJDIR}"/mk-config.log
+exec 5>&2 > ${log} 2>&1
+
+msg() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}\n" "${@}"
+   printf -- "${fmt}\n" "${@}" >&5
+}
+
+msg_nonl() {
+   fmt=${1}
+   shift
+   printf -- "${fmt}" "${@}"
+   printf -- "${fmt}" "${@}" >&5
+}
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1457,7 +1493,7 @@ msg 'done'
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
-printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT; " >> ${newenv}
+printf "VAL_UAGENT=${VAL_SID}${VAL_MAILX};export VAL_UAGENT\n" >> ${newenv}
 
 # The problem now is that the test should be able to run in the users linker
 # and path environment, so we need to place the test: rule first, before
@@ -1478,7 +1514,7 @@ printf \
 # Add the known utility and some other variables
 printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
 printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
-printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK; ' \
+printf 'VAL_PS_DOTLOCK=%s;export VAL_PS_DOTLOCK\n' \
    "${VAL_SID}${VAL_MAILX}-dotlock" >> ${newenv}
 if feat_yes DOTLOCK; then
    printf "#real below OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
@@ -1495,7 +1531,7 @@ for i in \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
+   printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
 done
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -1533,24 +1569,20 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j="\$${i}"
-   printf -- "${i}=%s;export ${i}; " "`quote_string ${j}`" >> ${newenv}
+   printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
 done
-
-# Note that makefile reads and eval'uates one line of this file, whereas other
-# consumers source it via .(1)
-printf "\n" >> ${newenv}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
 config_updated=
 if [ -f ${env} ] && ${cmp} ${newenv} ${env} >/dev/null 2>&1; then
-   echo 'Configuration is up-to-date'
+   msg 'Configuration is up-to-date'
    exit 0
 elif [ -f ${env} ]; then
    config_updated=1
-   echo 'Configuration has been updated..'
+   msg 'Configuration has been updated..'
 else
-   echo 'Shiny configuration..'
+   msg 'Shiny configuration..'
 fi
 
 ### WE ARE STARTING OVER ###
@@ -1570,7 +1602,6 @@ ${mv} -f ${newmk} ${mk}
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
-log="${OBJDIR}"/mk-config.log
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
@@ -1594,8 +1625,6 @@ msg_nonl() {
    printf -- "${fmt}" "${@}" >&5
 }
 
-# !!
-exec 5>&2 > ${log} 2>&1
 
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
@@ -1631,13 +1660,14 @@ fi
 printf '#define su_PAGE_SIZE %su\n' "${i}" >> ${h}
 
 # Generate SU <> OS error number mappings
-dump_test_program=0
-(
-   feat_yes DEVEL && NV= || NV=noverbose
-   SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
-      ${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} config
-) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
-dump_test_program=1
+msg_nonl ' . OS error mapping table generated ... '
+feat_yes DEVEL && NV= || NV=noverbose
+SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" rm="${rm}" sort="${sort}" \
+      ${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} compile_time || {
+   msg 'no'
+   config_exit 1
+}
+msg 'yes'
 
 ## /SU
 
@@ -1875,7 +1905,7 @@ int main(void){
 then
    :
 else
-   msg 'ERROR: we require termios.h and the tc[gs]etattr() family of functions.'
+   msg 'ERROR: we require termios.h and the tc[gs]etattr() function family.'
    msg 'That much Unix we indulge ourselves.'
    config_exit 1
 fi
@@ -2001,7 +2031,8 @@ int main(void){
 
 ##
 
-link_check putc_unlocked 'putc_unlocked(3)' '#define mx_HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked(3)' \
+   '#define mx_HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void){
    putc_unlocked('@', stdout);
@@ -2195,7 +2226,8 @@ int main(void){
 }
 !
 
-link_check dirent_d_type 'struct dirent.d_type' '#define mx_HAVE_DIRENT_TYPE' << \!
+link_check dirent_d_type 'struct dirent.d_type' \
+   '#define mx_HAVE_DIRENT_TYPE' << \!
 #include <dirent.h>
 int main(void){
    struct dirent de;
@@ -2224,23 +2256,23 @@ int main(void){
    oul = sizeof oub;
    oubp = oub;
 
-   if((id = iconv_open("ascii", "utf-8")) == (iconv_t)-1)
+   if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
      return 1;
    if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
-      return 1;
+      return 14;
    iconv_close(id);
 
    *oubp = '\0';
    oul = (size_t)(oubp - oub);
    if(oul == 0)
-      return 1;
+      return 14;
    /* Character-wise replacement? */
    if(oul == 1){
       if(oub[0] == '?')
          return 2;
       if(oub[0] == '*')
          return 3;
-      return 1;
+      return 14;
    }
    /* Byte-wise replacement? */
    if(oul == sizeof("\342\200\223") -1){
@@ -2248,11 +2280,12 @@ int main(void){
          return 12;
       if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
          return 13;
-      return 1;
+      return 14;
    }
    return 0;
 }
 !
+
    < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
          '#define mx_HAVE_ICONV' ||
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
@@ -2262,6 +2295,10 @@ int main(void){
    if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
       case ${?} in
+      1)
+         msg 'WARN: disabling ICONV due to faulty conversion/restrictions'
+         feat_bail_required ICONV
+         ;;
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
       12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
@@ -3142,7 +3179,7 @@ int main(void){
       fprintf(stderr, "idn_encodename failed: %s\n", idn_result_tostring(r));
       return 1;
    }
-   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name, sizeof(local_name));
+   r = idn_decodename(IDN_DECODE_APP, ace_name, local_name,sizeof(local_name));
    if (r != idn_success) {
       fprintf(stderr, "idn_decodename failed: %s\n", idn_result_tostring(r));
       return 1;
@@ -3588,13 +3625,15 @@ msg ''
 while read l; do msg "${l}"; done < ${tmp}
 
 msg 'Setup:'
-msg ' . System-wide resource file: %s/%s' "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
+msg ' . System-wide resource file: %s/%s' \
+   "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
 msg ' . bindir: %s' "${VAL_BINDIR}"
 if feat_yes DOTLOCK; then
    msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
 fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
-msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' \
+   "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
 if feat_yes MAILCAP; then
    msg ' . Built-in $MAILCAPS path search: %s' "${VAL_MAILCAPS}"

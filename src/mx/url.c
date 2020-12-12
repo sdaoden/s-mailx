@@ -88,7 +88,7 @@ char *
    for(; (c1 = *cp) != '\0'; ++cp){
       /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
        *    ALPHA / DIGIT / "-" / "." / "_" / "~"
-       * However add a special is[file]path mode for file-system friendliness */
+       * However add special is[file]path mode for file-system friendliness */
       if(su_cs_is_alnum(c1) || c1 == '_')
          *np++ = c1;
       else if(!ispath) {
@@ -490,7 +490,8 @@ juser:
          if(urlp->url_user_enc.l != l ||
                su_mem_cmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
-            n_err(_("Incorrect URL percent encoding: %s\n"), ub);
+            n_err(_("Not URL percent encoded (use `urlcodec enc'): %s\n"),
+               ub);
             d = NIL;
          }
       }else

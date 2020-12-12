@@ -11,11 +11,12 @@
 #@   removed, but trailing whitespace before "escaped newlines" is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.19 / 2020-04-26
+#@ S-nail v14.9.20 / 2020-12-12
 
 ## Variables
 
-# The standard POSIX 2008/Cor 2-2016 mandates the following initial settings:
+# The standard POSIX 2008/Cor 2-2016 mandates the following initial settings
+# which are established independendly from this file:
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
@@ -52,8 +53,8 @@ set autocollapse
 # This is a traditional entry and should usually be set.
 set append
 
-# Ask for a message subject.
-set ask
+# Confirm sending of messages:
+set asksend
 
 # Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager

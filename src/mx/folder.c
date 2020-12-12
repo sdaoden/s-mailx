@@ -58,7 +58,7 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-/* Update mailname (if name != NULL) and displayname, return whether displayname
+/* Update mailname (if name != NIL) and displayname, return whether displayname
  * was large enough to swallow mailname */
 static boole  _update_mailname(char const *name);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
@@ -71,8 +71,38 @@ static void a_folder_info(void);
 /* Set up the input pointers while copying the mail file into /tmp */
 static void a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml);
 
+#ifdef mx_HAVE_C90AMEND1
+su_SINLINE uz
+__narrow_suffix(char const *cp, uz cpl, uz maxl)
+{
+   int err;
+   uz i, ok;
+   NYD_IN;
+
+   for (err = ok = i = 0; cpl > maxl || err;) {
+      int ml = mblen(cp, cpl);
+      if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
+         (void)mblen(NULL, 0);
+         err = 1;
+         ml = 1;
+      } else {
+         if (!err)
+            ok = i;
+         err = 0;
+         if (ml == 0)
+            break;
+      }
+      cp += ml;
+      i += ml;
+      cpl -= ml;
+   }
+   NYD_OU;
+   return ok;
+}
+#endif /* mx_HAVE_C90AMEND1 */
+
 static boole
-_update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
+_update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Obj! */
 {
    char const *foldp;
    char *mailp, *dispp;
@@ -146,36 +176,6 @@ jdocopy:
    NYD_OU;
    return rv;
 }
-
-#ifdef mx_HAVE_C90AMEND1
-su_SINLINE uz
-__narrow_suffix(char const *cp, uz cpl, uz maxl)
-{
-   int err;
-   uz i, ok;
-   NYD_IN;
-
-   for (err = ok = i = 0; cpl > maxl || err;) {
-      int ml = mblen(cp, cpl);
-      if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
-         (void)mblen(NULL, 0);
-         err = 1;
-         ml = 1;
-      } else {
-         if (!err)
-            ok = i;
-         err = 0;
-         if (ml == 0)
-            break;
-      }
-      cp += ml;
-      i += ml;
-      cpl -= ml;
-   }
-   NYD_OU;
-   return ok;
-}
-#endif /* mx_HAVE_C90AMEND1 */
 
 static void
 a_folder_info(void){
@@ -316,7 +316,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
        * TODO MIME because of a "From " line!.
        * TODO That is: Mailbox superclass, MBOX:Mailbox, virtual load() which
        * TODO creates collection of MessageHull objects which are able to load
-       * TODO their content, and normalize content, correct structural errors */
+       * TODO their content, and normalize content, correct structural errs */
       if(UNLIKELY(cnt == 0)){
          if(!(f & a_ISEML))
             f |= a_MAYBE;
@@ -634,7 +634,7 @@ jlogname:
    /* TODO There is no intermediate VOID box we've switched to: name may
     * TODO point to the same box that we just have written, so any updates
     * TODO we won't see!  Reopen again in this case.  RACY! Goes with VOID! */
-   /* TODO In addition: in case of compressed/hook boxes we lock a temporary! */
+   /* TODO In addition: in case of compressed/hook boxes we lock a tmp file! */
    /* TODO We may uselessly open twice but quit() doesn't say whether we were
     * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
    if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !su_cs_cmp(name, mailname)) {

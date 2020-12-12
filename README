@@ -64,6 +64,9 @@ Commits to the [master], [release/*] and [stable/*] branches are
 posted to [13], and announcements will also be posted to [14], both
 are receive-only mailing-lists.
 
+  Note: mailing list related URLs etc. may change after the v14.9.20
+  release, please look at the web page shall the below not work!
+
   [7] s-mailx@lists.sdaoden.eu
   [8] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx
   [9] https://lists.sdaoden.eu/pipermail/s-mailx/
@@ -153,9 +156,10 @@ And then, assuming the last had been done:
     iterate their package can create local "packager releases" with the
     "grappa" mode of the script mk/make-release.sh.  With it, they can
     track the stable/ branch of desire, and have a [myrelease] branch
-    where the local releases are made.  In order to get the very same
-    file modifications that are made in the official [release/] they
-    need an installed perl(1).  For example:
+    where the local releases are made.  This needs an installed s-nail,
+    git(1), quite some other commands including a C99-capable $CC (see
+    mk/make-release.inc head, section "# Program stuff"), and optionally
+    perl(1).  For example:
 
       $ git fetch
       $ git checkout stable/stable
@@ -190,7 +194,7 @@ And then, assuming the last had been done:
     dealt with, then.
 
 - [crawl]
-    Developer chaos (distributed horror backup - do not use!).
+    Developer chaos.  (Distributed horror backup - do not use!)
 
 - [test-out]
     This branch contains the test output files.  The test itself only
@@ -213,7 +217,8 @@ And then, assuming the last had been done:
     signed with an OpenPGP key.
 
 - [heirloom]
-    A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository.
+    A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository
+    that ends with a tag named s-nail.
 
 4. Security record
 ------------------

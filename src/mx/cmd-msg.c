@@ -119,6 +119,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          ? SEND_MBOX : donotdecode
          ? SEND_SHOW : doign
          ? SEND_TODISP : SEND_TODISP_ALL);
+   UNINIT(cp, NIL);
 
    if(dopipe){
       if((obuf = mx_fs_pipe_open(cmd, "w", ok_vlook(SHELL), NIL, -1)) == NIL){
@@ -642,7 +643,7 @@ c_next(void *v)
    } else {
       /* TODO The threading code had some bugs that caused crashes.
        * TODO The last thing (before the deep look) happens here,
-       * TODO so let's not trust n_PS_DID_PRINT_DOT but check & hope it fixes */
+       * TODO let's not trust n_PS_DID_PRINT_DOT but check & hope it fixes */
       if ((mp = dot) != NULL && (n_pstate & n_PS_DID_PRINT_DOT))
          mp = next_in_thread(mp);
       while (mp != NULL && (mp->m_flag & MMNORM))

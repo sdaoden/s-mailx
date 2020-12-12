@@ -276,6 +276,7 @@ jleave:
 jerrdoc:
    emsg = su_err_doc(su_err_no());
 jerr:
+   UNUSED(emsg);
    n_err(_(".netrc: %s: %s\n"), n_shexp_quote_cp(netrc_load, FAL0), V_(emsg));
    f |= a_ERROR;
    goto jleave;

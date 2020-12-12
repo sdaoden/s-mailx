@@ -378,8 +378,8 @@ mx_termios_controller_setup(enum mx_termios_setup what){
             su_idec_u32_cp(&c, cp, 0, NIL);
 
          if(l == 0 || c == 0){
-            /* In non-interactive mode, stop now, except for the documented case
-             * that both are set but not both have been usable */
+            /* In non-interactive mode, stop now, except for the documented
+             * case that both are set but not both have been usable */
             if(!(n_psonce & n_PSO_INTERACTIVE) &&
                   !((n_psonce & n_PSO_TTYANY) &&
                      (n_poption & n_PO_BATCH_FLAG)) &&
@@ -435,6 +435,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
    NYD_IN;
 
    tiosep_2free = NIL;
+   UNINIT(tiosep, NIL);
 
    ASSERT_NYD_EXEC((tiosc & mx__TERMIOS_CMD_CTL_MASK) ||
        tiosc == mx_TERMIOS_CMD_RESET ||
@@ -460,7 +461,7 @@ mx_termios_cmd(u32 tiosc, uz a1){
 
    /* Note: RESET only called with signals blocked in main loop handler */
    if(tiosc == mx_TERMIOS_CMD_RESET){
-      boole first;
+      boole isfirst;
 
       if((tiosep = a_termios_g.tiosg_envp)->tiose_prev == NIL){
          rv = TRU1;
@@ -469,13 +470,13 @@ mx_termios_cmd(u32 tiosc, uz a1){
       rv = (tcsetattr(fileno(mx_tty_fp), TCSADRAIN, &tiosep->tiose_state
             ) == 0);
 
-      for(first = TRU1;; first = FAL0){
+      for(isfirst = TRU1;; isfirst = FAL0){
          a_termios_g.tiosg_envp = tiosep->tiose_prev;
 
-         if(first || !tiosep->tiose_suspended){
+         if(isfirst || !tiosep->tiose_suspended){
             if(tiosep->tiose_on_state_change != NIL)
                (*tiosep->tiose_on_state_change)(tiosep->tiose_osc_cookie,
-                  (first ? mx_TERMIOS_STATE_SUSPEND : 0
+                  (isfirst ? mx_TERMIOS_STATE_SUSPEND : 0
                       | mx_TERMIOS_STATE_POP), 0);
          }
 

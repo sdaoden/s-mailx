@@ -841,8 +841,8 @@ jnode_redo:
          }
       }
 
-      /* Make ranges contiguous: ensure a continuous range of atoms is converted
-       * to a SPECIAL one if at least one of them requires it */
+      /* Make ranges contiguous: ensure a continuous range of atoms is
+       * converted to a SPECIAL one if at least one of them requires it */
       for(tp = thead; tp != NULL; tp = tp->t_next){
          if(tp->t_f & a_T_SPECIAL){
             tcurr = tp;
@@ -1045,6 +1045,7 @@ jput_quote_esc:
             break;
          flags &= ~a_IN_AT;
       }
+
       if(c.c != '\0')
          agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
                mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
@@ -1053,15 +1054,19 @@ jput_quote_esc:
           * it to a n_nodename() address if the name is a valid user */
 jinsert_domain:
          if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
-               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>' &&
-               (!su_cs_cmp(addr, ok_vlook(LOGNAME)) ||
-                getpwnam(addr) != NULL)){
+               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>'){
+            if(su_cs_cmp(addr, ok_vlook(LOGNAME)) && getpwnam(addr) == NIL){
+               agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+                     mx_NAME_ADDRSPEC_ERR_NAME, '*');
+               goto jleave;
+            }
+
             /* XXX However, if hostname is set to the empty string this
              * XXX indicates that the used *mta* will perform the
              * XXX auto-expansion instead.  Not so with `addrcodec' though */
             agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR;
             if(!issingle_hack &&
-                  (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
+                  (cp = ok_vlook(hostname)) != NIL && *cp == '\0')
                agp->ag_n_flags |= mx_NAME_ADDRSPEC_WITHOUT_DOMAIN;
             else{
                c.ui32 = su_cs_len(cp = n_nodename(TRU1));
@@ -1930,8 +1935,10 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
             cs = _("%s contains invalid byte %s\n");
 
          c = mx_name_flags_get_err_wc(f);
-         snprintf(cbuf, sizeof cbuf,
-            (ok8bit && c >= 040 && c <= 0177 ? "'%c'" : fmt), c);
+         if(ok8bit && c >= 040 && c <= 0177)
+            snprintf(cbuf, sizeof cbuf, "'%c'", S(char,c));
+         else
+            snprintf(cbuf, sizeof cbuf, fmt, c);
          goto jprint;
       }
       goto jleave;
@@ -2555,7 +2562,7 @@ n_header_senderfield_of(struct message *mp){
    struct mx_name *np;
    NYD_IN;
 
-   if((np = mx_header_sender_of(mp, 0)) != NIL){
+   if((np = mx_header_sender_of(mp, GFULL | GSKIN)) != NIL){
       cp = np->n_fullname;
       goto jleave;
    }
@@ -3157,8 +3164,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 }
 
 FL void
-setup_from_and_sender(struct header *hp)
-{
+setup_from_and_sender(struct header *hp){
    char const *addr;
    struct mx_name *np;
    NYD_IN;
@@ -3167,17 +3173,27 @@ setup_from_and_sender(struct header *hp)
     * want -r to be honoured in favour of *from* in order to have
     * a behaviour that is compatible with what users would expect from e.g.
     * postfix(1) */
-   if ((np = hp->h_from) != NULL ||
-         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
+   if((np = hp->h_from) != NIL ||
+         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NIL)){
       ;
-   } else if ((addr = myaddrs(hp)) != NULL)
+   }else if((addr = myaddrs(hp)) != NIL)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+
    hp->h_from = np;
 
-   if ((np = hp->h_sender) != NULL) {
+   /* RFC 5322 says
+    *  If the originator of the message can be indicated by a single mailbox
+    *  and the author and transmitter are identical, the "Sender:" field SHOULD
+    *  NOT be used.  Otherwise, both fields SHOULD appear. */
+   if((np = hp->h_sender) != NIL){
       ;
-   } else if ((addr = ok_vlook(sender)) != NULL)
+   }else if((addr = ok_vlook(sender)) != NIL)
       np = n_extract_single(addr, GEXTRA | GFULL | GFULLEXTRA);
+
+   if(np != NIL && hp->h_from != NIL && hp->h_from->n_flink == NIL &&
+         mx_name_is_same_address(hp->h_from, np))
+      np = NIL;
+
    hp->h_sender = np;
 
    NYD_OU;
@@ -3445,6 +3461,7 @@ jleave:
 FL char const *
 n_header_is_known(char const *name, uz len){
    static char const * const names[] = {
+      /* RFC 5322 header names common here */
       "Bcc", "Cc", "From",
       "In-Reply-To", "Mail-Followup-To",
       "Message-ID", "References", "Reply-To",
@@ -3456,7 +3473,15 @@ n_header_is_known(char const *name, uz len){
       "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From",
          "Mailx-Orig-Sender", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
-      NULL
+      /* Rest of RFC 5322 standard headers, almost never seen here.
+       * As documented for *customhdr*, allow Comments:, Keywords: */
+      /*"Comments",*/ "Date",
+      /*"Keywords",*/ "Received",
+      "Resent-Bcc", "Resent-Cc", "Resent-Date",
+         "Resent-From", "Resent-Message-ID", "Resent-Reply-To",
+         "Resent-Sender", "Resent-To",
+      "Return-Path",
+      NIL
    };
    char const * const *rv;
    NYD_IN;
@@ -3464,9 +3489,10 @@ n_header_is_known(char const *name, uz len){
    if(len == UZ_MAX)
       len = su_cs_len(name);
 
-   for(rv = names; *rv != NULL; ++rv)
+   for(rv = names; *rv != NIL; ++rv)
       if(!su_cs_cmp_case_n(*rv, name, len))
          break;
+
    NYD_OU;
    return *rv;
 }

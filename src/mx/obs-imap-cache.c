@@ -322,7 +322,8 @@ putcache(struct mailbox *mp, struct message *m)
             fflush(obuf);
             rewind(obuf);
             fprintf(obuf, infofmt, ob, (unsigned long)m->m_xsize,
-               USEBITS(m->m_flag), (unsigned long)m->m_time, m->m_xlines);
+               S(int,USEBITS(m->m_flag)), (unsigned long)m->m_time,
+               m->m_xlines);
             putc('\n', obuf);
          }
          mx_fs_close(obuf);
@@ -359,8 +360,8 @@ putcache(struct mailbox *mp, struct message *m)
    }
 jdone:
    rewind(obuf);
-   fprintf(obuf, infofmt, c, (unsigned long)m->m_xsize, USEBITS(m->m_flag),
-         (unsigned long)m->m_time, m->m_xlines);
+   fprintf(obuf, infofmt, c, (unsigned long)m->m_xsize,
+      S(int,USEBITS(m->m_flag)), (unsigned long)m->m_time, m->m_xlines);
    putc('\n', obuf);
    if (ferror(obuf)) {
       unlink(name);
@@ -890,7 +891,8 @@ dequeue1(struct mailbox *mp)
    if (fp != NULL && fsize(fp) > 0) {
       if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
             != OKAY) {
-         n_err(_("Cannot select \"%s\" for dequeuing.\n"), mp->mb_imap_mailbox);
+         n_err(_("Cannot select \"%s\" for dequeuing.\n"),
+            mp->mb_imap_mailbox);
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||

@@ -32,7 +32,8 @@ struct mx_mimetype_handler;
 EXPORT int c_mailcap(void *vp);
 
 /* Try to find an action Mailcap handler for the MIME content-type ct, fill in
- * mthp accordingly upon success */
+ * mthp accordingly upon success.
+ * If this returns TRUM1 then it is a only-use-as-last-resort handler. */
 EXPORT boole mx_mailcap_handler(struct mx_mimetype_handler *mthp,
       char const *ct, enum sendaction action, struct mimepart const *mpp);
 

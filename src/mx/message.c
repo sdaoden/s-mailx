@@ -173,7 +173,7 @@ static int a_msg_evalcol(int col);
  * MDELETED the message has to be undeleted */
 static boole a_msg_check(int mno, int f);
 
-/* Scan out a single lexical item and return its token number, updating *mslp */
+/* Scan out a single lexical item and return its token number, update *mslp */
 static int a_msg_scan(struct a_msg_speclex *mslp);
 
 /* See if the passed name sent the passed message */
@@ -468,11 +468,15 @@ jnumber__thr:
             np = a_msg_add_to_nmadat(&nmadat, &nmasize, np,
                   savestr(msl.msl_str));
          else{
+            if(cp[1] == '\0')
+               goto jevalcol_err;
             while(*++cp != '\0'){
                colresult = a_msg_evalcol(*cp);
                if(colresult == 0){
+jevalcol_err:
                   if(flags & a_LOG)
-                     n_err(_("Unknown colon modifier: %s\n"), msl.msl_str);
+                     n_err(_("Unknown or empty colon modifier: %s\n"),
+                        msl.msl_str);
                   i = su_ERR_INVAL;
                   goto jerr;
                }

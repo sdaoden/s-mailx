@@ -63,17 +63,10 @@ enum mx_mimetype_handler_flags{
    mx_MIMETYPE_HDL_TMPF_UNLINK = 1u<<14, /* Delete it later again */
    /* Handler with _HDL_TMPF has a .mth_tmpf_nametmpl.. */
    mx_MIMETYPE_HDL_TMPF_NAMETMPL = 1u<<15,
-   mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX = 1u<<16, /* ..to be used as suffix */
+   mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX = 1u<<16 /* ..to be used as suffix */
    /* xxx textualnewlines */
-
-   /* Is (per call: for) quote action.  TODO This is a hack, in v15 there must
-    * TODO be filters which become plugged together: test regular action
-    * TODO instead (once creating filter chain); only _NOQUOTE detection then
-    * TODO must be made possible for mailcap somehow, still; in fact only
-    * TODO used to avoid evaluation "action" multiple times */
-   mx_MIMETYPE_HDL_ISQUOTE = 1u<<17
 };
-enum {mx_MIMETYPE_HDL_MAX = mx_MIMETYPE_HDL_ISQUOTE};
+enum {mx_MIMETYPE_HDL_MAX = mx_MIMETYPE_HDL_TMPF_NAMETMPL_SUFFIX};
 
 struct mx_mimetype_handler{
    BITENUM_IS(u32,mx_mime_handler_flags) mth_flags;

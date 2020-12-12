@@ -705,7 +705,7 @@ FL int c_source(void *v);
 FL int c_source_if(void *v);
 
 /* Evaluate a complete macro / a single command.  For the former lines will
- * always be free()d, for the latter cmd will always be duplicated internally */
+ * be free()d, for the latter cmd will always be duplicated internally */
 FL boole n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
             void (*on_finalize)(void*), void *finalize_arg);
 FL boole n_go_command(enum n_go_input_flags gif, char const *cmd);
@@ -788,12 +788,12 @@ FL char const * skip_comment(char const *cp);
 FL char const * routeaddr(char const *name);
 
 /* Query *expandaddr*, parse it and return flags.
- * The flags are already adjusted for n_PSO_INTERACTIVE, n_PO_TILDE_FLAG etc. */
+ * Flags are already adjusted for n_PSO_INTERACTIVE, n_PO_TILDE_FLAG etc. */
 FL enum expand_addr_flags expandaddr_to_eaf(void);
 
 /* Check if an address is invalid, either because it is malformed or, if not,
  * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
- * but the error condition wasn't covered by a 'hard "fail"ure', -1 otherwise */
+ * but the error condition was not covered by a 'hard "fail"ure', else -1 */
 FL s8       is_addr_invalid(struct mx_name *np,
                   enum expand_addr_check_mode eacm);
 
@@ -1207,7 +1207,7 @@ FL char *      mime_param_get(char const *param, char const *headerbody);
  * which it will if the created param requires more than MIME_LINELEN bytes;
  * there is never a trailing newline character */
 /* TODO mime_param_create() should return a StrList<> or something.
- * TODO in fact it should take a HeaderField* and append a HeaderFieldParam*! */
+ * TODO in fact it should take a HeaderField* and append HeaderFieldParam*! */
 FL s8       mime_param_create(struct str *result, char const *name,
                   char const *value);
 

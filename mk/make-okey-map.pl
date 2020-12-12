@@ -2,6 +2,8 @@
 require 5.008_001;
 use utf8;
 #@ Parse 'enum okeys' from nail.h and create gen-okeys.h.
+#@ Just like enum okeys it has to create case-insensitive sorted entries!
+#
 # Public Domain
 
 my $IN = 'include/mx/nail.h';
@@ -379,9 +381,9 @@ _EOT
       $last_pstr = "";
       $last_pend = "n_OKEYS_MAX";
       $last_pbeg = $i = 0;
-      foreach my $e (sort keys %chains){
+      foreach my $e (sort {CORE::fc($a) cmp CORE::fc($b)} keys %chains){
          $e = $chains{$e};
-         print F "${S}{$e->{keyoff}, $e->{enum}},\n";
+         print F "${S}{$e->{keyoff}u, $e->{enum}},\n";
          die "Chains need length of at least 4 bytes: $e->{name}"
             if length $e->{name} < 4;
          my $p = substr $e->{name}, 0, 4;
@@ -400,7 +402,7 @@ _EOT
       print F 'static struct a_amv_var_chain_map_bsrch const ',
          'a_amv_var_chain_map_bsrch[] = {', "\n";
       foreach my $e (@prefixes){
-         print F "${S}{\"$e->[0]\", $e->[1], $e->[2]},\n"
+         print F "${S}{\"$e->[0]\", $e->[1]u, $e->[2]},\n"
       }
       print F '};', "\n";
       print F '#define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT ',
@@ -412,8 +414,7 @@ _EOT
    # which cannot be initialized in a conforming way :(
    print F '/* Unfortunately init of varsized buffer impossible: ' .
       'define "subclass"es */' . "\n";
-   my @skeys = sort keys %virts;
-
+   my @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %virts;
    foreach(@skeys){
       my $e = $virts{$_};
       $e->{vname} = $1 if $e->{enum} =~ /ok_._(.*)/;
@@ -433,7 +434,7 @@ _EOT
          "\"$e->{name}\"};\n\n"
    }
 
-   print F "\n";
+   print F "\n" unless @skeys;
    print F 'static struct a_amv_var_virt const a_amv_var_virts[] = {', "\n";
    foreach(@skeys){
       my $e = $virts{$_};
@@ -444,8 +445,7 @@ _EOT
    print F '#define a_AMV_VAR_VIRTS_CNT ', scalar @skeys, "\n";
 
    # First-time-init values
-   @skeys = sort keys %i3vals;
-
+   @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %i3vals;
    print F "\n";
    print F 'static struct a_amv_var_defval const a_amv_var_i3vals[] = {', "\n";
    foreach(@skeys){
@@ -457,10 +457,10 @@ _EOT
    print F '#define a_AMV_VAR_I3VALS_CNT ', scalar @skeys, "\n";
 
    # Default values
-   @skeys = sort keys %defvals;
-
+   @skeys = sort {CORE::fc($a) cmp CORE::fc($b)} keys %defvals;
    print F "\n";
-   print F 'static struct a_amv_var_defval const a_amv_var_defvals[] = {', "\n";
+   print F 'static struct a_amv_var_defval const a_amv_var_defvals[] = {',
+      "\n";
    foreach(@skeys){
       my $e = $defvals{$_};
       print F "${S}{", $e->{enum}, ', {0,}, ',

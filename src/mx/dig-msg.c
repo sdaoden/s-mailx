@@ -195,6 +195,7 @@ a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp,
    NYD2_IN;
 
    hp = dmcp->dmc_hp;
+   UNINIT(a3p, NIL);
 
    if(args == NIL){
       cp = su_empty; /* xxx not NIL anyway */

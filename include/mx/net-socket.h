@@ -73,6 +73,24 @@ EXPORT boole mx_socket_open(struct mx_socket *sp, struct mx_url *urlp);
 /* */
 EXPORT int mx_socket_close(struct mx_socket *sp);
 
+/* Drop I/O buffers */
+INLINE struct mx_socket *mx_socket_reset_read_buf(struct mx_socket *self){
+   self->s_rbufptr = self->s_rbuf;
+   self->s_rsz = 0;
+   return self;
+}
+
+INLINE struct mx_socket *mx_socket_reset_write_buf(struct mx_socket *self){
+   self->s_wbufpos = 0;
+   return self;
+}
+
+INLINE struct mx_socket *mx_socket_reset_io_buf(struct mx_socket *self){
+   self = mx_socket_reset_read_buf(self);
+   self = mx_socket_reset_write_buf(self);
+   return self;
+}
+
 /* */
 EXPORT enum okay mx_socket_write(struct mx_socket *sp, char const *data);
 EXPORT enum okay mx_socket_write1(struct mx_socket *sp, char const *data,

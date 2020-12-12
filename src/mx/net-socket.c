@@ -80,8 +80,17 @@ su_EMPTY_FILE()
 /* TODO fake */
 #include "su/code-in.h"
 
+/* If a_netso_sig was zeroed .. test if anything happened */
+static void a_netso_onsig(int sig); /* TODO someday, need no more */
+static void a_netso_test_sig(void);
+
 /* */
 static boole a_netso_open(struct mx_socket *sop, struct mx_url *urlp);
+
+/* .url_flags&URL_TLS_MASK, do what is to be done; closes socket on error! */
+#ifdef mx_HAVE_TLS
+static int a_netso_open_tls_maybe(struct mx_socket *sop, struct mx_url *urlp);
+#endif
 
 /* */
 static int a_netso_connect(int fd, struct sockaddr *soap, uz soapl);
@@ -106,27 +115,40 @@ a_netso_onsig(int sig) /* TODO someday, we won't need it no more */
    }
 }
 
+static void
+a_netso_test_sig(void){
+   /* May need to bounce the signal to the go.c trampoline (or wherever) */
+   if(a_netso_sig != 0){
+      sigset_t cset;
+
+      sigemptyset(&cset);
+      sigaddset(&cset, a_netso_sig);
+      sigprocmask(SIG_UNBLOCK, &cset, NIL);
+      n_raise(a_netso_sig);
+   }
+}
+
 static boole
 a_netso_open(struct mx_socket *sop, struct mx_url *urlp) /*TODO sigs;refactor*/
 {
-# ifdef mx_HAVE_SO_XTIMEO
+#ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
-# endif
-# ifdef mx_HAVE_SO_LINGER
+#endif
+#ifdef mx_HAVE_SO_LINGER
    struct linger li;
+#endif
+#ifdef mx_HAVE_GETADDRINFO
+# ifndef NI_MAXHOST
+#  define NI_MAXHOST 1025
 # endif
-# ifdef mx_HAVE_GETADDRINFO
-#  ifndef NI_MAXHOST
-#   define NI_MAXHOST 1025
-#  endif
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0 = NULL, *res;
-# else
+#else
    struct sockaddr_in servaddr;
    struct in_addr **pptr;
    struct hostent *hp;
    struct servent *ep;
-# endif
+#endif
    n_sighdl_t volatile ohup, oint;
    char const * volatile serv;
    int volatile sofd = -1, errval;
@@ -158,7 +180,7 @@ jpseudo_jump:
    }
    rele_sigs();
 
-# ifdef mx_HAVE_GETADDRINFO
+#ifdef mx_HAVE_GETADDRINFO
    for (;;) {
       su_mem_set(&hints, 0, sizeof hints);
       hints.ai_socktype = SOCK_STREAM;
@@ -222,7 +244,7 @@ jjumped:
       res0 = NULL;
    }
 
-# else /* mx_HAVE_GETADDRINFO */
+#else /* mx_HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
       if ((ep = getservbyname(n_UNCONST(serv), "tcp")) != NULL)
          urlp->url_portno = ntohs(ep->s_port);
@@ -289,7 +311,7 @@ jjumped:
          sizeof servaddr)) != su_ERR_NONE)
       sofd = -1;
 jjumped:
-# endif /* !mx_HAVE_GETADDRINFO */
+#endif /* !mx_HAVE_GETADDRINFO */
 
    hold_sigs();
    safe_signal(SIGINT, oint);
@@ -310,40 +332,58 @@ jjumped:
       n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
-# ifdef mx_HAVE_SO_XTIMEO
+#ifdef mx_HAVE_SO_XTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
    (void)setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
-# endif
-# ifdef mx_HAVE_SO_LINGER
+#endif
+#ifdef mx_HAVE_SO_LINGER
    li.l_onoff = 1;
    li.l_linger = 42;
    (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
-# endif
+#endif
 
    /* SSL/TLS upgrade? */
-# ifdef mx_HAVE_TLS
-   hold_sigs();
+#ifdef mx_HAVE_TLS
+   if(urlp->url_flags & mx_URL_TLS_MASK)
+      sofd = a_netso_open_tls_maybe(sop, urlp);
+#endif
 
-#  if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
+jleave:
+   a_netso_test_sig();
+   NYD2_OU;
+   return (sofd >= 0);
+}
+
+#ifdef mx_HAVE_TLS
+static int
+a_netso_open_tls_maybe(struct mx_socket *sop, struct mx_url *urlp){
+   n_sighdl_t volatile ohup, oint;
+   NYD2_IN;
+
+   hold_sigs();
+   a_netso_sig = 0;
+
+# if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
       /* TODO the SSL_ def check should NOT be here */
    if(urlp->url_flags & mx_URL_TLS_MASK){
-      su_mem_set(&hints, 0, sizeof hints);
-      hints.ai_family = AF_UNSPEC;
-      hints.ai_flags = AI_NUMERICHOST;
-      res0 = NULL;
-      if(getaddrinfo(urlp->url_host.s, NULL, &hints, &res0) == 0)
-         freeaddrinfo(res0);
+      struct {struct addrinfo hints; struct addrinfo *res0;} x;
+
+      su_mem_set(&x, 0, sizeof x);
+      x.hints.ai_family = AF_UNSPEC;
+      x.hints.ai_flags = AI_NUMERICHOST;
+      if(getaddrinfo(urlp->url_host.s, NIL, &x.hints, &x.res0) == 0)
+         freeaddrinfo(x.res0);
       else
          urlp->url_flags |= mx_URL_HOST_IS_NAME;
    }
-#  endif
+# endif
 
-   if (urlp->url_flags & mx_URL_TLS_REQUIRED) {
+   if(urlp->url_flags & mx_URL_TLS_REQUIRED){
       ohup = safe_signal(SIGHUP, &a_netso_onsig);
       oint = safe_signal(SIGINT, &a_netso_onsig);
-      if (sigsetjmp(a_netso_actjmp, 0)) {
+      if(sigsetjmp(a_netso_actjmp, 0)){
          n_err(_("%s during SSL/TLS handshake\n"),
             (a_netso_sig == SIGHUP ? _("Hangup") : _("Interrupted")));
          goto jsclose;
@@ -353,7 +393,7 @@ jjumped:
       if(!n_tls_open(urlp, sop)){
 jsclose:
          mx_socket_close(sop);
-         sofd = -1;
+         ASSERT(sop->s_fd == -1);
       }
 
       hold_sigs();
@@ -362,20 +402,11 @@ jsclose:
    }
 
    rele_sigs();
-# endif /* mx_HAVE_TLS */
 
-jleave:
-   /* May need to bounce the signal to the go.c trampoline (or wherever) */
-   if (a_netso_sig != 0) {
-      sigset_t cset;
-      sigemptyset(&cset);
-      sigaddset(&cset, a_netso_sig);
-      sigprocmask(SIG_UNBLOCK, &cset, NULL);
-      n_raise(a_netso_sig);
-   }
    NYD2_OU;
-   return (sofd >= 0);
+   return sop->s_fd;
 }
+#endif /* mx_HAVE_TLS */
 
 static int
 a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
@@ -602,9 +633,17 @@ jesocksreplymsg:
          if(read(sop->s_fd, pbuf, i) != (sz)i)
             goto jerrsocks;
       }
-      rv = TRU1;
+
+      /* SSL/TLS upgrade? */
+#ifdef mx_HAVE_TLS
+      if(urlp->url_flags & mx_URL_TLS_MASK)
+         rv = (a_netso_open_tls_maybe(sop, urlp) >= 0);
+      else
+#endif
+         rv = TRU1;
    }
 jleave:
+   a_netso_test_sig();
    NYD_OU;
    return rv;
 }
@@ -633,8 +672,8 @@ mx_socket_close(struct mx_socket *sop)
 
          sop->s_tls = NULL;
          sop->s_use_tls = 0;
-         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
-            ;
+         if(SSL_shutdown(s_tls) == 0) /* XXX proper error handling;signals! */
+            SSL_shutdown(s_tls);
          SSL_free(s_tls);
       }
 # endif

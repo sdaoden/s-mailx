@@ -158,6 +158,38 @@ su_EMPTY_FILE()
 # define a_xtls_SSL_get_verified_chain SSL_get_peer_cert_chain
 #endif
 
+#if mx_HAVE_XTLS >= 0x30000
+# define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
+   SSL_CTX_load_verify_file(CTXP, FILE)
+# define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
+   SSL_CTX_load_verify_dir(ctxp, ca_dir)
+
+# define a_xtls_X509_STORE_load_file(STORE,FILE) \
+   X509_STORE_load_file(STORE, FILE)
+# define a_xtls_X509_STORE_load_path(STORE,PATH) \
+   X509_STORE_load_path(STORE, PATH)
+
+# define a_xtls_SSL_get_peer_certificate(TLSP) \
+   SSL_get0_peer_certificate(TLSP)
+# define a_xtls_SSL_get_peer_certificate__FREE(CERT)
+
+#else
+# define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
+   SSL_CTX_load_verify_locations(CTXP, FILE, NIL)
+# define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
+   SSL_CTX_load_verify_locations(CTXP, NIL, DIR)
+
+# define a_xtls_X509_STORE_load_file(STORE,FILE) \
+   X509_STORE_load_locations(STORE, FILE, NIL)
+# define a_xtls_X509_STORE_load_path(STORE,PATH) \
+   X509_STORE_load_locations(STORE, NIL, PATH)
+
+# define a_xtls_SSL_get_peer_certificate(TLSP) \
+   SSL_get_peer_certificate(TLSP)
+# define a_xtls_SSL_get_peer_certificate__FREE(CERT) \
+   X509_free(CERT)
+#endif /* mx_HAVE_XTLS >= 0x30000 */
+
 /* X509_STORE_set_flags */
 #undef a_XTLS_X509_V_ANY
 #ifndef X509_V_FLAG_NO_ALT_CHAINS
@@ -421,7 +453,7 @@ static boole a_xtls_config_pairs(void *confp, struct mx_url const *urlp);
 static boole a_xtls_load_verifications(SSL_CTX *ctxp,
       struct mx_url const *urlp);
 
-static boole a_xtls_check_host(struct mx_socket *sp, X509 *peercert,
+static boole a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
       struct mx_url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
@@ -649,7 +681,8 @@ a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, uz blen)
 
    mbp = BIO_new(BIO_s_mem());
 
-   if (ASN1_TIME_print(mbp, atp) && (l = BIO_get_mem_data(mbp, &mcp)) > 0)
+   if (ASN1_TIME_print(mbp, C(ASN1_TIME*,atp)) &&
+         (l = BIO_get_mem_data(mbp, &mcp)) > 0)
       snprintf(bdat, blen, "%.*s", (int)l, mcp);
    else {
       snprintf(bdat, blen, _("Bogus certificate date: %.*s"),
@@ -678,7 +711,8 @@ a_xtls_verify_cb(int success, X509_STORE_CTX *store)
       a_xtls_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
-      X509_STORE_CTX_get_error_depth(store), (success ? n_empty : V_(n_error)));
+      X509_STORE_CTX_get_error_depth(store),
+      (success ? su_empty : V_(n_error)));
 
    if ((cert = X509_STORE_CTX_get_current_cert(store)) != NULL) {
       X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
@@ -1263,24 +1297,12 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct mx_url const *urlp){
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
             FEXP_NSHELL));
 
-   if(ca_file != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         SSL_CTX_load_verify_file(ctxp, ca_file)
-#else
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
-#endif
-            != 1){
+   if(ca_file != NIL && a_xtls_SSL_CTX_load_verify_file(ctxp, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
       goto jleave;
    }
 
-   if(ca_dir != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         SSL_CTX_load_verify_dir(ctxp, ca_dir)
-#else
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir)
-#endif
-            != 1){
+   if(ca_dir != NIL && a_xtls_SSL_CTX_load_verify_dir(ctxp, ca_dir) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
@@ -1750,8 +1772,13 @@ a_xtls_smime_sign_digest(char const *name, char const **digname){
    if((cp = ok_vlook(smime_sign_digest)) != NULL ||
          (cp = ok_vlook(smime_sign_message_digest)/* v15 */) != NULL)
 jhave_name:
-      if(a_xtls_digest_find(cp, &digest, digname))
+      if(a_xtls_digest_find(cp, &digest, digname)){
+#ifndef PKCS7_PARTIAL
+         n_err(_("WARNING: old OpenSSL version, *smime-sign-digest*=%s "
+            "ignored!\n"), digname);
+#endif
          goto jleave;
+      }
 
    digest = a_XTLS_SMIME_DEFAULT_DIGEST();
    *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
@@ -1986,6 +2013,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
 #endif
 
    SSL_set_fd(sop->s_tls, sop->s_fd);
+   mx_socket_reset_io_buf(sop);
 
    if(SSL_connect(sop->s_tls) < 0){
       ssl_gen_err(_("could not initiate TLS connection"));
@@ -1997,7 +2025,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
       boole stay;
       X509 *peercert;
 
-      if((peercert = SSL_get_peer_certificate(sop->s_tls)) == NULL){
+      if((peercert = a_xtls_SSL_get_peer_certificate(sop->s_tls)) == NIL){
          n_err(_("TLS: no certificate from peer: %s\n"), urlp->url_h_p.s);
          goto jerr2;
       }
@@ -2037,8 +2065,8 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
          if(n_poption & n_PO_D_V)
             n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
          if(fprnt != NULL){
-            if(!(stay = !su_cs_cmp(fprnt, fpmdhexbuf))){
-               n_err(_("TLS fingerprint does not match: %s\n"
+            if(!(stay = !su_cs_cmp_case(fprnt, fpmdhexbuf))){
+               n_err(_("TLS fingerprint mismatch: %s\n"
                      "  Expected: %s\n  Detected: %s\n"),
                   urlp->url_h_p.s, fprnt, fpmdhexbuf);
                stay = n_tls_verify_decide();
@@ -2094,7 +2122,7 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
       }
 
 jpeer_leave:
-      X509_free(peercert);
+      a_xtls_SSL_get_peer_certificate__FREE(peercert);
       if(!stay)
          goto jerr2;
    }
@@ -2167,24 +2195,12 @@ c_verify(void *vp)
       ca_file = fexpand(ca_file, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
          FEXP_NSHELL));
 
-   if(ca_file != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         X509_STORE_load_file(store, ca_file)
-#else
-         X509_STORE_load_locations(store, ca_file, NIL)
-#endif
-            != 1){
+   if(ca_file != NIL && a_xtls_X509_STORE_load_file(store, ca_file) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_file, FAL0));
       goto jleave;
    }
 
-   if(ca_dir != NIL &&
-#if mx_HAVE_XTLS >= 0x30000
-         X509_STORE_load_path(store, ca_dir)
-#else
-         X509_STORE_load_locations(store, NIL, ca_dir)
-#endif
-            != 1){
+   if(ca_dir != NIL && a_xtls_X509_STORE_load_path(store, ca_dir) != 1){
       ssl_gen_err(_("Error loading %s\n"), n_shexp_quote_cp(ca_dir, FAL0));
       goto jleave;
    }
@@ -2295,24 +2311,31 @@ smime_sign(FILE *ip, char const *addr)
       goto jerr;
    }
 
-#undef _X
-#define _X  PKCS7_DETACHED | PKCS7_PARTIAL
-   if ((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb, _X)) == NULL) {
+#ifdef PKCS7_PARTIAL
+   if((pkcs7 = PKCS7_sign(NULL, NULL, chain, bb,
+         (PKCS7_DETACHED | PKCS7_PARTIAL))) == NIL){
       ssl_gen_err(_("Error creating the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
-   if (PKCS7_sign_add_signer(pkcs7, cert, pkey, md, _X) == NULL) {
+   if(PKCS7_sign_add_signer(pkcs7, cert, pkey, md,
+         (PKCS7_DETACHED | PKCS7_PARTIAL)) == NIL){
       ssl_gen_err(_("Error setting PKCS#7 signing object signer"));
       bail = TRU1;
       goto jerr;
    }
-   if (!PKCS7_final(pkcs7, bb, _X)) {
+   if(!PKCS7_final(pkcs7, bb, (PKCS7_DETACHED | PKCS7_PARTIAL))){
       ssl_gen_err(_("Error finalizing the PKCS#7 signing object"));
       bail = TRU1;
       goto jerr;
    }
-#undef _X
+#else
+   if((pkcs7 = PKCS7_sign(cert, pkey, chain, bb, PKCS7_DETACHED)) == NIL){
+      ssl_gen_err(_("Error creating the PKCS#7 signing object"));
+      bail = TRU1;
+      goto jerr;
+   }
+#endif /* !PKCS7_PARTIAL */
 
    if (PEM_write_bio_PKCS7(sb, pkcs7) == 0) {
       ssl_gen_err(_("Error writing signed S/MIME data"));

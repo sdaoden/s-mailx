@@ -7,6 +7,10 @@
 #@             (then grep for ^ERROR, for example).
 #@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
 #@ grep ^ERROR handling.
+#@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
+#@ this works with --run-test only.
+#@ Ditto, $JOBWAIT and $JOBMON are taken from environment when found.
+#
 # Public Domain
 
 : ${OBJDIR:=.obj}
@@ -15,7 +19,7 @@
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
 i=
-while true; do
+while :; do
    if [ -f ./mk-config.env ]; then
       break
    elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.env ]; then
@@ -65,7 +69,8 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
-JOBWAIT=42
+: ${JOBWAIT:=42}
+: ${JOBMON:=y}
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -192,7 +197,7 @@ unset POSIXLY_CORRECT LOGNAME USER
 
 # usage {{{
 usage() {
-   ${cat} >&2 <<_EOT
+   ${cat} >&2 <<'_EOT'
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
@@ -207,15 +212,22 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
  --no-jobs                do not spawn multiple jobs simultaneously
  --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
                           (for example to: grep ^ERROR)
+                          $MAILX_CC_ALL_TESTS_DUMPER in addition for even
+                          easier grep ^ERROR handling.
 
 The last invocation style will compile and test as many different
 configurations as possible.
 OBJDIR= may be set to the location of the built objects etc.
+$MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
+one test, aka --run-test).
+$JOBWAIT could denote a timeout, $JOBMON controls usage of "set -m".
 _EOT
    exit 1
 }
 
-NOJOBS= NOCOLOUR= DUMPERR= CHECK_ONLY= RUN_TEST= MAXJOBS=1 GIT_REPO= MAILX=
+CHECK_ONLY= RUN_TEST= MAILX=
+DEVELDIFF= DUMPERR= GIT_REPO=
+MAXJOBS=1 NOCOLOUR= NOJOBS=
 while [ ${#} -gt 0 ]; do
    if [ "${1}" = --no-jobs ]; then
       NOJOBS=y
@@ -319,8 +331,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
          HONOURS_READONLY=yes
       fi
       ${rm} -f ./.tisrdonly
-      trap '' EXIT
-      trap '' HUP INT TERM
+      trap '' EXIT HUP INT TERM
    fi
 fi
 
@@ -336,17 +347,19 @@ COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 
-trap "${rm} -rf ./t.*.d ./t.*.io ./t.*.result; jobreaper_stop" EXIT
-trap "exit 1" HUP INT TERM
+trap "
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result
+   jobreaper_stop
+" EXIT
+trap "exit 1" HUP INT QUIT TERM
 
 # JOBS {{{
 if [ -n "${NOJOBS}" ]; then
    jobs_max() { :; }
 else
    jobs_max() {
-      # Do only use half of the CPUs, since we live in pipes or do a lot of
-      # shell stuff, and i have seen lesser timeouts like this (on SunOS 5.9)
-      # ..the user desired variant
+      # The user desired variant
       if ( echo "${MAKEFLAGS}" | ${grep} -- -j ) >/dev/null 2>&1; then
          i=`echo "${MAKEFLAGS}" |
                ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
@@ -392,15 +405,31 @@ else
    }
 fi
 
+case "${JOBMON}" in
+[yY]*)
+   if (set -m >/dev/null 2>&1); then
+      JOBMON=y
+   else
+      echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
+      echo >&2 'Failing (hanging) tests could leave stale processes around!'
+      JOBMON=
+   fi
+   ;;
+*)
+   JOBMON=
+   ;;
+esac
+
 jobreaper_start() {
    ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
 
+   printf 'Starting job reaper (timeout of %s seconds)\n' ${JOBWAIT}
    i=
-   trap 'i=1' USR1
-   printf 'Starting job reaper\n'
-   (
+   trap 'i=1' USR1 # "reaper is up"
+   (  # .. which is actually a notify timer only
       parent=${$}
       sleeper= int=0 hot=0
+      trap '' EXIT HUP INT QUIT
       trap '
          [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
          int=1 hot=1
@@ -416,7 +445,7 @@ jobreaper_start() {
       ' TERM
 
       # traps are setup, notify parent that we are up and running
-      kill -USR1 ${parent}
+      kill -USR1 ${parent} >/dev/null 2>&1
 
       while :; do
          int=0
@@ -429,27 +458,33 @@ jobreaper_start() {
    ) </dev/null & #>/dev/null 2>&1 &
    JOBREAPER=${!}
 
+   j=
    if [ ${?} -eq 0 ]; then
       while :; do
          if [ -n "${i}" ]; then
             trap '' USR1
             return
          fi
-         printf '.. waiting for job reaper to come up\n'
+         printf '..%s waiting for job reaper to come up\n' "${j}"
+         j=' still'
          sleep 1 &
          wait ${!}
       done
    fi
 
    JOBREAPER=
-   printf '%s!! Cannot start wild job reaper%s\n' \
+   printf '%s!! Cannot start the wild job reaper!%s\n' \
       "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
 }
 
 jobreaper_stop() {
-   if [ -n "${JOBREAPER}" ]; then
-      kill -TERM ${JOBREAPER}
-      JOBREAPER=
+   [ -n "${JOBREAPER}" ] && kill -TERM ${JOBREAPER} >/dev/null 2>&1
+   JOBREAPER=
+   if [ ${JOBS} -gt 0 ]; then
+      echo 'Cleaning up running jobs'
+      jtimeout
+      wait ${JOBLIST}
+      JOBLIST=
    fi
 }
 
@@ -461,19 +496,23 @@ jspawn() {
       printf ' [%s=%s]' ${JOBS} "${1}"
    else
       JOBS=1
-      # Assume problems exist, do not let user hanging on terminal
+      # Assume problems exist, do not let user keep hanging on terminal
       if [ -n "${RUN_TEST}" ]; then
          printf '... [%s]\n' "${1}"
       fi
    fi
 
-   (
+   [ -n "${JOBMON}" ] && set -m >/dev/null 2>&1
+   (  # Place the job in its own directory to ease file management
+      trap '' EXIT HUP INT QUIT TERM USR1 USR2
       ${mkdir} t.${JOBS}.d && cd t.${JOBS}.d &&
          eval t_${1} ${JOBS} ${1} &&
          ${rm} -f ../t.${JOBS}.id
    ) > t.${JOBS}.io </dev/null & # 2>&1 </dev/null &
-   JOBLIST="${JOBLIST} ${!}"
-   printf '%s\n%s\n' ${!} ${1} > t.${JOBS}.id
+   i=${!}
+   [ -n "${JOBMON}" ] && set +m >/dev/null 2>&1
+   JOBLIST="${JOBLIST} ${i}"
+   printf '%s\n%s\n' ${i} ${1} > t.${JOBS}.id
 
    # ..until we should sync or reach the maximum concurrent number
    [ ${JOBS} -lt ${MAXJOBS} ] && return
@@ -491,7 +530,7 @@ jsync() {
       timeout= alldone=
 
       trap 'timeout=1' USR1
-      kill -USR1 ${JOBREAPER}
+      kill -USR1 ${JOBREAPER} >/dev/null 2>&1
 
       loops=0
       while [ -z "${timeout}" ]; do
@@ -515,19 +554,10 @@ jsync() {
          wait ${!}
       done
 
-      kill -USR2 ${JOBREAPER}
+      kill -USR2 ${JOBREAPER} >/dev/null 2>&1
       trap '' USR1
 
-      if [ -n "${timeout}" ]; then
-         i=0
-         while [ ${i} -lt ${JOBS} ]; do
-            i=`add ${i} 1`
-            if [ -f t.${i}.id ] &&
-                  read pid < t.${i}.id >/dev/null 2>&1; then
-               kill -KILL ${pid}
-            fi
-         done
-      fi
+      [ -n "${timeout}" ] && jtimeout
    fi
 
    # Now collect the zombies
@@ -568,9 +598,27 @@ jsync() {
          ESTAT=1
       fi
    done
-   ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
+
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
 
    JOBS=0
+}
+
+jtimeout() {
+   i=0
+   while [ ${i} -lt ${JOBS} ]; do
+      i=`add ${i} 1`
+      if [ -f t.${i}.id ] &&
+            read pid < t.${i}.id >/dev/null 2>&1 &&
+            kill -0 ${pid} >/dev/null 2>&1; then
+         j=${pid}
+         [ -n "${JOBMON}" ] && j=-${j}
+         kill -KILL ${j} >/dev/null 2>&1
+      else
+         ${rm} -f t.${i}.id
+      fi
+   done
 }
 # }}}
 
@@ -607,6 +655,10 @@ t_echook() {
 
 t_echoerr() {
    ESTAT=1
+   t_echo0err "${@}"
+}
+
+t_echo0err() {
    [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
    printf "${__i__}"'%sERROR: %s%s\n' \
       "${COLOR_ERR_ON}" "${*}" "${COLOR_ERR_OFF}"
@@ -657,6 +709,7 @@ check() {
    csum="`${cksum} < "${f}" | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
       t_echook "${tid}"
+      check__runx=${DEVELDIFF}
    else
       ESTAT=1
       t_echoerr "${tid}: checksum mismatch (got ${csum})"
@@ -679,17 +732,23 @@ check() {
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
             command -v diff >/dev/null 2>&1; then
          y=test-out
-         if (git rev-parse --verify $i) >/dev/null 2>&1; then :; else
+         if (git rev-parse --verify $y) >/dev/null 2>&1; then :; else
             y=refs/remotes/origin/test-out
             (git rev-parse --verify $y) >/dev/null 2>&1 || y=
          fi
-         if [ -n "${y}" ] &&
-               git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
-            diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
-            if [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
-               while read l; do
-                  printf 'ERROR-DIFF  %s\n' "${l}"
-               done < ../"${x}".diff
+         if [ -n "${y}" ]; then
+            if git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+               diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
+               if [ ${?} -eq 0 ]; then
+                  [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+                     ${rm} -f ../"${x}" ../"${x}".old ../"${x}".diff
+               elif [ -n "${MAILX_CC_ALL_TESTS_DUMPERR}" ]; then
+                  while read l; do
+                     printf 'ERROR-DIFF  %s\n' "${l}"
+                  done < ../"${x}".diff
+               fi
+            else
+               t_echo0err "${tid}: misses [test-out] template"
             fi
          fi
       fi
@@ -717,12 +776,17 @@ check_exn0() {
    # $1=test name [$2=status]
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
+   [ ${#} -gt 2 ] && __expect__=${3} || __expect__=
 
    TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
 
    if [ ${__qm__} -eq 0 ]; then
       ESTAT=1
       t_echoerr "${1}: unexpected 0 exit status: ${__qm__}"
+      TESTS_FAILED=`add ${TESTS_FAILED} 1`
+   elif [ -n "${__expect__}" ] && [ ${__expect__} -ne ${__qm__} ]; then
+      ESTAT=1
+      t_echoerr "${1}: unexpected exit status: ${__qm__} != ${__expected__}"
       TESTS_FAILED=`add ${TESTS_FAILED} 1`
    else
       t_echook "${1}"
@@ -735,17 +799,17 @@ color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
    # We do not want color for "make test > .LOG"!
-   if (command -v stty && command -v tput) >/dev/null 2>&1 &&
+   if command -v stty >/dev/null 2>&1 && command -v tput >/dev/null 2>&1 &&
          (<&1 >/dev/null stty -a) 2>/dev/null; then
-      sgr0=`tput sgr0 2>/dev/null`
+      { sgr0=`tput sgr0`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf1=`tput setaf 1 2>/dev/null`
+      { saf1=`tput setaf 1`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf2=`tput setaf 2 2>/dev/null`
+      { saf2=`tput setaf 2`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      saf3=`tput setaf 3 2>/dev/null`
+      { saf3=`tput setaf 3`; } 2>/dev/null
       [ $? -eq 0 ] || return
-      b=`tput bold 2>/dev/null`
+      { b=`tput bold`; } 2>/dev/null
       [ $? -eq 0 ] || return
 
       COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
@@ -1040,6 +1104,32 @@ t_X_errexit() {
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${BODY}" 2>&1
    check 11 0 "${BODY}" '2700500141 51'
+
+   # Ensure "good-injection" in a deeper indirection does not cause trouble
+   # This actually only works with MLE and HISTORY, and TODO needs a pseudo TTY
+   # interaction so that we DO initialize our line editor...
+   ${cat} <<- '__EOT' > "${BODY}"
+	define oha {
+	   return 0
+	}
+	define x {
+	  eval set $xarg
+	  echoes time
+	  return 0
+	}
+	__EOT
+
+   printf 'source %s\ncall x\necho au' "${BODY}"  |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > "${MBOX}" 2>&1
+   check 12 1 "${MBOX}" '2908921993 44'
+
+   printf 'source %s\nset on-history-addition=oha\ncall x\necho au' "${BODY}" |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > "${MBOX}" 2>&1
+   check 13 1 "${MBOX}" '2908921993 44'
+
+   printf 'source %s\ncall x\necho au' "${BODY}" |
+      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=nowhere > "${MBOX}" 2>&1
+   check 14 0 "${MBOX}" '2049365617 47'
 
    t_epilog "${@}"
 }
@@ -3160,46 +3250,73 @@ t_local() {
    t_prolog "${@}"
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	define du2 {
-	   echo du2-1 du=$du
-	   local set du=$1
-	   echo du2-2 du=$du
-	   local unset du
-	   echo du2-3 du=$du
-	}
-	define du {
-	   local set du=dudu
-	   echo du-1 du=$du
-	   call du2 du2du2
-	   echo du-2 du=$du
-	   local set nodu
-	   echo du-3 du=$du
-	}
-	define ich {
-	   echo ich-1 du=$du
-	   call du
-	   echo ich-2 du=$du
-	}
-	define wir {
-	   localopts $1
-	   set du=wirwir
-	   echo wir-1 du=$du
-	   call ich
-	   echo wir-2 du=$du
-	}
-	echo ------- global-1 du=$du
-	call ich
-	echo ------- global-2 du=$du
-	set du=global
-	call ich
-	echo ------- global-3 du=$du
-	call wir on
-	echo ------- global-4 du=$du
-	call wir off
-	echo ------- global-5 du=$du
-	__EOT
-
+		define du2 {
+		   echo du2-1 du=$du
+		   local set du=$1
+		   echo du2-2 du=$du
+		   local unset du
+		   echo du2-3 du=$du
+		}
+		define du {
+		   local set du=dudu
+		   echo du-1 du=$du
+		   call du2 du2du2
+		   echo du-2 du=$du
+		   local set nodu
+		   echo du-3 du=$du
+		}
+		define ich {
+		   echo ich-1 du=$du
+		   call du
+		   echo ich-2 du=$du
+		}
+		define wir {
+		   localopts $1
+		   set du=wirwir
+		   echo wir-1 du=$du
+		   call ich
+		   echo wir-2 du=$du
+		}
+		echo ------- global-1 du=$du
+		call ich
+		echo ------- global-2 du=$du
+		set du=global
+		call ich
+		echo ------- global-3 du=$du
+		call wir on
+		echo ------- global-4 du=$du
+		call wir off
+		echo ------- global-5 du=$du
+		__EOT
    check 1 0 "${MBOX}" '2411598140 641'
+
+   #
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+      define z {
+         echo z-1: x=$x y=$y z=$z crt=$crt
+         local set z=1 y=2 crt=10
+         echo z-2: x=$x y=$y z=$z crt=$crt
+      }
+      define y {
+         echo y-1: x=$x y=$y z=$z crt=$crt
+         local set x=2 y=1 crt=5
+         echo y-2: x=$x y=$y z=$z crt=$crt
+         call z
+         echo y-3: x=$x y=$y z=$z crt=$crt
+      }
+      define x {
+         echo x-1: x=$x y=$y z=$z crt=$crt
+         local set x=1 crt=1
+         echo x-2: x=$x y=$y z=$z crt=$crt
+         call y
+         echo x-3: x=$x y=$y z=$z crt=$crt
+      }
+      set crt
+      echo global-1: x=$x y=$y z=$z crt=$crt
+      call x
+      echo global-2: x=$x y=$y z=$z crt=$crt
+		__EOT
+   check 2 0 "${MBOX}" '2560788669 216'
 
    t_epilog "${@}"
 }
@@ -4491,6 +4608,20 @@ xit
    check 12-1 - .terr '4294967295 0'
    check 12-2 - ./.tfolder/.trec11 '1618754846 442'
 
+   ### More RFC cases
+
+   ## From: and Sender:
+   </dev/null ${MAILX} ${ARGS} -s ubject \
+      -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
+      to@exam.ple > "${MBOX}" 2>&1
+   check 13 0 "${MBOX}" '143390417 169'
+
+   # ..if From: is single mailbox and Sender: is same, no Sender:
+   </dev/null ${MAILX} ${ARGS} -s ubject \
+      -S from=a@b.org -S sender=a@b.org \
+      to@exam.ple > "${MBOX}" 2>&1
+   check 14 0 "${MBOX}" '1604962737 135'
+
    t_epilog "${@}"
 } # }}}
 
@@ -4732,7 +4863,7 @@ b7
          ./.tmbox >./.tall 2>&1
    check_ex0 18-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 18 - "${MBOX}" '4192298831 3932'
+   check 18 - "${MBOX}" '385267528 3926'
 
    # quote-as-attachment, fullnames
    </dev/null ${MAILX} ${ARGS} -Rf \
@@ -4745,6 +4876,20 @@ b7
          -Y ';reply;yb3' -Y !. \
          ./.tmbox >./.tall 2>&1
    check 19 0 ./.tall '2774517283 2571'
+
+   # Moreover, quoting of several parts with all*
+   t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
+   check 20 0 ./.tmbox '1874764424 668'
+
+   </dev/null ${MAILX} ${ARGS} -Rf \
+         -Sescape=! -Sindentprefix=' |' \
+         -Y 'set quote=allheaders' \
+         -Y reply -Y !. \
+         -Y 'set quote=allbodies' \
+         -Y reply -Y !. \
+         -Y xit \
+         ./.tmbox >./.tall 2>&1
+   check 21 0 ./.tall '946925637 1105'
 
    ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
@@ -7374,11 +7519,11 @@ t_rfc2231() {
    \\type 1 2 3
    \\xit
    ' | ${MAILX} ${ARGS} -Rf ./.tinv > ./.tall 2> ./.terr
-   check 4 0 ./.tall '1842050412 902'
-   if have_feat uistrings; then
+   check 4 0 ./.tall '4094731083 905'
+   if have_feat uistrings && have_feat iconv; then
       check 5 - ./.terr '3713266499 473'
    else
-      t_echoskip '5:[!UISTRINGS]'
+      t_echoskip '5:[!UISTRINGS or !ICONV]'
    fi
 
    t_epilog "${@}"
@@ -7429,12 +7574,12 @@ t_mime_types_load_control() {
          > ./.tout 2>&1
    check_ex0 1-estat
    ${cat} "${MBOX}" >> ./.tout
-   check 1 - ./.tout '919615295 2440'
+   check 1 - ./.tout '2128819500 2441'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '2184535740 3640'
+   check 2 0 ./.tout '1125106528 3642'
 
    t_epilog "${@}"
 }
@@ -7598,7 +7743,7 @@ my body
    check 5 0 "${MBOX}" '98184290 530'
    check 6 - .tall '3604001424 44'
 
-   # And more, with/out -r
+   # And more, with/out -r (and that Sender: vanishs as necessary)
    # TODO -r should be the Sender:, which should automatically propagate to
    # TODO From: if possible and/or necessary.  It should be possible to
    # TODO suppres -r stuff from From: and Sender:, but fallback to special -r
@@ -7611,16 +7756,17 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 7 0 "${MBOX}" '2052716617 201'
-   check 8 - .tout '2052716617 201'
+   check 7 0 "${MBOX}" '4275947318 181'
+   check 8 - .tout '4275947318 181'
    check 9 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
       -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a2@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 10 0 "${MBOX}" '3213404599 382'
-   check 11 - .tout '3213404599 382'
+   check 10 0 "${MBOX}" '1189494079 383'
+   check 11 - .tout '1189494079 383'
    check 12 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://"$MBOX" -s '-Sfrom + -r ++ test' \
@@ -7628,7 +7774,7 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       b@b.example >./.tall 2>&1
-   check 13 0 "${MBOX}" '337984804 609'
+   check 13 0 "${MBOX}" '2253033142 610'
    check 14 - .tall '4294967295 0'
 
    t_epilog "${@}"
@@ -7644,6 +7790,7 @@ t_cmd_escapes() {
       t__gen_msg from 'ex4@am.ple' subject sub4 &&
       t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
       t__gen_mimemsg from 'ex6@am.ple' subject sub6; } > ./.tmbox
+   check 1 - ./.tmbox '517368276 2182'
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
    printf '#
@@ -7804,13 +7951,14 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '774822337 7613'
-   if have_feat uistrings; then
+   check 2 - "${MBOX}" '3877629593 7699'
+
+   if have_feat uistrings && have_feat iconv; then
       check 2-err - ./.terr '3575876476 49'
    else
-      t_echoskip '2-err:[!UISTRINGS]'
+      t_echoskip '2-err:[!UISTRINGS or !ICONV]'
    fi
-   check 3 - ./.tmsg '1991699357 4453'
+   check 3 - ./.tmsg '3502750368 4445'
 
    # Simple return/error value after *expandaddr* failure test
    printf 'body
@@ -7835,7 +7983,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '2120083250 7814'
+   check 4 0 "${MBOX}" '115245837 7900'
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
@@ -9372,7 +9520,7 @@ t_lreply_futh_rth_etc() {
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '1909184320 39820'
+      check 1 - "${MBOX}" '1519985418 39828'
    else
       t_echoskip '1:[!UISTRINGS]'
    fi
@@ -9472,7 +9620,7 @@ t_pipe_handlers() {
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"; } > ./.tax 2>&1;'"${mv}"' ./.tax ./.tay' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
-   check 4 - "${BODY}" '2275717813 469'
+   check 4 - "${BODY}" '2036666633 493'
    check 4-hdl - ./.tay '144517347 151' async
 
    # Keep $MBOX..
@@ -9495,7 +9643,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 5 0 "${BODY}" '79260249 637'
+      check 5 0 "${BODY}" '4260004050 661'
 
       # Fill in ourselfs, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
@@ -9513,7 +9661,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 6 0 "${BODY}" '79260249 637'
+      check 6 0 "${BODY}" '4260004050 661'
 
       # And the same, via copiousoutput (fake)
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
@@ -9532,7 +9680,7 @@ t_pipe_handlers() {
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
                > "${BODY}" 2>&1
-      check 7 0 "${BODY}" '686281717 676'
+      check 7 0 "${BODY}" '709946464 677'
    fi
 
    t_epilog "${@}"
@@ -9608,14 +9756,15 @@ _EOT
       MAILCAPS=./.tmailcap ${MAILX} -X'commandalias m mailcap' ${ARGS} \
          > ./.tall 2>./.terr
    check 1 0 ./.tall '2012114724 3064'
-   check 2 - ./.terr '3903313993 2338'
+   have_feat uistrings && i='3903313993 2338' || i='4294967295 0'
+   check 2 - ./.terr "${i}"
 
    ##
 
    echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 "${MBOX}"
    check 3 0 "${MBOX}" '4224630386 228'
 
-   # I hate it: directly uses cat(1) and mv(1) ..
+   # For reproducability, one pseudo check with cat(1) and mv(1)
    printf '#
 text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
       test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
@@ -9629,8 +9778,25 @@ text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
 
    </dev/null MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
    ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '\mailcap' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 4.pre 0 ./.tall '1428075831 455'
+
+   # Same with real programs
+   printf '#
+text/plain; echo p-1-1\\;< %%s %s\\;echo p-1-2;\\
+      test=echo X >> ./.terrmc\\; [ -n "$XY" ];x-mailx-test-once
+text/plain; echo p-2-1\\;< %%s %s\\;echo p-2-2;\\
+      test=echo Y >> ./.terrmc\\;[ -z "$XY" ]
+text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
+         </dev/null %s %%s\\;echo p-3-2\\; } > ./.tx\\; %s -f ./.tx ./.tasy;\\
+      test=[ -n "$XY" ];nametemplate=%%s.txt;x-mailx-async
+text/plain; echo p-4-1\\;%s\\;echo p-4-2;copiousoutput
+   ' "${cat}" "${cat}" "${cat}" "${mv}" "${cat}" > ./.tmailcap
+
+   </dev/null MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
       -Y '#
-\mailcap
 \echo =1
 \mimeview
 \echo =2
@@ -9641,7 +9807,7 @@ text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
 \echo =4
 ' \
       -Rf "${MBOX}" > ./.tall 2>./.terr
-   check 4 0 ./.tall '1446638436 1286'
+   check 4 0 ./.tall '1912261831 831'
    check 5 - ./.terr '4294967295 0'
    check 6 - ./.terrmc '2376112102 6'
    check 7 - ./.tasy '3913344578 37' async
@@ -9656,26 +9822,27 @@ text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
 
    printf '#
 # stdin
-application/pdf; echo p-1-1\\;cat\\;echo p-1-2;  test=[ "$XY" = "" ]
+application/pdf; echo p-1-1\\;%s\\;echo p-1-2;  test=[ "$XY" = "" ]
 # tmpfile, no template
-application/pdf; echo p-2-1\\;< %%s cat\\;echo p-2-2;  test  =  [ "$XY" = two ]
+application/pdf; echo p-2-1\\;< %%s %s\\;echo p-2-2;  test  =  [ "$XY" = two ]
 # tmpfile, template
-application/pdf; echo p-3-1\\;< %%s cat\\;echo p-3-2; test=[ "$XY" = three ];\\
+application/pdf; echo p-3-1\\;< %%s %s\\;echo p-3-2; test=[ "$XY" = three ];\\
    nametemplate=%%s.txt
 # tmpfile, template, async
 application/pdf; { file=%%s \\; echo p-4-1 = ${file##*.}\\;\\
-         </dev/null cat %%s\\;echo p-4-2\\; } > ./.tx\\; mv -f ./.tx ./.tasy;\\
+         </dev/null %s %%s\\;echo p-4-2\\; } > ./.tx\\; %s -f ./.tx ./.tasy;\\
       test=[ "$XY" = four ]  ; nametemplate  =   %%s.txt  ; x-mailx-async
 # copious,stdin
-application/pdf; echo p-5-1\\;cat\\;echo p-5-2;  test=[ "$XY" = 1 ];\\
+application/pdf; echo p-5-1\\;%s\\;echo p-5-2;  test=[ "$XY" = 1 ];\\
    copiousoutput
 # copious, tmpfile, no template
-application/pdf; echo p-6-1\\;< %%s cat\\;echo p-6-2;  test = [ "$XY" = 2 ];\\
+application/pdf; echo p-6-1\\;< %%s %s\\;echo p-6-2;  test = [ "$XY" = 2 ];\\
    copiousoutput
 # copious, tmpfile, template
-application/pdf; echo p-7-1\\;< %%s cat\\;echo p-7-2;test = [ "$XY" = 3 ];\\
+application/pdf; echo p-7-1\\;< %%s %s\\;echo p-7-2;test = [ "$XY" = 3 ];\\
    nametemplate=%%s.txt; copiousoutput
-   ' > ./.tmailcap
+   ' "${cat}" "${cat}" "${cat}" "${cat}" "${mv}" "${cat}" "${cat}" "${cat}" \
+   > ./.tmailcap
 
    </dev/null XY= MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
    ${MAILX} ${ARGS} -Snomailcap-disable \
@@ -9703,9 +9870,42 @@ application/pdf; echo p-7-1\\;< %%s cat\\;echo p-7-2;test = [ "$XY" = 3 ];\\
 \echo =8
 ' \
       -Rf "${MBOX}" > ./.tall 2>./.terr
-   check 9 0 ./.tall '2494652433 3767'
+   check 9 0 ./.tall '2388630345 3850'
    check 10 - ./.terr '4294967295 0'
    check 11 - ./.tasy '842146666 27' async
+
+   # x-mailx-last-resort, x-mailx-ignore
+
+   ${rm} -f "${MBOX}"
+   printf 'in a pdf\n' > ./.tatt.pdf
+   printf 'du\n' | ${MAILX} ${ARGS} -a ./.tatt.pdf -s test "${MBOX}"
+   check 12 0 "${MBOX}" '3968874750 579'
+
+   printf '#
+# stdin
+application/pdf;echo hidden;x-mailx-ignore
+application/pdf;echo hidden;copiousoutput;x-mailx-ignore
+application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
+   ' "${cat}" > ./.tmailcap
+
+   </dev/null XY= MAILCAPS=./.tmailcap TMPDIR=`${pwd}` \
+   ${MAILX} ${ARGS} -Snomailcap-disable \
+      -Y '#
+\echo =1
+\mimeview
+\echo =2
+\mimetype ?t application/pdf  pdf
+\mimeview
+\echo =3
+\type
+\echo =4
+\unmimetype application/pdf
+\mimeview
+\echo =5
+' \
+      -Rf "${MBOX}" > ./.tall 2>./.terr
+   check 13 0 ./.tall '759843612 1961'
+   check 14 - ./.terr '4294967295 0'
 
    t_epilog "${@}"
 }
@@ -9793,9 +9993,13 @@ t_s_mime() {
       _z=${1}
 
       if [ "${_z}" = 0 ]; then
-         _pass= _osslreq=-nodes _ossl=
+         _pass=
+         _osslreq=-nodes
+         _ossl=
       else
-         _pass=Pacem_in_terris _osslreq= _ossl='-passin pass:'${_pass}
+         _pass=Pacem_in_terris
+         _osslreq=
+         _ossl='-passin pass:'${_pass}
       fi
 
       ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
@@ -9842,7 +10046,7 @@ t_s_mime() {
          -Ssmime-sign-digest=sha1 \
          -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' recei@ver.com
+         -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
       check ${_z} - "${MBOX}" '2359655411 336'
@@ -9878,7 +10082,7 @@ t_s_mime() {
          -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
          -Sfrom=test@localhost \
          -S password-test@localhost.smime-cert-key=${_pass} \
-         -s 'S/MIME test' recei@ver.com
+         -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
       check ${_z} - "${MBOX}" '2359655411 336'
@@ -10004,9 +10208,14 @@ Content-Transfer-Encoding: 8-bit
 --=BOUNDIN=--
 
 --=BOUNDOUT=
-Content-Type: text/plain
+Content-Type: text/troff
 
 Golden Brown
+
+--=BOUNDOUT=
+Content-Type: text/x-uuencode
+
+Aprendimos a quererte
 --=BOUNDOUT=--
 
 ' "${body}" "${body}"
@@ -10329,10 +10538,14 @@ else
    if have_feat debug; then
       if have_feat devel; then
          JOBSYNC=1
+         DEVELDIFF=y
          DUMPERR=y
          ARGS="${ARGS} -Smemdebug"
+         JOBWAIT=`add $JOBWAIT $JOBWAIT`
       fi
    elif have_feat devel; then
+      DEVELDIFF=y
+      DUMPERR=y
       LOOPS_MAX=${LOOPS_BIG}
    fi
    color_init
@@ -10346,12 +10559,12 @@ else
       jobreaper_stop
    else
       MAXJOBS=1
-      #jobreaper_start
+      jobreaper_start
       while [ ${#} -gt 0 ]; do
          jspawn ${1}
          shift
       done
-      #jobreaper_stop
+      jobreaper_stop
    fi
 
 fi
