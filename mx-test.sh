@@ -9984,9 +9984,13 @@ t_s_mime() {
       _z=${1}
 
       if [ "${_z}" = 0 ]; then
-         _pass= _osslreq=-nodes _ossl=
+         _pass=
+         _osslreq=-nodes
+         _ossl=
       else
-         _pass=Pacem_in_terris _osslreq= _ossl='-passin pass:'${_pass}
+         _pass=Pacem_in_terris
+         _osslreq=
+         _ossl='-passin pass:'${_pass}
       fi
 
       ${rm} -f ./.VERIFY ./.ENCRYPT ./.DECRYPT
