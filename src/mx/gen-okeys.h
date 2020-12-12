@@ -30,7 +30,7 @@ static char const a_amv_var_names[] = {
    'a','s','k','c','c','\0',
    /* 13. [117]+7 asksign, a_AMV_VF_BOOL */
    'a','s','k','s','i','g','n','\0',
-   /* 14. [125]+7 asksend, a_AMV_VF_BOOL|a_AMV_VF_I3VAL */
+   /* 14. [125]+7 asksend, a_AMV_VF_BOOL */
    'a','s','k','s','e','n','d','\0',
    /* 15. [133]+6 asksub, a_AMV_VF_BOOL|a_AMV_VF_I3VAL */
    'a','s','k','s','u','b','\0',
@@ -702,7 +702,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {1888769187u, 104u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* askbcc */
    {116464337u, 111u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* askcc */
    {2284472721u, 117u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* asksign */
-   {3082104315u, 125u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},   /* asksend */
+   {3082104315u, 125u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* asksend */
    {311620u, 133u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},   /* asksub */
    {745929243u, 140u, a_AMV_VF_NONE},   /* attrlist */
    {4253309083u, 149u, a_AMV_VF_NONE},   /* autobcc */
@@ -1040,63 +1040,63 @@ static struct a_amv_var_map const a_amv_var_map[] = {
 
 CTAV(4 == FIELD_SIZEOF(struct a_amv_var_chain_map_bsrch, avcmb_prefix));
 static struct a_amv_var_chain_map const a_amv_var_chain_map[] = {
-   {4401, ok_b_disconnected},
-   {4414, ok_v_imap_auth},
-   {4435, ok_v_imap_delim},
-   {4446, ok_v_imap_keepalive},
-   {4477, ok_b_imap_use_starttls},
-   {2159, ok_b_netrc_lookup},
-   {2446, ok_v_password},
-   {2463, ok_v_pop3_auth},
-   {2503, ok_b_pop3_no_apop},
-   {2516, ok_b_pop3_use_starttls},
-   {3145, ok_v_smime_cipher},
-   {3187, ok_v_smime_encrypt},
-   {3255, ok_v_smime_sign_cert},
-   {3271, ok_v_smime_sign_digest},
-   {3289, ok_v_smime_sign_include_certs},
-   {3314, ok_v_smime_sign_message_digest},
-   {3345, ok_v_smtp_auth},
-   {3403, ok_b_smtp_use_starttls},
-   {3475, ok_v_socks_proxy},
-   {3664, ok_v_ssl_ca_dir},
-   {3675, ok_v_ssl_ca_file},
-   {3687, ok_v_ssl_ca_flags},
-   {3700, ok_b_ssl_ca_no_defaults},
-   {3719, ok_v_ssl_cert},
-   {3728, ok_v_ssl_cipher_list},
-   {3760, ok_v_ssl_config_module},
-   {3778, ok_v_ssl_config_pairs},
-   {3795, ok_v_ssl_curves},
-   {3844, ok_v_ssl_key},
-   {3852, ok_v_ssl_method},
-   {3881, ok_v_ssl_protocol},
-   {3921, ok_v_ssl_verify},
-   {4009, ok_v_tls_ca_dir},
-   {4020, ok_v_tls_ca_file},
-   {4032, ok_v_tls_ca_flags},
-   {4045, ok_b_tls_ca_no_defaults},
-   {4080, ok_v_tls_config_module},
-   {4098, ok_v_tls_config_pairs},
-   {4153, ok_v_tls_fingerprint},
-   {4169, ok_v_tls_fingerprint_digest},
-   {4206, ok_v_tls_verify},
-   {4275, ok_v_user},
+   {4401u, ok_b_disconnected},
+   {4414u, ok_v_imap_auth},
+   {4435u, ok_v_imap_delim},
+   {4446u, ok_v_imap_keepalive},
+   {4477u, ok_b_imap_use_starttls},
+   {2159u, ok_b_netrc_lookup},
+   {2446u, ok_v_password},
+   {2463u, ok_v_pop3_auth},
+   {2503u, ok_b_pop3_no_apop},
+   {2516u, ok_b_pop3_use_starttls},
+   {3145u, ok_v_smime_cipher},
+   {3187u, ok_v_smime_encrypt},
+   {3255u, ok_v_smime_sign_cert},
+   {3271u, ok_v_smime_sign_digest},
+   {3289u, ok_v_smime_sign_include_certs},
+   {3314u, ok_v_smime_sign_message_digest},
+   {3345u, ok_v_smtp_auth},
+   {3403u, ok_b_smtp_use_starttls},
+   {3475u, ok_v_socks_proxy},
+   {3664u, ok_v_ssl_ca_dir},
+   {3675u, ok_v_ssl_ca_file},
+   {3687u, ok_v_ssl_ca_flags},
+   {3700u, ok_b_ssl_ca_no_defaults},
+   {3719u, ok_v_ssl_cert},
+   {3728u, ok_v_ssl_cipher_list},
+   {3760u, ok_v_ssl_config_module},
+   {3778u, ok_v_ssl_config_pairs},
+   {3795u, ok_v_ssl_curves},
+   {3844u, ok_v_ssl_key},
+   {3852u, ok_v_ssl_method},
+   {3881u, ok_v_ssl_protocol},
+   {3921u, ok_v_ssl_verify},
+   {4009u, ok_v_tls_ca_dir},
+   {4020u, ok_v_tls_ca_file},
+   {4032u, ok_v_tls_ca_flags},
+   {4045u, ok_b_tls_ca_no_defaults},
+   {4080u, ok_v_tls_config_module},
+   {4098u, ok_v_tls_config_pairs},
+   {4153u, ok_v_tls_fingerprint},
+   {4169u, ok_v_tls_fingerprint_digest},
+   {4206u, ok_v_tls_verify},
+   {4275u, ok_v_user},
 };
 #define a_AMV_VAR_CHAIN_MAP_CNT 42
 
 static struct a_amv_var_chain_map_bsrch const a_amv_var_chain_map_bsrch[] = {
-   {"disc", 0, ok_b_disconnected},
-   {"imap", 1, ok_b_imap_use_starttls},
-   {"netr", 5, ok_b_netrc_lookup},
-   {"pass", 6, ok_v_password},
-   {"pop3", 7, ok_b_pop3_use_starttls},
-   {"smim", 10, ok_v_smime_sign_message_digest},
-   {"smtp", 16, ok_b_smtp_use_starttls},
-   {"sock", 18, ok_v_socks_proxy},
-   {"ssl-", 19, ok_v_ssl_verify},
-   {"tls-", 32, ok_v_tls_verify},
-   {"user", 41, ok_v_user},
+   {"disc", 0u, ok_b_disconnected},
+   {"imap", 1u, ok_b_imap_use_starttls},
+   {"netr", 5u, ok_b_netrc_lookup},
+   {"pass", 6u, ok_v_password},
+   {"pop3", 7u, ok_b_pop3_use_starttls},
+   {"smim", 10u, ok_v_smime_sign_message_digest},
+   {"smtp", 16u, ok_b_smtp_use_starttls},
+   {"sock", 18u, ok_v_socks_proxy},
+   {"ssl-", 19u, ok_v_ssl_verify},
+   {"tls-", 32u, ok_v_tls_verify},
+   {"user", 41u, ok_v_user},
 };
 #define a_AMV_VAR_CHAIN_MAP_BSRCH_CNT 11
 
@@ -1245,7 +1245,6 @@ static struct{
    char const av_name[14 +1];
 } const a_amv_var_virt_version_update = {NIL, a_amv_var_virt_version_update_val, a_X(0 su_COMMA) a_AMV_VF_NONE|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_POSNUM, "version-update"};
 
-
 static struct a_amv_var_virt const a_amv_var_virts[] = {
    {ok_v_build_cc, {0,}, (void const*)&a_amv_var_virt_build_cc},
    {ok_v_build_ld, {0,}, (void const*)&a_amv_var_virt_build_ld},
@@ -1267,7 +1266,6 @@ static struct a_amv_var_virt const a_amv_var_virts[] = {
 #define a_AMV_VAR_VIRTS_CNT 16
 
 static struct a_amv_var_defval const a_amv_var_i3vals[] = {
-   {ok_b_asksend, {0,}, NIL},
    {ok_b_asksub, {0,}, NIL},
    {ok_v_datefield, {0,}, "%Y-%m-%d %H:%M"},
    {ok_v_datefield_markout_older, {0,}, "%Y-%m-%d"},
@@ -1281,20 +1279,9 @@ static struct a_amv_var_defval const a_amv_var_i3vals[] = {
    {ok_v_sendwait, {0,}, ""},
    {ok_v_umask, {0,}, "0077"},
 };
-#define a_AMV_VAR_I3VALS_CNT 13
+#define a_AMV_VAR_I3VALS_CNT 12
 
 static struct a_amv_var_defval const a_amv_var_defvals[] = {
-   {ok_v_DEAD, {0,}, VAL_DEAD},
-   {ok_v_EDITOR, {0,}, VAL_EDITOR},
-   {ok_v_LISTER, {0,}, VAL_LISTER},
-   {ok_v_MAILCAPS, {0,}, VAL_MAILCAPS},
-   {ok_v_MAILRC, {0,}, VAL_MAILRC},
-   {ok_v_MBOX, {0,}, VAL_MBOX},
-   {ok_v_NETRC, {0,}, VAL_NETRC},
-   {ok_v_PAGER, {0,}, VAL_PAGER},
-   {ok_v_SHELL, {0,}, VAL_SHELL},
-   {ok_v_TMPDIR, {0,}, VAL_TMPDIR},
-   {ok_v_VISUAL, {0,}, VAL_VISUAL},
    {ok_v_bind_inter_byte_timeout, {0,}, mx_BIND_INTER_BYTE_TIMEOUT},
    {ok_v_charset_7bit, {0,}, CHARSET_7BIT},
    {ok_v_charset_8bit, {0,}, CHARSET_8BIT},
@@ -1302,15 +1289,26 @@ static struct a_amv_var_defval const a_amv_var_defvals[] = {
    {ok_v_content_description_quote_attachment, {0,}, mx_CONTENT_DESC_QUOTE_ATTACHMENT},
    {ok_v_content_description_smime_message, {0,}, mx_CONTENT_DESC_SMIME_MESSAGE},
    {ok_v_content_description_smime_signature, {0,}, mx_CONTENT_DESC_SMIME_SIG},
+   {ok_v_DEAD, {0,}, VAL_DEAD},
+   {ok_v_EDITOR, {0,}, VAL_EDITOR},
    {ok_v_escape, {0,}, n_ESCAPE},
    {ok_v_ifs, {0,}, " \t\n"},
    {ok_v_indentprefix, {0,}, "\t"},
    {ok_v_line_editor_cpl_word_breaks, {0,}, n_LINE_EDITOR_CPL_WORD_BREAKS},
+   {ok_v_LISTER, {0,}, VAL_LISTER},
+   {ok_v_MAILCAPS, {0,}, VAL_MAILCAPS},
+   {ok_v_MAILRC, {0,}, VAL_MAILRC},
+   {ok_v_MBOX, {0,}, VAL_MBOX},
    {ok_v_mta, {0,}, VAL_MTA},
    {ok_v_mta_argv0, {0,}, VAL_MTA_ARGV0},
+   {ok_v_NETRC, {0,}, VAL_NETRC},
+   {ok_v_PAGER, {0,}, VAL_PAGER},
    {ok_v_quote_chars, {0,}, ">|}:"},
+   {ok_v_SHELL, {0,}, VAL_SHELL},
+   {ok_v_TMPDIR, {0,}, VAL_TMPDIR},
    {ok_v_toplines, {0,}, "5"},
    {ok_v_ttycharset, {0,}, CHARSET_8BIT},
+   {ok_v_VISUAL, {0,}, VAL_VISUAL},
 };
 #define a_AMV_VAR_DEFVALS_CNT 27
 
