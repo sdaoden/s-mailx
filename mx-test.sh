@@ -9,7 +9,7 @@
 #@ grep ^ERROR handling.
 #@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
 #@ this works with --run-test only.
-#@ Ditto, $JOBWAIT is taken from environment when found.
+#@ Ditto, $JOBWAIT and $JOBMON are taken from environment when found.
 #
 # Public Domain
 
@@ -70,6 +70,7 @@ LOOPS_MAX=$LOOPS_SMALL
 
 # How long unless started tests get reaped (avoid endless looping)
 : ${JOBWAIT:=42}
+: ${JOBMON:=y}
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -219,7 +220,7 @@ configurations as possible.
 OBJDIR= may be set to the location of the built objects etc.
 $MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
 one test, aka --run-test).
-Finally $JOBWAIT could be set to a different timeout.
+$JOBWAIT could denote a timeout, $JOBMON controls usage of "set -m".
 _EOT
    exit 1
 }
@@ -338,7 +339,7 @@ export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
-JOBS=0 JOBLIST= JOBDESC= JOBMON= JOBREAPER= JOBSYNC=
+JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
@@ -404,12 +405,20 @@ else
    }
 fi
 
-if (set -m >/dev/null 2>&1); then
-   JOBMON=y
-else
-   echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
-   echo >&2 'Failing (hanging) tests could leave stale processes around!'
-fi
+case "${JOBMON}" in
+[yY]*)
+   if (set -m >/dev/null 2>&1); then
+      JOBMON=y
+   else
+      echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
+      echo >&2 'Failing (hanging) tests could leave stale processes around!'
+      JOBMON=
+   fi
+   ;;
+*)
+   JOBMON=
+   ;;
+esac
 
 jobreaper_start() {
    ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
