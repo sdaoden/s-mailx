@@ -1145,11 +1145,25 @@ ld_runtime_flags() {
    ld_need_R_flags=
 }
 
+_cc_check_ever=
 cc_check() {
+   if [ -z "${_cc_check_ever}" ]; then
+      _cc_check_ever=' '
+      __occ=${cc_check_silent}
+      __oCFLAGS=${_CFLAGS}
+
+      cc_check_silent=
+      cc_check -Werror && _cc_check_ever=-Werror
+
+      _CFLAGS=${__oCFLAGS}
+      cc_check_silent=${__occ}
+      unset __occ __oCFLAGS
+   fi
+
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-      ${CC} ${INCS} \
+      ${CC} ${INCS} ${_cc_check_ever} \
             ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
