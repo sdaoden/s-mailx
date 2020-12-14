@@ -23,9 +23,6 @@ available on OpenPGP key servers, my website and download area.
 Release balls and OpenPGP signatures (.asc) can be downloaded via
 HTTPS/HTTP at \https?://ftp.sdaoden.eu.  Copies of the signatures
 can also be found at the end of this message.
-Preformatted manual pages are available at the same location as
-NAME.cat1.xz and NAME.xcat1.xz (the latter with mdocmx links but
-filtered via col -b).
 
 -----CHECKSUMS-----
 
@@ -33,7 +30,8 @@ These files and this announcement text are available as "-latest"
 symbolic links, for example s-nail-latest.txt.
 (A preformatted only-text all-ASCII manual version can also be
 downloaded as s-nail-VERSION.cat1.xz, and a ...xcat1.xz
-variant includes mdocmx anchors/links as text (#NO#, [NO]).)
+variant includes mdocmx anchors and links as text (#NO#, [NO]),
+and filtered with col -b.
 
   Announcement : https?://www.sdaoden.eu/code-nail-ann.html
   Manual       : https?://www.sdaoden.eu/code-nail.html
