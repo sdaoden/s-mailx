@@ -48,9 +48,8 @@ enum mx_mime_type_handler_flags{
    mx_MIME_TYPE_HDL_NIL, /* No pipe- mimetype handler, go away */
    mx_MIME_TYPE_HDL_CMD, /* Normal command */
    mx_MIME_TYPE_HDL_MSG, /* Display msg (returned as command string) */
-   mx_MIME_TYPE_HDL_PTF, /* A special pointer-to-function handler */
+   mx_MIME_TYPE_HDL_HTML, /* Our HTML filter */
    mx_MIME_TYPE_HDL_TEXT, /* ? special cmd to force treatment as text */
-   mx_MIME_TYPE_HDL_TEXT, /* @ special cmd to force treatment as text */
    mx_MIME_TYPE_HDL_TYPE_MASK = 7u,
 
    /* compose, composetyped, edit, print */
@@ -75,7 +74,6 @@ struct mx_mime_type_handler{
    char const *mth_tmpf_nametmpl; /* Only with HDL_TMPF_NAMETMPL */
    /* XXX union{} the following? */
    char const *mth_shell_cmd; /* For HDL_CMD */
-   int (*mth_ptf)(void); /* PTF main() for HDL_PTF */
    struct str mth_msg; /* Message describing this command */
 };
 
