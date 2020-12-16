@@ -36,10 +36,6 @@
 #include "mx/mime.h"
 #include "mx/mime-enc.h"
 
-#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
-   /* TODO that this does not belong: clear */
-# include "mx/filter-html.h"
-#endif
 #ifdef mx_HAVE_MAILCAP
 # include "mx/mailcap.h"
 #endif
@@ -195,7 +191,8 @@ a_mt_init(void){
    struct a_mt_node *tail;
    NYD_IN;
 
-   /*if(a_mt_is_init) Done by callees
+   ASSERT(!a_mt_is_init);
+   /*if(a_mt_is_init)
     *  goto jleave;*/
 
    /* Always load our built-ins */
@@ -238,7 +235,7 @@ a_mt_init(void){
          case 'U': case 'u':
                srcs_arr[0] = VAL_MIME_TYPES_USR;
             }
-            if (ccp[1] != '\0')
+            if(ccp[1] != '\0')
                goto jecontent;
             break;
          case 'F': case 'f':
@@ -341,7 +338,7 @@ a_mt_create(boole cmdcalled, BITENUM_IS(u32,a_mt_flags) orflags,
    if((typ = su_mem_find(line, '#', len)) != NIL)
       len = P2UZ(typ - line);
 
-   /* Then trim any trailing whitespace from line (including NL/CR) */
+   /* Then trim any whitespace from line (including NL/CR) */
    /* C99 */{
       struct str work;
 
@@ -499,7 +496,7 @@ a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name,
             break;
          /* Do not allow neither of ".txt" or "txt" to match "txt" */
          else if(i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
-               su_cs_cmp_case_n(name + j, ext, i))
+               su_cs_cmp_case_n(&name[j], ext, i))
             continue;
 
          /* Found it */
@@ -516,7 +513,7 @@ a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name,
             j = su_cs_len(name);
          }
          i = mtnp->mtn_len;
-         mtlp->mtl_result = n_autorec_alloc(i + j +1);
+         mtlp->mtl_result = su_AUTO_ALLOC(i + j +1);
          if(j > 0)
             su_mem_copy(mtlp->mtl_result, name, j);
          su_mem_copy(&mtlp->mtl_result[j], mtnp->mtn_line, i);
@@ -561,13 +558,13 @@ a_mt_by_name(struct a_mt_lookup *mtlp, char const *name){
       if(i + j == mtlp->mtl_nlen){
          char *xmt;
 
-         xmt = n_lofi_alloc(i + j +1);
+         xmt = su_LOFI_ALLOC(i + j +1);
          if(j > 0)
             su_mem_copy(xmt, cp, j);
          su_mem_copy(&xmt[j], mtnp->mtn_line, i);
          xmt[j += i] = '\0';
          i = su_cs_cmp_case(name, xmt);
-         n_lofi_free(xmt);
+         su_LOFI_FREE(xmt);
 
          /* Found it? */
          if(!i){
@@ -701,8 +698,7 @@ a_mt_classify_round(struct a_mt_class_arg *mtcap){
             mtc |= a_MT_C_HASNUL /*base64*/ | a_MT_C_SUGGEST_DONE;
             break;
          }
-      }else if(!(mtc & a_MT_C_FROM_) &&
-            UCMP(z, curlnlen, <, a_F_SIZEOF)){
+      }else if(!(mtc & a_MT_C_FROM_) && UCMP(z, curlnlen, <, a_F_SIZEOF)){
          *f_p++ = S(char,c);
          if(UCMP(z, curlnlen, ==, a_F_SIZEOF - 1) &&
                P2UZ(f_p - f_buf) == a_F_SIZEOF &&
@@ -739,7 +735,7 @@ a_mt_classify_o_s_part(BITENUM_IS(u32,a_mt_counter_evidence) mce,
    FILE *ibuf;
    long start_off;
    boole did_inrest;
-   enum a_mt_class mtc;
+   BITENUM_IS(u32,a_mt_class) mtc;
    enum mx_mime_type mt;
    NYD2_IN;
 
@@ -827,7 +823,7 @@ jdobuf:
       }
 
       mtca.mtca_buf = dec.s;
-      mtca.mtca_len = (sz)dec.l;
+      mtca.mtca_len = S(sz,dec.l);
       if((mtc = a_mt_classify_round(&mtca)) & a_MT_C_SUGGEST_DONE){
          mtc = a_MT_C_HASNUL;
          break;
@@ -942,16 +938,15 @@ jnextc:
    case 'h':
       switch(rv & mx_MIME_TYPE_HDL_TYPE_MASK){
       case mx_MIME_TYPE_HDL_NIL: /* FALLTHRU */
-      case mx_MIME_TYPE_HDL_PTF: break;
+      case mx_MIME_TYPE_HDL_HTML: break;
       default:
          cp = N_("only one type-marker can be used");
          goto jerrlog;
       }
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
-      mthp->mth_ptf = &mx_flthtml_process_main;
       mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s =
             UNCONST(char*,_("Built-in HTML tagsoup filter")));
-      rv |= mx_MIME_TYPE_HDL_PTF | mx_MIME_TYPE_HDL_COPIOUSOUTPUT;
+      rv |= mx_MIME_TYPE_HDL_HTML | mx_MIME_TYPE_HDL_COPIOUSOUTPUT;
       ++cp;
       goto jnextc;
 #else
@@ -1207,6 +1202,7 @@ jnorfc822:
       c = (menc == mx_MIME_ENC_7B ? CONV_7BIT
             : (menc == mx_MIME_ENC_8B ? CONV_8BIT
             : (menc == mx_MIME_ENC_QP ? CONV_TOQP : CONV_TOB64)));
+
    NYD_OU;
    return c;
 }
@@ -1398,10 +1394,9 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
       case a_MT_TM_SOUP_h:
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
-         mthp->mth_ptf = &mx_flthtml_process_main;
          mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s =
                UNCONST(char*,_("Built-in HTML tagsoup filter")));
-         rv ^= mx_MIME_TYPE_HDL_NIL | mx_MIME_TYPE_HDL_PTF;
+         rv ^= mx_MIME_TYPE_HDL_NIL | mx_MIME_TYPE_HDL_HTML;
          goto jleave;
 #endif
          /* FALLTHRU */
@@ -1579,12 +1574,12 @@ jdelall:
             i = su_cs_len(typ);
          }
 
-         val = n_lofi_alloc(i + mtnp->mtn_len +1);
+         val = su_LOFI_ALLOC(i + mtnp->mtn_len +1);
          su_mem_copy(val, typ, i);
          su_mem_copy(&val[i], mtnp->mtn_line, mtnp->mtn_len);
          val[i += mtnp->mtn_len] = '\0';
          i = su_cs_cmp_case(val, *argv);
-         n_lofi_free(val);
+         su_LOFI_FREE(val);
 
          if(!i){
             struct a_mt_node *nnp;
