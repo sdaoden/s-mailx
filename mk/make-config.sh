@@ -1519,10 +1519,10 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
+printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 printf \
-   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check-only %s\n' \
+   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables

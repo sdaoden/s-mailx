@@ -84,7 +84,8 @@ The following make(1) targets exist, the default being `build':
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run mx-test.sh in --check-only mode on the built binary.
+- test        Run mx-test.sh in --check mode on the built binary.
+              Tests to be skipped can be passed via SKIPTEST="t1 t2".
 - testnj      Likewise, but add --no-jobs to avoid spawning multiple
               tests in parallel.
 
@@ -189,6 +190,7 @@ first: sometimes it is known that certain tests fail on a specific
 target platform, and there is no applicable fix on application level.
 For example, it is not uncommon that Unicode tests fail because the
 platform uses old or incomplete character information.
+These tests can be excluded by passing SKIPTEST="t1 t2 ..".
 
 It could also be a miscompilation, caused by excessive optimization
 and/or a compiler bug.  If OPT_AUTOCC had been used in conjunction with

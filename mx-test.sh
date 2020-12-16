@@ -1,6 +1,6 @@
 #!/bin/sh -
-#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check-only [s-mailx-binary]
-#@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
+#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check mailx-binary [:SKIPTESTNAME:]
+#@           [OBJDIR=XY] ./mx-test.sh --run-test mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ --no-jobs can be used to prevent spawning concurrent tests.
 #@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
@@ -9,7 +9,7 @@
 #@ grep ^ERROR handling.
 #@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
 #@ this works with --run-test only.
-#@ Ditto, $JOBWAIT and $JOBMON are taken from environment when found.
+#@ $JOBWAIT, $JOBMON and $SKIPTEST are taken from environment when found.
 #
 # Public Domain
 
@@ -71,6 +71,7 @@ LOOPS_MAX=$LOOPS_SMALL
 # How long unless started tests get reaped (avoid endless looping)
 : ${JOBWAIT:=42}
 : ${JOBMON:=y}
+: ${SKIPTEST:=}
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -198,26 +199,27 @@ unset POSIXLY_CORRECT LOGNAME USER
 # usage {{{
 usage() {
    ${cat} >&2 <<'_EOT'
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check mailx-binary [:SKIPTEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test mailx-binary [:TEST:]
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
 
- --check-only EXE         run the test series, exit success or error;
-                          if run in a git(1) checkout then failed tests
-                          create test output data files
+ --check EXE [:SKIPTEST:] run test series, exit success or error.
+                          [:SKIPTEST:]s (and $SKIPTEST=) will be excluded.
  --run-test EXE [:TEST:]  run all or only the given TESTs, and create
                           test output data files; if run in a git(1)
                           checkout with the [test-out] branch available,
-                          it will also create file differences
+                          it will also create file diff(1)erences
  --no-jobs                do not spawn multiple jobs simultaneously
+                          (dependent on make(1) and sh(1), pass JOBMON=n, too)
  --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
                           (for example to: grep ^ERROR)
                           $MAILX_CC_ALL_TESTS_DUMPER in addition for even
-                          easier grep ^ERROR handling.
+                          easier grep ^ERROR handling
 
 The last invocation style will compile and test as many different
 configurations as possible.
-OBJDIR= may be set to the location of the built objects etc.
+EXE should be absolute or relative to $OBJDIR, which can be may be set to the
+location of the built objects etc.
 $MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
 one test, aka --run-test).
 $JOBWAIT could denote a timeout, $JOBMON controls usage of "set -m".
@@ -225,7 +227,7 @@ _EOT
    exit 1
 }
 
-CHECK_ONLY= RUN_TEST= MAILX=
+CHECK= RUN_TEST= MAILX=
 DEVELDIFF= DUMPERR= GIT_REPO=
 MAXJOBS=1 NOCOLOUR= NOJOBS=
 while [ ${#} -gt 0 ]; do
@@ -235,24 +237,28 @@ while [ ${#} -gt 0 ]; do
    elif [ "${1}" = --no-colour ]; then
       NOCOLOUR=y
       shift
+   elif [ "${1}" = -h ] || [ "${1}" = --help ]; then
+      usage
+      exit 0
    else
       break
    fi
 done
 
-if [ "${1}" = --check-only ]; then
-   [ ${#} -eq 2 ] || usage
-   CHECK_ONLY=1 MAILX=${2}
+if [ "${1}" = --check ]; then
+   CHECK=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
-   echo 'Mode: --check-only, binary: '"${MAILX}"
+   shift 2
+   SKIPTEST="${@} ${SKIPTEST}"
    [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
+   echo 'Mode: --check, binary: '"${MAILX}"
 elif [ "${1}" = --run-test ]; then
    [ ${#} -ge 2 ] || usage
    RUN_TEST=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
-   echo 'Mode: --run-test, binary: '"${MAILX}"
    [ -d ../.git ] && GIT_REPO=1
+   echo 'Mode: --run-test, binary: '"${MAILX}"
 else
    [ ${#} -eq 0 ] || usage
    echo 'Mode: full compile test, this will take a long time...'
@@ -269,7 +275,7 @@ MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
 # We want an UTF-8 locale, and HONOURS_READONLY {{{
-if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
+if [ -n "${CHECK}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
@@ -489,6 +495,25 @@ jobreaper_stop() {
 }
 
 jspawn() {
+   if [ -n "${CHECK}" ] && [ -n "${SKIPTEST}" ]; then
+      i="${@}"
+      j="${1}"
+      k=
+      set -- ${SKIPTEST}
+      SKIPTEST=
+      while [ ${#} -gt 0 ]; do
+         if [ "${1}" != "${j}" ]; then
+            SKIPTEST="${SKIPTEST} ${1}"
+         elif [ -z "${k}" ]; then
+            k=y
+            t_echoskip ${1}
+         fi
+         shift
+      done
+      [ -n "${k}" ] && return
+      set -- "${i}"
+   fi
+
    if [ ${MAXJOBS} -gt 1 ]; then
       # We are spawning multiple jobs..
       [ ${JOBS} -eq 0 ] && printf '...'
@@ -521,7 +546,11 @@ jspawn() {
 }
 
 jsync() {
-   [ ${JOBS} -eq 0 ] && return
+   if [ ${JOBS} -eq 0 ]; then
+      [ -n "${TEST_ANY}" ] && printf '\n'
+      TEST_ANY=
+      return
+   fi
    [ -z "${JOBSYNC}" ] && [ ${#} -eq 0 ] && return
 
    [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
@@ -722,7 +751,7 @@ check() {
       TESTS_FAILED=`add ${TESTS_FAILED} 1`
    fi
 
-   if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
+   if [ -n "${CHECK}${RUN_TEST}" ]; then
       x="t.${TEST_NAME}-${tid}"
       if [ -n "${RUN_TEST}" ] ||
             [ -n "${check__runx}" -a -n "${GIT_REPO}" ]; then
@@ -10531,7 +10560,7 @@ cc_all_configs() {
 # }}}
 
 ssec=$SECONDS
-if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
+if [ -z "${CHECK}${RUN_TEST}" ]; then
    jobs_max
    cc_all_configs
 else
