@@ -2,6 +2,7 @@
  *@ Implementation of go.h.
  *@ TODO - everything should take a_go_ctx* and work through it.
  *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
+ *@ TODO   Also, macro without return -> return status of last command!
  *@ TODO - sigs_hold_all() most often on, especially robot mode: TERRIBLE!
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
  *@ TODO   example to handle injections, and also `readctl' channels!

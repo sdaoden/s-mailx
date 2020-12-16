@@ -2,22 +2,103 @@
 #@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check mailx-binary [:SKIPTESTNAME:]
 #@           [OBJDIR=XY] ./mx-test.sh --run-test mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
-#@ --no-jobs can be used to prevent spawning concurrent tests.
 #@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
 #@             (then grep for ^ERROR, for example).
 #@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
 #@ grep ^ERROR handling.
 #@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
 #@ this works with --run-test only.
-#@ $JOBWAIT, $JOBMON and $SKIPTEST are taken from environment when found.
+#@ $JOBNO, $JOBWAIT, $JOBMON and $SKIPTEST could be passed via environment.
 #
 # Public Domain
 
 : ${OBJDIR:=.obj}
+: ${JOBNO:=}
+: ${JOBWAIT:=42}
+: ${JOBMON:=y}
+: ${SKIPTEST:=}
 
+# Note valgrind has problems with FDs in forked childs, which causes some tests
+# to fail (the FD is rewound and thus will be dumped twice)
+MEMTESTER=
+#MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
+
+export \
+   OBJDIR JOBNO JOBWAIT JOBMON SKIPTEST \
+   MEMTESTER
+
+##  --  >8  --  8<  --  ##
+
+# environ,usage,argv {{{
+LC_ALL=C LANG=C TZ=UTC
+export LC_ALL LANG TZ
+
+usage() {
+   cat >&2 <<'_EOT'
+Synopsis: [OBJDIR=x] mx-test.sh [--no-colour] --check mailx-binary [:SKIPTEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-colour] --run-test mailx-binary [:TEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-colour]
+
+ --check EXE [:SKIPTEST:] run test series, exit success or error.
+                          [:SKIPTEST:]s (and $SKIPTEST=) will be excluded.
+ --run-test EXE [:TEST:]  run all or only the given TESTs, and create
+                          test output data files; if run in a git(1)
+                          checkout with the [test-out] branch available,
+                          it will also create file diff(1)erences
+ --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
+                          (for example to: grep ^ERROR)
+                          $MAILX_CC_ALL_TESTS_DUMPER in addition for even
+                          easier grep ^ERROR handling
+
+EXE is either an absolute path or interpreted relative to $OBJDIR.
+$JOBNO could denote number of parallel jobs, $JOBWAIT a timeout, and
+$JOBMON controls usage of "set -m".  $MAILX_CC_TEST_NO_CLEANUP skips deletion
+of test data (works only with one test, aka --run-test).
+_EOT
+   exit 1
+}
+
+if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+   CHECK= RUN_TEST= MAILX= NOCOLOUR=
+
+   while [ ${#} -gt 0 ]; do
+      if [ "${1}" = --no-colour ]; then
+         NOCOLOUR=y
+         shift
+      elif [ "${1}" = -h ] || [ "${1}" = --help ]; then
+         usage
+         exit 0
+      else
+         break
+      fi
+   done
+
+   if [ "${1}" = --check ]; then
+      CHECK=1 MAILX=${2}
+      shift 2
+      SKIPTEST="${@} ${SKIPTEST}"
+      echo 'Mode: --check, binary: '"${MAILX}"
+   elif [ "${1}" = --run-test ]; then
+      [ ${#} -ge 2 ] || usage
+      RUN_TEST=1 MAILX=${2}
+      shift 2
+      echo 'Mode: --run-test, binary: '"${MAILX}"
+   else
+      [ ${#} -eq 0 ] || usage
+      echo 'Mode: full compile test, this will take a long time...'
+      MAILX__CC_TEST_NO_DATA_FILES=1
+      export MAILX__CC_TEST_NO_DATA_FILES
+   fi
+
+   export CHECK RUN_TEST MAILX NOCOLOUR
+fi
+# }}}
+
+# Config {{{
 # Instead of figuring out the environment in here, require a configured build
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
+
 i=
 while :; do
    if [ -f ./mk-config.env ]; then
@@ -39,7 +120,7 @@ while :; do
 done
 . ./mk-config.env
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
-   MAILX__CC_TEST_RUNNING=1
+   MAILX__CC_TEST_RUNNING=y
    export MAILX__CC_TEST_RUNNING
    exec "${SHELL}" "${i}${0}" "${@}"
 fi
@@ -61,222 +142,25 @@ MAIL=/dev/null
 #UTF8_LOCALE= HONOURS_READONLY= autodetected unless set
 TMPDIR=`${pwd}`
 
+export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX ERR MAIL TMPDIR
+
 # When testing mass mail/loops, maximum number of receivers/loops.
 # TODO note we do not gracefully handle ARG_MAX excess yet!
 # Those which use this have checksums for 2001 and 201.
 # Some use the smaller automatically if +debug
 LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
-
-# How long unless started tests get reaped (avoid endless looping)
-: ${JOBWAIT:=42}
-: ${JOBMON:=y}
-: ${SKIPTEST:=}
-
-# Note valgrind has problems with FDs in forked childs, which causes some tests
-# to fail (the FD is rewound and thus will be dumped twice)
-MEMTESTER=
-#MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
-
-##  --  >8  --  8<  --  ##
-
-t_all() { # {{{
-   # Absolute Basics
-   jspawn eval
-   jspawn X_Y_opt_input_go_stack
-   jspawn X_errexit
-   jspawn Y_errexit
-   jspawn S_freeze
-   jspawn f_batch_order
-   jspawn input_inject_semicolon_seq
-   jspawn wysh
-   jspawn commandalias # test now, save space later on!
-   jspawn posix_abbrev
-   jsync
-
-   # Basics
-   jspawn shcodec
-   jspawn ifelse
-   jspawn localopts
-   jspawn local
-   jspawn environ
-   jspawn loptlocenv
-   jspawn macro_param_shift
-   jspawn csop
-   jspawn vexpr
-   jspawn call_ret
-   jspawn xcall
-   jspawn vpospar
-   jspawn atxplode
-   jspawn read
-   jspawn readsh
-   jsync
-
-   # Send/RFC absolute basics
-   jspawn addrcodec
-   jspawn headerpick # (Just so we have a notion that it works a bit .. now)
-   jspawn can_send_rfc
-   jspawn reply
-   jspawn forward
-   jspawn resend
-   jsync
-
-   # VFS
-   jspawn copy
-   jspawn save
-   jspawn move
-   jspawn mbox
-   jspawn maildir
-   jsync
-
-   # MIME and RFC basics
-   jspawn mime_if_not_ascii
-   jspawn mime_encoding
-   jspawn xxxheads_rfc2047
-   jspawn iconv_mbyte_base64
-   jspawn iconv_mainbody
-   jspawn mime_force_sendout
-   jspawn binary_mainbody
-   jspawn C_opt_customhdr
-   jsync
-
-   # Operational basics with trivial tests
-   jspawn alias
-   jspawn charsetalias
-   jspawn shortcut
-   jspawn netrc
-   jsync
-
-   # Operational basics with easy tests
-   jspawn expandaddr # (after t_alias)
-   jspawn mta_aliases # (after t_expandaddr)
-   jspawn filetype
-   jspawn e_H_L_opts
-   jspawn q_t_etc_opts
-   jspawn message_injections
-   jspawn attachments
-   jspawn rfc2231 # (after attachments)
-   jspawn mime_types_load_control
-   jsync
-
-   # Around state machine, after basics
-   jspawn alternates
-   jspawn cmd_escapes
-   jspawn compose_edits
-   jspawn digmsg
-   jspawn on_main_loop_tick
-   jspawn on_program_exit
-   jsync
-
-   # Heavy use of/rely on state machine (behaviour) and basics
-   jspawn compose_hooks
-   jspawn mass_recipients
-   jspawn lreply_futh_rth_etc
-   jspawn pipe_handlers
-   jspawn mailcap
-   jsync
-
-   # Unclassified rest
-   jspawn top
-   jspawn z
-   jsync
-
-   # OPT_TLS (basics, like S/MIME)
-   jspawn s_mime
-   jsync
-
-   ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
-   jspawn net_pop3
-   jspawn net_imap
-   jspawn net_smtp
-   jsync
-
-   jsync 1
-} # }}}
+# }}}
 
 ## Now it is getting really weird. You have been warned.
-# Setup and support {{{
-export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR
 
-LC_ALL=C LANG=C
-TZ=UTC
+# Setup and support {{{
+
 # Wed Oct  2 01:50:07 UTC 1996
 SOURCE_DATE_EPOCH=844221007
+export SOURCE_DATE_EPOCH
 
-export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT LOGNAME USER
-
-# usage {{{
-usage() {
-   ${cat} >&2 <<'_EOT'
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check mailx-binary [:SKIPTEST:]
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test mailx-binary [:TEST:]
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
-
- --check EXE [:SKIPTEST:] run test series, exit success or error.
-                          [:SKIPTEST:]s (and $SKIPTEST=) will be excluded.
- --run-test EXE [:TEST:]  run all or only the given TESTs, and create
-                          test output data files; if run in a git(1)
-                          checkout with the [test-out] branch available,
-                          it will also create file diff(1)erences
- --no-jobs                do not spawn multiple jobs simultaneously
-                          (dependent on make(1) and sh(1), pass JOBMON=n, too)
- --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
-                          (for example to: grep ^ERROR)
-                          $MAILX_CC_ALL_TESTS_DUMPER in addition for even
-                          easier grep ^ERROR handling
-
-The last invocation style will compile and test as many different
-configurations as possible.
-EXE should be absolute or relative to $OBJDIR, which can be may be set to the
-location of the built objects etc.
-$MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
-one test, aka --run-test).
-$JOBWAIT could denote a timeout, $JOBMON controls usage of "set -m".
-_EOT
-   exit 1
-}
-
-CHECK= RUN_TEST= MAILX=
-DEVELDIFF= DUMPERR= GIT_REPO=
-MAXJOBS=1 NOCOLOUR= NOJOBS=
-
-while [ ${#} -gt 0 ]; do
-   if [ "${1}" = --no-jobs ]; then
-      NOJOBS=y
-      shift
-   elif [ "${1}" = --no-colour ]; then
-      NOCOLOUR=y
-      shift
-   elif [ "${1}" = -h ] || [ "${1}" = --help ]; then
-      usage
-      exit 0
-   else
-      break
-   fi
-done
-
-if [ "${1}" = --check ]; then
-   CHECK=1 MAILX=${2}
-   [ -x "${MAILX}" ] || usage
-   shift 2
-   SKIPTEST="${@} ${SKIPTEST}"
-   [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
-   echo 'Mode: --check, binary: '"${MAILX}"
-elif [ "${1}" = --run-test ]; then
-   [ ${#} -ge 2 ] || usage
-   RUN_TEST=1 MAILX=${2}
-   [ -x "${MAILX}" ] || usage
-   shift 2
-   [ -d ../.git ] && GIT_REPO=1
-   echo 'Mode: --run-test, binary: '"${MAILX}"
-else
-   [ ${#} -eq 0 ] || usage
-   echo 'Mode: full compile test, this will take a long time...'
-   MAILX__CC_TEST_NO_DATA_FILES=1
-   export MAILX__CC_TEST_NO_DATA_FILES
-fi
-# }}}
 
 # Since we invoke $MAILX from within several directories we need a fully
 # qualified path.  Or at least something similar.
@@ -284,6 +168,10 @@ fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
+
+GIT_REPO=
+[ -x "${MAILX}" ] || usage
+[ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
 
 # We want an UTF-8 locale, and HONOURS_READONLY {{{
 if [ -n "${CHECK}${RUN_TEST}" ]; then
@@ -362,6 +250,7 @@ fi
 export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
+DEVELDIFF= DUMPERR=
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
 JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
 SUBSECOND_SLEEP=
@@ -386,8 +275,13 @@ trap "
 trap "exit 1" HUP INT QUIT TERM
 
 # JOBS {{{
-if [ -n "${NOJOBS}" ]; then
-   jobs_max() { :; }
+jobs_max() { :; }
+
+if [ -n "${JOBNO}" ]; then
+   if { echo "${JOBNO}" | grep -q -e '^[0-9]\{1,\}$'; }; then :; else
+      echo >&2 '$JOBNO='${JOBNO}' is not a valid number, using 1'
+      JOBNO=1
+   fi
 else
    jobs_max() {
       # The user desired variant
@@ -396,8 +290,8 @@ else
                ${sed} -e 's/^.*-j[ 	]*\([0-9]\{1,\}\).*$/\1/'`
          if ( echo "${i}" | grep -q -e '^[0-9]\{1,\}$' ); then
             printf 'Job number derived from MAKEFLAGS: %s\n' ${i}
-            MAXJOBS=${i}
-            [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+            JOBNO=${i}
+            [ "${JOBNO}" -eq 0 ] && JOBNO=1
             return
          fi
       fi
@@ -407,7 +301,7 @@ else
       if ( ${MAKE} -j 10 -f t.mk.io ) >/dev/null 2>&1; then
          if command -v nproc >/dev/null 2>&1; then
             i=`nproc 2>/dev/null`
-            [ ${?} -eq 0 ] && MAXJOBS=${i}
+            [ ${?} -eq 0 ] && JOBNO=${i}
          else
             i=`getconf _NPROCESSORS_ONLN 2>/dev/null`
             j=${?}
@@ -428,10 +322,10 @@ else
             fi
             if [ ${j} -eq 0 ] && [ -n "${i}" ]; then
                printf 'Job number derived from CPU number: %s\n' ${i}
-               MAXJOBS=${i}
+               JOBNO=${i}
             fi
          fi
-         [ "${MAXJOBS}" -eq 0 ] && MAXJOBS=1
+         [ "${JOBNO}" -eq 0 ] && JOBNO=1
       fi
    }
 fi
@@ -485,6 +379,7 @@ jspawn() {
             SKIPTEST="${SKIPTEST} ${1}"
          elif [ -z "${k}" ]; then
             k=y
+            [ ${JOBNO} -gt 1 ] && printf ' '
             t_echoskip ${1}
          fi
          shift
@@ -493,7 +388,7 @@ jspawn() {
       set -- "${i}"
    fi
 
-   if [ ${MAXJOBS} -gt 1 ]; then
+   if [ ${JOBNO} -gt 1 ]; then
       # We are spawning multiple jobs..
       [ ${JOBS} -eq 0 ] && printf '...'
       JOBS=`add ${JOBS} 1`
@@ -519,7 +414,7 @@ jspawn() {
    printf '%s\n%s\n' ${i} ${1} > t.${JOBS}.id
 
    # ..until we should sync or reach the maximum concurrent number
-   [ ${JOBS} -lt ${MAXJOBS} ] && return
+   [ ${JOBS} -lt ${JOBNO} ] && return
 
    jsync 1
 }
@@ -532,7 +427,7 @@ jsync() {
    fi
    [ -z "${JOBSYNC}" ] && [ ${#} -eq 0 ] && return
 
-   [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
+   [ ${JOBNO} -ne 1 ] && printf ' .. waiting\n'
 
    # Start an asynchronous notify process
    ${rm} -f ./t.time.out
@@ -5888,6 +5783,7 @@ t_C_opt_customhdr() { # {{{
    t_epilog "${@}"
 }
 # }}}
+# }}}
 
 # Operational basics with trivial tests {{{
 t_alias() { # {{{
@@ -10779,10 +10675,10 @@ t__tls__copy() {
 
 # Test all configs TODO does not cover all *combinations*, stupid!
 cc_all_configs() { # {{{
-   if [ ${MAXJOBS} -gt 1 ]; then
-      MAXJOBS='-j '${MAXJOBS}
+   if [ ${JOBNO} -gt 1 ]; then
+      JOBNO='-j '${JOBNO}
    else
-      MAXJOBS=
+      JOBNO=
    fi
    if [ -n "${NOCOLOUR}" ] || [ -n "${MAILX_CC_TEST_NO_COLOUR}" ]; then
       MAILX_CC_TEST_NO_COLOUR=1
@@ -10933,20 +10829,135 @@ cc_all_configs() { # {{{
          continue
       fi
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
-      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n"
-      printf "\n\n##########\n${MAKE} ${MAXJOBS} config $c\n" >&2
-      ${SHELL} -c "cd .. && ${MAKE} ${MAXJOBS} config ${c}"
+      printf "\n\n##########\n${MAKE} ${JOBNO} config $c\n"
+      printf "\n\n##########\n${MAKE} ${JOBNO} config $c\n" >&2
+      ${SHELL} -c "cd .. && ${MAKE} ${JOBNO} config ${c}"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
          continue
       fi
-      ${SHELL} -c "cd ../ && ${MAKE} ${MAXJOBS} build test"
+      ${SHELL} -c "cd ../ && ${MAKE} ${JOBNO} build test"
    done
    ${rm} -f .ccac.h
    cd .. && ${MAKE} distclean
 } # }}}
 
+t_all() { # {{{
+   # Absolute Basics
+   jspawn eval
+   jspawn X_Y_opt_input_go_stack
+   jspawn X_errexit
+   jspawn Y_errexit
+   jspawn S_freeze
+   jspawn f_batch_order
+   jspawn input_inject_semicolon_seq
+   jspawn wysh
+   jspawn commandalias # test now, save space later on!
+   jspawn posix_abbrev
+   jsync
+
+   # Basics
+   jspawn shcodec
+   jspawn ifelse
+   jspawn localopts
+   jspawn local
+   jspawn environ
+   jspawn loptlocenv
+   jspawn macro_param_shift
+   jspawn csop
+   jspawn vexpr
+   jspawn call_ret
+   jspawn xcall
+   jspawn vpospar
+   jspawn atxplode
+   jspawn read
+   jspawn readsh
+   jsync
+
+   # Send/RFC absolute basics
+   jspawn addrcodec
+   jspawn headerpick # (Just so we have a notion that it works a bit .. now)
+   jspawn can_send_rfc
+   jspawn reply
+   jspawn forward
+   jspawn resend
+   jsync
+
+   # VFS
+   jspawn copy
+   jspawn save
+   jspawn move
+   jspawn mbox
+   jspawn maildir
+   jsync
+
+   # MIME and RFC basics
+   jspawn mime_if_not_ascii
+   jspawn mime_encoding
+   jspawn xxxheads_rfc2047
+   jspawn iconv_mbyte_base64
+   jspawn iconv_mainbody
+   jspawn mime_force_sendout
+   jspawn binary_mainbody
+   jspawn C_opt_customhdr
+   jsync
+
+   # Operational basics with trivial tests
+   jspawn alias
+   jspawn charsetalias
+   jspawn shortcut
+   jspawn netrc
+   jsync
+
+   # Operational basics with easy tests
+   jspawn expandaddr # (after t_alias)
+   jspawn mta_aliases # (after t_expandaddr)
+   jspawn filetype
+   jspawn e_H_L_opts
+   jspawn q_t_etc_opts
+   jspawn message_injections
+   jspawn attachments
+   jspawn rfc2231 # (after attachments)
+   jspawn mime_types_load_control
+   jsync
+
+   # Around state machine, after basics
+   jspawn alternates
+   jspawn cmd_escapes
+   jspawn compose_edits
+   jspawn digmsg
+   jspawn on_main_loop_tick
+   jspawn on_program_exit
+   jsync
+
+   # Heavy use of/rely on state machine (behaviour) and basics
+   jspawn compose_hooks
+   jspawn mass_recipients
+   jspawn lreply_futh_rth_etc
+   jspawn pipe_handlers
+   jspawn mailcap
+   jsync
+
+   # Unclassified rest
+   jspawn top
+   jspawn z
+   jsync
+
+   # OPT_TLS (basics, like S/MIME)
+   jspawn s_mime
+   jsync
+
+   ## OPT_NET_TEST -> major switch $TESTS_NET_TEST as below
+   jspawn net_pop3
+   jspawn net_imap
+   jspawn net_smtp
+   jsync
+
+   jsync 1
+} # }}}
+
+# Running {{{
 ssec=$SECONDS
 if [ -z "${CHECK}${RUN_TEST}" ]; then
    jobs_max
@@ -10970,12 +10981,12 @@ else
    if [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
       jobs_max
       printf 'Will do up to %s tests in parallel, with a %s second timeout\n' \
-         ${MAXJOBS} ${JOBWAIT}
+         ${JOBNO} ${JOBWAIT}
       jobreaper_start
       t_all
       jobreaper_stop
    else
-      MAXJOBS=1
+      JOBNO=1
       printf 'Tests have a %s second timeout\n' ${JOBWAIT}
       jobreaper_start
       while [ ${#} -gt 0 ]; do
@@ -10995,6 +11006,7 @@ printf '%u tests: %s%u ok%s, %s%u failure(s)%s.  %s%u test(s) skipped%s\n' \
 if [ -n "${ssec}" ] && [ -n "${esec}" ]; then
    ( echo 'Elapsed seconds: '`$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
 fi
+# }}}
 
 exit ${ESTAT}
 # s-sh-mode

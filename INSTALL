@@ -86,7 +86,7 @@ The following make(1) targets exist, the default being `build':
 
 - test        Run mx-test.sh in --check mode on the built binary.
               Tests to be skipped can be passed via SKIPTEST="t1 t2".
-- testnj      Likewise, but add --no-jobs to avoid spawning multiple
+- testnj      Likewise, but use $JOBNO=1 to avoid spawning multiple
               tests in parallel.
 
 Setting the make(1) variable $VERBOSE to an arbitrary value during
