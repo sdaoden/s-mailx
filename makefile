@@ -2,17 +2,21 @@
 #@ Adjustments have to be made in make.rc -- or on the command line.
 #@ See the file INSTALL if you need help.
 
+# (Targets of ./make-emerge.sh)
+CWDDIR=
+TOPDIR=
+OBJDIR=.obj
+
+##  --  >8  --  8<  --  ##
+
+SHELL = /bin/sh
+
 .PHONY: ohno tangerine citron \
 	all config build install uninstall clean distclean \
 	devel odevel \
 	test testnj
 .NOTPARALLEL:
 .WAIT: # Luckily BSD make supports specifying this as target, too
-
-# These are targets of make-emerge.sh
-CWDDIR=
-TOPDIR=
-OBJDIR=.obj
 
 ohno: build
 tangerine: config .WAIT build .WAIT test .WAIT install
@@ -43,14 +47,12 @@ odevel:
 	$${SHELL} "$${TOPDIR}"mk/make-version.sh create &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk all
 
-# The test should inherit the user runtime environment!
+# (Test should inherit user runtime environ, at least a bit)
 test:
 	@$(__prestop); cd "$(OBJDIR)" && LC_ALL=C $(MAKE) -f mk-config.mk test
 testnj:
 	@$(__prestop); cd "$(OBJDIR)" &&\
 	LC_ALL=C $(MAKE) -f mk-config.mk testnj
-
-## The rest is developer stuff
 
 d-cross-build:
 	@DEVEL_ORIG_CC=$(CC); export DEVEL_ORIG_CC; \
