@@ -378,8 +378,8 @@ else
       fi
 
       # The actual hardware
-      printf 'all:\n' > .t.mk.io
-      if ( ${MAKE} -j 10 -f .t.mk.io ) >/dev/null 2>&1; then
+      printf 'all:\n' > t.mk.io
+      if ( ${MAKE} -j 10 -f t.mk.io ) >/dev/null 2>&1; then
          if command -v nproc >/dev/null 2>&1; then
             i=`nproc 2>/dev/null`
             [ ${?} -eq 0 ] && MAXJOBS=${i}
@@ -417,7 +417,7 @@ case "${JOBMON}" in
    i=
    ( ${MAKE} -p ) >/dev/null 2>&1
    if [ ${?} -ne 0 ]; then
-      ${cat} > .t.mk.mon <<'_EOT'
+      ${cat} > t.mk.io <<'_EOT'
 all:
 	@printf ''
 ifdef .PARSEDIR
@@ -426,7 +426,7 @@ ifdef .PARSEDIR
 .endif
 endif
 _EOT
-      i=`${MAKE} -f .t.mk.mon 2>/dev/null`
+      i=`${MAKE} -f t.mk.io 2>/dev/null`
       if [ ${?} -ne 0 ] || [ -n "${i}" ]; then
          i="${MAKE} cannot supervise sh(1)ells with"
       fi
