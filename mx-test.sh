@@ -413,10 +413,30 @@ fi
 
 case "${JOBMON}" in
 [yY]*)
-   if (set -m >/dev/null 2>&1); then
+   # BSD make cannot monitor shells which monitor
+   i=
+   ( ${MAKE} -p ) >/dev/null 2>&1
+   if [ ${?} -ne 0 ]; then
+      ${cat} > .t.mk.mon <<'_EOT'
+all:
+	@printf ''
+ifdef .PARSEDIR
+.if defined(.PARSEDIR)
+	@echo yes
+.endif
+endif
+_EOT
+      i=`${MAKE} -f .t.mk.mon 2>/dev/null`
+      if [ ${?} -ne 0 ] || [ -n "${i}" ]; then
+         i="${MAKE} cannot supervise sh(1)ells with"
+      fi
+   fi
+
+   if [ -z "${i}" ] && (set -m >/dev/null 2>&1); then
       JOBMON=y
    else
-      echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
+      [ -z "${i}" ] && i="${SHELL} does not support"
+      echo >&2 ${i}" \"set -m[onitor]\"!"
       echo >&2 'Failing (hanging) tests could leave stale processes around!'
       JOBMON=
    fi
