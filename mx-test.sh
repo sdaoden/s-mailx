@@ -455,7 +455,8 @@ jobreaper_start() {
    (  # .. which is actually a notify timer only
       parent=${$}
       sleeper= int=0 hot=0
-      trap '' EXIT HUP INT QUIT
+      trap '' EXIT HUP QUIT CHLD
+      trap 'exit 0' INT
       trap '
          [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
          int=1 hot=1
