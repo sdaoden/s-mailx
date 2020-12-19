@@ -482,7 +482,7 @@ jobreaper_start() {
          sleeper=
          [ "${int}${hot}" = 01 ] && kill -USR1 ${parent} >/dev/null 2>&1
       done
-   ) </dev/null & #>/dev/null 2>&1 &
+   ) </dev/null >/dev/null 2>&1 &
    JOBREAPER=${!}
 
    j=
