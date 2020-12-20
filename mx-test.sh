@@ -413,32 +413,12 @@ fi
 
 case "${JOBMON}" in
 [yY]*)
-   # BSD make cannot monitor shells which monitor
-   i=
-   ( ${MAKE} -p ) >/dev/null 2>&1
-   if [ ${?} -ne 0 ]; then
-      ${cat} > t.mk.io <<'_EOT'
-all:
-	@printf ''
-ifdef .PARSEDIR
-.if defined(.PARSEDIR)
-	@echo yes
-.endif
-endif
-_EOT
-      i=`${MAKE} -f t.mk.io 2>/dev/null`
-      if [ ${?} -ne 0 ] || [ -n "${i}" ]; then
-         i="${MAKE} cannot supervise sh(1)ells with"
+   # There were problems when using monitor mode with mksh
+   i=`env -i ${SHELL} -c 'echo $KSH_VERSION'`
+   if [ -n "${i}" ]; then
+      if [ "${i}" != "${i#*MIRBSD}" ]; then
+         JOBMON=
       fi
-   fi
-
-   if [ -z "${i}" ] && (set -m >/dev/null 2>&1); then
-      JOBMON=y
-   else
-      [ -z "${i}" ] && i="${SHELL} does not support"
-      echo >&2 ${i}" \"set -m[onitor]\"!"
-      echo >&2 'Failing (hanging) tests could leave stale processes around!'
-      JOBMON=
    fi
    ;;
 *)
