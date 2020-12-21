@@ -456,9 +456,10 @@ jobreaper_start() {
 
       while :; do
          int=0
+         </dev/null ${cat} >/dev/null
          sleep ${JOBWAIT} &
          sleeper=${!}
-         wait ${!}
+         wait ${sleeper}
          sleeper=
          [ "${int}${hot}" = 01 ] && kill -USR1 ${parent} >/dev/null 2>&1
       done
@@ -767,7 +768,8 @@ check() {
             (git rev-parse --verify $y) >/dev/null 2>&1 || y=
          fi
          if [ -n "${y}" ]; then
-            if git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+            if GIT_CONFIG=/dev/null git show "${y}":"${x}" > \
+                  ../"${x}".old 2>/dev/null; then
                diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
                if [ ${?} -eq 0 ]; then
                   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
