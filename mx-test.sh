@@ -6934,6 +6934,67 @@ t_rfc2231() { # {{{
    t_epilog "${@}"
 } # }}}
 
+t_mimetype() { # {{{
+   t_prolog "${@}"
+
+   tmt='#
+mimetype ? text/x-unix-readme README INSTALL TODO COPYING NEWS
+mimetype application/x-tar-gz tgz tar.gz
+mimetype application/x-ma-tar-gz ma.tar.gz
+mimetype application/x-x-ma-tar-gz x.ma.tar.gz
+mimetype application/x-fun x.tar
+mimetype ?h application/x-xfun x
+mimetype application/x-tar  tar
+mimetype application/gzip  tgz gz emz
+'
+
+   # It prepends
+   { printf 'mimetype\nxit\n' | ${MAILX} -Y "${tmt}" ${ARGS} |
+      ${sed} '9,$d' > ./t1; } 2> ./t2
+   check 1 0 ./t1 '668594290 337'
+   check 2 - ./t2 '4294967295 0'
+
+   # It classifies
+   tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz '\
+'y.x.ma.tar.gz .x .x.ma.tar.gz .x.tar y.x.tar x.x NEWS'
+
+   for f in ${tfs}; do printf '' > ./${f}; done
+
+   printf 'm ./t3\nLine1\n~@ %s\n~.\nxit' "${tfs}" |
+      ${MAILX} -Y "${tmt}" ${ARGS} > ./t4 2>&1
+   check 3 0 ./t3 '723261436 2213'
+   check 4 - ./t4 '4294967295 0'
+
+   # Cache management
+   printf '#!%s\n%s | %s '"'2,"'$'"d'"' > ./t6 2>&1\n' \
+      "${SHELL}" "${cat}" "${sed}" > ./t5p.sh
+   chmod 0755 ./t5p.sh
+   printf 'application/boom peng' > ./t5mt
+
+   ${MAILX} ${ARGS} -S PAGER=./t5p.sh -Y "${tmt}" -Y '#
+echo 1
+unmimetype application/gzip text/x-unix-readme application/x-fun *
+echo 2
+;mimetype;echo 3;mimetype text/au AU;echo 4;mimetype text/au AU2;
+echo 5;mimetype;echo 6;unmimetype text/au;echo 7;mimetype
+echo 8;mimetype text/au AU;echo 9;mimetype text/au AU2;echo 10;mimetype
+echo 11;unmimetype *;echo 12;mimetype;
+echo 13;unmimetype reset # (re-) allow cache init
+echo 14;set mimetypes-load-control=f=./t5mt;set crt=0;mimetype;unset crt
+echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
+' \
+         > ./t5 2>&1
+   check_ex0 5-estat
+   if have_feat uistrings; then
+      check 5 - ./t5 '1352221656 322'
+   else
+      t_echoskip '5:[!UISTRINGS]'
+   fi
+   check 6 - ./t6 '3643354701 32'
+
+   t_epilog "${@}"
+} # }}}
+
 t_mime_types_load_control() { # {{{
    t_prolog "${@}"
 
@@ -10919,6 +10980,7 @@ t_all() { # {{{
    jspawn message_injections
    jspawn attachments
    jspawn rfc2231 # (after attachments)
+   jspawn mimetype
    jspawn mime_types_load_control
    jsync
 

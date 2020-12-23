@@ -7,13 +7,13 @@
 # Lines starting with a number sign (#) (after possible whitespace) are
 # comments and discarded, empty lines are ignored, remaining ones are
 # interpreted according to the scheme
-#    [TYPEMARKER ]MIMETYPE whitespace EXTENSION(S, whitespace separated)
+#    [TYPE-MARKER ]MIMETYPE whitespace EXTENSION(S, whitespace separated)
 # MIMETYPE may occur several times, values are joined.
 #
 # Syntax extensions:
 # - Follow lines may be used: instead of repeating MIMETYPE, start the next
 #   line with whitespace.  (Intervening comment lines may be used.)
-# - TYPEMARKER: a question mark (?) will tag the MIME type as plain text
+# - TYPE-MARKER: a question mark (?) will tag the MIME type as plain text
 #   (unless the user installs a specific handler for the type in question).
 #   The meaning is identical to what is documented for command `mimetype'.
 #
@@ -21,13 +21,13 @@
 # - Comments must be lines of their own.
 # - Only MIME types for which we have a type constant allocated in
 #   src/mx/mime-type.c:enum a_mimetype are allowed in this file here.
-# - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved.
 # - Note that at least one built-in type is required (empty C array)
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-
 ? text/plain  txt text conf cfg def list log in properties rc
+   README INSTALL TODO COPYING NEWS
 ? text/x-diff  diff patch
 ? text/troff  t tr roff man me ms tmac 1 2 3 4 5 6 7 8 9
 application/pdf  pdf
@@ -39,14 +39,6 @@ application/xml  xml xsd
 ? text/x-awk  awk
 ? text/x-chdr  h
 ? text/x-csrc  c
-? text/x-c++hdr  hpp hxx hh h++ hp
-? text/x-c++src  cpp cxx cc c++
-? text/x-ini  ini
-? text/x-perl  pl pm al perl
-? text/x-raku  raku rakumod
-# CHANGE (tika: text/plain)
-? text/x-pod  pod
-? text/x-rakudoc rakudoc
 
 # EXT .txz
 application/x-xz  xz txz
@@ -126,11 +118,14 @@ message/rfc822  eml mime mht mhtml
 ? text/x-assembly  s S asm
 # (Note tuple extensions will never match since text/plain wins!)
 ? text/x-asciidoc  asciidoc adoc ad ad.txt adoc.txt
+? text/x-c++hdr  hpp hxx hh h++ hp
+? text/x-c++src  cpp cxx cc c++
 ? text/x-csharp  cs
 # (I have assembler CGI's written myself, do not "? " mark that one)
 text/x-cgi  cgi
 ? text/x-d  d
 ? text/x-go  go
+? text/x-ini  ini
 ? text/x-java  java
 text/x-jsp  jsp
 ? text/x-lex  l
@@ -139,8 +134,13 @@ text/x-jsp  jsp
 # CHANGE (tika: text/plain)
 ? text/x-m4  m4
 ? text/x-objcsrc  m
+? text/x-perl  pl pm al perl
 ? text/x-php  php php3 php4
+# CHANGE (tika: text/plain)
+? text/x-pod  pod
 ? text/x-python  py
+? text/x-raku  raku rakumod
+? text/x-rakudoc rakudoc
 ? text/x-rst  rst rest restx
 ? text/x-ruby  rb
 text/x-uuencode  uu
