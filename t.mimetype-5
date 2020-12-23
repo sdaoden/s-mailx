@@ -1,0 +1,25 @@
+1
+2
+# `mimetype': no mime.types(5) data available
+3
+4
+5
+mimetype text/au  AU2
+mimetype text/au  AU
+6
+7
+# `mimetype': no mime.types(5) data available
+8
+9
+10
+mimetype text/au  AU2
+mimetype text/au  AU
+11
+12
+# `mimetype': no mime.types(5) data available
+13
+14
+15
+reproducible_build: No such MIME type: application/booms
+16
+x
