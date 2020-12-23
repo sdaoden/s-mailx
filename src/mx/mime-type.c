@@ -108,8 +108,6 @@ struct a_mt_node{
 };
 
 struct a_mt_lookup{
-   char const *mtl_name;
-   uz mtl_nlen;
    struct a_mt_node const *mtl_node;
    char *mtl_result; /* If requested, AUTO_ALLOC()ed MIME type */
 };
@@ -155,10 +153,9 @@ static boole a_mt__load_file(BITENUM_IS(u32,a_mt_flags) orflags,
 static struct a_mt_node *a_mt_create(boole cmdcalled,
       BITENUM_IS(u32,a_mt_flags) orflags, char const *line, uz len);
 
-/* Try to find MIME type by X (after zeroing mtlp), return NIL if not found;
- * if with_result >mtl_result will be created upon success for the former */
+/* Try to find MIME type by X (after zeroing mtlp), return NIL if not found */
 static struct a_mt_lookup *a_mt_by_filename(struct a_mt_lookup *mtlp,
-      char const *name, boole with_result);
+      char const *name);
 static struct a_mt_lookup *a_mt_by_name(struct a_mt_lookup *mtlp,
       char const *name);
 
@@ -456,31 +453,48 @@ jleave:
 }
 
 static struct a_mt_lookup *
-a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name,
-      boole with_result){
-   char const *ext, *cp;
-   struct a_mt_node *mtnp;
-   uz nlen, i, j;
+a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name){
+   struct a_mt_node *mtnp_hit, *mtnp;
+   uz nlen, mylen, i, j;
+   char const *myext, *ext, *cp;
    NYD2_IN;
 
    su_mem_set(mtlp, 0, sizeof *mtlp);
 
-   if((nlen = su_cs_len(name)) == 0) /* TODO name should be a URI */
-      goto jnull_leave;
-   /* We need a period TODO we should support names like README etc. */
-   for(i = nlen; name[--i] != '.';)
-      if(i == 0 || name[i] == '/') /* XXX no magics */
-         goto jnull_leave;
-   /* While here, basename() it */
-   while(i > 0 && name[i - 1] != '/')
+   /* "basename()" it */
+   nlen = su_cs_len(name); /* TODO should be URI! */
+
+   for(i = nlen; i > 0 && name[i - 1] != '/';)
       --i;
    name += i;
    nlen -= i;
-   mtlp->mtl_name = name;
-   mtlp->mtl_nlen = nlen;
 
+   /* We do not allow "Z" */
+   if(nlen <= 1)
+      goto jnil_leave;
+
+   /* We seem to have something to do */
    if(!a_mt_is_init)
       a_mt_init();
+
+   mtnp_hit = NIL;
+   myext = &name[nlen - 1];
+   mylen = 1;
+jnext_level:
+   for(;; ++mylen, --myext){
+      if(myext == name){
+         /* If this is the first run, allow matching README */
+         if(mtnp_hit == NIL)
+            break;
+         goto jcheck;
+      }
+
+      if(myext[-1] == '.'){
+         if(&myext[-1] == name)
+            goto jcheck;
+         break;
+      }
+   }
 
    /* ..all the MIME types */
    for(mtnp = a_mt_list; mtnp != NIL; mtnp = mtnp->mtn_next){
@@ -494,37 +508,45 @@ a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name,
 
          if((i = P2UZ(cp - ext)) == 0)
             break;
+
          /* Do not allow neither of ".txt" or "txt" to match "txt" */
-         else if(i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
-               su_cs_cmp_case_n(&name[j], ext, i))
+         if(i != mylen || su_cs_cmp_case_n(myext, ext, mylen))
             continue;
 
          /* Found it */
-         mtlp->mtl_node = mtnp;
+         mtnp_hit = mtnp;
 
-         if(!with_result)
-            goto jleave;
-
-         if((mtnp->mtn_flags & a_MT__TMASK) == a_MT_OTHER){
-            name = su_empty;
-            j = 0;
-         }else{
-            name = a_mt_names[mtnp->mtn_flags & a_MT__TMASK];
-            j = su_cs_len(name);
+         if(myext > name && myext[-1] == '.'){
+            ++mylen;
+            --myext;
+            goto jnext_level;
          }
-         i = mtnp->mtn_len;
-         mtlp->mtl_result = su_AUTO_ALLOC(i + j +1);
-         if(j > 0)
-            su_mem_copy(mtlp->mtl_result, name, j);
-         su_mem_copy(&mtlp->mtl_result[j], mtnp->mtn_line, i);
-         mtlp->mtl_result[j += i] = '\0';
-         goto jleave;
+         goto jcheck;
       }
    }
 
-jnull_leave:
-   mtlp = NIL;
-jleave:
+jcheck:
+   if((mtnp = mtnp_hit) != NIL){
+      mtlp->mtl_node = mtnp;
+
+      if((mtnp->mtn_flags & a_MT__TMASK) == a_MT_OTHER){
+         name = su_empty;
+         j = 0;
+      }else{
+         name = a_mt_names[mtnp->mtn_flags & a_MT__TMASK];
+         j = su_cs_len(name);
+      }
+
+      i = mtnp->mtn_len;
+      mtlp->mtl_result = su_AUTO_ALLOC(i + j +1);
+      if(j > 0)
+         su_mem_copy(mtlp->mtl_result, name, j);
+      su_mem_copy(&mtlp->mtl_result[j], mtnp->mtn_line, i);
+      mtlp->mtl_result[j += i] = '\0';
+   }else
+jnil_leave:
+      mtlp = NIL;
+
    NYD2_OU;
    return mtlp;
 }
@@ -538,7 +560,7 @@ a_mt_by_name(struct a_mt_lookup *mtlp, char const *name){
 
    su_mem_set(mtlp, 0, sizeof *mtlp);
 
-   if((mtlp->mtl_nlen = nlen = su_cs_len(mtlp->mtl_name = name)) == 0)
+   if((nlen = su_cs_len(name)) == 0)
       goto jnil_leave;
 
    if(!a_mt_is_init)
@@ -555,7 +577,7 @@ a_mt_by_name(struct a_mt_lookup *mtlp, char const *name){
       }
       i = mtnp->mtn_len;
 
-      if(i + j == mtlp->mtl_nlen){
+      if(i + j == nlen){
          char *xmt;
 
          xmt = su_LOFI_ALLOC(i + j +1);
@@ -1078,7 +1100,7 @@ mx_mime_type_classify_filename(char const *name){
    struct a_mt_lookup mtl;
    NYD_IN;
 
-   a_mt_by_filename(&mtl, name, TRU1);
+   a_mt_by_filename(&mtl, name);
 
    NYD_OU;
    return mtl.mtl_result;
@@ -1233,7 +1255,7 @@ mx_mime_type_classify_part(struct mimepart *mpp, boole for_user_context){
 
          if(mpp->m_filename != NIL &&
                (is_os || (mce.f & a_MT_CE_ALL_OVWR))){
-            if(a_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NIL){
+            if(a_mt_by_filename(&mtl, mpp->m_filename) == NIL){
                if(is_os)
                   goto jos_content_check;
             }else if(is_os || su_cs_cmp_case(ct, mtl.mtl_result)){
@@ -1325,9 +1347,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
          action != SEND_TODISP_PARTS)
       goto jleave;
 
-   el = ((es = mpp->m_filename) != NIL &&
-         (es = su_cs_rfind_c(es, '.')) != NIL &&
-         *++es != '\0') ? su_cs_len(es) : 0;
+   el = ((es = mpp->m_filename) != NIL) ? su_cs_len(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NIL ||
          (cs = mpp->m_ct_type_plain) != NIL) ? su_cs_len(cs) : 0;
    if((l = MAX(el, cl)) == 0)
@@ -1343,31 +1363,61 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
    /* I. *pipe-EXTENSION* handlers take precedence.
     * Yes, we really "fail" here for file extensions which clash MIME types */
    if(el > 0){
-      su_mem_copy(buf + a__L, es, el +1);
-      for(cp = &buf[a__L]; *cp != '\0'; ++cp)
-         *cp = su_cs_to_lower(*cp);
+      /* "basename()" it */
+      ccp = &es[el];
+      for(l = el; l > 0 && es[l - 1] != '/';)
+         --l;
+      es += l;
+      el -= l;
 
-      if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
-         rv = a_mt_pipe_check(mthp, action);
-         if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
-            goto jleave;
+      if(el == 0)
+         goto jc_t;
+
+      /* A leading dot does not belong to an extension */
+      if(*es == '.'){
+         ++es;
+         --el;
+      }
+      if((ccp = su_mem_find(es, '.', el)) != NIL){
+         el -= P2UZ(++ccp - es);
+         es = ccp;
+      }
+
+      for(;;){
+         su_mem_copy(&buf[a__L], es, el +1);
+         for(cp = &buf[a__L]; *cp != '\0'; ++cp)
+            *cp = su_cs_to_lower(*cp);
+
+         if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
+            rv = a_mt_pipe_check(mthp, action);
+            if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
+               goto jleave;
+         }
+
+         /* Next shorter level */
+         if((ccp = su_mem_find(es, '.', el)) == NIL)
+            break;
+         el -= P2UZ(++ccp - es);
+         es = ccp;
       }
    }
 
    /* Only MIME Content-Type: to follow, if any */
+jc_t:
    if(cl == 0)
       goto jleave;
 
+   /* ..and ensure a case-normalized variant is henceforth used */
    su_mem_copy(cp = &buf[a__L], cs, cl +1);
-   cs = cp; /* Ensure normalized variant is henceforth used */
+   cs = cp;
    for(; *cp != '\0'; ++cp)
       *cp = su_cs_to_lower(*cp);
 
    /* II.: *pipe-TYPE/SUBTYPE* */
    if((mthp->mth_shell_cmd = n_var_vlook(buf, FAL0)) != NIL){
       rv = a_mt_pipe_check(mthp, action);
-         if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
-            goto jleave;
+      if((rv & mx_MIME_TYPE_HDL_TYPE_MASK) != mx_MIME_TYPE_HDL_NIL)
+         goto jleave;
    }
 
    /* III. RFC 1524 / Mailcap lookup */
@@ -1462,7 +1512,7 @@ c_mimetype(void *vp){
 
       if(a_mt_list == NIL){
          fprintf(n_stdout,
-            _("# `mimetype': no mime.type(5) data available\n"));
+            _("# `mimetype': no mime.types(5) data available\n"));
          goto jleave;
       }
 
