@@ -6221,7 +6221,7 @@ In any event MIME type sources are loaded first as necessary \(en
 .Va mimetypes-load-control
 can be used to fine-tune which sources are actually loaded.
 .Pp
-The latter command deletes all specifications of the given MIME type, thus
+The latter command deletes all occurrances of the given MIME types, thus
 .Ql \&? unmimetype text/plain
 will remove all registered specifications for the MIME type
 .Ql text/plain .
@@ -13695,21 +13695,21 @@ set debug \e
 .
 As stated in
 .Sx "HTML mail and MIME attachments"
-\*(UA needs to learn about MIME (Multipurpose Internet Mail Extensions)
-media types in order to classify message and attachment content.
+MIME (Multipurpose Internet Mail Extensions) media types needs to be
+registered in order to be able to classify message and attachment content.
 One source for them are
 .Pa mime.types
 files, the loading of which can be controlled by setting the variable
 .Va mimetypes-load-control .
 Another is the command
 .Ic mimetype ,
-which also offers access to \*(UAs MIME type cache.
+which also offers access to the MIME type cache.
 .Pa mime.types
 files have the following syntax:
 .
 .Bd -literal -offset indent
 type/subtype extension [extension ...]
-# For example text/html html htm
+# For example: text/html html htm
 .Ed
 .
 .Pp
@@ -13722,16 +13722,21 @@ is used to declare the general type of data, while the
 specifies a specific format for that type of data.
 One or multiple filename
 .Ql extension Ns
-s, separated by whitespace, can be bound to the media type format.
+s, separated by whitespace, and specified without leading dot
+.Ql \&. ,
+can be bound to the media type format.
 Comments may be introduced anywhere on a line with a number sign
 .Ql # ,
 causing the remaining line to be discarded.
 .
-\*(UA also supports an extended, non-portable syntax in especially
-crafted files, which can be loaded via the alternative value syntax of
-.Va mimetypes-load-control ,
-and prepends an optional
-.Ql type-marker :
+.Pp
+An extended syntax that prepends an optional
+.Ql type-marker
+to the above is offered by the command
+.Ic mimetype
+and is supported also in especially crafted files which can be loaded
+via the alternative value syntax of
+.Va mimetypes-load-control :
 .
 .Pp
 .Dl [type-marker ]type/subtype extension [extension ...]
@@ -13753,14 +13758,30 @@ the content as plain text instead.
 .It Ar ?H
 Likewise
 .Ar ?h ,
-but instead of falling back to plain text require an explicit content
-handler to be defined.
+but instead of falling back to plain text require an explicit MIME
+content handler.
 .It Ar ?q
 If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
 This marker will avoid displaying the text message.
 .El
+.
+.Pp
+When classifying all registered MIME types are searched, and the longest
+matching extension will be used.
+A filename of only an
+.Ql extension
+will match, for example
+.Pa README
+is matched by
+.Ql mimetype\0 ? text/unix-readme NEWS README ,
+empty filenames are not matched, so for example
+.Pa .x.tar
+does not match
+.Ql application/x-fun x.tar
+but rather
+.Ql application/x-tar tar .
 .
 .Pp
 Further reading:
