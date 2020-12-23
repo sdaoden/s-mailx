@@ -9,6 +9,7 @@ OBJDIR=.obj
 
 ##  --  >8  --  8<  --  ##
 
+# For make(1)s which not honour POSIX special treatment
 SHELL = /bin/sh
 
 .PHONY: ohno tangerine citron \
