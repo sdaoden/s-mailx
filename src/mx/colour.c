@@ -102,7 +102,9 @@ struct a_colour_map /* : public mx_colour_pen */{
 struct a_colour_g{
    boole cg_is_init;
    u8 cg_type; /* a_colour_type */
-   u8 __cg_pad[6];
+   u8 __cg_pad[1];
+   boole cg_v15_pager_warned;
+   u32 cg_count; /* XXX Only for cg_v15_pager_warned */
    struct mx_colour_pen cg_reset; /* The reset sequence */
    struct a_colour_map
       *cg_maps[a_COLOUR_T_NONE][mx__COLOUR_CTX_MAX1][mx__COLOUR_IDS];
@@ -254,6 +256,13 @@ a_colour_ok_to_go(u32 get_flags){
    if(UNLIKELY(a_colour_g.cg_type == a_COLOUR_T_NONE) ||
          !a_colour_termcap_init())
       goto jleave;
+
+   /* TODO v15: drop colour_pager TODO: drop pager_used argument, thus! */
+   if(!a_colour_g.cg_v15_pager_warned && a_colour_g.cg_count > 0 &&
+         !ok_blook(colour_disable) && !ok_blook(colour_pager)){
+      a_colour_g.cg_v15_pager_warned = TRU1;
+      n_OBSOLETE("In v15 *colour-pager* is implied without *colour-disable*!");
+   }
 
    rv = TRU1;
 jleave:
@@ -422,7 +431,9 @@ jlinkhead:
 #endif
       cmp->cm_refcnt = 0;
       a_colour_map_ref(cmp);
+      ++a_colour_g.cg_count;
    }
+
    rv = TRU1;
 jleave:
    NYD2_OU;
@@ -471,6 +482,7 @@ jredo:
                tmp = cmp;
                cmp = cmp->cm_next;
                a_colour_map_unref(tmp);
+               --a_colour_g.cg_count;
             }
    }else{
       if((cmip = a_colour_map_id_find(mapname)) == NULL){
@@ -525,6 +537,7 @@ jemap:
       else
          lcmp->cm_next = cmp->cm_next;
       a_colour_map_unref(cmp);
+      --a_colour_g.cg_count;
    }
 
 jleave:
@@ -943,6 +956,13 @@ mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp, boole pager_used){
       goto jleave;
    if(a_colour_g.cg_type == a_COLOUR_T_NONE || !a_colour_termcap_init())
       goto jleave;
+
+   /* TODO v15: drop colour_pager TODO: drop pager_used argument, thus! */
+   if(!a_colour_g.cg_v15_pager_warned && a_colour_g.cg_count > 0 &&
+         !ok_blook(colour_disable) && !ok_blook(colour_pager)){
+      a_colour_g.cg_v15_pager_warned = TRU1;
+      n_OBSOLETE("In v15 *colour-pager* is implied without *colour-disable*!");
+   }
 
    mx_go_data->gdc_colour_active = cep->ce_enabled = TRU1;
 jleave:
