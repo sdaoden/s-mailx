@@ -1327,19 +1327,20 @@ Message content can be displayed with the command
 .Pf ( Ql t ,
 alias
 .Ic print ) .
-Here the variable
-.Va crt
-controls whether and when \*(UA will use the configured
+Whether and when the
 .Ev PAGER
-for display instead of directly writing to the user terminal
-.Va screen ,
-the sole difference to the command
-.Ic more ,
-which will always use the
+is used for displaying data, instead of writing to the
+.Va screen
+is controlled by the setting of
+.Va crt ,
+not only for
+.Ic type .
+.Ic more
+always uses
 .Ev PAGER .
 The command
 .Ic top
-will instead only show the first
+will show the first
 .Va toplines
 of a message (maybe even compressed if
 .Va topsqueeze
@@ -3186,34 +3187,26 @@ move the cursor forward one screen width.
 \*(OP Colours and font attributes through ANSI a.k.a. ISO 6429 SGR
 (select graphic rendition) escape sequences are optionally supported.
 Usage of colours and font attributes solely depends upon the
-capability of the detected terminal type
-.Pf ( Ev TERM ) ,
-and as fine-tuned through
+capability of the detected
+.Ev TERM Ns
+inal type (see
+.Sx "On terminal control and line editor" ) ,
+fine-tunable via
 .Va termcap .
-Colours and font attributes can be managed with the multiplexer command
-.Ic colour ,
+Colour and font attribute mappings can be managed with the command pair
+.Ic colour
 and
-.Ic uncolour
-removes the given mappings.
-Setting
-.Va colour-disable
-suppresses usage of colour and font attribute sequences, while leaving
-established mappings unchanged.
-.
-.Pp
-Whether actually applicable colour and font attribute sequences should
-also be generated when output is going to be paged through the external
+.Ic uncolour .
+Usage of established mappings can be turned off by setting
+.Va colour-disable .
+It may be necessary to pass special command line options to
 .Ev PAGER
-(also see
-.Va crt Ns
-) depends upon the setting of
-.Va colour-pager ,
-because pagers usually need to be configured in order to support ISO
-escape sequences.
-Knowledge of some widely used pagers is however built-in, and in a clean
-environment it is often enough to simply set
-.Va colour-pager ;
-please refer to that variable for more on this topic.
+to make it interpret the generated escape sequences.
+\*(OB: in v15
+.Va colour-pager
+is implied when
+.Va colour-disable
+is not set!
 .
 .Pp
 It might make sense to conditionalize colour setup on interactive mode via
@@ -9205,21 +9198,15 @@ Also see the section
 .
 .Mx
 .It Va colour-pager
-\*(BO\*(OP Whether colour shall be used for output that is paged through
+\*(OB\*(BO\*(OP Whether
+.Ic colour
+sequences (see
+.Sx "Coloured display" )
+shall be used for output that is paged through
 .Ev PAGER .
-Note that pagers may need special command line options, for example
-.Xr less 1
-requires the option
-.Fl \&\&R
-and
-.Xr lv 1
-the option
-.Fl \&\&c
-in order to support colours.
-Often doing manual adjustments is unnecessary since \*(UA may perform
-adjustments dependent on the value of the environment variable
-.Ev PAGER
-(see there for more).
+\*(OBIn v15 this is an implied setting when
+.Va colour-disable
+is not set!
 .
 .Mx
 .Mx
@@ -9245,10 +9232,10 @@ They all have default values, for example
 .
 .Mx
 .It Va crt
-In a(n interactive) terminal session, then if this valued variable is
-set it will be used as a threshold to determine how many lines the given
-output has to span before it will be displayed via the configured
-.Ev PAGER ;
+If set it defines the threshold that determines how many lines of output
+there have to be before the
+.Ev PAGER
+will be used for display.
 Usage of the
 .Ev PAGER
 can be forced by setting this to the value
@@ -9259,8 +9246,8 @@ terminal screen to compute the threshold (see
 .Va screen
 and
 .Xr stty 1 ) .
-\*(ID At the moment this uses the count of lines of the message in wire
-format, which, dependent on the
+\*(ID At the moment this may use the count of lines of the message in
+wire format, which, dependent on the
 .Va mime-encoding
 of the message, is unrelated to the number of display lines.
 (The software is old and historically the relation was a given thing.)
@@ -11737,9 +11724,9 @@ ing, message
 .Ic top Ns
 line display and scrolling via
 .Ic z .
-If this variable is not set \*(UA falls back to a calculation based upon
-the detected terminal window size and the baud rate: the faster the
-terminal, the more will be shown.
+If this variable is not set a calculation based upon the detected
+terminal window size and the baud rate is used: the faster the terminal,
+the more will be shown.
 Overall screen dimensions and pager usage is influenced by the
 environment variables
 .Ev COLUMNS
@@ -13475,7 +13462,9 @@ likewise for
 will optionally be set to
 .Ql -c .
 Also see
-.Va colour-pager .
+.Sx "Coloured display"
+and
+.Va colour-disable .
 .
 .Mx
 .It Ev PATH

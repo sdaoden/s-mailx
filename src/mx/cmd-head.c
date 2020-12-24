@@ -1052,20 +1052,19 @@ c_from(void *vp)
 
    obuf = n_stdout;
 
-   if (n_psonce & n_PSO_INTERACTIVE) {
-      if ((cp = ok_vlook(crt)) != NULL) {
-         uz ib;
+   /* v15-compat: just use page_or_print() once colour-pager is gone! */
+   if(mx_go_may_yield_control() && (cp = ok_vlook(crt)) != NIL){
+      uz ib;
 
-         for (n = 0, ip = msgvec; *ip != 0; ++ip)
-            ++n;
+      for(n = 0, ip = msgvec; *ip != 0; ++ip)
+         ++n;
 
-         if(*cp == '\0')
-            ib = n_screensize();
-         else
-            su_idec_uz_cp(&ib, cp, 0, NULL);
-         if (UCMP(z, n, >, ib) && (obuf = mx_pager_open()) == NULL)
-            obuf = n_stdout;
-      }
+      if(*cp == '\0')
+         ib = n_screensize();
+      else
+         su_idec_uz_cp(&ib, cp, 0, NIL);
+      if(UCMP(z, n, >, ib) && (obuf = mx_pager_open()) == NIL)
+         obuf = n_stdout;
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
