@@ -411,25 +411,36 @@ else
    }
 fi
 
-case "${JOBMON}" in
-[yY]*)
-   # There were problems when using monitor mode with mksh
-   i=`env -i ${SHELL} -c 'echo $KSH_VERSION'`
-   if [ -n "${i}" ]; then
-      if [ "${i}" != "${i#*MIRBSD}" ]; then
-         JOBMON=
-      fi
-   fi
-   ;;
-*)
-   JOBMON=
-   ;;
-esac
-
 jobreaper_start() {
    ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
 
    printf 'Starting job reaper (timeout of %s seconds)\n' ${JOBWAIT}
+
+   case "${JOBMON}" in
+   [yY]*)
+      # There were problems when using monitor mode with mksh
+      i=`env -i ${SHELL} -c 'echo $KSH_VERSION'`
+      if [ -n "${i}" ]; then
+         if [ "${i}" != "${i#*MIRBSD}" ]; then
+            JOBMON=
+         fi
+      fi
+
+      if [ -n "${JOBMON}" ]; then
+         ( set -m ) </dev/null >/dev/null 2>&1 || JOBMON=
+      else
+         printf >&2 '%s! $JOBMON: $SHELL %s incapable, disabled!%s\n' \
+            "${COLOR_ERR_ON}" "${SHELL}" "${COLOR_ERR_OFF}"
+         printf >&2 '%s!  No process groups available, killed tests may '\
+'leave process "zombies"!%s\n' \
+            "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
+      fi
+      ;;
+   *)
+      JOBMON=
+      ;;
+   esac
+
    i=
    trap 'i=1' USR1 # "reaper is up"
    (  # .. which is actually a notify timer only
@@ -481,7 +492,7 @@ jobreaper_start() {
    fi
 
    JOBREAPER=
-   printf '%s!! Cannot start the wild job reaper!%s\n' \
+   printf >&2 '%s! Cannot start the wild job reaper!%s\n' \
       "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
 }
 
