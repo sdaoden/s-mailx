@@ -10416,7 +10416,7 @@ message parts, if possible, for example via a possibly existing
 attachment filename.
 A non-empty value may also be given, in which case a number is expected,
 actually a carrier of bits, best specified as a binary value, like
-.Ql 0b1111 .
+.Ql mime-counter-evidence=0b1110 .
 .Pp
 .Bl -bullet -compact
 .It
@@ -13715,7 +13715,7 @@ type/subtype extension [extension ...]
 .Pp
 where
 .Ql type/subtype
-define the MIME media type, as standardized in RFC 2046:
+denotes the MIME media type, as standardized in RFC 2046:
 .Ql type
 is used to declare the general type of data, while the
 .Ql subtype
@@ -13730,41 +13730,62 @@ Comments may be introduced anywhere on a line with a number sign
 causing the remaining line to be discarded.
 .
 .Pp
-An extended syntax that prepends an optional
+An extended (non-portable) syntax that prepends an optional
 .Ql type-marker
 to the above is offered by the command
-.Ic mimetype
+.Ic mimetype ,
 and is supported also in especially crafted files which can be loaded
 via the alternative value syntax of
 .Va mimetypes-load-control :
 .
 .Pp
-.Dl [type-marker ]type/subtype extension [extension ...]
+.Dl [?type-marker ]type/subtype extension [extension ...]
 .
 .Pp
-The following type markers are supported:
+The following type-markers are supported; they are mutual exclusive
+unless documented otherwise:
 .
 .Pp
 .Bl -tag -compact -width ".It Ar _n_u"
-.It Ar \&?
-Treat message parts with this content as plain text.
-.It Ar ?t
-The same as plain
-.Ar \&? .
-.It Ar ?h
+.It Ar t
+Treat this media type as plain text; the
+.Ar t
+is actually optional.
+.It Ar h
 Treat message parts with this content as HTML tagsoup.
 If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
-.It Ar ?H
+.It Ar H
 Likewise
-.Ar ?h ,
+.Ar h ,
 but instead of falling back to plain text require an explicit MIME
 content handler.
-.It Ar ?q
+.It Ar q
 If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
 This marker will avoid displaying the text message.
+.It Ar *
+The given MIME media type shall only be matched when looking for
+handlers, but not when classifying content to create messages.
+.Ar t
+is no longer optional when this is used.
+IANA MIME registry standards do not know about
+.Dq extension chains :
+.Ql tar.gz
+is thus a
+.Xr gzip 1
+compressed file.
+Because MIME media type handlers, like those defined in
+.Sx "The Mailcap files" ,
+match media types, non-standardized fictional types like
+.Ql x-tar-gz
+are used in the wild as MIME environments become configured.
+The sane solution of recursively unpacking until no more MIME media type
+unpacking is possible is not available.
+This flag may be used alongside other type-markers, and is especially
+useful in conjunction with
+.Va mime-counter-evidence .
 .El
 .
 .Pp

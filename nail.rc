@@ -98,7 +98,7 @@ set markanswered
 
 # Try to circumvent false or missing MIME Content-Type descriptions.
 # Do set a value for extended behaviour (see the manual).
-set mime-counter-evidence=0b1111
+set mime-counter-evidence=0b1110
 
 # Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
 # Builtin types exist and may be sufficient.  The default equals "us".
@@ -231,7 +231,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 # that sending fails because of invalid (according to locale) character input.
 # This undesired event can be prevented as follows, the (possibly) resulting
 # octet-stream message data can be read nonetheless via
-# *mime-counter-evidence*=0b1111; better would be $UID -eq 0:
+# *mime-counter-evidence*=0b1110; better would be $UID -eq 0:
 #\if ! terminal && "$LOGNAME" == root
 #   \set mime-force-sendout
 #\endif
@@ -306,7 +306,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 #     hold \
 #  indentprefix='> ' \
 #  keep keepsave \
-#  markanswered mime-counter-evidence=0b1111 \
+#  markanswered mime-counter-evidence=0b1110 \
 #  outfolder \
 #  prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
 #  quote=allbodies quote-add-cc \
