@@ -270,7 +270,7 @@ a_termios_dimen_query(struct mx_termios_dimension *tiosdp){
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #else
-# error One of TCGETWINSIZE, TIOCGWINSZ and TIOCGSIZE
+# error One of tcgetwinsize(3), TIOCGWINSZ and TIOCGSIZE
 #endif
    /*NYD2_IN;*/
 
