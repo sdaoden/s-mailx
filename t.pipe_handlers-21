@@ -13,64 +13,76 @@ Content-Disposition: inline
 Line1
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/x-unix-readme; charset=us-ascii
+Content-Type: application/y-unix-readme; charset=us-ascii
 Content-Disposition: attachment; filename="README"
 
+body README
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/gzip; charset=us-ascii
+Content-Type: application/y-gzip; charset=us-ascii
 Content-Disposition: attachment; filename="x.gz"
 
+body x.gz
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-ma-tar-gz; charset=us-ascii
+Content-Type: application/y-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="x.ma.tar.gz"
 
+body x.ma.tar.gz
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar; charset=us-ascii
+Content-Type: application/y-tar; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar"
 
+body x.tar
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar-gz; charset=us-ascii
+Content-Type: application/y-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar.gz"
 
+body x.tar.gz
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-x-ma-tar-gz; charset=us-ascii
+Content-Type: application/y-x-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="y.x.ma.tar.gz"
 
+body y.x.ma.tar.gz
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-xfun; charset=us-ascii
+Content-Type: application/y-xfun; charset=us-ascii
 Content-Disposition: attachment; filename=".x"
 
+body .x
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-ma-tar-gz; charset=us-ascii
+Content-Type: application/y-ma-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename=".x.ma.tar.gz"
 
+body .x.ma.tar.gz
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-tar; charset=us-ascii
+Content-Type: application/y-tar; charset=us-ascii
 Content-Disposition: attachment; filename=".x.tar"
 
+body .x.tar
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-fun; charset=us-ascii
+Content-Type: application/y-fun; charset=us-ascii
 Content-Disposition: attachment; filename="y.x.tar"
 
+body y.x.tar
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/x-xfun; charset=us-ascii
+Content-Type: application/y-xfun; charset=us-ascii
 Content-Disposition: attachment; filename="x.x"
 
+body x.x
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: text/x-unix-readme; charset=us-ascii
+Content-Type: application/y-unix-readme; charset=us-ascii
 Content-Disposition: attachment; filename="NEWS"
 
+body NEWS
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 

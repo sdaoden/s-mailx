@@ -1,4 +1,5 @@
-reproducible_build: mime.types(5): invalid MIME type: aga-aga
+reproducible_build: mime.types(5): invalid MIME type:    ?t aga-aga aga
+reproducible_build: 
 >N  1 reproducible_build 1996-10-02 01:50   42/1233                            
 [-- Message  1 -- 42 lines, 1233 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996

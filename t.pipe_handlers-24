@@ -1,0 +1,85 @@
+[-- Message  1 -- 88 lines, 2390 bytes --]:
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+Status: R
+
+
+[-- #1.1 5/78 7bit --]
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Line1
+
+[-- #1.2 5/122 7bit --]
+Content-Type: application/y-unix-readme; charset=us-ascii
+Content-Disposition: attachment; filename="README"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.3 5/111 7bit --]
+Content-Type: application/y-gzip; charset=us-ascii
+Content-Disposition: attachment; filename="x.gz"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.4 5/130 7bit --]
+Content-Type: application/y-ma-tar-gz; charset=us-ascii
+Content-Disposition: attachment; filename="x.ma.tar.gz"
+
+body x.ma.tar.gz
+
+[-- #1.5 5/112 7bit --]
+Content-Type: application/y-tar; charset=us-ascii
+Content-Disposition: attachment; filename="x.tar"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.6 5/121 7bit --]
+Content-Type: application/y-tar-gz; charset=us-ascii
+Content-Disposition: attachment; filename="x.tar.gz"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.7 5/136 7bit --]
+Content-Type: application/y-x-ma-tar-gz; charset=us-ascii
+Content-Disposition: attachment; filename="y.x.ma.tar.gz"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.8 5/107 7bit --]
+Content-Type: application/y-xfun; charset=us-ascii
+Content-Disposition: attachment; filename=".x"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.9 5/132 7bit --]
+Content-Type: application/y-ma-tar-gz; charset=us-ascii
+Content-Disposition: attachment; filename=".x.ma.tar.gz"
+
+body .x.ma.tar.gz
+
+[-- #1.10 5/114 7bit --]
+Content-Type: application/y-tar; charset=us-ascii
+Content-Disposition: attachment; filename=".x.tar"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.11 5/116 7bit --]
+Content-Type: application/y-fun; charset=us-ascii
+Content-Disposition: attachment; filename="y.x.tar"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.12 5/109 7bit --]
+Content-Type: application/y-xfun; charset=us-ascii
+Content-Disposition: attachment; filename="x.x"
+
+[-- No MIME handler installed, or not applicable --]
+
+[-- #1.13 5/118 7bit --]
+Content-Type: application/y-unix-readme; charset=us-ascii
+Content-Disposition: attachment; filename="NEWS"
+
+[-- No MIME handler installed, or not applicable --]
