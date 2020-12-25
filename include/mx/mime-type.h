@@ -83,7 +83,8 @@ struct mx_mime_type_handler{
 EXPORT boole mx_mime_type_is_valid(char const *name, boole t_a_subt,
       boole subt_wildcard_ok);
 
-/* Check whether the Content-Type name is internally known */
+/* Check whether the Content-Type name is internally known.
+ * This only matches non-local MIME types (?* handler-only type-marker) */
 EXPORT boole mx_mime_type_is_known(char const *name);
 
 /* Return a Content-Type matching the name, or NIL if none could be found */
@@ -101,10 +102,10 @@ EXPORT enum conversion mx_mime_type_classify_file(FILE *fp,
       boole no_mboxo);
 
 /* Dependent on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const.  for_user_context rather maps 1:1 to
+ * but otherwise mpp is const.  is_hdl rather maps 1:1 to
  * MIME_PARSE_FOR_USER_CONTEXT */
 EXPORT enum mx_mime_type mx_mime_type_classify_part(struct mimepart *mpp,
-      boole for_user_context);
+      boole is_hdl);
 
 /* Query handler for a part, return the plain type (& HDL_TYPE_MASK).
  * mthp is anyway initialized (.mth_flags, .mth_msg) */

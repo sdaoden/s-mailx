@@ -2,12 +2,14 @@
 #@ The set of MIME types that will be built in.
 #@ Official MIME types are registered at and managed by IANA, see
 #@    <https://www.iana.org/assignments/media-types/media-types.xhtml>
-#@ In here are EXTensions and CHANGEs, though.
+#@ In here are EXTensions and CHANGEs, though.  x- are generally extensions.
 #
 # Lines starting with a number sign (#) (after possible whitespace) are
 # comments and discarded, empty lines are ignored, remaining ones are
 # interpreted according to the scheme
+#
 #    [TYPE-MARKER ]MIMETYPE whitespace EXTENSION(S, whitespace separated)
+#
 # MIMETYPE may occur several times, values are joined.
 #
 # Syntax extensions:
@@ -19,10 +21,10 @@
 #
 # Syntax restrictions:
 # - Comments must be lines of their own.
-# - Only MIME types for which we have a type constant allocated in
-#   src/mx/mime-type.c:enum a_mimetype are allowed in this file here.
-# - Note that the order of types and extensions is preserved.
-# - Note that at least one built-in type is required (empty C array)
+# - Only MIME type/subtypes for which we have a type flag allocated in
+#   src/mx/mime-type.c:enum a_mt_flags are allowed in this file.
+# - Defined order of built-in types is preserved.
+# - At least one built-in type is required (empty C array).
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-
@@ -40,18 +42,23 @@ application/xml  xml xsd
 ? text/x-chdr  h
 ? text/x-csrc  c
 
-# EXT .txz
+?* application/x-tar-xz  txz tar.xz
 application/x-xz  xz txz
-# EXT
-application/x-lzma  lzma tlz
+?* application/x-tar-zstd  tzst tar.zst
+# EXT tzst
 application/zstd  zst tzst
-application/gzip  tgz gz emz
-# EXT
+?* application/x-tar-gz  tgz tar.gz
+# EXT emz tgz
+application/gzip  gz emz tgz
+?* application/x-tar-lzip  tlz tar.lz
+application/x-lzip  lz tlz
+?* application/x-tar-lzma  tar.lzma
+application/x-lzma  lzma
+
 application/x-lz4  lz4
 application/x-tar  tar
+?* application/x-tar-bzip2  tbz2 tar.bz2
 application/x-bzip2  bz2 tbz2 boz
-# EXTs
-application/x-lzip  lz
 application/zip  zip
 
 application/pgp-encrypted  pgp
