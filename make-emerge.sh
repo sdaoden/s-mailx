@@ -2,6 +2,7 @@
 #@ Out-of-tree compilation support, à la
 #@    $ cd /tmp && mkdir build && cd build &&
 #@       ~/src/nail.git/make-emerge.sh && make tangerine DESTDIR=.ddir
+#
 # Public Domain
 
 ## Upon interest see mk/make-config.sh, the source of all this!
@@ -15,10 +16,6 @@ if [ -z "${__MAKE_EMERGE_UP}" ] && [ -d /usr/xpg4 ]; then
    echo >&2 'SunOS/Solaris, redirecting through $SHELL=/usr/xpg4/bin/sh'
    exec /usr/xpg4/bin/sh "${0}" "${@}"
 fi
-
-config_exit() {
-   exit ${1}
-}
 
 syno() {
    if [ ${#} -gt 0 ]; then
@@ -43,8 +40,7 @@ oneslash() {
 
 [ ${#} -eq 0 ] || syno
 
-SU_FIND_COMMAND_INCLUSION=1 . ${0%/*}/mk/su-find-command.sh
-
+SU_FIND_COMMAND_INCLUSION= . ${0%/*}/mk/su-find-command.sh
 thecmd_testandset_fail awk awk
 thecmd_testandset_fail cp cp
 thecmd_testandset_fail dirname dirname
@@ -54,7 +50,7 @@ thecmd_testandset_fail pwd pwd
 topdir=`${dirname} ${0}`
 if [ "${topdir}" = . ]; then
    msg 'This is not out of tree?!'
-   config_exit 1
+   exit
 fi
 topdir=`cd ${topdir}; oneslash "\`${pwd}\`"`
 blddir=`oneslash "\`${pwd}\`"`
@@ -71,8 +67,7 @@ ${awk} -v topdir="${topdir}" -v blddir="${blddir}" '
    /^OBJDIR=.*$/{ print "OBJDIR=" blddir ".obj"; next}
    {print}
    ' < "${topdir}"makefile > ./makefile
-${cp} "${topdir}"make.rc ./
-${cp} "${topdir}"mime.types ./
+${cp} "${topdir}"make.rc "${topdir}"mime.types ./
 ${cp} "${topdir}"include/mx/gen-version.h include/mx/
 set +e
 
