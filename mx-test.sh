@@ -6819,6 +6819,16 @@ reply 1 2
       t_echoskip '10:[!ICONV]'
    fi
 
+   # `mimetype' "handler-only" type-marker not matched for types
+   </dev/null ${MAILX} ${ARGS} -Smta=test \
+      -s Y \
+      -Y '~:unmimetype *' \
+      -Y '~:mimetype ? application/yeye txa3' \
+      -Y '~:mimetype ?* application/nono txa3' \
+      -Y '~@ ./txa3' \
+      ex@am.ple > ./t11 2>&1
+   check 11 0 ./t11 '602355274 477'
+
    t_epilog "${@}"
 } # }}}
 
@@ -6962,7 +6972,7 @@ mimetype application/gzip  tgz gz emz
 
    printf 'm ./t3\nLine1\n~@ %s\n~.\nxit' "${tfs}" |
       ${MAILX} -Y "${tmt}" ${ARGS} > ./t4 2>&1
-   check 3 0 ./t3 '723261436 2213'
+   check 3 0 ./t3 '2606517416 2221'
    check 4 - ./t4 '4294967295 0'
 
    # Cache management
@@ -6991,6 +7001,8 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
       t_echoskip '5:[!UISTRINGS]'
    fi
    check 6 - ./t6 '3643354701 32'
+
+   # Note: further type-marker stuff is done in t_pipe_handlers()
 
    t_epilog "${@}"
 } # }}}
@@ -7042,7 +7054,7 @@ t_mime_types_load_control() { # {{{
          > ./t1 2>&1
    check_ex0 1-estat
    ${cat} ./t1_2-x >> ./t1
-   check 1 - ./t1 '2344080340 2441'
+   check 1 - ./t1 '2881972427 2472'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./t.mts1,f=./t.mts3 \
@@ -9090,6 +9102,91 @@ t_pipe_handlers() { # {{{
                > ./t7 2>&1
       check 7 0 ./t7 '709946464 677'
    fi
+
+   ## Extension chains, type-markers (note: "linked" by t_mimetype())
+
+   tmt='#
+unmimetype *
+mimetype application/y-unix-readme README INSTALL TODO COPYING NEWS
+mimetype application/y-tar-gz tgz tar.gz
+mimetype application/y-ma-tar-gz ma.tar.gz
+mimetype application/y-x-ma-tar-gz x.ma.tar.gz
+mimetype application/y-fun x.tar
+mimetype application/y-xfun x
+mimetype application/y-tar  tar
+mimetype application/y-gzip  tgz gz emz
+mimetype ${x} application/x-unix-readme README INSTALL TODO COPYING NEWS
+mimetype ${x} application/x-tar-gz tgz tar.gz
+mimetype ${x} application/x-ma-tar-gz ma.tar.gz
+mimetype ${x} application/x-x-ma-tar-gz x.ma.tar.gz
+mimetype ${x} application/x-fun x.tar
+mimetype ${x} application/x-xfun x
+mimetype ${x} application/x-tar  tar
+mimetype ${x} application/x-gzip  tgz gz emz
+'
+
+   tfs='README x.gz x.ma.tar.gz x.tar x.tar.gz '\
+'y.x.ma.tar.gz .x .x.ma.tar.gz .x.tar y.x.tar x.x NEWS'
+
+   for f in ${tfs}; do printf 'body '${f}'\n' > ./${f}; done
+
+   printf 'm ./t11\nLine1\n~@ %s\n~.\nxit' "${tfs}" |
+      ${MAILX} -S x -Y "${tmt}" ${ARGS} > ./t10 2>&1
+   check 10 0 ./t10 '4294967295 0'
+   check 11 - ./t11 '3184122137 2390'
+
+   printf 'type\nxit' |
+      ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t12 2>&1
+   check 12 0 ./t12 '700052229 2562'
+
+   # base handler: text
+   printf 'type\nxit' |
+      ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t13 2>&1
+   check 13 0 ./t13 '4188775633 2079'
+
+   # handler-only, text: text
+   printf 'type\nxit' |
+      ${MAILX} -S x='?*t' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t14 2>&1
+   check 14 0 ./t14 '4188775633 2079'
+
+   # handler-only, no text: unhandled
+   printf 'type\nxit' |
+      ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t15 2>&1
+   check 15 0 ./t15 '1151825807 2610'
+
+   # hdl-only type-marker is honoured when sending
+   printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" |
+      ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} > ./t20 2>&1
+   check 20 0 ./t20 '4294967295 0'
+   check 21 - ./t21 '2035947076 2390'
+
+   printf 'type\nxit' |
+      ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t22 2>&1
+   check 22 0 ./t22 '415439050 2562'
+
+   printf 'type\nxit' |
+      ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t23 2>&1
+   check 23 0 ./t23 '415439050 2562'
+
+   printf 'type\nxit' |
+      ${MAILX} -Sx -Y "${tmt}" \
+      -Y 'mimetype ?*t application/y-ma-tar-gz ma.tar.gz' \
+      -Y 'mimetype ?t* application/x-x-ma-tar-gz x.ma.tar.gz' \
+      -Y 'mimetype ?t application/x-unix-readme README' \
+      ${ARGS} -Rf ./t21 > ./t24 2>&1
+   check 24 0 ./t24 '1214820540 2491'
+
+   # .. and * still needs a handler
+   printf 'type\nxit' |
+      ${MAILX} -Sx -S mime-counter-evidence=0b0110 -Y "${tmt}" \
+      -Y 'mimetype ?*t application/z-ma-tar-gz ma.tar.gz' \
+      -Y 'mimetype ?t* application/z-x-ma-tar-gz x.ma.tar.gz' \
+      -Y 'mimetype ?t application/z-unix-readme README' \
+      -Y 'mimetype ?* application/z-xfun x' \
+      -Y 'mimetype ?* application/z-fun x.tar' \
+      -S pipe-application/z-fun="?* echo in; ${cat}; echo out" \
+      ${ARGS} -Rf ./t21 > ./t25 2>&1
+   check 25 0 ./t25 '2846325427 2785'
 
    t_epilog "${@}"
 } # }}}
