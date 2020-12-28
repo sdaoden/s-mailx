@@ -29,7 +29,9 @@
 #if mx_HAVE_RANDOM != mx_RANDOM_IMPL_ARC4 &&\
       mx_HAVE_RANDOM != mx_RANDOM_IMPL_TLS
 # define a_RAND_USE_BUILTIN
-# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETRANDOM
+# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETENTROPY
+#  include <unistd.h>
+# elif mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETRANDOM
 #  include mx_RANDOM_GETRANDOM_H
 # endif
 # ifdef mx_HAVE_SCHED_YIELD
@@ -79,8 +81,9 @@ a_rand_init(void){
 
    a_rand = n_alloc(sizeof *a_rand);
 
-# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETRANDOM
-   /* getrandom(2) guarantees 256 without su_ERR_INTR..
+# if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETENTROPY ||\
+      mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETRANDOM
+   /* getentropy(3)/getrandom(2) guarantee 256 without su_ERR_INTR..
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
     * mx_HAVE_GETRANDOM is #defined) */
@@ -94,7 +97,11 @@ a_rand_init(void){
       for(o = 0, i = sizeof a_rand->a._dat;;){
          sz gr;
 
+#  if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETENTROPY
+         gr = getentropy(&a_rand->a._dat[o], i);
+#  else
          gr = mx_RANDOM_GETRANDOM_FUN(&a_rand->a._dat[o], i);
+#  endif
          if(gr == -1 && su_err_no() == su_ERR_NOSYS)
             break;
          a_rand->a._i = (a_rand->a._dat[a_rand->a._dat[1] ^
@@ -247,6 +254,8 @@ mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil){
          prngn = "arc4random";
 #elif mx_HAVE_RANDOM == mx_RANDOM_IMPL_TLS
          prngn = "*TLS RAND_*";
+#elif mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETENTROPY
+         prngn = "getentropy(3) + builtin ARC4";
 #elif mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETRANDOM
          prngn = "getrandom(2/3) + builtin ARC4";
 #elif mx_HAVE_RANDOM == mx_RANDOM_IMPL_URANDOM

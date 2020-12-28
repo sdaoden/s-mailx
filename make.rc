@@ -333,10 +333,11 @@ OPT_MTA_ALIASES=yes
 # The following will only be used to seed our builtin ARC4 PRNG.
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
+# . getentropy - getentropy(3) (a la POSIX: with GETENTROPY_MAX).
 # . urandom - reading from /dev/urandom.
 # . builtin - unscientific seeding for our builtin ARC4 implementation.
 # . (error - bail out)
-VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,urandom,builtin
+VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.

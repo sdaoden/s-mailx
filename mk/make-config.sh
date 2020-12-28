@@ -2991,7 +2991,8 @@ fi
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
-      "arc4,tls,libgetrandom,sysgetrandom,urandom,builtin,error"; then
+      "arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin,error"; \
+      then
    :
 else
    msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
@@ -3074,6 +3075,27 @@ int main(void){
    char buf[256];
    syscall(SYS_getrandom, buf, sizeof buf, 0);
    return 0;
+}
+!
+}
+
+val_random_getentropy() {
+   val__random_check_yield
+   link_check getentropy 'VAL_RANDOM: getentropy(3)' \
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETENTROPY' <<\!
+# include <errno.h>
+#include <limits.h>
+#include <unistd.h>
+# ifndef GETENTROPY_MAX
+#  define GETENTROPY_MAX 256
+# endif
+int main(void){
+   typedef char cta[GETENTROPY_MAX >= 256 ? 1 : -1];
+   char buf[GETENTROPY_MAX];
+
+   if(!getentropy(buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 }
