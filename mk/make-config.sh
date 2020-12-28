@@ -2018,6 +2018,44 @@ int main(void){
 }
 !
 
+if run_check close_range 'close_range(2)' '#define mx_HAVE_CLOSE_RANGE
+      #define mx_CLOSE_RANGE_FUN(LO,HI) close_range(LO, HI, 0)
+      #define mx_CLOSE_RANGE_H <unistd.h>' <<\!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   int fds[2];
+
+   if(!close_range(3, ~0u, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif link_check close_range 'close_range(2) (via syscall(2)' \
+      '#define mx_HAVE_CLOSE_RANGE
+      #define mx_CLOSE_RANGE_FUN(LO,HI) syscall(SYS_close_range, LO, HI, 0)
+      #define mx_CLOSE_RANGE_H <sys/syscall.h>' <<\!
+#include <sys/syscall.h>
+int main(void){
+   syscall(SYS_close_range, 3, ~0u, 0);
+   return 0;
+}
+!
+then
+   :
+elif link_check closefrom 'closefrom(2)' '#define mx_HAVE_CLOSEFROM' << \!
+#include <unistd.h>
+int main(void){
+   closefrom(3);
+   return 0;
+}
+!
+then
+   :
+fi
+
 link_check tcgetwinsize 'tcgetwinsize(3)' '#define mx_HAVE_TCGETWINSIZE' << \!
 #include <termios.h>
 int main(void){
@@ -2251,7 +2289,9 @@ int main(void){
 }
 !
 
+##
 ## optional and selectable
+##
 
 if feat_yes ICONV; then
    # To be able to create tests we need to figure out which replacement
@@ -3416,7 +3456,9 @@ else # }}}
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
 
+##
 ## Final feat_def's XXX should be loop over OPTIONs
+##
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
@@ -3471,7 +3513,9 @@ feat_def DEBUG 0
 feat_def DEVEL 0
 feat_def NOMEMDBG 0
 
+##
 ## Summarizing
+##
 
 INCS=`squeeze_ws "${INCS}"`
 LIBS=`squeeze_ws "${LIBS}"`
@@ -3625,7 +3669,9 @@ printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
 echo >> ${mk}
 ${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
 
+##
 ## Finished!
+##
 
 # We have completed the new configuration header.  Check whether *really*
 # Do the "second stage configuration changed" detection, exit if nothing to do
