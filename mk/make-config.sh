@@ -190,8 +190,9 @@ option_setup() {
          OPT_DEVEL=1
          ;;
       *)
-         echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-         echo >&2 '   NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
+         msg 'failed'
+         msg 'ERROR: unknown CONFIG= setting: '${CONFIG}
+         msg '   Available are NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
          exit 1
          ;;
       esac
