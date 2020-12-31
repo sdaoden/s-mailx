@@ -9,7 +9,7 @@
  *@ XXX - Multiple objects per message could be possible (a_dmsg_find()),
  *@ XXX   except in compose mode
  *
- * Copyright (c) 2016 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
