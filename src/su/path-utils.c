@@ -1,7 +1,7 @@
 /*@ Implementation of path.h, physical access utils. XXX Nicer single x_posix wrapper?!
  *@ TODO EINTR encapsulation, for all which need!?!?
  *
- * Copyright (c) 2021 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2021 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
