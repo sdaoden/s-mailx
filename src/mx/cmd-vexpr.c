@@ -7,7 +7,7 @@
  *@ TODO - yet needs OPT_CMD_CSOP for compat byte string operation call-out
  *@ TODO - _VEXPR -> _CVEXPR
  *
- * Copyright (c) 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

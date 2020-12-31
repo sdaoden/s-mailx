@@ -2,7 +2,7 @@
  *@ If su_A_T_T_DECL_ONLY is defined before inclusion, just enough for
  *@ prototyping a deriviation is provided.
  *
- * Copyright (c) 2003 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2003 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
