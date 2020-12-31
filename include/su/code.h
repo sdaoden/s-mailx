@@ -9,7 +9,7 @@
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
  *
- * Copyright (c) 2001 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
