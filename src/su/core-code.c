@@ -4,7 +4,7 @@
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
  *@ TODO su_program: if set, the PID should be logged, too!
  *
- * Copyright (c) 2019 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

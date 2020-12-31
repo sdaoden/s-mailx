@@ -2,7 +2,7 @@
  *@ Depends on su_HAVE_MEM_BAG_{AUTO,LOFI}. TODO FLUX
  *@ The allocation interface is macro-based for the sake of debugging.
  *
- * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -9,7 +9,7 @@
  *@ TODO And the actual drawing stuff is up to the backend, maybe in termios,
  *@ TODO or better termcap, or in ui-str.  I do not know.
  *
- * Copyright (c) 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -3,7 +3,7 @@
  *@ TODO Support vput, i.e.: vput commandalias x what-this-expands-to
  *@ TODO _CMDAL -> _CCMDAL
  *
- * Copyright (c) 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -5,7 +5,7 @@
  *@ TODO We have no notion of a "current message context" and thus badly log.
  *@ TODO This is not final yet, v15 will bring "filters".
  *
- * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

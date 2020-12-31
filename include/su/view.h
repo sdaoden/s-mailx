@@ -1,7 +1,7 @@
 /*@ Generic C++ View (-of-a-collection, for iterating plus purposes) templates.
  *@ (Merely of interest when creating a new C++ collection type.)
  *
- * Copyright (c) 2001 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
