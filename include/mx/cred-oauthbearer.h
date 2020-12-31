@@ -3,7 +3,7 @@
  *@ bearer token, RFC 6750); and XOAUTH2 (an early-shoot alternate mechanism).
  *@ xxx Primitive.  Better: restartable object, or a linked-in-stream filter.
  *
- * Copyright (c) 2019 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

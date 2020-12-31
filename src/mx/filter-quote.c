@@ -3,7 +3,7 @@
  *@ TODO quotation filter: anticipate in future data: don't break if only WS
  *@ TODO or a LF escaping \ follows on the line (simply reuse the latter).
  *
- * Copyright (c) 2012/3 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012/3 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

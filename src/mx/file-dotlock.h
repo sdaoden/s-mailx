@@ -7,7 +7,7 @@
  *@ It furtherly assumes that it can create a file name that is at least one
  *@ byte longer than the dotlock file's name!
  *
- * Copyright (c) 2012 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-2-Clause
  */
 /*
