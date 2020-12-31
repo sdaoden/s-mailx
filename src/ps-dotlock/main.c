@@ -7,7 +7,7 @@
  *@ with a symlink-resolved target and with SIGPIPE being ignored.
  *@ TODO Build static libsu, just link against.
  *
- * Copyright (c) 2015 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

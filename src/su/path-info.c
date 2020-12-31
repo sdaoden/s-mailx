@@ -1,6 +1,6 @@
 /*@ Implementation of path.h, info.
  *
- * Copyright (c) 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2022 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -1,6 +1,6 @@
 /*@ ATOI and ITOA: simple non-restartable integer conversion.
  *
- * Copyright (c) 2017 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
