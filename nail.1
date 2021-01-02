@@ -2907,7 +2907,9 @@ entries in
 .Va termcap
 will help shall the MLE misbehave, see there for more.
 The MLE can support a little bit of
-.Ic colour .
+.Ic colour ,
+and certain behaviours can be configured via
+.Va line-editor-config .
 .
 .Pp
 \*(OP If the
@@ -3046,19 +3048,24 @@ Toggle roundtrip mode shell quotes, where produced,
 on and off
 .Mx
 .Pf ( Cd mle-quote-rndtrip ) .
-This setting is temporary, and will be forgotten once the command line
-is committed; also see
+The default is configurable via
+.Va line-editor-config ;
+also see
 .Ic shcodec .
 .
 .It Ql \ecR
 \*(OP Complete the current line from (the remaining) older history entries
 .Mx
 .Pf ( Cd mle-hist-srch-bwd ) .
+Search behaviour is configurable via
+.Va line-editor-config .
 .
 .It Ql \ecS
 \*(OP Complete the current line from (the remaining) newer history entries
 .Mx
 .Pf ( Cd mle-hist-srch-fwd ) .
+Search behaviour is configurable via
+.Va line-editor-config .
 .
 .It Ql \ecT
 Paste the snarf buffer
@@ -10192,6 +10199,22 @@ to modified messages, and then those fields will be stripped silently.
 \*(BO When a message is saved it is usually discarded from the
 originating folder when \*(UA is quit.
 This setting causes all saved message to be retained.
+.
+.Mx
+.It Va line-editor-config
+\*(OP Interpreted as a comma-separated list of case-insensitive keywords.
+.Ql quote-rndtrip
+denotes the default setting of
+.Cd mle-quote-rndtrip .
+.Ql srch-case
+and
+.Ql srch-any
+define whether
+.Cd mle-hist-srch-bwd
+and
+.Cd mle-hist-srch-fwd
+match case-insensitively, and whether they compare against any substring
+or only the beginning of the line, respectively.
 .
 .Mx
 .It Va line-editor-cpl-word-breaks

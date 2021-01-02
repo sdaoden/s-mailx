@@ -59,6 +59,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/names.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -712,7 +713,7 @@ matchfield(struct message *m, char const *field, void const *what){
    if((in.s = hfieldX(field, m)) != NIL){
       in.l = su_cs_len(in.s);
       mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
-      rv = substr(out.s, what);
+      rv = (mx_substr(out.s, what) != NIL);
       su_FREE(out.s);
    }
 
@@ -732,7 +733,8 @@ matchenvelope(struct message *m, char const *field, void const *what)
       goto jleave;
 
    for (np = lextract(cp, GFULL); np != NULL; np = np->n_flink) {
-      if (!substr(np->n_name, what) && !substr(mkenvelope(np), what))
+      if(mx_substr(np->n_name, what) == NIL &&
+            mx_substr(mkenvelope(np), what) == NIL)
          continue;
       rv = 1;
       break;

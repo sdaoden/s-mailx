@@ -77,7 +77,7 @@ set emptystart
 # Do not strip name parts and comments from addresses (when replying etc).
 set fullnames
 
-# [OPTION] Add more entries to the history as is done by default.
+# [OPTION] Add more entries to line editor history as is done by default.
 # With a *history-file* the latter saves them to permanent storage.
 set history-gabby=all history-gabby-persist
 
@@ -92,6 +92,9 @@ set indentprefix="> "
 # Honour Mail-Followup-To: headers when replying etc., and generate these
 # headers when sending messages to known mailing-lists.
 set followup-to-honour=ask-yes followup-to
+
+# Line editor searches match any substring, and are case-insensitive
+set line-editor-config=srch-any,srch-case
 
 # Mark messages that have been answered.
 set markanswered
@@ -306,6 +309,7 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 #     hold \
 #  indentprefix='> ' \
 #  keep keepsave \
+#  line-editor-config=srch-any,srch-case \
 #  markanswered mime-counter-evidence=0b1110 \
 #  outfolder \
 #  prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
