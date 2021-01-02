@@ -44,6 +44,9 @@
 #ifdef mx_HAVE_SETLOCALE
 # include <locale.h>
 #endif
+#ifdef mx_HAVE_C90AMEND1
+# include <wctype.h>
+#endif
 
 #include <su/cs.h>
 #include <su/mem.h>
@@ -582,6 +585,92 @@ mx_makeprint_write_fp(char const *s, uz size, FILE *fp){
 
    NYD_OU;
    return n;
+}
+
+void
+mx_makelow(char *cp){ /* TODO isn't that crap? --> */
+      NYD_IN;
+
+#ifdef mx_HAVE_C90AMEND1
+   if(n_mb_cur_max > 1){
+      char *tp;
+      wchar_t wc;
+      int len;
+
+      tp = cp;
+
+      while(*cp != '\0'){
+         len = mbtowc(&wc, cp, n_mb_cur_max);
+         if(len < 0)
+            *tp++ = *cp++;
+         else{
+            wc = towlower(wc);
+            if(wctomb(tp, wc) == len)
+               tp += len, cp += len;
+            else
+               *tp++ = *cp++; /* <-- at least here */
+         }
+      }
+   }else
+#endif
+   for(;; ++cp){
+      char c;
+
+      if((c = *cp) == '\0')
+         break;
+      *cp = su_cs_to_lower(c);
+   }
+
+   NYD_OU;
+}
+
+char *
+mx_substr(char const *str, char const *sub){
+   char const *cp, *backup;
+   NYD_IN;
+
+   cp = sub;
+   backup = str;
+
+   while(*str != '\0' && *cp != '\0'){
+#ifdef mx_HAVE_C90AMEND1
+      if(n_mb_cur_max > 1){
+         wchar_t c1, c2;
+         int i;
+
+         if((i = mbtowc(&c1, cp, n_mb_cur_max)) == -1)
+            goto Jsinglebyte;
+         cp += i;
+         if((i = mbtowc(&c2, str, n_mb_cur_max)) == -1)
+            goto Jsinglebyte;
+         str += i;
+         c1 = towupper(c1);
+         c2 = towupper(c2);
+         if(c1 != c2){
+            if((i = mbtowc(&c1, backup, n_mb_cur_max)) > 0)
+               backup += i;
+            else
+               ++backup;
+            str = backup;
+            cp = sub;
+         }
+      }else
+Jsinglebyte:
+#endif
+      {
+         char c1, c2;
+
+         c1 = su_cs_to_upper(*cp++);
+         c2 = su_cs_to_upper(*str++);
+         if(c1 != c2){
+            str = ++backup;
+            cp = sub;
+         }
+      }
+   }
+
+   NYD_OU;
+   return (*cp == '\0' ? UNCONST(char*,backup) : NIL);
 }
 
 uz
