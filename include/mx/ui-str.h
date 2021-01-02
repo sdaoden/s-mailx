@@ -112,6 +112,12 @@ EXPORT void mx_makeprint(struct str const *in, struct str *out);
 EXPORT char *mx_makeprint_cp(char const *cp);
 EXPORT int mx_makeprint_write_fp(char const *s, uz sz, FILE *fp);
 
+/* Convert a string to lowercase, in-place and multibyte-aware */
+EXPORT void mx_makelow(char *cp);
+
+/* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
+EXPORT char *mx_substr(char const *str, char const *sub);
+
 /* Only remove (remaining) control characters, reterminate, return length */
 EXPORT uz mx_del_cntrl(char *cp, uz len);
 

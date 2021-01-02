@@ -1,37 +1,20 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ String support routines.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
 #define su_FILE strings
@@ -39,10 +22,6 @@
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
-#endif
-
-#ifdef mx_HAVE_C90AMEND1
-# include <wctype.h>
 #endif
 
 #include <su/cs.h>
@@ -189,90 +168,6 @@ n_is_maybe_regex_buf(char const *buf, uz len){
          ) != su_UZ_MAX);
    NYD2_OU;
    return rv;
-}
-
-FL void
-makelow(char *cp) /* TODO isn't that crap? --> */
-{
-      NYD_IN;
-#ifdef mx_HAVE_C90AMEND1
-   if (n_mb_cur_max > 1) {
-      char *tp = cp;
-      wchar_t wc;
-      int len;
-
-      while (*cp != '\0') {
-         len = mbtowc(&wc, cp, n_mb_cur_max);
-         if (len < 0)
-            *tp++ = *cp++;
-         else {
-            wc = towlower(wc);
-            if (wctomb(tp, wc) == len)
-               tp += len, cp += len;
-            else
-               *tp++ = *cp++; /* <-- at least here */
-         }
-      }
-   } else
-#endif
-          for(;; ++cp){
-      char c;
-
-      *cp = su_cs_to_lower(c = *cp);
-      if(c == '\0')
-         break;
-   }
-   NYD_OU;
-}
-
-FL boole
-substr(char const *str, char const *sub)
-{
-   char const *cp, *backup;
-   NYD_IN;
-
-   cp = sub;
-   backup = str;
-   while (*str != '\0' && *cp != '\0') {
-#ifdef mx_HAVE_C90AMEND1
-      if (n_mb_cur_max > 1) {
-         wchar_t c, c2;
-         int i;
-
-         if ((i = mbtowc(&c, cp, n_mb_cur_max)) == -1)
-            goto Jsinglebyte;
-         cp += i;
-         if ((i = mbtowc(&c2, str, n_mb_cur_max)) == -1)
-            goto Jsinglebyte;
-         str += i;
-         c = towupper(c);
-         c2 = towupper(c2);
-         if (c != c2) {
-            if ((i = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
-               backup += i;
-               str = backup;
-            } else
-               str = ++backup;
-            cp = sub;
-         }
-      } else
-Jsinglebyte:
-#endif
-      {
-         int c, c2;
-
-         c = *cp++ & 0377;
-         c = su_cs_to_upper(c);
-         c2 = *str++ & 0377;
-         c2 = su_cs_to_upper(c2);
-         if (c != c2) {
-            str = ++backup;
-            cp = sub;
-         }
-      }
-   }
-   NYD_OU;
-   return (*cp == '\0');
 }
 
 FL struct str *
