@@ -3673,7 +3673,7 @@ jnext_name:
          rv = (regexec(sep->ss_bodyre, out.s, 0,NULL, 0) != REG_NOMATCH);
       else
 #endif
-         rv = substr(out.s, sep->ss_body);
+         rv = (mx_substr(out.s, sep->ss_body) != NIL);
 
       if(np == NULL)
          n_free(out.s);

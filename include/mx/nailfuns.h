@@ -1061,12 +1061,6 @@ FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
 #define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, su_UZ_MAX)
 FL boole n_is_maybe_regex_buf(char const *buf, uz len);
 
-/* Convert a string to lowercase, in-place and with multibyte-aware */
-FL void        makelow(char *cp);
-
-/* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
-FL boole      substr(char const *str, char const *sub);
-
 /* struct str related support funs TODO _cp->_cs! */
 
 /* *self->s* is n_realloc()ed */

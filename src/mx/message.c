@@ -52,6 +52,7 @@
 #include "mx/names.h"
 #include "mx/net-pop3.h"
 #include "mx/termios.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1199,7 +1200,7 @@ a_msg_match_dash(struct message *mp, char const *str){
 
    in.l = su_cs_len(in.s = hbody);
    mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
-   rv = substr(out.s, hfield);
+   rv = (mx_substr(out.s, hfield) != NIL);
    su_FREE(out.s);
 
 jleave:
@@ -1510,7 +1511,7 @@ message_match(struct message *mp, struct search_expr const *sep,
             continue;
       }else
 #endif
-            if(!substr(line, sep->ss_body))
+            if(mx_substr(line, sep->ss_body) == NIL)
          continue;
       rv = TRU1;
       break;

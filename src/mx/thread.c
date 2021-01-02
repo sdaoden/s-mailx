@@ -51,6 +51,7 @@
 
 #include "mx/compat.h"
 #include "mx/names.h"
+#include "mx/ui-str.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -778,7 +779,7 @@ c_sort(void *vp)
                   ) != NULL) {
                ms[n].ms_u.ms_char = su_cs_dup((showname ? realname(cp)
                      : skin(cp)), 0);
-               makelow(ms[n].ms_u.ms_char);
+               mx_makelow(ms[n].ms_u.ms_char);
             } else
                ms[n].ms_u.ms_char = su_cs_dup(n_empty, 0);
             break;
@@ -790,7 +791,7 @@ c_sort(void *vp)
                       mx_HEADER_SUBJECT_EDIT_TRIM_ALL));
             else
                cp = UNCONST(char*,su_empty);
-            makelow(ms[n].ms_u.ms_char = su_cs_dup(cp, 0));
+            mx_makelow(ms[n].ms_u.ms_char = su_cs_dup(cp, 0));
             break;
          }
          ms[n++].ms_n = i;

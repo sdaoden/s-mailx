@@ -203,6 +203,14 @@ CTA(a_TTY__BIND_LAST >= (1u << a_TTY__BIND_FUN_SHIFTMAX),
 CTA(UCMP(64, a_TTY__BIND_LAST, <=, S32_MAX),
    "Flag bits excess storage datatype" /* And we need one bit free */);
 
+enum a_tty_config_flags{
+   a_TTY_CONF_QUOTE_RNDTRIP = 1u<<0, /* mle-quote-rndtrip default-on */
+   a_TTY_CONF_SRCH_CASE = 1u<<1, /* mle-hist-srch-* case-insensitive */
+   a_TTY_CONF_SRCH_ANY = 1u<<2, /* mle-hist-srch-* "matches any substring" */
+   a_TTY__CONF_LAST = a_TTY_CONF_SRCH_ANY
+};
+CTA(a_TTY__CONF_LAST <= U16_MAX, "Flag bits excess storage datatype");
+
 enum a_tty_fun_status{
    a_TTY_FUN_STATUS_OK, /* Worked, next character */
    a_TTY_FUN_STATUS_COMMIT, /* Line done */
@@ -245,6 +253,7 @@ enum a_tty_visual_flags{
    a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL | a_TTY_VF_SYNC,
    a_TTY__VF_LAST = a_TTY_VF_SYNC
 };
+CTA(a_TTY__VF_LAST <= U16_MAX, "Flag bits excess storage datatype");
 
 # ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_ctx{
@@ -358,17 +367,6 @@ struct a_tty_line{
    /* Caller pointers */
    char **tl_x_buf;
    uz *tl_x_bufsize;
-   /* Input processing */
-# ifdef mx_HAVE_KEY_BINDINGS
-   wchar_t tl_bind_takeover; /* Leftover byte to consume next */
-   u8 tl_bind_inter_byte_timeout; /* In 1/10th secs */
-   u8 tl_bind_inter_key_timeout; /*  ^ */
-   u8 tl__bind_pad1[2];
-   char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
-   char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
-   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
-   struct a_tty_bind_tree *tl_bind_tree;
-# endif
    /* Line data / content handling */
    u32 tl_count; /* ..of a_tty_cell's (<= a_TTY_LINE_MAX) */
    u32 tl_cursor; /* Current a_tty_cell insertion point */
@@ -384,8 +382,9 @@ struct a_tty_line{
    struct a_tty_hist *tl_hist; /* History cursor */
 # endif
    u32 tl_count_max; /* ..before buffer needs to grow */
+   BITENUM_IS(u16,a_tty_config_flags) tl_conf_flags;
    /* Visual data representation handling */
-   BITENUM_IS(u32,a_tty_visual_flags) tl_vi_flags;
+   BITENUM_IS(u16,a_tty_visual_flags) tl_vi_flags;
    u32 tl_lst_count; /* .tl_count after last sync */
    u32 tl_lst_cursor; /* .tl_cursor after last sync */
    /* TODO Add another indirection layer by adding a tl_phy_line of
@@ -393,8 +392,7 @@ struct a_tty_line{
     * TODO then check what _really_ has changed, sync those changes only */
    struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
    u32 tl_phy_cursor; /* Physical cursor position */
-   boole tl_quote_rndtrip; /* For _kht() expansion */
-   u8 tl__pad2[3];
+   su_64( u8 tl__pad2[4]; )
    BITENUM_IS(u32,mx_go_input_flags) tl_goinflags;
    u32 tl_prompt_length; /* Preclassified (TODO needed as tty_cell) */
    u32 tl_prompt_width;
@@ -404,6 +402,17 @@ struct a_tty_line{
 # ifdef mx_HAVE_COLOUR
    char *tl_pos_buf; /* mle-position colour-on, [4], reset seq. */
    char *tl_pos; /* Address of the [4] */
+# endif
+   /* Input processing */
+# ifdef mx_HAVE_KEY_BINDINGS
+   wchar_t tl_bind_takeover; /* Leftover byte to consume next */
+   u8 tl_bind_inter_byte_timeout; /* In 1/10th secs */
+   u8 tl_bind_inter_key_timeout; /*  ^ */
+   u8 tl__bind_pad4[2];
+   char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
+   char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
+   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
+   struct a_tty_bind_tree *tl_bind_tree;
 # endif
 };
 
@@ -1307,7 +1316,7 @@ a_tty_cell2save(struct a_tty_line *tlp){
          ++tcap, --i)
       len += tcap->tc_count;
 
-   tlp->tl_savec.s = n_autorec_alloc((tlp->tl_savec.l = len) +1);
+   tlp->tl_savec.s = su_AUTO_ALLOC((tlp->tl_savec.l = len) +1);
 
    for(tcap = tlp->tl_line.cells, len = 0, i = tlp->tl_count; i > 0;
          ++tcap, --i){
@@ -1332,7 +1341,7 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
    for(tcp = tcpmin; tcp < tcpmax; ++tcp)
       l += tcp->tc_count;
 
-   tlp->tl_pastebuf.s = cp = n_autorec_alloc((tlp->tl_pastebuf.l = l) +1);
+   tlp->tl_pastebuf.s = cp = su_AUTO_ALLOC((tlp->tl_pastebuf.l = l) +1);
 
    for(tcp = tcpmin; tcp < tcpmax; cp += l, ++tcp)
       su_mem_copy(cp, tcp->tc_cbuf, l = tcp->tc_count);
@@ -2389,7 +2398,8 @@ jaster_check:
    exp.s[exp.l] = '\0';
 
 jset:
-   exp.l = su_cs_len(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
+   exp.l = su_cs_len(exp.s = n_shexp_quote_cp(exp.s,
+         ((tlp->tl_conf_flags & a_TTY_CONF_QUOTE_RNDTRIP) != 0)));
    tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
@@ -2513,7 +2523,7 @@ jmulti:{
          /* Prepare display */
          input = sub;
          shoup = n_shexp_quote(n_string_trunc(shoup, 0), &input,
-               tlp->tl_quote_rndtrip);
+               ((tlp->tl_conf_flags & a_TTY_CONF_QUOTE_RNDTRIP) != 0));
          su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = shoup->s_dat;
          vic.vic_inlen = shoup->s_len;
@@ -2762,8 +2772,17 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
       if(xoff != 1 && (thp->th_flags & a_TTY_HIST_CTX_MASK) ==
             a_TTY_HIST_CTX_COMPOSE)
          continue;
-      if(su_cs_starts_with(thp->th_dat, &tlp->tl_savec.s[xoff]))
-         break;
+      else{
+         char *cp;
+
+         cp = ((tlp->tl_conf_flags & a_TTY_CONF_SRCH_CASE)
+                  ? mx_substr : su_cs_find)
+               (thp->th_dat, &tlp->tl_savec.s[xoff]);
+         if(cp != thp->th_dat && !(tlp->tl_conf_flags & a_TTY_CONF_SRCH_ANY))
+            cp = NIL;
+         if(cp != NIL)
+            break;
+      }
    }
 
    if(orig_savec.s != NIL)
@@ -2879,7 +2898,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
       tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       break;
    case a_X(QUOTE_RNDTRIP):
-      tlp->tl_quote_rndtrip = !tlp->tl_quote_rndtrip;
+      tlp->tl_conf_flags ^= a_TTY_CONF_QUOTE_RNDTRIP;
       break;
    case a_X(PROMPT_CHAR):{
       wchar_t wc;
@@ -3216,7 +3235,7 @@ jread_again:
                }
 
                /* Defer decision, try to read more characters */
-               nisp = n_autorec_alloc(sizeof *nisp);
+               nisp = su_AUTO_ALLOC(sizeof *nisp);
                if((nisp->last = isp) == NIL)
                   isp_head = nisp;
                else
@@ -3270,7 +3289,7 @@ jmle_fun:
                   struct a_tty_bind_ctx *tbcp;
 
                   tbcp = tbtp->tbt_bind;
-                  su_mem_copy(tlp->tl_defc.s = n_autorec_alloc(
+                  su_mem_copy(tlp->tl_defc.s = su_AUTO_ALLOC(
                         (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
                      tbcp->tbc_exp, tbcp->tbc_exp_len +1);
                   goto jrestart;
@@ -3520,7 +3539,7 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
             n_SHEXP_STATE_STOP)
          break;
 
-      ep = n_autorec_alloc(sizeof *ep);
+      ep = su_AUTO_ALLOC(sizeof *ep);
       if(head == NIL)
          head = ep;
       else
@@ -3656,7 +3675,7 @@ jeempty:
             j = i;
             i += cnvl;
          }
-         tbpcp->tbpc_seq = cp = cpbase = n_autorec_alloc(i);
+         tbpcp->tbpc_seq = cp = cpbase = su_AUTO_ALLOC(i);
          tbpcp->tbpc_cnv = cnv = &cpbase[j];
       }
 
@@ -4292,12 +4311,9 @@ int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
-   /* XXX split mx_tty_readline, it is huge */
+   /* XXX split mx_tty_readline, it is huge (but not so like workhorse!) */
    struct a_tty_line tl;
    struct n_string xprompt;
-# ifdef mx_HAVE_COLOUR
-   char *posbuf, *pos;
-# endif
    sz nn;
    NYD_IN;
 
@@ -4306,41 +4322,76 @@ int
       mx_tty_init();
    ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
-# ifdef mx_HAVE_COLOUR
-   mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
+   su_mem_set(&tl, 0, sizeof tl);
+   tl.tl_goinflags = gif;
 
-   /* .tl_pos_buf is a hack */
-   posbuf = pos = NIL;
+   /* C99 */{
+      static struct{
+         char const name[15];
+         u8 flag;
+      } const ca[] = {
+         {"quote-rndtrip", a_TTY_CONF_QUOTE_RNDTRIP},
+         {"srch-case", a_TTY_CONF_SRCH_CASE},
+         {"srch-any", a_TTY_CONF_SRCH_ANY}
+      };
+      uz i;
+      char *buf, *e;
 
-   if(mx_COLOUR_IS_ACTIVE()){
-      char const *ccol;
-      struct mx_colour_pen *ccp;
-      struct str const *s;
-
-      if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NIL)
-            ) != NIL && (s = mx_colour_pen_to_str(ccp)) != NIL){
-         ccol = s->s;
-         if((s = mx_colour_reset_to_str()) != NIL){
-            uz l1, l2;
-
-            l1 = su_cs_len(ccol);
-            l2 = su_cs_len(s->s);
-            posbuf = n_autorec_alloc(l1 + 4 + l2 +1);
-            su_mem_copy(posbuf, ccol, l1);
-            pos = &posbuf[l1];
-            su_mem_copy(&pos[4], s->s, ++l2);
+      if((buf = UNCONST(char*,ok_vlook(line_editor_config))) != NIL){
+         for(buf = savestr(buf); (e = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
+            for(i = 0;;){
+               if(!su_cs_cmp_case(e, ca[i].name)){
+                  tl.tl_conf_flags |= ca[i].flag;
+                  break;
+               }else if(++i == NELEM(ca)){
+                  n_err(_("*line-editor-config*: unknown keyword: %s\n"),
+                     n_shexp_quote_cp(e, FAL0));
+                  break;
+               }
+            }
          }
       }
    }
 
-   if(posbuf == NIL){
-      posbuf = pos = n_autorec_alloc(4 +1);
-      pos[4] = '\0';
+# ifdef mx_HAVE_COLOUR
+   /* C99 */{
+      char *posbuf, *pos;
+
+      mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
+
+      /* .tl_pos_buf is a hack */
+      posbuf = pos = NIL;
+
+      if(mx_COLOUR_IS_ACTIVE()){
+         char const *ccol;
+         struct mx_colour_pen *ccp;
+         struct str const *s;
+
+         if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NIL)
+               ) != NIL && (s = mx_colour_pen_to_str(ccp)) != NIL){
+            ccol = s->s;
+            if((s = mx_colour_reset_to_str()) != NIL){
+               uz l1, l2;
+
+               l1 = su_cs_len(ccol);
+               l2 = su_cs_len(s->s);
+               posbuf = su_AUTO_ALLOC(l1 + 4 + l2 +1);
+               su_mem_copy(posbuf, ccol, l1);
+               pos = &posbuf[l1];
+               su_mem_copy(&pos[4], s->s, ++l2);
+            }
+         }
+      }
+
+      if(posbuf == NIL){
+         posbuf = pos = su_AUTO_ALLOC(4 +1);
+         pos[4] = '\0';
+      }
+
+      tl.tl_pos_buf = posbuf;
+      tl.tl_pos = pos;
    }
 # endif /* mx_HAVE_COLOUR */
-
-   su_mem_set(&tl, 0, sizeof tl);
-   tl.tl_goinflags = gif;
 
 # ifdef mx_HAVE_KEY_BINDINGS
    /* C99 */{
@@ -4377,29 +4428,24 @@ jbind_timeout_redo:
          cp = ok_vlook(bind_inter_key_timeout);
          goto jbind_timeout_redo;
       }
+
+      if(a_tty.tg_bind_isdirty)
+         a_tty_bind_tree_teardown();
+      if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
+         a_tty_bind_tree_build();
+      tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & mx__GO_INPUT_CTX_MASK];
+      tl.tl_bind_shcut_cancel =
+            &a_tty.tg_bind_shcut_cancel[gif & mx__GO_INPUT_CTX_MASK];
+      tl.tl_bind_shcut_prompt_char =
+            &a_tty.tg_bind_shcut_prompt_char[gif & mx__GO_INPUT_CTX_MASK];
    }
-
-   if(a_tty.tg_bind_isdirty)
-      a_tty_bind_tree_teardown();
-   if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
-      a_tty_bind_tree_build();
-   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & mx__GO_INPUT_CTX_MASK];
-   tl.tl_bind_shcut_cancel =
-         &a_tty.tg_bind_shcut_cancel[gif & mx__GO_INPUT_CTX_MASK];
-   tl.tl_bind_shcut_prompt_char =
-         &a_tty.tg_bind_shcut_prompt_char[gif & mx__GO_INPUT_CTX_MASK];
 # endif /* mx_HAVE_KEY_BINDINGS */
-
-# ifdef mx_HAVE_COLOUR
-   tl.tl_pos_buf = posbuf;
-   tl.tl_pos = pos;
-# endif
 
    if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
       n_string_creat_auto(&xprompt);
 
-      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt,
-            gif)) > 0){
+      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt, gif)
+            ) > 0){
          tl.tl_prompt = n_string_cp_const(&xprompt);
          tl.tl_prompt_length = S(u32,xprompt.s_len);
       }
@@ -4424,7 +4470,7 @@ jbind_timeout_redo:
    a_tty.tg_line = NIL;
 
    NYD_OU;
-   return (int)nn;
+   return S(int,nn);
 }
 
 void
@@ -4504,7 +4550,7 @@ c_history(void *vp){
 
 jleave:
    NYD_OU;
-   return (x <= FAL0 ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+   return (x > FAL0 ? n_EXIT_OK : n_EXIT_ERR);
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -4690,6 +4736,7 @@ int
    }
 
    rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
+
    NYD_OU;
    return rv;
 }
