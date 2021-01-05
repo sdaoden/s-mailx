@@ -29,6 +29,10 @@
 #include <su/mem-bag.h>
 #include <su/sort.h>
 
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
+
 #include "mx/termios.h"
 
 #include "mx/ignore.h"
@@ -45,7 +49,7 @@ struct a_ignore_type{
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re{
       struct a_ignore_re *ir_next;
-      regex_t ir_regex;
+      struct su_re ir_re;
       char ir_input[VFIELD_SIZE(0)]; /* Regex input text (for showing it) */
    } *it_re, *it_re_tail;
 #endif
@@ -174,7 +178,7 @@ a_ignore_lookup(struct mx_ignore const *self, boole retain,
          dat = savestrbuf(dat, len);
       for(irp = self->i_retain.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
-               ? (regexec(&irp->ir_regex, dat, 0,NIL, 0) != REG_NOMATCH)
+               ? su_re_eval_cp(&irp->ir_re, dat, su_RE_EVAL_NONE)
                : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
                   irp->ir_input[len] == '\0')))
             goto jleave;
@@ -191,7 +195,7 @@ a_ignore_lookup(struct mx_ignore const *self, boole retain,
          dat = savestrbuf(dat, len);
       for(irp = self->i_ignore.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
-               ? (regexec(&irp->ir_regex, dat, 0,NIL, 0) != REG_NOMATCH)
+               ? su_re_eval_cp(&irp->ir_re, dat, su_RE_EVAL_NONE)
                : (!su_cs_cmp_n(irp->ir_input, dat, len) &&
                   irp->ir_input[len] == '\0')))
             goto jleave;
@@ -235,7 +239,7 @@ a_ignore_del_allof(struct mx_ignore *ip, boole retain){
 
       x = irp;
       irp = irp->ir_next;
-      regfree(&x->ir_regex);
+      su_re_gut(&x->ir_re);
       if(!ip->i_auto)
          su_FREE(x);
    }
@@ -415,7 +419,7 @@ a_ignore__delone(struct mx_ignore *ip, boole retain, char const *field){
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 
 #ifdef mx_HAVE_REGEX
-   if(n_is_maybe_regex(field)){
+   if(n_re_could_be_one_cp(field)){
       struct a_ignore_re **lirp, *irp;
 
       for(irp = *(lirp = &itp->it_re); irp != NIL;
@@ -425,7 +429,7 @@ a_ignore__delone(struct mx_ignore *ip, boole retain, char const *field){
             if(irp == itp->it_re_tail)
                itp->it_re_tail = irp->ir_next;
 
-            regfree(&irp->ir_regex);
+            su_re_gut(&irp->ir_re);
             if(!ip->i_auto)
                su_FREE(irp);
             --itp->it_count;
@@ -753,7 +757,7 @@ mx_ignore_insert(struct mx_ignore *self, boole retain,
 
    /* Check for regular expression or valid fieldname */
 #ifdef mx_HAVE_REGEX
-   if(!(isre = n_is_maybe_regex_buf(dat, len)))
+   if(!(isre = n_re_could_be_one_buf(dat, len)))
 #endif
    {
       char c;
@@ -782,8 +786,8 @@ mx_ignore_insert(struct mx_ignore *self, boole retain,
    rv = TRU1;
 #ifdef mx_HAVE_REGEX
    if(isre){
+      struct su_re *rep;
       struct a_ignore_re *x;
-      int s;
       uz i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_re,ir_input) + ++len;
@@ -791,11 +795,12 @@ mx_ignore_insert(struct mx_ignore *self, boole retain,
       su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
-      if((s = regcomp(&irp->ir_regex, irp->ir_input,
-            REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+      rep = su_re_create(&irp->ir_re);
+      if(su_re_setup_cp(rep, irp->ir_input, (su_RE_SETUP_EXT |
+            su_RE_SETUP_ICASE | su_RE_SETUP_TEST_ONLY)) != su_RE_ERR_NONE){
          n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(irp->ir_input, FAL0),
-            n_regex_err_to_doc(NIL, s));
+            n_shexp_quote_cp(irp->ir_input, FAL0), su_re_error_doc(rep));
+         su_re_gut(rep);
          if(!self->i_auto)
             su_FREE(irp);
          rv = FAL0;

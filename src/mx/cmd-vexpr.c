@@ -2,7 +2,6 @@
  *@ Implementation of cmd-vexpr.h.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
- *@ TODO - use su_regex (and if it's a wrapper only)
  *@ TODO - use su_path_info instead of stat(2)
  *@ TODO - yet needs OPT_CMD_CSOP for compat byte string operation call-out
  *@ TODO - _VEXPR -> _CVEXPR
@@ -39,14 +38,14 @@ su_EMPTY_FILE()
 
 #include <unistd.h> /* TODO su_path_info */
 
-#ifdef mx_HAVE_REGEX
-# include <regex.h> /* TODO su_regex */
-#endif
-
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
 
 #include "mx/cmd.h"
 /* v15compat: csop.h */
@@ -753,9 +752,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
       vcp->vc_flags |= a_VEXPR_MOD_CASE;
       /* FALLTHRU */
    case a_VEXPR_CMD_STR_REGEX:{
-      regmatch_t rema[1 + mx_VEXPR_REGEX_MAX];
-      regex_t re;
-      int reflrv;
+      struct su_re re;
 
       vcp->vc_flags |= a_VEXPR_ISNUM | a_VEXPR_ISDECIMAL;
       if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] == NIL ||
@@ -766,36 +763,32 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
       }
       vcp->vc_arg = vcp->vc_argv[1];
 
-      reflrv = REG_EXTENDED;
-      if(vcp->vc_flags & a_VEXPR_MOD_CASE)
-         reflrv |= REG_ICASE;
-      if((reflrv = regcomp(&re, vcp->vc_arg, reflrv))){
+      su_re_create(&re);
+
+      if(su_re_setup_cp(&re, vcp->vc_arg, (su_RE_SETUP_EXT |
+            ((vcp->vc_flags & a_VEXPR_MOD_CASE) ? su_RE_SETUP_ICASE
+             : su_RE_SETUP_NONE))) != su_RE_ERROR_NONE){
          n_err(_("vexpr: invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(vcp->vc_arg, FAL0),
-            n_regex_err_to_doc(NIL, reflrv));
+            n_shexp_quote_cp(vcp->vc_arg, FAL0), su_re_error_doc(&re));
+         su_re_gut(&re);
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_STR_GENERIC;
          n_pstate_err_no = su_ERR_INVAL;
          break;
       }
-      reflrv = regexec(&re, vcp->vc_argv[0], NELEM(rema), rema, 0);
-      regfree(&re);
 
-      if(reflrv == REG_NOMATCH){
+      if(!su_re_eval_cp(&re, vcp->vc_argv[0], su_RE_EVAL_NONE)){
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
-         break;
       }
-
       /* Search only?  Else replace, which is a bit */
-      if(vcp->vc_argv[2] == NIL){
-         if(UCMP(64, rema[0].rm_so, >, S64_MAX)){
+      else if(vcp->vc_argv[2] == NIL){
+         if(UCMP(64, re.re_match[0].rem_start, <=, S64_MAX))
+            vcp->vc_lhv = S(s64,re.re_match[0].rem_start);
+         else{
             vcp->vc_flags |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_STR_OVERFLOW;
-            break;
          }
-
-         vcp->vc_lhv = S(s64,rema[0].rm_so);
       }else{
          /* TODO We yet need to have a hook into generic pospar handling
           * TODO instead of having a shexp_parse carrier which takes some
@@ -803,18 +796,18 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
          char const *name, **argv, **ccpp;
          uz i, argc;
 
-         name = savestrbuf(&vcp->vc_argv[0][rema[0].rm_so],
-               rema[0].rm_eo - rema[0].rm_so);
+         name = savestrbuf(&vcp->vc_argv[0][re.re_match[0].rem_start],
+               re.re_match[0].rem_end - re.re_match[0].rem_start);
 
-         for(argc = i = 1; i < NELEM(rema); ++i)
-            if(rema[i].rm_so != -1)
+         for(argc = i = 1; i <= re.re_group_count; ++i)
+            if(re.re_match[i].rem_start != -1)
                argc = i;
          argv = su_LOFI_TALLOC(char const*,argc +1);
 
          for(ccpp = argv, i = 1; i <= argc; ++ccpp, ++i)
-            if(rema[i].rm_so != -1)
-               *ccpp = savestrbuf(&vcp->vc_argv[0][rema[i].rm_so],
-                     rema[i].rm_eo - rema[i].rm_so);
+            if(re.re_match[i].rem_start != -1)
+               *ccpp = savestrbuf(&vcp->vc_argv[0][re.re_match[i].rem_start],
+                     re.re_match[i].rem_end - re.re_match[i].rem_start);
             else
                *ccpp = su_empty;
          *ccpp = NIL;
@@ -825,14 +818,16 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
 
          su_LOFI_FREE(argv);
 
-         if(vcp->vc_varres == NIL){
+         if(vcp->vc_varres != NIL)
+            vcp->vc_flags ^= (a_VEXPR_ISNUM | a_VEXPR_ISDECIMAL);
+         else{
             vcp->vc_flags |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
-            break;
          }
-
-         vcp->vc_flags ^= (a_VEXPR_ISNUM | a_VEXPR_ISDECIMAL);
       }
+
+      su_re_gut(&re);
+
       }break;
 #endif /* mx_HAVE_REGEX */
    }
