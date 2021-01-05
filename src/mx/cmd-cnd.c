@@ -29,6 +29,10 @@
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
+
 #include "mx/go.h"
 
 #include "mx/cmd-cnd.h"
@@ -331,25 +335,29 @@ jesyn_ntr:
 
 #ifdef mx_HAVE_REGEX
       if(op[1] == '~'){
-         regex_t re;
-         int s;
+         struct su_re re;
 
          if(flags & a_SATURATED){
-            emsg = N_("invalid modifier for operational mode");
+            emsg = N_("invalid modifier for operational mode (regex)");
             goto jesyn;
          }
 
-         if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
-               (flags & (a_MOD | a_ICASE) ? REG_ICASE : 0))) != 0){
+         su_re_create(&re);
+
+         if(su_re_setup_cp(&re, rhv, (su_RE_SETUP_EXT |
+               su_RE_SETUP_TEST_ONLY | ((flags & (a_MOD | a_ICASE))
+                  ? su_RE_SETUP_ICASE : su_RE_SETUP_NONE))
+               ) != su_RE_ERROR_NONE){
             emsg = savecat(_("invalid regular expression: "),
-                  n_regex_err_to_doc(NIL, s));
+                  su_re_error_doc(&re));
+            su_re_gut(&re);
             goto jesyn_ntr;
          }
 
          if(!noop)
-            rv = (regexec(&re, lhv, 0,NIL, 0) == REG_NOMATCH) ^ (c == '=');
+            rv = (!su_re_eval_cp(&re, lhv, su_RE_EVAL_NONE) ^ (c == '='));
 
-         regfree(&re);
+         su_re_gut(&re);
       }else
 #endif /* mx_HAVE_REGEX */
             if(noop){

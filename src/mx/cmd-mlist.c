@@ -2,7 +2,6 @@
  *@ Implementation of cmd-mlist.h.
  *@ XXX Use a su_cs_set for non-regex stuff?
  *@ XXX use su_list for the regex stuff?
- *@ TODO use su_regex (and if it's a wrapper only)
  *@ TODO _ML -> _CML
  *
  * Copyright (c) 2014 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -29,14 +28,14 @@
 # include "mx/nail.h"
 #endif
 
-#ifdef mx_HAVE_REGEX
-# include <regex.h>
-#endif
-
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
 
 #include "mx/names.h"
 
@@ -66,7 +65,7 @@
 struct a_ml_regex{
    struct a_ml_regex *mlr_last;
    struct a_ml_regex *mlr_next;
-   regex_t mlr_regex;
+   struct su_re mlr_regex;
 };
 #endif
 
@@ -171,7 +170,7 @@ jset_data:
             ASSERT((subscribe & ~TRU1) == 0);
             u.flags = subscribe;
 #ifdef mx_HAVE_REGEX
-            if(n_is_maybe_regex(key)){
+            if(n_re_could_be_one_cp(key)){
                /* XXX Since the key is char* it could reside on an address
                 * XXX with bit 1 set, but since it is user input it came in
                 * XXX via shell argument quoting, is thus served by our memory,
@@ -272,7 +271,6 @@ jleave:
 static void *
 a_ml_re_clone(void const *t, u32 estate){
    struct a_ml_regex **mlrpp;
-   int s;
    char const *rep;
    union {void const *cvp; up flags; char const *ccp;} u;
    union {struct a_ml_regex *mlrp; up flags; void *vp;} rv;
@@ -284,8 +282,11 @@ a_ml_re_clone(void const *t, u32 estate){
       rep = u.ccp;
       u.cvp = t;
 
-      if((s = regcomp(&rv.mlrp->mlr_regex, rep,
-               REG_EXTENDED | REG_ICASE | REG_NOSUB)) == 0){
+      su_re_create(&rv.mlrp->mlr_regex);
+
+      if(su_re_setup_cp(&rv.mlrp->mlr_regex, rep,
+               (su_RE_SETUP_EXT | su_RE_SETUP_ICASE | su_RE_SETUP_TEST_ONLY)
+            ) == su_RE_ERROR_NONE){
          rv.mlrp->mlr_last = NIL;
          mlrpp = (u.flags & TRU1) ? &a_ml_re_sub : &a_ml_re_def;
          if((rv.mlrp->mlr_next = *mlrpp) != NIL)
@@ -296,7 +297,8 @@ a_ml_re_clone(void const *t, u32 estate){
       }else{
          n_err(_("%s: invalid regular expression: %s: %s\n"),
             (u.flags & TRU1 ? "mlsubscribe" : "mlist"),
-            n_shexp_quote_cp(rep, FAL0), n_regex_err_to_doc(NIL, s));
+            n_shexp_quote_cp(rep, FAL0), su_re_error_doc(&rv.mlrp->mlr_regex));
+         su_re_gut(&rv.mlrp->mlr_regex);
          su_FREE(rv.mlrp);
          su_err_set_no(su_ERR_INVAL);
          rv.vp = NIL;
@@ -330,8 +332,9 @@ a_ml_re_delete(void *self){
    if(nxtnp != NIL)
       nxtnp->mlr_last = lstnp;
 
-   regfree(&u.mlrp->mlr_regex);
+   su_re_gut(&u.mlrp->mlr_regex);
    su_FREE(u.mlrp);
+
    NYD_OU;
 }
 
@@ -512,7 +515,7 @@ mx_mlist_query(char const *name, boole subscribed_only){
       rv = mx_MLIST_SUBSCRIBED;
 jregex_redo:
       if((mlrp = *lpp) != NIL){
-         do if(regexec(&mlrp->mlr_regex, name, 0,NIL, 0) != REG_NOMATCH){
+         do if(su_re_eval_cp(&mlrp->mlr_regex, name, su_RE_EVAL_NONE)){
             /* Relink head */
             if(mlrp != *lpp){
                lstnp = mlrp->mlr_last;
