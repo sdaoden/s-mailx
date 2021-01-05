@@ -62,8 +62,6 @@
 /* *bind-inter-byte-timeout* default -- update manual on change! */
 #define mx_BIND_INTER_BYTE_TIMEOUT "200"
 
-#define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
-
 /* * */
 
 /* Default log level */

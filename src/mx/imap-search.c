@@ -59,6 +59,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/names.h"
+#include "mx/srch-ctx.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -451,7 +452,7 @@ jleave:
 static int
 itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
 {
-   struct search_expr se;
+   struct mx_srch_ctx sctx;
    char *cp;
    FILE *ibuf;
    int rv;
@@ -513,10 +514,10 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = UCMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
-      su_mem_set(&se, 0, sizeof se);
-      se.ss_field = "body";
-      se.ss_body = n->n_v;
-      rv = message_match(m, &se, FAL0);
+      su_mem_set(&sctx, 0, sizeof sctx);
+      sctx.sc_field = "body";
+      sctx.sc_body = n->n_v;
+      rv = message_match(m, &sctx, FAL0);
       break;
    case ITCC:
       rv = matchenvelope(m, "cc", n->n_v);
@@ -584,10 +585,10 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       rv = matchfield(m, "subject", n->n_v);
       break;
    case ITTEXT:
-      su_mem_set(&se, 0, sizeof se);
-      se.ss_field = "text";
-      se.ss_body = n->n_v;
-      rv = message_match(m, &se, TRU1);
+      su_mem_set(&sctx, 0, sizeof sctx);
+      sctx.sc_field = "text";
+      sctx.sc_body = n->n_v;
+      rv = message_match(m, &sctx, TRU1);
       break;
    case ITTO:
       rv = matchenvelope(m, "to", n->n_v);

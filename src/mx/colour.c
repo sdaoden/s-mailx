@@ -34,10 +34,15 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_COLOUR
+
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
 
 #include "mx/go.h"
 #include "mx/sigs.h"
@@ -92,7 +97,7 @@ struct a_colour_map /* : public mx_colour_pen */{
    char const *cm_tag; /* Colour tag or NULL for default (last) */
    struct a_colour_map_id const *cm_cmi;
 #ifdef mx_HAVE_REGEX
-   regex_t *cm_regex;
+   struct su_re *cm_re;
 #endif
    u32 cm_refcnt; /* Beware of reference drops in recursions */
    u32 cm_user_off; /* User input offset in .cm_buf */
@@ -427,7 +432,7 @@ jlinkhead:
       }
       cmp->cm_cmi = cmip;
 #ifdef mx_HAVE_REGEX
-      cmp->cm_regex = regexp;
+      cmp->cm_re = regexp;
 #endif
       cmp->cm_refcnt = 0;
       a_colour_map_ref(cmp);
@@ -608,15 +613,18 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       /* Can this be a valid list of headers? However, with regular expressions
        * simply use the input as such if it appears to be a regex */
 #ifdef mx_HAVE_REGEX
-      if(n_is_maybe_regex(ctag)){
-         int s;
+      if(n_re_could_be_one_cp(ctag) && regexpp != NIL){
+         struct su_re *rep;
 
-         if(regexpp != NULL &&
-               (s = regcomp(*regexpp = su_ALLOC(sizeof(regex_t)), ctag,
-                  REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+         if(su_re_setup_cp((rep = su_ALLOC(sizeof(struct su_re))),
+               ctag, (su_RE_SETUP_EXT | su_RE_SETUP_ICASE |
+               su_RE_SETUP_TEST_ONLY)) == su_RE_ERROR_NONE)
+            *regexpp = rep;
+         else{
             n_err(_("colour: invalid regular expression: %s: %s\n"),
-               n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NIL, s));
-            su_FREE(*regexpp);
+               n_shexp_quote_cp(ctag, FAL0), su_re_error_doc(rep));
+            su_re_gut(rep);
+            su_FREE(rep);
             goto jetag;
          }
       }else
@@ -642,6 +650,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
    }else
 jetag:
       ctag = mx_COLOUR_TAG_ERR;
+
    NYD2_OU;
    return ctag;
 }
@@ -697,8 +706,8 @@ a_colour_map_find(enum mx_colour_ctx cctx, enum mx_colour_id cid,
       if(ctag == NULL || a_COLOUR_TAG_IS_SPECIAL(ctag))
          continue;
 #ifdef mx_HAVE_REGEX
-      if(cmp->cm_regex != NULL){
-         if(regexec(cmp->cm_regex, ctag, 0,NULL, 0) != REG_NOMATCH)
+      if(cmp->cm_re != NIL){
+         if(su_re_eval_cp(cmp->cm_re, ctag, su_RE_EVAL_NONE))
             break;
       }else
 #endif
@@ -723,9 +732,9 @@ a_colour_map_unref(struct a_colour_map *self){
 
    if(--self->cm_refcnt == 0){
 #ifdef mx_HAVE_REGEX
-      if(self->cm_regex != NIL){
-         regfree(self->cm_regex);
-         su_FREE(self->cm_regex);
+      if(self->cm_re != NIL){
+         su_re_gut(self->cm_re);
+         su_FREE(self->cm_re);
       }
 #endif
       su_FREE(self);

@@ -57,6 +57,7 @@
 #include "mx/go.h"
 #include "mx/mime.h"
 #include "mx/names.h"
+#include "mx/srch-ctx.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 #include "mx/url.h"
@@ -3551,7 +3552,7 @@ grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
 }
 
 FL boole
-n_header_match(struct message *mp, struct search_expr const *sep){
+n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
    struct str fiter, in, out;
    char const *field;
    long lc;
@@ -3578,7 +3579,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       goto jleave;
 
    /* */
-   if((field = sep->ss_field) != NULL){
+   if((field = scp->sc_field) != NULL){
       if(!su_cs_cmp_case(field, "header") ||
             (field[0] == '<' && field[1] == '\0'))
          match = a_ALL;
@@ -3587,7 +3588,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          match = a_ITER;
       }
 #ifdef mx_HAVE_REGEX
-   }else if(sep->ss_fieldre != NULL){
+   }else if(scp->sc_fieldre != NULL){
       match = a_RE;
 #endif
    }else
@@ -3605,7 +3606,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       if(match == a_ITER){
          char *itercp;
 
-         su_mem_copy(itercp = fiter.s, sep->ss_field, fiter.l +1);
+         su_mem_copy(itercp = fiter.s, scp->sc_field, fiter.l +1);
          while((field = su_cs_sep_c(&itercp, ',', TRU1)) != NULL){
             /* It may be an abbreviation */
             char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
@@ -3633,18 +3634,18 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          uz i;
 
          i = P2UZ(colon - linebuf);
-         cp = n_lofi_alloc(i +1);
+         cp = su_LOFI_ALLOC(i +1);
          su_mem_copy(cp, linebuf, i);
          cp[i] = '\0';
-         i = (regexec(sep->ss_fieldre, cp, 0,NULL, 0) != REG_NOMATCH);
-         n_lofi_free(cp);
+         i = su_re_eval_cp(scp->sc_fieldre, cp, su_RE_EVAL_NONE);
+         su_LOFI_FREE(cp);
          if(!i)
             continue;
 #endif
       }
 
       /* It could be a plain existence test */
-      if(sep->ss_field_exists){
+      if(scp->sc_field_exists){
          rv = TRU1;
          break;
       }
@@ -3657,7 +3658,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       /* Shall we split into address list and match as/the addresses only?
        * TODO at some later time we should ignore and log efforts to search
        * TODO a skinned address list if we know the header has none such */
-      if(sep->ss_skin){
+      if(scp->sc_skin){
          if((np = lextract(in.s, GSKIN)) == NULL)
             continue;
          out.s = np->n_name;
@@ -3669,11 +3670,11 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
 jnext_name:
 #ifdef mx_HAVE_REGEX
-      if(sep->ss_bodyre != NULL)
-         rv = (regexec(sep->ss_bodyre, out.s, 0,NULL, 0) != REG_NOMATCH);
+      if(scp->sc_bodyre != NIL)
+         rv = su_re_eval_cp(scp->sc_bodyre, out.s, su_RE_EVAL_NONE);
       else
 #endif
-         rv = (mx_substr(out.s, sep->ss_body) != NIL);
+         rv = (mx_substr(out.s, scp->sc_body) != NIL);
 
       if(np == NULL)
          n_free(out.s);

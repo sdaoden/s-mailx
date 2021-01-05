@@ -43,14 +43,6 @@
 
 #include <sys/utsname.h>
 
-#ifdef mx_HAVE_NET
-# ifdef mx_HAVE_GETADDRINFO
-#  include <sys/socket.h>
-# endif
-
-# include <netdb.h>
-#endif
-
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
@@ -60,6 +52,14 @@
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
+#endif
+
+#ifdef mx_HAVE_NET
+# ifdef mx_HAVE_GETADDRINFO
+#  include <sys/socket.h>
+# endif
+
+# include <netdb.h>
 #endif
 
 #include <su/cs.h>
@@ -1294,21 +1294,6 @@ jclear:
    goto jleave;
 }
 #endif /* mx_HAVE_ERRORS */
-
-#ifdef mx_HAVE_REGEX
-FL char const *
-n_regex_err_to_doc(const regex_t *rep, int e){
-   char *cp;
-   uz i;
-   NYD2_IN;
-
-   i = regerror(e, rep, NULL, 0) +1;
-   cp = n_autorec_alloc(i);
-   regerror(e, rep, cp, i);
-   NYD2_OU;
-   return cp;
-}
-#endif
 
 FL boole
 mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){

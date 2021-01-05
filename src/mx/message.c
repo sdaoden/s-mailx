@@ -51,6 +51,7 @@
 #include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/net-pop3.h"
+#include "mx/srch-ctx.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
 
@@ -195,7 +196,7 @@ static boole a_msg_match_dash(struct message *mp, char const *str);
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
  * This is the engine behind the "@[..@].." search */
-static boole a_msg_match_at(struct message *mp, struct search_expr *sep);
+static boole a_msg_match_at(struct message *mp, struct mx_srch_ctx *scp);
 
 /* Unmark the named message */
 static void a_msg_unmark(int mesg);
@@ -633,24 +634,24 @@ jevalcol_err:
    }
 
    /* If any names were given, add any messages which match */
-   if(np > nmadat || id != NULL){
-      struct search_expr *sep;
+   if(np > nmadat || id != NIL){
+      struct mx_srch_ctx *scp;
 
-      sep = NULL;
+      scp = NIL;
 
-      /* The @ search works with struct search_expr, so build an array.
-       * To simplify array, i.e., regex_t destruction, and optimize for the
+      /* The @ search works with struct srch_ctx, so build an array.
+       * To simplify array, i.e., reg_exp destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       /* XXX Like many other things around here: this should be outsourced */
       if(np > nmadat){
-         j = P2UZ(np - nmadat) * sizeof(*sep);
-         sep = su_LOFI_ALLOC(j);
-         su_mem_set(sep, 0, j);
+         j = P2UZ(np - nmadat) * sizeof(*scp);
+         scp = su_LOFI_ALLOC(j);
+         su_mem_set(scp, 0, j);
 
          for(j = 0, nq = nmadat; *nq != NULL; ++j, ++nq){
             char *xsave, *x, *y;
 
-            sep[j].ss_body = x = xsave = *nq;
+            scp[j].sc_body = x = xsave = *nq;
             if(*x != '@' || (flags & a_ERROR))
                continue;
 
@@ -667,11 +668,11 @@ jevalcol_err:
             }
             if(x == NULL || &x[-1] == xsave)
 jat_where_default:
-               sep[j].ss_field = "subject";
+               scp[j].sc_field = "subject";
             else{
                ++xsave;
                if(*xsave == '~'){
-                  sep[j].ss_skin = TRU1;
+                  scp[j].sc_skin = TRU1;
                   if(++xsave >= x){
                      if(flags & a_LOG)
                         n_err(_("[@..]@ search expression: no namelist, "
@@ -684,20 +685,22 @@ jat_where_default:
 
                /* Namelist could be a regular expression, too */
 #ifdef mx_HAVE_REGEX
-               if(n_is_maybe_regex(cp)){
-                  int s;
+               if(n_re_could_be_one_cp(cp)){
+                  struct su_re *rep;
 
-                  ASSERT(sep[j].ss_field == NULL);
-                  if((s = regcomp(&sep[j].ss__fieldre_buf, cp,
-                        REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+                  ASSERT(scp[j].sc_field == NIL);
+                  rep = su_re_create(&scp[j].sc_fieldre__buf);
+                  if(su_re_setup_cp(rep, cp, (su_RE_SETUP_EXT |
+                           su_RE_SETUP_ICASE | su_RE_SETUP_TEST_ONLY)
+                        ) != su_RE_ERROR_NONE){
                      if(flags & a_LOG)
                         n_err(_("Invalid regular expression: %s: %s\n"),
-                           n_shexp_quote_cp(cp, FAL0),
-                           n_regex_err_to_doc(NULL, s));
+                           n_shexp_quote_cp(cp, FAL0), su_re_error_doc(rep));
+                     su_re_gut(rep);
                      flags |= a_ERROR;
                      continue;
                   }
-                  sep[j].ss_fieldre = &sep[j].ss__fieldre_buf;
+                  scp[j].sc_fieldre = rep;
                }else
 #endif
                     {
@@ -709,7 +712,7 @@ jat_where_default:
                   sio.l = P2UZ(x - xsave);
                   if(*(cp = n_str_trim(&sio, n_STR_TRIM_BOTH)->s) == '\0')
                      goto jat_where_default;
-                  sep[j].ss_field = cp;
+                  scp[j].sc_field = cp;
                }
             }
 
@@ -717,28 +720,30 @@ jat_where_default:
              * field(s) for existence  */
             x = &(x == NULL ? *nq : x)[1];
             if(*x == '\0'){
-               sep[j].ss_field_exists = TRU1;
+               scp[j].sc_field_exists = TRU1;
 #ifdef mx_HAVE_REGEX
-            }else if(n_is_maybe_regex(x)){
-               int s;
+            }else if(n_re_could_be_one_cp(x)){
+               struct su_re *rep;
 
-               sep[j].ss_body = NULL;
-               if((s = regcomp(&sep[j].ss__bodyre_buf, x,
-                     REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+               scp[j].sc_body = NIL;
+               rep = su_re_create(&scp[j].sc_bodyre__buf);
+               if(su_re_setup_cp(rep, x, (su_RE_SETUP_EXT |
+                        su_RE_SETUP_ICASE | su_RE_SETUP_TEST_ONLY)
+                     ) != su_RE_ERROR_NONE){
                   if(flags & a_LOG)
                      n_err(_("Invalid regular expression: %s: %s\n"),
-                        n_shexp_quote_cp(x, FAL0),
-                        n_regex_err_to_doc(NULL, s));
+                        n_shexp_quote_cp(x, FAL0), su_re_error_doc(rep));
+                  su_re_gut(rep);
                   flags |= a_ERROR;
                   continue;
                }
-               sep[j].ss_bodyre = &sep[j].ss__bodyre_buf;
+               scp[j].sc_bodyre = rep;
 #endif
             }else
-               sep[j].ss_body = x;
+               scp[j].sc_body = x;
          }
          if(flags & a_ERROR)
-            goto jnamesearch_sepfree;
+            goto jnamesearch_scpfree;
       }
 
       /* Iterate the entire message array */
@@ -762,7 +767,7 @@ jat_where_default:
          if(np > nmadat){
             for(nq = nmadat; *nq != NULL; ++nq){
                if(**nq == '@'){
-                  if(a_msg_match_at(mp, &sep[P2UZ(nq - nmadat)])){
+                  if(a_msg_match_at(mp, &scp[P2UZ(nq - nmadat)])){
                      flags |= a_TMP;
                      break;
                   }
@@ -789,18 +794,19 @@ jat_where_default:
       }
       su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
-jnamesearch_sepfree:
-      if(sep != NULL){
+jnamesearch_scpfree:
+      if(scp != NIL){
 #ifdef mx_HAVE_REGEX
          for(j = P2UZ(np - nmadat); j-- != 0;){
-            if(sep[j].ss_fieldre != NULL)
-               regfree(sep[j].ss_fieldre);
-            if(sep[j].ss_bodyre != NULL)
-               regfree(sep[j].ss_bodyre);
+            if(scp[j].sc_fieldre != NIL)
+               su_re_gut(scp[j].sc_fieldre);
+            if(scp[j].sc_bodyre != NIL)
+               su_re_gut(scp[j].sc_bodyre);
          }
 #endif
-         su_LOFI_FREE(sep);
+         su_LOFI_FREE(scp);
       }
+
       if(flags & a_ERROR){
          i = su_ERR_INVAL;
          goto jerr;
@@ -1209,7 +1215,7 @@ jleave:
 }
 
 static boole
-a_msg_match_at(struct message *mp, struct search_expr *sep){
+a_msg_match_at(struct message *mp, struct mx_srch_ctx *scp){
    char const *field;
    boole rv;
    NYD2_IN;
@@ -1217,12 +1223,12 @@ a_msg_match_at(struct message *mp, struct search_expr *sep){
    /* Namelist regex only matches headers.
     * And there are the special cases header/<, "body"/> and "text"/=, the
     * latter two of which need to be handled in here */
-   if((field = sep->ss_field) != NULL){
+   if((field = scp->sc_field) != NULL){
       if(!su_cs_cmp_case(field, "body") ||
             (field[1] == '\0' && field[0] == '>')){
          rv = FAL0;
 jmsg:
-         rv = message_match(mp, sep, rv);
+         rv = message_match(mp, scp, rv);
          goto jleave;
       }else if(!su_cs_cmp_case(field, "text") ||
             (field[1] == '\0' && field[0] == '=')){
@@ -1231,7 +1237,7 @@ jmsg:
       }
    }
 
-   rv = n_header_match(mp, sep);
+   rv = n_header_match(mp, scp);
 jleave:
    NYD2_OU;
    return rv;
@@ -1474,7 +1480,7 @@ message_append_null(void){
 }
 
 FL boole
-message_match(struct message *mp, struct search_expr const *sep,
+message_match(struct message *mp, struct mx_srch_ctx const *scp,
       boole with_headers){
    char *line;
    uz linesize, cnt;
@@ -1506,12 +1512,12 @@ message_match(struct message *mp, struct search_expr const *sep,
 
    while(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) != NIL){
 #ifdef mx_HAVE_REGEX
-      if(sep->ss_bodyre != NULL){
-         if(regexec(sep->ss_bodyre, line, 0,NULL, 0) == REG_NOMATCH)
+      if(scp->sc_bodyre != NIL){
+         if(!su_re_eval_cp(scp->sc_bodyre, line, su_RE_EVAL_NONE))
             continue;
       }else
 #endif
-            if(mx_substr(line, sep->ss_body) == NIL)
+            if(mx_substr(line, scp->sc_body) == NIL)
          continue;
       rv = TRU1;
       break;

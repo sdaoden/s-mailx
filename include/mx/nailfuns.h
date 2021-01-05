@@ -35,11 +35,14 @@
  * SUCH DAMAGE.
  */
 
+struct su_cs_dict;
+
 struct mx_attachment;
 struct mx_cmd_arg;
 struct mx_go_data_ctx;
 struct mx_ignore;
-struct su_cs_dict;
+struct mx_name; /* xxx already from nail.h */
+struct mx_srch_ctx;
 struct quoteflt;
 
 /*
@@ -338,11 +341,6 @@ FL void        n_panic(char const *format, ...);
 /* `errors' */
 #ifdef mx_HAVE_ERRORS
 FL int c_errors(void *vp);
-#endif
-
-/* */
-#ifdef mx_HAVE_REGEX
-FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
 /* Shared code for c_unxy() which base upon su_cs_dict, e.g., `shortcut' */
@@ -765,7 +763,7 @@ FL int grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
 
 /* Check whether sep->ss_sexpr (or ->ss_sregex) matches any header of mp.
  * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
-FL boole n_header_match(struct message *mp, struct search_expr const *sep);
+FL boole n_header_match(struct message *mp, struct mx_srch_ctx const *scp);
 
 /* Verify whether len (UZ_MAX=su_cs_len) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
@@ -822,8 +820,8 @@ FL void        message_append_null(void);
 
 /* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
  * true then the headers will also be searched (as plain text) */
-FL boole      message_match(struct message *mp, struct search_expr const *sep,
-               boole with_headers);
+FL boole message_match(struct message *mp, struct mx_srch_ctx const *scp,
+      boole with_headers);
 
 /*  */
 FL struct message *setdot(struct message *mp, boole set_ps_did_print_dot);
@@ -1058,8 +1056,8 @@ FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
 
 /* Could the string contain a regular expression?
  * NOTE: on change: manual contains several occurrences of this string! */
-#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, su_UZ_MAX)
-FL boole n_is_maybe_regex_buf(char const *buf, uz len);
+#define n_re_could_be_one_cp(S) n_re_could_be_one_buf(S, su_UZ_MAX)
+FL boole n_re_could_be_one_buf(char const *buf, uz len);
 
 /* struct str related support funs TODO _cp->_cs! */
 
