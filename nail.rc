@@ -1,46 +1,30 @@
 #--MKRC-START--
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
-#@ The syntax of this file is interpreted as follows:
-#@ - Leading and trailing whitespace (space, tabulator, newline: " \t\n"),
-#@   and all members of (the internal variable) *ifs-ws* are removed.
-#@ - Empty lines are ignored.
-#@ - Any other line is a command line.  Such lines may spread over multiple
-#@   lines if a reverse solidus character \ is placed as the last character of
-#@   all lines except the final one; any leading whitespace of follow lines is
-#@   removed, but trailing whitespace before "escaped newlines" is not.
-#@ - The number sign # is the comment-command and causes the (joined) line
-#@   (content) to be ignored.
+
+#
+#FIXME OAUTH! FIXME POSIX.1-2017 -> 202x!
+#
+
+#@ Manual documentation:
+#@ - File syntax: FILES -> "Resource files".
+#@ - POSIX.1-2017 standard mandated initial settings:
+#@   "INTERNAL VARIABLES" -> "Initial settings".
+#@
+#@ File notes:
+#@ - Portability: the file uses comments to disable non-portable extensions.
+#@ - Some variable settings assume v15-compat=yes.
+#@   These extended meanings are not recognized by other implementations.
+#@ - Non-portable things may be placed in a dedicated file, either addressed
+#@   by $MAILRC, or portably change and uncomment the following:
+#@	set mailx-extra-rc=~/.s-mailxrc
+#@ - Availability of entries marked [OPTION] is a compile-time decision.
+#@
 #--MKREL-START--
 #@ S-nail v14.9.25 / 2024-06-27
 #--MKREL-END--
 
 ## Variables {{{
-
-# The standard POSIX.1-2017 mandates these initial settings
-# (unsupported in brackets, deviations in parenthesis):
-# [a]   noallnet, [noappend], asksub, noaskbcc, noaskcc, noautoprint,
-# [b-f] nobang, nocmd, nocrt, nodebug, nodot, escape='~', noflipr, nofolder,
-# [g-i] header, (no)hold, noignore, noignoreeof, indentprefix=$'\t',
-# [j-o] (no)keep, (no)keepsave, nometoo, [noonehop], nooutfolder,
-# [p-r] nopage, prompt='? ', noquiet, norecord,
-# [s]   save, noscreen, (no)sendwait, noshowto, noSign, nosign,
-# [t-z] toplines="5"
-#
-# - In this implementation:
-#   + *hold*, *keep* and *keepsave* are set by default.
-#   + *sendwait* (with extended meaning) is set by default.
-#   + no*append* does not exist.  (It worked (correctly) only for MBOX
-#     mailboxes; append is default.)
-#   + no*onehop* does not exist.
-#     (To pass options through to the MTA, either add them after a "--"
-#     separator on the command line or set the *mta-arguments* variable.)
-
-# Adjustments of standard imposed default- as well as other settings follow.
-# - Settings in this file assume v15-compat=yes.
-# - Some of the latter are not portable and may thus have no effect with
-#   other Mail(1) / mailx(1) / mail(1) programs.
-# - Availability of entries marked [OPTION] is a compile-time decision.
 
 # Confirm sending of messages.
 set asksend
@@ -53,8 +37,8 @@ set autosort=thread
 # Uncomment for coloured output in $PAGER (if possible).
 #set colour-pager
 # If $PAGER is less(1) or lv(1) this usually serves well:
-#  ? set PAGER=less; environ unset LESS
-#  ? set PAGER=lv; environ unset LV
+#   ? set PAGER=less; environ unset LESS
+#   ? set PAGER=lv; environ unset LV
 
 # Use $PAGER if output is too long for a CRT-like screen.
 # (crt=0 always pages; value defines the number of lines.)
@@ -102,8 +86,8 @@ set mime-counter-evidence=0b1110
 
 # An informational prompt (and see "Gimmicks" below).
 # Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
-# Note the _real_ evaluation occurs once used (see *prompt* manual entry).
-#set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
+# The _real_ evaluation occurs once used (see *prompt* manual entry).
+#	set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to.
 set quote
@@ -136,11 +120,6 @@ set showto
 ## }}}
 ## Commands {{{
 
-# Unportable commands are commented out; when placed in specific file,
-#   set mailx-extra-rc=~/.my-file"
-# in $MAILRC (usually ~/.mailrc) will load them.
-# Command modifiers are not portable.
-
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
 # (These mappings are not applied to character sets specified by other
 # variables, e.g., *sendcharsets*).
@@ -148,71 +127,73 @@ set showto
 
 # Only include the selected header fields when printing messages
 retain date author sender from to cc subject \
-   message-id mail-followup-to reply-to
+	message-id mail-followup-to reply-to
 #\headerpick type retain from_ date author sender from to cc subject \
-#   message-id mail-followup-to reply-to
+#	message-id mail-followup-to reply-to
 # - when forwarding messages
 #\headerpick forward retain date author sender from to cc subject
 # - and do not include these when saving message, etc.
-#\if "$features" =@ ,+regex,
-#  \headerpick save ignore '^Original-.*$' '^X-.*$'
+#\if $features =% ,+regex,
+#	\headerpick save ignore '^Original-.*$' '^X-.*$'
 #\end
 
 ## }}}
 ## Some pipe-TYPE/SUBTYPE entries {{{
 # (Non-optional feature, different to ~/.mailcap support)
+#\if $features !% ,+mailcap,
 
-# HTML as text, inline display via lynx(1).
-#\if "$features" !@ ,+filter-html-tagsoup,
-#   \set pipe-text/html='?* lynx -stdin -dump -force_html'
-#\endif
+	# HTML as text, inline display via lynx(1).
+#	\if $features !% ,+filter-html-tagsoup,
+#		\se pipe-text/html='?* lynx -stdin -dump -force_html'
+#	\en
 
-# "External body", URL type supported only.
-#\set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
+	# "External body", URL type supported only.
+#	\set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
-# PDF display, asynchronous display: via `mimeview' command only.
-#\set pipe-application/pdf='?=&?\
-#   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
-#   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
-#   mupdf "${MAILX_FILENAME_TEMPORARY}"'
+	# PDF display, asynchronous display: via `mimeview' command only.
+#	\set pipe-application/pdf='?=&?\
+#		trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
+#		trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+#		mupdf "${MAILX_FILENAME_TEMPORARY}"'
 
+#\en # +mailcap
 ## }}}
 ## Gimmicks {{{
 
 # If interactive
-#\if terminal
-#   # More key bindings for the Mailx-Line-Editor.
-#   \if "$features" =@ ,+key-bindings,
-#      \bind base  $'\e',d  mle-snarf-word-fwd
-#      \bind base  $'\e',$'\c?'  mle-snarf-word-bwd
-#      \bind base  $'\e',f  mle-go-word-fwd
-#      \bind base  $'\e',b  mle-go-word-bwd
-#      \bind base  $'\cL'  mle-clear-screen
-#      \bind compose :kf1 ~v
-#   \endif
+#\if t
+#	# More key bindings for the Mailx-Line-Editor.
+#	\if $features =% ,+key-bindings,
+#		\bind base $'\e',d mle-snarf-word-fwd
+#		\bind base $'\e',$'\c?' mle-snarf-word-bwd
+#		\bind base $'\e',f mle-go-word-fwd
+#		\bind base $'\e',b mle-go-word-bwd
+#		\bind base $'\cL' mle-clear-screen
+#		\bind compose :kf1 ~v
+#	\en
 #
-#   # Coloured prompt for the Mailx-Line-Editor.
-#   \if "$features" =@ ,+mle, && "$features" =@ ,+colour,
-#      \colour 256 mle-position fg=202
-#      \colour 256 mle-prompt fg=203
-#      \colour 256 mle-error bg=124
-#      \colour iso mle-position ft=bold
-#      \colour iso mle-prompt fg=brown
-#      \colour iso mle-error bg=red
-#      \colour mono mle-position ft=reverse
-#      \colour mono mle-prompt ft=bold
-#      \colour mono mle-error ft=reverse
-#   \endif
-#\endif
+#	# Coloured prompt for the Mailx-Line-Editor.
+#	\if $features =% ,+mle, && $features =% ,+colour,
+#		\colour 256 mle-position fg=202
+#		\colour 256 mle-prompt fg=203
+#		\colour 256 mle-error bg=124
+#		\colour iso mle-position ft=bold
+#		\colour iso mle-prompt fg=brown
+#		\colour iso mle-error bg=red
+#		\colour mono mle-position ft=reverse
+#		\colour mono mle-prompt ft=bold
+#		\colour mono mle-error ft=reverse
+#	\en
+#\en
 
 # Install file-extension handlers to handle MBOXes in various formats.
 #\filetype \
-#   bz2 'bzip2 -dc' 'bzip2 -zc' \
-#   gpg 'gpg -d' 'gpg -e' \
-#   gz 'gzip -dc' 'gzip -c' \
-#   xz 'xz -dc' 'xz -zc' \
-#   zst 'zstd -dc' 'zstd -19 -zc' \
-#   zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+#	bz2 'bzip2 -dc' 'bzip2 -zc' \
+#	gpg 'gpg -d' 'gpg -e' \
+#	gz 'gzip -dc' 'gzip -c' \
+#	xz 'xz -dc' 'xz -zc' \
+#	zst 'zstd -dc' 'zstd -19 -zc' \
+#	zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
 # If mail is send from cron scripts and iconv(3) is compiled it, it could be
 # that sending fails because of invalid (according to locale) character input.
@@ -220,14 +201,157 @@ retain date author sender from to cc subject \
 # octet-stream message data can be read nonetheless via
 # *mime-counter-evidence*=0b1110; better would be $UID -eq 0:
 #\if ! terminal && "$LOGNAME" == root
-#   \set mime-force-sendout
-#\endif
+#	\set ttycharset-detect=iso-8859-1 mime-force-sendout
+#\en
+
+# Easy look at HTML alternative parts
+#\define showhtml {
+#	\local set mime-alternative-favour-rich pipe-text/html=?h?
+#	\type "$@"
+#}
+#\commandalias html '\call showhtml'
+
+# Add a signature to the end of messages
+#\set on-compose-embed=.sig.embed
+#\define .sig.embed {
+#	~< ~/.mysig
+#}
+
+#\set on-compose-leave=.sig.leave
+#\define .sig.leave {
+#	\readctl create ~/.mysig
+#	\if $? -eq 0
+#		\local readall i
+#		\if $? -gt 0
+#			\our >message-inject-tail csop trim-end $i
+#		\en
+#		\readctl remove ~/.mysig
+#	\en
+#}
 
 ## }}}
-## Example configurations (on top of defaults above) {{{
+## OAuth {{{
+#define oauth-activate {
+#	\set imap-auth=xoauth2 pop3-auth=xoauth2 smtp-config=-allmechs,xoauth2
+#	\set password=
+#
+#	\set oauth-helper='PATH-TO/oauth-helper.py \
+#			--resource PATH-TO/.'$1'.oauth' \
+#		oauth-helper-times=PATH-TO/.$1.oauth \
+#		on-oauth-password-change=_oauth-on-new-token
+#
+#	\set on-main-loop-tick=oauth-check-token-v14_10 \
+#		on-compose-enter=oauth-check-token-v14_10
+#}
+#
+#define _oauth-on-new-token {
+#	\echoerr ' .. updating password to OAuth token '$1
+#	\set password=$1
+#	\if $mailbox-resolved =~ ^imaps?://
+#		\echoerr ' .. and reconnecting active IMAP mailbox'
+#		\disconnect
+#		\connect
+#	\end
+#}
+
+#{{{ oauth-check-token:
+#@ . $oauth-helper
+#@   A script to invoke for fetching an OAuth 2.0 access token.
+#@   It must output one line of only the token upon success on standard output.
+#@ . $oauth-helper-times
+#@   If set, expected to point to a s-nail-oauth-helper.py configuration file.
+#@   Because the helper script can be --hook'ed, its --resource argument is not
+#@   necessarily a file that we can access.  Therefore this must be set
+#@   explicitly to a file where at least the timestamp= and timeout= lines of
+#@   the configuration can be found.
+#@   If not set, or not parsable, $oauth-helper is invoked once per tick!
+#@ . $on-oauth-password-change
+#@   If set, it is called whenever $oauth-helper announces an updated OAuth 2.0
+#@   access token, with the token as the only argument.
+#@   (To be used to update the actual $password/variant used, and maybe to do
+#@   a "disconnect;connect" for IMAP connections.)
+#set _oauth-pass= _oauth-timeout= _oauth-helper=
+#
+#define oauth-check-token-v14_10 {
+#	\if -z "$oauth-helper"; \return; \end
+#
+#	\if $oauth-helper != "$_oauth-helper"
+#		\set _oauth-pass= _oauth-timeout= _oauth-helper=$oauth-helper
+#	\end
+#
+#	\if -n "$_oauth-timeout"
+#		\local >epoch_sec vexpr epoch
+#		\local eval set $epoch_sec # -> epoch_n?sec
+#		\if $((epoch_sec + 600)) -lt $_oauth-timeout; \return; \end
+#		\unset _oauth-timeout
+#	\end
+#
+#	\local eval >i ! $oauth-helper
+#	\local set j=$? d=$?/$!/$^ERRDOC
+#	\if $j -ne 0
+#		\echoerr '! $oauth-helper exec failed, unsetting: '$d': '$oauth-helper
+#		\unset oauth-helper
+#		\return
+#	\end
+#
+#	\>i csop trim $i
+#	\if "$_oauth-pass" != "$i"
+#		\set _oauth-pass=$i
+#		\if -n "$verbose"
+#			\echoerr 'I Have a new Oauth 2.0 access token'
+#		\end
+#		\if -N on-oauth-password-change
+#			\call_if "$on-oauth-password-change" $_oauth-pass
+#		\else
+#			\echoerr 'I .. but without $on-oauth-password-change noone will know'
+#		\end
+#	\end
+#
+#	\if -n "$oauth-helper-times"
+#		\eval readctl create "$oauth-helper-times" # eval to resolve $VARs
+#		\set j=$? d=$^ERRDOC
+#		\if $j -ne 0
+#			\echoerr '! $oauth-helper-times inaccessible, unsetting: '$d': '$oauth-helper-times
+#			\unset oauth-helper-times
+#			\return
+#		\end
+#		\local readall _oauth--args
+#		\eval readctl remove "$oauth-helper-times"
+#
+#		\set ifs=$'\n'; \vpospar evalset $_oauth--args; \unset ifs
+#		\call _oauth-check-token-recur-v14_10 "$@"
+#
+#		\if -n "$_oauth--ts" && -n "$_oauth--to"
+#			: $((_oauth-timeout = _oauth--ts + _oauth--to))
+#			\if -n "$verbose"
+#				\local >epoch_sec vexpr epoch
+#				\eval local set $epoch_sec
+#				\echoerr 'I OAuth password timeout at epoch '$_oauth-timeout\
+#					', now '$epoch_sec', to-go '$((_oauth-timeout - epoch_sec))
+#			\end
+#		\else
+#			\echoerr '! $oauth-helper-times content bogus, unsetting: '$oauth-helper-times
+#			\unset oauth-helper-times
+#		\end
+#		\unset _oauth--ts _oauth--to
+#	\end
+#}
+#
+#define _oauth-check-token-recur-v14_10 {
+#	\if $# -eq 0; \return; \end
+#	\if $1 =~ ^[[:space:]]*time(stamp|out)[[:space:]]*=[[:space:]]*([[:digit:]]+).*
+#		\if $^1 == stamp; \set _oauth--ts=$^2; \else; \set _oauth--to=$^2; \end
+#	\end
+#	\shift
+#	\xcall _oauth-check-token-recur-v14_10 "$@"
+#}
+# }}}
+# }}}
+
+## Example configurations {{{
 
 ## Request strict TLS transport layer security checks
-#\set tls-verify=strict
+#\se tls-verify=strict
 #
 ## Where are the up-to-date TLS certificates?
 ## Since we manage up-to-date ones explicitly, do not use any,
@@ -236,7 +360,7 @@ retain date author sender from to cc subject \
 #\set tls-ca-file=/etc/ssl/certs/ca-certificates.crt tls-ca-no-defaults
 ##\set tls-ca-flags=partial-chain
 #\set smime-ca-file="${tls-ca-file}" smime-ca-no-defaults #\
-#  smime-ca-flags="${tls-ca-flags}"
+#	smime-ca-flags="${tls-ca-flags}"
 #
 ## This could also be outsourced to a central configuration file via
 ## *tls-config-file* plus *tls-config-module* iff the used library allows.
@@ -252,24 +376,24 @@ retain date author sender from to cc subject \
 ##   maybe use chain support via *tls-config-pairs-HOST* / -USER@HOST
 ##   to define such explicit exceptions, then, e.g.,
 ##     MinProtocol=TLSv1.1
-#\if "$tls-features" =% ,+ctx-set-maxmin-proto,
-#   \set tls-config-pairs='\
-#      CipherString = TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
-#      Curves=P-521:P-384:P-256,\
-#      MinProtocol = TLSv1.2'
-#\else
-#   \set tls-config-pairs='\
-#      CipherString = TLSv1.2:!aNULL:!eNULL:@STRENGTH,\
-#      Curves = P-521:P-384:P-256,\
-#      Protocol = -ALL\, +TLSv1.2\, +TLSv1.3'
-#\endif
+#\if $tls-features =% ,+ctx-set-maxmin-proto,
+#	\set tls-config-pairs='\
+#		CipherString = EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:!TLSv1,\
+#		Curves=P-521:P-384:P-256,\
+#		MinProtocol = TLSv1.2'
+#\el
+#	\set tls-config-pairs='\
+#		CipherString = EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:!TLSv1,\
+#		Curves = P-521:P-384:P-256,\
+#		Protocol = -ALL\, +TLSv1.2\, +TLSv1.3'
+#\en
 #
 ## Default directory where we act in (relative to $HOME)
 #\set folder=mail
 ## A leading "+" (often) means: under *folder*
 ## *record* is used to save copies of sent messages
 #\set MBOX=+mbox.mbox DEAD=+dead.txt \
-#   record=+sent.mbox record-files record-resent
+#	record=+sent.mbox record-files record-resent
 #
 ## Make "file mymbox" and "file myrec" go to..
 #\shortcut  mymbox %:+mbox.mbox  myrec +sent.mbox
@@ -284,44 +408,44 @@ retain date author sender from to cc subject \
 #\set mta=test
 #
 #\set \
-#  asksend autocollapse autosort=thread \
-#  colour-pager crt= \
-#  editalong=v editheaders emptystart \
-#  followup-to followup-to-add-cc followup-to-honour=ask-yes \
-#     forward-add-cc fullnames \
-#  header history-file=+.mailx-hist history-size=-1 history-gabby=all \
-#  indentprefix='> ' \
-#  line-editor-config=srch-any,srch-case \
-#  markanswered mime-counter-evidence=0b1110 \
-#  outfolder \
-#  prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
-#  quote=allbodies quote-add-cc \
-#  recipients-in-cc reply-to-honour=ask-yes reply-to-swap-in=mlist \
-#  sendcharsets=utf-8,iso-8859-1 showname showto \
-#  umask=
+#	asksend autocollapse autosort=thread \
+#	colour-pager crt= \
+#	editalong=v editheaders emptystart \
+#	followup-to followup-to-add-cc followup-to-honour=ask-yes \
+#		forward-add-cc fullnames \
+#	header history-file=+.mailx-hist history-size=-1 history-gabby=all \
+#	indentprefix='> ' \
+#	line-editor-config=srch-any,srch-case \
+#	markanswered mime-counter-evidence=0b1110 \
+#	outfolder \
+#	prompt='?\$?!\$!/\$^ERRNAME[\$account#\$mailbox-display]? ' \
+#	quote=allbodies quote-add-cc \
+#	recipients-in-cc reply-to-honour=ask-yes reply-to-swap-in=mlist \
+#	sendcharsets=utf-8,iso-8859-1 showname showto \
+#	umask=
 #
 ## Some mailing lists
-#\mlist list.one@exam.ple  '@xyz-editor\.xyz$' '@xyzf\.xyz$'
-#\mlsubscribe list.two@exam.ple  '^xfans@xfans\.xyz$'
+#\mlist list.one@exam.ple	'@xyz-editor\.xyz$' '@xyzf\.xyz$'
+#\mlsubscribe list.two@exam.ple	'^xfans@xfans\.xyz$'
 #
 ## A real life example of a very huge free mail provider
 ## Instead of directly placing content inside `account',
 ## we `define' a macro: like that we could "switch accounts"
-## from within *on-compose-splice*, for example!
+## from within *on-compose-embed*, for example!
 #\define XooglX {
-#  \set from='Your Name <address@examp.ple>'
-#  \set folder=~/spool/XooglX inbox=+syste.mbox sent=+sent
+#	\set from='Your Name <address@examp.ple>'
+#	\set folder=~/spool/XooglX inbox=+syste.mbox sent=+sent
 #
-#  \set mta=smtps://USER:PASS@smtp.gmail.com:465 mta-bcc-ok
+#	\set mta=smtps://USER:PASS@smtp.gmail.com:465 mta-bcc-ok
 #
-#  \set pop3-no-apop-pop.gmXil.com
-#  \shortcut pop %:pop3s://pop.gmXil.com
-#  \shortcut imap %:imaps://imap.gmXil.com
-#  # Or, entirely IMAP based setup
-#  #\set folder=imaps://imap.gmail.com record="+[Gmail]/Sent Mail"
+#	\set pop3-no-apop-pop.gmXil.com
+#	\shortcut pop %:pop3s://pop.gmXil.com
+#	\shortcut imap %:imaps://imap.gmXil.com
+#	# Or, entirely IMAP based setup
+#	#\set folder=imaps://imap.gmail.com record="+[Gmail]/Sent Mail"
 #}
 #\account XooglX {
-#  \call XooglX
+#	\call XooglX
 #}
 #
 ## Here is a pretty large one which does not allow sending mails
@@ -331,17 +455,17 @@ retain date author sender from to cc subject \
 ## with the mailing list under their project account (in *from*),
 ## still sending the message through their normal mail provider
 #\define XandeX {
-#  \set from='Your Name <address@exam.ple>'
-#  \set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
+#	\set from='Your Name <address@exam.ple>'
+#	\set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
 #
-#  \shortcut pop %:pop3s://pop.yaXXex.com
-#  \shortcut imap %:imaps://imap.yaXXex.com
+#	\shortcut pop %:pop3s://pop.yaXXex.com
+#	\shortcut imap %:imaps://imap.yaXXex.com
 #
-#  \set mta=smtps://USER:PASS@smtp.yaXXex.com:465 \
-#    hostname=yaXXex.com smtp-from=USER@yaXXex.com
+#	\set mta=smtps://USER:PASS@smtp.yaXXex.com:465 \
+#		hostname=yaXXex.com smtp-from=USER@yaXXex.com
 #}
 #\account XandeX {
-#  \call Xandex
+#	\call Xandex
 #}
 #
 ## Create some new commands so that, e.g., "? ls /tmp" will..
@@ -354,21 +478,21 @@ retain date author sender from to cc subject \
 ## here is a version of the example account that sets up SMTP and POP3:
 #
 #\define XandeX {
-#  \set from='Your Name <address@exam.ple>'
-#  \set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
-#  \set netrc-lookup
-#  # Load an encrypted ~/.netrc instead by uncommenting the next line
-#  #\set netrc-pipe='gpg -qd ~/.netrc.pgp'
+#	\set from='Your Name <address@exam.ple>'
+#	\set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
+#	\set netrc-lookup
+#	# Load an encrypted ~/.netrc instead by uncommenting the next line
+#	#\set netrc-pipe='gpg -qd ~/.netrc.pgp'
 #
-#  \set mta=smtps://smtp.yXXXXx.ru:465 \
-#      hostname=yXXXXx.com smtp-from=USER@yXXXXx.com
-#  \set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
+#	\set mta=smtps://smtp.yXXXXx.ru:465 \
+#		 hostname=yXXXXx.com smtp-from=USER@yXXXXx.com
+#	\set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
 #}
 #
 ## Then add to ~/.netrc
-##    $ echo 'machine *.yXXXXx.ru login USER password PASS' >> ~/.netrc
+##   $ echo 'machine *.yXXXXx.ru login USER password PASS' >> ~/.netrc
 ## This configuration should now work just fine:
-##    $ echo text | mailx -dvv -AXandeX -s Subject user@exam.ple
+##   $ echo text | mailx -dvv -AXandeX -s Subject user@exam.ple
 
 ## }}}
-# s-it-mode
+# s-itt-mode
