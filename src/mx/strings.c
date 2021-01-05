@@ -160,7 +160,7 @@ FL struct str *
  */
 
 FL boole
-n_is_maybe_regex_buf(char const *buf, uz len){
+n_re_could_be_one_buf(char const *buf, uz len){
    boole rv;
    NYD2_IN;
 

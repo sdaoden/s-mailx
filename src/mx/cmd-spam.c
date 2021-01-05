@@ -32,6 +32,10 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
+
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/random.h"
@@ -44,11 +48,6 @@ su_EMPTY_FILE()
  * It must be able to swallow the first line of a rate response */
 #if BUFFER_SIZE < 1024
 # error *spam-interface* BUFFER_SIZE constraints are not matched
-#endif
-
-#ifdef mx_HAVE_SPAM_FILTER
-  /* NELEM() of regmatch_t groups */
-# define SPAM_FILTER_MATCHES 32u
 #endif
 
 enum a_spam_action{
@@ -87,7 +86,7 @@ struct a_spam_filter{
 # ifdef mx_HAVE_REGEX
    u8 f__pad[4];
    u32 f_score_grpno; /* 0 for not set */
-   regex_t f_score_regex;
+   struct su_re f_score_regex;
 # endif
 };
 #endif
@@ -308,7 +307,6 @@ jecmd:
 # ifdef mx_HAVE_REGEX
    if(vcp->vc_action == a_SPAM_RATE &&
          (cp = ok_vlook(spamfilter_rate_scanscore)) != NIL){
-      int s;
       char const *bp;
 
       var = su_cs_find_c(cp, ';');
@@ -327,25 +325,22 @@ jecmd:
             a_spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
-      if(sfp->f_score_grpno >= SPAM_FILTER_MATCHES){
-         n_err(_("%s: *spamfilter-rate-scanscore*: "
-            "group %u excesses limit %u\n"),
-            a_spam_cmds[vcp->vc_action], sfp->f_score_grpno,
-            SPAM_FILTER_MATCHES);
-         goto jleave;
-      }
 
-      if((s = regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE)
-            ) != 0) {
+      if(sfp->f_score_grpno == 0){
+         n_err(_("%s: *spamfilter-rate-scanscore*: bad group 0: %s\n"),
+            a_spam_cmds[vcp->vc_action], cp);
+         goto jleave;
+      }else if(su_re_setup_cp(su_re_create(&sfp->f_score_regex), bp,
+            (su_RE_SETUP_EXT | su_RE_SETUP_ICASE)) != su_RE_ERROR_NONE){
          n_err(_("%s: invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
             a_spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
-            n_regex_err_to_doc(NIL, s));
-         goto jleave;
-      }
-      if(sfp->f_score_grpno > sfp->f_score_regex.re_nsub){
-         regfree(&sfp->f_score_regex);
+            su_re_error_doc(&sfp->f_score_regex));
+         goto jerr_re;
+      }else if(sfp->f_score_grpno > sfp->f_score_regex.re_group_count){
          n_err(_("%s: *spamfilter-rate-scanscore*: no group %u: %s\n"),
             a_spam_cmds[vcp->vc_action], sfp->f_score_grpno, cp);
+jerr_re:
+         su_re_gut(&sfp->f_score_regex);
          goto jleave;
       }
    }
@@ -365,7 +360,7 @@ jleave:
 static boole
 a_spamfilter_interact(struct a_spam_vc *vcp){
 # ifdef mx_HAVE_REGEX
-   regmatch_t rem[SPAM_FILTER_MATCHES], *remp;
+   struct su_re_match *remp;
    struct a_spam_filter *sfp;
    char *cp;
 # endif
@@ -401,28 +396,30 @@ a_spamfilter_interact(struct a_spam_vc *vcp){
 # ifdef mx_HAVE_REGEX
    sfp = &vcp->vc_t.filter;
 
+   /* In case this became disabled.. */
    if(sfp->f_score_grpno == 0)
       goto jleave;
+
    if(sfp->f_super.cf_result == NIL){
       n_err(_("%s: *spamfilter-rate-scanscore*: filter does not "
          "produce output!\n"));
       goto jleave;
    }
 
-   remp = rem + sfp->f_score_grpno;
+   remp = &sfp->f_score_regex.re_match[sfp->f_score_grpno];
 
-   if(regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
-         0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0){
+   if(!su_re_eval_cp(&sfp->f_score_regex, sfp->f_super.cf_result,
+         su_RE_EVAL_NONE) || remp->rem_start == -1){
       n_err(_("%s: *spamfilter-rate-scanscore* "
-            "does not match filter output!\n"),
-         a_spam_cmds[vcp->vc_action]);
+            "does not match filter output!\n"), a_spam_cmds[vcp->vc_action]);
+      su_re_gut(&sfp->f_score_regex);
       sfp->f_score_grpno = 0;
       goto jleave;
    }
 
    cp = sfp->f_super.cf_result;
-   cp[remp->rm_eo] = '\0';
-   cp += remp->rm_so;
+   cp[remp->rem_end] = '\0';
+   cp += remp->rem_start;
    a_spam_rate2score(vcp, cp);
 # endif /* mx_HAVE_REGEX */
 
@@ -443,7 +440,7 @@ a_spamfilter_dtor(struct a_spam_vc *vcp){
 
 # ifdef mx_HAVE_REGEX
    if(sfp->f_score_grpno > 0)
-      regfree(&sfp->f_score_regex);
+      su_re_gut(&sfp->f_score_regex);
 # endif
 
    NYD2_OU;

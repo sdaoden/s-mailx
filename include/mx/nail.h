@@ -59,10 +59,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef mx_HAVE_REGEX
-# include <regex.h>
-#endif
-
 /* Many things possibly of interest for adjustments have been outsourced */
 #include <mx/config.h>
 
@@ -1012,21 +1008,6 @@ struct n_strlist{
 #define n_STRLIST_LOFI_ALLOC(SZ) \
    su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
-
-struct search_expr{
-   /* XXX Type of search should not be evaluated but be enum */
-   boole ss_field_exists; /* Only check whether field spec. exists */
-   boole ss_skin; /* Shall work on (skin()ned) addresses */
-   u8 ss__pad[6];
-   char const *ss_field; /* Field spec. where to search (not always used) */
-   char const *ss_body; /* Field body search expression */
-#ifdef mx_HAVE_REGEX
-   regex_t *ss_fieldre; /* Could be instead of .ss_field */
-   regex_t *ss_bodyre; /* Ditto, .ss_body */
-   regex_t ss__fieldre_buf;
-   regex_t ss__bodyre_buf;
-#endif
-};
 
 struct n_timespec{
    s64 ts_sec;

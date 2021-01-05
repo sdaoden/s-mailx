@@ -3168,10 +3168,14 @@ t_vexpr() { # {{{
          '\$1\$2\${2}\$2\$4\${3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
          '\$1\${2}\$4\${3}rama';x
+		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
+         '\$1:\${2}:\$4:\${3}';x
+		vput vexpr res regex? 'Club banana' '(club )?(.*)(nana)(.*)' \
+         '\$1:\${2}:\$4:\${3}';x
 		echo ' #5'
 		__EOT
 
-      check regex 0 ./tregex '2831099111 542'
+      check regex 0 ./tregex '1617405672 590'
    else
       t_echoskip 'regex:[!REGEX]'
    fi
