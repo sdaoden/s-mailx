@@ -240,8 +240,15 @@ retain date author sender from to cc subject \
 #   \set mime-force-sendout
 #\endif
 
+# Easy look at HTML alternative parts
+#define showhtml {
+#   \local set mime-alternative-favour-rich pipe-text/html=?h?
+#   \type "$@"
+#}
+#\commandalias html '\call showhtml'
+
 ## }}}
-## Example configurations (on top of defaults above) {{{
+## Example configurations {{{
 
 ## Request strict TLS transport layer security checks
 #\set tls-verify=strict
