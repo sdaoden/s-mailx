@@ -38,22 +38,26 @@
 # ifdef mx_HAVE_HISTORY
 #  include <su/sort.h>
 # endif
+# ifdef mx_HAVE_REGEX
+#  include <su/re.h>
+# endif
 #endif
 
-#include "mx/cmd.h"
-#include "mx/compat.h"
-#include "mx/file-locks.h"
 #include "mx/file-streams.h"
-#include "mx/go.h"
-#include "mx/sigs.h"
-#include "mx/termios.h"
-#include "mx/ui-str.h"
 
-#ifdef mx_HAVE_COLOUR
-# include "mx/colour.h"
-#endif
 #ifdef mx_HAVE_MLE
+# include "mx/cmd.h"
+# include "mx/compat.h"
+# include "mx/file-locks.h"
+# include "mx/go.h"
+# include "mx/sigs.h"
 # include "mx/termcap.h"
+# include "mx/termios.h"
+# include "mx/ui-str.h"
+
+# ifdef mx_HAVE_COLOUR
+#  include "mx/colour.h"
+# endif
 #endif
 
 #include "mx/tty.h"
@@ -205,9 +209,12 @@ CTA(UCMP(64, a_TTY__BIND_LAST, <=, S32_MAX),
 
 enum a_tty_config_flags{
    a_TTY_CONF_QUOTE_RNDTRIP = 1u<<0, /* mle-quote-rndtrip default-on */
-   a_TTY_CONF_SRCH_CASE = 1u<<1, /* mle-hist-srch-* case-insensitive */
-   a_TTY_CONF_SRCH_ANY = 1u<<2, /* mle-hist-srch-* "matches any substring" */
-   a_TTY__CONF_LAST = a_TTY_CONF_SRCH_ANY
+   a_TTY_CONF_SRCH_ANY = 1u<<1, /* mle-hist-srch-* "matches any substring" */
+   a_TTY_CONF_SRCH_CASE = 1u<<2, /* mle-hist-srch-* case-insensitive */
+   a_TTY_CONF_SRCH_REGEX = 1u<<3, /* mle-hist-srch-* uses regex */
+
+   a_TTY__CONF_LAST = a_TTY_CONF_SRCH_REGEX,
+   a_TTY__CONF_MASK = (a_TTY__CONF_LAST << 1) - 1
 };
 CTA(a_TTY__CONF_LAST <= U16_MAX, "Flag bits excess storage datatype");
 
@@ -394,10 +401,9 @@ struct a_tty_line{
    u32 tl_phy_cursor; /* Physical cursor position */
    su_64( u8 tl__pad2[4]; )
    BITENUM_IS(u32,mx_go_input_flags) tl_goinflags;
-   u32 tl_prompt_length; /* Preclassified (TODO needed as tty_cell) */
    u32 tl_prompt_width;
-   su_64( u8 tl__pad3[4]; )
-   char const *tl_prompt; /* Preformatted prompt (including colours) */
+   struct n_string *tl_prompt; /* Preformatted prompt (including colours) */
+   char const *tl_prompt_base; /* Original prompt as passed to readline */
    /* .tl_pos_buf is a hack */
 # ifdef mx_HAVE_COLOUR
    char *tl_pos_buf; /* mle-position colour-on, [4], reset seq. */
@@ -586,7 +592,10 @@ static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif);
  * Returns false on allocation failure */
 static boole a_tty_hist_add(char const *s,
       BITENUM_IS(u32,mx_go_input_flags) gif);
-# endif
+# endif /* mx_HAVE_HISTORY*/
+
+/* Setup configurable aspects of a line (the first time) */
+static void a_tty_line_config(struct a_tty_line *tlp, boole first);
 
 /* Adjust an active raw mode to use / not use a timeout */
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -1205,6 +1214,153 @@ j_leave:
 }
 # endif /* mx_HAVE_HISTORY */
 
+static void
+a_tty_line_config(struct a_tty_line *tlp, boole first){
+   NYD2_IN;
+
+   /* *line-editor-config* */
+   /* C99 */{
+      static struct{
+         char const name[15];
+         u8 flag;
+      } const ca[] = {
+         {"quote-rndtrip", a_TTY_CONF_QUOTE_RNDTRIP},
+         {"srch-any", a_TTY_CONF_SRCH_ANY},
+         {"srch-case", a_TTY_CONF_SRCH_CASE}
+#ifdef mx_HAVE_REGEX
+         ,{"srch-regex", a_TTY_CONF_SRCH_REGEX}
+#endif
+      };
+      uz i;
+      char *buf, *e;
+
+      tlp->tl_conf_flags &= ~a_TTY__CONF_MASK;
+
+      if((buf = UNCONST(char*,ok_vlook(line_editor_config))) != NIL){
+         for(buf = savestr(buf); (e = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
+            for(i = 0;;){
+               if(!su_cs_cmp_case(e, ca[i].name)){
+                  tlp->tl_conf_flags |= ca[i].flag;
+                  break;
+               }else if(++i == NELEM(ca)){
+                  n_err(_("*line-editor-config*: unsupported keyword: %s\n"),
+                     n_shexp_quote_cp(e, FAL0));
+                  break;
+               }
+            }
+         }
+
+#ifdef mx_HAVE_REGEX
+         if((tlp->tl_conf_flags & a_TTY_CONF_SRCH_ANY) &&
+               (tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX))
+            n_err(_("*line-editor-config*: srch-regex and srch-any are mutual "
+                  "exclusive\n"));
+#endif
+      }
+   }
+
+# ifdef mx_HAVE_COLOUR
+   /* C99 */{
+      char *posbuf, *pos;
+
+      if(first)
+         mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
+
+      /* .tl_pos_buf is a hack */
+      posbuf = pos = NIL;
+
+      if(mx_COLOUR_IS_ACTIVE()){
+         char const *ccol;
+         struct mx_colour_pen *ccp;
+         struct str const *s;
+
+         if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NIL)
+               ) != NIL && (s = mx_colour_pen_to_str(ccp)) != NIL){
+            ccol = s->s;
+            if((s = mx_colour_reset_to_str()) != NIL){
+               uz l1, l2;
+
+               l1 = su_cs_len(ccol);
+               l2 = su_cs_len(s->s);
+               posbuf = su_AUTO_ALLOC(l1 + 4 + l2 +1);
+               su_mem_copy(posbuf, ccol, l1);
+               pos = &posbuf[l1];
+               su_mem_copy(&pos[4], s->s, ++l2);
+            }
+         }
+      }
+
+      if(posbuf == NIL){
+         posbuf = pos = su_AUTO_ALLOC(4 +1);
+         pos[4] = '\0';
+      }
+
+      tlp->tl_pos_buf = posbuf;
+      tlp->tl_pos = pos;
+   }
+# endif /* mx_HAVE_COLOUR */
+
+   /* Prompt after colour */
+   if(!(tlp->tl_goinflags & mx_GO_INPUT_PROMPT_NONE))
+      tlp->tl_prompt_width = mx_tty_create_prompt(tlp->tl_prompt,
+            tlp->tl_prompt_base, tlp->tl_goinflags);
+
+   /* The bind tree last, it is most expensive and has not really something
+    * to do with the line as such */
+# ifdef mx_HAVE_KEY_BINDINGS
+   /* C99 */{
+      char const *name, *cp;
+      u8 *destp;
+
+      destp = &tlp->tl_bind_inter_byte_timeout;
+      name = "byte";
+      cp = ok_vlook(bind_inter_byte_timeout);
+
+jbind_timeout_redo:
+      if(cp != NIL){
+         uz const uit_max = 100u * U8_MAX;
+         u32 is;
+         uz uit;
+
+         /* TODO generic variable `set' should have capability to ensure
+          * TODO integer limits upon assignment */
+         if(((is = su_idec_uz_cp(&uit, cp, 0, NIL)) & su_IDEC_STATE_EMASK) ||
+               !(is & su_IDEC_STATE_CONSUMED) || uit > uit_max){
+            if(n_poption & n_PO_D_V)
+               n_err(_("*bind-inter-%s-timeout* invalid, using %" PRIuZ
+                  ": %s\n"), name, uit_max, cp);
+            uit = uit_max;
+         }
+
+         /* Convert to the tenths of seconds that we need to use */
+         *destp = S(u8,(uit + 99) / 100);
+      }
+
+      if(destp == &tlp->tl_bind_inter_byte_timeout){
+         destp = &tlp->tl_bind_inter_key_timeout;
+         name = "key";
+         cp = ok_vlook(bind_inter_key_timeout);
+         goto jbind_timeout_redo;
+      }
+
+      if(a_tty.tg_bind_isdirty)
+         a_tty_bind_tree_teardown();
+      if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
+         a_tty_bind_tree_build();
+      tlp->tl_bind_tree_hmap =
+            &a_tty.tg_bind_tree[tlp->tl_goinflags & mx__GO_INPUT_CTX_MASK];
+      tlp->tl_bind_shcut_cancel =
+            &a_tty.tg_bind_shcut_cancel[tlp->tl_goinflags &
+               mx__GO_INPUT_CTX_MASK];
+      tlp->tl_bind_shcut_prompt_char =
+            &a_tty.tg_bind_shcut_prompt_char[tlp->tl_goinflags &
+               mx__GO_INPUT_CTX_MASK];
+   }
+# endif /* mx_HAVE_KEY_BINDINGS */
+
+   NYD2_OU;
+}
+
 # ifdef mx_HAVE_KEY_BINDINGS
 static void
 a_tty_term_rawmode_timeout(struct a_tty_line *tlp,
@@ -1549,7 +1705,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) ==
             (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
-         if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
+         if(fputs(n_string_cp(tlp->tl_prompt), mx_tty_fp) == EOF)
             goto jerr;
          phy_cur = tlp->tl_prompt_width + 1;
       }
@@ -1722,7 +1878,7 @@ jpaint:
 
    if(f & a_SHOW_PROMPT){
       ASSERT(phy_base == tlp->tl_prompt_width);
-      if(fputs(tlp->tl_prompt, mx_tty_fp) == EOF)
+      if(fputs(n_string_cp(tlp->tl_prompt), mx_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
       f |= a_VISIBLE_PROMPT;
@@ -2399,7 +2555,7 @@ jaster_check:
 
 jset:
    exp.l = su_cs_len(exp.s = n_shexp_quote_cp(exp.s,
-         ((tlp->tl_conf_flags & a_TTY_CONF_QUOTE_RNDTRIP) != 0)));
+            ((tlp->tl_conf_flags & a_TTY_CONF_QUOTE_RNDTRIP) != 0)));
    tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
@@ -2709,12 +2865,19 @@ jleave:
 
 static u32
 a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
+# ifdef mx_HAVE_REGEX
+   struct su_re re;
+# endif
    struct str orig_savec;
    u32 xoff, rv;
    struct a_tty_hist *thp;
    NYD2_IN;
 
    thp = NIL;
+# ifdef mx_HAVE_REGEX
+   if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX)
+      su_re_create(&re);
+# endif
 
    /* We cannot complete an empty line */
    if(UNLIKELY(tlp->tl_count == 0)){
@@ -2767,11 +2930,31 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
    if(orig_savec.s == NIL)
       a_tty_cell2save(tlp);
 
+# ifdef mx_HAVE_REGEX
+   if((tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX) &&
+         su_re_setup_cp(&re, &tlp->tl_savec.s[xoff],
+            (su_RE_SETUP_EXT | su_RE_SETUP_TEST_ONLY |
+             ((tlp->tl_conf_flags & a_TTY_CONF_SRCH_CASE) ? su_RE_SETUP_ICASE
+              : su_RE_SETUP_NONE))) != su_RE_ERROR_NONE){
+      n_err(_("Invalid regular expression: %s: %s\n"),
+         n_shexp_quote_cp(&tlp->tl_savec.s[xoff], FAL0),
+         su_re_error_doc(&re));
+      thp = NIL;
+      goto jleave;
+   }
+# endif
+
    for(; thp != NIL; thp = fwd ? thp->th_younger : thp->th_older){
       /* Applicable to input context?  Compose mode swallows anything */
       if(xoff != 1 && (thp->th_flags & a_TTY_HIST_CTX_MASK) ==
             a_TTY_HIST_CTX_COMPOSE)
          continue;
+# ifdef mx_HAVE_REGEX
+      else if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX){
+         if(su_re_eval_cp(&re, thp->th_dat, su_RE_EVAL_NONE))
+            break;
+      }
+# endif
       else{
          char *cp;
 
@@ -2787,7 +2970,13 @@ a_tty_khist_search(struct a_tty_line *tlp, boole fwd){
 
    if(orig_savec.s != NIL)
       tlp->tl_savec = orig_savec;
+
 jleave:
+# ifdef mx_HAVE_REGEX
+   if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_REGEX)
+      su_re_gut(&re);
+# endif
+
    rv = a_tty__khist_shared(tlp, thp);
 
    NYD2_OU;
@@ -4311,7 +4500,6 @@ int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
       su_DBG_LOC_ARGS_DECL){
-   /* XXX split mx_tty_readline, it is huge (but not so like workhorse!) */
    struct a_tty_line tl;
    struct n_string xprompt;
    sz nn;
@@ -4324,132 +4512,11 @@ int
 
    su_mem_set(&tl, 0, sizeof tl);
    tl.tl_goinflags = gif;
-
-   /* C99 */{
-      static struct{
-         char const name[15];
-         u8 flag;
-      } const ca[] = {
-         {"quote-rndtrip", a_TTY_CONF_QUOTE_RNDTRIP},
-         {"srch-case", a_TTY_CONF_SRCH_CASE},
-         {"srch-any", a_TTY_CONF_SRCH_ANY}
-      };
-      uz i;
-      char *buf, *e;
-
-      if((buf = UNCONST(char*,ok_vlook(line_editor_config))) != NIL){
-         for(buf = savestr(buf); (e = su_cs_sep_c(&buf, ',', TRU1)) != NIL;){
-            for(i = 0;;){
-               if(!su_cs_cmp_case(e, ca[i].name)){
-                  tl.tl_conf_flags |= ca[i].flag;
-                  break;
-               }else if(++i == NELEM(ca)){
-                  n_err(_("*line-editor-config*: unknown keyword: %s\n"),
-                     n_shexp_quote_cp(e, FAL0));
-                  break;
-               }
-            }
-         }
-      }
-   }
-
-# ifdef mx_HAVE_COLOUR
-   /* C99 */{
-      char *posbuf, *pos;
-
-      mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
-
-      /* .tl_pos_buf is a hack */
-      posbuf = pos = NIL;
-
-      if(mx_COLOUR_IS_ACTIVE()){
-         char const *ccol;
-         struct mx_colour_pen *ccp;
-         struct str const *s;
-
-         if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NIL)
-               ) != NIL && (s = mx_colour_pen_to_str(ccp)) != NIL){
-            ccol = s->s;
-            if((s = mx_colour_reset_to_str()) != NIL){
-               uz l1, l2;
-
-               l1 = su_cs_len(ccol);
-               l2 = su_cs_len(s->s);
-               posbuf = su_AUTO_ALLOC(l1 + 4 + l2 +1);
-               su_mem_copy(posbuf, ccol, l1);
-               pos = &posbuf[l1];
-               su_mem_copy(&pos[4], s->s, ++l2);
-            }
-         }
-      }
-
-      if(posbuf == NIL){
-         posbuf = pos = su_AUTO_ALLOC(4 +1);
-         pos[4] = '\0';
-      }
-
-      tl.tl_pos_buf = posbuf;
-      tl.tl_pos = pos;
-   }
-# endif /* mx_HAVE_COLOUR */
-
-# ifdef mx_HAVE_KEY_BINDINGS
-   /* C99 */{
-      char const *name, *cp;
-      u8 *destp;
-
-      destp = &tl.tl_bind_inter_byte_timeout;
-      name = "byte";
-      cp = ok_vlook(bind_inter_byte_timeout);
-
-jbind_timeout_redo:
-      if(cp != NIL){
-         uz const uit_max = 100u * U8_MAX;
-         u32 is;
-         uz uit;
-
-         /* TODO generic variable `set' should have capability to ensure
-          * TODO integer limits upon assignment */
-         if(((is = su_idec_uz_cp(&uit, cp, 0, NIL)) & su_IDEC_STATE_EMASK) ||
-               !(is & su_IDEC_STATE_CONSUMED) || uit > uit_max){
-            if(n_poption & n_PO_D_V)
-               n_err(_("*bind-inter-%s-timeout* invalid, using %" PRIuZ
-                  ": %s\n"), name, uit_max, cp);
-            uit = uit_max;
-         }
-
-         /* Convert to the tenths of seconds that we need to use */
-         *destp = S(u8,(uit + 99) / 100);
-      }
-
-      if(destp == &tl.tl_bind_inter_byte_timeout){
-         destp = &tl.tl_bind_inter_key_timeout;
-         name = "key";
-         cp = ok_vlook(bind_inter_key_timeout);
-         goto jbind_timeout_redo;
-      }
-
-      if(a_tty.tg_bind_isdirty)
-         a_tty_bind_tree_teardown();
-      if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
-         a_tty_bind_tree_build();
-      tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & mx__GO_INPUT_CTX_MASK];
-      tl.tl_bind_shcut_cancel =
-            &a_tty.tg_bind_shcut_cancel[gif & mx__GO_INPUT_CTX_MASK];
-      tl.tl_bind_shcut_prompt_char =
-            &a_tty.tg_bind_shcut_prompt_char[gif & mx__GO_INPUT_CTX_MASK];
-   }
-# endif /* mx_HAVE_KEY_BINDINGS */
-
    if(!(gif & mx_GO_INPUT_PROMPT_NONE)){
-      n_string_creat_auto(&xprompt);
-
-      if((tl.tl_prompt_width = mx_tty_create_prompt(&xprompt, prompt, gif)
-            ) > 0){
-         tl.tl_prompt = n_string_cp_const(&xprompt);
-         tl.tl_prompt_length = S(u32,xprompt.s_len);
-      }
+      tl.tl_prompt = n_string_creat_auto(&xprompt);
+      tl.tl_prompt_base = prompt;
    }
+   a_tty_line_config(&tl, TRU1);
 
    tl.tl_line.cbuf = *linebuf;
    if(n != 0){
