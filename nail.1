@@ -10207,14 +10207,16 @@ This setting causes all saved message to be retained.
 denotes the default setting of
 .Cd mle-quote-rndtrip .
 .Ql srch-case
-and
-.Ql srch-any
-define whether
+defines whether
 .Cd mle-hist-srch-bwd
 and
 .Cd mle-hist-srch-fwd
-match case-insensitively, and whether they compare against any substring
-or only the beginning of the line, respectively.
+match case-insensitively,
+.Ql srch-any
+whether they match any substring or only at the beginning of lines,
+and \*(OPally
+.Ql srch-regex
+will instead search through history based on a regular expression.
 .
 .Mx
 .It Va line-editor-cpl-word-breaks
