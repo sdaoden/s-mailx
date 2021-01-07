@@ -108,6 +108,7 @@
     * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
     * disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
+# define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
    /*!< Multithreading support available?
     * This is a subfeature of \r{SMP}. */
@@ -314,6 +315,9 @@ do{\
 #else
 # define su_MCTA(T,M)
 #endif
+#define CXXCAST(T1,T2) \
+   CTA(sizeof(T1) == sizeof(T2),\
+      "Wild C++ type==C type cast constrained not fullfilled!")
 
 /* LANG }}} */
 /* CC {{{ */
