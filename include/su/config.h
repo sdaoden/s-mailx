@@ -39,39 +39,60 @@
 # include <su/gen-config.h>
 #endif
 
-/* Internal configurables: values */
-
-/* Number of Not-Yet-Dead calls that are remembered */
-#define su_NYD_ENTRIES (25 * 84)
-
-/* Global configurables (code.h:CONFIG): features */
-
-#ifdef mx_HAVE_DEBUG
-# define su_HAVE_DEBUG
-#endif
-#ifdef mx_HAVE_DEVEL
-# define su_HAVE_DEVEL
-#endif
-
-#ifdef mx_HAVE_DOCSTRINGS
-# define su_HAVE_DOCSTRINGS
-#endif
-
-#define su_HAVE_MEM_BAG_AUTO
-#define su_HAVE_MEM_BAG_LOFI
-#ifdef mx_HAVE_NOMEMDBG
-# define su_HAVE_MEM_CANARIES_DISABLE
-#endif
-
-#undef su_HAVE_MT
-#undef su_HAVE_SMP
-
 /* Global configurables (code.h:CONFIG): values */
 
 /* Hardware page size (xxx additional dynamic lookup support) */
 #ifndef su_PAGE_SIZE
 # error Need su_PAGE_SIZE configuration
 #endif
+
+/* Global configurables (code.h:CONFIG): features */
+#ifdef su_USECASE_SU
+# define su_HAVE_NSPC
+/*# define su_HAVE_DEBUG*/
+/*# define su_HAVE_DEVEL*/
+# define su_HAVE_DOCSTRINGS
+# define su_HAVE_MEM_BAG_AUTO
+# define su_HAVE_MEM_BAG_LOFI
+/*# define su_HAVE_MEM_CANARIES_DISABLE*/
+# define su_HAVE_RE /* Unconditionally for now xxx */
+# undef su_HAVE_SMP /* for now xxx */
+#  undef su_HAVE_MT
+
+#elif defined su_USECASE_MX /* sue_USECASE_SU */
+# ifdef mx_HAVE_DEBUG
+#  define su_HAVE_DEBUG
+# endif
+
+# ifdef mx_HAVE_DEVEL
+#  define su_HAVE_DEVEL
+# endif
+
+# ifdef mx_HAVE_DOCSTRINGS
+#  define su_HAVE_DOCSTRINGS
+# endif
+
+# define su_HAVE_MEM_BAG_AUTO
+# define su_HAVE_MEM_BAG_LOFI
+# ifdef mx_HAVE_NOMEMDBG
+#  define su_HAVE_MEM_CANARIES_DISABLE
+# endif
+
+# undef su_HAVE_MT
+
+# ifdef mx_HAVE_REGEX
+#  define su_HAVE_RE
+# endif
+
+# undef su_HAVE_SMP
+#else /* su_USECASE_MX */
+# error Unknown SU usecase
+#endif
+
+/* Internal configurables: values */
+
+/* Number of Not-Yet-Dead calls that are remembered */
+#define su_NYD_ENTRIES (25 * 84)
 
 #endif /* !su_CONFIG_H */
 /* s-it-mode */

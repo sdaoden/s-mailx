@@ -6,15 +6,16 @@ su_USECASE_MX_DISABLED =
 awk?=awk
 getconf?=getconf
 
-CXXFLAGS+=-Wall -pedantic -Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
-CFLAGS+=-Wall -pedantic -Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
+SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
+CXXFLAGS+=-Wall -pedantic $(SUF)
+CFLAGS+=-Wall -pedantic $(SUF)
 
 CSRC = avopt.c core-code.c core-errors.c \
 	cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
 		cs-rfind.c cs-tbox.c cs-tools.c \
 	icodec-dec.c icodec-enc.c \
 	mem-alloc.c mem-bag.c mem-tools.c \
-	prime.c sort.c utf.c
+	prime.c re.c sort.c utf.c
 CXXSRC = cxx-core.cc \
 	.main.cc
 
@@ -45,11 +46,8 @@ $(CXXOBJ): $(CLIB) ../../include/su/gen-config.h
 	$(CXX) $(LDFLAGS) -o $(@) $(CXXOBJ) .clib.a
 
 ../../include/su/gen-config.h:
-	SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
-		$(SHELL) ../../mk/su-make-errors.sh config > .tmp.c &&\
-	$(CC) -o .tmp .tmp.c &&\
-	./.tmp > $(@) &&\
-	rm -f ./.tmp* &&\
+	CC="$(CC)" SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
+		$(SHELL) ../../mk/su-make-errors.sh compile_time &&\
 	echo '#define su_PAGE_SIZE '"`$(getconf) PAGESIZE`" >> $(@)
 
 # s-mk-mode

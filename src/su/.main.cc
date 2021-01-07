@@ -18,6 +18,7 @@ su_USECASE_MX_DISABLED
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/prime.h>
+#include <su/re.h>
 #include <su/sort.h>
 #include <su/utf.h>
 
@@ -36,6 +37,7 @@ static void a_cs_dict(void);
 static void a_icodec(void);
 static void a_mem_bag(void);
 static void a_prime(void);
+static void a_re(void);
 static void a_sort(void);
 static void a_utf(void);
 
@@ -67,6 +69,7 @@ int main(void){
 
    a_icodec();
    a_mem_bag();
+   a_re();
    a_sort();
 
    /// Extended
@@ -611,6 +614,76 @@ a_sort(void){
    for(uz i = NELEM(arr_sorted); i-- != 0;)
       if(cs::cmp(arr_sorted[i], arr_mixed[i]))
          a_ERR();
+}
+
+static void
+a_re(void){
+#ifdef su_HAVE_RE
+   re re;
+
+   if(re.setup("hello", re::setup_test_only) != re::error_none)
+      a_ERR();
+   else if(re.error() != re::error_none)
+      a_ERR();
+   else if(!re.is_setup())
+      a_ERR();
+   else if(!re.is_test_only())
+      a_ERR();
+   else if(re.group_count() != 0)
+      a_ERR();
+   else if(!re.eval("hello world"))
+      a_ERR();
+   else if(!re.eval_ok())
+      a_ERR();
+   else if(cs::cmp(re.input(), "hello world"))
+      a_ERR();
+
+   if(re.reset().reset().reset().setup("^hello", re::setup_icase))
+      a_ERR();
+   else if(re.error() != re::error_none)
+      a_ERR();
+   else if(!re.is_setup())
+      a_ERR();
+   else if(re.group_count() != 0)
+      a_ERR();
+   else if(!re.eval("Hello world"))
+      a_ERR();
+   else if(!re.eval_ok())
+      a_ERR();
+   else if(cs::cmp(re.input(), "Hello world"))
+      a_ERR();
+
+   if(re.setup("^hello[^[:alpha:]]*([[:alpha:]]+)$") != re.error_none)
+      a_ERR();
+   else if(re.error() != re::error_none)
+      a_ERR();
+   else if(!re.is_setup())
+      a_ERR();
+   else if(re.is_test_only())
+      a_ERR();
+   else if(re.group_count() != 1)
+      a_ERR();
+   else if(!re.eval("hello, world"))
+      a_ERR();
+   else if(!re.eval_ok())
+      a_ERR();
+   else if(re.match_at(1) == NIL)
+      a_ERR();
+   else if(!re.match_at(1)->is_valid())
+      a_ERR();
+   else if(re.match_at(1)->start() != 7)
+      a_ERR();
+   else if(re.match_at(1)->end() != 12)
+      a_ERR();
+   else if(re.match_at(0) == NIL)
+      a_ERR();
+   else if(re.match_at(0)->start() != 0)
+      a_ERR();
+   else if(re.match_at(0)->end() != 12)
+      a_ERR();
+   else if(cs::cmp(re.input(), "hello, world"))
+      a_ERR();
+#endif /* su_HAVE_RE */
 }
 
 static void

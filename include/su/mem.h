@@ -645,6 +645,8 @@ public:
    /*! @} */
 };
 
+NSPC_END(su)
+
 /*!
  * \ingroup CXX_MEM_CACHE_ALLOC
  * In order to be able, a global overwrite of \c{new()} is necessary.
@@ -655,7 +657,6 @@ inline void *operator new(size_t sz, void *vp, NSPC(su)mem::johnny const *j){
    return vp;
 }
 
-NSPC_END(su)
 # include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* !su_MEM_H */
