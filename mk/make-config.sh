@@ -2264,6 +2264,7 @@ int main(void){
    char inb[16], oub[16], *inbp, *oubp;
    iconv_t id;
    size_t inl, oul;
+   int rv;
 
    /* U+2013 */
    memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
@@ -2271,33 +2272,46 @@ int main(void){
    oul = sizeof oub;
    oubp = oub;
 
+   rv = 1;
    if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
-     return 1;
+      goto jleave;
+
+   rv = 14;
    if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
-      return 14;
-   iconv_close(id);
+      goto jleave;
 
    *oubp = '\0';
    oul = (size_t)(oubp - oub);
    if(oul == 0)
-      return 14;
+      goto jleave;
    /* Character-wise replacement? */
    if(oul == 1){
+      rv = 2;
       if(oub[0] == '?')
-         return 2;
+         goto jleave;
+      rv = 3;
       if(oub[0] == '*')
-         return 3;
-      return 14;
+         goto jleave;
+      rv = 14;
+      goto jleave;
    }
+
    /* Byte-wise replacement? */
    if(oul == sizeof("\342\200\223") -1){
+      rv = 12;
       if(!memcmp(oub, "???????", sizeof("\342\200\223") -1))
-         return 12;
+         goto jleave;
+      rv = 13;
       if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
-         return 13;
-      return 14;
+         goto jleave;
+      rv = 14;
    }
-   return 0;
+
+jleave:
+   if(id != (iconv_t)-1)
+      iconv_close(id);
+
+   return rv;
 }
 !
 
