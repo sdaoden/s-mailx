@@ -3053,9 +3053,10 @@ jinput_loop:
       for(;;){
          /* Ensure we have valid pointers, and room for grow */
          a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
-         timeout = FAL0;
 
 # ifdef mx_HAVE_KEY_BINDINGS
+         timeout = FAL0;
+
          if(tlp->tl_bind_takeover != '\0'){
             wc = tlp->tl_bind_takeover;
             tlp->tl_bind_takeover = '\0';
