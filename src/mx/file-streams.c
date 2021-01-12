@@ -752,6 +752,7 @@ mx_fs_fd_cloexec_set(sz fd){
       rv = (fcntl(ifd, F_SETFD, FD_CLOEXEC) != -1);
 
    NYD2_OU;
+   return rv;
 }
 
 boole
