@@ -167,55 +167,38 @@
 #define NELEM su_NELEM
 
 /* Not-Yet-Dead macros TODO stubs */
-#undef NYD_IN
-#undef NYD_OU
-#undef NYD
-#undef NYD2_IN
-#undef NYD2_OU
-#undef NYD2
-
 #define NYD_OU_LABEL su_NYD_OU_LABEL
+#define su__NYD_IN do{
+#define su__NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
+#define su__NYD do{}while(0)
+
 #if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
-   /**/
+# define NYD_IN su__NYD_IN
+# define NYD_OU su__NYD_OU
+# define NYD su__NYD
 #elif defined su_HAVE_DEVEL
 # define NYD_IN if(1){su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
 # define NYD_OU \
    goto NYD_OU_LABEL;NYD_OU_LABEL:\
    su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}else{}
 # define NYD if(0){}else{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}
-# ifdef NYD2
-#  undef NYD2
-#  define NYD2_IN if(1){su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
-#  define NYD2_OU \
-      goto NYD_OU_LABEL;NYD_OU_LABEL:\
-      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}else{}
-#  define NYD2 if(0){}else{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}
-# endif
 #else
 # define NYD_IN do{su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
 # define NYD_OU \
       goto NYD_OU_LABEL;NYD_OU_LABEL:\
       su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}while(0)
 # define NYD do{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}while(0)
-# ifdef NYD2
-#  undef NYD2
-#  define NYD2_IN do{su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
-#  define NYD2_OU \
-      goto NYD_OU_LABEL;NYD_OU_LABEL:\
-      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}while(0)
-#  define NYD2 do{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}while(0)
-# endif
 #endif
 /**/
-#ifndef NYD
-# define NYD_IN do{
-# define NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-# define NYD do{}while(0)
-#endif
-#ifndef NYD2
-# define NYD2_IN do{
-# define NYD2_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-# define NYD2 do{}while(0)
+#ifdef NYD2_ENABLE
+# undef NYD2_ENABLE
+# define NYD2_IN NYD_IN
+# define NYD2_OU NYD_OU
+# define NYD2 NYD
+#else
+# define NYD2_IN su__NYD_IN
+# define NYD2_OU su__NYD_OU
+# define NYD2 su__NYD
 #endif
 
 #define P2UZ su_P2UZ
