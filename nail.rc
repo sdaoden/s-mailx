@@ -94,7 +94,8 @@ set indentprefix="> "
 set followup-to-honour=ask-yes followup-to
 
 # Line editor searches match any substring, and are case-insensitive
-set line-editor-config=srch-any,srch-case
+# (srch-regex optionally allows regular expression searches)
+set line-editor-config=srch-any,srch-case,srch-pos0
 
 # Mark messages that have been answered.
 set markanswered
