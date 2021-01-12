@@ -837,7 +837,7 @@ mx_termcap_cmd(enum mx_termcap_cmd cmd, sz a1, sz a2){
          if(a1 > 0)
             --a1;
          if((rv = mx_termcap_cmd(mx_TERMCAP_CMD_ch, a1, 0)) > 0){
-            for(a2 = mx_termios_dimen.tiosd_width - a1 - 1; a2 > 0; --a2)
+            for(a2 = mx_termios_dimen.tiosd_width - a1; a2 > 0; --a2)
                if(putc(' ', mx_tty_fp) == EOF){
                   rv = FAL0;
                   break;
