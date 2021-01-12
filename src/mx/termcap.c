@@ -679,7 +679,10 @@ mx_termcap_init(void){
 #endif
 
    /* TODO We do not handle !mx_TERMCAP_QUERY_sam in this software! */
-   if(!mx_termcap_query(mx_TERMCAP_QUERY_am, &tv) ||
+   if(
+#ifdef mx_HAVE_TERMCAP
+      !mx_termcap_query(mx_TERMCAP_QUERY_am, &tv) ||
+#endif
          mx_termcap_query(mx_TERMCAP_QUERY_xenl, &tv)){
       n_psonce |= n_PSO_TERMCAP_FULLWIDTH;
 

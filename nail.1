@@ -12853,11 +12853,16 @@ and/or
 .Lb libtermcap
 capabilities (see
 .Sx "On terminal control and line editor" ,
-escape commas with reverse solidus) to be used to overwrite or define
-entries.
+escape commas with reverse solidus
+.Ql \e )
+to be used to overwrite or define entries.
 .Sy Note
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
+It will always be inspected, regardless of whether
+.Va features
+denotes termcap/terminfo library support via
+.Ql ,+termcap, .
 .
 .Pp
 String capabilities form
@@ -12904,6 +12909,7 @@ boolean which indicates if the right margin needs special treatment; the
 .Cd xenl
 capability is related, for more see
 .Ev COLUMNS .
+This capability is only used when backed by library support.
 .
 .It Cd clear Ns \0or Cd cl
 .Cd clear_screen :
@@ -12993,6 +12999,9 @@ boolean which indicates whether a newline written in the last column of an
 .Cd auto_right_margin
 indicating terminal is ignored.
 With it the full terminal width is available even on autowrap terminals.
+This will be inspected even without
+.Ql ,+termcap,
+.Va features .
 .El
 .
 .Pp
