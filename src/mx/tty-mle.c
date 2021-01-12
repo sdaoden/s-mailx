@@ -1490,8 +1490,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    LCTA(UCMP(64, a__LAST, <, U32_MAX), "Flag bits excess storage type");
 
    f = tlp->tl_vi_flags;
-   tlp->tl_vi_flags = (f & ~(a_TTY_VF_REFRESH | a_PERSIST_MASK)) |
-         a_TTY_VF_SYNC;
+   tlp->tl_vi_flags = (f & ~a_TTY_VF_ALL_MASK) | a_TTY_VF_SYNC;
    f |= a_TRUE_RV;
    if((w = tlp->tl_prompt_width) > 0)
       f |= a_HAVE_PROMPT;
@@ -1586,7 +1585,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    }
 
    /* Then search for right boundary.  Dependent upon n_PSO_FULLWIDTH (termcap
-    * am/xn) We leave the rightmost column empty because some terminals
+    * am/xn) we leave the rightmost column empty because some terminals
     * [cw]ould wrap the line if we write into that, or not.
     * TODO We do not deal with !mx_TERMCAP_QUERY_sam */
    phy_wid = phy_wid_base - phy_base;
@@ -1653,7 +1652,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
    /* Try to avoid repainting the complete line - this is possible if the
     * cursor "did not leave the screen" and the prompt status has not changed.
-    * I.e., after clamping virtual viewpoint, compare relation to physical */
+    * I.e., after cramping virtual viewpoint, compare relation to physical */
    if((f & (a_TTY_VF_MOD_SINGLE/*FIXME*/ |
             a_TTY_VF_MOD_CONTENT/* xxx */ | a_TTY_VF_MOD_DIRTY)) ||
          (tcxp = tlp->tl_phy_start) == NIL || tcxp > tccp || tcxp <= tcp_right)
@@ -1822,7 +1821,6 @@ jcursor:
       goto jerr;
 
 jleave:
-   tlp->tl_vi_flags |= (f & a_PERSIST_MASK);
    tlp->tl_lst_count = tlp->tl_count;
    tlp->tl_lst_cursor = tlp->tl_cursor;
    tlp->tl_phy_cursor = phy_cur;
