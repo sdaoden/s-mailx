@@ -10217,6 +10217,9 @@ whether they match any substring or only at the beginning of lines,
 and \*(OPally
 .Ql srch-regex
 will instead search through history based on a regular expression.
+The cursor is placed at the end of the expanded history search entry, with
+.Ql srch-pos0
+only if it fits on the line: like this the command name is always visible.
 .
 .Mx
 .It Va line-editor-cpl-word-breaks
