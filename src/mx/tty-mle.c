@@ -71,6 +71,7 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  *
  * Only used in interactive mode.
  * TODO . This code should be split in funs/raw input/bind modules.
+ * TODO . Multiline visual via CUPS; adjust srch-pos0 docu, then.
  * TODO . We work with wide characters, but not for buffer takeovers and
  * TODO   cell2save()ings.  This should be changed.  For the former the buffer
  * TODO   thus needs to be converted to wide first, and then simply be fed in.
@@ -209,9 +210,10 @@ CTA(UCMP(64, a_TTY__BIND_LAST, <=, S32_MAX),
 
 enum a_tty_config_flags{
    a_TTY_CONF_QUOTE_RNDTRIP = 1u<<0, /* mle-quote-rndtrip default-on */
-   a_TTY_CONF_SRCH_ANY = 1u<<1, /* mle-hist-srch-* "matches any substring" */
-   a_TTY_CONF_SRCH_CASE = 1u<<2, /* mle-hist-srch-* case-insensitive */
-   a_TTY_CONF_SRCH_REGEX = 1u<<3, /* mle-hist-srch-* uses regex */
+   a_TTY_CONF_SRCH_CASE = 1u<<1, /* mle-hist-srch-* case-insensitive */
+   a_TTY_CONF_SRCH_POS0 = 1u<<2, /* *mle-hist-srch* moves cursor to pos 0 */
+   a_TTY_CONF_SRCH_ANY = 1u<<3, /* mle-hist-srch-* "matches any substring" */
+   a_TTY_CONF_SRCH_REGEX = 1u<<4, /* mle-hist-srch-* uses regex */
 
    a_TTY__CONF_LAST = a_TTY_CONF_SRCH_REGEX,
    a_TTY__CONF_MASK = (a_TTY__CONF_LAST << 1) - 1
@@ -255,9 +257,11 @@ enum a_tty_visual_flags{
    a_TTY_VF_REFRESH = a_TTY_VF_MOD_DIRTY | a_TTY_VF_MOD_CURSOR |
          a_TTY_VF_MOD_CONTENT | a_TTY_VF_MOD_SINGLE,
    a_TTY_VF_BELL = 1u<<8, /* Ring the bell */
-   a_TTY_VF_SYNC = 1u<<9, /* Flush/Sync I/O channel */
+   a_TTY_VF_MAXWIDTH_POS0 = 1u<<9, /* srch-pos0 (one screen + adj cursor) */
+   a_TTY_VF_SYNC = 1u<<10, /* Flush/Sync I/O channel */
 
-   a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL | a_TTY_VF_SYNC,
+   a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL |
+         a_TTY_VF_MAXWIDTH_POS0 | a_TTY_VF_SYNC,
    a_TTY__VF_LAST = a_TTY_VF_SYNC
 };
 CTA(a_TTY__VF_LAST <= U16_MAX, "Flag bits excess storage datatype");
@@ -1225,8 +1229,9 @@ a_tty_line_config(struct a_tty_line *tlp, boole first){
          u8 flag;
       } const ca[] = {
          {"quote-rndtrip", a_TTY_CONF_QUOTE_RNDTRIP},
-         {"srch-any", a_TTY_CONF_SRCH_ANY},
-         {"srch-case", a_TTY_CONF_SRCH_CASE}
+         {"srch-case", a_TTY_CONF_SRCH_CASE},
+         {"srch-pos0", a_TTY_CONF_SRCH_POS0},
+         {"srch-any", a_TTY_CONF_SRCH_ANY}
 #ifdef mx_HAVE_REGEX
          ,{"srch-regex", a_TTY_CONF_SRCH_REGEX}
 #endif
@@ -1640,14 +1645,11 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       a_HAVE_PROMPT = a_TTY__VF_LAST<<2, /* Have a prompt */
       a_SHOW_PROMPT = a_TTY__VF_LAST<<3, /* Shall print the prompt */
       a_MOVE_CURSOR = a_TTY__VF_LAST<<4, /* Move visual cursor for user! */
-      a_LEFT_MIN = a_TTY__VF_LAST<<5, /* On left boundary */
-      a_RIGHT_MAX = a_TTY__VF_LAST<<6,
+      a_LEFT_MIN = a_TTY__VF_LAST<<5, /* Left boundary on screen */
+      a_RIGHT_MAX = a_TTY__VF_LAST<<6, /* .. */
       a_HAVE_POSITION = a_TTY__VF_LAST<<7, /* Print the position indicator */
-
-      /* We carry some flags over invocations (not worth a specific field) */
-      a_VISIBLE_PROMPT = a_TTY__VF_LAST<<8, /* The prompt is on the screen */
-      a_PERSIST_MASK = a_VISIBLE_PROMPT,
-      a__LAST = a_PERSIST_MASK
+      a_RECALC_PHY_CURSOR = a_TTY__VF_LAST<<8, /* Update knowledge of.. */
+      a__LAST = a_RECALC_PHY_CURSOR
    };
 
    u32 f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
@@ -1723,7 +1725,9 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
    /* Find the left visual boundary */
    phy_wid = (phy_wid >> 1) + (phy_wid >> 2);
-   if((cur = tlp->tl_cursor) == cnt)
+   if(f & a_TTY_VF_MAXWIDTH_POS0)
+      tlp->tl_cursor = cur = 0;
+   else if((cur = tlp->tl_cursor) == cnt)
       --cur;
 
    w = (tcp_left = tccp = tlp->tl_line.cells + cur)->tc_width;
@@ -1828,6 +1832,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    else{
          f |= a_TTY_VF_MOD_DIRTY;
 #if 0
+         FIXME do not always repaint; carry VISIBLE_PROMPT over invocations
       struct a_tty_cell const *tcyp;
       s32 cur_displace;
       u32 phy_lmargin, phy_rmargin, fx, phy_displace;
@@ -1841,10 +1846,17 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       }
 #endif
    }
-   goto jpaint;
+
+   if(f & a_TTY_VF_MAXWIDTH_POS0){
+      f ^= a_TTY_VF_MAXWIDTH_POS0;
+      if(f & a_RIGHT_MAX){
+         f |= a_RECALC_PHY_CURSOR;
+         tlp->tl_cursor = P2UZ(tcp_right + 1 - tcp_left);
+      }
+   }
 
    /* We know what we have to paint, start synchronizing */
-jpaint:
+/*jpaint:*/
    ASSERT(phy_cur == tlp->tl_phy_cursor);
    ASSERT(phy_wid == phy_wid_base - phy_base);
    ASSERT(cnt == tlp->tl_count);
@@ -1881,9 +1893,7 @@ jpaint:
       if(fputs(n_string_cp(tlp->tl_prompt), mx_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
-      f |= a_VISIBLE_PROMPT;
-   }else
-      f &= ~a_VISIBLE_PROMPT;
+   }
 
 /* FIXME reposition cursor for paint */
    for(w = phy_nxtcur; tcp_left <= tcp_right; ++tcp_left){
@@ -1973,12 +1983,15 @@ jpaint:
    /* Users are used to see the cursor right of the point of interest, so we
     * need some further adjustments unless in special conditions.  Be aware
     * that we may have adjusted cur at the beginning, too */
-   if((cur = tlp->tl_cursor) == 0)
+   if((cur = tlp->tl_cursor) == 0){
+      f |= a_MOVE_CURSOR;
       phy_nxtcur = phy_base;
+   }else if(f & a_RECALC_PHY_CURSOR)
+      phy_nxtcur = phy_cur;
    else if(cur != cnt){
-      u16 cw = tccp->tc_width;
+      u16 cw;
 
-      if(cw == U8_MAX) /* TODO yet HT == SPACE */
+      if((cw = tccp->tc_width) == U8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       phy_nxtcur -= cw;
    }
@@ -2818,6 +2831,8 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
       rv = tlp->tl_defc.l = i;
 
       f = (tlp->tl_count > 0) ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_NONE;
+      if(tlp->tl_conf_flags & a_TTY_CONF_SRCH_POS0)
+         f |= a_TTY_VF_MAXWIDTH_POS0;
       tlp->tl_count = tlp->tl_cursor = 0;
    }else{
       f = a_TTY_VF_BELL;
