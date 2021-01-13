@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_tbox
 #define su_SOURCE
 #define su_SOURCE_CS_TBOX
@@ -43,7 +42,9 @@ static uz a_cstbox_hash_case(void const *self);
 static void
 a_cstbox_free(void *t){
    NYD2_IN;
+
    su_FREE(t);
+
    NYD2_OU;
 }
 #endif
@@ -55,6 +56,7 @@ a_cstbox_assign(void *self, void const *t, u32 estate){
 
    if((rv = su_cs_dup(S(char const*,t), estate)) != NIL)
       su_FREE(self);
+
    NYD2_OU;
    return rv;
 }
@@ -65,6 +67,7 @@ a_cstbox_hash(void const *self){
    NYD2_IN;
 
    rv = su_cs_hash(S(char const*,self));
+
    NYD2_OU;
    return rv;
 }
@@ -75,6 +78,7 @@ a_cstbox_hash_case(void const *self){
    NYD2_IN;
 
    rv = su_cs_hash_case(S(char const*,self));
+
    NYD2_OU;
    return rv;
 }
@@ -88,4 +92,7 @@ struct su_toolbox const su_cs_toolbox_case = su_TOOLBOX_I9R(
    &su_cs_cmp_case, &a_cstbox_hash_case);
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_TBOX
 /* s-it-mode */

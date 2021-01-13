@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_ctype
 #define su_SOURCE
 #define su_SOURCE_CS_CTYPE
@@ -43,6 +42,7 @@ su_cs_cmp_case(char const *cp1, char const *cp2){
       if((rv = c1 - c2) != 0 || c1 == '\0')
          break;
    }
+
    NYD_OU;
    return rv;
 }
@@ -62,9 +62,13 @@ su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n){
       if((rv = c1 - c2) != 0 || c1 == '\0')
          break;
    }
+
    NYD_OU;
    return rv;
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_CTYPE
 /* s-it-mode */
