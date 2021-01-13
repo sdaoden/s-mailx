@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_icodec_enc
 #define su_SOURCE
 #define su_SOURCE_ICODEC_ENC
@@ -40,7 +39,8 @@ static char const a_icoe_upper[36 +1] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char const a_icoe_lower[36 +1] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 char *
-su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, u32 ienc_mode){
+su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value,
+      u8 base, BITENUM_IS(u32,su_ienc_mode) ienc_mode){
    enum{a_ISNEG = 1u<<su__IENC_MODE_SHIFT};
 
    u8 shiftmodu;
@@ -126,4 +126,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_ICODEC_ENC
 /* s-it-mode */

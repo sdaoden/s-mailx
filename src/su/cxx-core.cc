@@ -15,9 +15,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cxx_core
 #define su_SOURCE
+#define su_SOURCE_CPP_CORE_CODE
 
 #include "su/code.h"
 su_USECASE_MX_DISABLED
@@ -40,6 +40,7 @@ log::write(BITENUM_IS(u32,level) lvl, char const *fmt, ...){ // XXX unroll
    va_start(va, fmt);
    su_log_vwrite(lvl, fmt, &va);
    va_end(va);
+
    NYD_OU;
 }
 
@@ -60,4 +61,7 @@ STA type_toolbox<char const*> const * const cs::const_type_toolbox_case =
 STA char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CPP_CORE_CODE
 /* s-it-mode */

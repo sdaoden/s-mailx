@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_prime
 #define su_SOURCE
 #define su_SOURCE_PRIME
@@ -73,6 +72,7 @@ a_prime_is_pseudo(u64 no){
       rv = ((no & 1) && (no % 3) && (no % 5) && (no % 7));
       break;
    }
+
    NYD_OU;
    return rv;
 }
@@ -119,6 +119,7 @@ jdiver:
       if(pseudo_ok || a_prime_is_real(no))
          break;
    }
+
    NYD_OU;
    return no;
 }
@@ -131,6 +132,7 @@ su_prime_is_prime(u64 no, boole allowpseudo){
    rv = a_prime_is_pseudo(no);
    if(rv && !allowpseudo)
       rv = a_prime_is_real(no);
+
    NYD_OU;
    return rv;
 }
@@ -145,6 +147,7 @@ su_prime_get_former(u64 no, boole allowpseudo){
       no = a_prime_max;
    else
       no = a_prime_calc(no, -1, allowpseudo);
+
    NYD_OU;
    return no;
 }
@@ -159,6 +162,7 @@ su_prime_get_next(u64 no, boole allowpseudo){
       no = a_prime_max;
    else
       no = a_prime_calc(no, +1, allowpseudo);
+
    NYD_OU;
    return no;
 }
@@ -171,6 +175,7 @@ su_prime_lookup_former(u32 no){
    cursor = ((no < *a_PRIME_MIDDLE) ? a_PRIME_MIDDLE - 1 : a_PRIME_LAST);
    while(*cursor >= no && --cursor > a_PRIME_FIRST)
       ;
+
    NYD_OU;
    return *cursor;
 }
@@ -183,9 +188,13 @@ su_prime_lookup_next(u32 no){
    cursor = ((no > *a_PRIME_MIDDLE) ? a_PRIME_MIDDLE + 1 : a_PRIME_FIRST);
    while(*cursor <= no && ++cursor < a_PRIME_LAST)
       ;
+
    NYD_OU;
    return *cursor;
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_PRIME
 /* s-it-mode */

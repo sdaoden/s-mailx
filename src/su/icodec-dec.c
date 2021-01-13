@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_icodec_dec
 #define su_SOURCE
 #define su_SOURCE_ICODEC_DEC
@@ -67,13 +66,14 @@ static u64 const a_icod_cutlimit[35] = {
 };
 #undef a_X
 
-u32
-su_idec(void *resp, char const *cbuf, uz clen, u8 base, u32 idec_mode,
+BITENUM_IS(u32,su_idec_state)
+su_idec(void *resp, char const *cbuf, uz clen,
+      u8 base, BITENUM_IS(u32,su_idec_mode) idec_mode,
       char const **endptr_or_nil){
    /* XXX Brute simple and */
    u8 currc;
    u64 res, cut;
-   u32 rv;
+   BITENUM_IS(u32,su_idec_state) rv;
    NYD_IN;
    ASSERT(resp != NIL);
    ASSERT_EXEC(cbuf != NIL || clen == 0, clen = 0);
@@ -328,4 +328,7 @@ j_maxval:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_ICODEC_DEC
 /* s-it-mode */

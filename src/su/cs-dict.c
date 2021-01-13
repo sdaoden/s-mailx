@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_dict
 #define su_SOURCE
 #define su_SOURCE_CS_DICT
@@ -34,4 +33,7 @@
 #include <su/x-assoc-map.h>
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_DICT
 /* s-it-mode */

@@ -47,6 +47,7 @@ a_memt_rfind(void const *vp, s32 what, uz len){
          break;
       }
    }
+
    return rv;
 }
 

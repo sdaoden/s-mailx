@@ -16,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_tools
 #define su_SOURCE
 #define su_SOURCE_CS_TOOLS
@@ -41,6 +40,7 @@ su_cs_cmp(char const *cp1, char const *cp2){
       if((rv = c1 - c2) != 0 || c1 == '\0')
          break;
    }
+
    NYD_OU;
    return rv;
 }
@@ -60,6 +60,7 @@ su_cs_cmp_n(char const *cp1, char const *cp2, uz n){
       if((rv = c1 - c2) != 0 || c1 == '\0')
          break;
    }
+
    NYD_OU;
    return rv;
 }
@@ -79,6 +80,7 @@ su_cs_copy_n(char *dst, char const *src, uz n){
       while(--n > 0);
       *--cp = '\0';
    }
+
    dst = NIL;
 jleave:
    NYD_OU;
@@ -93,6 +95,7 @@ su_cs_len(char const *cp){
 
    for(cp_base = cp; *cp != '\0'; ++cp)
       ;
+
    NYD_OU;
    return P2UZ(cp - cp_base);
 }
@@ -105,6 +108,7 @@ su_cs_pcopy(char *dst, char const *src){
 
    while((*dst = *src++) != '\0')
       ++dst;
+
    NYD_OU;
    return dst;
 }
@@ -123,6 +127,7 @@ su_cs_pcopy_n(char *dst, char const *src, uz n){
       }while(--n > 0);
       *--dst = '\0';
    }
+
    dst = NIL;
 jleave:
    NYD_OU;
@@ -155,6 +160,7 @@ su_cs_sep_c(char **iolist, char sep, boole ignore_empty){
       if(*base != '\0' || !ignore_empty)
          break;
    }
+
    NYD_OU;
    return base;
 }
@@ -217,4 +223,7 @@ su_cs_sep_escable_c(char **iolist, char sep, boole ignore_empty){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_TOOLS
 /* s-it-mode */

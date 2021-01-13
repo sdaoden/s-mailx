@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_misc
 #define su_SOURCE
 #define su_SOURCE_CS_MISC
@@ -56,6 +55,7 @@ su_cs_hash_cbuf(char const *buf, uz len){
    ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
    a_CSMISC_HASH(c);
+
    NYD_OU;
    return h;
 }
@@ -68,6 +68,7 @@ su_cs_hash_case_cbuf(char const *buf, uz len){
    ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
    a_CSMISC_HASH(su_cs_to_lower(c));
+
    NYD_OU;
    return h;
 }
@@ -75,4 +76,7 @@ su_cs_hash_case_cbuf(char const *buf, uz len){
 #undef a_CSMISC_HASH
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_MISC
 /* s-it-mode */

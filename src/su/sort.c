@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_sort
 #define su_SOURCE
 #define su_SOURCE_SORT
@@ -58,4 +57,7 @@ su_sort_shell_vpp(void const **arr, uz entries, su_compare_fun cmp_or_nil){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_SORT
 /* s-it-mode */

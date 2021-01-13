@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_re
 #define su_SOURCE
 #define su_SOURCE_RE
@@ -234,4 +233,7 @@ su_re_eval_cp(struct su_re *self, char const *input,
 
 #include "su/code-ou.h"
 #endif /* su_HAVE_RE */
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_RE
 /* s-it-mode */

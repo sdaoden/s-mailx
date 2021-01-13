@@ -21,7 +21,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_mem_alloc
 #define su_SOURCE
 #define su_SOURCE_MEM_ALLOC
@@ -268,6 +267,7 @@ a_mema_release_free(void){
             " chunks / %" PRIuZ " bytes\n",
          c, s);
    }
+
    NYD2_OU;
 }
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -405,7 +405,8 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
 #endif /* su_MEM_ALLOC_DEBUG */
 
 void *
-su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
+su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
+      su_DBG_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -481,12 +482,14 @@ su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, maf,
          _("SU memory: allocation request"));
+
    NYD_OU;
    return rv;
 }
 
 void *
-su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
+su_mem_reallocate(void *ovp, uz size, uz no,
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -595,6 +598,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, maf,
          _("SU memory: reallocation request"));
+
    NYD_OU;
    return rv;
 }
@@ -661,11 +665,12 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
          "SU memory: free(NIL) from %s, line %" PRIu32 "\n"
          su_DBG_LOC_ARGS_USE);
 #endif
+
    NYD_OU;
 }
 
 void
-su_mem_set_conf(u32 mco, uz val){
+su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
    uz rmco;
    NYD_IN;
 
@@ -688,8 +693,12 @@ su_mem_set_conf(u32 mco, uz val){
       else
          a_mema_conf &= ~rmco;
    }
+
    NYD_OU;
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_MEM_ALLOC
 /* s-it-mode */

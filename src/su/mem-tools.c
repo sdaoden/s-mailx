@@ -18,7 +18,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_mem_tools
 #define su_SOURCE
 #define su_SOURCE_MEM_TOOLS
@@ -38,6 +37,7 @@ su_mem_find(void const *vp, s32 what, uz len){
    ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
 
    rv = LIKELY(len != 0) ? a_memt_find(vp, what, len) : NIL;
+
    NYD_OU;
    return rv;
 }
@@ -49,6 +49,7 @@ su_mem_rfind(void const *vp, s32 what, uz len){
    ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
 
    rv = LIKELY(len != 0) ? a_memt_rfind(vp, what, len) : NIL;
+
    NYD_OU;
    return rv;
 }
@@ -61,6 +62,7 @@ su_mem_cmp(void const *vpa, void const *vpb, uz len){
    ASSERT_NYD_EXEC(len == 0 || vpb != NIL, rv = 1);
 
    rv = LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
+
    NYD_OU;
    return rv;
 }
@@ -73,6 +75,7 @@ su_mem_copy(void *vp, void const *src, uz len){
 
    if(LIKELY(len > 0))
       a_memt_copy(vp, src, len);
+
    NYD_OU;
    return vp;
 }
@@ -85,6 +88,7 @@ su_mem_move(void *vp, void const *src, uz len){
 
    if(LIKELY(len > 0))
       a_memt_move(vp, src, len);
+
    NYD_OU;
    return vp;
 }
@@ -96,9 +100,13 @@ su_mem_set(void *vp, s32 what, uz len){
 
    if(LIKELY(len > 0))
       a_memt_set(vp, what, len);
+
    NYD_OU;
    return vp;
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_MEM_TOOLS
 /* s-it-mode */

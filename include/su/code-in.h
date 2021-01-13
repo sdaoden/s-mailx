@@ -166,7 +166,7 @@
 
 #define NELEM su_NELEM
 
-/* Not-Yet-Dead macros TODO stubs */
+/* Not-Yet-Dead macros */
 #define NYD_OU_LABEL su_NYD_OU_LABEL
 #define su__NYD_IN do{
 #define su__NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)

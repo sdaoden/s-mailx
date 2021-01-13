@@ -201,6 +201,7 @@
 #endif
 
 /* OS }}} */
+
 /* LANG {{{ */
 
 #ifndef __cplusplus
@@ -320,6 +321,7 @@ do{\
       "Wild C++ type==C type cast constrained not fullfilled!")
 
 /* LANG }}} */
+
 /* CC {{{ */
 
 #define su_CC_CLANG 0 /*!< \_ */
@@ -492,6 +494,7 @@ do{\
 #endif
 
 /* CC }}} */
+
 /* SUPPORT MACROS+ {{{ */
 
 /* USECASE_XY_DISABLED for tagging unused files:
@@ -1071,87 +1074,14 @@ enum{
 typedef su_s8 su_boole; /*!< The \SU boolean type (see \FAL0 etc.). */
 
 /* POD TYPE SUPPORT }}} */
-/* BASIC TYPE TRAITS {{{ */
 
-struct su_toolbox;
-/* plus PTF typedefs */
-
-/*! Create a new default instance of an object type, return it or \NIL.
- * See \r{su_clone_fun} for the meaning of \a{estate}. */
-typedef void *(*su_new_fun)(u32 estate);
-
-/*! Create a clone of \a{t}, and return it.
- * \a{estate} might be set to some \r{su_state_err_type}s to be turned to
- * non-fatal errors, and contain \r{su_state_err_flags} with additional
- * control requests.
- * Otherwise (\a{estate} is 0) \NIL can still be returned for
- * \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW}, dependent on the
- * global \r{su_state_get()} / \r{su_state_has()} setting,
- * as well as for other errors and with other \r{su_err_number}s, of course.
- * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
-typedef void *(*su_clone_fun)(void const *t, u32 estate);
-
-/*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or
- * \r{su_assign_fun}). */
-typedef void (*su_delete_fun)(void *self);
-
-/*! Assign \a{t}; see \r{su_clone_fun} for the meaning of \a{estate}.
- * In-place update of \SELF is (and should) not (be) assumed, but instead the
- * return value has to be used, with the exception as follows.
- * First all resources of \a{self} should be released (an operation which is
- * not supposed to fail), then the assignment be performed.
- * If this fails, \a{self} should be turned to cleared state again,
- * and \NIL should be returned.
- *
- * \remarks{This function is not used by (object owning) \r{COLL} unless
- * \r{su_STATE_ERR_NIL_IS_VALID_OBJECT} is set.  Regardless, if \NIL is
- * returned to indicate error then the caller which passed a non-\NIL object
- * is responsible for deletion or taking other appropriate steps.}
- *
- * \remarks{If \a{self} and \a{t} are \r{COLL}, then if assignment fails then
- * whereas \a{self} will not manage any elements, it has been assigned \a{t}'s
- * possible existent \r{su_toolbox} as well as other attributes.
- * Some \r{COLL} will provide an additional \c{assign_elems()} function.} */
-typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
-
-/*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is "less
- * than \a{b}", 0 on equality, and a value greater than 0 if \a{a} is
- * "greate than \a{b}". */
-typedef su_sz (*su_compare_fun)(void const *a, void const *b);
-
-/*! Create a hash that reproducibly represents \SELF. */
-typedef su_uz (*su_hash_fun)(void const *self);
-
-/* Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}! */
-/*! A toolbox provides object handling knowledge to \r{COLL}.
- * Also see \r{su_TOOLBOX_I9R()}. */
-struct su_toolbox{
-   su_clone_fun tb_clone; /*!< \copydoc{su_clone_fun}. */
-   su_delete_fun tb_delete; /*!< \copydoc{su_delete_fun}. */
-   su_assign_fun tb_assign; /*!< \copydoc{su_assign_fun}. */
-   su_compare_fun tb_compare; /*!< \copydoc{su_compare_fun}. */
-   su_hash_fun tb_hash; /*!< \copydoc{su_hash_fun}. */
-};
-
-/* Use C-style casts, not and ever su_R()! */
-/*! Initialize a \r{su_toolbox}. */
-#define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
-{\
-   su_FIELD_INITN(tb_clone) (su_clone_fun)(CLONE),\
-   su_FIELD_INITN(tb_delete) (su_delete_fun)(DELETE),\
-   su_FIELD_INITN(tb_assign) (su_assign_fun)(ASSIGN),\
-   su_FIELD_INITN(tb_compare) (su_compare_fun)(COMPARE),\
-   su_FIELD_INITN(tb_hash) (su_hash_fun)(HASH)\
-}
-
-/* BASIC TYPE TRAITS }}} */
-/* BASIC C INTERFACE (SYMBOLS) {{{ */
-
-/*! Byte order mark macro; there are also \r{su_bom}, \r{su_BOM_IS_BIG()} and
- * \r{su_BOM_IS_LITTLE()}. */
-#define su_BOM 0xFEFFu
+/* BASIC C INTERFACE (STATE) {{{ */
 
 /* su_state.. machinery: first byte: global log instance.. */
+
+/*! Byte order mark macro; there are also \r{su_bom}, \r{su_BOM_IS_BIG()}
+ * and \r{su_BOM_IS_LITTLE()}. */
+#define su_BOM 0xFEFFu
 
 /*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix,
  * for \r{su_log_set_level()}. */
@@ -1484,7 +1414,82 @@ EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif
 
-/* BASIC C INTERFACE (SYMBOLS) }}} */
+/* BASIC C INTERFACE (STATE) }}} */
+
+/* BASIC TYPE TOOLBOX AND TRAITS {{{ */
+
+struct su_toolbox;
+/* plus PTF typedefs */
+
+/*! Create a new default instance of an object type, return it or \NIL.
+ * See \r{su_clone_fun} for the meaning of \a{estate}. */
+typedef void *(*su_new_fun)(u32 estate);
+
+/*! Create a clone of \a{t}, and return it.
+ * \a{estate} might be set to some \r{su_state_err_type}s to be turned to
+ * non-fatal errors, and contain \r{su_state_err_flags} with additional
+ * control requests.
+ * Otherwise (\a{estate} is 0) \NIL can still be returned for
+ * \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW}, dependent on the
+ * global \r{su_state_get()} / \r{su_state_has()} setting,
+ * as well as for other errors and with other \r{su_err_number}s, of course.
+ * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
+typedef void *(*su_clone_fun)(void const *t, u32 estate);
+
+/*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or
+ * \r{su_assign_fun}). */
+typedef void (*su_delete_fun)(void *self);
+
+/*! Assign \a{t}; see \r{su_clone_fun} for the meaning of \a{estate}.
+ * In-place update of \SELF is (and should) not (be) assumed, but instead the
+ * return value has to be used, with the exception as follows.
+ * First all resources of \a{self} should be released (an operation which is
+ * not supposed to fail), then the assignment be performed.
+ * If this fails, \a{self} should be turned to cleared state again,
+ * and \NIL should be returned.
+ *
+ * \remarks{This function is not used by (object owning) \r{COLL} unless
+ * \r{su_STATE_ERR_NIL_IS_VALID_OBJECT} is set.  Regardless, if \NIL is
+ * returned to indicate error then the caller which passed a non-\NIL object
+ * is responsible for deletion or taking other appropriate steps.}
+ *
+ * \remarks{If \a{self} and \a{t} are \r{COLL}, then if assignment fails then
+ * whereas \a{self} will not manage any elements, it has been assigned \a{t}'s
+ * possible existent \r{su_toolbox} as well as other attributes.
+ * Some \r{COLL} will provide an additional \c{assign_elems()} function.} */
+typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
+
+/*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is "less
+ * than \a{b}", 0 on equality, and a value greater than 0 if \a{a} is
+ * "greate than \a{b}". */
+typedef su_sz (*su_compare_fun)(void const *a, void const *b);
+
+/*! Create a hash that reproducibly represents \SELF. */
+typedef su_uz (*su_hash_fun)(void const *self);
+
+/* Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}! */
+/*! A toolbox provides object handling knowledge to \r{COLL}.
+ * Also see \r{su_TOOLBOX_I9R()}. */
+struct su_toolbox{
+   su_clone_fun tb_clone; /*!< \copydoc{su_clone_fun}. */
+   su_delete_fun tb_delete; /*!< \copydoc{su_delete_fun}. */
+   su_assign_fun tb_assign; /*!< \copydoc{su_assign_fun}. */
+   su_compare_fun tb_compare; /*!< \copydoc{su_compare_fun}. */
+   su_hash_fun tb_hash; /*!< \copydoc{su_hash_fun}. */
+};
+
+/* Use C-style casts, not and ever su_R()! */
+/*! Initialize a \r{su_toolbox}. */
+#define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
+{\
+   su_FIELD_INITN(tb_clone) (su_clone_fun)(CLONE),\
+   su_FIELD_INITN(tb_delete) (su_delete_fun)(DELETE),\
+   su_FIELD_INITN(tb_assign) (su_assign_fun)(ASSIGN),\
+   su_FIELD_INITN(tb_compare) (su_compare_fun)(COMPARE),\
+   su_FIELD_INITN(tb_hash) (su_hash_fun)(HASH)\
+}
+
+/* BASIC TYPE TRAITS }}} */
 
 C_DECL_END
 #include <su/code-ou.h>
@@ -1567,7 +1572,205 @@ public:
 };
 
 /* POD TYPE SUPPORT }}} */
-/* BASIC TYPE TRAITS {{{ */
+
+/* BASIC C++ INTERFACE (STATE) {{{ */
+
+// FIXME C++ does not yet expose the public C EXPORT_DATA symbols
+
+// All instanceless static encapsulators.
+class bom;
+class err;
+class log;
+class state;
+
+/*! \copydoc{su_bom} */
+class bom{
+public:
+   /*! \copydoc{su_BOM} */
+   static u16 host(void) {return su_BOM;}
+
+   /*! \copydoc{su_bom_little} */
+   static u16 little(void) {return su_bom_little;}
+
+   /*! \copydoc{su_bom_big} */
+   static u16 big(void) {return su_bom_big;}
+};
+
+/*! \_ */
+class err{
+public:
+   /*! \copydoc{su_err_number} */
+   enum err_number{
+#ifdef DOXYGEN
+      enone,      /*!< No error. */
+      enotobacco  /*!< No such errno, fallback: no mapping exists. */
+#else
+      su__CXX_ERR_NUMBER_ENUM
+# undef su__CXX_ERR_NUMBER_ENUM
+#endif
+   };
+
+   /*! \copydoc{su_err_no()} */
+   static s32 no(void) {return su_err_no();}
+
+   /*! \copydoc{su_err_set_no()} */
+   static void set_no(s32 eno) {su_err_set_no(eno);}
+
+   /*! \copydoc{su_err_doc()} */
+   static char const *doc(s32 eno) {return su_err_doc(eno);}
+
+   /*! \copydoc{su_err_name()} */
+   static char const *name(s32 eno) {return su_err_name(eno);}
+
+   /*! \copydoc{su_err_from_name()} */
+   static s32 from_name(char const *name) {return su_err_from_name(name);}
+
+   /*! \copydoc{su_err_no_via_errno()} */
+   static s32 no_via_errno(void) {return su_err_no_via_errno();}
+};
+
+/*! \_ */
+class log{
+public:
+   /*! \copydoc{su_log_level} */
+   enum level{
+      emerg = su_LOG_EMERG, /*!< \copydoc{su_LOG_EMERG} */
+      alert = su_LOG_ALERT, /*!< \copydoc{su_LOG_ALERT} */
+      crit = su_LOG_CRIT, /*!< \copydoc{su_LOG_CRIT} */
+      err = su_LOG_ERR, /*!< \copydoc{su_LOG_ERR} */
+      warn = su_LOG_WARN, /*!< \copydoc{su_LOG_WARN} */
+      notice = su_LOG_NOTICE, /*!< \copydoc{su_LOG_NOTICE} */
+      info = su_LOG_INFO, /*!< \copydoc{su_LOG_INFO} */
+      debug = su_LOG_DEBUG /*!< \copydoc{su_LOG_DEBUG} */
+   };
+
+   /*! \copydoc{su_log_flags} */
+   enum flags{
+      f_core = su_LOG_F_CORE, /*!< \copydoc{su_LOG_F_CORE} */
+   };
+
+   // Log functions of various sort.
+   // Regardless of the level these also log if state_debug|state_verbose.
+   // The vp is a &va_list
+   /*! \copydoc{su_log_get_level()} */
+   static level get_level(void) {return S(level,su_log_get_level());}
+
+   /*! \copydoc{su_log_set_level()} */
+   static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
+
+   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+   static boole get_show_level(void){
+      return su_state_has(su_STATE_LOG_SHOW_LEVEL);
+   }
+
+   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+   static void set_show_level(boole on){
+      if(on)
+         su_state_set(su_STATE_LOG_SHOW_LEVEL);
+      else
+         su_state_clear(su_STATE_LOG_SHOW_LEVEL);
+   }
+
+   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
+   static boole get_show_pid(void){
+      return su_state_has(su_STATE_LOG_SHOW_PID);
+   }
+
+   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
+   static void set_show_pid(boole on){
+      if(on)
+         su_state_set(su_STATE_LOG_SHOW_PID);
+      else
+         su_state_clear(su_STATE_LOG_SHOW_PID);
+   }
+
+   /*! \copydoc{su_log_would_write()} */
+   static boole would_write(level lvl){
+      return su_log_would_write(S(su_log_level,lvl));
+   }
+
+   /*! \copydoc{su_log_write()} */
+   static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
+
+   /*! \copydoc{su_log_vwrite()} */
+   static void vwrite(BITENUM_IS(u32,level) lvl, char const *fmt, void *vp){
+      su_log_vwrite(lvl, fmt, vp);
+   }
+
+   /*! \copydoc{su_perr()} */
+   static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
+
+   /*! \copydoc{su_log_lock()} */
+   static void lock(void) {su_log_lock();}
+
+   /*! \copydoc{su_log_unlock()} */
+   static void unlock(void) {su_log_unlock();}
+};
+
+/*! \_ */
+class state{
+public:
+   /*! \copydoc{su_state_err_type} */
+   enum err_type{
+      /*! \copydoc{su_STATE_ERR_NOMEM} */
+      err_nomem = su_STATE_ERR_NOMEM,
+      /*! \copydoc{su_STATE_ERR_OVERFLOW} */
+      err_overflow = su_STATE_ERR_OVERFLOW
+   };
+
+   /*! \copydoc{su_state_err_flags} */
+   enum err_flags{
+      /*! \copydoc{su_STATE_ERR_TYPE_MASK} */
+      err_type_mask = su_STATE_ERR_TYPE_MASK,
+      /*! \copydoc{su_STATE_ERR_PASS} */
+      err_pass = su_STATE_ERR_PASS,
+      /*! \copydoc{su_STATE_ERR_NOPASS} */
+      err_nopass = su_STATE_ERR_NOPASS,
+      /*! \copydoc{su_STATE_ERR_NOERRNO} */
+      err_noerrno = su_STATE_ERR_NOERRNO,
+      /*! \copydoc{su_STATE_ERR_MASK} */
+      err_mask = su_STATE_ERR_MASK
+   };
+
+   /*! \copydoc{su_state_flags} */
+   enum flags{
+      /*! \copydoc{su_STATE_NONE} */
+      none = su_STATE_NONE,
+      /*! \copydoc{su_STATE_DEBUG} */
+      debug = su_STATE_DEBUG,
+      /*! \copydoc{su_STATE_VERBOSE} */
+      verbose = su_STATE_VERBOSE,
+      /*! \copydoc{su_STATE_REPRODUCIBLE} */
+      reproducible = su_STATE_REPRODUCIBLE
+   };
+
+   /*! \copydoc{su_program} */
+   static char const *get_program(void) {return su_program;}
+
+   /*! \copydoc{su_program} */
+   static void set_program(char const *name) {su_program = name;}
+
+   /*! \copydoc{su_state_get()} */
+   static boole get(void) {return su_state_get();}
+
+   /*! \copydoc{su_state_has()} */
+   static boole has(uz state) {return su_state_has(state);}
+
+   /*! \copydoc{su_state_set()} */
+   static void set(uz state) {su_state_set(state);}
+
+   /*! \copydoc{su_state_clear()} */
+   static void clear(uz state) {su_state_clear(state);}
+
+   /*! \copydoc{su_state_err()} */
+   static s32 err(err_type err, uz state, char const *msg_or_nil=NIL){
+      return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
+   }
+};
+
+/* BASIC C++ INTERFACE (SYMBOLS) }}} */
+
+/* BASIC TYPE TOOLBOX AND TRAITS {{{ */
 
 template<class T> class type_traits;
 template<class T> struct type_toolbox;
@@ -1805,202 +2008,6 @@ inline T const &get_round_up2(T const &a, T const &b){
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
 /* BASIC TYPE TRAITS }}} */
-/* BASIC C++ INTERFACE (SYMBOLS) {{{ */
-
-// FIXME C++ does not yet expose the public C EXPORT_DATA symbols
-
-// All instanceless static encapsulators.
-class bom;
-class err;
-class log;
-class state;
-
-/*! \copydoc{su_bom} */
-class bom{
-public:
-   /*! \copydoc{su_BOM} */
-   static u16 host(void) {return su_BOM;}
-
-   /*! \copydoc{su_bom_little} */
-   static u16 little(void) {return su_bom_little;}
-
-   /*! \copydoc{su_bom_big} */
-   static u16 big(void) {return su_bom_big;}
-};
-
-/*! \_ */
-class err{
-public:
-   /*! \copydoc{su_err_number} */
-   enum err_number{
-#ifdef DOXYGEN
-      enone,      /*!< No error. */
-      enotobacco  /*!< No such errno, fallback: no mapping exists. */
-#else
-      su__CXX_ERR_NUMBER_ENUM
-# undef su__CXX_ERR_NUMBER_ENUM
-#endif
-   };
-
-   /*! \copydoc{su_err_no()} */
-   static s32 no(void) {return su_err_no();}
-
-   /*! \copydoc{su_err_set_no()} */
-   static void set_no(s32 eno) {su_err_set_no(eno);}
-
-   /*! \copydoc{su_err_doc()} */
-   static char const *doc(s32 eno) {return su_err_doc(eno);}
-
-   /*! \copydoc{su_err_name()} */
-   static char const *name(s32 eno) {return su_err_name(eno);}
-
-   /*! \copydoc{su_err_from_name()} */
-   static s32 from_name(char const *name) {return su_err_from_name(name);}
-
-   /*! \copydoc{su_err_no_via_errno()} */
-   static s32 no_via_errno(void) {return su_err_no_via_errno();}
-};
-
-/*! \_ */
-class log{
-public:
-   /*! \copydoc{su_log_level} */
-   enum level{
-      emerg = su_LOG_EMERG, /*!< \copydoc{su_LOG_EMERG} */
-      alert = su_LOG_ALERT, /*!< \copydoc{su_LOG_ALERT} */
-      crit = su_LOG_CRIT, /*!< \copydoc{su_LOG_CRIT} */
-      err = su_LOG_ERR, /*!< \copydoc{su_LOG_ERR} */
-      warn = su_LOG_WARN, /*!< \copydoc{su_LOG_WARN} */
-      notice = su_LOG_NOTICE, /*!< \copydoc{su_LOG_NOTICE} */
-      info = su_LOG_INFO, /*!< \copydoc{su_LOG_INFO} */
-      debug = su_LOG_DEBUG /*!< \copydoc{su_LOG_DEBUG} */
-   };
-
-   /*! \copydoc{su_log_flags} */
-   enum flags{
-      f_core = su_LOG_F_CORE, /*!< \copydoc{su_LOG_F_CORE} */
-   };
-
-   // Log functions of various sort.
-   // Regardless of the level these also log if state_debug|state_verbose.
-   // The vp is a &va_list
-   /*! \copydoc{su_log_get_level()} */
-   static level get_level(void) {return S(level,su_log_get_level());}
-
-   /*! \copydoc{su_log_set_level()} */
-   static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
-
-   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
-   static boole get_show_level(void){
-      return su_state_has(su_STATE_LOG_SHOW_LEVEL);
-   }
-
-   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
-   static void set_show_level(boole on){
-      if(on)
-         su_state_set(su_STATE_LOG_SHOW_LEVEL);
-      else
-         su_state_clear(su_STATE_LOG_SHOW_LEVEL);
-   }
-
-   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
-   static boole get_show_pid(void){
-      return su_state_has(su_STATE_LOG_SHOW_PID);
-   }
-
-   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
-   static void set_show_pid(boole on){
-      if(on)
-         su_state_set(su_STATE_LOG_SHOW_PID);
-      else
-         su_state_clear(su_STATE_LOG_SHOW_PID);
-   }
-
-   /*! \copydoc{su_log_would_write()} */
-   static boole would_write(level lvl){
-      return su_log_would_write(S(su_log_level,lvl));
-   }
-
-   /*! \copydoc{su_log_write()} */
-   static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
-
-   /*! \copydoc{su_log_vwrite()} */
-   static void vwrite(BITENUM_IS(u32,level) lvl, char const *fmt, void *vp){
-      su_log_vwrite(lvl, fmt, vp);
-   }
-
-   /*! \copydoc{su_perr()} */
-   static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
-
-   /*! \copydoc{su_log_lock()} */
-   static void lock(void) {su_log_lock();}
-
-   /*! \copydoc{su_log_unlock()} */
-   static void unlock(void) {su_log_unlock();}
-};
-
-/*! \_ */
-class state{
-public:
-   /*! \copydoc{su_state_err_type} */
-   enum err_type{
-      /*! \copydoc{su_STATE_ERR_NOMEM} */
-      err_nomem = su_STATE_ERR_NOMEM,
-      /*! \copydoc{su_STATE_ERR_OVERFLOW} */
-      err_overflow = su_STATE_ERR_OVERFLOW
-   };
-
-   /*! \copydoc{su_state_err_flags} */
-   enum err_flags{
-      /*! \copydoc{su_STATE_ERR_TYPE_MASK} */
-      err_type_mask = su_STATE_ERR_TYPE_MASK,
-      /*! \copydoc{su_STATE_ERR_PASS} */
-      err_pass = su_STATE_ERR_PASS,
-      /*! \copydoc{su_STATE_ERR_NOPASS} */
-      err_nopass = su_STATE_ERR_NOPASS,
-      /*! \copydoc{su_STATE_ERR_NOERRNO} */
-      err_noerrno = su_STATE_ERR_NOERRNO,
-      /*! \copydoc{su_STATE_ERR_MASK} */
-      err_mask = su_STATE_ERR_MASK
-   };
-
-   /*! \copydoc{su_state_flags} */
-   enum flags{
-      /*! \copydoc{su_STATE_NONE} */
-      none = su_STATE_NONE,
-      /*! \copydoc{su_STATE_DEBUG} */
-      debug = su_STATE_DEBUG,
-      /*! \copydoc{su_STATE_VERBOSE} */
-      verbose = su_STATE_VERBOSE,
-      /*! \copydoc{su_STATE_REPRODUCIBLE} */
-      reproducible = su_STATE_REPRODUCIBLE
-   };
-
-   /*! \copydoc{su_program} */
-   static char const *get_program(void) {return su_program;}
-
-   /*! \copydoc{su_program} */
-   static void set_program(char const *name) {su_program = name;}
-
-   /*! \copydoc{su_state_get()} */
-   static boole get(void) {return su_state_get();}
-
-   /*! \copydoc{su_state_has()} */
-   static boole has(uz state) {return su_state_has(state);}
-
-   /*! \copydoc{su_state_set()} */
-   static void set(uz state) {su_state_set(state);}
-
-   /*! \copydoc{su_state_clear()} */
-   static void clear(uz state) {su_state_clear(state);}
-
-   /*! \copydoc{su_state_err()} */
-   static s32 err(err_type err, uz state, char const *msg_or_nil=NIL){
-      return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
-   }
-};
-
-/* BASIC C++ INTERFACE (SYMBOLS) }}} */
 
 NSPC_END(su)
 #include <su/code-ou.h>

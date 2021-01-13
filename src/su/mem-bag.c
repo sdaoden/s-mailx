@@ -19,7 +19,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_mem_bag
 #define su_SOURCE
 #define su_SOURCE_MEM_BAG
@@ -76,15 +75,15 @@ CTAV(S(u32,su_MEM_BAG_ALLOC_MUSTFAIL) == S(u32,su_MEM_ALLOC_MUSTFAIL));
 #ifdef su_HAVE_MEM_BAG_AUTO
 struct su__mem_bag_auto_buf{
    struct su__mem_bag_auto_buf *mbab_last;
-   char *mbab_bot;      /* For _fixate(): keep startup memory lingering */
-   char *mbab_relax;    /* !NIL: used by _relax_unroll(), not .mbab_bot */
-   char *mbab_caster;   /* Point of casting off memory */
+   char *mbab_bot; /* For _fixate(): keep startup memory lingering */
+   char *mbab_relax; /* !NIL: used by _relax_unroll(), not .mbab_bot */
+   char *mbab_caster; /* Point of casting off memory */
    char mbab_buf[VFIELD_SIZE(0)]; /* MEMBAG_HULL: void*[] */
 };
 
 struct su__mem_bag_auto_huge{
    struct su__mem_bag_auto_huge *mbah_last;
-   char mbah_buf[VFIELD_SIZE(0)];   /* MEMBAG_HULL: void* to real chunk */
+   char mbah_buf[VFIELD_SIZE(0)]; /* MEMBAG_HULL: void* to real chunk */
 };
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
@@ -92,7 +91,7 @@ struct su__mem_bag_auto_huge{
 struct su__mem_bag_lofi_pool{
    struct su__mem_bag_lofi_pool *mblp_last;
    char *mblp_caster;
-   char mblp_buf[VFIELD_SIZE(0)];   /* su__mem_bag_lofi_chunk* */
+   char mblp_buf[VFIELD_SIZE(0)]; /* su__mem_bag_lofi_chunk* */
 };
 
 struct su__mem_bag_lofi_chunk{
@@ -149,6 +148,7 @@ a_membag_lofi_free_top(struct su_mem_bag *self){
       self->mb_lofi_pool = p.mblp;
       su_FREE(mblpp);
    }
+
    NYD2_OU;
    return self;
 }
@@ -169,6 +169,7 @@ a_membag_free_auto_hulls(void *vp, char *maxp){
          su_FREE(*p.cp);
    }
 # endif
+
    NYD2_OU;
 }
 
@@ -185,6 +186,7 @@ a_membag_free_auto_huge_hull(void *vp){
       su_FREE(p.vp[0]);
    }
 # endif
+
    NYD2_OU;
 }
 #endif /* su_HAVE_MEM_BAG_AUTO */
@@ -210,6 +212,7 @@ a_membag_free_lofi_hulls(void *vp, char *maxp){
       }
    }
 # endif
+
    NYD2_OU;
 }
 #endif /* su_HAVE_MEM_BAG_LOFI */
@@ -229,6 +232,7 @@ su_mem_bag_create(struct su_mem_bag *self, uz bsz){
    self->mb_bsz = S(u32,bsz);
    bsz -= a_MEMBAG_BSZ_GAP;
    self->mb_bsz_wo_gap = S(u32,bsz);
+
    NYD_OU;
    return self;
 }
@@ -272,6 +276,7 @@ su_mem_bag_gut(struct su_mem_bag *self){
       }
    }
 #endif
+
    NYD_OU;
 }
 
@@ -389,6 +394,7 @@ su_mem_bag_push(struct su_mem_bag *self, struct su_mem_bag *that_one){
    that_one->mb_outer_save = that_one->mb_outer;
    that_one->mb_outer = self->mb_top;
    self->mb_top = that_one;
+
    NYD_OU;
    return self;
 }
@@ -411,6 +417,7 @@ su_mem_bag_pop(struct su_mem_bag *self, struct su_mem_bag *that_one){
       if(mbp == that_one)
          break;
    }
+
    NYD_OU;
    return self;
 }
@@ -514,8 +521,8 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 }
 
 void *
-su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
-      su_DBG_LOC_ARGS_DECL){
+su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -637,6 +644,7 @@ jhave_pool:;
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: auto allocation request"));
+
 jleave:
    NYD_OU;
    return rv;
@@ -656,6 +664,7 @@ su_mem_bag_lofi_snap_create(struct su_mem_bag *self){
    /* XXX Before SU this allocated one and returned that, now we do
     * XXX have no real debug support no more... */
    rv = self->mb_lofi_top;
+
    NYD2_OU;
    return rv;
 }
@@ -687,8 +696,8 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 }
 
 void *
-su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
-      su_DBG_LOC_ARGS_DECL){
+su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -776,6 +785,7 @@ jhave_pool:
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: lofi allocation request"));
+
 jleave:
    NYD_OU;
    return rv;
@@ -832,4 +842,7 @@ jeinval:
 
 #endif /* su_HAVE_MEM_BAG */
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_MEM_BAG
 /* s-it-mode */

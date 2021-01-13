@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_utf
 #define su_SOURCE
 #define su_SOURCE_UTF
@@ -181,9 +180,13 @@ j1:
    bp[0] = S(char,catp->enc_leader) | S(char,c);
 j0:
    bp[catp->enc_lval] = '\0';
+
    NYD_OU;
    return catp->enc_lval;
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_UTF
 /* s-it-mode */
