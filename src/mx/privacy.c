@@ -16,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE privacy
 #define mx_SOURCE
 #define mx_SOURCE_PRIVACY
@@ -143,4 +142,7 @@ mx_privacy_decrypt(struct message *mp, char const *to, char const *cc,
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_XTLS */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_PRIVACY
 /* s-it-mode */

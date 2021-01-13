@@ -16,9 +16,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE cmd_cnd
 #define mx_SOURCE
+#define mx_SOURCE_CMD_CND
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -750,4 +750,7 @@ mx_cnd_if_stack_del(struct mx_go_data_ctx *gdcp){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_CND
 /* s-it-mode */

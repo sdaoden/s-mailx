@@ -33,9 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE cmd_head
 #define mx_SOURCE
+#define mx_SOURCE_CMD_HEAD
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1120,4 +1120,7 @@ print_headers(int const *msgvec, boole only_marked,
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_HEAD
 /* s-it-mode */

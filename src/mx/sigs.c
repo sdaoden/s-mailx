@@ -33,9 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE sigs
 #define mx_SOURCE
+#define mx_SOURCE_SIGS
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -551,4 +551,7 @@ mx__nyd_oncrash(int signo){
 #endif /* DVLOR(1,0) */
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_SIGS
 /* s-it-mode */

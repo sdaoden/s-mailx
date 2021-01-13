@@ -23,7 +23,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE child
 #define mx_SOURCE
 #define mx_SOURCE_CHILD
@@ -640,4 +639,7 @@ mx_child_wait(struct mx_child_ctx *ccp){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CHILD
 /* s-it-mode */

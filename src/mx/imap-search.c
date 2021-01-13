@@ -39,9 +39,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE imap_search
 #define mx_SOURCE
+#define mx_SOURCE_IMAP_SEARCH
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -915,4 +915,7 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_IMAP_SEARCH */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_IMAP_SEARCH
 /* s-it-mode */

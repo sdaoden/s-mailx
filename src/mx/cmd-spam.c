@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Implementation of spam.h.
+ *@ Implementation of cmd-spam.h.
  *
  * Copyright (c) 2013 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -16,9 +16,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
-#define su_FILE spam
+#define su_FILE cmd_spam
 #define mx_SOURCE
+#define mx_SOURCE_CMD_SPAM
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -918,4 +918,7 @@ c_spam_spam(void *vp){
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_SPAM */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_SPAM
 /* s-it-mode */

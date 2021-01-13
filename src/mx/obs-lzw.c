@@ -61,9 +61,9 @@
  *
  * Adopted for Heirloom mailx by Gunnar Ritter.
  */
-#undef su_FILE
 #define su_FILE obs_lzw
 #define mx_SOURCE
+#define mx_SOURCE_OBS_LZW
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -761,3 +761,7 @@ zalloc(FILE *fp)
 
 #include "su/code-ou.h"
 #endif /* ndef mx_HAVE_IMAP */
+
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_OBS_LZW

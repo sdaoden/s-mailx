@@ -33,7 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE cmd_edit
 #define mx_SOURCE
 #define mx_SOURCE_CMD_EDIT
@@ -275,4 +274,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_EDIT
 /* s-it-mode */

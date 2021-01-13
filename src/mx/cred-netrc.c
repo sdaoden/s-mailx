@@ -20,7 +20,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE cred_netrc
 #define mx_SOURCE
 #define mx_SOURCE_CRED_NETRC
@@ -636,4 +635,7 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_NETRC */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CRED_NETRC
 /* s-it-mode */

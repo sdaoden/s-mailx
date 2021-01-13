@@ -33,9 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE send
 #define mx_SOURCE
+#define mx_SOURCE_SEND
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1790,4 +1790,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_SEND
 /* s-it-mode */

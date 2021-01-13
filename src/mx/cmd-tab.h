@@ -899,5 +899,4 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #undef EM
 
 #endif /* mx_CMD_TAB_H */
-
 /* s-it-mode */

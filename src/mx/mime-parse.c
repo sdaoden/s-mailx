@@ -33,9 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE mime_parse
 #define mx_SOURCE
+#define mx_SOURCE_MIME_PARSE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -474,4 +474,7 @@ mx_mime_parse_msg(struct message *mp, BITENUM_IS(u32,mx_mime_parse_flags) mpf){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_MIME_PARSE
 /* s-it-mode */

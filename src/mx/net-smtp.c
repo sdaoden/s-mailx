@@ -17,7 +17,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE net_smtp
 #define mx_SOURCE
 #define mx_SOURCE_NET_SMTP
@@ -769,6 +768,7 @@ j_leave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_SMTP */
-#undef mx_SOURCE_NET_SMTP
 #undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_NET_SMTP
 /* s-it-mode */

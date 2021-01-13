@@ -39,7 +39,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE net_pop3
 #define mx_SOURCE
 #define mx_SOURCE_NET_POP3
@@ -1195,6 +1194,7 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_POP3 */
-#undef mx_SOURCE_NET_POP3
 #undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_NET_POP3
 /* s-it-mode */

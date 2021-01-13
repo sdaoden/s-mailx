@@ -16,9 +16,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE ignore
 #define mx_SOURCE
+#define mx_SOURCE_IGNORE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -857,4 +857,7 @@ mx_ignore_lookup(struct mx_ignore const *self, char const *dat, uz len){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_IGNORE
 /* s-it-mode */

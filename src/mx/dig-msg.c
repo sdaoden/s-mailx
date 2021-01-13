@@ -23,7 +23,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE dig_msg
 #define mx_SOURCE
 #define mx_SOURCE_DIG_MSG
@@ -1324,4 +1323,7 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_DIG_MSG
 /* s-it-mode */

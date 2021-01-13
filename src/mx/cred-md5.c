@@ -38,7 +38,6 @@ without express or implied warranty of any kind.
 These notices must be retained in any copies of any part of this
 documentation and/or software.
  */
-#undef su_FILE
 #define su_FILE cred_md5
 #define mx_SOURCE
 #define mx_SOURCE_CRED_MD5
@@ -512,4 +511,7 @@ mx_md5_hmac(unsigned char *text, int text_len, unsigned char *key,
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_MD5 */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CRED_MD5
 /* s-it-mode */
