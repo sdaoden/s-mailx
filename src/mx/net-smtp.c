@@ -469,4 +469,6 @@ j_leave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_SMTP */
+#undef mx_SOURCE_NET_SMTP
+#undef su_FILE
 /* s-it-mode */
