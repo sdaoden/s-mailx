@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_core_errors
 #define su_SOURCE
 #define su_SOURCE_CORE_ERRORS
@@ -57,11 +56,11 @@ a_corerr_map_from_no(s32 eno){
 
    cemp = &a_corerr_map[su__ERR_NUMBER_VOIDOFF];
 
-   if(UCMP(z, su_ABS(eno), <=, S(su__ERR_NUMBER_TYPE,-1))){
-      for(adat = a_corerr_no2mapoff, asz = su_NELEM(a_corerr_no2mapoff);
+   if(UCMP(z, ABS(eno), <=, S(su__ERR_NUMBER_TYPE,-1))){
+      for(adat = a_corerr_no2mapoff, asz = NELEM(a_corerr_no2mapoff);
             asz != 0; asz >>= 1){
          tmp = &adat[asz >> 1];
-         if((ecmp = (s32)(S(su__ERR_NUMBER_TYPE,eno) - (*tmp)[0])) == 0){
+         if((ecmp = S(s32,S(su__ERR_NUMBER_TYPE,eno) - (*tmp)[0])) == 0){
             cemp = &a_corerr_map[(*tmp)[1]];
             break;
          }
@@ -71,6 +70,7 @@ a_corerr_map_from_no(s32 eno){
          }
       }
    }
+
    NYD2_OU;
    return cemp;
 }
@@ -101,6 +101,7 @@ su_err_name(s32 eno){
 
    cemp = a_corerr_map_from_no(eno);
    rv = &a_corerr_names[cemp->cem_nameoff];
+
    NYD2_OU;
    return rv;
 }
@@ -151,4 +152,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CORE_ERRORS
 /* s-it-mode */

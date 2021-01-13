@@ -16,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_cs_find
 #define su_SOURCE
 #define su_SOURCE_CS_FIND
@@ -44,6 +43,7 @@ su_cs_find(char const *cp, char const *xp){
       }
       cp = NIL;
    }
+
 jleave:
    NYD_OU;
    return UNCONST(char*,cp);
@@ -64,6 +64,7 @@ su_cs_find_c(char const *cp, char xc){
          break;
       }
    }
+
    NYD_OU;
    return UNCONST(char*,cp);
 }
@@ -85,6 +86,7 @@ su_cs_find_case(char const *cp, char const *xp){
       }
       cp = NIL;
    }
+
 jleave:
    NYD_OU;
    return UNCONST(char*,cp);
@@ -143,6 +145,7 @@ su_cs_starts_with(char const *cp, char const *xp){
          if((c = *cp) != xc)
             break;
       }
+
    rv = FAL0;
 jleave:
    NYD_OU;
@@ -167,6 +170,7 @@ su_cs_starts_with_n(char const *cp, char const *xp, uz n){
          if(--n == 0)
             goto jleave;
       }
+
    rv = FAL0;
 jleave:
    NYD_OU;
@@ -190,6 +194,7 @@ su_cs_starts_with_case(char const *cp, char const *xp){
          if((c = su_cs_to_lower(*cp)) != xc)
             break;
       }
+
    rv = FAL0;
 jleave:
    NYD_OU;
@@ -215,6 +220,7 @@ su_cs_starts_with_case_n(char const *cp, char const *xp, uz n){
          if(--n == 0)
             goto jleave;
       }
+
    rv = FAL0;
 jleave:
    NYD_OU;
@@ -222,4 +228,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CS_FIND
 /* s-it-mode */

@@ -19,7 +19,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_core_code
 #define su_SOURCE
 #define su_SOURCE_CORE_CODE
@@ -197,6 +196,7 @@ su__glock(enum su__glock_type gt){
    ASSERT(a_core_glock_recno[gt] != UZ_MAX);
    ++a_core_glock_recno[gt];
 # endif
+
    NYD2_OU;
 }
 
@@ -215,6 +215,7 @@ su__gunlock(enum su__glock_type gt){
    ASSERT(a_core_glock_recno[gt] > 0);
    --a_core_glock_recno[gt];
 # endif
+
    NYD2_OU;
 }
 #endif /* su_HAVE_MT */
@@ -263,6 +264,7 @@ jdolog:
 
    if(!(state & su_STATE_ERR_NOERRNO))
       su_err_set_no(eno);
+
    NYD2_OU;
    return eno;
 }
@@ -297,6 +299,7 @@ su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
       a_evlog(lvl, fmt, va);
       va_end(va);
    }
+
    NYD_OU;
 }
 
@@ -306,6 +309,7 @@ su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, void *vp){
 
    if(su_log_would_write(lvl))
       a_evlog(lvl, fmt, *S(va_list*,vp));
+
    NYD_OU;
 }
 
@@ -338,7 +342,7 @@ su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
 
       cnip = &a_core_nyd_infos[0];
 
-      if(a_core_nyd_curr != su_NELEM(a_core_nyd_infos))
+      if(a_core_nyd_curr != NELEM(a_core_nyd_infos))
          cnip += a_core_nyd_curr++;
       else
          a_core_nyd_curr = 1;
@@ -356,14 +360,20 @@ su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
    struct a_core_nyd_info const *cnip;
 
    a_core_nyd_skip = TRU1;
-   if(a_core_nyd_infos[su_NELEM(a_core_nyd_infos) - 1].cni_file != NULL)
+
+   if(a_core_nyd_infos[su_NELEM(a_core_nyd_infos) - 1].cni_file != NIL)
       for(i = a_core_nyd_curr, cnip = &a_core_nyd_infos[i];
             i < su_NELEM(a_core_nyd_infos); ++i)
          a_core_nyd_printone(ptf, cookie, cnip++);
+
    for(i = 0, cnip = a_core_nyd_infos; i < a_core_nyd_curr; ++i)
       a_core_nyd_printone(ptf, cookie, cnip++);
 }
 #endif /* DVLOR(1, 0) */
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_CORE_CODE
+#undef su_MASTER
 /* s-it-mode */

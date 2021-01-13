@@ -15,7 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE su_avopt
 #define su_SOURCE
 #define su_SOURCE_AVOPT
@@ -406,4 +405,7 @@ su_avopt_dump_doc(struct su_avopt const *self,
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef su_SOURCE
+#undef su_SOURCE_AVOPT
 /* s-it-mode */

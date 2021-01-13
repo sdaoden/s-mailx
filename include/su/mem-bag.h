@@ -205,7 +205,10 @@ INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
  * \c{relax_unroll()} after a single job has been handled, concluded with
  * a final \c{relax_gut()}.
  * \remarks{Only applies to \SELF or its current \r{su_mem_bag_top()}, if there
- * is one, does not propagate through the stack.} */
+ * is one, does not propagate through the stack.}
+ * \remarks{Can be called multiple times: \r{su_mem_bag_auto_relax_unroll()} as
+ * well as \r{su_mem_bag_auto_relax_gut() only perform real actions when called
+ * on the level which called this the first time.} */
 EXPORT struct su_mem_bag *su_mem_bag_auto_relax_create(
       struct su_mem_bag *self);
 
@@ -222,7 +225,7 @@ EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      u32 mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_AUTO_ALLOCATE(BAGP,SZ,NO,F) \
@@ -333,7 +336,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self,
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      u32 mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
 
 /*! Free \a{ovp}; \r{su_HAVE_DEBUG} will log if it is not stack top. */
 EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
@@ -523,7 +526,8 @@ public:
    }
 
    /*! \copydoc{su_mem_bag_auto_allocate()} */
-   void *auto_allocate(uz size, uz no=1, u32 af=alloc_none){
+   void *auto_allocate(uz size, uz no=1,
+         BITENUM_IS(u32,alloc_flags) af=alloc_none){
       return su_mem_bag_auto_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
@@ -538,7 +542,8 @@ public:
    }
 
    /*! \copydoc{su_mem_bag_lofi_allocate()} */
-   void *lofi_allocate(uz size, uz no=1, u32 af=alloc_none){
+   void *lofi_allocate(uz size, uz no=1,
+         BITENUM_IS(u32,alloc_flags) af=alloc_none){
       return su_mem_bag_lofi_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
    }
 
