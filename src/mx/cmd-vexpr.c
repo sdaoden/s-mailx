@@ -21,7 +21,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE cmd_vexpr
 #define mx_SOURCE
 #define mx_SOURCE_CMD_VEXPR
@@ -1067,4 +1066,7 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_CMD_VEXPR */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_VEXPR
 /* s-it-mode */

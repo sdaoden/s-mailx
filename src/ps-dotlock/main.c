@@ -21,7 +21,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE ps_dotlock_main
 #define mx_SOURCE
 #define mx_SOURCE_PS_DOTLOCK_MAIN
@@ -248,4 +247,7 @@ jmsg:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_PS_DOTLOCK_MAIN
 /* s-it-mode */

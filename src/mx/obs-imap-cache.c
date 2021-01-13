@@ -37,9 +37,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE obs_imap_cache
 #define mx_SOURCE
+#define mx_SOURCE_OBS_IMAP_CACHE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -928,4 +928,7 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_IMAP */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_OBS_IMAP_CACHE
 /* s-it-mode */

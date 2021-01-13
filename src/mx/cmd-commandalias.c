@@ -1,7 +1,11 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of cmd-commandalias.h.
- *@ TODO Support vput, i.e.: vput commandalias x what-this-expands-to
- *@ TODO _CMDAL -> _CCMDAL
+ *@ TODO - When creating, split arguments and reorder modifiers and command;
+ *@ TODO   add structure lookup with modifier bits and actual command: like
+ *@ TODO   that "? CA" would print help for real command even with modifiers!
+ *@ TODO   Also it would be nicer if modifier order would be normalized!
+ *@ TODO - Support vput, i.e.: vput commandalias x what-this-expands-to
+ *@ TODO   _CMDAL -> _CCMDAL
  *
  * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -18,7 +22,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE cmd_commandalias
 #define mx_SOURCE
 #define mx_SOURCE_CMD_COMMANDALIAS
@@ -139,4 +142,7 @@ c_uncommandalias(void *vp){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_COMMANDALIAS
 /* s-it-mode */

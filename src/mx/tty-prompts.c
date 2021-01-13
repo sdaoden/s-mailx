@@ -16,9 +16,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE tty_prompts
 #define mx_SOURCE
+#define mx_SOURCE_TTY_PROMPTS
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -309,4 +309,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_TTY_PROMPTS
 /* s-it-mode */
