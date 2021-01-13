@@ -1,9 +1,6 @@
 #@ make.rc defines the set of features and values used.
 #@ Reading INSTALL (first) is beneficial.
 #@
-#@ - Choosing a predefined CONFIG= disallows further option fine-tuning.
-#@   (With some exceptions, e.g., OPT_DEBUG.)
-#@
 #@ - Specifying settings on the command line will take precedence over
 #@   the variables in here (correctly triggering build updates as
 #@   necessary, too).
@@ -19,22 +16,21 @@
 #@ - Values have a VAL_ prefix, and are assigned strings, for example
 #@       VAL_PREFIX="/usr/local"
 #@
-#@   Values which are only used during configuration, building, and / or
-#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed etc.
+#@   Values which are only used during configuration, building, and/or
+#@   installation have no prefix, for example DESTDIR, VERBOSE, awk.
 #@   Strings which contain whitespace need to be quoted.
 #@
-#@   Some values offer "multiple choice" values, e.g., VAL_RANDOM
-#@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
-#@   They address the case of different implementations, and can then be
-#@   used to choose the desired one(s).
-#@   The value must be a comma-separated list of strings, for example
-#@   "idn2,idn,idnkit", the case is ignored, but the order is important.
-#@   The special strings "all" and "any" as well as the empty value
-#@   are wildcard matches; if any entry in the list is a wildcard match,
-#@   the entire list is ignored.
+#@   Some values offer "multiple choice" values, for example the
+#@   standalone VAL_RANDOM, and VAL_IDNA (with and if OPT_IDNA only).
+#@   They address the case of different implementations, and can then
+#@   be used to choose the desired one(s).  Expected is
+#@   a comma-separated list, for example "idn2,idn,idnkit", case is
+#@   ignored, but order is important.  The special strings "all" and
+#@   "any" as well as the empty value are wildcard matches; if any
+#@   entry in the list is a wildcard match, the entire list is ignored.
 #@   The special string "error" will abort configuration once its list
 #@   position is reached; this is only supported if documented, and not
-#@   with an accompanying OPT_ (which then offers "require", as above).
+#@   with an accompanying OPT_, which then offers "require", as above.
 #@
 #@ - This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
@@ -77,8 +73,8 @@ VAL_MANDIR=${VAL_PREFIX}/share/man
 VAL_SYSCONFDIR=${VAL_PREFIX}/etc
 
 # The variable $DESTDIR is prepended to all the paths from above at
-# installation time; this feature can be used for, e.g., package
-# building: if $VAL_PREFIX is "/usr/local", but $DESTDIR is "here",
+# installation time; this feature can be used for package building, for
+# example: if $VAL_PREFIX is "/usr/local", but $DESTDIR is "here",
 # then $VAL_PREFIX is still "/usr/local" whereas the build system
 # will instead use "here/usr/local".
 # NOTE: it cannot be set in here, but must be given on the command
@@ -152,8 +148,8 @@ VAL_WIDTH=80
 # Note that awk(1), rm(1), tr(1) and uname(1) are needed before this
 # file is read, all other utilities will be checked afterwards only.
 # uname(1) is in fact needed before the initial OS setup and thus no OS
-# specific adjustments (e.g., $PATH) have been performed yet, but its
-# use can be circumvented by setting $OS (uname -s) and $OSFULLSPEC
+# specific adjustments (for example $PATH) have been performed yet, but
+# its use can be circumvented by setting $OS (uname -s) and $OSFULLSPEC
 # (uname -a: this is not baked into the binary, it is only used to
 # recognize build environment changes).
 # Due to the evaluation order of the build system all those programs are
@@ -163,8 +159,8 @@ VAL_WIDTH=80
 ## FEATURE SET ##
 
 # Some operating systems only support the C/POSIX (7-bit, but eight bit
-# bytes are passed through unchanged) and UTF-8 based locales, e.g.,
-# Plan9, Musl based Linux variants and newer OpenBSD.  For such
+# bytes are passed through unchanged) and UTF-8 based locales, for
+# example Plan9, Musl based Linux variants and newer OpenBSD.  For such
 # environments we can avoid a lot of tests and may enable support for
 # features which would otherwise not be available.
 # Note: $OS is available as normalized all-lowercase upon evaluation.
@@ -223,15 +219,14 @@ OPT_DOCSTRINGS=yes
 # synchronization: set $OPT_DOTLOCK to support this traditional mail
 # spool file locking.
 # $VAL_MAIL(s) where normal system mailboxes reside are usually not
-# writable by normal users, except that a user may read and write his
-# own mailbox.  But this means that a program run by the user cannot
-# create a .lock file!  The solution is to install a privilege-separated
-# mini-program that has the sole purpose and functionality of managing
-# the dotlock file in such situations -- and only then, as a last
-# ressort.  With it dotlock files can be created for any mailbox for
-# which the invoking user has read (or read-write) permissions, and
-# under the UID and GID of the mailbox itself!  We call it -dotlock.
-# It will be SETUID to VAL_PS_DOTLOCK_USER, as above.
+# writable by normal users, except theyr may read/write their own boxes.
+# This means that a program run by the user cannot create a .lock file!
+# The solution is a privilege-separated mini-program that has the sole
+# purpose and functionality of managing the dotlock file -- and only
+# then, as a last ressort.  With it dotlock files can be created for any
+# mailbox for which the invoking user has read (or read-write)
+# permissions, and under the UID and GID of the mailbox itself!  We call
+# it -dotlock.  It will be SETUID to VAL_PS_DOTLOCK_USER, as above.
 # $OPT_DOTLOCK can be "require"d.
 OPT_DOTLOCK=yes
 
@@ -269,16 +264,14 @@ OPT_FILTER_QUOTE_FOLD=yes
 OPT_ICONV=yes
 VAL_ICONV=libc,iconv
 
-# IDNA (internationalized domain names for applications) offers users
-# the possibility to use domain names in their native language, i.e., to
-# use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
-# which the IDNA algorithm would convert to
-# <www.xn--rksmrgsa-0zap8p.example>.  :)
+# IDNA (internationalized domain names for applications) allow domain
+# names in native languages (non-ASCII).  For example www.smörgås.example
+# becomes possible, as www.xn--smrgs-pra0j.example.  :)
 # Multiple implementations are supported:
-# . idnkit - idnkit, https://www.nic.ad.jp/ja/idn/idnkit/download,
-#     either of version 1 for IDNA 2003 or version 2 for IDNA 2008.
-# . idn2 - GNU Libidn2 for IDNA 2008, https://www.gnu.org/software/libidn/,
-# . idn - GNU Libidn for IDNA 2003, same,
+# . idnkit (idnkit, https://www.nic.ad.jp/ja/idn/idnkit/download, either
+#     version 1 for IDNA 2003 or version 2 for IDNA 2008).
+# . idn2 (GNU Libidn2/IDNA 2008, https://www.gnu.org/software/libidn).
+# . idn (GNU Libidn/IDNA 2003, same URL).
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
 VAL_IDNA=idnkit,idn2,idn
@@ -320,8 +313,8 @@ OPT_MLE=yes
    # terminfo(5), and acts as a converting wrapper for this library.
    # To avoid this redundancy we also support terminfo(5), and use it
    # instead if we find it (assuming that termcap(5) is a stub, then).
-   # Note that terminfo(5) offers access to more key sequences, e.g.,
-   # kLFT5, for which no termcap(5) entry exists.
+   # Note that terminfo(5) offers access to more key sequences, for
+   # example kLFT5, for which no termcap(5) entry exists.
    # terminfo(5) support can (thus) be "require"d.
    OPT_TERMCAP=yes
       OPT_TERMCAP_VIA_TERMINFO=yes
@@ -332,31 +325,13 @@ OPT_MLE=yes
 # Note this only supports text-, no database files.
 OPT_MTA_ALIASES=yes
 
-# Several different P(seudo) R(andom number) G(enerator) possibilities.
-# No need for somewhat strong random is necessary.
-# The following will be used as sole PRG implementations.
-# . arc4 - we search for arc4random(3).
-# . tls - if OPT_TLS is available that libraries' PRNG can be used.
-# The following will only be used to seed our builtin ARC4 PRNG.
-# . libgetrandom - getrandom(3) via C library.
-# . sysgetrandom - getrandom(2) via SYSCALL.
-# . getentropy - getentropy(3) (a la POSIX: with GETENTROPY_MAX).
-# . urandom - reading from /dev/urandom.
-# . builtin - unscientific seeding for our builtin ARC4 implementation.
-# . (error - bail out)
-VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin
-
-# Regular expression (re_format(7)) support for searches, conditional
-# expressions etc., we use the extended ones, then; can be "require"d.
-OPT_REGEX=yes
-
 # Major switch to toggle *all* network related protocols
 # (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
 OPT_NET=yes
 
    # Detect support for GSS-API (Generic Security Services Application
-   # Programming Interface) based authentication, e.g., Kerberos v5?
+   # Programming Interface) based authentication, like Kerberos v5?
    # Available for IMAP and SMTP; can be "require"d.
    OPT_GSSAPI=yes
 
@@ -386,8 +361,8 @@ OPT_NET=yes
    # Sending mails directly over the network.  Can be "require"d.
    OPT_SMTP=yes
 
-   # Detect support for Secure Socket Layer (Transport Layer Security,
-   # TLS), i.e., encrypted socket connections; can be "require"d.
+   # Detect support for encrypted socket connections via Secure Socket
+   # Layer (Transport Layer Security, TLS); can be "require"d.
    # It also automatically enables support for S/MIME message signing,
    # verification, en- and decryption.
    # Supported are the OpenSSL (https://www.openssl.org) and LibreSSL
@@ -405,11 +380,29 @@ OPT_NET=yes
       # algorithms.  This can be "require"d.
       OPT_TLS_ALL_ALGORITHMS=yes
 
+# Several different P(seudo) R(andom number) G(enerator) possibilities.
+# No need for somewhat strong random is necessary.
+# The following will be used as sole PRG implementations.
+# . arc4 - we search for arc4random(3).
+# . tls - if OPT_TLS is available that libraries' PRNG can be used.
+# The following will only be used to seed our builtin ARC4 PRNG.
+# . libgetrandom - getrandom(3) via C library.
+# . sysgetrandom - getrandom(2) via SYSCALL.
+# . getentropy - getentropy(3) (a la POSIX: with GETENTROPY_MAX).
+# . urandom - reading from /dev/urandom.
+# . builtin - unscientific seeding for our builtin ARC4 implementation.
+# . (error - bail out)
+VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin
+
+# Regular expression (re_format(7)) support for searches, conditional
+# expressions etc., we use extended ones, then; can be "require"d.
+OPT_REGEX=yes
+
 # Interaction with a spam email filter is possible.
 # Refer to all commands and variables with a "spam" prefix, and
 # see the manual example section "Handling spam".
 # . OPT_SPAM_FILTER:
-#   Generic filter hook which can be used with e.g. bogofilter(1)
+#   Generic filter hook which can be used with for example bogofilter(1)
 #   and sylfilter(1): see documentation for the *spam-filter-**
 #   variables for expected application behaviour.
 # . OPT_SPAM_SPAMC:
@@ -450,7 +443,7 @@ VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
 # Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
 # These are definitily only useful for debugging.
-# Also, external libraries are often problematic (e.g., ncursesw), and
+# Also, external libraries are often problematic (like ncursesw), and
 # ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
 # Can be "require"d.
 OPT_ASAN_ADDRESS=no
