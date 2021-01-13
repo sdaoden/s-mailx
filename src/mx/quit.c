@@ -33,9 +33,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE quit
 #define mx_SOURCE
+#define mx_SOURCE_QUIT
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -711,4 +711,7 @@ restorequitflags(int qf)
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_QUIT
 /* s-it-mode */

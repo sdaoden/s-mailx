@@ -29,9 +29,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE filter_html
 #define mx_SOURCE
+#define mx_SOURCE_FILTER_HTML
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1427,4 +1427,7 @@ mx_flthtml_flush(struct mx_flthtml *self){
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_FILTER_HTML
 /* s-it-mode */

@@ -23,9 +23,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE go
 #define mx_SOURCE
+#define mx_SOURCE_GO
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -2768,4 +2768,7 @@ jshow:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_GO
 /* s-it-mode */

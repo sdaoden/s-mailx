@@ -38,7 +38,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef su_FILE
 #define su_FILE obs_imap
 #define mx_SOURCE
 #define mx_SOURCE_NET_IMAP
@@ -4693,6 +4692,7 @@ FL char *
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_IMAP */
-#undef mx_SOURCE_NET_IMAP
 #undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_NET_IMAP
 /* s-it-mode */

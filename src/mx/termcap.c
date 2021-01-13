@@ -22,9 +22,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE termcap
 #define mx_SOURCE
+#define mx_SOURCE_TERMCAP
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -989,4 +989,7 @@ mx_termcap_name_of_query(enum mx_termcap_query query){
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_TCAP */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_TERMCAP
 /* s-it-mode */

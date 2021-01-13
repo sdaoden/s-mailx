@@ -19,7 +19,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE file_streams
 #define mx_SOURCE
 #define mx_SOURCE_FILE_STREAMS
@@ -1322,4 +1321,7 @@ fsize(FILE *iob)
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_FILE_STREAMS
 /* s-it-mode */

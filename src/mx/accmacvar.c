@@ -29,9 +29,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE accmacvar
 #define mx_SOURCE
+#define mx_SOURCE_ACCMACVAR
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -4055,4 +4055,7 @@ jleave:
 #undef a_AMV_VLOOK_LOG_OBSOLETE
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_ACCMACVAR
 /* s-it-mode */

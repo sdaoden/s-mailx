@@ -24,9 +24,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE colour
 #define mx_SOURCE
+#define mx_SOURCE_COLOUR
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1150,4 +1150,7 @@ mx_colour_pen_get_cseq(struct mx_colour_pen const *self){
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_COLOUR */
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_COLOUR
 /* s-it-mode */

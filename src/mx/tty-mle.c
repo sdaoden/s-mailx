@@ -18,9 +18,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE tty_mle
 #define mx_SOURCE
+#define mx_SOURCE_TTY_MLE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -4833,4 +4833,7 @@ mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
 #endif /* nothing at all */
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_TTY_MLE
 /* s-it-mode */

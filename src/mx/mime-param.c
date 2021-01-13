@@ -16,9 +16,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE mime_param
 #define mx_SOURCE
+#define mx_SOURCE_MIME_PARAM
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -990,4 +990,7 @@ mx_mime_param_boundary_create(void){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_MIME_PARAM
 /* s-it-mode */

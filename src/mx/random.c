@@ -16,7 +16,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE random
 #define mx_SOURCE
 #define mx_SOURCE_RANDOM
@@ -372,4 +371,7 @@ mx_random_create_cp(uz len, u32 *reprocnt_or_nil){
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_RANDOM
 /* s-it-mode */
