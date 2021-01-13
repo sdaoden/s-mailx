@@ -19,7 +19,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef su_FILE
 #define su_FILE cmd_filetype
 #define mx_SOURCE
 #define mx_SOURCE_CMD_FILETYPE
@@ -432,4 +431,7 @@ jleave:
 }
 
 #include "su/code-ou.h"
+#undef su_FILE
+#undef mx_SOURCE
+#undef mx_SOURCE_CMD_FILETYPE
 /* s-it-mode */
