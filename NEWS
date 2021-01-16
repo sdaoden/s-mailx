@@ -2485,7 +2485,7 @@ found in the git(1) repository:
 
 Also accessible via HTTPS?, just replace X.Y.Z accordingly:
 
-  \https?://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
+  \https?://git.sdaoden.eu/browse?p=s-nail.git;a=blob_plain;f=NEWS;hb=refs/heads/release/vX.Y.Z
 
 For even older releases you need to look into the [timeline]
 branch, but no changelog has been administrated for them.
