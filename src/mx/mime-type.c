@@ -40,6 +40,9 @@
 #endif
 
 #include "mx/mime-type.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* mime.types template for builtin MIME types refers to this enumeration! */

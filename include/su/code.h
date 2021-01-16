@@ -135,6 +135,7 @@
  * The latter is a precondition for \vr{su_HAVE_INLINE}.
  * }\li{
  * Some macros require \vr{su_FILE} to be defined to a literal.
+ * That is, they are usually meant to be used by \SU code only.
  * }\li{
  * Define \vr{su_MASTER} to inject what is to be injected once; for example,
  * it enables \c{su_M*CTA()} compile time assertions.
@@ -751,7 +752,7 @@ do{\
 /*! Members in constant array */
 #define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
-/*! NYD comes from code-{in,ou}.h (support function below).
+/*! NYD comes from code-{in,ou}.h (support like \r{su_nyd_chirp()} below).
  * Instrumented functions will always have one label for goto: purposes. */
 #define su_NYD_OU_LABEL su__nydou
 
@@ -1237,6 +1238,18 @@ enum su_err_number{
 #endif
 };
 
+/*! Actions for \r{su_nyd_chirp()}. */
+enum su_nyd_action{
+   su_NYD_ACTION_ENTER, /*!< Function entry (once per function). */
+   su_NYD_ACTION_LEAVE, /*!< Function leave (once per function). */
+   su_NYD_ACTION_ANYWHERE /*!< Any place (but the other two). */
+};
+enum{
+   su__NYD_ACTION_MASK = 0x3,
+   su__NYD_ACTION_SHIFT = 29,
+   su__NYD_ACTION_SHIFT_MASK = (1u << su__NYD_ACTION_SHIFT) - 1
+};
+
 union su__bom_union{
    char bu_buf[2];
    u16 bu_val;
@@ -1294,20 +1307,22 @@ INLINE u32 su_state_get(void){
 }
 
 /*! Interaction with the SU library (global) state machine:
- * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
+ * test whether all (not any) of \a{flags} are set in \r{su_state_get()}.
+ * \a{flags} can be a bitmix of (a subset of) \r{su_state_err_flags} and
+ * \r{su_state_flags}. */
 INLINE boole su_state_has(uz flags){
    flags &= su__STATE_GLOBAL_MASK;
    return ((su__state & flags) == flags);
 }
 
-/*! \_ */
+/*! A bitmix of (a subset of) \r{su_state_err_flags} and \r{su_state_flags}. */
 INLINE void su_state_set(uz flags){
    MT( su__glock(su__GLOCK_STATE); )
    su__state |= flags & su__STATE_GLOBAL_MASK;
    MT( su__gunlock(su__GLOCK_STATE); )
 }
 
-/*! \_ */
+/*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){
    MT( su__glock(su__GLOCK_STATE); )
    su__state &= ~(flags & su__STATE_GLOBAL_MASK);
@@ -1315,12 +1330,15 @@ INLINE void su_state_clear(uz flags){
 }
 
 /*! Notify an error to the \SU (global) state machine.
+ * Report \a{err}or and use the \r{su_state_err_flags} \a{state} to evaluate
+ * what to do.
  * If the function is allowd to return a corresponding \r{su_err_number} will
  * be returned. */
-EXPORT s32 su_state_err(enum su_state_err_type err, uz state,
-      char const *msg_or_nil);
+EXPORT s32 su_state_err(enum su_state_err_type err,
+      BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
 
-/*! \_ */
+/*! Get the errno.
+ * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
 EXPORT s32 su_err_no(void);
 
 /*! \_ */
@@ -1332,7 +1350,7 @@ EXPORT s32 su_err_set_no(s32 eno);
  *  \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
-/*! \_ */
+/*! Return the name of the given error number. */
 EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to map an error name to an error number.
@@ -1399,14 +1417,17 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 /*! When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
 EXPORT void su_nyd_set_disabled(boole disabled);
 
-/*! In event-loop driven software that uses long jumps it may be desirable to
- * reset the recursion level at times.  \a{nlvl} is only honoured when smaller
- * than the current recursion level. */
+/*! Reset \r{su_nyd_chirp()} recursion level.
+ * In event-loop driven software that uses long jumps it may be desirable to
+ * reset the recursion level at times.
+ * \a{nlvl} is only honoured when smaller than the current recursion level. */
 EXPORT void su_nyd_reset_level(u32 nlvl);
 
 /*! Not-yet-dead chirp.
- * Normally used from the support macros in code-{in,ou}.h. */
-EXPORT void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+ * Normally used from the support macros in code-{in,ou}.h when \vr{su_FILE}
+ * is defined. */
+EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
+      char const *fun);
 
 /*! Dump all existing not-yet-dead entries via \a{ptf}.
  * \a{buf} is NUL terminated despite \a{blen} being passed, too. */
@@ -1763,7 +1784,8 @@ public:
    static void clear(uz state) {su_state_clear(state);}
 
    /*! \copydoc{su_state_err()} */
-   static s32 err(err_type err, uz state, char const *msg_or_nil=NIL){
+   static s32 err(err_type err, BITENUM_IS(uz,err_flags) state,
+         char const *msg_or_nil=NIL){
       return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
    }
 };

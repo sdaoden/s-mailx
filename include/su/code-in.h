@@ -166,40 +166,61 @@
 
 #define NELEM su_NELEM
 
-/* Not-Yet-Dead macros */
-#define NYD_OU_LABEL su_NYD_OU_LABEL
-#define su__NYD_IN do{
-#define su__NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-#define su__NYD do{}while(0)
+/* Not-Yet-Dead macros, only for su_FILE sources */
+#ifdef su_FILE
+# define NYD_OU_LABEL su_NYD_OU_LABEL
+# define su__NYD_IN_NOOP do{
+# define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
+# define su__NYD_NOOP do{}while(0)
 
-#if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
-# define NYD_IN su__NYD_IN
-# define NYD_OU su__NYD_OU
-# define NYD su__NYD
-#elif defined su_HAVE_DEVEL
-# define NYD_IN if(1){su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
-# define NYD_OU \
+# if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
+#  define su__NYD_IN su__NYD_IN_NOOP
+#  define su__NYD_OU su__NYD_OU_NOOP
+#  define su__NYD su__NYD_NOOP
+# elif defined NYDPROF_ENABLE || defined su_NYDPROF_ENABLE_ALWAYS
+#  error TODO NYDPROF not yet implemented.
+#  if defined su_HAVE_DEVEL
+#  else
+#  endif
+# elif defined su_HAVE_DEVEL
+#  define su__NYD_IN \
+   if(1){su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
+#  define su__NYD_OU \
    goto NYD_OU_LABEL;NYD_OU_LABEL:\
-   su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}else{}
-# define NYD if(0){}else{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}
-#else
-# define NYD_IN do{su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
-# define NYD_OU \
-      goto NYD_OU_LABEL;NYD_OU_LABEL:\
-      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}while(0)
-# define NYD do{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}while(0)
-#endif
-/**/
-#ifdef NYD2_ENABLE
-# undef NYD2_ENABLE
-# define NYD2_IN NYD_IN
-# define NYD2_OU NYD_OU
-# define NYD2 NYD
-#else
-# define NYD2_IN su__NYD_IN
-# define NYD2_OU su__NYD_OU
-# define NYD2 su__NYD
-#endif
+   su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}else{}
+#  define su__NYD \
+   if(0){}else{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}
+# else
+#  define su__NYD_IN \
+   do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
+#  define su__NYD_OU \
+   goto NYD_OU_LABEL;NYD_OU_LABEL:\
+   su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}while(0)
+#  define su__NYD \
+   do{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}while(0)
+# endif
+
+# if defined NYD_ENABLE || defined su_NYD_ENABLE_ALWAYS
+#  undef NYD_ENABLE
+#  define NYD_IN su__NYD_IN
+#  define NYD_OU su__NYD_OU
+#  define NYD su__NYD
+# else
+#  define NYD_IN su__NYD_IN_NOOP
+#  define NYD_OU su__NYD_OU_NOOP
+#  define NYD su__NYD_NOOP
+# endif
+# ifdef NYD2_ENABLE
+#  undef NYD2_ENABLE
+#  define NYD2_IN su__NYD_IN
+#  define NYD2_OU su__NYD_OU
+#  define NYD2 su__NYD
+# else
+#  define NYD2_IN su__NYD_IN_NOOP
+#  define NYD2_OU su__NYD_OU_NOOP
+#  define NYD2 su__NYD_NOOP
+# endif
+#endif /* su_FILE */
 
 #define P2UZ su_P2UZ
 
@@ -244,8 +265,7 @@
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
 /* POD TYPE SUPPORT (only if !C++) */
-#if defined su_HEADER ||\
-   ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
+#if defined su_HEADER || (defined su_FILE && su_C_LANG)
 # define ul su_ul
 # define ui su_ui
 # define us su_us
@@ -279,7 +299,7 @@
 # define TRU2 su_TRU2
 # define TRUM1 su_TRUM1
 # define boole su_boole
-#endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
+#endif /* su_HEADER || (su_FILE && su_C_LANG) */
 
 #define U8_MAX su_U8_MAX
 #define S8_MIN su_S8_MIN

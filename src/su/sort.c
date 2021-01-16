@@ -22,6 +22,9 @@
 #include "su/code.h"
 
 #include "su/sort.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 void

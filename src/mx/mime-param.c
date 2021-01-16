@@ -34,6 +34,9 @@
 #include "mx/random.h"
 
 #include "mx/mime-param.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 struct a_mpm_rfc2231_joiner {

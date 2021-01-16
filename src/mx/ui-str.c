@@ -54,6 +54,9 @@
 #include <su/utf.h>
 
 #include "mx/ui-str.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #ifdef mx_HAVE_NATCH_CHAR

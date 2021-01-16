@@ -31,6 +31,9 @@ su_EMPTY_FILE()
 #include <su/mem-bag.h>
 
 #include "mx/privacy.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 boole

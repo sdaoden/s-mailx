@@ -30,6 +30,9 @@
 #include <stdlib.h> /* TODO -> port C++ cache */
 
 #include "su/mem.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #ifndef su_MEM_ALLOC_DEBUG
@@ -527,7 +530,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of corrupted pointer"));
-         goto su_NYD_OU_LABEL;
+         goto NYD_OU_LABEL;
       }else{
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer freed!  At %s, line %" PRIu32
@@ -535,7 +538,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of a freed pointer"));
-         goto su_NYD_OU_LABEL;
+         goto NYD_OU_LABEL;
       }
    }
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -624,13 +627,13 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
             "SU memory: free of corrupted pointer at %s, line %" PRIu32 "\n"
             "\tLast seen: %s, line %" PRIu32 "\n"
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
-         goto su_NYD_OU_LABEL;
+         goto NYD_OU_LABEL;
       }else if(p.map_c->mac_isfree){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: double-free avoided at %s, line %" PRIu32 "\n"
             "\tLast seen: %s, line %" PRIu32 "\n"
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
-         goto su_NYD_OU_LABEL;
+         goto NYD_OU_LABEL;
       }
 
       orig_sz = p.map_c->mac_size - p.map_c->mac_user_off;
