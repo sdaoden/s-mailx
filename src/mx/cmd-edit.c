@@ -48,6 +48,9 @@
 
 /* TODO fake */
 #include "mx/cmd-edit.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Edit a message by writing the message into a funnily-named file (which

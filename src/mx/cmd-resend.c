@@ -55,6 +55,9 @@
 #include "mx/tty.h"
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Modify subject to begin with Re:/Fwd: if it does not already */

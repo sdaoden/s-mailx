@@ -23,6 +23,9 @@
 #include "su/mem.h"
 
 #include "su/cs.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 char *

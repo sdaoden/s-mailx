@@ -64,6 +64,9 @@
 #include "mx/ui-str.h"
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */

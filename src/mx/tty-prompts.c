@@ -39,6 +39,9 @@
 #endif
 
 #include "mx/tty.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 boole

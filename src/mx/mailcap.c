@@ -43,6 +43,9 @@ su_EMPTY_FILE()
 #include "mx/mime-type.h"
 
 #include "mx/mailcap.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Whether we should try to place as much on a line as possible (Y).

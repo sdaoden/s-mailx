@@ -44,6 +44,9 @@
 #include "mx/names.h"
 
 #include "mx/dig-msg.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #define a_DMSG_QUOTE(S) n_shexp_quote_cp(S, FAL0)

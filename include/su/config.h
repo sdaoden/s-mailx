@@ -91,6 +91,14 @@
 
 /* Internal configurables: values */
 
+/* DVLOR(1,0) ... */
+#if defined su_USECASE_MX &&\
+   (defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
+      || defined DOXYGEN)
+# define su_NYD_ENABLE_ALWAYS
+/*#undef su_NYDPROF_ENBALE_ALWAYS*/
+#endif
+
 /* Number of Not-Yet-Dead calls that are remembered */
 #define su_NYD_ENTRIES (25 * 84)
 

@@ -51,6 +51,9 @@
 
 /* TODO fake */
 #include "mx/sigs.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /*

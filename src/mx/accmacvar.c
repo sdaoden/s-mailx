@@ -52,6 +52,9 @@
 #include "mx/ui-str.h"
 #include "mx/url.h"
 
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV

@@ -85,6 +85,9 @@
 #endif
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* The difference in between mx_HAVE_ERRORS and not, is size of queue only */

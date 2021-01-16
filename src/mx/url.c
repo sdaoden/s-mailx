@@ -40,6 +40,9 @@
 
 #include "mx/url.h"
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Find the last @ before a slash

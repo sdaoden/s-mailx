@@ -27,6 +27,9 @@ su_USECASE_MX_DISABLED
 #include "su/cs.h"
 #include "su/utf.h"
 
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 NSPC_USE(su)
 

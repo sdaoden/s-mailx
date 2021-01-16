@@ -41,6 +41,9 @@
 
 #include "mx/filter-quote.h"
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #ifdef mx_HAVE_FILTER_QUOTE_FOLD

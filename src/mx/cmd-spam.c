@@ -42,6 +42,9 @@ su_EMPTY_FILE()
 #include "mx/sigs.h"
 
 #include "mx/cmd-spam.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* This is chosen rather arbitrarily.

@@ -22,6 +22,9 @@
 #include "su/code.h"
 
 #include "su/prime.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Collected & merged from 'GLIB 1's 'gprimes.c' and 'GNU STL's 'hashtable'

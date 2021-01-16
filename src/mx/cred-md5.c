@@ -55,6 +55,9 @@ su_EMPTY_FILE()
 #include "mx/mime-enc.h"
 
 #include "mx/cred-md5.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #ifndef mx_XTLS_HAVE_MD5

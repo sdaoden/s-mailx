@@ -78,6 +78,9 @@ su_EMPTY_FILE()
 #endif
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #define IMAP_ANSWER() \

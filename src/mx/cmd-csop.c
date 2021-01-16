@@ -37,6 +37,9 @@ su_EMPTY_FILE()
 #include "mx/cmd.h"
 
 #include "mx/cmd-csop.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 enum a_csop_cmd{

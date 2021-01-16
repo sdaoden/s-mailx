@@ -24,6 +24,9 @@
 #include "su/cs.h"
 
 #include "su/icodec.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* "Is power-of-two" table, and if, shift (indexed by base-2) */

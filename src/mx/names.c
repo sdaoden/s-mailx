@@ -54,6 +54,9 @@
 #include "mx/mta-aliases.h"
 
 #include "mx/names.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* ..of a_nm_alias_dp.

@@ -74,6 +74,9 @@ su_EMPTY_FILE()
 #include <su/mem.h>
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */

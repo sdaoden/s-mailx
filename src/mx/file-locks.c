@@ -37,6 +37,9 @@
 
 #include "mx/file-locks.h"
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* XXX Our pipe_open() main() takes void, temporary global data store */

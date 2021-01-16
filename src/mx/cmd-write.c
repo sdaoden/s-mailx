@@ -52,6 +52,9 @@
 #include "mx/names.h"
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Save/copy the indicated messages at the end of the passed file name.

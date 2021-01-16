@@ -35,7 +35,15 @@
 #include "su/icodec.h"
 
 /*#include "su/code.h"*/
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
+
+/* Normally in config.h */
+#if (defined su_HAVE_DEBUG || defined su_HAVE_DEVEL) && !defined su_NYD_ENTRIES
+# define su_NYD_ENTRIES 1000
+#endif
 
 #if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
 struct a_core_nyd_info{
@@ -64,6 +72,11 @@ union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
 union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
 
 #if DVLOR(1, 0)
+CTAV(su_NYD_ACTION_ENTER == 0);
+CTAV(su_NYD_ACTION_LEAVE == 1);
+CTAV(su_NYD_ACTION_ANYWHERE == 2);
+static char const a_core_nyd_desc[3] = "><=";
+
 MT( static uz a_core_glock_recno[su__GLOCK_MAX +1]; )
 
 static u32 a_core_nyd_curr, a_core_nyd_level;
@@ -166,8 +179,10 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
 
    u.i = snprintf(buf, sizeof(buf) - 1,
          "%c[%2" PRIu32 "] %.25s (%s%.40s:%" PRIu32 ")\n",
-         "=><"[(cnip->cni_chirp_line >> 29) & 0x3], cnip->cni_level,
-         cnip->cni_fun, sep, cp, (cnip->cni_chirp_line & 0x1FFFFFFFu));
+         a_core_nyd_desc[(cnip->cni_chirp_line >> su__NYD_ACTION_SHIFT
+            ) & su__NYD_ACTION_MASK], cnip->cni_level,
+         cnip->cni_fun, sep, cp,
+         (cnip->cni_chirp_line & su__NYD_ACTION_SHIFT_MASK));
    if(u.i > 0){
       u.z = u.i;
       if(u.z >= sizeof(buf) -1){
@@ -221,7 +236,8 @@ su__gunlock(enum su__glock_type gt){
 #endif /* su_HAVE_MT */
 
 s32
-su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
+su_state_err(enum su_state_err_type err,
+      BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
    static char const intro_nomem[] = N_("Out of memory: %s\n"),
       intro_overflow[] = N_("Datatype overflow: %s\n");
 
@@ -336,7 +352,10 @@ su_nyd_reset_level(u32 nlvl){
 }
 
 void
-su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
+su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
+      char const *fun){
+   LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
+
    if(!a_core_nyd_skip){
       struct a_core_nyd_info *cnip;
 
@@ -348,9 +367,12 @@ su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
          a_core_nyd_curr = 1;
       cnip->cni_file = file;
       cnip->cni_fun = fun;
-      cnip->cni_chirp_line = (S(u32,act & 0x3) << 29) | (line & 0x1FFFFFFFu);
-      cnip->cni_level = ((act == 0) ? a_core_nyd_level /* TODO spinlock */
-            : (act == 1) ? ++a_core_nyd_level : a_core_nyd_level--);
+      cnip->cni_chirp_line = (S(u32,act & su__NYD_ACTION_MASK
+            ) << su__NYD_ACTION_SHIFT) | (line & su__NYD_ACTION_SHIFT_MASK);
+      cnip->cni_level = ((act == su_NYD_ACTION_ANYWHERE)
+            ? a_core_nyd_level /* TODO spinlock */
+            : (act == su_NYD_ACTION_ENTER) ? ++a_core_nyd_level
+               : a_core_nyd_level--);
    }
 }
 

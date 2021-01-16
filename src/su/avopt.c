@@ -25,6 +25,9 @@
 #include "su/mem.h"
 
 #include "su/avopt.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 enum a_avopt_flags{

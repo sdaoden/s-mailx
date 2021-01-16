@@ -68,6 +68,9 @@ su_EMPTY_FILE()
 
 #include "mx/net-pop3.h"
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 struct a_pop3_ctx{

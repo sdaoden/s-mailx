@@ -59,6 +59,9 @@ su_EMPTY_FILE()
 #include "mx/url.h"
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 struct a_tls_verify_levels{
