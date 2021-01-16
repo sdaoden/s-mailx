@@ -37,7 +37,7 @@ and filtered with col -b.
   Manual       : https?://www.sdaoden.eu/code-nail.html
   Web          : https?://www.sdaoden.eu/code.html#s-mailx
   git(1) clone : \https?://git.sdaoden.eu/scm/s-nail.git
-  git(1) browse: https?://git.sdaoden.eu/cgit/s-nail.git
+  git(1) browse: https?://git.sdaoden.eu/browse/s-nail.git
 
 -----NEWS-----
 
