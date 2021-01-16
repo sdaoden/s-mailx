@@ -75,7 +75,7 @@ EXPORT int mx_socket_close(struct mx_socket *sp);
 
 /* Drop I/O buffers */
 INLINE struct mx_socket *mx_socket_reset_read_buf(struct mx_socket *self){
-   self->s_rbufptr = self->s_rbuf;
+   self->s_rbufptr = NIL;
    self->s_rsz = 0;
    return self;
 }
