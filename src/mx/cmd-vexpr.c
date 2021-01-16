@@ -53,6 +53,9 @@ su_EMPTY_FILE()
 #include "mx/ui-str.h"
 
 #include "mx/cmd-vexpr.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 enum a_vexpr_cmd{

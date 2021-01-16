@@ -37,6 +37,9 @@
 #include "mx/sigs.h"
 
 #include "mx/cmd-misc.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Expand the shell escape by expanding unescaped !'s into the last issued

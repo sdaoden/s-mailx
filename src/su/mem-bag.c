@@ -28,6 +28,9 @@
 #include "su/mem.h"
 
 #include "su/mem-bag.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 su_EMPTY_FILE()

@@ -54,6 +54,9 @@
 #include "mx/ui-str.h"
 
 /* TODO fake */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 static int        _screen;

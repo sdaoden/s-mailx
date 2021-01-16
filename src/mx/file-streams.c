@@ -40,6 +40,9 @@
 #include "mx/termcap.h"
 
 #include "mx/file-streams.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #ifdef O_CLOEXEC

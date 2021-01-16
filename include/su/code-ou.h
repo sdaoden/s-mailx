@@ -128,16 +128,21 @@
 
 #undef NELEM
 
-#undef NYD_OU_LABEL
-#undef su__NYD_IN
-#undef su__NYD_OU
-#undef su__NYD
-#undef NYD_IN
-#undef NYD_OU
-#undef NYD
-#undef NYD2_IN
-#undef NYD2_OU
-#undef NYD2
+#ifdef su_FILE
+# undef NYD_OU_LABEL
+# undef su__NYD_IN_NOOP
+# undef su__NYD_OU_NOOP
+# undef su__NYD_NOOP
+# undef su__NYD_IN
+# undef su__NYD_OU
+# undef su__NYD
+# undef NYD_IN
+# undef NYD_OU
+# undef NYD
+# undef NYD2_IN
+# undef NYD2_OU
+# undef NYD2
+#endif
 
 #undef P2UZ
 
@@ -170,8 +175,7 @@
 
 /* POD TYPE SUPPORT (only if !C++) */
 
-#if defined su_HEADER ||\
-   ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
+#if defined su_HEADER || (defined su_FILE && su_C_LANG)
 # undef ul
 # undef ui
 # undef us
@@ -205,7 +209,7 @@
 # undef TRU2
 # undef TRUM1
 # undef boole
-#endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
+#endif /* su_HEADER || (su_FILE && su_C_LANG) */
 
 #undef U8_MAX
 #undef S8_MIN

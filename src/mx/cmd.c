@@ -61,6 +61,9 @@
 #include "mx/url.h"
 
 #include "mx/cmd.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* Create a multiline info string about all known additional infos for lcp */

@@ -22,6 +22,9 @@
 #include "su/code.h"
 
 #include "su/utf.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 char const su_utf8_replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
