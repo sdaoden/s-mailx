@@ -41,6 +41,9 @@ su_EMPTY_FILE()
 #include "mx/url.h"
 
 #include "mx/cred-netrc.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four

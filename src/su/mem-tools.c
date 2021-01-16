@@ -26,6 +26,9 @@
 
 #include "su/mem.h"
 #include "su/x-mem-tools.h" /* $(SU_SRCDIR) */
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 void * (* volatile su_mem_set_volatile)(void*, int, uz) = &su_mem_set;

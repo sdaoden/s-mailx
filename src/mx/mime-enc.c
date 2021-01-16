@@ -33,6 +33,9 @@
 #include <su/mem-bag.h>
 
 #include "mx/mime-enc.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 enum a_me_qact{

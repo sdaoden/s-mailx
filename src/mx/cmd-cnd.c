@@ -36,6 +36,9 @@
 #include "mx/go.h"
 
 #include "mx/cmd-cnd.h"
+/*#define NYDPROF_ENABLE*/
+/*#define NYD_ENABLE*/
+/*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 #define a_CCND_IF_IS_ACTIVE() (mx_go_data->gdc_ifcond != NIL)
