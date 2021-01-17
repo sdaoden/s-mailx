@@ -89,7 +89,7 @@ XOPTIONS_XTRA="\
 # values of which only one will be really used, so those user wishes may not be
 # placed in the header, only the really detected one (but that has to!).
 # Used for grep(1), for portability assume fixed matching only.
-H_BLACKLIST='-e VAL_RANDOM -e VAL_IDNA'
+H_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
 
 # The problem is that we don't have any tools we can use right now, so
 # encapsulate stuff in functions which get called in right order later on
@@ -2293,7 +2293,15 @@ int main(void){
 ## optional and selectable
 ##
 
+# OPT_ICONV, VAL_ICONV {{{
 if feat_yes ICONV; then
+   if val_allof VAL_ICONV libc,iconv; then
+      :
+   else
+      msg 'ERROR: VAL_ICONV with invalid entries: %s' "${VAL_ICONV}"
+      config_exit 1
+   fi
+
    # To be able to create tests we need to figure out which replacement
    # sequence the iconv(3) implementation creates
    ${cat} > ${tmp2}.c << \!
@@ -2355,11 +2363,29 @@ jleave:
 }
 !
 
-   < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
-         '#define mx_HAVE_ICONV' ||
+   val_iconv_libc() {
+      < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
+            '#define mx_HAVE_ICONV'
+   }
+
+   val_iconv_iconv() {
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
-         '#define mx_HAVE_ICONV' '-liconv' ||
+         '#define mx_HAVE_ICONV' '-liconv'
+   }
+
+   val_iconv_bye() {
       feat_bail_required ICONV
+   }
+
+   oifs=${IFS}
+   IFS=", "
+   VAL_ICONV="${VAL_ICONV},bye"
+   set -- ${VAL_ICONV}
+   IFS=${oifs}
+   for randfun
+   do
+      eval val_iconv_$randfun && break
+   done
 
    if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
@@ -2377,7 +2403,8 @@ jleave:
    fi
 else
    feat_is_disabled ICONV
-fi # feat_yes ICONV
+fi
+# }}} OPT_ICONV, VAL_ICONV
 
 if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!

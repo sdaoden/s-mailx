@@ -259,8 +259,13 @@ OPT_FILTER_QUOTE_FOLD=yes
 # Character set conversion enables reading and sending of mails in
 # multiple character sets through usage of the iconv(3) library.  Please
 # read the manual section "Character sets" for the complete picture.
+# Multiple implementations are supported:
+# . libc (whether iconv(3) available in C library).
+# . iconv (via external iconv library, for example GNU libiconv,
+#     https://www.gnu.org/software/libiconv).
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
+VAL_ICONV=libc,iconv
 
 # IDNA (internationalized domain names for applications) offers users
 # the possibility to use domain names in their native language, i.e., to
