@@ -346,7 +346,9 @@ export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
-JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
+JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
+SUBSECOND_SLEEP=
+   ( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
@@ -355,9 +357,9 @@ ESTAT=0
 TEST_NAME=
 
 trap "
-   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result
    jobreaper_stop
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 
@@ -413,10 +415,6 @@ else
 fi
 
 jobreaper_start() {
-   ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
-
-   printf 'Starting job reaper (timeout of %s seconds)\n' ${JOBWAIT}
-
    case "${JOBMON}" in
    [yY]*)
       # There were problems when using monitor mode with mksh
@@ -441,67 +439,12 @@ jobreaper_start() {
       JOBMON=
       ;;
    esac
-
-   i=
-   trap 'i=1' USR1 # "reaper is up"
-   (  # .. which is actually a notify timer only
-      parent=${$}
-      sleeper= int=0 hot=0
-      trap '' EXIT HUP QUIT CHLD
-      trap 'exit 0' INT
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         int=1 hot=1
-      ' USR1
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         int=1 hot=0
-      ' USR2
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         echo "Stopping job reaper"
-         exit 0
-      ' TERM
-
-      # traps are setup, notify parent that we are up and running
-      kill -USR1 ${parent} >/dev/null 2>&1
-
-      while :; do
-         int=0
-         </dev/null ${cat} >/dev/null
-         sleep ${JOBWAIT} &
-         sleeper=${!}
-         wait ${sleeper}
-         sleeper=
-         [ "${int}${hot}" = 01 ] && kill -USR1 ${parent} >/dev/null 2>&1
-      done
-   ) </dev/null >/dev/null 2>&1 &
-   JOBREAPER=${!}
-
-   j=
-   if [ ${?} -eq 0 ]; then
-      while :; do
-         if [ -n "${i}" ]; then
-            trap '' USR1
-            return
-         fi
-         printf '..%s waiting for job reaper to come up\n' "${j}"
-         j=' still'
-         sleep 1 &
-         wait ${!}
-      done
-   fi
-
-   JOBREAPER=
-   printf >&2 '%s! Cannot start the wild job reaper!%s\n' \
-      "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
 }
 
 jobreaper_stop() {
-   [ -n "${JOBREAPER}" ] && kill -TERM ${JOBREAPER} >/dev/null 2>&1
-   JOBREAPER=
    if [ ${JOBS} -gt 0 ]; then
       echo 'Cleaning up running jobs'
+      [ -n "${JOBREAPER}" ] && kill -KILL ${JOBREAPER} >/dev/null 2>&1
       jtimeout
       wait ${JOBLIST}
       JOBLIST=
@@ -569,39 +512,50 @@ jsync() {
 
    [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
 
-   if [ -n "${JOBREAPER}" ]; then
-      timeout= alldone=
+   # Start an asynchronous notify process
+   ${rm} -f ./t.time.out
+   (
+      sleep ${JOBWAIT} &
+      sleeper=${!}
+      trap "kill -TERM ${sleeper}; exit 1" HUP INT TERM
+      wait ${sleeper}
+      trap '' HUP INT TERM
+      printf '' > ./t.time.out
+   ) </dev/null >/dev/null 2>&1 &
+   JOBREAPER=${!}
 
-      trap 'timeout=1' USR1
-      kill -USR1 ${JOBREAPER} >/dev/null 2>&1
-
-      loops=0
-      while [ -z "${timeout}" ]; do
-         alldone=1
-         i=0
-         while [ ${i} -lt ${JOBS} ]; do
-            i=`add ${i} 1`
-            [ -f t.${i}.id ] || continue
-            alldone=
-            break
-         done
-         [ -n "${alldone}" ] && break
-
-         if [ -z "${sleep_subsecond}" ]; then
-            loops=`add ${loops} 1`
-            [ ${loops} -lt 111 ] && continue
-            sleep 1 &
-         else
-            sleep .1 &
-         fi
-         wait ${!}
+   # Then loop a while, looking out for collecting tests
+   loops=0
+   while :; do
+      [ -f ./t.time.out ] && break
+      alldone=1
+      i=0
+      while [ ${i} -lt ${JOBS} ]; do
+         i=`add ${i} 1`
+         [ -f t.${i}.id ] || continue
+         alldone=
+         break
       done
+      [ -n "${alldone}" ] && break
 
-      kill -USR2 ${JOBREAPER} >/dev/null 2>&1
-      trap '' USR1
+      if [ -z "${SUBSECOND_SLEEP}" ]; then
+         loops=`add ${loops} 1`
+         [ ${loops} -lt 111 ] && continue
+         sleep 1 &
+      else
+         sleep .25 &
+      fi
+      wait ${!}
+   done
 
-      [ -n "${timeout}" ] && jtimeout
+   if [ -f ./t.time.out ]; then
+      ${rm} -f ./t.time.out
+      jtimeout
+   else
+      kill -TERM ${JOBREAPER} >/dev/null 2>&1
    fi
+   wait ${JOBREAPER}
+   JOBREAPER=
 
    # Now collect the zombies
    wait ${JOBLIST}
@@ -643,7 +597,7 @@ jsync() {
    done
 
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
+      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result ./t.time.out
 
    JOBS=0
 }
@@ -10603,6 +10557,7 @@ else
       jobreaper_stop
    else
       MAXJOBS=1
+      printf 'Tests have a %s second timeout\n' ${JOBWAIT}
       jobreaper_start
       while [ ${#} -gt 0 ]; do
          jspawn ${1}
