@@ -281,16 +281,17 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
             ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
-         i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+         i=`</dev/null LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+            \set errexit
             \define cset_test {
                \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \wysh set LC_ALL=${1}
+                  \set LC_ALL=${1}
                   \shift
-                  \eval xcall cset_test "${@}"
+                  \xcall cset_test "${@}"
                \end
                \xit 1
             }
