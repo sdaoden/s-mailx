@@ -2103,18 +2103,12 @@ is included in
 .Va features .
 .\" }}}
 .
-.\" .Ss "Character sets" {{{
+.\" .Ss "Character sets" review {{{
 .Ss "Character sets"
 .
-\*(OP \*(UA detects the character set of the terminal by using
-mechanisms that are controlled by the
-.Ev LC_CTYPE
-environment variable
-(in fact
-.Ev LC_ALL ,
-.Ev \&\&LC_CTYPE ,
-.Ev LANG ,
-in that order, see there).
+\*(OP The user's locale environment is detected by looking at the
+.Ev LC_ALL
+environment variable.
 The internal variable
 .Va ttycharset
 will be set to the detected terminal character set accordingly,
@@ -2122,119 +2116,98 @@ and will thus show up in the output of commands like
 .Ic set
 and
 .Ic varshow .
+This character set will be targeted when trying to display data,
+and user input data is expected to be in this character set, too.
 .
 .Pp
-However, the user may give
+When creating messages their character input data is classified.
+7-bit clean text data and attachments will be classified as
+.Va charset-7bit .
+8-bit data will \*(OPally be converted into members of
+.Va sendcharsets
+until a character set conversion succeeds.
+.Va charset-8bit
+is the implied default last member of this list.
+If no 8-bit character set is capable to represent input data,
+no message will be sent, and its text will optionally be
+.Va save Ns d
+in
+.Ev DEAD .
+If that is not acceptable, for example in script environments,
+.Va mime-force-sendout
+can be set to force sending of non-convertible data as
+.Ql application/octet-stream
+classified binary content instead: like this receivers still have the
+option to inspect message content (for example via
+.Va mime-counter-evidence ) .
+If the \*(OPal character set conversion is not available
+.Pf ( Va features
+misses
+.Ql ,+iconv, ) ,
 .Va ttycharset
-a value during startup, making it possible to send mail in a completely
+is the only supported character set for non 7-bit clean data, and
+it is simply assumed it can be used to exchange 8-bit messages.
+.
+.Pp
+.Va ttycharset
+may also be given an explicit value to send mail in a completely
 .Dq faked
-locale environment, an option which can be used to generate and send for
+locale environment, which can be used to generate and send for
 example 8-bit UTF-8 input data in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 environment (an example of this can be found in the section
 .Sx "On sending mail, and non-interactive mode" ) .
-Changing the value does not mean much beside that, because several
-aspects of the real character set are implied by the locale environment
-of the system, which stays unaffected by
+Doing so does not mean much beside that since several aspects of the
+real character set are implied by the locale environment of the system,
+which stays unaffected by
 .Va ttycharset .
 .
 .Pp
-Messages and attachments which consist of 7-bit clean data will be
-classified as consisting of
+Classifying 7-bit clean data as
 .Va charset-7bit
-character data.
-This is a problem if the
-.Va ttycharset
-character set is a multibyte character set that is also 7-bit clean.
-For example, the Japanese character set ISO-2022-JP is 7-bit clean but
-capable to encode the rich set of Japanese Kanji, Hiragana and Katakana
+is a problem if the input character set
+.Pf ( Va ttycharset )
+is a multibyte character set that is itself 7-bit clean.
+For example, the Japanese character set ISO-2022-JP is, but is capable
+to encode the rich set of Japanese Kanji, Hiragana and Katakana
 characters: in order to notify receivers of this character set the mail
 message must be MIME encoded so that the character set ISO-2022-JP can
-be advertised!
+be advertised, otherwise an invalid email message would result!
 To achieve this, the variable
 .Va charset-7bit
-must be set to ISO-2022-JP.
+can be set to ISO-2022-JP.
 (Today a better approach regarding email is the usage of UTF-8, which
 uses 8-bit bytes for non-US-ASCII data.)
 .
 .Pp
-If the \*(OPal character set conversion capabilities are not available
-.Pf ( Va features
-does not include the term
-.Ql +iconv ) ,
-then
+When replying to a message and the variable
+.Va reply-in-same-charset
+is set, the character set of the message being replied to is tried first
+as a target character set (still being a subject of
+.Ic charsetalias
+filtering, however).
+Another opportunity is
+.Va sendcharsets-else-ttycharset
+to reflect the user's locale environment automatically, it will treat
 .Va ttycharset
-will be the only supported character set,
-it is simply assumed that it can be used to exchange 8-bit messages
-(over the wire an intermediate, configurable
-.Va mime-encoding
-may be applied),
-and the rest of this section does not apply;
-it may however still be necessary to explicitly set it if automatic
-detection fails, since in that case it defaults to
-.\" (Keep in SYNC: ./nail.1:"Character sets", mx-config.h:CHARSET_*!)
-LATIN1 aka ISO-8859-1 unless the operating system environment is
-known to always and exclusively support UTF-8 locales.
-.
-.Pp
-\*(OP When reading messages, their text is converted into
-.Va ttycharset
-as necessary in order to display them on the user's terminal.
-Unprintable characters and invalid byte sequences are detected
-and replaced by proper substitution characters.
-Character set mappings for source character sets can be established with
-the command
-.Ic charsetalias ,
-which may be handy to work around faulty character set catalogues (one
-could add a missing LATIN1 to ISO-8859-1 mapping), or to enforce treatment
-of one character set as another one (maybe interpret LATIN1 as CP1252).
-Also see
-.Va charset-unknown-8bit
-to deal with another hairy aspect of message interpretation.
-.
-.Pp
-When sending messages their parts and attachments are classified.
-Whereas no character set conversion is performed on those parts which
-appear to be binary data,
-the character set being used must be declared within the MIME header of
-an outgoing text part if it contains characters that do not conform to
-the set of characters that are allowed by the email standards.
-Permissible values for character sets used in outgoing messages can be
-declared using the
-.Va sendcharsets
-variable, and the by-default set
-.Va charset-8bit ,
-the catch-all last-resort fallback character set that
-.Dq implicitly is the last member of
+as an implied member of (an unset)
 .Va sendcharsets .
 .
 .Pp
-When replying to a message and the variable
-.Va reply-in-same-charset
-is set, then the character set of the message being replied to
-is tried first (still being a subject of
-.Ic charsetalias ) .
-And it is also possible to make \*(UA work even more closely related to
-the current locale setting automatically by using the variable
-.Va sendcharsets-else-ttycharset ,
-please see there for more information.
-.
-.Pp
-All the specified character sets are tried in order unless the
-conversion of the part or attachment succeeds.
-If none of the tried (8-bit) character sets is capable to represent the
-content of the part or attachment,
-then the message will not be send and its text will optionally be
-.Va save Ns d
-in
-.Ev DEAD .
-If that is not acceptable, the variable
-.Va mime-force-sendout
-can be set in order to force sending of non-convertible text as
-.Ql application/octet-stream
-classified binary content instead; like this receivers still have the
-option to inspect message content (for example by setting
-.Va mime-counter-evidence ) .
+\*(OP When reading messages, their text data is converted into
+.Va ttycharset
+as necessary in order to display them on the user's terminal.
+Unprintable characters and invalid byte sequences are detected
+and replaced by substitution characters.
+Character set mappings for source character sets can be established with
+.Ic charsetalias ,
+which may be handy to work around faulty or incomplete character set
+catalogues (one could for example add a missing LATIN1 to ISO-8859-1
+mapping), or to enforce treatment of one character set as another one
+.Pf ( Dq interpret LATIN1 as CP1252 ) .
+Also see
+.Va charset-unknown-8bit
+to deal with another hairy aspect of message interpretation.
 .
 .Pp
 In general, if a message saying
@@ -2246,7 +2219,7 @@ In the first case, it is necessary to set an appropriate
 .Ev LC_CTYPE
 locale and/or the variable
 .Va ttycharset .
-The best results are usually achieved when \*(UA is run in a UTF-8
+The best results are usually achieved when running in a UTF-8
 locale on a UTF-8 capable terminal, in which case the full Unicode
 spectrum of characters is available.
 In this setup characters from various countries can be displayed,
