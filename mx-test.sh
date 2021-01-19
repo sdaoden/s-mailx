@@ -10384,11 +10384,14 @@ cc_all_configs() {
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_USAN"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
 
          #OPTVALS
          OPTNO = 0
 
+         MULCHOICE["OPT_ICONV"] = "VAL_ICONV"
+            MULVALS["VAL_ICONV"] = 1
          MULCHOICE["OPT_IDNA"] = "VAL_IDNA"
             MULVALS["VAL_IDNA"] = 1
 
