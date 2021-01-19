@@ -176,14 +176,14 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 # - when forwarding messages
 #\headerpick forward retain subject date sender from to cc
 # - and do not include these when saving message, etc.
-#\if "$features" =@ +regex
+#\if "$features" =@ ,+regex,
 #  \headerpick save ignore '^Original-.*$' '^X-.*$'
 #\end
 
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1).
-#\if "$features" !@ +filter-html-tagsoup
+#\if "$features" !@ ,+filter-html-tagsoup,
 #   \set pipe-text/html='?* lynx -stdin -dump -force_html'
 #\endif
 

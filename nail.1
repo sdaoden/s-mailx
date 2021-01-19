@@ -264,7 +264,7 @@ and its contents will be MIME-classified
 first \(em only the latter mode is available unless
 .Va features
 includes
-.Ql +iconv .
+.Ql ,+iconv, .
 .
 .It Fl B
 (\*(OB: \*(UA will always use line-buffered output, to gain
@@ -1123,7 +1123,7 @@ but will nonetheless take and send UTF-8 in the message text by using
 If character set conversion is compiled in
 .Pf ( Va features
 includes the term
-.Ql +iconv )
+.Ql ,+iconv, )
 invalid (according to
 .Va ttycharset )
 character input data would normally cause errors; setting
@@ -1550,7 +1550,7 @@ provision of an alternative, better MIME type.
 .Pp
 Whereas a simple HTML-to-text filter for displaying HTML messages is
 \*(OPally supported (indicated by
-.Ql +filter-html-tagsoup
+.Ql ,+filter-html-tagsoup,
 in
 .Va features ) ,
 MIME types other than plain text cannot be handled directly.
@@ -1585,7 +1585,7 @@ open PDF attachments in an external PDF viewer, asynchronously and with
 some other magic attached:
 .
 .Bd -literal -offset indent
-? if "$features" !% +filter-html-tagsoup
+? if "$features" !% ,+filter-html-tagsoup,
 ?   #set pipe-text/html='?* elinks -force-html -dump 1'
 ?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
@@ -1802,7 +1802,7 @@ Variables of secondary interest may be
 and
 .Va content-description-smime-signature .
 S/MIME is available if
-.Ql +smime
+.Ql ,+smime,
 is included in
 .Va features .
 .
@@ -3222,7 +3222,7 @@ indeed means
 .Dq interactive ) :
 .
 .Bd -literal -offset indent
-if terminal && "$features" =% +colour
+if terminal && "$features" =% ,+colour,
   colour iso view-msginfo ft=bold,fg=green
   colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
@@ -3413,12 +3413,11 @@ This behaviour is different to the
 ell, which is a programming language with syntactic elements of clearly
 defined semantics, and therefore capable to sequentially expand and
 evaluate individual elements of a line.
-\*(UA will never be able to handle
 .Ql \&? set one=value two=$one
-in a single statement, because the variable assignment is performed by
-the command
+for example will never possibly assign value to one, because the
+variable assignment is performed no sooner but by the command
 .Pf ( Ic set ) ,
-not the language.
+long after the expansion happened.
 .
 .Pp
 A list of all commands in lookup order is dumped by the command
@@ -4645,7 +4644,7 @@ for example
 and mappings are ineffective if character set conversion is not available
 .Pf ( Va features
 does not announce
-.Ql +iconv ) .
+.Ql ,+iconv, ) .
 Expansion happens recursively for cases where aliases point to other
 aliases (built-in loop limit: 8).
 .Pp
@@ -5566,7 +5565,7 @@ EML files consist of only one mail message,
 When reading MBOX files tolerant POSIX rules are used by default.
 Invalid message boundaries that can be found quite often in historic
 MBOX files will be complained about (even more with
-.Va debug ):
+.Va debug ) :
 in this case the method described for
 .Va mbox-rfc4155
 can be used to create a valid MBOX database from the invalid input.
@@ -6059,15 +6058,14 @@ will reverse the result.
 .Bd -literal -offset indent
 wysh set v15-compat=yes # with value: automatic "wysh"!
 if -N debug;echo *debug* set;else;echo not;endif
-if [ "$ttycharset" == UTF-8 ] || \e
-    [ "$ttycharset" ==?case UTF8 ]
-  echo *ttycharset* is UTF-8, the former case-sensitive!
+if "$ttycharset" == UTF-8 || "$ttycharset" ==?cas UTF8
+  echo ttycharset is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if "$features" =% +regex && "$TERM" =~?case "^xterm\&.*"
+if "$features" =% ,+regex, && "$TERM" =~?case ^xterm\&.*
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
@@ -7231,7 +7229,7 @@ as necessary).
 \*(NQ TLS information and management command multiplexer to aid in
 .Sx "Encrypted network communication" ,
 mostly available only if the term
-.Ql +sockets
+.Ql ,+sockets,
 is included in
 .Va features .
 Commands support
@@ -9011,8 +9009,8 @@ The number of messages present in the \*(OPal log queue of
 and a boolean which indicates whether the queue is not empty,
 respectively; both are always 0 unless
 .Va features
-indicates
-.Ql +errors .
+includes
+.Ql ,+errors, .
 .El
 .
 .
@@ -13091,7 +13089,7 @@ used to TLS library to verify TLS server certificates.
 \*(OP If this variable is set
 .Xr CONF_modules_load_file 3
 (if announced via
-.Ql +modules-load-file
+.Ql ,+modules-load-file,
 in
 .Va tls-features )
 is used to allow resource file based configuration of the TLS library.
@@ -13114,7 +13112,7 @@ resource files loaded like this, please see
 \*(OP If file based application-specific configuration via
 .Va tls-config-file
 is available, announced as
-.Ql +ctx-config
+.Ql ,+ctx-config,
 by
 .Va tls-features ,
 indicating availability of
@@ -13169,7 +13167,7 @@ is preceded with an asterisk
 will be performed on the value; it is an error if these fail.
 Unless proper support is announced by
 .Va tls-features
-.Pf ( Ql +conf-ctx )
+.Pf ( Ql ,+conf-ctx, )
 only the keys below are supported, otherwise the pairs will be used
 directly as arguments to the function
 .Xr SSL_CONF_cmd 3 .
@@ -13208,7 +13206,7 @@ These will be joined onto the list of ciphers from
 Available if
 .Va tls-features
 announces
-.Ql +ctx-set-ciphersuites ,
+.Ql ,+ctx-set-ciphersuites, ,
 as necessary via
 .Xr SSL_CTX_set_ciphersuites 3 .
 .
@@ -13224,7 +13222,7 @@ The maximum and minimum supported TLS versions, respectively.
 Available if
 .Va tls-features
 announces
-.Ql +ctx-set-maxmin-proto ,
+.Ql ,+ctx-set-maxmin-proto, ,
 as necessary via
 .Xr SSL_CTX_set_max_proto_version 3
 and
@@ -13262,7 +13260,7 @@ The used TLS protocol.
 If
 .Va tls-features
 announces
-.Ql +conf-ctx
+.Ql ,+conf-ctx,
 or
 .Ql ctx-set-maxmin-proto
 then using
@@ -13361,7 +13359,7 @@ For the complete list of digest algorithms refer to
 \*(OP If
 .Va tls-features
 announces
-.Ql +tls-rand-file
+.Ql ,+tls-rand-file,
 then this will be queried to find a file with random entropy data which
 can be used to seed the P(seudo)R(andom)N(umber)G(enerator), see
 .Xr RAND_load_file 3 .
@@ -14638,7 +14636,7 @@ wysh set smime-ca-file="${tls-ca-file}" \e
 #   maybe use chain support via tls-config-pairs-HOST / -USER@HOST
 #   to define such explicit exceptions, then, e.g.,
 #     MinProtocol=TLSv1.1
-if [ "$tls-features" =% +ctx-set-maxmin-proto ]
+if "$tls-features" =% ,+ctx-set-maxmin-proto,
   wysh set tls-config-pairs='\e
       CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
       Curves=P-521:P-384:P-256,\e
