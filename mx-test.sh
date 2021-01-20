@@ -839,7 +839,7 @@ fi
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
-      ${grep} +${1}, ) >/dev/null 2>&1
+      ${grep} ,+${1}, ) >/dev/null 2>&1
 }
 # }}}
 
@@ -4879,6 +4879,7 @@ b7
    t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
    check 20 0 ./.tmbox '1874764424 668'
 
+   have_feat filter-html-tagsoup && ck='946925637 1105' || ck='3587432511 1165'
    </dev/null ${MAILX} ${ARGS} -Rf \
          -Sescape=! -Sindentprefix=' |' \
          -Y 'set quote=allheaders' \
@@ -4887,7 +4888,7 @@ b7
          -Y reply -Y !. \
          -Y xit \
          ./.tmbox >./.tall 2>&1
-   check 21 0 ./.tall '946925637 1105'
+   check 21 0 ./.tall "${ck}"
 
    ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
@@ -7949,7 +7950,9 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '3877629593 7699'
+   have_feat filter-html-tagsoup && ck='3877629593 7699' ||
+      ck='2138694045 7943'
+   check 2 - "${MBOX}" "${ck}"
 
    if have_feat uistrings && have_feat iconv; then
       check 2-err - ./.terr '3575876476 49'
@@ -7959,6 +7962,8 @@ and i ~w rite this out to ./.tmsg
    check 3 - ./.tmsg '3502750368 4445'
 
    # Simple return/error value after *expandaddr* failure test
+   have_feat filter-html-tagsoup && ck='115245837 7900' ||
+      ck='2245417271 8144'
    printf 'body
 !:echo --one
 !s This a new subject is
@@ -7981,7 +7986,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '115245837 7900'
+   check 4 0 "${MBOX}" "${ck}"
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
