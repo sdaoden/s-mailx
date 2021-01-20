@@ -2364,8 +2364,11 @@ jleave:
 !
 
    val_iconv_libc() {
-      < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
+      < ${tmp2}.c link_check iconv 'iconv(3)' \
             '#define mx_HAVE_ICONV'
+      [ $? -eq 0 ] && return 0
+      < ${tmp2}.c link_check iconv 'iconv(3), GNU libiconv redirect aware' \
+            '#define mx_HAVE_ICONV' '' '-DLIBICONV_PLUG'
    }
 
    val_iconv_iconv() {
