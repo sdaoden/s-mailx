@@ -145,7 +145,7 @@ compile_time() { # {{{
    {
       printf '#include <errno.h>\nsu_ERROR_START\n'
       for n in `error_parse 0 0`; do
-         printf '#ifdef E%s\nE%s %s\n#else\n-1 %s\n#endif\n' $n $n $n $n
+         printf '#ifdef E%s\nE%s "%s"\n#else\n-1 "%s"\n#endif\n' $n $n $n $n
       done
    } > "${TARGET}".c
 
@@ -154,6 +154,11 @@ compile_time() { # {{{
    # While here sort numerically.
    "${CC}" -E "${TARGET}".c |
       ${awk} '
+         function stripsym(sym){
+            sym = substr(sym, 2)
+            sym = substr(sym, 1, length(sym) - 1)
+            return sym
+         }
          BEGIN{hot=0; conti=0}
          /^[ 	]*$/{next}
          /^[ 	]*#/{next}
@@ -161,12 +166,12 @@ compile_time() { # {{{
          {
             if(!hot)
                next
-            printf "%s ", $1
-            if(conti){
-               printf "\n"
+            i = conti ? stripsym($1) "\n" : $1 " "
+            printf i
+            if(conti)
                conti = 0
-            }else if($2 != "")
-               printf $2 "\n"
+            else if($2 != "")
+               printf "%s\n", stripsym($2)
             else
                conti = 1
          }
