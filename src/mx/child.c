@@ -2,7 +2,8 @@
  *@ Implementation of child.h.
  *@ TODO . argument and environment space constraints not tested.
  *@ TODO . use a SU child, offer+use our own stuff for "wait status" checks.
- *@ TODO (requires event loop then, likely)
+ *@ TODO   (requires event loop then, likely).
+ *@ TODO   Conditionally use waitid(2) instead of waitpid(2) (Joerg Schilling).
  *@ TODO . STDERR is always "passed", yet not taken care of regarding termios!
  *@ TODO . we would need full and true job control handling
  *@ TODO   But at least notion of background and foreground, see termios.c!
@@ -32,6 +33,10 @@
 #endif
 
 #include <sys/wait.h>
+
+#if defined mx_HAVE_CLOSE_RANGE
+# include mx_CLOSE_RANGE_H
+#endif
 
 #include <su/cs.h>
 #include <su/mem.h>
@@ -497,6 +502,12 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
    if((ccp->cc_flags & (mx_CHILD_SPAWN_CONTROL | mx_CHILD_SPAWN_CONTROL_LINGER)
          ) == mx_CHILD_SPAWN_CONTROL)
       close(S(int,ccp->cc__cpipe[1]));
+
+#if defined mx_HAVE_CLOSE_RANGE
+   mx_CLOSE_RANGE_FUN(STDERR_FILENO + 1, ~0u);
+#elif defined mx_HAVE_CLOSEFROM
+   closefrom(STDERR_FILENO + 1);
+#endif
 
    if(ccp->cc_mask != NIL){
       sigset_t *ssp;

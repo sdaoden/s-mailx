@@ -148,7 +148,10 @@ n_locale_init(void){
 #ifndef mx_HAVE_SETLOCALE
    n_mb_cur_max = 1;
 #else
-   setlocale(LC_ALL, n_empty);
+
+   if(setlocale(LC_ALL, su_empty) == NIL && (n_psonce & n_PSO_INTERACTIVE))
+      n_err(_("Cannot set locale to $LC_ALL=%s\n"), n_var_oklook(ok_v_LC_ALL));
+
    n_mb_cur_max = MB_CUR_MAX;
 # ifdef mx_HAVE_NL_LANGINFO
    /* C99 */{

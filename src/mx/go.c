@@ -2556,12 +2556,16 @@ jfound:
          fp = mx_fs_open(emsg, "&r");
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
-         n_err(_("readctl: create: standard descriptors are not allowed\n"));
-         goto jeinval;
+         emsg = N_("readctl: create: standard descriptors not allowed: %s\n");
+         goto jeinval_quote;
       }else{
          /* xxx Avoid */
-         mx_FS_FD_CLOEXEC_SET(fd);
-         emsg = NULL;
+         if(!mx_FS_FD_CLOEXEC_SET(fd)){
+            emsg = N_("readctl: create: "
+                  "cannot set close-on-exec flag for: %s\n");
+            goto jeinval_quote;
+         }
+         emsg = NIL;
          elen = 0;
          fp = fdopen(fd, "r");
       }

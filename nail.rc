@@ -11,7 +11,7 @@
 #@   removed, but trailing whitespace before "escaped newlines" is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.20 / 2020-12-12
+#@ S-nail v14.9.21 / 2021-01-21
 
 ## Variables
 
@@ -174,14 +174,14 @@ retain date sender from to cc subject message-id mail-followup-to reply-to
 # - when forwarding messages
 #\headerpick forward retain subject date sender from to cc
 # - and do not include these when saving message, etc.
-#\if "$features" =@ +regex
+#\if "$features" =@ ,+regex,
 #  \headerpick save ignore '^Original-.*$' '^X-.*$'
 #\end
 
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1).
-#\if "$features" !@ +filter-html-tagsoup
+#\if "$features" !@ ,+filter-html-tagsoup,
 #   \set pipe-text/html='?* lynx -stdin -dump -force_html'
 #\endif
 

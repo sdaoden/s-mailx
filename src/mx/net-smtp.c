@@ -164,13 +164,16 @@ a_netsmtp_read(struct mx_socket *sop, struct a_netsmtp_line *slp, int val,
          n_err(_("SMTP server: %s"), slp->sl_buf.s);
    }while(slp->sl_buf.s[3] == '-');
 
-   if(want_dat){
-      for(cp = slp->sl_buf.s; su_cs_is_digit(*cp); --len, ++cp)
+   if(val == rv && want_dat){
+      for(cp = slp->sl_buf.s; len > 0 && su_cs_is_digit(*cp); --len, ++cp)
          ;
-      for(; su_cs_is_blank(*cp); --len, ++cp)
+      for(; len > 0 && su_cs_is_blank(*cp); --len, ++cp)
          ;
+      if(len < 2){
+         rv = -2;
+         goto jleave;
+      }
       slp->sl_dat.s = cp;
-      ASSERT(len >= 2);
       len -= 2;
       cp[slp->sl_dat.l = S(uz,len)] = '\0';
    }
@@ -469,4 +472,6 @@ j_leave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_SMTP */
+#undef mx_SOURCE_NET_SMTP
+#undef su_FILE
 /* s-it-mode */

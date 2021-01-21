@@ -1,6 +1,6 @@
 #!/bin/sh -
-#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check-only [s-mailx-binary]
-#@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
+#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check mailx-binary [:SKIPTESTNAME:]
+#@           [OBJDIR=XY] ./mx-test.sh --run-test mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ --no-jobs can be used to prevent spawning concurrent tests.
 #@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
@@ -9,7 +9,7 @@
 #@ grep ^ERROR handling.
 #@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
 #@ this works with --run-test only.
-#@ Ditto, $JOBWAIT and $JOBMON are taken from environment when found.
+#@ $JOBWAIT, $JOBMON and $SKIPTEST are taken from environment when found.
 #
 # Public Domain
 
@@ -71,6 +71,7 @@ LOOPS_MAX=$LOOPS_SMALL
 # How long unless started tests get reaped (avoid endless looping)
 : ${JOBWAIT:=42}
 : ${JOBMON:=y}
+: ${SKIPTEST:=}
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -198,26 +199,27 @@ unset POSIXLY_CORRECT LOGNAME USER
 # usage {{{
 usage() {
    ${cat} >&2 <<'_EOT'
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check-only s-mailx-binary
-Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test s-mailx-binary [:TEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --check mailx-binary [:SKIPTEST:]
+Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs] --run-test mailx-binary [:TEST:]
 Synopsis: [OBJDIR=x] mx-test.sh [--no-jobs]
 
- --check-only EXE         run the test series, exit success or error;
-                          if run in a git(1) checkout then failed tests
-                          create test output data files
+ --check EXE [:SKIPTEST:] run test series, exit success or error.
+                          [:SKIPTEST:]s (and $SKIPTEST=) will be excluded.
  --run-test EXE [:TEST:]  run all or only the given TESTs, and create
                           test output data files; if run in a git(1)
                           checkout with the [test-out] branch available,
-                          it will also create file differences
+                          it will also create file diff(1)erences
  --no-jobs                do not spawn multiple jobs simultaneously
+                          (dependent on make(1) and sh(1), pass JOBMON=n, too)
  --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
                           (for example to: grep ^ERROR)
                           $MAILX_CC_ALL_TESTS_DUMPER in addition for even
-                          easier grep ^ERROR handling.
+                          easier grep ^ERROR handling
 
 The last invocation style will compile and test as many different
 configurations as possible.
-OBJDIR= may be set to the location of the built objects etc.
+EXE should be absolute or relative to $OBJDIR, which can be may be set to the
+location of the built objects etc.
 $MAILX_CC_TEST_NO_CLEANUP skips deletion of test data (works only with
 one test, aka --run-test).
 $JOBWAIT could denote a timeout, $JOBMON controls usage of "set -m".
@@ -225,7 +227,7 @@ _EOT
    exit 1
 }
 
-CHECK_ONLY= RUN_TEST= MAILX=
+CHECK= RUN_TEST= MAILX=
 DEVELDIFF= DUMPERR= GIT_REPO=
 MAXJOBS=1 NOCOLOUR= NOJOBS=
 while [ ${#} -gt 0 ]; do
@@ -235,24 +237,28 @@ while [ ${#} -gt 0 ]; do
    elif [ "${1}" = --no-colour ]; then
       NOCOLOUR=y
       shift
+   elif [ "${1}" = -h ] || [ "${1}" = --help ]; then
+      usage
+      exit 0
    else
       break
    fi
 done
 
-if [ "${1}" = --check-only ]; then
-   [ ${#} -eq 2 ] || usage
-   CHECK_ONLY=1 MAILX=${2}
+if [ "${1}" = --check ]; then
+   CHECK=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
-   echo 'Mode: --check-only, binary: '"${MAILX}"
+   shift 2
+   SKIPTEST="${@} ${SKIPTEST}"
    [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
+   echo 'Mode: --check, binary: '"${MAILX}"
 elif [ "${1}" = --run-test ]; then
    [ ${#} -ge 2 ] || usage
    RUN_TEST=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
-   echo 'Mode: --run-test, binary: '"${MAILX}"
    [ -d ../.git ] && GIT_REPO=1
+   echo 'Mode: --run-test, binary: '"${MAILX}"
 else
    [ ${#} -eq 0 ] || usage
    echo 'Mode: full compile test, this will take a long time...'
@@ -269,22 +275,23 @@ MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
 # We want an UTF-8 locale, and HONOURS_READONLY {{{
-if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
+if [ -n "${CHECK}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
             ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
-         i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+         i=`</dev/null LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+            \set errexit
             \define cset_test {
                \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \wysh set LC_ALL=${1}
+                  \set LC_ALL=${1}
                   \shift
-                  \eval xcall cset_test "${@}"
+                  \xcall cset_test "${@}"
                \end
                \xit 1
             }
@@ -339,7 +346,9 @@ export UTF8_LOCALE HONOURS_READONLY
 # }}}
 
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
-JOBS=0 JOBLIST= JOBDESC= JOBREAPER= JOBSYNC=
+JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
+SUBSECOND_SLEEP=
+   ( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
@@ -348,9 +357,9 @@ ESTAT=0
 TEST_NAME=
 
 trap "
-   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result
    jobreaper_stop
+   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 
@@ -372,8 +381,8 @@ else
       fi
 
       # The actual hardware
-      printf 'all:\n' > .t.mk.io
-      if ( ${MAKE} -j 10 -f .t.mk.io ) >/dev/null 2>&1; then
+      printf 'all:\n' > t.mk.io
+      if ( ${MAKE} -j 10 -f t.mk.io ) >/dev/null 2>&1; then
          if command -v nproc >/dev/null 2>&1; then
             i=`nproc 2>/dev/null`
             [ ${?} -eq 0 ] && MAXJOBS=${i}
@@ -405,83 +414,37 @@ else
    }
 fi
 
-case "${JOBMON}" in
-[yY]*)
-   if (set -m >/dev/null 2>&1); then
-      JOBMON=y
-   else
-      echo >&2 'Cannot use monitor mode (set -m) in sh(1).'
-      echo >&2 'Failing (hanging) tests could leave stale processes around!'
-      JOBMON=
-   fi
-   ;;
-*)
-   JOBMON=
-   ;;
-esac
-
 jobreaper_start() {
-   ( sleep .1 ) >/dev/null 2>&1 && sleep_subsecond=1 || sleep_subsecond=
-
-   printf 'Starting job reaper (timeout of %s seconds)\n' ${JOBWAIT}
-   i=
-   trap 'i=1' USR1 # "reaper is up"
-   (  # .. which is actually a notify timer only
-      parent=${$}
-      sleeper= int=0 hot=0
-      trap '' EXIT HUP INT QUIT
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         int=1 hot=1
-      ' USR1
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         int=1 hot=0
-      ' USR2
-      trap '
-         [ -n "${sleeper}" ] && kill -TERM ${sleeper} >/dev/null 2>&1
-         echo "Stopping job reaper"
-         exit 0
-      ' TERM
-
-      # traps are setup, notify parent that we are up and running
-      kill -USR1 ${parent} >/dev/null 2>&1
-
-      while :; do
-         int=0
-         sleep ${JOBWAIT} &
-         sleeper=${!}
-         wait ${!}
-         sleeper=
-         [ "${int}${hot}" = 01 ] && kill -USR1 ${parent} >/dev/null 2>&1
-      done
-   ) </dev/null & #>/dev/null 2>&1 &
-   JOBREAPER=${!}
-
-   j=
-   if [ ${?} -eq 0 ]; then
-      while :; do
-         if [ -n "${i}" ]; then
-            trap '' USR1
-            return
+   case "${JOBMON}" in
+   [yY]*)
+      # There were problems when using monitor mode with mksh
+      i=`env -i ${SHELL} -c 'echo $KSH_VERSION'`
+      if [ -n "${i}" ]; then
+         if [ "${i}" != "${i#*MIRBSD}" ]; then
+            JOBMON=
          fi
-         printf '..%s waiting for job reaper to come up\n' "${j}"
-         j=' still'
-         sleep 1 &
-         wait ${!}
-      done
-   fi
+      fi
 
-   JOBREAPER=
-   printf '%s!! Cannot start the wild job reaper!%s\n' \
-      "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
+      if [ -n "${JOBMON}" ]; then
+         ( set -m ) </dev/null >/dev/null 2>&1 || JOBMON=
+      else
+         printf >&2 '%s! $JOBMON: $SHELL %s incapable, disabled!%s\n' \
+            "${COLOR_ERR_ON}" "${SHELL}" "${COLOR_ERR_OFF}"
+         printf >&2 '%s!  No process groups available, killed tests may '\
+'leave process "zombies"!%s\n' \
+            "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}"
+      fi
+      ;;
+   *)
+      JOBMON=
+      ;;
+   esac
 }
 
 jobreaper_stop() {
-   [ -n "${JOBREAPER}" ] && kill -TERM ${JOBREAPER} >/dev/null 2>&1
-   JOBREAPER=
    if [ ${JOBS} -gt 0 ]; then
       echo 'Cleaning up running jobs'
+      [ -n "${JOBREAPER}" ] && kill -KILL ${JOBREAPER} >/dev/null 2>&1
       jtimeout
       wait ${JOBLIST}
       JOBLIST=
@@ -489,6 +452,25 @@ jobreaper_stop() {
 }
 
 jspawn() {
+   if [ -n "${CHECK}" ] && [ -n "${SKIPTEST}" ]; then
+      i="${@}"
+      j="${1}"
+      k=
+      set -- ${SKIPTEST}
+      SKIPTEST=
+      while [ ${#} -gt 0 ]; do
+         if [ "${1}" != "${j}" ]; then
+            SKIPTEST="${SKIPTEST} ${1}"
+         elif [ -z "${k}" ]; then
+            k=y
+            t_echoskip ${1}
+         fi
+         shift
+      done
+      [ -n "${k}" ] && return
+      set -- "${i}"
+   fi
+
    if [ ${MAXJOBS} -gt 1 ]; then
       # We are spawning multiple jobs..
       [ ${JOBS} -eq 0 ] && printf '...'
@@ -521,44 +503,59 @@ jspawn() {
 }
 
 jsync() {
-   [ ${JOBS} -eq 0 ] && return
+   if [ ${JOBS} -eq 0 ]; then
+      [ -n "${TEST_ANY}" ] && printf '\n'
+      TEST_ANY=
+      return
+   fi
    [ -z "${JOBSYNC}" ] && [ ${#} -eq 0 ] && return
 
    [ ${MAXJOBS} -ne 1 ] && printf ' .. waiting\n'
 
-   if [ -n "${JOBREAPER}" ]; then
-      timeout= alldone=
+   # Start an asynchronous notify process
+   ${rm} -f ./t.time.out
+   (
+      sleep ${JOBWAIT} &
+      sleeper=${!}
+      trap "kill -TERM ${sleeper}; exit 1" HUP INT TERM
+      wait ${sleeper}
+      trap '' HUP INT TERM
+      printf '' > ./t.time.out
+   ) </dev/null >/dev/null 2>&1 &
+   JOBREAPER=${!}
 
-      trap 'timeout=1' USR1
-      kill -USR1 ${JOBREAPER} >/dev/null 2>&1
-
-      loops=0
-      while [ -z "${timeout}" ]; do
-         alldone=1
-         i=0
-         while [ ${i} -lt ${JOBS} ]; do
-            i=`add ${i} 1`
-            [ -f t.${i}.id ] || continue
-            alldone=
-            break
-         done
-         [ -n "${alldone}" ] && break
-
-         if [ -z "${sleep_subsecond}" ]; then
-            loops=`add ${loops} 1`
-            [ ${loops} -lt 111 ] && continue
-            sleep 1 &
-         else
-            sleep .1 &
-         fi
-         wait ${!}
+   # Then loop a while, looking out for collecting tests
+   loops=0
+   while :; do
+      [ -f ./t.time.out ] && break
+      alldone=1
+      i=0
+      while [ ${i} -lt ${JOBS} ]; do
+         i=`add ${i} 1`
+         [ -f t.${i}.id ] || continue
+         alldone=
+         break
       done
+      [ -n "${alldone}" ] && break
 
-      kill -USR2 ${JOBREAPER} >/dev/null 2>&1
-      trap '' USR1
+      if [ -z "${SUBSECOND_SLEEP}" ]; then
+         loops=`add ${loops} 1`
+         [ ${loops} -lt 111 ] && continue
+         sleep 1 &
+      else
+         sleep .25 &
+      fi
+      wait ${!}
+   done
 
-      [ -n "${timeout}" ] && jtimeout
+   if [ -f ./t.time.out ]; then
+      ${rm} -f ./t.time.out
+      jtimeout
+   else
+      kill -TERM ${JOBREAPER} >/dev/null 2>&1
    fi
+   wait ${JOBREAPER}
+   JOBREAPER=
 
    # Now collect the zombies
    wait ${JOBLIST}
@@ -600,7 +597,7 @@ jsync() {
    done
 
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result
+      ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result ./t.time.out
 
    JOBS=0
 }
@@ -722,7 +719,7 @@ check() {
       TESTS_FAILED=`add ${TESTS_FAILED} 1`
    fi
 
-   if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
+   if [ -n "${CHECK}${RUN_TEST}" ]; then
       x="t.${TEST_NAME}-${tid}"
       if [ -n "${RUN_TEST}" ] ||
             [ -n "${check__runx}" -a -n "${GIT_REPO}" ]; then
@@ -737,7 +734,8 @@ check() {
             (git rev-parse --verify $y) >/dev/null 2>&1 || y=
          fi
          if [ -n "${y}" ]; then
-            if git show "${y}":"${x}" > ../"${x}".old 2>/dev/null; then
+            if GIT_CONFIG=/dev/null git show "${y}":"${x}" > \
+                  ../"${x}".old 2>/dev/null; then
                diff -ru ../"${x}".old ../"${x}" > ../"${x}".diff
                if [ ${?} -eq 0 ]; then
                   [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
@@ -841,7 +839,7 @@ fi
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
-      ${grep} +${1}, ) >/dev/null 2>&1
+      ${grep} ,+${1}, ) >/dev/null 2>&1
 }
 # }}}
 
@@ -4881,6 +4879,7 @@ b7
    t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
    check 20 0 ./.tmbox '1874764424 668'
 
+   have_feat filter-html-tagsoup && ck='946925637 1105' || ck='3587432511 1165'
    </dev/null ${MAILX} ${ARGS} -Rf \
          -Sescape=! -Sindentprefix=' |' \
          -Y 'set quote=allheaders' \
@@ -4889,7 +4888,7 @@ b7
          -Y reply -Y !. \
          -Y xit \
          ./.tmbox >./.tall 2>&1
-   check 21 0 ./.tall '946925637 1105'
+   check 21 0 ./.tall "${ck}"
 
    ARGS=${XARGS} # TODO v15-compat
    t_epilog "${@}"
@@ -7951,7 +7950,9 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>./.terr
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '3877629593 7699'
+   have_feat filter-html-tagsoup && ck='3877629593 7699' ||
+      ck='2138694045 7943'
+   check 2 - "${MBOX}" "${ck}"
 
    if have_feat uistrings && have_feat iconv; then
       check 2-err - ./.terr '3575876476 49'
@@ -7961,6 +7962,8 @@ and i ~w rite this out to ./.tmsg
    check 3 - ./.tmsg '3502750368 4445'
 
    # Simple return/error value after *expandaddr* failure test
+   have_feat filter-html-tagsoup && ck='115245837 7900' ||
+      ck='2245417271 8144'
    printf 'body
 !:echo --one
 !s This a new subject is
@@ -7983,7 +7986,7 @@ and i ~w rite this out to ./.tmsg
    ' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" \
          -Sescape=! \
          -s testsub one@to.invalid >./.tall 2>&1
-   check 4 0 "${MBOX}" '115245837 7900'
+   check 4 0 "${MBOX}" "${ck}"
    if have_feat uistrings; then
       check 5 - ./.tall '2336041127 212'
    else
@@ -10386,11 +10389,14 @@ cc_all_configs() {
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_USAN"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
 
          #OPTVALS
          OPTNO = 0
 
+         MULCHOICE["OPT_ICONV"] = "VAL_ICONV"
+            MULVALS["VAL_ICONV"] = 1
          MULCHOICE["OPT_IDNA"] = "VAL_IDNA"
             MULVALS["VAL_IDNA"] = 1
 
@@ -10531,7 +10537,7 @@ cc_all_configs() {
 # }}}
 
 ssec=$SECONDS
-if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
+if [ -z "${CHECK}${RUN_TEST}" ]; then
    jobs_max
    cc_all_configs
 else
@@ -10559,6 +10565,7 @@ else
       jobreaper_stop
    else
       MAXJOBS=1
+      printf 'Tests have a %s second timeout\n' ${JOBWAIT}
       jobreaper_start
       while [ ${#} -gt 0 ]; do
          jspawn ${1}

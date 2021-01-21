@@ -4684,4 +4684,6 @@ FL char *
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_IMAP */
+#undef mx_SOURCE_NET_IMAP
+#undef su_FILE
 /* s-it-mode */

@@ -62,7 +62,7 @@ struct mx_fs_tmp_ctx{
 
 /* */
 #ifdef O_CLOEXEC
-# define mx_FS_FD_CLOEXEC_SET(FD) do {;} while(0)
+# define mx_FS_FD_CLOEXEC_SET(FD) (1)
 #else
 # define mx_FS_FD_CLOEXEC_SET(FD) mx_fs_fd_cloexec_set(FD)
 #endif
@@ -112,7 +112,7 @@ EXPORT void mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp);
 EXPORT FILE *mx_fs_fd_open(sz fd, char const *oflags, boole nocloexec);
 
 /* */
-EXPORT void mx_fs_fd_cloexec_set(sz fd);
+EXPORT boole mx_fs_fd_cloexec_set(sz fd);
 
 /* Close and unregister a FILE* opened with any of fs_open(), fs_open_any(),
  * fs_tmp_open() (with O_REGISTER) or fd_open() */

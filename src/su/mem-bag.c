@@ -224,7 +224,7 @@ su_mem_bag_create(struct su_mem_bag *self, uz bsz){
    if(bsz == 0)
       bsz = su_PAGE_SIZE * 2;
    else
-      CLIP(bsz, a_MEMBAG_BSZ_LOWER, a_MEMBAG_BSZ_UPPER);
+      bsz = CLIP(bsz, a_MEMBAG_BSZ_LOWER, a_MEMBAG_BSZ_UPPER);
    bsz -= a_MEMBAG_BSZ_BASE;
    self->mb_bsz = S(u32,bsz);
    bsz -= a_MEMBAG_BSZ_GAP;

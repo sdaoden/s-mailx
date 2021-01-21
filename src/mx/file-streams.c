@@ -141,6 +141,7 @@ a_fs_scan_mode(char const **mode, int *omode){
    su_DBG( n_alert(_("Internal error: bad stdio open mode %s"), xmode); )
    su_NDBG( su_err_set_no(su_ERR_INVAL); )
    *omode = 0; /* (silence CC) */
+
    rv = FAL0;
 jleave:
    NYD2_OU;
@@ -169,6 +170,7 @@ a_fs_register_file(FILE *fp, int omode, struct mx_child_ctx *ccp, u32 flags,
       fsep->fse_cc = *ccp;
 
    a_fs_fp_head = fsep;
+
    NYD_OU;
    return fsep;
 }
@@ -344,7 +346,10 @@ mx_fs_open(char const *file, char const *oflags){
 
    if((fd = open(file, osflags, 0666)) == -1)
       goto jleave;
-   mx_FS_FD_CLOEXEC_SET(fd);
+   if(!mx_FS_FD_CLOEXEC_SET(fd)){
+      close(fd);
+      goto jleave;
+   }
 
    if((fp = fdopen(fd, oflags)) != NIL && moflags != NIL)
       a_fs_register_file(fp, osflags, 0, a_FS_EF_RAW, NIL, 0L, NIL);
@@ -506,6 +511,7 @@ jleave:
       *fs_or_nil = fs;
    if(rv == NIL && err != su_ERR_NONE)
       su_err_set_no(err);
+
    NYD_OU;
    return rv;
 }
@@ -618,9 +624,11 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       mx_sigs_all_holdx();
 
       if((fd = open(cp_base, osoflags, 0600)) != -1){
-         mx_FS_FD_CLOEXEC_SET(fd);
-         break;
+         if(mx_FS_FD_CLOEXEC_SET(fd))
+            break;
+         close(fd);
       }
+
       if(i >= mx_FS_TMP_OPEN_TRIES){
          e = su_err_no();
          goto jfree;
@@ -710,7 +718,9 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
    unlink(u.fsep->fse_realfile);
 
    u.fsep->fse_flags &= ~(a_FS_EF_HOLDSIGS | a_FS_EF_UNLINK);
+
    mx_sigs_all_rele();
+
    NYD_OU;
 }
 
@@ -726,19 +736,23 @@ mx_fs_fd_open(sz fd, char const *oflags, boole nocloexec){
 
    if((fp = fdopen(S(int,fd), oflags)) != NIL && oflags != NIL)
       a_fs_register_file(fp, osflags, 0, a_FS_EF_RAW, NIL, 0L, NIL);
+
    NYD_OU;
    return fp;
 }
 
-void
+boole
 mx_fs_fd_cloexec_set(sz fd){
    s32 ifd;
+   boole rv;
    NYD2_IN;
 
    ifd = S(s32,fd);
-   /*if((a__fl = fcntl(ifd, F_GETFD)) != -1 && !(ifd & FD_CLOEXEC))*/
-      (void)fcntl(ifd, F_SETFD, FD_CLOEXEC);
+   /*if(!(rv = ((a__fl = fcntl(ifd, F_GETFD)) != -1 && !(ifd & FD_CLOEXEC))))*/
+      rv = (fcntl(ifd, F_SETFD, FD_CLOEXEC) != -1);
+
    NYD2_OU;
+   return rv;
 }
 
 boole
@@ -747,6 +761,7 @@ mx_fs_close(FILE *fp){
    NYD_IN;
 
    rv = (a_fs_unregister_file(fp) && fclose(fp) == 0);
+
    NYD_OU;
    return rv;
 }
@@ -946,11 +961,13 @@ jleave:
 void
 mx_fs_close_all(void){
    NYD_IN;
+
    while(a_fs_fp_head != NIL)
       if((a_fs_fp_head->fse_flags & a_FS_EF_MASK) == a_FS_EF_PIPE)
          mx_fs_pipe_close(a_fs_fp_head->fse_fp, TRU1);
       else
          mx_fs_close(a_fs_fp_head->fse_fp);
+
    NYD_OU;
 }
 
@@ -1066,7 +1083,7 @@ jredo:
    NYD2_OU;
 }
 
-/* TODO The rest below is old-style */
+/* TODO The rest below is old-style v15 */
 
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
@@ -1087,6 +1104,7 @@ _length_of_line(char const *line, uz linesize)
       if (line[i] == '\n')
          break;
    i = (i < linesize) ? i + 1 : linesize;
+
    NYD2_OU;
    return i;
 }
@@ -1269,6 +1287,7 @@ jagain:
    }
    if (n > 0 && (*linebuf)[n - 1] == '\n')
       (*linebuf)[--n] = '\0';
+
    rv = (int)n;
 jleave:
    NYD2_OU;
@@ -1283,6 +1302,7 @@ fsize(FILE *iob)
    NYD_IN;
 
    rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
+
    NYD_OU;
    return rv;
 }

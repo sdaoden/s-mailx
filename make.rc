@@ -240,7 +240,9 @@ OPT_DOTLOCK=yes
 # or $PAGERs are started and clear errors off the screen.
 # If enabled errors will be duplicated to an error queue as they happen
 # and the `errors' command will show them when asked to.
+# VAL_ERRORS_LIMIT will be the default value of *errors-limit*.
 OPT_ERRORS=yes
+VAL_ERRORS_LIMIT=8000
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
@@ -259,8 +261,13 @@ OPT_FILTER_QUOTE_FOLD=yes
 # Character set conversion enables reading and sending of mails in
 # multiple character sets through usage of the iconv(3) library.  Please
 # read the manual section "Character sets" for the complete picture.
+# Multiple implementations are supported:
+# . libc (whether iconv(3) available in C library).
+# . iconv (via external iconv library, for example GNU libiconv,
+#     https://www.gnu.org/software/libiconv).
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
+VAL_ICONV=libc,iconv
 
 # IDNA (internationalized domain names for applications) offers users
 # the possibility to use domain names in their native language, i.e., to
@@ -333,10 +340,11 @@ OPT_MTA_ALIASES=yes
 # The following will only be used to seed our builtin ARC4 PRNG.
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
+# . getentropy - getentropy(3) (a la POSIX: with GETENTROPY_MAX).
 # . urandom - reading from /dev/urandom.
 # . builtin - unscientific seeding for our builtin ARC4 implementation.
 # . (error - bail out)
-VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,urandom,builtin
+VAL_RANDOM=arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.

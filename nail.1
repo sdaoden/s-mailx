@@ -15,9 +15,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\"@ S-nail v14.9.20 / 2020-12-12
-.Dd December 12, 2020
-.ds VV \\%v14.9.20
+.\"@ S-nail v14.9.21 / 2021-01-21
+.Dd January 21, 2021
+.ds VV \\%v14.9.21
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -462,6 +462,7 @@
 .Mx -anchor-spass Va "editheaders"
 .Mx -anchor-spass Va "emptystart"
 .Mx -anchor-spass Va "errexit"
+.Mx -anchor-spass Va "errors-limit"
 .Mx -anchor-spass Va "escape"
 .Mx -anchor-spass Va "expandaddr"
 .Mx -anchor-spass Va "expandaddr-domaincheck"
@@ -910,7 +911,7 @@ and its contents will be MIME-classified
 first \(em only the latter mode is available unless
 .Va features
 includes
-.Ql +iconv .
+.Ql ,+iconv, .
 .It Fl B
 (\*(OB: \*(UA will always use line-buffered output, to gain
 line-buffered input even in batch mode enable batch mode via
@@ -1707,7 +1708,7 @@ but will nonetheless take and send UTF-8 in the message text by using
 If character set conversion is compiled in
 .Pf ( Va features
 includes the term
-.Ql +iconv )
+.Ql ,+iconv, )
 invalid (according to
 .Va ttycharset )
 character input data would normally cause errors; setting
@@ -2107,7 +2108,7 @@ provision of an alternative, better MIME type.
 .Pp
 Whereas a simple HTML-to-text filter for displaying HTML messages is
 \*(OPally supported (indicated by
-.Ql +filter-html-tagsoup
+.Ql ,+filter-html-tagsoup,
 in
 .Va features ) ,
 MIME types other than plain text cannot be handled directly.
@@ -2139,7 +2140,7 @@ register a MathML MIME type and enable its plain text display, and to
 open PDF attachments in an external PDF viewer, asynchronously and with
 some other magic attached:
 .Bd -literal -offset indent
-? if "$features" !% +filter-html-tagsoup
+? if "$features" !% ,+filter-html-tagsoup,
 ?   #set pipe-text/html='?* elinks -force-html -dump 1'
 ?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
@@ -2337,7 +2338,7 @@ Variables of secondary interest may be
 and
 .Va content-description-smime-signature .
 S/MIME is available if
-.Ql +smime
+.Ql ,+smime,
 is included in
 .Va features .
 .Pp
@@ -2610,15 +2611,9 @@ TLS is available if
 is included in
 .Va features .
 .Ss "Character sets"
-\*(OP \*(UA detects the character set of the terminal by using
-mechanisms that are controlled by the
-.Ev LC_CTYPE
-environment variable
-(in fact
-.Ev LC_ALL ,
-.Ev \&\&LC_CTYPE ,
-.Ev LANG ,
-in that order, see there).
+\*(OP The user's locale environment is detected by looking at the
+.Ev LC_ALL
+environment variable.
 The internal variable
 .Va ttycharset
 will be set to the detected terminal character set accordingly,
@@ -2626,111 +2621,93 @@ and will thus show up in the output of commands like
 .Ic set
 and
 .Ic varshow .
+This character set will be targeted when trying to display data,
+and user input data is expected to be in this character set, too.
 .Pp
-However, the user may give
+When creating messages their character input data is classified.
+7-bit clean text data and attachments will be classified as
+.Va charset-7bit .
+8-bit data will \*(OPally be converted into members of
+.Va sendcharsets
+until a character set conversion succeeds.
+.Va charset-8bit
+is the implied default last member of this list.
+If no 8-bit character set is capable to represent input data,
+no message will be sent, and its text will optionally be
+.Va save Ns d
+in
+.Ev DEAD .
+If that is not acceptable, for example in script environments,
+.Va mime-force-sendout
+can be set to force sending of non-convertible data as
+.Ql application/octet-stream
+classified binary content instead: like this receivers still have the
+option to inspect message content (for example via
+.Va mime-counter-evidence ) .
+If the \*(OPal character set conversion is not available
+.Pf ( Va features
+misses
+.Ql ,+iconv, ) ,
 .Va ttycharset
-a value during startup, making it possible to send mail in a completely
+is the only supported character set for non 7-bit clean data, and
+it is simply assumed it can be used to exchange 8-bit messages.
+.Pp
+.Va ttycharset
+may also be given an explicit value to send mail in a completely
 .Dq faked
-locale environment, an option which can be used to generate and send for
+locale environment, which can be used to generate and send for
 example 8-bit UTF-8 input data in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 environment (an example of this can be found in the section
 .Sx "On sending mail, and non-interactive mode" ) .
-Changing the value does not mean much beside that, because several
-aspects of the real character set are implied by the locale environment
-of the system, which stays unaffected by
+Doing so does not mean much beside that since several aspects of the
+real character set are implied by the locale environment of the system,
+which stays unaffected by
 .Va ttycharset .
 .Pp
-Messages and attachments which consist of 7-bit clean data will be
-classified as consisting of
+Classifying 7-bit clean data as
 .Va charset-7bit
-character data.
-This is a problem if the
-.Va ttycharset
-character set is a multibyte character set that is also 7-bit clean.
-For example, the Japanese character set ISO-2022-JP is 7-bit clean but
-capable to encode the rich set of Japanese Kanji, Hiragana and Katakana
+is a problem if the input character set
+.Pf ( Va ttycharset )
+is a multibyte character set that is itself 7-bit clean.
+For example, the Japanese character set ISO-2022-JP is, but is capable
+to encode the rich set of Japanese Kanji, Hiragana and Katakana
 characters: in order to notify receivers of this character set the mail
 message must be MIME encoded so that the character set ISO-2022-JP can
-be advertised!
+be advertised, otherwise an invalid email message would result!
 To achieve this, the variable
 .Va charset-7bit
-must be set to ISO-2022-JP.
+can be set to ISO-2022-JP.
 (Today a better approach regarding email is the usage of UTF-8, which
 uses 8-bit bytes for non-US-ASCII data.)
 .Pp
-If the \*(OPal character set conversion capabilities are not available
-.Pf ( Va features
-does not include the term
-.Ql +iconv ) ,
-then
+When replying to a message and the variable
+.Va reply-in-same-charset
+is set, the character set of the message being replied to is tried first
+as a target character set (still being a subject of
+.Ic charsetalias
+filtering, however).
+Another opportunity is
+.Va sendcharsets-else-ttycharset
+to reflect the user's locale environment automatically, it will treat
 .Va ttycharset
-will be the only supported character set,
-it is simply assumed that it can be used to exchange 8-bit messages
-(over the wire an intermediate, configurable
-.Va mime-encoding
-may be applied),
-and the rest of this section does not apply;
-it may however still be necessary to explicitly set it if automatic
-detection fails, since in that case it defaults to
-LATIN1 aka ISO-8859-1 unless the operating system environment is
-known to always and exclusively support UTF-8 locales.
+as an implied member of (an unset)
+.Va sendcharsets .
 .Pp
-\*(OP When reading messages, their text is converted into
+\*(OP When reading messages, their text data is converted into
 .Va ttycharset
 as necessary in order to display them on the user's terminal.
 Unprintable characters and invalid byte sequences are detected
-and replaced by proper substitution characters.
+and replaced by substitution characters.
 Character set mappings for source character sets can be established with
-the command
 .Ic charsetalias ,
-which may be handy to work around faulty character set catalogues (one
-could add a missing LATIN1 to ISO-8859-1 mapping), or to enforce treatment
-of one character set as another one (maybe interpret LATIN1 as CP1252).
+which may be handy to work around faulty or incomplete character set
+catalogues (one could for example add a missing LATIN1 to ISO-8859-1
+mapping), or to enforce treatment of one character set as another one
+.Pf ( Dq interpret LATIN1 as CP1252 ) .
 Also see
 .Va charset-unknown-8bit
 to deal with another hairy aspect of message interpretation.
-.Pp
-When sending messages their parts and attachments are classified.
-Whereas no character set conversion is performed on those parts which
-appear to be binary data,
-the character set being used must be declared within the MIME header of
-an outgoing text part if it contains characters that do not conform to
-the set of characters that are allowed by the email standards.
-Permissible values for character sets used in outgoing messages can be
-declared using the
-.Va sendcharsets
-variable, and the by-default set
-.Va charset-8bit ,
-the catch-all last-resort fallback character set that
-.Dq implicitly is the last member of
-.Va sendcharsets .
-.Pp
-When replying to a message and the variable
-.Va reply-in-same-charset
-is set, then the character set of the message being replied to
-is tried first (still being a subject of
-.Ic charsetalias ) .
-And it is also possible to make \*(UA work even more closely related to
-the current locale setting automatically by using the variable
-.Va sendcharsets-else-ttycharset ,
-please see there for more information.
-.Pp
-All the specified character sets are tried in order unless the
-conversion of the part or attachment succeeds.
-If none of the tried (8-bit) character sets is capable to represent the
-content of the part or attachment,
-then the message will not be send and its text will optionally be
-.Va save Ns d
-in
-.Ev DEAD .
-If that is not acceptable, the variable
-.Va mime-force-sendout
-can be set in order to force sending of non-convertible text as
-.Ql application/octet-stream
-classified binary content instead; like this receivers still have the
-option to inspect message content (for example by setting
-.Va mime-counter-evidence ) .
 .Pp
 In general, if a message saying
 .Dq cannot convert from a to b
@@ -2741,7 +2718,7 @@ In the first case, it is necessary to set an appropriate
 .Ev LC_CTYPE
 locale and/or the variable
 .Va ttycharset .
-The best results are usually achieved when \*(UA is run in a UTF-8
+The best results are usually achieved when running in a UTF-8
 locale on a UTF-8 capable terminal, in which case the full Unicode
 spectrum of characters is available.
 In this setup characters from various countries can be displayed,
@@ -3641,7 +3618,7 @@ It might make sense to conditionalize colour setup on interactive mode via
 indeed means
 .Dq interactive ) :
 .Bd -literal -offset indent
-if terminal && "$features" =% +colour
+if terminal && "$features" =% ,+colour,
   colour iso view-msginfo ft=bold,fg=green
   colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
@@ -3809,12 +3786,11 @@ This behaviour is different to the
 ell, which is a programming language with syntactic elements of clearly
 defined semantics, and therefore capable to sequentially expand and
 evaluate individual elements of a line.
-\*(UA will never be able to handle
 .Ql \&? set one=value two=$one
-in a single statement, because the variable assignment is performed by
-the command
+for example will never possibly assign value to one, because the
+variable assignment is performed no sooner but by the command
 .Pf ( Ic set ) ,
-not the language.
+long after the expansion happened.
 .Pp
 A list of all commands in lookup order is dumped by the command
 .Ic list .
@@ -4930,7 +4906,7 @@ for example
 and mappings are ineffective if character set conversion is not available
 .Pf ( Va features
 does not announce
-.Ql +iconv ) .
+.Ql ,+iconv, ) .
 Expansion happens recursively for cases where aliases point to other
 aliases (built-in loop limit: 8).
 .Pp
@@ -5582,16 +5558,16 @@ a variable breaks any freely established
 .Cm link .
 .Mx
 .It Ic errors
-\*(OP Since \*(UA uses the console as a user interface it can happen
-that messages scroll by too fast to become recognized.
-Therefore an error log queue is available which can be managed by
-.Ic errors :
+\*(OP As console user interfaces at times scroll error messages by too
+fast and/or out of scope, data can additionally be sent to an error queue
+manageable by this command:
 .Ar show
 or no argument will display and clear the queue,
 .Ar clear
-will only clear the queue.
-The queue is finite: if its maximum size is reached any new message
-replaces the eldest.
+will only clear it.
+As the queue becomes filled with
+.Va errors-limit
+entries the eldest entries are being dropped.
 There are also the variables
 .Va ^ERRQUEUE-COUNT
 and
@@ -5776,7 +5752,7 @@ EML files consist of only one mail message,
 When reading MBOX files tolerant POSIX rules are used by default.
 Invalid message boundaries that can be found quite often in historic
 MBOX files will be complained about (even more with
-.Va debug ):
+.Va debug ) :
 in this case the method described for
 .Va mbox-rfc4155
 can be used to create a valid MBOX database from the invalid input.
@@ -6235,15 +6211,14 @@ will reverse the result.
 .Bd -literal -offset indent
 wysh set v15-compat=yes # with value: automatic "wysh"!
 if -N debug;echo *debug* set;else;echo not;endif
-if [ "$ttycharset" == UTF-8 ] || \e
-    [ "$ttycharset" ==?case UTF8 ]
-  echo *ttycharset* is UTF-8, the former case-sensitive!
+if "$ttycharset" == UTF-8 || "$ttycharset" ==?cas UTF8
+  echo ttycharset is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if "$features" =% +regex && "$TERM" =~?case "^xterm\&.*"
+if "$features" =% ,+regex, && "$TERM" =~?case ^xterm\&.*
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
@@ -7323,7 +7298,7 @@ as necessary).
 \*(NQ TLS information and management command multiplexer to aid in
 .Sx "Encrypted network communication" ,
 mostly available only if the term
-.Ql +sockets
+.Ql ,+sockets,
 is included in
 .Va features .
 Commands support
@@ -8930,8 +8905,8 @@ The number of messages present in the \*(OPal log queue of
 and a boolean which indicates whether the queue is not empty,
 respectively; both are always 0 unless
 .Va features
-indicates
-.Ql +errors .
+includes
+.Ql ,+errors, .
 .El
 .Mx
 .It Va *
@@ -9488,6 +9463,11 @@ but which use a different modifier for ignoring the error.
 Please refer to the variable
 .Va \&?
 for more on this topic.
+.Mx
+.It Va errors-limit
+\*(OP Maximum number of entries in the
+.Ic errors
+queue.
 .Mx
 .It Va escape
 The first character of this value defines the escape character for
@@ -10552,15 +10532,12 @@ and without supervision unless either the
 or the
 .Va verbose
 variable is set.
-.Ql Bcc:
-headers are not passed through to MTAs as part of messages unless
-.Va mta-bcc-ok
-is set (see there); corresponding receivers are addressed by
-protocol-specific means or MTA command line options only until then.
-\*(OPally expansion of the well-known
-.Va mta-aliases
-.Pf ( Xr aliases 5 )
-can also be directly performed by \*(UA.
+Also see
+.Va mta-bcc-ok .
+\*(OPally expansion of
+.Xr aliases 5
+can be performed by setting
+.Va mta-aliases .
 .Pp
 For testing purposes there is the
 .Ql test
@@ -10711,28 +10688,28 @@ through to the MTA.
 .It Va mta-arguments
 Arguments to pass through to a file-based
 .Va mta
-can be given via this variable, which is parsed according to
+(Mail-Transfer-Agent), parsed according to
 .Sx "Shell-style argument quoting"
-into an array of arguments, and which will be joined onto MTA options
-from other sources, and then passed individually to the MTA:
+into an array of arguments which will be joined onto MTA options
+from other sources, for example
 .Ql \&? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
 .Mx
 .It Va mta-no-default-arguments
-\*(BO Unless this variable is set \*(UA will pass some well known
-standard command line options to a file-based
+\*(BO Avoids passing standard command line options to a file-based
 .Va mta
-(Mail-Transfer-Agent), see there for more.
+(please see there).
 .Mx
 .It Va mta-no-receiver-arguments
-\*(BO By default a file-based
-.Va mta
-will be passed all receiver addresses on the command line.
-Some MTAs impose special behaviour on such arguments, so setting this
-variable will suppress them altogether.
-This can make it necessary to pass a
+\*(BO By default all receiver addresses will be passed as command line
+options to a file-based
+.Va mta .
+Setting this variable disables this behaviour to aid those MTAs which
+employ special treatment of such arguments.
+Doing so can make it necessary to pass a
 .Fl \&\&t
 via
-.Va mta-arguments .
+.Va mta-arguments ,
+to testify the MTA that it should use the passed message as a template.
 .Mx
 .It Va mta-argv0
 Many systems use a so-called
@@ -10747,15 +10724,16 @@ actually executed when calling the file-based
 will treat its contents as that name.
 .Mx
 .It Va mta-bcc-ok
-\*(BO By default
+\*(BO In violation of RFC 5322 some MTAs do not remove
 .Ql Bcc:
-header lines are not passed through since some MTAs do not remove them
-before sending them over the wire, in violation of RFC 5322.
-(For example Exim and Courier would need to be started with the
+header lines from transported messages after having noted the respective
+receivers for addressing purposes.
+(The MTAs Exim and Courier for example require the command line option
 .Fl \&\&t
-command line option to force stripping.)
-Setting this enables pass-through, therefore avoids generation of
-mutilated message versions, and \*(ID improves performance.
+to enforce removal.)
+Unless this is set corresponding receivers are addressed by
+protocol-specific means or MTA command line options only, the header
+itself is stripped before being sent over the wire.
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 \*(BO\*(IN\*(OP Used to control usage of the user's
@@ -12433,11 +12411,16 @@ and/or
 .Lb libtermcap
 capabilities (see
 .Sx "On terminal control and line editor" ,
-escape commas with reverse solidus) to be used to overwrite or define
-entries.
+escape commas with reverse solidus
+.Ql \e )
+to be used to overwrite or define entries.
 .Sy Note
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
+It will always be inspected, regardless of whether
+.Va features
+denotes termcap/terminfo library support via
+.Ql ,+termcap, .
 .Pp
 String capabilities form
 .Ql cap=value
@@ -12480,6 +12463,7 @@ boolean which indicates if the right margin needs special treatment; the
 .Cd xenl
 capability is related, for more see
 .Ev COLUMNS .
+This capability is only used when backed by library support.
 .It Cd clear Ns \0or Cd cl
 .Cd clear_screen :
 clear the screen and home cursor.
@@ -12554,6 +12538,9 @@ boolean which indicates whether a newline written in the last column of an
 .Cd auto_right_margin
 indicating terminal is ignored.
 With it the full terminal width is available even on autowrap terminals.
+This will be inspected even without
+.Ql ,+termcap,
+.Va features .
 .El
 .Pp
 Many more capabilities which describe key-sequences are documented for
@@ -12655,7 +12642,7 @@ used to TLS library to verify TLS server certificates.
 \*(OP If this variable is set
 .Xr CONF_modules_load_file 3
 (if announced via
-.Ql +modules-load-file
+.Ql ,+modules-load-file,
 in
 .Va tls-features )
 is used to allow resource file based configuration of the TLS library.
@@ -12677,7 +12664,7 @@ resource files loaded like this, please see
 \*(OP If file based application-specific configuration via
 .Va tls-config-file
 is available, announced as
-.Ql +ctx-config
+.Ql ,+ctx-config,
 by
 .Va tls-features ,
 indicating availability of
@@ -12730,7 +12717,7 @@ is preceded with an asterisk
 will be performed on the value; it is an error if these fail.
 Unless proper support is announced by
 .Va tls-features
-.Pf ( Ql +conf-ctx )
+.Pf ( Ql ,+conf-ctx, )
 only the keys below are supported, otherwise the pairs will be used
 directly as arguments to the function
 .Xr SSL_CONF_cmd 3 .
@@ -12766,7 +12753,7 @@ These will be joined onto the list of ciphers from
 Available if
 .Va tls-features
 announces
-.Ql +ctx-set-ciphersuites ,
+.Ql ,+ctx-set-ciphersuites, ,
 as necessary via
 .Xr SSL_CTX_set_ciphersuites 3 .
 .It Cd Curves
@@ -12780,7 +12767,7 @@ The maximum and minimum supported TLS versions, respectively.
 Available if
 .Va tls-features
 announces
-.Ql +ctx-set-maxmin-proto ,
+.Ql ,+ctx-set-maxmin-proto, ,
 as necessary via
 .Xr SSL_CTX_set_max_proto_version 3
 and
@@ -12815,7 +12802,7 @@ The used TLS protocol.
 If
 .Va tls-features
 announces
-.Ql +conf-ctx
+.Ql ,+conf-ctx,
 or
 .Ql ctx-set-maxmin-proto
 then using
@@ -12908,7 +12895,7 @@ For the complete list of digest algorithms refer to
 \*(OP If
 .Va tls-features
 announces
-.Ql +tls-rand-file
+.Ql ,+tls-rand-file,
 then this will be queried to find a file with random entropy data which
 can be used to seed the P(seudo)R(andom)N(umber)G(enerator), see
 .Xr RAND_load_file 3 .
@@ -13779,7 +13766,9 @@ is implied.
 .Mx
 .It Cd x-mailx-last-resort
 An extension flag that indicates that this handler shall only be used
-as a last resort, when no other source provides a MIME handler.
+as a last resort, when no other source (see
+.Sx "HTML mail and MIME attachments" )
+provides a MIME handler.
 .Mx
 .It Cd x-mailx-ignore
 An extension that enforces that this handler is not used at all.
@@ -14046,7 +14035,7 @@ wysh set smime-ca-file="${tls-ca-file}" \e
 #   maybe use chain support via tls-config-pairs-HOST / -USER@HOST
 #   to define such explicit exceptions, then, e.g.,
 #     MinProtocol=TLSv1.1
-if [ "$tls-features" =% +ctx-set-maxmin-proto ]
+if "$tls-features" =% ,+ctx-set-maxmin-proto,
   wysh set tls-config-pairs='\e
       CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
       Curves=P-521:P-384:P-256,\e

@@ -1218,4 +1218,6 @@ jleave:
 
 #include "su/code-ou.h"
 #endif /* mx_HAVE_POP3 */
+#undef mx_SOURCE_NET_POP3
+#undef su_FILE
 /* s-it-mode */

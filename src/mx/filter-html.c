@@ -1,5 +1,10 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ HTML tagsoup filter TODO rewrite wchar_t based (require mx_HAVE_C90AMEND1)
+ *@ Implementation of filter-html.h.
+ *@ TODO Rewrite wchar_t based (requires mx_HAVE_C90AMEND1)
+ *@ TODO . Change add_data() to enqueue more data before deciding to go on.
+ *@ TODO   Should improve soup detection.  I.e., we could keep the dumb
+ *@ TODO   approach all around if just add_data() would encapsulate tags and
+ *@ TODO   detect soup better, like quoted strings going on etc.
  *@ TODO . Numeric &#NO; entities should be treated by struct a_flthtml_ent
  *@ TODO . Binary sort/search ENTITY table
  *@ TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
@@ -118,12 +123,12 @@ struct a_flthtml_ent{
    char const fhe_ent[7]; /* Entity less & and ; surroundings */
 };
 
-/* Tag list; TODO not binary searched */
+/* Tag list; todo not binary searched */
 static struct mx_flthtml_tag const a_flthtml_tags[] = {
 # undef a_X
 # undef a_XC
-# define a_X(S,A)     {A, '\0', sizeof(S) -1, S "\0"}
-# define a_XC(S,C,A)  {A, C, sizeof(S) -1, S "\0"}
+# define a_X(S,A) {A, '\0', sizeof(S) -1, S "\0"}
+# define a_XC(S,C,A) {A, C, sizeof(S) -1, S "\0"}
 
 # if 0 /* This is treated very special (to avoid wasting space in .fht_tag) */
    a_X("BLOCKQUOTE", a_FLTHTML_SA_BQUOTE),
@@ -188,6 +193,7 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
    a_XSU("lsquo", "'", 0x2018), a_XSU("rsquo", "'", 0x2019),
    a_XSU("ldquo", "\"", 0x201C), a_XSU("rdquo", "\"", 0x201D),
    a_XSU("uarr", "^|", 0x2191), a_XSU("darr", "|v", 0x2193),
+   a_XU("bull", '.', 0x2022),
 
    a_XSU("euro", "EUR", 0x20AC),
    a_XSU("infin", "INFY", 0x221E),
@@ -322,23 +328,20 @@ static struct a_flthtml_ent const a_flthtml_ents[] = {
 };
 
 /* Real output */
-static struct mx_flthtml *a_flthtml_dump_hrefs(
-      struct mx_flthtml *self);
+static struct mx_flthtml *a_flthtml_dump_hrefs(struct mx_flthtml *self);
 static struct mx_flthtml *a_flthtml_dump(struct mx_flthtml *self);
 static struct mx_flthtml *a_flthtml_store(struct mx_flthtml *self,
       char c);
 # ifdef mx_HAVE_NATCH_CHAR
-static struct mx_flthtml *a_flthtml__sync_mbstuff(
-      struct mx_flthtml *self);
+static struct mx_flthtml *a_flthtml__sync_mbstuff(struct mx_flthtml *self);
 # endif
 
 /* Virtual output */
 static struct mx_flthtml *a_flthtml_nl(struct mx_flthtml *self);
 static struct mx_flthtml *a_flthtml_nl_force(struct mx_flthtml *self);
-static struct mx_flthtml *a_flthtml_putc(struct mx_flthtml *self,
+static struct mx_flthtml *a_flthtml_putc(struct mx_flthtml *self, char c);
+static struct mx_flthtml *a_flthtml_putc_premode(struct mx_flthtml *self,
       char c);
-static struct mx_flthtml *a_flthtml_putc_premode(
-      struct mx_flthtml *self, char c);
 static struct mx_flthtml *a_flthtml_puts(struct mx_flthtml *self,
       char const *cp);
 static struct mx_flthtml *a_flthtml_putbuf(struct mx_flthtml *self,
@@ -400,6 +403,7 @@ a_flthtml_dump_hrefs(struct mx_flthtml *self){
    self->fh_flags |= (putc('\n', self->fh_os) == EOF)
          ?  a_FLTHTML_ERROR : a_FLTHTML_NL_1 | a_FLTHTML_NL_2;
    self->fh_href_dist = mx_termios_dimen.tiosd_real_height >> 1;
+
 jleave:
    NYD2_OU;
    return self;
@@ -455,6 +459,7 @@ a_flthtml_store(struct mx_flthtml *self, char c){
    l = self->fh_len;
    if(UNLIKELY(l == 0) && (i = (self->fh_flags & a_FLTHTML_BQUOTE_MASK)
          ) != 0 && self->fh_lmax > a_FLTHTML_MINLEN){
+      char xc;
       u32 len, j;
       char const *ip;
 
@@ -464,18 +469,23 @@ a_flthtml_store(struct mx_flthtml *self, char c){
          ip = "   |"; /* XXX something from *quote-chars* */
          len = sizeof("   |") -1;
       }
-
       self->fh_len = len;
+
+      xc = '\0';
       for(j = len; j-- != 0;){
          char x;
 
          if((x = ip[j]) == '\t')
             x = ' ';
+         else if(xc == '\0' && su_cs_is_print(x) && !su_cs_is_space(x))
+            xc = x;
          self->fh_line[j] = x;
       }
+      if(xc == '\0')
+         xc = '|';
 
       while(--i > 0 && self->fh_len < self->fh_lmax - a_FLTHTML_BRKSUB)
-         self = a_flthtml_store(self, '|'); /* XXX sth of *quote-chars* */
+         self = a_flthtml_store(self, xc);
 
       l = self->fh_len;
    }
@@ -629,6 +639,7 @@ a_flthtml_nl(struct mx_flthtml *self){
       }else
          self->fh_flags = (f |= a_FLTHTML_NL_MASK);
    }
+
    NYD2_OU;
    return self;
 }
@@ -636,8 +647,10 @@ a_flthtml_nl(struct mx_flthtml *self){
 static struct mx_flthtml *
 a_flthtml_nl_force(struct mx_flthtml *self){
    NYD2_IN;
+
    if(!(self->fh_flags & a_FLTHTML_ERROR))
       self = a_flthtml_dump(self);
+
    NYD2_OU;
    return self;
 }
@@ -684,6 +697,7 @@ a_flthtml_putc_premode(struct mx_flthtml *self, char c){
       self->fh_flags = (f |= a_FLTHTML_ANY);
       self = a_flthtml_store(self, c);
    }
+
    NYD2_OU;
    return self;
 }
@@ -695,6 +709,7 @@ a_flthtml_puts(struct mx_flthtml *self, char const *cp){
 
    while((c = *cp++) != '\0')
       self = a_flthtml_putc(self, c);
+
    NYD2_OU;
    return self;
 }
@@ -705,13 +720,13 @@ a_flthtml_putbuf(struct mx_flthtml *self, char const *cp, uz len){
 
    while(len-- > 0)
       self = a_flthtml_putc(self, *cp++);
+
    NYD2_OU;
    return self;
 }
 
 static struct mx_flthtml *
-a_flthtml_param(struct mx_flthtml *self, struct str *store,
-      char const *param){
+a_flthtml_param(struct mx_flthtml *self, struct str *store, char const *param){
    char const *cp;
    char c, x, quote;
    uz i;
@@ -792,8 +807,6 @@ a_flthtml_param(struct mx_flthtml *self, struct str *store,
    }
 
    if(c == '"' || c == '\''){
-      /* TODO i have forgotten whether reverse solisud quoting is allowed in
-       * TODO quoted HTML parameter values?  not supporting that for now.. */
       store->s = UNCONST(char*,cp);
       for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
          ;
@@ -816,14 +829,14 @@ a_flthtml_param(struct mx_flthtml *self, struct str *store,
       ;
    if((store->l = i) == 0)
       store->s = NIL;
+
 jleave:
    NYD2_OU;
    return self;
 }
 
 static struct mx_flthtml *
-a_flthtml_expand_all_ents(struct mx_flthtml *self,
-      struct str const *param){
+a_flthtml_expand_all_ents(struct mx_flthtml *self, struct str const *param){
    char const *cp, *maxcp, *ep;
    char c;
    uz i;
@@ -852,6 +865,7 @@ jputc:
          cp = ep;
       }
    }
+
 jleave:
    NYD2_OU;
    return self;
@@ -869,13 +883,13 @@ a_flthtml_check_tag(struct mx_flthtml *self, char const *s){
    /* Extra check only */
    ASSERT(s != NIL);
    if(*s != '<'){
-      su_DBG( n_alert("HTML tagsoup filter: check_tag() called on soup!"); )
+      DBG( n_alert("HTML tagsoup filter: check_tag() called on soup!"); )
 jput_as_is:
       self = a_flthtml_puts(self, self->fh_bdat);
       goto jleave;
    }
 
-   for(++s, i = 0; (c = s[i]) != '\0' && c != '>' && !su_cs_is_white(c); ++i)
+   for(++s, i = 0; (c = s[i]) != '\0' && c != '>' && !su_cs_is_white(c); ++i){
       /* Special massage for things like <br/>: after the slash only whitespace
        * may separate us from the closing right angle! */
       if(c == '/'){
@@ -886,6 +900,7 @@ jput_as_is:
          if(c == '>')
             break;
       }
+   }
 
    for(hftp = a_flthtml_tags;;){
       if(i == hftp->fht_len && !su_cs_cmp_case_n(s, hftp->fht_tag, i)){
@@ -893,8 +908,9 @@ jput_as_is:
          if(c == '>' || c == '/' || su_cs_is_white(c))
             break;
       }
-      if(UNLIKELY(PCMP(++hftp, >=, a_flthtml_tags + NELEM(a_flthtml_tags)))){
-         /* A <blockquote> is very special xxx */
+
+      if(UNLIKELY(PCMP(++hftp, >=, &a_flthtml_tags[NELEM(a_flthtml_tags)]))){
+         /* xxx A <blockquote> is very special as it is used for quoting */
          boole isct;
 
          if((isct = (i > 1 && *s == '/'))){
@@ -908,7 +924,7 @@ jput_as_is:
                !su_cs_is_white(c))){
             s -= isct;
             i += isct;
-            goto jnotknown;
+            goto junknown;
          }
 
          if(!isct && !(self->fh_flags & a_FLTHTML_NL_2))
@@ -1016,7 +1032,7 @@ jleave:
    /* The problem is that even invalid tagsoup is widely used, without real
     * searching i have seen e-mail address in <N@H.D> notation, and more.
     * Protect us a bit: look around and possibly write the content as such */
-jnotknown:
+junknown:
    switch(*s){
    case '!':
    case '?':
@@ -1191,11 +1207,13 @@ jcp_reset:
                self = a_flthtml_puts(self, self->fh_bdat);
                f = self->fh_flags;
             }
+            break;
          }
          cp = self->fh_bdat;
          *cp++ = c;
          self->fh_flags = (f |= a_FLTHTML_NOPUT);
          break;
+
       case '>':
          /* Weird tagsoup around, do we actually parse a tag? */
          if(!(f & a_FLTHTML_NOPUT))
@@ -1243,13 +1261,21 @@ jdo_c:
                self->fh_flags &= ~a_FLTHTML_BLANK;
             }else
               self = a_flthtml_putc(self, c);
-         }else if((f & a_FLTHTML_ENT) && c == ';'){
+         }
+         /* People are using & without &amp;ing it, so terminate entity
+          * processing if it cannot be an entity XXX is_space() not enough */
+         else if((f & a_FLTHTML_ENT) && (c == ';' || su_cs_is_space(c))){
             cp[0] = c;
             cp[1] = '\0';
             f &= ~(a_FLTHTML_NOPUT | a_FLTHTML_ENT);
             self->fh_flags = f;
-            self = a_flthtml_check_ent(self, self->fh_bdat,
-                  P2UZ(cp + 1 - self->fh_bdat));
+            if(c == ';')
+               self = a_flthtml_check_ent(self, self->fh_bdat,
+                     P2UZ(cp + 1 - self->fh_bdat));
+            else{
+               self = a_flthtml_puts(self, self->fh_bdat);
+               f = self->fh_flags;
+            }
          }else{
             /* We may need to grow the buffer */
             if(PCMP(cp + 42/2, >=, cp_max)){
@@ -1274,7 +1300,7 @@ jleave:
 }
 
 /*
- * TODO Because we don't support filter chains yet this filter will be run
+ * TODO Because we do not support filter chains yet this filter will be run
  * TODO in a dedicated subprocess, driven via a special fs_pipe_open() mode
  */
 static boole a_flthtml__hadpipesig;
@@ -1319,6 +1345,7 @@ mx_flthtml_process_main(void){
    mx_flthtml_destroy(&hf);
 
    rv |= a_flthtml__hadpipesig;
+
    NYD_OU;
    return rv;
 }
@@ -1326,15 +1353,19 @@ mx_flthtml_process_main(void){
 void
 mx_flthtml_init(struct mx_flthtml *self){
    NYD_IN;
+
    /* (Rather redundant though) */
    su_mem_set(self, 0, sizeof *self);
+
    NYD_OU;
 }
 
 void
 mx_flthtml_destroy(struct mx_flthtml *self){
    NYD_IN;
+
    mx_flthtml_reset(self, NIL);
+
    NYD_OU;
 }
 
@@ -1366,6 +1397,7 @@ mx_flthtml_reset(struct mx_flthtml *self, FILE *f){
          self->fh_flags = a_FLTHTML_UTF8;
       self->fh_os = f;
    }
+
    NYD_OU;
 }
 
@@ -1375,6 +1407,7 @@ mx_flthtml_push(struct mx_flthtml *self, char const *dat, uz len){
    NYD_IN;
 
    rv = a_flthtml_add_data(self, dat, len);
+
    NYD_OU;
    return rv;
 }
@@ -1386,6 +1419,7 @@ mx_flthtml_flush(struct mx_flthtml *self){
 
    rv = a_flthtml_add_data(self, NIL, 0);
    rv |= !fflush(self->fh_os) ? 0 : -1;
+
    NYD_OU;
    return rv;
 }

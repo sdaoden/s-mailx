@@ -5,12 +5,10 @@ S-nail (later S-mailx) provides a simple and friendly environment for
 sending and receiving mail.  It is intended to provide the functionality
 of the POSIX mailx(1) command, but is MIME capable and optionally offers
 extensions for line editing, S/MIME, SMTP and POP3, among others.
-S-nail divides incoming mail into its constituent messages and allows
-the user to deal with them in any order.  It offers many commands and
-internal variables for manipulating messages and sending mail.  It
-provides the user simple editing capabilities to ease the composition of
-outgoing messages, and increasingly powerful and reliable
-non-interactive scripting capabilities.
+It divides incoming mail into its constituent messages and allows the
+user to deal with them in any order, offers many commands and variables
+for manipulating messages and sending mail, as well as line editing, and
+increasingly powerful scripting capabilities.
 
 Please refer to the file INSTALL for build and installation remarks,
 and to NEWS for release update information.  The file THANKS mentions
@@ -46,10 +44,10 @@ cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
 
   [1] https?://ftp.sdaoden.eu/s-nail-latest.tar.{gz,xz}{,.asc}
   [2] https?://www.sdaoden.eu/code.html#s-mailx
-  [3] https?://git.sdaoden.eu/cgit/s-nail.git
+  [3] https?://git.sdaoden.eu/browse/s-nail.git
   [4] https?://git.sdaoden.eu/scm/s-nail.git
-  [5] http://sourceforge.net/projects/s-nail
-  [6] http://repo.or.cz/s-mailx.git
+  [5] https?://sourceforge.net/projects/s-nail
+  [6] https?://repo.or.cz/s-mailx.git
 
 We have a mailing list[7] with moderated unsubscribed posting possi-
 bilities; subscriptions can be managed via web interface[8] (it is
@@ -76,7 +74,7 @@ are receive-only mailing-lists.
   [13] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
   [14] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
 
-Our heraldic animal snailmail.jpg has been found at [+1].
+Our heraldic animal snailmail.jpg had been found at [+1].
 Thank you!
 
   [+1] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
@@ -115,15 +113,14 @@ And then, assuming the last had been done:
 --------------------
 
 - [release/*]
-    A new branch within release/ is created for every release, e.g.,
-    [release/v14.8.10].  History will not be rewritten.
+    A new branch within release/ is created for every release, for
+    example [release/v14.8.10].  History will not be rewritten.
 
-    These branches consist of one commit, and that commit is signed with
-    an OpenPGP key and used for the signed release tag,
-    vMAJOR.MINOR.UPDATE.ar (.ar for "archive").  The commit as such
-    covers the data modifications that make up a release, i.e., release
-    date fixation, manual preprocessing, removal of data which does not
-    make sense in release tarballs, etc.
+    These branches consist of one signed commit, and is used for the
+    signed release tag, vMAJOR.MINOR.UPDATE.ar (.ar for "archive").
+    The commit as such covers the data modifications that make up
+    a release (release date fixation, manual preprocessing, removal of
+    data which does not make sense in release tarballs, ..).
 
     All this is not true for older releases, the new repository layout
     was introduced after v14.8.10.  But it used [timeline] as a source
@@ -178,7 +175,6 @@ And then, assuming the last had been done:
 
     These are possibly what users should track which want to have the
     newest non-release bugfixes and stable, backward-compatible commits.
-    See below for examples how to accomplish that.
 
 - [master]
     Rooted on top of [heirloom].  It gains only stable, but possibly

@@ -30,14 +30,14 @@ and cause automatic cleanups and rebuilds as necessary.
   $ make citron         # equals "$ make config build install"
   $ make distclean      # *Completely* cleanup working directory
 
-With adjustments:
+With feature adjustments:
 
-  $ make OPT_POP3=no OPT_SMTP=require OBJDIR=/tmpfs/mx tangerine
+  $ make OPT_POP3=no OPT_SMTP=require tangerine
   $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix citron
 
-With utility program and feature adjustments:
+With utility program, build and feature adjustments:
 
-  $ make awk=/usr/bin/nawk VERBOSE=yes OPT_NET=no tangerine
+  $ make awk=/usr/bin/nawk VERBOSE=yes OBJDIR=/tmpfs/mx OPT_NET=no tangerine
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
 SETUID (to VAL_DOTLOCK_USER, default "root") helper program will be build
@@ -63,7 +63,7 @@ in the directory .obj/ (or what $OBJDIR defines), in- or off-tree.
 The following make(1) targets exist, the default being `build':
 
 - tangerine   Shorthand for "$ make config build test install": create
-              or check and update configuration, build, test and install.
+              or check and update configuration, build, test, and install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
 - citron      Shorthand for "$ make config build install".
@@ -76,16 +76,16 @@ The following make(1) targets exist, the default being `build':
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
 
-              S-nail will create an uninstall shell script
-              (${VAL_SID}${VAL_MAILX}-uninstall.sh), but which will
-              *not* be installed if $DESTDIR is set non-empty -- within
-              $DESTDIR, that is.  Copy or move it manually from the S-nail
-              $OBJDIR into $DESTDIR as necessary in that case.
+              An uninstall script ${VAL_SID}${VAL_MAILX}-uninstall.sh
+              will be created but *not* be installed if $DESTDIR is set
+              non-empty -- within $DESTDIR, that is: it needs to be
+              copied manually from $OBJDIR into $DESTDIR as necessary.
 
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run mx-test.sh in --check-only mode on the built binary.
+- test        Run mx-test.sh in --check mode on the built binary.
+              Tests to be skipped can be passed via SKIPTEST="t1 t2".
 - testnj      Likewise, but add --no-jobs to avoid spawning multiple
               tests in parallel.
 
@@ -165,7 +165,7 @@ and the tests take place):
 - mk-config.env  sh(1) environment representing the configuration.
 
 Of special interest is mk-config.log since the error usually manifests
-here in textual output.  Maybe that makes it obvious what can be done
+here in textual form.  Maybe that makes it obvious what can be done
 (header files could not be found because of missing entries in
 $C_INCLUDE_PATH, libraries could not be linked because of incomplete
 $LD_LIBRARY_PATH, etc.).
@@ -190,6 +190,7 @@ first: sometimes it is known that certain tests fail on a specific
 target platform, and there is no applicable fix on application level.
 For example, it is not uncommon that Unicode tests fail because the
 platform uses old or incomplete character information.
+These tests can be excluded by passing SKIPTEST="t1 t2 ..".
 
 It could also be a miscompilation, caused by excessive optimization
 and/or a compiler bug.  If OPT_AUTOCC had been used in conjunction with
@@ -203,8 +204,9 @@ echoes the actual test names in brackets), for example
 
   $ ./mx-test.sh --run-test ./s-nail localopts mbox
 
-would run the tests "localopts" and "mbox".  Test output files look
-like t.TESTNAME-XY and reside  in the ./.obj ($OBJDIR) directory.
+would run the tests "localopts" and "mbox".  If not an absolute path
+the binary (./s-nail) is expected relative to $OBJDIR.  There also the
+test output files, named like t.TESTNAME-XY, reside.
 (If the build and test is done in a repository checkout, and if the
 branch "test-out" exists, then in addition to the failing test output
 the expected as well as -- optionally -- the file difference of these
@@ -215,13 +217,8 @@ It might make sense to send the output files of the failing tests to
 the mailing-list.  Because of ML message size restrictions, creating
 a compressed tar(1) archive of the files would be appreciated:
 
-  $ rm -f .obj/t.*.old .obj/t.*.diff  # In repository checkout only
-  $ tar -cf - .obj/t.* | xz > tlogs.tar.xz
-or
-  $ tar -cf - .obj/t.* | gzip > tlogs.tar.gz
-or
-  $ tar -cf - .obj/t.* | zstd -T0 -19 > tlogs.tar.zst
-etc.
+  $ rm -f .obj/t.*.old #.obj/t.*.diff # (In repository checkout only)
+  $ tar -cf - .obj/t.* | (xz/gzip/zstd -T0 -19) > tlogs.tar.(xz/gz/zst)
 
 Thank you!
 
@@ -236,12 +233,12 @@ to gain compiler debug flags, memory bound canaries and Not-Yet-Dead
 function graph listings in case of crashes etc.
 For sanitizers plus special options exist, please read make.rc for more.
 
-In case of errors using the -d (*debug*) and -v (*verbose*; may be set
-multiply for more verbosity) options (variables) is always good idea:
+In case of errors using the -d (*debug*) and -v (*verbose*[=VALUE])
+options (variables) is always good idea:
 
   $ s-nail -dvv
 or
-  $ s-nail -Sdebug -Sverbose -Sverbose
+  $ s-nail -Sdebug -Sverbose=3
 
 Should you really discover any problems with S-nail it would be very
 useful for development if you would contact the mailing-list!
@@ -251,10 +248,10 @@ Thank you!
 ----------------------------------------
 
 - All systems:
-  * Running the tests on a NFS filesystem may cause false negatives.
+  * Running tests on a NFS filesystem may cause false negatives.
     (Seen on the SunOS 5.11 OpenCSW machines, in [pipe_handlers]
-    failure due to hard link count mismatch since NFS links the file
-    to some other name, too, and that lingers too long, reproducibly).
+    failure due to hard link count mismatch since NFS also links the
+    file to some other name and that lingers too long, reproducibly).
 
   * Various warnings for diverse compiler versions etc.  This is a race
     which cannot be won, so i make the software compile and test under
@@ -272,16 +269,13 @@ Thank you!
     "PRI[du]Z" macros which end up with the correct size, which is
     also compile-time asserted (via "MCTA(sizeof(size_t) == XZ)").
 
-    By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
-    with gcc(1) and clang(1): with OPT_AUTOCC pass
-    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 in $CFLAGS.
+    By forcing ISO C99 mode these warnings vanish, for example gcc(1):
+    with OPT_AUTOCC pass "EXTRA_CFLAGS=-std=c99", otherwise ensure that
+    -std=c99 is defined in $CFLAGS.
 
 - BSD make, AND FreeBSD-derived sh(1):
-  * bmake(1) cannot drive "make test" that uses sh(1) "set -m" when
-    parallel (-j) building was used.
-    You could give "make testnj" a spin, but ymmv, especially with
-    FreeBSD derived /bin/sh, which also has problems with monitoring.
-    For those you should pass JOBMON=n.
+  * bmake(1) cannot drive "make test" with sh(1)ells that use monitor
+    mode "set -m".  Please pass JOBMON=n ("make test JOBMON=n").
 
 Development:
 
@@ -293,9 +287,9 @@ Frequently:
 
 . ArchLinux <https://www.archlinux.org/> (current).
 
-. FreeBSD <https://www.freebsd.org/> (x86: latest (11.2,12.1)).
+. FreeBSD <https://www.freebsd.org/> (x86: 11.2,12.1; amd64: 12.2).
   - v11. series test errors: see DragonFly.
-  - BSD make -j / sh(1) issue, as above.
+  - BSD make -j / sh(1) -m issue, as above.
 
 . OpenBSD <https://www.openbsd.org/> (x86: latest (6.[4-8])).
 
@@ -307,7 +301,7 @@ Pre-release, and other landmarks:
     LEFT and RIGHT PARENTHESIS, respectively) are not printable,
     causing replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
-  - BSD make -j / sh(1) issue, as above.
+  - BSD make -j / sh(1) -m issue, as above.
 
 . NetBSD <https://www.netbsd.org/> (amd64: 9.0).
   - BSD make -j issue, as above.
@@ -322,23 +316,22 @@ Pre-release, and other landmarks:
     (Sparc and x86 machines with SunOS 5.9, 5.10 and 5.11.)
 
   * We yet favoured Sun's compiler, but now use the default algorithm
-    which goes for $CC/$CFLAGS if set before searching default
-    open-source compilers, before trying special SUN flags.
+    which goes for $CC/$CFLAGS if set, then searches open-source
+    compilers, only if that fails we go for traditional SUN.
 
   * The original Sun roff (aka AT&T ditroff) is not capable to display
     the manual.  We offer preformatted manual pages, please see the
-    actual release announcement for details.
+    release announcement for details.
 
   * Some notes collected on earlier trials:
-    + We forcefully disable stack protectors on SunOS/gcc because of
-      linking errors seen in earlier tests.
+    + We may forcefully disable stack protectors on SunOS/gcc because
+      of link errors seen in earlier tests.
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       you have to overwrite the symbol with __builtin_va_start,
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
-      This will not work with OPT_AUTOCC.
 
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).

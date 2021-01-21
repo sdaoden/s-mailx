@@ -131,7 +131,7 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
       su_S(T *,su_MEM_BAG_SELF_AUTO_ALLOC_N_LOC(sizeof(T), su_S(su_uz,NO),\
          FNAME, LNNO))
 #  define su_MEM_BAG_SELF_AUTO_TCALLOC(T,NO) \
-      su_S(T *,su_MEM_BAG_SELF_AUTO_CALLOC_N(sizeof(T), su_S(su_uz,NO))
+      su_S(T *,su_MEM_BAG_SELF_AUTO_CALLOC_N(sizeof(T), su_S(su_uz,NO)))
 #  define su_MEM_BAG_SELF_AUTO_TCALLOC_LOC(T,NO,FNAME,LNNO) \
       su_S(T *,su_MEM_BAG_SELF_AUTO_CALLOC_N_LOC(sizeof(T), su_S(su_uz,NO),\
          FNAME, LNNO))

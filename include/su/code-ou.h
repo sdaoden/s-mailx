@@ -106,6 +106,9 @@
 #undef MT
 #undef NELEM
 #undef NYD_OU_LABEL
+#undef su__NYD_IN
+#undef su__NYD_OU
+#undef su__NYD
 #undef NYD_IN
 #undef NYD_OU
 #undef NYD

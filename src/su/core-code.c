@@ -148,7 +148,7 @@ jnomx:
 static void
 a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie, struct a_core_nyd_info const *cnip){
-   char buf[80], c;
+   char buf[80 +1], c;
    union {int i; uz z;} u;
    char const *sep, *cp;
 
@@ -166,7 +166,7 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
    }
 
    u.i = snprintf(buf, sizeof(buf) - 1,
-         "%c [%2" PRIu32 "] %.25s (%s%.40s:%" PRIu32 ")\n",
+         "%c[%2" PRIu32 "] %.25s (%s%.40s:%" PRIu32 ")\n",
          "=><"[(cnip->cni_chirp_line >> 29) & 0x3], cnip->cni_level,
          cnip->cni_fun, sep, cp, (cnip->cni_chirp_line & 0x1FFFFFFFu));
    if(u.i > 0){

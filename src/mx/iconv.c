@@ -162,15 +162,15 @@ n_iconv_reset(iconv_t cd){
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
 #  if su_OS_DRAGONFLY
-#   define __INBCAST(S) (char ** __restrict__)n_UNCONST(S)
+#   define a_X(X) S(char** __restrict__,S(void*,UNCONST(char*,X)))
 #  else
-#   define __INBCAST(S) (char const **)n_UNCONST(S)
+#   define a_X(X) S(char const**,S(void*,UNCONST(char*,X)))
 #  endif
 # elif su_OS_SUNOS || su_OS_SOLARIS
-#  define __INBCAST(S) (char const ** __restrict__)n_UNCONST(S)
+#  define a_X(X) S(char const** __restrict__,S(void*,UNCONST(char*,X)))
 # endif
-# ifndef __INBCAST
-#  define __INBCAST(S)  (char **)n_UNCONST(S)
+# ifndef a_X
+#  define a_X(X)  S(char**,S(void*,UNCONST(char*,X)))
 # endif
 
 int
@@ -185,7 +185,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    for(;;){
       uz i;
 
-      if((i = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft)) == 0)
+      if((i = iconv(cd, a_X(inb), inbleft, outb, outbleft)) == 0)
          break;
       if(i != (uz)-1){
          if(!(icf & n_ICONV_IGN_NOREVERSE)){
@@ -229,7 +229,7 @@ jleave:
    NYD2_OU;
    return err;
 }
-# undef __INBCAST
+# undef a_X
 
 int
 n_iconv_str(iconv_t cd, enum n_iconv_flags icf,

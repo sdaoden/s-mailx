@@ -89,7 +89,7 @@ XOPTIONS_XTRA="\
 # values of which only one will be really used, so those user wishes may not be
 # placed in the header, only the really detected one (but that has to!).
 # Used for grep(1), for portability assume fixed matching only.
-H_BLACKLIST='-e VAL_RANDOM -e VAL_IDNA'
+H_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
 
 # The problem is that we don't have any tools we can use right now, so
 # encapsulate stuff in functions which get called in right order later on
@@ -190,8 +190,9 @@ option_setup() {
          OPT_DEVEL=1
          ;;
       *)
-         echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-         echo >&2 '   NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
+         msg 'failed'
+         msg 'ERROR: unknown CONFIG= setting: '${CONFIG}
+         msg '   Available are NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
          exit 1
          ;;
       esac
@@ -282,12 +283,13 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
-#cc_os_search=
-#cc_no_stackprot=
-#cc_no_fortify=
-#ld_need_R_flags=
-#ld_no_bind_now=
-#ld_rpath_not_runpath=
+cc_os_search=
+cc_no_stackprot=
+cc_no_fortify=
+cc_no_flagtest=
+ld_need_R_flags=
+ld_no_bind_now=
+ld_rpath_not_runpath=
 
 _CFLAGS= _LDFLAGS=
 
@@ -394,35 +396,34 @@ cc_setup() {
       export CFLAGS LDFLAGS
    fi
 
-   [ -n "${CC}" ] && { _cc_default; return; }
-
-   msg_nonl 'Searching for a usable C compiler .. $CC='
-   if acmd_set CC clang || acmd_set CC gcc ||
-         acmd_set CC tcc || acmd_set CC pcc ||
-         acmd_set CC c89 || acmd_set CC c99; then
-      :
-
+   if [ -n "${CC}" ]; then
+      _cc_default
    elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
-      :
+      cc_no_flagtest=1
    else
-      msg 'boing booom tschak'
-      msg 'ERROR: I cannot find a compiler!'
-      msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
-      msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
-      config_exit 1
+      msg_nonl 'Searching for a usable C compiler .. $CC='
+      if acmd_set CC clang || acmd_set CC gcc ||
+            acmd_set CC tcc || acmd_set CC pcc ||
+            acmd_set CC c89 || acmd_set CC c99; then
+         case "${CC}" in
+         *pcc*) cc_no_fortify=1;;
+         *) ;;
+         esac
+      else
+         msg 'boing booom tschak'
+         msg 'ERROR: I cannot find a compiler!'
+         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
+         config_exit 1
+      fi
    fi
    msg '%s' "${CC}"
    export CC
-
-   case "${CC}" in
-   *pcc*) cc_no_fortify=1;;
-   *) ;;
-   esac
 }
 
 _cc_os_unixware() {
    if feat_yes AUTOCC && acmd_set CC cc; then
-      msg ' . have special UnixWare environmental rules ...'
+      msg_nonl ' . have special UnixWare rules for $CC ...'
       feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -435,7 +436,8 @@ _cc_os_unixware() {
 }
 
 _cc_os_sunos() {
-   if feat_yes AUTOCC && acmd_set CC cc; then
+   if feat_yes AUTOCC && acmd_set CC cc && "${CC}" -flags >/dev/null 2>&1; then
+      msg_nonl ' . have special SunOS rules for $CC ...'
       feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -444,6 +446,7 @@ _cc_os_sunos() {
       OPT_AUTOCC=0 ld_need_R_flags=-R
       return 0
    else
+      CC=
       : # cc_maxopt=2 cc_no_stackprot=1
    fi
    return 1
@@ -509,7 +512,9 @@ cc_hello() {
 }
 
 cc_flags() {
-   if feat_yes AUTOCC; then
+   if [ -n "${cc_no_flagtest}" ]; then
+      ld_runtime_flags # update!
+   elif feat_yes AUTOCC; then
       if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
@@ -1145,11 +1150,25 @@ ld_runtime_flags() {
    ld_need_R_flags=
 }
 
+_cc_check_ever=
 cc_check() {
+   if [ -z "${_cc_check_ever}" ]; then
+      _cc_check_ever=' '
+      __occ=${cc_check_silent}
+      __oCFLAGS=${_CFLAGS}
+
+      cc_check_silent=
+      cc_check -Werror && _cc_check_ever=-Werror
+
+      _CFLAGS=${__oCFLAGS}
+      cc_check_silent=${__occ}
+      unset __occ __oCFLAGS
+   fi
+
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-      ${CC} ${INCS} \
+      ${CC} ${INCS} ${_cc_check_ever} \
             ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
@@ -1308,6 +1327,8 @@ string_to_char_array() {
          y = xya[j]
          if(y == "\012")
             y = "\\n"
+         else if(y == "\\")
+            y = "\\\\"
          printf "'"'"'%s'"'"'", y
       }
    }'
@@ -1505,10 +1526,10 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
+printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 printf \
-   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check-only %s\n' \
+   'testnj: all\n\t$(ECHO_TEST)%s %smx-test.sh --no-jobs --check %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
@@ -2003,6 +2024,44 @@ int main(void){
 }
 !
 
+if run_check close_range 'close_range(2)' '#define mx_HAVE_CLOSE_RANGE
+      #define mx_CLOSE_RANGE_FUN(LO,HI) close_range(LO, HI, 0)
+      #define mx_CLOSE_RANGE_H <unistd.h>' <<\!
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   int fds[2];
+
+   if(!close_range(3, ~0u, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif link_check close_range 'close_range(2) (via syscall(2)' \
+      '#define mx_HAVE_CLOSE_RANGE
+      #define mx_CLOSE_RANGE_FUN(LO,HI) syscall(SYS_close_range, LO, HI, 0)
+      #define mx_CLOSE_RANGE_H <sys/syscall.h>' <<\!
+#include <sys/syscall.h>
+int main(void){
+   syscall(SYS_close_range, 3, ~0u, 0);
+   return 0;
+}
+!
+then
+   :
+elif link_check closefrom 'closefrom(2)' '#define mx_HAVE_CLOSEFROM' << \!
+#include <unistd.h>
+int main(void){
+   closefrom(3);
+   return 0;
+}
+!
+then
+   :
+fi
+
 link_check tcgetwinsize 'tcgetwinsize(3)' '#define mx_HAVE_TCGETWINSIZE' << \!
 #include <termios.h>
 int main(void){
@@ -2236,9 +2295,19 @@ int main(void){
 }
 !
 
+##
 ## optional and selectable
+##
 
+# OPT_ICONV, VAL_ICONV {{{
 if feat_yes ICONV; then
+   if val_allof VAL_ICONV libc,iconv; then
+      :
+   else
+      msg 'ERROR: VAL_ICONV with invalid entries: %s' "${VAL_ICONV}"
+      config_exit 1
+   fi
+
    # To be able to create tests we need to figure out which replacement
    # sequence the iconv(3) implementation creates
    ${cat} > ${tmp2}.c << \!
@@ -2249,6 +2318,7 @@ int main(void){
    char inb[16], oub[16], *inbp, *oubp;
    iconv_t id;
    size_t inl, oul;
+   int rv;
 
    /* U+2013 */
    memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
@@ -2256,41 +2326,75 @@ int main(void){
    oul = sizeof oub;
    oubp = oub;
 
+   rv = 1;
    if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
-     return 1;
+      goto jleave;
+
+   rv = 14;
    if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
-      return 14;
-   iconv_close(id);
+      goto jleave;
 
    *oubp = '\0';
    oul = (size_t)(oubp - oub);
    if(oul == 0)
-      return 14;
+      goto jleave;
    /* Character-wise replacement? */
    if(oul == 1){
+      rv = 2;
       if(oub[0] == '?')
-         return 2;
+         goto jleave;
+      rv = 3;
       if(oub[0] == '*')
-         return 3;
-      return 14;
+         goto jleave;
+      rv = 14;
+      goto jleave;
    }
+
    /* Byte-wise replacement? */
    if(oul == sizeof("\342\200\223") -1){
+      rv = 12;
       if(!memcmp(oub, "???????", sizeof("\342\200\223") -1))
-         return 12;
+         goto jleave;
+      rv = 13;
       if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
-         return 13;
-      return 14;
+         goto jleave;
+      rv = 14;
    }
-   return 0;
+
+jleave:
+   if(id != (iconv_t)-1)
+      iconv_close(id);
+
+   return rv;
 }
 !
 
-   < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
-         '#define mx_HAVE_ICONV' ||
+   val_iconv_libc() {
+      < ${tmp2}.c link_check iconv 'iconv(3)' \
+            '#define mx_HAVE_ICONV'
+      [ $? -eq 0 ] && return 0
+      < ${tmp2}.c link_check iconv 'iconv(3), GNU libiconv redirect aware' \
+            '#define mx_HAVE_ICONV' '' '-DLIBICONV_PLUG'
+   }
+
+   val_iconv_iconv() {
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
-         '#define mx_HAVE_ICONV' '-liconv' ||
+         '#define mx_HAVE_ICONV' '-liconv'
+   }
+
+   val_iconv_bye() {
       feat_bail_required ICONV
+   }
+
+   oifs=${IFS}
+   IFS=", "
+   VAL_ICONV="${VAL_ICONV},bye"
+   set -- ${VAL_ICONV}
+   IFS=${oifs}
+   for randfun
+   do
+      eval val_iconv_$randfun && break
+   done
 
    if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
@@ -2308,7 +2412,8 @@ int main(void){
    fi
 else
    feat_is_disabled ICONV
-fi # feat_yes ICONV
+fi
+# }}} OPT_ICONV, VAL_ICONV
 
 if feat_yes NET; then
    ${cat} > ${tmp2}.c << \!
@@ -2922,7 +3027,8 @@ fi
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
-      "arc4,tls,libgetrandom,sysgetrandom,urandom,builtin,error"; then
+      "arc4,tls,libgetrandom,sysgetrandom,getentropy,urandom,builtin,error"; \
+      then
    :
 else
    msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
@@ -3005,6 +3111,27 @@ int main(void){
    char buf[256];
    syscall(SYS_getrandom, buf, sizeof buf, 0);
    return 0;
+}
+!
+}
+
+val_random_getentropy() {
+   val__random_check_yield
+   link_check getentropy 'VAL_RANDOM: getentropy(3)' \
+      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETENTROPY' <<\!
+# include <errno.h>
+#include <limits.h>
+#include <unistd.h>
+# ifndef GETENTROPY_MAX
+#  define GETENTROPY_MAX 256
+# endif
+int main(void){
+   typedef char cta[GETENTROPY_MAX >= 256 ? 1 : -1];
+   char buf[GETENTROPY_MAX];
+
+   if(!getentropy(buf, sizeof buf) || errno != ENOSYS)
+      return 0;
+   return 1;
 }
 !
 }
@@ -3387,7 +3514,9 @@ else # }}}
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
 
+##
 ## Final feat_def's XXX should be loop over OPTIONs
+##
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
@@ -3442,7 +3571,9 @@ feat_def DEBUG 0
 feat_def DEVEL 0
 feat_def NOMEMDBG 0
 
+##
 ## Summarizing
+##
 
 INCS=`squeeze_ws "${INCS}"`
 LIBS=`squeeze_ws "${LIBS}"`
@@ -3502,7 +3633,7 @@ LIBS=`squeeze_ws "${LIBS}"`
 # $MAKEFLAGS often contain job-related things which hinders reproduceability.
 # For at least GNU make(1) we can separate those and our regular configuration
 # options by searching for the -- terminator
-COMMLINE=`printf '%s' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
+COMMLINE=`printf '%s\n' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
 COMMLINE=`squeeze_ws "${COMMLINE}"`
 
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
@@ -3596,7 +3727,9 @@ printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
 echo >> ${mk}
 ${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
 
+##
 ## Finished!
+##
 
 # We have completed the new configuration header.  Check whether *really*
 # Do the "second stage configuration changed" detection, exit if nothing to do
