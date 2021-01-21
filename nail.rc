@@ -12,7 +12,7 @@
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
 #--MKREL-START--
-#@ S-nail v14.9.20 / 2020-12-12
+#@ S-nail v14.9.21 / 2021-01-21
 #--MKREL-END--
 
 ## Variables
