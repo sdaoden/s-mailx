@@ -283,12 +283,13 @@ SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
-#cc_os_search=
-#cc_no_stackprot=
-#cc_no_fortify=
-#ld_need_R_flags=
-#ld_no_bind_now=
-#ld_rpath_not_runpath=
+cc_os_search=
+cc_no_stackprot=
+cc_no_fortify=
+cc_no_flagtest=
+ld_need_R_flags=
+ld_no_bind_now=
+ld_rpath_not_runpath=
 
 _CFLAGS= _LDFLAGS=
 
@@ -395,35 +396,34 @@ cc_setup() {
       export CFLAGS LDFLAGS
    fi
 
-   [ -n "${CC}" ] && { _cc_default; return; }
-
-   msg_nonl 'Searching for a usable C compiler .. $CC='
-   if acmd_set CC clang || acmd_set CC gcc ||
-         acmd_set CC tcc || acmd_set CC pcc ||
-         acmd_set CC c89 || acmd_set CC c99; then
-      :
-
+   if [ -n "${CC}" ]; then
+      _cc_default
    elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
-      :
+      cc_no_flagtest=1
    else
-      msg 'boing booom tschak'
-      msg 'ERROR: I cannot find a compiler!'
-      msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
-      msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
-      config_exit 1
+      msg_nonl 'Searching for a usable C compiler .. $CC='
+      if acmd_set CC clang || acmd_set CC gcc ||
+            acmd_set CC tcc || acmd_set CC pcc ||
+            acmd_set CC c89 || acmd_set CC c99; then
+         case "${CC}" in
+         *pcc*) cc_no_fortify=1;;
+         *) ;;
+         esac
+      else
+         msg 'boing booom tschak'
+         msg 'ERROR: I cannot find a compiler!'
+         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
+         config_exit 1
+      fi
    fi
    msg '%s' "${CC}"
    export CC
-
-   case "${CC}" in
-   *pcc*) cc_no_fortify=1;;
-   *) ;;
-   esac
 }
 
 _cc_os_unixware() {
    if feat_yes AUTOCC && acmd_set CC cc; then
-      msg ' . have special UnixWare environmental rules ...'
+      msg_nonl ' . have special UnixWare rules for $CC ...'
       feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -436,7 +436,8 @@ _cc_os_unixware() {
 }
 
 _cc_os_sunos() {
-   if feat_yes AUTOCC && acmd_set CC cc; then
+   if feat_yes AUTOCC && acmd_set CC cc && "${CC}" -flags >/dev/null 2>&1; then
+      msg_nonl ' . have special SunOS rules for $CC ...'
       feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
       CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -445,6 +446,7 @@ _cc_os_sunos() {
       OPT_AUTOCC=0 ld_need_R_flags=-R
       return 0
    else
+      CC=
       : # cc_maxopt=2 cc_no_stackprot=1
    fi
    return 1
@@ -510,7 +512,9 @@ cc_hello() {
 }
 
 cc_flags() {
-   if feat_yes AUTOCC; then
+   if [ -n "${cc_no_flagtest}" ]; then
+      ld_runtime_flags # update!
+   elif feat_yes AUTOCC; then
       if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
          msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
@@ -1323,6 +1327,8 @@ string_to_char_array() {
          y = xya[j]
          if(y == "\012")
             y = "\\n"
+         else if(y == "\\")
+            y = "\\\\"
          printf "'"'"'%s'"'"'", y
       }
    }'
@@ -3627,7 +3633,7 @@ LIBS=`squeeze_ws "${LIBS}"`
 # $MAKEFLAGS often contain job-related things which hinders reproduceability.
 # For at least GNU make(1) we can separate those and our regular configuration
 # options by searching for the -- terminator
-COMMLINE=`printf '%s' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
+COMMLINE=`printf '%s\n' "${COMMLINE}" | ${sed} -e 's/.*--\(.*\)/\1/'`
 COMMLINE=`squeeze_ws "${COMMLINE}"`
 
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
