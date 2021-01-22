@@ -1067,7 +1067,7 @@ val_allof() {
          '; then
       eval "${1}"=\"${2}\"
    else
-      # Enfore lowercase also in otherwise unchanged user value..
+      # Enforce lowercase also in otherwise unchanged user value..
       eval "${1}"=\""`echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-'`"\"
    fi
    return 0

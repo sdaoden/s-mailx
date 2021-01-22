@@ -157,7 +157,7 @@ enum expand_addr_flags{
 enum expand_addr_check_mode{
    EACM_NONE = 0u, /* Don't care about *expandaddr* */
    EACM_NORMAL = 1u<<0, /* Use our normal *expandaddr* checking */
-   EACM_STRICT = 1u<<1, /* Never allow any file or pipe addresse */
+   EACM_STRICT = 1u<<1, /* Never allow any file or pipe addressee */
    EACM_MODE_MASK = 0x3u, /* _NORMAL and _STRICT are mutual! */
 
    EACM_NOLOG = 1u<<2, /* Do not log check errors */
@@ -635,7 +635,7 @@ do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    }\
 }while(0)
 
-/* Program state bits which may regulary fluctuate */
+/* Program state bits which may regularly fluctuate */
 enum n_program_state{
    n_PS_ROOT = 1u<<30, /* Temporary "bypass any checks" bit */
 #define n_PS_ROOT_BLOCK(ACT) \
