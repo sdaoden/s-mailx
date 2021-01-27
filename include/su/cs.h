@@ -147,6 +147,7 @@ EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 /*! Duplicate a buffer into a \r{su_MEM_TALLOC()}ated duplicate.
  * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching NUL,
  * embedded NUL bytes will be included in the result.
+ *
  * \copydoc{su_clone_fun}. */
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 
@@ -278,6 +279,7 @@ class cs;
  * C++ variant of \r{CS} (\r{su/cs.h})
  */
 class EXPORT cs{
+   su_CLASS_NO_COPY(cs);
 public:
    /*! \copydoc{su_cs_ctype} */
    enum ctype{

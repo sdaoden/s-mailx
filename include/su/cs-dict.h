@@ -45,7 +45,7 @@ struct su_cs_dict_view;
  *
  * \list{\li{
  * Keys will be stored in full in the list nodes which make up the dictionary.
- * They will be hashed and compared by means of \ref{CS}.
+ * They will be hashed and compared by means of \ref{CS} (ASCII).
  * }\li{
  * Values are optionally owned (\r{su_CS_DICT_OWNS}), in which case the given,
  * then mandatory \r{su_toolbox} is used to manage value objects.
@@ -72,7 +72,6 @@ struct su_cs_dict_view;
  * \remarks{This collection does not offer \fn{hash()} and \fn{compare()}
  * functions, because these operations would be too expensive: for reproducable
  * and thus correct results a temporary sorted copy would be necessary.
- *
  * Due to lack of this functionality it also does not offer a \r{su_toolbox}
  * instance to operate on object-instances of itself.}
  * @{
@@ -321,7 +320,7 @@ INLINE s32 su_cs_dict_insert(struct su_cs_dict *self, char const *key,
  * \r{su_toolbox} fails, the old object will be deleted, \NIL will be inserted,
  * and this function fails.}
  *
- * Likewise, if \r{su_CS_DICT_NILISVALO} is not set, then if the
+ * \remarks{Likewise, if \r{su_CS_DICT_NILISVALO} is not set, then if the
  * \r{su_clone_fun} of the toolbox fails to create a duplicate of \a{value},
  * then the old value will remain unchanged and this function fails.} */
 INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key,
@@ -503,7 +502,6 @@ INLINE sz su_cs_dict_view_cmp(struct su_cs_dict_view const *self,
    return (self->csdv_node == t->csdv_node);
 }
 
-/*! @} */
 /*! @} */
 C_DECL_END
 #include <su/code-ou.h>
