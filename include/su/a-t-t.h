@@ -86,6 +86,7 @@ template<class T> class auto_type_toolbox;
  */
 template<class T>
 class auto_type_toolbox{
+   su_CLASS_NO_COPY(auto_type_toolbox);
 public:
    /*! \_ */
    typedef NSPC(su)type_traits<T> type_traits;

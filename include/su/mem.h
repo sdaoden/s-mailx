@@ -40,7 +40,7 @@ C_DECL_BEGIN
  * @{
  */
 
-/* A memset that is not optimized away */
+/*! A memset that is not optimized away */
 EXPORT_DATA void * (* volatile su_mem_set_volatile)(void*, int, uz);
 
 /*! \_ */
@@ -431,6 +431,7 @@ class mem;
 
 /*! \_ */
 class mem{
+   su_CLASS_NO_COPY(mem);
 public:
    /*!
     * \defgroup CXX_MEM_TOOLS C++ memory tools

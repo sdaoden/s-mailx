@@ -61,6 +61,7 @@ class sort;
  * C++ variant of \r{SORT} (\r{su/sort.h})
  */
 class sort{
+   su_CLASS_NO_COPY(sort);
 public:
    /*! \copydoc{su_sort_shell_vpp()} */
    template<class T>

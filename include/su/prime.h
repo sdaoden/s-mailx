@@ -74,6 +74,7 @@ class prime;
  * C++ variant of \r{PRIME} (\r{su/prime.h})
  */
 class prime{
+   su_CLASS_NO_COPY(prime);
 public:
    /*! \copydoc{su_PRIME_LOOKUP_MIN} */
    static u32 const lookup_min = su_PRIME_LOOKUP_MIN;

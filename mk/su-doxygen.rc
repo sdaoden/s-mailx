@@ -1,7 +1,7 @@
 #@ SU: doxygen(1) configuration
 
 PROJECT_NAME = S-nail
-PROJECT_NUMBER = 14.9.12
+PROJECT_NUMBER = 14.9.21
 PROJECT_BRIEF = "Send and receive Internet mail"
 INPUT = include/su
 EXCLUDE_PATTERNS = gen-*.*
@@ -18,9 +18,13 @@ PREDEFINED = DOXYGEN CXX_DOXYGEN \
 	\
 	su_HAVE_DEBUG \
 	su_HAVE_DEVEL \
+	su_HAVE_DOCSTRINGS \
 	su_HAVE_MEM_BAG_AUTO \
 	su_HAVE_MEM_BAG_LOFI \
 	su_HAVE_MEM_CANARIES_DISABLE \
+	su_HAVE_RE \
+	su_HAVE_SMP \
+	su_HAVE_MT \
 	\
 	__STDC_VERSION__=999912L C_LANG \
 	C_DECL_BEGIN C_DECL_END NSPC_BEGIN NSPC_END \
@@ -62,6 +66,7 @@ ALIASES += TRU1="\r{su_TRU1}"
 ALIASES += TRUM1="\r{su_TRUM1}"
 ALIASES += ASSERT{2}="Debug-assertion: returns \1 if \2."
 ALIASES += a{1}="<span>\a \1</span>"
+ALIASES += b{1}="<span>\b \1</span>"
 ALIASES += c{1}="<span>\c \1</span>"
 ALIASES += cb{1}="<div>\code \1\endcode</div>"
 ALIASES += copydoc{1}="\r{\1}:&nbsp; \copydoc \1 &nbsp;"
@@ -75,6 +80,6 @@ ALIASES += list{1}="<div>\1</div>"
 ALIASES += ln{1}="<span>\link \1\endlink</span>"
 ALIASES += pb{1}="<div>\parblock \1\endparblock</div>"
 ALIASES += r{1}="<span>\ref \1</span>"
-ALIASES += remarks{1}="\remarks <div>\parblock \1\endparblock</div>"
+ALIASES += remarks{1}="\note \1"
 ALIASES += vr{1}="\c{\1}"
 ALIASES += xln{1}="\c{\1}"
