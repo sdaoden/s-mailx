@@ -67,7 +67,7 @@ C_DECL_BEGIN
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
- * \remarks{Identical to \r{su_BITENUM_MASK().} */
+ * \remarks{Identical to \r{su_BITENUM_MASK()}.} */
 #define su_BITS_RANGE_MASK(LO,HI) su_BITENUM_MASK(LO, HI)
 
 /*! \_ */
@@ -236,6 +236,7 @@ class bits;
  * C++ variant of \r{BITS} (\r{su/bits.h})
  */
 class bits{
+   su_CLASS_NO_COPY(bits);
 public:
    /*! \copydoc{su_bits_test()} */
    static boole test(uz x, uz bit) {return su_bits_test(x, bit);}

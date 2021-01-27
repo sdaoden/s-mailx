@@ -57,7 +57,7 @@
  * the default can also be changed on a by-call or by-object basis, see
  * \r{su_state_err_flags} and \r{su_clone_fun} for more on this.
  *
- * \remarks{C++ object creation failures via \c{su_MEM_NEW()} etc. will however
+ * \remarks{C++ object creation failures via \c{su_MEM_NEW()} etc. will
  * always cause program abortion due to standard imposed execution flow.
  * This can be worked around by using \c{su_MEM_NEW_HEAP()} as appropriate.}
  * }\li{
@@ -110,7 +110,7 @@
 # define su_HAVE_MEM_CANARIES_DISABLE
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
-   /*!< Multithreading support available?
+   /*! Multithreading support available?
     * This is a subfeature of \r{SMP}. */
 # define su_HAVE_MT
 
@@ -233,7 +233,7 @@
 # endif
 
    /* Disable copy-construction and assignment of class */
-# define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &);
+# define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &)
    /* If C++ class inherits from a C class, and the C class "return self", we
     * have to waste a return register even if self==this */
 # define su_SELFTHIS_RET(X) /* return *(X); */ X; return *this
@@ -287,9 +287,12 @@
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#if (!su_C_LANG && __cplusplus +0 >= 201103L) || defined DOXYGEN
-# define su_CTA(T,M) static_assert(T, M) /*!< \_ */
-# define su_LCTA(T,M) static_assert(T, M) /*!< \_ */
+#ifdef DOXYGEN
+# define su_CTA(T,M) /*!< \_ */
+# define su_LCTA(T,M) /*!< \_ */
+#elif !su_C_LANG && __cplusplus +0 >= 201103L
+# define su_CTA(T,M) static_assert(T, M)
+# define su_LCTA(T,M) static_assert(T, M)
 #elif 0 /* unusable! */ && \
       defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
 # define su_CTA(T,M) _Static_assert(T, M)
@@ -650,7 +653,7 @@ do if(!(X)){\
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
- * \remarks{Identical to \r{su_BITS_RANGE_MASK().} */
+ * \remarks{Identical to \r{su_BITS_RANGE_MASK()}.} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
 
 /*! For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */
@@ -1048,8 +1051,10 @@ typedef su_s64 su_sz;
 # error I cannot handle this maximum value of size_t
 #endif
 
+#ifndef DOXYGEN
 MCTA(sizeof(su_uz) == sizeof(void*),
    "SU cannot handle sizeof(su_uz) != sizeof(void*)")
+#endif
 
 /* Regardless of P2UZ provide this one; only use it rarely */
 #if defined UINTPTR_MAX || defined DOXYGEN
@@ -1101,7 +1106,9 @@ enum{
    su__LOG_SHIFT = 8,
    su__LOG_MASK = (1u << su__LOG_SHIFT) - 1
 };
+#ifndef DOXYGEN
 MCTA(1u<<su__LOG_SHIFT > su__LOG_MAX, "Bit ranges may not overlap")
+#endif
 
 /*! Flags that can be ORd to \r{su_log_level}. */
 enum su_log_flags{
@@ -1210,9 +1217,11 @@ enum su__state_flags{
    su__STATE_GLOBAL_MASK = 0x00FFFFFFu & ~(su__STATE_LOG_MASK |
          (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
+#ifndef DOXYGEN
 MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK),
    "Bit ranges may not overlap")
 MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
+#endif
 
 #ifdef su_HAVE_MT
 enum su__glock_type{
@@ -1413,7 +1422,7 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 # define su_assert(EXPR,FILE,LINE,FUN,CRASH)
 #endif
 
-#if DVLOR(1, 0)
+#if DVLOR(1, 0) || defined DOXYGEN
 /*! When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
 EXPORT void su_nyd_set_disabled(boole disabled);
 
@@ -1433,7 +1442,7 @@ EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
  * \a{buf} is NUL terminated despite \a{blen} being passed, too. */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
-#endif
+#endif /* DVLOR(1,0) || DOXYGEN */
 
 /* BASIC C INTERFACE (STATE) }}} */
 
@@ -1562,9 +1571,11 @@ enum{
 };
 
 /* Place the mentioned alignment CTAs */
+#ifndef DOXYGEN
 MCTA(IS_POW2(sizeof(uz)), "Must be power of two")
 MCTA(IS_POW2(su__ZAL_S), "Must be power of two")
 MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
+#endif
 
 /*! \_ */
 class min{

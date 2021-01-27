@@ -81,22 +81,22 @@ enum su_re_errors{
 struct su_re{
     /*! \r{su_re_setup_flags} as given to \r{su_re_setup_cp()}. */
    BITENUM_IS(u8,su_re_setup_flags) re_setup_flags;
-   /*! After \r{su_re_setup()}: one of the \r{su_re_errors}. */
+   /*! After \r{su_re_setup_cp()}: one of the \r{su_re_errors}. */
    BITENUM_IS(u8,su_re_errors) re_error; /* (to make it fit in 8-bit) */
-   boole re_eval_ok; /*!< Whether last \r{su_re_eval()} matched. */
+   boole re_eval_ok; /*!< Whether last \r{su_re_eval_cp()} matched. */
     /*! \r{su_re_eval_flags} as given to last \r{su_re_eval_cp()}. */
    BITENUM_IS(u8,su_re_eval_flags) re_eval_flags;
    /*! Number of parenthesized subexpression groups found by
-    * \r{su_re_setup()}, and entries in \r{#re_match} (starting at offset 1).
-    * If \r{su_RE_TEST_ONLY} was given this is always 0. */
+    * \r{su_re_setup_cp()}, and entries in \r{#re_match} (starting at index 1).
+    * If \r{su_RE_SETUP_TEST_ONLY} was given this is always 0. */
    u32 re_group_count;
-   /*! Match position array unless disabled via \r{su_RE_TEST_ONLY}.
+   /*! Match position array unless disabled via \r{su_RE_SETUP_TEST_ONLY}.
     * It contains \r{#re_group_count} entries, plus the entry at index 0,
     * which always exists, then, and denotes the overall matching string.
-    * The content is accessible after a \r{su_re_eval()} if \r{#re_eval_ok},
+    * The content is accessible after a \r{su_re_eval_cp()} if \r{#re_eval_ok},
     * subexpression groups which did not match have their fields set to -1. */
    struct su_re_match *re_match;
-   char const *re_input; /*!< The buffer pointer given to \r{su_re_eval()}. */
+   char const *re_input; /*!< Buffer pointer given to \r{su_re_eval_cp()}. */
    void *re_super;
 };
 
@@ -183,7 +183,7 @@ class re;
  * C++ variant of \r{RE} (\r{su/re.h})
  */
 class EXPORT re : private su_re{
-   su_CLASS_NO_COPY(re)
+   su_CLASS_NO_COPY(re);
 public:
    class match;
 
@@ -195,8 +195,11 @@ public:
    public:
       ~match(void) {}
 
+      /*! \_ */
       boole is_valid(void) const {return (rem_start != -1);}
+      /*! \_ */
       s64 start(void) const {return rem_start;}
+      /*! \_ */
       s64 end(void) const {return rem_end;}
    };
 

@@ -207,8 +207,8 @@ INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
  * \remarks{Only applies to \SELF or its current \r{su_mem_bag_top()}, if there
  * is one, does not propagate through the stack.}
  * \remarks{Can be called multiple times: \r{su_mem_bag_auto_relax_unroll()} as
- * well as \r{su_mem_bag_auto_relax_gut() only perform real actions when called
- * on the level which called this the first time.} */
+ * well as \r{su_mem_bag_auto_relax_gut()} only perform real actions when
+ * called on the level which called this the first time.} */
 EXPORT struct su_mem_bag *su_mem_bag_auto_relax_create(
       struct su_mem_bag *self);
 
@@ -464,7 +464,7 @@ class mem_bag;
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
  */
 class EXPORT mem_bag : private su_mem_bag{
-   su_CLASS_NO_COPY(mem_bag)
+   su_CLASS_NO_COPY(mem_bag);
 public:
    /*! \copydoc{su_mem_bag_alloc_flags} */
    enum alloc_flags{

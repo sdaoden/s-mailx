@@ -56,7 +56,7 @@ enum su_idec_mode{
    su_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
    /*! Relaxed \a{base} 0 convenience: if the input used \c{BASE#number} number
     * sign syntax, then the scan will be restarted anew with the base given.
-    * Like this an UI can be permissive and support \c{s='  -008'; eval 10#$s}
+    * Like this an UI can be permissive and support \c{s='  -008'; eval 10#\$s}
     * out of the box (it would require a lot of logic otherwise). */
    su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN = 1u<<2,
 #if 0
@@ -71,7 +71,7 @@ enum su_idec_mode{
    su__IDEC_MODE_LIMIT_MASK = 3u<<3,
    /*! Do not treat it as an error if the limit is excessed!
     * Like this saturated (and bit-limited) results can be created
-    * (in that \r{su_IDEC_STATE_EOVERFLOW is suppressed). */
+    * (in that \r{su_IDEC_STATE_EOVERFLOW} is suppressed). */
    su_IDEC_MODE_LIMIT_NOERROR = 1u<<5,
    /* These bits are duplicated in the _state result bits! */
    su__IDEC_MODE_MASK = (1u<<6) - 1
@@ -91,7 +91,9 @@ enum su_idec_state{
    su_IDEC_STATE_CONSUMED = 1u<<17, /*!< All the input has been consumed. */
    su__IDEC_PRIVATE_SHIFT1 = 24u
 };
+#ifndef DOXYGEN
 MCTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
+#endif
 
 /*! Decode \a{clen} (or \r{su_cs_len()} if \r{su_UZ_MAX}) bytes of \a{cbuf}
  * into an integer according to the \r{su_idec_mode} \a{idec_mode},
@@ -305,6 +307,7 @@ class ienc;
  * C++ variant of \r{IDEC} (\r{su/icodec.h})
  */
 class idec{
+   su_CLASS_NO_COPY(idec);
 public:
    /*! \copydoc{su_idec_mode} */
    enum mode{
@@ -449,6 +452,7 @@ public:
  * C++ variant of \r{IENC} (\r{su/icodec.h})
  */
 class ienc{
+   su_CLASS_NO_COPY(ienc);
 public:
    enum{
       /*! \copydoc{su_IENC_BUFFER_SIZE} */
