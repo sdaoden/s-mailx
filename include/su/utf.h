@@ -93,6 +93,7 @@ class utf32;
  * C++ variant of \r{UTF8} (\r{su/utf.h})
  */
 class EXPORT utf8{
+   su_CLASS_NO_COPY(utf8);
 public:
    enum{
       /*! \copydoc{su_UTF8_BUFFER_SIZE} */
@@ -113,6 +114,7 @@ public:
  * C++ variant of \r{UTF32} (\r{su/utf.h})
  */
 class utf32{
+   su_CLASS_NO_COPY(utf32);
 public:
    /*! \copydoc{su_UTF32_REPLACER} */
    static u32 const replacer = su_UTF32_REPLACER;

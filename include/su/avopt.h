@@ -213,6 +213,7 @@ class avopt;
  * C++ variant of \r{AVOPT} (\r{su/avopt.h})
  */
 class EXPORT avopt : private su_avopt{
+   su_CLASS_NO_COPY(avopt);
 public:
    /*! \copydoc{su_avopt_state} */
    enum state{
