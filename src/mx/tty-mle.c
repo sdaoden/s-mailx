@@ -4249,12 +4249,6 @@ mx_tty_destroy(boole xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
-  /* Be aware of identical code for `exit' command! */
-#ifdef mx_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
-      mx_termcap_destroy();
-#endif
-
    /* Write the history file */
 # ifdef mx_HAVE_HISTORY
    if(!xit_fastpath)

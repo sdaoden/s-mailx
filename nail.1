@@ -11264,6 +11264,8 @@ This hook will be called when the program exits, whether via
 or
 .Ic quit ,
 or because the send mode is done.
+.Sy Note:
+this runs late and so terminal settings etc. are already teared down.
 .
 .Mx
 .It Va on-resend-cleanup
