@@ -1298,6 +1298,11 @@ jleave_full:
          temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
    }
 
+#ifdef mx_HAVE_TCAP
+   if(n_psonce & n_PSO_TTYANY)
+      mx_termcap_destroy();
+#endif
+
    n_exit_status = i;
 
 jleave:
