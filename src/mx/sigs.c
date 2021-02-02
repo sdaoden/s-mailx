@@ -171,20 +171,22 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
 
    n_pstate_err_no = (n_msleep(msec, ignint) > 0) ? su_ERR_INTR : su_ERR_NONE;
 
-   sigprocmask(SIG_SETMASK, &oset, NULL);
-   sigaction(SIGINT, &oact, NULL);
+   sigprocmask(SIG_SETMASK, &oset, NIL);
+   sigaction(SIGINT, &oact, NIL);
+
 jleave:
    NYD_OU;
-   return (argv == NULL);
+   return (argv == NIL);
+
 jeover:
    n_err(_("sleep: argument(s) overflow(s) datatype\n"));
    n_pstate_err_no = su_ERR_OVERFLOW;
-   argv = NULL;
+   argv = NIL;
    goto jleave;
 jesyn:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("sleep"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("sleep"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
-   argv = NULL;
+   argv = NIL;
    goto jleave;
 }
 

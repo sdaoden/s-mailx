@@ -79,7 +79,7 @@ c_shortcut(void *vp){
 
       for(rv = 0; key != NIL; argv += 2, key = *argv){
          if((dat = argv[1]) == NIL){
-            mx_cmd_print_synopsis(mx_cmd_firstfit("shortcut"), NIL);
+            mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("shortcut"), NIL);
             rv = 1;
             break;
          }

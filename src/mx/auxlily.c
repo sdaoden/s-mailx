@@ -942,6 +942,8 @@ n_verr(char const *format, va_list ap){
 
 FL void
 n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
+   /* Unhappy: too complicated, too slow; should possibly print repitition
+    * count more often, but be aware of n_PS_ERRORS_NEED_PRINT_ONCE docu */
    mx_COLOUR( static uz c5recur; ) /* *termcap* recursion */
 #ifdef mx_HAVE_ERRORS
    u32 errlim;
@@ -1254,7 +1256,7 @@ c_errors(void *v){
    if(!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 jerr:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("errors"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("errors"), NIL);
    v = NIL;
 jleave:
    NYD_OU;

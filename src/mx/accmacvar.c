@@ -2821,7 +2821,7 @@ c_define(void *v){
 
    if(args[1] == NIL || args[1][0] != '{' || args[1][1] != '\0' ||
          args[2] != NIL){
-      mx_cmd_print_synopsis(mx_cmd_firstfit("define"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("define"), NIL);
       goto jleave;
    }
 
@@ -2954,7 +2954,7 @@ c_account(void *v){
 
    if(args[1] && args[1][0] == '{' && args[1][1] == '\0'){
       if(args[2] != NIL){
-         mx_cmd_print_synopsis(mx_cmd_firstfit("account"), NIL);
+         mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
          goto jleave;
       }
       if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
@@ -3066,7 +3066,7 @@ c_localopts(void *vp){
       alf = a_AMV_LF_CALL_FIXATE, alm = a_AMV_LF_CALL_MASK;
    else{
 jesynopsis:
-      mx_cmd_print_synopsis(mx_cmd_firstfit("localopts"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("localopts"), NIL);
       goto jleave;
    }
 
@@ -3900,7 +3900,7 @@ jlopts_check:
       }
    }else{
 jeuse:
-      mx_cmd_print_synopsis(mx_cmd_firstfit("environ"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("environ"), NIL);
       rv = n_EXIT_ERR;
    }
 
@@ -3944,7 +3944,7 @@ c_vpospar(void *v){
    else{
       n_err(_("vpospar: invalid subcommand: %s\n"),
          n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
-      mx_cmd_print_synopsis(mx_cmd_firstfit("vpospar"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_arg_desc(cacp->cac_desc), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
       goto jleave;

@@ -379,7 +379,7 @@ c_csop(void *vp){
       ASSERT(0);
       break;
    case a_CSOP_ERR_SYNOPSIS:
-      mx_cmd_print_synopsis(mx_cmd_firstfit("csop"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("csop"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       goto jenum;
    case a_CSOP_ERR_SUBCMD:

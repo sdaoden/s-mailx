@@ -515,7 +515,7 @@ c_netrc(void *vp){
    if(su_cs_starts_with_case("load", *argv))
       goto jclear;
 jerr:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("netrc"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("netrc"), NIL);
    vp = NIL;
 jleave:
    NYD_OU;

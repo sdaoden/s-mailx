@@ -182,11 +182,15 @@ EXPORT char const *mx_cmd_isolate_name(char const *cmd);
 /* Whether cmd is a valid command name (and not a modifier, for example) */
 EXPORT boole mx_cmd_is_valid_name(char const *cmd);
 
-/* First command which fits for cmd, or NULL */
-EXPORT struct mx_cmd_desc const *mx_cmd_firstfit(char const *cmd);
+/* First command which fits for cmd, or NIL */
+EXPORT struct mx_cmd_desc const *mx_cmd_by_arg_desc(
+      struct mx_cmd_arg_desc const *cac_desc);
+
+/* First command which fits for cmd, or NIL */
+EXPORT struct mx_cmd_desc const *mx_cmd_by_name_firstfit(char const *cmd);
 
 /* Get the default command for the empty line */
-EXPORT struct mx_cmd_desc const *mx_cmd_default(void);
+EXPORT struct mx_cmd_desc const *mx_cmd_get_default(void);
 
 /* Or NIL if cmd is invalid, or su_empty if !HAVE_DOCSTRINGS */
 INLINE char const *mx_cmd_get_brief_doc(struct mx_cmd_desc const *cdp_or_nil){

@@ -956,7 +956,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
       ASSERT(0);
       break;
    case a_VEXPR_ERR_SYNOPSIS:
-      mx_cmd_print_synopsis(mx_cmd_firstfit("vexpr"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("vexpr"), NIL);
       n_pstate_err_no = su_ERR_INVAL;
       goto jenum;
    case a_VEXPR_ERR_SUBCMD:
