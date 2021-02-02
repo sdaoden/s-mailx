@@ -1277,7 +1277,7 @@ jleave:
    return (vp == NIL);
 
 jesynopsis:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("digmsg"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_arg_desc(cacp->cac_desc), NIL);
    goto jeinval;
 jeinval_quote:
    emsg = V_(emsg);

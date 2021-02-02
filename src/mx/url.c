@@ -200,7 +200,7 @@ jleave:
    NYD_OU;
    return (vp != NIL ? 0 : 1);
 jesynopsis:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("urlcodec"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("urlcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
    vp = NIL;
    goto jleave;
