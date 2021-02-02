@@ -1017,7 +1017,7 @@ c_dotmove(void *vp){
 
    if(*(args = vp) == '\0' || args[1] != '\0'){
 jerr:
-      mx_cmd_print_synopsis(mx_cmd_firstfit("dotmove"), NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("dotmove"), NIL);
       rv = n_EXIT_ERR;
    }else switch(args[0]){
    case '-':

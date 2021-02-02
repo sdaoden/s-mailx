@@ -425,7 +425,7 @@ c_mtaaliases(void *vp){
    if(su_cs_starts_with_case("load", cp))
       goto jclear;
 jerr:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("mtaaliases"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("mtaaliases"), NIL);
    vp = NIL;
 jleave:
    NYD_OU;

@@ -4627,7 +4627,7 @@ c_history(void *vp){
    }
 
    if(x < FAL0)
-      mx_cmd_print_synopsis(mx_cmd_firstfit("history")/* TODO arg_ctx */, NIL);
+      mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("history"), NIL);
 
 jleave:
    NYD_OU;
