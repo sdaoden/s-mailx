@@ -1199,7 +1199,14 @@ je_expandargv:
 #ifdef mx_HAVE_TCAP
       mx_termcap_init();
 #endif
+      /* We have to fake some state of readiness in order to allow resolving of
+       * lazy `bind's (from config files); this is ok and allows one call to
+       * tty_init() (and one to tty_destroy()) instead of two according pairs
+       * for send and receive mode, which also had the ugly effect that -A
+       * account switch and -X commands ran without properly setup tty/MLE! */
+      n_psonce |= n_PSO_STARTED_CONFIG;
       mx_tty_init();
+      n_psonce ^= n_PSO_STARTED_CONFIG;
    }
 
    /* Now we can set the account */

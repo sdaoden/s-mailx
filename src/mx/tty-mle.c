@@ -91,8 +91,8 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
     * specify *termcap-disable*, and let it mean exactly that.
     * On the other hand users can be expected to use `bind' in resources.
     * Therefore bindings which involve termcap/terminfo sequences, and which
-    * are defined before n_PSO_STARTED signals usability of termcap/terminfo,
-    * will be (partially) delayed until tty_init() is called.
+    * are defined before n_PSO_STARTED_CONFIG signals usability of
+    * termcap/terminfo, will be (partially) delayed until tty_init() is called.
     * And we preallocate space for the expansion of the resolved capability */
 #  define a_TTY_BIND_CAPNAME_MAX 15
 #  define a_TTY_BIND_CAPEXP_ROUNDUP 16
@@ -3437,7 +3437,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
    }
 
    /* Directly resolve any termcap(5) symbol if we are already setup */
-   if((n_psonce & n_PSO_STARTED) &&
+   if((n_psonce & n_PSO_STARTED_CONFIG) &&
          (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
           a_TTY_BIND_RESOLVE)
       a_tty_bind_resolve(tbcp);
