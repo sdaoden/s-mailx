@@ -1060,7 +1060,7 @@ c_mailcap(void *vp){
    }
 
 jerr:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("mailcap"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("mailcap"), NIL);
    vp = NIL;
 jleave:
    NYD_OU;

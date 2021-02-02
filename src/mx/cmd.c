@@ -461,7 +461,24 @@ mx_cmd_is_valid_name(char const *cmd){
 }
 
 struct mx_cmd_desc const *
-mx_cmd_firstfit(char const *cmd){
+mx_cmd_by_arg_desc(struct mx_cmd_arg_desc const *cac_desc){
+   struct mx_cmd_desc const *cdp;
+   NYD2_IN;
+
+   for(cdp = &a_cmd_ctable[a_CMD_CIDX(*cac_desc->cad_name)];
+         cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
+      if(cdp->cd_cadp == cac_desc)
+         goto jleave;
+
+   /* Should not happen though */
+   cdp = NIL;
+jleave:
+   NYD2_OU;
+   return cdp;
+}
+
+struct mx_cmd_desc const *
+mx_cmd_by_name_firstfit(char const *cmd){ /* TODO v15: by_arg_desc; but go.c */
    struct mx_cmd_desc const *cdp;
    char c, C, x;
    NYD2_IN;
@@ -484,7 +501,7 @@ jleave:
 }
 
 struct mx_cmd_desc const *
-mx_cmd_default(void){
+mx_cmd_get_default(void){
    struct mx_cmd_desc const *cdp;
    NYD2_IN;
 
@@ -803,7 +820,7 @@ jerr:
       }
 
       if(!su_state_has(su_STATE_REPRODUCIBLE))
-         mx_cmd_print_synopsis(mx_cmd_firstfit(cadp->cad_name), NIL);
+         mx_cmd_print_synopsis(mx_cmd_by_name_firstfit(cadp->cad_name), NIL);
    }
 
    if(n_pstate_err_no == su_ERR_NONE)

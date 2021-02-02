@@ -216,7 +216,7 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
          uz l;
 
          if(argv[1] == NIL || argv[2] == NIL){
-            mx_cmd_print_synopsis(mx_cmd_firstfit("filetype"), NIL);
+            mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("filetype"), NIL);
             rv = 1;
             break;
          }

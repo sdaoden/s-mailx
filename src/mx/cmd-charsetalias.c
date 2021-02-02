@@ -94,7 +94,8 @@ c_charsetalias(void *vp){
             rv = 1;
             continue;
          }else if((dat = argv[1]) == NIL){
-            mx_cmd_print_synopsis(mx_cmd_firstfit("charsetalias"), NIL);
+            mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("charsetalias"),
+               NIL);
             rv = 1;
             break;
          }else if((dat = n_iconv_normalize_name(dat)) == NIL){

@@ -3043,11 +3043,11 @@ c_imapcodec(void *vp){
 
 jleave:
    NYD_OU;
-   return (vp != NULL ? 0 : 1);
+   return (vp != NIL ? 0 : 1);
 jesynopsis:
-   mx_cmd_print_synopsis(mx_cmd_firstfit("imapcodec"), NIL);
+   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("imapcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
-   vp = NULL;
+   vp = NIL;
    goto jleave;
 }
 

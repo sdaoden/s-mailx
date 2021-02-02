@@ -345,7 +345,7 @@ jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
       line.s[0] = '\0';
       flags |= a_IS_EMPTY;
-      cdp = mx_cmd_default();
+      cdp = mx_cmd_get_default();
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jexec;
    }
@@ -487,7 +487,7 @@ jrestart:
     * command table entry.. */
    if(*word == '\0'){
       flags |= a_IS_EMPTY;
-      cdp = mx_cmd_default();
+      cdp = mx_cmd_get_default();
       goto jexec;
    }
 
@@ -532,7 +532,7 @@ jrestart:
       }
    }
 
-   if((cdp = mx_cmd_firstfit(word)) == NIL){
+   if((cdp = mx_cmd_by_name_firstfit(word)) == NIL){
       if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
          n_err(_("%s: unknown command%s\n"),
             mx_makeprint_cp(word), ((flags & a_IS_SKIP)
