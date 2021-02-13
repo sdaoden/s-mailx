@@ -558,7 +558,7 @@ nor
 command line options are used when contacting a file-based MTA, unless
 this automatic deduction is enforced by
 .Ic set Ns
-ing the internal variable
+ting the internal variable
 .Va r-option-implicit .
 .
 .Pp
@@ -10833,10 +10833,12 @@ be set) and
 .Va verbose
 variable is set); in conjunction with the
 .Fl r
-command line option \*(UA will also (not) pass
+command line option or
+.Va r-option-implicit
 .Fl \&\&f
 as well as possibly
-.Fl \&\&F .
+.Fl \&\&F
+will (not) be passed.
 .
 .Pp
 \*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
@@ -15244,8 +15246,8 @@ annotate = true
 Patches can also be send directly, for example:
 .
 .Bd -literal -offset indent
-$ git mail-patch HEAD^ |
-  \*(uA -Athe-account-you-need -t RECEIVER
+$ git format-patch -M --stdout HEAD^ |
+  \*(uA -A the-account-you-need -t RECEIVER
 .Ed
 .\" }}}
 .
