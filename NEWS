@@ -6,6 +6,48 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.22 ("Feathery sound of close tit flypast"), 2021-02-24
+------------------------------------------------------------
+
+O tempora!  O mores!
+Three fixes for thoughtless and also in other ways superficial
+code changes i have done.
+Apologises to all, but especially to Mr. Bell.
+
+Credits, in order of commit appearance: Jens Schleusener,
+Olav Mørkrid, Russell Bell and Johannes Schöpfer.
+
+A special thanks to Olav Mørkrid is overdue.
+
+ChangeLog
+^^^^^^^^^
+
+- After "echo foo | s-nail $USER" we no longer leave the terminal
+  in a different state than it should be.  Terminal initialization
+  was not rethought from scratch after we focused on the MLE
+  editor only and after we have implemented our own termcap/info
+  layer .. now done, and -A account switch and -X commands now run
+  properly covered already, too.  (Olav Mørkrid)
+
+- I had implemented a thoughtless use of close_range() aka
+  closefrom() -- this was totally broken (mysteriously not covered
+  by the tests, have to look, will fix for the future, too).  We
+  can never do this, and if it is only for `readctl'#?.
+  (Russell Bell, Johannes Schöpfer)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (8):
+d2bcfd45 Some: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
+ad7750d4 Mess! OpenSSL changed DEFINE_STACK_OF() 3.0 crap once again!!  Sorry!
+0d71e7ec main(): call mx_termcap_destroy() at times (Olav Mørkrid)
+aae70019 Do the latter right
+75970d68 Thank you, Olav!  (More fixes for the fix of the fix, that is)
+77b7d20c Hoooorray! One more fix needed for Olav Mørkrid!
+fac2d327 FIX! Remove close_range brain damange (Russell Bell, Johannes
+        Schöpfer)..
+
 v14.9.21 ("Tit escapes with a peanut"), 2021-01-21
 --------------------------------------------------
 
@@ -50,47 +92,9 @@ ChangeLog
   (since ever).
 
 - Manual: after rewrite and review i think the manual section
-  "Character sets" is of acceptable quality.  (Jörg Schilling)
+  "Character sets"#? is of acceptable quality.  (Jörg Schilling)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (56):
-ee8ba5ed mx-test.sh: allow skipping tests via $SKIPTEST=".."..
-e7cd3aca mx-test.sh: disable an unset $JOBMON for bmake(1)! (Simon Gerraty)
-c1299e6c THANKS: Simon Gerraty
-8e2fa0b6 mx-test.sh: let the jobreaper exit on SIGINT (Simon Gerraty)
-e3d92fe4 makefile: set SHELL to detach from user environment (Yasuhiro
-        KIMURA)..
-52287556 mx-test.sh: BSD make not the culprit (Yasuhiro KIMURA)
-269370b4 makefile: add note for SHELL (Yasuhiro KIMURA)
-fae211c5 mk/make-config.sh: fix ICONV test to run with OPT_ASAN_ADDRESS=y
-ededcddf MLE: fix compilation with OPT_KEY_BINDINGS=no
-9c5f0b96 Test fcntl(2) F_SETFD FD_CLOEXEC return (Matthias Gerstner)
-fecc0063 THANKS: Matthias Gerstner
-b578715b mx_termcap_init(): fix: no auto_right_margin except with library
-        support..
-028aeb3e mx_termcap_cmd(): "ch" fallback implementation: do full width, not -1
-b1bff334 Fix OPT_AMALGAMATION=y with OPT_GSSAPI=y
-c2e54ed7 a_netsmtp_read(): fix overflow for malicious server response (Olav
-        Mørkrid)..
-2053bac2 README: changed from cgit to gitweb
-a1dbde85 mx_socket_reset_read_buf(): rbufptr=NIL to avoid bad copies (Jörg
-        Schilling)..
-13a1bee3 NEWS: we now use gitweb not cgit
-71b050c0 mx_child_in_child_setup(): support for close_range(2) / closefrom(2)
-d5f3d6c5 a_flthtml_add_data(): even more care for broken entities..
-13c0ffeb nail.1: clarify *mta-bcc-ok* (Geoff Clare)
-df8fd858 PRNG: VAL_RANDOM: add getentropy(3) support
-1e4e02d8 make.rc,mk/make-config.sh: add VAL_ICONV selector (Jörg Schilling)
-7784bb7e Add VAL_ERRORS_LIMIT and *errors-limit*
-c0f7bd99 mx_locale_init(): log if interactive and $LC_ALL is a no-go (Jörg
-        Schilling)
-84908888 mx-test.sh: drop permanent jobreaper, just start a new one, always
-6950c69b nail.1: Character sets: improve, review (Jörg Schilling)
-c72f9466 mk/make-config.sh: GNU iconv redirects until forced otherwise (Jörg
-        Schilling)
-5ddeb6f9 mk/make-config.sh: fix $CC=cc SunOS shorthand (Jörg Schilling)
+git(1) shortlog: Steffen Nurpmeso (56)
 
 v14.9.20 ("Sombre Tit (Trauermeise)"), 2020-12-12
 -------------------------------------------------
