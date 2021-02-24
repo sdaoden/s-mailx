@@ -396,11 +396,6 @@ static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
 static uz a_xtls_state;
 static uz a_xtls_msgno;
 
-#if mx_HAVE_XTLS >= 0x30000
-   DEFINE_STACK_OF(GENERAL_NAME)
-   DEFINE_STACK_OF(X509)
-#endif
-
 /* Special pre-PRNG PRNG init */
 #ifdef mx_XTLS_HAVE_SET_RESEED_DEFAULTS
 SINLINE void a_xtls_rand_drbg_init(void);

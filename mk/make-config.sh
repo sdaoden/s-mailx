@@ -1067,7 +1067,7 @@ val_allof() {
          '; then
       eval "${1}"=\"${2}\"
    else
-      # Enfore lowercase also in otherwise unchanged user value..
+      # Enforce lowercase also in otherwise unchanged user value..
       eval "${1}"=\""`echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-'`"\"
    fi
    return 0
@@ -2023,44 +2023,6 @@ int main(void){
    return 1;
 }
 !
-
-if run_check close_range 'close_range(2)' '#define mx_HAVE_CLOSE_RANGE
-      #define mx_CLOSE_RANGE_FUN(LO,HI) close_range(LO, HI, 0)
-      #define mx_CLOSE_RANGE_H <unistd.h>' <<\!
-#include <unistd.h>
-# include <errno.h>
-int main(void){
-   int fds[2];
-
-   if(!close_range(3, ~0u, 0) || errno != ENOSYS)
-      return 0;
-   return 1;
-}
-!
-then
-   :
-elif link_check close_range 'close_range(2) (via syscall(2)' \
-      '#define mx_HAVE_CLOSE_RANGE
-      #define mx_CLOSE_RANGE_FUN(LO,HI) syscall(SYS_close_range, LO, HI, 0)
-      #define mx_CLOSE_RANGE_H <sys/syscall.h>' <<\!
-#include <sys/syscall.h>
-int main(void){
-   syscall(SYS_close_range, 3, ~0u, 0);
-   return 0;
-}
-!
-then
-   :
-elif link_check closefrom 'closefrom(2)' '#define mx_HAVE_CLOSEFROM' << \!
-#include <unistd.h>
-int main(void){
-   closefrom(3);
-   return 0;
-}
-!
-then
-   :
-fi
 
 link_check tcgetwinsize 'tcgetwinsize(3)' '#define mx_HAVE_TCGETWINSIZE' << \!
 #include <termios.h>

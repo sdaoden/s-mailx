@@ -364,15 +364,11 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
    }
 
    /* Enter the command loop */
-   if(n_psonce & n_PSO_INTERACTIVE)
-      mx_tty_init();
    /* "load()" more commands given on command line */
    if(mcp->mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
       n_exit_status = n_EXIT_ERR;
    else
       n_go_main_loop();
-   if(n_psonce & n_PSO_INTERACTIVE)
-      mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
    if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
@@ -1125,6 +1121,8 @@ jgetopt_done:
     * been worked and verified a bit, we are likely to go, perform more setup
     */
    n_psonce |= n_PSO_STARTED_GETOPT;
+   ASSERT(!(n_poption & n_PO_QUICKRUN_MASK) ||
+      !(n_psonce & n_PSO_INTERACTIVE));
 
    a_main_setup_vars();
 
@@ -1197,10 +1195,19 @@ je_expandargv:
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we
     * switch account or running commands */
+   if(n_psonce & n_PSO_INTERACTIVE){
 #ifdef mx_HAVE_TCAP
-   if(n_psonce & n_PSO_TTYANY)
       mx_termcap_init();
 #endif
+      /* We have to fake some state of readiness in order to allow resolving of
+       * lazy `bind's (from config files); this is ok and allows one call to
+       * tty_init() (and one to tty_destroy()) instead of two according pairs
+       * for send and receive mode, which also had the ugly effect that -A
+       * account switch and -X commands ran without properly setup tty/MLE! */
+      n_psonce |= n_PSO_STARTED_CONFIG;
+      mx_tty_init();
+      n_psonce ^= n_PSO_STARTED_CONFIG;
+   }
 
    /* Now we can set the account */
    if(mc.mc_A != NIL){
@@ -1269,8 +1276,6 @@ je_expandargv:
          }
       }
 
-      if(n_psonce & n_PSO_INTERACTIVE)
-         mx_tty_init();
       /* "load()" more commands given on command line */
       if(mc.mc_Y_cnt > 0 && !n_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
          n_exit_status = n_EXIT_ERR;
@@ -1280,31 +1285,37 @@ je_expandargv:
                (n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0)),
             mc.mc_to, mc.mc_cc, mc.mc_bcc, mc.mc_subject,
             mc.mc_attach, mc.mc_quote);
-      if(n_psonce & n_PSO_INTERACTIVE)
-         mx_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
 
-jleave_full:
-   i = n_exit_status;
-
-   n_psonce &= ~n_PSO_EXIT_MASK;
-   mx_account_leave();
-
-   n_psonce &= ~n_PSO_EXIT_MASK;
-   /* C99 */{
+jleave_full:/* C99 */{
       char const *ccp;
+      boole was_xit;
 
+      i = n_exit_status;
+      was_xit = ((n_psonce & n_PSO_XIT) != 0);
+
+      n_psonce &= ~n_PSO_EXIT_MASK;
+      mx_account_leave();
+
+      if(n_psonce & n_PSO_INTERACTIVE){
+         mx_tty_destroy(was_xit);
+#ifdef mx_HAVE_TCAP
+         mx_termcap_destroy();
+#endif
+      }
+
+      n_psonce &= ~n_PSO_EXIT_MASK;
       if((ccp = ok_vlook(on_program_exit)) != NIL)
          temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
+
+      n_exit_status = i;
    }
-
-   n_exit_status = i;
-
 jleave:
 #ifdef su_HAVE_DEBUG
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif
+
    NYD_OU;
    return n_exit_status;
 }

@@ -28,7 +28,7 @@ struct mx_termios_dimension;
 
 enum mx_termios_cmd{
    /* Throw away the entire stack, and restore normal terminal state.
-    * The outermost level will be regulary shutdown, as via POP.
+    * The outermost level will be regularly shutdown, as via POP.
     * The state_change handlers of all stack entries will be called.
     * Further bits may not be set (this is 0) */
    mx_TERMIOS_CMD_RESET,

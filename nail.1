@@ -15,9 +15,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\"@ S-nail v14.9.21 / 2021-01-21
-.Dd January 21, 2021
-.ds VV \\%v14.9.21
+.\"@ S-nail v14.9.22 / 2021-02-24
+.Dd February 24, 2021
+.ds VV \\%v14.9.22
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -1181,7 +1181,7 @@ nor
 command line options are used when contacting a file-based MTA, unless
 this automatic deduction is enforced by
 .Ic set Ns
-ing the internal variable
+ting the internal variable
 .Va r-option-implicit .
 .Pp
 Remarks: many default installations and sites disallow overriding the
@@ -5357,7 +5357,7 @@ the hyphen-minus
 will instead open the message that is being composed.
 If a hyphen-minus is given as the optional third argument then output
 will be generated on the standard output channel instead of being
-subject to consumation by the
+subject to consumption by the
 .Ic readsh
 (here better than
 .Ic read
@@ -10583,10 +10583,12 @@ be set) and
 .Va verbose
 variable is set); in conjunction with the
 .Fl r
-command line option \*(UA will also (not) pass
+command line option or
+.Va r-option-implicit
 .Fl \&\&f
 as well as possibly
-.Fl \&\&F .
+.Fl \&\&F
+will (not) be passed.
 .Pp
 \*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
@@ -10985,6 +10987,8 @@ This hook will be called when the program exits, whether via
 or
 .Ic quit ,
 or because the send mode is done.
+.Sy Note:
+this runs late and so terminal settings etc. are already teared down.
 .Mx
 .It Va on-resend-cleanup
 \*(ID Identical to
@@ -11371,7 +11375,7 @@ selection will be included in the quote,
 .Ql allbodies
 embeds the (body) contents of all MIME parts, and
 .Ql allheaders
-als includes all headers.
+also includes all headers.
 The quoted message will be enclosed by the expansions of
 .Va quote-inject-head
 and
@@ -14573,8 +14577,8 @@ annotate = true
 .Pp
 Patches can also be send directly, for example:
 .Bd -literal -offset indent
-$ git mail-patch HEAD^ |
-  \*(uA -Athe-account-you-need -t RECEIVER
+$ git format-patch -M --stdout HEAD^ |
+  \*(uA -A the-account-you-need -t RECEIVER
 .Ed
 .Ss "Howto handle stale dotlock files"
 .Ic folder
