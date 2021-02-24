@@ -32,7 +32,7 @@ ChangeLog
 - I had implemented a thoughtless use of close_range() aka
   closefrom() -- this was totally broken (mysteriously not covered
   by the tests, have to look, will fix for the future, too).  We
-  can never do this, and if it is only for `readctl'#?.
+  can never do this, and if it is only for `readctl'#254.
   (Russell Bell, Johannes Schöpfer)
 
 git(1) shortlog (edited)
@@ -92,7 +92,7 @@ ChangeLog
   (since ever).
 
 - Manual: after rewrite and review i think the manual section
-  "Character sets"#? is of acceptable quality.  (Jörg Schilling)
+  "Character sets"#15 is of acceptable quality.  (Jörg Schilling)
 
 git(1) shortlog: Steffen Nurpmeso (56)
 
