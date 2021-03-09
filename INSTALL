@@ -197,6 +197,7 @@ and/or a compiler bug.  If OPT_AUTOCC had been used in conjunction with
 a non-debug target (the defaults), an additional cc_maxopt=1 (or an
 EXTRA_CFLAGS=-O1 etc.) on the command line and a successive
 reconfiguration and -compilation could turn the green testing light on.
+(Or adjust VAL_AUTOCC to pass through desired ones as such.)
 
 In order to inspect the error more thoroughly, the mx-test.sh script
 can be used in --run-test mode to invoke the failing tests (testing

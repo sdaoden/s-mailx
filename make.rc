@@ -179,23 +179,24 @@ OPT_ALWAYS_UNICODE_LOCALE=`\
 # offer no source dependency tracking in this mode.)
 OPT_AMALGAMATION=no
 
-# Shall the build try to automatically detect a compiler and detect and
-# provide a set of known-good compiler flags?  It will use $CC if this
-# variable is set, otherwise a compiler is actively searched for.
-# If this option is chosen additions to flags may still be provided
-# by setting $EXTRA_CFLAGS and $EXTRA_LDFLAGS to whatever is desired.
-# Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS,
-# otherwise pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
+# Shall we detect a compiler and detect and provide a set of known-good
+# compiler flags?  It will still use $CC if this variable is set,
+# otherwise a compiler is actively searched for.
+# If chosen flag additions may still be provided by setting
+# $EXTRA_CFLAGS and $EXTRA_LDFLAGS.  Thus:
+# If false: we use your normal $CC / $CFLAGS / $LDFLAGS,
+# If true: pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
 #     $ make EXTRA_CFLAGS=-std=c99 tangerine
-# Whatever you do, the configuration is fixated and updates will force
-# rebuilds.
+# Anyhow configuration changes cause rebuilds.  Configurable a bit:
+# . keep_options: if set original $CFLAGS/$LDFLAGS are not cleared.
+#        Note: actively stripped by OPT_DEVEL and OPT_DEBUG!
+# . bind_now: -Wl,-z,now if supported (see ld(1)).
+# . pie: shall address randomization be used if supported.
+# . stackprot: shall stack protectors be used if supported.
+#     . fortify: onto stackprot, enable _FORTIFY_SOURCE=2.
+#           (This requires an optimized (-O) build.)
 OPT_AUTOCC=yes
-
-   # With $OPT_AUTOCC we will use stack protector guards shall the
-   # detected compiler support them; this goes in line with our own
-   # (heap) memory canaries and will detect buffer overflows.  Usually
-   # only useful during development, but often always enabled today.
-   OPT_AUTOCC_STACKPROT=yes
+   VAL_AUTOCC=keep_options,bind_now,pie,stackprot,fortify
 
 # Whether the commands `csop', `vexpr' .. shall be included.
 # v15compat: until v15 VEXPR needs CSOP.
@@ -237,7 +238,7 @@ OPT_DOTLOCK=yes
 # and the `errors' command will show them when asked to.
 # VAL_ERRORS_LIMIT will be the default value of *errors-limit*.
 OPT_ERRORS=yes
-VAL_ERRORS_LIMIT=8000
+   VAL_ERRORS_LIMIT=8000
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
@@ -262,7 +263,7 @@ OPT_FILTER_QUOTE_FOLD=yes
 #     https://www.gnu.org/software/libiconv).
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
-VAL_ICONV=libc,iconv
+   VAL_ICONV=libc,iconv
 
 # IDNA (internationalized domain names for applications) allow domain
 # names in native languages (non-ASCII).  For example www.smörgås.example
@@ -274,7 +275,7 @@ VAL_ICONV=libc,iconv
 # . idn (GNU Libidn/IDNA 2003, same URL).
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
-VAL_IDNA=idnkit,idn2,idn
+   VAL_IDNA=idnkit,idn2,idn
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
@@ -290,7 +291,7 @@ OPT_IMAP_SEARCH=yes
 # RFC 1524 specifies the default $VAL_MAILCAPS path search as follows,
 # and it specifies the $MAILCAPS environment variable to override it.
 OPT_MAILCAP=yes
-VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
+   VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
 
 # Whether support for Maildir email directories shall be enabled.
 OPT_MAILDIR=yes
