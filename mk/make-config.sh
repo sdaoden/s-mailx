@@ -205,6 +205,18 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
+   # 0=pre option evaluate, 1=post, 2=final call, before summary
+   case ${1} in
+   0)
+      ;;
+   1)
+      if feat_yes DEBUG || feat_yes DEVEL; then
+         val_strip VAL_AUTOCC keep_options
+      fi
+      ;;
+   2)
+   esac
+
    if feat_no TLS; then
       OPT_TLS_ALL_ALGORITHMS=0
    fi
@@ -395,7 +407,7 @@ cc_setup() {
       export CC EXTRA_CFLAGS EXTRA_LDFLAGS
       return
    else
-      CFLAGS= LDFLAGS=
+      val_has VAL_AUTOCC keep_options || CFLAGS= LDFLAGS=
       export CFLAGS LDFLAGS
    fi
 
@@ -423,8 +435,8 @@ cc_setup() {
          msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
          config_exit 1
       fi
+      msg '%s' "${CC}"
    fi
-   msg '%s' "${CC}"
    export CC
 }
 
@@ -433,10 +445,11 @@ _cc_os_unixware() {
       msg_nonl ' . have special UnixWare rules for $CC ...'
       feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
       export CC CFLAGS LDFLAGS
       OPT_AUTOCC=0 ld_need_R_flags=-R
+      msg '%s' "${CC}"
       return 0
    fi
    return 1
@@ -447,10 +460,11 @@ _cc_os_sunos() {
       msg_nonl ' . have special SunOS rules for $CC ...'
       feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
       export CC CFLAGS LDFLAGS
       OPT_AUTOCC=0 ld_need_R_flags=-R
+      msg '%s' "${CC}"
       return 0
    else
       CC=
@@ -468,7 +482,7 @@ _cc_default() {
    if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
       :
    else
-      msg 'Using C compiler ${CC}=%s' "${CC}"
+      msg '. C compiler ${CC}=%s' "${CC}"
    fi
 
    case "${CC}" in
@@ -499,7 +513,7 @@ doit(char const *s){
 }
 
 cc_hello() {
-   [ -n "${cc_check_silent}" ] || msg_nonl ' . CC compiles "Hello world" .. '
+   [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiles "Hello world" .. '
    if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS}; then
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -524,11 +538,12 @@ cc_flags() {
    elif feat_yes AUTOCC; then
       if [ -f ${env} ] && feat_no DEBUG && [ -z "${VERBOSE}" ]; then
          cc_check_silent=1
-         msg 'Detecting ${CFLAGS}/${LDFLAGS} for ${CC}=%s, just a second..' \
-            "${CC}"
+         if [ -f ${env} ]; then :; else
+            msg 'Checking ${CFLAGS}/${LDFLAGS} for ${CC}=%s ..' "${CC}"
+         fi
       else
          cc_check_silent=
-         msg 'Testing usable ${CFLAGS}/${LDFLAGS} for ${CC}=%s' "${CC}"
+         msg 'Checking ${CFLAGS}/${LDFLAGS} for ${CC}=%s' "${CC}"
       fi
 
       i=`echo "${CC}" | ${awk} 'BEGIN{FS="/"}{print $NF}'`
@@ -545,8 +560,8 @@ cc_flags() {
       fi
 
       feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
    else
       if feat_no DEBUG && feat_no DEVEL; then
          CFLAGS="-DNDEBUG ${CFLAGS}"
@@ -598,6 +613,8 @@ _cc_flags_generic() {
    if feat_yes DEBUG; then
       cc_check -O
       cc_check -g
+   elif val_has VAL_AUTOCC keep_options; then
+      :
    elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
       :
    elif [ ${cc_maxopt} -gt 1 ] && cc_check -O2; then
@@ -648,26 +665,28 @@ _cc_flags_generic() {
    cc_check -fno-common
    cc_check -fno-unwind-tables
    cc_check -fstrict-aliasing
-   if cc_check -fstrict-overflow && feat_yes DEVEL; then
+   if cc_check -fstrict-overflow && feat_yes DEVEL; then # XXX always
       cc_check -Wstrict-overflow=5
    fi
 
-   if feat_yes AUTOCC_STACKPROT; then
+   if val_has VAL_AUTOCC stackprot; then
       if [ -z "${cc_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
-            if [ -z "${cc_no_fortify}" ]; then
-               cc_check -D_FORTIFY_SOURCE=2
-            else
-               msg ' ! Not checking for -D_FORTIFY_SOURCE=2 compiler option,'
-               msg ' ! since that caused errors in a "similar" configuration.'
-               msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
+            if val_has VAL_AUTOCC fortify; then
+               if [ -z "${cc_no_fortify}" ]; then
+                  cc_check -D_FORTIFY_SOURCE=2
+               else
+                  msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+                  msg ' ! it caused errors in a "similar" configuration.'
+                  msg ' ! You may turn off OPT_AUTOCC, then rerun.'
+               fi
             fi
          fi
       else
-         msg ' ! Not checking for -fstack-protector compiler option,'
-         msg ' ! since that caused errors in a "similar" configuration.'
-         msg ' ! You may turn off OPT_AUTOCC, then rerun with your own'
+         msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+         msg ' ! it caused errors in a "similar" configuration.'
+         msg ' ! You may turn off OPT_AUTOCC, then rerun.'
       fi
    fi
 
@@ -706,10 +725,12 @@ _cc_flags_generic() {
    fi
 
    ld_check -Wl,-z,relro
-   if [ -z "${ld_no_bind_now}" ]; then
-      ld_check -Wl,-z,now
-   else
-      msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
+   if val_has VAL_AUTOCC bind_now; then
+      if [ -z "${ld_no_bind_now}" ]; then
+         ld_check -Wl,-z,now
+      else
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
+      fi
    fi
    ld_check -Wl,-z,noexecstack
    ld_check -Wl,--as-needed
@@ -733,11 +754,13 @@ _cc_flags_generic() {
    fi
 
    # Address randomization
-   _ccfg=${_CFLAGS}
-   if cc_check -fPIE || cc_check -fpie; then
-      ld_check -pie || _CFLAGS=${_ccfg}
+   if val_has VAL_AUTOCC pie; then
+      _ccfg=${_CFLAGS}
+      if cc_check -fPIE || cc_check -fpie; then
+         ld_check -pie || _CFLAGS=${_ccfg}
+      fi
+      unset _ccfg
    fi
-   unset _ccfg
 
    # Retpoline (xxx maybe later?)
 #   _ccfg=${_CFLAGS} _i=
@@ -854,7 +877,6 @@ feat_is_unsupported() {
    msg ' ! NOTICE: unsupported: OPT_%s' "${1}"
    echo "/* OPT_${1} -> mx_HAVE_${1} */" >> ${h}
    eval OPT_${1}=0
-   option_update # XXX this is rather useless here (dependency chain..)
 }
 
 feat_def() {
@@ -1078,6 +1100,52 @@ val_allof() {
       eval "${1}"=\""`echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-'`"\"
    fi
    return 0
+}
+
+val_foreach_call() {
+   eval __expo__=\$${1} __mod__=${2}
+   __oifs__=${IFS}
+   IFS=", "
+   set -- ${__expo__}
+   IFS=${__oifs__}
+   for __vfec__
+   do
+      eval ${__mod__}_${__vfec__} && break
+   done
+}
+
+val_has() {
+   eval __expo__=\$${1}
+   __expo__=`echo ${__expo__} | tr [[:upper:]] [[:lower:]]`
+   __vhasx__=`echo ${2} | tr [[:upper:]] [[:lower:]]`
+   __oifs__=${IFS}
+   IFS=", "
+   set -- ${__expo__}
+   IFS=${__oifs__}
+   for __vhasy__
+   do
+      [ "${__vhasx__}" = "${__vhasy__}" ] && return 0
+   done
+   return 1
+}
+
+val_strip() {
+   __name__=${1}
+   eval __expo__=\$${__name__}
+   __expo__=`echo ${__expo__} | tr [[:upper:]] [[:lower:]]`
+   __vhasx__=`echo ${2} | tr [[:upper:]] [[:lower:]]`
+   __oifs__=${IFS}
+   IFS=", "
+   set -- ${__expo__}
+   IFS=${__oifs__}
+   __vnew__=
+   for __vhasy__
+   do
+      [ "${__vhasx__}" = "${__vhasy__}" ] && continue
+      [ -n "${__vnew__}" ] && __vnew__=${__vnew__},
+      __vnew__=${__vnew__}${__vhasy__}
+   done
+   eval ${__name__}=${__vnew__}
 }
 
 oneslash() {
@@ -1488,7 +1556,7 @@ thecmd_testandset strip strip
 thecmd_testandset_fail cksum cksum
 
 # Update OPT_ options now, in order to get possible inter-dependencies right
-option_update
+option_update 0
 
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
@@ -1530,6 +1598,8 @@ SU_CWDDIR=${CWDDIR}
 msg_nonl 'Evaluating all configuration items ... '
 option_evaluate
 msg 'done'
+
+option_update 1
 
 #
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
@@ -2398,15 +2468,8 @@ jleave:
       feat_bail_required ICONV
    }
 
-   oifs=${IFS}
-   IFS=", "
    VAL_ICONV="${VAL_ICONV},bye"
-   set -- ${VAL_ICONV}
-   IFS=${oifs}
-   for randfun
-   do
-      eval val_iconv_$randfun && break
-   done
+   val_foreach_call VAL_ICONV val_iconv
 
    if feat_yes ICONV && feat_no CROSS_BUILD; then
       { ${tmp}; } >/dev/null 2>&1
@@ -3185,15 +3248,8 @@ val_random_error() {
    config_exit 42
 }
 
-oifs=${IFS}
-IFS=", "
 VAL_RANDOM="${VAL_RANDOM},error"
-set -- ${VAL_RANDOM}
-IFS=${oifs}
-for randfun
-do
-   eval val_random_$randfun && break
-done
+val_foreach_call VAL_RANDOM val_random
 # }}} VAL_RANDOM
 
 if feat_yes GSSAPI; then # {{{
@@ -3335,15 +3391,8 @@ int main(void){
       feat_bail_required IDNA
    }
 
-   oifs=${IFS}
-   IFS=", "
    VAL_IDNA="${VAL_IDNA},bye"
-   set -- ${VAL_IDNA}
-   IFS=${oifs}
-   for randfun
-   do
-      eval val_idna_$randfun && break
-   done
+   val_foreach_call VAL_IDNA val_idna
 else
    feat_is_disabled IDNA
 fi # }}} IDNA
@@ -3589,6 +3638,8 @@ feat_def NOMEMDBG 0
 ##
 ## Summarizing
 ##
+
+option_update 2
 
 INCS=`squeeze_ws "${INCS}"`
 LIBS=`squeeze_ws "${LIBS}"`
