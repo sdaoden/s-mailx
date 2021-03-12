@@ -49,7 +49,7 @@ enum mx_mimetype_handler_flags{
    mx_MIMETYPE_HDL_CMD, /* Normal command */
    mx_MIMETYPE_HDL_MSG, /* Display msg (returned as command string) */
    mx_MIMETYPE_HDL_PTF, /* A special pointer-to-function handler */
-   mx_MIMETYPE_HDL_TEXT, /* @ special cmd to force treatment as text */
+   mx_MIMETYPE_HDL_TEXT, /* ? special cmd to force treatment as text */
    mx_MIMETYPE_HDL_TYPE_MASK = 7u,
 
    /* compose, composetyped, edit, print */

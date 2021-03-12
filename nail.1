@@ -1535,17 +1535,22 @@ next input line it will trigger the hook
 HTML-only messages become more and more common, and many messages come
 bundled with a bouquet of MIME (Multipurpose Internet Mail Extensions)
 parts and attachments.
-To get a notion of MIME types \*(UA has a default set of types built-in,
+To get a notion of MIME types there is a built-in default set,
 onto which the content of
 .Sx "The mime.types files"
 will be added (as configured and allowed by
 .Va mimetypes-load-control ) .
-Types can also become registered with the command
+Types can also become registered and listed with the command
 .Ic mimetype .
 To improve interaction with the faulty MIME part declarations of real life
 .Va mime-counter-evidence
 will allow verification of the given assertion, and the possible
 provision of an alternative, better MIME type.
+Note plain text parts will always be preferred in
+.Ql multipart/alternative
+MIME messages unless
+.Va mime-alternative-favour-rich
+is set.
 .
 .Pp
 Whereas a simple HTML-to-text filter for displaying HTML messages is
@@ -1554,11 +1559,6 @@ Whereas a simple HTML-to-text filter for displaying HTML messages is
 in
 .Va features ) ,
 MIME types other than plain text cannot be handled directly.
-And for
-.Ql multipart/alternative
-MIME messages an existing plain text part is preferred unless
-.Va mime-alternative-favour-rich
-is set.
 To deal with specific non-text MIME types or file extensions programs
 need to be registered which either prepare (re-)integrable plain text
 versions of their input (a mode which is called
@@ -1596,11 +1596,20 @@ some other magic attached:
 ?   # Display HTML as plain text instead
 ?   #set pipe-text/html=?t
 ? endif
+
 ? mimetype ?t application/mathml+xml mathml
+
 ? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
+
+? define showhtml {
+?   \elocalopts yes
+?   \eset mime-alternative-favour-rich pipe-text/html=?h?
+?   \etype "$@"
+? }
+? \ecommandalias html \e\ecall showhtml
 .Ed
 .\" }}}
 .
@@ -11337,43 +11346,45 @@ the file should be readable by the invoking user only.
 .Ic pipe
 command without performing MIME and character set conversions.
 .
+.Mx
+.It Va pipe-EXTENSION
+Identical to
+.Va pipe-TYPE/SUBTYPE
+except that
+.Ql EXTENSION
+(normalized to lowercase using character mappings of the ASCII charset)
+denotes a file extension, for example
+.Ql xhtml .
+Handlers registered using this method take precedence.
+.
 .
 .Mx
 .It Va pipe-TYPE/SUBTYPE
-When a MIME message part of type
+A MIME message part identified as
 .Ql TYPE/SUBTYPE
-(case-insensitive) is displayed or quoted,
+(case-insensitive, normalized to lowercase using character mappings of
+the ASCII charset) is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
-Note that only parts which can be displayed inline as plain text (see
+Unless noted only parts displayable as inline plain text (see
 .Cd copiousoutput )
-are displayed unless otherwise noted, other MIME parts will only be
-considered by and for the command
+are covered, other MIME parts will only be considered by and for
 .Ic mimeview .
 .
 .Pp
 The special value question mark
 .Ql \&?
 forces interpretation of the message part as plain text, for example
-.Ql set pipe-application/xml=?
-will henceforth display XML
-.Dq as is .
-(The same could also be achieved by adding a MIME type marker with the
-.Ic mimetype
-command.
-And \*(OPally MIME type handlers may be defined via
+.Ql set pipe-application/xml=? .
+(This can also be achieved by adding a MIME type-marker via
+.Ic mimetype . )
+\*(OPally MIME type handlers may be defined via
 .Sx "The Mailcap files"
-\(em these directives,
-.Cd copiousoutput
-has already been used, should be referred to for further documentation.
-.
-.Pp
-The question mark
-.Ql \&?
-can in fact be used as a trigger character to adjust usage and behaviour
-of a following shell command specification more thoroughly by appending
-more special characters which refer to further mailcap directives, for
-example the following hypothetical command specification could be used:
+to which should be referred to for documentation of flags like
+.Cd copiousoutput .
+Question mark is indeed a trigger character to indicate flags that
+adjust behaviour and usage of the rest of the value, the shell command,
+for example:
 .
 .Bd -literal -offset indent
 ? set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
@@ -11382,23 +11393,24 @@ example the following hypothetical command specification could be used:
 .Pp
 .Bl -tag -compact -width ".It Ql __"
 .It Ql *
-The command produces plain text to be integrated in \*(UAs output:
+The command output can be reintegrated into this MUA's normal processing:
 .Cd copiousoutput .
+Implied when using a plain
+.Ql \& .
 .
 .It Ql #
-If set the handler will not be invoked when a message is to be quoted,
-but only when it will be displayed:
+Only use this handler for display, not for quoting a message:
 .Cd x-mailx-noquote .
 .
 .It Ql &
-Run the command asynchronously, i.e., without blocking \*(UA:
+Run the command asynchronously, do not wait for the handler to exit:
 .Cd x-mailx-async .
 The standard output of the command will go to
 .Pa /dev/null .
 .
 .It Ql \&!
-The command must be run on an interactive terminal, \*(UA will
-temporarily release the terminal to it:
+The command must be run on an interactive terminal, the terminal will
+temporarily be released for it to run:
 .Cd needsterminal .
 .
 .It Ql +
@@ -11414,13 +11426,26 @@ it is an error to use automatic deletion in conjunction with
 .
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
-input; if this flag is set then the data will instead be written into
+input; with this the data will instead be written into
 .Ev MAILX_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile-fill ) ,
 the creation of which is implied; in order to cause automatic deletion
 of the temporary file two plus signs
 .Ql ++
 still have to be used.
+.
+.It Ql t
+Text type-marker: display this as normal plain text (for type-markers:
+.Sx "The mime.types files" ) .
+Identical to only giving plain
+.Ql \&? ,
+implies
+.Cd copiousoutput .
+.
+.It Ql h
+\*(OP HTML type-marker: display via built-in HTML-to-text filter.
+Implies
+.Cd copiousoutput .
 .
 .It Ql \&?
 To avoid ambiguities with normal shell command content another
@@ -11470,17 +11495,6 @@ this variable will be set and contain the absolute pathname of the
 temporary file.
 .El
 .
-.
-.Mx
-.It Va pipe-EXTENSION
-This is identical to
-.Va pipe-TYPE/SUBTYPE
-except that
-.Ql EXTENSION
-(normalized to lowercase using character mappings of the ASCII charset)
-names a file extension, for example
-.Ql xhtml .
-Handlers registered using this method take precedence.
 .
 .Mx Va pop3-auth
 .It Va pop3-auth-USER@HOST , pop3-auth-HOST , pop3-auth
