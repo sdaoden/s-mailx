@@ -1470,7 +1470,8 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
       if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
          rv = a_mimetype_pipe_check(mthp, action);
-         goto jleave;
+         if((rv & mx_MIMETYPE_HDL_TYPE_MASK) != mx_MIMETYPE_HDL_NIL)
+            goto jleave;
       }
    }
 
@@ -1486,7 +1487,8 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
    /* II.: *pipe-TYPE/SUBTYPE* */
    if((mthp->mth_shell_cmd = n_var_vlook(buf, FAL0)) != NIL){
       rv = a_mimetype_pipe_check(mthp, action);
-      goto jleave;
+      if((rv & mx_MIMETYPE_HDL_TYPE_MASK) != mx_MIMETYPE_HDL_NIL)
+         goto jleave;
    }
 
    /* III. RFC 1524 / Mailcap lookup */
