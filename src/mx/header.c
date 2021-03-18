@@ -131,6 +131,10 @@ static void a_header_jdn_to_gregorian(uz jdn,
 static void a_header_parse_from_(struct message *mp,
       char date[n_FROM_DATEBUF]);
 
+/* xxx as long as we cannot grasp complete MIME mails via -t or compose mode,
+ * xxx and selectively add onto what is missing / etc, 'need to ignore some */
+static char const *a_header_extract_ignore_field_XXX(char const *linebuf);
+
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
@@ -421,6 +425,27 @@ a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
 
    mx_fs_linepool_release(hline, hsize);
    NYD2_OU;
+}
+
+static char const *
+a_header_extract_ignore_field_XXX(char const *linebuf){
+   static char const a_ifa[][sizeof("Content-Transfer-Encoding")] = {
+      "MIME-Version", "Content-Type", "Content-Transfer-Encoding",
+         "Content-Disposition", "Content-ID"
+   };
+
+   char const *ccp;
+   uz i;
+   NYD2_IN;
+
+   for(i = 0; i < NELEM(a_ifa); ++i)
+      if(n_header_get_field(linebuf, ccp = a_ifa[i], NIL) != NIL)
+         goto jleave;
+
+   ccp = NIL;
+jleave:
+   NYD2_OU;
+   return ccp;
 }
 
 #ifdef mx_HAVE_IDNA
@@ -1731,8 +1756,10 @@ jeseek:
                   checkaddr_err_or_null));
          }else
             goto jebadhead;
-      }
-      /* A free-form header; a_gethfield() did some verification already.. */
+      }else if((hef & n_HEADER_EXTRACT_COMPOSE_MODE) &&
+            (val = a_header_extract_ignore_field_XXX(linebuf)) != NIL)
+         n_err(_("Ignoring header field: %s\n"), val);
+      /* A free-form header; get_field() did some verification already */
       else{
          struct str hfield;
          struct n_header_field *hfp;
@@ -1809,8 +1836,8 @@ jebadhead:
             hp->h_sender = n_extract_single(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
       }
-   } else
-      n_err(_("Restoring deleted header lines\n"));
+   }else if(hef & n_HEADER_EXTRACT_COMPOSE_MODE)
+      n_err(_("Message header remains unchanged by template\n"));
 
 jleave:
    mx_fs_linepool_release(linebuf, linesize);
