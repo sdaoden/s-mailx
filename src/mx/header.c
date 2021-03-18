@@ -1732,7 +1732,16 @@ jeseek:
          }else
             goto jebadhead;
       }
-      /* A free-form header; a_gethfield() did some verification already.. */
+      /* In compose mode, actively ignore some fields (again) XXX */
+      else if((hef & n_HEADER_EXTRACT_COMPOSE_MODE) &&
+            (n_header_get_field(linebuf, val = "MIME-Version", NIL) != NIL ||
+             n_header_get_field(linebuf, val = "Content-Type", NIL) != NIL ||
+             n_header_get_field(linebuf, val = "Content-Transfer-Encoding", NIL
+               ) != NIL ||
+             n_header_get_field(linebuf, val = "Content-ID", NIL) != NIL)){
+         n_err(_("Ignoring header field: %s\n"), val);
+      }
+      /* A free-form header; get_field() did some verification already */
       else{
          struct str hfield;
          struct n_header_field *hfp;
@@ -1809,8 +1818,8 @@ jebadhead:
             hp->h_sender = n_extract_single(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
       }
-   } else
-      n_err(_("Restoring deleted header lines\n"));
+   }else if(hef & n_HEADER_EXTRACT_COMPOSE_MODE)
+      n_err(_("Message header remains unchanged by template\n"));
 
 jleave:
    mx_fs_linepool_release(linebuf, linesize);
