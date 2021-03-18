@@ -1563,11 +1563,14 @@ mx_go_main_loop(boole main_call){ /* FIXME */
          histadd = ((n_psonce & n_PSO_INTERACTIVE) &&
                !(n_pstate & n_PS_ROBOT) &&
                 a_go_ctx->gc_inject == NIL); /* xxx really injection? */
-         mx_sigs_all_rele();
-         ASSERT(!gec.gec_ignerr);
-         n = mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, NIL,
+         DBG(
+            mx_sigs_all_rele();
+            ASSERT(!gec.gec_ignerr);
+            mx_sigs_all_holdx();
+         )
+         n = mx_go_input((mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC |
+               mx_GO_INPUT_HOLDALLSIGS), NIL,
                &gec.gec_line.s, &gec.gec_line.l, NIL, &histadd);
-         mx_sigs_all_holdx();
 
          gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
       }
