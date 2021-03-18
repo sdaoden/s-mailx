@@ -717,7 +717,8 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    n_header_extract(((do_delayed_due_t
             ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECEIVERS
-            : n_HEADER_EXTRACT_EXTENDED | n_HEADER_EXTRACT_COMPOSE_MODE) |
+            : n_HEADER_EXTRACT_EXTENDED) |
+         n_HEADER_EXTRACT_COMPOSE_MODE |
          n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS), fp, hp, checkaddr_err);
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
