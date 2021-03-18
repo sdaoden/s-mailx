@@ -1257,10 +1257,10 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
                su_DBG_LOC_ARGS_ORUSE);
+         *tlp->tl_x_bufsize = i;
          mx_sigs_all_rele(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
-      *tlp->tl_x_bufsize = i;
    }
 
    NYD2_OU;
@@ -3269,9 +3269,12 @@ jmle_fun:
 
          /* We need to take over all the sequence "as is" */
 jtake_over:
+         for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next)
+            ;
+         a_tty_check_grow(tlp, rv  su_DBG_LOC_ARGS_USE);
          for(isp = isp_head; isp != NIL; isp = isp->next)
             if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
-               /* FIXME */
+               /* TODO ??? */
             }
 
 # else /* mx_HAVE_KEY_BINDINGS */
