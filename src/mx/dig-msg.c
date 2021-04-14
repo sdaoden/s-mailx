@@ -40,6 +40,7 @@
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
+#include "mx/mime.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
 
@@ -203,6 +204,7 @@ jecmd:
 static boole
 a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp,
       struct mx_cmd_arg *args){
+   struct str sin, sou;
    struct n_header_field *hfp;
    struct mx_name *np, **npp;
    uz i;
@@ -706,10 +708,17 @@ jremat:
          goto jecmd;
 
       if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
-         if(hp->h_subject == NIL)
+         if((sin.s = hp->h_subject) == NIL)
             goto j501cp;
-         if(fprintf(fp, "212 %s\n%s\n\n", cp, a_DMSG_QUOTE(hp->h_subject)) < 0)
+         sin.l = su_cs_len(sin.s);
+
+         mx_mime_display_from_header(&sin, &sou,
+            mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+
+         if(fprintf(fp, "212 %s\n%s\n\n", cp, a_DMSG_QUOTE(sou.s)) < 0)
             cp = NIL;
+
+         su_FREE(sou.s);
          goto jleave;
       }
 
@@ -727,7 +736,8 @@ jshow:
             case mx_NAME_ADDRSPEC_ISNAME: cp = n_ns; break;
             default: cp = np->n_name; break;
             }
-            fprintf(fp, "%s %s\n", cp, a_DMSG_QUOTE(np->n_fullname));
+            fprintf(fp, "%s %s\n", cp,
+               a_DMSG_QUOTE(mx_mime_fromaddr(np->n_fullname)));
          }while((np = np->n_flink) != NIL);
          if(putc('\n', fp) == EOF)
             cp = NIL;
@@ -786,10 +796,18 @@ jshow:
          for(any = FAL0, hfp = hp->h_user_headers; hfp != NIL;
                hfp = hfp->hf_next){
             if(!su_cs_cmp_case(cp, &hfp->hf_dat[0])){
-               if(!any)
+               if(!any){
+                  any = TRU1;
                   fprintf(fp, "212 %s\n", &hfp->hf_dat[0]);
-               any = TRU1;
-               fprintf(fp, "%s\n", a_DMSG_QUOTE(&hfp->hf_dat[hfp->hf_nl +1]));
+               }
+
+               sin.l = su_cs_len(sin.s = &hfp->hf_dat[hfp->hf_nl +1]);
+               mx_mime_display_from_header(&sin, &sou,
+                  mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+
+               fprintf(fp, "%s\n", a_DMSG_QUOTE(sou.s));
+
+               su_FREE(sou.s);
             }
          }
          if(!any)
