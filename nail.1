@@ -8231,6 +8231,10 @@ if no such header instance exists.
 .
 .It Cm show
 Shows the content of the header given as the third argument.
+The content will be converted to
+.Va ttycharset
+(\*(ID and then be made printable according to
+.Ev LC_ALL ) .
 Dependent on the header type this may respond with
 .Ql 211
 or
