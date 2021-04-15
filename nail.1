@@ -1113,7 +1113,7 @@ $ env LC_ALL=C \*(uA -:/ \e
 .Ed
 .
 .Pp
-As shown, scripts can
+As shown, scripts producing messages can
 .Dq fake
 a locale environment, the above specifies the all-compatible 7-bit clean
 .Ev LC_ALL
@@ -2157,10 +2157,14 @@ example 8-bit UTF-8 input data in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 environment (an example of this can be found in the section
 .Sx "On sending mail, and non-interactive mode" ) .
-Doing so does not mean much beside that since several aspects of the
-real character set are implied by the locale environment of the system,
-which stays unaffected by
-.Va ttycharset .
+Due to lack of programming interfaces reading mail will not really work
+as expected in a faked environment: whereas
+.Va ttycharset
+might be addressable, any output will be made safely printable, as via
+.Ic vexpr
+.Cm makeprint ,
+according to the actual locale environment, which is not affected by
+.Va ttycharset.
 .
 .Pp
 Classifying 7-bit clean data as
