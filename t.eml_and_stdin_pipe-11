@@ -1,0 +1,1 @@
+reproducible_build: Standard input "-" only works for -f command line option, read-only
