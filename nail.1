@@ -327,31 +327,35 @@ the first recipient's address (instead of in
 .
 .Mx
 .It Fl f , Fl Fl file
-Read in the contents of the user's
+Open the user's
 .Mx -sx
 .Sx "secondary mailbox"
-.Ev MBOX
-(or the specified file) for processing;
-when \*(UA is quit, it writes undeleted messages back to this file
-(but be aware of the
-.Va hold
-option).
-The optional
+.Ev MBOX ,
+or the specified
+.Ar file ,
+instead of the
+.Sx "primary system mailbox"
+(note
+.Va hold , keepsave ) .
+Just as if opened via
+.Ic folder
+the optional
 .Ar file
-argument will undergo some special
-.Sx "Filename transformations"
-(as via
-.Ic folder ) .
+argument is inspected for protocol specifications and undergoes
+.Sx "Filename transformations" .
+The
+.Ar file
+name
+.Dq -
+denotes (a MBOX or EML) standard input that could even correspond to
+a pipe instead of a regular file; it can only be used via
+.Fl \&\&f
+and only read-only
+.Pf ( Fl R ) .
 Note that
 .Ar file
-is not an argument to the flag
-.Fl \&\&f ,
-but is instead taken from the command line after option processing has
-been completed.
-In order to use a
-.Ar file
-that starts with a hyphen-minus, prefix with a relative path, as in
-.Ql ./-hyphenbox.mbox .
+is not an option argument, but taken from the command line after
+option processing has been completed.
 .
 .Mx
 .It Fl H , Fl Fl header-summary
@@ -5531,7 +5535,11 @@ and
 .Ic filetype Ns
 s is traversed to check whether hooks shall be used to load (and save)
 data from (and to) the given
-.Ar name .
+.Ar name
+(except for the
+.Dq -
+special case as documented for
+.Fl f ) .
 Changing hooks will not affect already opened mailboxes.
 For example, the following creates hooks for the
 .Xr gzip 1

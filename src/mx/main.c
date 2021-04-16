@@ -327,7 +327,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
    int i;
    NYD_IN;
 
-   i = (mcp->mc_A != NIL) ? FEDIT_ACCOUNT : FEDIT_NONE;
+   i = (mcp->mc_A != NIL) ? FEDIT_MAIN | FEDIT_ACCOUNT : FEDIT_MAIN;
    if(n_poption & n_PO_QUICKRUN_MASK)
       i |= FEDIT_RDONLY;
 

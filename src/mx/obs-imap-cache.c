@@ -663,8 +663,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    if (contents != NULL)
       n_free(contents);
    mb.mb_type = MB_CACHE;
-   mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
-         ) ? 0 : MB_DELE;
+   mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    if(omessage != NULL){
       if(transparent)
          /* This frees the message */

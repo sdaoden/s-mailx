@@ -5362,6 +5362,60 @@ t_maildir() { # {{{
 
    t_epilog "${@}"
 } # }}}
+
+t_eml_and_stdin_pipe() { # {{{
+   t_prolog "${@}"
+
+   t__gen_msg from pipe-committee subject stdin > ./t.mbox
+   ${sed} 1d < ./t.mbox > ./t.eml
+
+   check 1 0 ./t.mbox '1038043487 130'
+   check 2 0 ./t.eml '2467547934 81'
+
+   #
+   <./t.mbox ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf - >./t3 2>&1
+   check 3 0 ./t3 '3232332927 182'
+
+   <./t.mbox ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf mbox://- >./t4 2>&1
+   check 4 0 ./t4 '3232332927 182'
+
+   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf - >./t5 2>&1
+   check 5 0 ./t5 '3232332927 182'
+
+   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf mbox://- >./t6 2>&1
+   check 6 0 ./t6 '3232332927 182'
+
+   #
+   <./t.eml ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf - >./t7 2>&1
+   check 7 1 ./t7 '1848953769 43'
+
+   <./t.eml ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf eml://- >./t8 2>&1
+   check 8 0 ./t8 '269911796 177'
+
+   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf - >./t9 2>&1
+   check 9 1 ./t9 '1848953769 43'
+
+   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+      -Rf eml://- >./t10 2>&1
+   check 10 0 ./t10 '269911796 177'
+
+   #
+   <./t.mbox ${MAILX} ${ARGS} -f - >./t11 2>&1
+   check 11 1 ./t11 '2465941229 88'
+
+   <./t.eml ${MAILX} ${ARGS} -f eml://- >./t12 2>&1
+   check 12 1 ./t12 '3267665338 77'
+
+   t_epilog "${@}"
+} # }}}
+
 # }}}
 
 # MIME and RFC basics {{{
@@ -11052,6 +11106,7 @@ t_all() { # {{{
    jspawn move
    jspawn mbox
    jspawn maildir
+   jspawn eml_and_stdin_pipe
    jsync
 
    # MIME and RFC basics
