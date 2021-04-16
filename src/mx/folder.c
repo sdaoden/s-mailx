@@ -73,7 +73,8 @@ su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 static void a_folder_info(void);
 
 /* Set up the input pointers while copying the mail file into /tmp */
-static void a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml);
+static void a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml,
+      boole maybepipe);
 
 #ifdef mx_HAVE_C90AMEND1
 su_SINLINE uz
@@ -241,7 +242,7 @@ jleave:
 }
 
 static void
-a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
+a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
@@ -271,8 +272,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml){
    mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
       /* Ensure space for terminating LF, so do append it */
-      if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
-            ) == NIL)){
+      if(UNLIKELY(fgetline(&linebuf, &linesize, (maybepipe ? NIL : &filesize),
+            &cnt, ibuf, TRU1) == NIL)){
          /* TODO We are not prepared for error here */
          if(f & a_HADONE){
             if(f & a_CREATE){
@@ -450,6 +451,7 @@ jputln:
       self.m_size += cnt;
       ++self.m_lines;
    }
+
    NYD_OU;
 }
 
@@ -459,16 +461,29 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    /* TODO This all needs to be converted to URL:: and Mailbox:: */
    static int shudclob;
 
+   enum{
+      a_NONE,
+      a_DEVNULL = 1u<<0,
+      a_STDIN = 1u<<1,
+
+      a_SPECIALS_MASK = a_DEVNULL | a_STDIN
+   };
+
    struct stat stb;
    uz offset;
    char const *who, *orig_name;
    enum protocol proto;
    int rv, omsgCount = 0;
-   FILE *ibuf = NULL, *lckfp = NULL;
-   boole isdevnull = FAL0;
+   FILE *ibuf, *lckfp;
+   u8 flags;
    NYD_IN;
 
    n_pstate &= ~n_PS_SETFILE_OPENED;
+   flags = a_NONE;
+   ibuf = lckfp = NIL;
+
+   if(n_poption & n_PO_R_FLAG)
+      fm |= FEDIT_RDONLY;
 
    /* C99 */{
       enum fexp_mode fexpm;
@@ -517,33 +532,42 @@ jlogname:
 
    switch((proto = which_protocol(orig_name = name, TRU1, TRU1, &name))){
    case n_PROTO_EML:
-      if(fm & ~FEDIT_RDONLY){
-         n_err(_("Sorry, for now eml:// files cannot be used like this: %s\n"),
+      if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){
+         n_err(_("Sorry, for now eml:// files only work read-only: %s\n"),
             orig_name);
          goto jem1;
       }
-      fm |= FEDIT_RDONLY;
       /* FALLTHRU */
    case PROTO_FILE:
-      isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
-            !su_cs_cmp(name, n_path_devnull));
-#ifdef mx_HAVE_REALPATH
-      do { /* TODO we need objects, goes away then */
-# ifdef mx_HAVE_REALPATH_NULL
-         char *cp;
-
-         if ((cp = realpath(name, NULL)) != NULL) {
-            name = savestr(cp);
-            (free)(cp);
+      if(name[1] == '\0' && name[0] == '-'){
+         if(fm ^ (FEDIT_RDONLY | FEDIT_MAIN)){
+            n_err(_("Standard input \"-\" only works for -f "
+               "command line option, read-only\n"));
+            goto jem1;
          }
-# else
-         char cbuf[PATH_MAX];
+         flags = a_STDIN;
+      }else if((n_poption & n_PO_BATCH_FLAG) &&
+            !su_cs_cmp(name, n_path_devnull))
+         flags = a_DEVNULL;
+      else{
+#ifdef mx_HAVE_REALPATH
+         do{ /* TODO we need objects, goes away then */
+# ifdef mx_HAVE_REALPATH_NULL
+            char *cp;
 
-         if (realpath(name, cbuf) != NULL)
-            name = savestr(cbuf);
+            if((cp = realpath(name, NIL)) != NIL){
+               name = savestr(cp);
+               free(cp);
+            }
+# else
+            char cbuf[PATH_MAX];
+
+            if(realpath(name, cbuf) != NIL)
+               name = savestr(cbuf);
 # endif
-      } while (0);
+         }while(0);
 #endif
+      }
       rv = 1;
       break;
 #ifdef mx_HAVE_MAILDIR
@@ -572,7 +596,10 @@ jlogname:
       goto jem1;
    }
 
-   if((ibuf = mx_fs_open_any(savecat("file://", name), "r", NIL)) == NIL){
+   if(flags & a_STDIN)
+      ibuf = mx_fs_fd_open(fileno(n_stdin), "r", TRU1);
+   else if((ibuf = mx_fs_open_any(savecat("file://", name), "r", NIL)
+         ) == NIL){
       int e = su_err_no();
 
       if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
@@ -611,10 +638,10 @@ jlogname:
       goto jem1;
    }
 
-   if (S_ISREG(stb.st_mode) || isdevnull) {
+   if((flags & a_SPECIALS_MASK) || S_ISREG(stb.st_mode)){
       /* EMPTY */
-   } else {
-      if (fm & FEDIT_NEWMAIL)
+   }else{
+      if(fm & FEDIT_NEWMAIL)
          goto jleave;
       su_err_set_no(S_ISDIR(stb.st_mode) ? su_ERR_ISDIR : su_ERR_INVAL);
       n_perr(name, 0);
@@ -641,13 +668,14 @@ jlogname:
    /* TODO In addition: in case of compressed/hook boxes we lock a tmp file! */
    /* TODO We may uselessly open twice but quit() doesn't say whether we were
     * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
-   if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !su_cs_cmp(name, mailname)) {
+   if(!(flags & a_SPECIALS_MASK) && /*shudclob && !(fm & FEDIT_NEWMAIL) &&*/
+         !su_cs_cmp(name, mailname)){
       name = mailname;
       mx_fs_close(ibuf);
 
       if((ibuf = mx_fs_open_any(name, "r", NIL)) == NIL ||
             fstat(fileno(ibuf), &stb) == -1 ||
-            (!S_ISREG(stb.st_mode) && !isdevnull)) {
+            !S_ISREG(stb.st_mode)){
          n_perr(name, 0);
          rele_sigs();
          goto jem2;
@@ -655,14 +683,14 @@ jlogname:
    }
 
    /* Copy the messages into /tmp and set pointers */
-   if (!(fm & FEDIT_NEWMAIL)) {
-      if (isdevnull) {
+   if(!(fm & FEDIT_NEWMAIL)){
+      if(flags & a_DEVNULL){
          mb.mb_type = MB_VOID;
          mb.mb_perm = 0;
-      } else {
+      }else{
          mb.mb_type = MB_FILE;
-         mb.mb_perm = (((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY) ||
-               access(name, W_OK) < 0) ? 0 : MB_DELE | MB_EDIT);
+         mb.mb_perm = (((fm & FEDIT_RDONLY) || access(name, W_OK) < 0)
+               ? 0 : MB_DELE | MB_EDIT);
          if (shudclob) {
             if (mb.mb_itf) {
                fclose(mb.mb_itf);
@@ -689,7 +717,7 @@ jlogname:
       omsgCount = msgCount;
    }
 
-   if (isdevnull)
+   if(flags & a_SPECIALS_MASK) /* XXX no locking for read-only "-" "file" */
       lckfp = (FILE*)-1;
    else if(!(n_pstate & n_PS_EDIT))
       lckfp = mx_file_dotlock(name, fileno(ibuf), mx_FILE_LOCK_TYPE_READ,
@@ -713,7 +741,7 @@ jlogname:
       goto jleave;
    }
 
-   mailsize = fsize(ibuf);
+   mailsize = (flags & a_SPECIALS_MASK) ? 0 : fsize(ibuf);
 
    /* TODO This is too simple minded?  We should regenerate an index file
     * TODO to be able to truly tell whether *anything* has changed! */
@@ -721,7 +749,8 @@ jlogname:
       rele_sigs();
       goto jleave;
    }
-   a_folder_mbox_setptr(ibuf, offset, (proto == n_PROTO_EML));
+   a_folder_mbox_setptr(ibuf, offset, (proto == n_PROTO_EML),
+      ((flags & a_SPECIALS_MASK/* xxx pipe thing only though */) != 0));
    setmsize(msgCount);
    if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;

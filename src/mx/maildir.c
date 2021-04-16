@@ -173,8 +173,7 @@ a_maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
    if (!(fm & FEDIT_NEWMAIL))
       _cleantmp();
 
-   mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY))
-         ? 0 : MB_DELE;
+   mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    if ((i = _maildir_subdir(name, "cur", fm)) != 0)
       goto jleave;
    if ((i = _maildir_subdir(name, "new", fm)) != 0)

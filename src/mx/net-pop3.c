@@ -1093,8 +1093,7 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
 
    setmsize(msgCount);
    mb.mb_type = MB_POP3;
-   mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY))
-         ? 0 : MB_DELE;
+   mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    a_pop3_setptr(&mb, &pc);
 
    /*if (!(fm & FEDIT_NEWMAIL)) */{
