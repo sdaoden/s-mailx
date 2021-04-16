@@ -2118,8 +2118,6 @@ jduppass:
    } else   /* same account */
       mb.mb_flags |= same_flags;
 
-   if (n_poption & n_PO_R_FLAG)
-      fm |= FEDIT_RDONLY;
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
