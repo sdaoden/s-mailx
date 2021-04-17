@@ -5141,12 +5141,18 @@ will instead open the message that is being composed.
 If a hyphen-minus is given as the optional third argument then output
 will be generated on the standard output channel instead of being
 subject to consumption by the
-.Ic readsh
-(here better than
+.Ic readall
+(or
 .Ic read
-or
-.Ic readall )
-command.
+and
+.Ic readsh )
+command(s).
+Note: digmsg output must be fully consumed before normal processing
+(the lack of I/O redirection is sorely missed here); for
+.Ic \&\&digmsg
+objects this means each command output has to be read until end of file
+(EOF) occurs.
+.
 .Pp
 The objects may be
 .Cm remove Ns
@@ -5160,6 +5166,7 @@ and the third and all following arguments are interpreted as via
 .Ic ~^
 (see
 .Sx "COMMAND ESCAPES" ) :
+.
 .Bd -literal -offset indent
 ? vput = msgno; digmsg create $msgno
 ? digmsg $msgno header list;   readall x;   echon $x
