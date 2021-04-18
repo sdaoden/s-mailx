@@ -420,7 +420,7 @@ a_main_memtrace(int signo){
 
    lvl = su_log_get_level();
    su_log_set_level(su_LOG_INFO);
-   su_mem_trace();
+   su_mem_trace((mx_termios_dimen.tiosd_real_width > 80));
    su_log_set_level(lvl);
 }
 #endif
