@@ -3034,9 +3034,9 @@ c_imapcodec(void *vp){
       mx_makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_no();
-         vp = NULL;
+         vp = NIL;
       }
-      n_free(out.s);
+      su_FREE(out.s);
    }
 
 jleave:
