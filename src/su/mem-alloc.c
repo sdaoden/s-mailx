@@ -29,6 +29,10 @@
 
 #include <stdlib.h> /* TODO -> port C++ cache */
 
+#ifdef su_HAVE_DEBUG /* (MEM_ALLOC_DEBUG not yet) */
+# include "su/cs.h"
+#endif
+
 #include "su/mem.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -40,6 +44,7 @@
 # define a_MEMA_HOPE_SIZE_ADD 0
 #else
 # define a_MEMA_DBG(X) X
+# define a_MEMA_DUMP_SIZE 80
 # define a_MEMA_HOPE_SIZE (2 * 8 * sizeof(u8))
 # define a_MEMA_HOPE_INC(P) (P) += 8 * sizeof(u8)
 # define a_MEMA_HOPE_DEC(P) (P) -= 8 * sizeof(u8)
@@ -242,6 +247,10 @@ static struct a_mema_stats a_mema_stats[su__MEM_ALLOC_MARK_MAX + 1];
 #ifdef su_MEM_ALLOC_DEBUG
 /* */
 static void a_mema_release_free(void);
+
+/* */
+static void a_mema_dump_chunk(boole how, char buf[a_MEMA_DUMP_SIZE],
+      void const *vp, uz size);
 #endif
 
 #ifdef su_MEM_ALLOC_DEBUG
@@ -270,6 +279,32 @@ a_mema_release_free(void){
             " chunks / %" PRIuZ " bytes\n",
          c, s);
    }
+
+   NYD2_OU;
+}
+
+static void
+a_mema_dump_chunk(boole how, char buf[a_MEMA_DUMP_SIZE],
+      void const *vp, uz size){
+   char const *cp;
+   char *dp;
+   NYD2_IN;
+
+   LCTAV(a_MEMA_DUMP_SIZE > 5);
+
+   dp = buf;
+   if(how < FAL0)
+      *dp++ = '\n';
+   dp[0] = ' ';
+   dp[1] = ' ';
+   dp += 2;
+
+   if((size = MIN(size, a_MEMA_DUMP_SIZE - 4)) == 0)
+      dp = buf;
+   else for(cp = vp; size > 0; ++cp, --size)
+      *dp++ = su_cs_is_print(*cp) ? *cp : '?';
+
+   *dp = '\0';
 
    NYD2_OU;
 }
@@ -344,13 +379,15 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
 }
 
 boole
-su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
+su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
+   char dump[a_MEMA_DUMP_SIZE];
    union a_mema_ptr p, xp;
    u32 mark;
    boole anybad, isbad;
    NYD2_IN;
 
    anybad = FAL0;
+   dump[0] = '\0';
 
    for(mark = su__MEM_ALLOC_MARK_MAX;; --mark){
       struct a_mema_stats const *masp;
@@ -369,15 +406,21 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
             p.map_hc = p.map_hc->mahc_next){
          if(p.map_c->mac_mark != mark)
             continue;
+
          xp = p;
          ++xp.map_hc;
          a_MEMA_HOPE_GET_TRACE(map_hc, xp, isbad);
          anybad |= isbad;
+
+         if(dumpmem)
+            a_mema_dump_chunk(dumpmem, dump, xp.map_vp,
+               p.map_c->mac_size - p.map_c->mac_user_off);
+
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
-            p.map_c->mac_file, p.map_c->mac_line);
+            p.map_c->mac_file, p.map_c->mac_line, dump);
       }
 
       if(mark == su_MEM_ALLOC_MARK_0)
@@ -394,11 +437,16 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
          ++xp.map_hc;
          a_MEMA_HOPE_GET_TRACE(map_hc, xp, isbad);
          anybad |= isbad;
+
+         if(dumpmem)
+            a_mema_dump_chunk(dumpmem, dump, xp.map_vp,
+               p.map_c->mac_size - p.map_c->mac_user_off);
+
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
-            p.map_c->mac_file, p.map_c->mac_line);
+            p.map_c->mac_file, p.map_c->mac_line, dump);
       }
    }
 

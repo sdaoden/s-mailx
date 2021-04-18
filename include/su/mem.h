@@ -165,7 +165,7 @@ enum su_mem_conf_option{
 #ifdef su_MEM_ALLOC_DEBUG
 EXPORT boole su__mem_get_can_book(uz size, uz no);
 EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
-EXPORT boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE);
+EXPORT boole su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL);
 #endif
 
 /*! Rather internal, but due to the \r{su_mem_alloc_flags} \a{maf} maybe
@@ -406,14 +406,17 @@ INLINE boole su_mem_check(void){
 /* XXX mem_check_ptr()  */
 /* XXX mem_[usage_]info(); opt: output channel, thread ptr */
 
-/*! Dump statistics and memory content via \r{su_log_write()} and
- * \r{su_LOG_INFO} level.
+/*! Dump statistics and memory content (with \a{dumpmem})
+ * via \r{su_log_write()} and \r{su_LOG_INFO} level.
  * Checks all existing allocations for bound violations etc. while doing so.
+ * A positive \a{dumpmem} appends memory content to the allocation info line,
+ * a negative places the dump on a follow line.
  * Return \TRU1 on errors, \TRUM1 on fatal errors.
  * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined. */
-INLINE boole su_mem_trace(void){ /* XXX ochannel, thrptr*/
+INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
+   UNUSED(dumpmem);
 #ifdef su_MEM_ALLOC_DEBUG
-   return su__mem_trace(su_DBG_LOC_ARGS_INJ_SOLE);
+   return su__mem_trace(dumpmem su_DBG_LOC_ARGS_INJ);
 #else
    return FAL0;
 #endif
@@ -638,7 +641,7 @@ public:
    static void check(void) {su_mem_check();}
 
    /*! \r{su_mem_trace()} */
-   static void trace(void) {su_mem_trace();}
+   static void trace(boole dumpmem=FAL0) {su_mem_trace(dumpmem);}
 
    template<class T>
    static void del__heap(T *tptr){
