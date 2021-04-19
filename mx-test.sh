@@ -7712,6 +7712,7 @@ mail ./t15
 t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
    t_prolog "${@}"
 
+   # {{{
    printf '#
    mail ./t1\n!s This subject is\nThis body is
 !:echo --one
@@ -7816,6 +7817,45 @@ t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
    check 3 - ./t3 '3993703854 127'
    check 4 - ./t4 '4294967295 0'
    check 5 - ./t5 '2157992522 256'
+   # }}}
+
+   # [1091b026c9c8bcd26ce95aa90e7327757f9c0f32] check
+   # While here ensure IDNA decoding does not happen
+   ${cat} >> ./t6.eml <<'_EOT'
+Date: Tue, 20 Apr 2021 00:23:10 +0200
+To: Hey <bose@xn--kndelbrste-fcb0f>
+Subject: =?utf-8?Q?=C3=BCbject?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+_EOT
+
+   printf '#
+      define a_read_header_mline_res {
+         local set name fullname
+         read name fullname
+         local set read=$? es=$! en=$^ERRNAME
+         echo "read<$read> es=<$es> en<$en> name<$name> fullname<$fullname>"
+         if $read -gt 0
+            xcall a_read_header_mline_res
+         elif $read -eq 0
+            # That not! read name
+         else
+            echoerr err
+            xit
+         end
+      }
+      digmsg create 1
+      digmsg 1 header show to
+      read es
+      echo "!=$! ?=$? es<$es>"
+      call a_read_header_mline_res
+      digmsg remove 1
+      commandalias XY echo hui
+      read xy
+XY
+      echo "back !<$!> ?<$?> xy<$xy>"
+      ' | ${MAILX} ${ARGS} -Rf eml://./t6.eml >./t6 2>&1
+   check 6 0 ./t6 '1687359537 184'
 
    t_epilog "${@}"
 } # }}}
