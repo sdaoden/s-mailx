@@ -2686,7 +2686,9 @@ jfound:
          }
          fd = -1;
          elen = su_cs_len(emsg);
-         fp = mx_fs_open(emsg, "&r");
+
+         if((fp = mx_fs_open(emsg, "&r")) == NIL)
+            goto jecreate;
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
          emsg = N_("readctl: create: standard descriptors not allowed: %s\n");
@@ -2700,10 +2702,12 @@ jfound:
          }
          emsg = NIL;
          elen = 0;
-         fp = fdopen(fd, "r");
+
+         if((fp = fdopen(fd, "r")) == NIL)
+            goto jecreate;
       }
 
-      if(fp != NIL){
+      /* C99 */{
          uz i;
 
          if((i = UZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
@@ -2735,15 +2739,21 @@ jfound:
             grcp->grc_expand = cp = &grcp->grc_name[cap->ca_arg.ca_str.l +1];
             su_mem_copy(cp, emsg, ++elen);
          }
-      }else{
-         emsg = N_("readctl: failed to create file for %s\n");
-         goto jeinval_quote;
       }
    }
 
 jleave:
    NYD_OU;
    return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+
+jecreate:
+   emsg = N_("readctl: failed to open file: %s: %s\n");
+/*jerrno_quote:*/
+   n_pstate_err_no = su_err_no();
+   n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0),
+      su_err_doc(n_pstate_err_no));
+   f = a_ERR;
+   goto jleave;
 
 jeinval_quote:
    n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
