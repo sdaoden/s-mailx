@@ -6579,7 +6579,10 @@ d by giving the string used for creation.
 The channel name is expected to be a file descriptor number, or,
 if parsing the numeric fails, an input file name that undergoes minimal
 .Sx "Filename transformations"
-(no meta expansion are performed).
+(no meta expansion are performed), errors are reported via error number
+.Va \&!
+and exit status
+.Va \&? .
 For example (this example requires a modern shell):
 .Bd -literal -offset indent
 $ printf 'echon "hey, "\enread a\enyou\enecho $a' |\e
@@ -6588,6 +6591,15 @@ hey, you
 $ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
   LC_ALL=C 6<<< 'you' \*(uA -R#X'readctl create 6'
 hey, you
+
+? readctl create x/members.dat
+? set rv=$? es=$! ed=$^ERRDOC
+? if $rv -eq 0
+?   call a_find_until_eof "$usr"
+?   readctl remove x/members.dat
+? else
+?   echoerr 'Cannot read file x/members.dat: '$ed
+? endif
 .Ed
 .
 .Mx
