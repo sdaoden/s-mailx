@@ -1523,7 +1523,7 @@ jeseek:
          for (cp = val; su_cs_is_blank(*cp); ++cp)
             ;
          hq->h_subject = (hq->h_subject != NULL)
-               ? save2str(hq->h_subject, cp) : savestr(cp);
+               ? savecatsep(hq->h_subject, ' ', cp) : savestr(cp);
       }
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
