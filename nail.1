@@ -8326,6 +8326,16 @@ according to RFC 5322 rules, it may thus be equal to the from field.
 .El
 .
 .
+.It Cm epoch
+Show the message date as seconds since epoch via
+.Ql 210 .
+Error for an invalid date is
+.Ql 501 ,
+for using this command in compose mode
+.Ql 505 .
+For converting times you may want to look at
+.Ic vexpr .
+.
 .It Cm help , \&?
 Show an abstract of the above commands via
 .Ql 211 .
