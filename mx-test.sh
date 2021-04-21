@@ -7821,7 +7821,7 @@ t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
 
    # [1091b026c9c8bcd26ce95aa90e7327757f9c0f32] check
    # While here ensure IDNA decoding does not happen
-   ${cat} >> ./t6.eml <<'_EOT'
+   ${cat} >> ./t6-7.eml <<'_EOT'
 Date: Tue, 20 Apr 2021 00:23:10 +0200
 To: Hey <bose@xn--kndelbrste-fcb0f>
 Subject: =?utf-8?Q?=C3=BCbject?=
@@ -7854,8 +7854,28 @@ _EOT
       read xy
 XY
       echo "back !<$!> ?<$?> xy<$xy>"
-      ' | ${MAILX} ${ARGS} -Rf eml://./t6.eml >./t6 2>&1
+      ' | ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t6 2>&1
    check 6 0 ./t6 '1687359537 184'
+
+   #
+   printf '#
+      digmsg create 1
+      digmsg 1 epoch
+      read es
+      echo "!=$! ?=$? es<$es>"
+      digmsg remove 1
+      ' | ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t7 2>&1
+   check 7 0 ./t7 '3727574170 28'
+
+   </dev/null ${MAILX} ${ARGS} -Y '#
+         digmsg create 1
+         digmsg 1 epoch
+         read es
+         echo "!=$! ?=$? es<$es>"
+         digmsg remove 1
+         xit
+      ' -Rf eml://- >./t8 2>&1
+   check 8 0 ./t8 '2215033944 46'
 
    t_epilog "${@}"
 } # }}}
