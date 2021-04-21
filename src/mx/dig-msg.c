@@ -152,10 +152,23 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd,
       p.rv = a_dmsg__header(fp, dmcp, args);
    else if(su_cs_starts_with_case_n("attachment", p.s->s, p.s->l)){
       if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)) /* TODO attachment support */
-         p.rv = (fprintf(fp,
-               "505 `digmsg attachment' only in compose mode (yet)\n") > 0);
+         p.rv = (fputs("505 `digmsg attachment' only in compose mode (yet)\n",
+               fp) != EOF);
       else
          p.rv = a_dmsg__attach(fp, dmcp, args);
+   }else if(su_cs_starts_with_case_n("epoch", p.s->s, p.s->l)){
+      if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
+         p.rv = (fputs("505 `digmsg epoch' not in compose mode\n", fp) != EOF);
+      else{
+         time_t t;
+         char const *cp;
+
+         if((cp = hfield1("date", dmcp->dmc_mp)) == NIL || /* TODO .m_date! */
+               (t = rfctime(cp)) == 0)
+            p.rv = (fputs("501 `digmsg epoch': invalid date\n", fp) != EOF);
+         else
+            p.rv = (fprintf(fp, "210 %" PRIu64 "\n", S(u64,t)) > 0);
+      }
    }else if(su_cs_starts_with_case_n("version", p.s->s, p.s->l)){
       if(args != NIL)
          goto jecmd;
@@ -185,16 +198,17 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd,
                "   list [field] (210; [501]);\n"
                "   remove field (210; 501/505)\n"
                "   remove-at field position (210; 501/505)\n"
-               "   show field (211/212; 501)\n"
+               "   show field (211/212; 501)\n"), fp) != EOF &&
+            fputs(_(
+               "epoch (210; 501[/505])\n"
                "help (211)\n"
                "version (210)\n"), fp) != EOF &&
-#endif
+#endif /* mx_HAVE_UISTRINGS */
             putc('\n', fp) != EOF);
-   }else{
+   }else
 jecmd:
-      fputs("500\n", fp);
-      p.rv = FAL0;
-   }
+      p.rv = (fputs("500\n", fp) != EOF);
+
    fflush(fp);
 
    NYD2_OU;
