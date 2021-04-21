@@ -529,30 +529,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    if(ip->m_mimetype == mx_MIMETYPE_DISCARD)
       goto jheaders_skip;
-   else if(!hign && ip->m_mimetype == mx_MIMETYPE_822){
-      switch(action){
-      case SEND_TODISP:
-      case SEND_TODISP_ALL:
-      case SEND_QUOTE:
-      case SEND_QUOTE_ALL:
-         if(ok_blook(rfc822_body_from_)){
-            if(!qf->qf_bypass){
-               uz i;
-
-               i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix, qf->qf_pfix_len,
-                     obuf);
-               if(i == qf->qf_pfix_len && stats != NIL)
-                  *stats += i;
-            }
-            put_from_(obuf, ip->m_multipart, stats);
-            hany = TRU1;
-         }
-         break;
-      default:
-         dostat |= 16;
-         break;
-      }
-   }
 
    if (ip->m_mimetype == mx_MIMETYPE_PKCS7) {
       if (ip->m_multipart &&
@@ -701,7 +677,7 @@ jhdrtrunc:
    if(hlp->s_len > 0)
       goto jhdrput;
 
-   if(hign || (!hany && (dostat & (1 | 2)))){
+   if(hign /*|| (!hany && (dostat & (1 | 2)))*/){
       a_send_out_nl(obuf, qf, stats);
       if(hign)
          goto jheaders_skip;
@@ -765,6 +741,19 @@ jheaders_skip:
       case SEND_QUOTE_ALL:
          if(!(dostat & 16)){ /* XXX */
             dostat |= 16;
+            a_send_out_nl(obuf, qf, stats);
+            if(ok_blook(rfc822_body_from_)){
+               if(!qf->qf_bypass){
+                  uz i;
+
+                  i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix, qf->qf_pfix_len,
+                        obuf);
+                  if(i == qf->qf_pfix_len && stats != NIL)
+                     *stats += i;
+               }
+               put_from_(obuf, ip->m_multipart, stats);
+               hany = TRU1;
+            }
             goto jhdr_redo;
          }
          goto jmulti;
