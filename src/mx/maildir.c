@@ -239,7 +239,7 @@ a_maildir_cmp(void const *xa, void const *xb){
       goto jret;
 
    /* If the seconds part does not work, go deeper.
-    * We use de-facto standard "maildir — E-mail directory" from the Courier
+    * We use de-facto standard "maildir - E-mail directory" from the Courier
     * mail server, also used by, e.g., Dovecot: sec.MusecPpid.hostname:2,flags.
     * However, a different name convention exists which uses
     * sec.pid_counter.hostname:2,flags.
@@ -435,12 +435,10 @@ _maildir_append(char const *name, char const *sub, char const *fn)
       }
    }
 
-   /* Ensure room (and a NULLified last entry) */
-   ++msgCount;
-   message_append(NULL);
-   --msgCount;
+   /* Ensure room (and NILified last entry) */
+   mx_message_append_nil();
 
-   if (fn == NULL || sub == NULL)
+   if(fn == NIL || sub == NIL)
       goto jleave;
 
    m = &message[msgCount++];

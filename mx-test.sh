@@ -5148,9 +5148,9 @@ t_mbox() { # {{{
       file ./.tinv2 # Fully repaired
       File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    check_ex0 15-estat
-   # Equal since [Auto-fix when MBOX had From_ errors on read (Dr. Werner
+   # Almost EQ since [Auto-fix when MBOX had From_ errors on read (Dr. Werner
    # Fink).]
-   check 15-1 - ./.tinv1 '4151504442 314'
+   check 15-1 - ./.tinv1 '4026377396 312'
    check 15-2 - ./.tinv2 '4151504442 314'
 
    # *mbox-fcc-and-pcc*
@@ -5222,6 +5222,46 @@ t_mbox() { # {{{
       file ./.tinv1' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    check 24 0 ./.tinv1 '104184185 560'
    check 25 - ./.tinv2 '853754737 510'
+
+   # More corner cases
+   ${cat} <<-'_EOT' > ./t26.mbox
+	Leading text, what to do with it?
+
+	From MAILER-DAEMON-nono-0 Wed Oct  2 01:50:07 1996
+
+	This is a body, but not a valid message
+
+	From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+	ToMakeItHappen: header
+
+	From MAILER-DAEMON-nono-1 Wed Oct  2 01:50:07 1996
+
+	This is a body, but not a valid message, 2
+
+	From MAILER-DAEMON-4 Wed Oct  2 01:50:07 1996
+	One: header
+
+	From MAILER-DAEMON-nono-2 Wed Oct  2 01:50:07 1996
+
+	From MAILER-DAEMON-nono-3 Wed Oct  2 01:50:07 1996
+
+	From MAILER-DAEMON-nono-4 Wed Oct  2 01:50:07 1996
+
+	And do foolish things
+
+	From MAILER-DAEMON-6 Wed Oct  2 01:50:07 1996
+	One: two
+	three
+	_EOT
+
+   ${MAILX} ${ARGS} -Rf \
+      -Y 'headers;echo 1;Show 1;echo 2;Show 2;echo 3;Show 3;echo 4' \
+      -Y 'copy * ./t27' \
+      -Y 'copy 1 ./t28' \
+      ./t26.mbox > ./t26 2>&1
+   check 26 0 ./t26 '3467505698 3089'
+   check 27 - ./t27 '3764405655 487'
+   check 28 - ./t28 '2228574283 184'
 
    t_epilog "${@}"
 } # }}}
@@ -5360,6 +5400,21 @@ t_maildir() { # {{{
    check 10 0 ./.t10warp '3551111321 502'
    check 11 - ./.t11 '642719592 302'
 
+   #
+   ${mkdir} .z .z/cur .z/new .z/tmp
+   printf '' > .z/new/844221007.M13P13108.reproducible_build:2,s
+   printf '\n' > .z/new/844221007.M12P13108.reproducible_build:2,s
+   printf 'a\n' > .z/new/844221007.M11P13108.reproducible_build:2,s
+	printf 'From MAILER-DAEMON-0 Sat Apr 24 21:54:00 2021\n\nb\n' \
+      > .z/new/844221007.M10P13108.reproducible_build:2,s
+   </dev/null ${MAILX} ${ARGS} -Rf \
+      -Y 'h;echo 1;p 1;echo 2;p2;echo 3;p3;echo 4;p4' \
+      -Y 'copy * maildir://./.z2' \
+      -Y 'File ./.z2' \
+      -Y 'h;echo 1;p 1;echo 2;p2;echo 3;p3;echo 4;p4' \
+      ./.z > t12 2>>${ERR}
+   check 12 0 ./t12 '3263166940 1569'
+
    t_epilog "${@}"
 } # }}}
 
@@ -5373,37 +5428,30 @@ t_eml_and_stdin_pipe() { # {{{
    check 2 0 ./t.eml '2467547934 81'
 
    #
-   <./t.mbox ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf - >./t3 2>&1
+   <./t.mbox ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf - >./t3 2>&1
    check 3 0 ./t3 '3232332927 182'
 
-   <./t.mbox ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf mbox://- >./t4 2>&1
+   <./t.mbox ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf mbox://- >./t4 2>&1
    check 4 0 ./t4 '3232332927 182'
 
-   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf - >./t5 2>&1
+   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf - >./t5 2>&1
    check 5 0 ./t5 '3232332927 182'
 
-   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
+   ${cat} ./t.mbox | ${MAILX} ${ARGS} -Y 'p;x' -Serrexit \
       -Rf mbox://- >./t6 2>&1
    check 6 0 ./t6 '3232332927 182'
 
    #
-   <./t.eml ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf - >./t7 2>&1
-   check 7 1 ./t7 '1848953769 43'
+   <./t.eml ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf - >./t7 2>&1
+   check 7 0 ./t7 '3085605104 210'
 
-   <./t.eml ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf eml://- >./t8 2>&1
+   <./t.eml ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf eml://- >./t8 2>&1
    check 8 0 ./t8 '269911796 177'
 
-   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf - >./t9 2>&1
-   check 9 1 ./t9 '1848953769 43'
+   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf - >./t9 2>&1
+   check 9 0 ./t9 '3085605104 210'
 
-   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;xit' -Serrexit -Snomemdebug \
-      -Rf eml://- >./t10 2>&1
+   ${cat} ./t.eml | ${MAILX} ${ARGS} -Y 'p;x' -Serrexit -Rf eml://- >./t10 2>&1
    check 10 0 ./t10 '269911796 177'
 
    #
@@ -5412,6 +5460,16 @@ t_eml_and_stdin_pipe() { # {{{
 
    <./t.eml ${MAILX} ${ARGS} -f eml://- >./t12 2>&1
    check 12 1 ./t12 '3267665338 77'
+
+   # The big nothing
+   echo A | ${MAILX} ${ARGS} -Y 'p;x' -Rf eml://- >./t13 2>&1
+   check 13 0 ./t13 '1897903061 97'
+
+   echo | ${MAILX} ${ARGS} -Y 'p;x' -Rf eml://- >./t14 2>&1
+   check 14 0 ./t14 '1336432318 96'
+
+   </dev/null ${MAILX} ${ARGS} -Y 'p;x' -Rf eml://- >./t15 2>&1
+   check 15 0 ./t15 '2143650081 96'
 
    t_epilog "${@}"
 } # }}}
