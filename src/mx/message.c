@@ -1222,7 +1222,7 @@ a_msg_match_at(struct message *mp, struct mx_srch_ctx *scp){
             (field[1] == '\0' && field[0] == '>')){
          rv = FAL0;
 jmsg:
-         rv = message_match(mp, scp, rv);
+         rv = mx_message_match(mp, scp, rv);
          goto jleave;
       }else if(!su_cs_cmp_case(field, "text") ||
             (field[1] == '\0' && field[0] == '=')){
@@ -1424,7 +1424,7 @@ get_body(struct message *mp){
 }
 
 FL void
-message_reset(void){
+mx_message_reset(void){
    NYD_IN;
 
    if(message != NIL){
@@ -1438,7 +1438,7 @@ message_reset(void){
 }
 
 FL void
-message_append(struct message *mp){
+mx_message_append(struct message *mp){
    NYD_IN;
 
    if(UCMP(z, msgCount + 1, >=, a_msg_mem_space)){
@@ -1449,32 +1449,28 @@ message_append(struct message *mp){
       message = su_REALLOC(message, a_msg_mem_space * sizeof(*message));
    }
 
-   if(msgCount > 0){
-      if(mp != NIL)
-         message[msgCount - 1] = *mp;
-      else
-         su_mem_set(&message[msgCount - 1], 0, sizeof *message);
-   }
+   if(mp != NIL)
+      message[msgCount] = *mp;
+   else
+      su_mem_set(&message[msgCount], 0, sizeof *message);
+   ++msgCount;
 
    NYD_OU;
 }
 
 FL void
-message_append_null(void){
+mx_message_append_nil(void){
    NYD_IN;
 
-   if(msgCount == 0)
-      message_append(NIL);
-
+   mx_message_append(NIL);
+   --msgCount;
    setdot(message, FAL0);
-   message[msgCount].m_size = 0;
-   message[msgCount].m_lines = 0;
 
    NYD_OU;
 }
 
 FL boole
-message_match(struct message *mp, struct mx_srch_ctx const *scp,
+mx_message_match(struct message *mp, struct mx_srch_ctx const *scp,
       boole with_headers){
    char *line;
    uz linesize, cnt;

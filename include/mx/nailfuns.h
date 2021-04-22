@@ -809,18 +809,17 @@ FL FILE *      setinput(struct mailbox *mp, struct message *m,
 FL enum okay   get_body(struct message *mp);
 
 /* Reset (free) the global message array */
-FL void        message_reset(void);
+FL void mx_message_reset(void);
 
-/* Append the passed message descriptor onto the message array; if mp is NULL,
- * NULLify the entry at &[msgCount-1] */
-FL void        message_append(struct message *mp);
+/* Append the passed message descriptor onto the (extended) message array */
+FL void mx_message_append(struct message *mp);
 
-/* Append a NULL message */
-FL void        message_append_null(void);
+/* Append a NIL message (extends the storage space), but do not count it */
+FL void mx_message_append_nil(void);
 
 /* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
  * true then the headers will also be searched (as plain text) */
-FL boole message_match(struct message *mp, struct mx_srch_ctx const *scp,
+FL boole mx_message_match(struct message *mp, struct mx_srch_ctx const *scp,
       boole with_headers);
 
 /*  */

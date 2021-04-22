@@ -520,7 +520,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       su_mem_set(&sctx, 0, sizeof sctx);
       sctx.sc_field = "body";
       sctx.sc_body = n->n_v;
-      rv = message_match(m, &sctx, FAL0);
+      rv = mx_message_match(m, &sctx, FAL0);
       break;
    case ITCC:
       rv = matchenvelope(m, "cc", n->n_v);
@@ -591,7 +591,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
       su_mem_set(&sctx, 0, sizeof sctx);
       sctx.sc_field = "text";
       sctx.sc_body = n->n_v;
-      rv = message_match(m, &sctx, TRU1);
+      rv = mx_message_match(m, &sctx, TRU1);
       break;
    case ITTO:
       rv = matchenvelope(m, "to", n->n_v);
