@@ -252,20 +252,20 @@ jemailname:
    }
    ftrunc(obuf);
 
-   srelax_hold();
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    c = 0;
-   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
-      if (mp->m_flag & MDELETED)
+   for(mp = message; mp < &message[msgCount]; ++mp){
+      if((mp->m_flag & MDELETED) || !(mp->m_flag & MVALID))
          continue;
       ++c;
-      if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
-         srelax_rele();
+      if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL) < 0){
+         su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
          n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
          goto jleave;
       }
-      srelax();
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
    }
-   srelax_rele();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
    gotcha = (c == 0 && ibuf == NULL);
    if (ibuf != NULL) {

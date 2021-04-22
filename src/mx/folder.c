@@ -264,7 +264,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
    filesize = mailsize - offset;
 
    su_mem_set(&self, 0, sizeof self);
-   self.m_flag = MUSED | MNEW | MNEWEST;
+   self.m_flag = MVALID | MNEW | MNEWEST;
 
    offset = ftell(mb.mb_otf);
    f = a_MAYBE | (iseml ? a_ISEML : (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0));
@@ -325,6 +325,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
       if(UNLIKELY(cnt == 0)){
          if(!(f & a_ISEML))
             f |= a_MAYBE;
+
          if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
@@ -361,9 +362,10 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
              * TODO message header has been fully parsed.  For now we are stuck
              * TODO and fail for example in a_header_extract_date_from_from_()
              * TODO (which should not exist as such btw) */
-            self.m_flag = MUSED | MNEW | MNEWEST | MBADFROM_;
+            self.m_flag = MVALID | MNEW | MNEWEST | MBADFROM_;
          }else
-            self.m_flag = MUSED | MNEW | MNEWEST | (f & a_ISEML ? MNOFROM : 0);
+            self.m_flag = MVALID | MNEW | MNEWEST |
+                  (f & a_ISEML ? MNOFROM : 0);
          self.m_size = 0;
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
