@@ -3655,7 +3655,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
    if (m->m_flag&MANSWER)
       imap_store(mp, m, n, '+', "\\Answered", 0);
    if (m->m_flag&MUNANSWER)
-      imap_store(mp, m, n, '-', "\\Flagged", 0);
+      imap_store(mp, m, n, '-', "\\Answered", 0);
    if (m->m_flag&MDRAFT)
       imap_store(mp, m, n, '+', "\\Draft", 0);
    if (m->m_flag&MUNDRAFT)
