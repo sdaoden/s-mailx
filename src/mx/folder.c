@@ -347,6 +347,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
          commit = self;
          f |= a_CREATE | a_INHEAD;
+         if(f & a_ISEML)
+            f |= a_COMMIT;
 
          f &= ~a_MAYBE;
          if(from_ == TRUM1){
@@ -413,7 +415,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          }
       }else if(!su_cs_is_blank(linebuf[0])){
          /* So either this is a false detection (nothing but From_ line
-          * yet), or no separating empty line in between header/body!
+          * yet, and is not a valid MBOX according to POSIX and RFC 5322), or
+          * no separating empty line in between header/body!
           * In the latter case, add one! */
          if(!(f & a_CREATE)){
             if(putc('\n', mb.mb_otf) == EOF){
