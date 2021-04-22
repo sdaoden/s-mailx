@@ -246,11 +246,12 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
-      a_HADONE = 1u<<2,
-      a_MAYBE = 1u<<3,
-      a_CREATE = 1u<<4,
-      a_INHEAD = 1u<<5,
-      a_COMMIT = 1u<<6,
+      a_HAD_DATA = 1u<<2,
+      a_HAD_ONE = 1u<<3,
+      a_MAYBE = 1u<<4,
+      a_CREATE = 1u<<5,
+      a_INHEAD = 1u<<6,
+      a_COMMIT = 1u<<7,
       a_ISEML = 1u<<16
    };
 
@@ -259,15 +260,18 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
    boole from_;
    u32 f;
    uz filesize, linesize, cnt;
+   int msgcnt_base;
    NYD_IN;
 
+   msgcnt_base = msgCount;
    filesize = mailsize - offset;
 
    su_mem_set(&self, 0, sizeof self);
    self.m_flag = MVALID | MNEW | MNEWEST;
 
    offset = ftell(mb.mb_otf);
-   f = a_MAYBE | (iseml ? a_ISEML : (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0));
+   f = (iseml ? (a_ISEML | a_HAD_DATA)
+         : (a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0)));
 
    mx_fs_linepool_aquire(&linebuf, &linesize);
    for(;;){
@@ -275,7 +279,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
       if(UNLIKELY(fgetline(&linebuf, &linesize, (maybepipe ? NIL : &filesize),
             &cnt, ibuf, TRU1) == NIL)){
          /* TODO We are not prepared for error here */
-         if(f & a_HADONE){
+         if(f & (a_HAD_DATA | a_HAD_ONE)){
             if(f & a_CREATE){
                commit.m_size += self.m_size;
                commit.m_lines += self.m_lines;
@@ -284,9 +288,13 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
             commit.m_xsize = commit.m_size;
             commit.m_xlines = commit.m_lines;
             commit.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
-            message_append(&commit);
+            if(!(f & (a_ISEML | a_HAD_ONE)))
+               commit.m_flag &= ~MVALID;
+            if(f & a_ISEML)
+               commit.m_flag |= MNOFROM;
+            mx_message_append(&commit);
          }
-         message_append_null();
+         mx_message_append_nil();
 
          if(f & a_HAD_BAD_FROM_){
             /*if(!(mb.mb_active & MB_BAD_FROM_))*/{
@@ -329,17 +337,19 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
+            f |= a_HAD_BAD_FROM_;
+            f &= ~(a_CREATE | a_INHEAD | a_COMMIT);
             commit.m_size += self.m_size;
             commit.m_lines += self.m_lines;
+            commit.m_flag |= MBADFROM_;
             self = commit;
-            f &= ~(a_CREATE | a_INHEAD | a_COMMIT);
          }
          goto jputln;
       }
 
-      if(UNLIKELY((f & a_MAYBE) && ((from_ = ((f & a_ISEML) != 0)) ||
-               ((linebuf[0] == 'F') && (from_ = is_head(linebuf, cnt, TRU1)) &&
-                (from_ == TRU1 || !(f & a_RFC4155)))))){
+      if(UNLIKELY((f & a_MAYBE) && (from_ = (linebuf[0] == 'F')) &&
+            (from_ = is_head(linebuf, cnt, TRU1)) &&
+            (from_ == TRU1 || !(f & a_RFC4155)))){
          /* TODO char date[n_FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
@@ -347,11 +357,21 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          self.m_xlines = self.m_lines;
          self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
          commit = self;
+
          f |= a_CREATE | a_INHEAD;
          if(f & a_ISEML)
             f |= a_COMMIT;
-
+         else if(!(f & a_COMMIT) &&
+               (f & (a_HAD_DATA | a_HAD_ONE)) == a_HAD_DATA){
+            commit.m_flag &= ~MVALID;
+            if(msgcnt_base == msgCount)
+               mx_message_append(&commit);
+            else
+               message[msgCount - 1] = commit;
+         }
          f &= ~a_MAYBE;
+         f |= a_HAD_DATA;
+
          if(from_ == TRUM1){
             f |= a_HAD_BAD_FROM_;
             /* TODO MBADFROM_ causes the From_ line to be replaced entirely
@@ -374,15 +394,27 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
       }
 
       f &= ~a_MAYBE;
-      if(LIKELY(!(f & a_INHEAD)))
+      if(LIKELY(!(f & a_INHEAD))){
+         if(UNLIKELY(!(f & (a_ISEML | a_HAD_ONE | a_HAD_DATA)))){
+            for(cp = &linebuf[cnt]; cp-- != linebuf;)
+               if(!su_cs_is_space(*cp)){
+                  f |= a_HAD_DATA;
+                  self.m_flag |= MNOFROM;
+                  break;
+               }
+         }
          goto jputln;
+      }
 
       if(LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
+         u32 mf;
          char *cps, *cpe, c;
 
+         f |= a_HAD_DATA;
          if(f & a_CREATE)
             f |= a_COMMIT;
 
+         mf = self.m_flag;
          for(cps = linebuf; su_cs_is_blank(*cps); ++cps)
             ;
          for(cpe = cp; cpe > cps && (--cpe, su_cs_is_blank(*cpe));)
@@ -391,35 +423,34 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          case 5:
             if(!su_cs_cmp_case_n(cps, "status", 5))
                for(;;){
-                  ++cp;
-                  if((c = *cp) == '\0')
+                  if((c = *++cp) == '\0')
                      break;
-                  if(c == 'R')
-                     self.m_flag |= MREAD;
-                  else if(c == 'O')
-                     self.m_flag &= ~MNEW;
+                  switch(c){
+                  case 'R': mf |= MREAD; break;
+                  case 'O': mf &= ~MNEW; break;
+                  }
                }
             break;
          case 7:
             if(!su_cs_cmp_case_n(cps, "x-status", 7))
                for(;;){
-                  ++cp;
-                  if((c = *cp) == '\0')
+                  if((c = *++cp) == '\0')
                      break;
-                  if(c == 'F')
-                     self.m_flag |= MFLAGGED;
-                  else if(c == 'A')
-                     self.m_flag |= MANSWERED;
-                  else if(c == 'T')
-                     self.m_flag |= MDRAFTED;
+                  switch(c){
+                  case 'F': mf |= MFLAGGED; break;
+                  case 'A': mf |= MANSWERED; break;
+                  case 'T': mf |= MDRAFTED; break;
+                  }
                }
             break;
          }
+         self.m_flag = mf;
       }else if(!su_cs_is_blank(linebuf[0])){
          /* So either this is a false detection (nothing but From_ line
           * yet, and is not a valid MBOX according to POSIX and RFC 5322), or
           * no separating empty line in between header/body!
           * In the latter case, add one! */
+         f |= a_HAD_DATA;
          if(!(f & a_CREATE)){
             if(putc('\n', mb.mb_otf) == EOF){
                n_perr(_("/tmp"), 0);
@@ -434,15 +465,20 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
             self = commit;
             f &= ~(a_CREATE | a_INHEAD | a_COMMIT);
          }
+      }else if(!(f & (a_HAD_ONE | a_HAD_DATA))){
+         for(cp = &linebuf[cnt]; cp-- != linebuf;)
+            if(!su_cs_is_space(*cp)){
+               f |= a_HAD_DATA;
+               break;
+            }
       }
 
 jputln:
       if(f & a_COMMIT){
          f &= ~(a_CREATE | a_COMMIT);
-         if(f & a_HADONE)
-            message_append(&commit);
-         f |= a_HADONE;
-         msgCount++;
+         if(f & a_HAD_ONE)
+            mx_message_append(&commit);
+         f |= a_HAD_ONE | a_HAD_DATA;
       }
       linebuf[cnt++] = '\n';
       ASSERT(linebuf[cnt] == '\0');
@@ -1067,7 +1103,7 @@ initbox(char const *name)
    if(err)
       exit(n_EXIT_ERR);
 
-   message_reset();
+   mx_message_reset();
    mb.mb_active = MB_NONE;
    mb.mb_threaded = 0;
 #ifdef mx_HAVE_IMAP

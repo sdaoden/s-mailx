@@ -100,8 +100,11 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    rv = (fprintf(obuf,
          A_("%s[-- Message %2d -- %lu lines, %lu bytes%s --]:%s\n"),
          cpre, msg_no, S(ul,mp->m_lines), S(ul,mp->m_size),
-         ((mp->m_flag & MVALID) ? su_empty
-            : _(" -- INVALID (only direct copy/xy)")), csuf) > 0);
+         ((mp->m_flag & MVALID)
+            ? ((mp->m_flag & MBADFROM_)
+               ? _(" -- Erroneous: see mbox-rfc4155") : su_empty)
+            : _(" -- INVALID (only direct copy/xy)")),
+         csuf) > 0);
 
    NYD2_OU;
    return rv;
