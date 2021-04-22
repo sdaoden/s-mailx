@@ -95,10 +95,14 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
       }
    }
 #endif
+
    /* XXX Message info uses wire format for line count */
    rv = (fprintf(obuf,
-         A_("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-         cpre, msg_no, (ul)mp->m_lines, (ul)mp->m_size, csuf) > 0);
+         A_("%s[-- Message %2d -- %lu lines, %lu bytes%s --]:%s\n"),
+         cpre, msg_no, S(ul,mp->m_lines), S(ul,mp->m_size),
+         ((mp->m_flag & MVALID) ? su_empty
+            : _(" -- INVALID (only direct copy/xy)")), csuf) > 0);
+
    NYD2_OU;
    return rv;
 }

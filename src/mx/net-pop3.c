@@ -682,7 +682,7 @@ a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp){
       struct message *m;
 
       m = &message[i];
-      m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
+      m->m_flag = MVALID | MNEW | MNOFROM | MNEWEST;
       m->m_block = 0;
       m->m_offset = 0;
       m->m_size = m->m_xsize = 0;

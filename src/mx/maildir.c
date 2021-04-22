@@ -393,10 +393,12 @@ _maildir_append(char const *name, char const *sub, char const *fn)
 {
    struct message *m;
    time_t t = 0;
-   enum mflag f = MUSED | MNOFROM | MNEWEST;
    char const *cp, *xp;
+   BITENUM_IS(u32,mflag) f;
    NYD_IN;
    UNUSED(name);
+
+   f = MVALID | MNOFROM | MNEWEST;
 
    if (fn != NULL && sub != NULL) {
       if (!su_cs_cmp(sub, "new"))

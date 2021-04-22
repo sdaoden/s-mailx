@@ -1090,7 +1090,7 @@ enum content_info{
 
 /* Note: flags that are used in obs-imap-cache.c may not change */
 enum mflag{
-   MUSED = 1u<<0, /* entry is used, but this bit isn't */
+   MVALID = 1u<<0, /* message is structurally valid */
    MDELETED = 1u<<1, /* entry has been deleted */
    MSAVED = 1u<<2, /* entry has been saved */
    MTOUCH = 1u<<3, /* entry has been noticed */
@@ -1102,7 +1102,7 @@ enum mflag{
    MSTATUS = 1u<<9, /* message status has changed */
    MBOX = 1u<<10, /* Send this to mbox, regardless */
    MNOFROM = 1u<<11, /* no From line */
-   MHIDDEN = 1u<<12, /* message is hidden to user */
+   MHIDDEN = 1u<<12, /* message is hidden to user (half-accessibly cached) */
 MFULLYCACHED = 1u<<13, /* IMAP cached */
    MBOXED = 1u<<14, /* message has been sent to mbox */
 MUNLINKED = 1u<<15, /* Unlinked from IMAP cache */
