@@ -262,11 +262,6 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
             mx_FS_O_REGISTER), NIL)) == NIL)
       pbuf = n_stdout;
 
-   /* TODO In v15 we should query the m_message object, and directly send only
-    * TODO those parts, optionally over empty-line-squeeze and quote-strip
-    * TODO filters, in which we are interested in: only text content!
-    * TODO And: with *topsqueeze*, header/content separating empty line.. */
-   n_pstate &= ~n_PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
    plines = 0;
 
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf, FAL0); )
