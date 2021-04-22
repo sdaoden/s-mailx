@@ -429,7 +429,6 @@ jnumber__thr:
          }
          break;
       case a_MSG_T_PLUS:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
@@ -448,7 +447,6 @@ jnumber__thr:
          msl.msl_no = i;
          goto jnumber;
       case a_MSG_T_MINUS:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
@@ -467,7 +465,6 @@ jnumber__thr:
          msl.msl_no = i;
          goto jnumber;
       case a_MSG_T_STRING:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -497,7 +494,6 @@ jevalcol_err:
          }
          break;
       case a_MSG_T_OPEN:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
          flags |= a_TOPEN;
@@ -524,7 +520,6 @@ jevalcol_err:
          /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          /* FALLTHRU */
       case a_MSG_T_DOT:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if((msl.msl_no = i = a_msg_metamess(msl.msl_str[0], f)) < 0){
             msl.msl_no = -1;
             i = -i;
@@ -532,7 +527,6 @@ jevalcol_err:
          }
          goto jnumber;
       case a_MSG_T_BACK:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -553,13 +547,11 @@ jevalcol_err:
          }
          break;
       case a_MSG_T_ASTER:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
          flags |= a_ASTER;
          break;
       case a_MSG_T_COMMA:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          if(flags & a_RANGE)
             goto jebadrange;
@@ -597,7 +589,6 @@ jevalcol_err:
             n_err(_("Ignoring redundant specification of , selector\n"));
          break;
       case a_MSG_T_ERROR:
-         n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
          i = su_ERR_INVAL;
          goto jerr;
@@ -1575,7 +1566,6 @@ n_getmsglist(char const *buf, int *vector, int flags,
    NYD_IN;
 
    n_pstate &= ~n_PS_MSGLIST_MASK;
-   n_pstate |= n_PS_MSGLIST_DIRECT;
    n_msgmark1 = NIL;
    a_msg_list_last_saw_d = a_msg_list_saw_d;
    a_msg_list_saw_d = FAL0;
@@ -1679,9 +1669,8 @@ n_getmsglist(char const *buf, int *vector, int flags,
             *ip++ = (int)P2UZ(mp - message + 1);
    }
    *ip = 0;
-   mc = (int)P2UZ(ip - vector);
-   if(mc != 1)
-      n_pstate &= ~n_PS_MSGLIST_DIRECT;
+
+   mc = S(int,P2UZ(ip - vector));
 jleave:
    NYD_OU;
    return mc;
