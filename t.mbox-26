@@ -1,0 +1,65 @@
+reproducible_build: MBOX contains non-conforming From_ line(s)!
+reproducible_build:   Message boundaries may have been misdetected!
+reproducible_build:   Setting *mbox-rfc4155* and reopening _may_ improve the result.
+reproducible_build:   Recreating the mailbox will perform MBOXO quoting: "copy * SOME-FILE".
+reproducible_build:   (Then unset *mbox-rfc4155* again.)
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+>N  1                    Thu Jan  1 00:00    6/128                             
+ N  2 MAILER-DAEMON-2    Wed Oct  2 01:50    7/166                             
+ N  3 MAILER-DAEMON-4    Wed Oct  2 01:50   11/238                             
+ N  4 MAILER-DAEMON-6    Wed Oct  2 01:50    4/62                              
+1
+[-- Message  1 -- 6 lines, 128 bytes -- INVALID (only direct copy/xy) --]:
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+From MAILER-DAEMON Thu Jan  1 00:00:00 1970
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+Status: R
+
+Leading text, what to do with it?
+
+From MAILER-DAEMON-nono-0 Wed Oct  2 01:50:07 1996
+
+This is a body, but not a valid message
+
+2
+[-- Message  2 -- 7 lines, 166 bytes -- Erroneous: see mbox-rfc4155 --]:
+From MAILER-DAEMON Thu Jan  1 00:00:00 1970
+ToMakeItHappen: header
+Status: R
+
+From MAILER-DAEMON-nono-1 Wed Oct  2 01:50:07 1996
+
+This is a body, but not a valid message, 2
+
+3
+[-- Message  3 -- 11 lines, 238 bytes -- Erroneous: see mbox-rfc4155 --]:
+From MAILER-DAEMON Thu Jan  1 00:00:00 1970
+One: header
+Status: R
+
+From MAILER-DAEMON-nono-2 Wed Oct  2 01:50:07 1996
+
+From MAILER-DAEMON-nono-3 Wed Oct  2 01:50:07 1996
+
+From MAILER-DAEMON-nono-4 Wed Oct  2 01:50:07 1996
+
+And do foolish things
+
+4
+reproducible_build: Message 1 is invalid, skipped (address by itself)
+./t27 [New file] 486 bytes
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+./t28 [New file] 184 bytes

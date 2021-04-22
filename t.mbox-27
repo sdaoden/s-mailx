@@ -1,0 +1,25 @@
+From MAILER-DAEMON Thu Jan  1 00:00:00 1970
+ToMakeItHappen: header
+Status: R
+
+>From MAILER-DAEMON-nono-1 Wed Oct  2 01:50:07 1996
+
+This is a body, but not a valid message, 2
+
+From MAILER-DAEMON Thu Jan  1 00:00:00 1970
+One: header
+Status: R
+
+>From MAILER-DAEMON-nono-2 Wed Oct  2 01:50:07 1996
+
+>From MAILER-DAEMON-nono-3 Wed Oct  2 01:50:07 1996
+
+>From MAILER-DAEMON-nono-4 Wed Oct  2 01:50:07 1996
+
+And do foolish things
+
+From MAILER-DAEMON-6 Wed Oct  2 01:50:07 1996
+One: two
+
+three
+
