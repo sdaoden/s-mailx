@@ -188,6 +188,12 @@ jsend:
    su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
+
+      if(!(mp->m_flag & MVALID) && (ip != msgvec || ip[1] != 0)){
+         n_err(_("Message %d is invalid, skipped (address by itself)\n"), *ip);
+         continue;
+      }
+
 #ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
             !mx_ignore_is_any(mx_IGNORE_SAVE) && imap_thisaccount(file)){

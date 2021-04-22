@@ -1863,7 +1863,7 @@ imap_init(struct mailbox *mp, int n)
    UNUSED(mp);
 
    m = message + n;
-   m->m_flag = MUSED | MNOFROM;
+   m->m_flag = MVALID | MNOFROM;
    m->m_block = 0;
    m->m_offset = 0;
    NYD_OU;
