@@ -55,6 +55,10 @@ enum mx_fs_open_state{ /* TODO add mx_fs_open_mode, too */
 };
 MCTA(n_PROTO_MASK < mx_FS_OPEN_STATE_EXISTS, "Bit carrier ranges overlap")
 
+/* fs_tmp_open(): tdir_or_nil specials (with _TMP guaranteed to be NIL) */
+#define mx_FS_TMP_TDIR_TMP (NIL)
+/*#define mx_FS_TMP_TDIR_PWD su_R(char const*,-2) XXX reuse c_cwd() code! */
+
 /* Note: actually publicly visible part of larger internal struct */
 struct mx_fs_tmp_ctx{
    char const *fstc_filename;
@@ -89,9 +93,10 @@ EXPORT FILE *mx_fs_open(char const *file, char const *oflags);
 EXPORT FILE *mx_fs_open_any(char const *file, char const *oflags,
       enum mx_fs_open_state *fs_or_nil);
 
-/* Create a temporary file in $TMPDIR, use namehint for its name (prefix
- * unless O_SUFFIX is set in the fs_oflags oflags and *namehint!=NUL),
- * and return a stdio FILE pointer with access oflags.
+/* Create a temporary file in tdir_or_nil, use namehint_or_nil for its name
+ * (prefix unless O_SUFFIX is set in the fs_oflags oflags and
+ * *namehint_or_nil!=NUL), and return a stdio FILE pointer with access oflags.
+ * tdir_or_nil can be a mx_FS_TMPTDIR_* constant (mx_FS_TMP_TDIR_TMP is NIL).
  * *fstcp_or_nil may only be non-NIL under certain asserted conditions:
  * - if O_REGISTER: it is fully filled in; whether the filename is actually
  *   useful depends on the chosen UNLINK mode.
@@ -100,7 +105,8 @@ EXPORT FILE *mx_fs_open_any(char const *file, char const *oflags,
  *   filled in, tmp_release() is not callable.
  * In the latter two cases autorec memory storage will be created (on success).
  * One of O_WRONLY and O_RDWR must be set.  Implied: 0600,cloexec */
-EXPORT FILE *mx_fs_tmp_open(char const *namehint, u32 oflags,
+EXPORT FILE *mx_fs_tmp_open(char const *tdir_or_nil,
+      char const *namehint_or_nil, u32 oflags,
       struct mx_fs_tmp_ctx **fstcp_or_nil);
 
 /* If (O_REGISTER|)O_HOLDSIGS and a context pointer was set when calling

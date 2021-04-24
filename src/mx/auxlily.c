@@ -1271,7 +1271,7 @@ jlist:{
          goto jleave;
       }
 
-      if((fp = mx_fs_tmp_open("errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+      if((fp = mx_fs_tmp_open(NIL, "errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL)
          fp = n_stdout;
 
@@ -1429,7 +1429,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp,
 
    rv = TRU1;
 
-   if((fp = mx_fs_tmp_open(cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((fp = mx_fs_tmp_open(NIL, cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 

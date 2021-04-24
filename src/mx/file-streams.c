@@ -468,7 +468,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */
-   if((rv = mx_fs_tmp_open("fopenany", rof, NIL)) == NIL){
+   if((rv = mx_fs_tmp_open(NIL, "fopenany", rof, NIL)) == NIL){
       n_perr(_("tmpfile"), err = su_err_no());
       goto Jerr;
    }
@@ -520,8 +520,8 @@ jleave:
 }
 
 FILE *
-mx_fs_tmp_open(char const *namehint, u32 oflags,
-      struct mx_fs_tmp_ctx **fstcp_or_nil){
+mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
+      u32 oflags, struct mx_fs_tmp_ctx **fstcp_or_nil){
    /* The 6 is arbitrary but leaves room for an eight character hint (the
     * POSIX minimum path length is 14, though we do not check that XXX).
     * 6 should be more than sufficient given that we use base64url encoding
@@ -530,13 +530,11 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
 
    char *cp_base, *cp;
    uz maxname, hintlen, i;
-   char const *tmpdir;
    int osoflags, fd, e;
    boole relesigs;
    FILE *fp;
    NYD_IN;
 
-   ASSERT(namehint != NIL);
    ASSERT((oflags & mx_FS_O_WRONLY) || (oflags & mx_FS_O_RDWR));
    ASSERT(!(oflags & mx_FS_O_RDONLY));
    ASSERT(!(oflags & mx_FS_O_REGISTER_UNLINK) || (oflags & mx_FS_O_REGISTER));
@@ -550,14 +548,16 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    fp = NIL;
    relesigs = FAL0;
    e = 0;
-   tmpdir = ok_vlook(TMPDIR);
    maxname = NAME_MAX;
+
+   if(tdir_or_nil == NIL || tdir_or_nil == mx_FS_TMP_TDIR_TMP) /* (EQ) */
+      tdir_or_nil = ok_vlook(TMPDIR);
 
 #ifdef mx_HAVE_PATHCONF
    /* C99 */{
       long pc;
 
-      if((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1){
+      if((pc = pathconf(tdir_or_nil, _PC_NAME_MAX)) != -1){
          maxname = S(uz,pc);
          if(maxname < a_RANDCHARS + a_HINT_MIN){
             su_err_set_no(su_ERR_NAMETOOLONG);
@@ -567,18 +567,21 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    }
 #endif
 
-   /* We are prepared to ignore the namehint .. unless we may not */
-   if((oflags & mx_FS_O_SUFFIX) && *namehint != '\0'){
-      if((hintlen = su_cs_len(namehint)) >= maxname - a_RANDCHARS){
+   /* We are prepared to ignore the namehint .. but for O_SUFFIX */
+   if(namehint_or_nil == NIL){
+      namehint_or_nil = su_empty;
+      hintlen = 0;
+   }else{
+      hintlen = su_cs_len(namehint_or_nil);
+      if((oflags & mx_FS_O_SUFFIX) && hintlen >= maxname - a_RANDCHARS){
          su_err_set_no(su_ERR_NAMETOOLONG);
          goto jleave;
       }
-   }else
-      hintlen = 0;
+   }
 
    /* Prepare the template string once, then iterate over the random range.
     * But first ensure we can report the name in !O_REGISTER cases ("hack") */
-   i = su_cs_len(tmpdir) + 1 + maxname +1;
+   i = su_cs_len(tdir_or_nil) + 1 + maxname +1;
 
    if(!(oflags & mx_FS_O_REGISTER) && fstcp_or_nil != NIL){
       union {struct a_fs_ent *fse; void *v; struct mx_fs_tmp_ctx *fstc;} p;
@@ -593,7 +596,7 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    }
 
    cp_base = cp = su_LOFI_ALLOC(i);
-   cp = su_cs_pcopy(cp, tmpdir);
+   cp = su_cs_pcopy(cp, tdir_or_nil);
    *cp++ = '/';
    /* C99 */{
       uz j;
@@ -602,15 +605,18 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
       /* xxx We silently assume VAL_UAGENT easily fits in NAME_MAX-1 */
       xp = su_cs_pcopy(cp, VAL_UAGENT);
       *xp++ = '-';
-      if(!(oflags & mx_FS_O_SUFFIX))
-         xp = su_cs_pcopy(xp, namehint);
+      if(!(oflags & mx_FS_O_SUFFIX) && hintlen > 0){
+         su_mem_copy(xp, namehint_or_nil, hintlen);
+         xp += hintlen;
+         hintlen = 0; /* Now considered part of base! */
+      }
 
-      /* Just cut off as many of VAL_UAGENT as necessary */
+      /* Just cut off again as many as necessary (it suffices!) */
       if((i = P2UZ(xp - cp)) > (j = maxname - hintlen - a_RANDCHARS))
          xp -= i - j;
 
       if((oflags & mx_FS_O_SUFFIX) && hintlen > 0)
-         su_mem_copy(&xp[a_RANDCHARS], namehint, hintlen);
+         su_mem_copy(&xp[a_RANDCHARS], namehint_or_nil, hintlen);
 
       xp[hintlen + a_RANDCHARS] = '\0';
       cp = xp;
@@ -621,10 +627,11 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    if(oflags & mx_FS_O_APPEND)
       osoflags |= O_APPEND;
 
-   for(relesigs = TRU1, i = 0;; ++i){
+   for(i = 0;; ++i){
       su_mem_copy(cp, mx_random_create_cp(a_RANDCHARS, NIL), a_RANDCHARS);
 
       mx_sigs_all_holdx();
+      relesigs = TRU1;
 
       if((fd = open(cp_base, osoflags, 0600)) != -1){
          if(mx_FS_FD_CLOEXEC_SET(fd))
@@ -632,12 +639,13 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
          close(fd);
       }
 
-      if(i >= mx_FS_TMP_OPEN_TRIES){
-         e = su_err_no();
-         goto jfree;
-      }
+      e = su_err_no();
 
+      relesigs = FAL0;
       mx_sigs_all_rele();
+
+      if(i >= mx_FS_TMP_OPEN_TRIES || e == su_ERR_NOENT || e == su_ERR_NOTDIR)
+         goto jfree;
    }
 
    /* C99 */{
