@@ -259,13 +259,13 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
    FILE *iobuf, *pbuf;
    NYD2_IN;
 
-   if((iobuf = mx_fs_tmp_open("topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((iobuf = mx_fs_tmp_open(NIL, "topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("top: I/O temporary file"), 0);
       vp = NIL;
       goto jleave;
    }
-   if((pbuf = mx_fs_tmp_open("toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((pbuf = mx_fs_tmp_open(NIL, "toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       pbuf = n_stdout;
 

@@ -166,7 +166,7 @@ n_run_editor(FILE *fp, off_t size, int viored, boole readonly,/* TODO condom */
    nf = nf_pipetmp = NIL;
    modtime = 0, modsize = 0;
 
-   if((nf_tmp = mx_fs_tmp_open("edbase", ((viored == '|' ? mx_FS_O_RDWR
+   if((nf_tmp = mx_fs_tmp_open(NIL, "edbase", ((viored == '|' ? mx_FS_O_RDWR
                : mx_FS_O_WRONLY) | mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK),
                &fstcp)) == NIL){
 jetempo:
@@ -221,7 +221,7 @@ jetempo:
    if(viored == '|'){
       ASSERT(pipecmd != NIL);
 
-      if((nf_pipetmp = mx_fs_tmp_open("edpipe", (mx_FS_O_WRONLY |
+      if((nf_pipetmp = mx_fs_tmp_open(NIL, "edpipe", (mx_FS_O_WRONLY |
                mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
          goto jetempo;
       really_rewind(nf = nf_tmp);

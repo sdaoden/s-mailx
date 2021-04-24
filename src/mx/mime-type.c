@@ -1573,7 +1573,7 @@ c_mimetype(void *vp){
          goto jleave;
       }
 
-      if((fp = mx_fs_tmp_open("mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+      if((fp = mx_fs_tmp_open(NIL, "mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          fp = n_stdout;

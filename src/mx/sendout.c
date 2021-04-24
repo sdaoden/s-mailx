@@ -768,7 +768,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    do_iconv = FAL0;
    err = su_ERR_NONE;
 
-   if((nfo = mx_fs_tmp_open("infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
+   if((nfo = mx_fs_tmp_open(NIL, "infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
             mx_FS_O_REGISTER), &fstcp)) == NIL){
       n_perr(_("infix: temporary mail file"), err = su_err_no());
       goto jleave;
@@ -1019,8 +1019,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          int c;
          struct mx_fs_tmp_ctx *fstcp;
 
-         if((fp = mx_fs_tmp_open("outof", (mx_FS_O_RDWR | mx_FS_O_HOLDSIGS |
-                  mx_FS_O_REGISTER), &fstcp)) == NIL){
+         if((fp = mx_fs_tmp_open(NIL, "outof", (mx_FS_O_RDWR |
+                  mx_FS_O_HOLDSIGS | mx_FS_O_REGISTER), &fstcp)) == NIL){
             n_perr(_("Creation of temporary image"), 0);
             pipecnt = 0;
             goto jerror;
@@ -1381,8 +1381,8 @@ a_sendout_transfer(struct mx_send_ctx *scp, boole resent, boole *senderror){
       char *buf;
       FILE *fp;
 
-      if((fp = mx_fs_tmp_open("mtabccok", (mx_FS_O_RDWR | mx_FS_O_REGISTER |
-               mx_FS_O_UNLINK), NIL)) == NIL){
+      if((fp = mx_fs_tmp_open(NIL, "mtabccok", (mx_FS_O_RDWR |
+               mx_FS_O_REGISTER | mx_FS_O_UNLINK), NIL)) == NIL){
 jewritebcc:
          n_perr(_("Creation of *mta-write-bcc* message"), 0);
          *senderror = TRU1;
@@ -2887,7 +2887,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if((nfo = mx_fs_tmp_open("resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
+   if((nfo = mx_fs_tmp_open(NIL, "resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
             mx_FS_O_REGISTER), &fstcp)) == NIL){
       _sendout_error = TRU1;
       n_perr(_("resend_msg: temporary mail file"), 0);

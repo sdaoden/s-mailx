@@ -330,7 +330,7 @@ c_shell(void *vp){
    fp = NIL;
 
    if(varname != NIL &&
-         (fp = mx_fs_tmp_open("shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+         (fp = mx_fs_tmp_open(NIL, "shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
       n_pstate_err_no = su_ERR_CANCELED;
       rv = -1;

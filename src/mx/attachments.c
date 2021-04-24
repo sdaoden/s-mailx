@@ -153,7 +153,7 @@ a_attachments_iconv(struct mx_attachment *ap, FILE *ifp){
 
    cnt = S(uz,fsize(ifp));
 
-   if((ofp = mx_fs_tmp_open("atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((ofp = mx_fs_tmp_open(NIL, "atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("Temporary attachment data file"), 0);
       goto jerr;

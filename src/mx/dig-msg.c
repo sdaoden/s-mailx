@@ -1213,7 +1213,7 @@ c_digmsg(void *vp){
        * deleted files with open descriptors until next fs_close_all()
        * should be very small; if this paradigm is changed
        * DIG_MSG_COMPOSE_GUT() needs to be adjusted */
-      else if((dmcp->dmc_fp = mx_fs_tmp_open("digmsg", (mx_FS_O_RDWR |
+      else if((dmcp->dmc_fp = mx_fs_tmp_open(NIL, "digmsg", (mx_FS_O_RDWR |
                mx_FS_O_UNLINK | (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE
                   ? mx_FS_O_REGISTER : 0)),
                NIL)) != NIL)
