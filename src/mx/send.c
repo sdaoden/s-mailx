@@ -340,7 +340,7 @@ a_send_pipefile(enum sendaction action, struct mx_mime_type_handler *mthp,
    rbuf = *qbuf;
 
    if(action == SEND_QUOTE || action == SEND_QUOTE_ALL){
-      if((*qbuf = mx_fs_tmp_open("sendp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+      if((*qbuf = mx_fs_tmp_open(NIL, "sendp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          *qbuf = rbuf;
@@ -1195,7 +1195,7 @@ jpipe_close:
                pref = "mimetype";
          }
 
-         if((pbuf = mx_fs_tmp_open(pref, of,
+         if((pbuf = mx_fs_tmp_open(NIL, pref, of,
                   (mthp->mth_flags & mx_MIME_TYPE_HDL_TMPF ? &fstcp : NIL))
                ) == NIL)
             goto jesend;

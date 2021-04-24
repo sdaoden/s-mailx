@@ -3588,7 +3588,7 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if((fp = mx_fs_tmp_open("imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((fp = mx_fs_tmp_open(NIL, "imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
@@ -3949,7 +3949,7 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    }
    t = imap_read_date_time(cp);
 
-   if((tp = mx_fs_tmp_open("imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((tp = mx_fs_tmp_open(NIL, "imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       goto jstop;
 

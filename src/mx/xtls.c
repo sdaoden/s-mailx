@@ -1433,7 +1433,7 @@ smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
       break;
    }
 
-   if((fp = mx_fs_tmp_open("smimever", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((fp = mx_fs_tmp_open(NIL, "smimever", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -2292,7 +2292,7 @@ smime_sign(FILE *ip, char const *addr)
    if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
-   if((sfp = mx_fs_tmp_open("smimesign", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((sfp = mx_fs_tmp_open(NIL, "smimesign", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -2419,7 +2419,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    certs = sk_X509_new_null();
    sk_X509_push(certs, cert);
 
-   if((yp = mx_fs_tmp_open("smimeenc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((yp = mx_fs_tmp_open(NIL, "smimeenc", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jerr1;
@@ -2523,7 +2523,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
       op = NULL;
    }
 
-   if((op = mx_fs_tmp_open("smimed", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((op = mx_fs_tmp_open(NIL, "smimed", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -2639,7 +2639,7 @@ jloop:
    }
    size = m->m_size;
 
-   if((fp = mx_fs_tmp_open("smimecert", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((fp = mx_fs_tmp_open(NIL, "smimecert", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;

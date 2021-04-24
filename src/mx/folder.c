@@ -1090,7 +1090,7 @@ initbox(char const *name)
    _update_mailname((name != mailname) ? name : NULL);
 
    err = FAL0;
-   if((mb.mb_otf = mx_fs_tmp_open("tmpmbox", (mx_FS_O_WRONLY |
+   if((mb.mb_otf = mx_fs_tmp_open(NIL, "tmpmbox", (mx_FS_O_WRONLY |
             mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
       n_perr(_("initbox: temporary mail message file, writer"), 0);
       err = TRU1;

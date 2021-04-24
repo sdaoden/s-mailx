@@ -402,7 +402,7 @@ a_coll_print(FILE *cf, struct header *hp){
    rv = FAL0;
    mx_fs_linepool_aquire(&linebuf, &linesize);
 
-   if((obuf = mx_fs_tmp_open("collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((obuf = mx_fs_tmp_open(NIL, "collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL)
       obuf = n_stdout;
 
@@ -709,7 +709,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    rv = FAL0;
 
-   if((nf = mx_fs_tmp_open("colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((nf = mx_fs_tmp_open(NIL, "colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
@@ -833,7 +833,7 @@ a_coll_pipe(char const *cmd)
    rv = su_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if((nf = mx_fs_tmp_open("colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
             mx_FS_O_REGISTER), NIL)) == NIL){
 jperr:
       n_perr(_("temporary mail edit file"), rv = su_err_no());
@@ -1142,8 +1142,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    n_pstate |= n_PS_COMPOSE_MODE;
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
-   if((_coll_fp = mx_fs_tmp_open("collect", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((_coll_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR |
+            mx_FS_O_UNLINK | mx_FS_O_REGISTER), NIL)) == NIL){
       n_perr(_("collect: temporary mail file"), 0);
       goto jerr;
    }
