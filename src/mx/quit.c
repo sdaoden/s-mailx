@@ -210,7 +210,7 @@ edstop(void) /* TODO oh my god */
     * TODO (Or better: only come here.. then!  It is an *object method!* */
    /* TODO Ignoring stat error is easy, huh? */
    if(!stat(mailname, &statb) && statb.st_size > mailsize){
-      if((obuf = mx_fs_tmp_open("edstop", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+      if((obuf = mx_fs_tmp_open(NIL, "edstop", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          goto jleave;
@@ -416,7 +416,7 @@ quit(boole hold_sigs_on)
       boole lastnl;
 
       fprintf(n_stdout, _("New mail has arrived.\n"));
-      rbuf = mx_fs_tmp_open("quit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+      rbuf = mx_fs_tmp_open(NIL, "quit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
                mx_FS_O_REGISTER), NIL);
       if(rbuf == NIL){
 jerbuf:
@@ -571,7 +571,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
    }else{
       struct mx_fs_tmp_ctx *fstcp;
 
-      if((obuf = mx_fs_tmp_open("makembox", (mx_FS_O_WRONLY |
+      if((obuf = mx_fs_tmp_open(NIL, "makembox", (mx_FS_O_WRONLY |
                mx_FS_O_HOLDSIGS | mx_FS_O_REGISTER), &fstcp)) == NIL){
          n_perr(_("creation of temporary mail quit file"), 0);
          goto jleave;

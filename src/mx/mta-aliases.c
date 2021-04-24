@@ -461,7 +461,7 @@ jlist:{
    if(load_only)
       goto jleave;
 
-   if((fp = mx_fs_tmp_open("mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
+   if((fp = mx_fs_tmp_open(NIL, "mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
          mx_FS_O_REGISTER), NIL)) == NIL)
       fp = n_stdout;
 
