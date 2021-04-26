@@ -67,7 +67,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    int convert, boole domark, boole domove)
 {
    u64 mstats[1], tstats[2];
-   enum mx_fs_open_state fs;
+   BITENUM_IS(u32,mx_fs_open_state) fs;
    struct message *mp;
    char *file, *cp, *cq;
    FILE *obuf;
@@ -123,7 +123,8 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
          shell = ok_vlook(SHELL);
 
          /* Pipe target is special TODO hacked in later, normalize flow! */
-         if((obuf = mx_fs_pipe_open(file, "w", shell, NIL, -1)) == NIL){
+         if((obuf = mx_fs_pipe_open(file, mx_FS_PIPE_WRITE_CHILD_PASS, shell,
+                  NIL, -1)) == NIL){
             n_perr(file, n_pstate_err_no = su_err_no());
             goto jleave;
          }
@@ -141,7 +142,8 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
     * TODO However, URL parse because that file:// prefix check is a HACK! */
    if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
       file = savecat("file://", file);
-   if((obuf = mx_fs_open_any(file, "a+", &fs)) == NIL){
+   if((obuf = mx_fs_open_any(file, (mx_FS_O_RDWR | mx_FS_O_APPEND |
+            mx_FS_O_CREATE), &fs)) == NIL){
       n_perr(file, n_pstate_err_no = su_err_no());
       goto jleave;
    }

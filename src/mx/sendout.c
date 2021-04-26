@@ -510,7 +510,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       fi = ap->a_tmpf;
       ASSERT(ftell(fi) == 0);
-   }else if((fi = mx_fs_open(ap->a_path, "r")) == NIL){
+   }else if((fi = mx_fs_open(ap->a_path, mx_FS_O_RDONLY)) == NIL){
       err = su_err_no();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
          su_err_doc(err));
@@ -768,13 +768,13 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    do_iconv = FAL0;
    err = su_ERR_NONE;
 
-   if((nfo = mx_fs_tmp_open(NIL, "infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
-            mx_FS_O_REGISTER), &fstcp)) == NIL){
+   if((nfo = mx_fs_tmp_open(NIL, "infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS),
+            &fstcp)) == NIL){
       n_perr(_("infix: temporary mail file"), err = su_err_no());
       goto jleave;
    }
 
-   if((nfi = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
+   if((nfi = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL){
       n_perr(fstcp->fstc_filename, err = su_err_no());
       mx_fs_close(nfo);
    }
@@ -1020,14 +1020,15 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          struct mx_fs_tmp_ctx *fstcp;
 
          if((fp = mx_fs_tmp_open(NIL, "outof", (mx_FS_O_RDWR |
-                  mx_FS_O_HOLDSIGS | mx_FS_O_REGISTER), &fstcp)) == NIL){
+                  mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
             n_perr(_("Creation of temporary image"), 0);
             pipecnt = 0;
             goto jerror;
          }
 
          for(i = 0; i < pipecnt; ++i)
-            if((fppa[i] = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
+            if((fppa[i] = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)
+                  ) == NIL){
                n_perr(_("Creation of pipe image descriptor"), 0);
                break;
             }
@@ -1110,10 +1111,11 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             fout = n_stdout;
          else{
             int xerr;
-            enum mx_fs_open_state fs;
+            BITENUM_IS(u32,mx_fs_open_state) fs;
 
-            if((fout = mx_fs_open_any(fname, (mfap ? "a+" : "w"), &fs)
-                  ) == NIL){
+            if((fout = mx_fs_open_any(fname, (mx_FS_O_CREATE |
+                     (mfap ? mx_FS_O_RDWR | mx_FS_O_APPEND
+                      : mx_FS_O_WRONLY | mx_FS_O_TRUNC)), &fs)) == NIL){
 jefileeno:
                xerr = su_err_no();
 jefile:
@@ -1270,7 +1272,7 @@ static boole
 a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
    uz bufsize, buflen, cnt;
-   enum mx_fs_open_state fs;
+   BITENUM_IS(u32,mx_fs_open_state) fs;
    char *buf;
    boole rv, emptyline;
    NYD_IN;
@@ -1279,7 +1281,8 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    rv = FAL0;
    mx_fs_linepool_aquire(&buf, &bufsize);
 
-   if((fo = mx_fs_open_any(name, "a+", &fs)) == NIL){
+   if((fo = mx_fs_open_any(name, (mx_FS_O_RDWR | mx_FS_O_APPEND |
+            mx_FS_O_CREATE), &fs)) == NIL){
       n_perr(name, 0);
       goto j_leave;
    }
@@ -1381,8 +1384,8 @@ a_sendout_transfer(struct mx_send_ctx *scp, boole resent, boole *senderror){
       char *buf;
       FILE *fp;
 
-      if((fp = mx_fs_tmp_open(NIL, "mtabccok", (mx_FS_O_RDWR |
-               mx_FS_O_REGISTER | mx_FS_O_UNLINK), NIL)) == NIL){
+      if((fp = mx_fs_tmp_open(NIL, "mtabccok", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+               NIL)) == NIL){
 jewritebcc:
          n_perr(_("Creation of *mta-write-bcc* message"), 0);
          *senderror = TRU1;
@@ -1753,8 +1756,7 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta)
    if(*mta == '\0')
       fp = n_stdout;
    else{
-      if((fp = mx_fs_open(mta, "W+")) == NIL &&
-            (fp = mx_fs_open(mta, "r+")) == NIL)
+      if((fp = mx_fs_open(mta, mx_FS_O_RDWR | mx_FS_O_CREATE)) == NIL)
          goto jeno;
       if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
@@ -2887,15 +2889,15 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if((nfo = mx_fs_tmp_open(NIL, "resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS |
-            mx_FS_O_REGISTER), &fstcp)) == NIL){
+   if((nfo = mx_fs_tmp_open(NIL, "resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS),
+            &fstcp)) == NIL){
       _sendout_error = TRU1;
       n_perr(_("resend_msg: temporary mail file"), 0);
       n_pstate_err_no = su_ERR_IO;
       goto jleave;
    }
 
-   if((nfi = mx_fs_open(fstcp->fstc_filename, "r")) == NIL){
+   if((nfi = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL){
       n_perr(fstcp->fstc_filename, 0);
       n_pstate_err_no = su_ERR_IO;
    }
@@ -3039,9 +3041,9 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
       goto jleave;
    }
 
-   if((dbuf = mx_fs_open(cp, "w")) == NIL ||
-         !mx_file_lock(fileno(dbuf), (mx_FILE_LOCK_MODE_TEXCL |
-            mx_FILE_LOCK_MODE_RETRY))){
+   if((dbuf = mx_fs_open(cp, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_TRUNC))
+            ) == NIL || !mx_file_lock(fileno(dbuf), (mx_FILE_LOCK_MODE_TEXCL |
+         mx_FILE_LOCK_MODE_RETRY))){
       n_perr(_("Cannot save to $DEAD"), 0);
 
       if(dbuf != NIL)

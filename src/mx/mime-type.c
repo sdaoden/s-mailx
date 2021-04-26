@@ -309,7 +309,7 @@ a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){
    NYD_IN;
 
    if((cp = fexpand(file, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-         ) == NIL || (fp = mx_fs_open(cp, "r")) == NIL){
+         ) == NIL || (fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
       cp = NIL;
       goto jleave;
    }
@@ -1573,8 +1573,8 @@ c_mimetype(void *vp){
          goto jleave;
       }
 
-      if((fp = mx_fs_tmp_open(NIL, "mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
+      if((fp = mx_fs_tmp_open(NIL, "mimetype", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          fp = n_stdout;
       }

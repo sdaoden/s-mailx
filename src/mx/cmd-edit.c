@@ -167,8 +167,7 @@ n_run_editor(FILE *fp, off_t size, int viored, boole readonly,/* TODO condom */
    modtime = 0, modsize = 0;
 
    if((nf_tmp = mx_fs_tmp_open(NIL, "edbase", ((viored == '|' ? mx_FS_O_RDWR
-               : mx_FS_O_WRONLY) | mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK),
-               &fstcp)) == NIL){
+               : mx_FS_O_WRONLY) | mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL){
 jetempo:
       n_perr(_("creation of temporary mail edit file"), 0);
       goto jleave;
@@ -222,7 +221,7 @@ jetempo:
       ASSERT(pipecmd != NIL);
 
       if((nf_pipetmp = mx_fs_tmp_open(NIL, "edpipe", (mx_FS_O_WRONLY |
-               mx_FS_O_REGISTER | mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
+               mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
          goto jetempo;
       really_rewind(nf = nf_tmp);
       nf_tmp = nf_pipetmp;
@@ -259,7 +258,7 @@ jetempo:
          goto jleave;
    }
 
-   if((nf = mx_fs_open(fstcp->fstc_filename, "r+")) == NIL)
+   if((nf = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDWR)) == NIL)
       n_perr(fstcp->fstc_filename, 0);
 
 jleave:

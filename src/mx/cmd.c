@@ -254,8 +254,8 @@ a_cmd_c_list(void *vp){
       cdpa[i] = &a_cmd_ctable[l];
    cdpa[i] = NIL;
 
-   if((fp = mx_fs_tmp_open(NIL, "list", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "list", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+            ) == NIL)
       fp = n_stdout;
 
    scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
@@ -318,8 +318,8 @@ a_cmd_c_help(void *vp){
    FILE *fp;
    NYD_IN;
 
-   if((fp = mx_fs_tmp_open(NIL, "help", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "help", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+            ) == NIL)
       fp = n_stdout;
 
    /* Help for a single command? */

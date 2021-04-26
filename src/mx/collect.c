@@ -291,7 +291,7 @@ jdelim_empty:
          }
       }
       name = n_hy;
-   }else if((fbuf = mx_fs_open(name, "r")) == NIL){
+   }else if((fbuf = mx_fs_open(name, mx_FS_O_RDONLY)) == NIL){
       n_perr(name, rv = su_err_no());
       goto jleave;
    }
@@ -362,7 +362,8 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    rv = su_ERR_NONE;
    lc = cc = 0;
 
-   if((ibuf = mx_fs_pipe_open(cmd, "r", ok_vlook(SHELL), NIL, -1)) != NIL){
+   if((ibuf = mx_fs_pipe_open(cmd, mx_FS_PIPE_READ, ok_vlook(SHELL), NIL,
+            -1)) != NIL){
       int c;
 
       while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
@@ -402,8 +403,8 @@ a_coll_print(FILE *cf, struct header *hp){
    rv = FAL0;
    mx_fs_linepool_aquire(&linebuf, &linesize);
 
-   if((obuf = mx_fs_tmp_open(NIL, "collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((obuf = mx_fs_tmp_open(NIL, "collfp", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+         NIL)) == NIL)
       obuf = n_stdout;
 
    if(fprintf(obuf, _("-------\nMessage contains:\n")) < 0)
@@ -460,7 +461,8 @@ a_coll_write(char const *name, FILE *fp, int f)
       fflush(n_stdout);
    }
 
-   if((of = mx_fs_open(name, "a")) == NIL){
+   if((of = mx_fs_open(name, (mx_FS_O_WRONLY | mx_FS_O_APPEND |
+            mx_FS_O_CREATE))) == NIL){
       n_perr(name, rv = su_err_no());
       goto jerr;
    }
@@ -709,8 +711,8 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    rv = FAL0;
 
-   if((nf = mx_fs_tmp_open(NIL, "colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((nf = mx_fs_tmp_open(NIL, "colhead", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
@@ -833,8 +835,8 @@ a_coll_pipe(char const *cmd)
    rv = su_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
 
-   if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
 jperr:
       n_perr(_("temporary mail edit file"), rv = su_err_no());
       goto jout;
@@ -1143,7 +1145,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
 
    if((_coll_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR |
-            mx_FS_O_UNLINK | mx_FS_O_REGISTER), NIL)) == NIL){
+            mx_FS_O_UNLINK), NIL)) == NIL){
       n_perr(_("collect: temporary mail file"), 0);
       goto jerr;
    }
@@ -2001,10 +2003,10 @@ jout:
       mx_sigs_all_rele();
 
       if(mx_fs_pipe_cloexec(coap->coa_pipe) &&
-            (coap->coa_stdin = mx_fs_fd_open(coap->coa_pipe[0], "r", FAL0)
-               ) != NIL &&
-            (coap->coa_stdout = mx_fs_pipe_open(cmd, "W", u.sh, NIL,
-               coap->coa_pipe[1])) != NIL){
+            (coap->coa_stdin = mx_fs_fd_open(coap->coa_pipe[0],
+                  mx_FS_O_RDONLY)) != NIL &&
+            (coap->coa_stdout = mx_fs_pipe_open(cmd, mx_FS_PIPE_WRITE, u.sh,
+                  NIL, coap->coa_pipe[1])) != NIL){
          close(S(int,coap->coa_pipe[1]));
          coap->coa_pipe[1] = -1;
 
@@ -2122,7 +2124,7 @@ jreasksend:
       }
       cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
-      if((sigfp = mx_fs_open(cp, "r")) == NIL){
+      if((sigfp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
          n_err(_("Can't open *signature* %s: %s\n"),
             cpq, su_err_doc(su_err_no()));
          goto jerr;

@@ -171,7 +171,7 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
    FILE *afp;
    NYD_IN;
 
-   if((afp = mx_fs_open(masp->mas_path, "r")) == NIL){
+   if((afp = mx_fs_open(masp->mas_path, mx_FS_O_RDONLY)) == NIL){
       rv = su_err_no();
       n_err(_("*mta-aliases*: cannot open %s: %s\n"),
          n_shexp_quote_cp(masp->mas_path_usr, FAL0), su_err_doc(rv));
@@ -461,8 +461,8 @@ jlist:{
    if(load_only)
       goto jleave;
 
-   if((fp = mx_fs_tmp_open(NIL, "mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-         mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+         NIL)) == NIL)
       fp = n_stdout;
 
    n_string_creat_auto(&quote);

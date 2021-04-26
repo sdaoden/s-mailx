@@ -340,8 +340,8 @@ a_send_pipefile(enum sendaction action, struct mx_mime_type_handler *mthp,
    rbuf = *qbuf;
 
    if(action == SEND_QUOTE || action == SEND_QUOTE_ALL){
-      if((*qbuf = mx_fs_tmp_open(NIL, "sendp", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
+      if((*qbuf = mx_fs_tmp_open(NIL, "sendp", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+               NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          *qbuf = rbuf;
       }
@@ -356,8 +356,8 @@ a_send_pipefile(enum sendaction action, struct mx_mime_type_handler *mthp,
          fflush(n_stdout);
 
       u.ptf = &mx_flthtml_process_main;
-      if((rbuf = mx_fs_pipe_open(R(char*,-1), "W", u.sh, NIL, fileno(*qbuf))
-            ) == NIL)
+      if((rbuf = mx_fs_pipe_open(R(char*,-1), mx_FS_PIPE_WRITE, u.sh, NIL,
+               fileno(*qbuf))) == NIL)
          goto jerror;
       goto jleave;
    }
@@ -429,9 +429,9 @@ env_addon[i++] = str_concat_csvl(&s,
 
       rbuf = !mx_child_run(&cc) ? NIL : R(FILE*,-1);
    }else{
-      rbuf = mx_fs_pipe_open(mthp->mth_shell_cmd, "W", sh, env_addon,
-            (mthp->mth_flags & mx_MIME_TYPE_HDL_ASYNC ? mx_CHILD_FD_NULL
-             : fileno(*qbuf)));
+      rbuf = mx_fs_pipe_open(mthp->mth_shell_cmd, mx_FS_PIPE_WRITE, sh,
+            env_addon, ((mthp->mth_flags & mx_MIME_TYPE_HDL_ASYNC)
+               ? mx_CHILD_FD_NULL : fileno(*qbuf)));
 jerror:
       if(rbuf == NIL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
@@ -1028,7 +1028,8 @@ jmulti:
                 * TODO and that outer container is useless anyway ;-P */
                if(np->m_multipart != NULL &&
                      np->m_mime_type != mx_MIME_TYPE_822){
-                  if((obuf = mx_fs_open(n_path_devnull, "w")) == NIL)
+                  if((obuf = mx_fs_open(n_path_devnull, (mx_FS_O_WRONLY |
+                           mx_FS_O_CREATE | mx_FS_O_TRUNC))) == NIL)
                      continue;
                }else if((obuf = newfile(np, &ispipe)) == NIL)
                   continue;
@@ -1173,7 +1174,7 @@ jpipe_close:
          char const *pref;
          BITENUM_IS(u32,mx_fs_oflags) of;
 
-         of = mx_FS_O_RDWR | mx_FS_O_REGISTER;
+         of = mx_FS_O_RDWR;
 
          if(!(mthp->mth_flags & mx_MIME_TYPE_HDL_TMPF)){
             term_infd = 0;
@@ -1496,10 +1497,12 @@ jgetname:
       fp = NULL;
    else if(n_psonce & n_PSO_INTERACTIVE){
       if(*f == '|'){
-         fp = mx_fs_pipe_open(&f[1], "w", ok_vlook(SHELL), NIL, -1);
+         fp = mx_fs_pipe_open(&f[1], mx_FS_PIPE_WRITE_CHILD_PASS,
+               ok_vlook(SHELL), NIL, -1);
          if(!(*ispipe = (fp != NIL)))
             n_perr(f, 0);
-      }else if((fp = mx_fs_open(f, "w")) == NIL)
+      }else if((fp = mx_fs_open(f, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+               mx_FS_O_TRUNC))) == NIL)
          n_err(_("Cannot open %s\n"), n_shexp_quote_cp(f, FAL0));
    }else{
       /* Be very picky in non-interactive mode: actively disallow pipes,
@@ -1521,7 +1524,8 @@ jgetname:
       }
 
       /* Avoid overwriting of existing files */
-      while((fp = mx_fs_open(f, "wx")) == NIL){
+      while((fp = mx_fs_open(f, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+               mx_FS_O_EXCL))) == NIL){
          int e;
 
          if((e = su_err_no()) != su_ERR_EXIST){

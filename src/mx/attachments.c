@@ -153,8 +153,8 @@ a_attachments_iconv(struct mx_attachment *ap, FILE *ifp){
 
    cnt = S(uz,fsize(ifp));
 
-   if((ofp = mx_fs_tmp_open(NIL, "atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((ofp = mx_fs_tmp_open(NIL, "atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
       n_perr(_("Temporary attachment data file"), 0);
       goto jerr;
    }
@@ -265,7 +265,7 @@ jrefexp:
       if((
 #ifdef mx_HAVE_ICONV
             (oucs != NIL && oucs != R(char*,-1))
-               ? (cnvfp = mx_fs_open(file, "r")) == NIL :
+               ? (cnvfp = mx_fs_open(file, mx_FS_O_RDONLY)) == NIL :
 #endif
                access(file, R_OK) != 0)){
          e = su_err_no();

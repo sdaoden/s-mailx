@@ -1209,14 +1209,13 @@ c_digmsg(void *vp){
 
       if(cacp->cac_no == 3)
          dmcp->dmc_fp = n_stdout;
-      /* For compose mode simply use FS_O_REGISTER, the number of dangling
-       * deleted files with open descriptors until next fs_close_all()
+      /* For compose mode simply do no use FS_O_NOREGISTER, the number of
+       * dangling deleted files with open descriptors until next fs_close_all()
        * should be very small; if this paradigm is changed
        * DIG_MSG_COMPOSE_GUT() needs to be adjusted */
       else if((dmcp->dmc_fp = mx_fs_tmp_open(NIL, "digmsg", (mx_FS_O_RDWR |
                mx_FS_O_UNLINK | (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE
-                  ? mx_FS_O_REGISTER : 0)),
-               NIL)) != NIL)
+                  ? 0 : mx_FS_O_NOREGISTER)), NIL)) != NIL)
          dmcp->dmc_flags |= mx_DIG_MSG_HAVE_FP |
                (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE ? 0 : mx_DIG_MSG_FCLOSE);
       else{

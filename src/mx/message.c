@@ -1480,8 +1480,8 @@ mx_message_match(struct message *mp, struct mx_srch_ctx const *scp,
 
    rv = FAL0;
 
-   if((fp = mx_fs_tmp_open(NIL, "mpmatch", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "mpmatch", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       goto j_leave;
 
    mx_fs_linepool_aquire(&line, &linesize);

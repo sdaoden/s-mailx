@@ -475,7 +475,7 @@ a_maildir_readin(char const *name, struct message *mp){
    rv = FAL0;
    mx_fs_linepool_aquire(&buf, &bufsize);
 
-   if((fp = mx_fs_open(mp->m_maildir_file, "r")) == NIL){
+   if((fp = mx_fs_open(mp->m_maildir_file, mx_FS_O_RDONLY)) == NIL){
       emsg = _("Cannot read %s for message %lu\n");
       goto jerr;
    }
@@ -746,10 +746,11 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
       if((!stat(tfn, &st) || su_err_no() == su_ERR_NOENT) &&
-            (op = mx_fs_open(tfn, "wx")) != NIL)
+            (op = mx_fs_open(tfn, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+                  mx_FS_O_EXCL))) != NIL)
          break;
 
-      nfn = (char*)(P2UZ(nfn) - 1);
+      nfn = R(char*,P2UZ(nfn) - 1);
       if (nfn == NULL) {
          n_err(_("Can't create an unique file name in %s\n"),
             n_shexp_quote_cp(savecat(name, "/tmp"), FAL0));
@@ -1101,7 +1102,7 @@ jleave:
 }
 
 FL enum okay
-maildir_append(char const *name, FILE *fp, long offset)
+maildir_append(char const *name, FILE *fp, s64 offset)
 {
    struct n_timespec const *tsp;
    char *buf, *bp, *lp;
