@@ -182,7 +182,7 @@ edstop(void) /* TODO oh my god */
    struct message *mp;
    FILE *obuf = NULL, *ibuf = NULL;
    struct stat statb;
-   enum mx_fs_open_state fs;
+   BITENUM_IS(u32,mx_fs_open_state) fs;
    boole rv;
    NYD_IN;
 
@@ -210,12 +210,12 @@ edstop(void) /* TODO oh my god */
     * TODO (Or better: only come here.. then!  It is an *object method!* */
    /* TODO Ignoring stat error is easy, huh? */
    if(!stat(mailname, &statb) && statb.st_size > mailsize){
-      if((obuf = mx_fs_tmp_open(NIL, "edstop", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
+      if((obuf = mx_fs_tmp_open(NIL, "edstop", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+               NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          goto jleave;
       }
-      if((ibuf = mx_fs_open_any(mailname, "r", NIL)) == NIL){
+      if((ibuf = mx_fs_open_any(mailname, mx_FS_O_RDONLY, NIL)) == NIL){
 jemailname:
          n_perr(mailname, 0);
          goto jleave;
@@ -241,7 +241,7 @@ jemailname:
    fprintf(n_stdout, _("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(n_stdout);
 
-   if((obuf = mx_fs_open_any(mailname, "r+", &fs)) == NIL ||
+   if((obuf = mx_fs_open_any(mailname, mx_FS_O_RDWR, &fs)) == NIL ||
          !mx_file_lock(fileno(obuf), (mx_FILE_LOCK_MODE_TSHARE |
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
       int e;
@@ -292,8 +292,8 @@ jemailname:
 #else
       int fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC),
-            0600)) != -1)
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | O_TRUNC | mx_O_NOXY_BITS),
+               0600)) != -1)
          close(fd);
 #endif
 
@@ -394,7 +394,7 @@ quit(boole hold_sigs_on)
     * Delete all untouched messages to keep them out of mbox.
     * If all the messages are to be preserved, just exit with
     * a message */
-   fbuf = mx_fs_open_any(mailname, "r+", NIL);
+   fbuf = mx_fs_open_any(mailname, mx_FS_O_RDWR, NIL);
    if(fbuf == NIL){
       if(su_err_no() != su_ERR_NOENT)
          fprintf(n_stdout, _("Thou hast new mail.\n"));
@@ -416,8 +416,7 @@ quit(boole hold_sigs_on)
       boole lastnl;
 
       fprintf(n_stdout, _("New mail has arrived.\n"));
-      rbuf = mx_fs_tmp_open(NIL, "quit", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL);
+      rbuf = mx_fs_tmp_open(NIL, "quit", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL);
       if(rbuf == NIL){
 jerbuf:
          n_perr(_("temporary MBOX creation"), 0);
@@ -494,8 +493,8 @@ jcream:
 #else
       int fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC),
-            0600)) != -1)
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | O_TRUNC | mx_O_NOXY_BITS),
+               0600)) != -1)
          close(fd);
 #endif
       if(!ok_blook(keep))
@@ -562,21 +561,23 @@ makembox(void) /* TODO oh my god (also error reporting) */
    mbox = _mboxname;
    mcount = 0;
    if(ok_blook(append)){
-      if((obuf = mx_fs_open_any(mbox, "a+", &fs)) == NIL){
+      if((obuf = mx_fs_open_any(mbox, (mx_FS_O_RDWR | mx_FS_O_APPEND |
+               mx_FS_O_CREATE), &fs)) == NIL){
          n_perr(mbox, 0);
          goto jleave;
       }
+
       if((fs & n_PROTO_MASK) == n_PROTO_FILE)
          n_folder_mbox_prepare_append(obuf, NULL);
    }else{
       struct mx_fs_tmp_ctx *fstcp;
 
       if((obuf = mx_fs_tmp_open(NIL, "makembox", (mx_FS_O_WRONLY |
-               mx_FS_O_HOLDSIGS | mx_FS_O_REGISTER), &fstcp)) == NIL){
+               mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
          n_perr(_("creation of temporary mail quit file"), 0);
          goto jleave;
       }
-      if((ibuf = mx_fs_open(fstcp->fstc_filename, "r")) == NIL)
+      if((ibuf = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL)
          n_perr(fstcp->fstc_filename, 0);
       mx_fs_tmp_release(fstcp);
       if(ibuf == NIL){
@@ -584,7 +585,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
          goto jleave;
       }
 
-      if((abuf = mx_fs_open_any(mbox, "r", &fs)) != NIL){
+      if((abuf = mx_fs_open_any(mbox, mx_FS_O_RDONLY, &fs)) != NIL){
          boole lastnl;
 
          for (lastnl = FAL0; (c = getc(abuf)) != EOF && putc(c, obuf) != EOF;)
@@ -602,10 +603,10 @@ makembox(void) /* TODO oh my god (also error reporting) */
       }
       mx_fs_close(obuf);
 
-      if((c = open(mbox, (O_WRONLY | O_CREAT | mx_O_NOXY_BITS | O_TRUNC), 0666)
-            ) != -1)
+      if((c = open(mbox, (O_WRONLY | O_CREAT | O_TRUNC | mx_O_NOXY_BITS),
+               0666)) != -1)
          close(c);
-      if((obuf = mx_fs_open_any(mbox, "r+", &fs)) == NIL){
+      if((obuf = mx_fs_open_any(mbox, mx_FS_O_RDWR, &fs)) == NIL){
          n_perr(mbox, 0);
          mx_fs_close(ibuf);
          goto jleave;

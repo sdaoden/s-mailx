@@ -176,27 +176,29 @@ FL FILE *
 mx_pager_open(void){
    char const *env_add[2], *pager;
    FILE *rv;
-   NYD_IN;
+   NYD2_IN;
 
    ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
    pager = a_aux_pager_get(env_add + 0);
    env_add[1] = NIL;
 
-   if((rv = mx_fs_pipe_open(pager, "w", NIL, env_add, mx_CHILD_FD_PASS)
-         ) == NIL)
+   if((rv = mx_fs_pipe_open(pager, mx_FS_PIPE_WRITE_CHILD_PASS, NIL, env_add,
+            -1)) == NIL)
       n_perr(pager, 0);
-   NYD_OU;
+
+   NYD2_OU;
    return rv;
 }
 
 FL boole
 mx_pager_close(FILE *fp){
    boole rv;
-   NYD_IN;
+   NYD2_IN;
 
    rv = mx_fs_pipe_close(fp, TRU1);
-   NYD_OU;
+
+   NYD2_OU;
    return rv;
 }
 
@@ -1271,8 +1273,8 @@ jlist:{
          goto jleave;
       }
 
-      if((fp = mx_fs_tmp_open(NIL, "errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL)
+      if((fp = mx_fs_tmp_open(NIL, "errors", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
          fp = n_stdout;
 
       for(i = 0, enp = a_aux_err_head; enp != NIL; enp = enp->ae_next)
@@ -1429,8 +1431,8 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp,
 
    rv = TRU1;
 
-   if((fp = mx_fs_tmp_open(NIL, cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, cmdname, (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+         ) == NIL)
       fp = n_stdout;
 
    /* Create visual result */

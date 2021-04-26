@@ -792,7 +792,7 @@ FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
 
 FL boole maildir_quit(boole hold_sigs_on);
 
-FL enum okay maildir_append(char const *name, FILE *fp, long offset);
+FL enum okay maildir_append(char const *name, FILE *fp, s64 offset);
 
 FL enum okay maildir_remove(char const *name);
 #endif /* mx_HAVE_MAILDIR */
@@ -1360,7 +1360,7 @@ FL enum okay   imap_unread(struct message *m, int n);
 FL int         c_imapcodec(void *vp);
 FL int         c_imap_imap(void *vp);
 FL int         imap_newmail(int nmail);
-FL enum okay   imap_append(const char *xserver, FILE *fp, long offset);
+FL enum okay   imap_append(const char *xserver, FILE *fp, s64 offset);
 FL int         imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
 # ifdef mx_HAVE_IMAP_SEARCH

@@ -267,7 +267,7 @@ static void       imap_getflags(const char *cp, char const **xp,enum mflag *f);
 static enum okay  imap_append1(struct mailbox *mp, const char *name, FILE *fp,
                      off_t off1, long xsize, enum mflag flag, time_t t);
 static enum okay  imap_append0(struct mailbox *mp, const char *name, FILE *fp,
-                     long offset);
+                     s64 offset);
 static enum okay  imap_list1(struct mailbox *mp, const char *base,
                      struct list_item **list, struct list_item **lend,
                      int level);
@@ -3288,7 +3288,7 @@ jleave:
 }
 
 static enum okay
-imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
+imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
 {
    char *buf, *bp, *lp;
    uz bufsize, buflen, cnt;
@@ -3382,7 +3382,7 @@ jleave:
 }
 
 FL enum okay
-imap_append(const char *xserver, FILE *fp, long offset)
+imap_append(const char *xserver, FILE *fp, s64 offset)
 {
    n_sighdl_t volatile saveint, savepipe;
    struct mx_url url;
@@ -3588,8 +3588,8 @@ imap_folders(const char * volatile name, int strip)
    }
 
    fold = imap_fileof(name);
-   if((fp = mx_fs_tmp_open(NIL, "imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "imapfold", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       fp = n_stdout;
 
    imaplock = 1;
@@ -3949,8 +3949,8 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    }
    t = imap_read_date_time(cp);
 
-   if((tp = mx_fs_tmp_open(NIL, "imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((tp = mx_fs_tmp_open(NIL, "imapapui", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       goto jstop;
 
    size = xsize;

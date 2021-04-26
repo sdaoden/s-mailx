@@ -41,7 +41,7 @@
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NIL /* DOC! */
 #define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */
-#define mx_FS_TMP_OPEN_TRIES 10 /* Maximum number of fs_tmp_open() tries */
+#define mx_FS_TMP_OPEN_TRIES 42 /* Maximum number of fs_tmp_open() tries */
 
 #define n_IMAP_DELIM "/." /* Directory separator ([0] == replacer, too) */
 

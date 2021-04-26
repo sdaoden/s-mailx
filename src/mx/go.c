@@ -1253,11 +1253,11 @@ a_go_file(char const *file, boole silent_open_error){
 
    if(ispipe){
       if((fip = mx_fs_pipe_open(nbuf /* #if 0 above = savestrbuf(file, nlen)*/,
-            "r", ok_vlook(SHELL), NIL, -1)) == NIL)
+               mx_FS_PIPE_READ, ok_vlook(SHELL), NIL, -1)) == NIL)
          goto jeopencheck;
    }else if((nbuf = fexpand(file, FEXP_LOCAL_FILE | FEXP_NVAR)) == NIL)
       goto jeopencheck;
-   else if((fip = mx_fs_open(nbuf, "r")) == NIL){
+   else if((fip = mx_fs_open(nbuf, mx_FS_O_RDONLY)) == NIL){
 jeopencheck:
       if(!silent_open_error || (n_poption & n_PO_D_V))
          n_perr(nbuf, 0);
@@ -2037,7 +2037,7 @@ mx_go_load_rc(char const *name){
 
    rv = TRU1;
 
-   if((fip = mx_fs_open(name, "r")) == NIL){
+   if((fip = mx_fs_open(name, mx_FS_O_RDONLY)) == NIL){
       if(n_poption & n_PO_D_V)
          n_err(_("No such file to load: %s\n"), n_shexp_quote_cp(name, FAL0));
       goto jleave;
@@ -2715,7 +2715,8 @@ jfound:
          fd = -1;
          elen = su_cs_len(emsg);
 
-         if((fp = mx_fs_open(emsg, "&r")) == NIL)
+         if((fp = mx_fs_open(emsg, (mx_FS_O_RDONLY | mx_FS_O_NOREGISTER))
+                  ) == NIL)
             goto jecreate;
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
@@ -2723,7 +2724,7 @@ jfound:
          goto jeinval_quote;
       }else{
          /* xxx Avoid */
-         if(!mx_FS_FD_CLOEXEC_SET(fd)){
+         if(!mx_fs_fd_cloexec_set(fd)){
             emsg = N_("readctl: create: "
                   "cannot set close-on-exec flag for: %s\n");
             goto jeinval_quote;

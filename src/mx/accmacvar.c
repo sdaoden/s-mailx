@@ -684,8 +684,8 @@ a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf){
 
    rv = FAL0;
 
-   if((fp = mx_fs_tmp_open(NIL, "deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       fp = n_stdout;
 
    amf &= a_AMV_MF_TYPE_MASK;
@@ -2553,8 +2553,8 @@ a_amv_var_show_all(void){
 
    a_amv_var_show_instantiate_all();
 
-   if((fp = mx_fs_tmp_open(NIL, "setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "setlist", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       fp = n_stdout;
 
    for(no = i = 0; i < a_AMV_PRIME; ++i)
@@ -3742,8 +3742,8 @@ c_varshow(void *vp){
    FILE *fp;
    NYD_IN;
 
-   if((fp = mx_fs_tmp_open(NIL, "varshow", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "varshow", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       fp = n_stdout;
 
    msgp = n_string_creat(msgp);
