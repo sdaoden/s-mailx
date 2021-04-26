@@ -46,14 +46,14 @@
 #include "su/code-in.h"
 
 #ifdef O_CLOEXEC
-# define a_FS__O_CLOEXEC O_CLOEXEC
+# define a_FS_O_CLOEXEC O_CLOEXEC
 #else
-# define a_FS__O_CLOEXEC 0
+# define a_FS_O_CLOEXEC 0
 #endif
 
 enum{
-   a_FS_PIPE_READ = 0,
-   a_FS_PIPE_WRITE = 1
+   a_FS_PIPE_READ,
+   a_FS_PIPE_WRITE
 };
 
 enum a_fs_ent_flags{
@@ -71,13 +71,13 @@ enum a_fs_ent_flags{
    a_FS_EF_FD_PASS_NEEDS_WAIT = 1u<<10
 };
 
-/* This struct is what backs struct mx_fs_tmp_ctx! */
+/* This struct <-> struct mx_fs_tmp_ctx! */
 struct a_fs_ent{
    char *fse_realfile;
    struct a_fs_ent *fse_link;
-   u32 fse_flags;
-   int fse_omode;
-   long fse_offset; /* TODO SU I/O 64-bit */
+   BITENUM_IS(u32,a_fs_ent_flags) fse_flags;
+   BITENUM_IS(u32,mx_fs_oflags) fse_oflags;
+   s64 fse_offset;
    FILE *fse_fp;
    char *fse_save_cmd;
    struct mx_child_ctx fse_cc;
@@ -94,14 +94,16 @@ static struct a_fs_ent *a_fs_fp_head;
 struct a_fs_lpool_ent *a_fs_lpool_free;
 struct a_fs_lpool_ent *a_fs_lpool_used;
 
-/* Scan file open mode, and turn it to flags.  If & was prepended, set *mode
- * to NIL to indicate O_REGISTER shall not be set */
-static boole a_fs_scan_mode(char const **mode, int *omode);
+/* Convert oflags to open(2) flags; if os_or_nil is not NIL, store in there the
+ * best approximation to STDIO r[,r+],w,w+,a,a+ for fdopen(3) */
+static int a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags,
+      char const **os_or_nil);
 
-/* */
-static struct a_fs_ent *a_fs_register_file(FILE *fp, int omode,
-      struct mx_child_ctx *ccp,
-      u32 flags, char const *realfile, long offset, char const *save_cmd);
+/* Of oflags only mx__FS_O_RWMASK|mx_FS_O_APPEND is used */
+static struct a_fs_ent *a_fs_register_file(FILE *fp,
+      BITENUM_IS(u32,mx_fs_oflags) oflags,
+      BITENUM_IS(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp,
+      char const *realfile, s64 offset, char const *save_cmd);
 static boole a_fs_unregister_file(FILE *fp);
 
 /* */
@@ -109,53 +111,66 @@ static boole a_fs_file_load(uz flags, int infd, int outfd,
       char const *load_cmd);
 static boole a_fs_file_save(struct a_fs_ent *fpp);
 
-static boole
-a_fs_scan_mode(char const **mode, int *omode){
-   static struct{
-      char const mode[4];
-      int omode;
-   }const maps[] = {
-      {"r", O_RDONLY},
-      {"w", O_WRONLY | O_CREAT | mx_O_NOXY_BITS | O_TRUNC},
-      {"wx", O_WRONLY | O_CREAT | O_EXCL},
-      {"a", O_WRONLY | O_APPEND | O_CREAT | mx_O_NOXY_BITS},
-      {"a+", O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS},
-      {"r+", O_RDWR},
-      {"w+", O_RDWR | O_CREAT | mx_O_NOXY_BITS | O_TRUNC},
-      {"W+", O_RDWR | O_CREAT | O_EXCL}
-   };
-   boole rv;
-   uz i;
-   char const *xmode;
+static int
+a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil){
+   char const *os;
+   int rv;
    NYD2_IN;
 
-   if((xmode = *mode)[0] == '&'){
-      *mode = NIL;
-      ++xmode;
-   }
-
-   for(i = 0; i < NELEM(maps); ++i)
-      if(!su_cs_cmp(maps[i].mode, xmode)){
-         *omode = maps[i].omode;
-         rv = TRU1;
-         goto jleave;
+   if(oflags & mx_FS_O_RDONLY){
+      rv = O_RDONLY;
+      os = "r";
+   }else{
+      if(oflags & mx_FS_O_WRONLY){
+         rv = O_WRONLY;
+         os = "w";
+      }else{
+         if(!(oflags & mx_FS_O_RDWR)){
+            DBG( n_panic(_("Implementation error: unknown open flags 0x%X"),
+               oflags));
+         }
+         rv = O_RDWR;
+         os = "w+";
       }
 
-   su_DBG( n_alert(_("Internal error: bad stdio open mode %s"), xmode); )
-   su_NDBG( su_err_set_no(su_ERR_INVAL); )
-   *omode = 0; /* (silence CC) */
+      if(oflags & mx_FS_O_APPEND){
+         os = (rv == O_WRONLY) ? "a" : "a+";
+         rv |= O_APPEND;
+      }
+   }
 
-   rv = FAL0;
-jleave:
+   if(oflags & mx_FS_O_CREATE)
+      rv |= O_CREAT;
+   if(oflags & mx_FS_O_TRUNC)
+      rv |= O_TRUNC;
+   if(oflags & mx_FS_O_EXCL)
+      rv |= O_EXCL;
+
+#if a_FS_O_CLOEXEC != 0
+   if(!(oflags & mx_FS_O_NOCLOEXEC))
+      rv |= a_FS_O_CLOEXEC;
+#endif
+
+#ifdef O_NOFOLLOW
+   if(oflags & mx_FS_O_NOFOLLOW)
+      rv |= O_NOFOLLOW;
+#endif
+
+   rv |= mx_O_NOXY_BITS;
+
+   if(os_or_nil != NIL)
+      *os_or_nil = os;
+
    NYD2_OU;
    return rv;
 }
 
 static struct a_fs_ent *
-a_fs_register_file(FILE *fp, int omode, struct mx_child_ctx *ccp, u32 flags,
-      char const *realfile, long offset, char const *save_cmd){
+a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags,
+      BITENUM_IS(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp,
+      char const *realfile, s64 offset, char const *save_cmd){
    struct a_fs_ent *fsep;
-   NYD_IN;
+   NYD2_IN;
 
    ASSERT(!(flags & a_FS_EF_UNLINK) || realfile != NIL);
 
@@ -164,7 +179,7 @@ a_fs_register_file(FILE *fp, int omode, struct mx_child_ctx *ccp, u32 flags,
       fsep->fse_realfile = su_cs_dup(realfile, 0);
    fsep->fse_link = a_fs_fp_head;
    fsep->fse_flags = flags;
-   fsep->fse_omode = omode;
+   fsep->fse_oflags = oflags & (mx__FS_O_RWMASK | mx_FS_O_APPEND);
    fsep->fse_offset = offset;
    fsep->fse_fp = fp;
    if(save_cmd != NIL)
@@ -174,7 +189,7 @@ a_fs_register_file(FILE *fp, int omode, struct mx_child_ctx *ccp, u32 flags,
 
    a_fs_fp_head = fsep;
 
-   NYD_OU;
+   NYD2_OU;
    return fsep;
 }
 
@@ -182,7 +197,7 @@ static boole
 a_fs_unregister_file(FILE *fp){
    struct a_fs_ent **fsepp, *fsep;
    boole rv;
-   NYD_IN;
+   NYD2_IN;
 
    rv = TRU1;
 
@@ -193,6 +208,8 @@ a_fs_unregister_file(FILE *fp){
          break;
       }else if(fsep->fse_fp != fp)
          continue;
+
+      *fsepp = fsep->fse_link;
 
       switch(fsep->fse_flags & a_FS_EF_MASK){
       case a_FS_EF_RAW:
@@ -206,7 +223,6 @@ a_fs_unregister_file(FILE *fp){
       if((fsep->fse_flags & a_FS_EF_UNLINK) && unlink(fsep->fse_realfile))
          rv = FAL0;
 
-      *fsepp = fsep->fse_link;
       if(fsep->fse_realfile != NIL)
          su_FREE(fsep->fse_realfile);
       if(fsep->fse_save_cmd != NIL)
@@ -216,7 +232,7 @@ a_fs_unregister_file(FILE *fp){
       break;
    }
 
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -224,7 +240,7 @@ static boole
 a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd){
    struct mx_child_ctx cc;
    boole rv;
-   NYD2_IN;
+   NYD_IN;
 
    mx_child_ctx_setup(&cc);
    cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
@@ -250,21 +266,19 @@ a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd){
       break;
    }
 
-   NYD2_OU;
+   NYD_OU;
    return rv;
 }
 
 static boole
 a_fs_file_save(struct a_fs_ent *fsep){
    struct mx_child_ctx cc;
+   int osiflags;
    boole rv;
    NYD_IN;
 
-   if(fsep->fse_omode == O_RDONLY){
-      rv = TRU1;
+   if((rv = ((fsep->fse_oflags & mx__FS_O_RWMASK) == mx_FS_O_RDONLY)))
       goto jleave;
-   }
-   rv = FAL0;
 
    fflush(fsep->fse_fp);
    clearerr(fsep->fse_fp);
@@ -296,10 +310,11 @@ a_fs_file_save(struct a_fs_ent *fsep){
    mx_child_ctx_setup(&cc);
    cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
    cc.cc_fds[mx_CHILD_FD_IN] = fileno(fsep->fse_fp);
-   if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile,
-         ((fsep->fse_omode | O_CREAT |
-          (fsep->fse_omode & O_APPEND ? 0 : O_TRUNC) | mx_O_NOXY_BITS
-         ) & ~O_EXCL), 0666)) == -1){
+   osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | mx_O_NOXY_BITS;
+   if(!(fsep->fse_oflags & mx_FS_O_APPEND))
+      osiflags |= O_TRUNC;
+   if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags, 0666)
+            ) == -1){
       s32 err;
 
       err = su_err_no();
@@ -332,30 +347,30 @@ jleave:
 }
 
 FILE *
-mx_fs_open(char const *file, char const *oflags){
-   int osflags, fd;
-   char const *moflags;
+mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
+   int osiflags, fd;
+   char const *osflags;
    FILE *fp;
    NYD_IN;
 
    fp = NIL;
 
-   moflags = oflags;
-   if(!a_fs_scan_mode(&moflags, &osflags))
-      goto jleave;
-   osflags |= a_FS__O_CLOEXEC;
-   if(moflags == NIL)
-      ++oflags;
+   osiflags = a_fs_mx_to_os(oflags, &osflags);
 
-   if((fd = open(file, osflags, 0666)) == -1)
+   if((fd = open(file, osiflags, 0666)) == -1)
       goto jleave;
-   if(!mx_FS_FD_CLOEXEC_SET(fd)){
+#if a_FS_O_CLOEXEC == 0
+   if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
       close(fd);
       goto jleave;
    }
+#endif
 
-   if((fp = fdopen(fd, oflags)) != NIL && moflags != NIL)
-      a_fs_register_file(fp, osflags, 0, a_FS_EF_RAW, NIL, 0L, NIL);
+   if((fp = fdopen(fd, osflags)) != NIL){
+      if(!(oflags & mx_FS_O_NOREGISTER))
+         a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0L, NIL);
+   }else
+      close(fd);
 
 jleave:
    NYD_OU;
@@ -363,16 +378,16 @@ jleave:
 }
 
 FILE *
-mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
+mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags,
       enum mx_fs_open_state *fs_or_nil){ /* TODO as bits, return state */
    /* TODO Support file locking upon open time */
-   long offset;
+   s64 offset;
    enum protocol p;
-   enum mx_fs_oflags rof;
    uz flags;
-   int osflags, omode, infd;
+   BITENUM_IS(u32,mx_fs_oflags) tmpoflags;
+   int /*osiflags,*/ omode, infd;
    char const *cload, *csave;
-   enum mx_fs_open_state fs;
+   BITENUM_IS(u32, mx_fs_open_state) fs;
    s32 err;
    FILE *rv;
    NYD_IN;
@@ -382,20 +397,20 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    fs = mx_FS_OPEN_STATE_NONE;
    cload = csave = NIL;
 
-   /* !O_REGISTER is disallowed */
-   if(!a_fs_scan_mode(&oflags, &osflags) || oflags == NIL){
+   /* O_NOREGISTER is disallowed */
+   if(oflags & mx_FS_O_NOREGISTER){
       err = su_ERR_INVAL;
       goto jleave;
    }
 
+   /*osiflags =*/ a_fs_mx_to_os(oflags, NIL);
+   omode = ((oflags & mx__FS_O_RWMASK) == mx_FS_O_RDONLY) ? R_OK : R_OK | W_OK;
+   tmpoflags = (mx_FS_O_RDWR | mx_FS_O_UNLINK | (oflags & mx_FS_O_APPEND) |
+         mx_FS_O_NOREGISTER);
    flags = 0;
-   rof = mx_FS_O_RDWR | mx_FS_O_UNLINK;
-   if(osflags & O_APPEND)
-      rof |= mx_FS_O_APPEND;
-   omode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
 
-   /* We don't want to find mbox.bz2 when doing "copy * mbox", but only for
-    * "file mbox", so don't try hooks when writing */
+   /* We do not want to find mbox.bz2 when doing "copy * mbox", but only for
+    * "file mbox", so do not try hooks when writing */
    p = which_protocol(csave = file, TRU1, ((omode & W_OK) == 0), &file);
    fs = S(enum mx_fs_open_state,p);
    switch(p){
@@ -407,7 +422,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
 #ifdef mx_HAVE_IMAP
       file = csave;
       flags |= a_FS_EF_IMAP;
-      osflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;
+      /*osiflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;*/
       infd = -1;
       break;
 #else
@@ -420,7 +435,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       if(fs_or_nil != NIL && !access(file, F_OK))
          fs |= mx_FS_OPEN_STATE_EXISTS;
       flags |= a_FS_EF_MAILDIR;
-      osflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;
+      /*osiflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;*/
       infd = -1;
       break;
 #else
@@ -429,7 +444,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
 #endif
 
    case n_PROTO_EML:
-      if(!(osflags & O_RDONLY)){
+      if((oflags & mx__FS_O_RWMASK) != mx_FS_O_RDONLY){
          err = su_ERR_OPNOTSUPP;
          goto jleave;
       }
@@ -437,7 +452,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    case n_PROTO_FILE:{
       struct mx_filetype ft;
 
-      if(!(osflags & O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
+      if(!(oflags & mx_FS_O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
          fs |= mx_FS_OPEN_STATE_EXISTS;
 
       if(mx_filetype_exists(&ft, file)){/* TODO report real name to outside */
@@ -445,8 +460,9 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
          cload = ft.ft_load_dat;
          csave = ft.ft_save_dat;
          /* Cause truncation for compressor/hook output files */
-         osflags &= ~O_APPEND;
-         rof &= ~mx_FS_O_APPEND;
+         oflags &= ~mx_FS_O_APPEND;
+         /*osiflags &= ~O_APPEND;*/
+         tmpoflags &= ~mx_FS_O_APPEND;
          if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) != -1){
             fs |= mx_FS_OPEN_STATE_EXISTS;
             if(n_poption & n_PO_D_V)
@@ -454,13 +470,14 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
                   n_shexp_quote_cp(cload, FAL0), n_shexp_quote_cp(file, FAL0));
          }else{
             err = su_err_no();
-            if(!(osflags & O_CREAT) || err != su_ERR_NOENT)
+            if(!(oflags & mx_FS_O_CREATE) || err != su_ERR_NOENT)
                goto jleave;
          }
       }else{
          /*flags |= a_FS_EF_RAW;*/
          rv = mx_fs_open(file, oflags);
-         if((osflags & O_EXCL) && rv == NIL)
+         if(rv == NIL && (oflags & mx_FS_O_EXCL) &&
+               su_err_no() == su_ERR_EXIST)
             fs |= mx_FS_OPEN_STATE_EXISTS;
          goto jleave;
       }
@@ -468,7 +485,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */
-   if((rv = mx_fs_tmp_open(NIL, "fopenany", rof, NIL)) == NIL){
+   if((rv = mx_fs_tmp_open(NIL, "fopenany", tmpoflags, NIL)) == NIL){
       n_perr(_("tmpfile"), err = su_err_no());
       goto Jerr;
    }
@@ -498,7 +515,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       close(infd);
    fflush(rv);
 
-   if(!(osflags & O_APPEND))
+   if(!(oflags & mx_FS_O_APPEND))
       rewind(rv);
 
    if((offset = ftell(rv)) == -1){
@@ -508,7 +525,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       goto jleave;
    }
 
-   a_fs_register_file(rv, osflags, 0, flags, file, offset, csave);
+   a_fs_register_file(rv, oflags, flags, NIL, file, offset, csave);
 jleave:
    if(fs_or_nil != NIL)
       *fs_or_nil = fs;
@@ -521,7 +538,8 @@ jleave:
 
 FILE *
 mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
-      u32 oflags, struct mx_fs_tmp_ctx **fstcp_or_nil){
+      BITENUM_IS(u32,mx_fs_oflags) oflags,
+      struct mx_fs_tmp_ctx **fstcp_or_nil){
    /* The 6 is arbitrary but leaves room for an eight character hint (the
     * POSIX minimum path length is 14, though we do not check that XXX).
     * 6 should be more than sufficient given that we use base64url encoding
@@ -530,16 +548,17 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
 
    char *cp_base, *cp;
    uz maxname, hintlen, i;
-   int osoflags, fd, e;
+   int osiflags, fd, e;
    boole relesigs;
    FILE *fp;
    NYD_IN;
 
    ASSERT((oflags & mx_FS_O_WRONLY) || (oflags & mx_FS_O_RDWR));
    ASSERT(!(oflags & mx_FS_O_RDONLY));
-   ASSERT(!(oflags & mx_FS_O_REGISTER_UNLINK) || (oflags & mx_FS_O_REGISTER));
+   ASSERT(!(oflags & mx_FS_O_REGISTER_UNLINK) ||
+      !(oflags & mx_FS_O_NOREGISTER));
    ASSERT(!(oflags & mx_FS_O_HOLDSIGS) || !(oflags & mx_FS_O_UNLINK));
-   ASSERT(fstcp_or_nil == NIL || ((oflags & mx_FS_O_REGISTER) ||
+   ASSERT(fstcp_or_nil == NIL || (!(oflags & mx_FS_O_NOREGISTER) ||
       (oflags & mx_FS_O_HOLDSIGS) || !(oflags & mx_FS_O_UNLINK)));
 
    if(fstcp_or_nil != NIL)
@@ -580,10 +599,10 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
    }
 
    /* Prepare the template string once, then iterate over the random range.
-    * But first ensure we can report the name in !O_REGISTER cases ("hack") */
+    * But first ensure we can report the name in O_NOREGISTER cases ("hack") */
    i = su_cs_len(tdir_or_nil) + 1 + maxname +1;
 
-   if(!(oflags & mx_FS_O_REGISTER) && fstcp_or_nil != NIL){
+   if((oflags & mx_FS_O_NOREGISTER) && fstcp_or_nil != NIL){
       union {struct a_fs_ent *fse; void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
       /* Store character data right after the struct */
@@ -622,10 +641,10 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
       cp = xp;
    }
 
-   osoflags = O_CREAT | O_EXCL | a_FS__O_CLOEXEC;
-   osoflags |= (oflags & mx_FS_O_WRONLY) ? O_WRONLY : O_RDWR;
+   osiflags = O_CREAT | O_EXCL | a_FS_O_CLOEXEC;
+   osiflags |= (oflags & mx_FS_O_WRONLY) ? O_WRONLY : O_RDWR;
    if(oflags & mx_FS_O_APPEND)
-      osoflags |= O_APPEND;
+      osiflags |= O_APPEND;
 
    for(i = 0;; ++i){
       su_mem_copy(cp, mx_random_create_cp(a_RANDCHARS, NIL), a_RANDCHARS);
@@ -633,12 +652,14 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
       mx_sigs_all_holdx();
       relesigs = TRU1;
 
-      if((fd = open(cp_base, osoflags, 0600)) != -1){
-         if(mx_FS_FD_CLOEXEC_SET(fd))
+      if((fd = open(cp_base, osiflags, 0600)) != -1){
+#if a_FS_O_CLOEXEC == 0
+         if(!mx_fs_fd_cloexec_set(fd))
+            close(fd);
+         else
+#endif
             break;
-         close(fd);
       }
-
       e = su_err_no();
 
       relesigs = FAL0;
@@ -648,35 +669,26 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
          goto jfree;
    }
 
-   /* C99 */{
-      char const *osflags;
+   if((fp = fdopen(fd, ((oflags & mx_FS_O_RDWR) ? "w+" : "w"))) != NIL){
+      if(!(oflags & mx_FS_O_NOREGISTER)){
+         struct a_fs_ent *fsep;
 
-      osflags = (oflags & mx_FS_O_RDWR ? "w+" : "w");
+         fsep = a_fs_register_file(fp, oflags, (a_FS_EF_RAW |
+                  (oflags & mx_FS_O_REGISTER_UNLINK ? a_FS_EF_UNLINK : 0) |
+                  (oflags & mx_FS_O_HOLDSIGS ? a_FS_EF_HOLDSIGS : 0)), NIL,
+            cp_base, 0, NIL);
 
-      if((fp = fdopen(fd, osflags)) != NIL){
-         if(oflags & mx_FS_O_REGISTER){
-            struct a_fs_ent *fsep;
-            int osflagbits;
+         /* User arg points to registered data in this case */
+         if(fstcp_or_nil != NIL){
+            union {void *v; struct mx_fs_tmp_ctx *fstc;} p;
 
-            a_fs_scan_mode(&osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
-            fsep = a_fs_register_file(fp, osflagbits | a_FS__O_CLOEXEC, 0,
-                  (a_FS_EF_RAW |
-                   (oflags & mx_FS_O_REGISTER_UNLINK ? a_FS_EF_UNLINK : 0) |
-                   (oflags & mx_FS_O_HOLDSIGS ? a_FS_EF_HOLDSIGS : 0)),
-               cp_base, 0L, NIL);
-
-            /* User arg points to registered data in this case */
-            if(fstcp_or_nil != NIL){
-               union {void *v; struct mx_fs_tmp_ctx *fstc;} p;
-
-               p.v = fsep;
-               *fstcp_or_nil = p.fstc;
-            }
-         }else if(fstcp_or_nil != NIL){
-            /* Otherwise copy filename buffer into autorec storage */
-            cp = UNCONST(char*,(*fstcp_or_nil)->fstc_filename);
-            su_cs_pcopy(cp, cp_base);
+            p.v = fsep;
+            *fstcp_or_nil = p.fstc;
          }
+      }else if(fstcp_or_nil != NIL){
+         /* Otherwise copy filename buffer into autorec storage */
+         cp = UNCONST(char*,(*fstcp_or_nil)->fstc_filename);
+         su_cs_pcopy(cp, cp_base);
       }
    }
 
@@ -689,7 +701,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
    }else if(fp != NIL){
       /* We will succeed and keep the file around for further usage, likely
        * another stream will be opened for pure reading purposes (this is true
-       * at the time of this writing.  A restrictive umask(2) settings may have
+       * at the time of this writing.  A restrictive umask(2) setting may have
        * turned the path inaccessible, so ensure it may be read at least!
        * TODO once ok_vlook() can return an integer, look up *umask* first! */
       (void)fchmod(fd, S_IWUSR | S_IRUSR);
@@ -738,17 +750,16 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
 }
 
 FILE *
-mx_fs_fd_open(sz fd, char const *oflags, boole nocloexec){
+mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
    FILE *fp;
-   int osflags;
+   char const *osflags;
    NYD_IN;
 
-   a_fs_scan_mode(&oflags, &osflags);
-   if(!nocloexec)
-      osflags |= a_FS__O_CLOEXEC; /* Ensured by caller as documented! */
+   (void)a_fs_mx_to_os(oflags, &osflags);
 
-   if((fp = fdopen(S(int,fd), oflags)) != NIL && oflags != NIL)
-      a_fs_register_file(fp, osflags, 0, a_FS_EF_RAW, NIL, 0L, NIL);
+   if((fp = fdopen(S(int,fd), osflags)) != NIL &&
+         !(oflags & mx_FS_O_NOREGISTER))
+      a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
 
    NYD_OU;
    return fp;
@@ -756,13 +767,13 @@ mx_fs_fd_open(sz fd, char const *oflags, boole nocloexec){
 
 boole
 mx_fs_fd_cloexec_set(sz fd){
-   s32 ifd;
+   s32 ifd, ifl;
    boole rv;
    NYD2_IN;
 
    ifd = S(s32,fd);
-   /*if(!(rv = ((a__fl = fcntl(ifd, F_GETFD)) != -1 && !(ifd & FD_CLOEXEC))))*/
-      rv = (fcntl(ifd, F_SETFD, FD_CLOEXEC) != -1);
+   if((rv = ((ifl = fcntl(ifd, F_GETFD)) != -1)) && !(ifl & FD_CLOEXEC))
+      rv = (fcntl(ifd, F_SETFD, ifl | FD_CLOEXEC) != -1);
 
    NYD2_OU;
    return rv;
@@ -787,8 +798,8 @@ mx_fs_pipe_cloexec(sz fd[2]){
 
    rv = FAL0;
 
-#ifdef mx_HAVE_PIPE2
-   if(pipe2(xfd, O_CLOEXEC) != -1){
+#if defined mx_HAVE_PIPE2 && a_FS_O_CLOEXEC != 0
+   if(pipe2(xfd, a_FS_O_CLOEXEC) != -1){
       fd[0] = xfd[0];
       fd[1] = xfd[1];
       rv = TRU1;
@@ -797,9 +808,10 @@ mx_fs_pipe_cloexec(sz fd[2]){
    if(pipe(xfd) != -1){
       fd[0] = xfd[0];
       fd[1] = xfd[1];
-      mx_fs_fd_cloexec_set(fd[0]);
-      mx_fs_fd_cloexec_set(fd[1]);
-      rv = TRU1;
+      if(!(rv = (mx_fs_fd_cloexec_set(fd[0]) && mx_fs_fd_cloexec_set(fd[1])))){
+         close(xfd[0]);
+         close(xfd[1]);
+      }
    }
 #endif
 
@@ -808,8 +820,8 @@ mx_fs_pipe_cloexec(sz fd[2]){
 }
 
 FILE *
-mx_fs_pipe_open(char const *cmd, char const *mode, char const *sh,
-      char const **env_addon, int newfd1){
+mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh,
+      char const **env_addon, sz newfd1){
    struct mx_child_ctx cc;
    sz p[2], myside, hisside, fd0, fd1;
    sigset_t nset;
@@ -818,26 +830,28 @@ mx_fs_pipe_open(char const *cmd, char const *mode, char const *sh,
    NYD_IN;
 
    rv = NIL;
-   mod[0] = '0', mod[1] = '\0';
+   mod[0] = mod[1] = '\0';
 
    if(!mx_fs_pipe_cloexec(p))
       goto jleave;
 
-   if(*mode == 'r'){
+   switch(fspt){
+   default:
+   case mx_FS_PIPE_READ:
       myside = p[a_FS_PIPE_READ];
       fd0 = mx_CHILD_FD_PASS;
       hisside = fd1 = p[a_FS_PIPE_WRITE];
-      mod[0] = *mode;
-   }else if(*mode == 'W'){
+      mod[0] = 'r';
+      break;
+   case mx_FS_PIPE_WRITE_CHILD_PASS:
+      newfd1 = mx_CHILD_FD_PASS;
+      /* FALLTHRU */
+   case mx_FS_PIPE_WRITE:
       myside = p[a_FS_PIPE_WRITE];
       hisside = fd0 = p[a_FS_PIPE_READ];
       fd1 = newfd1;
       mod[0] = 'w';
-   }else{
-      myside = p[a_FS_PIPE_WRITE];
-      hisside = fd0 = p[a_FS_PIPE_READ];
-      fd1 = mx_CHILD_FD_PASS;
-      mod[0] = 'w';
+      break;
    }
 
    sigemptyset(&nset);
@@ -903,10 +917,10 @@ mx_fs_pipe_open(char const *cmd, char const *mode, char const *sh,
 
    close(S(int,hisside));
    if((rv = fdopen(myside, mod)) != NIL)
-      a_fs_register_file(rv, 0, &cc,
+      a_fs_register_file(rv, 0,
          ((fd0 != mx_CHILD_FD_PASS && fd1 != mx_CHILD_FD_PASS)
             ? a_FS_EF_PIPE : a_FS_EF_PIPE | a_FS_EF_FD_PASS_NEEDS_WAIT),
-         NIL, 0L, NIL);
+         &cc, NIL, 0L, NIL);
    else
       close(myside);
 

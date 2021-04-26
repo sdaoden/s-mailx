@@ -138,11 +138,11 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
    mx_fs_linepool_aquire(&buf, &bufsize);
    *hp = *bp = NIL;
 
-   if((*hp = mx_fs_tmp_open(NIL, "smimeh", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((*hp = mx_fs_tmp_open(NIL, "smimeh", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       goto jleave;
-   if((*bp = mx_fs_tmp_open(NIL, "smimeb", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((*bp = mx_fs_tmp_open(NIL, "smimeb", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       goto jleave;
 
    head = tail = NIL;
@@ -237,8 +237,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
    FILE *op;
    NYD_IN;
 
-   if((op = mx_fs_tmp_open(NIL, "smimea", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((op = mx_fs_tmp_open(NIL, "smimea", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -304,8 +304,8 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_IN;
 
-   if((op = mx_fs_tmp_open(NIL, "smimee", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((op = mx_fs_tmp_open(NIL, "smimee", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -471,7 +471,8 @@ c_certsave(void *vp){
       }
       file = cp;
 
-      if((fp = mx_fs_open(file, "a")) == NIL){
+      if((fp = mx_fs_open(file, (mx_FS_O_WRONLY | mx_FS_O_APPEND |
+               mx_FS_O_CREATE))) == NIL){
          n_perr(file, 0);
          vp = NULL;
          goto jleave;

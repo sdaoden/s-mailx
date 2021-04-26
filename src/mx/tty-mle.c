@@ -983,8 +983,8 @@ a_tty_hist_list(void){
    if(a_tty.tg_hist == NIL)
       goto jleave;
 
-   if((fp = mx_fs_tmp_open(NIL, "hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((fp = mx_fs_tmp_open(NIL, "hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+            ) == NIL)
       fp = n_stdout;
 
    no = a_tty.tg_hist_size;
@@ -2616,8 +2616,8 @@ jmulti:{
       uz locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
-      if((fp = mx_fs_tmp_open(NIL, "mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL){
+      if((fp = mx_fs_tmp_open(NIL, "mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+               NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
          fp = mx_tty_fp;
       }
@@ -4678,8 +4678,8 @@ c_bind(void *vp){
       u32 lns;
       FILE *fp;
 
-      if((fp = mx_fs_tmp_open(NIL, "bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-               mx_FS_O_REGISTER), NIL)) == NIL)
+      if((fp = mx_fs_tmp_open(NIL, "bind", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+               NIL)) == NIL)
          fp = n_stdout;
 
       lns = 0;

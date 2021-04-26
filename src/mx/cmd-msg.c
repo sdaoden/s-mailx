@@ -134,7 +134,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
    UNINIT(cp, NIL);
 
    if(dopipe){
-      if((obuf = mx_fs_pipe_open(cmd, "w", ok_vlook(SHELL), NIL, -1)) == NIL){
+      if((obuf = mx_fs_pipe_open(cmd, mx_FS_PIPE_WRITE_CHILD_PASS,
+               ok_vlook(SHELL), NIL, -1)) == NIL){
          n_perr(cmd, 0);
          obuf = n_stdout;
       }
@@ -209,7 +210,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
 
 jleave:
    if(obuf != n_stdout)
-      mx_pager_close(obuf);
+      mx_pager_close(obuf); /* xxx ok, but .. dopipe->pipe_close explicit?! */
    else
       clearerr(obuf);
 
@@ -251,22 +252,28 @@ jleave:
 
 static int
 a_cmsg_top(void *vp, struct mx_ignore const *itp){
+   enum{
+      a_NONE,
+      a_SQUEEZE = 1u<<0,
+      a_EMPTY = 1u<<8,
+      a_STOP = 1u<<9,
+      a_WORKMASK = 0xFF00u
+   };
    struct n_string s;
    int *msgvec, *ip;
-   enum{a_NONE, a_SQUEEZE = 1u<<0,
-      a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
+   u32 f;
    uz tmax, plines;
    FILE *iobuf, *pbuf;
    NYD2_IN;
 
-   if((iobuf = mx_fs_tmp_open(NIL, "topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL){
+   if((iobuf = mx_fs_tmp_open(NIL, "topio", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL){
       n_perr(_("top: I/O temporary file"), 0);
       vp = NIL;
       goto jleave;
    }
-   if((pbuf = mx_fs_tmp_open(NIL, "toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-            mx_FS_O_REGISTER), NIL)) == NIL)
+   if((pbuf = mx_fs_tmp_open(NIL, "toppag", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
+            NIL)) == NIL)
       pbuf = n_stdout;
 
    plines = 0;

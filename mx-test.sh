@@ -6561,16 +6561,14 @@ t_filetype() { # {{{
    if (echo | gzip -c) >/dev/null 2>&1; then
       {
          printf 'File "%s"\ncopy 1 ./t2.mbox.gz\ncopy 2 ./t2.mbox.gz' \
-            ./t.mbox | ${MAILX} ${ARGS} \
-               -X'filetype gz gzip\ -dc gzip\ -c'
+            ./t.mbox | ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
          printf 'File ./t2.mbox.gz\ncopy * ./t2.mbox\n' |
             ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./t3 2>&1
       check 2 - ./t2.mbox '1314354444 13536'
       check 3 - ./t3 '1817728413 103'
    else
-      t_echoskip '2:[missing gzip(1)]'
-      t_echoskip '3:[missing gzip(1)]'
+      t_echoskip '2-3:[missing gzip(1)]'
    fi
 
    {

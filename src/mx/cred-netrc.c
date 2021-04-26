@@ -122,15 +122,15 @@ a_netrc_create(void){
 
    if((netrc_load = ok_vlook(netrc_pipe)) != NIL){
       f |= a_IS_PIPE;
-      if((fi = mx_fs_pipe_open(netrc_load, "r", ok_vlook(SHELL), NIL,
-            mx_CHILD_FD_NULL)) == NIL)
+      if((fi = mx_fs_pipe_open(netrc_load, mx_FS_PIPE_READ, ok_vlook(SHELL),
+            NIL, -1)) == NIL)
          goto jerrdoc;
    }else{
       if((netrc_load = fexpand(ok_vlook(NETRC), (FEXP_NOPROTO |
             FEXP_LOCAL_FILE | FEXP_NSHELL))) == NIL)
          goto jleave;
 
-      if((fi = mx_fs_open(netrc_load, "r")) == NIL)
+      if((fi = mx_fs_open(netrc_load, mx_FS_O_RDONLY)) == NIL)
          goto jerrdoc;
 
       /* Be simple and apply rigid (permission) check(s) */

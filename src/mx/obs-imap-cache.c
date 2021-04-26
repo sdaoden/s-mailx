@@ -73,8 +73,8 @@ static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
 static void             remve(unsigned long n);
-static FILE *           cache_queue1(struct mailbox *mp, char const *mode,
-                           char **xname);
+static FILE *a_cache_queue1(struct mailbox *mp,
+      BITENUM_IS(u32,mx_fs_oflags) oflags, char **xname);
 static enum okay        dequeue1(struct mailbox *mp);
 
 static const char infofmt[] = "%c %lu %d %lu %ld";
@@ -176,7 +176,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
       goto jleave;
-   if((fp = mx_fs_open(encuid(mp, m->m_uid), "r")) == NIL)
+   if((fp = mx_fs_open(encuid(mp, m->m_uid), mx_FS_O_RDONLY)) == NIL)
       goto jleave;
 
    mx_file_lock(fileno(fp), mx_FILE_LOCK_MODE_TSHARE);
@@ -311,10 +311,9 @@ putcache(struct mailbox *mp, struct message *m)
       oldoffset = 0;
 
    /* XXX file_lock errors */
-   if((obuf = mx_fs_open(name = encuid(mp, m->m_uid), "r+")) == NIL){
-      if((obuf = mx_fs_open(name, "w")) == NIL)
-         goto jleave;
-   }
+   if((obuf = mx_fs_open(name = encuid(mp, m->m_uid), (mx_FS_O_RDWR |
+            mx_FS_O_CREATE))) == NIL)
+      goto jleave;
    mx_file_lock(fileno(obuf), mx_FILE_LOCK_MODE_TEXCL);
    if (fscanf(obuf, infofmt, &ob, (unsigned long*)&osize, &oflag,
          (unsigned long*)&otime, &olines) >= 4 && ob != '\0' &&
@@ -404,7 +403,7 @@ initcache(struct mailbox *mp)
    if (cwget(&cw) == STOP)
       goto jleave;
 
-   if((uvfp = mx_fs_open(uvname, "r+")) == NIL ||
+   if((uvfp = mx_fs_open(uvname, mx_FS_O_RDWR)) == NIL ||
          (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_MODE_TSHARE), 0) ||
          fscanf(uvfp, "%" PRIu64 , &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
@@ -480,7 +479,8 @@ clean(struct mailbox *mp, struct cw *cw)
    if (!n_path_mkdir(cachedir))
       goto jleave;
    snprintf(buf, bufsz, "%s/README", cachedir);
-   if((fp = mx_fs_open(buf, "wx")) != NIL){
+   if((fp = mx_fs_open(buf, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_EXCL))
+            ) != NIL){
       fputs(README1, fp);
       fputs(README2, fp);
       fputs(README3, fp);
@@ -502,7 +502,8 @@ clean(struct mailbox *mp, struct cw *cw)
       unlink(dp->d_name);
    }
    closedir(dirp);
-   fp = mx_fs_open("UIDVALIDITY", "w");
+   fp = mx_fs_open("UIDVALIDITY", (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+         mx_FS_O_TRUNC));
 jout:
    if (cwret(cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
@@ -797,7 +798,7 @@ cached_uidvalidity(struct mailbox *mp)
       uv = 0;
       goto jleave;
    }
-   if((uvfp = mx_fs_open(uvname, "r")) == NIL ||
+   if((uvfp = mx_fs_open(uvname, mx_FS_O_RDONLY)) == NIL ||
          (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_MODE_TSHARE), 0) ||
          fscanf(uvfp, "%" PRIu64, &uv) != 1)
       uv = 0;
@@ -809,7 +810,8 @@ jleave:
 }
 
 static FILE *
-cache_queue1(struct mailbox *mp, char const *mode, char **xname)
+a_cache_queue1(struct mailbox *mp, BITENUM_IS(u32,mx_fs_oflags) oflags,
+      char **xname)
 {
    char *name;
    FILE *fp = NULL;
@@ -817,7 +819,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
 
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
-   if((fp = mx_fs_open(name, mode)) != NIL)
+   if((fp = mx_fs_open(name, oflags)) != NIL)
       mx_file_lock(fileno(fp), mx_FILE_LOCK_MODE_TEXCL);
    if (xname)
       *xname = name;
@@ -827,14 +829,13 @@ jleave:
 }
 
 FL FILE *
-cache_queue(struct mailbox *mp)
-{
+cache_queue(struct mailbox *mp){
    FILE *fp;
    NYD_IN;
 
-   fp = cache_queue1(mp, "a", NULL);
-   if (fp == NULL)
+   if((fp = a_cache_queue1(mp, (O_WRONLY | O_APPEND | O_CREAT), NIL)) == NIL)
       n_err(_("Cannot queue IMAP command. Retry when online.\n"));
+
    NYD_OU;
    return fp;
 }
@@ -890,8 +891,7 @@ dequeue1(struct mailbox *mp)
    enum okay rv = OKAY;
    NYD_IN;
 
-   fp = cache_queue1(mp, "r+", &qname);
-   if (fp != NULL && fsize(fp) > 0) {
+   if((fp = a_cache_queue1(mp, mx_FS_O_RDWR, &qname)) != NIL && fsize(fp) > 0){
       if (imap_select(mp, &is_size, &is_count, mp->mb_imap_mailbox, FEDIT_NONE)
             != OKAY) {
          n_err(_("Cannot select \"%s\" for dequeuing.\n"),
@@ -899,7 +899,7 @@ dequeue1(struct mailbox *mp)
          goto jsave;
       }
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
-            (uvfp = mx_fs_open(uvname, "r")) == NIL ||
+            (uvfp = mx_fs_open(uvname, mx_FS_O_RDONLY)) == NIL ||
             (mx_file_lock(fileno(uvfp), mx_FILE_LOCK_MODE_TSHARE), 0) ||
             fscanf(uvfp, "%" PRIu64, &uv) != 1 || uv != mp->mb_uidvalidity) {
          n_err(_("Unique identifiers for \"%s\" are out of date. "
