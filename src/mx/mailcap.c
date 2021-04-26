@@ -192,7 +192,8 @@ a_mailcap_create(void){
          continue;
 
       mcls.mcls_name_quoted = n_shexp_quote_cp(cp, FAL0);
-      if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, "r")) == NIL){
+      if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, mx_FS_O_RDONLY)
+            ) == NIL){
          s32 eno;
 
          if((eno = su_err_no()) != su_ERR_NOENT)

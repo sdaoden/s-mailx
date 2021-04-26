@@ -441,7 +441,7 @@ jleave:
    a_filo_fdip = &fdi;
 
    u.ptf = &a_filo_main;
-   rv = mx_fs_pipe_open(R(char*,-1), "W", u.sh, NIL, cpipe[1]);
+   rv = mx_fs_pipe_open(R(char*,-1), mx_FS_PIPE_WRITE, u.sh, NIL, cpipe[1]);
    serr = su_err_no();
 
    close(S(int,cpipe[1]));

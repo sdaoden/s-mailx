@@ -638,9 +638,10 @@ jlogname:
    }
 
    if(flags & a_STDIN)
-      ibuf = mx_fs_fd_open(fileno(n_stdin), "r", TRU1);
-   else if((ibuf = mx_fs_open_any(savecat("file://", name), "r", NIL)
-         ) == NIL){
+      ibuf = mx_fs_fd_open(fileno(n_stdin), (mx_FS_O_RDONLY |
+            mx_FS_O_NOCLOEXEC));
+   else if((ibuf = mx_fs_open_any(savecat("file://", name), mx_FS_O_RDONLY,
+            NIL)) == NIL){
       int e = su_err_no();
 
       if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
@@ -714,7 +715,7 @@ jlogname:
       name = mailname;
       mx_fs_close(ibuf);
 
-      if((ibuf = mx_fs_open_any(name, "r", NIL)) == NIL ||
+      if((ibuf = mx_fs_open_any(name, mx_FS_O_RDONLY, NIL)) == NIL ||
             fstat(fileno(ibuf), &stb) == -1 ||
             !S_ISREG(stb.st_mode)){
          n_perr(name, 0);
@@ -1091,11 +1092,11 @@ initbox(char const *name)
 
    err = FAL0;
    if((mb.mb_otf = mx_fs_tmp_open(NIL, "tmpmbox", (mx_FS_O_WRONLY |
-            mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
+            mx_FS_O_HOLDSIGS | mx_FS_O_NOREGISTER), &fstcp)) == NIL){
       n_perr(_("initbox: temporary mail message file, writer"), 0);
       err = TRU1;
-   }else if((mb.mb_itf = mx_fs_open(fstcp->fstc_filename, "&r")
-         ) == NIL){
+   }else if((mb.mb_itf = mx_fs_open(fstcp->fstc_filename, (mx_FS_O_RDONLY |
+            mx_FS_O_NOREGISTER))) == NIL){
       n_perr(_("initbox: temporary mail message file, reader"), 0);
       err = TRU1;
    }
