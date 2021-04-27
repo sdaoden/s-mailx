@@ -6555,52 +6555,74 @@ in case of I/O errors, or
 upon End-Of-File.
 \*(ID The input data length is restricted to 31-bits.
 .
+.
 .Mx
 .It Ic readctl
 \*(NQ Manages input channels for
-.Ic read ,
-.Ic readsh
+.Ic read , readsh
 and
-.Ic readall ,
-to be used to avoid complicated or impracticable code, like calling
-.Ic \&\&read
-from within a macro in non-interactive mode.
-Without arguments, or when the first argument is
-.Cm show ,
-a listing of all known channels is printed.
+.Ic readall .
+Without arguments, or with
+.Cm show
+being the first, all known channels are listed.
 Channels can otherwise be
 .Cm create Ns
-d, and existing channels can be
+d, existing channels can be
 .Cm set
 active and
 .Cm remove Ns
 d by giving the string used for creation.
+Shared
+.Pf ( Xr fcntl 2 ,
+using
+.Dv F_OFD_SETLK
+if available)
+.Cm lock Ns
+s can be created for channels created on file names; this is tried several
+times and can thus block (and fail), an uppercase first letter will log
+iterations (case-insensitivity still applies).
+\*(OP The (otherwise identical)
+.Pf ( Va features
+includes
+.Ql ,+flock, )
+.Cm flock
+lock uses
+.Xr flock 2 .
+.
 .Pp
 The channel name is expected to be a file descriptor number, or,
-if parsing the numeric fails, an input file name that undergoes minimal
+shall parsing the numeric fail, a file name that then undergoes minimal
 .Sx "Filename transformations"
-(no meta expansion are performed), errors are reported via error number
+(no meta expansion are performed).
+Errors are reported via the error number
 .Va \&!
 and exit status
 .Va \&? .
-For example (this example requires a modern shell):
+Here are examples, the second requires a modern shell and passes in
+data via a file descriptor, the third opens a file, creates a shared
+lock and then calls a macro which is expected to consume all file data.
+.
 .Bd -literal -offset indent
 $ printf 'echon "hey, "\enread a\enyou\enecho $a' |\e
   \*(uA -R#
 hey, you
+
 $ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
   LC_ALL=C 6<<< 'you' \*(uA -R#X'readctl create 6'
 hey, you
 
-? readctl create x/members.dat
+? set fn=x/members.dat
+? readctl create $fn
 ? set rv=$? es=$! ed=$^ERRDOC
 ? if $rv -eq 0
-?   call a_find_until_eof "$usr"
-?   readctl remove x/members.dat
+?   readctl Lock $fn # ignore error
+?   call .read-and-handle-until-eof "$usr"
+?   readctl remove $fn
 ? else
-?   echoerr 'Cannot read file x/members.dat: '$ed
+?   echoerr $'Cannot read file \e$fn: \e$ed'
 ? endif
 .Ed
+.
 .
 .Mx
 .It Ic remove
