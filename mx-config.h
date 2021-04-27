@@ -37,7 +37,7 @@
 #define n_ESCAPE "~" /* Default escape for sending (POSIX standard) */
 
 #define mx_FILE_LOCK_TRIES 10 /* Maximum tries before file_lock() fails */
-#define mx_FILE_LOCK_MILLIS 200 /* If UZ_MAX, fall back to that */
+#define mx_FILE_LOCK_MILLIS 200 /* Wait time in between tries */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NIL /* DOC! */
 #define mx_FS_FILETYPE_CAT_PROG "cat" /* cat(1) */

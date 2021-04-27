@@ -720,11 +720,12 @@ jlogname:
    if(flags & a_SPECIALS_MASK) /* XXX no locking for read-only "-" "file" */
       lckfp = (FILE*)-1;
    else if(!(n_pstate & n_PS_EDIT))
-      lckfp = mx_file_dotlock(name, fileno(ibuf), mx_FILE_LOCK_TYPE_READ,
-            offset,0, (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX));
-   else if(mx_file_lock(fileno(ibuf), mx_FILE_LOCK_TYPE_READ, offset,0,
-         (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX)))
-      lckfp = (FILE*)-1;
+      lckfp = mx_file_dotlock(name, fileno(ibuf), (mx_FILE_LOCK_MODE_TSHARE |
+            (fm & FEDIT_NEWMAIL ? 0 : mx_FILE_LOCK_MODE_RETRY)));
+   else if(mx_file_lock(fileno(ibuf), (mx_FILE_LOCK_MODE_TSHARE |
+         (fm & FEDIT_NEWMAIL ? 0 : mx_FILE_LOCK_MODE_RETRY) |
+         mx_FILE_LOCK_MODE_LOG)))
+      lckfp = R(FILE*,-1);
 
    if (lckfp == NULL) {
       if (!(fm & FEDIT_NEWMAIL)) {
