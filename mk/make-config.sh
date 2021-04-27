@@ -71,6 +71,7 @@ XOPTIONS_DETECT="\
    MULTIBYTE_CHARSETS='Multibyte character sets' \
    TERMINAL_CHARSET='Automatic detection of terminal character set' \
    WIDE_GLYPHS='Wide glyph support' \
+   FLOCK='flock(2) file locking' \
 "
 
 # Rather special options, for custom building, or which always exist.
@@ -1888,7 +1889,7 @@ else
    config_exit 1
 fi
 
-if run_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
+if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
 #include <pwd.h>
 #include <unistd.h>
 # include <errno.h>
@@ -1916,12 +1917,15 @@ else
    config_exit 1
 fi
 
-if link_check ftruncate 'ftruncate(2)' \
+if run_check ftruncate 'ftruncate(2)' \
    '#define mx_HAVE_FTRUNCATE' << \!
 #include <unistd.h>
 #include <sys/types.h>
+# include <errno.h>
 int main(void){
-   return (ftruncate(0, 0) != 0);
+   if(ftruncate(0, 0) != 0 && errno == ENOSYS)
+      return 1;
+   return 0;
 }
 !
 then
@@ -1932,7 +1936,7 @@ else
    config_exit 1
 fi
 
-if run_check sa_restart 'SA_RESTART (for sigaction(2))' << \!
+if link_check sa_restart 'SA_RESTART (for sigaction(2))' << \!
 #include <signal.h>
 # include <errno.h>
 int main(void){
@@ -2023,6 +2027,29 @@ then
 else
    msg 'ERROR: we require termios.h and the tc[gs]etattr() function family.'
    msg 'That much Unix we indulge ourselves.'
+   config_exit 1
+fi
+
+if link_check fcntl_lock 'fcntl(2) file locking' << \!
+#include <fcntl.h>
+#include <unistd.h>
+int main(void){
+   struct flock flp;
+
+   flp.l_type = F_RDLCK;
+   flp.l_type = F_WRLCK;
+   flp.l_start = 0;
+   flp.l_whence = 0;
+   flp.l_len = 0;
+
+   fcntl(3, F_SETLK, &flp); /* (Really: no unlocking) */
+   return 0;
+}
+!
+then
+   :
+else
+   msg 'ERROR: we require fcntl(2) based file locking.'
    config_exit 1
 fi
 
@@ -2376,6 +2403,37 @@ int main(void){
       de.d_type == DT_DIR || de.d_type == DT_LNK);
 }
 !
+
+OPT_FLOCK=1
+if link_check flock_lock 'flock(2) file locking (via fcntl.h)' \
+      '#define mx_HAVE_FLOCK <fcntl.h>' << \!
+#include <fcntl.h>
+#include <unistd.h>
+int main(void){
+   flock(3, LOCK_SH | LOCK_NB);
+   flock(3, LOCK_EX | LOCK_NB);
+   flock(3, LOCK_UN);
+   return 0;
+}
+!
+then
+   :
+elif link_check flock_lock 'flock(2) file locking (via sys/file.h)' \
+      '#define mx_HAVE_FLOCK <sys/file.h>' << \!
+#include <sys/file.h>
+#include <unistd.h>
+int main(void){
+   flock(3, LOCK_SH | LOCK_NB);
+   flock(3, LOCK_EX | LOCK_NB);
+   flock(3, LOCK_UN);
+   return 0;
+}
+!
+then
+   :
+else
+   OPT_FLOCK=0
+fi
 
 ##
 ## optional and selectable

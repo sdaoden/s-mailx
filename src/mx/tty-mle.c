@@ -752,16 +752,17 @@ a_tty_hist_load(void){
 
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
-   if((fp = fopen(hfname, "r")) == NIL){
+   if((fp = fopen(hfname, "r")) == NIL ||
+         !mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
       s32 eno;
 
       eno = su_err_no();
-      n_err(_("Cannot read *history-file*=%s: %s\n"),
+      n_err(_("Cannot read/lock *history-file*=%s: %s\n"),
          n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
       rv = FAL0;
       goto jrele;
    }
-   (void)mx_file_lock(fileno(fp), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
 
    /* Clear old history */
    /* C99 */{
@@ -840,9 +841,11 @@ a_tty_hist_load(void){
    if(ferror(fp))
       n_err(_("I/O error while reading *history-file*=%s\n"),
          n_shexp_quote_cp(hfname, FAL0));
-   fclose(fp);
 
 jrele:
+   if(fp != NIL)
+      fclose(fp);
+
    mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;
@@ -853,7 +856,7 @@ static boole
 a_tty_hist_save(void){
    uz i;
    struct a_tty_hist *thp;
-   FILE *f;
+   FILE *fp;
    char const *v;
    boole rv, dogabby;
    NYD_IN;
@@ -872,19 +875,22 @@ a_tty_hist_save(void){
             break;
 
    mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
-   if((f = fopen(v, "w")) == NIL){ /* TODO temporary + rename?! */
+
+   /* TODO temporary histfile + rename?! */
+   if((fp = fopen(v, "w")) == NIL ||
+         !mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
       int e;
 
       e = su_err_no();
-      n_err(_("Cannot write *history-file*=%s: %s\n"),
+      n_err(_("Cannot write/lock *history-file*=%s: %s\n"),
          n_shexp_quote_cp(v, FAL0), su_err_doc(e));
       rv = FAL0;
       goto jrele;
    }
-   (void)mx_file_lock(fileno(f), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
    if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER,
-            sizeof(a_TTY_HIST_MARKER "\n") -1, f) !=
+            sizeof(a_TTY_HIST_MARKER "\n") -1, fp) !=
          sizeof(a_TTY_HIST_MARKER "\n") -1)
       goto jioerr;
    else for(; thp != NIL; thp = thp->th_younger){
@@ -900,16 +906,16 @@ a_tty_hist_save(void){
             c = 'c';
             break;
          }
-         if(putc(c, f) == EOF)
+         if(putc(c, fp) == EOF)
             goto jioerr;
 
-         if((thp->th_flags & a_TTY_HIST_GABBY) && putc('*', f) == EOF)
+         if((thp->th_flags & a_TTY_HIST_GABBY) && putc('*', fp) == EOF)
             goto jioerr;
 
-         if(putc(' ', f) == EOF ||
-               fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, f) !=
+         if(putc(' ', fp) == EOF ||
+               fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, fp) !=
                   sizeof(*thp->th_dat) * thp->th_len ||
-               putc('\n', f) == EOF){
+               putc('\n', fp) == EOF){
 jioerr:
             n_err(_("I/O error while writing *history-file* %s\n"),
                n_shexp_quote_cp(v, FAL0));
@@ -919,8 +925,10 @@ jioerr:
       }
    }
 
-   fclose(f);
 jrele:
+   if(fp != NIL)
+      fclose(fp);
+
    mx_sigs_all_rele(); /* XXX remove jumps */
 jleave:
    NYD_OU;

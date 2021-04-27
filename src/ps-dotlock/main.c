@@ -126,7 +126,7 @@ main(int argc, char **argv){
          strcmp(argv[ 6], "hostname") ||
          strcmp(argv[ 8], "randstr") ||
          strchr(argv[ 9], '/') != NULL /* ..attack vector */ ||
-         strcmp(argv[10], "pollmsecs") ||
+         strcmp(argv[10], "retry") ||
          fstat(STDIN_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode) ||
          fstat(STDOUT_FILENO, &stb) == -1 || !S_ISFIFO(stb.st_mode)){
 jeuse:
@@ -159,7 +159,7 @@ jeuse:
    fdi.fdi_lock_name = argv[5];
    fdi.fdi_hostname = argv[7];
    fdi.fdi_randstr = argv[9];
-   fdi.fdi_pollmsecs = S(uz,strtoul(argv[11], NULL, 10)); /* XXX SU */
+   fdi.fdi_retry = argv[11];
 
    /* Ensure the lock name and the file name are identical */
    /* C99 */{
