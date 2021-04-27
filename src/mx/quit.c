@@ -221,7 +221,9 @@ jemailname:
          goto jleave;
       }
 
-      mx_file_lock(fileno(ibuf), mx_FILE_LOCK_TYPE_READ, 0,0, UZ_MAX);
+      if(!mx_file_lock(fileno(ibuf), (mx_FILE_LOCK_MODE_TSHARE |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG)))
+         goto jemailname;
       if(fseek(ibuf, (long)mailsize, SEEK_SET) == -1)
          goto jemailname;
       while((c = getc(ibuf)) != EOF){ /* xxx bytewise??? */
@@ -239,12 +241,15 @@ jemailname:
    fprintf(n_stdout, _("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(n_stdout);
 
-   if((obuf = mx_fs_open_any(mailname, "r+", &fs)) == NIL){
-      int e = su_err_no();
+   if((obuf = mx_fs_open_any(mailname, "r+", &fs)) == NIL ||
+         !mx_file_lock(fileno(obuf), (mx_FILE_LOCK_MODE_TSHARE |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
+      int e;
+
+      e = su_err_no();
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
-   mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
    ftrunc(obuf);
 
    srelax_hold();
@@ -397,8 +402,8 @@ quit(boole hold_sigs_on)
       goto jleave;
    }
 
-   if((lckfp = mx_file_dotlock(mailname, fileno(fbuf), mx_FILE_LOCK_TYPE_WRITE,
-         0,0, UZ_MAX)) == NIL){
+   if((lckfp = mx_file_dotlock(mailname, fileno(fbuf),
+         (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY))) == NIL){
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       mx_fs_close(fbuf);
       fbuf = NIL;

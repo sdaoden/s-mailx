@@ -160,17 +160,21 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    disp = (fs & mx_FS_OPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
 
    if((fs & n_PROTO_MASK) != n_PROTO_IMAP){
-      /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
+      int xerr;
+
+      /* v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      mx_file_lock(fileno(obuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
+      if(!mx_file_lock(fileno(obuf), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
+         xerr = su_err_no();
+         goto jeappend;
+      }
 
-      if(fs & mx_FS_OPEN_STATE_EXISTS){
-         int xerr;
-
-         if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
-            n_perr(file, n_pstate_err_no = xerr);
-            goto jleave;
-         }
+      if((fs & mx_FS_OPEN_STATE_EXISTS) &&
+            (xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
+jeappend:
+         n_perr(file, n_pstate_err_no = xerr);
+         goto jleave;
       }
    }
 

@@ -1114,6 +1114,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
 
             if((fout = mx_fs_open_any(fname, (mfap ? "a+" : "w"), &fs)
                   ) == NIL){
+jefileeno:
                xerr = su_err_no();
 jefile:
                n_err(_("Writing message to %s failed: %s\n"),
@@ -1123,9 +1124,9 @@ jefile:
 
             if((fs & (n_PROTO_MASK | mx_FS_OPEN_STATE_EXISTS)) ==
                   (n_PROTO_FILE | mx_FS_OPEN_STATE_EXISTS)){
-               mx_file_lock(fileno(fout), mx_FILE_LOCK_TYPE_WRITE, 0,0,
-                     UZ_MAX);
-
+               if(!mx_file_lock(fileno(fout), (mx_FILE_LOCK_MODE_TEXCL |
+                     mx_FILE_LOCK_MODE_RETRY)))
+                  goto jefileeno;
                if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NIL)
                      ) != su_ERR_NONE)
                   goto jefile;
@@ -1289,9 +1290,14 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      mx_file_lock(fileno(fo), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
+      if(!mx_file_lock(fileno(fo), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
+         xerr = su_err_no();
+         goto jeappend;
+      }
 
       if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != su_ERR_NONE){
+jeappend:
          n_perr(name, xerr);
          goto jleave;
       }
@@ -1747,15 +1753,15 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta)
    if(*mta == '\0')
       fp = n_stdout;
    else{
-      if((fp = mx_fs_open(mta, "W+")) != NIL)
-         ;
-      else if((fp = mx_fs_open(mta, "r+")) == NIL)
+      if((fp = mx_fs_open(mta, "W+")) == NIL &&
+            (fp = mx_fs_open(mta, "r+")) == NIL)
          goto jeno;
-      else if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_TYPE_READ |
-            mx_FILE_LOCK_TYPE_WRITE), 0,0, UZ_MAX)){
+      if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
          f = su_ERR_NOLCK;
          goto jefo;
-      }else if((f = n_folder_mbox_prepare_append(fp, NIL)) != su_ERR_NONE)
+      }
+      if((f = n_folder_mbox_prepare_append(fp, NIL)) != su_ERR_NONE)
          goto jefo;
    }
 
@@ -3033,12 +3039,15 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
       goto jleave;
    }
 
-   if((dbuf = mx_fs_open(cp, "w")) == NIL){
+   if((dbuf = mx_fs_open(cp, "w")) == NIL ||
+         !mx_file_lock(fileno(dbuf), (mx_FILE_LOCK_MODE_TEXCL |
+            mx_FILE_LOCK_MODE_RETRY))){
       n_perr(_("Cannot save to $DEAD"), 0);
+
+      if(dbuf != NIL)
+         mx_fs_close(dbuf);
       goto jleave;
    }
-   /* XXX Natomic */
-   mx_file_lock(fileno(dbuf), mx_FILE_LOCK_TYPE_WRITE, 0,0, UZ_MAX);
 
    fprintf(n_stdout, "%s ", cpq);
    fflush(n_stdout);

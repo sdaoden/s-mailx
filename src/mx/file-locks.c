@@ -24,6 +24,13 @@
 # include "mx/nail.h"
 #endif
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#ifdef mx_HAVE_FLOCK
+# include mx_HAVE_FLOCK
+#endif
+
 #include <su/mem.h>
 #include <su/mem-bag.h>
 
@@ -36,7 +43,6 @@
 #include "mx/sigs.h"
 
 #include "mx/file-locks.h"
-/* TODO fake */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -44,14 +50,13 @@
 
 /* XXX Our pipe_open() main() takes void, temporary global data store */
 #ifdef mx_HAVE_DOTLOCK
-static enum mx_file_lock_type a_filo_flt;
+static enum mx_file_lock_mode a_filo_flm;
 static int a_filo_fd;
 struct mx_file_dotlock_info *a_filo_fdip;
 #endif
 
 /* Workhorse */
-static boole a_filo_lock(int fd, enum mx_file_lock_type flt, off_t off,
-      off_t len);
+static boole a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm);
 
 /* main() of fork(2)ed dot file locker */
 #ifdef mx_HAVE_DOTLOCK
@@ -63,30 +68,55 @@ static int a_filo_main(void);
 #endif
 
 static boole
-a_filo_lock(int fd, enum mx_file_lock_type flt, off_t off, off_t len){
-   struct flock flp;
+a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
    boole rv;
    NYD2_IN;
 
-   su_mem_set(&flp, 0, sizeof flp);
+#ifdef mx_HAVE_FLOCK
+   if((flm & mx_FILE_LOCK_MODE_IMASK) == mx_FILE_LOCK_MODE_IFLOCK){
+      int op;
 
-   switch(flt){
-   default:
-   case mx_FILE_LOCK_TYPE_READ: rv = F_RDLCK; break;
-   case mx_FILE_LOCK_TYPE_WRITE: rv = F_WRLCK; break;
+      switch(flm & mx_FILE_LOCK_MODE_TMASK){
+      default:
+      case mx_FILE_LOCK_MODE_TSHARE: op = LOCK_SH; break;
+      case mx_FILE_LOCK_MODE_TEXCL: op = LOCK_EX; break;
+      }
+      op |= LOCK_NB;
+
+      rv = (flock(fd, op) != -1);
+   }else
+#endif
+       {
+      struct flock flp;
+
+      su_mem_set(&flp, 0, sizeof flp);
+
+      switch(flm & mx_FILE_LOCK_MODE_TMASK){
+      default:
+      case mx_FILE_LOCK_MODE_TSHARE: flp.l_type = F_RDLCK; break;
+      case mx_FILE_LOCK_MODE_TEXCL: flp.l_type = F_WRLCK; break;
+      }
+      flp.l_start = 0;
+      flp.l_whence = SEEK_SET;
+      flp.l_len = 0;
+
+      rv = (fcntl(fd,
+#ifdef F_OFD_SETLK
+            F_OFD_SETLK,
+#else
+            F_SETLK,
+#endif
+            &flp) != -1);
    }
-   flp.l_type = rv;
-   flp.l_start = off;
-   flp.l_whence = SEEK_SET;
-   flp.l_len = len;
 
-   if(!(rv = (fcntl(fd, F_SETLK, &flp) != -1)))
+   if(!rv)
       switch(su_err_no()){
       case su_ERR_BADF:
       case su_ERR_INVAL:
          rv = TRUM1;
          break;
       }
+
    NYD2_OU;
    return rv;
 }
@@ -102,14 +132,14 @@ a_filo_main(void){
    enum mx_file_dotlock_state fdls;
    char const *cp;
    int fd;
-   enum mx_file_lock_type flt;
+   BITENUM_IS(u32,mx_file_lock_mode) flm;
    NYD_IN;
 
    /* Ignore SIGPIPE, we will see ERR_PIPE and "fall through" */
    safe_signal(SIGPIPE, SIG_IGN);
 
    /* Get the arguments "passed to us" */
-   flt = a_filo_flt;
+   flm = a_filo_flm;
    fd = a_filo_fd;
    UNUSED(fd);
    fdi = *a_filo_fdip;
@@ -195,7 +225,7 @@ jenametool:
          if(UCMP(z, NAME_MAX - 1, <, i))
             goto jenametool;
 # ifdef mx_HAVE_PATHCONF
-      }else if(pc - 1 >= S(long,i))
+      }else if(S(ul,pc) - 1 >= S(ul,i))
          break;
       else
          goto jenametool;
@@ -229,17 +259,15 @@ jenametool:
    }
 
    if(cp == NIL || stb.st_uid != n_user_id || stb.st_gid != n_group_id){
-      char itoabuf[64];
       char const *args[13];
 
-      snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, fdi.fdi_pollmsecs);
       args[ 0] = VAL_PS_DOTLOCK;
-      args[ 1] = (flt == mx_FILE_LOCK_TYPE_READ) ? "rdotlock" : "wdotlock";
-      args[ 2] = "mailbox";   args[ 3] = fdi.fdi_file_name;
-      args[ 4] = "name";      args[ 5] = fdi.fdi_lock_name;
-      args[ 6] = "hostname";  args[ 7] = fdi.fdi_hostname;
-      args[ 8] = "randstr";   args[ 9] = fdi.fdi_randstr;
-      args[10] = "pollmsecs"; args[11] = itoabuf;
+      args[ 1] = mx_FILE_LOCK_MODE_IS_TSHARE(flm) ? "rdotlock" : "wdotlock";
+      args[ 2] = "mailbox"; args[ 3] = fdi.fdi_file_name;
+      args[ 4] = "name"; args[ 5] = fdi.fdi_lock_name;
+      args[ 6] = "hostname"; args[ 7] = fdi.fdi_hostname;
+      args[ 8] = "randstr"; args[ 9] = fdi.fdi_randstr;
+      args[10] = "retry"; args[11] = fdi.fdi_retry;
       args[12] = NIL;
       execv(VAL_LIBEXECDIR "/" VAL_UAGENT "-dotlock", n_UNCONST(args));
 
@@ -281,44 +309,44 @@ jmsg:
 #endif /* mx_HAVE_DOTLOCK */
 
 boole
-mx_file_lock(int fd, enum mx_file_lock_type flt, off_t off, off_t len,
-      uz pollmsecs){
+mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
    uz tries;
    boole didmsg, rv;
-   NYD_IN;
-
-   if(pollmsecs == UZ_MAX)
-      pollmsecs = mx_FILE_LOCK_MILLIS;
+   NYD2_IN;
 
    UNINIT(rv, 0);
    for(didmsg = FAL0, tries = 0; tries <= mx_FILE_LOCK_TRIES; ++tries){
-      rv = a_filo_lock(fd, flt, off, len);
+      rv = a_filo_lock(fd, flm);
 
       if(rv == TRUM1){
          rv = FAL0;
          break;
       }
-      if(rv || pollmsecs == 0)
+      if(rv || !(flm & mx_FILE_LOCK_MODE_RETRY))
          break;
       else{
-         if(!didmsg){
-            n_err(_("Failed to create a file lock, waiting %lu milliseconds "),
-               pollmsecs);
-            didmsg = TRU1;
-         }else
-            n_err(".");
-         n_msleep(pollmsecs, FAL0);
+         if(flm & mx_FILE_LOCK_MODE_LOG){
+            if(!didmsg){
+               n_err(_("Failed to lock file, waiting %lu milliseconds "),
+                  S(ul,mx_FILE_LOCK_MILLIS));
+               didmsg = TRU1;
+            }else
+               n_err(".");
+         }
+         n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
       }
    }
+
    if(didmsg)
       n_err(" %s\n", (rv ? _("ok") : _("failure")));
-   NYD_OU;
+
+   NYD2_OU;
    return rv;
 }
 
 FILE *
-mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
-      off_t off, off_t len, uz pollmsecs){
+mx_file_dotlock(char const *fname, int fd,
+      BITENUM_IS(u32,mx_file_lock_mode) flm){
 #undef a_DOMSG
 #define a_DOMSG() \
    do if(!didmsg){\
@@ -339,8 +367,7 @@ mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
    FILE *rv;
    NYD_IN;
 
-   if(pollmsecs == UZ_MAX)
-      pollmsecs = mx_FILE_LOCK_MILLIS;
+   flm |= mx_FILE_LOCK_MODE_LOG;
 
    rv = NIL;
    didmsg = FAL0;
@@ -355,15 +382,15 @@ mx_file_dotlock(char const *fname, int fd, enum mx_file_lock_type flt,
       a_DOMSG();
 
    flocked = FAL0;
-   for(u.tries = 0; !mx_file_lock(fd, flt, off, len, 0);)
+   for(u.tries = 0; !mx_file_lock(fd, flm);)
       switch((serr = su_err_no())){
       case su_ERR_ACCES:
       case su_ERR_AGAIN:
       case su_ERR_NOLCK:
-         if(pollmsecs > 0 && ++u.tries < mx_FILE_LOCK_TRIES){
+         if((flm & mx_FILE_LOCK_MODE_RETRY) && ++u.tries < mx_FILE_LOCK_TRIES){
             a_DOMSG();
             n_err(".");
-            n_msleep(pollmsecs, FAL0);
+            n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
             continue;
          }
          /* FALLTHRU */
@@ -402,14 +429,14 @@ jleave:
     * privilege-separated dotlock program available, in which case that will be
     * executed and do "it" */
    fdi.fdi_file_name = fname;
-   fdi.fdi_pollmsecs = pollmsecs;
+   fdi.fdi_retry = (flm & mx_FILE_LOCK_MODE_RETRY) ? n_1 : su_empty;
    /* Initialize some more stuff; query the two strings in the parent in order
     * to cache the result of the former and anyway minimalize child page-ins.
     * Especially uname(3) may hang for multiple seconds when it is called the
     * first time! */
    fdi.fdi_hostname = n_nodename(FAL0);
    fdi.fdi_randstr = mx_random_create_cp(16, NIL);
-   a_filo_flt = flt;
+   a_filo_flm = flm;
    a_filo_fd = fd;
    a_filo_fdip = &fdi;
 

@@ -26,9 +26,18 @@
 
 struct mx_file_dotlock_info;
 
-enum mx_file_lock_type{
-   mx_FILE_LOCK_TYPE_READ,
-   mx_FILE_LOCK_TYPE_WRITE
+enum mx_file_lock_mode{
+   mx_FILE_LOCK_MODE_IDEFAULT, /* This is 0 */
+   mx_FILE_LOCK_MODE_IFCNTL = 1u<<0, /* fcntl(2) interface */
+#ifdef mx_HAVE_FLOCK
+   mx_FILE_LOCK_MODE_IFLOCK = 2u<<0, /* flock(2) interface (optional) */
+#endif
+   mx_FILE_LOCK_MODE_IMASK = 7u<<0,
+   mx_FILE_LOCK_MODE_TSHARE = 1u<<3, /* Shared (read) lock */
+   mx_FILE_LOCK_MODE_TEXCL = 2u<<3, /* Exclusive (write) lock */
+   mx_FILE_LOCK_MODE_TMASK = 7u<<3,
+   mx_FILE_LOCK_MODE_RETRY = 1u<<6, /* Retry FILE_LOCK_TRIES times */
+   mx_FILE_LOCK_MODE_LOG = 1u<<7 /* Log shall we try several times */
 };
 
 #ifdef mx_HAVE_DOTLOCK
@@ -49,25 +58,25 @@ enum mx_file_dotlock_state{
 };
 #endif
 
+/**/
+#define mx_FILE_LOCK_MODE_IS_TSHARE(FLM) \
+   (((FLM) & mx_FILE_LOCK_MODE_TMASK) == mx_FILE_LOCK_MODE_TSHARE)
+
 #ifdef mx_HAVE_DOTLOCK
 struct mx_file_dotlock_info{
    char const *fdi_file_name; /* Mailbox to lock */
    char const *fdi_lock_name; /* .fdi_file_name + .lock */
    char const *fdi_hostname; /* ..filled in parent (due resolver delays) */
    char const *fdi_randstr; /* ..ditto, random string */
-   uz fdi_pollmsecs;  /* Delay in between locking attempts */
+   char const *fdi_retry;  /* Empty if not wanted */
    struct stat *fdi_stb;
 };
 #endif
 
-/* Will retry FILE_LOCK_TRIES times if pollmsecs > 0.
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used */
-EXPORT boole mx_file_lock(int fd, enum mx_file_lock_type flt,
-      off_t off, off_t len, uz pollmsecs); /* XXX off_t -> s64 */
+/* */
+EXPORT boole mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm);
 
 /* Acquire a flt mx_file_lock().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used.
  * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be acquired,
  * NIL if not, with err_no being usable.
  * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
@@ -78,7 +87,7 @@ EXPORT boole mx_file_lock(int fd, enum mx_file_lock_type flt,
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
  * normal file lock could be established, otherwise err_no() is usable */
 EXPORT FILE *mx_file_dotlock(char const *fname, int fd,
-      enum mx_file_lock_type flt, off_t off, off_t len, uz pollmsecs);
+      BITENUM_IS(u32,mx_file_lock_mode) flm);
 
 #include <su/code-ou.h>
 #endif /* mx_FILE_LOCKS_H */

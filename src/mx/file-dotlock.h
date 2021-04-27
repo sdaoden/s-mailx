@@ -80,7 +80,7 @@ a_file_lock_dotlock_create(struct mx_file_dotlock_info *fdip){
       if(rv == mx_FILE_DOTLOCK_STATE_NONE ||
             (rv & mx_FILE_DOTLOCK_STATE_ABANDON))
          break;
-      if(fdip->fdi_pollmsecs == 0 || tries >= mx_DOTLOCK_TRIES){
+      if(fdip->fdi_retry[0] == '\0' || tries >= mx_DOTLOCK_TRIES){
          rv |= mx_FILE_DOTLOCK_STATE_ABANDON;
          break;
       }
@@ -91,7 +91,7 @@ a_file_lock_dotlock_create(struct mx_file_dotlock_info *fdip){
          rv = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
          break;
       }
-      n_msleep(fdip->fdi_pollmsecs, FAL0);
+      n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
    }
 
 #ifdef mx_SOURCE_PS_DOTLOCK_MAIN
