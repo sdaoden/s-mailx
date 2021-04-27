@@ -43,6 +43,7 @@
 #include "mx/cmd-commandalias.h"
 #include "mx/colour.h"
 #include "mx/dig-msg.h"
+#include "mx/file-locks.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 #include "mx/termios.h"
@@ -206,7 +207,7 @@ struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    struct a_go_readctl_ctx *grc_next;
    char const *grc_expand; /* If filename based, expanded string */
    FILE *grc_fp;
-   s32 grc_fd; /* Based upon file-descriptor */
+   s32 grc_fd; /* Based upon file-descriptor, -1 otherwise */
    char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
 };
 
@@ -2589,7 +2590,8 @@ c_readctl(void *vp){
       a_ERR = 1u<<0,
       a_SET = 1u<<1,
       a_CREATE = 1u<<2,
-      a_REMOVE = 1u<<3
+      a_LOCK = 1u<<3,
+      a_REMOVE = 1u<<4
    } f;
    struct mx_cmd_arg *cap;
    struct mx_cmd_arg_ctx *cacp;
@@ -2612,6 +2614,12 @@ c_readctl(void *vp){
       f = a_SET;
    else if(su_cs_starts_with_case("create", cap->ca_arg.ca_str.s))
       f = a_CREATE;
+#ifdef mx_HAVE_FLOCK
+   else if(su_cs_starts_with_case("flock", cap->ca_arg.ca_str.s))
+      f = a_LOCK;
+#endif
+   else if(su_cs_starts_with_case("lock", cap->ca_arg.ca_str.s))
+      f = a_LOCK;
    else if(su_cs_starts_with_case("remove", cap->ca_arg.ca_str.s))
       f = a_REMOVE;
    else{
@@ -2627,8 +2635,8 @@ c_readctl(void *vp){
 
    /* - is special TODO unfortunately also regarding storage */
    if(cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '-'){
-      if(f & (a_CREATE | a_REMOVE)){
-         n_err(_("readctl: cannot create nor remove -\n"));
+      if(f & (a_CREATE | a_LOCK | a_REMOVE)){
+         n_err(_("readctl: cannot create, lock nor remove -\n"));
          goto jeinval;
       }
       n_readctl_read_overlay = a_stdin;
@@ -2645,7 +2653,7 @@ c_readctl(void *vp){
             goto jfound;
    }
 
-   if(f & (a_SET | a_REMOVE)){
+   if(f & (a_SET | a_LOCK | a_REMOVE)){
       emsg = N_("readctl: no such channel: %s\n");
       goto jeinval_quote;
    }
@@ -2653,7 +2661,27 @@ c_readctl(void *vp){
 jfound:
    if(f & a_SET)
       n_readctl_read_overlay = grcp;
-   else if(f & a_REMOVE){
+   else if(f & a_LOCK){
+      char c;
+
+      if(grcp->grc_fd == STDIN_FILENO || grcp->grc_fd == STDOUT_FILENO ||
+            grcp->grc_fd == STDERR_FILENO){
+         emsg = N_("readctl: *lock: standard descriptors not allowed: %s\n");
+         goto jeinval_quote;
+      }
+
+      c = *cacp->cac_arg->ca_arg.ca_str.s;
+
+      if(!mx_file_lock(fileno(grcp->grc_fp), (
+#ifdef mx_HAVE_FLOCK
+            ((su_cs_to_upper(c) == 'F') ? mx_FILE_LOCK_MODE_IFLOCK : 0) |
+#endif
+            mx_FILE_LOCK_MODE_TSHARE | mx_FILE_LOCK_MODE_RETRY |
+            (su_cs_is_upper(c) ? mx_FILE_LOCK_MODE_LOG : 0)))){
+         emsg = N_("readctl: *lock: failed: %s\n");
+         goto jerrno_quote;
+      }
+   }else if(f & a_REMOVE){
       if(n_readctl_read_overlay == grcp)
          n_readctl_read_overlay = a_stdin;
 
@@ -2748,7 +2776,7 @@ jleave:
 
 jecreate:
    emsg = N_("readctl: failed to open file: %s: %s\n");
-/*jerrno_quote:*/
+jerrno_quote:
    n_pstate_err_no = su_err_no();
    n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0),
       su_err_doc(n_pstate_err_no));
@@ -2763,6 +2791,8 @@ jeinval:
    goto jleave;
 
 jshow:
+   if(cacp->cac_no > 1)
+      n_err(_("readctl: show: ignoring argument\n"));
    if((grcp = n_readctl_read_overlay) == NIL)
       fprintf(n_stdout, _("readctl: no channels registered\n"));
    else{
