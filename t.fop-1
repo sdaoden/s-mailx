@@ -1,0 +1,32 @@
+===T1
+0/NONE :./t1.1:
+0/NONE ::
+===T2
+0/NONE :3:
+===readctl create 2.1
+0/NONE :3:
+2/NONE :l1:
+2/NONE :l2:
+2/NONE :l3:
+-1/NONE :l3:
+===rewind 2.1.1
+0/NONE :3:
+2/NONE :l1:
+2/NONE :l2:
+2/NONE :l3:
+-1/NONE :l3:
+===rewind 2.1.2
+0/NONE :3:
+11/NONE :11:
+12/NONE :12:
+===rewind 2.1.3
+0/NONE :3:
+l1
+l2
+l3
+13/NONE :13:
+14/NONE :14:
+===dtors 2.1
+0/NONE :3:
+1/INVAL ::
+0/NONE ::
