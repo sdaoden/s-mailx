@@ -198,9 +198,9 @@ OPT_AMALGAMATION=no
 OPT_AUTOCC=yes
    VAL_AUTOCC=keep_options,bind_now,pie,stackprot,fortify
 
-# Whether the commands `csop', `vexpr' .. shall be included.
-# v15compat: until v15 VEXPR needs CSOP.
+# Whether commands `csop', `vexpr' .. shall be included (requireable).
 OPT_CMD_CSOP=yes
+OPT_CMD_FOP=yes
 OPT_CMD_VEXPR=yes
 
 # A simple form of coloured output can optionally be produced.
