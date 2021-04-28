@@ -29,6 +29,7 @@ fi
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
    CMD_CSOP='csop command: C-style string operations' \
+   CMD_FOP='fop command: file and path operations' \
    CMD_VEXPR='vexpr command: evaluate arguments as expressions' \
    COLOUR='Coloured message display' \
    DOCSTRINGS='Command documentation help strings' \
@@ -148,6 +149,7 @@ option_setup() {
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
          OPT_CMD_CSOP=1
+            OPT_CMD_FOP=1
             OPT_CMD_VEXPR=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
@@ -162,6 +164,7 @@ option_setup() {
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
          OPT_CMD_CSOP=1
+            OPT_CMD_FOP=1
             OPT_CMD_VEXPR=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
@@ -3664,11 +3667,9 @@ fi
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
-if feat_def CMD_CSOP; then
-   feat_def CMD_VEXPR # v15compat: VEXPR needs CSOP for byte string ops YET
-else
-   feat_bail_required CMD_VEXPR
-fi
+feat_def CMD_CSOP
+feat_def CMD_FOP
+feat_def CMD_VEXPR
 feat_def COLOUR
 feat_def CROSS_BUILD
 feat_def DOTLOCK

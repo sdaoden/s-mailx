@@ -3592,6 +3592,135 @@ t_readsh() { # {{{ TODO not enough
 
    t_epilog "${@}"
 } # }}}
+
+t_fop() { # XXX improve writes when we have redirection {{{
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>&1
+commandalias x echo '$?/$^ERRNAME :$res:'
+echo ===T1
+vput fop res touch ./t1.1;x
+unset res;vput fop res_noecho stat ./t1.1;x
+echo ===T2
+vput fop res lock ./t1.2 w;x
+set fd=$res
+#xxx write on our own
+! (echo l1;echo l2;echo l3;) > ./t1.2
+echo ===readctl create 2.1
+readctl create $fd;x
+read res;x
+read res;x
+read res;x
+read res;x
+echo ===rewind 2.1.1
+vput fop res rewind $fd;x
+read res;x
+read res;x
+read res;x
+read res;x
+echo ===rewind 2.1.2
+vput fop res rewind $fd;x
+vput fop res pass $fd @ "${CAT} && exit 11";x
+vput fop res pass $fd - "${CAT} && exit 12";x
+echo ===rewind 2.1.3
+vput fop res rewind $fd;x
+vput fop res pass $fd - "${CAT} && exit 13";x
+vput fop res pass $fd - "${CAT} && exit 14";x
+echo ===dtors 2.1
+vput fop res close $fd;x
+vput fop res close $fd;x
+readctl remove $fd;x
+	__EOT
+
+   check 1 0 ./t1 '2608383886 367'
+
+   if have_feat flock; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>&1
+commandalias x echo '$?/$^ERRNAME :$res:'
+echo ===T1
+vput fop res flock ./t2.1 a 'echo x1;echo x2;echo x3';x
+vput fop res flock ./t2.1 r;x
+set fd=$res
+echo ===readctl create 1.1
+readctl create $fd;x
+echo ===rewind 1.1.1
+vput fop res rewind $fd;x
+read res;x
+read res;x
+read res;x
+read res;x
+echo ===rewind 1.1.2
+vput fop res rewind $fd;x
+vput fop res pass $fd @ "${CAT} && exit 21";x
+vput fop res pass $fd - "${CAT} && exit 22";x
+echo ===rewind 1.1.3
+vput fop res rewind $fd;x
+vput fop res pass $fd - "${CAT} && exit 23";x
+vput fop res pass $fd - "${CAT} && exit 24";x
+echo ===dtors 1.1
+vput fop res close $fd;x
+vput fop res close $fd;x
+readctl remove $fd;x
+		__EOT
+
+      check 2 0 ./t2 '1544976144 297'
+   else
+      t_echoskip '2:[!FLOCK]'
+   fi
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>&1
+commandalias x echo '$?/$^ERRNAME :$res:'
+echo ===T1
+vput fop fd open ./t3.x w;x 1
+vput fop res open ./t3.x W;x 2
+fop pass - $fd "echo 1;echo .2;echo ._3";x 3 #xxx write on our own
+vput fop nil rewind $fd;x 4
+readctl create $fd;x 5
+read res;x 6
+read res;x 7
+read res;x 8
+read res;x 9
+vput fop nil close $fd;x 10
+readctl remove $fd;x 11
+echo ===T2
+vput fop fd open ./t3.x w;x 20
+fop pass - $fd "echo X";x 21 #xxx write on our own
+vput fop nil rewind $fd;x 22
+readctl create $fd;x 23
+read res;x 24
+read res;x 25
+read res;x 26
+read res;x 27
+readctl remove $fd;x 28
+vput fop nil close $fd;x 29
+echo ===T3
+vput fop fd open ./t3.x a^;x 30
+vput fop res open ./t3.x A;x 31
+fop pass - $fd "echo ._,4";x 32 #xxx write on our own
+fop rewind $fd;x 23
+readctl create $fd;x 34
+read res;x 35
+read res;x 36
+read res;x 37
+read res;x 38
+read res;x 39
+readctl remove $fd;x 40
+fop close $fd;x 41
+echo ===T4
+vput fop fd open ./t3.x a0^;x 50
+fop pass - $fd "echo 123";x 51 #xxx write on our own
+fop rewind $fd;x 52
+readctl create $fd;x 53
+read res;x 54
+read res;x 55
+readctl remove $fd;x 56
+fop close $fd;x 57
+	__EOT
+
+   check 3 0 ./t3 '3318177702 649'
+
+   t_epilog "${@}"
+} # }}}
 # }}}
 
 # Send/RFC absolute basics {{{
@@ -9184,8 +9313,8 @@ t_lreply_futh_rth_etc() { # {{{
 t_pipe_handlers() { # {{{
    t_prolog "${@}"
 
-   if have_feat cmd-vexpr; then :; else
-      t_echoskip '[!CMD_VEXPR]'
+   if have_feat cmd-fop; then :; else
+      t_echoskip '[!CMD_FOP]'
       t_epilog "${@}"
       return
    fi
@@ -9221,7 +9350,7 @@ t_pipe_handlers() { # {{{
       t_echoskip '5:[ln(1) not found]'
    else
       # Let us fill in tmpfile, test auto-deletion
-      printf 'Fi ./t3_7\nmimeview\nvput vexpr v file-stat .t5.one-link\n'\
+      printf 'Fi ./t3_7\nmimeview\nvput fop v stat .t5.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
@@ -9239,7 +9368,7 @@ t_pipe_handlers() { # {{{
       check 5 0 ./t5 '4260004050 661'
 
       # Fill in ourselfs, test auto-deletion
-      printf 'Fi ./t3_7\nmimeview\nvput vexpr v file-stat .t6.one-link\n'\
+      printf 'Fi ./t3_7\nmimeview\nvput fop v stat .t6.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
@@ -9258,7 +9387,7 @@ t_pipe_handlers() { # {{{
       check 6 0 ./t6 '4260004050 661'
 
       # And the same, via copiousoutput (fake)
-      printf 'Fi ./t3_7\np\nvput vexpr v file-stat .t7.one-link\n'\
+      printf 'Fi ./t3_7\np\nvput fop v stat .t7.one-link\n'\
 'eval set $v;echo should be $st_nlink link\nx\n' |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
             -S 'pipe-text/plain=?' \
@@ -11189,7 +11318,7 @@ t_all() { # {{{
    jspawn posix_abbrev
    jsync
 
-   # Basics
+   # Basics (variables, program logic, arg stuff etc.: all here)
    jspawn shcodec
    jspawn ifelse
    jspawn localopts
@@ -11197,14 +11326,15 @@ t_all() { # {{{
    jspawn environ
    jspawn loptlocenv
    jspawn macro_param_shift
-   jspawn csop
-   jspawn vexpr
+   jspawn csop # often used
+   jspawn vexpr # often used
    jspawn call_ret
    jspawn xcall
    jspawn vpospar
    jspawn atxplode
    jspawn read
    jspawn readsh
+   jspawn fop
    jsync
 
    # Send/RFC absolute basics
