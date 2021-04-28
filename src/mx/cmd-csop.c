@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of cmd-csop.h.
+ *@ TODO - re-implement via PTF as done for cmd-fop.c.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
  *@ TODO - _CSOP -> _CCSOP
@@ -89,7 +90,7 @@ CTA(((S(u32,a_CSOP_CMD__MAX | a_CSOP_ERR__MAX) << a_CSOP__FSHIFT) &
 
 struct a_csop_ctx{
    u32 csc_flags;
-   u8 csc_cmderr; /* On input, a_vexpr_cmd, on output (maybe) a_vexpr_err */
+   u8 csc_cmderr; /* On input, a_csop_cmd, on output (maybe) a_csop_err */
    boole csc_cm_local; /* `local' command modifier */
    u8 csc__pad[2];
    char const **csc_argv;

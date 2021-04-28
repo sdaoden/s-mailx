@@ -4978,10 +4978,12 @@ otherwise identical to
 .
 .Mx
 .It Ic csop
-\*(NQ A multiplexer command which provides C-style string operations on
-8-bit bytes without a notion of locale settings and character sets,
+\*(OP \*(NQ Multiplexer command which provides C-style string operations
+on 8-bit bytes without a notion of locale settings and character sets,
 effectively assuming ASCII data.
-For numeric and other operations refer to
+For file operations refer to
+.Ic fop ,
+for numeric and other operations to
 .Ic vexpr .
 .Cm vput ,
 one of the
@@ -5674,6 +5676,170 @@ Also see
 .Ic Copy
 and
 .Ic Save .
+.
+.
+.Mx
+.It Ic fop
+\*(OP\*(NQ A multiplexer command for file operations.
+For C-style byte string operations refer to
+.Ic csop ,
+for numeric and other operations to
+.Ic vexpr .
+The first argument defines the number, type, and meaning of the
+remaining ones.
+Unless otherwise noted subcommands that expect a file descriptor work
+only with descriptors which were opened via
+.Cm flock , lflock , lock , llock , open ;
+the descriptors that refer to standard input and output are accepted,
+regardless of their validity for the operation.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
+Except when otherwise noted errors will be reported in the error number
+.Va \&! ,
+and the result shown in case of errors is the empty string.
+Filename arguments undergo the usual
+.Sx "Filename transformations" .
+.
+.Bl -hang -width ".It Cm random"
+.It Cm close
+Close the given file descriptor.
+Standard descriptors cannot be closed.
+.
+.It Cm expand
+Only perform name transformations.
+.
+.It Cm ftruncate
+Truncate the given file descriptor to its current file position (also see
+.Cm rewind ) .
+.
+.It Cm flock , lflock , lock , llock
+Open the given file, then try to apply a shared read
+.Pf ( Ql R , r ) ,
+or an exclusive read and (appending) write
+.Pf ( Ql W , w , A , a )
+lock according to mode argument (second); uppercase variants log retries
+to gain the lock, writer ones create the file first as necessary, they
+will truncate the file to zero size first if a
+.Ql 0
+is part of the mode; further operation-success-echoes on the open
+descriptor can be suppressed by adding a circumflex
+.Ql ^ .
+The open file descriptor number is printed on success, and it must be
+.Cm close Ns
+d again explicitly.
+.Cm llock
+differs by not following symbolic links when opening a file.
+.Pp
+.Pf \*(OP( Va features
+includes
+.Ql ,+flock, )
+Different to the
+.Xr fcntl 2
+based locks the lock type
+.Cm flock
+uses the system call
+.Xr flock 2 ,
+and creates locks which are inherited by child processes.
+.Pf ( Cm lflock
+does not follow symbolic links when opening a file.)
+For these locks an optional third argument will be used as an argument
+to a newly spawned
+.Ev SHELL
+which inherits the locked descriptor as standard input for shared
+locks, as standard input and output otherwise;
+If the shell could be started its exit status code is returned,
+the normal result is suppressed but for
+.Cm vput ;
+the descriptor will have been closed regardless.
+.
+.It Cm mkdir
+Create a new directory.
+The optional second argument is a boolean that denotes whether parent
+directories shall be created as necessary.
+.
+.It Cm mktmp
+Create a temporary file and output its name.
+The first optional (and non-empty) argument will be used as a filename
+suffix, the (optional) second a target directory to be used instead of
+.Ev TMPDIR .
+.
+.It Cm open
+Open the given file using the mode given second, either in read-only
+.Pf ( Ql r ) ,
+or read- and (appending) write
+.Pf ( Ql W , w , A , a )
+mode; writer ones create the file first as necessary, uppercase versions
+fail if the file already exists, otherwise, the file will be truncated
+to zero size first if a
+.Ql 0
+is part of the mode; further operation-success-echoes on the open
+descriptor can be suppressed by adding a circumflex
+.Ql ^ .
+The open file descriptor number is printed on success, and it must be
+.Cm close Ns
+d again explicitly.
+.
+.It Cm pass
+Takes two file descriptor arguments to be passed as standard I/O to the
+.Ev SHELL
+command given third; beside the usual numbered ones the hyphen-minus
+.Ql -
+for passing through the according standard I/O, or commercial at
+.Ql @
+for
+.Pa /dev/null .
+Passing standard descriptors via number is not supported.
+If the shell could be started its exit status code is returned,
+the normal result is suppressed but for
+.Cm vput.
+.
+.It Cm rename
+.Xr rename 2 .
+.Sy Remarks:
+the first argument is the destination, the second the source.
+.
+.It Cm rewind
+.Xr rewind 3
+the file descriptor with the given number.
+.
+.It Cm rm
+.Xr unlink 2 .
+.
+.It Cm rmdir
+.Xr rmdir 2 .
+.
+.It Cm stat , lstat
+.Xr stat 2
+the given file and output values such that
+.Ql vput fop x stat FILE; eval set $x
+creates accessible variables.
+.Cm lstat
+differs by not following symbolic links when opening a file.
+.Ql st_type
+uses solidus
+.Ql /
+to denote directories, commercial at
+.Ql @
+for links, number sign
+.Ql #
+for block devices, percent sign
+.Ql %
+for for character devices, vertical bar
+.Ql |
+for FIFOs, equal sign
+.Ql =
+for sockets, and the period
+.Ql \&.
+for the rest.
+.
+.It Cm touch , ltouch
+Update file times, creating the file first as necessary.
+.Cm ltouch
+differs by not following symbolic links when creating the file.
+.El
+.
 .
 .Mx
 .It Ic Forward
@@ -6573,20 +6739,17 @@ active and
 .Cm remove Ns
 d by giving the string used for creation.
 Shared
-.Pf ( Xr fcntl 2 ,
-using
-.Dv F_OFD_SETLK
-if available)
+.Pf ( Xr fcntl 2 )
 .Cm lock Ns
 s can be created for channels created on file names; this is tried several
 times and can thus block (and fail), an uppercase first letter will log
 iterations (case-insensitivity still applies).
-\*(OP The (otherwise identical)
-.Pf ( Va features
+.Pf \*(OP( Va features
 includes
 .Ql ,+flock, )
+The otherwise identical
 .Cm flock
-lock uses
+lock type uses
 .Xr flock 2 .
 .
 .Pp
@@ -7382,10 +7545,12 @@ This command supports
 .
 .Mx
 .It Ic vexpr
-\*(NQ A multiplexer command which offers signed 64-bit numeric
+\*(OP\*(NQ Multiplexer command which offers signed 64-bit numeric
 calculations, as well as other, mostly string-based operations.
 C-style byte string operations are available via
-.Ic csop .
+.Ic csop ,
+and file operations via
+.Ic fop .
 The first argument defines the number, type, and meaning of the
 remaining arguments.
 An empty number argument is treated as 0.
@@ -7532,37 +7697,6 @@ and
 such that
 .Ql vput vexpr x epoch; eval set $x
 creates accessible variables.
-.It Cm file-expand
-Performs the usual
-.Sx "Filename transformations"
-on its argument.
-.It Cm file-stat , file-lstat
-Perform the usual
-.Sx "Filename transformations"
-on the argument, then call
-.Xr stat 2
-and
-.Xr lstat 2 ,
-respectively, and output values such that
-.Ql vput vexpr x file-stat FILE; eval set $x
-creates accessible variables.
-The variable
-.Ql st_type
-uses solidus
-.Ql /
-to denote directories, commercial at
-.Ql @
-for links, number sign
-.Ql #
-for block devices, percent sign
-.Ql %
-for for character devices, vertical bar
-.Ql |
-for FIFOs, equal sign
-.Ql =
-for sockets, and the period
-.Ql \&.
-for the rest.
 .It Cm random
 Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX

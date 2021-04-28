@@ -38,6 +38,7 @@
 #include "mx/cmd-csop.h"
 #include "mx/cmd-edit.h"
 #include "mx/cmd-filetype.h"
+#include "mx/cmd-fop.h"
 #include "mx/cmd-misc.h"
 #include "mx/cmd-mlist.h"
 #include "mx/cmd-shortcut.h"

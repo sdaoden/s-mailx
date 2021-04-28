@@ -419,6 +419,14 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1, NIL
      DS(N_("List mailboxes below the given or the global folder")) },
+   { "fop",
+#ifdef mx_HAVE_CMD_FOP
+      &c_fop,
+#else
+      NIL,
+#endif
+      (HG | M | V | X | EM | TWYSH), 1, MAC, NIL
+      DS(N_("<Operation>s on file-/paths with [:<arguments>:]")) },
    { "Forward", &c_Forward, (A | I | L | LNMAC | R | SC | EM | TARG),
       0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward)
      DS(N_("Like `forward', but derive filename from <address>")) },
