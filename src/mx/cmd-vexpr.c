@@ -2,8 +2,6 @@
  *@ Implementation of cmd-vexpr.h.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
- *@ TODO - use su_path_info instead of stat(2)
- *@ TODO - yet needs OPT_CMD_CSOP for compat byte string operation call-out
  *@ TODO - _VEXPR -> _CVEXPR
  *
  * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -32,11 +30,6 @@
 su_EMPTY_FILE()
 #ifdef mx_HAVE_CMD_VEXPR
 
-#include <sys/types.h> /* TODO su_path_info */
-#include <sys/stat.h> /* TODO su_path_info */
-
-#include <unistd.h> /* TODO su_path_info */
-
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
@@ -48,8 +41,6 @@ su_EMPTY_FILE()
 #endif
 
 #include "mx/cmd.h"
-/* v15compat: csop.h */
-#include "mx/cmd-csop.h"
 #include "mx/random.h"
 #include "mx/ui-str.h"
 
@@ -81,9 +72,6 @@ enum a_vexpr_cmd{
    a_VEXPR_CMD_AGN_DATE_UTC = a_VEXPR_CMD_AGN__MIN,
    a_VEXPR_CMD_AGN_DATE_STAMP_UTC,
    a_VEXPR_CMD_AGN_EPOCH,
-   a_VEXPR_CMD_AGN_FILE_EXPAND,
-   a_VEXPR_CMD_AGN_FILE_STAT,
-   a_VEXPR_CMD_AGN_FILE_LSTAT,
    a_VEXPR_CMD_AGN_RANDOM,
    a_VEXPR_CMD_AGN__MAX,
 
@@ -94,19 +82,6 @@ enum a_vexpr_cmd{
    a_VEXPR_CMD_STR_IREGEX, /* v15compat */
 #endif
    a_VEXPR_CMD_STR__MAX,
-
-   /* v15compat: vexpr byte operations -> csop */
-   a_VEXPR_CMD_BYTE__MIN = a_VEXPR_CMD_STR__MAX,
-   a_VEXPR_CMD_BYTE_LENGTH = a_VEXPR_CMD_BYTE__MIN,
-   a_VEXPR_CMD_BYTE_HASH32,
-   a_VEXPR_CMD_BYTE_HASH,
-   a_VEXPR_CMD_BYTE_FIND,
-   a_VEXPR_CMD_BYTE_IFIND,
-   a_VEXPR_CMD_BYTE_SUBSTRING,
-   a_VEXPR_CMD_BYTE_TRIM,
-   a_VEXPR_CMD_BYTE_TRIM_FRONT,
-   a_VEXPR_CMD_BYTE_TRIM_END,
-   a_VEXPR_CMD_BYTE__MAX,
 
    a_VEXPR_CMD__MAX
 };
@@ -193,9 +168,6 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
    {a_X(a_VEXPR_CMD_AGN_DATE_UTC, 0), "date-utc"},
    {a_X(a_VEXPR_CMD_AGN_DATE_STAMP_UTC, 0), "date-stamp-utc"},
    {a_X(a_VEXPR_CMD_AGN_EPOCH, 0), "epoch"},
-   {a_X(a_VEXPR_CMD_AGN_FILE_EXPAND, 0), "file-expand\0"},
-   {a_X(a_VEXPR_CMD_AGN_FILE_STAT, 0), "file-stat"},
-   {a_X(a_VEXPR_CMD_AGN_FILE_LSTAT, 0), "file-lstat"},
    {a_X(a_VEXPR_CMD_AGN_RANDOM, 0), "random"},
 
    {a_X(a_VEXPR_CMD_STR_MAKEPRINT, 0), "makeprint"},
@@ -203,17 +175,6 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
    {a_X(a_VEXPR_CMD_STR_REGEX, a_VEXPR_MOD_CASE), "regex"},
    {a_X(a_VEXPR_CMD_STR_IREGEX, 0), "iregex"}, /* v15compat*/
 #endif
-
-   /* v15compat: vexpr byte operations -> csop */
-   {a_X(a_VEXPR_CMD_BYTE_LENGTH, 0), "length"},
-   {a_X(a_VEXPR_CMD_BYTE_HASH, 0), "hash"},
-   {a_X(a_VEXPR_CMD_BYTE_HASH32, 0), "hash32"},
-   {a_X(a_VEXPR_CMD_BYTE_FIND, a_VEXPR_MOD_CASE), "find"},
-   {a_X(a_VEXPR_CMD_BYTE_IFIND, 0), "ifind"}, /* v15compat */
-   {a_X(a_VEXPR_CMD_BYTE_SUBSTRING, 0), "substring"},
-   {a_X(a_VEXPR_CMD_BYTE_TRIM, 0), "trim"},
-   {a_X(a_VEXPR_CMD_BYTE_TRIM_FRONT, 0), "trim-front\0"},
-   {a_X(a_VEXPR_CMD_BYTE_TRIM_END, 0), "trim-end"},
 
 #undef a_X
 };
@@ -517,7 +478,6 @@ jleave:
 
 static void
 a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
-   struct stat st;
    struct n_string s_b, *s;
    NYD2_IN;
 
@@ -609,97 +569,6 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
          /* n_string_gut(n_string_drop_ownership(s)); */
       }
       break;
-
-   case a_VEXPR_CMD_AGN_FILE_EXPAND:
-      if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] != NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
-         break;
-      }
-      vcp->vc_arg = vcp->vc_argv[0];
-
-      if((vcp->vc_varres = fexpand(vcp->vc_arg, FEXP_NVAR | FEXP_NOPROTO)
-            ) == NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
-      }
-      break;
-
-   case a_VEXPR_CMD_AGN_FILE_LSTAT:
-      vcp->vc_flags |= a_VEXPR_MOD_MASK;
-      /* FALLTHRU */
-   case a_VEXPR_CMD_AGN_FILE_STAT:{
-      char c;
-
-      if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] != NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
-         break;
-      }
-      vcp->vc_arg = vcp->vc_argv[0];
-
-      if((vcp->vc_varres = fexpand(vcp->vc_arg, (/*FEXP_NOPROTO |*/
-            FEXP_LOCAL | FEXP_NVAR))) == NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
-         break;
-      }
-
-      if(((vcp->vc_flags & a_VEXPR_MOD_MASK) ? lstat : stat
-            )(vcp->vc_varres, &st) != 0){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
-         break;
-      }
-
-      s = n_string_book(n_string_creat_auto(&s_b), 250);
-      s = n_string_push_cp(s, "st_file=");
-      s = n_string_push_cp(s, n_shexp_quote_cp(vcp->vc_varres, FAL0));
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_type=");
-      if(S_ISDIR(st.st_mode)) c = '/';
-      else if(S_ISLNK(st.st_mode)) c = '@';
-#ifdef S_ISBLK
-      else if(S_ISBLK(st.st_mode)) c = '#';
-#endif
-#ifdef S_ISCHR
-      else if(S_ISCHR(st.st_mode)) c = '%';
-#endif
-#ifdef S_ISFIFO
-      else if(S_ISFIFO(st.st_mode)) c = '|';
-#endif
-#ifdef S_ISSOCK
-      else if(S_ISSOCK(st.st_mode)) c = '=';
-#endif
-      else c = '.';
-      s = n_string_push_c(s, c);
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_nlink=");
-      s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, st.st_nlink, 10));
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_size=");
-      s = n_string_push_cp(s, su_ienc_u64(vcp->vc_iencbuf, st.st_size, 10));
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_mode=");
-      s = n_string_push_cp(s, su_ienc_s32(vcp->vc_iencbuf,
-            st.st_mode & 07777, 8));
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_uid=");
-      s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, st.st_uid, 10));
-      s = n_string_push_c(s, ' ');
-
-      s = n_string_push_cp(s, "st_gid=");
-      s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, st.st_gid, 10));
-      s = n_string_push_c(s, ' ');
-
-      vcp->vc_varres = n_string_cp(s);
-      /* n_string_gut(n_string_drop_ownership(s)); */
-      }break;
 
    case a_VEXPR_CMD_AGN_RANDOM:
       if(vcp->vc_argv[0] == NIL || vcp->vc_argv[1] != NIL){
@@ -936,14 +805,8 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
             a_vexpr_numeric(&vc);
          else if(i < a_VEXPR_CMD_AGN__MAX)
             a_vexpr_agnostic(&vc);
-         else if(i < a_VEXPR_CMD_STR__MAX)
+         else /*if(i < a_VEXPR_CMD_STR__MAX)*/
             a_vexpr_string(&vc);
-         else /*if(i < a_VEXPR_CMD_BYTE__MAX)*/{
-            n_OBSOLETE2(_("vexpr: C-style string operations are now "
-               "handled via `csop' command (sorry)"), vc.vc_cmd_name);
-            f = (c_csop(vp) == 0) ? 0 : a_VEXPR_ERR;
-            goto jleave;
-         }
          break;
       }
    }
