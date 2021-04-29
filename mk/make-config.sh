@@ -1150,15 +1150,21 @@ ld_runtime_flags() {
    ld_need_R_flags=
 }
 
-_cc_check_ever=
+_cc_check_ever= _cc_check_testprog=
 cc_check() {
    if [ -z "${_cc_check_ever}" ]; then
       _cc_check_ever=' '
       __occ=${cc_check_silent}
       __oCFLAGS=${_CFLAGS}
 
-      cc_check_silent=
-      cc_check -Werror && _cc_check_ever=-Werror
+      cc_check_silent=y
+      if cc_check -Werror; then
+         _cc_check_ever=-Werror
+         _CFLAGS=${__oCFLAGS}
+         if cc_check -Werror=implicit-function-declaration; then
+            _cc_check_testprog=-Werror=implicit-function-declaration
+         fi
+      fi
 
       _CFLAGS=${__oCFLAGS}
       cc_check_silent=${__occ}
@@ -1188,7 +1194,8 @@ ld_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-      ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+      ${CC} ${INCS} ${_cc_check_ever} \
+            ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
@@ -1251,7 +1258,8 @@ compile_check() {
    _check_preface "${variable}" "${topic}" "${define}"
 
    if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
+            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
+            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" ${tmp}.o &&
             [ -f ${tmp}.o ]; then
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1277,7 +1285,8 @@ _link_mayrun() {
    fi
 
    if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
+            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
+            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ${tmp} &&
          [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
       echo "@ INCS<${incs}> LIBS<${libs}>; executed: ${run}"
