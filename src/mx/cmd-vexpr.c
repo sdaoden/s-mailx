@@ -461,23 +461,25 @@ jenum_plusminus:
 
       case a_VEXPR_CMD_NUM_LSHIFT:
       case a_VEXPR_CMD_NUM_RSHIFT:
-      case a_VEXPR_CMD_NUM_URSHIFT:
+      case a_VEXPR_CMD_NUM_URSHIFT:{
+         u8 sv;
+
          if(rhv <= 63) /* xxx 63? */
-            cmd = S(u8,rhv);
+            sv = S(u8,rhv);
          else if(!(f & a_VEXPR_MOD_SATURATED)){
             f |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_NUM_OVERFLOW;
             break;
          }else
-            cmd = 63;
+            sv = 63;
 
          if(cmd == a_VEXPR_CMD_NUM_LSHIFT)
-            lhv <<= cmd;
+            lhv <<= sv;
          else if(cmd == a_VEXPR_CMD_NUM_RSHIFT)
-            lhv >>= cmd;
+            lhv >>= sv;
          else
-            lhv = S(u64,lhv) >> cmd;
-         break;
+            lhv = S(u64,lhv) >> sv;
+         }break;
       }
       break;
 
