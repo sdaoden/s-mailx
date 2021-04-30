@@ -1255,7 +1255,8 @@ cc_check() {
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} ${_cc_check_ever} \
-            ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
+            ${CFLAGS} ${_CFLAGS} ${1} ${EXTRA_CFLAGS} \
+            ${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
@@ -1275,7 +1276,8 @@ ld_check() {
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} ${_cc_check_ever} \
-            ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+            ${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS} \
+            ${LDFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
@@ -1296,16 +1298,12 @@ _check_preface() {
    echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
    #echo "/* checked ${topic} */" >> ${h}
-   ${rm} -f ${tmp} ${tmp}.o
+   ${rm} -f ${tmp} ${tmp}.o ${tmp}.c
    if [ "${dump_test_program}" = 1 ]; then
       { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
    else
       { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
    fi
-   #echo '@P'
-   #MAKEFLAGS= ${make} -f ${makefile} ${tmp}.x
-   #${cat} ${tmp}.x
-   echo '@R'
 }
 
 without_check() {
@@ -1337,10 +1335,16 @@ compile_check() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS}" \
-            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
-            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" ${tmp}.o &&
-            [ -f ${tmp}.o ]; then
+   __comp() (
+      cd "${OBJDIR}" || exit 1
+      echo "@CC ${@}"
+      eval MAKEFLAGS= "${@}" && [ -f ${tmp_basename}.o ]
+   )
+
+   if __comp ${CC} -Dmx_SOURCE -I./ ${INCS} \
+            ${CFLAGS} ${LDFLAGS} ${_cc_check_testprog} \
+            -c ${tmp}.c \
+            ${LIBS} ${libs} 2>&1; then
       msg 'yes'
       echo "${define}" >> ${h}
       eval have_${variable}=yes
@@ -1364,11 +1368,17 @@ _link_mayrun() {
       fi
    fi
 
-   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
-            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
-            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" \
-            XLIBS="${LIBS} ${libs}" ${tmp} &&
-         [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
+   __comp() (
+      cd "${OBJDIR}" || exit 1
+      echo "@CC ${@}"
+      eval MAKEFLAGS= "${@}" && [ -f "${tmp}" ] &&
+         { [ ${run} -eq 0 ] || "${tmp}"; }
+   )
+
+   if __comp ${CC} -Dmx_SOURCE -I./ ${INCS} ${incs} \
+            ${CFLAGS} ${LDFLAGS} ${_cc_check_testprog} \
+            -o ${tmp} ${tmp}.c \
+            ${LIBS} ${libs}; then
       echo "@ INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1451,6 +1461,7 @@ msg 'Checking for basic utility set'
 thecmd_testandset_fail awk awk
 thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
+thecmd_testandset_fail pwd pwd
 
 # Lowercase this now in order to isolate all the remains from case matters
 OS_ORIG_CASE=${OS}
@@ -1458,15 +1469,17 @@ OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 export OS
 
 # But first of all, create new configuration and check whether it changed
-if [ -z "${OBJDIR}" ]; then
-   OBJDIR=.obj
-else
-   OBJDIR=`${awk} -v input="${OBJDIR}" 'BEGIN{
-         if(index(input, "/"))
-            sub("/+$", "", input)
-         print input
-         }'`
-fi
+[ -z "${OBJDIR}" ] && OBJDIR=.obj
+OBJDIR=`${awk} -v OD="${OBJDIR}" 'BEGIN{
+   if(index(OD, "/"))
+      sub("/+$", "", OD)
+   if(OD !~ /^\//){
+      "'"${pwd}"'" | getline i
+      close("'"${pwd}"'")
+      OD = i "/" OD
+   }
+   print OD
+   }'`
 
 rc=./make.rc
 env="${OBJDIR}"/mk-config.env
@@ -1479,8 +1492,9 @@ newenv="${OBJDIR}"/mk-nconfig.env
 newh="${OBJDIR}"/mk-nconfig.h
 oldh="${OBJDIR}"/mk-oconfig.h
 tmp0="${OBJDIR}"/___tmp
-tmp=${tmp0}1$$
-tmp2=${tmp0}2$$
+tmp=${tmp0}1_${$}
+tmp_basename=___tmp1_${$}
+tmp2=${tmp0}2_${$}
 
 if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
    msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
@@ -1540,8 +1554,6 @@ thecmd_testandset_fail cmp cmp
 thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
-# We always need pwd(1), for at least mx-test.sh
-thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1722,7 +1734,6 @@ ${mv} -f ${newmk} ${mk}
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
-makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
@@ -1744,17 +1755,6 @@ msg_nonl() {
    printf "@ ${fmt}\n" "${@}"
    printf -- "${fmt}" "${@}" >&5
 }
-
-
-${cat} > ${makefile} << \!
-.SUFFIXES: .o .c .x .y
-.c.o:
-	$(CC) -Dmx_SOURCE -I./ $(XINCS) $(CFLAGS) -o $(@) -c $(<)
-.c.x:
-	$(CC) -Dmx_SOURCE -I./ $(XINCS) -E $(<) > $(@)
-.c:
-	$(CC) -Dmx_SOURCE -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
-!
 
 ## Generics
 
