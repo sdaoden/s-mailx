@@ -56,9 +56,10 @@ testnj:
 	LC_ALL=C $(MAKE) -f mk-config.mk testnj
 
 d-cross-build:
-	@DEVEL_ORIG_CC=$(CC); export DEVEL_ORIG_CC; \
-	$(MAKE) OPT_CROSS_BUILD=y OPT_DEVEL=1 VERBOSE=1 \
-		CC="$(TOPDIR)"mk/pcb-cc.sh config;\
+	@DEVEL_ORIG_CC=$(CC); export DEVEL_ORIG_CC;\
+	[ -n "$(TOPDIR)" ] && CC="$(TOPDIR)"mk/pcb-cc.sh || \
+		CC="`pwd`/mk/pcb-cc.sh";\
+	$(MAKE) OPT_CROSS_BUILD=y OPT_DEVEL=1 VERBOSE=1 CC="$${CC}" config;\
 	$(MAKE) distclean
 d-b:
 	@$(_prestop);\
