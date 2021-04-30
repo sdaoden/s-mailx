@@ -464,7 +464,7 @@ jenum_plusminus:
       case a_VEXPR_CMD_NUM_URSHIFT:{
          u8 sv;
 
-         if(rhv <= 63) /* xxx 63? */
+         if(S(u64,rhv) <= 63) /* xxx 63? */
             sv = S(u8,rhv);
          else if(!(f & a_VEXPR_MOD_SATURATED)){
             f |= a_VEXPR_ERR;
