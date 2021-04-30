@@ -3119,9 +3119,21 @@ t_vexpr() { # {{{
 	vput vexpr res pbase 16 u0x8000000000000001;x
 	vput vexpr res pbase 36 0x8000000000000001;x
 	vput vexpr res pbase 36 u0x8000000000000001;x
+	echo ' #13'
+	vput vexpr res << 0 1;x
+	vput vexpr res << 1 1;x
+	vput vexpr res << 0x80 55;x
+	vput vexpr res << 0x80 56;x
+	vput vexpr res >>> 0xE000000000000000 56;x
+	vput vexpr res >>> 0x8000000000000000 56;x
+	vput vexpr res >>> 0x7F00000000000000 56;x
+	vput vexpr res >> 0xE000000000000000 56;x
+	vput vexpr res >> 0x8000000000000000 56;x
+	vput vexpr res >> 0x7F00000000000000 56;x
+	vput vexpr res << 1 -1;x
 	__EOT
 
-   check numeric 0 ./tnumeric '163128733 2519'
+   check numeric 0 ./tnumeric '1323550728 2678'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex 2>&1
