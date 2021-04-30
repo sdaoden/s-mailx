@@ -1161,6 +1161,7 @@ cc_check() {
       if cc_check -Werror; then
          _cc_check_ever=-Werror
          _CFLAGS=${__oCFLAGS}
+         # Overcome a _GNU_SOURCE related glibc 2.32.3 bug (?!)
          if cc_check -Werror=implicit-function-declaration; then
             _cc_check_testprog=-Werror=implicit-function-declaration
          fi
