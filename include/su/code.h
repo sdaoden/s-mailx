@@ -246,7 +246,7 @@
 # define su_VIR
 # define su_OVR
    /* This is for the declarator only */
-# if __cplusplus +0 < 201103L
+# if __cplusplus +0 < 201103l
 #  define su_OVRX
 # else
 #  define su_OVRX override
@@ -257,7 +257,7 @@
 # define su_R(T,I) reinterpret_cast<T>(I)
 # define su_C(T,I) const_cast<T>(I)
 
-# define su_NIL (0L)
+# define su_NIL (0l)
 #endif /* __cplusplus */
 
 /*! The \r{su_state_err()} mechanism can be configured to not cause
@@ -290,11 +290,11 @@
 #ifdef DOXYGEN
 # define su_CTA(T,M) /*!< \_ */
 # define su_LCTA(T,M) /*!< \_ */
-#elif !su_C_LANG && __cplusplus +0 >= 201103L
+#elif !su_C_LANG && __cplusplus +0 >= 201103l
 # define su_CTA(T,M) static_assert(T, M)
 # define su_LCTA(T,M) static_assert(T, M)
 #elif 0 /* unusable! */ && \
-      defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+      defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l
 # define su_CTA(T,M) _Static_assert(T, M)
 # define su_LCTA(T,M) _Static_assert(T, M)
 #else
@@ -440,7 +440,7 @@ do{\
 #endif
 
 /* Function name */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l
 # define su_FUN __func__   /*!< "Not a literal". */
 #elif su_CC_CLANG || su_CC_VCHECK_GCC(3, 4) || su_CC_PCC || su_CC_TINYC
 # define su_FUN __extension__ __FUNCTION__
@@ -510,6 +510,9 @@ do{\
 # define su_USECASE_MX_DISABLED
 #endif
 
+/* If present denotes list of su_HAVE_xy file is using */
+#define su_USECASE_CONFIG_CHECKS(X)
+
 /* Basic support macros, with side effects */
 /*! Absolute value. */
 #define su_ABS(A) ((A) < 0 ? -(A) : (A))
@@ -532,7 +535,7 @@ do{\
 
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
 /* Commented out: "_Alignof() applied to an expression is a GNU extension" */
-#if 0 && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+#if 0 && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l
 # include <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
@@ -720,7 +723,7 @@ do{\
 
 /* C field init */
 #if (su_C_LANG && defined __STDC_VERSION__ && \
-      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
+      __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
 # define su_FIELD_INITN(N) .N = /*!< \_ */
 # define su_FIELD_INITI(I) [I] = /*!< \_ */
 #else
@@ -819,7 +822,7 @@ do{\
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && \
-      __STDC_VERSION__ +0 >= 199901L) || defined DOXYGEN
+      __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
    /*! Variable-type size (with byte array at end) */
 # define su_VFIELD_SIZE(X)
    /*! Variable-type size (with byte array at end) */
@@ -1001,7 +1004,7 @@ typedef size_t su_uz; /*!< \_ */
 
 #undef PRIuZ
 #undef PRIdZ
-#if (defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L) ||\
+#if (defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) ||\
       defined DOXYGEN
 # define PRIuZ "zu"
 # define PRIdZ "zd"
@@ -1489,9 +1492,9 @@ typedef void (*su_delete_fun)(void *self);
  * Some \r{COLL} will provide an additional \c{assign_elems()} function.} */
 typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
-/*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is "less
- * than \a{b}", 0 on equality, and a value greater than 0 if \a{a} is
- * "greate than \a{b}". */
+/*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less
+ * \e than \a{b}, 0 on equality, and a value greater than 0 if \a{a} is
+ * \e greater \e than \a{b}. */
 typedef su_sz (*su_compare_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
