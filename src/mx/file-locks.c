@@ -33,6 +33,7 @@
 
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/time.h>
 
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
@@ -333,7 +334,7 @@ mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
             }else
                n_err(".");
          }
-         n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
+         su_time_msleep(mx_FILE_LOCK_MILLIS, FAL0);
       }
    }
 
@@ -390,7 +391,7 @@ mx_file_dotlock(char const *fname, int fd,
          if((flm & mx_FILE_LOCK_MODE_RETRY) && ++u.tries < mx_FILE_LOCK_TRIES){
             a_DOMSG();
             n_err(".");
-            n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
+            su_time_msleep(mx_FILE_LOCK_MILLIS, FAL0);
             continue;
          }
          /* FALLTHRU */

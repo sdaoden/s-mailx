@@ -41,6 +41,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/time.h>
 
 #ifdef mx_HAVE_REGEX
 # include <su/re.h>
@@ -589,7 +590,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
       }else{
-         struct n_timespec const *tsp;
+         struct su_timespec const *tsp;
 
          tsp = n_time_now(TRU1);
 
@@ -602,7 +603,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
 
          s = n_string_push_cp(s, "epoch_nsec=");
          s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_nsec, 10));
+               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_nano, 10));
 
          vcp->vc_varres = n_string_cp(s);
          /* n_string_gut(n_string_drop_ownership(s)); */
