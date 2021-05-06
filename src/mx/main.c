@@ -78,14 +78,6 @@ struct a_main_aarg{
    char const *maa_file;
 };
 
-/* (extern, but not with amalgamation, so define here) */
-VL char const n_weekday_names[7 + 1][4] = {
-   "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", ""
-};
-VL char const n_month_names[12 + 1][4] = {
-   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
-};
 VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 #ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);

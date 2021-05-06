@@ -6,16 +6,24 @@ su_USECASE_MX_DISABLED =
 awk?=awk
 getconf?=getconf
 
-SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
+SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
+	-Dsu_HAVE_CLOCK_GETTIME \
+	-Dsu_HAVE_NANOSLEEP \
+	-Dsu_HAVE_UTIMENSAT
 CXXFLAGS+=-Wall -pedantic $(SUF)
 CFLAGS+=-Wall -pedantic $(SUF)
 
-CSRC = avopt.c core-code.c core-errors.c \
-	cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
+CSRC = avopt.c \
+	core-code.c core-errors.c \
+		cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
 		cs-rfind.c cs-tbox.c cs-tools.c \
 	icodec-dec.c icodec-enc.c \
 	mem-alloc.c mem-bag.c mem-tools.c \
-	prime.c re.c sort.c utf.c
+	prime.c \
+	re.c \
+	sort.c \
+	time-sleep.c time-spec.c time-utils.c
+	utf.c
 CXXSRC = cxx-core.cc \
 	.main.cc
 

@@ -39,9 +39,11 @@
 #endif
 
 #include <su/mem.h>
+#include <su/time.h>
 
 #ifdef a_RAND_USE_BUILTIN
 # include <su/prime.h>
+# include <su/time.h>
 #endif
 
 #include "mx/compat.h"
@@ -123,7 +125,7 @@ a_rand_init(void){
          }
          n_err(_("Not enough entropy for the "
             "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
-         n_msleep(250, FAL0);
+         su_time_msleep(250, FAL0);
       }
    }
 
@@ -149,11 +151,7 @@ a_rand_init(void){
       n_err(_("P(seudo)R(andom)N(umber)G(enerator): "
          "creating homebrew seed\n"));
    /* C99 */{
-# ifdef mx_HAVE_CLOCK_GETTIME
-      struct timespec ts;
-# else
-      struct timeval ts;
-# endif
+      struct su_timespec ts;
       boole slept;
       u32 seed, rnd, t, k;
 
@@ -168,19 +166,13 @@ a_rand_init(void){
          /* Stir the entire pool once */
          for(u.i = NELEM(a_rand->b32); u.i-- != 0;){
 
-# ifdef mx_HAVE_CLOCK_GETTIME
-            clock_gettime(CLOCK_REALTIME, &ts);
-            t = S(u32,ts.tv_nsec);
-# else
-            gettimeofday(&ts, NIL);
-            t = S(u32,ts.tv_usec);
-# endif
+            t = S(u32,su_timespec_current(&ts)->ts_nano);
             if(rnd & 1)
                t = (t >> 16) | (t << 16);
             a_rand->b32[u.i] ^= a_rand_weak(seed ^ t);
             a_rand->b32[t % NELEM(a_rand->b32)] ^= seed;
             if(rnd == 7 || rnd == 17)
-               a_rand->b32[u.i] ^= a_rand_weak(seed ^ S(u32,ts.tv_sec));
+               a_rand->b32[u.i] ^= a_rand_weak(seed ^ S(u32,ts.ts_sec));
             k = a_rand->b32[u.i] % NELEM(a_rand->b32);
             a_rand->b32[k] ^= a_rand->b32[u.i];
             seed ^= a_rand_weak(a_rand->b32[k]);
@@ -195,7 +187,7 @@ a_rand_init(void){
 # ifdef mx_HAVE_SCHED_YIELD
             sched_yield();
 # elif defined mx_HAVE_NANOSLEEP
-            ts.tv_sec = 0, ts.tv_nsec = 0;
+            ts.ts_sec = 0, ts.ts_nano = 0;
             nanosleep(&ts, NIL);
 # else
             rnd += 10;

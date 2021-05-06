@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/time.h>
 
 #include "mx/attachments.h"
 #include "mx/cmd.h"
@@ -715,7 +716,7 @@ jskip_to_next:
          fprintf(n_stdout,
             _("Waiting a second before proceeding to the next message..\n"));
          fflush(n_stdout);
-         n_msleep(1000, FAL0);
+         su_time_msleep(1000, FAL0);
       }
       n_autorec_relax_unroll();
       goto jwork_msg;
@@ -899,7 +900,7 @@ jwork_msg:
          fprintf(n_stdout,
             _("Waiting a second before proceeding to the next message..\n"));
          fflush(n_stdout);
-         n_msleep(1000, FAL0);
+         su_time_msleep(1000, FAL0);
       }
       n_autorec_relax_unroll();
       goto jwork_msg;

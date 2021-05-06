@@ -91,7 +91,7 @@ a_file_lock_dotlock_create(struct mx_file_dotlock_info *fdip){
          rv = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
          break;
       }
-      n_msleep(mx_FILE_LOCK_MILLIS, FAL0);
+      su_time_msleep(mx_FILE_LOCK_MILLIS, FAL0);
    }
 
 #ifdef mx_SOURCE_PS_DOTLOCK_MAIN

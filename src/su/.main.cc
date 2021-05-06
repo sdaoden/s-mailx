@@ -20,6 +20,7 @@ su_USECASE_MX_DISABLED
 #include <su/prime.h>
 #include <su/re.h>
 #include <su/sort.h>
+#include <su/time.h>
 #include <su/utf.h>
 
 //#define NYDPROF_ENABLE
@@ -42,9 +43,10 @@ static void a_mem_bag(void);
 static void a_prime(void);
 static void a_re(void);
 static void a_sort(void);
+static void a_time(void);
 static void a_utf(void);
 
-int main(void){
+int main(void){ // {{{
    state::set_program("SU/C++");
    state::set(state::debug);
 
@@ -66,6 +68,7 @@ int main(void){
    /// Basics (isolated)
 
    a_prime();
+   a_time();
    a_utf();
 
    /// Basics (building upon other basics)
@@ -85,8 +88,9 @@ int main(void){
    log::write(log::info, (a_errors == 0 ? "These songs of freedom\n"
       : "Not to be heard\n"));
    return (a_errors != 0);
-}
+} // }}}
 
+// cs_dict {{{
 static void
 a_cs_dict(void){
    a__cs_dict(cs_dict<char const*>::f_none);
@@ -505,7 +509,9 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
          a_ERR();
    }
 }
+// }}}
 
+// icodec {{{
 static void
 a_icodec(void){
    char buf[ienc::buffer_size];
@@ -563,7 +569,9 @@ a_icodec(void){
    if(u64 != su_U64_C(0xAFFEDEADABBABEEF))
       a_ERR();
 }
+// }}}
 
+// mem_bag {{{
 static void
 a_mem_bag(void){ // TODO only instantiation test yet
 #ifdef su_HAVE_MEM_BAG
@@ -584,7 +592,9 @@ a_mem_bag(void){ // TODO only instantiation test yet
    su_DEL(&mb->reset());
 #endif // su_HAVE_MEM_BAG
 }
+// }}}
 
+// prime {{{
 static void
 a_prime(void){
    u32 u32 = prime::lookup_next(0);
@@ -601,7 +611,9 @@ a_prime(void){
    if(u32 != u64)
       a_ERR();
 }
+// }}}
 
+// sort {{{
 static void
 a_sort(void){
    char const *arr_sorted[] = {
@@ -618,7 +630,9 @@ a_sort(void){
       if(cs::cmp(arr_sorted[i], arr_mixed[i]))
          a_ERR();
 }
+// }}}
 
+// re {{{
 static void
 a_re(void){
 #ifdef su_HAVE_RE
@@ -688,7 +702,245 @@ a_re(void){
       a_ERR();
 #endif /* su_HAVE_RE */
 }
+// }}}
 
+// time {{{
+static void a__time_utils(void);
+static void a__time_spec(void);
+
+static void
+a_time(void){
+   a__time_utils();
+   a__time_spec();
+}
+
+static void
+a__time_utils(void){
+   u32 y, m, d, hour, min, sec;
+   uz uz;
+   s64 ep;
+
+   if(time::epoch_max != S64_C(0x1D30BE2E1FF))
+      a_ERR();
+   if(time::min_secs != 60u) a_ERR();
+   if(time::hour_mins != 60u) a_ERR();
+   if(time::day_hours != 24u) a_ERR();
+   if(time::day_secs != 24u * 60u * 60u) a_ERR();
+   if(time::year_days != 365u) a_ERR();
+   if(time::jdn_epoch != 2440588ul) a_ERR();
+
+   if(time::weekday_sunday != 0 || time::weekday_monday != 1 ||
+         time::weekday_tuesday != 2 || time::weekday_wednesday != 3 ||
+         time::weekday_thursday != 4 || time::weekday_friday != 5 ||
+         time::weekday_saturday != 6)
+      a_ERR();
+   for(d = 0; d <= 6; ++d){
+      if(!time::weekday_is_valid(d))
+         a_ERR();
+      else if(time::weekday_name_abbrev(d) == NIL)
+         a_ERR();
+   }
+   if(time::weekday_is_valid(d)) a_ERR();
+
+   if(time::month_january != 0 || time::month_february != 1 ||
+         time::month_march != 2 || time::month_april != 3 ||
+         time::month_may != 4 || time::month_june != 5 ||
+         time::month_july != 6 || time::month_august != 7 ||
+         time::month_september != 8 || time::month_october != 9 ||
+         time::month_november != 10 || time::month_december != 11)
+      a_ERR();
+   for(m = 0; m <= 11; ++m){
+      if(!time::month_is_valid(m))
+         a_ERR();
+      else if(time::month_name_abbrev(m) == NIL)
+         a_ERR();
+   }
+   if(time::month_is_valid(m)) a_ERR();
+
+   //
+   y = m = d = hour = min = sec = max::u32;
+      if(time::epoch_to_gregor(-1, &y, &m, &d, &hour, &min, &sec)) a_ERR();
+      if(y != 0 || m != 0 || d != 0 || hour != 0 || min != 0 || sec != 0)
+         a_ERR();
+   y = m = d = hour = min = sec = max::u32;
+      if(time::epoch_to_gregor(time::epoch_max + 1, &y, &m, &d,
+            &hour, &min, &sec))
+         a_ERR();
+      if(y != 0 || m != 0 || d != 0 || hour != 0 || min != 0 || sec != 0)
+         a_ERR();
+
+   y = m = d = hour = min = sec = max::u32;
+      if(!time::epoch_to_gregor(time::epoch_max, &y, &m, &d,
+            &hour, &min, &sec))
+         a_ERR();
+      if(y != 65535 || m != 12 || d != 31 ||
+            hour != 23 || min != 59 || sec != 59)
+         a_ERR();
+   y = m = d = max::u32;
+      if(!time::epoch_to_gregor(0, &y, &m, &d)) a_ERR();
+      if(y != 1970 || m != 1 || d != 1) a_ERR();
+   y = m = d = hour = min = sec = max::u32;
+      if(!time::epoch_to_gregor(0, &y, &m, &d, &hour, &min, &sec)) a_ERR();
+      if(y != 1970 || m != 1 || d != 1 || hour != 0 || min != 0 || sec != 0)
+         a_ERR();
+   y = m = d = hour = min = sec = max::u32;
+      if(!time::epoch_to_gregor(S64_C(844221007), &y, &m, &d,
+            &hour, &min, &sec))
+         a_ERR();
+      if(y != 1996 || m != 10 || d != 2 || hour != 1 || min != 50 || sec != 7)
+         a_ERR();
+   y = m = d = hour = min = sec = max::u32;
+      if(!time::epoch_to_gregor(S64_C(2147483647), &y, &m, &d,
+            &hour, &min, &sec))
+         a_ERR();
+      if(y != 2038 || m != 1 || d != 19 || hour != 3 || min != 14 || sec != 7)
+         a_ERR();
+
+   //
+   ep = time::gregor_to_epoch(1969, 12, 31);
+   if(ep != -1) a_ERR();
+   ep = time::gregor_to_epoch(1969, 12, 31, 23, 59, 59);
+   if(ep != -1) a_ERR();
+   ep = time::gregor_to_epoch(1970, 1, 1);
+   if(ep != 0) a_ERR();
+   ep = time::gregor_to_epoch(1970, 1, 1, 0, 0, 0);
+   if(ep != 0) a_ERR();
+   ep = time::gregor_to_epoch(1970, 1, 1, 0, 1, 1);
+   if(ep != 61) a_ERR();
+   ep = time::gregor_to_epoch(1996, 10, 2, 1, 50, 7);
+   if(ep != 844221007) a_ERR();
+
+   //
+   uz = time::gregor_to_jdn(1970, 1, 1);
+   if(uz != time::jdn_epoch) a_ERR();
+   uz = time::gregor_to_jdn(1970, 1, 2);
+   if(uz != time::jdn_epoch + 1) a_ERR();
+   uz = time::gregor_to_jdn(1969, 12, 31);
+   if(uz != time::jdn_epoch - 1) a_ERR();
+
+   //
+   y = m = d = max::u32;
+      time::jdn_to_gregor(time::jdn_epoch, &y, &m, &d);
+      if(y != 1970 || m != 1 || d != 1) a_ERR();
+   y = m = d = max::u32;
+      time::jdn_to_gregor(time::jdn_epoch + 1, &y, &m, &d);
+      if(y != 1970 || m != 1 || d != 2) a_ERR();
+   y = m = d = max::u32;
+      time::jdn_to_gregor(time::jdn_epoch - 1, &y, &m, &d);
+      if(y != 1969 || m != 12 || d != 31) a_ERR();
+
+   //
+   if(!time::year_is_leap(2016)) a_ERR();
+      if(time::year_is_leap(2017)) a_ERR();
+      if(time::year_is_leap(2018)) a_ERR();
+      if(time::year_is_leap(2019)) a_ERR();
+      if(!time::year_is_leap(2020)) a_ERR();
+   if(!time::year_is_leap(1500)) a_ERR();
+      if(!time::year_is_leap(1600)) a_ERR();
+      if(!time::year_is_leap(1700)) a_ERR();
+      if(time::year_is_leap(1800)) a_ERR();
+      if(time::year_is_leap(1900)) a_ERR();
+      if(!time::year_is_leap(2000)) a_ERR();
+      if(time::year_is_leap(2100)) a_ERR();
+}
+
+static void
+a__time_spec(void){
+   if(time::spec::sec_millis != 1000l) a_ERR();
+   if(time::spec::sec_micros != 1000l * 1000) a_ERR();
+   if(time::spec::sec_nanos != 1000l * 1000 * 1000) a_ERR();
+
+   time::spec ts;
+
+   if(!ts.current().is_valid())
+      a_ERR();
+
+   time::spec ts2(ts);
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec()) a_ERR();
+   if(ts2.nano() != ts.nano()) a_ERR();
+   if(ts.compare(ts2) != 0) a_ERR();
+   if(ts2.compare(ts) != 0) a_ERR();
+   if(!(ts2 == ts)) a_ERR();
+   if(ts2 != ts) a_ERR();
+   if(ts2 < ts) a_ERR();
+   if(!(ts2 <= ts)) a_ERR();
+   if(!(ts2 >= ts)) a_ERR();
+   if(ts2 > ts) a_ERR();
+
+   ts2.sec(ts2.sec() - 1);
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec() - 1) a_ERR();
+   if(ts2.nano() != ts.nano()) a_ERR();
+   if(ts.compare(ts2) <= 0) a_ERR();
+   if(ts2.compare(ts) >= 0) a_ERR();
+   if(ts2 == ts) a_ERR();
+   if(!(ts2 != ts)) a_ERR();
+   if(!(ts2 < ts)) a_ERR();
+   if(!(ts2 <= ts)) a_ERR();
+   if(ts2 >= ts) a_ERR();
+   if(ts2 > ts) a_ERR();
+
+   ts2.sec(ts2.sec() + 2);
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec() + 1) a_ERR();
+   if(ts2.nano() != ts.nano()) a_ERR();
+   if(ts.compare(ts2) >= 0) a_ERR();
+   if(ts2.compare(ts) <= 0) a_ERR();
+   if(ts2 == ts) a_ERR();
+   if(!(ts2 != ts)) a_ERR();
+   if(ts2 < ts) a_ERR();
+   if(ts2 <= ts) a_ERR();
+   if(!(ts2 >= ts)) a_ERR();
+   if(!(ts2 > ts)) a_ERR();
+
+   ts2 = ts;
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec()) a_ERR();
+   if(ts2.nano() != ts.nano()) a_ERR();
+   if(ts.compare(ts2) != 0) a_ERR();
+   if(ts2.compare(ts) != 0) a_ERR();
+   if(!(ts2 == ts)) a_ERR();
+   if(ts2 != ts) a_ERR();
+   if(ts2 < ts) a_ERR();
+   if(!(ts2 <= ts)) a_ERR();
+   if(!(ts2 >= ts)) a_ERR();
+   if(ts2 > ts) a_ERR();
+
+   if(ts.nano() >= ts.sec_nanos - 2)
+      ts.nano(ts.nano() - 2);
+   else if(ts.nano() <= 1)
+      ts.nano(ts.nano() + 2);
+
+   ts2.assign(ts).nano(ts2.nano() - 1);
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec()) a_ERR();
+   if(ts2.nano() != ts.nano() - 1) a_ERR();
+   if(ts.compare(ts2) <= 0) a_ERR();
+   if(ts2.compare(ts) >= 0) a_ERR();
+   if(ts2 == ts) a_ERR();
+   if(!(ts2 != ts)) a_ERR();
+   if(!(ts2 < ts)) a_ERR();
+   if(!(ts2 <= ts)) a_ERR();
+   if(ts2 >= ts) a_ERR();
+   if(ts2 > ts) a_ERR();
+
+   ts2.nano(ts2.nano() + 2);
+   if(!ts2.is_valid()) a_ERR();
+   if(ts2.sec() != ts.sec()) a_ERR();
+   if(ts2.nano() != ts.nano() + 1) a_ERR();
+   if(ts.compare(ts2) >= 0) a_ERR();
+   if(ts2.compare(ts) <= 0) a_ERR();
+   if(ts2 == ts) a_ERR();
+   if(!(ts2 != ts)) a_ERR();
+   if(ts2 < ts) a_ERR();
+   if(ts2 <= ts) a_ERR();
+   if(!(ts2 >= ts)) a_ERR();
+   if(!(ts2 > ts)) a_ERR();
+}
+// }}}
+
+// utf {{{
 static void
 a_utf(void){
    char buf[utf8::buffer_size];
@@ -707,6 +959,7 @@ a_utf(void){
    if(cs::cmp(buf, utf8::replacer))
       a_ERR();
 }
+// }}}
 
 #include <su/code-ou.h>
 // s-it-mode

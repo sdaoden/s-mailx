@@ -32,6 +32,10 @@
 #include <errno.h>
 #include <string.h>
 
+#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+# include <time.h>
+#endif
+
 #if defined mx_HAVE_PRCTL_DUMPABLE
 # include <sys/prctl.h>
 #elif defined mx_HAVE_PROCCTL_TRACE_CTL
@@ -53,8 +57,7 @@
 #include "su/code-in.h"
 
 /* TODO Avoid linkage errors, instantiate what is needed;
- * TODO SU needs to be available as a library to overcome this,
- * TODO or a compiler capable of inlining can only be used */
+ * TODO SU needs to be available as a (static) library to overcome this */
 uz su__state;
 #ifdef su_MEM_ALLOC_DEBUG
 boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
@@ -64,7 +67,7 @@ boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #define su_err_set_no(X) (errno = X)
 
 static void _ign_signal(int signum);
-static uz n_msleep(uz millis, boole ignint);
+static uz su_time_msleep(uz millis, boole ignint);
 
 #include "mx/file-dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
@@ -79,10 +82,10 @@ _ign_signal(int signum){
 }
 
 static uz
-n_msleep(uz millis, boole ignint){
+su_time_msleep(uz millis, boole ignint){
    uz rv;
 
-#ifdef mx_HAVE_NANOSLEEP
+#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
    /* C99 */{
       struct timespec ts, trem;
       int i;
@@ -90,13 +93,23 @@ n_msleep(uz millis, boole ignint){
       ts.tv_sec = millis / 1000;
       ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
 
-      while((i = nanosleep(&ts, &trem)) != 0 && ignint)
+      while((i =
+#ifdef su_HAVE_CLOCK_NANOSLEEP
+                 clock_nanosleep
+#else
+                 nanosleep
+#endif
+                 (
+#ifdef su_HAVE_CLOCK_NANOSLEEP
+                  CLOCK_REALTIME, 0,
+#endif
+                  &ts, &trem)) != 0 && ignint)
          ts = trem;
       rv = (i == 0) ? 0
             : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
-#elif defined mx_HAVE_SLEEP
+#elif defined su_HAVE_SLEEP
    if((millis /= 1000) == 0)
       millis = 1;
    while((rv = sleep(S(ui,millis))) != 0 && ignint)
@@ -104,6 +117,7 @@ n_msleep(uz millis, boole ignint){
 #else
 # error Configuration should have detected a function for sleeping.
 #endif
+
    return rv;
 }
 

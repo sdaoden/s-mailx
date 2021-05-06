@@ -43,6 +43,8 @@
 
 #include <sys/utsname.h>
 
+#include <time.h>
+
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
@@ -67,6 +69,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/sort.h>
+#include <su/time.h>
 
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
@@ -705,46 +708,31 @@ n_is_all_or_aster(char const *name){
    return rv;
 }
 
-FL struct n_timespec const *
+FL struct su_timespec const *
 n_time_now(boole force_update){ /* TODO event loop update IF cmd requests! */
-   static struct n_timespec ts_now;
+   static struct su_timespec ts_now;
    NYD2_IN;
 
    if(UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
-      (void)su_idec_s64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH),
-         0,NULL);
-      ts_now.ts_nsec = 0;
-   }else if(force_update || ts_now.ts_sec == 0){
-#ifdef mx_HAVE_CLOCK_GETTIME
-      struct timespec ts;
-
-      clock_gettime(CLOCK_REALTIME, &ts);
-      ts_now.ts_sec = (s64)ts.tv_sec;
-      ts_now.ts_nsec = (sz)ts.tv_nsec;
-#elif defined mx_HAVE_GETTIMEOFDAY
-      struct timeval tv;
-
-      gettimeofday(&tv, NULL);
-      ts_now.ts_sec = (s64)tv.tv_sec;
-      ts_now.ts_nsec = (sz)tv.tv_usec * 1000;
-#else
-      ts_now.ts_sec = (s64)time(NULL);
-      ts_now.ts_nsec = 0;
-#endif
-   }
+      (void)su_idec_s64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NIL);
+      ts_now.ts_nano = 0;
+   }else if(force_update || ts_now.ts_sec == 0)
+      su_timespec_current(&ts_now);
 
    /* Just in case.. */
    if(UNLIKELY(ts_now.ts_sec < 0))
       ts_now.ts_sec = 0;
+
    NYD2_OU;
    return &ts_now;
 }
 
 FL void
 time_current_update(struct time_current *tc, boole full_update){
-   NYD_IN;
-   tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
+   NYD2_IN;
+
+   tc->tc_time = S(time_t,n_time_now(TRU1)->ts_sec);
 
    if(full_update){
       char *cp;
@@ -753,22 +741,25 @@ time_current_update(struct time_current *tc, boole full_update){
 
       t = tc->tc_time;
 jredo:
-      if((tmp = gmtime(&t)) == NULL){
+      if((tmp = gmtime(&t)) == NIL){
          t = 0;
          goto jredo;
       }
       su_mem_copy(&tc->tc_gm, tmp, sizeof tc->tc_gm);
-      if((tmp = localtime(&t)) == NULL){
+
+      if((tmp = localtime(&t)) == NIL){
          t = 0;
          goto jredo;
       }
       su_mem_copy(&tc->tc_local, tmp, sizeof tc->tc_local);
+
       cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((s64)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';
       ASSERT(P2UZ(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
-   NYD_OU;
+
+   NYD2_OU;
 }
 
 FL s32
@@ -806,11 +797,8 @@ n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
          (localp_or_nil->tm_min - utcp_or_nil->tm_min)) * 60) +
          (localp_or_nil->tm_sec - utcp_or_nil->tm_sec);
 
-   if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0){
-      s32 const ds = 24 * 60 * 60;
-
-      rv += (t == 1) ? ds : -S(s32,ds);
-   }
+   if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0)
+      rv += (t == 1) ? su_TIME_DAY_SECS : -S(s32,su_TIME_DAY_SECS);
 #endif
 
 jleave:
@@ -852,16 +840,16 @@ jredo:
 
    if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
-      wdn = n_weekday_names[4];
-      mn = n_month_names[0];
+      wdn = su_time_weekday_names_abbrev[su_TIME_WEEKDAY_THURSDAY];
+      mn = su_time_month_names_abbrev[su_TIME_MONTH_JANUARY];
       md = 1;
       th = tm = ts = 0;
    }else{
       y += 1900;
-      wdn = (tmp->tm_wday >= 0 && tmp->tm_wday <= 6)
-            ? n_weekday_names[tmp->tm_wday] : n_qm;
-      mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
-            ? n_month_names[tmp->tm_mon] : n_qm;
+      wdn = su_TIME_WEEKDAY_IS_VALID(tmp->tm_wday)
+            ? su_time_weekday_names_abbrev[tmp->tm_wday] : n_qm;
+      mn = su_TIME_MONTH_IS_VALID(tmp->tm_mon)
+            ? su_time_month_names_abbrev[tmp->tm_mon] : n_qm;
 
       if((md = tmp->tm_mday) < 1 || md > 31)
          md = 1;
@@ -879,38 +867,6 @@ jredo:
 
    NYD_OU;
    return buf;
-}
-
-FL uz
-n_msleep(uz millis, boole ignint){
-   uz rv;
-   NYD2_IN;
-
-#ifdef mx_HAVE_NANOSLEEP
-   /* C99 */{
-      struct timespec ts, trem;
-      int i;
-
-      ts.tv_sec = millis / 1000;
-      ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
-
-      while((i = nanosleep(&ts, &trem)) != 0 && ignint)
-         ts = trem;
-      rv = (i == 0) ? 0
-            : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
-   }
-
-#elif defined mx_HAVE_SLEEP
-   if((millis /= 1000) == 0)
-      millis = 1;
-   while((rv = sleep((unsigned int)millis)) != 0 && ignint)
-      millis = rv;
-#else
-# error Configuration should have detected a function for sleeping.
-#endif
-
-   NYD2_OU;
-   return rv;
 }
 
 FL void

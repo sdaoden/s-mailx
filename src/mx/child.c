@@ -36,6 +36,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/time.h>
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
@@ -158,7 +159,7 @@ a_child__on_termios_state_change(up cookie, u32 tiossc, s32 sig){/* TODO bad */
             uz i;
 
             for(i = 0; i < 10; ++i){
-               n_msleep(100, FAL0);
+               su_time_msleep(100, FAL0);
                if(cep->ce_done)
                   break;
             }
