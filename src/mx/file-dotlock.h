@@ -153,7 +153,12 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip,
    if(stat(lname, &stb) == -1)
       goto jbados;
 
-   unlink(lname);
+#ifdef mx_SOURCE_PS_DOTLOCK_MAIN
+   unlink
+#else
+   su_path_rm
+#endif
+      (lname);
 
    /* If the number of links was two (one for the unique file and one for
     * the lock), we've won the race */
@@ -165,7 +170,12 @@ jbados:
    rv = ((su_err_no() == su_ERR_EXIST)
          ? mx_FILE_DOTLOCK_STATE_EXIST
          : mx_FILE_DOTLOCK_STATE_NOPERM | mx_FILE_DOTLOCK_STATE_ABANDON);
-   unlink(lname);
+#ifdef mx_SOURCE_PS_DOTLOCK_MAIN
+   unlink
+#else
+   su_path_rm
+#endif
+      (lname);
    goto jleave;
 }
 

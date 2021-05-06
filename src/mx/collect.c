@@ -45,6 +45,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/utf.h>
 
 #include "mx/attachments.h"
@@ -1739,7 +1740,7 @@ jearg:
          }
 
          /* XXX race, and why not test everywhere, then? */
-         if(n_is_dir(cp, FAL0)){
+         if(su_path_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             if(a_HARDERR())
                goto jerr;

@@ -32,6 +32,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/attachments.h"
 #include "mx/file-streams.h"
@@ -82,7 +83,6 @@ VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 #ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
 #endif
-VL char const n_path_devnull[sizeof n_PATH_DEVNULL] = n_PATH_DEVNULL;
 VL char const n_0[2] = "0";
 VL char const n_1[2] = "1";
 VL char const n_m1[3] = "-1";
@@ -1006,7 +1006,7 @@ jeMmq:
          if(!(n_psonce & n_PSO_INTERACTIVE))
             setvbuf(n_stdin, NIL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-         mc.mc_folder = n_path_devnull;
+         mc.mc_folder = su_path_dev_null;
          n_var_setup_batch_mode();
          break;
       case '.':

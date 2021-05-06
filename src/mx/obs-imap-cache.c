@@ -52,6 +52,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/path.h>
 
 #include "mx/compat.h"
 #include "mx/file-locks.h"
@@ -72,7 +73,6 @@ static u64 *         builds(long *contentelem);
 static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
-static void             remve(unsigned long n);
 static FILE *a_cache_queue1(struct mailbox *mp,
       BITENUM_IS(u32,mx_fs_oflags) oflags, char **xname);
 static enum okay        dequeue1(struct mailbox *mp);
@@ -352,13 +352,13 @@ putcache(struct mailbox *mp, struct message *m)
       cnt -= n;
       if ((uz)n != fread(iob, 1, n, ibuf) ||
             n != (long)zwrite(zp, iob, n)) {
-         unlink(name);
+         su_path_rm(name);
          zfree(zp);
          goto jout;
       }
    }
    if (zfree(zp) < 0) {
-      unlink(name);
+      su_path_rm(name);
       goto jout;
    }
 jdone:
@@ -367,7 +367,7 @@ jdone:
       S(int,USEBITS(m->m_flag)), (unsigned long)m->m_time, m->m_xlines);
    putc('\n', obuf);
    if (ferror(obuf)) {
-      unlink(name);
+      su_path_rm(name);
       goto jout;
    }
    if (c == 'B' && USEBITS(m->m_flag) == MREAD)
@@ -376,7 +376,7 @@ jdone:
 jout:
    if(!mx_fs_close(obuf)){
       m->m_flag &= ~MFULLYCACHED;
-      unlink(name);
+      su_path_rm(name);
    }
    (void)fseek(mp->mb_itf, oldoffset, SEEK_SET);
 jleave:
@@ -422,7 +422,7 @@ initcache(struct mailbox *mp)
       x = ferror(uvfp);
 
       if(!mx_fs_close(uvfp) || x){
-         unlink(uvname);
+         su_path_rm(uvname);
          mp->mb_uidvalidity = 0;
       }
    }
@@ -476,7 +476,7 @@ clean(struct mailbox *mp, struct cw *cw)
    }
    buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) + su_cs_len(eaccount) +
          su_cs_len(emailbox) + 40);
-   if (!n_path_mkdir(cachedir))
+   if(!su_path_mkdir(cachedir, TRU1))
       goto jleave;
    snprintf(buf, bufsz, "%s/README", cachedir);
    if((fp = mx_fs_open(buf, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_EXCL))
@@ -489,7 +489,7 @@ clean(struct mailbox *mp, struct cw *cw)
    }
    fp = NULL;
    snprintf(buf, bufsz, "%s/%s/%s", cachedir, eaccount, emailbox);
-   if (!n_path_mkdir(buf))
+   if(!su_path_mkdir(buf, TRU1))
       goto jleave;
    if (chdir(buf) < 0)
       goto jleave;
@@ -499,7 +499,7 @@ clean(struct mailbox *mp, struct cw *cw)
       if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
             (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
          continue;
-      unlink(dp->d_name);
+      su_path_rm(dp->d_name);
    }
    closedir(dirp);
    fp = mx_fs_open("UIDVALIDITY", (mx_FS_O_WRONLY | mx_FS_O_CREATE |
@@ -554,6 +554,7 @@ static void
 purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    const char *name)
 {
+   char iencbuf[su_IENC_BUFFER_SIZE];
    u64 *contents;
    long i, j, contentelem;
    NYD_IN;
@@ -571,7 +572,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          } else if (i < mc && m[i].m_uid < contents[j])
             i++;
          else
-            remve(contents[j++]);
+            su_path_rm(su_ienc_u64(iencbuf, contents[j++], 10));
       }
       n_free(contents);
    }
@@ -595,17 +596,6 @@ longlt(const void *a, const void *b)
    return u.i;
 }
 
-static void
-remve(unsigned long n)
-{
-   char buf[30];
-   NYD_IN;
-
-   snprintf(buf, sizeof buf, "%lu", n);
-   unlink(buf);
-   NYD_OU;
-}
-
 FL void
 delcache(struct mailbox *mp, struct message *m)
 {
@@ -613,7 +603,7 @@ delcache(struct mailbox *mp, struct message *m)
    NYD_IN;
 
    fn = encuid(mp, m->m_uid);
-   if (fn && unlink(fn) == 0)
+   if (fn && su_path_rm(fn))
       m->m_flag |= MUNLINKED;
    NYD_OU;
 }
@@ -750,7 +740,7 @@ cache_remove(const char *name)
       su_mem_copy(path + pathend, dp->d_name, n);
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
-      if (unlink(path) < 0) {
+      if(!su_path_rm(path)){
          n_perr(path, 0);
          closedir(dirp);
          n_free(path);
@@ -760,7 +750,7 @@ cache_remove(const char *name)
    }
    closedir(dirp);
    path[pathend] = '\0';
-   rmdir(path);   /* no error on failure, might contain submailboxes */
+   su_path_rmdir(path); /* no error on failure, might contain submailboxes */
    n_free(path);
 jleave:
    NYD_OU;
@@ -921,7 +911,7 @@ jsave:
 
    if(fp != NIL){
       mx_fs_close(fp);
-      unlink(qname);
+      su_path_rm(qname);
    }
 jleave:
    NYD_OU;

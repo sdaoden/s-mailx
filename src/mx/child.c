@@ -36,6 +36,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/time.h>
 
 #include "mx/cmd.h"
@@ -482,7 +483,7 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
    /* TODO WHAT IS WITH STDERR_FILENO DAMMIT? */
    if((i = ((fd = S(s32,ccp->cc_fds[0])) == mx_CHILD_FD_NULL)))
-      ccp->cc_fds[0] = fd = open(n_path_devnull, O_RDONLY);
+      ccp->cc_fds[0] = fd = open(su_path_dev_null, O_RDONLY);
    if(fd >= 0){
       dup2(fd, STDIN_FILENO);
       if(i)
@@ -490,7 +491,7 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
    }
 
    if((i = ((fd = S(s32,ccp->cc_fds[1])) == mx_CHILD_FD_NULL)))
-      ccp->cc_fds[1] = fd = open(n_path_devnull, O_WRONLY);
+      ccp->cc_fds[1] = fd = open(su_path_dev_null, O_WRONLY);
    if(fd >= 0){
       dup2(fd, STDOUT_FILENO);
       if(i)

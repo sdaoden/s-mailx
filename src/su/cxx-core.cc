@@ -25,6 +25,7 @@ su_USECASE_MX_DISABLED
 #include <stdarg.h>
 
 #include "su/cs.h"
+#include "su/path.h"
 #include "su/utf.h"
 
 /*#define NYDPROF_ENABLE*/
@@ -58,6 +59,10 @@ STA type_toolbox<char*> const * const cs::type_toolbox_case =
       R(NSPC(su)type_toolbox<char*> const*,&su_cs_toolbox_case);
 STA type_toolbox<char const*> const * const cs::const_type_toolbox_case =
       R(NSPC(su)type_toolbox<char const*> const*,&su_cs_toolbox_case);
+
+// path.h
+
+STA char const path::dev_null[sizeof su_PATH_DEV_NULL] = su_PATH_DEV_NULL;
 
 // utf.h
 

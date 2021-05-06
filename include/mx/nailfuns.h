@@ -843,18 +843,6 @@ FL void        mark(int mesg, int f);
  * path.c
  */
 
-/* Test to see if the passed file name is a directory, return true if it is.
- * If check_access is set, we also access(2): if it is TRUM1 only X_OK|R_OK is
- * tested, otherwise X_OK|R_OK|W_OK. */
-FL boole n_is_dir(char const *name, boole check_access);
-
-/* Recursively create a directory */
-FL boole n_path_mkdir(char const *name);
-
-/* Delete a file, but only if the file is a plain file; return FAL0 on system
- * error and TRUM1 if name is not a plain file, return TRU1 on success */
-FL boole n_path_rm(char const *name);
-
 /* A get-wd..restore-wd approach */
 FL enum okay   cwget(struct cw *cw);
 FL enum okay   cwret(struct cw *cw);

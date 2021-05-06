@@ -41,6 +41,7 @@
 #include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/path.h>
 #include <su/sort.h>
 
 #include "mx/cmd.h"
@@ -1071,7 +1072,7 @@ jefrom:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: do not verify _that_ call.
           * See main.c! */
-         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(*val, TRUM1)){
+         if(!(n_pstate & n_PS_ROOT) && !su_path_is_dir(*val, TRUM1)){
             emsg = N_("$HOME is not a directory or not accessible: %s\n");
             goto jerr;
          }
@@ -1125,7 +1126,7 @@ jefrom:
          /* n_string_drop_ownership(so); */
          }break;
       case ok_v_TMPDIR:
-         if(!n_is_dir(*val, TRU1)){
+         if(!su_path_is_dir(*val, TRU1)){
             emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
             goto jerr;
          }
@@ -3469,12 +3470,12 @@ n_var_setup_batch_mode(void){
 
    n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
    n_poption |= n_PO_S_FLAG_TEMPORARY;
-   ok_vset(MAIL, n_path_devnull);
-   ok_vset(MBOX, n_path_devnull);
+   ok_vset(MAIL, su_path_dev_null);
+   ok_vset(MBOX, su_path_dev_null);
    ok_bset(emptystart);
    ok_bclear(errexit);
    ok_bclear(header);
-   ok_vset(inbox, n_path_devnull);
+   ok_vset(inbox, su_path_dev_null);
    ok_bclear(posix);
    ok_bset(quiet);
    ok_vset(sendwait, su_empty);
