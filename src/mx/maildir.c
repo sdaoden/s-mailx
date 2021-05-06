@@ -54,6 +54,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/path.h>
 #include <su/prime.h>
 #include <su/time.h>
 
@@ -155,10 +156,10 @@ _cleantmp(void)
       s = n_string_trunc(s, 0);
       s = n_string_push_buf(s, "tmp/", sizeof("tmp/") -1);
       s = n_string_push_cp(s, dp->d_name);
-      if (stat(n_string_cp(s), &st) == -1)
+      if(stat(n_string_cp(s), &st) == -1)
          continue;
-      if (st.st_atime <= now)
-         unlink(s->s_dat);
+      if(st.st_atime <= now)
+         su_path_rm(s->s_dat);
    }
    closedir(dirp);
 jleave:
@@ -573,8 +574,9 @@ maildir_update(void)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
-      if (dodel) {
-         if (unlink(m->m_maildir_file) < 0)
+
+      if(dodel){
+         if(!su_path_rm(m->m_maildir_file))
             n_err(_("Cannot delete file %s for message %lu\n"),
                n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file),
                   FAL0), (ul)P2UZ(m - message + 1));
@@ -629,8 +631,9 @@ _maildir_move(struct su_timespec const *tsp, struct message *m)
          (ul)P2UZ(m - message + 1));
       goto jleave;
    }
-   if (unlink(m->m_maildir_file) == -1)
-      n_err(_("Cannot unlink %s\n"),
+
+   if(!su_path_rm(m->m_maildir_file))
+      n_err(_("Cannot remove %s\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0));
 jleave:
    NYD_OU;
@@ -784,33 +787,29 @@ jtmperr:
          n_shexp_quote_cp(nfn, FAL0));
       goto jerr;
    }
+
    rv = OKAY;
 jerr:
-   if (unlink(tfn) == -1)
-      n_err(_("Cannot unlink %s\n"), n_shexp_quote_cp(tfn, FAL0));
+   if(!su_path_rm(tfn))
+      n_err(_("Cannot remove %s\n"), n_shexp_quote_cp(tfn, FAL0));
+
 jleave:
    NYD_OU;
    return rv;
 }
 
 static enum okay
-trycreate(char const *name)
-{
-   struct stat st;
-   enum okay rv = STOP;
+trycreate(char const *name){
+   enum okay rv;
    NYD_IN;
 
-   if (!stat(name, &st)) {
-      if (!S_ISDIR(st.st_mode)) {
-         n_err(_("%s is not a directory\n"), n_shexp_quote_cp(name, FAL0));
-         goto jleave;
-      }
-   } else if (!n_path_mkdir(name)) {
+   if(su_path_mkdir(name, TRU1))
+      rv = OKAY;
+   else{
       n_err(_("Cannot create directory %s\n"), n_shexp_quote_cp(name, FAL0));
-      goto jleave;
+      rv = STOP;
    }
-   rv = OKAY;
-jleave:
+
    NYD_OU;
    return rv;
 }
@@ -930,7 +929,7 @@ subdir_remove(char const *name, char const *sub)
       if (UCMP(32, pathend + n +1, >, pathsize))
          path = n_realloc(path, pathsize = pathend + n + 30);
       su_mem_copy(path + pathend, dp->d_name, n +1);
-      if (unlink(path) == -1) {
+      if(!su_path_rm(path)){
          n_perr(path, 0);
          closedir(dirp);
          goto jleave;
@@ -939,10 +938,11 @@ subdir_remove(char const *name, char const *sub)
    closedir(dirp);
 
    path[pathend] = '\0';
-   if (rmdir(path) == -1) {
+   if(!su_path_rmdir(path)){
       n_perr(path, 0);
       goto jleave;
    }
+
    rv = OKAY;
 jleave:
    n_free(path);
@@ -989,7 +989,7 @@ maildir_setfile(char const *who, char const * volatile name,
       mb.mb_type = MB_MAILDIR;
    }
 
-   if(!n_is_dir(name, FAL0)){
+   if(!su_path_is_dir(name, FAL0)){
       emsg = N_("Not a maildir: %s\n");
       goto jerr;
    }else if(chdir(name) < 0){
@@ -1220,10 +1220,12 @@ maildir_remove(char const *name)
          subdir_remove(name, "new") == STOP ||
          subdir_remove(name, "cur") == STOP)
       goto jleave;
-   if (rmdir(name) == -1) {
+
+   if(!su_path_rmdir(name)){
       n_perr(name, 0);
       goto jleave;
    }
+
    rv = OKAY;
 jleave:
    NYD_OU;
