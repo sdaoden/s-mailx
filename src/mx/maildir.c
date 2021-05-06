@@ -55,6 +55,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/prime.h>
+#include <su/time.h>
 
 #include "mx/compat.h"
 #include "mx/file-streams.h"
@@ -92,13 +93,13 @@ static boole a_maildir_readin(char const *name, struct message *mp);
 
 static void             maildir_update(void);
 
-static void             _maildir_move(struct n_timespec const *tsp,
+static void             _maildir_move(struct su_timespec const *tsp,
                            struct message *m);
 
-static char *           mkname(struct n_timespec const *tsp, enum mflag f,
+static char *           mkname(struct su_timespec const *tsp, enum mflag f,
                            char const *pref);
 
-static enum okay        maildir_append1(struct n_timespec const *tsp,
+static enum okay        maildir_append1(struct su_timespec const *tsp,
                            char const *name, FILE *fp, off_t off1,
                            long size, enum mflag flag);
 
@@ -545,7 +546,7 @@ static void
 maildir_update(void)
 {
    struct message *m;
-   struct n_timespec const *tsp;
+   struct su_timespec const *tsp;
    int dodel, c, gotcha = 0, held = 0, modflags = 0;
    NYD_IN;
 
@@ -612,7 +613,7 @@ jfree:
 }
 
 static void
-_maildir_move(struct n_timespec const *tsp, struct message *m)
+_maildir_move(struct su_timespec const *tsp, struct message *m)
 {
    char *fn, *newfn;
    NYD_IN;
@@ -636,10 +637,10 @@ jleave:
 }
 
 static char *
-mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
+mkname(struct su_timespec const *tsp, enum mflag f, char const *pref)
 {
    static char *node;
-   static struct n_timespec ts;
+   static struct su_timespec ts;
 
    char *cp;
    int size, n, i;
@@ -673,18 +674,21 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
       }
 
       /* Problem: Courier spec uses microseconds, not nanoseconds */
+      /* XXX timespec calculation! */
       if((s = tsp->ts_sec) > ts.ts_sec){
          ts.ts_sec = s;
-         ts.ts_nsec = tsp->ts_nsec / (n_DATE_NANOSSEC / n_DATE_MICROSSEC);
+         ts.ts_nano = tsp->ts_nano /
+               (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MICROS);
       }else{
-         s = tsp->ts_nsec / (n_DATE_NANOSSEC / n_DATE_MICROSSEC);
-         if(s <= ts.ts_nsec)
-            s = ts.ts_nsec + 1;
-         if(s < n_DATE_MICROSSEC)
-            ts.ts_nsec = s;
+         s = tsp->ts_nano /
+               (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MICROS);
+         if(s <= ts.ts_nano)
+            s = ts.ts_nano + 1;
+         if(s < su_TIMESPEC_SEC_NANOS)
+            ts.ts_nano = s;
          else{
             ++ts.ts_sec;
-            ts.ts_nsec = 0;
+            ts.ts_nano = 0;
          }
       }
 
@@ -692,7 +696,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
       size = 60 + su_cs_len(node);
       cp = n_autorec_alloc(size);
       n = snprintf(cp, size, "%" PRId64 ".M%" PRIdZ "P%ld.%s:2,",
-            ts.ts_sec, ts.ts_nsec, (long)n_pid, node);
+            ts.ts_sec, ts.ts_nano, (long)n_pid, node);
    } else {
       size = (n = su_cs_len(pref)) + 13;
       cp = n_autorec_alloc(size);
@@ -726,7 +730,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
 }
 
 static enum okay
-maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
+maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
    off_t off1, long size, enum mflag flag)
 {
    char buf[4096], *fn, *tfn, *nfn;
@@ -739,7 +743,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    nlen = su_cs_len(name);
 
    /* Create a unique temporary file */
-   for (nfn = (char*)0xA /* XXX no magic */;; n_msleep(500, FAL0)) {
+   for(nfn = R(char*,0xA) /* XXX no magic */;; su_time_msleep(500, FAL0)){
       flen = su_cs_len(fn = mkname(tsp, flag, NULL));
       tfn = n_autorec_alloc(n = nlen + flen + 6);
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
@@ -1104,7 +1108,7 @@ jleave:
 FL enum okay
 maildir_append(char const *name, FILE *fp, s64 offset)
 {
-   struct n_timespec const *tsp;
+   struct su_timespec const *tsp;
    char *buf, *bp, *lp;
    uz bufsize, buflen, cnt;
    off_t off1 = -1, offs;

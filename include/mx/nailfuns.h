@@ -36,6 +36,7 @@
  */
 
 struct su_cs_dict;
+struct su_timespec;
 
 struct mx_attachment;
 struct mx_cmd_arg;
@@ -299,8 +300,7 @@ FL boole n_is_all_or_aster(char const *name);
 
 /* Get seconds since epoch, return pointer to static struct.
  * Unless force_update is true we may use the event-loop tick time */
-FL struct n_timespec const *n_time_now(boole force_update);
-#define n_time_epoch() ((time_t)n_time_now(FAL0)->ts_sec)
+FL struct su_timespec const *n_time_now(boole force_update);
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
@@ -314,11 +314,6 @@ FL s32 n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
 /* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
  * NOTE: no trailing newline */
 FL char *n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil);
-
-/* Returns 0 if fully slept, number of millis left if ignint is true and we
- * were interrupted.  Actual resolution may be second or less.
- * Note in case of mx_HAVE_SLEEP this may be SIGALARM based. */
-FL uz n_msleep(uz millis, boole ignint);
 
 /* Our error print series..  Note: these reverse scan format in order to know
  * whether a newline was included or not -- this affects the output!
@@ -711,9 +706,6 @@ FL time_t      unixtime(char const *from);
 #endif
 
 FL time_t      rfctime(char const *date);
-
-FL time_t      combinetime(int year, int month, int day,
-                  int hour, int minute, int second);
 
 /* Determine the date to print in faked 'From ' lines */
 FL void        substdate(struct message *m);

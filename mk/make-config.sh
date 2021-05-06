@@ -1793,7 +1793,7 @@ msg 'yes'
 ## macros to be used by only the subprograms (potentially).
 
 if run_check clock_gettime 'clock_gettime(2)' \
-   '#define mx_HAVE_CLOCK_GETTIME' << \!
+   '#define su_HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1807,7 +1807,7 @@ int main(void){
 then
    :
 elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' \
-   '#define mx_HAVE_CLOCK_GETTIME' '-lrt' << \!
+   '#define su_HAVE_CLOCK_GETTIME' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1821,7 +1821,7 @@ int main(void){
 then
    :
 elif run_check gettimeofday 'gettimeofday(2)' \
-   '#define mx_HAVE_GETTIMEOFDAY' << \!
+   '#define su_HAVE_GETTIMEOFDAY' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
 # include <errno.h>
@@ -1839,8 +1839,8 @@ else
    have_no_subsecond_time=1
 fi
 
-if run_check nanosleep 'nanosleep(2)' \
-   '#define mx_HAVE_NANOSLEEP' << \!
+if run_check clock_nanosleep 'clock_nanosleep(2)' \
+   '#define su_HAVE_CLOCK_NANOSLEEP' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1848,7 +1848,29 @@ int main(void){
 
    ts.tv_sec = 1;
    ts.tv_nsec = 100000;
-   if(!nanosleep(&ts, NULL) || errno != ENOSYS)
+   if(!clock_nanosleep(
+#if defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK +0 > 0
+         CLOCK_MONOTONIC
+#else
+         CLOCK_REALTIME
+#endif
+         , 0, &ts, (void*)0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+then
+   :
+elif run_check nanosleep 'nanosleep(2)' \
+   '#define su_HAVE_NANOSLEEP' << \!
+#include <time.h>
+# include <errno.h>
+int main(void){
+   struct timespec ts;
+
+   ts.tv_sec = 1;
+   ts.tv_nsec = 100000;
+   if(!nanosleep(&ts, (void*)0) || errno != ENOSYS)
       return 0;
    return 1;
 }
@@ -1856,7 +1878,7 @@ int main(void){
 then
    :
 elif run_check nanosleep 'nanosleep(2) (via -lrt)' \
-   '#define mx_HAVE_NANOSLEEP' '-lrt' << \!
+   '#define su_HAVE_NANOSLEEP' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1864,7 +1886,7 @@ int main(void){
 
    ts.tv_sec = 1;
    ts.tv_nsec = 100000;
-   if(!nanosleep(&ts, NULL) || errno != ENOSYS)
+   if(!nanosleep(&ts, (void*)0) || errno != ENOSYS)
       return 0;
    return 1;
 }
@@ -1873,7 +1895,7 @@ then
    :
 # link_check is enough for this, that function is so old, trust the proto
 elif link_check sleep 'sleep(3)' \
-   '#define mx_HAVE_SLEEP' << \!
+   '#define su_HAVE_SLEEP' << \!
 #include <unistd.h>
 # include <errno.h>
 int main(void){
