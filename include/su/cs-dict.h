@@ -45,7 +45,7 @@ struct su_cs_dict_view;
  *
  * \list{\li{
  * Keys will be stored in full in the list nodes which make up the dictionary.
- * They will be hashed and compared by means of \ref{CS} (ASCII).
+ * They will be hashed and compared by means of \r{CS} (ASCII).
  * }\li{
  * Values are optionally owned (\r{su_CS_DICT_OWNS}), in which case the given,
  * then mandatory \r{su_toolbox} is used to manage value objects.
