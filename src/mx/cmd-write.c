@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/cmd.h"
 #include "mx/file-locks.h"
@@ -373,8 +374,8 @@ c_write(void *vp){
    NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
-      cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
-            cap->ca_arg.ca_str.l = su_cs_len(n_path_devnull));
+      cap->ca_arg.ca_str.s = savestrbuf(su_path_dev_null,
+            cap->ca_arg.ca_str.l = sizeof(su_path_dev_null));
 
    rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
    NYD_OU;

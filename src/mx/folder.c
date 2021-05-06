@@ -45,6 +45,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/path.h>
 
 #include "mx/cmd-shortcut.h"
 #include "mx/compat.h"
@@ -588,7 +589,7 @@ jlogname:
          }
          flags = a_STDIN;
       }else if((n_poption & n_PO_BATCH_FLAG) &&
-            !su_cs_cmp(name, n_path_devnull))
+            !su_cs_cmp(name, su_path_dev_null))
          flags = a_DEVNULL;
       else{
 #ifdef mx_HAVE_REALPATH
@@ -918,8 +919,8 @@ print_header_summary(char const *Larg)
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
       if ((n_poption & (n_PO_V | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
-         n_stdout = freopen(n_path_devnull, "w", stdout);
-         n_stderr = freopen(n_path_devnull, "w", stderr);
+         n_stdout = freopen(su_path_dev_null, "w", stdout);
+         n_stderr = freopen(su_path_dev_null, "w", stderr);
       }
       i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NULL) <= 0);
       if (n_poption & n_PO_EXISTONLY)

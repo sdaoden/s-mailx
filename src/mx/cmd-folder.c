@@ -42,6 +42,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/path.h>
 
 #include "mx/cmd.h"
 #include "mx/child.h"
@@ -219,18 +220,18 @@ c_remove(void *vp){
 
       switch(which_protocol(name, TRU1, FAL0, NIL)){
       case n_PROTO_EML:
-         if(unlink(name) == -1){
+         if(!su_path_rm(name)){
             emsg = su_err_doc(su_err_no());
             goto jerr;
          }
          break;
       case PROTO_FILE:
-         if(unlink(name) == -1){
+         if(!su_path_rm(name)){
             s32 err;
 
             if((err = su_err_no()) == su_ERR_ISDIR){
-               if(n_is_dir(name, FAL0)){
-                  if(!rmdir(name))
+               if(su_path_is_dir(name, FAL0)){
+                  if(su_path_rmdir(name))
                      break;
                   err = su_err_no();
                }
@@ -327,8 +328,8 @@ c_rename(void *vp){
          emsg = savecatsep(_("link(2) failed:"), ' ',
                _(su_err_doc(su_err_no())));
          goto jerrnotr;
-      }else if(unlink(oldn) == -1){
-         emsg = savecatsep(_("unlink(2) failed:"), ' ',
+      }else if(!su_path_rm(oldn)){
+         emsg = savecatsep(_("removing file failed:"), ' ',
                _(su_err_doc(su_err_no())));
          goto jerrnotr;
       }

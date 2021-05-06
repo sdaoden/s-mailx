@@ -52,8 +52,6 @@
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512 /* Maximum list of raw strings TODO dyn vector! */
 
-#define n_PATH_DEVNULL "/dev/null" /* Note: manual uses /dev/null as such */
-
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NIL /* DOC! */
 

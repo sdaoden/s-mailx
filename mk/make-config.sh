@@ -2137,7 +2137,7 @@ _EOT
    __va_copy 0 va_copy || __va_copy 1 __va_copy
 fi
 
-run_check pathconf 'f?pathconf(2)' '#define mx_HAVE_PATHCONF' << \!
+run_check pathconf 'f?pathconf(2)' '#define su_HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
 int main(void){
@@ -2179,7 +2179,7 @@ int main(void){
 !
 
 # We use this only then for now (need NOW+1)
-run_check utimensat 'utimensat(2)' '#define mx_HAVE_UTIMENSAT' << \!
+run_check utimensat 'utimensat(2)' '#define su_HAVE_UTIMENSAT' << \!
 #include <fcntl.h> /* For AT_* */
 #include <sys/stat.h>
 # include <errno.h>

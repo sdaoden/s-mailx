@@ -41,7 +41,8 @@
 # include "mx/nail.h"
 #endif
 
-#include <utime.h>
+#include <su/cs.h>
+#include <su/path.h>
 
 #include "mx/compat.h"
 #include "mx/dig-msg.h"
@@ -51,8 +52,6 @@
 #include "mx/net-pop3.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
-
-#include <su/cs.h>
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -81,9 +80,6 @@ static struct quitnames const _quitnames[] = {
 
 static char _mboxname[PATH_MAX];  /* Name of mbox */
 
-/* Touch the indicated file */
-static void _alter(char const *name);
-
 /* Preserve all the appropriate messages back in the system mailbox, and print
  * a nice message indicated how many were saved.  On any error, just return -1.
  * Else return 0.  Incorporate the any new mail that we found */
@@ -92,35 +88,6 @@ static int  writeback(FILE *res, FILE *obuf);
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
 static boole edstop(void);
-
-static void
-_alter(char const *name) /* TODO error handling */
-{
-#ifdef mx_HAVE_UTIMENSAT
-   struct timespec tsa[2];
-#else
-   struct stat sb;
-   struct utimbuf utb;
-#endif
-   struct n_timespec const *tsp;
-   NYD_IN;
-
-   tsp = n_time_now(TRU1); /* TODO -> eventloop */
-
-#ifdef mx_HAVE_UTIMENSAT
-   tsa[0].tv_sec = tsp->ts_sec + 1;
-   tsa[0].tv_nsec = tsp->ts_nsec;
-   tsa[1].tv_nsec = UTIME_OMIT;
-   utimensat(AT_FDCWD, name, tsa, 0);
-#else
-   if (!stat(name, &sb)) {
-      utb.actime = tsp->ts_sec;
-      utb.modtime = sb.st_mtime;
-      utime(name, &utb);
-   }
-#endif
-   NYD_OU;
-}
 
 static int
 writeback(FILE *res, FILE *obuf) /* TODO errors */
@@ -164,7 +131,7 @@ jerror:
    if (fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
-   _alter(mailname);
+   su_path_touch(mailname, NIL);
    if (p == 1)
       fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
    else
@@ -297,7 +264,7 @@ jemailname:
          close(fd);
 #endif
 
-      if(ok_blook(posix) && !ok_blook(keep) && n_path_rm(mailname))
+      if(ok_blook(posix) && !ok_blook(keep) && su_path_rm(mailname))
          fputs(_("removed\n"), n_stdout);
       else
          fputs(_("truncated\n"), n_stdout);
@@ -485,7 +452,7 @@ jcream:
       while ((c = getc(rbuf)) != EOF)
          putc(c, abuf);
       ftrunc(abuf);
-      _alter(mailname);
+      su_path_touch(mailname, NIL);
       rv = TRU1;
    } else {
 #ifdef mx_HAVE_FTRUNCATE
@@ -498,7 +465,7 @@ jcream:
          close(fd);
 #endif
       if(!ok_blook(keep))
-         n_path_rm(mailname);
+         su_path_rm(mailname);
       rv = TRU1;
    }
 
