@@ -33,6 +33,7 @@
 
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/time.h>
 
 #ifdef mx_HAVE_DOTLOCK
@@ -201,10 +202,8 @@ jislink:
    /* Be aware, even if the error is false!  Note the shared code in
     * file-dotlock.h *requires* that it is possible to create a filename
     * at least one byte longer than di_lock_name! */
-   do/* while(0) breaker */{
-# ifdef mx_HAVE_PATHCONF
-      long pc;
-# endif
+   /* C99 */{
+      uz pc;
       int i;
 
       i = snprintf(name, sizeof name, "%s.lock", fdi.fdi_file_name);
@@ -216,22 +215,9 @@ jenametool:
       }
 
       /* fd is a file, not portable to use for _PC_NAME_MAX */
-# ifdef mx_HAVE_PATHCONF
-      su_err_set_no(su_ERR_NONE);
-      if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
-         /* su_err_no() unchanged: no limit */
-         if(su_err_no() == su_ERR_NONE)
-            break;
-# endif
-         if(UCMP(z, NAME_MAX - 1, <, i))
-            goto jenametool;
-# ifdef mx_HAVE_PATHCONF
-      }else if(S(ul,pc) - 1 >= S(ul,i))
-         break;
-      else
+      if((pc = su_path_filename_max(NIL)) - 1 < S(uz,i))
          goto jenametool;
-# endif
-   }while(0);
+   }
 
    fdi.fdi_lock_name = name;
 
@@ -302,7 +288,7 @@ jmsg:
    if(fdls == mx_FILE_DOTLOCK_STATE_NONE){
       read(STDIN_FILENO, &fdls, sizeof fdls);
 
-      unlink(name);
+      su_path_rm(name);
    }
    NYD_OU;
    return n_EXIT_OK;

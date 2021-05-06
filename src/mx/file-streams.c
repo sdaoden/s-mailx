@@ -32,6 +32,7 @@
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/child.h"
 #include "mx/cmd-filetype.h"
@@ -567,24 +568,15 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
    fp = NIL;
    relesigs = FAL0;
    e = 0;
-   maxname = NAME_MAX;
 
    if(tdir_or_nil == NIL || tdir_or_nil == mx_FS_TMP_TDIR_TMP) /* (EQ) */
       tdir_or_nil = ok_vlook(TMPDIR);
 
-#ifdef mx_HAVE_PATHCONF
-   /* C99 */{
-      long pc;
-
-      if((pc = pathconf(tdir_or_nil, _PC_NAME_MAX)) != -1){
-         maxname = S(uz,pc);
-         if(maxname < a_RANDCHARS + a_HINT_MIN){
-            su_err_set_no(su_ERR_NAMETOOLONG);
-            goto jleave;
-         }
-      }
+   if((maxname = su_path_filename_max(tdir_or_nil)
+            ) < a_RANDCHARS + a_HINT_MIN){
+      su_err_set_no(su_ERR_NAMETOOLONG);
+      goto jleave;
    }
-#endif
 
    /* We are prepared to ignore the namehint .. but for O_SUFFIX */
    if(namehint_or_nil == NIL){
@@ -694,7 +686,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
 
    if(fp == NIL || (oflags & mx_FS_O_UNLINK)){
       e = su_err_no();
-      unlink(cp_base);
+      su_path_rm(cp_base);
       if(fp == NIL)
          close(fd);
       goto jfree;
@@ -740,7 +732,7 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
    DBG( if(u.fsep->fse_flags & a_FS_EF_UNLINK)
       n_alert("tmp_release(): REGISTER_UNLINK set!"); )
 
-   unlink(u.fsep->fse_realfile);
+   su_path_rm(u.fsep->fse_realfile);
 
    u.fsep->fse_flags &= ~(a_FS_EF_HOLDSIGS | a_FS_EF_UNLINK);
 

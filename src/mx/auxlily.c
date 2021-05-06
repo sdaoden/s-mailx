@@ -43,7 +43,18 @@
 
 #include <sys/utsname.h>
 
+#ifdef mx_HAVE_NET
+# ifdef mx_HAVE_GETADDRINFO
+#  include <sys/socket.h>
+# endif
+#endif
+
+#include <fcntl.h>
 #include <time.h>
+
+#ifdef mx_HAVE_NET
+# include <netdb.h>
+#endif
 
 #ifdef mx_HAVE_IDNA
 # if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
@@ -54,14 +65,6 @@
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
-#endif
-
-#ifdef mx_HAVE_NET
-# ifdef mx_HAVE_GETADDRINFO
-#  include <sys/socket.h>
-# endif
-
-# include <netdb.h>
 #endif
 
 #include <su/cs.h>

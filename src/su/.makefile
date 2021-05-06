@@ -9,7 +9,9 @@ getconf?=getconf
 SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
+	-Dsu_HAVE_PATHCONF \
 	-Dsu_HAVE_UTIMENSAT
+
 CXXFLAGS+=-Wall -pedantic $(SUF)
 CFLAGS+=-Wall -pedantic $(SUF)
 
@@ -19,7 +21,7 @@ CSRC = avopt.c \
 		cs-rfind.c cs-tbox.c cs-tools.c \
 	icodec-dec.c icodec-enc.c \
 	mem-alloc.c mem-bag.c mem-tools.c \
-	prime.c \
+	path.c prime.c \
 	re.c \
 	sort.c \
 	time-sleep.c time-spec.c time-utils.c
