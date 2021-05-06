@@ -59,6 +59,7 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/time.h>
 #include <su/utf.h>
 
 #include "mx/cmd.h"
@@ -4564,10 +4565,11 @@ transflags(struct message *omessage, long omsgCount, int transparent)
 }
 
 FL time_t
-imap_read_date_time(const char *cp)
+imap_read_date_time(const char *cp) /* TODO idec.. etc. */
 {
    char buf[3];
    time_t t;
+   s64 epsecs;
    int i, year, month, day, hour, minute, second, sign = -1;
    NYD2_IN;
 
@@ -4577,10 +4579,11 @@ imap_read_date_time(const char *cp)
    if (cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
       goto jinvalid;
    day = strtol(&cp[1], NULL, 10);
-   for (i = 0;;) {
-      if (su_cs_cmp_case_n(&cp[4], n_month_names[i], 3) == 0)
+   for(i = 0;;){
+      if(!su_cs_cmp_case_n(&cp[4], su_time_month_names_abbrev[i],
+            su_TIME_MONTH_NAMES_ABBREV_LEN))
          break;
-      if (n_month_names[++i][0] == '\0')
+      if(!su_TIME_MONTH_IS_VALID(++i))
          goto jinvalid;
    }
    month = i + 1;
@@ -4588,8 +4591,12 @@ imap_read_date_time(const char *cp)
    hour = strtol(&cp[13], NULL, 10);
    minute = strtol(&cp[16], NULL, 10);
    second = strtol(&cp[19], NULL, 10);
-   if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
+
+   epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
+   if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
       goto jinvalid;
+   t = S(time_t,epsecs);
+
    switch (cp[22]) {
    case '-':
       sign = 1;
@@ -4615,7 +4622,7 @@ jinvalid:
 }
 
 FL const char *
-imap_make_date_time(time_t t)
+imap_make_date_time(time_t t) /* XXX share */
 {
    static char s[40];
    char const *mn;
@@ -4631,19 +4638,19 @@ jredo:
    }
 
    tzdiff_min = S(int,n_time_tzdiff(t, NIL, tmp));
-   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
-   tzdiff_hour = tzdiff_min / 60;
-   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
+   tzdiff_min /= su_TIME_MIN_SECS;
+   tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
+   tzdiff_min %= su_TIME_HOUR_MINS;
 
    if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
-      mn = n_month_names[0];
+      mn = su_time_month_names_abbrev[su_TIME_MONTH_JANUARY];
       md = 1;
       th = tm = ts = 0;
    }else{
       y += 1900;
-      mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
-            ? n_month_names[tmp->tm_mon] : n_qm;
+      mn = su_TIME_MONTH_IS_VALID(tmp->tm_mon)
+            ? su_time_month_names_abbrev[tmp->tm_mon] : n_qm;
 
       if((md = tmp->tm_mday) < 1 || md > 31)
          md = 1;

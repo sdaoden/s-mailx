@@ -46,6 +46,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/time.h>
 
 #include "mx/cmd.h"
 
@@ -142,9 +143,9 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    else
       ignint = (argv[2] != NULL);
 
-   if(UZ_MAX / n_DATE_MILLISSEC < sec)
+   if(UZ_MAX / su_TIMESPEC_SEC_MILLIS < sec)
       goto jeover;
-   sec *= n_DATE_MILLISSEC;
+   sec *= su_TIMESPEC_SEC_MILLIS;
 
    if(UZ_MAX - sec < msec)
       goto jeover;
@@ -169,7 +170,8 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigaddset(&nset, SIGINT);
    sigprocmask(SIG_UNBLOCK, &nset, NULL);
 
-   n_pstate_err_no = (n_msleep(msec, ignint) > 0) ? su_ERR_INTR : su_ERR_NONE;
+   n_pstate_err_no = (su_time_msleep(msec, ignint) > 0)
+         ? su_ERR_INTR : su_ERR_NONE;
 
    sigprocmask(SIG_SETMASK, &oset, NIL);
    sigaction(SIGINT, &oact, NIL);

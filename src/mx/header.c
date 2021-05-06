@@ -48,6 +48,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/time.h>
 
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
@@ -119,13 +120,6 @@ static boole a_header_cmatch(char const *tp, char const *date);
 /* Check whether date is a valid 'From_' date.
  * (Rather ctime(3) generated dates, according to RFC 4155) */
 static boole a_header_is_date(char const *date);
-
-/* JulianDayNumber converter(s) */
-static uz a_header_gregorian_to_jdn(u32 y, u32 m, u32 d);
-#if 0
-static void a_header_jdn_to_gregorian(uz jdn,
-               u32 *yp, u32 *mp, u32 *dp);
-#endif
 
 /* ... And place the extracted date in `date' */
 static void a_header_parse_from_(struct message *mp,
@@ -321,89 +315,6 @@ a_header_is_date(char const *date){
    NYD2_OU;
    return rv;
 }
-
-static uz
-a_header_gregorian_to_jdn(u32 y, u32 m, u32 d){
-   /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
-    * (via third hand, plus adjustments).
-    * This algorithm is supposed to work for all dates in between 1582-10-15
-    * (0001-01-01 but that not Gregorian) and 65535-12-31 */
-   uz jdn;
-   NYD2_IN;
-
-#if 0
-   if(y == 0)
-      y = 1;
-   if(m == 0)
-      m = 1;
-   if(d == 0)
-      d = 1;
-#endif
-
-   if(m > 2)
-      m -= 3;
-   else{
-      m += 9;
-      --y;
-   }
-   jdn = y;
-   jdn /= 100;
-   y -= 100 * jdn;
-   y *= 1461;
-   y >>= 2;
-   jdn *= 146097;
-   jdn >>= 2;
-   jdn += y;
-   jdn += d;
-   jdn += 1721119;
-   m *= 153;
-   m += 2;
-   m /= 5;
-   jdn += m;
-   NYD2_OU;
-   return jdn;
-}
-
-#if 0
-static void
-a_header_jdn_to_gregorian(uz jdn, u32 *yp, u32 *mp, u32 *dp){
-   /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
-    * (via third hand, plus adjustments) */
-   uz y, x;
-   NYD2_IN;
-
-   jdn -= 1721119;
-   jdn <<= 2;
-   --jdn;
-   y =   jdn / 146097;
-         jdn %= 146097;
-   jdn |= 3;
-   y *= 100;
-   y +=  jdn / 1461;
-         jdn %= 1461;
-   jdn += 4;
-   jdn >>= 2;
-   x = jdn;
-   jdn <<= 2;
-   jdn += x;
-   jdn -= 3;
-   x =   jdn / 153;  /* x -> month */
-         jdn %= 153;
-   jdn += 5;
-   jdn /= 5; /* jdn -> day */
-   if(x < 10)
-      x += 3;
-   else{
-      x -= 9;
-      ++y;
-   }
-
-   *yp = (u32)(y & 0xFFFF);
-   *mp = (u32)(x & 0xFF);
-   *dp = (u32)(jdn & 0xFF);
-   NYD2_OU;
-}
-#endif /* 0 */
 
 static void
 a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
@@ -3000,22 +2911,27 @@ unixtime(char const *fromline)
    s32 i, year, month, day, hour, minute, second;
    NYD2_IN;
 
-   for (fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
+   for(fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
       ;
    fp -= 24;
-   if (P2UZ(fp - fromline) < 7)
+   if(P2UZ(fp - fromline) < 7)
       goto jinvalid;
-   if (fp[3] != ' ')
+
+   if(fp[3] != ' ')
       goto jinvalid;
-   for (i = 0;;) {
-      if (!strncmp(fp + 4, n_month_names[i], 3))
+
+   for(i = 0;;){
+      if(!su_cs_cmp_n(&fp[4], su_time_month_names_abbrev[i],
+            su_TIME_MONTH_NAMES_ABBREV_LEN))
          break;
-      if (n_month_names[++i][0] == '\0')
+      if(!su_TIME_MONTH_IS_VALID(++i))
          goto jinvalid;
    }
    month = i + 1;
-   if (fp[7] != ' ')
+
+   if(fp[7] != ' ')
       goto jinvalid;
+
    su_idec_s32_cp(&day, &fp[8], 10, &xp);
    if (*xp != ' ' || xp != fp + 10)
       goto jinvalid;
@@ -3031,16 +2947,24 @@ unixtime(char const *fromline)
    su_idec_s32_cp(&year, &fp[20], 10, &xp);
    if (xp != fp + 24)
       goto jinvalid;
-   if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
-      goto jinvalid;
 
-   t += n_time_tzdiff(t, NIL, NIL);
+   {
+      s64 epsecs;
+
+      epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
+      if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
+         goto jinvalid;
+
+      epsecs += n_time_tzdiff(epsecs, NIL, NIL);
+      t = S(time_t,epsecs);
+   }
 
 jleave:
    NYD2_OU;
    return t;
+
 jinvalid:
-   t = n_time_epoch();
+   t = S(time_t,n_time_now(FAL0)->ts_sec);
    goto jleave;
 }
 #endif /* mx_HAVE_IMAP_SEARCH || mx_HAVE_IMAP */
@@ -3063,15 +2987,18 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
          goto jinvalid;
    }
    su_idec_s32_cp(&day, cp, 10, &x);
-   if ((cp = nexttoken(x)) == NULL)
+
+   if((cp = nexttoken(x)) == NIL)
       goto jinvalid;
-   for (i = 0;;) {
-      if (!strncmp(cp, n_month_names[i], 3))
+   for(i = 0;;){
+      if(!su_cs_cmp_n(cp, su_time_month_names_abbrev[i],
+            su_TIME_MONTH_NAMES_ABBREV_LEN))
          break;
-      if (n_month_names[++i][0] == '\0')
+      if(!su_TIME_MONTH_IS_VALID(++i))
          goto jinvalid;
    }
    month = i + 1;
+
    if ((cp = nexttoken(&cp[3])) == NULL)
       goto jinvalid;
    /* RFC 5322, 4.3:
@@ -3100,8 +3027,14 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
    } else
       second = 0;
 
-   if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
-      goto jinvalid;
+   {
+      s64 epsecs;
+
+      epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
+      if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
+         goto jinvalid;
+      t = S(time_t,epsecs);
+   }
    if ((cp = nexttoken(x)) != NULL) {
       char buf[3];
       int sign = 1;
@@ -3143,49 +3076,6 @@ jleave:
    return t;
 jinvalid:
    t = 0;
-   goto jleave;
-}
-
-FL time_t
-combinetime(int year, int month, int day, int hour, int minute, int second){
-   uz const jdn_epoch = 2440588;
-   boole const y2038p = (sizeof(time_t) == 4);
-
-   uz jdn;
-   time_t t;
-   NYD2_IN;
-
-   if(UCMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
-         UCMP(32, minute, >=, n_DATE_MINSHOUR) ||
-         UCMP(32, hour, >=, n_DATE_HOURSDAY) ||
-         day < 1 || day > 31 ||
-         month < 1 || month > 12 ||
-         year < 1970)
-      goto jerr;
-
-   if(year >= 1970 + ((y2038p ? S32_MAX : S64_MAX) /
-         (n_DATE_SECSDAY * n_DATE_DAYSYEAR))){
-      /* Be a coward regarding Y2038, many people (mostly myself, that is) do
-       * test by stepping second-wise around the flip.  Don't care otherwise */
-      if(!y2038p)
-         goto jerr;
-      if(year > 2038 || month > 1 || day > 19 ||
-            hour > 3 || minute > 14 || second > 7)
-         goto jerr;
-   }
-
-   t = second;
-   t += minute * n_DATE_SECSMIN;
-   t += hour * n_DATE_SECSHOUR;
-
-   jdn = a_header_gregorian_to_jdn(year, month, day);
-   jdn -= jdn_epoch;
-   t += (time_t)jdn * n_DATE_SECSDAY;
-jleave:
-   NYD2_OU;
-   return t;
-jerr:
-   t = (time_t)-1;
    goto jleave;
 }
 
@@ -3266,8 +3156,8 @@ jredo_localtime:
       }
 
       if((i & 2) &&
-            (UCMP(64, t, >, time_current.tc_time + n_DATE_SECSDAY) ||
-#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
+            (UCMP(64, t, >, time_current.tc_time + su_TIME_DAY_SECS) ||
+#define _6M ((su_TIME_YEAR_DAYS / 2) * su_TIME_DAY_SECS)
             UCMP(64, t + _6M, <, time_current.tc_time))){
 #undef _6M
          if((fmt = (i & 4) ? cp : NULL) == NULL){

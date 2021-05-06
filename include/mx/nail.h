@@ -42,10 +42,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#ifdef mx_HAVE_GETTIMEOFDAY
-# include <sys/time.h>
-#endif
-
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -73,15 +69,6 @@ struct mx_mime_type_handler;
 
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
-#define n_DATE_DAYSYEAR 365u
-#define n_DATE_NANOSSEC (n_DATE_MICROSSEC * 1000)
-#define n_DATE_MICROSSEC (n_DATE_MILLISSEC * 1000)
-#define n_DATE_MILLISSEC 1000u
-#define n_DATE_SECSMIN 60u
-#define n_DATE_MINSHOUR 60u
-#define n_DATE_HOURSDAY 24u
-#define n_DATE_SECSHOUR (n_DATE_SECSMIN * n_DATE_MINSHOUR)
-#define n_DATE_SECSDAY (n_DATE_SECSHOUR * n_DATE_HOURSDAY)
 
 /* Network protocol newline */
 #define NETNL "\015\012"
@@ -1009,11 +996,6 @@ struct n_strlist{
    su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
 
-struct n_timespec{
-   s64 ts_sec;
-   sz ts_nsec;
-};
-
 struct time_current{ /* TODO s64, etc. */
    time_t tc_time;
    struct tm tc_gm;
@@ -1344,9 +1326,6 @@ struct cw{
 
 #define n_empty su_empty
 #ifndef mx_HAVE_AMALGAMATION
-VL char const n_month_names[12 + 1][4];
-VL char const n_weekday_names[7 + 1][4];
-
 VL char const n_uagent[sizeof VAL_UAGENT];
 # ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];

@@ -74,6 +74,10 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/mem.h>
 
+#if mx_HAVE_TLS != mx_TLS_IMPL_RESSL && !defined mx_XTLS_HAVE_RAND_FILE
+# include <su/time.h>
+#endif
+
 #include "mx/compat.h"
 #include "mx/cred-auth.h"
 #include "mx/file-streams.h"
@@ -1922,7 +1926,7 @@ mx_tls_rand_bytes(void *buf, uz blen){
          n_err(_("TLS RAND_bytes(3ssl) failed (missing entropy?), "
             "waiting a bit\n"));
          /* Around ~Y2K+1 anything <= was a busy loop iirc, so give pad */
-         n_msleep(250, FAL0);
+         su_time_msleep(250, FAL0);
          continue;
 #endif
          /* FALLTHRU */

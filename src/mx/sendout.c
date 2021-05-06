@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/time.h>
 
 #include "mx/attachments.h"
 #include "mx/child.h"
@@ -2451,29 +2452,28 @@ jfail_dead:
 FL int
 mkdate(FILE *fo, char const *field)
 {
-   struct tm tmpgm, *tmptr;
+   struct tm *tmptr;
    int tzdiff_hour, tzdiff_min, rv;
-   NYD_IN;
+   NYD2_IN;
 
-   su_mem_copy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
    tmptr = &time_current.tc_local;
 
    tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
-   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
-   tzdiff_hour = tzdiff_min / 60;
-   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
+   tzdiff_min /= su_TIME_MIN_SECS;
+   tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
+   tzdiff_min %= su_TIME_HOUR_MINS;
 
    rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
          field,
-         n_weekday_names[tmptr->tm_wday],
-         tmptr->tm_mday, n_month_names[tmptr->tm_mon],
+         su_time_weekday_names_abbrev[tmptr->tm_wday],
+         tmptr->tm_mday, su_time_month_names_abbrev[tmptr->tm_mon],
          tmptr->tm_year + 1900, tmptr->tm_hour,
          tmptr->tm_min, tmptr->tm_sec,
          tzdiff_hour * 100 + tzdiff_min);
    if(rv < 0)
       rv = -1;
 
-   NYD_OU;
+   NYD2_OU;
    return rv;
 }
 

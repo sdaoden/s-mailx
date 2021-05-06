@@ -54,6 +54,7 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/time.h>
 
 #include "mx/compat.h"
 #include "mx/file-streams.h"
@@ -634,23 +635,26 @@ _imap_read_date(char const *cp)
    if (day <= 0 || day > 31 || *xp++ != '-')
       goto jerr;
 
-   for (i = 0;;) {
-      if (!su_cs_cmp_case_n(xp, n_month_names[i], 3))
+   for(i = 0;;){
+      if(!su_cs_cmp_case_n(xp, su_time_month_names_abbrev[i],
+            su_TIME_MONTH_NAMES_ABBREV_LEN))
          break;
-      if (n_month_names[++i][0] == '\0')
+      if(!su_TIME_MONTH_IS_VALID(++i))
          goto jerr;
    }
    month = i + 1;
+
    if (xp[3] != '-')
       goto jerr;
    su_idec_s32_cp(&year, &xp[4], 10, &yp);
-   if (year < 1970 || year > 2037 || PCMP(yp, !=, xp + 8))
+   if (year < 1970 || year > 2037/* XXX?? */ || PCMP(yp, !=, xp + 8))
       goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jerr;
 
-   if((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
-      goto jleave/*jerr*/;
+   /* No need to test against S32_MAX if sizeof(time_t)==4, because year has
+    * been clamped above */
+   t = S(time_t,su_time_gregor_to_epoch(year, month, day, 0,0,0));
 
    t += n_time_tzdiff(t, NIL, NIL);
 
