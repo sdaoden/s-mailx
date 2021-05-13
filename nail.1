@@ -7682,12 +7682,16 @@ settings and character sets.
 .
 .Bl -hang -width ".It Cm random"
 .It Cm date-utc
-Outputs the current date and time in UTC (Coordinated Universal Time)
-with values named such that
+Outputs the current date and time in UTC (Coordinated Universal
+Time) with values named such that
 .Ql vput vexpr x date-utc; eval set $x
 creates accessible variables.
+An optional argument denotes the UNIX seconds-since-the-epoch
+to be used instead of the current time.
+(The algorithm does not know about leap seconds and works until
+65535-12-31T23:59:59.)
 .It Cm date-stamp-utc
-Outputs a RFC 3339 internet date/time format of UTC.
+Outputs the current UTC time in RFC 3339 internet date/time format.
 .It Cm epoch
 The seconds and nanoseconds since the Unix epoch (1970-01-01T00:00:00)
 named
@@ -7697,6 +7701,10 @@ and
 such that
 .Ql vput vexpr x epoch; eval set $x
 creates accessible variables.
+May be given one to six optional arguments naming (in order) year,
+month, day (of month), hour, minute and second to be used instead of the
+current time.
+(The algorithm works until 65535-12-31T23:59:59.)
 .It Cm random
 Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
