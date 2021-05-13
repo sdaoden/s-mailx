@@ -3178,15 +3178,15 @@ t_vexpr() { # {{{
 		vput vexpr res regex? 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #4'
 		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\${2}\$4\${3}rama';x
+			'\$1\${2}\$4\${3}rama';x
 		vput vexpr res regex 'Banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\$2\${2}\$2\$4\${3}rama';x
+			'\$1\$2\${2}\$2\$4\${3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\${2}\$4\${3}rama';x
+			'\$1\${2}\$4\${3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
-         '\$1:\${2}:\$4:\${3}';x
+			'\$1:\${2}:\$4:\${3}';x
 		vput vexpr res regex? 'Club banana' '(club )?(.*)(nana)(.*)' \
-         '\$1:\${2}:\$4:\${3}';x
+			'\$1:\${2}:\$4:\${3}';x
 		echo ' #5'
 		__EOT
 
@@ -3194,6 +3194,43 @@ t_vexpr() { # {{{
    else
       t_echoskip 'regex:[!REGEX]'
    fi
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tagnostic 2>&1
+	commandalias x echo '$?/$^ERRNAME :$res:'
+	vput vexpr res date-utc 1620942446;x
+	eval set $res
+	if 2021-5-13T21:47:26 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	vput vexpr res epoch 2021 05 13 21 47 26;x
+	eval set $res
+	if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+	#
+	vput vexpr res date-utc 0x1D30BE2E1FF;x
+	eval set $res
+	if 65535-12-31T23:59:59 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	vput vexpr res epoch 65535 12 31 23 59 59;x
+	eval set $res
+	if 20059491455990 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+	#
+	vput vexpr res date-utc 951786123;x
+	eval set $res
+	if 2000-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	vput vexpr res epoch 2000 02 29 01 02 03;x
+	eval set $res
+	if 9517861230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+	#
+	vput vexpr res date-utc 1582938123;x
+	eval set $res
+	if 2020-2-29T1:2:3 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	vput vexpr res epoch 2020 02 29 01 02 03;x
+	eval set $res
+	if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+	__EOT
+
+   check agnostic 0 ./tagnostic '2576812078 514'
 
    t_epilog "${@}"
 } # }}}
