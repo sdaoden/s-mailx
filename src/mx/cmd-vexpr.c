@@ -537,7 +537,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
                su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mon + 1, 10));
          s = n_string_push_c(s, ' ');
 
-         s = n_string_push_cp(s, "dutc_month=");
+         s = n_string_push_cp(s, "dutc_day=");
          s = n_string_push_cp(s,
                su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mday, 10));
          s = n_string_push_c(s, ' ');
