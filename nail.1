@@ -5147,11 +5147,10 @@ subject to consumption by the
 and
 .Ic readsh )
 command(s).
-Note: digmsg output must be fully consumed before normal processing
-(the lack of I/O redirection is sorely missed here); for
+Note: output must be consumed before normal processing can continue; for
 .Ic \&\&digmsg
-objects this means each command output has to be read until end of file
-(EOF) occurs.
+objects this means each command output has to be read until the end of
+file (EOF) state occurs.
 .
 .Pp
 The objects may be
