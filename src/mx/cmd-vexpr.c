@@ -478,53 +478,63 @@ jleave:
 
 static void
 a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
+   u32 utc[6];
+   struct su_timespec ts;
    struct n_string s_b, *s;
    NYD2_IN;
 
    switch(vcp->vc_cmderr){
    case a_VEXPR_CMD_AGN_DATE_UTC:
-      if(vcp->vc_argv[0] != NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
-      }else{
-         struct time_current tc;
+      if(vcp->vc_argv[0] == NIL)
+         su_timespec_current(&ts);
+      else{
+         if(vcp->vc_argv[1] != NIL){
+            vcp->vc_flags |= a_VEXPR_ERR;
+            vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
+            break;
+         }
 
-         time_current_update(&tc, TRU1);
-
-         s = n_string_book(n_string_creat_auto(&s_b), 31);
-
-         s = n_string_push_cp(s, "dutc_year=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_year + 1900, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "dutc_month=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mon + 1, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "dutc_day=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mday, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "dutc_hour=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_hour, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "dutc_min=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_min, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "dutc_sec=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_sec, 10));
-
-         vcp->vc_varres = n_string_cp(s);
-         /* n_string_gut(n_string_drop_ownership(s)); */
+         if((su_idec_s64_cp(&ts.ts_sec, vcp->vc_argv[0], 0, NIL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED)
+            goto jedutc_num;
       }
+
+      if(!su_time_epoch_to_gregor(ts.ts_sec, &utc[0], &utc[1], &utc[2],
+            &utc[3], &utc[4], &utc[5])){
+jedutc_num:
+         vcp->vc_flags |= a_VEXPR_ERR;
+         vcp->vc_cmderr = a_VEXPR_ERR_STR_NUM_RANGE;
+         break;
+      }
+
+      s = n_string_book(n_string_creat_auto(&s_b), 31);
+
+      s = n_string_push_cp(s, "dutc_year=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[0], 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "dutc_month=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[1], 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "dutc_day=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[2], 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "dutc_hour=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[3], 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "dutc_min=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[4], 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "dutc_sec=");
+      s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[5], 10));
+
+      vcp->vc_varres = n_string_cp(s);
+      /* n_string_gut(n_string_drop_ownership(s)); */
       break;
 
    default:
@@ -546,28 +556,52 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
       break;
 
    case a_VEXPR_CMD_AGN_EPOCH:
-      if(vcp->vc_argv[0] != NIL){
-         vcp->vc_flags |= a_VEXPR_ERR;
-         vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
-      }else{
-         struct su_timespec const *tsp;
+      if(vcp->vc_argv[0] == NIL)
+         su_timespec_current(&ts);
+      else{
+         uz i;
 
-         tsp = n_time_now(TRU1);
+         su_mem_set(utc, 0, sizeof utc);
 
-         s = n_string_book(n_string_creat_auto(&s_b), 31);
+         for(i = 0;; ++i){
+            if(vcp->vc_argv[i] == NIL)
+               break;
+            if(i == 6){
+               i = 0;
+               break;
+            }
+            if((su_idec_u32_cp(&utc[i], vcp->vc_argv[i], 0, NIL
+                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED)
+               goto jeepoch_num;
+         }
+         if(i == 0){
+            vcp->vc_flags |= a_VEXPR_ERR;
+            vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
+            break;
+         }
 
-         s = n_string_push_cp(s, "epoch_sec=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_sec, 10));
-         s = n_string_push_c(s, ' ');
-
-         s = n_string_push_cp(s, "epoch_nsec=");
-         s = n_string_push_cp(s,
-               su_ienc_s64(vcp->vc_iencbuf, tsp->ts_nano, 10));
-
-         vcp->vc_varres = n_string_cp(s);
-         /* n_string_gut(n_string_drop_ownership(s)); */
+         if((ts.ts_sec = su_time_gregor_to_epoch(utc[0], utc[1], utc[2],
+               utc[3], utc[4], utc[5])) == -1){
+jeepoch_num:
+            vcp->vc_flags |= a_VEXPR_ERR;
+            vcp->vc_cmderr = a_VEXPR_ERR_STR_NUM_RANGE;
+            break;
+         }
+         ts.ts_nano = 0;
       }
+
+      s = n_string_book(n_string_creat_auto(&s_b), 31);
+
+      s = n_string_push_cp(s, "epoch_sec=");
+      s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, ts.ts_sec, 10));
+      s = n_string_push_c(s, ' ');
+
+      s = n_string_push_cp(s, "epoch_nsec=");
+      s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, ts.ts_nano, 10));
+
+      vcp->vc_varres = n_string_cp(s);
+      /* n_string_gut(n_string_drop_ownership(s)); */
       break;
 
    case a_VEXPR_CMD_AGN_RANDOM:
