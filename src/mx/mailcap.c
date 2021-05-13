@@ -78,7 +78,7 @@ enum {a_MAILCAP_SF_MAX = a_MAILCAP_SF_X11_BITMAP + 1};
 
 enum a_mailcap_handler_flags{
    a_MAILCAP_F_TEXTUALNEWLINES = mx_MIME_TYPE_HDL_MAX << 1,
-   a_MAILCAP_F_TESTONCE = mx_MIME_TYPE_HDL_MAX << 2,
+   a_MAILCAP_F_TEST_ONCE = mx_MIME_TYPE_HDL_MAX << 2,
    a_MAILCAP_F_TEST_ONCE_DONE = mx_MIME_TYPE_HDL_MAX << 3,
    a_MAILCAP_F_TEST_ONCE_SUCCESS = mx_MIME_TYPE_HDL_MAX << 4,
    a_MAILCAP_F_HAS_S_FORMAT = mx_MIME_TYPE_HDL_MAX << 5, /* Somewhere a %s */
@@ -127,7 +127,7 @@ static struct a_mailcap_flags const a_mailcap_flags[] = {
    {a_MAILCAP_F_TEXTUALNEWLINES, "textualnewlines"},
    {mx_MIME_TYPE_HDL_ASYNC, "x-mailx-async"},
    {mx_MIME_TYPE_HDL_NOQUOTE, "x-mailx-noquote"},
-   {a_MAILCAP_F_TESTONCE, "x-mailx-test-once"},
+   {a_MAILCAP_F_TEST_ONCE, "x-mailx-test-once"},
    {mx_MIME_TYPE_HDL_TMPF, "x-mailx-tmpfile"},
    {mx_MIME_TYPE_HDL_TMPF_FILL, "x-mailx-tmpfile-fill"},
    {mx_MIME_TYPE_HDL_TMPF_UNLINK, "x-mailx-tmpfile-unlink\0"},
@@ -719,7 +719,7 @@ a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp,
       struct a_mailcap_hdl **ins_or_nil){
    struct a_mailcap_hdl *mchp;
    char const *emsg;
-   u32 f;
+   BITENUM_IS(u32,a_mailcap_handler_flags) f;
    boole rv;
    NYD2_IN;
 
@@ -1139,7 +1139,7 @@ jagain:
 
       /* Flags seem to fit, do we need to test? */
       if(p.mch->mch_sfields[a_MAILCAP_SF_TEST] != 0){
-         if(!(f & a_MAILCAP_F_TESTONCE) || !(f & a_MAILCAP_F_TEST_ONCE_DONE)){
+         if(!(f & a_MAILCAP_F_TEST_ONCE) || !(f & a_MAILCAP_F_TEST_ONCE_DONE)){
             struct mx_child_ctx cc;
 
             mx_child_ctx_setup(&cc);
@@ -1156,7 +1156,7 @@ jagain:
             if(mx_child_run(&cc) && cc.cc_exit_status == n_EXIT_OK)
                f |= a_MAILCAP_F_TEST_ONCE_SUCCESS;
 
-            if(f & a_MAILCAP_F_TESTONCE){
+            if(f & a_MAILCAP_F_TEST_ONCE){
                f |= a_MAILCAP_F_TEST_ONCE_DONE;
                p.mch->mch_flags = f;
             }
