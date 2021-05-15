@@ -605,7 +605,29 @@ _cc_flags_tcc() {
 _cc_flags_generic() {
    __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
    _CFLAGS= _LDFLAGS=
-   feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
+   if feat_yes DEVEL; then
+      __w=c89 __x=c99 __y=c11  __z=c18
+      __v=$(date +%j)
+      if [ -n "${good_shell}" ]; then
+         __v=${__v##*0}
+      else
+         __v=$(echo ${__v} | ${sed} -e 's/^0*//')
+      fi
+      if [ ${?} -eq 0 ]; then
+         case "$((__v % 4))" in
+         0) __w=c89 __x=c99 __y=c11 __z=c18;;
+         1) __w=c99 __x=c11 __y=c18 __z=c89;;
+         2) __w=c11 __x=c18 __y=c89 __z=c99;;
+         *) __w=c18 __x=c89 __y=c99 __z=c11;;
+         esac
+      fi
+      msg ' # DEVEL, std checks: '${__w}', '${__x}', '${__y}', '${__z}
+      cc_check -std=${__w} || cc_check -std=${__x} || cc_check -std=${__y} ||
+         cc_check -std=${__z}
+      unset __w __x __y __z
+   else
+      cc_check -std=c99
+   fi
 
    # E.g., valgrind does not work well with high optimization
    if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
