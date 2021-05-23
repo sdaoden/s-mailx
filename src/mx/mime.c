@@ -688,6 +688,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
       ciconv.l = 0;
       if(n_iconv_str(iconvd, n_ICONV_NONE, &ciconv, inp, NULL) != 0){
          n_iconv_reset(iconvd);
+         rv = -1;
          goto jleave;
       }
       *inp = ciconv;
