@@ -1200,9 +1200,7 @@ c_digmsg(void *vp){
          /* XXX n_header_extract error!! */
          n_header_extract((n_HEADER_EXTRACT_FULL |
                n_HEADER_EXTRACT_PREFILL_RECEIVERS |
-               n_HEADER_EXTRACT_IGNORE_FROM_ |
-               ((dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
-                  ? n_HEADER_EXTRACT_COMPOSE_MODE : 0)),
+               n_HEADER_EXTRACT_IGNORE_FROM_),
                fp, dmcp->dmc_hp, NIL);
          su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
       }
