@@ -679,7 +679,6 @@ do{\
    n_PS_MSGLIST_DIRECT = 1u<<15, /* A msg was directly chosen by number */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17, /* Last fexpand() with MULTIOK had .. */
-   n_PS_ERRORS_PROMPT = 1u<<18, /* New error to be reported in prompt */
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
     * suppressed */

@@ -166,15 +166,11 @@ mx_tty_create_prompt(struct n_string *store, char const *xprompt,
    NYD2_IN;
    ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
-   /* Prompt creation indicates that prompt printing is directly ahead, so take
-    * this opportunity of UI-in-a-known-state and advertise the error ring */
 #ifdef mx_HAVE_ERRORS
-   if(!(n_psonce & n_PSO_ERRORS_NOTED) && (n_pstate & n_PS_ERRORS_PROMPT)){
+   if(!(n_psonce & n_PSO_ERRORS_NOTED) && n_pstate_err_cnt > 0){
       n_psonce |= n_PSO_ERRORS_NOTED;
-      n_err(_("There are new messages in the error message ring "
-         "(denoted by %s),\n"
-         "  which can be managed with the `errors' command\n"),
-         V_(n_error));
+      n_err(_("There are messages in the error ring, "
+         "manageable via `errors' command\n"));
    }
 #endif
 
@@ -185,14 +181,6 @@ jredo:
       pwidth = poff = 0;
       goto jleave;
    }
-
-   /* Possible error/info prefix? */
-#ifdef mx_HAVE_ERRORS
-   if(n_pstate & n_PS_ERRORS_PROMPT){
-      n_pstate &= ~n_PS_ERRORS_PROMPT;
-      store = n_string_push_cp(store, V_(n_error));
-   }
-#endif
 
    if(!(gif & n_GO_INPUT_NL_FOLLOW)){
       boole x;

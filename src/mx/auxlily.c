@@ -943,7 +943,6 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 
    /* We have the prepared error message, take it over line-by-line, possibly
     * completing partly prepared one first */
-   n_pstate |= n_PS_ERRORS_PROMPT;
    if(n_pstate & n_PS_ERRORS_NEED_PRINT_ONCE){
       n_pstate ^= n_PS_ERRORS_NEED_PRINT_ONCE;
       allow_multiple = TRU1;
