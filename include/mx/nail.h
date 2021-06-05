@@ -1041,8 +1041,8 @@ ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
-   ok_v_smtp_hostname,                 /* {vip=1} */
-   ok_b_smtp_use_starttls,             /* {chain=1} */
+   ok_v_smtp_hostname, /* {vip=1,chain=1} */
+   ok_b_smtp_use_starttls, /* {chain=1} */
    ok_v_SOCKS5_PROXY, /* {vip=1,import=1,notempty=1,name=SOCKS5_PROXY} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */

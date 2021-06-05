@@ -630,15 +630,32 @@ jurlp_err:
 
    /* And then there are a lot of prebuild string combinations TODO do lazy */
 
+   /* .url_u_h_p: .url_user@.url_host[:.url_port] */
+   /* C99 */{
+      struct str *s = &urlp->url_u_h_p;
+      uz i = urlp->url_user.l;
+
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
+      if(i > 0){
+         su_mem_copy(s->s, urlp->url_user.s, i);
+         s->s[i++] = '@';
+      }
+      su_mem_copy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
+      i += urlp->url_h_p.l;
+      s->l = i;
+   }
+
    /* .url_u_h: .url_user@.url_host
-    * For SMTP we apply ridiculously complicated *v15-compat* plus
-    * *smtp-hostname* / *hostname* dependent rules */
+    *
+    * TODO For SMTP we apply ridiculously complicated *v15-compat* plus
+    * TODO *smtp-hostname* / *hostname* dependent rules.
+    * MUST be after _u_h_p, otherwise xok_vlook() will not work!! */
    /* C99 */{
       struct str h, *s;
       uz i;
 
       if(cproto == CPROTO_SMTP && ok_vlook(v15_compat) != NIL &&
-            (cp = ok_vlook(smtp_hostname)) != NIL){
+            (cp = xok_vlook(smtp_hostname, urlp, OXM_ALL)) != NIL){
          if(*cp == '\0')
             cp = n_nodename(TRU1);
          h.s = savestrbuf(cp, h.l = su_cs_len(cp));
@@ -655,21 +672,6 @@ jurlp_err:
       }
       su_mem_copy(s->s + i, h.s, h.l +1);
       i += h.l;
-      s->l = i;
-   }
-
-   /* .url_u_h_p: .url_user@.url_host[:.url_port] */
-   /* C99 */{
-      struct str *s = &urlp->url_u_h_p;
-      uz i = urlp->url_user.l;
-
-      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
-      if(i > 0){
-         su_mem_copy(s->s, urlp->url_user.s, i);
-         s->s[i++] = '@';
-      }
-      su_mem_copy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
-      i += urlp->url_h_p.l;
       s->l = i;
    }
 
