@@ -1865,12 +1865,13 @@ jeno:
                }
             }else if(i >= 15 && !su_mem_cmp(&rv[3], "QUEUE-EXISTS", 12)){
                if(rv[15] == '\0'){
-                  e = 0
 #ifdef mx_HAVE_ERRORS
-                        | (n_pstate_err_cnt != 0)
+                  if(n_pstate_err_cnt != 0)
+                     rv = V_(n_error);
+                  else
 #endif
-                  ;
-                  goto jeno;
+                     rv = su_empty;
+                  goto jleave;
                }
             }
          }

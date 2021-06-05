@@ -9014,10 +9014,11 @@ call work 0
 .Mx
 .Mx
 .It Va ^ERRQUEUE-COUNT , ^ERRQUEUE-EXISTS
-The number of messages present in the \*(OPal log queue of
+The number of messages in the \*(OPal queue of
 .Ic errors ,
-and a boolean which indicates whether the queue is not empty,
-respectively; both are always 0 unless
+and a string indicating queue state: empty or (translated)
+.Dq ERROR .
+Always 0 and the empty string, respectively, unless
 .Va features
 includes
 .Ql ,+errors, .
