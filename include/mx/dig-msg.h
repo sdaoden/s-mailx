@@ -41,8 +41,9 @@ enum mx_dig_msg_flags{
 struct mx_dig_msg_ctx{
    struct mx_dig_msg_ctx *dmc_last; /* Linked only if !DIG_MSG_COMPOSE */
    struct mx_dig_msg_ctx *dmc_next;
-   struct message *dmc_mp; /* XXX Yet NULL if DIG_MSG_COMPOSE */
-   enum mx_dig_msg_flags dmc_flags;
+   struct message *dmc_mp; /* XXX NIL if DIG_MSG_COMPOSE */
+   struct mimepart *dmc_mime; /* XXX ditto */
+   BITENUM_IS(u32,mx_dig_msg_flags) dmc_flags;
    u32 dmc_msgno; /* XXX Only if !DIG_MSG_COMPOSE */
    FILE *dmc_fp;
    struct header *dmc_hp;
@@ -50,13 +51,12 @@ struct mx_dig_msg_ctx{
    struct su_mem_bag dmc__membag_buf[1];
 };
 
-/* This is a bit hairy (it requires mx/go.h, which is NOT included) */
+/* Compose mode uses a "pseudo object" <> mx_dig_msg_compose_ctx TODO
+ * A bit hairy (requires mx/go.h + su/mem.h that are NOT included) */
 #define mx_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
 do{\
-   union {struct mx_dig_msg_ctx *dmc; void *v; u8 *b;} __p__;\
-   mx_dig_msg_compose_ctx = __p__.dmc = DMCP;\
-   __p__.b += sizeof *__p__.dmc;\
-   do *--__p__.b = 0; while(__p__.dmc != DMCP);\
+   mx_dig_msg_compose_ctx = DMCP;\
+   su_mem_set(mx_dig_msg_compose_ctx, 0, sizeof(*mx_dig_msg_compose_ctx));\
    (DMCP)->dmc_flags = mx_DIG_MSG_COMPOSE;\
    (DMCP)->dmc_hp = HP;\
    (DMCP)->dmc_membag = su_mem_bag_top(mx_go_data->gdc_membag);\
@@ -65,15 +65,18 @@ do{\
 #define mx_DIG_MSG_COMPOSE_GUT(DMCP) \
 do{\
    ASSERT(mx_dig_msg_compose_ctx == DMCP);\
-   /* File cleaned up via fs_close_all_files() */\
+   /* File is cleaned up via fs_close_all_files() */\
    mx_dig_msg_compose_ctx = NIL;\
 }while(0)
 
-EXPORT_DATA struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */
-EXPORT_DATA struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx; /* Or NIL XXX HACK*/
+EXPORT_DATA struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx;
+/* TODO The mx_dig_msg_read_overlay is one more hack to work around a missing
+ * TODO OnLineCompleteEvent mechanism, to allow `read' within macros etc. */
+EXPORT_DATA struct mx_dig_msg_ctx *mx_dig_msg_read_overlay;
 
-/**/
-EXPORT void mx_dig_msg_on_mailbox_close(struct mailbox *mbox); /* XXX HACK */
+/* XXX mx_dig_msg_on_mailbox_close() is a hack; it should be a handler of
+ * XXX a regular OnMailboxClose event emitted by boxes */
+EXPORT void mx_dig_msg_on_mailbox_close(struct mailbox *mbox);
 
 /* `digmsg' */
 EXPORT int c_digmsg(void *vp);

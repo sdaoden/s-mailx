@@ -151,12 +151,12 @@ static struct a_fop_ofd *
 a_fop_fd(char const *arg, struct a_fop_ofd *std_or_nil,
       struct a_fop_ofd ***fofppp_or_nil){
    struct a_fop_ofd **fofdpp, *fofdp;
-   s64 fd;
+   s32 fd;
    NYD2_IN;
 
-   if((su_idec_s64_cp(&fd, arg, 0, NIL
+   if((su_idec_s32_cp(&fd, arg, 0, NIL
             ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-         ) != su_IDEC_STATE_CONSUMED || fd < 0 || fd >= S32_MAX)
+         ) != su_IDEC_STATE_CONSUMED || fd < 0)
       fofdp = NIL;
    else{
       for(fofdpp = &a_fop_ofds;; fofdpp = &fofdp->fof_next){
@@ -895,6 +895,17 @@ jestr:
 
    NYD_OU;
    return ((f & a_FOP_USE_ESTAT) ? fc.fc_estat : ((f & a_FOP_ERR) ? 1 : 0));
+}
+
+FILE *
+mx_fop_get_file_by_cp(char const *cp){
+   struct a_fop_ofd fofd, *fofdp;
+   NYD_IN;
+
+   fofdp = a_fop_fd(cp, &fofd, NIL);
+
+   NYD_OU;
+   return (fofdp != NIL ? fofdp->fof_fp : NIL);
 }
 
 #include "su/code-ou.h"
