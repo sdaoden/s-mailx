@@ -2487,26 +2487,26 @@ n_puthead(boole nosend_msg, struct header *hp, FILE *fo, enum gfield w,
    enum sendaction action, enum conversion convert, char const *contenttype,
    char const *charset)
 {
-#define a_PUT_CC_BCC_FCC()   \
-do {\
-   if ((w & GCC) && (hp->h_cc != NULL || nosend_msg == TRUM1)) {\
-      if (!a_sendout_put_addrline("Cc:", hp->h_cc, fo, saf))\
+#define a_SENDOUT_PUT_CC_BCC_FCC() \
+do{\
+   if((w & GCC) && (hp->h_cc != NIL || nosend_msg == TRUM1)){\
+      if(!a_sendout_put_addrline("Cc:", hp->h_cc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
-   if ((w & GBCC) && (hp->h_bcc != NULL || nosend_msg == TRUM1)) {\
-      if (!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
+   if((w & GBCC) && (hp->h_bcc != NIL || nosend_msg == TRUM1)){\
+      if(!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
    if((w & GBCC_IS_FCC) && nosend_msg){\
-      for(np = hp->h_fcc; np != NULL; np = np->n_flink){\
+      for(np = hp->h_fcc; np != NIL; np = np->n_flink){\
          if(fprintf(fo, "Fcc: %s\n", np->n_name) < 0)\
             goto jleave;\
          ++gotcha;\
       }\
    }\
-} while (0)
+}while(0)
 
    char const *addr;
    uz gotcha;
@@ -2712,7 +2712,7 @@ j_mft_add:
    }
 
    if(!ok_blook(bsdcompat) && !ok_blook(bsdorder))
-      a_PUT_CC_BCC_FCC();
+      a_SENDOUT_PUT_CC_BCC_FCC();
 
    if((w & GSUBJECT) && ((hp->h_subject != NIL && *hp->h_subject != '\0') ||
          (nosend_msg && (hp->h_flags & HF_COMPOSE_MODE)))){
@@ -2728,7 +2728,7 @@ j_mft_add:
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
-      a_PUT_CC_BCC_FCC();
+      a_SENDOUT_PUT_CC_BCC_FCC();
 
    if ((w & GMSGID) && stealthmua <= 0 &&
          (addr = a_sendout_random_id(hp, TRU1)) != NULL) {
@@ -2861,7 +2861,7 @@ j_mft_add:
 jleave:
    NYD_OU;
    return rv;
-#undef a_PUT_CC_BCC_FCC
+#undef a_SENDOUT_PUT_CC_BCC_FCC
 }
 
 FL enum okay
@@ -3130,6 +3130,128 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
 jleave:
    NYD_OU;
 }
+
+#ifdef mx_HAVE_REGEX
+FL boole
+mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
+      struct header *envelope_or_nil, boole is_main_mp){
+   /* It is a terrible hack; we need a DOM and just dump_to_wire() */
+   FILE *ifp;
+   uz linesize, cnt, len, i;
+   char *linedat, *cp;
+   boole rv;
+   NYD2_IN;
+
+   rv = FAL0;
+   mx_fs_linepool_aquire(&linedat, &linesize);
+
+   if((ifp = setinput(&mb, R(struct message*,mp), NEED_BODY)) == NIL)
+      goto jleave;
+
+   cnt = mp->m_size;
+   while(fgetline(&linedat, &linesize, &cnt, &len, ifp, TRU1) != NIL){
+      if(!is_main_mp){
+         for(cp = linedat;;){
+            if((i = fwrite(cp, 1, len, ofp)) == 0)
+               break;
+            len -= i;
+            if(len == 0)
+               break;
+            cp += i;
+         }
+         if(len != 0)
+            goto jleave;
+      }else if(len == 1)
+         is_main_mp = FAL0;
+
+      if(envelope_or_nil != NIL) /* xxx From_ line aka postfix */
+         break;
+   }
+
+   if(envelope_or_nil != NIL){
+# define a_SENDOUT_PUT_CC_BCC_FCC() \
+do{\
+   if(hp->h_cc != NIL && !a_sendout_put_addrline("Cc:", hp->h_cc, ofp, saf))\
+      goto jleave;\
+   if(hp->h_bcc != NIL && !a_sendout_put_addrline("Bcc:", hp->h_bcc, ofp,saf))\
+      goto jleave;\
+}while(0)
+
+      BITENUM_IS(u32,enum a_sendout_addrline_flags) const saf =
+            a_SENDOUT_AL_DOMIME | a_SENDOUT_AL_COMMA;
+
+      struct n_header_field *chlp[3], *hfp;
+      struct mx_name *np;
+      struct header *hp;
+
+      hp = envelope_or_nil;
+      envelope_or_nil = NIL;
+
+      if(hp->h_from == NIL || hp->h_sender == NIL)
+         setup_from_and_sender(hp);
+
+      if((np = hp->h_author) != NIL &&
+            !a_sendout_put_addrline("Author:", np, ofp, saf))
+         goto jleave;
+      if((np = hp->h_from) != NIL){
+         if(hp->h_author == NIL &&
+               !a_sendout_put_addrline("Author:", np, ofp, saf))
+            goto jleave;
+         if(!a_sendout_put_addrline("From:", np, ofp, saf))
+            goto jleave;
+      }
+      if((np = hp->h_sender) != NIL &&
+            !a_sendout_put_addrline("Sender:", np, ofp, saf))
+         goto jleave;
+
+      if((np = hp->h_to) != NIL &&
+            !a_sendout_put_addrline("To:", np, ofp, saf))
+         goto jleave;
+      if(!ok_blook(bsdcompat) && !ok_blook(bsdorder))
+         a_SENDOUT_PUT_CC_BCC_FCC();
+
+      if(fwrite("Subject: ", sizeof(char), 9, ofp) != 9 ||
+            (hp->h_subject != NIL &&
+             mx_xmime_write(hp->h_subject,
+               su_cs_len(hp->h_subject), ofp,
+               CONV_TOHDR, mx_MIME_DISPLAY_ICONV, NIL,NIL) < 0))
+         goto jleave;
+      putc('\n', ofp);
+
+      if(ok_blook(bsdcompat) || ok_blook(bsdorder))
+         a_SENDOUT_PUT_CC_BCC_FCC();
+
+      if((np = hp->h_in_reply_to) != NIL &&
+            !a_sendout_put_addrline("In-Reply-To:", np, ofp, saf))
+         goto jleave;
+      if((np = hp->h_ref) != NIL &&
+            !a_sendout_put_addrline("References:", np, ofp, saf))
+         goto jleave;
+      if((np = hp->h_reply_to) != NIL &&
+            !a_sendout_put_addrline("Reply-To:", np, ofp, saf))
+         goto jleave;
+
+      chlp[0] = n_poption_arg_C;
+      chlp[1] = n_customhdr_list;
+      chlp[2] = hp->h_user_headers;
+      for(i = 0; i < NELEM(chlp); ++i){
+         if((hfp = chlp[i]) != NIL && !_sendout_header_list(ofp, hfp, TRU1))
+            goto jleave;
+      }
+
+      if(putc('\n', ofp) == EOF)
+         goto jleave;
+# undef a_SENDOUT_PUT_CC_BCC_FCC
+   }
+
+   rv = TRU1;
+jleave:
+   mx_fs_linepool_release(linedat, linesize);
+
+   NYD2_OU;
+   return rv;
+}
+#endif /* mx_HAVE_REGEX */
 
 #undef SEND_LINESIZE
 

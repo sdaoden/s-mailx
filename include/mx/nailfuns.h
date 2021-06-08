@@ -946,6 +946,12 @@ FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
 /* *save* / $DEAD */
 FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
 
+/* `digmsg' "X-SERIES" call-in HACK */
+#ifdef mx_HAVE_REGEX
+FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
+      struct header *envelope_or_nil, boole is_main_mp);
+#endif
+
 /*
  * shexp.c
  */

@@ -42,7 +42,7 @@ enum{
    mx__IGNORE_FWD = -5,
    mx__IGNORE_TOP = -6,
    mx__IGNORE_ADJUST = 3,
-   mx__IGNORE_MAX = 6 - mx__IGNORE_ADJUST
+   mx__IGNORE_MAX = -(mx__IGNORE_TOP) - mx__IGNORE_ADJUST
 };
 
 /* `(un)?headerpick' */
