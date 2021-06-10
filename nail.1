@@ -8133,16 +8133,16 @@ Also see
 .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level compose mode command which shares semantics with
+Inspect and modify the message using the semantics of
 .Ic digmsg ,
-and therefore evaluates its command line as documented in
+therefore arguments are evaluated according to
 .Sx "Shell-style argument quoting" .
-Does not manage the error number
+Error number
 .Va \&!
-and the exit status
-.Va \&? :
-errors are handled via the protocol, and hard errors like I/O failures
-cannot be handled.
+and exit status
+.Va \&?
+are not managed: errors are handled via the protocol,
+and hard errors like I/O failures cannot be handled.
 .
 .Pp
 The protocol consists of command lines followed by (a) response line(s).
@@ -8194,7 +8194,7 @@ commands can be issued.
 Syntax error; invalid command.
 .
 .It Ql 501
-Syntax error in parameters or arguments.
+Syntax error or otherwise invalid parameters or arguments.
 .
 .It Ql 505
 Error: an argument fails verification.
