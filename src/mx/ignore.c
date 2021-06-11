@@ -104,7 +104,7 @@ static struct mx_ignore *a_ignore_resolve_self(struct mx_ignore *xself,
  * If retain is _not_ TRUM1 then only the retained/ignored slot is inspected,
  * and regular expressions are not executed but instead their .ir_input is
  * text-compared against len bytes of dat.
- * Note it doesn't handle the .it_all "all fields" condition */
+ * Note it does not handle the .it_all "all fields" condition */
 static boole a_ignore_lookup(struct mx_ignore const *self, boole retain,
       char const *dat, uz len);
 
@@ -166,19 +166,21 @@ a_ignore_lookup(struct mx_ignore const *self, boole retain,
 
    if(len == UZ_MAX)
       len = su_cs_len(dat);
+   ASSERT(len == 0 || dat[len] == '\0');
+
    hi = su_cs_hash_case_cbuf(dat, len) % NELEM(self->i_retain.it_ht);
 
    /* Again: does not handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
    if(retain && self->i_retain.it_count > 0){
       rv = TRU1;
+
       for(ifp = self->i_retain.it_ht[hi]; ifp != NIL; ifp = ifp->if_next)
          if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
                ifp->if_field[len] == '\0')
             goto jleave;
+
 #ifdef mx_HAVE_REGEX
-      if(dat[len - 1] != '\0')
-         dat = savestrbuf(dat, len);
       for(irp = self->i_retain.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
                ? su_re_eval_cp(&irp->ir_re, dat, su_RE_EVAL_NONE)
@@ -186,16 +188,17 @@ a_ignore_lookup(struct mx_ignore const *self, boole retain,
                   irp->ir_input[len] == '\0')))
             goto jleave;
 #endif
+
       rv = (retain == TRUM1) ? TRUM1 : FAL0;
    }else if((retain == TRUM1 || !retain) && self->i_ignore.it_count > 0){
       rv = TRUM1;
+
       for(ifp = self->i_ignore.it_ht[hi]; ifp != NIL; ifp = ifp->if_next)
          if(!su_cs_cmp_case_n(ifp->if_field, dat, len) &&
                ifp->if_field[len] == '\0')
             goto jleave;
+
 #ifdef mx_HAVE_REGEX
-      if(dat[len - 1] != '\0')
-         dat = savestrbuf(dat, len);
       for(irp = self->i_ignore.it_re; irp != NIL; irp = irp->ir_next)
          if((retain == TRUM1
                ? su_re_eval_cp(&irp->ir_re, dat, su_RE_EVAL_NONE)
@@ -203,6 +206,7 @@ a_ignore_lookup(struct mx_ignore const *self, boole retain,
                   irp->ir_input[len] == '\0')))
             goto jleave;
 #endif
+
       rv = (retain == TRUM1) ? TRU1 : FAL0;
    }else
       rv = FAL0;
@@ -283,7 +287,7 @@ a_ignore_addcmd_mux(struct mx_ignore *ip, char const **list, boole retain){
       rv = TRU1;
    }else{
       for(ap = list; *ap != 0; ++ap)
-         switch(mx_ignore_insert_cp(ip, retain, *ap)){
+         switch(mx_ignore_insert(ip, retain, *ap)){
          case FAL0:
             n_err(_("Invalid field name cannot be %s: %s\n"),
                (retain ? _("retained") : _("ignored")), *ap);
@@ -727,23 +731,23 @@ mx_ignore_is_any(struct mx_ignore const *self){
 }
 
 boole
-mx_ignore_insert(struct mx_ignore *self, boole retain,
-      char const *dat, uz len){
+mx_ignore_insert(struct mx_ignore *self, boole retain, char const *dat){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
    boole isre;
 #endif
    struct a_ignore_field *ifp;
    struct a_ignore_type *itp;
+   uz len;
    boole rv;
    NYD_IN;
 
-   retain = !!retain; /* Make true bool, TRUM1 has special _lookup meaning */
-   rv = FAL0;
    self = a_ignore_resolve_self(self, TRU1);
 
-   if(len == UZ_MAX)
-      len = su_cs_len(dat);
+   retain = !!retain; /* Make true bool, TRUM1 has special _lookup meaning */
+
+   rv = FAL0;
+   len = su_cs_len(dat);
 
    /* Request to ignore or retain _anything_?  That is special-treated */
    if(len == 1 && dat[0] == '*'){
@@ -838,13 +842,13 @@ jleave:
 }
 
 boole
-mx_ignore_lookup(struct mx_ignore const *self, char const *dat, uz len){
+mx_ignore_lookup(struct mx_ignore const *self, char const *dat){
    boole rv;
    NYD_IN;
 
    if(self == mx_IGNORE_ALL)
       rv = TRUM1;
-   else if(len == 0 ||
+   else if(*dat == '\0' ||
          (self = a_ignore_resolve_self(UNCONST(struct mx_ignore*,self), FAL0)
             ) == NIL)
       rv = FAL0;
@@ -853,7 +857,7 @@ mx_ignore_lookup(struct mx_ignore const *self, char const *dat, uz len){
    else if(self->i_retain.it_count == 0 && self->i_ignore.it_all)
       rv = TRUM1;
    else
-      rv = a_ignore_lookup(self, TRUM1, dat, len);
+      rv = a_ignore_lookup(self, TRUM1, dat, UZ_MAX);
 
    NYD_OU;
    return rv;

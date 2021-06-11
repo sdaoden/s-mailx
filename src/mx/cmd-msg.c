@@ -581,13 +581,17 @@ c_top(void *v){
       itp = mx_IGNORE_TOP;
    else{
       itp = mx_ignore_new(TRU1);
-      mx_ignore_insert(itp, TRU1, "from", sizeof("from") -1);
-      mx_ignore_insert(itp, TRU1, "to", sizeof("to") -1);
-      mx_ignore_insert(itp, TRU1, "cc", sizeof("cc") -1);
-      mx_ignore_insert(itp, TRU1, "subject", sizeof("subject") -1);
+      mx_ignore_insert(itp, TRU1, "from");
+      mx_ignore_insert(itp, TRU1, "to");
+      mx_ignore_insert(itp, TRU1, "cc");
+      mx_ignore_insert(itp, TRU1, "subject");
    }
 
    rv = !a_cmsg_top(v, itp);
+
+   /*if(itp != mx_IGNORE_TOP)
+    *   mx_ignore_del(itp);*/
+
    NYD_OU;
    return rv;
 }
@@ -598,6 +602,7 @@ c_Top(void *v){
    NYD_IN;
 
    rv = !a_cmsg_top(v, mx_IGNORE_TYPE);
+
    NYD_OU;
    return rv;
 }
