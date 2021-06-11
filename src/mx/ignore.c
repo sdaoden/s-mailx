@@ -33,6 +33,7 @@
 # include <su/re.h>
 #endif
 
+#include "mx/go.h"
 #include "mx/termios.h"
 
 #include "mx/ignore.h"
@@ -59,12 +60,12 @@ struct a_ignore_type{
 };
 
 struct mx_ignore{
+   struct mx_go_cleanup_ctx i_gcc; /* Place first so it IS self */
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
-   boole i_auto; /* In auto-reclaimed, not heap memory */
    boole i_bltin; /* Is a built-in IGNORE* type */
    u8 i_ibm_idx; /* If .i_bltin: a_ignore_bltin_map[] idx */
-   u8 i__dummy[5];
+   u8 i__dummy[6];
 };
 
 struct a_ignore_bltin_map{
@@ -222,23 +223,20 @@ a_ignore_del_allof(struct mx_ignore *ip, boole retain){
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
+   uz i;
    struct a_ignore_type *itp;
    NYD2_IN;
 
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 
-   if(!ip->i_auto){
-      uz i;
+   for(i = 0; i < NELEM(itp->it_ht); ++i)
+      for(ifp = itp->it_ht[i]; ifp != NIL;){
+         struct a_ignore_field *x;
 
-      for(i = 0; i < NELEM(itp->it_ht); ++i)
-         for(ifp = itp->it_ht[i]; ifp != NIL;){
-            struct a_ignore_field *x;
-
-            x = ifp;
-            ifp = ifp->if_next;
-            su_FREE(x);
-         }
-   }
+         x = ifp;
+         ifp = ifp->if_next;
+         su_FREE(x);
+      }
 
 #ifdef mx_HAVE_REGEX
    for(irp = itp->it_re; irp != NIL;){
@@ -247,8 +245,7 @@ a_ignore_del_allof(struct mx_ignore *ip, boole retain){
       x = irp;
       irp = irp->ir_next;
       su_re_gut(&x->ir_re);
-      if(!ip->i_auto)
-         su_FREE(x);
+      su_FREE(x);
    }
 #endif
 
@@ -335,7 +332,8 @@ a_ignore__show(struct mx_ignore const *ip, boole retain){
       goto jleave;
    }while(0);
 
-   ring = su_AUTO_ALLOC((itp->it_count +1) * sizeof *ring);
+   ring = su_LOFI_ALLOC((itp->it_count +1) * sizeof *ring);
+
    for(ap = ring, i = 0; i < NELEM(itp->it_ht); ++i)
       for(ifp = itp->it_ht[i]; ifp != NIL; ifp = ifp->if_next)
          *ap++ = ifp->if_field;
@@ -364,6 +362,8 @@ a_ignore__show(struct mx_ignore const *ip, boole retain){
       putc(' ', n_stdout);
       fputs(cp, n_stdout);
    }
+
+   su_LOFI_FREE(ring);
 
    /* Regular expression in FIFO order */
 #ifdef mx_HAVE_REGEX
@@ -437,8 +437,8 @@ a_ignore__delone(struct mx_ignore *ip, boole retain, char const *field){
                itp->it_re_tail = irp->ir_next;
 
             su_re_gut(&irp->ir_re);
-            if(!ip->i_auto)
-               su_FREE(irp);
+            su_FREE(irp);
+
             --itp->it_count;
             goto jleave;
          }
@@ -451,14 +451,16 @@ a_ignore__delone(struct mx_ignore *ip, boole retain, char const *field){
       hi = su_cs_hash_case_cbuf(field, UZ_MAX) % NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NIL;
-            ifpp = &ifp->if_next, ifp = ifp->if_next)
+            ifpp = &ifp->if_next, ifp = ifp->if_next){
          if(!su_cs_cmp_case(ifp->if_field, field)){
             *ifpp = ifp->if_next;
-            if(!ip->i_auto)
-               su_FREE(ifp);
+
+            su_FREE(ifp);
+
             --itp->it_count;
            goto jleave;
          }
+      }
    }
 
    ip = NIL;
@@ -693,12 +695,16 @@ c_unfwdignore(void *v){ /* TODO v15 drop */
 }
 
 struct mx_ignore *
-mx_ignore_new(boole isauto){
+mx_ignore_new(boole auto_cleanup){
    struct mx_ignore *self;
    NYD_IN;
 
-   self = isauto ? su_AUTO_CALLOC(sizeof *self) : su_CALLOC(sizeof *self);
-   self->i_auto = isauto;
+   self = su_CALLOC(sizeof *self);
+
+   if(auto_cleanup){
+      self->i_gcc.gcc_fun = R(su_delete_fun,&mx_ignore_del);
+      mx_go_ctx_cleanup_push(&self->i_gcc);
+   }
 
    NYD_OU;
    return self;
@@ -710,8 +716,7 @@ mx_ignore_del(struct mx_ignore *self){
 
    a_ignore_del_allof(self, TRU1);
    a_ignore_del_allof(self, FAL0);
-   if(!self->i_auto)
-      su_FREE(self);
+   su_FREE(self);
 
    NYD_OU;
 }
@@ -795,21 +800,19 @@ mx_ignore_insert(struct mx_ignore *self, boole retain, char const *dat){
    if(isre){
       struct su_re *rep;
       struct a_ignore_re *x;
-      uz i;
 
-      i = VSTRUCT_SIZEOF(struct a_ignore_re,ir_input) + ++len;
-      irp = self->i_auto ? su_AUTO_ALLOC(i) : su_ALLOC(i);
+      irp = su_ALLOC(VSTRUCT_SIZEOF(struct a_ignore_re,ir_input) + ++len);
       su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
       rep = su_re_create(&irp->ir_re);
+
       if(su_re_setup_cp(rep, irp->ir_input, (su_RE_SETUP_EXT |
             su_RE_SETUP_ICASE | su_RE_SETUP_TEST_ONLY)) != su_RE_ERR_NONE){
          n_err(_("Invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(irp->ir_input, FAL0), su_re_error_doc(rep));
          su_re_gut(rep);
-         if(!self->i_auto)
-            su_FREE(irp);
+         su_FREE(irp);
          rv = FAL0;
          goto jleave;
       }
@@ -824,10 +827,8 @@ mx_ignore_insert(struct mx_ignore *self, boole retain, char const *dat){
 #endif /* mx_HAVE_REGEX */
         {
       u32 hi;
-      uz i;
 
-      i = VSTRUCT_SIZEOF(struct a_ignore_field,if_field) + len + 1;
-      ifp = self->i_auto ? su_AUTO_ALLOC(i) : su_ALLOC(i);
+      ifp = su_ALLOC(VSTRUCT_SIZEOF(struct a_ignore_field,if_field) + len + 1);
       su_mem_copy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
       hi = su_cs_hash_case_cbuf(dat, len) % NELEM(itp->it_ht);
