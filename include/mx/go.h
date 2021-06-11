@@ -26,6 +26,10 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
+struct mx_go_cleanup_ctx;
+struct mx_go_data_ctx;
+
+/* Forwards */
 struct mx_colour_env;
 
 enum mx_go_input_flags{
@@ -71,8 +75,13 @@ enum mx_go_input_inject_flags{
    mx_GO_INPUT_INJECT_HISTORY = 1u<<1 /* Allow history addition */
 };
 
+struct mx_go_cleanup_ctx{
+   struct mx_go_cleanup_ctx *gcc_last; /* Internal */
+   su_delete_fun gcc_fun; /* Required */
+};
+
 struct mx_go_data_ctx{
-   struct su_mem_bag *gdc_membag; /* Could be su__mem_bag_mx - or FIRST! */
+   struct su_mem_bag *gdc_membag; /* Could be su__mem_bag_mx; must be FIRST! */
    void *gdc_ifcond; /* Saved state of conditional stack */
 #ifdef mx_HAVE_COLOUR
    struct mx_colour_env *gdc_colour;
@@ -172,6 +181,14 @@ EXPORT boole mx_go_ctx_is_macro(void);
  * macro or file */
 EXPORT char const *mx_go_ctx_name(void);
 EXPORT char const *mx_go_ctx_parent_name(void);
+
+/* Push and pop a cleanup entry.
+ * gccp memory must be on the heap and be managed by the caller;
+ * it must remain accessible until gccp->gcc_fun(gccp) is called.
+ * pop() returns FAL0 if gccp is not the stack top; the cleanup call will
+ * happen at a later time, then */
+EXPORT void mx_go_ctx_cleanup_push(struct mx_go_cleanup_ctx *gccp);
+EXPORT boole mx_go_ctx_cleanup_pop(struct mx_go_cleanup_ctx *gccp);
 
 /* `source' and consorts */
 EXPORT int c_source(void *vp);
