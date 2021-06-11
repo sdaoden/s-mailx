@@ -198,6 +198,7 @@ struct a_go_ctx{
    FILE *gc_splice_stdout;
    u32 gc_splice_psonce;
    u8 gc_splice__dummy[4];
+   struct mx_go_cleanup_ctx *gc_cleanups; /* Registered usr cleanup handlers */
    struct mx_go_data_ctx gc_data;
    char gc_name[VFIELD_SIZE(0)]; /* Name of file or macro */
 };
@@ -1050,6 +1051,15 @@ jrestart:
          *giipp = giip->gii_next;
          su_FREE(giip);
       }
+   }
+
+   /* Handle cleanups */
+   while(gcp->gc_cleanups != NIL){
+      struct mx_go_cleanup_ctx *tmp;
+
+      tmp = gcp->gc_cleanups;
+      gcp->gc_cleanups = tmp->gcc_last;
+      (*tmp->gcc_fun)(tmp);
    }
 
    /* Cleanup non-crucial external stuff */
@@ -2434,6 +2444,40 @@ mx_go_ctx_parent_name(void){ /* XXX public ctx, inline */
 
    NYD2_OU;
    return rv;
+}
+
+void
+mx_go_ctx_cleanup_push(struct mx_go_cleanup_ctx *gccp){/* XXX public, inline */
+   struct a_go_ctx *gcp;
+   NYD_IN;
+
+   ASSERT(gccp != NIL && gccp->gcc_fun != NIL);
+
+   gcp = a_go_ctx;
+   gccp->gcc_last = gcp->gc_cleanups;
+   gcp->gc_cleanups = gccp;
+
+   NYD_OU;
+}
+
+boole
+mx_go_ctx_cleanup_pop(struct mx_go_cleanup_ctx *gccp){
+   struct a_go_ctx *gcp;
+   NYD_IN;
+
+   ASSERT(gccp != NIL && gccp->gcc_fun != NIL);
+
+   gcp = a_go_ctx;
+
+   if(gcp->gc_cleanups == gccp){
+      gcp->gc_cleanups = gccp->gcc_last;
+
+      (*gccp->gcc_fun)(gccp);
+      gccp = NIL;
+   }
+
+   NYD_OU;
+   return (gccp == NIL);
 }
 
 int
