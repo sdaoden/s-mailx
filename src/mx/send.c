@@ -215,8 +215,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
     if((cp = mpp->m_ct_type_usr_ovwr) != NULL){
       _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       want_ct = TRU1;
-   }else if((want_ct = mx_ignore_is_ign(doitp,
-         "content-type", sizeof("content-type") -1)))
+   }else if((want_ct = mx_ignore_is_ign(doitp, "content-type")))
       cp = mpp->m_ct_type_plain;
    if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
             su_cs_starts_with_case(cp, "application/")) {
@@ -236,8 +235,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
    if(mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL &&
          (!su_cs_cmp_case(cp, "7bit") ||
-          mx_ignore_is_ign(doitp, "content-transfer-encoding",
-            sizeof("content-transfer-encoding") -1))){
+          mx_ignore_is_ign(doitp, "content-transfer-encoding"))){
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       if (to.l > 25 && !su_cs_cmp_case(cp, "quoted-printable"))
@@ -283,7 +281,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    /* Content-Description */
-   if (mx_ignore_is_ign(doitp, "content-description", 19) &&
+   if (mx_ignore_is_ign(doitp, "content-description") &&
          (cp = mpp->m_content_description) != NULL && *cp != '\0') {
       if (cpre != NULL)
          _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -304,7 +302,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    /* Filename */
-   if (mx_ignore_is_ign(doitp, "content-disposition", 19) &&
+   if (mx_ignore_is_ign(doitp, "content-disposition") &&
          mpp->m_filename != NULL && *mpp->m_filename != '\0') {
       if (cpre != NULL)
          _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -556,9 +554,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    if(!hign && level == 0 && action != SEND_TODISP_PARTS){
       if(doitp != NIL){
-         if(!mx_ignore_is_ign(doitp, "status", 6))
+         if(!mx_ignore_is_ign(doitp, "status"))
             dostat |= 1;
-         if(!mx_ignore_is_ign(doitp, "x-status", 8))
+         if(!mx_ignore_is_ign(doitp, "x-status"))
             dostat |= 2;
       }else
          dostat |= 3;
@@ -651,11 +649,8 @@ jhdrput:
       /* If it is an ignored header, skip it */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
       /* C99 */{
-         uz i;
-
-         i = P2UZ(cp - hlp->s_dat);
          if(hign || (doitp != NULL &&
-                  mx_ignore_is_ign(doitp, hlp->s_dat, i)) ||
+                  mx_ignore_is_ign(doitp, hlp->s_dat)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
                (action == SEND_MBOX &&
@@ -1722,8 +1717,7 @@ sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
 #endif
 
    nozap = (doitp != mx_IGNORE_ALL && doitp != mx_IGNORE_FWD &&
-         action != SEND_RFC822 &&
-         !mx_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
+         action != SEND_RFC822 && !mx_ignore_is_ign(doitp, "from_"));
    if (mp->m_flag & (MNOFROM | MBADFROM_)) {
       if (nozap)
          size = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
