@@ -35,6 +35,13 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+static void a_cs_panic(void);
+
+static void
+a_cs_panic(void){
+   n_panic(_("Memory allocation too large"));
+}
+
 FL char *
 (savestr)(char const *str  su_DBG_LOC_ARGS_DECL)
 {
@@ -368,7 +375,7 @@ FL struct n_string *
    s = self->s_size;
    l = self->s_len;
    if((uz)S32_MAX - Z_ALIGN(1) - l <= noof)
-      n_panic(_("Memory allocation too large"));
+      a_cs_panic();
 
    if((i = s - l) <= ++noof){
       i += l + (u32)noof;
@@ -397,7 +404,7 @@ FL struct n_string *
    ASSERT(self != NULL);
 
    if(UCMP(z, S32_MAX, <=, nlen))
-      n_panic(_("Memory allocation too large"));
+      a_cs_panic();
 
    if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen  su_DBG_LOC_ARGS_USE);
