@@ -68,9 +68,9 @@ EXPORT int c_unfwdignore(void *v);
 
 /* Ignore object lifecycle.  (Most of the time this interface deals with
  * special IGNORE_* objects, e.g., IGNORE_TYPE, though.)
- * isauto: whether AUTO storage is to be used for allocations;
- * if SO, _del() need not be called */
-EXPORT struct mx_ignore *mx_ignore_new(boole isauto);
+ * auto_cleanup: whether memory storage should be managed via go_cleanup_ctx;
+ * if so, _del() MUST not be called */
+EXPORT struct mx_ignore *mx_ignore_new(boole auto_cleanup);
 EXPORT void mx_ignore_del(struct mx_ignore *self);
 
 /* Are there just _any_ user settings covered by self? */
