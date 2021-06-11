@@ -68,8 +68,8 @@ EXPORT int c_unfwdignore(void *v);
 
 /* Ignore object lifecycle.  (Most of the time this interface deals with
  * special IGNORE_* objects, e.g., IGNORE_TYPE, though.)
- * isauto: whether auto-reclaimed storage is to be used for allocations;
- * if so, _del() need not be called */
+ * isauto: whether AUTO storage is to be used for allocations;
+ * if SO, _del() need not be called */
 EXPORT struct mx_ignore *mx_ignore_new(boole isauto);
 EXPORT void mx_ignore_del(struct mx_ignore *self);
 
@@ -80,15 +80,11 @@ EXPORT boole mx_ignore_is_any(struct mx_ignore const *self);
  * Returns FAL0 if dat is not a valid header field name or an invalid regular
  * expression, TRU1 if insertion took place, and TRUM1 if already set */
 EXPORT boole mx_ignore_insert(struct mx_ignore *self, boole retain,
-      char const *dat, uz len);
-#define mx_ignore_insert_cp(SELF,RT,CP) mx_ignore_insert(SELF, RT, CP, UZ_MAX)
+      char const *dat);
 
 /* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
-EXPORT boole mx_ignore_lookup(struct mx_ignore const *self, char const *dat,
-      uz len);
-#define mx_ignore_lookup_cp(SELF,CP) mx_ignore_lookup(SELF, CP, UZ_MAX)
-#define mx_ignore_is_ign(SELF,FDAT,FLEN) \
-   (mx_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)
+EXPORT boole mx_ignore_lookup(struct mx_ignore const *self, char const *dat);
+#define mx_ignore_is_ign(SELF,FDAT) (mx_ignore_lookup(SELF, FDAT) == TRUM1)
 
 #include <su/code-ou.h>
 #endif /* mx_IGNORE_H */
