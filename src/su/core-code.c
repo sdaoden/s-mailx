@@ -299,7 +299,7 @@ su_err_set_no(s32 eno){
 }
 
 s32
-su_err_no_via_errno(void){
+su_err_no_by_errno(void){
    s32 rv;
    rv = /*TODO a_core_eno =*/errno;
    return rv;
