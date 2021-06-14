@@ -1370,7 +1370,7 @@ EXPORT char const *su_err_name(s32 eno);
 EXPORT s32 su_err_by_name(char const *name);
 
 /*! \_ */
-EXPORT s32 su_err_no_via_errno(void);
+EXPORT s32 su_err_no_by_errno(void);
 
 /*! \_ */
 INLINE enum su_log_level su_log_get_level(void){
@@ -1660,8 +1660,8 @@ public:
    /*! \copydoc{su_err_by_name()} */
    static s32 by_name(char const *name) {return su_err_by_name(name);}
 
-   /*! \copydoc{su_err_no_via_errno()} */
-   static s32 no_via_errno(void) {return su_err_no_via_errno();}
+   /*! \copydoc{su_err_no_by_errno()} */
+   static s32 no_by_errno(void) {return su_err_no_by_errno();}
 };
 
 /*! \_ */
