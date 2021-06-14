@@ -110,7 +110,7 @@ su_err_name(s32 eno){
 }
 
 s32
-su_err_from_name(char const *name){
+su_err_by_name(char const *name){
    struct a_corerr_map const *cemp;
    u32 hash, i, j, x;
    s32 rv;
