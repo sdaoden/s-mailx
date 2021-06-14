@@ -1367,7 +1367,7 @@ EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to map an error name to an error number.
  * Returns the fallback error as a negative value if none found */
-EXPORT s32 su_err_from_name(char const *name);
+EXPORT s32 su_err_by_name(char const *name);
 
 /*! \_ */
 EXPORT s32 su_err_no_via_errno(void);
@@ -1657,8 +1657,8 @@ public:
    /*! \copydoc{su_err_name()} */
    static char const *name(s32 eno) {return su_err_name(eno);}
 
-   /*! \copydoc{su_err_from_name()} */
-   static s32 from_name(char const *name) {return su_err_from_name(name);}
+   /*! \copydoc{su_err_by_name()} */
+   static s32 by_name(char const *name) {return su_err_by_name(name);}
 
    /*! \copydoc{su_err_no_via_errno()} */
    static s32 no_via_errno(void) {return su_err_no_via_errno();}

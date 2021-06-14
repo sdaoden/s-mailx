@@ -177,7 +177,7 @@ CPROTO_IMAP,
 };
 
 /* enum n_err_number from gen-config.h, which is in sync with
- * su_err_doc(), su_err_name() and su_err_from_name() */
+ * su_err_doc(), su_err_name() and su_err_by_name() */
 
 enum n_exit_status{
    n_EXIT_OK = EXIT_SUCCESS,

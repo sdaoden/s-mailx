@@ -1902,7 +1902,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
          e = n_pstate_err_no;
          goto jeno;
       }else if(rv[3] == '-'){
-         e = su_err_from_name(&rv[4]);
+         e = su_err_by_name(&rv[4]);
 jeno:
          switch(e){
          case 0: rv = n_0; break;
@@ -1918,7 +1918,7 @@ jeno:
             rv += 6;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
-            case '-': e = su_err_from_name(&rv[1]); break;
+            case '-': e = su_err_by_name(&rv[1]); break;
             default: goto jerr;
             }
             rv = su_err_doc(e);
@@ -1927,7 +1927,7 @@ jeno:
             rv += 7;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
-            case '-': e = su_err_from_name(&rv[1]); break;
+            case '-': e = su_err_by_name(&rv[1]); break;
             default: goto jerr;
             }
             rv = su_err_name(e);
