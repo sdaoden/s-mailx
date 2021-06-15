@@ -49,8 +49,7 @@ enum{
 EXPORT int c_headerpick(void *vp);
 EXPORT int c_unheaderpick(void *vp);
 
-/* TODO Compat variants of the c_(un)?h*() series,
- * except for `retain' and `ignore', which are standardized */
+/* `[un]retain' and `[un]ignore' are standardized and will not vanish. */
 EXPORT int c_retain(void *vp);
 EXPORT int c_ignore(void *vp);
 EXPORT int c_unretain(void *vp);
@@ -66,12 +65,14 @@ EXPORT int c_fwdignore(void *v);
 EXPORT int c_unfwdretain(void *v);
 EXPORT int c_unfwdignore(void *v);
 
-/* Ignore object lifecycle.  (Most of the time this interface deals with
- * special IGNORE_* objects, e.g., IGNORE_TYPE, though.)
+/* Object lifecycle for non-specials.
  * auto_cleanup: whether memory storage should be managed via go_cleanup_ctx;
  * if so, _del() MUST not be called */
-EXPORT struct mx_ignore *mx_ignore_new(boole auto_cleanup);
+EXPORT struct mx_ignore *mx_ignore_new(char const *name, boole auto_cleanup);
 EXPORT void mx_ignore_del(struct mx_ignore *self);
+
+/* Returns NIL if no such object exists */
+EXPORT struct mx_ignore *mx_ignore_by_name(char const *name);
 
 /* Are there just _any_ user settings covered by self? */
 EXPORT boole mx_ignore_is_any(struct mx_ignore const *self);

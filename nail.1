@@ -3582,8 +3582,9 @@ for the storage variable.
 .Pp
 The name must adhere
 .Ev SHELL
-rules and consist only of upper- and lowercase characters, digits,
-and the underscore; hyphen-minus may be used as a non-portable
+.Mx -ix "variable name rules"
+variable name rules and consist only of upper- and lowercase characters,
+digits, and the underscore; hyphen-minus may be used as a non-portable
 extension, leading digits and a trailing hyphen-minus are not allowed.
 .Sx "INTERNAL VARIABLES"
 other than writable (non-boolean) value variables may not be used;
@@ -3721,10 +3722,9 @@ at the beginning of a new token starts a comment that extends to the end
 of the line, and therefore ends argument processing.
 An unquoted dollar sign
 .Ql $
-will cause variable expansion of the given name, which must be a valid
-.Ev SHELL Ns
--style variable name (see
-.Cm vput ) :
+will cause variable expansion of the given name, which must honour
+.Mx -sx
+.Sx "variable name rules" :
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
@@ -5354,7 +5354,11 @@ The separation of process
 .Sx ENVIRONMENT
 variables as documented there can be resolved by this command,
 in order to make them (also) accessible as
-.Sx "INTERNAL VARIABLES" .
+.Sx "INTERNAL VARIABLES" ,
+their names however have to honour
+.Ev SHELL
+.Mx -sx
+.Sx "variable name rules" .
 The subcommands
 .Cm set
 and
@@ -5898,12 +5902,16 @@ An alias of this command is
 Also see
 .Sx "Specifying messages" .
 .
+.
 .Mx
 .Mx
 .It Ic headerpick , unheaderpick
-\*(NQ Multiplexer command to manage white- and blacklisting
-selections of header fields for a variety of applications.
-Without arguments the set of contexts that have settings is displayed.
+\*(NQ Multiplexer command to manage header field selection for a variety
+of applications.
+The latter command always takes three or more arguments and removes from
+the given context and the given type the given headers, all headers with
+.Ql * .
+Without arguments the former shows established settings of all contexts.
 When given arguments, the first argument is the context to which the
 command applies, one of (case-insensitive)
 .Ql type
@@ -5916,8 +5924,8 @@ for selecting which headers shall be stored persistently when
 .Ic move
 or even
 .Ic decrypt Ns
-ing messages (note that MIME related etc. header fields should not be
-ignored in order to not destroy usability of the message in this case),
+ing messages (MIME related etc. header fields should not be ignored in
+order to not destroy usability of the message in this case),
 .Ql forward
 for stripping down messages when
 .Ic forward Ns
@@ -5925,33 +5933,42 @@ ing message (has no effect if
 .Va forward-as-attachment
 is set), and
 .Ql top
-for defining user-defined set of fields for the command
+for defining a user-defined list of fields for
 .Ic top .
+.
 .Pp
-The current settings of the given context are displayed if it is the
-only argument.
-A second argument denotes the type of restriction that is to be chosen,
-it may be (a case-insensitive prefix of)
+The current settings are displayed with only the context argument.
+A restriction type may be given second, (a case-insensitive prefix of)
 .Ql retain
-or
+for positive or
 .Ql ignore
-for white- and blacklisting purposes, respectively.
-Establishing a whitelist suppresses inspection of the corresponding
-blacklist.
-.Pp
-If no further argument is given the current settings of the given type
-will be displayed, otherwise the remaining arguments specify header
-fields, which \*(OPally may be given as regular expressions, to be added
-to the given type.
+for negative filtering.
+Negative filters are not inspected if a positive list exists.
+The current settings for the type are shown without further arguments.
+Any further argument specifies header fields, which \*(OPally may be
+given as regular expressions, to be added to the given type.
 The special wildcard field (asterisk,
 .Ql * )
 will establish a (fast) shorthand setting which covers all fields.
+.
 .Pp
-The latter command always takes three or more arguments and can be used
-to remove selections, i.e., from the given context, the given type of
-list, all the given headers will be removed, the special argument
-.Ql *
-will remove all headers.
+.Ic \&\&headerpick
+supports managing user contexts.
+This mode is selected with (a case-insensitive prefix of) the
+.Dq context names
+.Cm create , remove , assign , join ;
+the real name is given next, it is case-insensitive, must not shadow
+a builtin name, and has to adhere to
+.Mx -sx
+.Sx "variable name rules" .
+Trying to create a context a second time is an error.
+The name of a constant template context is given third to
+.Cm assign
+and
+.Cm join ,
+whereas the former clears the target context first, the latter does not;
+in case of errors both clear the target context.
+.
 .
 .Mx
 .It Ic headers
@@ -6655,9 +6672,9 @@ otherwise success indicating status.
 .Ic readctl ,
 and assign the data, which will be split as indicated by
 .Va ifs ,
-to the given variables.
-The variable names are checked by the same rules as documented for
-.Cm vput ,
+to the given variables, which must honour
+.Mx -sx
+.Sx "variable name rules" ,
 and the same error codes will be seen in
 .Va \&! ;
 the exit status
@@ -6703,9 +6720,9 @@ maybe
 .It Ic readall
 \*(NQ Read anything from standard input, or the channel set active via
 .Ic readctl ,
-and assign the data to the given variable.
-The variable name is checked by the same rules as documented for
-.Cm vput ,
+and assign the data to the given variable, which must honour
+.Mx -sx
+.Sx "variable name rules" ,
 and the same error codes will be seen in
 .Va \&! ;
 the exit status
@@ -8765,7 +8782,10 @@ Some built-in variables are synchronized from and with the program
 .Sx ENVIRONMENT ,
 others can be linked or created with
 .Ic environ
-to henceforth have said property.
+to henceforth have said property; these have to honour
+.Ev SHELL
+.Mx -sx
+.Sx "variable name rules" .
 .
 .Bd -literal -offset indent
 ? set one=val\e 1 two="val 2" \e
