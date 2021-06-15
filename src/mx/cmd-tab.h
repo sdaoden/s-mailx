@@ -337,7 +337,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 { "delete", &c_delete, (A | W | P | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Delete <msglist>")) },
 { "discard", &c_ignore, (M | TWYRA), 0, MAC, NIL
-     DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
+     DS(N_("Add <headers> to the ignored LIST, or show that list")) },
    { "Decrypt", &c_Decrypt, (A | M | SC | TARG), 0, 0,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Decrypt)
      DS(N_("Like `decrypt', but derive filename from first sender")) },
@@ -454,7 +454,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 { "headers", &c_headers, (A | M | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
    { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC, NIL
-     DS(N_("Header selection: [<context> [<type> [<header-list>]]]"))},
+     DS(N_("[<ctx> [<type> [<headers>]]] | <create|remove> <ctx> | "
+      "assign <ctx> <ctx>"))},
    { "help", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL
      DS(N_("Show help [[Option] for the given command]]")) },
    { "history",
@@ -472,7 +473,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "if", &c_if, (G | F | M | X | TWYRA), 1, MAC, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "ignore", &c_ignore, (M | TWYRA), 0, MAC, NIL
-     DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
+     DS(N_("Add <headers> to the ignored LIST, or show that list")) },
    { "imap",
 #ifdef mx_HAVE_IMAP
       &c_imap_imap,
@@ -621,7 +622,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
       0, MMNDEL, NIL
      DS(N_("Reply to originators and recipients of <msglist>")) },
    { "retain", &c_retain, (M | TWYRA), 0, MAC, NIL
-     DS(N_("Add <header-list> to retained list, or show that list")) },
+     DS(N_("Add <headers> to retained list, or show that list")) },
    { "return", &c_return, (M | X | EM | NMAC |TWYSH), 0, 2, NIL
      DS(N_("Return control from macro [<return value> [<exit status>]]"))},
 { "replyall", &c_replyall, (O | A | I | L | LNMAC | R | SC | EM | TMSGLST),
@@ -792,9 +793,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "ungroup", &c_unalias, (M | TWYSH), 1, MAC, NIL
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "unheaderpick", &c_unheaderpick, (M | TWYSH), 3, MAC, NIL
-     DS(N_("Header deselection: <context> <type> <header-list>"))},
+     DS(N_("Header deselection: <ctx> <type> <headers>"))},
    { "unignore", &c_unignore, (M | TWYRA), 0, MAC, NIL
-     DS(N_("Un`ignore' <header-list>")) },
+     DS(N_("Un`ignore' <headers>")) },
    { "unmlist", &c_unmlist, (M | TWYSH), 1, MAC, NIL
      DS(N_("Un`mlist' <name-list> (* for all)")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | TWYSH), 1, MAC, NIL
@@ -806,7 +807,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "unread", &c_unread, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mark <msglist> as not being read")) },
    { "unretain", &c_unretain, (M | TWYRA), 0, MAC, NIL
-     DS(N_("Un`retain' <header-list>")) },
+     DS(N_("Un`retain' <headers>")) },
    { "unset", &c_unset, (HG | L | M | X | TWYSH), 1, MAC, NIL
      DS(N_("Unset <option-list>")) },
    { "unshortcut", &c_unshortcut, (M | TWYSH), 1, MAC, NIL
