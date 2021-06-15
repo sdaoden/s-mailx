@@ -3966,33 +3966,34 @@ t_headerpick() { # {{{
 
    #
    </dev/null ${MAILX} ${ARGS} -Rf -Y '# Do not care much on error UISTRINGS
+commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 \echo --- 1
 \headerpick
-\echo --- $?/$^ERRNAME, 2
+x2
 \type
-\echo --- $?/$^ERRNAME, 3
+x3
 \if "$features" !% +uistrings,
    \echoerr reproducible_build: Invalid field name cannot be ignored: ba:l
 \endif
 \headerpick type ignore \
    from_ mail-followup-to in-reply-to DATE MESSAGE-ID STATUS ba:l
-\echo --- $?/$^ERRNAME, 4
+x4
 \if "$features" !% +uistrings,
    \echo "#headerpick type retain currently covers no fields"
 \endif
 \headerpick
-\echo --- $?/$^ERRNAME, 5
+x5
 \type
-\echo --- $?/$^ERRNAME, 6
+x6
 \unheaderpick type ignore from_ DATE STATUS
-\echo --- $?/$^ERRNAME, 7
+x7
 \if "$features" !% +uistrings,
    \echo "#headerpick type retain currently covers no fields"
 \endif
 \headerpick
-\echo --- $?/$^ERRNAME, 8
+x8
 \type
-\echo --- $?/$^ERRNAME, 9
+x9
 \if "$features" =% +uistrings,
    \unheaderpick type ignore from_ ba:l
    \set x=$? y=$^ERRNAME
@@ -4003,13 +4004,13 @@ t_headerpick() { # {{{
 \endif
 \echo --- $x/$y, 10
 \unheaderpick type ignore *
-\echo --- $?/$^ERRNAME, 11
+x11
 \if "$features" !% +uistrings,
    \echo "#headerpick type retain currently covers no fields"
    \echo "#headerpick type ignore currently covers no fields"
 \endif
 \headerpick
-\echo --- $?/$^ERRNAME, 12
+x12
 \type
 \echo --- $?/$^ERRNAME, 13 ---
 #  ' ./tmbox > ./t1 2>&1
@@ -4019,54 +4020,88 @@ t_headerpick() { # {{{
    if have_feat uistrings; then
       have_feat regex && i='3515512395 2378' || i='4201290332 2378'
       </dev/null ${MAILX} ${ARGS} -Y '#
+commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 \headerpick type retain \
    bcc cc date from sender subject to \
    message-id mail-followup-to reply-to user-agent
-\echo --- $?/$^ERRNAME, 1
+x1
 \headerpick forward retain \
    cc date from message-id list-id sender subject to \
    mail-followup-to reply-to
-\echo --- $?/$^ERRNAME, 2
+x2
 \headerpick save ignore ^Original-.*$ ^X-.*$ ^DKIM.*$
-\echo --- $?/$^ERRNAME, 3
+x3
 \headerpick top retain To Cc
 \echo --- $?/$^ERRNAME, 4 ---
 \headerpick
-\echo --- $?/$^ERRNAME, 5
+x5
 \headerpick type
-\echo --- $?/$^ERRNAME, 6
+x6
 \headerpick forward
-\echo --- $?/$^ERRNAME, 7
+x7
 \headerpick save
-\echo --- $?/$^ERRNAME, 8
+x8
 \headerpick top
 \echo --- $?/$^ERRNAME, 9 ---
 \unheaderpick type retain message-id mail-followup-to reply-to user-agent
-\echo --- $?/$^ERRNAME, 10
+x10
 \unheaderpick save ignore ^X-.*$ ^DKIM.*$
-\echo --- $?/$^ERRNAME, 11
+x11
 \unheaderpick forward retain *
 \echo --- $?/$^ERRNAME, 12 ---
 \headerpick
-\echo --- $?/$^ERRNAME, 13
+x13
 \headerpick type
-\echo --- $?/$^ERRNAME, 14
+x14
 \headerpick save
 \echo --- $?/$^ERRNAME, 15 --
 \unheaderpick type retain *
-\echo --- $?/$^ERRNAME, 16
+x16
 \unheaderpick forward retain *
-\echo --- $?/$^ERRNAME, 17
+x17
 \unheaderpick save ignore *
-\echo --- $?/$^ERRNAME, 18
+x18
 \unheaderpick top retain *
 \echo --- $?/$^ERRNAME, 19 --
 \headerpick
-\echo --- $?/$^ERRNAME, 20
+x20
 #  ' > ./t2 2>&1
       check 2 0 ./t2 "${i}"
+
+      # object
+      </dev/null ${MAILX} ${ARGS} -Y '
+commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
+headerp create au;x1
+headerp create au1;x2
+headerp create au2;x3
+headerp create au3;x4
+headerp create au;x5
+headerp create .au;x6
+headerp;x7
+headerp au ret add bla1;x8
+headerp au1 ign add bla2;x9
+headerp ass au2 au;x10
+headerp ass au3 au1;x11
+headerp;x12
+headerp joi au2 au3;x13
+headerp joi au3 au;x14
+headerp;x15
+headerp rem au3;x16
+headerp rem au;x17
+headerp rem au1;x18
+headerp rem au2;x19
+headerp;x20
+#
+headerp crea au1;x21
+headerp crea au2;x22
+headerp au1 ign add du du du du du du du au1;x23
+headerp au2 ign add au2 from from from from from;x24
+headerp joi au1 au2;x25
+headerp;x26
+      ' > ./t3 2>&1
+      check 3 0 ./t3 '3491122476 1689'
    else
-      t_echoskip '2:[!UISTRINGS]'
+      t_echoskip '2-3:[!UISTRINGS]'
    fi
 
    t_epilog "${@}"

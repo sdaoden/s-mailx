@@ -580,7 +580,7 @@ c_top(void *v){
    if(mx_ignore_is_any(mx_IGNORE_TOP))
       itp = mx_IGNORE_TOP;
    else{
-      itp = mx_ignore_new(TRU1);
+      itp = mx_ignore_new(".top", TRU1);
       mx_ignore_insert(itp, TRU1, "from");
       mx_ignore_insert(itp, TRU1, "to");
       mx_ignore_insert(itp, TRU1, "cc");
