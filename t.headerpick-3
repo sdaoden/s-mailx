@@ -1,0 +1,56 @@
+--- 0/NONE, 1
+--- 0/NONE, 2
+--- 0/NONE, 3
+--- 0/NONE, 4
+reproducible_build: headerpick: create: context exists: au
+--- 1/INVAL, 5
+reproducible_build: headerpick: create: invalid context name: .au
+--- 1/INVAL, 6
+#headerpick au3 retain currently covers no fields
+#headerpick au3 ignore currently covers no fields
+#headerpick au2 retain currently covers no fields
+#headerpick au2 ignore currently covers no fields
+#headerpick au1 retain currently covers no fields
+#headerpick au1 ignore currently covers no fields
+#headerpick au retain currently covers no fields
+#headerpick au ignore currently covers no fields
+--- 0/NONE, 7
+--- 0/NONE, 8
+--- 0/NONE, 9
+--- 0/NONE, 10
+--- 0/NONE, 11
+#headerpick au3 retain currently covers no fields
+headerpick au3 ignore add bla2
+headerpick au2 retain add bla1
+#headerpick au2 ignore currently covers no fields
+#headerpick au1 retain currently covers no fields
+headerpick au1 ignore add bla2
+headerpick au retain add bla1
+#headerpick au ignore currently covers no fields
+--- 0/NONE, 12
+--- 0/NONE, 13
+--- 0/NONE, 14
+headerpick au3 retain add bla1
+headerpick au3 ignore add bla2
+headerpick au2 retain add bla1
+headerpick au2 ignore add bla2
+#headerpick au1 retain currently covers no fields
+headerpick au1 ignore add bla2
+headerpick au retain add bla1
+#headerpick au ignore currently covers no fields
+--- 0/NONE, 15
+--- 0/NONE, 16
+--- 0/NONE, 17
+--- 0/NONE, 18
+--- 0/NONE, 19
+--- 0/NONE, 20
+--- 0/NONE, 21
+--- 0/NONE, 22
+--- 0/NONE, 23
+--- 0/NONE, 24
+--- 0/NONE, 25
+#headerpick au2 retain currently covers no fields
+headerpick au2 ignore add au2 from
+#headerpick au1 retain currently covers no fields
+headerpick au1 ignore add au1 au2 du from
+--- 0/NONE, 26
