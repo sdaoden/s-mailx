@@ -8093,6 +8093,7 @@ t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
 
    # [1091b026c9c8bcd26ce95aa90e7327757f9c0f32] check
    # While here ensure IDNA decoding does not happen
+   # t6-7 used for t9, too
    ${cat} >> ./t6-7.eml <<'_EOT'
 Date: Tue, 20 Apr 2021 00:23:10 +0200
 To: Hey <bose@xn--kndelbrste-fcb0f>
@@ -8148,6 +8149,29 @@ XY
          xit
       ' -Rf eml://- >./t8 2>&1
    check 8 0 ./t8 '2215033944 46'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Y '#
+         commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
+         echo ==1
+         digmsg create 1 -;x 1
+         digmsg 1 header list
+         headerpick create t;x 2
+         headerpick t ignore date subject to;x 3
+         digmsg 1 header headerpick t
+         digmsg 1 header list
+         digmsg remove 1
+         echo ==2
+         digmsg create 1 -;x 10
+         digmsg 1 header list
+         unheaderpick t ignore *;x 12
+         headerpick t retain date subject to;x 13
+         digmsg 1 header headerpick t
+         digmsg 1 header list
+         digmsg remove 1
+         xit
+      ' -f t6-7.eml >./t9 2>&1
+   check 9 0 ./t9 '3321043850 245'
 
    t_epilog "${@}"
 } # }}}
