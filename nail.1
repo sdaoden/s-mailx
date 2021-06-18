@@ -8397,6 +8397,17 @@ The list position is always 1 for single-instance header fields.
 All free-form header fields are managed in a single list; also see
 .Va customhdr .
 .
+.It Cm headerpick
+Takes the name of a
+.Ic headerpick
+.Ar context
+and filters accordingly, giving
+.Ql 210
+on success, and
+.Ql 501
+for read-only messages or an invalid
+.Ar context .
+.
 .It Cm list
 Without a third argument a list of all yet existing headers is given via
 .Ql 210 ;
