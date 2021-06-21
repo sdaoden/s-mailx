@@ -84,9 +84,9 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_nil,
       msg_or_nil = _("invalid expression syntax");
 
    if(nearby_or_nil != NIL)
-      n_err(_("if: %s -- near: %s\n"), msg_or_nil, nearby_or_nil);
+      n_err(_("*if: %s -- near: %s\n"), msg_or_nil, nearby_or_nil);
    else
-      n_err(_("if: %s\n"), msg_or_nil);
+      n_err(_("*if: %s\n"), msg_or_nil);
 
    if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V)){
       str_concat_cpa(&s, cicp->cic_argv_base,
@@ -597,10 +597,9 @@ jesyn:
 }
 
 static int
-a_ccnd_if(void *v, boole iselif){
+a_ccnd_if(void *vp, boole iselif){
    struct a_ccnd_if_ctx cic;
    char const * const *argv;
-   uz argc;
    s8 xrv, rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
@@ -624,21 +623,10 @@ a_ccnd_if(void *v, boole iselif){
       goto jleave;
    }
 
-   /* For heaven's sake, support comments _today_ TODO wyshlist.. */
-   for(argc = 0, argv = v; argv[argc] != NIL; ++argc)
-      if(argv[argc][0] == '#'){
-         uz i;
-         char const **nav;
-
-         nav = su_AUTO_ALLOC(sizeof(char*) * (argc + 1));
-         for(i = 0; i < argc; ++i)
-            nav[i] = argv[i];
-         nav[i] = NIL;
-         argv = nav;
-         break;
-      }
-   cic.cic_argv_base = cic.cic_argv = argv;
-   cic.cic_argv_max = &argv[argc];
+   cic.cic_argv_base = cic.cic_argv = argv = vp;
+   while(*argv != NIL)
+      ++argv;
+   cic.cic_argv_max = argv;
    xrv = a_ccnd_oif_group(&cic, 0, FAL0);
 
    if(xrv >= 0){
