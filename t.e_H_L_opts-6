@@ -1,0 +1,41 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: me@exam.ple
+
+Line 1.
+Hello.
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: you@exam.ple
+
+Line 1.
+Bye.
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: pony1@reproducible_build
+From: pony1@reproducible_build
+To: me1@exam.ple
+Subject: subject cab
+
+Line 1.
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: pony2@reproducible_build
+From: pony2@reproducible_build
+To: me2@exam.ple
+Subject: subject bac
+
+Line 12.
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: pony3@reproducible_build
+From: pony3@reproducible_build
+To: me3@exam.ple
+Subject: subject abc
+
+Line 123.
+

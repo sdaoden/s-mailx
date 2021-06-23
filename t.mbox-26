@@ -16,6 +16,7 @@ reproducible_build: Not a header line, skipping: 'Leading text, what to do with 
 [-- Message  1 -- 6 lines, 128 bytes -- INVALID (only direct copy/xy) --]:
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 From MAILER-DAEMON Thu Jan  1 00:00:00 1970
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
@@ -56,6 +57,7 @@ And do foolish things
 4
 reproducible_build: Message 1 is invalid, skipped (address by itself)
 ./t27 [New file] 486 bytes
+reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'
 reproducible_build: Not a header line, skipping: 'Leading text, what to do with it?'

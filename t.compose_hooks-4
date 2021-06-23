@@ -1,5 +1,6 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: f1@z
 From: f1@z
 To: t1@z
 
@@ -7,6 +8,7 @@ b1
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
 Message-ID: <19961002015007.AQACA%f2@z>
@@ -81,6 +83,7 @@ Bcc: oce@exam.ple
 
 -------- Original Message --------
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: f1@z
 From: f1@z
 To: t1@z
 Status: R
@@ -117,6 +120,7 @@ Bcc: oce@exam.ple
 
 -- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQACA%f2@z)(f2@z)(du) --
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
 Message-ID: <19961002015007.AQACA%f2@z>
@@ -155,6 +159,7 @@ Bcc: oce@exam.ple
 
 -- forward (f2@z)(1996-10-02 01:50)(du <f2@z>)(19961002015007.AQACA%f2@z)(du)(du) --
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
 Message-ID: <19961002015007.AQACA%f2@z>
@@ -189,6 +194,7 @@ From reproducible_build Wed Oct  2 01:50:07 1996
 Resent-Date: Wed, 02 Oct 1996 01:50:07 +0000
 Resent-To: resendex@am.ple
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: f1@z
 From: f1@z
 To: t1@z
 
@@ -198,6 +204,7 @@ From reproducible_build Wed Oct  2 01:50:07 1996
 Resent-Date: Wed, 02 Oct 1996 01:50:07 +0000
 Resent-To: resendex@am.ple
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
 Message-ID: <19961002015007.AQACA%f2@z>
@@ -206,6 +213,7 @@ b2
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: f1@z
 From: f1@z
 To: t1@z
 
@@ -213,6 +221,7 @@ b1
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: du <f2@z>
 From: du <f2@z>
 To: t2@z
 Message-ID: <19961002015007.AQACA%f2@z>
