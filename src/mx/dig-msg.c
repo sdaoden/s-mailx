@@ -389,6 +389,9 @@ jins_505:
    if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = F)) \
       {npp = &hp->H; INS; goto jins;}
 
+   /* Same as From:*/
+   a_X("Author", h_author, UNUSED(0));
+
    if((cp = su_cs_find_c(args->ca_arg.ca_str.s, '?')) != NIL){
       mod_suff = cp;
       args->ca_arg.ca_str.s[P2UZ(cp - args->ca_arg.ca_str.s)] = '\0';
@@ -471,6 +474,7 @@ jcmd_headerpick:{ /* TODO v15-compat: oooooh: an iterator! {{{ */
       su_CONCAT(hp->h_, F) = NIL;
 
    a_X(subject, Subject);
+   a_X(author, Author);
    a_X(from, From);
    a_X(sender, Sender);
    a_X(to, To);
@@ -513,6 +517,7 @@ jcmd_list: jdefault:{ /* {{{ */
       }
 
       a_X(subject, Subject);
+      a_X(author, Author);
       a_X(from, From);
       a_X(sender, Sender);
       a_X(to, To);
@@ -578,6 +583,7 @@ jlist:
          goto jlist;\
       }
 
+      a_X(Author, author);
       a_X(Sender, sender);
       a_X(To, to);
       a_X(Cc, cc);
@@ -663,6 +669,7 @@ jrem:
       goto jrem;\
    }
 
+   a_X(Author, author);
    a_X(Sender, sender);
    a_X(To, to);
    a_X(Cc, cc);
@@ -764,6 +771,7 @@ jremat:
       goto jremat;\
    }
 
+   a_X(Author, author);
    a_X(Sender, sender);
    a_X(To, to);
    a_X(Cc, cc);
@@ -857,6 +865,7 @@ jshow:
       goto jshow;\
    }
 
+   a_X(Author, author);
    a_X(Sender, sender);
    a_X(To, to);
    a_X(Cc, cc);

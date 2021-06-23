@@ -165,11 +165,12 @@ set showto
 #\charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-retain date sender from to cc subject message-id mail-followup-to reply-to
-#\headerpick type retain from_ date sender from to cc subject \
+retain date author sender from to cc subject \
+   message-id mail-followup-to reply-to
+#\headerpick type retain from_ date author sender from to cc subject \
 #   message-id mail-followup-to reply-to
 # - when forwarding messages
-#\headerpick forward retain subject date sender from to cc
+#\headerpick forward retain date author sender from to cc subject
 # - and do not include these when saving message, etc.
 #\if "$features" =@ ,+regex,
 #  \headerpick save ignore '^Original-.*$' '^X-.*$'
