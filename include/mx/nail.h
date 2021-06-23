@@ -1251,6 +1251,7 @@ struct header{
    u32 h_dummy;
    char *h_subject; /* Subject string */
    char const *h_charset; /* preferred charset */
+   struct mx_name *h_author; /* Author: RFC 9057 (only parsed) */
    struct mx_name *h_from; /* overridden "From:" field */
    struct mx_name *h_sender; /* overridden "Sender:" field */
    struct mx_name *h_to; /* Dynamic "To:" string */

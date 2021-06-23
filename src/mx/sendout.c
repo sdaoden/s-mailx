@@ -2539,8 +2539,13 @@ do {\
       if (hp->h_from == NULL || hp->h_sender == NULL)
          setup_from_and_sender(hp);
 
-      if (hp->h_from != NULL) {
-         if (!a_sendout_put_addrline("From:", hp->h_from, fo, saf))
+      if(hp->h_from != NIL){
+         if(hp->h_author != NIL){
+            if(!a_sendout_put_addrline("Author:", hp->h_author, fo, saf))
+               goto jleave;
+         }else if(!a_sendout_put_addrline("Author:", hp->h_from, fo, saf))
+            goto jleave;
+         if(!a_sendout_put_addrline("From:", hp->h_from, fo, saf))
             goto jleave;
          ++gotcha;
       }

@@ -949,7 +949,7 @@ t_X_Y_opt_input_go_stack() { # {{{
 
 	this body via -t.
 	_EOT
-   check 5 0 ./t.mbox '3313167452 299'
+   check 5 0 ./t.mbox '641630721 321'
    check 6 - ./t6 '467429373 22'
 
    #
@@ -957,14 +957,14 @@ t_X_Y_opt_input_go_stack() { # {{{
       -X 'echo X before compose mode' \
       -Y '~s Subject via -Y (not!)' \
       -Y 'Additional body via -Y, nobatch mode' -. ./t.mbox > ./t8 2>&1
-   check 7 0 ./t.mbox '1561798488 476'
+   check 7 0 ./t.mbox '3953748270 498'
    check 8 - ./t8 '467429373 22'
 
    printf 'this body via stdin pipe.\n' | ${MAILX} ${ARGS} \
       -X 'echo X before compose mode' \
       -Y '~s Subject via -Y' \
       -Y 'Additional body via -Y, batch mode' -. ./t.mbox > ./t10 2>&1
-   check 9 0 ./t.mbox '3245082485 650'
+   check 9 0 ./t.mbox '2012913894 672'
    check 10 - ./t10 '467429373 22'
 
    # Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
@@ -4238,13 +4238,13 @@ xit
    </dev/null ${MAILX} ${ARGS} -s ubject \
       -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
       to@exam.ple > ./t13 2>&1
-   check 13 0 ./t13 '143390417 169'
+   check 13 0 ./t13 '2837699804 203'
 
    # ..if From: is single mailbox and Sender: is same, no Sender:
    </dev/null ${MAILX} ${ARGS} -s ubject \
       -S from=a@b.org -S sender=a@b.org \
       to@exam.ple > ./t14 2>&1
-   check 14 0 ./t14 '1604962737 135'
+   check 14 0 ./t14 '3373917180 151'
 
    t_epilog "${@}"
 } # }}}
@@ -5475,7 +5475,7 @@ t_mbox() { # {{{
       -Y 'copy * ./t27' \
       -Y 'copy 1 ./t28' \
       ./t26.mbox > ./t26 2>&1
-   check 26 0 ./t26 '3467505698 3089'
+   check 26 0 ./t26 '312000791 3259'
    check 27 - ./t27 '3764405655 487'
    check 28 - ./t28 '2228574283 184'
 
@@ -6620,7 +6620,7 @@ t_expandaddr() { # {{{
       ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t89.mbox -t -ssub \
          -Sexpandaddr=nametoaddr -Shostname=nowhere \
          > ./t90 2>&1
-   check 89 0 ./t89.mbox '1230259124 168'
+   check 89 0 ./t89.mbox '3724074854 203'
    check 90 - ./t90 '4294967295 0'
 
    t_epilog "${@}"
@@ -6867,22 +6867,24 @@ t_e_H_L_opts() { # {{{
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
       }' -fH ./t.mbox > ./t2 2>&1
-   check 2 0 ./t2 '4286438644 413'
+   check 2 0 ./t2 '3132089442 413'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test subject; set autosort=subject showname showto
       }' -fH ./t.mbox > ./t3 2>&1
-   check 3 0 ./t3 '3208053922 416'
+   check 3 0 ./t3 '2813644801 416'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test from; set autosort=from showto
       }' -fH ./t.mbox > ./t4 2>&1
-   check 4 0 ./t4 '4209767839 413'
+   check 4 0 ./t4 '3208236297 413'
 
    ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
          echo fh-test to; set autosort=to showto
       }' -fH ./t.mbox > ./t5 2>&1
-   check 5 0 ./t5 '2785342736 411'
+   check 5 0 ./t5 '901727002 411'
+
+   check 6 - ./t.mbox '3540578520 839'
 
    t_epilog "${@}"
 } # }}}
@@ -6918,7 +6920,7 @@ t_q_t_etc_opts() { # {{{
 		
 		BOOOM
 		_EOT
-   check 4 0 ./t4 '4161555890 124'
+   check 4 0 ./t4 '1256637859 138'
 
    # ?MODifier suffix
    printf '' > ./t10
@@ -6964,7 +6966,7 @@ t_message_injections() { # {{{
       -Smessage-inject-head=head-inject \
       -Smessage-inject-tail="`${cat} ./t.mysig`\n"'tail-inject' \
       > ./t4 2>&1
-   check 3 0 ./t3 '2189109479 207'
+   check 3 0 ./t3 '2646789247 218'
    check 4 - ./t4 '4294967295 0'
 
    t_epilog "${@}"
@@ -7114,7 +7116,7 @@ reply 1 2
       -a ./txa3 -a './tx a4' \
       -s Y \
       ex@am.ple > ./t7 2>&1
-   check 7 0 ./t7 '322752161 1267'
+   check 7 0 ./t7 '2357640864 1313'
 
    # input charset
    </dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
@@ -7141,7 +7143,7 @@ reply 1 2
             --attach ./txa10=utf8#latin1 \
             --subject Y \
             ex@am.ple > ./t10 2>&1
-         check 10 0 ./t10 '1786180439 877'
+         check 10 0 ./t10 '75186432 923'
       else
          t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
       fi
@@ -7533,7 +7535,7 @@ my body
    ' | ${MAILX} ${ARGS} -Smta=test://t3 -Sescape=! \
          -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
          -Rf ./t3_5-in > ./t4 2>&1
-   check 3 0 ./t3 '3184203976 265'
+   check 3 0 ./t3 '917782413 299'
    check 4 - ./t4 '3604001424 44'
 
    # same, per command
@@ -7549,7 +7551,7 @@ my body
 !.
    ' | ${MAILX} ${ARGS} -Smta=test://t5 -Sescape=! \
          -Rf ./t3_5-in > ./t6 2>&1
-   check 5 0 ./t5 '3184203976 265'
+   check 5 0 ./t5 '917782413 299'
    check 6 - ./t6 '3604001424 44'
 
    # And more, with/out -r (and that Sender: vanishs as necessary)
@@ -7564,8 +7566,8 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       -r a@b.example b@b.example ./t8 >./t9 2>&1
-   check 7 0 ./t7 '4275947318 181'
-   check 8 - ./t8 '4275947318 181'
+   check 7 0 ./t7 '683070437 201'
+   check 8 - ./t8 '683070437 201'
    check 9 - ./t9 '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://t10 -s '-Sfrom + -r ++ test' \
@@ -7573,8 +7575,8 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a2@b.example \
       -r a@b.example b@b.example ./t11 >./t12 2>&1
-   check 10 0 ./t10 '1462405008 202'
-   check 11 - ./t11 '1462405008 202'
+   check 10 0 ./t10 '1590152680 222'
+   check 11 - ./t11 '1590152680 222'
    check 12 - ./t12 '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=test://t13 -s '-Sfrom + -r ++ test' \
@@ -7582,7 +7584,7 @@ my body
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       b@b.example >./t14 2>&1
-   check 13 0 ./t13 '3616460158 227'
+   check 13 0 ./t13 '2530102496 273'
    check 14 - ./t14 '4294967295 0'
 
    t_epilog "${@}"
@@ -8765,7 +8767,7 @@ __EOT__
       -X'source ./t.rc' -Smta=test://t1 \
       >./t1-x 2>&1
    ${cat} ./t1-x >> ./t1
-   check 1 0 ./t1 '1635585689 10290'
+   check 1 0 ./t1 '429858159 10361'
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
@@ -9134,7 +9136,7 @@ this is content of forward 2, 2nd, with showname set
       ' >> ./t4-x 2>&1
    check_ex0 4-estat
    ${cat} ./t4-x >> ./t4
-   check 4 - ./t4 '785169254 10360'
+   check 4 - ./t4 '3526058127 10502'
 
    t_epilog "${@}"
 } # }}}
@@ -9355,7 +9357,7 @@ t_lreply_futh_rth_etc() { # {{{
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - ./t1 '1519985418 39828'
+      check 1 - ./t1 '3306748615 41875'
    else
       t_echoskip '1:[!UISTRINGS]'
    fi
@@ -9385,27 +9387,27 @@ t_lreply_futh_rth_etc() { # {{{
    printf 'reply 1\nthread\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
          ${argadd} -Rf ./t.mbox > ./t3 2>&1
-   check 2 0 ./t2_11 '1088906529 434'
+   check 2 0 ./t2_11 '2966409435 480'
    check 3 - ./t3 '4294967295 0'
 
    printf 'reply 1\nnew <- thread!\n!||%s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
          ${argadd} -Rf ./t2_11 > ./t5 2>&1
-   check 4 0 ./t2_11 '3484120084 773'
+   check 4 0 ./t2_11 '3870393639 865'
    check 5 - ./t5 '4294967295 0'
 
    printf 'reply 2\nold <- new <- thread!\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
          ${argadd} -Rf ./t2_11 > ./t7 2>&1
-   check 6 0 ./t2_11 '928408901 1234'
+   check 6 0 ./t2_11 '219545266 1372'
    check 7 - ./t7 '4294967295 0'
 
    printf 'reply 3\nnew <- old <- new <- thread!\n!|| %s -e "%s"\n!.\n' \
          "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
          ${argadd} -Rf ./t2_11 > ./t9 2>&1
-   check 8 0 ./t2_11 '1855390020 1587'
+   check 8 0 ./t2_11 '529088127 1771'
    check 9 - ./t9 '4294967295 0'
 
    # And follow-up testing whether changing In-Reply-To: to - starts a new
@@ -9415,7 +9417,7 @@ t_lreply_futh_rth_etc() { # {{{
          "${sed}" 's/^In-Reply-To:.*$/In-Reply-To:-/' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=test://t2_11 -Sreply-to-honour \
          ${argadd} -Rf ./t2_11 > ./t11 2>&1
-   check 10 0 ./t2_11 '433886680 2052'
+   check 10 0 ./t2_11 '968429240 2282'
    check 11 - ./t11 '4294967295 0'
 
    t_epilog "${@}"
@@ -9942,7 +9944,7 @@ t_s_mime() { # {{{
          { if(!skip) print }
       ' \
          < ./t${1}.VERIFY > ./t${_z}
-      check ${_z} - ./t${_z} '335634014 644'
+      check ${_z} - ./t${_z} '54262178 667'
       _z=`add ${_z} 1`
 
       printf 'verify\nx\n' |
@@ -9969,7 +9971,7 @@ t_s_mime() { # {{{
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
-      check ${_z} - ./t${_z} '2359655411 336'
+      check ${_z} - ./t${_z} '1324731554 359'
       _z=`add ${_z} 1`
 
       printf 'decrypt ./t%s.DECRYPT\nfi ./t%s.DECRYPT\nverify\nx\n' \
@@ -9987,7 +9989,7 @@ t_s_mime() { # {{{
          { if(!skip) print }
       ' \
          < ./t${1}.DECRYPT > ./t${_z}
-      check ${_z} - ./t${_z} '2602978204 940'
+      check ${_z} - ./t${_z} '3545588265 963'
       _z=`add ${_z} 1`
 
       { openssl smime -decrypt -inkey ./client2-key.pem \
@@ -10005,7 +10007,7 @@ t_s_mime() { # {{{
          -s 'S/MIME test' recei@ver.com >>${ERR} 2>&1
       check_ex0 ${_z}-estat
       ${sed} -e '/^$/,$d' < ./t${1}.ENCRYPT > ./t${_z}
-      check ${_z} - ./t${_z} '2359655411 336'
+      check ${_z} - ./t${_z} '1324731554 359'
       _z=`add ${_z} 1`
 
       # Note: deduce from *sign-cert*, not from *from*!
@@ -10013,7 +10015,7 @@ t_s_mime() { # {{{
          ${MAILX} ${ARGS} \
          -Ssmime-sign-cert-recei@ver.com=./client2-pair.pem \
          -Serrexit -R -f ./t${1}.ENCRYPT >>${ERR} 2>&1
-      check ${_z} 0 ./t${_z} '2453471323 431'
+      check ${_z} 0 ./t${_z} '3114464078 454'
       _z=`add ${_z} 1`
 
       openssl smime ${_ossl} -decrypt -inkey ./client2-key.pem \
@@ -10436,7 +10438,8 @@ EHLO %s
    }
 
    smtp_date_from() {
-      printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nFrom: %s\n' "${from}"
+      printf 'Date: Wed, 02 Oct 1996 01:50:07 +0000\nAuthor: %s\nFrom: %s\n' \
+         "${from}" "${from}"
    }
 
    smtp_to() { printf 'To: ex@am.ple\n'; }
