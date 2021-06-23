@@ -2585,24 +2585,23 @@ will be interpreted as (an extended) one if any of the
 is seen.
 If the optional
 .Ar @ Ns Ar name-list
-part is missing the search is restricted to the subject field body,
-but otherwise
-.Ar name-list
-specifies a comma-separated list of header fields to search, for example
+part is missing the search is restricted to the
+.Ql Subject: ;
+it is effectively non-optional, but can be empty, if
+.Ar expr
+includes a commercial at
+.Ql @ .
+It specifies a comma-separated list of header fields, for example
 .
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
 .
 .Pp
-In order to search for a string that includes a
-.Ql @
-(commercial at) character the
-.Ar name-list
-is effectively non-optional, but may be given as the empty string.
-Also, specifying an empty search
+Specifying an empty search
 .Ar expr Ns
-ession will effectively test for existence of the given header fields.
-Some special header fields may be abbreviated:
+ession effectively tests for existence of the given header fields.
+Some header fields may be abbreviated:
+.Ql a ,
 .Ql f ,
 .Ql t ,
 .Ql c ,
@@ -2610,13 +2609,20 @@ Some special header fields may be abbreviated:
 and
 .Ql s
 will match
-.Ql From ,
-.Ql To ,
-.Ql Cc ,
-.Ql Bcc
+.Ql Author: ,
+.Ql From: ,
+.Ql To: ,
+.Ql Cc: ,
+.Ql Bcc:
 and
-.Ql Subject ,
+.Ql Subject: ,
 respectively and case-insensitively.
+But for a plain field existence test
+.Ql Author
+indeed searches all of
+.Ql Author: ,
+.Ql From: ,
+.Ql Sender: .
 \*(OPally, and just like
 .Ar expr ,
 .Ar name-list

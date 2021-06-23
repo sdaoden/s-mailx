@@ -1378,6 +1378,15 @@ mx_header_needs_mime(struct header *hp){
    if((cp = hp->h_subject) != NIL)
       *cpp++ = cp;
 
+   if((np = hp->h_author) != NIL){
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+         goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }
+
    if((np = hp->h_from) != NIL){
       do if(mx_mime_header_needs_mime(np->n_name) ||
             (np->n_name != np->n_fullname &&
@@ -1535,6 +1544,13 @@ jeseek:
             hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
          }else
             goto jebadhead;
+      }else if((val = n_header_get_field(linebuf, "author", NIL)) != NIL){
+         if(hef & n_HEADER_EXTRACT_FULL){
+            ++seenfields;
+            hq->h_author = cat(hq->h_author,
+                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                     EACM_STRICT, NULL));
+         }
       } else if ((val = n_header_get_field(linebuf, "from", NULL)) != NULL) {
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
@@ -1697,6 +1713,7 @@ jebadhead:
       hp->h_to = hq->h_to;
       hp->h_cc = hq->h_cc;
       hp->h_bcc = hq->h_bcc;
+      hp->h_author = hq->h_author;
       hp->h_from = hq->h_from;
       hp->h_reply_to = hq->h_reply_to;
       hp->h_sender = hq->h_sender;
@@ -2887,18 +2904,19 @@ msgidcmp(char const *s1, char const *s2)
 }
 
 FL char const *
-fakefrom(struct message *mp)
-{
+fakefrom(struct message *mp){
    char const *name;
-   NYD_IN;
+   NYD2_IN;
 
-   if (((name = skin(hfield1("return-path", mp))) == NULL || *name == '\0' ) &&
-         ((name = skin(hfield1("from", mp))) == NULL || *name == '\0'))
+   if(((name = skin(hfield1("return-path", mp))) == NIL || *name == '\0' ) &&
+         ((name = skin(hfield1("from", mp))) == NIL || *name == '\0') &&
+         ((name = skin(hfield1("author", mp))) == NIL || *name == '\0'))
       /* XXX MAILER-DAEMON is what an old MBOX manual page says.
        * RFC 4155 however requires a RFC 5322 (2822) conforming
        * "addr-spec", but we simply can't provide that */
       name = "MAILER-DAEMON";
-   NYD_OU;
+
+   NYD2_OU;
    return name;
 }
 
@@ -3511,7 +3529,9 @@ n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
          su_mem_copy(itercp = fiter.s, scp->sc_field, fiter.l +1);
          while((field = su_cs_sep_c(&itercp, ',', TRU1)) != NULL){
             /* It may be an abbreviation */
-            char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
+            char const x[][8] = {
+               "author", "from", "to", "cc", "bcc", "subject"
+            };
             uz i;
             char c1;
 
@@ -3527,8 +3547,15 @@ n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
 
             if(!su_cs_cmp_case_n(field, linebuf, P2UZ(colon - linebuf)))
                break;
+            /* Author: finds From: and Sender: too */
+            if(!scp->sc_field_exists && !su_cs_cmp_case(field, "author")){
+               if(!su_cs_cmp_case_n("sender", linebuf, P2UZ(colon - linebuf)))
+                  break;
+               if(!su_cs_cmp_case_n("from", linebuf, P2UZ(colon - linebuf)))
+                  break;
+            }
          }
-         if(field == NULL)
+         if(field == NIL)
             continue;
 #ifdef mx_HAVE_REGEX
       }else if(match == a_RE){
@@ -3604,6 +3631,8 @@ n_header_is_known(char const *name, uz len){
       "In-Reply-To", "Mail-Followup-To",
       "Message-ID", "References", "Reply-To",
       "Sender", "Subject", "To",
+      /* RFCd */
+      "Author", /* RFC 9057 */
       /* More known, here and there */
       "Fcc",
       /* Mailx internal temporaries */
