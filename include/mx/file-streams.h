@@ -48,6 +48,9 @@ enum mx_fs_oflags{
    /* Do NOT register file for auto close and -deletion */
    mx_FS_O_NOREGISTER = 1u<<9,
 
+   /* fd_open() only: do not close the descriptor (dup() it first) */
+   mx_FS_O_NOCLOSEFD = 1u << 13,
+
    /* tmp_open() only: */
 
    /* ..unlink(2) after creation */
