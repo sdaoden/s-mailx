@@ -672,6 +672,8 @@ mx_fs_tmp_open(char const *namehint, u32 oflags,
    if(fp == NIL || (oflags & mx_FS_O_UNLINK)){
       e = su_err_no();
       unlink(cp_base);
+      if(fp == NIL)
+         close(fd);
       goto jfree;
    }else if(fp != NIL){
       /* We will succeed and keep the file around for further usage, likely
