@@ -749,10 +749,36 @@ mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
 
    (void)a_fs_mx_to_os(oflags, &osflags);
 
-   if((fp = fdopen(S(int,fd), osflags)) != NIL &&
-         !(oflags & mx_FS_O_NOREGISTER))
-      a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
+   if(oflags & mx_FS_O_NOCLOSEFD){
+      int m, nfd;
 
+      m = F_DUPFD;
+#ifdef F_DUPFD_CLOEXEC
+      if(!(oflags & mx_FS_O_NOCLOEXEC))
+         m = F_DUPFD_CLOEXEC;
+#endif
+
+      nfd = fcntl(fd, m, 0);
+      if(nfd == -1){
+         fp = NIL;
+         goto jleave;
+      }
+
+#ifndef F_DUPFD_CLOEXEC
+      if(!(oflags & mx_FS_O_NOCLOEXEC))
+         mx_fs_fd_cloexec_set(nfd);
+#endif
+
+      fd = nfd;
+   }
+
+   if((fp = fdopen(S(int,fd), osflags)) != NIL){
+      if(!(oflags & mx_FS_O_NOREGISTER))
+         a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
+   }else if(oflags & mx_FS_O_NOCLOSEFD)
+      close(fd);
+
+jleave:
    NYD_OU;
    return fp;
 }

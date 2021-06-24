@@ -638,10 +638,14 @@ jlogname:
       goto jem1;
    }
 
-   if(flags & a_STDIN)
+   if(flags & a_STDIN){
       ibuf = mx_fs_fd_open(fileno(n_stdin), (mx_FS_O_RDONLY |
-            mx_FS_O_NOCLOEXEC));
-   else if((ibuf = mx_fs_open_any(savecat("file://", name), mx_FS_O_RDONLY,
+            mx_FS_O_NOCLOEXEC | mx_FS_O_NOCLOSEFD));
+      if(ibuf == NIL){
+         n_perr(n_hy, 0);
+         goto jem1;
+      }
+   }else if((ibuf = mx_fs_open_any(savecat("file://", name), mx_FS_O_RDONLY,
             NIL)) == NIL){
       int e = su_err_no();
 
