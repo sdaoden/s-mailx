@@ -232,7 +232,7 @@ page_or_print(FILE *fp, uz lines)
          while ((c = getc(fp)) != EOF)
             if (c == '\n' && ++lines >= rows)
                break;
-         really_rewind(fp);
+         really_rewind(fp, c);
       }
 
       /* Take account for the follow-up prompt */

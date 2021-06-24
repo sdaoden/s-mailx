@@ -223,7 +223,7 @@ jetempo:
       if((nf_pipetmp = mx_fs_tmp_open(NIL, "edpipe", (mx_FS_O_WRONLY |
                mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
          goto jetempo;
-      really_rewind(nf = nf_tmp);
+      really_rewind(nf = nf_tmp, t);
       nf_tmp = nf_pipetmp;
       nf_pipetmp = nf;
       nf = NIL;

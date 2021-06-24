@@ -1349,9 +1349,16 @@ jeappend:
    }
 
 jleave:
-   really_rewind(fp);
+   /* C99 */{
+      int e;
+
+      really_rewind(fp, e);
+      if(e)
+         rv = FAL0;
+   }
    if(!mx_fs_close(fo))
       rv = FAL0;
+
 j_leave:
    mx_fs_linepool_release(buf, bufsize);
 
