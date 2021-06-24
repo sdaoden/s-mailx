@@ -86,9 +86,10 @@ struct quoteflt;
 #if !su_OS_OPENBSD &&\
    defined _POSIX_VERSION && _POSIX_VERSION + 0 >= 200809L
 # define n_real_seek(FP,OFF,WH) (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF)
-# define really_rewind(stream) \
+# define really_rewind(stream,rv) \
 do{\
-   rewind(stream);\
+   if((rv = (fseek(stream, 0L, SEEK_SET) == -1))) rv = errno;\
+   clearerr(stream);\
    fflush(stream);\
 }while(0)
 
@@ -96,9 +97,10 @@ do{\
 # define n_real_seek(FP,OFF,WH) \
    (fseek(FP, OFF, WH) != -1 && fflush(FP) != EOF &&\
       lseek(fileno(FP), OFF, WH) != -1)
-# define really_rewind(stream) \
+# define really_rewind(stream, rv) \
 do{\
-   rewind(stream);\
+   if((rv = (fseek(stream, 0L, SEEK_SET) == -1))) rv = errno;\
+   clearerr(stream);\
    fflush(stream);\
    lseek(fileno(stream), 0, SEEK_SET);\
 }while(0)
