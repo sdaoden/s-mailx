@@ -628,8 +628,16 @@ a_fop__rewind(struct a_fop_ctx *fcp){
       fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
    }else if((fofdp = a_fop_fd(fcp->fc_arg = fcp->fc_argv[0], &fofstd, NIL)
          ) != NIL){
-      really_rewind(fofdp->fof_fp);
-      fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
+      int e;
+
+      really_rewind(fofdp->fof_fp, e);
+      if(!e)
+         fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
+      else{
+         n_pstate_err_no = e;
+         fcp->fc_flags |= a_FOP_ERR;
+         fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
+      }
    }else{
       n_pstate_err_no = su_ERR_INVAL;
       fcp->fc_flags |= a_FOP_ERR;

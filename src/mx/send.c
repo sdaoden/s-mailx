@@ -1311,11 +1311,15 @@ joutln:
    stats = save_stats;
 
    if (rv >= 0 && (mthp->mth_flags & mx_MIME_TYPE_HDL_TMPF_FILL)) {
+      int e;
+
       mthp->mth_flags &= ~mx_MIME_TYPE_HDL_TMPF_FILL;
       fflush(pbuf);
-      really_rewind(pbuf);
-      /* Don't fs_close() a tmp_open() thing due to FS_O_UNREGISTER_UNLINK++ */
-      goto jpipe_for_real;
+      really_rewind(pbuf, e);
+      if(!e)
+         /* No fs_close() a tmp_open() thing due to FS_O_UNREGISTER_UNLINK++ */
+         goto jpipe_for_real;
+      rv = -1;
    }
 
    if (pbuf == qbuf)
@@ -1325,7 +1329,6 @@ joutln:
       n_free(outrest.s);
    if (inrest.s != NULL)
       n_free(inrest.s);
-
    }
 
 jend:
