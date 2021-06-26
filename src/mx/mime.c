@@ -781,10 +781,11 @@ a_mime_append_conv(char **buf, uz *size, uz *pos, char const *str, uz len){
    in.s = UNCONST(char*,str);
    in.l = len;
 
-   mx_mime_display_from_header(&in, &out,
-      mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
-   a_mime_append_str(buf, size, pos, out.s, out.l);
-   su_FREE(out.s);
+   if(mx_mime_display_from_header(&in, &out,
+         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
+      a_mime_append_str(buf, size, pos, out.s, out.l);
+      su_FREE(out.s);
+   }
 
    NYD2_OU;
 }
@@ -937,7 +938,7 @@ mx_mime_header_needs_mime(char const *body){
 }
 #endif
 
-void
+boole
 mx_mime_display_from_header(struct str const *in, struct str *out,
       BITENUM_IS(u32,mx_mime_display_flags) flags){
    /* TODO mime_fromhdr(): is called with strings that contain newlines;
@@ -953,7 +954,8 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
     * TODO purposes etc.  then the only condition we have to honour in here
     * TODO is that whitespace in between multiple adjacent MIME encoded words
     * TODO á la RFC 2047 is discarded; i.e.: this function should deal with
-    * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode() */
+    * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode()
+    * TODO Does currently not really fail. */
    struct str cin, cout;
    u32 convert, lastenc, lastoutl;
    char *p, *upper, *op;
@@ -962,14 +964,18 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
    char const *tcs;
    iconv_t fhicd;
 #endif
+   boole rv;
    NYD_IN;
 
+   rv = TRU1;
    out->l = 0;
    if(in->l == 0){
       *(out->s = su_ALLOC(1)) = '\0';
       goto jleave;
    }
    out->s = NIL;
+
+   rv = FAL0;
 
 #ifdef mx_HAVE_ICONV
    fhicd = R(iconv_t,-1);
@@ -988,7 +994,6 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
 #endif
          while(p < upper && *p != '?')
             ++p;  /* strip charset */
-
          /* ?[bq]?..?= */
          if(&p[4] >= upper)
             goto Jnotmime;
@@ -1009,7 +1014,6 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
                char *cs, *ltag;
 
                cs = su_LOFI_ALLOC(i + 1);
-
                su_mem_copy(cs, cbeg, i);
                cs[i] = '\0';
 
@@ -1042,7 +1046,7 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
          cin.s = ++p;
          cin.l = 1;
          for(;;){
-            if(PCMP(p + 1, >=, upper))
+            if(PCMP(&p[1], >=, upper))
                goto Jnotmime;
             if(*p++ == '?' && *p == '=')
                break;
@@ -1058,39 +1062,27 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
 
          cout.s = NIL;
          cout.l = 0;
+
          if(convert == CONV_FROMB64){
             if(!mx_b64_dec_header(&cout, &cin))
-               n_str_assign_cp(&cout, _("[Invalid Base64 encoding]"));
+               goto jdec_qm;
          }else if(!mx_qp_dec_header(&cout, &cin))
-            n_str_assign_cp(&cout, _("[Invalid Quoted-Printable encoding]"));
+jdec_qm:
+            n_str_assign_cp(&cout, n_qm);
 
          /* Normalize all decoded newlines to spaces XXX only \0/\n yet */
          /* C99 */{
-            char const *xcp;
-            boole any;
-            uz i, j;
+            uz i;
 
-            for(any = FAL0, i = cout.l; i-- != 0;)
+            for(i = cout.l; i-- != 0;)
                switch(cout.s[i]){
                case '\0':
                case '\n':
-                  any = TRU1;
                   cout.s[i] = ' ';
                   /* FALLTHRU */
                default:
                   break;
                }
-
-            if(any){
-               /* I18N: must be non-empty, last must be closing bracket/xy */
-               xcp = _("[Content normalized: ]");
-               i = su_cs_len(xcp);
-               j = cout.l;
-               n_str_add_buf(&cout, xcp, i);
-               su_mem_move(&cout.s[i - 1], cout.s, j);
-               su_mem_copy(&cout.s[0], xcp, i - 1);
-               cout.s[cout.l - 1] = xcp[i - 1];
-            }
          }
 
          out->l = lastenc;
@@ -1151,9 +1143,16 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
       n_iconv_close(fhicd);
 #endif
 
+   rv = TRU1;
 jleave:
+   if(!rv && out->s != NIL){
+      su_FREE(out->s);
+      out->s = NIL;
+      out->l = 0;
+   }
+
    NYD_OU;
-   return;
+   return rv;
 }
 
 char *
@@ -1394,10 +1393,10 @@ jqpb64_enc:
          xsize = -1;
       break;
    case CONV_FROMHDR:
-      mx_mime_display_from_header(&in, &out,
-         (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT |
-          (dflags & mx_MIME_DISPLAY_DEL_CNTRL)));
-      xsize = quoteflt_push(qf, out.s, out.l);
+      if(mx_mime_display_from_header(&in, &out,
+            (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT |
+             (dflags & mx_MIME_DISPLAY_DEL_CNTRL))))
+         xsize = quoteflt_push(qf, out.s, out.l);
       break;
    case CONV_TOHDR:
       xsize = a_mime_write_tohdr(&in, f, NIL, a_MIME_SH_NONE);

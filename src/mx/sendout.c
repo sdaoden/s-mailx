@@ -2155,9 +2155,9 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
    if (subject != NULL) {
       in.s = n_UNCONST(subject);
       in.l = su_cs_len(subject);
-      mx_mime_display_from_header(&in, &out,
-         /* TODO ???_ISPRINT |*/ mx_MIME_DISPLAY_ICONV);
-      head.h_subject = out.s;
+      if(mx_mime_display_from_header(&in, &out,
+            /* TODO ???_ISPRINT |*/ mx_MIME_DISPLAY_ICONV))
+         head.h_subject = savestrbuf(out.s, out.l);
    }
 
    fullnames = ok_blook(fullnames);
@@ -2181,10 +2181,8 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
 
    head.h_attach = attach;
 
-   /* TODO n_exit_status only!!?? */n_mail1(msf, &head, NULL, quotefile, FAL0);
+   /* TODO n_exit_status only!!?? */n_mail1(msf, &head, NIL, quotefile, FAL0);
 
-   if (subject != NULL)
-      n_free(out.s);
    NYD_OU;
    return 0;
 }

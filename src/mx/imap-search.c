@@ -720,9 +720,10 @@ matchfield(struct message *m, char const *field, void const *what){
 
    if((in.s = hfieldX(field, m)) != NIL){
       in.l = su_cs_len(in.s);
-      mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
-      rv = (mx_substr(out.s, what) != NIL);
-      su_FREE(out.s);
+      if(mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV)){
+         rv = (mx_substr(out.s, what) != NIL);
+         su_FREE(out.s);
+      }
    }
 
    NYD_OU;
@@ -766,7 +767,10 @@ mkenvelope(struct mx_name *np)
 
    in.s = np->n_fullname;
    in.l = su_cs_len(in.s);
-   mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
+   if(!mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV)){
+      out.s = UNCONST(char*,su_empty);
+      out.l = 0;
+   }
 
    rp = ip = su_LOFI_ALLOC(su_cs_len(out.s) + 1);
 
