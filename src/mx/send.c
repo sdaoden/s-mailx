@@ -289,10 +289,11 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
       ti.l = su_cs_len(ti.s = n_UNCONST(mpp->m_content_description));
-      mx_mime_display_from_header(&ti, &to,
-         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
-      _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      n_free(to.s);
+      if(mx_mime_display_from_header(&ti, &to,
+            mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
+         _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NIL, NIL);
+         su_FREE(to.s);
+      }
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)

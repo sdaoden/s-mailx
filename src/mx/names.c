@@ -479,8 +479,11 @@ nalloc(char const *str, enum gfield ntype)
          s += i;
          in.s[in.l = s] = '\0';
 
-         mx_mime_display_from_header(&in, &out,
-            mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */);
+         if(!mx_mime_display_from_header(&in, &out,
+               mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */)){
+            out.s = UNCONST(char*,su_empty);
+            out.l = 0;
+         }
 
          for (cp = out.s, i = out.l; i > 0 && su_cs_is_space(*cp); --i, ++cp)
             ;
@@ -488,7 +491,8 @@ nalloc(char const *str, enum gfield ntype)
             --i;
          np->n_fullextra = savestrbuf(cp, i);
 
-         su_FREE(out.s);
+         if(out.s != su_empty)
+            su_FREE(out.s);
 
          su_LOFI_FREE(in.s);
       }
@@ -523,10 +527,11 @@ jskipfullextra:
       }
 #endif
 
-      mx_mime_display_from_header(&in, &out,
-         mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */);
-      np->n_fullname = savestr(out.s);
-      su_FREE(out.s);
+      if(mx_mime_display_from_header(&in, &out,
+            mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */)){
+         np->n_fullname = savestr(out.s);
+         su_FREE(out.s);
+      }
 
 #ifdef mx_HAVE_IDNA
       if(ag.ag_n_flags & mx_NAME_IDNA)

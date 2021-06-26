@@ -2567,8 +2567,11 @@ jbrk:
    in.s = rname;
    in.l = rp - rname;
 
-   mx_mime_display_from_header(&in, &out,
-      mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+   if(!mx_mime_display_from_header(&in, &out,
+         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
+      cp = NIL;
+      goto jleave;
+   }
    rname = savestr(out.s);
    su_FREE(out.s);
 
@@ -2784,8 +2787,11 @@ mx_header_subject_edit(char const *subp,
 
    if(hsef & mx_HEADER_SUBJECT_EDIT_DECODE_MIME){
       in.l = su_cs_len(in.s = UNCONST(char*,subp));
-      mx_mime_display_from_header(&in, &out,
-         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+      if(!mx_mime_display_from_header(&in, &out,
+            mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT)){
+         subp = su_empty;
+         goto jprepend;
+      }
       subp = re_st = su_AUTO_ALLOC(out.l +1);
       su_mem_copy(re_st, out.s, out.l +1);
       su_FREE(out.s);
@@ -3594,7 +3600,8 @@ n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
       }else{
          np = NIL;
          in.l = su_cs_len(in.s);
-         mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
+         if(!mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV))
+            continue;
       }
 
 jnext_name:

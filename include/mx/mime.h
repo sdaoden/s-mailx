@@ -71,11 +71,13 @@ EXPORT void mx_mime_charset_iter_restore(char *outer_storage[2]);/* TODO drop*/
 EXPORT boole mx_mime_header_needs_mime(char const *body);
 #endif
 
-/* Convert header fields from RFC 5322 format */
-EXPORT void mx_mime_display_from_header(struct str const *in, struct str *out,
+/* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.
+ * FAL0 on hard error, in which case out->s is NIL */
+EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out,
       BITENUM_IS(u32,mx_mime_display_flags) flags);
 
-/* Interpret MIME strings in parts of an address field */
+/* Interpret MIME strings in parts of an address field.
+ * NIL on error or NIL input */
 EXPORT char *mx_mime_fromaddr(char const *name);
 
 /* fwrite(3) performing the given MIME conversion TODO mess! filter!! */
