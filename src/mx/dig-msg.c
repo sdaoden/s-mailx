@@ -826,8 +826,9 @@ jcmd_show:{ /* {{{ */
          goto j501cp;
       sin.l = su_cs_len(sin.s);
 
-      mx_mime_display_from_header(&sin, &sou,
-         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+      if(!mx_mime_display_from_header(&sin, &sou,
+            mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT))
+         goto j501cp;
 
       if(fprintf(fp, "212 %s\n%s\n\n", cp, a_DMSG_QUOTE(sou.s)) < 0)
          cp = NIL;
@@ -844,14 +845,17 @@ jshow:
 
       fprintf(fp, "211 %s\n", cp);
       do if(!(np->n_type & GDEL)){
+         char const *intro, *a;
+
          switch(np->n_flags & mx_NAME_ADDRSPEC_ISMASK){
-         case mx_NAME_ADDRSPEC_ISFILE: cp = n_hy; break;
-         case mx_NAME_ADDRSPEC_ISPIPE: cp = "|"; break;
-         case mx_NAME_ADDRSPEC_ISNAME: cp = n_ns; break;
-         default: cp = np->n_name; break;
+         case mx_NAME_ADDRSPEC_ISFILE: intro = n_hy; break;
+         case mx_NAME_ADDRSPEC_ISPIPE: intro = "|"; break;
+         case mx_NAME_ADDRSPEC_ISNAME: intro = n_ns; break;
+         default: intro = np->n_name; break;
          }
-         fprintf(fp, "%s %s\n",
-            cp, a_DMSG_QUOTE(mx_mime_fromaddr(np->n_fullname)));
+
+         if((a = mx_mime_fromaddr(np->n_fullname)) != NIL)
+            fprintf(fp, "%s %s\n", intro, a_DMSG_QUOTE(a));
       }while((np = np->n_flink) != NIL);
       if(putc('\n', fp) == EOF)
          cp = NIL;
