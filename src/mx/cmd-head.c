@@ -531,8 +531,9 @@ a_chead__subject(struct message *mp, boole threaded,
       goto jleave;
 
    in.l = su_cs_len(in.s = ms);
-   mx_mime_display_from_header(&in, &out,
-      mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
+   if(!mx_mime_display_from_header(&in, &out,
+         mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT))
+      goto jleave;
    rv = ms = out.s;
 
    if(!threaded || !subject_thread_compress || mp->m_level == 0)

@@ -1199,7 +1199,8 @@ a_msg_match_dash(struct message *mp, char const *str){
       goto jleave;
 
    in.l = su_cs_len(in.s = hbody);
-   mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV);
+   if(!mx_mime_display_from_header(&in, &out, mx_MIME_DISPLAY_ICONV))
+      goto jleave;
    rv = (mx_substr(out.s, hfield) != NIL);
    su_FREE(out.s);
 

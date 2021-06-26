@@ -887,8 +887,10 @@ mx_mime_param_get(char const *param, char const *headerbody){ /* TODO rewr. */
                struct str ti, to;
 
                ti.l = su_cs_len(ti.s = rv);
-               mx_mime_display_from_header(&ti, &to, mx_MIME_DISPLAY_ICONV |
-                  mx_MIME_DISPLAY_ISPRINT | mx_MIME_DISPLAY_DEL_CNTRL);
+               if(!mx_mime_display_from_header(&ti, &to,
+                     (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT |
+                      mx_MIME_DISPLAY_DEL_CNTRL)))
+                  goto jleave;
                rv = savestrbuf(to.s, to.l);
                su_FREE(to.s);
             }
