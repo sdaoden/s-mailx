@@ -1,14 +1,5 @@
 #!/bin/sh -
-#@ Synopsis: [OBJDIR=XY] ./mx-test.sh --check mailx-binary [:SKIPTESTNAME:]
-#@           [OBJDIR=XY] ./mx-test.sh --run-test mailx-binary [:TESTNAME:]
-#@           [./mx-test.sh # Note: performs hundreds of compilations!]
-#@ --no-colour or $MAILX_CC_TEST_NO_COLOUR for not trying to use colour
-#@             (then grep for ^ERROR, for example).
-#@ The last mode also reacts on $MAILX_CC_ALL_TESTS_DUMPERR, for even easier
-#@ grep ^ERROR handling.
-#@ And setting $MAILX_CC_TEST_NO_CLEANUP keeps all test data around, fwiw:
-#@ this works with --run-test only.  ($MAILX_TEST_KEEP_DATA, there, too.)
-#@ $JOBNO, $JOBWAIT, $JOBMON and $SKIPTEST could be passed via environment.
+#@ See usage() below.
 #
 # Public Domain
 
@@ -47,7 +38,7 @@ Synopsis: [OBJDIR=x] mx-test.sh [--no-colour]
                           it will also create file diff(1)erences
  --no-colour              or $MAILX_CC_TEST_NO_COLOUR: no colour
                           (for example to: grep ^ERROR)
-                          $MAILX_CC_ALL_TESTS_DUMPER in addition for even
+                          $MAILX_CC_ALL_TESTS_DUMPERR in addition for even
                           easier grep ^ERROR handling
 
 EXE is either an absolute path or interpreted relative to $OBJDIR.
