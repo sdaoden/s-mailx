@@ -174,7 +174,8 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
       }
 
       if((fs & mx_FS_OPEN_STATE_EXISTS) &&
-            (xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
+            (xerr = n_folder_mbox_prepare_append(obuf, FAL0, NIL)
+               ) != su_ERR_NONE){
 jeappend:
          n_perr(file, n_pstate_err_no = xerr);
          goto jleave;
@@ -217,7 +218,7 @@ jsend:
           * TODO can mess with the content of a message (in that if a msg
           * TODO ends with two \n, that is ok'd as MBOX separator! */
          if(convert == SEND_MBOX)
-            n_folder_mbox_prepare_append(obuf, NIL);
+            n_folder_mbox_prepare_append(obuf, TRU1, NIL);
       }
       su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
 
@@ -292,6 +293,7 @@ c_save(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -302,6 +304,7 @@ c_Save(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -312,6 +315,7 @@ c_copy(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -322,6 +326,7 @@ c_Copy(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -332,6 +337,7 @@ c_move(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -342,6 +348,7 @@ c_Move(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
+
    NYD_OU;
    return rv;
 }
@@ -352,6 +359,7 @@ c_decrypt(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -362,6 +370,7 @@ c_Decrypt(void *vp){
    NYD_IN;
 
    rv = a_cwrite_save1(vp, mx_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
+
    NYD_OU;
    return rv;
 }
@@ -378,6 +387,7 @@ c_write(void *vp){
             cap->ca_arg.ca_str.l = sizeof(su_path_dev_null));
 
    rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
+
    NYD_OU;
    return rv;
 }

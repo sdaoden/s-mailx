@@ -583,8 +583,11 @@ FL char const *n_folder_query(void);
 /* Prepare the seekable O_APPEND MBOX fout for appending of another message.
  * If st_or_null is not NULL it is assumed to point to an up-to-date status of
  * fout, otherwise an internal fstat(2) is performed as necessary.
+ * post defines whether a message was written out, ie whether it is a hard
+ * error if preparation for another message fails.
  * Returns su_err_no() of error */
-FL int n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null);
+FL int n_folder_mbox_prepare_append(FILE *fout, boole post,
+      struct stat *st_or_null);
 
 /*
  * header.c

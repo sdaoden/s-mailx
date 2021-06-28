@@ -245,7 +245,7 @@ jemailname:
    }
    /* May nonetheless be a broken MBOX TODO really: VFS, object KNOWS!! */
    else if(!gotcha && (fs & n_PROTO_MASK) == n_PROTO_FILE)
-      n_folder_mbox_prepare_append(obuf, NULL);
+      n_folder_mbox_prepare_append(obuf, TRU1, NIL);
    fflush(obuf);
    if (ferror(obuf)) {
       n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
@@ -535,7 +535,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
       }
 
       if((fs & n_PROTO_MASK) == n_PROTO_FILE)
-         n_folder_mbox_prepare_append(obuf, NULL);
+         n_folder_mbox_prepare_append(obuf, FAL0, NIL);
    }else{
       struct mx_fs_tmp_ctx *fstcp;
 

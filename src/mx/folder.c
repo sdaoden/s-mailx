@@ -1280,7 +1280,7 @@ jset:
 }
 
 FL int
-n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
+n_folder_mbox_prepare_append(FILE *fout, boole post, struct stat *st_or_nil){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
    struct stat stb;
    char buf[2];
@@ -1298,15 +1298,20 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
             goto jerrno;
       }
 
-      if(st_or_nil->st_size >= 2)
-         goto jleave;
-      if(st_or_nil->st_size == 0){
-         clearerr(fout);
-         rv = su_ERR_NONE;
+      if(st_or_nil->st_size >= 2){
+         if(rv == ESPIPE)
+            rv = su_ERR_NONE; /* XXX Just cannot do our job with ESPIPE ??? */
          goto jleave;
       }
+      if(!post){
+         if(st_or_nil->st_size == 0){
+            clearerr(fout);
+            rv = su_ERR_NONE;
+            goto jleave;
+         }
+      }
 
-      if(fseek(fout, -1L, SEEK_END))
+      if(fseek(fout, -1L, SEEK_END) != 0)
          goto jerrno;
       if(fread(buf, sizeof *buf, 1, fout) != 1)
          goto jerrno;

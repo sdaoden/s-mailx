@@ -1130,7 +1130,7 @@ jefile:
                if(!mx_file_lock(fileno(fout), (mx_FILE_LOCK_MODE_TEXCL |
                      mx_FILE_LOCK_MODE_RETRY)))
                   goto jefileeno;
-               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NIL)
+               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, FAL0, NIL)
                      ) != su_ERR_NONE)
                   goto jefile;
             }
@@ -1300,7 +1300,7 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
          goto jeappend;
       }
 
-      if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != su_ERR_NONE){
+      if((xerr = n_folder_mbox_prepare_append(fo, FAL0, NIL)) != su_ERR_NONE){
 jeappend:
          n_perr(name, xerr);
          goto jleave;
@@ -1771,7 +1771,7 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta)
          f = su_ERR_NOLCK;
          goto jefo;
       }
-      if((f = n_folder_mbox_prepare_append(fp, NIL)) != su_ERR_NONE)
+      if((f = n_folder_mbox_prepare_append(fp, FAL0, NIL)) != su_ERR_NONE)
          goto jefo;
    }
 
