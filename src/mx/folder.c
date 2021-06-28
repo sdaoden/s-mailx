@@ -1207,7 +1207,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
    boole needsep;
    NYD2_IN;
 
-   if(!fseek(fout, -2L, SEEK_END) && fread(buf, sizeof *buf, 2, fout) == 2)
+   if(fseek(fout, -2L, SEEK_END) == 0 && fread(buf, sizeof *buf, 2, fout) == 2)
       needsep = (buf[0] != '\n' || buf[1] != '\n');
    else{
       rv = su_err_no();
@@ -1233,9 +1233,10 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
    }
 
    rv = su_ERR_NONE;
-   if(fflush(fout) || (needsep && putc('\n', fout) == EOF))
+   if((needsep && putc('\n', fout) == EOF) || fflush(fout) == EOF)
 jerrno:
       rv = su_err_no();
+
 jleave:
    NYD2_OU;
    return rv;
