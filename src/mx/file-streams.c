@@ -960,6 +960,17 @@ jleave:
    return rv;
 }
 
+boole
+mx_fs_flush(FILE *fp){
+   boole rv;
+   NYD_IN;
+
+   rv = (fflush(fp) != EOF);
+
+   NYD_OU;
+   return rv;
+}
+
 void
 mx_fs_close_all(void){
    NYD_IN;

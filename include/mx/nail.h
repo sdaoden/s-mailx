@@ -203,6 +203,7 @@ enum n_exit_status{
    n_EXIT_ERR = EXIT_FAILURE,
    n_EXIT_USE = 64, /* sysexits.h:EX_USAGE */
    n_EXIT_NOUSER = 67, /* :EX_NOUSER */
+   n_EXIT_IOERR = 74, /* :EX_IOERR */
    n_EXIT_COLL_ABORT = 1<<1, /* Message collection was aborted */
    n_EXIT_SEND_ERROR = 1<<2 /* Unspecified send error occurred */
 };

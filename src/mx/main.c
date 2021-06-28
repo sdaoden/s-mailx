@@ -33,6 +33,7 @@
 #include <su/mem.h>
 
 #include "mx/attachments.h"
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
@@ -1310,7 +1311,15 @@ jleave_full:/* C99 */{
 
       n_exit_status = i;
    }
+
 jleave:
+   if(!mx_fs_flush(NIL)){
+      n_err(_("Flushing file output buffers failed: %s\n"),
+         su_err_doc(su_err_no()));
+      if(n_exit_status == n_EXIT_OK)
+         n_exit_status = n_EXIT_IOERR;
+   }
+
 #ifdef su_HAVE_DEBUG
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
