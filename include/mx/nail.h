@@ -393,30 +393,6 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_MASK = su_BITENUM_MASK(16, 22)
 };
 
-enum n_sigman_flags{
-   n_SIGMAN_NONE = 0,
-   n_SIGMAN_HUP = 1<<0,
-   n_SIGMAN_INT = 1<<1,
-   n_SIGMAN_QUIT = 1<<2,
-   n_SIGMAN_TERM = 1<<3,
-   n_SIGMAN_PIPE = 1<<4,
-
-   n_SIGMAN_IGN_HUP = 1<<5,
-   n_SIGMAN_IGN_INT = 1<<6,
-   n_SIGMAN_IGN_QUIT = 1<<7,
-   n_SIGMAN_IGN_TERM = 1<<8,
-
-   n_SIGMAN_ALL = 0xFF,
-   /* Mostly for _leave() reraise flags */
-   n_SIGMAN_VIPSIGS = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
-         n_SIGMAN_TERM,
-   n_SIGMAN_NTTYOUT_PIPE = 1<<16,
-   n_SIGMAN_VIPSIGS_NTTYOUT = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
-         n_SIGMAN_TERM | n_SIGMAN_NTTYOUT_PIPE,
-
-   n__SIGMAN_PING = 1<<17
-};
-
 enum n_str_trim_flags{
    n_STR_TRIM_FRONT = 1u<<0,
    n_STR_TRIM_END = 1u<<1,
