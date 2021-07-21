@@ -337,7 +337,7 @@ mx_mime_enc_target(void){
 }
 
 enum mx_mime_enc
-mx_mime_enc_from_ctehead(char const *hbody){
+mx_mime_enc_from_name(char const *hbody){
    enum mx_mime_enc rv;
    NYD2_IN;
 
@@ -382,7 +382,7 @@ mx_mime_enc_from_ctehead(char const *hbody){
 }
 
 char const *
-mx_mime_enc_from_conversion(enum conversion const convert){
+mx_mime_enc_name_from_conversion(enum conversion const convert){
    char const *rv;
    NYD2_IN;
 
