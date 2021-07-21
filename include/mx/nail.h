@@ -1209,6 +1209,8 @@ enum header_flags{
    HF_RECIPIENT_RECORD = 1u<<10, /* Save message in file named after rec. */
    HF_COMPOSE_MODE = 1u<<11, /* XXX not here Header in compose-mode */
    HF_USER_EDITED = 1u<<12, /* User has edited the template at least once */
+
+   HF_MESSAGE_8BITMIME = 1u<<15, /* 1+ use cases of CONV_8BIT */
    HF__NEXT_SHIFT = 16u
 };
 #define HF_CMD_TO_OFF(CMD) ((CMD) - 1)

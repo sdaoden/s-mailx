@@ -59,15 +59,17 @@ enum a_netsmtp_flags{
     * The rest of this file assumes for example that if _AUTH is not set no
     * authentication types are set */
    a_NETSMTP_EXT_NONE,
+
    a_NETSMTP_EXT_EHLO = 1u<<a_X(1), /* RFC 1869 */
-   a_NETSMTP_EXT_PIPELINING = 1u<<a_X(2), /* RFC 2920 */
-   a_NETSMTP_EXT_STARTTLS = 1u<<a_X(3), /* RFC 3207 */
-   a_NETSMTP_EXT_AUTH = 1u<<a_X(4), /* RFC 4954 */
-   a_NETSMTP_EXT_ALL = a_NETSMTP_EXT_EHLO |
+   a_NETSMTP_EXT_8BITMIME = 1u<<a_X(2), /* RFC 1652->6152 */
+   a_NETSMTP_EXT_PIPELINING = 1u<<a_X(3), /* RFC 2920 */
+   a_NETSMTP_EXT_STARTTLS = 1u<<a_X(4), /* RFC 3207 */
+   a_NETSMTP_EXT_AUTH = 1u<<a_X(5), /* RFC 4954 */
+   a_NETSMTP_EXT_ALL = a_NETSMTP_EXT_EHLO | a_NETSMTP_EXT_8BITMIME |
          a_NETSMTP_EXT_PIPELINING | a_NETSMTP_EXT_STARTTLS |
          a_NETSMTP_EXT_AUTH,
 
-   a_NETSMTP_FORCE_TLS = 1u<<a_X(5),
+   a_NETSMTP_FORCE_TLS = 1u<<a_X(6),
    a_NETSMTP_FORCE_TLS_IFF = a_NETSMTP_EXT_NONE
 #ifdef mx_HAVE_TLS
          | a_NETSMTP_FORCE_TLS
@@ -128,7 +130,7 @@ do{\
       \
       __y__ = UNCONST(char*,__cx__);\
       __z__ = su_cs_len(__y__);\
-      __x__ = n_lofi_alloc(__z__);\
+      __x__ = su_LOFI_ALLOC(__z__);\
       \
       su_mem_copy(__x__, __y__, __z__);\
       __y__ = &__x__[__z__];\
@@ -138,7 +140,7 @@ do{\
       *__y__ = '\0';\
       n_err(">>> %s\n", __x__);\
       \
-      n_lofi_free(__x__);\
+      su_LOFI_FREE(__x__);\
    }\
    \
    if(!(n_poption & n_PO_D))\
@@ -224,7 +226,10 @@ jleave:
 static void
 a_netsmtp_parse_caps(struct a_netsmtp_ctx *nscp, char const *cp){
    NYD_IN;
-   if(!su_cs_cmp(cp, "PIPELINING"))
+
+   if(!su_cs_cmp(cp, "8BITMIME"))
+      nscp->nsc_server_config |= a_NETSMTP_EXT_8BITMIME;
+   else if(!su_cs_cmp(cp, "PIPELINING"))
       nscp->nsc_server_config |= a_NETSMTP_EXT_PIPELINING;
    else if(!su_cs_cmp(cp, "STARTTLS"))
       nscp->nsc_server_config |= a_NETSMTP_EXT_STARTTLS;
@@ -244,6 +249,7 @@ a_netsmtp_parse_caps(struct a_netsmtp_ctx *nscp, char const *cp){
       }
       nscp->nsc_server_config |= a_NETSMTP_EXT_AUTH;
    }
+
    NYD_OU;
 }
 
@@ -258,7 +264,7 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/
    };
 
    char o[LINESIZE]; /* TODO n_string++ */
-   struct str b64;
+   struct str sb;
    struct mx_name *np;
    u8 f;
    uz resp2_cnt, blen, i, j;
@@ -357,6 +363,8 @@ je_ehlo:
       a_SMTP_ANSWER(2, FAL0, FAL0);
       nscp->nsc_server_config ^= a_NETSMTP_EXT_READ_IS_HOT;
       /* Keep only user desires */
+      if(n_poption & n_PO_D)
+         nscp->nsc_server_config = a_NETSMTP_ALL_AVAILABLE_MASK;
       nscp->nsc_server_config &= nscp->nsc_config;
    }
 
@@ -371,7 +379,8 @@ je_ehlo:
          n_err(_("*smtp-config*: using pipelining extension\n"));
    }
 
-   if(!(nscp->nsc_server_config & a_NETSMTP_EXT_AUTH))
+   if(!(nscp->nsc_server_config & a_NETSMTP_EXT_AUTH) ||
+         (n_poption & n_PO_D))
       goto jsend;
    if(n_poption & n_PO_D_V)
       n_err(_("*smtp-config*: using auth extension\n"));
@@ -421,10 +430,10 @@ jerr_cred:
                '\0', scp->sc_credp->cc_pass.s)) < 0)
             goto jerr_cred;
 
-         if(mx_b64_enc_buf(&b64, o, s, mx_B64_AUTO_ALLOC) == NIL)
+         if(mx_b64_enc_buf(&sb, o, s, mx_B64_AUTO_ALLOC) == NIL)
             goto jerr_cred;
 
-         if(snprintf(o, sizeof o, NETLINE("AUTH PLAIN %s"), b64.s) < 0)
+         if(snprintf(o, sizeof o, NETLINE("AUTH PLAIN %s"), sb.s) < 0)
             goto jerr_cred;
       }
       a_SMTP_OUT(o);
@@ -441,15 +450,15 @@ jerr_cred:
       else
          mech = xoa, i = sizeof(xoa) -1;
 
-      if(!mx_oauthbearer_create_icr(&b64, i,
+      if(!mx_oauthbearer_create_icr(&sb, i,
             scp->sc_urlp, scp->sc_credp, ((f & a_IS_OAUTHBEARER) == 0)))
          goto jerr_cred;
 
-      su_mem_copy(&b64.s[0], mech, i);
-      if((i = (b64.l < sizeof(o))))
-         su_mem_copy(o, b64.s, b64.l +1);
+      su_mem_copy(&sb.s[0], mech, i);
+      if((i = (sb.l < sizeof(o))))
+         su_mem_copy(o, sb.s, sb.l +1);
 
-      n_lofi_free(b64.s);
+      su_LOFI_FREE(sb.s);
 
       a_SMTP_OUT(o);
       }break;
@@ -462,8 +471,8 @@ jerr_cred:
 #undef a_MAX
 
       su_mem_copy(o, "AUTH EXTERNAL ", sizeof("AUTH EXTERNAL ") -1);
-      b64.s = &o[sizeof("AUTH EXTERNAL ") -1];
-      mx_b64_enc_buf(&b64, scp->sc_credp->cc_user.s,
+      sb.s = &o[sizeof("AUTH EXTERNAL ") -1];
+      mx_b64_enc_buf(&sb, scp->sc_credp->cc_user.s,
          scp->sc_credp->cc_user.l, mx_B64_BUF | mx_B64_CRLF);
       a_SMTP_OUT(o);
       break;
@@ -480,16 +489,16 @@ jerr_cred:
       a_SMTP_OUT(NETLINE("AUTH LOGIN"));
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
-      if(mx_b64_enc_buf(&b64, scp->sc_credp->cc_user.s,
+      if(mx_b64_enc_buf(&sb, scp->sc_credp->cc_user.s,
             scp->sc_credp->cc_user.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
-      a_SMTP_OUT(b64.s);
+      a_SMTP_OUT(sb.s);
       a_SMTP_ANSWER(3, FAL0, FAL0);
 
-      if(mx_b64_enc_buf(&b64, scp->sc_credp->cc_pass.s,
+      if(mx_b64_enc_buf(&sb, scp->sc_credp->cc_pass.s,
             scp->sc_credp->cc_pass.l, mx_B64_AUTO_ALLOC | mx_B64_CRLF) == NIL)
          goto jleave;
-      a_SMTP_OUT(b64.s);
+      a_SMTP_OUT(sb.s);
       break;
 
 #ifdef mx_HAVE_MD5
@@ -525,7 +534,19 @@ jerr_cred:
     * message (when status was 334) */
 
 jsend:
-   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>"), scp->sc_urlp->url_u_h.s);
+   sb.s = UNCONST(char*,su_empty);
+   if(nscp->nsc_server_config & a_NETSMTP_EXT_8BITMIME){
+      if(n_poption & n_PO_D_V)
+         n_err(_("*smtp-config*: using 8bitmime extension\n"));
+      sb.s = UNCONST(char*,(scp->sc_hp->h_flags & HF_MESSAGE_8BITMIME)
+            ? " BODY=8BITMIME" : " BODY=7BIT");
+   }else if(scp->sc_hp->h_flags & HF_MESSAGE_8BITMIME){
+      n_err(_("*smtp-config*: \"8bitmime\" extension needed, "
+         "but not used/available!\n"));
+      goto jleave;
+   }
+   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>%s"),
+      scp->sc_urlp->url_u_h.s, sb.s);
    a_SMTP_OUT(o);
    ++resp2_cnt;
    if(!(nscp->nsc_server_config & a_NETSMTP_EXT_PIPELINING))
@@ -594,7 +615,8 @@ jsend:
    f &= ~a_ERROR;
 jleave:
    if(nscp->nsc_buf.s != NIL)
-      n_free(nscp->nsc_buf.s);
+      su_FREE(nscp->nsc_buf.s);
+
    NYD_OU;
    return ((f & a_ERROR) == 0);
 }
@@ -615,6 +637,8 @@ mx_smtp_parse_config(struct mx_cred_ctx *credp, struct mx_url *urlp){
    } const cda[] = {
       {a_NETSMTP_EXT_ALL, a_NETSMTP_ALL_MASK, "all"},
       {a_NETSMTP_EXT_EHLO, a_NETSMTP_EXT_ALL, "ehlo"},
+      {a_NETSMTP_EXT_8BITMIME | a_NETSMTP_EXT_EHLO,
+         a_NETSMTP_EXT_8BITMIME, "8bitmime\0"},
       {a_NETSMTP_EXT_PIPELINING | a_NETSMTP_EXT_EHLO,
          a_NETSMTP_EXT_PIPELINING, "pipelining\0"},
       /* User desire to use STARTTLS for us always means: force it!

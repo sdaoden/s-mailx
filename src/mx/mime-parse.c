@@ -124,8 +124,8 @@ a_mps_part(struct message *zmp, struct mimepart *ip,
 
    if((ip->m_ct_enc = hfield1("content-transfer-encoding",
          R(struct message*,ip))) == NIL)
-      ip->m_ct_enc = mx_mime_enc_from_conversion(CONV_7BIT);
-   ip->m_mime_enc = mx_mime_enc_from_ctehead(ip->m_ct_enc);
+      ip->m_ct_enc = mx_mime_enc_name_from_conversion(CONV_7BIT);
+   ip->m_mime_enc = mx_mime_enc_from_name(ip->m_ct_enc);
 
    if(((cp = hfield1("content-disposition", R(struct message*,ip))) == NIL ||
          (ip->m_filename = mx_mime_param_get("filename", cp)) == NIL) &&
