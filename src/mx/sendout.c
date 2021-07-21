@@ -179,8 +179,8 @@ static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
-static boole a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
-      struct mx_name *to, int add_resent);
+static boole a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
+      struct message *mp, struct mx_name *to, int add_resent);
 
 static u32
 a_sendout_sendwait_to_swf(void){ /* TODO should happen at var assign time */
@@ -298,7 +298,8 @@ a_sendout_put_cte(FILE *fo, enum conversion conv){
     */
    rv = (conv == CONV_7BIT) ? 0
          : fprintf(fo, "Content-Transfer-Encoding: %s\n",
-            mx_mime_enc_from_conversion(conv));
+            mx_mime_enc_name_from_conversion(conv));
+
    NYD2_OU;
    return rv;
 }
@@ -526,6 +527,8 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
       charset = ap->a_charset;
       convert = mx_mime_type_classify_file(fi, (char const**)&ct,
             &charset, &do_iconv, TRU1);
+      if(convert == CONV_8BIT)
+         hp->h_flags |= HF_MESSAGE_8BITMIME;
 
       if(charset == NIL || ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS ||
             ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
@@ -878,12 +881,16 @@ jiconv_err:
 
    if(fflush(nfo) == EOF)
       err = su_err_no();
+
 jerr:
    mx_fs_close(nfo);
 
    if(err == su_ERR_NONE){
       fflush_rewind(nfi);
       mx_fs_close(fi);
+
+      if(convert == CONV_8BIT)
+         hp->h_flags |= HF_MESSAGE_8BITMIME;
    }else{
       mx_fs_close(nfi);
       nfi = NIL;
@@ -1978,8 +1985,8 @@ jleave:
 }
 
 static boole
-a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
-   struct mx_name *to, int add_resent)
+a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
+      struct message *mp, struct mx_name *to, int add_resent)
 {
    uz cnt, c, bufsize;
    char *buf;
@@ -2046,8 +2053,20 @@ a_sendout_infix_resend(FILE *fi, FILE *fo, struct message *mp,
             goto jleave;
          break;
       }
+      /* Strip trailing empty line (XXX Mailbox object should cover this) */
       if(cnt == 0 && *buf == '\n')
          break;
+
+      if(!(hp->h_flags & HF_MESSAGE_8BITMIME)){ /* TODO hack for resending */
+         uz i;
+
+         for(i = 0; i < c; ++i)
+            if(S(u8,buf[i]) & 0x80u){
+               hp->h_flags |= HF_MESSAGE_8BITMIME;
+               break;
+            }
+      }
+
       if(fwrite(buf, sizeof *buf, c, fo) != c)
          goto jleave;
    }
@@ -2934,6 +2953,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    }
 
    su_mem_set(&sctx, 0, sizeof sctx);
+   sctx.sc_hp = hp;
    sctx.sc_to = to;
    sctx.sc_input = nfi;
    sctx.sc_urlp = urlp;
@@ -2949,7 +2969,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
       _sendout_error = -1;
    }
 
-   if(!a_sendout_infix_resend(ibuf, nfo, mp, to, add_resent)){
+   if(!a_sendout_infix_resend(hp, ibuf, nfo, mp, to, add_resent)){
 jfail_dead:
       savedeadletter(nfi, TRU1);
       n_err(_("... message not sent\n"));

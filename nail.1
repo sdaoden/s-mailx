@@ -12419,15 +12419,27 @@ prefix disables usage of an extension, for example
 .Pp
 .Bl -tag -compact -width ".It Cd BaNg"
 .It Cd all
-This special word enables or disables all extensions.
+This special word enables (default) or disables all extensions.
 Disabling it also disables all the below authentication mechanisms.
-If unset or empty all available extensions are enabled.
 .It Cd ehlo
 Service Extensions (RFC 1869) added the notion of extensions to the SMTP
 protocol; when disabled, all other extensions are also disabled (for
 .Cd auth
 only the master switch is toggled, not the individual mechanisms),
 enabling any extension (re-)implies this.
+.It Cd 8bitmime
+8-bit MIME Transport (RFC 6152) enables usage of the
+.Ql 8bit
+.Va mime-encoding .
+If disabled or not supported by the server, SMTP will not send a
+.Ql 8bit
+message, and optionally
+.Va save
+the text in
+.Ev DEAD ;
+as this happens late the message will also have been
+.Va record Ns
+ed.
 .It Cd pipelining
 Command Pipelining (RFC 2920) helps saving packet roundtrips by allowing
 successive commands without waiting for respective server responses.

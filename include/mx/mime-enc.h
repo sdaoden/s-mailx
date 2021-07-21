@@ -103,10 +103,11 @@ enum mx_b64_flags{
 EXPORT enum mx_mime_enc mx_mime_enc_target(void);
 
 /* Map from a Content-Transfer-Encoding: header body (which may be NIL) */
-EXPORT enum mx_mime_enc mx_mime_enc_from_ctehead(char const *hbody);
+EXPORT enum mx_mime_enc mx_mime_enc_from_name(char const *hbody);
 
 /* XXX Try to get rid of that */
-EXPORT char const *mx_mime_enc_from_conversion(enum conversion const convert);
+EXPORT char const *mx_mime_enc_name_from_conversion(
+      enum conversion const convert);
 
 /* How many characters of (the complete body) ln need to be quoted */
 EXPORT uz mx_mime_enc_mustquote(char const *ln, uz lnlen, boole ishead);
