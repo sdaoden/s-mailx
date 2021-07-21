@@ -10270,7 +10270,7 @@ t_net_smtp() { # {{{
 
    t__tls_certs
 
-   helo= mail_from= from= msgid=
+   helo= mail_from= from= msgid= head_tail=
 
    have_feat tls && ext_tls=250-STARTTLS || ext_tls=
 
@@ -10282,7 +10282,7 @@ t_net_smtp() { # {{{
 
       ${cat} <<-_EOT > ./t.sh
 		#!${SHELL} -
-		<"${file}" ${MAILX} ${ARGS} -Sstealthmua=noagent \\
+		<"${file}" LC_ALL=C ${MAILX} ${ARGS} -Sstealthmua=noagent \\
 			-S tls-ca-no-defaults -S tls-ca-file=./ca.pem \\
 			-Suser=steffen -Spassword=Sway -s ub \\
 			-S 'mta=${proto}://localhost:'\${1} \\
@@ -10396,7 +10396,7 @@ EHLO %s
 ' \
       "${helo}"
       [ ${#} -eq 0 ] && [ -n "${ext_tls}" ] && printf '%s\n' "${ext_tls}"
-      printf '250 PIPELINING\n'
+      printf '250-8BITMIME\n250 PIPELINING\n'
    }
    # }}}
 
@@ -10409,8 +10409,11 @@ EHLO %s
       printf '\001\nDATA\n'
    }
 
+   mail_from_8bitmime=
    smtp_mail_from_to_pipelining() {
-      printf '\001\nMAIL FROM:<%s>\n' "${mail_from}"
+      __mftp__=
+      [ -n "${mail_from_8bitmime}" ] && __mftp__=' BODY='${mail_from_8bitmime}
+      printf '\001\nMAIL FROM:<%s>%s\n' "${mail_from}" "${__mftp__}"
       printf 'RCPT TO:<%s>\n' "${@}"
       printf 'DATA\n'
    }
@@ -10435,7 +10438,7 @@ EHLO %s
 
    smtp_to() { printf 'To: ex@am.ple\n'; }
 
-   smtp_head_tail() { printf 'Subject: ub%s\n\n' "${msgid}"; }
+   smtp_head_tail() { printf 'Subject: ub%s%s\n\n' "${msgid}" "${head_tail}"; }
 
    smtp_head_all() {
       smtp_mail_from_to ex@am.ple &&
@@ -10647,7 +10650,13 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
          }'`
 
    smtp_rcpt_to() {
-      smtp_script smtp -Ssmtp-config=${1} \
+      __srt_file__=${7} __srt_xfile__=:
+      if [ -z "${__srt_file__}" ]; then
+         __srt_file__=/dev/null
+      else
+         __srt_xfile__="${cat} \"${__srt_file__}\""
+      fi
+      smtp_script_file ${__srt_file__} smtp -Ssmtp-config=${1} ${8} \
          ${cclist} ${tolist} &&
       { ${2} && ${3} $rcpt_to &&
             eval "smtp_data ${4}" && ${awk} '
@@ -10673,21 +10682,44 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
                   doit(0, "To: ")
                   doit(1, "Cc: ")
                }' &&
-            smtp_head_tail && ${5}; } |
+            smtp_head_tail && eval ${__srt_xfile__} && ${5}; } |
          ../net-test t.sh > ./${6} 2>>${ERR}
    }
+
    smtp_rcpt_to -ehlo \
       smtp_helo \
       smtp_mail_from_to '' \
       smtp_quit \
       tdata-2
    check data-2 0 ./tdata-2 '4294967295 0'
+
+   mail_from_8bitmime=7BIT
    smtp_rcpt_to all,-starttls,-allmechs \
       smtp_ehlo \
       smtp_mail_from_to_pipelining "$rcpt_to" \
       smtp_quit_pipelining \
       tdata-3
+   mail_from_8bitmime=
    check data-3 0 ./tdata-3 '4294967295 0'
+
+   if have_feat iconv; then
+      echo Prösterchen > ./tdata-4.in
+      mail_from_8bitmime=8BITMIME
+      head_tail='
+MIME-Version: 1.0
+Content-Type: text/plain; charset=latin1
+Content-Transfer-Encoding: 8bit'
+      smtp_rcpt_to all,-starttls,-allmechs \
+         smtp_ehlo \
+         smtp_mail_from_to_pipelining "$rcpt_to" \
+         smtp_quit_pipelining \
+         tdata-4 tdata-4.in \
+         '-Smime-encoding=8bit -S ttycharset=LATIN1 -S charset-8bit=LATIN1'
+      mail_from_8bitmime= head_tail=
+      check data-4 0 ./tdata-4 '4294967295 0'
+   else
+      t_echoskip '4:[!ICONV]'
+   fi
    # }}}
 
    t_epilog "${@}"
