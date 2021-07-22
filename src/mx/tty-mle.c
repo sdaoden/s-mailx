@@ -133,8 +133,7 @@ CTA(a_TTY_LINE_MAX <= S32_MAX,
 # define a_TTY_SCROLL_MARGIN_RIGHT 10
 
 /* fexpand() flags for expand-on-tab */
-# define a_TTY_TAB_FEXP_FL \
-   (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
+# define a_TTY_TAB_FEXP_FL (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT)
 
 /* Columns to ripoff: position indicator.
  * Should be >= 4 to dig the position indicator that we place (if there is
@@ -2382,6 +2381,7 @@ a_tty_kht(struct a_tty_line *tlp){
    struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
+   char **exp_res;
    struct a_tty_cell *ctop, *cx;
    boole wedid, set_savec;
    u32 rv, f;
@@ -2486,10 +2486,10 @@ a_tty_kht(struct a_tty_line *tlp){
 jredo:
    /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
    mx_sigs_all_holdx();
-   exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
+   exp_res = mx_shexp_name_expand_multi(sub.s, a_TTY_TAB_FEXP_FL);
    mx_sigs_all_rele();
 
-   if(exp.s == NIL || (exp.l = su_cs_len(exp.s)) == 0){
+   if(exp_res == NIL || exp_res[0][0] == '\0'){
       if(wedid < FAL0)
          goto jnope;
 
@@ -2551,8 +2551,10 @@ jaster_check:
       preexp.s = savestrbuf(preexp.s, preexp.l);
 
    /* May be multi-return! */
-   if(n_pstate & n_PS_EXPAND_MULTIRESULT)
+   if(exp_res[1] != NIL)
       goto jmulti;
+
+   exp.l = su_cs_len(exp.s = exp_res[0]);
 
    /* xxx That not really true since the limit counts characters not bytes */
    LCTA(a_TTY_LINE_MAX <= S32_MAX, "a_TTY_LINE_MAX too large");
@@ -2615,9 +2617,8 @@ jmulti:{
       struct mx_visual_info_ctx vic;
       struct str input;
       wc_t c2, c1;
-      boole isfirst;
       char const *lococp;
-      uz locolen, scrwid, lnlen, lncnt, prefixlen;
+      uz idx, locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
       if((fp = mx_fs_tmp_open(NIL, "mlecpl", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
@@ -2626,42 +2627,23 @@ jmulti:{
          fp = mx_tty_fp;
       }
 
-      /* How long is the result string for real?  Search the NUL NUL
-       * terminator.  While here, detect the longest entry to perform an
-       * initial allocation of our accumulator string */
-      locolen = preexp.l;
-      do{
-         uz i;
-
-         i = su_cs_len(&exp.s[++exp.l]);
-         locolen = MAX(locolen, i);
-         exp.l += i;
-      }while(exp.s[exp.l + 1] != '\0');
-
-      shoup = n_string_reserve(n_string_trunc(shoup, 0),
-            locolen + (locolen >> 1));
+      shoup = n_string_reserve(n_string_trunc(shoup, 0), 80 -1);
 
       /* Iterate (once again) over all results */
       scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
       lnlen = lncnt = 0;
+      UNINIT(locolen, 0);
       UNINIT(prefixlen, 0);
       UNINIT(lococp, NIL);
       UNINIT(c1, '\0');
-      for(isfirst = TRU1; exp.l > 0; isfirst = FAL0, c1 = c2){
-         uz i;
+      for(idx = 0; (sub.s = exp_res[idx]) != NIL; c1 = c2, ++idx){
          char const *fullpath;
 
-         /* Next result */
-         sub = exp;
-         sub.l = i = su_cs_len(sub.s);
-         ASSERT(exp.l >= i);
-         if((exp.l -= i) > 0)
-            --exp.l;
-         exp.s += ++i;
+         sub.l = su_cs_len(sub.s);
 
          /* Separate dirname and basename */
          fullpath = sub.s;
-         if(isfirst){
+         if(idx == 0){
             char const *cp;
 
             if((cp = su_cs_rfind_c(fullpath, '/')) != NIL)
@@ -2687,11 +2669,13 @@ jmulti:{
 #endif
 
          /* Query longest common prefix along the way */
-         if(isfirst){
+         if(idx == 0){
             c1 = c2;
             lococp = sub.s;
             locolen = sub.l;
          }else if(locolen > 0){
+            uz i;
+
             for(i = 0; i < locolen; ++i)
                if(lococp[i] != sub.s[i]){
                   i = mx_field_detect_clip(i, lococp, i);
@@ -2720,13 +2704,13 @@ jmulti:{
             c1 = (su_cs_is_alnum(c2) != 0);
 #endif
          }
-         if(isfirst || c1 ||
+         if(idx == 0 || c1 ||
                scrwid < lnlen || scrwid - lnlen <= vic.vic_vi_width + 2){
             putc('\n', fp);
             if(scrwid < lnlen)
                ++lncnt;
             ++lncnt, lnlen = 0;
-            if(!isfirst && !c1)
+            if(idx != 0 && !c1)
                goto jsep;
          }else if(lnlen > 0){
 jsep:

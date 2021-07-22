@@ -962,12 +962,14 @@ FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
  * . #  for previous file
  * . &  invoker's mbox file
  * . +file file in folder directory
- * . any shell meta character (except for FEXP_NSHELL).
- * a poor man's vis(3), on name before calling this (and showing the user).
- * If FEXP_MULTIOK is set we return an array of terminated strings, the (last)
- * result string is terminated via \0\0 and n_PS_EXPAND_MULTIRESULT is set.
- * Returns the file name as an auto-reclaimed string */
+ * . any shell meta character (except for FEXP_NSHELL)
+ * XXX ->name_expand */
 FL char *fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm);
+
+/* Like fexpand(), but may instead return an array of strings in the
+ * auto-reclaimed result storage */
+FL char **mx_shexp_name_expand_multi(char const *name,
+      BITENUM_IS(u32,fexp_mode) fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l

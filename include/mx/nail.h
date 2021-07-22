@@ -202,14 +202,13 @@ enum fexp_mode{
    FEXP_MOST,
    FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide sh expansion */
    FEXP_SILENT = 1u<<1, /* Do not print but only return errors */
-   FEXP_MULTIOK = 1u<<2, /* Expansion to many entries is ok */
-   FEXP_LOCAL = 1u<<3, /* Result must be local file/maildir */
-   FEXP_LOCAL_FILE = 1u<<4, /* ..must be a local file: strips protocol://! */
-   FEXP_SHORTCUT = 1u<<5, /* Do expand shortcuts */
-   FEXP_NSPECIAL = 1u<<6, /* No %,#,& specials */
-   FEXP_NFOLDER = 1u<<7, /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1u<<8, /* Do not do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1u<<9, /* ..not even $VAR expansion */
+   FEXP_LOCAL = 1u<<2, /* Result must be local file/maildir */
+   FEXP_LOCAL_FILE = 1u<<3, /* ..must be a local file: strips protocol://! */
+   FEXP_SHORTCUT = 1u<<4, /* Do expand shortcuts */
+   FEXP_NSPECIAL = 1u<<5, /* No %,#,& specials */
+   FEXP_NFOLDER = 1u<<6, /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1u<<7, /* Do not do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1u<<8, /* ..not even $VAR expansion */
 
    /* Actually does expand ~/ etc. */
    FEXP_NONE = FEXP_NOPROTO | FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR,
@@ -454,7 +453,8 @@ do if(!su_state_has(su_STATE_REPRODUCIBLE)){\
    }\
 }while(0)
 
-/* Program state bits which may regularly fluctuate */
+/* Program state bits which may regularly fluctuate.
+ * P.S.: most of these actually hacks, but better ways are hard to find */
 enum n_program_state{
    n_PS_ROOT = 1u<<30, /* Temporary "bypass any checks" bit */
 #define n_PS_ROOT_BLOCK(ACT) \
@@ -480,30 +480,29 @@ do{\
    n_PS_HOOK = 1u<<8,
    n_PS_HOOK_MASK = n_PS_HOOK_NEWMAIL | n_PS_HOOK,
 
-   n_PS_EDIT = 1u<<9, /* Current mailbox no "system mailbox" */
-   n_PS_SETFILE_OPENED = 1u<<10, /* (hack) setfile() opened a new box */
+   n_PS_EDIT = 1u<<9, /* Current mailbox no "system mailbox" TODO per-MB! */
    /* After mailbox switch or `newmail': we have seen any command; if not set,
     * `next' will select message number 1 instead of "next good after dot" */
-   n_PS_SAW_COMMAND = 1u<<11,
-   n_PS_DID_PRINT_DOT = 1u<<12, /* Current message has been printed */
+   n_PS_SAW_COMMAND = 1u<<10,
+   n_PS_DID_PRINT_DOT = 1u<<11, /* Current message has been printed */
 
-   n_PS_SIGWINCH_PEND = 1u<<13, /* Need update of $COLUMNS/$LINES */
+   n_PS_SIGWINCH_PEND = 1u<<12, /* Need $COLUMNS/$LINES update (xxx atomic) */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = su_BITENUM_MASK(14, 17),
-   n_PS_MSGLIST_MASK = su_BITENUM_MASK(17, 17),
-   n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<17, /* n_getmsglist() saw something gabby */
+   n_PS_ARGLIST_MASK = su_BITENUM_MASK(13, 16),
+   n_PS_MSGLIST_MASK = su_BITENUM_MASK(16, 16),
+   n_PS_ARGMOD_LOCAL = 1u<<13, /* "local" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_VPUT = 1u<<14, /* "vput" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_WYSH = 1u<<15, /* "wysh" modifier TODO struct CmdCtx */
+   n_PS_MSGLIST_GABBY = 1u<<16, /* getmsglist() saw gabby stuff TODO CmdCtx */
 
-   n_PS_EXPAND_MULTIRESULT = 1u<<19, /* Last fexpand() with MULTIOK had .. */
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
     * suppressed */
-   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<20,
+   n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<18,
 
    /* Bad hacks */
+   n_PS_SETFILE_OPENED = 1u<<10, /* (hack) setfile() opened a new box */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
    n_PS_READLINE_NL = 1u<<25, /* readline_input()+ saw a \n */
    n_PS_BASE64_STRIP_CR = 1u<<26, /* Go for text output, strip CR's */

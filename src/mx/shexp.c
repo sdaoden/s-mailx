@@ -100,6 +100,14 @@ enum a_shexp_quote_flags{
    a_SHEXP_QUOTE__FREESHIFT = 16u
 };
 
+struct a_shexp_name_exp_ctx{
+   char const *snec_name;
+   BITENUM_IS(u32,fexp_mode) snec_fexpm;
+   boole snec_multi_ok;
+   u8 snec__pad[3];
+   char **snec_res;
+};
+
 #ifdef mx_HAVE_FNMATCH
 struct a_shexp_glob_ctx{
    char const *sgc_patdat; /* Remaining pattern (at and below level) */
@@ -137,6 +145,9 @@ struct a_shexp_quote_lvl{
    u8 sql__dummy[4];
 };
 
+/* Logic behind *expand() */
+static void a_shexp_name_expand(struct a_shexp_name_exp_ctx *snecp);
+
 /* Locate the user's mailbox file (where new, unread mail is queued) */
 static char *a_shexp_findmail(char const *user, boole force);
 
@@ -145,18 +156,206 @@ static char *a_shexp_findmail(char const *user, boole force);
  * AUTO_ALLOC()ed string */
 static char *a_shexp_tilde(char const *s);
 
-/* Perform fnmatch(3).  May return NULL on error */
-static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
+/* Perform fnmatch(3).  Returns an ERR_ */
+static s32 a_shexp_globname(struct a_shexp_name_exp_ctx *snecp);
 #ifdef mx_HAVE_FNMATCH
 static boole a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
-               struct n_strlist **slpp);
+      struct n_strlist **slpp);
 static char const *a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp);
-static su_sz a_shexp__globsort(void const *cvpa, void const *cvpb);
+static sz a_shexp__globsort(void const *cvpa, void const *cvpb);
 #endif
 
 /* Parse an input string and create a sh(1)ell-quoted result */
 static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp,
                struct a_shexp_quote_lvl *sqlp);
+
+static void
+a_shexp_name_expand(struct a_shexp_name_exp_ctx *snecp){
+   /* The order of evaluation is "%" and "#" expand into constants.
+    * "&" can expand into "+".  "+" can expand into shell meta characters.
+    * Shell meta characters expand into constants.
+    * This way, we make no recursive expansion */
+   struct str proto, s;
+   char const *res, *cp;
+   boole haveproto;
+   s32 eno;
+   NYD_IN;
+
+   eno = su_ERR_NONE;
+
+   if(!(snecp->snec_fexpm & FEXP_SHORTCUT) ||
+         (res = mx_shortcut_expand(snecp->snec_name)) == NIL)
+      res = snecp->snec_name;
+
+jprotonext:
+   UNINIT(proto.s, NIL), UNINIT(proto.l, 0);
+   haveproto = FAL0;
+   for(cp = res; *cp && *cp != ':'; ++cp)
+      if(!su_cs_is_alnum(*cp))
+         goto jnoproto;
+   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
+      haveproto = TRU1;
+      proto.s = UNCONST(char*,res);
+      cp += 3;
+      proto.l = P2UZ(cp - res);
+      res = cp;
+   }
+
+jnoproto:
+   if(!(snecp->snec_fexpm & FEXP_NSPECIAL)){
+jnext:
+      switch(*res){
+      case '%':
+         if(res[1] == ':' && res[2] != '\0'){
+            res = &res[2];
+            goto jprotonext;
+         }else{
+            boole force;
+
+            force = (res[1] != '\0');
+            res = a_shexp_findmail((force ? &res[1] : ok_vlook(LOGNAME)),
+                  force);
+            if(force)
+               goto jislocal;
+         }
+         goto jnext;
+      case '#':
+         if(res[1] != '\0')
+            break;
+         if(prevfile[0] == '\0'){
+            n_err(_("No previous file\n"));
+            res = NIL;
+            eno = su_ERR_NODATA;
+            goto jleave;
+         }
+         res = prevfile;
+         goto jislocal;
+      case '&':
+         if(res[1] == '\0')
+            res = ok_vlook(MBOX);
+         break;
+      default:
+         break;
+      }
+   }
+
+#ifdef mx_HAVE_IMAP
+   if(res[0] == '@' &&
+         which_protocol(mailname, FAL0, FAL0, NIL) == PROTO_IMAP)
+      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
+#endif
+
+   /* POSIX: if *folder* unset or null, "+" shall be retained */
+   if(!(snecp->snec_fexpm & FEXP_NFOLDER) && *res == '+' &&
+         *(cp = n_folder_query()) != '\0')
+      res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
+
+   /* Do some meta expansions */
+   if((snecp->snec_fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
+         ((snecp->snec_fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NIL)
+          : (su_cs_first_of(res, "{}[]*?$") != UZ_MAX))){
+      boole doexp;
+
+      if(snecp->snec_fexpm & FEXP_NOPROTO)
+         doexp = TRU1;
+      else{
+         cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
+
+         switch(which_protocol(cp, TRU1, FAL0, NIL)){
+         case n_PROTO_EML:
+         case n_PROTO_FILE:
+         case n_PROTO_MAILDIR:
+            doexp = TRU1;
+            break;
+         default:
+            doexp = FAL0;
+            break;
+         }
+      }
+
+      if(doexp){
+         struct str shin;
+         struct n_string shou, *shoup;
+
+         shin.s = UNCONST(char*,res);
+         shin.l = UZ_MAX;
+         shoup = n_string_creat_auto(&shou);
+         for(;;){
+            BITENUM_IS(u32,n_shexp_state) shs;
+
+            /* TODO shexp: take care: not include backtick eval once avail! */
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
+                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                  n_SHEXP_PARSE_QUOTE_AUTO_DQ |
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NIL);
+            if(shs & n_SHEXP_STATE_STOP)
+               break;
+         }
+         res = n_string_cp(shoup);
+         /*shoup = n_string_drop_ownership(shoup);*/
+
+         if(res[0] == '~')
+            res = a_shexp_tilde(res);
+
+         if(!(snecp->snec_fexpm & FEXP_NSHELL)){
+            snecp->snec_name = res;
+            if((eno = a_shexp_globname(snecp)) != su_ERR_NONE){
+               res = NIL;
+               goto jleave;
+            }
+
+            if(snecp->snec_multi_ok && snecp->snec_res[1] != NIL)
+               goto su_NYD_OU_LABEL;
+            res = snecp->snec_res[0];
+         }
+      }/* else no tilde */
+   }else if(res[0] == '~')
+      res = a_shexp_tilde(res);
+
+jislocal:
+   if(res != NIL && haveproto)
+      res = savecat(savestrbuf(proto.s, proto.l), res);
+
+   if(snecp->snec_fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
+      switch(which_protocol(res, FAL0, FAL0, &cp)){
+      case n_PROTO_MAILDIR:
+         if(!(snecp->snec_fexpm & FEXP_LOCAL_FILE)){
+         /* FALLTHRU */
+      case n_PROTO_FILE:
+      case n_PROTO_EML:
+            if(snecp->snec_fexpm & FEXP_LOCAL_FILE)
+               res = cp;
+            break;
+         }
+         /* FALLTHRU */
+      default:
+         n_err(_("Not a local file or directory: %s\n"),
+            n_shexp_quote_cp(snecp->snec_name, FAL0));
+         res = NIL;
+         eno = su_ERR_INVAL;
+         break;
+      }
+   }
+
+jleave:
+   if(res == NIL){
+      su_err_set_no(eno);
+      snecp->snec_res = NIL;
+   }else{
+      uz l;
+
+      /* Very ugly that res most likely is already heap */
+      l = su_cs_len(res) +1;
+
+      snecp->snec_res = S(char**,su_AUTO_ALLOC((sizeof(*snecp->snec_res) * 2
+            ) +l));
+      snecp->snec_res[0] = R(char*,&snecp->snec_res[2]);
+      snecp->snec_res[1] = NIL;
+      su_mem_copy(snecp->snec_res[0], res, l);
+   }
+
+   NYD_OU;
+}
 
 static char *
 a_shexp_findmail(char const *user, boole force){
@@ -165,17 +364,17 @@ a_shexp_findmail(char const *user, boole force){
    NYD2_IN;
 
    if(!force){
-      if((cp = ok_vlook(inbox)) != NULL && *cp != '\0'){
+      if((cp = ok_vlook(inbox)) != NIL && *cp != '\0'){
          /* _NFOLDER extra introduced to avoid % recursion loops */
          if((rv = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
-               ) != NULL)
+               ) != NIL)
             goto jleave;
          n_err(_("*inbox* expansion failed, using $MAIL/built-in: %s\n"), cp);
       }
       /* Heirloom compatibility: an IMAP *folder* becomes "%" */
 #ifdef mx_HAVE_IMAP
-      else if(cp == NULL && !su_cs_cmp(user, ok_vlook(LOGNAME)) &&
-            which_protocol(cp = n_folder_query(), FAL0, FAL0, NULL)
+      else if(cp == NIL && !su_cs_cmp(user, ok_vlook(LOGNAME)) &&
+            which_protocol(cp = n_folder_query(), FAL0, FAL0, NIL)
                == PROTO_IMAP){
          /* TODO Compat handling of *folder* with IMAP! */
          n_OBSOLETE("no more expansion of *folder* in \"%\": "
@@ -185,7 +384,7 @@ a_shexp_findmail(char const *user, boole force){
       }
 #endif
 
-      if((cp = ok_vlook(MAIL)) != NULL){
+      if((cp = ok_vlook(MAIL)) != NIL){
          rv = savestr(cp);
          goto jleave;
       }
@@ -220,14 +419,14 @@ a_shexp_tilde(char const *s){
       np = ok_vlook(HOME);
       rl = su_cs_len(rp);
    }else{
-      if((rp = su_cs_find_c(np = rp, '/')) != NULL){
+      if((rp = su_cs_find_c(np = rp, '/')) != NIL){
          nl = P2UZ(rp - np);
          np = savestrbuf(np, nl);
          rl = su_cs_len(rp);
       }else
          rl = 0;
 
-      if((pwp = getpwnam(np)) == NULL){
+      if((pwp = getpwnam(np)) == NIL){
          rv = savestr(s);
          goto jleave;
       }
@@ -242,81 +441,97 @@ a_shexp_tilde(char const *s){
       nl += rl;
    }
    rv[nl] = '\0';
+
 jleave:
    NYD2_OU;
    return rv;
 }
 
-static char *
-a_shexp_globname(char const *name, enum fexp_mode fexpm){
+static s32
+a_shexp_globname(struct a_shexp_name_exp_ctx *snecp){
 #ifdef mx_HAVE_FNMATCH
    struct a_shexp_glob_ctx sgc;
    struct n_string outer;
    struct n_strlist *slp;
    char *cp;
    void *lofi_snap;
+   s32 rv;
    NYD_IN;
 
+   rv = su_ERR_NONE;
    lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
 
    su_mem_set(&sgc, 0, sizeof sgc);
    /* C99 */{
       uz i;
 
-      sgc.sgc_patlen = i = su_cs_len(name);
+      sgc.sgc_patlen = i = su_cs_len(snecp->snec_name);
       sgc.sgc_patdat = cp = su_LOFI_ALLOC(++i);
-      su_mem_copy(cp, name, i);
+      su_mem_copy(cp, snecp->snec_name, i);
       sgc.sgc_outer = n_string_book(n_string_creat(&outer), i);
    }
-   sgc.sgc_flags = ((fexpm & FEXP_SILENT) != 0); /* a_shexp__glob():a_SILENT */
+   /* a_shexp__glob():a_SILENT */
+   sgc.sgc_flags = ((snecp->snec_fexpm & FEXP_SILENT) != 0);
 
-   slp = NULL;
+   slp = NIL;
    if(a_shexp__glob(&sgc, &slp))
-      cp = (char*)0x1;
+      cp = R(char*,0x1);
    else
-      cp = NULL;
+      cp = NIL;
 
    n_string_gut(&outer);
 
-   if(cp == NULL)
+   if(cp == NIL){
+      rv = su_ERR_INVAL;
       goto jleave;
+   }
 
-   if(slp == NULL){
+   if(slp == NIL){
       cp = UNCONST(char*,N_("File pattern does not match"));
+      rv = su_ERR_NODATA;
       goto jerr;
-   }else if(slp->sl_next == NULL)
-      cp = savestrbuf(slp->sl_dat, slp->sl_len);
-   else if(fexpm & FEXP_MULTIOK){
+   }else if(slp->sl_next == NIL){
+      snecp->snec_res = S(char**,su_AUTO_ALLOC(
+            (sizeof(*snecp->snec_res) * 2) + slp->sl_len +1));
+      snecp->snec_res[1] = NIL;
+      cp = snecp->snec_res[0] = R(char*,&snecp->snec_res[2]);
+      su_mem_copy(cp, slp->sl_dat, slp->sl_len +1);
+   }else if(snecp->snec_multi_ok){
       struct n_strlist **sorta, *xslp;
       uz i, no, l;
 
       no = l = 0;
-      for(xslp = slp; xslp != NULL; xslp = xslp->sl_next){
+      for(xslp = slp; xslp != NIL; xslp = xslp->sl_next){
          ++no;
          l += xslp->sl_len + 1;
       }
+      ASSERT(no > 1);
 
       sorta = su_LOFI_ALLOC(sizeof(*sorta) * no);
 
       no = 0;
-      for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
+      for(xslp = slp; xslp != NIL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
       su_sort_shell_vpp(su_S(void const**,sorta), no, &a_shexp__globsort);
 
-      cp = su_AUTO_ALLOC(++l);
+      snecp->snec_res = S(char**,su_AUTO_ALLOC(
+            (sizeof(*snecp->snec_res) * (no +1)) + ++l));
+      snecp->snec_res[no] = NIL;
+      cp = R(char*,&snecp->snec_res[no +1]);
+
       l = 0;
       for(i = 0; i < no; ++i){
          xslp = sorta[i];
-         su_mem_copy(&cp[l], xslp->sl_dat, xslp->sl_len);
+         su_mem_copy(snecp->snec_res[i] = &cp[l], xslp->sl_dat, xslp->sl_len);
          l += xslp->sl_len;
          cp[l++] = '\0';
       }
-      cp[l] = '\0';
+      ASSERT(snecp->snec_res[no] == NIL);
 
-      /*su_LOFI_FREE(sorta);*/
-      n_pstate |= n_PS_EXPAND_MULTIRESULT;
+      /* unrolled below su_LOFI_FREE(sorta);*/
    }else{
       cp = UNCONST(char*,N_("File pattern matches multiple results"));
+      rv = su_ERR_RANGE;
       goto jerr;
    }
 
@@ -324,14 +539,11 @@ jleave:
    su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
 
    NYD_OU;
-   return cp;
+   return rv;
 
 jerr:
-   if(!(fexpm & FEXP_SILENT)){
-      name = n_shexp_quote_cp(name, FAL0);
-      n_err("%s: %s\n", V_(cp), name);
-   }
-   cp = NULL;
+   if(!(snecp->snec_fexpm & FEXP_SILENT))
+      n_err("%s: %s\n", V_(cp), n_shexp_quote_cp(snecp->snec_name, FAL0));
    goto jleave;
 
 #else /* mx_HAVE_FNMATCH */
@@ -339,7 +551,11 @@ jerr:
 
    if(!(fexpm & FEXP_SILENT))
       n_err(_("No filename pattern support (fnmatch(3) not available)\n"));
-   return savestr(name);
+
+   snecp->snec_res[0] = snecp->snec_name;
+   snecp->snec_res[1] = NIL;
+
+   return su_ERR_NONE;
 #endif
 }
 
@@ -376,7 +592,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 
    /* Separate current directory/pattern level from any possible remaining
     * pattern in order to be able to use it for fnmatch(3) */
-   if((ccp = su_mem_find(sgcp->sgc_patdat, '/', sgcp->sgc_patlen)) == NULL)
+   if((ccp = su_mem_find(sgcp->sgc_patdat, '/', sgcp->sgc_patlen)) == NIL)
       nsgc.sgc_patlen = 0;
    else{
       nsgc = *sgcp;
@@ -399,7 +615,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    /* Quickshot: cannot be a fnmatch(3) pattern? */
    if(sgcp->sgc_patlen == 0 ||
          su_cs_first_of(sgcp->sgc_patdat, "?*[") == su_UZ_MAX){
-      dp = NULL;
+      dp = NIL;
       sgoc.sgoc_dt_type = -1;
       sgoc.sgoc_name = sgcp->sgc_patdat;
       if((ccp = a_shexp__glob_one(&sgoc)) == su_NIL ||
@@ -408,7 +624,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       goto jerr;
    }
 
-   if((dp = opendir(myp)) == NULL){
+   if((dp = opendir(myp)) == NIL){
       int err;
 
       switch((err = su_err_no())){
@@ -507,12 +723,12 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       }
    }
 
-   ccp = NULL;
+   ccp = NIL;
 jleave:
-   if(dp != NULL)
+   if(dp != NIL)
       closedir(dp);
    NYD2_OU;
-   return (ccp == NULL);
+   return (ccp == NIL);
 
 jerr:
    if(!(sgcp->sgc_flags & a_SILENT)){
@@ -586,7 +802,7 @@ Jstat:
       slp = n_STRLIST_LOFI_ALLOC(j);
       *sgocp->sgoc_slpp = slp;
       sgocp->sgoc_slpp = &slp->sl_next;
-      slp->sl_next = NULL;
+      slp->sl_next = NIL;
       if((j = sgocp->sgoc_old_outer_len) > 0){
          su_mem_copy(&slp->sl_dat[0], ousp->s_dat, j);
          if(slp->sl_dat[j -1] != '/')
@@ -603,15 +819,16 @@ jleave:
    return rv;
 }
 
-static su_sz
+static sz
 a_shexp__globsort(void const *cvpa, void const *cvpb){
-   su_sz rv;
+   sz rv;
    struct n_strlist const *slpa, *slpb;
    NYD2_IN;
 
    slpa = cvpa;
    slpb = cvpb;
    rv = su_cs_cmp_case(slpa->sl_dat, slpb->sl_dat);
+
    NYD2_OU;
    return rv;
 }
@@ -977,189 +1194,31 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){ /* TODO -> URL:: */
-   struct str proto, s;
-   char const *res, *cp;
-   boole dyn, haveproto;
-   s32 eno;
+fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
+   struct a_shexp_name_exp_ctx snec;
    NYD_IN;
 
-   n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
-   dyn = FAL0;
-   eno = su_ERR_NONE;
-
-   /* The order of evaluation is "%" and "#" expand into constants.
-    * "&" can expand into "+".  "+" can expand into shell meta characters.
-    * Shell meta characters expand into constants.
-    * This way, we make no recursive expansion */
-   if(!(fexpm & FEXP_SHORTCUT) || (res = mx_shortcut_expand(name)) == NIL)
-      res = name;
-
-jprotonext:
-   UNINIT(proto.s, NIL), UNINIT(proto.l, 0);
-   haveproto = FAL0;
-   for(cp = res; *cp && *cp != ':'; ++cp)
-      if(!su_cs_is_alnum(*cp))
-         goto jnoproto;
-   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
-      haveproto = TRU1;
-      proto.s = UNCONST(char*,res);
-      cp += 3;
-      proto.l = P2UZ(cp - res);
-      res = cp;
-   }
-
-jnoproto:
-   if(!(fexpm & FEXP_NSPECIAL)){
-jnext:
-      dyn = FAL0;
-      switch(*res){
-      case '%':
-         if(res[1] == ':' && res[2] != '\0'){
-            res = &res[2];
-            goto jprotonext;
-         }else{
-            boole force;
-
-            force = (res[1] != '\0');
-            res = a_shexp_findmail((force ? &res[1] : ok_vlook(LOGNAME)),
-                  force);
-            if(force)
-               goto jislocal;
-         }
-         goto jnext;
-      case '#':
-         if(res[1] != '\0')
-            break;
-         if(prevfile[0] == '\0'){
-            n_err(_("No previous file\n"));
-            res = NIL;
-            eno = su_ERR_NODATA;
-            goto jleave;
-         }
-         res = prevfile;
-         goto jislocal;
-      case '&':
-         if(res[1] == '\0')
-            res = ok_vlook(MBOX);
-         break;
-      default:
-         break;
-      }
-   }
-
-#ifdef mx_HAVE_IMAP
-   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NIL)
-         == PROTO_IMAP){
-      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NIL)->s;
-      dyn = TRU1;
-   }
-#endif
-
-   /* POSIX: if *folder* unset or null, "+" shall be retained */
-   if(!(fexpm & FEXP_NFOLDER) && *res == '+' &&
-         *(cp = n_folder_query()) != '\0'){
-      res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
-      dyn = TRU1;
-   }
-
-   /* Do some meta expansions */
-   if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
-         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NIL)
-          : (su_cs_first_of(res, "{}[]*?$") != su_UZ_MAX))){
-      boole doexp;
-
-      if(fexpm & FEXP_NOPROTO)
-         doexp = TRU1;
-      else{
-         cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
-
-         switch(which_protocol(cp, TRU1, FAL0, NIL)){
-         case n_PROTO_EML:
-         case n_PROTO_FILE:
-         case n_PROTO_MAILDIR:
-            doexp = TRU1;
-            break;
-         default:
-            doexp = FAL0;
-            break;
-         }
-      }
-
-      if(doexp){
-         struct str shin;
-         struct n_string shou, *shoup;
-
-         shin.s = UNCONST(char*,res);
-         shin.l = UZ_MAX;
-         shoup = n_string_creat_auto(&shou);
-         for(;;){
-            BITENUM_IS(u32,n_shexp_state) shs;
-
-            /* TODO shexp: take care: not include backtick eval once avail! */
-            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
-                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                  n_SHEXP_PARSE_QUOTE_AUTO_DQ |
-                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NIL);
-            if(shs & n_SHEXP_STATE_STOP)
-               break;
-         }
-         res = n_string_cp(shoup);
-         /*shoup = n_string_drop_ownership(shoup);*/
-         dyn = TRU1;
-
-         if(res[0] == '~')
-            res = a_shexp_tilde(res);
-
-         if(!(fexpm & FEXP_NSHELL) &&
-               (res = a_shexp_globname(res, fexpm)) == NIL){
-            eno = su_ERR_INVAL; /* TODO shexp_globname needs true error! */
-            goto jleave;
-         }
-         dyn = TRU1;
-      }/* else no tilde */
-   }else if(res[0] == '~'){
-      res = a_shexp_tilde(res);
-      dyn = TRU1;
-   }
-
-jislocal:
-   if(res != NIL && haveproto){
-      res = savecat(savestrbuf(proto.s, proto.l), res);
-      dyn = TRU1;
-   }
-
-   if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
-      switch(which_protocol(res, FAL0, FAL0, &cp)){
-      case n_PROTO_MAILDIR:
-         if(!(fexpm & FEXP_LOCAL_FILE)){
-         /* FALLTHRU */
-      case n_PROTO_FILE:
-      case n_PROTO_EML:
-            if(fexpm & FEXP_LOCAL_FILE){
-               res = cp;
-               dyn = FAL0;
-            }
-            break;
-         }
-         /* FALLTHRU */
-      default:
-         n_err(_("Not a local file or directory: %s\n"),
-            n_shexp_quote_cp(name, FAL0));
-         res = NIL;
-         eno = su_ERR_INVAL;
-         break;
-      }
-   }
-
-jleave:
-   if(res != NIL && !dyn)
-      res = savestr(res);
-   if(res == NIL)
-      su_err_set_no(eno);
+   snec.snec_name = name;
+   snec.snec_fexpm = fexpm;
+   snec.snec_multi_ok = FAL0;
+   a_shexp_name_expand(&snec);
 
    NYD_OU;
-   return UNCONST(char*,res);
+   return (snec.snec_res != NIL ? snec.snec_res[0] : NIL);
+}
+
+FL char **
+mx_shexp_name_expand_multi(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
+   struct a_shexp_name_exp_ctx snec;
+   NYD_IN;
+
+   snec.snec_name = name;
+   snec.snec_fexpm = fexpm;
+   snec.snec_multi_ok = TRU1;
+   a_shexp_name_expand(&snec);
+
+   NYD_OU;
+   return snec.snec_res;
 }
 
 FL BITENUM_IS(u32,n_shexp_state)
