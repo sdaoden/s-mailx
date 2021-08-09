@@ -793,9 +793,16 @@ jheaders_skip:
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case mx_MIMETYPE_HDL_CMD:
-            if(oaction == SEND_TODISP_PARTS &&
-                  (mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
-               goto jleave;
+            if(oaction == SEND_TODISP_PARTS){
+               if(mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT)
+                  goto jleave;
+               else{
+                  /* Because: interactive OR batch mode, so */
+                  if(!mx_tty_yesorno(_("Run MIME handler for this part?"),
+                        su_state_has(su_STATE_REPRODUCIBLE)))
+                     goto jleave;
+               }
+            }
             break;
          case mx_MIMETYPE_HDL_TEXT:
          case mx_MIMETYPE_HDL_PTF:
