@@ -1337,19 +1337,19 @@ jleave:
 static boole
 _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
       boole want_rich){
-   struct mimepart *plain;
-   boole rv, flagged;
+   struct mimepart *plain, *rich;
+   boole rv;
    NYD_IN;
 
-   flagged = rv = FAL0;
-   plain = NIL;
+   rv = FAL0;
+   plain = rich = NIL;
 
    for(; mpp != NIL; mpp = mpp->m_nextpart){
       switch(mpp->m_mimetype){
       case mx_MIMETYPE_TEXT_PLAIN:
          plain = mpp;
          if(!want_rich)
-            goto jflag;
+            goto jfound;
          continue;
       case mx_MIMETYPE_ALTERNATIVE:
       case mx_MIMETYPE_RELATED:
@@ -1371,35 +1371,39 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
 
       switch(mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_TYPE_MASK){
       case mx_MIMETYPE_HDL_TEXT:
+         if(!want_rich)
+            goto jfound;
          if(plain == NIL)
             plain = mpp;
-         if(!want_rich)
-            goto jflag;
          break;
       case mx_MIMETYPE_HDL_PTF:
-         if(want_rich){
-jflag:
-            flagged = TRU1;
-            mpp->m_flag |= MDISPLAY;
-            ASSERT(mpp->m_parent != NIL);
-            mpp->m_parent->m_flag |= MDISPLAY;
-            rv = TRU1;
-            goto jleave;
-         }
+         if(want_rich)
+            goto jfound;
+         if(rich == NIL ||
+               (rich->m_handler->mth_flags & mx_MIMETYPE_HDL_TYPE_MASK
+                  ) != mx_MIMETYPE_HDL_PTF)
+            rich = mpp;
          break;
       case mx_MIMETYPE_HDL_CMD:
-         if(want_rich &&
-               (mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
-            goto jflag;
+         if(mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
+            if(want_rich)
+               goto jfound;
+            if(rich == NIL)
+               rich = mpp;
+         }
          /* FALLTHRU */
       default:
          break;
       }
    }
 
-   if(plain != NIL && !flagged){
-      mpp = plain;
-      goto jflag;
+   /* Without plain part at all, choose an existing rich no matter what */
+   if((mpp = plain) != NIL || (mpp = rich) != NIL){
+jfound:
+      mpp->m_flag |= MDISPLAY;
+      ASSERT(mpp->m_parent != NIL);
+      mpp->m_parent->m_flag |= MDISPLAY;
+      rv = TRU1;
    }
 
 jleave:
