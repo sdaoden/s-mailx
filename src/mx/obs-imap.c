@@ -3561,6 +3561,12 @@ imap_folders(const char * volatile name, int strip)
    NYD_IN;
 
    fp = n_stdout;
+
+   if(mb.mb_sock == NIL){
+      n_err(_("No active folder, need reconnect\n"));
+      goto jleave;
+   }
+
    cp = protbase(name);
    xsp = mb.mb_imap_account;
    if (xsp == NULL || su_cs_cmp(cp, xsp)) {
