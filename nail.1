@@ -11641,6 +11641,18 @@ is extended to cover any empty mailbox, not only empty
 .Mx -sx
 .Sx "primary system mailbox" Ns
 es: they will be removed when they are left in empty state otherwise.
+.
+.It
+Each command has an exit
+.Va \&?
+and error
+.Va \&!
+status that overwrites that of the last command.
+In POSIX mode the program exit status will signal failure regardless
+unless all messages were successfully sent out to the
+.Va mta ;
+also see
+.Va sendwait .
 .El
 .
 .

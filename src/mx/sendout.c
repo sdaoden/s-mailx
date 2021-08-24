@@ -2413,10 +2413,13 @@ jleave:
 
    temporary_compose_mode_hook_unroll();
 
-   if (_sendout_error)
+   if(_sendout_error){
+      n_psonce |= n_PSO_SEND_ERROR;
       n_exit_status |= n_EXIT_SEND_ERROR;
+   }
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
+
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -3020,10 +3023,13 @@ jleave:
       }
    }
 
-   if (_sendout_error)
+   if(_sendout_error){
+      n_psonce |= n_PSO_SEND_ERROR;
       n_exit_status |= n_EXIT_SEND_ERROR;
+   }
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
+
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

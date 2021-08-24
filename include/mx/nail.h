@@ -705,6 +705,8 @@ enum n_program_state_once{
    n_PSO_XIT = 1u<<3,
    n_PSO_QUIT = 1u<<4,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
+   /* *posix* requires us to exit with error if sending any mail failed */
+   n_PSO_SEND_ERROR = 1u<<5,
 
    /* Pre _STARTED */
    /* 1u<<5, */
