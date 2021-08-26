@@ -590,8 +590,9 @@ mx_child_wait(struct mx_child_ctx *ccp){
     * TODO thing (setsid();setlogin();ioctl(fd, TIOCSCTTY)), that is
     * TODO CHLD:setpgid(0,0); PAREN:setpgid(CHILD,0),
     * TODO tcsetpgrp(STDIN_FILENO,CHILD)
-    * TODO We need to ensure job control signals get through */
-   mx_sigs_all_hold(SIGCHLD, -SIGTSTP, -SIGTTIN, -SIGTTOU, 0);
+    * TODO We need to ensure job control signals get through.
+    * TODO v15 also need to honour network keepalive alarms */
+   mx_sigs_all_hold(SIGCHLD, -SIGTSTP, -SIGTTIN, -SIGTTOU, -SIGALRM, 0);
 
    ok = TRU1;
    if((cep = a_child_find(ccp->cc_pid, &cepp)) != NIL){
