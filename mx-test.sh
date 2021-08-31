@@ -7377,12 +7377,12 @@ t_mime_types_load_control() { # {{{
          > ./t1 2>&1
    check_ex0 1-estat
    ${cat} ./t1_2-x >> ./t1
-   check 1 - ./t1 '2881972427 2472'
+   check 1 - ./t1 '2924385241 2476'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./t.mts1,f=./t.mts3 \
       -f ./t1_2-x > ./t2 2>&1
-   check 2 0 ./t2 '443001130 1201'
+   check 2 0 ./t2 '2867276834 1213'
 
    t_epilog "${@}"
 } # }}}
@@ -9544,7 +9544,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
 
    printf 'type\nxit' |
       ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t12 2>&1
-   check 12 0 ./t12 '700052229 2562'
+   check 12 0 ./t12 '1151825807 2610'
 
    # base handler: text
    printf 'type\nxit' |
@@ -9569,11 +9569,11 @@ mimetype ${x} application/x-gzip  tgz gz emz
 
    printf 'type\nxit' |
       ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t22 2>&1
-   check 22 0 ./t22 '415439050 2562'
+   check 22 0 ./t22 '576517884 2610'
 
    printf 'type\nxit' |
       ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t23 2>&1
-   check 23 0 ./t23 '415439050 2562'
+   check 23 0 ./t23 '576517884 2610'
 
    printf 'type\nxit' |
       ${MAILX} -Sx -Y "${tmt}" \
@@ -9581,7 +9581,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
       -Y 'mimetype ?t* application/x-x-ma-tar-gz x.ma.tar.gz' \
       -Y 'mimetype ?t application/x-unix-readme README' \
       ${ARGS} -Rf ./t21 > ./t24 2>&1
-   check 24 0 ./t24 '1214820540 2491'
+   check 24 0 ./t24 '1515966968 2531'
 
    # .. and * still needs a handler
    printf 'type\nxit' |
@@ -9593,7 +9593,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
       -Y 'mimetype ?* application/z-fun x.tar' \
       -S pipe-application/z-fun="?* echo in; ${cat}; echo out" \
       ${ARGS} -Rf ./t21 > ./t25 2>&1
-   check 25 0 ./t25 '2846325427 2785'
+   check 25 0 ./t25 '2423141259 2813'
 
    t_epilog "${@}"
 } # }}}
