@@ -1514,7 +1514,8 @@ jleave:
    if((rv &= mx_MIME_TYPE_HDL_TYPE_MASK) == mx_MIME_TYPE_HDL_NIL){
       if(mthp->mth_msg.s == NIL)
          mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s = UNCONST(char*,
-               A_("[-- No MIME handler installed, or not applicable --]\n")));
+               A_("[-- No handler usable "
+               "(maybe try command `mimeview') --]\n")));
    }else if(rv == mx_MIME_TYPE_HDL_CMD &&
          !(xrv & mx_MIME_TYPE_HDL_COPIOUSOUTPUT) &&
          action != SEND_TODISP_PARTS){
