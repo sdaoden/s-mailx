@@ -499,6 +499,9 @@ mx_child_in_child_setup(struct mx_child_ctx *ccp){
          ) == mx_CHILD_SPAWN_CONTROL)
       close(S(int,ccp->cc__cpipe[1]));
 
+   if(n_pstate & n_PS_SIGALARM)
+      alarm(0);
+
    if(ccp->cc_mask != NIL){
       sigset_t *ssp;
 

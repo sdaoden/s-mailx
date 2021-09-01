@@ -1108,6 +1108,7 @@ imap_timer_off(void)
 {
    NYD_IN;
    if (imapkeepalive > 0) {
+      n_pstate &= ~n_PS_SIGALARM;
       alarm(0);
       safe_signal(SIGALRM, savealrm);
    }
@@ -1349,6 +1350,7 @@ imapalarm(int s)
       safe_signal(SIGPIPE, savepipe);
    }
 jbrk:
+   n_pstate |= n_PS_SIGALARM;
    alarm(imapkeepalive);
 jleave:
    --imaplock;
@@ -2079,6 +2081,7 @@ jduppass:
       }
       if ((cp = xok_vlook(imap_keepalive, urlp, OXM_ALL)) != NULL) {
          if ((imapkeepalive = strtol(cp, NULL, 10)) > 0) {
+            n_pstate |= n_PS_SIGALARM;
             savealrm = safe_signal(SIGALRM, imapalarm);
             alarm(imapkeepalive);
          }
