@@ -22,7 +22,7 @@ body README
 Content-Type: application/y-gzip; charset=us-ascii
 Content-Disposition: attachment; filename="x.gz"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.4 5/130 +application/z-ma-tar-gz, 7bit, us-ascii --]
 Content-Type: application/y-ma-tar-gz; charset=us-ascii
@@ -34,13 +34,13 @@ body x.ma.tar.gz
 Content-Type: application/y-tar; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.6 5/121 +application/x-tar-gz, 7bit, us-ascii --]
 Content-Type: application/y-tar-gz; charset=us-ascii
 Content-Disposition: attachment; filename="x.tar.gz"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.7 5/136 +application/z-x-ma-tar-gz, 7bit, us-ascii --]
 Content-Type: application/y-x-ma-tar-gz; charset=us-ascii
@@ -52,7 +52,7 @@ body y.x.ma.tar.gz
 Content-Type: application/y-xfun; charset=us-ascii
 Content-Disposition: attachment; filename=".x"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.9 5/132 +application/z-ma-tar-gz, 7bit, us-ascii --]
 Content-Type: application/y-ma-tar-gz; charset=us-ascii
@@ -64,7 +64,7 @@ body .x.ma.tar.gz
 Content-Type: application/y-tar; charset=us-ascii
 Content-Disposition: attachment; filename=".x.tar"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.11 5/116 +application/z-fun, 7bit, us-ascii --]
 Content-Type: application/y-fun; charset=us-ascii
@@ -78,10 +78,10 @@ out
 Content-Type: application/y-xfun; charset=us-ascii
 Content-Disposition: attachment; filename="x.x"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.13 5/118 +application/x-unix-readme, 7bit, us-ascii --]
 Content-Type: application/y-unix-readme; charset=us-ascii
 Content-Disposition: attachment; filename="NEWS"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]

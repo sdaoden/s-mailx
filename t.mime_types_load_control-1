@@ -32,7 +32,7 @@ Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="t.mtsx.doom"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.5 6/173 --]
 Content-Type: application/aga-aga

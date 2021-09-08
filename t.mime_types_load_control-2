@@ -23,18 +23,18 @@ Content-Disposition: attachment; filename="t.mts1.mathml"
 Content-Type: x-conference/x-cooltalk; charset=us-ascii
 Content-Disposition: attachment; filename="t.mts2.ice"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.4 6/179 --]
 Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="t.mtsx.doom"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
 
 [-- #1.5 6/173 --]
 Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="t.mtsx.aga"
 
-[-- No MIME handler installed, or not applicable --]
+[-- No handler usable (maybe try command `mimeview') --]
