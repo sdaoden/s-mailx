@@ -282,21 +282,22 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
             ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          i=`</dev/null LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
-            \set errexit
             \define cset_test {
                \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \set LC_ALL=${1}
+                  \wysh set LC_ALL=${1}
                   \shift
                   \xcall cset_test "${@}"
                \end
                \xit 1
             }
-            \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 \
-               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8
+            \# POSIX last (faulty localedef(1) result of GNU C lib 2.3[24])
+            \call cset_test C.UTF-8 \
+               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8 \
+               POSIX.utf8 POSIX.UTF-8
          '`
          [ $? -eq 0 ] && UTF8_LOCALE=$i
       fi
