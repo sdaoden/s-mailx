@@ -1250,6 +1250,35 @@ enum su_err_number{
 #endif
 };
 
+/*! \SU exit status code constants.
+ * They correspond in name, value and meaning the Berkely \c{sysexits.h}
+ * constants that are unchanged since the 1980s. */
+enum su_ex_status{
+   su_EX_OK = 0, /*!< Successful termination (this is 0). */
+   su_EX_SUCCESS = su_EX_OK, /*!< Alias for \r{su_EX_OK}. */
+   su_EX_ERR = 1, /*!< Failing termination, unspecified error (value 1). */
+   su_EX_FAILURE = su_EX_ERR, /*!< Alias for \r{su_EX_ERR}. */
+   su_EX_USAGE = 64, /*!< Command was used incorrectly. */
+   su_EX_DATAERR = 65, /*!< User input data format error. */
+   su_EX_NOINPUT = 66, /*!< Cannot open user input file / no user data. */
+   su_EX_NOUSER = 67, /*!< User does not exist / addressee unknown. */
+   su_EX_NOHOST = 68, /*!< Host name unknown. */
+   su_EX_UNAVAILABLE = 69, /*!< Service unavailable / support file missing. */
+   su_EX_SOFTWARE = 70, /*!< Internal software error. */
+   su_EX_OSERR = 71, /*!< System error (for example, cannot fork). */
+   su_EX_OSFILE = 72, /*!< OS file missing or data format error. */
+   su_EX_CANTCREAT = 73, /*!< Cannot create (user specified) output file. */
+   su_EX_IOERR = 74, /*!< Input/output error. */
+   su_EX_TEMPFAIL = 75, /*!< Temporary failure; user is invited to retry. */
+   su_EX_PROTOCOL = 76, /*!< Remote error in protocol. */
+   su_EX_NOPERM = 77, /*!< Permission denied. */
+   su_EX_CONFIG = 78 /*!< Configuration error. */
+};
+enum{
+   su__EX_BASE = su_EX_USAGE,
+   su__EX_MAX = su_EX_CONFIG
+};
+
 /*! Actions for \r{su_nyd_chirp()}. */
 enum su_nyd_action{
    su_NYD_ACTION_ENTER, /*!< Function entry (once per function). */
@@ -1615,6 +1644,7 @@ public:
 // All instanceless static encapsulators.
 class bom;
 class err;
+class ex;
 class log;
 class state;
 
@@ -1635,10 +1665,10 @@ public:
 class err{
 public:
    /*! \copydoc{su_err_number} */
-   enum err_number{
+   enum number{
 #ifdef DOXYGEN
-      enone,      /*!< No error. */
-      enotobacco  /*!< No such errno, fallback: no mapping exists. */
+      enone, /*!< No error. */
+      enotobacco /*!< No such errno, fallback: no mapping exists. */
 #else
       su__CXX_ERR_NUMBER_ENUM
 # undef su__CXX_ERR_NUMBER_ENUM
@@ -1662,6 +1692,33 @@ public:
 
    /*! \copydoc{su_err_no_by_errno()} */
    static s32 no_by_errno(void) {return su_err_no_by_errno();}
+};
+
+/*! \_ */
+class ex{
+public:
+   /*! \copydoc{su_ex_status} */
+   enum status{
+      ok = su_EX_OK, /*!< \copydoc{su_EX_OK} */
+      success = su_EX_SUCCESS, /*!< \copydoc{su_EX_SUCCESS} */
+      err = su_EX_ERR, /*!< \copydoc{su_EX_ERR} */
+      failure = su_EX_FAILURE, /*!< \copydoc{su_EX_FAILURE} */
+      usage = su_EX_USAGE, /*!< \copydoc{su_EX_USAGE} */
+      dataerr = su_EX_DATAERR, /*!< \copydoc{su_EX_DATAERR} */
+      noinput = su_EX_NOINPUT, /*!< \copydoc{su_EX_NOINPUT} */
+      nouser = su_EX_NOUSER, /*!< \copydoc{su_EX_NOUSER} */
+      nohost = su_EX_NOHOST, /*!< \copydoc{su_EX_NOHOST} */
+      unavailable = su_EX_UNAVAILABLE, /*!< \copydoc{su_EX_UNAVAILABLE} */
+      software = su_EX_SOFTWARE, /*!< \copydoc{su_EX_SOFTWARE} */
+      oserr = su_EX_OSERR, /*!< \copydoc{su_EX_OSERR} */
+      osfile = su_EX_OSFILE, /*!< \copydoc{su_EX_OSFILE} */
+      cantcreat = su_EX_CANTCREAT, /*!< \copydoc{su_EX_CANTCREAT} */
+      ioerr = su_EX_IOERR, /*!< \copydoc{su_EX_IOERR} */
+      tempfail = su_EX_TEMPFAIL, /*!< \copydoc{su_EX_TEMPFAIL} */
+      protocol = su_EX_PROTOCOL, /*!< \copydoc{su_EX_PROTOCOL} */
+      noperm = su_EX_NOPERM, /*!< \copydoc{su_EX_NOPERM} */
+      config = su_EX_CONFIG /*!< \copydoc{su_EX_CONFIG} */
+   };
 };
 
 /*! \_ */
