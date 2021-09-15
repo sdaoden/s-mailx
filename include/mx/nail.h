@@ -180,11 +180,11 @@ CPROTO_IMAP,
  * su_err_doc(), su_err_name() and su_err_by_name() */
 
 enum n_exit_status{
-   n_EXIT_OK = EXIT_SUCCESS,
-   n_EXIT_ERR = EXIT_FAILURE,
-   n_EXIT_USE = 64, /* sysexits.h:EX_USAGE */
-   n_EXIT_NOUSER = 67, /* :EX_NOUSER */
-   n_EXIT_IOERR = 74, /* :EX_IOERR */
+   n_EXIT_OK = su_EX_OK,
+   n_EXIT_ERR = su_EX_ERR,
+   n_EXIT_USE = su_EX_USAGE,
+   n_EXIT_NOUSER = su_EX_NOUSER,
+   n_EXIT_IOERR = su_EX_IOERR,
    n_EXIT_COLL_ABORT = 1<<1, /* Message collection was aborted */
    n_EXIT_SEND_ERROR = 1<<2 /* Unspecified send error occurred */
 };
