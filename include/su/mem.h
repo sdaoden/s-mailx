@@ -40,9 +40,6 @@ C_DECL_BEGIN
  * @{
  */
 
-/*! A memset that is not optimized away */
-EXPORT_DATA void * (* volatile su_mem_set_volatile)(void*, int, uz);
-
 /*! \_ */
 EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 
@@ -60,6 +57,13 @@ EXPORT void *su_mem_move(void *vp, void const *src, uz len);
 
 /*! \_ */
 EXPORT void *su_mem_set(void *vp, s32 what, uz len);
+
+/*! Ensure \a{len} bytes of \a{vp} are zeroed.
+ * Care is taken compiler or linker do not optimize this away. */
+INLINE void su_mem_zero(void *vp, uz len){
+   void *(*const volatile set_v)(void *, s32, uz) = &su_mem_set;
+   (*set_v)(vp, 0, len);
+}
 
 /*! @} */
 /*!
@@ -476,10 +480,8 @@ public:
       return su_mem_set(vp, what, len);
    }
 
-   /*! \copydoc{su_mem_set_volatile()} */
-   static void *set_volatile(void *vp, s32 what, uz len){
-      return (*su_mem_set_volatile)(vp, what, len);
-   }
+   /*! \copydoc{su_mem_zero()} */
+   static void zero(void *vp, uz len) {su_mem_zero(vp, len);}
 
 public:
    /*! @} */
