@@ -29,7 +29,8 @@ CSRC = atomic.c \
 		cs-tools.c \
 	icodec-dec.c \
 		icodec-enc.c \
-	mem-alloc.c \
+	md.c md-siphash.c \
+		mem-alloc.c \
 		mem-bag.c \
 		mem-tools.c \
 		mutex.c \

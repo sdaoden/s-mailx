@@ -27,7 +27,9 @@
 #ifndef su_CODE_H
 #define su_CODE_H
 
-#include <su/config.h>
+#ifndef DOXYGEN
+# include <su/config.h>
+#endif
 
 /*!
  * \mainpage SU --- Steffen's Utilities
@@ -124,6 +126,17 @@
     * Also, compiler pragmas which suppress some warnings are not set, etc.*/
 # define su_HAVE_DEVEL
 # define su_HAVE_DOCSTRINGS /*!< Some more helpful strings. */
+   /*! \r{MD} support available?
+    * If so, always included are
+    * \list{\li{
+    * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
+    * }} */
+# define su_HAVE_MD
+   /* TODO \r{MD_BLAKE2B} support available?
+    * RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code
+    * (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+    * Subfeature of \r{su_HAVE_MD}. */
+/*#  define su_HAVE_MD_BLAKE2B*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \_ */
 # define su_HAVE_MEM_BAG_LOFI /*!< \_ */
    /*! Normally the debug library performs memory write boundary excess
@@ -146,7 +159,7 @@
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
    /*! Multithreading support available?
-    * This is a subfeature of \r{SMP}. */
+    * This is a subfeature of \r{su_HAVE_SMP}. */
 #  define su_HAVE_MT
 
    /* Values */
