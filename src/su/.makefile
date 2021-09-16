@@ -22,8 +22,8 @@ CSRC = atomic.c \
 		cs-alloc.c \
 		cs-ctype.c \
 		cs-dict.c \
+		cs-hash.c \
 		cs-find.c \
-		cs-misc.c \
 		cs-rfind.c \
 		cs-tbox.c \
 		cs-tools.c \

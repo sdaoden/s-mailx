@@ -36,7 +36,10 @@ C_DECL_BEGIN
  * \ingroup TEXT
  * \brief Byte character data, locale agnostic: ASCII only (\r{su/cs.h})
  *
- * Oh, the vivid part this is!
+ * \remarks{Functions that include \c{cbuf} in their name are capable to work
+ * on buffers with include \c{NUL}s unless the length parameter was given as
+ * \r{su_UZ_MAX} Unless \a{len} was \r{su_UZ_MAX} and thus detected by
+ * searching NUL, embedded NUL bytes will be included in the result.}
  * @{
  */
 
@@ -54,16 +57,16 @@ enum su_cs_ctype{
    su_CS_CTYPE_PUNCT = 1u<<8, /*!< \_ */
    su_CS_CTYPE_SPACE = 1u<<9, /*!< \_ */
    su_CS_CTYPE_UPPER = 1u<<10, /*!< \_ */
-   su_CS_CTYPE_WHITE = 1u<<11, /*!< SPACE, HT or LF */
-   su_CS_CTYPE_XDIGIT = 1u<<12,  /*!< \_ */
+   su_CS_CTYPE_WHITE = 1u<<11, /*!< SPACE, HT or LF. */
+   su_CS_CTYPE_XDIGIT = 1u<<12, /*!< \_ */
 
    su__CS_CTYPE_MAXSHIFT = 13u,
    su__CS_CTYPE_MASK = (1u<<su__CS_CTYPE_MAXSHIFT) - 1
 };
 
-EXPORT_DATA u16 const su__cs_ctype[S8_MAX + 1];
-EXPORT_DATA u8 const su__cs_tolower[S8_MAX + 1];
-EXPORT_DATA u8 const su__cs_toupper[S8_MAX + 1];
+EXPORT_DATA u16 const su__cs_ctype[1u + S8_MAX];
+EXPORT_DATA u8 const su__cs_tolower[1u + S8_MAX];
+EXPORT_DATA u8 const su__cs_toupper[1u + S8_MAX];
 
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox;
@@ -185,7 +188,7 @@ INLINE uz su_cs_first_of(char const *cp, char const *xp){
 /*! Hash a string (buffer).
  * This should be considered an attackable hash, for now Chris Torek's hash
  * algorithm is used, the resulting hash is stirred as shown by Bret Mulvey.
- * TODO Add _strong_hash (with, e.g., siphash algo)
+ * For better hashes see \ref{MD}.
  * Also see \r{su_cs_hash_case_cbuf()}. */
 EXPORT uz su_cs_hash_cbuf(char const *buf, uz len);
 
