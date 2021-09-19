@@ -96,7 +96,7 @@ char const *su_program;
  * TODO We need some _USECASE_ hook to store readily prepared lines then.
  * TODO Also, our log does not yet prepend "su_progam: " to each output line,
  * TODO because of all that (port FmtEncCtx, use rounds!!) */
-su_SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
+SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
       va_list ap);
 
 /* */
@@ -105,7 +105,7 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
       uz blen), up cookie, struct a_core_nyd_info const *cnip);
 #endif
 
-su_SINLINE void
+SINLINE void
 a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
 #ifdef su_USECASE_MX
 # ifndef mx_HAVE_AMALGAMATION
