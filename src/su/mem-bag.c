@@ -110,20 +110,20 @@ CTA(a_MEMBAG_BSZ_BASE + a_MEMBAG_BSZ_GAP < a_MEMBAG_BSZ_LOWER,
 
 /* Free .mb_lofi_top */
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE struct su_mem_bag *a_membag_lofi_free_top(struct su_mem_bag *self);
+SINLINE struct su_mem_bag *a_membag_lofi_free_top(struct su_mem_bag *self);
 #endif
 
 /* Free vp, which really is storage for (a) user heap pointer(s) */
 #ifdef su_HAVE_MEM_BAG_AUTO
-su_SINLINE void a_membag_free_auto_hulls(void *vp, char *maxp);
-su_SINLINE void a_membag_free_auto_huge_hull(void *vp);
+SINLINE void a_membag_free_auto_hulls(void *vp, char *maxp);
+SINLINE void a_membag_free_auto_huge_hull(void *vp);
 #endif
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE void a_membag_free_lofi_hulls(void *vp, char *maxp);
+SINLINE void a_membag_free_lofi_hulls(void *vp, char *maxp);
 #endif
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE struct su_mem_bag *
+SINLINE struct su_mem_bag *
 a_membag_lofi_free_top(struct su_mem_bag *self){
    struct su__mem_bag_lofi_pool *mblpp;
    boole isheap;
@@ -158,7 +158,7 @@ a_membag_lofi_free_top(struct su_mem_bag *self){
 #endif /* su_HAVE_MEM_BAG_LOFI */
 
 #ifdef su_HAVE_MEM_BAG_AUTO
-su_SINLINE void
+SINLINE void
 a_membag_free_auto_hulls(void *vp, char *maxp){
    NYD2_IN;
    UNUSED(vp);
@@ -176,7 +176,7 @@ a_membag_free_auto_hulls(void *vp, char *maxp){
    NYD2_OU;
 }
 
-su_SINLINE void
+SINLINE void
 a_membag_free_auto_huge_hull(void *vp){
    NYD2_IN;
    UNUSED(vp);
@@ -195,7 +195,7 @@ a_membag_free_auto_huge_hull(void *vp){
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-su_SINLINE void
+SINLINE void
 a_membag_free_lofi_hulls(void *vp, char *maxp){
    NYD2_IN;
    UNUSED(vp);
