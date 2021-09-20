@@ -243,6 +243,11 @@ FL int c_vpospar(void *v);
  * appends to s the UA name, version etc., and a \n LF */
 FL struct n_string *mx_version(struct n_string *s);
 
+/* Any non-TLS su_random hook */
+#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
+FL boole mx_random_hook(void **cookie, void *buf, uz len);
+#endif
+
 /* Compute *screen* size */
 FL uz n_screensize(void);
 
@@ -1300,9 +1305,10 @@ FL int c_tls(void *vp);
  */
 
 #ifdef mx_HAVE_XTLS
-/* Our wrapper for RAND_bytes(3); the implementation exists only when
- * HAVE_RANDOM is RANDOM_IMPL_TLS, though */
-FL void mx_tls_rand_bytes(void *buf, uz blen);
+/* Our su_random RAND_bytes(3) hook */
+# if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK == 3
+FL boole mx_random_hook(void **cookie, void *buf, uz len);
+# endif
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
  * buffer on success, otherwise urlp is constant */
