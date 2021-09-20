@@ -30,6 +30,11 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* Forwards */
+#ifdef su_HAVE_MD
+struct su_siphash;
+#endif
+
 /* cs {{{ */
 /*!
  * \defgroup CS Byte character data
@@ -38,8 +43,7 @@ C_DECL_BEGIN
  *
  * \remarks{Functions that include \c{cbuf} in their name are capable to work
  * on buffers with include \c{NUL}s unless the length parameter was given as
- * \r{su_UZ_MAX} Unless \a{len} was \r{su_UZ_MAX} and thus detected by
- * searching NUL, embedded NUL bytes will be included in the result.}
+ * \r{su_UZ_MAX}, since that enforces search for the terminating \c{NUL}.}
  * @{
  */
 
@@ -188,7 +192,7 @@ INLINE uz su_cs_first_of(char const *cp, char const *xp){
 /*! Hash a string (buffer).
  * This should be considered an attackable hash, for now Chris Torek's hash
  * algorithm is used, the resulting hash is stirred as shown by Bret Mulvey.
- * For better hashes see \ref{MD}.
+ * For more attack-proof hashing see \r{su_cs_hash_strong_cbuf()} or \r{MD}.
  * Also see \r{su_cs_hash_case_cbuf()}. */
 EXPORT uz su_cs_hash_cbuf(char const *buf, uz len);
 
@@ -208,6 +212,51 @@ INLINE uz su_cs_hash_case(char const *cp){
    ASSERT_RET(cp != NIL, 0);
    return su_cs_hash_case_cbuf(cp, UZ_MAX);
 }
+
+#if defined su_HAVE_MD || defined DOXYGEN
+/*! Strong hash creators (like \r{su_cs_hash_strong_cbuf()}) that are
+ * (more) proof against algorithmic complexity attacks on hashes use
+ * a random-seeded built-in \r{MD} template that is created once needed first.
+ * By giving a non-\NIL \a{tp} one can instead set the template explicitly:
+ * \a{tp} must be fully setup in order to be usable for copy-assignment,
+ * and the object backing \a{tp} must remain accessible.
+ *
+ * \remarks{The built-in template is setup only once, but which may fail since
+ * the used \r{su_random_builtin_generate()} can: implicit lazy initialization
+ * via the hash creators themselve pass \r{su_STATE_ERR_NOPASS} as \a{estate}!
+ * \ESTATE_RV; setup is incomplete unless this returns \r{su_STATE_NONE}.}
+ *
+ * \remarks{Only available with \r{su_HAVE_MD}.
+ * As of today this uses \r{MD_SIPHASH} with endianess-adjusted 64-bit output;
+ * if \r{su_UZ_BITS} is 32 the 64-bit output is mixed down to 32-bit.
+ * The type backing \a{tp} is only forward-declared, no header is included.} */
+EXPORT s32 su_cs_hash_strong_setup(struct su_siphash const *tp, u32 estate);
+
+/*! Hash a string (buffer) with a strong algorithm,
+ * see \r{su_cs_hash_strong_setup()} for the complete picture,
+ * and \r{su_cs_hash_strong_case_cbuf()} for case-insensitivity.
+ * \remarks{Only available with \r{su_HAVE_MD}.}
+ * \remarks{May abort the program unless initialization was successfully
+ * asserted via \r{su_cs_hash_strong_setup()}.} */
+EXPORT uz su_cs_hash_strong_cbuf(char const *buf, uz len);
+
+/*! \r{su_cs_hash_strong_cbuf()}. */
+INLINE uz su_cs_hash_strong(char const *cp){
+   ASSERT_RET(cp != NIL, 0);
+   return su_cs_hash_strong_cbuf(cp, UZ_MAX);
+}
+
+/*! Hash a string (buffer) with a strong algorithm, case-insensitively,
+ * otherwise identical to \r{su_cs_hash_strong_cbuf()}, see there for more.
+ * As usual, if \a{len} is 0 \a{buf} may be \NIL. */
+EXPORT uz su_cs_hash_strong_case_cbuf(char const *buf, uz len);
+
+/*! \r{su_cs_hash_strong_case_cbuf()}. */
+INLINE uz su_cs_hash_strong_case(char const *cp){
+   ASSERT_RET(cp != NIL, 0);
+   return su_cs_hash_strong_case_cbuf(cp, UZ_MAX);
+}
+#endif /* su_HAVE_MD || DOXYGEN */
 
 /*! \_ */
 EXPORT uz su_cs_len(char const *cp);
@@ -271,6 +320,7 @@ C_DECL_END
 #if !su_C_LANG || defined CXX_DOXYGEN
 # define su_A_T_T_DECL_ONLY
 # include <su/a-t-t.h>
+# include <su/md-siphash.h>
 
 # define su_CXX_HEADER
 # include <su/code-in.h>
@@ -282,6 +332,10 @@ class cs;
 /*!
  * \ingroup CS
  * C++ variant of \r{CS} (\r{su/cs.h})
+ *
+ * \remarks{Debug assertions are performed in the C base only.}
+ *
+ * \remarks{In difference, for C++, \c{su/md-siphash.h} is included.}
  */
 class EXPORT cs{
    su_CLASS_NO_COPY(cs);
@@ -428,6 +482,31 @@ public:
 
    /*! \copydoc{su_cs_hash_case()} */
    static uz hash_case(char const *cp) {return su_cs_hash_case(cp);}
+
+#ifdef su_HAVE_MD
+   /*! \copydoc{su_cs_hash_strong_setup()} */
+   static s32 hash_strong_setup(siphash const *tp, u32 estate=state::none){
+      return su_cs_hash_strong_setup(S(struct su_siphash const*,tp), estate);
+   }
+
+   /*! \copydoc{su_cs_hash_strong_cbuf()} */
+   static uz hash_strong(char const *buf, uz len){
+      return su_cs_hash_strong_cbuf(buf, len);
+   }
+
+   /*! \copydoc{su_cs_hash_strong()} */
+   static uz hash_strong(char const *cp) {return su_cs_hash_strong(cp);}
+
+   /*! \copydoc{su_cs_hash_strong_case_cbuf()} */
+   static uz hash_strong_case(char const *buf, uz len){
+      return su_cs_hash_strong_case_cbuf(buf, len);
+   }
+
+   /*! \copydoc{su_cs_hash_strong_case()} */
+   static uz hash_strong_case(char const *cp){
+      return su_cs_hash_strong_case(cp);
+   }
+#endif /* su_HAVE_MD */
 
    /*! \copydoc{su_cs_len()} */
    static uz len(char const *cp) {return su_cs_len(cp);}
