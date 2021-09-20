@@ -42,11 +42,13 @@ do{\
 \
    /* Since mixing matters mostly for pow2 spaced maps, mixing the \
     * lower 32-bit seems to be sufficient (? in practice) */\
-   xh += xh << 13;\
-   xh ^= xh >> 7;\
-   xh += xh << 3;\
-   xh ^= xh >> 17;\
-   xh += xh << 5;\
+   if(xh != 0){\
+      xh += xh << 13;\
+      xh ^= xh >> 7;\
+      xh += xh << 3;\
+      xh ^= xh >> 17;\
+      xh += xh << 5;\
+   }\
    h = S(uz,xh);\
 }while(0)
 

@@ -22,7 +22,7 @@ CSRC = atomic.c \
 		cs-alloc.c \
 		cs-ctype.c \
 		cs-dict.c \
-		cs-hash.c \
+		cs-hash.c cs-hash-strong.c \
 		cs-find.c \
 		cs-rfind.c \
 		cs-tbox.c \

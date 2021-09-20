@@ -95,7 +95,7 @@
 /* Internal configurables: values */
 
 /* DVLOR(1,0) ... */
-#if defined su_USECASE_MX &&\
+#if defined su_USECASE_MX && \
    (defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
       || defined DOXYGEN)
 # define su_NYD_ENABLE_ALWAYS

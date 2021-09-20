@@ -400,8 +400,8 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM &&\
-      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
+# if !defined su_CC_BOM && \
+      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && \
       defined __ORDER_BIG_ENDIAN
 #  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #   define su_CC_BOM su_CC_BOM_LITTLE
@@ -425,8 +425,8 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM &&\
-      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
+# if !defined su_CC_BOM && \
+      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && \
       defined __ORDER_BIG_ENDIAN
 #  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #   define su_CC_BOM su_CC_BOM_LITTLE
@@ -462,8 +462,8 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM &&\
-      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
+# if !defined su_CC_BOM && \
+      defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && \
       defined __ORDER_BIG_ENDIAN
 #  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #   define su_CC_BOM su_CC_BOM_LITTLE
@@ -830,7 +830,7 @@ do{\
 #endif
 
 /* XXX offsetof+: clang,pcc check faked! */
-#if su_CC_VCHECK_CLANG(5, 0) || su_CC_VCHECK_GCC(4, 1) ||\
+#if su_CC_VCHECK_CLANG(5, 0) || su_CC_VCHECK_GCC(4, 1) || \
       su_CC_VCHECK_PCC(1, 2) || defined DOXYGEN
    /*! The offset of field \a{F} in the type \a{T}. */
 # define su_FIELD_OFFSETOF(T,F) __builtin_offsetof(T, F)
@@ -1115,13 +1115,14 @@ typedef signed long su_s64;
 /* (So that we can use UCMP() for size_t comparison, too) */
 #ifdef su_CC_SIZE_TYPE
 typedef su_CC_SIZE_TYPE su_uz;
+# undef su_CC_SIZE_TYPE
 #else
 typedef size_t su_uz; /*!< \_ */
 #endif
 
 #undef PRIuZ
 #undef PRIdZ
-#if (defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) ||\
+#if (defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) || \
       defined DOXYGEN
 # define PRIuZ "zu"
 # define PRIdZ "zd"
@@ -1150,6 +1151,7 @@ MCTA(sizeof(size_t) == sizeof(u32),
 MCTA(sizeof(size_t) == sizeof(unsigned long),
    "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
 #endif
+
 /* The signed equivalence is not really compliant to the standard */
 #if su_UZ_MAX == su_U32_MAX || su_UZ_MAX == su_S32_MAX || defined DOXYGEN
 # define su_SZ_MIN su_S32_MIN /*!< \_ */
