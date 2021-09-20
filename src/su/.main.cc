@@ -242,6 +242,9 @@ static void
 a_cs_dict(void){
    a__cs_dict(cs_dict<char const*>::f_none);
    a__cs_dict(cs_dict<char const*>::f_pow2_spaced);
+   a__cs_dict(cs_dict<char const*>::f_strong);
+   a__cs_dict(cs_dict<char const*>::f_strong |
+      cs_dict<char const*>::f_pow2_spaced);
 }
 
 static void
@@ -445,12 +448,14 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
    s32 s32 = cdp->insert(k[0], "v1");
    if(s32 != 0)
       a_ERR();
+   {
       s32 = cdp->insert(k[0], "v1-no");
       if(s32 != -1)
          a_ERR();
       s32 = cdp->replace("k1", "v1-yes");
       if(s32 != -1)
          a_ERR();
+   }
    s32 = cdp->insert(k[1], "v2");
    if(s32 != 0)
       a_ERR();
@@ -468,23 +473,29 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
 
    if(!cdp->has_key(k[0]))
       a_ERR();
+   {
       char const *ccp = cdp->lookup(k[0]);
       if(ccp == NIL)
          a_ERR();
       else if(cs::cmp(ccp, "v1-yes"))
          a_ERR();
+   }
    if(cdp->has_key(k[1]))
       a_ERR();
-      ccp = cdp->lookup("k2");
+   {
+      char const *ccp = cdp->lookup("k2");
       if(ccp != NIL)
          a_ERR();
+   }
    if(!cdp->has_key(k[2]))
       a_ERR();
-      ccp = cdp->lookup("k3");
+   {
+      char const *ccp = cdp->lookup("k3");
       if(ccp == NIL)
          a_ERR();
       else if(cs::cmp(ccp, "v3"))
          a_ERR();
+   }
 
    {
       cs_dict<char const*> cd2(*cdp);
@@ -496,19 +507,23 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
 
       if(!cd2.has_key(k[0]))
          a_ERR();
-         ccp = cd2.lookup("k1");
+      {
+         char const *ccp = cd2.lookup("k1");
          if(ccp == NIL)
             a_ERR();
          else if(cs::cmp(ccp, "v1-yes"))
             a_ERR();
+      }
 
       if(!cd2.has_key(k[2]))
          a_ERR();
-         ccp = cd2.lookup("k3");
+      {
+         char const *ccp = cd2.lookup("k3");
          if(ccp == NIL)
             a_ERR();
          else if(cs::cmp(ccp, "v3"))
             a_ERR();
+      }
 
       if(cdp->assign_elems(cd2) != 0)
          a_ERR();
@@ -517,11 +532,13 @@ a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
    s32 = cdp->insert(k[1], "v2");
    if(s32 != 0)
       a_ERR();
-      ccp = cdp->lookup("k2");
+   {
+      char const *ccp = cdp->lookup("k2");
       if(ccp == NIL)
          a_ERR();
       else if(cs::cmp(ccp, "v2"))
          a_ERR();
+   }
 
    // view
    cs_dict<char const*>::view cdv(*cdp), cdv2(cdv);
