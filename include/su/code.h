@@ -126,12 +126,23 @@
 # define su_HAVE_DOCSTRINGS /*!< Some more helpful strings. */
 # define su_HAVE_MEM_BAG_AUTO /*!< \_ */
 # define su_HAVE_MEM_BAG_LOFI /*!< \_ */
-   /*! Normally the debug library provides memory write boundary excess via
-    * canaries (see \r{MEM_CACHE_ALLOC} and \r{su_MEM_ALLOC_DEBUG}).
+   /*! Normally the debug library performs memory write boundary excess
+    * detection via canaries (see \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
     * Since this counteracts external memory checkers like \c{valgrind(1)} or
     * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
     * disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
+   /*! The default type of random seeding.
+    * Inspected during \SU compilation time, and must be either
+    * \c{su_RANDOM_SEED_BUILTIN} (the default if undefined),
+    * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
+    * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
+    *   (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
+    *    and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
+    * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
+    * or \c{su_RANDOM_SEED_HOOK} for seeding via the necessary
+    *    \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun}. */
+# define su_RANDOM_SEED
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
    /*! Multithreading support available?
