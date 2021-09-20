@@ -78,7 +78,6 @@ static struct su_mutex a_core_glck_log;
 
 DVL( static struct su_nyd_control a_core_thread_main_nyd; )
 
-struct su_thread su__thread_main;
 uz su__state;
 
 char const su_empty[] = "";
@@ -335,7 +334,7 @@ jdolog:
 
 s32
 su_err_no(void){ /* xxx INLINE? */
-   return su_thread_err_no(su_thread_self());
+   return su_thread_get_err_no();
 }
 
 void

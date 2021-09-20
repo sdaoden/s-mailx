@@ -21,6 +21,7 @@ su_USECASE_MX_DISABLED
 #include <su/mem.h>
 #include <su/mem-bag.h>
 #include <su/prime.h>
+#include <su/random.h>
 #include <su/re.h>
 #include <su/sort.h>
 #include <su/time.h>
@@ -47,6 +48,7 @@ static void a_cs_dict(void);
 static void a_icodec(void);
 static void a_mem_bag(void);
 static void a_prime(void);
+static void a_random(void);
 static void a_re(void);
 static void a_sort(void);
 static void a_time(void);
@@ -86,6 +88,7 @@ int main(void){ // {{{
 
    a_icodec();
    a_mem_bag();
+   a_random();
    a_re();
    a_sort();
 
@@ -768,6 +771,143 @@ a_sort(void){
    for(uz i = NELEM(arr_sorted); i-- != 0;)
       if(cs::cmp(arr_sorted[i], arr_mixed[i]))
          a_ERR();
+}
+// }}}
+
+// random {{{
+static uz a_random_i;
+
+static boole a__random_gfun(void **cookie, void *buf, uz len);
+
+static void
+a_random(void){ // xxx too late, already initialized...
+   char buf[64];
+
+   {
+      random r1;
+      if(r1.create() != state::none)
+         a_ERR();
+      if(r1.type() != random::type_p)
+         a_ERR();
+      if(r1.seed_mix_after() != 0)
+         a_ERR();
+      if(!r1.seed())
+         a_ERR();
+      if(!r1.generate(buf, sizeof buf))
+         a_ERR();
+      if(!r1(buf, sizeof buf))
+         a_ERR();
+   }
+
+   {
+      random r2;
+      if(r2.create(random::type_sp) != state::none)
+         a_ERR();
+      if(r2.type() != random::type_sp)
+         a_ERR();
+      if(r2.seed_mix_after() != 0)
+         a_ERR();
+      if(r2.set_seed_mix_after(1024).seed_mix_after() != 1024)
+         a_ERR();
+      if(!r2.seed())
+         a_ERR();
+      if(!r2.generate(buf, sizeof buf))
+         a_ERR();
+      if(!r2(buf, sizeof buf))
+         a_ERR();
+
+      random r3;
+      if(r3.create(random::type_vsp) != state::none)
+         a_ERR();
+      if(r3.type() != random::type_vsp)
+         a_ERR();
+      if(r3.seed_mix_after() == 0)
+         a_ERR();
+      if(r3.set_seed_mix_after(0).seed_mix_after() != 0)
+         a_ERR();
+      if(!r3.seed(r2))
+         a_ERR();
+      if(!r3.generate(buf, sizeof buf))
+         a_ERR();
+      if(!r3(buf, sizeof buf))
+         a_ERR();
+   }
+
+   {
+      if(random::vsp_install(&a__random_gfun) != state::none)
+         a_ERR();
+
+      a_random_i = 0;
+      {
+         char buf2[8];
+         random r1;
+         if(r1.create(random::type_vsp) != state::none)
+            a_ERR();
+         if(r1.type() != random::type_vsp)
+            a_ERR();
+         if(r1.seed_mix_after() == 0)
+            a_ERR();
+         if(a_random_i != 0)
+            a_ERR();
+         if(!r1.generate(buf2, 0)) // no-op if len==0
+            a_ERR();
+         if(a_random_i != 0)
+            a_ERR();
+         if(!r1.seed())
+            a_ERR();
+         if(a_random_i != 1)
+            a_ERR();
+         if(r1.generate(buf2, sizeof buf2))
+            a_ERR();
+         if(!r1.generate(buf2, sizeof buf2))
+            a_ERR();
+         if(a_random_i != (1 | 2))
+            a_ERR();
+         if(mem::cmp(buf2, "abrababe", sizeof buf2))
+            a_ERR();
+         if(!r1(buf2, sizeof buf2))
+            a_ERR();
+         if(mem::cmp(buf2, "abrababe", sizeof buf2))
+            a_ERR();
+      }
+      if(a_random_i != (1 | 2 | 4))
+         a_ERR();
+
+      if(random::vsp_install(NIL, state::err_pass) != state::none)
+         a_ERR();
+   }
+
+   if(random::builtin_generate(buf, sizeof buf, state::err_pass
+         ) != state::none)
+      a_ERR();
+}
+
+static boole
+a__random_gfun(void **cookie, void *buf, uz len){
+   boole rv;
+
+   rv = TRU1;
+
+   if(*cookie == NIL){
+      a_random_i |= 1;
+      if(buf != NIL || len != 0)
+         a_ERR();
+      *cookie = R(random*,0x4221);
+   }else if(buf == NIL){
+      a_random_i |= 4;
+      if(*cookie != R(random*,0x4221) || len != 0)
+         a_ERR();
+   }else{
+      if(len != sizeof("abrababe") -1)
+         a_ERR();
+      if(a_random_i & 2)
+         mem::copy(buf, "abrababe", len);
+      else
+         rv = FAL0;
+      a_random_i |= 2;
+   }
+
+   return rv;
 }
 // }}}
 

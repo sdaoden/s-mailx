@@ -70,6 +70,20 @@ struct su_thread{
       t_;
 };
 
+/*! Sometimes a block needs to do work but also ensure that the current
+ * thread's error number is reestablished before the block is left.
+ * This macro opens a scope and saves the number, it will be reestablished once
+ * the scope is left via \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
+#define su_THREAD_ERR_NO_SCOPE_IN() \
+do{\
+   struct su_thread *__su__thread_self__ = su_thread_self();\
+   s32 __su__thread_self__err_no__ = __su__thread_self__->t_.err_no /**/
+
+/*! Counterpart to \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
+#define su_THREAD_ERR_NO_SCOPE_OU() \
+   __su__thread_self__->t_.err_no = __su__thread_self__err_no__;\
+}while(0)
+
 EXPORT_DATA struct su_thread su__thread_main;
 
 #include <su/x-thread.h> /* 2. */
@@ -92,16 +106,18 @@ INLINE void su_thread_set_err_no(struct su_thread *self, s32 e){
    self->t_.err_no = e;
 }
 
-/*! \_ */
-INLINE void su_thread_yield(struct su_thread *self){
-   ASSERT(self);
-   UNUSED(self);
-}
-
 /*! Obtain handle to calling thread. */
 INLINE struct su_thread *su_thread_self(void){
    return su__thread_self();
 }
+
+/*! \r{su_thread_err_no()} of the calling thread */
+INLINE s32 su_thread_get_err_no(void){
+   return su_thread_err_no(su_thread_self());
+}
+
+/*! Yield the processor of the calling thread */
+EXPORT void su_thread_yield(void);
 
 #ifdef su_HAVE_MT
 # error .
@@ -147,15 +163,18 @@ public:
    /*! \copydoc{su_thread_set_err_no()} */
    void set_err_no(s32 e) {su_thread_set_err_no(this, e);}
 
-   /*! \copydoc{su_thread_yield()} */
-   void yield(void) const {su_thread_yield(this);}
-
 #ifdef su_HAVE_MT
 # error
 #endif /* su_HAVE_MT */
 
    /*! \copydoc{su_thread_self()} */
    static thread *self(void) {return R(thread*,su_thread_self());}
+
+   /*! \copydoc{su_thread_get_err_no()} */
+   static s32 get_err_no(void) {return su_thread_get_err_no();}
+
+   /*! \copydoc{su_thread_yield()} */
+   static void yield(void) {su_thread_yield();}
 };
 
 #ifndef DOXYGEN

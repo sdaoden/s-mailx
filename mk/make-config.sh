@@ -1939,6 +1939,29 @@ else
    config_exit 1
 fi
 
+# XXX yet not for -lpthread, we only need it for one thread
+if link_check sched_yield 'sched_yield(2)' \
+      '#define su_HAVE_SCHED_YIELD' << \!
+#include <sched.h>
+int main(void){
+   sched_yield();
+   return 0;
+}
+!
+then
+   :
+elif link_check pthread_yield 'pthread_yield(2)' \
+      '#define su_HAVE_PTHREAD_YIELD' << \!
+#include <pthread.h>
+int main(void){
+   pthread_yield();
+   return 0;
+}
+!
+then
+   :
+fi
+
 if link_check userdb 'gete?[gu]id(2), getpwuid(3), getpwnam(3)' << \!
 #include <pwd.h>
 #include <unistd.h>
@@ -3211,20 +3234,42 @@ fi
 # Random implementations which completely replace our builtin machine
 
 val_random_arc4() {
-   link_check arc4random 'VAL_RANDOM: arc4random(3)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_ARC4' << \!
+   if link_check arc4random 'VAL_RANDOM: arc4random_buf(3)' \
+      '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 1' << \!
+#include <stdlib.h>
+int main(void){
+   char buf[4];
+   arc4random_buf(buf, sizeof buf);
+   return 0;
+}
+!
+   then
+      return 0
+   elif link_check arc4random 'VAL_RANDOM: arc4random(3)' \
+      '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 2' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
    return 0;
 }
 !
+   then
+      return 0
+   else
+      return 1
+   fi
 }
 
 val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_TLS' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_HOOK
+         #define su_RANDOM_HOOK_FUN mx_random_hook
+         #define mx_RANDOM_SEED_HOOK 3' >> ${h}
       # Avoid reseeding, all we need is a streamy random producer
       link_check xtls_rand_drbg_set_reseed_defaults \
          'RAND_DRBG_set_reseed_defaults(3ssl)' \
@@ -3241,29 +3286,11 @@ int main(void){
    fi
 }
 
-# The remaining random implementation are only used to seed our builtin
-# machine; we are prepared to handle failures of those, meaning that we have
-# a homebrew seeder; that tries to yield the time slice once, via
-# sched_yield(2) if available, nanosleep({0,0},) otherwise
-val__random_yield_ok=
-val__random_check_yield() {
-   [ -n "${val__random_yield_ok}" ] && return
-   val__random_yield_ok=1
-   link_check sched_yield 'sched_yield(2)' '#define mx_HAVE_SCHED_YIELD' << \!
-#include <sched.h>
-int main(void){
-   sched_yield();
-   return 0;
-}
-!
-}
-
 val_random_libgetrandom() {
-   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
-      #define mx_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
-      #define mx_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETRANDOM
+      #define su_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
+      #define su_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
 int main(void){
    char buf[256];
@@ -3274,11 +3301,10 @@ int main(void){
 }
 
 val_random_sysgetrandom() {
-   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETRANDOM
-      #define mx_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define mx_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETRANDOM
+      #define su_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define su_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
 int main(void){
    char buf[256];
@@ -3289,9 +3315,8 @@ int main(void){
 }
 
 val_random_getentropy() {
-   val__random_check_yield
    link_check getentropy 'VAL_RANDOM: getentropy(3)' \
-      '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_GETENTROPY' <<\!
+      '#define su_RANDOM_SEED su_RANDOM_SEED_GETENTROPY' <<\!
 # include <errno.h>
 #include <limits.h>
 #include <unistd.h>
@@ -3310,14 +3335,13 @@ int main(void){
 }
 
 val_random_urandom() {
-   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
    elif [ -f /dev/urandom ]; then
       msg yes
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define su_RANDOM_SEED su_RANDOM_SEED_URANDOM' >> ${h}
    else
       msg no
       return 1
@@ -3326,16 +3350,8 @@ val_random_urandom() {
 }
 
 val_random_builtin() {
-   val__random_check_yield
-   msg_nonl ' . VAL_RANDOM: builtin ... '
-   if [ -n "${have_no_subsecond_time}" ]; then
-      msg 'no\nERROR: %s %s' 'without a specialized PRG ' \
-         'one of clock_gettime(2) and gettimeofday(2) is required.'
-      config_exit 1
-   else
-      msg yes
-      echo '#define mx_HAVE_RANDOM mx_RANDOM_IMPL_BUILTIN' >> ${h}
-   fi
+   msg ' . VAL_RANDOM: using builtin seeder'
+   echo '#define su_RANDOM_SEED su_RANDOM_SEED_BUILTIN' >> ${h}
 }
 
 val_random_error() {

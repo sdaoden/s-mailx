@@ -24,14 +24,6 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* mx_HAVE_RANDOM: supported (external) PRG implementations */
-#define mx_RANDOM_IMPL_BUILTIN 0
-#define mx_RANDOM_IMPL_ARC4 1
-#define mx_RANDOM_IMPL_TLS 2
-#define mx_RANDOM_IMPL_GETENTROPY 3
-#define mx_RANDOM_IMPL_GETRANDOM 4 /* (both, syscall + library) */
-#define mx_RANDOM_IMPL_URANDOM 5
-
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL then we produce

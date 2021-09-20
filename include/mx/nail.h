@@ -542,9 +542,8 @@ enum n_program_state_once{
    n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
    n_PSO_LINE_EDITOR_INIT = 1u<<18,
-   n_PSO_RANDOM_INIT = 1u<<19,
-   n_PSO_TERMCAP_FULLWIDTH = 1u<<20, /* !am or am+xn (right margin wrap) */
-   n_PSO_PS_DOTLOCK_NOTED = 1u<<21
+   n_PSO_TERMCAP_FULLWIDTH = 1u<<19, /* !am or am+xn (right margin wrap) */
+   n_PSO_PS_DOTLOCK_NOTED = 1u<<20
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.
