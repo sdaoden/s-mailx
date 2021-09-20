@@ -33,6 +33,7 @@ C_DECL_BEGIN
 struct su_cs_dict;
 struct su_cs_dict_view;
 
+/* cs_dict {{{ */
 /*!
  * \defgroup CS_DICT Dictionary with C-style string keys
  * \ingroup COLL
@@ -77,6 +78,7 @@ struct su_cs_dict_view;
  * @{
  */
 
+/* dict {{{ */
 /*! Flags for \r{su_cs_dict_create()}, to be queried via
  * \r{su_cs_dict_flags()}, and to be adjusted via \r{su_cs_dict_add_flags()}
  * and \r{su_cs_dict_clear_flags()}. */
@@ -90,25 +92,27 @@ enum su_cs_dict_flags{
     * \remarks{Changing this setting later on is possible, but testifying the
     * implied consequences work out is up to the caller.} */
    su_CS_DICT_OWNS = 1u<<1,
+   /*! Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
+   su_CS_DICT_STRONG = 1u<<3,
    /*! Keys shall be hashed, compared and stored case-insensitively. */
-   su_CS_DICT_CASE = 1u<<2,
+   su_CS_DICT_CASE = 1u<<4,
    /*! Enable array-index list head rotation?
     * This dictionary uses an array of nodes which form singly-linked lists.
     * With this bit set, whenever a key is found in such a list, its list node
     * will become the new head of the list, which could over time improve
     * lookup speed due to lists becoming sorted by "hotness" over time. */
-   su_CS_DICT_HEAD_RESORT = 1u<<3,
+   su_CS_DICT_HEAD_RESORT = 1u<<5,
    /*! Enable automatic shrinking of the management array.
     * This is not enabled by default (the array only grows).
     * See \r{su_CS_DICT_FROZEN} (and \r{su_cs_dict_set_treshold_shift()}). */
-   su_CS_DICT_AUTO_SHRINK = 1u<<4,
+   su_CS_DICT_AUTO_SHRINK = 1u<<6,
    /*! Freeze the dictionary.
     * A frozen dictionary will neither grow nor shrink the management array of
     * nodes automatically.
     * When inserting/removing many key/value tuples it increases efficiency to
     * first freeze, perform the operations, and then perform finalization
     * by calling \r{su_cs_dict_balance()}. */
-   su_CS_DICT_FROZEN = 1u<<5,
+   su_CS_DICT_FROZEN = 1u<<7,
    /*! Mapped to \r{su_STATE_ERR_PASS}. */
    su_CS_DICT_ERR_PASS = su_STATE_ERR_PASS,
    /*! Mapped to \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}, but only honoured for
@@ -118,7 +122,7 @@ enum su_cs_dict_flags{
    su_CS_DICT_NILISVALO = su_CS_DICT_NIL_IS_VALID_OBJECT,
 
    su__CS_DICT_CREATE_MASK = su_CS_DICT_POW2_SPACED |
-         su_CS_DICT_OWNS | su_CS_DICT_CASE |
+         su_CS_DICT_OWNS | su_CS_DICT_STRONG | su_CS_DICT_CASE |
          su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
          su_CS_DICT_ERR_PASS | su_CS_DICT_NIL_IS_VALID_OBJECT
 };
@@ -180,7 +184,8 @@ EXPORT SHADOW struct su_cs_dict *su_cs_dict_create_copy(
 EXPORT void su_cs_dict_gut(struct su_cs_dict *self);
 
 /*! Assign \a{t}, and return 0 on success or, depending on the
- * \r{su_CS_DICT_ERR_PASS} setting, the corresponding \r{su_state_err()}.
+ * \r{su_CS_DICT_ERR_PASS} setting, the corresponding \r{su_state_err()}
+ * (also see \r{su_clone_fun}).
  * \remarks{The element order of \SELF and \a{t} may not be identical.}
  * \copydoc{su_assign_fun} */
 EXPORT s32 su_cs_dict_assign(struct su_cs_dict *self,
@@ -341,7 +346,9 @@ INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
    su__cs_dict_stats(self);
 #endif
 }
+/* }}} */
 
+/* view {{{ */
 /*!
  * \defgroup CS_DICT_VIEW View of and for su_cs_dict
  * \ingroup CS_DICT
@@ -349,6 +356,7 @@ INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
  *
  * This implements an associative unidirectional view type.
  * Whereas it documents C++ interfaces, \r{su/view.h} also applies to C views.
+ *@{
  */
 
 enum su__cs_dict_view_move_types{
@@ -501,8 +509,10 @@ INLINE sz su_cs_dict_view_cmp(struct su_cs_dict_view const *self,
    ASSERT_RET(t, 1);
    return (self->csdv_node == t->csdv_node);
 }
+/*! @} *//* }}} */
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -514,6 +524,7 @@ NSPC_BEGIN(su)
 
 template<class T,boole OWNS> class cs_dict;
 
+/* cs_dict {{{ */
 /*!
  * \ingroup CS_DICT
  * C++ variant of \r{CS_DICT} (\r{su/cs-dict.h})
@@ -569,6 +580,8 @@ public:
       f_none, /*!< This is 0. */
       /*! \copydoc{su_CS_DICT_POW2_SPACED} */
       f_pow2_spaced = su_CS_DICT_POW2_SPACED,
+      /*! \copydoc{su_CS_DICT_STRONG} */
+      f_strong = su_CS_DICT_STRONG,
       /*! \copydoc{su_CS_DICT_CASE} */
       f_case = su_CS_DICT_CASE,
       /*! \copydoc{su_CS_DICT_HEAD_RESORT} */
@@ -736,6 +749,7 @@ public:
    /*! \copydoc{su_cs_dict_statistics()} */
    void statistics(void) const {su_cs_dict_statistics(this);}
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

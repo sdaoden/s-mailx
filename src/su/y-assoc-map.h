@@ -235,7 +235,7 @@ jerr:
       self->a_T_F(count) = 0;
    }
 
-   ASSERT_NYD_EXEC(t != NIL, rv = su_ERR_FAULT);
+   ASSERT_NYD_EXEC(t != NIL, rv = -su_ERR_FAULT);
 
    if(flags){
       self->a_T_F(flags) = t->a_T_F(flags);
@@ -433,8 +433,12 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
    klen = S(u32,khash);
    if(khash != klen)
       goto jleave;
-   khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) ? su_cs_hash_case_cbuf
-         : su_cs_hash_cbuf)(key, klen);
+   if(self->a_T_F(flags) & a_T_PUBNAME(STRONG))
+      khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE))
+            ? su_cs_hash_strong_case_cbuf : su_cs_hash_strong_cbuf)(key, klen);
+   else
+      khash = ((self->a_T_F(flags) & a_T_PUBNAME(CASE))
+            ? su_cs_hash_case_cbuf : su_cs_hash_cbuf)(key, klen);
 # else
 #  error
 # endif
@@ -608,7 +612,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
          "OWNS_KEYS=%d "
 # endif
 # if a_TYPE == a_TYPE_CSDICT
-         "CASE=%d "
+         "CASE=%d STRONG=%d "
 # endif
          "OWNS=%d "
          "\n"
@@ -626,6 +630,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
 # endif
 # if a_TYPE == a_TYPE_CSDICT
          ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) != 0),
+         ((self->a_T_F(flags) & a_T_PUBNAME(STRONG)) != 0),
 # endif
          ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
       ((self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)) != 0),
