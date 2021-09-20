@@ -35,7 +35,8 @@ CSRC = atomic.c \
 		mutex.c \
 	path.c \
 		prime.c \
-	re.c \
+	random.c \
+		re.c \
 	sort.c \
 		spinlock.c \
 	thread.c \

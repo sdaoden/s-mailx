@@ -18,7 +18,13 @@
 #ifndef su__THREAD_Y
 # define su__THREAD_Y 1
 
-su_USECASE_MX_DISABLED
+# ifdef su_HAVE_SCHED_YIELD
+#  include <sched.h>
+# elif defined su_HAVE_PTHREAD_YIELD
+#  include <pthread.h>
+# else
+#  include "su/time.h"
+# endif
 
 #elif su__THREAD_Y == 1
 # undef su__THREAD_Y
@@ -27,6 +33,20 @@ su_USECASE_MX_DISABLED
 #elif su__THREAD_Y == 2
 # undef su__THREAD_Y
 # define su__THREAD_Y 3
+
+void
+su_thread_yield(void){
+# ifdef su_HAVE_SCHED_YIELD
+   sched_yield(); /* We _are_ single threaded */
+# elif defined su_HAVE_PTHREAD_YIELD
+   pthread_yield();
+# else
+   struct su_timespec ts;
+
+   ts.ts_sec = 0, ts.ts_nano = 0;
+   su_time_nsleep(&ts, NIL);
+# endif
+}
 
 #else
 # error .

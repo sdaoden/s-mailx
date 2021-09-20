@@ -21,10 +21,6 @@
 
 #include "su/code.h"
 
-su_USECASE_MX_DISABLED
-su_EMPTY_FILE()
-#ifdef su_HAVE_MT
-
 #include "su/thread.h"
 #include "su/y-thread.h" /* $(SU_SRCDIR) */
 /*#define NYDPROF_ENABLE*/
@@ -32,14 +28,14 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-/* struct su_thread su__thread_main; -> in core-code.c! */
-
 #include <su/y-thread.h> /* 2. */
+
+/* Initialized in core-code.c! */
+struct su_thread su__thread_main;
 
 #include <su/y-thread.h> /* 3. */
 
 #include "su/code-ou.h"
-#endif /* su_HAVE_MT */
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_THREAD

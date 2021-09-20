@@ -159,6 +159,42 @@ mx_version(struct n_string *s){
    return s;
 }
 
+#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
+FL boole
+mx_random_hook(void **cookie, void *buf, uz len){
+   NYD2_IN;
+   ASSERT(cookie != NIL && *cookie == NIL);
+   UNUSED(cookie);
+
+# if mx_RANDOM_SEED_HOOK == 1
+   arc4random_buf(buf, len);
+# else
+   for(;;){
+      union {u32 i4; char c[4];} r;
+      uz i;
+      char *cp;
+
+      r.i4 = S(u32,arc4random());
+
+      cp = buf;
+      switch((i = len & 3)){
+      case 0: cp[3] = r.c[3]; i = 4; /* FALLTHRU */
+      case 3: cp[2] = r.c[2]; /* FALLTHRU */
+      case 2: cp[1] = r.c[1]; /* FALLTHRU */
+      default: cp[0] = r.c[0]; break;
+      }
+
+      if((len -= i) == 0)
+         break;
+      buf = (cp += i);
+   }
+# endif
+
+   NYD2_OU;
+   return TRU1;
+}
+#endif /* su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3 */
+
 FL uz
 n_screensize(void){
    char const *cp;
