@@ -70,7 +70,7 @@ CTA(a_MEMBAG_BSZ_UPPER <= S32_MAX, "Excesses datatype storage");
 
 /* enum su_mem_bag_alloc_flags == enum su_mem_alloc_flags */
 CTAV(S(u32,su_MEM_BAG_ALLOC_NONE) == S(u32,su_MEM_ALLOC_NONE));
-CTAV(S(u32,su_MEM_BAG_ALLOC_CLEAR) == S(u32,su_MEM_ALLOC_CLEAR));
+CTAV(S(u32,su_MEM_BAG_ALLOC_ZERO) == S(u32,su_MEM_ALLOC_ZERO));
 CTAV(S(u32,su_MEM_BAG_ALLOC_OVERFLOW_OK) == S(u32,su_MEM_ALLOC_OVERFLOW_OK));
 CTAV(S(u32,su_MEM_BAG_ALLOC_NOMEM_OK) == S(u32,su_MEM_ALLOC_NOMEM_OK));
 CTAV(S(u32,su_MEM_BAG_ALLOC_MUSTFAIL) == S(u32,su_MEM_ALLOC_MUSTFAIL));
@@ -642,7 +642,7 @@ jhave_pool:;
          self->mb_auto_huge = mbahp;
       }
 
-      if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
+      if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
@@ -783,7 +783,7 @@ jhave_pool:
       }
       self->mb_lofi_top = mblcp;
 
-      if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
+      if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,

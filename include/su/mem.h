@@ -99,11 +99,21 @@ enum su_mem_alloc_flags{
    /*! Zero memory.
     * \remarks{TODO: until the C++ memory cache is ported this flag will not be
     * honoured by reallocation requests.} */
-   su_MEM_ALLOC_CLEAR = 1u<<1,
+   su_MEM_ALLOC_ZERO = 1u<<1,
+   /*! Try to mark memory so it is not included in core dumps, is not
+    * inherited by child processes upon \c{fork(2)} time, and is zeroed when
+    * the pointer is \r{su_mem_free()}d.
+    * But for the last all mentioned attributes require operating system
+    * support and therefore may or may not be backed by functionality.
+    * \remarks{TODO: until the C++ memory cache is ported this flag will not
+    * do anything.} */
+   su_MEM_ALLOC_CONCEAL = 1u<<2,
+
    /*! Perform overflow checks against 32-bit, not \r{su_UZ_MAX}. */
-   su_MEM_ALLOC_32BIT_OVERFLOW = 1u<<2,
+   su_MEM_ALLOC_32BIT_OVERFLOW = 1u<<3,
    /*! Perform overflow checks against 31-bit, not \r{su_UZ_MAX}. */
-   su_MEM_ALLOC_31BIT_OVERFLOW = 1u<<3,
+   su_MEM_ALLOC_31BIT_OVERFLOW = 1u<<4,
+
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
    su_MEM_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
@@ -225,16 +235,16 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
       su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_NONE, FNAME, LNNO)
 
 /*! \_ */
-#define su_MEM_CALLOC(SZ) su_MEM_ALLOCATE(SZ, 1, su_MEM_ALLOC_CLEAR)
+#define su_MEM_CALLOC(SZ) su_MEM_ALLOCATE(SZ, 1, su_MEM_ALLOC_ZERO)
 /*! \_ */
 #define su_MEM_CALLOC_LOC(SZ,FNAME,LNNO) \
-      su_MEM_ALLOCATE_LOC(SZ, 1, su_MEM_ALLOC_CLEAR, FNAME, LNNO)
+      su_MEM_ALLOCATE_LOC(SZ, 1, su_MEM_ALLOC_ZERO, FNAME, LNNO)
 
 /*! \_ */
-#define su_MEM_CALLOC_N(SZ,NO) su_MEM_ALLOCATE(SZ, NO, su_MEM_ALLOC_CLEAR)
+#define su_MEM_CALLOC_N(SZ,NO) su_MEM_ALLOCATE(SZ, NO, su_MEM_ALLOC_ZERO)
 /*! \_ */
 #define su_MEM_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
-      su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_CLEAR, FNAME, LNNO)
+      su_MEM_ALLOCATE_LOC(SZ, NO, su_MEM_ALLOC_ZERO, FNAME, LNNO)
 
 /*! \_ */
 #define su_MEM_REALLOC(OVP,SZ) su_MEM_REALLOCATE(OVP, SZ, 1, su_MEM_ALLOC_NONE)
@@ -276,10 +286,10 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
 #define su_MEM_TCALLOCF(T,NO,F) \
-   su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)))
+   su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, su_MEM_ALLOC_ZERO | (F)))
 /*! \_ */
 #define su_MEM_TCALLOCF_LOC(T,NO,F,FNAME,LNNO) \
-   su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)),\
+   su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, su_MEM_ALLOC_ZERO | (F)),\
       FNAME, LNNO)
 
 /*! \_ */
@@ -502,11 +512,15 @@ public:
    /*! \copydoc{su_mem_alloc_flags} */
    enum alloc_flags{
       alloc_none = su_MEM_ALLOC_NONE, /*!< \copydoc{su_MEM_ALLOC_NONE} */
-      alloc_clear = su_MEM_ALLOC_CLEAR, /*!< \copydoc{su_MEM_ALLOC_CLEAR} */
+      alloc_zero = su_MEM_ALLOC_ZERO, /*!< \copydoc{su_MEM_ALLOC_ZERO} */
+      /*! \copydoc{su_MEM_ALLOC_CONCEAL} */
+      alloc_conceal = su_MEM_ALLOC_CONCEAL,
+
       /*! \copydoc{su_MEM_ALLOC_32BIT_OVERFLOW} */
       alloc_32bit_overflow = su_MEM_ALLOC_32BIT_OVERFLOW,
       /*! \copydoc{su_MEM_ALLOC_31BIT_OVERFLOW} */
       alloc_31bit_overflow = su_MEM_ALLOC_31BIT_OVERFLOW,
+
       /*! \copydoc{su_MEM_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_ALLOC_NOMEM_OK} */
@@ -555,10 +569,10 @@ public:
 
 /*! \_ */
 #define su_MEM_CNEW(T) \
-   su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_CLEAR | su_MEM_ALLOC_MUSTFAIL)
+   su_MEM_ALLOC_NEW(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL)
 /*! \_ */
 #define su_MEM_CNEW_LOC(T,FNAME,LNNO) \
-   su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_CLEAR | su_MEM_ALLOC_MUSTFAIL,\
+   su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL,\
       FNAME, LNNO)
 
 /*! \_ */
