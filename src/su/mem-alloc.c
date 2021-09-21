@@ -494,7 +494,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
          /* XXX Of course this may run on odd ranges, but once upon a time
           * XXX i will port my C++ cache and then we're fine again (it will not
           * XXX even be handled in here) */
-         if(maf & su_MEM_ALLOC_CLEAR)
+         if(maf & su_MEM_ALLOC_ZERO)
             su_mem_set(rv, 0, size);
 #ifdef su_MEM_ALLOC_DEBUG
          else
