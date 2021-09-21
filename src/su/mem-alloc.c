@@ -366,12 +366,28 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
                " bytes): %s, line %" PRIu32 "\n",
             xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
             p.map_c->mac_file, p.map_c->mac_line);
+      }else{
+         uz i;
+         u8 const *ubp;
+
+         ubp = xp.map_u8p;
+         i = p.map_c->mac_size - p.map_c->mac_user_off;
+
+         while(i-- != 0)
+            if(ubp[i] != 0xBA){
+               anybad |= 1;
+               su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
+                  "! SU memory: FREED BUFFER MODIFIED: %p (%" PRIuZ
+                     " bytes): %s, line %" PRIu32 "\n",
+                  xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
+                  p.map_c->mac_file, p.map_c->mac_line);
+            }
       }
    }
 
    if(anybad)
       su_log_write(((a_mema_conf & su_MEM_CONF_ON_ERROR_EMERG)
-            ? su_LOG_EMERG : su_LOG_CRIT) | su_LOG_F_CORE,
+            ? su_LOG_EMERG : su_LOG_ALERT) | su_LOG_F_CORE,
          "SU memory check: errors encountered\n");
 
    NYD2_OU;
