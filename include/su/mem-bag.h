@@ -97,7 +97,8 @@ struct su_mem_bag;
 /*! Mirrors a subset of the \r{su_mem_alloc_flags}. *//* Equality CTAsserted */
 enum su_mem_bag_alloc_flags{
    su_MEM_BAG_ALLOC_NONE, /*!< \_ */
-   su_MEM_BAG_ALLOC_CLEAR = 1u<<1, /*!< Zero memory. */
+   su_MEM_BAG_ALLOC_ZERO = 1u<<1, /*!< Zero memory. */
+
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
    su_MEM_BAG_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
@@ -258,17 +259,17 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
 
 #  define su_MEM_BAG_SELF_AUTO_CALLOC(SZ) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL)
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_N(SZ,NO) \
       su_MEM_BAG_AUTO_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL)
 #  define su_MEM_BAG_SELF_AUTO_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_AUTO_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_AUTO_TALLOC(T,NO) \
       su_S(T *,su_MEM_BAG_SELF_AUTO_ALLOC_N(sizeof(T), su_S(su_uz,NO)))
@@ -385,17 +386,17 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 
 #  define su_MEM_BAG_SELF_LOFI_CALLOC(SZ) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL)
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_LOC(SZ,FNAME,LNNO) \
       su_MEM_BAG_LOFI_SELF_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, 1,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_N(SZ,NO) \
       su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL)
 #  define su_MEM_BAG_SELF_LOFI_CALLOC_N_LOC(SZ,NO,FNAME,LNNO) \
       su_MEM_BAG_LOFI_ALLOCATE_LOC(su_MEM_BAG_SELF, SZ, NO,\
-         su_MEM_BAG_ALLOC_CLEAR | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
+         su_MEM_BAG_ALLOC_ZERO | su_MEM_BAG_ALLOC_MUSTFAIL, FNAME, LNNO)
 
 #  define su_MEM_BAG_SELF_LOFI_TALLOC(T,NO) \
       su_S(T *,su_MEM_BAG_SELF_LOFI_ALLOC_N(sizeof(T), su_S(su_uz,NO)))
@@ -470,8 +471,9 @@ public:
    enum alloc_flags{
       /*! \copydoc{su_MEM_BAG_ALLOC_NONE} */
       alloc_none = su_MEM_BAG_ALLOC_NONE,
-      /*! \copydoc{su_MEM_BAG_ALLOC_CLEAR} */
-      alloc_clear = su_MEM_BAG_ALLOC_CLEAR,
+      /*! \copydoc{su_MEM_BAG_ALLOC_ZERO} */
+      alloc_zero = su_MEM_BAG_ALLOC_ZERO,
+
       /*! \copydoc{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_BAG_ALLOC_NOMEM_OK} */
