@@ -14,6 +14,7 @@
 su_USECASE_MX_DISABLED
 
 #include <su/atomic.h>
+#include <su/boswap.h>
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
@@ -38,6 +39,7 @@ static uz a_errors;
 
 static void a_abc(void);
 static void a_atomic(void);
+static void a_boswap(void);
 //static void a_cs(void); FIXME
 static void a_cs_dict(void);
    static void a__cs_dict(u32 addflags);
@@ -75,6 +77,7 @@ int main(void){ // {{{
 
    /// Basics (isolated)
 
+   a_boswap();
    a_prime();
    a_time();
    a_utf();
@@ -167,6 +170,60 @@ a_atomic(void){
       su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
    a_X(p, su_6432(U64_C(0xA8B7C6D5E4F3FEFD),0xA8B7C6D5),
       su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
+
+#undef a_X
+}
+// }}}
+
+// boswap {{{
+static void
+a_boswap(void){
+#define a_X(X,V1,V2) do{\
+   CONCAT(u,X) v1, v2;\
+\
+   v1 = V1;\
+   v2 = V2;\
+\
+   if(CONCAT(boswap::swap_,X)(v1) != v2)\
+      a_ERR();\
+   if(CONCAT(boswap::swap_,X)(v2) != v1)\
+      a_ERR();\
+   if(su_BOM_IS_LITTLE()){\
+      if(CONCAT(boswap::big_,X)(v1) != v2)\
+         a_ERR();\
+      if(CONCAT(boswap::big_,X)(v2) != v1)\
+         a_ERR();\
+      if(CONCAT(boswap::little_,X)(v1) != v1)\
+         a_ERR();\
+      if(CONCAT(boswap::little_,X)(v2) != v2)\
+         a_ERR();\
+\
+      if(CONCAT(boswap::net_,X)(v1) != v2)\
+         a_ERR();\
+      if(CONCAT(boswap::net_,X)(v2) != v1)\
+         a_ERR();\
+   }else{\
+      if(CONCAT(boswap::big_,X)(v1) != v1)\
+         a_ERR();\
+      if(CONCAT(boswap::big_,X)(v2) != v2)\
+         a_ERR();\
+      if(CONCAT(boswap::little_,X)(v1) != v2)\
+         a_ERR();\
+      if(CONCAT(boswap::little_,X)(v2) != v1)\
+         a_ERR();\
+\
+      if(CONCAT(boswap::net_,X)(v1) != v1)\
+         a_ERR();\
+      if(CONCAT(boswap::net_,X)(v2) != v2)\
+         a_ERR();\
+   }\
+}while(0);
+
+   a_X(16, 0xA054, 0x54A0)
+   a_X(32, 0xA0C19876, 0x7698C1A0)
+   a_X(64, U64_C(0xA0C19876B2D34321), U64_C(0x2143D3B27698C1A0))
+   a_X(z, su_6432(0xA0C19876B2D34321,0xA0C19876),
+      su_6432(0x2143D3B27698C1A0,0x7698C1A0))
 
 #undef a_X
 }
