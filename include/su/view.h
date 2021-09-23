@@ -30,6 +30,7 @@
 #endif
 
 #include <su/code.h>
+
 su_USECASE_MX_DISABLED
 #if !su_C_LANG || defined CXX_DOXYGEN
 
@@ -50,6 +51,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_unidir_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
 
+/* doc {{{ */
 /*!
  * \defgroup VIEW C++ View superclasses
  * \ingroup COLL
@@ -234,6 +236,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * }}
  * @{
  */
+/* }}} */
 
 /*! \_ */
 enum view_category{

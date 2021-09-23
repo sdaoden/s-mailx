@@ -59,6 +59,7 @@ C_DECL_BEGIN
 
 struct su_mem_bag;
 
+/* {{{ */
 /*!
  * \defgroup MEM_BAG Memory bags
  * \ingroup MEM
@@ -195,7 +196,7 @@ INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
 }
 
 /*
- * Allocation interface: auto
+ * Allocation interface: auto {{{
  */
 
 #ifdef su_HAVE_MEM_BAG_AUTO
@@ -313,9 +314,10 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
 #  endif /* !su_HAVE_DBG_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_AUTO */
+/* }}} */
 
 /*
- * Allocation interface: lofi
+ * Allocation interface: lofi {{{
  */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
@@ -449,8 +451,10 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 #  endif /* !su_HAVE_DBG_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_LOFI */
+/* }}}*/
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -460,6 +464,7 @@ NSPC_BEGIN(su)
 
 class mem_bag;
 
+/* mem_bag {{{ */
 /*!
  * \ingroup MEM_BAG
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
@@ -555,6 +560,7 @@ public:
    }
 #endif /* su_HAVE_MEM_BAG_LOFI */
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

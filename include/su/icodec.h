@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* icodec {{{ */
 /*!
  * \defgroup ICODEC Integer/String conversion
  * \ingroup TEXT
@@ -37,6 +38,7 @@ C_DECL_BEGIN
  * @{
  */
 
+/* idec {{{ */
 /*!
  * \defgroup IDEC Integers from Strings
  * \ingroup ICODEC
@@ -202,8 +204,9 @@ INLINE BITENUM_IS(u32,su_idec_state) su_idec_cp(void *resp, char const *cp,
 #define su_idec_up_cp(RP,CBP,B,CLP) su_idec_up(RP,CBP,su_UZ_MAX,B,CLP)
 /*! \_ */
 #define su_idec_sp_cp(RP,CBP,B,CLP) su_idec_sp(RP,CBP,su_UZ_MAX,B,CLP)
+/*! @} *//* }}} */
 
-/*! @} */
+/* ienc {{{ */
 /*!
  * \defgroup IENC Integers to Strings
  * \ingroup ICODEC
@@ -289,9 +292,10 @@ EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
 /*! \_ */
 #define su_ienc_sp(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_sp,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+/*! @} *//* }}} */
 
-/*! @} */
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -302,6 +306,7 @@ NSPC_BEGIN(su)
 class idec;
 class ienc;
 
+/* idec {{{ */
 /*!
  * \ingroup IDEC
  * C++ variant of \r{IDEC} (\r{su/icodec.h})
@@ -446,7 +451,9 @@ public:
       return su_idec_s64_cp(&resr, cbuf, base, endptr_or_nil);
    }
 };
+/* }}} */
 
+/* ienc {{{ */
 /*!
  * \ingroup IENC
  * C++ variant of \r{IENC} (\r{su/icodec.h})
@@ -519,6 +526,7 @@ public:
       return su_ienc(cbuf, value, base, mode);
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* bits {{{ */
 /*!
  * \defgroup BITS Bit operations
  * \ingroup MISC
@@ -220,8 +221,8 @@ EXTERN uz su_bits_array_find_last_set(uz const *xap, uz xaplen);
 EXTERN uz su_bits_array_find_first_set_after(uz const *xap, uz xaplen,
       uz startbit);
 #endif
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -231,6 +232,7 @@ NSPC_BEGIN(su)
 
 class bits;
 
+/* bits {{{ */
 /*!
  * \ingroup BITS
  * C++ variant of \r{BITS} (\r{su/bits.h})
@@ -325,6 +327,7 @@ public:
    }
 #endif
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

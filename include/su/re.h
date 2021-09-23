@@ -34,6 +34,7 @@ C_DECL_BEGIN
 struct su_re;
 struct su_re_match;
 
+/* re {{{ */
 /*!
  * \defgroup RE Regular expressions
  * \ingroup TEXT
@@ -166,8 +167,8 @@ EXPORT boole su_re_eval_cp(struct su_re *self, char const *input,
 INLINE char const *su_re_get_error_doc(enum su_re_errors error){
    return su__re_error_doc(error);
 }
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -178,6 +179,7 @@ NSPC_BEGIN(su)
 class re;
 //class re::match;
 
+/* re {{{ */
 /*!
  * \ingroup RE
  * C++ variant of \r{RE} (\r{su/re.h})
@@ -305,6 +307,7 @@ public:
       return su_re_get_error_doc(S(su_re_errors,error));
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

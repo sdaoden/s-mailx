@@ -32,6 +32,7 @@ C_DECL_BEGIN
 
 struct su_avopt;
 
+/* avopt {{{ */
 /*!
  * \defgroup AVOPT Command line argument parser
  * \ingroup MISC
@@ -197,8 +198,8 @@ EXPORT s8 su_avopt_parse(struct su_avopt *self);
 EXPORT boole su_avopt_dump_doc(struct su_avopt const *self,
       boole (*ptf)(up cookie, boole has_arg, char const *sopt,
          char const *lopt, char const *doc), up cookie);
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -208,6 +209,7 @@ NSPC_BEGIN(su)
 
 class avopt;
 
+/* avopt {{{ */
 /*!
  * \ingroup AVOPT
  * C++ variant of \r{AVOPT} (\r{su/avopt.h})
@@ -268,6 +270,7 @@ public:
       return su_avopt_dump_doc(this, ptf, cookie);
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

@@ -30,8 +30,10 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* Forwards */
 struct su_timespec;
 
+/* path {{{ */
 /*!
  * \defgroup PATH Operations on (file-) paths
  * \ingroup IO
@@ -102,7 +104,8 @@ EXPORT boole su_path_rmdir(char const *path);
  * \remarks{\c{su/time.h} is not included.} */
 EXPORT boole su_path_touch(char const *path, struct su_timespec const *tsp);
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -114,6 +117,7 @@ NSPC_BEGIN(su)
 
 class path;
 
+/* path {{{ */
 /*!
  * \ingroup PATH
  * C++ variant of \r{PATH} (\r{su/path.h})
@@ -171,6 +175,7 @@ public:
       return su_path_touch(path, S(struct su_timespec const*,tsp));
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* mem_tools {{{ */
 /*!
  * \defgroup MEM_TOOLS Memory tools
  * \ingroup MEM
@@ -64,8 +65,9 @@ INLINE void su_mem_zero(void *vp, uz len){
    void *(*const volatile set_v)(void *, s32, uz) = &su_mem_set;
    (*set_v)(vp, 0, len);
 }
+/*! @} *//* }}} */
 
-/*! @} */
+/* heap memory {{{ */
 /*!
  * \defgroup MEM_CACHE_ALLOC Heap memory
  * \ingroup MEM
@@ -358,8 +360,9 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
    /*! \_ */
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
 #endif /* !su_HAVE_DBG_LOC_ARGS */
+/*! @} *//* }}} */
 
-/*! @} */
+/* heap support {{{ */
 /*!
  * \defgroup MEM_CACHE_SUP Heap "support"
  * \ingroup MEM
@@ -435,8 +438,8 @@ INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
    return FAL0;
 #endif
 }
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -446,10 +449,12 @@ NSPC_BEGIN(su)
 
 class mem;
 
+/* {{{ */
 /*! \_ */
 class mem{
    su_CLASS_NO_COPY(mem);
 public:
+   /* c++ memory tools {{{ */
    /*!
     * \defgroup CXX_MEM_TOOLS C++ memory tools
     * \ingroup MEM_TOOLS
@@ -492,9 +497,10 @@ public:
 
    /*! \copydoc{su_mem_zero()} */
    static void zero(void *vp, uz len) {su_mem_zero(vp, len);}
+   /*! @} *//* }}} */
 
 public:
-   /*! @} */
+   /* c++ heap memory {{{ */
    /*!
     * \defgroup CXX_MEM_CACHE_ALLOC C++ heap memory
     * \ingroup MEM_CACHE_ALLOC
@@ -631,8 +637,10 @@ public:
 # define su_MEM_DEL_HEAP_PRIVATE_LOCOR(T,TP,ORARGS) \
       su_MEM_DEL_HEAP_PRIVATE(T, TP)
 #endif /* !su_HAVE_DBG_LOC_ARGS */
+   /*! @} *//* }}} */
 
-   /*! @} */
+public:
+   /* c++ heap support {{{ */
    /*!
     * \defgroup CXX_MEM_CACHE_SUP C++ heap "support"
     * \ingroup MEM_CACHE_SUP
@@ -664,9 +672,9 @@ public:
       ASSERT_RET_VOID(tptr != NIL);
       tptr->~T();
    }
-
-   /*! @} */
+   /*! @} *//* }}} */
 };
+/* }}} */
 
 NSPC_END(su)
 
