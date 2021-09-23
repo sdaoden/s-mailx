@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* cs {{{ */
 /*!
  * \defgroup CS Byte character data
  * \ingroup TEXT
@@ -260,8 +261,8 @@ INLINE s32 su_cs_to_lower(s32 x){
 INLINE s32 su_cs_to_upper(s32 x){
    return (S(u32,x) <= S8_MAX ? su__cs_toupper[x] : x);
 }
+/*! @} *//* }}} */
 
-/*! @} */
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -274,6 +275,7 @@ NSPC_BEGIN(su)
 
 class cs;
 
+/* CS {{{ */
 /*!
  * \ingroup CS
  * C++ variant of \r{CS} (\r{su/cs.h})
@@ -461,6 +463,7 @@ public:
    /*! \copydoc{su_cs_to_upper()} */
    static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
+/* }}} */
 
 /*!
  * \ingroup CS
