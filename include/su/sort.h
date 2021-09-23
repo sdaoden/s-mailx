@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* sort {{{ */
 /*!
  * \defgroup SORT Sorting of arrays
  * \ingroup MISC
@@ -46,7 +47,8 @@ C_DECL_BEGIN
 EXPORT void su_sort_shell_vpp(void const **arr, uz entries,
       su_compare_fun cmp_or_nil);
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -56,6 +58,7 @@ NSPC_BEGIN(su)
 
 class sort;
 
+/* sort {{{ */
 /*!
  * \ingroup SORT
  * C++ variant of \r{SORT} (\r{su/sort.h})
@@ -72,6 +75,7 @@ public:
          R(su_compare_fun,cmp_or_nil));
    }
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* prime {{{ */
 /*!
  * \defgroup PRIME Prime numbers
  * \ingroup MISC
@@ -59,7 +60,8 @@ EXPORT u32 su_prime_lookup_former(u32 no);
 /*! Next precalculated, maximum is \r{su_PRIME_LOOKUP_MAX}. */
 EXPORT u32 su_prime_lookup_next(u32 no);
 
-/*! @} */
+/*! @} *//* }}} */
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -69,6 +71,7 @@ NSPC_BEGIN(su)
 
 class prime;
 
+/* prime {{{ */
 /*!
  * \ingroup PRIME
  * C++ variant of \r{PRIME} (\r{su/prime.h})
@@ -103,6 +106,7 @@ public:
    /*! \copydoc{su_prime_lookup_next()} */
    static u32 lookup_next(u32 no) {return su_prime_lookup_next(no);}
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>

@@ -30,6 +30,7 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+/* utf {{{ */
 /*!
  * \defgroup UTF Unicode Transformation Formats
  * \ingroup TEXT
@@ -37,6 +38,7 @@ C_DECL_BEGIN
  * @{
  */
 
+/* utf8 {{{ */
 /*!
  * \defgroup UTF8 UTF-8
  * \ingroup UTF
@@ -59,8 +61,9 @@ EXPORT_DATA char const su_utf8_replacer[sizeof su_UTF8_REPLACER];
  * Returns \r{su_U32_MAX} on error, in which case the arguments will have been
  * stepped one byte. */
 EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
+/*! @} *//* }}} */
 
-/*! @} */
+/* utf32 {{{ */
 /*!
  * \defgroup UTF32 UTF-32
  * \ingroup UTF
@@ -75,9 +78,10 @@ EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
  * \a{bp} must be large enough also for the terminating NUL (see
  * \r{su_UTF8_BUFFER_SIZE}), its length will * be returned. */
 EXPORT uz su_utf32_to_8(u32 c, char *bp);
+/*! @} *//* }}} */
 
-/*! @} */
-/*! @} */
+/*! @} *//* }}}*/
+
 C_DECL_END
 #include <su/code-ou.h>
 #if !su_C_LANG || defined CXX_DOXYGEN
@@ -88,6 +92,7 @@ NSPC_BEGIN(su)
 class utf8;
 class utf32;
 
+/* utf8 {{{ */
 /*!
  * \ingroup UTF8
  * C++ variant of \r{UTF8} (\r{su/utf.h})
@@ -108,7 +113,9 @@ public:
       return su_utf8_to_32(bdat, blen);
    }
 };
+/* }}} */
 
+/* utf32 {{{ */
 /*!
  * \ingroup UTF32
  * C++ variant of \r{UTF32} (\r{su/utf.h})
@@ -122,6 +129,7 @@ public:
    /*! \copydoc{su_utf32_to_8()} */
    static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
 };
+/* }}} */
 
 NSPC_END(su)
 # include <su/code-ou.h>
