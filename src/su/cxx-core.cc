@@ -20,6 +20,7 @@
 #define su_SOURCE_CPP_CORE_CODE
 
 #include "su/code.h"
+
 su_USECASE_MX_DISABLED
 
 #include <stdarg.h>

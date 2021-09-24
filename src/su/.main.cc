@@ -10,8 +10,10 @@
 //#define a_TRACE
 
 #include <su/code.h>
+
 su_USECASE_MX_DISABLED
 
+#include <su/atomic.h>
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
@@ -35,6 +37,7 @@ NSPC_USE(su)
 static uz a_errors;
 
 static void a_abc(void);
+static void a_atomic(void);
 //static void a_cs(void); FIXME
 static void a_cs_dict(void);
    static void a__cs_dict(u32 addflags);
@@ -48,7 +51,7 @@ static void a_time(void);
 static void a_utf(void);
 
 int main(void){ // {{{
-   state::create("SU@C++", state::debug | log::debug);
+   state::create("SU@C++", state::debug | log::debug, state::err_nopass);
 
    if(log::get_show_level())
       a_ERR();
@@ -65,6 +68,10 @@ int main(void){ // {{{
    log::write(log::info, "Redemption songs\n");
 
    a_abc();
+
+   /// MT
+
+   a_atomic();
 
    /// Basics (isolated)
 
@@ -118,6 +125,50 @@ a_abc(void){
    FIELD_RANGE_ZERO(bla, &a, i1, i5);
    if(a.i1 != 0 || a.i2 != 0 || a.i3 != 0 || a.i4 != 0 || a.i5 != 0)
       a_ERR();
+}
+// }}}
+
+// atomic {{{
+static void
+a_atomic(void){
+#define a_X(X,Y,Z) do{\
+   CONCAT(u,X) ov, nv;\
+   CONCAT(u,X) ATOMIC store;\
+\
+   store = ov = Y;\
+   nv = Z;\
+   if(CONCAT(atomic::xchg_,X)(&store, nv) != ov)\
+      a_ERR();\
+   if(store != nv)\
+      a_ERR();\
+\
+   if(CONCAT(atomic::busy_xchg_,X)(&store, ov) != nv)\
+      a_ERR();\
+   if(store != ov)\
+      a_ERR();\
+\
+   if(CONCAT(atomic::cas_,X)(&store, nv, ov))\
+      a_ERR();\
+   if(!CONCAT(atomic::cas_,X)(&store, ov, nv))\
+      a_ERR();\
+   if(store != nv)\
+      a_ERR();\
+\
+   CONCAT(atomic::busy_cas_,X)(&store, nv, ov);\
+   if(store != ov)\
+      a_ERR();\
+}while(0);
+
+   a_X(8, 0xA8, 0x9A)
+   a_X(16, 0xA8B7, 0x9AA1)
+   a_X(32, 0xA8B7C6D5, 0x9AA1B2D3)
+   a_X(64, U64_C(0xA8B7C6D5E4F3FEFD), U64_C(0x9AA1B2D3AFFEDEAD))
+   a_X(z, su_6432(U64_C(0xA8B7C6D5E4F3FEFD),0xA8B7C6D5),
+      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
+   a_X(p, su_6432(U64_C(0xA8B7C6D5E4F3FEFD),0xA8B7C6D5),
+      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
+
+#undef a_X
 }
 // }}}
 
