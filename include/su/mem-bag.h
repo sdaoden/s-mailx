@@ -32,7 +32,7 @@
    /*!
     * \ingroup MEM_BAG
     * Defined if memory bags are available.
-    * They are if just any memory allocation type is supported.
+    * They are if just any memory bag allocation type is supported.
     */
 # define su_HAVE_MEM_BAG
 #endif

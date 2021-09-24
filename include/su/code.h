@@ -74,6 +74,22 @@
  * \SU requires an eight (8) or more byte alignment on the stack and heap.
  * This is because some of its facilities may use the lower (up to) three
  * bits of pointers for internal, implementation purposes.
+ * }\li{
+ * \SU object instances have a \c{_create()} / \c{_gut()} life cycle.
+ * Transparent objects instead use a \c{_new()} / \c{_del()} one.
+ * Non-objects (value carriers etc.) use \c{_setup()} if an equivalent to
+ * a constructor is needed.
+ *
+ * Many objects have an additional \c{_open()} / \c{_close()} or similar usage
+ * resource aquisition lifetime.
+ * If not, however, and in order to deal with overflow and out-of-memory
+ * hardening as above many \a{_create()} interfaces return an error code
+ * instead of \SELF.
+ * For such types the C++ object constructor will only perform memory
+ * clearance, an additional \c{_create()} to deal with resource aquisition will
+ * be required to perform true initialization.
+ * (Usually an \a{estate} argument as documented for \r{su_clone_fun} is then
+ * available to fine-tune error handling.)
  * }}
  */
 
@@ -89,6 +105,11 @@
  * \brief Overall \SU configuration (\r{su/code.h})
  *
  * It reflects the chosen configuration and the build time environment.
+ *
+ * \remarks{The \c{su_HAVE_xy} preprocessor macros are among the only
+ * preprocessor symbols which must be tested via \c{defined}.
+ * Normally \SU always defines preprocessor constants, and booleans are denoted
+ * via the values 0 and 1, respectively.}
  * @{
  */
 
@@ -115,7 +136,7 @@
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
    /*! Multithreading support available?
     * This is a subfeature of \r{SMP}. */
-# define su_HAVE_MT
+#  define su_HAVE_MT
 
    /* Values */
 # define su_PAGE_SIZE /*!< \_ */
@@ -687,6 +708,13 @@ do if(!(X)){\
    goto su_NYD_OU_LABEL;\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
+
+#if !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 201112l || \
+      defined DOXYGEN
+# define su_ATOMIC volatile /*!< \c{_Atomic volatile}, or \c{volatile}. */
+#else
+# define su_ATOMIC _Atomic volatile
+#endif
 
 /*! There are no bit-\c{enum}erations, but we use \c{enum}s as such, since the
  * only other option for bit constants would be preprocessor macros.
@@ -1266,15 +1294,19 @@ enum su_state_err_flags{
 
 /* ..third byte: misc flags */
 
-/*! \_ */
+/*! State flags of \r{su_state_has()}. */
 enum su_state_flags{
    su_STATE_NONE, /*!< No flag: this is 0. */
    su_STATE_DEBUG = 1u<<16, /*!< \_ */
    su_STATE_VERBOSE = 1u<<17, /*!< \_ */
+   /*! With \r{su_HAVE_MT}: \r{SMP} via multi-threading shall be expected.
+    * \remarks{Only if this flag was set when \r{su_state_create()} has been
+    * called \SU will be able to work with multiple \r{THREAD}.} */
+   su_STATE_MT = 1u<<18, /* TODO <> su_state_create() should act */
    /*! Reproducible behaviour switch.
     * See \r{su_reproducible_build},
     * and \xln{https://reproducible-builds.org}. */
-   su_STATE_REPRODUCIBLE = 1u<<18
+   su_STATE_REPRODUCIBLE = 1u<<19
 };
 
 enum su__state_flags{
@@ -1293,10 +1325,11 @@ MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
 #endif
 
 #ifdef su_HAVE_MT
-enum su__glock_type{
-   su__GLOCK_STATE,
-   su__GLOCK_LOG,
-   su__GLOCK_MAX = su__GLOCK_LOG
+enum su__glck_type{
+   su__GLCK_STATE, /* su_state_set() lock */
+   su__GLCK_GI9R, /* Global initializer (first-use-time-init) lock */
+   su__GLCK_LOG, /* su_log_*write*() lock */
+   su__GLCK_MAX = su__GLCK_LOG
 };
 #endif
 
@@ -1345,6 +1378,7 @@ enum{
    su__EX_MAX = su_EX_CONFIG
 };
 
+#if DVLOR(1, 0) || defined DOXYGEN
 /*! Actions for \r{su_nyd_chirp()}. */
 enum su_nyd_action{
    su_NYD_ACTION_ENTER, /*!< Function entry (once per function). */
@@ -1356,6 +1390,25 @@ enum{
    su__NYD_ACTION_SHIFT = 29,
    su__NYD_ACTION_SHIFT_MASK = (1u << su__NYD_ACTION_SHIFT) - 1
 };
+
+struct su_nyd_info{
+   char const *ni_file;
+   char const *ni_fun;
+   u32 ni_chirp_line;
+   u32 ni_level;
+};
+
+struct su_nyd_control{
+   u32 nc_level;
+   u16 nc_curr;
+   boole nc_skip;
+   u8 nc__pad[1];
+   struct su_nyd_info nc_infos[su_NYD_ENTRIES];
+};
+# ifndef DOXYGEN
+MCTA(su_NYD_ENTRIES <= U16_MAX, "Data type excess")
+# endif
+#endif /* DVLOR(1,0) */
 
 union su__bom_union{
    char bu_buf[2];
@@ -1400,12 +1453,22 @@ EXPORT_DATA char const su_reproducible_build[];
  * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
-/* */
-EXPORT void su__state_create(char const *argv0);
-
 #ifdef su_HAVE_MT
-EXPORT void su__glock(enum su__glock_type gt);
-EXPORT void su__gunlock(enum su__glock_type gt);
+EXPORT void su__glck(enum su__glck_type gt);
+EXPORT void su__gnlck(enum su__glck_type gt);
+# if !defined su_HAVE_MT && defined NDEBUG && !defined su_SOURCE_CORE_CODE
+#  define su__glck(X) su_UNUSED(0)
+#  define su__gnlck(X) su_UNUSED(0)
+# endif
+# define su__glck_gi9r() su__glck(su__GLCK_GI9R)
+# define su__gnlck_gi9r() su__gnlck(su__GLCK_GI9R)
+#endif
+
+#ifndef su__glck_gi9r
+# define su__glck(X) su_UNUSED(0)
+# define su__gnlck(X) su_UNUSED(0)
+# define su__glck_gi9r() su_UNUSED(0)
+# define su__gnlck_gi9r() su_UNUSED(0)
 #endif
 
 /*! Initialize \SU.
@@ -1413,6 +1476,15 @@ EXPORT void su__gunlock(enum su__glock_type gt);
  * and then be assigned to \r{su_program}.
  * \a{flags} may be a bitmix of what is allowed for
  * \r{su_state_set()} and \r{su_log_set_level()}.
+ * See \r{su_clone_fun} for the meaning of \a{estate} and the return value;
+ * \r{su_STATE_ERR_NOPASS} might be of interest in particular;
+ * note \SU is not usable unless this returns \r{su_STATE_NONE}!
+ * The following example initializes the library and emergency exits on error:
+ *
+ * \cb{
+ *    su_state_create("StationToStation", (su_STATE_DEBUG | su_LOG_DEBUG),
+ *       su_STATE_ERR_NOPASS);
+ * }
  *
  * \remarks{This \b{must} be called \b{first}.
  * (Except \r{su_nyd_chirp()} which is capable to deal.)
@@ -1422,15 +1494,7 @@ EXPORT void su__gunlock(enum su__glock_type gt);
  *
  * \remarks{Dependent upon the actual configuration it may make use of native
  * libraries and therefore cause itself resource usage / initialization.} */
-SINLINE void su_state_create(char const *program_or_nil, uz flags){
-   flags &= (su__STATE_GLOBAL_MASK | su__STATE_LOG_MASK)
-   su__state = flags | su__STATE_CREATED;
-
-#ifndef su_HAVE_MT
-   if(program_or_nil != NIL)
-#endif
-      su__state_create(program_or_nil);
-}
+EXPORT s32 su_state_create(char const *program_or_nil, uz flags, u32 estate);
 
 /*! Interaction with the SU library (global) state machine.
  * This covers \r{su_state_log_flags}, \r{su_state_err_type},
@@ -1448,18 +1512,19 @@ INLINE boole su_state_has(uz flags){
    return ((su__state & flags) == flags);
 }
 
-/*! A bitmix of (a subset of) \r{su_state_err_flags} and \r{su_state_flags}. */
+/*! A bitmix of (r\{su_state_err_type} and) (a subset of)
+ * \r{su_state_err_flags} as well as \r{su_state_flags}. */
 INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
-   MT( su__glock(su__GLOCK_STATE); )
+   MT( su__glck(su__GLCK_STATE); )
    su__state |= flags & su__STATE_GLOBAL_MASK;
-   MT( su__gunlock(su__GLOCK_STATE); )
+   MT( su__gnlck(su__GLCK_STATE); )
 }
 
 /*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
-   MT( su__glock(su__GLOCK_STATE); )
+   MT( su__glck(su__GLCK_STATE); )
    su__state &= ~(flags & su__STATE_GLOBAL_MASK);
-   MT( su__gunlock(su__GLOCK_STATE); )
+   MT( su__gnlck(su__GLCK_STATE); )
 }
 
 /*! Notify an error to the \SU (global) state machine.
@@ -1470,12 +1535,12 @@ INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
 EXPORT s32 su_state_err(enum su_state_err_type err,
       BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
 
-/*! Get the errno.
+/*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
 EXPORT s32 su_err_no(void);
 
-/*! \_ */
-EXPORT s32 su_err_set_no(s32 eno);
+/*! Set the \SU error number of the calling thread. */
+EXPORT void su_err_set_no(s32 eno);
 
 /*! Return string(s) describing C error number \a{eno}.
  * Effectively identical to \r{su_err_name()} if either the compile-time
@@ -1490,7 +1555,8 @@ EXPORT char const *su_err_name(s32 eno);
  * Returns the fallback error as a negative value if none found */
 EXPORT s32 su_err_by_name(char const *name);
 
-/*! \_ */
+/*! Set the \SU error number of the calling thread to the value of the
+ * ISO C \c{errno} variable, and return it. */
 EXPORT s32 su_err_no_by_errno(void);
 
 /*! \_ */
@@ -1499,12 +1565,12 @@ INLINE enum su_log_level su_log_get_level(void){
 }
 
 /*! \_ */
-INLINE void su_log_set_level(enum su_log_level nlvl){
+INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
    uz lvl;
-   /*MT( su__glock(su__GLOCK_STATE); )*/
+   MT( su__glck(su__GLCK_STATE); )
    lvl = S(uz,nlvl) & su__STATE_LOG_MASK;
    su__state = (su__state & su__STATE_GLOBAL_MASK) | lvl;
-   /*MT( su__gunlock(su__GLOCK_STATE); )*/
+   MT( su__gnlck(su__GLCK_STATE); )
 }
 
 /*! \_ */
@@ -1529,16 +1595,17 @@ EXPORT void su_perr(char const *msg, s32 eno_or_0);
 
 /*! SMP lock the global log domain. */
 INLINE void su_log_lock(void){
-   MT( su__glock(su__GLOCK_LOG); )
+   MT( su__glck(su__GLCK_LOG); )
 }
 
 /*! SMP unlock the global log domain. */
 INLINE void su_log_unlock(void){
-   MT( su__gunlock(su__GLOCK_LOG); )
+   MT( su__gnlck(su__GLCK_LOG); )
 }
 
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
+ * If it survives it will \r{su_err_set_no()} \ERR{FAULT}.
  * In order to get rid of linkage define \c{su_ASSERT_EXPAND_NOTHING}. */
 EXPORT void su_assert(char const *expr, char const *file, u32 line,
       char const *fun, boole crash);
@@ -1547,22 +1614,23 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #endif
 
 #if DVLOR(1, 0) || defined DOXYGEN
-/*! When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
+/*! Control NYD for the calling thread.
+ * When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
 EXPORT void su_nyd_set_disabled(boole disabled);
 
-/*! Reset \r{su_nyd_chirp()} recursion level.
+/*! Reset \r{su_nyd_chirp()} recursion level of the calling thread.
  * In event-loop driven software that uses long jumps it may be desirable to
  * reset the recursion level at times.
  * \a{nlvl} is only honoured when smaller than the current recursion level. */
 EXPORT void su_nyd_reset_level(u32 nlvl);
 
-/*! Not-yet-dead chirp.
+/*! Not-yet-dead chirp of the calling thread.
  * Normally used from the support macros in code-{in,ou}.h when \vr{su_FILE}
  * is defined. */
 EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun);
 
-/*! Dump all existing not-yet-dead entries via \a{ptf}.
+/*! Dump all existing not-yet-dead entries of the calling thread via \a{ptf}.
  * \a{buf} is NUL terminated despite \a{blen} being passed, too. */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
@@ -1587,7 +1655,15 @@ typedef void *(*su_new_fun)(u32 estate);
  * \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW}, dependent on the
  * global \r{su_state_get()} / \r{su_state_has()} setting,
  * as well as for other errors and with other \r{su_err_number}s, of course.
- * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
+ * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}.
+ *
+ * Many \SU functions take an \a{estate} parameter that has the same meaning as
+ * for this function.
+ * However, many return a \r{s32}, which then either is \r{su_STATE_NONE} upon
+ * success, one of the \r{su_state_err_type}s for hardening errors, or
+ * a negative \r{su_err_number} for "normal" errors.
+ * (In \r{su_ASSERT()} enabled code even \c{-su_ERR_FAULT} may happen.)
+ * Those which do not usually set \r{su_err_no()}. */
 typedef void *(*su_clone_fun)(void const *t, u32 estate);
 
 /*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or
@@ -1929,8 +2005,9 @@ public:
    };
 
    /*! \copydoc{su_state_create()} */
-   static void create(char const *program_or_nil, uz flags){
-      su_state_create(program_or_nil, flags);
+   static s32 create(char const *program_or_nil, uz flags,
+         u32 estate=none){
+      return su_state_create(program_or_nil, flags, estate);
    }
 
    /*! \copydoc{su_state_get()} */
@@ -2210,10 +2287,11 @@ NSPC_END(su)
  *
  * In \SU, and by default, collections learn how to deal with managed objects
  * through \r{su_toolbox} objects.
+ * (For behaviour peculiarities see \r{su_clone_fun} and \r{su_assign_fun}.)
+ *
  * The C++ variants deduce many more things, and automatically, through
  * (specializations of) \r{type_traits}, \r{type_toolbox}, and
  * \r{auto_type_toolbox}.
- *
  * Because the C++ versions are template wrappers around their \c{void*} based
  * C "supertypes", it is inefficient or even impossible to use \SU collections
  * for plain-old-data; to overcome this restriction (some) specializations to
@@ -2246,6 +2324,21 @@ NSPC_END(su)
  *
  * This covers general \r{su_HAVE_SMP}, as well as its multi-threading subset
  * \r{su_HAVE_MT}.
+ *
+ * \remarks{Many facilities in this group are available even if \r{su_HAVE_MT}
+ * is not available: they expand to no-op inline dummies, then.}
+ *
+ * \head1{Object initialization issues}
+ *
+ * In most real \r{su_HAVE_MT} cases the \SU objects are backed by native
+ * implementations, the initialization of which is highly backend dependent.
+ * Since \SU offers initialization macros like \r{su_MUTEX_I9R()} true resource
+ * aquisition might be performed upon first object functionality usage (for
+ * example, mutex locking).
+ * If initialization macros are used a resource aquisition failure results in
+ * a program abortion via \r{su_LOG_EMERG} log.
+ * If that is not acceptible the normal object \c{_create()} (see \r{mainpage})
+ * function has to be used, which allows error handling.
  */
 
 /*!

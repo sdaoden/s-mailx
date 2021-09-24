@@ -58,33 +58,32 @@
 # define su_HAVE_RE /* Unconditionally for now xxx */
 # undef su_HAVE_SMP /* for now xxx */
 #  undef su_HAVE_MT
+/*#  define su_ATOMIC_IS_REAL <-> ISO C11++ at SU compile time or other impl */
+/*#  define su__MUTEX_IMPL_SIZE "sizeof(pthread_mutex_t)" */
+/*#  define su__MUTEX_IMPL_ALIGNMENT 128 <-> the real sizeof */
+/*#  define su__THREAD_IMPL_SIZE "sizeof(pthread_t)" */
+/*#  define su__THREAD_IMPL_ALIGNMENT 128 <-> the real sizeof */
 
 #elif defined su_USECASE_MX /* sue_USECASE_SU */
 # ifdef mx_HAVE_DEBUG
 #  define su_HAVE_DEBUG
 # endif
-
 # ifdef mx_HAVE_DEVEL
 #  define su_HAVE_DEVEL
 # endif
-
 # ifdef mx_HAVE_DOCSTRINGS
 #  define su_HAVE_DOCSTRINGS
 # endif
-
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
 # ifdef mx_HAVE_NOMEMDBG
 #  define su_HAVE_MEM_CANARIES_DISABLE
 # endif
-
-# undef su_HAVE_MT
-
 # ifdef mx_HAVE_REGEX
 #  define su_HAVE_RE
 # endif
-
 # undef su_HAVE_SMP
+#  undef su_HAVE_MT
 #else /* su_USECASE_MX */
 # error Unknown SU usecase
 #endif
