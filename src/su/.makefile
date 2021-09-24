@@ -15,16 +15,31 @@ SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
 CXXFLAGS+=-Wall -pedantic $(SUF)
 CFLAGS+=-Wall -pedantic $(SUF)
 
-CSRC = avopt.c \
-	core-code.c core-errors.c \
-		cs-alloc.c cs-ctype.c cs-dict.c cs-find.c cs-misc.c \
-		cs-rfind.c cs-tbox.c cs-tools.c \
-	icodec-dec.c icodec-enc.c \
-	mem-alloc.c mem-bag.c mem-tools.c \
-	path.c prime.c \
+CSRC = atomic.c \
+		avopt.c \
+	core-code.c \
+		core-errors.c \
+		cs-alloc.c \
+		cs-ctype.c \
+		cs-dict.c \
+		cs-find.c \
+		cs-misc.c \
+		cs-rfind.c \
+		cs-tbox.c \
+		cs-tools.c \
+	icodec-dec.c \
+		icodec-enc.c \
+	mem-alloc.c \
+		mem-bag.c \
+		mem-tools.c \
+		mutex.c \
+	path.c \
+		prime.c \
 	re.c \
 	sort.c \
-	time-sleep.c time-spec.c time-utils.c
+		spinlock.c \
+	thread.c \
+		time-sleep.c time-spec.c time-utils.c \
 	utf.c
 CXXSRC = cxx-core.cc \
 	.main.cc

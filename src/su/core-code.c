@@ -1,5 +1,5 @@
 /*@ Implementation of code.h: (unavoidable) basics.
- *@ TODO Log: domain should be configurable
+ *@ TODO Log: domain should be configurable; we need log domain objects!
  *@ TODO Assert: the C++ lib has per-thread assertion states, s_nolog to
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
  *
@@ -33,26 +33,18 @@
 
 #include "su/cs.h"
 #include "su/icodec.h"
+#include "su/thread.h"
+
+#ifdef su_HAVE_MT
+# include "su/mutex.h"
+# include "su/spinlock.h"
+#endif
 
 /*#include "su/code.h"*/
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
-
-/* Normally in config.h */
-#if (defined su_HAVE_DEBUG || defined su_HAVE_DEVEL) && !defined su_NYD_ENTRIES
-# define su_NYD_ENTRIES 1000
-#endif
-
-#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
-struct a_core_nyd_info{
-   char const *cni_file;
-   char const *cni_fun;
-   u32 cni_chirp_line;
-   u32 cni_level;
-};
-#endif
 
 static char const a_core_lvlnames[][8] = {
    FIELD_INITI(su_LOG_EMERG) "emerg",
@@ -76,14 +68,17 @@ CTAV(su_NYD_ACTION_ENTER == 0);
 CTAV(su_NYD_ACTION_LEAVE == 1);
 CTAV(su_NYD_ACTION_ANYWHERE == 2);
 static char const a_core_nyd_desc[3] = "><=";
-
-MT( static uz a_core_glock_recno[su__GLOCK_MAX +1]; )
-
-static u32 a_core_nyd_curr, a_core_nyd_level;
-static boole a_core_nyd_skip;
-static struct a_core_nyd_info a_core_nyd_infos[su_NYD_ENTRIES];
 #endif
 
+#ifdef su_HAVE_MT
+static struct su_spinlock a_core_glck_state;
+static struct su_mutex a_core_glck_gi9r;
+static struct su_mutex a_core_glck_log;
+#endif
+
+DVL( static struct su_nyd_control a_core_thread_main_nyd; )
+
+struct su_thread su__thread_main;
 uz su__state;
 
 char const su_empty[] = "";
@@ -102,7 +97,7 @@ SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
 /* */
 #if DVLOR(1, 0)
 static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
-      uz blen), up cookie, struct a_core_nyd_info const *cnip);
+      uz blen), up cookie, struct su_nyd_info const *nip);
 #endif
 
 SINLINE void
@@ -159,14 +154,14 @@ jnomx:
 #if DVLOR(1, 0)
 static void
 a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
-      up cookie, struct a_core_nyd_info const *cnip){
+      up cookie, struct su_nyd_info const *nip){
    char buf[80 +1], c;
    union {int i; uz z;} u;
    char const *sep, *cp;
 
    /* Ensure actual file name can be seen, unless multibyte comes into play */
    sep = su_empty;
-   cp = cnip->cni_file;
+   cp = nip->ni_file;
    for(u.z = 0; (c = cp[u.z]) != '\0'; ++u.z)
       if(S(uc,c) & 0x80){
          u.z = 0;
@@ -179,10 +174,10 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
 
    u.i = snprintf(buf, sizeof(buf) - 1,
          "%c[%2" PRIu32 "] %.25s (%s%.40s:%" PRIu32 ")\n",
-         a_core_nyd_desc[(cnip->cni_chirp_line >> su__NYD_ACTION_SHIFT
-            ) & su__NYD_ACTION_MASK], cnip->cni_level,
-         cnip->cni_fun, sep, cp,
-         (cnip->cni_chirp_line & su__NYD_ACTION_SHIFT_MASK));
+         a_core_nyd_desc[(nip->ni_chirp_line >> su__NYD_ACTION_SHIFT
+            ) & su__NYD_ACTION_MASK], nip->ni_level,
+         nip->ni_fun, sep, cp,
+         (nip->ni_chirp_line & su__NYD_ACTION_SHIFT_MASK));
    if(u.i > 0){
       u.z = u.i;
       if(u.z >= sizeof(buf) -1){
@@ -195,14 +190,75 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
 }
 #endif /* DVLOR(1, 0) */
 
+#ifdef su_HAVE_MT
 void
-su__state_create(char const *program_or_nil){
-   /* TODO initialize the global locks (so native type is ready NOW) */
+su__glck(enum su__glck_type gt){
+   NYD2_IN;
+
+   switch(gt){
+   case su__GLCK_STATE:
+      su_spinlock_lock(&a_core_glck_state);
+      break;
+   case su__GLCK_GI9R:
+      su_MUTEX_LOCK(&a_core_glck_gi9r);
+      break;
+   case su__GLCK_LOG:
+      su_MUTEX_LOCK(&a_core_glck_log);
+      break;
+   }
+
+   NYD2_OU;
+}
+
+void
+su__gnlck(enum su__glck_type gt){
+   NYD2_IN;
+
+   switch(gt){
+   case su__GLCK_STATE:
+      su_spinlock_unlock(&a_core_glck_state);
+      break;
+   case su__GLCK_GI9R:
+      su_MUTEX_UNLOCK(&a_core_glck_gi9r);
+      break;
+   case su__GLCK_LOG:
+      su_MUTEX_UNLOCK(&a_core_glck_log);
+      break;
+   }
+
+   NYD2_OU;
+}
+#endif /* su_HAVE_MT */
+
+s32
+su_state_create(char const *program_or_nil, uz flags, u32 estate){
+   s32 rv;
+   UNUSED(estate);
+
+   rv = su_STATE_NONE;
+
+   flags &= (su__STATE_GLOBAL_MASK | su__STATE_LOG_MASK);
+   su__state = flags;
+
+   /* */
+   su__thread_main.t_.flags = su_THREAD_MAIN;
+   su__thread_main.t_.name = "main";
+   DVL( su__thread_main.t_.nydctl = &a_core_thread_main_nyd; )
 
 #ifdef su_HAVE_MT
-   if(program_or_nil != NIL)
+   if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))
+      goto jerr;
+   if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)))
+      goto jerr;
+   if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)))
+      goto jerr;
 #endif
-   {
+
+   /* Initialized! */
+   su__state |= su__STATE_CREATED;
+
+   /**/
+   if(program_or_nil != NIL){
       char *cp;
 
       if((cp = su_cs_rfind_c(program_or_nil, '/')) != NIL && *++cp != '\0')
@@ -210,47 +266,22 @@ su__state_create(char const *program_or_nil){
 
       su_program = program_or_nil;
    }
-}
 
 #ifdef su_HAVE_MT
-void
-su__glock(enum su__glock_type gt){
-   NYD2_IN;
+jleave:
+#endif
+   return rv;
 
-   switch(gt){
-   case su__GLOCK_STATE: /* XXX spinlock */
-      break;
-   case su__GLOCK_LOG: /* XXX mutex */
-      break;
+#ifdef su_HAVE_MT
+jerr:
+   if(!(estate & su_STATE_ERR_PASS) &&
+         ((estate & su_STATE_ERR_NOPASS) ||
+          !(rv & estate) || !(su__state & rv))){
+      abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
    }
-
-# if DVLOR(1, 0)
-   ASSERT(a_core_glock_recno[gt] != UZ_MAX);
-   ++a_core_glock_recno[gt];
-# endif
-
-   NYD2_OU;
+   goto jleave;
+#endif
 }
-
-void
-su__gunlock(enum su__glock_type gt){
-   NYD2_IN;
-
-   switch(gt){
-   case su__GLOCK_STATE: /* XXX spinlock */
-      break;
-   case su__GLOCK_LOG: /* XXX mutex */
-      break;
-   }
-
-# if DVLOR(1, 0)
-   ASSERT(a_core_glock_recno[gt] > 0);
-   --a_core_glock_recno[gt];
-# endif
-
-   NYD2_OU;
-}
-#endif /* su_HAVE_MT */
 
 s32
 su_state_err(enum su_state_err_type err,
@@ -303,22 +334,20 @@ jdolog:
 }
 
 s32
-su_err_no(void){
-   s32 rv;
-   rv = errno; /* TODO a_core_eno */
-   return rv;
+su_err_no(void){ /* xxx INLINE? */
+   return su_thread_err_no(su_thread_self());
 }
 
-s32
-su_err_set_no(s32 eno){
-   errno = eno; /* TODO a_core_eno; */
-   return eno;
+void
+su_err_set_no(s32 eno){ /* xxx INLINE? */
+   su_thread_set_err_no(su_thread_self(), eno);
 }
 
 s32
 su_err_no_by_errno(void){
    s32 rv;
-   rv = /*TODO a_core_eno =*/errno;
+
+   su_thread_set_err_no(su_thread_self(), rv = errno);
    return rv;
 }
 
@@ -354,46 +383,53 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
       "  File %.60s, line %" PRIu32 "\n"
       "  Function %.142s\n",
       expr, file, line, fun);
+   su_err_set_no(su_ERR_FAULT);
 }
 
 #if DVLOR(1, 0)
 void
 su_nyd_set_disabled(boole disabled){
-   a_core_nyd_skip = (disabled != FAL0);
+   su_thread_self()->t_.nydctl->nc_skip = (disabled != FAL0);
 }
 
 void
 su_nyd_reset_level(u32 nlvl){
-   if(nlvl < a_core_nyd_level)
-      a_core_nyd_level = nlvl;
+   struct su_nyd_control *ncp;
+
+   ncp = su_thread_self()->t_.nydctl;
+
+   if(nlvl < ncp->nc_level)
+      ncp->nc_level = nlvl;
 }
 
 void
 su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun){
+   struct su_nyd_control *ncp;
+
    LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
 
    /* nyd_chirp() documented to be capable to deal */
    if(!(su__state & su__STATE_CREATED))
       goto jleave;
 
-   if(!a_core_nyd_skip){
-      struct a_core_nyd_info *cnip;
+   ncp = su_thread_self()->t_.nydctl;
 
-      cnip = &a_core_nyd_infos[0];
+   if(!ncp->nc_skip){
+      struct su_nyd_info *nip;
 
-      if(a_core_nyd_curr != NELEM(a_core_nyd_infos))
-         cnip += a_core_nyd_curr++;
-      else
-         a_core_nyd_curr = 1;
-      cnip->cni_file = file;
-      cnip->cni_fun = fun;
-      cnip->cni_chirp_line = (S(u32,act & su__NYD_ACTION_MASK
+      if(ncp->nc_curr == NELEM(ncp->nc_infos))
+         ncp->nc_curr = 0;
+
+      nip = &ncp->nc_infos[ncp->nc_curr++];
+      nip->ni_file = file;
+      nip->ni_fun = fun;
+      nip->ni_chirp_line = (S(u32,act & su__NYD_ACTION_MASK
             ) << su__NYD_ACTION_SHIFT) | (line & su__NYD_ACTION_SHIFT_MASK);
-      cnip->cni_level = ((act == su_NYD_ACTION_ANYWHERE)
-            ? a_core_nyd_level /* TODO spinlock */
-            : (act == su_NYD_ACTION_ENTER) ? ++a_core_nyd_level
-               : a_core_nyd_level--);
+      nip->ni_level = ((act == su_NYD_ACTION_ANYWHERE)
+            ? ncp->nc_level
+            : ((act == su_NYD_ACTION_ENTER) ? ++ncp->nc_level
+               : ncp->nc_level--));
    }
 
 jleave:;
@@ -402,17 +438,22 @@ jleave:;
 void
 su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
    uz i;
-   struct a_core_nyd_info const *cnip;
+   struct su_nyd_info const *nip;
+   struct su_nyd_control *ncp;
 
-   a_core_nyd_skip = TRU1;
+   LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
 
-   if(a_core_nyd_infos[su_NELEM(a_core_nyd_infos) - 1].cni_file != NIL)
-      for(i = a_core_nyd_curr, cnip = &a_core_nyd_infos[i];
-            i < su_NELEM(a_core_nyd_infos); ++i)
-         a_core_nyd_printone(ptf, cookie, cnip++);
+   ncp = su_thread_self()->t_.nydctl;
+   ncp->nc_skip = TRU1;
 
-   for(i = 0, cnip = a_core_nyd_infos; i < a_core_nyd_curr; ++i)
-      a_core_nyd_printone(ptf, cookie, cnip++);
+   if((nip = ncp->nc_infos)[NELEM(ncp->nc_infos) - 1].ni_file != NIL)
+      for(i = ncp->nc_curr, nip += i; i < NELEM(ncp->nc_infos); ++i)
+         a_core_nyd_printone(ptf, cookie, nip++);
+
+   for(i = 0, nip = ncp->nc_infos; i < ncp->nc_curr; ++i)
+      a_core_nyd_printone(ptf, cookie, nip++);
+
+   ncp->nc_skip = FAL0;
 }
 #endif /* DVLOR(1, 0) */
 

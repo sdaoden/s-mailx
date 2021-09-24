@@ -108,6 +108,8 @@
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
 
+#undef ATOMIC
+
 #undef BITENUM_IS
 #undef BITENUM_MASK
 
