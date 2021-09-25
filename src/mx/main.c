@@ -94,7 +94,7 @@ VL char const n_qm[2] = "?";
 VL char const n_at[2] = "@";
 
 /* Perform basic startup initialization */
-static void a_main_startup(void);
+static void a_main_startup(char const *argv0);
 
 /* Grow a char** */
 static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
@@ -125,7 +125,7 @@ static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt,
       char const *lopt, char const *doc);
 
 static void
-a_main_startup(void){
+a_main_startup(char const *argv0){
    struct passwd *pwuid;
    char *cp;
    NYD2_IN;
@@ -134,13 +134,11 @@ a_main_startup(void){
    n_stdout = stdout;
    n_stderr = stderr;
 
-   if((cp = su_cs_rfind_c(su_program, '/')) != NIL)
-      su_program = ++cp;
    /* XXX Due to n_err() mess the su_log config only applies to EMERG yet! */
-   su_state_set(su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID
-         /* XXX | su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW */
-   );
-   su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
+   su_state_create(argv0, (
+         su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID |
+         n_LOG_LEVEL /* XXX _EMERG is 0.. */
+      ));
 
    /* Change to reproducible mode asap */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
@@ -739,16 +737,15 @@ main(int argc, char *argv[]){
    BITENUM_IS(u32,a_rf_ids) resfiles;
    NYD_IN;
 
-   su_mem_set(&mc, 0, sizeof mc);
-   resfiles = a_RF_DEFAULT;
-   UNINIT(emsg, NIL);
-
    /*
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
     */
 
-   su_program = (argc != 0) ? argv[0] : su_empty;
-   a_main_startup();
+   a_main_startup(argc != 0 ? argv[0] : su_empty);
+
+   su_mem_set(&mc, 0, sizeof mc);
+   resfiles = a_RF_DEFAULT;
+   UNINIT(emsg, NIL);
 
    /* Command line parsing.
     * XXX We could parse silently to grasp the actual mode (send, receive

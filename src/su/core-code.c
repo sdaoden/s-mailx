@@ -2,7 +2,6 @@
  *@ TODO Log: domain should be configurable
  *@ TODO Assert: the C++ lib has per-thread assertion states, s_nolog to
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
- *@ TODO su_program: if set, the PID should be logged, too!
  *
  * Copyright (c) 2019 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -29,9 +28,10 @@
 #include <errno.h> /* XXX Grrrr */
 #include <stdarg.h>
 #include <stdio.h> /* TODO Get rid */
-#include <stdlib.h>
+#include <stdlib.h> /* TODO Get rid */
 #include <unistd.h> /* TODO POSIX module! */
 
+#include "su/cs.h"
 #include "su/icodec.h"
 
 /*#include "su/code.h"*/
@@ -130,7 +130,7 @@ a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
    /* TODO ensure each line has the prefix; use FormatEncodeCtx */
    if(su_program != NIL){
       if(su_state_has(su_STATE_LOG_SHOW_PID)){
-         cp = su_ienc_u32(buf, getpid(), 10);
+         cp = su_ienc_u32(buf, getpid(), 10); /* XXX getpid()->process_id() */
          xfmt = "%s[%s]: ";
       }else{
          cp = su_empty;
@@ -194,6 +194,23 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
    }
 }
 #endif /* DVLOR(1, 0) */
+
+void
+su__state_create(char const *program_or_nil){
+   /* TODO initialize the global locks (so native type is ready NOW) */
+
+#ifdef su_HAVE_MT
+   if(program_or_nil != NIL)
+#endif
+   {
+      char *cp;
+
+      if((cp = su_cs_rfind_c(program_or_nil, '/')) != NIL && *++cp != '\0')
+         program_or_nil = cp;
+
+      su_program = program_or_nil;
+   }
+}
 
 #ifdef su_HAVE_MT
 void
@@ -356,6 +373,10 @@ su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun){
    LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
 
+   /* nyd_chirp() documented to be capable to deal */
+   if(!(su__state & su__STATE_CREATED))
+      goto jleave;
+
    if(!a_core_nyd_skip){
       struct a_core_nyd_info *cnip;
 
@@ -374,6 +395,8 @@ su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
             : (act == su_NYD_ACTION_ENTER) ? ++a_core_nyd_level
                : a_core_nyd_level--);
    }
+
+jleave:;
 }
 
 void
