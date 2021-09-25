@@ -42,9 +42,12 @@
  * \list{\li{
  * The basic infrastructure of \SU is provided by the file \r{su/code.h}.
  * Because all other \SU headers include it (thus), having it available is
- * almost always implicit.
+ * always implicit.
  * It should be noted, however, that the \r{CORE} reacts upon a few
  * preprocessor switches, as documented there.
+ * }\li{
+ * In order to use \SU, \r{su_state_create()} \b{must} be called \b{first}.
+ * This function is always in scope (\c{su/code.h}).
  * }\li{
  * Datatype overflow errors and out-of-memory situations are usually detected
  * and result in abortions (via \r{su_LOG_EMERG} logs).
@@ -1278,8 +1281,9 @@ enum su__state_flags{
    /* enum su_log_level is first "member" */
    su__STATE_LOG_MASK = 0x0Fu,
    su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
+   su__STATE_CREATED = 1u<<24,
    /* What is not allowed in the global state machine */
-   su__STATE_GLOBAL_MASK = 0x00FFFFFFu & ~(su__STATE_LOG_MASK |
+   su__STATE_GLOBAL_MASK = (su__STATE_CREATED - 1) & ~(su__STATE_LOG_MASK |
          (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
 #ifndef DOXYGEN
@@ -1391,16 +1395,42 @@ EXPORT_DATA char const su_empty[1];
 /*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
 EXPORT_DATA char const su_reproducible_build[];
 
-/*! Can be set to the name of the program to, e.g., create a common log
- * message prefix.
+/*! Usually set via \r{su_state_create()} to the name of the program, but can
+ * freely be set, for example to create a common log message prefix.
  * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
-/**/
+/* */
+EXPORT void su__state_create(char const *argv0);
+
 #ifdef su_HAVE_MT
 EXPORT void su__glock(enum su__glock_type gt);
 EXPORT void su__gunlock(enum su__glock_type gt);
 #endif
+
+/*! Initialize \SU.
+ * If \a{program_or_nil} is given it will undergo a \c{basename(3)} operation
+ * and then be assigned to \r{su_program}.
+ * \a{flags} may be a bitmix of what is allowed for
+ * \r{su_state_set()} and \r{su_log_set_level()}.
+ *
+ * \remarks{This \b{must} be called \b{first}.
+ * (Except \r{su_nyd_chirp()} which is capable to deal.)
+ * In threaded applications it must be called from the main thread of
+ * execution and before starting (non-\SU) threads, even if, for example,
+ * \SU is only used in one specific worker thread.}
+ *
+ * \remarks{Dependent upon the actual configuration it may make use of native
+ * libraries and therefore cause itself resource usage / initialization.} */
+SINLINE void su_state_create(char const *program_or_nil, uz flags){
+   flags &= (su__STATE_GLOBAL_MASK | su__STATE_LOG_MASK)
+   su__state = flags | su__STATE_CREATED;
+
+#ifndef su_HAVE_MT
+   if(program_or_nil != NIL)
+#endif
+      su__state_create(program_or_nil);
+}
 
 /*! Interaction with the SU library (global) state machine.
  * This covers \r{su_state_log_flags}, \r{su_state_err_type},
@@ -1419,14 +1449,14 @@ INLINE boole su_state_has(uz flags){
 }
 
 /*! A bitmix of (a subset of) \r{su_state_err_flags} and \r{su_state_flags}. */
-INLINE void su_state_set(uz flags){
+INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
    MT( su__glock(su__GLOCK_STATE); )
    su__state |= flags & su__STATE_GLOBAL_MASK;
    MT( su__gunlock(su__GLOCK_STATE); )
 }
 
 /*! \copydoc{su_state_set()} */
-INLINE void su_state_clear(uz flags){
+INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
    MT( su__glock(su__GLOCK_STATE); )
    su__state &= ~(flags & su__STATE_GLOBAL_MASK);
    MT( su__gunlock(su__GLOCK_STATE); )
@@ -1898,11 +1928,10 @@ public:
       reproducible = su_STATE_REPRODUCIBLE
    };
 
-   /*! \copydoc{su_program} */
-   static char const *get_program(void) {return su_program;}
-
-   /*! \copydoc{su_program} */
-   static void set_program(char const *name) {su_program = name;}
+   /*! \copydoc{su_state_create()} */
+   static void create(char const *program_or_nil, uz flags){
+      su_state_create(program_or_nil, flags);
+   }
 
    /*! \copydoc{su_state_get()} */
    static boole get(void) {return su_state_get();}
@@ -1921,6 +1950,12 @@ public:
          char const *msg_or_nil=NIL){
       return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
    }
+
+   /*! \copydoc{su_program} */
+   static char const *get_program(void) {return su_program;}
+
+   /*! \copydoc{su_program} */
+   static void set_program(char const *name) {su_program = name;}
 };
 
 /* BASIC C++ INTERFACE (SYMBOLS) }}} */

@@ -48,10 +48,8 @@ static void a_time(void);
 static void a_utf(void);
 
 int main(void){ // {{{
-   state::set_program("SU/C++");
-   state::set(state::debug);
+   state::create("SU@C++", state::debug | log::debug);
 
-   log::set_level(log::debug);
    if(log::get_show_level())
       a_ERR();
    log::set_show_level(TRU1);
