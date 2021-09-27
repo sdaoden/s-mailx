@@ -34,6 +34,7 @@ NSPC_USE(su)
 
 static uz a_errors;
 
+static void a_abc(void);
 //static void a_cs(void); FIXME
 static void a_cs_dict(void);
    static void a__cs_dict(u32 addflags);
@@ -65,6 +66,8 @@ int main(void){ // {{{
 
    log::write(log::info, "Redemption songs\n");
 
+   a_abc();
+
    /// Basics (isolated)
 
    a_prime();
@@ -89,6 +92,36 @@ int main(void){ // {{{
       : "Not to be heard\n"));
    return (a_errors != 0);
 } // }}}
+
+// abc {{{
+static void
+a_abc(void){
+   // su_CC_MEM_ZERO, su_FIELD_RANGE_COPY, su_FIELD_RANGE_ZERO
+   struct bla{u32 i1; u32 i2; u64 i3; u32 i4; u32 i5;} a, b;
+
+   a.i1 = a.i2 = a.i3 = a.i4 = a.i5 = 0x00B1C2D3;
+   b = a;
+   STRUCT_ZERO(bla, &a);
+   if(a.i1 != 0 || a.i2 != 0 || a.i3 != 0 || a.i4 != 0 || a.i5 != 0)
+      a_ERR();
+
+   mem::copy(FIELD_RANGE_COPY(bla, &a, &b, i2, i4));
+   if(a.i1 != 0 || a.i2 != 0x00B1C2D3 || a.i3 != 0x00B1C2D3 ||
+         a.i4 != 0x00B1C2D3 || a.i5 != 0)
+      a_ERR();
+   FIELD_RANGE_ZERO(bla, &a, i2, i3);
+   if(a.i1 != 0 || a.i2 != 0 || a.i3 != 0 || a.i4 != 0x00B1C2D3 || a.i5 != 0)
+      a_ERR();
+
+   mem::copy(FIELD_RANGE_COPY(bla, &a, &b, i1, i5));
+   if(a.i1 != 0x00B1C2D3 || a.i2 != 0x00B1C2D3 || a.i3 != 0x00B1C2D3 ||
+         a.i4 != 0x00B1C2D3 || a.i5 != 0x00B1C2D3)
+      a_ERR();
+   FIELD_RANGE_ZERO(bla, &a, i1, i5);
+   if(a.i1 != 0 || a.i2 != 0 || a.i3 != 0 || a.i4 != 0 || a.i5 != 0)
+      a_ERR();
+}
+// }}}
 
 // cs_dict {{{
 static void

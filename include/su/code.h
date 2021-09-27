@@ -289,7 +289,7 @@
  * a special local CTA to overcome this */
 #ifdef DOXYGEN
 # define su_CTA(T,M) /*!< \_ */
-# define su_LCTA(T,M) /*!< \_ */
+# define su_LCTA(T,M) /*!< \remarks{Introduces a block scope.} */
 #elif !su_C_LANG && __cplusplus +0 >= 201103l
 # define su_CTA(T,M) static_assert(T, M)
 # define su_LCTA(T,M) static_assert(T, M)
@@ -346,8 +346,12 @@ do{\
 # define su_CC_VCHECK_CLANG(X,Y) \
       (__clang_major__ +0 > (X) || \
        (__clang_major__ +0 == (X) && __clang_minor__ +0 >= (Y)))
+
+# define su_CC_ALIGNED(X) __attribute__((aligned(X)))
 # define su_CC_EXTEN __extension__
 # define su_CC_PACKED __attribute__((packed))
+# define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
+
 # if !defined su_CC_BOM &&\
       defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
       defined __ORDER_BIG_ENDIAN
@@ -367,8 +371,12 @@ do{\
 # define su_CC_PCC 1
 # define su_CC_VCHECK_PCC(X,Y) \
       (__PCC__ +0 > (X) || (__PCC__ +0 == (X) && __PCC_MINOR__ +0 >= (Y)))
+
+# define su_CC_ALIGNED(X) __attribute__((aligned(X)))
 # define su_CC_EXTEN __extension__
 # define su_CC_PACKED __attribute__((packed))
+# define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
+
 # if !defined su_CC_BOM &&\
       defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
       defined __ORDER_BIG_ENDIAN
@@ -384,13 +392,15 @@ do{\
 #elif defined __SUNPRO_C /* __PCC__ */
 # undef su_CC_SUNPROC
 # define su_CC_SUNPROC 1
-# define su_CC_PACKED TODO: PACKED attribute not supported for SunPro C
 
 #elif defined __TINYC__ /* __SUNPRO_C */
 # undef su_CC_TINYC
 # define su_CC_TINYC 1
+
+# define su_CC_ALIGNED(X) __attribute__((aligned(X)))
 # define su_CC_EXTEN /* __extension__ (ignored) */
 # define su_CC_PACKED __attribute__((packed))
+# define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
 #elif defined __GNUC__ /* __TINYC__ */
 # undef su_CC_GCC
@@ -398,8 +408,12 @@ do{\
 # define su_CC_GCC 1
 # define su_CC_VCHECK_GCC(X,Y) \
       (__GNUC__ +0 > (X) || (__GNUC__ +0 == (X) && __GNUC_MINOR__ +0 >= (Y)))
+
+# define su_CC_ALIGNED(X) __attribute__((aligned(X)))
 # define su_CC_EXTEN __extension__
 # define su_CC_PACKED __attribute__((packed))
+# define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
+
 # if !defined su_CC_BOM &&\
       defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&\
       defined __ORDER_BIG_ENDIAN
@@ -419,13 +433,36 @@ do{\
 # error SU: enables structure packing; it may not be a #pragma, but a _Pragma
 #endif
 
-#ifndef su_CC_EXTEN
-# define su_CC_EXTEN /*!< \_ */
+#if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l
+# undef su_CC_ALIGNED
+# define su_CC_ALIGNED(X) _Alignas(X)
 #endif
+
+#ifndef su_CC_ALIGNED
+   /*! Structure alignment; will be \c{_Alignas()} (C 2011) if possible. */
+# define su_CC_ALIGNED(X) TODO: ALIGNED not supported for this compiler
+#endif
+
+#ifndef su_CC_EXTEN
+# define su_CC_EXTEN /*!< The \c{__extension__} keyword or equivalent. */
+#endif
+
 #ifndef su_CC_PACKED
-   /*! \_ */
+   /*! Structure packing. */
 # define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
 #endif
+
+#if !defined su_CC_MEM_ZERO || defined su_HAVE_DEVEL
+# undef su_CC_MEM_ZERO
+# define su_CC_MEM_ZERO(X,Y) do{\
+   su_uz __su__l__ = Y;\
+   void *__su__op__ = X;\
+   su_u8 *__su__bp__ = su_S(su_u8*,__su__op__);\
+   while(__su__l__-- > 0)\
+      *__su__bp__++ = 0;\
+}while(0)
+#endif
+
 #if defined su_CC_BOM || defined DOXYGEN
 # ifdef DOXYGEN
    /*! If the CC offers \r{su_BOM} classification macros, defined to either
@@ -723,6 +760,10 @@ do{\
 /*! To avoid files that are overall empty */
 #define su_EMPTY_FILE() typedef int su_CONCAT(su_notempty_shall_b_, su_FILE);
 
+/*! Distance in between the fields \a{S}tart and \a{E}nd of type \a{T}. */
+#define su_FIELD_DISTANCEOF(T,S,E) \
+      (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S))
+
 /* C field init */
 #if (su_C_LANG && defined __STDC_VERSION__ && \
       __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
@@ -740,12 +781,27 @@ do{\
 # define su_FIELD_OFFSETOF(T,F) __builtin_offsetof(T, F)
 #else
 # define su_FIELD_OFFSETOF(T,F) \
-      su_S(su_uz,su_S(su_up,&(su_R(T *,0x1)->F)) - 1)
+      su_S(su_uz,su_S(su_up,&(su_R(T *,su_NIL)->F)))
 #endif
 
-/*! Distance in between the fields \a{S}tart and \a{E}end in type \a{T}. */
+/*! Range in bytes in between and including fields \a{S}tart and \a{E}nd in
+ * type \a{T}. */
 #define su_FIELD_RANGEOF(T,S,E) \
-      (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S))
+      (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S) +\
+       su_FIELD_SIZEOF(T, E))
+
+/*! Copy memory in the \r{su_FIELD_RANGEOF()} \a{S} and \a{E} of the \a{T}ype
+ * instance from the given memory \a{P}ointer to the \a{D}estination, to be
+ * used like \c{su_mem_copy(su_FIELD_RANGE_COPY(struct X, D, P, S, E))}. */
+#define su_FIELD_RANGE_COPY(T,D,P,S,E) \
+   (((su_u8*)D) + su_FIELD_OFFSETOF(T,S)),\
+   (((su_u8*)P) + su_FIELD_OFFSETOF(T,S)), su_FIELD_RANGEOF(T,S,E)
+
+/*! Zero memory in the \r{su_FIELD_RANGEOF()} \a{S} and \a{E} of the \a{T}ype
+ * instance at the given memory \a{P}ointer.
+ * \remarks{Introduces a block scope.} */
+#define su_FIELD_RANGE_ZERO(T,P,S,E) \
+   su_CC_MEM_ZERO(((su_u8*)P)+su_FIELD_OFFSETOF(T,S), su_FIELD_RANGEOF(T,S,E))
 
 /*! sizeof() for member fields */
 #define su_FIELD_SIZEOF(T,F) sizeof(su_S(T *,su_NIL)->F)
@@ -765,7 +821,7 @@ do{\
 #define su_NYD_OU_LABEL su__nydou
 
 /*! Pointer to size_t */
-#define su_P2UZ(X) su_S(su_uz,(su_up)(X))
+#define su_P2UZ(X) su_S(su_uz,/*not R() to avoid same-type++ warns*/(su_up)(X))
 
 /*! Pointer comparison */
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
@@ -790,6 +846,10 @@ do{\
 # define su_XSTRING STRING
 # define su_CONCAT(S1,S2) S1/* will no work out though */S2
 #endif
+
+/*! Zero an entire \a{T}ype instance at the given memory \a{P}ointer.
+ * \remarks{Introduces a block scope.} */
+#define su_STRUCT_ZERO(T,P) su_CC_MEM_ZERO(P, sizeof(T))
 
 #if su_C_LANG || defined DOXYGEN
    /*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned,
