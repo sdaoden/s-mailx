@@ -30,7 +30,7 @@
 #undef NSPC_USE
 #undef NSPC
 
-#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+#ifdef __cplusplus
 # undef CLASS_NO_COPY
 # undef SELFTHIS_RET
 
@@ -118,10 +118,13 @@
 #undef NDVL
 #undef DVLOR
 
+#undef FIELD_DISTANCEOF
 #undef FIELD_INITN
 #undef FIELD_INITI
 #undef FIELD_OFFSETOF
 #undef FIELD_RANGEOF
+#undef FIELD_RANGE_COPY
+#undef FIELD_RANGE_ZERO
 #undef FIELD_SIZEOF
 
 #undef MT
@@ -158,6 +161,12 @@
 #endif
 
 #undef SMP
+
+#undef STRING
+# undef XSTRING
+# undef CONCAT
+
+#undef STRUCT_ZERO
 
 #undef UCMP
 
