@@ -36,7 +36,7 @@
 #define NSPC_USE su_NSPC_USE
 #define NSPC su_NSPC
 
-#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+#ifdef __cplusplus
 # define CLASS_NO_COPY su_CLASS_NO_COPY
 # define SELFTHIS_RET su_SELFTHIS_RET
 
@@ -156,10 +156,13 @@
 #define NDVL su_NDVL
 #define DVLOR su_DVLOR
 
+#define FIELD_DISTANCEOF su_FIELD_DISTANCEOF
 #define FIELD_INITN su_FIELD_INITN
 #define FIELD_INITI su_FIELD_INITI
 #define FIELD_OFFSETOF su_FIELD_OFFSETOF
 #define FIELD_RANGEOF su_FIELD_RANGEOF
+#define FIELD_RANGE_COPY su_FIELD_RANGE_COPY
+#define FIELD_RANGE_ZERO su_FIELD_RANGE_ZERO
 #define FIELD_SIZEOF su_FIELD_SIZEOF
 
 #define MT su_MT
@@ -249,6 +252,12 @@
 #endif
 
 #define SMP su_SMP
+
+#define STRING su_STRING
+# define XSTRING su_XSTRING
+# define CONCAT su_CONCAT(S1,S2)
+
+#define STRUCT_ZERO su_STRUCT_ZERO
 
 #define UCMP su_UCMP
 
