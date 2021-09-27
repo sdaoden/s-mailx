@@ -536,10 +536,12 @@ do{\
 /* Alignment.  Note: su_uz POW2 asserted in POD section below! */
 /* Commented out: "_Alignof() applied to an expression is a GNU extension" */
 #if 0 && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l
-# include <stdalign.h>
+# i5e <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
-   /*! \c{_Alignof()} if available, something hacky otherwise */
+   /*! Power-of-two alignment for \a{X}.
+    * \remarks{Not \c{_Alignof()} even if available because
+    * \c{_Alignof()} applied to an expression is a GNU extension}. */
 # define su_ALIGNOF(X) su_ROUND_UP2(sizeof(X), su__ZAL_L)
 #endif
 
