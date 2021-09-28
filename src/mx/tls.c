@@ -286,7 +286,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
 
    fflush(op);
    if (ferror(op)) {
-      n_perr(_("signed output data"), 0);
+      n_perr(_("signed output data"), su_err_no_by_errno());
       mx_fs_close(op);
       op = NULL;
       goto jleave;
@@ -341,7 +341,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 
    fflush(op);
    if (ferror(op)) {
-      n_perr(_("encrypted output data"), 0);
+      n_perr(_("encrypted output data"), su_err_no_by_errno());
       mx_fs_close(op);
       op = NULL;
       goto jleave;
@@ -578,7 +578,7 @@ c_tls(void *vp){
 jleave:
    if(varname == NIL){
       if(fprintf(n_stdout, "%s\n", varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          vp = NIL;
       }
    }else if(!n_var_vset(varname, R(up,varres), cm_local)){

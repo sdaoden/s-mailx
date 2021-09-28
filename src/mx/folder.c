@@ -126,7 +126,8 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Obj! */
 
       if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML){
          name = adjname;
-         if(realpath(name, mailname) == NIL && su_err_no() != su_ERR_NOENT){
+         if(realpath(name, mailname) == NIL &&
+               su_err_no_by_errno() != su_ERR_NOENT){
             n_err(_("Cannot canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             goto jdocopy;
          }
@@ -466,7 +467,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          f |= a_HAD_DATA;
          if(!(f & a_CREATE)){
             if(putc('\n', mb.mb_otf) == EOF){
-               n_perr(_("/tmp"), 0);
+               n_perr(_("/tmp"), su_err_no_by_errno());
                exit(n_EXIT_ERR); /* TODO no! */
             }
             ++offset;
@@ -498,7 +499,7 @@ jputln:
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
 
       if(ferror(mb.mb_otf)){
-         n_perr(_("/tmp"), 0);
+         n_perr(_("/tmp"), su_err_no_by_errno());
          exit(n_EXIT_ERR); /* TODO no! */
       }
       offset += cnt;
@@ -693,17 +694,21 @@ jlogname:
    if (fstat(fileno(ibuf), &stb) == -1) {
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
-      n_perr(_("fstat"), 0);
+      n_perr(_("fstat"), su_err_no_by_errno());
       goto jem1;
    }
 
    if((flags & a_SPECIALS_MASK) || S_ISREG(stb.st_mode)){
       /* EMPTY */
    }else{
+      int e;
+
       if(fm & FEDIT_NEWMAIL)
          goto jleave;
-      su_err_set_no(S_ISDIR(stb.st_mode) ? su_ERR_ISDIR : su_ERR_INVAL);
-      n_perr(name, 0);
+
+      e = S_ISDIR(stb.st_mode) ? su_ERR_ISDIR : su_ERR_INVAL;
+      su_err_set_no(e);
+      n_perr(name, e);
       goto jem1;
    }
 
@@ -732,10 +737,19 @@ jlogname:
       name = mailname;
       mx_fs_close(ibuf);
 
-      if((ibuf = mx_fs_open_any(name, mx_FS_O_RDONLY, NIL)) == NIL ||
-            fstat(fileno(ibuf), &stb) == -1 ||
-            !S_ISREG(stb.st_mode)){
+      if((ibuf = mx_fs_open_any(name, mx_FS_O_RDONLY, NIL)) == NIL){
          n_perr(name, 0);
+         rele_sigs();
+         goto jem2;
+      }
+      if(fstat(fileno(ibuf), &stb) == -1){
+         n_perr(name, 0);
+         rele_sigs();
+         goto jem2;
+      }
+      if(!S_ISREG(stb.st_mode)){
+         su_err_set_no(su_ERR_INVAL);
+         n_perr(name, su_ERR_INVAL);
          rele_sigs();
          goto jem2;
       }
@@ -1254,7 +1268,7 @@ n_folder_query(void){
          free(cp);
 # endif
          rv = s->s_dat;
-      }else if(su_err_no() == su_ERR_NOENT)
+      }else if(su_err_no_by_errno() == su_ERR_NOENT)
          rv = cp;
       else{
          n_err(_("Cannot canonicalize *folder*: %s\n"),
@@ -1303,7 +1317,7 @@ n_folder_mbox_prepare_append(FILE *fout, boole post, struct stat *st_or_nil){
    if(fseek(fout, -2L, SEEK_END) == 0 && fread(buf, sizeof *buf, 2, fout) == 2)
       needsep = (buf[0] != '\n' || buf[1] != '\n');
    else{
-      rv = su_err_no();
+      rv = su_err_no_by_errno();
       if(st_or_nil == NIL){
          st_or_nil = &stb;
          if(fstat(fileno(fout), st_or_nil))
@@ -1334,7 +1348,7 @@ n_folder_mbox_prepare_append(FILE *fout, boole post, struct stat *st_or_nil){
    if((needsep && (fseek(fout, 0L, SEEK_END) || putc('\n', fout) == EOF)) ||
          fflush(fout) == EOF)
 jerrno:
-      rv = su_err_no();
+      rv = su_err_no_by_errno();
 
 jleave:
    NYD2_OU;

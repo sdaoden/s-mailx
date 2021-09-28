@@ -209,9 +209,9 @@ jpseudo_jump:
          if (serv == urlp->url_proto &&
                (serv = mx_url_servbyname(urlp->url_proto, NIL, NIL)) != NIL &&
                *serv != '\0') {
-            n_err(_("  Trying standard protocol port %s\n"), serv);
-            n_err(_("  If that succeeds consider including the "
-               "port in the URL!\n"));
+            n_err(_("  Trying standard protocol port %s\n"
+               "  If that succeeds consider including the port in the URL!\n"),
+                  serv);
             continue;
          }
          if (serv != urlp->url_port)
@@ -314,7 +314,7 @@ jjumped:
 
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-      n_perr(_("could not create socket"), 0);
+      n_perr(_("could not create socket"), su_err_no_by_errno());
       ASSERT(sofd == -1 && errval == 0);
       goto jjumped;
    }
@@ -444,7 +444,8 @@ a_netso_connect(int fd, struct sockaddr *soap, uz soapl){
 
       /* Always select(2) even if it succeeds right away, since on at least
        * SunOS/Solaris 5.9 SPARC it will cause failures (busy resources) */
-      if(connect(fd, soap, soapl) && (i = su_err_no()) != su_ERR_INPROGRESS){
+      if(connect(fd, soap, soapl) &&
+            (i = su_err_no_by_errno()) != su_ERR_INPROGRESS){
          rv = i;
          goto jerr_noerrno;
       }else{
@@ -499,7 +500,7 @@ jrewait:
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr:
 #endif
-      rv = su_err_no();
+      rv = su_err_no_by_errno();
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
@@ -521,7 +522,7 @@ a_netso_xwrite(int fd, char const *data, uz size)
 
    do {
       if ((wo = write(fd, data + wt, size - wt)) < 0) {
-         if (su_err_no() == su_ERR_INTR)
+         if (su_err_no_by_errno() == su_ERR_INTR)
             continue;
          else
             goto jleave;
@@ -574,7 +575,7 @@ mx_socket_open(struct mx_socket *sop, struct mx_url *urlp){
       pbuf[2] = 0x00; /* METHOD: X'00' NO AUTHENTICATION REQUIRED */
       if(write(sop->s_fd, pbuf, 3) != 3){
 jerrsocks:
-         n_perr("*socks-proxy*", 0);
+         n_perr("*socks-proxy*", su_err_no_by_errno());
 jesocks:
          mx_socket_close(sop);
          goto jleave;
@@ -772,7 +773,7 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
 jssl_retry:
       x = SSL_write(sop->s_tls, data, size);
       if(x < 0){
-         if((err = su_err_no()) == su_ERR_INTR)
+         if((err = su_err_no_by_errno()) == su_ERR_INTR)
             goto jssl_retry;
 
          if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
@@ -853,7 +854,7 @@ jssl_retry:
                if (sop->s_rsz < 0) {
                   char o[512];
 
-                  if((err = su_err_no()) == su_ERR_INTR)
+                  if((err = su_err_no_by_errno()) == su_ERR_INTR)
                      goto jssl_retry;
 
                   if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
@@ -879,12 +880,13 @@ jagain:
             if (sop->s_rsz <= 0) {
                if (sop->s_rsz < 0) {
                   char o[512];
+                  int e;
 
-                  if (su_err_no() == su_ERR_INTR)
+                  if ((e = su_err_no_by_errno()) == su_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sop->s_desc ?  sop->s_desc : "socket"));
-                  n_perr(o, 0);
+                  n_perr(o, e);
                }
                break;
             }

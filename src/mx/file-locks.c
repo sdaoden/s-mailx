@@ -112,7 +112,7 @@ a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
    }
 
    if(!rv)
-      switch(su_err_no()){
+      switch(su_err_no_by_errno()){
       case su_ERR_BADF:
       case su_ERR_INVAL:
          rv = TRUM1;
@@ -238,7 +238,7 @@ jenametool:
        * really an error from our point of view since the mailbox will degrade
        * to a readonly one for which no dotlock is needed, then, and errors
        * may arise only due to actions which require box modifications */
-      if(su_err_no() == su_ERR_ROFS){
+      if(su_err_no_by_errno() == su_ERR_ROFS){
          fdls = mx_FILE_DOTLOCK_STATE_ROFS | mx_FILE_DOTLOCK_STATE_ABANDON;
          goto jmsg;
       }
@@ -394,6 +394,7 @@ jleave:
       rv = (FILE*)-1;
    else
       su_err_set_no(serr);
+
    NYD_OU;
    return rv;
 
@@ -442,7 +443,7 @@ jleave:
    for(;;){
       u.r = read(S(int,cpipe[0]), &fdls, sizeof fdls);
       if(UCMP(z, u.r, !=, sizeof fdls)){
-         serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no();
+         serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no_by_errno();
          fdls = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
       }else
          serr = su_ERR_NONE;

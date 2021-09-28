@@ -209,7 +209,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          break;
       }
 
-      if((err = su_err_no()) == su_ERR_2BIG)
+      if((err = su_err_no_by_errno()) == su_ERR_2BIG)
          goto jleave;
 
       if(!(icf & n_ICONV_IGN_ILSEQ) || err != su_ERR_ILSEQ)

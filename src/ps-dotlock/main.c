@@ -64,6 +64,7 @@ boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
 #define su_err_no() errno
+#define su_err_no_by_errno() errno
 #define su_err_set_no(X) (errno = X)
 
 static void _ign_signal(int signum);

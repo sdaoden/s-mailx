@@ -87,7 +87,7 @@ a_file_lock_dotlock_create(struct mx_file_dotlock_info *fdip){
 
       xrv = mx_FILE_DOTLOCK_STATE_PING;
       w = write(STDOUT_FILENO, &xrv, sizeof xrv);
-      if(w == -1 && su_err_no() == su_ERR_PIPE){
+      if(w == -1 && su_err_no_by_errno() == su_ERR_PIPE){
          rv = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
          break;
       }
@@ -125,7 +125,7 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip,
                fchown(fd, fdip->fdi_stb->st_uid, fdip->fdi_stb->st_gid)){
             s32 x;
 
-            x = su_err_no();
+            x = su_err_no_by_errno();
             close(fd);
             su_err_set_no(x);
             goto jbados;
@@ -133,7 +133,7 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip,
 #endif
          close(fd);
          break;
-      }else if((e = su_err_no()) != su_ERR_EXIST){
+      }else if((e = su_err_no_by_errno()) != su_ERR_EXIST){
          rv = ((e == su_ERR_ROFS)
                ? mx_FILE_DOTLOCK_STATE_ROFS | mx_FILE_DOTLOCK_STATE_ABANDON
                : mx_FILE_DOTLOCK_STATE_NOPERM);
@@ -167,7 +167,7 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip,
 jleave:
    return rv;
 jbados:
-   rv = ((su_err_no() == su_ERR_EXIST)
+   rv = ((su_err_no_by_errno() == su_ERR_EXIST)
          ? mx_FILE_DOTLOCK_STATE_EXIST
          : mx_FILE_DOTLOCK_STATE_NOPERM | mx_FILE_DOTLOCK_STATE_ABANDON);
 #ifdef mx_SOURCE_PS_DOTLOCK_MAIN

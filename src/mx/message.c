@@ -1384,7 +1384,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need){
    fflush(mp->mb_otf);
    if(fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
          SEEK_SET) == -1){
-      n_perr(_("fseek"), 0);
+      n_perr(_("fseek"), su_err_no_by_errno());
       n_panic(_("temporary file seek"));
    }
    rv = mp->mb_itf;

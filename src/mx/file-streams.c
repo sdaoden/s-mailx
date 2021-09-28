@@ -286,7 +286,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
    if(!n_real_seek(fsep->fse_fp, fsep->fse_offset, SEEK_SET)){
       s32 err;
 
-      err = su_err_no();
+      err = su_err_no_by_errno();
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
          n_shexp_quote_cp(fsep->fse_realfile, FAL0), su_err_doc(err));
       goto jleave;
@@ -316,7 +316,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
             ) == -1){
       s32 err;
 
-      err = su_err_no();
+      err = su_err_no_by_errno();
       n_err(_("Fatal: cannot create %s: %s\n"),
          n_shexp_quote_cp(fsep->fse_realfile, FAL0), su_err_doc(err));
       goto jleave;
@@ -354,10 +354,13 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
 
    osiflags = a_fs_mx_to_os(oflags, &osflags);
 
-   if((fd = open(file, osiflags, 0666)) == -1)
+   if((fd = open(file, osiflags, 0666)) == -1){
+      su_err_no_by_errno();
       goto jleave;
+   }
 #if a_FS_O_CLOEXEC == 0
    if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
+      su_err_no_by_errno();
       close(fd);
       goto jleave;
    }
@@ -366,8 +369,10 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
    if((fp = fdopen(fd, osflags)) != NIL){
       if(!(oflags & mx_FS_O_NOREGISTER))
          a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0L, NIL);
-   }else
+   }else{
+      su_err_no_by_errno();
       close(fd);
+   }
 
 jleave:
    NYD_OU;
@@ -466,7 +471,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags,
                n_err(_("Using `filetype' handler %s to load %s\n"),
                   n_shexp_quote_cp(cload, FAL0), n_shexp_quote_cp(file, FAL0));
          }else{
-            err = su_err_no();
+            err = su_err_no_by_errno();
             if(!(oflags & mx_FS_O_CREATE) || err != su_ERR_NOENT)
                goto jleave;
          }
@@ -501,7 +506,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags,
       }
    }else{
       if((infd = creat(file, 0666)) == -1){
-         err = su_err_no();
+         err = su_err_no_by_errno();
          fclose(rv);
          rv = NIL;
          goto jleave;
@@ -516,7 +521,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags,
       rewind(rv);
 
    if((offset = ftell(rv)) == -1){
-      err = su_err_no();
+      err = su_err_no_by_errno();
       mx_fs_close(rv);
       rv = NIL;
       goto jleave;
@@ -648,7 +653,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
 #endif
             break;
       }
-      e = su_err_no();
+      e = su_err_no_by_errno();
 
       relesigs = FAL0;
       mx_sigs_all_rele();
@@ -681,7 +686,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
    }
 
    if(fp == NIL || (oflags & mx_FS_O_UNLINK)){
-      e = su_err_no();
+      e = su_err_no_by_errno();
       su_path_rm(cp_base);
       if(fp == NIL)
          close(fd);
@@ -756,6 +761,7 @@ mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
 
       nfd = fcntl(fd, m, 0);
       if(nfd == -1){
+         su_err_no_by_errno();
          fp = NIL;
          goto jleave;
       }
@@ -771,8 +777,11 @@ mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
    if((fp = fdopen(S(int,fd), osflags)) != NIL){
       if(!(oflags & mx_FS_O_NOREGISTER))
          a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
-   }else if(oflags & mx_FS_O_NOCLOSEFD)
-      close(fd);
+   }else{
+      su_err_no_by_errno();
+      if(oflags & mx_FS_O_NOCLOSEFD)
+         close(fd);
+   }
 
 jleave:
    NYD_OU;
@@ -789,6 +798,9 @@ mx_fs_fd_cloexec_set(sz fd){
    if((rv = ((ifl = fcntl(ifd, F_GETFD)) != -1)) && !(ifl & FD_CLOEXEC))
       rv = (fcntl(ifd, F_SETFD, ifl | FD_CLOEXEC) != -1);
 
+   if(!rv)
+      su_err_no_by_errno();
+
    NYD2_OU;
    return rv;
 }
@@ -799,6 +811,9 @@ mx_fs_close(FILE *fp){
    NYD_IN;
 
    rv = (a_fs_unregister_file(fp) && fclose(fp) == 0);
+
+   if(!rv)
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -817,16 +832,20 @@ mx_fs_pipe_cloexec(sz fd[2]){
       fd[0] = xfd[0];
       fd[1] = xfd[1];
       rv = TRU1;
-   }
+   }else
+      su_err_no_by_errno();
+
 #else
    if(pipe(xfd) != -1){
       fd[0] = xfd[0];
       fd[1] = xfd[1];
       if(!(rv = (mx_fs_fd_cloexec_set(fd[0]) && mx_fs_fd_cloexec_set(fd[1])))){
+         su_err_no_by_errno();
          close(xfd[0]);
          close(xfd[1]);
       }
-   }
+   }else
+      su_err_no_by_errno();
 #endif
 
    NYD_OU;
@@ -932,8 +951,10 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh,
          ((fd0 != mx_CHILD_FD_PASS && fd1 != mx_CHILD_FD_PASS)
             ? a_FS_EF_PIPE : a_FS_EF_PIPE | a_FS_EF_FD_PASS_NEEDS_WAIT),
          &cc, NIL, 0L, NIL);
-   else
+   else{
+      su_err_no_by_errno();
       close(myside);
+   }
 
 jleave:
    NYD_OU;
@@ -1001,7 +1022,8 @@ mx_fs_flush(FILE *fp){
    boole rv;
    NYD_IN;
 
-   rv = (fflush(fp) != EOF);
+   if(!(rv = (fflush(fp) != EOF)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -1192,6 +1214,7 @@ a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
             }
             break;
          } else {
+            su_err_no_by_errno();
             rv = NULL;
             goto jleave;
          }
@@ -1253,6 +1276,7 @@ char *
          break;
       } else if (fgets(rv + i_llen, size, fp) == NULL) {
          if (!feof(fp)) {
+            su_err_no_by_errno();
             rv = NULL;
             goto jleave;
          }
@@ -1313,7 +1337,7 @@ jagain:
                break;
             }
          } else {
-            if (size == -1 && su_err_no() == su_ERR_INTR)
+            if (size == -1 && su_err_no_by_errno() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {

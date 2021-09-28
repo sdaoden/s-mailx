@@ -343,7 +343,7 @@ c_rename(void *vp){
          emsg =
 #ifdef mx_HAVE_MAILDIR
                savecatsep(_("rename(2) failed:"), ' ',
-                  _(su_err_doc(su_err_no())))
+                  _(su_err_doc(su_err_no_by_errno())))
 #else
                _("no Maildir support available")
 #endif

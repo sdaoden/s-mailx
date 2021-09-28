@@ -143,7 +143,7 @@ su_path_filename_max(char const *path){
    errno = 0;
    if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
       rv = S(uz,sr);
-   else if(errno == 0)
+   else if(su_err_no_by_errno() == 0)
       rv = UZ_MAX;
    else
 #endif
@@ -168,7 +168,7 @@ su_path_pathname_max(char const *path){
    errno = 0;
    if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
       rv = S(uz,sr);
-   else if(errno == 0)
+   else if(su_err_no_by_errno() == 0)
       rv = UZ_MAX;
    else
 #endif
@@ -203,7 +203,7 @@ jredo:
    if(mkdir(path, 0777) == 0)
       rv = TRU1;
    else{
-      e = su_err_no();
+      e = su_err_no_by_errno();
 
       /* Try it recursively? */
       if(recursive && e == su_ERR_NOENT && buf == NIL){
@@ -276,7 +276,8 @@ su_path_rename(char const *dst, char const *src){
    ASSERT_NYD_EXEC(dst != NIL, rv = FAL0);
    ASSERT_NYD_EXEC(src != NIL, rv = FAL0);
 
-   rv = (rename(src, dst) == 0);
+   if(!(rv = (rename(src, dst) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -288,7 +289,8 @@ su_path_rm(char const *path){
    NYD_IN;
    ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
-   rv = (unlink(path) == 0);
+   if(!(rv = (unlink(path) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -300,7 +302,8 @@ su_path_rmdir(char const *path){
    NYD_IN;
    ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
-   rv = (rmdir(path) == 0);
+   if(!(rv = (rmdir(path) == 0)))
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -333,6 +336,9 @@ su_path_touch(char const *path, struct su_timespec const *tsp){
       rv = (utime(path, &utb) == 0);
    }
 #endif
+
+   if(!rv)
+      su_err_no_by_errno();
 
    NYD_OU;
    return rv;

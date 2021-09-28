@@ -571,7 +571,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = su_err_no();
+         err = su_err_no_by_errno();
          goto jerr_fclose;
       }
    }
@@ -749,7 +749,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    /* the final boundary with two attached dashes */
    if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
 jerr:
-      if((err = su_err_no()) == su_ERR_NONE)
+      if((err = su_err_no_by_errno()) == su_ERR_NONE)
          err = su_ERR_IO;
 jleave:
    NYD_OU;
@@ -880,7 +880,7 @@ jiconv_err:
       goto jerr;
 
    if(fflush(nfo) == EOF)
-      err = su_err_no();
+      err = su_err_no_by_errno();
 
 jerr:
    mx_fs_close(nfo);
@@ -1057,7 +1057,8 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             putc('\n', fp);
          fflush(fp);
          if(ferror(fp)){
-            n_perr(_("Finalizing write of temporary image"), 0);
+            n_perr(_("Finalizing write of temporary image"),
+                  su_err_no_by_errno());
             goto jerror;
          }
 
