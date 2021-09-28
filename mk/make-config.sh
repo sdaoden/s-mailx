@@ -1952,9 +1952,9 @@ int main(void){
       gid = getegid();
    if((uid = getuid()) != 0)
       uid = geteuid();
-   if((pw = getpwuid(uid)) == NULL && errno == ENOSYS)
+   if((pw = getpwuid(uid)) == (void*)0 && errno == ENOSYS)
       return 1;
-   if((pw = getpwnam("root")) == NULL && errno == ENOSYS)
+   if((pw = getpwnam("root")) == (void*)0 && errno == ENOSYS)
       return 1;
    return 0;
 }
@@ -2022,11 +2022,10 @@ else
 fi
 
 if link_check environ 'environ(3)' << \!
-#include <stdio.h> /* For C89 NULL */
 int main(void){
    extern char **environ;
 
-   return environ[0] == NULL;
+   return environ[0] == (void*)0;
 }
 !
 then
@@ -2246,7 +2245,7 @@ if link_check realpath 'realpath(3)' '#define mx_HAVE_REALPATH' << \!
 int main(void){
    char x_buf[4096], *x = realpath(".", x_buf);
 
-   return (x != NULL) ? 0 : 1;
+   return (x != (void*)0) ? 0 : 1;
 }
 !
 then
@@ -2254,11 +2253,11 @@ then
          '#define mx_HAVE_REALPATH_NULL' << \!
 #include <stdlib.h>
 int main(void){
-   char *x = realpath(".", NULL);
+   char *x = realpath(".", (void*)0);
 
-   if(x != NULL)
+   if(x != (void*)0)
       free(x);
-   return (x != NULL) ? 0 : 1;
+   return (x != (void*)0) ? 0 : 1;
 }
 !
    then
@@ -2408,7 +2407,7 @@ int main(void){
    iswprint(L'c');
    towupper(L'c');
    mbtowc(&wc, "x", 1);
-   mbrtowc(&wc, "x", 1, NULL);
+   mbrtowc(&wc, "x", 1, (void*)0);
    wctomb(mbb, wc);
    return (mblen("\0", 1) == 0);
 }
@@ -2431,7 +2430,7 @@ int main(void){
 #include <stdlib.h>
 int main(void){
    nl_langinfo(DAY_1);
-   return (nl_langinfo(CODESET) == NULL);
+   return (nl_langinfo(CODESET) == (void*)0);
 }
 !
    [ -n "${have_nl_langinfo}" ] && OPT_TERMINAL_CHARSET=1
@@ -2501,7 +2500,6 @@ if feat_yes ICONV; then
    # To be able to create tests we need to figure out which replacement
    # sequence the iconv(3) implementation creates
    ${cat} > ${tmp2}.c << \!
-#include <stdio.h> /* For C89 NULL */
 #include <string.h>
 #include <iconv.h>
 int main(void){
@@ -2666,7 +2664,7 @@ int main(void){
    if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &soe, &sol) == -1 &&
          errno == ENOSYS)
       return 1;
-   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
+   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (void*)0, 0) == -1 &&
          errno == ENOSYS)
       return 1;
    return 0;
@@ -2709,7 +2707,7 @@ int main(void){
    FD_SET(sofd, &fdset);
    tv.tv_sec = 10;
    tv.tv_usec = 0;
-   if((soe = select(sofd + 1, NULL, &fdset, NULL, &tv)) == 1){
+   if((soe = select(sofd + 1, (void*)0, &fdset, (void*)0, &tv)) == 1){
       sol = sizeof soe;
       getsockopt(sofd, SOL_SOCKET, SO_ERROR, &soe, &sol);
       if(soe == 0)
@@ -2774,10 +2772,10 @@ int main(void){
    struct in_addr **pptr;
 
    portno = 0;
-   if((ep = getservbyname("POPPY-PORT", "tcp")) != NULL)
+   if((ep = getservbyname("POPPY-PORT", "tcp")) != (void*)0)
       portno = (unsigned short)ep->s_port;
 
-   if((hp = gethostbyname("POPPY-HOST")) != NULL){
+   if((hp = gethostbyname("POPPY-HOST")) != (void*)0){
       pptr = (struct in_addr**)hp->h_addr_list;
       if(hp->h_addrtype != AF_INET)
          fprintf(stderr, "au\n");
@@ -2976,14 +2974,13 @@ int main(void){
             '#define mx_XTLS_HAVE_STACK_OF'
       elif compile_check xtls_stack_of '*SSL STACK_OF()' \
             '#define mx_XTLS_HAVE_STACK_OF' << \!
-#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 #include <openssl/rand.h>
 int main(void){
-   STACK_OF(GENERAL_NAME) *gens = NULL;
+   STACK_OF(GENERAL_NAME) *gens = (void*)0;
 
    printf("%p", gens); /* to use it */
    return 0;
@@ -3000,10 +2997,9 @@ int main(void){
       elif link_check xtls_conf \
             'TLS OpenSSL_modules_load_file(3ssl) support' \
             '#define mx_XTLS_HAVE_CONFIG' << \!
-#include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
-   CONF_modules_load_file(NULL, NULL, CONF_MFLAGS_IGNORE_MISSING_FILE);
+   CONF_modules_load_file((void*)0, (void*)0, CONF_MFLAGS_IGNORE_MISSING_FILE);
 #if mx_HAVE_XTLS < 0x10100
    CONF_modules_free();
 #endif
@@ -3052,10 +3048,9 @@ int main(void){
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
             link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
                '#define mx_XTLS_HAVE_CTX_CONFIG' << \!
-#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
-   SSL_CTX_config(NULL, "SOMEVAL");
+   SSL_CTX_config((void*)0, "SOMEVAL");
    return 0;
 }
 !
@@ -3073,11 +3068,10 @@ int main(void){
       elif link_check xtls_set_maxmin_proto \
          'TLS SSL_CTX_set_min_proto_version(3ssl)' \
          '#define mx_XTLS_HAVE_SET_MIN_PROTO_VERSION' << \!
-#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
-   SSL_CTX_set_min_proto_version(NULL, 0);
-   SSL_CTX_set_max_proto_version(NULL, 10);
+   SSL_CTX_set_min_proto_version((void*)0, 0);
+   SSL_CTX_set_max_proto_version((void*)0, 10);
    return 0;
 }
 !
@@ -3095,10 +3089,9 @@ int main(void){
       elif link_check xtls_set_ciphersuites \
          'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
          '#define mx_XTLS_HAVE_SET_CIPHERSUITES' << \!
-#include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
-   SSL_CTX_set_ciphersuites(NULL, NULL);
+   SSL_CTX_set_ciphersuites((void*)0, (void*)0);
    return 0;
 }
 !
@@ -3509,8 +3502,8 @@ int main(void){
    regex_t re;
 
    status = regcomp(&re, ".*bsd", REG_EXTENDED | REG_ICASE | REG_NOSUB);
-   xret = regerror(status, &re, NULL, 0);
-   status = regexec(&re, "plan9", 0,NULL, 0);
+   xret = regerror(status, &re, (void*)0, 0);
+   status = regexec(&re, "plan9", 0,(void*)0, 0);
    regfree(&re);
    return !(status == REG_NOMATCH);
 }
@@ -3577,7 +3570,7 @@ int main(void){
    r2 = tgetnum(UNCONST("Co"));
    r3 = tgetflag(UNCONST("ut"));
    tputs("cr", 1, &my_putc);
-   return (r1 == NULL || r2 == -1 || r3 == 0);
+   return (r1 == (void*)0 || r2 == -1 || r3 == 0);
 }
 _EOT
    }
@@ -3597,14 +3590,14 @@ int main(void){
    char *r3, *tp;
 
    er = OK;
-   r0 = setupterm(NULL, 1, &er);
+   r0 = setupterm((void*)0, 1, &er);
    r1 = tigetflag(UNCONST("bce"));
    r2 = tigetnum(UNCONST("colors"));
    r3 = tigetstr(UNCONST("cr"));
-   tp = tparm(r3, NULL, NULL, 0,0,0,0,0,0,0);
+   tp = tparm(r3, (void*)0, (void*)0, 0,0,0,0,0,0,0);
    tputs(tp, 1, &my_putc);
    return (r0 == ERR || r1 == -1 || r2 == -2 || r2 == -1 ||
-      r3 == (char*)-1 || r3 == NULL);
+      r3 == (char*)-1 || r3 == (void*)0);
 }
 _EOT
    }
@@ -3661,14 +3654,13 @@ _EOT
          run_check tgetent_null \
             "tgetent(3) of termcap(5) takes NULL buffer" \
             "#define mx_HAVE_TGETENT_NULL_BUF" << _EOT
-#include <stdio.h> /* For C89 NULL */
 #include <stdlib.h>
 #ifdef mx_HAVE_TERMCAP_CURSES
 # include <curses.h>
 #endif
 #include <term.h>
 int main(void){
-   tgetent(NULL, getenv("TERM"));
+   tgetent((void*)0, getenv("TERM"));
    return 0;
 }
 _EOT
