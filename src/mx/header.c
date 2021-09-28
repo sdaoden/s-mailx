@@ -2464,7 +2464,7 @@ c_addrcodec(void *vp){
 
    if(varname == NIL){
       if(fprintf(n_stdout, "%s\n", cp) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          vp = NIL;
       }
    }else if(!n_var_vset(varname, R(up,cp), cm_local)){

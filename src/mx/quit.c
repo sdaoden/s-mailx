@@ -120,10 +120,10 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
       if(lastnl != TRU2)
          putc('\n', obuf);
    }
-   ftrunc(obuf);
 
+   ftrunc(obuf);
    if (ferror(obuf)) {
-      n_perr(mailname, 0);
+      n_perr(mailname, su_err_no_by_errno());
 jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
@@ -621,12 +621,14 @@ jcopyerr:
       mx_fs_close(ibuf);
       fflush(obuf);
    }
+
    ftrunc(obuf);
    if(ferror(obuf)){
-      n_perr(mbox, 0);
+      n_perr(mbox, su_err_no_by_errno());
       mx_fs_close(obuf);
       goto jleave;
    }
+
    if(!mx_fs_close(obuf)){
 #ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) != n_PROTO_IMAP)

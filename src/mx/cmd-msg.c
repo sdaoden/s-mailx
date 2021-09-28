@@ -308,7 +308,7 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
 
       rewind(iobuf);
       if(ftruncate(fileno(iobuf), 0)){
-         n_perr(_("top: ftruncate(2)"), 0);
+         n_perr(_("top: ftruncate(2)"), su_err_no_by_errno());
          vp = NULL;
          break;
       }
@@ -723,7 +723,7 @@ c_pdot(void *vp){
    (void)n_string_cp(s);
    if(cacp->cac_vput == NIL){
       if(fprintf(n_stdout, "%s\n", s->s_dat) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          vp = NIL;
       }
    }else if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_cm_local)){

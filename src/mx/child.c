@@ -127,7 +127,7 @@ a_child__sigchld(int signo){
    for(;;){
       pid = waitpid(-1, &status, WNOHANG);
       if(pid <= 0){
-         if(pid == -1 && su_err_no() == su_ERR_INTR)
+         if(pid == -1 && su_err_no_by_errno() == su_ERR_INTR)
             continue;
          break;
       }
@@ -406,7 +406,7 @@ mx_child_fork(struct mx_child_ctx *ccp){
    case 0:
       goto jkid;
    case -1:
-      ccp->cc_error = su_err_no();
+      ccp->cc_error = su_err_no_by_errno();
 
       /* Link in cleanup list on failure */
       cep->ce_link = nlp;
@@ -565,7 +565,7 @@ mx_child_signal(struct mx_child_ctx *ccp, s32 sig){
       if(cep->ce_done)
          rv = -1;
       else if((rv = kill(S(pid_t,ccp->cc_pid), sig)) != 0)
-         rv = su_err_no();
+         rv = su_err_no_by_errno();
    }else
       ccp->cc_pid = rv = -1;
 
@@ -624,7 +624,7 @@ mx_child_wait(struct mx_child_ctx *ccp){
       /* XXX It would actually be better to sigsuspend on SIGCHLD */
       while(!cep->ce_done &&
             waitpid(S(pid_t,ccp->cc_pid), &cep->ce_status, 0) == -1){
-         if((ws = su_err_no()) != su_ERR_INTR){
+         if((ws = su_err_no_by_errno()) != su_ERR_INTR){
             ok = FAL0;
             break;
          }

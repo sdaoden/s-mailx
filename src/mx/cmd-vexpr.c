@@ -947,12 +947,12 @@ jestr:
                      ) < 0 ||
                   ((f & a_VEXPR_PBASE) &&
                      fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
-            n_pstate_err_no = su_err_no();
+            n_pstate_err_no = su_err_no_by_errno();
             f |= a_VEXPR_ERR;
          }
       }else if(vc.vc_varres != NIL &&
             fprintf(n_stdout, "%s\n", vc.vc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_VEXPR_ERR;
       }
    }else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){
