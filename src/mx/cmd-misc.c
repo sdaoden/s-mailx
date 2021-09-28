@@ -143,9 +143,9 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
             cp = n_string_cp(n_string_trunc(s, s->s_len - 1));
          n_errx(TRU1, (donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
-         e = su_err_no();
+         e = su_err_no_by_errno();
       if((rv = (fflush(fp) == EOF)))
-         e = su_err_no();
+         e = su_err_no_by_errno();
       rv |= ferror(fp) ? 1 : 0;
       n_pstate_err_no = e;
    }else if(!n_var_vset(varname, R(up,cp), cm_local)){
@@ -367,7 +367,7 @@ c_shell(void *vp){
                *x++ = c;
             *x++ = '\0';
             if(l != 0){
-               n_pstate_err_no = su_err_no();
+               n_pstate_err_no = su_err_no_by_errno();
                varres = n_empty; /* xxx hmmm */
             }
          }
@@ -432,7 +432,7 @@ c_cwd(void *vp){
       if(getcwd(s->s_dat, s->s_len) == NIL){
          int e;
 
-         e = su_err_no();
+         e = su_err_no_by_errno();
          if(e == su_ERR_RANGE)
             continue;
          n_perr(_("Failed to getcwd(3)"), e);
@@ -470,7 +470,7 @@ c_chdir(void *vp){
       goto jleave;
 
    if(chdir(cp) == -1){
-      n_perr(cp, 0);
+      n_perr(cp, su_err_no_by_errno());
       cp = NIL;
    }
 

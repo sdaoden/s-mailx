@@ -881,7 +881,7 @@ jestr:
 
    if(fc.fc_varname == NIL){
       if(fc.fc_varres != NIL && fprintf(n_stdout, "%s\n", fc.fc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_FOP_ERR;
       }
    }else if(!n_var_vset(fc.fc_varname, R(up,fc.fc_varres), fc.fc_cm_local)){

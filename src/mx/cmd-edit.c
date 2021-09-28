@@ -116,7 +116,7 @@ a_edit1(int *msgvec, int viored)
             ++size;
          mp->m_size = (uz)size;
          if (ferror(mb.mb_otf))
-            n_perr(_("/tmp"), 0);
+            n_perr(_("/tmp"), su_err_no_by_errno());
          mx_fs_close(fp);
       }
 
@@ -210,7 +210,7 @@ jetempo:
    }
 
    if(t != 0){
-      n_perr(fstcp->fstc_filename, 0);
+      n_perr(fstcp->fstc_filename, su_err_no_by_errno());
       goto jleave;
    }
 
@@ -249,7 +249,7 @@ jetempo:
       if(readonly)
          goto jleave;
       if(stat(fstcp->fstc_filename, &statb) == -1){
-         n_perr(fstcp->fstc_filename, 0);
+         n_perr(fstcp->fstc_filename, su_err_no_by_errno());
          goto jleave;
       }
       if(modtime == statb.st_mtime && modsize == statb.st_size)

@@ -434,7 +434,7 @@ jestr:
        * more bases for the fun of it */
       if(csc.csc_varres != NIL &&
             fprintf(n_stdout, "%s\n", csc.csc_varres) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          f |= a_CSOP_ERR;
       }
    }else if(!n_var_vset(csc.csc_varname, S(up,csc.csc_varres),

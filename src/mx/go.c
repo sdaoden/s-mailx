@@ -2795,8 +2795,10 @@ jfound:
          emsg = NIL;
          elen = 0;
 
-         if((fp = fdopen(fd, "r")) == NIL)
+         if((fp = fdopen(fd, "r")) == NIL){
+            su_err_no_by_errno();
             goto jecreate;
+         }
       }
 
       /* C99 */{

@@ -310,17 +310,14 @@ jdelim_empty:
       }
 
       if(indl > 0){
-         if(fwrite(indb, sizeof *indb, indl, _coll_fp) != indl){
-            rv = su_err_no();
-            goto jleave;
-         }
+         if(fwrite(indb, sizeof *indb, indl, _coll_fp) != indl)
+            goto jerrno;
          cc += indl;
       }
 
-      if(fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen){
-         rv = su_err_no();
-         goto jleave;
-      }
+      if(fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen)
+         goto jerrno;
+
       cc += linelen;
       ++lc;
    }
@@ -330,7 +327,8 @@ jdelim_empty:
    }
 
    if(fflush(_coll_fp)){
-      rv = su_err_no();
+jerrno:
+      rv = su_err_no_by_errno();
       goto jleave;
    }
 
@@ -349,6 +347,7 @@ jleave:
    if(writestat)
       fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
          n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : su_empty), lc, cc);
+
    NYD_OU;
    return rv;
 }
@@ -369,7 +368,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
       while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
          if(putc(c, fp) == EOF){
-            rv = su_err_no();
+            rv = su_err_no_by_errno();
             break;
          }
          ++cc;
@@ -389,6 +388,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
    fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
       (rv == su_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
+
    NYD_OU;
    return rv;
 }
@@ -442,6 +442,7 @@ jleave:
       clearerr(obuf);
 
    mx_fs_linepool_release(linebuf, linesize);
+
    NYD_OU;
    return rv;
 }
@@ -474,7 +475,7 @@ a_coll_write(char const *name, FILE *fp, int f)
       if (c == '\n')
          ++lc;
       if (putc(c, of) == EOF) {
-         n_perr(name, rv = su_err_no());
+         n_perr(name, rv = su_err_no_by_errno());
          goto jerr;
       }
    }
@@ -484,6 +485,7 @@ jleave:
    if(of != NIL)
       mx_fs_close(of);
    fflush(n_stdout);
+
    NYD_OU;
    return rv;
 jerr:
@@ -507,6 +509,7 @@ a_coll_message_inject_head(FILE *fp){
       rv = FAL0;
    else
       rv = TRU1;
+
    NYD2_OU;
    return rv;
 }
@@ -526,6 +529,7 @@ a_collect_add_sender_to_cc(struct header *hp, struct message *mp){
          gf |= GFULL;
       hp->h_cc = cat(hp->h_cc, ndup(addcc, gf));
    }
+
    NYD_OU;
 }
 
@@ -751,10 +755,12 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
 
    if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
+
    rv = TRU1;
 jleave:
    if(nf != NIL)
       mx_fs_close(nf);
+
    NYD_OU;
    return rv;
 }
@@ -838,14 +844,17 @@ a_coll_pipe(char const *cmd)
 
    if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
             NIL)) == NIL){
+      rv = su_err_no();
 jperr:
-      n_perr(_("temporary mail edit file"), rv = su_err_no());
+      n_perr(_("temporary mail edit file"), rv);
       goto jout;
    }
 
    /* stdin = current message.  stdout = new message */
-   if(fflush(_coll_fp) == EOF)
+   if(fflush(_coll_fp) == EOF){
+      rv = su_err_no_by_errno();
       goto jperr;
+   }
    rewind(_coll_fp);
 
    /* C99 */{
@@ -2142,7 +2151,7 @@ jreasksend:
 
       /* C99 */{
          FILE *x = UNVOLATILE(FILE*,sigfp);
-         int e = su_err_no(), ise = ferror(x);
+         int e = su_err_no_by_errno(), ise = ferror(x);
 
          sigfp = NULL;
          mx_fs_close(x);

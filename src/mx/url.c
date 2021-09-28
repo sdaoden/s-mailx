@@ -190,7 +190,7 @@ c_urlcodec(void *vp){
       in.l = su_cs_len(in.s = UNCONST(char*,varres));
       mx_makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
-         n_pstate_err_no = su_err_no();
+         n_pstate_err_no = su_err_no_by_errno();
          vp = NIL;
       }
       n_free(out.s);
