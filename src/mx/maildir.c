@@ -752,7 +752,7 @@ maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if((!stat(tfn, &st) || su_err_no() == su_ERR_NOENT) &&
+      if((!stat(tfn, &st) || su_err_no_by_errno() == su_ERR_NOENT) &&
             (op = mx_fs_open(tfn, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
                   mx_FS_O_EXCL))) != NIL)
          break;
@@ -916,7 +916,7 @@ subdir_remove(char const *name, char const *sub)
    path[pathend = namelen + sublen + 2] = '\0';
 
    if ((dirp = opendir(path)) == NULL) {
-      n_perr(path, 0);
+      n_perr(path, su_err_no_by_errno());
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {

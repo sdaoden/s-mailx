@@ -26,7 +26,6 @@ su_USECASE_CONFIG_CHECKS(
    su_HAVE_SLEEP
    )
 
-#include <errno.h>
 #include <time.h>
 
 #ifdef su_HAVE_SLEEP
@@ -127,7 +126,7 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
             &ts, &tsr);
 
       if(rv != 0){
-         switch((rv = errno)){
+         switch((rv = su_err_no_by_errno())){
          case su_ERR_INTR:
             if(rem_or_nil != NIL){
                rem_or_nil->ts_sec = tsr.tv_sec;

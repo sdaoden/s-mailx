@@ -768,7 +768,7 @@ cache_rename(const char *old, const char *new)
          (newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
       goto jleave;
    if (rename(olddir, newdir) < 0) {
-      n_perr(olddir, 0);
+      n_perr(olddir, su_err_no_by_errno());
       rv = STOP;
    }
 jleave:

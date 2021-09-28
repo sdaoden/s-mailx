@@ -203,6 +203,7 @@ jsend:
             !mx_ignore_is_any(mx_IGNORE_SAVE) && imap_thisaccount(file)){
          if(imap_copy(mp, P2UZ(mp - message + 1), file) == STOP){
             success = FAL0;
+            n_pstate_err_no = su_err_no_by_errno();
             goto jferr;
          }
          mstats[0] = mp->m_xsize;
@@ -210,6 +211,7 @@ jsend:
 #endif
            {
          if(sendmp(mp, obuf, itp, NIL, convert, mstats) < 0){
+            n_pstate_err_no = su_err_no_by_errno();
             success = FAL0;
             goto jferr;
          }
@@ -238,8 +240,9 @@ jsend:
    fflush(obuf);
 
    if (ferror(obuf)) {
+      n_pstate_err_no = su_err_no_by_errno();
 jferr:
-      n_perr(file, n_pstate_err_no = su_err_no());
+      n_perr(file, n_pstate_err_no);
       if (!success)
          su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
       success = FAL0;
