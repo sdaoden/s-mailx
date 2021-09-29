@@ -1,6 +1,8 @@
 #@ Include file for the make-release.sh generic release builder.
-#@ It also needs two hooks: update_stable_hook(), update_release_hook(),
-#@ which need to "git add" what they have modified.
+#@ It also needs three hooks: update_stable_hook() and update_release_hook(),
+#@ which need to "git add" what they have modified, and test_release_hook(),
+#@ (non-"grappa") called with the release tag name as an argument after the
+#@ release commit: if it returns a non-0 status the release process is aborted.
 #@ The "grappa" mode needs a current_version() hook, which has to set $VERSION
 #@ to the current program version, expected as MAJOR.MINOR.UPDATE[-whatever]
 
@@ -509,6 +511,7 @@ update_stable_hook
 if [ -z "${grappa}" ]; then
    update_stable_branch
    create_release_branch
+   test_release_hook v${REL}.ar || exit 1
    check_timeline_branch
    repo_push
    big_balls

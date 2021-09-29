@@ -173,6 +173,19 @@ update_release_hook() {
       ${fs}
 }
 
+test_release_hook() {
+   ${git} archive --format=tar --prefix=.xxx/ ${1} |
+      (
+         cd "${TMPDIR}" || exit 1
+         trap "${rm} -rf \"${TMPDIR}\"/.xxx" EXIT
+         ${tar} -x -f - || exit 2
+         cd .xxx || exit 3
+         echo '!!! Test build !!!'
+         make tangerine DESTDIR=.yyy || exit 4
+      )
+   return ${?}
+}
+
 . .git/make-release.inc
 
 # s-sh-mode
