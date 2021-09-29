@@ -15,15 +15,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifndef su__MEM_TOOLS_Y
+# define su__MEM_TOOLS_Y 1
 
-#include <string.h> /* TODO unroll them in C */
+# include <string.h> /* TODO unroll them in C */
 
-/*#define NYDPROF_ENABLE*/
-/*#define NYD_ENABLE*/
-/*#define NYD2_ENABLE*/
-#include "su/code-in.h"
+#elif su__MEM_TOOLS_Y == 1
+# undef su__MEM_TOOLS_Y
+# define su__MEM_TOOLS_Y 2
 
-/**/
 SINLINE void *a_memt_find(void const *vp, s32 what, uz len);
 SINLINE void *a_memt_rfind(void const *vp, s32 what, uz len);
 SINLINE sz a_memt_cmp(void const *vpa, void const *vpb, uz len);
@@ -77,5 +77,11 @@ a_memt_set(void *vp, s32 what, uz len){
    return vp;
 }
 
-#include "su/code-ou.h"
+#elif su__MEM_TOOLS_Y == 2
+# undef su__MEM_TOOLS_Y
+# define su__MEM_TOOLS_Y 3
+
+#else
+# error .
+#endif
 /* s-it-mode */

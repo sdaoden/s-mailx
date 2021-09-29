@@ -1,5 +1,5 @@
 /*@ Implementation of mem.h: utility funs.
- *@ The implementations are in ./x-mem-tools.h:
+ *@ The implementations are in ./y-mem-tools.h:
  *@ - a_memt_FUN().
  *@ - Data is asserted, length cannot be 0.
  *
@@ -25,11 +25,13 @@
 #include "su/code.h"
 
 #include "su/mem.h"
-#include "su/x-mem-tools.h" /* $(SU_SRCDIR) */
+#include "su/y-mem-tools.h" /* $(SU_SRCDIR) */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
+
+#include <su/y-mem-tools.h> /* 2. */
 
 void *
 su_mem_find(void const *vp, s32 what, uz len){
@@ -105,6 +107,8 @@ su_mem_set(void *vp, s32 what, uz len){
    NYD_OU;
    return vp;
 }
+
+#include <su/y-mem-tools.h> /* 3. */
 
 #include "su/code-ou.h"
 #undef su_FILE
