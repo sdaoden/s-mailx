@@ -31,9 +31,9 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-#include "su/x-assoc-map.h" /* $(SU_SRCDIR) */
+#include "su/y-assoc-map.h" /* $(SU_SRCDIR) */
 #define a_TYPE a_TYPE_CSDICT
-#include <su/x-assoc-map.h>
+#include <su/y-assoc-map.h>
 
 #include "su/code-ou.h"
 #undef su_FILE
