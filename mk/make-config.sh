@@ -3661,9 +3661,18 @@ else
    printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
 fi
 
+# Not those SU sources with su_USECASE_MX_DISABLED
+su_sources=`(
+      cd "${SRCDIR}"
+      for f in su/*.c; do
+         ${grep} su_USECASE_MX_DISABLED "${f}" >/dev/null >&1 && continue
+         echo ${f}
+      done
+      )`
+
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
-   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ${su_sources}) >> ${mk}
    (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
    mx_obj='$(MX_C_OBJ)' su_obj='$(SU_C_OBJ)'
 else
@@ -3677,9 +3686,8 @@ else
    printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
    printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_SOURCE\n' >> ${h}
 
-   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
-      i=`basename "${i}"`
-      printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
+   for i in `printf '%s\n' ${su_sources} | ${sort}`; do
+      printf '# include "%s%s"\n' "${SRCDIR}" "${i}" >> ${h}
    done
    echo >> ${mk}
 
