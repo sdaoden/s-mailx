@@ -116,7 +116,7 @@ su_err_by_name(char const *name){
    s32 rv;
    NYD2_IN;
 
-   hash = su_cs_hash(name) & U32_MAX;
+   hash = su_cs_hash_case(name) & U32_MAX;
 
    for(i = hash % a_CORERR_REV_PRIME, j = 0; j <= a_CORERR_REV_LONGEST; ++j){
       if((x = a_corerr_revmap[i]) == a_CORERR_REV_ILL)
@@ -124,7 +124,7 @@ su_err_by_name(char const *name){
 
       cemp = &a_corerr_map[x];
       if(cemp->cem_hash == hash &&
-            !su_cs_cmp(&a_corerr_names[cemp->cem_nameoff], name)){
+            !su_cs_cmp_case(&a_corerr_names[cemp->cem_nameoff], name)){
          rv = cemp->cem_errno;
          goto jleave;
       }
