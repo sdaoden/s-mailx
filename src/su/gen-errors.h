@@ -123,47 +123,51 @@ static char const a_corerr_names[] = {
    'N','O','T','E','M','P','T','Y','\0',
    /* 59. [434]+9 NOTOBACCO */
    'N','O','T','O','B','A','C','C','O','\0',
-   /* 60. [444]+7 NOTSOCK */
+   /* 60. [444]+14 NOTRECOVERABLE */
+   'N','O','T','R','E','C','O','V','E','R','A','B','L','E','\0',
+   /* 61. [459]+7 NOTSOCK */
    'N','O','T','S','O','C','K','\0',
-   /* 61. [452]+6 NOTSUP */
+   /* 62. [467]+6 NOTSUP */
    'N','O','T','S','U','P','\0',
-   /* 62. [459]+5 NOTTY */
+   /* 63. [474]+5 NOTTY */
    'N','O','T','T','Y','\0',
-   /* 63. [465]+4 NXIO */
+   /* 64. [480]+4 NXIO */
    'N','X','I','O','\0',
-   /* 64. [470]+9 OPNOTSUPP */
+   /* 65. [485]+9 OPNOTSUPP */
    'O','P','N','O','T','S','U','P','P','\0',
-   /* 65. [480]+8 OVERFLOW */
+   /* 66. [495]+8 OVERFLOW */
    'O','V','E','R','F','L','O','W','\0',
-   /* 66. [489]+4 PERM */
+   /* 67. [504]+9 OWNERDEAD */
+   'O','W','N','E','R','D','E','A','D','\0',
+   /* 68. [514]+4 PERM */
    'P','E','R','M','\0',
-   /* 67. [494]+4 PIPE */
+   /* 69. [519]+4 PIPE */
    'P','I','P','E','\0',
-   /* 68. [499]+5 PROTO */
+   /* 70. [524]+5 PROTO */
    'P','R','O','T','O','\0',
-   /* 69. [505]+14 PROTONOSUPPORT */
+   /* 71. [530]+14 PROTONOSUPPORT */
    'P','R','O','T','O','N','O','S','U','P','P','O','R','T','\0',
-   /* 70. [520]+9 PROTOTYPE */
+   /* 72. [545]+9 PROTOTYPE */
    'P','R','O','T','O','T','Y','P','E','\0',
-   /* 71. [530]+5 RANGE */
+   /* 73. [555]+5 RANGE */
    'R','A','N','G','E','\0',
-   /* 72. [536]+4 ROFS */
+   /* 74. [561]+4 ROFS */
    'R','O','F','S','\0',
-   /* 73. [541]+5 SPIPE */
+   /* 75. [566]+5 SPIPE */
    'S','P','I','P','E','\0',
-   /* 74. [547]+4 SRCH */
+   /* 76. [572]+4 SRCH */
    'S','R','C','H','\0',
-   /* 75. [552]+5 STALE */
+   /* 77. [577]+5 STALE */
    'S','T','A','L','E','\0',
-   /* 76. [558]+4 TIME */
+   /* 78. [583]+4 TIME */
    'T','I','M','E','\0',
-   /* 77. [563]+8 TIMEDOUT */
+   /* 79. [588]+8 TIMEDOUT */
    'T','I','M','E','D','O','U','T','\0',
-   /* 78. [572]+6 TXTBSY */
+   /* 80. [597]+6 TXTBSY */
    'T','X','T','B','S','Y','\0',
-   /* 79. [579]+10 WOULDBLOCK */
+   /* 81. [604]+10 WOULDBLOCK */
    'W','O','U','L','D','B','L','O','C','K','\0',
-   /* 80. [590]+4 XDEV */
+   /* 82. [615]+4 XDEV */
    'X','D','E','V','\0',
 };
 
@@ -291,47 +295,51 @@ static char const a_corerr_docs[] = {
    'D','i','r','e','c','t','o','r','y',' ','n','o','t',' ','e','m','p','t','y','\0',
    /* 59. [1334]+36 NOTOBACCO */ a_X(N_("No tobacco, snorkeling on empty pipe"))
    'N','o',' ','t','o','b','a','c','c','o',',',' ','s','n','o','r','k','e','l','i','n','g',' ','o','n',' ','e','m','p','t','y',' ','p','i','p','e','\0',
-   /* 60. [1371]+30 NOTSOCK */ a_X(N_("Socket operation on non-socket"))
+   /* 60. [1371]+21 NOTRECOVERABLE */ a_X(N_("State not recoverable"))
+   'S','t','a','t','e',' ','n','o','t',' ','r','e','c','o','v','e','r','a','b','l','e','\0',
+   /* 61. [1393]+30 NOTSOCK */ a_X(N_("Socket operation on non-socket"))
    'S','o','c','k','e','t',' ','o','p','e','r','a','t','i','o','n',' ','o','n',' ','n','o','n','-','s','o','c','k','e','t','\0',
-   /* 61. [1402]+23 NOTSUP */ a_X(N_("Operation not supported"))
+   /* 62. [1424]+23 NOTSUP */ a_X(N_("Operation not supported"))
    'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-   /* 62. [1426]+30 NOTTY */ a_X(N_("Inappropriate ioctl for device"))
+   /* 63. [1448]+30 NOTTY */ a_X(N_("Inappropriate ioctl for device"))
    'I','n','a','p','p','r','o','p','r','i','a','t','e',' ','i','o','c','t','l',' ','f','o','r',' ','d','e','v','i','c','e','\0',
-   /* 63. [1457]+21 NXIO */ a_X(N_("Device not configured"))
+   /* 64. [1479]+21 NXIO */ a_X(N_("Device not configured"))
    'D','e','v','i','c','e',' ','n','o','t',' ','c','o','n','f','i','g','u','r','e','d','\0',
-   /* 64. [1479]+23 OPNOTSUPP */ a_X(N_("Operation not supported"))
+   /* 65. [1501]+23 OPNOTSUPP */ a_X(N_("Operation not supported"))
    'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-   /* 65. [1503]+41 OVERFLOW */ a_X(N_("Value too large to be stored in data type"))
+   /* 66. [1525]+41 OVERFLOW */ a_X(N_("Value too large to be stored in data type"))
    'V','a','l','u','e',' ','t','o','o',' ','l','a','r','g','e',' ','t','o',' ','b','e',' ','s','t','o','r','e','d',' ','i','n',' ','d','a','t','a',' ','t','y','p','e','\0',
-   /* 66. [1545]+23 PERM */ a_X(N_("Operation not permitted"))
+   /* 67. [1567]+19 OWNERDEAD */ a_X(N_("Previous owner died"))
+   'P','r','e','v','i','o','u','s',' ','o','w','n','e','r',' ','d','i','e','d','\0',
+   /* 68. [1587]+23 PERM */ a_X(N_("Operation not permitted"))
    'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','p','e','r','m','i','t','t','e','d','\0',
-   /* 67. [1569]+11 PIPE */ a_X(N_("Broken pipe"))
+   /* 69. [1611]+11 PIPE */ a_X(N_("Broken pipe"))
    'B','r','o','k','e','n',' ','p','i','p','e','\0',
-   /* 68. [1581]+14 PROTO */ a_X(N_("Protocol error"))
+   /* 70. [1623]+14 PROTO */ a_X(N_("Protocol error"))
    'P','r','o','t','o','c','o','l',' ','e','r','r','o','r','\0',
-   /* 69. [1596]+22 PROTONOSUPPORT */ a_X(N_("Protocol not supported"))
+   /* 71. [1638]+22 PROTONOSUPPORT */ a_X(N_("Protocol not supported"))
    'P','r','o','t','o','c','o','l',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-   /* 70. [1619]+30 PROTOTYPE */ a_X(N_("Protocol wrong type for socket"))
+   /* 72. [1661]+30 PROTOTYPE */ a_X(N_("Protocol wrong type for socket"))
    'P','r','o','t','o','c','o','l',' ','w','r','o','n','g',' ','t','y','p','e',' ','f','o','r',' ','s','o','c','k','e','t','\0',
-   /* 71. [1650]+16 RANGE */ a_X(N_("Result too large"))
+   /* 73. [1692]+16 RANGE */ a_X(N_("Result too large"))
    'R','e','s','u','l','t',' ','t','o','o',' ','l','a','r','g','e','\0',
-   /* 72. [1667]+20 ROFS */ a_X(N_("Read-only filesystem"))
+   /* 74. [1709]+20 ROFS */ a_X(N_("Read-only filesystem"))
    'R','e','a','d','-','o','n','l','y',' ','f','i','l','e','s','y','s','t','e','m','\0',
-   /* 73. [1688]+12 SPIPE */ a_X(N_("Invalid seek"))
+   /* 75. [1730]+12 SPIPE */ a_X(N_("Invalid seek"))
    'I','n','v','a','l','i','d',' ','s','e','e','k','\0',
-   /* 74. [1701]+15 SRCH */ a_X(N_("No such process"))
+   /* 76. [1743]+15 SRCH */ a_X(N_("No such process"))
    'N','o',' ','s','u','c','h',' ','p','r','o','c','e','s','s','\0',
-   /* 75. [1717]+21 STALE */ a_X(N_("Stale NFS file handle"))
+   /* 77. [1759]+21 STALE */ a_X(N_("Stale NFS file handle"))
    'S','t','a','l','e',' ','N','F','S',' ','f','i','l','e',' ','h','a','n','d','l','e','\0',
-   /* 76. [1739]+13 TIME */ a_X(N_("Timer expired"))
+   /* 78. [1781]+13 TIME */ a_X(N_("Timer expired"))
    'T','i','m','e','r',' ','e','x','p','i','r','e','d','\0',
-   /* 77. [1753]+19 TIMEDOUT */ a_X(N_("Operation timed out"))
+   /* 79. [1795]+19 TIMEDOUT */ a_X(N_("Operation timed out"))
    'O','p','e','r','a','t','i','o','n',' ','t','i','m','e','d',' ','o','u','t','\0',
-   /* 78. [1773]+14 TXTBSY */ a_X(N_("Text file busy"))
+   /* 80. [1815]+14 TXTBSY */ a_X(N_("Text file busy"))
    'T','e','x','t',' ','f','i','l','e',' ','b','u','s','y','\0',
-   /* 79. [1788]+21 WOULDBLOCK */ a_X(N_("Operation would block"))
+   /* 81. [1830]+21 WOULDBLOCK */ a_X(N_("Operation would block"))
    'O','p','e','r','a','t','i','o','n',' ','w','o','u','l','d',' ','b','l','o','c','k','\0',
-   /* 80. [1810]+17 XDEV */ a_X(N_("Cross-device link"))
+   /* 82. [1852]+17 XDEV */ a_X(N_("Cross-device link"))
    'C','r','o','s','s','-','d','e','v','i','c','e',' ','l','i','n','k','\0',
 };
 #  undef a_X
@@ -344,111 +352,112 @@ static char const a_corerr_docs[] = {
 #  define a_X(X) 0
 # endif
 static struct a_corerr_map const a_corerr_map[] = {
-   {233011709u, 0u, 0u, a_X(su_ERR_NONE)},
-   {338119313u, 5u, 9u, a_X(su_ERR_2BIG)},
-   {2760110381u, 10u, 32u, a_X(su_ERR_ACCES)},
-   {3973621059u, 16u, 50u, a_X(su_ERR_ADDRINUSE)},
-   {4228849030u, 26u, 73u, a_X(su_ERR_ADDRNOTAVAIL)},
-   {1437911301u, 39u, 105u, a_X(su_ERR_AFNOSUPPORT)},
-   {1876217389u, 51u, 153u, a_X(su_ERR_AGAIN)},
-   {2638797879u, 57u, 186u, a_X(su_ERR_ALREADY)},
-   {1628681718u, 65u, 216u, a_X(su_ERR_BADF)},
-   {3563543249u, 70u, 236u, a_X(su_ERR_BADMSG)},
-   {332518208u, 77u, 248u, a_X(su_ERR_BUSY)},
-   {1622129131u, 82u, 260u, a_X(su_ERR_CANCELED)},
-   {3508732648u, 91u, 279u, a_X(su_ERR_CHILD)},
-   {3696001689u, 97u, 298u, a_X(su_ERR_CONNABORTED)},
-   {1535510636u, 109u, 331u, a_X(su_ERR_CONNREFUSED)},
-   {323416381u, 121u, 350u, a_X(su_ERR_CONNRESET)},
-   {265908508u, 131u, 375u, a_X(su_ERR_DEADLK)},
-   {1947834517u, 138u, 401u, a_X(su_ERR_DESTADDRREQ)},
-   {689055206u, 150u, 430u, a_X(su_ERR_DOM)},
-   {2103109256u, 154u, 463u, a_X(su_ERR_DQUOT)},
-   {690634405u, 160u, 483u, a_X(su_ERR_EXIST)},
-   {1325100503u, 166u, 495u, a_X(su_ERR_FAULT)},
-   {191906582u, 172u, 507u, a_X(su_ERR_FBIG)},
-   {3136618891u, 177u, 522u, a_X(su_ERR_HOSTUNREACH)},
-   {597011636u, 189u, 539u, a_X(su_ERR_IDRM)},
-   {3837265952u, 194u, 558u, a_X(su_ERR_ILSEQ)},
-   {164315250u, 200u, 580u, a_X(su_ERR_INPROGRESS)},
-   {295637505u, 211u, 606u, a_X(su_ERR_INTR)},
-   {4001353557u, 216u, 630u, a_X(su_ERR_INVAL)},
-   {1727311571u, 222u, 647u, a_X(su_ERR_IO)},
-   {1873054828u, 225u, 666u, a_X(su_ERR_ISCONN)},
-   {2112607642u, 232u, 694u, a_X(su_ERR_ISDIR)},
-   {409311535u, 238u, 709u, a_X(su_ERR_LOOP)},
-   {3633286620u, 243u, 743u, a_X(su_ERR_MFILE)},
-   {2195249641u, 249u, 763u, a_X(su_ERR_MLINK)},
-   {4096082673u, 255u, 778u, a_X(su_ERR_MSGSIZE)},
-   {3526377641u, 263u, 795u, a_X(su_ERR_MULTIHOP)},
-   {663564256u, 272u, 814u, a_X(su_ERR_NAMETOOLONG)},
-   {2628143458u, 284u, 833u, a_X(su_ERR_NETDOWN)},
-   {2913781409u, 292u, 849u, a_X(su_ERR_NETRESET)},
-   {3902971798u, 301u, 885u, a_X(su_ERR_NETUNREACH)},
-   {459859315u, 312u, 908u, a_X(su_ERR_NFILE)},
-   {3446690680u, 318u, 938u, a_X(su_ERR_NOBUFS)},
-   {4178159620u, 325u, 964u, a_X(su_ERR_NODATA)},
-   {4238350791u, 332u, 982u, a_X(su_ERR_NODEV)},
-   {1268523872u, 338u, 1016u, a_X(su_ERR_NOENT)},
-   {2076180286u, 344u, 1049u, a_X(su_ERR_NOEXEC)},
-   {1161014149u, 351u, 1067u, a_X(su_ERR_NOLCK)},
-   {1880207780u, 357u, 1086u, a_X(su_ERR_NOLINK)},
-   {2297471775u, 364u, 1108u, a_X(su_ERR_NOMEM)},
-   {288687459u, 370u, 1131u, a_X(su_ERR_NOMSG)},
-   {3588403549u, 376u, 1158u, a_X(su_ERR_NOPROTOOPT)},
-   {2608265568u, 387u, 1181u, a_X(su_ERR_NOSPC)},
-   {1014226748u, 393u, 1205u, a_X(su_ERR_NOSR)},
-   {2306425920u, 398u, 1229u, a_X(su_ERR_NOSTR)},
-   {2157612882u, 404u, 1249u, a_X(su_ERR_NOSYS)},
-   {1106981846u, 410u, 1274u, a_X(su_ERR_NOTCONN)},
-   {3361152810u, 418u, 1298u, a_X(su_ERR_NOTDIR)},
-   {1159928508u, 425u, 1314u, a_X(su_ERR_NOTEMPTY)},
-   {1391828806u, 434u, 1334u, a_X(su_ERR_NOTOBACCO)},
-   {3263554828u, 444u, 1371u, a_X(su_ERR_NOTSOCK)},
-   {151164965u, 452u, 1402u, a_X(su_ERR_NOTSUP)},
-   {3870455042u, 459u, 1426u, a_X(su_ERR_NOTTY)},
-   {273388482u, 465u, 1457u, a_X(su_ERR_NXIO)},
-   {727228813u, 470u, 1479u, a_X(su_ERR_OPNOTSUPP)},
-   {2142687439u, 480u, 1503u, a_X(su_ERR_OVERFLOW)},
-   {1727042864u, 489u, 1545u, a_X(su_ERR_PERM)},
-   {1752074821u, 494u, 1569u, a_X(su_ERR_PIPE)},
-   {385670576u, 499u, 1581u, a_X(su_ERR_PROTO)},
-   {3066850062u, 505u, 1596u, a_X(su_ERR_PROTONOSUPPORT)},
-   {1908988597u, 520u, 1619u, a_X(su_ERR_PROTOTYPE)},
-   {833145061u, 530u, 1650u, a_X(su_ERR_RANGE)},
-   {2868169750u, 536u, 1667u, a_X(su_ERR_ROFS)},
-   {2514504004u, 541u, 1688u, a_X(su_ERR_SPIPE)},
-   {1572477186u, 547u, 1701u, a_X(su_ERR_SRCH)},
-   {1954937632u, 552u, 1717u, a_X(su_ERR_STALE)},
-   {3112234335u, 558u, 1739u, a_X(su_ERR_TIME)},
-   {1794618926u, 563u, 1753u, a_X(su_ERR_TIMEDOUT)},
-   {1586215649u, 572u, 1773u, a_X(su_ERR_TXTBSY)},
-   {1014021045u, 579u, 1788u, a_X(su_ERR_WOULDBLOCK)},
-   {1748691063u, 590u, 1810u, a_X(su_ERR_XDEV)},
+   {3985216715u, 0u, 0u, a_X(su_ERR_NONE)},
+   {1548863513u, 5u, 9u, a_X(su_ERR_2BIG)},
+   {1554660129u, 10u, 32u, a_X(su_ERR_ACCES)},
+   {2204434067u, 16u, 50u, a_X(su_ERR_ADDRINUSE)},
+   {394928527u, 26u, 73u, a_X(su_ERR_ADDRNOTAVAIL)},
+   {579550335u, 39u, 105u, a_X(su_ERR_AFNOSUPPORT)},
+   {3219517789u, 51u, 153u, a_X(su_ERR_AGAIN)},
+   {2761593402u, 57u, 186u, a_X(su_ERR_ALREADY)},
+   {3204971797u, 65u, 216u, a_X(su_ERR_BADF)},
+   {3158111956u, 70u, 236u, a_X(su_ERR_BADMSG)},
+   {540720142u, 77u, 248u, a_X(su_ERR_BUSY)},
+   {1558977873u, 82u, 260u, a_X(su_ERR_CANCELED)},
+   {2919726635u, 91u, 279u, a_X(su_ERR_CHILD)},
+   {4070044494u, 97u, 298u, a_X(su_ERR_CONNABORTED)},
+   {3891312486u, 109u, 331u, a_X(su_ERR_CONNREFUSED)},
+   {4075740547u, 121u, 350u, a_X(su_ERR_CONNRESET)},
+   {1286193009u, 131u, 375u, a_X(su_ERR_DEADLK)},
+   {487183167u, 138u, 401u, a_X(su_ERR_DESTADDRREQ)},
+   {1275087668u, 150u, 430u, a_X(su_ERR_DOM)},
+   {1625064797u, 154u, 463u, a_X(su_ERR_DQUOT)},
+   {209712131u, 160u, 483u, a_X(su_ERR_EXIST)},
+   {2200690282u, 166u, 495u, a_X(su_ERR_FAULT)},
+   {1867556374u, 172u, 507u, a_X(su_ERR_FBIG)},
+   {977671325u, 177u, 522u, a_X(su_ERR_HOSTUNREACH)},
+   {2650255132u, 189u, 539u, a_X(su_ERR_IDRM)},
+   {2412233051u, 194u, 558u, a_X(su_ERR_ILSEQ)},
+   {232417195u, 200u, 580u, a_X(su_ERR_INPROGRESS)},
+   {1834216174u, 211u, 606u, a_X(su_ERR_INTR)},
+   {2778729263u, 216u, 630u, a_X(su_ERR_INVAL)},
+   {60996235u, 222u, 647u, a_X(su_ERR_IO)},
+   {1906653653u, 225u, 666u, a_X(su_ERR_ISCONN)},
+   {2703117147u, 232u, 694u, a_X(su_ERR_ISDIR)},
+   {3778570389u, 238u, 709u, a_X(su_ERR_LOOP)},
+   {3883052625u, 243u, 743u, a_X(su_ERR_MFILE)},
+   {4254424829u, 249u, 763u, a_X(su_ERR_MLINK)},
+   {3207869310u, 255u, 778u, a_X(su_ERR_MSGSIZE)},
+   {2429845702u, 263u, 795u, a_X(su_ERR_MULTIHOP)},
+   {2413025187u, 272u, 814u, a_X(su_ERR_NAMETOOLONG)},
+   {1599908174u, 284u, 833u, a_X(su_ERR_NETDOWN)},
+   {2546683399u, 292u, 849u, a_X(su_ERR_NETRESET)},
+   {126784772u, 301u, 885u, a_X(su_ERR_NETUNREACH)},
+   {1896383204u, 312u, 908u, a_X(su_ERR_NFILE)},
+   {926520351u, 318u, 938u, a_X(su_ERR_NOBUFS)},
+   {2057769072u, 325u, 964u, a_X(su_ERR_NODATA)},
+   {3065948358u, 332u, 982u, a_X(su_ERR_NODEV)},
+   {2670526869u, 338u, 1016u, a_X(su_ERR_NOENT)},
+   {76110661u, 344u, 1049u, a_X(su_ERR_NOEXEC)},
+   {601731946u, 351u, 1067u, a_X(su_ERR_NOLCK)},
+   {3857144037u, 357u, 1086u, a_X(su_ERR_NOLINK)},
+   {208857727u, 364u, 1108u, a_X(su_ERR_NOMEM)},
+   {74778096u, 370u, 1131u, a_X(su_ERR_NOMSG)},
+   {3003592202u, 376u, 1158u, a_X(su_ERR_NOPROTOOPT)},
+   {177925004u, 387u, 1181u, a_X(su_ERR_NOSPC)},
+   {514208665u, 393u, 1205u, a_X(su_ERR_NOSR)},
+   {3785574735u, 398u, 1229u, a_X(su_ERR_NOSTR)},
+   {3480363906u, 404u, 1249u, a_X(su_ERR_NOSYS)},
+   {75346310u, 410u, 1274u, a_X(su_ERR_NOTCONN)},
+   {1624312282u, 418u, 1298u, a_X(su_ERR_NOTDIR)},
+   {720759330u, 425u, 1314u, a_X(su_ERR_NOTEMPTY)},
+   {2920920986u, 434u, 1334u, a_X(su_ERR_NOTOBACCO)},
+   {976391395u, 444u, 1371u, a_X(su_ERR_NOTRECOVERABLE)},
+   {998215214u, 459u, 1393u, a_X(su_ERR_NOTSOCK)},
+   {3805023206u, 467u, 1424u, a_X(su_ERR_NOTSUP)},
+   {3435109480u, 474u, 1448u, a_X(su_ERR_NOTTY)},
+   {3914038247u, 480u, 1479u, a_X(su_ERR_NXIO)},
+   {1893827946u, 485u, 1501u, a_X(su_ERR_OPNOTSUPP)},
+   {3928670939u, 495u, 1525u, a_X(su_ERR_OVERFLOW)},
+   {2670544256u, 504u, 1567u, a_X(su_ERR_OWNERDEAD)},
+   {2347442461u, 514u, 1587u, a_X(su_ERR_PERM)},
+   {1163014026u, 519u, 1611u, a_X(su_ERR_PIPE)},
+   {568774852u, 524u, 1623u, a_X(su_ERR_PROTO)},
+   {286170084u, 530u, 1638u, a_X(su_ERR_PROTONOSUPPORT)},
+   {1271372488u, 545u, 1661u, a_X(su_ERR_PROTOTYPE)},
+   {3827478998u, 555u, 1692u, a_X(su_ERR_RANGE)},
+   {4034145621u, 561u, 1709u, a_X(su_ERR_ROFS)},
+   {3141617613u, 566u, 1730u, a_X(su_ERR_SPIPE)},
+   {3964300208u, 572u, 1743u, a_X(su_ERR_SRCH)},
+   {531247846u, 577u, 1759u, a_X(su_ERR_STALE)},
+   {193396678u, 583u, 1781u, a_X(su_ERR_TIME)},
+   {2741230255u, 588u, 1795u, a_X(su_ERR_TIMEDOUT)},
+   {153404842u, 597u, 1815u, a_X(su_ERR_TXTBSY)},
+   {799626252u, 604u, 1830u, a_X(su_ERR_WOULDBLOCK)},
+   {2462823744u, 615u, 1852u, a_X(su_ERR_XDEV)},
 };
 # undef a_X
 #endif /* su_SOURCE */
 
 #ifdef su_SOURCE /* Lock-out compile-time-tools */
-# define a_CORERR_REV_ILL 81u
-# define a_CORERR_REV_PRIME 149u
-# define a_CORERR_REV_LONGEST 4u
+# define a_CORERR_REV_ILL 83u
+# define a_CORERR_REV_PRIME 139u
+# define a_CORERR_REV_LONGEST 5u
 # define a_CORERR_REV_WRAPAROUND 0
 static u8 const a_corerr_revmap[a_CORERR_REV_PRIME] = {
-   81u, 70u, 6u, 81u, 63u, 36u, 45u, 52u, 81u, 81u,
-   34u, 81u, 81u, 58u, 81u, 81u, 29u, 4u, 81u, 41u,
-   1u, 68u, 81u, 81u, 48u, 74u, 81u, 81u, 81u, 81u,
-   81u, 81u, 42u, 19u, 81u, 20u, 81u, 81u, 81u, 12u,
-   47u, 81u, 32u, 64u, 51u, 81u, 81u, 81u, 44u, 27u,
-   62u, 69u, 77u, 81u, 56u, 55u, 79u, 37u, 81u, 81u,
-   81u, 72u, 5u, 67u, 81u, 81u, 81u, 81u, 81u, 13u,
-   81u, 81u, 81u, 81u, 23u, 24u, 14u, 81u, 81u, 81u,
-   60u, 81u, 57u, 81u, 81u, 81u, 81u, 18u, 54u, 40u,
-   71u, 65u, 78u, 81u, 80u, 22u, 9u, 81u, 49u, 81u,
-   81u, 81u, 81u, 11u, 38u, 66u, 3u, 81u, 50u, 43u,
-   15u, 2u, 35u, 76u, 25u, 30u, 31u, 8u, 75u, 73u,
-   81u, 81u, 81u, 10u, 81u, 81u, 81u, 81u, 16u, 28u,
-   81u, 7u, 17u, 46u, 81u, 81u, 26u, 81u, 39u, 53u,
-   59u, 81u, 81u, 33u, 21u, 0u, 61u, 81u, 81u
+   52u, 28u, 78u, 83u, 83u, 42u, 43u, 59u, 8u, 83u,
+   83u, 83u, 83u, 83u, 83u, 83u, 16u, 83u, 73u, 83u,
+   83u, 11u, 26u, 83u, 83u, 83u, 21u, 83u, 83u, 83u,
+   83u, 83u, 83u, 83u, 2u, 55u, 68u, 83u, 83u, 83u,
+   83u, 83u, 39u, 83u, 83u, 83u, 36u, 83u, 83u, 83u,
+   83u, 20u, 22u, 69u, 74u, 33u, 76u, 70u, 61u, 4u,
+   7u, 15u, 37u, 44u, 82u, 83u, 35u, 6u, 65u, 83u,
+   83u, 83u, 45u, 60u, 83u, 64u, 83u, 83u, 75u, 83u,
+   18u, 49u, 12u, 71u, 67u, 25u, 54u, 83u, 32u, 13u,
+   19u, 23u, 40u, 41u, 48u, 24u, 62u, 72u, 66u, 46u,
+   83u, 83u, 83u, 83u, 38u, 30u, 83u, 83u, 83u, 56u,
+   83u, 83u, 47u, 27u, 83u, 83u, 29u, 63u, 0u, 14u,
+   81u, 5u, 17u, 34u, 3u, 9u, 57u, 50u, 53u, 58u,
+   83u, 83u, 31u, 77u, 10u, 1u, 79u, 80u, 51u
 };
 #endif /* su_SOURCE */
