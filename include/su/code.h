@@ -1365,7 +1365,7 @@ EXPORT char const *su_err_doc(s32 eno);
 /*! Return the name of the given error number. */
 EXPORT char const *su_err_name(s32 eno);
 
-/*! Try to map an error name to an error number.
+/*! Try to (case-insensitively) map an error name to an error number.
  * Returns the fallback error as a negative value if none found */
 EXPORT s32 su_err_by_name(char const *name);
 
