@@ -1106,7 +1106,7 @@ mx_fs_linepool_cleanup(boole completely){
    NYD2_IN;
 
    if(!completely)
-      completely = 3; /* XXX magic */
+      completely = mx_LINEPOOL_QUEUE_MAX;
    else
       completely = FAL0;
 
@@ -1116,18 +1116,19 @@ jredo:
    while((tmp = lpep) != NIL){
       void *vp;
 
-      lpep = lpep->fsle_last;
+      lpep = tmp->fsle_last;
 
-      if((vp = tmp->fsle_dat) != NIL && completely &&
-            tmp->fsle_size <= LINESIZE * 2){
-         --completely;
-         tmp->fsle_last = a_fs_lpool_free;
-         a_fs_lpool_free = tmp;
-      }else{
-         if(vp != NIL)
-            su_FREE(vp);
-         su_FREE(tmp);
+      if((vp = tmp->fsle_dat) != NIL){
+         if(completely > 0 && tmp->fsle_size <= su_PAGE_SIZE){
+            --completely;
+            tmp->fsle_last = a_fs_lpool_free;
+            a_fs_lpool_free = tmp;
+            continue;
+         }
+
+         su_FREE(vp);
       }
+      su_FREE(tmp);
    }
 
    /* Only called from go_main_loop(), save to throw the hulls away */
@@ -1177,8 +1178,8 @@ a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
 
    /* Always leave room for NETNL, not only \n */
    for (rv = *line;;) {
-      if (*linesize <= LINESIZE || n >= *linesize - 128) {
-         *linesize += ((rv == NULL) ? LINESIZE + n + 2 : 256);
+      if (*linesize <= mx_LINESIZE || n >= *linesize - 128) {
+         *linesize += ((rv == NULL) ? mx_LINESIZE + n + 2 : 256);
          *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize,
                su_DBG_LOC_ARGS_ORUSE);
       }
@@ -1233,8 +1234,8 @@ char *
       goto jleave;
    }
 
-   if ((rv = *line) == NULL || *linesize < LINESIZE)
-      *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
+   if ((rv = *line) == NULL || *linesize < mx_LINESIZE)
+      *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = mx_LINESIZE,
             su_DBG_LOC_ARGS_ORUSE);
    size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
    if (size <= 1 || fgets(rv, size, fp) == NULL) {
@@ -1304,8 +1305,8 @@ int
       ASSERT(*linesize == 0 || *linebuf != NULL);
       n_pstate &= ~n_PS_READLINE_NL;
       for (;;) {
-         if (*linesize <= LINESIZE || n >= *linesize - 128) {
-            *linesize += ((*linebuf == NULL) ? LINESIZE + n + 1 : 256);
+         if (*linesize <= mx_LINESIZE || n >= *linesize - 128) {
+            *linesize += ((*linebuf == NULL) ? mx_LINESIZE + n + 1 : 256);
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
                   su_DBG_LOC_ARGS_ORUSE);
          }
