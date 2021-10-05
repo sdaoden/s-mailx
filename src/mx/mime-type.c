@@ -849,7 +849,7 @@ jos_leave:
       }
 
       if(in.l + 1 >= lsz)
-         in.s = su_REALLOC(in.s, lsz += LINESIZE);
+         in.s = su_REALLOC(in.s, lsz += mx_LINESIZE);
       if(c != EOF)
          in.s[in.l++] = S(char,c);
       if(!dobuf)

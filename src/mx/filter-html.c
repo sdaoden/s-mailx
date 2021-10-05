@@ -116,7 +116,7 @@ struct mx_flthtml_tag{
    u8 fht_len; /* Useful bytes in (NUL terminated) .fht_tag */
    char const fht_tag[10]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
-CTA(su_FIELD_SIZEOF(struct mx_flthtml_tag,fht_tag) < LINESIZE,
+CTA(su_FIELD_SIZEOF(struct mx_flthtml_tag,fht_tag) < mx_LINESIZE,
    "Structure field too large a size"); /* .fh_ign_tag */
 
 struct a_flthtml_ent{
@@ -1149,8 +1149,8 @@ a_flthtml_add_data(struct mx_flthtml *self, char const *dat, uz len){
    if((cp = self->fh_curr) != NIL)
       cp_max = self->fh_bmax;
    else{
-      cp = self->fh_curr = self->fh_bdat = su_ALLOC(LINESIZE);
-      cp_max = self->fh_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
+      cp = self->fh_curr = self->fh_bdat = su_ALLOC(mx_LINESIZE);
+      cp_max = self->fh_bmax = cp + mx_LINESIZE -1; /* (Room for NUL!) */
    }
    hot = (cp != self->fh_bdat);
 
@@ -1286,7 +1286,7 @@ jdo_c:
                uz i, m;
 
                i = P2UZ(cp - self->fh_bdat);
-               m = P2UZ(self->fh_bmax - self->fh_bdat) + LINESIZE;
+               m = P2UZ(self->fh_bmax - self->fh_bdat) + mx_LINESIZE;
 
                cp = self->fh_bdat = su_REALLOC(self->fh_bdat, m);
                self->fh_bmax = cp_max = &cp[m -1];
