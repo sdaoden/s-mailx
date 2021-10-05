@@ -49,8 +49,8 @@ su_EMPTY_FILE()
 
 /* This is chosen rather arbitrarily.
  * It must be able to swallow the first line of a rate response */
-#if BUFFER_SIZE < 1024
-# error *spam-interface* BUFFER_SIZE constraints are not matched
+#if mx_BUFFER_SIZE < 1024
+# error *spam-interface* mx_BUFFER_SIZE constraints are not matched
 #endif
 
 enum a_spam_action{
@@ -108,7 +108,7 @@ struct a_spam_vc{
    u8 vc__pad[2];
    boole (*vc_act)(struct a_spam_vc *);
    void (*vc_dtor)(struct a_spam_vc *);
-   char *vc_buffer; /* I/O buffer, BUFFER_SIZE bytes */
+   char *vc_buffer; /* I/O buffer, mx_BUFFER_SIZE bytes */
    uz vc_mno; /* Current message number */
    struct message *vc_mp; /* Current message */
    FILE *vc_ifp; /* Input stream on .vc_mp */
@@ -203,7 +203,7 @@ a_spam_action(enum a_spam_action sa, int *ip){
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
-   vc.vc_buffer = su_AUTO_ALLOC(BUFFER_SIZE);
+   vc.vc_buffer = su_AUTO_ALLOC(mx_BUFFER_SIZE);
 
    skipped = cnt = 0;
    if(vc.vc_progress){
@@ -706,7 +706,7 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
    for(size = vcp->vc_mp->m_size; size > 0;){
       uz i;
 
-      i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      i = fread(vcp->vc_buffer, 1, MIN(size, mx_BUFFER_SIZE), vcp->vc_ifp);
       if(i == 0){
          if(ferror(vcp->vc_ifp))
             state |= a_ERRORS;
@@ -745,7 +745,7 @@ jtail:
             vcp->vc_action == a_SPAM_RATE && !(state & (a_JUMPED | a_ERRORS))){
          sz i;
 
-         i = read(S(int,c2p[0]), vcp->vc_buffer, BUFFER_SIZE - 1);
+         i = read(S(int,c2p[0]), vcp->vc_buffer, mx_BUFFER_SIZE - 1);
          if(i > 0){
             vcp->vc_buffer[i] = '\0';
             if((cp = su_cs_find_c(vcp->vc_buffer, NETNL[0])) == NIL &&

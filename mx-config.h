@@ -102,7 +102,7 @@
 #else
 # define LINESIZE 2560
 #endif
-#define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
+#define mx_BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
 /* Default *mime-encoding* as enum mx_mime_enc; ONLY one of _B64, _QP, _8B */
 #define mx_MIME_DEFAULT_ENCODING mx_MIME_ENC_QP
