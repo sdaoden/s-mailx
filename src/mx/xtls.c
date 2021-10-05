@@ -1386,7 +1386,7 @@ static int
 smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
    X509_STORE *store)
 {
-   char data[LINESIZE], *sender, *to, *cc, *cnttype;
+   char data[mx_LINESIZE], *sender, *to, *cc, *cnttype;
    int rv, c, i, j;
    struct message *x;
    FILE *fp, *ip;

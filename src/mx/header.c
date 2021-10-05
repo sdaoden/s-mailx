@@ -2685,8 +2685,9 @@ n_header_senderfield_of(struct message *mp){
       mx_fs_linepool_aquire(&linebuf, &linesize);
       mx_fs_linepool_aquire(&namebuf, &namesize);
 
-      /* TODO And fallback only works for MBOX -> VFS!! */
-      namebuf = n_realloc(namebuf, namesize = LINESIZE);
+      /* TODO And fallback only works for MBOX -> VFS!! then: test!
+       * (TODO as of today tested by accident by t_attachments[5,6] */
+      namebuf = su_REALLOC(namebuf, namesize = mx_LINESIZE);
       namebuf[0] = 0;
       if (mp->m_flag & MNOFROM)
          goto jout;

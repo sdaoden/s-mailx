@@ -1879,7 +1879,7 @@ jforce_stdin:
             if(*linesize > 0)
                *linesize += n +1;
             else
-               *linesize = S(uz,n) + LINESIZE +1;
+               *linesize = S(uz,n) + mx_LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
                   su_DBG_LOC_ARGS_ORUSE);
            su_mem_copy(*linebuf, string, S(uz,n) +1);

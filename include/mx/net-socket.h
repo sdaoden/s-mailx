@@ -64,7 +64,7 @@ struct mx_socket{
    int s_rsz; /* size of last read in s_rbuf */
    char const *s_desc; /* description of error messages */
    void (*s_onclose)(void); /* execute on close */
-   char s_rbuf[LINESIZE + 1]; /* for buffered reads */
+   char s_rbuf[mx_LINESIZE + 1]; /* for buffered reads */
 };
 
 /* Note: immediately closes the socket again for CPROTO_CERTINFO */
