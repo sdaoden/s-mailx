@@ -1187,9 +1187,9 @@ mx_mime_type_classify_file(FILE *fp, char const **content_type,
       char *buf;
 
       a_mt_classify_init(&mtca, mtc);
-      buf = su_LOFI_ALLOC(BUFFER_SIZE);
+      buf = su_LOFI_ALLOC(mx_BUFFER_SIZE);
       for(;;){
-         mtca.mtca_len = fread(buf, sizeof(buf[0]), BUFFER_SIZE, fp);
+         mtca.mtca_len = fread(buf, sizeof(buf[0]), mx_BUFFER_SIZE, fp);
          mtca.mtca_buf = buf;
          if((mtc = a_mt_classify_round(&mtca)) & a_MT_C_SUGGEST_DONE)
             break;

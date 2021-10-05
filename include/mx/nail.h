@@ -55,10 +55,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <su/code.h>
+
 /* Many things possibly of interest for adjustments have been outsourced */
 #include <mx/config.h>
-
-#include <su/code.h>
 
 /* TODO fake */
 #include "su/code-in.h"
