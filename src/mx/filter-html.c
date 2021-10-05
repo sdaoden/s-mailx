@@ -1317,7 +1317,7 @@ a_flthtml__onpipe(int signo){
 
 int
 mx_flthtml_process_main(void){
-   char buf[BUFFER_SIZE];
+   char buf[mx_BUFFER_SIZE];
    struct mx_flthtml hf;
    uz i;
    int rv;
