@@ -1194,7 +1194,7 @@ _imap_maincatch(int s)
 static enum okay
 imap_noop1(struct mailbox *mp)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    NYD;
 
@@ -1420,7 +1420,7 @@ imap_preauth(struct mailbox *mp, struct mx_url *urlp,
          return OKAY;
    }else if(xok_blook(imap_use_starttls, urlp, OXM_ALL)){
       FILE *queuefp = NULL;
-      char o[LINESIZE];
+      char o[mx_LINESIZE];
 
       snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
       IMAP_OUT(o, MB_COMD, return STOP)
@@ -1447,7 +1447,7 @@ imap_preauth(struct mailbox *mp, struct mx_url *urlp,
 static enum okay
 imap_capability(struct mailbox *mp)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp;
    enum okay ok;
    NYD;
@@ -1553,7 +1553,7 @@ a_imap_auth(struct mailbox *mp, struct mx_url *urlp,
 static enum okay
 imap_cram_md5(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
-   char o[LINESIZE], *cp;
+   char o[mx_LINESIZE], *cp;
    FILE *queuefp = NULL;
    enum okay rv = STOP;
    NYD_IN;
@@ -1579,7 +1579,7 @@ jleave:
 static enum okay
 imap_login(struct mailbox *mp, struct mx_cred_ctx *ccred)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    enum okay rv = STOP;
    NYD_IN;
@@ -1751,7 +1751,7 @@ FL enum okay
 imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
    enum fedit_mode fm)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    char const *qname, *cp;
    FILE *queuefp;
    enum okay ok;
@@ -1787,7 +1787,7 @@ jleave:
 static enum okay
 imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    char const *cp;
    struct message *m;
@@ -2318,7 +2318,7 @@ imap_putstr(struct mailbox *mp, struct message *m, const char *str,
 static enum okay
 imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    struct message mt;
    n_sighdl_t volatile saveint, savepipe;
    char * volatile head;
@@ -2524,7 +2524,7 @@ static enum okay
 imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
 {
    /* bot > topp */
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    char const *cp;
    struct message mt;
    uz expected;
@@ -2663,7 +2663,7 @@ imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 static enum okay
 __imap_exit(struct mailbox *mp)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    NYD;
 
@@ -2721,7 +2721,7 @@ imap_delete(struct mailbox *mp, int n, struct message *m, int needstat)
 static enum okay
 imap_close(struct mailbox *mp)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    NYD;
 
@@ -2899,7 +2899,7 @@ static enum okay
 imap_store(struct mailbox *mp, struct message *m, int n, int c,
    const char *xsp, int needstat)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    FILE *queuefp = NULL;
    NYD;
 
@@ -3055,7 +3055,7 @@ jesynopsis:
 FL int
 c_imap_imap(void *vp)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    n_sighdl_t saveint, savepipe;
    struct mailbox *mp = &mb;
    FILE *queuefp = NULL;
@@ -3185,7 +3185,7 @@ static enum okay
 imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    long xsize, enum mflag flag, time_t t)
 {
-   char o[LINESIZE], *buf;
+   char o[mx_LINESIZE], *buf;
    uz bufsize, buflen, cnt;
    long size, lines, ysize;
    char const *qname;
@@ -3470,7 +3470,7 @@ static enum okay
 imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
    struct list_item **lend, int level)
 {
-   char o[LINESIZE], *cp;
+   char o[mx_LINESIZE], *cp;
    struct list_item *lp;
    const char *qname, *bp;
    FILE *queuefp;
@@ -3635,7 +3635,7 @@ jleave:
 static enum okay
 imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 {
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    const char *qname;
    boole twice, stored;
    FILE *queuefp;
@@ -4240,7 +4240,7 @@ out:
 FL enum okay
 imap_dequeue(struct mailbox *mp, FILE *fp)
 {
-   char o[LINESIZE], *newname, *buf, *bp, *cp, iob[4096];
+   char o[mx_LINESIZE], *newname, *buf, *bp, *cp, iob[4096];
    uz bufsize, buflen, cnt;
    long offs, offs1, offs2, octets;
    int twice, gotcha = 0;

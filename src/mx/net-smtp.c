@@ -263,7 +263,7 @@ a_netsmtp_talk(struct mx_socket *sop, struct mx_send_ctx *scp, /* TODO split*/
       a_IN_BCC = 1u<<3
    };
 
-   char o[LINESIZE]; /* TODO n_string++ */
+   char o[mx_LINESIZE]; /* TODO n_string++ */
    struct str sb;
    struct mx_name *np;
    u8 f;

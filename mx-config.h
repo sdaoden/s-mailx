@@ -96,12 +96,11 @@
 #define n_IDNA_IMPL_LIBIDN 1
 #define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
 
-/* Max readable line width TODO simply use BUFSIZ? */
-#if BUFSIZ + 0 > 2560
-# define LINESIZE BUFSIZ
-#else
-# define LINESIZE 2560
-#endif
+/* Max readable line width */
+#define mx_LINESIZE (su_PAGE_SIZE - 1)
+#define mx_LINEPOOL_QUEUE_MAX 2
+
+/* Our I/O buffer size */
 #define mx_BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
 /* Default *mime-encoding* as enum mx_mime_enc; ONLY one of _B64, _QP, _8B */

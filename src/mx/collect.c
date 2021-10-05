@@ -2131,8 +2131,9 @@ jreasksend:
          goto jerr;
       }
 
-      if(linebuf == NULL)
-         linebuf = n_alloc(linesize = LINESIZE);
+      if(linebuf == NIL)
+         linebuf = su_ALLOC(linesize = mx_LINESIZE);
+
       c = '\0';
       while((i = fread(linebuf, sizeof *linebuf, linesize,
             UNVOLATILE(FILE*,sigfp))) > 0){

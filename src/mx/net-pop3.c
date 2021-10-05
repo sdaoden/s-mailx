@@ -645,7 +645,7 @@ jleave:
 
 static enum okay
 a_pop3_list(struct mailbox *mp, int n, uz *size){
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    char const *cp;
    enum okay rv;
    NYD_IN;
@@ -727,7 +727,7 @@ jleave:
 
 static enum okay
 a_pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need){
-   char o[LINESIZE], *line, *lp;
+   char o[mx_LINESIZE], *line, *lp;
    n_sighdl_t volatile saveint, savepipe;
    uz linesize, linelen, size;
    int number, lines;
@@ -891,7 +891,7 @@ jleave:
 
 static enum okay
 a_pop3_delete(struct mailbox *mp, int n){
-   char o[LINESIZE];
+   char o[mx_LINESIZE];
    enum okay rv;
    NYD_IN;
 

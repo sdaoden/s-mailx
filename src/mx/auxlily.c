@@ -924,7 +924,7 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 #ifdef mx_HAVE_N_VA_COPY
 # define a_X 128
 #else
-# define a_X MIN(LINESIZE, 1024)
+# define a_X MIN(mx_LINESIZE, 1024)
 #endif
    mx_fs_linepool_aquire(&s_b.s, &s_b.l);
    i = 0;
