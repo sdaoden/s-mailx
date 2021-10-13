@@ -213,6 +213,15 @@ a_main_startup(void){
       char const *ep;
       boole doenv;
 
+      /* Reset inherited diverging effective IDs, do not pass them along! */
+      if(n_user_id != 0 &&
+            (n_user_id != geteuid() || n_group_id != getegid())){
+         n_err(_("Warning: dropping diverging effective IDs (euid/egid)\n"));
+         setuid(n_user_id);
+         setgid(n_group_id);
+      }
+
+      /* */
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NIL) &&
             (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
