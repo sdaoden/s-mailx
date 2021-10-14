@@ -112,7 +112,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Obj! */
 {
    char const *foldp;
    char *mailp, *dispp;
-   uz i, j, foldlen;
+   uz i, j, maillen, foldlen;
    boole rv;
    NYD_IN;
 
@@ -142,13 +142,15 @@ jdocopy:
    /* Don't display an absolute path but "+FOLDER" if under *folder* */
    if(*(foldp = n_folder_query()) != '\0'){
       foldlen = su_cs_len(foldp);
-      if(strncmp(foldp, mailp, foldlen))
+      if(su_cs_cmp_n(foldp, mailp, foldlen))
          foldlen = 0;
    }else
       foldlen = 0;
 
+   maillen = su_cs_len(mailp);
+
    /* We want to see the name of the folder .. on the screen */
-   i = su_cs_len(mailp);
+   i = maillen;
    if(i < sizeof(displayname) - 3 -1){
       if(foldlen > 0){
          *dispp++ = '+';
@@ -177,8 +179,18 @@ jdocopy:
       rv = FAL0;
    }
 
-   n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),
-      ok_vset(mailbox_display, displayname)));
+   for(dispp = &mailp[maillen]; --dispp != mailp;)
+      if(*dispp == '/'){ /* DIRSEP */
+         if(dispp[1] != '\0')
+            mailp = &dispp[1];
+         break;
+      }
+
+   n_PS_ROOT_BLOCK((
+      ok_vset(mailbox_basename, mailp),
+      ok_vset(mailbox_display, displayname),
+      ok_vset(mailbox_resolved, mailname)
+   ));
    NYD_OU;
    return rv;
 }
