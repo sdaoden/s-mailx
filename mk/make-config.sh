@@ -2157,6 +2157,21 @@ int main(void){
 !
    then
       :
+   elif run_check procctl_trace_ctl 'procctl(2) + PROC_TRACE_CTL_DISABLE' \
+         '#define mx_HAVE_PROCCTL_TRACE_CTL' << \!
+#include <sys/procctl.h>
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   int disable_trace = PROC_TRACE_CTL_DISABLE;
+   if(procctl(P_PID, getpid(), PROC_TRACE_CTL, &disable_trace) != -1 ||
+         errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
    elif run_check prtrace_deny 'ptrace(2) + PT_DENY_ATTACH' \
          '#define mx_HAVE_PTRACE_DENY' << \!
 #include <sys/ptrace.h>

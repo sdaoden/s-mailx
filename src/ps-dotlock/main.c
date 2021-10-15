@@ -35,6 +35,10 @@
 
 #if defined mx_HAVE_PRCTL_DUMPABLE
 # include <sys/prctl.h>
+#elif defined mx_HAVE_PROCCTL_TRACE_CTL
+# include <sys/procctl.h>
+
+# include <unistd.h>
 #elif defined mx_HAVE_PTRACE_DENY
 # include <sys/ptrace.h>
 #elif defined mx_HAVE_SETPFLAGS_PROTECT
@@ -204,6 +208,13 @@ jeuse:
 #if defined mx_HAVE_PRCTL_DUMPABLE
    if(prctl(PR_SET_DUMPABLE, 0))
       goto jmsg;
+#elif defined mx_HAVE_PROCCTL_TRACE_CTL
+   /* C99 */{
+      int disable_trace = PROC_TRACE_CTL_DISABLE;
+
+      if(procctl(P_PID, getpid(), PROC_TRACE_CTL, &disable_trace) == -1)
+         goto jmsg;
+   }
 #elif defined mx_HAVE_PTRACE_DENY
    if(ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
       goto jmsg;
