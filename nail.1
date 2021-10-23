@@ -12807,7 +12807,7 @@ capabilities (see
 escape commas with reverse solidus
 .Ql \e )
 to be used to overwrite or define entries.
-.Sy Note
+.Sy Note:
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
 It will always be inspected, regardless of whether
@@ -12972,17 +12972,20 @@ so-called ca-mode; this usually requires special configuration of the
 .Ev PAGER ,
 also dependent on the value of
 .Va crt .
-.Sy Note
+If set to a non-empty value the alternative screen is cleared before it
+is left, as via
+.Cd mle-clear-screen .
+.Sy Note:
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
 .
 .Mx
 .It Va termcap-disable
-\*(OP Disable any interaction with a terminal control library.
+\*(BO\*(OP Disable any interaction with a terminal control library.
 If set only some generic fallback built-ins and possibly the content of
 .Va termcap
-describe the terminal to \*(UA.
-.Sy Note
+describe the terminal.
+.Sy Note:
 this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
 .
