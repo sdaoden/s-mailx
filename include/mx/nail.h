@@ -543,10 +543,8 @@ enum n_program_state_once{
    n_PSO_ERRORS_NOTED = 1u<<17,
    n_PSO_LINE_EDITOR_INIT = 1u<<18,
    n_PSO_RANDOM_INIT = 1u<<19,
-   n_PSO_TERMCAP_DISABLE = 1u<<20,
-   n_PSO_TERMCAP_CA_MODE = 1u<<21,
-   n_PSO_TERMCAP_FULLWIDTH = 1u<<22, /* !am or am+xn (right margin wrap) */
-   n_PSO_PS_DOTLOCK_NOTED = 1u<<23
+   n_PSO_TERMCAP_FULLWIDTH = 1u<<20, /* !am or am+xn (right margin wrap) */
+   n_PSO_PS_DOTLOCK_NOTED = 1u<<21
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.
@@ -889,7 +887,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_TERM, /* {env=1} */
    ok_v_TMPDIR, /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
-   ok_b_termcap_ca_mode,
+   ok_v_termcap_ca_mode,
    ok_b_termcap_disable,
    ok_v_tls_ca_dir, /* {chain=1} */
    ok_v_tls_ca_file, /* {chain=1} */
