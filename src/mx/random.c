@@ -98,7 +98,8 @@ a_rand_init(void){
          sz gr;
 
 #  if mx_HAVE_RANDOM == mx_RANDOM_IMPL_GETENTROPY
-         gr = getentropy(&a_rand->a._dat[o], i);
+         if((gr = getentropy(&a_rand->a._dat[o], i)) != -1)
+            gr = i;
 #  else
          gr = mx_RANDOM_GETRANDOM_FUN(&a_rand->a._dat[o], i);
 #  endif
