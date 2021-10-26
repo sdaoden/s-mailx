@@ -455,8 +455,7 @@ jleave:
       case mx_FILE_DOTLOCK_STATE_NOPERM:
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
             emsg = N_("  Cannot create a dotlock file, "
-                  "please check permissions\n"
-                  "  (Or set *dotlock-disable*, then try again)\n");
+                  "please check permissions\n");
          serr = su_ERR_ACCES;
          break;
       case mx_FILE_DOTLOCK_STATE_NOEXEC:
@@ -528,8 +527,10 @@ jleave:
             if(n_poption & n_PO_D_V)
                n_err(_("  *dotlock-ignore-error* set: continuing\n"));
             rv = R(FILE*,-1);
-         }else
+         }else{
+            n_err(_("  (Set *dotlock-disable* to bypass dotlocking)\n"));
             goto jserr;
+         }
       }else
 jserr:
          su_err_set_no(serr);
