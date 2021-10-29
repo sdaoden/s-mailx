@@ -959,7 +959,6 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
 static struct mx_name *
 a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
    boole mfap;
-   char const *sh;
    u32 pipecnt, xcnt, i, swf;
    struct mx_name *np;
    FILE *fp, **fppa;
@@ -989,17 +988,14 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
     * the shell handlers can fork away and pass the descriptor around, so we
     * cannot simply use a single one and rewind that after the top children
     * shell has returned.
-    * To make our life a bit easier let's just use the auto-reclaimed
+    * To make our life a bit easier let us just use the auto-reclaimed
     * string storage */
-   if(pipecnt == 0 || (n_poption & n_PO_D)){
+   if(pipecnt == 0 || (n_poption & n_PO_D))
       pipecnt = 0;
-      sh = NIL;
-   }else{
+   else{
       i = sizeof(FILE*) * pipecnt;
-      fppa = n_lofi_alloc(i);
+      fppa = su_LOFI_ALLOC(i);
       su_mem_set(fppa, 0, i);
-
-      sh = ok_vlook(SHELL);
    }
 
    mfap = ok_blook(mbox_fcc_and_pcc);
@@ -1086,9 +1082,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          cc.cc_mask = &nset;
          cc.cc_fds[mx_CHILD_FD_IN] = fileno(fppa[xcnt]);
          cc.cc_fds[mx_CHILD_FD_OUT] = mx_CHILD_FD_NULL;
-         cc.cc_cmd = sh;
-         cc.cc_args[0] = "-c";
-         cc.cc_args[1] = &np->n_name[1];
+         mx_child_ctx_set_args_for_sh(&cc, NIL, &np->n_name[1]);
 
          if(!mx_child_run(&cc)){
             n_err(_("Piping message to %s failed\n"),
@@ -1167,7 +1161,7 @@ jleave:
       for(i = 0; i < pipecnt; ++i)
          if((fp = fppa[i]) != NIL)
             mx_fs_close(fp);
-      n_lofi_free(fppa);
+      su_LOFI_FREE(fppa);
    }
 
    NYD_OU;

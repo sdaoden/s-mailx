@@ -254,9 +254,7 @@ a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd){
       rv = TRU1;
       break;
    case a_FS_EF_HOOK:
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = load_cmd;
+      mx_child_ctx_set_args_for_sh(&cc, NIL, load_cmd);
       if(0){
       /* FALLTHRU */
    default:
@@ -330,9 +328,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
          n_err(_("Using `filetype' handler %s to save %s\n"),
             n_shexp_quote_cp(fsep->fse_save_cmd, FAL0),
             n_shexp_quote_cp(fsep->fse_realfile, FAL0));
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = fsep->fse_save_cmd;
+      mx_child_ctx_set_args_for_sh(&cc, NIL, fsep->fse_save_cmd);
       break;
    default:
       cc.cc_cmd = mx_FS_FILETYPE_CAT_PROG;
@@ -918,11 +914,8 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh,
             _exit(u.es);
       }
    }else{
-      if(sh != NIL){
-         cc.cc_cmd = sh;
-         cc.cc_args[0] = "-c";
-         cc.cc_args[1] = cmd;
-      }
+      if(sh != NIL)
+         mx_child_ctx_set_args_for_sh(&cc, sh, cmd);
 
       mx_child_run(&cc);
    }

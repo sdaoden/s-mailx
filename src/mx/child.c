@@ -222,6 +222,23 @@ mx_child_ctx_setup(struct mx_child_ctx *ccp){
 
    su_mem_set(ccp, 0, sizeof *ccp);
    ccp->cc_fds[0] = ccp->cc_fds[1] = mx_CHILD_FD_PASS;
+
+   NYD2_OU;
+}
+
+void
+mx_child_ctx_set_args_for_sh(struct mx_child_ctx *ccp, char const *sh_or_nil,
+      char const *cmd_string){
+   NYD2_IN;
+
+   if(sh_or_nil == NIL)
+      sh_or_nil = ok_vlook(SHELL);
+
+   ccp->cc_cmd = sh_or_nil;
+   ccp->cc_args[0] = "-c";
+   ccp->cc_args[1] = "--";
+   ccp->cc_args[2] = cmd_string;
+
    NYD2_OU;
 }
 

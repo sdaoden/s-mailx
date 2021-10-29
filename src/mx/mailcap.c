@@ -1141,18 +1141,17 @@ jagain:
       if(p.mch->mch_sfields[a_MAILCAP_SF_TEST] != 0){
          if(!(f & a_MAILCAP_F_TEST_ONCE) || !(f & a_MAILCAP_F_TEST_ONCE_DONE)){
             struct mx_child_ctx cc;
+            char const *cmdp;
+
+            cmdp = &R(char const*,&p.mch[1]
+                  )[p.mch->mch_sfields[a_MAILCAP_SF_TEST]];
+            if(p.mch->mch_sfield_has_format & (1u << a_MAILCAP_SF_TEST))
+               cmdp = a_mailcap_expand_formats(cmdp, mpp, ct);
 
             mx_child_ctx_setup(&cc);
             cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
             cc.cc_fds[0] = cc.cc_fds[1] = mx_CHILD_FD_NULL;
-            cc.cc_cmd = ok_vlook(SHELL);
-            cc.cc_args[0] = "-c";
-            cc.cc_args[1] = &R(char const*,&p.mch[1]
-                  )[p.mch->mch_sfields[a_MAILCAP_SF_TEST]];
-            if(p.mch->mch_sfield_has_format & (1u << a_MAILCAP_SF_TEST))
-               cc.cc_args[1] = a_mailcap_expand_formats(cc.cc_args[1],
-                     mpp, ct);
-
+            mx_child_ctx_set_args_for_sh(&cc, NIL, cmdp);
             if(mx_child_run(&cc) && cc.cc_exit_status == n_EXIT_OK)
                f |= a_MAILCAP_F_TEST_ONCE_SUCCESS;
 
