@@ -6615,9 +6615,11 @@ messages.
 .
 .Mx
 .It Ic pipe
-(pi) Takes an optional message list and shell command (that defaults to
+(pi) Takes an optional message list and a shell command (defaults to
 .Va cmd ) ,
-and pipes the messages through the command.
+and pipes the messages via
+.Ev SHELL
+through the command.
 If the
 .Va page
 variable is set,
@@ -7073,7 +7075,8 @@ change again due to output or result storage errors.
 .
 .Mx
 .It Ic shell
-\*(NQ (sh) Invokes an interactive version of the shell,
+\*(NQ (sh) Invokes an interactive version of the
+.Ev SHELL ,
 and returns its exit status.
 .
 .Mx
@@ -8023,7 +8026,8 @@ that character must be doubled instead.)
 .
 .Mx
 .It Ic ~! Ar command
-Execute the indicated shell
+Execute the indicated
+.Ev SHELL
 .Ar command
 which follows, replacing unescaped exclamation marks with the previously
 executed command if the internal variable
@@ -8124,7 +8128,9 @@ comment character.
 .
 .Mx
 .It Ic ~| Ar command
-Pipe the message text through the specified filter command.
+Pipe the message text via
+.Ev SHELL
+through the specified filter command.
 If the command gives no output or terminates abnormally,
 retain the original text of the message.
 The command
@@ -13764,14 +13770,18 @@ This environment entry is automatically squared with
 .
 .Mx
 .It Ev SHELL
-The
+The POSIX compatible
 .Xr sh 1
 to use for the commands
 .Ic \&! ,
+.Ic pipe ,
+and
 .Ic shell ,
 the
+.Sx "COMMAND ESCAPES"
 .Ic ~!
-.Sx "COMMAND ESCAPES" ,
+and
+.Ic ~| ,
 and when starting subprocesses.
 A compile-time default shell is used if this variable is not defined.
 .Ql $SHELL -c -- 'echo du'
