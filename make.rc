@@ -108,7 +108,7 @@ VAL_MTA=`\
 # This variable can be used to adjust this name as necessary.
 VAL_MTA_ARGV0=sendmail
 
-# Default $SHELL (sh(1) path).
+# Default (path to) POSIX compatible $SHELL aka sh(1).
 # (Sometimes however we simply invoke a command directly via execlp(3)
 # instead of indirectly through $SHELL -- in these cases execlp(3) may
 # fallback to it's own built-in sh(1) path.)
