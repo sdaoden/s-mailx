@@ -80,6 +80,11 @@ EXPORT void mx_child_controller_setup(void);
 /* Initialize (zero out etc.).  The .cc_fds are set to CHILD_FD_PASS */
 EXPORT void mx_child_ctx_setup(struct mx_child_ctx *ccp);
 
+/* Very often "sh -c -- cmd_string" is to be executed.
+ * sh_or_nil defaults to ok_vlook(SHELL) */
+EXPORT void mx_child_ctx_set_args_for_sh(struct mx_child_ctx *ccp,
+      char const *sh_or_nil, char const *cmd_string);
+
 /* Start and run a command, with optional arguments and splicing of stdin and
  * stdout, as defined by the ctx_setup()d ccp, return whether the process has
  * been started successfully.

@@ -230,9 +230,7 @@ jetempo:
 
       cc.cc_fds[mx_CHILD_FD_IN] = fileno(nf_pipetmp);
       cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf_tmp);
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = pipecmd;
+      mx_child_ctx_set_args_for_sh(&cc, NIL, pipecmd);
    }else{
       cc.cc_cmd = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
       if(oldint != SIG_IGN){
