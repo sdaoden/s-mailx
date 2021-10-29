@@ -62,14 +62,12 @@ enum a_spam_action{
 
 #if defined mx_HAVE_SPAM_FILTER || defined mx_HAVE_SPAM_SPAMC
 struct a_spam_cf{
+   /* .cf_cmd may be adjusted for each call (`spamforget')... */
    char const *cf_cmd;
    char *cf_result; /* _SPAM_RATE: first response line */
    s32 cf_exit_status;
    u8 cf__pad[3];
-   boole cf_useshell;
-   /* .cf_cmd may be adjusted for each call (`spamforget')... */
-   char const *cf_acmd;
-   char const *cf_a0;
+   boole cf_use_shell;
    char const *cf_env[4];
    n_sighdl_t cf_otstp;
    n_sighdl_t cf_ottin;
@@ -584,11 +582,7 @@ a_spam_cf_setup(struct a_spam_vc *vcp, boole useshell){
    LCTA(2 < NELEM(scfp->cf_env), "Preallocated buffer too small");
 
    scfp = &vcp->vc_t.cf;
-
-   if((scfp->cf_useshell = useshell)){
-      scfp->cf_acmd = ok_vlook(SHELL);
-      scfp->cf_a0 = "-c";
-   }
+   scfp->cf_use_shell = useshell;
 
    /* MAILX_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
@@ -686,10 +680,10 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
    cc.cc_mask = &cset;
    cc.cc_fds[mx_CHILD_FD_IN] = p2c[0];
    cc.cc_fds[mx_CHILD_FD_OUT] = c2p[1];
-   cc.cc_cmd = (scfp->cf_acmd != NIL ? scfp->cf_acmd : scfp->cf_cmd);
-   cc.cc_args[0] = scfp->cf_a0;
-   if(scfp->cf_acmd != NIL)
-      cc.cc_args[1] = scfp->cf_cmd;
+   if(scfp->cf_use_shell)
+      mx_child_ctx_set_args_for_sh(&cc, NIL, scfp->cf_cmd);
+   else
+      cc.cc_cmd = scfp->cf_cmd;
    cc.cc_env_addon = scfp->cf_env;
 
    if(!mx_child_run(&cc)){

@@ -422,9 +422,7 @@ env_addon[i++] = str_concat_csvl(&s,
       cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
       cc.cc_mask = &nset;
       cc.cc_fds[mx_CHILD_FD_IN] = term_infd;
-      cc.cc_cmd = sh;
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = mthp->mth_shell_cmd;
+      mx_child_ctx_set_args_for_sh(&cc, sh, mthp->mth_shell_cmd);
       cc.cc_env_addon = env_addon;
 
       rbuf = !mx_child_run(&cc) ? NIL : R(FILE*,-1);

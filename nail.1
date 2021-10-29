@@ -13774,6 +13774,10 @@ the
 .Sx "COMMAND ESCAPES" ,
 and when starting subprocesses.
 A compile-time default shell is used if this variable is not defined.
+.Ql $SHELL -c -- 'echo du'
+is required to print
+.Ql du
+(POSIX issue #1440).
 .
 .Mx
 .It Ev SOCKS5_PROXY

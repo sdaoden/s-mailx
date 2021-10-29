@@ -364,9 +364,7 @@ jflesyn:
 
       mx_child_ctx_setup(&cc);
       cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = fcp->fc_argv[2];
+      mx_child_ctx_set_args_for_sh(&cc, NIL, fcp->fc_argv[2]);
       cc.cc_fds[mx_CHILD_FD_IN] = fileno(fp);
       if(!mx_FILE_LOCK_MODE_IS_TSHARE(flm))
          cc.cc_fds[mx_CHILD_FD_OUT] = fileno(fp);
@@ -571,9 +569,7 @@ jredo:
       goto jredo;
 
    cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
-   cc.cc_cmd = ok_vlook(SHELL);
-   cc.cc_args[0] = "-c";
-   cc.cc_args[1] = fcp->fc_argv[i];
+   mx_child_ctx_set_args_for_sh(&cc, NIL, fcp->fc_argv[i]);
 
    if(mx_child_run(&cc)){
       fcp->fc_estat = cc.cc_exit_status;
