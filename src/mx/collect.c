@@ -855,9 +855,7 @@ jperr:
       cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
       cc.cc_fds[mx_CHILD_FD_IN] = fileno(_coll_fp);
       cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf);
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = cmd;
+      mx_child_ctx_set_args_for_sh(&cc, NIL, cmd);
       if(!mx_child_run(&cc) || cc.cc_exit_status != 0){
          mx_fs_close(nf);
          rv = su_ERR_CHILD;

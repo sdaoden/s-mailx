@@ -341,9 +341,7 @@ c_shell(void *vp){
       cc.cc_mask = &mask;
       if(fp != NIL)
          cc.cc_fds[mx_CHILD_FD_OUT] = fileno(fp);
-      cc.cc_cmd = ok_vlook(SHELL);
-      cc.cc_args[0] = "-c";
-      cc.cc_args[1] = a_cmisc_bangexp(*argv);
+      mx_child_ctx_set_args_for_sh(&cc, NIL, a_cmisc_bangexp(*argv));
 
       if(!mx_child_run(&cc) || (rv = cc.cc_exit_status) < 0){
          n_pstate_err_no = cc.cc_error;
