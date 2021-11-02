@@ -45,7 +45,7 @@ C_DECL_BEGIN
  * Otherwise, \a{cmp_or_nil} will not be called for \NIL array entries,
  * which thus can result in false sorting. */
 EXPORT void su_sort_shell_vpp(void const **arr, uz entries,
-      su_compare_fun cmp_or_nil);
+      su_cmp_fun cmp_or_nil);
 
 /*! @} *//* }}} */
 
@@ -69,10 +69,10 @@ public:
    /*! \copydoc{su_sort_shell_vpp()} */
    template<class T>
    static void shell(T const **arr, uz entries,
-         typename type_toolbox<T>::compare_fun cmp_or_nil){
+         typename type_toolbox<T>::cmp_fun cmp_or_nil){
       ASSERT_RET_VOID(entries == 0 || arr != NIL);
       su_sort_shell_vpp(R(void const**,arr), entries,
-         R(su_compare_fun,cmp_or_nil));
+         R(su_cmp_fun,cmp_or_nil));
    }
 };
 /* }}} */

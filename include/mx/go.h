@@ -77,7 +77,7 @@ enum mx_go_input_inject_flags{
 
 struct mx_go_cleanup_ctx{
    struct mx_go_cleanup_ctx *gcc_last; /* Internal */
-   su_delete_fun gcc_fun; /* Required */
+   su_del_fun gcc_fun; /* Required */
 };
 
 struct mx_go_data_ctx{

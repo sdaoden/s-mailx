@@ -1679,7 +1679,7 @@ typedef void *(*su_clone_fun)(void const *t, u32 estate);
 
 /*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or
  * \r{su_assign_fun}). */
-typedef void (*su_delete_fun)(void *self);
+typedef void (*su_del_fun)(void *self);
 
 /*! Assign \a{t}; see \r{su_clone_fun} for the meaning of \a{estate}.
  * In-place update of \SELF is (and should) not (be) assumed, but instead the
@@ -1703,7 +1703,7 @@ typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less
  * \e than \a{b}, 0 on equality, and a value greater than 0 if \a{a} is
  * \e greater \e than \a{b}. */
-typedef su_sz (*su_compare_fun)(void const *a, void const *b);
+typedef su_sz (*su_cmp_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
 typedef su_uz (*su_hash_fun)(void const *self);
@@ -1713,9 +1713,9 @@ typedef su_uz (*su_hash_fun)(void const *self);
  * Also see \r{su_TOOLBOX_I9R()}. */
 struct su_toolbox{
    su_clone_fun tb_clone; /*!< \copydoc{su_clone_fun}. */
-   su_delete_fun tb_delete; /*!< \copydoc{su_delete_fun}. */
+   su_del_fun tb_del; /*!< \copydoc{su_del_fun}. */
    su_assign_fun tb_assign; /*!< \copydoc{su_assign_fun}. */
-   su_compare_fun tb_compare; /*!< \copydoc{su_compare_fun}. */
+   su_cmp_fun tb_cmp; /*!< \copydoc{su_cmp_fun}. */
    su_hash_fun tb_hash; /*!< \copydoc{su_hash_fun}. */
 };
 
@@ -1724,9 +1724,9 @@ struct su_toolbox{
 #define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
 {\
    su_FIELD_INITN(tb_clone) (su_clone_fun)(CLONE),\
-   su_FIELD_INITN(tb_delete) (su_delete_fun)(DELETE),\
+   su_FIELD_INITN(tb_del) (su_del_fun)(DELETE),\
    su_FIELD_INITN(tb_assign) (su_assign_fun)(ASSIGN),\
-   su_FIELD_INITN(tb_compare) (su_compare_fun)(COMPARE),\
+   su_FIELD_INITN(tb_cmp) (su_cmp_fun)(COMPARE),\
    su_FIELD_INITN(tb_hash) (su_hash_fun)(HASH)\
 }
 
@@ -2202,8 +2202,8 @@ public:
    static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
-/*! This is binary compatible with \r{toolbox} (and \r{su_toolbox})!
- * Also see \r{COLL}. */
+/*! \remarks{Binary compatible with \r{toolbox} (a.k.a. \r{su_toolbox})!
+ * Also see \r{COLL}.} */
 template<class T>
 struct type_toolbox{
    /*! \_ */
@@ -2212,26 +2212,26 @@ struct type_toolbox{
    /*! \copydoc{su_clone_fun} */
    typedef typename type_traits::tp (*clone_fun)(
          typename type_traits::tp_const t, u32 estate);
-   /*! \copydoc{su_delete_fun} */
-   typedef void (*delete_fun)(typename type_traits::tp self);
+   /*! \copydoc{su_del_fun} */
+   typedef void (*del_fun)(typename type_traits::tp self);
    /*! \copydoc{su_assign_fun} */
    typedef typename type_traits::tp (*assign_fun)(
          typename type_traits::tp self, typename type_traits::tp_const t,
          u32 estate);
-   /*! \copydoc{su_compare_fun} */
-   typedef sz (*compare_fun)(typename type_traits::tp_const self,
+   /*! \copydoc{su_cmp_fun} */
+   typedef sz (*cmp_fun)(typename type_traits::tp_const self,
          typename type_traits::tp_const t);
    /*! \copydoc{su_hash_fun} */
    typedef uz (*hash_fun)(typename type_traits::tp_const self);
 
    /*! \r{#clone_fun} */
    clone_fun ttb_clone;
-   /*! \r{#delete_fun} */
-   delete_fun ttb_delete;
+   /*! \r{#del_fun} */
+   del_fun ttb_del;
    /*! \r{#assign_fun} */
    assign_fun ttb_assign;
-   /*! \r{#compare_fun} */
-   compare_fun ttb_compare;
+   /*! \r{#cmp_fun} */
+   cmp_fun ttb_cmp;
    /*! \r{#hash_fun} */
    hash_fun ttb_hash;
 };
