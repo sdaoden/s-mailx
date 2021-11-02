@@ -169,7 +169,7 @@ a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f){
    su_mem_copy(self->i_name, name, l);
 
    if(f & a_IGNORE_CLEANUP){
-      self->i_gcc.gcc_fun = R(su_delete_fun,&mx_ignore_del);
+      self->i_gcc.gcc_fun = R(su_del_fun,&mx_ignore_del);
       mx_go_ctx_cleanup_push(&self->i_gcc);
    }
 
@@ -365,7 +365,7 @@ a_ignore__show(struct mx_ignore const *ip, boole retain){
    *ap = NIL;
 
    su_sort_shell_vpp(su_S(void const**,ring), P2UZ(ap - ring),
-      su_cs_toolbox_case.tb_compare);
+      su_cs_toolbox_case.tb_cmp);
 
    i = fprintf(n_stdout, "headerpick %s %s",
          ip->i_name, (retain ? "retain" : "ignore"));

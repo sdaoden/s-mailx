@@ -320,7 +320,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap,
    np = a_N_ALLOC(self, lap->la_klen, flags);
    if(UNLIKELY(np == NIL)){
       if(xvalue != NIL)
-         (*self->a_T_F(tbox)->tb_delete)(xvalue);
+         (*self->a_T_F(tbox)->tb_del)(xvalue);
       rv = su_ERR_NOMEM; /* (Cannot be overflow error) */
       goto jleave;
    }
@@ -385,7 +385,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
          ASSERT(flags & a_T_PUBNAME(NILISVALO));
 
       if(ndat != NIL)
-         (*self->a_T_F(tbox)->tb_delete)(ndat);
+         (*self->a_T_F(tbox)->tb_del)(ndat);
    }
 
    np->a_N_F(data) = value;
@@ -401,7 +401,7 @@ a_FUN(remove)(struct a_T *self, struct a_N *np, struct a_LA *lap){
    --self->a_T_F(count);
 
    if(np->a_N_F(data) != NIL && (self->a_T_F(flags) & a_T_PUBNAME(OWNS)))
-      (*self->a_T_F(tbox)->tb_delete)(np->a_N_F(data));
+      (*self->a_T_F(tbox)->tb_del)(np->a_N_F(data));
    if(lap->la_last != NIL)
       lap->la_last->a_N_F(next) = np->a_N_F(next);
    else
@@ -675,7 +675,7 @@ a_T_PUBSYM(create)(struct a_T *self, u16 flags,
 
    ASSERT_NYD(!(flags & a_T_PUBNAME(OWNS)) ||
       (tbox_or_nil != NIL && tbox_or_nil->tb_clone != NIL &&
-       tbox_or_nil->tb_delete != NIL && tbox_or_nil->tb_assign != NIL));
+       tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
 
    self->a_T_F(flags) = (flags &= a_T_PRINAME(CREATE_MASK));
    self->a_T_F(tshift) = 2;
@@ -756,7 +756,7 @@ struct a_T *
 a_T_PUBSYM(clear_elems)(struct a_T *self){
    void *vp;
    struct a_N **arr, *np, *tmp;
-   su_delete_fun delfun;
+   su_del_fun delfun;
    u32 cnt, size;
    NYD_IN;
    ASSERT(self);
@@ -765,7 +765,7 @@ a_T_PUBSYM(clear_elems)(struct a_T *self){
    self->a_T_F(count) = 0;
    size = self->a_T_F(size);
    delfun = (self->a_T_F(flags) & a_T_PUBNAME(OWNS))
-         ? self->a_T_F(tbox)->tb_delete : S(su_delete_fun,NIL);
+         ? self->a_T_F(tbox)->tb_del : S(su_del_fun,NIL);
    arr = self->a_T_F(array);
 
    while(cnt > 0){
