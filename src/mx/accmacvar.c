@@ -2572,7 +2572,7 @@ a_amv_var_show_all(void){
       *cap++ = a_amv_var_virts[i].avv_var->av_name;
 
    if(no > 1)
-      su_sort_shell_vpp(S(void const**,vacp), no, su_cs_toolbox.tb_compare);
+      su_sort_shell_vpp(S(void const**,vacp), no, su_cs_toolbox.tb_cmp);
 
    msgp = &msg;
    msgp = n_string_reserve(n_string_creat(msgp), 80);
