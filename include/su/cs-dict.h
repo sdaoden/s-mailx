@@ -259,7 +259,7 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self,
    ASSERT(self);
    ASSERT(!(su_cs_dict_flags(self) & su_CS_DICT_OWNS) ||
       (tbox_or_nil != NIL && tbox_or_nil->tb_clone != NIL &&
-       tbox_or_nil->tb_delete != NIL && tbox_or_nil->tb_assign != NIL));
+       tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
    self->csd_tbox = tbox_or_nil;
    return self;
 }
@@ -616,7 +616,7 @@ public:
    /*! \copydoc{su_cs_dict_create()} */
    cs_dict(type_toolbox const *ttbox=NIL, u16 flags=f_none){
       ASSERT(!OWNS || (ttbox != NIL && ttbox->ttb_clone != NIL &&
-         ttbox->ttb_delete != NIL && ttbox->ttb_assign != NIL));
+         ttbox->ttb_del != NIL && ttbox->ttb_assign != NIL));
       flags &= su__CS_DICT_CREATE_MASK & ~su_CS_DICT_OWNS;
       if(OWNS)
          flags |= su_CS_DICT_OWNS;

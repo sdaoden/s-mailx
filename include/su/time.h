@@ -69,8 +69,8 @@ INLINE boole su_timespec_is_valid(struct su_timespec const *self){
          self->ts_nano >= 0 && self->ts_nano < su_TIMESPEC_SEC_NANOS);
 }
 
-/*! \copydoc{su_compare_fun()} */
-INLINE sz su_timespec_compare(struct su_timespec const *self,
+/*! \copydoc{su_cmp_fun()} */
+INLINE sz su_timespec_cmp(struct su_timespec const *self,
       struct su_timespec const *tp){
    s64 x;
    ASSERT_RET(self != NIL, -(tp != NIL));
@@ -332,8 +332,8 @@ public:
       /*! \copydoc{su_timespec_is_valid()} */
       boole is_valid(void) const {return su_timespec_is_valid(this);}
 
-      /*! \copydoc{su_timespec_compare()} */
-      sz compare(spec const &t) const {return su_timespec_compare(this, &t);}
+      /*! \copydoc{su_timespec_cmp()} */
+      sz cmp(spec const &t) const {return su_timespec_cmp(this, &t);}
 
       /*! \copydoc{su_timespec_is_EQ()} */
       boole operator==(spec const &t) const{

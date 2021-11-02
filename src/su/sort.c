@@ -28,7 +28,7 @@
 #include "su/code-in.h"
 
 void
-su_sort_shell_vpp(void const **arr, uz entries, su_compare_fun cmp_or_nil){
+su_sort_shell_vpp(void const **arr, uz entries, su_cmp_fun cmp_or_nil){
    void const **vpp, *vpa, *vpb;
    sz j, tmp;
    uz gap, i;

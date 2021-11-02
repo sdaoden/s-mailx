@@ -408,7 +408,7 @@ a__cs_dict(u32 addflags){
    {
       static type_toolbox<char*> const xtb = su_TYPE_TOOLBOX_I9R(
             (type_toolbox<char*>::clone_fun)0x1,
-            (type_toolbox<char*>::delete_fun)0x2,
+            (type_toolbox<char*>::del_fun)0x2,
             (type_toolbox<char*>::assign_fun)0x3,
             NIL, NIL);
       typedef cs_dict<char*,TRU1> csd;
@@ -1138,8 +1138,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec()) a_ERR();
    if(ts2.nano() != ts.nano()) a_ERR();
-   if(ts.compare(ts2) != 0) a_ERR();
-   if(ts2.compare(ts) != 0) a_ERR();
+   if(ts.cmp(ts2) != 0) a_ERR();
+   if(ts2.cmp(ts) != 0) a_ERR();
    if(!(ts2 == ts)) a_ERR();
    if(ts2 != ts) a_ERR();
    if(ts2 < ts) a_ERR();
@@ -1151,8 +1151,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec() - 1) a_ERR();
    if(ts2.nano() != ts.nano()) a_ERR();
-   if(ts.compare(ts2) <= 0) a_ERR();
-   if(ts2.compare(ts) >= 0) a_ERR();
+   if(ts.cmp(ts2) <= 0) a_ERR();
+   if(ts2.cmp(ts) >= 0) a_ERR();
    if(ts2 == ts) a_ERR();
    if(!(ts2 != ts)) a_ERR();
    if(!(ts2 < ts)) a_ERR();
@@ -1164,8 +1164,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec() + 1) a_ERR();
    if(ts2.nano() != ts.nano()) a_ERR();
-   if(ts.compare(ts2) >= 0) a_ERR();
-   if(ts2.compare(ts) <= 0) a_ERR();
+   if(ts.cmp(ts2) >= 0) a_ERR();
+   if(ts2.cmp(ts) <= 0) a_ERR();
    if(ts2 == ts) a_ERR();
    if(!(ts2 != ts)) a_ERR();
    if(ts2 < ts) a_ERR();
@@ -1177,8 +1177,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec()) a_ERR();
    if(ts2.nano() != ts.nano()) a_ERR();
-   if(ts.compare(ts2) != 0) a_ERR();
-   if(ts2.compare(ts) != 0) a_ERR();
+   if(ts.cmp(ts2) != 0) a_ERR();
+   if(ts2.cmp(ts) != 0) a_ERR();
    if(!(ts2 == ts)) a_ERR();
    if(ts2 != ts) a_ERR();
    if(ts2 < ts) a_ERR();
@@ -1195,8 +1195,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec()) a_ERR();
    if(ts2.nano() != ts.nano() - 1) a_ERR();
-   if(ts.compare(ts2) <= 0) a_ERR();
-   if(ts2.compare(ts) >= 0) a_ERR();
+   if(ts.cmp(ts2) <= 0) a_ERR();
+   if(ts2.cmp(ts) >= 0) a_ERR();
    if(ts2 == ts) a_ERR();
    if(!(ts2 != ts)) a_ERR();
    if(!(ts2 < ts)) a_ERR();
@@ -1208,8 +1208,8 @@ a__time_spec(void){
    if(!ts2.is_valid()) a_ERR();
    if(ts2.sec() != ts.sec()) a_ERR();
    if(ts2.nano() != ts.nano() + 1) a_ERR();
-   if(ts.compare(ts2) >= 0) a_ERR();
-   if(ts2.compare(ts) <= 0) a_ERR();
+   if(ts.cmp(ts2) >= 0) a_ERR();
+   if(ts2.cmp(ts) <= 0) a_ERR();
    if(ts2 == ts) a_ERR();
    if(!(ts2 != ts)) a_ERR();
    if(ts2 < ts) a_ERR();
