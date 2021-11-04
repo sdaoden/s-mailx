@@ -1362,7 +1362,7 @@ a_sendout_transfer(struct sendbundle *sbp, boole resent, boole *senderror){
    input_save = sbp->sb_input;
    if((resent || (sbp->sb_hp != NIL && sbp->sb_hp->h_bcc != NIL)) &&
          !ok_blook(mta_bcc_ok)){
-      boole inhdr;
+      boole inhdr, inskip;
       uz bufsize, bcnt, llen;
       char *buf;
       FILE *fp;
@@ -1379,17 +1379,23 @@ jewritebcc:
       mx_fs_linepool_aquire(&buf, &bufsize);
       bcnt = fsize(input_save);
       inhdr = TRU1;
+      inskip = FAL0;
       while(fgetline(&buf, &bufsize, &bcnt, &llen, input_save, TRU1) != NIL){
          if(inhdr){
             if(llen == 1 && *buf == '\n')
                inhdr = FAL0;
-            /* (We need _case for resent only) */
-            else if(su_cs_starts_with_case(buf, "bcc:"))
-               continue;
-            /* We yet do not generate that, but place the logic today */
-            else if(resent && su_cs_starts_with_case(buf, "resent-bcc:"))
-               continue;
-
+            else{
+               if(inskip && *buf == ' ')
+                  continue;
+               inskip = FAL0;
+               /* (We need _case for resent only);
+                * xxx We do not resent that yet , but place the logic today */
+               if(su_cs_starts_with_case(buf, "bcc:") ||
+                     (resent && su_cs_starts_with_case(buf, "resent-bcc:"))){
+                  inskip = TRU1;
+                  continue;
+               }
+            }
          }
          if(fwrite(buf, 1, llen, fp) != llen)
             goto jewritebcc;
