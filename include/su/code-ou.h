@@ -299,6 +299,9 @@
 # undef su_CNEW
 # undef su_CNEW_LOC
 # undef su_CNEW_LOCOR
+# undef su_NEWF_BLK
+# undef su_NEWF_BLK_LOC
+# undef su_NEWF_BLK_LOCOR
 # undef su_NEW_HEAP
 # undef su_NEW_HEAP_LOC
 # undef su_NEW_HEAP_LOCOR
