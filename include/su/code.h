@@ -281,7 +281,7 @@
 # define su_VIR
 # define su_OVR
    /* This is for the declarator only */
-# if __cplusplus +0 < 201103l
+# if __cplusplus +0 < 201103l || 1 /* XXX override ?? */
 #  define su_OVRX
 # else
 #  define su_OVRX override
