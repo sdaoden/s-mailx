@@ -581,6 +581,27 @@ public:
    su_MEM_ALLOC_NEW_LOC(T, su_MEM_ALLOC_ZERO | su_MEM_ALLOC_MUSTFAIL,\
       FNAME, LNNO)
 
+/*! \remarks{In order to support hardening, this introduces a block,
+ * and therefore assigns the result to \a{RES}.
+ * That is, flags only come in via \a{F}, even \r{su_MEM_ALLOC_MUSTFAIL} is not
+ * set by default.
+ * The constructor is called with \a{CTOR_ARGS_IN_PARENS}, one may pass only
+ * a space if no arguments are needed.} */
+#define su_MEM_NEWF_BLK(RES,T,F,CTOR_ARGS_IN_PARENS) \
+do{\
+   RES = su_S(T *,su_MEM_ALLOCATE(sizeof(T), 1, F));\
+   if((RES) != NIL)\
+      RES = su_MEM_NEW_HEAP(T, RES) CTOR_ARGS_IN_PARENS;\
+}while(0)
+
+/*! See \r{su_MEM_NEWF_BLK()}. */
+#define su_MEM_NEWF_BLK_LOC(RES,T,F,CTOR_ARGS_IN_PARENS,FNAME,LNNO) \
+do{\
+   RES = su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), 1, F, FNAME, LNNO));\
+   if((RES) != NIL)\
+      RES = su_MEM_NEW_HEAP(T, RES) CTOR_ARGS_IN_PARENS;\
+}while(0)
+
 /*! \_ */
 #define su_MEM_NEW_HEAP(T,VP) new(VP, su_S(su_NSPC(su)mem::johnny*,su_NIL)) T
 
@@ -613,6 +634,8 @@ public:
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define su_MEM_NEW_LOCOR(T,ORARGS) su_MEM_NEW_LOC(T, ORARGS)
 # define su_MEM_CNEW_LOCOR(T,ORARGS) su_MEM_CNEW_LOC(T, ORARGS)
+# define su_MEM_NEWF_BLK_LOCOR(RES,T,F,CAIP,ORARGS) \
+      su_MEM_NEWF_BLK_LOC(RES, T, F, CAIP, ORARGS)
 # define su_MEM_NEW_HEAP_LOCOR(T,VP,ORARGS) su_MEM_NEW_HEAP_LOC(T, VP, ORARGS)
 # define su_MEM_DEL_LOCOR(TP,ORARGS) su_MEM_DEL_LOC(TP, ORARGS)
 # define su_MEM_DEL_HEAP_LOCOR(TP,ORARGS) su_MEM_DEL_HEAP_LOC(TP, ORARGS)
@@ -625,6 +648,9 @@ public:
 # define su_MEM_NEW_LOCOR(T,ORARGS) su_MEM_NEW(T)
    /*! \_ */
 # define su_MEM_CNEW_LOCOR(T,ORARGS) su_MEM_CNEW(T)
+   /*! \_ */
+# define su_MEM_NEWF_BLK_LOCOR(RES,T,F,CTOR_ARGS_IN_PARENS,ORARGS) \
+      su_MEM_NEWF_BLK_LOC(RES, T, F, CTOR_ARGS_IN_PARENS)
    /*! \_ */
 # define su_MEM_NEW_HEAP_LOCOR(T,VP,ORARGS) su_MEM_NEW_HEAP(T, VP)
    /*! \_ */
