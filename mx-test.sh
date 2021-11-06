@@ -4237,6 +4237,43 @@ xit
       to@exam.ple > ./t14 2>&1
    check 14 0 ./t14 '3373917180 151'
 
+   # Ensure header line folding works out, with/out *mta-bcc-ok*
+   </dev/null ${MAILX} ${ARGS} -S mta=./tmta.sh \
+      -s ubject -Y 'Hi!' \
+      -b bcc-long-name-that-causes-wrap@no.1 \
+      -b bcc-long-name-that-causes-wrap@no.2 \
+      -b bcc-long-name-that-causes-wrap@no.3 \
+      -b bcc-long-name-that-causes-wrap@no.4 \
+      -c cc-long-name-that-causes-wrap@no.1 \
+      -c cc-long-name-that-causes-wrap@no.2 \
+      -c cc-long-name-that-causes-wrap@no.3 \
+      -c cc-long-name-that-causes-wrap@no.4 \
+      to-long-name-that-causes-wrap@no.1 \
+      to-long-name-that-causes-wrap@no.2 \
+      to-long-name-that-causes-wrap@no.3 \
+      to-long-name-that-causes-wrap@no.4 \
+      > ./t15 2>&1
+   check 15 0 ./t.mbox '3193007256 998'
+   check 15-1 - ./t15 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -S mta=./tmta.sh -S nomta-bcc-ok \
+      -s ubject -Y 'Hi!' \
+      -b bcc-long-name-that-causes-wrap@no.1 \
+      -b bcc-long-name-that-causes-wrap@no.2 \
+      -b bcc-long-name-that-causes-wrap@no.3 \
+      -b bcc-long-name-that-causes-wrap@no.4 \
+      -c cc-long-name-that-causes-wrap@no.1 \
+      -c cc-long-name-that-causes-wrap@no.2 \
+      -c cc-long-name-that-causes-wrap@no.3 \
+      -c cc-long-name-that-causes-wrap@no.4 \
+      to-long-name-that-causes-wrap@no.1 \
+      to-long-name-that-causes-wrap@no.2 \
+      to-long-name-that-causes-wrap@no.3 \
+      to-long-name-that-causes-wrap@no.4 \
+      > ./t16 2>&1
+   check 16 0 ./t.mbox '2175359047 843'
+   check 16-1 - ./t16 '4294967295 0'
+
    t_epilog "${@}"
 } # }}}
 
