@@ -4615,26 +4615,19 @@ imap_make_date_time(time_t t)
    char const *mn;
    s32 y, md, th, tm, ts;
    struct tm *tmp;
-   int tzdiff, tzdiff_hour, tzdiff_min;
-   time_t t2;
+   int tzdiff_hour, tzdiff_min;
    NYD2_IN;
 
 jredo:
-   if((t2 = mktime(gmtime(&t))) == (time_t)-1){
-      t = 0;
-      goto jredo;
-   }
-   tzdiff = t - t2;
    if((tmp = localtime(&t)) == NULL){
       t = 0;
       goto jredo;
    }
 
-   tzdiff_hour = (int)(tzdiff / 60);
-   tzdiff_min = tzdiff_hour % 60;
-   tzdiff_hour /= 60;
-   if (tmp->tm_isdst > 0)
-      tzdiff_hour++;
+   tzdiff_min = S(int,n_time_tzdiff(t, NIL, tmp));
+   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
+   tzdiff_hour = tzdiff_min / 60;
+   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
 
    if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
@@ -4659,6 +4652,7 @@ jredo:
 
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
          md, mn, y, th, tm, ts, tzdiff_hour, tzdiff_min);
+
    NYD2_OU;
    return s;
 }

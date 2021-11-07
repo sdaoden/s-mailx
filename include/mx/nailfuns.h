@@ -294,6 +294,11 @@ FL struct n_timespec const *n_time_now(boole force_update);
 FL void        time_current_update(struct time_current *tc,
                   boole full_update);
 
+/* TZ difference in seconds.
+ * secsepoch is only used if any of the tm's is NIL. */
+FL s32 n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
+      struct tm const *localp_or_nil);
+
 /* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
  * NOTE: no trailing newline */
 FL char *n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil);

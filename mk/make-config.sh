@@ -2104,6 +2104,16 @@ int main(void){
    fi
 fi
 
+link_check tm_gmtoff 'struct tm::tm_gmtoff' '#define mx_HAVE_TM_GMTOFF' << \!
+#include <time.h>
+int main(void){
+   time_t t;
+
+   t = time((void*)0);
+   return gmtime(&t)->tm_gmtoff != 0;
+}
+!
+
 ##
 ## optional and selectable
 ##

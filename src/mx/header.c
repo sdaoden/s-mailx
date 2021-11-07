@@ -2748,9 +2748,8 @@ FL time_t
 unixtime(char const *fromline)
 {
    char const *fp, *xp;
-   time_t t, t2;
-   s32 i, year, month, day, hour, minute, second, tzdiff;
-   struct tm *tmptr;
+   time_t t;
+   s32 i, year, month, day, hour, minute, second;
    NYD2_IN;
 
    for (fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
@@ -2786,14 +2785,9 @@ unixtime(char const *fromline)
       goto jinvalid;
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
       goto jinvalid;
-   if((t2 = mktime(gmtime(&t))) == (time_t)-1)
-      goto jinvalid;
-   tzdiff = t - t2;
-   if((tmptr = localtime(&t)) == NULL)
-      goto jinvalid;
-   if (tmptr->tm_isdst > 0)
-      tzdiff += 3600; /* TODO simply adding an hour for ISDST is .. buuh */
-   t -= tzdiff;
+
+   t += n_time_tzdiff(t, NIL, NIL);
+
 jleave:
    NYD2_OU;
    return t;

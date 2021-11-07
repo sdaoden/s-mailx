@@ -2435,17 +2435,17 @@ FL int
 mkdate(FILE *fo, char const *field)
 {
    struct tm tmpgm, *tmptr;
-   int tzdiff, tzdiff_hour, tzdiff_min, rv;
+   int tzdiff_hour, tzdiff_min, rv;
    NYD_IN;
 
    su_mem_copy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
-   tzdiff = time_current.tc_time - mktime(&tmpgm);
-   tzdiff_hour = (int)(tzdiff / 60);
-   tzdiff_min = tzdiff_hour % 60;
-   tzdiff_hour /= 60;
    tmptr = &time_current.tc_local;
-   if (tmptr->tm_isdst > 0)
-      ++tzdiff_hour;
+
+   tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
+   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
+   tzdiff_hour = tzdiff_min / 60;
+   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
+
    rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
          field,
          n_weekday_names[tmptr->tm_wday],
