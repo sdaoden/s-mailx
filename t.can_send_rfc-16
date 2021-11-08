@@ -1,0 +1,13 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: to-long-name-that-causes-wrap@no.1,
+ to-long-name-that-causes-wrap@no.2, to-long-name-that-causes-wrap@no.3,
+ to-long-name-that-causes-wrap@no.4
+Cc: cc-long-name-that-causes-wrap@no.1,
+ cc-long-name-that-causes-wrap@no.2, cc-long-name-that-causes-wrap@no.3,
+ cc-long-name-that-causes-wrap@no.4
+Subject: ubject
+
+Hi!
+ARGS: -i -- to-long-name-that-causes-wrap@no.1 to-long-name-that-causes-wrap@no.2 to-long-name-that-causes-wrap@no.3 to-long-name-that-causes-wrap@no.4 cc-long-name-that-causes-wrap@no.1 cc-long-name-that-causes-wrap@no.2 cc-long-name-that-causes-wrap@no.3 cc-long-name-that-causes-wrap@no.4 bcc-long-name-that-causes-wrap@no.1 bcc-long-name-that-causes-wrap@no.2 bcc-long-name-that-causes-wrap@no.3 bcc-long-name-that-causes-wrap@no.4
+
