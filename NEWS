@@ -6,6 +6,113 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
+v14.9.23 ("Tits look ahead for winter"), 2021-11-11
+---------------------------------------------------
+
+Credits, in order of commit appearance: Noctambule, Stephen Isard,
+Andreas Teuber, Simon Gerraty, Geoff Clare, Robert Elz,
+Harald van Dijk, Bryan Drewery, Andrea Biardi, Jörg Schilling.
+
+We welcome Andreas Teuber, Harald van Dijk, Bryan Drewery and
+Andrea Biardi in THANKS.
+
+Good-bye and farewall dear Jörg!
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- VAL_RANDOM=getentropy was broken.
+
+- An unset *mta-bcc-ok*#? could cause partial Bcc: content
+  to be written to Cc: or To:.  (If so many addressees where given
+  that multiple lines have to be used, content of all lines but
+  the first would be written.)  (Andreas Teuber)
+
+- Date offset calculation was wrong for timezones which use
+  a negative adjustment for "is daylight saving time active".
+  (Andrea Biardi)
+
+ChangeLog
+^^^^^^^^^
+
+- Continue searching MIME handler sources if the first found one
+  is not applicable in current context.  (Noctambule)
+
+- Fixed `vexpr'#? shift operators broken for "optimization" :-(.
+  Also fix `date-utc' subcommand which used two "dutc_month"
+  instead of one plus "dutc_day".
+
+- Temporarily set an unset $LESS to portable "RI" not "RXi".
+
+- A couple of SIGALARM / alarm(2) fixes for the -keepalive-
+  variable series.  (Stephen Isard)
+
+- We drop inherited effective IDs upon startup.  (Harald van Dijk)
+
+- `mimeview'#? now also asks for text/ parts whether an action
+  shall be applied.  And if there is no plain part we may
+  use the rich one if possible.  (Stephen Isard)
+
+- *pipe-TYPE/SUBTYPE*#? now support type-markers.  (Noctambule)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (57):
+921de6aaaa mx_qp_dec_header(): fix: do not decode an encoded "_" to " "
+edef6effff mx_mime_type_handler(): fix: if ..check() "fails", continue search
+        (Noctambule)
+af64338852 MLE:a_tty_readline(): FIX possible buffer-overflow with
+        HAVE_KEY_BINDINGS..
+1091b026c9 c_digmsg(): (fix): if `digmsg' input is not fully consumed..
+7e7ac8acd2 n_header_extract(): fix: reverse order when cat'ing multiple
+        Subject:
+1b23e50938 sendpart(): fix [b735b9b1db6980e040fc97f22fd94ed7ae547615] for
+        RFC822 parts..
+d513fa93a2 imap_copy1(): fix an UNANSWERED<>Flagged mismatch
+f26a16e7b5 `vexpr': FIX (oh mess!): fix <<,>>,>>>
+67d78f91d3 `vexpr': one more tweak for fix <<,>>,>>>
+d9df5e6059 `vexpr': "date-utc": fix: it is dutc_day= not a second dutc_month=
+dbdccea210 a_aux_pager_get(): set an unset $LESS= to the portable RI, not RXi
+166c1377aa a_mime__convhdra(): FIX missing iconv(3) failure (since EVER: nail
+        10.05++)..
+b2fedeadc2 nail.1: clarify 501 return code of `digmsg' / `~^'
+cde5c01e3c mx_fs_tmp_open(): plug FD leak in error path
+4870e54f9d n_folder_mbox_prepare_append(): fix: first putc(3) iff, then
+        fflush()
+2b6681b904 imap_folders(): fix crash in "Fi @NoSuch;folders @" (ever)
+0e68bbebab mx_child_wait(): let SIGALARM get through (Stephen Isard)
+1d9c79a2c0 Impose upper limit on socket failures (Stephen Isard)..
+69be61071c Clear an installed alarm(2) in fork(2)ed childs (Stephen Isard)
+ec14b3fe63 a_rand_init(): FIX getentropy(2) usage!
+c3ef40c2b6 a_sendout_transfer(): FIX *mta-bcc-ok* logic on follow lines!
+        (Andreas Teuber)
+067378472d THANKS: Andreas Teuber
+60944923a4 mx-test.sh: not stty but test -t 1 (BSD 4.1, Research V7) (Simon
+        Gerraty)
+7c7a195323 Ensure final fflush(3) reflected by exit status (Geoff Clare,
+        Robert Elz)
+77a598a655 In *posix* mode, generate failure exit if any msg sendout failed
+ddcad27f55 mx_tty_create_prompt()++: never prepend ERROR# to *prompt* (Stephen
+        Isard)
+068fa36f78 (BWDIC!) *^ERRQUEUE-EXISTS*: boolean -> string
+1aae726e32 a_main_startup(): drop inherited effective IDs (Harald van Dijk)
+ab86bef4cb THANKS: Harald van Dijk
+7f088542c0 ps-dotlock: check for and use procctl(2) PROC_TRACE_CTL (Bryan
+        Drewery)
+489c583d1b THANKS: Bryan Drewery
+ec650e3c52 `mimeview': also ask for text/ parts whether action ok (Stephen
+        Isard)
+9c8c9f3386 send.c:_send_al7ive_have_better(): use rich if there's no plain
+        (Stephen Isard)
+60ed19eed5 FIX UTC offset "calculation" (Andrea Biardi)..
+94c92d3e4d THANKS: Andrea Biardi
+6be6974c0e nail.1: continue on [edef6effffc077b1300db0b7ea8d76517d8198d7]
+        (Noctambule)
+9c11448e7c *pipe-TYPE/SUBTYPE*: support explicit type-markers (Noctambule)
+7b8ac94bf7 n_folder_mbox_prepare_append(): fix it on SunOS (Jörg Schilling,
+        RIP!)
+
 v14.9.22 ("Feathery sound of close tit flypast"), 2021-02-24
 ------------------------------------------------------------
 
@@ -35,18 +142,7 @@ ChangeLog
   can never do this, and if it is only for `readctl'#254.
   (Russell Bell, Johannes Schöpfer)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (8):
-d2bcfd45 Some: fix spelling errors -- thanks fossies.org! (Jens Schleusener)
-ad7750d4 Mess! OpenSSL changed DEFINE_STACK_OF() 3.0 crap once again!!  Sorry!
-0d71e7ec main(): call mx_termcap_destroy() at times (Olav Mørkrid)
-aae70019 Do the latter right
-75970d68 Thank you, Olav!  (More fixes for the fix of the fix, that is)
-77b7d20c Hoooorray! One more fix needed for Olav Mørkrid!
-fac2d327 FIX! Remove close_range brain damange (Russell Bell, Johannes
-        Schöpfer)..
+git(1) shortlog: Steffen Nurpmeso (8)
 
 v14.9.21 ("Tit escapes with a peanut"), 2021-01-21
 --------------------------------------------------
