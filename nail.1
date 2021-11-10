@@ -1554,11 +1554,16 @@ Whereas a simple HTML-to-text filter for displaying HTML messages is
 in
 .Va features ) ,
 MIME types other than plain text cannot be handled directly.
-Instead programs need to become registered to deal with specific MIME
-types or file extensions, either to prepare (re-)integrable plain text
+And for
+.Ql multipart/alternative
+MIME messages an existing plain text part is preferred unless
+.Va mime-alternative-favour-rich
+is set.
+To deal with specific non-text MIME types or file extensions programs
+need to be registered which either prepare (re-)integrable plain text
 versions of their input (a mode which is called
 .Cd copiousoutput ) ,
-or to display the content externally, for example in a graphical window:
+or display the content externally, for example in a graphical window:
 the latter type is only considered by and for the command
 .Ic mimeview .
 .
