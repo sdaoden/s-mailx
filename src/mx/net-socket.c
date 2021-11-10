@@ -746,17 +746,14 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
 
 # ifdef mx_HAVE_XTLS
    if(sop->s_use_tls){
-      int errcnt;
+      int errcnt, err;
 
       errcnt = 0;
 jssl_retry:
       x = SSL_write(sop->s_tls, data, size);
       if(x < 0){
-         if(++errcnt < 3){
-            int err;
-
-            err = su_err_no();
-            switch (SSL_get_error(sop->s_tls, x)) {
+         if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+            switch(SSL_get_error(sop->s_tls, x)){
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
                n_err(_("TLS socket write error, retrying: %s\n"),
@@ -766,7 +763,7 @@ jssl_retry:
          }
       }
    } else
-# endif
+# endif /* mx_HAVE_XTLS */
    {
       x = a_netso_xwrite(sop->s_fd, data, size);
    }
@@ -824,7 +821,7 @@ int
             PCMP(sop->s_rbufptr, >=, sop->s_rbuf + sop->s_rsz)) {
 # ifdef mx_HAVE_XTLS
          if(sop->s_use_tls){
-            int errcnt;
+            int errcnt, err;
 
             errcnt = 0;
 jssl_retry:
@@ -833,11 +830,8 @@ jssl_retry:
                if (sop->s_rsz < 0) {
                   char o[512];
 
-                  if(++errcnt < 3){
-                     int err;
-
-                     err = su_err_no();
-                     switch(SSL_get_error(sop->s_tls, sop->s_rsz)) {
+                  if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+                     switch(SSL_get_error(sop->s_tls, sop->s_rsz)){
                      case SSL_ERROR_WANT_READ:
                      case SSL_ERROR_WANT_WRITE:
                         n_err(_("TLS socket read error, retrying: %s\n"),
@@ -852,7 +846,7 @@ jssl_retry:
                break;
             }
          } else
-# endif
+# endif /* mx_HAVE_XTLS */
          {
 jagain:
             sop->s_rsz = read(sop->s_fd, sop->s_rbuf, sizeof sop->s_rbuf);
