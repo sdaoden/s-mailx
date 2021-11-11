@@ -1233,7 +1233,8 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_nil){
    }
 
    rv = su_ERR_NONE;
-   if((needsep && putc('\n', fout) == EOF) || fflush(fout) == EOF)
+   if((needsep && (fseek(fout, 0L, SEEK_END) || putc('\n', fout) == EOF)) ||
+         fflush(fout) == EOF)
 jerrno:
       rv = su_err_no();
 
