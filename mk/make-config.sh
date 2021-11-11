@@ -389,7 +389,7 @@ cc_setup() {
       _cc_default
       # Ensure those don't do any harm
       EXTRA_CFLAGS= EXTRA_LDFLAGS=
-      export EXTRA_CFLAGS EXTRA_LDFLAGS
+      export CC EXTRA_CFLAGS EXTRA_LDFLAGS
       return
    else
       CFLAGS= LDFLAGS=
@@ -398,7 +398,11 @@ cc_setup() {
 
    if [ -n "${CC}" ]; then
       _cc_default
-   elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
+      export CC
+      return
+   fi
+
+   if [ -n "${cc_os_search}" ] && ${cc_os_search}; then
       cc_no_flagtest=1
    else
       msg_nonl 'Searching for a usable C compiler .. $CC='
