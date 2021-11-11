@@ -19,7 +19,7 @@ cd ..
 : ${UPROGRAM:=S-nail}
 : ${MANUAL:=code-nail.html}
 
-: ${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads}
+: ${UPLOAD:=steffen@vpn.sdaoden.eu:/var/www/localhost/downloads}
 
 : ${MAILX:='s-nail -Snofollowup-to -Sreply-to=mailx -Ssmime-sign'}
 : ${ACCOUNT:=ich}
