@@ -23,7 +23,7 @@ NOTES, ChangeLog (packager-affine)
 
 - VAL_RANDOM=getentropy was broken.
 
-- An unset *mta-bcc-ok*#? could cause partial Bcc: content
+- An unset *mta-bcc-ok*#482 could cause partial Bcc: content
   to be written to Cc: or To:.  (If so many addressees where given
   that multiple lines have to be used, content of all lines but
   the first would be written.)  (Andreas Teuber)
@@ -38,7 +38,7 @@ ChangeLog
 - Continue searching MIME handler sources if the first found one
   is not applicable in current context.  (Noctambule)
 
-- Fixed `vexpr'#? shift operators broken for "optimization" :-(.
+- Fixed `vexpr'#303 shift operators broken for "optimization" :-(.
   Also fix `date-utc' subcommand which used two "dutc_month"
   instead of one plus "dutc_day".
 
@@ -49,11 +49,11 @@ ChangeLog
 
 - We drop inherited effective IDs upon startup.  (Harald van Dijk)
 
-- `mimeview'#? now also asks for text/ parts whether an action
+- `mimeview'#227 now also asks for text/ parts whether an action
   shall be applied.  And if there is no plain part we may
   use the rich one if possible.  (Stephen Isard)
 
-- *pipe-TYPE/SUBTYPE*#? now support type-markers.  (Noctambule)
+- *pipe-TYPE/SUBTYPE*#503 now support type-markers.  (Noctambule)
 
 git(1) shortlog (edited)
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -718,7 +718,7 @@ NOTES, ChangeLog (packager-affine)
   been fixed, and then caused a major rewrite of the child and
   termios handling for a rather "real" fix.
 
-  The latter has the side effect that *pipe-TYPE/SUBTYPE*#502
+  The latter has the side effect that *pipe-TYPE/SUBTYPE*#503
   handlers will now have their standard output go to /dev/null.
 
 - IMAP GSSAPI authentication should work again.  (Ivan Vučica)
@@ -968,7 +968,7 @@ NOTES, ChangeLog (packager-affine)
       Two argument forms require `wysh'#131.
 
     + `mimetype'#225 markers have changed likewise; this also
-      affects *pipe-TYPE/SUBTYPE*#502 and *pipe-EXTENSION*#509 (with
+      affects *pipe-TYPE/SUBTYPE*#503 and *pipe-EXTENSION*#502 (with
       legacy compatibility and -v/-d obsoletion warnings)!
 
         ? mimetype ?t text/x-awk  awk
@@ -1427,7 +1427,7 @@ THANKS.
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- The v14.9.* series called *pipe-TYPE/SUBTYPE*#502 handlers in
+- The v14.9.* series called *pipe-TYPE/SUBTYPE*#503 handlers in
   display or quote mode with CR (carriage-return) bytes stripped
   because of a missing output file comparison check, which broke
   binary formats etc.  (Slavko)
@@ -1749,7 +1749,7 @@ ChangeLog
   (Normal Ramsey)
 
 - *mime-alternative-favour-rich*#471 now also works for handlers
-  installed via *pipe-TYPE/SUBTYPE*#502. (Viktor Szépe)
+  installed via *pipe-TYPE/SUBTYPE*#503. (Viktor Szépe)
 
 - v14.9.* series did not generate In-Reply-To: headers!
 
@@ -2414,7 +2414,7 @@ ChangeLog
   Respiranto, Thomas Dickey, Donald Mugnai)
 
 - To support RFC 1524 a.k.a. .mailcap files (see below) many
-  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#502,
+  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#503,
   which may (rarely) affect existing values.
   The .mailcap support itself is not yet implemented.
 
