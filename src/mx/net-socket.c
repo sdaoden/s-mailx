@@ -745,18 +745,25 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
    }
 
 # ifdef mx_HAVE_XTLS
-   if (sop->s_use_tls) {
+   if(sop->s_use_tls){
+      int errcnt, err;
+
+      errcnt = 0;
 jssl_retry:
       x = SSL_write(sop->s_tls, data, size);
-      if (x < 0) {
-         switch (SSL_get_error(sop->s_tls, x)) {
-         case SSL_ERROR_WANT_READ:
-         case SSL_ERROR_WANT_WRITE:
-            goto jssl_retry;
+      if(x < 0){
+         if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+            switch(SSL_get_error(sop->s_tls, x)){
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+               n_err(_("TLS socket write error, retrying: %s\n"),
+                  su_err_doc(err));
+               goto jssl_retry;
+            }
          }
       }
    } else
-# endif
+# endif /* mx_HAVE_XTLS */
    {
       x = a_netso_xwrite(sop->s_fd, data, size);
    }
@@ -813,17 +820,24 @@ int
       if (sop->s_rbufptr == NULL ||
             PCMP(sop->s_rbufptr, >=, sop->s_rbuf + sop->s_rsz)) {
 # ifdef mx_HAVE_XTLS
-         if (sop->s_use_tls) {
+         if(sop->s_use_tls){
+            int errcnt, err;
+
+            errcnt = 0;
 jssl_retry:
             sop->s_rsz = SSL_read(sop->s_tls, sop->s_rbuf, sizeof sop->s_rbuf);
             if (sop->s_rsz <= 0) {
                if (sop->s_rsz < 0) {
                   char o[512];
 
-                  switch(SSL_get_error(sop->s_tls, sop->s_rsz)) {
-                  case SSL_ERROR_WANT_READ:
-                  case SSL_ERROR_WANT_WRITE:
-                     goto jssl_retry;
+                  if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+                     switch(SSL_get_error(sop->s_tls, sop->s_rsz)){
+                     case SSL_ERROR_WANT_READ:
+                     case SSL_ERROR_WANT_WRITE:
+                        n_err(_("TLS socket read error, retrying: %s\n"),
+                           su_err_doc(err));
+                        goto jssl_retry;
+                     }
                   }
                   snprintf(o, sizeof o, "%s",
                      (sop->s_desc ?  sop->s_desc : "socket"));
@@ -832,7 +846,7 @@ jssl_retry:
                break;
             }
          } else
-# endif
+# endif /* mx_HAVE_XTLS */
          {
 jagain:
             sop->s_rsz = read(sop->s_fd, sop->s_rbuf, sizeof sop->s_rbuf);

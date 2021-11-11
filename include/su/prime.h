@@ -30,29 +30,5 @@ EXPORT u32 su_prime_lookup_former(u32 no);
 EXPORT u32 su_prime_lookup_next(u32 no);
 C_DECL_END
 #include <su/code-ou.h>
-#if !su_C_LANG || defined CXX_DOXYGEN
-# define su_CXX_HEADER
-# include <su/code-in.h>
-NSPC_BEGIN(su)
-class prime;
-class prime{
-public:
-   static u32 const lookup_min = su_PRIME_LOOKUP_MIN;
-   static u32 const lookup_max = su_PRIME_LOOKUP_MAX;
-   static boole is_prime(u64 no, boole allowpseudo=TRU1){
-      return su_prime_is_prime(no, allowpseudo);
-   }
-   static u64 get_former(u64 no, boole allowpseudo=TRU1){
-      return su_prime_get_former(no, allowpseudo);
-   }
-   static u64 get_next(u64 no, boole allowpseudo=TRU1){
-      return su_prime_get_next(no, allowpseudo);
-   }
-   static u32 lookup_former(u32 no) {return su_prime_lookup_former(no);}
-   static u32 lookup_next(u32 no) {return su_prime_lookup_next(no);}
-};
-NSPC_END(su)
-# include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_PRIME_H */
 /* s-it-mode */

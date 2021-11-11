@@ -462,6 +462,7 @@ static void
 a_pop3_timer_off(void){
    NYD_IN;
    if(a_pop3_keepalive > 0){
+      n_pstate &= ~n_PS_SIGALARM;
       alarm(0);
       safe_signal(SIGALRM, a_pop3_savealrm);
    }
@@ -608,6 +609,7 @@ a_pop3alarm(int s){
       safe_signal(SIGPIPE, savepipe);
    }
 jbrk:
+   n_pstate |= n_PS_SIGALARM;
    alarm(a_pop3_keepalive);
 jleave:
    --a_pop3_lock;
@@ -1089,6 +1091,7 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
    if((cp = xok_vlook(pop3_keepalive, &pc.pc_url, OXM_ALL)) != NIL){
       su_idec_s32_cp(&a_pop3_keepalive, cp, 10, NIL);
       if(a_pop3_keepalive > 0){ /* Is a "positive number" */
+         n_pstate |= n_PS_SIGALARM;
          a_pop3_savealrm = safe_signal(SIGALRM, a_pop3alarm);
          alarm(a_pop3_keepalive);
       }

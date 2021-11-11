@@ -1362,7 +1362,7 @@ a_sendout_transfer(struct sendbundle *sbp, boole resent, boole *senderror){
    input_save = sbp->sb_input;
    if((resent || (sbp->sb_hp != NIL && sbp->sb_hp->h_bcc != NIL)) &&
          !ok_blook(mta_bcc_ok)){
-      boole inhdr;
+      boole inhdr, inskip;
       uz bufsize, bcnt, llen;
       char *buf;
       FILE *fp;
@@ -1379,17 +1379,23 @@ jewritebcc:
       mx_fs_linepool_aquire(&buf, &bufsize);
       bcnt = fsize(input_save);
       inhdr = TRU1;
+      inskip = FAL0;
       while(fgetline(&buf, &bufsize, &bcnt, &llen, input_save, TRU1) != NIL){
          if(inhdr){
             if(llen == 1 && *buf == '\n')
                inhdr = FAL0;
-            /* (We need _case for resent only) */
-            else if(su_cs_starts_with_case(buf, "bcc:"))
-               continue;
-            /* We yet do not generate that, but place the logic today */
-            else if(resent && su_cs_starts_with_case(buf, "resent-bcc:"))
-               continue;
-
+            else{
+               if(inskip && *buf == ' ')
+                  continue;
+               inskip = FAL0;
+               /* (We need _case for resent only);
+                * xxx We do not resent that yet , but place the logic today */
+               if(su_cs_starts_with_case(buf, "bcc:") ||
+                     (resent && su_cs_starts_with_case(buf, "resent-bcc:"))){
+                  inskip = TRU1;
+                  continue;
+               }
+            }
          }
          if(fwrite(buf, 1, llen, fp) != llen)
             goto jewritebcc;
@@ -2407,10 +2413,13 @@ jleave:
 
    temporary_compose_mode_hook_unroll();
 
-   if (_sendout_error)
+   if(_sendout_error){
+      n_psonce |= n_PSO_SEND_ERROR;
       n_exit_status |= n_EXIT_SEND_ERROR;
+   }
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
+
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -2426,17 +2435,17 @@ FL int
 mkdate(FILE *fo, char const *field)
 {
    struct tm tmpgm, *tmptr;
-   int tzdiff, tzdiff_hour, tzdiff_min, rv;
+   int tzdiff_hour, tzdiff_min, rv;
    NYD_IN;
 
    su_mem_copy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
-   tzdiff = time_current.tc_time - mktime(&tmpgm);
-   tzdiff_hour = (int)(tzdiff / 60);
-   tzdiff_min = tzdiff_hour % 60;
-   tzdiff_hour /= 60;
    tmptr = &time_current.tc_local;
-   if (tmptr->tm_isdst > 0)
-      ++tzdiff_hour;
+
+   tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
+   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
+   tzdiff_hour = tzdiff_min / 60;
+   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
+
    rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
          field,
          n_weekday_names[tmptr->tm_wday],
@@ -3014,10 +3023,13 @@ jleave:
       }
    }
 
-   if (_sendout_error)
+   if(_sendout_error){
+      n_psonce |= n_PSO_SEND_ERROR;
       n_exit_status |= n_EXIT_SEND_ERROR;
+   }
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
+
    NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

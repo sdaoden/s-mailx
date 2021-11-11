@@ -92,13 +92,8 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
 
 /* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
  * and check whether there are any such down mpp, which is a .m_multipart of
- * an /alternative container..
- * Afterwards the latter will flag all the subtree accordingly, setting
- * MDISPLAY in mimepart.m_flag if a part shall be displayed.
- * TODO of course all this is hacky in that it should ONLY be done so */
+ * an /alternative container.. */
 static boole        _send_al7ive_have_better(struct mimepart *mpp,
-                        enum sendaction action, boole want_rich);
-static void          _send_al7ive_flag_tree(struct mimepart *mpp,
                         enum sendaction action, boole want_rich);
 
 /* Get a file for an attachment */
@@ -529,30 +524,6 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    if(ip->m_mimetype == mx_MIMETYPE_DISCARD)
       goto jheaders_skip;
-   else if(!hign && ip->m_mimetype == mx_MIMETYPE_822){
-      switch(action){
-      case SEND_TODISP:
-      case SEND_TODISP_ALL:
-      case SEND_QUOTE:
-      case SEND_QUOTE_ALL:
-         if(ok_blook(rfc822_body_from_)){
-            if(!qf->qf_bypass){
-               uz i;
-
-               i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix, qf->qf_pfix_len,
-                     obuf);
-               if(i == qf->qf_pfix_len && stats != NIL)
-                  *stats += i;
-            }
-            put_from_(obuf, ip->m_multipart, stats);
-            hany = TRU1;
-         }
-         break;
-      default:
-         dostat |= 16;
-         break;
-      }
-   }
 
    if (ip->m_mimetype == mx_MIMETYPE_PKCS7) {
       if (ip->m_multipart &&
@@ -701,7 +672,7 @@ jhdrtrunc:
    if(hlp->s_len > 0)
       goto jhdrput;
 
-   if(hign || (!hany && (dostat & (1 | 2)))){
+   if(hign /*|| (!hany && (dostat & (1 | 2)))*/){
       a_send_out_nl(obuf, qf, stats);
       if(hign)
          goto jheaders_skip;
@@ -765,6 +736,19 @@ jheaders_skip:
       case SEND_QUOTE_ALL:
          if(!(dostat & 16)){ /* XXX */
             dostat |= 16;
+            a_send_out_nl(obuf, qf, stats);
+            if(ok_blook(rfc822_body_from_)){
+               if(!qf->qf_bypass){
+                  uz i;
+
+                  i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix, qf->qf_pfix_len,
+                        obuf);
+                  if(i == qf->qf_pfix_len && stats != NIL)
+                     *stats += i;
+               }
+               put_from_(obuf, ip->m_multipart, stats);
+               hany = TRU1;
+            }
             goto jhdr_redo;
          }
          goto jmulti;
@@ -804,9 +788,16 @@ jheaders_skip:
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case mx_MIMETYPE_HDL_CMD:
-            if(oaction == SEND_TODISP_PARTS &&
-                  (mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
-               goto jleave;
+            if(oaction == SEND_TODISP_PARTS){
+               if(mthp->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT)
+                  goto jleave;
+               else{
+                  /* Because: interactive OR batch mode, so */
+                  if(!mx_tty_yesorno(_("Run MIME handler for this part?"),
+                        su_state_has(su_STATE_REPRODUCIBLE)))
+                     goto jleave;
+               }
+            }
             break;
          case mx_MIMETYPE_HDL_TEXT:
          case mx_MIMETYPE_HDL_PTF:
@@ -899,11 +890,9 @@ jheaders_skip:
          (curr = &outermost)->outer = NULL;
          curr->mp = ip;
          flags = ok_blook(mime_alternative_favour_rich) ? _DORICH : _NONE;
-         if (!_send_al7ive_have_better(ip->m_multipart, action,
+         if(!_send_al7ive_have_better(ip->m_multipart, action,
                ((flags & _DORICH) != 0)))
             flags ^= _DORICH;
-         _send_al7ive_flag_tree(ip->m_multipart, oaction,
-            ((flags & _DORICH) != 0));
 
          n_SIGMAN_ENTER_SWITCH(&smalter, n_SIGMAN_ALL) {
          case 0:
@@ -1347,16 +1336,20 @@ jleave:
 
 static boole
 _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
-   boole want_rich)
-{
-   boole rv = FAL0;
+      boole want_rich){
+   struct mimepart *plain, *rich;
+   boole rv;
    NYD_IN;
 
-   for(; mpp != NULL; mpp = mpp->m_nextpart){
+   rv = FAL0;
+   plain = rich = NIL;
+
+   for(; mpp != NIL; mpp = mpp->m_nextpart){
       switch(mpp->m_mimetype){
       case mx_MIMETYPE_TEXT_PLAIN:
+         plain = mpp;
          if(!want_rich)
-            goto jflag;
+            goto jfound;
          continue;
       case mx_MIMETYPE_ALTERNATIVE:
       case mx_MIMETYPE_RELATED:
@@ -1365,7 +1358,7 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
       case mx_MIMETYPE_ENCRYPTED:
       case mx_MIMETYPE_MULTI:
          /* Be simple and recurse */
-         if (_send_al7ive_have_better(mpp->m_multipart, action, want_rich))
+         if(_send_al7ive_have_better(mpp->m_multipart, action, want_rich))
             goto jleave;
          continue;
       default:
@@ -1374,89 +1367,48 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
 
       if(mpp->m_handler == NIL)
          mx_mimetype_handler(mpp->m_handler =
-            n_autorec_alloc(sizeof(*mpp->m_handler)), mpp, action);
+            su_AUTO_ALLOC(sizeof(*mpp->m_handler)), mpp, action);
+
       switch(mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_TYPE_MASK){
       case mx_MIMETYPE_HDL_TEXT:
-         if (!want_rich)
-            goto jflag;
+         if(!want_rich)
+            goto jfound;
+         if(plain == NIL)
+            plain = mpp;
          break;
       case mx_MIMETYPE_HDL_PTF:
-         if (want_rich) {
-jflag:
-            mpp->m_flag |= MDISPLAY;
-            ASSERT(mpp->m_parent != NULL);
-            mpp->m_parent->m_flag |= MDISPLAY;
-            rv = TRU1;
-         }
+         if(want_rich)
+            goto jfound;
+         if(rich == NIL ||
+               (rich->m_handler->mth_flags & mx_MIMETYPE_HDL_TYPE_MASK
+                  ) != mx_MIMETYPE_HDL_PTF)
+            rich = mpp;
          break;
       case mx_MIMETYPE_HDL_CMD:
-         if(want_rich &&
-               (mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
-            goto jflag;
+         if(mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT){
+            if(want_rich)
+               goto jfound;
+            if(rich == NIL)
+               rich = mpp;
+         }
          /* FALLTHRU */
       default:
          break;
       }
    }
+
+   /* Without plain part at all, choose an existing rich no matter what */
+   if((mpp = plain) != NIL || (mpp = rich) != NIL){
+jfound:
+      mpp->m_flag |= MDISPLAY;
+      ASSERT(mpp->m_parent != NIL);
+      mpp->m_parent->m_flag |= MDISPLAY;
+      rv = TRU1;
+   }
+
 jleave:
    NYD_OU;
    return rv;
-}
-
-static void
-_send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
-   boole want_rich)
-{
-   boole hot;
-   NYD_IN;
-
-   ASSERT(mpp->m_parent != NULL);
-   hot = ((mpp->m_parent->m_flag & MDISPLAY) != 0);
-
-   for(; mpp != NIL; mpp = mpp->m_nextpart){
-      switch(mpp->m_mimetype){
-      case mx_MIMETYPE_TEXT_PLAIN:
-         if(hot && !want_rich)
-            mpp->m_flag |= MDISPLAY;
-         continue;
-      case mx_MIMETYPE_ALTERNATIVE:
-      case mx_MIMETYPE_RELATED:
-      case mx_MIMETYPE_DIGEST:
-      case mx_MIMETYPE_SIGNED:
-      case mx_MIMETYPE_ENCRYPTED:
-      case mx_MIMETYPE_MULTI:
-         /* Be simple and recurse */
-         if (_send_al7ive_have_better(mpp->m_multipart, action, want_rich))
-            goto jleave;
-         continue;
-      default:
-         break;
-      }
-
-      if(mpp->m_handler == NIL)
-         mx_mimetype_handler(mpp->m_handler =
-            n_autorec_alloc(sizeof(*mpp->m_handler)), mpp, action);
-      switch(mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_TYPE_MASK){
-      case mx_MIMETYPE_HDL_TEXT:
-         if (hot && !want_rich)
-            mpp->m_flag |= MDISPLAY;
-         break;
-      case mx_MIMETYPE_HDL_PTF:
-         if (hot && want_rich)
-            mpp->m_flag |= MDISPLAY;
-         break;
-      case mx_MIMETYPE_HDL_CMD:
-         if (hot && want_rich &&
-               (mpp->m_handler->mth_flags & mx_MIMETYPE_HDL_COPIOUSOUTPUT))
-            mpp->m_flag |= MDISPLAY;
-         break;
-         break;
-      default:
-         break;
-      }
-   }
-jleave:
-   NYD_OU;
 }
 
 static FILE *

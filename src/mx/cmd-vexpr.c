@@ -461,23 +461,25 @@ jenum_plusminus:
 
       case a_VEXPR_CMD_NUM_LSHIFT:
       case a_VEXPR_CMD_NUM_RSHIFT:
-      case a_VEXPR_CMD_NUM_URSHIFT:
-         if(rhv <= 63) /* xxx 63? */
-            cmd = S(u8,rhv);
+      case a_VEXPR_CMD_NUM_URSHIFT:{
+         u8 sv;
+
+         if(S(u64,rhv) <= 63) /* xxx 63? */
+            sv = S(u8,rhv);
          else if(!(f & a_VEXPR_MOD_SATURATED)){
             f |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_NUM_OVERFLOW;
             break;
          }else
-            cmd = 63;
+            sv = 63;
 
          if(cmd == a_VEXPR_CMD_NUM_LSHIFT)
-            lhv <<= cmd;
+            lhv <<= sv;
          else if(cmd == a_VEXPR_CMD_NUM_RSHIFT)
-            lhv >>= cmd;
+            lhv >>= sv;
          else
-            lhv = S(u64,lhv) >> cmd;
-         break;
+            lhv = S(u64,lhv) >> sv;
+         }break;
       }
       break;
 
@@ -535,7 +537,7 @@ a_vexpr_agnostic(struct a_vexpr_ctx *vcp){
                su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mon + 1, 10));
          s = n_string_push_c(s, ' ');
 
-         s = n_string_push_cp(s, "dutc_month=");
+         s = n_string_push_cp(s, "dutc_day=");
          s = n_string_push_cp(s,
                su_ienc_s64(vcp->vc_iencbuf, tc.tc_gm.tm_mday, 10));
          s = n_string_push_c(s, ' ');

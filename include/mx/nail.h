@@ -203,6 +203,7 @@ enum n_exit_status{
    n_EXIT_ERR = EXIT_FAILURE,
    n_EXIT_USE = 64, /* sysexits.h:EX_USAGE */
    n_EXIT_NOUSER = 67, /* :EX_NOUSER */
+   n_EXIT_IOERR = 74, /* :EX_IOERR */
    n_EXIT_COLL_ABORT = 1<<1, /* Message collection was aborted */
    n_EXIT_SEND_ERROR = 1<<2 /* Unspecified send error occurred */
 };
@@ -678,7 +679,6 @@ do{\
    n_PS_MSGLIST_DIRECT = 1u<<15, /* A msg was directly chosen by number */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17, /* Last fexpand() with MULTIOK had .. */
-   n_PS_ERRORS_PROMPT = 1u<<18, /* New error to be reported in prompt */
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
     * suppressed */
@@ -687,7 +687,8 @@ do{\
    /* Bad hacks */
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
    n_PS_READLINE_NL = 1u<<25, /* readline_input()+ saw a \n */
-   n_PS_BASE64_STRIP_CR = 1u<<26 /* Go for text output, strip CR's */
+   n_PS_BASE64_STRIP_CR = 1u<<26, /* Go for text output, strip CR's */
+   n_PS_SIGALARM = 1u<<27 /* Some network timer has alarm(2) installed */
 };
 
 /* Various states set once, and first time messages or initializers */
@@ -703,6 +704,8 @@ enum n_program_state_once{
    n_PSO_XIT = 1u<<3,
    n_PSO_QUIT = 1u<<4,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
+   /* *posix* requires us to exit with error if sending any mail failed */
+   n_PSO_SEND_ERROR = 1u<<5,
 
    /* Pre _STARTED */
    /* 1u<<5, */

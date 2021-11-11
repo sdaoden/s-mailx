@@ -31,29 +31,5 @@ EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
 EXPORT uz su_utf32_to_8(u32 c, char *bp);
 C_DECL_END
 #include <su/code-ou.h>
-#if !su_C_LANG || defined CXX_DOXYGEN
-# define su_CXX_HEADER
-# include <su/code-in.h>
-NSPC_BEGIN(su)
-class utf8;
-class utf32;
-class EXPORT utf8{
-public:
-   enum{
-      buffer_size = su_UTF8_BUFFER_SIZE
-   };
-   static char const replacer[sizeof su_UTF8_REPLACER];
-   static u32 convert_to_32(char const **bdat, uz *blen){
-      return su_utf8_to_32(bdat, blen);
-   }
-};
-class utf32{
-public:
-   static u32 const replacer = su_UTF32_REPLACER;
-   static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
-};
-NSPC_END(su)
-# include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_UTF_H */
 /* s-it-mode */

@@ -641,10 +641,10 @@ qp_decode_header(struct str *out, struct str const *in){
  * TODO       }*/
          }
       }else{
-jpushc:
          if(c == '_' /* a_ME_US */)
             c = ' ';
-         n_string_push_c(&s, (char)c);
+jpushc:
+         n_string_push_c(&s, S(char,c));
       }
    }
 

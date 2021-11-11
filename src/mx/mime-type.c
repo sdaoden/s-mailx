@@ -887,6 +887,7 @@ a_mimetype_pipe_check(struct mx_mimetype_handler *mthp,
    NYD2_IN;
 
    rv_orig = rv = mthp->mth_flags;
+   ASSERT((rv & mx_MIMETYPE_HDL_TYPE_MASK) == mx_MIMETYPE_HDL_NIL);
 
    /* Do we have any handler for this part? */
    if(*(cp = mthp->mth_shell_cmd) == '\0')
@@ -895,11 +896,11 @@ a_mimetype_pipe_check(struct mx_mimetype_handler *mthp,
       rv |= mx_MIMETYPE_HDL_CMD;
       goto jleave;
    }else{
-      if(cp[-1] == '@')
+      if(cp[-1] == '@')/* v15compat */
          n_OBSOLETE2(_("*pipe-TYPE/SUBTYPE*+': type markers (and much more) "
             "use ? not @"), mthp->mth_shell_cmd);
       if(*cp == '\0'){
-         rv |= mx_MIMETYPE_HDL_TEXT;
+         rv |= mx_MIMETYPE_HDL_TEXT | mx_MIMETYPE_HDL_COPIOUSOUTPUT;
          goto jleave;
       }
    }
@@ -920,9 +921,41 @@ jnextc:
       rv |= mx_MIMETYPE_HDL_TMPF_FILL;
       ++cp;
       goto jnextc;
+
+   case 't':
+      switch(rv & mx_MIMETYPE_HDL_TYPE_MASK){
+      case mx_MIMETYPE_HDL_NIL: /* FALLTHRU */
+      case mx_MIMETYPE_HDL_TEXT: break;
+      default:
+         cp = N_("only one type-marker can be used");
+         goto jerrlog;
+      }
+      rv |= mx_MIMETYPE_HDL_TEXT | mx_MIMETYPE_HDL_COPIOUSOUTPUT;
+      ++cp;
+      goto jnextc;
+   case 'h':
+      switch(rv & mx_MIMETYPE_HDL_TYPE_MASK){
+      case mx_MIMETYPE_HDL_NIL: /* FALLTHRU */
+      case mx_MIMETYPE_HDL_PTF: break;
+      default:
+         cp = N_("only one type-marker can be used");
+         goto jerrlog;
+      }
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
+      mthp->mth_ptf = &mx_flthtml_process_main;
+      mthp->mth_msg.l = su_cs_len(mthp->mth_msg.s =
+            UNCONST(char*,_("Built-in HTML tagsoup filter")));
+      rv |= mx_MIMETYPE_HDL_PTF | mx_MIMETYPE_HDL_COPIOUSOUTPUT;
+      ++cp;
+      goto jnextc;
+#else
+      cp = N_("?h type-marker unsupported (HTML tagsoup filter not built-in)");
+      goto jerrlog;
+#endif
+
    case '@':/* v15compat */
       /* FALLTHRU */
-   case '?':
+   case '?': /* End of flags */
       ++cp;
       /* FALLTHRU */
    default:
@@ -973,7 +1006,15 @@ jnextc:
       }
    }
 
-   rv |= mx_MIMETYPE_HDL_CMD;
+   if((rv & mx_MIMETYPE_HDL_TYPE_MASK) != mx_MIMETYPE_HDL_NIL){
+      if(rv & ~(mx_MIMETYPE_HDL_TYPE_MASK | mx_MIMETYPE_HDL_COPIOUSOUTPUT |
+            mx_MIMETYPE_HDL_NOQUOTE)){
+         cp = N_("?[th] type-markers only support flags * and #");
+         goto jerrlog;
+      }
+   }else
+      rv |= mx_MIMETYPE_HDL_CMD;
+
 jleave:
    mthp->mth_flags = rv;
    NYD2_OU;
@@ -1470,7 +1511,8 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
 
       if((mthp->mth_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NIL){
          rv = a_mimetype_pipe_check(mthp, action);
-         goto jleave;
+         if((rv & mx_MIMETYPE_HDL_TYPE_MASK) != mx_MIMETYPE_HDL_NIL)
+            goto jleave;
       }
    }
 
@@ -1486,7 +1528,8 @@ mx_mimetype_handler(struct mx_mimetype_handler *mthp,
    /* II.: *pipe-TYPE/SUBTYPE* */
    if((mthp->mth_shell_cmd = n_var_vlook(buf, FAL0)) != NIL){
       rv = a_mimetype_pipe_check(mthp, action);
-      goto jleave;
+      if((rv & mx_MIMETYPE_HDL_TYPE_MASK) != mx_MIMETYPE_HDL_NIL)
+         goto jleave;
    }
 
    /* III. RFC 1524 / Mailcap lookup */

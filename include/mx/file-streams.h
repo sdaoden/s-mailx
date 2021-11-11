@@ -143,7 +143,10 @@ EXPORT s32 mx_fs_pipe_signal(FILE *fp, s32 sig);
  * In conjunction with CHILD_FD_PASS dowait is mandatory. */
 EXPORT boole mx_fs_pipe_close(FILE *fp, boole dowait);
 
-/* Close all _O_REGISTERed files and pipes */
+/* Flush the given or (if NIL) all streams */
+EXPORT boole mx_fs_flush(FILE *fp);
+
+/* Close all files and pipes created without O_NOREGISTER */
 EXPORT void mx_fs_close_all(void);
 
 /* XXX Temporary (pre v15 I/O) line buffer "pool".

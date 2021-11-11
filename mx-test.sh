@@ -282,21 +282,22 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
             ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          i=`</dev/null LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
-            \set errexit
             \define cset_test {
                \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
                   \xit 0
                \end
                \if "${#}" -gt 0
-                  \set LC_ALL=${1}
+                  \wysh set LC_ALL=${1}
                   \shift
                   \xcall cset_test "${@}"
                \end
                \xit 1
             }
-            \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 \
-               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8
+            \# POSIX last (faulty localedef(1) result of GNU C lib 2.3[24])
+            \call cset_test C.UTF-8 \
+               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8 \
+               POSIX.utf8 POSIX.UTF-8
          '`
          [ $? -eq 0 ] && UTF8_LOCALE=$i
       fi
@@ -350,7 +351,7 @@ JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
 SUBSECOND_SLEEP=
    ( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
-COLOR_ERR_ON= COLOR_ERR_OFF=
+COLOR_ERR_ON= COLOR_ERR_OFF=  COLOR_DBGERR_ON= COLOR_DBGERR_OFF=
 COLOR_WARN_ON= COLOR_WARN_OFF=
 COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
@@ -568,11 +569,11 @@ jsync() {
 
       [ -s t.${i}.io ] && ${cat} t.${i}.io
       if [ -n "${DUMPERR}" ] && [ -s ./t.${i}.d/${ERR} ]; then
-         printf '%s   [Debug/Devel: nullified errors]\n' "${COLOR_ERR_ON}"
+         printf '%s   [Debug/Devel: nullified errors]\n' "${COLOR_DBGERR_ON}"
          while read l; do
             printf '   %s\n' "${l}"
          done < t.${i}.d/${ERR}
-         printf '%s' "${COLOR_ERR_OFF}"
+         printf '%s' "${COLOR_DBGERR_OFF}"
       fi
 
       if [ -f t.${i}.id ]; then
@@ -797,8 +798,7 @@ color_init() {
    [ -n "${NOCOLOUR}" ] && return
    [ -n "${MAILX_CC_TEST_NO_COLOUR}" ] && return
    # We do not want color for "make test > .LOG"!
-   if command -v stty >/dev/null 2>&1 && command -v tput >/dev/null 2>&1 &&
-         (<&1 >/dev/null stty -a) 2>/dev/null; then
+   if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
       { sgr0=`tput sgr0`; } 2>/dev/null
       [ $? -eq 0 ] || return
       { saf1=`tput setaf 1`; } 2>/dev/null
@@ -807,10 +807,13 @@ color_init() {
       [ $? -eq 0 ] || return
       { saf3=`tput setaf 3`; } 2>/dev/null
       [ $? -eq 0 ] || return
+      { saf5=`tput setaf 5`; } 2>/dev/null
+      [ $? -eq 0 ] || return
       { b=`tput bold`; } 2>/dev/null
       [ $? -eq 0 ] || return
 
       COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
+      COLOR_DBGERR_ON=${saf5} COLOR_DBGERR_OFF=${sgr0}
       COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
       COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
       unset saf1 saf2 saf3 b

@@ -15,9 +15,9 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.\"@ S-nail v14.9.22 / 2021-02-24
-.Dd February 24, 2021
-.ds VV \\%v14.9.22
+.\"@ S-nail v14.9.23 / 2021-11-11
+.Dd November 11, 2021
+.ds VV \\%v14.9.23
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -549,6 +549,7 @@
 .Mx -anchor-spass Va "page"
 .Mx -anchor-spass Va "password"
 .Mx -anchor-spass Va "piperaw"
+.Mx -anchor-spass Va "pipe-EXTENSION"
 .Mx -anchor-spass Va "pipe-TYPE/SUBTYPE"
 .Mx -anchor-spass Ev "MAILX_CONTENT"
 .Mx -anchor-spass Ev "MAILX_CONTENT_EVIDENCE"
@@ -556,7 +557,6 @@
 .Mx -anchor-spass Ev "MAILX_FILENAME"
 .Mx -anchor-spass Ev "MAILX_FILENAME_GENERATED"
 .Mx -anchor-spass Ev "MAILX_FILENAME_TEMPORARY"
-.Mx -anchor-spass Va "pipe-EXTENSION"
 .Mx -anchor-spass Va "pop3-auth"
 .Mx -anchor-spass Va "pop3-bulk-load"
 .Mx -anchor-spass Va "pop3-keepalive"
@@ -1698,7 +1698,7 @@ $ env LC_ALL=C \*(uA -:/ \e
     < content_file
 .Ed
 .Pp
-As shown, scripts can
+As shown, scripts producing messages can
 .Dq fake
 a locale environment, the above specifies the all-compatible 7-bit clean
 .Ev LC_ALL
@@ -2094,17 +2094,22 @@ next input line it will trigger the hook
 HTML-only messages become more and more common, and many messages come
 bundled with a bouquet of MIME (Multipurpose Internet Mail Extensions)
 parts and attachments.
-To get a notion of MIME types \*(UA has a default set of types built-in,
+To get a notion of MIME types there is a built-in default set,
 onto which the content of
 .Sx "The mime.types files"
 will be added (as configured and allowed by
 .Va mimetypes-load-control ) .
-Types can also become registered with the command
+Types can also become registered and listed with the command
 .Ic mimetype .
 To improve interaction with the faulty MIME part declarations of real life
 .Va mime-counter-evidence
 will allow verification of the given assertion, and the possible
 provision of an alternative, better MIME type.
+Note plain text parts will always be preferred in
+.Ql multipart/alternative
+MIME messages unless
+.Va mime-alternative-favour-rich
+is set.
 .Pp
 Whereas a simple HTML-to-text filter for displaying HTML messages is
 \*(OPally supported (indicated by
@@ -2112,11 +2117,11 @@ Whereas a simple HTML-to-text filter for displaying HTML messages is
 in
 .Va features ) ,
 MIME types other than plain text cannot be handled directly.
-Instead programs need to become registered to deal with specific MIME
-types or file extensions, either to prepare (re-)integrable plain text
+To deal with specific non-text MIME types or file extensions programs
+need to be registered which either prepare (re-)integrable plain text
 versions of their input (a mode which is called
 .Cd copiousoutput ) ,
-or to display the content externally, for example in a graphical window:
+or display the content externally, for example in a graphical window:
 the latter type is only considered by and for the command
 .Ic mimeview .
 .Pp
@@ -2146,11 +2151,20 @@ some other magic attached:
 ?   # Display HTML as plain text instead
 ?   #set pipe-text/html=?t
 ? endif
+
 ? mimetype ?t application/mathml+xml mathml
+
 ? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
+
+? define showhtml {
+?   \elocalopts yes
+?   \eset mime-alternative-favour-rich pipe-text/html=?h?
+?   \etype "$@"
+? }
+? \ecommandalias html \e\ecall showhtml
 .Ed
 .Ss "Mailing lists"
 Known or subscribed-to mailing lists may be flagged in the summary of
@@ -2660,10 +2674,14 @@ example 8-bit UTF-8 input data in a pure 7-bit US-ASCII
 .Ql LC_ALL=C
 environment (an example of this can be found in the section
 .Sx "On sending mail, and non-interactive mode" ) .
-Doing so does not mean much beside that since several aspects of the
-real character set are implied by the locale environment of the system,
-which stays unaffected by
-.Va ttycharset .
+Due to lack of programming interfaces reading mail will not really work
+as expected in a faked environment: whereas
+.Va ttycharset
+might be addressable, any output will be made safely printable, as via
+.Ic vexpr
+.Cm makeprint ,
+according to the actual locale environment, which is not affected by
+.Va ttycharset.
 .Pp
 Classifying 7-bit clean data as
 .Va charset-7bit
@@ -5358,12 +5376,16 @@ will instead open the message that is being composed.
 If a hyphen-minus is given as the optional third argument then output
 will be generated on the standard output channel instead of being
 subject to consumption by the
-.Ic readsh
-(here better than
+.Ic readall
+(or
 .Ic read
-or
-.Ic readall )
-command.
+and
+.Ic readsh )
+command(s).
+Note: output must be consumed before normal processing can continue; for
+.Ic \&\&digmsg
+objects this means each command output has to be read until the end of
+file (EOF) state occurs.
 .Pp
 The objects may be
 .Cm remove Ns
@@ -8110,16 +8132,16 @@ Also see
 .Ic ~e , ~v .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level compose mode command which shares semantics with
+Inspect and modify the message using the semantics of
 .Ic digmsg ,
-and therefore evaluates its command line as documented in
+therefore arguments are evaluated according to
 .Sx "Shell-style argument quoting" .
-Does not manage the error number
+Error number
 .Va \&!
-and the exit status
-.Va \&? :
-errors are handled via the protocol, and hard errors like I/O failures
-cannot be handled.
+and exit status
+.Va \&?
+are not managed: errors are handled via the protocol,
+and hard errors like I/O failures cannot be handled.
 .Pp
 The protocol consists of command lines followed by (a) response line(s).
 The first field of the response line represents a status code
@@ -8164,7 +8186,7 @@ commands can be issued.
 .It Ql 500
 Syntax error; invalid command.
 .It Ql 501
-Syntax error in parameters or arguments.
+Syntax error or otherwise invalid parameters or arguments.
 .It Ql 505
 Error: an argument fails verification.
 For example an invalid address has been specified (also see
@@ -8900,10 +8922,11 @@ call work 0
 .Mx
 .Mx
 .It Va ^ERRQUEUE-COUNT , ^ERRQUEUE-EXISTS
-The number of messages present in the \*(OPal log queue of
+The number of messages in the \*(OPal queue of
 .Ic errors ,
-and a boolean which indicates whether the queue is not empty,
-respectively; both are always 0 unless
+and a string indicating queue state: empty or (translated)
+.Dq ERROR .
+Always 0 and the empty string, respectively, unless
 .Va features
 includes
 .Ql ,+errors, .
@@ -10483,7 +10506,9 @@ It will, as a last resort, classify the part content as
 .Ql application/octet-stream .
 Please refer to the section
 .Sx "Character sets"
-for the complete picture of character set conversion in \*(UA.
+for the complete picture of character set conversion, and
+.Sx "HTML mail and MIME attachments"
+for how to internally or externally handle part content.
 .Mx
 .It Va mimetypes-load-control
 Can be used to control which of
@@ -11034,59 +11059,62 @@ the file should be readable by the invoking user only.
 .Ic pipe
 command without performing MIME and character set conversions.
 .Mx
+.It Va pipe-EXTENSION
+Identical to
+.Va pipe-TYPE/SUBTYPE
+except that
+.Ql EXTENSION
+(normalized to lowercase using character mappings of the ASCII charset)
+denotes a file extension, for example
+.Ql xhtml .
+Handlers registered using this method take precedence.
+.Mx
 .It Va pipe-TYPE/SUBTYPE
-When a MIME message part of type
+A MIME message part identified as
 .Ql TYPE/SUBTYPE
-(case-insensitive) is displayed or quoted,
+(case-insensitive, normalized to lowercase using character mappings of
+the ASCII charset) is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
-Note that only parts which can be displayed inline as plain text (see
+Unless noted only parts displayable as inline plain text (see
 .Cd copiousoutput )
-are displayed unless otherwise noted, other MIME parts will only be
-considered by and for the command
+are covered, other MIME parts will only be considered by and for
 .Ic mimeview .
 .Pp
 The special value question mark
 .Ql \&?
 forces interpretation of the message part as plain text, for example
-.Ql set pipe-application/xml=?
-will henceforth display XML
-.Dq as is .
-(The same could also be achieved by adding a MIME type marker with the
-.Ic mimetype
-command.
-And \*(OPally MIME type handlers may be defined via
+.Ql set pipe-application/xml=? .
+(This can also be achieved by adding a MIME type-marker via
+.Ic mimetype . )
+\*(OPally MIME type handlers may be defined via
 .Sx "The Mailcap files"
-\(em these directives,
-.Cd copiousoutput
-has already been used, should be referred to for further documentation.
-.Pp
-The question mark
-.Ql \&?
-can in fact be used as a trigger character to adjust usage and behaviour
-of a following shell command specification more thoroughly by appending
-more special characters which refer to further mailcap directives, for
-example the following hypothetical command specification could be used:
+to which should be referred to for documentation of flags like
+.Cd copiousoutput .
+Question mark is indeed a trigger character to indicate flags that
+adjust behaviour and usage of the rest of the value, the shell command,
+for example:
 .Bd -literal -offset indent
 ? set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .Pp
 .Bl -tag -compact -width ".It Ql __"
 .It Ql *
-The command produces plain text to be integrated in \*(UAs output:
+The command output can be reintegrated into this MUA's normal processing:
 .Cd copiousoutput .
+Implied when using a plain
+.Ql \& .
 .It Ql #
-If set the handler will not be invoked when a message is to be quoted,
-but only when it will be displayed:
+Only use this handler for display, not for quoting a message:
 .Cd x-mailx-noquote .
 .It Ql &
-Run the command asynchronously, i.e., without blocking \*(UA:
+Run the command asynchronously, do not wait for the handler to exit:
 .Cd x-mailx-async .
 The standard output of the command will go to
 .Pa /dev/null .
 .It Ql \&!
-The command must be run on an interactive terminal, \*(UA will
-temporarily release the terminal to it:
+The command must be run on an interactive terminal, the terminal will
+temporarily be released for it to run:
 .Cd needsterminal .
 .It Ql +
 Request creation of a zero-sized temporary file, the absolute pathname
@@ -11100,13 +11128,24 @@ it is an error to use automatic deletion in conjunction with
 .Cd x-mailx-async .
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
-input; if this flag is set then the data will instead be written into
+input; with this the data will instead be written into
 .Ev MAILX_FILENAME_TEMPORARY
 .Pf ( Cd x-mailx-tmpfile-fill ) ,
 the creation of which is implied; in order to cause automatic deletion
 of the temporary file two plus signs
 .Ql ++
 still have to be used.
+.It Ql t
+Text type-marker: display this as normal plain text (for type-markers:
+.Sx "The mime.types files" ) .
+Identical to only giving plain
+.Ql \&? ,
+implies
+.Cd copiousoutput .
+.It Ql h
+\*(OP HTML type-marker: display via built-in HTML-to-text filter.
+Implies
+.Cd copiousoutput .
 .It Ql \&?
 To avoid ambiguities with normal shell command content another
 question mark can be used to forcefully terminate interpretation of
@@ -11147,16 +11186,6 @@ If temporary file creation has been requested through the command prefix
 this variable will be set and contain the absolute pathname of the
 temporary file.
 .El
-.Mx
-.It Va pipe-EXTENSION
-This is identical to
-.Va pipe-TYPE/SUBTYPE
-except that
-.Ql EXTENSION
-(normalized to lowercase using character mappings of the ASCII charset)
-names a file extension, for example
-.Ql xhtml .
-Handlers registered using this method take precedence.
 .Mx Va pop3-auth
 .It Va pop3-auth-USER@HOST , pop3-auth-HOST , pop3-auth
 \*(OP\*(IN Variable chain that sets the POP3 authentication method.
@@ -11309,6 +11338,17 @@ is extended to cover any empty mailbox, not only empty
 .Mx -sx
 .Sx "primary system mailbox" Ns
 es: they will be removed when they are left in empty state otherwise.
+.It
+Each command has an exit
+.Va \&?
+and error
+.Va \&!
+status that overwrites that of the last command.
+In POSIX mode the program exit status will signal failure regardless
+unless all messages were successfully sent out to the
+.Va mta ;
+also see
+.Va sendwait .
 .El
 .Mx
 .It Va print-alternatives
@@ -13274,8 +13314,8 @@ The default paginator is
 .Dq less
 then a non-existing environment variable
 .Ev LESS
-will be set to
-.Ql Ri ,
+will be set to (the portable)
+.Ql RI ,
 likewise for
 .Dq lv
 .Ev LV
@@ -14575,6 +14615,10 @@ quiet = true
 annotate = true
 .Ed
 .Pp
+Newer
+.Xr git 1
+versions (v2.33.0) added the option
+.Cm sendmailCmd .
 Patches can also be send directly, for example:
 .Bd -literal -offset indent
 $ git format-patch -M --stdout HEAD^ |

@@ -1257,10 +1257,10 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
                su_DBG_LOC_ARGS_ORUSE);
+         *tlp->tl_x_bufsize = i;
          mx_sigs_all_rele(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
-      *tlp->tl_x_bufsize = i;
    }
 
    NYD2_OU;
@@ -1484,7 +1484,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
    u32 f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
       ASSERT_INJ(lstcur su_COMMA) cur,
-      vi_left, /*vi_right,*/ phy_nxtcur;
+      /*vi_left,*/ /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    NYD2_IN;
    LCTA(UCMP(64, a__LAST, <, U32_MAX), "Flag bits excess storage type");
@@ -1571,7 +1571,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       w += cw;
       --tcp_left;
    }
-   vi_left = w;
+   /*vi_left = w;*/
 
    /* If the left hand side of our visual viewpoint consumes less than half
     * of the screen width, show the prompt */
@@ -1616,7 +1616,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
        * again to extend the left boundary to overcome that */
       if(!(f & a_LEFT_MIN)){
          struct a_tty_cell const *tc1p = tlp->tl_line.cells;
-         u32 vil1 = vi_left;
+         /*u32 vil1 = vi_left;*/
 
          ASSERT(!(f & a_SHOW_PROMPT));
          w += tlp->tl_prompt_width;
@@ -1625,7 +1625,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
             if(i == U8_MAX) /* TODO yet HT == SPACE */
                i = 1;
-            vil1 += i;
+            /*vil1 += i;*/
             i += w;
             if(i > phy_wid)
                break;
@@ -3269,9 +3269,12 @@ jmle_fun:
 
          /* We need to take over all the sequence "as is" */
 jtake_over:
+         for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next)
+            ;
+         a_tty_check_grow(tlp, rv  su_DBG_LOC_ARGS_USE);
          for(isp = isp_head; isp != NIL; isp = isp->next)
             if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
-               /* FIXME */
+               /* TODO ??? */
             }
 
 # else /* mx_HAVE_KEY_BINDINGS */

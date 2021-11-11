@@ -615,9 +615,8 @@ jleave:
 static time_t
 _imap_read_date(char const *cp)
 {
-   time_t t, t2;
-   s32 year, month, day, i, tzdiff;
-   struct tm *tmptr;
+   time_t t;
+   s32 year, month, day, i;
    char const *xp, *yp;
    NYD_IN;
 
@@ -641,16 +640,12 @@ _imap_read_date(char const *cp)
       goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jerr;
-   if ((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
+
+   if((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
       goto jleave/*jerr*/;
-   if((t2 = mktime(gmtime(&t))) == (time_t)-1)
-      goto jerr;
-   tzdiff = t - t2;
-   if((tmptr = localtime(&t)) == NULL)
-      goto jerr;
-   if (tmptr->tm_isdst > 0)
-      tzdiff += 3600;
-   t -= tzdiff;
+
+   t += n_time_tzdiff(t, NIL, NIL);
+
 jleave:
    NYD_OU;
    return t;

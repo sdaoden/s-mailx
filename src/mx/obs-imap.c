@@ -1108,6 +1108,7 @@ imap_timer_off(void)
 {
    NYD_IN;
    if (imapkeepalive > 0) {
+      n_pstate &= ~n_PS_SIGALARM;
       alarm(0);
       safe_signal(SIGALRM, savealrm);
    }
@@ -1349,6 +1350,7 @@ imapalarm(int s)
       safe_signal(SIGPIPE, savepipe);
    }
 jbrk:
+   n_pstate |= n_PS_SIGALARM;
    alarm(imapkeepalive);
 jleave:
    --imaplock;
@@ -2079,6 +2081,7 @@ jduppass:
       }
       if ((cp = xok_vlook(imap_keepalive, urlp, OXM_ALL)) != NULL) {
          if ((imapkeepalive = strtol(cp, NULL, 10)) > 0) {
+            n_pstate |= n_PS_SIGALARM;
             savealrm = safe_signal(SIGALRM, imapalarm);
             alarm(imapkeepalive);
          }
@@ -3561,6 +3564,12 @@ imap_folders(const char * volatile name, int strip)
    NYD_IN;
 
    fp = n_stdout;
+
+   if(mb.mb_sock == NIL){
+      n_err(_("No active folder, need reconnect\n"));
+      goto jleave;
+   }
+
    cp = protbase(name);
    xsp = mb.mb_imap_account;
    if (xsp == NULL || su_cs_cmp(cp, xsp)) {
@@ -3655,7 +3664,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
    if (m->m_flag&MANSWER)
       imap_store(mp, m, n, '+', "\\Answered", 0);
    if (m->m_flag&MUNANSWER)
-      imap_store(mp, m, n, '-', "\\Flagged", 0);
+      imap_store(mp, m, n, '-', "\\Answered", 0);
    if (m->m_flag&MDRAFT)
       imap_store(mp, m, n, '+', "\\Draft", 0);
    if (m->m_flag&MUNDRAFT)
@@ -4606,26 +4615,19 @@ imap_make_date_time(time_t t)
    char const *mn;
    s32 y, md, th, tm, ts;
    struct tm *tmp;
-   int tzdiff, tzdiff_hour, tzdiff_min;
-   time_t t2;
+   int tzdiff_hour, tzdiff_min;
    NYD2_IN;
 
 jredo:
-   if((t2 = mktime(gmtime(&t))) == (time_t)-1){
-      t = 0;
-      goto jredo;
-   }
-   tzdiff = t - t2;
    if((tmp = localtime(&t)) == NULL){
       t = 0;
       goto jredo;
    }
 
-   tzdiff_hour = (int)(tzdiff / 60);
-   tzdiff_min = tzdiff_hour % 60;
-   tzdiff_hour /= 60;
-   if (tmp->tm_isdst > 0)
-      tzdiff_hour++;
+   tzdiff_min = S(int,n_time_tzdiff(t, NIL, tmp));
+   tzdiff_min /= 60; /* TODO su_TIME_MIN_SECS */
+   tzdiff_hour = tzdiff_min / 60;
+   tzdiff_min %= 60; /* TODO su_TIME_HOUR_MINS */
 
    if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
@@ -4650,6 +4652,7 @@ jredo:
 
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
          md, mn, y, th, tm, ts, tzdiff_hour, tzdiff_min);
+
    NYD2_OU;
    return s;
 }

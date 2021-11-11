@@ -1202,6 +1202,10 @@ c_digmsg(void *vp){
             dmcp->dmc_next->dmc_last = dmcp->dmc_last;
       }
 
+      if((dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP) &&
+            mx_dig_msg_read_overlay == dmcp)
+         mx_dig_msg_read_overlay = NIL;
+
       if(dmcp->dmc_flags & mx_DIG_MSG_FCLOSE)
          fclose(dmcp->dmc_fp);
 jeremove:
@@ -1238,6 +1242,7 @@ jeremove:
 
       if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
          rewind(dmcp->dmc_fp);
+         /* This will be reset by go_input() _if_ we read to EOF */
          mx_dig_msg_read_overlay = dmcp;
       }
    }

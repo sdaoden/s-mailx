@@ -389,7 +389,7 @@ cc_setup() {
       _cc_default
       # Ensure those don't do any harm
       EXTRA_CFLAGS= EXTRA_LDFLAGS=
-      export EXTRA_CFLAGS EXTRA_LDFLAGS
+      export CC EXTRA_CFLAGS EXTRA_LDFLAGS
       return
    else
       CFLAGS= LDFLAGS=
@@ -398,7 +398,11 @@ cc_setup() {
 
    if [ -n "${CC}" ]; then
       _cc_default
-   elif [ -n "${cc_os_search}" ] && ${cc_os_search}; then
+      export CC
+      return
+   fi
+
+   if [ -n "${cc_os_search}" ] && ${cc_os_search}; then
       cc_no_flagtest=1
    else
       msg_nonl 'Searching for a usable C compiler .. $CC='
@@ -1150,15 +1154,22 @@ ld_runtime_flags() {
    ld_need_R_flags=
 }
 
-_cc_check_ever=
+_cc_check_ever= _cc_check_testprog=
 cc_check() {
    if [ -z "${_cc_check_ever}" ]; then
       _cc_check_ever=' '
       __occ=${cc_check_silent}
       __oCFLAGS=${_CFLAGS}
 
-      cc_check_silent=
-      cc_check -Werror && _cc_check_ever=-Werror
+      cc_check_silent=y
+      if cc_check -Werror; then
+         _cc_check_ever=-Werror
+         _CFLAGS=${__oCFLAGS}
+         # Overcome a _GNU_SOURCE related glibc 2.32.3 bug (?!)
+         if cc_check -Werror=implicit-function-declaration; then
+            _cc_check_testprog=-Werror=implicit-function-declaration
+         fi
+      fi
 
       _CFLAGS=${__oCFLAGS}
       cc_check_silent=${__occ}
@@ -1188,7 +1199,8 @@ ld_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
-      ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+      ${CC} ${INCS} ${_cc_check_ever} \
+            ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
@@ -1251,7 +1263,8 @@ compile_check() {
    _check_preface "${variable}" "${topic}" "${define}"
 
    if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
+            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
+            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" ${tmp}.o &&
             [ -f ${tmp}.o ]; then
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1277,7 +1290,8 @@ _link_mayrun() {
    fi
 
    if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
+            CFLAGS="${_cc_check_testprog} ${CFLAGS}" \
+            LDFLAGS="${_cc_check_testprog} ${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ${tmp} &&
          [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
       echo "@ INCS<${incs}> LIBS<${libs}>; executed: ${run}"
@@ -2094,6 +2108,16 @@ int main(void){
    fi
 fi
 
+link_check tm_gmtoff 'struct tm::tm_gmtoff' '#define mx_HAVE_TM_GMTOFF' << \!
+#include <time.h>
+int main(void){
+   time_t t;
+
+   t = time((void*)0);
+   return gmtime(&t)->tm_gmtoff != 0;
+}
+!
+
 ##
 ## optional and selectable
 ##
@@ -2141,6 +2165,21 @@ if feat_yes DOTLOCK; then
 # include <errno.h>
 int main(void){
    if(!prctl(PR_SET_DUMPABLE, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   elif run_check procctl_trace_ctl 'procctl(2) + PROC_TRACE_CTL_DISABLE' \
+         '#define mx_HAVE_PROCCTL_TRACE_CTL' << \!
+#include <sys/procctl.h>
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   int disable_trace = PROC_TRACE_CTL_DISABLE;
+   if(procctl(P_PID, getpid(), PROC_TRACE_CTL, &disable_trace) != -1 ||
+         errno != ENOSYS)
       return 0;
    return 1;
 }
@@ -3651,9 +3690,18 @@ else
    printf "OPTIONAL_PS_DOTLOCK =\n" >> ${mk}
 fi
 
+# Not those SU sources with su_USECASE_MX_DISABLED
+su_sources=`(
+      cd "${SRCDIR}"
+      for f in su/*.c; do
+         ${grep} su_USECASE_MX_DISABLED "${f}" >/dev/null >&1 && continue
+         echo ${f}
+      done
+      )`
+
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
-   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ${su_sources}) >> ${mk}
    (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
    mx_obj='$(MX_C_OBJ)' su_obj='$(SU_C_OBJ)'
 else
@@ -3667,9 +3715,8 @@ else
    printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
    printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_SOURCE\n' >> ${h}
 
-   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
-      i=`basename "${i}"`
-      printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
+   for i in `printf '%s\n' ${su_sources} | ${sort}`; do
+      printf '# include "%s%s"\n' "${SRCDIR}" "${i}" >> ${h}
    done
    echo >> ${mk}
 

@@ -78,7 +78,7 @@ a_prime_is_pseudo(u64 no){
 }
 
 static boole
-a_prime_is_real(u64 no){ /* TODO brute force yet */
+a_prime_is_real(u64 no){ /* TODO brute force yet (at least Miller-Rabin?) */
    /* no is pseudo! */
    union {uz x; u64 x64; boole rv;} u;
    NYD_IN;

@@ -271,65 +271,6 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 #endif /* su_HAVE_MEM_BAG_LOFI */
 C_DECL_END
 #include <su/code-ou.h>
-#if !su_C_LANG || defined CXX_DOXYGEN
-# define su_CXX_HEADER
-# include <su/code-in.h>
-NSPC_BEGIN(su)
-class mem_bag;
-class EXPORT mem_bag : private su_mem_bag{
-   su_CLASS_NO_COPY(mem_bag)
-public:
-   enum alloc_flags{
-      alloc_none = su_MEM_BAG_ALLOC_NONE,
-      alloc_clear = su_MEM_BAG_ALLOC_CLEAR,
-      alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK,
-      alloc_nomem_ok = su_MEM_BAG_ALLOC_NOMEM_OK,
-      alloc_mayfail = su_MEM_BAG_ALLOC_MAYFAIL,
-      alloc_mustfail = su_MEM_BAG_ALLOC_MUSTFAIL
-   };
-   mem_bag(uz bsz=0) {su_mem_bag_create(this, bsz);}
-   ~mem_bag(void) {su_mem_bag_gut(this);}
-   mem_bag &fixate(void) {SELFTHIS_RET(su_mem_bag_fixate(this));}
-   mem_bag &reset(void) {SELFTHIS_RET(su_mem_bag_reset(this));}
-   mem_bag &push(mem_bag &that_one){
-      SELFTHIS_RET(su_mem_bag_push(this, &that_one));
-   }
-   mem_bag &pop(mem_bag &that_one){
-      SELFTHIS_RET(su_mem_bag_pop(this, &that_one));
-   }
-   mem_bag &top(void){
-      return (mb_top != NIL) ? *S(mem_bag*,mb_top) : *this;
-   }
-#ifdef su_HAVE_MEM_BAG_AUTO
-   mem_bag &auto_relax_create(void){
-      SELFTHIS_RET(su_mem_bag_auto_relax_create(this));
-   }
-   mem_bag &auto_relax_gut(void){
-      SELFTHIS_RET(su_mem_bag_auto_relax_gut(this));
-   }
-   mem_bag &auto_relax_unroll(void){
-      SELFTHIS_RET(su_mem_bag_auto_relax_unroll(this));
-   }
-   void *auto_allocate(uz size, uz no=1, u32 af=alloc_none){
-      return su_mem_bag_auto_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
-   }
-#endif /* su_HAVE_MEM_BAG_AUTO */
-#ifdef su_HAVE_MEM_BAG_LOFI
-   void *lofi_snap_create(void) {return su_mem_bag_lofi_snap_create(this);}
-   mem_bag &lofi_snap_unroll(void *cookie){
-      SELFTHIS_RET(su_mem_bag_lofi_snap_unroll(this, cookie));
-   }
-   void *lofi_allocate(uz size, uz no=1, u32 af=alloc_none){
-      return su_mem_bag_lofi_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
-   }
-   mem_bag &lofi_free(void *ovp){
-      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DBG_LOC_ARGS_INJ));
-   }
-#endif /* su_HAVE_MEM_BAG_LOFI */
-};
-NSPC_END(su)
-# include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_HAVE_MEM_BAG */
 #endif /* !su_MEM_BAG_H */
 /* s-it-mode */

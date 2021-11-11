@@ -25,23 +25,5 @@ EXPORT void su_sort_shell_vpp(void const **arr, uz entries,
       su_compare_fun cmp_or_nil);
 C_DECL_END
 #include <su/code-ou.h>
-#if !su_C_LANG || defined CXX_DOXYGEN
-# define su_CXX_HEADER
-# include <su/code-in.h>
-NSPC_BEGIN(su)
-class sort;
-class sort{
-public:
-   template<class T>
-   static void shell(T const **arr, uz entries,
-         typename type_toolbox<T>::compare_fun cmp_or_nil){
-      ASSERT_RET_VOID(entries == 0 || arr != NIL);
-      su_sort_shell_vpp(R(void const**,arr), entries,
-         R(su_compare_fun,cmp_or_nil));
-   }
-};
-NSPC_END(su)
-# include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_PRIME_H */
 /* s-it-mode */

@@ -33,6 +33,7 @@
 #include <su/mem.h>
 
 #include "mx/attachments.h"
+#include "mx/file-streams.h"
 #include "mx/iconv.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
@@ -212,6 +213,15 @@ a_main_startup(void){
       char const *ep;
       boole doenv;
 
+      /* Reset inherited diverging effective IDs, do not pass them along! */
+      if(n_user_id != 0 &&
+            (n_user_id != geteuid() || n_group_id != getegid())){
+         n_err(_("Warning: dropping diverging effective IDs (euid/egid)\n"));
+         setuid(n_user_id);
+         setgid(n_group_id);
+      }
+
+      /* */
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NIL) &&
             (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
@@ -1310,8 +1320,21 @@ jleave_full:/* C99 */{
 
       n_exit_status = i;
    }
+
 jleave:
+   if(n_exit_status == n_EXIT_OK && (n_psonce & n_PSO_SEND_ERROR) &&
+         ok_blook(posix))
+      n_exit_status = n_EXIT_SEND_ERROR;
+
+   if(!mx_fs_flush(NIL)){
+      n_err(_("Flushing file output buffers failed: %s\n"),
+         su_err_doc(su_err_no()));
+      if(n_exit_status == n_EXIT_OK)
+         n_exit_status = n_EXIT_IOERR;
+   }
+
 #ifdef su_HAVE_DEBUG
+   /* xxx call atexit handlers here */
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif

@@ -52,40 +52,5 @@ EXPORT boole su_avopt_dump_doc(struct su_avopt const *self,
          char const *lopt, char const *doc), up cookie);
 C_DECL_END
 #include <su/code-ou.h>
-#if !su_C_LANG || defined CXX_DOXYGEN
-# define su_CXX_HEADER
-# include <su/code-in.h>
-NSPC_BEGIN(su)
-class avopt;
-class EXPORT avopt : private su_avopt{
-public:
-   enum state{
-      state_done = su_AVOPT_STATE_DONE,
-      state_long = su_AVOPT_STATE_LONG,
-      state_err_arg = su_AVOPT_STATE_ERR_ARG,
-      state_err_opt = su_AVOPT_STATE_ERR_OPT
-   };
-   avopt(u32 argc, char const * const *argv, char const *opts_short,
-         char const * const *opts_long=NIL){
-      su_avopt_setup(this, argc, argv, opts_short, opts_long);
-   }
-   ~avopt(void){}
-   s8 parse(void) {return su_avopt_parse(this);}
-   char const *current_arg(void) const {return avo_current_arg;}
-   s8 current_opt(void) const {return avo_current_opt;}
-   u16 current_long_idx(void) const {return avo_current_long_idx;}
-   char const *current_err_opt(void) const {return avo_current_err_opt;}
-   s32 argc(void) const {return avo_argc;}
-   char const * const *argv(void) const {return avo_argv;}
-   char const *opts_short(void) const {return avo_opts_short;}
-   char const * const *opts_long(void) const {return avo_opts_long;}
-   boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt,
-         char const *lopt, char const *doc), up cookie=NIL) const{
-      return su_avopt_dump_doc(this, ptf, cookie);
-   }
-};
-NSPC_END(su)
-# include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_AVOPT_H */
 /* s-it-mode */

@@ -117,7 +117,7 @@ a_aux_pager_get(char const **env_addon){
        *    *colour-pager*, $PAGER */
       if(su_cs_find(rv, "less") != NIL){
          if(getenv("LESS") == NIL)
-            *env_addon = "LESS=RXi";
+            *env_addon = "LESS=RI";
       }else if(su_cs_find(rv, "lv") != NIL){
          if(getenv("LV") == NIL)
             *env_addon = "LV=-c";
@@ -743,6 +743,53 @@ jredo:
    NYD_OU;
 }
 
+FL s32
+n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
+      struct tm const *localp_or_nil){
+   struct tm tmbuf[2], *tmx;
+   time_t t;
+   s32 rv;
+   NYD2_IN;
+   UNUSED(utcp_or_nil);
+
+   rv = 0;
+
+   if(localp_or_nil == NIL){
+      t = S(time_t,secsepoch);
+      if((tmx = localtime(&t)) == NIL)
+         goto jleave;
+      tmbuf[0] = *tmx;
+      localp_or_nil = &tmbuf[0];
+   }
+
+#ifdef mx_HAVE_TM_GMTOFF
+   rv = localp_or_nil->tm_gmtoff;
+
+#else
+   if(utcp_or_nil == NIL){
+      t = S(time_t,secsepoch);
+      if((tmx = gmtime(&t)) == NIL)
+         goto jleave;
+      tmbuf[1] = *tmx;
+      utcp_or_nil = &tmbuf[1];
+   }
+
+   rv = ((((localp_or_nil->tm_hour - utcp_or_nil->tm_hour) * 60) +
+         (localp_or_nil->tm_min - utcp_or_nil->tm_min)) * 60) +
+         (localp_or_nil->tm_sec - utcp_or_nil->tm_sec);
+
+   if((t = (localp_or_nil->tm_yday - utcp_or_nil->tm_yday)) != 0){
+      s32 const ds = 24 * 60 * 60;
+
+      rv += (t == 1) ? ds : -S(s32,ds);
+   }
+#endif
+
+jleave:
+   NYD2_OU;
+   return rv;
+}
+
 FL char *
 n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
    /* Problem is that secsepoch may be invalid for representation of ctime(3),
@@ -943,7 +990,6 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 
    /* We have the prepared error message, take it over line-by-line, possibly
     * completing partly prepared one first */
-   n_pstate |= n_PS_ERRORS_PROMPT;
    if(n_pstate & n_PS_ERRORS_NEED_PRINT_ONCE){
       n_pstate ^= n_PS_ERRORS_NEED_PRINT_ONCE;
       allow_multiple = TRU1;
