@@ -273,42 +273,43 @@ Thank you!
     with OPT_AUTOCC pass "EXTRA_CFLAGS=-std=c99", otherwise ensure that
     -std=c99 is defined in $CFLAGS.
 
-- BSD make, AND FreeBSD-derived sh(1):
-  * bmake(1) cannot drive "make test" with sh(1)ells that use monitor
-    mode "set -m".  Please pass JOBMON=n ("make test JOBMON=n").
-
 Development:
 
-. CRUX Linux <https://www.crux.nu/> (x86-64: 3.6 (3.[56]).
+. CRUX Linux <https://www.crux.nu/>.
+  + x86-64: head.
 
 Frequently:
 
-. AlpineLinux <https://www.alpinelinux.org> (x86-64: edge).
+. AlpineLinux <https://www.alpinelinux.org>.
+  + x86-64: "2020", edge.
 
-. ArchLinux <https://www.archlinux.org/> (current).
+. ArchLinux <https://www.archlinux.org/>.
+  + current.
 
-. FreeBSD <https://www.freebsd.org/> (x86: 11.2,12.1; amd64: 12.2).
+. FreeBSD <https://www.freebsd.org/>.
+  + x86: 11.2; amd64: 12.2.
   - v11. series test errors: see DragonFly.
-  - BSD make -j / sh(1) -m issue, as above.
 
-. OpenBSD <https://www.openbsd.org/> (x86: latest (6.[4-8])).
+. OpenBSD <https://www.openbsd.org/>.
+  + x86: latest (6.{4,6,8,9}).
 
 Pre-release, and other landmarks:
 
-. DragonFly BSD <https://www.dragonflybsd.org/> (5.{6.1,8.0}).
+. DragonFly BSD <https://www.dragonflybsd.org/>.
+  + 5.6.1, 5.8.0.
   - The tests [iconv_mbyte_base64]-{4,8} fail because the C function
     iswprint(3) falsely claims that U+FF08 and U+FF09 (FULLWIDTH
     LEFT and RIGHT PARENTHESIS, respectively) are not printable,
     causing replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
-  - BSD make -j / sh(1) -m issue, as above.
 
-. NetBSD <https://www.netbsd.org/> (amd64: 9.0).
-  - BSD make -j issue, as above.
+. NetBSD <https://www.netbsd.org/>.
+  + amd64: 9.0.
 
 . OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
   @ Thanks to Jean-Marc Pigeon for generously providing access to
     a VZGOT on the most "beefy" machine i have ever worked on! ^_^
+  + Not tested for v14.9.23.  Sorry Jean-Marc, you're ok??
 
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
@@ -336,7 +337,9 @@ Pre-release, and other landmarks:
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).
 
-.  SunOS schillix 5.11 schillix-on i86pc i386 i86pc
+.  SunOS schillix 5.11 schillix-on.
+   @ Thank you and good bye, dear Jörg.
+   + i86pc i386 i86pc
    - reply-21 fails with iconv(3) error "Cannot convert from utf-8 to
      646", which is an iconv(3) error (should just do it).
 
