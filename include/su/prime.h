@@ -110,6 +110,6 @@ public:
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_PRIME_H */
 /* s-it-mode */
