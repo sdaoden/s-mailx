@@ -68,8 +68,7 @@
 /* * */
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
- * Note: must be lowercase!
- * (Keep in SYNC: ./nail.1:"Character sets", mx-config.h:CHARSET_*!) */
+ * Note: must be lowercase! */
 #define CHARSET_7BIT "us-ascii"
 #ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
