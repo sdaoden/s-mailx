@@ -560,8 +560,7 @@ enum n_program_state_once{
  * - most default VAL_ues come from in from build system via ./make.rc
  * - Other i3val=s and/or defval=s are imposed by POSIX: we do not (or only
  *   additionally "trust" the system-wide RC file to establish the settings
- * - code assumes (in conjunction with make-okey-map.pl) case-insensitive sort!
- * (Keep in SYNC: nail.h:okeys, nail.rc, nail.1:"Initial settings") */
+ * - code assumes (together with make-okey-map.pl) case-insensitive sort! */
 enum okeys{
    /* This is used for all macro(-local) variables etc., i.e.,
     * [*@#]|[1-9][0-9]*, in order to have something with correct properties.

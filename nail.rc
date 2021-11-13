@@ -33,7 +33,6 @@
 #     (To pass options through to the MTA, either add them after a "--"
 #     separator on the command line or set the *mta-arguments* variable.)
 # - *hold, *keep*, and *keepsave* are deliberately set below.
-# (Keep in SYNC: mx/nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 # Adjustments of standard imposed default- as well as other settings follow.
 # - Settings in this file assume v15-compat=yes.

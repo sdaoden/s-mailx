@@ -694,7 +694,6 @@ main(int argc, char *argv[]){
       a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
    };
 
-   /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const a_sopts[] =
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
