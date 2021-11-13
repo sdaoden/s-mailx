@@ -715,6 +715,6 @@ inline void *operator new(size_t sz, void *vp, NSPC(su)mem::johnny const *j){
 }
 
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* !su_MEM_H */
 /* s-it-mode */

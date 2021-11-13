@@ -29,16 +29,15 @@
 #include <su/code.h>
 
 #if defined su_HAVE_MEM_BAG_AUTO || defined su_HAVE_MEM_BAG_LOFI
-   /*!
-    * \ingroup MEM_BAG
+   /*! \ingroup MEM_BAG
     * Defined if memory bags are available.
-    * They are if just any memory bag allocation type is supported.
-    */
+    * They are if the \r{CONFIG} enables one of the memory bag allocation types
+    * \r{su_HAVE_MEM_BAG_AUTO} and/or \r{su_HAVE_MEM_BAG_LOFI}. */
 # define su_HAVE_MEM_BAG
 #endif
 #ifdef su_HAVE_MEM_BAG
 
-/* Use-case related foreign hooks */
+/* su_USECASE related foreign hooks XXX should not be here! config.h? */
 #ifdef su_USECASE_MX
 # include <su/code-in.h>
 C_DECL_BEGIN
@@ -564,7 +563,7 @@ public:
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_HAVE_MEM_BAG */
 #endif /* !su_MEM_BAG_H */
 /* s-it-mode */

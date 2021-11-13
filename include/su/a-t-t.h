@@ -34,7 +34,7 @@
  * \c{typedef}.
  * A later inclusion (without that variable) will then provide the definitions.
  */
-#endif
+#endif /* @CXX_DOXYGEN */
 
 #include <su/code.h>
 
@@ -171,6 +171,6 @@ STA type_toolbox<T> const auto_type_toolbox<T>::instance =
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_A_T_T_H */
 /* s-it-mode */

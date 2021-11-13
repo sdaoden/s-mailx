@@ -184,6 +184,6 @@ CXXCAST(thread, struct su_thread);
 
 NSPC_END(su)
 # include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_THREAD_H */
 /* s-it-mode */
