@@ -168,12 +168,12 @@ Controls loading of (as via
 .Ar spec
 is parsed case-insensitively, the letter
 .Ql s
-corresponds to the system wide
+corresponds to the system-wide
 .Pa \*(UR ,
 .Ql u
-the user's personal file
+to the user's personal file
 .Pa \*(ur .
-The (original) system wide resource is also compiled-in, accessible via
+A compiled-in copy of the (original) system-wide is accessible via
 .Ql x .
 The letters
 .Ql -
@@ -459,7 +459,7 @@ for the internal variable
 .
 .Mx
 .It Fl n
-Standard flag that inhibits reading the system wide
+Standard flag that inhibits reading the system-wide
 .Pa \*(UR
 upon startup.
 The option
@@ -8939,8 +8939,8 @@ set to
 .Ql 5 .
 .
 .Pp
-However, \*(UA has built-in some initial (and some default) settings
-which (may) diverge, others may become adjusted by one of the
+However, some initial (and some default) settings are built-in,
+and (may) diverge, others may become adjusted by one of the
 .Sx "Resource files" .
 Displaying the former is accomplished via
 .Ic set :
@@ -8953,7 +8953,7 @@ variable \(en use command line options or
 .Va mta-arguments
 to pass options through to a
 .Va mta .
-The default global resource file sets, among others, the variables
+The system-wide resource file as shipped, sets, among others,
 .Va hold ,
 .Va keep
 and
@@ -10786,7 +10786,7 @@ is part of the option value, then the user's personal
 .Pa \*(vU
 file will be loaded (if it exists); likewise the letter
 .Ql s
-controls loading of the system wide
+controls loading of the system-wide
 .Pa \*(vS ;
 directives found in the user file take precedence, letter matching is
 case-insensitive.
@@ -12794,10 +12794,10 @@ suppression does not occur.
 .
 .Mx
 .It Va system-mailrc
-\*(RO The compiled in path of the system wide initialization file
-one of the
-.Sx "Resource files" :
-.Pa \*(UR .
+\*(RO The compiled-in path of
+.Pa \*(UR ,
+the system-wide of the
+.Sx "Resource files" .
 .
 .
 .Mx
@@ -13911,7 +13911,7 @@ Upon startup \*(UA reads in several resource files, in order:
 .Bl -tag -width ".It Pa BaNg"
 .Mx
 .It Pa \*(UR
-System wide initialization file
+System-wide resource file
 .Pf ( Va system-mailrc ) .
 Reading of this file can be suppressed, either by using the
 .Fl \&:
@@ -13921,6 +13921,9 @@ command line options, or by setting the
 .Sx ENVIRONMENT
 variable
 .Ev MAILX_NO_SYSTEM_RC .
+A(n unmodified) version of this is also compiled-in, accessible via
+.Fl \&:
+.Ql x .
 .
 .Mx
 .It Pa \*(ur
