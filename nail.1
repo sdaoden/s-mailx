@@ -449,7 +449,7 @@ Also see
 .
 .Mx
 .It Fl N , Fl Fl no-header-summary
-inhibit the initial display of message headers when reading mail or
+Inhibit the initial display of message headers when reading mail or
 editing a mailbox
 .Ic folder
 by calling
@@ -1269,7 +1269,9 @@ The visual style of this summary of
 can be adjusted through the variable
 .Va headline
 and the possible sorting criterion via
-.Va autosort .
+.Va autosort
+and
+.Ic sort .
 Scrolling through
 .Va screen Ns
 fuls of
@@ -2425,7 +2427,9 @@ whereas
 will delete the messages 1 through 5.
 In sorted or threaded mode (see the
 .Ic sort
-command),
+command and the
+.Va autosort
+variable),
 .Ql delete 1-5
 will delete the messages that are located between (and including)
 messages 1 through 5 in the sorted/threaded order, as shown in the
@@ -4732,6 +4736,7 @@ Synonym for
 Only applicable to
 .Ql thread Ns
 ed
+.Pf ( Va autosort Ns ed )
 .Ic sort
 mode.
 Takes a message list and makes all replies to these messages invisible
@@ -7140,19 +7145,18 @@ message order and, if the
 variable is set,
 displays a header summary.
 The former command shows the current sorting criterion when used without
-an argument, but creates a sorted representation of the current folder
-otherwise, and changes the
+arguments, otherwise it creates a sorted representation of the current
+folder and adjusts the
 .Ic next
-command and the addressing modes such that they refer to messages in
-the sorted order.
-Message numbers are the same as in regular mode.
+command and the addressing modes for sorted order.
+Message numbers are identical.
 If the
 .Va header
 variable is set,
-a header summary in the new order is also displayed.
-Automatic folder sorting can be enabled by setting the
-.Va autosort
-variable, as in
+a newly ordered header summary is displayed thereafter.
+Automatic folder sorting is controlled by
+.Va autosort ,
+as in
 .Ql set autosort=thread .
 Possible sorting criterions are:
 .
@@ -7180,6 +7184,10 @@ Sort the messages by their message status.
 Sort the messages by their subject.
 .It Ar thread
 Create a threaded display.
+.Va autocollapse
+may be set to
+.Ic collapse
+threads automatically.
 .It Ar to
 Sort messages by the value of their
 .Ql To:
@@ -9249,12 +9257,13 @@ message will be sent automatically.
 .
 .Mx
 .It Va autocollapse
-\*(BO Causes threads to be collapsed automatically when .Ql thread Ns
+\*(BO Causes threads to be
+.Ic collapse Ns
+d automatically when
+.Ql thread Ns
 ed
 .Ic sort
-mode is entered (see the
-.Ic collapse
-command).
+mode is entered.
 .
 .Mx
 .It Va autoprint
@@ -9304,7 +9313,7 @@ If this variable is not set no reverse solidus stripping is performed.
 .It Va bind-inter-byte-timeout
 \*(OP Terminals may generate multi-byte sequences for special function
 keys, for example, but these sequences may not become read as a unit.
-And multi-byte sequences can be defined freely via
+Multi-byte sequences may also be defined freely via
 .Ic bind .
 This variable specifies the timeout in milliseconds that the MLE (see
 .Sx "On terminal control and line editor" )
@@ -9332,7 +9341,7 @@ If this variable is set, then the current key sequence is forcefully
 terminated once the timeout (in milliseconds) triggers.
 The value should be (maybe significantly) larger than
 .Va bind-inter-byte-timeout ,
-but may not excess the maximum, too.
+but cannot excess the maximum, too.
 .
 .Mx
 .It Va bsdcompat
@@ -11385,7 +11394,7 @@ for example:
 .
 .Pp
 .Bl -tag -compact -width ".It Ql __"
-.It Ql *
+.It Ql \&*
 The command output can be reintegrated into this MUA's normal processing:
 .Cd copiousoutput .
 Implied when using a plain

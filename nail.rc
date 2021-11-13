@@ -45,13 +45,13 @@
 # This is a traditional entry and should usually be set.
 set append
 
-# Confirm sending of messages:
+# Confirm sending of messages.
 set asksend
 
 # If threaded mode is activated, automatically collapse thread.
-# And enter threaded mode automatically.
-set autocollapse
-#set autosort=thread
+# Enter threaded mode automatically.
+#set autocollapse
+set autosort=thread
 
 # Uncomment for coloured output in $PAGER (if possible).
 #set colour-pager
