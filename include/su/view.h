@@ -27,7 +27,7 @@
  *
  * Merely of interest when creating new C++ collection types.
  */
-#endif
+#endif /* @CXX_DOXYGEN */
 
 #include <su/code.h>
 
@@ -839,6 +839,6 @@ su__VIEW_IMPL_END
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_VIEW_H */
 /* s-it-mode */

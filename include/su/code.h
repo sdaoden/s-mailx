@@ -31,7 +31,7 @@
 # include <su/config.h>
 #endif
 
-/*!
+/* MAINPAGE {{{ *//*!
  * \mainpage SU --- Steffen's Utilities
  *
  * Afters years of finding myself too busy to port my old C++ library of which
@@ -39,7 +39,7 @@
  * necessity to have a foundation of things i like using nonetheless,
  * i finally have started creating a minimal set of tools instead.
  *
- * Some introductional notes:
+ * \head1{Introductional notes}
  *
  * \list{\li{
  * The basic infrastructure of \SU is provided by the file \r{su/code.h}.
@@ -93,7 +93,33 @@
  * (Usually an \a{estate} argument as documented for \r{su_clone_fun} is then
  * available to fine-tune error handling.)
  * }}
- */
+ *
+ * \head1{Tools in mk/}
+ *
+ * \list{\li{
+ * \c{su-doc-strip.pl}: simple \c{perl(1)} program which strips
+ * \c{doxygen(1)}-style comments from all the given files.
+ * }\li{
+ * \c{su-doxygen.rc}: \c{doxygen(1)} configuration for \SU.
+ * \c{doxygen mk/su-doxygen.rc} should generate documentation.
+ * }\li{
+ * \c{su-find-command.sh}: find an executable command within a POSIX shell.
+ * Needed in a shipout.
+ * }\li{
+ * \c{su-make-cs-ctype.sh}: creates src/su/gen-cs-ctype.h.
+ * }\li{
+ * \c{su-make-errors.sh}: either create src/su/gen-errors.h, or, at compile
+ * time, the \c{OS<>SU\ map.
+ * Needed in a shipout.
+ * }\li{
+ * \c{su-make-strip-cxx.sh}: \c{cd(1)}s into include/su and removes C++ code
+ * (tagged \c{(SPACE)CXX_DOXYGEN..(SPACE)@CXX_DOXYGEN}) from all header files.
+ * POSIX shell and tools.
+ * }\li{
+ * \c{su-quote-rndtrip.sh}: round trip quote strings in POSIX shell.
+ * Needed in a shipout.
+ * }}
+ *//* MAINPAGE }}} */
 
 /*!
  * \file
@@ -2304,7 +2330,7 @@ template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !C_LANG || CXX_DOXYGEN */
+#endif /* !C_LANG || @CXX_DOXYGEN */
 
 /* MORE DOXYGEN TOP GROUPS {{{ */
 /*!

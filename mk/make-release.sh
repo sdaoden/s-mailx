@@ -138,12 +138,7 @@ update_release_hook() {
    ${mv} -f nail.rcx nail.rc
    ${git} add nail.rc
 
-   echo 'include/su/*.h: stripping C++ code'
-   (
-      cd include/su
-      ${sed} -i'' -e '/CXX_DOXYGEN/,/CXX_DOXYGEN/d' *.h
-      ${git} add .
-   )
+   ${SHELL} mk/su-make-strip-cxx.sh
 
    ${make} d-cmd-tab-nv && ${git} add -f src/mx/gen-cmd-tab.h
    ${make} d-cs-ctype-nv && ${git} add -f src/su/gen-cs-ctype.h
