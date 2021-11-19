@@ -135,10 +135,10 @@ a_main_startup(char const *argv0){
    n_stderr = stderr;
 
    /* XXX Due to n_err() mess the su_log config only applies to EMERG yet! */
-   su_state_create(argv0, (
-         su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID |
-         n_LOG_LEVEL /* XXX _EMERG is 0.. */
-      ), su_STATE_ERR_NOPASS);
+   su_state_create(su_STATE_CREATE_V1, argv0,
+         (su_STATE_LOG_SHOW_LEVEL | /*su_STATE_LOG_SHOW_PID |*/
+          n_LOG_LEVEL /* XXX _EMERG is 0.. */),
+      su_STATE_ERR_NOPASS);
 
    /* Change to reproducible mode asap */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
