@@ -442,7 +442,7 @@ jerr:
 static boole
 a_mailcap__parse_kv(struct a_mailcap_load_stack *mclsp, char *kp, char *vp){
 #undef a_X
-#define a_X(X,Y) FIELD_INITI(su_CONCAT(a_MAILCAP_SF_, X) - 1) su_STRING(Y)
+#define a_X(X,Y) FIELD_INITI(CONCAT(a_MAILCAP_SF_, X) - 1) STRING(Y)
    static char const sfa[][16] = {
       a_X(COMPOSE, compose),
       a_X(COMPOSETYPED, composetyped),
@@ -837,7 +837,7 @@ static struct n_strlist *
 a_mailcap_dump(char const *cmdname, char const *key, void const *dat){
    /* XXX real strlist + str_to_fmt() */
 #undef a_X
-#define a_X(X,Y) FIELD_INITI(su_CONCAT(a_MAILCAP_SF_, X)) Y
+#define a_X(X,Y) FIELD_INITI(CONCAT(a_MAILCAP_SF_, X)) Y
    static char const sfa[][20] = {
       a_X(CMD, " "),
       a_X(COMPOSE, " compose = "),

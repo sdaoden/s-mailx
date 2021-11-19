@@ -18,6 +18,7 @@ CFLAGS+=-Wall -pedantic $(SUF)
 CSRC = atomic.c \
 		avopt.c \
 	core-code.c \
+		core-create.c \
 		core-errors.c \
 		cs-alloc.c \
 		cs-ctype.c \

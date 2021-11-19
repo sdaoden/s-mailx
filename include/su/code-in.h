@@ -102,6 +102,11 @@
 
 /* SUPPORT MACROS+ */
 
+#undef SU
+#undef MX
+#define SU su_SU
+#define MX su_MX
+
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -160,7 +165,9 @@
 
 #define FIELD_DISTANCEOF su_FIELD_DISTANCEOF
 #define FIELD_INITN su_FIELD_INITN
+#define FIN su_FIELD_INITN
 #define FIELD_INITI su_FIELD_INITI
+#define FII su_FIELD_INITI
 #define FIELD_OFFSETOF su_FIELD_OFFSETOF
 #define FIELD_RANGEOF su_FIELD_RANGEOF
 #define FIELD_RANGE_COPY su_FIELD_RANGE_COPY
@@ -256,8 +263,7 @@
 #define SMP su_SMP
 
 #define STRING su_STRING
-# define XSTRING su_XSTRING
-# define CONCAT su_CONCAT(S1,S2)
+#define CONCAT su_CONCAT
 
 #define STRUCT_ZERO su_STRUCT_ZERO
 

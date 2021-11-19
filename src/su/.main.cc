@@ -56,7 +56,8 @@ static void a_time(void);
 static void a_utf(void);
 
 int main(void){ // {{{
-   state::create("SU@C++", state::debug | log::debug, state::err_nopass);
+   state::create(state::create_all,
+      "SU@C++", (state::debug | log::debug), state::err_nopass);
 
    if(log::get_show_level())
       a_ERR();
