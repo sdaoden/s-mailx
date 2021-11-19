@@ -41,13 +41,14 @@ su_EMPTY_FILE()
 # define a_LOCK_XCHG()
 # define a_UNLOCK_XCHG()
 #else
-static struct su_mutex a_atomic_cas_mtx = su_MUTEX_I9R("SU atomic CAS");
-static struct su_mutex a_atomic_xchg_mtx = su_MUTEX_I9R("SU atomic XCHG");
+   /* In core-code.c, then. */
+extern struct su_mutex su__atomic_cas_mtx;
+extern struct su_mutex su__atomic_xchg_mtx;
 
-# define a_LOCK_CAS() su_MUTEX_LOCK(&a_atomic_cas_mtx)
-# define a_UNLOCK_CAS() su_MUTEX_UNLOCK(&a_atomic_cas_mtx)
-# define a_LOCK_XCHG() su_MUTEX_LOCK(&a_atomic_xchg_mtx)
-# define a_UNLOCK_XCHG() su_MUTEX_UNLOCK(&a_atomic_xchg_mtx)
+# define a_LOCK_CAS() su_MUTEX_LOCK(&su__atomic_cas_mtx)
+# define a_UNLOCK_CAS() su_MUTEX_UNLOCK(&su__atomic_cas_mtx)
+# define a_LOCK_XCHG() su_MUTEX_LOCK(&su__atomic_xchg_mtx)
+# define a_UNLOCK_XCHG() su_MUTEX_UNLOCK(&su__atomic_xchg_mtx)
 #endif
 
 #define a_X(X,Y) \

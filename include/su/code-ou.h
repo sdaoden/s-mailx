@@ -74,6 +74,9 @@
 
 /* SUPPORT MACROS+ */
 
+#undef SU
+#undef MX
+
 #undef ABS
 #undef CLIP
 #undef IS_POW2
@@ -122,7 +125,9 @@
 
 #undef FIELD_DISTANCEOF
 #undef FIELD_INITN
+#undef FIN
 #undef FIELD_INITI
+#undef FII
 #undef FIELD_OFFSETOF
 #undef FIELD_RANGEOF
 #undef FIELD_RANGE_COPY
@@ -165,8 +170,7 @@
 #undef SMP
 
 #undef STRING
-# undef XSTRING
-# undef CONCAT
+#undef CONCAT
 
 #undef STRUCT_ZERO
 

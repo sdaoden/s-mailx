@@ -125,7 +125,7 @@ EXPORT boole su_random_generate(struct su_random *self, void *buf, uz len);
  * \ESTATE_RV: once the first random object is created the internal machinery
  * is setup, which may fail (but see \r{su_STATE_CREATE_RANDOM}).
  *
- * \a{cookie} is object specific and is initially \NIL.
+ * \a{cookie} of \a{on_generate} is object specific and is initially \NIL.
  * For as long as \a{*cookie} is \NIL \r{su_random_seed()} will call the hook
  * with all arguments 0, and only upon r{su_random_gut()} time, when \a{cookie}
  * is not \NIL, will the hook otherwise be called with a \NIL \a{buf} and

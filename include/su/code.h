@@ -48,8 +48,8 @@
  * It should be noted, however, that the \r{CORE} reacts upon a few
  * preprocessor switches, as documented there.
  * }\li{
- * In order to use \SU, \r{su_state_create()} \b{must} be called \b{first}.
- * This function is always in scope (\c{su/code.h}).
+ * In order to use \SU \r{su_state_create()} (or \r{su_state_create_core()})
+ * \b{must} be called \b{first}; it is always in scope.
  * }\li{
  * Datatype overflow errors and out-of-memory situations are usually detected
  * and result in abortions (via \r{su_LOG_EMERG} logs).
@@ -64,7 +64,8 @@
  *
  * \remarks{C++ object creation failures via \c{su_MEM_NEW()} etc. will
  * always cause program abortion due to standard imposed execution flow.
- * This can be worked around by using \c{su_MEM_NEW_HEAP()} as appropriate.}
+ * This can be worked around by using \r{su_MEM_NEW_HEAP()} or even
+ * \r{su_MEM_NEWF_BLK()} as appropriate.}
  * }\li{
  * Most collection and string object types work on 32-bit (or even 31-bit)
  * lengths a.k.a. counts a.k.a. sizes.
@@ -73,12 +74,9 @@
  * Other behaviour is explicitly declared with a "big" prefix, as in
  * "biglist", but none such object does exist at the time of this writing.
  * }\li{
- * \SU requires an eight (8) or more byte alignment on the stack and heap.
- * This is because some of its facilities may use the lower (up to) three
- * bits of pointers for internal, implementation purposes.
- * }\li{
  * \SU object instances have a \c{_create()} / \c{_gut()} life cycle.
- * Transparent objects instead use a \c{_new()} / \c{_del()} one.
+ * Transparent objects or those with special interface condition use
+ * a \c{_new()} / \c{_del()} one instead.
  * Non-objects (value carriers etc.) use \c{_setup()} if an equivalent to
  * a constructor is needed.
  *
@@ -86,12 +84,16 @@
  * resource aquisition lifetime.
  * If not, however, and in order to deal with overflow and out-of-memory
  * hardening as above many \a{_create()} interfaces return an error code
- * instead of \SELF.
+ * instead of \SELF, as documented for \r{su_clone_fun}, and usually an
+ * \a{estate} argument as documented there is then available to fine-tune error
+ * handling.
  * For such types the C++ object constructor will only perform memory
- * clearance, an additional \c{_create()} to deal with resource aquisition will
- * be required to perform true initialization.
- * (Usually an \a{estate} argument as documented for \r{su_clone_fun} is then
- * available to fine-tune error handling.)
+ * clearance, an additional \c{_create()} (or \c{_setup()}) to deal with
+ * resource aquisition will be required to perform true initialization.
+ * }\li{
+ * \SU requires an eight (8) or more byte alignment on the stack and heap.
+ * This is because some of its facilities may use the lower (up to) three
+ * bits of pointers for internal, implementation purposes.
  * }}
  *
  * \head1{Tools in mk/}
@@ -109,14 +111,14 @@
  * \c{su-make-cs-ctype.sh}: creates src/su/gen-cs-ctype.h.
  * }\li{
  * \c{su-make-errors.sh}: either create src/su/gen-errors.h, or, at compile
- * time, the \c{OS<>SU\ map.
+ * time, the \c{OS<>SU} map.
  * Needed in a shipout.
  * }\li{
  * \c{su-make-strip-cxx.sh}: \c{cd(1)}s into include/su and removes C++ code
  * (tagged \c{(SPACE)CXX_DOXYGEN..(SPACE)@CXX_DOXYGEN}) from all header files.
  * POSIX shell and tools.
  * }\li{
- * \c{su-quote-rndtrip.sh}: round trip quote strings in POSIX shell.
+ * \c{su-quote-rndtrip.sh}: round trip quote strings within POSIX shell.
  * Needed in a shipout.
  * }}
  *//* MAINPAGE }}} */
@@ -216,6 +218,18 @@
  * }}
  * @{
  */
+
+/*! The hexadecimal version of the library as via \r{su_VERSION_CALC()}. */
+#define su_VERSION 0x2000u
+
+/*! \r{su_VERSION} as a MAJOR.MINOR.UPDATE string literal. */
+#define su_VERSION_STRING "0.2.0"
+
+/*! Calculate a \SU version number, meaning 8 bits for \a{MA}jor, and 12 bits
+ * for each of \a{MI}nor and \a{UP}date components.
+ * Because 32-bit range is fully used arguments must be unsigned! */
+#define su_VERSION_CALC(MA,MI,UP) \
+   ((((MA) & 0xFF) << 24) | (((MI) & 0xFFF) << 12) | (((UP) & 0xFFF) << 12))
 
 /* OS {{{ */
 
@@ -614,8 +628,17 @@ do{\
 
 /* USECASE_XY_DISABLED for tagging unused files:
  * git rm `git grep ^su_USECASE_MX_DISABLED` */
+#ifdef su_USECASE_SU
+# define su_SU(X) X
+#else
+# define su_SU(X)
+#endif
+
 #ifdef su_USECASE_MX
+# define su_MX(X) X
 # define su_USECASE_MX_DISABLED This file is not a (valid) compilation unit
+#else
+# define su_MX(X)
 #endif
 #ifndef su_USECASE_MX_DISABLED
 # define su_USECASE_MX_DISABLED
@@ -914,19 +937,15 @@ do{\
 # define su_SMP(X)
 #endif
 
-/* String stuff.
- * __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
-#if defined __STDC__ || defined __STDC_VERSION__ || su_C_LANG || \
-      defined DOXYGEN
-# define su_STRING(X) #X /*!< \_ */
-# define su_XSTRING(X) su_STRING(X) /*!< \_ */
-# define su_CONCAT(S1,S2) su__CONCAT_1(S1, S2) /*!< \_ */
-# define su__CONCAT_1(S1,S2) S1 ## S2
-#else
-# define su_STRING(X) "X"
-# define su_XSTRING STRING
-# define su_CONCAT(S1,S2) S1/* will no work out though */S2
-#endif
+/*! Two indirections for graceful expansion. */
+#define su_STRING(X) su__STRING_1(X)
+# define su__STRING_1(X) su__STRING_2(X)
+# define su__STRING_2(X) #X /* __STDC__||__STDC_VERSION__||su_C_LANG */
+
+/*! Two indirections for graceful expansion. */
+#define su_CONCAT(S1,S2) su__CONCAT_1(S1, S2)
+# define su__CONCAT_1(S1,S2) su__CONCAT_2(S1, S2)
+# define su__CONCAT_2(S1,S2) S1 ## S2 /*__STDC__||__STDC_VERSION__||su_C_LANG*/
 
 /*! Zero an entire \a{T}ype instance at the given memory \a{P}ointer.
  * \remarks{Introduces a block scope.} */
@@ -1352,9 +1371,9 @@ enum su_state_flags{
    su_STATE_DEBUG = 1u<<16, /*!< \_ */
    su_STATE_VERBOSE = 1u<<17, /*!< \_ */
    /*! With \r{su_HAVE_MT}: \r{SMP} via multi-threading shall be expected.
-    * \remarks{Only if this flag was set when \r{su_state_create()} has been
-    * called \SU will be able to work with multiple \r{THREAD}.} */
-   su_STATE_MT = 1u<<18, /* TODO <> su_state_create() should act */
+    * \remarks{Only if this flag was set when \r{su_state_create_core()} has
+    * been called \SU will be able to work with multiple \r{THREAD}.} */
+   su_STATE_MT = 1u<<18, /* TODO <> su_state_create_core() should act */
    /*! Reproducible behaviour switch.
     * See \r{su_reproducible_build},
     * and \xln{https://reproducible-builds.org}. */
@@ -1376,7 +1395,17 @@ MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK),
 MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
 #endif
 
-#ifdef su_HAVE_MT
+/*! Argument bits for \r{su_state_create()}. */
+enum su_state_create_flags{
+   su_STATE_CREATE_RANDOM = 1u<<0, /*!< Initialize \r{RANDOM}. */
+   su_STATE_CREATE_MD = 1u<<1, /*!< Initialize \r{MD}. */
+
+   /* Exclusive cover-all's */
+   su_STATE_CREATE_V1 = 1u<<27, /*!< All subsystems of \r{su_VERSION} 1. */
+   su_STATE_CREATE_ALL = 15u<<27 /*!< All covered subsystems. */
+};
+
+#ifdef su_USECASE_SU
 enum su__glck_type{
    su__GLCK_STATE, /* su_state_set() lock */
    su__GLCK_GI9R, /* Global initializer (first-use-time-init) lock */
@@ -1500,12 +1529,12 @@ EXPORT_DATA char const su_empty[1];
 /*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
 EXPORT_DATA char const su_reproducible_build[];
 
-/*! Usually set via \r{su_state_create()} to the name of the program, but can
- * freely be set, for example to create a common log message prefix.
+/*! Usually set via \r{su_state_create_core()} to the name of the program, but
+ * can freely be set, for example to create a common log message prefix.
  * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
 EXPORT void su__glck(enum su__glck_type gt);
 EXPORT void su__gnlck(enum su__glck_type gt);
 # if !defined su_HAVE_MT && defined NDEBUG && !defined su_SOURCE_CORE_CODE
@@ -1523,30 +1552,41 @@ EXPORT void su__gnlck(enum su__glck_type gt);
 # define su__gnlck_gi9r() su_UNUSED(0)
 #endif
 
-/*! Initialize \SU.
- * If \a{program_or_nil} is given it will undergo a \c{basename(3)} operation
+/*! Initialize the \SU core (a more pleasant variant is \r{su_state_create()}).
+ * If \a{name_or_nil} is given it will undergo a \c{basename(3)} operation
  * and then be assigned to \r{su_program}.
  * \a{flags} may be a bitmix of what is allowed for
  * \r{su_state_set()} and \r{su_log_set_level()}.
- * See \r{su_clone_fun} for the meaning of \a{estate} and the return value;
- * \r{su_STATE_ERR_NOPASS} might be of interest in particular;
- * note \SU is not usable unless this returns \r{su_STATE_NONE}!
+ * \ESTATE_RV, \r{su_STATE_ERR_NOPASS} might be of interest in particular.
+ * Note \SU is not usable unless this returns \r{su_STATE_NONE}!
  * The following example initializes the library and emergency exits on error:
  *
  * \cb{
- *    su_state_create("StationToStation", (su_STATE_DEBUG | su_LOG_DEBUG),
+ *    su_state_create_core("StationToStation", (su_STATE_DEBUG | su_LOG_DEBUG),
  *       su_STATE_ERR_NOPASS);
  * }
  *
  * \remarks{This \b{must} be called \b{first}.
- * (Except \r{su_nyd_chirp()} which is capable to deal.)
  * In threaded applications it must be called from the main thread of
  * execution and before starting (non-\SU) threads, even if, for example,
- * \SU is only used in one specific worker thread.}
+ * \SU is only used in one specific worker thread.
+ * For real MT \r{su_STATE_MT} is a required precondition.}
  *
  * \remarks{Dependent upon the actual configuration it may make use of native
  * libraries and therefore cause itself resource usage / initialization.} */
-EXPORT s32 su_state_create(char const *program_or_nil, uz flags, u32 estate);
+EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
+
+/*! Like \r{su_state_create_core()}, but initializes many more subsystems
+ * according to \a{create_flags}.
+ * Many subsystems need internal machineries which are initialized when needed
+ * first, an operation that may fail.
+ * Because of this the public interface may generate errors that need to be
+ * handled, which may be undesireable.
+ * If this function is used instead of \r{su_state_create_core()} then
+ * internals of a desired subset of subsystems is initialized immediately,
+ * so that it can be asserted that these errors cannot occur. */
+EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags,
+      char const *name_or_nil, uz flags, u32 estate);
 
 /*! Interaction with the SU library (global) state machine.
  * This covers \r{su_state_log_flags}, \r{su_state_err_type},
@@ -1567,16 +1607,16 @@ INLINE boole su_state_has(uz flags){
 /*! A bitmix of (r\{su_state_err_type} and) (a subset of)
  * \r{su_state_err_flags} as well as \r{su_state_flags}. */
 INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
-   MT( su__glck(su__GLCK_STATE); )
+   su__glck(su__GLCK_STATE);
    su__state |= flags & su__STATE_GLOBAL_MASK;
-   MT( su__gnlck(su__GLCK_STATE); )
+   su__gnlck(su__GLCK_STATE);
 }
 
 /*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
-   MT( su__glck(su__GLCK_STATE); )
+   su__glck(su__GLCK_STATE);
    su__state &= ~(flags & su__STATE_GLOBAL_MASK);
-   MT( su__gnlck(su__GLCK_STATE); )
+   su__gnlck(su__GLCK_STATE);
 }
 
 /*! Notify an error to the \SU (global) state machine.
@@ -1619,10 +1659,10 @@ INLINE enum su_log_level su_log_get_level(void){
 /*! \_ */
 INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
    uz lvl;
-   MT( su__glck(su__GLCK_STATE); )
+   su__glck(su__GLCK_STATE);
    lvl = S(uz,nlvl) & su__STATE_LOG_MASK;
    su__state = (su__state & su__STATE_GLOBAL_MASK) | lvl;
-   MT( su__gnlck(su__GLCK_STATE); )
+   su__gnlck(su__GLCK_STATE);
 }
 
 /*! \_ */
@@ -1647,12 +1687,12 @@ EXPORT void su_perr(char const *msg, s32 eno_or_0);
 
 /*! SMP lock the global log domain. */
 INLINE void su_log_lock(void){
-   MT( su__glck(su__GLCK_LOG); )
+   su__glck(su__GLCK_LOG);
 }
 
 /*! SMP unlock the global log domain. */
 INLINE void su_log_unlock(void){
-   MT( su__gnlck(su__GLCK_LOG); )
+   su__gnlck(su__GLCK_LOG);
 }
 
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
@@ -1882,7 +1922,7 @@ public:
 };
 
 /*! \_ */
-class err{
+class err{ // {{{
 public:
    /*! \copydoc{su_err_number} */
    enum number{
@@ -1912,10 +1952,10 @@ public:
 
    /*! \copydoc{su_err_no_by_errno()} */
    static s32 no_by_errno(void) {return su_err_no_by_errno();}
-};
+}; // }}}
 
 /*! \_ */
-class ex{
+class ex{ // {{{
 public:
    /*! \copydoc{su_ex_status} */
    enum status{
@@ -1939,10 +1979,10 @@ public:
       noperm = su_EX_NOPERM, /*!< \copydoc{su_EX_NOPERM} */
       config = su_EX_CONFIG /*!< \copydoc{su_EX_CONFIG} */
    };
-};
+}; // }}}
 
 /*! \_ */
-class log{
+class log{ // {{{
 public:
    /*! \copydoc{su_log_level} */
    enum level{
@@ -2017,10 +2057,10 @@ public:
 
    /*! \copydoc{su_log_unlock()} */
    static void unlock(void) {su_log_unlock();}
-};
+}; // }}}
 
 /*! \_ */
-class state{
+class state{ // {{{
 public:
    /*! \copydoc{su_state_err_type} */
    enum err_type{
@@ -2056,10 +2096,29 @@ public:
       reproducible = su_STATE_REPRODUCIBLE
    };
 
-   /*! \copydoc{su_state_create()} */
-   static s32 create(char const *program_or_nil, uz flags,
+   /*! \copydoc{su_state_create_flags} */
+   enum create_flags{
+      /*! \copydoc{su_STATE_CREATE_RANDOM} */
+      create_random = su_STATE_CREATE_RANDOM,
+      /*! \copydoc{su_STATE_CREATE_MD} */
+      create_md = su_STATE_CREATE_MD,
+
+      /*! \copydoc{su_STATE_CREATE_V1} */
+      create_v1 = su_STATE_CREATE_V1,
+      /*! \copydoc{su_STATE_CREATE_ALL} */
+      create_all = su_STATE_CREATE_ALL
+   };
+
+   /*! \copydoc{su_state_create_core()} */
+   static s32 create_core(char const *program_or_nil, uz flags,
          u32 estate=none){
-      return su_state_create(program_or_nil, flags, estate);
+      return su_state_create_core(program_or_nil, flags, estate);
+   }
+
+   /*! \copydoc{su_state_create()} */
+   static s32 create(BITENUM_IS(u32,create_flags) create_flags,
+         char const *program_or_nil, uz flags, u32 estate=none){
+      return su_state_create(create_flags, program_or_nil, flags, estate);
    }
 
    /*! \copydoc{su_state_get()} */
@@ -2085,7 +2144,7 @@ public:
 
    /*! \copydoc{su_program} */
    static void set_program(char const *name) {su_program = name;}
-};
+}; // }}}
 
 /* BASIC C++ INTERFACE (SYMBOLS) }}} */
 

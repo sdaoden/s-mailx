@@ -35,9 +35,10 @@
 #include "su/icodec.h"
 #include "su/thread.h"
 
-#ifdef su_HAVE_MT
-# include "su/mutex.h"
-# include "su/spinlock.h"
+#ifdef su_USECASE_SU
+# include <su/atomic.h>
+# include <su/mutex.h>
+# include <su/spinlock.h>
 #endif
 
 /*#include "su/code.h"*/
@@ -47,21 +48,14 @@
 #include "su/code-in.h"
 
 static char const a_core_lvlnames[][8] = {
-   FIELD_INITI(su_LOG_EMERG) "emerg",
-   FIELD_INITI(su_LOG_ALERT) "alert",
-   FIELD_INITI(su_LOG_CRIT) "crit",
-   FIELD_INITI(su_LOG_ERR) "error",
-   FIELD_INITI(su_LOG_WARN) "warning",
-   FIELD_INITI(su_LOG_NOTICE) "notice",
-   FIELD_INITI(su_LOG_INFO) "info",
-   FIELD_INITI(su_LOG_DEBUG) "debug"
+   FII(su_LOG_EMERG) "emerg", FII(su_LOG_ALERT) "alert",
+   FII(su_LOG_CRIT) "crit", FII(su_LOG_ERR) "error",
+   FII(su_LOG_WARN) "warning", FII(su_LOG_NOTICE) "notice",
+   FII(su_LOG_INFO) "info", FII(su_LOG_DEBUG) "debug"
 };
 /* You can deduce the value from the offset */
 CTAV(su_LOG_EMERG == 0);
 CTAV(su_LOG_DEBUG == 7);
-
-union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
-union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
 
 #if DVLOR(1, 0)
 CTAV(su_NYD_ACTION_ENTER == 0);
@@ -70,7 +64,7 @@ CTAV(su_NYD_ACTION_ANYWHERE == 2);
 static char const a_core_nyd_desc[3] = "><=";
 #endif
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
 static struct su_spinlock a_core_glck_state;
 static struct su_mutex a_core_glck_gi9r;
 static struct su_mutex a_core_glck_log;
@@ -78,11 +72,19 @@ static struct su_mutex a_core_glck_log;
 
 DVL( static struct su_nyd_control a_core_thread_main_nyd; )
 
-uz su__state;
-
+union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
+union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
 char const su_empty[] = "";
 char const su_reproducible_build[] = "reproducible_build";
 u16 const su_bom = su_BOM;
+
+uz su__state;
+
+/* For atomic.c fallback */
+#if defined su_USECASE_SU && !su_ATOMIC_IS_REAL
+struct su_mutex su__atomic_cas_mtx;
+struct su_mutex su__atomic_xchg_mtx;
+#endif
 
 char const *su_program;
 
@@ -189,7 +191,7 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
 }
 #endif /* DVLOR(1, 0) */
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
 void
 su__glck(enum su__glck_type gt){
    NYD2_IN;
@@ -227,10 +229,10 @@ su__gnlck(enum su__glck_type gt){
 
    NYD2_OU;
 }
-#endif /* su_HAVE_MT */
+#endif /* su_USECASE_SU */
 
 s32
-su_state_create(char const *program_or_nil, uz flags, u32 estate){
+su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
    s32 rv;
    UNUSED(estate);
 
@@ -244,13 +246,20 @@ su_state_create(char const *program_or_nil, uz flags, u32 estate){
    su__thread_main.t_.name = "main";
    DVL( su__thread_main.t_.nydctl = &a_core_thread_main_nyd; )
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
    if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))
       goto jerr;
    if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)))
       goto jerr;
    if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)))
       goto jerr;
+
+# if !su_ATOMIC_IS_REAL
+   if((rv = su_mutex_create(&su__atomic_cas_mtx, "SU: atomic CAS", estate)))
+      goto jerr;
+   if((rv = su_mutex_create(&su__atomic_xchg_mtx, "SU: atomic XCHG", estate)))
+      goto jerr;
+# endif
 #endif
 
    /* Initialized! */
@@ -266,12 +275,12 @@ su_state_create(char const *program_or_nil, uz flags, u32 estate){
       su_program = program_or_nil;
    }
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
 jleave:
 #endif
    return rv;
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
 jerr:
    if(!(estate & su_STATE_ERR_PASS) &&
          ((estate & su_STATE_ERR_NOPASS) ||
