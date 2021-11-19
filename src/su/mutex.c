@@ -1,5 +1,5 @@
 /*@ Implementation of mutex.h.
- *@ NOTE: mutex_create(): used within su_state_create()!
+ *@ NOTE: mutex_create(): used within su_state_create_core()!
  *@ TODO No wait lists and thus deadlock checking yet
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.

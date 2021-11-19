@@ -62,9 +62,8 @@
 #include "su/thread.h"
 #include "su/time.h"
 
-#ifdef su_HAVE_MT
-  /* (Due to su_USECASE_MX_DISABLED) */
-# include "su/mutex.h"
+#ifdef su_USECASE_SU
+# include <su/mutex.h>
 #endif
 
 #include "su/random.h"
@@ -108,7 +107,7 @@ enum a_random_flags{
 };
 
 struct a_random_bltin{
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
    struct su_mutex rndb_cntrl_mtx;
    struct su_mutex rndb_rand_mtx;
 #endif
@@ -164,7 +163,7 @@ a_random_init(u32 estate){
          goto jleave;
       }
 
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
       if((rv = su_mutex_create(&rndp->rndb_cntrl_mtx, "SU random seed/cntrl",
             estate)) != su_STATE_NONE)
          goto jerrm1;
@@ -186,7 +185,7 @@ a_random_init(u32 estate){
       else{
          su_random_gut(&rndp->rndb_seed);
 jerr:
-#ifdef su_HAVE_MT
+#ifdef su_USECASE_SU
          su_mutex_gut(&rndp->rndb_rand_mtx);
 jerrm2:
          su_mutex_gut(&rndp->rndb_cntrl_mtx);
@@ -364,10 +363,10 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
       if(with_or_nil != NIL)
          su_random_generate(with_or_nil, bp, a_RANDOM_SEED_BYTES);
       else{
-         MT( su_MUTEX_LOCK(&a_random_bltin->rndb_cntrl_mtx); )
+         SU( su_MUTEX_LOCK(&a_random_bltin->rndb_cntrl_mtx); )
          su_random_generate(&a_random_bltin->rndb_seed, bp,
             a_RANDOM_SEED_BYTES);
-         MT( su_MUTEX_UNLOCK(&a_random_bltin->rndb_cntrl_mtx); )
+         SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_cntrl_mtx); )
       }
 
       fill = (self->rm_flags & a_RANDOM_IS_SEEDED) ? a_RANDOM_SEED_BYTES : 0;
@@ -581,9 +580,9 @@ su_random_builtin_generate(void *buf, uz len, u32 estate){
    rv = su_STATE_NONE;
 
    if(len > 0){
-      MT( su_MUTEX_LOCK(&a_random_bltin->rndb_rand_mtx); )
+      SU( su_MUTEX_LOCK(&a_random_bltin->rndb_rand_mtx); )
       su_random_generate(&a_random_bltin->rndb_rand, buf, len);
-      MT( su_MUTEX_UNLOCK(&a_random_bltin->rndb_rand_mtx); )
+      SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_rand_mtx); )
    }
 
 jleave:
