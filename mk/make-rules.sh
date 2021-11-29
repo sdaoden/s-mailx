@@ -1,5 +1,5 @@
 #!/bin/sh -
-#@ make-rules.sh: create make rules for the given .cc? files.
+#@ make-rules.sh: create make rules for the given .c(xx)? files.
 #@ All given files must reside in a single directory.
 #@ Comments following '#include "file"' directives will replace the default
 #@ $(DIRNAME_INCDIR) prefix; use - to not add a dependency for that header.
@@ -77,12 +77,12 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
          sub(".c$", "", po_i)
          is_c = 1
          ++cono
-      }else if(po_i ~ /\.cc$/){
-         sub(".cc$", "", po_i)
+      }else if(po_i ~ /\.cxx$/){
+         sub(".cxx$", "", po_i)
          is_c = 0
          ++cxxono
       }else{
-         print "ERROR: not a C or C++ file: " bname
+         print "ERROR: not a C (.c) or C++ (.cxx) file: " bname
          exit(2)
       }
 

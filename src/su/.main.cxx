@@ -55,7 +55,8 @@ static void a_sort(void);
 static void a_time(void);
 static void a_utf(void);
 
-int main(void){ // {{{
+int
+main(void){ // {{{
    state::create(state::create_all,
       "SU@C++", (state::debug | log::debug), state::err_nopass);
 
