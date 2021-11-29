@@ -1,4 +1,4 @@
-#@ .makefile, solely for creating the C++ .main.cc test program
+#@ .makefile, solely for creating the C++ .main.cxx test program
 #@ With CC=tcc, AR=tcc ARFLAGS=-ar!
 
 su_USECASE_MX_DISABLED =
@@ -44,22 +44,22 @@ CSRC = atomic.c \
 	thread.c \
 		time-sleep.c time-spec.c time-utils.c \
 	utf.c
-CXXSRC = cxx-core.cc \
-	.main.cc
+CXXSRC = cxx-core.cxx \
+	.main.cxx
 
 ## 8< >8
 
-.SUFFIXES: .o .c .cc .y
-.cc.o:
+.SUFFIXES: .o .c .cxx .y
+.cxx.o:
 	$(CXX) -Dsu_USECASE_SU -I../../src -I../../include \
 		$(CXXFLAGS) -o $(@) -c $(<)
 .c.o:
 	$(CC) -Dsu_USECASE_SU -I../../src -I../../include \
 		$(CFLAGS) -o $(@) -c $(<)
-.cc .c .y: ;
+.cxx .c .y: ;
 
 COBJ = $(CSRC:.c=.o)
-CXXOBJ = $(CXXSRC:.cc=.o)
+CXXOBJ = $(CXXSRC:.cxx=.o)
 OBJ = $(COBJ) $(CXXOBJ)
 
 all: .main
