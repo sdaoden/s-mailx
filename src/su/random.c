@@ -81,7 +81,7 @@ extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
  * Type 1 sequences the seed buffer with the 256 possible 8-bit values, then
  * fetches 4 "good" random bytes and uses them as indices plus an initial
  * permutation iteration count */
-#define a_RANDOM_ENTRO_TYPE 2
+#define a_RANDOM_ENTRO_TYPE 1
 #if a_RANDOM_ENTRO_TYPE == 1
 # define a_RANDOM_SEED_BYTES 4
 # define a_RANDOM_SEED_PERMUT_ITERS_MIN 256
@@ -92,7 +92,7 @@ extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
 
 /* Default bytes after which the seed buffer is mixed.
  * The 256 bytes of seed constantly permutate as we go */
-#define a_RANDOM_SEED_MIX_AFTER 1024
+#define a_RANDOM_RESEED_AFTER 1024
 
 /* (We use value comparisons in here; _NONE _must_ be 0) */
 CTAV(su_RANDOM_TYPE_NONE == 0);
@@ -172,11 +172,14 @@ a_random_init(u32 estate){
          goto jerrm2;
 #endif
 
+      /* To reuse all the control flow we need to create the built-in seeder as
+       * a _SP and adjust it to _VSP thereafter */
       if((rv = a_random_create(&rndp->rndb_seed, su_RANDOM_TYPE_SP, estate)
             ) != su_STATE_NONE)
          goto jerr;
+      rndp->rndb_seed.rm_type = su_RANDOM_TYPE_VSP;
       rndp->rndb_seed.rm_flags |= a_RANDOM_SEEDER;
-      rndp->rndb_seed.rm_seed_mix_after = a_RANDOM_SEED_MIX_AFTER *
+      rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_AFTER *
             (a_RANDOM_ENTRO_TYPE == 1 ? 1 : 16);
 
       if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)
@@ -210,8 +213,8 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
    switch(S(uz,(self->rm_type = type))){
    case su_RANDOM_TYPE_VSP:{
       union {void *vp; su_random_generate_fun rgf;} u;
-      self->rm_seed_mix_after = a_RANDOM_SEED_MIX_AFTER;
 
+      self->rm_reseed_after = a_RANDOM_RESEED_AFTER;
       u.rgf = a_random_vsp_generate;
       if((self->rm_vp = u.vp) != NIL){
          self->rm_flags = a_RANDOM_HOOK;
@@ -360,16 +363,19 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
 
    /* Not the special builtin seeder object? */
    if(!(self->rm_flags & a_RANDOM_SEEDER)){
-      if(with_or_nil != NIL)
-         su_random_generate(with_or_nil, bp, a_RANDOM_SEED_BYTES);
-      else{
+      if(with_or_nil != NIL){
+         if(!(rv = su_random_generate(with_or_nil, bp, a_RANDOM_SEED_BYTES)))
+            goto jleave;
+         fill = (with_or_nil->rm_type > su_RANDOM_TYPE_P)
+               ? a_RANDOM_SEED_BYTES : 0;
+      }else{
          SU( su_MUTEX_LOCK(&a_random_bltin->rndb_cntrl_mtx); )
          su_random_generate(&a_random_bltin->rndb_seed, bp,
             a_RANDOM_SEED_BYTES);
          SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_cntrl_mtx); )
+         fill = a_RANDOM_SEED_BYTES;
+         rv = TRU1;
       }
-
-      fill = (self->rm_flags & a_RANDOM_IS_SEEDED) ? a_RANDOM_SEED_BYTES : 0;
    }else{
       /* Operating the special seeder is MT locked!  Get "good" random bytes */
       fill = 0;
@@ -388,6 +394,9 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
          fill = read(u.fd, bp, a_RANDOM_SEED_BYTES);
          close(u.fd);
       }
+#elif su_RANDOM_SEED == su_RANDOM_SEED_HOOK
+      fill = su_RANDOM_HOOK_FUN(&self->rm_vsp_cookie, bp, a_RANDOM_SEED_BYTES)
+            ? a_RANDOM_SEED_BYTES : 0;
 #endif
 
       /* An unscientific homebrew seed as a fallback and a default */
@@ -500,7 +509,7 @@ su_random_generate(struct su_random *self, void *buf, uz len){
       uz i, resl;
 
       /* For simplicity we reseed only once after a request is done */
-      if((reseed = ((i = self->rm_seed_mix_after) > 0))){
+      if((reseed = ((i = self->rm_reseed_after) > 0))){
          reseed = (i < self->rm_bytes || i - self->rm_bytes <= len);
          if(reseed)
             self->rm_bytes = 0;

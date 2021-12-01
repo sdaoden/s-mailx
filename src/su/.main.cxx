@@ -1338,7 +1338,7 @@ a_random(void){ // xxx too late, already initialized...
          a_ERR();
       if(r1.type() != random::type_p)
          a_ERR();
-      if(r1.seed_mix_after() != 0)
+      if(r1.reseed_after() != 0)
          a_ERR();
       if(!r1.seed())
          a_ERR();
@@ -1354,9 +1354,9 @@ a_random(void){ // xxx too late, already initialized...
          a_ERR();
       if(r2.type() != random::type_sp)
          a_ERR();
-      if(r2.seed_mix_after() != 0)
+      if(r2.reseed_after() != 0)
          a_ERR();
-      if(r2.set_seed_mix_after(1024).seed_mix_after() != 1024)
+      if(r2.set_reseed_after(1024).reseed_after() != 1024)
          a_ERR();
       if(!r2.seed())
          a_ERR();
@@ -1370,9 +1370,9 @@ a_random(void){ // xxx too late, already initialized...
          a_ERR();
       if(r3.type() != random::type_vsp)
          a_ERR();
-      if(r3.seed_mix_after() == 0)
+      if(r3.reseed_after() == 0)
          a_ERR();
-      if(r3.set_seed_mix_after(0).seed_mix_after() != 0)
+      if(r3.set_reseed_after(0).reseed_after() != 0)
          a_ERR();
       if(!r3.seed(r2))
          a_ERR();
@@ -1394,7 +1394,7 @@ a_random(void){ // xxx too late, already initialized...
             a_ERR();
          if(r1.type() != random::type_vsp)
             a_ERR();
-         if(r1.seed_mix_after() == 0)
+         if(r1.reseed_after() == 0)
             a_ERR();
          if(a_random_i != 0)
             a_ERR();
