@@ -287,7 +287,7 @@ jferr:
 
 jleave:
    NYD2_OU;
-   return (success ? n_EXIT_OK : n_EXIT_ERR);
+   return (success ? su_EX_OK : su_EX_ERR);
 }
 
 FL int

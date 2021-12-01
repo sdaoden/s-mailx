@@ -291,7 +291,7 @@ jmsg:
       su_path_rm(name);
    }
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 #endif /* mx_HAVE_DOTLOCK */
 

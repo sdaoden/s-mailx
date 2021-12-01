@@ -11655,13 +11655,14 @@ is extended to cover any empty mailbox, not only empty
 es: they will be removed when they are left in empty state otherwise.
 .
 .It
-Each command has an exit
+The exit
 .Va \&?
-and error
-.Va \&!
-status that overwrites that of the last command.
-In POSIX mode the program exit status will signal failure regardless
-unless all messages were successfully sent out to the
+(and error
+.Va \&! Ns )
+status of each command replaces that of the former, the last becomes the
+exit status of the program itself.
+In POSIX mode the program exit status will instead have bit 2 (value 4)
+set unless all sent messages were successfully sent out to the
 .Va mta ;
 also see
 .Va sendwait .

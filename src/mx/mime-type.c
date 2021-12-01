@@ -1649,7 +1649,7 @@ jiter:
 
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 int
@@ -1728,7 +1728,7 @@ j1by1:
    }
 
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 #include "su/code-ou.h"

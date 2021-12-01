@@ -550,7 +550,7 @@ mx__nyd_oncrash(int signo){
       n_raise(signo);
 
       for(;;)
-         _exit(n_EXIT_ERR);
+         _exit(su_EX_ERR);
    }
 
    su_nyd_set_disabled(FAL0);

@@ -176,15 +176,8 @@ CPROTO_IMAP,
    /* We need a _DEDUCE, as default, for normal URL object */
 };
 
-/* enum n_err_number from gen-config.h, which is in sync with
- * su_err_doc(), su_err_name() and su_err_by_name() */
-
-enum n_exit_status{
-   n_EXIT_OK = su_EX_OK,
-   n_EXIT_ERR = su_EX_ERR,
-   n_EXIT_USE = su_EX_USAGE,
-   n_EXIT_NOUSER = su_EX_NOUSER,
-   n_EXIT_IOERR = su_EX_IOERR,
+/* These MUST not mess with bit range of enum su_ex_status */
+enum n_exit_status_addons{
    n_EXIT_COLL_ABORT = 1<<1, /* Message collection was aborted */
    n_EXIT_SEND_ERROR = 1<<2 /* Unspecified send error occurred */
 };

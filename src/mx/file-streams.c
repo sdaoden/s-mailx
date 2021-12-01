@@ -261,7 +261,7 @@ a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd){
          cc.cc_cmd = mx_FS_FILETYPE_CAT_PROG;
       }
 
-      rv = (mx_child_run(&cc) && cc.cc_exit_status == 0);
+      rv = (mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK);
       break;
    }
 
@@ -335,7 +335,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
       break;
    }
 
-   rv = (mx_child_run(&cc) && cc.cc_exit_status == 0);
+   rv = (mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK);
 
    close(cc.cc_fds[mx_CHILD_FD_OUT]); /* XXX no error handling */
 jleave:
@@ -1006,7 +1006,7 @@ mx_fs_pipe_close(FILE *ptr, boole dowait){
    safe_signal(SIGPIPE, opipe);
 
    if(dowait)
-      rv = (mx_child_wait(&cc) && cc.cc_exit_status == 0);
+      rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
    else{
       mx_child_forget(&cc);
       rv = TRU1;

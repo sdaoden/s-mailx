@@ -830,7 +830,7 @@ c_stouch(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -853,7 +853,7 @@ c_mboxit(void *vp){
 
 jleave:
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -862,7 +862,7 @@ c_preserve(void *vp){
    int rv, *msgvec, *ip;
    NYD_IN;
 
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
    if(n_pstate & n_PS_EDIT){
       fprintf(n_stdout, _("preserve: cannot be used in a system mailbox\n"));
       goto jleave;
@@ -877,7 +877,7 @@ c_preserve(void *vp){
       setdot(mp, TRU1);
    }
 
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 jleave:
    NYD_OU;
    return rv;
@@ -903,7 +903,7 @@ c_unread(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -921,7 +921,7 @@ c_seen(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -940,7 +940,7 @@ c_flag(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -961,7 +961,7 @@ c_unflag(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -980,7 +980,7 @@ c_answered(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -1001,7 +1001,7 @@ c_unanswered(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -1020,7 +1020,7 @@ c_draft(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -1041,7 +1041,7 @@ c_undraft(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 #include "su/code-ou.h"

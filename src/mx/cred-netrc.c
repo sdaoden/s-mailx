@@ -519,7 +519,7 @@ jerr:
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 
 jlookup:{
    struct mx_netrc_entry nrce;

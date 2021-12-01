@@ -262,7 +262,7 @@ mx_child_run(struct mx_child_ctx *ccp){
       if(!mx_child_wait(ccp))
          e = ccp->cc_error;
 
-      if((e != su_ERR_NONE || ccp->cc_exit_status < 0) &&
+      if((e != su_ERR_NONE || ccp->cc_exit_status < su_EX_OK) &&
             (ok_blook(bsdcompat) || ok_blook(bsdmsgs)))
          n_err(_("Fatal error in process\n"));
    }
@@ -344,7 +344,7 @@ jchild:{
       perror(argv[0]);
    }
    for(;;)
-      _exit(n_EXIT_ERR);
+      _exit(su_EX_ERR);
    }
 }
 
@@ -648,7 +648,7 @@ mx_child_wait(struct mx_child_ctx *ccp){
 
    if(ok){
       ccp->cc_exit_status = WEXITSTATUS(ws);
-      if(!WIFEXITED(ws) && ccp->cc_exit_status > 0)
+      if(!WIFEXITED(ws) && ccp->cc_exit_status > su_EX_OK)
          ccp->cc_exit_status = -ccp->cc_exit_status;
    }else{
       cep = NIL;

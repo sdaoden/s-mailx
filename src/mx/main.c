@@ -340,20 +340,20 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 
    i = setfile(mcp->mc_folder, i);
    if(i < 0){
-      n_exit_status = n_EXIT_ERR; /* error already reported */
+      n_exit_status = su_EX_ERR; /* error already reported */
       goto jquit;
    }
    temporary_folder_hook_check(FAL0);
    if(n_poption & n_PO_QUICKRUN_MASK){
       n_exit_status = i;
-      if(i == n_EXIT_OK && (!(n_poption & n_PO_EXISTONLY) ||
+      if(i == su_EX_OK && (!(n_poption & n_PO_EXISTONLY) ||
             (n_poption & n_PO_HEADERLIST)))
          print_header_summary(mcp->mc_L);
       goto jquit;
    }
 
    if(i > 0 && !ok_blook(emptystart)){
-      n_exit_status = n_EXIT_ERR;
+      n_exit_status = su_EX_ERR;
       goto jleave;
    }
 
@@ -372,7 +372,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
    /* Enter the command loop */
    /* "load()" more commands given on command line */
    if(mcp->mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mcp->mc_Y, mcp->mc_Y_cnt))
-      n_exit_status = n_EXIT_ERR;
+      n_exit_status = su_EX_ERR;
    else
       mx_go_main_loop(TRU1);
 
@@ -487,7 +487,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
    a[1] = NIL;
    n_poption |= n_PO_S_FLAG_TEMPORARY;
    n_pstate |= n_PS_ROBOT;
-   b = (c_set(a) == n_EXIT_OK);
+   b = (c_set(a) == su_EX_OK);
    n_pstate &= ~n_PS_ROBOT;
    n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
@@ -955,7 +955,7 @@ jeMmq:
 
          fputs(n_string_cp_const(mx_version(
             n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
-         n_exit_status = n_EXIT_OK;
+         n_exit_status = su_EX_OK;
          }goto jleave;
       case 'v':
          /* Be verbose */
@@ -1023,7 +1023,7 @@ jusage:
                n_err("%s\n", V_(emsg));
          }
          a_main_usage(n_stderr);
-         n_exit_status = n_EXIT_USE;
+         n_exit_status = su_EX_USAGE;
          goto jleave;
       }
    }
@@ -1192,7 +1192,7 @@ jgetopt_done:
 je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
-            n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
+            n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
             goto jleave;
          }
          do{
@@ -1228,7 +1228,7 @@ je_expandargv:
       a[1] = NIL;
       if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) ||
             ok_blook(errexit) || ok_blook(posix))){
-         n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
+         n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
          goto jleave;
       }
    }
@@ -1248,7 +1248,7 @@ je_expandargv:
          if(!mx_mime_type_is_known(n_poption_arg_Mm)){
             n_err(_("Could not find `mimetype' for -M argument: %s\n"),
                n_poption_arg_Mm);
-            n_exit_status = n_EXIT_ERR;
+            n_exit_status = su_EX_ERR;
             goto jleave_full;
          }
       }else if(/* XXX only to satisfy Coverity! */mc.mc_quote != NIL &&
@@ -1256,7 +1256,7 @@ je_expandargv:
                ) == NIL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(mc.mc_quote, FAL0));
-         n_exit_status = n_EXIT_ERR;
+         n_exit_status = su_EX_ERR;
          goto jleave_full;
       }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
          n_poption_arg_Mm = NULL;
@@ -1278,14 +1278,14 @@ je_expandargv:
          mc.mc_attach = mx_attachments_append(mc.mc_attach,
                mc.mc_a_head->maa_file, &aerr, NIL);
          if(aerr != mx_ATTACHMENTS_ERR_NONE){
-            n_exit_status = n_EXIT_ERR;
+            n_exit_status = su_EX_ERR;
             goto jleave_full;
          }
       }
 
       /* "load()" more commands given on command line */
       if(mc.mc_Y_cnt > 0 && !mx_go_load_lines(TRU1, mc.mc_Y, mc.mc_Y_cnt))
-         n_exit_status = n_EXIT_ERR;
+         n_exit_status = su_EX_ERR;
       else
          n_mail((((n_psonce & n_PSO_INTERACTIVE
                   ) ? n_MAILSEND_HEADERS_PRINT : 0) |
@@ -1319,15 +1319,15 @@ jleave_full:/* C99 */{
    }
 
 jleave:
-   if(n_exit_status == n_EXIT_OK && (n_psonce & n_PSO_SEND_ERROR) &&
+   if(n_exit_status == su_EX_OK && (n_psonce & n_PSO_SEND_ERROR) &&
          ok_blook(posix))
       n_exit_status = n_EXIT_SEND_ERROR;
 
    if(!mx_fs_flush(NIL)){
       n_err(_("Flushing file output buffers failed: %s\n"),
          su_err_doc(su_err_no()));
-      if(n_exit_status == n_EXIT_OK)
-         n_exit_status = n_EXIT_IOERR;
+      if(n_exit_status == su_EX_OK)
+         n_exit_status = su_EX_IOERR;
    }
 
 #ifdef su_HAVE_DEBUG

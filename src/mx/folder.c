@@ -468,7 +468,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          if(!(f & a_CREATE)){
             if(putc('\n', mb.mb_otf) == EOF){
                n_perr(_("/tmp"), su_err_no_by_errno());
-               exit(n_EXIT_ERR); /* TODO no! */
+               exit(su_EX_ERR); /* TODO no! */
             }
             ++offset;
             ++self.m_size;
@@ -500,7 +500,7 @@ jputln:
 
       if(ferror(mb.mb_otf)){
          n_perr(_("/tmp"), su_err_no_by_errno());
-         exit(n_EXIT_ERR); /* TODO no! */
+         exit(su_EX_ERR); /* TODO no! */
       }
       offset += cnt;
       self.m_size += cnt;
@@ -1133,7 +1133,7 @@ initbox(char const *name)
    }
    mx_fs_tmp_release(fstcp);
    if(err)
-      exit(n_EXIT_ERR);
+      exit(su_EX_ERR); /* TODO no! */
 
    mx_message_reset();
    mb.mb_active = MB_NONE;

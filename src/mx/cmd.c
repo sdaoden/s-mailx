@@ -309,7 +309,7 @@ a_cmd_c_list(void *vp){
       clearerr(fp);
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 static int

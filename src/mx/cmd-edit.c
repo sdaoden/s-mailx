@@ -240,7 +240,7 @@ jetempo:
       cc.cc_args[0] = fstcp->fstc_filename;
    }
 
-   if(!mx_child_run(&cc) || cc.cc_exit_status != 0)
+   if(!mx_child_run(&cc) || cc.cc_exit_status != su_EX_OK)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary

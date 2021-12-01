@@ -758,7 +758,8 @@ jtail:
       }
 
       state &= ~a_RUNNING;
-      if(mx_child_wait(&cc) && (scfp->cf_exit_status = cc.cc_exit_status) >= 0)
+      if(mx_child_wait(&cc) &&
+            (scfp->cf_exit_status = cc.cc_exit_status) >= su_EX_OK)
          state |= a_GOODRUN;
    }
 
@@ -852,7 +853,7 @@ c_spam_clear(void *vp){
       message[S(uz,*ip) - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -866,7 +867,7 @@ c_spam_set(void *vp){
    }
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -874,7 +875,7 @@ c_spam_forget(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_spam_action(a_SPAM_FORGET, S(int*,vp)) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = a_spam_action(a_SPAM_FORGET, S(int*,vp)) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -885,7 +886,7 @@ c_spam_ham(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_spam_action(a_SPAM_HAM, S(int*,vp)) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = a_spam_action(a_SPAM_HAM, S(int*,vp)) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -896,7 +897,7 @@ c_spam_rate(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_spam_action(a_SPAM_RATE, S(int*,vp)) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = a_spam_action(a_SPAM_RATE, S(int*,vp)) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -907,7 +908,7 @@ c_spam_spam(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_spam_action(a_SPAM_SPAM, S(int*,vp)) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = a_spam_action(a_SPAM_SPAM, S(int*,vp)) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
