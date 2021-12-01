@@ -1261,7 +1261,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
 jbail:
       n_err(_("Failed to save message in %s - message not sent\n"),
          n_shexp_quote_cp(ccp, FAL0));
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
       savedeadletter(fp, 1);
       rv = FAL0;
    }
@@ -1588,7 +1588,7 @@ jstop:
    else if(dowait){
       /* TODO Now with SPAWN_CONTROL we could actually (1) handle $DEAD only
        * TODO in the parent, and (2) report the REAL child error status!! */
-      rv = (mx_child_wait(&cc) && cc.cc_exit_status == 0);
+      rv = (mx_child_wait(&cc) && cc.cc_exit_status == su_EX_OK);
       if(!rv)
          goto jstop;
    }else{
@@ -1606,7 +1606,7 @@ jkid:
 #ifdef mx_HAVE_SMTP
    if(rv == TRU1){
       if(mx_smtp_mta(scp))
-         _exit(n_EXIT_OK);
+         _exit(su_EX_OK);
       savedeadletter(scp->sc_input, TRU1);
       if(!dowait)
          n_err(_("... message not sent\n"));
@@ -1617,7 +1617,7 @@ jkid:
       mx_child_in_child_exec_failed(&cc, su_err_no());
    }
    for(;;)
-      _exit(n_EXIT_ERR);
+      _exit(su_EX_ERR);
 }
 
 static char const **

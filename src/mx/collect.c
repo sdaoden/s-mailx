@@ -865,7 +865,7 @@ jperr:
       cc.cc_fds[mx_CHILD_FD_IN] = fileno(_coll_fp);
       cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf);
       mx_child_ctx_set_args_for_sh(&cc, NIL, cmd);
-      if(!mx_child_run(&cc) || cc.cc_exit_status != 0){
+      if(!mx_child_run(&cc) || cc.cc_exit_status != su_EX_OK){
          mx_fs_close(nf);
          rv = su_ERR_CHILD;
          goto jout;
@@ -992,10 +992,9 @@ collhup(int s)
    NYD; /* Signal handler */
    UNUSED(s);
 
+   /* That makes the difference to our standard HUP handler */
    savedeadletter(_coll_fp, TRU1);
-   /* Let's pretend nobody else wants to clean up, a true statement at
-    * this time */
-   exit(n_EXIT_ERR);
+   exit(su_EX_ERR);
 }
 
 static boole
@@ -1877,7 +1876,7 @@ jIi_putesc:
          flags |= a_COAP_NOSIGTERM;
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
-         exit(n_EXIT_ERR);
+         exit(su_EX_ERR);
          /*NOTREACHED*/
       /* case 'R': <> 'd' */
       /* case 'r': <> 'd' */

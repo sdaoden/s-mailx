@@ -642,7 +642,7 @@ c_headerpick(void *vp){
    if(*argv == NIL){
       struct a_ignore_bltin_map const *ibmp;
 
-      rv = n_EXIT_OK;
+      rv = su_EX_OK;
 
       for(ibmp = &a_ignore_bltin_map[0];
             ibmp <= &a_ignore_bltin_map[mx__IGNORE_MAX]; ++ibmp){
@@ -671,7 +671,7 @@ c_headerpick(void *vp){
             su_cs_starts_with_case("join", *argv)){
 jecreatname:
          n_err(_("headerpick: create: invalid context name: %s\n"), *argv);
-         rv = n_EXIT_ERR;
+         rv = su_EX_ERR;
          goto jleave;
       }else{
          struct a_ignore_bltin_map const *ibmp;
@@ -685,12 +685,12 @@ jecreatname:
       for(xself = a_ignore_list; xself != NIL; xself = xself->i_next)
          if(!su_cs_cmp_case(xself->i_name, *argv)){
             n_err(_("headerpick: create: context exists: %s\n"), *argv);
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             goto jleave;
          }
 
       self = mx_ignore_new(*argv, FAL0);
-      rv = n_EXIT_OK;
+      rv = su_EX_OK;
       goto jleave;
    }
 
@@ -713,7 +713,7 @@ jecreatname:
    if((self = mx_ignore_by_name(*argv)) == NIL){
 jectx:
       n_err(_("headerpick: invalid context: %s\n"), *argv);
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
       goto jleave;
    }
    ++argv;
@@ -723,10 +723,10 @@ jectx:
       if(rv > 0){
          if((self = a_ignore_resolve_self(self, FAL0)) != NIL)
             mx_ignore_del(self);
-         rv = n_EXIT_OK;
+         rv = su_EX_OK;
       }else
          rv = a_ignore_assijoin(xself, self, (rv != -1))
-               ? n_EXIT_OK : n_EXIT_ERR;
+               ? su_EX_OK : su_EX_ERR;
       goto jleave;
    }
 
@@ -760,7 +760,7 @@ jleave:
    return rv;
 jesyn:
    mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("headerpick"), NIL);
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
    goto jleave;
 }
 
