@@ -243,11 +243,6 @@ FL int c_vpospar(void *v);
  * appends to s the UA name, version etc., and a \n LF */
 FL struct n_string *mx_version(struct n_string *s);
 
-/* Any non-TLS su_random hook */
-#if su_RANDOM_SEED == su_RANDOM_SEED_HOOK && mx_RANDOM_SEED_HOOK != 3
-FL boole mx_random_hook(void **cookie, void *buf, uz len);
-#endif
-
 /* Compute *screen* size */
 FL uz n_screensize(void);
 

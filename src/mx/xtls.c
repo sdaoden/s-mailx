@@ -1898,13 +1898,14 @@ jleave:
 FL boole
 mx_random_hook(void **cookie, void *buf, uz len){
    NYD2_IN;
+   ASSERT(len > 0);
    ASSERT(cookie != NIL && *cookie == NIL);
    UNUSED(cookie);
 
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
 
-   while(len > 0){
+   for(;;){
       s32 i;
 
       switch(RAND_bytes(buf, i = MIN(S32_MAX, len))){
@@ -1931,7 +1932,8 @@ mx_random_hook(void **cookie, void *buf, uz len){
          break;
       }
 
-      len -= i;
+      if((len -= i) == 0)
+         break;
       buf = &S(u8*,buf)[i];
    }
 
