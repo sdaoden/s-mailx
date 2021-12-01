@@ -2240,7 +2240,7 @@ c_verify(void *vp)
    srelax_rele();
 
    if ((rv = ec) != 0)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 jleave:
    if (store != NULL)
       X509_STORE_free(store);

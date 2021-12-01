@@ -4635,7 +4635,7 @@ c_history(void *vp){
 
 jleave:
    NYD_OU;
-   return (x > FAL0 ? n_EXIT_OK : n_EXIT_ERR);
+   return (x > FAL0 ? su_EX_OK : su_EX_ERR);
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -4723,7 +4723,7 @@ c_bind(void *vp){
 
 jleave:
    NYD_OU;
-   return (vp != NIL) ? n_EXIT_OK : n_EXIT_ERR;
+   return (vp != NIL) ? su_EX_OK : su_EX_ERR;
 }
 
 int
@@ -4780,7 +4780,7 @@ jredo:
 
 jleave:
    NYD_OU;
-   return (vp != NIL) ? n_EXIT_OK : n_EXIT_ERR;
+   return (vp != NIL) ? su_EX_OK : su_EX_ERR;
 }
 # endif /* mx_HAVE_KEY_BINDINGS */
 

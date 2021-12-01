@@ -322,14 +322,14 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
 
    /* Take care not to overwrite existing exit status */
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
-      n_exit_status = n_EXIT_OK;
+      n_exit_status = su_EX_OK;
 
    flags = ((mx_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    eval_cnt = 0;
    rv = 1;
    nerrn = su_ERR_NONE;
-   nexn = n_EXIT_OK;
+   nexn = su_EX_OK;
    cdp = NIL;
    vput = NIL;
    alias_name = NIL;
@@ -955,7 +955,7 @@ jleave:
    if(flags & a_IGNERR){
       /* Take care not to overwrite existing exit status */
       if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
-         n_exit_status = n_EXIT_OK;
+         n_exit_status = su_EX_OK;
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
    }else if(rv != 0){
       if(ok_blook(errexit))
@@ -969,8 +969,8 @@ jleave:
          rv = 0;
 
       if(rv != 0){
-         if(n_exit_status == n_EXIT_OK)
-            n_exit_status = n_EXIT_ERR;
+         if(n_exit_status == su_EX_OK)
+            n_exit_status = su_EX_ERR;
          if((n_poption & n_PO_D_V) &&
                !(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)))
             n_alert(_("Non-interactive, bailing out due to errors "
@@ -1005,7 +1005,7 @@ a_go_hangup(int s){
    NYD; /* Signal handler */
    UNUSED(s);
    /* nothing to do? */
-   exit(n_EXIT_ERR);
+   exit(su_EX_ERR);
 }
 
 #ifdef mx_HAVE_IMAP
@@ -1525,7 +1525,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
                      mx_sigs_all_holdx();
 
                      if(n < 0) {
-                        n_exit_status |= n_EXIT_ERR;
+                        n_exit_status |= su_EX_ERR;
                         rv = FAL0;
                         break;
                      }
@@ -2485,7 +2485,7 @@ c_source(void *vp){
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = (a_go_file(*S(char**,vp), FAL0) == TRU1) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -2496,7 +2496,7 @@ c_source_if(void *vp){ /* XXX obsolete?, support file tests in `if' etc.! */
    int rv;
    NYD_IN;
 
-   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? n_EXIT_OK : n_EXIT_ERR;
+   rv = (a_go_file(*S(char**,vp), TRU1) == TRU1) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return rv;
@@ -2579,7 +2579,7 @@ c_exit(void *vp){
    if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NIL);
@@ -2590,7 +2590,7 @@ c_exit(void *vp){
    n_psonce |= n_PSO_XIT;
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -2601,7 +2601,7 @@ c_quit(void *vp){
    if(*(argv = vp) != NIL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NIL) &
             (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED)
-      n_exit_status |= n_EXIT_ERR;
+      n_exit_status |= su_EX_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NIL);
@@ -2612,7 +2612,7 @@ c_quit(void *vp){
    n_psonce |= n_PSO_QUIT;
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 int
@@ -2819,7 +2819,7 @@ jfound:
 
 jleave:
    NYD_OU;
-   return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+   return (f & a_ERR) ? su_EX_ERR : su_EX_OK;
 
 jecreate:
    emsg = N_("readctl: failed to open file: %s: %s\n");

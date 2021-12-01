@@ -429,7 +429,7 @@ jerr:
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 
 jclear:
    if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){

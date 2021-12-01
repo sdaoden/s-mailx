@@ -3056,7 +3056,7 @@ c_localopts(void *vp){
    n_OBSOLETE("`localopts': please use \"local [environ] set\" for variables, "
       "and \"local call\" etc. for macros");
 
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
 
    if((argv = vp)[1] == NIL || su_cs_starts_with_case("scope", (++argv)[-1]))
       alf = alm = a_AMV_LF_SCOPE;
@@ -3083,7 +3083,7 @@ jesynopsis:
    if(rv > FAL0)
       a_amv_lopts->as_loflags |= alf;
 
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 jleave:
    NYD_OU;
    return rv;
@@ -3143,7 +3143,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    mx_go_input_force_eof();
 
    n_pstate_err_no = su_ERR_NONE;
-   rv = n_EXIT_OK;
+   rv = su_EX_OK;
 
    if((argv = vp)[0] != NIL){
       s32 i;
@@ -3156,7 +3156,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
          n_err(_("return: return value argument is invalid: %s\n"),
             argv[0]);
          n_pstate_err_no = su_ERR_INVAL;
-         rv = n_EXIT_ERR;
+         rv = su_EX_ERR;
       }
 
       if(argv[1] != NIL){
@@ -3168,7 +3168,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
             n_err(_("return: error number argument is invalid: %s\n"),
                argv[1]);
             n_pstate_err_no = su_ERR_INVAL;
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
          }
       }
    }
@@ -3699,11 +3699,11 @@ c_set(void *vp){
 
    if(*(ap = vp) == NIL){
       a_amv_var_show_all();
-      err = n_EXIT_OK;
+      err = su_EX_OK;
    }else
       err = a_amv_var_c_set(ap, ((n_pstate & n_PS_ARGMOD_LOCAL)
                ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE)
-            ) ? n_EXIT_OK : n_EXIT_ERR;
+            ) ? su_EX_OK : su_EX_ERR;
 
    NYD_OU;
    return err;
@@ -3720,7 +3720,7 @@ c_unset(void *vp){
    avscf = (n_pstate & n_PS_ARGMOD_LOCAL) ? a_AMV_VSETCLR_LOCAL
          : a_AMV_VSETCLR_NONE;
 
-   for(err = n_EXIT_OK, ap = vp; *ap != NIL; ++ap){
+   for(err = su_EX_OK, ap = vp; *ap != NIL; ++ap){
       if(a_amv_var_check_name(*ap, FAL0)){
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
@@ -3728,7 +3728,7 @@ c_unset(void *vp){
             continue;
       }
 
-      err = n_EXIT_ERR;
+      err = su_EX_ERR;
    }
 
    NYD_OU;
@@ -3773,7 +3773,7 @@ c_varshow(void *vp){
       clearerr(fp);
 
    NYD_OU;
-   return n_EXIT_OK;
+   return su_EX_OK;
 }
 
 FL int
@@ -3799,18 +3799,18 @@ c_environ(void *vp){
       if(*++ap == NIL || ap[1] != NIL) /* XXX arg-parser, subcommand.. */
          goto jeuse;
 
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
       if((ev = getenv(*ap)) != NIL){
          if(vp == NIL){
             if(fprintf(n_stdout, "%s\n", ev) > 0)
-               rv = n_EXIT_OK;
+               rv = su_EX_OK;
             else
                n_pstate_err_no = su_err_no_by_errno();
          }else if(!n_var_vset(vp, R(up,ev),
                ((avscf & a_AMV_VSETCLR_LOCAL) != 0)))
             n_pstate_err_no = su_ERR_NOTSUP;
          else
-            rv = n_EXIT_OK;
+            rv = su_EX_OK;
       }else
          n_pstate_err_no = su_ERR_NOENT;
 
@@ -3824,9 +3824,9 @@ c_environ(void *vp){
 
    if((islnk = su_cs_starts_with_case("link", *ap)) ||
          su_cs_starts_with_case("unlink", *ap)){
-      for(rv = n_EXIT_OK; *++ap != NIL;){
+      for(rv = su_EX_OK; *++ap != NIL;){
          if(!a_amv_var_check_name(*ap, TRU1)){
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             continue;
          }
 
@@ -3870,41 +3870,41 @@ jlopts_check:
             if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) &&
                   (n_poption & n_PO_D_V))
                n_err(_("environ: unlink: no link established: %s\n"), *ap);
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
          }else{
             char const *evp;
 
             if((evp = getenv(*ap)) != NIL){
                if(!a_amv_var_set(&avc, evp, avscf))
-                  rv = n_EXIT_ERR;
+                  rv = su_EX_ERR;
             }else{
                n_err(_("environ: link: cannot link to non-existent: %s\n"),
                   *ap);
-               rv = n_EXIT_ERR;
+               rv = su_EX_ERR;
             }
          }
       }
    }else if(su_cs_starts_with_case("set", *ap)){
-      rv = a_amv_var_c_set(++ap, avscf) ? n_EXIT_OK : n_EXIT_ERR;
+      rv = a_amv_var_c_set(++ap, avscf) ? su_EX_OK : su_EX_ERR;
    }else if(su_cs_starts_with_case("unset", *ap)){
-      for(rv = n_EXIT_OK; *++ap != NIL;){
+      for(rv = su_EX_OK; *++ap != NIL;){
          if(!a_amv_var_check_name(*ap, TRU1)){
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
             continue;
          }
 
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
          if(!a_amv_var_clear(&avc, avscf))
-            rv = n_EXIT_ERR;
+            rv = su_EX_ERR;
       }
    }else{
 jeuse:
       mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("environ"), NIL);
-      rv = n_EXIT_ERR;
+      rv = su_EX_ERR;
    }
 
-   if(rv != n_EXIT_OK)
+   if(rv != su_EX_OK)
       n_pstate_err_no = su_ERR_INVAL;
 
 jleave:
@@ -4053,7 +4053,7 @@ jeover:
 
 jleave:
    NYD_OU;
-   return (f & a_ERR) ? n_EXIT_ERR : n_EXIT_OK;
+   return (f & a_ERR) ? su_EX_ERR : su_EX_OK;
 }
 
 #undef a_AMV_VLOOK_LOG_OBSOLETE

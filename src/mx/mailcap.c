@@ -1065,7 +1065,7 @@ jerr:
    vp = NIL;
 jleave:
    NYD_OU;
-   return (vp == NIL ? n_EXIT_ERR : n_EXIT_OK);
+   return (vp == NIL ? su_EX_ERR : su_EX_OK);
 
 jlist:
    if(a_mailcap_dp == NIL)
@@ -1152,7 +1152,7 @@ jagain:
             cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
             cc.cc_fds[0] = cc.cc_fds[1] = mx_CHILD_FD_NULL;
             mx_child_ctx_set_args_for_sh(&cc, NIL, cmdp);
-            if(mx_child_run(&cc) && cc.cc_exit_status == n_EXIT_OK)
+            if(mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK)
                f |= a_MAILCAP_F_TEST_ONCE_SUCCESS;
 
             if(f & a_MAILCAP_F_TEST_ONCE){

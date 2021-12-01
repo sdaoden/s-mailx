@@ -1433,7 +1433,9 @@ enum su_err_number{
 
 /*! \SU exit status code constants.
  * They correspond in name, value and meaning the Berkely \c{sysexits.h}
- * constants that are unchanged since the 1980s. */
+ * constants that are unchanged since the 1980s.
+ * After \c{su_EX_ERR} there is a value hole that ends with the first Berkeley
+ * constant \c{su_EX_USAGE} (value 64), the last is \c{su_EX_CONFIG} (78). */
 enum su_ex_status{
    su_EX_OK = 0, /*!< Successful termination (this is 0). */
    su_EX_SUCCESS = su_EX_OK, /*!< Alias for \r{su_EX_OK}. */
@@ -1454,10 +1456,6 @@ enum su_ex_status{
    su_EX_PROTOCOL = 76, /*!< Remote error in protocol. */
    su_EX_NOPERM = 77, /*!< Permission denied. */
    su_EX_CONFIG = 78 /*!< Configuration error. */
-};
-enum{
-   su__EX_BASE = su_EX_USAGE,
-   su__EX_MAX = su_EX_CONFIG
 };
 
 #if DVLOR(1, 0) || defined DOXYGEN
