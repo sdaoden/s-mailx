@@ -289,7 +289,7 @@ jerr:
    /* if(s != NIL) n_string_gut(s); */
 
    NYD_OU;
-   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 }
 
 FL int
@@ -378,7 +378,7 @@ c_rename(void *vp){
 
 jleave:
    NYD_OU;
-   return (emsg == NIL ? n_EXIT_OK : n_EXIT_ERR);
+   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 
 
 jerr:
@@ -403,7 +403,7 @@ c_folders(void *v){ /* TODO fexpand*/
    int rv;
    NYD_IN;
 
-   rv = n_EXIT_ERR;
+   rv = su_EX_ERR;
 
    if(*(argv = v) != NIL){
       if((cp = fexpand(*argv, fexp)) == NIL)
@@ -423,8 +423,8 @@ c_folders(void *v){ /* TODO fexpand*/
       cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
       cc.cc_cmd = ok_vlook(LISTER);
       cc.cc_args[0] = cp;
-      if(mx_child_run(&cc) && cc.cc_exit_status == 0)
-         rv = n_EXIT_OK;
+      if(mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK)
+         rv = su_EX_OK;
    }
 
 jleave:
