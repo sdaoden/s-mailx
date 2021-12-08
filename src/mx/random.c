@@ -38,7 +38,23 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-static struct su_random a_random; /* xxx dbg onexit dtor */
+static struct su_random a_random;
+
+DVL( static void a_randomx__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+
+#if DVLOR(1, 0)
+static void
+a_randomx__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_random_gut(&a_random);
+
+   su_mem_set(&a_random, 0, sizeof a_random);
+
+   NYD2_OU;
+}
+#endif
 
 char *
 mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil){
@@ -54,6 +70,8 @@ mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil){
       /* (su_state_create() ok..) */
       (void)su_random_create(&a_random, su_RANDOM_TYPE_P, su_STATE_ERR_NOPASS);
       (void)su_random_seed(&a_random, NIL);
+      DVL( su_state_on_gut_install(&a_randomx__on_gut, FAL0,
+         su_STATE_ERR_NOPASS); )
    }
 
    /* We use our base64 encoder with _NOPAD set, so ensure the encoded result

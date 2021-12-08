@@ -341,6 +341,11 @@
 #define SZ_MAX su_SZ_MAX
 #define UZ_BITS su_UZ_BITS
 
+/* state_gut */
+#if DVLOR(1, 0) || defined su_HAVE_STATE_GUT_FORK
+# define su__STATE_ON_GUT_FUN
+#endif
+
 /* MEMORY */
 
 #define su_ALLOCATE su_MEM_ALLOCATE
