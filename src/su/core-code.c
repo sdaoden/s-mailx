@@ -1,4 +1,5 @@
 /*@ Implementation of code.h: (unavoidable) basics.
+ *@ And data instantiations from internal.h.
  *@ TODO Log: domain should be configurable; we need log domain objects!
  *@ TODO Assert: the C++ lib has per-thread assertion states, s_nolog to
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
@@ -41,6 +42,8 @@
 # include <su/spinlock.h>
 #endif
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 /*#include "su/code.h"*/
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -70,7 +73,7 @@ static struct su_mutex a_core_glck_gi9r;
 static struct su_mutex a_core_glck_log;
 #endif
 
-DVL( static struct su_nyd_control a_core_thread_main_nyd; )
+DVL( static struct su__nyd_control a_core_thread_main_nyd; )
 
 union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
 union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
@@ -79,14 +82,15 @@ char const su_reproducible_build[] = "reproducible_build";
 u16 const su_bom = su_BOM;
 
 uz su__state;
+char const *su_program;
 
-/* For atomic.c fallback */
+/* internal.h */
 #if defined su_USECASE_SU && !su_ATOMIC_IS_REAL
 struct su_mutex su__atomic_cas_mtx;
 struct su_mutex su__atomic_xchg_mtx;
 #endif
-
-char const *su_program;
+struct su__state_on_gut *su__state_on_gut;
+struct su__state_on_gut *su__state_on_gut_final;
 
 /* TODO Eventually all the I/O is SU based, then this will vanish!
  * TODO We need some _USECASE_ hook to store readily prepared lines then.
@@ -98,7 +102,7 @@ SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
 /* */
 #if DVLOR(1, 0)
 static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
-      uz blen), up cookie, struct su_nyd_info const *nip);
+      uz blen), up cookie, struct su__nyd_info const *nip);
 #endif
 
 SINLINE void
@@ -155,7 +159,7 @@ jnomx:
 #if DVLOR(1, 0)
 static void
 a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
-      up cookie, struct su_nyd_info const *nip){
+      up cookie, struct su__nyd_info const *nip){
    char buf[80 +1], c;
    union {int i; uz z;} u;
    char const *sep, *cp;
@@ -244,7 +248,12 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
    /* */
    su__thread_main.t_.flags = su_THREAD_MAIN;
    su__thread_main.t_.name = "main";
-   DVL( su__thread_main.t_.nydctl = &a_core_thread_main_nyd; )
+   DVL(
+      su__thread_main.t_.nydctl = &a_core_thread_main_nyd;
+      a_core_thread_main_nyd.nc_level = 0;
+      a_core_thread_main_nyd.nc_curr = 0;
+      a_core_thread_main_nyd.nc_skip = FAL0;
+   )
 
 #ifdef su_USECASE_SU
    if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))
@@ -289,6 +298,54 @@ jerr:
    }
    goto jleave;
 #endif
+}
+
+void
+su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   struct su__state_on_gut *sogp;
+   NYD_IN;
+
+   if(!(flags & su_STATE_GUT_NO_IO)){
+   }
+
+   if(!(flags & su_STATE_GUT_NO_HANDLERS))
+      for(sogp = su__state_on_gut; sogp != NIL; sogp = sogp->sog_last)
+         (*sogp->sog_cb)(flags);
+
+   if(!(flags & su_STATE_GUT_NO_FINAL_HANDLERS)){
+      /* More care since in DVL() mode the last one cleans it all up! */
+      struct su__state_on_gut *tmp;
+
+      for(sogp = su__state_on_gut_final; (tmp = sogp) != NIL;){
+         sogp = tmp->sog_last;
+         (*tmp->sog_cb)(flags);
+      }
+   }
+
+   su__state_on_gut = su__state_on_gut_final = NIL;
+
+   if(!(flags & su_STATE_GUT_NO_LOCKS) &&
+         (flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+#ifdef su_USECASE_SU
+# if !su_ATOMIC_IS_REAL
+      su_mutex_gut(&su__atomic_xchg_mtx);
+      su_mutex_gut(&su__atomic_cas_mtx);
+# endif
+
+      su_mutex_gut(&a_core_glck_log);
+      su_mutex_gut(&a_core_glck_gi9r);
+      su_spinlock_gut(&a_core_glck_state);
+#endif
+
+      su_CC_MEM_ZERO(&su__thread_main, sizeof(su__thread_main));
+      DVL( su_CC_MEM_ZERO(&a_core_thread_main_nyd,
+         sizeof(a_core_thread_main_nyd)); )
+   }
+
+   su_program = NIL;
+   su__state = 0;
+
+   NYD_OU;
 }
 
 s32
@@ -397,14 +454,17 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
 #if DVLOR(1, 0)
 void
 su_nyd_set_disabled(boole disabled){
-   su_thread_self()->t_.nydctl->nc_skip = (disabled != FAL0);
+   struct su__nyd_control *ncp;
+
+   ncp = S(struct su__nyd_control*,su_thread_self()->t_.nydctl);
+   ncp->nc_skip = (disabled != FAL0);
 }
 
 void
 su_nyd_reset_level(u32 nlvl){
-   struct su_nyd_control *ncp;
+   struct su__nyd_control *ncp;
 
-   ncp = su_thread_self()->t_.nydctl;
+   ncp = S(struct su__nyd_control*,su_thread_self()->t_.nydctl);
 
    if(nlvl < ncp->nc_level)
       ncp->nc_level = nlvl;
@@ -413,7 +473,7 @@ su_nyd_reset_level(u32 nlvl){
 void
 su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun){
-   struct su_nyd_control *ncp;
+   struct su__nyd_control *ncp;
 
    LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
 
@@ -421,10 +481,10 @@ su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
    if(!(su__state & su__STATE_CREATED))
       goto jleave;
 
-   ncp = su_thread_self()->t_.nydctl;
+   ncp = S(struct su__nyd_control*,su_thread_self()->t_.nydctl);
 
    if(!ncp->nc_skip){
-      struct su_nyd_info *nip;
+      struct su__nyd_info *nip;
 
       if(ncp->nc_curr == NELEM(ncp->nc_infos))
          ncp->nc_curr = 0;
@@ -446,12 +506,12 @@ jleave:;
 void
 su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
    uz i;
-   struct su_nyd_info const *nip;
-   struct su_nyd_control *ncp;
+   struct su__nyd_info const *nip;
+   struct su__nyd_control *ncp;
 
    LCTA(su__NYD_ACTION_MASK <= 3, "Value too large for bitshift");
 
-   ncp = su_thread_self()->t_.nydctl;
+   ncp = S(struct su__nyd_control*,su_thread_self()->t_.nydctl);
    ncp->nc_skip = TRU1;
 
    if((nip = ncp->nc_infos)[NELEM(ncp->nc_infos) - 1].ni_file != NIL)

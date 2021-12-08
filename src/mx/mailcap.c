@@ -135,7 +135,7 @@ static struct a_mailcap_flags const a_mailcap_flags[] = {
    {a_MAILCAP_F_IGNORE, "x-mailx-ignore"}
 };
 
-static struct su_cs_dict *a_mailcap_dp, a_mailcap__d; /* XXX atexit _gut() */
+static struct su_cs_dict *a_mailcap_dp, a_mailcap__d;
 
 /* We stop parsing and _gut(FAL0) on hard errors like NOMEM, OVERFLOW and IO.
  * The __parse*() series return is-error, with TRUM1 being a fatal one */
@@ -154,6 +154,7 @@ static boole a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp,
       struct a_mailcap_hdl **ins_or_nil);
 
 static void a_mailcap_gut(boole gut_dp);
+DVL( static void a_mailcap__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct n_strlist *a_mailcap_dump(char const *cmdname, char const *key,
@@ -177,6 +178,8 @@ a_mailcap_create(void){
    a_mailcap_dp = su_cs_dict_set_treshold_shift(
             su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
          a_MAILCAP_CSD_TRESHOLD_SHIFT);
+   DVL( su_state_on_gut_install(&a_mailcap__on_gut, FAL0,
+      su_STATE_ERR_NOPASS); )
 
    if(*(cp_base = UNCONST(char*,ok_vlook(MAILCAPS))) == '\0')
       goto jleave;
@@ -824,6 +827,10 @@ a_mailcap_gut(boole gut_dp){
       }
 
       if(gut_dp){
+         DVL(
+            if(gut_dp != TRUM1)
+               su_state_on_gut_uninstall(&a_mailcap__on_gut, FAL0);
+         )
          su_cs_dict_gut(a_mailcap_dp);
          a_mailcap_dp = NIL;
       }else
@@ -832,6 +839,20 @@ a_mailcap_gut(boole gut_dp){
 
    NYD2_OU;
 }
+
+#if DVLOR(1, 0)
+static void
+a_mailcap__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      a_mailcap_gut(TRUM1);
+
+   a_mailcap_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 static struct n_strlist *
 a_mailcap_dump(char const *cmdname, char const *key, void const *dat){

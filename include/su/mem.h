@@ -1,4 +1,5 @@
 /*@ Memory: tools like copy, move etc., and a heap allocation interface.
+ *@ TODO optimization option like atomic.h
  *
  * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC

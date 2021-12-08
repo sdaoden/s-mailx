@@ -4493,15 +4493,19 @@ mx_tty_destroy(boole xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
-   /* Write the history file */
-# ifdef mx_HAVE_HISTORY
-   if(!xit_fastpath)
-      a_tty_hist_save();
+# if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
+   if(!xit_fastpath){
+      mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
+      a_tty_bind_tree_teardown();
+   }
 # endif
 
-# if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
-   if(!xit_fastpath)
-      mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
+   /* Write the history file */
+# ifdef mx_HAVE_HISTORY
+   if(!xit_fastpath){
+      a_tty_hist_save();
+      DVL( a_tty_hist_clear(); )
+   }
 # endif
 
 # ifdef mx_HAVE_DEBUG

@@ -218,6 +218,8 @@ static char const * const a_go_bltin_rc_lines[] = {
 
 static n_sighdl_t a_go_oldpipe;
 
+static struct su_cs_dict a_go__obsol, *a_go_obsol; /* XXX only if any! */
+
 /* Our current execution context, and the buffer backing the outermost level */
 static struct a_go_ctx *a_go_ctx;
 
@@ -231,6 +233,8 @@ static union{
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
 struct mx_go_data_ctx *mx_go_data;
+
+DVL( static void a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
@@ -261,6 +265,20 @@ static boole a_go_load(struct a_go_ctx *gcp);
 /* A simplified command loop for recursed state machines */
 static boole a_go_event_loop(struct a_go_ctx *gcp,
       BITENUM_IS(u32,mx_go_input_flags) gif);
+
+#if DVLOR(1, 0)
+static void
+a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(a_go_obsol);
+
+   a_go_obsol = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 static void
 a_go_update_pstate(void){
@@ -670,12 +688,13 @@ jeflags:
 
    if((cdp->cd_caflags & mx_CMD_ARG_O) && /* XXX Remove! -> within command! */
          !su_state_has(su_STATE_REPRODUCIBLE)){
-      static struct su_cs_dict a_go__obsol, *a_go_obsol;
-
-      if(UNLIKELY(a_go_obsol == NIL)) /* XXX atexit cleanup */
+      if(UNLIKELY(a_go_obsol == NIL)){
          a_go_obsol = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_go__obsol, (su_CS_DICT_POW2_SPACED |
                   su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+         DVL( su_state_on_gut_install(&a_go__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       if(UNLIKELY(!su_cs_dict_has_key(a_go_obsol, cdp->cd_name))){
          su_cs_dict_insert(a_go_obsol, cdp->cd_name, NIL);
@@ -1004,7 +1023,8 @@ static void
 a_go_hangup(int s){
    NYD; /* Signal handler */
    UNUSED(s);
-   /* nothing to do? */
+
+   su_state_gut(su_STATE_GUT_ACT_CARE);
    exit(su_EX_ERR);
 }
 

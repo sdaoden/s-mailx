@@ -122,7 +122,7 @@ union a_random_dat{
 CTAV(FIELD_SIZEOF(union a_random_dat,b8) == 256);
 CTAV(a_RANDOM_SEED_BYTES <= 256);
 
-static struct a_random_bltin *a_random_bltin; /* TODO DVLOR() cleanup */
+static struct a_random_bltin *a_random_bltin;
 
 /* _TYPE_VSP hook */
 static su_random_generate_fun a_random_vsp_generate
@@ -133,6 +133,9 @@ static su_random_generate_fun a_random_vsp_generate
 
 /* */
 static s32 a_random_init(u32 estate);
+#ifdef su__STATE_ON_GUT_FUN
+static void a_random__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+#endif
 
 /* (_init() needs ctor, but public ctor needs _init()) */
 static s32 a_random_create(struct su_random *self, enum su_random_type type,
@@ -167,6 +170,7 @@ a_random_init(u32 estate){
       if((rv = su_mutex_create(&rndp->rndb_cntrl_mtx, "SU random seed/cntrl",
             estate)) != su_STATE_NONE)
          goto jerrm1;
+
       if((rv = su_mutex_create(&rndp->rndb_rand_mtx, "SU builtin random",
             estate)) != su_STATE_NONE)
          goto jerrm2;
@@ -176,18 +180,27 @@ a_random_init(u32 estate){
        * a _SP and adjust it to _VSP thereafter */
       if((rv = a_random_create(&rndp->rndb_seed, su_RANDOM_TYPE_SP, estate)
             ) != su_STATE_NONE)
-         goto jerr;
+         goto jerr1;
       rndp->rndb_seed.rm_type = su_RANDOM_TYPE_VSP;
       rndp->rndb_seed.rm_flags |= a_RANDOM_SEEDER;
       rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_AFTER *
             (a_RANDOM_ENTRO_TYPE == 1 ? 1 : 16);
 
       if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)
+            ) != su_STATE_NONE)
+         goto jerr;
+
+      if((rv = su_STATE_NONE
+#ifdef su__STATE_ON_GUT_FUN
+               | su_state_on_gut_install(&a_random__on_gut, TRU1, estate)
+#endif
             ) == su_STATE_NONE)
          a_random_bltin = rndp;
       else{
-         su_random_gut(&rndp->rndb_seed);
+         su_random_gut(&rndp->rndb_rand);
 jerr:
+         su_random_gut(&rndp->rndb_seed);
+jerr1:
 #ifdef su_USECASE_SU
          su_mutex_gut(&rndp->rndb_rand_mtx);
 jerrm2:
@@ -204,6 +217,30 @@ jleave:
    NYD2_OU;
    return rv;
 }
+
+#ifdef su__STATE_ON_GUT_FUN
+static void
+a_random__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+# if DVLOR(1, 0)
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      su_random_gut(&a_random_bltin->rndb_rand);
+      su_random_gut(&a_random_bltin->rndb_seed);
+#  ifdef su_USECASE_SU
+      su_mutex_gut(&a_random_bltin->rndb_rand_mtx);
+      su_mutex_gut(&a_random_bltin->rndb_cntrl_mtx);
+#  endif
+
+      su_FREE(a_random_bltin);
+   }
+# endif
+
+   a_random_bltin = NIL;
+
+   NYD2_OU;
+}
+#endif /* su__STATE_ON_GUT_FUN */
 
 static s32
 a_random_create(struct su_random *self, enum su_random_type type, u32 estate){

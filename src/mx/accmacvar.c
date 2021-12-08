@@ -336,6 +336,9 @@ static struct a_amv_lostack *a_amv_lopts;
    /*a_amv_compose_lostack != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
+#ifdef a_AMV_VAR_HAS_OBSOLETE
+static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
+#endif
 
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
@@ -347,6 +350,12 @@ static struct a_amv_var *a_amv_folder_hook_lopts;
 
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_lostack *a_amv_compose_lostack;
+
+#if DVLOR(1, 0)
+static boole a_amv_on_gut_installed;
+#endif
+
+DVL( static void a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* Lookup for macros/accounts: if newamp is not NIL it will be linked in the
  * map, if _MF_UNDEF is set a possibly existing entry will be removed (first).
@@ -463,12 +472,52 @@ static boole a_amv_var_c_set(char const **ap,
 static void a_amv_var_obsolete(char const *name);
 #endif
 
+#if DVLOR(1, 0)
+static void
+a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      struct a_amv_var *avp;
+      uz i;
+
+      (void)a_amv_mac_undef(n_star, a_AMV_MF_ACCOUNT);
+      (void)a_amv_mac_undef(n_star, a_AMV_MF_NONE);
+
+      for(i = 0; i < a_AMV_PRIME; ++i){
+         while((avp = a_amv_vars[i]) != NIL){/* TODO !ENV clearance on_gut! */
+            a_amv_vars[i] = avp->av_link;
+            a_amv_var_free(avp->av_value);
+            su_FREE(avp);
+         }
+      }
+
+      if(a_amv_var_obsol != NIL)
+         su_cs_dict_gut(a_amv_var_obsol);
+   }
+
+   su_mem_set(a_amv_macs, 0, sizeof(a_amv_macs));
+   su_mem_set(a_amv_vars, 0, sizeof(a_amv_vars));
+   a_amv_var_obsol = NIL;
+   a_amv_on_gut_installed = FAL0;
+
+   NYD2_OU;
+}
+#endif /* DVLOR(1,0) */
+
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       BITENUM_IS(u32,a_amv_mac_flags) amf){
    struct a_amv_mac *amp, **ampp, **ampp_base;
    BITENUM_IS(u32,a_amv_mac_flags) save_amf;
    NYD2_IN;
+
+#if DVLOR(1, 0)
+   if(!a_amv_on_gut_installed){
+      su_state_on_gut_install(&a_amv__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      a_amv_on_gut_installed = TRU1;
+   }
+#endif
 
    save_amf = amf;
    amf &= a_AMV_MF_TYPE_MASK;
@@ -642,7 +691,7 @@ a_amv_mac__finalize(void *vp){
 
       for(avpp_base = *amcap->amca_local_vars, avpp = &avpp_base[a_AMV_PRIME];
             avpp-- != avpp_base;){
-         while((avp = *avpp)){
+         while((avp = *avpp) != NIL){
             ASSERT(!(avp->av_flags & ~a_AMV_VF_EXT__LOCAL_MASK));
             *avpp = avp->av_link;
             a_amv_var_free(avp->av_value);
@@ -1292,8 +1341,8 @@ jefrom:
          n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
          break;
       case ok_b_memdebug:
-         DBG( su_mem_set_conf((ok_blook(debug) ? 0 : a_DEBUG_MEMCONF) |
-               su_MEM_CONF_ON_ERROR_EMERG, FAL0); )
+         DBG( su_mem_set_conf((a_DEBUG_MEMCONF | su_MEM_CONF_ON_ERROR_EMERG),
+            FAL0); )
 #undef a_DEBUG_MEMCONF
          break;
       case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
@@ -1587,6 +1636,13 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
    ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
       (avlf & a_AMV_VLOOK_I3VAL_NONEW));
    ASSERT(!(avlf & a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO));
+
+#if DVLOR(1, 0)
+   if(!a_amv_on_gut_installed){
+      su_state_on_gut_install(&a_amv__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      a_amv_on_gut_installed = TRU1;
+   }
+#endif
 
    avcp->avc_prime = a_AMV_HASH2PRIME(avcp->avc_hash);
    avmp = avcp->avc_map;
@@ -2787,24 +2843,23 @@ a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
 #ifdef a_AMV_VAR_HAS_OBSOLETE
 static void
 a_amv_var_obsolete(char const *name){
-   static struct su_cs_dict a_csd__obsol, *a_csd_obsol;
    NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE)){
-      if(UNLIKELY(a_csd_obsol == NIL)) /* XXX atexit cleanup */
-         a_csd_obsol = su_cs_dict_set_treshold_shift(
-               su_cs_dict_create(&a_csd__obsol, (su_CS_DICT_POW2_SPACED |
+      if(UNLIKELY(a_amv_var_obsol == NIL))
+         a_amv_var_obsol = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_amv_var__obsol, (su_CS_DICT_POW2_SPACED |
                   su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
 
-      if(UNLIKELY(!su_cs_dict_has_key(a_csd_obsol, name))){
-         su_cs_dict_insert(a_csd_obsol, name, NIL);
+      if(UNLIKELY(!su_cs_dict_has_key(a_amv_var_obsol, name))){
+         su_cs_dict_insert(a_amv_var_obsol, name, NIL);
          n_err(_("Warning: variable superseded or obsoleted: %s\n"), name);
       }
    }
 
    NYD2_OU;
 }
-#endif
+#endif /* a_AMV_VAR_HAS_OBSOLETE */
 
 FL int
 c_define(void *v){

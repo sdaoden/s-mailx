@@ -73,8 +73,10 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_NM_A8S_TRESHOLD_SHIFT 2
 
-static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d; /* XXX atexit gut()..*/
-static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX .. (DVL()) */
+static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d;
+static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d;
+
+DVL( static void a_nm__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* Same name, while taking care for *allnet*? */
 static boole a_nm_is_same_name(char const *n1, char const *n2,
@@ -108,6 +110,41 @@ static struct n_strlist *a_nm_alias_dump(char const *cmdname, char const *key,
 /* */
 static struct n_strlist *a_nm_a8s_dump(char const *cmdname, char const *key,
       void const *dat);
+
+#if DVLOR(1, 0)
+static void
+a_nm__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      struct su_cs_dict_view dv;
+      void *vp;
+      struct n_strlist *slp;
+
+      if(a_nm_alias_dp != NIL){
+         su_cs_dict_view_setup(&dv, a_nm_alias_dp);
+         su_CS_DICT_VIEW_FOREACH(&dv){
+            slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
+            do{
+               vp = slp;
+               slp = slp->sl_next;
+               su_FREE(vp);
+            }while(slp != NIL);
+         }
+
+         su_cs_dict_gut(&a_nm_alias__d);
+      }
+
+      if(a_nm_a8s_dp != NIL)
+         su_cs_dict_gut(&a_nm_a8s__d);
+   }
+
+   a_nm_alias_dp = NIL;
+   a_nm_a8s_dp = NIL;
+
+   NYD2_OU;
+}
+#endif /* DVLOR(1,0) */
 
 static boole
 a_nm_is_same_name(char const *n1, char const *n2, boole *isall_or_nil){
@@ -1075,10 +1112,16 @@ c_alias(void *vp){
       boole exists;
       char const *val1, *val2;
 
-      if(a_nm_alias_dp == NIL)
+      if(a_nm_alias_dp == NIL){
          a_nm_alias_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_nm_alias__d, a_NM_ALIAS_FLAGS, NIL),
                a_NM_ALIAS_TRESHOLD_SHIFT);
+         DVL(
+            if(a_nm_a8s_dp == NIL)
+               su_state_on_gut_install(&a_nm__on_gut, FAL0,
+                  su_STATE_ERR_NOPASS);
+         )
+      }
 
       if((exists = (head = dat.slp) != NIL)){
          while(dat.slp->sl_next != NIL)
@@ -1158,7 +1201,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
                do{
                   vp = slp;
                   slp = slp->sl_next;
-                  n_free(vp);
+                  su_FREE(vp);
                }while(slp != NIL);
             }
             su_cs_dict_clear(a_nm_alias_dp);
@@ -1171,7 +1214,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
          do{
             vp = slp;
             slp = slp->sl_next;
-            n_free(vp);
+            su_FREE(vp);
          }while(slp != NIL);
          su_cs_dict_view_remove(&dv);
       }
@@ -1254,10 +1297,16 @@ c_alternates(void *vp){
       if(varname != NULL)
          n_err(_("alternates: `vput' only supported in \"show\" mode\n"));
 
-      if(a_nm_a8s_dp == NIL)
+      if(a_nm_a8s_dp == NIL){
          a_nm_a8s_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_nm_a8s__d, a_NM_A8S_FLAGS, NIL),
                a_NM_A8S_TRESHOLD_SHIFT);
+         DVL(
+            if(a_nm_alias_dp == NIL)
+               su_state_on_gut_install(&a_nm__on_gut, FAL0,
+                  su_STATE_ERR_NOPASS);
+         )
+      }
       /* In POSIX mode this command declares a, not appends to a list */
       else if(ok_blook(posix))
          su_cs_dict_clear_elems(a_nm_a8s_dp);

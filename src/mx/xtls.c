@@ -429,7 +429,7 @@ static void a_xtls__load_algos(void);
 #  define a_xtls_load_algos a_xtls__load_algos
 # endif
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
-static void a_xtls_atexit(void);
+static void a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
 # endif
 #endif
 #ifndef a_xtls_load_algos
@@ -611,7 +611,7 @@ a_xtls_init(void){
 # if mx_HAVE_XTLS < 0x10100
          if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
             a_xtls_state |= a_XTLS_S_EXIT_HDL;
-            atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
+            su_state_on_gut_install(&a_xtls__on_gut, FAL0, su_STATE_ERR_PASS);
          }
 # endif
          if(n_poption & n_PO_D_V)
@@ -641,7 +641,7 @@ a_xtls__load_algos(void){
 
       if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
          a_xtls_state |= a_XTLS_S_EXIT_HDL;
-         atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
+         su_state_on_gut_install(&a_xtls__on_gut, FAL0, su_STATE_ERR_PASS);
       }
    }
    NYD2_OU;
@@ -650,18 +650,22 @@ a_xtls__load_algos(void){
 
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void
-a_xtls_atexit(void){
+a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
    NYD2_IN;
 
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
 #  ifdef mx_XTLS_HAVE_CONFIG
-   if(a_xtls_state & a_XTLS_S_CONF_LOAD)
-      CONF_modules_free();
+      if(a_xtls_state & a_XTLS_S_CONF_LOAD)
+         CONF_modules_free();
 #  endif
 
 #  ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
-      EVP_cleanup();
+      if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
+         EVP_cleanup();
 #  endif
+   }
+
+   a_xtls_state = 0;
 
    NYD2_OU;
 }
