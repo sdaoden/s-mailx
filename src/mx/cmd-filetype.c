@@ -66,7 +66,9 @@ static struct mx_filetype const a_ft_OBSOLETE_xz = { /* TODO v15 compat */
 
 /* +toolbox below */
 
-static struct su_cs_dict *a_ft_dp, a_ft__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_ft_dp, a_ft__d;
+
+DVL( static void a_ft__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static void *a_ft_clone(void const *t, u32 estate);
@@ -84,6 +86,20 @@ static struct su_toolbox const a_ft_tbox = su_TOOLBOX_I9R(
 /* */
 static struct n_strlist *a_ft_dump(char const *cmdname, char const *key,
       void const *dat);
+
+#if DVLOR(1, 0)
+static void
+a_ft__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(&a_ft__d);
+
+   a_ft_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 static void *
 a_ft_clone(void const *t, u32 estate){
@@ -206,10 +222,13 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
          rv = 1;
       }
    }else{
-      if(a_ft_dp == NIL)
+      if(a_ft_dp == NIL){
          a_ft_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_ft__d, a_FT_FLAGS, &a_ft_tbox),
                a_FT_TRESHOLD_SHIFT);
+         DVL( su_state_on_gut_install(&a_ft__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       rv = 0;
       do{ /* while(*(argv += 3) != NIL); */

@@ -31,6 +31,8 @@ su_EMPTY_FILE()
 #include "su/mutex.h"
 #include "su/thread.h"
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/md.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -44,18 +46,20 @@ struct a_md_list{
    su_new_fun mdl_cxx_it; /* Only if C++-created */
 };
 
-static struct su_mutex *a_md_lock, a__md_lockbuf; /* TODO DVLOR() cleanup */
+static struct su_mutex *a_md_lock, a__md_lockbuf;
 static struct a_md_list *a_md_list;
 /* + vtbl's below */
+
+/* su__md_init() */
+#ifdef su__STATE_ON_GUT_FUN
+static void a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+#endif
 
 static void a_md_del(void *self);
 
 static void *a_md_siphash_new(u32 estate);
 static up a_md_siphash_prop(void const *self, enum su_md_prop prop);
 static s32 a_md_siphash_setup(void *self, void const *k, uz kl, uz ds);
-
-/* extern for su_state_create() */
-extern s32 su__md_init(u32 estate);
 
 static struct su_md_vtbl const a_md_siphash = {
    FIN(mdvtbl_new) &a_md_siphash_new,
@@ -65,6 +69,33 @@ static struct su_md_vtbl const a_md_siphash = {
    FIN(mdvtbl_update) R(void(*)(void*,void const*,uz),&su_siphash_update),
    FIN(mdvtbl_end) R(void(*)(void*,void*),&su_siphash_end)
 };
+
+#ifdef su__STATE_ON_GUT_FUN
+static void
+a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+   UNUSED(flags);
+
+# if DVLOR(1, 0)
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      struct a_md_list *mdlp, *tmp;
+
+      mdlp = a_md_list;
+      a_md_list = NIL;
+      while((tmp = mdlp) != NIL){
+         mdlp = tmp->mdl_last;
+         su_FREE(tmp);
+      }
+
+      su_mutex_gut(&a__md_lockbuf);
+   }
+# endif
+
+   a_md_lock = NIL;
+
+   NYD2_OU;
+}
+#endif /* su__STATE_ON_GUT_FUN */
 
 static void
 a_md_del(void *self){
@@ -125,7 +156,7 @@ a_md_siphash_setup(void *self, void const *k, uz kl, uz ds){
    return rv;
 }
 
-/* extern for su_state_create() */s32
+/*extern*/s32
 su__md_init(u32 estate){
    s32 rv;
    NYD2_IN;
@@ -136,8 +167,15 @@ su__md_init(u32 estate){
 
    if(a_md_lock == NIL &&
          (rv = su_mutex_create(&a__md_lockbuf, "SU M(essage) D(igest) DB",
-            estate)) == su_STATE_NONE)
-      a_md_lock = &a__md_lockbuf;
+               estate)) == su_STATE_NONE){
+#ifdef su__STATE_ON_GUT_FUN
+      if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)
+            ) != su_STATE_NONE)
+         su_mutex_gut(&a__md_lockbuf);
+      else
+#endif
+         a_md_lock = &a__md_lockbuf;
+   }
 
    su__gnlck_gi9r();
 

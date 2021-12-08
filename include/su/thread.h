@@ -61,7 +61,7 @@ struct su_thread{
       s32 err_no;
       char const *name;
       struct su_thread *wait_last; /* Lock-wait-suspension list */
-      DVLOR( struct su_nyd_control, void ) *nydctl;
+      void *nydctl;
    }
 #ifdef su__THREAD_IMPL_ALIGNMENT
       su_CC_ALIGNED(su__THREAD_IMPL_ALIGNMENT)

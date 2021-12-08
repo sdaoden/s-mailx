@@ -157,6 +157,8 @@ static void a_mt_init(void);
 static boole a_mt__load_file(BITENUM_IS(u32,a_mt_flags) orflags,
       char const *file, char **line, uz *linesize);
 
+DVL( static void a_mt__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+
 /* Create (prepend) a new MIME type; cmdcalled results in a bit more verbosity
  * for `mimetype'; line is terminated, len is just an optimization */
 static struct a_mt_node *a_mt_create(boole cmdcalled,
@@ -201,6 +203,8 @@ a_mt_init(void){
    ASSERT(!a_mt_is_init);
    /*if(a_mt_is_init)
     *  goto jleave;*/
+
+   DVL( su_state_on_gut_install(&a_mt__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
    /* Always load our built-ins */
    for(tail = htail = NIL, i = 0; i < NELEM(a_mt_bltin); ++i){
@@ -352,6 +356,30 @@ jleave:
    NYD_OU;
    return (cp != NIL);
 }
+
+#if DVLOR(1, 0)
+static void
+a_mt__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   struct a_mt_node **mtnpp, *mtnp;
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      for(mtnpp = &a_mt_hdl_list;; mtnpp = &a_mt_list){
+         while((mtnp = *mtnpp) != NIL){
+            *mtnpp = mtnp->mtn_next;
+            su_FREE(mtnp);
+         }
+         if(mtnpp != &a_mt_hdl_list)
+            break;
+      }
+   }
+
+   a_mt_hdl_list = a_mt_list = NIL;
+   a_mt_is_init = FAL0;
+
+   NYD2_OU;
+}
+#endif /* DVLOR(1, 0) */
 
 static struct a_mt_node *
 a_mt_create(boole cmdcalled, BITENUM_IS(u32,a_mt_flags) orflags,

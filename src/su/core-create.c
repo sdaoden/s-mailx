@@ -21,6 +21,8 @@
 
 #include <su/random.h>
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/code.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -43,13 +45,9 @@ su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags,
       goto jleave;
 
 #if defined su_HAVE_MD && !defined su_USECASE_MX
-   /* C99 */{
-      extern s32 su__md_init(u32 estate);
-
-      if((create_flags & a_V1(su_STATE_CREATE_MD)) &&
-            (rv = su__md_init(estate)) != su_STATE_NONE)
-         goto jleave;
-   }
+   if((create_flags & a_V1(su_STATE_CREATE_MD)) &&
+         (rv = su__md_init(estate)) != su_STATE_NONE)
+      goto jleave;
 #endif
 
 #undef a_V1

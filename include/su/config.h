@@ -65,6 +65,7 @@
 /*#  define su__MUTEX_IMPL_ALIGNMENT 128 <-> the real sizeof */
 /*#  define su__THREAD_IMPL_SIZE "sizeof(pthread_t)" */
 /*#  define su__THREAD_IMPL_ALIGNMENT 128 <-> the real sizeof */
+# undef su_HAVE_STATE_GUT_FORK
 
 #elif defined su_USECASE_MX /* sue_USECASE_SU */
 # ifdef mx_HAVE_DEBUG
@@ -88,6 +89,7 @@
 # endif
 # undef su_HAVE_SMP
 #  undef su_HAVE_MT
+# undef su_HAVE_STATE_GUT_FORK
 #else /* su_USECASE_MX */
 # error Unknown SU usecase
 #endif

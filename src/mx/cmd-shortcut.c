@@ -42,7 +42,23 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_SCUT_TRESHOLD_SHIFT 2
 
-static struct su_cs_dict *a_scut_dp, a_scut__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_scut_dp, a_scut__d;
+
+DVL( static void a_scut__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+
+#if DVLOR(1, 0)
+static void
+a_scut__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(&a_scut__d);
+
+   a_scut_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 int
 c_shortcut(void *vp){
@@ -72,10 +88,13 @@ c_shortcut(void *vp){
          rv = 1;
       }
    }else{
-      if(a_scut_dp == NIL)
+      if(a_scut_dp == NIL){
          a_scut_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_scut__d, a_SCUT_FLAGS, &su_cs_toolbox),
                a_SCUT_TRESHOLD_SHIFT);
+         DVL( su_state_on_gut_install(&a_scut__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       for(rv = 0; key != NIL; argv += 2, key = *argv){
          if((dat = argv[1]) == NIL){

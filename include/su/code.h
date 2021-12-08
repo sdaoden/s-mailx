@@ -48,8 +48,11 @@
  * It should be noted, however, that the \r{CORE} reacts upon a few
  * preprocessor switches, as documented there.
  * }\li{
- * In order to use \SU \r{su_state_create()} (or \r{su_state_create_core()})
- * \b{must} be called \b{first}; it is always in scope.
+ * In order to use \SU \r{su_state_create()} or the more basic
+ * \r{su_state_create_core()} \b{must} be called \b{first}.
+ * The counterpart \r{su_state_gut()} will optionally notify
+ * \r{su_state_on_gut_install()}ed handlers.
+ * These functions are always in scope.
  * }\li{
  * Datatype overflow errors and out-of-memory situations are usually detected
  * and result in abortions (via \r{su_LOG_EMERG} logs).
@@ -190,6 +193,7 @@
    /*! Multithreading support available?
     * This is a subfeature of \r{su_HAVE_SMP}. */
 #  define su_HAVE_MT
+# define su_HAVE_STATE_GUT_FORK /*!< \r{su_STATE_GUT_ACT_FORK} code path. */
 
    /* Values */
 # define su_PAGE_SIZE /*!< \_ */
@@ -803,12 +807,12 @@ do if(!(X)){\
  * \remarks{Identical to \r{su_BITS_RANGE_MASK()}.} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
 
-/*! For injection macros like su_DBG(), NDBG, DBGOR, 64, 32, 6432 */
+/*! For injection macros like \r{su_DBG()}, NDBG, DBGOR, 64, 32, 6432. */
 #define su_COMMA ,
 
 /* Debug injections */
 #if defined su_HAVE_DEBUG && !defined NDEBUG
-# define su_DBG(X) X /*!< \_ */
+# define su_DBG(X) X /*!< Inject for \r{su_HAVE_DEBUG} and not \c{NDEBUG}. */
 # define su_NDBG(X) /*!< \_ */
 # define su_DBGOR(X,Y) X /*!< \_ */
 #else
@@ -853,7 +857,7 @@ do{\
 /* Development injections */
 #if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
       || defined DOXYGEN
-# define su_DVL(X) X /*!< \_ */
+# define su_DVL(X) X /*!< Inject for \r{su_HAVE_DEVEL} or \r{su_HAVE_DEBUG}. */
 # define su_NDVL(X) /*!< \_ */
 # define su_DVLOR(X,Y) X /*!< \_ */
 #else
@@ -908,32 +912,32 @@ do{\
 #define su_FIELD_RANGE_ZERO(T,P,S,E) \
    su_CC_MEM_ZERO(((su_u8*)P)+su_FIELD_OFFSETOF(T,S), su_FIELD_RANGEOF(T,S,E))
 
-/*! sizeof() for member fields */
+/*! sizeof() for member fields. */
 #define su_FIELD_SIZEOF(T,F) sizeof(su_S(T *,su_NIL)->F)
 
-/* Multithread injections */
+/* */
 #ifdef su_HAVE_MT
-# define su_MT(X) X /*!< \_ */
+# define su_MT(X) X /*!< Inject for \r{su_HAVE_MT}. */
 #else
 # define su_MT(X)
 #endif
 
-/*! Members in constant array */
+/*! Members in constant array. */
 #define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
 /*! NYD comes from code-{in,ou}.h (support like \r{su_nyd_chirp()} below).
  * Instrumented functions will always have one label for goto: purposes. */
 #define su_NYD_OU_LABEL su__nydou
 
-/*! Pointer to size_t */
+/*! Pointer to size_t cast. */
 #define su_P2UZ(X) su_S(su_uz,/*not R() to avoid same-type++ warns*/(su_up)(X))
 
-/*! Pointer comparison */
+/*! Pointer comparison. */
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
 
-/* SMP injections */
+/* */
 #ifdef su_HAVE_SMP
-# define su_SMP(X) X /*!< \_ */
+# define su_SMP(X) X /*!< Inject for \r{su_HAVE_SMP}. */
 #else
 # define su_SMP(X)
 #endif
@@ -963,11 +967,11 @@ do{\
       (su_S(su_NSPC(su) u ## T,A) C su_S(su_NSPC(su) u ## T,B))
 #endif
 
-/*! Casts-away (*NOT* cast-away) */
+/*! Casts-away (*NOT* cast-away). */
 #define su_UNCONST(T,P) su_R(T,su_R(su_up,su_S(void const*,P)))
-/*! Casts-away (*NOT* cast-away) */
+/*! Casts-away (*NOT* cast-away). */
 #define su_UNVOLATILE(T,P) su_R(T,su_R(su_up,su_S(void volatile*,P)))
-/*! To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
+/*! To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;". */
 #define su_UNALIGN(T,P) su_R(T,su_R(su_up,P))
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 
@@ -981,14 +985,14 @@ do{\
 # define su_UNINIT_DECL(V) = V
 #endif
 
-/*! Avoid "unused" warnings */
+/*! Avoid "unused" warnings. */
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && \
       __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
-   /*! Variable-type size (with byte array at end) */
+   /*! Variable-type size (with byte array at end). */
 # define su_VFIELD_SIZE(X)
-   /*! Variable-type size (with byte array at end) */
+   /*! Variable-type size (with byte array at end). */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define su_VFIELD_SIZE(X) \
@@ -1001,11 +1005,11 @@ do{\
 
 /* We are ready to start using our own style */
 #ifndef su_CC_SIZE_TYPE
-# include <sys/types.h> /* TODO create config time script, */
+# include <sys/types.h> /* TODO create config time script,.. */
 #endif
 
-#include <inttypes.h> /* TODO query infos and drop */
-#include <limits.h> /* TODO those includes! */
+#include <inttypes.h> /* TODO ..query infos and drop */
+#include <limits.h> /* TODO ..those includes! */
 
 #define su_HEADER
 #include <su/code-in.h>
@@ -1331,6 +1335,7 @@ enum su_state_err_type{
  * It is also possible to instead enforce program abortion regardless of
  * a global ignorance policy, and pass other control flags. */
 enum su_state_err_flags{
+   su_STATE_ERR_NONE, /*!< 0. */
    /*! A mask containing all \r{su_state_err_type} bits. */
    su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
    /*! Allow passing of all errors.
@@ -1347,7 +1352,7 @@ enum su_state_err_flags{
     * use (NOT) \r{su_STATE_ERR_MASK} to overload that with meaning, adding
     * support for owning \r{COLL} (for \r{su_toolbox} users, to be exact)
     * actually made sense: if this bit is set it indicates that \NIL values
-    * returned by \r{su_toolbox} members are acceptible values (and thus do not
+    * returned by \r{su_toolbox} members are acceptable values (and thus do not
     * cause actions like insertion, replacement etc. to fail). */
    su_STATE_ERR_NIL_IS_VALID_OBJECT = 1u<<14,
    /*! Alias for \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
@@ -1404,6 +1409,52 @@ enum su_state_create_flags{
    /* Exclusive cover-all's */
    su_STATE_CREATE_V1 = 1u<<27, /*!< All subsystems of \r{su_VERSION} 1. */
    su_STATE_CREATE_ALL = 15u<<27 /*!< All covered subsystems. */
+};
+
+/*! Argument bits for \r{su_state_gut()}. */
+enum su_state_gut_flags{
+   /*! The value 0 for normal exit (see \r{su_STATE_GUT_ACT_MASK}). */
+   su_STATE_GUT_ACT_NORM,
+   /*! Normal exit, quick (see \r{su_STATE_GUT_ACT_MASK}).
+    * Does less, and a hint to the handlers to follow suit. */
+   su_STATE_GUT_ACT_QUICK,
+   /*! Abnormal exit (see \r{su_STATE_GUT_ACT_MASK}). */
+   su_STATE_GUT_ACT_CARE,
+#if defined su_HAVE_STATE_GUT_FORK || defined DOXYGEN
+   /*! The state is destroyed after a child process has been spawned / forked
+    * / cloned, from within the child process.
+    * \remarks{This is problematic especially in true \r{su_HAVE_MT} aka
+    * threaded \r{su_HAVE_SMP} conditions.
+    * That is to say that the state of locks etc. cannot be guaranteed in
+    * a portable fashion (let alone easily), and simply destroying and giving
+    * back such resources seems unwise.
+    * So it should be expected that calling \r{su_state_gut()} in this mode
+    * mostly leaves old resources laying around, and only resets some pointers
+    * to \NIL, so that a new \r{su_state_create()} cycle becomes possible.
+    * Because of this flaky-because-better-is-not the \r{CONFIG} option
+    * \r{su_HAVE_STATE_GUT_FORK} is a precondition for this code path.} */
+   su_STATE_GUT_ACT_FORK,
+#endif /* su_HAVE_STATE_GUT_FORK || DOXYGEN */
+   /* P.S.: code-{in,ou}. define su__STATE_ON_GUT_FUN */
+
+   su_STATE_GUT_ACT_MASK = 0xF, /*!< A mask of all "actions". */
+
+   /*! Do not call normal \r{su_state_on_gut_install()}ed handlers. */
+   su_STATE_GUT_NO_HANDLERS = 1u<<4,
+   /*! Do not call final \r{su_state_on_gut_install()}ed handlers. */
+   su_STATE_GUT_NO_FINAL_HANDLERS = 1u<<5,
+
+   /*! The library and called handlers should be aware that \r{SMP} locking may
+    * cause deadlocks, for example because multiple threads were running when
+    * one of them initiated program termination. */
+   su_STATE_GUT_NO_LOCKS = 1u<<6,
+   /*! Do not perform I/O, like flushing some streams etc.
+    * P.S.: general I/O will be flushed before handlers are called. */
+   su_STATE_GUT_NO_IO = 1u<<7,
+
+   /*! With \r{su_HAVE_DEVEL}, call \r{su_mem_trace()} as one of the last \SU
+    * statements for \r{su_STATE_GUT_ACT_NORM} invocations. */
+   su_STATE_GUT_MEM_TRACE = 1u<<16
 };
 
 #ifdef su_USECASE_SU
@@ -1465,35 +1516,15 @@ enum su_nyd_action{
    su_NYD_ACTION_LEAVE, /*!< Function leave (once per function). */
    su_NYD_ACTION_ANYWHERE /*!< Any place (but the other two). */
 };
-enum{
-   su__NYD_ACTION_MASK = 0x3,
-   su__NYD_ACTION_SHIFT = 29,
-   su__NYD_ACTION_SHIFT_MASK = (1u << su__NYD_ACTION_SHIFT) - 1
-};
-
-struct su_nyd_info{
-   char const *ni_file;
-   char const *ni_fun;
-   u32 ni_chirp_line;
-   u32 ni_level;
-};
-
-struct su_nyd_control{
-   u32 nc_level;
-   u16 nc_curr;
-   boole nc_skip;
-   u8 nc__pad[1];
-   struct su_nyd_info nc_infos[su_NYD_ENTRIES];
-};
-# ifndef DOXYGEN
-MCTA(su_NYD_ENTRIES <= U16_MAX, "Data type excess")
-# endif
-#endif /* DVLOR(1,0) */
+#endif
 
 union su__bom_union{
    char bu_buf[2];
    u16 bu_val;
 };
+
+/*! See \r{su_state_on_gut_install()}. */
+typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
 
 /* Known endianness bom versions, see su_bom_little, su_bom_big */
 EXPORT_DATA union su__bom_union const su__bom_little;
@@ -1529,7 +1560,7 @@ EXPORT_DATA char const su_empty[1];
 EXPORT_DATA char const su_reproducible_build[];
 
 /*! Usually set via \r{su_state_create_core()} to the name of the program, but
- * can freely be set, for example to create a common log message prefix.
+ * may be set freely, for example to create a common log message prefix.
  * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
@@ -1587,6 +1618,30 @@ EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
 EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags,
       char const *name_or_nil, uz flags, u32 estate);
 
+/*! Tear down \SU according to \a{flags}.
+ * This should be called upon normal program termination, from within the main
+ * and single thread of execution, but \a{flags} can be used for configuration.
+ * \SU needs to be reinitialized after this has been called.
+ * Also see \r{su_state_on_gut_install()}. */
+EXPORT void su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+
+/*! Install an \a{is_final} \a{hdl} to be called upon \r{su_state_gut()} time
+ * in last-in first-out order.
+ * Final handlers execute after all (normal) handlers have been processed.
+ * \r{su_state_gut()} will pass down its \r{su_state_gut_flags} argument to any
+ * handlers that is allowed to be called.
+ * Nothing prevents handlers to be installed multiple times.
+ * \ESTATE_RV.
+ * \remarks{Final handlers should rely on as few as possible infrastructure,
+ * network, child processes, date with timezone, locales, random, message
+ * digests, and many more facilities which may use dynamic memory etc., will
+ * likely have performed cleanup already; do not use unless you cope.} */
+EXPORT s32 su_state_on_gut_install(su_state_on_gut_fun hdl, boole is_final,
+      u32 estate);
+
+/*! Remove the \a{if_final} \a{hdl}, and return whether it was installed. */
+EXPORT boole su_state_on_gut_uninstall(su_state_on_gut_fun hdl,boole is_final);
+
 /*! Interaction with the SU library (global) state machine.
  * This covers \r{su_state_log_flags}, \r{su_state_err_type},
  * and \r{su_state_flags} flags and values. */
@@ -1603,18 +1658,21 @@ INLINE boole su_state_has(uz flags){
    return ((su__state & flags) == flags);
 }
 
-/*! A bitmix of (r\{su_state_err_type} and) (a subset of)
- * \r{su_state_err_flags} as well as \r{su_state_flags}. */
+/*! A bitmix of (\r{su_state_err_type} and a subset of)
+ * \r{su_state_err_flags}, as well as \r{su_state_flags}. */
 INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
+   flags &= su__STATE_GLOBAL_MASK;
    su__glck(su__GLCK_STATE);
-   su__state |= flags & su__STATE_GLOBAL_MASK;
+   su__state |= flags;
    su__gnlck(su__GLCK_STATE);
 }
 
 /*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
+   flags &= su__STATE_GLOBAL_MASK;
+   flags &= ~flags;
    su__glck(su__GLCK_STATE);
-   su__state &= ~(flags & su__STATE_GLOBAL_MASK);
+   su__state &= flags;
    su__gnlck(su__GLCK_STATE);
 }
 
@@ -1636,7 +1694,7 @@ EXPORT void su_err_set_no(s32 eno);
 /*! Return string(s) describing C error number \a{eno}.
  * Effectively identical to \r{su_err_name()} if either the compile-time
  * option \r{su_HAVE_DOCSTRINGS} is missing (always), or when
- *  \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
+ * \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
 /*! Return the name of the given error number. */
@@ -1684,12 +1742,12 @@ EXPORT void su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl,
 /*! Like perror(3). */
 EXPORT void su_perr(char const *msg, s32 eno_or_0);
 
-/*! SMP lock the global log domain. */
+/*! \r{su_STATE_MT} lock the global log domain. */
 INLINE void su_log_lock(void){
    su__glck(su__GLCK_LOG);
 }
 
-/*! SMP unlock the global log domain. */
+/*! \r{su_STATE_MT} unlock the global log domain. */
 INLINE void su_log_unlock(void){
    su__gnlck(su__GLCK_LOG);
 }
@@ -1697,7 +1755,8 @@ INLINE void su_log_unlock(void){
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
  * If it survives it will \r{su_err_set_no()} \ERR{FAULT}.
- * In order to get rid of linkage define \c{su_ASSERT_EXPAND_NOTHING}. */
+ * \remarks{Define \c{su_ASSERT_EXPAND_NOTHING} in order to get rid of linkage
+ * and make it expand to a no-op macro.} */
 EXPORT void su_assert(char const *expr, char const *file, u32 line,
       char const *fun, boole crash);
 #else
@@ -1706,23 +1765,27 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 
 #if DVLOR(1, 0) || defined DOXYGEN
 /*! Control NYD for the calling thread.
- * When \a{disabled}, \r{su_nyd_chirp()} will return quick. */
+ * When \a{disabled}, \r{su_nyd_chirp()} will return quick.
+ * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_set_disabled(boole disabled);
 
 /*! Reset \r{su_nyd_chirp()} recursion level of the calling thread.
  * In event-loop driven software that uses long jumps it may be desirable to
  * reset the recursion level at times.
- * \a{nlvl} is only honoured when smaller than the current recursion level. */
+ * \a{nlvl} is only honoured when smaller than the current recursion level.
+ * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_reset_level(u32 nlvl);
 
 /*! Not-yet-dead chirp of the calling thread.
  * Normally used from the support macros in code-{in,ou}.h when \vr{su_FILE}
- * is defined. */
+ * is defined.
+ * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun);
 
 /*! Dump all existing not-yet-dead entries of the calling thread via \a{ptf}.
- * \a{buf} is NUL terminated despite \a{blen} being passed, too. */
+ * \a{buf} is NUL terminated despite \a{blen} being passed, too.
+ * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif /* DVLOR(1,0) || DOXYGEN */
@@ -2071,6 +2134,8 @@ public:
 
    /*! \copydoc{su_state_err_flags} */
    enum err_flags{
+      /*! \copydoc{su_STATE_ERR_NONE} */
+      err_none = su_STATE_ERR_NONE,
       /*! \copydoc{su_STATE_ERR_TYPE_MASK} */
       err_type_mask = su_STATE_ERR_TYPE_MASK,
       /*! \copydoc{su_STATE_ERR_PASS} */
@@ -2108,6 +2173,37 @@ public:
       create_all = su_STATE_CREATE_ALL
    };
 
+   /*! \copydoc{su_state_gut_flags} */
+   enum gut_flags{
+      /*! \copydoc{su_STATE_GUT_ACT_NORM} */
+      gut_act_norm = su_STATE_GUT_ACT_NORM,
+      /*! \copydoc{su_STATE_GUT_ACT_QUICK} */
+      gut_act_quick = su_STATE_GUT_ACT_QUICK,
+      /*! \copydoc{su_STATE_GUT_ACT_CARE} */
+      gut_act_care = su_STATE_GUT_ACT_CARE,
+#if defined su_HAVE_STATE_GUT_FORK || defined DOXYGEN
+      /*! \copydoc{su_STATE_GUT_ACT_FORK} */
+      gut_act_fork = su_STATE_GUT_ACT_FORK,
+#endif
+      /*! \copydoc{su_STATE_GUT_ACT_MASK} */
+      gut_act_mask = su_STATE_GUT_ACT_MASK,
+
+      /*! \copydoc{su_STATE_GUT_NO_HANDLERS} */
+      gut_no_handlers = su_STATE_GUT_NO_HANDLERS,
+      /*! \copydoc{su_STATE_GUT_NO_FINAL_HANDLERS} */
+      gut_no_final_handlers = su_STATE_GUT_NO_FINAL_HANDLERS,
+      /*! \copydoc{su_STATE_GUT_NO_LOCKS} */
+      gut_no_locks = su_STATE_GUT_NO_LOCKS,
+      /*! \copydoc{su_STATE_GUT_NO_IO} */
+      gut_no_io = su_STATE_GUT_NO_IO,
+
+      /*! \copydoc{su_STATE_GUT_MEM_TRACE} */
+      gut_mem_trace = su_STATE_GUT_MEM_TRACE
+   };
+
+   /*! See \r{su_state_on_gut_fun()}. */
+   typedef void (*on_gut_fun)(BITENUM_IS(u32,gut_flags) flags);
+
    /*! \copydoc{su_state_create_core()} */
    static s32 create_core(char const *program_or_nil, uz flags,
          u32 estate=none){
@@ -2118,6 +2214,11 @@ public:
    static s32 create(BITENUM_IS(u32,create_flags) create_flags,
          char const *program_or_nil, uz flags, u32 estate=none){
       return su_state_create(create_flags, program_or_nil, flags, estate);
+   }
+
+   /*! \copydoc{su_state_gut()} */
+   static void gut(BITENUM_IS(u32,gut_flags) flags=gut_act_norm){
+      su_state_gut(S(enum su_state_gut_flags,flags));
    }
 
    /*! \copydoc{su_state_get()} */
@@ -2133,7 +2234,7 @@ public:
    static void clear(uz state) {su_state_clear(state);}
 
    /*! \copydoc{su_state_err()} */
-   static s32 err(err_type err, BITENUM_IS(uz,err_flags) state,
+   static s32 err(err_type err, BITENUM_IS(uz,err_flags) state=err_none,
          char const *msg_or_nil=NIL){
       return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
    }
@@ -2145,9 +2246,9 @@ public:
    static void set_program(char const *name) {su_program = name;}
 }; // }}}
 
-/* BASIC C++ INTERFACE (SYMBOLS) }}} */
+/* BASIC C++ INTERFACE (STATE) }}} */
 
-/* BASIC TYPE TOOLBOX AND TRAITS {{{ */
+/* BASIC TYPE TOOLBOX AND TRAITS, SUPPORT {{{ */
 
 template<class T> class type_traits;
 template<class T> struct type_toolbox;
@@ -2384,7 +2485,7 @@ inline T const &get_round_up2(T const &a, T const &b){
 /*! \copydoc{su_IS_POW2()} */
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
-/* BASIC TYPE TRAITS }}} */
+/* BASIC TYPE TOOLBOX AND TRAITS, SUPPORT }}} */
 
 NSPC_END(su)
 #include <su/code-ou.h>
@@ -2447,8 +2548,8 @@ NSPC_END(su)
  * example, mutex locking).
  * If initialization macros are used a resource aquisition failure results in
  * a program abortion via \r{su_LOG_EMERG} log.
- * If that is not acceptible the normal object \c{_create()} (see \r{mainpage})
- * function has to be used, which allows error handling.
+ * If that is not acceptable the normal object \c{_create()} (see \r{mainpage})
+ * function has to be used, it allows for error handling.
  */
 
 /*!

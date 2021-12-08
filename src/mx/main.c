@@ -1296,26 +1296,28 @@ je_expandargv:
 
 jleave_full:/* C99 */{
       char const *ccp;
-      boole was_xit;
+      u32 opsonce;
 
       i = n_exit_status;
-      was_xit = ((n_psonce & n_PSO_XIT) != 0);
+      opsonce = n_psonce;
 
-      n_psonce &= ~n_PSO_EXIT_MASK;
+      n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
       mx_account_leave();
 
       if(n_psonce & n_PSO_INTERACTIVE){
-         mx_tty_destroy(was_xit);
+         mx_tty_destroy((opsonce & n_PSO_XIT) != 0);
 #ifdef mx_HAVE_TCAP
          mx_termcap_destroy();
 #endif
       }
 
-      n_psonce &= ~n_PSO_EXIT_MASK;
-      if((ccp = ok_vlook(on_program_exit)) != NIL)
+      if((ccp = ok_vlook(on_program_exit)) != NIL){
+         n_psonce &= ~n_PSO_EXIT_MASK; /* (macro call->event loop shall run) */
          temporary_on_xy_hook_caller("on-program-exit", ccp, FAL0);
+      }
 
       n_exit_status = i;
+      n_psonce = opsonce;
    }
 
 jleave:
@@ -1330,11 +1332,24 @@ jleave:
          n_exit_status = su_EX_IOERR;
    }
 
-#ifdef su_HAVE_DEBUG
-   /* xxx call atexit handlers here */
-   su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
-   su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
-#endif
+   if(n_exit_status == su_EX_OK){
+      DVL( boole memdbg = ok_blook(memdebug); )
+
+      DVL(
+         mx_fs_linepool_cleanup(TRU1);
+         su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
+      )
+
+      su_state_gut(
+         ((n_psonce & n_PSO_XIT)
+            ? su_STATE_GUT_ACT_QUICK : su_STATE_GUT_ACT_NORM)
+         DVL(
+            | ((!memdbg ||
+                (!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_D_VV)))
+               ? 0 : su_STATE_GUT_MEM_TRACE)
+         ));
+   }/*else
+      su_state_gut(su_STATE_GUT_ACT_CARE);*/
 
    NYD_OU;
    return n_exit_status;

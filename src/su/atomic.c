@@ -29,6 +29,8 @@ su_EMPTY_FILE()
 # include "su/mutex.h"
 #endif
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/atomic.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -41,10 +43,6 @@ su_EMPTY_FILE()
 # define a_LOCK_XCHG()
 # define a_UNLOCK_XCHG()
 #else
-   /* In core-code.c, then. */
-extern struct su_mutex su__atomic_cas_mtx;
-extern struct su_mutex su__atomic_xchg_mtx;
-
 # define a_LOCK_CAS() su_MUTEX_LOCK(&su__atomic_cas_mtx)
 # define a_UNLOCK_CAS() su_MUTEX_UNLOCK(&su__atomic_cas_mtx)
 # define a_LOCK_XCHG() su_MUTEX_LOCK(&su__atomic_xchg_mtx)

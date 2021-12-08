@@ -46,7 +46,23 @@
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CMDAL_TRESHOLD_SHIFT 2
 
-static struct su_cs_dict *a_cmdal_dp, a_cmdal__d; /* XXX atexit _gut() (DVL) */
+static struct su_cs_dict *a_cmdal_dp, a_cmdal__d;
+
+DVL( static void a_cmdal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+
+#if DVLOR(1, 0)
+static void
+a_cmdal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(&a_cmdal__d);
+
+   a_cmdal_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 char const *
 mx_commandalias_exists(char const *name, char const **expansion_or_nil){
@@ -104,10 +120,13 @@ c_commandalias(void *vp){
          rv = 1;
       }
    }else{
-      if(a_cmdal_dp == NIL)
+      if(a_cmdal_dp == NIL){
          a_cmdal_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_cmdal__d, a_CMDAL_FLAGS, &su_cs_toolbox),
                a_CMDAL_TRESHOLD_SHIFT);
+         DVL( su_state_on_gut_install(&a_cmdal__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       s = n_string_creat_auto(&s_b);
       s = n_string_book(s, 500); /* xxx magic */

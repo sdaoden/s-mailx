@@ -1,6 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of ignore.h.
- *@ XXX debug+: on-exit cleanup
  *
  * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -104,6 +103,11 @@ CTA(S(u32,mx__IGNORE_MAX) <= S(u32,a_IGNORE_BLTIN_MASK), "Bit range excessed");
 
 static struct mx_ignore *a_ignore_bltin[mx__IGNORE_MAX + 1];
 static struct mx_ignore *a_ignore_list;
+#if DVLOR(1, 0)
+static boole a_ignore_on_gut_installed;
+#endif
+
+DVL( static void a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct mx_ignore *a_ignore_new(char const *name,
@@ -148,11 +152,43 @@ static boole a_ignore_lookup(struct mx_ignore const *self, boole retain,
 static boole a_ignore_insert(struct a_ignore_type *itp,
       char const *dat, uz len, boole isre);
 
+#if DVLOR(1, 0)
+static void
+a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
+      uz i;
+      struct mx_ignore *ip;
+
+      while((ip = a_ignore_list) != NIL)
+         mx_ignore_del(ip);
+
+      for(i = 0; i <= mx__IGNORE_MAX; ++i)
+         if((ip = a_ignore_bltin[i]) != NIL)
+            mx_ignore_del(ip);
+   }
+
+   su_mem_set(a_ignore_bltin, 0, sizeof(a_ignore_bltin));
+   a_ignore_list = NIL;
+   a_ignore_on_gut_installed = FAL0;
+
+   NYD2_OU;
+}
+#endif
+
 static struct mx_ignore *
 a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f){
    struct mx_ignore *self;
    uz l;
    NYD2_IN;
+
+#if DVLOR(1, 0)
+   if(!a_ignore_on_gut_installed){
+      a_ignore_on_gut_installed = TRU1;
+      su_state_on_gut_install(&a_ignore__on_gut, FAL0, su_STATE_ERR_NOPASS);
+   }
+#endif
 
    l = su_cs_len(name) +1;
 

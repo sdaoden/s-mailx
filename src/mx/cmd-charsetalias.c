@@ -43,7 +43,23 @@
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CSAL_TRESHOLD_SHIFT 4
 
-static struct su_cs_dict *a_csal_dp, a_csal__d; /* XXX atexit _gut() (DVL()) */
+static struct su_cs_dict *a_csal_dp, a_csal__d;
+
+DVL( static void a_csal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+
+#if DVLOR(1, 0)
+static void
+a_csal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+   NYD2_IN;
+
+   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+      su_cs_dict_gut(&a_csal__d);
+
+   a_csal_dp = NIL;
+
+   NYD2_OU;
+}
+#endif
 
 int
 c_charsetalias(void *vp){
@@ -82,10 +98,13 @@ c_charsetalias(void *vp){
          rv = 1;
       }
    }else{
-      if(a_csal_dp == NIL)
+      if(a_csal_dp == NIL){
          a_csal_dp = su_cs_dict_set_treshold_shift(
                su_cs_dict_create(&a_csal__d, a_CSAL_FLAGS, &su_cs_toolbox),
                a_CSAL_TRESHOLD_SHIFT);
+         DVL( su_state_on_gut_install(&a_csal__on_gut, FAL0,
+            su_STATE_ERR_NOPASS); )
+      }
 
       for(rv = 0; key != NIL; argv += 2, key = *argv){
          if((key = n_iconv_normalize_name(key)) == NIL){

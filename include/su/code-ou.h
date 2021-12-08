@@ -249,6 +249,9 @@
 #undef SZ_MAX
 #undef UZ_BITS
 
+/* state_gut */
+#undef su__STATE_ON_GUT_FUN
+
 /* MEMORY */
 
 #undef su_ALLOCATE
