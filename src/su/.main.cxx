@@ -7,7 +7,7 @@
 #define a_STATS(X) //X
 
 // Memory trace on program exit?
-//#define a_TRACE
+#define a_TRACE
 
 #include <su/code.h>
 
@@ -100,11 +100,17 @@ main(void){ // {{{
 
    a_cs_dict();
 
-#ifdef a_TRACE
-   mem::trace();
-#endif
+   a_STATS( mem::trace(); )
+
    log::write(log::info, (a_errors == 0 ? "These songs of freedom\n"
       : "Not to be heard\n"));
+
+   state::gut(
+#ifdef a_TRACE
+      state::gut_mem_trace
+#endif
+   );
+
    return (a_errors != 0);
 } // }}}
 
