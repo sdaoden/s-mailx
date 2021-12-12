@@ -324,6 +324,8 @@ FL void n_err(char const *format, ...);
 FL void n_errx(boole allow_multiple, char const *format, ...);
 FL void n_verr(char const *format, va_list ap);
 FL void n_verrx(boole allow_multiple, char const *format, va_list ap);
+/* Hook for SU */
+FL void n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len);
 
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);

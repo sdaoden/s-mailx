@@ -1284,8 +1284,8 @@ MCTA(1u<<su__LOG_SHIFT > su__LOG_MAX, "Bit ranges may not overlap")
 
 /*! Flags that can be ORd to \r{su_log_level}. */
 enum su_log_flags{
-   /*! In environments where \r{su_log_write()} is (also) hooked to an output
-    * channel, do not log the message through that. */
+   /*! In a state in that recursive logging should be avoided at all cost this
+    * flag should be set. */
    su_LOG_F_CORE = 1u<<(su__LOG_SHIFT+0)
 };
 
@@ -1526,6 +1526,13 @@ union su__bom_union{
 /*! See \r{su_state_on_gut_install()}. */
 typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
 
+/*! See \r{su_log_set_write_fun()}.
+ * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
+ * \a{msg} is one line of \a{len} bytes (excluding the \c{NUL} terminator).
+ * \remarks{If \r{su_LOG_F_CORE} is set in \a{lvl_a_flags} recursively causing
+ * log messages should be avoided.} */
+typedef void (*su_log_write_fun)(u32 lvl_a_flags, char const *msg, uz len);
+
 /* Known endianness bom versions, see su_bom_little, su_bom_big */
 EXPORT_DATA union su__bom_union const su__bom_little;
 EXPORT_DATA union su__bom_union const su__bom_big;
@@ -1708,6 +1715,16 @@ EXPORT s32 su_err_by_name(char const *name);
  * ISO C \c{errno} variable, and return it. */
 EXPORT s32 su_err_no_by_errno(void);
 
+/*! Get the currently installed \r{su_log_write_fun}.
+ * The default is \NIL. */
+EXPORT su_log_write_fun su_log_get_write_fun(void);
+
+/*! The builtin log "domain" that is used by \SU by default logs to a system
+ * dependent error channel, which might even be a "null device".
+ * It can be hooked by passing a \r{su_log_write_fun}, passing \NIL restores
+ * the default behaviour. */
+EXPORT void su_log_set_write_fun(su_log_write_fun funp);
+
 /*! \_ */
 INLINE enum su_log_level su_log_get_level(void){
    return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
@@ -1729,15 +1746,18 @@ INLINE boole su_log_would_write(enum su_log_level lvl){
 }
 
 /*! Log functions of various sort.
- * \a{lvl} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
+ * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
- * If \r{su_program} is set, it will be prepended to messages. */
-EXPORT void su_log_write(BITENUM_IS(u32,su_log_level) lvl,
-      char const *fmt, ...);
+ * If \r{su_program} is set, it will be prepended to messages.
+ * Control characters within \a{fmt} (but horizontal tabulator HT) will be
+ * normalized to space (SPACE), and a line feed (LF) will be appended
+ * automatically; if \a{fmt} consists of multiple lines, each line will be
+ * logged by itself separately. */
+EXPORT void su_log_write(u32 lvl_a_flags, char const *fmt, ...);
 
-/*! See \r{su_log_write()}.  The \a{vp} is a \c{&va_list}. */
-EXPORT void su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl,
-      char const *fmt, void *vp);
+/*! See \r{su_log_write()}.
+ * \a{valp} is a \c{va_list*}, but the header is not included. */
+EXPORT void su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *valp);
 
 /*! Like perror(3). */
 EXPORT void su_perr(char const *msg, s32 eno_or_0);
@@ -2063,9 +2083,19 @@ public:
       f_core = su_LOG_F_CORE, /*!< \copydoc{su_LOG_F_CORE} */
    };
 
-   // Log functions of various sort.
-   // Regardless of the level these also log if state_debug|state_verbose.
-   // The vp is a &va_list
+   /*! See \r{su_log_write_fun()}. */
+   typedef void (*write_fun)(u32 lvl_a_flags, char const *msg, uz len);
+
+   /*! \copydoc{su_log_get_write_fun()} */
+   static write_fun get_write_fun(void){
+      return R(write_fun,su_log_get_write_fun());
+   }
+
+   /*! \copydoc{su_log_set_write_fun()} */
+   static void set_write_fun(write_fun fun){
+      su_log_set_write_fun(R(su_log_write_fun,fun));
+   }
+
    /*! \copydoc{su_log_get_level()} */
    static level get_level(void) {return S(level,su_log_get_level());}
 
@@ -2104,11 +2134,11 @@ public:
    }
 
    /*! \copydoc{su_log_write()} */
-   static void write(BITENUM_IS(u32,level) lvl, char const *fmt, ...);
+   static void write(u32 lvl_a_flags, char const *fmt, ...);
 
    /*! \copydoc{su_log_vwrite()} */
-   static void vwrite(BITENUM_IS(u32,level) lvl, char const *fmt, void *vp){
-      su_log_vwrite(lvl, fmt, vp);
+   static void vwrite(u32 lvl_a_flags, char const *fmt, void *valp){
+      su_log_vwrite(lvl_a_flags, fmt, valp);
    }
 
    /*! \copydoc{su_perr()} */

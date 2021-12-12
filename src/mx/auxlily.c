@@ -1134,6 +1134,15 @@ jleave:
 }
 
 FL void
+n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len){
+   UNUSED(len);
+   if(!(lvl_a_flags & su_LOG_F_CORE))
+      n_err(msg, NIL);
+   else
+      fprintf(stderr, "%s%s", ok_vlook(log_prefix), msg);
+}
+
+FL void
 n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
    va_list ap;
    NYD;
