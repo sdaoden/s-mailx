@@ -67,6 +67,8 @@ CTAV(su_NYD_ACTION_ANYWHERE == 2);
 static char const a_core_nyd_desc[3] = "><=";
 #endif
 
+static su_log_write_fun a_core_log_write;
+
 #ifdef su_USECASE_SU
 static struct su_spinlock a_core_glck_state;
 static struct su_mutex a_core_glck_gi9r;
@@ -92,12 +94,8 @@ struct su_mutex su__atomic_xchg_mtx;
 struct su__state_on_gut *su__state_on_gut;
 struct su__state_on_gut *su__state_on_gut_final;
 
-/* TODO Eventually all the I/O is SU based, then this will vanish!
- * TODO We need some _USECASE_ hook to store readily prepared lines then.
- * TODO Also, our log does not yet prepend "su_progam: " to each output line,
- * TODO because of all that (port FmtEncCtx, use rounds!!) */
-SINLINE void a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt,
-      va_list ap);
+/* */
+SINLINE void a_evlog(u32 lvl_a_flags, char const *fmt, va_list ap);
 
 /* */
 #if DVLOR(1, 0)
@@ -106,53 +104,75 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
 #endif
 
 SINLINE void
-a_evlog(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, va_list ap){
-#ifdef su_USECASE_MX
-# ifndef mx_HAVE_AMALGAMATION
-   /*extern*/ void n_err(char const *, ...);
-   /*extern*/ void n_verr(char const *, va_list);
-# endif
-#endif
-   char buf[su_IENC_BUFFER_SIZE];
-   char const *cp, *xfmt;
+a_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
+   char buf[2048]/* TODO FmtCodec */, ibuf[su_IENC_BUFFER_SIZE], *cursor;
    u32 f;
 
-   f = lvl & ~su__LOG_MASK;
-   lvl &= su__LOG_MASK;
+   f = lvl_a_flags & ~su__LOG_MASK;
+   lvl_a_flags &= su__LOG_MASK;
 
-   if(!(f & su_LOG_F_CORE)){
-#ifdef su_USECASE_MX
-      if(lvl != su_LOG_EMERG)
-         goto jnostd;
-#endif
-   }
+   cursor = buf;
 
    /* TODO ensure each line has the prefix; use FormatEncodeCtx */
    if(su_program != NIL){
+      cursor = su_cs_pcopy_n(cursor, su_program, 33);
+      if(cursor == NIL)
+         cursor = &buf[32];
+
       if(su_state_has(su_STATE_LOG_SHOW_PID)){
-         cp = su_ienc_u32(buf, getpid(), 10); /* XXX getpid()->process_id() */
-         xfmt = "%s[%s]: ";
-      }else{
-         cp = su_empty;
-         xfmt = "%s: ";
+         char const *cp;
+
+         *cursor++ = '[';
+         cp = su_ienc_u32(ibuf, getpid(), 10); /* XXX getpid()->process_id() */
+         cursor = su_cs_pcopy(cursor, cp);
+         *cursor++ = ']';
       }
-      fprintf(stderr, xfmt, su_program, cp);
+
+      *cursor++ = ':';
+      *cursor++ = ' ';
    }
 
-   if(su_state_has(su_STATE_LOG_SHOW_LEVEL))
-      fprintf(stderr, "[%s] ",
-         a_core_lvlnames[lvl]);
+   if(su_state_has(su_STATE_LOG_SHOW_LEVEL)){
+      *cursor++ = '[';
+      cursor = su_cs_pcopy(cursor, a_core_lvlnames[lvl_a_flags]);
+      *cursor++ = ']';
+      *cursor++ = ' ';
+   }
 
-   vfprintf(stderr, fmt, ap);
+   vsnprintf(cursor, (sizeof(buf) - 1 - 1 - P2UZ(cursor - buf)), fmt, ap);
 
-#ifdef su_USECASE_MX
-   goto jnomx;
-jnostd:
-   n_verr(fmt, ap);
-jnomx:
-#endif
+   /* For each line in fmt, write one line */
+   SU( su_MUTEX_LOCK(&a_core_glck_log); )
+   for(;;){
+      char *cp, c;
 
-   if(lvl == su_LOG_EMERG)
+      /* Normalize control characters */
+      for(cp = cursor; (c = *cp) != '\0'; ++cp)
+         if(su_cs_is_cntrl(c)){
+            if(c == '\n')
+               break;
+            if(c != '\t')
+               *cursor = ' ';
+         }
+      *cp++ = '\n';
+      if(c != '\0')
+         c = *cp;
+      *cp = '\0';
+
+      if(a_core_log_write != NIL)
+         (*a_core_log_write)((f | lvl_a_flags), buf, P2UZ(cp - buf));
+      else
+         fwrite(buf, sizeof(*buf), P2UZ(cp - buf), stderr);/*TODO NO STD!*/
+
+      if(c == '\0')
+         break;
+
+      *cp = c;
+      su_cs_pcopy(cursor, cp);
+   }
+   SU( su_MUTEX_UNLOCK(&a_core_glck_log); )
+
+   if(lvl_a_flags == su_LOG_EMERG)
       abort(); /* TODO configurable */
 }
 
@@ -416,14 +436,34 @@ su_err_no_by_errno(void){
    return rv;
 }
 
+su_log_write_fun
+su_log_get_write_fun(void){
+   su_log_write_fun rv;
+   NYD_IN;
+
+   rv = a_core_log_write;
+
+   NYD_OU;
+   return rv;
+}
+
 void
-su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
+su_log_set_write_fun(su_log_write_fun fun){
+   NYD_IN;
+
+   a_core_log_write = fun;
+
+   NYD_OU;
+}
+
+void
+su_log_write(u32 lvl_a_flags, char const *fmt, ...){
    va_list va;
    NYD_IN;
 
-   if(su_log_would_write(lvl)){
+   if(su_log_would_write(lvl_a_flags)){
       va_start(va, fmt);
-      a_evlog(lvl, fmt, va);
+      a_evlog(lvl_a_flags, fmt, va);
       va_end(va);
    }
 
@@ -431,11 +471,11 @@ su_log_write(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, ...){
 }
 
 void
-su_log_vwrite(BITENUM_IS(u32,su_log_level) lvl, char const *fmt, void *vp){
+su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *vp){
    NYD_IN;
 
-   if(su_log_would_write(lvl))
-      a_evlog(lvl, fmt, *S(va_list*,vp));
+   if(su_log_would_write(lvl_a_flags))
+      a_evlog(lvl_a_flags, fmt, *S(va_list*,vp));
 
    NYD_OU;
 }

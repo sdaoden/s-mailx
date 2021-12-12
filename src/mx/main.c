@@ -139,6 +139,7 @@ a_main_startup(char const *argv0){
          (su_STATE_LOG_SHOW_LEVEL | /*su_STATE_LOG_SHOW_PID |*/
           n_LOG_LEVEL /* XXX _EMERG is 0.. */),
       su_STATE_ERR_NOPASS);
+   su_log_set_write_fun(&n_su_log_write_fun);
 
    /* Change to reproducible mode asap */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
@@ -1340,6 +1341,7 @@ jleave:
          su_mem_bag_gut(mx_go_data->gdc_membag); /* Was init in go_init() */
       )
 
+      su_log_set_write_fun(NIL);
       su_state_gut(
          ((n_psonce & n_PSO_XIT)
             ? su_STATE_GUT_ACT_QUICK : su_STATE_GUT_ACT_NORM)
