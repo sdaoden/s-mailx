@@ -37,21 +37,6 @@
 #endif
 #ifdef su_HAVE_MEM_BAG
 
-/* su_USECASE related foreign hooks XXX should not be here! config.h? */
-#ifdef su_USECASE_MX
-# include <su/code-in.h>
-C_DECL_BEGIN
-
-struct mx_go_data_ctx;
-struct su_mem_bag;
-struct su__mem_bag_mx {struct su_mem_bag *mbm_bag;};
-EXPORT_DATA struct mx_go_data_ctx *mx_go_data;
-# define su_MEM_BAG_SELF (su_R(struct su__mem_bag_mx*,mx_go_data)->mbm_bag)
-
-C_DECL_END
-# include <su/code-ou.h>
-#endif /* su_USECASE_MX */
-
 #define su_HEADER
 #include <su/code-in.h>
 C_DECL_BEGIN
