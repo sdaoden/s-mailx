@@ -215,7 +215,11 @@ big_balls() {
          ( cd "${TMPDIR}" && ${tar} -x -f - )
       cd "${TMPDIR}"
 
-      ${tar} -c -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
+      # And use a portable format by default; ustar from 1988 is ok for us,
+      # but pax/posix from 2001 is even more forgiving and future aware
+      fmt=
+      ${tar} --format=pax --version >/dev/null 2>&1 && fmt=--format=pax
+      ${tar} -c ${fmt} -f "${PROGRAM}-${REL}.tar" "${PROGRAM}-${REL}"
       < "${PROGRAM}-${REL}.tar" ${xz} -e -C sha256 > "${PROGRAM}-${REL}.tar.xz"
       < "${PROGRAM}-${REL}.tar" ${gzip} -9 > "${PROGRAM}-${REL}.tar.gz"
       ${rm} "${PROGRAM}-${REL}.tar"
