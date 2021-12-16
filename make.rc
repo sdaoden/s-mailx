@@ -44,12 +44,20 @@
 #@ - You may NOT comment out anything in here -- if you want to disable
 #@   a feature, set it to a false boolean.
 
-## IDENTITIES, PATHS AND PROGRAMS ##
+## IDENTITIES, PATHS AND PROGRAMS (unsorted, sorry!) ##
 
 # Contact info (end up as the INTERNAL VARIABLES *contact-mail* and
 # *contact-web*, respectively).
 VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
 VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
+
+# To ease the life of forkers and packagers "our" name can be changed.
+# The name is built by concatenating $VAL_SID and $VAL_MAILX:
+# $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
+# than two characters, must fit _easily_ in NAME_MAX-1, must not contain
+# any whitespace, and must not contain multibyte sequences.
+VAL_SID=s-
+VAL_MAILX=nail
 
 # The user ID our small privilege-separated dotlock helper program will
 # be SETUID to, shall it be included ($OPT_DOTLOCK).
@@ -60,17 +68,20 @@ VAL_PS_DOTLOCK_USER=root
 # General prefix of installation.
 VAL_PREFIX=/usr/local
 
-# Fine tune individual locations, normally under $VAL_PREFIX.
-# . the place of normal binaries.
-VAL_BINDIR=${VAL_PREFIX}/bin
-# . the place of privilege-separated binaries, names of which are
-#   ${VAL_SID}${VAL_MAILX}-foo ($VAL_SID and $VAL_MAILX are below).
-#   (Only with: $OPT_DOTLOCK.)
-VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
-# . of the manual.
-VAL_MANDIR=${VAL_PREFIX}/share/man
-# . of the exemplary resource file.
-VAL_SYSCONFDIR=${VAL_PREFIX}/etc
+   # Fine tune directory locations, normally under $VAL_PREFIX:
+   # . of normal binaries.
+   VAL_BINDIR=${VAL_PREFIX}/bin
+   # . of privilege-separated binaries (if any), names of which are
+   #     ${VAL_SID}${VAL_MAILX}-foo.
+   VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
+   # . of the manual.
+   VAL_MANDIR=${VAL_PREFIX}/share/man
+   # . of the exemplary resource file.
+   VAL_SYSCONFDIR=${VAL_PREFIX}/etc
+
+      # The exemplary resource template (within $VAL_SYSCONFDIR).
+      # Note 1: not overwritten by "make install" if yet exists!
+      VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for package building, for
@@ -140,21 +151,28 @@ VAL_HEIGHT=24
 VAL_WIDTH=80
 
 # The following tools may be provided a.k.a. overwritten,
-# `command -v NAME` is used to query the utility otherwise:
-#  STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
-#     grep=, ln=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
-# Usually in administrator paths:
-#  chown= [$OPT_DOTLOCK]
-# Note that awk(1), pwd(1), rm(1), tr(1) and uname(1) are needed before
-# this file is read, all other utilities will be checked afterwards only.
-# uname(1) is in fact needed before the initial OS setup and thus no OS
-# specific adjustments (for example $PATH) have been performed yet, but
-# its use can be circumvented by setting $OS (uname -s) and $OSFULLSPEC
-# (uname -a: this is not baked into the binary, it is only used to
-# recognize build environment changes).
+# `command -v NAME` is used to query the utility otherwise.
 # Due to the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
+#
+#     awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
+#     grep=, ln=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
+#
+# Optionally:
+#     objcopy= [$OPT_DEBUG], strip=
+#
+# Usually in administrator paths:
+#  chown= [$OPT_DOTLOCK]
+#
+# Note I: needed before this file is read (can only be overwritten by
+#  passing them on the command line):
+#     awk(1), pwd(1), rm(1), tr(1) and uname(1)
+#
+# Note II: uname(1) is needed before the initial OS setup, and thus no
+#  OS specific adjustments (for example $PATH) have been performed yet.
+#  Its usage can be avoided by passing filled $OS (otherwise: uname -s)
+#  and $OSFULLSPEC (otherwise: uname -a).
 
 ## FEATURE SET ##
 
@@ -195,6 +213,7 @@ OPT_AMALGAMATION=no
 # . stackprot: shall stack protectors be used if supported.
 #     . fortify: onto stackprot, enable _FORTIFY_SOURCE=2.
 #           (This requires an optimized (-O) build.)
+# $OPT_AUTOCC reacts upon $OPT_DEBUG.
 OPT_AUTOCC=yes
    VAL_AUTOCC=keep_options,bind_now,pie,stackprot,fortify
 
@@ -210,6 +229,14 @@ OPT_COLOUR=yes
 # systemcall etc. tests (link and run the executable) but only to
 # perform the link tests necessary to detect host environment.
 OPT_CROSS_BUILD=no
+
+# Enables a few code check paths, does not strip binaries.
+# With $OPT_AUTOCC, use debug compiler flags.
+# (Code assertions are disabled via the standardized NDEBUG compiler
+# preprocessor variable, which $OPT_AUTOCC does not use if this is on.)
+# If objcopy(1) and strip(1) are available and capable, place the debug
+# information in a separate file and strip the binary nonetheless.
+OPT_DEBUG=no
 
 # We may include `help' etc. strings for commands, increasing size a bit.
 OPT_DOCSTRINGS=yes
@@ -423,22 +450,6 @@ OPT_USE_PKGSYS=yes
 ##  --  >8  --  8<  --  ##
 ## Normal users should not need to read any further
 
-## PATHS AND PROGRAMS, DEVELOPMENT ##
-
-# To ease the life of forkers and packagers "our" name can be changed.
-# The name is built by concatenating $VAL_SID and $VAL_MAILX:
-# $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
-# than two characters, must fit _easily_ in NAME_MAX-1, must not contain
-# any whitespace, and must not contain multibyte sequences.
-VAL_SID=s-
-VAL_MAILX=nail
-
-# The name of the exemplary resource template.
-# Note 1: not overwritten by "make install" if yet exists!
-VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
-
-## FEATURE SET, DEVELOPMENT ##
-
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
@@ -451,17 +462,14 @@ OPT_ASAN_ADDRESS=no
 OPT_ASAN_MEMORY=no
 OPT_USAN=no
 
-# Use debug compiler flags, enable code assertions and memory canaries,
-# which require a rather large amount of runtime memory.
-OPT_DEBUG=no
-
-# Development only.
+# Development only, or to address a very specific program misbehaviour.
+# Requires a rather large amount of runtime memory and run time.
 OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
 
-# If $OPT_DEBUG is true we will use a simple memory wrapper with
+# If $OPT_DEVEL is true we will use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or
 # the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
 OPT_NOMEMDBG=`\

@@ -313,9 +313,10 @@ ld_rpath_not_runpath=
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
-   # We don't "have any utility" (see make.rc)
-   [ -n "${OS}" ] && [ -n "${OSFULLSPEC}" ] ||
+   # We do not "have any utility" (see make.rc)
+   if [ -z "${OS}" ] || [ -z "${OSFULLSPEC}" ]; then
       thecmd_testandset_fail uname uname
+   fi
 
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
@@ -516,10 +517,14 @@ doit(char const *s){
 !
 }
 
+cc_build_tmp_as_tmp2() {
+   ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1
+}
+
 cc_hello() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiles "Hello world" .. '
-   if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS}; then
+   if cc_build_tmp_as_tmp2; then
       [ -n "${cc_check_silent}" ] || msg 'yes'
       feat_yes CROSS_BUILD && return 0
       [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
@@ -1481,9 +1486,9 @@ os_early_setup
 # Check those tools right now that we need before including $rc
 msg 'Checking for basic utility set'
 thecmd_testandset_fail awk awk
+thecmd_testandset_fail pwd pwd
 thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
-thecmd_testandset_fail pwd pwd
 
 # Lowercase this now in order to isolate all the remains from case matters
 OS_ORIG_CASE=${OS}
@@ -1560,34 +1565,41 @@ msg 'done'
 os_setup
 
 msg 'Checking for remaining set of utilities'
-thecmd_testandset_fail getconf getconf
+# Needed for path_check
 thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
 path_check PATH
 
-# awk(1) above
+# far above thecmd_testandset_fail awk awk
 thecmd_testandset_fail basename basename
 thecmd_testandset_fail cat cat
 thecmd_testandset_fail chmod chmod
 thecmd_testandset_fail cp cp
 thecmd_testandset_fail cmp cmp
-# grep(1) above
+thecmd_testandset_fail getconf getconf
+# above thecmd_testandset_fail grep grep
 thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
-# rm(1) above
+# far above thecmd_testandset_fail pwd pwd
+# far above thecmd_testandset_fail rm rm
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
 thecmd_testandset_fail tee tee
+# far above thecmd_testandset_fail tr tr
+
+thecmd_testandset_fail MAKE make
+make=${MAKE}
+export MAKE
+
 __PATH=${PATH}
 thecmd_testandset chown chown ||
    PATH="/sbin:${PATH}" thecmd_set chown chown ||
    PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
 PATH=${__PATH}
-thecmd_testandset_fail MAKE make
-make=${MAKE}
-export MAKE
+
+thecmd_testandset objcopy objcopy
 thecmd_testandset strip strip
 
 # For ./mx-test.sh only
@@ -1679,9 +1691,12 @@ for i in \
          PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
          NET_TEST_CWDDIR NET_TEST_INCDIR NET_TEST_SRCDIR \
          SU_CWDDIR SU_INCDIR SU_SRCDIR \
+      \
       awk basename cat chmod chown cp cmp grep getconf \
          ln mkdir mv pwd rm sed sort tee tr \
-      MAKE MAKEFLAGS make SHELL strip \
+      \
+      MAKE MAKEFLAGS make objcopy SHELL strip \
+      \
       cksum; do
    eval j=\$${i}
    printf -- "${i} = ${j}\n" >> ${newmk}
@@ -1715,12 +1730,32 @@ cc_hello
 # This may also update ld_runtime_flags() (again)
 cc_flags
 
+DEBUG_IN_EXTERNAL_FILE=
+if feat_yes DEBUG; then
+   [ -n "${cc_check_silent}" ] ||
+      msg_nonl ' . Can place debug symbols in external file .. '
+   cc_create_testfile
+   if cc_build_tmp_as_tmp2 && [ -n "${objcopy}" ] && [ -n "${strip}" ] &&
+         ${objcopy} --only-keep-debug ${tmp2} \
+            ${tmp2}.debug >/dev/null 2>&1 &&
+         ${strip} -g ${tmp2} >/dev/null 2>&1 &&
+         ${objcopy} --add-gnu-debuglink=${tmp2}.debug \
+            ${tmp2} >/dev/null 2>&1 &&
+         [ -s ${tmp2} ] && [ -s ${tmp2}.debug ]; then
+      [ -n "${cc_check_silent}" ] || msg 'yes'
+      DEBUG_IN_EXTERNAL_FILE=y
+   else
+      [ -n "${cc_check_silent}" ] || msg 'no'
+   fi
+fi
+
 for i in \
       COMMLINE \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
       CC CFLAGS LDFLAGS \
       INCS LIBS \
       OSFULLSPEC \
+      DEBUG_IN_EXTERNAL_FILE \
       ; do
    eval j="\$${i}"
    printf -- "${i}=%s;export ${i}\n" "`quote_string ${j}`" >> ${newenv}
@@ -3704,6 +3739,9 @@ feat_def COLOUR
 feat_def CROSS_BUILD
 feat_def DOTLOCK
 feat_def FILTER_HTML_TAGSOUP
+feat_def DEBUG 0
+feat_def DOCSTRINGS
+feat_def ERRORS
 if feat_yes FILTER_QUOTE_FOLD; then
    if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
       echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
@@ -3713,8 +3751,6 @@ if feat_yes FILTER_QUOTE_FOLD; then
 else
    feat_is_disabled FILTER_QUOTE_FOLD
 fi
-feat_def DOCSTRINGS
-feat_def ERRORS
 feat_def IMAP
 feat_def IMAP_SEARCH
 feat_def MAILCAP
@@ -3742,7 +3778,6 @@ feat_def USE_PKGSYS
 feat_def ASAN_ADDRESS 0
 feat_def ASAN_MEMORY 0
 feat_def USAN 0
-feat_def DEBUG 0
 feat_def DEVEL 0
 feat_def NOMEMDBG 0
 
