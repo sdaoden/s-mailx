@@ -10,8 +10,13 @@
 #@    thecmd_testandset_fail MAKE make
 #@ or
 #@    MAKE=/usr/bin/make thecmd_testandset_fail MAKE make
+#@ _However_, in order to support prefilled variables like "awk='busybox awk'"
+#@ spaces in command names found via path search are not supported.
+#@ That is to say that we take user-prefilled variable names with spaces as
+#@ granted, and actively fail to find commands with spaces ourselfs; like this
+#@ users of these functions can simply say: $VAR args, not "$VAR" args.
 #
-# 2017 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 # Thanks to Robert Elz (kre).
 # Public Domain
 
@@ -46,6 +51,14 @@ thecmd_testandset_fail() { fc__acmd "${2}" 1 1 1 "${1}"; }
 
 fc__pathsrch() { # pname=$1 exec=$2 varname=$3 verbok=$4
    fcps__pname=$1 fcps__exec=$2 fcps__varname=$3 fcps__verbok=$4
+
+   # Commands with spaces are not found
+   if [ "${fcps__exec}" != "${fcps__exec#* }" ]; then
+      [ -n "${VERBOSE}" ] && [ ${fcps__verbok} -ne 0 ] &&
+         msg ' . ${%s} ... %s (has spaces, CANNOT be found)' \
+            "${fcps__pname}" "${fcps__exec}"
+      return 1
+   fi
 
    # It may be an absolute path, check that first
    if [ "${fcps__exec}" != "${fcps__exec#/}" ] &&
@@ -90,9 +103,21 @@ fc__acmd() {
    fca__pname=${1} fca__dotest=${2} fca__dofail=${3} \
       fca__verbok=${4} fca__varname=${5}
 
+   # Is the variable prefilled?
    if [ "${fca__dotest}" -ne 0 ]; then
       eval fca__dotest=\$${fca__varname}
       if [ -n "${fca__dotest}" ]; then
+         # It could be something like "busybox awk".  So if there is any
+         # whitespace in a given variable, this cannot truly be solved in an
+         # automatic fashion, we need to take it for granted
+         if [ "${fca__dotest}" = "${fca__dotest#* }" ] ||
+               [ -f "${fca__dotest}" ]; then :; else
+            [ -n "${VERBOSE}" ] && [ ${fca__verbok} -ne 0 ] &&
+               msg ' . ${%s} ... %s (spacy user data, unverifiable)' \
+                  "${fca__pname}" "${fca__dotest}"
+            return 0
+         fi
+
          if fc__pathsrch "${fca__pname}" "${fca__dotest}" "${fca__varname}" \
                ${fca__verbok}; then
             return 0
