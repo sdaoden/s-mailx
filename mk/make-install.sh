@@ -12,34 +12,52 @@ __mkdir() {
    fi
 }
 
-__copyfile() {
-   _mode=${1} _src=${2} _xdst=${3} _dst="${DESTDIR}${3}"
-   echo "rm -f \"\${DESTDIR}${_xdst}\"" >> \
-      "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+___docopychownfile() {
+   _xstrip=${1} _mode=${2} _ident=${3} _src=${4} _xdst=${5} \
+      _dst="${DESTDIR}${5}"
+
    ${cp} -f "${_src}" "${_dst}"
+
+   echo "${rm} -f \"\${DESTDIR}${_xdst}\"" \
+      >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+
+   if [ "${_xstrip}" = y ]; then
+      if [ "${OPT_DEBUG}" != 0 ]; then
+         if [ -n "${DEBUG_IN_EXTERNAL_FILE}" ]; then
+            ${objcopy} --only-keep-debug "${_dst}" "${_dst}".debug
+            ${strip} -g "${_dst}"
+            ${objcopy} --add-gnu-debuglink="${_dst}".debug "${_dst}"
+
+            if [ -n "${_ident}" ]; then
+               ${chown} ${_ident} "${_dst}".debug || true
+            fi
+            ${chmod} 0644 "${_dst}".debug
+
+            echo "${rm} -f \"\${DESTDIR}${_xdst}\".debug" \
+               >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+         fi
+      elif [ -n "${strip}" ]; then
+         ${strip} "${_dst}"
+      fi
+   fi
+
+   if [ -n "${_ident}" ]; then
+      ${chown} ${_ident} "${_dst}" || true
+   fi
    ${chmod} ${_mode} "${_dst}"
+}
+
+__copyfile() {
+   ___docopychownfile "${1}" "${2}" '' "${3}" "${4}"
 }
 
 __copychownfile() {
-   _mode=${1} _ident=${2} _src=${3} _xdst=${4} _dst="${DESTDIR}${4}"
-   echo "rm -f \"\${DESTDIR}${_xdst}\"" >> \
-      "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
-   ${cp} -f "${_src}" "${_dst}"
-   ${chown} ${_ident} "${_dst}" || true
-   ${chmod} ${_mode} "${_dst}"
-}
-
-__stripfile() {
-   _file=${1}
-   if [ "${OPT_DEBUG}" != 0 ]; then :;
-   elif [ -n "${strip}" ]; then
-      ${strip} "${_file}"
-   fi
+   ___docopychownfile "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
 cd "${CWDDIR}" || exit 11
 
-echo '#!/bin/sh -' > "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+echo '#!'"${SHELL}"' -' > "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo '#@ Uninstall script for '"${VAL_UAGENT}" >> \
    "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 echo >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
@@ -52,17 +70,15 @@ __mkdir "${VAL_BINDIR}"
 __mkdir "${VAL_MANDIR}/man1"
 __mkdir "${VAL_SYSCONFDIR}"
 
-__stripfile "${OBJDIR}"/"${VAL_UAGENT}"
-__copyfile 0755 "${OBJDIR}"/"${VAL_UAGENT}" "${VAL_BINDIR}"/"${VAL_UAGENT}"
-__copyfile 0444 "${OBJDIR}"/uman.1 "${VAL_MANDIR}"/man1/"${VAL_UAGENT}".1
+__copyfile y 0755 "${OBJDIR}"/"${VAL_UAGENT}" "${VAL_BINDIR}"/"${VAL_UAGENT}"
+__copyfile n 0444 "${OBJDIR}"/uman.1 "${VAL_MANDIR}"/man1/"${VAL_UAGENT}".1
 if [ -f "${DESTDIR}${VAL_SYSCONFDIR}/${VAL_SYSCONFRC}" ]; then :; else
-   __copyfile 0444 "${OBJDIR}"/urc.rc "${VAL_SYSCONFDIR}/${VAL_SYSCONFRC}"
+   __copyfile n 0444 "${OBJDIR}"/urc.rc "${VAL_SYSCONFDIR}/${VAL_SYSCONFRC}"
 fi
 
 if [ "${OPT_DOTLOCK}" != 0 ]; then
    __mkdir "${VAL_LIBEXECDIR}"
 
-   __stripfile "${OBJDIR}"/"${VAL_PS_DOTLOCK}"
    m='o=rx' o=
    #if [ -n "${_____PRIVSEP_GROUP}" ]; then
    #   m="g=rxs,${m}" o=":${VAL_PRIVSEP_GROUP}"
@@ -74,16 +90,16 @@ if [ "${OPT_DOTLOCK}" != 0 ]; then
    else
       m="u=rx,${m}"
    fi;
-   __copychownfile "${m}" "${o}" \
+   __copychownfile y "${m}" "${o}" \
       "${OBJDIR}"/"${VAL_PS_DOTLOCK}" "${VAL_LIBEXECDIR}/${VAL_PS_DOTLOCK}"
-fi;
+fi
 
 if [ -z "${DESTDIR}" ]; then
-   __copyfile 0755 "${OBJDIR}/${VAL_UAGENT}-uninstall.sh" \
+   __copyfile n 0755 "${OBJDIR}/${VAL_UAGENT}-uninstall.sh" \
       "${VAL_BINDIR}/${VAL_UAGENT}-uninstall.sh"
 else
-   echo "rm -f \"\${DESTDIR}${VAL_BINDIR}/${VAL_UAGENT}\"-uninstall.sh" >> \
-      "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
+   echo "${rm} -f \"\${DESTDIR}${VAL_BINDIR}/${VAL_UAGENT}\"-uninstall.sh" \
+      >> "${OBJDIR}/${VAL_UAGENT}-uninstall.sh"
 fi
 
 # s-sh-mode
