@@ -122,6 +122,9 @@
 #undef DVL
 #undef NDVL
 #undef DVLOR
+#undef DVLDBG
+#undef NDVLDBG
+#undef DVLDBGOR
 
 #undef FIELD_DISTANCEOF
 #undef FIELD_INITN

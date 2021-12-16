@@ -1,10 +1,10 @@
 /*@ Code of the basic infrastructure (POD types, macros etc.) and functions.
  *@ And main documentation entry point, as below.
- *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and NDEBUG.
- *@   The latter is a precondition for su_HAVE_INLINE; dependent upon compiler
- *@   __OPTIMIZE__ (and __OPTIMIZE_SIZE__) may be looked at in addition, then.
- *@   su_HAVE_DEVEL is meant as a possibility to enable test paths with
- *@   debugging disabled.
+ *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and the standard NDEBUG.
+ *@   The former two are configuration-time constants, they will create
+ *@   additional API and even cause a different ABI.
+ *@   The latter is a standardized preprocessor macro that is used for example
+ *@   to choose \r{su_ASSERT()} expansion.
  *@ - Some macros require su_FILE to be defined to a literal.
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
@@ -152,11 +152,21 @@
     * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
 
-# define su_HAVE_DEBUG /*!< Debug variant, including assertions etc. */
-   /*! Test paths available in non-debug code.
-    * Also, compiler pragmas which suppress some warnings are not set, etc.*/
+    /*! Enables a few code check paths and debug-only structure content and
+     * function arguments: it creates additional API, and even causes
+     * a different ABI.
+     * (Code assertions are disabled via the standardized NDEBUG compiler
+     * preprocessor variable.) */
+# define su_HAVE_DEBUG
+   /*! Enable developer mode: it creates additional API, and even causes
+    * a different ABI.
+    * Expensive in size and runtime development code paths, like extensive
+    * memory tracing and lingering, otherwise useless on-gut cleanups, and
+    * more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
-# define su_HAVE_DOCSTRINGS /*!< Some more helpful strings. */
+   /*! Makes available some more helpful, translatable strings for logging
+    * purposes etc., which can be left out for (minimal) space savings. */
+# define su_HAVE_DOCSTRINGS
    /*! \r{MD} support available?
     * If so, always included are
     * \list{\li{
@@ -168,9 +178,9 @@
     * (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
     * Subfeature of \r{su_HAVE_MD}. */
 /*#  define su_HAVE_MD_BLAKE2B*/
-# define su_HAVE_MEM_BAG_AUTO /*!< \_ */
-# define su_HAVE_MEM_BAG_LOFI /*!< \_ */
-   /*! Normally the debug library performs memory write boundary excess
+# define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
+# define su_HAVE_MEM_BAG_LOFI /*!< \r{MEM_BAG}. */
+   /*! Normally the development library performs memory write boundary excess
     * detection via canaries (see \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
     * Since this counteracts external memory checkers like \c{valgrind(1)} or
     * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
@@ -209,9 +219,10 @@
  *
  * \list{\li{
  * Reacts upon \vr{su_HAVE_DEBUG}, \vr{su_HAVE_DEVEL}, and \vr{NDEBUG}.
- * Whereas the former two are configuration-time constants which will create
- * additional API and cause a different ABI, the latter will only cause
- * preprocessor changes, for example for \r{su_ASSERT()}.
+ * The former two are configuration-time constants, they will create additional
+ * API and even cause a different ABI.
+ * The latter is a standardized preprocessor macro that is used for example to
+ * choose \r{su_ASSERT()} expansion.
  * }\li{
  * The latter is a precondition for \vr{su_HAVE_INLINE}.
  * }\li{
@@ -822,48 +833,57 @@ do if(!(X)){\
 #endif
 
 /* Debug file location arguments.  (For an usage example see su/mem.h.) */
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG
-# define su_HAVE_DBG_LOC_ARGS
-# define su_DBG_LOC_ARGS_FILE su__dbg_loc_args_file
-# define su_DBG_LOC_ARGS_LINE su__dbg_loc_args_line
+#ifdef su_HAVE_DEVEL
+# define su_HAVE_DVL_LOC_ARGS
+# define su_DVL_LOC_ARGS_FILE su__dbg_loc_args_file
+# define su_DVL_LOC_ARGS_LINE su__dbg_loc_args_line
 
-# define su_DBG_LOC_ARGS_DECL_SOLE \
-   char const *su_DBG_LOC_ARGS_FILE, su_u32 su_DBG_LOC_ARGS_LINE
-# define su_DBG_LOC_ARGS_DECL , su_DBG_LOC_ARGS_DECL_SOLE
-# define su_DBG_LOC_ARGS_INJ_SOLE __FILE__, __LINE__
-# define su_DBG_LOC_ARGS_INJ , su_DBG_LOC_ARGS_INJ_SOLE
-# define su_DBG_LOC_ARGS_USE_SOLE su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE
-# define su_DBG_LOC_ARGS_USE , su_DBG_LOC_ARGS_USE_SOLE
-# define su_DBG_LOC_ARGS_ORUSE su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE
-# define su_DBG_LOC_ARGS_UNUSED() \
+# define su_DVL_LOC_ARGS_DECL_SOLE \
+   char const *su_DVL_LOC_ARGS_FILE, su_u32 su_DVL_LOC_ARGS_LINE
+# define su_DVL_LOC_ARGS_DECL , su_DVL_LOC_ARGS_DECL_SOLE
+# define su_DVL_LOC_ARGS_INJ_SOLE __FILE__, __LINE__
+# define su_DVL_LOC_ARGS_INJ , su_DVL_LOC_ARGS_INJ_SOLE
+# define su_DVL_LOC_ARGS_USE_SOLE su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE
+# define su_DVL_LOC_ARGS_USE , su_DVL_LOC_ARGS_USE_SOLE
+# define su_DVL_LOC_ARGS_ORUSE su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE
+# define su_DVL_LOC_ARGS_UNUSED() \
 do{\
-   su_UNUSED(su_DBG_LOC_ARGS_FILE);\
-   su_UNUSED(su_DBG_LOC_ARGS_LINE);\
+   su_UNUSED(su_DVL_LOC_ARGS_FILE);\
+   su_UNUSED(su_DVL_LOC_ARGS_LINE);\
 }while(0)
 #else
-# define su_DBG_LOC_ARGS_FILE "unused"
-# define su_DBG_LOC_ARGS_LINE 0
+# define su_DVL_LOC_ARGS_FILE "unused"
+# define su_DVL_LOC_ARGS_LINE 0
 #
-# define su_DBG_LOC_ARGS_DECL_SOLE
-# define su_DBG_LOC_ARGS_DECL
-# define su_DBG_LOC_ARGS_INJ_SOLE
-# define su_DBG_LOC_ARGS_INJ
-# define su_DBG_LOC_ARGS_USE_SOLE
-# define su_DBG_LOC_ARGS_USE
-# define su_DBG_LOC_ARGS_ORUSE su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE
-# define su_DBG_LOC_ARGS_UNUSED() do{}while(0)
-#endif /* su_HAVE_DEVEL || su_HAVE_DEBUG */
+# define su_DVL_LOC_ARGS_DECL_SOLE
+# define su_DVL_LOC_ARGS_DECL
+# define su_DVL_LOC_ARGS_INJ_SOLE
+# define su_DVL_LOC_ARGS_INJ
+# define su_DVL_LOC_ARGS_USE_SOLE
+# define su_DVL_LOC_ARGS_USE
+# define su_DVL_LOC_ARGS_ORUSE su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE
+# define su_DVL_LOC_ARGS_UNUSED() do{}while(0)
+#endif /* su_HAVE_DEVEL */
 
 /* Development injections */
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
-      || defined DOXYGEN
-# define su_DVL(X) X /*!< Inject for \r{su_HAVE_DEVEL} or \r{su_HAVE_DEBUG}. */
+#if defined su_HAVE_DEVEL || defined DOXYGEN
+# define su_DVL(X) X /*!< Inject for \r{su_HAVE_DEVEL}. */
 # define su_NDVL(X) /*!< \_ */
 # define su_DVLOR(X,Y) X /*!< \_ */
 #else
 # define su_DVL(X)
 # define su_NDVL(X) X
 # define su_DVLOR(X,Y) Y
+#endif
+
+#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG || defined DOXYGEN
+# define su_DVLDBG(X) X /*!< With \r{su_HAVE_DEVEL} or \r{su_HAVE_DEBUG}. */
+# define su_NDVLDBG(X) /*!< \_ */
+# define su_DVLDBGOR(X,Y) X /*!< \_ */
+#else
+# define su_DVLDBG(X)
+# define su_NDVLDBG(X) X
+# define su_DVLDBGOR(X,Y) Y
 #endif
 
 /*! To avoid files that are overall empty */
@@ -1122,7 +1142,7 @@ typedef signed int su_s32;
 # define su_U64_C(C) UINT64_C(C) /*!< \_ */
 typedef uint64_t su_u64; /*!< \_ */
 typedef int64_t su_s64; /*!< \_ */
-#elif ULONG_MAX <= 0xFFFFFFFFu
+#elif ULONG_MAX - 1 <= 0xFFFFFFFFu - 1
 # if !defined ULLONG_MAX
 #  error We need a 64 bit integer
 # else
@@ -1786,26 +1806,30 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #if DVLOR(1, 0) || defined DOXYGEN
 /*! Control NYD for the calling thread.
  * When \a{disabled}, \r{su_nyd_chirp()} will return quick.
- * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
+ * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_set_disabled(boole disabled);
 
 /*! Reset \r{su_nyd_chirp()} recursion level of the calling thread.
  * In event-loop driven software that uses long jumps it may be desirable to
  * reset the recursion level at times.
  * \a{nlvl} is only honoured when smaller than the current recursion level.
- * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
+ * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_reset_level(u32 nlvl);
 
 /*! Not-yet-dead chirp of the calling thread.
  * Normally used from the support macros in code-{in,ou}.h when \vr{su_FILE}
  * is defined.
- * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
+ * Define \c{NYD_ENABLE} on per-file level, or \c{su_NYD_ENABLE} on global
+ * level, and injections will happen; in this case \c{NYD2_ENABLE} and
+ * \c{su_NYD2_ENABLE} will also be inspected.
+ * The same for \c{NYDPROF_ENABLE}, but this is currently not implemented.
+ * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line,
       char const *fun);
 
 /*! Dump all existing not-yet-dead entries of the calling thread via \a{ptf}.
  * \a{buf} is NUL terminated despite \a{blen} being passed, too.
- * \remarks{Available only with \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL}.} */
+ * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen),
       up cookie);
 #endif /* DVLOR(1,0) || DOXYGEN */
@@ -1833,8 +1857,8 @@ typedef void *(*su_new_fun)(u32 estate);
  *
  * Many \SU functions take an \a{estate} parameter that has the same meaning as
  * for this function.
- * However, many return a \r{s32}, which then either is \r{su_STATE_NONE} upon
- * success, one of the \r{su_state_err_type}s for hardening errors, or
+ * However, many return a \r{su_s32}, which then either is \r{su_STATE_NONE}
+ * upon success, one of the \r{su_state_err_type}s for hardening errors, or
  * a negative \r{su_err_number} for "normal" errors.
  * (In \r{su_ASSERT()} enabled code even \c{-su_ERR_FAULT} may happen.)
  * Those which do not usually set \r{su_err_no()}. */
@@ -2578,7 +2602,7 @@ NSPC_END(su)
  * example, mutex locking).
  * If initialization macros are used a resource aquisition failure results in
  * a program abortion via \r{su_LOG_EMERG} log.
- * If that is not acceptable the normal object \c{_create()} (see \r{mainpage})
+ * If that is not acceptable the normal object \c{_create()} (see \r{index})
  * function has to be used, it allows for error handling.
  */
 

@@ -54,7 +54,7 @@ a_mutex_init(struct su_mutex *self){
 }
 #endif
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 boole
 su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
       struct su_thread *tsp, char const *file, u32 line){
@@ -111,7 +111,7 @@ su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
 jleave:
    return rv;
 }
-#endif /* DVLOR(1, 0) */
+#endif /* DVLDBGOR(1, 0) */
 
 #ifdef su_HAVE_MT
 # ifdef su__MUTEX_SPIN
@@ -125,14 +125,14 @@ jleave:
 void
 su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
       su__MUTEX_ARGS_DECL){
-   DVLOR( UNUSED(file); UNUSED(line); )
+   DVLDBGOR( UNUSED(file); UNUSED(line); )
 
    if(!(self->mtx_.flags & su_MUTEX_INIT))
       self = a_mutex_init(self);
 
    a_LOCK();
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
       goto jleave;
 #endif
@@ -141,7 +141,7 @@ su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
       boole xlock;
 
       if((xlock = (self->mtx_.owner != NIL))){
-         DVL( self->mtx_.line = line; self->mtx_.file = file; )
+         DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
          a_UNLOCK();
       }
       a_mutex_os_lock(self, self->mtx_.os, tsp);
@@ -153,8 +153,8 @@ su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
 
    ++self->mtx_.count;
 
-DVLOR( jleave: )
-   DVL( self->mtx_.line = line; self->mtx_.file = file; )
+DVLDBGOR( jleave: )
+   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
    a_UNLOCK();
 }
 
@@ -163,14 +163,14 @@ su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
       su__MUTEX_ARGS_DECL){
    boole rv;
 
-   DVLOR( UNUSED(file); UNUSED(line); )
+   DVLDBGOR( UNUSED(file); UNUSED(line); )
 
    if(!(self->mtx_.flags & su_MUTEX_INIT))
       self = a_mutex_init(self);
 
    a_LOCK();
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
       goto jleave;
 #endif
@@ -186,7 +186,7 @@ su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
    ++self->mtx_.count;
 
 jleave:
-   DVL( self->mtx_.line = line; self->mtx_.file = file; )
+   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
    a_UNLOCK();
 
    return rv;
@@ -194,9 +194,9 @@ jleave:
 
 void
 su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
-   DVLOR( UNUSED(file); UNUSED(line); )
+   DVLDBGOR( UNUSED(file); UNUSED(line); )
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    if(!(self->mtx_.flags & su_MUTEX_INIT)){
       su__mutex_check(self, su__MUTEX_UNLOCK_NOLOCK, tsp, file, line);
       goto jleave;
@@ -205,7 +205,7 @@ su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
 
    a_LOCK();
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    if(!su__mutex_check(self, su__MUTEX_UNLOCK, tsp, file, line))
       goto jleave;
 #endif
@@ -215,8 +215,8 @@ su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
       a_mutex_os_unlock(self, self->mtx_.os, tsp);
    }
 
-DVLOR( jleave: )
-   DVL( self->mtx_.line = line; self->mtx_.file = file; )
+DVLDBGOR( jleave: )
+   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
    a_UNLOCK();
 }
 

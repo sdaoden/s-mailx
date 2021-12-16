@@ -72,7 +72,7 @@ a_url_last_at_before_slash(char const *cp){
 #endif
 
 char *
-(mx_url_xenc)(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL){
+(mx_url_xenc)(char const *cp, boole ispath  su_DVL_LOC_ARGS_DECL){
    char *n, *np, c1;
    NYD2_IN;
 
@@ -86,7 +86,7 @@ char *
       }
       i *= 3;
       ++i;
-      np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DBG_LOC_ARGS_ORUSE);
+      np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DVL_LOC_ARGS_ORUSE);
    }
 
    for(; (c1 = *cp) != '\0'; ++cp){
@@ -116,13 +116,13 @@ jleave:
 }
 
 char *
-(mx_url_xdec)(char const *cp  su_DBG_LOC_ARGS_DECL){
+(mx_url_xdec)(char const *cp  su_DVL_LOC_ARGS_DECL){
    char *n, *np;
    s32 c;
    NYD2_IN;
 
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
-         su_DBG_LOC_ARGS_ORUSE);
+         su_DVL_LOC_ARGS_ORUSE);
 
    while((c = S(uc,*cp++)) != '\0'){
       if(c == '%' && cp[0] != '\0' && cp[1] != '\0'){

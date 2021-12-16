@@ -525,7 +525,7 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 
 void *
 su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -577,7 +577,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
           * head (top) if possible */
          mbabp = S(struct su__mem_bag_auto_buf*,su_ALLOCATE_LOC((self->mb_bsz +
                   a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
          if(mbabp == NIL)
             goto jleave;
          cp = mbabp->mbab_buf;
@@ -600,7 +600,7 @@ jhave_pool:;
 
             v.p = rv;
             rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
-                  su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+                  su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
             if(rv != NIL)
                *v.pp = rv;
             else{
@@ -614,12 +614,12 @@ jhave_pool:;
 
          DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_auto_allocate(): huge: "
             "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
-            size  su_DBG_LOC_ARGS_USE); )
+            size  su_DVL_LOC_ARGS_USE); )
 
          mbahp = S(struct su__mem_bag_auto_huge*,su_ALLOCATE_LOC(
                VSTRUCT_SIZEOF(struct su__mem_bag_auto_huge,mbah_buf) + chunksz,
                1, (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
          if(UNLIKELY(mbahp == NIL))
             goto jleave;
 #if !a_MEMBAG_HULL
@@ -627,7 +627,7 @@ jhave_pool:;
 #else
          rv = su_ALLOCATE_LOC(size, 1,
                (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
          if(rv != NIL){
             union {void *p; void **pp;} v;
 
@@ -700,7 +700,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 
 void *
 su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -732,7 +732,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
          DBG( if(realsz > self->mb_bsz)
             su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_allocate(): huge: "
                   "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
-               size  su_DBG_LOC_ARGS_USE); )
+               size  su_DVL_LOC_ARGS_USE); )
          isheap = (a_MEMBAG_HULL || realsz > self->mb_bsz);
          chunksz = Z_ALIGN(VSTRUCT_SIZEOF(struct su__mem_bag_lofi_chunk,
                   mblc_buf)) + (isheap ? sizeof(up) : realsz);
@@ -752,7 +752,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
       /* Need a pool */
       mblpp = S(struct su__mem_bag_lofi_pool*,su_ALLOCATE_LOC((self->mb_bsz +
             a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
-            su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
+            su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
       if(mblpp == NIL)
          goto jleave;
       rv = cp = mblpp->mblp_buf;
@@ -772,7 +772,7 @@ jhave_pool:
 
          v.p = rv;
          rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+               su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);
          if(rv != NIL){
             v.p = mblcp->mblc_buf;
             *v.pp = S(void*,rv);
@@ -795,7 +795,7 @@ jleave:
 }
 
 struct su_mem_bag *
-su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
+su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
    UNUSED(ovp);
    ASSERT(self);
@@ -810,13 +810,13 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
       if(ovp == NIL){
          su_log_write(su_LOG_DEBUG,
             "su_mem_bag_lofi_free(): NIL from %s:%" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE);
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
       if(((mblcp = self->mb_lofi_top) == NIL)){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "no LOFI memory exists at %s:%" PRIu32 "!\n"  su_DBG_LOC_ARGS_USE);
+            "no LOFI memory exists at %s:%" PRIu32 "!\n"  su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
@@ -830,7 +830,7 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
       }else if(ovp != mblcp->mblc_buf){
 jeinval:
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "invalid pointer from %s:%" PRIu32 "!\n"  su_DBG_LOC_ARGS_USE);
+            "invalid pointer from %s:%" PRIu32 "!\n"  su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
    }

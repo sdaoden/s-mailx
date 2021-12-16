@@ -211,12 +211,12 @@ EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_AUTO_ALLOCATE(BAGP,SZ,NO,F) \
-      su_mem_bag_auto_allocate(BAGP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+      su_mem_bag_auto_allocate(BAGP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_AUTO_ALLOCATE_LOC(BAGP,SZ,NO,F,FNAME,LNNO) \
       su_mem_bag_auto_allocate(BAGP, SZ, NO, F, FNAME, LNNO)
 # else
@@ -269,7 +269,7 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
          FNAME, LNNO))
 
    /* (The painful _LOCOR series) */
-#  ifdef su_HAVE_DBG_LOC_ARGS
+#  ifdef su_HAVE_DVL_LOC_ARGS
 #   define su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(SZ,ORARGS) \
       su_MEM_BAG_SELF_AUTO_ALLOC_LOC(SZ, ORARGS)
 #   define su_MEM_BAG_SELF_AUTO_ALLOC_N_LOCOR(SZ,NO,ORARGS) \
@@ -295,7 +295,7 @@ EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
       su_MEM_BAG_SELF_AUTO_TALLOC(T, NO)
 #   define su_MEM_BAG_SELF_AUTO_TCALLOC_LOCOR(T,NO,ORARGS) \
       su_MEM_BAG_SELF_AUTO_TCALLOC(T, NO)
-#  endif /* !su_HAVE_DBG_LOC_ARGS */
+#  endif /* !su_HAVE_DVL_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_AUTO */
 /* }}} */
@@ -323,16 +323,16 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self,
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! Free \a{ovp}; \r{su_HAVE_DEBUG} will log if it is not stack top. */
 EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
-      void *ovp su_DBG_LOC_ARGS_DECL);
+      void *ovp su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_LOFI_ALLOCATE(BAGP,SZ,NO,F) \
-      su_mem_bag_lofi_allocate(BAGP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+      su_mem_bag_lofi_allocate(BAGP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_LOFI_ALLOCATE_LOC(BAGP,SZ,NO,F,FNAME,LNNO) \
       su_mem_bag_lofi_allocate(BAGP, SZ, NO, F, FNAME, LNNO)
 # else
@@ -343,8 +343,8 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 
 /*! \_ */
 # define su_MEM_BAG_LOFI_FREE(BAGP,OVP) \
-   su_mem_bag_lofi_free(BAGP, OVP  su_DBG_LOC_ARGS_INJ)
-# ifdef su_HAVE_DBG_LOC_ARGS
+   su_mem_bag_lofi_free(BAGP, OVP  su_DVL_LOC_ARGS_INJ)
+# ifdef su_HAVE_DVL_LOC_ARGS
 #  define su_MEM_BAG_LOFI_FREE_LOC(BAGP,OVP,FNAME,LNNO) \
       su_mem_bag_lofi_free(BAGP, OVP, FNAME, LNNO)
 # else
@@ -402,7 +402,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
       su_MEM_BAG_LOFI_FREE_LOC(su_MEM_BAG_SELF, OVP, FNAME, LNNO)
 
    /* (The painful _LOCOR series) */
-#  ifdef su_HAVE_DBG_LOC_ARGS
+#  ifdef su_HAVE_DVL_LOC_ARGS
 #   define su_MEM_BAG_SELF_LOFI_ALLOC_LOCOR(SZ,ORARGS) \
       su_MEM_BAG_SELF_LOFI_ALLOC_LOC(SZ, ORARGS)
 #   define su_MEM_BAG_SELF_LOFI_ALLOC_N_LOCOR(SZ,NO,ORARGS) \
@@ -432,7 +432,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
       su_MEM_BAG_SELF_LOFI_TCALLOC(T, NO)
 #   define su_MEM_BAG_SELF_LOFI_FREE_LOCOR(OVP,ORARGS) \
       su_MEM_BAG_SELF_LOFI_FREE_LOC(OVP, ORARGS)
-#  endif /* !su_HAVE_DBG_LOC_ARGS */
+#  endif /* !su_HAVE_DVL_LOC_ARGS */
 # endif /* su_MEM_BAG_SELF */
 #endif /* su_HAVE_MEM_BAG_LOFI */
 /* }}}*/
@@ -519,7 +519,7 @@ public:
    /*! \copydoc{su_mem_bag_auto_allocate()} */
    void *auto_allocate(uz size, uz no=1,
          BITENUM_IS(u32,alloc_flags) af=alloc_none){
-      return su_mem_bag_auto_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_auto_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
@@ -535,12 +535,12 @@ public:
    /*! \copydoc{su_mem_bag_lofi_allocate()} */
    void *lofi_allocate(uz size, uz no=1,
          BITENUM_IS(u32,alloc_flags) af=alloc_none){
-      return su_mem_bag_lofi_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_lofi_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
    }
 
    /*! \copydoc{su_mem_bag_lofi_free()} */
    mem_bag &lofi_free(void *ovp){
-      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DBG_LOC_ARGS_INJ));
+      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DVL_LOC_ARGS_INJ));
    }
 #endif /* su_HAVE_MEM_BAG_LOFI */
 };

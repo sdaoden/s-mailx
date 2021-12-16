@@ -43,14 +43,14 @@ a_cs_panic(void){
 }
 
 FL char *
-(savestr)(char const *str  su_DBG_LOC_ARGS_DECL)
+(savestr)(char const *str  su_DVL_LOC_ARGS_DECL)
 {
    uz size;
    char *news;
    NYD_IN;
 
    size = su_cs_len(str);
-   news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(size +1,  su_DBG_LOC_ARGS_ORUSE);
+   news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(size +1,  su_DVL_LOC_ARGS_ORUSE);
    if(size > 0)
       su_mem_copy(news, str, size);
    news[size] = '\0';
@@ -59,12 +59,12 @@ FL char *
 }
 
 FL char *
-(savestrbuf)(char const *sbuf, uz sbuf_len  su_DBG_LOC_ARGS_DECL)
+(savestrbuf)(char const *sbuf, uz sbuf_len  su_DVL_LOC_ARGS_DECL)
 {
    char *news;
    NYD_IN;
 
-   news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(sbuf_len +1, su_DBG_LOC_ARGS_ORUSE);
+   news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(sbuf_len +1, su_DVL_LOC_ARGS_ORUSE);
    if(sbuf_len > 0)
       su_mem_copy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
@@ -73,7 +73,7 @@ FL char *
 }
 
 FL char *
-(savecatsep)(char const *s1, char sep, char const *s2  su_DBG_LOC_ARGS_DECL)
+(savecatsep)(char const *s1, char sep, char const *s2  su_DVL_LOC_ARGS_DECL)
 {
    uz l1, l2;
    char *news;
@@ -82,7 +82,7 @@ FL char *
    l1 = (s1 != NULL) ? su_cs_len(s1) : 0;
    l2 = su_cs_len(s2);
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l1 + (sep != '\0') + l2 +1,
-         su_DBG_LOC_ARGS_ORUSE);
+         su_DVL_LOC_ARGS_ORUSE);
    if (l1 > 0) {
       su_mem_copy(news + 0, s1, l1);
       if (sep != '\0')
@@ -133,7 +133,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
-   char const *sep_o_null  su_DBG_LOC_ARGS_DECL)
+   char const *sep_o_null  su_DVL_LOC_ARGS_DECL)
 {
    uz sonl, l;
    char const * const *xcpa;
@@ -145,7 +145,7 @@ FL struct str *
       l += su_cs_len(*xcpa) + sonl;
 
    self->l = l;
-   self->s = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l +1, su_DBG_LOC_ARGS_ORUSE);
+   self->s = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l +1, su_DVL_LOC_ARGS_ORUSE);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
       uz i;
@@ -182,7 +182,7 @@ n_re_could_be_one_buf(char const *buf, uz len){
 
 FL struct str *
 (n_str_assign_buf)(struct str *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    NYD_IN;
    if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
@@ -191,7 +191,7 @@ FL struct str *
 
    if(LIKELY(buflen > 0)){
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = buflen) +1,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
       su_mem_copy(self->s, buf, buflen);
       self->s[buflen] = '\0';
    }else
@@ -202,7 +202,7 @@ FL struct str *
 
 FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    NYD_IN;
    if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
@@ -213,7 +213,7 @@ FL struct str *
       uz osl = self->l, nsl = osl + buflen;
 
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = nsl) +1,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
       su_mem_copy(self->s + osl, buf, buflen);
       self->s[nsl] = '\0';
    }
@@ -367,7 +367,7 @@ n__string_clear(struct n_string *self){
 }
 
 FL struct n_string *
-(n_string_reserve)(struct n_string *self, uz noof  su_DBG_LOC_ARGS_DECL){
+(n_string_reserve)(struct n_string *self, uz noof  su_DVL_LOC_ARGS_DECL){
    u32 i, l, s;
    NYD_IN;
    ASSERT(self != NULL);
@@ -384,11 +384,11 @@ FL struct n_string *
 
       if(!self->s_auto)
          self->s_dat = su_MEM_REALLOC_LOCOR(self->s_dat, i,
-               su_DBG_LOC_ARGS_ORUSE);
+               su_DVL_LOC_ARGS_ORUSE);
       else{
          char *ndat;
 
-         ndat = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DBG_LOC_ARGS_ORUSE);
+         ndat = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DVL_LOC_ARGS_ORUSE);
          if(l > 0)
             su_mem_copy(ndat, self->s_dat, l);
          self->s_dat = ndat;
@@ -399,7 +399,7 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_resize)(struct n_string *self, uz nlen  su_DBG_LOC_ARGS_DECL){
+(n_string_resize)(struct n_string *self, uz nlen  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
    ASSERT(self != NULL);
 
@@ -407,7 +407,7 @@ FL struct n_string *
       a_cs_panic();
 
    if(self->s_len < nlen)
-      self = (n_string_reserve)(self, nlen  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, nlen  su_DVL_LOC_ARGS_USE);
    self->s_len = (u32)nlen;
    NYD_OU;
    return self;
@@ -415,7 +415,7 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_push_buf)(struct n_string *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
@@ -427,7 +427,7 @@ FL struct n_string *
    if(buflen > 0){
       u32 i;
 
-      self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, buflen  su_DVL_LOC_ARGS_USE);
       su_mem_copy(&self->s_dat[i = self->s_len], buf, buflen);
       self->s_len = (i += (u32)buflen);
    }
@@ -436,13 +436,13 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_push_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
+(n_string_push_c)(struct n_string *self, char c  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
-      self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, 1  su_DVL_LOC_ARGS_USE);
    self->s_dat[self->s_len++] = c;
    NYD_OU;
    return self;
@@ -450,7 +450,7 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_unshift_buf)(struct n_string *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
@@ -460,7 +460,7 @@ FL struct n_string *
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
-      self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, buflen  su_DVL_LOC_ARGS_USE);
       if(self->s_len > 0)
          su_mem_move(&self->s_dat[buflen], self->s_dat, self->s_len);
       su_mem_copy(self->s_dat, buf, buflen);
@@ -471,13 +471,13 @@ FL struct n_string *
 }
 
 FL struct n_string *
-(n_string_unshift_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
+(n_string_unshift_c)(struct n_string *self, char c  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
-      self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, 1  su_DVL_LOC_ARGS_USE);
    if(self->s_len > 0)
       su_mem_move(&self->s_dat[1], self->s_dat, self->s_len);
    self->s_dat[0] = c;
@@ -488,7 +488,7 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_insert_buf)(struct n_string *self, uz idx,
-      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL){
+      char const *buf, uz buflen  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
@@ -499,7 +499,7 @@ FL struct n_string *
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
-      self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, buflen  su_DVL_LOC_ARGS_USE);
       if(self->s_len > 0)
          su_mem_move(&self->s_dat[idx + buflen], &self->s_dat[idx],
             self->s_len - idx);
@@ -512,14 +512,14 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_insert_c)(struct n_string *self, uz idx,
-      char c  su_DBG_LOC_ARGS_DECL){
+      char c  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
 
    ASSERT(self != NULL);
    ASSERT(idx <= self->s_len);
 
    if(self->s_len + 1 >= self->s_size)
-      self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, 1  su_DVL_LOC_ARGS_USE);
    if(self->s_len > 0)
       su_mem_move(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
    self->s_dat[idx] = c;
@@ -545,14 +545,14 @@ n_string_cut(struct n_string *self, uz idx, uz len){
 }
 
 FL char *
-(n_string_cp)(struct n_string *self  su_DBG_LOC_ARGS_DECL){
+(n_string_cp)(struct n_string *self  su_DVL_LOC_ARGS_DECL){
    char *rv;
    NYD2_IN;
 
    ASSERT(self != NULL);
 
    if(self->s_size == 0)
-      self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
+      self = (n_string_reserve)(self, 1  su_DVL_LOC_ARGS_USE);
 
    (rv = self->s_dat)[self->s_len] = '\0';
    NYD2_OU;
