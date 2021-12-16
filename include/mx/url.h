@@ -70,12 +70,12 @@ struct mx_url{ /* XXX not _ctx: later object */
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
  * These return a newly autorec_alloc()ated result, or NIL on length excess */
-EXPORT char *mx_url_xenc(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL);
-EXPORT char *mx_url_xdec(char const *cp  su_DBG_LOC_ARGS_DECL);
+EXPORT char *mx_url_xenc(char const *cp, boole ispath  su_DVL_LOC_ARGS_DECL);
+EXPORT char *mx_url_xdec(char const *cp  su_DVL_LOC_ARGS_DECL);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define mx_url_xenc(CP,P) mx_url_xenc(CP, P  su_DBG_LOC_ARGS_INJ)
-# define mx_url_xdec(CP) mx_url_xdec(CP  su_DBG_LOC_ARGS_INJ)
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define mx_url_xenc(CP,P) mx_url_xenc(CP, P  su_DVL_LOC_ARGS_INJ)
+# define mx_url_xdec(CP) mx_url_xdec(CP  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* `urlcodec' */

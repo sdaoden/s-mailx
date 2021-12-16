@@ -67,7 +67,7 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
    self->avo_opts_long = opts_long_or_nil;
 
    /* Somewhat test the content of the option strings in debug code */
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    /* C99 */{
       uz i;
       char const *cp;
@@ -185,7 +185,7 @@ jelong_colon:
       if(!(self->avo_flags & (a_AVOPT_SHORT | a_AVOPT_LONG)))
          self->avo_flags |= a_AVOPT_DONE;
    }
-#endif /* DVLOR(1,0) */
+#endif /* DVLDBGOR(1,0) */
 
    NYD_OU;
    return self;

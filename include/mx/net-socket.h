@@ -98,10 +98,10 @@ EXPORT enum okay mx_socket_write1(struct mx_socket *sp, char const *data,
 
 /* */
 EXPORT int mx_socket_getline(char **line, uz *linesize, uz *linelen,
-      struct mx_socket *sp  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
+      struct mx_socket *sp  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define mx_socket_getline(A,B,C,D) \
-   mx_socket_getline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
+   mx_socket_getline(A, B, C, D  su_DVL_LOC_ARGS_INJ)
 #endif
 
 #include <su/code-ou.h>

@@ -309,7 +309,7 @@ c_csop(void *vp){
    uz i, j;
    NYD_IN;
 
-   DVL( su_mem_set(&csc, 0xAA, sizeof csc); )
+   DVLDBG( su_mem_set(&csc, 0xAA, sizeof csc); )
    csc.csc_flags = a_CSOP_ERR;
    csc.csc_cmderr = a_CSOP_ERR_SUBCMD;
    csc.csc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);

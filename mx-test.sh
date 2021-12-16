@@ -11333,7 +11333,7 @@ cc_all_configs() { # {{{
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
          NOTME["OPT_USAN"] = 1
-         NOTME["OPT_NOMEMDBG"] = 1
+         NOTME["OPT_EXTERNAL_MEM_CHECK"] = 1
 
          #OPTVALS
          OPTNO = 0

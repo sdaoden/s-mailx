@@ -181,33 +181,33 @@ enum su_mem_conf_option{
 
 #ifdef su_MEM_ALLOC_DEBUG
 EXPORT boole su__mem_get_can_book(uz size, uz no);
-EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
-EXPORT boole su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL);
+EXPORT boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE);
+EXPORT boole su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL);
 #endif
 
 /*! Rather internal, but due to the \r{su_mem_alloc_flags} \a{maf} maybe
  * handy sometimes.
  * Normally to be used through the macros below */
 EXPORT void *su_mem_allocate(uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! If \NIL is returned, then the original memory has not been freed.
  * (From our point of view. TODO We are yet backed by OS malloc.) */
 EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL);
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
-EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
+EXPORT void su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 #define su_MEM_ALLOCATE(SZ,NO,F) \
-      su_mem_allocate(SZ, NO, F  su_DBG_LOC_ARGS_INJ)
+      su_mem_allocate(SZ, NO, F  su_DVL_LOC_ARGS_INJ)
 
 /*! \_ */
 #define su_MEM_REALLOCATE(OVP,SZ,NO,F) \
-      su_mem_reallocate(OVP, SZ, NO, F  su_DBG_LOC_ARGS_INJ)
+      su_mem_reallocate(OVP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_ALLOCATE_LOC(SZ,NO,F,FNAME,LNNO) \
       su_mem_allocate(SZ, NO, F, FNAME, LNNO)
 
@@ -303,8 +303,8 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
       su_S(T *,su_MEM_REALLOCATE_LOC(OVP, sizeof(T), NO, F, FNAME, LNNO))
 
 /*! \_ */
-#define su_MEM_FREE(OVP) su_mem_free(OVP  su_DBG_LOC_ARGS_INJ)
-#ifdef su_HAVE_DBG_LOC_ARGS
+#define su_MEM_FREE(OVP) su_mem_free(OVP  su_DVL_LOC_ARGS_INJ)
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_FREE_LOC(OVP,FNAME,LNNO) su_mem_free(OVP, FNAME, LNNO)
 #else
    /*! \_ */
@@ -312,7 +312,7 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 #endif
 
 /* (The painful _LOCOR series) */
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_ALLOC_LOCOR(SZ,ORARGS) su_MEM_ALLOC_LOC(SZ, ORARGS)
 # define su_MEM_ALLOC_N_LOCOR(SZ,NO,ORARGS) su_MEM_ALLOC_N_LOC(SZ, NO, ORARGS)
 # define su_MEM_CALLOC_LOCOR(SZ,ORARGS) su_MEM_CALLOC_LOC(SZ, ORGARGS)
@@ -360,7 +360,7 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 # define su_MEM_TREALLOCF_LOCOR(T,OVP,F,NO) su_MEM_TREALLOCF(T, OVP, NO, F)
    /*! \_ */
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
-#endif /* !su_HAVE_DBG_LOC_ARGS */
+#endif /* !su_HAVE_DVL_LOC_ARGS */
 /*! @} *//* }}} */
 
 /* heap support {{{ */
@@ -415,7 +415,7 @@ EXPORT void su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val);
  * Always succeeds if \r{su_MEM_ALLOC_DEBUG} is not defined. */
 INLINE boole su_mem_check(void){
 #ifdef su_MEM_ALLOC_DEBUG
-   return su__mem_check(su_DBG_LOC_ARGS_INJ_SOLE);
+   return su__mem_check(su_DVL_LOC_ARGS_INJ_SOLE);
 #else
    return FAL0;
 #endif
@@ -434,7 +434,7 @@ INLINE boole su_mem_check(void){
 INLINE boole su_mem_trace(boole dumpmem){ /* XXX ochannel, thrptr */
    UNUSED(dumpmem);
 #ifdef su_MEM_ALLOC_DEBUG
-   return su__mem_trace(dumpmem su_DBG_LOC_ARGS_INJ);
+   return su__mem_trace(dumpmem su_DVL_LOC_ARGS_INJ);
 #else
    return FAL0;
 #endif
@@ -632,7 +632,7 @@ do{\
    (su_ASSERT((TP) != su_NIL), (TP)->~T())
 
 /* (The painful _LOCOR series) */
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define su_MEM_NEW_LOCOR(T,ORARGS) su_MEM_NEW_LOC(T, ORARGS)
 # define su_MEM_CNEW_LOCOR(T,ORARGS) su_MEM_CNEW_LOC(T, ORARGS)
 # define su_MEM_NEWF_BLK_LOCOR(RES,T,F,CAIP,ORARGS) \
@@ -663,7 +663,7 @@ do{\
    /*! \_ */
 # define su_MEM_DEL_HEAP_PRIVATE_LOCOR(T,TP,ORARGS) \
       su_MEM_DEL_HEAP_PRIVATE(T, TP)
-#endif /* !su_HAVE_DBG_LOC_ARGS */
+#endif /* !su_HAVE_DVL_LOC_ARGS */
    /*! @} *//* }}} */
 
 public:

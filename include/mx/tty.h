@@ -74,10 +74,10 @@ EXPORT void mx_tty_destroy(boole xit_fastpath);
  * Only the _CTX_ bits in lif are used */
 EXPORT int mx_tty_readline(BITENUM_IS(u32,mx_go_input_flags) gif,
       char const *prompt, char **linebuf, uz *linesize, uz n,
-      boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
+      boole *histok_or_nil  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define mx_tty_readline(A,B,C,D,E,F) \
-   (mx_tty_readline)(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
+   (mx_tty_readline)(A, B, C, D, E, F  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Add a line (most likely as returned by tty_readline()) to the history.

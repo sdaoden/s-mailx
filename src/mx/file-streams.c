@@ -127,7 +127,7 @@ a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil){
          os = "w";
       }else{
          if(!(oflags & mx_FS_O_RDWR)){
-            DBG( n_panic(_("Implementation error: unknown open flags 0x%X"),
+            DVLDBG( n_panic(_("Implementation error: unknown open flags 0x%X"),
                oflags));
          }
          rv = O_RDWR;
@@ -204,7 +204,7 @@ a_fs_unregister_file(FILE *fp){
 
    for(fsepp = &a_fs_fp_head;; fsepp = &fsep->fse_link){
       if(UNLIKELY((fsep = *fsepp) == NIL)){
-         su_DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
+         DVLDBGOR(n_panic, n_alert)(_("Invalid file pointer"));
          rv = FAL0;
          break;
       }else if(fsep->fse_fp != fp)
@@ -730,7 +730,7 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
 
    u.vp = fstcp;
    ASSERT(u.fsep->fse_flags & a_FS_EF_HOLDSIGS);
-   DBG( if(u.fsep->fse_flags & a_FS_EF_UNLINK)
+   DVLDBG( if(u.fsep->fse_flags & a_FS_EF_UNLINK)
       n_alert("tmp_release(): REGISTER_UNLINK set!"); )
 
    su_path_rm(u.fsep->fse_realfile);
@@ -990,7 +990,7 @@ mx_fs_pipe_close(FILE *ptr, boole dowait){
 
    for(fsep = a_fs_fp_head;; fsep = fsep->fse_link)
       if(UNLIKELY(fsep == NIL)){
-         DBG( n_alert(_("pipe_close: invalid file pointer")); )
+         DVLDBG( n_alert(_("pipe_close: invalid file pointer")); )
          rv = FAL0;
          goto jleave;
       }else if(fsep->fse_fp == ptr)
@@ -1081,7 +1081,7 @@ mx_fs_linepool_release(char *dp, uz ds){
 
 boole
 (mx_fs_linepool_book)(char **dp, uz *dsp, uz len, uz toadd
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    boole rv;
    NYD2_IN;
 
@@ -1098,7 +1098,7 @@ boole
    if(*dsp < len){
       char *ndp;
 
-      if((ndp = su_MEM_REALLOC_LOCOR(*dp, len, su_DBG_LOC_ARGS_ORUSE)) == NIL)
+      if((ndp = su_MEM_REALLOC_LOCOR(*dp, len, su_DVL_LOC_ARGS_ORUSE)) == NIL)
          goto jleave;
       *dp = ndp;
       *dsp = len;
@@ -1163,7 +1163,7 @@ static uz     _length_of_line(char const *line, uz linesize);
 
 /* Read a line, one character at a time */
 static char *a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil,
-      FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
+      FILE *fp, int appendnl, uz n  su_DVL_LOC_ARGS_DECL);
 
 static uz
 _length_of_line(char const *line, uz linesize)
@@ -1183,7 +1183,7 @@ _length_of_line(char const *line, uz linesize)
 
 static char *
 a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
-   int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
+   int appendnl, uz n  su_DVL_LOC_ARGS_DECL)
 {
    char *rv;
    int c;
@@ -1196,7 +1196,7 @@ a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp,
       if (*linesize <= mx_LINESIZE || n >= *linesize - 128) {
          *linesize += ((rv == NULL) ? mx_LINESIZE + n + 2 : 256);
          *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize,
-               su_DBG_LOC_ARGS_ORUSE);
+               su_DVL_LOC_ARGS_ORUSE);
       }
       c = getc(fp);
       if (c != EOF) {
@@ -1231,7 +1231,7 @@ jleave:
 
 char *
 (fgetline)(char **line, uz *linesize, uz *cnt, uz *llen_or_nil, FILE *fp,
-   int appendnl su_DBG_LOC_ARGS_DECL)
+   int appendnl  su_DVL_LOC_ARGS_DECL)
 {
    uz i_llen, size;
    char *rv;
@@ -1246,13 +1246,13 @@ char *
       /* Without we cannot determine where the chars returned by fgets()
        * end if there's no newline.  We have to read one character by one */
       rv = a_fs_fgetline_byone(line, linesize, llen_or_nil, fp, appendnl, 0
-            su_DBG_LOC_ARGS_USE);
+            su_DVL_LOC_ARGS_USE);
       goto jleave;
    }
 
    if ((rv = *line) == NULL || *linesize < mx_LINESIZE)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = mx_LINESIZE,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
    size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
    if (size <= 1 || fgets(rv, size, fp) == NULL) {
       /* Leave llen untouched; it is used to determine whether the last line
@@ -1265,7 +1265,7 @@ char *
    *cnt -= i_llen;
    while (rv[i_llen - 1] != '\n') {
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
       size = *linesize - i_llen;
       size = (size <= *cnt) ? size : *cnt + 1;
       if (size <= 1) {
@@ -1294,7 +1294,7 @@ char *
    /* Always leave room for NETNL, not only \n */
    if(appendnl && *linesize - i_llen < 3)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
 
    if(llen_or_nil != NIL)
       *llen_or_nil = i_llen;
@@ -1305,7 +1305,7 @@ jleave:
 
 int
 (readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
-   su_DBG_LOC_ARGS_DECL)
+   su_DVL_LOC_ARGS_DECL)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
     * TODO should be configurable just as for fgetline(); ..or whatever..
@@ -1325,7 +1325,7 @@ int
          if (*linesize <= mx_LINESIZE || n >= *linesize - 128) {
             *linesize += ((*linebuf == NULL) ? mx_LINESIZE + n + 1 : 256);
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
-                  su_DBG_LOC_ARGS_ORUSE);
+                  su_DVL_LOC_ARGS_ORUSE);
          }
 jagain:
          size = read(0, *linebuf + n, *linesize - n - 1);
@@ -1356,7 +1356,7 @@ jagain:
        * read one char at a time as it is the only way to get lines with
        * embedded NUL characters in standard stdio */
       if(a_fs_fgetline_byone(linebuf, linesize, &n, ibuf, 1,
-            n su_DBG_LOC_ARGS_USE) == NIL)
+            n su_DVL_LOC_ARGS_USE) == NIL)
          goto jleave;
    }
    if (n > 0 && (*linebuf)[n - 1] == '\n')

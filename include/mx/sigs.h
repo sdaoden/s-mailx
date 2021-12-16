@@ -118,9 +118,7 @@ EXPORT void n_sigman_consume(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c).
  * Does not crash for SIGUSR2 */
-#if su_DVLOR(1, 0)
-EXPORT void mx__nyd_oncrash(int signo);
-#endif
+DVL( EXPORT void mx__nyd_oncrash(int signo); )
 
 #include <su/code-ou.h>
 #endif /* mx_SIGS_H */

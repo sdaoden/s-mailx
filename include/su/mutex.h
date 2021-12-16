@@ -45,7 +45,7 @@ struct su_mutex;
  * \brief Mutual exclusion device (\r{su/mutex.h})
  *
  * Without \r{su_HAVE_MT} this is a "checking" no-op wrapper.
- * Dependent upon \r{su_DVLOR()} the debug-enabled functions simply ignore
+ * Dependent upon \r{su_DVLDBGOR()} the debug-enabled functions simply ignore
  * their debug-only arguments.
  * Please see \r{SMP} for peculiarities of \SU lock types.
  * @{
@@ -60,7 +60,7 @@ enum su_mutex_flags{
    su_MUTEX_INIT = 1u<<1
 };
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 enum su__mutex_xfn{
    su__MUTEX_GUT,
    su__MUTEX_LOCK,
@@ -93,9 +93,10 @@ struct su_mutex{
       mtx_;
 };
 
-#define su__MUTEX_ARGS_DECL DVLOR(su_COMMA char const *file su_COMMA u32 line,)
-#define su__MUTEX_ARGS DVLOR(su_COMMA file su_COMMA line,)
-#define su__MUTEX_ARGS_INJ su_DVLOR(su_COMMA __FILE__ su_COMMA __LINE__,)
+#define su__MUTEX_ARGS_DECL \
+   su_DVLDBG(su_COMMA char const *file su_COMMA u32 line)
+#define su__MUTEX_ARGS su_DVLDBG(su_COMMA file su_COMMA line)
+#define su__MUTEX_ARGS_INJ su_DVLDBG(su_COMMA __FILE__ su_COMMA __LINE__)
 
 /* */
 #ifdef DOXYGEN
@@ -133,30 +134,30 @@ struct su_mutex{
    su__MUTEX_I9R(su_MUTEX_FLAT, NAME_OR_NIL)
 #endif /* !DOXYGEN */
 
-/*! Uses \r{su_DVLOR()} to select the according mutex lock interface. */
+/*! Uses \r{su_DVLDBGOR()} to select the according mutex lock interface. */
 #define su_MUTEX_LOCK(SELF) \
-   su_DVLOR(su_mutex_lock_dbg,su_mutex_lock)(SELF su__MUTEX_ARGS_INJ)
+   su_DVLDBGOR(su_mutex_lock_dbg,su_mutex_lock)(SELF su__MUTEX_ARGS_INJ)
 
-/*! Uses \r{su_DVLOR()} to select the according mutex lock interface. */
+/*! Uses \r{su_DVLDBGOR()} to select the according mutex lock interface. */
 #define su_MUTEX_LOCK_TS(SELF,TSP) \
-   su_DVLOR(su_mutex_lock_ts_dbg,su_mutex_lock_ts)\
+   su_DVLDBGOR(su_mutex_lock_ts_dbg,su_mutex_lock_ts)\
       (SELF, TSP su__MUTEX_ARGS_INJ)
 
-/*! Uses \r{su_DVLOR()} to select the according mutex trylock interface. */
+/*! Uses \r{su_DVLDBGOR()} to select the according mutex trylock interface. */
 #define su_MUTEX_TRYLOCK(SELF) \
-   su_DVLOR(su_mutex_trylock_dbg,su_mutex_trylock)(SELF su__MUTEX_ARGS_INJ)
+   su_DVLDBGOR(su_mutex_trylock_dbg,su_mutex_trylock)(SELF su__MUTEX_ARGS_INJ)
 
-/*! Uses \r{su_DVLOR()} to select the according mutex trylock interface. */
+/*! Uses \r{su_DVLDBGOR()} to select the according mutex trylock interface. */
 #define su_MUTEX_TRYLOCK_TS(SELF,TSP) \
-   su_DVLOR(su_mutex_trylock_ts_dbg,su_mutex_trylock_ts)\
+   su_DVLDBGOR(su_mutex_trylock_ts_dbg,su_mutex_trylock_ts)\
       (SELF, TSP su__MUTEX_ARGS_INJ)
 
-/*! Uses \r{su_DVLOR()} to select the according mutex unlock interface. */
+/*! Uses \r{su_DVLDBGOR()} to select the according mutex unlock interface. */
 #define su_MUTEX_UNLOCK(SELF) \
-   su_DVLOR(su_mutex_unlock_dbg,su_mutex_unlock)(SELF su__MUTEX_ARGS_INJ)
+   su_DVLDBGOR(su_mutex_unlock_dbg,su_mutex_unlock)(SELF su__MUTEX_ARGS_INJ)
 
 /* */
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 EXPORT boole su__mutex_check(struct su_mutex *self,
       enum su__mutex_xfn mf, struct su_thread *tsp, char const *file,u32 line);
 #endif
@@ -196,7 +197,7 @@ INLINE s32 su_mutex_create(struct su_mutex *self, char const *name_or_nil,
 /*! \_ */
 INLINE void su_mutex_gut(struct su_mutex *self){
    ASSERT(self);
-   DVL( if(su__mutex_check(self, su__MUTEX_GUT, NIL su__MUTEX_ARGS_INJ)) )
+   DVLDBG( if(su__mutex_check(self, su__MUTEX_GUT, NIL su__MUTEX_ARGS_INJ)) )
       MT( if(self->mtx_.flags & su_MUTEX_INIT) su__mutex_os_gut(self) )
          ;
 }
@@ -217,16 +218,16 @@ INLINE char const *su_mutex_name(struct su_mutex const *self){
    return self->mtx_.name;
 }
 
-/*! Via \r{su_DVLOR()}: file name of last operation, or \NIL. */
+/*! Via \r{su_DVLDBGOR()}: file name of last operation, or \NIL. */
 INLINE char const *su_mutex_file(struct su_mutex const *self){
    ASSERT(self);
-   return DVLOR(self->mtx_.file, NIL);
+   return DVLDBGOR(self->mtx_.file, NIL);
 }
 
-/*! Via \r{su_DVLOR()}: line number of last operation, or 0. */
+/*! Via \r{su_DVLDBGOR()}: line number of last operation, or 0. */
 INLINE u32 su_mutex_line(struct su_mutex const *self){
    ASSERT(self);
-   return DVLOR(self->mtx_.line, 0);
+   return DVLDBGOR(self->mtx_.line, 0);
 }
 
 /*! Is \SELF "currently locked"? */

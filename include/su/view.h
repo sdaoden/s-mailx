@@ -464,7 +464,7 @@ public:\
       ASSERT_RET(startpos.is_valid(), err::einval);\
       ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos),\
          err::einval);\
-      if(DBGOR(1, 0)){\
+      if(DVLDBGOR(1, 0)){\
          if(is_same_parent(startpos)){\
             myself v(startpos);\
             if(endpos.is_valid()){\

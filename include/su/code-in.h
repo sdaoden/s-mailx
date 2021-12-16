@@ -162,6 +162,9 @@
 #define DVL su_DVL
 #define NDVL su_NDVL
 #define DVLOR su_DVLOR
+#define DVLDBG su_DVLDBG
+#define NDVLDBG su_NDVLDBG
+#define DVLDBGOR su_DVLDBGOR
 
 #define FIELD_DISTANCEOF su_FIELD_DISTANCEOF
 #define FIELD_INITN su_FIELD_INITN
@@ -181,27 +184,22 @@
 /* Not-Yet-Dead macros, only for su_FILE sources */
 #ifdef su_FILE
 # define NYD_OU_LABEL su_NYD_OU_LABEL
-# define su__NYD_IN_NOOP do{
-# define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-# define su__NYD_NOOP do{}while(0)
+# if 0
+#  define su__NYD_IN_NOOP do{do{}while(0)
+#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
+#  define su__NYD_NOOP do{}while(0)
+# else
+#  define su__NYD_IN_NOOP if(1){do{}while(0)
+#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}
+#  define su__NYD_NOOP do{}while(0)
+# endif
 
-# if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
+# ifndef su_HAVE_DEVEL
 #  define su__NYD_IN su__NYD_IN_NOOP
 #  define su__NYD_OU su__NYD_OU_NOOP
 #  define su__NYD su__NYD_NOOP
-# elif defined NYDPROF_ENABLE || defined su_NYDPROF_ENABLE_ALWAYS
+# elif defined NYDPROF_ENABLE || defined su_NYDPROF_ENABLE
 #  error TODO NYDPROF not yet implemented.
-#  if defined su_HAVE_DEVEL
-#  else
-#  endif
-# elif defined su_HAVE_DEVEL
-#  define su__NYD_IN \
-   if(1){su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
-#  define su__NYD_OU \
-   goto NYD_OU_LABEL;NYD_OU_LABEL:\
-   su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}else{}
-#  define su__NYD \
-   if(0){}else{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}
 # else
 #  define su__NYD_IN \
    do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
@@ -212,22 +210,28 @@
    do{su_nyd_chirp(su_NYD_ACTION_ANYWHERE,__FILE__,__LINE__,su_FUN);}while(0)
 # endif
 
-# if defined NYD_ENABLE || defined su_NYD_ENABLE_ALWAYS
-#  undef NYD_ENABLE
+# if defined NYD_ENABLE || defined su_NYD_ENABLE
 #  define NYD_IN su__NYD_IN
 #  define NYD_OU su__NYD_OU
 #  define NYD su__NYD
-# else
+#  if defined NYD2_ENABLE || defined su_NYD2_ENABLE
+#   define NYD2_IN su__NYD_IN
+#   define NYD2_OU su__NYD_OU
+#   define NYD2 su__NYD
+#  endif
+# endif
+
+# undef NYD_ENABLE
+# undef NYDPROF_ENABLE
+# undef NYD2_ENABLE
+# undef NYDPROF2_ENABLE
+
+# ifndef NYD_IN
 #  define NYD_IN su__NYD_IN_NOOP
 #  define NYD_OU su__NYD_OU_NOOP
 #  define NYD su__NYD_NOOP
 # endif
-# ifdef NYD2_ENABLE
-#  undef NYD2_ENABLE
-#  define NYD2_IN su__NYD_IN
-#  define NYD2_OU su__NYD_OU
-#  define NYD2 su__NYD
-# else
+# ifndef NYD2_IN
 #  define NYD2_IN su__NYD_IN_NOOP
 #  define NYD2_OU su__NYD_OU_NOOP
 #  define NYD2 su__NYD_NOOP

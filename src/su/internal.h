@@ -50,8 +50,9 @@ struct su__nyd_control{
    u8 nc__pad[1];
    struct su__nyd_info nc_infos[su_NYD_ENTRIES];
 };
-#endif /* DVLOR(1,0) */
+
 MCTA(su_NYD_ENTRIES <= U16_MAX, "Data type excess")
+#endif /* DVLOR(1,0) */
 
 struct su__state_on_gut{
    struct su__state_on_gut *sog_last;

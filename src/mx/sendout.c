@@ -443,7 +443,7 @@ a_sendout_attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       err = a_sendout__attach_file(hp, ap, fo, force);
       mx_fs_close(ap->a_tmpf);
-      su_DBG( ap->a_tmpf = NIL; )
+      DVLDBG( ap->a_tmpf = NIL; )
       goto jleave;
    }
 
@@ -1328,7 +1328,7 @@ jeappend:
                break;
             }
          }
-      /*}su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
+      /*}DVLDBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
 
       emptyline = (buflen > 0 && *buf == '\n');
       if(fwrite(buf, sizeof *buf, buflen, fo) != buflen){

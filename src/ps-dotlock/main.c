@@ -60,8 +60,8 @@
  * TODO SU needs to be available as a (static) library to overcome this */
 uz su__state;
 #ifdef su_MEM_ALLOC_DEBUG
-boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
-boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_trace(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
 #define su_err_no() errno
 #define su_err_no_by_errno() errno

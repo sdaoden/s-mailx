@@ -110,7 +110,7 @@ static int a_main_rcv_mode(struct a_main_ctx *mcp);
 static void a_main_hdrstop(int signo);
 
 /* SIGUSR1, then */
-#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+#if DVLOR(1, 0) && defined su_MEM_ALLOC_DEBUG
 static void a_main_memtrace(int signo);
 #endif
 
@@ -180,7 +180,7 @@ a_main_startup(char const *argv0){
       safe_signal(SIGPIPE, SIG_IGN);
 
 #if DVLOR(1, 0)
-# if defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+# if defined su_MEM_ALLOC_DEBUG
    safe_signal(SIGUSR1, &a_main_memtrace);
 # endif
    safe_signal(SIGUSR2, &mx__nyd_oncrash);
@@ -403,7 +403,7 @@ a_main_hdrstop(int signo){
    siglongjmp(a_main__hdrjmp, 1);
 }
 
-#if DVLOR(1, 0) && defined mx_HAVE_DEVEL && defined su_MEM_ALLOC_DEBUG
+#if DVLOR(1, 0) && defined su_MEM_ALLOC_DEBUG
 static void
 a_main_memtrace(int signo){
    enum su_log_level lvl;
@@ -1070,7 +1070,7 @@ jgetopt_done:
    while(argv[i] != NIL)
       ++i;
    if(n_smopts_cnt + i > mc.mc_smopts_size)
-      DBG(mc.mc_smopts_size =)
+      DVLDBG(mc.mc_smopts_size =)
       a_main_grow_cpp(&n_smopts, n_smopts_cnt + i + 1, n_smopts_cnt);
 
    /* Check for inconsistent arguments, fix some temporaries */

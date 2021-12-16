@@ -88,7 +88,7 @@ su_siphash_once(void *digest_store, enum su_siphash_digest digest_type,
       void const *key, void const *dat, uz dat_len, u8 crounds, u8 drounds){
    NYD_IN;
    ASSERT_NYD(digest_store != NIL);
-   DBG( su_mem_set(digest_store, 0,
+   DVLDBG( su_mem_set(digest_store, 0,
       (digest_type == su_SIPHASH_DIGEST_64 ? 8 : 16)); )
    ASSERT_NYD(key != NIL);
    ASSERT_NYD(dat_len == 0 || dat != NIL);

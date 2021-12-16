@@ -92,7 +92,7 @@ static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
    {mx_IGNORE_TYPE, "print\0"},
    {mx_IGNORE_FWD, "fwd"}
 };
-#ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "mx_ignore is defined locally" */
+#if DVLOR(1, 0) /* Avoid gcc warn cascade "mx_ignore is defined locally" */
 CTAV(-mx__IGNORE_TYPE - mx__IGNORE_ADJUST == 0);
 CTAV(-mx__IGNORE_SAVE - mx__IGNORE_ADJUST == 1);
 CTAV(-mx__IGNORE_FWD - mx__IGNORE_ADJUST == 2);

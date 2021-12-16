@@ -50,7 +50,7 @@ su__re_reset(struct su_re *self){
 
    su_FREE(self->re_super);
 
-   DBG( su_mem_set(self, 0xAA, sizeof *self); )
+   DVLDBG( su_mem_set(self, 0xAA, sizeof *self); )
    self->re_super = NIL;
 
    NYD2_OU;

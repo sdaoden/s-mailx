@@ -597,7 +597,7 @@ jneed_enc:
       bp_xmax -= self->mpb_charset_len;
    }
    if(PCMP(bp_max, <=, &buf[sizeof("Hunky Dory")])){
-      DBG( n_alert("a_mpm_create(): Hunky Dory!"); )
+      DVLDBG( n_alert("a_mpm_create(): Hunky Dory!"); )
       bp_max = &buf[MIME_LINELEN >> 1]; /* And then it is SHOULD, anyway */
    }
    ASSERT(PCMP(&bp_max[4 * 3], <=, bp_xmax)); /* UTF-8 extra pad, below */

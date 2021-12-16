@@ -142,7 +142,7 @@ do{\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt lower canary: " \
             "0x%02X: %s, line %" PRIu32 "\n",\
-         (C).map_cp, __i, su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);\
+         (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
    a_MEMA_HOPE_INC(__xp.map_u8p) + __xc->mac_size - __xc->mac_user_off;\
@@ -169,7 +169,7 @@ do{\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt upper canary: " \
             "0x%02X: %s, line %" PRIu32 "\n",\
-         (C).map_cp, __i, su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);\
+         (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
    if(BAD)\
@@ -332,7 +332,7 @@ jleave:
 }
 
 boole
-su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
+su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
    union a_mema_ptr p, xp;
    boole anybad, isbad;
    NYD2_IN;
@@ -395,7 +395,7 @@ su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE){
 }
 
 boole
-su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
+su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
    char dump[a_MEMA_DUMP_SIZE];
    union a_mema_ptr p, xp;
    u32 mark;
@@ -473,7 +473,7 @@ su__mem_trace(boole dumpmem  su_DBG_LOC_ARGS_DECL){
 
 void *
 su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -481,7 +481,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
 #endif
    void *rv;
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no; )
    if(UNLIKELY(size == 0))
@@ -520,8 +520,8 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
          p.map_hc->mahc_prev = NIL;
          if((p.map_hc->mahc_next = a_mema_heap_list) != NIL)
             a_mema_heap_list->mahc_prev = p.map_hc;
-         p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-         p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+         p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+         p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
          p.map_c->mac_isfree = FAL0;
          p.map_c->mac_mark = mark = a_MEMA_MARK_TO_STORE(maf);
          ASSERT(size - user_sz <= S32_MAX);
@@ -556,7 +556,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
 
 void *
 su_mem_reallocate(void *ovp, uz size, uz no,
-      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DBG_LOC_ARGS_DECL){
+      BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -565,7 +565,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 #endif
    void *rv;
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    a_MEMA_DBG( user_sz = size su_COMMA user_no = no su_COMMA orig_sz = 0; )
    if(UNLIKELY(size == 0))
@@ -591,7 +591,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer corrupted!  At %s, line %" PRIu32
                "\n\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of corrupted pointer"));
          goto NYD_OU_LABEL;
@@ -599,7 +599,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer freed!  At %s, line %" PRIu32
                "\n\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of a freed pointer"));
          goto NYD_OU_LABEL;
@@ -632,8 +632,8 @@ su_mem_reallocate(void *ovp, uz size, uz no,
          p.map_hc->mahc_prev = NIL;
          if((p.map_hc->mahc_next = a_mema_heap_list) != NIL)
             a_mema_heap_list->mahc_prev = p.map_hc;
-         p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-         p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+         p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+         p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
          p.map_c->mac_isfree = FAL0;
          p.map_c->mac_mark = mark = a_MEMA_MARK_TO_STORE(maf);
          ASSERT(size - user_sz <= S32_MAX);
@@ -658,7 +658,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 
          if(origovp != NIL){
             su_mem_copy(rv, origovp, MIN(orig_sz, size));
-            su_mem_free(origovp su_DBG_LOC_ARGS_USE);
+            su_mem_free(origovp su_DVL_LOC_ARGS_USE);
          }
       }
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -671,9 +671,9 @@ su_mem_reallocate(void *ovp, uz size, uz no,
 }
 
 void
-su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
+su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
    NYD_IN;
-   su_DBG_LOC_ARGS_UNUSED();
+   su_DVL_LOC_ARGS_UNUSED();
 
    if(LIKELY(ovp != NIL)){
 #ifdef su_MEM_ALLOC_DEBUG
@@ -690,13 +690,13 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: free of corrupted pointer at %s, line %" PRIu32 "\n"
             "\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }else if(p.map_c->mac_isfree){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: double-free avoided at %s, line %" PRIu32 "\n"
             "\tLast seen: %s, line %" PRIu32 "\n"
-            su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
+            su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }
 
@@ -704,8 +704,8 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
       su_mem_set(ovp, 0xBA, orig_sz);
       ovp = p.map_vp;
 
-      p.map_c->mac_file = su_DBG_LOC_ARGS_FILE;
-      p.map_c->mac_line = su_DBG_LOC_ARGS_LINE;
+      p.map_c->mac_file = su_DVL_LOC_ARGS_FILE;
+      p.map_c->mac_line = su_DVL_LOC_ARGS_LINE;
       p.map_c->mac_isfree = TRU1;
       if(p.map_hc == a_mema_heap_list){
          if((a_mema_heap_list = p.map_hc->mahc_next) != NIL)
@@ -730,7 +730,7 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
    else
       su_log_write(su_LOG_DEBUG,
          "SU memory: free(NIL) from %s, line %" PRIu32 "\n"
-         su_DBG_LOC_ARGS_USE);
+         su_DVL_LOC_ARGS_USE);
 #endif
 
    NYD_OU;

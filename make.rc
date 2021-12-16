@@ -122,7 +122,7 @@ VAL_MTA_ARGV0=sendmail
 # Default (path to) POSIX compatible $SHELL aka sh(1).
 # (Sometimes however we simply invoke a command directly via execlp(3)
 # instead of indirectly through $SHELL -- in these cases execlp(3) may
-# fallback to it's own built-in sh(1) path.)
+# fallback to itss own built-in sh(1) path.)
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
@@ -472,7 +472,7 @@ OPT_NOEXTMD5=no
 # If $OPT_DEVEL is true we will use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or
 # the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
-OPT_NOMEMDBG=`\
+OPT_EXTERNAL_MEM_CHECK=`\
    if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
       echo yes;\
    else \

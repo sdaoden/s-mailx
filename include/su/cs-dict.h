@@ -156,7 +156,7 @@ EXPORT struct su__cs_dict_node *su__cs_dict_lookup(
 /* *lookarg_or_nil is always updated */
 EXPORT s32 su__cs_dict_insrep(struct su_cs_dict *self, char const *key,
       void *value, up replace_and_view_or_nil);
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 EXPORT void su__cs_dict_stats(struct su_cs_dict const *self);
 #endif
 
@@ -338,11 +338,10 @@ INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key,
 /*! Returns the false boolean if \a{key} cannot be found. */
 EXPORT boole su_cs_dict_remove(struct su_cs_dict *self, char const *key);
 
-/*! With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} this will
- * \r{su_log_write()} statistics about \SELF. */
+/*! Via \r{su_DVLDBG()} it will \r{su_log_write()} statistics about \SELF. */
 INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
    UNUSED(self);
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
    su__cs_dict_stats(self);
 #endif
 }

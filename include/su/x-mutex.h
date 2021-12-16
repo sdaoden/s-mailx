@@ -33,7 +33,7 @@ su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
       su__MUTEX_ARGS_DECL){
    self->mtx_.lck = 1;
 
-   DVL(
+   DVLDBG(
       if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
          goto jleave;
       self->mtx_.line = line;
@@ -43,7 +43,7 @@ su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
    if(self->mtx_.count++ == 0)
       self->mtx_.owner = tsp;
 
-DVL( jleave: )
+DVLDBG( jleave: )
    self->mtx_.lck = 0;
 }
 
@@ -54,7 +54,7 @@ su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
 
    self->mtx_.lck = 1;
 
-   DVL(
+   DVLDBG(
       if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
          goto jleave;
       self->mtx_.line = line;
@@ -66,7 +66,7 @@ su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
       ++self->mtx_.count;
    }
 
-DVL( jleave: )
+DVLDBG( jleave: )
    self->mtx_.lck = 0;
    return rv;
 }
@@ -75,7 +75,7 @@ INLINE void
 su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
    self->mtx_.lck = 1;
 
-   DVL(
+   DVLDBG(
       if(!su__mutex_check(self, su__MUTEX_UNLOCK, NIL, file, line))
          goto jleave;
       self->mtx_.line = line;
@@ -85,7 +85,7 @@ su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
    if(--self->mtx_.count == 0)
       self->mtx_.owner = NIL;
 
-DVL( jleave: )
+DVLDBG( jleave: )
    self->mtx_.lck = 0;
 }
 

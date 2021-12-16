@@ -822,7 +822,7 @@ c_fop(void *vp){
    u32 f;
    NYD_IN;
 
-   /*DVL(*/ su_mem_set(&fc, 0xAA, sizeof fc); /*)*/
+   /*DVLDBG(*/ su_mem_set(&fc, 0xAA, sizeof fc); /*)*/
    fc.fc_flags = a_FOP_ERR;
    fc.fc_cmderr = a_FOP_ERR_SUBCMD;
    fc.fc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
