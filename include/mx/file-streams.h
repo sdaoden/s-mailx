@@ -168,12 +168,12 @@ EXPORT void mx_fs_close_all(void);
 EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
 EXPORT void mx_fs_linepool_release(char *dp, uz ds);
 EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 EXPORT void mx_fs_linepool_cleanup(boole completely);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define mx_fs_linepool_book(A,B,C,D) \
-   mx_fs_linepool_book(A, B, C, D  su_DBG_LOC_ARGS_INJ)
+   mx_fs_linepool_book(A, B, C, D  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* TODO The rest below is old-style (will vanish with I/O layer rewrite) */
@@ -188,10 +188,10 @@ EXPORT void mx_fs_linepool_cleanup(boole completely);
  * appendnl - always terminate line with \n, append if necessary.
  * Manages the n_PS_READLINE_NL hack */
 EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen_or_nil,
-      FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
+      FILE *fp, int appendnl  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define fgetline(A,B,C,D,E,F)   \
-   fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
+   fgetline(A, B, C, D, E, F  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Read up a line from the specified input into the linebuffer.
@@ -200,10 +200,10 @@ EXPORT char *fgetline(char **line, uz *linesize, uz *count, uz *llen_or_nil,
  * treated as _the_ line if no more (successful) reads are possible.
  * Manages the n_PS_READLINE_NL hack */
 EXPORT int readline_restart(FILE *ibuf, char **linebuf, uz *linesize, uz n
-      su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
+      su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define readline_restart(A,B,C,D) \
-   readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
+   readline_restart(A, B, C, D  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Determine the size of the file possessed by the passed buffer */

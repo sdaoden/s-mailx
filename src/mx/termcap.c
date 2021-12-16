@@ -301,7 +301,7 @@ jlearned:
                : v));
    }
 
-   DBG( if(n_poption & n_PO_D_VV)
+   DVLDBG( if(n_poption & n_PO_D_VV)
       n_err("*termcap* parsed: buffer used=%lu\n",
          S(ul,a_termcap_g->tg_dat.s_len)) );
 
@@ -740,7 +740,7 @@ mx_termcap_destroy(void){
 
    mx_TERMCAP_SUSPEND(TRU1);
 
-#ifdef mx_HAVE_DEBUG
+#if DVLOR(1, 0)
    /* C99 */{
       struct a_termcap_ext_ent *tmp;
 

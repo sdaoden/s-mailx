@@ -73,13 +73,15 @@
 # endif
 # ifdef mx_HAVE_DEVEL
 #  define su_HAVE_DEVEL
+#  define su_NYD_ENABLE
+#  define su_NYD2_ENABLE
 # endif
 # ifdef mx_HAVE_DOCSTRINGS
 #  define su_HAVE_DOCSTRINGS
 # endif
 # define su_HAVE_MEM_BAG_AUTO
 # define su_HAVE_MEM_BAG_LOFI
-# ifdef mx_HAVE_NOMEMDBG
+# ifdef mx_HAVE_EXTERNAL_MEM_CHECK
 #  define su_HAVE_MEM_CANARIES_DISABLE
 # endif
 # define su_HAVE_MD
@@ -104,16 +106,10 @@ extern struct mx_go_data_ctx *mx_go_data;
 
 /* Internal configurables: values */
 
-/* DVLOR(1,0) ... */
-#if defined su_USECASE_MX && \
-   (defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */\
-      || defined DOXYGEN)
-# define su_NYD_ENABLE_ALWAYS
-/*#undef su_NYDPROF_ENBALE_ALWAYS*/
-#endif
-
 /* Number of Not-Yet-Dead calls that are remembered */
-#define su_NYD_ENTRIES (25 * 84)
+#ifdef su_HAVE_DEVEL
+# define su_NYD_ENTRIES (25 * 84)
+#endif
 
 #endif /* !su_CONFIG_H */
 /* s-it-mode */

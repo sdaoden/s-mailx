@@ -134,9 +134,9 @@ EXPORT void mx_go_input_inject(
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 EXPORT int mx_go_input(BITENUM_IS(u32,mx_go_input_flags gif),
       char const *prompt_or_nil, char **linebuf, uz *linesize,
-      char const *string_or_nil, boole *histok_or_nil  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define mx_go_input(A,B,C,D,E,F) mx_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
+      char const *string_or_nil, boole *histok_or_nil  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define mx_go_input(A,B,C,D,E,F) mx_go_input(A,B,C,D,E,F  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Like go_input(), but return savestr()d result or NIL in case of errors or if
