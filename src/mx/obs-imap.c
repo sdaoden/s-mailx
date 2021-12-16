@@ -504,7 +504,7 @@ imap_path_encode(char const *cp, boole *err_or_null){
       su_mem_copy(out.s, &cp[-l_plain], out.l = l_plain);
    else
       out.l = 0;
-   su_DBG( l_plain += (l << 2); )
+   DVLDBG( l_plain += (l << 2); )
 
    while(l > 0){
       c = *cp++;
@@ -2685,15 +2685,9 @@ imap_exit(struct mailbox *mp)
    n_free(mp->mb_imap_mailbox);
    if (mp->mb_cache_directory != NULL)
       n_free(mp->mb_cache_directory);
-#ifndef mx_HAVE_DEBUG /* TODO ASSERT LEGACY */
-   mp->mb_imap_account =
-   mp->mb_imap_mailbox =
-   mp->mb_cache_directory = "";
-#else
    mp->mb_imap_account = NULL; /* for ASSERT legacy time.. */
    mp->mb_imap_mailbox = NULL;
    mp->mb_cache_directory = NULL;
-#endif
 #endif
    if(mp->mb_sock != NIL){
       if(mp->mb_sock->s_fd >= 0)
@@ -4671,13 +4665,13 @@ jredo:
 }
 
 FL char *
-(protbase)(char const *cp  su_DBG_LOC_ARGS_DECL)
+(protbase)(char const *cp  su_DVL_LOC_ARGS_DECL)
 {
    char *n, *np;
    NYD2_IN;
 
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
-         su_DBG_LOC_ARGS_ORUSE);
+         su_DVL_LOC_ARGS_ORUSE);
 
    /* Just ignore the `is-system-mailbox' prefix XXX */
    if (cp[0] == '%' && cp[1] == ':')

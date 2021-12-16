@@ -776,7 +776,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
    uz i, j;
    NYD_IN;
 
-   /*DVL(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
+   /*DVLDBG(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
    vc.vc_flags = a_VEXPR_ERR | a_VEXPR_ISNUM;
    vc.vc_cmderr = a_VEXPR_ERR_SUBCMD;
    vc.vc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);

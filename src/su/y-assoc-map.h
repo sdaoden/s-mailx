@@ -571,7 +571,7 @@ jleave:
    return rv;
 }
 
-#if DVLOR(1, 0)
+#if DVLDBGOR(1, 0)
 void
 a_T_PRISYM(stats)(struct a_T const *self){
    ul size, empties, multies, maxper, i, j;
@@ -668,7 +668,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
 
    NYD_OU;
 }
-#endif /* DVLOR(1, 0) */
+#endif /* DVLDBGOR(1, 0) */
 
 struct a_T *
 a_T_PUBSYM(create)(struct a_T *self, u16 flags,

@@ -937,7 +937,7 @@ jmsglist_go:
       }break;
 
    default:
-      DBG( n_panic(_("Implementation error: unknown argument type: %d"),
+      DVLDBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK); )
       nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
@@ -1452,7 +1452,7 @@ mx_go_init(void){
    ASSERT(n_stdin != NIL);
 
    gcp = S(void*,a_go__mainctx_b.uf);
-   DBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
+   DVLDBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
       su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -1754,7 +1754,7 @@ mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags) giif,
 int
 (mx_go_input)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, char const *string, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    /* TODO readline: linebuf pool!; mx_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
     * TODO and consumed by OnLineCompletedEvent listeners */
@@ -1901,7 +1901,7 @@ jforce_stdin:
             else
                *linesize = S(uz,n) + mx_LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
-                  su_DBG_LOC_ARGS_ORUSE);
+                  su_DVL_LOC_ARGS_ORUSE);
            su_mem_copy(*linebuf, string, S(uz,n) +1);
          }
          string = NIL;
@@ -1909,7 +1909,7 @@ jforce_stdin:
          mx_sigs_all_rele();
 
          n = (mx_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_nil
-               su_DBG_LOC_ARGS_USE);
+               su_DVL_LOC_ARGS_USE);
 
          mx_sigs_all_holdx();
 
@@ -1928,7 +1928,7 @@ jforce_stdin:
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
-               su_DBG_LOC_ARGS_USE);
+               su_DVL_LOC_ARGS_USE);
 
          mx_sigs_all_holdx();
 

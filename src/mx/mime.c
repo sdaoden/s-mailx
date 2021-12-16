@@ -427,7 +427,7 @@ j_beejump:
          if((flags & a_NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
             flags |= a_ENC_B64;
       }
-      DBG( if(flags & a_8BIT) ASSERT(flags & a_ENCODE); )
+      DVLDBG( if(flags & a_8BIT) ASSERT(flags & a_ENCODE); )
 
       if(!(flags & a_ENCODE)){
          /* Encoded word produced, but no linear whitespace for necessary RFC

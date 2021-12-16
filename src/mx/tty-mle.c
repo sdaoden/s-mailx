@@ -614,7 +614,7 @@ static u8 a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
 static void a_tty_check_grow(struct a_tty_line *tlp, u32 no
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 static sz a_tty_cell2dat(struct a_tty_line *tlp);
 static void a_tty_cell2save(struct a_tty_line *tlp);
 
@@ -664,7 +664,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
 
 /* Readline core */
 static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 
 # ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
@@ -1434,7 +1434,7 @@ a_tty_wcwidth(wchar_t wc){
 }
 
 static void
-a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
+a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DVL_LOC_ARGS_DECL){
    u32 cmax;
    NYD2_IN;
 
@@ -1447,7 +1447,7 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
          i <<= 1;
          tlp->tl_line.cbuf =
          *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
-               su_DBG_LOC_ARGS_ORUSE);
+               su_DVL_LOC_ARGS_ORUSE);
          *tlp->tl_x_bufsize = i;
          mx_sigs_all_rele(); /* XXX v15 drop */
       }
@@ -3204,7 +3204,7 @@ jreset:
 
 static sz
 a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
@@ -3232,7 +3232,7 @@ jrestart:
    /* Treat buffer take-over mode specially, that simplifies the below */
    if(UNLIKELY(len != 0)){
       /* Ensure we have valid pointers, and room for grow */
-      a_tty_check_grow(tlp, S(u32,len)  su_DBG_LOC_ARGS_USE);
+      a_tty_check_grow(tlp, S(u32,len)  su_DVL_LOC_ARGS_USE);
 
       for(;;){
          ASSERT(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NIL);
@@ -3260,7 +3260,7 @@ jrestart:
          }
 
          /* Ensure more room -- should normally be a no-op */
-         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, 1  su_DVL_LOC_ARGS_USE);
       }
       goto jrestart;
    }
@@ -3290,7 +3290,7 @@ jinput_loop:
 
       for(;;){
          /* Ensure we have valid pointers, and room for grow */
-         a_tty_check_grow(tlp, 1  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, 1  su_DVL_LOC_ARGS_USE);
 
 # ifdef mx_HAVE_KEY_BINDINGS
          timeout = FAL0;
@@ -3511,7 +3511,7 @@ jmle_fun:
 jtake_over:
          for(rv = 0, isp = isp_head; isp != NIL; ++rv, isp = isp->next)
             ;
-         a_tty_check_grow(tlp, rv  su_DBG_LOC_ARGS_USE);
+         a_tty_check_grow(tlp, rv  su_DVL_LOC_ARGS_USE);
          for(isp = isp_head; isp != NIL; isp = isp->next)
             if(a_tty_kother(tlp, isp->tbtp->tbt_char)){
                /* TODO ??? */
@@ -3597,7 +3597,7 @@ jinject_input:{
    i = su_cs_len(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
-            su_DBG_LOC_ARGS_ORUSE);
+            su_DVL_LOC_ARGS_ORUSE);
       *tlp->tl_x_bufsize = i;
    }
    su_mem_copy(*tlp->tl_x_buf, cbufp, i);
@@ -4493,7 +4493,7 @@ mx_tty_destroy(boole xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
-# if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
+# if defined mx_HAVE_KEY_BINDINGS && DVLOR(1, 0)
    if(!xit_fastpath){
       mx_go_command(mx_GO_INPUT_NONE, "unbind * *");
       a_tty_bind_tree_teardown();
@@ -4508,7 +4508,7 @@ mx_tty_destroy(boole xit_fastpath){
    }
 # endif
 
-# ifdef mx_HAVE_DEBUG
+# if DVLOR(1, 0)
    su_mem_set(&a_tty, 0, sizeof a_tty);
 
    n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
@@ -4521,7 +4521,7 @@ jleave:
 int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
    sz nn;
@@ -4552,7 +4552,7 @@ int
    mx_termios_cmd(mx_TERMIOS_CMD_PUSH | mx_TERMIOS_CMD_RAW, 1);
    mx_termios_on_state_change_set(&a_tty_on_state_change, S(up,NIL));
    mx_TERMCAP_RESUME(FAL0);
-   nn = a_tty_readline(&tl, n, histok_or_nil  su_DBG_LOC_ARGS_USE);
+   nn = a_tty_readline(&tl, n, histok_or_nil  su_DVL_LOC_ARGS_USE);
    /*mx_COLOUR( mx_colour_env_gut(); )
     *mx_TERMCAP_SUSPEND(FAL0);*/
    mx_termios_cmdx(mx_TERMIOS_CMD_POP | mx_TERMIOS_CMD_RAW);
@@ -4811,7 +4811,7 @@ mx_tty_destroy(boole xit_fastpath){
 int
 (mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt,
       char **linebuf, uz *linesize, uz n, boole *histok_or_nil
-      su_DBG_LOC_ARGS_DECL){
+      su_DVL_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;
    NYD_IN;
@@ -4824,7 +4824,7 @@ int
       }
    }
 
-   rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
+   rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DVL_LOC_ARGS_USE);
 
    NYD_OU;
    return rv;

@@ -1016,18 +1016,18 @@ FL int c_shcodec(void *vp);
  */
 
 /* Return a pointer to a dynamic copy of the argument */
-FL char *savestr(char const *str  su_DBG_LOC_ARGS_DECL);
-FL char *savestrbuf(char const *sbuf, uz slen  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define savestr(CP) savestr(CP  su_DBG_LOC_ARGS_INJ)
-# define savestrbuf(CBP,CBL) savestrbuf(CBP, CBL  su_DBG_LOC_ARGS_INJ)
+FL char *savestr(char const *str  su_DVL_LOC_ARGS_DECL);
+FL char *savestrbuf(char const *sbuf, uz slen  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define savestr(CP) savestr(CP  su_DVL_LOC_ARGS_INJ)
+# define savestrbuf(CBP,CBL) savestrbuf(CBP, CBL  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
 FL char *savecatsep(char const *cp1, char sep, char const *cp2
-   su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define savecatsep(S1,SEP,S2) savecatsep(S1, SEP, S2  su_DBG_LOC_ARGS_INJ)
+   su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define savecatsep(S1,SEP,S2) savecatsep(S1, SEP, S2  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Make copy of argument incorporating old one, if set, separated by space */
@@ -1041,9 +1041,9 @@ FL struct str * str_concat_csvl(struct str *self, ...);
 
 /*  */
 FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
-   char const *sep_o_null  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define str_concat_cpa(S,A,N) str_concat_cpa(S, A, N  su_DBG_LOC_ARGS_INJ)
+   char const *sep_o_null  su_DVL_LOC_ARGS_DECL);
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define str_concat_cpa(S,A,N) str_concat_cpa(S, A, N  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -1061,21 +1061,21 @@ FL boole n_re_could_be_one_buf(char const *buf, uz len);
 /* *self->s* is n_realloc()ed; if buflen==UZ_MAX su_cs_len() is called unless
  * buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str *n_str_assign_buf(struct str *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 #define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UZ_MAX)
 
 /* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UZ_MAX
  * su_cs_len() is called unless buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str *n_str_add_buf(struct str *self, char const *buf, uz buflen
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
 #define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UZ_MAX)
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define n_str_assign_buf(S,B,BL) \
-   n_str_assign_buf(S, B, BL  su_DBG_LOC_ARGS_INJ)
-# define n_str_add_buf(S,B,BL) n_str_add_buf(S, B, BL  su_DBG_LOC_ARGS_INJ)
+   n_str_assign_buf(S, B, BL  su_DVL_LOC_ARGS_INJ)
+# define n_str_add_buf(S,B,BL) n_str_add_buf(S, B, BL  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Remove leading and trailing su_cs_is_space()s and *ifs-ws*, respectively.
@@ -1156,25 +1156,25 @@ INLINE boole n_string_can_book(struct n_string *self, uz len){
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, uz noof
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 #define n_string_book n_string_reserve
 
 /* Resize to exactly nlen bytes; any new storage isn't initialized */
 FL struct n_string *n_string_resize(struct n_string *self, uz nlen
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_string_reserve(S,N)   (n_string_reserve)(S, N  su_DBG_LOC_ARGS_INJ)
-# define n_string_resize(S,N)    (n_string_resize)(S, N  su_DBG_LOC_ARGS_INJ)
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define n_string_reserve(S,N)   (n_string_reserve)(S, N  su_DVL_LOC_ARGS_INJ)
+# define n_string_resize(S,N)    (n_string_resize)(S, N  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* */
 FL struct n_string *n_string_push_buf(struct n_string *self, char const *buf,
-      uz buflen  su_DBG_LOC_ARGS_DECL);
+      uz buflen  su_DVL_LOC_ARGS_DECL);
 #define n_string_push(S, T)       n_string_push_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_push_cp(S,CP)    n_string_push_buf(S, CP, UZ_MAX)
 FL struct n_string *n_string_push_c(struct n_string *self, char c
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 
 #define n_string_assign(S,T)     ((S)->s_len = 0, n_string_push(S, T))
 #define n_string_assign_c(S,C)   ((S)->s_len = 0, n_string_push_c(S, C))
@@ -1182,44 +1182,44 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 #define n_string_assign_buf(S,B,BL) \
    ((S)->s_len = 0, n_string_push_buf(S, B, BL))
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define n_string_push_buf(S,B,BL) \
-   (n_string_push_buf)(S, B, BL  su_DBG_LOC_ARGS_INJ)
-# define n_string_push_c(S,C) (n_string_push_c)(S, C  su_DBG_LOC_ARGS_INJ)
+   (n_string_push_buf)(S, B, BL  su_DVL_LOC_ARGS_INJ)
+# define n_string_push_c(S,C) (n_string_push_c)(S, C  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* */
 FL struct n_string *n_string_unshift_buf(struct n_string *self,
-      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL);
+      char const *buf, uz buflen  su_DVL_LOC_ARGS_DECL);
 #define n_string_unshift(S,T) \
    n_string_unshift_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_unshift_cp(S,CP) \
    n_string_unshift_buf(S, CP, UZ_MAX)
 FL struct n_string *n_string_unshift_c(struct n_string *self, char c
-      su_DBG_LOC_ARGS_DECL);
+      su_DVL_LOC_ARGS_DECL);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define n_string_unshift_buf(S,B,BL) \
-   (n_string_unshift_buf)(S, B, BL  su_DBG_LOC_ARGS_INJ)
+   (n_string_unshift_buf)(S, B, BL  su_DVL_LOC_ARGS_INJ)
 # define n_string_unshift_c(S,C) \
-   (n_string_unshift_c)(S, C  su_DBG_LOC_ARGS_INJ)
+   (n_string_unshift_c)(S, C  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* */
 FL struct n_string *n_string_insert_buf(struct n_string *self, uz idx,
-      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL);
+      char const *buf, uz buflen  su_DVL_LOC_ARGS_DECL);
 #define n_string_insert(S,I,T) \
    n_string_insert_buf(S, I, (T)->s_len, (T)->s_dat)
 #define n_string_insert_cp(S,I,CP) \
    n_string_insert_buf(S, I, CP, UZ_MAX)
 FL struct n_string *n_string_insert_c(struct n_string *self, uz idx,
-      char c  su_DBG_LOC_ARGS_DECL);
+      char c  su_DVL_LOC_ARGS_DECL);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
+#ifdef su_HAVE_DVL_LOC_ARGS
 # define n_string_insert_buf(S,I,B,BL) \
-   (n_string_insert_buf)(S, I, B, BL  su_DBG_LOC_ARGS_INJ)
+   (n_string_insert_buf)(S, I, B, BL  su_DVL_LOC_ARGS_INJ)
 # define n_string_insert_c(S,I,C) \
-   (n_string_insert_c)(S, I, C  su_DBG_LOC_ARGS_INJ)
+   (n_string_insert_c)(S, I, C  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* */
@@ -1228,11 +1228,11 @@ FL struct n_string *n_string_cut(struct n_string *self, uz idx,
 
 /* Ensure self has a - NUL terminated - buffer, and return that.
  * The latter may return the pointer to an internal empty RODATA instead */
-FL char *n_string_cp(struct n_string *self  su_DBG_LOC_ARGS_DECL);
+FL char *n_string_cp(struct n_string *self  su_DVL_LOC_ARGS_DECL);
 FL char const *n_string_cp_const(struct n_string const *self);
 
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_string_cp(S) (n_string_cp)(S  su_DBG_LOC_ARGS_INJ)
+#ifdef su_HAVE_DVL_LOC_ARGS
+# define n_string_cp(S) (n_string_cp)(S  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /*
@@ -1376,9 +1376,9 @@ FL time_t      imap_read_date_time(const char *cp);
 FL const char * imap_make_date_time(time_t t);
 
 /* Extract the protocol base and return a duplicate */
-FL char *protbase(char const *cp  su_DBG_LOC_ARGS_DECL);
-# ifdef su_HAVE_DBG_LOC_ARGS
-#  define protbase(CP) (protbase)(CP  su_DBG_LOC_ARGS_INJ)
+FL char *protbase(char const *cp  su_DVL_LOC_ARGS_DECL);
+# ifdef su_HAVE_DVL_LOC_ARGS
+#  define protbase(CP) (protbase)(CP  su_DVL_LOC_ARGS_INJ)
 # endif
 #endif /* mx_HAVE_IMAP */
 

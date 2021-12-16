@@ -815,7 +815,7 @@ jleave:
 
 int
 (mx_socket_getline)(char **line, uz *linesize, uz *linelen,
-   struct mx_socket *sop  su_DBG_LOC_ARGS_DECL)
+   struct mx_socket *sop  su_DVL_LOC_ARGS_DECL)
 {
    int rv;
    uz lsize;
@@ -837,7 +837,7 @@ int
          uz diff = P2UZ(lp - lp_base);
          *linesize = (lsize += 256); /* XXX magic */
          *line = lp_base = su_MEM_REALLOC_LOCOR(lp_base, lsize,
-               su_DBG_LOC_ARGS_ORUSE);
+               su_DVL_LOC_ARGS_ORUSE);
          lp = lp_base + diff;
       }
 

@@ -68,14 +68,13 @@ struct su_spinlock;
  * Spinlock does not offer \r{su_nyd_chirp()} information.
  * Please see \r{SMP} for peculiarities of \SU lock types.
  *
- * \remarks{With \r{su_HAVE_DEVEL} and/or \r{su_HAVE_DEBUG} some sanity checks
- * are performed.
+ * \remarks{Via \r{su_DVLDBG()} some sanity checks are performed.
  * Note that these debug enabled spinlocks are not binary compatible with
  * non-debug spinlocks, to be more exact their type size differs.}
  * @{
  */
 
-#if defined su__SPINLOCK_IS && DVLOR(1, 0)
+#if defined su__SPINLOCK_IS && DVLDBGOR(1, 0)
 # define su__SPINLOCK_DBG
 #endif
 
@@ -92,7 +91,7 @@ enum su__spinlock_xfn{
 struct su_spinlock{
 #ifdef su__SPINLOCK_IS
    up ATOMIC sl_lck; /* With __SPINLOCK_DBG a thread*, otherwise a bool */
-   DVL( char const *sl_name; )
+   DVLDBG( char const *sl_name; )
 #else
    struct su_mutex sl_mtx;
 #endif
@@ -100,7 +99,8 @@ struct su_spinlock{
 
 #if defined su__SPINLOCK_IS || defined DOXYGEN
    /*! Please see \r{SMP} for consequences of initializing objects like so. */
-# define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) {0 su_DVL(su_COMMA DBG_NAME_OR_NIL)}
+# define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) \
+   {0 su_DVLDBG(su_COMMA DBG_NAME_OR_NIL)}
 #else
 # define su_SPINLOCK_I9R(DBG_NAME_OR_NIL) su_MUTEX_FLAT_I9R(DBG_NAME_OR_NIL)
 #endif
@@ -121,7 +121,7 @@ INLINE s32 su_spinlock_create(struct su_spinlock *self,
    UNUSED(estate);
 #ifdef su__SPINLOCK_IS
    self->sl_lck = 0;
-   DVL( self->sl_name = dbg_name_or_nil; )
+   DVLDBG( self->sl_name = dbg_name_or_nil; )
    rv = su_STATE_NONE;
 #else
    rv = su_mutex_create(&self->sl_mtx, dbg_name_or_nil, estate);
@@ -134,7 +134,7 @@ INLINE void su_spinlock_gut(struct su_spinlock *self){
    ASSERT(self);
 #ifdef su__SPINLOCK_IS
    UNUSED(self);
-   DVL( su__spinlock_check(self, su__SPIN_DTOR, 0); )
+   DVLDBG( su__spinlock_check(self, su__SPIN_DTOR, 0); )
 #else
    su_mutex_gut(&self->sl_mtx);
 #endif
@@ -144,9 +144,11 @@ INLINE void su_spinlock_gut(struct su_spinlock *self){
 INLINE void su_spinlock_lock(struct su_spinlock *self){
    ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   up v = DVLOR(R(up,su_thread_self()), 1);
-   DVL( if(!su__spinlock_check(self, su__SPIN_LOCK, v)) return; )
-   su__spinlock_lock(self, v);
+   /* C99 */{
+      up v = DVLDBGOR(R(up,su_thread_self()), 1);
+      DVLDBG( if(!su__spinlock_check(self, su__SPIN_LOCK, v)) return; )
+      su__spinlock_lock(self, v);
+   }
 #else
    su_mutex_lock(&self->sl_mtx);
 #endif
@@ -158,9 +160,11 @@ INLINE void su_spinlock_lock(struct su_spinlock *self){
 INLINE boole su_spinlock_trylock(struct su_spinlock *self){
    ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   up v = DVLOR(R(up,su_thread_self()), 1);
-   DVL( if(!su__spinlock_check(self, su__SPIN_TRYLOCK, v)) return FAL0; )
-   return su__spinlock_trylock(self, v);
+   /* C99 */{
+      up v = DVLDBGOR(R(up,su_thread_self()), 1);
+      DVLDBG( if(!su__spinlock_check(self, su__SPIN_TRYLOCK, v)) return FAL0; )
+      return su__spinlock_trylock(self, v);
+   }
 #else
    return su_mutex_trylock(&self->sl_mtx);
 #endif
@@ -170,7 +174,7 @@ INLINE boole su_spinlock_trylock(struct su_spinlock *self){
 INLINE void su_spinlock_unlock(struct su_spinlock *self){
    ASSERT(self);
 #ifdef su__SPINLOCK_IS
-   DVL( if(!su__spinlock_check(self, su__SPIN_UNLOCK, 0)) return; )
+   DVLDBG( if(!su__spinlock_check(self, su__SPIN_UNLOCK, 0)) return; )
    su__spinlock_unlock(self);
 #else
    su_mutex_unlock(&self->sl_mtx);

@@ -887,7 +887,7 @@ a_flthtml_check_tag(struct mx_flthtml *self, char const *s){
    /* Extra check only */
    ASSERT(s != NIL);
    if(*s != '<'){
-      DBG( n_alert("HTML tagsoup filter: check_tag() called on soup!"); )
+      DVLDBG( n_alert("HTML tagsoup filter: check_tag() called on soup!"); )
 jput_as_is:
       self = a_flthtml_puts(self, self->fh_bdat);
       goto jleave;

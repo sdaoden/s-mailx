@@ -547,7 +547,7 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
 
    ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
    ASSERT(cacp->cac_desc->cad_no > 0);
-#ifdef mx_HAVE_DEBUG
+#if DVLDBGOR(1, 0)
    /* C99 */{
       boole opt_seen = FAL0;
 
@@ -592,7 +592,7 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
             !(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
       }
    }
-#endif /* mx_HAVE_DEBUG */
+#endif /* DVLDBGOR(1,0) */
 
    n_pstate_err_no = su_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
@@ -860,7 +860,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
 
    for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
       vp = buf;
-      DBG( su_mem_set(vp, 0, sizeof *ncap); )
+      DVLDBG( su_mem_set(vp, 0, sizeof *ncap); )
 
       if(ncap == NIL)
          ncacp->cac_arg = vp;

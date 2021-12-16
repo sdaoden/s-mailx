@@ -635,9 +635,9 @@ _cc_flags_generic() {
    fi
 
    # E.g., valgrind does not work well with high optimization
-   if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
+   if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK &&
          feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
-      msg ' ! OPT_NOMEMDBG, setting cc_maxopt=1 (-O1)'
+      msg ' ! OPT_EXTERNAL_MEM_CHECK, setting cc_maxopt=1 (-O1)'
       cc_maxopt=1
    fi
    # Check -g first since some others may rely upon -g / optim. level
@@ -3779,7 +3779,7 @@ feat_def ASAN_ADDRESS 0
 feat_def ASAN_MEMORY 0
 feat_def USAN 0
 feat_def DEVEL 0
-feat_def NOMEMDBG 0
+feat_def EXTERNAL_MEM_CHECK 0
 
 ##
 ## Summarizing
