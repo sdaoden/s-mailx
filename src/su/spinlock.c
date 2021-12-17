@@ -49,7 +49,7 @@ su__spinlock_check(struct su_spinlock *self, enum su__spinlock_xfn slf, up v){
    case su__SPIN_DTOR:
       if(self->sl_lck != 0){
          su_log_write(su_LOG_ALERT,
-            "su_spinlock_gut(%p=%s): still locked by %s\n",
+            "su_spinlock_gut(%p=%s): still locked by %s",
             self, self->sl_name,
             su_thread_name(R(struct su_thread*,self->sl_lck)));
          goto jleave;
@@ -59,15 +59,15 @@ su__spinlock_check(struct su_spinlock *self, enum su__spinlock_xfn slf, up v){
    case su__SPIN_TRYLOCK:
       if(self->sl_lck == v){
          su_log_write(su_LOG_ALERT,
-            "su_spinlock_(try)?lock(%p=%s): already locked by %s\n",
+            "su_spinlock_(try)?lock(%p=%s): already locked by %s",
             self, self->sl_name, su_thread_name(R(struct su_thread*,v)));
          goto jleave;
       }
       break;
    case su__SPIN_UNLOCK:
       if(self->sl_lck == 0){
-         su_log_write(su_LOG_ALERT,
-            "su_spinlock_unlock(%p=%s): not locked\n", self, self->sl_name);
+         su_log_write(su_LOG_ALERT, "su_spinlock_unlock(%p=%s): not locked",
+            self, self->sl_name);
          goto jleave;
       }
       break;

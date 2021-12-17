@@ -95,7 +95,7 @@ struct su__state_on_gut *su__state_on_gut;
 struct su__state_on_gut *su__state_on_gut_final;
 
 /* */
-SINLINE void a_evlog(u32 lvl_a_flags, char const *fmt, va_list ap);
+SINLINE void a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap);
 
 /* */
 #if DVLOR(1, 0)
@@ -104,16 +104,19 @@ static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
 #endif
 
 SINLINE void
-a_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
-   char buf[2048]/* TODO FmtCodec */, ibuf[su_IENC_BUFFER_SIZE], *cursor;
+a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
+   /* TODO buffer size is 2048; syslog: RFC 3164 -> 1024, RFC 5424 -> flexible,
+    * TODO assume at least 4096; FreeBSD has 8Kib since 2021-12-31 (again) */
+   char buf[2048]/* TODO FmtCodec */, ibuf[su_IENC_BUFFER_SIZE],
+      *xbuf, *cursor;
    u32 f;
 
-   f = lvl_a_flags & ~su__LOG_MASK;
-   lvl_a_flags &= su__LOG_MASK;
+   f = lvl_a_flags & ~su_LOG_PRIMASK;
+   lvl_a_flags &= su_LOG_PRIMASK;
 
-   cursor = buf;
+   cursor = xbuf = buf;
 
-   /* TODO ensure each line has the prefix; use FormatEncodeCtx */
+   /* Prepare our line prefix TODO use FmtCodec */
    if(su_program != NIL){
       cursor = su_cs_pcopy_n(cursor, su_program, 33);
       if(cursor == NIL)
@@ -127,46 +130,67 @@ a_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
          cursor = su_cs_pcopy(cursor, cp);
          *cursor++ = ']';
       }
-
-      *cursor++ = ':';
-      *cursor++ = ' ';
    }
 
    if(su_state_has(su_STATE_LOG_SHOW_LEVEL)){
       *cursor++ = '[';
       cursor = su_cs_pcopy(cursor, a_core_lvlnames[lvl_a_flags]);
       *cursor++ = ']';
+   }
+
+   if(cursor != buf){
+      *cursor++ = ':';
       *cursor++ = ' ';
    }
 
+   /* Shall the prefix be CANcelled on the first line? */
+   if(*fmt == '\x18'){
+      ++fmt;
+      xbuf = cursor;
+   }
    vsnprintf(cursor, (sizeof(buf) - 1 - 1 - P2UZ(cursor - buf)), fmt, ap);
 
-   /* For each line in fmt, write one line */
+   /* For each line in fmt, write out one line */
    SU( su_MUTEX_LOCK(&a_core_glck_log); )
    for(;;){
       char *cp, c;
 
-      /* Normalize control characters */
-      for(cp = cursor; (c = *cp) != '\0'; ++cp)
-         if(su_cs_is_cntrl(c)){
-            if(c == '\n')
-               break;
-            if(c != '\t')
-               *cursor = ' ';
+      /* Normalize control characters but HT */
+      for(cp = cursor;; ++cp){
+         if(LIKELY(!su_cs_is_cntrl(c = *cp)))
+            continue;
+
+         if(c == '\0' || c == '\n'){
+            *cp++ = '\n';
+            if(c != '\0')
+               c = *cp;
+            break;
          }
-      *cp++ = '\n';
-      if(c != '\0')
-         c = *cp;
+
+         /* Last newline can also be CANcelled */
+         if(c != '\x18'){
+            if(c != '\t')
+jspace:
+               *cp = ' ';
+         }else if(cp[1] == '\0'){
+            c = '\0';
+            break;
+         }else{
+            /* XXX hint user on her error */
+            goto jspace;
+         }
+      }
       *cp = '\0';
 
       if(a_core_log_write != NIL)
-         (*a_core_log_write)((f | lvl_a_flags), buf, P2UZ(cp - buf));
+         (*a_core_log_write)((f | lvl_a_flags), xbuf, P2UZ(cp - xbuf));
       else
-         fwrite(buf, sizeof(*buf), P2UZ(cp - buf), stderr);/*TODO NO STD!*/
+         fwrite(xbuf, sizeof(*xbuf), P2UZ(cp - xbuf), /*TODO STD*/stderr);
 
       if(c == '\0')
          break;
 
+      xbuf = buf;
       *cp = c;
       su_cs_pcopy(cursor, cp);
    }
@@ -371,8 +395,8 @@ su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 s32
 su_state_err(enum su_state_err_type err,
       BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
-   static char const intro_nomem[] = N_("Out of memory: %s\n"),
-      intro_overflow[] = N_("Datatype overflow: %s\n");
+   static char const intro_nomem[] = N_("Out of memory: %s"),
+      intro_overflow[] = N_("Datatype overflow: %s");
 
    enum su_log_level lvl;
    char const *introp;
@@ -463,7 +487,7 @@ su_log_write(u32 lvl_a_flags, char const *fmt, ...){
 
    if(su_log_would_write(lvl_a_flags)){
       va_start(va, fmt);
-      a_evlog(lvl_a_flags, fmt, va);
+      a_core_evlog(lvl_a_flags, fmt, va);
       va_end(va);
    }
 
@@ -475,7 +499,7 @@ su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *vp){
    NYD_IN;
 
    if(su_log_would_write(lvl_a_flags))
-      a_evlog(lvl_a_flags, fmt, *S(va_list*,vp));
+      a_core_evlog(lvl_a_flags, fmt, *S(va_list*,vp));
 
    NYD_OU;
 }
@@ -486,7 +510,7 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
    su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
       "SU assert failed: %.60s\n"
       "  File %.60s, line %" PRIu32 "\n"
-      "  Function %.142s\n",
+      "  Function %.142s",
       expr, file, line, fun);
    su_err_set_no(su_ERR_FAULT);
 }

@@ -76,17 +76,17 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
          if((cp = self->avo_opts_short)[0] == '\0'){
             self->avo_flags &= ~a_AVOPT_SHORT;
             su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty short option "
-               "string is unsupported\n");
+               "string is unsupported");
          }else do{
             if(!su_cs_is_print(*cp)){
                self->avo_flags &= ~a_AVOPT_SHORT;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid non-"
-                  "printable bytes in short option string: %s\n",
+                  "printable bytes in short option string: %s",
                   self->avo_opts_short);
             }else if(*cp == '-'){
                self->avo_flags &= ~a_AVOPT_SHORT;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                  "hyphen-minus in short option string: %s\n",
+                  "hyphen-minus in short option string: %s",
                   self->avo_opts_short);
             }
          }while(*++cp != '\0');
@@ -96,12 +96,12 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
          if(self->avo_opts_long[0] == NIL){
             self->avo_flags &= ~a_AVOPT_LONG;
             su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty long option "
-               "array is unsupported\n");
+               "array is unsupported");
          }else for(i = 0; (cp = self->avo_opts_long[i]) != NIL; ++i){
             if(cp[0] == '\0'){
                self->avo_flags &= ~a_AVOPT_LONG;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty long option "
-                  "strings are unsupported\n");
+                  "strings are unsupported");
             }else do{
                if(*cp == ';'){
                   /* Empty option, or no equivalence? */
@@ -109,7 +109,7 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
 jelong_semicolon:
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                        "semicolon usage in long option string: %s\n",
+                        "semicolon usage in long option string: %s",
                         self->avo_opts_long[i]);
                   }
                   /* Could only indicate documentation string, too */
@@ -126,7 +126,7 @@ jelong_semicolon:
                         cp[1] == su_AVOPT_STATE_ERR_ARG){
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): long option "
-                        "equivalence byte shadows enum su_avopt_state: %s\n",
+                        "equivalence byte shadows enum su_avopt_state: %s",
                         self->avo_opts_long[i]);
                   }else if(self->avo_flags & a_AVOPT_SHORT){
                      char const *osp;
@@ -144,7 +144,7 @@ jelong_semicolon:
                            if((osp[1] == ':') != wantsopt){
                               self->avo_flags &= ~a_AVOPT_LONG;
                               su_log_write(su_LOG_CRIT, "su_avopt_setup(): "
-                                 "long option %s argument, short does%s: %s\n",
+                                 "long option %s argument, short does%s: %s",
                                  (wantsopt ? "wants" : "does not want"),
                                  (wantsopt ? " not" : su_empty),
                                  self->avo_opts_long[i]);
@@ -163,19 +163,19 @@ jelong_semicolon:
 jelong_colon:
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                        "colon in long option string: %s\n",
+                        "colon in long option string: %s",
                         self->avo_opts_long[i]);
                   }
                   break;
                }else if(*cp == '='){
                   self->avo_flags &= ~a_AVOPT_LONG;
                   su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                     "equal-sign in long option string: %s\n",
+                     "equal-sign in long option string: %s",
                      self->avo_opts_long[i]);
                }else if(!su_cs_is_print(*cp)){
                   self->avo_flags &= ~a_AVOPT_LONG;
                   su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid non-"
-                     "printable bytes in long option string: %s\n",
+                     "printable bytes in long option string: %s",
                      self->avo_opts_long[i]);
                }
             }while(*++cp != '\0');

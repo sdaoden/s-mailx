@@ -1294,19 +1294,19 @@ enum su_log_level{
    su_LOG_DEBUG /*!< Debug-level message */
 };
 enum{
-   su__LOG_MAX = su_LOG_DEBUG,
-   su__LOG_SHIFT = 8,
-   su__LOG_MASK = (1u << su__LOG_SHIFT) - 1
+   su__LOG_PRIMAX = su_LOG_DEBUG,
+   su__LOG_PRISHIFT = 3,
+   su_LOG_PRIMASK = (1u << su__LOG_PRISHIFT) - 1 /* xxx document? */
 };
 #ifndef DOXYGEN
-MCTA(1u<<su__LOG_SHIFT > su__LOG_MAX, "Bit ranges may not overlap")
+MCTA(1u<<su__LOG_PRISHIFT > su__LOG_PRIMAX, "Bit ranges may not overlap")
 #endif
 
 /*! Flags that can be ORd to \r{su_log_level}. */
 enum su_log_flags{
    /*! In a state in that recursive logging should be avoided at all cost this
     * flag should be set. */
-   su_LOG_F_CORE = 1u<<(su__LOG_SHIFT+0)
+   su_LOG_F_CORE = 1u<<(su__LOG_PRISHIFT+0)
 };
 
 /*! Adjustment possibilities for the global log domain (e.g,
@@ -1548,7 +1548,8 @@ typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
 
 /*! See \r{su_log_set_write_fun()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
- * \a{msg} is one line of \a{len} bytes (excluding the \c{NUL} terminator).
+ * \a{msg} is one line of \a{len} bytes (excluding the \c{NUL} terminator;
+ * and the final newline can be cancelled, actually).
  * \remarks{If \r{su_LOG_F_CORE} is set in \a{lvl_a_flags} recursively causing
  * log messages should be avoided.} */
 typedef void (*su_log_write_fun)(u32 lvl_a_flags, char const *msg, uz len);
@@ -1742,7 +1743,8 @@ EXPORT su_log_write_fun su_log_get_write_fun(void);
 /*! The builtin log "domain" that is used by \SU by default logs to a system
  * dependent error channel, which might even be a "null device".
  * It can be hooked by passing a \r{su_log_write_fun}, passing \NIL restores
- * the default behaviour. */
+ * the default behaviour.
+ * See \r{su_log_write()} for more. */
 EXPORT void su_log_set_write_fun(su_log_write_fun funp);
 
 /*! \_ */
@@ -1761,18 +1763,37 @@ INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
 
 /*! \_ */
 INLINE boole su_log_would_write(enum su_log_level lvl){
-   return ((S(u32,lvl) & su__LOG_MASK) <= (su__state & su__STATE_LOG_MASK) ||
+   return ((S(u32,lvl) & su_LOG_PRIMASK) <= (su__state & su__STATE_LOG_MASK) ||
       (su__state & su__STATE_D_V));
 }
 
 /*! Log functions of various sort.
+ * The global log "domain" protects itself with \r{su_log_lock()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
- * If \r{su_program} is set, it will be prepended to messages.
+ * If \r{su_program} is set it will be included in the per-line prefix that
+ * prepended to messages, optionally supplemented by \r{su_STATE_LOG_SHOW_PID}.
+ * The log level will be part of the prefix with \r{su_STATE_LOG_SHOW_LEVEL}.
+ *
  * Control characters within \a{fmt} (but horizontal tabulator HT) will be
  * normalized to space (SPACE), and a line feed (LF) will be appended
  * automatically; if \a{fmt} consists of multiple lines, each line will be
- * logged by itself separately. */
+ * logged by itself separately.
+ *
+ * Printing of the initial prefix (if any) can be cancelled by placing the
+ * ECMA-48 control character CAN(cel, octal 030 aka hexadecimal 0x18) as the
+ * first byte in \a{fmt}.
+ * The automatically placed newline at the end of \a{fmt} can be CANcelled by
+ * placing CAN as the last byte.
+ * \cb{
+ *    su_log_write(su_LOG_WARN, "One line.");
+ *    su_log_write(su_LOG_WARN, "One line.\nSecond line.");
+ *    su_log_lock();
+ *    su_log_write(su_LOG_WARN, "\030No prefix.\nSecond line,\030");
+ *    su_log_write(su_LOG_WARN, "\030 to be continued");
+ *    su_log_unlock();
+ * }
+ */
 EXPORT void su_log_write(u32 lvl_a_flags, char const *fmt, ...);
 
 /*! See \r{su_log_write()}.

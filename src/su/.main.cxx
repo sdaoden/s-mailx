@@ -72,7 +72,7 @@ main(void){ // {{{
    if(!log::get_show_pid())
       a_ERR();
 
-   log::write(log::info, "Redemption songs\n");
+   log::write(log::info, "Redemption songs");
 
    a_abc();
 
@@ -102,8 +102,8 @@ main(void){ // {{{
 
    a_STATS( mem::trace(); )
 
-   log::write(log::info, (a_errors == 0 ? "These songs of freedom\n"
-      : "Not to be heard\n"));
+   log::write(log::info,
+      (a_errors == 0 ? "These songs of freedom" : "Not to be heard"));
 
    state::gut(
 #ifdef a_TRACE

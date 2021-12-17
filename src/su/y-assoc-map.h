@@ -580,8 +580,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
    ASSERT(self);
 
    su_log_lock();
-   su_log_write(su_LOG_INFO,
-      "----------\n>>> " a_TYPE_NAME "(%p): statistics\n",
+   su_log_write(su_LOG_INFO, "----------\n>>> " a_TYPE_NAME "(%p): statistics",
       self);
 
    arr = self->a_T_F(array);
@@ -622,7 +621,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
       "  - Tresh-Shift: %u\n"
       "* Distribution\n"
       "  - Slots: empty: %lu, multiple: %lu, maximum: %lu, avg/multi: ~%lu\n"
-      "* Distribution, visual\n"
+      "* Distribution, visual"
       ,
       ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0),
 # if a_TYPE != a_TYPE_CSDICT
@@ -658,11 +657,10 @@ a_T_PRISYM(stats)(struct a_T const *self){
       }
       *cp = '\0';
 
-      su_log_write(su_LOG_INFO, "%5lu |%s\n", (ul)i, buf);
+      su_log_write(su_LOG_INFO, "%5lu |%s", S(ul,i), buf);
    }
 
-   su_log_write(su_LOG_INFO,
-      "<<<" a_TYPE_NAME "(%p): statistics\n----------\n",
+   su_log_write(su_LOG_INFO, "<<<" a_TYPE_NAME "(%p): statistics\n----------",
       self);
    su_log_unlock();
 
