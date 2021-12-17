@@ -72,7 +72,7 @@ su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
       if(self->mtx_.owner != NIL){
          su_log_write(su_LOG_ALERT,
             "su_mutex_gut(%p=%s): still locked by %s at %s:%u\n"
-            "   Last seen at %s:%u\n",
+            "   Last seen at %s:%u",
             self, self->mtx_.name,
               su_thread_name(self->mtx_.owner), file, line,
             self->mtx_.file, self->mtx_.line);
@@ -84,7 +84,7 @@ su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
       if(self->mtx_.owner == tsp && (self->mtx_.flags & su_MUTEX_FLAT)){
          su_log_write(su_LOG_ALERT,
             "su_mutex_(try)?lock(%p=%s): flat yet locked by %s at %s:%u\n"
-            "   Last seen at %s:%u\n",
+            "   Last seen at %s:%u",
             self, self->mtx_.name, su_thread_name(tsp), file, line,
             self->mtx_.file, self->mtx_.line);
          goto jleave;
@@ -92,14 +92,14 @@ su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
       break;
    case su__MUTEX_UNLOCK_NOLOCK:
       su_log_write(su_LOG_ALERT,
-         "su_mutex_unlock(%p=%s): never used until seen at %s:%u\n",
+         "su_mutex_unlock(%p=%s): never used until seen at %s:%u",
          self, self->mtx_.name, file, line);
       goto jleave;
    case su__MUTEX_UNLOCK:
       if(self->mtx_.owner == NIL){
          su_log_write(su_LOG_ALERT,
             "su_mutex_unlock(%p=%s): not locked at %s:%u\n"
-            "   Last seen at %s:%u\n",
+            "   Last seen at %s:%u",
             self, self->mtx_.name, file, line,
             self->mtx_.file, self->mtx_.line);
          goto jleave;

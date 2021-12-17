@@ -246,8 +246,7 @@ su_mem_bag_gut(struct su_mem_bag *self){
    ASSERT(self);
 
    DBG( if(self->mb_top != NIL)
-      su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!\n",
-         self); )
+      su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!", self); )
 
    self = su_mem_bag_reset(self);
 
@@ -328,8 +327,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 
       /* Forcefully gut() an active relaxation */
       if(self->mb_auto_relax_recur > 0){
-         DBG( su_log_write(su_LOG_DEBUG,
-            "su_mem_bag_reset(): has relaxation!\n"); )
+         DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
          self->mb_auto_relax_recur = 1;
          self = su_mem_bag_auto_relax_gut(self);
       }
@@ -376,7 +374,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 #ifdef su_HAVE_MEM_BAG_LOFI
    if(self->mb_lofi_top != NIL){
       DBG( su_log_write(su_LOG_DEBUG,
-         "su_mem_bag_reset(%p): still has LOFI memory!\n", self); )
+         "su_mem_bag_reset(%p): still has LOFI memory!", self); )
       do
          self = a_membag_lofi_free_top(self);
       while(self->mb_lofi_top != NIL);
@@ -613,7 +611,7 @@ jhave_pool:;
          struct su__mem_bag_auto_huge *mbahp;
 
          DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_auto_allocate(): huge: "
-            "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
+            "%" PRIuZ " bytes from %s:%" PRIu32,
             size  su_DVL_LOC_ARGS_USE); )
 
          mbahp = S(struct su__mem_bag_auto_huge*,su_ALLOCATE_LOC(
@@ -686,7 +684,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 #ifdef su_HAVE_DEBUG
       if(mblcp == NIL){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_snap_unroll(%p): no such "
-            "snap exists: non-debug crash!\n", oself);
+            "snap exists: non-debug crash!", oself);
          break;
       }
 #endif
@@ -731,7 +729,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
          realsz = Z_ALIGN(size);
          DBG( if(realsz > self->mb_bsz)
             su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_allocate(): huge: "
-                  "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
+                  "%" PRIuZ " bytes from %s:%" PRIu32,
                size  su_DVL_LOC_ARGS_USE); )
          isheap = (a_MEMBAG_HULL || realsz > self->mb_bsz);
          chunksz = Z_ALIGN(VSTRUCT_SIZEOF(struct su__mem_bag_lofi_chunk,
@@ -809,14 +807,15 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DVL_LOC_ARGS_DECL){
 
       if(ovp == NIL){
          su_log_write(su_LOG_DEBUG,
-            "su_mem_bag_lofi_free(): NIL from %s:%" PRIu32 "\n"
+            "su_mem_bag_lofi_free(): NIL from %s:%" PRIu32
             su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
       if(((mblcp = self->mb_lofi_top) == NIL)){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "no LOFI memory exists at %s:%" PRIu32 "!\n"  su_DVL_LOC_ARGS_USE);
+            "no LOFI memory exists at %s:%" PRIu32
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
 
@@ -830,7 +829,8 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DVL_LOC_ARGS_DECL){
       }else if(ovp != mblcp->mblc_buf){
 jeinval:
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
-            "invalid pointer from %s:%" PRIu32 "!\n"  su_DVL_LOC_ARGS_USE);
+            "invalid pointer from %s:%" PRIu32
+            su_DVL_LOC_ARGS_USE);
          goto NYD_OU_LABEL;
       }
    }
