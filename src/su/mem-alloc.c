@@ -141,7 +141,7 @@ do{\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt lower canary: " \
-            "0x%02X: %s, line %" PRIu32 "\n",\
+            "0x%02X: %s, line %" PRIu32,\
          (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
@@ -168,13 +168,13 @@ do{\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt upper canary: " \
-            "0x%02X: %s, line %" PRIu32 "\n",\
+            "0x%02X: %s, line %" PRIu32,\
          (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
    if(BAD)\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
-         "! SU memory:   ..canary last seen: %s, line %" PRIu32 "\n",\
+         "! SU memory:   ..canary last seen: %s, line %" PRIu32,\
          __xc->mac_file, __xc->mac_line);\
 }while(0)
 #endif /* su_MEM_ALLOC_DEBUG */
@@ -276,7 +276,7 @@ a_mema_release_free(void){
 
       su_log_write(su_LOG_INFO | su_LOG_F_CORE,
          "su_mem_set_conf(LINGER_FREE_RELEASE): freed %" PRIuZ
-            " chunks / %" PRIuZ " bytes\n",
+            " chunks / %" PRIuZ " bytes",
          c, s);
    }
 
@@ -348,7 +348,7 @@ su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
          anybad |= isbad;
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "! SU memory: CANARY ERROR (heap): %p (%" PRIuZ
-               " bytes): %s, line %" PRIu32 "\n",
+               " bytes): %s, line %" PRIu32,
             xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
             p.map_c->mac_file, p.map_c->mac_line);
       }
@@ -363,7 +363,7 @@ su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
          anybad |= isbad;
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "! SU memory: CANARY ERROR (free list): %p (%" PRIuZ
-               " bytes): %s, line %" PRIu32 "\n",
+               " bytes): %s, line %" PRIu32,
             xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
             p.map_c->mac_file, p.map_c->mac_line);
       }else{
@@ -378,7 +378,7 @@ su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
                anybad |= 1;
                su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
                   "! SU memory: FREED BUFFER MODIFIED: %p (%" PRIuZ
-                     " bytes): %s, line %" PRIu32 "\n",
+                     " bytes): %s, line %" PRIu32,
                   xp.map_vp, (p.map_c->mac_size - p.map_c->mac_user_off),
                   p.map_c->mac_file, p.map_c->mac_line);
             }
@@ -388,7 +388,7 @@ su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE){
    if(anybad)
       su_log_write(((a_mema_conf & su_MEM_CONF_ON_ERROR_EMERG)
             ? su_LOG_EMERG : su_LOG_ALERT) | su_LOG_F_CORE,
-         "SU memory check: errors encountered\n");
+         "SU memory check: errors encountered");
 
    NYD2_OU;
    return anybad;
@@ -433,7 +433,7 @@ su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
                p.map_c->mac_size - p.map_c->mac_user_off);
 
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
             p.map_c->mac_file, p.map_c->mac_line, dump);
@@ -445,7 +445,7 @@ su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
 
    if(a_mema_free_list != NIL){
       su_log_write(su_LOG_INFO | su_LOG_F_CORE,
-         "Freed memory lingering for release:\n");
+         "Freed memory lingering for release:");
 
       for(p.map_hc = a_mema_free_list; p.map_hc != NIL;
             p.map_hc = p.map_hc->mahc_next){
@@ -459,7 +459,7 @@ su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
                p.map_c->mac_size - p.map_c->mac_user_off);
 
          su_log_write((isbad ? su_LOG_ALERT : su_LOG_INFO) | su_LOG_F_CORE,
-            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s\n",
+            "  %s%p (%" PRIuZ " bytes): %s, line %" PRIu32 "%s",
             (isbad ? "! SU memory: CANARY ERROR: " : ""), xp.map_vp,
             p.map_c->mac_size - p.map_c->mac_user_off,
             p.map_c->mac_file, p.map_c->mac_line, dump);
@@ -590,7 +590,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
       else if(isbad == TRUM1){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer corrupted!  At %s, line %" PRIu32
-               "\n\tLast seen: %s, line %" PRIu32 "\n"
+               "\n\tLast seen: %s, line %" PRIu32
             su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of corrupted pointer"));
@@ -598,7 +598,7 @@ su_mem_reallocate(void *ovp, uz size, uz no,
       }else{
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: reallocation: pointer freed!  At %s, line %" PRIu32
-               "\n\tLast seen: %s, line %" PRIu32 "\n"
+               "\n\tLast seen: %s, line %" PRIu32
             su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of a freed pointer"));
@@ -689,13 +689,13 @@ su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
       if(isbad == TRUM1){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: free of corrupted pointer at %s, line %" PRIu32 "\n"
-            "\tLast seen: %s, line %" PRIu32 "\n"
+            "\tLast seen: %s, line %" PRIu32
             su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }else if(p.map_c->mac_isfree){
          su_log_write(su_LOG_ALERT | su_LOG_F_CORE,
             "SU memory: double-free avoided at %s, line %" PRIu32 "\n"
-            "\tLast seen: %s, line %" PRIu32 "\n"
+            "\tLast seen: %s, line %" PRIu32
             su_DVL_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
          goto NYD_OU_LABEL;
       }
@@ -729,7 +729,7 @@ su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    else
       su_log_write(su_LOG_DEBUG,
-         "SU memory: free(NIL) from %s, line %" PRIu32 "\n"
+         "SU memory: free(NIL) from %s, line %" PRIu32
          su_DVL_LOC_ARGS_USE);
 #endif
 
