@@ -37,6 +37,7 @@
 #ifndef n_NAIL_H
 # define n_NAIL_H
 
+#define su_USECASE_MX
 #include <mx/gen-config.h>
 
 #include <sys/stat.h>

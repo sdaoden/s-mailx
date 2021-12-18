@@ -25,8 +25,8 @@
 /*#define su_HAVE_NSPC*/
 
 /* For now thought of _MX, _ROFF; _SU: standalone library */
-#ifndef su_USECASE_SU
-# define su_USECASE_MX
+#ifndef su_USECASE_MX
+# define su_USECASE_SU
 #endif
 
 #ifdef su_USECASE_MX
