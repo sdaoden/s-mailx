@@ -5,6 +5,7 @@ su_USECASE_MX_DISABLED =
 
 awk?=awk
 getconf?=getconf
+rm?=rm
 
 SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
 	-Dsu_HAVE_CLOCK_GETTIME \
@@ -49,38 +50,54 @@ CSRC = atomic.c \
 			time-spec.c \
 			time-utils.c \
 	utf.c
-CXXSRC = cxx-core.cxx \
-	.main.cxx
+
+CXXSRC = cxx-core.cxx
+
+PROGSRC = .main.cxx
 
 ## 8< >8
 
 .SUFFIXES: .o .c .cxx .y
 .cxx.o:
-	$(CXX) -Dsu_USECASE_SU -I../../src -I../../include \
-		$(CXXFLAGS) -o $(@) -c $(<)
+	$(CXX) -I../../src -I../../include $(CXXFLAGS) -o $(@) -c $(<)
 .c.o:
-	$(CC) -Dsu_USECASE_SU -I../../src -I../../include \
-		$(CFLAGS) -o $(@) -c $(<)
+	$(CC) -I../../src -I../../include $(CFLAGS) -o $(@) -c $(<)
 .cxx .c .y: ;
 
+CONFIG = ../../include/su/gen-config.h
 COBJ = $(CSRC:.c=.o)
 CXXOBJ = $(CXXSRC:.cxx=.o)
-OBJ = $(COBJ) $(CXXOBJ)
+PROGOBJ = $(PROGSRC:.cxx=.o)
+OBJ = $(COBJ) $(CXXOBJ) $(PROGOBJ)
 
 all: .main
 clean:
-	rm -f ../../include/su/gen-config.h .main .tmp* .clib.a $(OBJ)
+	$(rm) -f $(CONFIG) .main .tmp*  .clib.a .cxxlib.a $(OBJ)
 
-$(COBJ): $(CSRC) ../../include/su/gen-config.h
+$(COBJ): $(CSRC) $(CONFIG)
 .clib.a: $(COBJ)
 	$(AR) $(ARFLAGS) $(@) $(COBJ)
-$(CXXOBJ): $(CLIB) ../../include/su/gen-config.h
-.main: $(CXXOBJ) .clib.a
-	$(CXX) $(LDFLAGS) -o $(@) $(CXXOBJ) .clib.a
 
-../../include/su/gen-config.h:
+$(CXXOBJ): $(CXXSRC)
+.cxxlib.a: $(CXXOBJ) .clib.a
+	$(AR) $(ARFLAGS) $(@) $(CXXOBJ)
+
+$(PROGOBJ): $(PROGSRC) #.clib.a .cxxlib.a
+.main: $(PROGOBJ) .clib.a .cxxlib.a
+	$(CXX) $(LDFLAGS) -o $(@) $(PROGOBJ) .cxxlib.a .clib.a
+
+$(CONFIG):
 	CC="$(CC)" SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
-		$(SHELL) ../../mk/su-make-errors.sh compile_time &&\
+		$(SHELL) ../../mk/su-make-errors.sh compile_time
 	echo '#define su_PAGE_SIZE '"`$(getconf) PAGESIZE`" >> $(@)
+	xxx="$(SUF)";\
+	if [ "$${xxx##*su_HAVE_DEBUG}" != "$$xxx" ]; then \
+	printf '#ifndef su_HAVE_DEBUG\n#define su_HAVE_DEBUG\n#endif\n' \
+	>> $(@);\
+	fi; \
+	if [ "$${xxx##*su_HAVE_DEVEL}" != "$$xxx" ]; then \
+	printf '#ifndef su_HAVE_DEVEL\n#define su_HAVE_DEVEL\n#endif\n' \
+	>> $(@);\
+	fi
 
 # s-mk-mode
