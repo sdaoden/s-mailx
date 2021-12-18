@@ -361,7 +361,11 @@
 # define su_R(T,I) reinterpret_cast<T>(I)
 # define su_C(T,I) const_cast<T>(I)
 
-# define su_NIL (0l)
+# if __cplusplus + 0 >= 201103L
+#  define su_NIL nullptr
+# else
+#  define su_NIL (0l)
+# endif
 #endif /* __cplusplus */
 
 /*! The \r{su_state_err()} mechanism can be configured to not cause
