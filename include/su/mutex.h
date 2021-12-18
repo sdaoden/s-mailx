@@ -184,6 +184,7 @@ INLINE s32 su_mutex_create(struct su_mutex *self, char const *name_or_nil,
       u32 estate){
    s32 rv;
    ASSERT(self);
+   UNUSED(estate);
    FIELD_RANGE_ZERO(struct su_mutex, self, mtx_.lck, mtx_.file);
    self->mtx_.name = name_or_nil;
    rv = su_STATE_NONE;
@@ -199,7 +200,7 @@ INLINE void su_mutex_gut(struct su_mutex *self){
    ASSERT(self);
    DVLDBG( if(su__mutex_check(self, su__MUTEX_GUT, NIL su__MUTEX_ARGS_INJ)) )
       MT( if(self->mtx_.flags & su_MUTEX_INIT) su__mutex_os_gut(self) )
-         ;
+         {;}
 }
 
 /*! Turn \SELF into a flat mutex.

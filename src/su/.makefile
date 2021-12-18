@@ -7,14 +7,17 @@ awk?=awk
 getconf?=getconf
 rm?=rm
 
-SUF=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG \
+SUFDEVEL=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
+SUF=$(SUFDEVEL) \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
 	-Dsu_HAVE_PATHCONF \
 	-Dsu_HAVE_UTIMENSAT
+SUFW=-W -Wall -pedantic \
+	-Wno-uninitialized -Wno-unused-result -Wno-unused-value
 
-CXXFLAGS+=-Wall -pedantic $(SUF)
-CFLAGS+=-Wall -pedantic $(SUF)
+CXXFLAGS+=$(SUF) $(SUFW)
+CFLAGS+=$(SUF) $(SUFW) -D_GNU_SOURCE
 
 CSRC = atomic.c \
 		avopt.c \

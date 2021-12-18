@@ -20,6 +20,7 @@
  *@ - Append ", uz crounds, uz drounds" arguments.
  *@ - Use crounds,drounds not cROUNDS,dROUNDS in the function (and remove test
  *@   for defaults since they _are_ set).
+ *@ - $CC warnings: "int i -> u32 i", sprinkle FALLTHRU comments.
  *@ - Then provide the rest via copy+paste.
  *@ Note: If default != 2-4, adjust!
  *
@@ -102,7 +103,6 @@ a_md_siphash(const void *in, const uz inlen, const void *k, u8 *out,
     u8 const *ni = (u8 const *)in;
     u8 const *kk = (u8 const *)k;
 
-    ASSERT((outlen == 8) || (outlen == 16));
     u64 v0 = U64_C(0x736f6d6570736575);
     u64 v1 = U64_C(0x646f72616e646f6d);
     u64 v2 = U64_C(0x6c7967656e657261);
@@ -110,10 +110,11 @@ a_md_siphash(const void *in, const uz inlen, const void *k, u8 *out,
     u64 k0 = U8TO64_LE(kk);
     u64 k1 = U8TO64_LE(kk + 8);
     u64 m;
-    int i;
+    u32 i;
     u8 const *end = ni + inlen - (inlen % sizeof(u64));
     const int left = inlen & 7;
     u64 b = ((u64)inlen) << 56;
+    ASSERT((outlen == 8) || (outlen == 16));
     v3 ^= k1;
     v2 ^= k0;
     v1 ^= k1;
@@ -135,17 +136,17 @@ a_md_siphash(const void *in, const uz inlen, const void *k, u8 *out,
 
     switch (left) {
     case 7:
-        b |= ((u64)ni[6]) << 48;
+        b |= ((u64)ni[6]) << 48; /* FALLTHRU */
     case 6:
-        b |= ((u64)ni[5]) << 40;
+        b |= ((u64)ni[5]) << 40; /* FALLTHRU */
     case 5:
-        b |= ((u64)ni[4]) << 32;
+        b |= ((u64)ni[4]) << 32; /* FALLTHRU */
     case 4:
-        b |= ((u64)ni[3]) << 24;
+        b |= ((u64)ni[3]) << 24; /* FALLTHRU */
     case 3:
-        b |= ((u64)ni[2]) << 16;
+        b |= ((u64)ni[2]) << 16; /* FALLTHRU */
     case 2:
-        b |= ((u64)ni[1]) << 8;
+        b |= ((u64)ni[1]) << 8; /* FALLTHRU */
     case 1:
         b |= ((u64)ni[0]);
         break;
@@ -284,17 +285,17 @@ a_md_siphash_end(struct su_siphash *self, u8 *out){
 
     switch (self->sh_carry_size) {
     case 7:
-        b |= ((u64)self->sh_carry[6]) << 48;
+        b |= ((u64)self->sh_carry[6]) << 48; /* FALLTHRU */
     case 6:
-        b |= ((u64)self->sh_carry[5]) << 40;
+        b |= ((u64)self->sh_carry[5]) << 40; /* FALLTHRU */
     case 5:
-        b |= ((u64)self->sh_carry[4]) << 32;
+        b |= ((u64)self->sh_carry[4]) << 32; /* FALLTHRU */
     case 4:
-        b |= ((u64)self->sh_carry[3]) << 24;
+        b |= ((u64)self->sh_carry[3]) << 24; /* FALLTHRU */
     case 3:
-        b |= ((u64)self->sh_carry[2]) << 16;
+        b |= ((u64)self->sh_carry[2]) << 16; /* FALLTHRU */
     case 2:
-        b |= ((u64)self->sh_carry[1]) << 8;
+        b |= ((u64)self->sh_carry[1]) << 8; /* FALLTHRU */
     case 1:
         b |= ((u64)self->sh_carry[0]);
         break;
