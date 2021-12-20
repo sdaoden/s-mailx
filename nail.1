@@ -13739,26 +13739,26 @@ file.
 .
 .Mx
 .It Ev PAGER
-Pathname of the program to use for backing the command
-.Ic more ,
-and when the
+Pathname of the paging program backing
+.Ic more
+and
 .Va crt
-variable enforces usage of a pager for output.
+induced pager usage.
 The default paginator is
 .Xr more 1
 (path search through
 .Ev SHELL ) .
 .Pp
-\*(UA inspects the contents of this variable: if its contains the string
+The content of this variable is inspected: if it contains
 .Dq less
 then a non-existing environment variable
 .Ev LESS
-will be set to (the portable)
-.Ql RI ,
-likewise for
+is temporarily set to the portable
+.Ql RIFE
+(the latter two excessively), whereas for
 .Dq lv
 .Ev LV
-will optionally be set to
+will temporarily be set to
 .Ql -c .
 Also see
 .Sx "Coloured display"
