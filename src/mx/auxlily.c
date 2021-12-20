@@ -128,7 +128,7 @@ a_aux_pager_get(char const **env_addon){
        *    *colour-pager*, $PAGER */
       if(su_cs_find(rv, "less") != NIL){
          if(getenv("LESS") == NIL)
-            *env_addon = "LESS=RI";
+            *env_addon = "LESS=RIFE";
       }else if(su_cs_find(rv, "lv") != NIL){
          if(getenv("LV") == NIL)
             *env_addon = "LV=-c";
