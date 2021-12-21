@@ -84,8 +84,8 @@ extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
 #define a_RANDOM_ENTRO_TYPE 1
 #if a_RANDOM_ENTRO_TYPE == 1
 # define a_RANDOM_SEED_BYTES 4
-# define a_RANDOM_SEED_PERMUT_ITERS_MIN 256
-# define a_RANDOM_SEED_PERMUT_ITERS_MAX 999
+# define a_RANDOM_SEED_PERMUT_ITERS_MIN (256 * 2)
+# define a_RANDOM_SEED_PERMUT_ITERS_MAX (256 * 8)
 #else
 # define a_RANDOM_SEED_BYTES 256
 #endif
@@ -184,11 +184,12 @@ a_random_init(u32 estate){
       rndp->rndb_seed.rm_type = su_RANDOM_TYPE_VSP;
       rndp->rndb_seed.rm_flags |= a_RANDOM_SEEDER;
       rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_AFTER *
-            (a_RANDOM_ENTRO_TYPE == 1 ? 1 : 16);
+            (a_RANDOM_ENTRO_TYPE == 1 ? 1 : 8);
 
       if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)
             ) != su_STATE_NONE)
          goto jerr;
+      rndp->rndb_rand.rm_reseed_after = a_RANDOM_RESEED_AFTER * 8;
 
       if((rv = su_STATE_NONE
 #ifdef su__STATE_ON_GUT_FUN
@@ -486,11 +487,13 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
    LCTAV(a_RANDOM_SEED_BYTES == 4);
    UNUSED(fill);
    self->rm_ro1 = bp[0];
-   self->rm_ro2 = bp[1];
-   u.i = bp[2];
+   self->rm_ro2 = bp[2];
+   u.i = bp[1];
    u.i <<= 8;
    u.i |= bp[3];
+
    su_mem_zero(bp, a_RANDOM_SEED_BYTES);
+
    u.i = CLIP(u.i, a_RANDOM_SEED_PERMUT_ITERS_MIN,
          a_RANDOM_SEED_PERMUT_ITERS_MAX);
 #else
