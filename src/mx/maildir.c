@@ -803,7 +803,7 @@ trycreate(char const *name){
    enum okay rv;
    NYD_IN;
 
-   if(su_path_mkdir(name, TRU1))
+   if(su_path_mkdir(name, TRU1, su_STATE_ERR_NOPASS))
       rv = OKAY;
    else{
       n_err(_("Cannot create directory %s\n"), n_shexp_quote_cp(name, FAL0));

@@ -476,7 +476,7 @@ clean(struct mailbox *mp, struct cw *cw)
    }
    buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) + su_cs_len(eaccount) +
          su_cs_len(emailbox) + 40);
-   if(!su_path_mkdir(cachedir, TRU1))
+   if(!su_path_mkdir(cachedir, TRU1, su_STATE_ERR_NOPASS))
       goto jleave;
    snprintf(buf, bufsz, "%s/README", cachedir);
    if((fp = mx_fs_open(buf, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_EXCL))
@@ -489,7 +489,7 @@ clean(struct mailbox *mp, struct cw *cw)
    }
    fp = NULL;
    snprintf(buf, bufsz, "%s/%s/%s", cachedir, eaccount, emailbox);
-   if(!su_path_mkdir(buf, TRU1))
+   if(!su_path_mkdir(buf, TRU1, su_STATE_ERR_NOPASS))
       goto jleave;
    if (chdir(buf) < 0)
       goto jleave;
