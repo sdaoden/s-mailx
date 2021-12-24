@@ -84,6 +84,9 @@ INLINE boole su_path_is_dir(char const *path, boole check_access){
    return su__path_is(path, su_PATH_TYPE_DIR, check_access);
 }
 
+/*! Change current working directory. */
+EXPORT boole su_path_chdir(char const *path);
+
 /*! Create directory \a{path}, possibly \a{recursive}ly.
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
  * In \a{recursive} operation mode heap memory may be needed: errors

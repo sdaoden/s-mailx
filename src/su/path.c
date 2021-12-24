@@ -179,6 +179,19 @@ su_path_pathname_max(char const *path){
 }
 
 boole
+su_path_chdir(char const *path){
+   boole rv;
+   NYD_IN;
+   ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
+
+   if(!(rv = (chdir(path) == 0)))
+      su_err_no_by_errno();
+
+   NYD_OU;
+   return rv;
+}
+
+boole
 su_path_mkdir(char const *path, boole recursive, u32 estate){
 #undef a_ALLOC
 #undef a_FREE
