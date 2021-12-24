@@ -86,9 +86,9 @@ INLINE boole su_path_is_dir(char const *path, boole check_access){
 
 /*! Create directory \a{path}, possibly \a{recursive}ly.
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
- * \remarks{In \a{recursive} operation mode heap memory may be needed: errors
- * as via \r{su_state_err_type} can thus occur.} */
-EXPORT boole su_path_mkdir(char const *path, boole recursive);
+ * In \a{recursive} operation mode heap memory may be needed: errors
+ * as via \r{su_state_err_type} can thus occur; \ESTATE. */
+EXPORT boole su_path_mkdir(char const *path, boole recursive, u32 estate);
 
 /*! Rename (\c{rename(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_rename(char const *dst, char const *src);
@@ -151,9 +151,10 @@ public:
    }
 
    /*! \copydoc{su_path_mkdir()} */
-   static boole mkdir(char const *path, boole recursive=FAL0){
+   static boole mkdir(char const *path, boole recursive=FAL0,
+         u32 estate=state::none){
       ASSERT_RET(path != NIL, FAL0);
-      return su_path_mkdir(path, recursive);
+      return su_path_mkdir(path, recursive, estate);
    }
 
    /*! \copydoc{su_path_rename()} */
