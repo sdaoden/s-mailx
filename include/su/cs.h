@@ -156,17 +156,14 @@ EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 /*! Duplicate a buffer into a \r{su_MEM_TALLOC()}ated duplicate.
  * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching NUL,
  * embedded NUL bytes will be included in the result.
- *
- * \copydoc{su_clone_fun}. */
+ * \ESTATE. */
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 
 /*! \r{su_cs_dup_cbuf()}. */
 EXPORT char *su_cs_dup(char const *cp, u32 estate);
 
-#if 0
 /*! Is \a{x} the ending (sub)string of \a{cp}? */
 EXPORT boole su_cs_ends_with_case(char const *cp, char const *x);
-#endif
 
 /*! Search \a{xp} within \a{cp}, return pointer to location or \NIL.
  * Returns \a{cp} if \a{xp} is the empty buffer. */
