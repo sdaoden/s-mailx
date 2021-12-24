@@ -28,7 +28,6 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-#if 0
 boole
 su_cs_ends_with_case(char const *cp, char const *xp){
    boole rv;
@@ -64,7 +63,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* 0 */
 
 char *
 su_cs_rfind_c(char const *cp, char x){
