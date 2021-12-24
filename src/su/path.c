@@ -179,14 +179,15 @@ su_path_pathname_max(char const *path){
 }
 
 boole
-su_path_mkdir(char const *path, boole recursive){ /* TODO estate argument! */
+su_path_mkdir(char const *path, boole recursive, u32 estate){
 #undef a_ALLOC
 #undef a_FREE
 #if defined su_HAVE_MEM_BAG_LOFI && defined su_MEM_BAG_SELF
-# define a_ALLOC(SZ) su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1, 0)
+# define a_ALLOC(SZ) \
+   su_MEM_BAG_LOFI_ALLOCATE(su_MEM_BAG_SELF, SZ, 1, estate & su_STATE_ERR_MASK)
 # define a_FREE(P) su_MEM_BAG_SELF_LOFI_FREE(P)
 #else
-# define a_ALLOC(SZ) su_ALLOC(SZ)
+# define a_ALLOC(SZ) su_ALLOCATE(SZ, 1, estate & su_STATE_ERR_MASK)
 # define a_FREE(P) su_FREE(P)
 #endif
 
