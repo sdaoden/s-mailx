@@ -279,7 +279,7 @@ jleave:
    return;
 
 jerrdoc:
-   emsg = su_err_doc(su_err_no());
+   emsg = su_err_doc(-1);
 jerr:
    UNUSED(emsg);
    n_err(_(".netrc: %s: %s\n"), n_shexp_quote_cp(netrc_load, FAL0), V_(emsg));

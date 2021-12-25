@@ -221,7 +221,7 @@ c_remove(void *vp){
       switch(which_protocol(name, TRU1, FAL0, NIL)){
       case n_PROTO_EML:
          if(!su_path_rm(name)){
-            emsg = su_err_doc(su_err_no());
+            emsg = su_err_doc(-1);
             goto jerr;
          }
          break;
@@ -325,12 +325,10 @@ c_rename(void *vp){
       /* FALLTHRU */
    case PROTO_FILE:
       if(link(oldn, newn) == -1){
-         emsg = savecatsep(_("link(2) failed:"), ' ',
-               _(su_err_doc(su_err_no())));
+         emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
          goto jerrnotr;
       }else if(!su_path_rm(oldn)){
-         emsg = savecatsep(_("removing file failed:"), ' ',
-               _(su_err_doc(su_err_no())));
+         emsg = savecatsep(_("removing file failed:"), ' ', _(su_err_doc(-1)));
          goto jerrnotr;
       }
       break;

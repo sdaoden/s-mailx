@@ -433,7 +433,7 @@ env_addon[i++] = str_concat_csvl(&s,
 jerror:
       if(rbuf == NIL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
-            mthp->mth_msg, su_err_doc(su_err_no()));
+            mthp->mth_msg, su_err_doc(-1));
       else{
          fflush(*qbuf);
          if(*qbuf != n_stdout)

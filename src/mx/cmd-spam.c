@@ -238,7 +238,7 @@ a_spam_action(enum a_spam_action sa, int *ip){
          if((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NIL){
             n_err(_("%s`%s': cannot load message %" PRIuZ ": %s\n"),
                vc.vc_esep, a_spam_cmds[sa], vc.vc_mno,
-               su_err_doc(su_err_no()));
+               su_err_doc(-1));
             ok = FAL0;
             break;
          }
@@ -653,14 +653,14 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
 
    if(!mx_fs_pipe_cloexec(p2c)){
       n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
-         vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
+         vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(-1));
       goto jtail;
    }
    state |= a_P2C;
 
    if(!mx_fs_pipe_cloexec(c2p)){
       n_err(_("%s`%s': cannot create child pipe: %s\n"),
-         vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
+         vcp->vc_esep, a_spam_cmds[vcp->vc_action], su_err_doc(-1));
       goto jtail;
    }
    state |= a_C2P;

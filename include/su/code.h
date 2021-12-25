@@ -1723,13 +1723,15 @@ EXPORT s32 su_err_no(void);
 /*! Set the \SU error number of the calling thread. */
 EXPORT void su_err_set_no(s32 eno);
 
-/*! Return string(s) describing C error number \a{eno}.
+/*! Return string(s) describing C error number \a{eno},
+ * or \r{su_err_no()} if that is \c{-1}.
  * Effectively identical to \r{su_err_name()} if either the compile-time
  * option \r{su_HAVE_DOCSTRINGS} is missing (always), or when
  * \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
-/*! Return the name of the given error number. */
+/*! Return the name of the given error number \a{eno},
+ * or \r{su_err_no()} if that is \c{-1}.  */
 EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to (case-insensitively) map an error name to an error number.
@@ -2073,10 +2075,10 @@ public:
    static void set_no(s32 eno) {su_err_set_no(eno);}
 
    /*! \copydoc{su_err_doc()} */
-   static char const *doc(s32 eno) {return su_err_doc(eno);}
+   static char const *doc(s32 eno=-1) {return su_err_doc(eno);}
 
    /*! \copydoc{su_err_name()} */
-   static char const *name(s32 eno) {return su_err_name(eno);}
+   static char const *name(s32 eno=-1) {return su_err_name(eno);}
 
    /*! \copydoc{su_err_by_name()} */
    static s32 by_name(char const *name) {return su_err_by_name(name);}
