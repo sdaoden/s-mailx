@@ -1327,8 +1327,7 @@ jleave:
       n_exit_status = n_EXIT_SEND_ERROR;
 
    if(!mx_fs_flush(NIL)){
-      n_err(_("Flushing file output buffers failed: %s\n"),
-         su_err_doc(su_err_no()));
+      n_err(_("Flushing file output buffers failed: %s\n"), su_err_doc(-1));
       if(n_exit_status == su_EX_OK)
          n_exit_status = su_EX_IOERR;
    }
