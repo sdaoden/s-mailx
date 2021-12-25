@@ -84,6 +84,9 @@ su_err_doc(s32 eno){
    struct a_corerr_map const *cemp;
    NYD2_IN;
 
+   if(eno == -1)
+      eno = su_err_no();
+
    cemp = a_corerr_map_from_no(eno);
    rv = (
 #ifdef su_HAVE_DOCSTRINGS
@@ -101,6 +104,9 @@ su_err_name(s32 eno){
    char const *rv;
    struct a_corerr_map const *cemp;
    NYD2_IN;
+
+   if(eno == -1)
+      eno = su_err_no();
 
    cemp = a_corerr_map_from_no(eno);
    rv = &a_corerr_names[cemp->cem_nameoff];
