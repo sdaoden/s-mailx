@@ -2132,8 +2132,7 @@ jreasksend:
       cpq = n_shexp_quote_cp(cp = cpq, FAL0);
 
       if((sigfp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
-         n_err(_("Can't open *signature* %s: %s\n"),
-            cpq, su_err_doc(su_err_no()));
+         n_err(_("Can't open *signature* %s: %s\n"), cpq, su_err_doc(-1));
          goto jerr;
       }
 
