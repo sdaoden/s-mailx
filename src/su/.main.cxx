@@ -14,6 +14,7 @@
 su_USECASE_MX_DISABLED
 
 #include <su/atomic.h>
+#include <su/avopt.h>
 #include <su/boswap.h>
 #include <su/cs.h>
 #include <su/cs-dict.h>
@@ -42,6 +43,7 @@ static uz a_errors;
 
 static void a_abc(void);
 static void a_atomic(void);
+static void a_avopt(void);
 static void a_boswap(void);
 //static void a_cs(void); FIXME
 static void a_cs_dict(void);
@@ -74,6 +76,7 @@ main(void){ // {{{
 
    log::write(log::info, "Redemption songs");
 
+#if 1
    a_abc();
 
    /// MT
@@ -82,6 +85,7 @@ main(void){ // {{{
 
    /// Basics (isolated)
 
+   a_avopt();
    a_boswap();
    a_md();
    a_prime();
@@ -100,6 +104,8 @@ main(void){ // {{{
 
    a_cs_dict();
 
+   ///
+#endif // tests
    a_STATS( mem::trace(); )
 
    log::write(log::info,
@@ -185,6 +191,182 @@ a_atomic(void){
       su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
 
 #undef a_X
+}
+// }}}
+
+// avopt {{{
+static void
+a_avopt(void){ // xxx only line mode
+   static char const a_sopts[] = "A:#";
+   static char const * const a_lopts[] = {
+      "resource-files:;;a",
+      "account:;A;b",
+      "batch-mode;#;c",
+      "long-help;\201;d",
+      NIL
+   }, * const a_argv[] = {
+      "--resource-files=a-a",
+      "--resource-files",
+         "a-a",
+      "--account=a-b",
+      "--batch-mode      ",
+      "--batch-mode",
+      "--long-help",
+      "--bummer",
+      "--bummer=au",
+      "-#A ",
+      "--",
+      "-#A",
+      "Hello, world",
+      NIL
+   }, * const a_lines[] = {
+      "resource-files=a-a",
+      "resource-files a-a",
+      "account=a-b",
+      "account",
+      "batch-mode      ",
+      "batch-mode",
+      "long-help",
+      "bummer",
+      "bummer=au",
+      NIL
+   };
+
+   avopt avox, avo(0, NIL, NIL, a_lopts);
+   avox.setup(NELEM(a_argv), a_argv, a_sopts, a_lopts);
+
+   //
+   if(avox.argc() != 14)
+      a_ERR();
+   for(s8 i = 0; (i = avox.parse()) != avox.state_done;){
+      switch(i){
+      default:
+         a_ERR();
+         break;
+
+      case avopt::state_long:
+         if(avox.argc() != 13 && avox.argc() != 11)
+            a_ERR();
+         if(avox.current_opt() != avox.state_long)
+            a_ERR();
+         if(avox.current_long_idx() != 0)
+            a_ERR();
+         if(cs::cmp(avox.current_arg(), "a-a"))
+            a_ERR();
+         break;
+
+      case 'A':
+         if(avox.argc() != 10 && avox.argc() != 4)
+            a_ERR();
+         if(avox.current_opt() != 'A')
+            a_ERR();
+         if((avox.argc() == 9 && cs::cmp(avox.current_arg(), "a-b")) &&
+               (avox.argc() == 3 && cs::cmp(avox.current_arg(), " ")))
+            a_ERR();
+         break;
+
+      case '#':
+         if(avox.argc() != 8 && avox.argc() != 4)
+            a_ERR();
+         if(avox.current_opt() != '#')
+            a_ERR();
+         if(avox.current_arg() != NIL)
+            a_ERR();
+         break;
+
+      case S(char,S(u8,'\201')):
+         if(avox.argc() != 7)
+            a_ERR();
+         if(avox.current_opt() != S(char,S(u8,'\201')))
+            a_ERR();
+         if(avox.current_arg() != NIL)
+            a_ERR();
+         break;
+
+      case avopt::state_err_opt:
+         {char const *emsg = avopt::fmt_err_opt; UNUSED(emsg);}
+         if(avox.argc() != 9 && avox.argc() != 6 && avox.argc() != 5)
+            a_ERR();
+         if((avox.argc() == 9 && avox.current_err_opt() != a_argv[4]) &&
+               (avox.argc() == 6 && avox.current_err_opt() != a_argv[7]) &&
+               (avox.argc() == 5 && avox.current_err_opt() != a_argv[8]))
+            a_ERR();
+         break;
+      }
+   }
+   if(avox.argc() != 3)
+      a_ERR();
+   if(avox.argv()[0] != a_argv[11])
+      a_ERR();
+   if(avox.argv()[1] != a_argv[12])
+      a_ERR();
+   if(avox.argv()[2] != a_argv[13] || avox.argv()[2] != NIL)
+      a_ERR();
+
+   //
+   for(char const * const *la = a_lines; *la != NIL; ++la){
+      s8 i = avo.parse_line(*la);
+
+      switch(i){
+      default:
+         a_ERR();
+         break;
+
+      case avopt::state_long:
+         if(la != &a_lines[0] && la != &a_lines[1])
+            a_ERR();
+         if(avo.current_opt() != avo.state_long)
+            a_ERR();
+         if(avo.current_long_idx() != 0)
+            a_ERR();
+         if(cs::cmp(avo.current_arg(), "a-a"))
+            a_ERR();
+         break;
+
+      case 'A':
+         if(la != &a_lines[2])
+            a_ERR();
+         if(avo.current_opt() != 'A')
+            a_ERR();
+         if(cs::cmp(avo.current_arg(), "a-b"))
+            a_ERR();
+         break;
+
+      case '#':
+         if(la != &a_lines[5])
+            a_ERR();
+         if(avo.current_opt() != '#')
+            a_ERR();
+         if(avo.current_arg() != NIL)
+            a_ERR();
+         break;
+
+      case S(char,S(u8,'\201')):
+         if(la != &a_lines[6])
+            a_ERR();
+         if(avo.current_opt() != S(char,S(u8,'\201')))
+            a_ERR();
+         if(avo.current_arg() != NIL)
+            a_ERR();
+         break;
+
+      case avopt::state_err_arg:
+         {char const *emsg = avopt::fmt_err_arg; UNUSED(emsg);}
+         if(la != &a_lines[3])
+            a_ERR();
+         if(avo.current_err_opt() != *la)
+            a_ERR();
+         break;
+
+      case avopt::state_err_opt:
+         {char const *emsg = avopt::fmt_err_opt; UNUSED(emsg);}
+         if(la != &a_lines[4] && la != &a_lines[7] && la != &a_lines[8])
+            a_ERR();
+         if(avo.current_err_opt() != *la)
+            a_ERR();
+         break;
+      }
+   }
 }
 // }}}
 
