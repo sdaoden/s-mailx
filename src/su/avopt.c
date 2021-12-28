@@ -1,6 +1,6 @@
 /*@ Implementation of avopt.h.
  *
- * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2018 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -38,13 +38,89 @@ enum a_avopt_flags{
    a_AVOPT_LONG = 1u<<3,
    a_AVOPT_FOLLOWUP = 1u<<4,
    a_AVOPT_CURR_LONG = 1u<<5,
-   a_AVOPT_ERR_OPT = 1u<<6,
-   a_AVOPT_ERR_ARG = 1u<<7,
-   a_AVOPT_ROUND_MASK = a_AVOPT_CURR_LONG | a_AVOPT_ERR_OPT | a_AVOPT_ERR_ARG
+   a_AVOPT_ROUND_MASK = a_AVOPT_CURR_LONG
 };
 
 char const su_avopt_fmt_err_arg[] = N_("option requires argument: %s\n");
 char const su_avopt_fmt_err_opt[] = N_("invalid option: %s\n");
+
+static s8 a_avopt_long(struct su_avopt *self, char const *curr, boole is_vec);
+
+static s8
+a_avopt_long(struct su_avopt *self, char const *curr, boole is_vec){
+   s8 rv;
+   char const * const *opta, *opt, *xcurr;
+   NYD_IN;
+
+   for(opta = self->avo_opts_long;;){
+      char c;
+jouter:
+      if((opt = *opta++) == NIL)
+         goto jerropt;
+      if(*opt != *(xcurr = curr))
+         continue;
+
+      while((c = *++opt) != '\0')
+         if(c == ':' || c == ';')
+            break;
+         else if(c != *++xcurr)
+            goto jouter;
+
+      if(*++xcurr == '\0')
+         break;
+      if(c == ':'){
+         if((c = *xcurr) == '=')
+            break;
+         if(!is_vec && su_cs_is_space(c))
+            break;
+      }
+   }
+   --opta;
+
+   /* Have it: argument? */
+   if(*opt == ':'){
+      ++opt;
+      if(*xcurr == '=')
+         ++xcurr;
+      else if(is_vec){
+         if(self->avo_argc == 0)
+            goto jerrarg;
+         --self->avo_argc;
+         xcurr = *self->avo_argv++;
+      }else{
+         char c;
+
+         for(;; ++xcurr){
+            if((c = *xcurr) == '\0')
+               goto jerrarg;
+            if(!su_cs_is_space(c))
+               break;
+         }
+      }
+   }else
+      xcurr = NIL;
+
+   self->avo_current_arg = xcurr;
+   /* xxx undefined unless rv==su_AVOPT_STATE_LONG! */
+   self->avo_current_long_idx = P2UZ(opta - self->avo_opts_long);
+
+   /* Short option equivalence instead of su_AVOPT_STATE_LONG?
+    * No test for NUL since long option string is expected to have been tested
+    * by su_HAVE_DEBUG / su_HAVE_DEVEL code, as below! */
+   rv = (*opt == ';' && *++opt != ';') ? *opt : su_AVOPT_STATE_LONG;
+jleave:
+   NYD_OU;
+   return rv;
+
+jerropt:
+   self->avo_current_err_opt = curr;
+   rv = su_AVOPT_STATE_ERR_OPT;
+   goto jleave;
+jerrarg:
+   self->avo_current_err_opt = curr;
+   rv = su_AVOPT_STATE_ERR_ARG;
+   goto jleave;
+}
 
 struct su_avopt *
 su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
@@ -194,7 +270,7 @@ jelong_colon:
 s8
 su_avopt_parse(struct su_avopt *self){
    u8 flags;
-   char const *opt, *curr;
+   char const *curr;
    s8 rv;
    NYD_IN;
    ASSERT(self);
@@ -208,8 +284,9 @@ su_avopt_parse(struct su_avopt *self){
    /* If follow up is set this necessarily is a short option */
    if(flags & a_AVOPT_FOLLOWUP){
       ASSERT(flags & a_AVOPT_SHORT);
-      goto jshort;
+      goto Jshort;
    }
+   flags &= ~a_AVOPT_FOLLOWUP;
 
    /* We need an argv entry */
    if(self->avo_argc == 0){
@@ -234,55 +311,17 @@ su_avopt_parse(struct su_avopt *self){
          flags |= a_AVOPT_DONE | a_AVOPT_STOP;
          goto jleave;
       }else{
-         /* This is a long option */
-         char const * const *opta, *xcurr;
-
          flags |= a_AVOPT_CURR_LONG;
-         rv = su_AVOPT_STATE_LONG;
-
-         opta = self->avo_opts_long;
-         for(;;){
-jlong_outer:
-            if((opt = *opta++) == NIL)
-               goto jerropt;
-            if(*opt != *(xcurr = curr))
-               continue;
-
-            while(*++opt != '\0')
-               if(*opt == ':' || *opt == ';')
-                  break;
-               else if(*opt != *++xcurr)
-                  goto jlong_outer;
-
-            if(*++xcurr == '\0' || (*xcurr == '=' && *opt == ':'))
-               break;
-         }
-
-         /* Have it: argument? */
-         if(*opt == ':'){
-            ++opt;
-            if(*xcurr == '=')
-               ++xcurr;
-            else{
-               if(self->avo_argc == 0)
-                  goto jerrarg;
-               --self->avo_argc;
-               xcurr = *self->avo_argv++;
-            }
-         }else
-            xcurr = NIL;
-         self->avo_current_arg = xcurr;
-         self->avo_current_long_idx = P2UZ(opta - self->avo_opts_long) - 1;
-
-         /* Short option equivalence instead of su_AVOPT_STATE_LONG? */
-         if(*opt == ';' && *++opt != ';')
-            rv = *opt;
+         rv = a_avopt_long(self, curr, TRU1);
       }
    }else if(UNLIKELY((flags & a_AVOPT_SHORT) == 0))
       goto jerropt;
-   else{
+   else Jshort:{
+      char const *opt;
+
+      flags &= ~a_AVOPT_FOLLOWUP;
+
       /* A short option */
-jshort:
       opt = self->avo_opts_short;
       rv = S(s8,*curr++);
 
@@ -296,19 +335,18 @@ jshort:
       }
 
       /* Does this take an argument? */
-      flags &= ~a_AVOPT_FOLLOWUP;
       if(opt[1] != ':'){
          if(*curr != '\0')
             flags |= a_AVOPT_FOLLOWUP;
          opt = NIL;
       }else{
-         if(*curr == '\0'){
+         if(*(opt = curr) == '\0'){
             if(self->avo_argc == 0)
                goto jerrarg;
             --self->avo_argc;
-            curr = *self->avo_argv++;
+            opt = *self->avo_argv++;
          }
-         opt = curr;
+         curr = NIL;
       }
       self->avo_current_arg = opt;
    }
@@ -319,34 +357,49 @@ jleave:
          (rv != su_AVOPT_STATE_DONE || !(flags & a_AVOPT_STOP)) ? rv
             : su_AVOPT_STATE_STOP;
    self->avo_flags = flags;
+
    NYD_OU;
    return rv;
 
 jerropt:
-   if(flags & a_AVOPT_CURR_LONG)
-      self->avo_current_err_opt = curr;
-   else{
-      self->avo_current_err_opt = self->avo__buf;
-      self->avo__buf[0] = S(char,rv);
-      self->avo__buf[1] = '\0';
-   }
-   flags &= ~a_AVOPT_FOLLOWUP;
-   flags |= a_AVOPT_ERR_OPT;
+   ASSERT(!(flags & a_AVOPT_FOLLOWUP));
+   ASSERT(!(flags & a_AVOPT_CURR_LONG));
+   self->avo_current_err_opt = self->avo__buf;
+   self->avo__buf[0] = S(char,rv);
+   self->avo__buf[1] = '\0';
    rv = su_AVOPT_STATE_ERR_OPT;
    goto jleave;
 
 jerrarg:
    ASSERT(!(flags & a_AVOPT_FOLLOWUP));
-   if(flags & a_AVOPT_CURR_LONG)
-      self->avo_current_err_opt = curr;
-   else{
-      self->avo_current_err_opt = self->avo__buf;
-      self->avo__buf[0] = S(char,rv);
-      self->avo__buf[1] = '\0';
-   }
-   flags |= a_AVOPT_ERR_ARG;
+   ASSERT(!(flags & a_AVOPT_CURR_LONG));
+   self->avo_current_err_opt = self->avo__buf;
+   self->avo__buf[0] = S(char,rv);
+   self->avo__buf[1] = '\0';
    rv = su_AVOPT_STATE_ERR_ARG;
    goto jleave;
+}
+
+s8
+su_avopt_parse_line(struct su_avopt *self, char const *cp){
+   s8 rv;
+   u8 flags;
+   NYD_IN;
+   ASSERT(self);
+   ASSERT_EXEC(cp != NIL, cp = su_empty);
+
+   flags = self->avo_flags;
+   flags &= ~(a_AVOPT_FOLLOWUP | a_AVOPT_ROUND_MASK);
+   flags |= a_AVOPT_CURR_LONG;
+   self->avo_flags = flags;
+
+   rv = (!(flags & a_AVOPT_LONG) ? su_AVOPT_STATE_DONE
+         : a_avopt_long(self, cp, FAL0));
+
+   self->avo_current_opt = rv;
+
+   NYD_OU;
+   return rv;
 }
 
 boole

@@ -25,6 +25,7 @@ su_USECASE_MX_DISABLED
 
 #include <stdarg.h>
 
+#include "su/avopt.h"
 #include "su/cs.h"
 #include "su/path.h"
 #include "su/utf.h"
@@ -40,6 +41,11 @@ su_USECASE_MX_DISABLED
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 NSPC_USE(su)
+
+// avopt.h
+
+STA char const * const avopt::fmt_err_arg = su_avopt_fmt_err_arg;
+STA char const * const avopt::fmt_err_opt = su_avopt_fmt_err_opt;
 
 // code.h
 

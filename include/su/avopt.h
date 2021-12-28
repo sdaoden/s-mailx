@@ -75,6 +75,16 @@ struct su_avopt;
  * Instead, the format strings \r{su_avopt_fmt_err_arg} and
  * \r{su_avopt_fmt_err_opt} can be used with an argument of
  * \r{su_avopt::avo_current_err_opt}.
+ * }\li{
+ * There is a \r{su_avopt_parse_line()} interface that realizes a simple
+ * configuration file syntax which mirrors long command line options to to
+ * per-line directives.
+ * For example, the long option \c{account} that can be specified as
+ * \c{--account myself} or \c{--account=myself} on the command line is then
+ * expected on a line by its own as \c{account myself} or \c{account=myself}.
+ * }\li{
+ * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} content of short and long
+ * option strings are checked for notational errors.
  * }}
  *
  * \cb{
@@ -160,7 +170,8 @@ struct su_avopt{
     * In case of long options only this may include the argument, too, i.e.,
     * the entire argument vector entry which caused failure.
     * Only useful if any of \r{su_AVOPT_STATE_ERR_ARG} and
-    * \r{su_AVOPT_STATE_ERR_OPT} has occurred. */
+    * \r{su_AVOPT_STATE_ERR_OPT} has occurred, and the only member useful for
+    * users after an error. */
    char const *avo_current_err_opt;
    char avo__buf[Z_ALIGN_PZ(2)];
 };
@@ -172,7 +183,8 @@ EXPORT_DATA char const su_avopt_fmt_err_arg[];
 EXPORT_DATA char const su_avopt_fmt_err_opt[];
 
 /*! One of \a{opts_short_or_nil} and \a{opts_long_or_nil} must be given.
- * The latter must be a \NIL terminated array. */
+ * The latter must be a \NIL terminated array.
+ * \a{argv} can be \NIL if \a{argc} is 0. */
 EXPORT struct su_avopt *su_avopt_setup(struct su_avopt *self,
       u32 argc, char const * const *argv,
       char const *opts_short_or_nil, char const * const *opts_long_or_nil);
@@ -180,9 +192,20 @@ EXPORT struct su_avopt *su_avopt_setup(struct su_avopt *self,
 /*! Returns either a member of \r{su_avopt_state} to indicate errors and
  * other states, or a short option character.
  * In case of \r{su_AVOPT_STATE_LONG}, \r{su_avopt::avo_current_long_idx}
- * points to the entry in \r{su_avopt::avo_opts_long} that has been
- * detected. */
+ * points to the detected \r{su_avopt::avo_opts_long} entry. */
 EXPORT s8 su_avopt_parse(struct su_avopt *self);
+
+/*! Identical to \r{su_avopt_parse()}, but parse the given string \a{cp}
+ * instead of the setup argument vector.
+ * \a{cp} should be whitespace trimmed, and is expected to consist of a long
+ * option without the leading double hyphen-minus, and an optional argument in
+ * the usual notation.
+ * \r{su_avopt_setup()} should have been given long options.
+ * The fields \r{su_avopt::avo_argc} and \r{su_avopt::avo_argv} are not used.
+ * \remarks{One may not intermix calls to \r{su_avopt_parse()} and this
+ * function, because \r{su_avopt_parse()} implements a state machine that
+ * this function consciously (changes but) ignores.} */
+EXPORT s8 su_avopt_parse_line(struct su_avopt *self, char const *cp);
 
 /*! If there are long options, query them all in order and dump them via the
  * given pointer to function \a{ptf}.
@@ -213,6 +236,8 @@ class avopt;
 /*!
  * \ingroup AVOPT
  * C++ variant of \r{AVOPT} (\r{su/avopt.h})
+ *
+ * \remarks{Debug assertions are performed in the C base only.}
  */
 class EXPORT avopt : private su_avopt{
    su_CLASS_NO_COPY(avopt);
@@ -229,16 +254,35 @@ public:
       state_err_opt = su_AVOPT_STATE_ERR_OPT
    };
 
+   /*! \copydoc{su_avopt_fmt_err_arg} */
+   static char const * const fmt_err_arg;
+
+   /*! \copydoc{su_avopt_fmt_err_opt} */
+   static char const * const fmt_err_opt;
+
+   /*! \NOOP; \r{setup()} is real constructor. */
+   avopt(void) {DBG( STRUCT_ZERO(su_avopt, this); )}
+
    /*! \copydoc{su_avopt_setup()} */
    avopt(u32 argc, char const * const *argv, char const *opts_short,
          char const * const *opts_long=NIL){
       su_avopt_setup(this, argc, argv, opts_short, opts_long);
    }
+
    /*! \_ */
-   ~avopt(void){}
+   ~avopt(void) {}
+
+   /*! \copydoc{su_avopt_setup()} */
+   avopt &setup(u32 argc, char const * const *argv, char const *opts_short,
+         char const * const *opts_long=NIL){
+      SELFTHIS_RET(su_avopt_setup(this, argc, argv, opts_short, opts_long));
+   }
 
    /*! \copydoc{su_avopt_parse()} */
    s8 parse(void) {return su_avopt_parse(this);}
+
+   /*! \copydoc{su_avopt_parse_line()} */
+   s8 parse_line(char const *cp) {return su_avopt_parse_line(this, cp);}
 
    /*! \copydoc{su_avopt::avo_current_arg} */
    char const *current_arg(void) const {return avo_current_arg;}
@@ -266,7 +310,7 @@ public:
 
    /*! \copydoc{su_avopt_dump_doc()} */
    boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt,
-         char const *lopt, char const *doc), up cookie=NIL) const{
+         char const *lopt, char const *doc), up cookie=0) const{
       return su_avopt_dump_doc(this, ptf, cookie);
    }
 };
