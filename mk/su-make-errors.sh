@@ -143,6 +143,9 @@ compile_time() { # {{{
       exit 1
    }
    set -e
+   pipefail=
+   ( set -o pipefail ) >/dev/null 2>&1 && pipefail=y
+   [ -n "${pipefail}" ] && set -o pipefail
 
    {
       printf '#include <errno.h>\nsu_ERROR_START\n'
@@ -357,8 +360,8 @@ fi
 echo >&2 'Invalid usage'
 exit 1
 
-# PERL {{{
-# Thanks to perl(5) and it's -x / #! perl / __END__ mechanism!
+#' PERL {{{
+# Thanks to perl(5) and its -x / #! perl / __END__ mechanism!
 # Why can env(1) not be used for such easy things in #!?
 #!perl
 
