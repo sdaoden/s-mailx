@@ -4277,6 +4277,140 @@ xit
    t_epilog "${@}"
 } # }}}
 
+t_mta_args() { # {{{
+   t_prolog "${@}"
+
+   "${cat}" <<-_EOT > ./tmta.sh
+		#!${SHELL} -
+		(
+			echo '\$#='\${#}
+			echo '\$0='\${0}
+			while [ \${#} -gt 0 ]; do
+				echo 'ARG<'"\${1}"'>'
+				shift
+			done
+		) > ./t.mbox
+	_EOT
+   ${chmod} 0755 ./tmta.sh
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      r@e.c > ./t1 2>&1
+   check 1 0 ./t.mbox '137783094 45'
+   check 1-err - ./t1 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S metoo \
+      r@e.c > ./t2 2>&1
+   check 2 0 ./t.mbox '2700843329 53'
+   check 2-err - ./t2 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S metoo -S verbose \
+      r@e.c > ./t3 2>&1
+   check 3 0 ./t.mbox '2202430763 61'
+   check 3-err - ./t3 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S metoo -S verbose -S mta-no-default-arguments \
+      r@e.c > ./t4 2>&1
+   check 4 0 ./t.mbox '2206079536 29'
+   check 4-err - ./t4 '4294967295 0'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S mta-no-default-arguments -S mta-no-receiver-arguments \
+      r1@e.c r2@e.c > ./t5 2>&1
+   check 5 0 ./t.mbox '2135964332 18'
+   check 5-err - ./t5 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S mta-no-receiver-arguments \
+      r1@e.c r2@e.c > ./t6 2>&1
+   check 6 0 ./t.mbox '745357308 34'
+   check 6-err - ./t6 '4294967295 0'
+
+   # *mta-bcc-ok* tested in can_send_rfc()
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S mta-arguments='-t -X "/tmp/my log"' \
+      r@e.c > ./t7 2>&1
+   check 7 0 ./t.mbox '1146999542 78'
+   check 7-err - ./t7 '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
+      -S mta-no-default-arguments \
+      -S mta-arguments='-t -X "/tmp/my log"' \
+      r@e.c > ./t8 2>&1
+   check 8 0 ./t.mbox '2762392930 62'
+   check 8-err - ./t8 '4294967295 0'
+
+   # NOBATCH_!
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S mta-arguments='-t -X "/tmp/my log"' \
+      r@e.c \
+      -- -x -y -z > ./t9 2>&1
+   check_exn0 9
+   check 9-err - ./t9 '3200702761 93'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S mta-arguments='-t -X "/tmp/my log"' \
+      -S expandargv \
+      r@e.c \
+      -- -x -y -z > ./t10 2>&1
+   check 10 0 ./t.mbox '3004936903 102'
+   check 10-err - ./t10 '4294967295 0'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S mta-no-default-arguments \
+      -S mta-arguments='-t -X "/tmp/my log"' \
+      -S expandargv \
+      r@e.c \
+      -- -x -y -z > ./t11 2>&1
+   check 11 0 ./t.mbox '1392240145 86'
+   check 11-err - ./t11 '4294967295 0'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S expandargv=fail \
+      r@e.c \
+      -- -x -y -z > ./t12 2>&1
+   check_exn0 12
+   check 12-err - ./t12 '3200702761 93'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S expandargv=restrict \
+      r@e.c \
+      -- -x -y -z > ./t13 2>&1
+   check_exn0 13
+   check 13-err - ./t13 '3200702761 93'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S expandargv=restrict -~ \
+      r@e.c \
+      -- -x -y -z > ./t14 2>&1
+   check 14 0 ./t.mbox '1330910444 69'
+   check 14-err - ./t14 '4294967295 0'
+
+   </dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
+      -S expandargv=restrict -# \
+      r@e.c \
+      -- -x -y -z > ./t15 2>&1
+   check 15 0 ./t.mbox '1330910444 69'
+   check 15-err - ./t15 '4294967295 0'
+
+   # *mta-argv0* cannot be tested via shell
+
+   ## Important to test other but send-only mode
+   printf 'mail r@e.c\n~s t\n~.' |
+      ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -R \
+      -S expandargv -# \
+      -- -x -y -z > ./t16 2>&1
+   check 16 0 ./t.mbox '1330910444 69'
+   check 16-err - ./t16 '4294967295 0'
+
+   t_epilog "${@}"
+} # }}}
+
 t_reply() { # {{{
    # Alternates and ML related address massage etc. somewhere else
    t_prolog "${@}"
@@ -11515,6 +11649,7 @@ t_all() { # {{{
    jspawn addrcodec
    jspawn headerpick # (Just so we have a notion that it works a bit .. now)
    jspawn can_send_rfc
+   jspawn mta_args
    jspawn reply
    jspawn forward
    jspawn resend
