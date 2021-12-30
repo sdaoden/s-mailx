@@ -1186,8 +1186,9 @@ jgetopt_done:
          n_err(_("Unknown *expandargv* value: %s\n"), cp);
 
       if((cp = argv[i]) != NIL){
-         if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
-                  !(n_psonce & n_PSO_INTERACTIVE)))){
+         /* _TILDE_ is implied by _BATCH_ */
+         if(isfail || (isrestrict && !((n_poption & n_PO_TILDE_FLAG) ||
+                  (n_psonce & n_PSO_INTERACTIVE)))){
 je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
