@@ -1,0 +1,7 @@
+$#=5
+$0=./tmta.sh
+ARG<-i>
+ARG<-m>
+ARG<-v>
+ARG<-->
+ARG<r@e.c>

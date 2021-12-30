@@ -1,0 +1,8 @@
+$#=6
+$0=./tmta.sh
+ARG<-i>
+ARG<-t>
+ARG<-X>
+ARG</tmp/my log>
+ARG<-->
+ARG<r@e.c>

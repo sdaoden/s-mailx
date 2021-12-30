@@ -1,0 +1,8 @@
+$#=6
+$0=./tmta.sh
+ARG<-i>
+ARG<-x>
+ARG<-y>
+ARG<-z>
+ARG<-->
+ARG<r@e.c>
