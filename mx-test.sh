@@ -159,10 +159,10 @@ unset POSIXLY_CORRECT LOGNAME USER
 { echo ${MAILX} | ${grep} -q ^/; } || MAILX="${TMPDIR}"/${MAILX}
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
+[ -x "${MAILX}" ] || usage
 export RAWMAILX MAILX
 
 GIT_REPO=
-[ -x "${MAILX}" ] || usage
 [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
 
 # We want an UTF-8 locale, and HONOURS_READONLY {{{
@@ -170,7 +170,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
-            (</dev/null "${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
+            (</dev/null ${RAWMAILX} -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          # C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
          # so here political friction for some decades, too
@@ -180,7 +180,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
                   \echo $LC_ALL
                   \xit 0
                \end
-               \if "${#}" -gt 0
+               \if ${#} -gt 0
                   \set LC_ALL=${1}
                   \shift
                   \xcall cset_test "${@}"
@@ -218,7 +218,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
    fi
 
    if [ -n "${UTF8_LOCALE}" ]; then
-      echo 'Using Unicode locale '"${UTF8_LOCALE}"
+      echo 'Using Unicode locale '${UTF8_LOCALE}
    else
       echo 'No Unicode locale found, disabling Unicode tests'
    fi
@@ -270,7 +270,7 @@ trap "exit 1" HUP INT QUIT TERM
 jobs_max() { :; }
 
 if [ -n "${JOBNO}" ]; then
-   if { echo "${JOBNO}" | grep -q -e '^[0-9]\{1,\}$'; }; then :; else
+   if { echo ${JOBNO} | grep -q -e '^[0-9]\{1,\}$'; }; then :; else
       echo >&2 '$JOBNO='${JOBNO}' is not a valid number, using 1'
       JOBNO=1
    fi
@@ -636,11 +636,14 @@ check() {
       fi
 
       if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
+            command -v git >/dev/null 2>&1 &&
             command -v diff >/dev/null 2>&1; then
          y=test-out
-         if (git rev-parse --verify $y) >/dev/null 2>&1; then :; else
+         if (GIT_CONFIG=/dev/null git rev-parse --verify $y
+               ) >/dev/null 2>&1; then :; else
             y=refs/remotes/origin/test-out
-            (git rev-parse --verify $y) >/dev/null 2>&1 || y=
+            (GIT_CONFIG=/dev/null git rev-parse --verify $y
+               ) >/dev/null 2>&1 || y=
          fi
          if [ -n "${y}" ]; then
             if GIT_CONFIG=/dev/null git show "${y}":"${x}" > \
@@ -750,7 +753,7 @@ else
 fi
 
 have_feat() {
-   ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
+   ( ${RAWMAILX} ${ARGS} -X'echo $features' -Xx |
       ${grep} ,+${1}, ) >/dev/null 2>&1
 }
 # }}}
@@ -4146,10 +4149,10 @@ t_can_send_rfc() { # {{{
    check 4-err - ./t4 '4294967295 0'
 
    # Two test with a file-based MTA
-   "${cat}" <<-_EOT > ./tmta.sh
+   ${cat} <<-_EOT > ./tmta.sh
 		#!${SHELL} -
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
-			"${cat}" && echo pardauz && echo) > ./t.mbox
+			${cat} && echo pardauz && echo) > ./t.mbox
 	_EOT
    ${chmod} 0755 ./tmta.sh
 
@@ -4179,10 +4182,10 @@ xit
    ${mkdir} tfolder
    xfolder=`${pwd}`/tfolder
 
-   "${cat}" <<-_EOT > ./tmta.sh
+   ${cat} <<-_EOT > ./tmta.sh
 		#!${SHELL} -
 		(echo 'From reproducible_build Wed Oct  2 01:50:07 1996' &&
-			"${cat}" && echo 'ARGS: '"\${@}" && echo) > ./t.mbox
+			${cat} && echo 'ARGS: '"\${@}" && echo) > ./t.mbox
 	_EOT
    ${chmod} 0755 ./tmta.sh
 
@@ -4280,7 +4283,7 @@ xit
 t_mta_args() { # {{{
    t_prolog "${@}"
 
-   "${cat}" <<-_EOT > ./tmta.sh
+   ${cat} <<-_EOT > ./tmta.sh
 		#!${SHELL} -
 		(
 			echo '\$#='\${#}
