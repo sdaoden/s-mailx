@@ -302,6 +302,8 @@ a_avopt(void){ // xxx only line mode
       a_ERR();
    if(avox.argv()[2] != a_argv[13] || avox.argv()[2] != NIL)
       a_ERR();
+   if(avox.current_opt() != avox.state_stop)
+      a_ERR();
 
    //
    for(char const * const *la = a_lines; *la != NIL; ++la){
