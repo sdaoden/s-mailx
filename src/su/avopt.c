@@ -197,12 +197,14 @@ jelong_semicolon:
                   else if(cp[2] != '\0' && cp[2] != ';'){
                      goto jelong_semicolon;
                   }else if(cp[1] == su_AVOPT_STATE_DONE ||
+                        cp[1] == su_AVOPT_STATE_STOP ||
                         cp[1] == su_AVOPT_STATE_LONG ||
-                        cp[1] == su_AVOPT_STATE_ERR_OPT ||
-                        cp[1] == su_AVOPT_STATE_ERR_ARG){
+                        cp[1] == su_AVOPT_STATE_ERR_ARG ||
+                        cp[1] == su_AVOPT_STATE_ERR_OPT){
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): long option "
-                        "equivalence byte shadows enum su_avopt_state: %s",
+                        "short option equivalence shadows enum su_avopt_state"
+                        ": %s",
                         self->avo_opts_long[i]);
                   }else if(self->avo_flags & a_AVOPT_SHORT){
                      char const *osp;
@@ -353,7 +355,6 @@ su_avopt_parse(struct su_avopt *self){
 
 jleave:
    self->avo_curr = curr;
-   self->avo_current_opt = rv;
    self->avo_current_opt =
          (rv != su_AVOPT_STATE_DONE || !(flags & a_AVOPT_STOP)) ? rv
             : su_AVOPT_STATE_STOP;
