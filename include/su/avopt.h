@@ -135,9 +135,10 @@ struct su_avopt;
 /*! \remarks{The values of these constants are ASCII control characters.} */
 enum su_avopt_state{
    su_AVOPT_STATE_DONE = '\0', /*!< \_ */
-   su_AVOPT_STATE_LONG = '\001', /*!< \_ */
-   su_AVOPT_STATE_ERR_ARG = '\002', /*!< \_ */
-   su_AVOPT_STATE_ERR_OPT = '\003' /*!< \_ */
+   su_AVOPT_STATE_STOP = '\001', /*!< \_ */
+   su_AVOPT_STATE_LONG = '\002', /*!< \_ */
+   su_AVOPT_STATE_ERR_ARG = '\003', /*!< \_ */
+   su_AVOPT_STATE_ERR_OPT = '\004' /*!< \_ */
 };
 
 /*! \remarks{Most fields make sense only after \r{su_avopt_parse()} has been

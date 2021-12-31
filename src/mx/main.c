@@ -1035,9 +1035,8 @@ jgetopt_done:
     * those options until after the resource files are loaded... */
    argc = avo.avo_argc;
    argv = C(char**,avo.avo_argv);
-   if((cp = argv[i = 0]) == NIL)
-      ;
-   else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
+   if((cp = argv[i = 0]) == NIL || avo.avo_current_opt == su_AVOPT_STATE_STOP){
+   }else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* n_PO_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
    else if(n_poption & n_PO_f_FLAG){
