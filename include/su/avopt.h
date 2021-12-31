@@ -71,6 +71,16 @@ struct su_avopt;
  * short option string, otherwise the colon will be mistreated as an argument
  * requirement for the preceeding option.
  * }\li{
+ * An option (not argument) double hyphen-minus \c{--} stops argument
+ * processing, anything that follows is no longer recognized as an option.
+ * If \c{--} is not given processing is stopped at the first non-option or if
+ * the argument list is exhausted, whatever comes first.
+ *
+ * An option (not argument) single hyphen-minus \c{-} is also not recognized as
+ * an option, but instead also stops processing.
+ * The difference is that \c{--} is consumed from the argument list, whereas
+ * \c{-} is not and remains in \r{su_avopt::avo_argv}.
+ * }\li{
  * Error messages are not logged.
  * Instead, the format strings \r{su_avopt_fmt_err_arg} and
  * \r{su_avopt_fmt_err_opt} can be used with an argument of
@@ -132,6 +142,8 @@ struct su_avopt;
  *      }
  *   }
  *
+ *   // avo.avo_current_opt is either su_AVOPT_STATE_DONE or
+ *   // su_AVOPT_STATE_STOP in case of -- termination
  *   argc = avo.avo_argc;
  *   argv = su_C(char**,avo.avo_argv);
  * }
@@ -145,11 +157,15 @@ struct su_avopt;
 
 /*! \remarks{The values of these constants are ASCII control characters.} */
 enum su_avopt_state{
-   su_AVOPT_STATE_DONE = '\0', /*!< \_ */
-   su_AVOPT_STATE_STOP = '\001', /*!< \_ */
+   su_AVOPT_STATE_DONE = '\0', /*!< Argument processing is done. */
+   /*! Argument processing stopped due to \c{--} terminator;
+    * this is never returned in favour of \r{su_AVOPT_STATE_DONE} by
+    * \r{su_avopt_parse()}, but can only be found
+    * \r{su_avopt::avo_current_opt}!} */
+   su_AVOPT_STATE_STOP = '\001',
    su_AVOPT_STATE_LONG = '\002', /*!< \_ */
    su_AVOPT_STATE_ERR_ARG = '\003', /*!< \_ */
-   su_AVOPT_STATE_ERR_OPT = '\004' /*!< \_ */
+   su_AVOPT_STATE_ERR_OPT = '\004', /*!< \_ */
 };
 
 /*! \remarks{Most fields make sense only after \r{su_avopt_parse()} has been
@@ -192,7 +208,8 @@ EXPORT struct su_avopt *su_avopt_setup(struct su_avopt *self,
 /*! Returns either a member of \r{su_avopt_state} to indicate errors and
  * other states, or a short option character.
  * In case of \r{su_AVOPT_STATE_LONG}, \r{su_avopt::avo_current_long_idx}
- * points to the detected \r{su_avopt::avo_opts_long} entry. */
+ * points to the detected \r{su_avopt::avo_opts_long} entry.
+ * Can be called repeatedly until \r{su_AVOPT_STATE_DONE} is returned. */
 EXPORT s8 su_avopt_parse(struct su_avopt *self);
 
 /*! Identical to \r{su_avopt_parse()}, but parse the given string \a{cp}
@@ -246,6 +263,8 @@ public:
    enum state{
       /*! \copydoc{su_AVOPT_STATE_DONE} */
       state_done = su_AVOPT_STATE_DONE,
+      /*! \copydoc{su_AVOPT_STATE_STOP} */
+      state_stop = su_AVOPT_STATE_STOP,
       /*! \copydoc{su_AVOPT_STATE_LONG} */
       state_long = su_AVOPT_STATE_LONG,
       /*! \copydoc{su_AVOPT_STATE_ERR_ARG} */
