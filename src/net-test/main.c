@@ -18,7 +18,7 @@
  *@ TODO   expected answers, etc.  Then resort the collected answers and
  *@ TODO   write them in the given order to STDOUT for checksumming.  Etc.
  *
- * Copyright (c) 2019 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

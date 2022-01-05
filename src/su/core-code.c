@@ -4,7 +4,7 @@
  *@ TODO Assert: the C++ lib has per-thread assertion states, s_nolog to
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
  *
- * Copyright (c) 2019 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2019 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

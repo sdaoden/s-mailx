@@ -1,6 +1,6 @@
 /*@ Implementation of path.h. XXX Nicer single x_posix wrapper?!
  *
- * Copyright (c) 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2021 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

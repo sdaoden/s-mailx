@@ -5,7 +5,7 @@
  *@ TODO With an on_loop_tick_event, trigger cache update once per loop max.
  *@ TODO I.e., unless *netrc-pipe* was set, auto check for updates.
  *
- * Copyright (c) 2014 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -2,7 +2,7 @@
  *@ TODO Optimize (even asm hooks?)
  *@ TODO (last)_(not_)?of
  *
- * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

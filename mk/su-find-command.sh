@@ -16,7 +16,7 @@
 #@ granted, and actively fail to find commands with spaces ourselfs; like this
 #@ users of these functions can simply say: $VAR args, not "$VAR" args.
 #
-# 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# 2017 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
 # Thanks to Robert Elz (kre).
 # Public Domain
 
