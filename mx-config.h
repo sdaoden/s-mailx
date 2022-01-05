@@ -3,7 +3,7 @@
  *@ This is included (as mx/config.h) after all the (system) headers.
  *@ TODO It is a wild name convention mess, to say the least.
  *
- * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

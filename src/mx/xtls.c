@@ -3,7 +3,7 @@
  *@ Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-4-Clause TODO ISC
  */
 /*

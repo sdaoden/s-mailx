@@ -2,7 +2,7 @@
  *@ Include once, define a_TYPE correspondingly, include again.
  *@ xxx Can be optimized, some functions be made inline wrappers.
  *
- * Copyright (c) 2001 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
