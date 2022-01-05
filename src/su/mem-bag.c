@@ -4,7 +4,7 @@
  *@ XXX - With (this) new approach, the memory backing _auto_buf and
  *@ XXX  _lofi_pool is of equal size, and thus a (global?) cache could be added
  *
- * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

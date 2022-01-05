@@ -265,7 +265,7 @@ POSIX conformance improvements. In March 2006, he integrated that
 program into the Heirloom project, renaming it to Heirloom mailx, the
 development of which ceased in 2008.
 
-In 2012 Steffen (Daode) Nurpmeso adopted the codebase as S-nail.
+In 2012 Steffen Nurpmeso adopted the codebase as S-nail.
 We try to end up as S-mailx.
 
 # s-ts-mode
