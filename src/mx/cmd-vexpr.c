@@ -4,7 +4,7 @@
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
  *@ TODO - _VEXPR -> _CVEXPR
  *
- * Copyright (c) 2017 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

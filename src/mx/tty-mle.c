@@ -3,7 +3,7 @@
  *@ Because we have (had) multiple line-editor implementations, including our
  *@ own MLE, change layout a bit and place them one after the other.
  *
- * Copyright (c) 2012 - 2021 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
