@@ -3217,16 +3217,11 @@ Colour and font attribute mappings can be managed with the command pair
 .Ic colour
 and
 .Ic uncolour .
-Usage of established mappings can be turned off by setting
-.Va colour-disable .
 It may be necessary to pass special command line options to
 .Ev PAGER
 to make it interpret the generated escape sequences.
-\*(OB: in v15
-.Va colour-pager
-is implied when
-.Va colour-disable
-is not set!
+Usage of established mappings can be turned off by setting
+.Va colour-disable .
 .
 .Pp
 It might make sense to conditionalize colour setup on interactive mode via
@@ -9453,13 +9448,7 @@ Also see the section
 .
 .Mx
 .It Va colour-pager
-\*(OB\*(BO\*(OP Whether
-.Ic colour
-sequences (see
-.Sx "Coloured display" )
-shall be used for output that is paged through
-.Ev PAGER .
-\*(OBIn v15 this is an implied setting when
+\*(OB\*(BO\*(OP This is now an implied setting when
 .Va colour-disable
 is not set!
 .
