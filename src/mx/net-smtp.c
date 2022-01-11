@@ -545,9 +545,17 @@ jsend:
          "but not used/available!\n"));
       goto jleave;
    }
-   snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>%s"),
-      scp->sc_urlp->url_u_h.s, sb.s);
+
+   /* C99 */{
+      char const *cp;
+
+      if((cp = xok_vlook(smtp_from, scp->sc_urlp, OXM_ALL)) == NIL)
+         cp = scp->sc_urlp->url_u_h.s;
+
+      snprintf(o, sizeof o, NETLINE("MAIL FROM:<%s>%s"), cp, sb.s);
+   }
    a_SMTP_OUT(o);
+
    ++resp2_cnt;
    if(!(nscp->nsc_server_config & a_NETSMTP_EXT_PIPELINING))
       a_SMTP_ANSWER(2, FAL0, FAL0);
