@@ -145,6 +145,10 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
+   /* Change to reproducible mode asap */
+   if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
+      su_state_set(su_STATE_REPRODUCIBLE);
+
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
     * TODO For now we get this wrong, all over the place, as this software
     * TODO has always been developed with stdout as an output channel.
@@ -281,7 +285,6 @@ a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
 
 static void
 a_main_setup_vars(void){
-   char const *cp;
    NYD2_IN;
 
    /*
@@ -296,15 +299,13 @@ a_main_setup_vars(void){
 
    /* Are we in a reproducible-builds.org environment?
     * That special mode bends some settings (again) */
-   if(ok_vlook(SOURCE_DATE_EPOCH) != NIL){
-      su_state_set(su_STATE_REPRODUCIBLE);
+   if(su_state_has(su_STATE_REPRODUCIBLE)){
       su_program = su_reproducible_build;
       n_pstate |= n_PS_ROOT;
       ok_vset(LOGNAME, su_reproducible_build);
       /* Do not care about USER at all in this special mode! */
       n_pstate &= ~n_PS_ROOT;
-      cp = savecat(su_reproducible_build, ": ");
-      ok_vset(log_prefix, cp);
+      ok_vset(log_prefix, savecat(su_reproducible_build, ": "));
    }
 
    /* Finally set our terminal dimension */
