@@ -722,7 +722,7 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
          rv = TRU1;
    }else if(tiossc & mx_TERMIOS_STATE_RESUME){
       /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0); )
+      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp); )
       mx_TERMCAP_RESUME(TRU1);
       a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       /* TODO Due to SA_RESTART we need to refresh the line in here! */
@@ -1287,7 +1287,7 @@ a_tty_line_config(struct a_tty_line *tlp, boole first){
       char *posbuf, *pos;
 
       if(first)
-         mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp, FAL0);
+         mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp);
 
       /* .tl_pos_buf is a hack */
       posbuf = pos = NIL;
