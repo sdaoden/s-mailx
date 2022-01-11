@@ -66,16 +66,14 @@ enum mx_colour_id{
 #define mx_COLOUR_TAG_SUM_OLDER R(char*,-3)
 
 enum mx_colour_get_flags{
-   mx_COLOUR_GET_FORCED = 1u<<0, /* Act even if COLOUR_IS_ACTIVE() is false */
-   mx_COLOUR_PAGER_USED = 1u<<1 /* Assume output goes to pager */
+   mx_COLOUR_GET_FORCED = 1u<<0 /* Act even if COLOUR_IS_ACTIVE() is false */
 };
 
 struct mx_colour_env{
    struct mx_colour_env *ce_last;
    boole ce_enabled; /* Colour enabled on this level */
    u8 ce_ctx; /* enum mx_colour_ctx */
-   u8 ce_ispipe; /* .ce_outfp known to be a pipe */
-   u8 ce__pad[5];
+   u8 ce__pad[6];
    FILE *ce_outfp;
    struct a_colour_map *ce_current; /* Active colour or NIL */
 };
@@ -98,12 +96,10 @@ EXPORT int c_uncolour(void *v);
  * Signals are blocked */
 EXPORT void mx_colour_stack_del(struct mx_go_data_ctx *gdcp);
 
-/* We want coloured output (in this autorec memory cycle), pager_used is used
- * to test whether *colour-pager* is to be inspected, if fp is given, the reset
- * sequence will be written as necessary by _stack_del()
- * env_gut() will reset() as necessary if fp is not NIL */
-EXPORT void mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp,
-         boole pager_used);
+/* We want coloured output (in this autorec memory cycle), if fp is given, the
+ * reset sequence will be written as necessary by _stack_del() env_gut() will
+ * reset() as necessary if fp is not NIL */
+EXPORT void mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp);
 EXPORT void mx_colour_env_gut(void);
 
 /* Putting anything (for pens: including NIL) resets current state first */

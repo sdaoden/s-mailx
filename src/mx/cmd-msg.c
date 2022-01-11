@@ -164,12 +164,12 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       }
       mx_COLOUR(
          if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-            mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
+            mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf);
       )
    }
    mx_COLOUR(
       else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-         mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0);
+         mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout);
    )
 
    rv = 0;
@@ -278,7 +278,7 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
 
    plines = 0;
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf); )
    n_string_creat_auto(&s);
    /* C99 */{
       sz l;
@@ -533,7 +533,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    setdot(mp, TRU1);
    uncollapse1(mp, 1);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout); )
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;

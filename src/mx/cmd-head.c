@@ -870,7 +870,7 @@ _headers(int msgspec) /* TODO rework v15 */
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
 #endif
-      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout, FAL0); )
+      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
       n_autorec_relax_create();
       for(lastmq = NULL, mq = &message[msgCount]; mp < mq; lastmq = mp, ++mp){
          ++mesg;
@@ -926,7 +926,7 @@ jdot_unsort:
       _screen = g / size;
       mp = mq;
 
-      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout, FAL0); )
+      mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
       n_autorec_relax_create();
       for(lastmq = NULL; mp != NULL; lastmq = mp, mp = mq){
          mq = next_in_thread(mp);
@@ -1076,8 +1076,7 @@ c_from(void *vp)
       ;
    setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1], FAL0);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf,
-      (obuf != n_stdout)); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf); )
    n_autorec_relax_create();
    for(n = 0, ip = msgvec; *ip != 0; ++ip){ /* TODO join into _print_head() */
       a_chead_print_head((uz)n++, S(uz,*ip), obuf, mb.mb_threaded, FAL0);
@@ -1105,7 +1104,7 @@ print_headers(int const *msgvec, boole only_marked,
 
    time_current_update(&time_current, FAL0);
 
-   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
    n_autorec_relax_create();
    for(printed = 0; *msgvec != 0; ++msgvec) {
       struct message *mp = message + *msgvec - 1;

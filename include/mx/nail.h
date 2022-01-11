@@ -609,7 +609,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_charset_unknown_8bit, /* {vip=1} */
    ok_v_cmd,
    ok_b_colour_disable,
-   ok_b_colour_pager,
+   ok_b_colour_pager, /* {obsolete=1} */
    ok_v_contact_mail, /* {virt=VAL_CONTACT_MAIL} */
    ok_v_contact_web, /* {virt=VAL_CONTACT_WEB} */
    ok_v_content_description_forwarded_message, /* {\ } */
