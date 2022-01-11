@@ -10012,11 +10012,11 @@ command line option (without argument; see there for more), or by setting
 If the machine's hostname is not valid at the Internet (for example at
 a dialup machine) either this or
 .Va hostname
-(and a SMTP-based
+have to be set (a SMTP-based
 .Va mta
-adds even more fine-tuning capabilities with
-.Va smtp-hostname )
-have to be set: if so the message and MIME part related unique ID fields
+adds onto this
+.Va smtp-from Ns ):
+if so the message and MIME part related unique ID fields
 .Ql Message-ID:
 and
 .Ql Content-ID:
@@ -10289,15 +10289,12 @@ variable assignment is aborted when a necessary conversion fails.
 .Pp
 Setting it to the empty string will cause the normal hostname to be
 used, but nonetheless enables creation of said ID fields.
-In conjunction with the built-in SMTP
-.Va mta
-.Va smtp-hostname
-also influences the results:
-one should produce some test messages with the desired combination of
+One should produce some test messages with the desired combination of
 .Va \&\&hostname ,
 and/or
 .Va from ,
-.Va sender
+.Va sender ,
+.Va smtp-from
 etc. first.
 .
 .Mx
@@ -10905,7 +10902,7 @@ Server interaction (TLS, authentication type, etc.) is configurable via
 An overview on TLS and links to more information can be found under
 .Sx "Encrypted network communication" .
 Note that with some mail providers it may be necessary to set the
-.Va smtp-hostname
+.Va smtp-from
 variable in order to use a specific combination of
 .Va from ,
 .Va hostname
@@ -12567,42 +12564,29 @@ A popular slightly different variant of the later standardized
 .El
 .
 .
-.Mx Va smtp-hostname
-.It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
-\*(OP Normally \*(UA uses the variable
-.Va from
-to derive the necessary
+.Mx Va smtp-from
+.It Va smtp-from-USER@HOST , smtp-from-HOST , smtp-from
+\*(OP Until this is set the necessary
 .Ql USER@HOST
-information in order to issue a
+information to issue a
 .Ql MAIL FROM:<>
 SMTP
 .Va mta
-command.
-Setting
-.Va smtp-hostname
-can be used to use the
-.Ql USER
-from the SMTP account
-.Pf ( Va mta
-or the
+command is derived from the variable
+.Va from
+if set, or
 .Va user
-variable chain)
-and the given
-.Ql HOST
-.Pf ( Va hostname
-if the empty string is given, or the local hostname as a last resort).
-This often allows using an address that is itself valid but hosted by
-a provider other than from which (in
-.Va from )
-the message is sent.
-Setting this variable also influences generated
-.Ql Message-ID:
 and
-.Ql Content-ID:
-header fields.
+.Va hostname
+otherwise.
 If the \*(OPal IDNA support is available (see
 .Va idna-disable )
 variable assignment is aborted when a necessary conversion fails.
+.
+.Mx Va smtp-hostname
+.It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
+\*(OP\*(OB Please use the more powerful successor
+.Va smtp-from .
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST ,\
