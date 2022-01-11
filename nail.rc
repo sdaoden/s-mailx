@@ -294,7 +294,7 @@ retain date author sender from to cc subject \
 ## Not really optional as it is needed for, e.g., S/MIME
 #\set from='Your Name <address@exam.ple>'
 #
-## It may be necessary to set *hostname* and/or *smtp-hostname*
+## It may be necessary to set *hostname* and/or *smtp-from*
 ## if the "SERVER" of *mta* and "domain" of *from* do not match.
 ## The `urlencode' command can be used to encode USER and PASS
 ##\set mta=(smtps?|submissions?)://[USER[:PASS]@]SERVER[:PORT]
@@ -357,7 +357,7 @@ retain date author sender from to cc subject \
 #  \shortcut imap %:imaps://imap.yaXXex.com
 #
 #  \set mta=smtps://USER:PASS@smtp.yaXXex.com:465 \
-#    hostname=yaXXex.com smtp-hostname=
+#    hostname=yaXXex.com smtp-from=USER@yaXXex.com
 #}
 #\account XandeX {
 #  \call Xandex
@@ -380,7 +380,7 @@ retain date author sender from to cc subject \
 #  #\set netrc-pipe='gpg -qd ~/.netrc.pgp'
 #
 #  \set mta=smtps://smtp.yXXXXx.ru:465 \
-#      smtp-hostname= hostname=yXXXXx.com
+#      hostname=yXXXXx.com smtp-from=USER@yXXXXx.com
 #  \set pop3-keepalive=240 pop3-no-apop-pop.yXXXXx.ru
 #}
 #

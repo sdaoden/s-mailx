@@ -10433,7 +10433,7 @@ c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
    t_epilog "${@}"
 } # }}}
 
-t_net_smtp() { # {{{
+t_net_smtp() { # {{{ TODO v15: drop smtp-hostname tests
    t_prolog "${@}"
 
    if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
@@ -10514,7 +10514,7 @@ Message-ID: <19961002015007.AQACA%steffen@am.ple>'
       from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
-      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple
+      smtp__script /dev/null "$@" -Sfrom=${from}
    }
 
    smtp_script_from_hostname() {
@@ -10523,7 +10523,8 @@ Message-ID: <19961002015007.AQACA%steffen.ex@am.ple>'
       from=${mail_from}
       msgid='
 Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
-      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple -Shostname=am2.ple2
+      smtp__script /dev/null "$@" \
+         -Sfrom=${mail_from} -Shostname=am2.ple2
    }
 
    smtp_script_from_hostname_smtp_hostname() {
@@ -10532,7 +10533,7 @@ Message-ID: <19961002015007.AQACAAAA@am2.ple2>'
       from=steffen.ex@am.ple
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
-      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+      smtp__script /dev/null "$@" -Sfrom=${from} \
          -Shostname=am2.ple2 -Ssmtp-hostname=am3.ple3
    }
 
@@ -10542,8 +10543,18 @@ Message-ID: <19961002015007.AQACA%steffen@am3.ple3>'
       from=steffen.ex@am.ple
       msgid='
 Message-ID: <19961002015007.AQACA%steffen@am2.ple2>'
-      smtp__script /dev/null "$@" -Sfrom=steffen.ex@am.ple \
+      smtp__script /dev/null "$@" -Sfrom=${from} \
          -Shostname=am2.ple2 -Ssmtp-hostname=
+   }
+
+   smtp_script_from_hostname_smtp_from() {
+      helo=am.ple
+      mail_from=steffen2@am2.ple2
+      from=steffen.ex@am.ple
+      msgid='
+Message-ID: <19961002015007.AQACAAAA@am.ple>'
+      smtp__script /dev/null "$@" -Shostname=am.ple \
+         -Sfrom=${from} -Ssmtp-from=steffen2@am2.ple2
    }
    # }}}
 
@@ -10642,7 +10653,7 @@ QUIT
    smtp_go() { smtp_head_all && smtp_quit; }
    # }}}
 
-   # Check the *from* / *hostname* / *smtp-hostname* .. interaction {{{
+   # Check the *from* / *hostname* / *smtp-from* .. interaction {{{
    smtp_script smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test t.sh > ./t1 2>&1
    check 1 0 ./t1 '4294967295 0'
@@ -10674,6 +10685,10 @@ QUIT
    smtp_script_from_hostname_smtp_hostname_empty smtp -Ssmtp-config=-ehlo
    { smtp_helo && smtp_go; } | ../net-test t.sh > ./t8 2>&1
    check 8 0 ./t8 '4294967295 0'
+
+   smtp_script_from_hostname_smtp_from smtp -Ssmtp-config=-ehlo
+   { smtp_helo && smtp_go; } | ../net-test t.sh > ./t9 2>&1
+   check 9 0 ./t9 '4294967295 0'
    # }}}
 
    # Real EHLO authentication types {{{
