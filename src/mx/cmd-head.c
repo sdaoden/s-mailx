@@ -44,11 +44,13 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 #include "mx/cmd-mlist.h"
 #include "mx/colour.h"
 #include "mx/compat.h"
+#include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/termios.h"
 #include "mx/ui-str.h"
@@ -1042,52 +1044,39 @@ jerr:
 }
 
 FL int
-c_from(void *vp)
-{
+c_from(void *vp){
+   FILE *obuf;
    int *msgvec, *ip, n;
-   char *cp;
-   FILE * volatile obuf;
    NYD_IN;
 
    if(*(msgvec = vp) == 0)
       goto jleave;
 
-   time_current_update(&time_current, FAL0);
-
-   obuf = n_stdout;
-
-   /* v15-compat: just use page_or_print() once colour-pager is gone! */
-   if(mx_go_may_yield_control() && (cp = ok_vlook(crt)) != NIL){
-      uz ib;
-
-      for(n = 0, ip = msgvec; *ip != 0; ++ip)
-         ++n;
-
-      if(*cp == '\0')
-         ib = n_screensize();
-      else
-         su_idec_uz_cp(&ib, cp, 0, NIL);
-      if(UCMP(z, n, >, ib) && (obuf = mx_pager_open()) == NIL)
-         obuf = n_stdout;
-   }
-
    /* Update dot before display so that the dotmark etc. are correct */
-   for (ip = msgvec; ip[1] != 0; ++ip)
+   for(ip = msgvec; ip[1] != 0; ++ip)
       ;
    setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1], FAL0);
 
+   if((obuf = mx_fs_tmp_open(NIL, "from", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
+         ) == NIL)
+      obuf = n_stdout;
+
+   time_current_update(&time_current, FAL0);
+
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf); )
-   n_autorec_relax_create();
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    for(n = 0, ip = msgvec; *ip != 0; ++ip){ /* TODO join into _print_head() */
-      a_chead_print_head((uz)n++, S(uz,*ip), obuf, mb.mb_threaded, FAL0);
-      n_autorec_relax_unroll();
+      a_chead_print_head(S(uz,n++), S(uz,*ip), obuf, mb.mb_threaded, FAL0);
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
    }
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
    mx_COLOUR( mx_colour_env_gut(); )
 
-   if(obuf != n_stdout)
-      mx_pager_close(obuf);
-   else
+   if(obuf != n_stdout){
+      page_or_print(obuf, n);
+
+      mx_fs_close(obuf);
+   }else
       clearerr(obuf);
 
 jleave:

@@ -165,15 +165,16 @@ n_screensize(void){
    uz rv;
    NYD2_IN;
 
-   if((cp = ok_vlook(screen)) != NIL){
+   rv = 0;
+   if((cp = ok_vlook(screen)) != NIL)
       su_idec_uz_cp(&rv, cp, 0, NIL);
-      if(rv == 0)
-         rv = mx_termios_dimen.tiosd_height;
-   }else
+
+   if(rv == 0)
       rv = mx_termios_dimen.tiosd_height;
 
    if(rv > 2)
       rv -= 2;
+
    NYD2_OU;
    return rv;
 }
