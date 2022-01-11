@@ -1104,18 +1104,25 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          n_customhdr_list = hflp;
          }break;
       case ok_v_from:
-      case ok_v_sender:{
+      case ok_v_sender:
+      case ok_v_smtp_from:{
          struct mx_name *np;
 
-         np = (okey == ok_v_sender ? n_extract_single : lextract
+         np = (okey != ok_v_from ? n_extract_single : lextract
                )(*val, GEXTRA | GFULL);
          if(np == NIL){
 jefrom:
-            emsg = N_("*from* / *sender*: invalid  address(es): %s\n");
+            emsg = N_("*from* / *sender* / *smtp-from*: "
+                  "invalid address(es): %s\n");
             goto jerr;
-         }else for(; np != NIL; np = np->n_flink)
-            if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-               goto jefrom;
+         }else{
+            if(okey == ok_v_smtp_from)
+               *val = np->n_name;
+
+            for(; np != NIL; np = np->n_flink)
+               if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+                  goto jefrom;
+         }
          }break;
       case ok_v_HOME:
          /* Note this gets called from main.c during initialization, and they

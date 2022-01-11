@@ -653,7 +653,7 @@ jurlp_err:
    /* .url_u_h: .url_user@.url_host
     *
     * TODO For SMTP we apply ridiculously complicated *v15-compat* plus
-    * TODO *smtp-hostname* / *hostname* dependent rules.
+    * TODO *smtp-hostname* (NOW OBSOLETE!) / *hostname* dependent rules.
     * MUST be after _u_h_p, otherwise xok_vlook() will not work!! */
    /* C99 */{
       struct str h, *s;
