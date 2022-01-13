@@ -752,7 +752,10 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
 jssl_retry:
       x = SSL_write(sop->s_tls, data, size);
       if(x < 0){
-         if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+         if((err = su_err_no()) == su_ERR_INTR)
+            goto jssl_retry;
+
+         if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
             switch(SSL_get_error(sop->s_tls, x)){
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
@@ -830,7 +833,10 @@ jssl_retry:
                if (sop->s_rsz < 0) {
                   char o[512];
 
-                  if(++errcnt < 3 && (err = su_err_no()) != su_ERR_WOULDBLOCK){
+                  if((err = su_err_no()) == su_ERR_INTR)
+                     goto jssl_retry;
+
+                  if(++errcnt < 3 && err != su_ERR_WOULDBLOCK){
                      switch(SSL_get_error(sop->s_tls, sop->s_rsz)){
                      case SSL_ERROR_WANT_READ:
                      case SSL_ERROR_WANT_WRITE:
