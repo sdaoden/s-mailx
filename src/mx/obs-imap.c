@@ -912,7 +912,15 @@ imap_response_parse(void)
          ip++;
          pp++;
       }
-      imap_response_get(&ip);
+      /* C99 */{
+         int rs;
+
+         rs = response_status;
+         imap_response_get(&ip);
+         if(response_status != RESPONSE_BYE &&
+               response_status != RESPONSE_OTHER)
+            response_status = rs;
+      }
       pp = &parsebuf[ip - imapbuf];
       switch (response_status) {
       case RESPONSE_BYE:
@@ -3294,7 +3302,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
    mx_fs_linepool_aquire(&buf, &bufsize);
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
-   time(&tim);
+   tim = 0;
    size = 0;
 
    for (flag = MNEW, state = _NLSEP;;) {
