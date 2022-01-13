@@ -203,6 +203,7 @@ static char const *a_imap_path_normalize(struct mailbox *mp, char const *cp,
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
+static void a_imap_res__untagged(const char **cp);
 static void       imap_response_parse(void);
 static enum okay  imap_answer(struct mailbox *mp, int errprnt);
 static enum okay  imap_parse_list(void);
@@ -882,6 +883,22 @@ imap_response_get(const char **cp)
 }
 
 static void
+a_imap_res__untagged(const char **cp){
+   NYD2_IN;
+
+   if(su_cs_cmp_case_n(*cp, "OK ", 3) == 0){
+      *cp += 3;
+      response_status = RESPONSE_OK;
+   }else if (su_cs_cmp_case_n(*cp, "BYE ", 4) == 0){
+      *cp += 4;
+      response_status = RESPONSE_BYE;
+   }else
+      response_status = RESPONSE_OTHER;
+
+   NYD2_OU;
+}
+
+static void
 imap_response_parse(void)
 {
    static char *parsebuf; /* TODO Use pool */
@@ -905,31 +922,20 @@ imap_response_parse(void)
          pp++;
       }
       break;
-   case '*':
-      ip++;
-      pp++;
-      while (*ip == ' ') {
-         ip++;
-         pp++;
-      }
-      /* C99 */{
-         int rs;
 
-         rs = response_status;
-         imap_response_get(&ip);
-         if(response_status != RESPONSE_BYE &&
-               response_status != RESPONSE_OTHER)
-            response_status = rs;
+   case '*':
+      for(;;){
+         ++ip, ++pp;
+         if(*ip != ' ')
+            break;
       }
+
+      a_imap_res__untagged(&ip);
       pp = &parsebuf[ip - imapbuf];
-      switch (response_status) {
-      case RESPONSE_BYE:
-         response_type = RESPONSE_FATAL;
-         break;
-      default:
-         response_type = RESPONSE_DATA;
-      }
+      response_type = (response_status == RESPONSE_BYE) ? RESPONSE_FATAL
+            : RESPONSE_DATA;
       break;
+
    default:
       responded_tag = parsebuf;
       while (*pp && *pp != ' ')
