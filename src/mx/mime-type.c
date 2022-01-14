@@ -1399,7 +1399,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
 #define a__L (sizeof(a__S) -1)
 
    struct a_mt_lookup mtl;
-   char const *es, *cs, *ccp;
+   char const *es, *cs;
    uz el, cl, l;
    char *buf, *cp;
    BITENUM_IS(u32,mx_mime_type_hander_flags) rv, xrv;
@@ -1433,7 +1433,6 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
       boole ever;
 
       /* "basename()" it */
-      ccp = &es[el];
       for(l = el; l > 0 && es[l - 1] != '/';)
          --l;
       es += l;
@@ -1449,6 +1448,8 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp,
       }
 
       for(ever = FAL0;; ever = TRU1){
+         char const *ccp;
+
          if((ccp = su_mem_find(es, '.', el)) != NIL){
             el -= P2UZ(++ccp - es);
             es = ccp;
