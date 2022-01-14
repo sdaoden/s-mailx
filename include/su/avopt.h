@@ -38,63 +38,85 @@ struct su_avopt;
  * \ingroup MISC
  * \brief Command line argument option parser (\r{su/avopt.h})
  *
- * Differences to the POSIX \c{getopt()} standard:
- *
  * \list{\li{
- * Long options are supported.
- * They can be mapped to a short option by adding a \c{;CHAR} suffix to
- * the long option (after the possible \c{:} which indicates an argument).
- * If so, calling \r{su_avopt_parse()} will return the short option equivalence
- * instead of only setting \r{su_avopt::avo_current_long_idx} and returning
- * \r{su_AVOPT_STATE_LONG}.
- * }\li{
- * If long options are used, documentation strings can be included, and dumped
- * via \r{su_avopt_dump_doc()}.
- * They can be appended after a \c{;} suffix that follows the possibly empty
- * short option mapping.
- * See below for examples.
+ * Any printable ASCII (7-bit) character except hyphen-minus \c{-} may be used
+ * as a short option.
  * }\li{
  * This implementation always differentiates in between
  * \r{su_AVOPT_STATE_ERR_OPT} and \r{su_AVOPT_STATE_ERR_ARG} errors.
- * A leading colon \c{:} in the short option string is thus treated as a normal
- * argument.
- * }\li{
- * Any printable ASCII character except hyphen-minus \c{-} may be used as an
- * option.
+ * A leading colon \c{:} in the short option definition string is thus treated
+ * as a normal argument (at any other position it would be mistreated as an
+ * argument indicator for the preceding option).
  *
- * Long options can neither contain colon \c{:} (indicating the option has an
- * argument), semicolon \c{;} (indicating a short option letter equivalent
- * follows), nor the equal-sign \c{=} (used to separate an option and argument
- * within the same argument vector slot), however.
- *
- * It is best to place the short option colon \c{:} as the first entry in the
- * short option string, otherwise the colon will be mistreated as an argument
- * requirement for the preceeding option.
+ * For example \c{::ab:c} defines an option \c{:} that takes an argument,
+ * an option \c{a} that does not, \c{b} which does, and \c{c} which does not.
+ * A user could use it for example like \c{-cabHello -: World}
+ * or \c{-a -c -b Hello -:World}.
  * }\li{
- * An option (not argument) double hyphen-minus \c{--} stops argument
- * processing, anything that follows is no longer recognized as an option.
+ * Long options are supported.
+ * They may consist of any printable ASCII (7-bit) character except
+ * colon \c{:} (indicating the option has an argument),
+ * equal-sign \c{=} (separates an option from its argument),
+ * and semicolon \c{;} (definition separator).
+ *
+ * Long options need to be identified, either via a short option equivalence
+ * mapping, or a unique identifier, a (negative) 32-bit decimal value.
+ * The identifier is placed after a semicolon \c{;} separator,
+ * after the possible \c{:} which indicates an argument requirement,
+ * it is what is returned by \r{su_avopt_parse()} and
+ * \r{su_avopt_parse_line()}, and what is stored in
+ * \r{su_avopt::avo_current_opt}.
+ *
+ * For example \c{name:;n} defines an option \c{name} that takes an argument,
+ * and maps to the short option \c{n}, whether that is itself defined or not.
+ * (However, debug enabled code will check that an existing \c{n} would also
+ * take an argument.)
+ * A user could use it like \c{--name=Jonah} or \c{--name Jonah}, and it would
+ * always appear as if \c{-n Jonah} (aka \c{-nJonah}) had been used.
+ * And \c{long-help;-99} defines an option \c{long-help} without argument and
+ * the identifier \c{-99}.
+ * }\li{
+ * Documentation strings can optionally be appended to long option definitions
+ * after another \c{;} separator that follows the identifier.
+ * These documentation strings may be dumped via \r{su_avopt_dump_doc()}.
+ *
+ * For example \c{account:;a;Activate the given account name} defines an option
+ * \c{account} that takes an argument, maps to the short option \c{a}, and has
+ * a documentation string, whereas \c{follow-symlinks;-3;Follow symbolic links}
+ * defines an option \c{follow-symlinks} with identifier \c{-3} and has the
+ * documentation string \c{Follow symbolic links}.
+ * }\li{
+ * When parsing an argument vector via \r{su_avopt_parse()} an option (not
+ * argument) double hyphen-minus \c{--} stops argument processing, anything
+ * that follows is no longer recognized as an option.
+ * The function still returns \r{su_AVOPT_STATE_DONE} then, but
+ * \r{su_avopt::avo_current_opt} contains \r{su_AVOPT_STATE_STOP} in this case.
+ *
  * If \c{--} is not given processing is stopped at the first non-option or if
  * the argument list is exhausted, whatever comes first.
  *
  * An option (not argument) single hyphen-minus \c{-} is also not recognized as
- * an option, but instead also stops processing.
+ * an option, but also stops processing.
  * The difference is that \c{--} is consumed from the argument list, whereas
  * \c{-} is not and remains in \r{su_avopt::avo_argv}.
  * }\li{
  * Error messages are not logged.
  * Instead, the format strings \r{su_avopt_fmt_err_arg} and
  * \r{su_avopt_fmt_err_opt} can be used with an argument of
- * \r{su_avopt::avo_current_err_opt}.
+ * \r{su_avopt::avo_current_err_opt} whenever an error is generated.
  * }\li{
  * There is a \r{su_avopt_parse_line()} interface that realizes a simple
- * configuration file syntax which mirrors long command line options to to
+ * configuration file syntax which mirrors long command line options to
  * per-line directives.
- * For example, the long option \c{account} that can be specified as
+ *
+ * For example, the long option \c{account} which can be specified as
  * \c{--account myself} or \c{--account=myself} on the command line is then
- * expected on a line by its own as \c{account myself} or \c{account=myself}.
+ * expected on a line on its own as \c{account myself} or \c{account=myself}.
  * }\li{
  * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} content of short and long
  * option strings are checked for notational errors.
+ * If long options are used which map to existing short options, it is verified
+ * that the "takes argument" state is identical.
  * }}
  *
  * \cb{
@@ -104,23 +126,25 @@ struct su_avopt;
  *      "resource-files:;:;" N_("control loading of resource files"),
  *      "account:;A;" N_("execute an `account' command"),
  *      "batch-mode;#;" N_("more confined non-interactive setup"),
- *      "long-help;\201;" N_("this listing"),
+ *      "long-help;-99;" N_("this listing"),
  *      NIL
  *   };
  *
  *   struct su_avopt avo;
  *   char const *emsg;
- *   s8 i;
+ *   s32 i;
  *
- *   su_avopt_setup(&avo, --argc, su_C(char const*const*,++argv),
+ *   su_avopt_setup(&avo,
+ *      (argc != 0 ? --argc : argc), su_C(char const*const*,++argv),
  *      a_sopts, a_lopts);
+ *
  *   while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
  *      switch(i){
  *      case 'A':
  *         "account_name" = avo.avo_current_arg;
  *         break;
  *      case 'h':
- *      case su_S(char,su_S(su_u8,'\201')):
+ *      case -99:
  *         a_main_usage(n_stdout);
  *         if(i != 'h'){
  *            fprintf(n_stdout, "\nLong options:\n");
@@ -147,41 +171,33 @@ struct su_avopt;
  *   argc = avo.avo_argc;
  *   argv = su_C(char**,avo.avo_argv);
  * }
- *
- * \remarks{Since the return value of \r{su_avopt_parse()} and
- * \r{su_avopt::avo_current_opt} are both \r{su_s8}, the entire range of bytes
- * with the high bit set is available to provide short option equivalences for
- * long options.}
  * @{
  */
 
 /*! \remarks{The values of these constants are ASCII control characters.} */
 enum su_avopt_state{
    su_AVOPT_STATE_DONE = '\0', /*!< Argument processing is done. */
-   /*! Argument processing stopped due to \c{--} terminator;
-    * this is never returned in favour of \r{su_AVOPT_STATE_DONE} by
-    * \r{su_avopt_parse()}, but can only be found
-    * \r{su_avopt::avo_current_opt}!} */
+   /*! Argument processing stopped due to \c{--} terminator.
+    * This is never returned in favour of \r{su_AVOPT_STATE_DONE} by
+    * \r{su_avopt_parse()}, but can only be found in
+    * \r{su_avopt::avo_current_opt}.} */
    su_AVOPT_STATE_STOP = '\001',
-   su_AVOPT_STATE_LONG = '\002', /*!< \_ */
-   su_AVOPT_STATE_ERR_ARG = '\003', /*!< \_ */
-   su_AVOPT_STATE_ERR_OPT = '\004', /*!< \_ */
+   su_AVOPT_STATE_ERR_ARG = '\002', /*!< \_ */
+   su_AVOPT_STATE_ERR_OPT = '\003' /*!< \_ */
 };
 
-/*! \remarks{Most fields make sense only after \r{su_avopt_parse()} has been
- * called (at least once).} */
+/*! \remarks{Most fields make sense only after \r{su_avopt_parse()} or
+ * \r{su_avopt_parse_line()} have been called (at least once).} */
 struct su_avopt{
-   char const *avo_current_arg; /*!< Current argument or \NIL. */
-   s8 avo_current_opt; /*!< Or a \r{su_avopt_state} constant. */
-   u8 avo_flags;
-   /*! Only useful if \r{su_AVOPT_STATE_LONG} has been returned (and can be
-    * found in \r{su_avopt::avo_current_opt}). */
-   u16 avo_current_long_idx;
-   u32 avo_argc; /*!< Remaining count. */
-   char const * const *avo_argv; /*!< Remaining entries. */
-   char const *avo_curr;
    char const *avo_opts_short; /*!< Short options as given. */
    char const * const *avo_opts_long; /*!< Long options as given. */
+   char const * const *avo_argv; /*!< Remaining entries. */
+   u32 avo_argc; /*!< Remaining count. */
+   /*! In the positive number range this denotes a short option 7-bit character
+    * or a \r{su_avopt_state} constant, negative values are reserved for long
+    * option identifiers. */
+   s32 avo_current_opt;
+   char const *avo_current_arg; /*!< Current argument or \NIL. */
    /*! The current option that lead to an error as a NUL terminated string.
     * In case of long options only this may include the argument, too, i.e.,
     * the entire argument vector entry which caused failure.
@@ -189,7 +205,9 @@ struct su_avopt{
     * \r{su_AVOPT_STATE_ERR_OPT} has occurred, and the only member useful for
     * users after an error. */
    char const *avo_current_err_opt;
-   char avo__buf[Z_ALIGN_PZ(2)];
+   char const *avo_curr;
+   u8 avo_flags;
+   char avo__buf[2  +1 su_64(+ 4)];
 };
 
 /*! \_ */
@@ -200,17 +218,17 @@ EXPORT_DATA char const su_avopt_fmt_err_opt[];
 
 /*! One of \a{opts_short_or_nil} and \a{opts_long_or_nil} must be given.
  * The latter must be a \NIL terminated array.
- * \a{argv} can be \NIL if \a{argc} is 0. */
+ * \a{argv} can be \NIL if \a{argc} is 0.
+ * \r{su_DVLDBGOR()} enabled code inspects the option strings and invalidates
+ * on error, meaning that \r{su_avopt_parse()} and \r{su_avopt_parse_line()}
+ * may return \r{su_AVOPT_STATE_DONE} unexpectedly. */
 EXPORT struct su_avopt *su_avopt_setup(struct su_avopt *self,
       u32 argc, char const * const *argv,
       char const *opts_short_or_nil, char const * const *opts_long_or_nil);
 
-/*! Returns either a member of \r{su_avopt_state} to indicate errors and
- * other states, or a short option character.
- * In case of \r{su_AVOPT_STATE_LONG}, \r{su_avopt::avo_current_long_idx}
- * points to the detected \r{su_avopt::avo_opts_long} entry.
+/*! Parse the setup argument vector.
  * Can be called repeatedly until \r{su_AVOPT_STATE_DONE} is returned. */
-EXPORT s8 su_avopt_parse(struct su_avopt *self);
+EXPORT s32 su_avopt_parse(struct su_avopt *self);
 
 /*! Identical to \r{su_avopt_parse()}, but parse the given string \a{cp}
  * instead of the setup argument vector.
@@ -222,12 +240,12 @@ EXPORT s8 su_avopt_parse(struct su_avopt *self);
  * \remarks{One may not intermix calls to \r{su_avopt_parse()} and this
  * function, because \r{su_avopt_parse()} implements a state machine that
  * this function consciously (changes but) ignores.} */
-EXPORT s8 su_avopt_parse_line(struct su_avopt *self, char const *cp);
+EXPORT s32 su_avopt_parse_line(struct su_avopt *self, char const *cp);
 
 /*! If there are long options, query them all in order and dump them via the
  * given pointer to function \a{ptf}.
  * If there is a short option equivalence, \a{sopt} is not the empty string.
- * Options will be preceeded with \c{-} and \c{--}, respectively.
+ * Options will be preceded with \c{-} and \c{--}, respectively.
  * Stops when \a{ptf} returns \FAL0, otherwise returns \TRU1.
  *
  * \remarks{The long option string is copied over to a stack buffer of 128
@@ -265,8 +283,6 @@ public:
       state_done = su_AVOPT_STATE_DONE,
       /*! \copydoc{su_AVOPT_STATE_STOP} */
       state_stop = su_AVOPT_STATE_STOP,
-      /*! \copydoc{su_AVOPT_STATE_LONG} */
-      state_long = su_AVOPT_STATE_LONG,
       /*! \copydoc{su_AVOPT_STATE_ERR_ARG} */
       state_err_arg = su_AVOPT_STATE_ERR_ARG,
       /*! \copydoc{su_AVOPT_STATE_ERR_OPT} */
@@ -298,34 +314,31 @@ public:
    }
 
    /*! \copydoc{su_avopt_parse()} */
-   s8 parse(void) {return su_avopt_parse(this);}
+   s32 parse(void) {return su_avopt_parse(this);}
 
    /*! \copydoc{su_avopt_parse_line()} */
-   s8 parse_line(char const *cp) {return su_avopt_parse_line(this, cp);}
-
-   /*! \copydoc{su_avopt::avo_current_arg} */
-   char const *current_arg(void) const {return avo_current_arg;}
-
-   /*! \copydoc{su_avopt::avo_current_opt} */
-   s8 current_opt(void) const {return avo_current_opt;}
-
-   /*! \copydoc{su_avopt::avo_current_long_idx} */
-   u16 current_long_idx(void) const {return avo_current_long_idx;}
-
-   /*! \copydoc{su_avopt::avo_current_err_opt} */
-   char const *current_err_opt(void) const {return avo_current_err_opt;}
-
-   /*! \copydoc{su_avopt::avo_argc} */
-   s32 argc(void) const {return avo_argc;}
-
-   /*! \copydoc{su_avopt::avo_argv} */
-   char const * const *argv(void) const {return avo_argv;}
+   s32 parse_line(char const *cp) {return su_avopt_parse_line(this, cp);}
 
    /*! \copydoc{su_avopt::avo_opts_short} */
    char const *opts_short(void) const {return avo_opts_short;}
 
    /*! \copydoc{su_avopt::avo_opts_long} */
    char const * const *opts_long(void) const {return avo_opts_long;}
+
+   /*! \copydoc{su_avopt::avo_argv} */
+   char const * const *argv(void) const {return avo_argv;}
+
+   /*! \copydoc{su_avopt::avo_argc} */
+   u32 argc(void) const {return avo_argc;}
+
+   /*! \copydoc{su_avopt::avo_current_opt} */
+   s32 current_opt(void) const {return avo_current_opt;}
+
+   /*! \copydoc{su_avopt::avo_current_arg} */
+   char const *current_arg(void) const {return avo_current_arg;}
+
+   /*! \copydoc{su_avopt::avo_current_err_opt} */
+   char const *current_err_opt(void) const {return avo_current_err_opt;}
 
    /*! \copydoc{su_avopt_dump_doc()} */
    boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt,
