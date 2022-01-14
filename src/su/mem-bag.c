@@ -578,7 +578,6 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
                su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE));
          if(mbabp == NIL)
             goto jleave;
-         cp = mbabp->mbab_buf;
          rv = mbabp->mbab_bot = top = mbabp->mbab_buf;
          mbabp->mbab_relax = NIL;
          mbabp->mbab_caster = cp = &top[chunksz];

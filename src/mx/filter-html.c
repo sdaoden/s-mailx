@@ -1276,10 +1276,8 @@ jdo_c:
             if(c == ';')
                self = a_flthtml_check_ent(self, self->fh_bdat,
                      P2UZ(cp + 1 - self->fh_bdat));
-            else{
+            else
                self = a_flthtml_puts(self, self->fh_bdat);
-               f = self->fh_flags;
-            }
          }else{
             /* We may need to grow the buffer */
             if(PCMP(cp + 42/2, >=, cp_max)){

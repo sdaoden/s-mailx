@@ -54,7 +54,7 @@
 #ifdef mx_HAVE_DOTLOCK
 static enum mx_file_lock_mode a_filo_flm;
 static int a_filo_fd;
-struct mx_file_dotlock_info *a_filo_fdip;
+static struct mx_file_dotlock_info *a_filo_fdip;
 #endif
 
 /* Workhorse */
