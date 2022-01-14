@@ -32,23 +32,26 @@
 
 enum a_avopt_flags{
    a_AVOPT_NONE,
-   a_AVOPT_DONE = 1u<<0,
-   a_AVOPT_STOP = 1u<<1,
-   a_AVOPT_SHORT = 1u<<2,
-   a_AVOPT_LONG = 1u<<3,
-   a_AVOPT_FOLLOWUP = 1u<<4,
-   a_AVOPT_CURR_LONG = 1u<<5,
+#if DVLDBGOR(1, 0)
+   a_AVOPT_ERR = 1u<<0,
+#endif
+   a_AVOPT_DONE = 1u<<1,
+   a_AVOPT_STOP = 1u<<2,
+   a_AVOPT_SHORT = 1u<<3,
+   a_AVOPT_LONG = 1u<<4,
+   a_AVOPT_FOLLOWUP = 1u<<5,
+   a_AVOPT_CURR_LONG = 1u<<6,
    a_AVOPT_ROUND_MASK = a_AVOPT_CURR_LONG
 };
 
 char const su_avopt_fmt_err_arg[] = N_("option requires argument: %s\n");
 char const su_avopt_fmt_err_opt[] = N_("invalid option: %s\n");
 
-static s8 a_avopt_long(struct su_avopt *self, char const *curr, boole is_vec);
+static s32 a_avopt_long(struct su_avopt *self, char const *curr, boole is_vec);
 
-static s8
+static s32
 a_avopt_long(struct su_avopt *self, char const *curr, boole is_vec){
-   s8 rv;
+   s32 rv;
    char const * const *opta, *opt, *xcurr;
    NYD_IN;
 
@@ -101,13 +104,21 @@ jouter:
       xcurr = NIL;
 
    self->avo_current_arg = xcurr;
-   /* xxx undefined unless rv==su_AVOPT_STATE_LONG! */
-   self->avo_current_long_idx = P2UZ(opta - self->avo_opts_long);
 
-   /* Short option equivalence instead of su_AVOPT_STATE_LONG?
-    * No test for NUL since long option string is expected to have been tested
-    * by su_HAVE_DEBUG / su_HAVE_DEVEL code, as below! */
-   rv = (*opt == ';' && *++opt != ';') ? *opt : su_AVOPT_STATE_LONG;
+   /* Short option equivalence or identifier?
+    * No tests since long option string is expected to have been tested by
+    * su_HAVE_DEBUG / su_HAVE_DEVEL code, as below! */
+   ASSERT(*opt == ';');
+   if(*++opt != '-')
+      rv = *opt;
+   else{
+      char c;
+
+      for(rv = 0; su_cs_is_digit(c = *++opt);)
+         rv = (rv * 10) + c - '0'; /* XXX atoi */
+      rv = -rv;
+   }
+
 jleave:
    NYD_OU;
    return rv;
@@ -142,7 +153,8 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
    self->avo_opts_short = opts_short_or_nil;
    self->avo_opts_long = opts_long_or_nil;
 
-   /* Somewhat test the content of the option strings in debug code */
+   /* Somewhat test the content of the option strings in debug code
+    * NOTE: test does NOT auto-test this, see a_avopt() near EOFUN */
 #if DVLDBGOR(1, 0)
    /* C99 */{
       uz i;
@@ -151,16 +163,19 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
       if(self->avo_flags & a_AVOPT_SHORT){
          if((cp = self->avo_opts_short)[0] == '\0'){
             self->avo_flags &= ~a_AVOPT_SHORT;
+            self->avo_flags |= a_AVOPT_ERR;
             su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty short option "
                "string is unsupported");
          }else do{
             if(!su_cs_is_print(*cp)){
                self->avo_flags &= ~a_AVOPT_SHORT;
+               self->avo_flags |= a_AVOPT_ERR;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid non-"
                   "printable bytes in short option string: %s",
                   self->avo_opts_short);
             }else if(*cp == '-'){
                self->avo_flags &= ~a_AVOPT_SHORT;
+               self->avo_flags |= a_AVOPT_ERR;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
                   "hyphen-minus in short option string: %s",
                   self->avo_opts_short);
@@ -171,92 +186,121 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
       if(self->avo_flags & a_AVOPT_LONG){
          if(self->avo_opts_long[0] == NIL){
             self->avo_flags &= ~a_AVOPT_LONG;
+            self->avo_flags |= a_AVOPT_ERR;
             su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty long option "
                "array is unsupported");
          }else for(i = 0; (cp = self->avo_opts_long[i]) != NIL; ++i){
+            boole arg, b;
+
             if(cp[0] == '\0'){
                self->avo_flags &= ~a_AVOPT_LONG;
+               self->avo_flags |= a_AVOPT_ERR;
                su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty long option "
                   "strings are unsupported");
-            }else do{
-               if(*cp == ';'){
-                  /* Empty option, or no equivalence? */
-                  if(cp == self->avo_opts_long[i] || cp[1] == '\0'){
-jelong_semicolon:
-                     self->avo_flags &= ~a_AVOPT_LONG;
-                     su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                        "semicolon usage in long option string: %s",
-                        self->avo_opts_long[i]);
-                  }
-                  /* Could only indicate documentation string, too */
-                  else if(cp[1] == ';'){
-                     ;
-                  }
-                  /* Otherwise we require an equivalence, optionally followed
-                   * by documentation */
-                  else if(cp[2] != '\0' && cp[2] != ';'){
-                     goto jelong_semicolon;
-                  }else if(cp[1] == su_AVOPT_STATE_DONE ||
-                        cp[1] == su_AVOPT_STATE_STOP ||
-                        cp[1] == su_AVOPT_STATE_LONG ||
-                        cp[1] == su_AVOPT_STATE_ERR_ARG ||
-                        cp[1] == su_AVOPT_STATE_ERR_OPT){
-                     self->avo_flags &= ~a_AVOPT_LONG;
-                     su_log_write(su_LOG_CRIT, "su_avopt_setup(): long option "
-                        "short option equivalence shadows enum su_avopt_state"
-                        ": %s",
-                        self->avo_opts_long[i]);
-                  }else if(self->avo_flags & a_AVOPT_SHORT){
-                     char const *osp;
-                     char sopt;
-                     boole wantsopt;
+               continue;
+            }
 
-                     wantsopt = (cp[-1] == ':');
-                     sopt = cp[1];
+            arg = FAL0;
 
-                     for(osp = self->avo_opts_short; *osp != '\0'; ++osp){
-                        if(*osp != sopt){
-                           if(osp[1] == ':')
-                              ++osp;
-                        }else{
-                           if((osp[1] == ':') != wantsopt){
-                              self->avo_flags &= ~a_AVOPT_LONG;
-                              su_log_write(su_LOG_CRIT, "su_avopt_setup(): "
-                                 "long option %s argument, short does%s: %s",
-                                 (wantsopt ? "wants" : "does not want"),
-                                 (wantsopt ? " not" : su_empty),
-                                 self->avo_opts_long[i]);
-                           }
-                           break;
-                        }
-                     }
-                  }
-                  break;
-               }else if(*cp == ':'){
-                  if(cp == self->avo_opts_long[i])
-                     goto jelong_colon;
-                  if(cp[1] != '\0'){
-                     if(cp[1] == ';')
-                        continue;
-jelong_colon:
-                     self->avo_flags &= ~a_AVOPT_LONG;
-                     su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                        "colon in long option string: %s",
-                        self->avo_opts_long[i]);
-                  }
-                  break;
-               }else if(*cp == '='){
+            b = FAL0;
+            for(; *cp != ':' && *cp != ';' && *cp != '\0'; ++cp){
+               if(b)
+                  continue;
+               if(!su_cs_is_print(*cp) || *cp == '='){
+                  b = TRU1;
                   self->avo_flags &= ~a_AVOPT_LONG;
+                  self->avo_flags |= a_AVOPT_ERR;
                   su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                     "equal-sign in long option string: %s",
-                     self->avo_opts_long[i]);
-               }else if(!su_cs_is_print(*cp)){
-                  self->avo_flags &= ~a_AVOPT_LONG;
-                  su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid non-"
-                     "printable bytes in long option string: %s",
+                     "content in long option string: %s",
                      self->avo_opts_long[i]);
                }
-            }while(*++cp != '\0');
+            }
+            if(cp == self->avo_opts_long[i]){
+               self->avo_flags &= ~a_AVOPT_LONG;
+               self->avo_flags |= a_AVOPT_ERR;
+               su_log_write(su_LOG_CRIT, "su_avopt_setup(): missing "
+                  "actual long option: %s", self->avo_opts_long[i]);
+            }
+
+            if(*cp == ':'){
+               arg = TRU1;
+               ++cp;
+            }
+
+            if(*cp != ';' || *++cp == '\0'){
+               self->avo_flags &= ~a_AVOPT_LONG;
+               self->avo_flags |= a_AVOPT_ERR;
+               su_log_write(su_LOG_CRIT, "su_avopt_setup(): missing "
+                  "long option identifier: %s", self->avo_opts_long[i]);
+               continue;
+            }
+
+            if(*cp == '-'){
+               s64 loi;
+
+               b = FAL0;
+               for(loi = 0; su_cs_is_digit(*++cp);){
+                  loi = (loi * 10) + *cp - '0'; /* XXX atoi */
+                  if(!b && loi >= S32_MAX){
+                     b = TRU1;
+                     self->avo_flags &= ~a_AVOPT_LONG;
+                     self->avo_flags |= a_AVOPT_ERR;
+                     su_log_write(su_LOG_CRIT, "su_avopt_setup(): "
+                        "long option identifier not 32-bit: %s",
+                        self->avo_opts_long[i]);
+                  }
+               }
+
+               if(cp[-1] == '-' || loi == 0){
+                  self->avo_flags &= ~a_AVOPT_LONG;
+                  self->avo_flags |= a_AVOPT_ERR;
+                  su_log_write(su_LOG_CRIT, "su_avopt_setup(): empty "
+                     "or 0 long option identifier: %s",
+                     self->avo_opts_long[i]);
+               }
+            }else{
+               if(!su_cs_is_print(*cp)){
+                  ASSERT(*cp != '\0');
+                  self->avo_flags &= ~a_AVOPT_LONG;
+                  self->avo_flags |= a_AVOPT_ERR;
+                  su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
+                     "long option short option equivalence: %s",
+                     self->avo_opts_long[i]);
+               }else if(self->avo_flags & a_AVOPT_SHORT){
+                  char const *osp;
+
+                  for(osp = self->avo_opts_short; *osp != '\0'; ++osp){
+                     if(*osp != *cp){
+                        if(osp[1] == ':')
+                           ++osp;
+                     }else{
+                        if((osp[1] == ':') != arg){
+                           self->avo_flags &= ~a_AVOPT_LONG;
+                           self->avo_flags |= a_AVOPT_ERR;
+                           su_log_write(su_LOG_CRIT, "su_avopt_setup(): "
+                              "long option %s argument, short does%s: %s",
+                              (arg ? "wants" : "does not want"),
+                              (arg ? " not" : su_empty),
+                              self->avo_opts_long[i]);
+                        }
+                        break;
+                     }
+                  }
+               }
+
+               ++cp;
+            }
+
+            if(*cp == '\0')
+               continue;
+
+            if(*cp != ';'){
+               self->avo_flags &= ~a_AVOPT_LONG;
+               self->avo_flags |= a_AVOPT_ERR;
+               su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid content "
+                  "after (unseparated?) long option identifier: %s: %s",
+                  self->avo_opts_long[i], cp);
+            }
          }
       }
 
@@ -269,11 +313,11 @@ jelong_colon:
    return self;
 }
 
-s8
+s32
 su_avopt_parse(struct su_avopt *self){
    u8 flags;
    char const *curr;
-   s8 rv;
+   s32 rv;
    NYD_IN;
    ASSERT(self);
 
@@ -382,9 +426,9 @@ jerrarg:
    goto jleave;
 }
 
-s8
+s32
 su_avopt_parse_line(struct su_avopt *self, char const *cp){
-   s8 rv;
+   s32 rv;
    u8 flags;
    NYD_IN;
    ASSERT(self);
@@ -396,6 +440,9 @@ su_avopt_parse_line(struct su_avopt *self, char const *cp){
    self->avo_flags = flags;
 
    rv = (!(flags & a_AVOPT_LONG) ? su_AVOPT_STATE_DONE
+#if DVLDBGOR(1, 0)
+         : (flags & a_AVOPT_ERR) ? su_AVOPT_STATE_DONE
+#endif
          : a_avopt_long(self, cp, FAL0));
 
    self->avo_current_opt = rv;
@@ -440,12 +487,13 @@ su_avopt_dump_doc(struct su_avopt const *self,
 
          /* (Actual) Short option equivalence? */
          s_so[0] = '\0';
-         if(*opt == ';' && *++opt != ';'){
-            if(su_cs_is_print(*opt)){
-               s_so[0] = '-';
-               s_so[1] = *opt;
-            }
-            ++opt;
+         ASSERT(*opt == ';');
+         if(*++opt == '-'){
+            while(su_cs_is_digit(*++opt))
+               ;
+         }else{
+            s_so[0] = '-';
+            s_so[1] = *opt++;
          }
 
          /* Documentation? */

@@ -196,13 +196,13 @@ a_atomic(void){
 
 // avopt {{{
 static void
-a_avopt(void){ // xxx only line mode
+a_avopt(void){
    static char const a_sopts[] = "A:#";
    static char const * const a_lopts[] = {
-      "resource-files:;;a",
+      "resource-files:;-3;a",
       "account:;A;b",
       "batch-mode;#;c",
-      "long-help;\201;d",
+      "long-help;-10;d",
       NIL
    }, * const a_argv[] = {
       "--resource-files=a-a",
@@ -238,18 +238,16 @@ a_avopt(void){ // xxx only line mode
    //
    if(avox.argc() != 14)
       a_ERR();
-   for(s8 i = 0; (i = avox.parse()) != avox.state_done;){
+   for(s32 i = 0; (i = avox.parse()) != avox.state_done;){
       switch(i){
       default:
          a_ERR();
          break;
 
-      case avopt::state_long:
+      case -3:
          if(avox.argc() != 13 && avox.argc() != 11)
             a_ERR();
-         if(avox.current_opt() != avox.state_long)
-            a_ERR();
-         if(avox.current_long_idx() != 0)
+         if(avox.current_opt() != -3)
             a_ERR();
          if(cs::cmp(avox.current_arg(), "a-a"))
             a_ERR();
@@ -274,10 +272,10 @@ a_avopt(void){ // xxx only line mode
             a_ERR();
          break;
 
-      case S(char,S(u8,'\201')):
+      case -10:
          if(avox.argc() != 7)
             a_ERR();
-         if(avox.current_opt() != S(char,S(u8,'\201')))
+         if(avox.current_opt() != -10)
             a_ERR();
          if(avox.current_arg() != NIL)
             a_ERR();
@@ -307,19 +305,15 @@ a_avopt(void){ // xxx only line mode
 
    //
    for(char const * const *la = a_lines; *la != NIL; ++la){
-      s8 i = avo.parse_line(*la);
-
-      switch(i){
+      switch(avo.parse_line(*la)){
       default:
          a_ERR();
          break;
 
-      case avopt::state_long:
+      case -3:
          if(la != &a_lines[0] && la != &a_lines[1])
             a_ERR();
-         if(avo.current_opt() != avo.state_long)
-            a_ERR();
-         if(avo.current_long_idx() != 0)
+         if(avo.current_opt() != -3)
             a_ERR();
          if(cs::cmp(avo.current_arg(), "a-a"))
             a_ERR();
@@ -343,10 +337,10 @@ a_avopt(void){ // xxx only line mode
             a_ERR();
          break;
 
-      case S(char,S(u8,'\201')):
+      case -10:
          if(la != &a_lines[6])
             a_ERR();
-         if(avo.current_opt() != S(char,S(u8,'\201')))
+         if(avo.current_opt() != -10)
             a_ERR();
          if(avo.current_arg() != NIL)
             a_ERR();
@@ -369,6 +363,24 @@ a_avopt(void){ // xxx only line mode
          break;
       }
    }
+
+#if 0
+   static char const aerr_sopts[] = "A\1-NO";
+   static char const * const aerr_lopts[] = {
+      "",
+      ";",
+      "no-map;", "no-map",
+      "inv-map;\1",
+      "mul-map;-1;-2",
+      "bad-map;-0", "bad-map;2147483647", "bad-map;-2147483648",
+      NIL
+   };
+   avox.setup(0, NIL, aerr_sopts, aerr_lopts);
+
+   static char const aerr_sopts2[] = "AB:";
+   static char const * const aerr_lopts2[] = {"A:;A", "B;B", NIL};
+   avox.setup(0, NIL, aerr_sopts2, aerr_lopts2);
+#endif
 }
 // }}}
 

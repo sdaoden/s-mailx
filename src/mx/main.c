@@ -714,7 +714,7 @@ main(int argc, char *argv[]){
       "header-summary;H;" N_("is to be displayed (for given file) only"),
          "help;h;" N_("short help"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
-      "long-help;\201;" N_("this listing"),
+      "long-help;-1;" N_("this listing"),
       "no-header-summary;N;" N_("identical to -Snoheader"),
       "quote-file:;q;" N_("initialize body of message to be sent with a file"),
       "read-only;R;" N_("any mailbox file will be opened read-only"),
@@ -732,7 +732,7 @@ main(int argc, char *argv[]){
 
    struct a_main_ctx mc;
    struct su_avopt avo;
-   int i;
+   s32 i;
    char const *emsg;
    char *cp;
    BITENUM_IS(u32,a_rf_ids) resfiles;
@@ -839,9 +839,9 @@ main(int argc, char *argv[]){
          n_psonce &= ~n_PSO_INTERACTIVE;
          break;
       case 'h':
-      case S(char,S(u8,'\201')):
+      case -1:
          a_main_usage(n_stdout);
-         if(i != 'h'){
+         if(i < 0){
             fprintf(n_stdout, "\nLong options:\n");
             (void)su_avopt_dump_doc(&avo, &a_main_dump_doc, S(up,n_stdout));
          }
