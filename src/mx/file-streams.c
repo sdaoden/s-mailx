@@ -105,7 +105,7 @@ static struct a_fs_ent *a_fs_register_file(FILE *fp,
       BITENUM_IS(u32,mx_fs_oflags) oflags,
       BITENUM_IS(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp,
       char const *realfile, s64 offset, char const *save_cmd);
-static boole a_fs_unregister_file(FILE *fp);
+static s32 a_fs_unregister_file(FILE *fp);
 
 /* */
 static boole a_fs_file_load(uz flags, int infd, int outfd,
@@ -194,18 +194,18 @@ a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags,
    return fsep;
 }
 
-static boole
+static s32
 a_fs_unregister_file(FILE *fp){
    struct a_fs_ent **fsepp, *fsep;
-   boole rv;
+   s32 e;
    NYD2_IN;
 
-   rv = TRU1;
+   e = su_ERR_NONE;
 
    for(fsepp = &a_fs_fp_head;; fsepp = &fsep->fse_link){
       if(UNLIKELY((fsep = *fsepp) == NIL)){
          DVLDBGOR(n_panic, n_alert)(_("Invalid file pointer"));
-         rv = FAL0;
+         e = su_ERR_FAULT;
          break;
       }else if(fsep->fse_fp != fp)
          continue;
@@ -217,12 +217,13 @@ a_fs_unregister_file(FILE *fp){
       case a_FS_EF_PIPE:
          break;
       default:
-         rv = a_fs_file_save(fsep);
+         if(!a_fs_file_save(fsep))
+            e = su_ERR_IO; /* xxx */
          break;
       }
 
       if((fsep->fse_flags & a_FS_EF_UNLINK) && unlink(fsep->fse_realfile))
-         rv = FAL0;
+         e = su_err_no_by_errno();
 
       if(fsep->fse_realfile != NIL)
          su_FREE(fsep->fse_realfile);
@@ -234,7 +235,7 @@ a_fs_unregister_file(FILE *fp){
    }
 
    NYD2_OU;
-   return rv;
+   return e;
 }
 
 static boole
@@ -810,10 +811,11 @@ mx_fs_close(FILE *fp){
    boole rv;
    NYD_IN;
 
-   rv = (a_fs_unregister_file(fp) && fclose(fp) == 0);
+   rv = TRU1;
 
-   if(!rv)
-      su_err_no_by_errno();
+   if(a_fs_unregister_file(fp) == su_ERR_NONE)
+      if(!(rv = (fclose(fp) == 0)))
+         su_err_no_by_errno();
 
    NYD_OU;
    return rv;
@@ -981,7 +983,7 @@ mx_fs_pipe_signal(FILE *fp, s32 sig){
 }
 
 boole
-mx_fs_pipe_close(FILE *ptr, boole dowait){
+mx_fs_pipe_close(FILE *fp, boole dowait){
    n_sighdl_t opipe;
    struct mx_child_ctx cc;
    boole rv;
@@ -993,16 +995,17 @@ mx_fs_pipe_close(FILE *ptr, boole dowait){
          DVLDBG( n_alert(_("pipe_close: invalid file pointer")); )
          rv = FAL0;
          goto jleave;
-      }else if(fsep->fse_fp == ptr)
+      }else if(fsep->fse_fp == fp)
          break;
    cc = fsep->fse_cc;
 
    ASSERT(!(fsep->fse_flags & a_FS_EF_FD_PASS_NEEDS_WAIT) || dowait);
 
-   a_fs_unregister_file(ptr);
-
    opipe = safe_signal(SIGPIPE, SIG_IGN); /* TODO only because we jump stuff */
-   fclose(ptr);
+
+   if(a_fs_unregister_file(fp) == su_ERR_NONE)
+      fclose(fp);
+
    safe_signal(SIGPIPE, opipe);
 
    if(dowait)
