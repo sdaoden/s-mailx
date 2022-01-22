@@ -98,6 +98,7 @@ a_child_manager_cleanup(void){
       }else
          cepp = &(*cepp)->ce_link;
    }
+
    NYD_OU;
    return nlp;
 }
@@ -105,7 +106,6 @@ a_child_manager_cleanup(void){
 SINLINE struct a_child_ent *
 a_child_find(s32 pid, struct a_child_ent ***ceppp_or_nil){
    struct a_child_ent **cepp, *cep;
-   NYD2_IN;
 
    for(cepp = &a_child_head; (cep = *cepp) != NIL; cepp = &(*cepp)->ce_link)
       if(cep->ce_pid == pid)
@@ -113,7 +113,7 @@ a_child_find(s32 pid, struct a_child_ent ***ceppp_or_nil){
 
    if(ceppp_or_nil != NIL)
       *ceppp_or_nil = cepp;
-   NYD2_OU;
+
    return cep;
 }
 
