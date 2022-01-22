@@ -1193,7 +1193,8 @@ n_alert(char const *format, ...){
 FL void
 n_panic(char const *format, ...){
    va_list ap;
-   NYD2_IN;
+
+   DVL( su_nyd_set_disabled(TRU1); )
 
    if(a_aux_err_tail != NIL && !a_aux_err_tail->ae_done){
       a_aux_err_tail->ae_done = TRU1;
@@ -1207,7 +1208,7 @@ n_panic(char const *format, ...){
 
    putc('\n', n_stderr);
    fflush(n_stderr);
-   NYD2_OU;
+
    abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
 
