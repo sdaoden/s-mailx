@@ -476,7 +476,7 @@ mx_fs_open_any(char const *file, char const *oflags, /* TODO take flags */
       if(!a_fs_file_load(flags, infd, fileno(rv), cload)) Jerr:{
          err = su_err_no();
          if(rv != NIL)
-            mx_fs_close(rv);
+            fclose(rv); /* Not yet registered */
          rv = NIL;
          if(infd >= 0)
             close(infd);
