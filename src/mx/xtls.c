@@ -1461,10 +1461,13 @@ smime_verify(struct message *m, int n, a_XTLS_STACKOF(X509) *chain,
 #undef _X
 #undef _Y
 #define _X     (sizeof("application/") -1)
-#define _Y(X)  X, sizeof(X) -1
-      if (cnttype && su_cs_starts_with_case(cnttype, "application/") &&
+#define _Y(X)  X, i = sizeof(X) -1
+      if(cnttype != NIL &&
+            su_cs_starts_with_case(cnttype, "application/") &&
             (!su_cs_cmp_case_n(cnttype + _X, _Y("pkcs7-mime")) ||
-             !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime")))) {
+               !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime"))) &&
+            (cnttype[_X + i] == ';' || su_cs_is_space(cnttype[_X + i]) ||
+               cnttype[_X + i] == '\0')){
 #undef _Y
 #undef _X
          if ((x = smime_decrypt(m, to, cc, TRU1)) == NULL)

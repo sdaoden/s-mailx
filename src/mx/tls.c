@@ -378,9 +378,11 @@ mx_smime_decrypt_assemble(struct message *mp, FILE *hp, FILE *bp){
       if(buf[0] == '\n')
          break;
       if((cp = n_header_get_field(buf, "content-transfer-encoding", NIL)
-            ) != NIL)
-         if(!su_cs_cmp_case_n(cp, "binary", 7))
+            ) != NIL){
+         if(!su_cs_cmp_case_n(cp, "binary", 7) &&
+               (cp[7] == '\0' || su_cs_is_space(cp[7])))
             binary = TRU1;
+      }
       if(fwrite(buf, sizeof *buf, buflen, mb.mb_otf) != buflen)
          goto jleave;
       octets += buflen;

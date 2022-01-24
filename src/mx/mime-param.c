@@ -436,7 +436,7 @@ a__mpm_rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result,
          *emsg = N_("MIME RFC 2231 invalidity: missing character set\n");
          f |= a_ERRORS;
       }else if(su_cs_cmp_case_n(tcs = ok_vlook(ttycharset),
-            head->rj_dat, head->rj_cs_len)){
+            head->rj_dat, head->rj_cs_len) || tcs[head->rj_cs_len] != '\0'){
          char *cs;
 
          cs = su_LOFI_ALLOC(head->rj_cs_len +1);
