@@ -207,11 +207,15 @@ mx_smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, boole keep){
 
    rv = OKAY;
 jleave:
-   if(!rv){
-      if(*bp != NIL)
+   if(rv != OKAY){
+      if(*bp != NIL){
          mx_fs_close(*bp);
-      if(*hp != NIL)
+         *bp = NIL;
+      }
+      if(*hp != NIL){
          mx_fs_close(*hp);
+         *hp = NIL;
+      }
    }
 
    mx_fs_linepool_release(buf, bufsize);
