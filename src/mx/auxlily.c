@@ -278,40 +278,50 @@ which_protocol(char const *name, boole check_stat, boole try_hooks,
          goto jfile;
 
    if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){ /* TODO lookup table */
+      uz i;
       boole yeshooks;
 
       yeshooks = FAL0;
+      i = P2UZ(cp - name);
 
-      if(!su_cs_cmp_case_n(name, "file", sizeof("file") -1) ||
-            !su_cs_cmp_case_n(name, "mbox", sizeof("mbox") -1))
+      if((i == sizeof("file") -1 &&
+            !su_cs_cmp_case_n(name, "file", sizeof("file") -1)) ||
+            (i == sizeof("mbox") -1 &&
+               !su_cs_cmp_case_n(name, "mbox", sizeof("mbox") -1)))
          yeshooks = TRU1, rv = PROTO_FILE;
-      else if(!su_cs_cmp_case_n(name, "eml", sizeof("eml") -1))
+      else if(i == sizeof("eml") -1 &&
+            !su_cs_cmp_case_n(name, "eml", sizeof("eml") -1))
          yeshooks = TRU1, rv = n_PROTO_EML;
-      else if(!su_cs_cmp_case_n(name, "maildir", sizeof("maildir") -1)){
+      else if(i == sizeof("maildir") -1 &&
+            !su_cs_cmp_case_n(name, "maildir", sizeof("maildir") -1)){
 #ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
          n_err(_("No Maildir directory support compiled in\n"));
 #endif
-      }else if(!su_cs_cmp_case_n(name, "pop3", sizeof("pop3") -1)){
+      }else if(i == sizeof("pop3") -1 &&
+            !su_cs_cmp_case_n(name, "pop3", sizeof("pop3") -1)){
 #ifdef mx_HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
-      }else if(!su_cs_cmp_case_n(name, "pop3s", sizeof("pop3s") -1)){
+      }else if(i == sizeof("pop3s") -1 &&
+            !su_cs_cmp_case_n(name, "pop3s", sizeof("pop3s") -1)){
 #if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
-      }else if(!su_cs_cmp_case_n(name, "imap", sizeof("imap") -1)){
+      }else if(i == sizeof("imap") -1 &&
+            !su_cs_cmp_case_n(name, "imap", sizeof("imap") -1)){
 #ifdef mx_HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAP support compiled in\n"));
 #endif
-      }else if(!su_cs_cmp_case_n(name, "imaps", sizeof("imaps") -1)){
+      }else if(i == sizeof("imaps") -1 &&
+            !su_cs_cmp_case_n(name, "imaps", sizeof("imaps") -1)){
 #if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
          rv = PROTO_IMAP;
 #else
@@ -658,15 +668,15 @@ n_boolify(char const *inbuf, uz inlen, boole emptyrv){
       rv = (emptyrv >= FAL0) ? (emptyrv == FAL0 ? FAL0 : TRU1) : TRU2;
    else{
       if((inlen == 1 && (*inbuf == '1' || *inbuf == 'y' || *inbuf == 'Y')) ||
-            !su_cs_cmp_case_n(inbuf, "true", inlen) ||
-            !su_cs_cmp_case_n(inbuf, "yes", inlen) ||
-            !su_cs_cmp_case_n(inbuf, "on", inlen))
+            (inlen == 4 && !su_cs_cmp_case_n(inbuf, "true", inlen)) ||
+            (inlen == 3 && !su_cs_cmp_case_n(inbuf, "yes", inlen)) ||
+            (inlen == 2 && !su_cs_cmp_case_n(inbuf, "on", inlen)))
          rv = TRU1;
       else if((inlen == 1 &&
                (*inbuf == '0' || *inbuf == 'n' || *inbuf == 'N')) ||
-            !su_cs_cmp_case_n(inbuf, "false", inlen) ||
-            !su_cs_cmp_case_n(inbuf, "no", inlen) ||
-            !su_cs_cmp_case_n(inbuf, "off", inlen))
+            (inlen == 5 && !su_cs_cmp_case_n(inbuf, "false", inlen)) ||
+            (inlen == 2 && !su_cs_cmp_case_n(inbuf, "no", inlen)) ||
+            (inlen == 3 && !su_cs_cmp_case_n(inbuf, "off", inlen)))
          rv = FAL0;
       else{
          u64 ib;

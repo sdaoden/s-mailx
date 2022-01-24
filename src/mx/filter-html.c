@@ -908,7 +908,7 @@ jput_as_is:
 
    for(hftp = a_flthtml_tags;;){
       if(i == hftp->fht_len && !su_cs_cmp_case_n(s, hftp->fht_tag, i)){
-         c = s[hftp->fht_len];
+         c = s[i];
          if(c == '>' || c == '/' || su_cs_is_white(c))
             break;
       }
