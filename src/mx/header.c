@@ -3045,7 +3045,9 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
    }
    month = i + 1;
 
-   if ((cp = nexttoken(&cp[3])) == NULL)
+   if(!su_cs_is_space(cp[su_TIME_MONTH_NAMES_ABBREV_LEN]))
+      goto jinvalid;
+   if((cp = nexttoken(&cp[su_TIME_MONTH_NAMES_ABBREV_LEN + 1])) == NIL)
       goto jinvalid;
    /* RFC 5322, 4.3:
     *  Where a two or three digit year occurs in a date, the year is to be
@@ -3573,13 +3575,16 @@ n_header_match(struct message *mp, struct mx_srch_ctx const *scp){
                }
             }
 
-            if(!su_cs_cmp_case_n(field, linebuf, P2UZ(colon - linebuf)))
+            i = P2UZ(colon - linebuf);
+            if(!su_cs_cmp_case_n(field, linebuf, i) && field[i] == '\0')
                break;
             /* Author: finds From: and Sender: too */
             if(!scp->sc_field_exists && !su_cs_cmp_case(field, "author")){
-               if(!su_cs_cmp_case_n("sender", linebuf, P2UZ(colon - linebuf)))
+               if(i == sizeof("sender") -1 &&
+                     !su_cs_cmp_case_n("sender", linebuf, i))
                   break;
-               if(!su_cs_cmp_case_n("from", linebuf, P2UZ(colon - linebuf)))
+               if(i == sizeof("from") -1 &&
+                     !su_cs_cmp_case_n("from", linebuf, i))
                   break;
             }
          }
@@ -3686,7 +3691,7 @@ n_header_is_known(char const *name, uz len){
       len = su_cs_len(name);
 
    for(rv = names; *rv != NIL; ++rv)
-      if(!su_cs_cmp_case_n(*rv, name, len))
+      if(!su_cs_cmp_case_n(*rv, name, len) && (*rv)[len] == '\0')
          break;
 
    NYD_OU;

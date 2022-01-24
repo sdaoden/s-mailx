@@ -3154,6 +3154,7 @@ imap_getflags(const char *cp, char const **xp, enum mflag *f)
    NYD2_IN;
    while (*cp != ')') {
       if (*cp == '\\') {
+         /* TODO imap_getflags: after flag is SPC or ) or \0 */
          if (su_cs_cmp_case_n(cp, "\\Seen", 5) == 0)
             *f |= MREAD;
          else if (su_cs_cmp_case_n(cp, "\\Recent", 7) == 0)
@@ -4570,9 +4571,12 @@ imap_read_date_time(const char *cp) /* TODO idec.. etc. */
    NYD2_IN;
 
    /* "25-Jul-2004 15:33:44 +0200"
-    * |    |    |    |    |    |
-    * 0    5   10   15   20   25 */
-   if (cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
+    *  |  |   |    |        |
+    *  1  4   8    13       22 */
+   if(cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
+      goto jinvalid;
+   if(cp[2] != '-' || cp[7] != '-' || cp[12] != ' ' ||
+         cp[15] != ':' || cp[18] != ':' || cp[21] != ' ')
       goto jinvalid;
    day = strtol(&cp[1], NULL, 10);
    for(i = 0;;){

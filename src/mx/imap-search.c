@@ -643,9 +643,9 @@ _imap_read_date(char const *cp)
          goto jerr;
    }
    month = i + 1;
-
    if (xp[3] != '-')
       goto jerr;
+
    su_idec_s32_cp(&year, &xp[4], 10, &yp);
    if (year < 1970 || year > 2037/* XXX?? */ || PCMP(yp, !=, xp + 8))
       goto jerr;
