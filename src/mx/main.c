@@ -754,7 +754,10 @@ main(int argc, char *argv[]){
     * XXX We could parse silently to grasp the actual mode (send, receive
     * XXX with/out -f, then use an according option array.  This would ease
     * XXX the interdependency checking necessities! */
-   su_avopt_setup(&avo, --argc, C(char const*const*,++argv), a_sopts, a_lopts);
+   su_avopt_setup(&avo,
+      (argc != 0 ? --argc : argc), C(char const*const*,++argv),
+      a_sopts, a_lopts);
+
    while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
       switch(i){
       case 'A':
