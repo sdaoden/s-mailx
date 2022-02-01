@@ -18,7 +18,7 @@ if dowemayhave "$@"; then
    if acmd_set CC clang || acmd_set CC gcc ||
          acmd_set CC tcc || acmd_set CC pcc ||
          acmd_set CC c89 || acmd_set CC c99; then
-      exec "$CC" "$@"
+      exec $CC "$@"
    else
       echo >&2 'boing booom tschak'
       echo >&2 'ERROR: I cannot find a compiler!'

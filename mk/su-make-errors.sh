@@ -157,7 +157,7 @@ compile_time() { # {{{
    # The problem is that at least (some versions of) gcc mangle output.
    # Ensure we get both arguments on one line.
    # While here sort numerically.
-   "${CC}" -E "${TARGET}".c |
+   ${CC} -E "${TARGET}".c |
       ${awk} '
          function stripsym(sym){
             sym = substr(sym, 2)
