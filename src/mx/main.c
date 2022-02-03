@@ -747,7 +747,7 @@ main(int argc, char *argv[]){
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
     */
 
-   su_program = argv[0];
+   su_program = (argc != 0) ? argv[0] : su_empty;
    a_main_startup();
 
    /* Command line parsing.
