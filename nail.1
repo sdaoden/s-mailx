@@ -804,7 +804,7 @@ Command line receiver address handling supports the
 .Ql shquote
 constraint of
 .Va expandaddr ,
-for more please see
+for more see
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Bd -literal -offset indent
@@ -1065,7 +1065,7 @@ would find
 and
 .Va pop3-no-apop
 in order.
-For more please see
+For more see
 .Sx "On URL syntax and credential lookup"
 and
 .Sx "INTERNAL VARIABLES" .
@@ -1258,7 +1258,7 @@ When invoked without addressees \*(UA enters interactive mode in which
 mails may be read.
 When used like that the user's system
 .Va inbox
-(for more on mailbox types please see the command
+(for more on mailbox types see the command
 .Ic folder )
 is read in and a one line header of each message therein is displayed if
 the variable
@@ -3699,7 +3699,7 @@ and it is unlikely that their function will become meaningful to \*(UA.
 .
 .Bd -filled -offset indent
 .Sy Compatibility note:
-\*(ID Please note that even many new-style commands do not yet honour
+\*(ID Note that even many new-style commands do not yet honour
 .Va ifs
 to parse their arguments: whereas the
 .Ev SHELL
@@ -4264,10 +4264,8 @@ and specifies the operation to perform on the rest of the line.
 .Pp
 Decoding will show how a standard-compliant MUA will display the given
 argument, which should be an email address.
-Please be aware that most MUAs have difficulties with the address
-standards, and vary wildly when (comments) in parenthesis,
-.Dq double-quoted
-strings, or quoted-pairs, as below, become involved.
+MUAs have varying support of address standards regarding comments,
+parenthesis, double-quoted strings, or so-called quoted-pairs.
 \*(ID \*(UA currently does not perform decoding when displaying addresses.
 .
 .Pp
@@ -4443,7 +4441,7 @@ so that
 .Ql unbind * *
 will remove all bindings of all contexts.
 Due to initialization order unbinding will not work for built-in key
-bindings upon program startup, however: please use
+bindings upon program startup, however: use
 .Va line-editor-no-defaults
 for this purpose instead.
 .
@@ -6288,7 +6286,7 @@ entries.
 .El
 .
 .It Ic localopts
-\*(OB Please just use the
+\*(OB Just use the
 .Cm local
 modifier, as in
 .Ql local set ,
@@ -6316,7 +6314,7 @@ For example it will also implicitly generate a
 .Ql Mail-Followup-To:
 header if that seems useful, regardless of the setting of the variable
 .Va followup-to .
-For more documentation please refer to
+For more documentation refer to
 .Sx "On sending mail, and non-interactive mode" .
 .Pp
 This may generate the errors
@@ -6353,7 +6351,7 @@ then collects the remaining mail content and sends it out.
 Unless the internal variable
 .Va fullnames
 is set recipient addresses will be stripped from comments, names etc.
-For more documentation please refer to
+For more documentation refer to
 .Sx "On sending mail, and non-interactive mode" .
 .Pp
 This may generate the errors
@@ -6870,7 +6868,7 @@ will exchange this command with
 The command
 .Ic Lreply
 offers special support for replying to mailing lists.
-For more documentation please refer to
+For more documentation refer to
 .Sx "On sending mail, and non-interactive mode" .
 .Pp
 This may generate the errors
@@ -8090,7 +8088,7 @@ Does not manage the error number
 .Va \&!
 and the exit status
 .Va \&?
-(please use
+(Use
 .Ic ~^
 if error handling is necessary).
 The append mode expects a list of
@@ -9651,9 +9649,8 @@ s a non-0 status, cause a program exit unless prefixed by
 This also affects
 .Sx "COMMAND ESCAPES" ,
 but which use a different modifier for ignoring the error.
-Please refer to the variable
-.Va \&?
-for more on this topic.
+For more on this topic refer to the variable
+.Va \&? .
 .
 .Mx
 .It Va errors-limit
@@ -9953,7 +9950,7 @@ The former defaults to
 Special format directives in these strings will be expanded if possible,
 and if so configured the output will be folded according to
 .Va quote-fold ;
-for more please refer to
+for more refer to
 .Va quote-inject-head .
 Injections will not be performed by
 .Ic forward
@@ -9977,7 +9974,7 @@ According to that RFC setting the
 variable is required if
 .Va \&\&from
 contains more than one address.
-\*(ID Please expect automatic management of the
+\*(ID Expect automatic management of the
 .Va from
 and
 .Va sender
@@ -10765,7 +10762,7 @@ a decoding step.
 because of non-convertible character content this variable may be set.
 It will, as a last resort, classify the part content as
 .Ql application/octet-stream .
-Please refer to the section
+Refer to the section
 .Sx "Character sets"
 for the complete picture of character set conversion, and
 .Sx "HTML mail and MIME attachments"
@@ -10988,7 +10985,7 @@ from other sources, for example
 .It Va mta-no-default-arguments
 \*(BO Avoids passing standard command line options to a file-based
 .Va mta
-(please see there).
+(see there).
 .
 .Mx
 .It Va mta-no-receiver-arguments
@@ -11113,7 +11110,7 @@ perform only absolutely necessary actions, like cleaning up
 .Ic alternates ,
 for example.
 .Pp
-For compose mode hooks that may affect the message content please see
+For compose mode hooks that may affect the message content see
 .Va on-compose-enter , on-compose-leave , on-compose-splice .
 \*(ID This hook exists because
 .Ic alias , alternates , commandalias , shortcut ,
@@ -12077,7 +12074,7 @@ responsible for the actual transmission of the message.
 This field should normally not be used unless the
 .Va from
 field contains more than one address, on which case it is required.
-\*(ID Please expect automatic management of the
+\*(ID Expect automatic management of the
 .Va from
 and
 .Va sender
@@ -12274,7 +12271,7 @@ and
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
 \*(OP Points to a file in PEM format.
 For the purpose of signing and decryption this file needs to contain the
-user's private key, followed by his certificate.
+user's private key followed by the certificate.
 .
 .Pp
 For message signing
@@ -12332,7 +12329,7 @@ The possible password sources are documented in
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
 \*(OP Specifies the message digest to use when signing S/MIME messages.
-Please remember that for this use case
+Remember that for this use case
 .Ql USER@HOST
 refers to the variable
 .Va from
@@ -12404,7 +12401,7 @@ via the mechanisms described in
 .
 .Mx Va smtp-auth
 .It Va smtp-auth-USER@HOST , smtp-auth-HOST , smtp-auth
-\*(OP\*(OB Please use the authentication slots of
+\*(OP\*(OB Use the authentication slots of
 .Va smtp-config .
 .
 .
@@ -12574,13 +12571,13 @@ variable assignment is aborted when a necessary conversion fails.
 .
 .Mx Va smtp-hostname
 .It Va smtp-hostname-USER@HOST , smtp-hostname-HOST , smtp-hostname
-\*(OP\*(OB Please use the more powerful successor
+\*(OP\*(OB Use the more powerful successor
 .Va smtp-from .
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST ,\
   smtp-use-starttls
-\*(BO\*(OP\*(OB Please use
+\*(BO\*(OP\*(OB Use
 .Va smtp-config .
 (Forcing TLS has become a default setting.)
 .
@@ -12616,7 +12613,7 @@ $ \*(uA -Ssocks-proxy=[socks5://]localhost:10000
 \*(OP In order to use any of the spam-related commands (like
 .Ic spamrate )
 the desired spam interface must be defined by setting this variable.
-Please refer to the manual section
+Refer to the manual section
 .Sx "Handling spam"
 for the complete picture of spam handling in \*(UA.
 All or none of the following interfaces may be available:
@@ -12989,7 +12986,7 @@ The CA certificate pool built into the TLS library can be disabled via
 .Va tls-ca-no-defaults ,
 further fine-tuning is possible via
 .Va tls-ca-flags .
-The directory search requires special filename conventions, please see
+The directory search requires special filename conventions, see
 .Xr SSL_CTX_load_verify_locations 3
 and
 .Xr verify 1
@@ -13069,7 +13066,7 @@ error if the file cannot be loaded.
 The application name will always be passed as
 .Ql \*(uA .
 Some TLS libraries support application-specific configuration via
-resource files loaded like this, please see
+resource files loaded like this, see
 .Va tls-config-module .
 .
 .Mx Va tls-config-module
@@ -13794,7 +13791,7 @@ a program abortion.
 .Mx
 .It Ev TERM
 \*(OP The terminal type for which output is to be prepared.
-For extended colour and font control please refer to
+For extended colour and font control refer to
 .Sx "Coloured display" ,
 and for terminal management in general to
 .Sx "On terminal control and line editor" .
@@ -14641,7 +14638,7 @@ Many CAs offer such certificates for free.
 Usually offered is a combined certificate and private key in PKCS#12
 format which \*(UA does not accept directly.
 To convert it to PEM format, the following shell command can be used;
-please read on for how to use these PEM files.
+Read on for how to use these PEM files.
 .
 .Bd -literal -offset indent
 $ openssl pkcs12 -in cert.p12 -out certpem.pem -clcerts -nodes
@@ -14680,7 +14677,7 @@ certificate in the following web form, and also to use your name as the
 .
 .Pp
 Create a private key and a certificate request on your local computer
-(please see the manual pages of the used commands for more in-depth
+(see the manual pages of the used commands for more in-depth
 knowledge on what the used arguments etc. do):
 .
 .Pp
@@ -14904,7 +14901,7 @@ up-to-date (from within \*(UA) can only be performed via the hook
 .Va on-main-loop-tick ,
 or (for sending only)
 .Va on-compose-enter
-(for more on authentication please see the section
+(for more on authentication see the section
 .Sx "On URL syntax and credential lookup" ) :
 .
 .Bd -literal -offset indent
