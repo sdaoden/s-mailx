@@ -130,15 +130,13 @@ a_termios_sig_adjust(boole condome){
          safe_signal(SIGHUP, &a_termios_onsig);
       if((a_termios_g.tiosg_oint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &a_termios_onsig);
-      if((a_termios_g.tiosg_oquit = safe_signal(SIGQUIT, &a_termios_onsig)
-            ) != SIG_IGN)
-         safe_signal(SIGQUIT, &a_termios_onsig);
-      if((a_termios_g.tiosg_oterm = safe_signal(SIGTERM, &a_termios_onsig)
-            ) != SIG_IGN)
-         safe_signal(SIGTERM, &a_termios_onsig);
+      safe_signal(SIGQUIT, &a_termios_onsig);
+      safe_signal(SIGTERM, &a_termios_onsig);
    }else{
-      safe_signal(SIGHUP, a_termios_g.tiosg_ohup);
-      safe_signal(SIGINT, a_termios_g.tiosg_oint);
+      if(a_termios_g.tiosg_ohup != SIG_IGN)
+         safe_signal(SIGHUP, a_termios_g.tiosg_ohup);
+      if(a_termios_g.tiosg_oint != SIG_IGN)
+         safe_signal(SIGINT, a_termios_g.tiosg_oint);
       safe_signal(SIGQUIT, a_termios_g.tiosg_oquit);
       safe_signal(SIGTERM, a_termios_g.tiosg_oterm);
    }
