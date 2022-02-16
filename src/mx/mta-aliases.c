@@ -207,8 +207,7 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
       goto jleave;
    }
 
-   dp = su_cs_dict_create(&masp->mas_dict,
-         (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE), NIL);
+   dp = su_cs_dict_create(&masp->mas_dict, su_CS_DICT_CASE, NIL);
    su_cs_dict_view_setup(&csdv, dp);
    nsp = n_string_creat_auto(&ns);
    nsp = n_string_book(nsp, 512);
