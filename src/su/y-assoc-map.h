@@ -581,7 +581,7 @@ jleave:
 #if DVLDBGOR(1, 0)
 void
 a_T_PRISYM(stats)(struct a_T const *self){
-   ul size, empties, multies, maxper, i, j;
+   ul size, empties, multies, maxper, avg, i, j;
    struct a_N **arr, *np;
    NYD_IN;
    ASSERT(self);
@@ -607,9 +607,10 @@ a_T_PRISYM(stats)(struct a_T const *self){
          maxper = MAX(maxper, j);
       }
    }
-   j = (multies != 0) ? multies : size - empties;
-   if(j != 0)
-      j = self->a_T_F(count) / j;
+
+   avg = (multies != 0) ? multies : size - empties;
+   if(avg != 0)
+      avg = self->a_T_F(count) / avg;
 
    su_log_write(su_LOG_INFO,
       "* Overview\n"
@@ -629,12 +630,9 @@ a_T_PRISYM(stats)(struct a_T const *self){
          "ERR_PASS=%d "
          "NILISVALO=%d"
          "\n"
-      "  - Array size : %lu\n"
-      "  - Elements   : %lu\n"
-      "  - Tresh-Shift: %u\n"
+      "  - treshold=%lu array-size=%lu entries=%lu\n"
       "* Distribution\n"
-      "  - Slots: empty: %lu, multiple: %lu, maximum: %lu, avg/multi: ~%lu\n"
-      "* Distribution, visual"
+      "  - slots: 0=%lu max=%lu multi=%lu avg/multi=~%lu"
       ,
       ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
 # if a_TYPE != a_TYPE_CSDICT
@@ -650,30 +648,50 @@ a_T_PRISYM(stats)(struct a_T const *self){
 # endif
          ((self->a_T_F(flags) & a_T_PUBNAME(ERR_PASS)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(NILISVALO)) != 0),
-      S(ul,self->a_T_F(size)),
-      S(ul,self->a_T_F(count)),
-      S(ui,self->a_T_F(tshift)),
-      S(ul,empties), S(ul,multies), S(ul,maxper), S(ul,j)
+      S(ul,self->a_T_F(tshift)), S(ul,self->a_T_F(size)),
+         S(ul,self->a_T_F(count)),
+      S(ul,empties), S(ul,maxper), S(ul,multies), S(ul,avg)
    );
 
    /* Second pass: visual distribution */
-   for(i = 0; i < size; ++i){
-      char buf[50], *cp;
+   if(self->a_T_F(size) > 60 * 60)
+      su_log_write(su_LOG_INFO, "    Array too large for visual display");
+   else{
+      boole lnl;
 
-      cp = buf;
-      for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next)){
-         if(++j >= sizeof(buf) - 1 -1){
-            *cp++ = '@';
-            break;
+      for(lnl = TRU1, i = 0; i < size;){
+         char d, fmt_buf[sizeof("\030%c\030")], *fmt;
+
+         for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next))
+            ++j;
+         d = '0';
+         if(j >= avg >> 1){
+            d = '_';
+            if(j >= avg){
+               d = (j == avg) ? '~' : '=';
+               if(j >= avg + ((maxper - avg) >> 1)){
+                  d = '/';
+                  if(j == maxper)
+                     d = '!';
+               }
+            }
          }
-         *cp++ = '*';
-      }
-      *cp = '\0';
 
-      su_log_write(su_LOG_INFO, "%5lu |%s", S(ul,i), buf);
+         su_mem_copy(fmt = fmt_buf, "\030%c\030", sizeof("\030%c\030"));
+         if(++i == size || i % 60 == 0){
+            fmt[sizeof("\030%c\030") - 1 -1] = '\0';
+            if(lnl)
+               ++fmt;
+            lnl = TRU1;
+         }else if(lnl){
+            lnl = FAL0;
+            ++fmt;
+         }
+         su_log_write(su_LOG_INFO, fmt, d);
+      }
    }
 
-   su_log_write(su_LOG_INFO, "<<<" a_TYPE_NAME "(%p): statistics\n----------",
+   su_log_write(su_LOG_INFO, "<<< " a_TYPE_NAME "(%p): statistics\n----------",
       self);
    su_log_unlock();
 
