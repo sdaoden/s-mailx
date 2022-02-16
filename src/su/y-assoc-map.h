@@ -88,9 +88,8 @@ struct a_LA{
    uz la_khash;
 };
 
-/* force: ignore FROZEN state.  Return -1 if we did resize, successfully */
+/* force: ignore FROZEN state.  Return resize() result, -1 done nothing */
 SINLINE s32 a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount);
-static s32 a_FUN(resize)(struct a_T *self, u32 xcount);
 
 /* */
 static s32 a_FUN(assign)(struct a_T *self, struct a_T const *t,
@@ -112,113 +111,18 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
    u64 s;
    NYD2_IN;
 
-   rv = su_ERR_NONE;
+   rv = -1;
 
    if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
       s = self->a_T_F(size);
 
       if(xcount > (s << self->a_T_F(tshift)) || (xcount < (s >>= 1) &&
              (self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK))))
-         rv = a_FUN(resize)(self, xcount);
+         rv = a_T_PUBSYM(resize)(self, xcount);
    }else
       ASSERT(xcount == 0 || self->a_T_F(size) > 0);
 
    NYD2_OU;
-   return rv;
-}
-
-static s32
-a_FUN(resize)(struct a_T *self, u32 xcount){
-   s32 rv;
-   struct a_N **narr, **arr;
-   boole prime;
-   u32 size, nsize;
-   NYD_IN;
-
-   size = self->a_T_F(size);
-   prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
-
-   /* Calculate new size */
-   /* C99 */{
-      u32 onsize;
-      boole grow;
-
-      /* >= to catch initial 0 size */
-      grow = ((xcount >> self->a_T_F(tshift)) >= size);
-      nsize = size;
-
-      for(;;){
-         onsize = nsize;
-
-         if(!prime){
-            ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
-            if(grow){
-               if(nsize == 0)
-                  nsize = 1u << 1;
-               else if(UCMP(32, nsize, <, S32_MIN))
-                  nsize <<= 1;
-            }else if(nsize > (1u << 1))
-               nsize >>= 1;
-         }else
-            nsize = grow ? su_prime_lookup_next(nsize)
-                  : su_prime_lookup_former(nsize);
-
-         /* Refuse to excess storage bounds, but do not fail for this: simply
-          * keep on going and place more nodes in the slots.
-          * Because of the numbers we are talking about this is a theoretical
-          * issue (at the time of this writing). */
-         if(nsize == onsize)
-            break;
-         if(grow){
-            /* (Again, shift 64-bit to avoid overflow) */
-            if((S(u64,nsize) << self->a_T_F(tshift)) >= xcount)
-               break;
-         }else if((nsize >> 1) <= xcount)
-            break;
-      }
-
-      if(size == nsize){
-         rv = su_ERR_NONE;
-         goto jleave;
-      }
-   }
-
-   /* Try to allocate new array, give up on failure */
-   narr = su_TCALLOCF(struct a_N*, nsize,
-         (self->a_T_F(flags) & su_STATE_ERR_MASK));
-   if(UNLIKELY(narr == NIL)){
-      rv = su_err_no();
-      goto jleave;
-   }
-
-   /* We will succeed: move pointers over */
-   self->a_T_F(size) = nsize;
-
-   arr = self->a_T_F(array);
-   self->a_T_F(array) = narr;
-
-   if((xcount = self->a_T_F(count)) > 0){
-      struct a_N *np, **npos, *xnp;
-
-      do for(np = arr[--size]; np != NIL; --xcount){
-         uz i;
-
-         i = np->a_N_F(khash);
-         i= prime ? i % nsize : i & (nsize - 1);
-         npos = &narr[i];
-         xnp = np;
-         np = np->a_N_F(next);
-         xnp->a_N_F(next) = *npos;
-         *npos = xnp;
-      }while(xcount > 0 && size > 0);
-   }
-
-   if(arr != NIL)
-      su_FREE(arr);
-
-   rv = -1;
-jleave:
-   NYD_OU;
    return rv;
 }
 
@@ -527,7 +431,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
    /* But on error we will put new node in case we are empty, so create some
     * array space right away */
    if(UNLIKELY(self->a_T_F(size) == 0) &&
-         (rv = a_FUN(resize)(self, 1)) > su_ERR_NONE)
+         (rv = a_T_PUBSYM(resize)(self, 1)) > su_ERR_NONE)
       goto jleave;
 
    /* Try to find a yet existing key */
@@ -553,9 +457,11 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
        * ignoring ENOMEM++ */
       if(UNLIKELY(np->a_N_F(next) != NIL)){
          /* If we did resize and we have to know the node location, it seems
-          * easiest and most efficient to simply perform another lookup */
+          * easiest to simply perform another lookup */
+         /* TODO This is the most expensive thinkable approach!
+          * TODO Instead check_resize could take &la and update a non-NIL */
          if(a_FUN(check_resize)(self, FAL0, self->a_T_F(count)
-               ) < su_ERR_NONE && viewp != NIL)
+               ) == su_ERR_NONE && viewp != NIL)
             np = a_T_PRISYM(lookup)(self, key, &la);
       }
    }else{
@@ -836,6 +742,102 @@ a_T_PUBSYM(swap)(struct a_T *self, struct a_T *t){
 
    NYD_OU;
    return self;
+}
+
+s32
+a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
+   s32 rv;
+   struct a_N **narr, **arr;
+   boole prime;
+   u32 size, nsize;
+   NYD_IN;
+   ASSERT(self);
+
+   size = self->a_T_F(size);
+   prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
+
+   /* Calculate new size */
+   /* C99 */{
+      u32 onsize;
+      boole grow;
+
+      /* >= to catch initial 0 size */
+      grow = ((xcount >> self->a_T_F(tshift)) >= size);
+      nsize = size;
+
+      for(;;){
+         onsize = nsize;
+
+         if(!prime){
+            ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
+            if(grow){
+               if(nsize == 0)
+                  nsize = 1u << 1;
+               else if(UCMP(32, nsize, <, S32_MIN))
+                  nsize <<= 1;
+            }else if(nsize > (1u << 1))
+               nsize >>= 1;
+         }else
+            nsize = grow ? su_prime_lookup_next(nsize)
+                  : su_prime_lookup_former(nsize);
+
+         /* Refuse to excess storage bounds, but do not fail for this: simply
+          * keep on going and place more nodes in the slots.
+          * Because of the numbers we are talking about this is a theoretical
+          * issue (at the time of this writing). */
+         if(nsize == onsize)
+            break;
+         if(grow){
+            /* (Again, shift 64-bit to avoid overflow) */
+            if((S(u64,nsize) << self->a_T_F(tshift)) >= xcount)
+               break;
+         }else if((nsize >> 1) <= xcount)
+            break;
+      }
+
+      if(size == nsize){
+         rv = -1;
+         goto jleave;
+      }
+   }
+
+   /* Try to allocate new array, give up on failure */
+   narr = su_TCALLOCF(struct a_N*, nsize,
+         (self->a_T_F(flags) & su_STATE_ERR_MASK));
+   if(UNLIKELY(narr == NIL)){
+      rv = su_err_no();
+      goto jleave;
+   }
+
+   /* We will succeed: move pointers over */
+   self->a_T_F(size) = nsize;
+
+   arr = self->a_T_F(array);
+   self->a_T_F(array) = narr;
+
+   if((xcount = self->a_T_F(count)) > 0){
+      struct a_N *np, **npos, *xnp;
+
+      do for(np = arr[--size]; np != NIL; --xcount){
+         uz i;
+
+         i = np->a_N_F(khash);
+         i= prime ? i % nsize : i & (nsize - 1);
+         npos = &narr[i];
+         xnp = np;
+         np = np->a_N_F(next);
+         xnp->a_N_F(next) = *npos;
+         *npos = xnp;
+      }while(xcount > 0 && size > 0);
+   }
+
+   if(arr != NIL)
+      su_FREE(arr);
+
+   rv = su_ERR_NONE;
+jleave:
+   NYD_OU;
+   return rv;
 }
 
 struct a_T *

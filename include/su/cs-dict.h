@@ -285,11 +285,28 @@ INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
    return self->csd_count;
 }
 
+/*! Current size of the node management array.
+ * (Might be of interest to re\r{su_cs_dict_balance()} with
+ * \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
+INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_size;
+}
+
+/*! Resize the management table to accommodate for \a{xcount} elements.
+ * Calculate the new size as via \r{su_cs_dict_set_treshold_shift}.
+ * The \r{su_CS_DICT_FROZEN} state is ignored, but possibly needs to be set to
+ * avoid an immediate automatic resize upon the next insertion
+ * (and removal, if \r{su_CS_DICT_AUTO_SHRINK} is set).
+ * Returns -1 if no action was performed, \ERR{NONE} upon successful resize,
+ * or a \r{su_err_number} (including, also depending on the setting of
+ * \r{su_CS_DICT_ERR_PASS}, a corresponding \r{su_state_err()}).
+ * In the latter case no action has been performed. */
+EXPORT s32 su_cs_dict_resize(struct su_cs_dict *self, u32 xcount);
+
 /*! Thaw and balance \a{self}.
  * Thaw \SELF from (a possible) \r{su_CS_DICT_FROZEN} state that may have been
- * set via \r{su_cs_dict_add_flags()}, recalculate the perfect size of the
- * management table for the current number of managed elements, and rebalance
- * \SELF as necessary.
+ * set via \r{su_cs_dict_add_flags()}, and call \r{su_cs_dict_resize()}.
  * \remarks{If memory failures occur the balancing is simply not performed.} */
 EXPORT struct su_cs_dict *su_cs_dict_balance(struct su_cs_dict *self);
 
@@ -709,6 +726,12 @@ public:
 
    /*! Whether \r{count()} is 0. */
    boole is_empty(void) const {return (count() == 0);}
+
+   /*! \copydoc{su_cs_dict_size()} */
+   u32 size(void) const {return csd_size;}
+
+   /*! \copydoc{su_cs_dict_resize()} */
+   s32 resize(u32 xcount) {return su_cs_dict_resize(this, xcount);}
 
    /*! \copydoc{su_cs_dict_balance()} */
    cs_dict &balance(void) {SELFTHIS_RET(su_cs_dict_balance(this));}
