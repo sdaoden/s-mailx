@@ -53,21 +53,34 @@ struct su_cs_dict_view;
  * Dependent upon \r{su_CS_DICT_NIL_IS_VALID_OBJECT} \NIL values will still be
  * supported.
  * }\li{
+ * Most characteristics can be adjusted via \r{su_cs_dict_add_flags()} and
+ * \r{su_cs_dict_clear_flags()}.
+ * Doing so can cause crashes or tear memory holes later on!
+ * The only flags safe to adjust at any time are
+ * \r{su_CS_DICT_AUTO_SHRINK},
+ * \r{su_CS_DICT_FROZEN},
+ * and \r{su_CS_DICT_HEAD_RESORT},
+ * as below, all others should only be changed directly after
+ * \r{su_cs_dict_create()} or \r{su_cs_dict_clear()}.
+ * }\li{
  * \r{su_STATE_ERR_PASS} may be enforced on a per-object level by setting
  * \r{su_CS_DICT_ERR_PASS}.
  * This interacts with \r{su_CS_DICT_NIL_IS_VALID_OBJECT}.
  * }\li{
- * In-array-index list node head resorting can be controlled via
- * \r{su_CS_DICT_HEAD_RESORT}.
- * }\li{
- * The array size / node count spacing relation is controllable via
- * \r{su_cs_dict_set_treshold_shift()}.
+ * The balance of array size / node count spacing relation is controllable
+ * via \r{su_cs_dict_set_treshold_shift()}.
  * Automatic shrinks are unaffected by that and happen only if
  * \r{su_CS_DICT_AUTO_SHRINK} is enabled.
  * }\li{
  * It is possible to turn instances into \r{su_CS_DICT_FROZEN} state.
- * \r{su_cs_dict_balance()} can be used at a later time to thaw the object
- * and make it reflect its new situation, if so desired.
+ * When inserting/removing many key/value tuples it may increase efficiency to
+ * temporarily freeze the dictionary, then call \r{su_cs_dict_balance()} to
+ * thaw the object and make it reflect its new situation, if so desired.
+ * (Alternatively the flag may simply be cleared again.)
+ * }\li{
+ * In-array-index list node head resorting can be controlled via
+ * \r{su_CS_DICT_HEAD_RESORT}.
+ * In an ideal situation this can help improve lookup times.
  * }}
  *
  * \remarks{This collection does not offer \fn{hash()} and \fn{compare()}
@@ -83,36 +96,31 @@ struct su_cs_dict_view;
  * \r{su_cs_dict_flags()}, and to be adjusted via \r{su_cs_dict_add_flags()}
  * and \r{su_cs_dict_clear_flags()}. */
 enum su_cs_dict_flags{
-   /*! Whether power-of-two spacing and mask indexing is used.
-    * If this is not set, prime spacing and modulo indexing will be used.
-    * \remarks{Changing this setting later on is possible, but testifying the
-    * implied consequences work out is up to the caller.} */
-   su_CS_DICT_POW2_SPACED = 1u<<0,
-   /*! Values are owned.
-    * \remarks{Changing this setting later on is possible, but testifying the
-    * implied consequences work out is up to the caller.} */
-   su_CS_DICT_OWNS = 1u<<1,
-   /*! Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
-   su_CS_DICT_STRONG = 1u<<3,
-   /*! Keys shall be hashed, compared and stored case-insensitively. */
-   su_CS_DICT_CASE = 1u<<4,
-   /*! Enable array-index list head rotation?
-    * This dictionary uses an array of nodes which form singly-linked lists.
-    * With this bit set, whenever a key is found in such a list, its list node
-    * will become the new head of the list, which could over time improve
-    * lookup speed due to lists becoming sorted by "hotness" over time. */
-   su_CS_DICT_HEAD_RESORT = 1u<<5,
-   /*! Enable automatic shrinking of the management array.
-    * This is not enabled by default (the array only grows).
-    * See \r{su_CS_DICT_FROZEN} (and \r{su_cs_dict_set_treshold_shift()}). */
-   su_CS_DICT_AUTO_SHRINK = 1u<<6,
+   /*! Values are owned. */
+   su_CS_DICT_OWNS = 1u<<0,
+   /*!  If this is set, prime spacing and modulo indexing will be used.
+    * By default power-of-two spacing and mask indexing is used, which provides
+    * good distribution of "normal" key data via \r{su_cs-hash()}, as well as
+    * with "all" key data via \r{su_cs_hash_strong()}, which is used in
+    * conjunction with \r{su_CS_DICT_STRONG}. */
+   su_CS_DICT_PRIME_SPACED = 1u<<2,
+   /*! Enable automatic shrinking of management array(s).
+    * This is not enabled by default (array(s) only grow(s)). */
+   su_CS_DICT_AUTO_SHRINK = 1u<<3,
    /*! Freeze the dictionary.
-    * A frozen dictionary will neither grow nor shrink the management array of
-    * nodes automatically.
-    * When inserting/removing many key/value tuples it increases efficiency to
-    * first freeze, perform the operations, and then perform finalization
-    * by calling \r{su_cs_dict_balance()}. */
-   su_CS_DICT_FROZEN = 1u<<7,
+    * A frozen dictionary will neither grow nor shrink management array(s) of
+    * nodes automatically. */
+   su_CS_DICT_FROZEN = 1u<<4,
+   /*! Enable array-index list head rotation?
+    * This dictionary uses nodes which form singly-linked lists.
+    * With this bit set, whenever a key is found in such a list, its list node
+    * will become the new head of the list, potentially improving lookup speed
+    * due to lists becoming sorted by "hotness" over time. */
+   su_CS_DICT_HEAD_RESORT = 1u<<5,
+   /*! Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
+   su_CS_DICT_STRONG = 1u<<6,
+   /*! Keys shall be hashed, compared and stored case-insensitively. */
+   su_CS_DICT_CASE = 1u<<7,
    /*! Mapped to \r{su_STATE_ERR_PASS}. */
    su_CS_DICT_ERR_PASS = su_STATE_ERR_PASS,
    /*! Mapped to \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}, but only honoured for
@@ -121,9 +129,11 @@ enum su_cs_dict_flags{
    /*! Alias for \r{su_CS_DICT_NIL_IS_VALID_OBJECT}. */
    su_CS_DICT_NILISVALO = su_CS_DICT_NIL_IS_VALID_OBJECT,
 
-   su__CS_DICT_CREATE_MASK = su_CS_DICT_POW2_SPACED |
-         su_CS_DICT_OWNS | su_CS_DICT_STRONG | su_CS_DICT_CASE |
-         su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
+   su__CS_DICT_CREATE_MASK = su_CS_DICT_OWNS |
+         su_CS_DICT_PRIME_SPACED |
+         su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
+         su_CS_DICT_HEAD_RESORT |
+         su_CS_DICT_STRONG | su_CS_DICT_CASE |
          su_CS_DICT_ERR_PASS | su_CS_DICT_NIL_IS_VALID_OBJECT
 };
 #ifdef su_SOURCE_CS_DICT
@@ -276,9 +286,10 @@ INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
 }
 
 /*! Thaw and balance \a{self}.
- * Thaw \SELF from (a possible) \r{su_CS_DICT_FROZEN} state, recalculate the
- * perfect size of the management table for the current number of managed
- * elements, and rebalance \SELF as necessary.
+ * Thaw \SELF from (a possible) \r{su_CS_DICT_FROZEN} state that may have been
+ * set via \r{su_cs_dict_add_flags()}, recalculate the perfect size of the
+ * management table for the current number of managed elements, and rebalance
+ * \SELF as necessary.
  * \remarks{If memory failures occur the balancing is simply not performed.} */
 EXPORT struct su_cs_dict *su_cs_dict_balance(struct su_cs_dict *self);
 
@@ -366,17 +377,17 @@ enum su__cs_dict_view_move_types{
 
 /*! \_ */
 struct su_cs_dict_view{
-   struct su_cs_dict *csdv_parent;     /*!< We are \fn{is_setup()} with it. */
+   /* *_next_* only valid after _move(..HAS_NEXT) */
+   struct su_cs_dict *csdv_parent; /*!< We are \fn{is_setup()} with it. */
    struct su__cs_dict_node *csdv_node;
    u32 csdv_index;
-   /* Those only valid after _move(..HAS_NEXT) */
    u32 csdv_next_index;
    struct su__cs_dict_node *csdv_next_node;
 };
 
 /* "The const is preserved logically" */
 EXPORT struct su_cs_dict_view *su__cs_dict_view_move(
-      struct su_cs_dict_view *self, u8 type);
+      struct su_cs_dict_view *self, /*_view_move_types*/ u8 type);
 
 /*! Easy iteration support; \a{SELF} must be \r{su_cs_dict_view_setup()}. */
 #define su_CS_DICT_VIEW_FOREACH(SELF) \
@@ -575,20 +586,20 @@ class cs_dict : private su_cs_dict{
 
 public:
    /*! \copydoc{su_cs_dict_flags} */
-   enum flags{
+   enum flags{ // owns is template arg
       f_none, /*!< This is 0. */
-      /*! \copydoc{su_CS_DICT_POW2_SPACED} */
-      f_pow2_spaced = su_CS_DICT_POW2_SPACED,
-      /*! \copydoc{su_CS_DICT_STRONG} */
-      f_strong = su_CS_DICT_STRONG,
-      /*! \copydoc{su_CS_DICT_CASE} */
-      f_case = su_CS_DICT_CASE,
-      /*! \copydoc{su_CS_DICT_HEAD_RESORT} */
-      f_head_resort = su_CS_DICT_HEAD_RESORT,
+      /*! \copydoc{su_CS_DICT_PRIME_SPACED} */
+      f_prime_spaced = su_CS_DICT_PRIME_SPACED,
       /*! \copydoc{su_CS_DICT_AUTO_SHRINK} */
       f_auto_shrink = su_CS_DICT_AUTO_SHRINK,
       /*! \copydoc{su_CS_DICT_FROZEN} */
       f_frozen = su_CS_DICT_FROZEN,
+      /*! \copydoc{su_CS_DICT_HEAD_RESORT} */
+      f_head_resort = su_CS_DICT_HEAD_RESORT,
+      /*! \copydoc{su_CS_DICT_STRONG} */
+      f_strong = su_CS_DICT_STRONG,
+      /*! \copydoc{su_CS_DICT_CASE} */
+      f_case = su_CS_DICT_CASE,
       /*! \copydoc{su_CS_DICT_ERR_PASS} */
       f_err_pass = su_CS_DICT_ERR_PASS,
       /*! \copydoc{su_CS_DICT_NIL_IS_VALID_OBJECT} */

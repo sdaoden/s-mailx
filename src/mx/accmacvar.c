@@ -2849,8 +2849,8 @@ a_amv_var_obsolete(char const *name){
    if(!su_state_has(su_STATE_REPRODUCIBLE)){
       if(UNLIKELY(a_amv_var_obsol == NIL))
          a_amv_var_obsol = su_cs_dict_set_treshold_shift(
-               su_cs_dict_create(&a_amv_var__obsol, (su_CS_DICT_POW2_SPACED |
-                  su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
+               su_cs_dict_create(&a_amv_var__obsol, (su_CS_DICT_HEAD_RESORT |
+                  su_CS_DICT_ERR_PASS), NIL), 2);
 
       if(UNLIKELY(!su_cs_dict_has_key(a_amv_var_obsol, name))){
          su_cs_dict_insert(a_amv_var_obsol, name, NIL);

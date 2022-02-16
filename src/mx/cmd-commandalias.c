@@ -42,7 +42,7 @@
 #include "su/code-in.h"
 
 /* ..of a_cmdal_dp */
-#define a_CMDAL_FLAGS (su_CS_DICT_POW2_SPACED | su_CS_DICT_OWNS |\
+#define a_CMDAL_FLAGS (su_CS_DICT_OWNS |\
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CMDAL_TRESHOLD_SHIFT 2
 
