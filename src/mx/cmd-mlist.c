@@ -45,7 +45,7 @@
 #include "su/code-in.h"
 
 /* ..of a_ml_dp.. */
-#define a_ML_FLAGS (su_CS_DICT_POW2_SPACED | su_CS_DICT_CASE |\
+#define a_ML_FLAGS (su_CS_DICT_CASE |\
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_ML_TRESHOLD_SHIFT 2
 
@@ -58,7 +58,7 @@
  * a_ml_regex* == self with bit 1 indicating subscription state.
  * We MUST pass non-NIL to assign()! */
 #ifdef mx_HAVE_REGEX
-# define a_ML_RE_FLAGS (su_CS_DICT_POW2_SPACED | su_CS_DICT_OWNS |\
+# define a_ML_RE_FLAGS (su_CS_DICT_OWNS |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS | su_CS_DICT_NILISVALO)
 # define a_ML_RE_TRESHOLD_SHIFT 4
 #endif

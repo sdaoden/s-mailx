@@ -444,11 +444,12 @@ static void a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]);
 
 static void
 a_cs_dict(void){
+   a__cs_dict(cs_dict<char const*>::f_prime_spaced);
    a__cs_dict(cs_dict<char const*>::f_none);
-   a__cs_dict(cs_dict<char const*>::f_pow2_spaced);
-   a__cs_dict(cs_dict<char const*>::f_strong);
+
    a__cs_dict(cs_dict<char const*>::f_strong |
-      cs_dict<char const*>::f_pow2_spaced);
+      cs_dict<char const*>::f_prime_spaced);
+   a__cs_dict(cs_dict<char const*>::f_strong);
 }
 
 static void
