@@ -1,7 +1,8 @@
 // Very primitive C++ compile and run instantiator for SU C++ wrappers.
 
 // Sometimes we need a loop limit, e.g., when putting elements in containers
-#define a_LOOP_NO 1000
+// Be warned it becomes exponential, 42024 at max, maybe
+#define a_LOOP_NO 4224
 
 // Call funs which produce statistical output
 #define a_STATS(X) //X
@@ -112,8 +113,9 @@ main(void){ // {{{
       (a_errors == 0 ? "These songs of freedom" : "Not to be heard"));
 
    state::gut(
+      (a_errors == 0 ? state::gut_act_norm : state::gut_act_quick)
 #ifdef a_TRACE
-      state::gut_mem_trace
+      | state::gut_mem_trace
 #endif
    );
 
