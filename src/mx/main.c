@@ -656,18 +656,22 @@ a_main_usage(FILE *fp){
 static boole
 a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt,
       char const *doc){
-   char const *x1, *x2;
+   char const *x1, *x2, *x3;
    NYD2_IN;
    UNUSED(doc);
 
+   /* I18N: separating command line options: opening for short option */
+   x2 = (sopt[0] != '\0') ? _(", ") : sopt;
+
    if(has_arg)
       /* I18N: describing arguments to command line options */
-      x1 = (sopt[0] != '\0' ? _(" ARG, ") : sopt), x2 = _("=ARG");
+      x1 = _("=ARG"), x3 = (x2 != sopt) ? _(" ARG") : sopt;
    else
-      /* I18N: separating command line options */
-      x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
-   /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
-   fprintf(S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, V_(doc));
+      x1 = x3 = su_empty;
+
+   /* I18N: long option[=ARG][ short option [ARG]]: doc */
+   fprintf(S(FILE*,cookie), _("%s%s%s%s%s: %s\n"),
+      lopt, x1, x2, sopt, x3, V_(doc));
 
    NYD2_OU;
    return TRU1;
@@ -697,37 +701,37 @@ main(int argc, char *argv[]){
    static char const a_sopts[] =
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
-      "resource-files:;:;" N_("control loading of resource files"),
       "account:;A;" N_("execute an `account' command"),
          "attach:;a;" N_("attach a file to message to be sent"),
-      "bcc:;b;" N_("add blind carbon copy recipient"),
-      "custom-header:;C;" N_("create custom header (\"header-field: body\")"),
-         "cc:;c;" N_("add carbon copy recipient"),
-      "disconnected;D;" N_("identical to -Sdisconnected"),
-         "debug;d;" N_("identical to -Sdebug"),
-      "discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
+      "batch-mode;#;" N_("more confined non-interactive setup"),
+         "bcc:;b;" N_("add blind carbon copy recipient"),
+      "cc:;c;" N_("add carbon copy recipient"),
          "check-and-exit;e;" N_("note mail presence (of -L) via exit status"),
+         "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
+         "custom-header:;C;" N_("add custom header (\"header-field: body\")"),
+      "debug;d;" N_("identical to -Sdebug"),
+         "discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
+         "disconnected;D;" N_("identical to -Sdisconnected"),
+      "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
+         "end-options;.;" N_("force end of options, and (enter) send mode"),
       "file;f;" N_("open secondary mailbox, or \"file\" last on command line"),
+         "from-address:;r;" N_("set source address used by MTAs (and -Sfrom)"),
       "header-summary;H;" N_("is to be displayed (for given file) only"),
          "help;h;" N_("short help"),
-      "search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+      "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
+      "long-help;\201;" N_("this listing"),
       "no-header-summary;N;" N_("identical to -Snoheader"),
       "quote-file:;q;" N_("initialize body of message to be sent with a file"),
       "read-only;R;" N_("any mailbox file will be opened read-only"),
-         "from-address:;r;" N_("set source address used by MTAs (and -Sfrom)"),
-      "set:;S;" N_("set one of the INTERNAL VARIABLES (unset via \"noARG\")"),
+         "resource-files:;:;" N_("control loading of resource files"),
+      "search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+         "set:;S;" N_("set a variable (unset via \"noARG\")"),
+         "startup-cmd:;X;" N_("to be executed before normal operation"),
          "subject:;s;" N_("specify subject of message to be sent"),
       "target:;T;" N_("add receiver(s) \"header-field: address\" as via -t"),
-      "template;t;" N_("message to be sent is read from standard input"),
-      "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
-      "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
-         "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
-      "startup-cmd:;X;" N_("to be executed before normal operation"),
-      "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
-      "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
-      "batch-mode;#;" N_("more confined non-interactive setup"),
-      "end-options;.;" N_("force the end of options, and (enter) send mode"),
-      "long-help;\201;" N_("this listing"),
+         "template;t;" N_("message to be sent is read from standard input"),
+      "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
+         "version;V;" N_("print version (more with \"[-v] -Xversion -Xx\")"),
       NIL
    };
 
