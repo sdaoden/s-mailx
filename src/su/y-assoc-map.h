@@ -326,13 +326,17 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 # else
    u32 klen;
 # endif
-   u32 cnt, slotidx;
    uz khash;
+   u32 cnt, slotidx;
    struct a_N *rv, **arr, *last;
    NYD_IN;
    ASSERT(self);
 
    rv = NIL;
+   cnt = self->a_T_F(count);
+
+   if(UNLIKELY(cnt == 0) && UNLIKELY(lookarg_or_nil == NIL))
+      goto jleave;
 
 # if a_TYPE == a_TYPE_CSDICT
    khash = su_cs_len(key);
@@ -357,7 +361,7 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
       slotidx = prime ? khash % slotidx : khash & (slotidx - 1);
    }
 
-   arr = self->a_T_F(array) + slotidx;
+   arr = &self->a_T_F(array)[slotidx];
 
    if(lookarg_or_nil != NIL){
       struct a_LA *lap;
@@ -370,10 +374,10 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
       lap->la_klen = klen;
 # endif
       lap->la_khash = khash;
-   }
 
-   if(UNLIKELY((cnt = self->a_T_F(count)) == 0))
-      goto jleave;
+      if(UNLIKELY(cnt == 0))
+         goto jleave;
+   }
 
    for(last = rv, rv = *arr; rv != NIL; last = rv, rv = rv->a_N_F(next)){
       if(khash != rv->a_N_F(khash))
@@ -912,27 +916,25 @@ jset:
 s32
 a_V_PUBSYM(set_data)(struct a_V *self, void *value){
    s32 rv;
+   u16 flags;
    struct a_T *parent;
    NYD_IN;
    ASSERT(self);
    ASSERT_NYD_EXEC(a_V_PUBSYM(is_valid)(self), rv = su_ERR_INVAL);
 
    parent = self->a_V_F(parent);
+   flags = parent->a_T_F(flags);
 
-   if(value == NIL){
-      u16 flags;
-
-      flags = parent->a_T_F(flags);
-
-      if((flags & a_T_PUBNAME(OWNS)) && !(flags & a_T_PUBNAME(NILISVALO))){
+   if(flags & a_T_PUBNAME(OWNS)){
+      if(UNLIKELY(value == NIL) && UNLIKELY(!(flags & a_T_PUBNAME(NILISVALO))))
          rv = su_ERR_INVAL;
-         goto jleave;
-      }
+      else
+         rv = a_FUN(replace)(parent, self->a_V_F(node), value);
+   }else{
+      self->a_V_F(node)->a_N_F(data) = value;
+      rv = su_ERR_NONE;
    }
 
-   rv = a_FUN(replace)(parent, self->a_V_F(node), value);
-
-jleave:
    NYD_OU;
    return rv;
 }
@@ -944,9 +946,10 @@ a_V_PUBSYM(find)(struct a_V *self, a_TK const *key){
    NYD_IN;
    ASSERT(self);
 
-   self->a_V_F(node) =
-   np = a_T_PRISYM(lookup)(self->a_V_F(parent), key, &la);
-   if(np != NIL){
+   np = (LIKELY(self->a_V_F(parent)->a_T_F(count) > 0)
+         ? a_T_PRISYM(lookup)(self->a_V_F(parent), key, &la) : NIL);
+
+   if((self->a_V_F(node) = np) != NIL){
       self->a_V_F(index) = la.la_slotidx;
       self->a_V_F(next_node) = NIL;
    }
