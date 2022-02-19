@@ -471,7 +471,8 @@ INLINE void *su_cs_dict_view_data(struct su_cs_dict_view const *self){
 }
 
 /*! Replace the data of a \r{su_cs_dict_view_is_valid()} view.
- * Behaves like \r{su_cs_dict_replace()}. */
+ * If the parent \r{su_CS_DICT_OWNS} its values this behaves like
+ * \r{su_cs_dict_replace()}, otherwise it returns \ERR{NONE}. */
 EXPORT s32 su_cs_dict_view_set_data(struct su_cs_dict_view *self, void *value);
 
 /*! Move a setup view to the first position, if there is one.
