@@ -79,6 +79,9 @@ EXPORT_DATA struct su_toolbox const su_cs_toolbox;
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox_case;
 
+EXPORT uz su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen,
+   char const *xp, uz xplen);
+
 /*! This actually tests for 7-bit cleanliness. */
 INLINE boole su_cs_is_ascii(s32 x) {return (S(u32,x) <= S8_MAX);}
 
@@ -129,7 +132,7 @@ INLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
 #undef a_X
 
 /*! Test \a{x} for any of the \r{su_cs_ctype} bits given in \a{csct}. */
-INLINE boole su_cs_is_ctype(s32 x, u32 csct){
+INLINE boole su_cs_is_ctype(s32 x, BITENUM_IS(u32,ctype) csct){
    return (su_cs_is_ascii(x) && (su__cs_ctype[x] & csct) != 0);
 }
 
@@ -175,16 +178,36 @@ EXPORT char *su_cs_find_c(char const *cp, char xc);
 /*! Like \r{su_cs_find()}, but case-insensitive. */
 EXPORT char *su_cs_find_case(char const *cp, char const *xp);
 
-/*! Returns offset to first character of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
+/*! Return offset to first byte of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
  * \remarks{Will not find NUL.} */
-EXPORT uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
-      char const *xp, uz xlen);
+INLINE uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
+      char const *xp, uz xplen){
+   ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
+   ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(TRU1, cp, cplen, xp, xplen);
+}
 
 /*! \_ */
 INLINE uz su_cs_first_of(char const *cp, char const *xp){
    ASSERT_RET(cp != NIL, UZ_MAX);
    ASSERT_RET(xp != NIL, UZ_MAX);
-   return su_cs_first_of_cbuf_cbuf(cp, UZ_MAX, xp, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(TRU1, cp, UZ_MAX, xp, UZ_MAX);
+}
+
+/*! Return offset to first byte not of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
+ * \remarks{Will not find NUL.} */
+INLINE uz su_cs_first_not_of_cbuf_cbuf(char const *cp, uz cplen,
+      char const *xp, uz xplen){
+   ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
+   ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(FAL0, cp, cplen, xp, xplen);
+}
+
+/*! \_ */
+INLINE uz su_cs_first_not_of(char const *cp, char const *xp){
+   ASSERT_RET(cp != NIL, UZ_MAX);
+   ASSERT_RET(xp != NIL, UZ_MAX);
+   return su__cs_first_x_of_cbuf_cbuf(FAL0, cp, UZ_MAX, xp, UZ_MAX);
 }
 
 /*! Hash a string (buffer).
@@ -424,7 +447,9 @@ public:
    static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
    /*! \copydoc{su_cs_is_ctype()} */
-   static boole is_ctype(s32 x, u32 ct) {return su_cs_is_ctype(x, ct);}
+   static boole is_ctype(s32 x, BITENUM_IS(u32,ctype) ct){
+      return su_cs_is_ctype(x, ct);
+}
 
    /*! \copydoc{su_cs_cmp()} */
    static sz cmp(char const *cp1, char const *cp2){
@@ -461,11 +486,41 @@ public:
       return su_cs_dup(cp, estate);
    }
 
+   /*! \copydoc{su_cs_ends_with_case()} */
+   static boole ends_with_case(char const *cp, char const *x){
+      return su_cs_ends_with_case(cp, x);
+   }
+
    /*! \copydoc{su_cs_find()} */
    static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
 
    /*! \copydoc{su_cs_find_c()} */
    static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}
+
+   /*! \copydoc{su_cs_find_case()} */
+   static char *find_case(char const *cp, char const *x){
+      return su_cs_find_case(cp, x);
+   }
+
+   /*! \copydoc{su_cs_find_first_of()} */
+   static uz first_of(char const *cp, char const *xp){
+      return su_cs_first_of(cp, xp);
+   }
+
+   /*! \copydoc{su_cs_find_first_of_cbuf_cbuf()} */
+   static uz first_of(char const *cp, uz cplen, char const *xp, uz xplen){
+      return su_cs_first_of_cbuf_cbuf(cp, cplen, xp, xplen);
+   }
+
+   /*! \copydoc{su_cs_find_first_not_of()} */
+   static uz first_not_of(char const *cp, char const *xp){
+      return su_cs_first_not_of(cp, xp);
+   }
+
+   /*! \copydoc{su_cs_find_first_not_of_cbuf_cbuf()} */
+   static uz first_not_of(char const *cp, uz cplen, char const *xp, uz xplen){
+      return su_cs_first_not_of_cbuf_cbuf(cp, cplen, xp, xplen);
+   }
 
    /*! \copydoc{su_cs_hash_cbuf()} */
    static uz hash(char const *buf, uz len) {return su_cs_hash_cbuf(buf, len);}
@@ -535,6 +590,21 @@ public:
    /*! \copydoc{su_cs_starts_with()} */
    static boole starts_with(char const *cp, char const *x){
       return su_cs_starts_with(cp, x);
+   }
+
+   /*! \copydoc{su_cs_starts_with_n()} */
+   static boole starts_with(char const *cp, char const *x, uz n){
+      return su_cs_starts_with_n(cp, x, n);
+   }
+
+   /*! \copydoc{su_cs_starts_with_case()} */
+   static boole starts_with_case(char const *cp, char const *x){
+      return su_cs_starts_with_case(cp, x);
+   }
+
+   /*! \copydoc{su_cs_starts_with_case_n()} */
+   static boole starts_with_case(char const *cp, char const *x, uz n){
+      return su_cs_starts_with_case_n(cp, x, n);
    }
 
    /*! \copydoc{su_cs_to_lower()} */
