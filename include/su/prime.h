@@ -42,7 +42,7 @@ C_DECL_BEGIN
 #define su_PRIME_LOOKUP_MIN 0x2u
 
 /*! Maximum pre-calculated lookup prime (a \r{su_u32}). */
-#define su_PRIME_LOOKUP_MAX 0x18000005u
+#define su_PRIME_LOOKUP_MAX su_6432(0xC0000217u,0xC0000217ul)
 
 /*! \_
  * \remarks{Very unacademical (brute force).} */
