@@ -28,20 +28,22 @@
 #include "su/code-in.h"
 
 /* Collected & merged from 'GLIB 1's 'gprimes.c' and 'GNU STL's 'hashtable'
- * (around Y2K+1 or so) */
+ * (around Y2K+1 or so); beyond 0x18000005 added in 2022 */
 static u32 const a_prime_lookup[] = {
    0x00000002, 0x00000005, 0x0000000B,
    0x00000017, 0x0000002F, 0x00000061, 0x0000009D,
    0x0000011B, 0x0000022D, 0x00000337, 0x000004D5, 0x00000741, 0x00000AD9,
    0x00001051, 0x00001867, 0x0000249B, 0x000036E9, 0x00005261, 0x00007B8B,
-          0x0000B947,
-   0x000115E7, 0x0001A0E1, 0x00027149, 0x0003A9E5, 0x00057EE3, 0x00083E39,
-          0x000C5D67,
-   0x00128C09, 0x001BD1FF, 0x0029BB13, 0x003E988B, 0x005DE4C1, 0x008CD721,
-          0x00D342AB,
-   0x01800013, 0x03000005, 0x06000017, 0x0C000013,
-   0x18000005
+         0x0000B947,
+   0x000115E7ul, 0x0001A0E1ul, 0x00027149ul, 0x0003A9E5ul, 0x00057EE3ul,
+         0x00083E39ul, 0x000C5D67ul,
+   0x00128C09ul, 0x001BD1FFul, 0x0029BB13ul, 0x003E988Bul, 0x005DE4C1ul,
+         0x008CD721ul, 0x00D342ABul,
+   0x01800013ul, 0x03000005ul, 0x06000017ul, 0x0C000013ul,
+   0x18000005ul, 0x30000059ul, 0x600000F5ul, 0xC0000217ul/*, 0xFFFFFFFBul*/
 };
+CTAV(su_PRIME_LOOKUP_MAX == 0xC0000217ul);
+
 #define a_PRIME_FIRST &a_prime_lookup[0]
 #define a_PRIME_MIDDLE &a_prime_lookup[NELEM(a_prime_lookup) / 2]
 #define a_PRIME_LAST &a_prime_lookup[NELEM(a_prime_lookup) - 1]
