@@ -540,7 +540,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
          "ERR_PASS=%d "
          "NILISVALO=%d"
          "\n"
-      "  - treshold=%lu array-size=%lu entries=%lu\n"
+      "  - treshold=%lu size=%lu (min-size=%lu) entries=%lu\n"
       "* Distribution\n"
       "  - slots: 0=%lu max=%lu multi=%lu avg/multi=~%lu"
       ,
@@ -559,7 +559,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
          ((self->a_T_F(flags) & a_T_PUBNAME(ERR_PASS)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(NILISVALO)) != 0),
       S(ul,self->a_T_F(tshift)), S(ul,self->a_T_F(size)),
-         S(ul,self->a_T_F(count)),
+         S(ul,self->a_T_F(min_size)), S(ul,self->a_T_F(count)),
       S(ul,empties), S(ul,maxper), S(ul,multies), S(ul,avg)
    );
 
@@ -575,14 +575,14 @@ a_T_PRISYM(stats)(struct a_T const *self){
          for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next))
             ++j;
          d = '0';
-         if(j >= avg >> 1){
+         if(j > 0 && j >= avg >> 1){
             d = '_';
             if(j >= avg){
                d = (j == avg) ? '~' : '=';
                if(j >= avg + ((maxper - avg) >> 1)){
                   d = '/';
                   if(j == maxper)
-                     d = '!';
+                     d = '^';
                }
             }
          }
@@ -760,7 +760,7 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
    size = self->a_T_F(size);
    prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
 
-   /* Calculate new size */
+   /* Calculate new size, a bit complicated task */
    /* C99 */{
       u32 onsize;
       boole grow;
@@ -773,17 +773,30 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
          onsize = nsize;
 
          if(!prime){
-            ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
+            ASSERT(nsize == 0 || IS_POW2(nsize));
             if(grow){
-               if(nsize == 0)
+               if(UNLIKELY(nsize == 0)){
                   nsize = 1u << 1;
-               else if(UCMP(32, nsize, <, S32_MIN))
+                  while(nsize < self->a_T_F(min_size))
+                     nsize <<= 1;
+               }else if(UCMP(32, nsize, <, S32_MIN))
                   nsize <<= 1;
-            }else if(nsize > (1u << 1))
-               nsize >>= 1;
-         }else
-            nsize = grow ? su_prime_lookup_next(nsize)
-                  : su_prime_lookup_former(nsize);
+            }else if(nsize > (1u << 1)){
+               u32 i = nsize >> 1;
+               if(i >= self->a_T_F(min_size))
+                  nsize = i;
+            }
+         }else if(grow){
+            for(;;){
+               nsize = su_prime_lookup_next(nsize);
+               if(nsize >= self->a_T_F(min_size))
+                  break;
+            }
+         }else{
+            u32 i = su_prime_lookup_former(nsize);
+            if(i >= self->a_T_F(min_size))
+               nsize = i;
+         }
 
          /* Refuse to excess storage bounds, but do not fail for this: simply
           * keep on going and place more nodes in the slots.
