@@ -105,6 +105,7 @@ enum su_cs_dict_flags{
     * conjunction with \r{su_CS_DICT_STRONG}. */
    su_CS_DICT_PRIME_SPACED = 1u<<2,
    /*! Enable automatic shrinking of management array(s).
+    * It occurs when \r{su_cs_dict_count()} is half of \r{su_cs_dict_size()}.
     * This is not enabled by default (array(s) only grow(s)). */
    su_CS_DICT_AUTO_SHRINK = 1u<<3,
    /*! Freeze the dictionary.
@@ -146,9 +147,10 @@ struct su_cs_dict{
    struct su__cs_dict_node **csd_array;
    u16 csd_flags;
    u8 csd_tshift;
-   u8 csd__pad[su_6432(5,1)];
+   u8 csd__pad[1];
    u32 csd_count;
    u32 csd_size;
+   u32 csd_min_size;
    struct su_toolbox const *csd_tbox;
 };
 
@@ -216,6 +218,37 @@ EXPORT struct su_cs_dict *su_cs_dict_clear_elems(struct su_cs_dict *self);
 EXPORT struct su_cs_dict *su_cs_dict_swap(struct su_cs_dict *self,
       struct su_cs_dict *t);
 
+/*! Current number of key/value element pairs. */
+INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_count;
+}
+
+/*! Current size of the node management array.
+ * (Might be of interest to re\r{su_cs_dict_balance()} with
+ * \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
+INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_size;
+}
+
+/*! The minimum size of the node management array.
+ * See \r{su_cs_dict_set_min_size()}. */
+INLINE u32 su_cs_dict_min_size(struct su_cs_dict const *self){
+   ASSERT(self);
+   return self->csd_min_size;
+}
+
+/*! Set the minimum size of the node management array.
+ * If set the array will not be (re)sized to a size smaller than this.
+ * \remarks{\a{nmsize} cannot be larger than 0xB947 (a large 16-bit prime).} */
+INLINE struct su_cs_dict *su_cs_dict_set_min_size(
+      struct su_cs_dict *self, u32 nmsize){
+   ASSERT(self);
+   self->csd_min_size = MIN(0xB947u, nmsize);
+   return self;
+}
+
 /*! Get the used \r{su_cs_dict_flags}. */
 INLINE u16 su_cs_dict_flags(struct su_cs_dict const *self){
    ASSERT(self);
@@ -277,20 +310,6 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self,
        tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
    self->csd_tbox = tbox_or_nil;
    return self;
-}
-
-/*! Current number of key/value element pairs. */
-INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
-   ASSERT(self);
-   return self->csd_count;
-}
-
-/*! Current size of the node management array.
- * (Might be of interest to re\r{su_cs_dict_balance()} with
- * \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
-INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
-   ASSERT(self);
-   return self->csd_size;
 }
 
 /*! Resize the management table to accommodate for \a{xcount} elements.
@@ -366,7 +385,12 @@ INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key,
 /*! Returns the false boolean if \a{key} cannot be found. */
 EXPORT boole su_cs_dict_remove(struct su_cs_dict *self, char const *key);
 
-/*! Via \r{su_DVLDBG()} it will \r{su_log_write()} statistics about \SELF. */
+/*! Via \r{su_DVLDBG()} it will \r{su_log_write()} statistics about \SELF.
+ * If not too large, a visualization is shown: \c{0} denotes an empty slot,
+ * or one with less than 50% of the average number of elements per slot,
+ * \c{_} less than average, \c{~} the average, \c{=} more than average, but
+ * less than \c{/}, used for half the distance in between average and maximum;
+ * \c{^} finally denotes the maximum number of elements. */
 INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
    UNUSED(self);
 #if DVLDBGOR(1, 0)
@@ -690,7 +714,25 @@ public:
    /*! \copydoc{su_cs_dict_swap()} */
    cs_dict &swap(cs_dict &t) {SELFTHIS_RET(su_cs_dict_swap(this, &t));}
 
-   /*! \copydoc{su_cs_dict_flags()} */
+   /*! \copydoc{su_cs_dict_count()} */
+   u32 count(void) const {return csd_count;}
+
+   /*! Whether \r{count()} is 0. */
+   boole is_empty(void) const {return (count() == 0);}
+
+   /*! \copydoc{su_cs_dict_size()} */
+   u32 size(void) const {return csd_size;}
+
+   /*! \copydoc{su_cs_dict_min_size()} */
+   u32 min_size(void) const {return csd_min_size;}
+
+   /*! \copydoc{su_cs_dict_set_min_size()} */
+   cs_dict &set_min_size(u32 nmsize){
+      SELFTHIS_RET(su_cs_dict_set_min_size(this, nmsize));
+   }
+
+   /*! \copydoc{su_cs_dict_flags()}
+    * \remarks{Since \c{OWNS} is a template argument that flag is stripped.} */
    u16 flags(void) const {return (su_cs_dict_flags(this) & ~su_CS_DICT_OWNS);}
 
    /*! \copydoc{su_cs_dict_add_flags()} */
@@ -721,15 +763,6 @@ public:
       SELFTHIS_RET(su_cs_dict_set_toolbox(this,
          R(su_toolbox const*,tbox_or_nil)));
    }
-
-   /*! \copydoc{su_cs_dict_count()} */
-   u32 count(void) const {return csd_count;}
-
-   /*! Whether \r{count()} is 0. */
-   boole is_empty(void) const {return (count() == 0);}
-
-   /*! \copydoc{su_cs_dict_size()} */
-   u32 size(void) const {return csd_size;}
 
    /*! \copydoc{su_cs_dict_resize()} */
    s32 resize(u32 xcount) {return su_cs_dict_resize(this, xcount);}
