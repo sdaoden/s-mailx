@@ -136,6 +136,50 @@ INLINE boole su_timespec_is_GT(struct su_timespec const *self,
    x = self->ts_sec - tp->ts_sec;
    return (x > 0 || (x == 0 && self->ts_nano > tp->ts_nano));
 }
+
+/*! Add \a{tp} to \SELF.
+ * This does not prevent integer wraparounds. */
+INLINE struct su_timespec *su_timespec_add(struct su_timespec *self,
+      struct su_timespec const *tp){
+   s64 sec;
+   sz nano;
+   ASSERT_RET(self != NIL, self);
+   ASSERT_RET(tp != NIL, self);
+
+   sec = self->ts_sec;
+   nano = self->ts_nano;
+   sec += tp->ts_sec;
+   nano += tp->ts_nano;
+   while(nano >= su_TIMESPEC_SEC_NANOS){
+      ++sec;
+      nano -= su_TIMESPEC_SEC_NANOS;
+   }
+   self->ts_sec = sec;
+   self->ts_nano = nano;
+   return self;
+}
+
+/*! Subtract \a{tp} to \SELF.
+ * This does not prevent integer wraparounds. */
+INLINE struct su_timespec *su_timespec_sub(struct su_timespec *self,
+      struct su_timespec const *tp){
+   s64 sec;
+   sz nano;
+   ASSERT_RET(self != NIL, self);
+   ASSERT_RET(tp != NIL, self);
+
+   sec = self->ts_sec;
+   nano = self->ts_nano;
+   sec -= tp->ts_sec;
+   nano -= tp->ts_nano;
+   while(nano < 0){
+      --sec;
+      nano += su_TIMESPEC_SEC_NANOS;
+   }
+   self->ts_sec = sec;
+   self->ts_nano = nano;
+   return self;
+}
 /*! @} *//* }}} */
 
 /* utils {{{ */
@@ -364,6 +408,18 @@ public:
       boole operator>(spec const &t) const{
          return su_timespec_is_GT(this, &t);
       }
+
+      /*! \copydoc{su_timespec_add()} */
+      spec &add(spec const &t) {SELFTHIS_RET(su_timespec_add(this, &t));}
+
+      /*! \copydoc{su_timespec_add()} */
+      spec &operator+=(spec const &t) {return add(t);}
+
+      /*! \copydoc{su_timespec_sub()} */
+      spec &sub(spec const &t) {SELFTHIS_RET(su_timespec_sub(this, &t));}
+
+      /*! \copydoc{su_timespec_add()} */
+      spec &operator-=(spec const &t) {return sub(t);}
    };
    /* }}} */
 
