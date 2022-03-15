@@ -1884,6 +1884,7 @@ a__time_spec(void){
    if(time::spec::sec_nanos != 1000l * 1000 * 1000) a_ERR();
 
    time::spec ts;
+   // add/sub tested at the end
 
    if(!ts.current().is_valid())
       a_ERR();
@@ -1970,6 +1971,31 @@ a__time_spec(void){
    if(ts2 <= ts) a_ERR();
    if(!(ts2 >= ts)) a_ERR();
    if(!(ts2 > ts)) a_ERR();
+
+   /* add/sub */
+   ts.sec(30).nano(ts.sec_nanos - 10);
+   if(!ts.is_valid()) a_ERR();
+   if(ts.sec() != 30) a_ERR();
+   if(ts.nano() != ts.sec_nanos - 10) a_ERR();
+
+   if(!(ts2 = ts).is_valid()) a_ERR();
+   if(ts2.sec() != 30) a_ERR();
+   if(ts2.nano() != ts2.sec_nanos - 10) a_ERR();
+
+   if(!ts2.add(ts2).is_valid()) a_ERR();
+   if(ts2.sec() != 61) a_ERR();
+   if(ts2.nano() != ts2.sec_nanos - 20) a_ERR();
+
+   if(!(ts2 = ts).sub(ts2).is_valid()) a_ERR();
+   if(ts2.sec() != 0) a_ERR();
+   if(ts2.nano() != 0) a_ERR();
+
+   ts2 = ts;
+   ts.sec(ts.sec() + 1);
+   ts2.nano(ts2.nano() + 11);
+   if(!ts.sub(ts2).is_valid()) a_ERR();
+   if(ts.sec() != 0) a_ERR();
+   if(ts.nano() != ts.sec_nanos - 11) a_ERR();
 }
 // }}}
 
