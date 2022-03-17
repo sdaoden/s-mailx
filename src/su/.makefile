@@ -1,11 +1,15 @@
 #@ .makefile, solely for creating the C++ .main.cxx test program
-#@ With CC=tcc, AR=tcc ARFLAGS=-ar!
+#@ - Does not work with smake(1).
 
 su_USECASE_MX_DISABLED =
 
 awk?=awk
 getconf?=getconf
 rm?=rm
+CC?=cc
+CXX?=c++
+# BSD make uses rl!
+ARFLAGS=rv
 
 SUFDEVEL=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
 SUF=$(SUFDEVEL) \
@@ -60,33 +64,33 @@ PROGSRC = .main.cxx
 
 ## 8< >8
 
-.SUFFIXES: .o .c .cxx .y
-.cxx.o:
-	$(CXX) -I../../src -I../../include $(CXXFLAGS) -o $(@) -c $(<)
-.c.o:
-	$(CC) -I../../src -I../../include $(CFLAGS) -o $(@) -c $(<)
-.cxx .c .y: ;
-
 CONFIG = ../../include/su/gen-config.h
 COBJ = $(CSRC:.c=.o)
 CXXOBJ = $(CXXSRC:.cxx=.o)
 PROGOBJ = $(PROGSRC:.cxx=.o)
 OBJ = $(COBJ) $(CXXOBJ) $(PROGOBJ)
 
+.SUFFIXES: .o .c .cxx .y # .y for smake
+.cxx.o:
+	$(CXX) -I../../src -I../../include $(CXXFLAGS) -o $(@) -c $(<)
+.c.o:
+	$(CC) -I../../src -I../../include $(CFLAGS) -o $(@) -c $(<)
+.cxx .c .y: ;
+
 all: .main
 clean:
 	$(rm) -f $(CONFIG) .main .tmp*  .clib.a .cxxlib.a $(OBJ)
 
-$(COBJ): $(CSRC) $(CONFIG)
+$(COBJ): $(CONFIG) $(CSRC)
 .clib.a: $(COBJ)
 	$(AR) $(ARFLAGS) $(@) $(COBJ)
 
 $(CXXOBJ): $(CXXSRC)
-.cxxlib.a: $(CXXOBJ) .clib.a
+.cxxlib.a: $(CXXOBJ)
 	$(AR) $(ARFLAGS) $(@) $(CXXOBJ)
 
-$(PROGOBJ): $(PROGSRC) #.clib.a .cxxlib.a
-.main: $(PROGOBJ) .clib.a .cxxlib.a
+$(PROGOBJ): $(PROGSRC)
+.main: .clib.a .cxxlib.a $(PROGOBJ)
 	$(CXX) $(LDFLAGS) -o $(@) $(PROGOBJ) .cxxlib.a .clib.a
 
 $(CONFIG):
