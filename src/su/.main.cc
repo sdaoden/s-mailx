@@ -98,7 +98,69 @@ a__cs_dict(u32 addflags){
       k[2] = "k3";
 
       a__cs_dict_case(&cd, k);
+
+      if(cd.is_empty())
+         a_ERR();
+
+      cs_dict<char const*> cd2(cd);
+      if(cd2.count() != cd.count())
+         a_ERR();
+      for(cs_dict<char const*>::view cdv(cd2); cdv; ++cdv)
+         if(!cd.has_key(cdv.key()))
+            a_ERR();
+         else if(cdv.data() != cd.lookup(cdv.key()))
+            a_ERR();
+
+      cd2 = cd;
+      if(cd2.count() != cd.count())
+         a_ERR();
+      for(cs_dict<char const*>::view cdv(cd2); cdv; ++cdv)
+         if(!cd.has_key(cdv.key()))
+            a_ERR();
+         else if(cdv.data() != cd.lookup(cdv.key()))
+            a_ERR();
    }
+   {
+      cs_dict<char const*,TRU1> cd(auto_type_toolbox<char const*
+         >::get_instance(), addflags);
+
+      cs_dict<char const*,TRU1>::view cdv(cd);
+      if(cdv.reset_insert("K1", "V1"))
+         a_ERR();
+      else if(cdv.reset_insert("K2", "V2"))
+         a_ERR();
+      else if(cdv.reset_insert("K3", "V3"))
+         a_ERR();
+      else{
+         if(cd.is_empty())
+            a_ERR();
+
+         cs_dict<char const*,TRU1> cd2(cd);
+         if(cd2.count() != cd.count())
+            a_ERR();
+         for(cs_dict<char const*,TRU1>::view cdv(cd2); cdv; ++cdv)
+            if(!cd.has_key(cdv.key()))
+               a_ERR();
+            else if(cs::cmp(cdv.data(), cd.lookup(cdv.key())))
+               a_ERR();
+            else if(cdv.data() == cd.lookup(cdv.key()))
+               a_ERR();
+
+         cd2 = cd;
+         if(cd2.count() != cd.count())
+            a_ERR();
+         for(cs_dict<char const*,TRU1>::view cdv(cd2); cdv; ++cdv)
+            if(!cd.has_key(cdv.key()))
+               a_ERR();
+            else if(cs::cmp(cdv.data(), cd.lookup(cdv.key())))
+               a_ERR();
+            else if(cdv.data() == cd.lookup(cdv.key()))
+               a_ERR();
+      }
+   }
+
+   // Now for the real thing
+
    {
       cs_dict<char const*> cd(NIL, cd.f_case | addflags);
       char const *k[3];
