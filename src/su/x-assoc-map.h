@@ -116,8 +116,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
    if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
       s = self->a_T_F(size);
 
-      if(xcount >= (s << self->a_T_F(tshift)) ||
-            (xcount < (s >>= 1) &&
+      if(xcount > (s << self->a_T_F(tshift)) || (xcount < (s >>= 1) &&
              (self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK))))
          rv = a_FUN(resize)(self, xcount);
    }else
