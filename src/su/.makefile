@@ -8,20 +8,47 @@ getconf?=getconf
 rm?=rm
 CC?=cc
 CXX?=c++
-# BSD make uses rl!
+# Elder BSD make use rl!
 ARFLAGS=rv
 
-SUFDEVEL=-Dsu_HAVE_DEVEL -Dsu_HAVE_DEBUG
+SUFLVLC=#-std=c89
+SUFLVLCXX=#-std=c++2b
+SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL #-Dsu_NYD_ENABLE
+SUFOPT=-O1 -g
+#SUFOPT=-O2
+
+# standalone: -Dsu_RANDOM_SEED=su_RANDOM_SEED_URANDOM
 SUF=$(SUFDEVEL) \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
 	-Dsu_HAVE_PATHCONF \
-	-Dsu_HAVE_UTIMENSAT
-SUFW=-W -Wall -pedantic \
-	-Wno-uninitialized -Wno-unused-result -Wno-unused-value
+	-Dsu_HAVE_UTIMENSAT \
 
-CXXFLAGS+=$(SUF) $(SUFW)
-CFLAGS+=$(SUF) $(SUFW) -D_GNU_SOURCE
+SUFWW=-Weverything \
+	-Wno-atomic-implicit-seq-cst \
+	-Wno-c++98-compat \
+	-Wno-documentation-unknown-command \
+	-Wno-duplicate-enum \
+	-Wno-reserved-identifier \
+	-Wno-reserved-macro-identifier \
+	-Wno-unused-macros \
+
+SUFW=-W -Wall -pedantic \
+	-Wno-uninitialized -Wno-unused-result -Wno-unused-value \
+	-fno-common \
+	-fstrict-aliasing -fstrict-overflow \
+
+SUFS=-fPIE \
+	-fstack-protector-strong \
+	-D_FORTIFY_SOURCE=2 \
+	#-fsanitize=address \
+
+CFLAGS+=$(SUFLVLC) $(SUF) $(SUFW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
+CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFW) $(SUFS) $(SUFOPT)
+
+LDFLAGS+=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
+	-Wl,--enable-new-dtags \
+	-fpie
 
 CSRC = atomic.c \
 		avopt.c \
@@ -91,7 +118,7 @@ $(CXXOBJ): $(CXXSRC)
 
 $(PROGOBJ): $(PROGSRC)
 .main: .clib.a .cxxlib.a $(PROGOBJ)
-	$(CXX) $(LDFLAGS) -o $(@) $(PROGOBJ) .cxxlib.a .clib.a
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(@) $(PROGOBJ) .cxxlib.a .clib.a
 
 $(CONFIG):
 	CC="$(CC)" SRCDIR=`dirname \`pwd\``/ TARGET="$(@)" awk="$(awk)" \
