@@ -1046,35 +1046,48 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
    while (p < upper) {
       op = p;
-      if (*p == '=' && *(p + 1) == '?') {
+      if(*p == '=' && p[1] == '?'){
          p += 2;
 #ifdef mx_HAVE_ICONV
          cbeg = p;
 #endif
-         while (p < upper && *p != '?')
+         while(p < upper && *p != '?')
             ++p;  /* strip charset */
-         if (p >= upper)
+         /* ?[bq]?..?= */
+         if(&p[4] >= upper)
             goto jnotmime;
          ++p;
+
 #ifdef mx_HAVE_ICONV
-         if (flags & TD_ICONV) {
-            uz i = P2UZ(p - cbeg);
-            char *ltag, *cs = n_lofi_alloc(i);
+         if(flags & TD_ICONV){
+            uz i;
 
-            su_mem_copy(cs, cbeg, --i);
-            cs[i] = '\0';
-            /* RFC 2231 extends the RFC 2047 character set definition in
-             * encoded words by language tags - silently strip those off */
-            if ((ltag = su_cs_find_c(cs, '*')) != NULL)
-               *ltag = '\0';
-
-            if (fhicd != (iconv_t)-1)
+            if(fhicd != R(iconv_t,-1))
                n_iconv_close(fhicd);
-            fhicd = su_cs_cmp_case(cs, tcs)
-                  ? n_iconv_open(tcs, cs) : (iconv_t)-1;
-            n_lofi_free(cs);
+
+            i = P2UZ(p - cbeg) - 1;
+
+            if(i > 0){
+               char *cs, *ltag;
+
+               cs = n_lofi_alloc(i +1);
+
+               su_mem_copy(cs, cbeg, i);
+               cs[i] = '\0';
+
+               /* RFC 2231 extends the RFC 2047 character set definition in
+                * encoded words by language tags - silently strip those off */
+               if((ltag = su_cs_find_c(cs, '*')) != NIL)
+                  *ltag = '\0';
+
+               fhicd = su_cs_cmp_case(cs, tcs)
+                     ? n_iconv_open(tcs, cs) : R(iconv_t,-1);
+
+               n_lofi_free(cs);
+            }
          }
 #endif
+
          switch (*p) {
          case 'B': case 'b':
             convert = CONV_FROMB64;
@@ -1087,6 +1100,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          }
          if (*++p != '?')
             goto jnotmime;
+
          cin.s = ++p;
          cin.l = 1;
          for (;;) {
@@ -1097,7 +1111,12 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             ++cin.l;
          }
          ++p;
-         --cin.l;
+         /* Shortcut on empty POI; _ensure_ buffer */
+         if(--cin.l == 0){
+            out = n_str_add_buf(out, n_qm, 1);
+            lastenc = lastoutl = --out->l;
+            continue;
+         }
 
          cout.s = NULL;
          cout.l = 0;
@@ -1121,7 +1140,6 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
                   /* FALLTHRU */
                default:
                   break;
-
                }
 
             if(any){
@@ -1177,6 +1195,8 @@ jnotmime: {
          lastoutl = out->l;
       }
    }
+
+   ASSERT(out->s != NIL);
    out->s[out->l] = '\0';
 
    if (flags & TD_ISPR) {
