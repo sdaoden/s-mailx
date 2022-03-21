@@ -1062,8 +1062,10 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          if(flags & TD_ICONV){
             uz i;
 
-            if(fhicd != R(iconv_t,-1))
+            if(fhicd != R(iconv_t,-1)){
                n_iconv_close(fhicd);
+               fhicd = R(iconv_t,-1);
+            }
 
             i = P2UZ(p - cbeg) - 1;
 
