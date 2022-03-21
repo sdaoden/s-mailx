@@ -5993,6 +5993,27 @@ _EOT
       t_echoskip '8:[!ICONV]'
    fi
 
+   # TODO This test is false: mx_mime_display_from_header() rewrite!!!
+   ${cat} > ./t9-in <<'_EOT'
+From zaza@exam.ple  Mon Mar 21 20:49:17 2022
+Date: Mon, 21 Mar 2022 20:49:17 +0100
+From: za=?us-ascii?Q?=?=za <zaza@exam.ple>,
+ za=??Q?=?=za <zaz2a@exam.ple>,
+ za=???=?=za <zaz3a@exam.ple>,
+ za=?us-ascii??=?=za <zaz4a@exam.ple>,
+To: x <a@b.ple>
+Subject: c
+Message-ID: <a@1>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+
+_EOT
+   echo type | ${MAILX} ${ARGS} \
+      -Rf ./t9-in > ./t9 2>>${ERR}
+   check 9 0 ./t9 '1718457763 424'
+
    t_epilog "${@}"
 } # }}}
 
