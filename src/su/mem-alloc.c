@@ -746,7 +746,7 @@ su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
 
    if((rmco & su_MEM_CONF_LINGER_FREE_RELEASE) ||
          (!val && (rmco & su_MEM_CONF_LINGER_FREE))){
-      rmco &= ~su_MEM_CONF_LINGER_FREE_RELEASE;
+      rmco &= ~S(uz,su_MEM_CONF_LINGER_FREE_RELEASE);
 #ifdef su_MEM_ALLOC_DEBUG
       su_mem_check();
       a_mema_release_free();

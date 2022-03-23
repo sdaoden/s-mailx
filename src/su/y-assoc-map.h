@@ -244,7 +244,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap,
       a_TK *nckey;
 
       for(nckey = np->a_N_F(key); *nckey != '\0'; ++nckey)
-         *nckey = su_cs_to_lower(*nckey);
+         *nckey = S(a_TK,su_cs_to_lower(*nckey));
    }
 # else
 #  error
@@ -423,7 +423,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
    ASSERT(self);
 
    flags = self->a_T_F(flags);
-   viewp = R(struct a_V*,replace_and_view_or_nil & ~TRU1);
+   viewp = R(struct a_V*,replace_and_view_or_nil & ~S(up,TRU1));
 
    /* Ensure this basic precondition */
    if(value == NIL &&

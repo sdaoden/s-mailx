@@ -64,11 +64,11 @@
     (p)[0] = (u8)((v)); \
     (p)[1] = (u8)((v) >> 8); \
     (p)[2] = (u8)((v) >> 16); \
-    (p)[3] = (u8)((v) >> 24);
+    (p)[3] = (u8)((v) >> 24)
 
 #define U64TO8_LE(p, v) \
     U32TO8_LE((p), (u32)((v))); \
-    U32TO8_LE((p) + 4, (u32)((v) >> 32));
+    U32TO8_LE((p) + 4, (u32)((v) >> 32))
 
 #define U8TO64_LE(p) \
     (((u64)((p)[0])) | ((u64)((p)[1]) << 8) | \
@@ -136,17 +136,17 @@ a_md_siphash(const void *in, const uz inlen, const void *k, u8 *out,
 
     switch (left) {
     case 7:
-        b |= ((u64)ni[6]) << 48; /* FALLTHRU */
+        b |= ((u64)ni[6]) << 48; FALLTHRU
     case 6:
-        b |= ((u64)ni[5]) << 40; /* FALLTHRU */
+        b |= ((u64)ni[5]) << 40; FALLTHRU
     case 5:
-        b |= ((u64)ni[4]) << 32; /* FALLTHRU */
+        b |= ((u64)ni[4]) << 32; FALLTHRU
     case 4:
-        b |= ((u64)ni[3]) << 24; /* FALLTHRU */
+        b |= ((u64)ni[3]) << 24; FALLTHRU
     case 3:
-        b |= ((u64)ni[2]) << 16; /* FALLTHRU */
+        b |= ((u64)ni[2]) << 16; FALLTHRU
     case 2:
-        b |= ((u64)ni[1]) << 8; /* FALLTHRU */
+        b |= ((u64)ni[1]) << 8; FALLTHRU
     case 1:
         b |= ((u64)ni[0]);
         break;
@@ -285,17 +285,17 @@ a_md_siphash_end(struct su_siphash *self, u8 *out){
 
     switch (self->sh_carry_size) {
     case 7:
-        b |= ((u64)self->sh_carry[6]) << 48; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[6]) << 48; FALLTHRU
     case 6:
-        b |= ((u64)self->sh_carry[5]) << 40; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[5]) << 40; FALLTHRU
     case 5:
-        b |= ((u64)self->sh_carry[4]) << 32; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[4]) << 32; FALLTHRU
     case 4:
-        b |= ((u64)self->sh_carry[3]) << 24; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[3]) << 24; FALLTHRU
     case 3:
-        b |= ((u64)self->sh_carry[2]) << 16; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[2]) << 16; FALLTHRU
     case 2:
-        b |= ((u64)self->sh_carry[1]) << 8; /* FALLTHRU */
+        b |= ((u64)self->sh_carry[1]) << 8; FALLTHRU
     case 1:
         b |= ((u64)self->sh_carry[0]);
         break;

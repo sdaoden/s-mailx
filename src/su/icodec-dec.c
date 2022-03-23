@@ -105,7 +105,7 @@ jnumber_sign_rescan:
    switch(*cbuf){
    case '-':
       rv |= su_IDEC_STATE_SEEN_MINUS;
-      /* FALLTHROUGH */
+      FALLTHRU
    case '+':
       if(*++cbuf == '\0' || --clen == 0)
          goto jeinval;
@@ -143,9 +143,9 @@ jnumber_sign_rescan:
                   base = 10;
                else{
                   if(c2 == '#')
-                     clen -= 2, cbuf += 2;
+                     S(void,clen -= 2), cbuf += 2;
                   else
-                     clen -= 3, cbuf += 3;
+                     S(void,clen -= 3), cbuf += 3;
 
                   if(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)
                      goto jnumber_sign_rescan;
@@ -186,7 +186,7 @@ jnumber_sign_rescan:
 jprefix_skip:
 #if 1
                if(clen > 1 && a_icod_atoi[S(u8,cbuf[1])] < base)
-                  --clen, ++cbuf;
+                  S(void,--clen), ++cbuf;
 #else
                if(*++cbuf == '\0' || --clen == 0)
                   goto jeinval;
@@ -291,7 +291,7 @@ jleave:
       break;
    }
    if(rv & su_IDEC_MODE_LIMIT_NOERROR)
-      rv &= ~su_IDEC_STATE_EOVERFLOW;
+      rv &= ~S(u32,su_IDEC_STATE_EOVERFLOW);
 
    if(endptr_or_nil != NIL)
       *endptr_or_nil = cbuf;

@@ -248,7 +248,7 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
    s32 rv;
    NYD2_IN;
 
-   switch(S(uz,(self->rm_type = type))){
+   switch(S(uz,(self->rm_type = S(u8,type)))){
    case su_RANDOM_TYPE_VSP:{
       union {void *vp; su_random_generate_fun rgf;} u;
 
@@ -260,8 +260,9 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
          break;
       }
       }
-      /* FALLTHRU */
-   case su_RANDOM_TYPE_SP: /* FALLTHRU */
+      FALLTHRU
+   case su_RANDOM_TYPE_SP:
+      FALLTHRU
    case su_RANDOM_TYPE_P:
       if((self->rm_vp = su_TCALLOCF(union a_random_dat, 1,
                (estate | su_MEM_ALLOC_CONCEAL))) != NIL)
@@ -271,7 +272,8 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
          rv = su_STATE_ERR_NOMEM;
       }
       break;
-   default: /* FALLTHRU */
+   default:
+      FALLTHRU
    case su_RANDOM_TYPE_NONE:
       rv = su_STATE_NONE;
       break;
@@ -349,12 +351,13 @@ su_random_gut(struct su_random *self){
          }
          break;
       }
-      /* FALLTHRU */
-   case su_RANDOM_TYPE_SP: /* FALLTHRU */
+      FALLTHRU
+   case su_RANDOM_TYPE_SP:
+      FALLTHRU
    case su_RANDOM_TYPE_P:
       su_FREE(self->rm_vp);
       break;
-   case su_RANDOM_TYPE_NONE: /* FALLTHRU */
+   case su_RANDOM_TYPE_NONE:
       break;
    }
 
@@ -393,7 +396,7 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
    /* Init sequence type 1 upon first seeding */
    if(!(self->rm_flags & a_RANDOM_IS_SEEDED))
       for(u.i = NELEM(rdp->b8); u.i-- != 0;)
-         rdp->b8[u.i] = NELEM(rdp->b8) - 1 - u.i;
+         rdp->b8[u.i] = S(u8,NELEM(rdp->b8) - 1 - u.i);
    bp = &buf[0];
 #else
    bp = &rdp->b8[0];
