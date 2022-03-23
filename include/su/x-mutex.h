@@ -36,7 +36,7 @@ su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
    DVLDBG(
       if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
          goto jleave;
-      self->mtx_.line = line;
+      self->mtx_.line = S(u16,MIN(U16_MAX, line));
       self->mtx_.file = file;
    )
 
@@ -57,7 +57,7 @@ su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
    DVLDBG(
       if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
          goto jleave;
-      self->mtx_.line = line;
+      self->mtx_.line = S(u16,MIN(U16_MAX, line));
       self->mtx_.file = file;
    )
 
@@ -78,7 +78,7 @@ su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
    DVLDBG(
       if(!su__mutex_check(self, su__MUTEX_UNLOCK, NIL, file, line))
          goto jleave;
-      self->mtx_.line = line;
+      self->mtx_.line = S(u16,MIN(U16_MAX, line));
       self->mtx_.file = file;
    )
 

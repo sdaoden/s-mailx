@@ -126,6 +126,7 @@
 #undef NDVLDBG
 #undef DVLDBGOR
 
+#undef FALLTHRU
 #undef FIELD_DISTANCEOF
 #undef FIELD_INITN
 #undef FIN

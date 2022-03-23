@@ -350,8 +350,8 @@
 # define su_VIR
 # define su_OVR
    /* This is for the declarator only */
-# if __cplusplus +0 < 201103l || 1 /* XXX override ?? */
-#  define su_OVRX
+# if __cplusplus +0 < 201103l || 1/* XXX override ?? */
+#  define su_OVRX virtual
 # else
 #  define su_OVRX override
 # endif
@@ -416,8 +416,8 @@
 # define su__LCTA_2(T,F,L) \
 do{\
    typedef char ASSERT_failed_file_ ## F ## _line_ ## L[(T) ? 1 : -1];\
-   ASSERT_failed_file_ ## F ## _line_ ## L __i_am_unused__;\
-   su_UNUSED(__i_am_unused__);\
+   ASSERT_failed_file_ ## F ## _line_ ## L su____i_am_unused__;\
+   su_UNUSED(su____i_am_unused__);\
 }while(0)
 #endif
 
@@ -470,6 +470,10 @@ do{\
 #  else
 #   error Unsupported __BYTE_ORDER__
 #  endif
+# endif
+
+# if su_CC_VCHECK_CLANG(13,0) /* XXX not "real" */
+#  define su_CC_FALLTHRU __attribute__((fallthrough));
 # endif
 
 /* __GNUC__ after some other Unix compilers which also define __GNUC__ */
@@ -534,6 +538,12 @@ do{\
 #  endif
 # endif
 
+   /* Dunno; unused due to gcc 11.2.0: a label can only be part of a statement
+    * and a declaration is not a statement */
+# if su_CC_VCHECK_GCC(7,0)
+#  define su_CC_FALLTHRU UNUSED(0); __attribute__ ((fallthrough));
+# endif
+
 #elif !defined su_CC_IGNORE_UNKNOWN
 # error SU: This compiler is not yet supported.
 # error SU: To continue with your CFLAGS etc., define su_CC_IGNORE_UNKNOWN.
@@ -555,6 +565,10 @@ do{\
 # define su_CC_EXTEN /*!< The \c{__extension__} keyword or equivalent. */
 #endif
 
+#ifndef su_CC_FALLTHRU
+# define su_CC_FALLTHRU /* FALLTHRU */
+#endif
+
 #ifndef su_CC_PACKED
    /*! Structure packing. */
 # define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
@@ -563,11 +577,11 @@ do{\
 #if !defined su_CC_MEM_ZERO || defined su_HAVE_DEVEL
 # undef su_CC_MEM_ZERO
 # define su_CC_MEM_ZERO(X,Y) do{\
-   su_uz __su__l__ = Y;\
-   void *__su__op__ = X;\
-   su_u8 *__su__bp__ = su_S(su_u8*,__su__op__);\
-   while(__su__l__-- > 0)\
-      *__su__bp__++ = 0;\
+   su_uz su____l__ = Y;\
+   void *su____op__ = X;\
+   su_u8 *su____bp__ = su_S(su_u8*,su____op__);\
+   while(su____l__-- > 0)\
+      *su____bp__++ = 0;\
 }while(0)
 #endif
 
@@ -892,6 +906,9 @@ do{\
 
 /*! To avoid files that are overall empty */
 #define su_EMPTY_FILE() typedef int su_CONCAT(su_notempty_shall_b_, su_FILE);
+
+/*! Switch label fall through */
+#define su_FALLTHRU su_CC_FALLTHRU
 
 /*! Distance in between the fields \a{S}tart and \a{E}nd of type \a{T}. */
 #define su_FIELD_DISTANCEOF(T,S,E) \
@@ -2131,7 +2148,7 @@ public:
 
    /*! \copydoc{su_log_flags} */
    enum flags{
-      f_core = su_LOG_F_CORE, /*!< \copydoc{su_LOG_F_CORE} */
+      f_core = su_LOG_F_CORE /*!< \copydoc{su_LOG_F_CORE} */
    };
 
    /*! See \r{su_log_write_fun()}. */
@@ -2303,7 +2320,7 @@ public:
    }
 
    /*! \copydoc{su_state_get()} */
-   static boole get(void) {return su_state_get();}
+   static u32 get(void) {return su_state_get();}
 
    /*! \copydoc{su_state_has()} */
    static boole has(uz state) {return su_state_has(state);}

@@ -256,42 +256,48 @@ EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
    su_ienc(CBP, su_S(su_u8,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s8(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s8,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, S(su_u64,su_S(su_s64,su_S(su_s8,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u16(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u16,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s16(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s16,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s16,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u32(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u32,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s32(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s32,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s32,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_u64(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_u64,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_s64(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_s64,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_s64,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_uz(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_uz,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_sz(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_sz,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_sz,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 
 /*! \_ */
 #define su_ienc_up(CBP,VAL,B) \
    su_ienc(CBP, su_S(su_up,VAL), B, su_IENC_MODE_NONE)
 /*! \_ */
 #define su_ienc_sp(CBP,VAL,B) \
-   su_ienc(CBP, su_S(su_sp,VAL), B, su_IENC_MODE_SIGNED_TYPE)
+   su_ienc(CBP, su_S(su_u64,su_S(su_s64,su_S(su_sp,VAL))), B,\
+      su_IENC_MODE_SIGNED_TYPE)
 /*! @} *//* }}} */
 
 /*! @} *//* }}} */
