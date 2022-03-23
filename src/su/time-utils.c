@@ -50,15 +50,15 @@ su_time_epoch_to_gregor(s64 epsec, u32 *yp, u32 *mp, u32 *dp,
    ASSERT_NYD_EXEC(dp != NIL, rv = FAL0);
 
    if(epsec >= 0 && epsec <= su_TIME_EPOCH_MAX){
-      sec = epsec % su_TIME_MIN_SECS;
+      sec = S(u32,epsec % su_TIME_MIN_SECS);
             epsec /= su_TIME_MIN_SECS;
-      min = epsec % su_TIME_HOUR_MINS;
+      min = S(u32,epsec % su_TIME_HOUR_MINS);
             epsec /= su_TIME_HOUR_MINS;
-      hour = epsec % su_TIME_DAY_HOURS;
+      hour = S(u32,epsec % su_TIME_DAY_HOURS);
             epsec /= su_TIME_DAY_HOURS;
 
       epsec += su_TIME_JDN_EPOCH;
-      su_time_jdn_to_gregor(epsec, &y, &m, &d);
+      su_time_jdn_to_gregor(S(uz,epsec), &y, &m, &d);
       rv = TRU1;
    }else{
       rv = FAL0;

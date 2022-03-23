@@ -135,7 +135,7 @@ INLINE uz su_bits_find_first_set(uz x){
    if(x != 0)
       do if(x & 1)
          return i;
-      while((++i, x >>= 1));
+      while((S(void,++i), x >>= 1));
    return UZ_MAX;
 }
 

@@ -76,12 +76,12 @@ struct su_thread{
  * the scope is left via \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
 #define su_THREAD_ERR_NO_SCOPE_IN() \
 do{\
-   struct su_thread *__su__thread_self__ = su_thread_self();\
-   s32 __su__thread_self__err_no__ = __su__thread_self__->t_.err_no /**/
+   struct su_thread *su____thread_self__ = su_thread_self();\
+   s32 su____thread_self__err_no__ = su____thread_self__->t_.err_no /**/
 
 /*! Counterpart to \r{su_THREAD_ERR_NO_SCOPE_OU()}. */
 #define su_THREAD_ERR_NO_SCOPE_OU() \
-   __su__thread_self__->t_.err_no = __su__thread_self__err_no__;\
+   su____thread_self__->t_.err_no = su____thread_self__err_no__;\
 }while(0)
 
 EXPORT_DATA struct su_thread su__thread_main;

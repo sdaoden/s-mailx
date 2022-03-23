@@ -203,6 +203,7 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp,
       mdlp->mdl_cxx_it = cxx_it;
       a_md_list = mdlp;
       su_MUTEX_UNLOCK(a_md_lock);
+      rv = su_STATE_NONE;
    }
 
    NYD_OU;
@@ -280,6 +281,8 @@ su_md_new_by_name(char const *name, u32 estate){
    NYD_IN;
 
    estate &= su_STATE_ERR_MASK;
+   UNINIT(vtblp, NIL);
+   UNINIT(newptf, NIL);
 
    if(!su_cs_cmp_case(name, "siphash")){
       vtblp = &a_md_siphash;
@@ -307,6 +310,7 @@ jno:
       su_err_set_no(su_ERR_NOTSUP);
       self = NIL;
    }else if((self = su_TALLOCF(struct su_md, 1, estate)) != NIL){
+      ASSERT(newptf != NIL);
       self->md_vtbl = vtblp;
       if((self->md_vp = (*newptf)(estate)) == NIL){
          su_THREAD_ERR_NO_SCOPE_IN();

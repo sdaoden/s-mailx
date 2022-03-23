@@ -112,7 +112,7 @@ su_cs_find_c(char const *cp, char xc){
 
 char *
 su_cs_find_case(char const *cp, char const *xp){
-   char xc, c;
+   s32 xc, c;
    NYD_IN;
    ASSERT_NYD(cp != NIL);
    ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
@@ -190,7 +190,7 @@ su_cs_starts_with_case(char const *cp, char const *xp){
 
    if(LIKELY(*xp != '\0'))
       for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+         s32 xc, c;
 
          if((xc = *xp) == '\0')
             goto jleave;
@@ -214,7 +214,7 @@ su_cs_starts_with_case_n(char const *cp, char const *xp, uz n){
 
    if(LIKELY(n > 0 && *xp != '\0'))
       for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+         s32 xc, c;
 
          if((xc = *xp) == '\0')
             goto jleave;

@@ -227,7 +227,7 @@ public:
    virtual ~md(void) {}
 
    /*! \copydoc{su_md_property()} */
-   virtual up property(prop prop) const = 0;
+   virtual up property(prop prop) const; // Default always (up)-1
 
    /*! \copydoc{su_md_name()} */
    char const *name(void) const {return R(char const*,property(prop_name));}

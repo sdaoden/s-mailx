@@ -25,7 +25,7 @@
 # define su__BOSWAP_X 2
 
 INLINE u16 su__boswap_16(u16 v){
-   return (
+   return S(u16,
       ((v & 0x00FFu) << 8) |
       ((v & 0xFF00u) >> 8)
    );

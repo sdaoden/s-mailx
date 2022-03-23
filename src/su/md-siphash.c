@@ -48,7 +48,7 @@ su_siphash_setup_custom(struct su_siphash *self, void const *key,
       drounds = su__SIPHASH_DEFAULT_DROUNDS;
 
    FIELD_RANGE_ZERO(struct su_siphash,self, sh_carry_size,sh_v3);
-   self->sh_digest = digest_size;
+   self->sh_digest = S(u8,digest_size);
    self->sh_compress_rounds = crounds;
    self->sh_finalize_rounds = drounds;
 

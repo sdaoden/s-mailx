@@ -762,7 +762,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
 jhave_pool:
       mblcp = S(struct su__mem_bag_lofi_chunk*,rv);
       mblcp->mblc_last = R(struct su__mem_bag_lofi_chunk*,
-            R(up,self->mb_lofi_top) | isheap);
+            R(up,self->mb_lofi_top) | S(uz,isheap));
       if(!isheap)
          rv = mblcp->mblc_buf;
       else{

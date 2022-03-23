@@ -43,7 +43,8 @@ su_thread_yield(void){
 # else
    struct su_timespec ts;
 
-   ts.ts_sec = 0, ts.ts_nano = 0;
+   ts.ts_sec = 0;
+   ts.ts_nano = 0;
    su_time_nsleep(&ts, NIL);
 # endif
 }

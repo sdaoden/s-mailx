@@ -231,6 +231,12 @@ md::new_by_name(char const *name, u32 estate){
    return rv;
 }
 
+VIR up
+md::property(prop prop) const{ // (for vtable placement)
+   UNUSED(prop);
+   return S(up,-1);
+}
+
 STA s32
 md::install(char const *name, md *(*ctor)(u32 estate), u32 estate){
    s32 rv;

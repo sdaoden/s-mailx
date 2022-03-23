@@ -200,7 +200,7 @@ INLINE void su_mutex_gut(struct su_mutex *self){
    ASSERT(self);
    DVLDBG( if(su__mutex_check(self, su__MUTEX_GUT, NIL su__MUTEX_ARGS_INJ)) )
       MT( if(self->mtx_.flags & su_MUTEX_INIT) su__mutex_os_gut(self) )
-         {;}
+         do{}while(0);
 }
 
 /*! Turn \SELF into a flat mutex.

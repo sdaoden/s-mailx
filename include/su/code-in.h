@@ -166,6 +166,7 @@
 #define NDVLDBG su_NDVLDBG
 #define DVLDBGOR su_DVLDBGOR
 
+#define FALLTHRU su_FALLTHRU
 #define FIELD_DISTANCEOF su_FIELD_DISTANCEOF
 #define FIELD_INITN su_FIELD_INITN
 #define FIN su_FIELD_INITN
@@ -202,7 +203,7 @@
 #  error TODO NYDPROF not yet implemented.
 # else
 #  define su__NYD_IN \
-   do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN);
+   do{su_nyd_chirp(su_NYD_ACTION_ENTER,__FILE__,__LINE__,su_FUN)
 #  define su__NYD_OU \
    goto NYD_OU_LABEL;NYD_OU_LABEL:\
    su_nyd_chirp(su_NYD_ACTION_LEAVE,__FILE__,__LINE__,su_FUN);}while(0)
