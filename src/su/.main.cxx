@@ -61,7 +61,7 @@ static void a_utf(void);
 int
 main(void){ // {{{
    state::create(state::create_all,
-      "SU@C++", (state::debug | log::debug), state::err_nopass);
+      "SU@C++", (S(u32,state::debug) | S(u32,log::debug)), state::err_nopass);
 
    if(log::get_show_level())
       a_ERR();
@@ -188,9 +188,9 @@ a_atomic(void){
    a_X(32, 0xA8B7C6D5, 0x9AA1B2D3)
    a_X(64, U64_C(0xA8B7C6D5E4F3FEFD), U64_C(0x9AA1B2D3AFFEDEAD))
    a_X(z, su_6432(U64_C(0xA8B7C6D5E4F3FEFD),0xA8B7C6D5),
-      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
+      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3))
    a_X(p, su_6432(U64_C(0xA8B7C6D5E4F3FEFD),0xA8B7C6D5),
-      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3));
+      su_6432(U64_C(0x9AA1B2D3AFFEDEAD), 0x9AA1B2D3))
 
 #undef a_X
 }
@@ -441,7 +441,7 @@ a_boswap(void){
 // }}}
 
 // cs_dict {{{
-static void a__cs_dict(u32 addflags);
+static void a__cs_dict(u16 addflags);
 static void a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]);
 
 static void
@@ -455,7 +455,7 @@ a_cs_dict(void){
 }
 
 static void
-a__cs_dict(u32 addflags){
+a__cs_dict(u16 addflags){
    {
       cs_dict<char const*> cd(NIL, addflags);
       char const *k[3];
@@ -1278,7 +1278,7 @@ class a__md_sade : public md{
 public:
    a__md_sade(void) : m_sh() {}
 
-   OVRX ~a__md_sade(void) {;}
+   OVRX ~a__md_sade(void) {}
 
    OVRX up property(prop prop) const{
       return a__md_prop(NIL, S(su_md_prop,prop));
@@ -1437,8 +1437,8 @@ a__md_test(char const *name, md *mdp, TDAT const *tdat){ // {{{
          key[i] = S(u8,i);
 
       LCTAV(INSZ_MAX <= max::u8);
-      for(u8 i = 0; i < P2UZ(tp - &tdat[0]); ++i)
-         in[i] = i;
+      for(u8 j = 0; j < P2UZ(tp - &tdat[0]); ++j)
+         in[j] = j;
 
       // once
       if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){

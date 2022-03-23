@@ -111,7 +111,7 @@ a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
       *xbuf, *cursor;
    u32 f;
 
-   f = lvl_a_flags & ~su_LOG_PRIMASK;
+   f = lvl_a_flags & ~S(u32,su_LOG_PRIMASK);
    lvl_a_flags &= su_LOG_PRIMASK;
 
    cursor = xbuf = buf;
@@ -228,7 +228,7 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
          nip->ni_fun, sep, cp,
          (nip->ni_chirp_line & su__NYD_ACTION_SHIFT_MASK));
    if(u.i > 0){
-      u.z = u.i;
+      u.z = S(uz,u.i);
       if(u.z >= sizeof(buf) -1){
          buf[sizeof(buf) - 2] = '\n';
          buf[sizeof(buf) - 1] = '\0';
@@ -337,7 +337,7 @@ jleave:
 jerr:
    if(!(estate & su_STATE_ERR_PASS) &&
          ((estate & su_STATE_ERR_NOPASS) ||
-          !(rv & estate) || !(su__state & rv))){
+          !(S(u32,rv) & estate) || !(su__state & S(u32,rv)))){
       abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
    }
    goto jleave;
@@ -412,7 +412,7 @@ su_state_err(enum su_state_err_type err,
    switch(xerr &= su_STATE_ERR_TYPE_MASK){
    default:
       ASSERT(0);
-      /* FALLTHRU */
+      FALLTHRU
    case su_STATE_ERR_NOMEM:
       eno = su_ERR_NOMEM;
       introp = intro_nomem;

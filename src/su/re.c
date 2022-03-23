@@ -148,7 +148,7 @@ su_re_setup_cp(struct su_re *self, char const *expr,
       i = 0;
    }else{
       /* One for [0], one for copying, see a_RE_MATCH_SIZE */
-      i = (self->re_group_count = re.re_nsub) + 1 + 1;
+      i = (self->re_group_count = S(u32,re.re_nsub)) + 1 + 1;
       i *= a_RE_MATCH_SIZE;
    }
 

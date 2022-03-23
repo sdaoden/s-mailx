@@ -48,7 +48,7 @@ su_time_msleep(uz millis, boole ignint){
       struct su_timespec ts, trem;
 
       ts.ts_sec = millis / su_TIMESPEC_SEC_MILLIS;
-      ts.ts_nano = (millis %= su_TIMESPEC_SEC_MILLIS) *
+      ts.ts_nano = S(sz,millis %= su_TIMESPEC_SEC_MILLIS) *
             (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MILLIS);
 
       for(;;){
@@ -65,7 +65,7 @@ su_time_msleep(uz millis, boole ignint){
             continue;
          }
 
-         rv = ((tsp->ts_sec * su_TIMESPEC_SEC_MILLIS) +
+         rv = S(uz,(tsp->ts_sec * su_TIMESPEC_SEC_MILLIS) +
                   (tsp->ts_nano /
                    (su_TIMESPEC_SEC_NANOS / su_TIMESPEC_SEC_MILLIS)));
          break;

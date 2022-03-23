@@ -165,7 +165,7 @@ EXPORT boole su_re_eval_cp(struct su_re *self, char const *input,
 
 /*! \_ */
 INLINE char const *su_re_get_error_doc(enum su_re_errors error){
-   return su__re_error_doc(error);
+   return su__re_error_doc(S(u8,error));
 }
 /*! @} *//* }}} */
 

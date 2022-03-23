@@ -112,7 +112,7 @@ su_cs_hash_strong_case_cbuf(char const *buf, uz len){
       sh = *a_cshashstrong_tp;
       while(len > 0){
          for(cp = b_base;;){
-            *cp++ = su_cs_to_lower(*buf++);
+            *cp++ = S(char,su_cs_to_lower(*buf++));
             if(--len == 0 || cp == &b_base[NELEM(b_base)])
                break;
          }
