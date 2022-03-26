@@ -116,8 +116,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
    if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
       s = self->a_T_F(size);
 
-      if(xcount >= (s << self->a_T_F(tshift)) ||
-            (xcount < (s >>= 1) &&
+      if(xcount > (s << self->a_T_F(tshift)) || (xcount < (s >>= 1) &&
              (self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK))))
          rv = a_FUN(resize)(self, xcount);
    }else
@@ -232,8 +231,7 @@ a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags){
    rv = su_ERR_NONE;
 jerr:
    if(self->a_T_F(count) > 0){
-      if(self->a_T_F(flags) & a_T_PUBNAME(OWNS))
-         self = a_T_PUBSYM(clear_elems)(self);
+      self = a_T_PUBSYM(clear_elems)(self);
       self->a_T_F(count) = 0;
    }
 

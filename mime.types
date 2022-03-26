@@ -33,7 +33,7 @@
 application/pdf  pdf
 ?h application/xhtml+xml  xhtml xht
 ?h text/html  html htm
-application/xml  xml xsl xsd
+application/xml  xml xsd
 
 ? application/x-sh  sh bash
 ? text/x-awk  awk
@@ -97,7 +97,7 @@ application/x-x509-ca-cert  der crt
 application/x-xfig  fig
 application/xml-dtd  dtd
 application/xquery  xq xquery
-application/xslt+xml  xslt
+application/xslt+xml  xsl xslt
 audio/aac  aac
 audio/basic  au snd
 audio/midi  mid midi kar rmi

@@ -31,12 +31,13 @@
 enum a_avopt_flags{
    a_AVOPT_NONE,
    a_AVOPT_DONE = 1u<<0,
-   a_AVOPT_SHORT = 1u<<1,
-   a_AVOPT_LONG = 1u<<2,
-   a_AVOPT_FOLLOWUP = 1u<<3,
-   a_AVOPT_CURR_LONG = 1u<<4,
-   a_AVOPT_ERR_OPT = 1u<<5,
-   a_AVOPT_ERR_ARG = 1u<<6,
+   a_AVOPT_STOP = 1u<<1,
+   a_AVOPT_SHORT = 1u<<2,
+   a_AVOPT_LONG = 1u<<3,
+   a_AVOPT_FOLLOWUP = 1u<<4,
+   a_AVOPT_CURR_LONG = 1u<<5,
+   a_AVOPT_ERR_OPT = 1u<<6,
+   a_AVOPT_ERR_ARG = 1u<<7,
    a_AVOPT_ROUND_MASK = a_AVOPT_CURR_LONG | a_AVOPT_ERR_OPT | a_AVOPT_ERR_ARG
 };
 
@@ -228,7 +229,7 @@ su_avopt_parse(struct su_avopt *self){
     * anything non-NUL follows */
    if(UNLIKELY(*curr == '-')){
       if(!(flags & a_AVOPT_LONG) || *++curr == '\0'){
-         flags |= a_AVOPT_DONE;
+         flags |= a_AVOPT_DONE | a_AVOPT_STOP;
          goto jleave;
       }else{
          /* This is a long option */
@@ -313,6 +314,9 @@ jshort:
 jleave:
    self->avo_curr = curr;
    self->avo_current_opt = rv;
+   self->avo_current_opt =
+         (rv != su_AVOPT_STATE_DONE || !(flags & a_AVOPT_STOP)) ? rv
+            : su_AVOPT_STATE_STOP;
    self->avo_flags = flags;
    NYD_OU;
    return rv;

@@ -281,7 +281,9 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
             ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
-         i=`</dev/null LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+         # C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
+         # so here political friction for some decades, too
+         i=`</dev/null LC_ALL=de_DE.utf8 ${RAWMAILX} ${ARGS} -X '
             \define cset_test {
                \if "${ttycharset}" =%?case utf
                   \echo $LC_ALL
@@ -294,10 +296,13 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
                \end
                \xit 1
             }
-            \# POSIX last (faulty localedef(1) result of GNU C lib 2.3[24])
-            \call cset_test C.UTF-8 \
-               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8 \
-               POSIX.utf8 POSIX.UTF-8
+            \call cset_test \
+               de_DE.UTF-8 \
+               zh_CN.utf8 zh_CN.UTF-8 \
+               ru_RU.utf8 ru_RU.UTF-8 \
+               en_GB.utf8 en_GB.UTF-8 en_US.utf8 en_US.UTF-8 \
+               POSIX.utf8 POSIX.UTF-8 \
+               C.utf8 C.UTF-8
          '`
          [ $? -eq 0 ] && UTF8_LOCALE=$i
       fi

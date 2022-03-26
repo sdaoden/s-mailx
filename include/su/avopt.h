@@ -24,9 +24,10 @@ C_DECL_BEGIN
 struct su_avopt;
 enum su_avopt_state{
    su_AVOPT_STATE_DONE = '\0',
-   su_AVOPT_STATE_LONG = '\001',
-   su_AVOPT_STATE_ERR_ARG = '\002',
-   su_AVOPT_STATE_ERR_OPT = '\003'
+   su_AVOPT_STATE_STOP = '\001',
+   su_AVOPT_STATE_LONG = '\002',
+   su_AVOPT_STATE_ERR_ARG = '\003',
+   su_AVOPT_STATE_ERR_OPT = '\004'
 };
 struct su_avopt{
    char const *avo_current_arg;

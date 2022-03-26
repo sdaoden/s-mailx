@@ -225,7 +225,7 @@ jeuse:
 
    /* This helper is only executed when really needed, it thus doesn't make
     * sense to try to continue with initial privileges */
-   if(setuid(geteuid()))
+   if(setuid(geteuid()) || setgid(getegid()))
       goto jmsg;
 
    fdls = a_file_lock_dotlock_create(&fdi);

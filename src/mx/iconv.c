@@ -121,8 +121,12 @@ n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
    NYD_IN;
 
-   tocode = n_iconv_normalize_name(tocode);
-   fromcode = n_iconv_normalize_name(fromcode);
+   if((tocode = n_iconv_normalize_name(tocode)) == NIL ||
+         (fromcode = n_iconv_normalize_name(fromcode)) == NIL){
+      su_err_set_no(su_ERR_INVAL);
+      id = R(iconv_t,-1);
+      goto jleave;
+   }
 
    id = iconv_open(tocode, fromcode);
 
@@ -133,6 +137,8 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * names */
    if (id == (iconv_t)-1 && !su_cs_cmp_case(tocode, fromcode))
       su_err_set_no(su_ERR_NONE);
+
+jleave:
    NYD_OU;
    return id;
 }

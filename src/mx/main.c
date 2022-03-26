@@ -145,6 +145,10 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
+   /* Change to reproducible mode asap */
+   if(ok_vlook(SOURCE_DATE_EPOCH) != NIL)
+      su_state_set(su_STATE_REPRODUCIBLE);
+
    /* TODO This is wrong: interactive is STDIN/STDERR for a POSIX sh(1).
     * TODO For now we get this wrong, all over the place, as this software
     * TODO has always been developed with stdout as an output channel.
@@ -281,7 +285,6 @@ a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
 
 static void
 a_main_setup_vars(void){
-   char const *cp;
    NYD2_IN;
 
    /*
@@ -296,15 +299,13 @@ a_main_setup_vars(void){
 
    /* Are we in a reproducible-builds.org environment?
     * That special mode bends some settings (again) */
-   if(ok_vlook(SOURCE_DATE_EPOCH) != NIL){
-      su_state_set(su_STATE_REPRODUCIBLE);
+   if(su_state_has(su_STATE_REPRODUCIBLE)){
       su_program = su_reproducible_build;
       n_pstate |= n_PS_ROOT;
       ok_vset(LOGNAME, su_reproducible_build);
       /* Do not care about USER at all in this special mode! */
       n_pstate &= ~n_PS_ROOT;
-      cp = savecat(su_reproducible_build, ": ");
-      ok_vset(log_prefix, cp);
+      ok_vset(log_prefix, savecat(su_reproducible_build, ": "));
    }
 
    /* Finally set our terminal dimension */
@@ -655,18 +656,22 @@ a_main_usage(FILE *fp){
 static boole
 a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt,
       char const *doc){
-   char const *x1, *x2;
+   char const *x1, *x2, *x3;
    NYD2_IN;
    UNUSED(doc);
 
+   /* I18N: separating command line options: opening for short option */
+   x2 = (sopt[0] != '\0') ? _(", ") : sopt;
+
    if(has_arg)
       /* I18N: describing arguments to command line options */
-      x1 = (sopt[0] != '\0' ? _(" ARG, ") : sopt), x2 = _("=ARG");
+      x1 = _("=ARG"), x3 = (x2 != sopt) ? _(" ARG") : sopt;
    else
-      /* I18N: separating command line options */
-      x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
-   /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
-   fprintf(S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, V_(doc));
+      x1 = x3 = su_empty;
+
+   /* I18N: long option[=ARG][ short option [ARG]]: doc */
+   fprintf(S(FILE*,cookie), _("%s%s%s%s%s: %s\n"),
+      lopt, x1, x2, sopt, x3, V_(doc));
 
    NYD2_OU;
    return TRU1;
@@ -696,37 +701,37 @@ main(int argc, char *argv[]){
    static char const a_sopts[] =
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
-      "resource-files:;:;" N_("control loading of resource files"),
       "account:;A;" N_("execute an `account' command"),
          "attach:;a;" N_("attach a file to message to be sent"),
-      "bcc:;b;" N_("add blind carbon copy recipient"),
-      "custom-header:;C;" N_("create custom header (\"header-field: body\")"),
-         "cc:;c;" N_("add carbon copy recipient"),
-      "disconnected;D;" N_("identical to -Sdisconnected"),
-         "debug;d;" N_("identical to -Sdebug"),
-      "discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
+      "batch-mode;#;" N_("more confined non-interactive setup"),
+         "bcc:;b;" N_("add blind carbon copy recipient"),
+      "cc:;c;" N_("add carbon copy recipient"),
          "check-and-exit;e;" N_("note mail presence (of -L) via exit status"),
+         "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
+         "custom-header:;C;" N_("add custom header (\"header-field: body\")"),
+      "debug;d;" N_("identical to -Sdebug"),
+         "discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
+         "disconnected;D;" N_("identical to -Sdisconnected"),
+      "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
+         "end-options;.;" N_("force end of options, and (enter) send mode"),
       "file;f;" N_("open secondary mailbox, or \"file\" last on command line"),
+         "from-address:;r;" N_("set source address used by MTAs (and -Sfrom)"),
       "header-summary;H;" N_("is to be displayed (for given file) only"),
          "help;h;" N_("short help"),
-      "search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+      "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
+      "long-help;\201;" N_("this listing"),
       "no-header-summary;N;" N_("identical to -Snoheader"),
       "quote-file:;q;" N_("initialize body of message to be sent with a file"),
       "read-only;R;" N_("any mailbox file will be opened read-only"),
-         "from-address:;r;" N_("set source address used by MTAs (and -Sfrom)"),
-      "set:;S;" N_("set one of the INTERNAL VARIABLES (unset via \"noARG\")"),
+         "resource-files:;:;" N_("control loading of resource files"),
+      "search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+         "set:;S;" N_("set a variable (unset via \"noARG\")"),
+         "startup-cmd:;X;" N_("to be executed before normal operation"),
          "subject:;s;" N_("specify subject of message to be sent"),
       "target:;T;" N_("add receiver(s) \"header-field: address\" as via -t"),
-      "template;t;" N_("message to be sent is read from standard input"),
-      "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
-      "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
-         "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
-      "startup-cmd:;X;" N_("to be executed before normal operation"),
-      "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
-      "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
-      "batch-mode;#;" N_("more confined non-interactive setup"),
-      "end-options;.;" N_("force the end of options, and (enter) send mode"),
-      "long-help;\201;" N_("this listing"),
+         "template;t;" N_("message to be sent is read from standard input"),
+      "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
+         "version;V;" N_("print version (more with \"[-v] -Xversion -Xx\")"),
       NIL
    };
 
@@ -746,14 +751,17 @@ main(int argc, char *argv[]){
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
     */
 
-   su_program = argv[0];
+   su_program = (argc != 0) ? argv[0] : su_empty;
    a_main_startup();
 
    /* Command line parsing.
     * XXX We could parse silently to grasp the actual mode (send, receive
     * XXX with/out -f, then use an according option array.  This would ease
     * XXX the interdependency checking necessities! */
-   su_avopt_setup(&avo, --argc, C(char const*const*,++argv), a_sopts, a_lopts);
+   su_avopt_setup(&avo,
+      (argc != 0 ? --argc : argc), C(char const*const*,++argv),
+      a_sopts, a_lopts);
+
    while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
       switch(i){
       case 'A':
@@ -1035,9 +1043,8 @@ jgetopt_done:
     * those options until after the resource files are loaded... */
    argc = avo.avo_argc;
    argv = C(char**,avo.avo_argv);
-   if((cp = argv[i = 0]) == NIL)
-      ;
-   else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
+   if((cp = argv[i = 0]) == NIL || avo.avo_current_opt == su_AVOPT_STATE_STOP){
+   }else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
    /* n_PO_BATCH_FLAG sets to /dev/null, but -f can still be used and sets & */
    else if(n_poption & n_PO_f_FLAG){
@@ -1186,8 +1193,9 @@ jgetopt_done:
          n_err(_("Unknown *expandargv* value: %s\n"), cp);
 
       if((cp = argv[i]) != NIL){
-         if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
-                  !(n_psonce & n_PSO_INTERACTIVE)))){
+         /* _TILDE_ is implied by _BATCH_ */
+         if(isfail || (isrestrict && !((n_poption & n_PO_TILDE_FLAG) ||
+                  (n_psonce & n_PSO_INTERACTIVE)))){
 je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
