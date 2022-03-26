@@ -33,7 +33,7 @@ NOTES, ChangeLog (packager-affine)
 ChangeLog
 ^^^^^^^^^
 
-- Fix *expandargv*#?=restrict (broken since v14.9.0).
+- Fix *expandargv*#419=restrict (broken since v14.9.0).
 
 - Fix a bug from nail 10.08 as of 2004-06-28 that leads to
   crashes when some file cannot be loaded.
