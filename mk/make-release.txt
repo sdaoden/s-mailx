@@ -28,10 +28,6 @@ Inline copies of the signatures are at the end of this message.
 
 These files and this announcement text are available as "-latest"
 symbolic links, for example s-nail-latest.txt.
-(A preformatted only-text all-ASCII manual version can also be
-downloaded as s-nail-VERSION.cat1.xz, and a ...xcat1.xz
-variant includes mdocmx anchors and links as text (#NO#, [NO]),
-and filtered with col -b.
 
   Announcement : https?://www.sdaoden.eu/code-nail-ann.html
   Manual       : https?://www.sdaoden.eu/code-nail.html

@@ -447,11 +447,6 @@ upload() (
          echo "-ln -s ${PROGRAM}-${REL}.txt ${PROGRAM}-latest.txt"
       fi
 
-      [ -f "${PROGRAM}"-${REL}.cat1.xz ] &&
-         echo "-put ${PROGRAM}-${REL}.cat1.xz"
-      [ -f "${PROGRAM}"-${REL}.xcat1.xz ] &&
-         echo "-put ${PROGRAM}-${REL}.xcat1.xz"
-
       echo "-chmod 0644 ${PROGRAM}-${REL}.*"
    } |
    ${sftp} -b - ${UPLOAD}
