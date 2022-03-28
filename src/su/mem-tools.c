@@ -64,7 +64,8 @@ su_mem_cmp(void const *vpa, void const *vpb, uz len){
    ASSERT_NYD_EXEC(len == 0 || vpa != NIL, rv = (vpb == NIL) ? 0 : -1);
    ASSERT_NYD_EXEC(len == 0 || vpb != NIL, rv = 1);
 
-   rv = LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
+   rv = UNLIKELY(vpa == vpb) ? 0
+         : LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
 
    NYD_OU;
    return rv;
@@ -76,8 +77,14 @@ su_mem_copy(void *vp, void const *src, uz len){
    ASSERT_NYD(len == 0 || vp != NIL);
    ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(len > 0))
+   if(LIKELY(vp != src && len > 0)){
+      /* dalias: if((up)s-(up)d-n <= -2*n) return memcpy(d, s, n); */
+      ASSERT_NYD_EXEC(
+         (R(up,src) < R(up,vp) && R(up,src) + len <= R(up,vp)) ||
+         (R(up,src) > R(up,vp) && R(up,src) - len >= R(up,vp)),
+         su_mem_move(vp, src, len));
       a_memt_copy(vp, src, len);
+   }
 
    NYD_OU;
    return vp;
@@ -89,7 +96,7 @@ su_mem_move(void *vp, void const *src, uz len){
    ASSERT_NYD(len == 0 || vp != NIL);
    ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(len > 0))
+   if(LIKELY(vp != src && len > 0))
       a_memt_move(vp, src, len);
 
    NYD_OU;
