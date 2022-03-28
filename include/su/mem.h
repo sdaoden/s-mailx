@@ -45,7 +45,9 @@ C_DECL_BEGIN
 /*! \_ */
 EXPORT sz su_mem_cmp(void const *vpa, void const *vpb, uz len);
 
-/*! \_ */
+/*! \_
+ * \remarks{Because this may end up calling native functions, overlap is
+ * generally forbidden, even if it makes no sense logically.} */
 EXPORT void *su_mem_copy(void *vp, void const *src, uz len);
 
 /*! \_ */
