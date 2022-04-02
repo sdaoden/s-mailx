@@ -15,7 +15,7 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
-The set of builtin MIME types could be adjusted in ./mime.types.
+The set of built-in MIME types could be adjusted in ./mime.types.
 Experts could find it valuable to adjust C code in ./mx-config.h.
 
 Without any adjustments all non-experimental features will be enabled,
@@ -284,17 +284,17 @@ Development:
 Frequently:
 
 . AlpineLinux <https://www.alpinelinux.org>.
-  + x86-64: "2020", edge.
+  + x86-64: "202[01]", edge.
 
 . ArchLinux <https://www.archlinux.org/>.
-  + current.
+  + "2021", current.
 
 . FreeBSD <https://www.freebsd.org/>.
-  + x86: 11.2; amd64: 12.2.
+  + x86: 11.2, 13.1; amd64: 12.2.
   - v11. series test errors: see DragonFly.
 
 . OpenBSD <https://www.openbsd.org/>.
-  + x86: latest (6.{4,6,8,9}).
+  + x86: latest (6.{6,8,9}).
 
 Pre-release, and other landmarks:
 
@@ -312,7 +312,7 @@ Pre-release, and other landmarks:
 . OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
   @ Thanks to Jean-Marc Pigeon for generously providing access to
     a VZGOT on the most "beefy" machine i have ever worked on! ^_^
-  + Not tested for v14.9.23.  Sorry Jean-Marc, you're ok??
+  + Not tested for v14.9.24.  Sorry Jean-Marc, you're ok??
 
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
@@ -324,8 +324,7 @@ Pre-release, and other landmarks:
     compilers, only if that fails we go for traditional SUN.
 
   * The original Sun roff (aka AT&T ditroff) is not capable to display
-    the manual.  We offer preformatted manual pages, please see the
-    release announcement for details.
+    the manual.  Modern Solaris use mandoc which can, however (i think).
 
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because
