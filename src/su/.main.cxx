@@ -1601,8 +1601,38 @@ a_random(void){ // xxx too late, already initialized...
    char buf[64];
 
    {
+      char buf1[NELEM(buf)], buf2[NELEM(buf)], buf3[NELEM(buf)];
+      random r0;
+      if(r0.create(random::type_r) != state::none)
+         a_ERR();
+      if(r0.type() != random::type_r)
+         a_ERR();
+      if(r0.reseed_after() != 0)
+         a_ERR();
+      if(!r0.seed())
+         a_ERR();
+      if(!r0.generate(buf, sizeof buf))
+         a_ERR();
+      if(!r0.generate(buf1, sizeof buf1))
+         a_ERR();
+
+      if(!r0.seed())
+         a_ERR();
+      if(!r0(buf2, sizeof buf2))
+         a_ERR();
+      if(!r0(buf3, sizeof buf3))
+         a_ERR();
+
+      if(mem::cmp(buf, buf2, sizeof buf))
+         a_ERR();
+      if(mem::cmp(buf1, buf3, sizeof buf1))
+         a_ERR();
+   }
+
+   {
+      char buf1[NELEM(buf)];
       random r1;
-      if(r1.create() != state::none)
+      if(r1.create(random::type_p) != state::none)
          a_ERR();
       if(r1.type() != random::type_p)
          a_ERR();
@@ -1612,13 +1642,18 @@ a_random(void){ // xxx too late, already initialized...
          a_ERR();
       if(!r1.generate(buf, sizeof buf))
          a_ERR();
-      if(!r1(buf, sizeof buf))
+
+      if(!r1.seed())
+         a_ERR();
+      if(!r1(buf1, sizeof buf1))
+         a_ERR();
+      if(!mem::cmp(buf, buf1, sizeof buf))
          a_ERR();
    }
 
    {
       random r2;
-      if(r2.create(random::type_sp) != state::none)
+      if(r2.create() != state::none)
          a_ERR();
       if(r2.type() != random::type_sp)
          a_ERR();
@@ -1696,6 +1731,11 @@ a_random(void){ // xxx too late, already initialized...
 
    if(random::builtin_generate(buf, sizeof buf, state::err_pass
          ) != state::none)
+      a_ERR();
+
+   if(!random::builtin_seed(TRU1))
+      a_ERR();
+   if(!random::builtin_seed(FAL0))
       a_ERR();
 }
 
