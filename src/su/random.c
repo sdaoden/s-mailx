@@ -30,7 +30,9 @@
 
 #ifndef su_RANDOM_SEED
 # define su_RANDOM_SEED su_RANDOM_SEED_BUILTIN
-#elif su_RANDOM_SEED == su_RANDOM_SEED_BUILTIN
+#endif
+
+#if su_RANDOM_SEED == su_RANDOM_SEED_BUILTIN
 #elif su_RANDOM_SEED == su_RANDOM_SEED_GETENTROPY
 #elif su_RANDOM_SEED == su_RANDOM_SEED_GETRANDOM
 # ifndef su_RANDOM_GETRANDOM_H
@@ -77,33 +79,26 @@
 extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
 #endif
 
-/* Type 2 fills the 256 bytes seed buffer with "good" random bytes.
- * Type 1 sequences the seed buffer with the 256 possible 8-bit values, then
- * fetches 4 "good" random bytes and uses them as indices plus an initial
- * permutation iteration count */
-#define a_RANDOM_ENTRO_TYPE 1
-#if a_RANDOM_ENTRO_TYPE == 1
-# define a_RANDOM_SEED_BYTES 4
-# define a_RANDOM_SEED_PERMUT_ITERS_MIN (256 * 2)
-# define a_RANDOM_SEED_PERMUT_ITERS_MAX (256 * 8)
-#else
-# define a_RANDOM_SEED_BYTES 256
-#endif
+/* Data buffer.  ARC4 == 256 bytes */
+#define a_RANDOM_SEED_BYTES 256
 
-/* Default bytes after which the seed buffer is mixed.
- * The 256 bytes of seed constantly permutate as we go */
-#define a_RANDOM_RESEED_AFTER 1024
+/* Default bytes after which the array is reseeded.
+ * The array permutates as we go; Sixteen is arbitrary, but sweet (maybe) */
+#define a_RANDOM_RESEED_AFTER (a_RANDOM_SEED_BYTES * 16)
+#define a_RANDOM_RESEED_SEEDER_AFTER (a_RANDOM_RESEED_AFTER * 2)
 
 /* (We use value comparisons in here; _NONE _must_ be 0) */
 CTAV(su_RANDOM_TYPE_NONE == 0);
-CTAV(su_RANDOM_TYPE_P == 1);
-CTAV(su_RANDOM_TYPE_SP == 2);
-CTAV(su_RANDOM_TYPE_VSP == 3);
+CTAV(su_RANDOM_TYPE_R == 1);
+CTAV(su_RANDOM_TYPE_P == 2);
+CTAV(su_RANDOM_TYPE_SP == 3);
+CTAV(su_RANDOM_TYPE_VSP == 4);
 
 enum a_random_flags{
    a_RANDOM_SEEDER = 1u<<0, /* The seeder object */
    a_RANDOM_HOOK = 1u<<1, /* .rm_vp in fact (*_on_generate)() */
-   a_RANDOM_IS_SEEDED = 1u<<2
+   a_RANDOM_REPRO = 1u<<2, /* _TYPE_R */
+   a_RANDOM_IS_SEEDED = 1u<<3
 };
 
 struct a_random_bltin{
@@ -116,11 +111,12 @@ struct a_random_bltin{
 };
 
 union a_random_dat{
-   u8 b8[256];
-   u32 b32[256 / sizeof(u32)];
+   u8 b8[a_RANDOM_SEED_BYTES];
+   u32 b32[a_RANDOM_SEED_BYTES / sizeof(u32)];
 };
 CTAV(FIELD_SIZEOF(union a_random_dat,b8) == 256);
-CTAV(a_RANDOM_SEED_BYTES <= 256);
+CTAV(FIELD_SIZEOF(union a_random_dat,b8) % sizeof(u32) == 0);
+CTAV(a_RANDOM_SEED_BYTES <= a_RANDOM_SEED_BYTES);
 
 static struct a_random_bltin *a_random_bltin;
 
@@ -183,13 +179,12 @@ a_random_init(u32 estate){
          goto jerr1;
       rndp->rndb_seed.rm_type = su_RANDOM_TYPE_VSP;
       rndp->rndb_seed.rm_flags |= a_RANDOM_SEEDER;
-      rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_AFTER *
-            (a_RANDOM_ENTRO_TYPE == 1 ? 1 : 8);
+      rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_SEEDER_AFTER;
 
       if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)
             ) != su_STATE_NONE)
          goto jerr;
-      rndp->rndb_rand.rm_reseed_after = a_RANDOM_RESEED_AFTER * 8;
+      rndp->rndb_rand.rm_reseed_after = a_RANDOM_RESEED_AFTER;
 
       if((rv = su_STATE_NONE
 #ifdef su__STATE_ON_GUT_FUN
@@ -264,10 +259,14 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
    case su_RANDOM_TYPE_SP:
       FALLTHRU
    case su_RANDOM_TYPE_P:
+      FALLTHRU
+   case su_RANDOM_TYPE_R:
       if((self->rm_vp = su_TCALLOCF(union a_random_dat, 1,
-               (estate | su_MEM_ALLOC_CONCEAL))) != NIL)
+               (estate | su_MEM_ALLOC_CONCEAL))) != NIL){
+         if(type == su_RANDOM_TYPE_R)
+            self->rm_flags |= a_RANDOM_REPRO;
          rv = su_STATE_NONE;
-      else{
+      }else{
          self->rm_type = su_RANDOM_TYPE_NONE;
          rv = su_STATE_ERR_NOMEM;
       }
@@ -355,6 +354,8 @@ su_random_gut(struct su_random *self){
    case su_RANDOM_TYPE_SP:
       FALLTHRU
    case su_RANDOM_TYPE_P:
+      FALLTHRU
+   case su_RANDOM_TYPE_R:
       su_FREE(self->rm_vp);
       break;
    case su_RANDOM_TYPE_NONE:
@@ -366,11 +367,8 @@ su_random_gut(struct su_random *self){
 
 boole
 su_random_seed(struct su_random *self, struct su_random *with_or_nil){
-#if a_RANDOM_ENTRO_TYPE == 1
-   u8 buf[a_RANDOM_SEED_BYTES];
-#endif
+   u8 buf[4];
    sz fill;
-   u8 *bp;
    union a_random_dat *rdp;
    union {void *vp; su_random_generate_fun rgf; int fd; uz i;} u;
    boole rv;
@@ -392,30 +390,40 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
 
    rdp = S(union a_random_dat*,self->rm_vp);
 
-#if a_RANDOM_ENTRO_TYPE == 1
-   /* Init sequence type 1 upon first seeding */
-   if(!(self->rm_flags & a_RANDOM_IS_SEEDED))
-      for(u.i = NELEM(rdp->b8); u.i-- != 0;)
-         rdp->b8[u.i] = S(u8,NELEM(rdp->b8) - 1 - u.i);
-   bp = &buf[0];
-#else
-   bp = &rdp->b8[0];
-#endif
-
    /* Not the special builtin seeder object? */
-   if(!(self->rm_flags & a_RANDOM_SEEDER)){
+   if(LIKELY(!(self->rm_flags & a_RANDOM_SEEDER))){
+      u8 *bp;
+
+      if(self->rm_type > su_RANDOM_TYPE_P){
+         bp = &rdp->b8[0];
+         u.i = a_RANDOM_SEED_BYTES;
+      }else{
+         if(!(self->rm_flags & a_RANDOM_IS_SEEDED) ||
+               (self->rm_flags & a_RANDOM_REPRO))
+            for(u.i = NELEM(rdp->b8); u.i-- != 0;)
+               rdp->b8[u.i] = S(u8,NELEM(rdp->b8) - 1 - u.i);
+
+         if(self->rm_flags & a_RANDOM_REPRO){
+            self->rm_ro1 = NELEM(rdp->b8) - (NELEM(rdp->b8) >> 3);
+            self->rm_ro2 = NELEM(rdp->b8) >> 3;
+            rv = TRU1;
+            goto jleave;
+         }
+
+         bp = &buf[0];
+         u.i = NELEM(buf);
+      }
+
       if(with_or_nil != NIL){
-         if(!(rv = su_random_generate(with_or_nil, bp, a_RANDOM_SEED_BYTES)))
+         if(!(rv = su_random_generate(with_or_nil, bp, u.i)))
             goto jleave;
          fill = (with_or_nil->rm_type > su_RANDOM_TYPE_P)
                ? a_RANDOM_SEED_BYTES : 0;
       }else{
          SU( su_MUTEX_LOCK(&a_random_bltin->rndb_cntrl_mtx); )
-         su_random_generate(&a_random_bltin->rndb_seed, bp,
-            a_RANDOM_SEED_BYTES);
+         su_random_generate(&a_random_bltin->rndb_seed, bp, u.i);
          SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_cntrl_mtx); )
-         fill = a_RANDOM_SEED_BYTES;
-         rv = TRU1;
+         fill = u.i;
       }
    }else{
       /* Operating the special seeder is MT locked!  Get "good" random bytes */
@@ -425,85 +433,66 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
       LCTA(a_RANDOM_SEED_BYTES <= 256,
          "Buffer too large to be served without su_ERR_INTR error");
 # if su_RANDOM_SEED == su_RANDOM_SEED_GETENTROPY
-      fill = (getentropy(bp, a_RANDOM_SEED_BYTES) == 0
+      fill = (getentropy(rdp->b8, a_RANDOM_SEED_BYTES) == 0
             ? a_RANDOM_SEED_BYTES : 0);
 # else
-      fill = su_RANDOM_GETRANDOM_FUN(bp, a_RANDOM_SEED_BYTES);
+      fill = su_RANDOM_GETRANDOM_FUN(rdp->b8, a_RANDOM_SEED_BYTES);
 # endif
 #elif su_RANDOM_SEED == su_RANDOM_SEED_URANDOM
       if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){ /* TODO SU I/O!*/
-         fill = read(u.fd, bp, a_RANDOM_SEED_BYTES);
+         fill = read(u.fd, rdp->b8, a_RANDOM_SEED_BYTES);
          close(u.fd);
       }
 #elif su_RANDOM_SEED == su_RANDOM_SEED_HOOK
-      fill = su_RANDOM_HOOK_FUN(&self->rm_vsp_cookie, bp, a_RANDOM_SEED_BYTES)
-            ? a_RANDOM_SEED_BYTES : 0;
+      fill = su_RANDOM_HOOK_FUN(&self->rm_vsp_cookie, rdp->b8,
+            a_RANDOM_SEED_BYTES) ? a_RANDOM_SEED_BYTES : 0;
 #endif
 
       /* An unscientific homebrew seed as a fallback and a default */
       if(fill != a_RANDOM_SEED_BYTES){
+         struct su_timespec ts;
          u32 seed, rnd;
 
-         seed = (R(up,a_random_bltin) ^ R(up,self) ^ R(up,rdp)) & U32_MAX;
+         seed = a_random_weak(su_timespec_current(&ts)->ts_sec & U32_MAX);
+         seed ^= (R(up,a_random_bltin) ^ R(up,self) ^ R(up,rdp)) & U32_MAX;
 
-         for(rnd = 0; rnd != (a_RANDOM_ENTRO_TYPE == 1 ? 5 : 2); ++rnd){
+         for(rnd = 0; rnd != 2; ++rnd){
             if(rnd != 0)
                su_thread_yield();
 
             /* Stir the entire pool once */
             for(u.i = NELEM(rdp->b32); u.i-- != 0;){
-               struct su_timespec ts;
                u32 t;
 
                t = S(u32,su_timespec_current(&ts)->ts_nano);
                if(rnd & 1)
                   t = (t >> 16) ^ (t << 16);
-#if a_RANDOM_ENTRO_TYPE == 1
-               seed ^= a_random_weak(t);
-               break;
-#else
                rdp->b32[u.i] ^= a_random_weak(seed ^ t);
                rdp->b32[t % NELEM(rdp->b32)] ^= seed;
-               if(rnd & 2)
-                  rdp->b32[u.i] ^= a_random_weak(seed ^ S(u32,ts.ts_sec));
                /* C99 */{
                   u32 k = rdp->b32[u.i] % NELEM(rdp->b32);
                   rdp->b32[k] ^= rdp->b32[u.i];
                   seed ^= a_random_weak(rdp->b32[k]);
                }
-#endif
             }
          }
-
-#if a_RANDOM_ENTRO_TYPE == 1
-         LCTAV(a_RANDOM_SEED_BYTES == 4);
-         bp[3] ^= (seed & 0xFFu); seed >>= 8;
-         bp[2] ^= (seed & 0xFFu); seed >>= 8;
-         bp[1] ^= (seed & 0xFFu); seed >>= 8;
-         bp[0] ^= (seed & 0xFFu);
-#endif
       }
    }
 
    /* */
-#if a_RANDOM_ENTRO_TYPE == 1
-   LCTAV(a_RANDOM_SEED_BYTES == 4);
-   UNUSED(fill);
-   self->rm_ro1 = bp[0];
-   self->rm_ro2 = bp[2];
-   u.i = bp[1];
-   u.i <<= 8;
-   u.i |= bp[3];
-
-   su_mem_zero(bp, a_RANDOM_SEED_BYTES);
-
-   u.i = CLIP(u.i, a_RANDOM_SEED_PERMUT_ITERS_MIN,
-         a_RANDOM_SEED_PERMUT_ITERS_MAX);
-#else
-   self->rm_ro1 = (rdp->b8[rdp->b8[1] ^ rdp->b8[84]]);
-   self->rm_ro2 = (rdp->b8[rdp->b8[65] ^ rdp->b8[42]]);
-   u.i = (fill != a_RANDOM_SEED_BYTES) ? NELEM(rdp->b8) : 0;
-#endif
+   if(self->rm_type > su_RANDOM_TYPE_P){
+      self->rm_ro1 = (rdp->b8[rdp->b8[1] ^ rdp->b8[84]]);
+      self->rm_ro2 = (rdp->b8[rdp->b8[168] ^ rdp->b8[42]]);
+      u.i = (fill != a_RANDOM_SEED_BYTES) ? NELEM(rdp->b8) + rdp->b8[110] : 0;
+   }else{
+      self->rm_ro1 = buf[0];
+      self->rm_ro2 = buf[2];
+      u.i = buf[1];
+      u.i <<= 8;
+      u.i |= buf[3];
+      /*su_mem_zero(buf, NELEM(buf));*/
+      u.i = CLIP(u.i, NELEM(rdp->b8), NELEM(rdp->b8) * 5);
+   }
 
    while(u.i-- != 0)
       a_random_get8(self);
@@ -527,32 +516,36 @@ su_random_generate(struct su_random *self, void *buf, uz len){
 
    rv = TRU1;
 
-   if(len == 0)
-      goto jleave;
-
-   if(!(self->rm_flags & a_RANDOM_IS_SEEDED) &&
-         !(rv = su_random_seed(self, NIL)))
-      goto jleave;
-
-   if(self->rm_flags & a_RANDOM_HOOK){
+   if(len == 0){
+      ;
+   }else if(!(self->rm_flags & a_RANDOM_IS_SEEDED) &&
+         !(rv = su_random_seed(self, NIL))){
+      ;
+   }else if(self->rm_flags & a_RANDOM_HOOK){
       union {void *vp; su_random_generate_fun rgf;} u;
 
       u.vp = self->rm_vp;
       rv = (*u.rgf)(&self->rm_vsp_cookie, buf, len);
-      goto jleave;
-   }
-
-   if(self->rm_type < su_RANDOM_TYPE_SP){
+   }else if(self->rm_type < su_RANDOM_TYPE_SP){
       for(bp = buf; len-- != 0;)
          *bp++ = a_random_get8(self);
    }else{
       u8 crounds, drounds;
       enum su_siphash_digest shd;
       boole reseed;
-      uz i, resl;
+      uz i, resl, datl;
+
+      /**/
+      i = self->rm_reseed_after;
+      if(LIKELY(i != U32_MAX))
+         reseed = (i > 0);
+      else{
+         self->rm_reseed_after = i = a_RANDOM_RESEED_AFTER;
+         reseed = TRU1;
+      }
 
       /* For simplicity we reseed only once after a request is done */
-      if((reseed = ((i = self->rm_reseed_after) > 0))){
+      if(reseed){
          reseed = (i < self->rm_bytes || i - self->rm_bytes <= len);
          if(reseed)
             self->rm_bytes = 0;
@@ -569,18 +562,19 @@ su_random_generate(struct su_random *self, void *buf, uz len){
 
       crounds = 4;
       drounds = 8;
+      datl = su_SIPHASH_KEY_SIZE;
       if(self->rm_type == su_RANDOM_TYPE_SP){
          crounds >>= 1;
          drounds >>= 1;
+         datl = 0;
       }
 
       while(len > 0){
-         for(bp = b_base, i = su_SIPHASH_KEY_SIZE * 2; i-- != 0; ++bp)
+         for(bp = b_base, i = su_SIPHASH_KEY_SIZE + datl; i-- != 0; ++bp)
             *bp = a_random_get8(self);
 
          su_siphash_once(bp, shd, &b_base[0],
-            &b_base[su_SIPHASH_KEY_SIZE], su_SIPHASH_KEY_SIZE,
-            crounds, drounds);
+            &b_base[su_SIPHASH_KEY_SIZE], datl, crounds, drounds);
 
          i = MIN(len, resl);
          su_mem_copy(buf, bp, i);
@@ -589,13 +583,12 @@ su_random_generate(struct su_random *self, void *buf, uz len){
          buf = &S(u8*,buf)[i];
       }
 
-      su_mem_zero(b_base, sizeof b_base); /* xxx stupid paranoia! */
+      su_mem_zero(b_base, sizeof b_base);
 
       if(reseed)
          su_random_seed(self, NIL);
    }
 
-jleave:
    NYD_OU;
    return rv;
 }
@@ -636,6 +629,36 @@ su_random_builtin_generate(void *buf, uz len, u32 estate){
       su_random_generate(&a_random_bltin->rndb_rand, buf, len);
       SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_rand_mtx); )
    }
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+
+boole
+su_random_builtin_seed(boole seeder){
+   struct su_random *rp;
+   SU( struct su_mutex *mp; )
+   boole rv;
+   NYD_IN;
+
+   if(a_random_bltin == NIL &&
+         a_random_init(su_STATE_ERR_PASS) != su_STATE_NONE){
+      rv = FAL0;
+      goto jleave;
+   }
+
+   if(seeder){
+      rp = &a_random_bltin->rndb_seed;
+      SU( mp = &a_random_bltin->rndb_cntrl_mtx; )
+   }else{
+      rp = &a_random_bltin->rndb_rand;
+      SU( mp = &a_random_bltin->rndb_rand_mtx; )
+   }
+
+   SU( su_MUTEX_LOCK(mp); )
+   rv = su_random_seed(rp, NIL);
+   SU( su_MUTEX_UNLOCK(mp); )
 
 jleave:
    NYD_OU;
