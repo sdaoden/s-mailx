@@ -21,9 +21,9 @@
 .ds VV \\%v14.9.25
 .\"--MKREL-END--
 .\"--MKMAN-START--
-.ds UU \\%S-NAIL
-.ds UA \\%S-nail
-.ds uA \\%s-nail
+.ds XX \\%S-NAIL
+.ds Xx \\%S-nail
+.ds xX \\%s-nail
 .ds UR \\%s-nail.rc
 .ds ur \\%~/.mailrc
 .ds VD \\%~/dead.letter
@@ -47,20 +47,20 @@
 .if !d str-Lb-libterminfo \
   .ds str-Lb-libterminfo Terminal Information Library (libterminfo, \-lterminfo)
 .
-.Dt "\*(UU" 1
+.Dt "\*(XX" 1
 .Os
 .Mx -enable
 .
 .
 .Sh NAME
-.Nm \*(UA \%[\*(VV]
+.Nm \*(Xx \%[\*(VV]
 .Nd send and receive Internet mail
 .
 .
 .\" .Sh SYNOPSIS {{{
 .Sh SYNOPSIS
 .
-.Nm \*(uA
+.Nm \*(xX
 .Bk -words
 .Op Fl DdEFinv~#
 .Op Fl \&: Ar spec
@@ -81,7 +81,7 @@
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Pp
-.Nm \*(uA
+.Nm \*(xX
 .Bk -words
 .Op Fl DdEeHiNnRv~#
 .Op Fl \&: Ar spec
@@ -95,7 +95,7 @@
 .Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
-.Nm \*(uA
+.Nm \*(xX
 .Bk -words
 .Op Fl DdEeHiNnRv~#
 .Op Fl \&: Ar spec
@@ -111,9 +111,9 @@
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Pp
-.Nm \*(uA
+.Nm \*(xX
 .Fl h | Fl Fl help
-.Nm \*(uA
+.Nm \*(xX
 .Fl V | Fl Fl version
 .
 .\" }}}
@@ -131,7 +131,7 @@
 (with value) is default since v14.10.0, and the manual
 expects this context;
 Most old (other context) documentation has been removed.
-S-nail (\*(UA) will see major changes until v15.0 (circa 2022).
+S-nail (\*(Xx) will see major changes until v15.0 (circa 2022).
 Some backward incompatibilities cannot be avoided, for example
 .Sx COMMANDS
 will change to
@@ -139,13 +139,13 @@ will change to
 .Ed
 .
 .Pp
-\*(UA provides a simple and friendly environment for sending and
+\*(Xx provides a simple and friendly environment for sending and
 receiving mail.
 It is intended to provide the functionality of the POSIX
 .Xr mailx 1
 command, but is MIME capable and optionally offers extensions for
 line editing, S/MIME, SMTP and POP3, among others.
-\*(UA divides incoming mail into its constituent messages and allows
+\*(Xx divides incoming mail into its constituent messages and allows
 the user to deal with them in any order.
 It offers many
 .Sx COMMANDS
@@ -409,7 +409,7 @@ This mode does not honour
 If the
 .Fl e
 option has been given in addition no header summary is produced,
-but \*(UA will instead indicate via its exit status whether
+but \*(Xx will instead indicate via its exit status whether
 .Ar spec
 matched any messages
 .Pf ( Ql 0 )
@@ -685,14 +685,14 @@ appropriate privileges presumed; effectively identical to
 .
 .Mx
 .It Fl V , Fl Fl version
-Show \*(UAs
+Show \*(Xxs
 .Va version
 and exit.
 The command
 .Ic version
 will also show the list of
 .Va features :
-.Ql $ \*(uA -:/ -Xversion -Xx .
+.Ql $ \*(xX -:/ -Xversion -Xx .
 .
 .Mx
 .It Fl v , Fl Fl verbose
@@ -736,7 +736,7 @@ message text before sending the message:
 .Bd -literal -offset indent
 $ ( echo 'line    one. Word.     Word2.';\e
     echo '~| /usr/bin/fmt -tuw66' ) |\e
-  LC_ALL=C \*(uA -d~:/ -Sttycharset=utf-8 bob@exam.ple
+  LC_ALL=C \*(xX -d~:/ -Sttycharset=utf-8 bob@exam.ple
 .Ed
 .
 .Mx
@@ -774,7 +774,7 @@ The following prepares an email message in a batched dry run:
 $ for name in bob alice@exam.ple lisa@exam.ple; do
     printf 'mail %s\en~s ubject\enText\en~.\en' "${name}"
   done |
-  LC_ALL=C \*(uA -#:x -Smta=test \e
+  LC_ALL=C \*(xX -#:x -Smta=test \e
     -X'alias bob bob@exam.ple'
 .Ed
 .
@@ -783,7 +783,7 @@ $ for name in bob alice@exam.ple lisa@exam.ple; do
 This flag forces termination of option processing in order to prevent
 .Dq option injection
 (attacks).
-It also forcefully puts \*(UA into send mode, see
+It also forcefully puts \*(Xx into send mode, see
 .Sx "On sending mail, and non-interactive mode" .
 .El
 .
@@ -808,14 +808,14 @@ for more see
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Bd -literal -offset indent
-$ \*(uA -#:/ -X 'addrcodec enc Hey, ho <silver@go>' -Xx
+$ \*(xX -#:/ -X 'addrcodec enc Hey, ho <silver@go>' -Xx
 .Ed
 .\" }}}
 .
 .\" .Ss "A starter" {{{ review
 .Ss "A starter"
 .
-\*(UA is a direct descendant of
+\*(Xx is a direct descendant of
 .Bx
 Mail, itself a successor to the Research
 .Ux
@@ -833,11 +833,11 @@ If the \*(OPal SMTP
 .Va mta
 is included in the
 .Va features
-of \*(UA then the system side is not a mandatory precondition for mail
+of \*(Xx then the system side is not a mandatory precondition for mail
 delivery.
 .
 .Pp
-\*(UA strives for compliance with the POSIX
+\*(Xx strives for compliance with the POSIX
 .Xr mailx 1
 standard, but
 .Va posix ,
@@ -929,7 +929,7 @@ or
 To send a message to one or more people, using a local or built-in
 .Va mta
 (Mail-Transfer-Agent) transport to actually deliver the generated mail
-message, \*(UA can be invoked with arguments which are the names of
+message, \*(Xx can be invoked with arguments which are the names of
 people to whom the mail will be sent, and the command line options
 .Fl b
 and
@@ -938,19 +938,19 @@ can be used to add (blind) carbon copy receivers:
 .
 .Bd -literal -offset indent
 # Via test MTA
-$ echo Hello, world | \*(uA -:/ -Smta=test -s test $LOGNAME
+$ echo Hello, world | \*(xX -:/ -Smta=test -s test $LOGNAME
 
 # Via sendmail(1) MTA
-$ </dev/null \*(uA -:x -s test $LOGNAME
+$ </dev/null \*(xX -:x -s test $LOGNAME
 
 # Debug dry-run mode:
-$ </dev/null LC_ALL=C \*(uA -d -:/ \e
+$ </dev/null LC_ALL=C \*(xX -d -:/ \e
    -Sttycharset=utf8 -Sfullnames \e
    -b bcc@exam.ple -c cc@exam.ple -. \e
    '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
 
 # With SMTP (no real sending due to -d debug dry-run)
-$ LC_ALL=C \*(uA -d -:/ -Sttycharset=utf8 \e
+$ LC_ALL=C \*(xX -d -:/ -Sttycharset=utf8 \e
     -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-auth \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc --end-options \e
@@ -1010,10 +1010,10 @@ header, see
 .Sx "Compose mode" .
 .
 .Bd -literal -offset indent
-$ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
-$ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
+$ echo bla | \*(xX -Sexpandaddr -s test ./mbox.mbox
+$ echo bla | \*(xX -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
-    \*(uA -:/ -Smta=test -Sttycharset=utf8 \e
+    \*(xX -:/ -Smta=test -Sttycharset=utf8 \e
       --set mime-force-sendout --set fullnames \e
       -S expandaddr=fail,-all,+addr,failinvaddr -s test \e
       --end-options 'Imagine John <cold@turk.ey>'
@@ -1079,7 +1079,7 @@ to disable configuration files in conjunction with repetitions of
 to specify variables:
 .
 .Bd -literal -offset indent
-$ env LC_ALL=C \*(uA -:/ \e
+$ env LC_ALL=C \*(xX -:/ \e
     -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://me@exam.ple:465 -Ssmtp-config=-allmechs,plain \e
@@ -1123,7 +1123,7 @@ In interactive mode, introduced soon, messages can be sent by calling the
 command with a list of recipient addresses:
 .
 .Bd -literal -offset indent
-$ \*(uA -:/ -Squiet -Semptystart -Sfullnames -Smta=test
+$ \*(xX -:/ -Squiet -Semptystart -Sfullnames -Smta=test
 "/var/spool/mail/user": 0 messages
 ? mail "Recipient 1 <rec1@exam.ple>", rec2@exam.ple
 \&...
@@ -1254,7 +1254,7 @@ meaning that covered changes will be reverted once compose mode is left.
 .\" .Ss "On reading mail, and more on interactive mode" {{{
 .Ss "On reading mail, and more on interactive mode"
 .
-When invoked without addressees \*(UA enters interactive mode in which
+When invoked without addressees \*(Xx enters interactive mode in which
 mails may be read.
 When used like that the user's system
 .Va inbox
@@ -1278,7 +1278,7 @@ fuls of
 .Ic headers
 can be performed with the command
 .Ic z .
-If the initially opened mailbox is empty \*(UA will instead exit
+If the initially opened mailbox is empty \*(Xx will instead exit
 immediately (after displaying a message) unless the variable
 .Va emptystart
 is set.
@@ -1434,7 +1434,7 @@ will be automatically moved to a
 the user's
 .Ev MBOX
 file, when the mailbox is left, either by changing the active mailbox or
-by quitting \*(UA \(en this automatic moving from a system- or primary-
+by quitting \*(Xx \(en this automatic moving from a system- or primary-
 to the secondary mailbox is not performed when the variable
 .Va hold
 is set.
@@ -1499,7 +1499,7 @@ Of course messages can be
 .Ic delete Ql d ,
 and they can spring into existence again via
 .Ic undelete ,
-or when the \*(UA session is ended via the
+or when the \*(Xx session is ended via the
 .Ic exit
 or
 .Ic xit
@@ -1645,7 +1645,7 @@ The commands
 .Ic mlist
 and
 .Ic mlsubscribe
-manage \*(UAs notion of which addresses are mailing lists.
+manage \*(Xxs notion of which addresses are mailing lists.
 With the \*(OPal regular expression support any address
 .Mx -ix "magic regular expression characters"
 which contains any of the magic regular expression characters
@@ -1756,7 +1756,7 @@ to ensure that the given S/MIME messages can be trusted.
 If so, verified sender certificates that were embedded in signed
 messages can be saved locally with the command
 .Ic certsave ,
-and used by \*(UA to encrypt further communication with these senders:
+and used by \*(Xx to encrypt further communication with these senders:
 .
 .Bd -literal -offset indent
 ? certsave FILENAME
@@ -1767,7 +1767,7 @@ and used by \*(UA to encrypt further communication with these senders:
 .Pp
 To sign outgoing messages, in order to allow receivers to verify the
 origin of these messages, a personal S/MIME certificate is required.
-\*(UA supports password-protected personal certificates (and keys), see
+\*(Xx supports password-protected personal certificates (and keys), see
 .Va smime-sign-cert .
 The section
 .Sx "On URL syntax and credential lookup"
@@ -2013,7 +2013,7 @@ when connecting to it) can be fetched with the command
 is taken into account here):
 .
 .Bd -literal -offset indent
-$ \*(uA -vX 'tls certchain SERVER-URL[:PORT]; x'
+$ \*(xX -vX 'tls certchain SERVER-URL[:PORT]; x'
 .Ed
 .
 .Pp
@@ -2029,7 +2029,7 @@ The message digest (algorithm) can be configured via the variable chain
 can again be used:
 .
 .Bd -literal -offset indent
-$ \*(uA -X 'set verbose; tls fingerprint SERVER-URL[:PORT]; x'
+$ \*(xX -X 'set verbose; tls fingerprint SERVER-URL[:PORT]; x'
 .Ed
 .
 .Pp
@@ -2248,7 +2248,7 @@ and hyphen-minus
 .\" .Ss "Message states" {{{
 .Ss "Message states"
 .
-\*(UA differentiates in between several message states; the current
+\*(Xx differentiates in between several message states; the current
 state will be reflected in the summary of
 .Ic headers
 if the
@@ -2734,7 +2734,7 @@ it is necessary to quote the entire IMAP search expression in order to
 ensure that it remains a single token.
 This addressing mode is available with all types of mailbox
 .Ic folder Ns
-s; \*(UA will perform the search locally as necessary.
+s; \*(Xx will perform the search locally as necessary.
 Strings must be enclosed by double quotation marks
 .Ql \&"
 in their entirety if they contain whitespace or parentheses;
@@ -2985,7 +2985,7 @@ Move the cursor backward one character
 .
 .It Ql \ecD
 Forward delete the character under the cursor;
-quits \*(UA if used on the empty line unless the internal variable
+quits \*(Xx if used on the empty line unless the internal variable
 .Va ignoreeof
 is set
 .Mx
@@ -3248,7 +3248,7 @@ endif
 .\" .Ss "Handling spam" {{{
 .Ss "Handling spam"
 .
-\*(OP \*(UA can make use of several spam interfaces for the purpose of
+\*(OP \*(Xx can make use of several spam interfaces for the purpose of
 identification of, and, in general, dealing with spam messages.
 A precondition of most commands in order to function is that the
 .Va spam-interface
@@ -3320,14 +3320,14 @@ $ spamd --listen=localhost:2142 --listen=/tmp/.spamsock \e
 .Ed
 .
 .Pp
-Thereafter \*(UA can make use of these interfaces:
+Thereafter \*(Xx can make use of these interfaces:
 .
 .Bd -literal -offset indent
-$ \*(uA -Sspam-interface=spamc -Sspam-maxsize=500000 \e
+$ \*(xX -Sspam-interface=spamc -Sspam-maxsize=500000 \e
     -Sspamc-command=/usr/local/bin/spamc \e
     -Sspamc-arguments="-U /tmp/.spamsock" -Sspamc-user=
 or
-$ \*(uA -Sspam-interface=spamc -Sspam-maxsize=500000 \e
+$ \*(xX -Sspam-interface=spamc -Sspam-maxsize=500000 \e
     -Sspamc-command=/usr/local/bin/spamc \e
     -Sspamc-arguments="-d localhost -p 2142" -Sspamc-user=
 .Ed
@@ -3339,7 +3339,7 @@ Here is an example, requiring it to be accessible via
 .Ev PATH :
 .
 .Bd -literal -offset indent
-$ \*(uA -Sspam-interface=filter -Sspam-maxsize=500000 \e
+$ \*(xX -Sspam-interface=filter -Sspam-maxsize=500000 \e
     -Sspamfilter-ham="bogofilter -n" \e
     -Sspamfilter-noham="bogofilter -N" \e
     -Sspamfilter-nospam="bogofilter -S" \e
@@ -3387,7 +3387,7 @@ and
 .\" .Sh COMMANDS {{{
 .Sh COMMANDS
 .
-\*(UA reads input in lines.
+\*(Xx reads input in lines.
 An unquoted reverse solidus
 .Ql \e
 at the end of a command line
@@ -3695,7 +3695,7 @@ that the
 supports are not used, and are treated as ordinary characters: for one
 these characters (but the first) are vivid parts of email addresses or
 .Sx "Filename transformations" ,
-and it is unlikely that their function will become meaningful to \*(UA.
+and it is unlikely that their function will become meaningful to \*(Xx.
 .
 .Bd -filled -offset indent
 .Sy Compatibility note:
@@ -3704,9 +3704,9 @@ and it is unlikely that their function will become meaningful to \*(UA.
 to parse their arguments: whereas the
 .Ev SHELL
 is a language with syntactic elements of clearly defined semantics,
-\*(UA parses entire input lines and decides on a per-command base what
+\*(Xx parses entire input lines and decides on a per-command base what
 to do with the rest of the line.
-This also means that whenever an unknown command is seen all that \*(UA
+This also means that whenever an unknown command is seen all that \*(Xx
 can do is cancellation of the processing of the remains of the line.
 .Pp
 It also often depends on an actual subcommand of a multiplexer command
@@ -4117,7 +4117,7 @@ indicates that no temporary file could be created to collect the command
 output at first glance.
 In case of catchable out-of-memory situations
 .Va ^ERR Ns -NOMEM
-will occur and \*(UA will try to store the empty string, just like with
+will occur and \*(Xx will try to store the empty string, just like with
 all other detected error conditions.
 .
 .
@@ -4266,7 +4266,7 @@ Decoding will show how a standard-compliant MUA will display the given
 argument, which should be an email address.
 MUAs have varying support of address standards regarding comments,
 parenthesis, double-quoted strings, or so-called quoted-pairs.
-\*(ID \*(UA currently does not perform decoding when displaying addresses.
+\*(ID \*(Xx currently does not perform decoding when displaying addresses.
 .
 .Pp
 Skinning is identical to decoding but only outputs the plain address,
@@ -4953,7 +4953,7 @@ one of the
 .Sx "Command modifiers" .
 .Bd -literal -offset indent
 ? commandalias xx
-\*(uA: `commandalias': no such alias: xx
+\*(xX: `commandalias': no such alias: xx
 ? commandalias xx echo hello,
 ? commandalias xx
 commandalias xx 'echo hello,'
@@ -5417,7 +5417,7 @@ and
 .
 .Mx
 .It Ic exit
-(ex or x) Exit from \*(UA without changing the active mailbox and skip
+(ex or x) Exit from \*(Xx without changing the active mailbox and skip
 any saving of messages in the
 .Mx -sx
 .Sx "secondary mailbox"
@@ -5448,7 +5448,7 @@ but open the mailbox read-only.
 .Mx
 .It Ic filetype , unfiletype
 \*(NQ Define, list, and remove, respectively, file handler hooks,
-which provide (shell) commands that enable \*(UA to load and save MBOX
+which provide (shell) commands that enable \*(Xx to load and save MBOX
 files from and to files with the registered file extensions, as shown
 and described for
 .Ic folder .
@@ -6035,7 +6035,7 @@ instead of in the
 Does not override the
 .Ic delete
 command.
-\*(UA deviates from the POSIX standard with this command, because a
+\*(Xx deviates from the POSIX standard with this command, because a
 .Ic next
 command issued after
 .Ic hold
@@ -6385,7 +6385,7 @@ If the argument is
 then the cache will only be (re-)initialized, and
 .Ar clear
 will remove its contents.
-Note that \*(UA will try to load the files only once, use
+Note that \*(Xx will try to load the files only once, use
 .Ql Ic \&\&mailcap Ns \:\0\:clear
 to unlock further attempts.
 Loading and parsing can be made more
@@ -6397,7 +6397,7 @@ Loading and parsing can be made more
 .Mx -sx
 .Sx "secondary mailbox"
 .Ev MBOX
-when \*(UA is quit; this is the default action unless the variable
+when \*(Xx is quit; this is the default action unless the variable
 .Va hold
 is set.
 \*(ID This command can only be used in a
@@ -6789,11 +6789,11 @@ lock and then calls a macro which is expected to consume all file data.
 .
 .Bd -literal -offset indent
 $ printf 'echon "hey, "\enread a\enyou\enecho $a' |\e
-  \*(uA -R#
+  \*(xX -R#
 hey, you
 
 $ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
-  LC_ALL=C 6<<< 'you' \*(uA -R#X'readctl create 6'
+  LC_ALL=C 6<<< 'you' \*(xX -R#X'readctl create 6'
 hey, you
 
 ? set fn=x/members.dat
@@ -7199,7 +7199,7 @@ will be applied.
 If the given expanded argument ends with a vertical bar
 .Ql |
 then the argument will instead be interpreted as a shell command and
-\*(UA will read the output generated by it.
+\*(Xx will read the output generated by it.
 Dependent on the settings of
 .Va posix
 and
@@ -7263,7 +7263,7 @@ flag as appropriate; because the spam rating headers are lost the rate
 will be forgotten once the mailbox is left.
 Refer to the manual section
 .Sx "Handling spam"
-for the complete picture of spam handling in \*(UA.
+for the complete picture of spam handling in \*(Xx.
 .
 .Mx
 .It Ic spamset
@@ -7369,7 +7369,7 @@ if necessary.
 .Mx -sx
 .Sx "secondary mailbox"
 .Ev MBOX .
-\*(UA deviates from the POSIX standard with this command,
+\*(Xx deviates from the POSIX standard with this command,
 as a following
 .Ic next
 command will display the following message instead of the current one.
@@ -7560,7 +7560,7 @@ Shows the
 .Va version
 and
 .Va features
-of \*(UA, optionally in a more
+of \*(Xx, optionally in a more
 .Va verbose
 form which also includes the build and running system environment.
 This command supports
@@ -7914,7 +7914,7 @@ ed macro it will silently be (a more expensive variant of)
 .
 .Mx
 .It Ic z
-\*(NQ \*(UA presents message headers in
+\*(NQ \*(Xx presents message headers in
 .Va screen Ns
 fuls as described under the
 .Ic headers
@@ -7994,6 +7994,16 @@ can be achieved with hyphen-minus
 .Ql - ,
 overriding
 .Va errexit .
+.Bd -literal -offset indent
+? set errexit; reply .
+~ - : illegal
+\*(xX: illegal: unknown command
+~:illegal
+\*(xX: illegal: unknown command
+\*(xX: Failed to prepare composed message
+$
+.Ed
+.
 .It
 The modifier dollar
 .Ql $
@@ -8061,7 +8071,7 @@ finally a given
 will be incorporated, after which the compose mode is left.
 .
 .Mx
-.It Ic ~: Ar \*(UA-command Ns \0or Ic ~_ Ar \*(UA-command
+.It Ic ~: Ar \*(Xx-command Ns \0or Ic ~_ Ar \*(Xx-command
 Can be used to execute
 .Sx COMMANDS
 (which are allowed in compose mode).
@@ -8214,7 +8224,7 @@ Syntax error or otherwise invalid parameters or arguments.
 Error: an argument fails verification.
 For example an invalid address has been specified (also see
 .Va expandaddr ) ,
-or an attempt was made to modify anything in \*(UA's own namespace,
+or an attempt was made to modify anything in \*(Xx's own namespace,
 or a modifying subcommand has been used on a read-only message.
 .
 .It Ql 506
@@ -8385,7 +8395,7 @@ if the third argument specifies a free-form header field name that is
 invalid, or if body content extraction fails to succeed,
 .Ql 505
 if any extracted address does not pass syntax and/or security checks or
-on \*(UA namespace violations, and
+on \*(Xx namespace violations, and
 .Ql 506
 to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
@@ -8439,7 +8449,7 @@ upon success,
 .Ql 501
 if no such header can be found, and
 .Ql 505
-on \*(UA namespace violations.
+on \*(Xx namespace violations.
 .
 .It Cm remove-at
 This will remove from the header given as the third argument the
@@ -8448,7 +8458,7 @@ argument, reporting
 .Ql 210
 upon success or
 .Ql 505
-if the list position argument is not a number or on \*(UA namespace
+if the list position argument is not a number or on \*(Xx namespace
 violations, and
 .Ql 501
 if no such header instance exists.
@@ -8469,7 +8479,7 @@ any failure results in
 .
 .
 .Pp
-In compose mode read-only access to optional pseudo headers in the \*(UA
+In compose mode read-only access to optional pseudo headers in the \*(Xx
 private namespace is available:
 .
 .
@@ -8724,7 +8734,7 @@ is seen on a line by itself, and encountering EOF is an error; the
 .Ar HERE-delimiter
 is a required argument in non-interactive mode; if it is single-quote
 quoted then the pasted content will not be expanded, \*(ID otherwise
-a future version of \*(UA may perform shell-style expansion on the content.
+a future version of \*(Xx may perform shell-style expansion on the content.
 .
 .Mx
 .It Ic ~s Ar string
@@ -8945,7 +8955,7 @@ and (may) diverge, others may become adjusted by one of the
 .Sx "Resource files" .
 Displaying the former is accomplished via
 .Ic set :
-.Ql $ \*(uA -:/ -v -Xset -Xx .
+.Ql $ \*(xX -:/ -v -Xset -Xx .
 In general this implementation sets (and has extended the meaning of)
 .Va sendwait ,
 and does not support the
@@ -9144,7 +9154,7 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-\*(BO If set, \*(UA asks an interactive user for files to attach at the
+\*(BO If set, \*(Xx asks an interactive user for files to attach at the
 end of each message; An empty line finalizes the list.
 .
 .Mx
@@ -9182,7 +9192,7 @@ variable is ignored when this variable is set.
 .Mx
 .It Va asksub
 .\" The alternative *ask* is not documented on purpose
-\*(BO Causes \*(UA to prompt the interactive user for the subject upon
+\*(BO Causes \*(Xx to prompt the interactive user for the subject upon
 entering compose mode unless a subject already exists.
 .
 .Mx
@@ -9377,7 +9387,7 @@ field in message headers and with the
 .Mx
 .It Va build-cc , build-ld , build-os , build-rest
 \*(RO The build environment, including the compiler, the linker, the
-operating system \*(UA has been build for, usually taken from
+operating system \*(Xx has been build for, usually taken from
 .Xr uname 1
 via
 .Ql uname -s ,
@@ -9417,7 +9427,7 @@ and this variable is effectively ignored.
 .Dq upgrade
 the content of a mail message by using a character set with the name
 .Ql unknown-8bit .
-Because of the unclassified nature of this character set \*(UA will not
+Because of the unclassified nature of this character set \*(Xx will not
 be capable to convert this character set to any other character set.
 If this variable is set any message part which uses the character set
 .Ql unknown-8bit
@@ -9454,7 +9464,7 @@ is not set!
 .Mx
 .It Va contact-mail , contact-web
 \*(RO Addresses for contact per email and web, respectively, for
-bug reports, suggestions, or anything else regarding \*(UA.
+bug reports, suggestions, or anything else regarding \*(Xx.
 The former can be used directly:
 .Ql \&? Ns \| Cm eval Ns \| Ic mail Ns \| $contact-mail .
 .
@@ -9628,10 +9638,10 @@ its header is included in the editable text.
 .
 .Mx
 .It Va emptystart
-\*(BO When entering interactive mode \*(UA normally writes
+\*(BO When entering interactive mode \*(Xx normally writes
 .Dq \&No mail for user
 and exits immediately if a mailbox is empty or does not exist.
-If this variable is set \*(UA starts even with an empty or non-existent
+If this variable is set \*(Xx starts even with an empty or non-existent
 mailbox (the latter behaviour furtherly depends upon
 .Va bsdcompat ,
 though).
@@ -10159,7 +10169,7 @@ Note that extended host system support is required nonetheless, e.g.,
 detection of the terminal character set is one precondition;
 and this feature only works in an Unicode (i.e., UTF-8) locale.
 .Pp
-In general setting this variable will cause \*(UA to encapsulate text
+In general setting this variable will cause \*(Xx to encapsulate text
 fields that may occur when displaying
 .Va headline
 (and some other fields, like dynamic expansions in
@@ -10172,7 +10182,7 @@ no value (or any value other than
 .Ql 2
 and
 .Ql 3 )
-will make \*(UA assume that the terminal is capable to properly deal
+will make \*(Xx assume that the terminal is capable to properly deal
 with Unicode version 6.3, in which case text is embedded in a pair of
 U+2068 (FIRST STRONG ISOLATE) and U+2069 (POP DIRECTIONAL ISOLATE)
 characters.
@@ -10407,13 +10417,13 @@ mailbox types will never be removed, even if empty.
 .
 .Mx
 .It Va keep-content-length
-\*(BO When (editing messages and) writing MBOX mailbox files \*(UA can
+\*(BO When (editing messages and) writing MBOX mailbox files \*(Xx can
 be told to keep the
 .Ql Content-Length:
 and
 .Ql Lines:
 header fields that some MUAs generate by setting this variable.
-Since \*(UA does neither use nor update these non-standardized header
+Since \*(Xx does neither use nor update these non-standardized header
 fields (which in itself shows one of their conceptual problems),
 stripping them should increase interoperability in between MUAs that
 work with with same mailbox files.
@@ -10421,14 +10431,14 @@ Note that, if this is not set but
 .Va writebackedited ,
 as below, is, a possibly performed automatic stripping of these header
 fields already marks the message as being modified.
-\*(ID At some future time \*(UA will be capable to rewrite and apply an
+\*(ID At some future time \*(Xx will be capable to rewrite and apply an
 .Va mime-encoding
 to modified messages, and then those fields will be stripped silently.
 .
 .Mx
 .It Va keepsave
 \*(BO When a message is saved it is usually discarded from the
-originating folder when \*(UA is quit.
+originating folder when \*(Xx is quit.
 This setting causes all saved message to be retained.
 .
 .Mx
@@ -10462,7 +10472,7 @@ tabulator completion to decide where word boundaries exist, by default
 .
 .Mx
 .It Va line-editor-disable
-\*(BO Turn off any line editing capabilities (from \*(UAs POW, see
+\*(BO Turn off any line editing capabilities (from \*(Xxs POW, see
 .Sx "On terminal control and line editor"
 for more).
 .
@@ -10473,7 +10483,7 @@ for more).
 .Mx
 .It Va log-prefix
 Error log message prefix string
-.Pf ( Ql "\*(uA: " ) .
+.Pf ( Ql "\*(xX: " ) .
 .
 .Mx
 .It Va mailbox-basename
@@ -10535,7 +10545,7 @@ for detecting message boundaries (so-called
 lines) are used instead of the stricter rules from the standard RFC 4155.
 This behaviour can be switched by setting this variable.
 .Pp
-This may temporarily be handy when \*(UA complains about invalid
+This may temporarily be handy when \*(Xx complains about invalid
 .Ql From_
 lines when opening a MBOX: in this case setting this variable and
 re-opening the mailbox in question may correct the result.
@@ -10662,7 +10672,7 @@ will not be overwritten.
 \*(BO If this variable is set then rich MIME alternative parts (e.g.,
 HTML) will be preferred in favour of included plain text versions when
 displaying messages, provided that a handler exists which produces
-output that can be (re)integrated into \*(UA's normal visual display.
+output that can be (re)integrated into \*(Xx's normal visual display.
 .
 .Mx
 .It Va mime-counter-evidence
@@ -10677,7 +10687,7 @@ or a similar mechanism to correctly classify content, but specify an
 unspecific MIME type
 .Pf ( Ql application/octet-stream )
 even for plain text attachments.
-If this variable is set then \*(UA will try to re-classify such MIME
+If this variable is set then \*(Xx will try to re-classify such MIME
 message parts, if possible, for example via a possibly existing
 attachment filename.
 A non-empty value may also be given, in which case a number is expected,
@@ -10782,8 +10792,8 @@ controls loading of the system-wide
 .Pa \*(vS ;
 directives found in the user file take precedence, letter matching is
 case-insensitive.
-If this variable is not set \*(UA will try to load both files.
-Incorporation of the \*(UA-built-in MIME types cannot be suppressed,
+If this variable is not set \*(Xx will try to load both files.
+Incorporation of the \*(Xx-built-in MIME types cannot be suppressed,
 but they will be matched last (the order can be listed via
 .Ic mimetype ) .
 .Pp
@@ -10831,8 +10841,8 @@ and honours
 .Va mbox-fcc-and-pcc :
 .
 .Bd -literal -offset indent
-$ echo text | \*(uA -:/ -Smta=test -s ubject ex@am.ple
-$ </dev/null \*(uA -:/ -Smta=test://./xy ex@am.ple
+$ echo text | \*(xX -:/ -Smta=test -s ubject ex@am.ple
+$ </dev/null \*(xX -:/ -Smta=test://./xy ex@am.ple
 .Ed
 .
 .Pp
@@ -10879,7 +10889,7 @@ as well as possibly
 will (not) be passed.
 .
 .Pp
-\*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
+\*(OPally \*(Xx can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
 a corresponding URL (see
 .Sx "On URL syntax and credential lookup" ) .
@@ -10929,7 +10939,7 @@ specify the port as
 however.
 .It
 The SUBMISSION protocol (RFC 6409) lives on server port 587 and
-shares the semantics with SMTP from \*(UA's point of view:
+shares the semantics with SMTP from \*(Xx's point of view:
 .Ql submission://[user[:password]@]server[:port] .
 .It
 \*(OP The SUBMISSIONS protocol (RFC 8314) that lives on server port 465
@@ -11048,7 +11058,7 @@ is loaded (see
 .Ic netrc
 and
 .Va netrc-lookup )
-then \*(UA will read the output of a shell pipe instead of the user's
+then \*(Xx will read the output of a shell pipe instead of the user's
 .Pa \*(VN
 file if this variable is set (to the desired shell command).
 This can be used to, for example, store
@@ -11172,7 +11182,7 @@ These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
 macro hook is called etc.
 Both hooks will be executed in a subprocess, with their input and output
-connected to \*(UA such that they can act as if they would be an
+connected to \*(Xx such that they can act as if they would be an
 interactive user.
 The difference in between them is that the latter is a
 .Ev SHELL
@@ -11187,7 +11197,7 @@ will indicate said capability).
 can be used to perform cleanup as necessary.
 .
 .Pp
-During execution of these hooks \*(UA will temporarily forget whether it
+During execution of these hooks \*(Xx will temporarily forget whether it
 has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
 will always be available, and for guaranteed reproducibilities sake
@@ -11320,7 +11330,7 @@ is followed by a formfeed character
 .It Va password-USER@HOST , password-HOST , password
 Variable chain that sets a password, which is used in case none has
 been given in the protocol and account-specific URL;
-as a last resort \*(UA will ask for a password on the user's terminal if
+as a last resort \*(Xx will ask for a password on the user's terminal if
 the authentication method requires a password.
 Specifying passwords in a startup file is generally a security risk;
 the file should be readable by the invoking user only.
@@ -11403,7 +11413,7 @@ Request creation of a zero-sized temporary file, the absolute pathname
 of which will be made accessible via the environment variable
 .Ev MAILX_FILENAME_TEMPORARY :
 .Cd x-mailx-tmpfile .
-If given twice then the file will be unlinked automatically by \*(UA
+If given twice then the file will be unlinked automatically by \*(Xx
 when the command loop is entered again at latest:
 .Cd x-mailx-tmpfile-unlink ;
 it is an error to use automatic deletion in conjunction with
@@ -11516,11 +11526,11 @@ method will \*(OPally be replaced with APOP if possible (see there).
 .
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
-\*(BO\*(OP When accessing a POP3 server \*(UA loads the headers of
+\*(BO\*(OP When accessing a POP3 server \*(Xx loads the headers of
 the messages, and only requests the message bodies on user request.
 For the POP3 protocol this means that the message headers will be
 downloaded twice.
-If this variable is set then \*(UA will download only complete messages
+If this variable is set then \*(Xx will download only complete messages
 from the given POP3 server(s) instead.
 .
 .Mx Va pop3-keepalive
@@ -11552,7 +11562,7 @@ and then today transport is almost ever TLS secured.)
 .Mx Va pop3-use-starttls
 .It Va pop3-use-starttls-USER@HOST , pop3-use-starttls-HOST ,\
   pop3-use-starttls
-\*(BO\*(OP Causes \*(UA to issue a
+\*(BO\*(OP Causes \*(Xx to issue a
 .Ql STLS
 command to make an unencrypted POP3 session TLS encrypted.
 This functionality is not supported by all servers.
@@ -11561,7 +11571,7 @@ Directly using encrypted communication channels should be preferred.
 .
 .Mx
 .It Va posix
-\*(BO This flag enables POSIX mode, which changes behaviour of \*(UA
+\*(BO This flag enables POSIX mode, which changes behaviour of \*(Xx
 where that deviates from standardized behaviour.
 It is automatically squared with the environment variable
 .Ev POSIXLY_CORRECT ,
@@ -11898,7 +11908,7 @@ commands.
 .
 .Mx
 .It Va reply-in-same-charset
-\*(BO If this variable is set \*(UA first tries to use the same
+\*(BO If this variable is set \*(Xx first tries to use the same
 character set of the original message for replies.
 If this fails, the mechanism described in
 .Sx "Character sets"
@@ -12019,20 +12029,20 @@ outgoing internet mail.
 The value of the variable
 .Va charset-8bit
 is automatically appended to this list of character sets.
-If no character set conversion capabilities are compiled into \*(UA then
+If no character set conversion capabilities are compiled into \*(Xx then
 the only supported charset is
 .Va ttycharset .
 Also see
 .Va sendcharsets-else-ttycharset
 and refer to the section
 .Sx "Character sets"
-for the complete picture of character set conversion in \*(UA.
+for the complete picture of character set conversion in \*(Xx.
 .
 .Mx
 .It Va sendcharsets-else-ttycharset
 \*(BO\*(OP If this variable is set, but
 .Va sendcharsets
-is not, then \*(UA acts as if
+is not, then \*(Xx acts as if
 .Va sendcharsets
 had been set to the value of the variable
 .Va ttycharset .
@@ -12048,7 +12058,7 @@ never comes into play as
 .Va ttycharset
 is implicitly assumed to be 8-bit and capable to represent all files the
 user may specify (as is the case when no character set conversion
-support is available in \*(UA and the only supported character set is
+support is available in \*(Xx and the only supported character set is
 .Va ttycharset ,
 see
 .Sx "Character sets" ) .
@@ -12115,7 +12125,7 @@ for command-pipe receivers.
 .
 .Mx
 .It Va showlast
-\*(BO This setting causes \*(UA to start at the last message
+\*(BO This setting causes \*(Xx to start at the last message
 instead of the first one when opening a mail folder, as well as with
 .Ic from
 and
@@ -12123,7 +12133,7 @@ and
 .
 .Mx
 .It Va showname
-\*(BO Causes \*(UA to use the sender's real name instead of the plain
+\*(BO Causes \*(Xx to use the sender's real name instead of the plain
 address in the header field summary and in message specifications.
 .
 .Mx
@@ -12208,11 +12218,11 @@ is not available) and
 (DES CBC, 56 bits).
 .Pp
 The actually available cipher algorithms depend on the cryptographic
-library that \*(UA uses.
+library that \*(Xx uses.
 \*(OP Support for more cipher algorithms may be available through
 dynamic loading via
 .Xr EVP_get_cipherbyname 3
-(OpenSSL) if \*(UA has been compiled to support this.
+(OpenSSL) if \*(Xx has been compiled to support this.
 .
 .Mx
 .It Va smime-crl-dir
@@ -12246,7 +12256,7 @@ will be inspected for messages which become encrypted.
 .
 .Mx
 .It Va smime-force-encryption
-\*(BO\*(OP Causes \*(UA to refuse sending unencrypted messages.
+\*(BO\*(OP Causes \*(Xx to refuse sending unencrypted messages.
 .
 .Mx
 .It Va smime-sign
@@ -12296,7 +12306,7 @@ and
 .Ql Cc: )
 of the message, which are searched for addresses for which such
 a variable is set.
-\*(UA always uses the first address that matches,
+\*(Xx always uses the first address that matches,
 so if the same message is sent to more than one of the user addresses
 using different encryption keys, decryption might fail.
 .
@@ -12347,7 +12357,7 @@ cryptographic libraries which do not offer the necessary interface:
 it will be logged if that happened.
 .
 .Pp
-\*(UA will try to add built-in support for the following message
+\*(Xx will try to add built-in support for the following message
 digests, names are case-insensitive:
 .Ql BLAKE2b512 ,
 .Ql BLAKE2s256 ,
@@ -12604,7 +12614,7 @@ the machine
 and from which actual network traffic happens:
 .Bd -literal -offset indent
 $ ssh -D 10000 USER@HOST
-$ \*(uA -Ssocks-proxy=[socks5://]localhost:10000
+$ \*(xX -Ssocks-proxy=[socks5://]localhost:10000
 # or =localhost:10000; no local DNS: =127.0.0.1:10000
 .Ed
 .
@@ -12615,7 +12625,7 @@ $ \*(uA -Ssocks-proxy=[socks5://]localhost:10000
 the desired spam interface must be defined by setting this variable.
 Refer to the manual section
 .Sx "Handling spam"
-for the complete picture of spam handling in \*(UA.
+for the complete picture of spam handling in \*(Xx.
 All or none of the following interfaces may be available:
 .
 .Bl -tag -width ".It Ql _ilte_"
@@ -12626,12 +12636,12 @@ from the
 .Xr spamassassin 1
 .Pf ( Lk http://spamassassin.apache.org SpamAssassin )
 suite.
-Different to the generic filter interface \*(UA will automatically add
+Different to the generic filter interface \*(Xx will automatically add
 the correct arguments for a given command and has the necessary
 knowledge to parse the program's output.
 A default value for
 .Va spamc-command
-will have been compiled into the \*(UA binary if
+will have been compiled into the \*(Xx binary if
 .Xr spamc 1
 has been found in
 .Ev PATH
@@ -12698,12 +12708,12 @@ program for the
 .Va spam-interface .
 Note that the path is not expanded, but used
 .Dq as is .
-A fallback path will have been compiled into the \*(UA binary if the
+A fallback path will have been compiled into the \*(Xx binary if the
 executable had been found during compilation.
 .
 .Mx
 .It Va spamc-arguments
-\*(OP Even though \*(UA deals with most arguments for the
+\*(OP Even though \*(Xx deals with most arguments for the
 .Ql spamc
 .Va spam-interface
 automatically, it may at least sometimes be desirable to specify
@@ -12715,7 +12725,7 @@ connection-related ones via this variable, for example
 \*(OP Specify a username for per-user configuration files for the
 .Ql spamc
 .Va spam-interface .
-If this is set to the empty string then \*(UA will use the name of the
+If this is set to the empty string then \*(Xx will use the name of the
 current
 .Va user .
 .
@@ -12759,7 +12769,7 @@ generation of the
 .Ql Content-ID:
 and
 .Ql User-Agent:
-header fields that include obvious references to \*(UA.
+header fields that include obvious references to \*(Xx.
 There are two pitfalls associated with this:
 First, the message id of outgoing messages is not known anymore.
 Second, an expert may still use the remaining information in the header
@@ -12807,7 +12817,7 @@ Numerics have to be notated as
 .Ql cap#number
 where the number is expected in normal decimal notation.
 Finally, booleans do not have any value but indicate a true or false
-state simply by being defined or not; this indeed means that \*(UA
+state simply by being defined or not; this indeed means that \*(Xx
 does not support undefining an existing boolean.
 String capability values will undergo some expansions before use:
 for one notations like
@@ -12834,7 +12844,7 @@ that home the cursor and produce an audible bell, one might write:
 .
 .Pp
 The following terminal capabilities are or may be meaningful for the
-operation of the built-in line editor or \*(UA in general:
+operation of the built-in line editor or \*(Xx in general:
 .
 .Pp
 .Bl -tag -compact -width ".It Cd yay"
@@ -12858,7 +12868,7 @@ plus
 .It Cd colors Ns \0or Cd Co
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
-Note that \*(UA does not actually care about the terminal beside that,
+Note that \*(Xx does not actually care about the terminal beside that,
 but always emits ANSI / ISO 6429 escape sequences; also see
 .Ic colour .
 .
@@ -12915,7 +12925,7 @@ plus
 and
 .Cd enter_ca_mode ,
 respectively: exit and enter the alternative screen ca-mode,
-effectively turning \*(UA into a fullscreen application.
+effectively turning \*(Xx into a fullscreen application.
 This must be enabled explicitly by setting
 .Va termcap-ca-mode .
 .
@@ -13064,7 +13074,7 @@ If a non-empty value is given then the given file, after performing
 will be used instead of the TLS libraries global default, and it is an
 error if the file cannot be loaded.
 The application name will always be passed as
-.Ql \*(uA .
+.Ql \*(xX .
 Some TLS libraries support application-specific configuration via
 resource files loaded like this, see
 .Va tls-config-module .
@@ -13081,10 +13091,10 @@ by
 indicating availability of
 .Xr SSL_CTX_config 3 ,
 then, it becomes possible to use a central TLS configuration file
-for all programs, including \*(uA, for example
+for all programs, including \*(xX, for example
 .Bd -literal -offset indent
-# Register a configuration section for \*(uA
-\*(uA = mailx_master
+# Register a configuration section for \*(xX
+\*(xX = mailx_master
 # The top configuration section creates a relation
 # in between dynamic SSL configuration and an actual
 # program specific configuration section
@@ -13384,8 +13394,8 @@ command series will strip adjacent empty lines and quotations.
 .
 .Mx
 .It Va ttycharset
-The character set of the terminal \*(UA operates on,
-and the one and only supported character set that \*(UA can use if no
+The character set of the terminal \*(Xx operates on,
+and the one and only supported character set that \*(Xx can use if no
 character set conversion capabilities have been compiled into it,
 in which case it defaults to ISO-8859-1.
 Otherwise it defaults to UTF-8.
@@ -13404,7 +13414,7 @@ for the complete picture about character sets.
 .Mx
 .It Va typescript-mode
 \*(BO A special multiplex variable that disables all variables and
-settings which result in behaviour that interferes with running \*(UA in
+settings which result in behaviour that interferes with running \*(Xx in
 .Xr script 1 ;
 it sets
 .Va colour-disable ,
@@ -13429,11 +13439,11 @@ Child processes inherit the file mode creation mask of their parent.
 .It Va user-HOST , user
 Variable chain that sets a global fallback user name, used in case
 none has been given in the protocol and account-specific URL.
-This variable defaults to the name of the user who runs \*(UA.
+This variable defaults to the name of the user who runs \*(Xx.
 .
 .Mx
 .It Va v15-compat
-Enable upward compatibility with \*(UA version 15.0 in respect to which
+Enable upward compatibility with \*(Xx version 15.0 in respect to which
 configuration options are available and how they are handled.
 If set to a non-empty value (the default) the command modifier
 .Cm wysh
@@ -13464,7 +13474,7 @@ Also see
 .Mx
 .It Va version , version-date , \
   version-hexnum , version-major , version-minor , version-update
-\*(RO \*(UA version information: the first variable is a string with
+\*(RO \*(Xx version information: the first variable is a string with
 the complete version identification, the second the release date in ISO
 8601 notation without time.
 The third is a 32-bit hexadecimal number with the upper 8 bits storing
@@ -13630,8 +13640,8 @@ Default is
 .
 .Mx
 .It Ev LOGNAME
-Upon startup \*(UA will actively ensure that this variable refers to the
-name of the user who runs \*(UA, in order to be able to pass a verified
+Upon startup \*(Xx will actively ensure that this variable refers to the
+name of the user who runs \*(Xx, in order to be able to pass a verified
 name to any newly created child process.
 .
 .Mx
@@ -13674,7 +13684,7 @@ If this variable is set then reading of
 .Pa \*(UR
 (aka\&
 .Va system-mailrc )
-at startup is inhibited, i.e., the same effect is achieved as if \*(UA
+at startup is inhibited, i.e., the same effect is achieved as if \*(Xx
 had been started up with the option
 .Fl \&:
 (and according argument) or
@@ -13777,7 +13787,7 @@ This environment entry is automatically squared with
 Specifies a time in seconds since the Unix epoch (1970-01-01) to be
 used in place of the current time.
 This variable is looked up upon program startup, and its existence will
-switch \*(UA to a reproducible mode
+switch \*(Xx to a reproducible mode
 .Pf ( Lk https://reproducible-builds.org )
 which uses deterministic random numbers, a special fixated pseudo
 .Ev LOGNAME
@@ -13786,7 +13796,7 @@ This operation mode is used for development and by software packagers.
 \*(ID Currently an invalid setting is only ignored, rather than causing
 a program abortion.
 .Pp
-.Dl $ SOURCE_DATE_EPOCH=`date +%s` \*(uA
+.Dl $ SOURCE_DATE_EPOCH=`date +%s` \*(xX
 .
 .Mx
 .It Ev TERM
@@ -13804,7 +13814,7 @@ temporary files to be used instead of
 (or the given compile-time constant) if set, existent, accessible as
 well as read- and writable.
 This variable is only used when it resides in the process environment,
-but \*(UA will ensure at startup that this environment variable is
+but \*(Xx will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.
 .
 .Mx
@@ -14211,7 +14221,7 @@ header field to be applied to the composed data.
 .It Cd copiousoutput
 A flag field which indicates that the output of the
 .Cd view
-command is integrable into \*(UAs normal visual display.
+command is integrable into \*(Xxs normal visual display.
 It is mutually exclusive with
 .Cd needsterminal .
 .
@@ -14250,7 +14260,7 @@ can be used.
 .It Cd needsterminal
 This flag field indicates that the given shell command must be run on
 an interactive terminal.
-\*(UA will temporarily release the terminal to the given command in
+\*(Xx will temporarily release the terminal to the given command in
 interactive mode, in non-interactive mode this entry will be entirely
 ignored; this flag implies
 .Cd x-mailx-noquote .
@@ -14283,13 +14293,13 @@ encoding, and will be in that form after decoding.
 .It Cd x11-bitmap
 Names a file, in X11 bitmap (xbm) format, which points to an appropriate
 icon to be used to visually denote the presence of this kind of data.
-This field is not used by \*(UA.
+This field is not used by \*(Xx.
 .
 .Mx
 .It Cd x-mailx-async
 Extension flag field that denotes that the given
 .Cd view
-command shall be executed asynchronously, without blocking \*(UA.
+command shall be executed asynchronously, without blocking \*(Xx.
 Cannot be used in conjunction with
 .Cd needsterminal ;
 the standard output of the command will go to
@@ -14411,7 +14421,7 @@ multipart/*; /usr/local/bin/showmulti \e
 .Ed
 .
 .Pp
-Note that \*(UA does not support handlers for multipart MIME parts as
+Note that \*(Xx does not support handlers for multipart MIME parts as
 shown in this example (as of today).
 It does not support the additional formats
 .Ql %n
@@ -14636,7 +14646,7 @@ For personal use it is recommended to get a S/MIME certificate from
 one of the major CAs on the Internet.
 Many CAs offer such certificates for free.
 Usually offered is a combined certificate and private key in PKCS#12
-format which \*(UA does not accept directly.
+format which \*(Xx does not accept directly.
 To convert it to PEM format, the following shell command can be used;
 Read on for how to use these PEM files.
 .
@@ -14706,8 +14716,8 @@ In order to use your new S/MIME setup a combined private key/public key
 .Dl $ cat key.pem pub.crt > ME@HERE.com.paired
 .
 .Pp
-This is the file \*(UA will work with.
-If you have created your private key with a passphrase then \*(UA will
+This is the file \*(Xx will work with.
+If you have created your private key with a passphrase then \*(Xx will
 ask you for it whenever a message is signed or decrypted, unless this
 operation has been automated as described in
 .Sx "Signed and encrypted messages with S/MIME" .
@@ -14739,25 +14749,25 @@ To seriously use S/MIME or TLS verification,
 an up-to-date CRL is required for each trusted CA.
 There is otherwise no method to distinguish between valid and
 invalidated certificates.
-\*(UA currently offers no mechanism to fetch CRLs, nor to access them on
+\*(Xx currently offers no mechanism to fetch CRLs, nor to access them on
 the Internet, so they have to be retrieved by some external mechanism.
 .
 .Pp
-\*(UA accepts CRLs in PEM format only;
+\*(Xx accepts CRLs in PEM format only;
 CRLs in DER format must be converted, like, e.\|g.:
 .
 .Pp
 .Dl $ openssl crl \-inform DER \-in crl.der \-out crl.pem
 .
 .Pp
-To tell \*(UA about the CRLs, a directory that contains all CRL files
+To tell \*(Xx about the CRLs, a directory that contains all CRL files
 (and no other files) must be created.
 The
 .Va smime-crl-dir
 or
 .Va tls-crl-dir
 variables, respectively, must then be set to point to that directory.
-After that, \*(UA requires a CRL to be present for each CA that is used
+After that, \*(Xx requires a CRL to be present for each CA that is used
 to verify a certificate.
 .\" }}}
 .
@@ -14777,11 +14787,11 @@ twice) if something does not work well.
 Very often a diagnostic message can be produced that leads to the
 problems' solution.
 .
-.\" .Ss "\*(UA shortly hangs on startup" {{{
-.Ss "\*(UA shortly hangs on startup"
+.\" .Ss "\*(Xx shortly hangs on startup" {{{
+.Ss "\*(Xx shortly hangs on startup"
 .
 This can have two reasons, one is the necessity to wait for a file lock
-and cannot be helped, the other being that \*(UA calls the function
+and cannot be helped, the other being that \*(Xx calls the function
 .Xr uname 2
 in order to query the nodename of the box (sometimes the real one is
 needed instead of the one represented by the internal variable
@@ -14816,14 +14826,14 @@ her- and himself with the locally installed
 .Xr kinit 1
 program, that protocol has no such local part but instead requires
 a world-wide-web query to create or fetch a token; since there is no
-local cache this query would have to be performed whenever \*(UA is
+local cache this query would have to be performed whenever \*(Xx is
 invoked (in interactive sessions situation may differ).
 .
 .Pp
-\*(UA does not directly support OAuth.
+\*(Xx does not directly support OAuth.
 It, however, supports XOAUTH2 / OAUTHBEARER, see
 .Sx "But, how about XOAUTH2 / OAUTHBEARER?"
-If that is not used it is necessary to declare \*(UA a
+If that is not used it is necessary to declare \*(Xx a
 .Dq less secure app
 (on the providers account web page) in order to read and send mail.
 However, it also seems possible to take the following steps instead:
@@ -14839,7 +14849,7 @@ enable
 create an application specific password (16 characters), and
 .It
 use that special password instead of the real Google account password in
-\*(UA (for more on that see the section
+\*(Xx (for more on that see the section
 .Sx "On URL syntax and credential lookup" ) .
 .El
 .\" }}}
@@ -14897,7 +14907,7 @@ The procedure as a whole can be read at
 .Lk https://github.com/google/\:gmail-oauth2-tools/\:wiki/\:\
 OAuth2DotPyRunThrough .
 Since periodic timers are not yet supported, keeping an access token
-up-to-date (from within \*(UA) can only be performed via the hook
+up-to-date (from within \*(Xx) can only be performed via the hook
 .Va on-main-loop-tick ,
 or (for sending only)
 .Va on-compose-enter
@@ -14969,7 +14979,7 @@ with its option
 if available, to see the byte sequences which are actually produced
 by keypresses, and use the variable
 .Va termcap
-to make \*(UA aware of them.
+to make \*(Xx aware of them.
 The terminal this is typed on produces some unexpected sequences,
 here for an example the shifted home key:
 .
@@ -14981,15 +14991,15 @@ here for an example the shifted home key:
 ? x
 $ cat -v
 ^[[H
-$ \*(uA -v -Stermcap='kHOM=\eE[H'
+$ \*(xX -v -Stermcap='kHOM=\eE[H'
 ? bind*
 # 1B 5B=[ 48=H
   bind base :kHOM z0
 .Ed
 .\" }}}
 .
-.\" .Ss "Can \*(UA git-send-email?" {{{
-.Ss "Can \*(UA git-send-email?"
+.\" .Ss "Can \*(Xx git-send-email?" {{{
+.Ss "Can \*(Xx git-send-email?"
 .
 Yes.
 Put (at least parts of) the following in your
@@ -14997,7 +15007,7 @@ Put (at least parts of) the following in your
 .
 .Bd -literal -offset indent
 [sendemail]
-smtpserver = /usr/bin/\*(uA
+smtpserver = /usr/bin/\*(xX
 smtpserveroption = -t
 #smtpserveroption = -Sexpandaddr
 smtpserveroption = -Athe-account-you-need
@@ -15023,7 +15033,7 @@ Patches can also be send directly, for example:
 .
 .Bd -literal -offset indent
 $ git format-patch -M --stdout HEAD^ |
-  \*(uA -A the-account-you-need -t RECEIVER
+  \*(xX -A the-account-you-need -t RECEIVER
 .Ed
 .\" }}}
 .
@@ -15035,7 +15045,7 @@ sometimes fails to open MBOX mail databases because creation of
 .Mx -sx
 .Sx "dotlock files"
 is impossible due to existing but unowned lock files.
-\*(UA does not offer an option to deal with those files, because it is
+\*(Xx does not offer an option to deal with those files, because it is
 considered a site policy what counts as unowned, and what not.
 The site policy is usually defined by administrator(s), and expressed in
 the configuration of a locally installed MTA (for example Postfix
@@ -15043,7 +15053,7 @@ the configuration of a locally installed MTA (for example Postfix
 Therefore the suggestion:
 .
 .Bd -literal -offset indent
-$ </dev/null \*(uA -s 'MTA: be no frog, handle lock' $LOGNAME
+$ </dev/null \*(xX -s 'MTA: be no frog, handle lock' $LOGNAME
 .Ed
 .
 .Pp
@@ -15066,7 +15076,7 @@ Support can hopefully be readded later based on a new-style I/O, with
 SysV signal handling.
 In fact the IMAP support had already been removed from the codebase, but
 was reinstantiated on user demand: in effect the IMAP code is at the
-level of \*(UA v14.8.16 (with
+level of \*(Xx v14.8.16 (with
 .Ic imapcodec
 being the sole exception), and should be treated with some care.
 .
@@ -15085,7 +15095,7 @@ can be used to manually apply them to any given argument).
 Hierarchy delimiters are normalized, a step which is configurable via the
 .Va imap-delim
 variable chain, but defaults to the first seen delimiter otherwise.
-\*(UA supports internationalised IMAP names, and en- and decodes the
+\*(Xx supports internationalised IMAP names, and en- and decodes the
 names from and to the
 .Va ttycharset
 as necessary and possible.
@@ -15143,7 +15153,7 @@ makes the entire mailbox available for disconnected use.
 .Mx
 .It Ic imap
 Sends command strings directly to the current IMAP server.
-\*(UA operates always in IMAP `selected state' on the current mailbox;
+\*(Xx operates always in IMAP `selected state' on the current mailbox;
 commands that change this will produce undesirable results and should be
 avoided.
 Useful IMAP commands are:
@@ -15259,8 +15269,8 @@ only uses data from the client certificate.
 .It Va imap-cache
 Enables caching of IMAP mailboxes.
 The value of this variable must point to a directory that is either
-existent or can be created by \*(UA.
-All contents of the cache can be deleted by \*(UA at any time;
+existent or can be created by \*(Xx.
+All contents of the cache can be deleted by \*(Xx at any time;
 it is not safe to make assumptions about them.
 .
 .Mx Va imap-delim
@@ -15300,7 +15310,7 @@ command does not descend to subfolders.
 .
 .Mx Va imap-use-starttls
 .It Va imap-use-starttls-USER@HOST , imap-use-starttls-HOST , imap-use-starttls
-Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
+Causes \*(Xx to issue a `STARTTLS' command to make an unencrypted
 IMAP session TLS encrypted.
 This functionality is not supported by all servers,
 and is not used if the session is already encrypted by the IMAPS method.
@@ -15448,7 +15458,7 @@ in the British Royal Signals and Radar Establishment (RSRE) in Malvern.
 .An "Keith Bostic" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" .
-\*(UA is developed by
+\*(Xx is developed by
 .An "Steffen Nurpmeso" Aq s-mailx@lists.sdaoden.eu .
 .
 .
@@ -15470,7 +15480,7 @@ of hanging network connections, for example (all this is unrelated to
 .Va ignore ) .
 .
 .Pp
-The SMTP and POP3 protocol support of \*(UA is very basic.
+The SMTP and POP3 protocol support of \*(Xx is very basic.
 Also, if it fails to contact its upstream SMTP server, it will not make
 further attempts to transfer the message at a later time (setting
 .Va save
@@ -15506,7 +15516,7 @@ and very).
 .Pp
 Please report bugs to the
 .Va contact-mail
-address, for example from within \*(uA:
+address, for example from within \*(xX:
 .\" v15-compat: drop eval as `mail' will expand variable?
 .Ql \&? Ns \| Cm eval Ns \| Ic mail Ns \| $contact-mail .
 Including the
@@ -15525,6 +15535,6 @@ Bug subject
 .
 .Pp
 Information on the web at
-.Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ; x' .
+.Ql $ \*(xX -X 'echo Ns \| $ Ns Va contact-web Ns ; x' .
 .
 .\" s-ts-mode

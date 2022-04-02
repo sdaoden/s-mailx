@@ -19,9 +19,9 @@ export VERSION
       un = toupper(ENVIRON["VAL_UAGENT"])
          ln = tolower(un)
          cn = toupper(substr(ln, 1, 1)) substr(ln, 2)
-         print ".ds UU \\\\%", un
-         print ".ds UA \\\\%", cn
-         print ".ds uA \\\\%", ln
+         print ".ds XX \\\\%", un
+         print ".ds Xx \\\\%", cn
+         print ".ds xX \\\\%", ln
       path = ENVIRON["VAL_SYSCONFRC"]
          gsub("/", "/\\:", path)
          print ".ds UR \\\\%", path
