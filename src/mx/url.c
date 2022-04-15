@@ -169,6 +169,7 @@ c_urlcodec(void *vp){
    if(su_cs_starts_with_case_n("encode", act, alen))
       varres = mx_url_xenc(cp, ispath);
    else if(su_cs_starts_with_case_n("decode", act, alen))
+      /* TODO `urlcodec pathdecode': should not decode dirsep!! */
       varres = mx_url_xdec(cp);
    else
       goto jesynopsis;

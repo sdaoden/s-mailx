@@ -122,6 +122,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Obj! */
       char const *adjname;
       enum protocol p;
 
+      /* v15-compat: which_protocol(): no auto-completion */
       p = which_protocol(name, TRU1, TRU1, &adjname);
 
       if(p == n_PROTO_FILE || p == n_PROTO_MAILDIR || p == n_PROTO_EML){
@@ -585,6 +586,7 @@ jlogname:
    /* For at least substdate() users TODO -> eventloop tick */
    time_current_update(&time_current, FAL0);
 
+   /* v15-compat: which_protocol(): no auto-completion */
    switch((proto = which_protocol(orig_name = name, TRU1, TRU1, &name))){
    case n_PROTO_EML:
       if(!(fm & FEDIT_RDONLY) || (fm & ~(FEDIT_RDONLY | FEDIT_MAIN))){

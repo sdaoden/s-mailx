@@ -418,7 +418,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "folder", &c_file, (M | T | TWYRA), 0, 1, NIL
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1, NIL
-     DS(N_("List mailboxes below the given or the global folder")) },
+     DS(N_("List mailboxes below the given or the global *folder*")) },
    { "fop",
 #ifdef mx_HAVE_CMD_FOP
       &c_fop,
@@ -667,7 +667,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "size", &c_messize, (A | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Show size in bytes for <msglist>")) },
    { "sleep", &c_sleep, (M | X | EM | NOHIST | TWYSH), 1, 3, NIL
-     DS(N_("Sleep for <seconds> [<milliseconds>]"))},
+     DS(N_("Sleep for <seconds> [<milliseconds>|empty [non-interruptible]]"))},
 { "source", &c_source, (M | TWYSH), 1, 1, NIL
      DS(N_("Read commands from <file>")) },
    { "sort", &c_sort, (A | TWYSH), 0, 1, NIL
@@ -748,7 +748,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "touch", &c_stouch, (A | W | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mark <msglist> for saving in *mbox*")) },
 { "thread", &c_thread, (O | A | TMSGLST), 0, 0, NIL
- DS(N_("Obsoleted by `sort' \"thread\"")) },
+ DS(N_("Obsoleted by `sort thread'")) },
 
 { "undelete", &c_undelete, (A | P | TMSGLST), MDELETED, MMNDEL, NIL
      DS(N_("Un`delete' <msglist>")) },
@@ -812,8 +812,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Unset <option-list>")) },
    { "unshortcut", &c_unshortcut, (M | TWYSH), 1, MAC, NIL
      DS(N_("Delete <shortcut-list> (* for all)")) },
-   { "unsort", &c_unthread, (A | TMSGLST), 0, 0, NIL
-     DS(N_("Disable sorted or threaded mode")) },
+   { "unsort", &c_unsort, (A | TMSGLST), 0, 0, NIL
+     DS(N_("The same as `sort none'")) },
    { "urlcodec", &c_urlcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
 { "unfwdignore", &c_unfwdignore, (O | M | TRAWLST), 0, MAC, NIL
@@ -826,8 +826,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
  DS(N_("Obsoleted by `unheaderpick'")) },
 { "unsaveretain", &c_unsaveretain, (O | M | TRAWLST), 0, MAC, NIL
  DS(N_("Obsoleted by `unheaderpick'")) },
-{ "unthread", &c_unthread, (O | A | TMSGLST), 0, 0, NIL
- DS(N_("Obsolete (use `unsort')")) },
+{ "unthread", &c_unsort, (O | A | TMSGLST), 0, 0, NIL
+ DS(N_("Obsolete, use `sort none' (Disable sorted mode)")) },
 
 { "visual", &c_visual, (A | I | S | TMSGLST), 0, MMNORM, NIL
      DS(N_("Edit <msglist>")) },
