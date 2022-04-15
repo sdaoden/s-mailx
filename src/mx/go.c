@@ -522,8 +522,7 @@ jrestart:
 
       /* Avoid self-recursion; since a commandalias can shadow a command of
        * equal name allow one level of expansion to return an equal result:
-       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit".
-       * P.S.: should also work for "help x" ... */
+       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
       if(alias_name != NIL && !su_cs_cmp(word, alias_name))
          flags |= a_NOALIAS;
 
