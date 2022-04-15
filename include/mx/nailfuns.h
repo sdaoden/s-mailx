@@ -1244,9 +1244,6 @@ FL char const *n_string_cp_const(struct n_string const *self);
 FL int         c_thread(void *vp);
 
 /*  */
-FL int         c_unthread(void *vp);
-
-/*  */
 FL struct message * next_in_thread(struct message *mp);
 FL struct message * prev_in_thread(struct message *mp);
 FL struct message * this_in_thread(struct message *mp, long n);
@@ -1254,6 +1251,7 @@ FL struct message * this_in_thread(struct message *mp, long n);
 /* Sorted mode is internally just a variant of threaded mode with all m_parent
  * and m_child links being NULL */
 FL int         c_sort(void *vp);
+FL int         c_unsort(void *vp);
 
 /*  */
 FL int         c_collapse(void *v);

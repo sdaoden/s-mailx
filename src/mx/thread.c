@@ -559,29 +559,6 @@ c_thread(void *vp)
    return rv;
 }
 
-FL int
-c_unthread(void *vp)
-{
-   struct message *m;
-   int rv;
-   NYD_IN;
-
-   mb.mb_threaded = 0;
-   if (mb.mb_sorted != NULL)
-      n_free(mb.mb_sorted);
-   mb.mb_sorted = NULL;
-
-   for (m = message; PCMP(m, <, message + msgCount); ++m)
-      m->m_collapsed = 0;
-
-   if (vp && !(n_pstate & n_PS_HOOK_MASK) && ok_blook(header))
-      rv = print_header_group(vp);
-   else
-      rv = 0;
-   NYD_OU;
-   return rv;
-}
-
 FL struct message *
 next_in_thread(struct message *mp)
 {
@@ -664,12 +641,13 @@ FL int
 c_sort(void *vp)
 {
    enum method {SORT_SUBJECT, SORT_DATE, SORT_STATUS, SORT_SIZE, SORT_FROM,
-      SORT_TO, SORT_SPAM, SORT_THREAD} method;
+      SORT_TO, SORT_SPAM, SORT_THREAD, SORT_NONE} method;
    struct {
       char const *me_name;
       enum method me_method;
       int         (*me_func)(void const *, void const *);
    } const methnames[] = {
+      {"none", SORT_NONE, NIL},
       {"date", SORT_DATE, &_mlonglt},
       {"from", SORT_FROM, &_mcharlt},
       {"to", SORT_TO, &_mcharlt},
@@ -710,6 +688,11 @@ c_sort(void *vp)
          i = 1;
          goto jleave;
       }
+   }
+
+   if(methnames[i].me_method == SORT_NONE){
+      i = c_unsort(NIL);
+      goto jleave;
    }
 
    if (mb.mb_sorted != NULL)
@@ -833,9 +816,35 @@ c_sort(void *vp)
 
    i = ((vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);
+
 jleave:
    NYD_OU;
    return i;
+}
+
+FL int
+c_unsort(void *vp){
+   struct message *mp;
+   int rv;
+   NYD_IN;
+
+   mb.mb_threaded = 0;
+   if(mb.mb_sorted != NIL){
+      su_FREE(mb.mb_sorted);
+      mb.mb_sorted = NIL;
+   }
+
+   for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp)
+      mp->m_collapsed = 0;
+
+   if(vp != NIL && !(n_pstate & n_PS_HOOK_MASK) && ok_blook(header) &&
+         msgCount > 0)
+      rv = print_header_group(vp);
+   else
+      rv = su_EX_OK;
+
+   NYD_OU;
+   return rv;
 }
 
 FL int
