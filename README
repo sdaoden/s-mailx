@@ -3,12 +3,10 @@ W e l c o m e  t o  S - n a i l / S - m a i l x
 
 S-nail (later S-mailx) provides a simple and friendly environment for
 sending and receiving mail.  It is intended to provide the functionality
-of the POSIX mailx(1) command, but is MIME capable and optionally offers
+of the POSIX mailx(1) command, is MIME capable, and optionally offers
 extensions for line editing, S/MIME, SMTP and POP3, among others.
-It divides incoming mail into its constituent messages and allows the
-user to deal with them in any order, offers many commands and variables
-for manipulating messages and sending mail, as well as line editing, and
-increasingly powerful scripting capabilities.
+Users are given tools for email appraisal and management, as well
+as increasingly powerful, reliable scripting capabilities.
 
 Please refer to the file INSTALL for build and installation remarks,
 and to NEWS for release update information.  The file THANKS mentions
@@ -38,10 +36,10 @@ Annotated Excerpts from the Programmer's Manual, 1971-1986":
 ---------
 
 Our latest release can be downloaded at [1], and the fully cross-
-referenced manual can also be viewed as HTML online[2].
-There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
-cloning purposes), with mirrors at Sourceforge[5.a] (our initial
-hoster), Github[5.b] and repo.or.cz[5.c].
+referenced manual can also be viewed online[2].
+There are browsable git(1) repositories[3] (for cloning: [4]),
+with mirrors at Sourceforge[5.a] (our initial hoster), Github[5.b],
+and repo.or.cz[5.c].
 
   [1] https?://ftp.sdaoden.eu/s-nail-latest.tar.{gz,xz}{,.asc}
   [2] https?://www.sdaoden.eu/code.html#s-mailx
@@ -56,23 +54,18 @@ bilities; subscriptions can be managed via web interface[8] (it is
 a GNU Mailman list, so posting to LISTNAME-request@ and the subject
 "subscribe" will also do).  We have a browser-accessible and searchable
 archive[9], and The Mail Archive is so kind and offers it, with all its
-services, too [10]!  For example, i have subscribed the RSS feed that
-The Mail Archive produces to Gwene.org[11].  And Gmane.org was so kind
-and took us, we are here[12].  Thanks to all of you!
+services[10]!  We are at Gmane.org[11] and Gwene.org[12]: thank you!
 
 Commits to the [master], [release/*] and [stable/*] branches are
 posted to [13], and announcements will also be posted to [14], both
 are receive-only mailing-lists.
 
-  Note: mailing list related URLs etc. may change after the v14.9.20
-  release, please look at the web page shall the below not work!
-
   [7] s-mailx@lists.sdaoden.eu
   [8] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx
   [9] https://lists.sdaoden.eu/pipermail/s-mailx/
   [10] https://www.mail-archive.com/s-mailx@lists.sdaoden.eu/
-  [11] news.gwene.org/gwene.mail.s-mailx
-  [12] news.gmane.org/gmane.mail.s-mailx.general
+  [11] news.gmane.org/gmane.mail.s-mailx.general
+  [12] news.gwene.org/gwene.mail.s-mailx
   [13] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
   [14] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
 
@@ -118,7 +111,7 @@ And then, assuming the last had been done:
     A new branch within release/ is created for every release, for
     example [release/v14.8.10].  History will not be rewritten.
 
-    These branches consist of one signed commit, and is used for the
+    These branches consist of one signed commit, and are used for the
     signed release tag, vMAJOR.MINOR.UPDATE.ar (.ar for "archive").
     The commit as such covers the data modifications that make up
     a release (release date fixation, manual preprocessing, removal of
@@ -180,10 +173,9 @@ And then, assuming the last had been done:
 
 - [master]
     Rooted on top of [heirloom].  It gains only stable, but possibly
-    backward-incompatible changes (usually mentioned on the ML), and
-    will be used to create new entries in stable/.  It may gain signed
-    commits for sealing purposes from time to time.
-    History will not be rewritten.
+    backward-incompatible changes, and will be used to create new
+    entries in stable/.  It may gain signed commits for sealing purposes
+    from time to time.  History will not be rewritten.
 
 - [next]
     Rooted on top of [master], this consists of a furious mixture of
