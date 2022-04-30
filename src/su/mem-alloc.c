@@ -274,7 +274,7 @@ a_mema_release_free(void){
          free(vp);
       }
 
-      su_log_write(su_LOG_INFO | su_LOG_F_CORE,
+      su_log_write(su_LOG_DEBUG | su_LOG_F_CORE,
          "su_mem_set_conf(LINGER_FREE_RELEASE): freed %" PRIuZ
             " chunks / %" PRIuZ " bytes",
          c, s);
