@@ -136,7 +136,7 @@ TMPDIR=`${pwd}`
 
 export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX ERR MAIL TMPDIR
 
-# When testing mass mail/loops, maximum number of receivers/loops.
+# When testing mass mail/loops, maximum number of recipients/loops.
 # TODO note we do not gracefully handle ARG_MAX excess yet!
 # Those which use this have checksums for 2001 and 201.
 # Some use the smaller automatically if +debug
@@ -4321,13 +4321,13 @@ t_mta_args() { # {{{
 
    #
    </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
-      -S mta-no-default-arguments -S mta-no-receiver-arguments \
+      -S mta-no-default-arguments -S mta-no-recipient-arguments \
       r1@e.c r2@e.c > ./t5 2>&1
    check 5 0 ./t.mbox '2135964332 18'
    check 5-err - ./t5 '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./tmta.sh -s t \
-      -S mta-no-receiver-arguments \
+      -S mta-no-recipient-arguments \
       r1@e.c r2@e.c > ./t6 2>&1
    check 6 0 ./t.mbox '745357308 34'
    check 6-err - ./t6 '4294967295 0'

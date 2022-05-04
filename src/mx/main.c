@@ -575,7 +575,7 @@ jeTuse:
    else
       np = nalloc_fcc(a);
    if(np == NIL){
-      rv = N_("-T: invalid receiver (address)");
+      rv = N_("-T: invalid recipient (address)");
       goto jleave;
    }
 
@@ -605,7 +605,7 @@ a_main_usage(FILE *fp){
       putc('\n', fp);
 
    fprintf(fp, _(
-      "Send-only mode: send mail \"to-addr\"(ess) receiver(s):\n"
+      "Send-only mode: send mail \"to-addr\"(ess) recipient(s):\n"
       "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
       "  %s [:-a attachment:] [:-b bcc-addr:] [:-c cc-addr:]\n"
       "  %s [-M type | -m file | -q file | -t] [-r from-addr] "
@@ -725,7 +725,7 @@ main(int argc, char *argv[]){
          "set:;S;" N_("set a variable (unset via \"noARG\")"),
          "startup-cmd:;X;" N_("to be executed before normal operation"),
          "subject:;s;" N_("specify subject of message to be sent"),
-      "target:;T;" N_("add receiver(s) \"header-field: address\" as via -t"),
+      "target:;T;" N_("add recipient(s) \"header-field: address\" as via -t"),
          "template;t;" N_("message to be sent is read from standard input"),
       "verbose;v;" N_("equals -Sverbose (multiply for more verbosity)"),
          "version;V;" N_("print version (more with \"[-v] -Xversion -Xx\")"),

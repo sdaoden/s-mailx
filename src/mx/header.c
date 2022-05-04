@@ -1511,7 +1511,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
       linebuf[0] = '\0';
 
    su_mem_set(hq, 0, sizeof *hq);
-   if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
+   if(hef & n_HEADER_EXTRACT_PREFILL_RECIPIENTS){
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;

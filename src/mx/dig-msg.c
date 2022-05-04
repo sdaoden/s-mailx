@@ -1610,7 +1610,7 @@ c_digmsg(void * volatile vp){
 
          /* XXX n_header_extract error!! */
          n_header_extract((n_HEADER_EXTRACT_FULL |
-               n_HEADER_EXTRACT_PREFILL_RECEIVERS |
+               n_HEADER_EXTRACT_PREFILL_RECIPIENTS |
                n_HEADER_EXTRACT_IGNORE_FROM_),
                fp, dmcp->dmc_hp, NIL);
 

@@ -128,7 +128,7 @@ static s32 a_sendout_attach_file(struct header *hp, struct mx_attachment *ap,
 static s32 a_sendout__attach_file(struct header *hp, struct mx_attachment *ap,
       FILE *f, boole force);
 
-/* There are non-local receivers, collect credentials etc. */
+/* There are non-local recipients, collect credentials etc. */
 static boole a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps);
 
 /* Attach a message to the file buffer */
@@ -1708,15 +1708,25 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
    if (!snda)
       args[i++] = "--";
 
-   /* Receivers follow */
-   if(!ok_blook(mta_no_receiver_arguments))
-      for (; to != NULL; to = to->n_flink)
-         if (!(to->n_type & GDEL))
-            args[i++] = to->n_name;
-   args[i] = NULL;
+   /* Recipients follow */
+   /* C99 */{
+      boole nra_v15compat;
 
-   if(vas != NULL)
-      n_lofi_free(vas);
+      nra_v15compat = ok_blook(mta_no_receiver_arguments);
+      if(nra_v15compat)
+         n_OBSOLETE(_("please use mta-no-recipient-arguments not -receiver-; "
+            "a \"braino\", sorry!"));
+
+      if(!nra_v15compat && !ok_blook(mta_no_recipient_arguments))
+         for(; to != NIL; to = to->n_flink)
+            if(!(to->n_type & GDEL))
+               args[i++] = to->n_name;
+   }
+   args[i] = NIL;
+
+   if(vas != NIL)
+      su_LOFI_FREE(vas);
+
    NYD_OU;
    return args;
 }

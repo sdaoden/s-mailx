@@ -240,9 +240,9 @@ enum n_header_extract_flags{
          n_HEADER_EXTRACT_FULL,
 
    n_HEADER_EXTRACT_COMPOSE_MODE = 1u<<8, /* Extracting during compose mode */
-   /* Prefill the receivers with the already existing content of the given
+   /* Prefill the recipient with the already existing content of the given
     * struct header arguent */
-   n_HEADER_EXTRACT_PREFILL_RECEIVERS = 1u<<9,
+   n_HEADER_EXTRACT_PREFILL_RECIPIENTS = 1u<<9,
    /* Understand and ignore shell-style comments */
    n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<10,
    /* Ignore a MBOX From_ line _silently */
@@ -726,7 +726,8 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mta_aliases, /* {notempty=1} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
-   ok_b_mta_no_receiver_arguments,
+ok_b_mta_no_receiver_arguments, /* {obsolete=1} */
+   ok_b_mta_no_recipient_arguments,
    ok_v_mta_argv0, /* {notempty=1,defval=VAL_MTA_ARGV0} */
    ok_b_mta_bcc_ok,
 
