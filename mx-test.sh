@@ -12618,7 +12618,7 @@ t__tls__create() (
       > server-pass-chain.pem
 
    ##
-   openssl dhparam -check -text -5 512 -out dh512.pem || exit 9
+   openssl dhparam -check -text -out dh512.pem -5 512 || exit 9
 
    ## Client certificate
    openssl req -newkey rsa:1024 \
