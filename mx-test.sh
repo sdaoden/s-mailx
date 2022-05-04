@@ -13,6 +13,7 @@
 : ${UTF8_LOCALE:=} # else auto-detect
 : ${HONOURS_READONLY_NOT:=} # file-system/user "can"; else auto-detect
 : ${FS_TIME_RES:=1} # file-system time resolution
+: ${OSSL_NEWKEY_SPEC:=rsa:2048} # to avoid future "key too small"
 
 : ${KEEP_DATA:=}
 : ${NO_COLOUR:=}
@@ -14893,112 +14894,76 @@ subjectKeyIdentifier = hash
 _EOT
 
 	## Root CA
-	openssl req -newkey rsa:1024 \
-		-config t-root-ca.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t-root-ca.cnf -nodes \
 		-keyout root-ca-key.pem -out root-ca-req.pem || exit 1
-	openssl x509 -req -in root-ca-req.pem \
-		-extfile t-root-ca.cnf \
+	openssl x509 -req -in root-ca-req.pem -extfile t-root-ca.cnf \
 		-signkey root-ca-key.pem \
 		-out root-ca-cert.pem || exit 2
 
 	## Root CA 2
-	openssl req -newkey rsa:1024 \
-		-config t-root2-ca.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t-root2-ca.cnf -nodes \
 		-keyout root2-ca-key.pem -out root2-ca-req.pem || exit 1
-	openssl x509 -req -in root2-ca-req.pem \
-		-extfile t-root2-ca.cnf \
+	openssl x509 -req -in root2-ca-req.pem -extfile t-root2-ca.cnf \
 		-signkey root2-ca-key.pem \
 		-out root2-ca-cert.pem || exit 2
 
 	${cat} root-ca-cert.pem root2-ca-cert.pem > ca.pem
 
 	## Server CA, sign with root CA
-	openssl req -newkey rsa:1024 \
-		-config t-ca.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t-ca.cnf -nodes \
 		-keyout server-ca-key.pem -out server-ca-req.pem || exit 3
-	openssl x509 -req -in server-ca-req.pem \
-		-extfile t-ca.cnf \
+	openssl x509 -req -in server-ca-req.pem -extfile t-ca.cnf \
 		-CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
 		-out server-ca-cert.pem || exit 4
 
 	## Server certificate, sign with server CA
-	openssl req -newkey rsa:1024 \
-		-config t-srv.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t-srv.cnf -nodes \
 		-keyout server-key.pem -out server-req.pem || exit 5
-	openssl x509 -req -in server-req.pem \
-		-extfile t-srv.cnf \
+	openssl x509 -req -in server-req.pem -extfile t-srv.cnf \
 		-CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
 		-out server-cert.pem || exit 6
-	${cat} server-cert.pem \
-		server-ca-cert.pem \
-		> server-chain.pem
+	${cat} server-cert.pem server-ca-cert.pem > server-chain.pem
 
 	# Same, password protected
-	openssl req -newkey rsa:1024 \
-		-config t.cnf \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t.cnf \
 		-passout pass:server-key-pass \
 		-keyout server-pass-key.pem -out server-pass-req.pem || exit 7
-	openssl x509 -req -in server-pass-req.pem \
-		-extfile t.cnf \
+	openssl x509 -req -in server-pass-req.pem -extfile t.cnf \
 		-CA server-ca-cert.pem -CAkey server-ca-key.pem -CAcreateserial \
 		-out server-pass-cert.pem || exit 8
-	${cat} \
-		server-pass-cert.pem \
-		server-ca-cert.pem \
-		> server-pass-chain.pem
+	${cat} server-pass-cert.pem server-ca-cert.pem > server-pass-chain.pem
 
-	##
-	openssl dhparam -check -text -5 512 -out dh512.pem || exit 9
+	 ##
+	openssl dhparam -check -text -out dh512.pem -5 512 || exit 9
 
 	## Client certificate
-	openssl req -newkey rsa:1024 \
-		-config t.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t.cnf -nodes \
 		-keyout client-key.pem -out client-req.pem || exit 10
-	openssl x509 -req -in client-req.pem \
-		-extfile t.cnf \
+	openssl x509 -req -in client-req.pem -extfile t.cnf \
 		-CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
 		-out client-cert.pem || exit 11
-	${cat} \
-		client-key.pem client-cert.pem \
-		> client-pair.pem
-	${cat} \
-		client-cert.pem \
-		root-ca-cert.pem \
-		> client-chain.pem
+	${cat} client-key.pem client-cert.pem > client-pair.pem
+	${cat} client-cert.pem root-ca-cert.pem > client-chain.pem
 
 	# With password
-	openssl req -newkey rsa:1024 \
-		-config t.cnf \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t.cnf \
 		-passout pass:client-key-pass \
 		-keyout client-pass-key.pem -out client-pass-req.pem || exit 12
-	openssl x509 -req -in client-pass-req.pem \
-		-extfile t.cnf \
+	openssl x509 -req -in client-pass-req.pem -extfile t.cnf \
 		-passin pass:client-key-pass \
 		-CA root-ca-cert.pem -CAkey root-ca-key.pem -CAcreateserial \
 		-out client-pass-cert.pem || exit 13
-	${cat} \
-		client-pass-key.pem client-pass-cert.pem \
-		> client-pass-pair.pem
-	${cat} \
-		client-pass-cert.pem \
-		root-ca-cert.pem \
-		> client-pass-chain.pem
+	${cat} client-pass-key.pem client-pass-cert.pem > client-pass-pair.pem
+	${cat} client-pass-cert.pem root-ca-cert.pem > client-pass-chain.pem
 
 	## Client 2 certificate
-	openssl req -newkey rsa:1024 \
-		-config t2.cnf -nodes \
+	openssl req -newkey ${OSSL_NEWKEY_SPEC} -config t2.cnf -nodes \
 		-keyout client2-key.pem -out client2-req.pem || exit 10
-	openssl x509 -req -in client2-req.pem \
-		-extfile t2.cnf \
+	openssl x509 -req -in client2-req.pem -extfile t2.cnf \
 		-CA root2-ca-cert.pem -CAkey root2-ca-key.pem -CAcreateserial \
 		-out client2-cert.pem || exit 11
-	${cat} \
-		client2-key.pem client2-cert.pem \
-		> client2-pair.pem
-	${cat} \
-		client2-cert.pem \
-		root2-ca-cert.pem \
-		> client2-chain.pem
+	${cat} client2-key.pem client2-cert.pem > client2-pair.pem
+	${cat} client2-cert.pem root2-ca-cert.pem > client2-chain.pem
 
 	echo >&2 '[<<< Test SSL/TLS keys/certificates setup]'
 	printf '' > .t_tls_is_setup
