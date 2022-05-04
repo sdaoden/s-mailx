@@ -275,15 +275,15 @@ jredo:
          if(mx_name_is_same_address(xp, nnp))
             goto jlink;
 
-      /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
+      /* If this recipient came in only via R-T: or M-F-T:, place her/him/it in
        * To: due to lack of a better place.  But only if To: is not empty after
-       * all formerly present receivers have been worked, to avoid that yet
-       * unaddressed receivers propagate to To: whereas formerly addressed ones
-       * end in Cc: .. */
+       * all formerly present recipients have been worked, to avoid that yet
+       * unaddressed recipients propagate to To: whereas formerly addressed
+       * ones end in Cc: .. */
       if(f & a_LIST_CLASSIFIED){
          if(f & a_SEEN_TO){
             /* .. with one exception: if we know the original sender, and if
-             * that no longer is a receiver, then assume the original sender
+             * that no longer is a recipient, then assume the original sender
              * desires to redirect to a different address */
             if(!(f & a_ORIG_SEARCHED)){
                f |= a_ORIG_SEARCHED;
@@ -324,7 +324,7 @@ jlink:
       nnp->n_type = (nnp->n_type & ~GMASK) | gf;
    }
 
-   /* Include formerly unaddressed receivers at the right place */
+   /* Include formerly unaddressed recipients at the right place */
    if(!(f & a_LIST_CLASSIFIED)){
 jclass_ok:
       f |= a_LIST_CLASSIFIED;
@@ -529,7 +529,7 @@ jwork_msg:
       if(mft != NIL)
          head.h_mft = n_namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
 
-      /* Optionally do not propagate a receiver that originally was in
+      /* Optionally do not propagate a recipient that originally was in
        * secondary Cc: to the primary To: list */
       if(ok_blook(recipients_in_cc)){
          a_crese_polite_rt_mft_move(mp, &head, np);
@@ -599,7 +599,7 @@ jrecipients_done:
 
    /* For list replies automatically recognize the list address given in the
     * RFC 2369 List-Post: header, so that we will not throw away a possible
-    * corresponding receiver: temporarily "`mlist' the List-Post: address" */
+    * corresponding recipient: temporarily "`mlist' the List-Post: address" */
    if(hf & HF_LIST_REPLY){
       struct mx_name *lpnp;
 
@@ -677,12 +677,12 @@ j_lt_redo:
       }
 
       /* For `Lreply' only, fail immediately with DESTADDRREQ if there are no
-       * receivers at all! */
-      if(head.h_to == NULL && head.h_cc == NULL){
+       * recipients at all! */
+      if(head.h_to == NIL && head.h_cc == NIL){
          n_err(_("No recipients specified for `Lreply'\n"));
          if(msgvec[1] == 0){
             n_pstate_err_no = su_ERR_DESTADDRREQ;
-            msgvec = NULL;
+            msgvec = NIL;
             goto jleave;
          }
          goto jskip_to_next;
