@@ -41,8 +41,8 @@ EXPORT int c_unmlsubscribe(void *vp);
 EXPORT enum mx_mlist_type mx_mlist_query(char const *name,
       boole subscribed_only);
 
-/* Give MLIST_OTHER to search for any kind of list, in which case all receivers
- * are searched until EOL or _SUBSCRIBED is seen.
+/* Give MLIST_OTHER to search for any kind of list, in which case all
+ * recipients are searched until EOL or _SUBSCRIBED is seen.
  * _POSSIBLY may not be searched for; it return _POSSIBLY for _OTHER, though.
  * XXX possibly belongs to message or header specific code */
 EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp,

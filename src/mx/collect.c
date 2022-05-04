@@ -723,7 +723,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
    }
 
    n_header_extract(((do_delayed_due_t
-            ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECEIVERS
+            ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECIPIENTS
             : n_HEADER_EXTRACT_EXTENDED) |
          n_HEADER_EXTRACT_COMPOSE_MODE |
          n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS), fp, hp, checkaddr_err);
@@ -1569,7 +1569,7 @@ jearg:
 "~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]], #no)\n"
 "~| <shellcmd> Pipe message through shell filter (~||: with headers)\n"
 "~^ help       Help for ^ (`digmsg') message control\n"
-"~c <users>    Add receivers to Cc: (~b: Bcc:) list\n"
+"~c <users>    Add recipients to Cc: (~b: Bcc:) list\n"
 "~e, ~v        Edit message via $EDITOR / $VISUAL\n"
             ), n_stdout);
          fputs(_(
@@ -1584,7 +1584,7 @@ jearg:
          fputs(_(
 "~r <file>     Insert <file> / <- [HERE-DELIM]> (~R: use *indentprefix*)\n"
 "~s <subject>  Set Subject:\n"
-"~t <users>    Add receivers to To: list\n"
+"~t <users>    Add recipient to To: list\n"
 "~u <msglist>  Insert without headers (~U: use *indentprefix*)\n"
 "~w <file>     Write message onto file\n"
 "~x, ~q, ~.    Discard, discard and save to $DEAD, send message\n"
@@ -2100,7 +2100,7 @@ jreasksend:
       temporary_compose_mode_hook_call(cp);
    }
 
-   /* Add automatic receivers */
+   /* Add automatic recipients */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
       hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC |
             (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN)),
