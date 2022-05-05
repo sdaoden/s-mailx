@@ -381,9 +381,8 @@ jredo:
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
 #ifdef mx_HAVE_UISTRINGS
-      fputs(su_program, fp);
       fputs(_(
-         " commands -- <msglist> denotes message specification tokens, e.g.,\n"
+         "Commands -- <msglist> denotes message specification tokens, e.g.,\n"
          "1-5, :n, @f@Ulf or . (current, the \"dot\"), separated by *ifs*:\n"),
          fp);
       fputs(_(
@@ -414,7 +413,7 @@ jredo:
 "quit                   quit and apply changes to the current mailbox\n"
 "xit or exit            like `quit', but discard changes\n"
 "!shell command         shell escape\n"
-"list                   show all commands (reacts upon *verbose*)\n"),
+"list                   show all commands (*verbose*)\n"),
          fp);
 #endif /* mx_HAVE_UISTRINGS */
 
