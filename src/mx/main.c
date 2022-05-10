@@ -637,7 +637,8 @@ a_main_usage(FILE *fp){
    fprintf(fp, _(
          ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
          ". -a attachment[=input-charset[#output-charset]]\n"
-         ". -b, -c, -r, -T, to-addr: ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
+         ". -b, -c, -r, -T, to-addr: ex@am.ple or '(Lovely) Ex <am@p.le>' "
+            "(-Sfullnames)\n"
          ". -M, -m, -q, -t: special input (-t: template message on stdin)\n"
          ". -e only mail check, -H header summary; "
             "both: message specification via -L\n"
