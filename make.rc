@@ -205,9 +205,13 @@ OPT_AMALGAMATION=no
 # If false: we use your normal $CC / $CFLAGS / $LDFLAGS,
 # If true: pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
 #     $ make EXTRA_CFLAGS=-std=c99 tangerine
-# Anyhow configuration changes cause rebuilds.  Configurable a bit:
-# . keep_options: if set original $CFLAGS/$LDFLAGS are not cleared.
-#        Note: actively stripped by OPT_DEVEL and OPT_DEBUG!
+# Anyhow configuration changes cause rebuilds.
+# With OPT_AUTOCC VAL_AUTOCC allows a bit of configuration:
+# . option_care: if set no optimization (-O*) nor debugger things (-g)
+#     are looked for: for packagers who want to pass default $CFLAGS
+#     via $EXTRA_CFLAGS.
+#     Note: we rely on inlining, so ensure -DNDEBUG / -Oxx fits!
+#     Note X: actively stripped by OPT_DEVEL and OPT_DEBUG!
 # . bind_now: -Wl,-z,now if supported (see ld(1)).
 # . pie: shall address randomization be used if supported.
 # . stackprot: shall stack protectors be used if supported.
@@ -215,7 +219,7 @@ OPT_AMALGAMATION=no
 #           (This requires an optimized (-O) build.)
 # $OPT_AUTOCC reacts upon $OPT_DEBUG.
 OPT_AUTOCC=yes
-   VAL_AUTOCC=keep_options,bind_now,pie,stackprot,fortify
+   VAL_AUTOCC=bind_now,pie,stackprot,fortify
 
 # Whether commands `csop', `vexpr' .. shall be included (requireable).
 OPT_CMD_CSOP=yes
