@@ -215,7 +215,7 @@ option_update() {
       ;;
    1)
       if feat_yes DEBUG || feat_yes DEVEL; then
-         val_strip VAL_AUTOCC keep_options
+         val_strip VAL_AUTOCC option_care
       fi
       ;;
    2)
@@ -407,12 +407,12 @@ cc_setup() {
    # EXTRA_CFLAGS/EXTRA_LDFLAGS
    if feat_no AUTOCC; then
       _cc_default
-      # Ensure those don't do any harm
+      # Ensure those do not do any harm
       EXTRA_CFLAGS= EXTRA_LDFLAGS=
       export CC EXTRA_CFLAGS EXTRA_LDFLAGS
       return
    else
-      val_has VAL_AUTOCC keep_options || CFLAGS= LDFLAGS=
+      CFLAGS= LDFLAGS=
       export CFLAGS LDFLAGS
    fi
 
@@ -450,8 +450,8 @@ _cc_os_unixware() {
       msg_nonl ' . have special UnixWare rules for $CC ...'
       feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
-      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
       export CC CFLAGS LDFLAGS
       OPT_AUTOCC=0 ld_need_R_flags=-R
       msg '%s' "${CC}"
@@ -465,8 +465,8 @@ _cc_os_sunos() {
       msg_nonl ' . have special SunOS rules for $CC ...'
       feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
-      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
       export CC CFLAGS LDFLAGS
       OPT_AUTOCC=0 ld_need_R_flags=-R
       msg '%s' "${CC}"
@@ -518,7 +518,7 @@ doit(char const *s){
 }
 
 cc_build_tmp_as_tmp2() {
-   ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+   ${CC} ${INCS} ${EXTRA_CFLAGS} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1
 }
 
@@ -535,8 +535,7 @@ cc_hello() {
    fi
    [ -n "${cc_check_silent}" ] || msg 'no'
    msg 'ERROR: i cannot compile or run a "Hello world" via'
-   msg '   %s' \
-  "${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
+   msg '   %s' "${CC} ${INCS} ${EXTRA_CFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
    msg 'ERROR:   Please read INSTALL, rerun'
    config_exit 1
 }
@@ -569,13 +568,14 @@ cc_flags() {
       fi
 
       feat_no DEBUG && feat_no DEVEL && _CFLAGS="-DNDEBUG ${_CFLAGS}"
-      CFLAGS="${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS}"
-      LDFLAGS="${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS}"
+      CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
+      LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
    else
       if feat_no DEBUG && feat_no DEVEL; then
          CFLAGS="-DNDEBUG ${CFLAGS}"
       fi
    fi
+
    export CFLAGS LDFLAGS
 }
 
@@ -647,7 +647,7 @@ ${__s1}', '${__s2}', '${__s3}', '${__s4}', '${__s5}
    if feat_yes DEBUG; then
       cc_check -O
       cc_check -g
-   elif val_has VAL_AUTOCC keep_options; then
+   elif val_has VAL_AUTOCC option_care; then
       :
    elif [ ${cc_maxopt} -gt 2 ] && cc_check -O3; then
       :
@@ -1250,10 +1250,8 @@ ld_runtime_flags() {
       do
          # But do not link any fakeroot injected path into our binaries!
          case "${i}" in *fakeroot*) continue;; esac
-         LDFLAGS="${LDFLAGS} ${ld_need_R_flags}${i}"
          _LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
       done
-      export LDFLAGS
    fi
    # Disable it for a possible second run.
    ld_need_R_flags=
@@ -1285,8 +1283,8 @@ cc_check() {
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} ${_cc_check_ever} \
-            ${CFLAGS} ${_CFLAGS} ${1} ${EXTRA_CFLAGS} \
-            ${LDFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
+            ${_CFLAGS} ${1} ${EXTRA_CFLAGS} \
+            ${_LDFLAGS} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
@@ -1306,8 +1304,8 @@ ld_check() {
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
       ${CC} ${INCS} ${_cc_check_ever} \
-            ${CFLAGS} ${_CFLAGS} ${EXTRA_CFLAGS} \
-            ${LDFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+            ${_CFLAGS} ${EXTRA_CFLAGS} \
+            ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
             -o ${tmp2} ${tmp}.c ${LIBS} || exit 1
       feat_no CROSS_BUILD || exit 0
       ${tmp2}
