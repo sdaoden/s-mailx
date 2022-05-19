@@ -37,6 +37,46 @@ struct su_random;
  * \defgroup RANDOM Random number generator
  * \ingroup MISC
  * \brief Random number generator (\r{su/random.h})
+ *
+ * \head2{Biased numbers}
+ *
+ * If random numbers are to be generated with an upper limit that cannot be
+ * served by multiples of 8-bit the unused top bits are usually removed with
+ * a remainder operations, for example for numbers 0 to 9 via \c{random % 10}.
+ * The following is by M.E. O'Neill,
+ * \xln{https://www.pcg-random.org/posts/bounded-rands.html}:
+ *
+ * \pb{
+ *    To understand why rand() % 52 produces biased numbers, [.] observe that
+ *    52 does not perfectly divide 2^32, it divides it 82,595,524 times with
+ *    remainder 48. Meaning that if we use rand() % 52, there will be
+ *    82,595,525 ways to select the first 48 cards from our 52-card deck and
+ *    only 82,595,524 ways to select the final four cards. [.]
+ *    For a 32-bit PRNG, a bounded range of less than 2^24 has a bias of less
+ *    than 0.5% but above 2^31 the bias is 50% - some numbers will occur half
+ *    as often as others.
+ * }
+ *
+ * The modulo bias can be avoided by rejecting random values which lie inside
+ * the remainder window of \c{0 .. 2**32 % limit}.
+ * Again M.E. O'Neill:
+ *
+ * \pb{
+ *    Our code for this version uses a trick to divide 2^32 by range without
+ *    using any 64-bit math. [.] We observe that for unsigned integers, unary
+ *    negation of range calculates the positive value 2^32 - range; dividing
+ *    this value by range will produce an answer one less than 2**32 / range.
+ * }
+ *
+ * This leads us to the following code:
+ *
+ * \cb{
+ *    u32 r, t = -range % range;
+ *    for(;;)
+ *       if((r = rng()) >= t)
+ *          break;
+ *    return r % range;
+ * }
  * @{
  */
 
