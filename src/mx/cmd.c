@@ -87,22 +87,6 @@ static struct mx_cmd_desc const a_cmd_ctable[] = {
 /* And the indexes */
 #include "mx/gen-cmd-tab.h" /* $(MX_SRCDIR) */
 
-/* And a list of things which are special to the lexer in go.c, so that we can
- * provide help and list them.
- * This cross-file relationship is a bit unfortunate.. */
-#ifdef mx_HAVE_DOCSTRINGS
-# define DS(S) , S
-#else
-# define DS(S)
-#endif
-static struct mx_cmd_desc const a_cmd_ctable_plus[] = {
-   { n_ns, R(int(*)(void*),-1), mx_CMD_ARG_TYPE_STRING, 0, 0, NIL
-      DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { n_hy, R(int(*)(void*),-1), mx_CMD_ARG_TYPE_WYSH, 0, 0, NIL
-      DS(N_("Print out the preceding message")) }
-};
-#undef DS
-
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *
 a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
@@ -241,29 +225,23 @@ jfakeent:
 static int
 a_cmd_c_list(void *vp){
    FILE *fp;
-   struct mx_cmd_desc const **cdpa, *cdp, **cdpa_curr;
-   uz i, l, scrwid;
+   struct mx_cmd_desc const *cdp, *cdp_max;
+   uz scrwid, i, l;
    NYD_IN;
    UNUSED(vp);
-
-   i = NELEM(a_cmd_ctable_plus) + NELEM(a_cmd_ctable) +1;
-   cdpa = n_autorec_alloc(sizeof(cdp) * i);
-
-   for(i = 0; i < NELEM(a_cmd_ctable_plus); ++i)
-      cdpa[i] = &a_cmd_ctable_plus[i];
-   for(l = 0; l < NELEM(a_cmd_ctable); ++i, ++l)
-      cdpa[i] = &a_cmd_ctable[l];
-   cdpa[i] = NIL;
 
    if((fp = mx_fs_tmp_open(NIL, "list", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
             ) == NIL)
       fp = n_stdout;
 
-   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
-
    fprintf(fp, _("Commands are:\n"));
+
+   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
+   i = 0;
    l = 1;
-   for(i = 0, cdpa_curr = cdpa; (cdp = *cdpa_curr++) != NIL;){
+
+   for(cdp = a_cmd_ctable, cdp_max = &cdp[NELEM(a_cmd_ctable)];
+         cdp < cdp_max; ++cdp){
       char const *pre, *suf;
 
       if(cdp->cd_func == NIL)
@@ -296,7 +274,7 @@ a_cmd_c_list(void *vp){
             fprintf(fp, "\n");
             ++l;
          }
-         fprintf(fp, (*cdpa_curr != NIL ? "%s%s%s, " : "%s%s%s\n"),
+         fprintf(fp, (&cdp[1] != cdp_max ? "%s%s%s, " : "%s%s%s\n"),
             pre, cdp->cd_name, suf);
       }
    }
@@ -345,7 +323,6 @@ a_cmd_c_help(void *vp){
       cdp_max = &(cdp = a_cmd_ctable)[NELEM(a_cmd_ctable)];
       cdp = &cdp[a_CMD_CIDX(*arg)];
 
-jredo:
       for(; cdp < cdp_max; ++cdp){
          if(cdp->cd_func == NIL || !su_cs_starts_with(cdp->cd_name, arg))
             continue;
@@ -363,12 +340,6 @@ jredo:
          putc('\n', fp);
          rv = 0;
          goto jleave;
-      }
-
-      if(cdp_max == &a_cmd_ctable[NELEM(a_cmd_ctable)]){
-         cdp_max = &(cdp =
-               a_cmd_ctable_plus)[NELEM(a_cmd_ctable_plus)];
-         goto jredo;
       }
 
       if(alias_name != NIL){
@@ -493,7 +464,6 @@ mx_cmd_by_name_firstfit(char const *cmd){ /* TODO v15: by_arg_desc; but go.c */
       else if((x = *cdp->cd_name) != c && x != C)
          break;
 
-   /* This is not called for anything in the _plus table */
    cdp = NIL;
 jleave:
    NYD2_OU;
