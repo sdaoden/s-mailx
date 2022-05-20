@@ -3767,6 +3767,47 @@ fop close $fd;x 57
 
    t_epilog "${@}"
 } # }}}
+
+t_msg_number_list() { # {{{
+   t_prolog "${@}"
+
+   {
+      t__gen_msg from 'ex1@am.ple' subject sub1
+      t__gen_msg from 'ex2@am.ple' subject sub2
+      t__gen_msg from 'ex3@am.ple' subject sub3
+   } > ./t.mbox
+
+   ${MAILX} ${ARGS} -Rf -Y '#
+      commandalias x echo '"'"'$?/$^ERRNAME <$res>'"'"'
+      set res
+      =
+      x
+      = +
+      x
+      # (dot not moved)
+      = +
+      x
+      = $
+      x
+      = ^
+      x
+      vput = res
+      x
+      vput = res *
+      x
+      set ifs=","
+      vput = res *
+      x
+      set ifs=", "
+      vput = res *
+      x
+      xit
+      ' ./t.mbox > ./t1 2>>${ERR}
+
+   check 1 0 ./t1 '3152029378 118'
+
+   t_epilog "${@}"
+} # }}}
 # }}}
 
 # Send/RFC absolute basics {{{
@@ -11682,6 +11723,7 @@ t_all() { # {{{
    jspawn read
    jspawn readsh
    jspawn fop
+   jspawn msg_number_list
    jsync
 
    # Send/RFC absolute basics
