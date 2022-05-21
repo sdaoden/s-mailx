@@ -187,6 +187,7 @@ jredo:
       goto jleave;
    }
 
+   /* Possible additional info to be displayed in mle-position colour? */
    if(!(gif & mx_GO_INPUT_NL_FOLLOW)){
       boole x;
 
@@ -205,6 +206,7 @@ jredo:
       store = n_string_push_c(store, ' ');
    }
 
+   /* */
    cp = (gif & mx_GO_INPUT_PROMPT_EVAL)
          ? (gif & mx_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
          : xprompt;
@@ -296,8 +298,9 @@ jeeval:
          store = n_string_push_buf(store, rsp->s, rsp->l);
       }
 
+      /* */
       if(poff > 0 && rsp != NIL &&
-            (((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_ERROR, NIL)
+            (((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NIL)
                ) != NIL &&
              (esp = mx_colour_pen_to_str(ccp)) != NIL) || (esp = psp) != NIL)){
          store = n_string_insert_buf(store, poff, rsp->s, rsp->l);
