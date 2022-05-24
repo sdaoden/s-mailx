@@ -250,7 +250,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 { "alias", &c_alias, (M | TWYSH), 0, MAC, NIL
      DS(N_("Show all (or <alias>), or append to <alias> :<data>:")) },
    { "account", &c_account, (M | TWYSH), 0, MAC, NIL
-     DS(N_("Create or select <account>, or list all accounts")) },
+     DS(N_("Create <account {>, select <account>, or list all accounts")) },
    { "addrcodec", &c_addrcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
     DS(N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))},
    { "alternates", &c_alternates, (M | V | TWYSH), 0, MAC, NIL
@@ -345,7 +345,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_decrypt)
      DS(N_("Like `copy', but decrypt first, if encrypted")) },
    { "define", &c_define, (M | X | TWYSH), 0, 2, NIL
-     DS(N_("Define a <macro> or show the currently defined ones")) },
+     DS(N_("Define a <macro {>, or list <macro> or all existing ones")) },
    { "digmsg", &c_digmsg, (HG | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_digmsg)
      DS(N_("<create|remove> <-|msgno> [<->] | <-|msgno> <cmd>: "
