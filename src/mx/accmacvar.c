@@ -378,7 +378,8 @@ static boole a_amv_mac_exec(struct a_amv_mac_call_args *amcap,
 static void a_amv_mac__finalize(void *vp);
 
 /* User display helpers */
-static boole a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf);
+static boole a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf,
+      char const *name);
 
 /* _def() returns error for faulty definitions and already existing * names,
  * _undef() returns error if a named thing does not exist */
@@ -725,7 +726,7 @@ a_amv_mac__finalize(void *vp){
 }
 
 static boole
-a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf){
+a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf, char const *name){
    uz lc, mc, ti, i;
    char const *typestr;
    FILE *fp;
@@ -745,7 +746,8 @@ a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf){
       struct a_amv_mac *amp;
 
       for(amp = a_amv_macs[ti]; amp != NIL; amp = amp->am_next){
-         if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf){
+         if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf &&
+               (name == NIL || !su_cs_cmp(name, amp->am_name))){
             struct a_amv_mac_line **amlpp;
 
             if(++mc > 1){
@@ -2877,13 +2879,12 @@ c_define(void *v){
 
    rv = 1;
 
-   if((args = v)[0] == NIL){
-      rv = (a_amv_mac_show(a_AMV_MF_NONE) == FAL0);
+   if((args = v)[0] == NIL || args[1] == NIL){
+      rv = (a_amv_mac_show(a_AMV_MF_NONE, args[0]) == FAL0);
       goto jleave;
    }
 
-   if(args[1] == NIL || args[1][0] != '{' || args[1][1] != '\0' ||
-         args[2] != NIL){
+   if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
       mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("define"), NIL);
       goto jleave;
    }
@@ -3011,12 +3012,12 @@ c_account(void *v){
    rv = 1;
 
    if((args = v)[0] == NIL){
-      rv = (a_amv_mac_show(a_AMV_MF_ACCOUNT) == FAL0);
+      rv = (a_amv_mac_show(a_AMV_MF_ACCOUNT, NIL) == FAL0);
       goto jleave;
    }
 
-   if(args[1] && args[1][0] == '{' && args[1][1] == '\0'){
-      if(args[2] != NIL){
+   if(args[1] != NIL){
+      if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
          mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
          goto jleave;
       }
