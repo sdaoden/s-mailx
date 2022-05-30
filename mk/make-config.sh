@@ -1755,7 +1755,7 @@ for i in \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
       CC CFLAGS LDFLAGS \
       INCS LIBS \
-      OSFULLSPEC \
+      OS OSFULLSPEC \
       DEBUG_IN_EXTERNAL_FILE \
       ; do
    eval j="\$${i}"
