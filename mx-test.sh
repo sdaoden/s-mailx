@@ -753,8 +753,12 @@ else
 fi
 
 have_feat() {
-   ( ${RAWMAILX} ${ARGS} -X'echo $features' -Xx |
-      ${grep} ,+${1}, ) >/dev/null 2>&1
+   ${RAWMAILX} ${ARGS} -X '
+      \if ${features} =% ,+'"${1}"',
+         \xit 0
+      \endif
+      \xit 1
+   '
 }
 # }}}
 # }}}
