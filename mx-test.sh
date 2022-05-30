@@ -9,10 +9,9 @@
 : ${JOBMON:=y}
 : ${SKIPTEST:=}
 
-# Note valgrind has problems with FDs in forked childs, which causes some tests
-# to fail (the FD is rewound and thus will be dumped twice)
-MEMTESTER=
-#MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
+# XXX LONG Note valgrind has problems with FDs in forked childs, which causes
+# XXX UNTESTED some tests to fail (FD is rewound and thus will be dumped twice)
+MEMTESTER= #'valgrind --leak-check=full --log-file=.vl-%p '
 
 export \
    OBJDIR JOBNO JOBWAIT JOBMON SKIPTEST \
@@ -158,8 +157,31 @@ unset POSIXLY_CORRECT LOGNAME USER
 # qualified path.  Or at least something similar.
 { echo ${MAILX} | ${grep} -q ^/; } || MAILX="${TMPDIR}"/${MAILX}
 RAWMAILX=${MAILX}
-MAILX="${MEMTESTER}${MAILX}"
+
+# "sh -c -- 'echo yes'" must echo "yes"; FreeBSD #264319, #220587: work around
+if [ "`\"${VAL_SHELL}\" -c -- 'echo yes'`" = yes ]; then
+   T_MAILX= T_SH=
+else
+   echo '! '"${VAL_SHELL}"' cannot deal with "-c -- ARG", using workaround'
+   T_MAILX=./t.mailx.sh T_SH=./t.sh.sh
+   ${rm} -f ${T_MAILX} ${T_SH}
+   ${cat} > ${T_MAILX} <<_EOT
+#!${VAL_SHELL}
+SHELL=${TMPDIR}/${T_SH}
+export SHELL
+exec ${MAILX} "\$@"
+_EOT
+   ${cat} > ${T_SH} <<_EOT
+#!${VAL_SHELL}
+shift 2
+exec ${VAL_SHELL} -c "\${@}"
+_EOT
+   ${chmod} 0755 ${T_MAILX} ${T_SH}
+   MAILX=${TMPDIR}/${T_MAILX}
+fi
+
 [ -x "${MAILX}" ] || usage
+MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
 GIT_REPO=
@@ -262,7 +284,8 @@ ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
 trap "
    jobreaper_stop
    [ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result ./t.time.out ./t.tls.db
+      ${rm} -rf ./t.*.d ./t.*.io ./t.*.result \
+         ./t.time.out ./t.tls.db ${T_MAILX} ${T_SH}
 " EXIT
 trap "exit 1" HUP INT QUIT TERM
 

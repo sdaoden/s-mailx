@@ -251,6 +251,10 @@ Thank you!
 ----------------------------------------
 
 - All systems:
+  * "$SHELL -c -- 'echo du'" is required to print "du".
+    POSIX issue #1440, FreeBSD /bin/sh fails (#264319, #220587).
+    The test suite works around, but consider VAL_SHELL=/better/one.
+
   * Running tests on a NFS filesystem may cause false negatives.
     (Seen on the SunOS 5.11 OpenCSW machines, in [pipe_handlers]
     failure due to hard link count mismatch since NFS also links the
