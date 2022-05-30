@@ -1546,9 +1546,9 @@ c_digmsg(void * volatile vp){
    struct n_sigman sm;
    char const *cp, *emsg;
    struct mx_dig_msg_ctx *dmcp;
-   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg * volatile cap;
    struct mx_cmd_arg_ctx *cacp;
-   boole have_sm;
+   boole volatile have_sm;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
