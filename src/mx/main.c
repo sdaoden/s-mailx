@@ -346,7 +346,8 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
       n_exit_status = su_EX_ERR; /* error already reported */
       goto jquit;
    }
-   temporary_folder_hook_check(FAL0);
+   temporary_on_mailbox_open(FAL0);
+
    if(n_poption & n_PO_QUICKRUN_MASK){
       n_exit_status = i;
       if(i == su_EX_OK && (!(n_poption & n_PO_EXISTONLY) ||

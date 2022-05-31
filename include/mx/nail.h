@@ -649,7 +649,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_b_flipr,
    ok_v_folder, /* {vip=1} */
    ok_v_folder_resolved, /* {rdonly=1,nodel=1} */
-   ok_v_folder_hook,
+ok_v_folder_hook, /* {obsolete=1} */
    ok_b_followup_to,
    ok_b_followup_to_add_cc,
    ok_v_followup_to_honour,
@@ -750,6 +750,8 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_compose_splice, /* {notempty=1} */
    ok_v_on_compose_splice_shell, /* {notempty=1} */
    ok_v_on_history_addition, /* {notempty=1} */
+   ok_v_on_mailbox_open, /* {notempty=1} */
+   ok_v_on_mailbox_newmail, /* {notempty=1} */
    ok_v_on_main_loop_tick, /* {notempty=1} */
    ok_v_on_program_exit, /* {notempty=1} */
    ok_v_on_resend_cleanup, /* {notempty=1} */

@@ -307,9 +307,11 @@ quit(boole hold_sigs_on)
 
    rv = FAL0;
    fbuf = lckfp = rbuf = NIL;
+
    if(mb.mb_digmsg != NIL)
       mx_dig_msg_on_mailbox_close(&mb);
-   temporary_folder_hook_unroll();
+
+   temporary_on_mailbox_close();
 
    /* If we are read only, we can't do anything, so just return quickly */
    /* TODO yet we cannot return quickly if resources have to be released!

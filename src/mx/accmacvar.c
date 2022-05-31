@@ -159,7 +159,7 @@ enum a_amv_var_lookup_flags{
 
 enum a_amv_var_setclr_flags{
    a_AMV_VSETCLR_NONE = 0,
-   a_AMV_VSETCLR_LOCAL = 1u<<1, /* `local' scope (aka `localopts') */
+   a_AMV_VSETCLR_LOCAL = 1u<<1, /* `local' scope */
    a_AMV_VSETCLR_ENV = 1u<<2, /* `environ' or otherwise environ */
    a_AMV_VSETCLR_UNROLL = 1u<<3, /* Currently unrolling */
    a_AMV_VSETCLR_UNROLL_ENV_LINKED = 1u<<4 /* ..only restore _EXT_LINKED */
@@ -332,7 +332,7 @@ static struct a_amv_mac *a_amv_macs[a_AMV_PRIME]; /* TODO dynamically spaced */
 /* Unroll list of currently running macro stack (XXX grrr global byypass) */
 static struct a_amv_lostack *a_amv_lopts;
 #define a_AMV_HAVE_LOPTS_AKA_LOCAL() /* TODO */\
-   (/*mx_go_ctx_is_macro() || a_amv_folder_hooks_lopts != NIL || */\
+   (/*mx_go_ctx_is_macro() || a_amv_on_mailbox_open_lopts != NIL || */\
    /*a_amv_compose_lostack != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
@@ -343,10 +343,10 @@ static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
 
-/* TODO We really deserve localopts support for *folder-hook*s, so hack it in
+/* TODO We really deserve localopts support for *on-mailbox-open*, so hack in
  * TODO today via a static lostack, it should be a field in mailbox, once that
  * TODO is a real multi-instance object */
-static struct a_amv_var *a_amv_folder_hook_lopts;
+static struct a_amv_var *a_amv_on_mailbox_open_lopts;
 
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_lostack *a_amv_compose_lostack;
@@ -3082,7 +3082,7 @@ c_account(void *v){
       restorequitflags(nqf);
       if(i < 0)
          goto jleave;
-      temporary_folder_hook_check(FAL0);
+      temporary_on_mailbox_open(FAL0);
       if(i != 0 && !ok_blook(emptystart)) /* Avoid annoying "double message" */
          goto jleave;
       n_folder_announce(n_ANNOUNCE_CHANGE);
@@ -3271,44 +3271,64 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac,
 }
 
 FL boole
-temporary_folder_hook_check(boole nmail){ /* TODO temporary, v15: drop */
+temporary_on_mailbox_open(boole only_new_mail_check){ /* TODO v15: drop */
+   struct{
+      char const name[30];
+      u16 ok;
+   } const looks[2] = {
+      {"on-mailbox-open-", ok_v_on_mailbox_open},
+      {"on-mailbox-newmail-", ok_v_on_mailbox_newmail}
+   };
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
-   uz len;
-   char const *cp;
+   char const *mn, *cp;
+   boole rv, v15_compat;
    char *var;
-   boole rv;
+   uz len;
    NYD_IN;
 
-   rv = TRU1;
-   var = su_AUTO_ALLOC(len = su_cs_len(mailname) +
-         sizeof("folder-hook-") -1 +1);
+   len = su_cs_len(mailname);
+   var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-newmail-") -1 +2);
 
+   rv = TRU1;
+   mn = mailname;
+jredo:
    /* First try the fully resolved path */
-   snprintf(var, len, "folder-hook-%s", mailname);
+   v15_compat = TRU1;
+   su_cs_pcopy(su_cs_pcopy(var, looks[only_new_mail_check].name), mn);
+   if((cp = n_var_vlook(var, FAL0)) != NIL)
+      goto jmac;
+
+   v15_compat = FAL0;
+   su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);/* v15-compat */
    if((cp = n_var_vlook(var, FAL0)) != NIL)
       goto jmac;
 
    /* If we are under *folder*, try the usual +NAME syntax, too */
-   if(displayname[0] == '+'){
-      char *x;
-
-      for(x = &mailname[len]; x != mailname; --x)
-         if(x[-1] == '/'){
-            snprintf(var, len, "folder-hook-+%s", x);
-            if((cp = n_var_vlook(var, FAL0)) != NIL)
-               goto jmac;
-            break;
+   /* XXX is there a better way than [0]=='+'?  this is sick */
+   if(mn == mailname && displayname[0] == '+'){
+      for(cp = &mailname[len]; cp != mailname; --cp)
+         if(cp[-1] == '/'){
+            char *x;
+            mn = x = &var[sizeof("on-mailbox-newmail-") -1 + len + 1];
+            x[0] = '+';
+            su_cs_pcopy(&x[1], cp);
+            goto jredo;
          }
    }
 
-   /* Plain *folder-hook* is our last try */
-   if((cp = ok_vlook(folder_hook)) == NIL)
-      goto jleave;
+   /* Plain *on-mailbox-XY* is our last try */
+   v15_compat = TRU1;
+   if((cp = n_var_oklook(looks[only_new_mail_check].ok)) == NIL){
+      v15_compat = FAL0;
+      if((cp = ok_vlook(folder_hook)) == NIL)/*v15-compat*/
+         goto jleave;
+   }
 
 jmac:
    if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) == NIL){
-      n_err(_("Cannot call *folder-hook* for %s: macro does not exist: %s\n"),
+      n_err(_("Cannot call *%s** for %s: macro does not exist: %s\n"),
+         looks[only_new_mail_check].name,
          n_shexp_quote_cp(displayname, FAL0), cp);
       rv = FAL0;
       goto jleave;
@@ -3318,10 +3338,12 @@ jmac:
    amcap->amca_name = cp;
    amcap->amca_amp = amp;
    n_pstate &= ~n_PS_HOOK_MASK;
-   if(nmail)
+   if(only_new_mail_check){
+      if(v15_compat)
+         amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
       n_pstate |= n_PS_HOOK_NEWMAIL;
-   else{
-      amcap->amca_unroller = &a_amv_folder_hook_lopts;
+   }else{
+      amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
       n_pstate |= n_PS_HOOK;
    }
    amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -3337,15 +3359,15 @@ jleave:
 }
 
 FL void
-temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
+temporary_on_mailbox_close(void){ /* XXX intermediate hack */
    NYD_IN;
 
-   if(a_amv_folder_hook_lopts != NIL){
+   if(a_amv_on_mailbox_open_lopts != NIL){
       void *save = a_amv_lopts;
 
       a_amv_lopts = NIL;
-      a_amv_lopts_unroll(&a_amv_folder_hook_lopts);
-      ASSERT(a_amv_folder_hook_lopts == NIL);
+      a_amv_lopts_unroll(&a_amv_on_mailbox_open_lopts);
+      ASSERT(a_amv_on_mailbox_open_lopts == NIL);
       a_amv_lopts = save;
    }
 
