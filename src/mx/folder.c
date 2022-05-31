@@ -821,6 +821,7 @@ jlogname:
     * TODO to be able to truly tell whether *anything* has changed! */
    if ((fm & FEDIT_NEWMAIL) && UCMP(z, mailsize, <=, offset)) {
       rele_sigs();
+      fprintf(n_stdout, _("No new mail\n"));
       goto jleave;
    }
    a_folder_mbox_setptr(ibuf, offset, (proto == n_PROTO_EML),
@@ -846,25 +847,25 @@ jlogname:
    rele_sigs();
 
    rv = (msgCount == 0);
-   if(rv)
-      su_err_set_no(su_ERR_NODATA);
 
    if(n_poption & n_PO_EXISTONLY)
-      goto jleave;
+      goto jxleave;
 
-   if(rv){
-      if(!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)){
-         if(!(fm & FEDIT_NEWMAIL)){
-            if (!ok_blook(emptystart))
-               n_err(_("No mail for %s at %s\n"),
-                  who, n_shexp_quote_cp(name, FAL0));
-         }
-         goto jleave;
+   if(rv && (!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL))){
+      if(!(fm & FEDIT_NEWMAIL)){
+         if(!ok_blook(emptystart))
+            n_err(_("No mail for %s\n"), who);
       }
+      goto jxleave;
    }
 
    if(fm & FEDIT_NEWMAIL)
       newmailinfo(omsgCount);
+
+jxleave:
+   if(rv)
+      su_err_set_no(su_ERR_NODATA);
+
 jleave:
    if(ibuf != NIL){
       mx_fs_close(ibuf);
@@ -905,7 +906,7 @@ newmailinfo(int omsgCount)
    } else
       fprintf(n_stdout, _("Loaded %d messages.\n"), msgCount);
 
-   temporary_folder_hook_check(TRU1);
+   temporary_on_mailbox_open(TRU1);
 
    mdot = getmdot(1);
 

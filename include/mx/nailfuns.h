@@ -152,9 +152,9 @@ FL int c_return(void *vp);
 FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
       boole sigs_held);
 
-/* TODO Check whether a *folder-hook* exists for currently active mailbox */
-FL boole temporary_folder_hook_check(boole nmail);
-FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
+/* TODO Check whether *on-mailbox-open* exists for currently active mailbox */
+FL boole temporary_on_mailbox_open(boole only_new_mail_check);
+FL void temporary_on_mailbox_close(void); /* XXX im. hack */
 
 /* TODO v15 drop Invoke compose hook macname
  * _hook_control(): local argument only of interest for enable=!FAL0 */
