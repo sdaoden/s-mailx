@@ -7118,27 +7118,86 @@ t_e_H_L_opts() { # {{{
    ${MAILX} ${ARGS} -Smta=test://t.mbox \
       -r '' -X 'set from=pony3@$LOGNAME'
 
-   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+   ${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
          echo fh-test size; set autosort=size showname showto
       }' -fH ./t.mbox > ./t2 2>&1
    check 2 0 ./t2 '3132089442 413'
 
-   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+   ${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
          echo fh-test subject; set autosort=subject showname showto
       }' -fH ./t.mbox > ./t3 2>&1
    check 3 0 ./t3 '2813644801 416'
 
-   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+   ${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
          echo fh-test from; set autosort=from showto
       }' -fH ./t.mbox > ./t4 2>&1
    check 4 0 ./t4 '3208236297 413'
 
-   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+   ${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
          echo fh-test to; set autosort=to showto
       }' -fH ./t.mbox > ./t5 2>&1
    check 5 0 ./t5 '901727002 411'
 
    check 6 - ./t.mbox '3540578520 839'
+
+   t_epilog "${@}"
+} # }}}
+
+t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
+   t_prolog "${@}"
+
+   t__gen_msg from 'ex1@am.ple' subject s1 > ./t1x.mbox
+   t__gen_msg from 'ex2@am.ple' subject s2 > ./t1y.mbox
+   t__gen_msg from 'ex3@am.ple' subject s3 > ./t1z.mbox
+
+   xfolder=`${pwd}`
+
+   ${MAILX} ${ARGS} -Y '#
+      set noautosort noshowto \
+         on-mailbox-open=ofo on-mailbox-newmail=ofn \
+         on-mailbox-open-+t1x.mbox=ofo-z on-mailbox-newmail-+t1x.mbox=ofn-z \
+         on-mailbox-open-+t1y.mbox=ofo-z on-mailbox-newmail-+t1y.mbox=ofn-z
+      define ofo {
+         echo "ofo as<$autosort> showto<$showto> kuh<$kuh>"
+         set autosort=to showto kuh=muh
+      }
+      define ofn {
+         echo "ofn as<$autosort> showto<$showto> kuh<$kuh>"
+         set autosort=from kuh=wuff
+         search:u
+      }
+      define ofo-z {
+         echo ofo-z; \xcall ofo
+      }
+      define ofn-z {
+         echo ofn-z; \xcall ofn
+      }
+      echo "1 as<$autosort> showto<$showto> kuh<$kuh>"
+      File ./t1x.mbox
+      echo "2 as<$autosort> showto<$showto> kuh<$kuh>"
+      newmail
+      echo "3 as<$autosort> showto<$showto> kuh<$kuh>"
+      !'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+      echo "4 as<$autosort> showto<$showto> kuh<$kuh>"
+      newmail
+      echo "5 as<$autosort> showto<$showto> kuh<$kuh>"
+      headers
+      #
+      set folder='"${xfolder}"'
+      echo "11 as<$autosort> showto<$showto> kuh<$kuh>"
+      File +t1y.mbox
+      echo "12 as<$autosort> showto<$showto> kuh<$kuh>"
+      newmail
+      echo "13 as<$autosort> showto<$showto> kuh<$kuh>"
+      !'"${cat}"' ./t1z.mbox >> ./t1y.mbox
+      echo "14 as<$autosort> showto<$showto> kuh<$kuh>"
+      newmail
+      echo "15 as<$autosort> showto<$showto> kuh<$kuh>"
+      headers
+      ' \
+      -R > ./t1 2>&1
+
+   check 1 0 ./t1 '3709091196 1000'
 
    t_epilog "${@}"
 } # }}}
@@ -11795,6 +11854,7 @@ t_all() { # {{{
    jspawn mta_aliases # (after t_expandaddr)
    jspawn filetype
    jspawn e_H_L_opts
+   jspawn newmail_on_folder
    jspawn q_t_etc_opts
    jspawn message_injections
    jspawn attachments

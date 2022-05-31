@@ -3353,8 +3353,8 @@ Because messages must exist on local storage in order to be scored (or
 used for Bayesian filter training), it is possibly a good idea to
 perform the local spam check last.
 Spam can be checked automatically when opening specific folders by
-setting a specialized form of the internal variable
-.Va folder-hook .
+setting a specialized form of
+.Va on-mailbox-open .
 .
 .Bd -literal -offset indent
 define spamdelhook {
@@ -3368,7 +3368,7 @@ define spamdelhook {
   del :s
   move :S +maybe-spam
 }
-set folder-hook-SOMEFOLDER=spamdelhook
+set on-mailbox-open-SOMEFOLDER=spamdelhook
 .Ed
 .
 .Pp
@@ -3537,10 +3537,10 @@ state is restored once the
 is left.
 The covered scope of a
 .Ic define Ns
-d macro ends when execution is passed up to the callee, an
-.Ic account
-is left once a different account is activated, and some macros, notably
-.Va folder-hook Ns s ,
+d macro, once a different account is activated for
+.Ic account ,
+and some macros, notably
+.Va on-mailbox-open Ns s ,
 use their own specific notion of covered scope, here it will be extended
 until the folder is left again.
 .
@@ -4218,8 +4218,8 @@ With one argument the given account is activated: the system
 of that account will be changed to (as via
 .Ic folder ) ,
 a possibly installed
-.Va folder-hook
-will be run, and the internal variable
+.Va on-mailbox-open
+will be run, and
 .Va account
 will be updated.
 The two argument form behaves identical to defining a macro as via
@@ -5509,9 +5509,9 @@ out, a new mailbox will be opened, the internal variables
 .Va mailbox-resolved
 and
 .Va mailbox-display
-will be updated, a set according
-.Va folder-hook
-is executed, and optionally a summary of
+are updated, a set
+.Va on-mailbox-open
+is evaluated, and optionally a summary of
 .Ic headers
 is displayed if the variable
 .Va header
@@ -7209,9 +7209,9 @@ and also dependent on whether the command modifier
 had been used, encountering errors will stop sourcing of the given input.
 \*(ID Note that
 .Ic \&\&source
-cannot be used from within macros that execute as
-.Va folder-hook Ns s
-or
+cannot be used from within hook macros like
+.Va on-mailbox-open ,
+nor from
 .Ic account Ns s ,
 i.e., it can only be called from macros that were
 .Ic call Ns ed .
@@ -9847,39 +9847,13 @@ Once the actual value is evaluated first, the internal variable
 .Va folder-resolved
 will be updated for caching purposes.
 .
-.Mx Va folder-hook
-.It Va folder-hook-FOLDER , Va folder-hook
-Names a
-.Ic define Ns d
-macro which will be called whenever a
-.Ic folder
-is opened.
-The macro will also be invoked when new mail arrives,
-but message lists for commands executed from the macro
-only include newly arrived messages then.
+.It Va folder-hook-FOLDER , folder-hook
+\*(OB Predecessor of both of
+.Va on-mailbox-newmail
+(with a different
 .Cm local
-scoping is activated by default in a folder hook, causing the covered
-settings to be reverted once the folder is left again.
-.Pp
-The specialized form will override the generic one if
-.Ql FOLDER
-matches the file that is opened.
-Unlike other folder specifications, the fully expanded name of a folder,
-without metacharacters, is used to avoid ambiguities.
-However, if the mailbox resides under
-.Va folder
-then the usual
-.Ql +
-specification is tried in addition, so that if
-.Va \&\&folder
-is
-.Dq mail
-(and thus relative to the user's home directory) then
-.Pa /home/usr1/mail/sent
-will be tried as
-.Ql folder-hook-/home/usr1/mail/sent
-first, but then followed by
-.Ql folder-hook-+sent .
+scope!) and
+.Va on-mailbox-open .
 .
 .Mx
 .It Va folder-resolved
@@ -11284,6 +11258,43 @@ command name; i.e., one may do
 and will then be able to access the positional parameters as usual via
 .Va * , # , 1
 etc.
+.
+.Mx Va on-mailbox-newmail
+.Mx Va on-mailbox-open
+.It Va on-mailbox-open-FOLDER , on-mailbox-open ,\
+    on-mailbox-newmail-FOLDER , on-mailbox-newmail
+Macros which are evaluated when a
+.Ic folder
+is opened or a successful
+.Ic newmail
+check is performed, respectively.
+.Cm local
+scoping is activated by default, causing the covered settings to be
+reverted no sooner but when
+.Va folder-resolved
+is left again.
+The specialization is matched against the fully expanded name,
+without metacharacters; however, if
+.Ql FOLDER
+resides under
+.Va folder
+the usual
+.Ql +
+.Pf ( Sx "Filename transformations" )
+is also tried: for example, if
+.Va \&\&folder
+is
+.Dq mail
+(therefore relative to
+.Ev HOME )
+then
+.Pa /home/usr1/mail/sent
+will be tried as
+.Ql on-mailbox-open-/home/usr1/mail/sent
+first, followed by
+.Ql on-mailbox-open-+sent
+(and lastly
+.Ql on-mailbox-open ) .
 .
 .Mx
 .It Va on-main-loop-tick

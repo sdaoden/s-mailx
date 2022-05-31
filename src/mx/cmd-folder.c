@@ -79,14 +79,14 @@ _c_file(void *v, enum fedit_mode fm)
 
    save_mbox_for_possible_quitstuff();
 
-   i = setfile(*argv, fm);
-   if (i < 0) {
+   if((i = setfile(*argv, fm)) < 0){
       i = 1;
       goto jleave;
    }
+
    ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
-   if (n_pstate & n_PS_SETFILE_OPENED)
-      temporary_folder_hook_check(FAL0);
+   if(n_pstate & n_PS_SETFILE_OPENED)
+      temporary_on_mailbox_open(FAL0);
 
    if (i > 0) {
       /* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
