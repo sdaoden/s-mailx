@@ -444,29 +444,8 @@ do{\
 # ifdef DOXYGEN
 #  define su_INLINE inline /*!< \_ */
 #  define su_SINLINE inline /*!< \_ */
-# elif su_CC_GCC
-#  if !su_CC_VCHECK_GCC(3, 1)
-#   define su_INLINE extern __inline__
-#   define su_SINLINE static __inline__
-#  elif !defined __GNUC_GNU_INLINE__  /*4.1.3; !su_CC_VCHECK_GCC(4, 2)*/
-#   define su_INLINE extern __inline __attribute__((always_inline))
-#   define su_SINLINE static __inline __attribute__((always_inline))
-   /* gcc 8.3.0 bug: does not gracefully inline with -Os
-    * gcc 12.1.0 bug: ditto, -Og
-    * Thus: always gcc-specific! */
-#  elif 1 /*!defined __OPTIMIZE__ || \
-      !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 199901l*/
-#   define su_INLINE extern __inline __attribute__((gnu_inline))
-#   define su_SINLINE static __inline __attribute__((gnu_inline))
-#  elif !defined NDEBUG || !defined __OPTIMIZE__
-#   define su_INLINE static inline
-#   define su_SINLINE static inline
-#  else
-#   define su_INLINE inline
-#   define su_SINLINE static inline
-#  endif
-# elif su_CC_CLANG || su_CC_PCC
-#  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
+# elif su_CC_CLANG || su_CC_GCC || su_CC_PCC
+#  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l
 #   if !defined NDEBUG || !defined __OPTIMIZE__
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
@@ -476,8 +455,13 @@ do{\
 #    define su_SINLINE static inline __attribute__((always_inline))
 #   endif
 #  else
-#   define su_INLINE static __inline
-#   define su_SINLINE static __inline
+#   if su_CC_VCHECK_GCC(3, 1)
+#    define su_INLINE static __inline __attribute__((always_inline))
+#    define su_SINLINE static __inline __attribute__((always_inline))
+#   else
+#    define su_INLINE static __inline
+#    define su_SINLINE static __inline
+#   endif
 #  endif
 # else
 #  define su_INLINE static /* TODO __attribute__((unused)) alike? */
