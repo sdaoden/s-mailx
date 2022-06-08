@@ -445,16 +445,17 @@ do{\
 #  define su_INLINE inline /*!< \_ */
 #  define su_SINLINE inline /*!< \_ */
 # elif su_CC_GCC
-   /* After lots of trouble with OpenBSD/gcc 4.2.1 and SunOS/gcc 3.4.3 */
-#  if !su_CC_VCHECK_GCC(3, 2) /* Unsure: only used C++ at that time */
-#   define su_INLINE extern __inline
-#   define su_SINLINE static __inline
-#  elif !su_CC_VCHECK_GCC(4, 3)
+#  if !su_CC_VCHECK_GCC(3, 1)
+#   define su_INLINE extern __inline__
+#   define su_SINLINE static __inline__
+#  elif !defined __GNUC_GNU_INLINE__  /*4.1.3; !su_CC_VCHECK_GCC(4, 2)*/
 #   define su_INLINE extern __inline __attribute__((always_inline))
 #   define su_SINLINE static __inline __attribute__((always_inline))
-   /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
-#  elif !su_CC_VCHECK_GCC(8, 3) || !defined __OPTIMIZE__ ||\
-      !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 199901L
+   /* gcc 8.3.0 bug: does not gracefully inline with -Os
+    * gcc 12.1.0 bug: ditto, -Og
+    * Thus: always gcc-specific! */
+#  elif 1 /*!defined __OPTIMIZE__ || \
+      !defined __STDC_VERSION__ || __STDC_VERSION__ +0 < 199901l*/
 #   define su_INLINE extern __inline __attribute__((gnu_inline))
 #   define su_SINLINE static __inline __attribute__((gnu_inline))
 #  elif !defined NDEBUG || !defined __OPTIMIZE__
