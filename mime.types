@@ -76,7 +76,6 @@ image/png  png
 application/cbor  cbor
 
 # Remains alphabetically
-? application/javascript  js
 ? application/json  json
 ? application/mbox  mbox
 application/rdf+xml  rdf owl
@@ -122,6 +121,7 @@ message/rfc822  eml mime mht mhtml
 ? text/calendar  ics ifb
 ? text/css  css
 ? text/csv  csv
+? text/javascript  js
 ? text/sgml  sgml sgm
 ? text/x-assembly  s S asm
 # (Note tuple extensions will never match since text/plain wins!)
