@@ -1258,7 +1258,7 @@ ld_runtime_flags() {
 }
 
 _cc_check_ever= _cc_check_testprog=
-cc_check() {
+cc_check_testprog() {
    if [ -z "${_cc_check_ever}" ]; then
       _cc_check_ever=' '
       __occ=${cc_check_silent}
@@ -1273,11 +1273,18 @@ cc_check() {
             _cc_check_testprog=-Werror=implicit-function-declaration
          fi
       fi
+      if [ "${_cc_check_ever}" = ' ' ] || [ -z "${_cc_check_testprog}" ]; then
+         msg 'WARN: $CC without -Werror[=implicit*]: inaccurate feature tests!'
+      fi
 
       _CFLAGS=${__oCFLAGS}
       cc_check_silent=${__occ}
       unset __occ __oCFLAGS
    fi
+}
+
+cc_check() {
+   cc_check_testprog
 
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
    (
@@ -1300,6 +1307,8 @@ cc_check() {
 
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
+   cc_check_testprog
+
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
    (
       trap "exit 11" ABRT BUS ILL SEGV # avoid error messages (really)
@@ -1361,6 +1370,8 @@ without_check() {
 compile_check() {
    variable=$1 topic=$2 define=$3
 
+   cc_check_testprog
+
    _check_preface "${variable}" "${topic}" "${define}"
 
    __comp() (
@@ -1387,6 +1398,8 @@ compile_check() {
 
 _link_mayrun() {
    run=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
+
+   cc_check_testprog
 
    _check_preface "${variable}" "${topic}" "${define}"
 
@@ -2510,9 +2523,9 @@ int main(void){
 !
 
 OPT_FLOCK=1
-if link_check flock_lock 'flock(2) file locking (via fcntl.h)' \
-      '#define mx_HAVE_FLOCK <fcntl.h>' << \!
-#include <fcntl.h>
+if link_check flock_lock 'flock(2) file locking (via sys/file.h)' \
+      '#define mx_HAVE_FLOCK <sys/file.h>' << \!
+#include <sys/file.h>
 #include <unistd.h>
 int main(void){
    flock(3, LOCK_SH | LOCK_NB);
@@ -2523,9 +2536,9 @@ int main(void){
 !
 then
    :
-elif link_check flock_lock 'flock(2) file locking (via sys/file.h)' \
-      '#define mx_HAVE_FLOCK <sys/file.h>' << \!
-#include <sys/file.h>
+elif link_check flock_lock 'flock(2) file locking (via fcntl.h)' \
+      '#define mx_HAVE_FLOCK <fcntl.h>' << \!
+#include <fcntl.h>
 #include <unistd.h>
 int main(void){
    flock(3, LOCK_SH | LOCK_NB);
