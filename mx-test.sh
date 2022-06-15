@@ -3620,6 +3620,27 @@ t_read() { # {{{
 
    check ifs 0 ./tifs '890153490 298'
 
+   {
+      echo 'hey3.0,:"'"'"'you    ",:world!:mars.'
+      echo 'hey3.0,:"'"'"'you    ",:world!:mars.::'
+   } | ${MAILX} ${ARGS} -X '
+      commandalias x echo \$?/\$^ERRNAME
+      commandalias y x <\$a><\$b><\$c><\$d><\$e>
+      readctl creat ./tifsin;x
+      set ifs=:; read a b c;y; unset ifs
+      readctl remo ./tifsin;x
+      readctl creat ./tifsin;x
+      set ifs=:; read a b c d;y; unset ifs
+      readctl remo ./tifsin;x
+      readctl creat ./tifsin;x
+      set ifs=:; read a b c d e;y; unset ifs
+      readctl remo ./tifsin;x
+      #
+      set ifs=:; read a b c d e;y; unset ifs
+      set ifs=:; read a b c d e;y; unset ifs
+      ' > ./tifs-2
+   check ifs-2 0 ./tifs-2 '1805702358 294'
+
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./treadall 2>&1
 	commandalias x echo '$?/$^ERRNAME / <$d>'
    readctl create ./t1in
