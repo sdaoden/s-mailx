@@ -220,6 +220,9 @@ a_cmisc_read(void * volatile vp, boole atifs){
          /* The last variable gets the remaining line less trailing IFS-WS */
          if(atifs){
             if(argv[1] == NIL){
+               /* However, if the only character is IFS, strip that! */
+               if(trim.l == 1 && su_cs_find_c(ifs, trim.s[0]) != NIL)
+                  --trim.l;
 jitall:
                s = n_string_assign_buf(s, trim.s, trim.l);
                trim.l = 0;
