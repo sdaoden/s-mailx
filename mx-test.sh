@@ -3621,25 +3621,35 @@ t_read() { # {{{
    check ifs 0 ./tifs '890153490 298'
 
    {
-      echo 'hey3.0,:"'"'"'you    ",:world!:mars.'
-      echo 'hey3.0,:"'"'"'you    ",:world!:mars.::'
-   } | ${MAILX} ${ARGS} -X '
+      echo 'hey1.0,:'"'"'you    ",:world!:mars.	'
+      echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
+      echo 'hey3.0,:'"'"'you    ",:world!:mars.::	'
+      echo 'hey1.0,:'"'"'you    ",:world!:mars.	'
+      echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
+      echo 'hey3.0,:'"'"'you    ",:world!:mars.::	'
+   } > ./tifsin-2
+
+   ${MAILX} ${ARGS} -X '
+      commandalias r read
       commandalias x echo \$?/\$^ERRNAME
       commandalias y x <\$a><\$b><\$c><\$d><\$e>
-      readctl creat ./tifsin;x
-      set ifs=:; read a b c;y; unset ifs
-      readctl remo ./tifsin;x
-      readctl creat ./tifsin;x
-      set ifs=:; read a b c d;y; unset ifs
-      readctl remo ./tifsin;x
-      readctl creat ./tifsin;x
-      set ifs=:; read a b c d e;y; unset ifs
-      readctl remo ./tifsin;x
-      #
-      set ifs=:; read a b c d e;y; unset ifs
-      set ifs=:; read a b c d e;y; unset ifs
+      define x {
+         local set v=$*
+         readctl creat ./tifsin-2;x
+         set ifs=":	";eval r $v;unset ifs;y
+         set ifs=":	";eval r $v;unset ifs;y
+         set ifs=":	";eval r $v;unset ifs;y
+         set ifs=:;eval r $v;unset ifs;y
+         set ifs=:;eval r $v;unset ifs;y
+         set ifs=:;eval r $v;unset ifs;y
+         readctl remo ./tifsin-2;x
+      }
+      call x a b c
+      call x a b c d
+      call x a b c d e
+      xit
       ' > ./tifs-2
-   check ifs-2 0 ./tifs-2 '1805702358 294'
+   check ifs-2 0 ./tifs-2 '3840749226 897'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./treadall 2>&1
 	commandalias x echo '$?/$^ERRNAME / <$d>'
