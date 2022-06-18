@@ -2669,11 +2669,18 @@ t_environ() { # {{{
 		echo --l3-preou;show
 		local xcall l4
 	}
+	define l3.local {
+		echo --l3.local-in;show
+		local set LK1=LK1_L3.local
+		echo --l3.local-ou;show
+	}
 	define l2 {
 		echo --l2-in;show
 		set LK1=LK1_L2 EK1=EK1_L2
-		echo --l2-mid;show
+		echo --l2-mid-1;show
 		call l3
+		echo --l2-mid-2;show
+		call l3.local
 		echo --l2-ou;show
 	}
 	define l1 {
@@ -2696,7 +2703,7 @@ t_environ() { # {{{
 	__EOT
 
    check_ex0 2-estat
-   have_feat uistrings && ck='2411360456 1550' || ck='25013986 1482'
+   have_feat uistrings && ck='1900155792 1889' || ck='2028138132 1821'
    check 2 - ./t2 "${ck}"
 
    # Rather redundant, but came up during tests so let's use it
