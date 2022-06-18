@@ -19,7 +19,7 @@ LK1=LK1_L1 EK1=EK1_L1
 environ set LK1=LK1_L1
 environ set EK1=EK1_L1
 shell LK1<LK1_L1> EK1<EK1_L1>
---l2-mid
+--l2-mid-1
 LK1=LK1_L2 EK1=EK1_L2
 environ set LK1=LK1_L2
 environ set EK1=EK1_L2
@@ -59,6 +59,21 @@ LK1=LK1_L4 EK1=
 set LK1=LK1_L4
 #unset: EK1
 shell LK1<LK1_L3> EK1<>
+--l2-mid-2
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l3.local-in
+LK1=LK1_L3 EK1=EK1_L3
+environ set LK1=LK1_L3
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
+--l3.local-ou
+LK1=LK1_L3.local EK1=EK1_L3
+set LK1=LK1_L3.local
+environ set EK1=EK1_L3
+shell LK1<LK1_L3> EK1<EK1_L3>
 --l2-ou
 LK1=LK1_L3 EK1=EK1_L3
 environ set LK1=LK1_L3
