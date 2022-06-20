@@ -808,6 +808,40 @@ eval eval eval eval echo "\"'$i'\""
    t_epilog "${@}"
 } # }}}
 
+t_call() { # {{{
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1
+	define one {
+	   echo one<$0>: $#: $*
+	}
+	call one
+	call one 1
+	call one 1 2
+	call one 1 2 3
+	define two {
+	   echo two<$0>: $#: $*
+	   call one "$@"
+	}
+	call two
+	call two a
+	call two a b
+	call two a b c
+	define three {
+	   echo three<$0>: $#: $*
+	   call two "$@"
+	}
+	call three
+	call three not
+	call three not my
+	call three not my love
+	__EOT
+
+   check 1 0 ./t1 '59079195 403'
+
+   t_epilog "${@}"
+} # }}}
+
 t_X_Y_opt_input_go_stack() { # {{{
    t_prolog "${@}"
 
@@ -11819,6 +11853,7 @@ cc_all_configs() { # {{{
 t_all() { # {{{
    # Absolute Basics
    jspawn eval
+   jspawn call
    jspawn X_Y_opt_input_go_stack
    jspawn X_errexit
    jspawn Y_errexit
