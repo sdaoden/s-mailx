@@ -1,0 +1,101 @@
+--l1
+----l2
+----l2
+-top-1
+DEAD=dead.0 U=u.0 N=n.0
+set DEAD=dead.0
+environ set U=u.0
+set N=n.0
+shell DEAD<dead.0> U<u.0> N<>
+--l1
+----l2
+----l2
+-top-2
+DEAD=dead.2 U=u.2 N=n.2
+set DEAD=dead.2
+environ set U=u.2
+set N=n.2
+shell DEAD<dead.2> U<u.2> N<>
+--l1
+2 env[U=u.3] U=u.0
+----l2
+2 env[U=u.3] U=u.3
+4:n.3
+----locall2
+2 env[U=u.3] U=u.3
+4:n.3
+-top-3
+DEAD=dead.3 U=u.3 N=n.3
+set DEAD=dead.3
+environ set U=u.3
+set N=n.3
+shell DEAD<dead.3> U<u.3> N<>
+--l1
+----l2
+----l2
+-top-4
+DEAD=dead.0 U=u.0 N=n.0
+set DEAD=dead.0
+environ set U=u.0
+set N=n.0
+shell DEAD<dead.0> U<u.0> N<>
+--l1
+----l2
+----l2
+-top-5
+DEAD=dead.5 U=u.5 N=n.5
+set DEAD=dead.5
+environ set U=u.5
+set N=n.5
+shell DEAD<dead.5> U<u.5> N<>
+--l1
+2 env[U=u.6] U=u.0
+----l2
+2 env[U=u.6] U=u.6
+4:n.6
+----locall2
+2 env[U=u.6] U=u.6
+4:n.6
+-top-6
+DEAD=dead.6 U=u.6 N=n.6
+set DEAD=dead.6
+environ set U=u.6
+set N=n.6
+shell DEAD<dead.6> U<u.6> N<>
+--l1
+2 env[U=u.7] U=u.0
+----l2
+2 env[U=u.7] U=u.7
+4:n.7
+----locall2
+2 env[U=u.7] U=u.7
+4:n.7
+-top-7
+DEAD=dead.7 U=u.7 N=n.7
+set DEAD=dead.7
+environ set U=u.7
+set N=n.7
+shell DEAD<dead.7> U<u.7> N<>
+--l1
+----l2
+----l2
+-top-8
+DEAD=dead.8 U=u.8 N=n.8
+set DEAD=dead.8
+environ set U=u.8
+set N=n.8
+shell DEAD<dead.8> U<u.8> N<>
+--l1
+2 env[U=u.9] U=u.0
+----l2
+2 env[U=u.9] U=u.9
+4:n.9
+----locall2
+2 env[U=u.9] U=u.9
+4:n.9
+-top-9
+DEAD=dead.9 U=u.9 N=n.9
+set DEAD=dead.9
+environ set U=u.9
+set N=n.9
+shell DEAD<dead.9> U<u.9> N<>
