@@ -3482,6 +3482,68 @@ t_xcall() { # {{{
    t_epilog "${@}"
 } # }}}
 
+t_local_x_call_environ() { # {{{
+   t_prolog "${@}"
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
+   \commandalias show '\
+      \vput environ x lookup DEAD;\
+      \if "$DEAD" != dead.0 || "$x" != dead.0;\echo 1:$DEAD:$x;\end;\
+      \vput environ x lookup U;\
+      \if "$U" != u.0 || "$x" != u.0;\echo 2 env[U=$x] U=$U;\end;\
+      \vput environ x lookup N;\
+      \if $? -eq 0;\echo 3:$N;\end;\
+      \if "$N" != n.0;\echo 4:$N;\end'
+   define l2 {
+      echo ----${1}l2
+      show
+   }
+   define l1 {
+      eval $1 set DEAD=dead.0 U=u.0 N=n.0 x
+      echo --l1
+      show
+      call l2
+      xcall l2 $1
+   }
+   define xl0 {
+      eval $1 xcall l1 "$2"
+   }
+   define l0 {
+      local call l1 "$1"
+   }
+   define xi {
+      set DEAD=dead.$1 U=u.$1 N=n.$1
+   }
+   define xo {
+      echo -top-${1}
+      echo DEAD=$DEAD U=$U N=$N;varshow DEAD U N
+      !echo shell" DEAD<$DEAD> U<$U> N<$N>"
+   }
+   commandalias xi call xi
+   commandalias xo call xo
+
+   environ unset N
+   set U=u.0
+   environ link U
+
+   xi 1;call l1;xo 1
+   xi 2;local call l1;xo 2
+   xi 3;call l1 local;xo 3
+
+   xi 4;call xl0;xo 4
+   xi 5;call xl0 local;xo 5
+   xi 6;call xl0 '' local;xo 6
+   xi 7;call xl0 local local;xo 7
+
+   xi 8;call l0;xo 8
+   xi 9;call l0 local;xo 9
+	__EOT
+
+   check 1 0 ./t1 '368283413 1412'
+
+   t_epilog "${@}"
+} # }}}
+
 t_vpospar() { # {{{
    t_prolog "${@}"
 
@@ -11877,6 +11939,7 @@ t_all() { # {{{
    jspawn vexpr # often used
    jspawn call_ret
    jspawn xcall
+   jspawn local_x_call_environ
    jspawn vpospar
    jspawn atxplode
    jspawn read
