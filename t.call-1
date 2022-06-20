@@ -1,0 +1,24 @@
+one<>: 0: 
+one<>: 1: 1
+one<>: 2: 1 2
+one<>: 3: 1 2 3
+two<>: 0: 
+one<two>: 0: 
+two<>: 1: a
+one<two>: 1: a
+two<>: 2: a b
+one<two>: 2: a b
+two<>: 3: a b c
+one<two>: 3: a b c
+three<>: 0: 
+two<three>: 0: 
+one<two>: 0: 
+three<>: 1: not
+two<three>: 1: not
+one<two>: 1: not
+three<>: 2: not my
+two<three>: 2: not my
+one<two>: 2: not my
+three<>: 3: not my love
+two<three>: 3: not my love
+one<two>: 3: not my love
