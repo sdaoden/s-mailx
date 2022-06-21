@@ -126,7 +126,11 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
             &ts, &tsr);
 
       if(rv != 0){
-         switch((rv = su_err_no_by_errno())){
+         switch((rv
+# ifndef su_HAVE_CLOCK_NANOSLEEP
+               = su_err_no_by_errno()
+# endif
+               )){
          case su_ERR_INTR:
             if(rem_or_nil != NIL){
                rem_or_nil->ts_sec = tsr.tv_sec;
