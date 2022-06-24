@@ -385,11 +385,12 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Echo arguments to standard output, without a trailing newline")) },
    { "echoerrn", &c_echoerrn, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
-{ "else", &c_else, (HG | F | M | X | TWYSH), 0, 0, NIL
+{ "else", &c_else, (HG | F | M | X | EM | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "elif", &c_elif, (HG | F | M | X | TWYRA), 1, MAC, NIL
+   /* v15-compat `elif': WYRA not WYSH so obsoletion warnings: errors out! */
+   { "elif", &c_elif, (HG | F | M | X | EM | TWYRA), 1, MAC, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "endif", &c_endif, (HG | F | M | X | TWYSH), 0, 0, NIL
+   { "endif", &c_endif, (HG | F | M | X | EM | TWYSH), 0, 0, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "environ", &c_environ, (HG | L | M | V | X | EM | TWYSH), 2, MAC, NIL
      DS(N_("<link|unlink|set|unset> :<variable>:, or [vput] lookup <var>")) },
@@ -478,7 +479,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
 
-   { "if", &c_if, (HG | F | M | X | TWYRA), 1, MAC, NIL
+   /* v15-compat `if': WYRA not WYSH so obsoletion warnings: errors out! */
+   { "if", &c_if, (HG | F | M | X | EM | TWYRA), 1, MAC, NIL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "ignore", &c_ignore, (M | TWYRA), 0, MAC, NIL
      DS(N_("Add <headers> to the ignored LIST, or show that list")) },
