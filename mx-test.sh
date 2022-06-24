@@ -2797,6 +2797,7 @@ t_shcodec() { # {{{
 t_ifelse() { # {{{
    t_prolog "${@}"
 
+   #{{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./teasy 2>>${ERR}
    commandalias e \\echo
    set i=0
@@ -2857,26 +2858,42 @@ t_ifelse() { # {{{
    if 1
       if 0
          set i=5
+         define x {
+            #
+         }
       els
          set i=10
          if [ $i -eq 0 ]
             e 0
             set i=1
+            define x {
+               #
+            }
          eli [ $i -ne 0 ]
             e 1
             set i=2
+            define x {
+               #
+            }
          els
             set i=3
             e 2
+            define x {
+               #
+            }
          end
+         define x {
+            #
+         }
          e =$i
       end
    end
    e ==$i
 	__EOT
-
+   #}}}
    check easy 0 ./teasy '1243020683 28'
 
+   # {{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tshexpign 2>>${ERR}
    commandalias e \\echo
    set i=0
@@ -2941,8 +2958,132 @@ t_ifelse() { # {{{
    end
    e =$i
 	__EOT
-
+   #}}}
    check shexpign 0 ./tshexpign '1174905124 27'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tbadsyn 2>>${ERR}
+   if !;echo 1a;else;echo 1b;endif
+   if [ ! && a == hey ];echo 2a;else;echo 2b;endif
+	__EOT
+   check badsyntax 0 ./tbadsyn '4294967295 0'
+
+   #{{{
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tgoodsyn 2>>${ERR}
+   commandalias e \\echo
+   commandalias f \\endif
+   if ! false;e y1.1;f
+   if [ ! != x ];e y1.2;f
+   if [ ! == ! ];e y1.3;f
+   if [ & == & ];e y1.4;f
+   if [ | == | ];e y1.5;f
+   if [ & != | ];e y1.6;f
+   if [ | != & ];e y1.7;f
+   #
+   if [ && == && ];e y1.8;f
+   if [ || == || ];e y1.9;f
+   if [ && != || ];e y1.10;f
+   if [ || != && ];e y1.11;f
+   #
+   if [ == [;e y1.12;f
+   if ! ! [ == [;e y1.13;f
+   if ! [ != [;e y1.14;f
+   if [ [ == [ ];e y1.15;f
+   if [ ! ! [ == [ ];e y1.16;f
+   if [ ! [ != [ ];e y1.16;f
+   if [ [ [ [ == [ ] ] ];e y1.17;f
+   #
+   if ] == ];e y1.18;f
+   if ! ! ] == ];e y1.19;f
+   if ! ] != ];e y1.20;f
+   if [ ] == ] ];e y1.21;f
+   if [ ! ! ] == ] ];e y1.22;f
+   if [ ! ] != ] ];e y1.23;f
+   if [ [ [ ] == ] ] ] ];e y1.24;f
+   ##
+   if ! false;e y2.1;f
+   if ! != x;e y2.2;f
+   if ! ! ! != x;e y2.3;f
+   if ! == !;e y2.4;f
+   if & == &;e y2.5;f
+   if | == |;e y2.6;f
+   if & != |;e y2.7;f
+   if | != &;e y2.8;f
+   #
+   if && == &&;e y2.9;f
+   if || == ||;e y2.10;f
+   if && != ||;e y2.11;f
+   if || != &&;e y2.12;f
+   if ! && == &&;e y2.13;f
+   if ! || == ||;e y2.14;f
+   if ! && != ||;e y2.15;f
+   if ! || != &&;e y2.16;f
+   ##
+   if [ ! false ];e y2.20;f
+   if [ ! != x ];e y2.21;f
+   if ! [ ! ! != x ] ;e y2.22;f
+   if [ ! == ! ];e y2.23;f
+   if [ & == & ];e y2.24;f
+   if [ | == | ];e y2.25;f
+   if [ & != | ];e y2.26;f
+   if [ | != & ];e y2.27;f
+   #
+   if [ && == && ];e y2.28;f
+   if [ || == || ];e y2.29;f
+   if [ && != || ];e y2.30;f
+   if [ || != && ];e y2.31;f
+   if ! [ && == && ];e y2.32;f
+   if [ ! [ || == || ] ];e y2.33;f
+   if [ ! && != || ];e y2.34;f
+   if [ ! || != && ];e y2.35;f
+   ##
+   if [ && == && ] && [ && == && ];e y3.1;f
+   if [ || == || ] || [ || == || ];e y3.2;f
+   if [ && != || ] && [ && != || ];e y3.3;f
+   if [ || != && ] || [ || != && ];e y3.4;f
+   #
+   if && == && && && == &&;e y4.1;f
+   if || == || || || == ||;e y4.2;f
+   if && != || && && != ||;e y4.3;f
+   if || != && || || != &&;e y4.4;f
+   ##
+   if [ '' -lt 1 ];e y10.1;f
+   ## (examplary: binaries are all alike in our eyes)
+   if == == ==;e y20.1;f
+   if == != !=;e y20.2;f
+   if != == !=;e y20.3;f
+   if != != ==;e y20.4;f
+   #
+   if [ == == == ];e y21.1;f
+   if [ == != != ];e y21.2;f
+   if [ != == != ];e y21.3;f
+   if [ != != == ];e y21.4;f
+   #
+   if ! == == ==;else;e y22.1;f
+   if ! == != !=;else;e y22.2;f
+   if ! != == !=;else;e y22.3;f
+   if ! != != ==;else;e y22.4;f
+   #
+   if ! [ == == == ];else;e y23.1;f
+   if ! [ == != != ];else;e y23.2;f
+   if ! [ != == != ];else;e y23.3;f
+   if ! [ != != == ];else;e y23.4;f
+   #
+   if [ ! == == == ];else;e y24.1;f
+   if [ ! == != != ];else;e y24.2;f
+   if [ ! != == != ];else;e y24.3;f
+   if [ ! != != == ];else;e y24.4;f
+   ##
+   if -n [;e y30.1;f
+   if -n ];e y30.2;f
+   if -n &&;e y30.3;f
+   if -n ||;e y30.4;f
+   if ! -z [;e y31.1;f
+   if ! -z ];e y31.2;f
+   if ! -z &&;e y31.3;f
+   if ! -z ||;e y31.4;f
+	__EOT
+   #}}}
+   check goodsyntax 0 ./tgoodsyn '2169678278 550'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tNnZz_whiteout
 	\if -N xyz; echo 1.err-1; \
@@ -2968,12 +3109,11 @@ t_ifelse() { # {{{
 	\if $xyz != notempty;echo 4.err-1;else;echo 4.ok;\end
 	\if $xyz == notempty;echo 5.ok;else;echo 5.err-1;\end
 	__EOT
-
    check NnZz_whiteout 0 ./tNnZz_whiteout '4280687462 25'
 
-   # TODO t_ifelse: individual tests as for NnZz_whiteout
+   #{{{ # TODO t_ifelse: individual tests as for NnZz_whiteout
    # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=x > ./tnormal
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tnormal
 		if 0
 		   echo 1.err
 		else
@@ -3595,11 +3735,12 @@ t_ifelse() { # {{{
 		   echo 98.err
 		endif
 	__EOT
-
+   #}}}
    check normal 0 ./tnormal '1688759742 719'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=X > ./tregex
+      #{{{
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
@@ -3689,7 +3830,7 @@ t_ifelse() { # {{{
 			   echo 15.err
 			endif
 		__EOT
-
+      #}}}
       check regex 0 ./tregex '1115671789 95'
    else
       t_echoskip 'regex:[!REGEX]'
