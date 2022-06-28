@@ -3044,6 +3044,8 @@ t_vexpr() { # {{{
 	vput vexpr res = -9223372036854775809;x
 	vput vexpr res =?saturated -9223372036854775809;x
 	vput vexpr res = U9223372036854775809;x
+	vput vexpr res = 64#7__________;x
+	vput vexpr res = 64#7@@@@@@@@@@;x
 	echo ' #0.1'
 	vput vexpr res = \
 		0b0111111111111111111111111111111111111111111111111111111111111111;x
@@ -3184,6 +3186,8 @@ t_vexpr() { # {{{
 	vput vexpr res pbase 16 u0x8000000000000001;x
 	vput vexpr res pbase 36 0x8000000000000001;x
 	vput vexpr res pbase 36 u0x8000000000000001;x
+	vput vexpr res pbase 64 0xF64D7EFE7CBD;x
+	vput vexpr res pbase 64 0776767676767676767676;x
 	echo ' #13'
 	vput vexpr res << 0 1;x
 	vput vexpr res << 1 1;x
@@ -3198,7 +3202,7 @@ t_vexpr() { # {{{
 	vput vexpr res << 1 -1;x
 	__EOT
 
-   check numeric 0 ./tnumeric '1323550728 2678'
+   check numeric 0 ./tnumeric '3600543675 2773'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex 2>&1
