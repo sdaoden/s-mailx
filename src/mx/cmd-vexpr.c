@@ -459,7 +459,7 @@ jenum_plusminus:
          vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
          break;
       }
-      if(lhv < 2 || lhv > 36){
+      if(lhv < 2 || lhv > 64){
          f |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_NUM_RANGE;
          break;
