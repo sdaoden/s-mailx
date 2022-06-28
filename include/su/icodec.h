@@ -85,7 +85,16 @@ enum su_idec_state{
    /*! Malformed input, no usable result has been stored. */
    su_IDEC_STATE_EINVAL = 1u<<8,
    /*! Bad character according to base, but we have seen some good ones
-    * before, otherwise \r{su_IDEC_STATE_EINVAL} would have been used. */
+    * before, otherwise \r{su_IDEC_STATE_EINVAL} would have been used.
+    *
+    * \remarks{After some error in the tor software all software (which had to,
+    * we did) turned to an interpretation of the C standard which says that the
+    * prefix may optionally precede an otherwise valid sequence, which means
+    * that "0x" is not a STATE_INVAL error but gives a "0" result with
+    * a STATE_BASE error and a rest of "x".
+    * Ever since this is a rather regular error, and all of \c{0B}, \c{09},
+    * \c{0x} (with base 0 or 2, 8, 16, respectively) will have a result of
+    * 0 and leave the last byte unconsumed.} */
    su_IDEC_STATE_EBASE = 2u<<8,
    su_IDEC_STATE_EOVERFLOW = 3u<<8, /*!< Result too large. */
    su_IDEC_STATE_EMASK = 3u<<8, /*!< All errors, that is. */
@@ -104,7 +113,8 @@ CTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps");
  * whether MIN/MAX are used), which must point to storage of the correct type,
  * return the resulting \r{su_idec_state} (which includes \a{idec_mode}).
  * If \a{endptr_or_nil} is will be pointed to the last parsed byte.
- * Base auto-detection can be enfored by setting \a{base} to 0. */
+ * Base auto-detection can be enfored by setting \a{base} to 0,
+ * otherwise \a{base} must be within and including 2 and 64. */
 EXPORT BITENUM_IS(u32,su_idec_state) su_idec(void *resp,
       char const *cbuf, uz clen,
       u8 base, BITENUM_IS(u32,su_idec_mode) idec_mode,
@@ -236,8 +246,8 @@ enum su_ienc_mode{
    /*! No base prefixes shall prepend the number, even if the conversion base
     * would normally place one. */
    su_IENC_MODE_NO_PREFIX = 1u<<4,
-   /*! For bases greater ten (10), use lowercase letters instead of the default
-    * uppercase.
+   /*! For bases greater ten (10), and less than 37, use lowercase letters
+    * instead of the default uppercase.
     * This does not cover the base. */
    su_IENC_MODE_LOWERCASE = 1u<<5,
 
@@ -245,7 +255,7 @@ enum su_ienc_mode{
    su__IENC_MODE_MASK = (1u<<su__IENC_MODE_SHIFT) - 1
 };
 
-/*! Encode an integer value according to base (2-36) and \r{su_ienc_mode}
+/*! Encode an integer according to base (2-64, including) and \r{su_ienc_mode}
  * \a{ienc_mode}, return pointer to starting byte or \NIL on error.
  * An error only happens for an invalid base. */
 EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,

@@ -30,16 +30,20 @@
 #include "su/code-in.h"
 
 /* "Is power-of-two" table, and if, shift (indexed by base-2) */
-static u8 const a_icoe_shifts[35] = {
+static u8 const a_icoe_shifts[63] = {
          1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */
    0, 0, 0, 0, 0, 0, 4, 0, 0, 0,   /* 10 .. 19 */
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 20 .. 29 */
-   0, 0, 5, 0, 0, 0, 0             /* 30 .. 36 */
+   0, 0, 5, 0, 0, 0, 0, 0, 0, 0,   /* 30 .. 39 */
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 40 .. 49 */
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 50 .. 59 */
+   0, 0, 0, 0, 6                   /* 60 .. 64 */
 };
 
 /* XXX itoa byte maps not locale aware.. */
 static char const a_icoe_upper[36 +1] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const a_icoe_lower[36 +1] = "0123456789abcdefghijklmnopqrstuvwxyz";
+static char const a_icoe_lower[64 +1] = "0123456789abcdefghijklmnopqrstuvwxyz"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ@_";
 
 char *
 su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value,
@@ -51,14 +55,15 @@ su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value,
    char *rv;
    NYD_IN;
 
-   if(UNLIKELY(base < 2 || base > 36)){
+   if(UNLIKELY(base < 2 || base > 64)){
       rv = NIL;
       goto jleave;
    }
 
    ienc_mode &= su__IENC_MODE_MASK;
    *(rv = &cbuf[su_IENC_BUFFER_SIZE -1]) = '\0';
-   itoa = (ienc_mode & su_IENC_MODE_LOWERCASE) ? a_icoe_lower : a_icoe_upper;
+   itoa = (base > 36 || (ienc_mode & su_IENC_MODE_LOWERCASE)
+         ) ? a_icoe_lower : a_icoe_upper;
 
    if(S(s64,value) < 0){
       ienc_mode |= a_ISNEG;

@@ -1002,6 +1002,99 @@ a_icodec(void){
       a_ERR();
    else if(s32 != min::s32)
       a_ERR();
+
+   //
+
+   if(idec::convert_u64(&u64, "0x", max::uz, 0, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != 'x')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+   if(idec::convert_u64(&u64, "0X", max::uz, 16, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != 'X')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+
+   if(idec::convert_u64(&u64, "0b", max::uz, 0, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != 'b')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+   if(idec::convert_u64(&u64, "0B", max::uz, 2, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != 'B')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+
+   if(idec::convert_u64(&u64, "09", max::uz, 0, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != '9')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+
+   if(idec::convert_u64(&u64, "09", max::uz, 8, &ccp) != idec::state_ebase)
+      a_ERR();
+   else if(*ccp != '9')
+      a_ERR();
+   if(u64 != U64_C(0))
+      a_ERR();
+
+   //
+
+   struct{
+      char const *in;
+      NSPC(su)u64 out;
+      u8 base;
+   } const conv[] = {
+      {"64#hello", 288970072, 64},
+      {"64#world", 543274317, 64},
+      {"42#hello", 53974014, 42},
+      {"42#world", 101400907, 42},
+      {"37#hello", 32599429, 37},
+      {"37#world", 61226577, 37},
+      {"36#hello", 29234652, 36},
+      {"36#world", 54903217, 36},
+      {"32#hello", 18306744, 32},
+      {"32#vorld", 33320621, 32},
+      {"64#ZA_@RD_@US", U64_C(0xF64FFED67FFEE36), 64},
+      {NIL, 0, 0}
+   };
+
+   for(uz i = 0; conv[i].in != NIL; ++i){
+      if(idec::convert_u64(&u64, &conv[i].in[3], max::uz, conv[i].base, &ccp
+            ) != idec::state_consumed)
+         a_ERR();
+      else if(*ccp != '\0')
+         a_ERR();
+      if(u64 != conv[i].out)
+         a_ERR();
+
+      if(idec::convert_u64(&u64, conv[i].in, max::uz, 0, &ccp
+            ) != idec::state_consumed)
+         a_ERR();
+      else if(*ccp != '\0')
+         a_ERR();
+      if(u64 != conv[i].out)
+         a_ERR();
+
+      if((ccp = ienc::convert(buf, u64, conv[i].base,
+            (ienc::mode_no_prefix | ienc::mode_lowercase))) == NIL)
+         a_ERR();
+      else if(cs::cmp(ccp, &conv[i].in[3]))
+         a_ERR();
+
+      if((ccp = ienc::convert(buf, u64, conv[i].base, ienc::mode_lowercase)
+            ) == NIL)
+         a_ERR();
+      else if(cs::cmp(ccp, conv[i].in))
+         a_ERR();
+   }
 }
 // }}}
 
