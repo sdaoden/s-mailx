@@ -432,7 +432,7 @@ jenum_plusminus:
             }
             f |= a_VEXPR_SOFTOVERFLOW;
             lhv = S64_MAX;
-         }else
+         }else if(lhv != S64_MIN || rhv != -1)
             lhv /= rhv;
          break;
 
@@ -445,8 +445,10 @@ jenum_plusminus:
             }
             f |= a_VEXPR_SOFTOVERFLOW;
             lhv = S64_MAX;
-         }else
+         }else if(lhv != S64_MIN || rhv != -1)
             lhv %= rhv;
+         else
+            lhv = 0;
          break;
 
       case a_VEXPR_CMD_NUM_OR:
