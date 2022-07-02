@@ -2549,7 +2549,8 @@ followed by
 .
 .It Ql \ecV
 Prompts for a Unicode character (hexadecimal number without prefix, see
-.Ic vexpr )
+.Mx -sx
+.Sx "number syntax rules" )
 to be inserted
 .Mx
 .Pf ( Cd mle-prompt-char ) .
@@ -3521,8 +3522,8 @@ and the following character is treated literally as part of the argument.
 .Ss "Shell-style argument quoting"
 .
 .Ev SHELL Ns
--style, and therefore POSIX standardized, argument parsing and
-quoting rules are used by most commands.
+-style, and therefore POSIX standardized, argument parsing, expansion,
+and quoting rules are used by most commands.
 \*(ID Most new commands only support these new rules and are flagged
 \*(NQ, some elder ones can use them via
 .Cm wysh ;
@@ -3550,6 +3551,14 @@ and less-than and greater-than signs
 are treated as ordinary characters: they are either vivid parts of email
 addresses or
 .Sx "Filename transformations" .
+Any unquoted number sign
+.Ql #
+that begins a new token starts a comment that extends to the end
+of the line, and therefore ends argument processing.
+An unquoted dollar sign
+.Ql $
+starts
+.Sx "Shell-style expansions" .
 .
 .Bd -filled -offset indent
 .Sy Compatibility note:
@@ -3572,22 +3581,6 @@ parameters fully support
 for an almost shell-compatible field splitting:
 .Ic call , call_if , read , vpospar , xcall .
 .Ed
-.
-.Pp
-Any unquoted number sign
-.Ql #
-that begins a new token starts a comment that extends to the end
-of the line, and therefore ends argument processing.
-An unquoted dollar sign
-.Ql $
-causes variable expansion of the given name, which must honour
-.Mx -sx
-.Sx "variable name rules" :
-.Sx "INTERNAL VARIABLES"
-as well as
-.Sx ENVIRONMENT
-(shell) variables can be accessed through this mechanism, brace
-enclosing the name is supported (for example to subdivide a token).
 .
 .Pp
 Whereas the metacharacters
@@ -3635,17 +3628,19 @@ The literal value of all characters enclosed in
 .Ql \(dqdouble-\:quotes\(dq
 is retained, with the exception of dollar sign
 .Ql $
-that causes variable expansion, as above, backquote (grave accent)
+that causes
+.Sx "Shell-style expansions" ,
+backquote (grave accent)
 .Ql `
 (which not yet means anything special), reverse solidus
 .Ql \e
 that escapes any of the characters dollar sign
-.Ql $
-(to prevent variable expansion), backquote (grave accent)
+.Ql $ ,
+backquote (grave accent)
 .Ql ` ,
 double-quote
 .Ql \(dq
-(to prevent ending the quote) and reverse solidus
+(to prevent ending the quote), and reverse solidus
 .Ql \e
 (to prevent escaping, that is, to embed a reverse solidus character
 as-is), but has no special meaning otherwise.
@@ -3691,7 +3686,8 @@ A 0 byte will suppress further output for the quoted argument.
 eight-bit byte with the hexadecimal value
 .Ql HH
 (one or two hexadecimal characters, no prefix, see
-.Ic vexpr ) .
+.Mx -sx
+.Sx "number syntax rules" ) .
 A 0 byte will suppress further output for the quoted argument.
 .It Ql \eUHHHHHHHH
 the Unicode / ISO-10646 character with the hexadecimal codepoint value
@@ -3741,9 +3737,9 @@ The control code NUL
 a non-standard extension) will suppress further output for the remains
 of the token (which may extend beyond the current quote), or, depending
 on the context, the remains of all arguments for the current command.
-.It Ql \e$NAME
-Non-standard extension: expand the given variable name, as above.
-Brace enclosing the name is supported.
+.It Ql \e$expression
+Non-standard extension to embed
+.Sx "Shell-style expansions" .
 .It Ql \e`{command}
 Not yet supported, just to raise awareness: Non-standard extension.
 .El
@@ -3765,6 +3761,136 @@ Caveats:
 ? call xy $x four
 1, one two three, four, one two three four
 .Ed
+.\" }}}
+.
+.\" .Ss "Shell-style expansions" {{{
+.Ss "Shell-style expansions"
+.
+Within
+.Sx "Shell-style argument quoting"
+an unquoted dollar sign
+.Ql $
+triggers expression expansions.
+The simplemost expression is an optionally brace enclosed variable name,
+for example
+.Ql $NAME
+or
+.Ql ${NAME} ,
+which must honour
+.Mx -sx
+.Sx "variable name rules" :
+.Sx "INTERNAL VARIABLES"
+as well as
+.Sx ENVIRONMENT
+(shell) variables can be accessed and expanded through this mechanism.
+.
+.Pp
+Within pairs of double parenthesis
+.Ql $(( ))
+64-bit signed integer arithmetic expansions are performed.
+Different to
+.Ic vexpr
+no saturated mode is available (overflow constants will result),
+and errors are not trackable:
+a syntactically invalid expression causes the context
+.Pf ( Sx COMMANDS )
+to fail due to invalid arguments.
+Variable NAMEs can be referenced: unset or empty values expand to 0,
+otherwise the value is interpreted as a self-contained expression to
+expand arithmetically first.
+.Mx -ix "number syntax rules"
+Numbers prefixed with
+.Ql 0x
+or
+.Ql 0X
+denote hexadecimal (base 16) numbers,
+.Ql 0
+indicates octal (base 8), and
+.Ql 0b
+as well as
+.Ql 0B
+denote binary (base 2) numbers.
+A permissive
+.Ql NUMBER
+parse mode (see example) is used for the
+.Ql BASE#NUMBER
+notation;
+.Ql BASE
+is an unsigned decimal in the range 2 and 64, inclusive.
+Power-of-two bases are parsed as unsigned integers (making for overflow
+constant differences).
+The following list of operators is sorted in decreasing precedence.
+.
+.Bd -literal -offset indent
+? set i=0; echo $((i + i)), $((i+=1)), $((i + i)); varshow i
+0, 1, 2
+set i=1
+? set i=-2; eval echo \e$(( 10# $i))
+-2
+.Ed
+.
+.Bd -filled -offset indent
+.Sy Compatibility note:
+\*(ID Of the following, only
+.Dq The result is treated as the arithmetic expression to be evaluated
+is true:
+The expression is treated as if it were within double quotes,
+but a double quote inside the parentheses is not treated specially.
+All tokens in the expression undergo parameter and variable expansion,
+command substitution, and quote removal.
+The result is treated as the arithmetic expression to be evaluated.
+Arithmetic expansions may be nested.
+.Ed
+.
+.Pp
+.Bl -tag -compact -width ".It Ar _n_u"
+.It Ar \&( , \&)
+Parenthesis can be used to form sub-expressions which are evaluated with
+the highest precedence.
+.It Ar VAR++ , VAR--
+Postfix increment and decrement, for variables.
+.It Ar + , -
+Unary plus and minus.
+.It Ar ++VAR , --VAR
+Prefix increment and decrement, for variables.
+.It Ar \&! , ~
+Logical and bitwise negation.
+.It Ar **
+Exponentiation.
+.It Ar * , / , %
+Multiplication, division, remainder (modulo).
+.It Ar + , -
+Addition and subtraction.
+.It Ar << , >> , >>>
+Bitwise shifts, the last performs an unsigned right shift.
+.It Ar <= , >= , < , >
+Comparison.
+.It Ar == , !=
+Equality and inequality.
+.It Ar &
+Bitwise AND.
+.It Ar ^
+Bitwise XOR.
+.It Ar |
+Bitwise OR.
+.It Ar &&
+Logical AND.
+.It Ar ||
+Logical OR.
+.It Ar EXPR0\0?\0EXPR1\0:\0EXPR2
+Conditional operator: if EXPR0 is true evalute EXPR1, otherwise evaluate
+EXPR2; this can be nested.
+Precedence note: for example
+.Ql 1?crt=10:crt=5
+is an error, as it is
+.Ql (1?(crt=10):crt)=5 ;
+.Ql 1?crt=10:(crt=5)
+is ok.
+.It Ar **= , *= , /= , %= , += , -= , <<= , >>= , >>>= , &= , ^= , |= , =
+Assignment.
+.It Ar EXPR1\0,\0EXPR2
+Comma (sequential evaluation).
+.El
 .\" }}}
 .
 .\" .Ss "Message list arguments" {{{
@@ -7318,48 +7444,21 @@ as the numeric error
 .Va ^ERR Ns -RANGE .
 .
 .Pp
-Numeric operations work on one or two signed 64-bit integers.
-Numbers prefixed with
-.Ql 0x
-or
-.Ql 0X
-are interpreted as hexadecimal (base 16) numbers, whereas
-.Ql 0
-indicates octal (base 8), and
-.Ql 0b
-as well as
-.Ql 0B
-denote binary (base 2) numbers.
-It is possible to use any base in between 2 and 64, inclusive, with the
-.Ql BASE#number
-notation, where the base is given as an unsigned decimal number, so
-.Ql 16#AFFE
-is a different way of specifying a hexadecimal number.
-Unsigned interpretation of a number can be enforced by prefixing an
+Numeric operations work on one or two signed 64-bit integers according to
+.Mx -sx
+.Sx "number syntax rules" .
+Unsigned interpretation of a number can be enforced with an
 .Ql u
-(case-insensitively), as in
+prefix (case-insensitive), as in
 .Ql u-110 ;
-this is not necessary for power-of-two bases (2, 4, 8, 16 and 32),
-which are unsigned by default, but it still makes a difference regarding
-overflow detection and overflow constant.
-It is possible to enforce signed interpretation by (instead) prefixing a
+power-of-two bases (2,4,8,16,32,64) are unsigned by default, but regarding
+overflow detection and error constants it still makes a difference.
+To enforce signed interpretation (instead) prefix
 .Ql s
-(case-insensitively).
-The number sign notation uses a permissive parse mode and as such
-supports complicated conditions out of the box:
-.
-.Bd -literal -offset indent
-? set ifs=:;read i;unset ifs;echo $i;vexpr pb 2 10#$i
-   -009
-[.]
-0b1001
-.Ed
-.
-.Pp
+(case-insensitive).
 One integer is expected by assignment (equals sign
 .Ql = ) ,
-which does nothing but argument parsing, thus detecting validity and
-possible overflow conditions, unary not (tilde
+which does nothing but validity and overflow detection, unary not (tilde
 .Ql ~ ) ,
 which creates the bitwise complement, and unary plus and minus.
 Two integers are used by addition (plus sign
@@ -8575,10 +8674,10 @@ the quoting rules are documented for
 Dependent upon the built-in variable values may become interpreted
 as colour names, command specifications, normal text, etc.
 They may be treated as numbers, in which case decimal values are
-expected if so documented, but otherwise any numeric format and
-base that is valid and understood by the
-.Ic vexpr
-command may be used.
+expected if so documented, otherwise the usual
+.Mx -sx
+.Sx "number syntax rules"
+apply.
 .
 .Pp
 .Dq Boolean string
