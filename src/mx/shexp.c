@@ -51,6 +51,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/icodec.h>
 #include <su/sort.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
@@ -74,12 +75,13 @@
  *   defined in Portable Character Set and do not begin with a digit.
  *   Other characters may be permitted by an implementation;
  *   applications shall tolerate the presence of such names.
- * We do support the hyphen-minus "-" (except in last position for ${x[:]-y}).
+ * We do support the hyphen-minus "-" (except in first and last position.
  * We support some special parameter names for one-letter(++) variable names;
  * these have counterparts in the code that manages internal variables,
  * and some more special treatment below! */
 #define a_SHEXP_ISVARC(C) (su_cs_is_alnum(C) || (C) == '_' || (C) == '-')
-#define a_SHEXP_ISVARC_BAD1ST(C) (su_cs_is_digit(C)) /* (Assumed below!) */
+/* (Assumed below!) */
+#define a_SHEXP_ISVARC_BAD1ST(C) (su_cs_is_digit(C) || (C) == '-')
 #define a_SHEXP_ISVARC_BADNST(C) ((C) == '-')
 
 #define a_SHEXP_ISENVVARC(C) (su_cs_is_alnum(C) || (C) == '_')
@@ -168,6 +170,9 @@ static sz a_shexp__globsort(void const *cvpa, void const *cvpb);
 /* Parse an input string and create a sh(1)ell-quoted result */
 static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp,
                struct a_shexp_quote_lvl *sqlp);
+
+#define a_SHEXP_ARITH_ERROR_TRACK
+#include "mx/shexp-arith.h" /* $(MX_SRCDIR) */
 
 static void
 a_shexp_name_expand(struct a_shexp_name_exp_ctx *snecp){
@@ -1224,7 +1229,7 @@ mx_shexp_name_expand_multi(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
 FL BITENUM_IS(u32,n_shexp_state)
 n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
       struct n_string *store, struct str *input, void const **cookie){
-   /* TODO shexp_parse_token: WCHAR
+   /* TODO shexp_parse_token: WCHAR (+separate in logical units if possible)
     * TODO This needs to be rewritten in order to support $(( )) and $( )
     * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
     * TODO too.  We need a carrier struct, then, and can nicely split this
@@ -1259,7 +1264,7 @@ n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags,
       a_TMP = 1u<<30
    };
 
-   char c2, c, quotec, utf[8];
+   char c2, c, quotec, stackbuf[su_IENC_BUFFER_SIZE];
    BITENUM_IS(u32,n_shexp_state) rv;
    uz i, il;
    u32 state, last_known_meta_trim_len;
@@ -1308,7 +1313,7 @@ jrestart_empty:
    state &= a_ROUND_MASK;
 
    /* In cookie mode, the next ARGV entry is the token already, unchanged,
-    * since it has already been expanded before! */
+    * since it has been expanded before! */
    if(state & a_COOKIE){
       char const * const *xcookie, *cp;
 
@@ -1695,12 +1700,12 @@ jerr_ib_save:
                            goto Jerr_uni_norm;
                         }
 
-                        j = su_utf32_to_8(no, utf);
+                        j = su_utf32_to_8(no, stackbuf);
 
                         if(n_psonce & n_PSO_UNICODE){
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
                            if(!(flags & n_SHEXP_PARSE_DRYRUN))
-                              store = n_string_push_buf(store, utf, j);
+                              store = n_string_push_buf(store, stackbuf, j);
                            continue;
                         }
 #ifdef mx_HAVE_ICONV
@@ -1708,7 +1713,7 @@ jerr_ib_save:
                            char *icp;
 
                            icp = n_iconv_onetime_cp(n_ICONV_NONE,
-                                 NULL, NULL, utf);
+                                 NULL, NULL, stackbuf);
                            if(icp != NULL){
                               rv |= n_SHEXP_STATE_OUTPUT;
                               if(!(flags & n_SHEXP_PARSE_DRYRUN))
@@ -1718,14 +1723,12 @@ jerr_ib_save:
                         }
 #endif
                         if(!(flags & n_SHEXP_PARSE_DRYRUN)) Jerr_uni_norm:{
-                           char itoa[32];
-
                            rv |= n_SHEXP_STATE_OUTPUT |
                                  n_SHEXP_STATE_ERR_UNICODE;
-                           i = snprintf(itoa, sizeof itoa, "\\%c%0*X",
+                           i = snprintf(stackbuf, sizeof stackbuf, "\\%c%0*X",
                                  (no > 0xFFFFu ? 'U' : 'u'),
                                  (int)(no > 0xFFFFu ? 8 : 4), (u32)no);
-                           store = n_string_push_buf(store, itoa, i);
+                           store = n_string_push_buf(store, stackbuf, i);
                         }
                         continue;
                      }
@@ -1734,7 +1737,7 @@ jerr_ib_save:
                   }
                   break;
 
-               /* Extension: \$ can be used to expand a variable.
+               /* Extension: \$ can be used to enter $xyz multiplexer.
                 * B(ug|ad) effect: if conversion fails, not written "as-is" */
                case '$':
                   if(il == 0)
@@ -1749,14 +1752,94 @@ j_dollar_ungetc:
                }
             }
          }else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{
+            char const *cp, *vp;
+
             state &= ~a_VARSUBST_MASK;
-            if(*ib == '{')
+            c2 = *ib;
+
+            /* $X is a multiplexer for an increasing amount of functionality */
+            /* 1. Arithmetic expression */
+            if(UNLIKELY(c2 == '(')){
+               char const *emsg;
+               char *xcp;
+               s64 res;
+               uz parens;
+
+               ib_save = ib++;
+               i = il--;
+               if(il < 3 || *ib != '(')
+                  goto jearith;
+               ++ib;
+               --il;
+
+               parens = 2;
+               while(il > 0){
+                  --il;
+                  if((c = *ib++) == '(')
+                     ++parens;
+                  else if(c == ')' && --parens == 1 && il > 0 && *ib == ')'){
+                     --il;
+                     ++ib;
+                     parens = 0;
+                     break;
+                  }else if(c == '"' || c == '\'' || c == '$'){ /* TODO $ */
+                     if(flags & n_SHEXP_PARSE_LOG)
+                        n_err(_("$(( )) expression cannot (yet) handle quotes "
+                              "nor expand variables: %.*s: %.*s\n"),
+                           S(int,input->l), input->s, S(int,i), ib_save);
+                     rv |= n_SHEXP_STATE_ERR_BADSUB;
+                     goto jerr_ib_save;
+                  }
+               }
+               if(parens > 0){
+jearith:
+                  if(flags & n_SHEXP_PARSE_LOG)
+                     n_err(_("$(( )) syntax or grouping error: %.*s: %.*s\n"),
+                        S(int,input->l), input->s, S(int,i), ib_save);
+                  rv |= n_SHEXP_STATE_ERR_BADSUB | n_SHEXP_STATE_ERR_GROUPOPEN;
+                  goto jerr_ib_save;
+               }
+
+               if((flags & n_SHEXP_PARSE_DRYRUN) || (state & a_SKIPMASK))
+                  continue;
+
+               xcp = UNCONST(char*,&ib_save[2]);
+               switch(a_shexp_arith_eval(&res, xcp, P2UZ(&ib[-2] - xcp),
+                     &xcp)){
+               default:
+                  cp = su_ienc_s64(stackbuf, res, 10);
+                  goto j_var_push_cp;
+#undef a_X
+#define a_X(X,N) case CONCAT(a_SHEXP_ARITH_ERR_,X): emsg = N_(N); break
+               a_X(NOMEM, "out of memory");
+               a_X(SYNTAX, "syntax error");
+               a_X(ASSIGN_NO_VAR,
+                  "assignment without variable (precedence error?)");
+               a_X(DIV_BY_ZERO, "division by zero");
+               a_X(EXP_INVALID, "invalid exponent");
+               a_X(NO_OP, "syntax error, expected operand");
+               a_X(COND_NO_COLON, "syntax error, incomplete ?: condition");
+               a_X(COND_PREC_INVALID, "?: condition, invalid precedence "
+                  "(1:v2:v3=3)");
+               a_X(NAME_LOOP, "recursive variable name reference");
+               a_X(OP_INVALID, "unknown operator");
+               }
+#undef a_X
+
+               if(flags & n_SHEXP_PARSE_LOG)
+                  n_err(_("Bad $(()) substitution: %s: %.*s: stop near: %s\n"),
+                     V_(emsg), (int)P2UZ(&ib[-2] - &ib_save[2]), &ib_save[2],
+                     xcp);
+               rv |= n_SHEXP_STATE_ERR_BADSUB;
+               goto jerr_ib_save;
+            }
+
+            /* 2. Enbraced variable name */
+            if(c2 == '{')
                state |= a_BRACE;
 
             /* Scan variable name */
             if(!(state & a_BRACE) || il > 1){
-               char const *cp, *vp;
-
                ib_save = ib - 1;
                if(state & a_BRACE)
                   --il, ++ib;
@@ -1808,7 +1891,7 @@ j_dollar_ungetc:
                         rv |= n_SHEXP_STATE_ERR_GROUPOPEN;
                   }
                   if(flags & n_SHEXP_PARSE_LOG)
-                     n_err(_("Invalid identifier for ${}: %.*s: %.*s\n"),
+                     n_err(_("Invalid ${} identifier: %.*s: %.*s\n"),
                         (int)input->l, input->s,
                         (int)P2UZ(ib - ib_save), ib_save);
                   rv |= n_SHEXP_STATE_ERR_IDENTIFIER;
@@ -1816,29 +1899,18 @@ j_dollar_ungetc:
                }else if(i == 0){
                   if(state & a_BRACE){
                      if(il == 0 || *ib != '}'){
-                        if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("No closing brace for ${}: %.*s: %.*s\n"),
-                              (int)input->l, input->s,
-                              (int)P2UZ(ib - ib_save), ib_save);
-                        rv |= n_SHEXP_STATE_ERR_GROUPOPEN;
-                        goto jerr_ib_save;
+                        goto jebracenoc;
                      }
                      --il, ++ib;
-
-                     if(i == 0){
-                        if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("Bad substitution for ${}: %.*s: %.*s\n"),
-                              (int)input->l, input->s,
-                              (int)P2UZ(ib - ib_save), ib_save);
-                        rv |= n_SHEXP_STATE_ERR_BADSUB;
-                        goto jerr_ib_save;
-                     }
+                     if(i == 0)
+                        goto jebracesubst;
                   }
                   /* Simply write dollar as-is? */
                   c = '$';
                }else{
                   if(state & a_BRACE){
                      if(il == 0 || *ib != '}'){
+jebracenoc:
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("No closing brace for ${}: %.*s: %.*s\n"),
                               (int)input->l, input->s,
@@ -1849,8 +1921,9 @@ j_dollar_ungetc:
                      --il, ++ib;
 
                      if(i == 0){
+jebracesubst:
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("Bad substitution for ${}: %.*s: %.*s\n"),
+                           n_err(_("Bad ${} substitution: %.*s: %.*s\n"),
                               (int)input->l, input->s,
                               (int)P2UZ(ib - ib_save), ib_save);
                         rv |= n_SHEXP_STATE_ERR_BADSUB;
@@ -1877,7 +1950,7 @@ j_dollar_ungetc:
                         ++ib, --il;
                      else
                         continue;
-                     input->s = n_UNCONST(ib);
+                     input->s = UNCONST(char*,ib);
                      input->l = il;
                      goto jrestart_empty;
                   }
@@ -1899,6 +1972,7 @@ j_var_look_buf:
                      vp = savestrbuf(vp, i);
 
                   if((cp = n_var_vlook(vp, TRU1)) != NULL){
+j_var_push_cp:
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
                      for(; (c = *cp) != '\0'; ++cp)
