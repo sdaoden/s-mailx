@@ -172,6 +172,7 @@ jleave:
    return rv;
 
 jargc1:/* C99 */{
+fprintf(stderr, "argc 1 <%s>\n",argv[0],argv[1],argv[2]);
    switch(*(cp = argv[0])){
    case '$': /* v15compat */
       if(!(n_pstate & n_PS_ARGMOD_WYSH)){
@@ -229,6 +230,7 @@ jargc1:/* C99 */{
 jargc2:/* C99 */{
    emsg = N_("unrecognized condition");
 
+fprintf(stderr, "argc 2 <%s> <%s>\n",argv[0],argv[1],argv[2]);
    cp = argv[0];
    if(cp[0] != '-' || cp[2] != '\0'){
       a_REDO();
@@ -274,6 +276,7 @@ jargc3:/* C99 */{
 
    flags = a_NONE;
 
+fprintf(stderr, "argc 3 <%s> <%s> <%s>\n",argv[0],argv[1],argv[2]);
    emsg = N_("unrecognized condition");
    op = argv[1];
    if((c = op[0]) == '\0'){
@@ -338,7 +341,7 @@ jargc3:/* C99 */{
 #ifdef mx_HAVE_REGEX
             && op[1] != '~'
 #endif
-      )
+            )
          goto jesyn;
    }else if(c == '-'){
       if(op[1] == '\0' || op[2] == '\0' || op[3] != '\0')
@@ -611,8 +614,6 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop){
             continue;
          }else{
             if(state & a_CANNOT_CBRACK){
-               emsg = N_("cannot use closing bracket here");
-               goto jesyn;
                /* However, maybe user _wants_ this as an argument!
                 * emsg = N_("cannot use closing bracket here");
                 * goto jesyn; */
