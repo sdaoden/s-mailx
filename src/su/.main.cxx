@@ -948,12 +948,16 @@ a_icodec(void){
       a_ERR();
    else if(u64 != max::u64)
       a_ERR();
+   else if(*ccp != '\0')
+      a_ERR();
    ccp = "-999999999999999999999999999999999999999999999";
    if((idec::convert_u64(&u64, ccp, max::uz, 0, &ccp
             ) & (idec::state_emask | idec::state_consumed)
          ) != (idec::state_eoverflow | idec::state_consumed))
       a_ERR();
    else if(u64 != max::u64)
+      a_ERR();
+   else if(*ccp != '\0')
       a_ERR();
 
    s64 s64;
@@ -964,12 +968,16 @@ a_icodec(void){
       a_ERR();
    else if(s64 != max::s64)
       a_ERR();
+   else if(*ccp != '\0')
+      a_ERR();
    ccp = "-999999999999999999999999999999999999999999999";
    if((idec::convert_s64(&s64, ccp, max::uz, 0, &ccp
             ) & (idec::state_emask | idec::state_consumed)
          ) != (idec::state_eoverflow | idec::state_consumed))
       a_ERR();
    else if(s64 != min::s64)
+      a_ERR();
+   else if(*ccp != '\0')
       a_ERR();
 
    ccp = "999999999999999999999999999999999999999999999";
@@ -979,12 +987,16 @@ a_icodec(void){
       a_ERR();
    else if(u32 != max::u32)
       a_ERR();
+   else if(*ccp != '\0')
+      a_ERR();
    ccp = "-999999999999999999999999999999999999999999999";
    if((idec::convert_u32(&u32, ccp, max::uz, 0, &ccp
             ) & (idec::state_emask | idec::state_consumed)
          ) != (idec::state_eoverflow | idec::state_consumed))
       a_ERR();
    else if(u32 != max::u32)
+      a_ERR();
+   else if(*ccp != '\0')
       a_ERR();
 
    s32 s32;
@@ -995,12 +1007,16 @@ a_icodec(void){
       a_ERR();
    else if(s32 != max::s32)
       a_ERR();
+   else if(*ccp != '\0')
+      a_ERR();
    ccp = "-999999999999999999999999999999999999999999999";
    if((idec::convert_s32(&s32, ccp, max::uz, 0, &ccp
             ) & (idec::state_emask | idec::state_consumed)
          ) != (idec::state_eoverflow | idec::state_consumed))
       a_ERR();
    else if(s32 != min::s32)
+      a_ERR();
+   else if(*ccp != '\0')
       a_ERR();
 
    //
@@ -1095,6 +1111,159 @@ a_icodec(void){
       else if(cs::cmp(ccp, conv[i].in))
          a_ERR();
    }
+
+   //// Limit / signed / flags
+
+   BITENUM_IS(NSPC(su)u32,idec::mode) m;
+
+   //
+   ccp = "0x7FFFFFFFFFFFFFFF ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (idec::mode_signed_type),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_none))
+      a_ERR();
+   else if(s64 != max::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x7FFFFFFF ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (idec::mode_signed_type | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_none))
+      a_ERR();
+   else if(s32 != max::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   ccp = "0x8000000000000000 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (idec::mode_signed_type),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s64 != max::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x80000000 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (idec::mode_signed_type | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s32 != max::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   ccp = "0x8000000000000000 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (0),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_none))
+      a_ERR();
+   else if(s64 != min::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x80000000 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (0 | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_none))
+      a_ERR();
+   else if(s32 != min::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   //
+   ccp = "0x7FFFFFFFFFFFFFFF1 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (idec::mode_signed_type),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s64 != max::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x7FFFFFFF1 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (idec::mode_signed_type | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s32 != max::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   ccp = "0x80000000000000000 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (idec::mode_signed_type),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s64 != max::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x8000000000 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (idec::mode_signed_type | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s32 != max::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   ccp = "0x80000000000000000 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (0),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s64 != S(NSPC(su)s64,max::u64))
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "0x8000000000 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (0 | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s32 != S(NSPC(su)s32,max::u32))
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+
+   ccp = "-0x80000000000000000 ";
+   if(((m = idec::convert(&s64, ccp, max::uz, 0,
+            (idec::mode_signed_type),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s64 != min::s64)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
+   ccp = "-0x8000000000 ";
+   if(((m = idec::convert(&s32, ccp, max::uz, 0,
+            (idec::mode_signed_type | idec::mode_limit_32bit),
+            &ccp)) & (idec::state_emask | idec::state_consumed)
+         ) != (idec::state_eoverflow))
+      a_ERR();
+   else if(s32 != min::s32)
+      a_ERR();
+   else if(ccp[0] != ' ' || ccp[1] != '\0')
+      a_ERR();
 }
 // }}}
 
