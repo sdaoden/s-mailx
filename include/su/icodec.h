@@ -54,7 +54,9 @@ enum su_idec_mode{
    /*! If a power-of-two is used explicitly, or if a \a{base} of 0 is used
     * and a known standard prefix is seen, enforce interpretation as unsigned.
     * This only makes a difference in conjunction with
-    * \r{su_IDEC_MODE_SIGNED_TYPE}. */
+    * \r{su_IDEC_MODE_SIGNED_TYPE}, and in respect to the overflow cutlimit
+    * calculation; overflow constants are (still) based upon whether
+    * a leading hyphen-minus was seen, or not. */
    su_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
    /*! Relaxed \a{base} 0 convenience: if the input used \c{BASE#number} number
     * sign syntax, then the scan will be restarted anew with the base given.
