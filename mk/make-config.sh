@@ -682,6 +682,7 @@ _cc_flags_generic() {
    #fi
    cc_check -pedantic
    if feat_no DEVEL; then
+      cc_check -Wno-deprecated-declarations
       if feat_yes AMALGAMATION; then
          cc_check -Wno-unused-function
       fi
