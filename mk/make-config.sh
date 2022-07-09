@@ -3225,7 +3225,8 @@ int main(void){
 !
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check tls_md5 'TLS: MD5 digest' '#define mx_XTLS_HAVE_MD5' << \!
+         if run_check tls_md5 'TLS: MD5 digest' \
+               '#define mx_XTLS_HAVE_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -3250,6 +3251,12 @@ int main(void){
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
+         then
+            :
+         else
+            msg 'WARN: OpenSSL without MD5, enabling OPT_NOEXTMD5=1!'
+            OPT_NOEXTMD5=1
+         fi
       fi
    else
       feat_bail_required TLS_ALL_ALGORITHMS # feat_is_disabled?
