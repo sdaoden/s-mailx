@@ -685,6 +685,7 @@ ${__s1}', '${__s2}', '${__s3}', '${__s4}', '${__s5}
    #fi
    cc_check -pedantic
    if feat_no DEVEL; then
+      cc_check -Wno-deprecated-declarations
       if feat_yes AMALGAMATION; then
          cc_check -Wno-unused-function
       fi
