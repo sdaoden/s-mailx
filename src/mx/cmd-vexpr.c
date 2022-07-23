@@ -518,6 +518,10 @@ jedutc_num:
       s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[1], 10));
       s = n_string_push_c(s, ' ');
 
+      s = n_string_push_cp(s, "dutc_month_abbrev=");
+      s = n_string_push_cp(s, su_time_month_names_abbrev[utc[1] - 1]);
+      s = n_string_push_c(s, ' ');
+
       s = n_string_push_cp(s, "dutc_day=");
       s = n_string_push_cp(s, su_ienc_u32(vcp->vc_iencbuf, utc[2], 10));
       s = n_string_push_c(s, ' ');
