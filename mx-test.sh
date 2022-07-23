@@ -3265,16 +3265,16 @@ t_vexpr() { # {{{
 	commandalias x echo '$?/$^ERRNAME :$res:'
 	vput vexpr res date-utc 1620942446;x
 	eval set $res
-	if 2021-5-13T21:47:26 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	if 2021-5-13T21:47:26:May != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
 	vput vexpr res epoch 2021 05 13 21 47 26;x
 	eval set $res
 	if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 	#
 	vput vexpr res date-utc 0x1D30BE2E1FF;x
 	eval set $res
-	if 65535-12-31T23:59:59 != "${dutc_year}-${dutc_month}-${dutc_day}T"\
-		"$dutc_hour:$dutc_min:$dutc_sec"; echo ERROR; endif
+	if 65535-12-31T23:59:59:Dec != "${dutc_year}-${dutc_month}-${dutc_day}T"\
+		"$dutc_hour:$dutc_min:$dutc_sec:$dutc_month_abbrev"; echo ERROR; endif
 	vput vexpr res epoch 65535 12 31 23 59 59;x
 	eval set $res
 	if 20059491455990 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
@@ -3296,7 +3296,7 @@ t_vexpr() { # {{{
 	if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 	__EOT
 
-   check agnostic 0 ./tagnostic '2576812078 514'
+   check agnostic 0 ./tagnostic '638877393 602'
 
    t_epilog "${@}"
 } # }}}
