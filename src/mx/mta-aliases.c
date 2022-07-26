@@ -275,7 +275,8 @@ jparse_line:{
           *    They can end with a dollar sign. In regular expression terms:
           *       [a-z_][a-z0-9_-]*[$]?
           *    Usernames may only be up to 32 characters long.
-          * Test against alpha since the csdict will lowercase names.. */
+          * Test against alpha since the csdict will lowercase names..
+          * Same MTAALI_TEST below! */
          *l2.s = '\0';
          c = *(l2.s = nsp->s_dat);
          if(!su_cs_is_alpha(c) && c != '_'){
@@ -433,130 +434,199 @@ jput_name:
 
 int
 c_mtaaliases(void *vp){
-   char const *cp;
-   boole load_only;
+   enum{
+      a_CLEAR = 1u<<0,
+      a_LOAD = 1u<<1,
+      a_SHOW = 1u<<2,
+      a_LOOK = 1u<<3,
+      a_LOOK_EXPAND = 1u<<4
+   };
+   char const *cp, *cpx, comma[2] = ",";
    char **argv;
+   u32 f;
    NYD_IN;
 
+   f = a_LOAD | a_LOOK;
    argv = vp;
-   load_only = FAL0;
 
    if((cp = *argv) == NIL)
-      goto jlist;
-   if(argv[1] != NIL)
-      goto jerr;
-   if(su_cs_starts_with_case("show", cp))
-      goto jlist;
-   if(su_cs_starts_with_case("clear", cp))
-      goto jclear;
-   load_only = TRU1;
-   if(su_cs_starts_with_case("load", cp))
-      goto jclear;
+      f = a_LOAD | a_SHOW;
+   else if(*cp == '-' && cp[1] == '\0'){
+      if(argv[2] != NIL){
 jerr:
-   mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("mtaaliases"), NIL);
-   vp = NIL;
+         mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("mtaaliases"), NIL);
+         vp = NIL;
+         goto jleave;
+      }
+      cp = argv[1];
+      f = a_LOAD | a_LOOK | a_LOOK_EXPAND;
+   }else if(argv[1] != NIL)
+      goto jerr;
+   else if(su_cs_starts_with_case("show", cp))
+      f = a_LOAD | a_SHOW;
+   else if(su_cs_starts_with_case("clear", cp))
+      f = a_CLEAR;
+   else if(su_cs_starts_with_case("load", cp))
+      f = a_CLEAR | a_LOAD;
+
+   if(f & a_CLEAR){
+      if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
+         a_mtaali_gut_csd(&a_mtaali_g.mag_dict);
+         su_FREE(a_mtaali_g.mag_path);
+      }
+      a_mtaali_g.mag_path = NIL;
+   }
+
+   if(f & a_LOAD){
+      if((cpx = ok_vlook(mta_aliases)) == NIL){
+         n_err(_("mtaaliases: *mta-aliases* not set\n"));
+         vp = NIL;
+         goto jleave;
+      }
+
+      if(a_mtaali_cache_init(cpx) != su_ERR_NONE ||
+            a_mtaali_g.mag_path == a_MTAALI_G_ERR){
+         n_err(_("mtaaliases: *mta-aliases* had no content\n"));
+         vp = NIL;
+         goto jleave;
+      }
+   }
+
+   if(f & a_LOOK){
+      union {void *v; struct a_mtaali_alias *maa; struct n_strlist *sl;} p;
+      char c;
+
+      vp = NIL;
+
+      /* Same MTAALI_TEST above! */
+      c = *(cpx = cp);
+      if(!su_cs_is_alpha(c) && c != '_'){
+jename:
+         n_err(_("mtaaliases: not a valid name: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }
+      while((c = *++cpx) != '\0')
+         if(!su_cs_is_alnum(c) && c != '_' && c != '-'){
+            if(c == '$' && *cpx == '\0')
+               break;
+            goto jename;
+         }
+
+      if((p.v = su_cs_dict_lookup(&a_mtaali_g.mag_dict, cp)) == NIL){
+         n_err(_("No such MTA alias: %s\n"), n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }
+
+      if(fprintf(n_stdout, "%s:", cp) < 0)
+         goto jleave;
+
+      cpx = su_empty;
+      if(!(f & a_LOOK_EXPAND)){
+         for(p.sl = p.maa->maa_values; p.sl != NIL; p.sl = p.sl->sl_next){
+            if(fprintf(n_stdout, "%s %s", cpx, p.sl->sl_dat) < 0)
+               goto jleave;
+            cpx = comma;
+         }
+      }else{
+         struct mx_name n, *np;
+
+         STRUCT_ZERO(struct mx_name, np = &n);
+         np->n_flags = mx_NAME_ADDRSPEC_ISNAME;
+         np->n_name = savestr(cp);
+         mx_mta_aliases_expand(&np);
+
+         for(; np != NIL; np = np->n_flink){
+            if(fprintf(n_stdout, "%s %s", cpx, np->n_name) < 0)
+               goto jleave;
+            cpx = comma;
+         }
+      }
+
+      if(putc('\n', n_stdout) == EOF)
+         goto jleave;
+      vp = *argv;
+   }
+
+   if(f & a_SHOW){
+      struct n_string quote; /* TODO quoting does not belong; -> RFC 822++ */
+      uz scrwid, l, lw;
+      struct n_strlist *slp;
+      struct a_mtaali_alias *maap;
+      FILE *fp;
+
+      if((fp = mx_fs_tmp_open(NIL, "mtaaliases",
+            (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
+         fp = n_stdout;
+
+      n_string_creat_auto(&quote);
+      scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
+      l = 0;
+      for(maap = a_mtaali_g.mag_aliases; maap != NIL; maap = maap->maa_next){
+         boole any;
+
+         /* Our reader above guarantees the name does not need to be quoted! */
+         fputs(cp = maap->maa_key, fp);
+         putc(':', fp);
+         lw = su_cs_len(cp) + 1;
+
+         any = FAL0;
+         for(slp = maap->maa_values; slp != NIL; slp = slp->sl_next){
+            uz i;
+
+            if(!any)
+               any = TRU1;
+            else{
+               putc(',', fp);
+               ++lw;
+            }
+
+            /* TODO A name itself?  Otherwise we may need to apply quoting!
+             * TODO quoting does not belong; -> RFC 822++ */
+            cp = slp->sl_dat;
+            i = slp->sl_len;
+            if(cp[i + 1] != a_MTAALI_T_NAME && cp[i + 1] != a_MTAALI_T_ADDR &&
+                  su_cs_first_of_cbuf_cbuf(cp, i, " \t\"#:@", 6) != UZ_MAX){
+               char c;
+
+               n_string_reserve(n_string_trunc(&quote, 0),
+                  (slp->sl_len * 2) + 2);
+               n_string_push_c(&quote, '"');
+               while((c = *cp++) != '\0'){
+                  if(c == '"' || c == '\\')
+                     n_string_push_c(&quote, '\\');
+                  n_string_push_c(&quote, c);
+               }
+               n_string_push_c(&quote, '"');
+               cp = n_string_cp(&quote);
+               i = quote.s_len;
+            }
+
+            if(lw + i >= scrwid){
+               fputs("\n  ", fp);
+               ++l;
+               lw = 2;
+            }
+            lw += i + 1;
+            putc(' ', fp);
+            fputs(cp, fp);
+         }
+         putc('\n', fp);
+         ++l;
+      }
+      /* n_string_gut(&quote); */
+
+      if(fp != n_stdout){
+         page_or_print(fp, l);
+
+         mx_fs_close(fp);
+      }else
+         clearerr(fp);
+   }
+
 jleave:
    NYD_OU;
    return (vp == NIL ? su_EX_ERR : su_EX_OK);
-
-jclear:
-   if(a_mtaali_g.mag_path != NIL && a_mtaali_g.mag_path != a_MTAALI_G_ERR){
-      a_mtaali_gut_csd(&a_mtaali_g.mag_dict);
-      su_FREE(a_mtaali_g.mag_path);
-   }
-   a_mtaali_g.mag_path = NIL;
-   if(load_only)
-      goto jlist;
-   goto jleave;
-
-jlist:{
-   struct n_string quote; /* TODO quoting does not belong; -> RFC 822++ */
-   uz scrwid, l, lw;
-   struct n_strlist *slp;
-   struct a_mtaali_alias *maap;
-   FILE *fp;
-
-   if((cp = ok_vlook(mta_aliases)) == NIL){
-      n_err(_("mtaaliases: *mta-aliases* not set\n"));
-      vp = NIL;
-      goto jleave;
-   }else if(a_mtaali_cache_init(cp) != su_ERR_NONE ||
-         a_mtaali_g.mag_path == a_MTAALI_G_ERR){
-      n_err(_("mtaaliases: *mta-aliases* had no content\n"));
-      vp = NIL;
-      goto jleave;
-   }
-   if(load_only)
-      goto jleave;
-
-   if((fp = mx_fs_tmp_open(NIL, "mtaaliases", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
-         NIL)) == NIL)
-      fp = n_stdout;
-
-   n_string_creat_auto(&quote);
-   scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
-   l = 0;
-   for(maap = a_mtaali_g.mag_aliases; maap != NIL; maap = maap->maa_next){
-      boole any;
-
-      /* Our reader above guarantees the name does not need to be quoted! */
-      fputs(cp = maap->maa_key, fp);
-      putc(':', fp);
-      lw = su_cs_len(cp) + 1;
-
-      any = FAL0;
-      for(slp = maap->maa_values; slp != NIL; slp = slp->sl_next){
-         uz i;
-
-         if(!any)
-            any = TRU1;
-         else{
-            putc(',', fp);
-            ++lw;
-         }
-
-         /* TODO Is it a name itself?  Otherwise we may need to apply quoting!
-          * TODO quoting does not belong; -> RFC 822++ */
-         cp = slp->sl_dat;
-         i = slp->sl_len;
-         if(cp[i + 1] != a_MTAALI_T_NAME && cp[i + 1] != a_MTAALI_T_ADDR &&
-               su_cs_first_of_cbuf_cbuf(cp, i, " \t\"#:@", 6) != UZ_MAX){
-            char c;
-
-            n_string_reserve(n_string_trunc(&quote, 0), (slp->sl_len * 2) + 2);
-            n_string_push_c(&quote, '"');
-            while((c = *cp++) != '\0'){
-               if(c == '"' || c == '\\')
-                  n_string_push_c(&quote, '\\');
-               n_string_push_c(&quote, c);
-            }
-            n_string_push_c(&quote, '"');
-            cp = n_string_cp(&quote);
-            i = quote.s_len;
-         }
-
-         if(lw + i >= scrwid){
-            fputs("\n  ", fp);
-            ++l;
-            lw = 2;
-         }
-         lw += i + 1;
-         putc(' ', fp);
-         fputs(cp, fp);
-      }
-      putc('\n', fp);
-      ++l;
-   }
-   /* n_string_gut(&quote); */
-
-   if(fp != n_stdout){
-      page_or_print(fp, l);
-
-      mx_fs_close(fp);
-   }else
-      clearerr(fp);
-   }
-   goto jleave;
 }
 
 s32

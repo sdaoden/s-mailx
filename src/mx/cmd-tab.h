@@ -248,7 +248,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Pipe [<msglist>] to [<command>], honour `ignore' / `retain'")) },
 
 { "alias", &c_alias, (M | TWYSH), 0, MAC, NIL
-     DS(N_("Show all (or <alias>), or append to <alias> :<data>:")) },
+     DS(N_("Show all (or [-] <alias>), or append to <alias> :<data>:")) },
    { "account", &c_account, (M | TWYSH), 0, MAC, NIL
      DS(N_("Create <account {>, select <account>, or list all accounts")) },
    { "addrcodec", &c_addrcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL
@@ -541,8 +541,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
       NIL,
 #endif
-      (M | TWYSH), 0, 1, NIL
-      DS(N_("[<show>], <load> or <clear> the *mta-aliases* cache")) },
+      (M | TWYSH), 0, 2, NIL
+      DS(N_("[<show>], <load>, <clear> *mta-aliases* cache, "
+         "or show [-] <MTA alias>")) },
 { "Mv", &c_Move, (O | A | M | SC | TARG), 0, 0,
  mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Move)
  DS(N_("Like `move', but derive filename from first sender")) },
