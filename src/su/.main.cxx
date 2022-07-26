@@ -583,12 +583,17 @@ a__cs_dict(u16 addflags){
    a_STATS( cdo.statistics(); )
 
    cdo.clear().add_flags(cdu.f_frozen);
-   for(u32 = 0; u32++ < a_LOOP_NO;){
+   for(u32 = 0; u32 < a_LOOP_NO; ++u32){
       if((cp = ienc::convert(buf, u32)) == NIL){
          a_ERR();
          break;
       }
       if(cdo.insert(cp, cp) != 0)
+         a_ERR();
+      char *xp = cdo.lookup(cp);
+      if(xp == NIL)
+         a_ERR();
+      else if(cs::cmp(xp, cp))
          a_ERR();
    }
    if(cdo.count() != a_LOOP_NO)
@@ -597,6 +602,8 @@ a__cs_dict(u16 addflags){
    u32 = 0;
    for(cs_dict<char*,TRU1>::view cdov(cdo); cdov; ++u32, ++cdov)
       if(cs::cmp(cdov.key(), cdov.data()))
+         a_ERR();
+      else if(cdov.key() == cdov.data())
          a_ERR();
    if(u32 != a_LOOP_NO)
       a_ERR();
@@ -611,6 +618,8 @@ a__cs_dict(u16 addflags){
    u32 = 0;
    for(cs_dict<char*,TRU1>::view cdov(cdo); cdov; ++u32, ++cdov)
       if(cs::cmp(cdov.key(), cdov.data()))
+         a_ERR();
+      else if(cdov.key() == cdov.data())
          a_ERR();
    if(u32 != a_LOOP_NO)
       a_ERR();
@@ -629,7 +638,7 @@ a__cs_dict(u16 addflags){
       typedef cs_dict<char*,TRU1> csd;
 
       csd *cdo2 = su_NEW(csd)(&xtb);
-      if(cdo2->assign(cdo) != 0)
+      if(cdo2->assign(cdo) != 0) // (replaces tbox)
          a_ERR();
       if(cdo2->count() != cdo.count())
          a_ERR();
@@ -640,6 +649,55 @@ a__cs_dict(u16 addflags){
       if(cdo2.assign_elems(cdo) != 0)
          a_ERR();
       if(cdo2.count() != cdo.count())
+         a_ERR();
+   }
+   {
+      cs_dict<char*,TRU1> cdo2(auto_type_toolbox<char*>::get_instance()),
+         cdo3(auto_type_toolbox<char*>::get_instance());
+
+      for(cs_dict<char*,TRU1>::view cdov(cdo); cdov; ++cdov){
+         cs_dict<char*,TRU1>::view cdov2(cdo2), cdov3(cdo3);
+
+         if(cdov2.reset_insert(cdov.key(), cdov.data()))
+            a_ERR();
+         else if(!cdov2.is_valid())
+            a_ERR();
+         else if(cs::cmp(cdov2.key(), cdov.key()))
+            a_ERR();
+         else if(cs::cmp(cdov2.data(), cdov.data()))
+            a_ERR();
+         else if(cdov2.reset_insert(cdov.key(), UNCONST(char*,su_empty)) != -1)
+            a_ERR();
+         else if(!cdov2.is_valid())
+            a_ERR();
+         else if(cs::cmp(cdov2.key(), cdov.key()))
+            a_ERR();
+         else if(cs::cmp(cdov2.data(), cdov.data()))
+            a_ERR();
+
+         if(cdov3.reset_replace(cdov.key(), cdov.data()))
+            a_ERR();
+         else if(!cdov3.is_valid())
+            a_ERR();
+         else if(cs::cmp(cdov3.key(), cdov.key()))
+            a_ERR();
+         else if(cs::cmp(cdov3.data(), cdov.data()))
+            a_ERR();
+         else if(cdov3.reset_replace(cdov.key(),UNCONST(char*,su_empty)) != -1)
+            a_ERR();
+         else if(!cdov3.is_valid())
+            a_ERR();
+         else if(cs::cmp(cdov3.key(), cdov.key()))
+            a_ERR();
+         else if(!cs::cmp(cdov3.data(), cdov.data()))
+            a_ERR();
+         else if(cs::cmp(cdov3.data(), su_empty))
+            a_ERR();
+      }
+
+      if(cdo2.count() != cdo.count())
+         a_ERR();
+      if(cdo3.count() != cdo.count())
          a_ERR();
    }
 }
