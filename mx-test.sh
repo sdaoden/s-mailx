@@ -7050,6 +7050,29 @@ t_mta_aliases() { # {{{
 	a8: ex1@a8.ple
 	__EOT
 
+   </dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox \
+      -Smta-aliases=./t.ali \
+      -X mtaaliases \
+      -X xit > ./tlist 2>&1
+   check list 0 ./tlist '1644126449 193'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=test://t.mbox \
+      -Smta-aliases=./t.ali \
+      -Y 'def y {
+         x a1;x a2;x a2_2;x a3;x a4;x a5;x a6;x a7;x a8;x a9;x a10
+      }
+      \commandali x \\mtaali -
+      \call y
+      \commandali x \\mtaali
+      \call y
+      ' > ./tlook 2>./tlook-err
+   check look 0 ./tlook '3425855815 506'
+   if have_feat uistrings; then
+      check look-err - ./tlook-err '2628536915 170'
+   else
+      t_echoskip 'look-err:[!UISTRINGS]'
+   fi
+
    echo | ${MAILX} ${ARGS} -Smta=test://t.mbox \
       -Smta-aliases=./t.ali \
       -b a3 -c a2 a1 > ./t2 2>&1
