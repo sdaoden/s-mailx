@@ -557,7 +557,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
 jleave:
    if(UNLIKELY(viewp != NIL)){
       if(LIKELY(rv <= su_ERR_NONE)){
-         viewp->a_V_F(node) = *la.la_slot;
+         viewp->a_V_F(node) = np;
          viewp->a_V_F(index) = la.la_slotidx;
       }else
          viewp->a_V_F(node) = NIL;
