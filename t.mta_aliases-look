@@ -1,0 +1,18 @@
+a1: ex1@a1.ple, ex2@a1.ple, ex3@a1.ple, ex4@a1.ple
+a2: ex1@a2.ple, ex2@a2.ple, ex3@a2.ple, ex4@a2.ple
+a2_2: ex3@a2.ple, ex4@a2.ple
+a3: a9, ex1@a8.ple, ex1@a6.ple, ex1@a4.ple
+a4: a9, ex1@a8.ple, ex1@a6.ple, ex1@a4.ple
+a5: a9, ex1@a8.ple, ex1@a6.ple
+a6: a9, ex1@a8.ple, ex1@a6.ple
+a7: a9, ex1@a8.ple
+a8: ex1@a8.ple
+a1: ex1@a1.ple, ex2@a1.ple, <ex3@a1.ple>, ex4@a1.ple
+a2: ex1@a2.ple, ex2@a2.ple, a2_2
+a2_2: ex3@a2.ple, ex4@a2.ple
+a3: a4
+a4: a5, ex1@a4.ple
+a5: a6
+a6: a7, ex1@a6.ple
+a7: a8, a9
+a8: ex1@a8.ple
