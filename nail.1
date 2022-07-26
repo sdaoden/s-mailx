@@ -4165,11 +4165,11 @@ to none to multiple recipients, to be expanded after
 .Sx "Compose mode"
 is left (see
 .Va metoo ) .
-Without arguments the former shows a list of all known aliases,
-with one argument only the expansion of the given one.
+Without arguments the former shows a list of all known aliases, one per
+line, with one argument only the expansion of the given one.
 With two arguments, hyphen-minus
 .Ql -
-being the first, the second is expanded recursively.
+being the first, the recursive expansion of the second is shown.
 .
 .Pp
 In all other cases the given alias is created or appended to:
@@ -6213,16 +6213,25 @@ Identical to
 .
 .Mx
 .It Ic mtaaliases
-\*(OP Without arguments or with
+\*(OP Without an argument or with
 .Ar show
 the
 .Va mta-aliases
-cache is shown, (re-)initializing it first (as necessary).
+cache is initialized if necessary and then shown;
+the output is normalized and properly quoted and fitted to
+.Ev COLUMNS ;
+it is usable as an
+.Xr aliases 5
+input file.
 If the argument is
-.Ar load
-then the cache will (only) be (re-)initialized,
 .Ar clear
-removes its contents.
+the cache is removed, whereas
+.Ar load
+will also reinitialize it.
+Otherwise the expansion of the given MTA alias is shown in one line.
+With two arguments, hyphen-minus
+.Ql -
+being the first, show the recursive expansion of the second.
 .
 .Mx
 .It Ic netrc
