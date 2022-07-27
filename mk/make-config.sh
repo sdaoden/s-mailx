@@ -3871,14 +3871,25 @@ COMMLINE=`squeeze_ws "${COMMLINE}"`
 
 i=`printf '%s %s %s\n' "${CC}" "${CFLAGS}" "${i}"`
    printf '#define VAL_BUILD_CC "%s"\n' "$i" >> ${h}
-   i=`string_to_char_array "${i}"`
+   if [ -z "${VAL_BUILD_INFO}" ]; then
+      i=`string_to_char_array "${i}"`
+   else
+      i='""'
+   fi
    printf '#define VAL_BUILD_CC_ARRAY %s\n' "$i" >> ${h}
+
 i=`printf '%s %s %s\n' "${CC}" "${LDFLAGS}" "${LIBS}"`
    printf '#define VAL_BUILD_LD "%s"\n' "$i" >> ${h}
-   i=`string_to_char_array "${i}"`
+   if [ -z "${VAL_BUILD_INFO}" ]; then
+      i=`string_to_char_array "${i}"`
+   else
+      i='""'
+   fi
    printf '#define VAL_BUILD_LD_ARRAY %s\n' "$i" >> ${h}
+
 i=${COMMLINE}
    printf '#define VAL_BUILD_REST "%s"\n' "$i" >> ${h}
+   [ -z "${VAL_BUILD_INFO}" ] || i=${VAL_BUILD_INFO}
    i=`string_to_char_array "${i}"`
    printf '#define VAL_BUILD_REST_ARRAY %s\n' "$i" >> ${h}
 

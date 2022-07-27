@@ -51,6 +51,14 @@
 VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
 VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 
+# Optional, for packagers who do not want to include build information
+# in the binary: if set non-empty this ends up in the INTERNAL VARIABLES
+# *build-rest*, and *build-cc* as well as *build-ld* will be empty.
+# Please set your own VAL_CONTACT_{MAIL,WEB} if you set this, and/or
+# include enough information to make bug reports linkable to package
+# recipes and the used build environment.
+VAL_BUILD_INFO=
+
 # To ease the life of forkers and packagers "our" name can be changed.
 # The name is built by concatenating $VAL_SID and $VAL_MAILX:
 # $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
