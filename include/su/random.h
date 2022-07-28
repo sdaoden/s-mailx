@@ -129,10 +129,12 @@ struct su_random{
     * that many random bytes can be performed.
     * If 0 automatic seed mixing is disabled, if \r{su_U32_MAX} it will be set
     * to an internal default when needed first.
+    * If enabled this denotes the minimum value onto which a random of
+    * maximally the same value is added.
     * By default disabled for the former, and enabled for the latter type. */
    u32 rm_reseed_after;
+   u32 rm_reseed_next;
    u32 rm_bytes;
-   su_64( u8 rm__pad[4]; )
    void *rm_vp;
    void *rm_vsp_cookie;
 };
