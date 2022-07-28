@@ -535,7 +535,7 @@ su_random_generate(struct su_random *self, void *buf, uz len){
       boole reseed;
       uz i, resl, datl;
 
-      /**/
+      /* For simplicity we reseed only once after a request is done */
       i = self->rm_reseed_after;
       if(LIKELY(i != U32_MAX))
          reseed = (i > 0);
@@ -544,15 +544,27 @@ su_random_generate(struct su_random *self, void *buf, uz len){
          reseed = TRU1;
       }
 
-      /* For simplicity we reseed only once after a request is done */
       if(reseed){
+         if((datl = self->rm_reseed_next) == 0)
+            self->rm_reseed_next = datl = i;
+         i = datl;
          reseed = (i < self->rm_bytes || i - self->rm_bytes <= len);
-         if(reseed)
+
+         if(reseed){
+            /* Randomize reseed_after */
+            for(resl = datl = 0; resl < 4; ++resl){
+               datl <<= 6; /* (assuming reseed_after is LT 24-bits) */
+               datl ^= a_random_get8(self);
+            }
+            i = self->rm_reseed_after;
+            i += (datl % i);
+            self->rm_reseed_next = S(u32,i);
             self->rm_bytes = 0;
-         else
+         }else
             self->rm_bytes += len;
       }
 
+      /* */
       resl = su_SIPHASH_DIGEST_SIZE_64;
       shd = su_SIPHASH_DIGEST_64;
       if(len > 8){
