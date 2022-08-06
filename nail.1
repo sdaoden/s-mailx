@@ -13676,6 +13676,15 @@ but \*(Xx will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.
 .
 .Mx
+.It Ev TZ
+Defines the
+.Xr timezone 3
+for local standard time and
+.Xr date 1 .
+(System-dependent, often there is also a
+.Pa /etc/localtime . )
+.
+.Mx
 .It Ev USER
 Identical to
 .Ev LOGNAME

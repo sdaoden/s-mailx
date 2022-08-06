@@ -397,7 +397,8 @@ mx_smime_decrypt_assemble(struct message *mp, FILE *hp, FILE *bp){
 
       save = time_current;
       time_current_update(&time_current, TRU1);
-      if((w = mkdate(mb.mb_otf, "X-Decoding-Date")) == -1)
+      if((w = mx_sendout_header_date(mb.mb_otf, "X-Decoding-Date", TRU1)
+            ) == -1)
          goto jleave;
       octets += w;
       time_current = save;

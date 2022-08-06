@@ -924,12 +924,6 @@ FL int c_Sendmail(void *v);
 FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
       struct message *quote, char const *quotefile, boole local);
 
-/* Create a Date: header field.
- * We compare the localtime() and gmtime() results to get the timezone, because
- * numeric timezones are easier to read and because $TZ isn't always set.
- * Return number of bytes written of -1 */
-FL int mkdate(FILE *fo, char const *field);
-
 /* Dump the to, subject, cc header on the passed file buffer.
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
  * editing a message (yet we are stupid and cannot do it any better).
@@ -939,6 +933,17 @@ FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,
                   char const *charset);
+
+/* Create Date:-style header field body (not field itself).
+ * We compare the localtime() and gmtime() results to get the timezone, because
+ * numeric timezones are easier to read and because $TZ isn't always set.
+ * If must_locale is not set, we may fall back to UTC for time zones which
+ * require sub-minute precision, because the RFC 5322 +HHMM zone indicator
+ * otherwise causes precision loss on receiver systems (which convert to their
+ * locale timezone).
+ * Return number of bytes written or -1 on failure */
+FL int mx_sendout_header_date(FILE *fo, char const *field,
+      boole must_locale);
 
 /* Note: hp->h_to must already have undergone address massage(s), it is taken
  * as-is; h_cc and h_bcc are asserted to be NIL.  urlp must have undergone
