@@ -2008,7 +2008,7 @@ a_sendout_infix_resend(struct header *hp, FILE *fi, FILE *fo,
    if (add_resent) {
       if(fputs("Resent-", fo) == EOF)
          goto jleave;
-      if(mkdate(fo, "Date") == -1)
+      if(mx_sendout_header_date(fo, "Date", FAL0) == -1)
          goto jleave;
       if ((cp = myaddrs(NULL)) != NULL) {
          if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-From:", fo,
@@ -2478,34 +2478,6 @@ jfail_dead:
    goto jleave;
 }
 
-FL int
-mkdate(FILE *fo, char const *field)
-{
-   struct tm *tmptr;
-   int tzdiff_hour, tzdiff_min, rv;
-   NYD2_IN;
-
-   tmptr = &time_current.tc_local;
-
-   tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
-   tzdiff_min /= su_TIME_MIN_SECS;
-   tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
-   tzdiff_min %= su_TIME_HOUR_MINS;
-
-   rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %+05d\n",
-         field,
-         su_time_weekday_names_abbrev[tmptr->tm_wday],
-         tmptr->tm_mday, su_time_month_names_abbrev[tmptr->tm_mon],
-         tmptr->tm_year + 1900, tmptr->tm_hour,
-         tmptr->tm_min, tmptr->tm_sec,
-         tzdiff_hour * 100 + tzdiff_min);
-   if(rv < 0)
-      rv = -1;
-
-   NYD2_OU;
-   return rv;
-}
-
 FL boole
 n_puthead(boole nosend_msg, struct header *hp, FILE *fo, enum gfield w,
    enum sendaction action, enum conversion convert, char const *contenttype,
@@ -2562,8 +2534,9 @@ do{\
    if(nosend_msg)
       saf |= a_SENDOUT_AL_INC_INVADDR;
 
-   if (w & GDATE)
-      mkdate(fo, "Date"), ++gotcha;
+   if(w & GDATE)
+      mx_sendout_header_date(fo, "Date", FAL0), ++gotcha;
+
    if (w & GIDENT) {
       if (hp->h_from == NULL || hp->h_sender == NULL)
          setup_from_and_sender(hp);
@@ -2886,6 +2859,53 @@ jleave:
    NYD_OU;
    return rv;
 #undef a_SENDOUT_PUT_CC_BCC_FCC
+}
+
+FL int
+mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
+   int tzdiff_hour, tzdiff_min, rv;
+   char const *tzsign;
+   struct tm *tmptr;
+   NYD2_IN;
+
+   tmptr = &time_current.tc_local;
+
+   /* */
+   tzsign = n_hy;
+   if(LIKELY(tmptr->tm_sec == time_current.tc_gm.tm_sec) || must_locale){
+      tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
+      tzdiff_min /= su_TIME_MIN_SECS;
+      tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
+      tzdiff_min %= su_TIME_HOUR_MINS;
+      tzdiff_hour *= 100;
+      tzdiff_hour += tzdiff_min;
+      if(tzdiff_hour < 0)
+         tzdiff_hour = -tzdiff_hour;
+      else
+         tzsign = "+";
+   }else{
+      if(n_poption & n_PO_D_VV)
+         n_err(_("The difference of UTC to local timezone $TZ "
+               "requires second precision.\n"
+               "  Unsupported by RFC 5321, switching to TZ=UTC to not loose "
+               "precision!\n"));
+      tmptr = &time_current.tc_gm;
+      tzdiff_hour = 0;
+   }
+
+   rv = fprintf(fo, "%s: %s, %02d %s %04d %02d:%02d:%02d %s%04d\n",
+         field,
+         su_time_weekday_names_abbrev[tmptr->tm_wday],
+         tmptr->tm_mday,
+         su_time_month_names_abbrev[tmptr->tm_mon],
+         tmptr->tm_year + 1900,
+         tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec,
+         tzsign, tzdiff_hour);
+   if(rv < 0)
+      rv = -1;
+
+   NYD2_OU;
+   return rv;
 }
 
 FL enum okay
