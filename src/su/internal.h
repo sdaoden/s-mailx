@@ -64,6 +64,10 @@ extern struct su_mutex su__atomic_cas_mtx;
 extern struct su_mutex su__atomic_xchg_mtx;
 #endif
 
+#if DVLDBGOR(1, 0)
+extern u8 su__mem_filler;
+#endif
+
 extern struct su__state_on_gut *su__state_on_gut;
 extern struct su__state_on_gut *su__state_on_gut_final;
 

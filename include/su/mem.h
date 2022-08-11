@@ -166,19 +166,25 @@ enum{
    su_MEM_ALLOC_MIN = Z_ALIGN(1)
 };
 
-/*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific.
- * They are bits not values unless otherwise noted. */
+/*! Most \r{su_mem_set_conf()} flags are \r{su_MEM_ALLOC_DEBUG} specific. */
 enum su_mem_conf_option{
    su_MEM_CONF_NONE,
    /* su_MEM_ALLOC_DEBUG only: booleans */
    su_MEM_CONF_DEBUG = 1u<<0, /*!< More tests, be verbose. */
    su_MEM_CONF_ON_ERROR_EMERG = 1u<<1, /*!< Error out if tests fail. */
-   su_MEM_CONF_LINGER_FREE = 1u<<2, /*!< Keep \c{free()}s until.. */
-   su_MEM_CONF_LINGER_FREE_RELEASE = 1u<<3, /*!< ..they are released */
+   /*! Keep \c{free()}s until they are explicitly released. */
+   su_MEM_CONF_LINGER_FREE = 1u<<2,
+   /*! Release lingering \c{free()}s. */
+   su_MEM_CONF_LINGER_FREE_RELEASE = 1u<<3,
+   /* su_MEM_ALLOC_DEBUG only: values */
+   /*! Set fill byte of allocations that do not use \r{su_MEM_ALLOC_ZERO}.
+    * The default is \c{0xAA}; it is believed that \c{0} and \c{0xFF} are also
+    * good candidates to reveal problems. */
+   su_MEM_CONF_FILLER_SET = 1u<<4,
 
 /*madvise,free area count*/
 /*say_if_empty_on_exit,statistics*/
-   su__MEM_CONF_MAX = su_MEM_CONF_LINGER_FREE_RELEASE
+   su__MEM_CONF_MAX = su_MEM_CONF_FILLER_SET
 };
 
 #ifdef su_MEM_ALLOC_DEBUG
@@ -400,11 +406,14 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
 #define su_mem_get_usable_size_32(SZ) su_S(su_u32,su_Z_ALIGN(SZ)) /*XXX*/
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 
-/*! Most options are actually boolean flags: multiple thereof can be set or
+/*! Configure aspects of the memory allocator.
+ * Most options are actually boolean flags: multiple thereof can be set or
  * cleared with one operation by ORing together the according
- * \r{su_mem_conf_option}s in \a{mco} , the (then) \r{su_boole} \a{val} will be
- * used for all of them.
+ * \r{su_mem_conf_option}s in \a{mco} , the (then) \r{su_boole} \a{val} will
+ * be used for all of them.
  * \list{\li{
+ * \c{FILLER_SET} (exclusive, no flag): lowest byte of \a{val} is used.
+ * }\li{
  * \c{LINGER_FREE}: unsetting causes \c{LINGER_FREE_RELEASE} to take place.
  * }\li{
  * \c{LINGER_FREE_RELEASE} completely ignores \a{val}.
@@ -557,7 +566,9 @@ public:
       /*! \copydoc{su_MEM_CONF_LINGER_FREE} */
       conf_linger_free = su_MEM_CONF_LINGER_FREE,
       /*! \copydoc{su_MEM_CONF_LINGER_FREE_RELEASE} */
-      conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE
+      conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE,
+      /*! \copydoc{su_MEM_CONF_FILLER_SET} */
+      conf_filler_set = su_MEM_CONF_FILLER_SET
    };
 
 /*! The base of \r{su_MEM_NEW()} etc.

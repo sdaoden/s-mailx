@@ -91,6 +91,9 @@ char const *su_program;
 struct su_mutex su__atomic_cas_mtx;
 struct su_mutex su__atomic_xchg_mtx;
 #endif
+#if DVLDBGOR(1, 0)
+u8 su__mem_filler;
+#endif
 struct su__state_on_gut *su__state_on_gut;
 struct su__state_on_gut *su__state_on_gut_final;
 
@@ -298,6 +301,11 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
       a_core_thread_main_nyd.nc_curr = 0;
       a_core_thread_main_nyd.nc_skip = FAL0;
    )
+
+   /* internal.h */
+#if DVLDBGOR(1, 0)
+   su__mem_filler = 0xAA;
+#endif
 
 #ifdef su_USECASE_SU
    if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))

@@ -27,6 +27,8 @@
 
 #include "su/mem.h"
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/mem-bag.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -642,6 +644,7 @@ jhave_pool:;
 
       if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
+      DVLDBG( else su_mem_set(rv, su__mem_filler, size); )
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: auto allocation request"));
@@ -783,6 +786,7 @@ jhave_pool:
 
       if(mbaf & su_MEM_BAG_ALLOC_ZERO)
          su_mem_set(rv, 0, size);
+      DVLDBG( else su_mem_set(rv, su__mem_filler, size); )
    }else
       su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: lofi allocation request"));
