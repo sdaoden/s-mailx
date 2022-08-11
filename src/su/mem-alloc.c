@@ -33,6 +33,8 @@
 # include "su/cs.h"
 #endif
 
+#include "su/internal.h" /* $(SU_SRCDIR) */
+
 #include "su/mem.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -514,7 +516,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf
             su_mem_set(rv, 0, size);
 #ifdef su_MEM_ALLOC_DEBUG
          else
-            su_mem_set(rv, 0xAA, size);
+            su_mem_set(rv, su__mem_filler, size);
          p.map_vp = rv;
 
          p.map_hc->mahc_prev = NIL;
@@ -745,7 +747,7 @@ su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
    ASSERT_NYD(rmco <= su__MEM_CONF_MAX);
 
    if((rmco & su_MEM_CONF_LINGER_FREE_RELEASE) ||
-         (!val && (rmco & su_MEM_CONF_LINGER_FREE))){
+         ((rmco & su_MEM_CONF_LINGER_FREE) && !val)){
       rmco &= ~S(uz,su_MEM_CONF_LINGER_FREE_RELEASE);
 #ifdef su_MEM_ALLOC_DEBUG
       su_mem_check();
@@ -753,8 +755,11 @@ su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
 #endif
    }
 
+   if(rmco == su_MEM_CONF_FILLER_SET){
+      DVLDBG( su__mem_filler = S(u8,val); )
+   }
    /* xxx !MEM_DEBUG does not test whether mem_conf_option is available */
-   if(rmco != 0){
+   else if(rmco != 0){
       if(val != FAL0)
          a_mema_conf |= rmco;
       else

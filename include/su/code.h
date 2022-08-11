@@ -1444,11 +1444,17 @@ MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
 
 /*! Argument bits for \r{su_state_create()}. */
 enum su_state_create_flags{
-   su_STATE_CREATE_RANDOM = 1u<<0, /*!< Initialize \r{RANDOM}. */
-   su_STATE_CREATE_MD = 1u<<1, /*!< Initialize \r{MD}. */
+   su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}. */
+   su__STATE_CREATE_RANDOM_MEM_FILLER = 1u<<1,
+   /*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET}.
+    * It favours \c{0x00} and \c{0xFF} over other random numbers.
+    * Implies \c{CREATE_RANDOM}. */
+   su_STATE_CREATE_RANDOM_MEM_FILLER = su_STATE_CREATE_RANDOM |
+         su__STATE_CREATE_RANDOM_MEM_FILLER,
+   su_STATE_CREATE_MD = 1u<<2, /*!< (V1) Initialize \r{MD}. */
 
    /* Exclusive cover-all's */
-   su_STATE_CREATE_V1 = 1u<<27, /*!< All subsystems of \r{su_VERSION} 1. */
+   su_STATE_CREATE_V1 = 1u<<27, /*!< (V1) All \r{su_VERSION} 1 subsystems. */
    su_STATE_CREATE_ALL = 15u<<27 /*!< All covered subsystems. */
 };
 
@@ -2262,6 +2268,8 @@ public:
    enum create_flags{
       /*! \copydoc{su_STATE_CREATE_RANDOM} */
       create_random = su_STATE_CREATE_RANDOM,
+      /*! \copydoc{su_STATE_CREATE_RANDOM_MEM_FILLER} */
+      create_random_mem_filler = su_STATE_CREATE_RANDOM_MEM_FILLER,
       /*! \copydoc{su_STATE_CREATE_MD} */
       create_md = su_STATE_CREATE_MD,
 

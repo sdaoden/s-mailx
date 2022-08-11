@@ -21,6 +21,10 @@
 
 #include <su/random.h>
 
+#if su_DVLDBGOR(1, 0)
+# include <su/mem.h>
+#endif
+
 #include "su/internal.h" /* $(SU_SRCDIR) */
 
 #include "su/code.h"
@@ -43,6 +47,24 @@ su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags,
    if((create_flags & a_V1(su_STATE_CREATE_RANDOM)) &&
          (rv = su_random_vsp_install(NIL, estate)) != su_STATE_NONE)
       goto jleave;
+
+#if DVLDBGOR(1, 0)
+   if(create_flags & a_V1(su__STATE_CREATE_RANDOM_MEM_FILLER)){
+      u8 mf;
+
+      if((rv = su_random_builtin_generate(&mf, sizeof(mf), estate)
+            ) != su_STATE_NONE)
+         goto jleave;
+
+      /* The patterns 0 and -1 are more likely to reveal problems */
+      switch(mf & 0x3){
+      case 0x0: mf = 0x00; break;
+      case 0x1: mf = 0xFFu; break;
+      default: break;
+      }
+      su_mem_set_conf(su_MEM_CONF_FILLER_SET, mf);
+   }
+#endif
 
 #if defined su_HAVE_MD && !defined su_USECASE_MX
    if((create_flags & a_V1(su_STATE_CREATE_MD)) &&
