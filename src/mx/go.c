@@ -1129,7 +1129,7 @@ jrestart:
       mx_fs_close_all();
 
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
-      DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+      DBGX( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
       n_pstate &= ~n_PS_ROBOT;
       ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK & ~a_GO_XCALL_SEEN));
@@ -1141,7 +1141,7 @@ jrestart:
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
-      DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+      DBGX( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
       goto jxleave;
    }else if(gcp->gc_flags & a_GO_SPLICE){ /* TODO Temporary hack */
       n_stdin = gcp->gc_splice_stdin;
@@ -1409,7 +1409,7 @@ a_go_event_loop(struct a_go_ctx *gcp, BITENUM_IS(u32,mx_go_input_flags) gif){
 
       if(f & a_TICKED){
          su_mem_bag_reset(gcp->gc_data.gdc_membag);
-         DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+         DBGX( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
       }
 
       /* Read a line of commands and handle end of file specially */

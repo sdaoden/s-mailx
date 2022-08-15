@@ -119,6 +119,9 @@
 #undef DBG
 #undef NDGB
 #undef DBGOR
+#undef DBGX
+#undef NDGBX
+#undef DBGXOR
 #undef DVL
 #undef NDVL
 #undef DVLOR

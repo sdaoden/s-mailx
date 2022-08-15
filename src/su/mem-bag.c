@@ -249,7 +249,7 @@ su_mem_bag_gut(struct su_mem_bag *self){
    NYD_IN;
    ASSERT(self);
 
-   DBG( if(self->mb_top != NIL)
+   DBGX( if(self->mb_top != NIL)
       su_log_write(su_LOG_DEBUG, "su_mem_bag_gut(%p): has bag stack!", self); )
 
    self = su_mem_bag_reset(self);
@@ -331,7 +331,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 
       /* Forcefully gut() an active relaxation */
       if(self->mb_auto_relax_recur > 0){
-         DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
+         DBGX( su_log_write(su_LOG_DEBUG, "su_mem_bag_reset(): is relaxed!"); )
          self->mb_auto_relax_recur = 1;
          self = su_mem_bag_auto_relax_gut(self);
       }
@@ -377,7 +377,7 @@ su_mem_bag_reset(struct su_mem_bag *self){
 
 #ifdef su_HAVE_MEM_BAG_LOFI
    if(self->mb_lofi_top != NIL){
-      DBG( su_log_write(su_LOG_DEBUG,
+      DBGX( su_log_write(su_LOG_DEBUG,
          "su_mem_bag_reset(%p): still has LOFI memory!", self); )
       do
          self = a_membag_lofi_free_top(self);
@@ -613,7 +613,7 @@ jhave_pool:;
       }else{
          struct su__mem_bag_auto_huge *mbahp;
 
-         DBG( su_log_write(su_LOG_DEBUG, "su_mem_bag_auto_allocate(): huge: "
+         DBGX( su_log_write(su_LOG_DEBUG, "su_mem_bag_auto_allocate(): huge: "
             "%" PRIuZ " bytes from %s:%" PRIu32,
             size  su_DVL_LOC_ARGS_USE); )
 
@@ -731,7 +731,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
          uz realsz;
 
          realsz = Z_ALIGN(size);
-         DBG( if(realsz > self->mb_bsz)
+         DBGX( if(realsz > self->mb_bsz)
             su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_allocate(): huge: "
                   "%" PRIuZ " bytes from %s:%" PRIu32,
                size  su_DVL_LOC_ARGS_USE); )

@@ -296,7 +296,7 @@ public:
    static char const * const fmt_err_opt;
 
    /*! \NOOP; \r{setup()} is real constructor. */
-   avopt(void) {DBG( STRUCT_ZERO(su_avopt, this); )}
+   avopt(void) {DBGX( STRUCT_ZERO(su_avopt, this); )}
 
    /*! \copydoc{su_avopt_setup()} */
    avopt(u32 argc, char const * const *argv, char const *opts_short,
