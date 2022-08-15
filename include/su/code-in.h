@@ -159,6 +159,9 @@
 #define DBG su_DBG
 #define NDGB su_NDBG
 #define DBGOR su_DBGOR
+#define DBGX su_DBGX
+#define NDGBX su_NDBGX
+#define DBGXOR su_DBGXOR
 #define DVL su_DVL
 #define NDVL su_NDVL
 #define DVLOR su_DVLOR

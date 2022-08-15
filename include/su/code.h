@@ -845,14 +845,24 @@ do if(!(X)){\
 #define su_COMMA ,
 
 /* Debug injections */
-#if defined su_HAVE_DEBUG && !defined NDEBUG
-# define su_DBG(X) X /*!< Inject for \r{su_HAVE_DEBUG} and not \c{NDEBUG}. */
+#if defined su_HAVE_DEBUG
+# define su_DBG(X) X /*!< Inject for \r{su_HAVE_DEBUG}. */
 # define su_NDBG(X) /*!< \_ */
 # define su_DBGOR(X,Y) X /*!< \_ */
+# ifndef NDEBUG
+#  define su_DBGX(X) X /*!< Inject for \r{su_HAVE_DEBUG} and not \c{NDEBUG}. */
+#  define su_NDBGX(X) /*!< \_ */
+#  define su_DBGXOR(X,Y) X /*!< \_ */
+# endif
 #else
 # define su_DBG(X)
 # define su_NDBG(X) X
 # define su_DBGOR(X,Y) Y
+#endif
+#ifndef su_DBGX
+# define su_DBGX(X)
+# define su_NDBGX(X) X
+# define su_DBGXOR(X,Y) Y
 #endif
 
 /* Debug file location arguments.  (For an usage example see su/mem.h.) */
@@ -889,7 +899,7 @@ do{\
 #endif /* su_HAVE_DEVEL */
 
 /* Development injections */
-#if defined su_HAVE_DEVEL || defined DOXYGEN
+#ifdef su_HAVE_DEVEL
 # define su_DVL(X) X /*!< Inject for \r{su_HAVE_DEVEL}. */
 # define su_NDVL(X) /*!< \_ */
 # define su_DVLOR(X,Y) X /*!< \_ */
@@ -899,7 +909,7 @@ do{\
 # define su_DVLOR(X,Y) Y
 #endif
 
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG || defined DOXYGEN
+#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG
 # define su_DVLDBG(X) X /*!< With \r{su_HAVE_DEVEL} or \r{su_HAVE_DEBUG}. */
 # define su_NDVLDBG(X) /*!< \_ */
 # define su_DVLDBGOR(X,Y) X /*!< \_ */
