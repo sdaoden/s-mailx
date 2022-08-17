@@ -241,6 +241,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "=", &c_pdot, (A | HG | V | X | EM | TARG), 0, MMNDEL,
      mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pdot)
      DS(N_("Show message number of [<msglist>] (or the \"dot\")")) },
+   { ":", su_R(int(*)(void*),-1)/*ok!*/, (HG | L | M | X | TWYSH), 0, MAC, NIL
+     DS(N_("No-effect: does nothing but expanding arguments")) },
    { "?", &a_cmd_c_help, (HG | M | X | TWYSH), 0, 1, NIL
      DS(N_("Show help [[Option] for the given command]]")) },
    { "|", &c_pipe, (A | TARG), 0, MMNDEL,

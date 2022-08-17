@@ -386,15 +386,13 @@ jrestart:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jret0;
    }
-   /* Handle ! differently to get the correct lexical conventions */
-   if(*cp == '!')
-      ++cp;
+
    /* Isolate the actual command; since it may not necessarily be
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = UNCONST(char*,mx_cmd_isolate_name(cp))) == line.s &&
-         (*cp == '|' || *cp == '?'))
+   if((cp = UNCONST(char*,mx_cmd_isolate_name(cp))) == line.s &&
+         (*cp == '!' || *cp == ':' || *cp == '?' || *cp == '|'))
       ++cp;
    c = S(int,P2UZ(cp - line.s));
    word = UCMP(z, c, <, sizeof _wordbuf) ? _wordbuf : su_AUTO_ALLOC(c +1);
@@ -427,11 +425,14 @@ jrestart:
       }
       break;
    case sizeof("u") -1:
-      if(!su_cs_cmp_case(word, "u")){
+      if(*word == 'u' || *word == 'U'){
          n_err(_("Ignoring yet unused `u' command modifier!"));
          flags |= a_U;
          goto jrestart;
       }
+      /* Not a modifier, but worth special treatment */
+      if(*word == ':')
+         flags |= a_NOALIAS;
       break;
    case sizeof("eval") -1:
    /*case sizeof("vput") -1:*/
@@ -439,10 +440,12 @@ jrestart:
       if(!su_cs_cmp_case(word, "eval")){
          ++eval_cnt;
          goto jrestart;
-      }else if(!su_cs_cmp_case(word, "vput")){
+      }
+      if(!su_cs_cmp_case(word, "vput")){
          flags |= a_VPUT;
          goto jrestart;
-      }else if(!su_cs_cmp_case(word, "wysh")){
+      }
+      if(!su_cs_cmp_case(word, "wysh")){
          flags |= a_WYSH;
          goto jrestart;
       }
@@ -908,6 +911,12 @@ jmsglist_go:
             S(u32,cdp->cd_mmask_o_maxargs));
          mx_cmd_print_synopsis(cdp, NIL);
          flags |= a_NO_ERRNO;
+         break;
+      }
+
+      /* : no-effect is special */
+      if(cdp->cd_func == R(int(*)(void*),-1)){
+         rv = 0;
          break;
       }
 
