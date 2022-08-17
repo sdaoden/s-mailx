@@ -4136,6 +4136,20 @@ and the error number
 are supported.
 .
 .Mx
+.It Ic \&:
+No-effect command: does nothing but expanding arguments.
+(For an otherwise empty input line that invokes the default command
+.Ic next
+this conflicts the
+.Ar \&:
+message specification documented in
+.Sx "Specifying messages" ,
+but compatibility to the well-known
+.Xr sh 1
+.Ic \&\&:
+command deemed more important than this special case.)
+.
+.Mx
 .It Ic \&?
 \*(OP Show a brief summary of commands.
 \*(OP Given an optionally abbreviated name the according synopsis is
