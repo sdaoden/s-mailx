@@ -342,7 +342,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = su_EX_OK;
 
-   flags = ((mx_cnd_if_exists() == TRUM1 ? a_IS_SKIP : a_NONE) |
+   flags = ((mx_cnd_if_exists(NIL) == TRUM1 ? a_IS_SKIP : a_NONE) |
          (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    eval_cnt = 0;
    rv = 1;
@@ -588,11 +588,19 @@ jexec:
       goto jwhite;
 
    /* See if we should execute the command -- if a conditional we always
-    * execute it, otherwise, check the state of cond.
-    * To allow "if 0; echo no; else; echo yes;end" we need to be able to
-    * perform input line sequentiation / rest injection even in whiteout
-    * situations.  See if we can do that. */
-   if(UNLIKELY(flags & a_IS_SKIP) && !(cdp->cd_caflags & mx_CMD_ARG_F)){
+    * execute it, otherwise, check the state of cond. */
+   if(cdp->cd_caflags & mx_CMD_ARG_F){
+      /* This may change the IS_SKIP status, and therefore whether shell
+       * evaluation happens on arguments, we may not do so for an `elif' that
+       * will be a whiteout, even if we are going currently */
+      if(mx_cnd_if_exists(cdp) == TRUM1)
+         flags |= a_IS_SKIP;
+      else
+         flags &= ~a_IS_SKIP;
+   }else if(UNLIKELY(flags & a_IS_SKIP)){
+      /* To allow "if 0; echo no; else; echo yes;end" we need to be able to
+       * perform input line sequentiation / rest injection even in whiteout
+       * situations.  See if we can do that. */
 jwhite:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
 
@@ -897,7 +905,7 @@ jmsglist_go:
       if(flags & a_VPUT)
          *argvp++ = vput;
 
-      if((c = getrawlist((c != 0), argvp,
+      if((c = getrawlist((c != 0), ((flags & a_IS_SKIP) != 0), argvp,
             (n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
          n_err(_("%s: invalid argument list\n"), cdp->cd_name);
          flags |= a_NO_ERRNO;
@@ -2015,7 +2023,7 @@ jforce_stdin:
 jhave_dat:
    if(n_poption & n_PO_D_VVV)
       n_err(_("%s%s %d bytes <%s>\n"),
-         iftype, (mx_cnd_if_exists() == TRUM1 ? "?whiteout" : su_empty),
+         iftype, (mx_cnd_if_exists(NIL) == TRUM1 ? "?whiteout" : su_empty),
          n, *linebuf);
 
 jleave:

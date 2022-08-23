@@ -1640,12 +1640,12 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
       /* Don't assume anything on the content but do allocate exactly j slots;
        * like this getrawlist will never overflow (and return -1) */
       j = su_cs_len(cp);
-      vas = n_lofi_alloc(sizeof(*vas) * j);
-      vas_cnt = (uz)getrawlist(TRU1, vas, j, cp, j);
+      vas = su_LOFI_ALLOC(sizeof(*vas) * j);
+      vas_cnt = S(uz,getrawlist(TRU1, FAL0, vas, j, cp, j));
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
-   args = n_autorec_alloc(i * sizeof(char*));
+   args = su_AUTO_ALLOC(i * sizeof(char*));
 
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
       n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));

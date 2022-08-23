@@ -2777,7 +2777,154 @@ t_shcodec() { # {{{
 t_ifelse() { # {{{
    t_prolog "${@}"
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=X > ./tNnZz_whiteout
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./teasy 2>>${ERR}
+   commandalias e \\echo
+   set i=0
+   if [ $i -eq 0 ]
+      e 0
+      set i=1
+   eli [ $i -ne 0 ]
+      e 1
+      set i=2
+   els
+      set i=3
+      e 2
+   end
+   e =$i
+   set i=10
+   if [ $i -eq 0 ]
+      e 0
+      set i=1
+   eli [ $i -ne 0 ]
+      e 1
+      set i=2
+   els
+      set i=3
+      e 2
+   end
+   e =$i
+   set i=10
+   if [ $i -eq 0 ]
+      e 0
+      set i=1
+   eli [ $i -ne 10 ]
+      e 1
+      set i=2
+   els
+      set i=3
+      e 2
+   end
+   e =$i
+   #
+   set i=0
+   if 1
+      if 0
+         if [ $i -eq 0 ]
+            e 0
+            set i=1
+         eli [ $i -ne 0 ]
+            e 1
+            set i=2
+         els
+            set i=3
+            e 2
+         end
+         e =$i
+      end
+   end
+   e ==$i
+   set i=10
+   if 1
+      if 0
+         set i=5
+      els
+         set i=10
+         if [ $i -eq 0 ]
+            e 0
+            set i=1
+         eli [ $i -ne 0 ]
+            e 1
+            set i=2
+         els
+            set i=3
+            e 2
+         end
+         e =$i
+      end
+   end
+   e ==$i
+	__EOT
+
+   check easy 0 ./teasy '1243020683 28'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tshexpign 2>>${ERR}
+   commandalias e \\echo
+   set i=0
+   if [ $((i+=10)) -eq 10 ]
+      e 0
+   eli [ $((++i)) -eq 11 ]
+      e 1
+   els
+      :$((i+=40))
+      e 2
+   end
+   e =$i
+   set i=0
+   if [ $((i+=10)) -eq 1 ]
+      e 0
+   eli [ $((++i)) -eq 11 ]
+      e 1
+   els
+      :$((i+=40))
+      e 2
+   end
+   e =$i
+   set i=0
+   if [ $((i+=10)) -eq 1 ]
+      e 0
+   eli [ $((i++)) -eq 11 ]
+      e 1
+   els
+      :$((i+=40))
+      e 2
+   end
+   e =$i
+   #
+   set i=0
+   if 1
+      if 0
+         if [ $((i+=10)) -eq 10 ]
+            e 0
+         eli [ $((++i)) -eq 11 ]
+            e 1
+         els
+            :$((i+=40))
+            e 2
+         end
+      end
+   end
+   e =$i
+   set i=0
+   if 1
+      if 0
+         :$((i=5))
+      els
+         if [ $((i+=10)) -eq 10 ]
+            e 0
+         eli [ $((++i)) -eq 11 ]
+            e 1
+         els
+            :$((i+=40))
+            e 2
+         end
+      end
+   end
+   e =$i
+	__EOT
+
+   check shexpign 0 ./tshexpign '1174905124 27'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tNnZz_whiteout
 	\if -N xyz; echo 1.err-1; \
 		\elif ! -Z xyz;echo 1.err-2;\
 		\elif -n "$xyz"     ;      echo 1.err-3   ;    \
