@@ -33,6 +33,7 @@
 # include <su/re.h>
 #endif
 
+#include "mx/cmd.h"
 #include "mx/go.h"
 
 #include "mx/cmd-cnd.h"
@@ -44,8 +45,8 @@
 #define a_CCND_IF_IS_ACTIVE() (mx_go_data->gdc_ifcond != NIL)
 #define a_CCND_IF_IS_SKIP() \
    (a_CCND_IF_IS_ACTIVE() &&\
-      (R(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_noop ||\
-       !R(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_go))
+      (S(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_noop ||\
+       !S(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond)->cin_go))
 
 struct a_ccnd_if_node{
    struct a_ccnd_if_node *cin_outer;
@@ -53,7 +54,7 @@ struct a_ccnd_if_node{
    boole cin_noop; /* Outer stack !cin_go, entirely no-op */
    boole cin_go; /* Green light */
    boole cin_else; /* In `else' clause */
-   u8 cin__dummy[4];
+   su_64( u8 cin__dummy[4]; )
 };
 
 struct a_ccnd_if_ctx{
@@ -713,12 +714,35 @@ c_endif(void *vp){
 }
 
 boole
-mx_cnd_if_exists(void){
+mx_cnd_if_exists(struct mx_cmd_desc const *next_cmd_or_nil){
    boole rv;
    NYD2_IN;
 
-   if((rv = a_CCND_IF_IS_ACTIVE()) && a_CCND_IF_IS_SKIP())
-      rv = TRUM1;
+   ASSERT(next_cmd_or_nil == NIL ||
+      (next_cmd_or_nil->cd_caflags & mx_CMD_ARG_F) != 0);
+
+   if((rv = a_CCND_IF_IS_ACTIVE())){
+      boole toggle;
+
+      toggle = (next_cmd_or_nil != NIL &&
+            (next_cmd_or_nil->cd_func == &c_elif ||
+             next_cmd_or_nil->cd_func == &c_else));
+
+      if(a_CCND_IF_IS_SKIP()){
+         if(toggle){
+            struct a_ccnd_if_node *cinp;
+
+            cinp = S(struct a_ccnd_if_node*,mx_go_data->gdc_ifcond);
+
+            if((cinp = cinp->cin_outer) != NIL &&
+                  (cinp->cin_noop || !cinp->cin_go))
+               toggle = FAL0;
+         }
+
+         rv = toggle ? FAL0 : TRUM1;
+      }else if(toggle)
+         rv = TRUM1;
+   }
 
    NYD2_OU;
    return rv;

@@ -191,7 +191,7 @@ jredo:
    if(!(gif & mx_GO_INPUT_NL_FOLLOW)){
       boole x;
 
-      if((x = mx_cnd_if_exists())){
+      if((x = mx_cnd_if_exists(NIL))){
          if(store->s_len != 0)
             store = n_string_push_c(store, '#');
          if(x == TRUM1)

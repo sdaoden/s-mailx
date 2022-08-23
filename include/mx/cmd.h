@@ -224,9 +224,10 @@ EXPORT void *mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp,
       void *vp);
 
 /* Scan out the list of string arguments according to rm, return -1 on error;
- * res_dat is NULL terminated unless res_size is 0 or error occurred */
-EXPORT int /* TODO v15*/ getrawlist(boole wysh, char **res_dat, uz res_size,
-                  char const *line, uz linesize);
+ * res_dat is NIL terminated unless res_size is 0 or error occurred.
+ * skip_aka_dryrun is passed through to shell expression scanner */
+EXPORT int /* TODO v15*/ getrawlist(boole wysh, boole skip_aka_dryrun,
+      char **res_dat, uz res_size, char const *line, uz linesize);
 
 /* Logic behind `eval' and `~ $', cnt is number of expansions to be performed.
  * *io will be set to AUTO_ALLOC() result upon success, optionally prepended by
