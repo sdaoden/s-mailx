@@ -863,7 +863,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
 }
 
 int
-getrawlist(boole wysh, char **res_dat, uz res_size,
+getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size,
       char const *line, uz linesize){
    int res_no;
    NYD_IN;
@@ -883,7 +883,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
       /* And assuming result won't grow input */
       char c2, c, quotec, *cp2, *linebuf;
 
-      linebuf = n_lofi_alloc(linesize);
+      linebuf = su_LOFI_ALLOC(linesize);
 
       for(;;){
          for(; su_cs_is_blank(*line); ++line)
@@ -930,7 +930,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
             break;
       }
 
-      n_lofi_free(linebuf);
+      su_LOFI_FREE(linebuf);
    }else{
       /* sh(1) compat mode.  Prepare shell token-wise */
       struct n_string store;
@@ -938,7 +938,7 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
       void const *cookie;
 
       n_string_creat_auto(&store);
-      input.s = n_UNCONST(line);
+      input.s = UNCONST(char*,line);
       input.l = linesize;
       cookie = NULL;
 
@@ -954,8 +954,10 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
 
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                   (cookie == NULL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
+                  (skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
                   /* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
-                  n_SHEXP_PARSE_META_SEMICOLON), &store, &input, &cookie);
+                  n_SHEXP_PARSE_META_SEMICOLON),
+                  (skip_aka_dryrun ? NIL : &store), &input, &cookie);
 
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
                ASSERT(shs & n_SHEXP_STATE_STOP);
