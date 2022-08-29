@@ -52,6 +52,8 @@ su_USECASE_CONFIG_CHECKS(su_HAVE_PATHCONF su_HAVE_UTIMENSAT)
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* POSIX 2008/Cor 1-2013 defines a minimum of 14 for _POSIX_NAME_MAX */
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
@@ -225,7 +227,7 @@ jredo:
          uz len;
 
          len = su_cs_len(path) +1 +1; /* NULNUL terminated */
-         if((buf = a_ALLOC(len)) == NIL){
+         if((buf = S(char*,a_ALLOC(len))) == NIL){
             rv = FAL0;
             goto NYD_OU_LABEL;
          }

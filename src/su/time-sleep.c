@@ -38,6 +38,8 @@ su_USECASE_CONFIG_CHECKS(
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 uz
 su_time_msleep(uz millis, boole ignint){
    uz rv;

@@ -30,6 +30,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 enum a_avopt_flags{
    a_AVOPT_NONE,
 #if DVLDBGOR(1, 0)

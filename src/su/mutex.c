@@ -35,6 +35,8 @@ su_USECASE_MX_DISABLED
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 MT( static struct su_mutex *a_mutex_init(struct su_mutex *self); )
 
 #include <su/y-mutex.h> /* 2. */

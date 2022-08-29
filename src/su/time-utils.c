@@ -27,6 +27,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 char const su_time_weekday_names_abbrev[su_TIME_WEEKDAY_SATURDAY +1
       ][su_TIME_WEEKDAY_NAMES_ABBREV_LEN +1] = {
    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
