@@ -519,7 +519,7 @@ doit(char const *s){
 
 cc_build_tmp_as_tmp2() {
    ${CC} ${INCS} ${EXTRA_CFLAGS} ${EXTRA_LDFLAGS} \
-         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1
+         -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null
 }
 
 cc_hello() {
@@ -528,14 +528,14 @@ cc_hello() {
       [ -n "${cc_check_silent}" ] || msg 'yes'
       feat_yes CROSS_BUILD && return 0
       [ -n "${cc_check_silent}" ] || msg_nonl ' . Compiled program works .. '
-      if ( [ "`\"${tmp2}\"`" = 'Hello world' ] ) >/dev/null 2>&1; then
+      if ( [ "`\"${tmp2}\"`" = 'Hello world' ] ) >/dev/null; then
          [ -n "${cc_check_silent}" ] || msg 'yes'
          return 0
       fi
    fi
    [ -n "${cc_check_silent}" ] || msg 'no'
-   msg 'ERROR: i cannot compile or run a "Hello world" via'
-   msg '   %s' "${CC} ${INCS} ${EXTRA_CFLAGS} ${EXTRA_LDFLAGS} ${LIBS}"
+   msg 'ERROR: I cannot compile or run a "Hello world"!'
+   msg 'ERROR:   The error may have manifested in '${log}
    msg 'ERROR:   Please read INSTALL, rerun'
    config_exit 1
 }
