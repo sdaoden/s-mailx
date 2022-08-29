@@ -28,6 +28,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 sz
 su_cs_cmp(char const *cp1, char const *cp2){
    sz rv;

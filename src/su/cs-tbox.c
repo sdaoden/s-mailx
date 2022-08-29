@@ -29,6 +29,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /**/
 #if DVLOR(1, 0)
 static void a_cstbox_free(void *t);

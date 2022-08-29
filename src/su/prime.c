@@ -27,6 +27,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* Collected & merged from 'GLIB 1's 'gprimes.c' and 'GNU STL's 'hashtable'
  * (around Y2K+1 or so); beyond 0x18000005 added in 2022 */
 static u32 const a_prime_lookup[] = {

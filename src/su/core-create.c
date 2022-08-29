@@ -33,6 +33,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 s32
 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags,
       char const *name_or_nil, uz flags, u32 estate){

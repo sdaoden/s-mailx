@@ -27,6 +27,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #define a_CSHASH_HASH(C) \
 do{\
    u64 xh = 0;\

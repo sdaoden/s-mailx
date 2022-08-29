@@ -39,6 +39,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 struct a_md_list{
    struct a_md_list *mdl_last;
    char const *mdl_name;

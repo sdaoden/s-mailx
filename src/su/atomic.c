@@ -37,6 +37,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #if su_ATOMIC_IS_REAL
 # define a_LOCK_CAS()
 # define a_UNLOCK_CAS()
