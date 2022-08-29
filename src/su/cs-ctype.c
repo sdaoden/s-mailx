@@ -27,6 +27,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* Include the constant su-make-cs-ctype.sh output */
 #include "su/gen-cs-ctype.h" /* $(SU_SRCDIR) */
 

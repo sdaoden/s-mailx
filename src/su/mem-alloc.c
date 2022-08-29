@@ -41,6 +41,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #ifndef su_MEM_ALLOC_DEBUG
 # define a_MEMA_DBG(X)
 # define a_MEMA_HOPE_SIZE_ADD 0
@@ -303,7 +305,7 @@ a_mema_dump_chunk(boole how, char buf[a_MEMA_DUMP_SIZE],
 
    if((size = MIN(size, a_MEMA_DUMP_SIZE - 4)) == 0)
       dp = buf;
-   else for(cp = vp; size > 0; ++cp, --size)
+   else for(cp = S(char const*,vp); size > 0; ++cp, --size)
       *dp++ = su_cs_is_print(*cp) ? *cp : '?';
 
    *dp = '\0';

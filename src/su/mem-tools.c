@@ -31,6 +31,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #include <su/y-mem-tools.h> /* 2. */
 
 void *

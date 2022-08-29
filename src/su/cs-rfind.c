@@ -28,6 +28,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 boole
 su_cs_ends_with_case(char const *cp, char const *xp){
    boole rv;

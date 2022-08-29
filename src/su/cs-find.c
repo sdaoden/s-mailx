@@ -32,6 +32,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 uz
 su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen,
       char const *xp, uz xplen){

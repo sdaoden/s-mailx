@@ -29,6 +29,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* "Is power-of-two" table, and if, shift (indexed by base-2) */
 static u8 const a_icoe_shifts[63] = {
          1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */

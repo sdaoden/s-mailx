@@ -31,6 +31,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #include "su/y-assoc-map.h" /* $(SU_SRCDIR) */
 #define a_TYPE a_TYPE_CSDICT
 #include <su/y-assoc-map.h>

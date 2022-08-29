@@ -30,6 +30,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #ifdef su__STATE_ON_GUT_FUN
 static struct su__state_on_gut a_corgut_mgr;
 #endif

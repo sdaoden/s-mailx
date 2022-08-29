@@ -74,6 +74,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* _TYPE_VSP hook */
 #if su_RANDOM_SEED == su_RANDOM_SEED_HOOK
 extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
@@ -527,7 +529,7 @@ su_random_generate(struct su_random *self, void *buf, uz len){
       u.vp = self->rm_vp;
       rv = (*u.rgf)(&self->rm_vsp_cookie, buf, len);
    }else if(self->rm_type < su_RANDOM_TYPE_SP){
-      for(bp = buf; len-- != 0;)
+      for(bp = S(u8*,buf); len-- != 0;)
          *bp++ = a_random_get8(self);
    }else{
       u8 crounds, drounds;

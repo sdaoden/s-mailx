@@ -33,6 +33,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #include <su/y-md-siphash.h> /* 2. */
 
 s32
@@ -99,7 +101,7 @@ su_siphash_once(void *digest_store, enum su_siphash_digest digest_type,
       drounds = su__SIPHASH_DEFAULT_DROUNDS;
 
    a_md_siphash(dat, dat_len, key,
-      digest_store,
+      S(u8*,digest_store),
       (digest_type == su_SIPHASH_DIGEST_64 ? su_SIPHASH_DIGEST_SIZE_64
          : su_SIPHASH_DIGEST_SIZE_128),
       crounds, drounds);

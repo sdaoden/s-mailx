@@ -314,6 +314,11 @@
 # define su_C_DECL_BEGIN /*!< \_ */
 # define su_C_DECL_END /*!< \_ */
 
+# define su_NSPC_BEGIN(X)
+# define su_NSPC_END(X)
+# define su_NSPC_USE(X)
+# define su_NSPC(X)
+
    /* Casts */
 # define su_S(T,I) ((T)(I)) /*!< \_ */
 # define su_R(T,I) ((T)(I)) /*!< \_ */
@@ -330,9 +335,9 @@
 #  define su_NSPC_USE(X) using namespace X;
 #  define su_NSPC(X) X::
 # else
-#  define su_NSPC_BEGIN(X) /**/
-#  define su_NSPC_END(X) /**/
-#  define su_NSPC_USE(X) /**/
+#  define su_NSPC_BEGIN(X)
+#  define su_NSPC_END(X)
+#  define su_NSPC_USE(X)
 #  define su_NSPC(X) /**/::
 # endif
 

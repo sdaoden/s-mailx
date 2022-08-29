@@ -31,6 +31,8 @@ su_USECASE_CONFIG_CHECKS(su_HAVE_CLOCK_GETTIME su_HAVE_GETTIMEOFDAY)
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 struct su_timespec *
 su_timespec_current(struct su_timespec *self){
    NYD2_IN;

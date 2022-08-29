@@ -28,11 +28,13 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 struct a_corerr_map{
-   u32 cem_hash;     /* Hash of name */
-   u32 cem_nameoff;  /* Into a_corerr_names[] */
-   u32 cem_docoff;   /* Into a_corerr_docs[] */
-   s32 cem_errno;    /* OS errno value for this one */
+   u32 cem_hash; /* Hash of name */
+   u32 cem_nameoff; /* Into a_corerr_names[] */
+   u32 cem_docoff; /* Into a_corerr_docs[] */
+   s32 cem_errno; /* OS errno value for this one */
 };
 
 /* Include the constant su-make-errors.sh output */

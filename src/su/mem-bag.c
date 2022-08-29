@@ -38,6 +38,8 @@
 su_EMPTY_FILE()
 #ifdef su_HAVE_MEM_BAG
 
+NSPC_USE(su)
+
 /* Are we a managing hull for the heap cache, for ASAN etc. integration? */
 #if defined su_HAVE_DEBUG || defined su_HAVE_MEM_CANARIES_DISABLE
 # define a_MEMBAG_HULL 1
@@ -604,7 +606,7 @@ jhave_pool:;
             if(rv != NIL)
                *v.pp = rv;
             else{
-               mbabp->mbab_caster = v.p;
+               mbabp->mbab_caster = S(char*,v.p);
                goto jleave;
             }
          }
@@ -778,7 +780,7 @@ jhave_pool:
             v.p = mblcp->mblc_buf;
             *v.pp = S(void*,rv);
          }else{
-            mblpp->mblp_caster = v.p;
+            mblpp->mblp_caster = S(char*,v.p);
             goto jleave;
          }
       }
@@ -816,7 +818,7 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DVL_LOC_ARGS_DECL){
          goto NYD_OU_LABEL;
       }
 
-      if(((mblcp = self->mb_lofi_top) == NIL)){
+      if((mblcp = self->mb_lofi_top) == NIL){
          su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_free(): "
             "no LOFI memory exists at %s:%" PRIu32
             su_DVL_LOC_ARGS_USE);

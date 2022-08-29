@@ -50,6 +50,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 static char const a_core_lvlnames[][8] = {
    FII(su_LOG_EMERG) "emerg", FII(su_LOG_ALERT) "alert",
    FII(su_LOG_CRIT) "crit", FII(su_LOG_ERR) "error",
@@ -64,7 +66,7 @@ CTAV(su_LOG_DEBUG == 7);
 CTAV(su_NYD_ACTION_ENTER == 0);
 CTAV(su_NYD_ACTION_LEAVE == 1);
 CTAV(su_NYD_ACTION_ANYWHERE == 2);
-static char const a_core_nyd_desc[3] = "><=";
+static char const a_core_nyd_desc[3] = {'>','<','='};
 #endif
 
 static su_log_write_fun a_core_log_write;
@@ -493,7 +495,7 @@ su_log_write(u32 lvl_a_flags, char const *fmt, ...){
    va_list va;
    NYD_IN;
 
-   if(su_log_would_write(lvl_a_flags)){
+   if(su_log_would_write(S(enum su_log_level,lvl_a_flags))){
       va_start(va, fmt);
       a_core_evlog(lvl_a_flags, fmt, va);
       va_end(va);
@@ -506,7 +508,7 @@ void
 su_log_vwrite(u32 lvl_a_flags, char const *fmt, void *vp){
    NYD_IN;
 
-   if(su_log_would_write(lvl_a_flags))
+   if(su_log_would_write(S(enum su_log_level,lvl_a_flags)))
       a_core_evlog(lvl_a_flags, fmt, *S(va_list*,vp));
 
    NYD_OU;

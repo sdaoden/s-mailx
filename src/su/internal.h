@@ -29,6 +29,8 @@
 #include <su/code-in.h>
 C_DECL_BEGIN
 
+NSPC_USE(su)
+
 #if DVLOR(1, 0)
 enum{
    su__NYD_ACTION_MASK = 0x3,

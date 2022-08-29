@@ -28,6 +28,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 char *
 su_cs_dup_cbuf(char const *buf, uz len, u32 estate){
    char *rv;

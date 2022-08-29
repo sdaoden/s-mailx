@@ -28,6 +28,8 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 #include <su/y-thread.h> /* 2. */
 
 /* Initialized in core-code.c! */

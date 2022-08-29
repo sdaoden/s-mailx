@@ -36,6 +36,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 boole
 su__spinlock_check(struct su_spinlock *self, enum su__spinlock_xfn slf, up v){
    boole rv;

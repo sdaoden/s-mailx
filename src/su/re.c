@@ -35,6 +35,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 /* Reuse our sufficiently spaced match buffer for interaction with underlaying
  * engine: either pass it directly on equal size of match structure, otherwise
  * pass it at &[>base] and copy result backwards */
@@ -204,7 +206,7 @@ su_re_eval_cp(struct su_re *self, char const *input,
       uz i;
       u8 *p;
 
-      p = S(u8*,self->re_match);
+      p = R(u8*,self->re_match);
       i = self->re_group_count + 1 + 1;
       p += a_RE_MATCH_SIZE * i;
       p -= sizeof(regmatch_t) * --i;

@@ -34,6 +34,8 @@ su_EMPTY_FILE()
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+NSPC_USE(su)
+
 static struct su_siphash a_cshashstrong_t;
 static struct su_siphash const *a_cshashstrong_tp; /* XXX dbg exit */
 
