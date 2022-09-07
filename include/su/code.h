@@ -355,10 +355,10 @@
 # define su_VIR
 # define su_OVR
    /* This is for the declarator only */
-# if __cplusplus +0 < 201103l || 1/* XXX override ?? */
-#  define su_OVRX virtual
+# if __cplusplus +0 < 201103l /* XXX override ?? */
+#  define su_OVRX(X) virtual X
 # else
-#  define su_OVRX override
+#  define su_OVRX(X) X override
 # endif
 
    /* Casts */
@@ -949,14 +949,16 @@ do{\
  * instance from the given memory \a{P}ointer to the \a{D}estination, to be
  * used like \c{su_mem_copy(su_FIELD_RANGE_COPY(struct X, D, P, S, E))}. */
 #define su_FIELD_RANGE_COPY(T,D,P,S,E) \
-   (((su_u8*)D) + su_FIELD_OFFSETOF(T,S)),\
-   (((su_u8*)P) + su_FIELD_OFFSETOF(T,S)), su_FIELD_RANGEOF(T,S,E)
+   (su_S(su_u8*,su_S(void*,D)) + su_FIELD_OFFSETOF(T,S)),\
+   (su_S(su_u8*,su_S(void*,P)) + su_FIELD_OFFSETOF(T,S)),\
+   su_FIELD_RANGEOF(T,S,E)
 
 /*! Zero memory in the \r{su_FIELD_RANGEOF()} \a{S} and \a{E} of the \a{T}ype
  * instance at the given memory \a{P}ointer.
  * \remarks{Introduces a block scope.} */
 #define su_FIELD_RANGE_ZERO(T,P,S,E) \
-   su_CC_MEM_ZERO(((su_u8*)P)+su_FIELD_OFFSETOF(T,S), su_FIELD_RANGEOF(T,S,E))
+   su_CC_MEM_ZERO(su_S(su_u8*,su_S(void*,P))+su_FIELD_OFFSETOF(T,S),\
+      su_FIELD_RANGEOF(T,S,E))
 
 /*! sizeof() for member fields. */
 #define su_FIELD_SIZEOF(T,F) sizeof(su_S(T *,su_NIL)->F)
@@ -976,7 +978,7 @@ do{\
 #define su_NYD_OU_LABEL su__nydou
 
 /*! Pointer to size_t cast. */
-#define su_P2UZ(X) su_S(su_uz,/*not R() to avoid same-type++ warns*/(su_up)(X))
+#define su_P2UZ(X) su_S(su_uz,/*not R(): avoid same-type++ warns*/S(su_up,X))
 
 /*! Pointer comparison. */
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))

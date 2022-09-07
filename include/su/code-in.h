@@ -191,7 +191,7 @@
 #  define su__NYD_NOOP do{}while(0)
 # else
 #  define su__NYD_IN_NOOP if(1){do{}while(0)
-#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}
+#  define su__NYD_OU_NOOP goto NYD_OU_LABEL;NYD_OU_LABEL:;}do{}while(0)
 #  define su__NYD_NOOP do{}while(0)
 # endif
 
