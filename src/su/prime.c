@@ -57,7 +57,7 @@ static boole a_prime_is_pseudo(u64 no);
 static boole a_prime_is_real(u64 no);
 
 /* */
-static u64 a_prime_calc(u64 no, sz add, boole pseudo_ok);
+static u64 a_prime_calc(u64 no, s64 add, boole pseudo_ok);
 
 static boole
 a_prime_is_pseudo(u64 no){
@@ -107,19 +107,19 @@ jfal:
 }
 
 static u64
-a_prime_calc(u64 no, sz add, boole pseudo_ok){
+a_prime_calc(u64 no, s64 add, boole pseudo_ok){
    NYD_IN;
 
    /* Primes are all odd (except 2 but that is NEVER evaluated in here) */
    if(!(no & 1)){
-      no += add;
+      no += S(u64,add);
       add <<= 1;
       goto jdiver;
    }
 
    add <<= 1;
    for(;;){
-      no += add;
+      no += S(u64,add);
 jdiver:
       if(!a_prime_is_pseudo(no))
          continue;

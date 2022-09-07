@@ -11,7 +11,7 @@ CXX?=c++
 # Elder BSD make use rl!
 ARFLAGS=rv
 
-SUFLVLC=#-std=c89
+SUFLVLC=#-std=c2x
 SUFLVLCXX=#-std=c++2b
 SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL #-Dsu_NYD_ENABLE
 SUFOPT=-O1 -g
@@ -24,27 +24,27 @@ SUF=$(SUFDEVEL) \
 	-Dsu_HAVE_PATHCONF \
 	-Dsu_HAVE_UTIMENSAT \
 
-SUFWW=-Weverything \
+SUFWW=-Weverything -W -Wall -pedantic \
 	-Wno-atomic-implicit-seq-cst \
 	-Wno-c++98-compat \
 	-Wno-documentation-unknown-command \
 	-Wno-duplicate-enum \
 	-Wno-reserved-identifier \
 	-Wno-reserved-macro-identifier \
-	-Wno-unused-macros \
+	-Wno-unused-macros
 
-SUFW=-W -Wall -pedantic \
-	-Wno-uninitialized -Wno-unused-result -Wno-unused-value \
-	-fno-common \
-	-fstrict-aliasing -fstrict-overflow \
+SUFW=-W -Wall -pedantic
 
 SUFS=-fPIE \
+	-fno-common \
+	-fstrict-aliasing -fstrict-overflow \
 	-fstack-protector-strong \
 	-D_FORTIFY_SOURCE=2 \
+	#-fsanitize=undefined \
 	#-fsanitize=address \
 
-CFLAGS+=$(SUFLVLC) $(SUF) $(SUFW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
-CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFW) $(SUFS) $(SUFOPT)
+CFLAGS+=$(SUFLVLC) $(SUF) $(SUFWW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
+CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFWW) $(SUFS) $(SUFOPT)
 
 LDFLAGS+=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
 	-Wl,--enable-new-dtags \

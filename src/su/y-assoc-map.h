@@ -415,8 +415,8 @@ s32
 a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
       up replace_and_view_or_nil){
    struct a_LA la;
-   struct a_N *np;
    s32 rv;
+   struct a_N *np;
    struct a_V *viewp;
    u16 flags;
    NYD_IN;
@@ -424,6 +424,7 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value,
 
    flags = self->a_T_F(flags);
    viewp = R(struct a_V*,replace_and_view_or_nil & ~S(up,TRU1));
+   UNINIT(np, NIL);
 
    /* Ensure this basic precondition */
    if(value == NIL &&

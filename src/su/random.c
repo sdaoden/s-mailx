@@ -425,7 +425,7 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
          SU( su_MUTEX_LOCK(&a_random_bltin->rndb_cntrl_mtx); )
          su_random_generate(&a_random_bltin->rndb_seed, bp, u.i);
          SU( su_MUTEX_UNLOCK(&a_random_bltin->rndb_cntrl_mtx); )
-         fill = u.i;
+         fill = S(sz,u.i);
       }
    }else{
       /* Operating the special seeder is MT locked!  Get "good" random bytes */
@@ -519,10 +519,8 @@ su_random_generate(struct su_random *self, void *buf, uz len){
    rv = TRU1;
 
    if(len == 0){
-      ;
    }else if(!(self->rm_flags & a_RANDOM_IS_SEEDED) &&
          !(rv = su_random_seed(self, NIL))){
-      ;
    }else if(self->rm_flags & a_RANDOM_HOOK){
       union {void *vp; su_random_generate_fun rgf;} u;
 
@@ -542,13 +540,13 @@ su_random_generate(struct su_random *self, void *buf, uz len){
       if(LIKELY(i != U32_MAX))
          reseed = (i > 0);
       else{
-         self->rm_reseed_after = i = a_RANDOM_RESEED_AFTER;
+         i = self->rm_reseed_after = a_RANDOM_RESEED_AFTER;
          reseed = TRU1;
       }
 
       if(reseed){
          if((datl = self->rm_reseed_next) == 0)
-            self->rm_reseed_next = datl = i;
+            self->rm_reseed_next = S(u32,datl = i);
          i = datl;
          reseed = (i < self->rm_bytes || i - self->rm_bytes <= len);
 

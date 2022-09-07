@@ -505,23 +505,23 @@ a__cs_dict(u16 addflags){
          cs_dict<char const*,TRU1> cd2(cd);
          if(cd2.count() != cd.count())
             a_ERR();
-         for(cs_dict<char const*,TRU1>::view cdv(cd2); cdv; ++cdv)
-            if(!cd.has_key(cdv.key()))
+         for(cs_dict<char const*,TRU1>::view cdv2(cd2); cdv2; ++cdv2)
+            if(!cd.has_key(cdv2.key()))
                a_ERR();
-            else if(cs::cmp(cdv.data(), cd.lookup(cdv.key())))
+            else if(cs::cmp(cdv2.data(), cd.lookup(cdv2.key())))
                a_ERR();
-            else if(cdv.data() == cd.lookup(cdv.key()))
+            else if(cdv2.data() == cd.lookup(cdv2.key()))
                a_ERR();
 
          cd2 = cd;
          if(cd2.count() != cd.count())
             a_ERR();
-         for(cs_dict<char const*,TRU1>::view cdv(cd2); cdv; ++cdv)
-            if(!cd.has_key(cdv.key()))
+         for(cs_dict<char const*,TRU1>::view cdv2(cd2); cdv2; ++cdv2)
+            if(!cd.has_key(cdv2.key()))
                a_ERR();
-            else if(cs::cmp(cdv.data(), cd.lookup(cdv.key())))
+            else if(cs::cmp(cdv2.data(), cd.lookup(cdv2.key())))
                a_ERR();
-            else if(cdv.data() == cd.lookup(cdv.key()))
+            else if(cdv2.data() == cd.lookup(cdv2.key()))
                a_ERR();
       }
    }
@@ -631,9 +631,9 @@ a__cs_dict(u16 addflags){
    }
    {
       static type_toolbox<char*> const xtb = su_TYPE_TOOLBOX_I9R(
-            (type_toolbox<char*>::clone_fun)0x1,
-            (type_toolbox<char*>::del_fun)0x2,
-            (type_toolbox<char*>::assign_fun)0x3,
+            R(type_toolbox<char*>::clone_fun,0x1),
+            R(type_toolbox<char*>::del_fun,0x2),
+            R(type_toolbox<char*>::assign_fun,0x3),
             NIL, NIL);
       typedef cs_dict<char*,TRU1> csd;
 
@@ -1598,21 +1598,21 @@ class a__md_sade : public md{
 public:
    a__md_sade(void) : m_sh() {}
 
-   OVRX ~a__md_sade(void) {}
+   OVRX(~a__md_sade(void)) {}
 
-   OVRX up property(prop prop) const{
+   OVRX(up property(prop prop) const){
       return a__md_prop(NIL, S(su_md_prop,prop));
    }
 
-   OVRX s32 setup(void const *key, uz key_len, uz digest_size){
+   OVRX(s32 setup(void const *key, uz key_len, uz digest_size)){
       return a__md_setup(&m_sh, key, key_len, digest_size);
    }
 
-   OVRX void update(void const *dat, uz dat_len){
+   OVRX(void update(void const *dat, uz dat_len)){
       su_siphash_update(&m_sh, dat, dat_len);
    }
 
-   OVRX void end(void *store) {su_siphash_end(&m_sh, store);}
+   OVRX(void end(void *store)) {su_siphash_end(&m_sh, store);}
 
    static md *create(u32 estate){
       UNUSED(estate);

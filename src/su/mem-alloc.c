@@ -59,50 +59,50 @@ NSPC_USE(su)
     * and primes from maxv@netbsd.org, src/sys/kern/subr_kmem.c */
 # define a_MEMA_HOPE_LOWER(M,P) \
 do{\
-   u64 __h__ = R(up,P);\
-   __h__ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
-   __h__ >>= 56;\
-   (M) = S(u8,__h__);\
+   u64 h___ = R(up,P);\
+   h___ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
+   h___ >>= 56;\
+   (M) = S(u8,h___);\
 }while(0)
 
 # define a_MEMA_HOPE_UPPER(M,P) \
 do{\
-   u32 __i__;\
-   u64 __x__, __h__ = R(up,P);\
-   __h__ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
-   for(__i__ = 56; __i__ != 0; __i__ -= 8)\
-      if((__x__ = (__h__ >> __i__)) != 0){\
-         (M) = S(u8,__x__);\
+   u32 i___;\
+   u64 x___, h___ = R(up,P);\
+   h___ *= (S(u64,0x9E37FFFFu) << 32) | 0xFFFC0000u;\
+   for(i___ = 56; i___ != 0; i___ -= 8)\
+      if((x___ = (h___ >> i___)) != 0){\
+         (M) = S(u8,x___);\
          break;\
       }\
-   if(__i__ == 0)\
+   if(i___ == 0)\
       (M) = 0xAAu;\
 }while(0)
 
 # define a_MEMA_HOPE_SET(T,C) \
 do{\
-   union a_mema_ptr __xp;\
-   struct a_mema_chunk *__xc;\
-   __xp.map_vp = (C).map_vp;\
-   __xc = R(struct a_mema_chunk*,__xp.T - 1);\
+   union a_mema_ptr xp__;\
+   struct a_mema_chunk *xc__;\
+   xp__.map_vp = (C).map_vp;\
+   xc__ = R(struct a_mema_chunk*,xp__.T - 1);\
    a_MEMA_HOPE_INC((C).map_cp);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[0], &__xp.map_u8p[0]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[1], &__xp.map_u8p[1]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[2], &__xp.map_u8p[2]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[3], &__xp.map_u8p[3]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[4], &__xp.map_u8p[4]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[5], &__xp.map_u8p[5]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[6], &__xp.map_u8p[6]);\
-   a_MEMA_HOPE_LOWER(__xp.map_u8p[7], &__xp.map_u8p[7]);\
-   a_MEMA_HOPE_INC(__xp.map_u8p) + __xc->mac_size - __xc->mac_user_off;\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[0], &__xp.map_u8p[0]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[1], &__xp.map_u8p[1]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[2], &__xp.map_u8p[2]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[3], &__xp.map_u8p[3]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[4], &__xp.map_u8p[4]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[5], &__xp.map_u8p[5]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[6], &__xp.map_u8p[6]);\
-   a_MEMA_HOPE_UPPER(__xp.map_u8p[7], &__xp.map_u8p[7]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[0], &xp__.map_u8p[0]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[1], &xp__.map_u8p[1]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[2], &xp__.map_u8p[2]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[3], &xp__.map_u8p[3]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[4], &xp__.map_u8p[4]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[5], &xp__.map_u8p[5]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[6], &xp__.map_u8p[6]);\
+   a_MEMA_HOPE_LOWER(xp__.map_u8p[7], &xp__.map_u8p[7]);\
+   a_MEMA_HOPE_INC(xp__.map_u8p) + xc__->mac_size - xc__->mac_user_off;\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[0], &xp__.map_u8p[0]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[1], &xp__.map_u8p[1]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[2], &xp__.map_u8p[2]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[3], &xp__.map_u8p[3]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[4], &xp__.map_u8p[4]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[5], &xp__.map_u8p[5]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[6], &xp__.map_u8p[6]);\
+   a_MEMA_HOPE_UPPER(xp__.map_u8p[7], &xp__.map_u8p[7]);\
 }while(0)
 
 # define a_MEMA_HOPE_GET_TRACE(T,C,BAD) \
@@ -114,72 +114,72 @@ do{\
 
 # define a_MEMA_HOPE_GET(T,C,BAD) \
 do{\
-   union a_mema_ptr __xp;\
-   struct a_mema_chunk *__xc;\
-   u32 __i;\
-   u8 __m;\
-   __xp.map_vp = (C).map_vp;\
-   a_MEMA_HOPE_DEC(__xp.map_cp);\
-   (C).map_cp = __xp.map_cp;\
-   __xc = R(struct a_mema_chunk*,__xp.T - 1);\
+   union a_mema_ptr xp__;\
+   struct a_mema_chunk *xc__;\
+   u32 i__;\
+   u8 m___;\
+   xp__.map_vp = (C).map_vp;\
+   a_MEMA_HOPE_DEC(xp__.map_cp);\
+   (C).map_cp = xp__.map_cp;\
+   xc__ = R(struct a_mema_chunk*,xp__.T - 1);\
    (BAD) = FAL0;\
-   __i = 0;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[0]);\
-      if(__xp.map_u8p[0] != __m) __i |= 1<<7;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[1]);\
-      if(__xp.map_u8p[1] != __m) __i |= 1<<6;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[2]);\
-      if(__xp.map_u8p[2] != __m) __i |= 1<<5;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[3]);\
-      if(__xp.map_u8p[3] != __m) __i |= 1<<4;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[4]);\
-      if(__xp.map_u8p[4] != __m) __i |= 1<<3;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[5]);\
-      if(__xp.map_u8p[5] != __m) __i |= 1<<2;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[6]);\
-      if(__xp.map_u8p[6] != __m) __i |= 1<<1;\
-   a_MEMA_HOPE_LOWER(__m, &__xp.map_u8p[7]);\
-      if(__xp.map_u8p[7] != __m) __i |= 1<<0;\
-   if(__i != 0){\
-      (BAD) = (__i >= (1<<3)) ? TRUM1 : TRU1;\
+   i__ = 0;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[0]);\
+      if(xp__.map_u8p[0] != m___) i__ |= 1<<7;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[1]);\
+      if(xp__.map_u8p[1] != m___) i__ |= 1<<6;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[2]);\
+      if(xp__.map_u8p[2] != m___) i__ |= 1<<5;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[3]);\
+      if(xp__.map_u8p[3] != m___) i__ |= 1<<4;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[4]);\
+      if(xp__.map_u8p[4] != m___) i__ |= 1<<3;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[5]);\
+      if(xp__.map_u8p[5] != m___) i__ |= 1<<2;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[6]);\
+      if(xp__.map_u8p[6] != m___) i__ |= 1<<1;\
+   a_MEMA_HOPE_LOWER(m___, &xp__.map_u8p[7]);\
+      if(xp__.map_u8p[7] != m___) i__ |= 1<<0;\
+   if(i__ != 0){\
+      (BAD) = (i__ >= (1<<3)) ? TRUM1 : TRU1;\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt lower canary: " \
             "0x%02X: %s, line %" PRIu32,\
-         (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
+         (C).map_cp, i__, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
-   a_MEMA_HOPE_INC(__xp.map_u8p) + __xc->mac_size - __xc->mac_user_off;\
-   __i = 0;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[0]);\
-      if(__xp.map_u8p[0] != __m) __i |= 1<<0;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[1]);\
-      if(__xp.map_u8p[1] != __m) __i |= 1<<1;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[2]);\
-      if(__xp.map_u8p[2] != __m) __i |= 1<<2;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[3]);\
-      if(__xp.map_u8p[3] != __m) __i |= 1<<3;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[4]);\
-      if(__xp.map_u8p[4] != __m) __i |= 1<<4;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[5]);\
-      if(__xp.map_u8p[5] != __m) __i |= 1<<5;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[6]);\
-      if(__xp.map_u8p[6] != __m) __i |= 1<<6;\
-   a_MEMA_HOPE_UPPER(__m, &__xp.map_u8p[7]);\
-      if(__xp.map_u8p[7] != __m) __i |= 1<<7;\
-   if(__i != 0){\
-      (BAD) |= (__i >= (1<<3)) ? TRUM1 : TRU1;\
+   a_MEMA_HOPE_INC(xp__.map_u8p) + xc__->mac_size - xc__->mac_user_off;\
+   i__ = 0;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[0]);\
+      if(xp__.map_u8p[0] != m___) i__ |= 1<<0;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[1]);\
+      if(xp__.map_u8p[1] != m___) i__ |= 1<<1;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[2]);\
+      if(xp__.map_u8p[2] != m___) i__ |= 1<<2;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[3]);\
+      if(xp__.map_u8p[3] != m___) i__ |= 1<<3;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[4]);\
+      if(xp__.map_u8p[4] != m___) i__ |= 1<<4;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[5]);\
+      if(xp__.map_u8p[5] != m___) i__ |= 1<<5;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[6]);\
+      if(xp__.map_u8p[6] != m___) i__ |= 1<<6;\
+   a_MEMA_HOPE_UPPER(m___, &xp__.map_u8p[7]);\
+      if(xp__.map_u8p[7] != m___) i__ |= 1<<7;\
+   if(i__ != 0){\
+      (BAD) |= (i__ >= (1<<3)) ? TRUM1 : TRU1;\
       a_MEMA_HOPE_INC((C).map_cp);\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory: %p: corrupt upper canary: " \
             "0x%02X: %s, line %" PRIu32,\
-         (C).map_cp, __i, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
+         (C).map_cp, i__, su_DVL_LOC_ARGS_FILE, su_DVL_LOC_ARGS_LINE);\
       a_MEMA_HOPE_DEC((C).map_cp);\
    }\
    if(BAD)\
       su_log_write(su_LOG_ALERT | su_LOG_F_CORE,\
          "! SU memory:   ..canary last seen: %s, line %" PRIu32,\
-         __xc->mac_file, __xc->mac_line);\
+         xc__->mac_file, xc__->mac_line);\
 }while(0)
 #endif /* su_MEM_ALLOC_DEBUG */
 
@@ -194,8 +194,8 @@ struct a_mema_chunk{
 };
 # define a_MEMA_MARK_TO_STORE(X) \
    ((S(u32,X) >> su__MEM_ALLOC_MARK_SHIFT) & su__MEM_ALLOC_MARK_MASK)
-# define a_MEMA_STORE_TO_MARK(MACP) \
-   ((MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)
+/*# define a_MEMA_STORE_TO_MARK(MACP) \
+ *   ((MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)*/
 
 /* The heap memory mem_free() may become delayed to detect double frees */
 struct a_mema_heap_chunk{

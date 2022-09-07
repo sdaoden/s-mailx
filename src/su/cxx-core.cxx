@@ -136,9 +136,9 @@ namespace{
    public:
       a_md(struct su_md *mdp) : m_md(mdp) {}
 
-      OVRX ~a_md(void) {su_md_del(m_md);}
+      OVRX(~a_md(void)) {su_md_del(m_md);}
 
-      OVRX up property(prop prop) const{
+      OVRX(up property(prop prop) const){
          up rv;
          NYD_IN;
 
@@ -148,7 +148,7 @@ namespace{
          return rv;
       }
 
-      OVRX s32 setup(void const *key, uz key_len, uz digest_size){
+      OVRX(s32 setup(void const *key, uz key_len, uz digest_size)){
          s32 rv;
          NYD_IN;
          ASSERT_NYD_EXEC(key_len == 0 || key != NIL, rv = err::efault);
@@ -159,7 +159,7 @@ namespace{
          return rv;
       }
 
-      OVRX void update(void const *dat, uz dat_len){
+      OVRX(void update(void const *dat, uz dat_len)){
          NYD_IN;
          ASSERT_NYD(dat_len == 0 || dat != NIL);
 
@@ -169,7 +169,7 @@ namespace{
          NYD_OU;
       }
 
-      OVRX void end(void *store){
+      OVRX(void end(void *store)){
          NYD_IN;
          ASSERT_NYD(store != NIL);
 
