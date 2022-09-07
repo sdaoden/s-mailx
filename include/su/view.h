@@ -317,7 +317,7 @@ public:
 // base& _x   ...   MYSELF& y = _x   ...   y.m_view
 // (and only so if we put a "using" directive, see su__VIEW_IMPL_START__BASE).
 // To be (hopefully..) absolutely safe use a C-style cast
-#define su__VIEW_DOWNCAST(X) ((su__VIEW_NAME&)X)
+#define su__VIEW_DOWNCAST(X) C(su__VIEW_NAME &,X)
 
 #define su__VIEW_IMPL_START /*{{{*/\
 template<class VIEWTRAITS, class GBASEVIEWT>\
