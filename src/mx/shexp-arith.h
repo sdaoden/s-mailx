@@ -235,7 +235,7 @@ struct a_shexp_arith_stack{
 };
 
 struct a_shexp_arith_ctx{
-   enum a_shexp_arith_error sac_error;
+   u32 sac_error;
    boole sac_have_error_track;
    u8 sac__pad[3];
    s64 sac_rv;
@@ -382,12 +382,12 @@ a_shexp_arith_eval(
    a_shexp__arith_eval(&self, exp_buf, exp_len);
    *resp = self.sac_rv;
 
-   a_SHEXP_ARITH_L(("< arith_eval %zu <%.*s> -> <%lld> ERR<%d>\n",
+   a_SHEXP_ARITH_L(("< arith_eval %zu <%.*s> -> <%lld> ERR<%u>\n",
       exp_len, S(int,exp_len != UZ_MAX ? exp_len : su_cs_len(exp_buf)),
       exp_buf, self.sac_rv, self.sac_error));
 
    NYD_OU;
-   return self.sac_error;
+   return S(enum a_shexp_arith_error,self.sac_error);
 }
 
 static void
@@ -409,7 +409,7 @@ a_shexp__arith_eval(struct a_shexp_arith_ctx *self,
    /* Create a single continuous allocation for anything */
    /* C99 */{
       union {void *v; char *c;} p;
-      uz i, j, a;
+      uz i, j, o, a;
 
       /* Done for empty expression */
       if((i = a_shexp__arith_ws_squeeze(self, exp_buf, exp_len, NIL)) == 0)
@@ -417,11 +417,11 @@ a_shexp__arith_eval(struct a_shexp_arith_ctx *self,
 
       /* Overflow check: since arithmetic expressions are rarely long enough
        * to come near this limit, xxx laxe & fuzzy, not exact; max U32_MAX! */
-      if(su_64( i >= U32_MAX || ) i >= UZ_MAX / 2)
+      if(su_64( i >= U32_MAX || ) i++ >= UZ_MAX / 2)
          goto jenomem;
-      ++i;
       if(i >= ((UZ_MAX - (i a_SHEXP_ARITH_ERROR_TRACK( * 2 ))) /
-               ((su_ALIGNOF(*sasp->sas_nums) + sizeof(*sasp->sas_ops) * 2)
+               ((su_ALIGNOF(*sasp->sas_nums) +
+                 su_ALIGNOF(sizeof(*sasp->sas_ops) * 2))
                 a_SHEXP_ARITH_ERROR_TRACK(
                   + sizeof(*sasp->sas_error_track) * 2 ))
             )){
@@ -432,7 +432,8 @@ jenomem:
 
       ++i;
       j = su_ALIGNOF(*sasp->sas_nums) * (i >> 1);
-      a = j + (sizeof(*sasp->sas_ops) * i) +
+      o = su_ALIGNOF(sizeof(*sasp->sas_ops) * i);
+      a = j + o +
             a_SHEXP_ARITH_ERROR_TRACK( (sizeof(*sasp->sas_error_track) * i) + )
             1 + (i a_SHEXP_ARITH_ERROR_TRACK( * 2 ));
       mem_p = p.v = su_LOFI_ALLOC(a);
@@ -444,7 +445,7 @@ jenomem:
       sasp->sas_nums = sasp->sas_nums_top = S(struct a_shexp_arith_val*,p.v);
       p.c += j;
       sasp->sas_ops = sasp->sas_ops_top = S(u16*,p.v);
-      p.c += sizeof(*sasp->sas_ops) * i;
+      p.c += o;
       a_SHEXP_ARITH_ERROR_TRACK(
          sasp->sas_error_track_top = sasp->sas_error_track = S(char**,p.v);
          p.c += sizeof(*sasp->sas_error_track) * i;
