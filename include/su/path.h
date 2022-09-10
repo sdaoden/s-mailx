@@ -87,11 +87,12 @@ INLINE boole su_path_is_dir(char const *path, boole check_access){
 /*! Change current working directory. */
 EXPORT boole su_path_chdir(char const *path);
 
-/*! Create directory \a{path}, possibly \a{recursive}ly.
+/*! Create directory \a{path}, possibly \a{recursive}ly, with UNIX \a{mode}.
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
  * In \a{recursive} operation mode heap memory may be needed: errors
  * as via \r{su_state_err_type} can thus occur; \ESTATE. */
-EXPORT boole su_path_mkdir(char const *path, boole recursive, u32 estate);
+EXPORT boole su_path_mkdir(char const *path, u32 mode, boole recursive,
+      u32 estate);
 
 /*! Rename (\c{rename(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_rename(char const *dst, char const *src);
@@ -155,10 +156,10 @@ public:
    }
 
    /*! \copydoc{su_path_mkdir()} */
-   static boole mkdir(char const *path, boole recursive=FAL0,
+   static boole mkdir(char const *path, u32 mode=0777, boole recursive=FAL0,
          u32 estate=state::none){
       ASSERT_RET(path != NIL, FAL0);
-      return su_path_mkdir(path, recursive, estate);
+      return su_path_mkdir(path, mode, recursive, estate);
    }
 
    /*! \copydoc{su_path_rename()} */

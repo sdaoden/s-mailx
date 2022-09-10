@@ -194,7 +194,7 @@ su_path_chdir(char const *path){
 }
 
 boole
-su_path_mkdir(char const *path, boole recursive, u32 estate){
+su_path_mkdir(char const *path, u32 mode, boole recursive, u32 estate){
 #undef a_ALLOC
 #undef a_FREE
 #if defined su_HAVE_MEM_BAG_LOFI && defined su_MEM_BAG_SELF
@@ -216,7 +216,7 @@ su_path_mkdir(char const *path, boole recursive, u32 estate){
    e = su_ERR_NONE;
    buf = NIL;
 jredo:
-   if(mkdir(path, 0777) == 0)
+   if(mkdir(path, S(mode_t,mode)) == 0)
       rv = TRU1;
    else{
       e = su_err_no_by_errno();
