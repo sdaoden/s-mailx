@@ -410,7 +410,7 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
       goto jleave;
    }
 
-   if(!su_path_mkdir(fcp->fc_varres, n_boolify(a1, UZ_MAX, FAL0),
+   if(!su_path_mkdir(fcp->fc_varres, 0777, n_boolify(a1, UZ_MAX, FAL0),
          su_STATE_ERR_NOPASS)){
       n_pstate_err_no = su_err_no();
       fcp->fc_flags |= a_FOP_ERR;
