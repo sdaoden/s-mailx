@@ -4183,8 +4183,8 @@ settings for email account creation, covered by a specific
 .Cm local
 scope that extends until another account is activated.
 When left, also for a regular program
-.Ic quit ,
-the hook
+.Ic quit
+or when the account macro cannot be switched to successully, the hook
 .Va on-account-cleanup
 is called.
 There is a special read-only
@@ -4193,7 +4193,8 @@ account for the purpose of changing to global scope.
 .
 .Pp
 Without arguments a list of all accounts is shown.
-With one argument the given one is activated: its system
+With one argument the given one is activated: after the macro body has
+been evaluated its system
 .Va inbox
 is opened as via
 .Ic folder ,
