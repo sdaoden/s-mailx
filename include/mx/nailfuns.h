@@ -537,7 +537,7 @@ FL int c_Move(void *vp);
 FL int c_decrypt(void *vp);
 FL int c_Decrypt(void *vp);
 
-/* Write the indicated messages at the end of the passed file name, minus
+/* Write the indicated messages at the end of the passed filename, minus
  * header and trailing blank line.  This is the MIME save function */
 FL int c_write(void *vp);
 
@@ -554,7 +554,7 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
  * folder.c
  */
 
-/* Set up editing on the given file name.
+/* Set up editing on the given filename.
  * If the first character of name is %, we are considered to be editing the
  * file, otherwise we are reading our mail which has signficance for mbox and
  * so forth */

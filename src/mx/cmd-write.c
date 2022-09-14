@@ -58,7 +58,7 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-/* Save/copy the indicated messages at the end of the passed file name.
+/* Save/copy the indicated messages at the end of the passed filename.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct mx_ignore const *itp,
             int convert, boole domark, boole domove);

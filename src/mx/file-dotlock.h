@@ -4,7 +4,7 @@
  *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
  *@ that SIGPIPE is ignored (we react upon ERR_PIPE).
- *@ It furtherly assumes that it can create a file name that is at least one
+ *@ It furtherly assumes that it can create a filename that is at least one
  *@ byte longer than the dotlock file's name!
  *
  * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.

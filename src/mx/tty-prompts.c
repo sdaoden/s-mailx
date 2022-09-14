@@ -148,7 +148,7 @@ mx_tty_getfilename(struct n_string *store,
          ) == n_PSO_INTERACTIVE){
       n_psonce |= n_PSO_GETFILENAME_QUOTE_NOTED;
       fprintf(n_stdout,
-         _("# All file names need to be sh(1)ell-style quoted, everywhere\n"));
+         _("# All filenames need to be sh(1)ell-style quoted, everywhere\n"));
    }
 
    store = n_string_trunc(store, 0);

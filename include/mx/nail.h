@@ -1136,7 +1136,7 @@ struct message{
 #endif
 #ifdef mx_HAVE_MAILDIR
    char const *m_maildir_file; /* original maildir file of msg */
-   u32 m_maildir_hash; /* hash of file name in maildir sub */
+   u32 m_maildir_hash; /* hash of filename in maildir sub */
 #endif
    int m_collapsed; /* collapsed thread information */
    unsigned m_idhash; /* hash on Message-ID for threads */

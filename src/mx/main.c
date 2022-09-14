@@ -1146,7 +1146,7 @@ jgetopt_done:
 
    /* load() any resource files */
    if(resfiles & a_RF_MASK){
-      /* *expand() returns a savestr(), but load() only uses the file name
+      /* *expand() returns a savestr(), but load() only uses the filename
        * for fopen(), so it is safe to do this */
       if(resfiles & a_RF_SYSTEM){
          boole nload;

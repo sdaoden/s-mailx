@@ -458,7 +458,7 @@ Low-Level
 
   . fexpand() the 2nd: it should return structure because we need to
      check for FEDIT_SYSBOX, which currently only checks whether the first
-     character of a file name is '%', not whether it is '%', '%:FILEPATH'
+     character of a filename is '%', not whether it is '%', '%:FILEPATH'
      or '%VALIDUSER', because that is impossible to do!
 
   . On the long run in-memory password storage should be zeroed after

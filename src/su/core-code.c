@@ -213,7 +213,7 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
    union {int i; uz z;} u;
    char const *sep, *cp;
 
-   /* Ensure actual file name can be seen, unless multibyte comes into play */
+   /* Ensure actual filename can be seen, unless multibyte comes into play */
    sep = su_empty;
    cp = nip->ni_file;
    for(u.z = 0; (c = cp[u.z]) != '\0'; ++u.z)

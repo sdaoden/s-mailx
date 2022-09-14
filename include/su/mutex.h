@@ -219,7 +219,7 @@ INLINE char const *su_mutex_name(struct su_mutex const *self){
    return self->mtx_.name;
 }
 
-/*! Via \r{su_DVLDBGOR()}: file name of last operation, or \NIL. */
+/*! Via \r{su_DVLDBGOR()}: filename of last operation, or \NIL. */
 INLINE char const *su_mutex_file(struct su_mutex const *self){
    ASSERT(self);
    return DVLDBGOR(self->mtx_.file, NIL);

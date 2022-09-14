@@ -44,7 +44,7 @@ enum mx_file_lock_mode{
 enum mx_file_dotlock_state{
    mx_FILE_DOTLOCK_STATE_NONE,
    mx_FILE_DOTLOCK_STATE_CANT_CHDIR, /* Failed to chdir(2) into desired path */
-   mx_FILE_DOTLOCK_STATE_NAMETOOLONG, /* Lock file name would be too long */
+   mx_FILE_DOTLOCK_STATE_NAMETOOLONG, /* Lock filename would be too long */
    mx_FILE_DOTLOCK_STATE_ROFS, /* Read-only filesys (no error, mailbox RO) */
    mx_FILE_DOTLOCK_STATE_NOPERM, /* No permission to create lock file */
    mx_FILE_DOTLOCK_STATE_NOEXEC, /* Privilege separated dotlocker not found */
