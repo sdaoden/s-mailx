@@ -86,7 +86,7 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
          exit(2)
       }
 
-      # Object file name
+      # Object filename
       po_i = COUNT_MODE ? dname "-" sprintf("%03u", cono + cxxono) ".o" \
             : dname "-" po_i ".o"
       if(is_c)

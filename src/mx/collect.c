@@ -1699,7 +1699,7 @@ jearg:
       case '<':
       case 'R':
       case 'r':
-            /* Invoke a file: Search for the file name, then open it and copy
+            /* Invoke a file: Search for the filename, then open it and copy
              * the contents to _coll_fp */
             if(cnt > 0 && c == '<' && *cp == '!'){
                /* TODO hist. normalization */

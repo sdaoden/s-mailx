@@ -176,7 +176,7 @@ jeuse:
    fdi.fdi_randstr = argv[9];
    fdi.fdi_retry = argv[11];
 
-   /* Ensure the lock name and the file name are identical */
+   /* Ensure the lock name and the filename are identical */
    /* C99 */{
       uz i;
 
