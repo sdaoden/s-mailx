@@ -52,7 +52,7 @@ struct mx_attachment{
    char const *a_path_user; /* Path as given (maybe including iconv spec) */
    char const *a_path; /* Path as opened */
    char const *a_path_bname; /* Basename of path as opened */
-   char const *a_name; /* File name to be stored (EQ a_path_bname) */
+   char const *a_name; /* Filename to be stored (EQ a_path_bname) */
    char const *a_content_type; /* content type */
    char const *a_content_disposition; /* content disposition */
    struct mx_name *a_content_id; /* content id */
@@ -72,7 +72,7 @@ EXPORT struct mx_attachment *mx_attachments_append(
       BITENUM_IS(u32,mx_attach_error) *aerr_or_nil,
       struct mx_attachment **newap_or_nil);
 
-/* Shell-token parse names, and append resulting file names to aplist, return
+/* Shell-token parse names, and append resulting filenames to aplist, return
  * (new) aplist head */
 EXPORT struct mx_attachment *mx_attachments_append_list(
       struct mx_attachment *aplist, char const *names);

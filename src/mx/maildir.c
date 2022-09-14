@@ -759,7 +759,7 @@ maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
 
       nfn = R(char*,P2UZ(nfn) - 1);
       if (nfn == NULL) {
-         n_err(_("Can't create an unique file name in %s\n"),
+         n_err(_("Cannot create an unique filename in %s\n"),
             n_shexp_quote_cp(savecat(name, "/tmp"), FAL0));
          goto jleave;
       }

@@ -36,7 +36,7 @@ EXPORT int c_cwd(void *vp);
 /* `chdir': change user's working directory */
 EXPORT int c_chdir(void *vp);
 
-/* `echo' series: expand file names like echo (to stdout/stderr, with/out
+/* `echo' series: expand filenames like echo (to stdout/stderr, with/out
  * trailing newline) */
 EXPORT int c_echo(void *vp);
 EXPORT int c_echoerr(void *vp);
