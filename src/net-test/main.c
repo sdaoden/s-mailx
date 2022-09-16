@@ -13,7 +13,7 @@
  *@     the user matches.
  *@ - If -v is given, the prepared I/O as well as real I/O is logged on STDERR.
  *@ TODO - intermangled responses (expect tuple 2[lines follow] 3[..]),
- *@ TODO   store list unless fullfilled (or whatever).  E.g.,
+ *@ TODO   store list unless fulfilled (or whatever).  E.g.,
  *@ TODO   "tuples 1/2 2/3" would read one line and save the next two as
  *@ TODO   expected answers, etc.  Then resort the collected answers and
  *@ TODO   write them in the given order to STDOUT for checksumming.  Etc.

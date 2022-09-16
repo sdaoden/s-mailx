@@ -547,7 +547,7 @@ a__cs_dict(u16 addflags){
    cs_dict<NSPC(su)up,FAL0> cdu(NIL, addflags);
    cs_dict<char*,TRU1> cdo(auto_type_toolbox<char*>::get_instance());
 
-   cdo.set_treshold_shift(4).add_flags(cdo.f_head_resort | addflags);
+   cdo.set_threshold_shift(4).add_flags(cdo.f_head_resort | addflags);
 
    for(u32 = 0; u32++ < a_LOOP_NO;){
       if((cp = ienc::convert_u32(buf, u32)) == NIL){
@@ -610,7 +610,7 @@ a__cs_dict(u16 addflags){
 
    a_STATS( cdo.statistics(); )
 
-   if(cdo.set_treshold_shift(2).balance().count() != a_LOOP_NO)
+   if(cdo.set_threshold_shift(2).balance().count() != a_LOOP_NO)
       a_ERR();
 
    a_STATS( cdo.statistics(); )

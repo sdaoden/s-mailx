@@ -66,12 +66,12 @@
  * recursion-allowed, thereafter name::n_fullname (empty if EQ n_name) */
 #define a_NM_ALIAS_FLAGS (su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK |\
       su_CS_DICT_ERR_PASS)
-#define a_NM_ALIAS_TRESHOLD_SHIFT 2
+#define a_NM_ALIAS_THRESHOLD_SHIFT 2
 
 /* ..of a_nm_a8s_dp */
 #define a_NM_A8S_FLAGS (su_CS_DICT_CASE |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_NM_A8S_TRESHOLD_SHIFT 2
+#define a_NM_A8S_THRESHOLD_SHIFT 2
 
 static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d;
 static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d;
@@ -1118,9 +1118,9 @@ c_alias(void *vp){
       char const *val1, *val2;
 
       if(a_nm_alias_dp == NIL){
-         a_nm_alias_dp = su_cs_dict_set_treshold_shift(
+         a_nm_alias_dp = su_cs_dict_set_threshold_shift(
                su_cs_dict_create(&a_nm_alias__d, a_NM_ALIAS_FLAGS, NIL),
-               a_NM_ALIAS_TRESHOLD_SHIFT);
+               a_NM_ALIAS_THRESHOLD_SHIFT);
          DVL(
             if(a_nm_a8s_dp == NIL)
                su_state_on_gut_install(&a_nm__on_gut, FAL0,
@@ -1306,9 +1306,9 @@ c_alternates(void *vp){
          n_err(_("alternates: `vput' only supported in \"show\" mode\n"));
 
       if(a_nm_a8s_dp == NIL){
-         a_nm_a8s_dp = su_cs_dict_set_treshold_shift(
+         a_nm_a8s_dp = su_cs_dict_set_threshold_shift(
                su_cs_dict_create(&a_nm_a8s__d, a_NM_A8S_FLAGS, NIL),
-               a_NM_A8S_TRESHOLD_SHIFT);
+               a_NM_A8S_THRESHOLD_SHIFT);
          DVL(
             if(a_nm_alias_dp == NIL)
                su_state_on_gut_install(&a_nm__on_gut, FAL0,

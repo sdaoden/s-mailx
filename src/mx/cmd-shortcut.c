@@ -40,7 +40,7 @@
 /* ..of a_scut_dp */
 #define a_SCUT_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_SCUT_TRESHOLD_SHIFT 2
+#define a_SCUT_THRESHOLD_SHIFT 2
 
 static struct su_cs_dict *a_scut_dp, a_scut__d;
 
@@ -89,9 +89,9 @@ c_shortcut(void *vp){
       }
    }else{
       if(a_scut_dp == NIL){
-         a_scut_dp = su_cs_dict_set_treshold_shift(
+         a_scut_dp = su_cs_dict_set_threshold_shift(
                su_cs_dict_create(&a_scut__d, a_SCUT_FLAGS, &su_cs_toolbox),
-               a_SCUT_TRESHOLD_SHIFT);
+               a_SCUT_THRESHOLD_SHIFT);
          DVL( su_state_on_gut_install(&a_scut__on_gut, FAL0,
             su_STATE_ERR_NOPASS); )
       }
