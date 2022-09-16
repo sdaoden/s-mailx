@@ -11048,13 +11048,13 @@ isolated session, which is signalled in its entirety as necessary.
 .
 .Bd -literal -offset indent
 define ocs_signature {
-  read version
+  read proto_version
   echo '~< ~/.mysig' # '~<! fortune pathtofortunefile'
 }
 set on-compose-splice=ocs_signature
 
 set on-compose-splice-shell=$'\e
-  read version;\e
+  read proto_version;\e
   printf "hello $version!  Headers: ";\e
   echo \e'~^header list\e';\e
   read status result;\e
@@ -11062,8 +11062,8 @@ set on-compose-splice-shell=$'\e
   '
 
 define ocsm {
-  read version
-  echo Splice protocol version is $version
+  read proto_version
+  echo Splice protocol version is $proto_version
   echo '~^h l'; read hl; vput csop es subs "${hl}" 0 1
   if "$es" != 2
     echoerr 'Cannot read header list'; echo '~x'; xit
