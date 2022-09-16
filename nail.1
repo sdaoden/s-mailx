@@ -10432,6 +10432,10 @@ ing instead
 .Pf ( Va v15-compat , Cm wysh ) .
 Also see
 .Va on-compose-leave .
+.Bd -literal -offset indent
+? set sign=$'\en  Tony'  Sign=$'\en  Tony\en  I am fixing things!'
+? set message-inject-tail=${Sign}
+.Ed
 .
 .Mx
 .It Va metoo
@@ -10963,7 +10967,11 @@ Context about the message being worked on can be queried via
 can be used to perform other necessary cleanup steps.
 .
 .Pp
-Here is an example that injects a signature via
+Here is an example that injects a signature (also see
+.Va Sign , sign
+as well as
+.Ic ~A , ~a )
+via
 .Va message-inject-tail ;
 instead using
 .Va on-compose-splice
@@ -10997,50 +11005,53 @@ set on-compose-leave=t_ocl
 .Mx
 .Mx
 .It Va on-compose-splice , on-compose-splice-shell
-These hooks run once the normal compose mode is finished, but before the
-.Va on-compose-leave
-macro hook is called etc.
-Both hooks will be executed in a subprocess, with their input and output
-connected to \*(Xx such that they can act as if they would be an
-interactive user.
-The difference in between them is that the latter is a
+These hooks run after compose mode is finished, but before
+.Va on-compose-leave .
+Both are executed in a subprocess, with their input and output connected
+such that they can act like an interactive user: \*(Xx's output they
+.Ic read ,
+input for \*(Xx they can
+.Ic echo .
+Whereas the latter is a
 .Ev SHELL
-command, whereas the former is a normal
+command, the former is a
 .Ic define Ns
-d macro, but which is restricted to a small set of commands (the
+d macro that is evaluated in a restricted mode with only a small set of
+commands available (the
 .Va verbose
 output of for example
 .Ic list
-will indicate said capability).
-.Va on-compose-cleanup
-can be used to perform cleanup as necessary.
+indicates the
+.Ql subprocess
+capability).
 .
 .Pp
-During execution of these hooks \*(Xx will temporarily forget whether it
-has been started in interactive mode, (a restricted set of)
+In the subprocess (a restricted set of)
 .Sx "COMMAND ESCAPES"
-will always be available, and for guaranteed reproducibilities sake
+will always be available.
+For guaranteed reproducibilities' sake
 .Va escape
 and
 .Va ifs
-will be set to their defaults.
-The compose mode command
+are set to their defaults.
+The escape
 .Ic ~^
-has been especially designed for scriptability (via these hooks).
-The first line the hook will read on its standard input is the protocol
-version of said command escape, currently
-.Dq 0 0 2 :
+has been especially designed for scriptability: the first line these
+hooks will read on standard input is the escape's protocol version
+.Pf ( Dq 0 0 2 ) ,
 backward incompatible protocol changes have to be expected.
 .
 .Pp
 Care must be taken to avoid deadlocks and other false control flow:
-if both involved processes wait for more input to happen at the
-same time, or one does not expect more input but the other is stuck
-waiting for consumption of its output, etc.
-There is no automatic synchronization of the hook: it will not be
-stopped automatically just because it, e.g., emits
-.Ql ~x .
-The hooks will however receive a termination signal if the parent enters
+if subprocess and \*(Xx both wait for more input, or if one does not
+expect more input, whereas the other waits for consumption of its output.
+Hooks are not automatically synchronized: if a hook emits
+.Ql ~x
+to cause \*(Xx to exit compose mode, the subprocess will keep running
+nonetheless until the macro is completely worked or
+.Ic xit
+is called explicitly.
+They will however receive a termination signal if the parent enters
 an error condition.
 \*(ID Protection against and interaction with signals is not yet given;
 it is likely that in the future these scripts will be placed in an
