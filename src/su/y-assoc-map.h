@@ -541,7 +541,7 @@ a_T_PRISYM(stats)(struct a_T const *self){
          "ERR_PASS=%d "
          "NILISVALO=%d"
          "\n"
-      "  - treshold=%lu size=%lu (min-size=%lu) entries=%lu\n"
+      "  - threshold=%lu size=%lu (min-size=%lu) entries=%lu\n"
       "* Distribution\n"
       "  - slots: 0=%lu max=%lu multi=%lu avg/multi=~%lu"
       ,

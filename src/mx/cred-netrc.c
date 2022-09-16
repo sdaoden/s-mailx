@@ -53,7 +53,7 @@ su_EMPTY_FILE()
 /* Dictionary stores a_netrc_entry, not owned */
 #define a_NETRC_FLAGS (su_CS_DICT_CASE | su_CS_DICT_HEAD_RESORT |\
       su_CS_DICT_ERR_PASS)
-#define a_NETRC_TRESHOLD_SHIFT 3
+#define a_NETRC_THRESHOLD_SHIFT 3
 
 enum a_netrc_token{
    a_NETRC_ERROR = -1,
@@ -112,9 +112,9 @@ a_netrc_create(void){
    u32 f;
    NYD_IN;
 
-   a_netrc_dp = su_cs_dict_set_treshold_shift(
+   a_netrc_dp = su_cs_dict_set_threshold_shift(
          su_cs_dict_create(&a_netrc__d, a_NETRC_FLAGS, NIL),
-            a_NETRC_TRESHOLD_SHIFT);
+            a_NETRC_THRESHOLD_SHIFT);
    DVL( su_state_on_gut_install(&a_netrc__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
    f = a_NONE;
