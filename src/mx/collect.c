@@ -1006,14 +1006,13 @@ a_coll_putesc(char const *s, boole addnl, FILE *stream){
    isposix = ok_blook(posix);
 
    while((c1 = *s++) != '\0'){
-      if(c1 == '\\' && ((c2 = *s) == 't' || c2 == 'n')){
-         if(!isposix){
-            isposix = TRU1; /* TODO v15 OBSOLETE! */
-            n_err(_("Compose mode warning: expanding \\t or \\n in variable "
-                  "without *posix*!\n"
+      if(/*v15-compat isposix &&*/ c1 == '\\' &&
+            ((c2 = *s) == 't' || c2 == 'n')){
+         if(!isposix)
+            n_OBSOLETE(_("Compose mode warning: expanding \\t or \\n in "
+                  "variable without *posix*!\n"
                "  Support remains only for ~A,~a,~I,~i in *posix* mode!\n"
-               "  Please use \"wysh set X=y..\" instead\n"));
-         }
+               "  Please expand these variables at \"set X=$'y\\n'\" time\n"));
          ++s;
          c1 = (c2 == 't') ? '\t' : '\n';
       }
@@ -2165,19 +2164,16 @@ jreasksend:
          putc('\n', _coll_fp);
    }
 
-   {  char const *cp_obsolete = ok_vlook(NAIL_TAIL);
+   {
+   char const *cp_obsolete = ok_vlook(NAIL_TAIL);
 
-      if(cp_obsolete != NULL)
-         n_OBSOLETE(_("please use *message-inject-tail*, not *NAIL_TAIL*"));
+   if(cp_obsolete != NULL)
+      n_OBSOLETE(_("please use *message-inject-tail*, not *NAIL_TAIL*"));
 
-   if((cp = ok_vlook(message_inject_tail)) != NULL ||
-         (cp = cp_obsolete) != NULL){
-      if(!a_coll_putesc(cp, TRU1, _coll_fp))
-         goto jerr;
-      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-            (!a_coll_putesc(cp, TRU1, n_stdout) || fflush(n_stdout) == EOF))
-         goto jerr;
-   }
+   if(((cp = ok_vlook(message_inject_tail)) != NULL ||
+            (cp = cp_obsolete) != NULL) &&
+         !a_coll_putesc(cp, TRU1, _coll_fp))
+      goto jerr;
    }
 
 jskiptails:
