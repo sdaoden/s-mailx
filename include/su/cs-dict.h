@@ -68,7 +68,7 @@ struct su_cs_dict_view;
  * This interacts with \r{su_CS_DICT_NIL_IS_VALID_OBJECT}.
  * }\li{
  * The balance of array size / node count spacing relation is controllable
- * via \r{su_cs_dict_set_treshold_shift()}.
+ * via \r{su_cs_dict_set_threshold_shift()}.
  * Automatic shrinks are unaffected by that and happen only if
  * \r{su_CS_DICT_AUTO_SHRINK} is enabled.
  * }\li{
@@ -273,20 +273,20 @@ INLINE struct su_cs_dict *su_cs_dict_clear_flags(struct su_cs_dict *self,
    return self;
 }
 
-/*! Get the used treshold shift.
- * See \r{su_cs_dict_set_treshold_shift()}. */
-INLINE u8 su_cs_dict_treshold_shift(struct su_cs_dict const *self){
+/*! Get the used threshold shift.
+ * See \r{su_cs_dict_set_threshold_shift()}. */
+INLINE u8 su_cs_dict_threshold_shift(struct su_cs_dict const *self){
    ASSERT(self);
    return self->csd_tshift;
 }
 
-/*! Set the treshold shift.
- * The treshold shift is used to decide when the internal array is to be grown
+/*! Set the threshold shift.
+ * The threshold shift is used to decide when the internal array is to be grown
  * according to the algorithm
- * \cb{count-of-buckets >= array-capacity << treshold-shift}
+ * \cb{count-of-buckets >= array-capacity << threshold-shift}
  * The value will be \r{su_CLIP()}ped in between 1 and 8; the default is 2.
  * It does not affect shrinking (controlled via \r{su_CS_DICT_AUTO_SHRINK}). */
-INLINE struct su_cs_dict *su_cs_dict_set_treshold_shift(
+INLINE struct su_cs_dict *su_cs_dict_set_threshold_shift(
       struct su_cs_dict *self, u8 ntshift){
    ASSERT(self);
    self->csd_tshift = CLIP(ntshift, 1, 8);
@@ -313,7 +313,7 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self,
 }
 
 /*! Resize the management table to accommodate for \a{xcount} elements.
- * Calculate the new size as via \r{su_cs_dict_set_treshold_shift}.
+ * Calculate the new size as via \r{su_cs_dict_set_threshold_shift}.
  * The \r{su_CS_DICT_FROZEN} state is ignored, but possibly needs to be set to
  * avoid an immediate automatic resize upon the next insertion
  * (and removal, if \r{su_CS_DICT_AUTO_SHRINK} is set).
@@ -745,12 +745,12 @@ public:
       SELFTHIS_RET(su_cs_dict_clear_flags(this, flags & ~su_CS_DICT_OWNS));
    }
 
-   /*! \copydoc{su_cs_dict_treshold_shift()} */
-   u8 treshold_shift(void) const {return su_cs_dict_treshold_shift(this);}
+   /*! \copydoc{su_cs_dict_threshold_shift()} */
+   u8 threshold_shift(void) const {return su_cs_dict_threshold_shift(this);}
 
-   /*! \copydoc{su_cs_dict_set_treshold_shift()} */
-   cs_dict &set_treshold_shift(u8 tshift){
-      SELFTHIS_RET(su_cs_dict_set_treshold_shift(this, tshift));
+   /*! \copydoc{su_cs_dict_set_threshold_shift()} */
+   cs_dict &set_threshold_shift(u8 tshift){
+      SELFTHIS_RET(su_cs_dict_set_threshold_shift(this, tshift));
    }
 
    /*! \copydoc{su_cs_dict_toolbox()} */

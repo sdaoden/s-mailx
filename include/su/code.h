@@ -435,7 +435,7 @@ do{\
 #endif
 #define CXXCAST(T1,T2) \
    CTA(sizeof(T1) == sizeof(T2),\
-      "Wild C++ type==C type cast constrained not fullfilled!")
+      "Wild C++ type==C type cast constrained not fulfilled!")
 
 /* LANG }}} */
 

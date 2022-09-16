@@ -47,7 +47,7 @@
 /* ..of a_ml_dp.. */
 #define a_ML_FLAGS (su_CS_DICT_CASE |\
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_ML_TRESHOLD_SHIFT 2
+#define a_ML_THRESHOLD_SHIFT 2
 
 /* ..of a_ml_re_dp.  Only for un-registration + flag change: use a high t.-s.
  * Usage of NILISVALO is essential for our purpose, since we use
@@ -60,7 +60,7 @@
 #ifdef mx_HAVE_REGEX
 # define a_ML_RE_FLAGS (su_CS_DICT_OWNS |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS | su_CS_DICT_NILISVALO)
-# define a_ML_RE_TRESHOLD_SHIFT 4
+# define a_ML_RE_THRESHOLD_SHIFT 4
 #endif
 
 #ifdef mx_HAVE_REGEX
@@ -151,13 +151,13 @@ a_ml_mux(boole subscribe, char const **argv){
             mx_page_or_print_strlist(cmd, slp, FAL0));
    }else{
       if(a_ml_dp == NIL){
-         a_ml_dp = su_cs_dict_set_treshold_shift(
+         a_ml_dp = su_cs_dict_set_threshold_shift(
                su_cs_dict_create(&a_ml__d, a_ML_FLAGS, NIL),
-               a_ML_TRESHOLD_SHIFT);
+               a_ML_THRESHOLD_SHIFT);
 #ifdef mx_HAVE_REGEX
-         a_ml_re_dp = su_cs_dict_set_treshold_shift(
+         a_ml_re_dp = su_cs_dict_set_threshold_shift(
                su_cs_dict_create(&a_ml__re_d, a_ML_RE_FLAGS, &a_ml_re_tbox),
-               a_ML_RE_TRESHOLD_SHIFT);
+               a_ML_RE_THRESHOLD_SHIFT);
 #endif
          DVL( su_state_on_gut_install(&a_ml__on_gut, FAL0,
             su_STATE_ERR_NOPASS); )
