@@ -1035,7 +1035,7 @@ do{\
 
 /* Avoid "may be used uninitialized" warnings */
 #if (defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)) || \
-      defined DOYGEN
+      defined DOXYGEN
 # define su_UNINIT(N,V) su_S(void,0) /*!< \_ */
 # define su_UNINIT_DECL(V) /*!< \_ */
 #else
