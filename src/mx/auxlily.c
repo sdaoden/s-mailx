@@ -923,12 +923,19 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
    struct str s_b, s;
    struct a_aux_err_node *lenp, *enp;
    sz i;
+   boole dolog, dosave;
    char const *lpref, *c5pref, *c5suff;
    NYD2_IN;
 
    mx_COLOUR( ++c5recur; )
    lpref = NIL;
    c5pref = c5suff = su_empty;
+
+   dosave = ((n_poption & n_PO_D_V) || !(n_pstate & n_PS_ROBOT));
+   /* Test output wants error messages */
+   /*dolog = (dosave || su_state_has(su_STATE_REPRODUCIBLE) ||
+         !(n_psonce & n_PSO_STARTED_CONFIG))*/;
+   dolog = TRU1;
 
    /* Fully expand the buffer (TODO use fmtenc) */
 #undef a_X
@@ -1036,8 +1043,8 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          enp->ae_cnt = 1;
          n_string_creat(&enp->ae_str);
 
-         if(a_aux_err_tail != NIL)
-            a_aux_err_tail->ae_next = enp;
+         if(lenp != NIL)
+            lenp->ae_next = enp;
          else
             a_aux_err_head = enp;
          a_aux_err_tail = enp;
@@ -1066,7 +1073,8 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
 
          /* We need to write it out regardless of whether it is a complete line
           * or not, say (for at least `echoerrn') TODO IO errors not handled */
-         if(cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)){
+         if((cp == NIL || allow_multiple || !(n_psonce & n_PSO_INTERACTIVE)) &&
+               dolog){
             fprintf(n_stderr, "%s%s%s%s%s",
                c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
                &n_string_cp(&enp->ae_str)[k], c5suff,
@@ -1095,7 +1103,7 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
          /* Otherwise, if the last error has a count, say so, unless it would
           * soil and intermix display */
          else if(lenp->ae_cnt > 1 && !allow_multiple &&
-               (n_psonce & n_PSO_INTERACTIVE)){
+               (n_psonce & n_PSO_INTERACTIVE) && dolog){
             fprintf(n_stderr,
                _("%s%s-- Last message repeated %u times --%s\n"),
                c5pref, lpref, lenp->ae_cnt, c5suff);
@@ -1104,16 +1112,30 @@ n_verrx(boole allow_multiple, char const *format, va_list ap){/*XXX sigcondom*/
       }
 
       /* When we come here we need to write at least the/a \n! */
-      if(!isdup && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE)){
+      if(!isdup && !allow_multiple && (n_psonce & n_PSO_INTERACTIVE) && dolog){
          fprintf(n_stderr, "%s%s%s%s\n",
             c5pref, (enp->ae_dumped_till == 0 ? lpref : su_empty),
             &n_string_cp(&enp->ae_str)[enp->ae_dumped_till], c5suff);
          fflush(n_stderr);
       }
 
-      if(isdup){
-         lenp->ae_next = NIL;
+      if(isdup || !dosave || !(n_psonce & n_PSO_INTERACTIVE)){
+         if(a_aux_err_head == enp){
+            ASSERT(a_aux_err_tail == a_aux_err_head);
+            ASSERT(lenp == NIL || lenp == a_aux_err_tail);
+            ASSERT(enp->ae_next == NIL);
+            a_aux_err_head = NIL;
+            if(enp == lenp)
+               lenp = NIL;
+         }else{
+            ASSERT(lenp != NIL);
+            ASSERT(lenp != enp);
+            ASSERT(lenp->ae_next == a_aux_err_tail);
+            ASSERT(a_aux_err_tail == enp);
+            lenp->ae_next = NIL;
+         }
          a_aux_err_tail = lenp;
+
          n_string_gut(&enp->ae_str);
          su_FREE(enp);
          continue;
