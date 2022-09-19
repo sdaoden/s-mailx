@@ -5273,7 +5273,10 @@ upon lookup failure.
 .
 .Mx
 .It Ic errors
-\*(OP Manages the queue of error messages:
+\*(OP Manages the queue of error messages.
+Error messages sometimes fly by and scroll off the screen fast;
+In interactive sessions they are duplicated into this queue, more so with
+.Va verbose .
 .Ar show
 or no argument will display and clear the queue,
 .Ar clear
