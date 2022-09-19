@@ -5688,6 +5688,13 @@ the given file and output values such that
 creates accessible variables.
 .Cm lstat
 differs by not following symbolic links when opening a file.
+The time fields are named
+.Ql st_Xtime
+for the second, and
+.Ql st_Xtimensec
+for the nanosecond (maybe 0), where
+.Ql X
+is one of a(ccess), c(hange) and m(odification).
 .Ql st_type
 uses solidus
 .Ql /
