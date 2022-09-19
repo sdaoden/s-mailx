@@ -768,10 +768,60 @@ a_fop__stat(struct a_fop_ctx *fcp){
    s = n_string_push_cp(s, "st_uid=");
    s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, st.st_uid, 10));
    s = n_string_push_c(s, ' ');
-
    s = n_string_push_cp(s, "st_gid=");
    s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, st.st_gid, 10));
    s = n_string_push_c(s, ' ');
+
+   /* C99 */{
+      s64 nt, t;
+
+      nt = 0;
+
+#ifdef mx_HAVE_STAT_TIMESPEC
+      t = st.st_atim.tv_sec;
+      nt = st.st_atim.tv_nsec;
+#else
+      t = st.st_atime;
+# ifdef mx_HAVE_STAT_TIMENSEC
+      nt = st.st_atimensec;
+# endif
+#endif
+      s = n_string_push_cp(s, "st_atime=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, t, 10));
+      s = n_string_push_cp(s, " st_atimensec=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, nt, 10));
+      s = n_string_push_c(s, ' ');
+
+#ifdef mx_HAVE_STAT_TIMESPEC
+      t = st.st_ctim.tv_sec;
+      nt = st.st_ctim.tv_nsec;
+#else
+      t = st.st_ctime;
+# ifdef mx_HAVE_STAT_TIMENSEC
+      nt = st.st_ctimensec;
+# endif
+#endif
+      s = n_string_push_cp(s, "st_ctime=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, t, 10));
+      s = n_string_push_cp(s, " st_ctimensec=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, nt, 10));
+      s = n_string_push_c(s, ' ');
+
+#ifdef mx_HAVE_STAT_TIMESPEC
+      t = st.st_mtim.tv_sec;
+      nt = st.st_mtim.tv_nsec;
+#else
+      t = st.st_mtime;
+# ifdef mx_HAVE_STAT_TIMENSEC
+      nt = st.st_mtimensec;
+# endif
+#endif
+      s = n_string_push_cp(s, "st_mtime=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, t, 10));
+      s = n_string_push_cp(s, " st_mtimensec=");
+      s = n_string_push_cp(s, su_ienc_s64(fcp->fc_iencbuf, nt, 10));
+      s = n_string_push_c(s, ' ');
+   }
 
    fcp->fc_varres = n_string_cp(s);
    /* n_string_gut(n_string_drop_ownership(s)); */

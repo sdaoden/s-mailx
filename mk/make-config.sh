@@ -2265,6 +2265,32 @@ int main(void){
 }
 !
 
+if link_check stat_timespec 'struct stat timespec fields' \
+      '#define mx_HAVE_STAT_TIMESPEC' << \!
+#include <sys/stat.h>
+int main(void){
+   struct stat x;
+
+   stat(".", &x);
+   return x.st_atim.tv_sec != 0 && x.st_atim.tv_nsec != 0;
+}
+!
+then
+   :
+elif link_check stat_timensec 'struct stat timensec fields' \
+      '#define mx_HAVE_STAT_TIMENSEC' << \!
+#include <sys/stat.h>
+int main(void){
+   struct stat x;
+
+   stat(".", &x);
+   return x.st_atime != 0 && x.st_atimensec != 0;
+}
+!
+then
+   :
+fi
+
 link_check tcgetwinsize 'tcgetwinsize(3)' '#define mx_HAVE_TCGETWINSIZE' << \!
 #include <termios.h>
 int main(void){
