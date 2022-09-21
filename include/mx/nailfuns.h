@@ -454,6 +454,9 @@ FL int c_next(void *v);
 /* `=': print out the value(s) of <msglist> (or dot) */
 FL int c_pdot(void *vp);
 
+/* Only set "dot" to the single msg argument */
+FL int c_setdot(void *vp);
+
 /* Print the size of each message */
 FL int c_messize(void *v);
 
