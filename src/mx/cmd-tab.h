@@ -166,6 +166,12 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(save, 1, a_cmd_cad_save){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+mx_CMD_ARG_DESC_SUBCLASS_DEF(setdot, 1, a_cmd_cad_setdot){
+   {mx_CMD_ARG_DESC_MSGLIST | mx_CMD_ARG_DESC_GREEDY |
+         mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 #ifdef mx_HAVE_KEY_BINDINGS
 # define a_CMD_CAD_UNBIND mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_unbind)
 mx_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_cmd_cad_unbind){
@@ -655,6 +661,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
      DS(N_("Mark <msglist> as seen")) },
    { "seen", &c_seen, (A | M | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Mark <msglist> as seen")) },
+   { "setdot", &c_setdot, (A | HG | EM | TARG), 0, MMNDEL,
+     mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_setdot)
+     DS(N_("Set \"dot\" to the given <msg>")) },
 { "shell", &c_dosh, (I | S | EM | TWYSH), 0, 0, NIL
      DS(N_("Invoke an interactive shell")) },
    { "shcodec", &c_shcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL

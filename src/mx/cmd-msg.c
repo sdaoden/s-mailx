@@ -738,6 +738,20 @@ jleave:
 }
 
 FL int
+c_setdot(void *vp){
+   struct mx_cmd_arg_ctx *cacp;
+   NYD_IN;
+
+   n_pstate_err_no = su_ERR_NONE;
+   cacp = vp;
+
+   setdot(&message[*cacp->cac_arg->ca_arg.ca_msglist - 1], FAL0);
+
+   NYD_OU;
+   return su_EX_OK;
+}
+
+FL int
 c_messize(void *v)
 {
    int *msgvec = v, *ip, mesg;
