@@ -3343,9 +3343,10 @@ jread_again:
 
             if(rv < 0)
                goto jleave;
+
 # ifdef mx_HAVE_KEY_BINDINGS
             /* Timeout expiration */
-            else if(rv == 0){
+            if(rv == 0){
                ASSERT(timeout);
                ASSERT(isp != NIL);
 
@@ -3379,6 +3380,19 @@ jread_again:
                *cbuf = '\x04';
             }
             ++cbufp;
+
+            if((n_poption & n_PO_D_VVV) == n_PO_D_VVV){
+               char const *bsep, *cbp;
+
+               for(bsep = su_empty, cbp = cbuf, rv = P2UZ(cbufp - cbp); rv > 0;
+                     bsep = " ", ++cbp, --rv){
+                  char c = *cbp, c2 = c;
+                  if(!su_cs_is_print(c))
+                     c2 = '?';
+                  n_err("%s\\x%02X/%c", bsep, S(u32,S(u8,c)), c2);
+               }
+               n_err("\n");
+            }
 
             rv = S(sz,mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]));
             if(rv <= 0){

@@ -2349,8 +2349,9 @@ or
 .Lb libterminfo ,
 and enhances or enables interactive usage aspects, like
 .Sx "Coloured display" ,
+.Mx -ix MLE
 and understanding of cursor and function keys for the Mailx-Line-Editor
-(MLE) for the
+MLE for the
 .Ev TERM Ns
 inal found in the
 .Sx ENVIRONMENT .
@@ -4710,7 +4711,10 @@ Preconditions depend on slots, the following of which exist:
 .Pp
 Slot names prefixed with
 .Ql mle-
-are used for the \*(OPal built-in Mailx-Line-Editor (MLE, see
+are used for the \*(OPal built-in Mailx-Line-Editor
+.Mx -sx
+.Sx MLE
+(see
 .Sx "On terminal control and line editor" ) ,
 and do not support preconditions.
 .Pp
@@ -9188,7 +9192,10 @@ If this variable is not set no reverse solidus stripping is performed.
 keys, for example, but these sequences may not become read as a unit.
 Multi-byte sequences may also be defined freely via
 .Ic bind .
-This variable specifies the timeout in milliseconds that the MLE (see
+This variable specifies the timeout in milliseconds that the
+.Mx -sx
+.Sx MLE
+(see
 .Sx "On terminal control and line editor" )
 waits for more bytes to arrive unless it considers a sequence
 .Dq complete .
@@ -10050,7 +10057,10 @@ If this variable is set only basic US-ASCII symbols will be used.
 .It Va history-file
 \*(OP The (expandable) location of a permanent
 .Ic history
-file for the MLE line editor
+file for the
+.Mx -sx
+.Sx MLE
+line editor
 .Pf ( Sx "On terminal control and line editor" ) .
 Also see
 .Va history-size .
@@ -10283,7 +10293,12 @@ This setting causes all saved message to be retained.
 .
 .Mx
 .It Va line-editor-config
-\*(OP Interpreted as a comma-separated list of case-insensitive keywords.
+\*(OP
+Some aspects of the
+.Mx -sx
+.Sx MLE
+are dynamically adjustable.
+Interpreted as a comma-separated list of case-insensitive keywords.
 .Ql quote-rndtrip
 denotes the default setting of
 .Cd mle-quote-rndtrip .
@@ -11115,7 +11130,10 @@ set on-compose-splice=ocsm
 .It Va on-history-addition
 This hook will be called if an entry is about to be added to the
 .Ic history
-of the MLE, as documented in
+of the
+.Mx -sx
+.Sx MLE ,
+as documented in
 .Sx "On terminal control and line editor" .
 It will be called with three arguments: the first is the name of the
 input context (see
@@ -13435,7 +13453,9 @@ Queried and used once on program startup in interactive or batch
 mode on a (pseudo-) terminal.
 Actively managed
 .Pf ( Ql SIGWINCH )
-for child processes and the MLE
+for child processes and the
+.Mx -sx
+.Sx MLE
 .Pf ( Sx "On terminal control and line editor" )
 in interactive mode thereafter.
 Non-interactive mode always uses, and the fallback default is
@@ -14820,55 +14840,54 @@ define update_access_token {
 .
 .\" .Ss "Not \(dqdefunctional\(dq, but the editor key does not work" {{{ review
 .Ss "Not \(dqdefunctional\(dq, but the editor key does not work"
-.
-Two thinkable situations: the first is a shadowed sequence; setting
-.Va debug ,
-or the most possible
+Maybe a sequence is shadowed; setting
+.Va debug
+or maximum
 .Va verbose
-mode, causes a printout of the
+causes a
 .Ic bind
-tree after that is built; being a cache, this happens only upon startup
-or after modifying bindings.
+tree dump after (re-)build (upon startup or after modifying bindings).
 .
 .Pp
-Or second, terminal libraries (see
+Or the terminal library (see
 .Sx "On terminal control and line editor",
 .Ic bind ,
 .Va termcap )
-may report different codes than the terminal really sends, rendering
-bindings dysfunctional because expected and received data do not match; the
-.Va verbose
-listing of
-.Ic bind Ns
-ings will show the byte sequences that are expected.
-(One common source of problems is that the \(em possibly even
+reports different codes than
+.Ev TERM
+generates, causing
+dysfunctional bindings because of mismatches.
+(One common source of this is that the \(em possibly even
 non-existing \(em keypad is not turned on, and the resulting layout
-reports the keypad control codes for the normal keyboard keys.)
-.
-.Pp
-To overcome the situation use for example the program
-.Xr cat 1
-with its option
-.Fl \&\&v ,
-if available, to see the byte sequences which are actually produced
-by keypresses, and use the variable
-.Va termcap
-to make \*(Xx aware of them.
-The terminal this is typed on produces some unexpected sequences,
-here for an example the shifted home key:
+reports codes for the normal keyboard keys.)
+The expected code sequences are shown by
+.Ic bind
+in
+.Va verbose
+mode, the
+.Mx -sx
+.Sx MLE
+loggs the generated ones if
+.Va debug
+is set in conjunction with maximum
+.Va verbose .
+After detecting the correct codes these can be placed in
+.Va termcap .
+Here a hypothetic HOME key example (with redundancy removed):
 .
 .Bd -literal -offset indent
-? set verbose
-? bind*
+? set verbose; bind*
 # 1B 5B=[ 31=1 3B=; 32=2 48=H
-  bind base :kHOM z0
-? x
-$ cat -v
-^[[H
-$ \*(xX -v -Stermcap='kHOM=\eE[H'
-? bind*
+  bind base :khome mle-go-home
+? set verbose=3 debug
+# ..pressing HOME key
+? s-nail: \ex1B/?
+s-nail: \ex5B/[
+s-nail: \ex48/H
+#[..]
+? set noverbose nodebug termcap='khome=\eE[H'; bind*
 # 1B 5B=[ 48=H
-  bind base :kHOM z0
+  bind base :khome mle-go-home
 .Ed
 .\" }}}
 .
