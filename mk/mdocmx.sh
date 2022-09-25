@@ -9,11 +9,11 @@
 #@ -c: only with -t or -T: whether compact TOC display shall be generated
 #@ Set $AWK environment to force a special awk(1) interpreter.
 #
-# Written 2014 - 2020 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# Written 2014 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
 # Public Domain
 
 : ${TMPDIR:=/tmp}
-: ${ENV_TMP="${TMPDIR}:${TMP}:${TEMP}"}
+: ${ENV_TMP:="${TMPDIR}:${TMP}:${TEMP}"}
 
 #  --  >8  --  8<  --  #
 
@@ -113,13 +113,13 @@ i=`expr ${OPTIND} - 1`
 
 ##
 
-# awk(1) doesn't support signal handlers, which means that, when we're part of
-# a pipe which the user terminates, we are not capable to deal with the broken
-# pipe case that our END{} handler will generate when we had to perform any
-# preprocessing, and that in turn would result in a dangling temporary file!
+# awk(1) does not support signal handlers, so when we are part of a pipe which
+# the user terminates we are not capable to deal with the broken pipe case that
+# our END{} handler will generate when we had to perform any preprocessing, and
+# that in turn would result in a dangling temporary file!
 # Thus the only sane option seems to be to always create the temporary file,
-# whether we need it or not, not to exec(1) awk(1) but keep on running shell
-# in order to remove the temporary after awk(1) has finished, whichever way.
+# whether we need it or not, not to exec(1) awk(1) but keep on running shell in
+# order to remove the temporary after awk(1) has finished, whichever way.
 
 find_tmpdir() {
   i=${IFS}
