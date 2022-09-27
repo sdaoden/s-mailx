@@ -4840,6 +4840,27 @@ t_vpospar() { # {{{
    #}}}
    check ifs 0 ./tifs '2015927702 706'
 
+   ${MAILX} ${ARGS} -X '
+      set x=$'"'"'a b\nc d\ne f\n'"'"'
+      vpospar set $x
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      eval vpospar set $x
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      set ifs=$'"'"'\n'"'"'
+      eval vpospar set $x
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      unset ifs
+      vput vpospar i quote
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      vpospar clear
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      echo i<$i>
+      eval vpospar set $i
+      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      xit
+      ' > ./tifs-2 2>&1
+   check ifs-2 0 ./tifs-2 '1412306707 260'
+
    t_epilog "${@}"
 } # }}}
 
