@@ -6540,7 +6540,9 @@ otherwise success indicating status.
 .Ic readctl
 activated descriptor, split as indicated by
 .Va ifs ,
-into to the given variable(s), which must honour
+into to the given
+.Cm local Ns
+izable variable(s), which must honour
 .Mx -sx
 .Sx "variable name rules"
 .Pf ( Va \&!
@@ -6596,7 +6598,9 @@ maybe
 .It Ic readall
 \*(NQ Read anything unexpanded from standard input, or the
 .Ic readctl
-activated descriptor, into to the given variable, which must honour
+activated descriptor, into to the given
+.Cm local Ns
+izable variable, which must honour
 .Mx -sx
 .Sx "variable name rules"
 .Pf ( Va \&!

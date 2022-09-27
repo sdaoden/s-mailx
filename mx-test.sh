@@ -5001,6 +5001,27 @@ t_read() { # {{{
 	__EOT
    check readall 0 ./treadall '4113506527 405'
 
+   {
+      echo abra
+      echo kadabra
+   } > ./tlocalin
+
+   ${MAILX} ${ARGS} -X '
+      commandalias r read
+      commandalias x echo \$?/\$^ERRNAME
+      define x {
+         echo ==$1
+         readctl creat ./tlocalin;x
+         local eval $1 locvar;x;echo "L<$locvar>"
+         readctl remo ./tlocalin;x
+      }
+      set locvar=run
+      call x read;echo "G<$locvar>"
+      call x readall;echo "G<$locvar>"
+      xit
+      ' > ./tlocal
+   check local 0 ./tlocal '293471176 99'
+
    t_epilog "${@}"
 } # }}}
 
@@ -5025,6 +5046,25 @@ t_readsh() { # {{{ TODO not enough
    readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
 	__EOT
    check 1 0 ./t1 '2955084684 291'
+
+   {
+      echo abra
+      echo kadabra
+   } > ./tlocalin
+
+   ${MAILX} ${ARGS} -X '
+      commandalias r read
+      commandalias x echo \$?/\$^ERRNAME
+      define x {
+         readctl creat ./tlocalin;x
+         local readsh locvar;x;echo "L<$locvar>"
+         readctl remo ./tlocalin;x
+      }
+      set locvar=run
+      call x;echo "G<$locvar>"
+      xit
+      ' > ./tlocal
+   check local 0 ./tlocal '2737640059 36'
 
    t_epilog "${@}"
 } # }}}
