@@ -51,7 +51,7 @@ static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 
 /* c_read(), c_readsh() */
 static int a_cmisc_read(void *vp, boole atifs);
-static boole a_cmisc_read_set(char const *cp, char const *value);
+static boole a_cmisc_read_set(char const *cp, char const *value, boole local);
 
 /* c_version() */
 static su_sz a_cmisc_version_cmp(void const *s1, void const *s2);
@@ -169,8 +169,10 @@ a_cmisc_read(void * volatile vp, boole atifs){
    char const *ifs, **argv, *cp;
    char *linebuf;
    uz linesize, i;
+   boole cm_local;
    NYD2_IN;
 
+   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
    s = n_string_creat_auto(&s_b);
    s = n_string_reserve(s, 64 -1);
    mx_fs_linepool_aquire(&linebuf, &linesize);
@@ -249,7 +251,7 @@ jsh_redo:
                goto jsh_redo;
          }
 
-         if(!a_cmisc_read_set(*argv, n_string_cp(s))){
+         if(!a_cmisc_read_set(*argv, n_string_cp(s), cm_local)){
             n_pstate_err_no = su_ERR_NOTSUP;
             rv = -1;
             break;
@@ -259,7 +261,7 @@ jsh_redo:
 
    /* Set the remains to the empty string */
    for(; *argv != NIL; ++argv)
-      if(!a_cmisc_read_set(*argv, su_empty)){
+      if(!a_cmisc_read_set(*argv, su_empty, cm_local)){
          n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
          break;
@@ -275,7 +277,7 @@ jleave:
 }
 
 static boole
-a_cmisc_read_set(char const *cp, char const *value){
+a_cmisc_read_set(char const *cp, char const *value, boole local){
    boole rv;
    NYD2_IN;
 
@@ -283,14 +285,14 @@ a_cmisc_read_set(char const *cp, char const *value){
       value = N_("not a valid variable name");
    else if(!n_var_is_user_writable(cp))
       value = N_("variable is read-only");
-   else if(!n_var_vset(cp, S(up,value), FAL0))
+   else if(!n_var_vset(cp, S(up,value), local))
       value = N_("failed to update variable value");
    else{
       rv = TRU1;
       goto jleave;
    }
 
-   n_err("read: %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
+   n_err("read{,sh}: %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
    rv = FAL0;
 
 jleave:
@@ -609,7 +611,8 @@ c_readall(void *vp){ /* TODO 64-bit retval */
       }
    }
 
-   if(!a_cmisc_read_set(argv[0], n_string_cp(s))){
+   if(!a_cmisc_read_set(argv[0], n_string_cp(s),
+         ((n_pstate & n_PS_ARGMOD_LOCAL) != 0))){
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
       goto jleave;

@@ -602,11 +602,11 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 { "reply", &c_reply, (A | I | L | LNMAC | R | SC | EM | TMSGLST),
       0, MMNDEL, NIL
      DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "read", &c_read, (HG | M | X | EM | TWYSH), 1, MAC, NIL
+   { "read", &c_read, (HG | L | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Read a line into <variable>(s), split at $ifs")) },
-   { "readsh", &c_readsh, (HG | M | X | EM | TWYSH), 1, MAC, NIL
+   { "readsh", &c_readsh, (HG | L | M | X | EM | TWYSH), 1, MAC, NIL
      DS(N_("Read a line input into <variable>(s), split at shell tokens")) },
-   { "readall", &c_readall, (HG | M | X | EM | TWYSH), 1, 1, NIL
+   { "readall", &c_readall, (HG | L | M | X | EM | TWYSH), 1, 1, NIL
      DS(N_("Read anything from standard input until EOF into <variable>")) },
    { "readctl", &c_readctl, (HG | M | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_readctl)
