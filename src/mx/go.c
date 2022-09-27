@@ -616,20 +616,14 @@ jwhite:
       case mx_CMD_ARG_TYPE_NDMLIST:
       case mx_CMD_ARG_TYPE_WYSH:
       case mx_CMD_ARG_TYPE_ARG:{
-         boole once;
-
          emsg = line.s;
-         for(once = FAL0, s = n_string_creat_auto(&s_b);; once = TRU1){
+         for(s = n_string_creat_auto(&s_b);;){
             u32 shs;
 
             shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON |
                      n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_TRIM_SPACE |
                      n_SHEXP_PARSE_TRIM_IFSSPACE), s, &line,
                   NIL);
-
-            if(!once && (flags & a_IS_EMPTY) && s->s_len != 0)
-               n_err(_("The empty (default) command is ignored here, "
-                     "but has arguments: %s\n"), emsg);
             if(line.l == 0)
                break;
             if(shs & n_SHEXP_STATE_META_SEMICOLON){
