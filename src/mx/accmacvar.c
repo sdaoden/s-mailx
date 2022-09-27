@@ -2045,17 +2045,11 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
       struct a_amv_mac_call_args *amcap;
 
       amcap = a_amv_lopts->as_amcap;
+      ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK);
 
       argc = amcap->amca_pospar->app_count;
       argv = amcap->amca_pospar->app_dat;
       argv += amcap->amca_pospar->app_idx;
-
-      /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
-      if(!(ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) &&
-            amcap->amca_amp != NIL && (amcap->amca_ps_hook_mask ||
-               (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
-                  ) == a_AMV_MF_ACCOUNT))
-         goto jleave;
 
       if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
          if(avcp->avc_special_prop > 0){
