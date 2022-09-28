@@ -3998,8 +3998,9 @@ c_vpospar(void *v){
       a_NONE = 0,
       a_ERR = 1u<<0,
       a_SET = 1u<<1,
-      a_CLEAR = 1u<<2,
-      a_QUOTE = 1u<<3
+      a_EVALSET = 1u<<2,
+      a_CLEAR = 1u<<3,
+      a_QUOTE = 1u<<4
    };
 
    struct mx_cmd_arg *cap;
@@ -4007,7 +4008,7 @@ c_vpospar(void *v){
    struct a_amv_pospar *appp;
    BITENUM_IS(u32,a_flags) f;
    char const *varres;
-   struct mx_cmd_arg_ctx *cacp;
+   struct mx_cmd_arg_ctx *cacp, cac;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
@@ -4017,6 +4018,8 @@ c_vpospar(void *v){
 
    if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s))
       f = a_SET;
+   else if(su_cs_starts_with_case("evalset", cap->ca_arg.ca_str.s))
+      f = a_SET | a_EVALSET;
    else if(su_cs_starts_with_case("clear", cap->ca_arg.ca_str.s))
       f = a_CLEAR;
    else if(su_cs_starts_with_case("quote", cap->ca_arg.ca_str.s))
@@ -4031,7 +4034,7 @@ c_vpospar(void *v){
    }
    --cacp->cac_no;
 
-   if((f & (a_CLEAR | a_QUOTE)) && cap->ca_next != NIL){
+   if((f & (a_CLEAR | a_QUOTE)) && cacp->cac_no > 0){
       n_err(_("vpospar: %s: takes no argument\n"), cap->ca_arg.ca_str.s);
       n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
@@ -4055,30 +4058,66 @@ c_vpospar(void *v){
       }
       su_mem_set(appp, 0, sizeof *appp);
 
-      if(f & a_SET){
-         if((i = cacp->cac_no) > a_AMV_POSPAR_MAX){
-            n_err(_("vpospar: overflow: %" PRIuZ " arguments!\n"), i);
-            n_pstate_err_no = su_ERR_OVERFLOW;
+      if(f & a_CLEAR)
+         goto jleave;
+
+      if((i = cacp->cac_no) == 0)
+         goto jleave;
+
+      if(f & a_EVALSET){
+         mx_CMD_ARG_DESC_SUBCLASS_DEF(evalset, 1, a_pseudo_evalset_arg){
+            {mx_CMD_ARG_DESC_SHEXP |
+                  mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP/*?*/,
+               n_SHEXP_PARSE_IFS_VAR | /*n_SHEXP_PARSE_TRIM_IFSSPACE |*/
+                  n_SHEXP_PARSE_IGNORE_COMMENT} /* args */
+         }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+         static struct mx_cmd_desc const a_pseudo_evalset = {
+            "vpospar evalset", R(int(*)(void*),-1), mx_CMD_ARG_TYPE_ARG, 0, 0,
+            mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_pseudo_evalset_arg), NIL
+         };
+
+         if(i > 1){
+            n_err(_("vpospar: evalset: only takes one argument\n"));
+            n_pstate_err_no = su_ERR_INVAL;
             f = a_ERR;
             goto jleave;
          }
 
-         if(i > 0){
-            appp->app_maxcount = appp->app_count = S(u16,i);
-            /* XXX Optimize: store it all in one chunk! */
-            ++i;
-            i *= sizeof *appp->app_dat;
-            appp->app_dat = su_ALLOC(i);
-
-            for(i = 0; cap != NIL; ++i, cap = cap->ca_next){
-               appp->app_dat[i] = su_ALLOC(cap->ca_arg.ca_str.l +1);
-               su_mem_copy(UNCONST(char*,appp->app_dat[i]),
-                  cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
-            }
-
-            appp->app_dat[i] = NIL;
+         su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+         cac.cac_desc = a_pseudo_evalset.cd_cadp;
+         cac.cac_indat = cap->ca_arg.ca_str.s;
+         cac.cac_inlen = cap->ca_arg.ca_str.l;
+         if(!mx_cmd_arg_parse(&cac)){
+            f = a_ERR;
+            goto jleave;
          }
+
+         cacp = &cac;
+         cap = cacp->cac_arg;
+         if((i = cacp->cac_no) == 0)
+            goto jleave;
       }
+
+      if(i > a_AMV_POSPAR_MAX){
+         n_err(_("vpospar: overflow: %" PRIuZ " arguments!\n"), i);
+         n_pstate_err_no = su_ERR_OVERFLOW;
+         f = a_ERR;
+         goto jleave;
+      }
+
+      appp->app_maxcount = appp->app_count = S(u16,i);
+      /* XXX Optimize: store it all in one chunk! */
+      ++i;
+      i *= sizeof *appp->app_dat;
+      appp->app_dat = su_ALLOC(i);
+
+      for(i = 0; cap != NIL; ++i, cap = cap->ca_next){
+         appp->app_dat[i] = su_ALLOC(cap->ca_arg.ca_str.l +1);
+         su_mem_copy(UNCONST(char*,appp->app_dat[i]),
+            cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
+      }
+      appp->app_dat[i] = NIL;
    }else{
       if(appp->app_count == 0)
          varres = su_empty;
