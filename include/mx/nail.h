@@ -327,6 +327,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
+   n_SHEXP_PARSE_IGNORE_COMMENT = 1u<<10, /* # does not start a comment */
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the

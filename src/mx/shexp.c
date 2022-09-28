@@ -1434,7 +1434,8 @@ jrestart:
             last_known_meta_trim_len = U32_MAX;
          }
          /* A comment may it be if no token has yet started */
-         else if(c == '#' && (state & a_NTOKEN)){
+         else if(c == '#' &&
+               (state & a_NTOKEN) && !(flags & n_SHEXP_PARSE_IGNORE_COMMENT)){
             ib += il;
             il = 0;
             rv |= n_SHEXP_STATE_STOP;
@@ -2036,9 +2037,10 @@ jleave:
 
       /* At the start of the next token: if this is a comment, simply throw
        * away all the following data! */
-      if(il > 0 && *ib == '#'){
+      if(il > 0 && *ib == '#' && !(flags & n_SHEXP_PARSE_IGNORE_COMMENT)){
          ib += il;
          il = 0;
+         rv |= n_SHEXP_STATE_STOP;
       }
    }
 
