@@ -95,7 +95,7 @@ enum mx_cmd_arg_desc_flags{
    mx_CMD_ARG_DESC_GREEDY = 1u<<17,
    /* If greedy, join all given arguments separated by ASCII SP right away */
    mx_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
-   /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
+   /* Honour an overall "stop" request in one of the arguments (#) */
    mx_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
    /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
    mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,

@@ -1015,10 +1015,10 @@ mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
    rv = FAL0;
 
    while(cnt > 0){
+      su_STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
       cac.cac_desc = a_cmd_eval.cd_cadp;
       cac.cac_indat = io->s;
       cac.cac_inlen = io->l;
-      cac.cac_msgflag = cac.cac_msgmask = 0;
       if(!mx_cmd_arg_parse(&cac))
          goto jleave;
 
