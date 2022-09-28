@@ -4861,6 +4861,22 @@ t_vpospar() { # {{{
       ' > ./tifs-2 2>&1
    check ifs-2 0 ./tifs-2 '1412306707 260'
 
+   ${MAILX} ${ARGS} -X '
+      set x=$'"'"'a b\n#c d\ne f\n'"'"'
+      set ifs=$'"'"'\n'"'"'; vpospar set $x; unset ifs
+      echo $#: <$1><$2><$3>
+      set ifs=$'"'"'\n'"'"'; eval vpospar set $x; unset ifs
+      echo $#: <$1><$2><$3>
+      set ifs=$'"'"'\n'"'"'; vpospar evalset $x; unset ifs
+      echo $#: <$1><$2><$3>
+      vpospar evalset ""
+      echo $#: <$1><$2><$3>
+      vpospar evalset "a b c"
+      echo $#: <$1><$2><$3>
+      xit
+      ' > ./tevalset 2>&1
+   check evalset 0 ./tevalset '2054446552 79'
+
    t_epilog "${@}"
 } # }}}
 
