@@ -7662,6 +7662,13 @@ the remaining arguments will be used to (re)create the stack,
 if the parameter stack size limit is excessed an
 .Va ^ERR Ns -OVERFLOW
 error will occur.
+.Ql evalset
+acts likewise, but only takes one argument to furtherly
+.Cm eval Ns
+uate in a special mode where number sign
+.Ql #
+is an ordinary character
+.Pf ( Sx "Shell-style argument quoting" ) .
 .
 .Pp
 If the first argument is
@@ -7689,12 +7696,26 @@ to losslessly (re)create an argument stack from and to a single variable.
 .
 .Bd -literal -offset indent
 ? vpospar set hey, "'you    ", world!
-? echo $#: <${1}><${2}><${3}>
+? echo $#: <$1><$2><$3>
 ? vput vpospar x quote
 ? vpospar clear
-? echo $#: <${1}><${2}><${3}>
-? eval vpospar set ${x}
-? echo $#: <${1}><${2}><${3}>
+? echo $#: <$1><$2><$3>
+? eval vpospar set $x
+? echo $#: <$1><$2><$3>
+?
+? set x=$'a b\en#c d\ene f\en'
+? set ifs=$'\en'; vpospar set $x; unset ifs
+? echo $#: <$1><$2><$3>
+1: <a b
+#c d
+e f
+><><>
+? set ifs=$'\en'; eval vpospar set $x; unset ifs
+? echo $#: <$1><$2><$3>
+1: <a b><><>
+? set ifs=$'\en'; vpospar evalset $x; unset ifs
+? echo $#: <$1><$2><$3>
+3: <a b><#c d><e f>
 .Ed
 .
 .
