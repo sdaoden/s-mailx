@@ -494,12 +494,21 @@ jrestart:
    }
 
    if((cdp = mx_cmd_firstfit(word)) == NIL){
-      if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
+      boole isskip;
+
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
+      isskip = ((flags & a_IS_SKIP) != 0);
+
+      /* TODO as long as `define' takes over input and consumes until }
+       * TODO ie we do not have on-line-completed-event or however we do it,
+       * TODO we must ignore "a closing }" here */
+      if(isskip && word[0] == '}' && word[1] == '\0')
+         goto jret0;
+      if(!isskip || (n_poption & n_PO_D_VVV))
          n_err(_("%s: unknown command%s\n"),
             prstr(word), ((flags & a_IS_SKIP)
                ? _(" (ignored due to `if' condition)") : su_empty));
-      gecp->gec_hist_flags = a_GO_HIST_NONE;
-      if(flags & a_IS_SKIP)
+      if(isskip)
          goto jret0;
       nerrn = su_ERR_NOSYS;
       goto jleave;
