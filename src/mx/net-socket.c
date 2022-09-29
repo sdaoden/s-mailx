@@ -723,6 +723,9 @@ mx_socket_write1(struct mx_socket *sop, char const *data, int size,
    int x;
    NYD2_IN;
 
+   if(sop->s_fd == -1)
+      goto jleave;
+
    if (use_buffer > 0) {
       int di;
 
@@ -829,6 +832,11 @@ int
    if (sop->s_rsz < 0) {
       mx_socket_close(sop);
       rv = sop->s_rsz;
+      goto jleave;
+   }
+
+   if(sop->s_fd == -1){
+      rv = -1;
       goto jleave;
    }
 
