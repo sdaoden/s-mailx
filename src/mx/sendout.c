@@ -527,7 +527,10 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
       charset = ap->a_charset;
       convert = mx_mime_type_classify_file(fi, (char const**)&ct,
             &charset, &do_iconv, TRU1);
-      if(convert == CONV_8BIT)
+
+      if(ap->a_conv_force_b64)
+         convert = CONV_TOB64;
+      else if(convert == CONV_8BIT)
          hp->h_flags |= HF_MESSAGE_8BITMIME;
 
       if(charset == NIL || ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS ||

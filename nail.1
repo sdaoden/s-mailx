@@ -204,7 +204,8 @@ or
 are set.
 .
 .Mx
-.It Fl a Ar file Ns Oo Ar =input-charset Ns Oo Ar #output-charset Oc Oc , \
+.It Fl a Ar file Ns Oo Ar = Ns Oo ! Oc Ns input-charset Ns \
+    Oo Ar # Ns Oo ! Oc Ns output-charset Oc Oc , \
   Fl Fl attach Ns =..
 \*(SM Attach
 .Ar file ,
@@ -212,43 +213,50 @@ subject to tilde expansion (see
 .Sx "Filename transformations"
 and
 .Ic folder ) .
-If
-.Ar file
-is not accessible but contains an equal-sign
-.Ql =
-it is split into a filename and a character set specification,
-interpreted as below.
-(In
+In
 .Sx "Compose mode"
 the
 .Sx "COMMAND ESCAPES"
 .Ic ~@
 and especially the scriptable
 .Ic ~^
-provide alternatives.)
+provide alternatives for attaching files.
 .Pp
-If only an input character set
+If
+.Ar file
+is not accessible but contains an equal-sign
+.Ql =
+a character set specification is split off.
 .Mx -ix "character set specification"
-is specified the input side is fixed and no conversion is applied;
+If only an input one is given it is fixated and no conversion is applied;
 an empty, or the special string hyphen-minus
 .Ql -
 means
 .Va ttycharset .
-If an output character set has also been specified the conversion
-is performed immediately, not considering file type and content;
-however, an empty string or hyphen-minus
+If an output one is given the conversion is performed on-the-fly, not
+considering file type nor content; however, empty string or hyphen-minus
 .Ql -
-enforce the default conversion of
-.Sx "Character sets" ,
+enforce the default
+.Sx "Character sets"
+conversion
+.Pf ( Ql -a file ,
+.Ql -a file=# ,
+and
+.Ql -a file=-#-
+are identical),
 later applied after MIME-classifying
 .Ar file
-.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files")
-first.
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files") .
 Without
 .Ql ,+iconv,
 in
 .Va features
 only this mode is available.
+The character set names may be prefixed with exclamation mark
+.Ql \&!
+to enforce base64
+.Va mime-encoding
+of the attachment.
 .
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
