@@ -60,7 +60,9 @@ struct mx_attachment{
    char const *a_input_charset; /* Interpretation depends on .a_conv */
    char const *a_charset; /* ... */
    FILE *a_tmpf; /* If AC_TMPFILE */
-   enum mx_attachments_conv a_conv; /* User chosen conversion */
+   BITENUM_IS(u8,mx_attachments_conv) a_conv; /* User chosen conversion */
+   boole a_conv_force_b64; /* Encode in base64, always; only files*/
+   u8 a__pad[3];
    int a_msgno; /* message number */
 };
 

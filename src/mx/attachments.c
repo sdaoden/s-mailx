@@ -1,5 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of attachments.h.
+ *@ TODO: even though we attach DOS \r\n files as such, we normalize when
+ *@ TODO  `write'ing then: t_attachments:cnv-2.5.write
  *
  * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -225,6 +227,7 @@ mx_attachments_append(struct mx_attachment *aplist, char const *file,
    FILE *cnvfp;
 #endif
    int msgno;
+   boole force_b64;
    char const *file_user, *incs, *oucs;
    struct mx_attachment *nap, *ap;
    enum mx_attachments_error aerr;
@@ -236,6 +239,7 @@ mx_attachments_append(struct mx_attachment *aplist, char const *file,
    aerr = mx_ATTACHMENTS_ERR_NONE;
    nap = NIL;
    incs = oucs = NIL;
+   force_b64 = FAL0;
 
    if(*file == '\0'){
       aerr = mx_ATTACHMENTS_ERR_OTHER;
@@ -278,7 +282,10 @@ jrefexp:
 
             nfp = savestrbuf(file, P2UZ(cp - file));
 
-            for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
+            if((force_b64 = (*(ncp = ++cp) == '!')))
+               ncp = ++cp;
+
+            for(; (c = *cp) != '\0'; ++cp)
                if(!su_cs_is_alnum(c) && !su_cs_is_punct(c))
                   break;
                else if(c == '#'){
@@ -291,7 +298,11 @@ jrefexp:
                         e = su_ERR_INVAL;
                         goto jerr_fopen;
                      }
-                     ncp = &cp[1];
+
+                     if(*(ncp = &cp[1]) == '!'){
+                        force_b64 = TRU1;
+                        ++ncp, ++cp;
+                     }
                   }else
                      break;
                }
@@ -324,7 +335,9 @@ jerr_fopen:
    }
 
    nap = a_attachments_setup_base(su_AUTO_CALLOC(sizeof *nap), file);
+   nap->a_conv_force_b64 = force_b64;
    nap->a_path_user = file_user;
+
    if(msgno >= 0)
       nap = a_attachments_setup_msg(nap, file, msgno);
    else{
@@ -566,11 +579,12 @@ mx_attachments_list_print(struct mx_attachment const *aplist, FILE *fp){
          }else
             incs = oucs = su_reproducible_build;
 
-         if(fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
+         if(fprintf(fp, "#%" PRIu32 ": %s [%s -- %s%s",
                attno, n_shexp_quote_cp(ap->a_name, FAL0),
                n_shexp_quote_cp(ap->a_path, FAL0),
                (ap->a_content_type != NIL
-                ? ap->a_content_type : _("unclassified content"))) < 0)
+                ? ap->a_content_type : _("unclassified content")),
+               (ap->a_conv_force_b64 ? _(", base64 enforced") : su_empty)) < 0)
             goto jerr;
 
          if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
