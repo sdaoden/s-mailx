@@ -8983,6 +8983,70 @@ reply 1 2
       ex@am.ple > ./t11 2>&1
    check 11 0 ./t11 '602355274 477'
 
+   # default conv with ! base64 enforcement, too
+   printf 'one line\012' > ./tcnv
+   check cnv-1.0 - ./tcnv  '665489461 9'
+
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-1.1 2>&1
+   check cnv-1.1 0 ./tcnv-1.1 '1383471891 569'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-1.2 2>&1
+   check cnv-1.2 0 ./tcnv-1.2 '1383471891 569'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-1.3 2>&1
+   check cnv-1.3 0 ./tcnv-1.3 '1383471891 569'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-1.4 2>&1
+   check cnv-1.4 0 ./tcnv-1.3 '1383471891 569'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-1.5 2>&1
+   check cnv-1.5 0 ./tcnv-1.5 '1383471891 569'
+   </dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.5 \
+      > ./tcnv-1.5.verify 2>&1
+   check cnv-1.5.verify 0 ./tcnv-1.5.verify '3289363155 36'
+   check cnv-1.5.write - ./tcnv#1.2 '665489461 9'
+
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-1.6 2>&1
+   check cnv-1.6 0 ./tcnv-1.6 '1023221665 607'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-1.7 2>&1
+   check cnv-1.7 0 ./tcnv-1.7 '1023221665 607'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-1.8 2>&1
+   check cnv-1.8 0 ./tcnv-1.8 '1023221665 607'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-1.9 2>&1
+   check cnv-1.9 0 ./tcnv-1.9 '1023221665 607'
+   </dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.9 \
+      > ./tcnv-1.9.verify 2>&1
+   check cnv-1.9.verify 0 ./tcnv-1.9.verify '3289363155 36'
+   check cnv-1.9.write - ./tcnv#1.2#1.2 '665489461 9'
+
+   printf 'one line\015\012' > ./tcnv
+   check cnv-2.0 - ./tcnv '3312016702 10'
+
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-2.1 2>&1
+   check cnv-2.1 0 ./tcnv-2.1 '576631173 571'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-2.2 2>&1
+   check cnv-2.2 0 ./tcnv-2.2 '576631173 571'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-2.3 2>&1
+   check cnv-2.3 0 ./tcnv-2.3 '576631173 571'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-2.4 2>&1
+   check cnv-2.4 0 ./tcnv-2.3 '576631173 571'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-2.5 2>&1
+   check cnv-2.5 0 ./tcnv-2.5 '576631173 571'
+   </dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.5 \
+      > ./tcnv-2.5.verify 2>&1
+   check cnv-2.5.verify 0 ./tcnv-2.5.verify '3289363155 36'
+   # TODO John Holder wants '3312016702 10'; yet we normalize \r\n to \n
+   check cnv-2.5.write - ./tcnv#1.2#1.2#1.2 '665489461 9'
+
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-2.6 2>&1
+   check cnv-2.6 0 ./tcnv-2.6 '3670608759 612'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-2.7 2>&1
+   check cnv-2.7 0 ./tcnv-2.7 '3670608759 612'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-2.8 2>&1
+   check cnv-2.8 0 ./tcnv-2.8 '3670608759 612'
+   < ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-2.9 2>&1
+   check cnv-2.9 0 ./tcnv-2.9 '3670608759 612'
+   </dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.9 \
+      > ./tcnv-2.9.verify 2>&1
+   check cnv-2.9.verify 0 ./tcnv-2.9.verify '3289363155 36'
+   check cnv-2.9.write - ./tcnv#1.2#1.2#1.2#1.2 '3312016702 10'
+
    t_epilog "${@}"
 } # }}}
 
