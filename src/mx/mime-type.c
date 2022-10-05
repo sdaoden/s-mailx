@@ -78,11 +78,12 @@ enum a_mimetype_class{
    a_MIMETYPE_C_ISTXTCOK = 1u<<3, /* _ISTXT + *mime-allow-text-controls* */
    a_MIMETYPE_C_HIGHBIT = 1u<<4, /* Not 7bit clean */
    a_MIMETYPE_C_LONGLINES = 1u<<5, /* MIME_LINELEN_LIMIT exceed. */
-   a_MIMETYPE_C_CTRLCHAR = 1u<<6, /* Control characters seen */
-   a_MIMETYPE_C_HASNUL = 1u<<7, /* Contains \0 characters */
-   a_MIMETYPE_C_NOTERMNL = 1u<<8, /* Lacks a final newline */
-   a_MIMETYPE_C_FROM_ = 1u<<9, /* ^From_ seen */
-   a_MIMETYPE_C_FROM_1STLINE = 1u<<10, /* From_ line seen */
+   a_MIMETYPE_C_CRLF = 1u<<6, /* \x0D\x0A sequences */
+   a_MIMETYPE_C_CTRLCHAR = 1u<<7, /* Control characters seen */
+   a_MIMETYPE_C_HASNUL = 1u<<8, /* Contains \0 characters */
+   a_MIMETYPE_C_NOTERMNL = 1u<<9, /* Lacks a final newline */
+   a_MIMETYPE_C_FROM_ = 1u<<10, /* ^From_ seen */
+   a_MIMETYPE_C_FROM_1STLINE = 1u<<11, /* From_ line seen */
    a_MIMETYPE_C_SUGGEST_DONE = 1u<<16, /* Inspector suggests parse stop */
    a_MIMETYPE_C__1STLINE = 1u<<17 /* .. */
 };
@@ -647,6 +648,8 @@ a_mimetype_classify_round(struct a_mimetype_class_arg *mtcap){
          mtc &= ~a_MIMETYPE_C__1STLINE;
          if(curlnlen >= MIME_LINELEN_LIMIT)
             mtc |= a_MIMETYPE_C_LONGLINES;
+         if(lastc == '\r')
+            mtc |= a_MIMETYPE_C_CRLF;
          if(c == EOF)
             break;
          f_p = f_buf;
@@ -1315,12 +1318,14 @@ mx_mimetype_classify_file(FILE *fp, char const **content_type,
       goto jleave;
    }
 
-   if(mtc & (a_MIMETYPE_C_LONGLINES | a_MIMETYPE_C_CTRLCHAR |
+   if(mtc & (a_MIMETYPE_C_LONGLINES | a_MIMETYPE_C_CRLF |
+         a_MIMETYPE_C_CTRLCHAR |
          a_MIMETYPE_C_NOTERMNL | a_MIMETYPE_C_FROM_)){
       if(menc != MIMEE_B64 && menc != MIMEE_QP){
          /* If the user chooses 8bit, and we do not privacy-sign the message,
           * then if encoding would be enforced only because of a ^From_, no */
-         if((mtc & (a_MIMETYPE_C_LONGLINES | a_MIMETYPE_C_CTRLCHAR |
+         if((mtc & (a_MIMETYPE_C_LONGLINES | a_MIMETYPE_C_CRLF |
+                  a_MIMETYPE_C_CTRLCHAR |
                   a_MIMETYPE_C_NOTERMNL | a_MIMETYPE_C_FROM_)
                ) != a_MIMETYPE_C_FROM_ || no_mboxo)
             menc = MIMEE_QP;
