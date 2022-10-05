@@ -84,7 +84,7 @@ enum a_mt_class{
    a_MT_C_ISTXTCOK = 1u<<3, /* _ISTXT + *mime-allow-text-controls* */
    a_MT_C_HIGHBIT = 1u<<4, /* Not 7bit clean */
    a_MT_C_LONGLINES = 1u<<5, /* MIME_LINELEN_LIMIT exceed. */
-   a_MT_C_CRLF = 1u<<6, /* \x0D\x0A sequences */
+   a_MT_C_CRLF = 1u<<6, /* \x0D\x0A sequences HACK v15: simply reencode */
    a_MT_C_CTRLCHAR = 1u<<7, /* Control characters seen */
    a_MT_C_HASNUL = 1u<<8, /* Contains \0 characters */
    a_MT_C_NOTERMNL = 1u<<9, /* Lacks a final newline */
