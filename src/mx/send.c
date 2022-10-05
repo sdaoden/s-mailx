@@ -148,17 +148,17 @@ _out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
 
    flags = (S(u32,action) & mx__MIME_DISPLAY_EOF);
    action &= ~mx__MIME_DISPLAY_EOF;
-   n = mx_mime_write(buf, len, fp,
-         action == SEND_MBOX ? CONV_NONE : convert,
-         flags | ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
-            action == SEND_TODISP_PARTS ||
-            action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+   flags |= ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
+             action == SEND_TODISP_PARTS ||
+             action == SEND_QUOTE || action == SEND_QUOTE_ALL)
          ?  mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT
          : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
                action == SEND_TOFILE)
             ? mx_MIME_DISPLAY_ICONV
             : (action == SEND_SHOW ? mx_MIME_DISPLAY_ISPRINT
-                  : mx_MIME_DISPLAY_NONE)),
+                  : mx_MIME_DISPLAY_NONE));
+   n = mx_mime_write(buf, len, fp,
+         (action == SEND_MBOX ? CONV_NONE : convert), flags,
          qf, outrest, inrest);
    if (n < 0)
       size = n;

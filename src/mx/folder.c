@@ -329,7 +329,13 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset, boole iseml, boole maybepipe){
          break;
       }
 
-      /* Normalize away line endings, we will place (readded) \n */
+      /* TODO Normalize away line endings, we will place (readded) \n */
+      /* TODO v15 MIME layer rewrite: we need to parse this into a tree of
+       * TODO objects, and the "Part" object must recognize the used line
+       * TODO ending; this is in fact standard, RFC 2045 etc; ie, we may need
+       * TODO to reencode a part when writing a RFC 5322 eml, or when writing
+       * TODO a RFC 4155 MBOX, in order to keep the part-native line-endings
+       * TODO alive; in particular RFC 2045 about CRLF regarding this!! */
       if(cnt >= 2 && linebuf[cnt - 2] == '\r')
          linebuf[--cnt] = '\0';
       linebuf[--cnt] = '\0';
