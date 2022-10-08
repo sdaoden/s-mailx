@@ -2505,6 +2505,18 @@ s I1=0 I2=2 I3=+E+ I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
       > ./tarith-bad 2>>${ERR}
    check arith-bad 0 ./tarith-bad '1862980575 467'
 
+   </dev/null ${MAILX} ${ARGS} -Y '
+      define x {
+         \local :$((myvar=1+1))
+         \vars myvar
+      }
+      \vars myvar
+      \call x
+      \vars myvar
+      \xit
+   ' > ./tarith-local 2>&1
+   check arith-local 0 ./tarith-local '455497105 40'
+
    t_epilog "${@}"
 } # }}}
 
