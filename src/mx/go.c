@@ -360,6 +360,12 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
       gecp->gec_hist_cmd = gecp->gec_hist_args = NIL;
    s = NIL;
 
+   /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
+    * TODO does not use any of those list commands which strip this mask,
+    * TODO and for now we misuse bits for checking relation to history;
+    * TODO argument state should be property of a per-cmd carrier instead */
+   n_pstate &= ~n_PS_ARGLIST_MASK;
+
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
@@ -498,6 +504,9 @@ jrestart:
    }
 
    if(eval_cnt > 0){
+      /* $(()) may set variables, check and set now! */
+      if(flags & a_LOCAL)
+         n_pstate |= n_PS_ARGMOD_LOCAL;
       if(!mx_cmd_eval(&line, eval_cnt, word)){
          flags |= a_NO_ERRNO;
          goto jleave;
@@ -718,12 +727,6 @@ jeflags:
             cdp->cd_name);
       }
    }
-
-   /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
-    * TODO does not use any of those list commands which strip this mask,
-    * TODO and for now we misuse bits for checking relation to history;
-    * TODO argument state should be property of a per-cmd carrier instead */
-   n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if(flags & a_WYSH){
       switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){

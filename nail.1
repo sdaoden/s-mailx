@@ -3897,6 +3897,11 @@ is an error, as it is
 is ok.
 .It Ar **= , *= , /= , %= , += , -= , <<= , >>= , >>>= , &= , ^= , |= , =
 Assignment.
+It is subject to scoping rules;
+.Cm local Ns
+ly
+.Ic set Ns
+ting a variable before arithmetically expanding it is an option.
 .It Ar EXPR1\0,\0EXPR2
 Comma (sequential evaluation).
 .El
