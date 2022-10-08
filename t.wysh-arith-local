@@ -1,0 +1,3 @@
+#unset: myvar
+set myvar=2
+#unset: myvar
