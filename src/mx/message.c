@@ -306,7 +306,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
       mp->m_flag = mf;
    }
 
-   su_mem_set(&msl, 0, sizeof msl);
+   STRUCT_ZERO(struct a_msg_speclex, &msl);
    msl.msl_cap = cap;
    msl.msl_input_orig = orig;
 
