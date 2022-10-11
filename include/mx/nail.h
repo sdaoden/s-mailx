@@ -484,12 +484,13 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<12, /* Need $COLUMNS/$LINES update (xxx atomic) */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = su_BITENUM_MASK(13, 16),
-   n_PS_MSGLIST_MASK = su_BITENUM_MASK(16, 16),
-   n_PS_ARGMOD_LOCAL = 1u<<13, /* "local" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_VPUT = 1u<<14, /* "vput" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_WYSH = 1u<<15, /* "wysh" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<16, /* getmsglist() saw gabby stuff TODO CmdCtx */
+   n_PS_ARGLIST_MASK = su_BITENUM_MASK(13, 17),
+   n_PS_MSGLIST_MASK = su_BITENUM_MASK(17, 17),
+   n_PS_ARGMOD_GLOBAL = 1u<<13, /* "global" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
+   n_PS_MSGLIST_GABBY = 1u<<17, /* getmsglist() saw gabby stuff TODO CmdCtx */
 
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
