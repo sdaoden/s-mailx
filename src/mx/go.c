@@ -360,14 +360,14 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
       gecp->gec_hist_cmd = gecp->gec_hist_args = NIL;
    s = NIL;
 
+   /* Aliases that refer to shell commands or macro expansion restart */
+jrestart:
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO does not use any of those list commands which strip this mask,
     * TODO and for now we misuse bits for checking relation to history;
     * TODO argument state should be property of a per-cmd carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
-   /* Aliases that refer to shell commands or macro expansion restart */
-jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
       line.s[0] = '\0';
       flags |= a_IS_EMPTY;
@@ -412,14 +412,13 @@ jrestart:
    switch(c){
    default:
       break;
-   /*case sizeof("global") -1:*/
-   case sizeof("ignerr") -1:
+   case sizeof("global") -1:
+   /*case sizeof("ignerr") -1:*/
       if(!su_cs_cmp_case(word, "ignerr")){
          flags |= a_IGNERR;
          goto jrestart;
       }
-      if(!su_cs_cmp_case(word, "global")){
-         n_err(_("Ignoring yet unused `global' command modifier!"));
+      if(!su_cs_cmp_case(word, "global")){ /* (2nd because rarer) */
          flags |= a_GLOBAL;
          goto jrestart;
       }
@@ -494,6 +493,8 @@ jrestart:
          s = n_string_push_buf(s, "wysh ", sizeof("wysh ") -1);
       if(flags & a_IGNERR)
          s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
+      if(flags & a_GLOBAL)
+         s = n_string_push_buf(s, "global ", sizeof("global ") -1);
       if(flags & a_LOCAL)
          s = n_string_push_buf(s, "local ", sizeof("local ") -1);
       if(flags & a_VPUT)
@@ -668,7 +669,7 @@ jwhite:
    }
    if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
-      emsg = N_("%s: can only be used batch or interactive mode\n");
+      emsg = N_("%s: can only be used in batch or interactive mode\n");
       goto jeflags;
    }
    if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
@@ -759,7 +760,6 @@ jeflags:
          emsg = N_("%s: cannot use `local' modifier in this context\n");
          goto jeflags; /* above */
       }
-
       flags |= a_WYSH;
       n_pstate |= n_PS_ARGMOD_LOCAL | n_PS_ARGMOD_WYSH;
    }
@@ -794,6 +794,23 @@ jeflags:
          mx_cmd_print_synopsis(cdp, NIL);
          flags &= ~a_VPUT;
       }
+   }
+
+   if(flags & a_GLOBAL){
+      if(!(cdp->cd_caflags & mx_CMD_ARG_G)){
+         emsg = N_("%s: command modifier `global' not supported\n");
+         goto jeflags; /* above */
+      }
+      if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+         emsg = N_("%s: cannot use `global' modifier in this context\n");
+         goto jeflags; /* above */
+      }
+      /* In conjunction with vput local refers to the vput variable */
+      if((flags & (a_LOCAL | a_VPUT)) == a_LOCAL){ /* local known to be ok */
+         emsg = N_("%s: `global' and `local' are mutual exclusive\n");
+         goto jeflags; /* above */
+      }
+      n_pstate |= n_PS_ARGMOD_GLOBAL; /* (only new commands use this) */
    }
 
    if(n_poption & n_PO_D_VV)

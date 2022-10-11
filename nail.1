@@ -3362,10 +3362,16 @@ call xxx arg <ball>
 .
 .Mx
 .It Cm global
-\*(ID Does yet not implement any functionality.
-When supported, apply changes in global scope despite any established
-.Cm local Ns
-ity.
+When supported, apply changes in global scope despite an established
+.Cm local
+scope.
+.Sy Remarks:
+for commands which support the
+.Cm vput
+modifier this can lead to strange constructs like
+.Ql \eglobal local vput vpospar myvar quote
+where the command is advised to work in global scope, but the variable
+assignment happens in local scope.
 .
 .Mx
 .It Cm ignerr
