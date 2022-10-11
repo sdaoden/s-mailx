@@ -709,12 +709,10 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
          name = savestrbuf(&vcp->vc_argv[0][re.re_match[0].rem_start],
                re.re_match[0].rem_end - re.re_match[0].rem_start);
 
-         for(argc = i = 1; i <= re.re_group_count; ++i)
-            if(re.re_match[i].rem_start != -1)
-               argc = i;
+         argc = re.re_group_count + 1;
          argv = su_LOFI_TALLOC(char const*,argc +1);
 
-         for(ccpp = argv, i = 1; i <= argc; ++ccpp, ++i)
+         for(ccpp = argv, i = 1; i < argc; ++ccpp, ++i)
             if(re.re_match[i].rem_start != -1)
                *ccpp = savestrbuf(&vcp->vc_argv[0][re.re_match[i].rem_start],
                      re.re_match[i].rem_end - re.re_match[i].rem_start);
@@ -732,7 +730,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
             vcp->vc_flags ^= (a_VEXPR_ISNUM | a_VEXPR_ISDECIMAL);
          else{
             vcp->vc_flags |= a_VEXPR_ERR;
-            vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
+            vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;/* XXX could be OVERFLOW */
          }
       }
 

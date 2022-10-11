@@ -863,7 +863,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #endif
       (HG | M | V | X | EM | TWYSH), 1, MAC, NIL
       DS(N_("Evaluate [according to] <operator> [any :<argument>:]")) },
-   { "vpospar", &c_vpospar, (HG | M | V | X | EM | TARG), 0, 0,
+   { "vpospar", &c_vpospar, (G | HG | M | V | X | EM | TARG), 0, 0,
       mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
 

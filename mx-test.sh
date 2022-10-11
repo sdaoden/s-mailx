@@ -4788,14 +4788,16 @@ t_vpospar() { # {{{
 
    #{{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
+   commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
+   commandalias y echo 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
    vpospar set hey, "'you    ", world!
-   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   x
    vput vpospar x quote; echo x<$x>
-   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;x
    vput vpospar y quote;echo y<$y>
-   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   eval vpospar set ${y};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};x
+   eval vpospar set ${y};x
+   eval vpospar set ${x};x
 
    define infun2 {
       echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
@@ -4803,91 +4805,128 @@ t_vpospar() { # {{{
    }
 
    define infun {
-      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      y
       vput vpospar y quote;echo infun:y<$y>
-      eval vpospar set ${x};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
-      vpospar clear;echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      eval vpospar set ${x};y
+      vpospar clear;y
       eval call infun2 $x
-      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
-      eval vpospar set ${y};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      y
+      eval vpospar set ${y};y
    }
 
    call infun This "in a" fun
-   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   x
+   vpospar clear;x
 	__EOT
    #}}}
    check 1 0 ./t1 '155175639 866'
 
    #{{{
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tifs 2>&1
+   commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
    set ifs=\'
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
-   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   x
    vput vpospar x quote; echo x<$x>
-   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;x
+   eval vpospar set ${x};x
 
    set ifs=,
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
-   unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   unset ifs;x
    set ifs=,
    vput vpospar x quote; echo x<$x>
-   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;x
    eval vpospar set ${x};\
-      unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+      unset ifs;x
 
    set ifs=$',\t'
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
-   unset ifs; echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   unset ifs; x
    set ifs=$',\t'
    vput vpospar x quote; echo x<$x>
-   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;x
    eval vpospar set ${x};\
-   unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   unset ifs;x
 	__EOT
    #}}}
    check ifs 0 ./tifs '2015927702 706'
 
+   #{{{
    ${MAILX} ${ARGS} -X '
+      commandalias x echo '"'"'$?: $#: <$*>: <$1><$2><$3><$4><$5><$6>'"'"'
       set x=$'"'"'a b\nc d\ne f\n'"'"'
       vpospar set $x
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       eval vpospar set $x
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       set ifs=$'"'"'\n'"'"'
       eval vpospar set $x
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       unset ifs
       vput vpospar i quote
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       vpospar clear
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       echo i<$i>
       eval vpospar set $i
-      echo $?: $#: <$*>: <$1><$2><$3><$4><$5><$6>
+      x
       xit
       ' > ./tifs-2 2>&1
+   #}}}
    check ifs-2 0 ./tifs-2 '1412306707 260'
 
+   #{{{
    ${MAILX} ${ARGS} -X '
+      commandalias x echo '"'"'$#: <$1><$2><$3>'"'"'
       set x=$'"'"'a b\n#c d\ne f\n'"'"'
       set ifs=$'"'"'\n'"'"'; vpospar set $x; unset ifs
-      echo $#: <$1><$2><$3>
+      x
       set ifs=$'"'"'\n'"'"'; eval vpospar set $x; unset ifs
-      echo $#: <$1><$2><$3>
+      x
       set ifs=$'"'"'\n'"'"'; vpospar evalset $x; unset ifs
-      echo $#: <$1><$2><$3>
+      x
       vpospar evalset ""
-      echo $#: <$1><$2><$3>
+      x
       vpospar evalset "a b c"
-      echo $#: <$1><$2><$3>
+      x
       xit
       ' > ./tevalset 2>&1
+   #}}}
    check evalset 0 ./tevalset '2054446552 79'
+
+   #{{{
+   ${MAILX} ${ARGS} -X '
+      commandalias x echo '"'"'$?: $#: <$1><$2><$3><$4> x<$x>'"'"'
+      define t1 {
+         x
+         global vpospar set a1 b1 c1 d1
+         x
+      }
+      define t2 {
+         x
+         global local vput vpospar x quote
+         x
+         echo "x <$x>"
+         local vput vpospar x quote
+         x
+         echo "x <$x>"
+      }
+      x
+      vpospar set a b c d
+      x
+      call t1 t1.1 t1.2 t1.3 t1.4
+      x
+      call t2 t2.1 t2.2 t2.3 t2.4
+      x
+      local call t2 t3.1 t3.2 t3.3 t3.4
+      x
+      ' > ./tglobal 2>&1
+   #}}}
+   check global 0 ./tglobal '2494928013 543'
 
    t_epilog "${@}"
 } # }}}

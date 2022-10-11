@@ -170,7 +170,8 @@ FL boole temporary_addhist_hook(char const *ctx, char const *gabby_type,
 /* TODO v15 drop: let shexp_parse_token take a carrier with positional
  * TODO params, then let callers use that as such!!
  * Call hook in a recursed environment named name where positional params are
- * setup according to argv/argc.  NOTE: all signals blocked! */
+ * setup according to argv/argc.  NOTE: all signals blocked!
+ * NIL on OVERFLOW */
 #ifdef mx_HAVE_REGEX
 FL char *temporary_pospar_access_hook(char const *name, char const **argv,
       u32 argc, char *(*hook)(void *uservp), void *uservp);
