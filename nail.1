@@ -7667,13 +7667,15 @@ etc. is replaced with the according match group of the regular expression:
 .
 .Mx
 .It Ic vpospar
-\*(NQ Manage the positional parameter stack (see
+\*(NQ Manage the scope's positional parameter stack (see
 .Va 1 , # , * , @
 as well as
 .Ic shift ) .
+The global scope can be enforced with the modifier
+.Cm global .
 If the first argument is
-.Ql clear ,
-the positional parameter stack of the current context, or the global one
+.Ql clear
+the stack is cleared.
 otherwise, is cleared.
 If it is
 .Ql set

@@ -62,9 +62,6 @@
 # error Exactly one of mx_HAVE_SETENV and mx_HAVE_PUTENV
 #endif
 
-/* Positional parameter maximum (macro arguments, `vexpr' "splitifs") */
-#define a_AMV_POSPAR_MAX S16_MAX
-
 /* Special "pseudo macro" that stabs you from the back */
 #define a_AMV_MACKY_MACK R(struct a_amv_mac*,-1)
 
@@ -198,14 +195,13 @@ enum a_amv_var_vip_mode{
 };
 
 struct a_amv_pospar{
-   u16 app_maxcount; /* == slots in .app_dat */
-   u16 app_count; /* Maximum a_AMV_POSPAR_MAX */
-   u16 app_idx; /* `shift' moves this one, decs .app_count */
+   u32 app_maxcount; /* == slots in .app_dat */
+   u32 app_count; /* Maximum is S32_MAX */
+   u32 app_idx; /* `shift' moves this one, decs .app_count */
    boole app_not_heap; /* .app_dat stuff not dynamically allocated */
-   u8 app__dummy[1];
+   u8 app__dummy[3];
    char const **app_dat; /* NIL terminated (for "$@" explosion support) */
 };
-CTA(a_AMV_POSPAR_MAX <= S16_MAX, "Limit exceeds datatype capabilities");
 
 struct a_amv_mac{
    struct a_amv_mac *am_next;
@@ -357,6 +353,9 @@ static boole a_amv_on_gut_installed;
 
 DVL( static void a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 
+/**/
+static void a_amv_pospar_clear(struct a_amv_pospar *appp);
+
 /* Lookup for macros/accounts: if newamp is not NIL it will be linked in the
  * map, if _MF_UNDEF is set a possibly existing entry will be removed (first).
  * Returns NIL if a lookup failed, or if newamp was set, the found entry in
@@ -506,6 +505,23 @@ a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 }
 #endif /* DVLOR(1,0) */
 
+static void
+a_amv_pospar_clear(struct a_amv_pospar *appp){
+   u32 i;
+   NYD2_IN;
+
+   if(!appp->app_not_heap && appp->app_maxcount > 0){
+      for(i = appp->app_maxcount; i-- != 0;)
+         su_FREE(UNCONST(char**,appp->app_dat[i]));
+
+      su_FREE(appp->app_dat);
+   }
+
+   STRUCT_ZERO(struct a_amv_pospar, appp);
+
+   NYD2_OU;
+}
+
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       BITENUM_IS(u32,a_amv_mac_flags) amf){
@@ -574,7 +590,7 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
    cacp = vp;
    name = cacp->cac_arg->ca_arg.ca_str.s;
 
-   if(UNLIKELY(cacp->cac_no > a_AMV_POSPAR_MAX)){
+   if(UNLIKELY(cacp->cac_no > S32_MAX)){
       n_err(_("Too many arguments to macro `call': %s\n"), name);
       n_pstate_err_no = su_ERR_OVERFLOW;
       rv = 1;
@@ -610,7 +626,7 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
 
       amcap->amca_pospar = &amcap->amca__pospar;
       if(argc > 0){
-         amcap->amca__pospar.app_count = S(u16,argc);
+         amcap->amca__pospar.app_count = argc;
          amcap->amca__pospar.app_not_heap = TRU1;
          amcap->amca__pospar.app_dat = argv;
       }
@@ -676,15 +692,8 @@ a_amv_mac__finalize(void *vp){
    amcap = losp->as_amcap;
 
    /* Delete positional parameter stack */
-   if(amcap->amca_pospar == &amcap->amca__pospar &&
-         !amcap->amca__pospar.app_not_heap &&
-         amcap->amca__pospar.app_maxcount > 0){
-      u16 i;
-
-      for(i = amcap->amca__pospar.app_maxcount; i-- != 0;)
-         su_FREE(UNCONST(char*,amcap->amca__pospar.app_dat[i]));
-      su_FREE(amcap->amca__pospar.app_dat);
-   }
+   if(amcap->amca_pospar == &amcap->amca__pospar)
+      a_amv_pospar_clear(&amcap->amca__pospar);
 
    /* `local' variable hashmap.  These have no environment map, never */
    if(amcap->amca_local_vars != NIL){
@@ -1458,7 +1467,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
    char c;
    NYD2_IN;
 
-   su_mem_set(avcp, 0, sizeof *avcp); /* XXX overkill, just set chain */
+   STRUCT_ZERO(struct a_amv_var_carrier, avcp);/*XXX overkill, just set chain*/
 
    /* It may be a special a.k.a. macro-local or one-letter parameter */
    c = name[0];
@@ -1472,10 +1481,10 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
             goto jno_special_param;
          j = j * 10 + S(u8,c) - '0';
       }
-      if(j <= a_AMV_POSPAR_MAX){
-         avcp->avc_special_cat = a_AMV_VSC_POSPAR;
-         goto jspecial_param;
-      }
+      if(j > S32_MAX)
+         goto jerr;
+      avcp->avc_special_cat = a_AMV_VSC_POSPAR;
+      goto jspecial_param;
    }else if(UNLIKELY(name[1] == '\0')){
       switch(c){
       case '?':
@@ -1542,6 +1551,7 @@ jno_special_param:
    if(try_harder && a_amv_var_revlookup_chain(avcp, name))
       goto jleave;
 
+jerr:
    ASSERT(avcp->avc_map == NIL);/*avcp->avc_map = NIL;*/
    avcp = NIL;
 jleave:
@@ -2033,7 +2043,7 @@ jleave:
 static char const *
 a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
    uz i, j;
-   u16 argc;
+   u32 argc;
    char const *rv, **argv;
    NYD2_IN;
 
@@ -3150,7 +3160,7 @@ jleave:
 FL int
 c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    struct a_amv_pospar *appp;
-   u16 i;
+   u32 i;
    int rv;
    NYD_IN;
 
@@ -3159,15 +3169,15 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    if((vp = *S(char**,vp)) == NIL)
       i = 1;
    else{
-      s16 sib;
+      s32 sib;
 
-      if((su_idec_s16_cp(&sib, vp, 10, NIL
+      if((su_idec_s32_cp(&sib, vp, 10, NIL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || sib < 0){
          n_err(_("shift: invalid argument: %s\n"), vp);
          goto jleave;
       }
-      i = S(u16,sib);
+      i = S(u32,sib);
    }
 
    /* If in in a macro/xy */
@@ -3178,7 +3188,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
       appp = &a_amv_pospar;
 
    if(i > appp->app_count){
-      n_err(_("shift: cannot shift %hu of %hu parameters\n"),
+      n_err(_("shift: cannot shift %u of %u parameters\n"),
          i, appp->app_count);
       goto jleave;
    }else{
@@ -3516,7 +3526,12 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
    char *rv;
    NYD_IN;
 
-   su_mem_set(&amca, 0, sizeof amca);
+   if(argc > S32_MAX){
+      rv = NIL;
+      goto jleave;
+   }
+
+   STRUCT_ZERO(struct a_amv_mac_call_args, &amca);
    amca.amca_name = name;
    amca.amca_amp = a_AMV_MACKY_MACK;
    amca.amca_pospar = &amca.amca__pospar;
@@ -3524,7 +3539,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
    amca.amca__pospar.app_not_heap = TRU1;
    amca.amca__pospar.app_dat = argv;
 
-   su_mem_set(&los, 0, sizeof los);
+   STRUCT_ZERO(struct a_amv_lostack, &los);
 
    mx_sigs_all_holdx(); /* TODO DISLIKE! */
 
@@ -3539,6 +3554,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    mx_sigs_all_rele(); /* TODO DISLIKE! */
 
+jleave:
    NYD_OU;
    return rv;
 }
@@ -4044,19 +4060,15 @@ c_vpospar(void *v){
    cap = cap->ca_next;
 
    /* If in a macro, we need to overwrite the local instead of global argv */
-   appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */
+   appp = ((!(n_pstate & n_PS_ARGMOD_GLOBAL) &&
+            a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
          ? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar);
 
    if(f & (a_SET | a_CLEAR)){
       if(cacp->cac_vput != NIL)/* XXX better argparse */
          n_err(_("vpospar: `vput' only supported for `quote' subcommand\n"));
 
-      if(!appp->app_not_heap && appp->app_maxcount > 0){
-         for(i = appp->app_maxcount; i-- != 0;)
-            su_FREE(UNCONST(char**,appp->app_dat[i]));
-         su_FREE(appp->app_dat);
-      }
-      su_mem_set(appp, 0, sizeof *appp);
+      a_amv_pospar_clear(appp);
 
       if(f & a_CLEAR)
          goto jleave;
@@ -4099,14 +4111,14 @@ c_vpospar(void *v){
             goto jleave;
       }
 
-      if(i > a_AMV_POSPAR_MAX){
+      if(i > S32_MAX){
          n_err(_("vpospar: overflow: %" PRIuZ " arguments!\n"), i);
          n_pstate_err_no = su_ERR_OVERFLOW;
          f = a_ERR;
          goto jleave;
       }
 
-      appp->app_maxcount = appp->app_count = S(u16,i);
+      appp->app_maxcount = appp->app_count = S(u32,i);
       /* XXX Optimize: store it all in one chunk! */
       ++i;
       i *= sizeof *appp->app_dat;
