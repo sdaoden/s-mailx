@@ -44,6 +44,10 @@
 #include <su/path.h>
 #include <su/sort.h>
 
+#ifdef mx_HAVE_REGEX
+# include <su/re.h>
+#endif
+
 #include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
@@ -195,7 +199,7 @@ enum a_amv_var_vip_mode{
 };
 
 struct a_amv_pospar{
-   u32 app_maxcount; /* == slots in .app_dat */
+   u32 app_max_count; /* == slots in .app_dat (or 0 upon single-chunk alloc) */
    u32 app_count; /* Maximum is S32_MAX */
    u32 app_idx; /* `shift' moves this one, decs .app_count */
    boole app_not_heap; /* .app_dat stuff not dynamically allocated */
@@ -230,9 +234,11 @@ struct a_amv_mac_call_args{
    boole amca_no_xcall; /* XXX We want GO_INPUT_NO_XCALL for this */
    boole amca_ignerr; /* XXX Use GO_INPUT_IGNERR for evaluating commands */
    u8 amca__pad[4];
-   struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
    struct a_amv_pospar *amca_pospar;
+   struct a_amv_pospar *amca_re_match;
+   struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
    struct a_amv_pospar amca__pospar;
+   struct a_amv_pospar amca__re_match;
 };
 
 struct a_amv_lostack{
@@ -338,6 +344,9 @@ static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
 
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
+
+/* Ditto, $^[#0-9].. */
+static struct a_amv_pospar a_amv_re_match;
 
 /* TODO We really deserve localopts support for *on-mailbox-open*, so hack in
  * TODO today via a static lostack, it should be a field in mailbox, once that
@@ -510,9 +519,9 @@ a_amv_pospar_clear(struct a_amv_pospar *appp){
    u32 i;
    NYD2_IN;
 
-   if(!appp->app_not_heap && appp->app_maxcount > 0){
-      for(i = appp->app_maxcount; i-- != 0;)
-         su_FREE(UNCONST(char**,appp->app_dat[i]));
+   if(!appp->app_not_heap && appp->app_dat != NIL){
+      for(i = appp->app_max_count; i-- != 0;)
+         su_FREE(UNCONST(char*,appp->app_dat[i]));
 
       su_FREE(appp->app_dat);
    }
@@ -614,7 +623,7 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
          argv[argc] = cacp->cac_arg->ca_arg.ca_str.s;
       argv[argc] = NIL;
 
-      su_mem_set(amcap, 0, sizeof *amcap);
+      STRUCT_ZERO(struct a_amv_mac_call_args, amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
 
@@ -630,6 +639,7 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
          amcap->amca__pospar.app_not_heap = TRU1;
          amcap->amca__pospar.app_dat = argv;
       }
+      amcap->amca_re_match = &amcap->amca__re_match;
 
       (void)a_amv_mac_exec(amcap, lospopts_or_nil);
       rv = n_pstate_ex_no;
@@ -694,6 +704,8 @@ a_amv_mac__finalize(void *vp){
    /* Delete positional parameter stack */
    if(amcap->amca_pospar == &amcap->amca__pospar)
       a_amv_pospar_clear(&amcap->amca__pospar);
+   if(amcap->amca_re_match == &amcap->amca__re_match)
+      a_amv_pospar_clear(&amcap->amca__re_match);
 
    /* `local' variable hashmap.  These have no environment map, never */
    if(amcap->amca_local_vars != NIL){
@@ -1963,59 +1975,72 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 static char const *
 a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
    char iencbuf[su_IENC_BUFFER_SIZE];
-   s32 e;
+   s32 j;
    uz i;
    char const *rv;
    NYD2_IN;
 
    i = su_cs_len(rv = &avcp->avc_name[1]);
 
+   /* #, digit+ */
+#ifdef mx_HAVE_REGEX
+   if(rv[0] == '#' || su_cs_is_digit(rv[0])){
+      struct a_amv_pospar *appp;
+
+      appp = a_AMV_HAVE_LOPTS_AKA_LOCAL()
+            ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match;
+      ASSERT(appp->app_max_count == 0);
+
+      if(rv[0] == '#'){
+         j = appp->app_count;
+         goto jienc;
+      }
+      if((su_idec_s32_cp(&j, &rv[0], 0, NIL) &
+               (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) == su_IDEC_STATE_CONSUMED && j >= 0 &&
+            S(u32,j) < appp->app_count){
+         rv = appp->app_dat[j];
+         goto jleave;
+      }
+   }else
+#endif
    /* ERR, ERRDOC, ERRNAME, plus *-NAME variants.
     * As well as ERRQUEUE-. */
-   if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
+         if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
       if(i == 3){
-         e = n_pstate_err_no;
-         goto jeno;
+         j = n_pstate_err_no;
+         goto jienc;
       }else if(rv[3] == '-'){
-         e = su_err_by_name(&rv[4]);
-jeno:
-         switch(e){
-         case 0: rv = n_0; break;
-         case 1: rv = n_1; break;
-         default:
-            /* XXX Need to convert number to string yet */
-            rv = savestr(su_ienc(iencbuf, e, 10, su_IENC_MODE_SIGNED_TYPE));
-            break;
-         }
-         goto jleave;
+         j = su_err_by_name(&rv[4]);
+         goto jienc;
       }else if(i >= 6){
          if(!su_mem_cmp(&rv[3], "DOC", 3)){
             rv += 6;
             switch(*rv){
-            case '\0': e = n_pstate_err_no; break;
-            case '-': e = su_err_by_name(&rv[1]); break;
+            case '\0': j = n_pstate_err_no; break;
+            case '-': j = su_err_by_name(&rv[1]); break;
             default: goto jerr;
             }
-            rv = su_err_doc(e);
+            rv = su_err_doc(j);
             goto jleave;
          }else if(i >= 7 && !su_mem_cmp(&rv[3], "NAME", 4)){
             rv += 7;
             switch(*rv){
-            case '\0': e = n_pstate_err_no; break;
-            case '-': e = su_err_by_name(&rv[1]); break;
+            case '\0': j = n_pstate_err_no; break;
+            case '-': j = su_err_by_name(&rv[1]); break;
             default: goto jerr;
             }
-            rv = su_err_name(e);
+            rv = su_err_name(j);
             goto jleave;
          }else if(i >= 14){
             if(!su_mem_cmp(&rv[3], "QUEUE-COUNT", 11)){
                if(rv[14] == '\0'){
-                  e = 0
+                  j = 0
 #ifdef mx_HAVE_ERRORS
                         | n_pstate_err_cnt
 #endif
                   ;
-                  goto jeno;
+                  goto jienc;
                }
             }else if(i >= 15 && !su_mem_cmp(&rv[3], "QUEUE-EXISTS", 12)){
                if(rv[15] == '\0'){
@@ -2038,6 +2063,17 @@ jerr:
 jleave:
    NYD2_OU;
    return rv;
+
+jienc:
+   /* XXX Need to convert number to string yet; var as such should be int */
+   switch(j){
+   case 0: rv = n_0; break;
+   case 1: rv = n_1; break;
+   default:
+      rv = savestr(su_ienc(iencbuf, j, 10, su_IENC_MODE_SIGNED_TYPE));
+      break;
+   }
+   goto jleave;
 }
 
 static char const *
@@ -2984,6 +3020,7 @@ mx_account_leave(void){
             amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
             amcap->amca_no_xcall = TRU1;
             amcap->amca_pospar = &amcap->amca__pospar;
+            amcap->amca_re_match = &amcap->amca__re_match;
             n_pstate |= n_PS_HOOK;
             (void)a_amv_mac_exec(amcap, NIL);
             n_pstate &= ~n_PS_HOOK_MASK;
@@ -3066,6 +3103,7 @@ c_account(void *v){
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
       amcap->amca_no_xcall = TRU1;
       amcap->amca_pospar = &amcap->amca__pospar;
+      amcap->amca_re_match = &amcap->amca__re_match;
       ++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
       if(!a_amv_mac_exec(amcap, NIL) || n_pstate_ex_no != 0){
          /* XXX account switch incomplete, unroll? */
@@ -3262,6 +3300,7 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac,
          amcap->amca_ps_hook_mask = TRU1;
          amcap->amca_no_xcall = TRU1;
          amcap->amca_pospar = &amcap->amca__pospar;
+         amcap->amca_re_match = &amcap->amca__re_match;
          n_pstate &= ~n_PS_HOOK_MASK;
          n_pstate |= n_PS_HOOK;
          a_amv_mac_exec(amcap, NIL);
@@ -3354,6 +3393,7 @@ jmac:
    amcap->amca_ps_hook_mask = TRU1;
    amcap->amca_no_xcall = TRU1;
    amcap->amca_pospar = &amcap->amca__pospar;
+   amcap->amca_re_match = &amcap->amca__re_match;
    rv = a_amv_mac_exec(amcap, NIL);
    n_pstate &= ~n_PS_HOOK_MASK;
 
@@ -3397,11 +3437,17 @@ temporary_compose_mode_hook_control(boole enable, boole local){ /* XXX hack */
       amcap->amca_loflags = cmh_losp->as_loflags;
       amcap->amca_ps_hook_mask = FAL0;
       amcap->amca_no_xcall = TRU1;
-      amcap->amca_pospar = a_AMV_HAVE_LOPTS_AKA_LOCAL()
-            ? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar;
+      if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
+         amcap->amca_pospar = a_amv_lopts->as_amcap->amca_pospar;
+         amcap->amca_re_match = a_amv_lopts->as_amcap->amca_re_match;
+      }else{
+         amcap->amca_pospar = &a_amv_pospar;
+         amcap->amca_re_match = &a_amv_re_match;
+      }
 
       cmh_losp->as_amcap = amcap;
-      a_amv_compose_lostack = a_amv_lopts = cmh_losp;
+      a_amv_compose_lostack =
+      a_amv_lopts = cmh_losp;
    }else{
       if(a_amv_compose_lostack->as_lopts != NIL){
          void *save;
@@ -3450,6 +3496,7 @@ temporary_compose_mode_hook_call(char const *macname){
       amcap->amca_ps_hook_mask = TRU1;
       amcap->amca_no_xcall = TRU1;
       amcap->amca_pospar = &amcap->amca__pospar;
+      amcap->amca_re_match = &amcap->amca__re_match;
       n_pstate &= ~n_PS_HOOK_MASK;
       n_pstate |= n_PS_HOOK;
       if(macname != NIL)
@@ -3502,6 +3549,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type,
       amcap->amca__pospar.app_count = 3;
       amcap->amca__pospar.app_not_heap = TRU1;
       amcap->amca__pospar.app_dat = argv;
+      amcap->amca_re_match = &amcap->amca__re_match;
 
       if(!a_amv_mac_exec(amcap, NIL))
          rv = TRUM1;
@@ -3519,7 +3567,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type,
 
 #ifdef mx_HAVE_REGEX
 FL char *
-temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
+temporary_pospar_access_hook(char const *name, char const **argv, u32 argc, /* v15 drop */
       char *(*hook)(void *uservp), void *uservp){
    struct a_amv_lostack los;
    struct a_amv_mac_call_args amca;
@@ -3538,6 +3586,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
    amca.amca__pospar.app_count = argc;
    amca.amca__pospar.app_not_heap = TRU1;
    amca.amca__pospar.app_dat = argv;
+   amca.amca_re_match = &amca.amca__re_match;
 
    STRUCT_ZERO(struct a_amv_lostack, &los);
 
@@ -3554,6 +3603,55 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc,
 
    mx_sigs_all_rele(); /* TODO DISLIKE! */
 
+jleave:
+   NYD_OU;
+   return rv;
+}
+
+FL s32
+mx_var_re_match_set(u32 group_count, char const *dat,
+      struct su_re_match const *remp){
+   union {char **pp; char *p;} c;
+   uz i, j;
+   s32 rv;
+   struct a_amv_pospar *appp;
+   NYD_IN;
+
+   /* If in a macro, we need to overwrite the local instead of global argv */
+   appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */
+         ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match);
+
+   a_amv_pospar_clear(appp);
+
+   /* Add $^0 */
+   if(group_count >= S32_MAX){
+      rv = su_ERR_OVERFLOW;
+      goto jleave;
+   }
+
+   /* Not used, single-chunk alloc: appp->app_max_count = 0;*/
+   appp->app_count = (group_count ? ++group_count : group_count);
+
+   for(i = j = 0; i < group_count; ++i)
+      j += sizeof(char const*) +1 + remp[i].rem_end - remp[i].rem_start;
+   j += sizeof(char const*);
+
+   /* XXX Optimize: store it all in one chunk! */
+   appp->app_dat = C(char const**,c.pp = S(char**,su_ALLOC(j)));
+   c.pp += group_count;
+   *c.pp++ = NIL;
+   c.p = R(char*,c.pp);
+
+   for(remp += group_count; group_count-- > 0;){
+      --remp;
+      i = remp->rem_end - remp->rem_start;
+      appp->app_dat[group_count] = c.p;
+      su_mem_copy(c.p, &dat[remp->rem_start], i);
+      c.p += i;
+      *c.p++ = '\0';
+   }
+
+   rv = su_ERR_NONE;
 jleave:
    NYD_OU;
    return rv;
@@ -4118,7 +4216,7 @@ c_vpospar(void *v){
          goto jleave;
       }
 
-      appp->app_maxcount = appp->app_count = S(u32,i);
+      appp->app_max_count = appp->app_count = S(u32,i);
       /* XXX Optimize: store it all in one chunk! */
       ++i;
       i *= sizeof *appp->app_dat;

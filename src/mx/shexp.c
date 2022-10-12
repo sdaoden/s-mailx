@@ -1841,22 +1841,27 @@ jearith:
 
             /* Scan variable name */
             if(!(state & a_BRACE) || il > 1){
+               boole caret;
+
                ib_save = ib - 1;
                if(state & a_BRACE)
                   --il, ++ib;
                vp = ib;
                state &= ~a_EXPLODE;
 
-               for(i = 0; il > 0; --il, ++ib, ++i){
+               /* In order to support $^# we need to treat caret especially */
+               for(caret = FAL0, i = 0; il > 0; --il, ++ib){
                   /* We have some special cases regarding special parameters,
                    * so ensure these don't cause failure.  This code has
                    * counterparts in code that manages internal variables! */
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
                      if(i == 0){
-                        /* Simply skip over multiplexer */
-                        if(c == '^')
+                        /* Simply skip over multiplexer, do not count it */
+                        if(c == '^'){
+                           caret = TRU1;
                            continue;
+                        }
                         if(c == '*' || c == '@' || c == '#' || c == '?' ||
                               c == '!'){
                            if(c == '@'){
@@ -1873,7 +1878,10 @@ jearith:
                         state |= a_DIGIT1;
                   }else
                      state |= a_NONDIGIT;
+                  ++i;
                }
+               if(caret)
+                  ++i;
 
                /* In skip mode, be easy and.. skip over */
                if(state & a_SKIPMASK){
