@@ -126,6 +126,7 @@ a_cndexp_test(struct a_cndexp_ctx *cecp, boole noop, uz argc, uz *unary){
    rv = TRUM1;
    emsg = NIL;
    argv = cecp->cec_argv;
+   UNINIT(cp, su_empty);
 
    /* Maximally unary ! was seen here */
    if(UNLIKELY(argc != 1 && argc != 3 &&
@@ -319,7 +320,7 @@ jargc3:/* C99 */{
       if(op[1] != '=')
          goto jesyn;
    }else if(c == '=' || c == '!'){
-      if(op[1] != '=' && op[1] != '%' && op[1] != '@'
+      if(op[1] != '=' && op[1] != '%' && op[1] != '@'/* v15compat */
 #ifdef mx_HAVE_REGEX
             && op[1] != '~'
 #endif
@@ -412,8 +413,9 @@ jargc3:/* C99 */{
       su_re_create(&re);
 
       if(su_re_setup_cp(&re, rhv, (su_RE_SETUP_EXT |
-            su_RE_SETUP_TEST_ONLY | ((flags & (a_MOD | a_ICASE))
-               ? su_RE_SETUP_ICASE : su_RE_SETUP_NONE))
+            (noop ? su_RE_SETUP_TEST_ONLY : su_RE_SETUP_NONE) |
+            ((flags & (a_MOD | a_ICASE)) ? su_RE_SETUP_ICASE
+               : su_RE_SETUP_NONE))
             ) != su_RE_ERROR_NONE){
          emsg = savecat(_("invalid regular expression: "),
                su_re_error_doc(&re));
@@ -421,10 +423,22 @@ jargc3:/* C99 */{
          goto jesyn_ntr;
       }
 
-      if(!noop)
-         rv = (!su_re_eval_cp(&re, lhv, su_RE_EVAL_NONE) ^ (c == '='));
+      if(!noop){
+         rv = su_re_eval_cp(&re, lhv, su_RE_EVAL_NONE);
+         if(mx_var_re_match_set((rv ? re.re_group_count : 0), lhv, re.re_match
+               ) != su_ERR_NONE){
+            emsg = N_("pattern with too many matches");
+            n_pstate_err_no = su_ERR_OVERFLOW;
+         }
+         rv = (!rv ^ (c == '='));
+      }
 
       su_re_gut(&re);
+
+      if(emsg != NIL){
+         rv = TRUM1;
+         goto jesyn;
+      }
    }else
 #endif /* mx_HAVE_REGEX */
          if(noop){

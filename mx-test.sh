@@ -3832,8 +3832,20 @@ t_ifelse() { # {{{
 		__EOT
       #}}}
       check regex 0 ./tregex '1115671789 95'
+
+      #{{{
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex-match
+      commandalias x \\echo '$?/$^ERRNAME.. $^#<$^0, $^1, $^2, $^3, $^4>'
+      commandalias e \\echoerr err:
+      \if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
+      \if abrakadabra =~ ^.*(ra)(.*)(ra)'$'; x; \else; e 2; \end
+      \if abrakadabra !~ (.+)no.*; x; \else; e 3; \end
+      \if bananarama =~?case (.*)NANA(.*); x; \else; e 4; \end
+		__EOT
+      #}}}
+      check regex-match 0 ./tregex-match '1787920457 135'
    else
-      t_echoskip 'regex:[!REGEX]'
+      t_echoskip 'regex,regex-match:[!REGEX]'
    fi
 
    t_epilog "${@}"

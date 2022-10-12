@@ -6083,6 +6083,16 @@ locale, and are therefore aware of
 and
 .Cm !~
 treat the right hand side as an extended regular expression.
+Match groups (in parenthesis, see
+.Xr re_format 7
+or
+.Xr regex 7 ,
+dependent on host system) can be accessed in
+.Cm local Ns
+-most scope via the
+.Va ^
+multiplexer sub-variables
+.Va ^# , ^0 , ^1 .
 .
 .Pp
 Conditions can be joined via AND-OR lists (where the AND operator is
@@ -8941,6 +8951,26 @@ The error number may be set with the command
 the requested state or condition, of which there are:
 .
 .Bl -tag -width ".It Va BaNg"
+.Mx
+.Mx
+.Mx
+.It Va ^# , ^0 , ^1
+Access to match groups of the last regular expression evaluation in
+.Cm local Ns
+-most scope, created for example by the
+.Ic if
+command.
+The former denotes the number of match groups including
+.Va \&\&^0
+that holds the entire matching string (0 for no match); for example
+.Bd -literal -offset indent
+\eif abrakadabra =~ (.+)ka.*
+  \eecho $^#: <$^0> <$^1> <$^2>
+\eend
+# ->
+2: <abrakadabra> <abra> <>
+.Ed
+.
 .Mx
 .Mx
 .Mx
