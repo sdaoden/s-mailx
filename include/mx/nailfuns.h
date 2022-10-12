@@ -36,6 +36,7 @@
  */
 
 struct su_cs_dict;
+struct su_re_match;
 struct su_timespec;
 
 struct mx_attachment;
@@ -175,6 +176,10 @@ FL boole temporary_addhist_hook(char const *ctx, char const *gabby_type,
 #ifdef mx_HAVE_REGEX
 FL char *temporary_pospar_access_hook(char const *name, char const **argv,
       u32 argc, char *(*hook)(void *uservp), void *uservp);
+
+/* group_count does not include $^0!  If 0, only clear.  NONE,OVERFLOW,NOMEM */
+FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
+      struct su_re_match const *remp);
 #endif
 
 /* Setting up batch mode, variable-handling side */
