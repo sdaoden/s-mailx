@@ -7651,24 +7651,28 @@ are therefore identical.
 terminal.
 .
 .It Cm regex
-\*(OP A string operation that will try to match the first argument with
-the regular expression given as the second argument.
+\*(OP A string operation that tries to match the first argument with
+the regular expression
+.Pf ( Xr re_format 7
+or
+.Xr regex 7 ,
+dependent on host system) given as the second argument.
 .Ql \&?
 modifier suffix is supported.
-If the optional third argument has been given then instead of showing
-the match offset a replacement operation is performed: the third
-argument is treated as if specified within dollar-single-quote
-.Pf ( Sx "Shell-style argument quoting" ) ,
-and any occurrence of a positional parameter, for example
-.Va \&0 , 1
-etc. is replaced with the according match group of the regular expression:
+With the optional third argument the match group accessors
+.Va ^# , ^0 , ^1
+are set (in
+.Cm local Ns
+-most scope) for successful matches, and the argument is interpreted
+as if specified within dollar-single-quote
+.Pf ( Sx "Shell-style argument quoting" ) :
 .Bd -literal -offset indent
 ? vput vexpr res regex bananarama \e
-    (.*)NanA(.*) '\e${1}au\e$2'
+    (.*)NanA(.*) '\e${^1}au\e$^2'
 ? echo $?/$!/$^ERRNAME:$res:
 1/61/NODATA::
 ? vput vexpr res regex?case bananarama \e
-    (.*)NanA(.*) '\e${1}uauf\e$2'
+    (.*)NanA(.*) '\e${^1}uauf\e$^2'
 ? echo $?/$!/$^ERRNAME:$res:
 0/0/NONE:bauauframa:
 .Ed

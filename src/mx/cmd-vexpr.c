@@ -185,7 +185,7 @@ static void a_vexpr_agnostic(struct a_vexpr_ctx *vcp);
 static void a_vexpr_string(struct a_vexpr_ctx *vcp);
 
 #ifdef mx_HAVE_REGEX
-static char *a_vexpr__regex_replace(void *uservp);
+static char *a_vexpr__regex_replace(void *uservp);/* v15-compat */
 #endif
 
 static void
@@ -691,7 +691,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
          vcp->vc_flags |= a_VEXPR_ERR;
          vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;
       }
-      /* Search only?  Else replace, which is a bit */
+      /* Search only? */
       else if(vcp->vc_argv[2] == NIL){
          if(UCMP(64, re.re_match[0].rem_start, <=, S64_MAX))
             vcp->vc_lhv = S(s64,re.re_match[0].rem_start);
@@ -699,12 +699,17 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
             vcp->vc_flags |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_STR_OVERFLOW;
          }
-      }else{
-         /* TODO We yet need to have a hook into generic pospar handling
-          * TODO instead of having a shexp_parse carrier which takes some
-          * TODO pospars directly */
+      }
+      /* Search+Replace */
+      else{
+         mx_var_re_match_set(re.re_group_count, vcp->vc_argv[0], re.re_match);
+         {/* TODO v15-compat vexpr regex: only directly shexp via $^0++ */
          char const *name, **argv, **ccpp;
          uz i, argc;
+
+         n_OBSOLETE(_("`vexpr': regex: search+replace: now uses "
+            "regular expression match group accesses via \\$^NUMBER; "
+            "\\$NUMBER positional parameter support will vanish in v15"));
 
          name = savestrbuf(&vcp->vc_argv[0][re.re_match[0].rem_start],
                re.re_match[0].rem_end - re.re_match[0].rem_start);
@@ -731,6 +736,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
          else{
             vcp->vc_flags |= a_VEXPR_ERR;
             vcp->vc_cmderr = a_VEXPR_ERR_STR_NODATA;/* XXX could be OVERFLOW */
+         }
          }
       }
 
