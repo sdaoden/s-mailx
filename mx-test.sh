@@ -1092,35 +1092,35 @@ t_X_errexit() { # {{{
 	echo two
 	__EOT
 
-   </dev/null ${MAILX} ${ARGS} -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > ./t1 2>&1
    check 1 0 ./t1 '2700500141 51'
 
-   </dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source ./t.rc' \
       > ./t2 2>&1
    check 2 0 ./t2 '2700500141 51'
 
-   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Snomemdebug \
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
       > ./t3 2>&1
    check 3 0 ./t3 '2700500141 51'
 
    ##
 
-   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > ./t4 2>&1
    check 4 1 ./t4 '4096689457 47'
 
-   </dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Serrexit \
       > ./t5 2>&1
    check 5 1 ./t5 '4096689457 47'
 
-   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Serrexit \
       > ./t6 2>&1
    check 6 1 ./t6 '2710539986 162'
 
-   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
+   </dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sposix \
       > ./t7 2>&1
    check 7 1 ./t7 '2710539986 162'
 
@@ -1128,20 +1128,20 @@ t_X_errexit() { # {{{
 
    ${sed} -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
 
-   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit \
          -X'echo one' -X'ignerr echos nono ' -X'echo two' \
       > ./t8 2>&1
    check 8 0 ./t8 '2700500141 51'
 
-   </dev/null ${MAILX} ${ARGS} -X'source ./t2.rc' -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source ./t2.rc' -Serrexit \
       > ./t9 2>&1
    check 9 0 ./t9 '2700500141 51'
 
-   </dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
+   </dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Serrexit \
       > ./t10 2>&1
    check 10 0 ./t10 '2700500141 51'
 
-   </dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
+   </dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Sposix \
       > ./t11 2>&1
    check 11 0 ./t11 '2700500141 51'
 
@@ -1160,15 +1160,15 @@ t_X_errexit() { # {{{
 	__EOT
 
    printf 'source ./t3.rc\ncall x\necho au'  |
-      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > ./t12 2>&1
+      ${MAILX} ${ARGS} -Sxarg=errexit > ./t12 2>&1
    check 12 1 ./t12 '2908921993 44'
 
    printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
-      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=errexit > ./t13 2>&1
+      ${MAILX} ${ARGS} -Sxarg=errexit > ./t13 2>&1
    check 13 1 ./t13 '2908921993 44'
 
    printf 'source ./t3.rc\ncall x\necho au' |
-      ${MAILX} ${ARGS} -Snomemdebug -Sxarg=nowhere > ./t14 2>&1
+      ${MAILX} ${ARGS} -Sxarg=nowhere > ./t14 2>&1
    check 14 0 ./t14 '2049365617 47'
 
    t_epilog "${@}"
@@ -1189,23 +1189,23 @@ t_Y_errexit() { # {{{
 	echo two
 	__EOT
 
-   </dev/null ${MAILX} ${ARGS} -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > ./t1 2>&1
    check 1 0 ./t1 '2700500141 51'
 
-   </dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' \
       > ./t2 2>&1
    check 2 0 ./t2 '2700500141 51'
 
    ##
 
-   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit \
          -Y'echo one' -Y' echos nono ' -Y'echo two' \
       > ./t3 2>&1
    check 3 1 ./t3 '4096689457 47'
 
-   </dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' -Serrexit \
       > ./t4 2>&1
    check 4 1 ./t4 '4096689457 47'
 
@@ -1213,12 +1213,12 @@ t_Y_errexit() { # {{{
 
    ${sed} -e 's/^echos /ignerr echos /' < ./t.rc > ./t2.rc
 
-   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit \
          -Y'echo one' -Y'ignerr echos nono ' -Y'echo two' \
       > ./t5 2>&1
    check 5 0 ./t5 '2700500141 51'
 
-   </dev/null ${MAILX} ${ARGS} -Y'source ./t2.rc' -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Y'source ./t2.rc' -Serrexit \
       > ./t6 2>&1
    check 6 0 ./t6 '2700500141 51'
 
@@ -4695,7 +4695,7 @@ t_call_ret() { # {{{
    fi
 
    #{{{
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > ./t1 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>&1
 	define w1 {
 		echon ">$1 "
 		local vput vexpr i + $1 1
@@ -4776,7 +4776,7 @@ t_xcall() { # {{{
 
    #{{{
    ${cat} <<- '__EOT' | \
-      ${MAILX} ${ARGS} -Snomemdebug -Smax=${LOOPS_MAX} > ./t1 2>&1
+      ${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>&1
 	define work {
 		echon "$1 "
       \if "$3" == ""; local set l=local; else; local set l=;\endif
@@ -4860,11 +4860,11 @@ t_xcall() { # {{{
 		__EOT
       #}}}
       < ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
-         -Snomemdebug > ./t2 2>&1
+         > ./t2 2>&1
       check 2 0 ./t2 '4036613316 4184'
 
       < ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
-         -Snomemdebug > ./t3 2>&1
+         > ./t3 2>&1
       check 3 1 ./t3 '3179757785 2787'
    else
       t_echoskip '2-3:[!UISTRINGS]'
@@ -10863,14 +10863,14 @@ __EOT__
    #}}}
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+   ${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
       -X'source ./t.rc' -Smta=test://t1 \
       >./t1-x 2>&1
    ${cat} ./t1-x >> ./t1
    check 1 0 ./t1 '429858159 10361'
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+   ${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
       -St_remove=1 -X'source ./t.rc' -Smta=test://t2 \
       >./t2-x 2>&1
    ${cat} ./t2-x >> ./t2
@@ -10883,7 +10883,7 @@ __EOT__
    #{{{
    printf 'local mail ex@am.ple\nbody\n!.
       varshow t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
-   ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+   ' | ${MAILX} ${ARGS} -Sescape=! \
       -Smta=test://t3 \
       -X'
          define bail {
@@ -11091,7 +11091,7 @@ b1
       m t2@z
 b2
 !.
-      ' | ${MAILX} ${ARGS} -Smta=test://t4 -Snomemdebug -Sescape=! \
+      ' | ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! \
          > ./t4-x 2>&1
    check_ex0 4-intro-estat
 
@@ -11130,7 +11130,7 @@ this is content of forward 2, 2nd, with showname set
       Resend 1 2 Resendex@am.ple
       echo Resend 1 2: $? $! $^ERRNAME;echo;echo
    ' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sfullnames \
+   ${MAILX} ${ARGS} -Sescape=! -Sfullnames \
       -Smta=test://t4 \
       -X'
          define bail {
@@ -11286,7 +11286,7 @@ __EOT__
    #}}}
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+   ${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
       -X'source ./t.rc' -Smta=test://t1 -Smaximum=${LOOPS_MAX} \
       >./t1-x 2>&1
    check_ex0 1-estat
@@ -11298,7 +11298,7 @@ __EOT__
    fi
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+   ${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
       -St_remove=1 -X'source ./t.rc' -Smta=test://t2 \
       -Smaximum=${LOOPS_MAX} \
       >./t2-x 2>&1
