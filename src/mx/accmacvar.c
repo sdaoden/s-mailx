@@ -3586,7 +3586,8 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc, /* v
    amca.amca__pospar.app_count = argc;
    amca.amca__pospar.app_not_heap = TRU1;
    amca.amca__pospar.app_dat = argv;
-   amca.amca_re_match = &amca.amca__re_match;
+   amca.amca_re_match = (a_AMV_HAVE_LOPTS_AKA_LOCAL()
+         ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match);
 
    STRUCT_ZERO(struct a_amv_lostack, &los);
 
