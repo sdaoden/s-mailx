@@ -4616,26 +4616,26 @@ t_vexpr() { # {{{
 		vput vexpr res regex? 'bananarama' 'Bana';x
 		vput vexpr res regex? 'bananarama' 'rama';x
 		echo ' #2'
-		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
-		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
-		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0';x
-		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0';x
+		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
+		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
+		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$^1\$^0';x
+		vput vexpr res regex 'bananarama' '(.+)rama' '\$^1\$^0';x
 		echo ' #3'
-		vput vexpr res regex? 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
-		vput vexpr res regex? 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
-		vput vexpr res regex? 'bananarama' 'Bana(.+)' '\$1\$0';x
-		vput vexpr res regex? 'bananarama' '(.+)rama' '\$1\$0';x
+	vput vexpr res regex? 'bananarama' '(.*)nana(.*)' '\${^1}a\${^0}u{\$^2}';x
+		vput vexpr res regex? 'bananarama' '(.*)bana(.*)' '\${^1}a\${^0}u\$^2';x
+		vput vexpr res regex? 'bananarama' 'Bana(.+)' '\$^1\$^0';x
+		vput vexpr res regex? 'bananarama' '(.+)rama' '\$^1\$^0';x
 		echo ' #4'
 		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
-			'\$1\${2}\$4\${3}rama';x
+			'\$^1\${^2}\$^4\${^3}rama';x
 		vput vexpr res regex 'Banana' '(club )?(.*)(nana)(.*)' \
-			'\$1\$2\${2}\$2\$4\${3}rama';x
+			'\$^1\$^2\${^2}\$^2\$^4\${^3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
-			'\$1\${2}\$4\${3}rama';x
+			'\$^1\${^2}\$^4\${^3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
-			'\$1:\${2}:\$4:\${3}';x
+			'\$^1:\${^2}:\$^4:\${^3}';x
 		vput vexpr res regex? 'Club banana' '(club )?(.*)(nana)(.*)' \
-			'\$1:\${2}:\$4:\${3}';x
+			'\$^1:\${^2}:\$^4:\${^3}';x
 		echo ' #5'
 		__EOT
       #}}}
