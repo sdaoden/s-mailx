@@ -6707,8 +6707,9 @@ active and
 d by giving the string used for creation.
 .Pp
 The channel name is expected to be a file descriptor number, or,
-if parsing the numeric fails, an input file name that undergoes
-.Sx "Filename transformations" .
+if parsing the numeric fails, an input file name that undergoes minimal
+.Sx "Filename transformations"
+(no meta expansion are performed).
 For example (this example requires a modern shell):
 .Bd -literal -offset indent
 $ printf 'echon "hey, "\enread a\enyou\enecho $a' |\e
