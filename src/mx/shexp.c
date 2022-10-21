@@ -1571,11 +1571,14 @@ jrestart:
                   if(il == 0)
                      goto j_dollar_ungetc;
                   --il, c2 = *ib++;
+                  /* Careful: \c\ and \c\\ have to be treated alike in POSIX */
+                  if(c2 == '\\' && il > 0 && *ib == '\\')
+                     --il, ++ib;
                   if(state & a_SKIPMASK)
                      continue;
                   /* ASCII C0: 0..1F, 7F <- @.._ (+ a-z -> A-Z), ? */
                   c = su_cs_to_upper(c2) ^ 0x40;
-                  if((u8)c > 0x1F && c != 0x7F){
+                  if(S(u8,c) > 0x1F && c != 0x7F){
                      if(flags & n_SHEXP_PARSE_LOG)
                         n_err(_("Invalid \\c notation: %.*s: %.*s\n"),
                            (int)input->l, input->s,
