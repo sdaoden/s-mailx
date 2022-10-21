@@ -1427,6 +1427,10 @@ e a$'\011'b
 e a$'\x9'b
 e a$'\u9'b
 e a$'\U9'b
+e a$'\c\'b
+e a$'\c\\'b
+e a$'b\c\c'd
+e a$'b\c\\c'd
 e a$'\c@'b c d
 	__EOT
    #}}}
@@ -1436,11 +1440,11 @@ e a$'\c@'b c d
    else
       < ./t.rc DIET=CURD TIED= \
       LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>>${ERR}
-      check unicode 0 ./tunicode '475805847 317'
+      check unicode 0 ./tunicode '1126664893 337'
    fi
 
    < ./t.rc DIET=CURD TIED= ${MAILX} ${ARGS} > ./tc 2>>${ERR}
-   check c 0 ./tc '1473887148 321'
+   check c 0 ./tc '3138417346 341'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t3
    set mager='\hey\'
