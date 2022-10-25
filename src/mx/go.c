@@ -821,8 +821,8 @@ jeflags:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NIL)
          goto jmsglist_err;
-      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL)
-            ) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs,
+            ((flags & a_IS_SKIP) != 0), NIL)) < 0){
          nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -862,8 +862,8 @@ jmsglist_go:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NIL)
          goto jmsglist_err;
-      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, NIL)
-            ) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs,
+            ((flags & a_IS_SKIP) != 0), NIL)) < 0){
          nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -961,7 +961,7 @@ jmsglist_go:
       cac.cac_inlen = line.l;
       cac.cac_msgflag = cdp->cd_mflags_o_minargs;
       cac.cac_msgmask = cdp->cd_mmask_o_maxargs;
-      if(!mx_cmd_arg_parse(&cac)){
+      if(!mx_cmd_arg_parse(&cac, ((flags & a_IS_SKIP) != 0))){
          flags |= a_NO_ERRNO;
          break;
       }

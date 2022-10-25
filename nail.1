@@ -1891,8 +1891,7 @@ Mark for special attention.
 .\" .Ss "Specifying messages" {{{
 .Ss "Specifying messages"
 .
-\*(NQ
-Some
+\*(NQSome
 .Sx COMMANDS
 take
 .Sx "Message list arguments" ,
@@ -2480,8 +2479,7 @@ Backspace: backward delete one character
 .Pf ( Cd mle-del-bwd ) .
 .
 .It Ql \ecI
-\*(NQ
-Horizontal tabulator:
+\*(NQHorizontal tabulator:
 try to expand the word before the cursor, supporting the usual
 .Sx "Filename transformations"
 .Mx
@@ -5932,52 +5930,69 @@ displays the following message, not the current one.
 .
 .Mx
 .It Ic if
-(i) Part of the
+\*(NQ(i) Part of the
 .Ic \&\&if , Ic elif , else , endif
 conditional execution: if the given expression(s) evaluate to true
 the encapsulated block is executed.
-The POSIX standard only supports the (case-insensitive) conditions
-.Cm r
-(receive mode; any word beginning with
-.Ql r )
-and
-.Cm s
-(send mode; any word beginning with
-.Ql s ) ,
-all others are non-portable extensions.
-The syntax is as ambiguous as for
+All arguments (values, operators, metacharacters for groups, AND-OR
+lists etc.) must be separate tokens
+.Pf ( Sx "Shell-style argument quoting" ) .
+The expressions are parsed much like the
+.Ql [[ .. ]]
+construct of some
 .Xr sh 1 Ns
-ell's
-.Xr test 1
-conditional expression evaluator: using bracket groups (as below), and
-.Dq protecting
-strings, for example by prefixing them with an X byte, can help.
-All arguments (values, conditions, and metacharacters for groupings,
-AND-OR lists etc.) must be given as separate tokens (space-separated;
-.Sx "Shell-style argument quoting" ) .
-.Sy Remarks :
-condition syntax errors skip all branches (as no-ops) until
+ells; quoting literals that equal syntax elements, especially
+.Ql \&[
+and unary operators, avoids syntax ambiguities; quoting variable-only
+arguments is needed if they may expand to the empty string.
+Syntax errors cause blocks to be skipped (as no-ops) until
 .Ic endif .
+.Sy Remarks:
+in a whiteout the modifier
+.Cm eval
+does not work, even for the conditional command that toggles that state.
 .
 .Bd -literal -offset indent
-if receive
-  commands ...
-else
-  commands ...
-endif
+if expression
+  [commands ...]
+eli[f] expression
+  [commands ...]
+el[se]
+  [commands ...]
+en[dif]
 
 set i=!
-if [ r ] && [ x"$i" == x! ]; echo yes; else; echo no; end
+if r && $i == !; echo yes; else; echo no; end
+
+set i=-n
+if -n == && '-n' == -n; echo yes; end
+yes
+if -n == && \e-n == -n; echo yes; end
+yes
+if -n == && $i == -n; echo yes; end
+yes
+if -n == && -n == -n; echo yes; end
+\&..this is an error
 .Ed
 .
 .Pp
-Further (case-insensitive) one-argument conditions are
+The only portable operators are
+.Cm r
+(receive mode)
+and
+.Cm s
+(send mode), all others are extensions.
+This includes case-insensitivity, and the (partially) spelled-out
+.Cm receive
+and
+.Cm send .
+Further no-argument operators are
 .Cm t
 (any word beginning with
 .Ql t
 not equal to
 .Ql true )
-which is true in interactive terminal sessions (running attached to
+that matches interactive terminal sessions (running attached to
 a terminal, and none of the
 .Dq quickrun
 command line options
@@ -5987,48 +6002,42 @@ and
 .Fl L
 were used), as well as any boolean value (see
 .Sx "INTERNAL VARIABLES"
-for textual boolean representations) to mark an enwrapped block as
-.Dq never execute
-or
-.Dq always execute .
+for textual boolean representations).
+Non-argument operators are detected as a last ressort.
 .
 .Pp
-Two argument conditions.
-Variables can be tested for existence and expansion:
+Unary variable test operators are
 .Cm -N
 and
 .Cm -Z
-test whether the given variable exist, or not, so that
+which test whether the given variable exists, or not, so that
 .Ql -N editalong
-evaluates to true when
+is true when
 .Va editalong
 is set, whereas
 .Ql -Z editalong
-will if it is not.
+is if it is not.
 .Cm -n
 and
 .Cm -z
 test whether the length of the given string is nonzero or zero.
-The remaining conditions take three arguments.
 .
 .Pp
-Integer conditions treat the arguments on the left and right hand side
-of the operator as integral numbers and compare them arithmetically.
-It is an error if any of the operands is not a valid integer, an empty
-argument (which implies it had been quoted) is treated as if it were 0.
-Via the question mark
+Integer binary operators interpret arguments as integral signed 64-bit
+numbers, and compare them arithmetically.
+Invalid numbers are errors, unset variables and the empty string are 0.
+Operators may be suffixed with the question mark
 .Cm \&?
-modifier suffix a saturated operation mode is available where numbers
-will linger at the minimum or maximum possible value, instead of
-overflowing (or trapping), the keyword
+modifier to enforce
 .Ql saturated
-is optional,
-.Ql ==? ,
-.Ql ==?satu
+operation mode where numbers linger at the minimum or maximum value
+instead of causing an error, the keyword is optional,
+.Ql -lt? ,
+.Ql -lt?satu
 and
-.Ql ==?saturated
-are therefore identical.
-Available conditions are
+.Ql -lt?saturated
+are identical.
+The operators are
 .Cm -lt
 (less than),
 .Cm -le
@@ -6040,22 +6049,24 @@ Available conditions are
 .Cm -ge
 (greater than or equal to), and
 .Cm -gt
-(greater than).
+(greater than), for example
+.Ql if 3 -gt 2;echo yes;end .
 .
 .Pp
-8-bit US-ASCII byte string and regular expression string conditions
-compare the left and right hand side according to their textual content.
-Unset variables are treated as the empty string.
-Via question mark
+8-bit US-ASCII byte and regular expression binary operators interpret
+arguments textually.
+Unset variables expand to the empty string.
+Operators can be suffixed with the question mark
 .Cm \&?
-suffix a case-insensitive operation mode is available, the keyword
-.Ql case
-is optional,
-.Ql ==?
-and
+modifier to choose a
+.Ql case-insensitive
+operation mode, the keyword is optional,
+.Ql ==? ,
 .Ql ==?case
+and
+.Ql ==?case-insensitive
 are identical.
-Available 8-bit US-ASCII byte string conditions are
+Available 8-bit US-ASCII byte binary operators are
 .Cm <
 (less than),
 .Cm <=
@@ -6067,22 +6078,20 @@ Available 8-bit US-ASCII byte string conditions are
 .Cm >=
 (greater than or equal to),
 .Cm >
-(greater than),
+(greater than), as well as
 .Cm =%
 (is substring of) and
 .Cm !%
-(is not substring of).
-If the case-insensitivity modifier has been used, case is ignored
-according to the rules of the US-ASCII encoding.
+(is not substring of), for example
+.Ql if Water =% at;echo yes;end .
 .
 .Pp
-\*(OP Regular expression string conditions work according to the active
-locale, and are therefore aware of
-.Sx "Character sets" .
+\*(OP Regular expression binary operators work in the active locale (see
+.Sx "Character sets" ) .
 .Cm =~
 and
 .Cm !~
-treat the right hand side as an extended regular expression.
+interpret the right hand side argument as an extended regular expression.
 Match groups (in parenthesis, see
 .Xr re_format 7
 or
@@ -6092,25 +6101,92 @@ dependent on host system) can be accessed in
 -most scope via the
 .Va ^
 multiplexer sub-variables
-.Va ^# , ^0 , ^1 .
+.Va ^# , ^0 , ^1
+etc, for example
+.Ql if knoedel =~? .*(OEDE).*; echo yes, $^1 is in $^0; end .
 .
 .Pp
-Conditions can be joined via AND-OR lists (where the AND operator is
+Unary file operators test an aspect of the given filename argument.
+.Sx "Filename transformations"
+are not performed.
+Unless noted the same
+.Ql saturated
+question mark
+.Cm \&?
+modifier like for integer binary operators may be given to ignore
+the argument and (re)use the file status cache that persists until
+expression evaluation ends.
+A non-existing cache is treated as a non-existing file.
+Without modifier the cache is updated.
+The operators are
+.Cm -b
+(file exists and is block special),
+.Cm -c
+(exists, character special),
+.Cm -d
+(exists, directory),
+.Cm -e
+(exists),
+.Cm -f
+(exists, regular file),
+.Cm -g
+(exists, set-group-ID),
+.Cm -k
+(exists, sticky bit set),
+.Cm -L
+(exists, symbolic link),
+.Cm -O
+(exists, owned by effective user ID),
+.Cm -p
+(exists, named pipe),
+.Cm -r
+(exists, user can read, no modifier),
+.Cm -S
+(exists, socket),
+.Cm -s
+(exists, size greater than zero),
+.Cm -t
+(file descriptor number argument is open on a terminal, no modifier),
+.Cm -u
+(exists, set-user-ID),
+.Cm -w
+(exists, user can write, no modifier),
+.Cm -x
+(exists, user can execute / search, no modifier).
+All operators resolve symbolic links except
+.Cm -L .
+For example
+.Ql if -f /etc/motd && -s? ''; echo yes; end .
+.
+.Pp
+Binary file operators interpret the left and right hand side arguments
+as filenames.
+.Sx "Filename transformations"
+are not performed.
+The operators are
+.Cm -ef
+(both files refer to same device and inode),
+.Cm -nt
+(left hand modification is newer, or it exists and right hand does not),
+.Cm -ot
+(left hand modification is older, or it does not exist and right hand
+side does).
+All operators resolve symbolic links.
+For example
+.Ql if /etc/passwd -nt /etc/shadow; echo yes; end .
+.
+.Pp
+Expressions can be joined via AND-OR lists (where AND is
 .Cm &&
-and the OR operator is
+and OR is
 .Cm || ) ,
-which have equal precedence and will be evaluated with left
-associativity, like is known from the
-.Ev SHELL .
-It is possible to form groups of conditions and lists by enclosing them
-in interlockable pairs of brackets
+which have equal precedence and left associativity.
+Further groups can be created via interlockable pairs of brackets
 .Cm [\ \&.\&.\&.\ ] ,
-which are themselve joinable with AND-OR lists.
-.
-.Pp
+themselve joinable with AND-OR lists.
 The unary operator
 .Cm \&!
-reverses the result of individual conditions or entire groups.
+reverses the result of individual expressions or entire groups.
 .
 .Bd -literal -offset indent
 if -N debug;echo *debug* set;else;echo not;endif
@@ -6118,18 +6194,18 @@ if "$ttycharset" == UTF-8 || "$ttycharset" ==?cas UTF8
   echo ttycharset is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
-if "${t1}" == "${t2}"
-  echo These two variables are byte-wise equal
+if ${t1} == ${t2}
+  echo The non-empty variables are byte-wise equal
 endif
-if "$features" =% ,+regex, && "$TERM" =~?case ^xterm\&.*
+if $features =% ,+regex, && "$TERM" =~?case ^xterm\&.*
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${t1}" != '' ] || \e
     [ "$t2" != '' ] ] ]
   echo Noisy, noisy
 endif
-if true && [ -n "t1" || -n "${t2}" ]
-  echo Left associativity, as is known from the shell
+if true && [ -n "$t1" || -n "${t2}" ]
+  echo Left associativity as known from the shell
 endif
 .Ed
 .
@@ -8991,12 +9067,13 @@ Note this is a direct mapping of (a subset of) the system error values,
 with (high numbered) fallbacks for unsupported constants:
 .Bd -literal -offset indent
 define work {
-  eval echo \e$1: \e$^ERR-$1:\e
+  \eeval echo \e$1: \e$^ERR-$1: \e
     \e$^ERRNAME-$1: \e$^ERRDOC-$1
-  vput vexpr i + "$1" 1
-  if $i -lt 16; \excall work $i; end
+  \eeval if \e$(($1 + 1)) -lt 16
+    \eeval xcall work \e$(($1 + 1))
+  \eend
 }
-call work 0
+\ecall work $^ERR-NONE
 .Ed
 .
 .Mx

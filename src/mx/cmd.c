@@ -503,7 +503,7 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 }
 
 boole
-mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp){
+mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
    enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
 
    struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
@@ -603,7 +603,8 @@ jshexp_restart:
 
          ncap.ca_arg_flags =
          shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
-               n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
+                  (skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
+                  n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY
                   ? &cookie : NIL));
@@ -655,7 +656,7 @@ jshexp_restart:
          ASSERT(shin.s[shin.l] == '\0');
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
-               ), cacp->cac_msgflag, target_argpp) < 0){
+               ), cacp->cac_msgflag, skip_aka_dryrun, target_argpp) < 0){
             goto jerr;
          }
 
@@ -729,13 +730,19 @@ jshexp_restart:
          else
             lcap->ca_next = cap;
          lcap = cap;
-         ++cacp->cac_no;
+         if(++cacp->cac_no == U32_MAX){
+            n_pstate_err_no = su_ERR_OVERFLOW;
+            goto jerr;
+         }
 
-         if(target_argpp != NULL){
+         if(target_argpp != NIL){
             lcap->ca_next = cap = *target_argpp;
-            if(cap != NULL){
+            if(cap != NIL){
                lcap = cap;
-               ++cacp->cac_no;
+               if(++cacp->cac_no == U32_MAX){
+                  n_pstate_err_no = su_ERR_OVERFLOW;
+                  goto jerr;
+               }
             }
          }
       }
@@ -1019,7 +1026,7 @@ mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
       cac.cac_desc = a_cmd_eval.cd_cadp;
       cac.cac_indat = io->s;
       cac.cac_inlen = io->l;
-      if(!mx_cmd_arg_parse(&cac))
+      if(!mx_cmd_arg_parse(&cac, FAL0))
          goto jleave;
 
       for(i = 0, cap = cac.cac_arg; cap != NIL; cap = cap->ca_next)

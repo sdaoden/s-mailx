@@ -142,7 +142,7 @@ struct mx_cmd_arg_ctx{
    uz cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
    u32 cac_msgflag; /* Input (option): required flags of messages */
    u32 cac_msgmask; /* Input (option): relevant flags of messages */
-   u32 cac_no; /* Output: number of parsed arguments */
+   u32 cac_no; /* Output: number of parsed arguments (LT U32_MAX!) */
    boole cac_cm_local; /* "Output": `local' command modifier was set */
    u8 cac__pad[3];
    struct mx_cmd_arg *cac_arg; /* Output: parsed arguments */
@@ -216,8 +216,10 @@ EXPORT boole mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil,
  * otherwise no resources are allocated (in ->cac_arg).
  * For _WYSH arguments the flags _TRIM_SPACE (v15 _not_ _TRIM_IFSSPACE) and
  * _LOG are implicit, _META_SEMICOLON is starting with the last (non-optional)
- * argument, and then a trailing empty argument is ignored, too */
-EXPORT boole mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp);
+ * argument, and then a trailing empty argument is ignored, too.
+ * skip_aka_dryrun is passed through to shell expression scanner */
+EXPORT boole mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp,
+      boole skip_aka_dryrun);
 
 /* Save away the data from/to AUTO memory to mem_bag vp */
 EXPORT void *mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp,

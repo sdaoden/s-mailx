@@ -1795,7 +1795,7 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
    cac.cac_inlen = UZ_MAX;
    cac.cac_msgflag = cac.cac_msgmask = 0;
 
-   if((rv = mx_cmd_arg_parse(&cac)))
+   if((rv = mx_cmd_arg_parse(&cac, FAL0)))
       rv = a_dmsg_cmd(fp, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
 
    NYD_OU;
