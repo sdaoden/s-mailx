@@ -104,6 +104,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 6, a_cmd_cad_digmsg){ /* XXX 4 OR 5 */
       n_SHEXP_PARSE_TRIM_IFSSPACE} /* arg4 */
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+/* elif: uses if */
+
 mx_CMD_ARG_DESC_SUBCLASS_DEF(Forward, 1, a_cmd_cad_Forward){
    {mx_CMD_ARG_DESC_MSGLIST_AND_TARGET | mx_CMD_ARG_DESC_GREEDY /*|
          mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE*/,
@@ -114,6 +116,12 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_cmd_cad_forward){
    {mx_CMD_ARG_DESC_MSGLIST_AND_TARGET | mx_CMD_ARG_DESC_GREEDY /*|
          mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE*/,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
+}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+mx_CMD_ARG_DESC_SUBCLASS_DEF(if, 1, a_cmd_cad_if){
+   {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY |
+         mx_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 mx_CMD_ARG_DESC_SUBCLASS_DEF(Move, 1, a_cmd_cad_Move){
@@ -386,12 +394,12 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
    { "echoerrn", &c_echoerrn, (HG | M | V | X | EM | TWYSH), 0, MAC, NIL
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
 { "else", &c_else, (HG | F | M | X | EM | TWYSH), 0, 0, NIL
-     DS(N_("Part of the if/elif/else/endif statement")) },
-   /* v15-compat `elif': WYRA not WYSH so obsoletion warnings: errors out! */
-   { "elif", &c_elif, (HG | F | M | X | EM | TWYRA), 1, MAC, NIL
-     DS(N_("Part of the if/elif/else/endif statement")) },
+     DS(N_("Part of the if/elif/else/endif conditional expression")) },
+   { "elif", &c_elif, (HG | F | M | X | EM | TARG), 0, 0,
+     mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_if)
+     DS(N_("Part of the if/elif/else/endif conditional expression")) },
    { "endif", &c_endif, (HG | F | M | X | EM | TWYSH), 0, 0, NIL
-     DS(N_("Part of the if/elif/else/endif statement")) },
+     DS(N_("Part of the if/elif/else/endif conditional expression")) },
    { "environ", &c_environ, (HG | L | M | V | X | EM | TWYSH), 2, MAC, NIL
      DS(N_("<link|unlink|set|unset> :<variable>:, or [vput] lookup <var>")) },
    { "errors",
@@ -478,10 +486,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
          "<delete> :<NO>:, or re-eval entry <NO>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NIL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
-
-   /* v15-compat `if': WYRA not WYSH so obsoletion warnings: errors out! */
-   { "if", &c_if, (HG | F | M | X | EM | TWYRA), 1, MAC, NIL
-     DS(N_("Part of the if/elif/else/endif statement")) },
+   { "if", &c_if, (HG | F | M | X | EM | TARG), 0, 0,
+     mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_if)
+     DS(N_("Part of the if/elif/else/endif conditional expression")) },
    { "ignore", &c_ignore, (M | TWYRA), 0, MAC, NIL
      DS(N_("Add <headers> to the ignored LIST, or show that list")) },
    { "imap",

@@ -896,7 +896,7 @@ a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
    int rv, *msgvec;
    NYD_IN;
 
-   if((rv = n_getmsglist(ms, n_msgvec, 0, NIL)) < 0){
+   if((rv = n_getmsglist(ms, n_msgvec, 0, FAL0, NIL)) < 0){
       rv = n_pstate_err_no; /* XXX not really, should be handled there! */
       goto jleave;
    }

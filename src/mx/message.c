@@ -1560,9 +1560,8 @@ touch(struct message *mp){
 }
 
 FL int
-n_getmsglist(char const *buf, int *vector, int flags,
-   struct mx_cmd_arg **capp_or_null)
-{
+n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
+      struct mx_cmd_arg **capp_or_nil){
    int *ip, mc;
    struct message *mp;
    NYD_IN;
@@ -1573,8 +1572,8 @@ n_getmsglist(char const *buf, int *vector, int flags,
    a_msg_list_saw_d = FAL0;
 
    *vector = 0;
-   if(capp_or_null != NULL)
-      *capp_or_null = NULL;
+   if(capp_or_nil != NIL)
+      *capp_or_nil = NIL;
    if(*buf == '\0'){
       mc = 0;
       goto jleave;
@@ -1598,7 +1597,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       cac.cac_inlen = UZ_MAX;
       cac.cac_msgflag = flags;
       cac.cac_msgmask = 0;
-      if(!mx_cmd_arg_parse(&cac)){
+      if(!mx_cmd_arg_parse(&cac, skip_aka_dryrun)){
          mc = -1;
          goto jleave;
       }else if(cac.cac_no == 0){
@@ -1606,11 +1605,11 @@ n_getmsglist(char const *buf, int *vector, int flags,
          goto jleave;
       }else{
          /* Is this indeed a (maybe optional) message list and a target? */
-         if(capp_or_null != NULL){
+         if(capp_or_nil != NIL){
             struct mx_cmd_arg *cap, **lcapp;
 
-            if((cap = cac.cac_arg)->ca_next == NULL){
-               *capp_or_null = cap;
+            if((cap = cac.cac_arg)->ca_next == NIL){
+               *capp_or_nil = cap;
                mc = 0;
                goto jleave;
             }
@@ -1619,8 +1618,8 @@ n_getmsglist(char const *buf, int *vector, int flags,
                if((cap = *lcapp)->ca_next == NULL)
                   break;
             }
-            *capp_or_null = cap;
-            *lcapp = NULL;
+            *capp_or_nil = cap;
+            *lcapp = NIL;
 
             /* In the list-and-target mode we have to take special care, since
              * some commands use special call conventions historically (use the
@@ -1651,7 +1650,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK){
             if(!(mp->m_flag & MNEWEST))
-               a_msg_unmark((int)P2UZ(mp - message + 1));
+               a_msg_unmark(S(int,P2UZ(mp - message + 1)));
             else
                ++mc;
          }
@@ -1664,11 +1663,11 @@ n_getmsglist(char const *buf, int *vector, int flags,
    if(mb.mb_threaded == 0){
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK)
-            *ip++ = (int)P2UZ(mp - message + 1);
+            *ip++ = S(int,P2UZ(mp - message + 1));
    }else{
       for(mp = threadroot; mp != NULL; mp = next_in_thread(mp))
          if(mp->m_flag & MMARK)
-            *ip++ = (int)P2UZ(mp - message + 1);
+            *ip++ = S(int,P2UZ(mp - message + 1));
    }
    *ip = 0;
 

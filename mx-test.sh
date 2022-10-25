@@ -8,6 +8,7 @@
 : ${JOBWAIT:=42}
 : ${JOBMON:=y}
 : ${SKIPTEST:=}
+: ${FS_TIME_RES:=1} # file-system time resolution
 
 # XXX LONG Note valgrind has problems with FDs in forked childs, which causes
 # XXX UNTESTED some tests to fail (FD is rewound and thus will be dumped twice)
@@ -2966,8 +2967,18 @@ t_ifelse() { # {{{
    check shexpign 0 ./tshexpign '1174905124 27'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tbadsyn 2>>${ERR}
-   if !;echo 1a;else;echo 1b;endif
-   if [ ! && a == hey ];echo 2a;else;echo 2b;endif
+   commandalias ca \\commandalias
+   ca ec \\echo
+   ca el \\else\;ec
+   ca f \\endif
+   if !;ec 1a;el 1b;f
+   if [ ! && a == hey ];ec 2a;el 2b;f
+   if true && ! ! ! ! ! ! ! ! !;ec 3a;el 3b;f
+   if true && [ true ] [ true ];ec 4a;el 4b;f
+   if [ -n == -n ];ec 5a;el 5b;f
+   if -n == -n;ec 6a;el 6b;f
+   if [ == ];ec 7a;el 7b;f
+   if [ == [;ec 7a;el 7b;f
 	__EOT
    check badsyntax 0 ./tbadsyn '4294967295 0'
 
@@ -2988,21 +2999,31 @@ t_ifelse() { # {{{
    if [ && != || ];e y1.10;f
    if [ || != && ];e y1.11;f
    #
-   if [ == [;e y1.12;f
-   if ! ! [ == [;e y1.13;f
-   if ! [ != [;e y1.14;f
-   if [ [ == [ ];e y1.15;f
-   if [ ! ! [ == [ ];e y1.16;f
-   if [ ! [ != [ ];e y1.16;f
-   if [ [ [ [ == [ ] ] ];e y1.17;f
+   if '[' == [;e y1.12;f
+   set i=[
+   if ! ! $i == [;e y1.13;f
+   if ! \[ != [;e y1.14;f
+   if [ '[' == [ ];e y1.15;f
+   if [ ! ! $'\x5B' == [ ];e y1.16;f
+   if [ ! $'\u5B' != [ ];e y1.17;f
+   if [ [ [ \[ == [ ] ] ];e y1.18;f
    #
-   if ] == ];e y1.18;f
-   if ! ! ] == ];e y1.19;f
-   if ! ] != ];e y1.20;f
-   if [ ] == ] ];e y1.21;f
-   if [ ! ! ] == ] ];e y1.22;f
-   if [ ! ] != ] ];e y1.23;f
-   if [ [ [ ] == ] ] ] ];e y1.24;f
+   if ] == ];e y1.19;f
+   if ! ! ] == ];e y1.20;f
+   if ! ] != ];e y1.21;f
+   if [ ] == ] ];e y1.22;f
+   if [ ! ! ] == ] ];e y1.23;f
+   if [ ! ] != ] ];e y1.24;f
+   if [ [ [ ] == ] ] ] ];e y1.25;f
+   #
+   if '[' != ];e y1.26;f
+   set i=[
+   if ! ! $i != ];e y1.27;f
+   if ! \[ == ];e y1.28;f
+   if [ '[' != ] ];e y1.29;f
+   if [ ! ! $'\x5B' != ] ];e y1.30;f
+   if [ ! $'\u5B' == ] ];e y1.31;f
+   if [ [ [ ! \[ == ] ] ] ];e y1.32;f
    ##
    if ! false;e y2.1;f
    if ! != x;e y2.2;f
@@ -3017,10 +3038,10 @@ t_ifelse() { # {{{
    if || == ||;e y2.10;f
    if && != ||;e y2.11;f
    if || != &&;e y2.12;f
-   if ! && == &&;e y2.13;f
-   if ! || == ||;e y2.14;f
-   if ! && != ||;e y2.15;f
-   if ! || != &&;e y2.16;f
+   if ! && != &&;e y2.13;f
+   if ! || != ||;e y2.14;f
+   if ! && == ||;e y2.15;f
+   if ! || == &&;e y2.16;f
    ##
    if [ ! false ];e y2.20;f
    if [ ! != x ];e y2.21;f
@@ -3035,10 +3056,10 @@ t_ifelse() { # {{{
    if [ || == || ];e y2.29;f
    if [ && != || ];e y2.30;f
    if [ || != && ];e y2.31;f
-   if ! [ && == && ];e y2.32;f
-   if [ ! [ || == || ] ];e y2.33;f
-   if [ ! && != || ];e y2.34;f
-   if [ ! || != && ];e y2.35;f
+   if ! ! [ && == && ];e y2.32;f
+   if [ ! [ ! || == || ] ];e y2.33;f
+   if ! [ ! && != || ];e y2.34;f
+   if [ ! ! || != && ];e y2.35;f
    ##
    if [ && == && ] && [ && == && ];e y3.1;f
    if [ || == || ] || [ || == || ];e y3.2;f
@@ -3056,26 +3077,38 @@ t_ifelse() { # {{{
    if == != !=;e y20.2;f
    if != == !=;e y20.3;f
    if != != ==;e y20.4;f
+   # (quoting binaries is not needed)
+   if [ '==' == == ];e y21.1;f
+   set i===
+   if [ $i == == ];e y21.2;f
+   if [ == == == ];e y21.3;f
+   if [ == != != ];e y21.4;f
+   if [ != == != ];e y21.5;f
+   if [ != != == ];e y21.6;f
    #
-   if [ == == == ];e y21.1;f
-   if [ == != != ];e y21.2;f
-   if [ != == != ];e y21.3;f
-   if [ != != == ];e y21.4;f
+   if ! '==' == ==;el;e y22.1;f
+   set i===
+   if ! $i == ==;el;e y22.2;f
+   if ! == == ==;el;e y22.3;f
+   if ! == != !=;el;e y22.4;f
+   if ! != == !=;el;e y22.5;f
+   if ! != != ==;el;e y22.6;f
    #
-   if ! == == ==;else;e y22.1;f
-   if ! == != !=;else;e y22.2;f
-   if ! != == !=;else;e y22.3;f
-   if ! != != ==;else;e y22.4;f
+   if ! [ '==' == == ];el;e y23.1;f
+   set i===
+   if ! [ $i == == ];el;e y23.2;f
+   if [ ! == == == ];el;e y23.3;f
+   if [ ! == != != ];el;e y23.4;f
+   if ! [ != == != ];el;e y23.5;f
+   if ! [ != != == ];el;e y23.6;f
    #
-   if ! [ == == == ];else;e y23.1;f
-   if ! [ == != != ];else;e y23.2;f
-   if ! [ != == != ];else;e y23.3;f
-   if ! [ != != == ];else;e y23.4;f
-   #
-   if [ ! == == == ];else;e y24.1;f
-   if [ ! == != != ];else;e y24.2;f
-   if [ ! != == != ];else;e y24.3;f
-   if [ ! != != == ];else;e y24.4;f
+   if [ ! '==' == == ];el;e y24.1;f
+   set i===
+   if [ ! $i == == ];el;e y24.2;f
+   if [ ! == == == ];el;e y24.3;f
+   if [ ! ! == != != ];el;e y24.4;f
+   if [ ! != == != ];el;e y24.5;f
+   if [ ! != != == ];el;e y24.6;f
    ##
    if -n [;e y30.1;f
    if -n ];e y30.2;f
@@ -3085,11 +3118,39 @@ t_ifelse() { # {{{
    if ! -z ];e y31.2;f
    if ! -z &&;e y31.3;f
    if ! -z ||;e y31.4;f
+   ##
+   if -n ==;e y32.1;f
+   if [ -n == ];e y32.2;f
+   if [ '-n' == -n ];e y32.3;f
+   if \-n == -n;e y32.4;f
+   if -n == && true;e y32.5;f
+   if \-n == -n && true;e y32.6;f
+   if -$'\u6E' == ] || true;e y32.7;f
+   if [ [ [ -n == ] ] ];e y32.8;f
+   if [ [ [ -$'\x6e' == -n ] ] ];e y32.9;f
+   if [ '-n' != ] && true ];e y32.10;f
+   if [ -$'\x6e' == ] ] || true;e y32.11;f
+   if [ [ \-n == ] ] ] || true;e y32.12;f
+   if [ [ \-n == ] ] || true ];e y32.13;f
+   #
+   if ! ! -n ==;e y33.1;f
+   if ! [ ! -n == ];e y33.2;f
+   if ! [ ! \-n == -n ];e y33.3;f
+   if ! ! \-n == -n;e y33.4;f
+   if ! ! -n == && true;e y33.5;f
+   if ! ! \-n == -n && true;e y33.6;f
+   if ! \-n == ] && true;e y33.7;f
+   if ! ! [ ! [ ! [ -n == ] ] ];e y33.8;f
+   if ! ! [ ! [ ! [ \-n == -n ] ] ];e y33.9;f
+   if [ ! \-n == ] && true ];e y33.10;f
+   if [ ! \-n == ] ] && true;e y33.11;f
+   if ! ! [ ! [  \-n == ] ] ] && true;e y33.12;f
+   if ! ! [ [ \-n != ] ] && true ];e y33.13;f
 	__EOT
    #}}}
-   check goodsyntax 0 ./tgoodsyn '2169678278 550'
+   check goodsyntax 0 ./tgoodsyn '2589130917 786'
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tNnZz_whiteout
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>>${ERR}
 	\if -N xyz; echo 1.err-1; \
 		\elif ! -Z xyz;echo 1.err-2;\
 		\elif -n "$xyz"     ;      echo 1.err-3   ;    \
@@ -3117,7 +3178,7 @@ t_ifelse() { # {{{
 
    #{{{ # TODO t_ifelse: individual tests as for NnZz_whiteout
    # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tnormal
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tnormal 2>>${ERR}
 		if 0
 		   echo 1.err
 		else
@@ -3744,7 +3805,7 @@ t_ifelse() { # {{{
 
    if have_feat regex; then
       #{{{
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex 2>>${ERR}
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
@@ -3838,7 +3899,7 @@ t_ifelse() { # {{{
       check regex 0 ./tregex '1115671789 95'
 
       #{{{
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex-match
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex-match 2>>${ERR}
       commandalias x \\echo '$?/$^ERRNAME.. $^#<$^0, $^1, $^2, $^3, $^4>'
       commandalias e \\echoerr err:
       \if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
@@ -3851,6 +3912,32 @@ t_ifelse() { # {{{
    else
       t_echoskip 'regex,regex-match:[!REGEX]'
    fi
+
+   #{{{
+   printf '' > ./tf1
+   sleep ${FS_TIME_RES}
+   printf '.' > ./tf2
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tfops 2>>${ERR}
+   commandalias o \\echo
+   commandalias e \\end
+   \if -e tf1;o 1;e
+   \if -e tf1 && -f tf1;o 2;e
+   \if -e tf1 && -f tf1 && ! -s tf1;o 3;e
+   \if -e tf1 && -f? .;o 4;e
+   \if -e tf1 && -f? . && ! -s? -;o 5;e
+   \if -r tf1;o 6;e
+   \if -w tf1;o 7;e
+   \if -x .;o 8;e
+   \if tf1 -ef tf1;o 9;e
+   \if ! tf1 -ef tf2;o 10;e
+   \if tf2 -ef tf2;o 11;e
+   \if tf1 -ot tf2;o 12;e
+   \if ! tf2 -ot tf1;o 13;e
+   \if tf2 -nt tf1;o 14;e
+	__EOT
+   #}}}
+   check fileops 0 ./tfops '571055761 33'
 
    t_epilog "${@}"
 } # }}}

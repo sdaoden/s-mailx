@@ -33,688 +33,766 @@
 # include <su/re.h>
 #endif
 
+#include "mx/cmd.h"
+
 #include "mx/cndexp.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
+enum a_cndexp_op{
+   a_CNDEXP_OP_NONE = 0,
+
+   a_CNDEXP_OP_N,
+   a_CNDEXP_OP_MIN_UNARY = a_CNDEXP_OP_N,
+   a_CNDEXP_OP_v = a_CNDEXP_OP_N,
+   a_CNDEXP_OP_Z,
+   a_CNDEXP_OP_n,
+   a_CNDEXP_OP_z,
+
+   a_CNDEXP_OP_FU_b,
+   a_CNDEXP_OP_FU_c,
+   a_CNDEXP_OP_FU_d,
+   a_CNDEXP_OP_FU_e,
+   a_CNDEXP_OP_FU_f,
+   a_CNDEXP_OP_FU_G,
+   a_CNDEXP_OP_FU_g,
+   a_CNDEXP_OP_FU_k,
+   a_CNDEXP_OP_FU_L,
+   a_CNDEXP_OP_FU_O,
+   a_CNDEXP_OP_FU_p,
+   a_CNDEXP_OP_FU_r,
+   a_CNDEXP_OP_FU_S,
+   a_CNDEXP_OP_FU_s,
+   a_CNDEXP_OP_FU_t,
+   a_CNDEXP_OP_FU_u,
+   a_CNDEXP_OP_FU_w,
+   a_CNDEXP_OP_FU_x,
+   a_CNDEXP_OP_MAX_UNARY = a_CNDEXP_OP_FU_x,
+
+   a_CNDEXP_OP_INT_lt,
+   a_CNDEXP_OP_MIN_BINARY = a_CNDEXP_OP_INT_lt,
+   a_CNDEXP_OP_INT_le,
+   a_CNDEXP_OP_INT_eq,
+   a_CNDEXP_OP_INT_ne,
+   a_CNDEXP_OP_INT_ge,
+   a_CNDEXP_OP_INT_gt,
+
+   a_CNDEXP_OP_8B_LT,
+   a_CNDEXP_OP_8B_LE,
+   a_CNDEXP_OP_8B_EQ,
+   a_CNDEXP_OP_8B_NE,
+   a_CNDEXP_OP_8B_GE,
+   a_CNDEXP_OP_8B_GT,
+   a_CNDEXP_OP_8B_SUB,
+   a_CNDEXP_OP_8B_NSUB,
+#ifdef mx_HAVE_REGEX
+   a_CNDEXP_OP_RE_MATCH,
+   a_CNDEXP_OP_RE_NMATCH,
+#endif
+
+   a_CNDEXP_OP_FB_ef,
+   a_CNDEXP_OP_FB_nt,
+   a_CNDEXP_OP_FB_ot,
+   a_CNDEXP_OP_MAX_BINARY = a_CNDEXP_OP_FB_ot,
+
+   a_CNDEXP__OP_MAX
+};
+
+/* This is ORd to the op */
+enum a_cndexp_op_flags{
+   a_CNDEXP_OP_MASK = 0xFFu,
+
+   a_CNDEXP_OP_F_UNANOT = 1u<<8, /* */
+   a_CNDEXP_OP_F_LBRACK = 1u<<9,
+   a_CNDEXP_OP_F_RBRACK = 1u<<10,
+   a_CNDEXP_OP_F_AND = 1u<<11,
+   a_CNDEXP_OP_F_OR = 1u<<12,
+   a_CNDEXP_OP_F_ANDOR = a_CNDEXP_OP_F_AND | a_CNDEXP_OP_F_OR,
+   a_CNDEXP_OP_F_TERMINATOR = a_CNDEXP_OP_F_RBRACK | a_CNDEXP_OP_F_ANDOR,
+
+   a_CNDEXP_OP_F_ERR = 1u<<13,
+   a_CNDEXP_OP_F_CASE = 1u<<14,
+   a_CNDEXP_OP_F_SATURATED = 1u<<15
+   /* Must fit in 16-bit */
+};
+CTA(S(u32,a_CNDEXP_OP_MASK) >= S(u32,a_CNDEXP__OP_MAX), "Bit range overlap");
+
 struct a_cndexp_ctx{
    char const * const *cec_argv_base;
-   char const * const *cec_argv;
+   char const * const *cec_argv; /* (Moving) */
    boole cec_log_on_error;
-   u8 cec__pad[su_6432(7,3)];
+   boole cec_have_stat;
+   u8 cec__pad[2];
+   u32 cec_argc;
+   u16 *cec_toks; /* "Analyzed" (moving) */
+   struct stat cec_stat;
 };
+
+/* Entry point.  Anything level>0 is inside [ groups */
+static boole a_cndexp_expr(struct a_cndexp_ctx *cecp, uz level, boole noop);
+
+/* */
+static boole a_cndexp__op_apply(struct a_cndexp_ctx *cecp, u16 op,
+      char const *lhv, char const *rhv, boole noop);
 
 /* */
 static void a_cndexp_error(struct a_cndexp_ctx const *cecp,
-      char const *msg_or_nil, char const *nearby_or_nil);
-
-/* No-op and (1) do not work for real, only syntax-check and
- * (2) non-error return is ignored.
- * argv is a "proposed argc" until group end or AND-OR or argv NIL */
-static boole a_cndexp_test(struct a_cndexp_ctx *cecp, boole noop,
-      uz argv, uz *unary);
-static boole a_cndexp_group(struct a_cndexp_ctx *cecp, uz level, boole noop);
-
-static void
-a_cndexp_error(struct a_cndexp_ctx const *cecp, char const *msg_or_nil,
-      char const *nearby_or_nil){
-   struct str s;
-   char const *sep, *expr;
-   NYD2_IN;
-
-   if(!cecp->cec_log_on_error)
-      goto jleave;
-
-   str_concat_cpa(&s, cecp->cec_argv_base,
-      (*cecp->cec_argv_base != NIL ? " " : su_empty));
-
-   if(msg_or_nil == NIL)
-      msg_or_nil = _("invalid expression syntax");
-
-   if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
-      sep = expr = su_empty;
-   else
-      sep = ": ", expr = s.s;
-
-   if(nearby_or_nil != NIL)
-      n_err(_("*if: %s (near: %s)%s%s\n"),
-         msg_or_nil, nearby_or_nil, sep, expr);
-   else
-      n_err(_("*if: %s%s%s\n"), msg_or_nil, sep, expr);
-
-   if(sep == su_empty){
-      ul argc;
-
-      n_err(_("   Expression: %s\n"), s.s);
-
-      str_concat_cpa(&s, cecp->cec_argv,
-         (*cecp->cec_argv != NIL ? " # " : su_empty));
-
-      for(argc = 0; cecp->cec_argv[argc] != NIL; ++argc){
-      }
-      n_err(_("   Stopped, %lu token(s) left: %s\n"), argc, s.s);
-   }
-
-jleave:
-   n_pstate_err_no = su_ERR_INVAL;
-
-   NYD2_OU;
-}
+      char const *msg_or_nil);
 
 static boole
-a_cndexp_test(struct a_cndexp_ctx *cecp, boole noop, uz argc, uz *unary){
-#undef a_REDO
-#define a_REDO() \
-   if(argc < 3 && *unary > 0){\
-      --*unary;\
-      ++argc;\
-      argv = --cecp->cec_argv;\
-      goto jredo;\
-   }else if(cecp->cec_argv[argc] != NIL){\
-      ++argc;\
-      goto jredo;\
-   }
+a_cndexp_expr(struct a_cndexp_ctx *cecp, uz level, boole noop){
+   char const *emsg;
+   u32 c;
+   boole syntax, rv, xrv;
+   NYD_IN;
 
-   char c, opbuf[4];
-   char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
-   boole rv;
-   NYD2_IN;
-   ASSERT(argc >= 1);
+   for(syntax = FAL0, rv = TRUM1;;
+         syntax = !syntax,
+         cecp->cec_argv += c, cecp->cec_toks += c, cecp->cec_argc -= c){
+      enum {a_NONE = 0, a_UNA = 1u<<0, a_BIN = 1u<<1};
 
-   rv = TRUM1;
-   emsg = NIL;
-   argv = cecp->cec_argv;
-   UNINIT(cp, su_empty);
+      u16 op;
+      u32 i, unanot;
 
-   /* Maximally unary ! was seen here */
-   if(UNLIKELY(argc != 1 && argc != 3 &&
-         (argc != 2 || !(n_pstate & n_PS_ARGMOD_WYSH)))){
-      cp = argv[0];
-      goto jesyn;
-   }
-
-jredo:
-   if(argc == 3)
-      goto jargc3;
-   if(argc == 2)
-      goto jargc2;
-   if(argc == 1)
-      goto jargc1;
-
-   cp = argv[0];
-   goto jesyn;
-
-jresult:
-   /* Easier to handle in here */
-   if(noop && rv /*== TRUM1*/)
-      rv = TRU1;
-
-jleave:
-   cecp->cec_argv += argc;
-
-   NYD2_OU;
-   return rv;
-
-jargc1:/* C99 */{
-   switch(*(cp = argv[0])){
-   case '$': /* v15compat */
-      if(!(n_pstate & n_PS_ARGMOD_WYSH)){
-         /* v15compat (!wysh): $ trigger? */
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
-               goto jesyn;
-         }
-
-         lhv = noop ? NIL : n_var_vlook(cp, TRU1);
-         rv = (lhv != NIL);
+      if((i = cecp->cec_argc) == 0)
          break;
-      }
-      /* FALLTHRU */
 
-   default:
-      switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
-      case FAL0:
-      case TRU1:
-         break;
-      default:
-         a_REDO();
-         emsg = N_("Expected a boolean");
-         rv = TRUM1;
-         goto jesyn;
-      }
-      break;
+      if(syntax){
+         op = *cecp->cec_toks;
 
-   case 'R': case 'r':
-      rv = ((n_psonce & n_PSO_SENDMODE) == 0);
-      break;
-   case 'S': case 's':
-      rv = ((n_psonce & n_PSO_SENDMODE) != 0);
-      break;
-
-   case 'T': case 't':
-      if(!su_cs_cmp_case(cp, "true")) /* Beware! */
-         rv = TRU1;
-      else
-         rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
-      break;
-   }
-
-   goto jresult;
-   }
-
-jargc2:/* C99 */{
-   emsg = N_("unrecognized condition");
-
-   cp = argv[0];
-   if(cp[0] != '-' || cp[2] != '\0'){
-      a_REDO();
-      goto jesyn;
-   }
-
-   switch((c = cp[1])){
-   case 'N':
-   case 'Z':
-      if(noop)
-         rv = TRU1;
-      else{
-         lhv = n_var_vlook(argv[1], TRU1);
-         rv = (c == 'N') ? (lhv != NIL) : (lhv == NIL);
-      }
-      break;
-   case 'n':
-   case 'z':
-      if(noop)
-         rv = TRU1;
-      else{
-         lhv = argv[1];
-         rv = (c == 'n') ? (*lhv != '\0') : (*lhv == '\0');
-      }
-      break;
-   default:
-      a_REDO();
-      goto jesyn;
-   }
-
-   goto jresult;
-   }
-
-jargc3:/* C99 */{
-   enum a_flags{
-      a_NONE,
-      a_MOD = 1u<<0,
-      a_ICASE = 1u<<1,
-      a_SATURATED = 1u<<2
-   };
-
-   BITENUM_IS(u32,a_flags) flags;
-
-   flags = a_NONE;
-
-   emsg = N_("unrecognized condition");
-   op = argv[1];
-   if((c = op[0]) == '\0'){
-      cp = op;
-      goto jesyn;
-   }
-
-   /* May be modifier */
-   if(c == '@'){ /* v15compat */
-      n_OBSOLETE2(_("if/elif: please use ? modifier suffix, "
-            "not @ prefix: %s"),
-         savecatsep(n_shexp_quote_cp(argv[0], FAL0), ' ',
-            savecatsep(n_shexp_quote_cp(argv[1], FAL0), ' ',
-               n_shexp_quote_cp(argv[2], FAL0))));
-      for(;;){
-         c = *++op;
-         if(c == 'i')
-            flags |= a_ICASE;
-         else
-            break;
-      }
-      if(flags == a_NONE)
-         flags = a_ICASE;
-   }else
-   if((cp = su_cs_find_c(op, '?')) != NIL){
-      if(cp[1] == '\0')
-         flags |= a_MOD;
-      else if(su_cs_starts_with_case("case", &cp[1]))
-         flags |= a_ICASE;
-      else if(su_cs_starts_with_case("saturated", &cp[1]))
-         flags |= a_SATURATED;
-      else{
-         cp = op;
-         emsg = N_("invalid modifier");
-         goto jesyn;
-      }
-
-      /* C99 */{
-         uz i;
-
-         i = P2UZ(cp - op);
-         if(i > 3){
-            cp = op;
-            goto jesyn;
-         }
-         opbuf[i] = '\0';
-         su_mem_copy(opbuf, op, i);
-         op = opbuf;
-      }
-   }
-
-   if(op[1] == '\0'){
-      if(c != '<' && c != '>')
-         goto jesyn;
-   }else if(c != '-' && op[2] != '\0')
-      goto jesyn;
-   else if(c == '<' || c == '>'){
-      if(op[1] != '=')
-         goto jesyn;
-   }else if(c == '=' || c == '!'){
-      if(op[1] != '=' && op[1] != '%' && op[1] != '@'/* v15compat */
-#ifdef mx_HAVE_REGEX
-            && op[1] != '~'
-#endif
-            )
-         goto jesyn;
-   }else if(c == '-'){
-      if(op[1] == '\0' || op[2] == '\0' || op[3] != '\0')
-         goto jesyn;
-      if(op[1] == 'e'){
-         if(op[2] != 'q')
-            goto jesyn;
-      }else if(op[1] == 'g' || op[1] == 'l'){
-         if(op[2] != 'e' && op[2] != 't')
-            goto jesyn;
-      }else if(op[1] == 'n'){
-         if(op[2] != 'e')
-            goto jesyn;
-      }else
-         goto jesyn;
-   }else
-      goto jesyn;
-
-   /* */
-   lhv = argv[0];
-   if(!(n_pstate & n_PS_ARGMOD_WYSH)){ /* v15compat (!wysh): $ trigger? */
-      cp = lhv;
-      if(*cp == '$'){
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
-               goto jesyn;
-         }
-
-         lhv = noop ? NIL : n_var_vlook(cp, TRU1);
-      }else
-         goto jesyn;
-   }
-
-   /* The right hand side may also be a variable, more syntax checking */
-   emsg = N_("invalid right hand side");
-   if((rhv = argv[2]) == NIL /* Cannot happen */)
-      goto jesyn;
-
-   if(!(n_pstate & n_PS_ARGMOD_WYSH)){/* v15compat */
-      if(*rhv == '$'){
-         if(*++rhv == '\0')
-            goto jesyn;
-
-         if(*rhv == '{'){
-            uz i;
-
-            i = su_cs_len(rhv);
-
-            if(i > 0 && rhv[i - 1] == '}')
-               rhv = savestrbuf(++rhv, i -= 2);
-            else{
-               cp = --rhv;
+         if(op & a_CNDEXP_OP_F_RBRACK){
+            if(level == 0){
+               emsg = V_("no group to close here");
                goto jesyn;
             }
+            if(noop && rv/* == TRUM1*/)
+               rv = TRU1;
+            break;
          }
 
-         rhv = noop ? NIL : n_var_vlook(cp = rhv, TRU1);
-      }
-   }
-
-   /* A null value is treated as the empty string */
-   emsg = NIL;
-   if(lhv == NIL)
-      lhv = UNCONST(char*,su_empty);
-   if(rhv == NIL)
-      rhv = UNCONST(char*,su_empty);
-
-   /* String */
-#ifdef mx_HAVE_REGEX
-   if(op[1] == '~'){
-      struct su_re re;
-
-      if(flags & a_SATURATED){
-         emsg = N_("invalid modifier for operational mode (regex)");
-         goto jesyn;
-      }
-
-      su_re_create(&re);
-
-      if(su_re_setup_cp(&re, rhv, (su_RE_SETUP_EXT |
-            (noop ? su_RE_SETUP_TEST_ONLY : su_RE_SETUP_NONE) |
-            ((flags & (a_MOD | a_ICASE)) ? su_RE_SETUP_ICASE
-               : su_RE_SETUP_NONE))
-            ) != su_RE_ERROR_NONE){
-         emsg = savecat(_("invalid regular expression: "),
-               su_re_error_doc(&re));
-         su_re_gut(&re);
-         goto jesyn_ntr;
-      }
-
-      if(!noop){
-         rv = su_re_eval_cp(&re, lhv, su_RE_EVAL_NONE);
-         if(mx_var_re_match_set((rv ? re.re_group_count : 0), lhv, re.re_match
-               ) != su_ERR_NONE){
-            emsg = N_("pattern with too many matches");
-            n_pstate_err_no = su_ERR_OVERFLOW;
+         if(!(op & a_CNDEXP_OP_F_ANDOR)){
+            emsg = V_("expected an AND/OR list");
+            goto jesyn;
          }
-         rv = (!rv ^ (c == '='));
+
+         noop = (((op & a_CNDEXP_OP_F_AND) != 0) ^ (rv == TRU1));
+         c = 1;
+         continue;
       }
 
-      su_re_gut(&re);
-
-      if(emsg != NIL){
-         rv = TRUM1;
-         goto jesyn;
+      /* There may be leading unary NOTs */
+      for(unanot = c = 0; c < i; ++unanot, ++c){
+         op = cecp->cec_toks[c];
+         if((op & a_CNDEXP_OP_MASK) != a_CNDEXP_OP_NONE ||
+               !(op & a_CNDEXP_OP_F_UNANOT))
+            break;
       }
-   }else
-#endif /* mx_HAVE_REGEX */
-         if(noop){
-      ;
-   }
-   /* Byte find */
-   else if(op[1] == '%' || op[1] == '@'){
-      if(flags & a_SATURATED){
-         emsg = N_("invalid modifier for operational mode");
-         goto jesyn;
-      }
-
-      if(op[1] == '@') /* v15compat */
-         n_OBSOLETE("if++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
-      rv = ((flags & (a_MOD | a_ICASE) ? su_cs_find_case(lhv, rhv)
-            : su_cs_find(lhv, rhv)) == NIL) ^ (c == '=');
-   }
-   /* Integer */
-   else if(c == '-'){
-      u32 lhvif, rhvif;
-      s64 lhvi, rhvi;
-
-      if(flags & a_ICASE){
-         emsg = N_("invalid modifier for operational mode");
+      if(c == i){
+         ASSERT(unanot > 0);
+         emsg = N_("trailing unary ! operators");
          goto jesyn;
       }
 
-      if(*lhv == '\0')
-         lhv = n_0;
-      if(*rhv == '\0')
-         rhv = n_0;
-      rhvif = lhvif = (flags & (a_MOD | a_SATURATED)
-               ? su_IDEC_MODE_LIMIT_NOERROR : su_IDEC_MODE_NONE) |
-            su_IDEC_MODE_SIGNED_TYPE;
-      lhvif = su_idec_cp(&lhvi, lhv, 0, lhvif, NIL);
-      rhvif = su_idec_cp(&rhvi, rhv, 0, rhvif, NIL);
-
-      if((lhvif & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED ||
-            (rhvif & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED){
-         /* TODO if/elif: should support $! and set ERR-OVERFLOW!! */
-         emsg = N_("invalid integer number");
-         goto jesyn;
+      /* Maybe a group open? */
+      if(cecp->cec_toks[c] & a_CNDEXP_OP_F_LBRACK){
+         ++c;
+         cecp->cec_argv += c;
+         cecp->cec_argc -= c;
+         cecp->cec_toks += c;
+         xrv = a_cndexp_expr(cecp, level + 1, noop);
+         if(cecp->cec_argc-- == 0){
+            emsg = N_("premature end, a ']' is missing or must be quoted");
+            goto jesyn;
+         }
+         ++cecp->cec_argv;
+         ++cecp->cec_toks;
+         c = 0;
+         goto jstepit;
       }
 
-      lhvi -= rhvi;
-      switch(op[1]){
-      default:
-      case 'e': rv = (lhvi == 0); break;
-      case 'n': rv = (lhvi != 0); break;
-      case 'l': rv = (op[2] == 't') ? lhvi < 0 : lhvi <= 0; break;
-      case 'g': rv = (op[2] == 't') ? lhvi > 0 : lhvi >= 0; break;
+      /* Must be an operator */
+
+      if(i - c > 1){
+         u8 f;
+         u32 c_save;
+
+         c_save = 0;
+jop_redo:
+         f = a_NONE;
+
+         op = cecp->cec_toks[c];
+         op &= a_CNDEXP_OP_MASK;
+         if(op >= a_CNDEXP_OP_MIN_UNARY && op <= a_CNDEXP_OP_MAX_UNARY)
+            f |= a_UNA;
+
+         if(i - c > 2){
+            u16 opx;
+
+            opx = (cecp->cec_toks[c + 1] & a_CNDEXP_OP_MASK);
+            if(opx >= a_CNDEXP_OP_MIN_BINARY && opx <= a_CNDEXP_OP_MAX_BINARY)
+               f |= a_BIN;
+         }
+
+         if(f & (a_UNA | a_BIN)){
+            ++c;
+            if(f & a_UNA)
+               xrv = a_cndexp__op_apply(cecp, cecp->cec_toks[c - 1],
+                     cecp->cec_argv[c], NIL, noop);
+            else{
+               xrv = a_cndexp__op_apply(cecp, cecp->cec_toks[c],
+                     cecp->cec_argv[c - 1], cecp->cec_argv[c + 1], noop);
+               ++c;
+            }
+            ++c;
+            goto jstepit;
+         }
+
+         /* Maybe we saw UNANOT? Step left by one and retry */
+         if(unanot > 0 && c_save == 0){
+            --unanot;
+            c_save = c--;
+            ASSERT(c_save != 0);
+            goto jop_redo;
+         }
+         if(c_save != 0){
+            ++unanot;
+            c = c_save;
+         }
       }
+
+      /* Implicit no-argument operator? */
+      if(cecp->cec_toks[c] == a_CNDEXP_OP_NONE){
+         char const *cp;
+
+         cp = cecp->cec_argv[c++];
+         switch(*cp){
+         default:
+            switch((xrv = n_boolify(cp, UZ_MAX, TRUM1))){
+            case FAL0:
+            case TRU1:
+               goto jstepit;
+            default:
+               break;
+            }
+            break;
+         case 'R': case 'r':
+            xrv = ((n_psonce & n_PSO_SENDMODE) == 0);
+            goto jstepit;
+         case 'S': case 's':
+            xrv = ((n_psonce & n_PSO_SENDMODE) != 0);
+            goto jstepit;
+
+         case 'T': case 't':
+            if(!su_cs_cmp_case(cp, "true")) /* Beware! */
+               xrv = TRU1;
+            else
+               xrv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
+            goto jstepit;
+         }
+      }
+
+      /* This is not right */
+      emsg = N_("expected an operator");
+      goto jesyn;
+
+jstepit:
+      if(xrv == TRUM1){
+         rv = xrv;
+         break;
+      }
+      if(unanot & 1)
+         xrv = !xrv;
+      if(!noop)
+         rv = xrv;
    }
-   /* Byte compare */
-   else{
-      s32 scmp;
 
-      if(flags & a_SATURATED){
-         emsg = N_("invalid modifier for operational mode");
-         goto jesyn;
-      }
-
-      scmp = (flags & (a_MOD | a_ICASE)) ? su_cs_cmp_case(lhv, rhv)
-            : su_cs_cmp(lhv, rhv);
-      switch(c){
-      default:
-      case '=': rv = (scmp == 0); break;
-      case '!': rv = (scmp != 0); break;
-      case '<': rv = (op[1] == '\0') ? scmp < 0 : scmp <= 0; break;
-      case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
-      }
-   }
-
-   goto jresult;
-   }
+jleave:
+   NYD_OU;
+   return rv;
 
 jesyn:
    if(emsg != NIL)
       emsg = V_(emsg);
-#ifdef mx_HAVE_REGEX
-jesyn_ntr:
-#endif
-   a_cndexp_error(cecp, emsg, cp);
-   ASSERT(rv == TRUM1);
+   a_cndexp_error(cecp, emsg);
+   rv = TRUM1;
    goto jleave;
-
-#undef a_REDO
 }
 
 static boole
-a_cndexp_group(struct a_cndexp_ctx *cecp, uz level, boole noop){
-   enum a_state{
-      a_FIRST = 1u<<0,
-      a_END_OK = 1u<<1,
-      a_NEED_LIST = 1u<<2,
-
-      a_CANNOT_UNARY = a_NEED_LIST,
-      a_CANNOT_OBRACK = a_NEED_LIST,
-      a_CANNOT_CBRACK = a_FIRST,
-      a_CANNOT_LIST = a_FIRST,
-      a_CANNOT_COND = a_NEED_LIST
-   };
-
-   char c;
-   char const *emsg, *arg0, * const *argv;
-   uz unary, i;
-   BITENUM_IS(u32,a_state) state;
-   boole rv, xrv;
+a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op,
+      char const *lhv, char const *rhv, boole noop){
+   struct stat sb1, sb2;
+   boole act, rv;
    NYD2_IN;
 
-   rv = TRUM1;
-   state = a_FIRST;
-   unary = 0;
-   emsg = NIL;
+   act = (noop == FAL0);
+   if(!act && (n_poption & n_PO_D_V))
+      act = TRUM1;
+   UNINIT(rv, FAL0);
 
-   for(;;){
-      arg0 = *(argv = cecp->cec_argv);
-      if(arg0 == NIL){
-         if(!(state & a_END_OK)){
-            emsg = N_("missing expression (premature end)");
-            goto jesyn;
-         }
-         if(noop && rv /*== TRUM1*/)
-            rv = TRU1;
-         break;
-      }
-
-      switch((c = *arg0)){
-      case '!':
-         if(arg0[1] != '\0')
-            goto jneed_cond;
-
-         /* This might be regular string argument, but we cannot decide here */
-         if(state & a_CANNOT_UNARY){
-            emsg = N_("cannot use unary operator here");
-            goto jesyn;
-         }
-
-         state &= ~(a_FIRST | a_END_OK);
-         state |= a_CANNOT_LIST;
-         ++unary;
-         cecp->cec_argv = ++argv;
-         continue;
-
-      case '[':
-      case ']':
-         if(arg0[1] != '\0')
-            goto jneed_cond;
-
-         if(c == '['){
-            if(state & a_CANNOT_OBRACK){
-                emsg = N_("cannot open a group here");
-                goto jesyn;
-            }
-
-            cecp->cec_argv = ++argv;
-            if((xrv = a_cndexp_group(cecp, level + 1, noop)
-                  ) == TRUM1){
-               rv = xrv;
-               goto jleave;
-            }else if(!noop)
-               rv = (unary & 1) ? !xrv : xrv;
-
-            state &= ~(a_FIRST | a_END_OK);
-            state |= (level == 0 ? a_END_OK : 0) | a_NEED_LIST;
-            unary = 0;
-            continue;
-         }else{
-            if(state & a_CANNOT_CBRACK){
-               /* However, maybe user _wants_ this as an argument!
-                * emsg = N_("cannot use closing bracket here");
-                * goto jesyn; */
-               goto jneed_cond;
-            }
-
-            if(level == 0){
-               /* However, maybe user _wants_ this as an argument!
-                * emsg = N_("no open groups to be closed here");
-                * goto jesyn; */
-               goto jneed_cond;
-            }
-
-            cecp->cec_argv = ++argv;
-            if(noop && rv /*== TRUM1*/)
-               rv = TRU1;
-            goto jleave; /* break;"break;" */
-         }
-         /* not reached */
-         break;
-
-      case '|':
-      case '&':
-         if(c != arg0[1] || arg0[2] != '\0')
-            goto jneed_cond;
-
-         if(state & a_CANNOT_LIST){
-            /* However, maybe user _wants_ this as an argument!
-             * emsg = N_("cannot use AND-OR list here");
-             * goto jesyn; */
-            goto jneed_cond;
-         }
-
-         noop = ((c == '&') ^ (rv == TRU1));
-         state &= ~(a_FIRST | a_END_OK | a_NEED_LIST);
-         state |= a_CANNOT_LIST;
-         ASSERT(unary == 0);
-
-         cecp->cec_argv = ++argv;
-         continue;
-
-      default:
-jneed_cond:
-         if(state & a_CANNOT_COND){
-            emsg = N_("cannot use `if' condition here");
-            goto jesyn;
-         }
-
-         /* Forward scan for something that can end a condition (regulary) */
-         for(i = 0;; ++i){
-            if((arg0 = argv[i]) == NIL)
-               break;
-            /* So the first cannot be it but for syntax error.
-             * We cannot always gracefully decide in between syntax error and
-             * not, anyway, therefore just skip the first */
-            if(i == 0)
-               continue;
-            c = *arg0;
-            if((c == '[' || c == ']') && arg0[1] == '\0')
-               break;
-            if((c == '&' || c == '|') && c == arg0[1] && arg0[2] == '\0')
-               break;
-         }
-         if(i == 0){
-            emsg = N_("empty conditional group");
-            goto jesyn;
-         }
-
-         if((xrv = a_cndexp_test(cecp, noop, i, &unary)) == TRUM1){
-            rv = xrv;
-            goto jleave;
-         }else if(!noop)
-            rv = (unary & 1) ? !xrv : xrv;
-
-         state &= ~a_FIRST;
-         state |= a_END_OK | a_NEED_LIST;
-         unary = 0;
-         break;
-      }
+   if(op & a_CNDEXP_OP_F_ERR){
+      lhv = N_("invalid modifier used for operator");
+      goto jesyn;
    }
 
+   switch(op & a_CNDEXP_OP_MASK){
+   case a_CNDEXP_OP_N:
+   case a_CNDEXP_OP_Z:
+      if(act){
+         lhv = n_var_vlook(lhv, TRU1);
+         rv = ((lhv == NIL) == ((op & a_CNDEXP_OP_MASK) == a_CNDEXP_OP_Z));
+      }
+      break;
+
+   case a_CNDEXP_OP_n: rv = *lhv != '\0'; break;
+   case a_CNDEXP_OP_z: rv = *lhv == '\0'; break;
+
+   case a_CNDEXP_OP_FU_b: FALLTHRU
+   case a_CNDEXP_OP_FU_c: FALLTHRU
+   case a_CNDEXP_OP_FU_d: FALLTHRU
+   case a_CNDEXP_OP_FU_e: FALLTHRU
+   case a_CNDEXP_OP_FU_f: FALLTHRU
+   case a_CNDEXP_OP_FU_G: FALLTHRU
+   case a_CNDEXP_OP_FU_g: FALLTHRU
+   case a_CNDEXP_OP_FU_p: FALLTHRU
+   case a_CNDEXP_OP_FU_k: FALLTHRU
+   case a_CNDEXP_OP_FU_O: FALLTHRU
+   case a_CNDEXP_OP_FU_s: FALLTHRU
+   case a_CNDEXP_OP_FU_S: FALLTHRU
+   case a_CNDEXP_OP_FU_u: FALLTHRU
+      if(act){
+         if(!(op & a_CNDEXP_OP_F_SATURATED))
+            cecp->cec_have_stat = (*lhv != '\0' &&
+                  !stat(lhv, &cecp->cec_stat));
+         if((rv = cecp->cec_have_stat)){
+            switch(op & a_CNDEXP_OP_MASK){
+            case a_CNDEXP_OP_FU_b: rv = S_ISBLK(cecp->cec_stat.st_mode); break;
+            case a_CNDEXP_OP_FU_c: rv = S_ISCHR(cecp->cec_stat.st_mode); break;
+            case a_CNDEXP_OP_FU_d: rv = S_ISDIR(cecp->cec_stat.st_mode); break;
+            /*case a_CNDEXP_OP_FU_e:*/
+            case a_CNDEXP_OP_FU_f: rv = S_ISREG(cecp->cec_stat.st_mode); break;
+            case a_CNDEXP_OP_FU_G:
+               rv = (n_group_eid == cecp->cec_stat.st_gid);
+               break;
+            case a_CNDEXP_OP_FU_g:
+               rv = ((cecp->cec_stat.st_mode & S_ISGID) != 0);
+               break;
+            case a_CNDEXP_OP_FU_p: rv = S_ISFIFO(cecp->cec_stat.st_mode);break;
+            case a_CNDEXP_OP_FU_k:
+#ifndef S_ISVTX
+# define S_ISVTX 0
+#endif
+               rv = ((cecp->cec_stat.st_mode & S_ISVTX) != 0);
+               break;
+            case a_CNDEXP_OP_FU_s: rv = (cecp->cec_stat.st_size > 0); break;
+            case a_CNDEXP_OP_FU_S: rv = S_ISSOCK(cecp->cec_stat.st_mode);break;
+            case a_CNDEXP_OP_FU_O:
+               rv = (n_user_eid == cecp->cec_stat.st_uid);
+               break;
+            case a_CNDEXP_OP_FU_u:
+               rv = ((cecp->cec_stat.st_mode & S_ISUID) != 0);
+               break;
+            }
+         }
+      }
+      break;
+
+   case a_CNDEXP_OP_FU_L:
+      if(act){
+         if(!(op & a_CNDEXP_OP_F_SATURATED))
+            cecp->cec_have_stat = (*lhv != '\0' &&
+                  !lstat(lhv, &cecp->cec_stat));
+         if((rv = cecp->cec_have_stat))
+            rv = S_ISLNK(cecp->cec_stat.st_mode);
+      }
+      break;
+
+   case a_CNDEXP_OP_FU_r:
+      if(act)
+         rv = (*lhv != '\0' && !access(lhv, R_OK));
+      break;
+   case a_CNDEXP_OP_FU_w:
+      if(act)
+         rv = (*lhv != '\0' && !access(lhv, W_OK));
+      break;
+   case a_CNDEXP_OP_FU_x:
+      if(act)
+         rv = (*lhv != '\0' && !access(lhv, X_OK));
+      break;
+
+   case a_CNDEXP_OP_FU_t:
+      if(act){
+         s32 lhvi;
+
+         rv = ((su_idec_s32_cp(&lhvi, lhv, 0, NIL) &
+                  (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) == su_IDEC_STATE_CONSUMED && lhvi >= 0);
+         if(rv)
+            rv = isatty(lhvi);
+      }
+      break;
+
+   case a_CNDEXP_OP_INT_lt: FALLTHRU
+   case a_CNDEXP_OP_INT_le: FALLTHRU
+   case a_CNDEXP_OP_INT_eq: FALLTHRU
+   case a_CNDEXP_OP_INT_ne: FALLTHRU
+   case a_CNDEXP_OP_INT_ge: FALLTHRU
+   case a_CNDEXP_OP_INT_gt:
+      if(act){
+         s64 lhvi, rhvi;
+         u32 lf, rf;
+
+         if(*lhv == '\0')
+            lhv = n_0;
+         if(*rhv == '\0')
+            rhv = n_0;
+
+         rf = lf = ((op & a_CNDEXP_OP_F_SATURATED)
+                  ? su_IDEC_MODE_LIMIT_NOERROR : su_IDEC_MODE_NONE) |
+               su_IDEC_MODE_SIGNED_TYPE;
+         lf = su_idec_cp(&lhvi, lhv, 0, lf, NIL);
+         rf = su_idec_cp(&rhvi, rhv, 0, rf, NIL);
+
+         if((lf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED ||
+               (rf & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED){
+            /* TODO if/elif: should support $! and set ERR-OVERFLOW!! */
+            lhv = N_("invalid integer number");
+            goto jesyn;
+         }
+
+         lhvi -= rhvi;
+         switch(op & a_CNDEXP_OP_MASK){
+         default:
+         case a_CNDEXP_OP_INT_lt: rv = (lhvi < 0); break;
+         case a_CNDEXP_OP_INT_le: rv = (lhvi <= 0); break;
+         case a_CNDEXP_OP_INT_eq: rv = (lhvi == 0); break;
+         case a_CNDEXP_OP_INT_ne: rv = (lhvi != 0); break;
+         case a_CNDEXP_OP_INT_ge: rv = (lhvi >= 0); break;
+         case a_CNDEXP_OP_INT_gt: rv = (lhvi > 0); break;
+         }
+      }
+      break;
+
+   case a_CNDEXP_OP_8B_LT: FALLTHRU
+   case a_CNDEXP_OP_8B_LE: FALLTHRU
+   case a_CNDEXP_OP_8B_EQ: FALLTHRU
+   case a_CNDEXP_OP_8B_NE: FALLTHRU
+   case a_CNDEXP_OP_8B_GE: FALLTHRU
+   case a_CNDEXP_OP_8B_GT:
+      if(act){
+         s32 scmp;
+
+         scmp = (op & a_CNDEXP_OP_F_CASE ? su_cs_cmp_case : su_cs_cmp
+               )(lhv, rhv);
+
+         switch(op & a_CNDEXP_OP_MASK){
+         default:
+         case a_CNDEXP_OP_8B_LT: rv = (scmp < 0); break;
+         case a_CNDEXP_OP_8B_LE: rv = (scmp <= 0); break;
+         case a_CNDEXP_OP_8B_EQ: rv = (scmp == 0); break;
+         case a_CNDEXP_OP_8B_NE: rv = (scmp != 0); break;
+         case a_CNDEXP_OP_8B_GE: rv = (scmp >= 0); break;
+         case a_CNDEXP_OP_8B_GT: rv = (scmp > 0); break;
+         }
+      }
+      break;
+
+   case a_CNDEXP_OP_8B_SUB: FALLTHRU
+   case a_CNDEXP_OP_8B_NSUB:
+      if(act)
+         rv = (((op & a_CNDEXP_OP_F_CASE ? su_cs_find_case : su_cs_find
+                  )(lhv, rhv) != NIL) ^
+               ((op & a_CNDEXP_OP_MASK) == a_CNDEXP_OP_8B_NSUB));
+      break;
+
+#ifdef mx_HAVE_REGEX
+   case a_CNDEXP_OP_RE_MATCH: FALLTHRU
+   case a_CNDEXP_OP_RE_NMATCH:
+      if(act){
+         struct su_re re;
+
+         su_re_create(&re);
+
+         if(su_re_setup_cp(&re, rhv, (su_RE_SETUP_EXT |
+                  ((act < FAL0) ? su_RE_SETUP_TEST_ONLY : su_RE_SETUP_NONE) |
+                  ((op & a_CNDEXP_OP_F_CASE)
+                     ? su_RE_SETUP_ICASE : su_RE_SETUP_NONE))
+               ) != su_RE_ERROR_NONE){
+            lhv = savecat(_("invalid regular expression: "),
+                  su_re_error_doc(&re));
+            su_re_gut(&re);
+            goto jesyn_ntr;
+         }
+
+         if(act > FAL0){
+            rv = su_re_eval_cp(&re, lhv, su_RE_EVAL_NONE);
+            if(mx_var_re_match_set((rv ? re.re_group_count : 0),
+                  lhv, re.re_match) != su_ERR_NONE){
+               su_re_gut(&re);
+               a_cndexp_error(cecp, _("pattern with too many matches"));
+               n_pstate_err_no = su_ERR_OVERFLOW;
+               rv = TRUM1;
+               goto jleave;
+            }
+            rv = (!rv ^ ((op & a_CNDEXP_OP_MASK) == a_CNDEXP_OP_RE_MATCH));
+         }
+
+         su_re_gut(&re);
+      }
+      break;
+#endif /* mx_HAVE_REGEX */
+
+   case a_CNDEXP_OP_FB_ef: FALLTHRU
+   case a_CNDEXP_OP_FB_nt: FALLTHRU
+   case a_CNDEXP_OP_FB_ot: FALLTHRU
+      if(act){
+         boole s1, s2;
+
+         s1 = (*lhv != '\0' && !stat(lhv, &sb1));
+         s2 = (*rhv != '\0' && !stat(rhv, &sb2));
+
+         switch(op & a_CNDEXP_OP_MASK){
+         case a_CNDEXP_OP_FB_ef:
+            rv = (s1 && s2 &&
+                  sb1.st_dev == sb2.st_dev && sb1.st_ino == sb2.st_ino);
+            break;
+         case a_CNDEXP_OP_FB_nt: /* TODO timespec */
+            rv = (s1 > s2 || sb1.st_mtime > sb2.st_mtime);
+            break;
+         case a_CNDEXP_OP_FB_ot: /* TODO timespec */
+            rv = (s1 < s2 || sb1.st_mtime < sb2.st_mtime);
+            break;
+         }
+      }
+      break;
+   }
+
+   if(act <= FAL0)
+      rv = TRU1;
 jleave:
    NYD2_OU;
    return rv;
 
 jesyn:
-   if(emsg == NIL)
-      emsg = N_("invalid grouping");
-   a_cndexp_error(cecp, V_(emsg), arg0);
+   if(lhv != NIL)
+      lhv = V_(lhv);
+#ifdef mx_HAVE_REGEX
+jesyn_ntr:
+#endif
+   a_cndexp_error(cecp, lhv);
    rv = TRUM1;
    goto jleave;
 }
 
-boole
-mx_cndexp_parse(char const * const *argv, boole log_on_error){
-   struct a_cndexp_ctx cec;
-   boole rv;
-   NYD_IN;
-   ASSERT(argv != NIL);
+static void
+a_cndexp_error(struct a_cndexp_ctx const *cecp, char const *msg_or_nil){
+   struct str e, r;
+   NYD2_IN;
 
+   if(cecp->cec_log_on_error){
+      str_concat_cpa(&e, cecp->cec_argv_base, " ");
+
+      str_concat_cpa(&r, cecp->cec_argv, " ");
+
+      if(msg_or_nil == NIL)
+         msg_or_nil = _("invalid expression syntax");
+
+      n_err(_("Conditional expression: %s: stop during: %s: of: %s\n"),
+         msg_or_nil, r.s, e.s);
+
+      /* v15-compat */
+      n_OBSOLETE("Note: conditional expressions now exclusively use "
+         "shell-style notation; compatibility shims were removed!");
+   }
+
+   n_pstate_err_no = su_ERR_INVAL;
+   NYD2_OU;
+}
+
+boole
+mx_cndexp_parse(struct mx_cmd_arg_ctx const *cacp, boole log_on_error){
+   struct a_cndexp_ctx cec;
+   struct mx_cmd_arg *cap;
+   u16 *toks, op;
+   char const **argv;
+   union {void *v; char const **pcc; char **pc; u16 *u;} p;
+   boole rv;
+   u32 i;
+   NYD_IN;
+
+   ASSERT(cacp->cac_no < U32_MAX);
+   i = cacp->cac_no + 1;
+   if(UZ_MAX / i <= sizeof(*argv) + sizeof(*toks)){
+      if(log_on_error)
+         n_err(_("conditional expression: overflow: too many arguments\n"));
+      rv = TRUM1;
+      goto jleave;
+   }
+
+   p.v = su_LOFI_ALLOC(i * (sizeof(*argv) + sizeof(*toks)));
+   argv = p.pcc;
+   p.pc += i;
+   toks = p.u;
+   p.pc -= i;
+
+   STRUCT_ZERO(struct a_cndexp_ctx, &cec);
+   cec.cec_argc = --i;
    cec.cec_argv_base = cec.cec_argv = argv;
    cec.cec_log_on_error = log_on_error;
+   cec.cec_toks = toks;
 
-   rv = a_cndexp_group(&cec, 0, FAL0);
+   /* Convert anything we see to op's, with NONE being the default.
+    * Do not try to understand implicit arguments */
+   for(cap = cacp->cac_arg; cap != NIL; *toks++ = op, cap = cap->ca_next){
+      char *ap, c, c2, c3;
 
+      ASSERT((cap->ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK
+         ) == mx_CMD_ARG_DESC_SHEXP);
+
+      *argv++ = ap = cap->ca_arg.ca_str.s;
+      op = a_CNDEXP_OP_NONE;
+
+      /* Anything that saw changes / quotes cannot be syntax */
+      if(cap->ca_arg_flags & n_SHEXP_STATE_CHANGE_MASK)
+         continue;
+
+      c = ap[0];
+      if((c2 = ap[1]) == '\0'){
+         switch(c){
+         case '!': op = a_CNDEXP_OP_F_UNANOT; break;
+         case '[': op = a_CNDEXP_OP_F_LBRACK; break;
+         case ']': op = a_CNDEXP_OP_F_RBRACK; break;
+         case '<': op = a_CNDEXP_OP_8B_LT; break;
+         case '>': op = a_CNDEXP_OP_8B_GT; break;
+         }
+      }else if((c3 = ap[2]) == '\0'){
+         switch(c){
+         case '&': if(c2 == '&') op = a_CNDEXP_OP_F_AND; break;
+         case '|': if(c2 == '|') op = a_CNDEXP_OP_F_OR; break;
+         case '-':
+juna_hyphen_mod:
+            switch(c2){
+            case 'N': op |= a_CNDEXP_OP_N; break;
+            case 'Z': op |= a_CNDEXP_OP_Z; break;
+            case 'n': op |= a_CNDEXP_OP_n; break;
+            case 'z': op |= a_CNDEXP_OP_z; break;
+            case 'b': op |= a_CNDEXP_OP_FU_b; break;
+            case 'c': op |= a_CNDEXP_OP_FU_c; break;
+            case 'd': op |= a_CNDEXP_OP_FU_d; break;
+            case 'e': op |= a_CNDEXP_OP_FU_e; break;
+            case 'f': op |= a_CNDEXP_OP_FU_f; break;
+            case 'G': op |= a_CNDEXP_OP_FU_G; break;
+            case 'g': op |= a_CNDEXP_OP_FU_g; break;
+            case 'k': op |= a_CNDEXP_OP_FU_k; break;
+            case 'L': op |= a_CNDEXP_OP_FU_L; break;
+            case 'O': op |= a_CNDEXP_OP_FU_O; break;
+            case 'p': op |= a_CNDEXP_OP_FU_p; break;
+            case 'r': op |= a_CNDEXP_OP_FU_r; goto jfX_check;
+            case 's': op |= a_CNDEXP_OP_FU_s; break;
+            case 'S': op |= a_CNDEXP_OP_FU_S; break;
+            case 't': op |= a_CNDEXP_OP_FU_t; goto jfX_check;
+            case 'u': op |= a_CNDEXP_OP_FU_u; break;
+            case 'w': op |= a_CNDEXP_OP_FU_w; goto jfX_check;
+            case 'x': op |= a_CNDEXP_OP_FU_x; goto jfX_check;
+            }
+            break;
+         default:
+            if(c2 != '?')
+               goto j8b;
+            c2 = '\0';
+            switch(c){
+            case '<': op = a_CNDEXP_OP_8B_LT | a_CNDEXP_OP_F_CASE; break;
+            case '>': op = a_CNDEXP_OP_8B_GT | a_CNDEXP_OP_F_CASE; break;
+            }
+            break;
+         }
+      }else if(c == '-'){
+         /* Unary with modifier? */
+         if(c3 == '?'){
+            i = 3;
+            goto jmod_satu;
+         }
+
+         if((c = ap[3]) != '\0'){
+            if(c != '?')
+               continue;
+            i = 4;
+jmod_satu:
+            op |= a_CNDEXP_OP_F_SATURATED;
+            if(ap[i] != '\0' && !su_cs_starts_with_case("saturated", &ap[i]))
+               op |= a_CNDEXP_OP_F_ERR;
+            if(c3 == '?')
+               goto juna_hyphen_mod;
+         }
+
+         switch(c2){
+         case 'l':
+            if(c3 == 't') {op |= a_CNDEXP_OP_INT_lt; break;}
+            if(c3 == 'e') {op |= a_CNDEXP_OP_INT_le; break;}
+            break;
+         case 'e':
+            if(c3 == 'q') {op |= a_CNDEXP_OP_INT_eq; break;}
+            if(c3 == 'f') {op |= a_CNDEXP_OP_FB_ef; goto jfX_check;}
+            break;
+         case 'n':
+            if(c3 == 'e') {op |= a_CNDEXP_OP_INT_ne; break;}
+            if(c3 == 't') {op |= a_CNDEXP_OP_FB_nt; goto jfX_check;}
+            break;
+         case 'g':
+            if(c3 == 'e') {op |= a_CNDEXP_OP_INT_ge; break;}
+            if(c3 == 't') {op |= a_CNDEXP_OP_INT_gt; break;}
+            break;
+         case 'o':
+            if(c3 == 't'){
+               op |= a_CNDEXP_OP_FB_ot;
+jfX_check:
+               if(op & a_CNDEXP_OP_F_SATURATED)
+                  op |= a_CNDEXP_OP_F_ERR;
+            }
+            break;
+         }
+      }else if(c3 == '?'){
+         op |= a_CNDEXP_OP_F_CASE;
+         if(ap[3] != '\0' &&
+               !su_cs_starts_with_case("case-insensitive", &ap[3]))
+            op |= a_CNDEXP_OP_F_ERR;
+j8b:
+         switch(c){
+         case '<': if(c2 == '=') op |= a_CNDEXP_OP_8B_LE; break;
+         case '=':
+            switch(c2){
+            case '=': op |= a_CNDEXP_OP_8B_EQ; break;
+            case '%': op |= a_CNDEXP_OP_8B_SUB; break;
+#ifdef mx_HAVE_REGEX
+            case '~': op |= a_CNDEXP_OP_RE_MATCH; break;
+#endif
+            }
+            break;
+         case '!':
+            switch(c2){
+            case '=': op |= a_CNDEXP_OP_8B_NE; break;
+            case '%': op |= a_CNDEXP_OP_8B_NSUB; break;
+#ifdef mx_HAVE_REGEX
+            case '~': op |= a_CNDEXP_OP_RE_NMATCH; break;
+#endif
+            }
+            break;
+         case '>': if(c2 == '=') op |= a_CNDEXP_OP_8B_GE; break;
+         }
+      }
+   }
+   *argv = NIL;
+   *toks = a_CNDEXP_OP_NONE;
+
+   rv = a_cndexp_expr(&cec, 0, FAL0);
+
+   su_LOFI_FREE(p.v);
+
+jleave:
    NYD_OU;
    return rv;
 }

@@ -77,13 +77,6 @@ a_ccnd_if(void *vp, boole iselif){
    if(!iselif)
       mx_go_data->gdc_ifcond = cinp;
 
-   if(!(n_pstate & n_PS_ARGMOD_WYSH)){ /* v15-compat */
-      /* Unfortunately */
-      n_OBSOLETE(_("`if',`elif': $ expansion was removed, "
-         "please use `wysh' (implicit with \"set v15-compat=y\")"));
-      goto jv15compat_err;
-   }
-
    if(cinp->cin_flags & a_CCND_IF_F_NOOP){
       rv = su_EX_OK;
       goto jleave;
@@ -92,13 +85,13 @@ a_ccnd_if(void *vp, boole iselif){
    /* C99 */{
       boole xrv;
 
-      if((xrv = mx_cndexp_parse(S(char const*const*,vp), TRU1)) >= FAL0){
+      if((xrv = mx_cndexp_parse(S(struct mx_cmd_arg_ctx const*,vp), TRU1)
+            ) >= FAL0){
          ASSERT(cinp->cin_flags & a_CCND_IF_F_GO);
          if(!xrv)
             cinp->cin_flags ^= a_CCND_IF_F_GO;
          rv = su_EX_OK;
       }else{
-jv15compat_err:
          cinp->cin_flags |= a_CCND_IF_F_ERROR | a_CCND_IF_F_NOOP;
          rv = su_EX_ERR;
       }
