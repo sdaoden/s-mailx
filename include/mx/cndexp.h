@@ -24,10 +24,15 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Evaluate a conditional expression as presented in argv.
+/* Forwards */
+struct mx_cmd_arg_ctx;
+
+/* Evaluate a conditional expression as presented in cacp.
  * Returns TRU1 if the condition is true, FAL0 if it is not.
- * TRUM1 is returned upon error, log_on_error then allows n_err() reports */
-EXPORT boole mx_cndexp_parse(char const * const *argv, boole log_on_error);
+ * TRUM1 is returned upon error, log_on_error then allows n_err() reports.
+ * ASSERTs that cacp does not contain _ARG_DESC_MSGLIST arguments. */
+EXPORT boole mx_cndexp_parse(struct mx_cmd_arg_ctx const *cacp,
+      boole log_on_error);
 
 #include <su/code-ou.h>
 #endif /* mx_CNDEXP_H */

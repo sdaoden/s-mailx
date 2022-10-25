@@ -961,7 +961,8 @@ print_header_summary(char const *Larg)
          n_stdout = freopen(su_path_dev_null, "w", stdout);
          n_stderr = freopen(su_path_dev_null, "w", stderr);
       }
-      i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NULL) <= 0);
+      i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, FAL0, NIL
+            ) <= 0);
       if (n_poption & n_PO_EXISTONLY)
          n_exit_status = (int)i;
       else if(i == 0)
