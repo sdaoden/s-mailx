@@ -504,7 +504,7 @@ jrestart:
       gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
    }
 
-   if(eval_cnt > 0){
+   if(eval_cnt > 0 && mx_cnd_if_exists(NIL) >= FAL0){
       /* $(()) may set variables, check and set now! */
       if(flags & a_LOCAL)
          n_pstate |= n_PS_ARGMOD_LOCAL;
