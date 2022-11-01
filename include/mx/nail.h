@@ -361,18 +361,24 @@ enum n_shexp_state{
    /* We have produced some output (or would have, with _PARSE_DRYRUN).
     * Note that empty quotes like '' produce no output but set this bit */
    n_SHEXP_STATE_OUTPUT = 1u<<0,
-   /* Don't call the parser again (# comment seen; out of input).
+   /* Do not call the parser again (# comment seen; out of input).
     * Not (necessarily) mutual with _OUTPUT) */
    n_SHEXP_STATE_STOP = 1u<<1,
-   n_SHEXP_STATE_UNICODE = 1u<<2, /* \[Uu] used */
-   n_SHEXP_STATE_CONTROL = 1u<<3, /* Control characters seen */
-   n_SHEXP_STATE_QUOTE = 1u<<4, /* Any quotes seen */
-   n_SHEXP_STATE_WS_LEAD = 1u<<5, /* _TRIM_{IFS,}SPACE: seen.. */
-   n_SHEXP_STATE_WS_TRAIL = 1u<<6, /* .. leading / trailing WS */
-   n_SHEXP_STATE_META_VERTBAR = 1u<<7, /* Metacharacter | follows/ed */
-   /*n_SHEXP_STATE_META_AMPERSAND = 1u<<8, NEVER! Metacharacter & follows/ed */
-   n_SHEXP_STATE_META_SEMICOLON = 1u<<9, /* Metacharacter ; follows/ed */
 
+   n_SHEXP_STATE_UNICODE = 1u<<2, /* \[Uu] used */
+   n_SHEXP_STATE_QUOTE = 1u<<3, /* Any quotes seen */
+   n_SHEXP_STATE_SUB = 1u<<4, /* Any ${/( substitution seen */
+   n_SHEXP_STATE_CHANGE = 1u<<5, /* Any other expansion/change */
+   n_SHEXP_STATE_CHANGE_MASK = n_SHEXP_STATE_UNICODE | n_SHEXP_STATE_QUOTE |
+         n_SHEXP_STATE_SUB | n_SHEXP_STATE_CHANGE,
+
+   n_SHEXP_STATE_CONTROL = 1u<<10, /* Control characters seen */
+   n_SHEXP_STATE_WS_LEAD = 1u<<11, /* _TRIM_{IFS,}SPACE: seen.. */
+   n_SHEXP_STATE_WS_TRAIL = 1u<<12, /* .. leading / trailing WS */
+
+   n_SHEXP_STATE_META_VERTBAR = 1u<<13, /* Metacharacter | follows/ed */
+   /*n_SHEXP_STATE_META_AMPERSAND = 1u<<14,NEVER! Metacharacter & follows/ed */
+   n_SHEXP_STATE_META_SEMICOLON = 1u<<15, /* Metacharacter ; follows/ed */
    n_SHEXP_STATE_META_MASK = n_SHEXP_STATE_META_VERTBAR |
          /*n_SHEXP_STATE_META_AMPERSAND |*/ n_SHEXP_STATE_META_SEMICOLON,
 
@@ -380,8 +386,8 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17, /* Valid \[Uu] and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1u<<18, /* Bad number (\[UuXx]) */
    n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<19, /* Invalid identifier */
-   n_SHEXP_STATE_ERR_BADSUB = 1u<<20, /* Empty/bad ${}/[] substitution */
-   n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21, /* _QUOTEOPEN + no }/]/)/ 4 ${/[/( */
+   n_SHEXP_STATE_ERR_BADSUB = 1u<<20, /* Empty/bad ${}/() substitution */
+   n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21, /* Unclosed ${/( */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22, /* Quote remains open at EOS */
 
    n_SHEXP_STATE_ERR_MASK = su_BITENUM_MASK(16, 22)
