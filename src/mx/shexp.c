@@ -1428,8 +1428,10 @@ jrestart:
          }else if(c == '\\'){
             /* Outside of quotes this just escapes any next character, but
              * a sole <reverse solidus> at EOS is left unchanged */
-             if(il > 0)
+             if(il > 0){
                --il, c = *ib++;
+               rv |= n_SHEXP_STATE_CHANGE;
+             }
             state &= ~a_NTOKEN;
             last_known_meta_trim_len = U32_MAX;
          }
@@ -1529,6 +1531,7 @@ jrestart:
             else if((c2 = *ib) == quotec){
                --il, ++ib;
                c = quotec;
+               rv |= n_SHEXP_STATE_CHANGE;
             }else if(quotec == '"'){
                /* Double quotes, POSIX says:
                 *    The <backslash> shall retain its special meaning as an
@@ -1536,13 +1539,14 @@ jrestart:
                 *    by one of the following characters when considered
                 *    special: $ ` " \ <newline> */
                switch(c2){
-               case '$':
-               case '`':
+               case '$': FALLTHRU
+               case '`': FALLTHRU
                /* case '"': already handled via c2 == quotec */
                case '\\':
                   --il, ++ib;
                   c = c2;
-                  /* FALLTHRU */
+                  rv |= n_SHEXP_STATE_CHANGE;
+                  FALLTHRU
                default:
                   break;
                }
@@ -1554,17 +1558,18 @@ jrestart:
                /* case '\'': already handled via c2 == quotec */
                case '\\':
                   c = c2;
+                  rv |= n_SHEXP_STATE_CHANGE;
                   break;
 
-               case 'b': c = '\b'; break;
-               case 'f': c = '\f'; break;
-               case 'n': c = '\n'; break;
-               case 'r': c = '\r'; break;
-               case 't': c = '\t'; break;
-               case 'v': c = '\v'; break;
+               case 'b': c = '\b'; rv |= n_SHEXP_STATE_CHANGE; break;
+               case 'f': c = '\f'; rv |= n_SHEXP_STATE_CHANGE; break;
+               case 'n': c = '\n'; rv |= n_SHEXP_STATE_CHANGE; break;
+               case 'r': c = '\r'; rv |= n_SHEXP_STATE_CHANGE; break;
+               case 't': c = '\t'; rv |= n_SHEXP_STATE_CHANGE; break;
+               case 'v': c = '\v'; rv |= n_SHEXP_STATE_CHANGE; break;
 
-               case 'E':
-               case 'e': c = '\033'; break;
+               case 'E': FALLTHRU
+               case 'e': c = '\033'; rv |= n_SHEXP_STATE_CHANGE; break;
 
                /* Control character */
                case 'c':
@@ -1574,6 +1579,7 @@ jrestart:
                   /* Careful: \c\ and \c\\ have to be treated alike in POSIX */
                   if(c2 == '\\' && il > 0 && *ib == '\\')
                      --il, ++ib;
+                  rv |= n_SHEXP_STATE_CHANGE;
                   if(state & a_SKIPMASK)
                      continue;
                   /* ASCII C0: 0..1F, 7F <- @.._ (+ a-z -> A-Z), ? */
@@ -1601,7 +1607,7 @@ jrestart:
                      c2 = c;
                      --il, ++ib;
                   }
-                  /* FALLTHRU */
+                  FALLTHRU
                case '1': case '2': case '3':
                case '4': case '5': case '6': case '7':
                   c2 -= '0';
@@ -1628,6 +1634,7 @@ jerr_ib_save:
                      c2 = (c2 << 3) | (c -= '0');
                      --il, ++ib;
                   }
+                  rv |= n_SHEXP_STATE_CHANGE;
                   if(state & a_SKIPMASK)
                      continue;
                   if((c = c2) == '\0'){
@@ -1647,8 +1654,7 @@ jerr_ib_save:
                   if(il == 0)
                      goto j_dollar_ungetc;
                   if(0){
-                     /* FALLTHRU */
-
+                     FALLTHRU
                /* Hexadecimal sequence, 1 or 2 hexadecimal bytes */
                case 'X':
                case 'x':
@@ -1689,7 +1695,10 @@ jerr_ib_save:
                            state |= a_SKIPQ;
                      }else if(no == 0)
                         state |= a_SKIPQ;
-                     else if(!(state & a_SKIPMASK)){
+                     else if(state & a_SKIPMASK){
+                        rv |= n_SHEXP_STATE_CHANGE;
+                        continue;
+                     }else{
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
                            store = n_string_reserve(store, MAX(j, 4));
 
@@ -1710,6 +1719,7 @@ jerr_ib_save:
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
                            if(!(flags & n_SHEXP_PARSE_DRYRUN))
                               store = n_string_push_buf(store, stackbuf, j);
+                           rv |= n_SHEXP_STATE_CHANGE;
                            continue;
                         }
 #ifdef mx_HAVE_ICONV
@@ -1719,7 +1729,7 @@ jerr_ib_save:
                            icp = n_iconv_onetime_cp(n_ICONV_NONE,
                                  NULL, NULL, stackbuf);
                            if(icp != NULL){
-                              rv |= n_SHEXP_STATE_OUTPUT;
+                              rv |= n_SHEXP_STATE_OUTPUT |n_SHEXP_STATE_CHANGE;
                               if(!(flags & n_SHEXP_PARSE_DRYRUN))
                                  store = n_string_push_cp(store, icp);
                               continue;
@@ -1736,8 +1746,7 @@ jerr_ib_save:
                         }
                         continue;
                      }
-                     if(state & a_SKIPMASK)
-                        continue;
+                     rv |= n_SHEXP_STATE_CHANGE;
                   }
                   break;
 
@@ -1804,14 +1813,17 @@ jearith:
                   goto jerr_ib_save;
                }
 
-               if((flags & n_SHEXP_PARSE_DRYRUN) || (state & a_SKIPMASK))
+               if((flags & n_SHEXP_PARSE_DRYRUN) || (state & a_SKIPMASK)){
+                  rv |= n_SHEXP_STATE_SUB;
                   continue;
+               }
 
                xcp = UNCONST(char*,&ib_save[2]);
                switch(a_shexp_arith_eval(&res, xcp, P2UZ(&ib[-2] - xcp),
                      &xcp)){
                default:
                   cp = su_ienc_s64(stackbuf, res, 10);
+                  rv |= n_SHEXP_STATE_SUB;
                   goto j_var_push_cp;
 #undef a_X
 #define a_X(X,N) case CONCAT(a_SHEXP_ARITH_ERR_,X): emsg = N_(N); break
@@ -1890,6 +1902,7 @@ jearith:
                if(state & a_SKIPMASK){
                   if((state & a_BRACE) && il > 0 && *ib == '}')
                      --il, ++ib;
+                  rv |= n_SHEXP_STATE_SUB;
                   continue;
                }
 
@@ -1943,6 +1956,7 @@ jebracesubst:
                      }
                   }
 
+                  rv |= n_SHEXP_STATE_SUB;
                   if(flags & n_SHEXP_PARSE_DRYRUN)
                      continue;
 
