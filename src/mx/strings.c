@@ -133,35 +133,34 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
 FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
-   char const *sep_o_null  su_DVL_LOC_ARGS_DECL)
-{
-   uz sonl, l;
-   char const * const *xcpa;
-   NYD_IN;
+      char const *sep_o_nil  su_DVL_LOC_ARGS_DECL){
+   char *cp;
+   char const * const *xcpa, *ccp;
+   NYD2_IN;
 
-   sonl = (sep_o_null != NULL) ? su_cs_len(sep_o_null) : 0;
+   /* C99 */{
+      uz sonl, l;
 
-   for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa)
-      l += su_cs_len(*xcpa) + sonl;
+      sonl = (sep_o_nil != NIL) ? su_cs_len(sep_o_nil) : 0;
 
-   self->l = l;
-   self->s = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l +1, su_DVL_LOC_ARGS_ORUSE);
+      for(l = 0, xcpa = cpa; (ccp = *xcpa) != NIL; ++xcpa)
+         if(*ccp != '\0')
+            l += su_cs_len(ccp) + sonl;
 
-   for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
-      uz i;
-
-      i = su_cs_len(*xcpa);
-      if(i > 0){
-         su_mem_copy(self->s + l, *xcpa, i);
-         l += i;
-      }
-      if (sonl > 0) {
-         su_mem_copy(self->s + l, sep_o_null, sonl);
-         l += sonl;
-      }
+      self->l = l;
+      self->s =
+      cp = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l +1, su_DVL_LOC_ARGS_ORUSE);
    }
-   self->s[l] = '\0';
-   NYD_OU;
+
+   for(xcpa = cpa; (ccp = *xcpa) != NIL; ++xcpa)
+      if(*ccp != '\0'){
+         if(xcpa != cpa && sep_o_nil != NIL)
+            cp = su_cs_pcopy(cp, sep_o_nil);
+         cp = su_cs_pcopy(cp, ccp);
+      }
+   *cp = '\0'; /* (all-empty) */
+
+   NYD2_OU;
    return self;
 }
 
