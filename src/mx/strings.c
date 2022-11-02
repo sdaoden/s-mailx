@@ -100,34 +100,32 @@ FL char *
  */
 
 FL struct str *
-str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
-{
+str_concat_csvl(struct str *self, ...){ /* XXX onepass maybe better here */
    va_list vl;
-   uz l;
-   char const *cs;
-   NYD_IN;
+   char *cp;
+   char const *ccp;
+   NYD2_IN;
 
-   va_start(vl, self);
-   for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
-      l += su_cs_len(cs);
-   va_end(vl);
+   /* C99 */{
+      uz l;
 
-   self->l = l;
-   self->s = n_autorec_alloc(l +1);
+      va_start(vl, self);
+      for(l = 0; (ccp = va_arg(vl, char const*)) != NIL;)
+         l += su_cs_len(ccp);
+      va_end(vl);
 
-   va_start(vl, self);
-   for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
-      uz i;
-
-      i = su_cs_len(cs);
-      if(i > 0){
-         su_mem_copy(self->s + l, cs, i);
-         l += i;
-      }
+      self->l = l;
+      self->s = cp = su_AUTO_ALLOC(l +1);
    }
-   self->s[l] = '\0';
+
+   va_start(vl, self);
+   while((ccp = va_arg(vl, char const*)) != NIL)
+      if(*ccp != '\0')
+         cp = su_cs_pcopy(cp, ccp);
+   *cp = '\0'; /* (all-empty) */
    va_end(vl);
-   NYD_OU;
+
+   NYD2_OU;
    return self;
 }
 
