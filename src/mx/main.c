@@ -216,8 +216,10 @@ a_main_startup(char const *argv0){
       boole doenv;
 
       /* Reset inherited diverging effective IDs, do not pass them along! */
+      n_user_eid = geteuid();
+      n_group_eid = getegid();
       if(n_user_id != 0 &&
-            (n_user_id != geteuid() || n_group_id != getegid())){
+            (n_user_id != n_user_eid || n_group_id != n_group_eid)){
          n_err(_("Warning: dropping diverging effective IDs (euid/egid)\n"));
          setuid(n_user_id);
          setgid(n_group_id);
