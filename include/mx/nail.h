@@ -1332,8 +1332,8 @@ VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
 
 VL u32 n_mb_cur_max; /* Value of MB_CUR_MAX */
 
-VL gid_t n_group_id; /* getgid() and getuid() */
-VL uid_t n_user_id;
+VL gid_t n_group_id, n_group_eid; /* getgid() and getuid() */
+VL uid_t n_user_id, n_user_eid;
 VL pid_t n_pid; /* getpid() (lazy initialized) */
 
 VL int n_exit_status; /* Program exit status TODO long term: ex_no */
