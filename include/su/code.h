@@ -720,7 +720,7 @@ do{\
 
 /*! Align a pointer \a{MEM} by the \r{su_ALIGNOF()} of \a{OTYPE}, and cast
  * the result to \a{DTYPE}. */
-#define su_P_ALIGN(DTYPE,OTYPE,MEM) \
+#define su_ALIGN_P(DTYPE,OTYPE,MEM) \
    su_R(DTYPE,\
       su_IS_POW2(su_ALIGNOF(OTYPE))\
          ? su_ROUND_UP2(su_R(su_up,MEM), su_ALIGNOF(OTYPE))\
@@ -729,15 +729,15 @@ do{\
 /* Roundup/align an integer;  Note: POW2 asserted in POD section below! */
 /*! Overalign an integer value to a size that cannot cause just any problem
  * for anything which does not use special alignment directives.
- * \remarks{It is safe to assume that \r{su_P_ALIGN()} can be used to place an
+ * \remarks{It is safe to assume that \r{su_ALIGN_P()} can be used to place an
  * object into a memory region spaced with it.} */
-#define su_Z_ALIGN_OVER(X) su_ROUND_UP2(su_S(su_uz,X), 2 * su__ZAL_L)
+#define su_ALIGN_Z_OVER(X) su_ROUND_UP2(su_S(su_uz,X), 2 * su__ZAL_L)
 
-/*! Smaller than \r{su_Z_ALIGN_OVER()}, but sufficient for plain-old-data. */
-#define su_Z_ALIGN(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_L)
+/*! Smaller than \r{su_ALIGN_Z_OVER()}, but sufficient for plain-old-data. */
+#define su_ALIGN_Z(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_L)
 
-/*! \r{su_Z_ALIGN()}, but only for pointers and \r{su_uz}. */
-#define su_Z_ALIGN_PZ(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_S)
+/*! \r{su_ALIGN_Z()}, but only for pointers and \r{su_uz}. */
+#define su_ALIGN_Z_PZ(X) su_ROUND_UP2(su_S(su_uz,X), su__ZAL_S)
 
 /* (These are below MCTA()d to be of equal size[, however].)
  * _L must adhere to the minimum aligned claimed in the \mainpage */

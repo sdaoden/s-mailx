@@ -88,10 +88,10 @@
 #undef ROUND_UP2
 
 #undef ALIGNOF
-#undef P_ALIGN
-#undef Z_ALIGN_OVER
-#undef Z_ALIGN
-#undef Z_ALIGN_PZ
+#undef ALIGN_P
+#undef ALIGN_Z_OVER
+#undef ALIGN_Z
+#undef ALIGN_Z_PZ
 
 #undef ASSERT_INJ
 #undef ASSERT_INJOR

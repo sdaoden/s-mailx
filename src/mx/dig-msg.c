@@ -131,12 +131,12 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
       goto jleave;
    }
 
-   *dmcpp = dmcp = su_CALLOC(Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
+   *dmcpp = dmcp = su_CALLOC(ALIGN_Z(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
    dmcp->dmc_flags = mx_DIG_MSG_OWN_MEMBAG |
          (!(mb.mb_perm & MB_DELE) ? mx_DIG_MSG_RDONLY : mx_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
-   dmcp->dmc_hp = R(struct header*,Z_ALIGN(P2UZ(&dmcp[1])));
+   dmcp->dmc_hp = R(struct header*,ALIGN_Z(P2UZ(&dmcp[1])));
    dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
    /* Rest done by caller */
    rv = su_ERR_NONE;

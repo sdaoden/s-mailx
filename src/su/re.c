@@ -41,7 +41,7 @@ NSPC_USE(su)
  * engine: either pass it directly on equal size of match structure, otherwise
  * pass it at &[>base] and copy result backwards */
 #define a_RE_MATCH_SIZE \
-   Z_ALIGN_OVER(MAX(sizeof(struct su_re_match), sizeof(regmatch_t)))
+   ALIGN_Z_OVER(MAX(sizeof(struct su_re_match), sizeof(regmatch_t)))
 
 struct su_re *
 su__re_reset(struct su_re *self){
@@ -154,10 +154,10 @@ su_re_setup_cp(struct su_re *self, char const *expr,
       i *= a_RE_MATCH_SIZE;
    }
 
-   i += Z_ALIGN_OVER(sizeof(regex_t));
+   i += ALIGN_Z_OVER(sizeof(regex_t));
    if((self->re_super = su_ALLOCATE(i, 1, su_MEM_ALLOC_MAYFAIL)) != NIL){
       self->re_match = S(struct su_re_match*,S(void*,
-            &S(u8*,self->re_super)[Z_ALIGN_OVER(sizeof(regex_t))]));
+            &S(u8*,self->re_super)[ALIGN_Z_OVER(sizeof(regex_t))]));
       /* xxx It seems hacky to think copying works everywhere */
       su_mem_copy(self->re_super, &re, sizeof(re));
    }else{

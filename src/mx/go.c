@@ -2351,7 +2351,7 @@ mx_go_command(BITENUM_IS(u32,mx_go_input_flags) gif, char const *cmd){
    sigprocmask(SIG_BLOCK, NIL, &osigmask);
 
    i = su_cs_len(cmd) +1;
-   ial = Z_ALIGN(i);
+   ial = ALIGN_Z(i);
    gcp = su_ALLOC(VSTRUCT_SIZEOF(struct a_go_ctx,gc_name) +
          ial + 2*sizeof(char*));
    su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name));

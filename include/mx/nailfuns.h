@@ -1162,12 +1162,12 @@ n_string_clear(struct n_string *self){
 
 /* Check whether a buffer of Len bytes can be inserted into S(elf) */
 INLINE boole n_string_get_can_book(uz len){
-   return (S(uz,S32_MAX) - Z_ALIGN(1) > len);
+   return (S(uz,S32_MAX) - ALIGN_Z(1) > len);
 }
 
 INLINE boole n_string_can_book(struct n_string *self, uz len){
    return (n_string_get_can_book(len) &&
-      S(uz,S32_MAX) - Z_ALIGN(1) - len > self->s_len);
+      S(uz,S32_MAX) - ALIGN_Z(1) - len > self->s_len);
 }
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */

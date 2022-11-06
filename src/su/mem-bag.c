@@ -59,7 +59,7 @@ NSPC_USE(su)
 CTA(a_MEMBAG_BSZ_UPPER <= S32_MAX, "Excesses datatype storage");
 
 /* When allocating a .mb_bsz buffer, add management sizes (back) */
-#define a_MEMBAG_BSZ_BASE MAX(Z_ALIGN(a_MEMBAG__SZA), Z_ALIGN(a_MEMBAG__SZB))
+#define a_MEMBAG_BSZ_BASE MAX(ALIGN_Z(a_MEMBAG__SZA), ALIGN_Z(a_MEMBAG__SZB))
 
 #ifdef su_HAVE_MEM_BAG_AUTO
 # define a_MEMBAG__SZA VSTRUCT_SIZEOF(struct su__mem_bag_auto_buf,mbab_buf)
@@ -548,7 +548,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
       uz chunksz;
 
       size *= no;
-      chunksz = a_MEMBAG_HULL ? sizeof(up) : Z_ALIGN(size);
+      chunksz = a_MEMBAG_HULL ? sizeof(up) : ALIGN_Z(size);
 
       /* Pool allocation possible?  Huge allocations are special */
       if(LIKELY(chunksz <= self->mb_bsz)){
@@ -730,13 +730,13 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
       /* C99 */{
          uz realsz;
 
-         realsz = Z_ALIGN(size);
+         realsz = ALIGN_Z(size);
          DBGX( if(realsz > self->mb_bsz)
             su_log_write(su_LOG_DEBUG, "su_mem_bag_lofi_allocate(): huge: "
                   "%" PRIuZ " bytes from %s:%" PRIu32,
                size  su_DVL_LOC_ARGS_USE); )
          isheap = (a_MEMBAG_HULL || realsz > self->mb_bsz);
-         chunksz = Z_ALIGN(VSTRUCT_SIZEOF(struct su__mem_bag_lofi_chunk,
+         chunksz = ALIGN_Z(VSTRUCT_SIZEOF(struct su__mem_bag_lofi_chunk,
                   mblc_buf)) + (isheap ? sizeof(up) : realsz);
       }
 
