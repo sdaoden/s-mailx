@@ -340,6 +340,7 @@ class mutex;
  * C++ variant of \r{MUTEX} (\r{su/mutex.h})
  */
 class mutex : private su_mutex{
+   // friend of thread
    su_CLASS_NO_COPY(mutex);
 public:
    class scope;
