@@ -371,12 +371,12 @@ FL struct n_string *
 
    s = self->s_size;
    l = self->s_len;
-   if((uz)S32_MAX - Z_ALIGN(1) - l <= noof)
+   if(S(uz,S32_MAX) - ALIGN_Z(1) - l <= noof)
       a_cs_panic();
 
    if((i = s - l) <= ++noof){
-      i += l + (u32)noof;
-      i = Z_ALIGN(i);
+      i += l + S(u32,noof);
+      i = ALIGN_Z(i);
       self->s_size = i -1;
 
       if(!self->s_auto)

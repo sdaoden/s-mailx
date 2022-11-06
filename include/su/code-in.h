@@ -127,10 +127,10 @@
 #define ROUND_UP2 su_ROUND_UP2
 
 #define ALIGNOF su_ALIGNOF
-#define P_ALIGN su_P_ALIGN
-#define Z_ALIGN_OVER su_Z_ALIGN_OVER
-#define Z_ALIGN su_Z_ALIGN
-#define Z_ALIGN_PZ su_Z_ALIGN_PZ
+#define ALIGN_P su_ALIGN_P
+#define ALIGN_Z_OVER su_ALIGN_Z_OVER
+#define ALIGN_Z su_ALIGN_Z
+#define ALIGN_Z_PZ su_ALIGN_Z_PZ
 
 /* ASSERT series */
 #define ASSERT_INJ su_ASSERT_INJ
