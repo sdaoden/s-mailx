@@ -320,6 +320,7 @@ class time;
  * C++ variant of \r{TIME} (\r{su/time.h})
  */
 class time{
+   // friend of time::spec
    su_CLASS_NO_COPY(time);
 public:
    class spec;

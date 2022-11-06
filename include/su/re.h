@@ -185,6 +185,7 @@ class re;
  * C++ variant of \r{RE} (\r{su/re.h})
  */
 class EXPORT re : private su_re{
+   // friend of re::match
    su_CLASS_NO_COPY(re);
 public:
    class match;

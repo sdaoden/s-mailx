@@ -359,6 +359,7 @@ class cs;
  * \remarks{In difference, for C++, \c{su/md-siphash.h} is included.}
  */
 class EXPORT cs{
+   // friend of siphash
    su_CLASS_NO_COPY(cs);
 public:
    /*! \copydoc{su_cs_ctype} */

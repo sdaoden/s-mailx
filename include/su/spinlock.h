@@ -204,6 +204,7 @@ class spinlock;
  * C++ variant of \r{SPINLOCK} (\r{su/spinlock.h})
  */
 class spinlock : private su_spinlock{
+   // friend of thread
    su_CLASS_NO_COPY(spinlock);
 public:
    /*! \remarks{As documented in \r{SMP} \r{create()} is real constructor!} */
