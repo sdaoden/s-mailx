@@ -747,7 +747,7 @@ lextract(char const *line, enum gfield ntype)
 
    if(line == su_NIL)
       rv = su_NIL;
-   else if((ntype & GNOT_A_LIST) || strpbrk(line, ",\"\\(<|"))
+   else if((ntype & GNOT_A_LIST) || su_cs_first_of(line, ",\"\\(<|") != UZ_MAX)
       rv = a_nm_extract1(line, ntype, ",", 1);
    else
       rv = extract(line, ntype);

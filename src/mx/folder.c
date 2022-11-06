@@ -531,7 +531,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       a_SPECIALS_MASK = a_DEVNULL | a_STDIN
    };
 
-   struct stat stb;
+   struct su_pathinfo pi;
    uz offset;
    char const *who, *orig_name;
    enum protocol proto;
@@ -699,14 +699,14 @@ jlogname:
       goto jem1;
    }
 
-   if (fstat(fileno(ibuf), &stb) == -1) {
-      if (fm & FEDIT_NEWMAIL)
+   if(!su_pathinfo_fstat(&pi, fileno(ibuf))){
+      if(fm & FEDIT_NEWMAIL)
          goto jleave;
-      n_perr(_("fstat"), su_err_no_by_errno());
+      n_perr(_("fstat"), su_err_no());
       goto jem1;
    }
 
-   if((flags & a_SPECIALS_MASK) || S_ISREG(stb.st_mode)){
+   if((flags & a_SPECIALS_MASK) || su_pathinfo_is_reg(&pi)){
       /* EMPTY */
    }else{
       int e;
@@ -714,7 +714,7 @@ jlogname:
       if(fm & FEDIT_NEWMAIL)
          goto jleave;
 
-      e = S_ISDIR(stb.st_mode) ? su_ERR_ISDIR : su_ERR_INVAL;
+      e = su_pathinfo_is_dir(&pi) ? su_ERR_ISDIR : su_ERR_INVAL;
       su_err_set_no(e);
       n_perr(name, e);
       goto jem1;
@@ -750,12 +750,12 @@ jlogname:
          rele_sigs();
          goto jem2;
       }
-      if(fstat(fileno(ibuf), &stb) == -1){
+      if(!su_pathinfo_fstat(&pi, fileno(ibuf))){
          n_perr(name, 0);
          rele_sigs();
          goto jem2;
       }
-      if(!S_ISREG(stb.st_mode)){
+      if(!su_pathinfo_is_reg(&pi)){
          su_err_set_no(su_ERR_INVAL);
          n_perr(name, su_ERR_INVAL);
          rele_sigs();
@@ -1316,9 +1316,10 @@ jset:
 }
 
 FL int
-n_folder_mbox_prepare_append(FILE *fout, boole post, struct stat *st_or_nil){
+n_folder_mbox_prepare_append(FILE *fout, boole post,
+      struct su_pathinfo *pip_or_nil){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
-   struct stat stb;
+   struct su_pathinfo pi;
    char buf[2];
    int rv;
    boole needsep;
@@ -1328,19 +1329,21 @@ n_folder_mbox_prepare_append(FILE *fout, boole post, struct stat *st_or_nil){
       needsep = (buf[0] != '\n' || buf[1] != '\n');
    else{
       rv = su_err_no_by_errno();
-      if(st_or_nil == NIL){
-         st_or_nil = &stb;
-         if(fstat(fileno(fout), st_or_nil))
-            goto jerrno;
+      if(pip_or_nil == NIL){
+         pip_or_nil = &pi;
+         if(!su_pathinfo_fstat(pip_or_nil, fileno(fout))){
+            rv = su_err_no();
+            goto jleave;
+         }
       }
 
-      if(st_or_nil->st_size >= 2){
+      if(pip_or_nil->pi_size >= 2){
          if(rv == ESPIPE)
             rv = su_ERR_NONE; /* XXX Just cannot do our job with ESPIPE ??? */
          goto jleave;
       }
       if(!post){
-         if(st_or_nil->st_size == 0){
+         if(pip_or_nil->pi_size == 0){
             clearerr(fout);
             rv = su_ERR_NONE;
             goto jleave;

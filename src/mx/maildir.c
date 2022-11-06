@@ -134,34 +134,34 @@ __maildircatch_hold(int s)
 }
 
 static void
-_cleantmp(void)
-{
-   struct stat st;
+_cleantmp(void){
+   struct su_pathinfo pi;
    struct n_string s_b, *s;
    s64 now;
    DIR *dirp;
    struct dirent *dp;
    NYD_IN;
 
-   if ((dirp = opendir("tmp")) == NULL)
+   if((dirp = opendir("tmp")) == NIL)
       goto jleave;
 
    now = n_time_now(FAL0)->ts_sec - 36*3600;
    s = n_string_creat_auto(&s_b);
 
-   while ((dp = readdir(dirp)) != NULL) {
-      if (dp->d_name[0] == '.')
+   while((dp = readdir(dirp)) != NIL){
+      if(dp->d_name[0] == '.')
          continue;
 
       s = n_string_trunc(s, 0);
       s = n_string_push_buf(s, "tmp/", sizeof("tmp/") -1);
       s = n_string_push_cp(s, dp->d_name);
-      if(stat(n_string_cp(s), &st) == -1)
-         continue;
-      if(st.st_atime <= now)
+
+      if(su_pathinfo_stat(&pi, n_string_cp(s)) && pi.pi_atime.ts_sec <= now)
          su_path_rm(s->s_dat);
    }
+
    closedir(dirp);
+
 jleave:
    NYD_OU;
 }
@@ -624,7 +624,8 @@ _maildir_move(struct su_timespec const *tsp, struct message *m)
    newfn = savecat("cur/", fn);
    if (!su_cs_cmp(m->m_maildir_file, newfn))
       goto jleave;
-   if (link(m->m_maildir_file, newfn) == -1) {
+
+   if(!su_path_link(newfn, m->m_maildir_file)){
       n_err(_("Cannot link %s to %s: message %lu not touched\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0),
          n_shexp_quote_cp(savecatsep(mailname, '/', newfn), FAL0),
@@ -635,6 +636,7 @@ _maildir_move(struct su_timespec const *tsp, struct message *m)
    if(!su_path_rm(m->m_maildir_file))
       n_err(_("Cannot remove %s\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0));
+
 jleave:
    NYD_OU;
 }
@@ -737,7 +739,6 @@ maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
    off_t off1, long size, enum mflag flag)
 {
    char buf[4096], *fn, *tfn, *nfn;
-   struct stat st;
    FILE *op;
    uz nlen, flen, n;
    enum okay rv = STOP;
@@ -751,10 +752,8 @@ maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
       tfn = n_autorec_alloc(n = nlen + flen + 6);
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
-      /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if((!stat(tfn, &st) || su_err_no_by_errno() == su_ERR_NOENT) &&
-            (op = mx_fs_open(tfn, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
-                  mx_FS_O_EXCL))) != NIL)
+      op = mx_fs_open(tfn, (mx_FS_O_WRONLY | mx_FS_O_CREATE | mx_FS_O_EXCL));
+      if(op != NIL)
          break;
 
       nfn = R(char*,P2UZ(nfn) - 1);
@@ -782,7 +781,7 @@ jtmperr:
 
    nfn = n_autorec_alloc(n = nlen + flen + 6);
    snprintf(nfn, n, "%s/new/%s", name, fn);
-   if (link(tfn, nfn) == -1) {
+   if(!su_path_link(nfn, tfn)) {
       n_err(_("Cannot link %s to %s\n"), n_shexp_quote_cp(tfn, FAL0),
          n_shexp_quote_cp(nfn, FAL0));
       goto jerr;
@@ -989,10 +988,7 @@ maildir_setfile(char const *who, char const * volatile name,
       mb.mb_type = MB_MAILDIR;
    }
 
-   if(!su_path_is_dir(name, FAL0)){
-      emsg = N_("Not a maildir: %s\n");
-      goto jerr;
-   }else if(chdir(name) < 0){
+   if(chdir(name) < 0){
       emsg = N_("Cannot enter maildir://%s\n");
 jerr:
       n_err(V_(emsg), n_shexp_quote_cp(name, FAL0));

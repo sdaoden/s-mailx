@@ -130,7 +130,7 @@ a_filo_main(void){
     * problems (SunOS), since the pathconf(3) value comes too late! */
    char name[PATH_MAX +1];
    struct mx_file_dotlock_info fdi;
-   struct stat stb, fdstb;
+   struct su_pathinfo pi, fdpi;
    enum mx_file_dotlock_state fdls;
    char const *cp;
    int fd;
@@ -166,9 +166,9 @@ jislink:
     * This is however only true if we do not have realpath(3) available since
     * that will have resolved the path already otherwise; nonetheless, let
     * readlink(2) be a precondition for dotlocking and keep this code */
-   if(lstat(cp = fdi.fdi_file_name, &stb) == -1)
+   if(!su_pathinfo_lstat(&pi, cp = fdi.fdi_file_name))
       goto jmsg;
-   if(S_ISLNK(stb.st_mode)){
+   if(su_pathinfo_is_lnk(&pi)){
       /* Use AUTO_ALLOC() and hope we stay in built-in buffer.. */
       char *x;
       uz i;
@@ -193,10 +193,10 @@ jislink:
    fdls = mx_FILE_DOTLOCK_STATE_FISHY | mx_FILE_DOTLOCK_STATE_ABANDON;
 
    /* Bail out if the file has changed its identity in the meanwhile */
-   if(fstat(fd, &fdstb) == -1 ||
-         fdstb.st_dev != stb.st_dev || fdstb.st_ino != stb.st_ino ||
-         fdstb.st_uid != stb.st_uid || fdstb.st_gid != stb.st_gid ||
-         fdstb.st_mode != stb.st_mode)
+   if(!su_pathinfo_fstat(&fdpi, fd) ||
+         fdpi.pi_dev != pi.pi_dev || fdpi.pi_ino != pi.pi_ino ||
+         fdpi.pi_uid != pi.pi_uid || fdpi.pi_gid != pi.pi_gid ||
+         fdpi.pi_flags != pi.pi_flags)
       goto jmsg;
 
    /* Be aware, even if the error is false!  Note the shared code in
@@ -245,7 +245,7 @@ jenametool:
       cp = NIL;
    }
 
-   if(cp == NIL || stb.st_uid != n_user_id || stb.st_gid != n_group_id){
+   if(cp == NIL || pi.pi_uid != n_user_id || pi.pi_gid != n_group_id){
       char const *args[13];
 
       args[ 0] = VAL_PS_DOTLOCK;

@@ -24,6 +24,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <stdarg.h>
+
 #include <su/cs.h>
 #include <su/mem.h>
 

@@ -1790,6 +1790,10 @@ jleave:
       n_free(linedat);
    NYD_OU;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
+
+   if(rv < 0 && su_err_no() == su_ERR_NONE)
+      su_err_set_no(su_ERR_INVAL);
+
    return rv;
 }
 

@@ -31,6 +31,7 @@
 #include <su/cs-dict.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/cmd.h"
 
@@ -274,7 +275,7 @@ c_unfiletype(void *vp){
 
 boole
 mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
-   struct stat stb;
+   struct su_pathinfo pi;
    struct su_cs_dict_view dv;
    struct n_string s_b, *s;
    u32 l;
@@ -291,7 +292,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
          s = n_string_push_buf(s, su_cs_dict_view_key(&dv),
                su_cs_dict_view_key_len(&dv));
 
-         if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
+         if(su_pathinfo_stat(&pi, n_string_cp(s)) && su_pathinfo_is_reg(&pi)){
             if(res_or_nil != NIL){
                struct a_ft_dat *ftdp;
 
@@ -313,7 +314,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_trunc(s, l);
    s = n_string_push_buf(s, a_ft_OBSOLETE_xz.ft_ext_dat,
          a_ft_OBSOLETE_xz.ft_ext_len);
-   if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
+   if(su_pathinfo_stat(&pi, n_string_cp(s)) && su_pathinfo_is_reg(&pi)){
       n_OBSOLETE("auto .xz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_xz;
@@ -323,7 +324,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_trunc(s, l);
    s = n_string_push_buf(s, a_ft_OBSOLETE_gz.ft_ext_dat,
          a_ft_OBSOLETE_gz.ft_ext_len);
-   if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
+   if(su_pathinfo_stat(&pi, n_string_cp(s)) && su_pathinfo_is_reg(&pi)){
       n_OBSOLETE("auto .gz support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_gz;
@@ -333,7 +334,7 @@ mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file){
    s = n_string_trunc(s, l);
    s = n_string_push_buf(s, a_ft_OBSOLETE_bz2.ft_ext_dat,
          a_ft_OBSOLETE_bz2.ft_ext_len);
-   if(!stat(n_string_cp(s), &stb) && S_ISREG(stb.st_mode)){
+   if(su_pathinfo_stat(&pi, n_string_cp(s)) && su_pathinfo_is_reg(&pi)){
       n_OBSOLETE("auto .bz2 support vanishes, please use `filetype' command");
       if(res_or_nil != NIL)
          *res_or_nil = a_ft_OBSOLETE_bz2;

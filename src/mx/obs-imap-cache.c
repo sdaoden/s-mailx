@@ -711,7 +711,7 @@ jleave:
 FL enum okay
 cache_remove(const char *name)
 {
-   struct stat st;
+   struct su_pathinfo pi;
    DIR *dirp;
    struct dirent *dp;
    char *path, *dir;
@@ -738,7 +738,7 @@ cache_remove(const char *name)
       if (pathend + n > pathsize)
          path = n_realloc(path, pathsize = pathend + n + 30);
       su_mem_copy(path + pathend, dp->d_name, n);
-      if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
+      if(!su_pathinfo_stat(&pi, path) || !su_pathinfo_is_reg(&pi))
          continue;
       if(!su_path_rm(path)){
          n_perr(path, 0);

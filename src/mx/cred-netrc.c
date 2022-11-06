@@ -34,6 +34,7 @@ su_EMPTY_FILE()
 #include <su/cs-dict.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/cmd.h"
 #include "mx/child.h"
@@ -103,7 +104,7 @@ a_netrc_create(void){
 
    char buffer[a_NETRC_TOKEN_MAXLEN], machine[a_NETRC_TOKEN_MAXLEN],
       login[a_NETRC_TOKEN_MAXLEN], password[a_NETRC_TOKEN_MAXLEN], *netrc_load;
-   struct stat sb;
+   struct su_pathinfo pi;
    boole nl_last;
    enum a_netrc_token t;
    FILE *fi;
@@ -136,8 +137,8 @@ a_netrc_create(void){
          goto jerrdoc;
 
       /* Be simple and apply rigid (permission) check(s) */
-      if(fstat(fileno(fi), &sb) == -1 || !S_ISREG(sb.st_mode) ||
-            (sb.st_mode & (S_IRWXG | S_IRWXO))){
+      if(!su_pathinfo_fstat(&pi, fileno(fi)) || !su_pathinfo_is_reg(&pi) ||
+            (pi.pi_flags & (su_IOPF_RWXGRP | su_IOPF_RWXOTH))){
          emsg = N_("Not a regular file, or accessible by non-user\n");
          goto jerr;
       }

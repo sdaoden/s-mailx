@@ -40,21 +40,13 @@
 #define su_USECASE_MX
 #include <mx/gen-config.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <errno.h>
 #include <fcntl.h>
-#include <inttypes.h>
-#include <limits.h>
 #include <setjmp.h>
 #include <signal.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include <su/code.h>
 
@@ -1374,7 +1366,7 @@ VL struct mailbox mb; /* Current mailbox */
 VL char mailname[PATH_MAX]; /* Name of current file TODO URL/object*/
 VL char displayname[80 - 16]; /* Prettyfied for display TODO URL/obj*/
 VL char prevfile[PATH_MAX]; /* Name of previous file TODO URL/obj */
-VL off_t mailsize; /* Size of system mailbox */
+VL s64 mailsize; /* Size of system mailbox */
 VL struct message *dot; /* Pointer to current message */
 VL struct message *prevdot; /* Previous current message */
 VL struct message *message; /* The actual message structure */

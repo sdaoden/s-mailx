@@ -45,6 +45,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <string.h> /* XXX strcoll() */
+
 #include <su/cs.h>
 #include <su/mem.h>
 #include <su/prime.h>

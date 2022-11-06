@@ -30,10 +30,11 @@
 
 #ifdef mx_HAVE_MLE
 # include <su/cs.h>
+# include <su/icodec.h>
 # include <su/mem-bag.h>
+# include <su/path.h>
 # include <su/utf.h>
 
-# include <su/icodec.h>
 
 # ifdef mx_HAVE_HISTORY
 #  include <su/sort.h>
@@ -2381,8 +2382,8 @@ jleave:
 
 static u32
 a_tty_kht(struct a_tty_line *tlp){
+   struct su_pathinfo pi;
    struct su_mem_bag *membag, *membag_persist, membag__buf[1];
-   struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
    char **exp_res;
@@ -2574,7 +2575,7 @@ jaster_check:
       goto jaster_check;
 
    if(exp.s[exp.l - 1] != '/'){
-      if(!stat(exp.s, &sb) && S_ISDIR(sb.st_mode)){
+      if(su_pathinfo_stat(&pi, exp.s) && su_pathinfo_is_dir(&pi)){
          shoup = n_string_assign_buf(shoup, exp.s, exp.l);
          shoup = n_string_push_c(shoup, '/');
          exp.s = n_string_cp(shoup);
@@ -2726,29 +2727,22 @@ jsep:
 
          /* Support the known filename tagging
           * XXX *line-editor-completion-filetype* or so */
-         if(!lstat(fullpath, &sb)){
+         if(su_pathinfo_lstat(&pi, fullpath)){
             char c = '\0';
 
-            if(S_ISDIR(sb.st_mode))
-               c = '/';
-            else if(S_ISLNK(sb.st_mode))
-               c = '@';
-# ifdef S_ISFIFO
-            else if(S_ISFIFO(sb.st_mode))
-               c = '|';
-# endif
-# ifdef S_ISSOCK
-            else if(S_ISSOCK(sb.st_mode))
-               c = '=';
-# endif
-# ifdef S_ISCHR
-            else if(S_ISCHR(sb.st_mode))
-               c = '%';
-# endif
-# ifdef S_ISBLK
-            else if(S_ISBLK(sb.st_mode))
+            if(su_pathinfo_is_blk(&pi))
                c = '#';
-# endif
+            else if(su_pathinfo_is_chr(&pi))
+               c = '%';
+            else if(su_pathinfo_is_dir(&pi))
+               c = '/';
+            else if(su_pathinfo_is_fifo(&pi))
+               c = '|';
+            else if(su_pathinfo_is_lnk(&pi))
+               c = '@';
+            /*else if(su_pathinfo_is_reg(&pi))*/
+            else if(su_pathinfo_is_sock(&pi))
+               c = '=';
 
             if(c != '\0'){
                putc(c, fp);

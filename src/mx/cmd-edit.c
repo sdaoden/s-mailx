@@ -1,37 +1,20 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Perform message editing functions.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
- * SPDX-License-Identifier: BSD-3-Clause
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #define su_FILE cmd_edit
 #define mx_SOURCE
@@ -41,240 +24,254 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+#include <su/icodec.h>
+#include <su/path.h>
+#include <su/time.h>
+
 #include "mx/child.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
 #include "mx/tty.h"
 
-/* TODO fake */
 #include "mx/cmd-edit.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-/* Edit a message by writing the message into a funnily-named file (which
- * should not exist) and forking an editor on it */
-static int a_edit1(int *msgvec, int viored);
+static void a_edit_it(int *msgvec, int viored);
 
-static int
-a_edit1(int *msgvec, int viored)
-{
-   int c, i;
-   FILE *fp = NULL;
-   struct message *mp;
-   off_t size;
-   boole wb, lastnl;
-   NYD_IN;
+static void
+a_edit_it(int *msgvec, int viored){
+	char prompt[80], *piins, iencbuf[su_IENC_BUFFER_SIZE];
+	FILE *fp;
+	n_sighdl_t sigint;
+	struct message *mp;
+	uz i;
+	boole wb;
+	NYD_IN;
 
-   wb = ok_blook(writebackedited);
+	wb = ok_blook(writebackedited);
 
-   /* Deal with each message to be edited... */
-   for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
-      n_sighdl_t sigint;
+	for(piins = NIL, i = 0; msgvec[i] != 0 && UCMP(z, i, <, msgCount); ++i){
+		if(i > 0){
+			if(piins == NIL)
+				piins = su_cs_pcopy(prompt, _("Edit message "));
 
-      if(i > 0){
-         char prompt[64];
+			su_cs_pcopy(piins, su_ienc_s32(iencbuf, msgvec[i], 10));
 
-         snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
-         if(!mx_tty_yesorno(prompt, TRU1))
-            continue;
-      }
+			if(!mx_tty_yesorno(prompt, TRU1))
+				continue;
+		}
 
-      mp = message + msgvec[i] - 1;
-      setdot(mp, TRU1);
-      touch(mp);
+		mp = &message[msgvec[i] - 1];
+		setdot(mp, TRU1);
+		touch(mp);
 
-      sigint = safe_signal(SIGINT, SIG_IGN);
+		sigint = safe_signal(SIGINT, SIG_IGN);
 
-      --mp->m_size; /* Strip final NL.. TODO MAILVFS->MESSAGE->length() */
-      fp = n_run_editor(fp, -1/*mp->m_size TODO */, viored,
-            ((mb.mb_perm & MB_EDIT) == 0 || !wb), NULL, mp,
-            (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint, NULL);
-      ++mp->m_size; /* And re-add it TODO */
+		--mp->m_size; /* Strip final NL.. TODO MAILVFS->MESSAGE->length() */
+		fp = mx_run_editor(viored, ((mb.mb_perm & MB_EDIT) == 0 || !wb), (wb ? SEND_MBOX : SEND_TODISP_ALL),
+				sigint, NIL, -1, NIL, mp, NIL);
+		++mp->m_size; /* And re-add it TODO */
 
-      if (fp != NULL) {
-         fseek(mb.mb_otf, 0L, SEEK_END);
-         size = ftell(mb.mb_otf);
-         mp->m_block = mailx_blockof(size);
-         mp->m_offset = mailx_offsetof(size);
-         mp->m_lines = 0;
-         mp->m_flag |= MODIFY;
-         rewind(fp);
-         lastnl = 0;
-         size = 0;
-         while ((c = getc(fp)) != EOF) {
-            if ((lastnl = (c == '\n')))
-               ++mp->m_lines;
-            if (putc(c, mb.mb_otf) == EOF)
-               break;
-            ++size;
-         }
-         if (!lastnl && putc('\n', mb.mb_otf) != EOF)
-            ++size;
-         if (putc('\n', mb.mb_otf) != EOF)
-            ++size;
-         mp->m_size = (uz)size;
-         if (ferror(mb.mb_otf))
-            n_perr(_("/tmp"), su_err_no_by_errno());
-         mx_fs_close(fp);
-      }
+		if(fp != NIL){
+			int c;
+			uz size;
+			long lines;
+			boole lastnl;
+			off_t end_off;
 
-      safe_signal(SIGINT, sigint);
-   }
+			if(fseek(mb.mb_otf, 0L, SEEK_END) == -1)
+				goto jeotf;
+			if((end_off = ftell(mb.mb_otf)) == -1)
+				goto jeotf;
 
-   NYD_OU;
-   return 0;
+			rewind(fp);
+			for(lastnl = FAL0, lines = 0, size = 0; (c = getc(fp)) != EOF; ++size){
+				if((lastnl = (c == '\n')))
+					++lines;
+				if(putc(c, mb.mb_otf) == EOF)
+					goto jeotf;
+			}
+			if(!lastnl){
+				if(putc('\n', mb.mb_otf) == EOF)
+					goto jeotf;
+				++size;
+			}
+			if(putc('\n', mb.mb_otf) == EOF)
+				goto jeotf;
+			++size;
+
+			if(fflush(mb.mb_otf) != EOF && !ferror(mb.mb_otf)){
+				mp->m_flag |= MODIFY;
+				mp->m_block = mailx_blockof(end_off);
+				mp->m_offset = mailx_offsetof(end_off);
+				mp->m_size = size;
+				mp->m_lines = lines;
+			}else{
+jeotf:
+				n_perr(_("/tmp"), su_err_no_by_errno());
+			}
+
+			mx_fs_close(fp);
+		}
+
+		safe_signal(SIGINT, sigint);
+	}
+
+	NYD_OU;
 }
 
 int
 c_edit(void *vp){
-   int rv;
-   NYD_IN;
+	NYD_IN;
 
-   rv = a_edit1(vp, 'e');
+	a_edit_it(vp, 'e');
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return su_EX_OK; /* XXX */
 }
 
 int
 c_visual(void *vp){
-   int rv;
-   NYD_IN;
+	NYD_IN;
 
-   rv = a_edit1(vp, 'v');
+	a_edit_it(vp, 'v');
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return su_EX_OK; /* XXX */
 }
 
 FILE *
-n_run_editor(FILE *fp, off_t size, int viored, boole readonly,/* TODO condom */
-      struct header *hp, struct message *mp, enum sendaction action,
-      n_sighdl_t oldint, char const *pipecmd){
-   struct stat statb;
-   struct mx_child_ctx cc;
-   sigset_t cset;
-   int t;
-   time_t modtime;
-   off_t modsize;
-   struct mx_fs_tmp_ctx *fstcp;
-   FILE *nf, *nf_pipetmp, *nf_tmp;
-   NYD_IN;
+mx_run_editor(int viored, boole rdonly, enum sendaction action, n_sighdl_t oldint,
+		FILE *fp_or_nil, s64 cnt, struct header *hp_or_nil, struct message *mp_or_nil,
+		char const *pipecmd_or_nil){
+	struct mx_child_ctx cc;
+	sigset_t cset;
+	struct su_pathinfo pi;
+	struct su_timespec modtime;
+	struct mx_fs_tmp_ctx *fstcp;
+	u64 modsize;
+	FILE *nf, *nf_pipetmp, *nf_tmp;
+	NYD_IN;
 
-   nf = nf_pipetmp = NIL;
-   modtime = 0, modsize = 0;
+	nf = nf_pipetmp = NIL;
+	STRUCT_ZERO(struct su_timespec, &modtime);
+	modsize = 0;
 
-   if((nf_tmp = mx_fs_tmp_open(NIL, "edbase", ((viored == '|' ? mx_FS_O_RDWR
-               : mx_FS_O_WRONLY) | mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL){
-jetempo:
-      n_perr(_("creation of temporary mail edit file"), 0);
-      goto jleave;
-   }
+	if((nf_tmp = mx_fs_tmp_open(NIL, "edbase", ((viored == '|' ? mx_FS_O_RDWR : mx_FS_O_WRONLY) |
+				mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
+		goto jperr;
 
-   if(hp != NIL){
-      ASSERT(mp == NIL);
-      if(!n_header_put4compose(nf_tmp, hp))
-         goto jleave;
-   }
+	if(mp_or_nil != NIL){
+		ASSERT(fp_or_nil == NIL);
+		ASSERT(hp_or_nil == NIL);
+		if(sendmp(mp_or_nil, nf_tmp, NIL, NIL, action, NIL) < 0)
+			goto jperr;
+	}else{
+		int c;
+		ASSERT(fp_or_nil != NIL);
 
-   if(mp != NIL){
-      ASSERT(hp == NIL);
-      if(sendmp(mp, nf_tmp, NIL, NIL, action, NIL) < 0){
-         n_err(_("Failed to prepare editable message\n"));
-         goto jleave;
-      }
-   }else{
-      if(size >= 0){
-         while(--size >= 0 && (t = getc(fp)) != EOF)
-            if(putc(t, nf_tmp) == EOF)
-               break;
-      }else{
-         while((t = getc(fp)) != EOF)
-            if(putc(t, nf_tmp) == EOF)
-               break;
-      }
-   }
+		if(hp_or_nil != NIL && !n_header_put4compose(nf_tmp, hp_or_nil))
+			goto jleave;
 
-   fflush(nf_tmp);
+		if(cnt >= 0){
+			while(--cnt >= 0 && (c = getc(fp_or_nil)) != EOF)
+				if(putc(c, nf_tmp) == EOF)
+					goto jperros;
+		}else while((c = getc(fp_or_nil)) != EOF)
+			if(putc(c, nf_tmp) == EOF)
+				goto jperros;
+	}
 
-   if((t = (fp != NIL && ferror(fp))) == 0 && (t = ferror(nf_tmp)) == 0){
-      if(viored != '|'){
-         if(!fstat(fileno(nf_tmp), &statb))
-            modtime = statb.st_mtime, modsize = statb.st_size;
+	if(fflush(nf_tmp) == EOF || (fp_or_nil != NIL && ferror(fp_or_nil)))
+		goto jperros;
+	else{
+		int x;
 
-         if(readonly)
-            t = (fchmod(fileno(nf_tmp), S_IRUSR) != 0);
-      }
-   }
+		really_rewind(nf_tmp, x);
+		if(x != 0)
+			goto jperros;
+	}
 
-   if(t != 0){
-      n_perr(fstcp->fstc_filename, su_err_no_by_errno());
-      goto jleave;
-   }
+	if(viored != '|'){
+		if(rdonly){
+			if(!su_path_fchmod(fileno(nf_tmp), su_IOPF_RUSR))
+				goto jperr;
+		}else if(su_pathinfo_fstat(&pi, fileno(nf_tmp))){
+			modtime = pi.pi_mtime;
+			modsize = pi.pi_size;
+		}
+	}
 
-   mx_child_ctx_setup(&cc);
-   cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+	mx_child_ctx_setup(&cc);
+	cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
 
-   if(viored == '|'){
-      ASSERT(pipecmd != NIL);
+	if(viored == '|'){
+		ASSERT(pipecmd_or_nil != NIL);
 
-      if((nf_pipetmp = mx_fs_tmp_open(NIL, "edpipe", (mx_FS_O_WRONLY |
-               mx_FS_O_REGISTER_UNLINK), &fstcp)) == NIL)
-         goto jetempo;
-      really_rewind(nf = nf_tmp, t);
-      nf_tmp = nf_pipetmp;
-      nf_pipetmp = nf;
-      nf = NIL;
+		nf_pipetmp = mx_fs_tmp_open(NIL, "edpipe", (mx_FS_O_WRONLY | mx_FS_O_REGISTER_UNLINK), &fstcp);
+		if(nf_pipetmp == NIL)
+			goto jperr;
 
-      cc.cc_fds[mx_CHILD_FD_IN] = fileno(nf_pipetmp);
-      cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf_tmp);
-      mx_child_ctx_set_args_for_sh(&cc, NIL, pipecmd);
-   }else{
-      cc.cc_cmd = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
-      if(oldint != SIG_IGN){
-         sigemptyset(&cset);
-         cc.cc_mask = &cset;
-      }
-      cc.cc_args[0] = fstcp->fstc_filename;
-   }
+		nf = nf_tmp, nf_tmp = nf_pipetmp, nf_pipetmp = nf, nf = NIL;
 
-   if(!mx_child_run(&cc) || cc.cc_exit_status != su_EX_OK)
-      goto jleave;
+		cc.cc_fds[mx_CHILD_FD_IN] = fileno(nf_pipetmp);
+		cc.cc_fds[mx_CHILD_FD_OUT] = fileno(nf_tmp);
+		mx_child_ctx_set_args_for_sh(&cc, NIL, pipecmd_or_nil);
+	}else{
+		cc.cc_cmd = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
+		if(oldint != SIG_IGN){
+			sigemptyset(&cset);
+			cc.cc_mask = &cset;
+		}
+		cc.cc_args[0] = fstcp->fstc_filename;
+	}
 
-   /* If in read only mode or file unchanged, just remove the editor temporary
-    * and return.  Otherwise switch to new file */
-   if(viored != '|'){
-      if(readonly)
-         goto jleave;
-      if(stat(fstcp->fstc_filename, &statb) == -1){
-         n_perr(fstcp->fstc_filename, su_err_no_by_errno());
-         goto jleave;
-      }
-      if(modtime == statb.st_mtime && modsize == statb.st_size)
-         goto jleave;
-   }
+	if(!mx_child_run(&cc) || cc.cc_exit_status != su_EX_OK)
+		goto jleave;
 
-   if((nf = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDWR)) == NIL)
-      n_perr(fstcp->fstc_filename, 0);
+	/* If rdonly or file unchanged, remove the temporary and return.  Otherwise switch to new file */
+	if(viored != '|'){
+		if(rdonly)
+			goto jleave;
+		if(!su_pathinfo_stat(&pi, fstcp->fstc_filename))
+			goto jperr;
+		if(su_timespec_is_EQ(&modtime, &pi.pi_mtime) && modsize == pi.pi_size)
+			goto jleave;
+	}
+
+	if((nf = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDWR)) == NIL)
+		goto jperr;
 
 jleave:
-   if(nf_pipetmp != NIL)
-      mx_fs_close(nf_pipetmp);
+	if(nf_pipetmp != NIL)
+		mx_fs_close(nf_pipetmp);
 
-   if(nf_tmp != NIL && !mx_fs_close(nf_tmp)){
-      n_perr(_("closing of temporary mail edit file"), 0);
-      if(nf != NIL)
-         mx_fs_close(nf);
-      nf = NIL;
-   }
-   NYD_OU;
-   return nf;
+	if(nf_tmp != NIL && !mx_fs_close(nf_tmp)){
+		n_perr(_("closing of temporary mail edit file"), 0);
+		if(nf != NIL){
+			mx_fs_close(nf);
+			nf = NIL;
+		}
+	}
+
+	NYD_OU;
+	return nf;
+jperros:
+	viored = su_err_no_by_errno();
+	goto jperrx;
+jperr:
+	viored = 0;
+jperrx:
+	n_perr(_("Failed to prepare editable message"), viored);
+	goto jleave;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_CMD_EDIT
-/* s-it-mode */
+/* s-itt-mode */

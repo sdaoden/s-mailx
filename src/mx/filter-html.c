@@ -1108,7 +1108,7 @@ jputuni:
       for(hfep = a_flthtml_ents;
             PCMP(hfep, <, a_flthtml_ents + NELEM(a_flthtml_ents)); ++hfep)
          if(l == ((hf = hfep->fhe_flags) & a_FLTHTML_EF_LENGTH_MASK) &&
-               !strncmp(s, hfep->fhe_ent, l)) {
+               !su_cs_cmp_n(s, hfep->fhe_ent, l)) {
             if((hf & a_FLTHTML_EF_HAVE_UNI) && (f & a_FLTHTML_UTF8)){
                i = hfep->fhe_uni;
                goto jputuni;

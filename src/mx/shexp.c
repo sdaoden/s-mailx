@@ -55,6 +55,7 @@
 #include <su/sort.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/utf.h>
 
 #include "mx/cmd.h"
@@ -773,12 +774,12 @@ a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp){
 Jstat:
 #endif
       {
-         struct stat sb;
+         struct su_pathinfo pi;
 
-         if(stat(n_string_cp(ousp), &sb)){
+         if(!su_pathinfo_stat(&pi, n_string_cp(ousp))){
             rv = N_("I/O error when querying file status");
             goto jleave;
-         }else if(S_ISDIR(sb.st_mode))
+         }else if(su_pathinfo_is_dir(&pi))
             isdir = TRU1;
       }
 #ifdef mx_HAVE_DIRENT_TYPE

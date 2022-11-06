@@ -230,11 +230,9 @@ c_remove(void *vp){
             s32 err;
 
             if((err = su_err_no()) == su_ERR_ISDIR){
-               if(su_path_is_dir(name, FAL0)){
-                  if(su_path_rmdir(name))
-                     break;
-                  err = su_err_no();
-               }
+               if(su_path_rmdir(name))
+                  break;
+               err = su_err_no();
             }
             emsg = su_err_doc(err);
             goto jerr;
@@ -324,7 +322,7 @@ c_rename(void *vp){
    case n_PROTO_EML:
       /* FALLTHRU */
    case PROTO_FILE:
-      if(link(oldn, newn) == -1){
+      if(!su_path_link(newn, oldn)){
          emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
          goto jerrnotr;
       }else if(!su_path_rm(oldn)){

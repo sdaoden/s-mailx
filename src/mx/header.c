@@ -2734,27 +2734,28 @@ jnewname:
          goto jout;
       if ((cp = su_cs_find_c(linebuf, 'F')) == NULL)
          goto jout;
-      if (strncmp(cp, "From", 4))
+      if (su_cs_cmp_n(cp, "From", 4))
          goto jout;
       if (namesize <= linesize)
          namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
-      /* UUCP from 976 (we do not support anyway!) */
+      /* UUCP from 976 (we do not support anyway!) TODO NEVER TESTED! */
       while ((cp = su_cs_find_c(cp, 'r')) != NULL) {
-         if (!strncmp(cp, "remote", 6)) {
-            if ((cp = su_cs_find_c(cp, 'f')) == NULL)
+         if (su_cs_cmp_n(cp, "remote", 6) == 0) {
+            if ((cp = su_cs_find_c(cp, 'f')) == NIL)
                break;
-            if (strncmp(cp, "from", 4) != 0)
+            if (su_cs_cmp_n(cp, "from", 4) != 0)
                break;
-            if ((cp = su_cs_find_c(cp, ' ')) == NULL)
+            cp += 4;
+            if(*cp != ' ')
                break;
             cp++;
             if (f1st) {
-               strncpy(namebuf, cp, namesize);
+               su_cs_copy_n(namebuf, cp, namesize);
                f1st = 0;
             } else {
                cp2 = su_cs_rfind_c(namebuf, '!') + 1;
-               strncpy(cp2, cp, P2UZ(namebuf + namesize - cp2));
+               su_cs_copy_n(cp2, cp, P2UZ(namebuf + namesize - cp2));
             }
             namebuf[namesize - 2] = '!';
             namebuf[namesize - 1] = '\0';

@@ -107,6 +107,7 @@ main(void){ // {{{
 
    ///
 #endif // tests
+
    a_STATS( mem::trace(); )
 
    log::write(log::info,
