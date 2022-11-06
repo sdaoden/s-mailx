@@ -329,6 +329,7 @@ public:
    /*! \copydoc{TIMESPEC} */
    class spec : private su_timespec{
       friend class path;
+//      friend class path::info;
       friend class time;
    public:
       /*! \copydoc{su_TIMESPEC_SEC_MILLIS} */

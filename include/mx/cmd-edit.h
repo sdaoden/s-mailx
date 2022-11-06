@@ -27,23 +27,23 @@
 #include <su/code-in.h>
 
 /* Edit a message list */
-EXPORT int c_edit(void *v);
+EXPORT int c_edit(void *vp);
 
 /* Invoke the visual editor on a message list */
-EXPORT int c_visual(void *v);
+EXPORT int c_visual(void *vp);
 
-/* Run an editor on either size bytes of the file fp (or until EOF if size is
- * negative) or on the message mp, and return a new file or NIL on error of if
- * the user did not perform any edits (not possible in pipe mode).
- * For now we ASSERT that mp==NIL if hp!=NIL, treating this as a special call
- * from within compose mode.
+/* Run an editor on either cnt bytes of the file fp_or_nil (or until EOF if
+ * cnt is negative), or on the message mp_or_nil, and return a new file or NIL
+ * on error if the user did not perform any edits (not possible in pipe mode).
+ * For now we ASSERT that mp_or_nil==NIL if hp_or_nil!=NIL, treating this as
+ * a special call from within compose mode.
  * Signals must be handled by the caller.
  * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for child_run(), in
- * which case pipecmd must have been given */
-EXPORT FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
-      struct header *hp, struct message *mp, enum sendaction action,
-      n_sighdl_t oldint, char const *pipecmd);
+ * which case pipecmd_or_nil must have been given */
+EXPORT FILE *mx_run_editor(int viored, boole rdonly, enum sendaction action, n_sighdl_t oldint,
+		FILE *fp_or_nil, s64 cnt, struct header *hp_or_nil, struct message *mp_or_nil,
+		char const *pipecmd_or_nil);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_EDIT_H */
-/* s-it-mode */
+/* s-itt-mode */

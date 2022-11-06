@@ -669,7 +669,7 @@ a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
 
    if(fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
          "Content-Disposition: inline\n", _sendout_boundary) < 0)
-      goto jerr;
+      goto jerrio;
 
    if((ccp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(ccp, "noagent")){
       struct mx_name *np;
@@ -683,7 +683,7 @@ a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
          ccp = a_sendout_random_id(hp, FAL0);
 
       if(ccp != NULL && fprintf(fo, "Content-ID: <%s>\n", ccp) < 0)
-         goto jerr;
+         goto jerrio;
    }
 
    if((ccp = ap->a_content_description) != NULL &&
@@ -691,18 +691,21 @@ a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
           mx_xmime_write(ccp, su_cs_len(ccp), fo, CONV_TOHDR,
                (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT), NIL, NIL
             ) < 0 || putc('\n', fo) == EOF))
-      goto jerr;
+      goto jerrio;
    if(putc('\n', fo) == EOF)
-      goto jerr;
+      goto jerrio;
 
-   mp = message + ap->a_msgno - 1;
+   mp = &message[ap->a_msgno - 1];
    touch(mp);
    if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
-jerr:
-      if((err = su_err_no()) == su_ERR_NONE)
-         err = su_ERR_IO;
+      err = su_err_no();
+
+jleave:
    NYD_OU;
    return err;
+jerrio:
+   err = su_ERR_IO;
+   goto jleave;
 }
 
 static s32

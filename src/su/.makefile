@@ -22,6 +22,7 @@ SUF=$(SUFDEVEL) \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
 	-Dsu_HAVE_PATHCONF \
+	-Dsu_HAVE_STAT_BLOCKS -Dsu_HAVE_STAT_TIMESPEC \
 	-Dsu_HAVE_UTIMENSAT \
 
 SUFWW=-Weverything -W -Wall -pedantic \
@@ -43,8 +44,8 @@ SUFS=-fPIE \
 	#-fsanitize=undefined \
 	#-fsanitize=address \
 
-CFLAGS+=$(SUFLVLC) $(SUF) $(SUFWW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
-CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFWW) $(SUFS) $(SUFOPT)
+CFLAGS+=$(SUFLVLC) $(SUF) $(SUFW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
+CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFW) $(SUFS) $(SUFOPT)
 
 LDFLAGS+=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
 	-Wl,--enable-new-dtags \
@@ -73,7 +74,8 @@ CSRC = atomic.c \
 			mem-tools.c \
 		mem-bag.c \
 		mutex.c \
-	path.c \
+	path-info.c \
+			path-utils.c \
 		prime.c \
 	random.c \
 		re.c \

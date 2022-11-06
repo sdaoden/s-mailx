@@ -27,11 +27,10 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_MTA_ALIASES
-#include <sys/stat.h> /* TODO su_path_info */
-
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/mem.h>
+#include <su/path.h>
 
 #include "mx/cmd.h"
 #include "mx/file-streams.h"

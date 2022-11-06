@@ -155,7 +155,7 @@ static boole a_coll_makeheader(FILE *fp, struct header *hp,
                s8 *checkaddr_err, boole do_delayed_due_t);
 
 /* Edit the message being collected on fp.
- * If c=='|' pipecmd must be set and is passed through to n_run_editor().
+ * If c=='|' pipecmd must be set and is passed through to run_editor().
  * On successful return, make the edit file the new temp file; return errno */
 static s32 a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
@@ -798,8 +798,8 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    }
 
    rewind(_coll_fp);
-   nf = n_run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint,
-         pipecmd);
+   nf = mx_run_editor(c, FAL0, SEND_MBOX, sigint,
+         _coll_fp, S64_C(-1), hp, NIL, pipecmd);
    if(nf != NULL){
       if(hp != NULL){
          /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
@@ -1742,16 +1742,6 @@ jearg:
 
                /*n_string_gut(s2p);*/
             }
-         }
-
-         /* XXX race, and why not test everywhere, then? */
-         if(su_path_is_dir(cp, FAL0)){
-            n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
-            if(a_HARDERR())
-               goto jerr;
-            n_pstate_err_no = su_ERR_ISDIR;
-            n_pstate_ex_no = 1;
-            break;
          }
 
          if((n_pstate_err_no = a_coll_include_file(cp, (c == 'R'), TRU1)

@@ -1137,9 +1137,14 @@ jefrom:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: do not verify _that_ call.
           * See main.c! */
-         if(!(n_pstate & n_PS_ROOT) && !su_path_is_dir(*val, TRUM1)){
-            emsg = N_("$HOME is not a directory or not accessible: %s\n");
-            goto jerr;
+         if(!(n_pstate & n_PS_ROOT)){
+            struct su_pathinfo pi;
+
+            if(!su_pathinfo_stat(&pi, *val) || !su_pathinfo_is_dir(&pi) ||
+                  !su_path_access(*val, (su_IOPF_READ | su_IOPF_EXEC))){
+               emsg = N_("$HOME is not a directory or not accessible: %s\n");
+               goto jerr;
+            }
          }
          break;
 #ifdef mx_HAVE_IDNA
@@ -1190,12 +1195,15 @@ jefrom:
          *val = n_string_cp(s);
          /* n_string_drop_ownership(so); */
          }break;
-      case ok_v_TMPDIR:
-         if(!su_path_is_dir(*val, TRU1)){
-            emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
-            goto jerr;
-         }
-         break;
+      case ok_v_TMPDIR:{
+            struct su_pathinfo pi;
+
+            if(!su_pathinfo_stat(&pi, *val) || !su_pathinfo_is_dir(&pi) ||
+                  !su_path_access(*val, su_IOPF_ACCESS_MASK)){
+               emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
+               goto jerr;
+            }
+         }break;
       case ok_v_umask:
          if(**val != '\0'){
             u64 uib;
@@ -1316,10 +1324,10 @@ jefrom:
          break;
       case ok_v_umask:
          if(**val != '\0'){
-            u64 uib;
+            u32 uib;
 
-            su_idec_u64_cp(&uib, *val, 0, NIL);
-            umask(S(mode_t,uib));
+            su_idec_u32_cp(&uib, *val, 0, NIL);
+            su_path_umask(uib);
          }
          break;
       case ok_v_verbose:{
