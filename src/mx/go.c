@@ -36,6 +36,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/child.h"
 #include "mx/cmd.h"
@@ -549,7 +550,7 @@ jrestart:
          }
 
          /* And join arguments onto alias expansion */
-         i = strlen(alias_exp);
+         i = su_cs_len(alias_exp);
          j = su_cs_len(word);
          cp = line.s;
          alias_name = line.s = su_AUTO_ALLOC(j +1 + i + 1 + line.l +1);
@@ -1572,10 +1573,11 @@ mx_go_main_loop(boole main_call){ /* FIXME */
             char *cp;
 
             if((cp = ok_vlook(newmail)) != NIL){ /* TODO -> on_tick_event! */
-               struct stat st;
+               struct su_pathinfo pi;
 
                if(mb.mb_type == MB_FILE){
-                  if(!stat(mailname, &st) && st.st_size > mailsize)
+                  if(su_pathinfo_stat(&pi, mailname) &&
+                        UCMP(64, pi.pi_size, >, mailsize))
 #if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
                   Jnewmail:
 #endif

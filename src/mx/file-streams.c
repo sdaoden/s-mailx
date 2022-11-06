@@ -698,7 +698,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil,
        * at the time of this writing.  A restrictive umask(2) setting may have
        * turned the path inaccessible, so ensure it may be read at least!
        * TODO once ok_vlook() can return an integer, look up *umask* first! */
-      (void)fchmod(fd, S_IWUSR | S_IRUSR);
+      (void)su_path_fchmod(fd, su_IOPF_WUSR | su_IOPF_RUSR);
    }
 
    su_LOFI_FREE(cp_base);
@@ -1372,13 +1372,12 @@ jleave:
 }
 
 off_t
-fsize(FILE *iob)
-{
-   struct stat sbuf;
+fsize(FILE *iob){
+   struct su_pathinfo pi;
    off_t rv;
    NYD_IN;
 
-   rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
+   rv = (!su_pathinfo_fstat(&pi, fileno(iob)) ? 0 : pi.pi_size);
 
    NYD_OU;
    return rv;

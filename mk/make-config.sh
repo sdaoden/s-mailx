@@ -2265,8 +2265,19 @@ int main(void){
 }
 !
 
+link_check stat_blocks 'struct stat st_blocks' \
+      '#define su_HAVE_STAT_BLOCKS' << \!
+#include <sys/stat.h>
+int main(void){
+   struct stat x;
+
+   stat(".", &x);
+   return x.st_blocks != 0;
+}
+!
+
 if link_check stat_timespec 'struct stat timespec fields' \
-      '#define mx_HAVE_STAT_TIMESPEC' << \!
+      '#define su_HAVE_STAT_TIMESPEC' << \!
 #include <sys/stat.h>
 int main(void){
    struct stat x;
@@ -2278,7 +2289,7 @@ int main(void){
 then
    :
 elif link_check stat_timensec 'struct stat timensec fields' \
-      '#define mx_HAVE_STAT_TIMENSEC' << \!
+      '#define su_HAVE_STAT_TIMENSEC' << \!
 #include <sys/stat.h>
 int main(void){
    struct stat x;
@@ -2301,7 +2312,6 @@ int main(void){
 }
 !
 
-# We use this only then for now (need NOW+1)
 run_check utimensat 'utimensat(2)' '#define su_HAVE_UTIMENSAT' << \!
 #include <fcntl.h> /* For AT_* */
 #include <sys/stat.h>

@@ -50,6 +50,7 @@
 #endif
 
 #include <fcntl.h>
+#include <stdarg.h>
 #include <time.h>
 
 #ifdef mx_HAVE_NET
@@ -71,6 +72,7 @@
 #include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/path.h>
 #include <su/sort.h>
 #include <su/time.h>
 
@@ -340,23 +342,23 @@ jfile:
       rv = PROTO_FILE;
 jcheck:
       if(check_stat || try_hooks){
+         struct su_pathinfo pi;
          struct mx_filetype ft;
-         struct stat stb;
          char *np;
          uz i;
 
          np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
          su_mem_copy(np, name, i +1);
 
-         if(!stat(name, &stb)){
-            if(S_ISDIR(stb.st_mode)
+         if(su_pathinfo_stat(&pi, name)){
+            if(su_pathinfo_is_dir(&pi)
 #ifdef mx_HAVE_MAILDIR
                   && (su_mem_copy(&np[i], "/tmp", 5),
-                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                     su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi)) &&
                   (su_mem_copy(&np[i], "/new", 5),
-                     !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+                     su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi)) &&
                   (su_mem_copy(&np[i], "/cur", 5),
-                     !stat(np, &stb) && S_ISDIR(stb.st_mode))
+                     su_pathinfo_stat(&pi, np) && su_pathinfo_is_dir(&pi))
 #endif
             ){
                rv =

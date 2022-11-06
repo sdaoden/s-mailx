@@ -145,10 +145,10 @@ jleave:
 static boole
 edstop(void) /* TODO oh my god */
 {
+   struct su_pathinfo pi;
    int gotcha, c;
    struct message *mp;
    FILE *obuf = NULL, *ibuf = NULL;
-   struct stat statb;
    BITENUM_IS(u32,mx_fs_open_state) fs;
    boole rv;
    NYD_IN;
@@ -176,7 +176,7 @@ edstop(void) /* TODO oh my god */
     * TODO to be able to truly tell whether *anything* has changed!
     * TODO (Or better: only come here.. then!  It is an *object method!* */
    /* TODO Ignoring stat error is easy, huh? */
-   if(!stat(mailname, &statb) && statb.st_size > mailsize){
+   if(su_pathinfo_stat(&pi, mailname) && UCMP(64, pi.pi_size, >, mailsize)){
       if((obuf = mx_fs_tmp_open(NIL, "edstop", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
                NIL)) == NIL){
          n_perr(_("tmpfile"), 0);
@@ -295,10 +295,10 @@ j_leave:
 FL boole
 quit(boole hold_sigs_on)
 {
+   struct su_pathinfo pi;
    int p, modify, anystat, c;
    FILE *fbuf, *lckfp, *rbuf, *abuf;
    struct message *mp;
-   struct stat minfo;
    boole rv;
    NYD_IN;
 
@@ -381,7 +381,7 @@ quit(boole hold_sigs_on)
    }
 
    rbuf = NULL;
-   if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
+   if(su_pathinfo_fstat(&pi, fileno(fbuf)) && UCMP(64, pi.pi_size, >, mailsize)){
       boole lastnl;
 
       fprintf(n_stdout, _("New mail has arrived.\n"));
