@@ -96,7 +96,7 @@
 # define NYD2_OU S(void,0)
 # define P2UZ(X) S(size_t,X)
 # define S(X,Y) ((X)(Y))
-# define su_ALIGNOF(X) ((sizeof(X) + 7) & ~7)
+# define ALIGN_Z(X) ((sizeof(X) + 7) & ~7)
 # define su_COMMA ,
 # define su_cs_cmp(X,Y) strcmp(X, Y)
 # define su_cs_is_digit(X) isdigit(S(unsigned char,X))
@@ -420,9 +420,9 @@ a_shexp__arith_eval(struct a_shexp_arith_ctx *self,
       if(su_64( i >= U32_MAX || ) i++ >= UZ_MAX / 2)
          goto jenomem;
       if(i >= ((UZ_MAX - (i a_SHEXP_ARITH_ERROR_TRACK( * 2 ))) /
-               ((su_ALIGNOF(*sasp->sas_nums) +
-                 (su_ALIGNOF(*sasp->sas_ops) * 2))
-                a_SHEXP_ARITH_ERROR_TRACK(
+               ((ALIGN_Z(sizeof(*sasp->sas_nums)) +
+                 ALIGN_Z(sizeof(*sasp->sas_ops) * 2))
+                 a_SHEXP_ARITH_ERROR_TRACK(
                   + sizeof(*sasp->sas_error_track) * 2 ))
             )){
 jenomem:
@@ -431,8 +431,8 @@ jenomem:
       }
 
       ++i;
-      j = su_ALIGNOF(*sasp->sas_nums) * (i >> 1);
-      o = su_ALIGNOF(*sasp->sas_ops) * i;
+      j = ALIGN_Z(sizeof(*sasp->sas_nums) * (i >> 1));
+      o = ALIGN_Z(sizeof(*sasp->sas_ops) * i);
       a = j + o +
             a_SHEXP_ARITH_ERROR_TRACK( (sizeof(*sasp->sas_error_track) * i) + )
             1 + (i a_SHEXP_ARITH_ERROR_TRACK( * 2 ));
@@ -463,7 +463,7 @@ jenomem:
 
       a_SHEXP_ARITH_L((" ! _arith_eval ALLOC <%lu> "
             "nums=%p (%lu) ops=%p varp=%p %lu <%s>\n",
-         S(ul,a), sasp->sas_nums, S(ul,j / su_ALIGNOF(*sasp->sas_nums)),
+         S(ul,a), sasp->sas_nums, S(ul,j / sizeof(*sasp->sas_nums)),
          sasp->sas_ops, varp, S(ul,i - 1), ep));
    }
 
