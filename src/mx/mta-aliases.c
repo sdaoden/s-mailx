@@ -329,10 +329,10 @@ jeval:
 
                i = su_cs_len(np->n_fullname) +1;
                slp = n_STRLIST_ALLOC(i + 1 +
-                     (maap == NIL ? 2*Z_ALIGN_OVER(ALIGNOF(*maap)) : 0));
+                     (maap == NIL ? 2*ALIGN_Z_OVER(ALIGNOF(*maap)) : 0));
 
                if(maap == NIL){
-                  maap = P_ALIGN(struct a_mtaali_alias*, maap,
+                  maap = ALIGN_P(struct a_mtaali_alias*, maap,
                         &slp->sl_dat[i +1 + 1]);
                   maap->maa_next = NIL;
                   tailp = &maap->maa_values;

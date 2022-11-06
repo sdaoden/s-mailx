@@ -827,7 +827,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
    len = sizeof *cacp;
    for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
       i = cap->ca_arg.ca_str.l +1;
-      i = Z_ALIGN(i);
+      i = ALIGN_Z(i);
       len += sizeof(*cap) + i;
    }
    if(cacp->cac_vput != NIL)
@@ -855,7 +855,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
          cap->ca_arg.ca_str.s,
          (i = (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1));
 
-      i = Z_ALIGN(i);
+      i = ALIGN_Z(i);
       buf += sizeof(*ncap) + i;
    }
 
