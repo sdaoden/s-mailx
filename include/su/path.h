@@ -128,6 +128,7 @@ class path;
  * \remarks{In difference, for C++, \c{su/time.h} is included.}
  */
 class EXPORT path{
+   // friend of time::spec
    su_CLASS_NO_COPY(path);
 public:
    /*! \copydoc{su_PATH_DEV_NULL} */
