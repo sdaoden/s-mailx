@@ -2501,6 +2501,7 @@ s I1=1 I2=2 I3=3 I4=+E+;p "<$((0?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=+E+ I2=2 I3=3 I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=1 I2=+E+ I3=3 I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=0 I2=2 I3=+E+ I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
+s I1=5;p "<I1=$((xa ((512 + 511) & ~511) >> 9))>";e "<$I1>"
 	__EOT
    # }}}
 
@@ -2508,7 +2509,7 @@ s I1=0 I2=2 I3=+E+ I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
       -Y 'commandalias ca \\commandalias' \
       -Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
       > ./tarith-bad 2>>${ERR}
-   check arith-bad 0 ./tarith-bad '1862980575 467'
+   check arith-bad 0 ./tarith-bad '2406984383 471'
 
    </dev/null ${MAILX} ${ARGS} -Y '
       define x {
