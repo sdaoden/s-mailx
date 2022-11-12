@@ -468,16 +468,21 @@ a_sigs_nyd__dump(up cookie, char const *buf, uz blen){
 
 void
 mx__nyd_oncrash(int signo){
+   static boole a_oncrash;
+
    char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    int fd;
    uz i, fnl;
    char const *tmpdir;
    u32 poption_save;
+   LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
+      "System limits too low for fixed-size buffer operation");
 
    su_nyd_set_disabled(TRU1);
 
-   LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
-      "System limits too low for fixed-size buffer operation");
+   if(a_oncrash)
+      goto jstderr;
+   a_oncrash = TRU1;
 
    poption_save = n_poption; /* XXX sigh */
    n_poption &= ~n_PO_D_V;
@@ -499,8 +504,10 @@ mx__nyd_oncrash(int signo){
    su_mem_copy(cp += fnl, ".dat", sizeof(".dat"));
    fnl = i + sizeof(".dat") -1;
 
-   if((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)
+   if((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1){
+jstderr:
       fd = STDERR_FILENO;
+   }
 
 # undef _X
 # define _X(X) X, sizeof(X) -1
@@ -553,6 +560,8 @@ mx__nyd_oncrash(int signo){
       for(;;)
          _exit(su_EX_ERR);
    }
+
+   a_oncrash = FAL0;
 
    su_nyd_set_disabled(FAL0);
 }
