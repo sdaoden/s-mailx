@@ -526,12 +526,15 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
 }
 
 #if DVLOR(1, 0)
-void
+boole
 su_nyd_set_disabled(boole disabled){
    struct su__nyd_control *ncp;
+   boole rv;
 
    ncp = S(struct su__nyd_control*,su_thread_self()->t_.nydctl);
+   rv = ncp->nc_skip;
    ncp->nc_skip = (disabled != FAL0);
+   return rv;
 }
 
 void
