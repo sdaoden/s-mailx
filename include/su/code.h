@@ -1871,10 +1871,10 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 #endif
 
 #if DVLOR(1, 0) || defined DOXYGEN
-/*! Control NYD for the calling thread.
+/*! Control NYD for the calling thread, return former state.
  * When \a{disabled}, \r{su_nyd_chirp()} will return quick.
  * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
-EXPORT void su_nyd_set_disabled(boole disabled);
+EXPORT boole su_nyd_set_disabled(boole disabled);
 
 /*! Reset \r{su_nyd_chirp()} recursion level of the calling thread.
  * In event-loop driven software that uses long jumps it may be desirable to
