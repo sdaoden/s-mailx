@@ -14,7 +14,7 @@
 #@   satisfied.  "require" is available where documented only.
 #@
 #@ - Values have a VAL_ prefix, and are assigned strings, for example
-#@       VAL_PREFIX="/usr/local"
+#@     VAL_PREFIX="/usr/local"
 #@
 #@   Values which are only used during configuration, building, and/or
 #@   installation have no prefix, for example DESTDIR, VERBOSE, awk.
@@ -76,24 +76,24 @@ VAL_PS_DOTLOCK_USER=root
 # General prefix of installation.
 VAL_PREFIX=/usr/local
 
-   # Fine tune directory locations, normally under $VAL_PREFIX:
-   # . of normal binaries.
-   VAL_BINDIR=${VAL_PREFIX}/bin
-   # . of privilege-separated binaries (if any), names of which are
-   #     ${VAL_SID}${VAL_MAILX}-foo.
-   VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
-   # . of the manual.
-   VAL_MANDIR=${VAL_PREFIX}/share/man
-   # . of the exemplary resource file.
-   VAL_SYSCONFDIR=${VAL_PREFIX}/etc
+	# Fine tune directory locations, normally under $VAL_PREFIX:
+	# . of normal binaries.
+	VAL_BINDIR=${VAL_PREFIX}/bin
+	# . of privilege-separated binaries (if any), names of which are
+	#   ${VAL_SID}${VAL_MAILX}-foo.
+	VAL_LIBEXECDIR=${VAL_PREFIX}/libexec
+	# . of the manual.
+	VAL_MANDIR=${VAL_PREFIX}/share/man
+	# . of the exemplary resource file.
+	VAL_SYSCONFDIR=${VAL_PREFIX}/etc
 
-      # The exemplary resource template (within $VAL_SYSCONFDIR).
-      # Note 1: not overwritten by "make install" if yet exists!
-      VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
+		# The exemplary resource template (within $VAL_SYSCONFDIR).
+		# Note 1: not overwritten by "make install" if yet exists!
+		VAL_SYSCONFRC=${VAL_SID}${VAL_MAILX}.rc
 
 # The variable $DESTDIR is prepended to all the paths from above at
-# installation time; this feature can be used for package building, for
-# example: if $VAL_PREFIX is "/usr/local", but $DESTDIR is "here",
+# installation time; this feature can be used for package building,
+# for example: if $VAL_PREFIX is "/usr/local", but $DESTDIR is "here",
 # then $VAL_PREFIX is still "/usr/local" whereas the build system
 # will instead use "here/usr/local".
 # NOTE: it cannot be set in here, but must be given on the command
@@ -102,23 +102,23 @@ VAL_PREFIX=/usr/local
 #DESTDIR=
 
 # Where the local mail system stores user $MAIL files.
-VAL_MAIL=`\
-   if [ -d /var/spool/mail ]; then \
-      echo /var/spool/mail;\
-   else \
-      echo /var/mail;\
-   fi`
+VAL_MAIL=$(\
+	if [ -d /var/spool/mail ]; then \
+		echo /var/spool/mail;\
+	else \
+		echo /var/mail; \
+	fi)
 
 # Path to the local MTA (Mail-Transfer-Agent).
 # MTA aliases (aliases(5)) are optionally supported via OPT_MTA_ALIASES.
-VAL_MTA=`\
-   if [ -x /usr/bin/sendmail ]; then \
-      echo /usr/bin/sendmail;\
-   elif [ -x /usr/lib/sendmail ]; then \
-      echo /usr/lib/sendmail;\
-   else \
-      echo /usr/sbin/sendmail;\
-   fi`
+VAL_MTA=$(\
+	if [ -x /usr/bin/sendmail ]; then \
+		echo /usr/bin/sendmail;\
+	elif [ -x /usr/lib/sendmail ]; then \
+		echo /usr/lib/sendmail;\
+	else \
+		echo /usr/sbin/sendmail;\
+	fi)
 
 # Today a lot of systems no longer use sendmail(1), but a different MTA.
 # To ensure compatibility with sendmail(1), a system called
@@ -164,23 +164,23 @@ VAL_WIDTH=80
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
 #
-#     awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
-#     grep=, ln=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
+#  awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
+#  grep=, ln=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
 #
 # Optionally:
-#     objcopy= [$OPT_DEBUG], strip=
+#  objcopy= [$OPT_DEBUG], strip=
 #
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
 #
 # Note I: needed before this file is read (can only be overwritten by
-#  passing them on the command line):
-#     awk(1), pwd(1), rm(1), tr(1) and uname(1)
+# passing them on the command line):
+#  awk(1), pwd(1), rm(1), tr(1) and uname(1)
 #
 # Note II: uname(1) is needed before the initial OS setup, and thus no
-#  OS specific adjustments (for example $PATH) have been performed yet.
-#  Its usage can be avoided by passing filled $OS (otherwise: uname -s)
-#  and $OSFULLSPEC (otherwise: uname -a).
+# OS specific adjustments (for example $PATH) have been performed yet.
+# Its usage can be avoided by passing filled $OS (otherwise: uname -s)
+# and $OSFULLSPEC (otherwise: uname -a).
 
 ## FEATURE SET ##
 
@@ -190,12 +190,12 @@ VAL_WIDTH=80
 # environments we can avoid a lot of tests and may enable support for
 # features which would otherwise not be available.
 # Note: $OS is available as normalized all-lowercase upon evaluation.
-OPT_ALWAYS_UNICODE_LOCALE=`\
-   if [ "${OS}" = openbsd ] || [ -f /lib/ld-musl-x86_64.so.1 ]; then \
-      echo yes;\
-   else \
-      echo no;\
-   fi`
+OPT_ALWAYS_UNICODE_LOCALE=$(\
+	if [ "${OS}" = openbsd ] || [ -f /lib/ld-musl-x86_64.so.1 ]; then \
+		echo yes;\
+	else \
+		echo no;\
+	fi)
 
 # It is possible to compile as "single-source", meaning that all source
 # files are injected into a single compilation unit.
@@ -212,22 +212,22 @@ OPT_AMALGAMATION=no
 # $EXTRA_CFLAGS and $EXTRA_LDFLAGS.  Thus:
 # If false: we use your normal $CC / $CFLAGS / $LDFLAGS,
 # If true: pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
-#     $ make EXTRA_CFLAGS=-std=c99 tangerine
+#   $ make EXTRA_CFLAGS=-std=c99 tangerine
 # Anyhow configuration changes cause rebuilds.
 # With OPT_AUTOCC VAL_AUTOCC allows a bit of configuration:
 # . option_care: if set no optimization (-O*) nor debugger things (-g)
-#     are looked for: for packagers who want to pass default $CFLAGS
-#     via $EXTRA_CFLAGS.
-#     Note: we rely on inlining, so ensure -DNDEBUG / -Oxx fits!
-#     Note X: actively stripped by OPT_DEVEL and OPT_DEBUG!
+#   are looked for: for packagers who want to pass default $CFLAGS
+#   via $EXTRA_CFLAGS.
+#   Note: we rely on inlining, so ensure -DNDEBUG / -Oxx fits!
+#   Note X: actively stripped by OPT_DEVEL and OPT_DEBUG!
 # . bind_now: -Wl,-z,now if supported (see ld(1)).
 # . pie: shall address randomization be used if supported.
 # . stackprot: shall stack protectors be used if supported.
-#     . fortify: onto stackprot, enable _FORTIFY_SOURCE=2.
-#           (This requires an optimized (-O) build.)
+# . fortify: onto stackprot, enable _FORTIFY_SOURCE=2.
+#   (This requires an optimized (-O) build.)
 # $OPT_AUTOCC reacts upon $OPT_DEBUG.
 OPT_AUTOCC=yes
-   VAL_AUTOCC=bind_now,pie,stackprot,fortify
+	VAL_AUTOCC=bind_now,pie,stackprot,fortify
 
 # Whether commands `csop', `vexpr' .. shall be included (requireable).
 OPT_CMD_CSOP=yes
@@ -277,7 +277,7 @@ OPT_DOTLOCK=yes
 # and the `errors' command will show them when asked to.
 # VAL_ERRORS_LIMIT will be the default value of *errors-limit*.
 OPT_ERRORS=yes
-   VAL_ERRORS_LIMIT=8000
+	VAL_ERRORS_LIMIT=8000
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it will
@@ -299,22 +299,22 @@ OPT_FILTER_QUOTE_FOLD=yes
 # Multiple implementations are supported:
 # . libc (whether iconv(3) available in C library).
 # . iconv (via external iconv library, for example GNU libiconv,
-#     https://www.gnu.org/software/libiconv).
+#   https://www.gnu.org/software/libiconv).
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
-   VAL_ICONV=libc,iconv
+	VAL_ICONV=libc,iconv
 
 # IDNA (internationalized domain names for applications) allow domain
 # names in native languages (non-ASCII).  For example www.smörgås.example
 # becomes possible, as www.xn--smrgs-pra0j.example.  :)
 # Multiple implementations are supported:
 # . idnkit (idnkit, https://www.nic.ad.jp/ja/idn/idnkit/download, either
-#     version 1 for IDNA 2003 or version 2 for IDNA 2008).
+#   version 1 for IDNA 2003 or version 2 for IDNA 2008).
 # . idn2 (GNU Libidn2/IDNA 2008, https://www.gnu.org/software/libidn).
 # . idn (GNU Libidn/IDNA 2003, same URL).
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
-   VAL_IDNA=idnkit,idn2,idn
+	VAL_IDNA=idnkit,idn2,idn
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
@@ -330,7 +330,7 @@ OPT_IMAP_SEARCH=yes
 # RFC 1524 specifies the default $VAL_MAILCAPS path search as follows,
 # and it specifies the $MAILCAPS environment variable to override it.
 OPT_MAILCAP=yes
-   VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
+	VAL_MAILCAPS=~/.mailcap:/etc/mailcap:/usr/etc/mailcap:/usr/local/etc/mailcap
 
 # Whether support for Maildir email directories shall be enabled.
 OPT_MAILDIR=yes
@@ -342,22 +342,22 @@ OPT_MAILDIR=yes
 # Can be "require"d.
 OPT_MLE=yes
 
-   # Add support for `history' management.
-   OPT_HISTORY=yes
+	# Add support for `history' management.
+	OPT_HISTORY=yes
 
-   # Add support for `(un)?bind'ing of key sequences.
-   OPT_KEY_BINDINGS=yes
+	# Add support for `(un)?bind'ing of key sequences.
+	OPT_KEY_BINDINGS=yes
 
-   # Use termcap(5) for MLE terminal control; can be "require"d.
-   # Today most environments ship a termcap(5) that in fact is part of
-   # terminfo(5), and acts as a converting wrapper for this library.
-   # To avoid this redundancy we also support terminfo(5), and use it
-   # instead if we find it (assuming that termcap(5) is a stub, then).
-   # Note that terminfo(5) offers access to more key sequences, for
-   # example kLFT5, for which no termcap(5) entry exists.
-   # terminfo(5) support can (thus) be "require"d.
-   OPT_TERMCAP=yes
-      OPT_TERMCAP_VIA_TERMINFO=yes
+	# Use termcap(5) for MLE terminal control; can be "require"d.
+	# Today most environments ship a termcap(5) that in fact is part of
+	# terminfo(5), and acts as a converting wrapper for this library.
+	# To avoid this redundancy we also support terminfo(5), and use it
+	# instead if we find it (assuming that termcap(5) is a stub, then).
+	# Note that terminfo(5) offers access to more key sequences, for
+	# example kLFT5, for which no termcap(5) entry exists.
+	# terminfo(5) support can (thus) be "require"d.
+	OPT_TERMCAP=yes
+		OPT_TERMCAP_VIA_TERMINFO=yes
 
 # Whether support for MTA aliases(5) shall be included.
 # With it, and if *mta-aliases* is set to a file, MTA aliases will be
@@ -370,55 +370,55 @@ OPT_MTA_ALIASES=yes
 # can be "require"d.
 OPT_NET=yes
 
-   # Detect support for GSS-API (Generic Security Services Application
-   # Programming Interface) based authentication, like Kerberos v5?
-   # Available for IMAP and SMTP; can be "require"d.
-   OPT_GSSAPI=yes
+	# Detect support for GSS-API (Generic Security Services Application
+	# Programming Interface) based authentication, like Kerberos v5?
+	# Available for IMAP and SMTP; can be "require"d.
+	OPT_GSSAPI=yes
 
-   # Add support for IMAP protocol.
-   # Reading of mails directly on the server.
-   # Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which
-   # case it only warns.  Can be "require"d.
-   OPT_IMAP=yes
+	# Add support for IMAP protocol.
+	# Reading of mails directly on the server.
+	# Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which
+	# case it only warns.  Can be "require"d.
+	OPT_IMAP=yes
 
-   # The MD5 message digest (RFC 1321) enables several authentication
-   # possibilities for POP3 (APOP), IMAP and SMTP (CRAM-MD5).
-   OPT_MD5=yes
+	# The MD5 message digest (RFC 1321) enables several authentication
+	# possibilities for POP3 (APOP), IMAP and SMTP (CRAM-MD5).
+	OPT_MD5=yes
 
-   # Support for parsing of user and password credentials from the
-   # ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
-   OPT_NETRC=yes
+	# Support for parsing of user and password credentials from the
+	# ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
+	OPT_NETRC=yes
 
-   # This will compile a test server which the test series will use to
-   # test the network code.  It is not installed, but only for testing.
-   OPT_NET_TEST=yes
+	# This will compile a test server which the test series will use to
+	# test the network code.  It is not installed, but only for testing.
+	OPT_NET_TEST=yes
 
-   # Add support for POP3 protocol.
-   # Download of mails via POP protocol.  Can be "require"d.
-   OPT_POP3=yes
+	# Add support for POP3 protocol.
+	# Download of mails via POP protocol.  Can be "require"d.
+	OPT_POP3=yes
 
-   # Add support for SMTP (and SUBMISSION) protocol.
-   # Sending mails directly over the network.  Can be "require"d.
-   OPT_SMTP=yes
+	# Add support for SMTP (and SUBMISSION) protocol.
+	# Sending mails directly over the network.  Can be "require"d.
+	OPT_SMTP=yes
 
-   # Detect support for encrypted socket connections via Secure Socket
-   # Layer (Transport Layer Security, TLS); can be "require"d.
-   # It also automatically enables support for S/MIME message signing,
-   # verification, en- and decryption.
-   # Supported are the OpenSSL (https://www.openssl.org) and LibreSSL
-   # (http://www.libressl.org) libraries.
-   OPT_TLS=yes
+	# Detect support for encrypted socket connections via Secure Socket
+	# Layer (Transport Layer Security, TLS); can be "require"d.
+	# It also automatically enables support for S/MIME message signing,
+	# verification, en- and decryption.
+	# Supported are the OpenSSL (https://www.openssl.org) and LibreSSL
+	# (http://www.libressl.org) libraries.
+	OPT_TLS=yes
 
-      # If $OPT_TLS: shall mechanisms to support more digest and cipher
-      # algorithms than the few that are documented be used?
-      # For S/MIME *smime-cipher* for example this will cause
-      # EVP_get_cipherbyname(3) to be tried shall the built-in knowledge
-      # not suffice to understand the user request.
-      # Will create a large statically linked binary; dynamically linked
-      # the costs only arise once the extended lookup is actually needed
-      # (the first time).  Some TLS libraries will always support all
-      # algorithms.  This can be "require"d.
-      OPT_TLS_ALL_ALGORITHMS=yes
+		# If $OPT_TLS: shall mechanisms to support more digest and cipher
+		# algorithms than the few that are documented be used?
+		# For S/MIME *smime-cipher* for example this will cause
+		# EVP_get_cipherbyname(3) to be tried shall the built-in knowledge
+		# not suffice to understand the user request.
+		# Will create a large statically linked binary; dynamically linked
+		# the costs only arise once the extended lookup is actually needed
+		# (the first time).  Some TLS libraries will always support all
+		# algorithms.  This can be "require"d.
+		OPT_TLS_ALL_ALGORITHMS=yes
 
 # Several different P(seudo) R(andom number) G(enerator) possibilities.
 # No need for somewhat strong random is necessary.
@@ -484,11 +484,11 @@ OPT_NOEXTMD5=no
 # If $OPT_DEVEL is true we will use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or
 # the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
-OPT_EXTERNAL_MEM_CHECK=`\
-   if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
-      echo yes;\
-   else \
-      echo no;\
-   fi`
+OPT_EXTERNAL_MEM_CHECK=$(\
+	if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
+		echo yes;\
+	else \
+		echo no;\
+	fi)
 
-# vim:set tw=72: s-it-mode
+# vim:set tw=79: s-itt-mode
