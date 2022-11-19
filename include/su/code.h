@@ -164,9 +164,6 @@
     * memory tracing and lingering, otherwise useless on-gut cleanups, and
     * more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
-   /*! Makes available some more helpful, translatable strings for logging
-    * purposes etc., which can be left out for (minimal) space savings. */
-# define su_HAVE_DOCSTRINGS
    /*! \r{MD} support available?
     * If so, always included are
     * \list{\li{
@@ -1763,15 +1760,11 @@ EXPORT s32 su_err_no(void);
 /*! Set the \SU error number of the calling thread. */
 EXPORT void su_err_set_no(s32 eno);
 
-/*! Return string(s) describing C error number \a{eno},
- * or \r{su_err_no()} if that is \c{-1}.
- * Effectively identical to \r{su_err_name()} if either the compile-time
- * option \r{su_HAVE_DOCSTRINGS} is missing (always), or when
- * \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
+/*! Return string(s) describing C error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.
+ * Effectively identical to \r{su_err_name()} if \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
-/*! Return the name of the given error number \a{eno},
- * or \r{su_err_no()} if that is \c{-1}.  */
+/*! Return the name of the given error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.  */
 EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to (case-insensitively) map an error name to an error number.

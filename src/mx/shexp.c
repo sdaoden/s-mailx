@@ -2133,13 +2133,10 @@ n_shexp_unquote_one(struct n_string *store, char const *input){
          n_SHEXP_PARSE_IGNORE_EMPTY),
          store, &dat, NIL);
 
-#ifdef mx_HAVE_UISTRINGS
    if(!(shs & n_SHEXP_STATE_STOP))
       n_err(_("# Only one (shell-quoted) argument is expected: %s\n"), input);
-#endif
 
-   if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
-            n_SHEXP_STATE_ERR_MASK)
+   if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP | n_SHEXP_STATE_ERR_MASK)
          ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
       rv = FAL0;
    else if(!(shs & n_SHEXP_STATE_STOP))

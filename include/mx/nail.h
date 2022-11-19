@@ -1300,9 +1300,7 @@ struct cw{
 #define n_empty su_empty
 #ifndef mx_HAVE_AMALGAMATION
 VL char const n_uagent[sizeof VAL_UAGENT];
-# ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];
-# endif
 VL char const n_0[2];
 VL char const n_1[2];
 VL char const n_m1[3]; /* -1 */
@@ -1352,8 +1350,6 @@ VL u32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
  * TODO Like this we could use $^ERR-SUBNO or so to access these from outer
  * TODO space, and could perform much better testing; e.g., too many failures
  * TODO simply result in _INVAL, but what has it been exactly?
- * TODO This will furthermore allow better testing, in that even without
- * TODO uistrings we can test error conditions _exactly_!
  * TODO And change the tests accordingly, even support a mode where our
  * TODO error output is entirely suppressed, so that we _really_ can test
  * TODO and only based upon the subnumber!! */

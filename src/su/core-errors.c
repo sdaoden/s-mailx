@@ -90,12 +90,7 @@ su_err_doc(s32 eno){
       eno = su_err_no();
 
    cemp = a_corerr_map_from_no(eno);
-   rv = (
-#ifdef su_HAVE_DOCSTRINGS
-         !su_state_has(su_STATE_REPRODUCIBLE)
-         ? &a_corerr_docs[cemp->cem_docoff] :
-#endif
-         &a_corerr_names[cemp->cem_nameoff]);
+   rv = (!su_state_has(su_STATE_REPRODUCIBLE) ? &a_corerr_docs[cemp->cem_docoff] : &a_corerr_names[cemp->cem_nameoff]);
 
    NYD2_OU;
    return rv;

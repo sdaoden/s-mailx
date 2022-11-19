@@ -1560,7 +1560,6 @@ jearg:
          break;
       /* case '<': <> 'd' */
       case '?':
-#ifdef mx_HAVE_UISTRINGS
          fputs(_(
 "COMMAND ESCAPES (to be placed after a newline; excerpt).\n"
 "~: <command>  Execute command\n"
@@ -1589,7 +1588,6 @@ jearg:
 "~x, ~q, ~.    Discard, discard and save to $DEAD, send message\n"
 "Modifiers: - (ignerr), $ (evaluate), e.g: \"~- $ @ $TMPDIR/file\"\n"
             ), n_stdout);
-#endif /* mx_HAVE_UISTRINGS */
          if(cnt != 0)
             goto jearg;
          n_pstate_err_no = su_ERR_NONE;

@@ -1062,12 +1062,6 @@ t_X_Y_opt_input_go_stack() { # {{{
 t_X_errexit() { # {{{
 	t_prolog "${@}"
 
-	if have_feat uistrings; then :; else
-		t_echoskip '[!UISTRINGS]'
-		t_epilog "${@}"
-		return
-	fi
-
 	${cat} <<- '__EOT' > ./t.rc
 	echo one
 	echos nono
@@ -1158,12 +1152,6 @@ t_X_errexit() { # {{{
 
 t_Y_errexit() { # {{{
 	t_prolog "${@}"
-
-	if have_feat uistrings; then :; else
-		t_echoskip '[!UISTRINGS]'
-		t_epilog "${@}"
-		return
-	fi
 
 	${cat} <<- '__EOT' > ./t.rc
 	echo one
@@ -4188,8 +4176,7 @@ t_environ() { # {{{
 	__EOT
 	#}}}
 	check_ex0 2-estat
-	have_feat uistrings && ck='1900155792 1889' || ck='2028138132 1821'
-	check 2 - ./t2 "${ck}"
+	check 2 - ./t2 '1900155792 1889'
 
 	# Rather redundant, but came up during tests so let's use it
 	if have_feat cmd-vexpr; then
@@ -4225,8 +4212,7 @@ t_environ() { # {{{
 		unset du
 		< ./t3_4_5.dat ${MAILX} ${ARGS} > ./t4 2>&1
 		check_ex0 4-estat
-		have_feat uistrings && ck='1967950703 693' || ck='1243820518 559'
-		check 4 - ./t4 "${ck}"
+		check 4 - ./t4 '1967950703 693'
 
 		< ./t3_4_5.dat ${MAILX} ${ARGS} -Y 'set du=via-y' > ./t5 2>&1
 		check 5 0 ./t5 '3094640490 700'
@@ -4252,8 +4238,7 @@ t_environ() { # {{{
 	__EOT
 	#}}}
 	check_ex0 6-estat
-	have_feat uistrings && ck='2303278002 242' || ck='3150923704 217'
-	check 6 - ./t6 "${ck}"
+	check 6 - ./t6 '2303278002 242'
 
 	t_epilog "${@}"
 } # }}}
@@ -4892,55 +4877,51 @@ t_xcall() { # {{{
 
 	##
 
-	if have_feat uistrings; then
-		#{{{
-		${cat} <<- '__EOT' > ./t.in
-		\define __w {
-			\echon "$1 "
-			local \ vput vexpr i + $1 1
-			\if $i -le 111
-				\local vput vexpr j & $i 7
-				\if $j -eq 7; \echo .; \end
-				\xcall __w $i $2
-			\end
-			\echo ! The end for $1
-			\if $2 -eq 0
-				nonexistingcommand
-				\echo would be err with errexit
-				\return
-			\end
-			\echo calling exit
-			\exit
-		}
-		\define work {
-			\echo eins
-			\call __w 0 0
-			\echo zwei, ?=$? !=$!
-			\local set errexit
-			\ignerr call __w 0 0
-			\echo drei, ?=$? !=$^ERRNAME
-			\call __w 0 $1
-			\echo vier, ?=$? !=$^ERRNAME, this is an error
-		}
-		\ignerr call work 0
-		\echo outer 1, ?=$? !=$^ERRNAME
-		xxxign \call work 0
-		\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-		\call work 1
-		\echo outer 3, ?=$? !=$^ERRNAME
-		\echo this is definitely an error
-		__EOT
-		#}}}
-		< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
-			> ./t2 2>&1
-		check 2 0 ./t2 '4036613316 4184'
+	#{{{
+	${cat} <<- '__EOT' > ./t.in
+	\define __w {
+		\echon "$1 "
+		local \ vput vexpr i + $1 1
+		\if $i -le 111
+			\local vput vexpr j & $i 7
+			\if $j -eq 7; \echo .; \end
+			\xcall __w $i $2
+		\end
+		\echo ! The end for $1
+		\if $2 -eq 0
+			nonexistingcommand
+			\echo would be err with errexit
+			\return
+		\end
+		\echo calling exit
+		\exit
+	}
+	\define work {
+		\echo eins
+		\call __w 0 0
+		\echo zwei, ?=$? !=$!
+		\local set errexit
+		\ignerr call __w 0 0
+		\echo drei, ?=$? !=$^ERRNAME
+		\call __w 0 $1
+		\echo vier, ?=$? !=$^ERRNAME, this is an error
+	}
+	\ignerr call work 0
+	\echo outer 1, ?=$? !=$^ERRNAME
+	xxxign \call work 0
+	\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+	\call work 1
+	\echo outer 3, ?=$? !=$^ERRNAME
+	\echo this is definitely an error
+	__EOT
+	#}}}
+	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
+		> ./t2 2>&1
+	check 2 0 ./t2 '4036613316 4184'
 
-		< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
-			> ./t3 2>&1
-		check 3 1 ./t3 '3179757785 2787'
-	else
-		t_echoskip '2-3:[!UISTRINGS]'
-	fi
+	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
+		> ./t3 2>&1
+	check 3 1 ./t3 '3179757785 2787'
 
 	t_epilog "${@}"
 } # }}}
@@ -5741,50 +5722,30 @@ t_headerpick() { # {{{
 	t__x1_msg > ./tmbox
 
 	#{{{
-	</dev/null ${MAILX} ${ARGS} -Rf -Y '# Do not care much on error UISTRINGS
+	</dev/null ${MAILX} ${ARGS} -Rf -Y '#
 commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 \echo --- 1
 \headerpick
 x2
 \type
 x3
-\if "$features" !% +uistrings,
-	\echoerr reproducible_build: Invalid field name cannot be ignored: ba:l
-\endif
-\headerpick type ignore \
-	from_ mail-followup-to in-reply-to DATE MESSAGE-ID STATUS ba:l
+\headerpick type ignore from_ mail-followup-to in-reply-to DATE MESSAGE-ID STATUS ba:l
 x4
-\if "$features" !% +uistrings,
-	\echo "#headerpick type retain currently covers no fields"
-\endif
 \headerpick
 x5
 \type
 x6
 \unheaderpick type ignore from_ DATE STATUS
 x7
-\if "$features" !% +uistrings,
-	\echo "#headerpick type retain currently covers no fields"
-\endif
 \headerpick
 x8
 \type
 x9
-\if "$features" =% +uistrings,
-	\unheaderpick type ignore from_ ba:l
-	\set x=$? y=$^ERRNAME
-\else
-	\echoerr reproducible_build: Field not ignored: from_
-	\echoerr reproducible_build: Field not ignored: ba:l
-	\set x=1 y=INVAL
-\endif
+\unheaderpick type ignore from_ ba:l
+\set x=$? y=$^ERRNAME
 \echo --- $x/$y, 10
 \unheaderpick type ignore *
 x11
-\if "$features" !% +uistrings,
-	\echo "#headerpick type retain currently covers no fields"
-	\echo "#headerpick type ignore currently covers no fields"
-\endif
 \headerpick
 x12
 \type
@@ -5793,18 +5754,17 @@ x12
 	#}}}
 	check 1 0 ./t1 '2481904228 2273'
 
-	if have_feat uistrings; then
-		#{{{
-		have_feat regex && i='3515512395 2378' || i='4201290332 2378'
-		</dev/null ${MAILX} ${ARGS} -Y '#
+	#{{{
+	have_feat regex && i='3515512395 2378' || i='4201290332 2378'
+	</dev/null ${MAILX} ${ARGS} -Y '#
 commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 \headerpick type retain \
-	bcc cc date from sender subject to \
-	message-id mail-followup-to reply-to user-agent
+bcc cc date from sender subject to \
+message-id mail-followup-to reply-to user-agent
 x1
 \headerpick forward retain \
-	cc date from message-id list-id sender subject to \
-	mail-followup-to reply-to
+cc date from message-id list-id sender subject to \
+mail-followup-to reply-to
 x2
 \headerpick save ignore ^Original-.*$ ^X-.*$ ^DKIM.*$
 x3
@@ -5843,11 +5803,11 @@ x18
 \headerpick
 x20
 #	' > ./t2 2>&1
-		#}}}
-		check 2 0 ./t2 "${i}"
+	#}}}
+	check 2 0 ./t2 "${i}"
 
-		# {{{object
-		</dev/null ${MAILX} ${ARGS} -Y '
+	# {{{object
+	</dev/null ${MAILX} ${ARGS} -Y '
 commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 headerp create au;x1
 headerp create au1;x2
@@ -5876,12 +5836,9 @@ headerp au1 ign add du du du du du du du au1;x23
 headerp au2 ign add au2 from from from from from;x24
 headerp joi au1 au2;x25
 headerp;x26
-		' > ./t3 2>&1
-		#}}}
-		check 3 0 ./t3 '3491122476 1689'
-	else
-		t_echoskip '2-3:[!UISTRINGS]'
-	fi
+	' > ./t3 2>&1
+	#}}}
+	check 3 0 ./t3 '3491122476 1689'
 
 	t_epilog "${@}"
 } # }}}
@@ -5909,11 +5866,7 @@ t_can_send_rfc() { # {{{
 		to@no.1,to@no.2 to@no.3 \
 		> ./t2no 2>&1
 	check 2no 4 ./t.mbox '3350946897 468'
-	if have_feat uistrings; then
-		check 2no-err - ./t2no '3397557940 190'
-	else
-		check 2no-err - ./t2no '4294967295 0'
-	fi
+	check 2no-err - ./t2no '3397557940 190'
 
 	# XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
 	# XXX would not treat that as a list but look for "," as a separator
@@ -6258,11 +6211,7 @@ body3
 	#' \
 		> ./.tall 2>./.terr
 	check 5 0 ./.tall '3088217220 382'
-	if have_feat uistrings; then
-		check 6 - ./.terr '2514745519 544'
-	else
-		t_echoskip '6:[!UISTRINGS]'
-	fi
+	check 6 - ./.terr '2514745519 544'
 
 	# ..but Maildir will not
 	if have_feat maildir; then
@@ -6286,11 +6235,7 @@ body3
 		#' \
 			> ./.tall 2>./.terr
 		check 7 0 ./.tall '3631170341 244'
-		if have_feat uistrings; then
-			check 8 - ./.terr '1074346767 629'
-		else
-			t_echoskip '8:[!UISTRINGS]'
-		fi
+		check 8 - ./.terr '1074346767 629'
 	fi
 
 	## Ensure action on multiple messages
@@ -6525,19 +6470,11 @@ b8
 
 	t_it forward
 	check 1 0 ./.tall '2356713156 2219'
-	if have_feat uistrings && have_feat docstrings; then
-		check 2 - ./.terr '3273108824 335'
-	else
-		t_echoskip '2:[!UISTRINGS]'
-	fi
+	check 2 - ./.terr '3273108824 335'
 
 	t_it Forward
 	check 3 0 ./.tall '2356713156 2219'
-	if have_feat uistrings && have_feat docstrings; then
-		check 4 - ./.terr '447176534 355'
-	else
-		t_echoskip '4:[!UISTRINGS]'
-	fi
+	check 4 - ./.terr '447176534 355'
 	${rm} -f ex*
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
@@ -6677,19 +6614,11 @@ t_resend() { # {{{
 
 	t_it resend
 	check 1 0 ./.tall '1461006932 1305'
-	if have_feat uistrings; then
-		check 2 - ./.terr '138360532 210'
-	else
-		t_echoskip '2:[!UISTRINGS]'
-	fi
+	check 2 - ./.terr '138360532 210'
 
 	t_it Resend
 	check 3 0 ./.tall '3674535444 958'
-	if have_feat uistrings; then
-		check 4 - ./.terr '138360532 210'
-	else
-		t_echoskip '4:[!UISTRINGS]'
-	fi
+	check 4 - ./.terr '138360532 210'
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
 	${mkdir} .tfolder
@@ -6759,12 +6688,8 @@ t_copy() { # {{{
 	#}}}
 	check_ex0 2
 
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	if [ -n "${HONOURS_READONLY}" ]; then
 		n2_1=2-1 cs2_1='1913702840 1121'
 		n2_4=2-4 cs2_4='3642131968 344'
@@ -6778,11 +6703,7 @@ t_copy() { # {{{
 	check 2-2 - ./.tf1 '686654461 334'
 	check 2-3 - ./.tf2 '1931512953 162'
 	check ${n2_4} - ./.tf3 "${cs2_4}"
-	if have_feat uistrings; then
-		check ${n2_5} - ./.terr "${cs2_5}"
-	else
-		t_echoskip '2-5:[!UISTRINGS]'
-	fi
+	check ${n2_5} - ./.terr "${cs2_5}"
 
 	##
 	check 3 - "${MBOX}" '1477662071 346'
@@ -6820,12 +6741,8 @@ t_copy() { # {{{
 
 	t_it 5 headers '#'
 	check_ex0 5-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	check 5-2 - ./.tlst '1058655452 9'
 	check 5-3 - ./.tall '1543702808 1617'
@@ -6836,12 +6753,8 @@ t_copy() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	check_ex0 6-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	check 6-2 - ./.tlst '1865898363 29'
 	${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
@@ -6918,12 +6831,8 @@ t_save() { # {{{
 	#}}}
 	check_ex0 2
 
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	if [ -n "${HONOURS_READONLY}" ]; then
 		n2_1=2-1 cs2_1='2335843514 1121'
 		n2_4=2-4 cs2_4='970407001 344'
@@ -6937,11 +6846,7 @@ t_save() { # {{{
 	check 2-2 - ./.tf1 '2435434321 334'
 	check 2-3 - ./.tf2 '920652966 162'
 	check ${n2_4} - ./.tf3 "${cs2_4}"
-	if have_feat uistrings; then
-		check ${n2_5} - ./.terr "${cs2_5}"
-	else
-		t_echoskip '2-5:[!UISTRINGS]'
-	fi
+	check ${n2_5} - ./.terr "${cs2_5}"
 
 	##
 	check 3 - "${MBOX}" '1219692400 346'
@@ -6979,12 +6884,8 @@ t_save() { # {{{
 
 	t_it 5 headers '#'
 	check_ex0 5-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	check 5-2 - ./.tlst '1058655452 9'
 	check 5-3 - ./.tall '3418590770 1617'
@@ -6995,12 +6896,8 @@ t_save() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	check_ex0 6-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	check 6-2 - ./.tlst '1865898363 29'
 	${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
@@ -7095,12 +6992,8 @@ t_move() { # {{{
 	#}}}
 	check_ex0 2
 
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	if [ -n "${HONOURS_READONLY}" ]; then
 		n2_1=2-1 cs2_1='1641443074 491'
 		n2_4=2-4 cs2_4='602144474 155'
@@ -7111,11 +7004,7 @@ t_move() { # {{{
 	check ${n2_1} - ./.tall "${cs2_1}"
 	check 2-2 - ./.tf1 '1473857906 162'
 	check 2-3 - ./.tf2 '331229810 162'
-	if have_feat uistrings; then
-		check ${n2_4} - ./.terr "${cs2_4}"
-	else
-		t_echoskip '2-4:[!UISTRINGS]'
-	fi
+	check ${n2_4} - ./.terr "${cs2_4}"
 
 	##
 	check 3 - "${MBOX}" '4294967295 0'
@@ -7153,20 +7042,12 @@ t_move() { # {{{
 
 	t_it 5 headers '#'
 	check_ex0 5-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	check 5-2 - ./.tlst '1058655452 9'
 	check 5-3 - ./.tall '419037676 870'
-	if have_feat uistrings; then
-		check 5-4 - ./.terr '1383646464 86'
-	else
-		t_echoskip '5-4:[!UISTRINGS]'
-	fi
+	check 5-4 - ./.terr '1383646464 86'
 	check 5-5 - ./from1 '3719268580 827'
 	check 5-6 - ./ex '4262925856 149'
 	${rm} -f ./.tlst ./.tall ./.terr ./from1 ./ex
@@ -7174,12 +7055,8 @@ t_move() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	check_ex0 6-1
-	if have_feat uistrings; then # TODO
-		${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
-		${sed} '$d' < ./.tallx > ./.tall
-	else
-		${mv} ./.tallx ./.tall
-	fi
+	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${ERR}"
+	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	check 6-2 - ./.tlst '1865898363 29'
 	${cat} ./.tall >> ${ERR} #check 6-3 - ./.tall # TODO due to folder echoes
@@ -7269,11 +7146,7 @@ t_mbox() { # {{{
 			.tmbox3 .tmbox3 .tmbox2
 	) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>>${ERR}
 	check 6 0 .tmbox3 '1429216753 13336'
-	if have_feat uistrings; then
-		${sed} 2d < .tall > .tallx
-	else
-		${cp} .tall .tallx
-	fi
+	${sed} 2d < .tall > .tallx
 	check 7 - .tallx '169518319 13477'
 
 	# Invalid MBOXes (after [f4db93b3])
@@ -7957,11 +7830,7 @@ t_iconv_mainbody() { # {{{
 		-s '–' over-the@rain.bow 2>./t4
 	check_exn0 3
 	check 3 - ./t.mbox '3559538297 250'
-	if have_feat uistrings; then
-		check 4 - ./t4 '271380835 121'
-	else
-		t_echoskip '4:[!UISTRINGS]'
-	fi
+	check 4 - ./t4 '271380835 121'
 
 	# The different iconv(3) implementations use different replacement sequence
 	# types (character-wise, byte-wise, and the character(s) used differ)
@@ -8135,51 +8004,47 @@ _EOT
 	check 1 0 ./t1 '139467786 277'
 	check 2 - ./t2 '1598893942 133'
 
-	if have_feat uistrings; then
-		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t3 2>&1
-		commandalias x echo '$?/$^ERRNAME'
-		echo 1
-		alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
-		alias a:bra!; x
-		alias ha@m	ham-expansion	ha@m '';x
-		alias ha@m;x
-		alias beb@ra  ceb@ra beb@ra1;x
-		alias beb@ra;x
-		alias ceb@ra  ceb@ra1;x
-		alias ceb@ra;x
-		alias deb@ris	 '';x
-		alias deb@ris;x
-		echo 2
-		alias - a:bra!;x
-		alias - ha@m;x
-		alias - beb@ra;x
-		alias - ceb@ra;x
-		alias - deb@ris;x
-		echo 3
-		unalias ha@m;x
-		alias - a:bra!;x
-		unalias beb@ra;x
-		alias - a:bra!;x
-		echo 4
-		unalias*;x;alias;x
-		echo 5
-		\alias noexpa@and this@error1;x
-		\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
-		\alias ha@m;x
-		\alias - ha@m;x
-		\alias noexpa@and2 this@error2;x
-		\alias expa1@and this@error3;x
-		\alias expa@and \\expa1@and;x
-		\alias expa@and;x
-		\alias - ha@m;x
-		\alias - expa@and;x
-		__EOT
-		#}}}
-		check 3 0 ./t3 '1513155156 796'
-	else
-		t_echoskip '3:[!UISTRINGS]'
-	fi
+	#{{{
+	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t3 2>&1
+	commandalias x echo '$?/$^ERRNAME'
+	echo 1
+	alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+	alias a:bra!; x
+	alias ha@m	ham-expansion	ha@m '';x
+	alias ha@m;x
+	alias beb@ra  ceb@ra beb@ra1;x
+	alias beb@ra;x
+	alias ceb@ra  ceb@ra1;x
+	alias ceb@ra;x
+	alias deb@ris	 '';x
+	alias deb@ris;x
+	echo 2
+	alias - a:bra!;x
+	alias - ha@m;x
+	alias - beb@ra;x
+	alias - ceb@ra;x
+	alias - deb@ris;x
+	echo 3
+	unalias ha@m;x
+	alias - a:bra!;x
+	unalias beb@ra;x
+	alias - a:bra!;x
+	echo 4
+	unalias*;x;alias;x
+	echo 5
+	\alias noexpa@and this@error1;x
+	\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
+	\alias ha@m;x
+	\alias - ha@m;x
+	\alias noexpa@and2 this@error2;x
+	\alias expa1@and this@error3;x
+	\alias expa@and \\expa1@and;x
+	\alias expa@and;x
+	\alias - ha@m;x
+	\alias - expa@and;x
+	__EOT
+	#}}}
+	check 3 0 ./t3 '1513155156 796'
 
 	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
@@ -8280,7 +8145,6 @@ t_netrc() { # {{{
 	check 1 0 ./t1 '2911708535 542'
 
 	#{{{
-	have_feat uistrings && i='3076722625 893' || i='3808149439 645'
 	printf '# Comment
 		echo ==host
 		netrc loo x.local
@@ -8307,7 +8171,7 @@ t_netrc() { # {{{
 		netrc loo a1@a.local
 	' | NETRC=./.tnetrc ${MAILX} ${ARGS} > ./t2 2>&1
 	#}}}
-	check 2 0 ./t2 "${i}"
+	check 2 0 ./t2 '3076722625 893'
 
 	t_epilog "${@}"
 } # }}}
@@ -8319,12 +8183,6 @@ t_expandaddr() { # {{{
 	# MTA alias specific part in t_mta_aliases()
 	# This only tests from command line, rest later on (iff any)
 	t_prolog "${@}"
-
-	if have_feat uistrings; then :; else
-		t_echoskip '[!UISTRINGS]'
-		t_epilog "${@}"
-		return
-	fi
 
 	echo "${cat}" > ./t.cat
 	${chmod} 0755 ./t.cat
@@ -8676,11 +8534,7 @@ t_mta_aliases() { # {{{
 		\call y
 		' > ./tlook 2>./tlook-err
 	check look 0 ./tlook '3425855815 506'
-	if have_feat uistrings; then
-		check look-err - ./tlook-err '2628536915 170'
-	else
-		t_echoskip 'look-err:[!UISTRINGS]'
-	fi
+	check look-err - ./tlook-err '2628536915 170'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-Smta-aliases=./t.ali \
@@ -8691,7 +8545,6 @@ t_mta_aliases() { # {{{
 	## xxx The following are actually *expandaddr* tests!!
 
 	# May not send plain names over SMTP!
-	mtaali=
 	if have_feat smtp; then
 		echo | ${MAILX} ${ARGS} \
 			-Smta=smtp://laber.backe -Ssmtp-config=-ehlo \
@@ -8699,12 +8552,9 @@ t_mta_aliases() { # {{{
 			-b a3 -c a2 a1 > ./t5 2>&1
 		check_exn0 3
 		check 4 - ./t.mbox '1172368381 238'
-		mtaali=1
-	fi
-	if [ -n "${mtaali}" ] && have_feat uistrings; then
 		check 5 - ./t5 '771616226 179'
 	else
-		t_echoskip '5:[!SMTP/!UISTRINGS]'
+		t_echoskip '5:[!SMTP]'
 	fi
 
 	# xxx for false-positive SMTP test we would need some mocking
@@ -8714,22 +8564,14 @@ t_mta_aliases() { # {{{
 		-b a3 -c a2 a1 > ./t8 2>&1
 	check_exn0 6
 	check 7 - ./t.mbox '1172368381 238'
-	if have_feat uistrings; then
-		check 8 - ./t8 '2834389894 178'
-	else
-		t_echoskip '8:[!UISTRINGS]'
-	fi
+	check 8 - ./t8 '2834389894 178'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-Sexpandaddr=-name \
 		-Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ./t10 2>&1
 	check 9 4 ./t.mbox '2322273994 472'
-	if have_feat uistrings; then
-		check 10 - ./t10 '2136559508 69'
-	else
-		t_echoskip '10:[!UISTRINGS]'
-	fi
+	check 10 - ./t10 '2136559508 69'
 
 	echo 'a9:nine@nine.nine' >> ./t.ali
 
@@ -8777,11 +8619,7 @@ t_mta_aliases() { # {{{
 		> ./t14 2>&1
 	#}}}
 	check 13 0 ./t.mbox '550955032 1469'
-	if have_feat uistrings; then
-		check 14 - ./t14 '1795496020 473'
-	else
-		t_echoskip '14:[!UISTRINGS]'
-	fi
+	check 14 - ./t14 '1795496020 473'
 	check 15 - ./t.f1 '3056269950 249'
 	check 16 - ./t.p1 '3056269950 249'
 	check 17 - ./t.p2 '3056269950 249'
@@ -9098,11 +8936,7 @@ t_attachments() { # {{{
 		ex@am.ple > ./t2 2>&1
 
 	check 1 0 ./t1 '113047025 646'
-	if have_feat uistrings; then
-		check 2 - ./t2 '3897935448 734'
-	else
-		t_echoskip '2:[!UISTRINGS]'
-	fi
+	check 2 - ./t2 '3897935448 734'
 
 	#{{{
 	printf \
@@ -9153,11 +8987,7 @@ t_attachments() { # {{{
 			> ./t4 2>&1
 	#}}}
 	check 3 0 ./t3 '542557236 2337'
-	if have_feat uistrings; then
-		check 4 - ./t4 '2071033724 1930'
-	else
-		t_echoskip '4:[!UISTRINGS]'
-	fi
+	check 4 - ./t4 '2071033724 1930'
 
 	#{{{
 	printf \
@@ -9189,11 +9019,7 @@ reply 1 2
 			> ./t6 2>&1
 	#}}}
 	check 5 0 ./t5 '1604688179 2316'
-	if have_feat uistrings; then
-		check 6 - ./t6 '1210753005 508'
-	else
-		t_echoskip '6:[!UISTRINGS]'
-	fi
+	check 6 - ./t6 '1210753005 508'
 
 	##
 
@@ -9419,10 +9245,10 @@ t_rfc2231() { # {{{
 		\\xit
 		' | ${MAILX} ${ARGS} -Rf ./t.inv > ./t4 2> ./t5
 	check 4 0 ./t4 '4094731083 905'
-	if have_feat uistrings && have_feat iconv; then
+	if have_feat iconv; then
 		check 5 - ./t5 '3713266499 473'
 	else
-		t_echoskip '5:[!UISTRINGS or !ICONV]'
+		t_echoskip '5:[!ICONV]'
 	fi
 
 	t_epilog "${@}"
@@ -9479,11 +9305,7 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
 ' \
 			> ./t5 2>&1
 	check_ex0 5-estat
-	if have_feat uistrings; then
-		check 5 - ./t5 '1352221656 322'
-	else
-		t_echoskip '5:[!UISTRINGS]'
-	fi
+	check 5 - ./t5 '1352221656 322'
 	check 6 - ./t6 '3643354701 32'
 
 	# Note: further type-marker stuff is done in t_pipe_handlers()
@@ -9493,12 +9315,6 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
 
 t_mime_types_load_control() { # {{{
 	t_prolog "${@}"
-
-	if have_feat uistrings; then :; else
-		t_echoskip '[!UISTRINGS]'
-		t_epilog "${@}"
-		return
-	fi
 
 	${cat} <<-'_EOT' > ./t.mts1
 	? application/mathml+xml mathml
@@ -9655,11 +9471,7 @@ _EOT
 	__EOT
 	#}}}
 	check 1 0 ./t1 '3901995195 542'
-	if have_feat uistrings; then
-		check 2 - ./t2 '1878598364 505'
-	else
-		t_echoskip '2:[!UISTRINGS]'
-	fi
+	check 2 - ./t2 '1878598364 505'
 
 	#{{{ Automatic alternates, also from command line (freezing etc.)
 	${cat} <<- '__EOT' > ./t3_5-in
@@ -9917,13 +9729,12 @@ and i ~w rite this out to ./t3
 	#}}}
 	check_ex0 2-estat
 	${cat} ./t2-x >> t2
-	have_feat filter-html-tagsoup && ck='4240573679 7693' ||
-		ck='72945 7753'
+	have_feat filter-html-tagsoup && ck='4240573679 7693' || ck='72945 7753'
 	check 2 - ./t2 "${ck}"
-	if have_feat uistrings && have_feat iconv; then
+	if have_feat iconv; then
 		check 2-err - ./t2-err '3575876476 49'
 	else
-		t_echoskip '2-err:[!UISTRINGS or !ICONV]'
+		t_echoskip '2-err:[!ICONV]'
 	fi
 	check 3 - ./t3 '1594635428 4442'
 
@@ -9953,8 +9764,7 @@ and i ~w rite this out to ./t3
 	#}}}
 	check_ex0 4-estat
 	check 4 0 ./t4 "3422189437 200"
-	have_feat uistrings && ck='2336041127 212' || ck='1818580177 59'
-	check 5 - ./t5 "${ck}"
+	check 5 - ./t5 '2336041127 212'
 
 	# Modifiers and whitespace indulgence; first matches t_eval():1
 	#{{{
@@ -9988,11 +9798,7 @@ and i ~w rite this out to ./t3
 	#}}}
 	check 6 4 ./t6 '892731775 136'
 	[ -f ./t7 ]; check_exn0 7
-	if have_feat uistrings; then
-		check 8 - ./t8 '472073999 207'
-	else
-		t_echoskip '8:[!UISTRINGS]'
-	fi
+	check 8 - ./t8 '472073999 207'
 
 	t_epilog "${@}"
 } # }}}
@@ -10247,8 +10053,7 @@ t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
 		${MAILX} ${ARGS} -Smta=test://t1 -Sescape=! >./t2 2>&1
 	#}}}
 	check 1 0 ./t1 '665881681 179'
-	have_feat uistrings && ck='1692807677 1366' || ck='218732148 1097'
-	check 2 - ./t2 "${ck}"
+	check 2 - ./t2 '1692807677 1366'
 	check 3 - ./t3 '3993703854 127'
 	check 4 - ./t4 '4294967295 0'
 	check 5 - ./t5 '2157992522 256'
@@ -10406,9 +10211,8 @@ t_on_program_exit() { # {{{
 t_compose_hooks() { # {{{ TODO monster
 	t_prolog "${@}"
 
-	if have_feat uistrings &&
-			have_feat cmd-csop && have_feat cmd-vexpr; then :; else
-		t_echoskip '[!UISTRINGS/!CMD_CSOP/!CMD_VEXPR]'
+	if have_feat cmd-csop && have_feat cmd-vexpr; then :; else
+		t_echoskip '[!CMD_CSOP/!CMD_VEXPR]'
 		t_epilog "${@}"
 		return
 	fi
@@ -11526,11 +11330,7 @@ t_lreply_futh_rth_etc() { # {{{
 	_EOT
 	#}}}
 	check_ex0 1-estat
-	if have_feat uistrings; then
-		check 1 - ./t1 '3306748615 41875'
-	else
-		t_echoskip '1:[!UISTRINGS]'
-	fi
+	check 1 - ./t1 '3306748615 41875'
 
 	#{{{
 	${cat} <<-'_EOT' > ./t.mbox
@@ -11849,8 +11649,7 @@ _EOT
 		MAILCAPS=./t.mailcap ${MAILX} -X'commandalias m mailcap' ${ARGS} \
 			> ./t1 2>./t2
 	check 1 0 ./t1 '2012114724 3064'
-	check 2 - ./t2 \
-		"$(have_feat uistrings && echo '3981551532 2338' || echo '4294967295 0')"
+	check 2 - ./t2 '3981551532 2338'
 
 	##
 

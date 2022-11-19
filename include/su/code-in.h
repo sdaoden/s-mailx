@@ -253,20 +253,10 @@
 #ifdef mx_SOURCE
 # undef A_
 # define A_(S) S
-# ifdef mx_HAVE_UISTRINGS
-#  define _(S) S
-#  define N_(S) S
-#  define V_(S) S
-# else
-#  define _(S) su_empty
-#  define N_(S) ""
-#  define V_(S) su_empty
-# endif
-#elif defined su_SOURCE
-# define _(S) S
-# define N_(S) S
-# define V_(S) S
 #endif
+#define _(S) S
+#define N_(S) S
+#define V_(S) S
 
 #define SMP su_SMP
 
