@@ -192,7 +192,6 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd,
          goto jecmd;
       p.rv = (fputs(_("211 (Arguments undergo shell-style evaluation)\n"),
                fp) != EOF &&
-#ifdef mx_HAVE_UISTRINGS
             fputs(_(
                "attachment:\n"
                "   attribute name (212; 501)\n"
@@ -217,7 +216,6 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd,
                "epoch (210; 501[/505])\n"
                "help (211)\n"
                "version (210)\n"), fp) != EOF &&
-#endif /* mx_HAVE_UISTRINGS */
             putc('\n', fp) != EOF);
    }else
 jecmd:
