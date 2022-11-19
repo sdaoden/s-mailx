@@ -32,7 +32,6 @@ XOPTIONS="\
 	CMD_FOP='fop command: file and path operations' \
 	CMD_VEXPR='vexpr command: evaluate arguments as expressions' \
 	COLOUR='Coloured message display' \
-	DOCSTRINGS='Command documentation help strings' \
 	DOTLOCK='Dotlock files and privilege-separated dotlock program' \
 	ERRORS='Log message ring' \
 	FILTER_HTML_TAGSOUP='Simple built-in HTML-to-text display filter' \
@@ -61,7 +60,6 @@ XOPTIONS="\
 			TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
 	SPAM_FILTER='Freely configurable *spam-filter-..*s' \
 	SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
-	UISTRINGS='User interface and error message strings' \
 "
 
 # Options which are automatically deduced from host environment, i.e., these
@@ -145,14 +143,12 @@ option_setup() {
 			;;
 		[nN][uU][lL][lL][iI])
 			OPT_ICONV=require
-			OPT_UISTRINGS=1
 			;;
 		[mM][iI][nN][iI][mM][aA][lL])
 			OPT_CMD_CSOP=1
 				OPT_CMD_FOP=1
 				OPT_CMD_VEXPR=1
 			OPT_COLOUR=1
-			OPT_DOCSTRINGS=1
 			OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
 			OPT_ERRORS=1
 			OPT_IDNA=1
@@ -160,14 +156,12 @@ option_setup() {
 			OPT_MLE=1
 				OPT_HISTORY=1 OPT_KEY_BINDINGS=1
 			OPT_SPAM_FILTER=1
-			OPT_UISTRINGS=1
 			;;
 		[nN][eE][tT][sS][eE][nN][dD])
 			OPT_CMD_CSOP=1
 				OPT_CMD_FOP=1
 				OPT_CMD_VEXPR=1
 			OPT_COLOUR=1
-			OPT_DOCSTRINGS=1
 			OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
 			OPT_ERRORS=1
 			OPT_IDNA=1
@@ -182,7 +176,6 @@ option_setup() {
 				OPT_SMTP=require
 				OPT_TLS=require
 			OPT_SPAM_FILTER=1
-			OPT_UISTRINGS=1
 			;;
 		[mM][aA][xX][iI][mM][aA][lL])
 			option_maximal
@@ -3652,7 +3645,6 @@ feat_def CROSS_BUILD
 feat_def DOTLOCK
 feat_def FILTER_HTML_TAGSOUP
 feat_def DEBUG 0
-feat_def DOCSTRINGS
 feat_def ERRORS
 if feat_yes FILTER_QUOTE_FOLD; then
 	if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
@@ -3684,7 +3676,6 @@ if feat_yes SPAM_SPAMC || feat_yes SPAM_FILTER; then
 else
 	echo '/* mx_HAVE_SPAM */' >> ${h}
 fi
-feat_def UISTRINGS
 feat_def USE_PKGSYS
 
 feat_def ASAN_ADDRESS 0

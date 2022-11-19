@@ -250,9 +250,6 @@ OPT_CROSS_BUILD=no
 # information in a separate file and strip the binary nonetheless.
 OPT_DEBUG=no
 
-# We may include `help' etc. strings for commands, increasing size a bit.
-OPT_DOCSTRINGS=yes
-
 # File dotlocking is performed for "system mailbox" (%[USER] and
 # %:ANYFILE) MBOX files: when synchronizing any such FILE a FILE.lock
 # file will be created in the directory of FILE, for the duration of the
@@ -449,10 +446,6 @@ OPT_REGEX=yes
 #   Support for interaction with spamassassin(1)s spamc(1).
 OPT_SPAM_FILTER=yes
 OPT_SPAM_SPAMC=no
-
-# Removing (almost) all user interface and error messages is possible.
-# This might be interesting for automated use cases (only).
-OPT_UISTRINGS=yes
 
 # Whether package system, for example pkgsrc(7) on NetBSD and more,
 # OpenCSW on SunOS/Solaris, etc., specific paths shall be automatically
