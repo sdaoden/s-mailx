@@ -33,4 +33,4 @@ INLINE struct su_thread *su__thread_self(void) {return &su__thread_main;}
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */

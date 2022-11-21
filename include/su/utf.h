@@ -47,8 +47,7 @@ C_DECL_BEGIN
  */
 
 enum{
-   /*! Maximum buffer size of an UTF-8 sequence including terminating NUL. */
-   su_UTF8_BUFFER_SIZE = 5u
+	su_UTF8_BUFFER_SIZE = 5u /*!< Maximum buffer size of an UTF-8 sequence including terminating NUL. */
 };
 
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
@@ -98,20 +97,17 @@ class utf32;
  * C++ variant of \r{UTF8} (\r{su/utf.h})
  */
 class EXPORT utf8{
-   su_CLASS_NO_COPY(utf8);
+	su_CLASS_NO_COPY(utf8);
 public:
-   enum{
-      /*! \copydoc{su_UTF8_BUFFER_SIZE} */
-      buffer_size = su_UTF8_BUFFER_SIZE
-   };
+	enum{
+		buffer_size = su_UTF8_BUFFER_SIZE /*!< \copydoc{su_UTF8_BUFFER_SIZE} */
+	};
 
-   /*! \copydoc{su_UTF8_REPLACER} */
-   static char const replacer[sizeof su_UTF8_REPLACER];
+	/*! \copydoc{su_UTF8_REPLACER} */
+	static char const replacer[sizeof su_UTF8_REPLACER];
 
-   /*! \copydoc{su_utf8_to_32()} */
-   static u32 convert_to_32(char const **bdat, uz *blen){
-      return su_utf8_to_32(bdat, blen);
-   }
+	/*! \copydoc{su_utf8_to_32()} */
+	static u32 convert_to_32(char const **bdat, uz *blen) {return su_utf8_to_32(bdat, blen);}
 };
 /* }}} */
 
@@ -121,13 +117,13 @@ public:
  * C++ variant of \r{UTF32} (\r{su/utf.h})
  */
 class utf32{
-   su_CLASS_NO_COPY(utf32);
+	su_CLASS_NO_COPY(utf32);
 public:
-   /*! \copydoc{su_UTF32_REPLACER} */
-   static u32 const replacer = su_UTF32_REPLACER;
+	/*! \copydoc{su_UTF32_REPLACER} */
+	static u32 const replacer = su_UTF32_REPLACER;
 
-   /*! \copydoc{su_utf32_to_8()} */
-   static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
+	/*! \copydoc{su_utf32_to_8()} */
+	static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
 };
 /* }}} */
 
@@ -135,4 +131,4 @@ NSPC_END(su)
 # include <su/code-ou.h>
 #endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_UTF_H */
-/* s-it-mode */
+/* s-itt-mode */

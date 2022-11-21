@@ -22,10 +22,9 @@
 
 su_USECASE_MX_DISABLED
 
-   /* ISO C11++ at SU compile time++ */
-# if defined su_ATOMIC_IS_REAL && \
-      (defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l && \
-       !defined __STDC_NO_ATOMICS__)
+/* ISO C11++ at SU compile time++ */
+# if defined su_ATOMIC_IS_REAL &&\
+		(defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112l && !defined __STDC_NO_ATOMICS__)
 #  define su__ATOMIC_HAVE_FUNS
 #  include <stdatomic.h>
 # endif
@@ -38,92 +37,90 @@ su_USECASE_MX_DISABLED
 #  ifdef su__ATOMIC_HAVE_FUNS
 
 #   define a_X(X,Y) \
-INLINE X CONCAT(su__atomic_xchg_,Y)(X ATOMIC *store, X nval){\
-   return atomic_exchange(store, nval);\
-}
+INLINE X CONCAT(su__atomic_xchg_,Y)(X ATOMIC *store, X nval) {return atomic_exchange(store, nval);}
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
 #   undef a_X
 #   define a_X(X,Y) \
 INLINE X CONCAT(su__atomic_busy_xchg_,Y)(X ATOMIC *store, X nval){\
-   X rv;\
+	X rv;\
 \
-   while((rv = atomic_exchange(store, nval)) == nval)\
-      ;\
-   return rv;\
+	while((rv = atomic_exchange(store, nval)) == nval) {}\
+\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
 #   undef a_X
 #   define a_X(X,Y) \
 INLINE boole CONCAT(su__atomic_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   X roval = oval;\
+	X roval = oval;\
 \
-   return S(boole,atomic_compare_exchange_strong(store, &roval, nval));\
+	return S(boole,atomic_compare_exchange_strong(store, &roval, nval));\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
 #   undef a_X
 #   define a_X(X,Y) \
 INLINE void CONCAT(su__atomic_busy_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   X roval = oval;\
+	X roval = oval;\
 \
-   while(!atomic_compare_exchange_strong(store, &roval, nval))\
-      ;\
+	while(!atomic_compare_exchange_strong(store, &roval, nval)) {}\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
 #   undef a_X
 #  endif /* su__ATOMIC_HAVE_FUNS */
 
-   /* In MT case the source will provide protection via mutex */
+/* In MT case the source will provide protection via mutex */
 # elif !defined su_HAVE_MT || defined su_SOURCE_ATOMIC /* su_ATOMIC_IS_REAL */
 #  define su__ATOMIC_HAVE_FUNS
 
-#   define a_X(X,Y) \
+#  define a_X(X,Y) \
 INLINE X CONCAT(su__atomic_xchg_,Y)(X ATOMIC *store, X nval){\
-   X rv;\
+	X rv;\
 \
-   rv = *store;\
-   *store = nval;\
-   return rv;\
+	rv = *store;\
+	*store = nval;\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
-#   undef a_X
-#   define a_X(X,Y) \
+#  undef a_X
+#  define a_X(X,Y) \
 INLINE X CONCAT(su__atomic_busy_xchg_,Y)(X ATOMIC *store, X nval){\
-   X rv;\
+	X rv;\
 \
-   while(*store == nval)\
-      ;\
-   rv = *store;\
-   *store = nval;\
-   return rv;\
+	while(*store == nval) {}\
+\
+	rv = *store;\
+	*store = nval;\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
-#   undef a_X
-#   define a_X(X,Y) \
+#  undef a_X
+#  define a_X(X,Y) \
 INLINE boole CONCAT(su__atomic_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   boole rv;\
+	boole rv;\
 \
-   if((rv = (*store == oval)))\
-      *store = nval;\
-   return rv;\
+	if((rv = (*store == oval)))\
+		*store = nval;\
+\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
-#   undef a_X
-#   define a_X(X,Y) \
+#  undef a_X
+#  define a_X(X,Y) \
 INLINE void CONCAT(su__atomic_busy_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   while(*store != oval)\
-      ;\
-   *store = nval;\
+	while(*store != oval) {}\
+\
+	*store = nval;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
-#   undef a_X
+#  undef a_X
 # endif /* !defined su_HAVE_MT || defined su_SOURCE_ATOMIC */
 
 #elif su__ATOMIC_X == 2
@@ -133,4 +130,4 @@ a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */

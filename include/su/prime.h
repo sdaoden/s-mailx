@@ -77,34 +77,28 @@ class prime;
  * C++ variant of \r{PRIME} (\r{su/prime.h})
  */
 class prime{
-   su_CLASS_NO_COPY(prime);
+	su_CLASS_NO_COPY(prime);
 public:
-   /*! \copydoc{su_PRIME_LOOKUP_MIN} */
-   static u32 const lookup_min = su_PRIME_LOOKUP_MIN;
+	/*! \copydoc{su_PRIME_LOOKUP_MIN} */
+	static u32 const lookup_min = su_PRIME_LOOKUP_MIN;
 
-   /*! \copydoc{su_PRIME_LOOKUP_MAX} */
-   static u32 const lookup_max = su_PRIME_LOOKUP_MAX;
+	/*! \copydoc{su_PRIME_LOOKUP_MAX} */
+	static u32 const lookup_max = su_PRIME_LOOKUP_MAX;
 
-   /*! \copydoc{su_prime_is_prime()} */
-   static boole is_prime(u64 no, boole allowpseudo=TRU1){
-      return su_prime_is_prime(no, allowpseudo);
-   }
+	/*! \copydoc{su_prime_is_prime()} */
+	static boole is_prime(u64 no, boole allowpseudo=TRU1) {return su_prime_is_prime(no, allowpseudo);}
 
-   /*! \copydoc{su_prime_get_former()} */
-   static u64 get_former(u64 no, boole allowpseudo=TRU1){
-      return su_prime_get_former(no, allowpseudo);
-   }
+	/*! \copydoc{su_prime_get_former()} */
+	static u64 get_former(u64 no, boole allowpseudo=TRU1) {return su_prime_get_former(no, allowpseudo);}
 
-   /*! \copydoc{su_prime_get_next()} */
-   static u64 get_next(u64 no, boole allowpseudo=TRU1){
-      return su_prime_get_next(no, allowpseudo);
-   }
+	/*! \copydoc{su_prime_get_next()} */
+	static u64 get_next(u64 no, boole allowpseudo=TRU1) {return su_prime_get_next(no, allowpseudo);}
 
-   /*! \copydoc{su_prime_lookup_former()} */
-   static u32 lookup_former(u32 no) {return su_prime_lookup_former(no);}
+	/*! \copydoc{su_prime_lookup_former()} */
+	static u32 lookup_former(u32 no) {return su_prime_lookup_former(no);}
 
-   /*! \copydoc{su_prime_lookup_next()} */
-   static u32 lookup_next(u32 no) {return su_prime_lookup_next(no);}
+	/*! \copydoc{su_prime_lookup_next()} */
+	static u32 lookup_next(u32 no) {return su_prime_lookup_next(no);}
 };
 /* }}} */
 
@@ -112,4 +106,4 @@ NSPC_END(su)
 # include <su/code-ou.h>
 #endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_PRIME_H */
-/* s-it-mode */
+/* s-itt-mode */

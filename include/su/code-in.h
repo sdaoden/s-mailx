@@ -464,4 +464,4 @@
 # endif /* su_HAVE_MEM_BAG_LOFI */
 #endif /* su_MEM_BAG_SELF */
 
-/* s-it-mode */
+/* s-itt-mode */

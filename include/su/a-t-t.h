@@ -88,27 +88,24 @@ template<class T> class auto_type_toolbox;
  */
 template<class T>
 class auto_type_toolbox{
-   su_CLASS_NO_COPY(auto_type_toolbox);
+	su_CLASS_NO_COPY(auto_type_toolbox);
 public:
-   /*! \_ */
-   typedef NSPC(su)type_traits<T> type_traits;
+	/*! \_ */
+	typedef NSPC(su)type_traits<T> type_traits;
 
-   /*! Accessing this field should be avoided because there may be
-    * specializations which do not offer it -- \r{get_instance()} is inline. */
-   static type_toolbox<T> const instance;
+	/*! Accessing this field should be avoided because there may be
+	 * specializations which do not offer it -- \r{get_instance()} is inline. */
+	static type_toolbox<T> const instance;
 
-   /*! \_ */
-   static type_toolbox<T> const *get_instance(void) {return &instance;}
+	/*! \_ */
+	static type_toolbox<T> const *get_instance(void) {return &instance;}
 
 private:
-   static typename type_traits::tp s_clone(typename type_traits::tp_const t,
-         u32 estate);
-   static void s_delete(typename type_traits::tp self);
-   static typename type_traits::tp s_assign(typename type_traits::tp self,
-         typename type_traits::tp_const t, u32 estate);
-   static sz s_compare(typename type_traits::tp_const self,
-         typename type_traits::tp_const t);
-   static uz s_hash(typename type_traits::tp_const self);
+	static typename type_traits::tp s_clone(typename type_traits::tp_const t, u32 estate);
+	static void s_delete(typename type_traits::tp self);
+	static typename type_traits::tp s_assign(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
+	static sz s_compare(typename type_traits::tp_const self, typename type_traits::tp_const t);
+	static uz s_hash(typename type_traits::tp_const self);
 };
 #endif /* su_A_T_T_DECL_OK */
 
@@ -118,54 +115,58 @@ private:
 template<class T>
 PRI STA typename type_traits::tp
 auto_type_toolbox<T>::s_clone(typename type_traits::tp_const t, u32 estate){
-   ASSERT_RET(t != NIL, NIL);
-   type_traits::tp self = su_NEW(typename type_traits::type);
-   if(self->assign(t, estate) != 0){
-      su_DEL(self);
-      self = NIL;
-   }
-   return self;
+	ASSERT_RET(t != NIL, NIL);
+
+	type_traits::tp self = su_NEW(typename type_traits::type);
+
+	if(self->assign(t, estate) != 0){
+		su_DEL(self);
+		self = NIL;
+	}
+
+	return self;
 }
 
 template<class T>
 PRI STA void
 auto_type_toolbox<T>::s_delete(typename type_traits::tp self){
-   ASSERT_RET_VOID(self != NIL);
-   su_DEL(self);
+	ASSERT_RET_VOID(self != NIL);
+
+	su_DEL(self);
 }
 
 template<class T>
 PRI STA typename type_traits::tp
-auto_type_toolbox<T>::s_assign(typename type_traits::tp self,
-      typename type_traits::tp_const t, u32 estate){
-   ASSERT_RET(self != NIL, NIL);
-   ASSER_RET(t != NIL, self);
-   if(self != t){
-      if(self->assign(t, estate) != 0)
-         self = NIL;
-   }
-   return self;
+auto_type_toolbox<T>::s_assign(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate){
+	ASSERT_RET(self != NIL, NIL);
+	ASSERT_RET(t != NIL, self);
+
+	if(self != t)
+		self = self->assign(t, estate);
+
+	return self;
 }
 
 template<class T>
 PRI STA sz
-auto_type_toolbox<T>::s_compare(typename type_traits::tp_const self,
-      typename type_traits::tp_const t){
-   ASSERT_RET(self != NIL, (t != NIL) ? -1 : 0);
-   ASSERT_RET(t != NIL, 1);
-   return self->compare(*t);
+auto_type_toolbox<T>::s_compare(typename type_traits::tp_const self, typename type_traits::tp_const t){
+	ASSERT_RET(self != NIL, (t != NIL) ? -1 : 0);
+	ASSERT_RET(t != NIL, 1);
+
+	return self->compare(*t);
 }
 
 template<class T>
 PRI STA uz
 auto_type_toolbox<T>::s_hash(typename type_traits::tp_const self){
-   ASSERT_RET(self != NIL, 0);
-   return self->hash();
+	ASSERT_RET(self != NIL, 0);
+
+	return self->hash();
 }
 
 template<class T>
 STA type_toolbox<T> const auto_type_toolbox<T>::instance =
-      su_TYPE_TOOLBOX_I9R(&s_clone, &s_delete, &s_assign, &s_compare, &s_hash);
+		su_TYPE_TOOLBOX_I9R(&s_clone, &s_delete, &s_assign, &s_compare, &s_hash);
 #endif // !su_A_T_T_DECL_ONLY
 /* }}} */
 
@@ -173,4 +174,4 @@ NSPC_END(su)
 #include <su/code-ou.h>
 #endif /* !C_LANG || @CXX_DOXYGEN */
 #endif /* su_A_T_T_H */
-/* s-it-mode */
+/* s-itt-mode */

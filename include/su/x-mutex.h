@@ -29,64 +29,62 @@ su_USECASE_MX_DISABLED
 #  define su__MUTEX_HAVE_FUNS
 
 INLINE void
-su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
-      su__MUTEX_ARGS_DECL){
-   self->mtx_.lck = 1;
+su__mutex_lock(struct su_mutex *self, struct su_thread *tsp  su__MUTEX_ARGS_DECL){
+	self->mtx_.lck = 1;
 
-   DVLDBG(
-      if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
-         goto jleave;
-      self->mtx_.line = S(u16,MIN(U16_MAX, line));
-      self->mtx_.file = file;
-   )
+	DVLDBG(
+		if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
+			goto jleave;
+		self->mtx_.line = S(u16,MIN(U16_MAX, line));
+		self->mtx_.file = file;
+	)
 
-   if(self->mtx_.count++ == 0)
-      self->mtx_.owner = tsp;
+	if(self->mtx_.count++ == 0)
+		self->mtx_.owner = tsp;
 
 DVLDBG( jleave: )
-   self->mtx_.lck = 0;
+	self->mtx_.lck = 0;
 }
 
 INLINE boole
-su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
-      su__MUTEX_ARGS_DECL){
-   boole rv;
+su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp  su__MUTEX_ARGS_DECL){
+	boole rv;
 
-   self->mtx_.lck = 1;
+	self->mtx_.lck = 1;
 
-   DVLDBG(
-      if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
-         goto jleave;
-      self->mtx_.line = S(u16,MIN(U16_MAX, line));
-      self->mtx_.file = file;
-   )
+	DVLDBG(
+		if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
+			goto jleave;
+		self->mtx_.line = S(u16,MIN(U16_MAX, line));
+		self->mtx_.file = file;
+	)
 
-   if((rv = (self->mtx_.owner == tsp || self->mtx_.owner == NIL))){
-      self->mtx_.owner = tsp;
-      ++self->mtx_.count;
-   }
+	if((rv = (self->mtx_.owner == tsp || self->mtx_.owner == NIL))){
+		self->mtx_.owner = tsp;
+		++self->mtx_.count;
+	}
 
 DVLDBG( jleave: )
-   self->mtx_.lck = 0;
-   return rv;
+	self->mtx_.lck = 0;
+	return rv;
 }
 
 INLINE void
 su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
-   self->mtx_.lck = 1;
+	self->mtx_.lck = 1;
 
-   DVLDBG(
-      if(!su__mutex_check(self, su__MUTEX_UNLOCK, NIL, file, line))
-         goto jleave;
-      self->mtx_.line = S(u16,MIN(U16_MAX, line));
-      self->mtx_.file = file;
-   )
+	DVLDBG(
+		if(!su__mutex_check(self, su__MUTEX_UNLOCK, NIL, file, line))
+			goto jleave;
+		self->mtx_.line = S(u16,MIN(U16_MAX, line));
+		self->mtx_.file = file;
+	)
 
-   if(--self->mtx_.count == 0)
-      self->mtx_.owner = NIL;
+	if(--self->mtx_.count == 0)
+		self->mtx_.owner = NIL;
 
 DVLDBG( jleave: )
-   self->mtx_.lck = 0;
+	self->mtx_.lck = 0;
 }
 
 # endif /* !su_HAVE_MT */
@@ -97,4 +95,4 @@ DVLDBG( jleave: )
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */
