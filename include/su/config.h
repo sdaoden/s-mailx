@@ -30,8 +30,8 @@
 #endif
 
 #ifdef su_USECASE_MX
-   /* In this case we get our config, error maps etc., all from here.
-    * We must take care not to break OPT_AMALGAMATION though */
+	/* In this case we get our config, error maps etc., all from here.
+	 * We must take care not to break OPT_AMALGAMATION though */
 # ifndef mx_HAVE_AMALGAMATION
 #  include <mx/gen-config.h>
 # endif
@@ -109,4 +109,4 @@ extern struct mx_go_data_ctx *mx_go_data;
 #endif
 
 #endif /* !su_CONFIG_H */
-/* s-it-mode */
+/* s-itt-mode */

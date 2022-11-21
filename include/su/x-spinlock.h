@@ -27,15 +27,8 @@ su_USECASE_MX_DISABLED
 # define su__SPINLOCK_X 2
 
 # ifdef su__SPINLOCK_IS
-INLINE void su__spinlock_lock(struct su_spinlock *self, up v){
-   while(!su_atomic_cas_p(&self->sl_lck, 0, v))
-      ;
-}
-
-INLINE boole su__spinlock_trylock(struct su_spinlock *self, up v){
-   return su_atomic_cas_p(&self->sl_lck, 0, v);
-}
-
+INLINE void su__spinlock_lock(struct su_spinlock *self, up v) {while(!su_atomic_cas_p(&self->sl_lck, 0, v)){}}
+INLINE boole su__spinlock_trylock(struct su_spinlock *self, up v) {return su_atomic_cas_p(&self->sl_lck, 0, v);}
 INLINE void su__spinlock_unlock(struct su_spinlock *self) {self->sl_lck = 0;}
 # endif /* su__SPINLOCK_IS */
 
@@ -46,4 +39,4 @@ INLINE void su__spinlock_unlock(struct su_spinlock *self) {self->sl_lck = 0;}
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */
