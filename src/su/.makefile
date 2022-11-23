@@ -128,12 +128,10 @@ $(CONFIG):
 	echo '#define su_PAGE_SIZE '"`$(getconf) PAGESIZE`" >> $(@)
 	xxx="$(SUF)";\
 	if [ "$${xxx##*su_HAVE_DEBUG}" != "$$xxx" ]; then \
-	printf '#ifndef su_HAVE_DEBUG\n#define su_HAVE_DEBUG\n#endif\n' \
-	>> $(@);\
+		printf '#ifndef su_HAVE_DEBUG\n#define su_HAVE_DEBUG\n#endif\n' >> $(@);\
 	fi; \
 	if [ "$${xxx##*su_HAVE_DEVEL}" != "$$xxx" ]; then \
-	printf '#ifndef su_HAVE_DEVEL\n#define su_HAVE_DEVEL\n#endif\n' \
-	>> $(@);\
+		printf '#ifndef su_HAVE_DEVEL\n#define su_HAVE_DEVEL\n#endif\n' >> $(@);\
 	fi
 
 # s-mk-mode

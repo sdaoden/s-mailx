@@ -84,7 +84,7 @@ struct su_siphash{
  * \a{key} must be \r{su_SIPHASH_KEY_SIZE} bytes.
  * \a{crounds} and \a{drounds} may be given as 0, in which case the default values (2 and 4, respectively) are used.
  * Returns \r{su_STATE_NONE}. */
-EXPORT s32 su_siphash_setup_custom(struct su_siphash *self, void const *key, enum su_siphash_digest digest_size,
+EXPORT s32 su_siphash_setup_custom(struct su_siphash *self, void const *key, enum su_siphash_digest digest_type,
 		u8 crounds, u8 drounds);
 
 /*! Setup a default SipHash context (64-bit digest, 2 crounds, 4 drounds) via \r{su_siphash_setup_custom()}. */
@@ -164,8 +164,8 @@ public:
 	s32 setup(void const *key) {return su_siphash_setup(this, key);}
 
 	/*! \copydoc{su_siphash_setup_custom()} */
-	s32 setup(void const *key, digest digest_size, u8 crounds=0, u8 drounds=0){
-		return su_siphash_setup_custom(this, key, S(su_siphash_digest,digest_size), crounds, drounds);
+	s32 setup(void const *key, digest digest_type, u8 crounds=0, u8 drounds=0){
+		return su_siphash_setup_custom(this, key, S(su_siphash_digest,digest_type), crounds, drounds);
 	}
 
 	/*! \copydoc{su_siphash::sh_digest} */

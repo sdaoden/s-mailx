@@ -46,58 +46,56 @@ static uz a_cstbox_hash_case(void const *self);
 #if DVLOR(1, 0)
 static void
 a_cstbox_free(void *t){
-   NYD2_IN;
+	NYD2_IN;
 
-   su_FREE(t);
+	su_FREE(t);
 
-   NYD2_OU;
+	NYD2_OU;
 }
 #endif
 
 static void *
 a_cstbox_assign(void *self, void const *t, u32 estate){
-   char *rv;
-   NYD2_IN;
+	char *rv;
+	NYD2_IN;
 
-   if((rv = su_cs_dup(S(char const*,t), estate)) != NIL)
-      su_FREE(self);
+	if((rv = su_cs_dup(S(char const*,t), estate)) != NIL)
+		su_FREE(self);
 
-   NYD2_OU;
-   return rv;
+	NYD2_OU;
+	return rv;
 }
 
 static uz
 a_cstbox_hash(void const *self){
-   uz rv;
-   NYD2_IN;
+	uz rv;
+	NYD2_IN;
 
-   rv = su_cs_hash(S(char const*,self));
+	rv = su_cs_hash(S(char const*,self));
 
-   NYD2_OU;
-   return rv;
+	NYD2_OU;
+	return rv;
 }
 
 static uz
 a_cstbox_hash_case(void const *self){
-   uz rv;
-   NYD2_IN;
+	uz rv;
+	NYD2_IN;
 
-   rv = su_cs_hash_case(S(char const*,self));
+	rv = su_cs_hash_case(S(char const*,self));
 
-   NYD2_OU;
-   return rv;
+	NYD2_OU;
+	return rv;
 }
 
-struct su_toolbox const su_cs_toolbox = su_TOOLBOX_I9R(
-   &su_cs_dup, &a_cstbox_free, &a_cstbox_assign,
-   &su_cs_cmp, &a_cstbox_hash);
+struct su_toolbox const su_cs_toolbox =
+		su_TOOLBOX_I9R(&su_cs_dup, &a_cstbox_free, &a_cstbox_assign, &su_cs_cmp, &a_cstbox_hash);
 
-struct su_toolbox const su_cs_toolbox_case = su_TOOLBOX_I9R(
-   &su_cs_dup, &a_cstbox_free, &a_cstbox_assign,
-   &su_cs_cmp_case, &a_cstbox_hash_case);
+struct su_toolbox const su_cs_toolbox_case =
+		su_TOOLBOX_I9R(&su_cs_dup, &a_cstbox_free, &a_cstbox_assign, &su_cs_cmp_case, &a_cstbox_hash_case);
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_TBOX
-/* s-it-mode */
+/* s-itt-mode */

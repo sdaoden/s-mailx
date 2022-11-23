@@ -33,110 +33,107 @@ NSPC_USE(su)
 
 /* "Is power-of-two" table, and if, shift (indexed by base-2) */
 static u8 const a_icoe_shifts[63] = {
-         1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */
-   0, 0, 0, 0, 0, 0, 4, 0, 0, 0,   /* 10 .. 19 */
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 20 .. 29 */
-   0, 0, 5, 0, 0, 0, 0, 0, 0, 0,   /* 30 .. 39 */
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 40 .. 49 */
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 50 .. 59 */
-   0, 0, 0, 0, 6                   /* 60 .. 64 */
+	      1, 0, 2, 0, 0, 0, 3, 0, /* 2 .. 9 */
+	0, 0, 0, 0, 0, 0, 4, 0, 0, 0, /* 10 .. 19 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 20 .. 29 */
+	0, 0, 5, 0, 0, 0, 0, 0, 0, 0, /* 30 .. 39 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 40 .. 49 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 50 .. 59 */
+	0, 0, 0, 0, 6  /* 60 .. 64 */
 };
 
 /* XXX itoa byte maps not locale aware.. */
-static char const a_icoe_upper[36 +1] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const a_icoe_lower[64 +1] = "0123456789abcdefghijklmnopqrstuvwxyz"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ@_";
+static char const a_icoe_upper[36 +1] = "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static char const a_icoe_lower[64 +1] = "0123456789" "abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "@_";
 
 char *
-su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value,
-      u8 base, BITENUM_IS(u32,su_ienc_mode) ienc_mode){
-   enum{a_ISNEG = 1u<<su__IENC_MODE_SHIFT};
+su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, BITENUM_IS(u32,su_ienc_mode) ienc_mode){
+	enum{a_ISNEG = 1u<<su__IENC_MODE_SHIFT};
 
-   u8 shiftmodu;
-   char const *itoa;
-   char *rv;
-   NYD_IN;
+	u8 shiftmodu;
+	char const *itoa;
+	char *rv;
+	NYD_IN;
 
-   if(UNLIKELY(base < 2 || base > 64)){
-      rv = NIL;
-      goto jleave;
-   }
+	if(UNLIKELY(base < 2 || base > 64)){
+		rv = NIL;
+		goto jleave;
+	}
 
-   ienc_mode &= su__IENC_MODE_MASK;
-   *(rv = &cbuf[su_IENC_BUFFER_SIZE -1]) = '\0';
-   itoa = (base > 36 || (ienc_mode & su_IENC_MODE_LOWERCASE)
-         ) ? a_icoe_lower : a_icoe_upper;
+	ienc_mode &= su__IENC_MODE_MASK;
+	*(rv = &cbuf[su_IENC_BUFFER_SIZE -1]) = '\0';
+	itoa = (base > 36 || (ienc_mode & su_IENC_MODE_LOWERCASE)) ? a_icoe_lower : a_icoe_upper;
 
-   if(S(s64,value) < 0){
-      ienc_mode |= a_ISNEG;
-      if(ienc_mode & su_IENC_MODE_SIGNED_TYPE){
-         /* self->is_negative = TRU1; */
-         value = -value;
-      }
-   }
+	if(S(s64,value) < 0){
+		ienc_mode |= a_ISNEG;
+		if(ienc_mode & su_IENC_MODE_SIGNED_TYPE){
+			/* self->is_negative = TRU1; */
+			value = -value;
+		}
+	}
 
-   if((shiftmodu = a_icoe_shifts[base - 2]) != 0){
-      --base; /* convert to mask */
-      do{
-         *--rv = itoa[value & base];
-         value >>= shiftmodu;
-      }while(value != 0);
+	if((shiftmodu = a_icoe_shifts[base - 2]) != 0){
+		--base; /* convert to mask */
+		do{
+			*--rv = itoa[value & base];
+			value >>= shiftmodu;
+		}while(value != 0);
 
-      if(!(ienc_mode & su_IENC_MODE_NO_PREFIX)){
-         /* self->before_prefix = cp; */
-         if(shiftmodu == 4)
-            *--rv = 'x';
-         else if(shiftmodu == 1)
-            *--rv = 'b';
-         else if(shiftmodu != 3){
-            ++base; /* Reconvert from mask */
-            goto jnumber_sign_prefix;
-         }
-         *--rv = '0';
-      }
-   }else{
-      do{
-         shiftmodu = value % base;
-         value /= base;
-         *--rv = itoa[shiftmodu];
-      }while(value != 0);
+		if(!(ienc_mode & su_IENC_MODE_NO_PREFIX)){
+			/* self->before_prefix = cp; */
+			if(shiftmodu == 4)
+				*--rv = 'x';
+			else if(shiftmodu == 1)
+				*--rv = 'b';
+			else if(shiftmodu != 3){
+				++base; /* Reconvert from mask */
+				goto jnumber_sign_prefix;
+			}
+			*--rv = '0';
+		}
+	}else{
+		do{
+			shiftmodu = value % base;
+			value /= base;
+			*--rv = itoa[shiftmodu];
+		}while(value != 0);
 
-      if(!(ienc_mode & su_IENC_MODE_NO_PREFIX) && base != 10){
+		if(!(ienc_mode & su_IENC_MODE_NO_PREFIX) && base != 10){
 jnumber_sign_prefix:
-         value = base;
-         base = 10;
-         *--rv = '#';
-         do{
-            shiftmodu = value % base;
-            value /= base;
-            *--rv = itoa[shiftmodu];
-         }while(value != 0);
-      }
+			value = base;
+			base = 10;
+			*--rv = '#';
+			do{
+				shiftmodu = value % base;
+				value /= base;
+				*--rv = itoa[shiftmodu];
+			}while(value != 0);
+		}
 
-      if(ienc_mode & su_IENC_MODE_SIGNED_TYPE){
-         char c;
+		if(ienc_mode & su_IENC_MODE_SIGNED_TYPE){
+			char c;
 
-         if(ienc_mode & a_ISNEG)
-            c = '-';
-         else if(ienc_mode & su_IENC_MODE_SIGNED_PLUS)
-            c = '+';
-         else if(ienc_mode & su_IENC_MODE_SIGNED_SPACE)
-            c = ' ';
-         else
-            c = '\0';
+			if(ienc_mode & a_ISNEG)
+				c = '-';
+			else if(ienc_mode & su_IENC_MODE_SIGNED_PLUS)
+				c = '+';
+			else if(ienc_mode & su_IENC_MODE_SIGNED_SPACE)
+				c = ' ';
+			else
+				c = '\0';
 
-         if(c != '\0')
-            *--rv = c;
-      }
-   }
+			if(c != '\0')
+				*--rv = c;
+		}
+	}
 
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_ICODEC_ENC
-/* s-it-mode */
+/* s-itt-mode */
