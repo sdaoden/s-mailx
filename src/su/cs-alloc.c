@@ -32,57 +32,55 @@ NSPC_USE(su)
 
 char *
 su_cs_dup_cbuf(char const *buf, uz len, u32 estate){
-   char *rv;
-   NYD_IN;
-   ASSERT_EXEC(len == 0 || buf != NIL, len = 0);
+	char *rv;
+	NYD_IN;
+	ASSERT_EXEC(len == 0 || buf != NIL, len = 0);
 
-   if(len == UZ_MAX)
-      len = su_cs_len(buf);
-   estate &= su_STATE_ERR_MASK;
+	if(len == UZ_MAX)
+		len = su_cs_len(buf);
+	estate &= su_STATE_ERR_MASK;
 
-   if(LIKELY(len != UZ_MAX)){
-      rv = S(char*,su_ALLOCATE(1, len +1, estate));
-      if(LIKELY(rv != NIL)){
-         if(len > 0)
-            su_mem_copy(rv, buf, len);
-         rv[len] = '\0';
-      }
-   }else{
-      su_state_err(su_STATE_ERR_OVERFLOW, estate,
-            _("SU cs_dup_cbuf: buffer too large"));
-      rv = NIL;
-   }
+	if(LIKELY(len != UZ_MAX)){
+		rv = S(char*,su_ALLOCATE(1, len +1, estate));
+		if(LIKELY(rv != NIL)){
+			if(len > 0)
+				su_mem_copy(rv, buf, len);
+			rv[len] = '\0';
+		}
+	}else{
+		su_state_err(su_STATE_ERR_OVERFLOW, estate, _("SU cs_dup_cbuf: buffer too large"));
+		rv = NIL;
+	}
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 char *
 su_cs_dup(char const *cp, u32 estate){
-   char *rv;
-   uz l;
-   NYD_IN;
-   ASSERT_EXEC(cp != NIL, cp = su_empty);
+	char *rv;
+	uz l;
+	NYD_IN;
+	ASSERT_EXEC(cp != NIL, cp = su_empty);
 
-   estate &= su_STATE_ERR_MASK;
-   l = su_cs_len(cp);
+	estate &= su_STATE_ERR_MASK;
+	l = su_cs_len(cp);
 
-   if(LIKELY(l != UZ_MAX)){
-      ++l;
-      if(LIKELY((rv = S(char*,su_ALLOCATE(1, l, estate))) != NIL))
-         su_mem_copy(rv, cp, l);
-   }else{
-      su_state_err(su_STATE_ERR_OVERFLOW, estate,
-            _("SU cs_dup: string too long"));
-      rv = NIL;
-   }
+	if(LIKELY(l != UZ_MAX)){
+		++l;
+		if(LIKELY((rv = S(char*,su_ALLOCATE(1, l, estate))) != NIL))
+			su_mem_copy(rv, cp, l);
+	}else{
+		su_state_err(su_STATE_ERR_OVERFLOW, estate, _("SU cs_dup: string too long"));
+		rv = NIL;
+	}
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_ALLOC
-/* s-it-mode */
+/* s-itt-mode */

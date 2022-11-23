@@ -34,46 +34,46 @@ NSPC_USE(su)
 
 sz
 su_cs_cmp_case(char const *cp1, char const *cp2){
-   sz rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
+	sz rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
-   for(;;){
-      s32 c1, c2;
+	for(;;){
+		s32 c1, c2;
 
-      c1 = su_cs_to_lower(*cp1++);
-      c2 = su_cs_to_lower(*cp2++);
-      if((rv = c1 - c2) != 0 || c1 == '\0')
-         break;
-   }
+		c1 = su_cs_to_lower(*cp1++);
+		c2 = su_cs_to_lower(*cp2++);
+		if((rv = c1 - c2) != 0 || c1 == '\0')
+			break;
+	}
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 sz
 su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n){
-   sz rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
+	sz rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+	ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
-   for(rv = 0; n != 0; --n){
-      s32 c1, c2;
+	for(rv = 0; n != 0; --n){
+		s32 c1, c2;
 
-      c1 = su_cs_to_lower(*cp1++);
-      c2 = su_cs_to_lower(*cp2++);
-      if((rv = c1 - c2) != 0 || c1 == '\0')
-         break;
-   }
+		c1 = su_cs_to_lower(*cp1++);
+		c2 = su_cs_to_lower(*cp2++);
+		if((rv = c1 - c2) != 0 || c1 == '\0')
+			break;
+	}
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_CTYPE
-/* s-it-mode */
+/* s-itt-mode */

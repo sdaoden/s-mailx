@@ -54,13 +54,13 @@ NSPC_USE(su)
 #define a_X(X,Y) \
 X \
 CONCAT(su__atomic_g_xchg_,Y)(X ATOMIC *store, X nval){\
-   X rv;\
+	X rv;\
 \
-   a_LOCK_XCHG();\
-   rv = CONCAT(su_atomic_xchg_,Y)(store, nval);\
-   a_UNLOCK_XCHG();\
+	a_LOCK_XCHG();\
+	rv = CONCAT(su_atomic_xchg_,Y)(store, nval);\
+	a_UNLOCK_XCHG();\
 \
-   return rv;\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
@@ -68,13 +68,13 @@ a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 #define a_X(X,Y) \
 X \
 CONCAT(su__atomic_g_busy_xchg_,Y)(X ATOMIC *store, X nval){\
-   X rv;\
+	X rv;\
 \
-   a_LOCK_XCHG();\
-   rv = CONCAT(su_atomic_busy_xchg_,Y)(store, nval);\
-   a_UNLOCK_XCHG();\
+	a_LOCK_XCHG();\
+	rv = CONCAT(su_atomic_busy_xchg_,Y)(store, nval);\
+	a_UNLOCK_XCHG();\
 \
-   return rv;\
+	return rv;\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
@@ -82,22 +82,22 @@ a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 #define a_X(X,Y) \
 boole \
 CONCAT(su__atomic_g_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   boole rv;\
+	boole rv;\
 \
-   a_LOCK_CAS();\
-   rv = CONCAT(su_atomic_cas_,Y)(store, oval, nval);\
-   a_UNLOCK_CAS();\
+	a_LOCK_CAS();\
+	rv = CONCAT(su_atomic_cas_,Y)(store, oval, nval);\
+	a_UNLOCK_CAS();\
 \
-   return rv;\
+	return rv;\
 }
 
 #undef a_X
 #define a_X(X,Y) \
 void \
 CONCAT(su__atomic_g_busy_cas_,Y)(X ATOMIC *store, X oval, X nval){\
-   a_LOCK_CAS();\
-   CONCAT(su_atomic_busy_cas_,Y)(store, oval, nval);\
-   a_UNLOCK_CAS();\
+	a_LOCK_CAS();\
+	CONCAT(su_atomic_busy_cas_,Y)(store, oval, nval);\
+	a_UNLOCK_CAS();\
 }
 a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 
@@ -113,4 +113,4 @@ a_X(u8,8) a_X(u16,16) a_X(u32,32) a_X(u64,64) a_X(uz,z) a_X(up,p)
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_ATOMIC
-/* s-it-mode */
+/* s-itt-mode */
