@@ -44,74 +44,66 @@ MT( static struct su_mutex *a_mutex_init(struct su_mutex *self); )
 #ifdef su_HAVE_MT
 static struct su_mutex *
 a_mutex_init(struct su_mutex *self){
-   su__glck_gi9r();
+	su__glck_gi9r();
 
-   if(!(self->mtx_.flags & su_MUTEX_INIT)){
-      su__mutex_os_create(self, su_STATE_ERR_NOPASS);
-      self->mtx_.flags |= su_MUTEX_INIT;
-   }
+	if(!(self->mtx_.flags & su_MUTEX_INIT)){
+		su__mutex_os_create(self, su_STATE_ERR_NOPASS);
+		self->mtx_.flags |= su_MUTEX_INIT;
+	}
 
-   su__gnlck_gi9r();
-   return self;
+	su__gnlck_gi9r();
+	return self;
 }
 #endif
 
 #if DVLDBGOR(1, 0)
 boole
-su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf,
-      struct su_thread *tsp, char const *file, u32 line){
-   boole rv;
+su__mutex_check(struct su_mutex *self, enum su__mutex_xfn mf, struct su_thread *tsp, char const *file, u32 line){
+	boole rv;
 
-   if(tsp == NIL)
-      tsp = su_thread_self();
+	if(tsp == NIL)
+		tsp = su_thread_self();
 
-   rv = FAL0;
+	rv = FAL0;
 
-   switch(mf){
-   case su__MUTEX_GUT:
-      if(!(self->mtx_.flags & su_MUTEX_INIT))
-         break;
-      if(self->mtx_.owner != NIL){
-         su_log_write(su_LOG_ALERT,
-            "su_mutex_gut(%p=%s): still locked by %s at %s:%u\n"
-            "   Last seen at %s:%u",
-            self, self->mtx_.name,
-              su_thread_name(self->mtx_.owner), file, line,
-            self->mtx_.file, self->mtx_.line);
-         goto jleave;
-      }
-      break;
-   case su__MUTEX_LOCK:
-   case su__MUTEX_TRYLOCK:
-      if(self->mtx_.owner == tsp && (self->mtx_.flags & su_MUTEX_FLAT)){
-         su_log_write(su_LOG_ALERT,
-            "su_mutex_(try)?lock(%p=%s): flat yet locked by %s at %s:%u\n"
-            "   Last seen at %s:%u",
-            self, self->mtx_.name, su_thread_name(tsp), file, line,
-            self->mtx_.file, self->mtx_.line);
-         goto jleave;
-      }
-      break;
-   case su__MUTEX_UNLOCK_NOLOCK:
-      su_log_write(su_LOG_ALERT,
-         "su_mutex_unlock(%p=%s): never used until seen at %s:%u",
-         self, self->mtx_.name, file, line);
-      goto jleave;
-   case su__MUTEX_UNLOCK:
-      if(self->mtx_.owner == NIL){
-         su_log_write(su_LOG_ALERT,
-            "su_mutex_unlock(%p=%s): not locked at %s:%u\n"
-            "   Last seen at %s:%u",
-            self, self->mtx_.name, file, line,
-            self->mtx_.file, self->mtx_.line);
-         goto jleave;
-      }
-      break;
-   }
+	switch(mf){
+	case su__MUTEX_GUT:
+		if(!(self->mtx_.flags & su_MUTEX_INIT))
+			break;
+		if(self->mtx_.owner != NIL){
+			su_log_write(su_LOG_ALERT,
+				"su_mutex_gut(%p=%s): still locked by %s at %s:%u\n\tLast seen at %s:%u",
+				self, self->mtx_.name, su_thread_name(self->mtx_.owner), file, line,
+				self->mtx_.file, self->mtx_.line);
+			goto jleave;
+		}
+		break;
+	case su__MUTEX_LOCK:
+	case su__MUTEX_TRYLOCK:
+		if(self->mtx_.owner == tsp && (self->mtx_.flags & su_MUTEX_FLAT)){
+			su_log_write(su_LOG_ALERT,
+				"su_mutex_(try)?lock(%p=%s): flat yet locked by %s at %s:%u\n\tLast seen at %s:%u",
+				self, self->mtx_.name, su_thread_name(tsp), file, line,
+				self->mtx_.file, self->mtx_.line);
+			goto jleave;
+		}
+		break;
+	case su__MUTEX_UNLOCK_NOLOCK:
+		su_log_write(su_LOG_ALERT, "su_mutex_unlock(%p=%s): never used until seen at %s:%u",
+			self, self->mtx_.name, file, line);
+		goto jleave;
+	case su__MUTEX_UNLOCK:
+		if(self->mtx_.owner == NIL){
+			su_log_write(su_LOG_ALERT, "su_mutex_unlock(%p=%s): not locked at %s:%u\n\tLast seen at %s:%u",
+				self, self->mtx_.name, file, line, self->mtx_.file, self->mtx_.line);
+			goto jleave;
+		}
+		break;
+	}
 
-   rv = TRU1;
+	rv = TRU1;
 jleave:
-   return rv;
+	return rv;
 }
 #endif /* DVLDBGOR(1, 0) */
 
@@ -125,101 +117,98 @@ jleave:
 # endif
 
 void
-su__mutex_lock(struct su_mutex *self, struct su_thread *tsp
-      su__MUTEX_ARGS_DECL){
-   DVLDBGOR( UNUSED(file); UNUSED(line); )
+su__mutex_lock(struct su_mutex *self, struct su_thread *tsp  su__MUTEX_ARGS_DECL){
+	DVLDBGOR( UNUSED(file); UNUSED(line); )
 
-   if(!(self->mtx_.flags & su_MUTEX_INIT))
-      self = a_mutex_init(self);
+	if(!(self->mtx_.flags & su_MUTEX_INIT))
+		self = a_mutex_init(self);
 
-   a_LOCK();
+	a_LOCK();
 
 #if DVLDBGOR(1, 0)
-   if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
-      goto jleave;
+	if(!su__mutex_check(self, su__MUTEX_LOCK, tsp, file, line))
+		goto jleave;
 #endif
 
-   if(self->mtx_.owner != tsp){
-      boole xlock;
+	if(self->mtx_.owner != tsp){
+		boole xlock;
 
-      if((xlock = (self->mtx_.owner != NIL))){
-         DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
-         a_UNLOCK();
-      }
-      a_mutex_os_lock(self, self->mtx_.os, tsp);
-      if(xlock)
-         a_LOCK();
+		if((xlock = (self->mtx_.owner != NIL))){
+			DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
+			a_UNLOCK();
+		}
+		a_mutex_os_lock(self, self->mtx_.os, tsp);
+		if(xlock)
+			a_LOCK();
 
-      self->owner = tsp;
-   }
+		self->owner = tsp;
+	}
 
-   ++self->mtx_.count;
+	++self->mtx_.count;
 
 DVLDBGOR( jleave: )
-   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
-   a_UNLOCK();
+	DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
+	a_UNLOCK();
 }
 
 boole
-su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp
-      su__MUTEX_ARGS_DECL){
-   boole rv;
+su__mutex_trylock(struct su_mutex *self, struct su_thread *tsp  su__MUTEX_ARGS_DECL){
+	boole rv;
 
-   DVLDBGOR( UNUSED(file); UNUSED(line); )
+	DVLDBGOR( UNUSED(file); UNUSED(line); )
 
-   if(!(self->mtx_.flags & su_MUTEX_INIT))
-      self = a_mutex_init(self);
+	if(!(self->mtx_.flags & su_MUTEX_INIT))
+		self = a_mutex_init(self);
 
-   a_LOCK();
+	a_LOCK();
 
 #if DVLDBGOR(1, 0)
-   if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
-      goto jleave;
+	if(!(rv = su__mutex_check(self, su__MUTEX_TRYLOCK, tsp, file, line)))
+		goto jleave;
 #endif
 
-   if((rv = (self->mtx_.owner == tsp)))
-      ;
-   else if((rv = (self->mtx_.owner == NIL))){
-      a_mutex_os_lock(self, self->mtx_.os, tsp);
-      self->owner = tsp;
-   }else
-      goto jleave;
+	if((rv = (self->mtx_.owner == tsp))){
+	}else if((rv = (self->mtx_.owner == NIL))){
+		a_mutex_os_lock(self, self->mtx_.os, tsp);
+		self->owner = tsp;
+	}else
+		goto jleave;
 
-   ++self->mtx_.count;
+	++self->mtx_.count;
 
 jleave:
-   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
-   a_UNLOCK();
+	DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
+	a_UNLOCK();
 
-   return rv;
+	return rv;
 }
 
 void
 su__mutex_unlock(struct su_mutex *self  su__MUTEX_ARGS_DECL){
-   DVLDBGOR( UNUSED(file); UNUSED(line); )
+	DVLDBGOR( UNUSED(file); UNUSED(line); )
 
 #if DVLDBGOR(1, 0)
-   if(!(self->mtx_.flags & su_MUTEX_INIT)){
-      su__mutex_check(self, su__MUTEX_UNLOCK_NOLOCK, tsp, file, line);
-      goto jleave;
-   }
+	if(!(self->mtx_.flags & su_MUTEX_INIT)){
+		su__mutex_check(self, su__MUTEX_UNLOCK_NOLOCK, tsp, file, line);
+		goto jleave;
+	}
 #endif
 
-   a_LOCK();
+	a_LOCK();
 
 #if DVLDBGOR(1, 0)
-   if(!su__mutex_check(self, su__MUTEX_UNLOCK, tsp, file, line))
-      goto jleave;
+	if(!su__mutex_check(self, su__MUTEX_UNLOCK, tsp, file, line))
+		goto jleave;
 #endif
 
-   if(--self->mtx_.count == 0){
-      self->mtx_.owner = NIL;
-      a_mutex_os_unlock(self, self->mtx_.os, tsp);
-   }
+	if(--self->mtx_.count == 0){
+		self->mtx_.owner = NIL;
+		a_mutex_os_unlock(self, self->mtx_.os, tsp);
+	}
 
 DVLDBGOR( jleave: )
-   DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
-   a_UNLOCK();
+	DVLDBG( self->mtx_.line = line; self->mtx_.file = file; )
+	a_UNLOCK();
 }
 
 # undef a_LOCK
@@ -232,4 +221,4 @@ DVLDBGOR( jleave: )
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_MUTEX
-/* s-it-mode */
+/* s-itt-mode */

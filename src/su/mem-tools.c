@@ -37,84 +37,83 @@ NSPC_USE(su)
 
 void *
 su_mem_find(void const *vp, s32 what, uz len){
-   void *rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
+	void *rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
 
-   rv = LIKELY(len != 0) ? a_memt_find(vp, what, len) : NIL;
+	rv = LIKELY(len != 0) ? a_memt_find(vp, what, len) : NIL;
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 void *
 su_mem_rfind(void const *vp, s32 what, uz len){
-   void *rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
+	void *rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(len == 0 || vp != NIL, rv = NIL);
 
-   rv = LIKELY(len != 0) ? a_memt_rfind(vp, what, len) : NIL;
+	rv = LIKELY(len != 0) ? a_memt_rfind(vp, what, len) : NIL;
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 sz
 su_mem_cmp(void const *vpa, void const *vpb, uz len){
-   sz rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(len == 0 || vpa != NIL, rv = (vpb == NIL) ? 0 : -1);
-   ASSERT_NYD_EXEC(len == 0 || vpb != NIL, rv = 1);
+	sz rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(len == 0 || vpa != NIL, rv = (vpb == NIL) ? 0 : -1);
+	ASSERT_NYD_EXEC(len == 0 || vpb != NIL, rv = 1);
 
-   rv = UNLIKELY(vpa == vpb) ? 0
-         : LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0;
+	rv = UNLIKELY(vpa == vpb) ? 0 : (LIKELY(len != 0) ? a_memt_cmp(vpa, vpb, len) : 0);
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 void *
 su_mem_copy(void *vp, void const *src, uz len){
-   NYD_IN;
-   ASSERT_NYD(len == 0 || vp != NIL);
-   ASSERT_NYD(len == 0 || src != NIL);
+	NYD_IN;
+	ASSERT_NYD(len == 0 || vp != NIL);
+	ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(vp != src && len > 0)){
-      /* dalias: if((up)s-(up)d-n <= -2*n) return memcpy(d, s, n); */
-      ASSERT_NYD_EXEC(
-         (R(up,src) < R(up,vp) && R(up,src) + len <= R(up,vp)) ||
-         (R(up,src) > R(up,vp) && R(up,src) - len >= R(up,vp)),
-         su_mem_move(vp, src, len));
-      a_memt_copy(vp, src, len);
-   }
+	if(LIKELY(vp != src && len > 0)){
+		/* dalias: if((up)s-(up)d-n <= -2*n) return memcpy(d, s, n); */
+		ASSERT_NYD_EXEC(
+			(R(up,src) < R(up,vp) && R(up,src) + len <= R(up,vp)) ||
+			(R(up,src) > R(up,vp) && R(up,src) - len >= R(up,vp)),
+			su_mem_move(vp, src, len));
+		a_memt_copy(vp, src, len);
+	}
 
-   NYD_OU;
-   return vp;
+	NYD_OU;
+	return vp;
 }
 
 void *
 su_mem_move(void *vp, void const *src, uz len){
-   NYD_IN;
-   ASSERT_NYD(len == 0 || vp != NIL);
-   ASSERT_NYD(len == 0 || src != NIL);
+	NYD_IN;
+	ASSERT_NYD(len == 0 || vp != NIL);
+	ASSERT_NYD(len == 0 || src != NIL);
 
-   if(LIKELY(vp != src && len > 0))
-      a_memt_move(vp, src, len);
+	if(LIKELY(vp != src && len > 0))
+		a_memt_move(vp, src, len);
 
-   NYD_OU;
-   return vp;
+	NYD_OU;
+	return vp;
 }
 
 void *
 su_mem_set(void *vp, s32 what, uz len){
-   NYD_IN;
-   ASSERT_NYD(len == 0 || vp != NIL);
+	NYD_IN;
+	ASSERT_NYD(len == 0 || vp != NIL);
 
-   if(LIKELY(len > 0))
-      a_memt_set(vp, what, len);
+	if(LIKELY(len > 0))
+		a_memt_set(vp, what, len);
 
-   NYD_OU;
-   return vp;
+	NYD_OU;
+	return vp;
 }
 
 #include <su/y-mem-tools.h> /* 3. */
@@ -123,4 +122,4 @@ su_mem_set(void *vp, s32 what, uz len){
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_MEM_TOOLS
-/* s-it-mode */
+/* s-itt-mode */

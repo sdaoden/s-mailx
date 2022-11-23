@@ -33,48 +33,48 @@ SINLINE void *a_memt_set(void *vp, s32 what, uz len);
 
 SINLINE void *
 a_memt_find(void const *vp, s32 what, uz len){
-   /* Need to cast away const for g++ 8.2.0 (OSUKISS Linux) */
-   return memchr(C(void*,vp), what, len);
+	/* Need to cast away const for g++ 8.2.0 (OSUKISS Linux) */
+	return memchr(C(void*,vp), what, len);
 }
 
 SINLINE void *
 a_memt_rfind(void const *vp, s32 what, uz len){
-   u8 *rv;
+	u8 *rv;
 
-   for(rv = &C(u8*,S(u8 const*,vp))[len];;){
-      ASSERT(&rv[-1] >= S(u8 const*,vp));
-      if(*--rv == S(u8,what))
-         break;
-      if(UNLIKELY(rv == vp)){
-         rv = NIL;
-         break;
-      }
-   }
+	for(rv = &C(u8*,S(u8 const*,vp))[len];;){
+		ASSERT(&rv[-1] >= S(u8 const*,vp));
+		if(*--rv == S(u8,what))
+			break;
+		if(UNLIKELY(rv == vp)){
+			rv = NIL;
+			break;
+		}
+	}
 
-   return rv;
+	return rv;
 }
 
 SINLINE sz
 a_memt_cmp(void const *vpa, void const *vpb, uz len){
-   return memcmp(vpa, vpb, len);
+	return memcmp(vpa, vpb, len);
 }
 
 SINLINE void *
 a_memt_copy(void *vp, void const *src, uz len){
-   memcpy(vp, src, len);
-   return vp;
+	memcpy(vp, src, len);
+	return vp;
 }
 
 SINLINE void *
 a_memt_move(void *vp, void const *src, uz len){
-   memmove(vp, src, len);
-   return vp;
+	memmove(vp, src, len);
+	return vp;
 }
 
 SINLINE void *
 a_memt_set(void *vp, s32 what, uz len){
-   memset(vp, what, len);
-   return vp;
+	memset(vp, what, len);
+	return vp;
 }
 
 #elif su__MEM_TOOLS_Y == 2
@@ -84,4 +84,4 @@ a_memt_set(void *vp, s32 what, uz len){
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */

@@ -32,61 +32,61 @@ NSPC_USE(su)
 
 boole
 su_cs_ends_with_case(char const *cp, char const *xp){
-   boole rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
-   ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
 
-   rv = FAL0;
+	rv = FAL0;
 
-   if(LIKELY(*xp != '\0')){
-      uz cl, xl;
+	if(LIKELY(*xp != '\0')){
+		uz cl, xl;
 
-      cl = su_cs_len(cp);
-      xl = su_cs_len(xp);
+		cl = su_cs_len(cp);
+		xl = su_cs_len(xp);
 
-      if(cl < xl)
-         goto jleave;
+		if(cl < xl)
+			goto jleave;
 
-      for(cp += cl - xl;; ++cp, ++xp){
-         s32 c, xc;
+		for(cp += cl - xl;; ++cp, ++xp){
+			s32 c, xc;
 
-         if((c = su_cs_to_lower(*cp)) != (xc = su_cs_to_lower(*xp)))
-            break;
+			if((c = su_cs_to_lower(*cp)) != (xc = su_cs_to_lower(*xp)))
+				break;
 
-         if(xc == '\0'){
-            rv = TRU1;
-            break;
-         }
-      }
-   }
+			if(xc == '\0'){
+				rv = TRU1;
+				break;
+			}
+		}
+	}
 
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 char *
 su_cs_rfind_c(char const *cp, char x){
-   char const *match, *tail;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp != NIL, match = NIL);
+	char const *match, *tail;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, match = NIL);
 
-   for(match = NIL, tail = cp;; ++tail){
-      s32 c;
+	for(match = NIL, tail = cp;; ++tail){
+		s32 c;
 
-      if((c = *tail) == x)
-         match = tail;
-      if(c == '\0')
-         break;
-   }
+		if((c = *tail) == x)
+			match = tail;
+		if(c == '\0')
+			break;
+	}
 
-   NYD_OU;
-   return UNCONST(char*,match);
+	NYD_OU;
+	return UNCONST(char*,match);
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_RFIND
-/* s-it-mode */
+/* s-itt-mode */

@@ -40,44 +40,40 @@ NSPC_USE(su)
 
 boole
 su__spinlock_check(struct su_spinlock *self, enum su__spinlock_xfn slf, up v){
-   boole rv;
+	boole rv;
 
-   if(v == 0)
-      v = R(up,su_thread_self());
+	if(v == 0)
+		v = R(up,su_thread_self());
 
-   rv = FAL0;
+	rv = FAL0;
 
-   switch(slf){
-   case su__SPIN_DTOR:
-      if(self->sl_lck != 0){
-         su_log_write(su_LOG_ALERT,
-            "su_spinlock_gut(%p=%s): still locked by %s",
-            self, self->sl_name,
-            su_thread_name(R(struct su_thread*,self->sl_lck)));
-         goto jleave;
-      }
-      break;
-   case su__SPIN_LOCK:
-   case su__SPIN_TRYLOCK:
-      if(self->sl_lck == v){
-         su_log_write(su_LOG_ALERT,
-            "su_spinlock_(try)?lock(%p=%s): already locked by %s",
-            self, self->sl_name, su_thread_name(R(struct su_thread*,v)));
-         goto jleave;
-      }
-      break;
-   case su__SPIN_UNLOCK:
-      if(self->sl_lck == 0){
-         su_log_write(su_LOG_ALERT, "su_spinlock_unlock(%p=%s): not locked",
-            self, self->sl_name);
-         goto jleave;
-      }
-      break;
-   }
+	switch(slf){
+	case su__SPIN_DTOR:
+		if(self->sl_lck != 0){
+			su_log_write(su_LOG_ALERT, "su_spinlock_gut(%p=%s): still locked by %s",
+				self, self->sl_name, su_thread_name(R(struct su_thread*,self->sl_lck)));
+			goto jleave;
+		}
+		break;
+	case su__SPIN_LOCK:
+	case su__SPIN_TRYLOCK:
+		if(self->sl_lck == v){
+			su_log_write(su_LOG_ALERT, "su_spinlock_(try)?lock(%p=%s): already locked by %s",
+				self, self->sl_name, su_thread_name(R(struct su_thread*,v)));
+			goto jleave;
+		}
+		break;
+	case su__SPIN_UNLOCK:
+		if(self->sl_lck == 0){
+			su_log_write(su_LOG_ALERT, "su_spinlock_unlock(%p=%s): not locked", self, self->sl_name);
+			goto jleave;
+		}
+		break;
+	}
 
-   rv = TRU1;
+	rv = TRU1;
 jleave:
-   return rv;
+	return rv;
 }
 
 #include "su/code-ou.h"
@@ -85,4 +81,4 @@ jleave:
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_SPINLOCK
-/* s-it-mode */
+/* s-itt-mode */

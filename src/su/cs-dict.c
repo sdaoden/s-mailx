@@ -41,4 +41,4 @@ NSPC_USE(su)
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_DICT
-/* s-it-mode */
+/* s-itt-mode */

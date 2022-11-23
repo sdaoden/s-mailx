@@ -35,41 +35,40 @@ NSPC_USE(su)
 
 struct su_timespec *
 su_timespec_current(struct su_timespec *self){
-   NYD2_IN;
-   ASSERT(self);
+	NYD2_IN;
+	ASSERT(self);
 
-   /* C99 */{
+	/* C99 */{
 #ifdef su_HAVE_CLOCK_GETTIME
-      struct timespec ts;
+		struct timespec ts;
 
-      if(sizeof(*self) == sizeof(ts) &&
-            sizeof(self->ts_sec) == sizeof(ts.tv_sec))
-         clock_gettime(CLOCK_REALTIME, R(struct timespec*,self));
-      else{
-         clock_gettime(CLOCK_REALTIME, &ts);
-         self->ts_sec = S(s64,ts.tv_sec);
-         self->ts_nano = S(sz,ts.tv_nsec);
-      }
+		if(sizeof(*self) == sizeof(ts) && sizeof(self->ts_sec) == sizeof(ts.tv_sec))
+			clock_gettime(CLOCK_REALTIME, R(struct timespec*,self));
+		else{
+			clock_gettime(CLOCK_REALTIME, &ts);
+			self->ts_sec = S(s64,ts.tv_sec);
+			self->ts_nano = S(sz,ts.tv_nsec);
+		}
 
 #elif defined su_HAVE_GETTIMEOFDAY
-      struct timeval tv;
+		struct timeval tv;
 
-      gettimeofday(&tv, NIL);
-      self->ts_sec = S(s64,tv.tv_sec);
-      self->ts_nano = S(sz,tv.tv_usec) * 1000;
+		gettimeofday(&tv, NIL);
+		self->ts_sec = S(s64,tv.tv_sec);
+		self->ts_nano = S(sz,tv.tv_usec) * 1000;
 
 #else
-      self->ts_sec = S(s64,time(NIL));
-      self->ts_nano = 0;
+		self->ts_sec = S(s64,time(NIL));
+		self->ts_nano = 0;
 #endif
-   }
+	}
 
-   NYD2_OU;
-   return self;
+	NYD2_OU;
+	return self;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_TIME_SPEC
-/* s-it-mode */
+/* s-itt-mode */

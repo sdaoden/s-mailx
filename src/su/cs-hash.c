@@ -31,53 +31,53 @@ NSPC_USE(su)
 
 #define a_CSHASH_HASH(C) \
 do{\
-   u64 xh = 0;\
+	u64 xh = 0;\
 \
-   if(len == UZ_MAX)\
-      for(; (c = *buf++) != '\0';)\
-         xh = (xh * 33) + S(u8,C);\
-   else\
-      while(len-- != 0){ /* XXX Duff's device, unroll 8? */\
-         c = *buf++;\
-         xh = (xh * 33) + S(u8,C);\
-      }\
+	if(len == UZ_MAX)\
+		for(; (c = *buf++) != '\0';)\
+			xh = (xh << 5) + xh + S(u8,C);\
+	else\
+		while(len-- != 0){ /* XXX Duff's device, unroll 8? */\
+			c = *buf++;\
+			xh = (xh << 5) + xh + S(u8,C);\
+		}\
 \
-   /* Since mixing matters mostly for pow2 spaced maps, mixing the \
-    * lower 32-bit seems to be sufficient (? in practice) */\
-   if(xh != 0){\
-      xh += xh << 13;\
-      xh ^= xh >> 7;\
-      xh += xh << 3;\
-      xh ^= xh >> 17;\
-      xh += xh << 5;\
-   }\
-   h = S(uz,xh);\
+	/* Since mixing matters mostly for pow2 spaced maps, mixing the \
+	 * lower 32-bit seems to be sufficient (? in practice) */\
+	if(xh != 0){\
+		xh += xh << 13;\
+		xh ^= xh >> 7;\
+		xh += xh << 3;\
+		xh ^= xh >> 17;\
+		xh += xh << 5;\
+	}\
+	h = S(uz,xh);\
 }while(0)
 
 uz
 su_cs_hash_cbuf(char const *buf, uz len){
-   char c;
-   uz h;
-   NYD_IN;
-   ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
+	char c;
+	uz h;
+	NYD_IN;
+	ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
-   a_CSHASH_HASH(c);
+	a_CSHASH_HASH(c);
 
-   NYD_OU;
-   return h;
+	NYD_OU;
+	return h;
 }
 
 uz
 su_cs_hash_case_cbuf(char const *buf, uz len){
-   char c;
-   uz h;
-   NYD_IN;
-   ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
+	char c;
+	uz h;
+	NYD_IN;
+	ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
-   a_CSHASH_HASH(su_cs_to_lower(c));
+	a_CSHASH_HASH(su_cs_to_lower(c));
 
-   NYD_OU;
-   return h;
+	NYD_OU;
+	return h;
 }
 
 #undef a_CSHASH_HASH
@@ -86,4 +86,4 @@ su_cs_hash_case_cbuf(char const *buf, uz len){
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_HASH
-/* s-it-mode */
+/* s-itt-mode */

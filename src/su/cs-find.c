@@ -35,206 +35,205 @@
 NSPC_USE(su)
 
 uz
-su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen,
-      char const *xp, uz xplen){
-   uz rv, bs[su_BITS_TO_UZ(U8_MAX + 1)];
-   char c;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cplen == 0 || cp != NIL, rv = UZ_MAX);
-   ASSERT_NYD_EXEC(xplen == 0 || xp != NIL, rv = UZ_MAX);
+su__cs_first_x_of_cbuf_cbuf(boole x, char const *cp, uz cplen, char const *xp, uz xplen){
+	uz rv, bs[su_BITS_TO_UZ(U8_MAX + 1)];
+	char c;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cplen == 0 || cp != NIL, rv = UZ_MAX);
+	ASSERT_NYD_EXEC(xplen == 0 || xp != NIL, rv = UZ_MAX);
 
-   su_mem_set(bs, 0, sizeof bs);
+	su_mem_set(bs, 0, sizeof bs);
 
-   /* For all bytes in x, set the bit of value */
-   for(rv = P2UZ(xp);; ++xp){
-      if(xplen-- == 0 || (c = *xp) == '\0')
-         break;
-      su_bits_array_set(bs, S(u8,c));
-   }
-   if(UNLIKELY(rv == P2UZ(xp)))
-      goto jnope;
+	/* For all bytes in x, set the bit of value */
+	for(rv = P2UZ(xp);; ++xp){
+		if(xplen-- == 0 || (c = *xp) == '\0')
+			break;
+		su_bits_array_set(bs, S(u8,c));
+	}
+	if(UNLIKELY(rv == P2UZ(xp)))
+		goto jnope;
 
-   /* For all bytes in cp, test whether the value bit is set */
-   for(xp = cp;; ++cp){
-      if(cplen-- == 0 || (c = *cp) == '\0')
-         break;
-      if(x == su_bits_array_test(bs, S(u8,c))){
-         rv = P2UZ(cp - xp);
-         goto jleave;
-      }
-   }
+	/* For all bytes in cp, test whether the value bit is set */
+	for(xp = cp;; ++cp){
+		if(cplen-- == 0 || (c = *cp) == '\0')
+			break;
+		if(x == su_bits_array_test(bs, S(u8,c))){
+			rv = P2UZ(cp - xp);
+			goto jleave;
+		}
+	}
 
 jnope:
-   rv = UZ_MAX;
+	rv = UZ_MAX;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 char *
 su_cs_find(char const *cp, char const *xp){
-   char xc, c;
-   NYD_IN;
-   ASSERT_NYD(cp != NIL);
-   ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
+	char xc, c;
+	NYD_IN;
+	ASSERT_NYD(cp != NIL);
+	ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
 
-   /* Return cp if x is empty */
-   if(LIKELY((xc = *xp) != '\0')){
-      for(; (c = *cp) != '\0'; ++cp){
-         if(c == xc && su_cs_starts_with(cp, xp))
-            goto jleave;
-      }
-      cp = NIL;
-   }
+	/* Return cp if x is empty */
+	if(LIKELY((xc = *xp) != '\0')){
+		for(; (c = *cp) != '\0'; ++cp){
+			if(c == xc && su_cs_starts_with(cp, xp))
+				goto jleave;
+		}
+		cp = NIL;
+	}
 
 jleave:
-   NYD_OU;
-   return UNCONST(char*,cp);
+	NYD_OU;
+	return UNCONST(char*,cp);
 }
 
 char *
 su_cs_find_c(char const *cp, char xc){
-   NYD_IN;
-   ASSERT_NYD(cp != NIL);
+	NYD_IN;
+	ASSERT_NYD(cp != NIL);
 
-   for(;; ++cp){
-      char c;
+	for(;; ++cp){
+		char c;
 
-      if((c = *cp) == xc)
-         break;
-      if(c == '\0'){
-         cp = NIL;
-         break;
-      }
-   }
+		if((c = *cp) == xc)
+			break;
+		if(c == '\0'){
+			cp = NIL;
+			break;
+		}
+	}
 
-   NYD_OU;
-   return UNCONST(char*,cp);
+	NYD_OU;
+	return UNCONST(char*,cp);
 }
 
 char *
 su_cs_find_case(char const *cp, char const *xp){
-   s32 xc, c;
-   NYD_IN;
-   ASSERT_NYD(cp != NIL);
-   ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
+	s32 xc, c;
+	NYD_IN;
+	ASSERT_NYD(cp != NIL);
+	ASSERT_NYD_EXEC(xp != NIL, cp = NIL);
 
-   /* Return cp if xp is empty */
-   if(LIKELY((xc = *xp) != '\0')){
-      xc = su_cs_to_lower(xc);
-      for(; (c = *cp) != '\0'; ++cp){
-         c = su_cs_to_lower(c);
-         if(c == xc && su_cs_starts_with_case(cp, xp))
-            goto jleave;
-      }
-      cp = NIL;
-   }
+	/* Return cp if xp is empty */
+	if(LIKELY((xc = *xp) != '\0')){
+		xc = su_cs_to_lower(xc);
+		for(; (c = *cp) != '\0'; ++cp){
+			c = su_cs_to_lower(c);
+			if(c == xc && su_cs_starts_with_case(cp, xp))
+				goto jleave;
+		}
+		cp = NIL;
+	}
 
 jleave:
-   NYD_OU;
-   return UNCONST(char*,cp);
+	NYD_OU;
+	return UNCONST(char*,cp);
 }
 
 boole
 su_cs_starts_with(char const *cp, char const *xp){
-   boole rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
-   ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
 
-   if(LIKELY(*xp != '\0'))
-      for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+	if(LIKELY(*xp != '\0'))
+		for(rv = TRU1;; ++cp, ++xp){
+			char xc, c;
 
-         if((xc = *xp) == '\0')
-            goto jleave;
-         if((c = *cp) != xc)
-            break;
-      }
+			if((xc = *xp) == '\0')
+				goto jleave;
+			if((c = *cp) != xc)
+				break;
+		}
 
-   rv = FAL0;
+	rv = FAL0;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 boole
 su_cs_starts_with_n(char const *cp, char const *xp, uz n){
-   boole rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(n == 0 || cp != NIL, rv = FAL0);
-   ASSERT_NYD_EXEC(n == 0 || xp != NIL, rv = FAL0);
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(n == 0 || cp != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC(n == 0 || xp != NIL, rv = FAL0);
 
-   if(LIKELY(n > 0 && *xp != '\0'))
-      for(rv = TRU1;; ++cp, ++xp){
-         char xc, c;
+	if(LIKELY(n > 0 && *xp != '\0'))
+		for(rv = TRU1;; ++cp, ++xp){
+			char xc, c;
 
-         if((xc = *xp) == '\0')
-            goto jleave;
-         if((c = *cp) != xc)
-            break;
-         if(--n == 0)
-            goto jleave;
-      }
+			if((xc = *xp) == '\0')
+				goto jleave;
+			if((c = *cp) != xc)
+				break;
+			if(--n == 0)
+				goto jleave;
+		}
 
-   rv = FAL0;
+	rv = FAL0;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 boole
 su_cs_starts_with_case(char const *cp, char const *xp){
-   boole rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
-   ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(cp != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC(xp != NIL, rv = FAL0);
 
-   if(LIKELY(*xp != '\0'))
-      for(rv = TRU1;; ++cp, ++xp){
-         s32 xc, c;
+	if(LIKELY(*xp != '\0'))
+		for(rv = TRU1;; ++cp, ++xp){
+			s32 xc, c;
 
-         if((xc = *xp) == '\0')
-            goto jleave;
-         xc = su_cs_to_lower(*xp);
-         if((c = su_cs_to_lower(*cp)) != xc)
-            break;
-      }
+			if((xc = *xp) == '\0')
+				goto jleave;
+			xc = su_cs_to_lower(*xp);
+			if((c = su_cs_to_lower(*cp)) != xc)
+				break;
+		}
 
-   rv = FAL0;
+	rv = FAL0;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 boole
 su_cs_starts_with_case_n(char const *cp, char const *xp, uz n){
-   boole rv;
-   NYD_IN;
-   ASSERT_NYD_EXEC(n == 0 || cp != NIL, rv = FAL0);
-   ASSERT_NYD_EXEC(n == 0 || xp != NIL, rv = FAL0);
+	boole rv;
+	NYD_IN;
+	ASSERT_NYD_EXEC(n == 0 || cp != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC(n == 0 || xp != NIL, rv = FAL0);
 
-   if(LIKELY(n > 0 && *xp != '\0'))
-      for(rv = TRU1;; ++cp, ++xp){
-         s32 xc, c;
+	if(LIKELY(n > 0 && *xp != '\0'))
+		for(rv = TRU1;; ++cp, ++xp){
+			s32 xc, c;
 
-         if((xc = *xp) == '\0')
-            goto jleave;
-         xc = su_cs_to_lower(*xp);
-         if((c = su_cs_to_lower(*cp)) != xc)
-            break;
-         if(--n == 0)
-            goto jleave;
-      }
+			if((xc = *xp) == '\0')
+				goto jleave;
+			xc = su_cs_to_lower(*xp);
+			if((c = su_cs_to_lower(*cp)) != xc)
+				break;
+			if(--n == 0)
+				goto jleave;
+		}
 
-   rv = FAL0;
+	rv = FAL0;
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_CS_FIND
-/* s-it-mode */
+/* s-itt-mode */

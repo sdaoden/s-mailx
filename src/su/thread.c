@@ -41,4 +41,4 @@ struct su_thread su__thread_main;
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_THREAD
-/* s-it-mode */
+/* s-itt-mode */

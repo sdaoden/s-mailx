@@ -39,74 +39,71 @@ NSPC_USE(su)
 
 s32
 su_siphash_setup_custom(struct su_siphash *self, void const *key,
-      enum su_siphash_digest digest_size, u8 crounds, u8 drounds){
-   s32 rv;
-   NYD_IN;
-   ASSERT(self);
+		enum su_siphash_digest digest_type, u8 crounds, u8 drounds){
+	s32 rv;
+	NYD_IN;
+	ASSERT(self);
 
-   if(crounds == 0)
-      crounds = su__SIPHASH_DEFAULT_CROUNDS;
-   if(drounds == 0)
-      drounds = su__SIPHASH_DEFAULT_DROUNDS;
+	if(crounds == 0)
+		crounds = su__SIPHASH_DEFAULT_CROUNDS;
+	if(drounds == 0)
+		drounds = su__SIPHASH_DEFAULT_DROUNDS;
 
-   FIELD_RANGE_ZERO(struct su_siphash,self, sh_carry_size,sh_v3);
-   self->sh_digest = S(u8,digest_size);
-   self->sh_compress_rounds = crounds;
-   self->sh_finalize_rounds = drounds;
+	FIELD_RANGE_ZERO(struct su_siphash,self, sh_carry_size,sh_v3);
+	self->sh_digest = S(u8,digest_type);
+	self->sh_compress_rounds = crounds;
+	self->sh_finalize_rounds = drounds;
 
-   ASSERT_NYD_EXEC(key != NIL, rv = -su_ERR_FAULT);
+	ASSERT_NYD_EXEC(key != NIL, rv = -su_ERR_FAULT);
 
-   rv = a_md_siphash_setup(self, key);
+	rv = a_md_siphash_setup(self, key);
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 void
 su_siphash_update(struct su_siphash *self, void const *dat, uz dat_len){
-   NYD_IN;
-   ASSERT(self);
-   ASSERT_NYD(dat_len == 0 || dat != NIL);
+	NYD_IN;
+	ASSERT(self);
+	ASSERT_NYD(dat_len == 0 || dat != NIL);
 
-   if(dat_len > 0)
-      a_md_siphash_update(self, dat, dat_len);
+	if(dat_len > 0)
+		a_md_siphash_update(self, dat, dat_len);
 
-   NYD_OU;
+	NYD_OU;
 }
 
 void
 su_siphash_end(struct su_siphash *self, void *digest_store){
-   NYD_IN;
-   ASSERT(self);
-   ASSERT_NYD(digest_store != NIL);
+	NYD_IN;
+	ASSERT(self);
+	ASSERT_NYD(digest_store != NIL);
 
-   a_md_siphash_end(self, S(u8*,digest_store));
+	a_md_siphash_end(self, S(u8*,digest_store));
 
-   NYD_OU;
+	NYD_OU;
 }
 
 void
 su_siphash_once(void *digest_store, enum su_siphash_digest digest_type,
-      void const *key, void const *dat, uz dat_len, u8 crounds, u8 drounds){
-   NYD_IN;
-   ASSERT_NYD(digest_store != NIL);
-   DVLDBG( su_mem_set(digest_store, 0,
-      (digest_type == su_SIPHASH_DIGEST_64 ? 8 : 16)); )
-   ASSERT_NYD(key != NIL);
-   ASSERT_NYD(dat_len == 0 || dat != NIL);
+		void const *key, void const *dat, uz dat_len, u8 crounds, u8 drounds){
+	NYD_IN;
+	ASSERT_NYD(digest_store != NIL);
+	DVLDBG( su_mem_set(digest_store, 0, (digest_type == su_SIPHASH_DIGEST_64 ? 8 : 16)); )
+	ASSERT_NYD(key != NIL);
+	ASSERT_NYD(dat_len == 0 || dat != NIL);
 
-   if(crounds == 0)
-      crounds = su__SIPHASH_DEFAULT_CROUNDS;
-   if(drounds == 0)
-      drounds = su__SIPHASH_DEFAULT_DROUNDS;
+	if(crounds == 0)
+		crounds = su__SIPHASH_DEFAULT_CROUNDS;
+	if(drounds == 0)
+		drounds = su__SIPHASH_DEFAULT_DROUNDS;
 
-   a_md_siphash(dat, dat_len, key,
-      S(u8*,digest_store),
-      (digest_type == su_SIPHASH_DIGEST_64 ? su_SIPHASH_DIGEST_SIZE_64
-         : su_SIPHASH_DIGEST_SIZE_128),
-      crounds, drounds);
+	a_md_siphash(dat, dat_len, key, S(u8*,digest_store),
+		(digest_type == su_SIPHASH_DIGEST_64 ? su_SIPHASH_DIGEST_SIZE_64 : su_SIPHASH_DIGEST_SIZE_128),
+		crounds, drounds);
 
-   NYD_OU;
+	NYD_OU;
 }
 
 #include <su/y-md-siphash.h> /* 3. */
@@ -116,4 +113,4 @@ su_siphash_once(void *digest_store, enum su_siphash_digest digest_type,
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_MD_SIPHASH
-/* s-it-mode */
+/* s-itt-mode */

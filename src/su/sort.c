@@ -31,38 +31,38 @@ NSPC_USE(su)
 
 void
 su_sort_shell_vpp(void const **arr, uz entries, su_cmp_fun cmp_or_nil){
-   void const **vpp, *vpa, *vpb;
-   sz j, tmp;
-   uz gap, i;
-   NYD_IN;
-   ASSERT_NYD(entries == 0 || arr != NIL);
+	void const **vpp, *vpa, *vpb;
+	sz j, tmp;
+	uz gap, i;
+	NYD_IN;
+	ASSERT_NYD(entries == 0 || arr != NIL);
 
-   for(gap = entries; (gap >>= 1) != 0;){
-      for(i = gap; i < entries; ++i){
-         for(j = S(sz,i - gap); j >= 0; j -= gap){
-            vpp = &arr[j];
-            vpb = vpp[0];
-            vpa = vpp[gap];
-            tmp = S(sz,P2UZ(vpa) - P2UZ(vpb));
+	for(gap = entries; (gap >>= 1) != 0;){
+		for(i = gap; i < entries; ++i){
+			for(j = S(sz,i - gap); j >= 0; j -= gap){
+				vpp = &arr[j];
+				vpb = vpp[0];
+				vpa = vpp[gap];
+				tmp = S(sz,P2UZ(vpa) - P2UZ(vpb));
 
-            if(tmp == 0)
-               break;
-            if(cmp_or_nil != NIL && vpa != NIL && vpb != NIL)
-               tmp = (*cmp_or_nil)(vpa, vpb);
-            if(tmp >= 0)
-               break;
+				if(tmp == 0)
+					break;
+				if(cmp_or_nil != NIL && vpa != NIL && vpb != NIL)
+					tmp = (*cmp_or_nil)(vpa, vpb);
+				if(tmp >= 0)
+					break;
 
-            vpp[0] = vpa;
-            vpp[gap] = vpb;
-         }
-      }
-   }
+				vpp[0] = vpa;
+				vpp[gap] = vpb;
+			}
+		}
+	}
 
-   NYD_OU;
+	NYD_OU;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
 #undef su_SOURCE_SORT
-/* s-it-mode */
+/* s-itt-mode */

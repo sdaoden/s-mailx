@@ -28,37 +28,37 @@ su_USECASE_MX_DISABLED
 
 s32
 su__mutex_os_create(struct su_mutex *self, u32 estate){
-   s32 rv;
-   UNUSED(estate);
+	s32 rv;
+	UNUSED(estate);
 
-   rv = su_STATE_NONE;
-   /* init self->mtx_.os */
+	rv = su_STATE_NONE;
+	/* init self->mtx_.os */
 #ifndef su__MUTEX_SPIN
-   /* init self->mtx_.os_lck */
+	/* init self->mtx_.os_lck */
 #endif
-   return rv;
+	return rv;
 }
 
 void
 su__mutex_os_gut(struct su_mutex *self){
-   UNUSED(self);
-   /* destroy self->mtx_.os */
+	UNUSED(self);
+	/* destroy self->mtx_.os */
 #ifndef su__MUTEX_SPIN
-   /* destroy self->mtx_.os_lck */
+	/* destroy self->mtx_.os_lck */
 #endif
 }
 
 SINLINE void
 a_mutex_os_lock(struct su_mutex *self, u8 *osmtx, struct su_thread *tsp){
-   UNUSED(self);
-   UNUSED(osmtx);
-   UNUSED(tsp);
+	UNUSED(self);
+	UNUSED(osmtx);
+	UNUSED(tsp);
 }
 
 SINLINE void
 a_mutex_os_unlock(struct su_mutex *self, u8 *osmtx){
-   UNUSED(self);
-   UNUSED(osmtx);
+	UNUSED(self);
+	UNUSED(osmtx);
 }
 
 # endif /* su_HAVE_MT */
@@ -69,4 +69,4 @@ a_mutex_os_unlock(struct su_mutex *self, u8 *osmtx){
 #else
 # error .
 #endif
-/* s-it-mode */
+/* s-itt-mode */
