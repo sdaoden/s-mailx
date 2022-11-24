@@ -29,21 +29,20 @@ struct mx_ignore; /* Transparent */
 /* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
  * _ALL is very special in that it does not have a backing object.
  * Go over enum to avoid cascads of (different) CC warnings for used CTA()s */
+enum{
+	mx__IGNORE_ALL = -2,
+	mx__IGNORE_TYPE = -3,
+	mx__IGNORE_SAVE = -4,
+	mx__IGNORE_FWD = -5,
+	mx__IGNORE_TOP = -6,
+	mx__IGNORE_ADJUST = 3,
+	mx__IGNORE_MAX = -(mx__IGNORE_TOP) - mx__IGNORE_ADJUST
+};
 #define mx_IGNORE_ALL R(struct mx_ignore*,mx__IGNORE_ALL)
 #define mx_IGNORE_TYPE R(struct mx_ignore*,mx__IGNORE_TYPE)
 #define mx_IGNORE_SAVE R(struct mx_ignore*,mx__IGNORE_SAVE)
 #define mx_IGNORE_FWD R(struct mx_ignore*,mx__IGNORE_FWD)
 #define mx_IGNORE_TOP R(struct mx_ignore*,mx__IGNORE_TOP)
-
-enum{
-   mx__IGNORE_ALL = -2,
-   mx__IGNORE_TYPE = -3,
-   mx__IGNORE_SAVE = -4,
-   mx__IGNORE_FWD = -5,
-   mx__IGNORE_TOP = -6,
-   mx__IGNORE_ADJUST = 3,
-   mx__IGNORE_MAX = -(mx__IGNORE_TOP) - mx__IGNORE_ADJUST
-};
 
 /* `(un)?headerpick' */
 EXPORT int c_headerpick(void *vp);
@@ -66,8 +65,7 @@ EXPORT int c_unfwdretain(void *v);
 EXPORT int c_unfwdignore(void *v);
 
 /* Object lifecycle for non-specials.
- * auto_cleanup: whether memory storage should be managed via go_cleanup_ctx;
- * if so, _del() MUST not be called */
+ * auto_cleanup: whether memory storage should be managed via go_cleanup_ctx; if so, _del() MUST not be called */
 EXPORT struct mx_ignore *mx_ignore_new(char const *name, boole auto_cleanup);
 EXPORT void mx_ignore_del(struct mx_ignore *self);
 
@@ -78,10 +76,9 @@ EXPORT struct mx_ignore *mx_ignore_by_name(char const *name);
 EXPORT boole mx_ignore_is_any(struct mx_ignore const *self);
 
 /* Set an entry to retain (or ignore).
- * Returns FAL0 if dat is not a valid header field name or an invalid regular
- * expression, TRU1 if insertion took place, and TRUM1 if already set */
-EXPORT boole mx_ignore_insert(struct mx_ignore *self, boole retain,
-      char const *dat);
+ * Returns FAL0 if dat is not a valid header field name or an invalid regular expression, TRU1 if insertion took place,
+ * and TRUM1 if already set */
+EXPORT boole mx_ignore_insert(struct mx_ignore *self, boole retain, char const *dat);
 
 /* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
 EXPORT boole mx_ignore_lookup(struct mx_ignore const *self, char const *dat);
@@ -89,4 +86,4 @@ EXPORT boole mx_ignore_lookup(struct mx_ignore const *self, char const *dat);
 
 #include <su/code-ou.h>
 #endif /* mx_IGNORE_H */
-/* s-it-mode */
+/* s-itt-mode */

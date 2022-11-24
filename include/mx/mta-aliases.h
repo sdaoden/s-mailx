@@ -30,16 +30,14 @@
 /* `mtaaliases' */
 EXPORT int c_mtaaliases(void *vp);
 
-/* Expand all names from *npp which are still of type mx_NAME_ADDRSPEC_ISNAME,
- * iff *mta-aliases* is set.
- * Return ERR_NONE when processing completed normally, ERR_NOENT if the file
- * given in *mta-aliases* does not exist, or whatever other error occurred.
- * ERR_DESTADDRREQ is returned instead of ERR_NONE if after expansion ISNAME
- * entries still remain in *npp.
+/* Expand all names from *npp which are still of type mx_NAME_ADDRSPEC_ISNAME, iff *mta-aliases* is set.
+ * Return ERR_NONE when processing completed normally, ERR_NOENT if the file given in *mta-aliases* does not exist,
+ * or whatever other error occurred.  ERR_DESTADDRREQ is returned instead of ERR_NONE if after expansion ISNAME entries
+ * still remain in *npp.
  * The result may contain duplicates */
 EXPORT s32 mx_mta_aliases_expand(struct mx_name **npp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_MTA_ALIASES */
 #endif /* mx_MTA_ALIASES_H */
-/* s-it-mode */
+/* s-itt-mode */

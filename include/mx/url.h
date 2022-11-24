@@ -28,43 +28,42 @@ struct mx_url;
 
 #ifdef mx_HAVE_NET
 enum mx_url_flags{
-   mx_URL_TLS_REQUIRED = 1u<<0, /* Whether protocol always uses SSL/TLS.. */
-   mx_URL_TLS_OPTIONAL = 1u<<1, /* ..may later upgrade to SSL/TLS */
-   mx_URL_TLS_MASK = mx_URL_TLS_REQUIRED | mx_URL_TLS_OPTIONAL,
-   mx_URL_HAD_USER = 1u<<2, /* Whether .url_user was part of the URL */
-   mx_URL_HOST_IS_NAME = 1u<<3 /* .url_host not numeric address */
+	mx_URL_TLS_REQUIRED = 1u<<0, /* Whether protocol always uses SSL/TLS.. */
+	mx_URL_TLS_OPTIONAL = 1u<<1, /* ..may later upgrade to SSL/TLS */
+	mx_URL_TLS_MASK = mx_URL_TLS_REQUIRED | mx_URL_TLS_OPTIONAL,
+	mx_URL_HAD_USER = 1u<<2, /* Whether .url_user was part of the URL */
+	mx_URL_HOST_IS_NAME = 1u<<3 /* .url_host not numeric address */
 };
 #endif
 
 struct mx_url{ /* XXX not _ctx: later object */
-   char const *url_input; /* Input as given (really) */
-   u32 url_flags;
-   u16 url_portno; /* atoi .url_port or default, host endian */
-   u8 url_cproto; /* enum cproto as given */
-   u8 url_proto_len; /* Length of .url_proto (to first '\0') */
+	char const *url_input; /* Input as given (really) */
+	u32 url_flags;
+	u16 url_portno; /* atoi .url_port or default, host endian */
+	u8 url_cproto; /* enum cproto as given */
+	u8 url_proto_len; /* Length of .url_proto (to first '\0') */
 #ifdef mx_HAVE_NET
-   char url_proto[16]; /* Communication protocol as 'xy\0://\0' */
-   char const *url_port; /* Port (if given) or NIL */
-   struct str url_user; /* User, exactly as given / looked up */
-   struct str url_user_enc; /* User, url_xenc()oded */
-   struct str url_pass; /* Pass (url_xdec()oded) or NULL */
-   /* TODO we don't know whether .url_host is a name or an address.  Us
-    * TODO Net::IPAddress::fromString() to check that, then set
-    * TODO URL_HOST_IS_NAME solely based on THAT!  Until then,
-    * TODO URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK+mx_HAVE_GETADDRINFO */
-   struct str url_host; /* Service hostname TODO we don't know */
-   struct str url_path; /* Path suffix or NULL */
-   /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
-   struct str url_h_p; /* .url_host[:.url_port] */
-   /* .url_user@.url_host
-    * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
-    * *hostname*)!  (And may later be overwritten according to *from*!) */
-   struct str url_u_h;
-   struct str url_u_h_p; /* .url_user@.url_host[:.url_port] */
-   struct str url_eu_h_p; /* .url_user_enc@.url_host[:.url_port] */
-   char const *url_p_u_h_p; /* .url_proto://.url_u_h_p */
-   char const *url_p_eu_h_p; /* .url_proto://.url_eu_h_p */
-   char const *url_p_eu_h_p_p; /* .url_proto://.url_eu_h_p[/.url_path] */
+	char url_proto[16]; /* Communication protocol as 'xy\0://\0' */
+	char const *url_port; /* Port (if given) or NIL */
+	struct str url_user; /* User, exactly as given / looked up */
+	struct str url_user_enc; /* User, url_xenc()oded */
+	struct str url_pass; /* Pass (url_xdec()oded) or NIL */
+	/* TODO we don't know whether .url_host is a name or an address.  Use Net::IPAddress::fromString() to check
+	 * TODO that, then set URL_HOST_IS_NAME solely based on THAT! Until then, URL_HOST_IS_NAME ONLY set if
+	 * TODO n_URL_TLS_MASK+mx_HAVE_GETADDRINFO */
+	struct str url_host; /* Service hostname TODO we do not know */
+	struct str url_path; /* Path suffix or NIL */
+	/* TODO: url_get_component(url *, enum COMPONENT, str *store) */
+	struct str url_h_p; /* .url_host[:.url_port] */
+	/* .url_user@.url_host
+	 * Note: for CPROTO_SMTP this may resolve HOST via *smtp-hostname* (->
+	 * *hostname*)!  (And may later be overwritten according to *from*!) */
+	struct str url_u_h;
+	struct str url_u_h_p; /* .url_user@.url_host[:.url_port] */
+	struct str url_eu_h_p; /* .url_user_enc@.url_host[:.url_port] */
+	char const *url_p_u_h_p; /* .url_proto://.url_u_h_p */
+	char const *url_p_eu_h_p; /* .url_proto://.url_eu_h_p */
+	char const *url_p_eu_h_p_p; /* .url_proto://.url_eu_h_p[/.url_path] */
 #endif /* mx_HAVE_NET */
 };
 
@@ -86,20 +85,17 @@ EXPORT int c_urlcodec(void *vp);
 EXPORT char *mx_url_mailto_to_address(char const *mailtop);
 
 /* Return port for proto, or NIL if unknown.
- * Upon success *port_or_nil and *issnd_or_nil will be updated, if set; the
- * latter states whether protocol is of a sending type (SMTP, file etc.).
- * For file:// and test:// this returns su_empty, in the former case
- * *port_or_nil is 0 and in the latter U16_MAX */
-EXPORT char const *mx_url_servbyname(char const *proto, u16 *port_or_nil,
-      boole *issnd_or_nil);
+ * Upon success *port_or_nil and *issnd_or_nil will be updated, if set; the latter states whether protocol is of
+ * a sending type (SMTP, file etc.).
+ * For file:// and test:// this returns su_empty, in the former case *port_or_nil is 0 and in the latter U16_MAX */
+EXPORT char const *mx_url_servbyname(char const *proto, u16 *port_or_nil, boole *issnd_or_nil);
 
-/* Parse data, which must meet the criteria of the protocol cproto, and fill
- * in the URL structure urlp (URL rather according to RFC 3986) */
+/* Parse data, which must meet the criteria of the protocol cproto, and fill in the URL structure urlp (URL rather
+ * according to RFC 3986) */
 #ifdef mx_HAVE_NET
-EXPORT boole mx_url_parse(struct mx_url *urlp, enum cproto cproto,
-      char const *data);
+EXPORT boole mx_url_parse(struct mx_url *urlp, enum cproto cproto, char const *data);
 #endif /* mx_HAVE_NET */
 
 #include <su/code-ou.h>
 #endif /* mx_URL_H */
-/* s-it-mode */
+/* s-itt-mode */

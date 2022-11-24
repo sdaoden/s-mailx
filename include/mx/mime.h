@@ -38,19 +38,19 @@ struct quoteflt;
 struct str;
 
 enum mx_mime_display_flags{
-   mx_MIME_DISPLAY_NONE,
-   mx_MIME_DISPLAY_ICONV = 1u<<1, /* iconv() buffer */
-   mx_MIME_DISPLAY_ISPRINT = 1u<<0, /* makeprint() result */
-   mx_MIME_DISPLAY_DEL_CNTRL = 1u<<2, /* Delete control characters */
+	mx_MIME_DISPLAY_NONE,
+	mx_MIME_DISPLAY_ICONV = 1u<<1, /* iconv() buffer */
+	mx_MIME_DISPLAY_ISPRINT = 1u<<0, /* makeprint() result */
+	mx_MIME_DISPLAY_DEL_CNTRL = 1u<<2, /* Delete control characters */
 
-   /* NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and
-    * enum sendaction, and may thus NOT clash with their bit range! */
-   mx__MIME_DISPLAY_EOF = 1u<<14, /* EOF seen, last round! TODO GROSS hack */
-   mx__MIME_DISPLAY_BUF_CONST = 1u<<15 /* Buffer may be const, copy it */
+	/* NOTE: _TD_EOF and _TD_BUFCOPY may be ORd with enum conversion and enum sendaction, and may thus NOT clash
+	 * with their bit range! */
+	mx__MIME_DISPLAY_EOF = 1u<<14, /* EOF seen, last round! TODO GROSS hack */
+	mx__MIME_DISPLAY_BUF_CONST = 1u<<15 /* Buffer may be const, copy it */
 };
 
-/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
- * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
+/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be used to prepend a charset to this list
+ * (e.g., for *reply-in-same-charset*).
  * The returned boolean indicates charset_iter_is_valid().
  * Without HAVE_ICONV, this "iterates" over *ttycharset* only */
 EXPORT boole mx_mime_charset_iter_reset(char const *a_charset_to_try_first);
@@ -58,8 +58,8 @@ EXPORT boole mx_mime_charset_iter_next(void);
 EXPORT boole mx_mime_charset_iter_is_valid(void);
 EXPORT char const *mx_mime_charset_iter(void);
 
-/* And this is (xxx temporary?) which returns the iterator if that is valid and
- * otherwise either *charset-8bit* or *ttycharset*, dep. on mx_HAVE_ICONV */
+/* And this is (xxx temporary?) which returns the iterator if that is valid and otherwise either *charset-8bit* or
+ * *ttycharset*, dep. on mx_HAVE_ICONV */
 EXPORT char const *mx_mime_charset_iter_or_fallback(void);
 
 EXPORT void mx_mime_charset_iter_recurse(char *outer_storage[2]);/* TODO drop*/
@@ -73,22 +73,19 @@ EXPORT boole mx_mime_header_needs_mime(char const *body);
 
 /* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.
  * FAL0 on hard error, in which case out->s is NIL */
-EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out,
-      BITENUM_IS(u32,mx_mime_display_flags) flags);
+EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out, BITENUM_IS(u32,mx_mime_display_flags) flags);
 
 /* Interpret MIME strings in parts of an address field.
  * NIL on error or NIL input */
 EXPORT char *mx_mime_fromaddr(char const *name);
 
 /* fwrite(3) performing the given MIME conversion TODO mess! filter!! */
-EXPORT sz mx_mime_write(char const *ptr, uz size, FILE *f,
-      enum conversion convert, BITENUM_IS(u32,mx_mime_display_flags) dflags,
-      struct quoteflt *qf, struct str *outrest, struct str *inrest);
-EXPORT sz mx_xmime_write(char const *ptr, uz size, /* TODO drop */
-      FILE *f, enum conversion convert,
-      BITENUM_IS(u32,mx_mime_display_flags) dflags,
-      struct str *outrest, struct str *inrest);
+EXPORT sz mx_mime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
+		BITENUM_IS(u32,mx_mime_display_flags) dflags, struct quoteflt *qf, struct str *outrest,
+		struct str *inrest);
+EXPORT sz mx_xmime_write /* TODO drop */(char const *ptr, uz size, FILE *f, enum conversion convert,
+		BITENUM_IS(u32,mx_mime_display_flags) dflags, struct str *outrest, struct str *inrest);
 
 #include <su/code-ou.h>
 #endif /* mx_MIME_H */
-/* s-it-mode */
+/* s-itt-mode */

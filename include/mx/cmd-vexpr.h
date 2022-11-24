@@ -31,4 +31,4 @@ EXPORT int c_vexpr(void *vp);
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_VEXPR */
 #endif /* mx_CMD_VEXPR_H */
-/* s-it-mode */
+/* s-itt-mode */

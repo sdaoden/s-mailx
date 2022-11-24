@@ -24,10 +24,9 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
- * terminator, the second returns an n_autorec_alloc()ed buffer.
- * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL then we produce
- * a reproducible string by using and managing that counter instead */
+/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL terminator, the second returns a
+ * su_AUTO_ALLOC()ated buffer.
+ * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL a reproducible string through counter is produced instead */
 EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
 EXPORT char *mx_random_create_cp(uz len, u32 *reprocnt_or_nil);
 
@@ -38,4 +37,4 @@ EXPORT boole mx_random_hook(void **cookie, void *buf, uz len);
 
 #include <su/code-ou.h>
 #endif /* mx_RANDOM_H */
-/* s-it-mode */
+/* s-itt-mode */
