@@ -33,11 +33,10 @@ EXPORT int c_elif(void *vp);
 EXPORT int c_else(void *vp);
 EXPORT int c_endif(void *vp);
 
-/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1).
- * Modify the return as appropriate if next_cmd_or_nil is set; it is asserted
- * this is only !NIL if mx_CMD_ARG_F is set.
- * (For example, an `if' is current and not a whiteout, but the following
- * `elif' will be, so its arguments may not be evaluated at all!) */
+/* Whether an `if' block exists (TRU1) / is in a whiteout condition (TRUM1).  Modify the return as appropriate if
+ * next_cmd_or_nil is set; it is asserted this is only !NIL if mx_CMD_ARG_F is set.
+ * (For example, an `if' is current and not a whiteout, but the following `elif' will be, so its arguments may not be
+ * evaluated at all!) */
 EXPORT boole mx_cnd_if_exists(struct mx_cmd_desc const *next_cmd_or_nil);
 
 /* An execution context is teared down, and it finds to have an if stack */
@@ -45,4 +44,4 @@ EXPORT void mx_cnd_if_stack_del(struct mx_go_data_ctx *gdcp);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_CND_H */
-/* s-it-mode */
+/* s-itt-mode */

@@ -34,4 +34,4 @@ EXPORT char const *mx_charsetalias_expand(char const *cp, boole is_normalized);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_CHARSETALIAS_H */
-/* s-it-mode */
+/* s-itt-mode */

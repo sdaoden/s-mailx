@@ -50,8 +50,7 @@
 EXPORT enum okay mx_pop3_noop(void);
 
 /* */
-EXPORT int mx_pop3_setfile(char const *who, char const *server,
-      enum fedit_mode fm);
+EXPORT int mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
 
 /* */
 EXPORT enum okay mx_pop3_header(struct message *m);
@@ -65,4 +64,4 @@ EXPORT boole mx_pop3_quit(boole hold_sigs_on);
 #include <su/code-ou.h>
 #endif /* mx_HAVE_POP3 */
 #endif /* mx_NET_POP3_H */
-/* s-it-mode */
+/* s-itt-mode */

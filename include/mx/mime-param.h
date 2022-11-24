@@ -30,16 +30,14 @@ struct str;
 EXPORT char *mx_mime_param_get(char const *param, char const *headerbody);
 
 /* Format parameter name to have value, AUTO_ALLOC() it or NIL in result.
- * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
- * which it will if the created param requires more than MIME_LINELEN bytes;
- * there is never a trailing newline character */
+ * 0 on error, 1 or -1 on success: the latter if result contains \n newlines, which it will if the created param
+ * requires more than MIME_LINELEN bytes; there never is a trailing newline character */
 /* TODO mime_param_create() should return a StrList<> or something.
  * TODO in fact it should take a HeaderField* and append HeaderFieldParam*! */
-EXPORT s8 mx_mime_param_create(struct str *result, char const *name,
-      char const *value);
+EXPORT s8 mx_mime_param_create(struct str *result, char const *name, char const *value);
 
-/* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * AUTO_ALLOC()ated copy of it; store su_cs_len() in *len if set */
+/* Get the boundary out of a Content-Type: multipart/xyz header field, return AUTO_ALLOC()ated copy of it;
+ * store su_cs_len() in *len if set */
 EXPORT char *mx_mime_param_boundary_get(char const *headerbody, uz *len);
 
 /* Create a AUTO_ALLOC()ed MIME boundary */
@@ -48,4 +46,4 @@ EXPORT char *mx_mime_param_boundary_create(void);
 
 #include <su/code-ou.h>
 #endif /* mx_MIME_PARAM_H */
-/* s-it-mode */
+/* s-itt-mode */

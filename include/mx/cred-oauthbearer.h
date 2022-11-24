@@ -30,16 +30,14 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* This LOFI allocates a result buffer that contains pre_len bytes of
- * uninitialized storage at the front plus the OAUTHBEARER (or XOAUTH2)
- * Initial Client Response.
+/* This LOFI allocates a result buffer that contains pre_len bytes of uninitialized storage at the front plus the
+ * OAUTHBEARER (or XOAUTH2) Initial Client Response.
  * pre_len must not excess "T18446744073709551615 AUTHENTICATE OAUTHBEARER ".
  * Upon error (it was logged) res is zeroed. */
-EXPORT boole mx_oauthbearer_create_icr(struct str *res, uz pre_len,
-      struct mx_url const *urlp, struct mx_cred_ctx const *ccp,
-      boole is_xoauth2);
+EXPORT boole mx_oauthbearer_create_icr(struct str *res, uz pre_len, struct mx_url const *urlp,
+		struct mx_cred_ctx const *ccp, boole is_xoauth2);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_NET */
 #endif /* mx_CRED_OAUTHBEARER_H */
-/* s-it-mode */
+/* s-itt-mode */

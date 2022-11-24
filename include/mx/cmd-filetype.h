@@ -27,30 +27,26 @@
 struct mx_filetype;
 
 struct mx_filetype{
-   char const *ft_ext_dat; /* Extension this handles, without first period */
-   uz ft_ext_len;
-   char const *ft_load_dat; /* And the load and save command strings */
-   uz ft_load_len;
-   char const *ft_save_dat;
-   uz ft_save_len;
+	char const *ft_ext_dat; /* Extension this handles, without first period */
+	uz ft_ext_len;
+	char const *ft_load_dat; /* And the load and save command strings */
+	uz ft_load_len;
+	char const *ft_save_dat;
+	uz ft_save_len;
 };
 
 /* `(un)?filetype' */
 EXPORT int c_filetype(void *vp);
 EXPORT int c_unfiletype(void *vp);
 
-/* Whether the non-existing file has a handable "equivalent", to be checked by
- * iterating over all established extensions and trying the resulting
- * concatenated filename; a set res_or_nil will be filled on success (data must
- * be copied out) */
-EXPORT boole mx_filetype_trial(struct mx_filetype *res_or_nil,
-      char const *file);
+/* Whether the non-existing file has a handable "equivalent", to be checked by iterating over all established
+ * extensions and trying the resulting concatenated filename; a set res_or_nil will be filled on success (data must be
+ * copied out) */
+EXPORT boole mx_filetype_trial(struct mx_filetype *res_or_nil, char const *file);
 
-/* Whether (the extension of) file is known; a set res_or_nil will be filled
- * on success (data must be copied out) */
-EXPORT boole mx_filetype_exists(struct mx_filetype *res_or_nil,
-      char const *file);
+/* Whether (the extension of) file is known; a set res_or_nil will be filled on success (data must be copied out) */
+EXPORT boole mx_filetype_exists(struct mx_filetype *res_or_nil, char const *file);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_FILETYPE_H */
-/* s-it-mode */
+/* s-itt-mode */

@@ -38,16 +38,13 @@ EXPORT int c_mlsubscribe(void *vp);
 EXPORT int c_unmlsubscribe(void *vp);
 
 /* Whether a name is a known (or subscribed_only) list */
-EXPORT enum mx_mlist_type mx_mlist_query(char const *name,
-      boole subscribed_only);
+EXPORT enum mx_mlist_type mx_mlist_query(char const *name, boole subscribed_only);
 
-/* Give MLIST_OTHER to search for any kind of list, in which case all
- * recipients are searched until EOL or _SUBSCRIBED is seen.
+/* MLIST_OTHER searches for any kind, in which case all recipients are searched until EOL or _SUBSCRIBED is seen.
  * _POSSIBLY may not be searched for; it return _POSSIBLY for _OTHER, though.
  * XXX possibly belongs to message or header specific code */
-EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
-      enum mx_mlist_type what);
+EXPORT enum mx_mlist_type mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_MLIST_H */
-/* s-it-mode */
+/* s-itt-mode */

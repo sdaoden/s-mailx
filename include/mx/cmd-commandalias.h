@@ -26,8 +26,7 @@
 
 /* Whether a `commandalias' name exists, returning name or NIL, pointing
  * expansion_or_nil to expansion if set: both point into internal storage */
-EXPORT char const *mx_commandalias_exists(char const *name,
-      char const **expansion_or_nil);
+EXPORT char const *mx_commandalias_exists(char const *name, char const **expansion_or_nil);
 
 /* `(un)?commandalias' */
 EXPORT int c_commandalias(void *vp);
@@ -35,4 +34,4 @@ EXPORT int c_uncommandalias(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_COMMANDALIAS_H */
-/* s-it-mode */
+/* s-itt-mode */

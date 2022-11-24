@@ -29,9 +29,9 @@
 EXPORT_DATA FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 
 /* Return whether user says yes, on STDIN if interactive.
- * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for n_boolify() and chooses the yes/no string to append to prompt
- * accordingly.  If prompt is NIL "Continue" is used instead.
+ * Uses noninteract_default, the return value for non-interactive use cases, as a hint for n_boolify() and chooses the
+ * yes/no string to append to prompt accordingly.
+ * If prompt is NIL "Continue" is used instead.
  * Handles+reraises SIGINT */
 EXPORT boole mx_tty_yesorno(char const *prompt, boole noninteract_default);
 
@@ -44,18 +44,14 @@ EXPORT char *mx_tty_getuser(char const *query);
 EXPORT char *mx_tty_getpass(char const *query);
 #endif
 
-/* Via go_input_cp(); handles shell unquoting and returns the status of
- * n_shexp_unquote_one() (so TRU2 for empty input) */
-EXPORT boole mx_tty_getfilename(struct n_string *store,
-      BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt_or_nil,
-      char const *init_content_or_nil);
+/* Via go_input_cp(); handles shell unquoting and returns the status of n_shexp_unquote_one() (TRU2 for empty input) */
+EXPORT boole mx_tty_getfilename(struct n_string *store, BITENUM_IS(u32,mx_go_input_flags) gif,
+		char const *prompt_or_nil, char const *init_content_or_nil);
 
-/* Create the prompt and return its visual width in columns, which may be 0
- * if evaluation is disabled etc.  The data is placed in store.
- * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
- * takes place */
-EXPORT u32 mx_tty_create_prompt(struct n_string *store, char const *xprompt,
-      BITENUM_IS(u32,mx_go_input_flags) gif);
+/* Create the prompt and return its visual width in columns, which may be 0 if evaluation is disabled etc.
+ * The data is placed in store.
+ * xprompt is inspected only if prompt is enabled and no *prompt* evaluation takes place */
+EXPORT u32 mx_tty_create_prompt(struct n_string *store, char const *xprompt, BITENUM_IS(u32,mx_go_input_flags) gif);
 
 /* MLE */
 
@@ -72,20 +68,16 @@ EXPORT void mx_tty_destroy(boole xit_fastpath);
  * If n>0 assumes that *linebuf has n bytes of default content.
  * histok_or_nil like for go_input().
  * Only the _CTX_ bits in lif are used */
-EXPORT int mx_tty_readline(BITENUM_IS(u32,mx_go_input_flags) gif,
-      char const *prompt, char **linebuf, uz *linesize, uz n,
-      boole *histok_or_nil  su_DVL_LOC_ARGS_DECL);
+EXPORT int mx_tty_readline(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize,
+		uz n, boole *histok_or_nil  su_DVL_LOC_ARGS_DECL);
 #ifdef su_HAVE_DVL_LOC_ARGS
-# define mx_tty_readline(A,B,C,D,E,F) \
-   (mx_tty_readline)(A, B, C, D, E, F  su_DVL_LOC_ARGS_INJ)
+# define mx_tty_readline(A,B,C,D,E,F) (mx_tty_readline)(A, B, C, D, E, F  su_DVL_LOC_ARGS_INJ)
 #endif
 
 /* Add a line (most likely as returned by tty_readline()) to the history.
- * Whether and how an entry is added for real depends on gif, e.g.,
- * GO_INPUT_HIST_GABBY / *history-gabby* relation.
+ * Whether and how an entry is added for real depends on gif, e.g., GO_INPUT_HIST_GABBY / *history-gabby* relation.
  * Empty strings are never stored */
-EXPORT void mx_tty_addhist(char const *s,
-      BITENUM_IS(u32,mx_go_input_flags) gif);
+EXPORT void mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif);
 
 #ifdef mx_HAVE_HISTORY
 EXPORT int c_history(void *vp);
@@ -99,4 +91,4 @@ EXPORT int c_unbind(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_TTY_H */
-/* s-it-mode */
+/* s-itt-mode */

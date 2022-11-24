@@ -27,19 +27,18 @@
 struct message;
 
 enum mx_mime_parse_flags{
-   mx_MIME_PARSE_NONE,
-   mx_MIME_PARSE_DECRYPT = 1u<<0,
-   mx_MIME_PARSE_PARTS = 1u<<1,
-   mx_MIME_PARSE_SHALLOW = 1u<<2,
-   /* In effect we parse this message for user display or quoting purposes,
-    * so relaxed rules regarding content inspection may be applicable */
-   mx_MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
+	mx_MIME_PARSE_NONE,
+	mx_MIME_PARSE_DECRYPT = 1u<<0,
+	mx_MIME_PARSE_PARTS = 1u<<1,
+	mx_MIME_PARSE_SHALLOW = 1u<<2,
+	/* In effect we parse this message for user display or quoting purposes, so relaxed rules regarding content
+	 * inspection may be applicable */
+	mx_MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
 };
 
 /* Create MIME part object tree for and of mp */
-EXPORT struct mimepart *mx_mime_parse_msg(struct message *mp,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf);
+EXPORT struct mimepart *mx_mime_parse_msg(struct message *mp, BITENUM_IS(u32,mx_mime_parse_flags) mpf);
 
 #include <su/code-ou.h>
 #endif /* mx_MIME_PARSE_H */
-/* s-it-mode */
+/* s-itt-mode */

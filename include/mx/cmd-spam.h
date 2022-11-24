@@ -35,4 +35,4 @@ EXPORT int c_spam_spam(void *vp);
 #include <su/code-ou.h>
 #endif /* mx_HAVE_SPAM */
 #endif /* mx_CMD_SPAM_H */
-/* s-it-mode */
+/* s-itt-mode */

@@ -33,4 +33,4 @@ EXPORT char const *mx_shortcut_expand(char const *str);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_SHORTCUT_H */
-/* s-it-mode */
+/* s-itt-mode */

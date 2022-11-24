@@ -34,4 +34,4 @@ EXPORT FILE *mx_fop_get_file_by_cp(char const *cp);
 #include <su/code-ou.h>
 #endif /* mx_HAVE_CMD_FOP */
 #endif /* mx_CMD_FOP_H */
-/* s-it-mode */
+/* s-itt-mode */

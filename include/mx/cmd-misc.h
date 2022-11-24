@@ -55,4 +55,4 @@ EXPORT int c_version(void *vp);
 
 #include <su/code-ou.h>
 #endif /* mx_CMD_MISC_H */
-/* s-it-mode */
+/* s-itt-mode */

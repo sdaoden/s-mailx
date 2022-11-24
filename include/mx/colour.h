@@ -35,30 +35,30 @@ struct mx_colour_env;
 /* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
 enum mx_colour_ctx{
-   mx_COLOUR_CTX_SUM,
-   mx_COLOUR_CTX_VIEW,
-   mx_COLOUR_CTX_MLE,
-   mx__COLOUR_CTX_MAX1
+	mx_COLOUR_CTX_SUM,
+	mx_COLOUR_CTX_VIEW,
+	mx_COLOUR_CTX_MLE,
+	mx__COLOUR_CTX_MAX1
 };
 
 enum mx_colour_id{
-   /* Header summary */
-   mx_COLOUR_ID_SUM_DOTMARK = 0,
-   mx_COLOUR_ID_SUM_HEADER,
-   mx_COLOUR_ID_SUM_THREAD,
+	/* Header summary */
+	mx_COLOUR_ID_SUM_DOTMARK = 0,
+	mx_COLOUR_ID_SUM_HEADER,
+	mx_COLOUR_ID_SUM_THREAD,
 
-   /* Message display */
-   mx_COLOUR_ID_VIEW_FROM_ = 0,
-   mx_COLOUR_ID_VIEW_HEADER,
-   mx_COLOUR_ID_VIEW_MSGINFO,
-   mx_COLOUR_ID_VIEW_PARTINFO,
+	/* Message display */
+	mx_COLOUR_ID_VIEW_FROM_ = 0,
+	mx_COLOUR_ID_VIEW_HEADER,
+	mx_COLOUR_ID_VIEW_MSGINFO,
+	mx_COLOUR_ID_VIEW_PARTINFO,
 
-   /* Mailx-Line-Editor */
-   mx_COLOUR_ID_MLE_POSITION = 0,
-   mx_COLOUR_ID_MLE_PROMPT,
-   mx_COLOUR_ID_MLE_ERROR,
+	/* Mailx-Line-Editor */
+	mx_COLOUR_ID_MLE_POSITION = 0,
+	mx_COLOUR_ID_MLE_PROMPT,
+	mx_COLOUR_ID_MLE_ERROR,
 
-   mx__COLOUR_IDS = mx_COLOUR_ID_VIEW_PARTINFO + 1
+	mx__COLOUR_IDS = mx_COLOUR_ID_VIEW_PARTINFO + 1
 };
 
 /* Some non-string colour precondition constants, let us call them tags */
@@ -66,23 +66,23 @@ enum mx_colour_id{
 #define mx_COLOUR_TAG_SUM_OLDER R(char*,-3)
 
 enum mx_colour_get_flags{
-   mx_COLOUR_GET_FORCED = 1u<<0 /* Act even if COLOUR_IS_ACTIVE() is false */
+	mx_COLOUR_GET_FORCED = 1u<<0 /* Act even if COLOUR_IS_ACTIVE() is false */
 };
 
 struct mx_colour_env{
-   struct mx_colour_env *ce_last;
-   boole ce_enabled; /* Colour enabled on this level */
-   u8 ce_ctx; /* enum mx_colour_ctx */
-   u8 ce__pad[6];
-   FILE *ce_outfp;
-   struct a_colour_map *ce_current; /* Active colour or NIL */
+	struct mx_colour_env *ce_last;
+	boole ce_enabled; /* Colour enabled on this level */
+	u8 ce_ctx; /* enum mx_colour_ctx */
+	u8 ce__pad[6];
+	FILE *ce_outfp;
+	struct a_colour_map *ce_current; /* Active colour or NIL */
 };
 
 struct mx_colour_pen;
 
 /* `(un)?colour' */
-EXPORT int c_colour(void *v);
-EXPORT int c_uncolour(void *v);
+EXPORT int c_colour(void *vp);
+EXPORT int c_uncolour(void *vp);
 
 /* TODO All the colour (pen etc. ) interfaces below have to vanish.
  * TODO What we need here is a series of query functions which take context,
@@ -96,9 +96,8 @@ EXPORT int c_uncolour(void *v);
  * Signals are blocked */
 EXPORT void mx_colour_stack_del(struct mx_go_data_ctx *gdcp);
 
-/* We want coloured output (in this autorec memory cycle), if fp is given, the
- * reset sequence will be written as necessary by _stack_del() env_gut() will
- * reset() as necessary if fp is not NIL */
+/* We want coloured output (in this autorec memory cycle), if fp is given, the reset sequence will be written as
+ * necessary by _stack_del() env_gut() will reset() as necessary if fp is not NIL */
 EXPORT void mx_colour_env_create(enum mx_colour_ctx cctx, FILE *fp);
 EXPORT void mx_colour_env_gut(void);
 
@@ -109,11 +108,9 @@ EXPORT void mx_colour_reset(void);
 /* Of course temporary only and may return NIL.  Does not affect state! */
 EXPORT struct str const *mx_colour_reset_to_str(void);
 
-/* A pen is bound to its environment and automatically reclaimed; it may be
- * NULL but that can be used anyway for simplicity.
- * This includes pen_to_str() -- which doesn't affect state! */
-EXPORT struct mx_colour_pen *mx_colour_pen_create(enum mx_colour_id cid,
-                           char const *ctag);
+/* A pen is bound to its environment and automatically reclaimed.
+ * It may be NIL but that can be used anyway for simplicity; this includes pen_to_str(), which doesn't affect state! */
+EXPORT struct mx_colour_pen *mx_colour_pen_create(enum mx_colour_id cid, char const *ctag);
 EXPORT void mx_colour_pen_put(struct mx_colour_pen *self);
 
 /* Get an escape sequence (or NIL, if self is, or no colour there is) */
@@ -125,16 +122,14 @@ EXPORT struct str const *mx_colour_get_reset_cseq(u32 get_flags);
 
 /* Just get the pen for the given combination, or NIL.
  * The return value is "volatile" to colour change commands */
-EXPORT struct mx_colour_pen *mx_colour_get_pen(u32 get_flags,
-      enum mx_colour_ctx cctx, enum mx_colour_id cid, char const *ctag);
+EXPORT struct mx_colour_pen *mx_colour_get_pen(u32 get_flags, enum mx_colour_ctx cctx, enum mx_colour_id cid, char const *ctag);
 
 /* Get terminal control sequence (or NIL, if self is, or no colour there is) */
-EXPORT struct str const *mx_colour_pen_get_cseq(
-      struct mx_colour_pen const *self);
+EXPORT struct str const *mx_colour_pen_get_cseq( struct mx_colour_pen const *self);
 
 #include <su/code-ou.h>
 #else
 # define mx_COLOUR(X)
 #endif /* mx_HAVE_COLOUR */
 #endif /* mx_COLOUR_H */
-/* s-it-mode */
+/* s-itt-mode */
