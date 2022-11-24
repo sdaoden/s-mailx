@@ -7,19 +7,19 @@
  */
 /*
  * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ *		  The Regents of the University of California.	All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *		notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ *		notice, this list of conditions and the following disclaimer in the
+ *		documentation and/or other materials provided with the distribution.
  * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ *		may be used to endorse or promote products derived from this software
+ *		without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -49,387 +49,379 @@
 #include "mx/net-pop3.h"
 #include "mx/tty.h"
 
-/* TODO fake */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
 /* c_file, c_File */
-static int        _c_file(void *v, enum fedit_mode fm);
+static int a_cfold_file(void *v, enum fedit_mode fm);
 
 static int
-_c_file(void *v, enum fedit_mode fm)
-{
-   char **argv = v;
-   int i;
-   NYD2_IN;
+a_cfold_file(void *v, enum fedit_mode fm){
+	char **argv = v;
+	int i;
+	NYD2_IN;
 
-   if(*argv == NULL){
-      n_folder_announce(n_ANNOUNCE_STATUS);
-      i = 0;
-      goto jleave;
-   }
+	if(*argv == NIL){
+		n_folder_announce(n_ANNOUNCE_STATUS);
+		i = 0;
+		goto jleave;
+	}
 
-   if (n_pstate & n_PS_HOOK_MASK) {
-      n_err(_("Cannot change folder from within a hook\n"));
-      i = 1;
-      goto jleave;
-   }
+	if(n_pstate & n_PS_HOOK_MASK){
+		n_err(_("Cannot change folder from within a hook\n"));
+		i = 1;
+		goto jleave;
+	}
 
-   save_mbox_for_possible_quitstuff();
+	save_mbox_for_possible_quitstuff();
 
-   if((i = setfile(*argv, fm)) < 0){
-      i = 1;
-      goto jleave;
-   }
+	if((i = setfile(*argv, fm)) < 0){
+		i = 1;
+		goto jleave;
+	}
 
-   ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
-   if(n_pstate & n_PS_SETFILE_OPENED)
-      temporary_on_mailbox_open(FAL0);
+	ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
+	if(n_pstate & n_PS_SETFILE_OPENED)
+		temporary_on_mailbox_open(FAL0);
 
-   if (i > 0) {
-      /* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
-       * TODO a macro: because that recursed commando loop will terminate the
-       * TODO entire macro due to that!  So either the user needs to be able
-       * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
-       * TODO if $?", then "overriding an "error"), or we need a different
-       * TODO return that differentiates */
-      i = (n_pstate & n_PS_ROBOT) ? 0 : 1;
-      goto jleave;
-   }
+	if(i > 0){
+		/* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
+		 * TODO a macro: because that recursed commando loop will terminate the
+		 * TODO entire macro due to that!  So either the user needs to be able
+		 * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
+		 * TODO if $?", then "overriding an "error"), or we need a different
+		 * TODO return that differentiates */
+		i = (n_pstate & n_PS_ROBOT) ? 0 : 1;
+		goto jleave;
+	}
 
-   if(n_pstate & n_PS_SETFILE_OPENED)
-      n_folder_announce(n_ANNOUNCE_CHANGE);
-   i = 0;
+	if(n_pstate & n_PS_SETFILE_OPENED)
+		n_folder_announce(n_ANNOUNCE_CHANGE);
+	i = 0;
 jleave:
-   NYD2_OU;
-   return i;
+	NYD2_OU;
+	return i;
 }
 
 FL int
-c_file(void *v)
-{
-   int rv;
-   NYD_IN;
+c_file(void *vp){
+	int rv;
+	NYD_IN;
 
-   rv = _c_file(v, FEDIT_NONE);
-   NYD_OU;
-   return rv;
+	rv = a_cfold_file(vp, FEDIT_NONE);
+
+	NYD_OU;
+	return rv;
 }
 
 FL int
-c_File(void *v)
-{
-   int rv;
-   NYD_IN;
+c_File(void *vp){
+	int rv;
+	NYD_IN;
 
-   rv = _c_file(v, FEDIT_RDONLY);
-   NYD_OU;
-   return rv;
+	rv = a_cfold_file(vp, FEDIT_RDONLY);
+
+	NYD_OU;
+	return rv;
 }
 
 FL int
 c_newmail(void *vp){
-   int val, mdot;
-   NYD_IN;
-   UNUSED(vp);
+	int val, mdot;
+	NYD_IN;
+	UNUSED(vp);
 
-   val = 1;
+	val = 1;
 
-   if(n_pstate & n_PS_HOOK_MASK)
-      n_err(_("Cannot call `newmail' from within a hook\n"));
+	if(n_pstate & n_PS_HOOK_MASK)
+		n_err(_("Cannot call `newmail' from within a hook\n"));
 #ifdef mx_HAVE_IMAP
-   else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
-      ;
+	else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
+		;
 #endif
-   else if((val = setfile(mailname,
-            FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
-         ) == 0) {
-      mdot = getmdot(1);
-      setdot(&message[mdot - 1], FAL0);
-   }
+	else if((val = setfile(mailname, FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))) == 0){
+		mdot = getmdot(1);
+		setdot(&message[mdot - 1], FAL0);
+	}
 
-   NYD_OU;
-   return val;
+	NYD_OU;
+	return val;
 }
 
 FL int
-c_noop(void *v)
-{
-   int rv = 0;
-   NYD_IN;
-   UNUSED(v);
+c_noop(void *vp){
+	NYD_IN;
+	UNUSED(vp);
 
-   switch (mb.mb_type) {
+	switch(mb.mb_type){
 #ifdef mx_HAVE_POP3
-   case MB_POP3:
-      mx_pop3_noop();
-      break;
+	case MB_POP3:
+		mx_pop3_noop();
+		break;
 #endif
 #ifdef mx_HAVE_IMAP
-   case MB_IMAP:
-      imap_noop();
-      break;
+	case MB_IMAP:
+		imap_noop();
+		break;
 #endif
-   default:
-      break;
-   }
-   NYD_OU;
-   return rv;
+	default:
+		break;
+	}
+
+	NYD_OU;
+	return su_EX_OK;
 }
 
 FL int
 c_remove(void *vp){
-   struct n_string s_b, *s;
-   uz fmt_len;
-   char const *emsg, **argv, *fmt, *name;
-   NYD_IN;
+	struct n_string s_b, *s;
+	uz fmt_len;
+	char const *emsg, **argv, *fmt, *name;
+	NYD_IN;
 
-   if(n_psonce & n_PSO_INTERACTIVE)
-      s = n_string_book(n_string_creat_auto(&s_b), 127);
-   else
-      s = NIL;
+	if(n_psonce & n_PSO_INTERACTIVE)
+		s = n_string_book(n_string_creat_auto(&s_b), 127);
+	else
+		s = NIL;
 
-   emsg = NIL;
-   argv = vp;
-   /* I18N: remove a file (mailbox)? */
-   fmt_len = su_cs_len(fmt = _("Remove "));
+	emsg = NIL;
+	argv = vp;
+	/* I18N: remove a file (mailbox)? */
+	fmt_len = su_cs_len(fmt = _("Remove "));
 
-   do{ /* }while(*++argv != NIL); */
-      if((name = fexpand(*argv, FEXP_NVAR)) == NIL){
-         emsg = N_("file expansion failed");
-         goto jerr;
-      }
+	do{ /* }while(*++argv != NIL); */
+		if((name = fexpand(*argv, FEXP_NVAR)) == NIL){
+			emsg = N_("file expansion failed");
+			goto jerr;
+		}
 
-      if(!su_cs_cmp(name, mailname)){
-         emsg = N_("cannot remove an open mailbox");
-         goto jerr;
-      }
+		if(!su_cs_cmp(name, mailname)){
+			emsg = N_("cannot remove an open mailbox");
+			goto jerr;
+		}
 
-      if(s != NIL){
-         s = n_string_trunc(s, 0);
-         s = n_string_assign_buf(s, fmt, fmt_len);
-         s = n_string_push_cp(s, n_shexp_quote_cp(*argv, FAL0));
-         s = n_string_push_buf(s, " (", sizeof(" (") -1);
-         s = n_string_push_cp(s, n_shexp_quote_cp(name, FAL0));
-         s = n_string_push_c(s, ')');
-         if(!mx_tty_yesorno(n_string_cp(s), TRU1))
-            continue;
-      }
+		if(s != NIL){
+			s = n_string_trunc(s, 0);
+			s = n_string_assign_buf(s, fmt, fmt_len);
+			s = n_string_push_cp(s, n_shexp_quote_cp(*argv, FAL0));
+			s = n_string_push_buf(s, " (", sizeof(" (") -1);
+			s = n_string_push_cp(s, n_shexp_quote_cp(name, FAL0));
+			s = n_string_push_c(s, ')');
+			if(!mx_tty_yesorno(n_string_cp(s), TRU1))
+				continue;
+		}
 
-      switch(which_protocol(name, TRU1, FAL0, NIL)){
-      case n_PROTO_EML:
-         if(!su_path_rm(name)){
-            emsg = su_err_doc(-1);
-            goto jerr;
-         }
-         break;
-      case PROTO_FILE:
-         if(!su_path_rm(name)){
-            s32 err;
+		switch(which_protocol(name, TRU1, FAL0, NIL)){
+		case n_PROTO_EML:
+			if(!su_path_rm(name)){
+				emsg = su_err_doc(-1);
+				goto jerr;
+			}
+			break;
+		case PROTO_FILE:
+			if(!su_path_rm(name)){
+				s32 err;
 
-            if((err = su_err_no()) == su_ERR_ISDIR){
-               if(su_path_rmdir(name))
-                  break;
-               err = su_err_no();
-            }
-            emsg = su_err_doc(err);
-            goto jerr;
-         }
-         break;
-      case PROTO_POP3:
-         emsg = N_("cannot remove POP3 mailboxes");
-         goto jerr;
-      case PROTO_MAILDIR:
-         if(1
+				if((err = su_err_no()) == su_ERR_ISDIR){
+					if(su_path_rmdir(name))
+						break;
+					err = su_err_no();
+				}
+				emsg = su_err_doc(err);
+				goto jerr;
+			}
+			break;
+		case PROTO_POP3:
+			emsg = N_("cannot remove POP3 mailboxes");
+			goto jerr;
+		case PROTO_MAILDIR:
+			if(TRU1
 #ifdef mx_HAVE_MAILDIR
-               && maildir_remove(name) != OKAY
+					&& maildir_remove(name) != OKAY
 #endif
-         ){
-            emsg =
+			){
+				emsg =
 #ifdef mx_HAVE_MAILDIR
-                  N_("Maildir remove failed")
+						N_("Maildir remove failed")
 #else
-                  N_("no Maildir support available")
+						N_("no Maildir support available")
 #endif
-                  ;
-            goto jerr;
-         }
-         break;
-      case PROTO_IMAP:
-         if(1
+						;
+				goto jerr;
+			}
+			break;
+		case PROTO_IMAP:
+			if(TRU1
 #ifdef mx_HAVE_IMAP
-               && imap_remove(name) != OKAY
+					&& imap_remove(name) != OKAY
 #endif
-         ){
-            emsg =
+			){
+				emsg =
 #ifdef mx_HAVE_IMAP
-                  N_("IMAP remove failed")
+						N_("IMAP remove failed")
 #else
-                  N_("no IMAP support available")
+						N_("no IMAP support available")
 #endif
-               ;
-            goto jerr;
-         }
-         break;
-      case PROTO_UNKNOWN:
-      default:
-         emsg = N_("unknown protocol, not removing");
+					;
+				goto jerr;
+			}
+			break;
+		case PROTO_UNKNOWN:
+		default:
+			emsg = N_("unknown protocol, not removing");
 jerr:
-         emsg = V_(emsg);
-         n_err(_("%s: `remove': %s: %s\n"),
-            n_ERROR, n_shexp_quote_cp(*argv, FAL0), emsg);
-         break;
-      }
-   }while(*++argv != NIL);
+			emsg = V_(emsg);
+			n_err(_("%s: `remove': %s: %s\n"), n_ERROR, n_shexp_quote_cp(*argv, FAL0), emsg);
+			break;
+		}
+	}while(*++argv != NIL);
 
-   /* if(s != NIL) n_string_gut(s); */
+	/* if(s != NIL) n_string_gut(s); */
 
-   NYD_OU;
-   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
+	NYD_OU;
+	return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 }
 
 FL int
 c_rename(void *vp){
-   enum protocol oldp;
-   char const **argv, *emsg, *oldn, *newn;
-   NYD_IN;
+	enum protocol oldp;
+	char const **argv, *emsg, *oldn, *newn;
+	NYD_IN;
 
-   argv = vp;
+	argv = vp;
 
-   emsg = N_("file expansion failed");
+	emsg = N_("file expansion failed");
 
-   if((oldn = fexpand(argv[0], FEXP_FULL)) == NIL)
-      goto jerr;
-   oldp = which_protocol(oldn, TRU1, FAL0, NIL);
+	if((oldn = fexpand(argv[0], FEXP_FULL)) == NIL)
+		goto jerr;
+	oldp = which_protocol(oldn, TRU1, FAL0, NIL);
 
-   if((newn = fexpand(argv[1], FEXP_FULL)) == NIL)
-      goto jerr;
-   if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
-      emsg = N_("can only rename folders of same type\n");
-      goto jerr;
-   }
+	if((newn = fexpand(argv[1], FEXP_FULL)) == NIL)
+		goto jerr;
+	if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
+		emsg = N_("can only rename folders of same type\n");
+		goto jerr;
+	}
 
-   if(!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)){
-      emsg = N_("cannot rename an open mailbox");
-      goto jerr;
-   }
+	if(!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)){
+		emsg = N_("cannot rename an open mailbox");
+		goto jerr;
+	}
 
-   emsg = NIL;
+	emsg = NIL;
 
-   switch(oldp){
-   case n_PROTO_EML:
-      /* FALLTHRU */
-   case PROTO_FILE:
-      if(!su_path_link(newn, oldn)){
-         emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
-         goto jerrnotr;
-      }else if(!su_path_rm(oldn)){
-         emsg = savecatsep(_("removing file failed:"), ' ', _(su_err_doc(-1)));
-         goto jerrnotr;
-      }
-      break;
-   case PROTO_MAILDIR:
-      if(1
+	switch(oldp){
+	case n_PROTO_EML:
+		/* FALLTHRU */
+	case PROTO_FILE:
+		if(!su_path_link(newn, oldn)){
+			emsg = savecatsep(_("link(2) failed:"), ' ', _(su_err_doc(-1)));
+			goto jerrnotr;
+		}else if(!su_path_rm(oldn)){
+			emsg = savecatsep(_("removing file failed:"), ' ', _(su_err_doc(-1)));
+			goto jerrnotr;
+		}
+		break;
+	case PROTO_MAILDIR:
+		if(TRU1
 #ifdef mx_HAVE_MAILDIR
-            && rename(oldn, newn) == -1
+				&& rename(oldn, newn) == -1
 #endif
-      ){
-         emsg =
+		){
+			emsg =
 #ifdef mx_HAVE_MAILDIR
-               savecatsep(_("rename(2) failed:"), ' ',
-                  _(su_err_doc(su_err_no_by_errno())))
+					savecatsep(_("rename(2) failed:"), ' ', _(su_err_doc(su_err_no_by_errno())))
 #else
-               _("no Maildir support available")
+					_("no Maildir support available")
 #endif
-               ;
-         goto jerrnotr;
-      }
-      break;
-   case PROTO_POP3:
-      emsg = N_("cannot rename POP3 mailboxes");
-      goto jerr;
-   case PROTO_IMAP:
-      if(1
+					;
+			goto jerrnotr;
+		}
+		break;
+	case PROTO_POP3:
+		emsg = N_("cannot rename POP3 mailboxes");
+		goto jerr;
+	case PROTO_IMAP:
+		if(TRU1
 #ifdef mx_HAVE_IMAP
-            && imap_rename(oldn, newn) != OKAY
+				&& imap_rename(oldn, newn) != OKAY
 #endif
-      ){
-         emsg =
+		){
+			emsg =
 #ifdef mx_HAVE_IMAP
-               N_("IMAP rename failed")
+					N_("IMAP rename failed")
 #else
-               N_("no IMAP support available")
+					N_("no IMAP support available")
 #endif
-               ;
-         goto jerr;
-      }
-      break;
-   case PROTO_UNKNOWN:
-   default:
-      emsg = N_("unknown protocol, not renaming");
-      goto jerr;
-   }
+					;
+			goto jerr;
+		}
+		break;
+	case PROTO_UNKNOWN:
+	default:
+		emsg = N_("unknown protocol, not renaming");
+		goto jerr;
+	}
 
 jleave:
-   NYD_OU;
-   return (emsg == NIL ? su_EX_OK : su_EX_ERR);
+	NYD_OU;
+	return (emsg == NIL ? su_EX_OK : su_EX_ERR);
 
 
 jerr:
-   emsg = V_(emsg);
+	emsg = V_(emsg);
 jerrnotr:
-   n_err(_("%s: `rename': %s -> %s: %s\n"),
-      n_ERROR, n_shexp_quote_cp(argv[0], FAL0),
-      n_shexp_quote_cp(argv[1], FAL0), emsg);
-   goto jleave;
+	n_err(_("%s: `rename': %s -> %s: %s\n"), n_ERROR, n_shexp_quote_cp(argv[0], FAL0),
+		n_shexp_quote_cp(argv[1], FAL0), emsg);
+	goto jleave;
 }
 
 FL int
 c_folders(void *v){ /* TODO fexpand*/
-   enum fexp_mode const fexp = FEXP_NSHELL
+	enum fexp_mode const fexp = FEXP_NSHELL
 #ifndef mx_HAVE_IMAP
-         | FEXP_LOCAL
+			| FEXP_LOCAL
 #endif
-      ;
-   struct mx_child_ctx cc;
-   char const *cp;
-   char **argv;
-   int rv;
-   NYD_IN;
+		;
+	struct mx_child_ctx cc;
+	char const *cp;
+	char **argv;
+	int rv;
+	NYD_IN;
 
-   rv = su_EX_ERR;
+	rv = su_EX_ERR;
 
-   if(*(argv = v) != NIL){
-      if((cp = fexpand(*argv, fexp)) == NIL)
-         goto jleave;
-   }else if(*(cp = n_folder_query()) == '\0'){
-      n_err(_("folders: *folder* not set, or not resolvable\n"));
-      goto jleave;
-   }
+	if(*(argv = v) != NIL){
+		if((cp = fexpand(*argv, fexp)) == NIL)
+			goto jleave;
+	}else if(*(cp = n_folder_query()) == '\0'){
+		n_err(_("folders: *folder* not set, or not resolvable\n"));
+		goto jleave;
+	}
 
 #ifdef mx_HAVE_IMAP
-   if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
-      rv = imap_folders(cp, *argv == NIL);
-   else
+	if(which_protocol(cp, FAL0, FAL0, NIL) == PROTO_IMAP)
+		rv = imap_folders(cp, *argv == NIL);
+	else
 #endif
-       {
-      mx_child_ctx_setup(&cc);
-      cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
-      cc.cc_cmd = ok_vlook(LISTER);
-      cc.cc_args[0] = cp;
-      if(mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK)
-         rv = su_EX_OK;
-   }
+		 {
+		mx_child_ctx_setup(&cc);
+		cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
+		cc.cc_cmd = ok_vlook(LISTER);
+		cc.cc_args[0] = cp;
+		if(mx_child_run(&cc) && cc.cc_exit_status == su_EX_OK)
+			rv = su_EX_OK;
+	}
 
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_CMD_FOLDER
-/* s-it-mode */
+/* s-itt-mode */

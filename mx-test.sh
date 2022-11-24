@@ -6091,7 +6091,7 @@ t_mta_args() { # {{{
 		r@e.c \
 		-- -x -y -z > ./t9 2>&1
 	check_exn0 9
-	check 9-err - ./t9 '3200702761 93'
+	check 9-err - ./t9 '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S mta-arguments='-t -X "/tmp/my log"' \
@@ -6115,14 +6115,14 @@ t_mta_args() { # {{{
 		r@e.c \
 		-- -x -y -z > ./t12 2>&1
 	check_exn0 12
-	check 12-err - ./t12 '3200702761 93'
+	check 12-err - ./t12 '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=restrict \
 		r@e.c \
 		-- -x -y -z > ./t13 2>&1
 	check_exn0 13
-	check 13-err - ./t13 '3200702761 93'
+	check 13-err - ./t13 '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=restrict -~ \
