@@ -42,8 +42,7 @@
 #include "su/code-in.h"
 
 /* ..of a_cmdal_dp */
-#define a_CMDAL_FLAGS (su_CS_DICT_OWNS |\
-      su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_CMDAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_CMDAL_THRESHOLD_SHIFT 2
 
 static struct su_cs_dict *a_cmdal_dp, a_cmdal__d;
@@ -53,118 +52,110 @@ DVL( static void a_cmdal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
 #if DVLOR(1, 0)
 static void
 a_cmdal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
-   NYD2_IN;
+	NYD2_IN;
 
-   if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
-      su_cs_dict_gut(&a_cmdal__d);
+	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
+		su_cs_dict_gut(&a_cmdal__d);
 
-   a_cmdal_dp = NIL;
+	a_cmdal_dp = NIL;
 
-   NYD2_OU;
+	NYD2_OU;
 }
 #endif
 
 char const *
 mx_commandalias_exists(char const *name, char const **expansion_or_nil){
-   char const *dat;
-   NYD_IN;
+	char const *dat;
+	NYD_IN;
 
-   if(a_cmdal_dp == NIL ||
-         (dat = S(char*,su_cs_dict_lookup(a_cmdal_dp, name))) == NIL)
-      name = NIL;
-   else if(expansion_or_nil != NIL)
-      *expansion_or_nil = dat;
+	if(a_cmdal_dp == NIL || (dat = S(char*,su_cs_dict_lookup(a_cmdal_dp, name))) == NIL)
+		name = NIL;
+	else if(expansion_or_nil != NIL)
+		*expansion_or_nil = dat;
 
-   NYD_OU;
-   return name;
+	NYD_OU;
+	return name;
 }
 
 int
 c_commandalias(void *vp){
-   struct su_cs_dict_view dv;
-   struct n_string s_b, *s;
-   int rv;
-   char const **argv, *key;
-   NYD_IN;
+	struct su_cs_dict_view dv;
+	struct n_string s_b, *s;
+	int rv;
+	char const **argv, *key;
+	NYD_IN;
 
-   if((key = *(argv = vp)) == NIL){
-      struct n_strlist *slp;
+	if((key = *(argv = vp)) == NIL){
+		struct n_strlist *slp;
 
-      slp = NIL;
-      rv = !(mx_xy_dump_dict("commandalias", a_cmdal_dp, &slp, NIL,
-               &mx_xy_dump_dict_gen_ptf) &&
-            mx_page_or_print_strlist("commandalias", slp, FAL0));
-      goto jleave;
-   }
+		slp = NIL;
+		rv = !(mx_xy_dump_dict("commandalias", a_cmdal_dp, &slp, NIL, &mx_xy_dump_dict_gen_ptf) &&
+				mx_page_or_print_strlist("commandalias", slp, FAL0));
+		goto jleave;
+	}
 
-   /* Verify the name is a valid one, and not a command modifier */
-   if(*key == '\0' || *mx_cmd_isolate_name(key) != '\0' ||
-         !mx_cmd_is_valid_name(key)){
-      n_err(_("commandalias: not a valid command name: %s\n"),
-         n_shexp_quote_cp(key, FAL0));
-      rv = 1;
-      goto jleave;
-   }
+	/* Verify the name is a valid one, and not a command modifier */
+	if(*key == '\0' || *mx_cmd_isolate_name(key) != '\0' || !mx_cmd_is_valid_name(key)){
+		n_err(_("commandalias: not a valid command name: %s\n"), n_shexp_quote_cp(key, FAL0));
+		rv = 1;
+		goto jleave;
+	}
 
-   if(argv[1] == NIL){
-      if(a_cmdal_dp != NIL &&
-            su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_cmdal_dp), key)){
-         struct n_strlist *slp;
+	if(argv[1] == NIL){
+		if(a_cmdal_dp != NIL && su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_cmdal_dp), key)){
+			struct n_strlist *slp;
 
-         slp = mx_xy_dump_dict_gen_ptf("commandalias", key,
-               su_cs_dict_view_data(&dv));
-         rv = (fputs(slp->sl_dat, n_stdout) == EOF);
-         rv |= (putc('\n', n_stdout) == EOF);
-      }else{
-         n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(key, FAL0));
-         rv = 1;
-      }
-   }else{
-      if(a_cmdal_dp == NIL){
-         a_cmdal_dp = su_cs_dict_set_threshold_shift(
-               su_cs_dict_create(&a_cmdal__d, a_CMDAL_FLAGS, &su_cs_toolbox),
-               a_CMDAL_THRESHOLD_SHIFT);
-         DVL( su_state_on_gut_install(&a_cmdal__on_gut, FAL0,
-            su_STATE_ERR_NOPASS); )
-      }
+			slp = mx_xy_dump_dict_gen_ptf("commandalias", key, su_cs_dict_view_data(&dv));
+			rv = (fputs(slp->sl_dat, n_stdout) == EOF);
+			rv |= (putc('\n', n_stdout) == EOF);
+		}else{
+			n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(key, FAL0));
+			rv = 1;
+		}
+	}else{
+		if(a_cmdal_dp == NIL){
+			a_cmdal_dp = su_cs_dict_set_threshold_shift(
+					su_cs_dict_create(&a_cmdal__d, a_CMDAL_FLAGS, &su_cs_toolbox),
+					a_CMDAL_THRESHOLD_SHIFT);
+			DVL( su_state_on_gut_install(&a_cmdal__on_gut, FAL0, su_STATE_ERR_NOPASS); )
+		}
 
-      s = n_string_creat_auto(&s_b);
-      s = n_string_book(s, 500); /* xxx magic */
-      while(*++argv != NIL){
-         if(s->s_len > 0)
-            s = n_string_push_c(s, ' ');
-         s = n_string_push_cp(s, *argv); /* XXX with SU string, EOVERFLOW++ !*/
-      }
+		s = n_string_creat_auto(&s_b);
+		s = n_string_book(s, 500); /* xxx magic */
+		while(*++argv != NIL){
+			if(s->s_len > 0)
+				s = n_string_push_c(s, ' ');
+			s = n_string_push_cp(s, *argv); /* XXX with SU string, EOVERFLOW++ !*/
+		}
 
-      if(su_cs_dict_replace(a_cmdal_dp, key, n_string_cp(s)) <= 0)
-         rv = 0;
-      else{
-         n_err(_("Failed to create `commandalias' storage: %s\n"),
-            n_shexp_quote_cp(key, FAL0));
-         rv = 1;
-      }
+		if(su_cs_dict_replace(a_cmdal_dp, key, n_string_cp(s)) <= 0)
+			rv = 0;
+		else{
+			n_err(_("Failed to create `commandalias' storage: %s\n"), n_shexp_quote_cp(key, FAL0));
+			rv = 1;
+		}
 
-      /*n_string_gut(s);*/
-   }
+		/*n_string_gut(s);*/
+	}
 
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 int
 c_uncommandalias(void *vp){
-   int rv;
-   NYD_IN;
+	int rv;
+	NYD_IN;
 
-   rv = !mx_unxy_dict("commandalias", a_cmdal_dp, vp);
+	rv = !mx_unxy_dict("commandalias", a_cmdal_dp, vp);
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 #include "su/code-ou.h"
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_CMD_COMMANDALIAS
-/* s-it-mode */
+/* s-itt-mode */

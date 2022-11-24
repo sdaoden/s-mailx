@@ -262,27 +262,12 @@ FL boole mx_pager_close(FILE *fp);
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, uz lines);
 
-/* Parse name and guess at the required protocol.
- * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
- * TODO that together with *newfolders*=maildir adds Maildir support; sigh!
- * If try_hooks is set check_stat is implied and if the stat(2) fails all
- * file-hook will be tried in order to find a supported version of name.
- * If adjusted_or_null is not NULL it will be set to the final version of name
- * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
- * a hook is needed the "real" filename will be placed.
- * TODO This c..p should be URL::from_string()->protocol() or something! */
-FL enum protocol  which_protocol(char const *name, boole check_stat,
-                     boole try_hooks, char const **adjusted_or_null);
-
 /* Hexadecimal itoa (NUL terminates) / atoi (-1 on error) */
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL s32      n_c_from_hex_base16(char const hex[2]);
 
 /* Return the name of the dead.letter file */
 FL char const * n_getdeadletter(void);
-
-/* Detect and query the hostname to use */
-FL char *n_nodename(boole mayoverride);
 
 /* Convert from / to *ttycharset* */
 #ifdef mx_HAVE_IDNA
@@ -374,6 +359,25 @@ FL struct n_strlist *mx_xy_dump_dict_gen_ptf(char const *cmdname,
  * a trailing such is put as necessary */
 FL boole mx_page_or_print_strlist(char const *cmdname,
       struct n_strlist *slp, boole cnt_lines);
+
+/*
+ * auxlily-compat.c
+ */
+
+/* Parse name and guess at the required protocol.
+ * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
+ * TODO that together with *newfolders*=maildir adds Maildir support; sigh!
+ * If try_hooks is set check_stat is implied and if the stat(2) fails all
+ * file-hook will be tried in order to find a supported version of name.
+ * If adjusted_or_null is not NULL it will be set to the final version of name
+ * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
+ * a hook is needed the "real" filename will be placed.
+ * TODO This c..p should be URL::from_string()->protocol() or something! */
+FL enum protocol  which_protocol(char const *name, boole check_stat,
+                     boole try_hooks, char const **adjusted_or_null);
+
+/* Detect and query the hostname to use */
+FL char *n_nodename(boole mayoverride);
 
 /*
  * cmd-folder.c

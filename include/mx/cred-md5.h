@@ -72,6 +72,7 @@ documentation and/or software.
  * machines which provide only 64-bit integers.
  */
 typedef u32 mx_md5_type;
+# define mx_MD5_TYPE_MAX U32_MAX
 
 typedef struct{
 	mx_md5_type state[4]; /* state (ABCD) */

@@ -145,8 +145,8 @@ a_fop_fd(char const *arg, struct a_fop_ofd *std_or_nil, struct a_fop_ofd ***fofp
 	s32 fd;
 	NYD2_IN;
 
-	if((su_idec_s32_cp(&fd, arg, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED ||
-			fd < 0)
+	if((su_idec_s32_cp(&fd, arg, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+			) != su_IDEC_STATE_CONSUMED || fd < 0)
 		fofdp = NIL;
 	else{
 		for(fofdpp = &a_fop_ofds;; fofdpp = &fofdp->fof_next){
@@ -419,8 +419,8 @@ a_fop__mktmp(struct a_fop_ctx *fcp){
 		goto jleave;
 	}
 
-	if((fp = mx_fs_tmp_open(tdir, fcp->fc_arg, (mx_FS_O_RDWR | ((*fcp->fc_arg != '\0') ? mx_FS_O_SUFFIX : 0)), &fstcp)
-			) != NIL){
+	if((fp = mx_fs_tmp_open(tdir, fcp->fc_arg, (mx_FS_O_RDWR | ((*fcp->fc_arg != '\0') ? mx_FS_O_SUFFIX : 0)),
+			&fstcp)) != NIL){
 		fcp->fc_varres = savestr(fstcp->fstc_filename);
 		mx_fs_close(fp);
 	}else{
@@ -766,8 +766,7 @@ a_fop__touch(struct a_fop_ctx *fcp){
 	}
 	fcp->fc_arg = fcp->fc_argv[0];
 
-	if((fcp->fc_varres = fexpand(fcp->fc_arg, (/*FEXP_NOPROTO |*/
-			FEXP_LOCAL | FEXP_NVAR))) == NIL){
+	if((fcp->fc_varres = fexpand(fcp->fc_arg, (/*FEXP_NOPROTO |*/ FEXP_LOCAL | FEXP_NVAR))) == NIL){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		goto jleave;
@@ -775,8 +774,7 @@ a_fop__touch(struct a_fop_ctx *fcp){
 
 	if(!su_path_touch(fcp->fc_varres, n_time_now(TRU1))){
 		if((fp = mx_fs_open(fcp->fc_varres, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
-					((fcp->fc_flags & a_FOP_MOD_NOFOLLOW) ? mx_FS_O_NOFOLLOW : 0)))
-					) != NIL)
+					((fcp->fc_flags & a_FOP_MOD_NOFOLLOW) ? mx_FS_O_NOFOLLOW : 0)))) != NIL)
 			mx_fs_close(fp);
 		else{
 			n_pstate_err_no = su_err_no();
@@ -814,8 +812,7 @@ c_fop(void *vp){
 		was_l = FAL0;
 		if(su_cs_starts_with_case_n(a_fop_subcmds[i].fs_name, fc.fc_arg, j) ||
 				(is_l && (a_fop_subcmds[i].fs_flags & a_FOP_MOD_NOFOLLOW) &&
-				 (was_l = su_cs_starts_with_case_n(a_fop_subcmds[i].fs_name,
-						&fc.fc_arg[1], j - 1)))){
+				 (was_l = su_cs_starts_with_case_n(a_fop_subcmds[i].fs_name, &fc.fc_arg[1], j - 1)))){
 			fc.fc_arg = (fc.fc_subcmd = &a_fop_subcmds[i])->fs_name;
 			fc.fc_flags = f | (was_l ? a_FOP_MOD_NOFOLLOW : 0);
 
@@ -865,7 +862,7 @@ jestr:
 	}
 
 	NYD_OU;
-	return ((f & a_FOP_USE_ESTAT) ? fc.fc_estat : ((f & a_FOP_ERR) ? 1 : 0));
+	return ((f & a_FOP_USE_ESTAT) ? fc.fc_estat : ((f & a_FOP_ERR) ? su_EX_ERR : su_EX_OK));
 }
 
 FILE *

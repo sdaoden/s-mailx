@@ -38,109 +38,109 @@ su_EMPTY_FILE()
 
 boole
 mx_privacy_sign_is_desired(void){
-   boole rv;
-   NYD_IN;
+	boole rv;
+	NYD_IN;
 
-   rv = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
+	rv = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
 #ifndef mx_HAVE_TLS
-   if(rv){
-      n_err(_("No TLS support compiled in\n"));
-      rv = FAL0;
-   }
+	if(rv){
+		n_err(_("No TLS support compiled in\n"));
+		rv = FAL0;
+	}
 #endif
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 FILE *
 mx_privacy_sign(FILE *ip, char const *addr){
-   FILE *rv;
-   NYD_IN;
-   UNUSED(ip);
+	FILE *rv;
+	NYD_IN;
+	UNUSED(ip);
 
-   if(addr == NIL){
-      n_err(_("No *from* address for signing specified\n"));
-      rv = NIL;
-      goto jleave;
-   }
+	if(addr == NIL){
+		n_err(_("No *from* address for signing specified\n"));
+		rv = NIL;
+		goto jleave;
+	}
 
 #ifdef mx_HAVE_TLS
-   rv = smime_sign(ip, addr);
+	rv = smime_sign(ip, addr);
 #else
-   n_err(_("No TLS support compiled in\n"));
-   rv = NIL;
+	n_err(_("No TLS support compiled in\n"));
+	rv = NIL;
 #endif
 
 jleave:
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 boole
 mx_privacy_verify(struct message *mp, int nr){
-   NYD_IN;
+	NYD_IN;
 
-   UNUSED(mp);
-   UNUSED(nr);
+	UNUSED(mp);
+	UNUSED(nr);
 
-   NYD_OU;
-   return FAL0;
+	NYD_OU;
+	return FAL0;
 }
 
 FILE *
 mx_privacy_encrypt_try(FILE *ip, char const *to){
-   char const k[] = "smime-encrypt-";
-   uz nl;
-   char const *cp;
-   char *vs;
-   FILE *rv;
-   NYD_IN;
+	char const k[] = "smime-encrypt-";
+	uz nl;
+	char const *cp;
+	char *vs;
+	FILE *rv;
+	NYD_IN;
 
-   nl = su_cs_len(to);
-   vs = su_LOFI_ALLOC(sizeof(k)-1 + nl +1);
-   su_mem_copy(vs, k, sizeof(k) -1);
-   su_mem_copy(&vs[sizeof(k) -1], to, nl +1);
+	nl = su_cs_len(to);
+	vs = su_LOFI_ALLOC(sizeof(k)-1 + nl +1);
+	su_mem_copy(vs, k, sizeof(k) -1);
+	su_mem_copy(&vs[sizeof(k) -1], to, nl +1);
 
-   if((cp = n_var_vlook(vs, FAL0)) != NIL){
+	if((cp = n_var_vlook(vs, FAL0)) != NIL){
 #ifdef mx_HAVE_TLS
-      rv = smime_encrypt(ip, cp, to);
-      goto jleave;
+		rv = smime_encrypt(ip, cp, to);
+		goto jleave;
 #else
-      n_err(_("No TLS support compiled in\n"));
+		n_err(_("No TLS support compiled in\n"));
 #endif
-   }
+	}
 
-   rv = R(FILE*,-1);
+	rv = R(FILE*,-1);
 jleave:
-   su_LOFI_FREE(vs);
+	su_LOFI_FREE(vs);
 
-   NYD_OU;
-   return rv;
+	NYD_OU;
+	return rv;
 }
 
 boole
 mx_privacy_encrypt_is_forced(void){
-   boole rv;
-   NYD_IN;
+	boole rv;
+	NYD_IN;
 
-   rv = ok_blook(smime_force_encryption);
-   NYD_OU;
-   return rv;
+	rv = ok_blook(smime_force_encryption);
+
+	NYD_OU;
+	return rv;
 }
 
 struct message *
-mx_privacy_decrypt(struct message *mp, char const *to, char const *cc,
-      boole is_a_verify_call){
-   NYD_IN;
+mx_privacy_decrypt(struct message *mp, char const *to, char const *cc, boole is_a_verify_call){
+	NYD_IN;
 
-   UNUSED(mp);
-   UNUSED(to);
-   UNUSED(cc);
-   UNUSED(is_a_verify_call);
+	UNUSED(mp);
+	UNUSED(to);
+	UNUSED(cc);
+	UNUSED(is_a_verify_call);
 
-   NYD_OU;
-   return NIL;
+	NYD_OU;
+	return NIL;
 }
 
 #include "su/code-ou.h"
@@ -148,4 +148,4 @@ mx_privacy_decrypt(struct message *mp, char const *to, char const *cc,
 #undef su_FILE
 #undef mx_SOURCE
 #undef mx_SOURCE_PRIVACY
-/* s-it-mode */
+/* s-itt-mode */
