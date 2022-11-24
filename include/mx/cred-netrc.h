@@ -28,27 +28,23 @@
 #include <su/code-in.h>
 
 struct mx_netrc_entry{
-   char const *nrce_machine; /* Matching machine entry */
-   char const *nrce_login; /* Or NIL */
-   char const *nrce_password; /* Or NIL */
+	char const *nrce_machine; /* Matching machine entry */
+	char const *nrce_login; /* Or NIL */
+	char const *nrce_password; /* Or NIL */
 };
 
 /* `netrc' */
 EXPORT int c_netrc(void *vp);
 
-/* Lookup an entry for urlp in the .netrc database, fill in result on success:
- * any data points into internal storage.
- * Returns FAL0 if no entry has been found, or if no user was provided and
- * multiple entries match for the given host.
- * Otherwise returns TRU1 if an entry was found, and
- * TRUM1 if an exact match has been found; an exact match is
+/* Lookup an entry for urlp in the .netrc database, fill in result on success: any data points into internal storage.
+ * Returns FAL0 if no entry has been found, or if no user was provided and multiple entries match for the given host.
+ * Otherwise returns TRU1 if an entry was found, and TRUM1 if an exact match has been found; an exact match is
  * - if urlp has a user and we have a machine (hostname) / login (user) match
  * - if only one match exists for machine (and it does not contradict
  *   a possible URL provided user) */
-EXPORT boole mx_netrc_lookup(struct mx_netrc_entry *result,
-      struct mx_url const *urlp);
+EXPORT boole mx_netrc_lookup(struct mx_netrc_entry *result, struct mx_url const *urlp);
 
 #include <su/code-ou.h>
 #endif /* mx_HAVE_NETRC */
 #endif /* mx_CRED_NETRC_H */
-/* s-it-mode */
+/* s-itt-mode */
