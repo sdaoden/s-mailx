@@ -195,6 +195,17 @@ su_path_fchmod(sz fd, u32 permprot){
 }
 
 boole
+su_path_isatty(sz fd){
+	boole rv;
+	NYD_IN;
+
+	rv = (isatty(S(s32,fd)) == 1);
+
+	NYD_OU;
+	return rv;
+}
+
+boole
 su_path_link(char const *dst, char const *src){
 	boole rv;
 	NYD_IN;

@@ -61,6 +61,7 @@ su_EMPTY_FILE()
 #include "mx/compat.h"
 #include "mx/file-streams.h"
 #include "mx/sigs.h"
+#include "mx/time.h"
 
 /* TODO fake */
 /*#define NYDPROF_ENABLE*/
@@ -145,7 +146,7 @@ _cleantmp(void){
    if((dirp = opendir("tmp")) == NIL)
       goto jleave;
 
-   now = n_time_now(FAL0)->ts_sec - 36*3600;
+   now = mx_time_now(FAL0)->ts_sec - 36*3600;
    s = n_string_creat_auto(&s_b);
 
    while((dp = readdir(dirp)) != NIL){
@@ -394,24 +395,20 @@ static void
 _maildir_append(char const *name, char const *sub, char const *fn)
 {
    struct message *m;
-   time_t t = 0;
    char const *cp, *xp;
+   s64 t;
    BITENUM_IS(u32,mflag) f;
    NYD_IN;
    UNUSED(name);
 
    f = MVALID | MNOFROM | MNEWEST;
+   t = 0;
 
    if (fn != NULL && sub != NULL) {
       if (!su_cs_cmp(sub, "new"))
          f |= MNEW;
 
-      /* C99 */{
-         s64 tib;
-
-         (void)/*TODO*/su_idec_s64_cp(&tib, fn, 10, &xp);
-         t = (time_t)tib;
-      }
+      (void)/*TODO*/su_idec_s64_cp(&t, fn, 10, &xp);
 
       if ((cp = su_cs_rfind_c(xp, ',')) != NULL && PCMP(cp, >, xp + 2) &&
             cp[-1] == '2' && cp[-2] == n_MAILDIR_SEPARATOR) {
@@ -565,7 +562,7 @@ maildir_update(void)
             goto jbypass;
    }
 
-   tsp = n_time_now(TRU1); /* TODO FAL0, eventloop update! */
+   tsp = mx_time_now(TRU1); /* TODO FAL0, eventloop update! */
 
    n_autorec_relax_create();
    for (m = message, gotcha = 0, held = 0; PCMP(m, <, message + msgCount);
@@ -1122,7 +1119,7 @@ maildir_append(char const *name, FILE *fp, s64 offset)
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
    size = 0;
-   tsp = n_time_now(TRU1); /* TODO -> eventloop */
+   tsp = mx_time_now(TRU1); /* TODO -> eventloop */
 
    n_autorec_relax_create();
    for (flag = MNEW, state = _NLSEP;;) {

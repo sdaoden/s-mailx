@@ -46,11 +46,11 @@ NSPC_USE(su)
 static void a_pathinfo_copy(struct su_pathinfo *self, struct stat *sp);
 
 static void
-a_pathinfo_copy(struct su_pathinfo *self, struct stat *sp){
+a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 	u32 x, f;
 	NYD2_IN;
 
-	x = S(u32,sp->st_mode);
+	x = S(u32,stp->st_mode);
 
 	/* */
 	if(su_IOPF_XOTH == S_IXOTH && su_IOPF_WOTH == S_IWOTH && su_IOPF_ROTH == S_IROTH &&
@@ -126,41 +126,41 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *sp){
 	}
 
 	self->pi_flags = f;
-	self->pi_nlink = sp->st_nlink;
-	self->pi_ino = S(u64,sp->st_ino);
-	self->pi_dev = S(u64,sp->st_dev);
-	self->pi_rdev = S(u64,sp->st_rdev);
-	self->pi_uid = S(uz,sp->st_uid);
-	self->pi_gid = S(uz,sp->st_gid);
+	self->pi_nlink = stp->st_nlink;
+	self->pi_ino = S(u64,stp->st_ino);
+	self->pi_dev = S(u64,stp->st_dev);
+	self->pi_rdev = S(u64,stp->st_rdev);
+	self->pi_uid = S(uz,stp->st_uid);
+	self->pi_gid = S(uz,stp->st_gid);
 	self->pi_blocks =
 #ifdef su_HAVE_STAT_BLOCKS
-			sp->st_blocks
+			stp->st_blocks
 #else
-			((S(u64,sp->st_size) + 511) & ~511) >> 9
+			((S(u64,stp->st_size) + 511) & ~511) >> 9
 #endif
 			;
-	self->pi_blksize = sp->st_blksize;
-	self->pi_size = sp->st_size;
+	self->pi_blksize = stp->st_blksize;
+	self->pi_size = stp->st_size;
 #ifdef su_HAVE_STAT_TIMESPEC
-	self->pi_atime.ts_sec = S(s64,sp->st_atim.tv_sec);
-	self->pi_atime.ts_nano = S(sz,sp->st_atim.tv_nsec);
-	self->pi_mtime.ts_sec = S(s64,sp->st_mtim.tv_sec);
-	self->pi_mtime.ts_nano = S(sz,sp->st_mtim.tv_nsec);
-	self->pi_ctime.ts_sec = S(s64,sp->st_ctim.tv_sec);
-	self->pi_ctime.ts_nano = S(sz,sp->st_ctim.tv_nsec);
+	self->pi_atime.ts_sec = S(s64,stp->st_atim.tv_sec);
+	self->pi_atime.ts_nano = S(sz,stp->st_atim.tv_nsec);
+	self->pi_mtime.ts_sec = S(s64,stp->st_mtim.tv_sec);
+	self->pi_mtime.ts_nano = S(sz,stp->st_mtim.tv_nsec);
+	self->pi_ctime.ts_sec = S(s64,stp->st_ctim.tv_sec);
+	self->pi_ctime.ts_nano = S(sz,stp->st_ctim.tv_nsec);
 #elif defined su_HAVE_STAT_TIMENSEC
-	self->pi_atime.ts_sec = S(s64,sp->st_atime);
-	self->pi_atime.ts_nano = S(sz,sp->st_atimensec);
-	self->pi_mtime.ts_sec = S(s64,sp->st_mtime);
-	self->pi_mtime.ts_nano = S(sz,sp->st_mtimensec);
-	self->pi_ctime.ts_sec = S(s64,sp->st_ctime);
-	self->pi_ctime.ts_nano = S(sz,sp->st_ctimensec);
+	self->pi_atime.ts_sec = S(s64,stp->st_atime);
+	self->pi_atime.ts_nano = S(sz,stp->st_atimensec);
+	self->pi_mtime.ts_sec = S(s64,stp->st_mtime);
+	self->pi_mtime.ts_nano = S(sz,stp->st_mtimensec);
+	self->pi_ctime.ts_sec = S(s64,stp->st_ctime);
+	self->pi_ctime.ts_nano = S(sz,stp->st_ctimensec);
 #else
-	self->pi_atime.ts_sec = S(s64,sp->st_atime);
+	self->pi_atime.ts_sec = S(s64,stp->st_atime);
 	self->pi_atime.ts_nano = 0;
-	self->pi_mtime.ts_sec = S(s64,sp->st_mtime);
+	self->pi_mtime.ts_sec = S(s64,stp->st_mtime);
 	self->pi_mtime.ts_nano = 0;
-	self->pi_ctime.ts_sec = S(s64,sp->st_ctime);
+	self->pi_ctime.ts_sec = S(s64,stp->st_ctime);
 	self->pi_ctime.ts_nano = 0;
 #endif
 

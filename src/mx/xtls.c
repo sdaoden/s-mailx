@@ -2243,7 +2243,7 @@ ssl_gen_err(char const *fmt, ...)
    NYD_IN;
 
    va_start(ap, fmt);
-   n_verr(fmt, ap);
+   n_verr(fmt, &ap);
    va_end(ap);
 
    n_err(_(": %s\n"), ERR_error_string(ERR_get_error(), NULL));

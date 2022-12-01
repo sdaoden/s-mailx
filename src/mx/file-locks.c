@@ -24,8 +24,9 @@
 # include "mx/nail.h"
 #endif
 
+#include <sys/stat.h> /* File modes, file-dotlock.h */
+
 #include <fcntl.h>
-#include <unistd.h>
 
 #ifdef mx_HAVE_FLOCK
 # include mx_HAVE_FLOCK

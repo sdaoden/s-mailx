@@ -164,6 +164,9 @@ EXPORT boole su_path_chdir(char const *path);
  * The \ERR{INTR} error is handled internally! */
 EXPORT boole su_path_fchmod(sz fd, u32 permprot);
 
+/*! \_ */
+EXPORT boole su_path_isatty(sz fd);
+
 /*! Link (\c{link(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_link(char const *dst, char const *src);
 

@@ -1171,7 +1171,7 @@ j_leave:
 # endif /* mx_HAVE_HISTORY */
 
 static void
-a_tty_line_config(struct a_tty_line *tlp, boole first){
+a_tty_line_config(struct a_tty_line *tlp, boole isfirst){
 	NYD2_IN;
 
 	/* *line-editor-config* */
@@ -1218,7 +1218,7 @@ a_tty_line_config(struct a_tty_line *tlp, boole first){
 	/* C99 */{
 		char *posbuf, *pos;
 
-		if(first)
+		if(isfirst)
 			mx_colour_env_create(mx_COLOUR_CTX_MLE, mx_tty_fp);
 
 		/* .tl_pos_buf is a hack */

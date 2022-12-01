@@ -61,6 +61,7 @@
 #include "mx/mime-type.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
+#include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/ui-str.h"
 
@@ -1638,11 +1639,11 @@ put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
 
    if (ip != NULL && ip->m_from != NULL) {
       froma = ip->m_from;
-      date = n_time_ctime(ip->m_time, NULL);
+      date = mx_time_ctime(ip->m_time, NIL);
       nl = "\n";
    } else {
       froma = ok_vlook(LOGNAME);
-      date = time_current.tc_ctime;
+      date = mx_time_current.tc_ctime;
       nl = n_empty;
    }
 
@@ -1675,7 +1676,7 @@ sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
    int rv, c;
    NYD_IN;
 
-   time_current_update(&time_current, TRU1);
+   mx_time_current_update(NIL, TRU1);
    rv = -1;
    linedat = NULL;
    linesize = 0;
@@ -1725,7 +1726,7 @@ sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
          size = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
                (qf.qf_bypass ? n_empty : qf.qf_pfix), fakefrom(mp),
-               n_time_ctime(mp->m_time, NULL), csuf);
+               mx_time_ctime(mp->m_time, NIL), csuf);
    } else if (nozap) {
       if (!qf.qf_bypass) {
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);

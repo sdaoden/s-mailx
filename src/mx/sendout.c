@@ -63,6 +63,7 @@
 #include "mx/privacy.h"
 #include "mx/random.h"
 #include "mx/sigs.h"
+#include "mx/time.h"
 #include "mx/tty.h"
 #include "mx/url.h"
 
@@ -1052,7 +1053,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
 
          if(mfap)
             fprintf(fp, "From %s %s",
-               ok_vlook(LOGNAME), time_current.tc_ctime);
+               ok_vlook(LOGNAME), mx_time_current.tc_ctime);
          c = EOF;
          while(i = c, (c = getc(fo)) != EOF)
             putc(c, fp);
@@ -1315,7 +1316,7 @@ jeappend:
       }
    }
 
-   if(fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime) < 0)
+   if(fprintf(fo, "From %s %s", ok_vlook(LOGNAME), mx_time_current.tc_ctime) < 0)
       goto jleave;
 
    rv = TRU1;
@@ -1798,8 +1799,7 @@ a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta)
    f = ok_blook(mbox_fcc_and_pcc) ? a_MAFC : a_OK;
 
    if((f & a_MAFC) &&
-         fprintf(fp, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime
-            ) < 0)
+         fprintf(fp, "From %s %s", ok_vlook(LOGNAME), mx_time_current.tc_ctime) < 0)
       goto jeno;
    while(fgetline(&buf, &bufsize, &cnt, &llen, scp->sc_input, TRU1) != NIL){
       if(fwrite(buf, 1, llen, fp) != llen)
@@ -1876,7 +1876,7 @@ a_sendout_random_id(struct header *hp, boole msgid)
    goto jleave;
 
 jgen:
-   tmp = &time_current.tc_gm;
+   tmp = &mx_time_current.tc_gm;
    i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + su_cs_len(h);
    rv = n_autorec_alloc(i +1);
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
@@ -2269,7 +2269,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    }
 
    /* Update some globals we likely need first */
-   time_current_update(&time_current, TRU1);
+   mx_time_current_update(NIL, TRU1);
 
    temporary_compose_mode_hook_control(TRU1, local);
 
@@ -2320,7 +2320,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * XXX But *do* update otherwise because the mail seems to be backdated
     * XXX if the user edited some time, which looks odd and it happened
     * XXX to me that i got mis-dated response mails due to that... */
-   time_current_update(&time_current, TRU1);
+   mx_time_current_update(NIL, TRU1);
 
    /* TODO hrmpf; the MIME/send layer rewrite MUST address the init crap:
     * TODO setup the header ONCE; note this affects edit.c, collect.c ...,
@@ -2874,12 +2874,12 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
    struct tm *tmptr;
    NYD2_IN;
 
-   tmptr = &time_current.tc_local;
+   tmptr = &mx_time_current.tc_local;
 
    /* */
    tzsign = n_hy;
-   if(LIKELY(tmptr->tm_sec == time_current.tc_gm.tm_sec) || must_locale){
-      tzdiff_min = S(int,n_time_tzdiff(time_current.tc_time, NIL, tmptr));
+   if(LIKELY(tmptr->tm_sec == mx_time_current.tc_gm.tm_sec) || must_locale){
+      tzdiff_min = S(int,mx_time_tzdiff(mx_time_current.tc_time, NIL, tmptr));
       tzdiff_min /= su_TIME_MIN_SECS;
       tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
       tzdiff_min %= su_TIME_HOUR_MINS;
@@ -2891,11 +2891,9 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
          tzsign = "+";
    }else{
       if(n_poption & n_PO_D_VV)
-         n_err(_("The difference of UTC to local timezone $TZ "
-               "requires second precision.\n"
-               "  Unsupported by RFC 5321, switching to TZ=UTC to not loose "
-               "precision!\n"));
-      tmptr = &time_current.tc_gm;
+         n_err(_("The difference of UTC to local timezone $TZ requires second precision.\n"
+               "  Unsupported by RFC 5321, switching to TZ=UTC to not loose precision!\n"));
+      tmptr = &mx_time_current.tc_gm;
       tzdiff_hour = 0;
    }
 
@@ -2947,7 +2945,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
    }
 
    /* Update some globals we likely need first */
-   time_current_update(&time_current, TRU1);
+   mx_time_current_update(NIL, TRU1);
 
    if((nfo = mx_fs_tmp_open(NIL, "resend", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS),
             &fstcp)) == NIL){
@@ -3121,7 +3119,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
     * TODO I/O error handling missing.  Yuck! */
    n_string_reserve(n_string_creat_auto(&line), 2 * SEND_LINESIZE);
    bytes = (ul)fprintf(dbuf, "From %s %s",
-         ok_vlook(LOGNAME), time_current.tc_ctime);
+         ok_vlook(LOGNAME), mx_time_current.tc_ctime);
    lines = 1;
    for(flags = a_NONE, c = '\0'; c != EOF; bytes += line.s_len, ++lines){
       n_string_trunc(&line, 0);

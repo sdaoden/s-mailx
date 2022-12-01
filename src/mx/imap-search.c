@@ -61,6 +61,7 @@ su_EMPTY_FILE()
 #include "mx/mime.h"
 #include "mx/names.h"
 #include "mx/srch-ctx.h"
+#include "mx/time.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -155,7 +156,7 @@ static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
                         uz c, struct itnode *n);
 
-static time_t        _imap_read_date(char const *cp);
+static s64           _imap_read_date(char const *cp);
 static char *        _imap_quotestr(char const *s);
 static char *        _imap_unquotestr(char const *s);
 
@@ -323,7 +324,7 @@ static enum okay
 itsplit(char const *spec, char const **xp)
 {
    char const *cp;
-   time_t t;
+   s64 t;
    enum okay rv;
    NYD_IN;
 
@@ -350,7 +351,7 @@ itsplit(char const *spec, char const **xp)
       /* <date> */
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
-      if ((t = _imap_read_date(_it_args[0])) == (time_t)-1) {
+      if ((t = _imap_read_date(_it_args[0])) == -1) {
          n_err(_("Invalid date %s: >>> %s <<<\n"),
             (char*)_it_args[0], around(*xp));
          rv = STOP;
@@ -479,7 +480,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
 
          mx_fs_linepool_aquire(&line, &linesize);
          if (readline_restart(ibuf, &line, &linesize, 0) > 0)
-            m->m_time = unixtime(line);
+            m->m_time = mx_header_unixtime(line);
          mx_fs_linepool_release(line, linesize);
       }
       break;
@@ -488,7 +489,7 @@ itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
    case ITSENTSINCE:
       if (m->m_date == 0)
          if ((cp = hfield1("date", m)) != NULL)
-            m->m_date = rfctime(cp);
+            m->m_date = mx_header_rfctime(cp);
       break;
    default:
       break;
@@ -621,10 +622,10 @@ jleave:
    return rv;
 }
 
-static time_t
+static s64
 _imap_read_date(char const *cp)
 {
-   time_t t;
+   s64 t;
    s32 year, month, day, i;
    char const *xp, *yp;
    NYD_IN;
@@ -652,17 +653,15 @@ _imap_read_date(char const *cp)
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jerr;
 
-   /* No need to test against S32_MAX if sizeof(time_t)==4, because year has
-    * been clamped above */
-   t = S(time_t,su_time_gregor_to_epoch(year, month, day, 0,0,0));
-
-   t += n_time_tzdiff(t, NIL, NIL);
+   t = su_time_gregor_to_epoch(year, month, day, 0,0,0);
+   ASSERT(t >= 0); /* t ok, year check above! */
+   t += mx_time_tzdiff(t, NIL, NIL);
 
 jleave:
    NYD_OU;
    return t;
 jerr:
-   t = (time_t)-1;
+   t = -1;
    goto jleave;
 }
 

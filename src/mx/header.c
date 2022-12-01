@@ -60,6 +60,7 @@
 #include "mx/names.h"
 #include "mx/srch-ctx.h"
 #include "mx/termios.h"
+#include "mx/time.h"
 #include "mx/ui-str.h"
 #include "mx/url.h"
 
@@ -2950,11 +2951,11 @@ fakefrom(struct message *mp){
 }
 
 #if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
-FL time_t
-unixtime(char const *fromline)
+FL s64
+mx_header_unixtime(char const *fromline)
 {
    char const *fp, *xp;
-   time_t t;
+   s64 t;
    s32 i, year, month, day, hour, minute, second;
    NYD2_IN;
 
@@ -2995,32 +2996,27 @@ unixtime(char const *fromline)
    if (xp != fp + 24)
       goto jinvalid;
 
-   {
-      s64 epsecs;
+   t = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
+   if(t < 0)
+      goto jinvalid;
 
-      epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
-      if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
-         goto jinvalid;
-
-      epsecs += n_time_tzdiff(epsecs, NIL, NIL);
-      t = S(time_t,epsecs);
-   }
+   t += mx_time_tzdiff(t, NIL, NIL);
 
 jleave:
    NYD2_OU;
    return t;
 
 jinvalid:
-   t = S(time_t,n_time_now(FAL0)->ts_sec);
+   t = mx_time_now(FAL0)->ts_sec;
    goto jleave;
 }
 #endif /* mx_HAVE_IMAP_SEARCH || mx_HAVE_IMAP */
 
-FL time_t
-rfctime(char const *date) /* TODO su_idec_ return tests */
+FL s64
+mx_header_rfctime(char const *date) /* TODO su_idec_ return tests */
 {
    char const *cp, *x;
-   time_t t;
+   s64 t;
    s32 i, year, month, day, hour, minute, second;
    NYD2_IN;
 
@@ -3080,9 +3076,9 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
       s64 epsecs;
 
       epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
-      if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
+      if(epsecs < 0)
          goto jinvalid;
-      t = S(time_t,epsecs);
+      t = epsecs;
    }
    if ((cp = nexttoken(x)) != NULL) {
       char buf[3];
@@ -3111,7 +3107,7 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
          tadj += (s64)i * 60; /* XXX */
          if (sign < 0)
             tadj = -tadj;
-         t += (time_t)tadj;
+         t += tadj;
       }
       /* TODO WE DO NOT YET PARSE (OBSOLETE) ZONE NAMES
        * TODO once again, Christos Zoulas and NetBSD Mail have done
@@ -3145,14 +3141,15 @@ substdate(struct message *m)
          while (su_cs_is_alnum(*cp));
       }
       if (cp && *++cp)
-         m->m_time = rfctime(cp);
+         m->m_time = mx_header_rfctime(cp);
    }
-   if (m->m_time == 0 || m->m_time > time_current.tc_time) {
-      if ((cp = hfield1("date", m)) != NULL)
-         m->m_time = rfctime(cp);
+   if (m->m_time == 0 || m->m_time > mx_time_current.tc_time) {
+      if ((cp = hfield1("date", m)) != NIL)
+         m->m_time = mx_header_rfctime(cp);
    }
-   if (m->m_time == 0 || m->m_time > time_current.tc_time)
-      m->m_time = time_current.tc_time;
+   if (m->m_time == 0 || m->m_time > mx_time_current.tc_time)
+      m->m_time = mx_time_current.tc_time;
+
    NYD_OU;
 }
 
@@ -3161,7 +3158,7 @@ n_header_textual_date_info(struct message *mp, char const **color_tag_or_null){
    struct tm tmlocal;
    char *rv;
    char const *fmt, *cp;
-   time_t t;
+   s64 t;
    NYD_IN;
    UNUSED(color_tag_or_null);
 
@@ -3178,8 +3175,8 @@ jredo:
          goto jredo;
       }
 
-      t = rfctime(cp);
-      rv = n_time_ctime(t, NULL);
+      t = mx_header_rfctime(cp);
+      rv = mx_time_ctime(t, NIL);
       cp = ok_vlook(datefield_markout_older);
       i = (*fmt != '\0');
       if(cp != NULL)
@@ -3195,7 +3192,7 @@ jredo:
           * TODO an object tree, and date: etc. have a datetime object, which
           * TODO verifies upon parse time; then ALL occurrences of datetime are
           * TODO valid all through the program; and: to_wire, to_user! */
-         t2 = t;
+         t2 = S(time_t,t);
 jredo_localtime:
          if((tmp = localtime(&t2)) == NULL){
             t2 = 0;
@@ -3204,10 +3201,9 @@ jredo_localtime:
          su_mem_copy(&tmlocal, tmp, sizeof *tmp);
       }
 
-      if((i & 2) &&
-            (UCMP(64, t, >, time_current.tc_time + su_TIME_DAY_SECS) ||
+      if((i & 2) && (UCMP(64, t, >, mx_time_current.tc_time + su_TIME_DAY_SECS) ||
 #define _6M ((su_TIME_YEAR_DAYS / 2) * su_TIME_DAY_SECS)
-            UCMP(64, t + _6M, <, time_current.tc_time))){
+            UCMP(64, t + _6M, <, mx_time_current.tc_time))){
 #undef _6M
          if((fmt = (i & 4) ? cp : NULL) == NULL){
             char *x;
@@ -3238,18 +3234,18 @@ jredo_localtime:
             if(j > 128){
                n_err(_("Ignoring this date format: %s\n"),
                   n_shexp_quote_cp(fmt, FAL0));
-               su_cs_pcopy_n(rv, n_time_ctime(t, NULL), j);
+               su_cs_pcopy_n(rv, mx_time_ctime(t, NIL), j);
             }
          }
       }
-   }else if(t == (time_t)0 && !(mp->m_flag & MNOFROM)){
+   }else if(t == 0 && !(mp->m_flag & MNOFROM)){
       /* TODO eliminate this path, query the FROM_ date in setptr(),
        * TODO all other codepaths do so by themselves ALREADY ?????
        * TODO ASSERT(mp->m_time != 0);, then
        * TODO ALSO changes behaviour of datefield_markout_older */
       a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
    }else
-      rv = savestr(n_time_ctime(t, NULL));
+      rv = savestr(mx_time_ctime(t, NIL));
    NYD_OU;
    return rv;
 }
