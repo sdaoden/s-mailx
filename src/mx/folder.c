@@ -55,6 +55,7 @@
 #include "mx/net-pop3.h"
 #include "mx/net-socket.h"
 #include "mx/sigs.h"
+#include "mx/time.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -590,7 +591,7 @@ jlogname:
    }
 
    /* For at least substdate() users TODO -> eventloop tick */
-   time_current_update(&time_current, FAL0);
+   mx_time_current_update(NIL, FAL0);
 
    /* v15-compat: which_protocol(): no auto-completion */
    switch((proto = which_protocol(orig_name = name, TRU1, TRU1, &name))){

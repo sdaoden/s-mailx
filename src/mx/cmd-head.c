@@ -53,6 +53,7 @@
 #include "mx/file-streams.h"
 #include "mx/mime.h"
 #include "mx/termios.h"
+#include "mx/time.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -815,7 +816,7 @@ _headers(int msgspec) /* TODO rework v15 */
    enum mflag fl;
    NYD_IN;
 
-   time_current_update(&time_current, FAL0);
+   mx_time_current_update(NIL, FAL0);
 
    fl = MNEW | MFLAGGED;
    flag = 0;
@@ -1061,7 +1062,7 @@ c_from(void *vp){
          ) == NIL)
       obuf = n_stdout;
 
-   time_current_update(&time_current, FAL0);
+   mx_time_current_update(NIL, FAL0);
 
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, obuf); )
    su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
@@ -1091,7 +1092,7 @@ print_headers(int const *msgvec, boole only_marked,
    uz printed;
    NYD_IN;
 
-   time_current_update(&time_current, FAL0);
+   mx_time_current_update(NIL, FAL0);
 
    mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
    n_autorec_relax_create();

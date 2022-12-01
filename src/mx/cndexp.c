@@ -356,7 +356,7 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 	case a_CNDEXP_OP_FU_O: FALLTHRU
 	case a_CNDEXP_OP_FU_s: FALLTHRU
 	case a_CNDEXP_OP_FU_S: FALLTHRU
-	case a_CNDEXP_OP_FU_u: FALLTHRU
+	case a_CNDEXP_OP_FU_u:
 		if(act){
 			if(!(op & a_CNDEXP_OP_F_SATURATED))
 				cecp->cec_have_pi = (*lhv != '\0' && su_pathinfo_stat(&cecp->cec_pi, lhv));
@@ -409,7 +409,7 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 			rv = ((su_idec_s32_cp(&lhvi, lhv, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 					) == su_IDEC_STATE_CONSUMED && lhvi >= 0);
 			if(rv)
-				rv = isatty(lhvi); /* XXX */
+				rv = su_path_isatty(lhvi);
 		}
 		break;
 
@@ -519,7 +519,7 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 
 	case a_CNDEXP_OP_FB_ef: FALLTHRU
 	case a_CNDEXP_OP_FB_nt: FALLTHRU
-	case a_CNDEXP_OP_FB_ot: FALLTHRU
+	case a_CNDEXP_OP_FB_ot:
 		if(act){
 			boole s1, s2;
 

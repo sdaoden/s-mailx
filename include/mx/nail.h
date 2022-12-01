@@ -43,10 +43,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <setjmp.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <unistd.h>
 
 #include <su/code.h>
 
@@ -966,13 +965,6 @@ struct n_strlist{
    su_LOFI_ALLOC(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_PLAIN_SIZE() VSTRUCT_SIZEOF(struct n_strlist, sl_dat)
 
-struct time_current{ /* TODO s64, etc. */
-   time_t tc_time;
-   struct tm tc_gm;
-   struct tm tc_local;
-   char tc_ctime[32];
-};
-
 struct mailbox{
    enum{
       MB_NONE = 0, /* no reply expected */
@@ -1096,7 +1088,7 @@ struct mimepart{
    uz m_xsize; /* Bytes in the full part */
    long m_lines; /* Lines in the message; wire format! */
    long m_xlines; /* Lines in the full message; ditto */
-   time_t m_time; /* Time the message was sent */
+   s64 m_time; /* Time the message was sent */
    char const *m_from; /* Message sender */
    struct mimepart *m_nextpart; /* Next part at same level */
    struct mimepart *m_multipart; /* Parts of multipart */
@@ -1129,8 +1121,8 @@ struct message{
    uz m_xsize; /* Bytes in the full message */
    long m_lines; /* Lines in the message */
    long m_xlines; /* Lines in the full message */
-   time_t m_time; /* time the message was sent */
-   time_t m_date; /* time in the 'Date' field */
+   s64 m_time; /* time the message was sent */
+   s64 m_date; /* time in the 'Date' field */
 #ifdef mx_HAVE_IMAP
    u64 m_uid; /* IMAP unique identifier */
 #endif
@@ -1375,8 +1367,6 @@ VL int imap_created_mailbox; /* hack to get feedback from imap */
 #endif
 
 VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
-
-VL struct time_current time_current; /* time(3); send: mail1() XXXcarrier */
 
 #ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */

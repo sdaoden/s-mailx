@@ -415,7 +415,7 @@ _makethreads(struct message *m, u32 cnt, int nmail)
          _mlook(NULL, mt, m + i, mprime);
          if (m[i].m_date == 0) {
             if ((cp = hfield1("date", m + i)) != NULL)
-               m[i].m_date = rfctime(cp);
+               m[i].m_date = mx_header_rfctime(cp);
          }
       }
       m[i].m_child = m[i].m_younger = m[i].m_elder = m[i].m_parent = NULL;
@@ -734,7 +734,7 @@ c_sort(void *vp)
          switch (method) {
          case SORT_DATE:
             if (mp->m_date == 0 && (cp = hfield1("date", mp)) != NULL)
-               mp->m_date = rfctime(cp);
+               mp->m_date = mx_header_rfctime(cp);
             ms[n].ms_u.ms_long = mp->m_date;
             break;
          case SORT_STATUS:

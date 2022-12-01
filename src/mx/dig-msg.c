@@ -159,10 +159,11 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
 			p.rv = (fputs("505 `digmsg epoch' not in compose mode\n", fp) != EOF);
 		else{
-			time_t t;
+			s64 t;
 			char const *cp;
 
-			if((cp = hfield1("date", dmcp->dmc_mp)) == NIL || /* TODO .m_date! */ (t = rfctime(cp)) == 0)
+			if((cp = hfield1("date", dmcp->dmc_mp)) == NIL ||
+					/* TODO .m_date! */ (t = mx_header_rfctime(cp)) == 0)
 				p.rv = (fputs("501 `digmsg epoch': invalid date\n", fp) != EOF);
 			else
 				p.rv = (fprintf(fp, "210 %" PRIu64 "\n", S(u64,t)) > 0);
