@@ -21,9 +21,18 @@
 
 #include <mx/nail.h>
 
+#include <signal.h>
+
 /* TODO FAKE */
 #define mx_HEADER
 #include <su/code-in.h>
+
+#ifdef NSIG_MAX
+# undef NSIG
+# define NSIG NSIG_MAX
+#elif !defined NSIG
+# define NSIG ((sizeof(sigset_t) * 8) - 1)
+#endif
 
 enum n_sigman_flags{
 	n_SIGMAN_NONE = 0,

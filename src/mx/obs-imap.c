@@ -50,6 +50,8 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
 #include <sys/socket.h>
 
+#include <time.h>
+
 #include <netdb.h>
 #ifdef mx_HAVE_ARPA_INET_H
 # include <arpa/inet.h>
@@ -71,6 +73,7 @@ su_EMPTY_FILE()
 #include "mx/file-streams.h"
 #include "mx/mime-enc.h"
 #include "mx/sigs.h"
+#include "mx/time.h"
 #include "mx/net-socket.h"
 #include "mx/ui-str.h"
 
@@ -207,6 +210,10 @@ static char const *a_imap_path_normalize(struct mailbox *mp, char const *cp,
       boole look_delim); /* for `imapcodec' only! */
 /* Returns NULL on error */
 static char *imap_path_quote(struct mailbox *mp, char const *cp);
+
+static s64 imap_read_date_time(const char *cp);
+static const char *imap_make_date_time(s64 t);
+
 static void       imap_other_get(char *pp);
 static void       imap_response_get(const char **cp);
 static void a_imap_res__untagged(const char **cp);
@@ -266,7 +273,7 @@ static const char *tag(int new);
 static char *     imap_putflags(int f);
 static void       imap_getflags(const char *cp, char const **xp,enum mflag *f);
 static enum okay  imap_append1(struct mailbox *mp, const char *name, FILE *fp,
-                     off_t off1, long xsize, enum mflag flag, time_t t);
+                     off_t off1, long xsize, enum mflag flag, s64 t);
 static enum okay  imap_append0(struct mailbox *mp, const char *name, FILE *fp,
                      s64 offset);
 static enum okay  imap_list1(struct mailbox *mp, const char *base,
@@ -282,7 +289,7 @@ static enum okay  imap_appenduid_parse(const char *cp,
                      u64 *uidvalidity, u64 *uid);
 static enum okay  imap_copyuid(struct mailbox *mp, struct message *m,
                      const char *name);
-static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
+static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, s64 t,
                      long off1, long xsize, long size, long lines, int flag,
                      const char *name);
 static enum okay  imap_appenduid_cached(struct mailbox *mp, FILE *fp);
@@ -814,6 +821,125 @@ imap_path_quote(struct mailbox *mp, char const *cp){
    rv = err ? NULL : imap_quotestr(cp);
    NYD2_OU;
    return rv;
+}
+
+static s64
+imap_read_date_time(const char *cp) /* TODO idec.. etc. */
+{
+   char buf[3];
+   s64 t, epsecs;
+   int i, year, month, day, hour, minute, second, sign = -1;
+   NYD2_IN;
+
+   /* "25-Jul-2004 15:33:44 +0200"
+    *  |  |   |    |        |
+    *  1  4   8    13       22 */
+   if(cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
+      goto jinvalid;
+   if(cp[2] != '-' || cp[7] != '-' || cp[12] != ' ' ||
+         cp[15] != ':' || cp[18] != ':' || cp[21] != ' ')
+      goto jinvalid;
+   day = strtol(&cp[1], NULL, 10);
+   for(i = 0;;){
+      if(!su_cs_cmp_case_n(&cp[4], su_time_month_names_abbrev[i],
+            su_TIME_MONTH_NAMES_ABBREV_LEN))
+         break;
+      if(!su_TIME_MONTH_IS_VALID(++i))
+         goto jinvalid;
+   }
+   month = i + 1;
+   year = strtol(&cp[8], NULL, 10);
+   hour = strtol(&cp[13], NULL, 10);
+   minute = strtol(&cp[16], NULL, 10);
+   second = strtol(&cp[19], NULL, 10);
+
+   epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
+   if(epsecs < 0)
+      goto jinvalid;
+   t = epsecs;
+
+   switch (cp[22]) {
+   case '-':
+      sign = 1;
+      break;
+   case '+':
+      break;
+   default:
+      goto jinvalid;
+   }
+   buf[2] = '\0';
+   buf[0] = cp[23];
+   buf[1] = cp[24];
+   t += strtol(buf, NULL, 10) * sign * 3600;
+   buf[0] = cp[25];
+   buf[1] = cp[26];
+   t += strtol(buf, NULL, 10) * sign * 60;
+
+jleave:
+   NYD2_OU;
+   return t;
+
+jinvalid:
+   t = mx_time_current_update(NIL, FAL0)->tc_time;
+   goto jleave;
+}
+
+static const char *
+imap_make_date_time(s64 t) /* TODO share foundation with mx_time_ctime() */
+{
+   static char s[40];
+   char const *mn;
+   s32 y, md, th, tm, ts;
+   struct tm *tmp;
+   int tzdiff_hour, tzdiff_min;
+   NYD2_IN;
+
+jredo:
+   /* C99 */{
+      time_t t2;
+
+      if(sizeof(t2) == 4 && t >= S32_MAX){
+         t = 0;
+         goto jredo;
+      }
+      t2 = S(time_t,t);
+      if((tmp = localtime(&t2)) == NIL){
+         t = 0;
+         goto jredo;
+      }
+   }
+
+   tzdiff_min = S(int,mx_time_tzdiff(t, NIL, tmp));
+   tzdiff_min /= su_TIME_MIN_SECS;
+   tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
+   tzdiff_min %= su_TIME_HOUR_MINS;
+
+   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
+      y = 1970;
+      mn = su_time_month_names_abbrev[su_TIME_MONTH_JANUARY];
+      md = 1;
+      th = tm = ts = 0;
+   }else{
+      y += 1900;
+      mn = su_TIME_MONTH_IS_VALID(tmp->tm_mon)
+            ? su_time_month_names_abbrev[tmp->tm_mon] : n_qm;
+
+      if((md = tmp->tm_mday) < 1 || md > 31)
+         md = 1;
+
+      if((th = tmp->tm_hour) < 0 || th > 23)
+         th = 0;
+      if((tm = tmp->tm_min) < 0 || tm > 59)
+         tm = 0;
+      if((ts = tmp->tm_sec) < 0 || ts > 60)
+         ts = 0;
+   }
+
+   snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
+         md, mn, y, th, tm, ts, tzdiff_hour, tzdiff_min);
+
+   NYD2_OU;
+   return s;
 }
 
 static void
@@ -1748,7 +1874,7 @@ jleave:
 }
 
 FL enum okay
-imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
+imap_select(struct mailbox *mp, s64 *size, int *cnt, const char *mbx,
    enum fedit_mode fm)
 {
    char o[mx_LINESIZE];
@@ -2195,13 +2321,13 @@ imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
    char *line, *lp;
    uz linesize, linelen, size = 0;
    int emptyline = 0, lines = 0;
-   off_t offset;
+   s64 offset;
    NYD_IN;
 
    mx_fs_linepool_aquire(&line, &linesize);
 
    fseek(mp->mb_otf, 0L, SEEK_END);
-   offset = ftell(mp->mb_otf);
+   offset = S(s64,ftell(mp->mb_otf));
 
    if(head)
       fwrite(head, 1, headsize, mp->mb_otf);
@@ -2287,13 +2413,13 @@ static void
 imap_putstr(struct mailbox *mp, struct message *m, const char *str,
    const char *head, uz headsize, long headlines)
 {
-   off_t offset;
+   s64 offset;
    uz len;
    NYD_IN;
 
    len = su_cs_len(str);
    fseek(mp->mb_otf, 0L, SEEK_END);
-   offset = ftell(mp->mb_otf);
+   offset = S(s64,ftell(mp->mb_otf));
    if (head)
       fwrite(head, 1, headsize, mp->mb_otf);
    if (len > 0) {
@@ -3178,7 +3304,7 @@ imap_getflags(const char *cp, char const **xp, enum mflag *f)
 
 static enum okay
 imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
-   long xsize, enum mflag flag, time_t t)
+   long xsize, enum mflag flag, s64 t)
 {
    char o[mx_LINESIZE], *buf;
    uz bufsize, buflen, cnt;
@@ -3293,7 +3419,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
    off_t off1 = -1, offs;
    int flag;
    enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
-   time_t tim;
+   s64 tim;
    long size;
    enum okay rv;
    NYD_IN;
@@ -3327,7 +3453,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
             }
             break;
          }
-         tim = unixtime(buf);
+         tim = mx_header_unixtime(buf);
       } else
          size += buflen+1;
       offs += buflen;
@@ -3865,7 +3991,7 @@ jleave:
 }
 
 static enum okay
-imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
+imap_appenduid(struct mailbox *mp, FILE *fp, s64 t, long off1, long xsize,
    long size, long lines, int flag, const char *name)
 {
    struct mailbox xmb;
@@ -3912,7 +4038,7 @@ static enum okay
 imap_appenduid_cached(struct mailbox *mp, FILE *fp)
 {
    FILE *tp = NULL;
-   time_t t;
+   s64 t;
    long size, xsize, ysize, lines;
    enum mflag flag = MNEW;
    char *name, *buf, *bp;
@@ -4559,115 +4685,6 @@ transflags(struct message *omessage, long omsgCount, int transparent)
    prevdot = newprevdot;
    n_free(omessage);
    NYD_OU;
-}
-
-FL time_t
-imap_read_date_time(const char *cp) /* TODO idec.. etc. */
-{
-   char buf[3];
-   time_t t;
-   s64 epsecs;
-   int i, year, month, day, hour, minute, second, sign = -1;
-   NYD2_IN;
-
-   /* "25-Jul-2004 15:33:44 +0200"
-    *  |  |   |    |        |
-    *  1  4   8    13       22 */
-   if(cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
-      goto jinvalid;
-   if(cp[2] != '-' || cp[7] != '-' || cp[12] != ' ' ||
-         cp[15] != ':' || cp[18] != ':' || cp[21] != ' ')
-      goto jinvalid;
-   day = strtol(&cp[1], NULL, 10);
-   for(i = 0;;){
-      if(!su_cs_cmp_case_n(&cp[4], su_time_month_names_abbrev[i],
-            su_TIME_MONTH_NAMES_ABBREV_LEN))
-         break;
-      if(!su_TIME_MONTH_IS_VALID(++i))
-         goto jinvalid;
-   }
-   month = i + 1;
-   year = strtol(&cp[8], NULL, 10);
-   hour = strtol(&cp[13], NULL, 10);
-   minute = strtol(&cp[16], NULL, 10);
-   second = strtol(&cp[19], NULL, 10);
-
-   epsecs = su_time_gregor_to_epoch(year, month, day, hour, minute, second);
-   if(epsecs < 0 || (sizeof(t) <= 4 && epsecs >= S32_MAX))
-      goto jinvalid;
-   t = S(time_t,epsecs);
-
-   switch (cp[22]) {
-   case '-':
-      sign = 1;
-      break;
-   case '+':
-      break;
-   default:
-      goto jinvalid;
-   }
-   buf[2] = '\0';
-   buf[0] = cp[23];
-   buf[1] = cp[24];
-   t += strtol(buf, NULL, 10) * sign * 3600;
-   buf[0] = cp[25];
-   buf[1] = cp[26];
-   t += strtol(buf, NULL, 10) * sign * 60;
-jleave:
-   NYD2_OU;
-   return t;
-jinvalid:
-   time(&t);
-   goto jleave;
-}
-
-FL const char *
-imap_make_date_time(time_t t) /* XXX share */
-{
-   static char s[40];
-   char const *mn;
-   s32 y, md, th, tm, ts;
-   struct tm *tmp;
-   int tzdiff_hour, tzdiff_min;
-   NYD2_IN;
-
-jredo:
-   if((tmp = localtime(&t)) == NULL){
-      t = 0;
-      goto jredo;
-   }
-
-   tzdiff_min = S(int,n_time_tzdiff(t, NIL, tmp));
-   tzdiff_min /= su_TIME_MIN_SECS;
-   tzdiff_hour = tzdiff_min / su_TIME_HOUR_MINS;
-   tzdiff_min %= su_TIME_HOUR_MINS;
-
-   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
-      y = 1970;
-      mn = su_time_month_names_abbrev[su_TIME_MONTH_JANUARY];
-      md = 1;
-      th = tm = ts = 0;
-   }else{
-      y += 1900;
-      mn = su_TIME_MONTH_IS_VALID(tmp->tm_mon)
-            ? su_time_month_names_abbrev[tmp->tm_mon] : n_qm;
-
-      if((md = tmp->tm_mday) < 1 || md > 31)
-         md = 1;
-
-      if((th = tmp->tm_hour) < 0 || th > 23)
-         th = 0;
-      if((tm = tmp->tm_min) < 0 || tm > 59)
-         tm = 0;
-      if((ts = tmp->tm_sec) < 0 || ts > 60)
-         ts = 0;
-   }
-
-   snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
-         md, mn, y, th, tm, ts, tzdiff_hour, tzdiff_min);
-
-   NYD2_OU;
-   return s;
 }
 
 FL char *

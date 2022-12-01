@@ -28,7 +28,6 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_CMD_FOP
-
 #include <su/cs.h>
 #include <su/icodec.h>
 #include <su/mem.h>
@@ -39,6 +38,7 @@ su_EMPTY_FILE()
 #include "mx/cmd.h"
 #include "mx/file-locks.h"
 #include "mx/file-streams.h"
+#include "mx/time.h"
 
 #include "mx/cmd-fop.h"
 /*#define NYDPROF_ENABLE*/
@@ -772,7 +772,7 @@ a_fop__touch(struct a_fop_ctx *fcp){
 		goto jleave;
 	}
 
-	if(!su_path_touch(fcp->fc_varres, n_time_now(TRU1))){
+	if(!su_path_touch(fcp->fc_varres, mx_time_now(TRU1))){
 		if((fp = mx_fs_open(fcp->fc_varres, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
 					((fcp->fc_flags & a_FOP_MOD_NOFOLLOW) ? mx_FS_O_NOFOLLOW : 0)))) != NIL)
 			mx_fs_close(fp);

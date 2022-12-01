@@ -113,7 +113,7 @@ static void a_pop3_catch(int s);
 static void a_pop3_maincatch(int s);
 static enum okay a_pop3_noop1(struct mailbox *mp);
 static void a_pop3alarm(int s);
-static enum okay a_pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
+static enum okay a_pop3_stat(struct mailbox *mp, s64 *size, int *cnt);
 static enum okay a_pop3_list(struct mailbox *mp, int n, uz *size);
 static void a_pop3_setptr(struct mailbox *mp, struct a_pop3_ctx const *pcp);
 static enum okay a_pop3_get(struct mailbox *mp, struct message *m,
@@ -602,7 +602,7 @@ jleave:
 }
 
 static enum okay
-a_pop3_stat(struct mailbox *mp, off_t *size, int *cnt){
+a_pop3_stat(struct mailbox *mp, s64 *size, int *cnt){
    char const *cp;
    enum okay rv;
    NYD_IN;
@@ -631,7 +631,7 @@ a_pop3_stat(struct mailbox *mp, off_t *size, int *cnt){
          goto jerr;
       if(su_idec_uz_cp(&i, cp, 10, NIL) & su_IDEC_STATE_EMASK)
          goto jerr;
-      *size = S(off_t,i);
+      *size = S(s64,i);
       rv = OKAY;
    }
 
@@ -732,7 +732,7 @@ a_pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need){
    uz linesize, linelen, size;
    int number, lines;
    int volatile emptyline;
-   off_t offset;
+   s64 offset;
    enum okay volatile rv;
    NYD_IN;
 
@@ -761,7 +761,7 @@ a_pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need){
    }
 
    fseek(mp->mb_otf, 0L, SEEK_END);
-   offset = ftell(mp->mb_otf);
+   offset = S(s64,ftell(mp->mb_otf));
 jretry:
    switch(need){
    case NEED_HEADER:

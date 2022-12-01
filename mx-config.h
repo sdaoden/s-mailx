@@ -190,12 +190,5 @@
 */
 #define mx_O_NOXY_BITS (mx_O_NOCTTY /*| mx_O_NOFOLLOW*/)
 
-#ifdef NSIG_MAX
-# undef NSIG
-# define NSIG NSIG_MAX
-#elif !defined NSIG
-# define NSIG ((sizeof(sigset_t) * 8) - 1)
-#endif
-
 #endif /* mx_CONFIG_H */
 /* s-it-mode */

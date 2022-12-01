@@ -3177,13 +3177,14 @@ temporary_on_mailbox_open(boole only_new_mail_check){ /* TODO v15: drop */
 
 	len = su_cs_len(mailname);
 	var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-newmail-") -1 +2);
+	only_new_mail_check = !!only_new_mail_check;
 
 	rv = TRU1;
 	mn = mailname;
 jredo:
 	/* First try the fully resolved path */
 	v15_compat = TRU1;
-	su_cs_pcopy(su_cs_pcopy(var, looks[only_new_mail_check].name), mn);
+	su_cs_pcopy(su_cs_pcopy(var, looks[S(u8,only_new_mail_check)].name), mn);
 	if((cp = n_var_vlook(var, FAL0)) != NIL)
 		goto jmac;
 
@@ -3207,7 +3208,7 @@ jredo:
 
 	/* Plain *on-mailbox-XY* is our last try */
 	v15_compat = TRU1;
-	if((cp = n_var_oklook(looks[only_new_mail_check].ok)) == NIL){
+	if((cp = n_var_oklook(looks[S(u8,only_new_mail_check)].ok)) == NIL){
 		v15_compat = FAL0;
 		if((cp = ok_vlook(folder_hook)) == NIL)/*v15-compat*/
 			goto jleave;
@@ -3216,7 +3217,7 @@ jredo:
 jmac:
 	if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) == NIL){
 		n_err(_("Cannot call *%s** for %s: macro does not exist: %s\n"),
-			looks[only_new_mail_check].name, n_shexp_quote_cp(displayname, FAL0), cp);
+			looks[S(u8,only_new_mail_check)].name, n_shexp_quote_cp(displayname, FAL0), cp);
 		rv = FAL0;
 		goto jleave;
 	}

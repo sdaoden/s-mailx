@@ -30,6 +30,7 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 
 #include "mx/file-streams.h"
 #include "mx/go.h"
@@ -259,7 +260,7 @@ jrefexp:
 #ifdef mx_HAVE_ICONV
 				(oucs != NIL && oucs != R(char*,-1)) ? (cnvfp = mx_fs_open(file, mx_FS_O_RDONLY)) == NIL :
 #endif
-					access(file, R_OK) != 0)){
+					!su_path_access(file, su_IOPF_READ))){
 			e = su_err_no();
 
 			/* It may not have worked because of a character-set specification,

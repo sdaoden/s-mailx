@@ -38,7 +38,6 @@
 struct su_cs_dict;
 struct su_pathinfo;
 struct su_re_match;
-struct su_timespec;
 
 struct mx_attachment;
 struct mx_cmd_arg;
@@ -292,30 +291,14 @@ FL boole n_quadify(char const *inbuf, uz inlen, char const *prompt,
 /* Is the argument "all" (case-insensitive) or "*" */
 FL boole n_is_all_or_aster(char const *name);
 
-/* Get seconds since epoch, return pointer to static struct.
- * Unless force_update is true we may use the event-loop tick time */
-FL struct su_timespec const *n_time_now(boole force_update);
-
-/* Update *tc* to now; only .tc_time updated unless *full_update* is true */
-FL void        time_current_update(struct time_current *tc,
-                  boole full_update);
-
-/* TZ difference in seconds.
- * secsepoch is only used if any of the tm's is NIL. */
-FL s32 n_time_tzdiff(s64 secsepoch, struct tm const *utcp_or_nil,
-      struct tm const *localp_or_nil);
-
-/* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
- * NOTE: no trailing newline */
-FL char *n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil);
-
 /* Our error print series..  Note: these reverse scan format in order to know
  * whether a newline was included or not -- this affects the output!
+ * vlp is a va_list*, but stdarg.h.
  * xxx Prototype changes to be reflected in src/su/core-code. (for now) */
 FL void n_err(char const *format, ...);
 FL void n_errx(boole allow_multiple, char const *format, ...);
-FL void n_verr(char const *format, va_list ap);
-FL void n_verrx(boole allow_multiple, char const *format, va_list ap);
+FL void n_verr(char const *format, void *vlp);
+FL void n_verrx(boole allow_multiple, char const *format, void *vlp);
 /* Hook for SU */
 FL void n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len);
 
@@ -719,14 +702,15 @@ FL int         msgidcmp(char const *s1, char const *s2);
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
 
-/* From username Fri Jan  2 20:13:51 2004
+#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
+/* From username Fri Jan  2 20:13:51 2004; else current time
  *               |    |    |    |    |
  *               0    5   10   15   20 */
-#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
-FL time_t      unixtime(char const *from);
+FL s64 mx_header_unixtime(char const *from);
 #endif
 
-FL time_t      rfctime(char const *date);
+/* 0 for invalid times */
+FL s64 mx_header_rfctime(char const *date);
 
 /* Determine the date to print in faked 'From ' lines */
 FL void        substdate(struct message *m);
@@ -1363,7 +1347,7 @@ FL char *imap_path_decode(char const *path, boole *err_or_null);
 
 FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
-FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
+FL enum okay   imap_select(struct mailbox *mp, s64 *size, int *count,
                   const char *mbx, enum fedit_mode fm);
 FL int imap_setfile(char const *who, const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
@@ -1391,8 +1375,6 @@ FL int         c_cache(void *vp);
 FL int         disconnected(const char *file);
 FL void        transflags(struct message *omessage, long omsgCount,
                   int transparent);
-FL time_t      imap_read_date_time(const char *cp);
-FL const char * imap_make_date_time(time_t t);
 
 /* Extract the protocol base and return a duplicate */
 FL char *protbase(char const *cp  su_DVL_LOC_ARGS_DECL);

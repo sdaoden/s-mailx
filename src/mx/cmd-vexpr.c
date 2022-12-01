@@ -41,6 +41,7 @@ su_EMPTY_FILE()
 
 #include "mx/cmd.h"
 #include "mx/random.h"
+#include "mx/time.h"
 #include "mx/ui-str.h"
 
 #include "mx/cmd-vexpr.h"
@@ -531,9 +532,9 @@ jedutc_num:
 			vcp->vc_flags |= a_VEXPR_ERR;
 			vcp->vc_cmderr = a_VEXPR_ERR_SYNOPSIS;
 		}else{
-			struct time_current tc;
+			struct mx_time_current tc;
 
-			time_current_update(&tc, TRU1);
+			mx_time_current_update(&tc, TRU1);
 			(void)snprintf(vcp->vc_iencbuf, sizeof(vcp->vc_iencbuf), "%04d-%02d-%02dT%02d:%02d:%02dZ",
 				tc.tc_gm.tm_year + 1900, tc.tc_gm.tm_mon + 1, tc.tc_gm.tm_mday,
 				tc.tc_gm.tm_hour, tc.tc_gm.tm_min, tc.tc_gm.tm_sec);
