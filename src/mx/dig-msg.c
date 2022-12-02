@@ -1393,10 +1393,12 @@ j501:
 	if(fputs("501\n", fp) == EOF)
 		cp = NIL;
 	goto jleave;
+#ifdef mx_HAVE_REGEX
 j505:
 	if(fputs("505\n", fp) == EOF)
 		cp = NIL;
 	goto jleave;
+#endif
 j505r:
 	if(fprintf(fp, "505 read-only: %s\n", cp) < 0)
 		cp = NIL;

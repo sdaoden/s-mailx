@@ -5358,6 +5358,12 @@ t_readsh() { # {{{ TODO not enough
 t_fop() { # XXX improve writes when we have redirection {{{
 	t_prolog "${@}"
 
+	if have_feat cmd-fop; then :; else
+		t_echoskip '[!CMD_FOP]'
+		t_epilog "${@}"
+		return
+	fi
+
 	#{{{
 	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>&1
 commandalias x echo '$?/$^ERRNAME :$res:'

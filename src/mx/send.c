@@ -431,7 +431,9 @@ env_addon[i++] = str_concat_csvl(&s,
       rbuf = mx_fs_pipe_open(mthp->mth_shell_cmd, mx_FS_PIPE_WRITE, sh,
             env_addon, ((mthp->mth_flags & mx_MIME_TYPE_HDL_ASYNC)
                ? mx_CHILD_FD_NULL : fileno(*qbuf)));
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 jerror:
+#endif
       if(rbuf == NIL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
             mthp->mth_msg, su_err_doc(-1));
@@ -441,7 +443,10 @@ jerror:
             fflush(n_stdout);
       }
    }
+
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 jleave:
+#endif
    NYD_OU;
    return rbuf;
 }
