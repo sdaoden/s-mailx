@@ -604,31 +604,29 @@ _cc_flags_tcc() {
 _cc_flags_generic() {
 	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
 	_CFLAGS= _LDFLAGS=
-	if feat_yes DEVEL; then
-		__s1=c89 __s2=c99 __s3=c11 __s4=c18 __s5=c2x
-		__v=$(date +%j)
+	# Prefer C99+ due to 64-bit types etc
+	__x='c99 c11 c18 c2x c89'
+	if feat_yes DEVEL && [ -n "${date}" ]; then
+		__y=$(${date} +%s)
 		if [ ${?} -eq 0 ]; then
 			if [ -n "${good_shell}" ]; then
-				__v=${__v##*0}
+				__y=${__y##*0}
 			else
-				__v=$(echo ${__v} | ${sed} -e 's/^0*//')
+				__y=$(echo ${__y} | ${sed} -e 's/^0*//')
 			fi
-			case "$((__v % 5))" in
-			0) ;;
-			1) __s1=c99 __s2=c11 __s3=c18 __s4=c2x __s5=c89;;
-			2) __s1=c11 __s2=c18 __s3=c2x __s4=c89 __s5=c99;;
-			3) __s1=c18 __s2=c2x __s3=c89 __s4=c99 __s5=c11;;
-			*) __s1=c2x __s2=c89 __s3=c99 __s4=c11 __s5=c18;;
+			case "$((__y % 5))" in
+			0) __x='c89 c99 c11 c18 c2x';;
+			1) ;;
+			2) __x='c11 c18 c2x c89 c99';;
+			3) __x='c18 c2x c89 c99 c11';;
+			4) __x='c2x c89 c99 c11 c18';;
 			esac
 		fi
-		msg ' # DEVEL, std checks: '${__s1}', '${__s2}', '${__s3}', '${__s4}', '${__s5}
-		cc_check -std=${__s1} || cc_check -std=${__s2} ||
-			cc_check -std=${__s3} || cc_check -std=${__s4} ||
-			cc_check -std=${__s5}
-		unset __s1 __s2 __s3 __s4 __s5
-	else
-		cc_check -std=c99
+		unset __y
 	fi
+	for __x in ${__x}; do
+		cc_check -std=${__x} && break
+	done
 
 	# E.g., valgrind does not work well with high optimization
 	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
@@ -1576,6 +1574,9 @@ PATH=${__PATH}
 
 thecmd_testandset objcopy objcopy
 thecmd_testandset strip strip
+
+# For random creation, optional
+thecmd_testandset date date
 
 # For ./mx-test.sh only
 thecmd_testandset_fail cksum cksum
