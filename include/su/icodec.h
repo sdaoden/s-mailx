@@ -204,7 +204,7 @@ INLINE BITENUM_IS(u32,su_idec_state) su_idec_cp(void *resp, char const *cp,
  */
 
 enum{
-	su_IENC_BUFFER_SIZE = 80u /*!< Maximum buffer size needed by \r{su_ienc()}, including \c{NUL} and base prefixes. */
+	su_IENC_BUFFER_SIZE = 80u /*!< Maximum buffer size needed by \r{su_ienc()}, including \NUL and base prefixes. */
 };
 
 /*! \_ */

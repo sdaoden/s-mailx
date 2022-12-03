@@ -83,7 +83,7 @@ EXPORT boole su_pathinfo_lstat(struct su_pathinfo *self, char const *path);
 /*! . */
 EXPORT boole su_pathinfo_fstat(struct su_pathinfo *self, sz fd);
 
-/*! Get "descriptive character" for the type, or NUL for regular file. */
+/*! Get "descriptive character" for the type, or \NUL for regular file. */
 EXPORT char su_pathinfo_descriptive_char(struct su_pathinfo const *self);
 
 /*! \_ */

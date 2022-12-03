@@ -47,7 +47,7 @@ C_DECL_BEGIN
  */
 
 enum{
-	su_UTF8_BUFFER_SIZE = 5u /*!< Maximum buffer size of an UTF-8 sequence including terminating NUL. */
+	su_UTF8_BUFFER_SIZE = 5u /*!< Maximum buffer size of an UTF-8 sequence including terminating \NUL. */
 };
 
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
@@ -74,7 +74,7 @@ EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
 #define su_UTF32_REPLACER 0xFFFDu
 
 /*! Convert an UTF-32 character to an UTF-8 sequence.
- * \a{bp} must be large enough also for the terminating NUL (see
+ * \a{bp} must be large enough also for the terminating \NUL (see
  * \r{su_UTF8_BUFFER_SIZE}), its length will * be returned. */
 EXPORT uz su_utf32_to_8(u32 c, char *bp);
 /*! @} *//* }}} */

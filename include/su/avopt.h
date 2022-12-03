@@ -196,7 +196,7 @@ struct su_avopt{
 	 * negative values are reserved for long option identifiers. */
 	s32 avo_current_opt;
 	char const *avo_current_arg; /*!< Current argument or \NIL. */
-	/*! The current option that lead to an error as a NUL terminated string.
+	/*! The current option that lead to an error as a \NUL terminated string.
 	 * In case of long options only this may include the argument, too,
 	 * that is to say the entire argument vector entry which caused failure.
 	 * Only useful if any of \r{su_AVOPT_STATE_ERR_ARG} and \r{su_AVOPT_STATE_ERR_OPT} has occurred,

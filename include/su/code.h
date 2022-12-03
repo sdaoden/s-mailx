@@ -1478,7 +1478,7 @@ typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
 
 /*! See \r{su_log_set_write_fun()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
- * \a{msg} is one line of \a{len} bytes (excluding the \c{NUL} terminator;
+ * \a{msg} is one line of \a{len} bytes (excluding the \NUL terminator;
  * and the final newline can be cancelled, actually).
  * \remarks{If \r{su_LOG_F_CORE} is set in \a{lvl_a_flags} recursively causing log messages should be avoided.} */
 typedef void (*su_log_write_fun)(u32 lvl_a_flags, char const *msg, uz len);
@@ -1745,7 +1745,7 @@ EXPORT void su_nyd_reset_level(u32 nlvl);
 EXPORT void su_nyd_chirp(enum su_nyd_action act, char const *file, u32 line, char const *fun);
 
 /*! Dump all existing not-yet-dead entries of the calling thread via \a{ptf}.
- * \a{buf} is NUL terminated despite \a{blen} being passed, too.
+ * \a{buf} is \NUL terminated despite \a{blen} being passed, too.
  * \remarks{Available only with \r{su_HAVE_DEVEL}.} */
 EXPORT void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
 #endif /* DVLOR(1,0) || DOXYGEN */
