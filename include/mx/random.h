@@ -24,7 +24,7 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL terminator, the second returns a
+/* Get a (pseudo) random string of *len* bytes, _not_ counting the \NUL terminator, the second returns a
  * su_AUTO_ALLOC()ated buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_nil not NIL a reproducible string through counter is produced instead */
 EXPORT char *mx_random_create_buf(char *dat, uz len, u32 *reprocnt_or_nil);
