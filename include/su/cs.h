@@ -42,8 +42,8 @@ struct su_siphash;
  * \ingroup TEXT
  * \brief Byte character data, locale agnostic: ASCII only (\r{su/cs.h})
  *
- * \remarks{Functions that include \c{cbuf} in their name are capable to work on buffers with include \c{NUL}s,
- * unless the length parameter was given as \r{su_UZ_MAX}, since that enforces search for the terminating \c{NUL}.}
+ * \remarks{Functions that include \c{cbuf} in their name are capable to work on buffers with include \NUL's,
+ * unless the length parameter was given as \r{su_UZ_MAX}, since that enforces search for the terminating \NUL.}
  * @{
  */
 
@@ -152,8 +152,8 @@ EXPORT sz su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n);
 EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 
 /*! Duplicate a buffer into a \r{su_MEM_TALLOC()}ated duplicate.
- * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching NUL,
- * embedded NUL bytes will be included in the result.
+ * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching \NUL,
+ * embedded \NUL bytes will be included in the result.
  * \ESTATE. */
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 
@@ -174,7 +174,7 @@ EXPORT char *su_cs_find_c(char const *cp, char xc);
 EXPORT char *su_cs_find_case(char const *cp, char const *xp);
 
 /*! Return offset to first byte of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
- * \remarks{Will not find NUL.} */
+ * \remarks{Will not find \NUL.} */
 INLINE uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen, char const *xp, uz xplen){
 	ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
 	ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
@@ -189,7 +189,7 @@ INLINE uz su_cs_first_of(char const *cp, char const *xp){
 }
 
 /*! Return offset to first byte not of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
- * \remarks{Will not find NUL.} */
+ * \remarks{Will not find \NUL.} */
 INLINE uz su_cs_first_not_of_cbuf_cbuf(char const *cp, uz cplen, char const *xp, uz xplen){
 	ASSERT_RET(cplen == 0 || cp != NIL, UZ_MAX);
 	ASSERT_RET(xplen == 0 || xp != NIL, UZ_MAX);
@@ -270,10 +270,10 @@ INLINE uz su_cs_hash_strong_case(char const *cp){
 /*! \_ */
 EXPORT uz su_cs_len(char const *cp);
 
-/*! Copy \a{src} to \a{dst}, return pointer to NUL in \a{dst}. */
+/*! Copy \a{src} to \a{dst}, return pointer to \NUL in \a{dst}. */
 EXPORT char *su_cs_pcopy(char *dst, char const *src);
 
-/*! Copy \a{src} to \a{dst}, return pointer to NUL in \a{dst}.
+/*! Copy \a{src} to \a{dst}, return pointer to \NUL in \a{dst}.
  * Returns \NIL if \a{dst} is not large enough; \a{dst} will always be terminated unless \a{n} was 0 on entry. */
 EXPORT char *su_cs_pcopy_n(char *dst, char const *src, uz n);
 
