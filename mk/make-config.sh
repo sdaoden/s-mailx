@@ -2502,6 +2502,7 @@ feat_yes NET &&
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h> /* FD_ZERO() SunOS 5.9, at least */
 #include <unistd.h>
 # include <errno.h>
 int main(void){
