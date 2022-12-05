@@ -176,19 +176,5 @@
 # define STDERR_FILENO 2
 #endif
 
-#ifdef O_NOCTTY
-# define mx_O_NOCTTY O_NOCTTY
-#else
-# define mx_O_NOCTTY 0
-#endif
-/*
-#ifdef O_NOFOLLOW
-# define mx_O_NOFOLLOW O_NOFOLLOW
-#else
-# define mx_O_NOFOLLOW 0
-#endif
-*/
-#define mx_O_NOXY_BITS (mx_O_NOCTTY /*| mx_O_NOFOLLOW*/)
-
 #endif /* mx_CONFIG_H */
 /* s-it-mode */
