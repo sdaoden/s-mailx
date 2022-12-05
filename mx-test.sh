@@ -20,6 +20,9 @@ export OBJDIR JOBNO JOBWAIT JOBMON SKIPTEST FS_TIME_RES MEMTESTER
 
 ## -- >8 -- 8< -- ##
 
+# Note: until we reexec to get the configured $SHELL we may not use any newer or more sophisticated constructs
+# like for example $( subshell )!
+
 # environ,usage,argv {{{
 LC_ALL=C LANG=C TZ=UTC
 export LC_ALL LANG TZ
@@ -95,7 +98,7 @@ while :; do
 	if [ -f ./mk-config.env ]; then
 		break
 	elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.env ]; then
-		i=$(pwd)/ # not from environment, sic
+		i=`pwd`/ # not from environment, sic
 		cd "${OBJDIR}"
 		break
 	else
@@ -109,7 +112,10 @@ while :; do
 		make config
 	fi
 done
+
 . ./mk-config.env
+
+# Re-exxec ourselfs with the "correct" $SHELL, if not already.
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
 	MAILX__CC_TEST_RUNNING=y
 	export MAILX__CC_TEST_RUNNING
@@ -141,8 +147,6 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 LOOPS_MAX=$LOOPS_SMALL
 # }}}
 
-## Now it is getting really weird. You have been warned.
-
 # Setup and support {{{
 
 # Wed Oct  2 01:50:07 UTC 1996
@@ -156,7 +160,7 @@ unset POSIXLY_CORRECT LOGNAME USER
 RAWMAILX=${MAILX}
 
 # "sh -c -- 'echo yes'" must echo "yes"; FreeBSD #264319, #220587: work around
-if [ "$("${VAL_SHELL}" -c -- 'echo yes')" = yes ]; then
+if [ $("${VAL_SHELL}" -c -- 'echo yes' 2>/dev/null) = yes ]; then
 	T_MAILX= T_SH=
 else
 	echo '! '"${VAL_SHELL}"' cannot deal with "-c -- ARG", using workaround'
@@ -518,8 +522,7 @@ jsync() {
 		fi
 	done
 
-	[ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] &&
-		${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result ./t.time.out
+	[ -z "${MAILX_CC_TEST_NO_CLEANUP}" ] && ${rm} -rf ./t.*.d ./t.*.id ./t.*.io t.*.result ./t.time.out
 
 	JOBS=0
 }
@@ -528,9 +531,7 @@ jtimeout() {
 	i=0
 	while [ ${i} -lt ${JOBS} ]; do
 		i=$(add ${i} 1)
-		if [ -f t.${i}.id ] &&
-				read pid < t.${i}.id >/dev/null 2>&1 &&
-				kill -0 ${pid} >/dev/null 2>&1; then
+		if [ -f t.${i}.id ] && read pid < t.${i}.id >/dev/null 2>&1 && kill -0 ${pid} >/dev/null 2>&1; then
 			j=${pid}
 			[ -n "${JOBMON}" ] && j=-${j}
 			kill -KILL ${j} >/dev/null 2>&1
@@ -545,8 +546,7 @@ jtimeout() {
 t_prolog() {
 	shift
 
-	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 \
-		TEST_NAME=${1} TEST_ANY=
+	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 TEST_NAME=${1} TEST_ANY=
 
 	printf '%s[%s]%s\n' "" "${TEST_NAME}" ""
 }
