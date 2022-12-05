@@ -26,7 +26,7 @@
 
 struct mx_fs_tmp_ctx;
 
-/* MX open flags; always implied are mx_O_NOXY_BITS (from mx_config.h).
+/* MX open flags; always implied are some to avoid takeovers, like O_NOCTTY.
  * Normally implied (except stated otherwise) are O_CLOEXEC and "registration" for auto closing upon signal jump (sic)
  * or regular mainloop tick (shall no regular close have been issued by then, of course), they have to be disabled
  * explicitly (via FS_O_NOCLOEXEC, FS_O_NOREGISTER) */
@@ -85,6 +85,9 @@ enum mx_fs_pipe_type{
 struct mx_fs_tmp_ctx{
 	char const *fstc_filename;
 };
+
+/* Open according to oflags (see there); mx_FS_O_NOREGISTER is implied! */
+EXPORT s32 mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode);
 
 /* Open according to oflags (see there) */
 EXPORT FILE *mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags);
