@@ -148,8 +148,6 @@ a_cndexp_expr(struct a_cndexp_ctx *cecp, uz level, boole noop){
 	NYD_IN;
 
 	for(syntax = FAL0, rv = TRUM1;; syntax = !syntax, cecp->cec_argv += c, cecp->cec_toks += c, cecp->cec_argc -= c){
-		enum {a_NONE = 0, a_UNA = 1u<<0, a_BIN = 1u<<1};
-
 		u16 op;
 		u32 i, unanot;
 
@@ -209,40 +207,31 @@ a_cndexp_expr(struct a_cndexp_ctx *cecp, uz level, boole noop){
 		}
 
 		/* Must be an operator */
-
 		if(i - c > 1){
-			u8 f;
 			u32 c_save;
 
 			c_save = 0;
 jop_redo:
-			f = a_NONE;
-
 			op = cecp->cec_toks[c];
 			op &= a_CNDEXP_OP_MASK;
-			if(op >= a_CNDEXP_OP_MIN_UNARY && op <= a_CNDEXP_OP_MAX_UNARY)
-				f |= a_UNA;
+			if(op >= a_CNDEXP_OP_MIN_UNARY && op <= a_CNDEXP_OP_MAX_UNARY){
+				++c;
+				xrv = a_cndexp__op_apply(cecp, cecp->cec_toks[c - 1], cecp->cec_argv[c], NIL, noop);
+				++c;
+				goto jstepit;
+			}
 
 			if(i - c > 2){
 				u16 opx;
 
 				opx = (cecp->cec_toks[c + 1] & a_CNDEXP_OP_MASK);
-				if(opx >= a_CNDEXP_OP_MIN_BINARY && opx <= a_CNDEXP_OP_MAX_BINARY)
-					f |= a_BIN;
-			}
-
-			if(f & (a_UNA | a_BIN)){
-				++c;
-				if(f & a_UNA)
-					xrv = a_cndexp__op_apply(cecp, cecp->cec_toks[c - 1],
-							cecp->cec_argv[c], NIL, noop);
-				else{
+				if(opx >= a_CNDEXP_OP_MIN_BINARY && opx <= a_CNDEXP_OP_MAX_BINARY){
+					++c;
 					xrv = a_cndexp__op_apply(cecp, cecp->cec_toks[c],
 							cecp->cec_argv[c - 1], cecp->cec_argv[c + 1], noop);
-					++c;
+					c += 2;
+					goto jstepit;
 				}
-				++c;
-				goto jstepit;
 			}
 
 			/* Maybe we saw UNANOT? Step left by one and retry */
