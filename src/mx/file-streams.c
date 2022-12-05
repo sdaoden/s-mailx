@@ -52,6 +52,20 @@
 # define a_FS_O_CLOEXEC 0
 #endif
 
+#ifdef O_NOCTTY
+# define a_FS_O_NOCTTY O_NOCTTY
+#else
+# define a_FS_O_NOCTTY 0
+#endif
+
+#if 0 /*def O_NOFOLLOW*/
+# define a_FS_O_NOFOLLOW O_NOFOLLOW
+#else
+# define a_FS_O_NOFOLLOW 0
+#endif
+
+#define a_FS_O_NOXY_BITS (a_FS_O_NOCTTY | a_FS_O_NOFOLLOW)
+
 enum{
 	a_FS_PIPE_READ,
 	a_FS_PIPE_WRITE
@@ -153,7 +167,7 @@ a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil){
 		rv |= O_NOFOLLOW;
 #endif
 
-	rv |= mx_O_NOXY_BITS;
+	rv |= a_FS_O_NOXY_BITS;
 
 	if(os_or_nil != NIL)
 		*os_or_nil = os;
@@ -305,7 +319,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
 	mx_child_ctx_setup(&cc);
 	cc.cc_flags = mx_CHILD_RUN_WAIT_LIFE;
 	cc.cc_fds[mx_CHILD_FD_IN] = fileno(fsep->fse_fp);
-	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | mx_O_NOXY_BITS;
+	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | a_FS_O_NOXY_BITS;
 	if(!(fsep->fse_oflags & mx_FS_O_APPEND))
 		osiflags |= O_TRUNC;
 	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags, 0666)) == -1){
@@ -334,6 +348,29 @@ a_fs_file_save(struct a_fs_ent *fsep){
 jleave:
 	NYD_OU;
 	return rv;
+}
+
+s32
+mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode){
+	s32 fd;
+	char const *osflags;
+	int osiflags;
+	NYD_IN;
+
+	osiflags = a_fs_mx_to_os(oflags, &osflags);
+
+	if((fd = open(file, osiflags, mode)) == -1)
+		su_err_no_by_errno();
+#if a_FS_O_CLOEXEC == 0
+	else if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
+		su_err_no_by_errno();
+		close(fd);
+		fd = -1;
+	}
+#endif
+
+	NYD_OU;
+	return fd;
 }
 
 FILE *
@@ -415,7 +452,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 #ifdef mx_HAVE_IMAP
 		file = csave;
 		flags |= a_FS_EF_IMAP;
-		/*osiflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;*/
+		/*osiflags = O_RDWR | O_APPEND | O_CREAT | a_FS_O_NOXY_BITS;*/
 		infd = -1;
 		break;
 #else
@@ -428,7 +465,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 		if(fs_or_nil != NIL && !access(file, F_OK))
 			fs |= mx_FS_OPEN_STATE_EXISTS;
 		flags |= a_FS_EF_MAILDIR;
-		/*osiflags = O_RDWR | O_APPEND | O_CREAT | mx_O_NOXY_BITS;*/
+		/*osiflags = O_RDWR | O_APPEND | O_CREAT | a_FS_O_NOXY_BITS;*/
 		infd = -1;
 		break;
 #else

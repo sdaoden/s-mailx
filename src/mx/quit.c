@@ -257,10 +257,10 @@ jemailname:
 #ifdef mx_HAVE_FTRUNCATE
       ftruncate(fileno(obuf), 0);
 #else
-      int fd;
+      s32 fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | O_TRUNC | mx_O_NOXY_BITS),
-               0600)) != -1)
+      if((fd = mx_fs_open_fd(mailname, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+               mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0600)) != -1)
          close(fd);
 #endif
 
@@ -460,10 +460,10 @@ jcream:
 #ifdef mx_HAVE_FTRUNCATE
       ftruncate(fileno(fbuf), 0);
 #else
-      int fd;
+      s32 fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | O_TRUNC | mx_O_NOXY_BITS),
-               0600)) != -1)
+      if((fd = mx_fs_open_fd(mailname, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+               mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0600)) != -1)
          close(fd);
 #endif
       if(!ok_blook(keep))
@@ -581,8 +581,8 @@ makembox(void) /* TODO oh my god (also error reporting) */
          if(su_cs_cmp_case_n(xmbox, "mbox://", sizeof("mbox://") -1) == 0)
             xmbox += sizeof("mbox://") -1;
 
-         if((c = open(xmbox, (O_WRONLY | O_CREAT | mx_O_NOXY_BITS | O_TRUNC),
-               0666)) != -1)
+         if((c = mx_fs_open_fd(xmbox, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
+                  mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0666)) != -1)
             close(c);
       }
 
