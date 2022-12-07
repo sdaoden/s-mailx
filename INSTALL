@@ -84,7 +84,7 @@ The following make(1) targets exist, the default being `build':
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run mx-test.sh in --check mode on the built binary.
+- test        Run mx-test.sh in check mode on the built binary.
               Tests to be skipped can be passed via SKIPTEST="t1 t2".
 - testnj      Likewise, but use $JOBNO=1 to avoid spawning multiple
               tests in parallel.
@@ -200,25 +200,20 @@ reconfiguration and -compilation could turn the green testing light on.
 (Or adjust VAL_AUTOCC to pass through desired ones as such.)
 
 In order to inspect the error more thoroughly, the mx-test.sh script
-can be used in --run-test mode to invoke the failing tests (testing
+can be used in run-test mode to invoke the failing tests (testing
 echoes the actual test names in brackets), for example
 
-  $ ./mx-test.sh --run-test ./s-nail localopts mbox
+  $ ./mx-test.sh run-test ./s-nail localopts mbox
 
 would run the tests "localopts" and "mbox".  If not an absolute path
 the binary (./s-nail) is expected relative to $OBJDIR.  There also the
-test output files, named like t.TESTNAME-XY, reside.
-(If the build and test is done in a repository checkout, and if the
-branch "test-out" exists, then in addition to the failing test output
-the expected as well as -- optionally -- the file difference of these
-two is generated automatically, too.  And these outputs are also
-generated for normal "$ make test" runs, then.)
+test output files of failed tests, named like t.TESTNAME-XY, reside.
 
 It might make sense to send the output files of the failing tests to
 the mailing-list.  Because of ML message size restrictions, creating
 a compressed tar(1) archive of the files would be appreciated:
 
-  $ rm -f .obj/t.*.old #.obj/t.*.diff # (In repository checkout only)
+  $ rm -f .obj/t.*.old
   $ tar -cf - .obj/t.* | (xz/gzip/zstd -T0 -19) > tlogs.tar.(xz/gz/zst)
 
 Thank you!
