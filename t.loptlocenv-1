@@ -41,7 +41,6 @@ environ set yz=fi
 environ set zz=if
 set _S_MAILX_TEST=trabbel
 shell a= tl= xy= yz=fi zz=if MT=trabbel
-reproducible_build: Ignoring value of boolean variable: asksub: du
 --r1-mid
 as=1 tl=10 xy=bye yz=cry zz=yrc MT=gelle
 set asksub

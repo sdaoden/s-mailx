@@ -16,7 +16,6 @@ Status: RO
 That's appalling, I.
 
 --- 0/NONE, 3
-reproducible_build: Invalid field name cannot be ignored: ba:l
 --- 1/INVAL, 4
 #headerpick type retain currently covers no fields
 headerpick type ignore DATE from_ in-reply-to mail-followup-to MESSAGE-ID \
@@ -49,8 +48,6 @@ Status: RO
 That's appalling, I.
 
 --- 0/NONE, 9
-reproducible_build: Field not ignored: from_
-reproducible_build: Field not ignored: ba:l
 --- 1/INVAL, 10
 --- 0/NONE, 11
 #headerpick type retain currently covers no fields

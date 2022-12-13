@@ -1,10 +1,8 @@
 --one
 0/NONE
 --two
-reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
 1/INVAL
 0/NONE
 --three
-reproducible_build: abcc: *expandaddr* does not allow user name target
 1/INVAL
 0/0/NONE

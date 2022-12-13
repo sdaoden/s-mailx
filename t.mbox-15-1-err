@@ -1,0 +1,5 @@
+reproducible_build: MBOX contains non-conforming From_ line(s)!
+reproducible_build:   Message boundaries may have been misdetected!
+reproducible_build:   Setting *mbox-rfc4155* and reopening _may_ improve the result.
+reproducible_build:   Recreating the mailbox will perform MBOXO quoting: "copy * SOME-FILE".
+reproducible_build:   (Then unset *mbox-rfc4155* again.)

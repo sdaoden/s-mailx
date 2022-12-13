@@ -10,7 +10,6 @@ Status: R
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 
-reproducible_build: *mimetypes-load-control*: cannot open or load ./t.mts3: NOENT
          Schub-di-du
 
 [-- #1.2 5/142 7bit --]

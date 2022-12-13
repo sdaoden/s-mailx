@@ -6,6 +6,5 @@
 .tf1 [New file] 162 bytes
 1:0/NONE
 >N  2 from1@exam.ple     1996-10-02 01:50    8/162   Move2                     
-2:1/ACCES
-.tf2 [Appended] 162 bytes
-3:0/NONE
+.tf2 [New file] 162 bytes
+2:0/NONE

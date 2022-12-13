@@ -1,3 +1,1 @@
 one
-reproducible_build: echos: unknown command
-reproducible_build: Alert: Stopped loading initialization resource ./t.rc due to errors (enable *debug* for trace)

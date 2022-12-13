@@ -1,0 +1,124 @@
+reproducible_build: Bad $(()) substitution: syntax error: 2 2: stop near: 2 2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): I1=1 I1=2: stop near: I1=1 I1=2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: I1 I1: stop near: I1 I1
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: unknown operator: 3425#56: stop near: 3425#56
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): 7=43: stop near: 7=43
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: 2#44: stop near: 2#44
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: division by zero: 44/0: stop near: 44/0
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand:  ,   2 : stop near: , 2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: ,2: stop near: ,2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 2,: stop near: 
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1,,2: stop near: ,2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): 3+(3*I=11): stop near: 3*I=11)
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): 3+(3*=11): stop near: 3*=11)
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): 3+(3=11): stop near: 3=11)
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 3+(=11): stop near: =11)
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: ?: stop near: ?
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 0?: stop near: 
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: ?1: stop near: ?1
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?: stop near: 
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, incomplete ?: condition: 1?2: stop near: 1?2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: :: stop near: :
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: 1:: stop near: 1:
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: :2: stop near: :2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: 1:2: stop near: 1:2
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: 0 ? 0 ? 0 : 1 : 2 : 3: stop near:  0 ? 0 : 1 : 2 : 3
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 0 ? 0 ? 0 : 1 :: stop near: 
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, incomplete ?: condition: 0 ? 0 ? 0 : 1: stop near: 0 ? 0 ? 0 : 1
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: I: stop near: I
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: I+: stop near: 
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): ++I=3: stop near: ++I=3
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): --I=3: stop near: --I=3
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): (++I)=3: stop near: (++I)=3
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): (--I)=3: stop near: (--I)=3
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: (J)++*(I)++: stop near: +*(I)++
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: (J)--*(I)--: stop near: *(I)--
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 3+(3*(I=11)++): stop near: +)
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 3+(3*((I=11)++)): stop near: +))
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): I1<I2?I3*=I3:I2*=I2: stop near: I3*=I3:I2*=I2
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2<I3)?I3*=I3:I2*=I2:I1*=I1: stop near: I3*=I3:I2*=I2:I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?I5*=I5:I4*=I4:I3*=I3:I2*=I2:I1*=I1: stop near: I5*=I5:I4*=I4:I3*=I3:I2*=I2:I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?(I5*=I5):I4*=I4:I3*=I3:I2*=I2:I1*=I1: stop near: (I5*=I5):I4*=I4:I3*=I3:I2*=I2:I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?(I5*=I5):(I4*=I4):I3*=I3:I2*=I2:I1*=I1: stop near: (I4<I5)?(I5*=I5):(I4*=I4):I3*=I3:I2*=I2:I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?(I5*=I5):(I4*=I4):(I3*=I3):I2*=I2:I1*=I1: stop near: (I3<I4)?(I4<I5)?(I5*=I5):(I4*=I4):(I3*=I3):I2*=I2:I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?(I5*=I5):(I4*=I4):(I3*=I3):(I2*=I2):I1*=I1: stop near: (I2>I3)?(I3<I4)?(I4<I5)?(I5*=I5):(I4*=I4):(I3*=I3):(I2*=I2):I1*=I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?I5*=I5:I4*=I4:(I3*=I3):(I2*=I2):(I1*=I1): stop near: I5*=I5:I4*=I4:(I3*=I3):(I2*=I2):(I1*=I1)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?I5*=I5:I4*=I4:I3*=I3:(I2*=I2):(I1*=I1): stop near: I5*=I5:I4*=I4:I3*=I3:(I2*=I2):(I1*=I1)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): (I1<I2)?(I2>I3)?(I3<I4)?(I4<I5)?I5*=I5:I4*=I4:I3*=I3:I2*=I2:(I1*=I1): stop near: I5*=I5:I4*=I4:I3*=I3:I2*=I2:(I1*=I1)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3):  (I1 < I2) ? ((I2 > I3) ? I3 *= I3 : I2 *= I2) : (I1 *= I1): stop near:  I3 *= I3 : I2 *= I2) : (I1 *= I1)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3):  (I1 < I2) ? ((I2 > I3) ? I3 *= I3 : (I2 *= I2)) : I1 *= I1: stop near:  ((I2 > I3) ? I3 *= I3 : (I2 *= I2)) : I1 *= I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: I1: stop near: I1
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1:++I2: stop near: 1?I1:++I2
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: I2,(1?I1:++I2): stop near: (1?I1:++I2)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): 0?I1=10:(0?I3:I2=12): stop near: I3:I2=12)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: ?: condition, invalid precedence (1:v2:v3=3): 0?I1=10:(1?I3:I2=12): stop near: I3:I2=12)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1:I2: stop near: 1?I1:I2
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 0?I1:I2: stop near: I1:I2
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1+=1:(I2=2): stop near: 1?I1+=1:(I2=2)
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 0?I1?I2:I3:I4: stop near: I1?I2:I3:I4
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1?I2:I3:I4: stop near: 1?I1?I2:I3:I4
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1?I2:I3:I4: stop near: I1?I2:I3:I4
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1?I2:I3:I4: stop near: I2:I3:I4
+reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: syntax error: xa ((512 + 511) & ~511) >> 9: stop near: xa ((512 + 511) & ~511) >> 9
+reproducible_build: echon: invalid argument list

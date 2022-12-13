@@ -4,7 +4,6 @@ sh=
 sh=
 2 only local (au) du=au:set du=au
 sh=
-reproducible_build: environ: link: cannot link to non-existent: du
 3 also env linked du=au:set du=au
 sh=
 ----------------RECURSION STARTS
@@ -12,7 +11,6 @@ sh=
 sh=
 2 only local (au) du=au:set du=au
 sh=
-reproducible_build: environ: link: cannot link to non-existent: du
 3 also env linked du=au:set du=au
 sh=
 4 local (2) unset du=:#unset: du

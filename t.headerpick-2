@@ -46,7 +46,6 @@ headerpick type retain bcc cc date from sender subject to
 headerpick save ignore '^Original-.*$'
 --- 0/NONE, 15 --
 --- 0/NONE, 16
-reproducible_build: No fields currently being retained
 --- 0/NONE, 17
 --- 0/NONE, 18
 --- 0/NONE, 19 --

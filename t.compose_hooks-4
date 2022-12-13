@@ -263,7 +263,6 @@ t1@z t1@z
 501 Mailx-Orig-Cc
 501 Mailx-Orig-Bcc
 0/0/NONE
-the header list is 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
 on-XY-leave
 0/0/NONE
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -330,7 +329,6 @@ t1@z t1@z
 501 Mailx-Orig-Cc
 501 Mailx-Orig-Bcc
 0/0/NONE
-the header list is 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
 on-XY-leave
 0/0/NONE
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -395,7 +393,6 @@ t1@z t1@z
 501 Mailx-Orig-Cc
 501 Mailx-Orig-Bcc
 0/0/NONE
-the header list is 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
 on-XY-leave
 0/0/NONE
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -458,7 +455,6 @@ t2@z t2@z
 501 Mailx-Orig-Cc
 501 Mailx-Orig-Bcc
 0/0/NONE
-the header list is 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
 on-XY-leave
 0/0/NONE
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
@@ -521,7 +517,6 @@ t2@z t2@z
 501 Mailx-Orig-Cc
 501 Mailx-Orig-Bcc
 0/0/NONE
-the header list is 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command
 on-XY-leave
 0/0/NONE
 210 To Mailx-Raw-To Mailx-Orig-Sender Mailx-Orig-From Mailx-Orig-To Mailx-Command

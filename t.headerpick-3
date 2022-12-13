@@ -2,9 +2,7 @@
 --- 0/NONE, 2
 --- 0/NONE, 3
 --- 0/NONE, 4
-reproducible_build: headerpick: create: context exists: au
 --- 1/INVAL, 5
-reproducible_build: headerpick: create: invalid context name: .au
 --- 1/INVAL, 6
 #headerpick au3 retain currently covers no fields
 #headerpick au3 ignore currently covers no fields

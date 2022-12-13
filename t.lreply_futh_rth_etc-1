@@ -218,7 +218,6 @@ References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
 This is text of "Reply 2.4".
 
 -----After Reply 2.4: 0/NONE
-reproducible_build: No recipients specified for `Lreply'
 -----After Lreply 2.1: 1/DESTADDRREQ
 
 From reproducible_build Wed Oct  2 01:50:07 1996
@@ -341,7 +340,6 @@ References: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
 This is text of "Reply 3.4".
 
 -----After Reply 3.4: 0/NONE
-reproducible_build: No recipients specified for `Lreply'
 -----After Lreply 3.1: 1/DESTADDRREQ
 
 From reproducible_build Wed Oct  2 01:50:07 1996

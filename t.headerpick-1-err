@@ -1,0 +1,3 @@
+reproducible_build: Invalid field name cannot be ignored: ba:l
+reproducible_build: Field not ignored: from_
+reproducible_build: Field not ignored: ba:l
