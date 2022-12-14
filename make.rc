@@ -461,10 +461,8 @@ OPT_USE_PKGSYS=yes
 # Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
 # These are definitily only useful for debugging.
 # Also, external libraries are often problematic (like ncursesw), and
-# ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
 # Can be "require"d.
 OPT_ASAN_ADDRESS=no
-OPT_ASAN_MEMORY=no
 OPT_USAN=no
 
 # Development only, or to address a very specific program misbehaviour.
@@ -478,7 +476,7 @@ OPT_NOEXTMD5=no
 # canaries.  This interferes with memory debuggers like valgrind(1) or
 # the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
 OPT_EXTERNAL_MEM_CHECK=$(\
-	if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
+	if feat_yes ASAN_ADDRESS; then \
 		echo yes;\
 	else \
 		echo no;\
