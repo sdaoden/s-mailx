@@ -4863,23 +4863,17 @@ t_vexpr() { # {{{
 t_call_ret() { # {{{
 	t_prolog "${@}"
 
-	if have_feat cmd-vexpr; then :; else
-		t_echoskip '[!CMD_VEXPR]'
-		t_epilog "${@}"
-		return
-	fi
-
 	#{{{
 	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
 	define w1 {
 		echon ">$1 "
-		local vput vexpr i + $1 1
+		eval local : \$((i = $1 + 1))
 		if $i -le 42
-			local vput vexpr j & $i 7
+			local : $((j = i & 7))
 			if $j -eq 7; echo .; end
 			call w1 $i
 			set i=$? k=$!
-			local vput vexpr j & $i 7
+			: $((j = i & 7))
 			echon "<$1/$i/$k "
 			if $j -eq 7; echo .; end
 		else
@@ -4890,7 +4884,7 @@ t_call_ret() { # {{{
 	# Transport $?/$! up the call chain
 	define w2 {
 		echon ">$1 "
-		local vput vexpr i + $1 1
+		eval local : \$((i = $1 + 1))
 		if $1 -lt 42
 			call w2 $i
 			local set i=$? j=$! k=$^ERRNAME
@@ -4905,14 +4899,14 @@ t_call_ret() { # {{{
 	# Up and down it goes
 	define w3 {
 		echon ">$1/$2 "
-		local vput vexpr i + $1 1
+		eval local : \$((i = $1 + 1))
 		if $1 -lt 42
 			call w3 $i $2
 			local set i=$? j=$!
-			local vput vexpr k - $1 $2
+			eval local : \$((k = $1 - $2))
 			if $k -eq 21
-				vput vexpr i + $1 1
-				vput vexpr j + $2 1
+				eval : \$((i = $1 + 1))
+				eval : \$((j = $2 + 1))
 				echo "# <$i/$j> .. "
 				call w3 $i $j
 				set i=$? j=$!
@@ -4940,24 +4934,17 @@ t_call_ret() { # {{{
 	t_epilog "${@}"
 } # }}}
 
-t_xcall() { # {{{ # FIXME VEXPR
+t_xcall() { # {{{
 	t_prolog "${@}"
 
-	if have_feat cmd-vexpr; then :; else
-		t_echoskip '[!CMD_VEXPR]'
-		t_epilog "${@}"
-		return
-	fi
-
 	#{{{
-	${cat} <<- '__EOT' | \
-		${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>${E0}
+	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>${E0}
 	define work {
 		echon "$1 "
 		\if "$3" == ""; local set l=local; else; local set l=;\endif
-		eval $l vput vexpr i + $1 1
+		eval $l : \$((i = $1 + 1))
 		if $i -le "$max"
-			eval $l vput vexpr j & $i 7
+			eval $l : \$((j = i & 7))
 			if $j -eq 7
 				echo .
 			end
@@ -4997,9 +4984,9 @@ t_xcall() { # {{{ # FIXME VEXPR
 	${cat} <<- '__EOT' > ./t.in
 	\define __w {
 		\echon "$1 "
-		local \ vput vexpr i + $1 1
+		local eval : \$((i = $1 + 1))
 		\if $i -le 111
-			\local vput vexpr j & $i 7
+			local : $((j = i & 7))
 			\if $j -eq 7; \echo .; \end
 			\xcall __w $i $2
 		\end
