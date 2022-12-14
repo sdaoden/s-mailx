@@ -629,7 +629,7 @@ _cc_flags_generic() {
 	done
 
 	# E.g., valgrind does not work well with high optimization
-	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
+	if [ ${cc_maxopt} -gt 1 ] && feat_yes EXTERNAL_MEM_CHECK && feat_no ASAN_ADDRESS; then
 		msg ' ! OPT_EXTERNAL_MEM_CHECK, setting cc_maxopt=1 (-O1)'
 		cc_maxopt=1
 	fi
@@ -722,18 +722,6 @@ _cc_flags_generic() {
 			:
 		else
 			feat_bail_required ASAN_ADDRESS
-			_CFLAGS=${_ccfg}
-		fi
-	fi
-
-	if feat_yes ASAN_MEMORY; then
-		_ccfg=${_CFLAGS}
-		if cc_check -fsanitize=memory && ld_check -fsanitize=memory &&
-				cc_check -fsanitize-memory-track-origins=2 &&
-				ld_check -fsanitize-memory-track-origins=2; then
-			:
-		else
-			feat_bail_required ASAN_MEMORY
 			_CFLAGS=${_ccfg}
 		fi
 	fi
@@ -3680,7 +3668,6 @@ fi
 feat_def USE_PKGSYS
 
 feat_def ASAN_ADDRESS 0
-feat_def ASAN_MEMORY 0
 feat_def USAN 0
 feat_def DEVEL 0
 feat_def EXTERNAL_MEM_CHECK 0

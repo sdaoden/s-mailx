@@ -163,7 +163,7 @@ LOOPS_BIG=2001 LOOPS_SMALL=201
 : ${LOOPS_MAX:=$LOOPS_SMALL}
 # }}}
 
-# Setup and support {{{
+# Setup and exec support {{{
 
 # Wed Oct  2 01:50:07 UTC 1996
 SOURCE_DATE_EPOCH=844221007
@@ -201,9 +201,6 @@ fi
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-GIT_REPO=
-[ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
-
 # We want an UTF-8 locale, and HONOURS_READONLY_NOT {{{
 if [ -n "${CHECK}${RUN_TEST}" ]; then
 	if [ -z "${UTF8_LOCALE}" ]; then
@@ -231,7 +228,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
 					en_GB.utf8 en_GB.UTF-8 en_US.utf8 en_US.UTF-8 \
 					POSIX.utf8 POSIX.UTF-8 \
 					C.utf8 C.UTF-8
-			')
+			' 2>/dev/null)
 			[ $? -eq 0 ] && UTF8_LOCALE=$i
 		fi
 
@@ -276,6 +273,9 @@ fi
 export UTF8_LOCALE HONOURS_READONLY_NOT
 # }}}
 
+GIT_REPO=
+[ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
+FILTER_ERR=:
 DEVELDIFF= DUMPERR=
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
 JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
@@ -560,7 +560,49 @@ jtimeout() {
 }
 # }}}
 
-# echoes, checks, color_init, add, modulo {{{
+# add, modulo, color_init, have_feat, echoes, checks, $FILTER_ERR impls {{{
+if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
+	add() { echo "$((${1} + ${2}))"; }
+	modulo() { echo "$((${1} % ${2}))"; }
+else
+	add() { ${awk} 'BEGIN{print '${1}' + '${2}'}'; }
+	modulo() { ${awk} 'BEGIN{print '${1}' % '${2}'}'; }
+fi
+
+color_init() {
+	[ -n "${NO_COLOUR}" ] && return
+	# We do not want color for "make test > .LOG"!
+	if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
+		{ sgr0=$(tput sgr0); } 2>/dev/null
+		[ $? -eq 0 ] || return
+		{ saf1=$(tput setaf 1); } 2>/dev/null
+		[ $? -eq 0 ] || return
+		{ saf2=$(tput setaf 2); } 2>/dev/null
+		[ $? -eq 0 ] || return
+		{ saf3=$(tput setaf 3); } 2>/dev/null
+		[ $? -eq 0 ] || return
+		{ saf5=$(tput setaf 5); } 2>/dev/null
+		[ $? -eq 0 ] || return
+		{ b=$(tput bold); } 2>/dev/null
+		[ $? -eq 0 ] || return
+
+		COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
+		COLOR_DBGERR_ON=${saf5} COLOR_DBGERR_OFF=${sgr0}
+		COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
+		COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
+		unset saf1 saf2 saf3 b
+	fi
+}
+
+have_feat() {
+	</dev/null ${RAWMAILX} ${ARGS} -X '
+		\if ${features} !% ,+'"${1}"',
+			\xit 1
+		\endif
+	' 2>/dev/null
+}
+
+
 t_prolog() {
 	shift
 	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 TEST_NAME=${1} TEST_ANY=
@@ -661,7 +703,7 @@ cke0() { # tid eestat file cksum
 	ck_it '' y "${e}" "${@}"
 }
 
-ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX]
+ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX] {{{
 	ck0=${1} cke0=${2} restat=${3} tid=${4} eestat=${5} f=${6} s=${7} es=${8}
 	if [ -n "${es}" ] && [ -n "${cke0}" ]; then
 		echo >&2 'IMPLERR ck_it: '${*}
@@ -763,6 +805,7 @@ ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX]
 	fi
 
 	if [ -n "${cke0}" ]; then
+		eval $FILTER_ERR ${tid} "${E0}"
 		docopy= csum="$(${cksum} < "${E0}" | ${sed} -e 's/[	 ]\{1,\}/ /g')"
 		if [ "${csum}" != '4294967295 0' ]; then
 			ESTAT=1
@@ -782,9 +825,10 @@ ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX]
 			[ -n "${docopy}" ] && ${cp} -f "${E0}" ../"t.${TEST_NAME}-${tid}-err"
 		fi
 	elif [ -n "${es}" ]; then
+		eval $FILTER_ERR ${tid} "${EX}"
 		ck_it '' '' 0 ${tid}-err - "${EX}" "${es}"
 	fi
-}
+} # }}}
 
 ck_ex0() {
 	# $1=test name [$2=status]
@@ -825,57 +869,23 @@ ck_exx() {
 	fi
 }
 
-color_init() {
-	[ -n "${NO_COLOUR}" ] && return
-	# We do not want color for "make test > .LOG"!
-	if [ -t 1 ] && command -v tput >/dev/null 2>&1; then
-		{ sgr0=$(tput sgr0); } 2>/dev/null
-		[ $? -eq 0 ] || return
-		{ saf1=$(tput setaf 1); } 2>/dev/null
-		[ $? -eq 0 ] || return
-		{ saf2=$(tput setaf 2); } 2>/dev/null
-		[ $? -eq 0 ] || return
-		{ saf3=$(tput setaf 3); } 2>/dev/null
-		[ $? -eq 0 ] || return
-		{ saf5=$(tput setaf 5); } 2>/dev/null
-		[ $? -eq 0 ] || return
-		{ b=$(tput bold); } 2>/dev/null
-		[ $? -eq 0 ] || return
+filter_err_sani() {
+	__tid__=${1} __f__=${2}
+	${sed} -e '
+		/^reproducible_build: /bp
+		w '"${__f__}"'.sani
+		d
+		:p
+		' < "${__f__}" > "${__f__}".sed
+	${mv} "${__f__}".sed "${__f__}"
 
-		COLOR_ERR_ON=${saf1}${b} COLOR_ERR_OFF=${sgr0}
-		COLOR_DBGERR_ON=${saf5} COLOR_DBGERR_OFF=${sgr0}
-		COLOR_WARN_ON=${saf3}${b} COLOR_WARN_OFF=${sgr0}
-		COLOR_OK_ON=${saf2} COLOR_OK_OFF=${sgr0}
-		unset saf1 saf2 saf3 b
+	if [ -f "${__f__}.sani" ]; then
+		if [ -s "${__f__}.sani" ]; then # xxx ..yes?
+			echo "${TEST_NAME}: ${__tid__}:" >> ../t.SANI
+			${cat} "${__f__}.sani" >> ../t.SANI
+		fi
+		${rm} -f "${__f__}.sani"
 	fi
-}
-
-if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
-	add() {
-		echo "$((${1} + ${2}))"
-	}
-else
-	add() {
-		${awk} 'BEGIN{print '${1}' + '${2}'}'
-	}
-fi
-
-if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
-	modulo() {
-		echo "$((${1} % ${2}))"
-	}
-else
-	modulo() {
-		${awk} 'BEGIN{print '${1}' % '${2}'}'
-	}
-fi
-
-have_feat() {
-	</dev/null ${RAWMAILX} ${ARGS} -X '
-		\if ${features} !% ,+'"${1}"',
-			\xit 1
-		\endif
-	'
 }
 # }}}
 # }}}
@@ -5979,8 +5989,8 @@ t_can_send_rfc() { # {{{
 		-T 'bcc?single: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
 		-T cc?si\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
 		-T to?:\ to@no.1,'<to@no.2>' -T to:\ to@no.3 \
-		> ${EX} 2>&1
-	ck 3 0 ./t.mbox '1453534480 678' '4294967295 0'
+		> ${EX} 2>${E0}
+	cke0 3 0 ./t.mbox '1453534480 678'
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -Sfullnames -s Sub.4 \
 		-T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
@@ -6156,9 +6166,9 @@ t_mta_args() { # {{{
 
 	# NOBATCH_!
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t -S mta-arguments='-t -X "/tmp/my log"' \
-		r@e.c -- -x -y -z > ${E0} 2>./t9
+		r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 9
-	cke0 9-err - ./t9 '1656006414 94'
+	ck0 9-err - ${E0} '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S mta-arguments='-t -X "/tmp/my log"' -S expandargv r@e.c -- -x -y -z > ${E0} 2>&1
@@ -6170,14 +6180,14 @@ t_mta_args() { # {{{
 	cke0 11 0 ./t.mbox '1392240145 86'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
-		-S expandargv=fail r@e.c -- -x -y -z > ${E0} 2>./t12
+		-S expandargv=fail r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 12
-	cke0 12-err - ./t12 '1656006414 94'
+	ck0 12-err - ${E0} '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
-		-S expandargv=restrict r@e.c -- -x -y -z > ${E0} 2>./t13
+		-S expandargv=restrict r@e.c -- -x -y -z > ${E0} 2>${EX}
 	ck_exx 13
-	cke0 13-err - ./t13 '1656006414 94'
+	ck0 13-err - ${E0} '1656006414 94'
 
 	</dev/null ${MAILX} ${NOBATCH_ARGS} -Smta=./tmta.sh -s t \
 		-S expandargv=restrict -~ r@e.c -- -x -y -z > ${E0} 2>&1
@@ -7228,13 +7238,13 @@ t_mbox() { # {{{
 	_EOT
 
 	< ./.ttmpl ${MAILX} ${ARGS} -t > "${MBOX}" 2>${E0}
-	cke0 16 0 "${MBOX}" '4294967295 0'
+	ck0e0 16 0 "${MBOX}"
 	ck 17 - ./.tfcc1 '2301294938 148'
 	ck 18 - ./.tfcc2 '2301294938 148'
 	ck 19 - ./.tpcc1 '2301294938 148'
 
 	< ./.ttmpl ${MAILX} ${ARGS} -t -Snombox-fcc-and-pcc > "${MBOX}" 2>${E0}
-	cke0 20 0 "${MBOX}" '4294967295 0'
+	ck0e0 20 0 "${MBOX}"
 	ck 21 - ./.tfcc1 '3629108107 98'
 	ck 22 - ./.tfcc2 '3629108107 98'
 	ck 23 - ./.tpcc1 '2373220256 246'
@@ -7522,11 +7532,11 @@ t_eml_and_stdin_pipe() { # {{{
 	cke0 10 0 ./t10 '269911796 177'
 
 	#
-	<./t.mbox ${MAILX} ${ARGS} -f - >${E0} 2>./t11
-	cke0 11 1 ./t11 '2465941229 88'
+	<./t.mbox ${MAILX} ${ARGS} -f - >${E0} 2>${EX}
+	ck0 11 1 ${E0} '2465941229 88'
 
-	<./t.eml ${MAILX} ${ARGS} -f eml://- >${E0} 2>./t12
-	cke0 12 1 ./t12 '3267665338 77'
+	<./t.eml ${MAILX} ${ARGS} -f eml://- >${E0} 2>${EX}
+	ck0 12 1 ${E0} '3267665338 77'
 
 	# The big nothing
 	echo A | ${MAILX} ${ARGS} -Y 'p;x' -Rf eml://- >./t13 2>${E0}
@@ -7718,7 +7728,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 	if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
 		${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t1_to_4 \
-				-Sescape=! -Smime-encoding=base64 >${E0} 2>./t2
+				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
 			set ttycharset=utf-8 sendcharsets=iso-2022-jp
 			m t1@exam.ple
 !s Japanese from UTF-8 to ISO-2022-JP
@@ -7749,7 +7759,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 		ck_ex0 1-estat
 		${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' < ./t1_to_4 > ./t1
 		cke0 1 - ./t1 '3314001564 516'
-		ck 2 - ./t2 '4294967295 0'
+		ck0 2 - ${EX}
 
 		printf 'eval f 1; eval write ./t3; eval type 1; eval type 2\n' |
 			LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
@@ -7766,7 +7776,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 	if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
 		${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t5_to_8 \
-				-Sescape=! -Smime-encoding=base64 >${E0} 2>./t6
+				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
 			set ttycharset=utf-8 sendcharsets=euc-jp
 			m t1@exam.ple
 !s Japanese from UTF-8 to EUC-JP
@@ -7796,7 +7806,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 		ck_ex0 5-estat
 		${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' < t5_to_8 > ./t5
 		cke0 5 - ./t5 '1754179361 469'
-		ck 6 - ./t6 '4294967295 0'
+		ck0 6 - ${EX}
 
 		printf 'eval f 1; eval write ./t7; eval type 1; eval type 2\n' |
 			LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
@@ -7824,16 +7834,16 @@ t_iconv_mainbody() { # {{{
 
 	printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://t.mbox \
 		-S charset-7bit=us-ascii -S charset-8bit=utf-8 \
-		-s '–' over-the@rain.bow >${E0} 2>./t2
+		-s '–' over-the@rain.bow >${EX} 2>${E0}
 	cke0 1 0 ./t.mbox '3559538297 250'
-	ck 2 - ./t2 '4294967295 0'
+	ck0 2 - ${EX}
 
 	printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://t.mbox \
 		-S charset-7bit=us-ascii -S charset-8bit=us-ascii \
-		-s '–' over-the@rain.bow >${E0} 2>./t4
+		-s '–' over-the@rain.bow >${E0} 2>${EX}
 	ck_exx 3
-	cke0 3 - ./t.mbox '3559538297 250'
-	ck 4 - ./t4 '271380835 121'
+	ck 3 - ./t.mbox '3559538297 250'
+	ck0 4 - ${E0} '271380835 121'
 
 	# The different iconv(3) implementations use different replacement sequence
 	# types (character-wise, byte-wise, and the character(s) used differ)
@@ -7862,13 +7872,12 @@ t_binary_mainbody() { # {{{
 	t_prolog "${@}"
 
 	printf 'abra\0\nka\r\ndabra' |
-		${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' ./t.mbox >${E0} 2>./t2
+		${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' ./t.mbox >${EX} 2>${E0}
 	cke0 1 0 ./t.mbox '1629827 239'
-	ck 2 - ./t2 '4294967295 0'
+	ck0 2 - ${EX}
 
 	printf 'p\necho\necho writing now\nwrite ./t5\n' |
-		${MAILX} ${ARGS} -Rf \
-			-Spipe-application/octet-stream="?* ${cat} > ./t4" ./t.mbox >./t3 2>${E0}
+		${MAILX} ${ARGS} -Rf -Spipe-application/octet-stream="?* ${cat} > ./t4" ./t.mbox >./t3 2>${E0}
 	cke0 3 0 ./t3 '970629510 314'
 	ck 4 - ./t4 '3817108933 15'
 	ck 5 - ./t5 '3817108933 15'
@@ -7891,7 +7900,7 @@ t_mime_force_sendout() { # {{{
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
 		over-the@rain.bow > ${EX} 2>&1
-	ck 1 4 ./t.mbox '4294967295 0' '271380835 121'
+	ck0 1 4 ./t.mbox '271380835 121'
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s go -Smime-force-sendout \
 		over-the@rain.bow > ${E0} 2>&1
@@ -8184,8 +8193,8 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat > ./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 1 4 ./t.mbox '1216011460 138'
-	ck 2 - ${EX} '3404105912 162'
+	ck 1 4 ./t.mbox '1216011460 138' '3404105912 162'
+	ck0 2 - ${E0}
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
@@ -8194,7 +8203,7 @@ t_expandaddr() { # {{{
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ./t4 2>${E0}
 	cke0 3 0 ./t.mbox '847567042 276'
-	ck 4 - ./t4 '4294967295 0'
+	ck0 4 - ./t4
 	ck 5 - t.file '1216011460 138'
 	ck 6 - t.pipe '1216011460 138'
 
@@ -8205,7 +8214,7 @@ t_expandaddr() { # {{{
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ./t8 2>${E0}
 	cke0 7 0 ./t.mbox '3682360102 414'
-	ck 8 - ./t8 '4294967295 0'
+	ck0 8 - ./t8
 	ck 9 - t.file '847567042 276'
 	ck 10 - t.pipe '1216011460 138'
 
@@ -8215,8 +8224,8 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 11 4 ./t.mbox '1010907786 552'
-	ck 12 - ${EX} '2897686659 70'
+	ck 11 4 ./t.mbox '1010907786 552' '2897686659 70'
+	ck0 12 - ${E0}
 	ck 13 - t.file '847567042 276'
 	ck 14 - t.pipe '1216011460 138'
 
@@ -8226,10 +8235,10 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 15 4 ./t.mbox '1010907786 552'
-	ck 16 - ${EX} '50695798 179'
+	ck 15 4 ./t.mbox '1010907786 552' '50695798 179'
+	ck0 16 - ${E0}
 	ck 17 - t.file '847567042 276'
-	ck 18 - t.pipe '4294967295 0'
+	ck0 18 - t.pipe
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
@@ -8237,29 +8246,29 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 19 4 ./t.mbox '3359494254 690'
-	ck 20 - ${EX} '1751120754 91'
+	ck 19 4 ./t.mbox '3359494254 690' '1751120754 91'
+	ck0 20 - ${E0}
 	ck 21 - t.file '3682360102 414'
-	ck 22 - t.pipe '4294967295 0'
+	ck0 22 - t.pipe
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=fail,-all,+file,+pipe,-pipe,+name,+addr \
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 23 4 ./t.mbox '3359494254 690'
-	ck 24 - ${EX} '4118644033 200'
+	ck 23 4 ./t.mbox '3359494254 690' '4118644033 200'
+	ck0 24 - ${E0}
 	ck 25 - t.file '3682360102 414'
-	ck 26 - t.pipe '4294967295 0'
+	ck0 26 - t.pipe
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
-		> ./t28 2>${E0}
+		> ${EX} 2>${E0}
 	cke0 27 0 ./t.mbox '3735108703 828'
-	ck 28 - ./t28 '4294967295 0'
+	ck0 28 - ${EX}
 	ck 29 - t.file '1010907786 552'
 	ck 30 - t.pipe '1216011460 138'
 
@@ -8267,8 +8276,8 @@ t_expandaddr() { # {{{
 		-Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 31 4 ./t.mbox '4225234603 949'
-	ck 32 - ${EX} '3486613973 73'
+	ck 31 4 ./t.mbox '4225234603 949' '3486613973 73'
+	ck0 32 - ${E0}
 	ck 33 - t.file '452731060 673'
 	ck 34 - t.pipe '1905076731 121'
 
@@ -8277,10 +8286,10 @@ t_expandaddr() { # {{{
 		-Sexpandaddr=fail,-all,+file,+pipe,+name,-name,+addr \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 35 4 ./t.mbox '4225234603 949'
-	ck 36 - ${EX} '3032065285 182'
+	ck 35 4 ./t.mbox '4225234603 949' '3032065285 182'
+	ck0 36 - ${E0}
 	ck 37 - t.file '452731060 673'
-	ck 38 - t.pipe '4294967295 0'
+	ck0 38 - t.pipe
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
@@ -8288,8 +8297,8 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 39 4 ./t.mbox '4225234603 949'
-	ck 40 - ${EX} '3863610168 169'
+	ck 39 4 ./t.mbox '4225234603 949' '3863610168 169'
+	ck0 40 - ${E0}
 	ck 41 - t.file '1975297706 775'
 	ck 42 - t.pipe '130065764 102'
 
@@ -8299,8 +8308,8 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 43 4 ./t.mbox '4225234603 949'
-	ck 44 - ${EX} '3863610168 169'
+	ck 43 4 ./t.mbox '4225234603 949' '3863610168 169'
+	ck0 44 - ${E0}
 	ck 45 - t.file '1210943515 911'
 	ck 46 - t.pipe '1831110400 136'
 
@@ -8311,40 +8320,40 @@ t_expandaddr() { # {{{
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
-	cke0 47 4 ./t.mbox '4225234603 949'
-	ck 48 - ${EX} '851041772 278'
+	ck 47 4 ./t.mbox '4225234603 949' '851041772 278'
+	ck0 48 - ${E0}
 	ck 49 - t.file '1210943515 911'
-	ck 50 - t.pipe '4294967295 0'
+	ck0 50 - t.pipe
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=-all,+addr \
 		taddr@exam.ple this@@c.example \
 		> ${E0} 2>${EX}
-	cke0 51 4 ./t.mbox '473729143 1070'
-	ck 52 - ${EX} '2646392129 66'
+	ck 51 4 ./t.mbox '473729143 1070' '2646392129 66'
+	ck0 52 - ${E0}
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=-all,failinvaddr \
 		taddr@exam.ple this@@c.example \
 		> ${E0} 2>${EX}
-	cke0 53 4 ./t.mbox '473729143 1070'
-	ck 54 - ${EX} '887391555 175'
+	ck 53 4 ./t.mbox '473729143 1070' '887391555 175'
+	ck0 54 - ${E0}
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sthis=taddr@exam.ple -Sexpandaddr \
 		-c '\$this' -b '\$this' '\$this' \
 		> ${E0} 2>${EX}
-	cke0 55 4 ./t.mbox '473729143 1070'
-	ck 56 - ${EX} '3680176617 141'
+	ck 55 4 ./t.mbox '473729143 1070' '3680176617 141'
+	ck0 56 - ${E0}
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sthis=taddr@exam.ple -Sexpandaddr=shquote \
 		-c '\$this' -b '\$this' '\$this' \
-		> ./t58 2>${E0}
+		> ${EX} 2>${E0}
 	cke0 57 0 ./t.mbox '398243793 1191'
-	ck 58 - ./t58 '4294967295 0'
+	ck0 58 - ${EX}
 
 	#
 	printf '' > ./t.mbox
@@ -8352,12 +8361,12 @@ t_expandaddr() { # {{{
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 			-Sadd-file-recipients \
 			-Sexpandaddr=-all,+fcc \
-			> ./t60 2>${E0}
+			> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
-	cke0 59 0 ./t.mbox '4294967295 0'
-	ck 60 - ./t60 '4294967295 0'
+	ck0e0 59 0 ./t.mbox
+	ck0 60 - ${EX}
 	ck 61 - t.file1 '3178309482 124'
 	ck 62 - t.file2 '3178309482 124'
 
@@ -8366,12 +8375,12 @@ t_expandaddr() { # {{{
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 			-Sadd-file-recipients \
 			-Sexpandaddr=-all,+file \
-			> ./t64 2>${E0}
+			> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
-	cke0 63 0 ./t.mbox '4294967295 0'
-	ck 64 - ./t64 '4294967295 0'
+	ck0e0 63 0 ./t.mbox
+	ck0 64 - ${EX}
 	ck 65 - t.file1 '3027266938 248'
 	ck 66 - t.file2 '3027266938 248'
 
@@ -8380,12 +8389,12 @@ t_expandaddr() { # {{{
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 			-Sadd-file-recipients \
 			-Sexpandaddr=-all,+file,-fcc \
-			> ./t68 2>${E0}
+			> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
-	cke0 67 0 ./t.mbox '4294967295 0'
-	ck 68 - ./t68 '4294967295 0'
+	ck0e0 67 0 ./t.mbox
+	ck0 68 - ${EX}
 	ck 69 - t.file1 '1875215222 372'
 	ck 70 - t.file2 '1875215222 372'
 
@@ -8398,8 +8407,8 @@ t_expandaddr() { # {{{
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
-	cke0 71 4 ./t.mbox '4294967295 0'
-	ck 72 - ${EX} '2936929607 223'
+	ck0 71 4 ./t.mbox '2936929607 223'
+	ck0 72 - ${E0}
 	ck 73 - t.file1 '1875215222 372'
 	ck 74 - t.file2 '1875215222 372'
 
@@ -8413,8 +8422,8 @@ t_expandaddr() { # {{{
 	Fcc: t.file2
 	To: never@exam.ple
 	_EOT
-	cke0 75 4 ./t.mbox '4294967295 0'
-	ck 76 - ${EX} '4156837575 247'
+	ck0 75 4 ./t.mbox '4156837575 247'
+	ck0 76 - ${E0}
 	ck 77 - t.file1 '1875215222 372'
 	ck 78 - t.file2 '1875215222 372'
 
@@ -8423,11 +8432,11 @@ t_expandaddr() { # {{{
 	${cat} <<-_EOT |\
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 			-Sexpandaddr=fail,domaincheck \
-			> ${E0} 2>${EX}
+			> ${EX} 2>${E0}
 	To: one@localhost
 	_EOT
 	cke0 79 0 ./t.mbox '171635532 120'
-	ck 80 - ${EX} '4294967295 0'
+	ck0 80 - ${EX}
 
 	${cat} <<-_EOT |\
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
@@ -8435,8 +8444,8 @@ t_expandaddr() { # {{{
 			> ${E0} 2>${EX}
 	To: one@localhost  ,	 	Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-	cke0 81 4 ./t.mbox '2659464839 240'
-	ck 82 - ${EX} '1119895397 158'
+	ck 81 4 ./t.mbox '2659464839 240' '1119895397 158'
+	ck0 82 - ${E0}
 
 	${cat} <<-_EOT |\
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
@@ -8444,33 +8453,33 @@ t_expandaddr() { # {{{
 			> ${E0} 2>${EX}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
-	cke0 83 4 ./t.mbox '2659464839 240'
-	ck 84 - ${EX} '1577313789 267'
+	ck 83 4 ./t.mbox '2659464839 240' '1577313789 267'
+	ck0 84 - ${E0}
 
 	${cat} <<-_EOT |\
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
 			-Sexpandaddr=fail,domaincheck \
 			-Sexpandaddr-domaincheck=exam.ple,tro.uble \
-			> ./t86 2>${E0}
+			> ${EX} 2>${E0}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	cke0 85 0 ./t.mbox '1670655701 410'
-	ck 86 - ./t86 '4294967295 0'
+	ck0 86 - ${EX}
 
 	#
 	printf 'To: <reproducible_build>' |
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t87.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr \
-			> ./t88 2>${E0}
+			> ${EX} 2>${E0}
 	cke0 87 0 ./t87.mbox '1288059511 146'
-	ck 88 - ./t88 '4294967295 0'
+	ck0 88 - ${EX}
 
 	printf 'To: <reproducible_build>' |
 		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t89.mbox -t -ssub \
 			-Sexpandaddr=nametoaddr -Shostname=nowhere \
-			> ./t90 2>${E0}
+			> ${EX} 2>${E0}
 	cke0 89 0 ./t89.mbox '3724074854 203'
-	ck 90 - ./t90 '4294967295 0'
+	ck0 90 - ${EX}
 
 	t_epilog "${@}"
 } # }}}
@@ -8536,8 +8545,8 @@ t_mta_aliases() { # {{{
 			-Smta-aliases=./t.ali \
 			-b a3 -c a2 a1 > ${E0} 2>${EX}
 		ck_exx 3
-		cke0 4 - ./t.mbox '1172368381 238'
-		ck 5 - ${EX} '771616226 179'
+		ck 4 - ./t.mbox '1172368381 238'
+		ck0 5 - ${E0} '771616226 179'
 	else
 		t_echoskip '5:[!SMTP]'
 	fi
@@ -8546,13 +8555,13 @@ t_mta_aliases() { # {{{
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=fail,-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>${EX}
 	ck_exx 6
-	cke0 7 - ./t.mbox '1172368381 238'
-	ck 8 - ${EX} '2834389894 178'
+	ck 7 - ./t.mbox '1172368381 238'
+	ck0 8 - ${E0} '2834389894 178'
 
 	echo | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sexpandaddr=-name -Smta-aliases=./t.ali \
 		-b a3 -c a2 a1 > ${E0} 2>${EX}
-	cke0 9 4 ./t.mbox '2322273994 472'
-	ck 10 - ${EX} '2136559508 69'
+	ck 9 4 ./t.mbox '2322273994 472'
+	ck0 10 - ${E0} '2136559508 69'
 
 	echo 'a9:nine@nine.nine' >> ./t.ali
 
@@ -8837,7 +8846,7 @@ t_q_t_etc_opts() { # {{{
 	ck 7 - ./t.cc2 '2948857341 94'
 	ck 8 - './t.bcc1 .t.bcc1-2' '2948857341 94'
 	ck 9 - './t.to2 .t.to2-2' '2948857341 94'
-	ck 10 - ./t10 '4294967295 0'
+	ck0 10 - ./t10
 
 	t_epilog "${@}"
 } # }}}
@@ -9487,7 +9496,7 @@ my body
 		-r a@b.example b@b.example ./t8 >./t9 2>${E0}
 	ck 7 0 ./t7 '683070437 201'
 	ck 8 - ./t8 '683070437 201'
-	cke0 9 - ./t9 '4294967295 0'
+	ck0e0 9 - ./t9
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t10 -s '-Sfrom + -r ++ test' \
 		-c a@b.example -c b@b.example -c c@c.example \
@@ -9496,7 +9505,7 @@ my body
 		-r a@b.example b@b.example ./t11 >./t12 2>${E0}
 	ck 10 0 ./t10 '1590152680 222'
 	ck 11 - ./t11 '1590152680 222'
-	cke0 12 - ./t12 '4294967295 0'
+	ck0e0 12 - ./t12
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://t13 -s '-Sfrom + -r ++ test' \
 		-c a@b.example -c b@b.example -c c@c.example \
@@ -9504,7 +9513,7 @@ my body
 		-S sender=a@b.example \
 		b@b.example >./t14 2>${E0}
 	ck 13 0 ./t13 '2530102496 273'
-	cke0 14 - ./t14 '4294967295 0'
+	ck0e0 14 - ./t14
 
 	t_epilog "${@}"
 } # }}}
@@ -9992,7 +10001,7 @@ t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
 	ck 1 0 ./t1 '665881681 179'
 	ck 2 - ./t2 '218732148 1097' '2464191144 269'
 	ck 3 - ./t3 '3993703854 127'
-	ck 4 - ./t4 '4294967295 0'
+	ck0 4 - ./t4
 	ck 5 - ./t5 '2157992522 256'
 
 	# [1091b026c9c8bcd26ce95aa90e7327757f9c0f32] check
@@ -11310,7 +11319,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
 	for f in ${tfs}; do printf 'body '${f}'\n' > ./${f}; done
 
 	printf 'm ./t11\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x -Y "${tmt}" ${ARGS} > ./t10 2>${E0}
-	cke0 10 0 ./t10 '4294967295 0'
+	ck0e0 10 0 ./t10
 	ck 11 - ./t11 '3184122137 2390'
 
 	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t12 2>${E0}
@@ -11330,7 +11339,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
 
 	# hdl-only type-marker is honoured when sending
 	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} > ./t20 2>${E0}
-	cke0 20 0 ./t20 '4294967295 0'
+	ck0e0 20 0 ./t20
 	ck 21 - ./t21 '2035947076 2390'
 
 	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t22 2>${E0}
@@ -13044,7 +13053,6 @@ cc_all_configs() { #{{{
 			NOTME["OPT_DEBUG"] = 1
 			NOTME["OPT_DEVEL"] = 1
 			NOTME["OPT_ASAN_ADDRESS"] = 1
-			NOTME["OPT_ASAN_MEMORY"] = 1
 			NOTME["OPT_USAN"] = 1
 			NOTME["OPT_EXTERNAL_MEM_CHECK"] = 1
 
@@ -13341,6 +13349,11 @@ else
 	fi
 	color_init
 
+	if [ "${OPT_USAN}" = 1 ] || [ "${OPT_ASAN_ADDRESS}" = 1 ]; then
+		${rm} -f t.SANI
+		FILTER_ERR=filter_err_sani
+	fi
+
 	if [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
 		jobs_max
 		printf 'Will do up to %s tests in parallel, with a %s second timeout\n' ${JOBNO} ${JOBWAIT}
@@ -13358,6 +13371,9 @@ else
 		jobreaper_stop
 	fi
 
+	if [ "${OPT_USAN}" != 0 ] || [ "${OPT_ASAN_ADDRESS}" != 0 ]; then
+		echo '... Please find *SANitizer etc in t.SANI'
+	fi
 fi
 
 if [ -n "${xsec}" ]; then
