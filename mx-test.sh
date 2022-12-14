@@ -1186,10 +1186,10 @@ t_X_errexit() { # {{{
 	ck 1 0 ./t1 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' > ./t2 2>${EX}
-	ck 2 0 ./t2 '3865817952 8' '1999012506 52'
+	ck 2 0 ./t2 '3865817952 8' '2734035291 92'
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u > ./t3 2>${EX}
-	ck 3 0 ./t3 '3865817952 8' '1999012506 52'
+	ck 3 0 ./t3 '3865817952 8' '2734035291 92'
 
 	##
 
@@ -1197,13 +1197,13 @@ t_X_errexit() { # {{{
 	ck 4 1 ./t4 '815791956 4' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t.rc' -Serrexit > ./t5 2>${EX}
-	ck 5 1 ./t5 '815791956 4' '1618942436 47'
+	ck 5 1 ./t5 '815791956 4' '4049990069 67'
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Serrexit > ./t6 2>${EX}
-	ck 6 1 ./t6 '815791956 4' '2020445541 162'
+	ck 6 1 ./t6 '815791956 4' '2310462538 182'
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sposix > ./t7 2>${EX}
-	ck 7 1 ./t7 '815791956 4' '2020445541 162'
+	ck 7 1 ./t7 '815791956 4' '2310462538 182'
 
 	## Repeat 4-7 with ignerr set
 
@@ -1213,13 +1213,13 @@ t_X_errexit() { # {{{
 	ck 8 0 ./t8 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -X'source ./t2.rc' -Serrexit > ./t9 2>${EX}
-	ck 9 0 ./t9 '3865817952 8' '1999012506 52'
+	ck 9 0 ./t9 '3865817952 8' '2734035291 92'
 
 	</dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Serrexit > ./t10 2>${EX}
-	ck 10 0 ./t10 '3865817952 8' '1999012506 52'
+	ck 10 0 ./t10 '3865817952 8' '2734035291 92'
 
 	</dev/null MAILRC=./t2.rc ${MAILX} ${ARGS} -:u -Sposix > ./t11 2>${EX}
-	ck 11 0 ./t11 '3865817952 8' '1999012506 52'
+	ck 11 0 ./t11 '3865817952 8' '2734035291 92'
 
 	${cat} <<- '__EOT' > ./t3.rc
 	define oha {
@@ -1243,7 +1243,7 @@ t_X_errexit() { # {{{
 
 	printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
 		${MAILX} ${ARGS} -Sxarg=i > ./t14 2>${EX}
-	ck 14 0 ./t14 '1772040099 3' '3971402149 53'
+	ck 14 0 ./t14 '1772040099 3' '515198292 93'
 
 	t_epilog "${@}"
 } # }}}
@@ -1263,7 +1263,7 @@ t_Y_errexit() { # {{{
 	ck 1 0 ./t1 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' > ./t2 2>${EX}
-	ck 2 0 ./t2 '3865817952 8' '1999012506 52'
+	ck 2 0 ./t2 '3865817952 8' '2734035291 92'
 
 	##
 
@@ -1271,7 +1271,7 @@ t_Y_errexit() { # {{{
 	ck 3 1 ./t3 '815791956 4' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t.rc' -Serrexit > ./t4 2>${EX}
-	ck 4 1 ./t4 '815791956 4' '1618942436 47'
+	ck 4 1 ./t4 '815791956 4' '4049990069 67'
 
 	## Repeat 3-4 with ignerr set
 
@@ -1281,7 +1281,7 @@ t_Y_errexit() { # {{{
 	ck 5 0 ./t5 '3865817952 8' '681325307 43'
 
 	</dev/null ${MAILX} ${ARGS} -Y'source ./t2.rc' -Serrexit > ./t6 2>${EX}
-	ck 6 0 ./t6 '3865817952 8' '1999012506 52'
+	ck 6 0 ./t6 '3865817952 8' '2734035291 92'
 
 	t_epilog "${@}"
 } # }}}
@@ -4267,7 +4267,7 @@ t_environ() { # {{{
 	echo --toplevel-ou; show
 	__EOT
 	#}}}
-	ck 2 0 ./t2 '2028138132 1821' '3552534465 77'
+	ck 2 0 ./t2 '2028138132 1821' '3634674220 117'
 
 	# Rather redundant, but came up during tests so let's use it
 	if have_feat cmd-vexpr; then
@@ -4328,7 +4328,7 @@ t_environ() { # {{{
 	x
 	__EOT
 	#}}}
-	ck 6 0 ./t6 '1502695313 170' '2019043019 76'
+	ck 6 0 ./t6 '1502695313 170' '1396566516 96'
 
 	t_epilog "${@}"
 } # }}}
@@ -4764,7 +4764,7 @@ t_vexpr() { # {{{
 	X 13.1<
 	__EOT
 	#}}}
-	ck numeric 0 ./tnumeric '3600543675 2773' '3115053411 2327'
+	ck numeric 0 ./tnumeric '3600543675 2773' '2472071137 3247'
 
 	if have_feat regex; then
 		#{{{
@@ -5034,10 +5034,10 @@ t_xcall() { # {{{ # FIXME VEXPR
 	__EOT
 	#}}}
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' > ./t2 2>${EX}
-	ck 2 0 ./t2 '2293035624 3736' '3279804175 495'
+	ck 2 0 ./t2 '2293035624 3736' '723082170 715'
 
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' > ./t3 2>${EX}
-	ck 3 1 ./t3 '3857975724 2451' '2753253425 370'
+	ck 3 1 ./t3 '3857975724 2451' '782246248 530'
 
 	t_epilog "${@}"
 } # }}}
@@ -6520,10 +6520,10 @@ b8
 	#}}}
 
 	t_it forward
-	ck 1 0 ./.tall '2356713156 2219' '3273108824 335'
+	ck 1 0 ./.tall '2356713156 2219' '3453317104 495'
 
 	t_it Forward
-	ck 3 0 ./.tall '2356713156 2219' '447176534 355'
+	ck 3 0 ./.tall '2356713156 2219' '1665239258 515'
 	${rm} -f ex*
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
@@ -6658,10 +6658,10 @@ t_resend() { # {{{
 	#}}}
 
 	t_it resend
-	ck 1 0 ./.tall '1461006932 1305' '138360532 210'
+	ck 1 0 ./.tall '1461006932 1305' '2849514883 330'
 
 	t_it Resend
-	ck 3 0 ./.tall '3674535444 958' '138360532 210'
+	ck 3 0 ./.tall '3674535444 958' '2849514883 330'
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
 	${mkdir} .tfolder
@@ -10928,7 +10928,7 @@ this is content of forward 2, 2nd, with showname set
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '1461166401 9997' '1863958284 505'
+	ck 4 - ./t4 '1461166401 9997' '1312459649 605'
 
 	t_epilog "${@}"
 } # }}}
