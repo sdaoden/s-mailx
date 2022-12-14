@@ -113,11 +113,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
 	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
 	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 	s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
-#ifdef mx_HAVE_ERRORS
-	doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
-#else
-	doerr = FAL0;
-#endif
+	doerr = (fp == n_stderr);
 
 	for(ap = argv; *ap != NIL; ++ap){
 		if(ap != argv)
