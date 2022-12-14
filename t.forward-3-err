@@ -1,13 +1,13 @@
-1:done
-2:done
+reproducible_build: 1:done
+reproducible_build: 2:done
 reproducible_build: ex3@am.ple: *expandaddr* does not allow mail address target
 reproducible_build: No recipients specified
 reproducible_build: ... message not sent
-3:done
-4:done
+reproducible_build: 3:done
+reproducible_build: 4:done
 reproducible_build: No recipient specified.
 reproducible_build: Synopsis: Forward: Like `forward', but derive filename from <address>
-5:done
-6:done
-7:done
-8:done
+reproducible_build: 5:done
+reproducible_build: 6:done
+reproducible_build: 7:done
+reproducible_build: 8:done
