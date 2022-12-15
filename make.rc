@@ -459,9 +459,8 @@ OPT_USE_PKGSYS=yes
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
 # Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
-# These are definitily only useful for debugging.
-# Also, external libraries are often problematic (like ncursesw), and
-# Can be "require"d.
+# Also, external libraries are often problematic (like ncursesw).
+# Implicitly "require"d (developer debug aid only).
 OPT_ASAN_ADDRESS=no
 OPT_USAN=no
 
