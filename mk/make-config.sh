@@ -1,5 +1,6 @@
 #!/bin/sh -
 #@ Please see INSTALL and make.rc instead.
+#@ TODO - Modularize
 
 LC_ALL=C
 export LC_ALL
@@ -83,14 +84,12 @@ XOPTIONS_XTRA="\
 	SMIME='S/MIME message signing, verification, en- and decryption' \
 "
 
-# To avoid too many recompilations we use a two-stage "configuration changed"
-# detection, the first uses mk-config.env, which only goes for actual user
-# config settings etc. the second uses mk-config.h, which thus includes the
-# things we have truly detected.  This does not work well for multiple choice
-# values of which only one will be really used, so those user wishes may not be
-# placed in the header, only the really detected one (but that has to!).
-# Used for grep(1), for portability assume fixed matching only.
-H_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
+# To avoid too many recompilations we use a two-stage "configuration changed" detection, the first uses mk-config.env,
+# which only goes for actual (a bit re-verified) user config settings etc. the second uses mk-config.h, which thus
+# includes the things we have truly detected.  This does not work well for multiple choice values of which only one
+# will be really used, so those user wishes may not be placed in the header, only the really detected one (but that has
+# to!).  Used for grep(1), for portability assume fixed matching only.
+H_VAL_BLACKLIST='-e VAL_ICONV -e VAL_IDNA -e VAL_RANDOM'
 
 # The problem is that we do not have any tools we can use right now, so
 # encapsulate stuff in functions which get called in right order later on
@@ -277,6 +276,13 @@ option_update() {
 	elif feat_no TERMCAP; then
 		OPT_TERMCAP_VIA_TERMINFO=0
 	fi
+
+	if feat_yes ASAN_ADDRESS; then
+		OPT_ASAN_ADDRESS=require
+	fi
+	if feat_yes USAN; then
+		OPT_USAN=require
+	fi
 }
 
 ## - >8 - << OPTIONS | EARLY >> - 8< - ##
@@ -305,6 +311,7 @@ ld_no_bind_now=
 ld_rpath_not_runpath=
 
 _CFLAGS= _LDFLAGS=  _CFLAGS_NOT4TESTS= _LDFLAGS_NOT4TESTS=
+OPT_ANYEVAL= VAL_ANYEVAL=
 
 os_early_setup() {
 	# We do not "have any utility" (see make.rc)
@@ -607,12 +614,12 @@ _cc_flags_generic() {
 	# Prefer C99+ due to native 64-bit types etc
 	_i=c89
 	if feat_yes ASAN_ADDRESS || feat_yes USAN; then
-		msg ' ! Disabling ISO C89 due to desire for sanitizers'
+		msg ' ! Disabling ISO C89 due to desire to use sanitizers'
 		_i=
 	fi
 	__x='c99 c11 c18 c2x '${_i}
 	if feat_yes DEVEL && [ -n "${date}" ]; then
-		__y=$(${date} +%s)
+		__y=$(${date} +%M) # not too often
 		if [ ${?} -eq 0 ]; then
 			if [ -n "${good_shell}" ]; then
 				__y=${__y##*0}
@@ -858,7 +865,7 @@ config_exit() {
 }
 
 # Our feature check environment
-_feats_eval_done=0
+_feats_cleanup_done=0
 
 _feat_val_no() {
 	[ "x${1}" = x0 ] || [ "x${1}" = xn ] || [ "x${1}" = xfalse ] || [ "x${1}" = xno ] || [ "x${1}" = xoff ]
@@ -875,7 +882,7 @@ _feat_val_require() {
 
 _feat_check() {
 	eval _fc_i=\$OPT_${1}
-	if [ "$_feats_eval_done" = 1 ]; then
+	if [ "$_feats_cleanup_done" = 1 ]; then
 		[ "x${_fc_i}" = x0 ] && return 1
 		return 0
 	fi
@@ -986,8 +993,7 @@ option_doc_of() {
 }
 
 option_join_rc() {
-	# Join the values from make.rc into what currently is defined, not
-	# overwriting yet existing settings
+	# Join the values from make.rc into what currently is defined, not overwriting yet existing settings
 	${rm} -f ${tmp}
 	# We want read(1) to perform reverse solidus escaping in order to be able to
 	# use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
@@ -1029,10 +1035,10 @@ option_join_rc() {
 				sub(/^[^=]*=/, "", LINE)
 				sub(/^"*/, "", LINE)
 				sub(/"*$/, "", LINE)
-				# Sun xpg4/bin/awk expands those twice:
-				# Notice that backslash escapes are interpreted twice, once in
-				# lexical processing of the string and once in processing the
-				# regular expression.
+				# Sun xpg4/bin/awk expands those twice and says:
+				#   Notice that backslash escapes are interpreted twice, once in
+				#   lexical processing of the string and once in processing the
+				#   regular expression.
 					i = "\""
 					gsub(/"/, "\\\\\"", i)
 					i = (i == "\134\"")
@@ -1044,16 +1050,18 @@ option_join_rc() {
 		[ "${i}" = "OBJDIR" ] && continue
 		echo "${i}=\"${j}\""
 	done > ${tmp}
-	# Reread the mixed version right now
+
+	# Reread the mixed version right now - this evaluates shell snippets!
 	. ${tmp}
 }
 
-option_evaluate() {
-	# Expand the option values, which may contain shell snippets
-	# Set booleans to 0 or 1, or require, set _feats_eval_done=1
+option_cleanup() { # xxx i think we could "merge this" .. away??
+	# Set booleans to 0 or 1, or require, set _feats_cleanup_done=1
 	${rm} -f ${newenv} ${newmk}
+	printf '' > ${newenv}
+	printf '' > ${newmk}
 
-	exec 7<&0 8>&1 <${tmp} >${newenv}
+	exec 7<&0 <${tmp}
 	while read line; do
 		z=
 		if [ -n "${good_shell}" ]; then
@@ -1063,7 +1071,7 @@ option_evaluate() {
 			i=$(${awk} -v LINE="${line}" 'BEGIN{
 				gsub(/=.*$/, "", LINE);\
 				print LINE
-			}')
+				}')
 			if echo "${i}" | ${grep} '^OPT_' >/dev/null 2>&1; then
 				z=1
 			fi
@@ -1074,30 +1082,25 @@ option_evaluate() {
 			j="$(echo ${j} | ${tr} '[A-Z]' '[a-z]')"
 			if [ -z "${j}" ] || _feat_val_no "${j}"; then
 				j=0
-				printf "\t/* #undef ${i} */\n" >> ${newh}
 			elif _feat_val_yes "${j}"; then
 				if _feat_val_require "${j}"; then
 					j=require
 				else
 					j=1
 				fi
-				printf "   /* #define ${i} */\n" >> ${newh}
 			else
-				msg 'ERROR: cannot parse <%s>' "${line}"
+				msg 'ERROR: cannot parse <%s> (<%s>=<%s>)' "${line}" "${i}" "${j}"
 				config_exit 1
 			fi
-		elif { echo ${i} | ${grep} ${H_BLACKLIST} >/dev/null 2>&1; }; then
-			:
+			eval "${i}=\"${j}\""
+			OPT_ANYEVAL="${OPT_ANYEVAL} ${i}"
 		else
-			printf "#define ${i} \"${j}\"\n" >> ${newh}
+			VAL_ANYEVAL="${VAL_ANYEVAL} ${i}"
 		fi
-		printf -- "${i} = ${j}\n" >> ${newmk}
-		printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})"
-		eval "${i}=\"${j}\""
 	done
-	exec 0<&7 1>&8 7<&- 8<&-
+	exec 0<&7 7<&-
 
-	_feats_eval_done=1
+	_feats_cleanup_done=1
 }
 
 val_allof() {
@@ -1640,11 +1643,8 @@ SU_CWDDIR=${CWDDIR}
 	SU_INCDIR=${INCDIR}
 	SU_SRCDIR=${SRCDIR}
 
-# Our configuration options may at this point still contain shell snippets,
-# we need to evaluate them in order to get them expanded, and we need those
-# evaluated values not only in our new configuration file, but also at hand..
-msg_nonl 'Evaluating all configuration items ... '
-option_evaluate
+msg_nonl 'Cleaning up configuration items ... '
+option_cleanup
 msg 'done'
 
 option_update 1
@@ -1697,6 +1697,7 @@ for i in \
 		cksum; do
 	eval j=\$${i}
 	printf -- "${i} = ${j}\n" >> ${newmk}
+	[ "${i}" = MAKEFLAGS ] && continue # GNU make 4.4 embeds volatile info
 	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
 done
 
@@ -1743,10 +1744,32 @@ if feat_yes DEBUG; then
 	fi
 fi
 
+# Done with detection!  Write out our stuff!!
+for i in ${OPT_ANYEVAL}; do
+	eval j=\$${i}
+	if [ "${j}" = 0 ]; then
+		printf "\t/* #undef ${i} */\n" >> ${newh}
+	else
+		[ "${j}" = require ] && j=1 # lesser possibilities
+		printf "\t/* #define ${i} */\n" >> ${newh}
+	fi
+	printf -- "${i} = ${j}\n" >> ${newmk}
+	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+done
+for i in ${VAL_ANYEVAL}; do
+	eval j=\$${i}
+	if { echo ${i} | ${grep} ${H_VAL_BLACKLIST} >/dev/null 2>&1; }; then
+		:
+	else
+		printf "#define ${i} \"${j}\"\n" >> ${newh}
+	fi
+	printf -- "${i} = ${j}\n" >> ${newmk}
+	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
+done
+
 _ocf=${CFLAGS} _old=${LDFLAGS}
 CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}" LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 for i in \
-		COMMLINE \
 		PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
 		CC CFLAGS LDFLAGS \
 		INCS LIBS \
@@ -3904,7 +3927,7 @@ ${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
 ## Finished!
 ##
 
-# We have completed the new configuration header.  Check whether *really*
+# We have completed the new configuration header.
 # Do the "second stage configuration changed" detection, exit if nothing to do
 if [ -f ${oldh} ]; then
 	if ${cmp} ${h} ${oldh} >/dev/null 2>&1; then

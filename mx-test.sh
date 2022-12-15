@@ -13349,7 +13349,7 @@ else
 	fi
 	color_init
 
-	if [ "${OPT_USAN}" = 1 ] || [ "${OPT_ASAN_ADDRESS}" = 1 ]; then
+	if [ "${OPT_USAN}" != 0 ] || [ "${OPT_ASAN_ADDRESS}" != 0 ]; then
 		${rm} -f t.SANI
 		FILTER_ERR=filter_err_sani
 	fi
