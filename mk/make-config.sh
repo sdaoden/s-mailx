@@ -304,7 +304,7 @@ ld_need_R_flags=
 ld_no_bind_now=
 ld_rpath_not_runpath=
 
-_CFLAGS= _LDFLAGS=
+_CFLAGS= _LDFLAGS=  _CFLAGS_NOT4TESTS= _LDFLAGS_NOT4TESTS=
 
 os_early_setup() {
 	# We do not "have any utility" (see make.rc)
@@ -420,9 +420,9 @@ cc_setup() {
 		cc_no_flagtest=1
 	else
 		msg_nonl 'Searching for a usable C compiler .. $CC='
-		if acmd_set CC clang || acmd_set CC gcc ||
+		if acmd_set CC gcc || acmd_set CC clang ||
 				acmd_set CC tcc || acmd_set CC pcc ||
-				acmd_set CC c89 || acmd_set CC c99; then
+				acmd_set CC c99 || acmd_set CC c89; then
 			case "${CC}" in
 			*pcc*) cc_no_fortify=1;;
 			*) ;;
@@ -430,7 +430,7 @@ cc_setup() {
 		else
 			msg 'boing booom tschak'
 			msg 'ERROR: I cannot find a compiler!'
-			msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+			msg ' Neither of gcc(1), clang(1), tcc(1), pcc(1), c99(1) and c89(1).'
 			msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
 			config_exit 1
 		fi
@@ -482,7 +482,7 @@ _cc_default() {
 	if [ -z "${VERBOSE}" ] && [ -f ${env} ] && feat_no DEBUG; then
 		:
 	else
-		msg '. C compiler ${CC}=%s' "${CC}"
+		msg ' . C compiler ${CC}=%s' "${CC}"
 	fi
 
 	case "${CC}" in
@@ -604,8 +604,13 @@ _cc_flags_tcc() {
 _cc_flags_generic() {
 	__cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
 	_CFLAGS= _LDFLAGS=
-	# Prefer C99+ due to 64-bit types etc
-	__x='c99 c11 c18 c2x c89'
+	# Prefer C99+ due to native 64-bit types etc
+	_i=c89
+	if feat_yes ASAN_ADDRESS || feat_yes USAN; then
+		msg ' ! Disabling ISO C89 due to desire for sanitizers'
+		_i=
+	fi
+	__x='c99 c11 c18 c2x '${_i}
 	if feat_yes DEVEL && [ -n "${date}" ]; then
 		__y=$(${date} +%s)
 		if [ ${?} -eq 0 ]; then
@@ -615,11 +620,11 @@ _cc_flags_generic() {
 				__y=$(echo ${__y} | ${sed} -e 's/^0*//')
 			fi
 			case "$((__y % 5))" in
-			0) __x='c89 c99 c11 c18 c2x';;
+			0) __x=${_i}' c99 c11 c18 c2x';;
 			1) ;;
-			2) __x='c11 c18 c2x c89 c99';;
-			3) __x='c18 c2x c89 c99 c11';;
-			4) __x='c2x c89 c99 c11 c18';;
+			2) __x='c11 c18 c2x c99 '${_i};;
+			3) __x='c18 c2x c99 c11 '${_i};;
+			4) __x='c2x c99 c11 c18 '${_i};;
 			esac
 		fi
 		unset __y
@@ -650,7 +655,7 @@ _cc_flags_generic() {
 	fi
 
 	if feat_yes AMALGAMATION; then
-		cc_check -pipe
+		cc_check -pipe # reduce memory peak
 	fi
 
 	#if feat_yes DEVEL && cc_check -Weverything; then
@@ -696,46 +701,70 @@ _cc_flags_generic() {
 
 	if val_has VAL_AUTOCC stackprot; then
 		if [ -z "${cc_no_stackprot}" ]; then
-			if cc_check -fstack-protector-strong || cc_check -fstack-protector-all; then
-				if val_has VAL_AUTOCC fortify; then
-					if [ -z "${cc_no_fortify}" ]; then
-						cc_check -D_FORTIFY_SOURCE=2
-					else
-						msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
-						msg ' ! it caused errors in a "similar" configuration.'
-						msg ' ! You may turn off OPT_AUTOCC, then rerun.'
+			_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+			if cc_check -fstack-protector-strong; then
+				_i=-fstack-protector-strong
+			elif cc_check -fstack-protector-all; then
+				_i=-fstack-protector-all
+			fi
+			if [ -n "${_i}" ]; then
+				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
+				if [ -z "${cc_no_fortify}" ]; then
+					if val_has VAL_AUTOCC fortify && cc_check -D_FORTIFY_SOURCE=2; then
+						_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -D_FORTIFY_SOURCE=2"
 					fi
+				else
+					msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+					msg ' ! it caused errors in a "similar" configuration.'
+					msg ' ! You may turn off OPT_AUTOCC, then rerun.'
 				fi
 			fi
+			_CFLAGS=${_ocf} _LDFLAGS=${_old}
 		else
-			msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+			msg ' ! No check for stack protection options,'
 			msg ' ! it caused errors in a "similar" configuration.'
 			msg ' ! You may turn off OPT_AUTOCC, then rerun.'
+			xy
 		fi
 	fi
 
 	# LD (+ dependent CC)
 
+	_any_sani=
 	if feat_yes ASAN_ADDRESS; then
-		_ccfg=${_CFLAGS}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
 		if cc_check -fsanitize=address && ld_check -fsanitize=address; then
-			:
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=address"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=address"
+			_any_sani=y
 		else
 			feat_bail_required ASAN_ADDRESS
-			_CFLAGS=${_ccfg}
 		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
 	if feat_yes USAN; then
-		_ccfg=${_CFLAGS}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
 		if cc_check -fsanitize=undefined && ld_check -fsanitize=undefined; then
-			:
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize=undefined"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize=undefined"
+			_any_sani=y
 		else
 			feat_bail_required USAN
-			_CFLAGS=${_ccfg}
 		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
+	if [ -n "${_any_sani}" ]; then
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		if cc_check -fsanitize-recover=all; then # && ld_check -fsanitize-recover=all; then
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fsanitize-recover=all"
+#			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -fsanitize-recover=address"
+		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
+	fi
+
+	#
 	ld_check -Wl,-z,relro
 	if val_has VAL_AUTOCC bind_now; then
 		if [ -z "${ld_no_bind_now}" ]; then
@@ -767,27 +796,34 @@ _cc_flags_generic() {
 
 	# Address randomization
 	if val_has VAL_AUTOCC pie; then
-		_ccfg=${_CFLAGS}
-		if cc_check -fPIE || cc_check -fpie; then
-			ld_check -pie || _CFLAGS=${_ccfg}
+		_ocf=${_CFLAGS} _old=${_LDFLAGS} _i=
+		if cc_check -fPIE; then
+			_i=-fPIE
+		elif cc_check -fpie; then
+			_i=-fpie
 		fi
-		unset _ccfg
+		if [ -n "${_i}" ] && ld_check -pie; then
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -pie"
+		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
 	# Retpoline (xxx maybe later?)
-#	_ccfg=${_CFLAGS} _i=
-#	if cc_check -mfunction-return=thunk; then
-#		if cc_check -mindirect-branch=thunk; then
-#			_i=1
-#		fi
+#	_ocf=${_CFLAGS} _old=${_LDFLAGS}
+#	if cc_check -fcf-protection=full; then
+#		_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fcf-protection=full"
 #	elif cc_check -mretpoline; then
-#		_i=1
+#		#if ld_check -Wl,-z,retpolineplt; then .. ignored in newer clang
+#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mretpoline"
+#		#	_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -Wl,-z,retpolineplt"
+#		#fi
+#	elif cc_check -mfunction-return=thunk; then
+#		if cc_check -mindirect-branch=thunk; then
+#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mfunction-return=thunk -mindirect-branch=thunk"
+#		fi
 #	fi
-#	if [ -n "${_i}" ]; then
-#		ld_check -Wl,-z,retpolineplt || _i=
-#	fi
-#	[ -n "${_i}" ] || _CFLAGS=${_ccfg}
-#	unset _ccfg
+#	_CFLAGS=${_ocf} _LDFLAGS=${_old}
 
 	_CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
 	unset __cflags __ldflags
@@ -1707,6 +1743,8 @@ if feat_yes DEBUG; then
 	fi
 fi
 
+_ocf=${CFLAGS} _old=${LDFLAGS}
+CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}" LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 for i in \
 		COMMLINE \
 		PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
@@ -1718,6 +1756,7 @@ for i in \
 	eval j="\$${i}"
 	printf -- "${i}=%s;export ${i}\n" "$(quote_string ${j})" >> ${newenv}
 done
+CFLAGS=${_ocf} LDFLAGS=${_old}
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
@@ -2399,9 +2438,9 @@ fi
 
 ### FORK AWAY SHARED BASE SERIES ###
 
-BASE_CFLAGS=${CFLAGS}
+BASE_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 BASE_INCS=$(squeeze_ws "${INCS}")
-BASE_LDFLAGS=${LDFLAGS}
+BASE_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 BASE_LIBS=$(squeeze_ws "${LIBS}")
 
 ## The remains are expected to be used only by the main MUA binary!
@@ -3681,9 +3720,9 @@ option_update 2
 INCS=$(squeeze_ws "${INCS}")
 LIBS=$(squeeze_ws "${LIBS}")
 
-MX_CFLAGS=${CFLAGS}
+MX_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 	MX_INCS=${INCS}
-	MX_LDFLAGS=${LDFLAGS}
+	MX_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 	MX_LIBS=${LIBS}
 SU_CFLAGS="${BASE_CFLAGS} -Dsu_USECASE_MX"
 	SU_CXXFLAGS=
@@ -3694,9 +3733,9 @@ PS_DOTLOCK_CFLAGS=${BASE_CFLAGS}
 	PS_DOTLOCK_INCS=${BASE_INCS}
 	PS_DOTLOCK_LDFLAGS=${BASE_LDFLAGS}
 	PS_DOTLOCK_LIBS=${BASE_LIBS}
-NET_TEST_CFLAGS=${CFLAGS}
+NET_TEST_CFLAGS="${CFLAGS} ${_CFLAGS_NOT4TESTS}"
 	NET_TEST_INCS=${INCS}
-	NET_TEST_LDFLAGS=${LDFLAGS}
+	NET_TEST_LDFLAGS="${LDFLAGS} ${_LDFLAGS_NOT4TESTS}"
 	NET_TEST_LIBS=${LIBS}
 
 for i in \
@@ -3735,8 +3774,8 @@ elif (${CC} -v) >/dev/null 2>&1; then
 fi
 
 CC=$(squeeze_ws "${CC}")
-CFLAGS=$(squeeze_ws "${CFLAGS}")
-LDLAGS=$(squeeze_ws "${LDFLAGS}")
+CFLAGS=$(squeeze_ws "${CFLAGS} ${_CFLAGS_NOT4TESTS}")
+LDFLAGS=$(squeeze_ws "${LDFLAGS} ${_LDFLAGS_NOT4TESTS}")
 LIBS=$(squeeze_ws "${LIBS}")
 # $MAKEFLAGS often contain job-related things which hinders reproduceability.
 # For at least GNU make(1) we can separate those and our regular configuration

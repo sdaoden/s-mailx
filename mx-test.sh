@@ -134,7 +134,7 @@ done
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
 	MAILX__CC_TEST_RUNNING=y
 	export MAILX__CC_TEST_RUNNING
-	exec "${SHELL}" "${i}${0}" "${@}"
+	exec ${SHELL} "${i}${0}" "${@}"
 fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as such is a compile-time variable
