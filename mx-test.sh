@@ -5491,8 +5491,7 @@ echo ===T1
 vput fop res touch ./t1.1;x
 unset res;vput fop res_noecho stat ./t1.1;x
 echo ===T2
-vput fop res lock ./t1.2 w;x
-set fd=$res
+vput fop fd lock ./t1.2 w;x
 #xxx write on our own
 ! (echo l1;echo l2;echo l3;) > ./t1.2
 echo ===readctl create 2.1
@@ -5502,26 +5501,30 @@ read res;x
 read res;x
 read res;x
 echo ===rewind 2.1.1
-vput fop res rewind $fd;x
+vput fop xres rewind $fd;x
+if $xres -ne $fd;echo ERR;end
 read res;x
 read res;x
 read res;x
 read res;x
 echo ===rewind 2.1.2
-vput fop res rewind $fd;x
+vput fop xres rewind $fd;x
+if $xres -ne $fd;echo ERR;end
 vput fop res pass $fd @ "${CAT} && exit 11";x
 vput fop res pass $fd - "${CAT} && exit 12";x
 echo ===rewind 2.1.3
-vput fop res rewind $fd;x
+vput fop xres rewind $fd;x
+if $xres -ne $fd;echo ERR;end
 vput fop res pass $fd - "${CAT} && exit 13";x
 vput fop res pass $fd - "${CAT} && exit 14";x
 echo ===dtors 2.1
-vput fop res close $fd;x
+vput fop xres close $fd;x
+if $xres -ne $fd;echo ERR;end
 vput fop res close $fd;x
 readctl remove $fd;x
 	__EOT
 	#}}}
-	cke0 1 0 ./t1 '2608383886 367'
+	cke0 1 0 ./t1 '3450645225 369'
 
 	if have_feat flock; then
 		#{{{

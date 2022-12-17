@@ -224,8 +224,19 @@ a_fop__ftruncate(struct a_fop_ctx *fcp){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
 	}else if((fofdp = a_fop_fd(fcp->fc_arg = fcp->fc_argv[0], &fofstd, NIL)) != NIL){
-		ftrunc(fofdp->fof_fp);
-		fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
+		off_t off;
+
+		fflush(fofdp->fof_fp);
+		off = ftell(fofdp->fof_fp);
+		if(off != -1)
+			off = ftruncate(fileno(fofdp->fof_fp), off);
+		if(off != -1)
+			fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
+		else{
+			n_pstate_err_no = su_err_no_by_errno();
+			fcp->fc_flags |= a_FOP_ERR;
+			fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
+		}
 	}else{
 		n_pstate_err_no = su_ERR_INVAL;
 		fcp->fc_flags |= a_FOP_ERR;
@@ -256,10 +267,14 @@ jflesyn:
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
 		goto jleave;
-	}else if(flm == mx_FILE_LOCK_MODE_IDEFAULT){
-		if(fcp->fc_argv[2] != NIL)
+	}
+#ifdef mx_HAVE_FLOCK
+	else if(flm != mx_FILE_LOCK_MODE_IDEFAULT){
+		if(fcp->fc_argv[2] != NIL && fcp->fc_argv[3] != NIL)
 			goto jflesyn;
-	}else if(fcp->fc_argv[2] != NIL && fcp->fc_argv[3] != NIL)
+	}else
+#endif
+	if(fcp->fc_argv[2] != NIL)
 		goto jflesyn;
 
 	fcp->fc_arg = fcp->fc_argv[0];
@@ -310,10 +325,14 @@ jflesyn:
 	}else
 		oflags |= mx_FS_O_RDWR | mx_FS_O_CREATE;
 
+#ifdef mx_HAVE_FLOCK
 	if(fcp->fc_argv[2] == NIL)
+#endif
 		oflags |= mx_FS_O_NOREGISTER;
+#ifdef mx_HAVE_FLOCK
 	else if(silence)
 		goto jflesyn;
+#endif
 	if(fcp->fc_flags & a_FOP_MOD_NOFOLLOW)
 		oflags |= mx_FS_O_NOFOLLOW;
 
@@ -336,7 +355,10 @@ jflesyn:
 		goto jleave;
 	}
 
-	if(oflags & mx_FS_O_NOREGISTER){
+#ifdef mx_HAVE_FLOCK
+	if(fcp->fc_argv[2] == NIL)
+#endif
+	{
 		struct a_fop_ofd *fofdp;
 
 		fofdp = su_TALLOC(struct a_fop_ofd, 1);
@@ -345,7 +367,9 @@ jflesyn:
 		fofdp->fof_fp = fp;
 		fofdp->fof_silence = silence;
 		fcp->fc_varres = su_ienc_s32(fcp->fc_iencbuf, fileno(fp), 10);
-	}else{
+	}
+#ifdef mx_HAVE_FLOCK
+	else{
 		struct mx_child_ctx cc;
 
 		mx_child_ctx_setup(&cc);
@@ -368,6 +392,7 @@ jflesyn:
 
 		n_pstate_err_no = cc.cc_error;
 	}
+#endif /* mx_HAVE_FLOCK */
 
 jleave:
 	NYD2_OU;
