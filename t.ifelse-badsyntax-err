@@ -1,0 +1,8 @@
+reproducible_build: Conditional expression: trailing unary ! operators: stop during: !: of: !
+reproducible_build: Conditional expression: expected an operator: stop during: ! && a == hey ]: of: [ ! && a == hey ]
+reproducible_build: Conditional expression: trailing unary ! operators: stop during: ! ! ! ! ! ! ! ! !: of: true && ! ! ! ! ! ! ! ! !
+reproducible_build: Conditional expression: expected an AND/OR list: stop during: [ true ]: of: true && [ true ] [ true ]
+reproducible_build: Conditional expression: expected an AND/OR list: stop during: -n ]: of: [ -n == -n ]
+reproducible_build: Conditional expression: expected an AND/OR list: stop during: -n: of: -n == -n
+reproducible_build: Conditional expression: expected an operator: stop during: == ]: of: [ == ]
+reproducible_build: Conditional expression: expected an operator: stop during: == [: of: [ == [

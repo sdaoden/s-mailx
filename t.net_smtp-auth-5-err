@@ -1,0 +1,3 @@
+reproducible_build: SMTP: no usable authentication types (remain; *verbose* for reasons)
+reproducible_build: ... message not sent
+net-test: Interrupted system call
