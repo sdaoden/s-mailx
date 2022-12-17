@@ -602,7 +602,6 @@ have_feat() {
 	' 2>/dev/null
 }
 
-
 t_prolog() {
 	shift
 	ESTAT=0 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0 TEST_NAME=${1} TEST_ANY=
@@ -1245,11 +1244,11 @@ t_X_errexit() { # {{{
 	__EOT
 
 	printf 'source ./t3.rc\ncall x\necho au' | ${MAILX} ${ARGS} -Sxarg=errexit > ./t12 2>${EX}
-	ck0 12 1 ./t12 '1627276283 48'
+	ck0 12 1 ./t12 '116615032 68'
 
 	printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
 		${MAILX} ${ARGS} -Sxarg=errexit > ./t13 2>${EX}
-	ck0 13 1 ./t13 '1627276283 48'
+	ck0 13 1 ./t13 '116615032 68'
 
 	printf 'source ./t3.rc\nset on-history-addition=oha\ncall x\necho au' |
 		${MAILX} ${ARGS} -Sxarg=i > ./t14 2>${EX}
@@ -6299,6 +6298,8 @@ body3
 		#' \
 			> ./.tall 2>${EX}
 		ck 7 0 ./.tall '3631170341 244' '1074346767 629'
+	else
+		t_echoskip '7:[!MAILDIR]'
 	fi
 
 	## Ensure action on multiple messages
@@ -6458,7 +6459,7 @@ b7
 	cke0 19 0 ./.tall '2774517283 2571'
 
 	# Moreover, quoting of several parts with all*
-	t__gen_mimemsg from 'ex1@am.ple' subject for-repl > ./.tmbox
+	t__gen_msg_mime from 'ex1@am.ple' subject for-repl > ./.tmbox
 	ck 20 0 ./.tmbox '1874764424 668'
 
 	</dev/null ${MAILX} ${ARGS} -Rf \
@@ -7861,7 +7862,7 @@ t_iconv_mainbody() { # {{{
 	# types (character-wise, byte-wise, and the character(s) used differ)
 	i="${MAILX_ICONV_MODE}"
 	if [ -n "${i}" ]; then
-		t__gen_mimemsg from 'my@self' subject '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
+		t__gen_msg_mime from 'my@self' subject '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
 		ck 5 0 ./t5 '3471036537 677'
 
 		LC_ALL=C ${MAILX} ${ARGS} -Y 'p;xit' -Rf ./t5 >./t5-xxx 2>./${E0}
@@ -9046,14 +9047,14 @@ reply 1 2
 
 	if have_feat iconv; then
 		printf 'ein \303\244ffchen und ein pferd\n' > ./txa10
-		if (< ./tx.a1 iconv -f ascii -t utf8) >/dev/null 2>&1; then
+		if (< ./tx.a1 iconv -f iso-8859-1 -t utf8) >/dev/null 2>&1; then
 			</dev/null ${MAILX} ${ARGS} --set mta=test \
 				--set stealthmua=noagent --set hostname \
 				--attach ./tx.a1=-#utf8 \
-				--attach ./txa10=utf8#latin1 \
+				--attach ./txa10=utf8#iso-8859-1 \
 				--subject Y \
 				ex@am.ple > ./t10 2>${E0}
-			cke0 10 0 ./t10 '75186432 923'
+			cke0 10 0 ./t10 '3768148 927'
 		else
 			t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
 		fi
@@ -9541,7 +9542,7 @@ t_cmd_escapes() { # {{{
 	{ t__x1_msg && t__x2_msg && t__x3_msg &&
 		t__gen_msg from 'ex4@am.ple' subject sub4 &&
 		t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
-		t__gen_mimemsg from 'ex6@am.ple' subject sub6; } > ./t.mbox
+		t__gen_msg_mime from 'ex6@am.ple' subject sub6; } > ./t.mbox
 	ck 1 - ./t.mbox '517368276 2182'
 
 	# ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
@@ -12338,7 +12339,7 @@ c3RlZmZlbiAwZjJmNmViMzI2YmE5M2UxM2YyM2M5MjhjZDYzMTQxOQ==
 	smtp_script smtp -Ssmtp-config=-all,xoauth2
 	{ smtp_ehlo && printf '\001\nNOT REACHED\n'; } |
 			../net-test -s t.sh > ./tauth-5 2>${EX}
-	ck0 auth-5 8 ./tauth-5 '0 0'
+	ck0 auth-5 8 ./tauth-5 '3338365820 164'
 
 	if have_feat tls; then
 		smtp_script smtp -Ssmtp-config=-all,starttls,xoauth2
@@ -12508,7 +12509,7 @@ t__gen_msg() {
 	t___gen_msg '' "${@}"
 }
 
-t__gen_mimemsg() {
+t__gen_msg_mime() {
 	t___gen_msg 1 "${@}"
 }
 
