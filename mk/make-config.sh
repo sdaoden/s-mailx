@@ -2591,21 +2591,30 @@ int main(void){
 	char inb[16], oub[16], *inbp, *oubp;
 	iconv_t id;
 	size_t inl, oul;
-	int rv;
+	int glibc_bug, rv;
 
-	/* U+2013 */
-	memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
-	inl = sizeof("\342\200\223") -1;
+	glibc_bug = 0;
+
+jredo:
+	/* U+1FA78/f0 9f a9 b9/;DROP OF BLOOD */
+	memcpy(inbp = inb, "\360\237\251\271", sizeof("\360\237\251\271"));
+	inl = sizeof("\360\237\251\271") -1;
 	oul = sizeof oub;
 	oubp = oub;
 
 	rv = 1;
-	if((id = iconv_open("us-ascii", "utf-8")) == (iconv_t)-1)
+	if((id = iconv_open((glibc_bug ? "us-ascii//TRANSLIT" : "us-ascii"), "utf-8")) == (iconv_t)-1)
 		goto jleave;
 
 	rv = 14;
-	if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
+	if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1){
+		if(glibc_bug == 0){
+			iconv_close(id);
+			glibc_bug = 32;
+			goto jredo;
+		}
 		goto jleave;
+	}
 
 	*oubp = '\0';
 	oul = (size_t)(oubp - oub);
@@ -2624,12 +2633,12 @@ int main(void){
 	}
 
 	/* Byte-wise replacement? */
-	if(oul == sizeof("\342\200\223") -1){
+	if(oul == sizeof("\360\237\251\271") -1){
 		rv = 12;
-		if(!memcmp(oub, "???????", sizeof("\342\200\223") -1))
+		if(!memcmp(oub, "????", sizeof("\360\237\251\271") -1))
 			goto jleave;
 		rv = 13;
-		if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
+		if(!memcmp(oub, "****", sizeof("\360\237\251\271") -1))
 			goto jleave;
 		rv = 14;
 	}
@@ -2638,7 +2647,7 @@ jleave:
 	if(id != (iconv_t)-1)
 		iconv_close(id);
 
-	return rv;
+	return rv | glibc_bug;
 }
 !
 
@@ -2662,17 +2671,20 @@ jleave:
 
 	if feat_yes ICONV && feat_no CROSS_BUILD; then
 		{ ${tmp}; } >/dev/null 2>&1
-		case ${?} in
-		1)
+		i=${?} j=FAL0
+		[ ${i} -gt 31 ] && j=TRU1
+		case ${i} in
+		1|33)
 			msg 'WARN: disabling ICONV due to faulty conversion/restrictions'
 			feat_bail_required ICONV
 			;;
-		2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
-		3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
-		12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
-		13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
+		2|34) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${env};;
+		3|35) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${env};;
+		12|44) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${env};;
+		13|45) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${env};;
 		*) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
 		esac
+		echo '#define mx_ICONV_NEEDS_TRANSLIT '${j} >> ${h}
 	fi
 else
 	feat_is_disabled ICONV
