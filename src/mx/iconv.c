@@ -102,7 +102,11 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
 #ifdef mx_HAVE_ICONV
 iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
+# ifndef mx_ICONV_NEEDS_TRANSLIT
+	static boole mx_ICONV_NEEDS_TRANSLIT;
+# endif
 	iconv_t id;
+	char const *tocode_orig;
 	NYD_IN;
 
 	if((tocode = n_iconv_normalize_name(tocode)) == NIL || (fromcode = n_iconv_normalize_name(fromcode)) == NIL){
@@ -110,13 +114,48 @@ n_iconv_open(char const *tocode, char const *fromcode){
 		id = R(iconv_t,-1);
 		goto jleave;
 	}
+	tocode_orig = tocode;
+
+	/* For cross-compilations this needs to be evaluated once at runtime */
+# ifndef mx_ICONV_NEEDS_TRANSLIT
+	if(mx_ICONV_NEEDS_TRANSLIT == FAL0){
+		for(;;){
+			char inb[8], *inbp, oub[8], *oubp;
+			uz inl, oul;
+
+			/* U+1FA78/f0 9f a9 b9/;DROP OF BLOOD */
+			su_mem_copy(inbp = inb, "\360\237\251\271", sizeof("\360\237\251\271"));
+			inl = sizeof("\360\237\251\271") -1;
+			oul = sizeof oub;
+			oubp = oub;
+
+			if((id = iconv_open((mx_ICONV_NEEDS_TRANSLIT ? "us-ascii//TRANSLIT" : "us-ascii"), "utf-8")
+					) == (iconv_t)-1)
+				break;
+
+			if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1){
+				iconv_close(id);
+				if(mx_ICONV_NEEDS_TRANSLIT)
+					break;
+				mx_ICONV_NEEDS_TRANSLIT = TRUM1;
+			}else{
+				iconv_close(id);
+				mx_ICONV_NEEDS_TRANSLIT = TRU1;
+				break;
+			}
+		}
+	}
+# endif /* ifndef mx_ICONV_NEEDS_TRANSLIT */
+
+	if(mx_ICONV_NEEDS_TRANSLIT == TRU1)
+		tocode = savecat(tocode, "//TRANSLIT");
 
 	id = iconv_open(tocode, fromcode);
 
 	/* If the encoding names are equal at this point, they are just not understood by iconv(), and we cannot
 	 * sensibly use it in any way.  We do not perform this as an optimization above since iconv() can otherwise be
 	 * used to check the validity of the input even with identical encoding names */
-	if(id == R(iconv_t,-1) && !su_cs_cmp_case(tocode, fromcode))
+	if(id == R(iconv_t,-1) && !su_cs_cmp_case(tocode_orig, fromcode))
 		su_err_set_no(su_ERR_NONE);
 
 jleave:
