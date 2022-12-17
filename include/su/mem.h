@@ -38,6 +38,7 @@ C_DECL_BEGIN
  * \brief \r{MEM} tools like copy (\r{su/mem.h})
  *
  * In general argument pointers may be given as \NIL if a length argument which covers them is given as 0.
+ * These functions can be used early (unless debug code checks would trigger).
  * @{
  */
 

@@ -162,7 +162,7 @@
 	 * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
 	 * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
 	 * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
-	 * or \c{su_RANDOM_SEED_HOOK} for seeding via the necessary \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
+	 * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
 	 * the latter only in special builds, of course. */
 # define su_RANDOM_SEED
 # define su_HAVE_RE /*!< \r{RE} support available? */
@@ -1363,7 +1363,9 @@ enum su_state_create_flags{
 	su__STATE_CREATE_RANDOM_MEM_FILLER = 1u<<1,
 	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET}.
 	 * It favours \c{0x00} and \c{0xFF} over other random numbers.
-	 * Implies \c{CREATE_RANDOM}. */
+	 * Implies \c{CREATE_RANDOM}.
+	 * \remarks{As this creates a random number, a \r{su_RANDOM_SEED} of \c{su_RANDOM_SEED_HOOK} must be carefully
+	 * written due to hen-and-egg.} */
 	su_STATE_CREATE_RANDOM_MEM_FILLER = su_STATE_CREATE_RANDOM | su__STATE_CREATE_RANDOM_MEM_FILLER,
 	su_STATE_CREATE_MD = 1u<<2, /*!< (V1) Initialize \r{MD}. */
 
@@ -1380,11 +1382,11 @@ enum su_state_gut_flags{
 	su_STATE_GUT_ACT_QUICK,
 	su_STATE_GUT_ACT_CARE, /*!< Abnormal exit (see \r{su_STATE_GUT_ACT_MASK}). */
 #if defined su_HAVE_STATE_GUT_FORK || defined DOXYGEN
-	/*! The state is destroyed after a child process has been spawned / forked / cloned, from within the child process.
+	/*! State is destroyed after a child process has been spawned / forked / cloned, from within the child process.
 	 * \remarks{This is problematic especially in true \r{su_HAVE_MT} aka threaded \r{su_HAVE_SMP} conditions.
 	 * That is to say that the state of locks etc. cannot be guaranteed in a portable fashion (let alone easily),
 	 * and simply destroying and giving back such resources seems unwise.
-	 * So it should be expected that calling \r{su_state_gut()} in this mode mostly leaves old resources laying around,
+	 * It should be expected that calling \r{su_state_gut()} in this mode mostly leaves old resources laying around,
 	 * and only resets some pointers to \NIL, so that a new \r{su_state_create()} cycle becomes possible.
 	 * Because of this the \r{CONFIG} option \r{su_HAVE_STATE_GUT_FORK} is a precondition for this code path.} */
 	su_STATE_GUT_ACT_FORK,
@@ -1396,15 +1398,15 @@ enum su_state_gut_flags{
 	su_STATE_GUT_NO_HANDLERS = 1u<<4, /*!< Do not call normal \r{su_state_on_gut_install()}ed handlers. */
 	su_STATE_GUT_NO_FINAL_HANDLERS = 1u<<5, /*!< Do not call final \r{su_state_on_gut_install()}ed handlers. */
 
-	/*! The library and called handlers should be aware that \r{SMP} locking may cause deadlocks, for example because
+	/*! Library and called handlers should be aware that \r{SMP} locking may cause deadlocks, for example because
 	 * multiple threads were running when one of them initiated program termination. */
 	su_STATE_GUT_NO_LOCKS = 1u<<6,
 	/*! Do not perform I/O, like flushing some streams etc.
 	 * P.S.: general I/O will be flushed before handlers are called. */
 	su_STATE_GUT_NO_IO = 1u<<7,
 
-	/*! With \r{su_HAVE_DEVEL}, call \r{su_mem_trace()} as one of the last \SU statements for \r{su_STATE_GUT_ACT_NORM}
-	 * invocations. */
+	/*! With \r{su_HAVE_DEVEL}, call \r{su_mem_trace()} as one of the last \SU statements for
+	 * \r{su_STATE_GUT_ACT_NORM} invocations. */
 	su_STATE_GUT_MEM_TRACE = 1u<<16
 };
 
@@ -1561,8 +1563,7 @@ EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
  * Many subsystems need internal machineries which are initialized when needed first, an operation that may fail.
  * Because of this the public interface may generate errors that need to be handled, which may be undesireable.
  * If this function is used instead of \r{su_state_create_core()} then internals of a desired subset of subsystems
- * is initialized immediately,
- * so that it can be asserted that these errors cannot occur. */
+ * is initialized immediately, so that it can be asserted that these errors cannot occur. */
 EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate);
 
 /*! Tear down \SU according to \a{flags}.

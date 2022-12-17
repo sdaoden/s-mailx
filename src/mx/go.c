@@ -1424,24 +1424,26 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE!
 }
 
 void
-mx_go_init(void){
+mx_go_init(boole pre_su_init){
 	struct a_go_ctx *gcp;
 	NYD2_IN;
 
 	ASSERT(n_stdin != NIL);
 
-	gcp = S(void*,a_go__mainctx_b.uf);
-	DVLDBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
-		su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
-	gcp->gc_data.gdc_membag = su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
-	gcp->gc_file = n_stdin;
-	su_mem_copy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
+	if(pre_su_init){
+		gcp = S(void*,a_go__mainctx_b.uf);
+		DVLDBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx,gc_name)),
+			su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
+		gcp->gc_data.gdc_membag = su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
+		gcp->gc_file = n_stdin;
+		su_mem_copy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
 
-	a_go_ctx = gcp;
-	mx_go_data = &gcp->gc_data;
-
-	mx_termios_controller_setup(mx_TERMIOS_SETUP_STARTUP);
-	mx_child_controller_setup();
+		a_go_ctx = gcp;
+		mx_go_data = &gcp->gc_data;
+	}else{
+		mx_termios_controller_setup(mx_TERMIOS_SETUP_STARTUP);
+		mx_child_controller_setup();
+	}
 
 	NYD2_OU;
 }

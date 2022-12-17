@@ -117,7 +117,8 @@ struct su_mem_bag{
  * otherwise it is cramped to some internal limits (currently 1 KB / 10 MB).
  *
  * Memory bags can serve chunks larger than what pools can handle, but these need special treatment,
- * and thus counteract the idea of a pool: their occurrence is logged with \r{su_HAVE_DEBUG}. */
+ * and thus counteract the idea of a pool: their occurrence is logged with \r{su_HAVE_DEBUG}.
+ * Resources are lazy allocated. */
 EXPORT struct su_mem_bag *su_mem_bag_create(struct su_mem_bag *self, uz bsz);
 
 /*! If \SELF owns a stack of bags as created via \r{su_mem_bag_push()},
