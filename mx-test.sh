@@ -7858,17 +7858,19 @@ t_iconv_mainbody() { # {{{
 	# types (character-wise, byte-wise, and the character(s) used differ)
 	i="${MAILX_ICONV_MODE}"
 	if [ -n "${i}" ]; then
-		printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf ./t.mbox >./t5-xxx 2>./${E0}
-		j=${?}
-		ck_ex0 5-1-estat ${j}
+		t__gen_mimemsg from 'my@self' subject '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
+		ck 5 0 ./t5 '3471036537 677'
+
+		LC_ALL=C ${MAILX} ${ARGS} -Y 'p;xit' -Rf ./t5 >./t5-xxx 2>./${E0}
+		ck_ex0 5-1-estat ${?}
 		if [ ${i} -eq 13 ]; then
-			cke0 5-2 - ./t5-xxx '189327996 283' # XXX old (before test MTA)
+			cke0 5-2 - ./t5-xxx '1909828403 62' # * per byte
 		elif [ ${i} -eq 12 ]; then
-			cke0 5-3 - ./t5-xxx '1959197095 283' # XXX old (before test MTA)
+			cke0 5-3 - ./t5-xxx '1322133099 621' # ? per byte
 		elif [ ${i} -eq 3 ]; then
-			cke0 5-4 - ./t5-xxx '3544755786 278'
+			cke0 5-4 - ./t5-xxx '1016055915 615' # *
 		else
-			cke0 5-5 - ./t5-xxx '2381160335 278'
+			cke0 5-5 - ./t5-xxx '2418770324 615' # ?
 		fi
 	else
 		t_echoskip '5:[ICONV replacement unknown]'
