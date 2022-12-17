@@ -1,0 +1,32 @@
+[-- Message  1 -- 36 lines, 677 bytes --]:
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: my@self
+Subject: ?
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+Status: R
+
+
+[-- #1.1 16/284 --]
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+
+[-- #1.1.1 5/79 --]
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+?
+
+[-- #1.1.2 5/108 --]
+
+[-- #1.2 4/39 7bit --]
+Content-Type: text/troff
+
+Golden Brown
+
+[-- #1.3 3/52 7bit --]
+Content-Type: text/x-uuencode
+
+Aprendimos a quererte
