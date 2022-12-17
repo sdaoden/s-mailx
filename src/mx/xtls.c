@@ -73,6 +73,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 
 #if mx_HAVE_TLS != mx_TLS_IMPL_RESSL && !defined mx_XTLS_HAVE_RAND_FILE
 # include <su/time.h>

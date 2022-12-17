@@ -97,7 +97,7 @@ struct mx_go_data_ctx{
 EXPORT_DATA struct mx_go_data_ctx *mx_go_data;
 
 /* Setup the run environment; this i *only* for main() */
-EXPORT void mx_go_init(void);
+EXPORT void mx_go_init(boole pre_su_init);
 
 /* Interpret user commands.
  * If stdin is !isatty, print no prompt; return whether last processed command returned error; *only* for main()! */
