@@ -398,6 +398,12 @@ _os_setup_sunos() {
 
 	msg 'Whatever $CC, turning off stack protection (see INSTALL)!'
 	cc_maxopt=2 cc_no_stackprot=1
+
+	if [ "${VAL_SHELL}" = /bin/sh ]; then
+		VAL_SHELL=/usr/xpg4/bin/sh
+		msg ' ! VAL_SHELL=/bin/sh will not do on SunOS, using '${VAL_SHELL}
+	fi
+
 	return 1
 }
 
