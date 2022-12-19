@@ -37,7 +37,7 @@ With feature adjustments:
 
 With utility program, build and feature adjustments:
 
-  $ make awk=/usr/bin/nawk VERBOSE=yes OBJDIR=/tmpfs/mx OPT_NET=no tangerine
+  $ make awk=/usr/bin/nawk VERBOSE=yes OBJDIR=/tmp/mx OPT_NET=no citron
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
 SETUID (to VAL_DOTLOCK_USER, default "root") helper program will be build
@@ -98,17 +98,14 @@ It is possible to apply manual adjustments on top of those.
 
 - CONFIG=NULL, CONFIG=NULLI
   Anything that can be turned off is off.  MIME cannot.
-  The latter adds and "require"s iconv(3) and adds the user interface
-  strings.
+  The latter adds and "require"s iconv(3).
 
 - CONFIG=MINIMAL
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and do not regret improved usability for the rare interactive use
-  occasions.  Adds documentation strings, the built-in line editor (MLE)
-  with history support and key bindings, error tracking, basic colour
-  support and IDNA addresses, as well as generic spam filter support.
-
-  "Require"s iconv(3), regex(3) and the dotlock helper.
+  occasions.  Adds the built-in line editor (MLE) with history support
+  and key bindings, error tracking, basic colour support and IDNA
+  addresses, as well as generic spam filter support.
 
 - CONFIG=NETSEND
   Sending messages directly to the mail provider via the SMTP protocol,
@@ -214,11 +211,11 @@ In order to inspect the error more thoroughly, the mx-test.sh script
 can be used in run-test mode to invoke the failing tests (testing
 echoes the actual test names in brackets), for example
 
-  $ ./mx-test.sh run-test ./s-nail localopts mbox
+  $ ./mx-test.sh run-test ./s-nail mbox reply
 
-would run the tests "localopts" and "mbox".  If not an absolute path
-the binary (./s-nail) is expected relative to $OBJDIR.  There also the
-test output files of failed tests, named like t.TESTNAME-XY, reside.
+would run the tests "mbox" and "reply".  If not an absolute path the
+binary (./s-nail) is expected relative to $OBJDIR.  There also the test
+output files of failed tests, named like t.TESTNAME-XY, reside.
 
 It might make sense to send the output files of the failing tests to
 the mailing-list.  Because of ML message size restrictions, creating
@@ -294,7 +291,7 @@ Development:
 Frequently:
 
 . AlpineLinux <https://www.alpinelinux.org>.
-  + x86-64: "202[01]", edge.
+  + x86-64: "202[012]", edge; aarch64: "2022".
 
 . ArchLinux <https://www.archlinux.org/>.
   + "2021", current.
@@ -304,12 +301,12 @@ Frequently:
   - v11. series test errors: see DragonFly.
 
 . OpenBSD <https://www.openbsd.org/>.
-  + x86: latest (6.{6,8,9}).
+  + x86: 6.9; amd64: 7.1, 7.3.
 
 Pre-release, and other landmarks:
 
 . DragonFly BSD <https://www.dragonflybsd.org/>.
-  + 5.6.1, 5.8.0.
+  + 5.8.0.
   - The tests [iconv_mbyte_base64]-{4,8} fail because the C function
     iswprint(3) falsely claims that U+FF08 and U+FF09 (FULLWIDTH
     LEFT and RIGHT PARENTHESIS, respectively) are not printable,
@@ -317,7 +314,7 @@ Pre-release, and other landmarks:
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
 
 . NetBSD <https://www.netbsd.org/>.
-  + amd64: 9.0.
+  + amd64: 9.0.3.
 
 . OSUKISS Linux <https://osukiss.safe.ca/> (boing-boom-tschak)
   @ Thanks to Jean-Marc Pigeon for generously providing access to
@@ -339,12 +336,19 @@ Pre-release, and other landmarks:
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because
       of link errors seen in earlier tests.
+
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       you have to overwrite the symbol with __builtin_va_start,
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
+
+    + On the OpenCSW clusters i saw GNU compiler installations which
+      claimed ISO C99 compatibility but provided incomplete headers: the
+      resulting binary will fail the test suite.
+      Add EXTRA_CFLAGS=-std=c89 if you use OPT_AUTOCC, otherwise ensure
+      ISO C99 (or later) to overcome test suite failures.
 
   - You may see failures in Unicode-related tests due to outdated or
     false Unicode tables on elder releases (as in NetBSD).
