@@ -142,25 +142,41 @@ jdocopy:
    mailp = mailname;
    dispp = displayname;
 
-   /* Don't display an absolute path but "+FOLDER" if under *folder* */
+   /* Don't display an absolute path but "+FOLDER" if within *folder* */
+   n_pstate &= ~n_PS_MAILNAME_WITHIN_FOLDER;
    if(*(foldp = n_folder_query()) != '\0'){
       foldlen = su_cs_len(foldp);
       if(su_cs_cmp_n(foldp, mailp, foldlen))
          foldlen = 0;
+      else
+         n_pstate |= n_PS_MAILNAME_WITHIN_FOLDER;
    }else
       foldlen = 0;
+
+   /* And never include any paths in displayname when reproducible */
+   if(su_state_has(su_STATE_REPRODUCIBLE) && su_path_is_absolute(mailp)){
+      /* TODO really needs a path_get_dir_part()! */
+      if((mailp = su_cs_rfind_c(mailp, su_PATH_SEP_C)) != NIL)
+         ++mailp;
+      else
+         mailp = mailname;
+   }
 
    maillen = su_cs_len(mailp);
 
    /* We want to see the name of the folder .. on the screen */
    i = maillen;
    if(i < sizeof(displayname) - 3 -1){
-      if(foldlen > 0){
+      if(foldlen > 0 /* xxx -> n_pstate & n_PS_MAILNAME_WITHIN_FOLDER */){
          *dispp++ = '+';
          *dispp++ = '[';
-         su_mem_copy(dispp, mailp, foldlen);
-         dispp += foldlen;
-         mailp += foldlen;
+         if(su_state_has(su_STATE_REPRODUCIBLE))
+            foldlen = 0;
+         else{
+            su_mem_copy(dispp, mailp, foldlen);
+            dispp += foldlen;
+            mailp += foldlen;
+         }
          *dispp++ = ']';
          su_mem_copy(dispp, mailp, i -= foldlen);
          dispp[i] = '\0';
