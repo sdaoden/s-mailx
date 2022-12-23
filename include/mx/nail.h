@@ -499,7 +499,8 @@ do{\
    n_PS_HEADER_NEEDED_MIME = 1u<<24, /* mime_write_tohdr() not ASCII clean */
    n_PS_READLINE_NL = 1u<<25, /* readline_input()+ saw a \n */
    n_PS_BASE64_STRIP_CR = 1u<<26, /* Go for text output, strip CR's */
-   n_PS_SIGALARM = 1u<<27 /* Some network timer has alarm(2) installed */
+   n_PS_SIGALARM = 1u<<27, /* Some network timer has alarm(2) installed */
+   n_PS_MAILNAME_WITHIN_FOLDER = 1u<<28 /* mailname[] within *folder* */
 };
 
 /* Various states set once, and first time messages or initializers */
