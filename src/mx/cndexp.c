@@ -398,7 +398,7 @@ a_cndexp__op_apply(struct a_cndexp_ctx  *cecp, u16 op, char const *lhv, char con
 			rv = ((su_idec_s32_cp(&lhvi, lhv, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 					) == su_IDEC_STATE_CONSUMED && lhvi >= 0);
 			if(rv)
-				rv = su_path_isatty(lhvi);
+				rv = su_path_is_a_tty(lhvi);
 		}
 		break;
 

@@ -154,13 +154,8 @@ jdocopy:
       foldlen = 0;
 
    /* And never include any paths in displayname when reproducible */
-   if(su_state_has(su_STATE_REPRODUCIBLE) && su_path_is_absolute(mailp)){
-      /* TODO really needs a path_get_dir_part()! */
-      if((mailp = su_cs_rfind_c(mailp, su_PATH_SEP_C)) != NIL)
-         ++mailp;
-      else
-         mailp = mailname;
-   }
+   if(su_state_has(su_STATE_REPRODUCIBLE))
+      mailp = n_filename_to_repro(mailp);
 
    maillen = su_cs_len(mailp);
 
@@ -627,7 +622,7 @@ jlogname:
          }
          flags = a_STDIN;
       }else if((n_poption & n_PO_BATCH_FLAG) &&
-            !su_cs_cmp(name, su_path_dev_null))
+            !su_cs_cmp(name, su_path_null))
          flags = a_DEVNULL;
       else{
 #ifdef mx_HAVE_REALPATH
@@ -973,8 +968,8 @@ print_header_summary(char const *Larg)
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
       if ((n_poption & (n_PO_V | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
-         n_stdout = freopen(su_path_dev_null, "w", stdout);
-         n_stderr = freopen(su_path_dev_null, "w", stderr);
+         n_stdout = freopen(su_path_null, "w", stdout);
+         n_stderr = freopen(su_path_null, "w", stderr);
       }
       i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, FAL0, NIL
             ) <= 0);

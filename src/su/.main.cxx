@@ -24,6 +24,7 @@ su_USECASE_MX_DISABLED
 # include <su/md-siphash.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/prime.h>
 #include <su/random.h>
 #include <su/re.h>
@@ -50,6 +51,7 @@ static void a_cs_dict(void);
 static void a_icodec(void);
 static void a_md(void);
 static void a_mem_bag(void);
+static void a_path_cs(void);
 static void a_prime(void);
 static void a_random(void);
 static void a_re(void);
@@ -95,6 +97,7 @@ main(void){ // {{{
 
 	a_icodec();
 	a_mem_bag();
+	a_path_cs();
 	a_random();
 	a_re();
 	a_sort();
@@ -1809,6 +1812,50 @@ a_mem_bag(void){ // TODO only instantiation test yet
 
 	su_DEL(&mb->reset());
 #endif // su_HAVE_MEM_BAG
+}
+// }}}
+
+// path_cs {{{
+static void
+a_path_cs(void){
+	// Tests from POSIX manual
+	char buf[80];
+	char const *bp;
+
+	// basename
+#undef X
+#define X(S,B) mem::copy(buf, S, sizeof(S)); bp = path::basename(buf); if(cs::cmp(bp, B)) a_ERR()
+	X("usr", "usr");
+	X("usr/", "usr");
+	X("usr///////", "usr");
+	X("", ".");
+	X("/", "/");
+#if su_OS_POSIX
+	X("//", "//");
+#endif
+	X("///", "/");
+	X("/usr/", "usr");
+	X("/usr/lib", "lib");
+	X("//usr//lib//", "lib");
+	X("/home//dwc//test", "test");
+
+	// dirname
+#undef X
+#define X(S,B) mem::copy(buf, S, sizeof(S)); bp = path::dirname(buf); if(cs::cmp(bp, B)) a_ERR()
+	X("usr", ".");
+	X("usr/", ".");
+	X("usr///////", ".");
+	X("", ".");
+	X("/", "/");
+#if su_OS_POSIX
+	X("//", "//");
+#endif
+	X("///", "/");
+	X("/usr/", "/");
+	X("/usr/lib", "/usr");
+	X("//usr//lib//", "//usr");
+	X("/home//dwc//test", "/home//dwc");
+#undef X
 }
 // }}}
 
