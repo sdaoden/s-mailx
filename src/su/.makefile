@@ -76,6 +76,7 @@ CSRC = atomic.c \
 		mutex.c \
 	path-info.c \
 			path-utils.c \
+				path-utils-cs.c \
 		prime.c \
 	random.c \
 		re.c \

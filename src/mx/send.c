@@ -1029,7 +1029,7 @@ jmulti:
                 * TODO and that outer container is useless anyway ;-P */
                if(np->m_multipart != NULL &&
                      np->m_mime_type != mx_MIME_TYPE_822){
-                  if((obuf = mx_fs_open(su_path_dev_null, (mx_FS_O_WRONLY |
+                  if((obuf = mx_fs_open(su_path_null, (mx_FS_O_WRONLY |
                            mx_FS_O_CREATE | mx_FS_O_TRUNC))) == NIL)
                      continue;
                }else if((obuf = newfile(np, &ispipe)) == NIL)

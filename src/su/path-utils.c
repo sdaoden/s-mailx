@@ -1,4 +1,4 @@
-/*@ Implementation of path.h, utils. XXX Nicer single x_posix wrapper?!
+/*@ Implementation of path.h, physical access utils. XXX Nicer single x_posix wrapper?!
  *@ TODO EINTR encapsulation, for all which need!?!?
  *
  * Copyright (c) 2021 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -83,58 +83,6 @@ NSPC_USE(su)
 # define PATH_MAX 1024
 #endif
 
-char const su_path_dev_null[sizeof su_PATH_DEV_NULL] = su_PATH_DEV_NULL;
-
-uz
-su_path_filename_max(char const *path){
-	uz rv;
-#ifdef su_HAVE_PATHCONF
-	long sr;
-#endif
-	NYD_IN;
-
-	if(path == NIL)
-		path = ".";
-
-#ifdef su_HAVE_PATHCONF
-	errno = 0;
-	if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
-		rv = S(uz,sr);
-	else if(su_err_no_by_errno() == 0)
-		rv = UZ_MAX;
-	else
-#endif
-		rv = NAME_MAX;
-
-	NYD_OU;
-	return rv;
-}
-
-uz
-su_path_pathname_max(char const *path){
-	uz rv;
-#ifdef su_HAVE_PATHCONF
-	long sr;
-#endif
-	NYD_IN;
-
-	if(path == NIL)
-		path = ".";
-
-#ifdef su_HAVE_PATHCONF
-	errno = 0;
-	if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
-		rv = S(uz,sr);
-	else if(su_err_no_by_errno() == 0)
-		rv = UZ_MAX;
-	else
-#endif
-		rv = PATH_MAX;
-
-	NYD_OU;
-	return rv;
-}
-
 boole
 su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode){
 	boole rv;
@@ -195,7 +143,7 @@ su_path_fchmod(sz fd, u32 permprot){
 }
 
 boole
-su_path_isatty(sz fd){
+su_path_is_a_tty(sz fd){
 	boole rv;
 	NYD_IN;
 
@@ -214,6 +162,56 @@ su_path_link(char const *dst, char const *src){
 
 	if(!(rv = (link(src, dst) == 0)))
 		su_err_no_by_errno();
+
+	NYD_OU;
+	return rv;
+}
+
+uz
+su_path_max_filename(char const *path){
+	uz rv;
+#ifdef su_HAVE_PATHCONF
+	long sr;
+#endif
+	NYD_IN;
+
+	if(path == NIL)
+		path = ".";
+
+#ifdef su_HAVE_PATHCONF
+	errno = 0;
+	if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
+		rv = S(uz,sr);
+	else if(su_err_no_by_errno() == 0)
+		rv = UZ_MAX;
+	else
+#endif
+		rv = NAME_MAX;
+
+	NYD_OU;
+	return rv;
+}
+
+uz
+su_path_max_pathname(char const *path){
+	uz rv;
+#ifdef su_HAVE_PATHCONF
+	long sr;
+#endif
+	NYD_IN;
+
+	if(path == NIL)
+		path = ".";
+
+#ifdef su_HAVE_PATHCONF
+	errno = 0;
+	if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
+		rv = S(uz,sr);
+	else if(su_err_no_by_errno() == 0)
+		rv = UZ_MAX;
+	else
+#endif
+		rv = PATH_MAX;
 
 	NYD_OU;
 	return rv;

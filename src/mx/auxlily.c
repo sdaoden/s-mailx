@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Auxiliary functions that don't fit anywhere else.
+ *@ Auxiliary functions that do not fit anywhere else.
  *
  * Copyright (c) 2012 - 2022 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -145,7 +145,7 @@ n_screensize(void){
 		rv = mx_termios_dimen.tiosd_height;
 
 	if(rv > 2)
-		rv -= 2; /* XXX i have forgotten why this (prompt line, keep command line? */
+		rv -= 2; /* XXX i have forgotten why this (prompt line + keep command line? */
 
 	NYD2_OU;
 	return rv;
@@ -469,6 +469,28 @@ n_is_all_or_aster(char const *name){
 	NYD2_IN;
 
 	rv = ((name[0] == '*' && name[1] == '\0') || !su_cs_cmp_case(name, "all"));
+
+	NYD2_OU;
+	return rv;
+}
+
+FL char *
+n_filename_to_repro(char const *name){
+	char *rv;
+	char const *proto, *cp;
+	NYD2_IN;
+
+	if((cp = su_cs_find(name, "://")) != NIL){
+		cp += 3;
+		proto = savestrbuf(name, P2UZ(cp - name));
+		name = cp;
+	}else
+		proto = NIL;
+
+	if(su_cs_cmp(name, su_path_null)) /* xxx ..after canonicalization.. */
+		name = su_path_basename(savestr(name));
+
+	rv = (proto != NIL) ? savecat(proto, name) : savestr(name);
 
 	NYD2_OU;
 	return rv;
