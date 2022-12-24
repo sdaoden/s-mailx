@@ -291,6 +291,9 @@ FL boole n_quadify(char const *inbuf, uz inlen, char const *prompt,
 /* Is the argument "all" (case-insensitive) or "*" */
 FL boole n_is_all_or_aster(char const *name);
 
+/* Turn the argument to a reproducible URL/path <-> TODO URL method!! */
+FL char *n_filename_to_repro(char const *name);
+
 /* Our error print series..  Note: these reverse scan format in order to know
  * whether a newline was included or not -- this affects the output!
  * vlp is a va_list*, but stdarg.h.

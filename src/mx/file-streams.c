@@ -462,7 +462,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 
 	case n_PROTO_MAILDIR:
 #ifdef mx_HAVE_MAILDIR
-		if(fs_or_nil != NIL && !access(file, F_OK))
+		if(fs_or_nil != NIL && su_path_access(file, su_IOPF_EXIST))
 			fs |= mx_FS_OPEN_STATE_EXISTS;
 		flags |= a_FS_EF_MAILDIR;
 		/*osiflags = O_RDWR | O_APPEND | O_CREAT | a_FS_O_NOXY_BITS;*/
@@ -482,7 +482,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 	case n_PROTO_FILE:{
 		struct mx_filetype ft;
 
-		if(!(oflags & mx_FS_O_EXCL) && fs_or_nil != NIL && !access(file, F_OK))
+		if(!(oflags & mx_FS_O_EXCL) && fs_or_nil != NIL && su_path_access(file, su_IOPF_EXIST))
 			fs |= mx_FS_OPEN_STATE_EXISTS;
 
 		if(mx_filetype_exists(&ft, file)){/* TODO report real name to outside */
@@ -597,7 +597,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 	if(tdir_or_nil == NIL || tdir_or_nil == mx_FS_TMP_TDIR_TMP) /* (EQ) */
 		tdir_or_nil = ok_vlook(TMPDIR);
 
-	if((maxname = su_path_filename_max(tdir_or_nil)) < a_RANDCHARS + a_HINT_MIN){
+	if((maxname = su_path_max_filename(tdir_or_nil)) < a_RANDCHARS + a_HINT_MIN){
 		su_err_set_no(su_ERR_NAMETOOLONG);
 		goto jleave;
 	}

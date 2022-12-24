@@ -965,7 +965,7 @@ jeMmq:
 			if(!(n_psonce & n_PSO_INTERACTIVE))
 				setvbuf(n_stdin, NIL, _IOLBF, 0);
 			n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-			mc.mc_folder = su_path_dev_null;
+			mc.mc_folder = su_path_null;
 			n_var_setup_batch_mode();
 			break;
 		case '.':

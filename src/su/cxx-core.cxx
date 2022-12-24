@@ -73,7 +73,12 @@ STA type_toolbox<char const*> const * const cs::const_type_toolbox_case =
 
 // path.h
 
-STA char const path::dev_null[sizeof su_PATH_DEV_NULL] = su_PATH_DEV_NULL;
+STA char const path::sep[sizeof su_path_sep] = {su_PATH_SEP_C, '\0'};
+STA char const path::list_sep[sizeof su_path_list_sep] = {su_PATH_LIST_SEP_C, '\0'};
+
+STA char const path::current[sizeof su_PATH_CURRENT] = su_PATH_CURRENT;
+STA char const path::null[sizeof su_PATH_NULL] = su_PATH_NULL;
+STA char const path::root[sizeof su_PATH_ROOT] = su_PATH_ROOT;
 
 // utf.h
 

@@ -6731,13 +6731,11 @@ t_copy() { # {{{
 	copy 1 2 .tf3
 	echo 4:$?/$^ERRNAME
 	headers
-	#' "${MBOX}" > ./.tallx 2>${EX}
+	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
 	ck_ex0 2
 
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
-	ck 2-1 - ./.tall '4146827489 1111' '3989834342 80'
+	ck 2-1 - ./.tall '2298930454 1134' '3989834342 80'
 	ck 2-2 - ./.tf1 '686654461 334'
 	ck 2-3 - ./.tf2 '1931512953 162'
 	ck 2-4 - ./.tf3 '3642131968 344'
@@ -6781,18 +6779,16 @@ t_copy() { # {{{
 		echo 5:$?/$^ERRNAME
 		'"${2}"'
 		#' \
-			"${MBOX}" > ./.tallx 2>${E0}
+			"${MBOX}" > ./.tall 2>${E0}
 		return ${?}
 	}
 	#}}}
 
 	t_it 5 headers '#'
 	ck_ex0 5-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	cke0 5-2 - ./.tlst '1058655452 9'
-	ck 5-3 - ./.tall '1543702808 1617'
+	ck 5-3 - ./.tall '3307461568 1640'
 	ck 5-4 - ./from1 '1031912635 999'
 	ck 5-5 - ./ex '2400630246 149'
 	${rm} -f ./.tlst ./.tall ./from1 ./ex
@@ -6800,11 +6796,9 @@ t_copy() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	ck_ex0 6-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	cke0 6-2 - ./.tlst '1865898363 29'
-	${cat} ./.tall >> ${E} #check 6-3 - ./.tall # TODO due to folder echoes
+	ck 6-3 - ./.tall '1497580953 200'
 	ck 6-4 - .tfolder/from1 '1031912635 999'
 	ck 6-5 - .tfolder/ex '2400630246 149'
 
@@ -6831,7 +6825,7 @@ t_copy() { # {{{
 
 	t_it 'copy ./.tout'
 	ck_ex0 7-estat
-	cke0 7-1 - ./.tall '3805176908 152'
+	cke0 7-1 - ./.tall '2690657141 144'
 	ck 7-2 - ./.tout '2447734879 1316'
 
 	t_it Copy
@@ -6869,13 +6863,11 @@ t_save() { # {{{
 	save 1 2 .tf3
 	echo 4:$?/$^ERRNAME
 	headers
-	#' "${MBOX}" > ./.tallx 2>${EX}
+	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
 	ck_ex0 2
 
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
-	ck 2-1 - ./.tall '1171381938 1111' '720724138 80'
+	ck 2-1 - ./.tall '1574744881 1134' '720724138 80'
 	ck 2-2 - ./.tf1 '2435434321 334'
 	ck 2-3 - ./.tf2 '920652966 162'
 	ck 2-4 - ./.tf3 '970407001 344'
@@ -6919,18 +6911,16 @@ t_save() { # {{{
 		echo 5:$?/$^ERRNAME
 		'"${2}"'
 		#' \
-			"${MBOX}" > ./.tallx 2>${E0}
+			"${MBOX}" > ./.tall 2>${E0}
 		return ${?}
 	}
 	#}}}
 
 	t_it 5 headers '#'
 	ck_ex0 5-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	cke0 5-2 - ./.tlst '1058655452 9'
-	ck 5-3 - ./.tall '3418590770 1617'
+	ck 5-3 - ./.tall '3851321887 1640'
 	ck 5-4 - ./from1 '1462882526 999'
 	ck 5-5 - ./ex '2153575326 149'
 	${rm} -f ./.tlst ./.tall ./from1 ./ex
@@ -6938,11 +6928,9 @@ t_save() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	ck_ex0 6-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	cke0 6-2 - ./.tlst '1865898363 29'
-	${cat} ./.tall >> ${E} #ck 6-3 - ./.tall # TODO due to folder echoes
+	ck 6-3 - ./.tall '1497580953 200'
 	ck 6-4 - .tfolder/from1 '1462882526 999'
 	ck 6-5 - .tfolder/ex '2153575326 149'
 
@@ -6975,7 +6963,7 @@ t_save() { # {{{
 
 	t_it 7 'save ./.tout'
 	ck_ex0 7-estat
-	cke0 7-1 - ./.tall '4190949581 312'
+	cke0 7-1 - ./.tall '3182427098 304'
 	ck 7-2 - ./.tout '2447734879 1316'
 	ck 7-3 - ./.tmbox '561523988 397'
 
@@ -6990,7 +6978,7 @@ t_save() { # {{{
 	# saves in $MBOX without argument
 	t_it 9 save yes
 	ck_ex0 9-estat
-	ck 9-1 - ./.tall '652005824 320'
+	ck 9-1 - ./.tall '2516783822 312'
 	ck 9-2 - ./.tmboxx '2447734879 1316'
 	ck 9-3 - ./.tmbox '561523988 397'
 
@@ -6998,7 +6986,7 @@ t_save() { # {{{
 	${rm} -f ./.tmboxx
 	t_it 10 save yes yes
 	ck_ex0 10-estat
-	ck 10-1 - ./.tall '652005824 320'
+	ck 10-1 - ./.tall '2516783822 312'
 	ck 10-2 - ./.tmboxx '2447734879 1316'
 	[ -f ./.tmbox ]; ck_exx 10-3
 
@@ -7024,13 +7012,11 @@ t_move() { # {{{
 	move 2 .tf2
 	echo 2:$?/$^ERRNAME
 	headers
-	#' "${MBOX}" > ./.tallx 2>${EX}
+	#' "${MBOX}" > ./.tall 2>${EX}
 	#}}}
 	ck_ex0 2
 
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
-	ck 2-1 - ./.tall '2544144497 481' '306996652 123'
+	ck 2-1 - ./.tall '1731611253 505' '306996652 123'
 	ck 2-2 - ./.tf1 '1473857906 162'
 	ck 2-3 - ./.tf2 '331229810 162'
 
@@ -7073,18 +7059,16 @@ t_move() { # {{{
 		echo 5:$?/$^ERRNAME
 		'"${2}"'
 		#' \
-			"${MBOX}" > ./.tallx 2>${EX}
+			"${MBOX}" > ./.tall 2>${EX}
 		return ${?}
 	}
 	#}}}
 
 	t_it 5 headers '#'
 	ck_ex0 5-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * > ./.tlst
 	ck 5-2 - ./.tlst '1058655452 9'
-	ck 5-3 - ./.tall '419037676 870' '1383646464 86'
+	ck 5-3 - ./.tall '593556983 894' '1383646464 86'
 	ck 5-5 - ./from1 '3719268580 827'
 	ck 5-6 - ./ex '4262925856 149'
 	${rm} -f ./.tlst ./.tall ./from1 ./ex
@@ -7092,11 +7076,9 @@ t_move() { # {{{
 	${mkdir} .tfolder
 	t_it 6 '#' 'set outfolder folder='"$(${pwd})"'/.tfolder'
 	ck_ex0 6-1
-	${sed} -e '$bP' -e d -e :P < ./.tallx >> "${E}"
-	${sed} '$d' < ./.tallx > ./.tall
 	echo * .tfolder/* > ./.tlst
 	ck 6-2 - ./.tlst '1865898363 29'
-	${cat} ./.tall >> ${E} #check 6-3 - ./.tall # TODO due to folder echoes
+	ck 6-3 - ./.tall '2269450259 174'
 	ck 6-4 - .tfolder/from1 '3719268580 827'
 	ck 6-5 - .tfolder/ex '4262925856 149'
 
@@ -7123,7 +7105,7 @@ t_move() { # {{{
 
 	t_it 'move ./.tout'
 	ck_ex0 7-estat
-	cke0 7-1 - ./.tall '3805176908 152'
+	cke0 7-1 - ./.tall '2690657141 144'
 	ck 7-2 - ./.tout '2447734879 1316'
 
 	t_it Move
@@ -7188,17 +7170,17 @@ t_mbox() { # {{{
 	echo > .tinvmbox
 	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
 	cke0 8 0 .tinvmbox '2848412822 118'
-	ck 9 - ./.tall '461280182 33'
+	ck 9 - ./.tall '1565535673 31'
 
 	echo ' ' > .tinvmbox
 	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
 	cke0 10 0 .tinvmbox '624770486 120'
-	ck 11 - ./.tall '461280182 33'
+	ck 11 - ./.tall '1565535673 31'
 
 	{ echo; echo; } > .tinvmbox # (not invalid)
 	printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>${E0}
 	cke0 12 0 .tinvmbox '1485640875 119'
-	ck 13 - ./.tall '461280182 33'
+	ck 13 - ./.tall '1565535673 31'
 
 	# *mbox-rfc4155*, plus
 	${cat} <<-_EOT > ./.tinv1
@@ -7227,17 +7209,18 @@ t_mbox() { # {{{
 		call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>${E0}
 	ck_ex0 14-estat
 	${cat} ./.tinv1 ./.tok >> .tall
-	cke0 14 - ./.tall '739301109 616'
+	cke0 14 - ./.tall '839364783 614'
 
 	printf \
 		'file ./.tinv1 # ^From not repaired, but missing trailing NL is
 		File ./.tok # Just move away to nowhere
 		set mbox-rfc4155
 		file ./.tinv2 # Fully repaired
-		File ./.tok' | ${MAILX} ${ARGS} >>${E} 2>${EX}
+		File ./.tok' | ${MAILX} ${ARGS} >./t15 2>${EX}
 	ck_ex0 15-estat
 	# Almost EQ since [Auto-fix when MBOX had From_ errors on read (Dr. Werner Fink).]
-	ck 15-1 - ./.tinv1 '4026377396 312' '3396438084 367'
+	ck 15 - ./t15 '1370453225 32' '3396438084 367'
+	ck 15-1 - ./.tinv1 '4026377396 312'
 	ck 15-2 - ./.tinv2 '4151504442 314'
 
 	# *mbox-fcc-and-pcc*
@@ -7306,10 +7289,11 @@ t_mbox() { # {{{
 		sort date
 		remove ./.tinv2
 		copy * ./.tinv2
-		file ./.tinv1' | ${MAILX} ${ARGS} >>${E} 2>${EX}
+		file ./.tinv1' | ${MAILX} ${ARGS} >./t24 2>${EX}
 	#}}}
-	ck 24 0 ./.tinv1 '104184185 560' '3755289952 734'
-	ck 25 - ./.tinv2 '853754737 510'
+	ck 24 0 ./t24 '3398158582 44' '3755289952 734'
+	ck 25-1 - ./.tinv2 '853754737 510'
+	ck 25-2 - ./.tinv1 '104184185 560'
 
 	#{{{ More corner cases
 	${cat} <<-'_EOT' > ./t26.mbox
@@ -7347,7 +7331,7 @@ t_mbox() { # {{{
 		-Y 'copy * ./t27' \
 		-Y 'copy 1 ./t28' \
 		./t26.mbox > ./t26 2>${EX}
-	ck 26 0 ./t26 '3388925562 1207' '3105031204 2052'
+	ck 26 0 ./t26 '2704463768 1203' '3105031204 2052'
 	ck 27 - ./t27 '3764405655 487'
 	ck 28 - ./t28 '2228574283 184'
 
@@ -7486,7 +7470,7 @@ t_maildir() { # {{{
 		copy * ./.t10warp
 	' "${cat}" | ${MAILX} ${ARGS} >./.t10 2>${EX}
 	# Note that substdate() fixes all but one From_ line to $SOURCE_DATE_EPOCH!
-	ck 10 - ./.t10 '4131734798 74' '3396438084 367'
+	ck 10 - ./.t10 '3358647049 70' '3396438084 367'
 	ck 10-warp 0 ./.t10warp '3551111321 502'
 	ck 11 - ./.t11 '642719592 302'
 
@@ -7504,7 +7488,7 @@ t_maildir() { # {{{
 		./.z > t12 2>${EX}
 	ck_ex0 12-estat
 	${sed} -e '/^reproducible_build: Not a header line/d' < ${EX} > ${E0}
-	cke0 12 0 ./t12 '3263166940 1569'
+	cke0 12 0 ./t12 '3236247792 1567'
 
 	t_epilog "${@}"
 } # }}}
@@ -7781,7 +7765,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 		cke0 3 0 ./t3 '1259742080 686'
 		# TODO check 4 - ./t4 '3214068822 2123'
 			${sed} -e '/^\[-- M/d' < ./t4 > ./t4-x
-			ck 4 - ./t4-x '4042322737 2025'
+			ck 4 - ./t4-x '576175209 2023'
 	else
 		t_echoskip '1-4:[ICONV/iconv(1):ISO-2022-JP unsupported]'
 	fi
@@ -7828,7 +7812,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 		cke0 7 0 ./t7 '1259742080 686'
 		#TODO check 8 - ./t8 '2506063395 2075'
 			${sed} -e '/^\[-- M/d' < ./t8 > ./t8-x
-			ck 8 - ./t8-x '504034186 1978'
+			ck 8 - ./t8-x '1803103494 1976'
 	else
 		t_echoskip '5-8:[ICONV/iconv(1):EUC-JP unsupported]'
 	fi
@@ -7893,7 +7877,7 @@ t_binary_mainbody() { # {{{
 
 	printf 'p\necho\necho writing now\nwrite ./t5\n' |
 		${MAILX} ${ARGS} -Rf -Spipe-application/octet-stream="?* ${cat} > ./t4" ./t.mbox >./t3 2>${E0}
-	cke0 3 0 ./t3 '970629510 314'
+	cke0 3 0 ./t3 '207118784 312'
 	ck 4 - ./t4 '3817108933 15'
 	ck 5 - ./t5 '3817108933 15'
 
@@ -8648,7 +8632,7 @@ t_filetype() { # {{{
 				${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
 		} > ./t3 2>${E0}
 		cke0 2 - ./t2.mbox '1314354444 13536'
-		ck 3 - ./t3 '1817728413 103'
+		ck 3 - ./t3 '3960901924 97'
 	else
 		t_echoskip '2-3:[missing gzip(1)]'
 	fi
@@ -8669,7 +8653,7 @@ t_filetype() { # {{{
 				-X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
 	} > ./t5 2>${E0}
 	cke0 4 - ./t4.mbox '2687765142 27092'
-	ck 5 - ./t5 '3154959458 173'
+	ck 5 - ./t5 '2436024965 163'
 
 	t_epilog "${@}"
 } # }}}
@@ -8920,26 +8904,25 @@ t_attachments() { # {{{
 	printf 'att3-1\natt3-2\natt3-4\n' > ./txa3
 	printf 'att4-1\natt4-2\natt4-4\n' > './tx a4'
 
-	printf \
-'!@  ./txa3			 		 "./tx a4"		 		  ""
+	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 \
+		-a ./tx.a1 -a './tx a2' \
+		-s attachment-test \
+		ex@am.ple > ./t2 2>${E0}
+!@  ./txa3			 		 "./tx a4"		 		  ""
 !p
 !@
 	./txa3
  "./tx a2"
 
 !p
-!.' \
-	| ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 \
-		-a ./tx.a1 -a './tx a2' \
-		-s attachment-test \
-		ex@am.ple > ./t2 2>${E0}
-
+!.
+	_EOT
 	cke0 1 0 ./t1 '113047025 646'
 	ck 2 - ./t2 '3897935448 734'
 
 	#{{{
-	printf \
-'mail ex@amp.ple
+	cat <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>${E0}
+mail ex@amp.ple
 !s This the subject is
 !@  ./txa3	 	 	"#2"	 	 "./tx a4"	 	 	  "#1"	""
 !p
@@ -8981,15 +8964,15 @@ t_attachments() { # {{{
  "#2"
 
 !p
-!.' \
-	| ${MAILX} ${ARGS} -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>${E0}
+!.
+	_EOT
 	#}}}
 	cke0 3 0 ./t3 '542557236 2337'
 	ck 4 - ./t4 '2071033724 1930'
 
 	#{{{
-	printf \
-'mail ex@amp.ple
+	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>${E0}
+mail ex@amp.ple
 !s Subject One
 !@ "#."
 Body one.
@@ -9012,8 +8995,8 @@ reply 1 2
 "#."
 
 !p
-!.' \
-	| ${MAILX} ${ARGS} -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>${E0}
+!.
+	_EOT
 	#}}}
 	cke0 5 0 ./t5 '1604688179 2316'
 	ck 6 - ./t6 '1210753005 508'
@@ -11746,7 +11729,7 @@ t_s_mime() { # {{{
 			-Serrexit -R -f ./t.ENCRYPT > ${EX} 2>${E0}
 		${sed} -e 's/file\] [0-9]* bytes/file] .... bytes/' < ${EX} > ${EX}.x
 		${mv} ${EX}.x ${EX}
-		cke0 ${1}-6 0 ${EX} '2852244548 70'
+		cke0 ${1}-6 0 ${EX} '1623989744 68'
 		${awk} '
 			BEGIN{skip=0}
 			/^Content-Description: /{skip = 2; print; next}
@@ -11774,8 +11757,8 @@ t_s_mime() { # {{{
 			${MAILX} ${ARGS} \
 			-Ssmime-sign-cert-recei@ver.com=./client2-pair.pem \
 			-Serrexit -R -f ./t.ENCRYPT > ${EX} 2>${E0}
-		cke0 ${1}-10 0 ${EX} '1751486051 32'
-		ck ${1}-10 0 ./tdecrypt '3114464078 454'
+		cke0 ${1}-10 0 ${EX} '3082658999 30'
+		ck ${1}-10-dec 0 ./tdecrypt '3114464078 454'
 
 		openssl smime ${_ossl} -decrypt -inkey ./client2-key.pem -in ./t.ENCRYPT >>${E} 2>&1
 		ck_ex0 ${1}-11

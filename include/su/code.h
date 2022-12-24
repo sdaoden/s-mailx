@@ -212,6 +212,8 @@
 
 /* OS {{{ */
 
+#define su_OS_POSIX 1 /*!< Will be true for POSIX-style operating system(s) (interfaces). */
+
 #define su_OS_CYGWIN 0 /*!< \_ */
 #define su_OS_DARWIN 0 /*!< \_ */
 #define su_OS_DRAGONFLY 0 /*!< \_ */
@@ -230,7 +232,9 @@
 #if 0
 #elif defined __CYGWIN__
 # undef su_OS_CYGWIN
+# undef su_OS_POSIX
 # define su_OS_CYGWIN 1
+# define su_OS_POSIX 0
 #elif defined DARWIN || defined _DARWIN
 # undef su_OS_DARWIN
 # define su_OS_DARWIN 1
@@ -251,7 +255,9 @@
 # define su_OS_MINIX 1
 #elif defined __MSDOS__
 # undef su_OS_MSDOS
+# undef su_OS_POSIX
 # define su_OS_MSDOS 1
+# define su_OS_POSIX 0
 #elif defined __NetBSD__
 # undef su_OS_NETBSD
 # define su_OS_NETBSD 1
@@ -266,6 +272,10 @@
 #  undef su_OS_SUNOS
 #  define su_OS_SUNOS 1
 # endif
+/*su_OS_WIN32
+ *su_OS_WIN64
+ *# undef su_OS_POSIX
+ *# define su_OS_POSIX 0*/
 #endif
 
 /* OS }}} */

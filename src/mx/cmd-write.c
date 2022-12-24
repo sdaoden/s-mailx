@@ -242,6 +242,8 @@ jsend:
    if (ferror(obuf)) {
       n_pstate_err_no = su_err_no_by_errno();
 jferr:
+      if(su_state_has(su_STATE_REPRODUCIBLE))
+         file = n_filename_to_repro(file);
       n_perr(file, n_pstate_err_no);
       if (!success)
          su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
@@ -264,6 +266,8 @@ jferr:
             disp = A_("[Appended]");
       }
 #endif
+      if(su_state_has(su_STATE_REPRODUCIBLE))
+         file = n_filename_to_repro(file);
       fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
          n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
@@ -386,8 +390,8 @@ c_write(void *vp){
    NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
-      cap->ca_arg.ca_str.s = savestrbuf(su_path_dev_null,
-            cap->ca_arg.ca_str.l = sizeof(su_path_dev_null));
+      cap->ca_arg.ca_str.s = savestrbuf(su_path_null,
+            cap->ca_arg.ca_str.l = sizeof(su_path_null));
 
    rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
 
