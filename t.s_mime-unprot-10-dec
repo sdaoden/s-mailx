@@ -1,0 +1,14 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+Author: test@localhost
+From: test@localhost
+To: recei@ver.com
+Subject: S/MIME test
+X-Encoded-Content-Type: application/pkcs7-mime; name="smime.p7m"
+X-Encoded-Content-Transfer-Encoding: base64
+X-Encoded-Content-Disposition: attachment; filename="smime.p7m"
+X-Encoded-Content-Description: S/MIME encrypted message
+X-Decoding-Date: Wed, 02 Oct 1996 01:50:07 +0000
+
+bla
+
