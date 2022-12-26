@@ -893,7 +893,7 @@ filter_err_sani() {
 t_eval() { # {{{
 	t_prolog "${@}"
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 set i=du
 echo 1:
 echo $i
@@ -915,7 +915,7 @@ t_call() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	define one {
 		echo one<$0>: $#: $*
 	}
@@ -1103,7 +1103,7 @@ t_X_Y_opt_input_go_stack() { # {{{
 	ck 3 0 ./t.mbox '264636255 125'
 	cke0 4 - ./t4 '467429373 22'
 
-	${cat} <<-_EOT | ${MAILX} ${ARGS} -t \
+	<<-_EOT ${MAILX} ${ARGS} -t \
 		-X 'echo X before compose mode' \
 		-Y '~s Subject via -Y' \
 		-Y 'Additional body via -Y' -. ./t.mbox > ./t6 2>${E0}
@@ -1416,7 +1416,7 @@ t_input_inject_semicolon_seq() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	define mydeepmac {
 		;;;echon '(mydeepmac)';;;
 	}
@@ -1514,7 +1514,7 @@ e a$'\c@'b c d
 	< ./t.rc DIET=CURD TIED= ${MAILX} ${ARGS} > ./tc 2>${EX}
 	ck c 0 ./tc '3138417346 341' '466473069 346'
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t3 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
 	set mager='\hey\'
 	varshow mager
 	set mager="\hey\\"
@@ -2604,7 +2604,7 @@ s I1=5;p "<I1=$((xa ((512 + 511) & ~511) >> 9))>";e "<$I1>"
 t_commandalias() { # {{{
 	t_prolog "${@}"
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias echo echo hoho
 	echo stop.
 	commandalias X Xx
@@ -2683,7 +2683,7 @@ t_shcodec() { # {{{
 	t_prolog "${@}"
 
 	#{{{ XXX the first needs to be checked, it is quite dumb as such
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME'
 	shcodec e abcd
 	x
@@ -2853,8 +2853,7 @@ t_shcodec() { # {{{
 		t_echoskip 'unicode:[no UTF-8 locale]'
 	elif have_feat multibyte-charsets; then
 		#{{{
-		${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
-			${MAILX} ${ARGS} > ./tunicode 2>${E0}
+		<<- '__EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${E0}
 		#
 		shcodec e täst
 		shcodec +e täst
@@ -2879,7 +2878,7 @@ t_ifelse() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./teasy 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./teasy 2>${E0}
 	commandalias e \\echo
 	set i=0
 	if [ $i -eq 0 ]
@@ -2975,7 +2974,7 @@ t_ifelse() { # {{{
 	cke0 easy 0 ./teasy '1243020683 28'
 
 	# {{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tshexpign 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tshexpign 2>${E0}
 	commandalias e \\echo
 	set i=0
 	if [ $((i+=10)) -eq 10 ]
@@ -3042,7 +3041,7 @@ t_ifelse() { # {{{
 	#}}}
 	cke0 shexpign 0 ./tshexpign '1174905124 27'
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tbadsyn 2>${EX}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tbadsyn 2>${EX}
 	commandalias ca \\commandalias
 	ca ec \\echo
 	ca el \\else\;ec
@@ -3059,7 +3058,7 @@ t_ifelse() { # {{{
 	ck0 badsyntax 0 ./tbadsyn '2718347745 864'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tgoodsyn 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tgoodsyn 2>${E0}
 	commandalias e \\echo
 	commandalias f \\endif
 	if ! false;e y1.1;f
@@ -3226,7 +3225,7 @@ t_ifelse() { # {{{
 	#}}}
 	cke0 goodsyntax 0 ./tgoodsyn '2589130917 786'
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>${E0}
 	\if -N xyz; echo 1.err-1; \
 		\elif ! -Z xyz;echo 1.err-2;\
 		\elif -n "$xyz"	  ;	 	echo 1.err-3	;	  \
@@ -3255,7 +3254,7 @@ t_ifelse() { # {{{
 
 	#{{{ # TODO t_ifelse: individual tests as for NnZz_whiteout
 	# Nestable conditions test
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tnormal 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tnormal 2>${E0}
 		if 0
 			echo 1.err
 		else
@@ -3882,7 +3881,7 @@ t_ifelse() { # {{{
 
 	if have_feat regex; then
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex 2>${E0}
+		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 				echo 1.ok
@@ -3976,7 +3975,7 @@ t_ifelse() { # {{{
 		cke0 regex 0 ./tregex '1115671789 95'
 
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex-match 2>${E0}
+		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex-match 2>${E0}
 		commandalias x \\echo '$?/$^ERRNAME.. $^#<$^0, $^1, $^2, $^3, $^4>'
 		commandalias e \\echoerr err:
 		\if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
@@ -3995,7 +3994,7 @@ t_ifelse() { # {{{
 	sleep ${FS_TIME_RES}
 	printf '.' > ./tf2
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tfops 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tfops 2>${E0}
 	commandalias o \\echo
 	commandalias e \\end
 	\if -e tf1;o 1;e
@@ -4023,7 +4022,7 @@ t_localopts() { # {{{
 	t_prolog "${@}"
 
 	#{{{ Nestable conditions test
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	define t2 {
 		echo in: t2
 		set t2=t2
@@ -4113,7 +4112,7 @@ t_local() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 		define du2 {
 			echo du2-1 du=$du
 			local set du=$1
@@ -4157,7 +4156,7 @@ t_local() { # {{{
 	cke0 1 0 ./t1 '291008203 807'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
 		define z {
 			echo z-1: x=$x y=$y z=$z crt=$crt
 			local set z=1 y=2 crt=10
@@ -4192,7 +4191,7 @@ t_environ() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>${E0}
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	varshow EK1 EK2 EK3 EK4 NEK5
@@ -4234,7 +4233,7 @@ t_environ() { # {{{
 	cke0 1 0 ./t1 '2826722558 1100'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>${EX}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
 	define l4 {
 		echo --l4-in;show
 		eval $1 environ unlink LK1
@@ -4330,7 +4329,7 @@ t_environ() { # {{{
 
 	#{{{ lookup
 	unset du
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t6 2>${EX}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t6 2>${EX}
 	commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
 	environ lookup du
 	x
@@ -4448,7 +4447,7 @@ t_macro_param_shift() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${EX}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
 	define t2 {
 		echo in: t2
 		echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -4500,7 +4499,7 @@ t_csop() { # {{{
 	fi
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME :$res:'
 	echo ' #-2'
 	vput csop res find you y;x
@@ -4577,7 +4576,7 @@ t_vexpr() { # {{{
 	fi
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tnumeric 2>${EX}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tnumeric 2>${EX}
 	commandalias x \\echo '$?/$^ERRNAME $res'
 	commandalias X \\echoerr
 	echo ' #0.0'
@@ -4786,7 +4785,7 @@ t_vexpr() { # {{{
 
 	if have_feat regex; then
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tregex 2>${E0}
+		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex 2>${E0}
 		commandalias x echo '$?/$^ERRNAME :$res:'
 		echo ' #-2'
 		vput vexpr res regex you y;x
@@ -4838,7 +4837,7 @@ t_vexpr() { # {{{
 	fi
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tagnostic 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tagnostic 2>${E0}
 	commandalias x echo '$?/$^ERRNAME :$res:'
 	vput vexpr res date-utc 1620942446;x
 	eval set $res
@@ -4882,7 +4881,7 @@ t_call_ret() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	define w1 {
 		echon ">$1 "
 		eval local : \$((i = $1 + 1))
@@ -4956,7 +4955,7 @@ t_xcall() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>${E0}
 	define work {
 		echon "$1 "
 		\if "$3" == ""; local set l=local; else; local set l=;\endif
@@ -5051,7 +5050,7 @@ t_local_x_call_environ() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	\commandalias show '\
 		\vput environ x lookup DEAD;\
 		\if "$DEAD" != dead.0 || "$x" != dead.0;\echo 1:$DEAD:$x;\end;\
@@ -5114,7 +5113,7 @@ t_vpospar() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
 	commandalias y echo 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
 	vpospar set hey, "'you    ", world!
@@ -5149,7 +5148,7 @@ t_vpospar() { # {{{
 	cke0 1 0 ./t1 '155175639 866'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./tifs 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tifs 2>${E0}
 	commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
 	set ifs=\'
 	echo ifs<$ifs> ifs-ws<$ifs-ws>
@@ -5326,7 +5325,7 @@ t_read() { # {{{
    hey4, "'you    "
 	__EOT
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
 	read a b c;x
 	read a b c;x
@@ -5346,7 +5345,7 @@ t_read() { # {{{
    :
 	__EOT
 
-	${cat} <<- '__EOT' | 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
+	<<- '__EOT' 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
 	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
 	set ifs=:
 	read a b c;x
@@ -5391,7 +5390,7 @@ t_read() { # {{{
 		' > ./tifs-2 2>${E0}
 	cke0 ifs-2 0 ./tifs-2 '3840749226 897'
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./treadall 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
 	commandalias x echo '$?/$^ERRNAME / <$d>'
 	readctl create ./t1in
 	readall d;x
@@ -5442,7 +5441,7 @@ t_readsh() { # {{{ TODO not enough
    from@exam.ple' diet spliced <from@exam.ple>   ''a'  
 	__EOT
 
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
 	readsh a b c;x
 	readsh a b c;x
@@ -5484,7 +5483,7 @@ t_fop() { # XXX improve writes when we have redirection {{{
 	fi
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
 commandalias x echo '$?/$^ERRNAME :$res:'
 echo ===T1
 vput fop res touch ./t1.1;x
@@ -5527,7 +5526,7 @@ readctl remove $fd;x
 
 	if have_feat flock; then
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
+		<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t2 2>${E0}
 commandalias x echo '$?/$^ERRNAME :$res:'
 echo ===T1
 vput fop res flock ./t2.1 a 'echo x1;echo x2;echo x3';x
@@ -5561,7 +5560,7 @@ readctl remove $fd;x
 	fi
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
 commandalias x echo '$?/$^ERRNAME :$res:'
 echo ===T1
 vput fop fd open ./t3.x w;x 1
@@ -5662,7 +5661,7 @@ t_addrcodec() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME $res'
 	vput addrcodec res e 1 <doog@def>
 	x
@@ -5786,7 +5785,7 @@ t_addrcodec() { # {{{
 	cke0 1 0 ./t1 '1047317989 2612'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t2 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
 	commandalias x echo '$?/$^ERRNAME $res'
 	mlist isa1@list
 	mlsubscribe isa2@list
@@ -5812,7 +5811,7 @@ t_addrcodec() { # {{{
 
 	if have_feat idna; then
 		#{{{
-		${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
+		<<- '__EOT' ${MAILX} ${ARGS} ${ADDARG_UNI} > ./tidna 2>${E0}
 		commandalias x echo '$?/$^ERRNAME $res'
 		vput addrcodec res e		(heu) <du@blödiän> "stroh" du	 
 		x
@@ -7723,7 +7722,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 	fi
 
 	if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
-		${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+		<<-'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t1_to_4 \
 				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
 			set ttycharset=utf-8 sendcharsets=iso-2022-jp
@@ -7771,7 +7770,7 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 	fi
 
 	if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-		${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+		<<-'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t5_to_8 \
 				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
 			set ttycharset=utf-8 sendcharsets=euc-jp
@@ -7978,7 +7977,7 @@ t_alias() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
 	alias a1 ex1@a1.ple
 	alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
 	alias a1 ex4@a1.ple
@@ -8005,7 +8004,7 @@ _EOT
 	ck 2 - ./t2 '1598893942 133'
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t3 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
 	commandalias x echo '$?/$^ERRNAME'
 	echo 1
 	alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
@@ -8056,7 +8055,7 @@ t_charsetalias() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME'
 	echo 1
 	charsetalias latin1 latin15;x
@@ -8088,7 +8087,7 @@ t_shortcut() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} > ./t1 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
 	commandalias x echo '$?/$^ERRNAME'
 	echo 1
 	shortcut file1 expansion-of-file1;x
@@ -8356,11 +8355,9 @@ t_expandaddr() { # {{{
 
 	#
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sadd-file-recipients \
-			-Sexpandaddr=-all,+fcc \
-			> ${EX} 2>${E0}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sadd-file-recipients -Sexpandaddr=-all,+fcc \
+		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
@@ -8370,11 +8367,9 @@ t_expandaddr() { # {{{
 	ck 62 - t.file2 '3178309482 124'
 
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sadd-file-recipients \
-			-Sexpandaddr=-all,+file \
-			> ${EX} 2>${E0}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sadd-file-recipients -Sexpandaddr=-all,+file \
+		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
@@ -8384,11 +8379,9 @@ t_expandaddr() { # {{{
 	ck 66 - t.file2 '3027266938 248'
 
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sadd-file-recipients \
-			-Sexpandaddr=-all,+file,-fcc \
-			> ${EX} 2>${E0}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sadd-file-recipients -Sexpandaddr=-all,+file,-fcc \
+		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
@@ -8398,11 +8391,9 @@ t_expandaddr() { # {{{
 	ck 70 - t.file2 '1875215222 372'
 
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sadd-file-recipients \
-			-Sexpandaddr=-all,+fcc,-file \
-			> ${E0} 2>${EX}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sadd-file-recipients -Sexpandaddr=-all,+fcc,-file \
+		> ${E0} 2>${EX}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
@@ -8412,11 +8403,9 @@ t_expandaddr() { # {{{
 	ck 74 - t.file2 '1875215222 372'
 
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sadd-file-recipients \
-			-Sexpandaddr=-all,fail,+addr \
-			> ${E0} 2>${EX}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sadd-file-recipients -Sexpandaddr=-all,fail,+addr \
+		> ${E0} 2>${EX}
 	Fcc: t.file1
 	Fcc: t.file2
 	To: never@exam.ple
@@ -8428,38 +8417,33 @@ t_expandaddr() { # {{{
 
 	#
 	printf '' > ./t.mbox
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sexpandaddr=fail,domaincheck \
-			> ${EX} 2>${E0}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sexpandaddr=fail,domaincheck \
+		> ${EX} 2>${E0}
 	To: one@localhost
 	_EOT
 	cke0 79 0 ./t.mbox '171635532 120'
 	ck0 80 - ${EX}
 
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sexpandaddr=domaincheck \
-			> ${E0} 2>${EX}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sexpandaddr=domaincheck \
+		> ${E0} 2>${EX}
 	To: one@localhost  ,	 	Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	ck 81 4 ./t.mbox '2659464839 240' '1119895397 158'
 	ck0 82 - ${E0}
 
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sexpandaddr=fail,domaincheck \
-			> ${E0} 2>${EX}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sexpandaddr=fail,domaincheck \
+		> ${E0} 2>${EX}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	ck 83 4 ./t.mbox '2659464839 240' '1577313789 267'
 	ck0 84 - ${E0}
 
-	${cat} <<-_EOT |\
-		${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-			-Sexpandaddr=fail,domaincheck \
-			-Sexpandaddr-domaincheck=exam.ple,tro.uble \
-			> ${EX} 2>${E0}
+	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
+		-Sexpandaddr=fail,domaincheck -Sexpandaddr-domaincheck=exam.ple,tro.uble \
+		> ${EX} 2>${E0}
 	To: one@localhost  ,		Hey two <two@exam.ple>, Trouble <three@tro.uble>
 	_EOT
 	cke0 85 0 ./t.mbox '1670655701 410'
@@ -8820,7 +8804,7 @@ t_q_t_etc_opts() { # {{{
 	cke0 3 0 ./t3 '589355579 6642'
 
 	# Check comments in the header
-	${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Snodot -t ./t4 > ${E0} 2>&1
+	<<-'_EOT' ${MAILX} ${ARGS} -Snodot -t ./t4 > ${E0} 2>&1
 		# Ein Kommentar
 		From: du@da
 		# Noch ein Kommentar
@@ -9330,7 +9314,7 @@ t_alternates() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+	<<- '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
 	commandalias x echo '$?/$^ERRNAME'
 	commandalias y echo '$?/$^ERRNAME <$rv>'
 	echo --0
@@ -9813,7 +9797,7 @@ t_compose_edits() { # {{{ XXX very rudimentary
 	[ -f ./t10-x ]; ck_exx 10
 	cke0 11 - ./t11 '2907383252 330'
 
-	${cat} <<-_EOT | ${MAILX} ${ARGS} -t >${E0} 2>&1
+	<<-_EOT ${MAILX} ${ARGS} -t >${E0} 2>&1
 	Fcc: t12
 	Subject: Fcc via -t test
 
@@ -11054,7 +11038,7 @@ t_lreply_futh_rth_etc() { # {{{
 	#}}}
 
 	#{{{
-	${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
+	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 -Rf ./t.mbox >> ./t1 2>${EX}
 	define r {
 		set m="This is text of \"reply ${1}."
 		reply 1 2 3
