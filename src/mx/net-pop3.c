@@ -906,18 +906,10 @@ jleave:
 static enum okay
 a_pop3_update(struct mailbox *mp){
    struct message *m;
-   int dodel, c, gotcha, held;
+   int dodel, gotcha, held;
    NYD_IN;
 
-   if(!(n_pstate & n_PS_EDIT)){
-      holdbits();
-      c = 0;
-      for(m = message; PCMP(m, <, &message[msgCount]); ++m)
-         if(m->m_flag & MBOX)
-            ++c;
-      if(c > 0)
-         makembox();
-   }
+   mx_quit_automove_mbox(TRU1);
 
    gotcha = held = 0;
    for(m = message; PCMP(m, <, message + msgCount); ++m){

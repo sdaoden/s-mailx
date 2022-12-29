@@ -6940,7 +6940,7 @@ t_save() { # {{{
 
 		a='-Rf'
 		[ ${#} -gt 2 ] && a='-S MBOX=./.tmboxx'
-		[ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox'
+		[ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox -Snohold -Snokeep -Snokeepsave'
 		printf '#
 			headers
 			'"${2}"'

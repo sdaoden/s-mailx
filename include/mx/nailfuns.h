@@ -869,13 +869,13 @@ FL void        cwrelse(struct cw *cw);
  * TODO dropped via a single rele_sigs() if hold_sigs_on */
 FL boole      quit(boole hold_sigs_on);
 
-/* Adjust the message flags in each message */
-FL int         holdbits(void);
-
-/* Create another temporary file and copy user's mbox file darin.  If there is
- * no mbox, copy nothing.  If he has specified "append" don't copy his mailbox,
- * just copy saveable entries at the end */
-FL enum okay   makembox(void);
+/* Append "mbox"ified or auto-copy/move messages from a primary mailbox to
+ * the secondary $MBOX.
+ * If need_stat_verify is we check whether primary, permissions impose the
+ * action, if yes set we holdbits and verify whether there are any messages to
+ * copy/move to secondary MBOX at all.
+ * Return success (else I/O error) */
+FL boole mx_quit_automove_mbox(boole need_stat_verify);
 
 FL void        save_mbox_for_possible_quitstuff(void); /* TODO DROP IF U CAN */
 
