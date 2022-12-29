@@ -17,33 +17,30 @@
 
 ## Variables {{{
 
-# The standard POSIX 2008/Cor 2-2016 mandates the following initial settings
-# for built-in internal variables (established independendly from this file):
-# [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
+# The standard POSIX 2008/Cor 2-2016 mandates these initial settings
+# (* denotes built-in changes, unsupported in brackets):
+# [a]   noallnet, [noappend], asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
-# [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
-# [j-o] nokeep, nokeepsave, nometoo, nooutfolder,
+# [f-i] noflipr, nofolder, header, *nohold, noignore, noignoreeof,
+# [j-o] *nokeep, *nokeepsave, nometoo, [noonehop], nooutfolder,
 # [p-r] nopage, prompt="? ", noquiet, norecord,
 # [s]   save, nosendwait, noshowto, nosign, noSign,
 # [t-z] toplines="5"
 #
-# - In this mailx implementation:
-#   + *sendwait* is set by default (and has extended meaning).
+# - In this implementation:
+#   + *hold*, *keep* and *keepsave* are set by default.
+#   + *sendwait* (with extended meaning) is set by default.
+#   + no*append* does not exist.  (It worked (correctly) only for MBOX
+#     mailboxes; append is default.)
 #   + no*onehop* does not exist.
 #     (To pass options through to the MTA, either add them after a "--"
 #     separator on the command line or set the *mta-arguments* variable.)
-# - *hold, *keep*, and *keepsave* are deliberately set below.
 
 # Adjustments of standard imposed default- as well as other settings follow.
 # - Settings in this file assume v15-compat=yes.
 # - Some of the latter are not portable and may thus have no effect with
 #   other Mail(1) / mailx(1) / mail(1) programs.
 # - Availability of entries marked [OPTION] is a compile-time decision.
-
-# Append rather than prepend when writing to mbox automatically.
-# Has no effect unless *hold* is unset (it is set below).
-# This is a traditional entry and should usually be set.
-set append
 
 # Confirm sending of messages.
 set asksend
@@ -80,10 +77,6 @@ set fullnames
 # With a *history-file* the latter saves them to permanent storage.
 set history-gabby=all history-gabby-persist
 
-# Do not move read messages of system mailboxes to MBOX by default since this
-# is likely to be irritating for most users today; also see *keepsave*.
-set hold
-
 # Reply *quote* original messages with "> ".
 # POSIX mandates tabulator ("set indentprefix=$'\t'") as default.
 set indentprefix="> "
@@ -106,16 +99,6 @@ set mime-counter-evidence=0b1110
 # Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
 # Builtin types exist and may be sufficient.  The default equals "us".
 #set mimetypes-load-control
-
-# Do not remove empty (MBOX) system mailboxes.  (_No_ empty (MBOX) mailbox
-# at all if $POSIXLY_CORRECT a.k.a. *posix* is set!)
-# This may be relevant for privacy since other users could otherwise create
-# them with different permissions.
-set keep
-
-# Do not move `save'd or `write'n message to $MBOX by default since this is
-# likely to be irritating for most users today; also see *hold*.
-set keepsave
 
 # An informational prompt (and see "Gimmicks" below).
 # Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
@@ -301,15 +284,13 @@ retain date author sender from to cc subject \
 #\set mta=test
 #
 #\set \
-#  append asksend autocollapse autosort=thread \
+#  asksend autocollapse autosort=thread \
 #  colour-pager crt= \
 #  editalong=v editheaders emptystart \
 #  followup-to followup-to-add-cc followup-to-honour=ask-yes \
 #     forward-add-cc fullnames \
 #  header history-file=+.mailx-hist history-size=-1 history-gabby=all \
-#     hold \
 #  indentprefix='> ' \
-#  keep keepsave \
 #  line-editor-config=srch-any,srch-case \
 #  markanswered mime-counter-evidence=0b1110 \
 #  outfolder \

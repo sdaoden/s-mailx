@@ -2855,19 +2855,11 @@ static enum okay
 imap_update(struct mailbox *mp)
 {
    struct message *m;
-   int dodel, c, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
+   int dodel, gotcha = 0, held = 0, modflags = 0, needstat, stored = 0;
    NYD_IN;
 
-   if (!(n_pstate & n_PS_EDIT) && mp->mb_perm != 0) {
-      holdbits();
-      c = 0;
-      for (m = message; PCMP(m, <, message + msgCount); ++m)
-         if (m->m_flag & MBOX)
-            ++c;
-      if (c > 0)
-         if (makembox() == STOP)
-            goto jbypass;
-   }
+   if(!mx_quit_automove_mbox(TRU1))
+      goto jbypass;
 
    gotcha = held = 0;
    for (m = message; PCMP(m, <, message + msgCount); ++m) {

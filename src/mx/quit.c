@@ -59,11 +59,10 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-enum quitflags {
-   QUITFLAG_HOLD      = 1<<0,
-   QUITFLAG_KEEP      = 1<<1,
-   QUITFLAG_KEEPSAVE  = 1<<2,
-   QUITFLAG_APPEND    = 1<<3
+enum quitflags{
+   QUITFLAG_HOLD = 1<<0,
+   QUITFLAG_KEEP = 1<<1,
+   QUITFLAG_KEEPSAVE = 1<<2
 };
 
 struct quitnames {
@@ -74,11 +73,14 @@ struct quitnames {
 static struct quitnames const _quitnames[] = {
    {QUITFLAG_HOLD, ok_b_hold},
    {QUITFLAG_KEEP, ok_b_keep},
-   {QUITFLAG_KEEPSAVE, ok_b_keepsave},
-   {QUITFLAG_APPEND, ok_b_append}
+   {QUITFLAG_KEEPSAVE, ok_b_keepsave}
 };
 
 static char _mboxname[PATH_MAX];  /* Name of mbox */
+
+/* Adjust the message flags in each message.  Return whether any message got
+ * a status change */
+static boole a_quit_holdbits(void);
 
 /* Preserve all the appropriate messages back in the system mailbox, and print
  * a nice message indicated how many were saved.  On any error, just return -1.
@@ -88,6 +90,40 @@ static int  writeback(FILE *res, FILE *obuf);
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
 static boole edstop(void);
+
+static boole
+a_quit_holdbits(void){
+   struct message *mp;
+   int holdbit, nohold, mf;
+   boole rv, autohold;
+   NYD2_IN;
+
+   rv = FAL0;
+   autohold = ok_blook(hold);
+   holdbit = autohold ? MPRESERVE : MBOX;
+   nohold = MBOX | MSAVED | MDELETED | MPRESERVE;
+   if(ok_blook(keepsave))
+      nohold ^= MSAVED;
+
+   for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
+      mf = mp->m_flag;
+      if(mf & MNEW){
+         mf &= ~MNEW;
+         mf |= MSTATUS;
+      }
+      if(!(mf & MTOUCH))
+         mf |= MPRESERVE;
+      if(!(mf & nohold))
+         mf |= holdbit;
+      mp->m_flag = mf;
+
+      if(mf & (MSTATUS | MFLAG | MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))
+         rv = TRU1;
+   }
+
+   NYD2_OU;
+   return rv;
+}
 
 static int
 writeback(FILE *res, FILE *obuf) /* TODO errors */
@@ -296,10 +332,10 @@ FL boole
 quit(boole hold_sigs_on)
 {
    struct su_pathinfo pi;
-   int p, modify, anystat, c;
+   int p, modify, c;
    FILE *fbuf, *lckfp, *rbuf, *abuf;
    struct message *mp;
-   boole rv;
+   boole rv, anystat;
    NYD_IN;
 
    if(!hold_sigs_on)
@@ -403,21 +439,22 @@ jerbuf:
       fflush_rewind(rbuf);
    }
 
-   anystat = holdbits();
+   anystat = a_quit_holdbits();
    modify = 0;
-   for (c = 0, p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp) {
-      if (mp->m_flag & MBOX)
-         c++;
-      if (mp->m_flag & MPRESERVE)
-         p++;
-      if (mp->m_flag & MODIFY)
-         modify++;
+   for(c = 0, p = 0, mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
+      int mf = mp->m_flag;
+      if(mf & MBOX)
+         ++c;
+      if(mf & MPRESERVE)
+         ++p;
+      if(mf & MODIFY)
+         ++modify;
    }
-   if (p == msgCount && !modify && !anystat) {
+   if(p == msgCount && !modify && !anystat){
       rv = TRU1;
-      if (p == 1)
+      if(p == 1)
          fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
-      else if (p > 1)
+      else if(p > 1)
          fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
       goto jleave;
    }
@@ -433,7 +470,7 @@ jerbuf:
       goto jcream;
    }
 
-   if (makembox() == STOP) {
+   if(!mx_quit_automove_mbox(FAL0)){
       rv = mx_tty_yesorno(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
@@ -486,116 +523,48 @@ jleave:
    return rv;
 }
 
-FL int
-holdbits(void)
-{
-   struct message *mp;
-   int anystat, autohold, holdbit, nohold;
-   NYD_IN;
-
-   anystat = 0;
-   autohold = ok_blook(hold);
-   holdbit = autohold ? MPRESERVE : MBOX;
-   nohold = MBOX | MSAVED | MDELETED | MPRESERVE;
-   if (ok_blook(keepsave))
-      nohold &= ~MSAVED;
-   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
-      if (mp->m_flag & MNEW) {
-         mp->m_flag &= ~MNEW;
-         mp->m_flag |= MSTATUS;
-      }
-      if (mp->m_flag & (MSTATUS | MFLAG | MUNFLAG | MANSWER | MUNANSWER |
-            MDRAFT | MUNDRAFT))
-         ++anystat;
-      if (!(mp->m_flag & MTOUCH))
-         mp->m_flag |= MPRESERVE;
-      if (!(mp->m_flag & nohold))
-         mp->m_flag |= holdbit;
-   }
-   NYD_OU;
-   return anystat;
-}
-
-FL enum okay
-makembox(void) /* TODO oh my god (also error reporting) */
-{
-   struct message *mp;
-   char *mbox;
-   int mcount, c;
-   FILE *ibuf = NULL, *obuf, *abuf;
+FL boole
+mx_quit_automove_mbox(boole need_stat_verify){
+   FILE *obuf;
    enum mx_fs_open_state fs;
-   enum okay rv = STOP;
+   uz mcount;
+   char *mbox;
+   struct message *mp;
+   boole rv;
    NYD_IN;
 
+   if(need_stat_verify){
+      rv = TRU1;
+
+      if(mb.mb_perm == 0 || (n_pstate & n_PS_EDIT))
+         goto jleave;
+
+      a_quit_holdbits();
+
+      for(mp = message;; ++mp){
+         if(PCMP(mp, ==, &message[msgCount]))
+            goto jleave;
+         if(mp->m_flag & MBOX)
+            break;
+      }
+   }
+
+   rv = FAL0;
    mbox = _mboxname;
    mcount = 0;
-   if(ok_blook(append)){
-      if((obuf = mx_fs_open_any(mbox, (mx_FS_O_RDWR | mx_FS_O_APPEND |
-               mx_FS_O_CREATE), &fs)) == NIL){
-         n_perr(mbox, 0);
-         goto jleave;
-      }
 
-      if((fs & n_PROTO_MASK) == n_PROTO_FILE)
-         n_folder_mbox_prepare_append(obuf, FAL0, NIL);
-   }else{
-      struct mx_fs_tmp_ctx *fstcp;
-
-      if((obuf = mx_fs_tmp_open(NIL, "makembox", (mx_FS_O_WRONLY |
-               mx_FS_O_HOLDSIGS), &fstcp)) == NIL){
-         n_perr(_("creation of temporary mail quit file"), 0);
-         goto jleave;
-      }
-      if((ibuf = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL)
-         n_perr(fstcp->fstc_filename, 0);
-      mx_fs_tmp_release(fstcp);
-      if(ibuf == NIL){
-         mx_fs_close(obuf);
-         goto jleave;
-      }
-
-      if((abuf = mx_fs_open_any(mbox, mx_FS_O_RDONLY, &fs)) != NIL){
-         boole lastnl;
-
-         for (lastnl = FAL0; (c = getc(abuf)) != EOF && putc(c, obuf) != EOF;)
-            lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
-         if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
-            putc('\n', obuf);
-
-         mx_fs_close(abuf);
-      }
-      if(ferror(obuf)){
-         n_perr(_("temporary mail quit file"), 0);
-         mx_fs_close(ibuf);
-         mx_fs_close(obuf);
-         goto jleave;
-      }
-      mx_fs_close(obuf);
-
-      /* C99 */{
-         char const *xmbox;
-
-         /* Strip possible protocol prefix; this is a backport "hack".
-          * It should all be an object-based "VFS" thing, anyway */
-         xmbox = mbox;
-         if(su_cs_cmp_case_n(xmbox, "mbox://", sizeof("mbox://") -1) == 0)
-            xmbox += sizeof("mbox://") -1;
-
-         if((c = mx_fs_open_fd(xmbox, (mx_FS_O_WRONLY | mx_FS_O_CREATE |
-                  mx_FS_O_TRUNC | mx_FS_O_NOCLOEXEC), 0666)) != -1)
-            close(c);
-      }
-
-      if((obuf = mx_fs_open_any(mbox, mx_FS_O_RDWR, &fs)) == NIL){
-         n_perr(mbox, 0);
-         mx_fs_close(ibuf);
-         goto jleave;
-      }
+   if((obuf = mx_fs_open_any(mbox, (mx_FS_O_RDWR | mx_FS_O_APPEND |
+            mx_FS_O_CREATE), &fs)) == NIL){
+      n_perr(mbox, 0);
+      goto jleave;
    }
 
-   srelax_hold();
-   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
-      if (mp->m_flag & MBOX) {
+   if((fs & n_PROTO_MASK) == n_PROTO_FILE)
+      n_folder_mbox_prepare_append(obuf, FAL0, NIL);
+
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
+      if(mp->m_flag & MBOX){
          ++mcount;
 #ifdef mx_HAVE_IMAP
          if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
@@ -609,33 +578,18 @@ makembox(void) /* TODO oh my god (also error reporting) */
 jcopyerr:
 #endif
             n_perr(mbox, 0);
-            srelax_rele();
-            if(ibuf != NIL)
-               mx_fs_close(ibuf);
+            su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
             mx_fs_close(obuf);
             goto jleave;
          }
+
          mp->m_flag |= MBOXED;
-         srelax();
+         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
       }
    }
-   srelax_rele();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
-   /* Copy the user's old mbox contents back to the end of the stuff we just
-    * saved.  If we are appending, this is unnecessary */
-   if (!ok_blook(append)) {
-      boole lastnl;
-
-      rewind(ibuf);
-      for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
-         lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
-      if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
-         putc('\n', obuf);
-      mx_fs_close(ibuf);
-      fflush(obuf);
-   }
-
-   ftrunc(obuf);
+   ftrunc(obuf); /* XXX clears error, order.. */
    if(ferror(obuf)){
       n_perr(mbox, su_err_no_by_errno());
       mx_fs_close(obuf);
@@ -649,11 +603,12 @@ jcopyerr:
          n_perr(mbox, 0);
       goto jleave;
    }
-   if (mcount == 1)
-      fprintf(n_stdout, _("Saved 1 message in mbox\n"));
-   else
-      fprintf(n_stdout, _("Saved %d messages in mbox\n"), mcount);
-   rv = OKAY;
+
+   mbox = n_shexp_quote_cp(mbox, FAL0);
+   fprintf(n_stdout, _("Saved %" PRIuZ " %s in MBOX=%s\n"),
+      mcount, (mcount == 1 ? _("message") : _("messages")), mbox);
+
+   rv = TRU1;
 jleave:
    NYD_OU;
    return rv;

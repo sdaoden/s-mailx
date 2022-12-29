@@ -545,22 +545,13 @@ maildir_update(void)
 {
    struct message *m;
    struct su_timespec const *tsp;
-   int dodel, c, gotcha = 0, held = 0, modflags = 0;
+   int dodel, gotcha = 0, held = 0, modflags = 0;
    NYD_IN;
 
-   if (mb.mb_perm == 0)
+   if(!mx_quit_automove_mbox(TRU1))
+         goto jbypass;
+   if(mb.mb_perm == 0)
       goto jfree;
-
-   if (!(n_pstate & n_PS_EDIT)) {
-      holdbits();
-      for (m = message, c = 0; PCMP(m, <, message + msgCount); ++m) {
-         if (m->m_flag & MBOX)
-            c++;
-      }
-      if (c > 0)
-         if (makembox() == STOP)
-            goto jbypass;
-   }
 
    tsp = mx_time_now(TRU1); /* TODO FAL0, eventloop update! */
 
