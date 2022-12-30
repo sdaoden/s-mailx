@@ -38,17 +38,21 @@ enum mx_fs_oflags{
 	mx__FS_O_RWMASK = mx_FS_O_RDONLY | mx_FS_O_WRONLY | mx_FS_O_RDWR,
 	mx_FS_O_APPEND = 1u<<3,
 	mx_FS_O_CREATE = 1u<<4,
-	mx_FS_O_TRUNC = 1u<<5,
-	mx_FS_O_EXCL = 1u<<6,
-	mx_FS_O_NOFOLLOW = 1u<<7,
+	mx_FS_O_CREATE_0600 = 1u<<5, /* When we _CREATE, not 0666 but 0600 */
+	mx_FS_O_TRUNC = 1u<<6,
+	mx_FS_O_EXCL = 1u<<7,
+	mx_FS_O_NOFOLLOW = 1u<<8,
 
 	/* Do NOT open O_CLOEXEC (that if supported, see below) */
-	mx_FS_O_NOCLOEXEC = 1u<<8,
+	mx_FS_O_NOCLOEXEC = 1u<<9,
 	/* Do NOT register file for auto close and -deletion */
-	mx_FS_O_NOREGISTER = 1u<<9,
+	mx_FS_O_NOREGISTER = 1u<<10,
 
 	/* fd_open() only: do not close the descriptor (dup() it first) */
 	mx_FS_O_NOCLOSEFD = 1u << 13,
+	/* v15-compat open_any() only: this file is the target of an internal duplicate, via a temporary MBOX, and it
+	 * should _strictly_ ensure Message states are reflected _exactly_ */
+	mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION = 1u<<13,
 
 	/* tmp_open() only: */
 

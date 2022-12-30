@@ -189,7 +189,7 @@ a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags, BITENUM_IS(u32
 		fsep->fse_realfile = su_cs_dup(realfile, 0);
 	fsep->fse_link = a_fs_fp_head;
 	fsep->fse_flags = flags;
-	fsep->fse_oflags = oflags & (mx__FS_O_RWMASK | mx_FS_O_APPEND);
+	fsep->fse_oflags = oflags/* & (mx__FS_O_RWMASK | mx_FS_O_APPEND)*/;
 	fsep->fse_offset = offset;
 	fsep->fse_fp = fp;
 	if(save_cmd != NIL)
@@ -304,7 +304,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 
 #ifdef mx_HAVE_MAILDIR
 	if((fsep->fse_flags & a_FS_EF_MASK) == a_FS_EF_MAILDIR){
-		rv = maildir_append(fsep->fse_realfile, fsep->fse_fp, fsep->fse_offset);
+		rv = maildir_append(fsep->fse_realfile, fsep->fse_fp, fsep->fse_offset,
+				((fsep->fse_oflags & mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION) != 0));
 		goto jleave;
 	}
 #endif
@@ -322,7 +323,8 @@ a_fs_file_save(struct a_fs_ent *fsep){
 	osiflags = a_fs_mx_to_os(fsep->fse_oflags, NIL) | O_CREAT | a_FS_O_NOXY_BITS;
 	if(!(fsep->fse_oflags & mx_FS_O_APPEND))
 		osiflags |= O_TRUNC;
-	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags, 0666)) == -1){
+	if((cc.cc_fds[mx_CHILD_FD_OUT] = open(fsep->fse_realfile, osiflags,
+			(fsep->fse_oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 		s32 err;
 
 		err = su_err_no_by_errno();
@@ -380,11 +382,13 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
 	FILE *fp;
 	NYD_IN;
 
+	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
+
 	fp = NIL;
 
 	osiflags = a_fs_mx_to_os(oflags, &osflags);
 
-	if((fd = open(file, osiflags, 0666)) == -1){
+	if((fd = open(file, osiflags, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 		su_err_no_by_errno();
 		goto jleave;
 	}
@@ -422,6 +426,8 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 	s32 err;
 	FILE *rv;
 	NYD_IN;
+
+	ASSERT(!(oflags & mx_FS_O_CREATE_0600) || (oflags & mx_FS_O_CREATE));
 
 	rv = NIL;
 	err = su_ERR_NONE;
@@ -532,7 +538,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 			goto jleave;
 		}
 	}else{
-		if((infd = creat(file, 0666)) == -1){
+		if((infd = creat(file, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 			err = su_err_no_by_errno();
 			fclose(rv);
 			rv = NIL;

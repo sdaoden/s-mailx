@@ -126,29 +126,32 @@ a_quit_holdbits(void){
 }
 
 static int
-writeback(FILE *res, FILE *obuf) /* TODO errors */
-{
+writeback(FILE *res, FILE *obuf){ /* TODO errors */
    struct message *mp;
-   int rv = -1, p, c;
+   uz p;
+   int rv, c;
    NYD_IN;
 
-   if (fseek(obuf, 0L, SEEK_SET) == -1)
+   rv = -1;
+
+   if(fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
-   srelax_hold();
-   for (p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp)
-      if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   for(p = 0, mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
+      if((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)){
          ++p;
-         if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
+         if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL) < 0){
             n_perr(mailname, 0);
-            srelax_rele();
+            su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
             goto jerror;
          }
-         srelax();
+         su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
       }
-   srelax_rele();
+   }
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
-   if(res != NULL){
+   if(res != NIL){
       boole lastnl;
 
       for(lastnl = FAL0; (c = getc(res)) != EOF && putc(c, obuf) != EOF;)
@@ -158,20 +161,21 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
    }
 
    ftrunc(obuf);
-   if (ferror(obuf)) {
+   if(ferror(obuf)){
       n_perr(mailname, su_err_no_by_errno());
 jerror:
       fseek(obuf, 0L, SEEK_SET);
       goto jleave;
    }
-   if (fseek(obuf, 0L, SEEK_SET) == -1)
+   if(fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
    su_path_touch(mailname, NIL);
-   if (p == 1)
-      fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
-   else
-      fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
+
+   if(p > 0)
+      fprintf(n_stdout, _("Held %" PRIuZ " %s in %s\n"),
+         p, (p == 1 ? _("message") : _("messages")), displayname);
+
    rv = 0;
 jleave:
    NYD_OU;
@@ -451,11 +455,10 @@ jerbuf:
          ++modify;
    }
    if(p == msgCount && !modify && !anystat){
+      if(p > 0)
+         fprintf(n_stdout, _("Held %d %s in %s\n"),
+            p, (p == 1 ? _("message") : _("messages")), displayname);
       rv = TRU1;
-      if(p == 1)
-         fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
-      else if(p > 1)
-         fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
       goto jleave;
    }
 
@@ -554,7 +557,7 @@ mx_quit_automove_mbox(boole need_stat_verify){
    mcount = 0;
 
    if((obuf = mx_fs_open_any(mbox, (mx_FS_O_RDWR | mx_FS_O_APPEND |
-            mx_FS_O_CREATE), &fs)) == NIL){
+            mx_FS_O_CREATE | mx_FS_O_CREATE_0600 | mx_FS_O_EXACT_MESSAGE_STATE_REFLECTION), &fs)) == NIL){
       n_perr(mbox, 0);
       goto jleave;
    }
@@ -604,6 +607,8 @@ jcopyerr:
       goto jleave;
    }
 
+   if(su_state_has(su_STATE_REPRODUCIBLE))
+      mbox = n_filename_to_repro(mbox);
    mbox = n_shexp_quote_cp(mbox, FAL0);
    fprintf(n_stdout, _("Saved %" PRIuZ " %s in MBOX=%s\n"),
       mcount, (mcount == 1 ? _("message") : _("messages")), mbox);
