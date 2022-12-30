@@ -93,7 +93,8 @@ static void             _maildir_append(char const *name, char const *sub,
 
 static boole a_maildir_readin(char const *name, struct message *mp);
 
-static void             maildir_update(void);
+/* Whether maildir shall NOT be kept thereafter */
+static boole a_maildir_update(void);
 
 static void             _maildir_move(struct su_timespec const *tsp,
                            struct message *m);
@@ -103,7 +104,7 @@ static char *           mkname(struct su_timespec const *tsp, enum mflag f,
 
 static enum okay        maildir_append1(struct su_timespec const *tsp,
                            char const *name, FILE *fp, off_t off1,
-                           long size, enum mflag flag);
+                           long size, enum mflag flag, boole realstat);
 
 static enum okay        trycreate(char const *name);
 
@@ -540,66 +541,65 @@ jerr:
    goto jleave;
 }
 
-static void
-maildir_update(void)
-{
-   struct message *m;
+static boole
+a_maildir_update(void){
+   struct message *mp;
+   uz gotcha, held, modflags;
    struct su_timespec const *tsp;
-   int dodel, gotcha = 0, held = 0, modflags = 0;
+   boole rv;
    NYD_IN;
 
-   if(!mx_quit_automove_mbox(TRU1))
-         goto jbypass;
-   if(mb.mb_perm == 0)
-      goto jfree;
+   rv = FAL0;
+
+   if(!mx_quit_automove_mbox(TRU1) || mb.mb_perm == 0)
+      goto jleave;
 
    tsp = mx_time_now(TRU1); /* TODO FAL0, eventloop update! */
 
-   n_autorec_relax_create();
-   for (m = message, gotcha = 0, held = 0; PCMP(m, <, message + msgCount);
-         ++m) {
-      if (n_pstate & n_PS_EDIT)
-         dodel = m->m_flag & MDELETED;
-      else
-         dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
-
-      if(dodel){
-         if(!su_path_rm(m->m_maildir_file))
-            n_err(_("Cannot delete file %s for message %lu\n"),
-               n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file),
-                  FAL0), (ul)P2UZ(m - message + 1));
-         else
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   gotcha = held = modflags = 0;
+   for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
+      if((n_pstate & n_PS_EDIT) ? ((mp->m_flag & MDELETED) != 0)
+            : !((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH))){
+         if(su_path_rm(mp->m_maildir_file))
             ++gotcha;
-      } else {
-         if ((m->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS) ||
-               (m->m_flag & (MNEW | MBOXED | MSAVED | MSTATUS | MFLAG |
-               MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))) {
-            _maildir_move(tsp, m);
-            n_autorec_relax_unroll();
+         else
+            n_err(_("Cannot delete file %s for message %lu\n"),
+               n_shexp_quote_cp(savecatsep(mailname, '/', mp->m_maildir_file),
+                  FAL0), S(ul,P2UZ(mp - message + 1)));
+      }else{
+         ++held;
+         if((mp->m_flag & (MREAD | MSTATUS)) == (MREAD | MSTATUS) ||
+               (mp->m_flag & (MNEW | MBOXED | MSAVED | MSTATUS | MFLAG |
+                  MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT))){
+            _maildir_move(tsp, mp);
             ++modflags;
          }
-         ++held;
       }
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
    }
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
-jbypass:
-   if ((gotcha || modflags) && (n_pstate & n_PS_EDIT)) {
+   if((gotcha || modflags) && (n_pstate & n_PS_EDIT)){
       fprintf(n_stdout, "%s %s\n",
          n_shexp_quote_cp(displayname, FAL0),
          ((ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-          ? _("complete") : _("updated.")));
-   } else if (held && !(n_pstate & n_PS_EDIT) && mb.mb_perm != 0) {
-      if (held == 1)
-         fprintf(n_stdout, _("Held 1 message in %s\n"), displayname);
-      else
-         fprintf(n_stdout, _("Held %d messages in %s\n"), held, displayname);
-   }
+          ? _("complete") : _("updated")));
+   }else if(held > 0 && !(n_pstate & n_PS_EDIT)){
+      fprintf(n_stdout, _("Held %" PRIuZ " %s in %s\n"),
+         held, (held == 1 ? _("message") : _("messages")), displayname);
+   }else
+      rv = (held == 0 && !ok_blook(keep) &&
+            (!(n_pstate & n_PS_EDIT) || ok_blook(posix)));
+
    fflush(n_stdout);
-jfree:
-   for (m = message; PCMP(m, <, message + msgCount); ++m)
-      n_free(n_UNCONST(m->m_maildir_file));
+
+jleave:
+   for(mp = message; PCMP(mp, <, &message[msgCount]); ++mp)
+      su_FREE(UNCONST(char*,mp->m_maildir_file));
+
    NYD_OU;
+   return rv;
 }
 
 static void
@@ -724,7 +724,7 @@ mkname(struct su_timespec const *tsp, enum mflag f, char const *pref)
 
 static enum okay
 maildir_append1(struct su_timespec const *tsp, char const *name, FILE *fp,
-   off_t off1, long size, enum mflag flag)
+   off_t off1, long size, enum mflag flag, boole realstat)
 {
    char buf[4096], *fn, *tfn, *nfn;
    FILE *op;
@@ -768,7 +768,8 @@ jtmperr:
    mx_fs_close(op);
 
    nfn = n_autorec_alloc(n = nlen + flen + 6);
-   snprintf(nfn, n, "%s/new/%s", name, fn);
+   snprintf(nfn, n, "%s/%s/%s",
+      name, ((!realstat || (flag & MNEW)) ? "new" : "cur"), fn);
    if(!su_path_link(nfn, tfn)) {
       n_err(_("Cannot link %s to %s\n"), n_shexp_quote_cp(tfn, FAL0),
          n_shexp_quote_cp(nfn, FAL0));
@@ -1030,12 +1031,14 @@ jerr:
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          n_err(_("No mail for %s at %s\n"), who, n_shexp_quote_cp(name, FAL0));
+      su_err_set_no(su_ERR_NODATA);
       i = 1;
       goto jleave;
    }
 
    if ((fm & FEDIT_NEWMAIL) && msgCount > omsgCount)
       newmailinfo(omsgCount);
+
    i = 0;
 jleave:
    NYD_OU;
@@ -1047,7 +1050,7 @@ maildir_quit(boole hold_sigs_on)
 {
    n_sighdl_t saveint;
    struct cw cw;
-   boole rv;
+   boole rv, remove;
    NYD_IN;
 
    if(hold_sigs_on)
@@ -1070,10 +1073,12 @@ maildir_quit(boole hold_sigs_on)
       goto jleave;
    }
 
+   remove = FAL0;
    if (sigsetjmp(_maildir_jmp, 1) == 0) {
       if (saveint != SIG_IGN)
          safe_signal(SIGINT, &__maildircatch_hold);
-      maildir_update();
+
+      remove = a_maildir_update();
    }
 
    safe_signal(SIGINT, saveint);
@@ -1081,6 +1086,10 @@ maildir_quit(boole hold_sigs_on)
    if (cwret(&cw) == STOP)
       n_panic(_("Cannot change back to current directory"));
    cwrelse(&cw);
+
+   if(remove)
+      maildir_remove(mailname);
+
    rv = TRU1;
 jleave:
    if(hold_sigs_on)
@@ -1090,7 +1099,7 @@ jleave:
 }
 
 FL enum okay
-maildir_append(char const *name, FILE *fp, s64 offset)
+maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
 {
    struct su_timespec const *tsp;
    char *buf, *bp, *lp;
@@ -1120,7 +1129,8 @@ maildir_append(char const *name, FILE *fp, s64 offset)
             ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
              is_head(buf, buflen, FAL0))) {
          if (off1 != (off_t)-1) {
-            if((rv = maildir_append1(tsp, name, fp, off1, size, flag)) == STOP)
+            if((rv = maildir_append1(tsp, name, fp, off1, size, flag, realstat)
+                  ) == STOP)
                goto jfree;
             n_autorec_relax_unroll();
             if (fseek(fp, offs + buflen, SEEK_SET) == -1) {

@@ -6776,6 +6776,11 @@ hey, you
 The given names are mailbox type classified, and type specific removal
 will be applied; removal of unknown types is refused.
 In interactive mode the user is asked for confirmation.
+\*(ID Removing a
+.Mx -sx
+.Sx Maildir
+folder may be partial in case any of the subdirectories (tmp,new,cur)
+cannot be removed.
 .
 .Mx
 .It Ic rename
@@ -10412,8 +10417,12 @@ when using a common
 (for example for
 .Ev MAIL ) ,
 and prevents creation of malicious files in a world-writable spool.
-\*(ID Only local regular (MBOX) files are covered, Maildir and other
-mailbox types will never be removed, even if empty.
+\*(ID Only local MBOX and maildir mailboxes are covered, other mailbox
+types will never be removed, even if empty; note that a
+.Mx -sx
+.Sx Maildir
+.Ic remove
+may be partial.
 .
 .Mx
 .It Va keep-content-length

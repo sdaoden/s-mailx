@@ -793,7 +793,8 @@ FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
 
 FL boole maildir_quit(boole hold_sigs_on);
 
-FL enum okay maildir_append(char const *name, FILE *fp, s64 offset);
+FL enum okay maildir_append(char const *name, FILE *fp, s64 offset,
+      boole realstat);
 
 FL enum okay maildir_remove(char const *name);
 #endif /* mx_HAVE_MAILDIR */

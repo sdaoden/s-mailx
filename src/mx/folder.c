@@ -238,8 +238,15 @@ a_folder_info(void){
 
    /* If displayname gets truncated the user effectively has no option to see
     * the full pathname of the mailbox, so print it at least for '? fi' */
-   fprintf(n_stdout, "%s: ", n_shexp_quote_cp(
-      (_update_mailname(NULL) ? displayname : mailname), FAL0));
+   /* C99 */{
+      char const *cp;
+
+      cp = _update_mailname(NULL) ? displayname : mailname;
+      if(su_state_has(su_STATE_REPRODUCIBLE))
+         cp = n_filename_to_repro(cp);
+
+      fprintf(n_stdout, "%s: ", n_shexp_quote_cp(cp, FAL0));
+   }
    if (msgCount == 1)
       fprintf(n_stdout, _("1 message"));
    else
