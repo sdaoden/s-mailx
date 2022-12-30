@@ -89,6 +89,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    shell = NULL;
    file = NULL;
 
+   /* Is is "Save" (uppercase) */
    if(!(cap->ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
       struct mx_name *np;
 

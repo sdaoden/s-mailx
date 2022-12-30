@@ -8174,6 +8174,139 @@ t_netrc() { # {{{
 
 	t_epilog "${@}"
 } # }}}
+
+t_states_and_primary_secondary() { # {{{
+	t_prolog "${@}"
+
+	{
+		t__gen_msg from 'ex1@am.ple' subject s1 body b1
+		t__gen_msg_mime from 'ex2@am.ple' subject s2 body 'b2, l1
+
+			b2, l3'
+		t__gen_msg from 'ex3@am.ple' subject s3 body b3
+	} > ./t.tpl
+	> nix
+
+	#{{{
+	${cat} <<- '__EOT' > ./t.p
+commandalias x ec '$?/$^ERRNAME'
+\if ! [ -n "$hold" && -n "$keep" && -n "$keepsave" ]; \xit 100; \end
+! > ./t.rash
+vput cwd cwd # TODO v15-compat so that maildir:// can be tested <> MBOX relative path!
+set MBOX=$p://$cwd/t-mbox.$p inbox=$p://t.$p
+Fi ./t.tpl;x
+c * $p://t.$p;x
+eval i $o t.$p;ec y;el;ec n;en
+#
+ec =N
+Fi %;x;fi
+h;x
+fi %;x;fi
+h;x
+Fi nix
+#
+ec =U
+fi %;x;fi
+h;x
+Fi %;x;fi
+h;x
+Fi nix
+#
+ec =-hold
+unset hold
+fi %;x;fi
+h;x
+Fi %;x;fi
+h;x
+Fi nix
+#
+ec =state
+fi %;x
+h;x
+mbox 1;x # (is default)
+copy 2 ./t.rash;x
+Fi nix
+Fi %;x;fi
+h;x
+Fi &;fi
+h;x
+Fi nix
+#
+ec =save
+fi %;x;fi
+s ./t-save.$p;x
+h;x
+ec empty!
+Fi %;x;fi
+h;x
+Fi &;fi
+h;x
+Fi ./t-save.$p;fi
+h;x
+Fi nix
+#
+#
+ec =refill,nokeepsave
+Fi ./t.tpl;x
+c * $p://t.$p;x
+unset keepsave
+fi %;x;fi
+h;x
+s * &;x
+h;x
+Fi %;x;fi
+h;x
+Fi &;fi
+h;x
+Fi nix
+#
+#
+ec =refill,hold
+Fi ./t.tpl;x
+c * $p://t.$p;x
+set hold
+fi %;x;fi
+s * &;x
+h;x
+Fi %;x;fi
+h;x
+Fi &;fi
+h;x
+Fi nix
+#
+#
+ec =refill,nohold,nokeep
+Fi ./t.tpl;x
+c * $p://t.$p;x
+unset hold keep
+fi %;x;fi
+s * &;x
+h;x
+Fi &;fi
+h;x
+Fi nix
+eval i $o t.$p;ec n;el;ec y;en
+	__EOT
+	#}}}
+
+	< ./t.p ${MAILX} ${ARGS} -S p=mbox -S o=-f > ./t1 2>${EX}
+	ck 1-1 0 ./t1 '575602306 7129' '3778887936 129'
+	[ -f ./t.mbox ]; ck_exx 1-2
+	ck 1-3 - ./t-mbox.mbox '1281902666 3752'
+	ck 1-4 - ./t-save.mbox '3292035903 131'
+
+	if have_feat maildir; then
+		< ./t.p ${MAILX} ${ARGS} -S p=maildir -S o=-d > ./t2 2>${EX}
+		ck 2-1 0 ./t2 '1724556867 7258' '3778887936 129'
+		#ck 2-2 - ./t.maildir
+		#ck 2-3 - ./t-mbox-mbox.maildir
+		ck 2-4 - ./t-save.maildir '1069891918 123'
+	else
+		t_echoskip '2:[!MAILDIR]'
+	fi
+
+	t_epilog "${@}"
+} # }}}
 # }}}
 
 # Operational basics with easy tests {{{
@@ -13251,6 +13384,7 @@ t_all() { #{{{
 	jspawn charsetalias
 	jspawn shortcut
 	jspawn netrc
+	jspawn states_and_primary_secondary
 	jsync
 
 	# Operational basics with easy tests
