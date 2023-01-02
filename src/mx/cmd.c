@@ -118,47 +118,51 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		break;
 	default:
 	case mx_CMD_ARG_TYPE_ARG:{
-		u32 flags, xflags;
+		u32 flags;
 		uz i, ol;
 		struct mx_cmd_arg_desc const *cadp;
 
 		rv = n_string_push_cp(rv, _("argument tokens: "));
 
 		for(cadp = cdp->cd_cadp, ol = i = 0; i < cadp->cad_no; ++i){
-			xflags = flags = cadp->cad_ent_flags[i][0];
-jfakeent:
-			if(flags & mx_CMD_ARG_DESC_OPTION){
-				++ol;
-				rv = n_string_push_c(rv, '[');
+			flags = cadp->cad_ent_flags[i][0];
+
+			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
+			}else{
+				if(flags & mx_CMD_ARG_DESC_OPTION){
+					++ol;
+					rv = n_string_push_c(rv, '[');
+				}
+				if(i != 0){
+					rv = n_string_push_c(rv, ',');
+					rv = n_string_push_c(rv, ' ');
+				}
+				if(flags & mx_CMD_ARG_DESC_GREEDY)
+					rv = n_string_push_c(rv, ':');
 			}
-			if(i != 0){
-				rv = n_string_push_c(rv, ',');
-				rv = n_string_push_c(rv, ' ');
-			}
-			if(flags & mx_CMD_ARG_DESC_GREEDY)
-				rv = n_string_push_c(rv, ':');
+
 			switch(flags & mx__CMD_ARG_DESC_TYPE_MASK){
 			default:
+				rv = n_string_push_cp(rv, _("AUA"));
 			case mx_CMD_ARG_DESC_SHEXP:
 				rv = n_string_push_cp(rv, _("(shell-)token"));
 				break;
 			case mx_CMD_ARG_DESC_MSGLIST:
-				rv = n_string_push_cp(rv, _("(shell-)msglist"));
+				rv = n_string_push_cp(rv, _("[(shell-)msglist (default dot)]"));
+				break;
+			case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+				rv = n_string_push_cp(rv, _("[[(shell-)msglist (default dot)], (shell-)token]"));
 				break;
 			case mx_CMD_ARG_DESC_NDMSGLIST:
 				rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
 				break;
-			case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
-				rv = n_string_push_cp(rv, _("(shell-)msglist"));
-				++i;
-				xflags = mx_CMD_ARG_DESC_SHEXP;
 			}
-			if(flags & mx_CMD_ARG_DESC_GREEDY)
-				rv = n_string_push_c(rv, ':');
 
-			if(xflags != flags){
-				flags = xflags;
-				goto jfakeent;
+			if(flags & mx__CMD_ARG_DESC_TYPE_LIST_WITH_DFLT_MASK){
+
+			}else{
+				if(flags & mx_CMD_ARG_DESC_GREEDY)
+					rv = n_string_push_c(rv, ':');
 			}
 		}
 		while(ol-- > 0)
