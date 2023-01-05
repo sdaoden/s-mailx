@@ -279,6 +279,7 @@ FILTER_ERR=:
 DEVELDIFF= DUMPERR=
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
 JOBS=0 JOBLIST= JOBREAPER= JOBSYNC=
+	JOB_MSG_ID= # per JOB!
 SUBSECOND_SLEEP=
 	( sleep .1 ) >/dev/null 2>&1 && SUBSECOND_SLEEP=y
 
@@ -431,6 +432,7 @@ jspawn() {
 	[ -n "${JOBMON}" ] && set -m >/dev/null 2>&1
 	( # Place the job in its own directory to ease file management
 		trap '' EXIT HUP INT QUIT TERM USR1 USR2
+		JOB_MSG_ID=
 		${mkdir} t.${JOBS}.d && cd t.${JOBS}.d &&
 			eval t_${1} ${JOBS} ${1} &&
 			${rm} -f ../t.${JOBS}.id
@@ -1398,7 +1400,7 @@ t_S_freeze() { # {{{
 t_f_batch_order() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject f-batch-order > ./t.mbox
+	gm sub f-batch-order > ./t.mbox
 
 	# This would exit 64 (EX_USAGE) from ? to [fbddb3b3] (FIX: -f: add
 	# n_PO_f_FLAG to avoid that command line order matters)
@@ -5619,9 +5621,9 @@ t_msg_number_list() { # {{{
 
 	#{{{
 	{
-		t__gen_msg from 'ex1@am.ple' subject sub1
-		t__gen_msg from 'ex2@am.ple' subject sub2
-		t__gen_msg from 'ex3@am.ple' subject sub3
+		gm from 'ex1@am.ple' sub sub1
+		gm from 'ex2@am.ple' sub sub2
+		gm from 'ex3@am.ple' sub sub3
 	} > ./t.mbox
 
 	</dev/null ${MAILX} ${ARGS} -Rf -Y '#
@@ -6221,7 +6223,7 @@ t_reply() { # {{{
 	# Alternates and ML related address massage etc. somewhere else
 	t_prolog "${@}"
 
-	t__gen_msg subject reply from 1 to 2 cc 2 > "${MBOX}"
+	gm sub reply from 1 to 2 cc 2 > "${MBOX}"
 
 	## Base (does not test "recipient record")
 	t_it() {
@@ -6256,7 +6258,7 @@ r4
 	cke0 4 0 ./.tall '4164251531 851'
 
 	## Dig the errors
-	t__gen_msg subject reply-no-addr > ./.tnoaddr
+	gm sub reply-no-addr > ./.tnoaddr
 
 	# MBOX will deduce addressee from From_ line..
 	</dev/null ${MAILX} ${ARGS} -R -Sescape=! -Y '#
@@ -6302,7 +6304,7 @@ body3
 	fi
 
 	## Ensure action on multiple messages
-	t__gen_msg subject reply2 from from2@exam.ple body body2 >> "${MBOX}"
+	gm sub reply2 from from2@exam.ple body body2 >> "${MBOX}"
 
 	t_it() {
 		</dev/null ${MAILX} ${ARGS} -Rf -Sescape=! -Y '#
@@ -6447,30 +6449,41 @@ b7
 
 	# quote-as-attachment, fullnames
 	</dev/null ${MAILX} ${ARGS} -Rf \
-			-Sescape=! \
-			-S quote-as-attachment \
-			-Y reply -Y yb1 -Y !. \
-			-Y 'unset quote-as-attachment' \
-			-Y 'reply;yb2' -Y !. \
-			-Y 'set quote-as-attachment fullnames' \
-			-Y ';reply;yb3' -Y !. \
-			./.tmbox >./.tall 2>${E0}
+		-Sescape=! \
+		-S quote-as-attachment \
+		-Y reply -Y yb1 -Y !. \
+		-Y 'unset quote-as-attachment' \
+		-Y 'reply;yb2' -Y !. \
+		-Y 'set quote-as-attachment fullnames' \
+		-Y ';reply;yb3' -Y !. \
+		./.tmbox >./.tall 2>${E0}
 	cke0 19 0 ./.tall '2774517283 2571'
 
 	# Moreover, quoting of several parts with all*
-	t__gen_msg_mime from 'ex1@am.ple' subject for-repl > ./.tmbox
-	ck 20 0 ./.tmbox '1874764424 668'
+	gmX from 'ex1@am.ple' subject for-repl > ./.tmbox
+	ck 20 0 ./.tmbox '1958233015 670'
 
-	</dev/null ${MAILX} ${ARGS} -Rf \
+	</dev/null ${MAILX} ${ARGS} -Rf -S pipe-text/html=@ \
+		-Sescape=! -Sindentprefix=' |' \
+		-Y 'set quote=allheaders' \
+		-Y reply -Y !. \
+		-Y 'set quote=allbodies' \
+		-Y reply -Y !. \
+		./.tmbox >./.tall 2>${E0}
+	cke0 21-nohtml - ./.tall '3380397445 1175'
+
+	if have_feat filter-html-tagsoup; then
+		</dev/null ${MAILX} ${ARGS} -Rf \
 			-Sescape=! -Sindentprefix=' |' \
 			-Y 'set quote=allheaders' \
 			-Y reply -Y !. \
 			-Y 'set quote=allbodies' \
 			-Y reply -Y !. \
 			./.tmbox >./.tall 2>${E0}
-	ck_ex0 21-estat
-	have_feat filter-html-tagsoup && ck='946925637 1105' || ck='3587432511 1165'
-	cke0 21 - ./.tall "${ck}"
+		cke0 21-html - ./.tall '3677737714 1115'
+	else
+		t_echoskip '21-html:[!FILTER_HTML_TAGSOUP]'
+	fi
 
 	t_epilog "${@}"
 } # }}}
@@ -6478,8 +6491,8 @@ b7
 t_forward() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
-	t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
+	gm sub fwd1 body origb1 from 1 to 2 > "${MBOX}"
+	gm sub fwd2 body origb2 from 1 to 1 >> "${MBOX}"
 
 	#{{{ Base (does not test "recipient record")
 	t_it() {
@@ -6638,8 +6651,8 @@ b6
 t_resend() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject fwd1 body origb1 from 1 to 2 > "${MBOX}"
-	t__gen_msg subject fwd2 body origb2 from 1 to 1 >> "${MBOX}"
+	gm sub fwd1 body origb1 from 1 to 2 > "${MBOX}"
+	gm sub fwd2 body origb2 from 1 to 1 >> "${MBOX}"
 
 	#{{{ Base
 	t_it() {
@@ -6708,8 +6721,8 @@ t_resend() { # {{{
 t_copy() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
-	t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+	gm sub Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+	gm sub Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
 	ck 1 - "${MBOX}" '137107341 324' # for flag test
 
 	#{{{
@@ -6755,9 +6768,9 @@ t_copy() { # {{{
 
 	#{{{
 	t_it() {
-		t__gen_msg subject Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
-		t__gen_msg subject Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
-		t__gen_msg subject Copy3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+		gm sub Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
+		gm sub Copy2 from 1 to 1 body 'Body2' >> "${MBOX}"
+		gm sub Copy3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
 		ck ${1} - "${MBOX}" '2667292819 473' # for flag test
 
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
@@ -6840,8 +6853,8 @@ t_copy() { # {{{
 t_save() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
-	t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+	gm sub Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+	gm sub Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
 	ck 1 - "${MBOX}" '3634443864 324' # for flag test
 
 	#{{{
@@ -6887,9 +6900,9 @@ t_save() { # {{{
 
 	#{{{
 	t_it() {
-		t__gen_msg subject Save1 from 1 to 1 body 'Body1' > "${MBOX}"
-		t__gen_msg subject Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
-		t__gen_msg subject Save3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+		gm sub Save1 from 1 to 1 body 'Body1' > "${MBOX}"
+		gm sub Save2 from 1 to 1 body 'Body2' >> "${MBOX}"
+		gm sub Save3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
 		ck ${1} - "${MBOX}" '1391391227 473' # for flag test
 
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
@@ -6995,8 +7008,8 @@ t_save() { # {{{
 t_move() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
-	t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+	gm sub Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+	gm sub Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
 	ck 1 - "${MBOX}" '2967134193 324' # for flag test
 
 	#{{{
@@ -7035,9 +7048,9 @@ t_move() { # {{{
 
 	#{{{
 	t_it() {
-		t__gen_msg subject Move1 from 1 to 1 body 'Body1' > "${MBOX}"
-		t__gen_msg subject Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
-		t__gen_msg subject Move3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
+		gm sub Move1 from 1 to 1 body 'Body1' > "${MBOX}"
+		gm sub Move2 from 1 to 1 body 'Body2' >> "${MBOX}"
+		gm sub Move3 from ex@am.ple to 1 body 'Body3' >> "${MBOX}"
 		ck ${1} - "${MBOX}" '2826896131 473' # for flag test
 
 		</dev/null ${MAILX} ${ARGS} -f -Y "${3}"'
@@ -7495,7 +7508,7 @@ t_maildir() { # {{{
 t_eml_and_stdin_pipe() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg from pipe-committee subject stdin > ./t.mbox
+	gm from pipe-committee sub stdin > ./t.mbox
 	${sed} 1d < ./t.mbox > ./t.eml
 
 	ck 1 0 ./t.mbox '1038043487 130'
@@ -7845,7 +7858,7 @@ t_iconv_mainbody() { # {{{
 	# types (character-wise, byte-wise, and the character(s) used differ)
 	i="${MAILX_ICONV_MODE}"
 	if [ -n "${i}" ]; then
-		t__gen_msg_mime from 'my@self' subject '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
+		gmX from 'my@self' sub '=?utf-8?B?8J+puQ==?=' body '🩹' > ./t5
 		ck 5 0 ./t5 '3471036537 677'
 
 		LC_ALL=C ${MAILX} ${ARGS} -Y 'p;xit' -Rf ./t5 >./t5-xxx 2>./${E0}
@@ -8179,11 +8192,11 @@ t_states_and_primary_secondary() { # {{{
 	t_prolog "${@}"
 
 	{
-		t__gen_msg from 'ex1@am.ple' subject s1 body b1
-		t__gen_msg_mime from 'ex2@am.ple' subject s2 body 'b2, l1
+		gm from 'ex1@am.ple' sub s1 body b1
+		gmX from 'ex2@am.ple' sub s2 body 'b2, l1
 
 			b2, l3'
-		t__gen_msg from 'ex3@am.ple' subject s3 body b3
+		gm from 'ex3@am.ple' sub s3 body b3
 	} > ./t.tpl
 	> nix
 
@@ -8290,14 +8303,14 @@ eval i $o t.$p;ec n;el;ec y;en
 	#}}}
 
 	< ./t.p ${MAILX} ${ARGS} -S p=mbox -S o=-f > ./t1 2>${EX}
-	ck 1-1 0 ./t1 '575602306 7129' '3778887936 129'
+	ck 1-1 0 ./t1 '3220621126 7129' '3778887936 129'
 	[ -f ./t.mbox ]; ck_exx 1-2
-	ck 1-3 - ./t-mbox.mbox '1281902666 3752'
+	ck 1-3 - ./t-mbox.mbox '2668747897 3760'
 	ck 1-4 - ./t-save.mbox '3292035903 131'
 
 	if have_feat maildir; then
 		< ./t.p ${MAILX} ${ARGS} -S p=maildir -S o=-d > ./t2 2>${EX}
-		ck 2-1 0 ./t2 '1724556867 7258' '3778887936 129'
+		ck 2-1 0 ./t2 '3612654491 7258' '3778887936 129'
 		#ck 2-2 - ./t.maildir
 		#ck 2-3 - ./t-mbox-mbox.maildir
 		ck 2-4 - ./t-save.maildir '1069891918 123'
@@ -8860,9 +8873,9 @@ t_e_H_L_opts() { # {{{
 t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
 	t_prolog "${@}"
 
-	t__gen_msg from 'ex1@am.ple' subject s1 > ./t1x.mbox
-	t__gen_msg from 'ex2@am.ple' subject s2 > ./t1y.mbox
-	t__gen_msg from 'ex3@am.ple' subject s3 > ./t1z.mbox
+	gm from 'ex1@am.ple' sub s1 > ./t1x.mbox
+	gm from 'ex2@am.ple' sub s2 > ./t1y.mbox
+	gm from 'ex3@am.ple' sub s3 > ./t1z.mbox
 
 	xfolder=$(${pwd})
 
@@ -9640,19 +9653,19 @@ t_cmd_escapes() { # {{{
 
 	echo 'included file' > ./t.txt
 	{ t__x1_msg && t__x2_msg && t__x3_msg &&
-		t__gen_msg from 'ex4@am.ple' subject sub4 &&
-		t__gen_msg from 'eximan <ex5@am.ple>' subject sub5 &&
-		t__gen_msg_mime from 'ex6@am.ple' subject sub6; } > ./t.mbox
-	ck 1 - ./t.mbox '517368276 2182'
+		gm from 'ex4@am.ple' sub sub4 &&
+		gm from 'eximan <ex5@am.ple>' sub sub5 &&
+		gmX from 'ex6@am.ple' sub sub6; } > ./t.mbox
+	ck 1 - ./t.mbox '911181609 2184'
 
 	# ~@ is tested with other attachment stuff, ~^ is in compose_edits + digmsg
 	#{{{
-	printf '#
-		set Sign=SignVar sign=signvar DEAD=./t.txt
-		set forward-inject-head quote-inject-head
-		headerpick type retain Subject
-		headerpick forward retain Subject To
-		reply 2
+	${cat} <<- '__EOT' > ./t2.in
+set Sign=SignVar sign=signvar DEAD=./t.txt
+set forward-inject-head quote-inject-head
+headerpick type retain Subject
+headerpick forward retain Subject To
+reply 2
 !!1 Not escaped.  And shell test last, right before !..
 !:echo 1
 !:   echo 2 only echoed via colon
@@ -9732,7 +9745,7 @@ t_cmd_escapes() { # {{{
 !Q 1 3
 !:echo 31:$?/$^ERRNAME
 set quote-inject-head quote-inject-tail indentprefix
-!:set quote-inject-head=%%a quote-inject-tail=--%%r
+!:set quote-inject-head=%a quote-inject-tail=--%r
 32: ~Q
 !Q
 !:echo 32:$?/$^ERRNAME
@@ -9800,13 +9813,27 @@ and i ~w rite this out to ./t3
 !u 6
 !:echo 56 was u:$?/$^ERRNAME
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://t2 -Rf -Sescape=! -Sindentprefix=' |' ./t.mbox >./t2-x 2>${EX}
+	__EOT
 	#}}}
+
+	< t2.in ${MAILX} ${ARGS} -Rf -Sescape=! -Sindentprefix=' |' \
+		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
-	${cat} ./t2-x >> t2
-	have_feat filter-html-tagsoup && ck='4240573679 7693' || ck='72945 7753'
-	ck 2 - ./t2 "${ck}" '3575876476 49'
-	ck 3 - ./t3 '1594635428 4442'
+	${cat} ./t2-x >> t2-nohtml
+	ck 2-nohtml - ./t2-nohtml '1111214389 7757' '3575876476 49'
+	ck 3-nohtml - ./t3 '1594635428 4442'
+
+	if have_feat filter-html-tagsoup; then
+		> ./t3
+		< t2.in ${MAILX} ${ARGS} -Rf -Sescape=! -Sindentprefix=' |' \
+			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
+		ck_ex0 2-estat
+		${cat} ./t2-x >> t2-html
+		ck 2-html - ./t2-html '2393038495 7697' '3575876476 49'
+		ck 3-html - ./t3 '1594635428 4442'
+	else
+		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
+	fi
 
 	#{{{ Simple return/error value after *expandaddr* failure test
 	printf 'body
@@ -11711,7 +11738,7 @@ application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
 t_top() { # {{{
 	t_prolog "${@}"
 
-	t__gen_msg subject top1 to 1 from 1 cc 1 body 'body1-1
+	gm sub top1 to 1 from 1 cc 1 body 'body1-1
 body1-2
 
 body1-3
@@ -11721,7 +11748,7 @@ body1-4
 body1-5
 '	> ./t.mbox
 
-	t__gen_msg subject top2 to 1 from 1 cc 1 body 'body2-1
+	gm sub top2 to 1 from 1 cc 1 body 'body2-1
 body2-2
 
 
@@ -12605,58 +12632,83 @@ Content-Transfer-Encoding: 8bit'
 
 # Test support {{{
 # Message generation and other header/message content {{{
-t__gen_msg() {
-	t___gen_msg '' "${@}"
-}
+gm() { t__gm '' "$@"; }
+gmX() { t__gm 1 "$@"; }
+gmx() { t__gm 2 "$@"; }
 
-t__gen_msg_mime() {
-	t___gen_msg 1 "${@}"
-}
-
-t___gen_msg() {
-	ismime=${1}
+t__gm() {
+	ismime=$1
 	shift
 
-	t___header() {
-		printf '%s: ' ${1}
-		case "${3}" in
+	th() {
+		printf '%s: ' $1
+		case "$3" in
 		[0-9]*)
 			___hi=1
-			while [ ${___hi} -le ${3} ]; do
-				[ ${___hi} -gt 1 ] && printf ', '
-				printf '%s%s <%s%s@exam.ple>' ${1} ${___hi} ${2} ${___hi}
-				___hi=$(add ${___hi} 1)
+			while [ $___hi -le $3 ]; do
+				[ $___hi -gt 1 ] && printf ', '
+				printf '%s%s <%s%s@exam.ple>' $1 $___hi $2 $___hi
+				___hi=$(add $___hi 1)
 			done
 			;;
 		*)
-			printf '%s' "${3}"
+			printf '%s' "$3"
 			;;
 		esac
 		printf '\n'
 	}
 
-	printf 'From reproducible_build Wed Oct  2 01:50:07 1996
-Date: Wed, 02 Oct 1996 01:50:07 +0000
-'
+	ref_chain() {
+		ref=
+		while [ $# -gt 0 ]; do
+			[ -n "$ref" ] && ref="$ref "
+			ref="$ref<$1>"
+			shift
+		done
+		th References ref "$ref"
+	}
+
+	printf 'From reproducible_build Wed Oct  2 01:50:07 1996\n'
+	# date first (too rare, too lazy)
+	date='Wed, 02 Oct 1996 01:50:07 +0000'
+	if [ "$1" = date ]; then
+		date=$2
+		shift 2
+	fi
+	printf 'Date: %s\n' "$date"
 
 	body=Body
-	while [ ${#} -ge 2 ]; do
-		case "${1}" in
-		from) t___header From from "${2}";;
-		to) t___header To to "${2}";;
-		cc) t___header Cc cc "${2}";;
-		bcc) t___header Bcc bcc "${2}";;
-		subject) printf 'Subject: %s\n' "${2}";;
-		body) body="${2}";;
+	mid=
+	if [ -n "$JOB_MSG_ID" ]; then
+		mid=-$JOB_MSG_ID
+	else
+		JOB_MSG_ID=0
+	fi
+	JOB_MSG_ID=$(add $JOB_MSG_ID 1)
+	mid='20200204225307.FaKeD%bo@oo'$mid
+
+	while [ $# -ge 2 ]; do
+		case "$1" in
+		fr*) th From from "$2";;
+		to) th To to "$2";;
+		cc) th Cc cc "$2";;
+		bcc) th Bcc bcc "$2";;
+		su*) printf 'Subject: %s\n' "$2";;
+		bo*) body=$2;;
+		mid) mid=$2;;
+		irt) th In-Reply-To irt "<$2>";;
+		ref) ref_chain $2;;
+		date) echo >&2 'ERROR: gm(): date NOT FIRST';;
+		*) th $1 $1 "$2";;
 		esac
 		shift 2
 	done
 
-	if [ -z "${ismime}" ]; then
-		printf '\n%s\n\n' "${body}"
+	if [ -z "$ismime" ]; then
+		printf '\n%s\n\n' "$body"
 	else
 		printf 'MIME-Version: 1.0
-Message-ID: <20200204225307.FaKeD%%bo@oo>
+Message-ID: <%s>
 Content-Type: multipart/mixed; boundary="=BOUNDOUT="
 
 --=BOUNDOUT=
@@ -12675,7 +12727,10 @@ Content-Transfer-Encoding: 8-bit
 <HTML><BODY>%s<BR></BODY></HTML>
 
 --=BOUNDIN=--
+' "$mid" "$body" "$body"
 
+		if [ "$ismime" != 2 ]; then
+			printf '
 --=BOUNDOUT=
 Content-Type: text/troff
 
@@ -12685,9 +12740,10 @@ Golden Brown
 Content-Type: text/x-uuencode
 
 Aprendimos a quererte
---=BOUNDOUT=--
+'
 
-' "${body}" "${body}"
+		fi
+		printf '%s=BOUNDOUT=--\n\n' '--'
 	fi
 }
 
