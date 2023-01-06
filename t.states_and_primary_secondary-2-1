@@ -1,18 +1,18 @@
 0/NONE
-maildir://t.maildir [New file] 930 bytes
+maildir://t.maildir [New file] 932 bytes
 0/NONE
 y
 =N
 0/NONE
 t.maildir: 3 messages 3 new [Read-only]
 >N  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 0/NONE
 t.maildir: 3 messages 3 new
 >N  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 Held 3 messages in t.maildir
@@ -20,38 +20,38 @@ Held 3 messages in t.maildir
 0/NONE
 t.maildir: 3 messages 3 unread
 >U  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- U  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ U  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  U  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 Held 3 messages in t.maildir
 0/NONE
 t.maildir: 3 messages 3 unread [Read-only]
 >U  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- U  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ U  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  U  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 =-hold
 0/NONE
 t.maildir: 3 messages 3 unread
 >U  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- U  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ U  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  U  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 Held 3 messages in t.maildir
 0/NONE
 t.maildir: 3 messages 3 unread [Read-only]
 >U  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- U  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ U  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  U  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 =state
 0/NONE
 >U  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- U  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ U  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  U  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 0/NONE
-t.rash [Appended] 690 bytes
+t.rash [Appended] 692 bytes
 0/NONE
 Saved 2 messages in MBOX=maildir://t-mbox.maildir
 Held 1 message in t.maildir
@@ -61,7 +61,7 @@ t.maildir: 1 message 1 unread [Read-only]
 0/NONE
 t-mbox.maildir: 2 messages 1 unread [Read-only]
 >U  1 ex1@am.ple         1996-10-02 01:50    7/82    s1                        
- O  2 ex2@am.ple         1996-10-02 01:50   40/650   s2                        
+ O  2 ex2@am.ple         1996-10-02 01:50   40/652   s2                        
 0/NONE
 =save
 0/NONE
@@ -77,7 +77,7 @@ t.maildir: 0 messages [Read-only]
 1/INVAL
 t-mbox.maildir: 3 messages 1 unread [Read-only]
 >U  1 ex1@am.ple         1996-10-02 01:50    7/82    s1                        
- O  2 ex2@am.ple         1996-10-02 01:50   40/650   s2                        
+ O  2 ex2@am.ple         1996-10-02 01:50   40/652   s2                        
  O  3 ex3@am.ple         1996-10-02 01:50    7/83    s3                        
 0/NONE
 t-save.maildir: 1 message 1 unread [Read-only]
@@ -85,18 +85,18 @@ t-save.maildir: 1 message 1 unread [Read-only]
 0/NONE
 =refill,nokeepsave
 0/NONE
-maildir://t.maildir [Appended] 930 bytes
+maildir://t.maildir [Appended] 932 bytes
 0/NONE
 0/NONE
 t.maildir: 3 messages 3 new
 >N  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
-maildir://t-mbox.maildir [Appended] 906 bytes
+maildir://t-mbox.maildir [Appended] 908 bytes
 0/NONE
 >S  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- S  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ S  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  S  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 1/NODATA
@@ -104,22 +104,22 @@ t.maildir: 0 messages [Read-only]
 1/INVAL
 t-mbox.maildir: 6 messages 3 new 4 unread [Read-only]
  U  1 ex1@am.ple         1996-10-02 01:50    7/82    s1                        
- O  2 ex2@am.ple         1996-10-02 01:50   40/650   s2                        
+ O  2 ex2@am.ple         1996-10-02 01:50   40/652   s2                        
  O  3 ex3@am.ple         1996-10-02 01:50    7/83    s3                        
 >N  4 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  5 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  5 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  6 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 =refill,hold
 0/NONE
-maildir://t.maildir [Appended] 930 bytes
+maildir://t.maildir [Appended] 932 bytes
 0/NONE
 0/NONE
 t.maildir: 3 messages 3 new
-maildir://t-mbox.maildir [Appended] 906 bytes
+maildir://t-mbox.maildir [Appended] 908 bytes
 0/NONE
 >S  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- S  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ S  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  S  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 1/NODATA
@@ -127,39 +127,39 @@ t.maildir: 0 messages [Read-only]
 1/INVAL
 t-mbox.maildir: 9 messages 6 new 7 unread [Read-only]
  U  1 ex1@am.ple         1996-10-02 01:50    7/82    s1                        
- O  2 ex2@am.ple         1996-10-02 01:50   40/650   s2                        
+ O  2 ex2@am.ple         1996-10-02 01:50   40/652   s2                        
  O  3 ex3@am.ple         1996-10-02 01:50    7/83    s3                        
 >N  4 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  5 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  5 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  6 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
  N  7 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  8 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  8 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  9 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 =refill,nohold,nokeep
 0/NONE
-maildir://t.maildir [Appended] 930 bytes
+maildir://t.maildir [Appended] 932 bytes
 0/NONE
 0/NONE
 t.maildir: 3 messages 3 new
-maildir://t-mbox.maildir [Appended] 906 bytes
+maildir://t-mbox.maildir [Appended] 908 bytes
 0/NONE
 >S  1 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- S  2 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ S  2 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  S  3 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 t-mbox.maildir: 12 messages 9 new 10 unread [Read-only]
  U  1 ex1@am.ple         1996-10-02 01:50    7/82    s1                        
- O  2 ex2@am.ple         1996-10-02 01:50   40/650   s2                        
+ O  2 ex2@am.ple         1996-10-02 01:50   40/652   s2                        
  O  3 ex3@am.ple         1996-10-02 01:50    7/83    s3                        
 >N  4 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  5 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  5 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  6 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
  N  7 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N  8 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N  8 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N  9 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
  N 10 ex1@am.ple         1996-10-02 01:50    6/72    s1                        
- N 11 ex2@am.ple         1996-10-02 01:50   39/639   s2                        
+ N 11 ex2@am.ple         1996-10-02 01:50   39/641   s2                        
  N 12 ex3@am.ple         1996-10-02 01:50    6/72    s3                        
 0/NONE
 y

@@ -1,0 +1,56 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex1@am.ple
+Subject: Re: for-repl
+In-Reply-To: <20200204225307.FaKeD%bo@oo-3>
+References: <20200204225307.FaKeD%bo@oo-3>
+
+ex1@am.ple wrote:
+
+ |From reproducible_build Wed Oct  2 01:50:07 1996
+ |Date: Wed, 02 Oct 1996 01:50:07 +0000
+ |From: ex1@am.ple
+ |Subject: for-repl
+ |MIME-Version: 1.0
+ |Message-ID: <20200204225307.FaKeD%bo@oo-3>
+ |Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+ |Status: R
+
+
+ |Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+ |Content-Type: text/plain; charset=utf-8
+ |Content-Transfer-Encoding: 8-bit
+
+ |Body
+
+ |Content-Type: text/html; charset=utf-8
+ |Content-Transfer-Encoding: 8-bit
+
+ |<HTML><BODY>Body<BR></BODY></HTML>
+
+ |Content-Type: text/troff
+
+ |Golden Brown
+
+ |Content-Type: text/x-uuencode
+
+ |Aprendimos a quererte
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex1@am.ple
+Subject: Re: for-repl
+In-Reply-To: <20200204225307.FaKeD%bo@oo-3>
+References: <20200204225307.FaKeD%bo@oo-3>
+
+ex1@am.ple wrote:
+
+ |Body
+
+ |<HTML><BODY>Body<BR></BODY></HTML>
+
+ |Golden Brown
+
+ |Aprendimos a quererte
+

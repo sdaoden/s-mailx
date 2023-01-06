@@ -193,7 +193,7 @@ Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: ex6@am.ple
 Subject: sub6
 MIME-Version: 1.0
-Message-ID: <20200204225307.FaKeD%bo@oo>
+Message-ID: <20200204225307.FaKeD%bo@oo-2>
 Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
 Status: R
 
@@ -208,7 +208,7 @@ Body
 Content-Type: text/html; charset=3Dutf-8
 Content-Transfer-Encoding: 8-bit
 
-Body
+<HTML><BODY>Body<BR></BODY></HTML>
 
 Content-Type: text/troff
 
@@ -229,7 +229,7 @@ Body
  |From: ex6@am.ple
  |Subject: sub6
  |MIME-Version: 1.0
- |Message-ID: <20200204225307.FaKeD%bo@oo>
+ |Message-ID: <20200204225307.FaKeD%bo@oo-2>
  |Content-Type: multipart/mixed; boundary=3D"=3DBOUNDOUT=3D"
  |Status: R
 
@@ -244,7 +244,7 @@ Body
  |Content-Type: text/html; charset=3Dutf-8
  |Content-Transfer-Encoding: 8-bit
 
- |Body
+ |<HTML><BODY>Body<BR></BODY></HTML>
 
  |Content-Type: text/troff
 
