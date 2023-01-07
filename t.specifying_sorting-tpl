@@ -1,0 +1,250 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: a1
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>
+Subject: s1
+
+b1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e1@a
+To: x@y
+Cc: mid@3
+Subject: s2
+Status: R
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo-1>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b2
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b2<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e2@a
+To: x@y,e1@a
+Cc: us@ex.amp us@ex.ample
+Subject: s3
+hey1: yeh1
+MIME-Version: 1.0
+Message-ID: <mid@1>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b3
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b3<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e3@a
+To: x@y,e2@a
+Subject: Re: s3
+In-Reply-To: <mid@1>
+References: <mid@1>
+Status: O
+MIME-Version: 1.0
+Message-ID: <mid@2>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b4
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b4<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e4@a
+To: x@y,e3@a
+Subject: Re: s3
+In-Reply-To: <mid@2>
+References: <mid@1> <mid@2>
+MIME-Version: 1.0
+Message-ID: <mid@3>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b5
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b5<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e5@a
+To: x@y,e4@a
+Subject: Re: s3
+In-Reply-To: <mid@3>
+References: <mid@1> <mid@2> <mid@3>
+MIME-Version: 1.0
+Message-ID: <mid@4>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b6
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b6<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e6@a
+To: x@y
+Subject: s7
+hey2: yeh2
+MIME-Version: 1.0
+Message-ID: <mid@5>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b7
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b7<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e7@a
+To: x@y
+Subject: Re: s7
+In-Reply-To: <mid@5>
+References: <mid@5>
+Status: RO
+MIME-Version: 1.0
+Message-ID: <mid@6>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b8
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b8<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: e8e@a
+To: x@y
+Subject: Re: s3
+In-Reply-To: <mid@1>
+References: <mid@1>
+MIME-Version: 1.0
+Message-ID: <mid@7>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b9
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b9<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Fri, 03 Dec 1999 11:36:47 +0000
+From: a10
+To: To1 <to1@exam.ple>, To2 <to2@exam.ple>, To3 <to3@exam.ple>
+Bcc: us@ex.ample
+Subject: s10
+
+b10
+
