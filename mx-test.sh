@@ -8320,6 +8320,189 @@ eval i $o t.$p;ec n;el;ec y;en
 
 	t_epilog "${@}"
 } # }}}
+
+t_specifying_sorting() { # {{{
+	t_prolog "${@}"
+
+	{
+		gm fr a1 to 2 su s1 bo b1
+		gmx fr e1@a to x@y cc mid@3 su s2 bo b2 Status R
+		gmx fr e2@a to x@y,e1@a cc 'us@ex.amp us@ex.ample' su s3 bo b3 mid mid@1 hey1 yeh1
+		gmx fr e3@a to x@y,e2@a su 'Re: s3' bo b4 mid mid@2 irt mid@1 ref mid@1 Status O
+		gmx fr e4@a to x@y,e3@a su 'Re: s3' bo b5 mid mid@3 irt mid@2 ref 'mid@1 mid@2'
+		gmx fr e5@a to x@y,e4@a su 'Re: s3' bo b6 mid mid@4 irt mid@3 ref 'mid@1 mid@2 mid@3'
+		gmx fr e6@a to x@y su s7 bo b7 mid mid@5 hey2 yeh2
+		gmx fr e7@a to x@y su 'Re: s7' bo b8 mid mid@6 irt mid@5 ref mid@5 Status RO
+		gmx fr e8e@a to x@y su 'Re: s3' bo b9 mid mid@7 irt mid@1 ref mid@1
+		gm date 'Fri, 03 Dec 1999 11:36:47 +0000' fr a10 to 3 bcc us@ex.ample su s10 bo b10
+	} > ./t.tpl
+	ck tpl - ./t.tpl '2948526833 4886'
+
+	#{{{
+	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t1 2>${E0}
+ec def
+h
+ec date
+sort date
+h
+ec from
+sort from
+h
+ec size
+sort size
+h
+ec status
+sort status
+h
+ec subject
+sort subject
+h
+ec thread
+sort thread
+h
+ec to
+sort to
+h
+	__EOT
+	#}}}
+	cke0 1 0 ./t1 '2781961062 6444'
+
+	#{{{
+	${cp} ./t.tpl ./t.tpl.mod
+	${cat} <<- '__EOT' | ${MAILX} ${ARGS} -f ./t.tpl.mod > ./t2 2>${EX}
+commandalias x echo '$?/$^ERRNAME'
+ec 1,`,`
+sea 1;x
+sea `;x
+sea `;x
+ec *,`
+sea *;x
+sea `;x
+ec .,`
+sea .;x
+sea `;x
+ec 2,.,`,';'
+sea 2;x
+sea `;x
+sea ';';x
+ec +,.
+sea +;x
+sea .;x
+ec -,.,';',`,.
+sea -;x
+sea .;x
+sea ';';x
+sea `;x
+sea .;x
+ec ^,.
+sea ^;x
+sea .;x
+ec '$',.,';',.
+sea '$';x
+sea .;x
+sea ';';x
+sea .;x
+ec 3-6,`,.
+sea 3-6;x
+# TODO Selectors that may also be used as endpoints include any of .;-+^$.
+sea `;x
+sea .;x
+ec address,`
+sea e1;x
+sea `;x
+sea E@;x
+sea `;x
+#XXX *showname*
+ec ..allnet
+set allnet
+sea E@;x
+sea E;x # !icase
+sea e;x
+sea e8;x
+unset allnet
+ec /
+sea /1;x
+sea /2;x
+sea /;x
+sea /re;x
+ec ..searchheaders
+sea /subject:re;x
+set searchheaders
+sea /subject:re;x
+sea / ;x
+sea /from:E8;x
+unset searchheaders
+ec @
+sea @;x
+sea @@@;x
+sea @f@e@;x
+sea @a@e@;x
+sea @s@re;x
+sea @hey@;x
+sea @hey1@;x
+sea @~t@to2@exam.ple;x
+sea @c,b@us@ex.amp;x
+sea @Date@'03 Dec';x
+# TODO <,>,= (yet does full dump search)
+ec :
+sea :n;x
+sea :o;x
+sea :r;x
+sea :u;x
+ec ..flag
+sea :f;x
+flag 2 5;x
+sea :f;x
+unflag *;x
+sea :f;x
+ec ..answered
+sea :a;x
+answered 3 6;x
+sea :a;x
+unanswered *;x
+sea :a;x
+ec ..draft
+sea :t;x
+draft 2 5;x
+sea :t;x
+undraft *;x
+sea :t;x
+ec ..delete
+sea :d;x
+delete 4 7;x
+sea :d;x
+undelete 4 7;x
+sea :d;x
+# TODO :s, :S, :L, :l
+	__EOT
+	#}}}
+	ck 2 0 ./t2 '3460117684 11416' '3869828139 559'
+
+	if have_feat regex; then
+		#{{{
+		${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Rf ./t.tpl > ./t3 2>${E0}
+commandalias x echo '$?/$^ERRNAME'
+ec @
+sea @hey.*@;x
+sea @~t@'e[123]@a|to[13]@exam\.ple';x
+sea @~(c|b)@^us@ex\.amp$;x
+sea @~(c|b)@^us@ex\.ample$;x
+sea @(c|b)@^us@ex\.ample$;x
+sea @>@^b10?$;x
+		__EOT
+		#}}}
+		cke0 3 0 ./t3 '1188076824 1084'
+	else
+		t_echoskip '3:[!REGEX]'
+	fi
+
+	# TODO if have_feat imap-search; then
+	#else
+	#	t_echoskip '4:[!IMAP-SEARCH]'
+	# fi
+
+	t_epilog "${@}"
+} # }}}
 # }}}
 
 # Operational basics with easy tests {{{
@@ -13441,6 +13624,7 @@ t_all() { #{{{
 	jspawn shortcut
 	jspawn netrc
 	jspawn states_and_primary_secondary
+	jspawn specifying_sorting
 	jsync
 
 	# Operational basics with easy tests
