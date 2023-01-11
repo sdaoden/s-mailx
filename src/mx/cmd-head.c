@@ -62,7 +62,7 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-static int        _screen;
+static int a_chead_screen;
 
 /* Print out the header of a specific message.
  * time_current must be up-to-date when this is called.
@@ -87,7 +87,7 @@ static int a_chead__dispc(struct message *mp, char const *a);
 static int a_chead_scroll(char const *arg, boole onlynew);
 
 /* Shared `headers' implementation */
-static int     _headers(int msgspec);
+static int a_chead_headers(int msgspec);
 
 static void
 a_chead_print_head(uz yetprinted, uz msgno, FILE *f, boole threaded,
@@ -144,22 +144,22 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    mx_COLOUR( struct mx_colour_pen *cpen_new su_COMMA
       *cpen_cur su_COMMA *cpen_bas; )
    enum {
-      _NONE       = 0,
-      _ISDOT      = 1<<0,
-      _ISTO       = 1<<1,
-      a_IFMT      = 1<<2,
-      _LOOP_MASK  = (1<<4) - 1,
-      a_SFMT      = 1<<4,        /* It is 'S' */
+      a_NONE = 0,
+      a_ISDOT = 1u<<0,
+      a_ISTO = 1u<<1,
+      a_IFMT = 1u<<2,
+      a_LOOP_MASK = (1u<<4) - 1,
+      a_SFMT = 1u<<4, /* It is 'S' */
       /* For the simple byte-based counts in wleft and n we sometimes need
        * adjustments to compensate for additional bytes of UTF-8 sequences */
-      _PUTCB_UTF8_SHIFT = 5,
-      _PUTCB_UTF8_MASK = 3<<5
-   } flags = _NONE;
+      a_PUTCB_UTF8_SHIFT = 5u,
+      a_PUTCB_UTF8_MASK = 3u<<5
+   } flags = a_NONE;
    NYD2_IN;
    UNUSED(buf);
 
    if ((mp = message + msgno - 1) == dot)
-      flags = _ISDOT;
+      flags = a_ISDOT;
 
    color_tag = NULL;
    date = n_header_textual_date_info(mp, &color_tag);
@@ -169,7 +169,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
       n_header_textual_sender_info(mp, NIL, &cp, NULL, NULL, NULL, &isto);
       name = cp;
       if(isto)
-         flags |= _ISTO;
+         flags |= a_ISTO;
    }
 
    subjline = NULL;
@@ -218,7 +218,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    /* Walk *headline*, producing output TODO not (really) MB safe */
 #ifdef mx_HAVE_COLOUR
    if(mx_COLOUR_IS_ACTIVE()){
-      if(flags & _ISDOT)
+      if(flags & a_ISDOT)
          color_tag = mx_COLOUR_TAG_SUM_DOT;
       cpen_bas = mx_colour_pen_create(mx_COLOUR_ID_SUM_HEADER, color_tag);
       mx_colour_pen_put(cpen_new = cpen_cur = cpen_bas);
@@ -238,7 +238,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
          continue;
       }
 
-      flags &= _LOOP_MASK;
+      flags &= a_LOOP_MASK;
       n = 0;
       s = 1;
       if ((c = *++fp) == '-') {
@@ -262,7 +262,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
          goto jputcb;
       case '>':
       case '<':
-         if (flags & _ISDOT) {
+         if (flags & a_ISDOT) {
             mx_COLOUR(
                if(mx_COLOUR_IS_ACTIVE())
                   cpen_new = mx_colour_pen_create(mx_COLOUR_ID_SUM_DOTMARK,
@@ -277,7 +277,7 @@ a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
                   cbuf[1] = (char)0x97, cbuf[2] = (char)0x82;
                c = (char)0xE2;
                cbuf[3] = '\0';
-               flags |= 2 << _PUTCB_UTF8_SHIFT;
+               flags |= 2 << a_PUTCB_UTF8_SHIFT;
             }
          } else
             c = ' ';
@@ -316,8 +316,8 @@ jputcb:
          n = fprintf(f, "%*s", n, cbuf);
          if (n >= 0) {
             wleft -= n;
-            if ((n = (flags & _PUTCB_UTF8_MASK)) != 0) {
-               n >>= _PUTCB_UTF8_SHIFT;
+            if ((n = (flags & a_PUTCB_UTF8_MASK)) != 0) {
+               n >>= a_PUTCB_UTF8_SHIFT;
                wleft += n;
             }
          } else {
@@ -357,18 +357,18 @@ jputcb:
             i = wleft;
             n = (n < 0) ? -wleft : wleft;
          }
-         if (flags & _ISTO) {/* XXX tr()! */
+         if (flags & a_ISTO) {/* XXX tr()! */
             if(wleft <= 3){
                wleft = 0;
                break;
             }
             i -= 3;
          }
-         n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : n_empty),
+         n = fprintf(f, "%s%s", ((flags & a_ISTO) ? "To " : n_empty),
                mx_colalign(name, i, n, &wleft));
          if (n < 0)
             wleft = 0;
-         else if (flags & _ISTO)
+         else if (flags & a_ISTO)
             wleft -= 3;
          break;
       case 'i':
@@ -728,25 +728,25 @@ a_chead_scroll(char const *arg, boole onlynew){
       arg = n_empty;
    switch(*arg){
    case '\0':
-      ++_screen;
+      ++a_chead_screen;
       goto jfwd;
    case '^':
       if(arg[1] != '\0')
          goto jerr;
-      if(_screen == 0)
+      if(a_chead_screen == 0)
          goto jerrbwd;
-      _screen = 0;
+      a_chead_screen = 0;
       break;
    case '$':
       if(arg[1] != '\0')
          goto jerr;
-      if(_screen == maxs)
+      if(a_chead_screen == maxs)
          goto jerrfwd;
-      _screen = maxs;
+      a_chead_screen = maxs;
       break;
    case '+':
       if(arg[1] == '\0')
-         ++_screen;
+         ++a_chead_screen;
       else{
          isabs = FAL0;
 
@@ -760,33 +760,33 @@ a_chead_scroll(char const *arg, boole onlynew){
                   ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                ) != su_IDEC_STATE_CONSUMED)
             goto jerr;
-         if(l > maxs - (isabs ? 0 : _screen))
+         if(l > maxs - (isabs ? 0 : a_chead_screen))
             goto jerrfwd;
-         _screen = isabs ? (int)l : _screen + l;
+         a_chead_screen = isabs ? (int)l : a_chead_screen + l;
       }
 jfwd:
-      if(_screen > maxs){
+      if(a_chead_screen > maxs){
 jerrfwd:
-         _screen = maxs;
+         a_chead_screen = maxs;
          fprintf(n_stdout, _("On last screenful of messages\n"));
       }
       break;
 
    case '-':
       if(arg[1] == '\0')
-         --_screen;
+         --a_chead_screen;
       else{
          if((su_idec_sz_cp(&l, ++arg, 0, NULL
                   ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                ) != su_IDEC_STATE_CONSUMED)
             goto jerr;
-         if(l > _screen)
+         if(l > a_chead_screen)
             goto jerrbwd;
-         _screen -= l;
+         a_chead_screen -= l;
       }
-      if(_screen < 0){
+      if(a_chead_screen < 0){
 jerrbwd:
-         _screen = 0;
+         a_chead_screen = 0;
          fprintf(n_stdout, _("On first screenful of messages\n"));
       }
       if(msgspec == -1)
@@ -799,14 +799,14 @@ jerr:
       goto jleave;
    }
 
-   size = _headers(msgspec);
+   size = a_chead_headers(msgspec);
 jleave:
    NYD2_OU;
    return size;
 }
 
 static int
-_headers(int msgspec) /* TODO rework v15 */
+a_chead_headers(int msgspec) /* TODO rework v15 */
 {
    boole needdot, showlast;
    int g, k, mesg, size;
@@ -824,13 +824,13 @@ _headers(int msgspec) /* TODO rework v15 */
    lastmq = NULL;
 
    size = (int)/*TODO*/n_screensize();
-   if (_screen < 0)
-      _screen = 0;
+   if(a_chead_screen < 0)
+      a_chead_screen = 0;
 #if 0 /* FIXME original code path */
-      k = _screen * size;
+      k = a_chead_screen * size;
 #else
    if (msgspec <= 0)
-      k = _screen * size;
+      k = a_chead_screen * size;
    else
       k = msgspec;
 #endif
@@ -865,7 +865,7 @@ _headers(int msgspec) /* TODO rework v15 */
          g = lastg;
          mq = lastmq;
       }
-      _screen = g / size;
+      a_chead_screen = g / size;
       mp = mq;
 
       mesg = (int)P2UZ(mp - message);
@@ -926,7 +926,7 @@ jdot_unsort:
          g = lastg;
          mq = lastmq;
       }
-      _screen = g / size;
+      a_chead_screen = g / size;
       mp = mq;
 
       mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_SUM, n_stdout); )
@@ -980,13 +980,13 @@ c_headers(void *v)
 }
 
 FL int
-print_header_group(int *vector)
-{
+print_header_group(int *vector){
    int rv;
    NYD_IN;
 
-   ASSERT(vector != NULL && vector != (void*)-1);
-   rv = _headers(vector[0]);
+   ASSERT(vector != NIL && vector != R(void*,-1));
+   rv = a_chead_headers(vector[0]);
+
    NYD_OU;
    return rv;
 }
