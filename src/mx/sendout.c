@@ -82,9 +82,9 @@ enum a_sendout_addrline_flags{
    a_SENDOUT_AL_DOMIME = 1<<1,      /* Perform MIME conversion */
    a_SENDOUT_AL_COMMA = GCOMMA,
    a_SENDOUT_AL_FILES = GFILES,
-   _a_SENDOUT_AL_GMASK = a_SENDOUT_AL_COMMA | a_SENDOUT_AL_FILES
+   a__SENDOUT_AL_GMASK = a_SENDOUT_AL_COMMA | a_SENDOUT_AL_FILES
 };
-CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
+CTA(!(a__SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
 enum a_sendout_sendwait_flags{
