@@ -79,13 +79,13 @@ INLINE boole su__pathinfo_is(struct su_pathinfo const *pip, u32 t){
 	return ((pip->pi_flags & su_IOPF_TYPE_MASK) == t);
 }
 
-/*! . */
+/*! \_ */
 EXPORT boole su_pathinfo_stat(struct su_pathinfo *self, char const *path);
 
-/*! . */
+/*! \_ */
 EXPORT boole su_pathinfo_lstat(struct su_pathinfo *self, char const *path);
 
-/*! . */
+/*! \_ */
 EXPORT boole su_pathinfo_fstat(struct su_pathinfo *self, sz fd);
 
 /*! Get "descriptive character" for the type, or \NUL for regular file. */

@@ -445,18 +445,18 @@ public:
 	/*! \copydoc{su_cs_find_case()} */
 	static char *find_case(char const *cp, char const *x) {return su_cs_find_case(cp, x);}
 
-	/*! \copydoc{su_cs_find_first_of()} */
+	/*! \copydoc{su_cs_first_of()} */
 	static uz first_of(char const *cp, char const *xp) {return su_cs_first_of(cp, xp);}
 
-	/*! \copydoc{su_cs_find_first_of_cbuf_cbuf()} */
+	/*! \copydoc{su_cs_first_of_cbuf_cbuf()} */
 	static uz first_of(char const *cp, uz cplen, char const *xp, uz xplen){
 		return su_cs_first_of_cbuf_cbuf(cp, cplen, xp, xplen);
 	}
 
-	/*! \copydoc{su_cs_find_first_not_of()} */
+	/*! \copydoc{su_cs_first_not_of()} */
 	static uz first_not_of(char const *cp, char const *xp) {return su_cs_first_not_of(cp, xp);}
 
-	/*! \copydoc{su_cs_find_first_not_of_cbuf_cbuf()} */
+	/*! \copydoc{su_cs_first_not_of_cbuf_cbuf()} */
 	static uz first_not_of(char const *cp, uz cplen, char const *xp, uz xplen){
 		return su_cs_first_not_of_cbuf_cbuf(cp, cplen, xp, xplen);
 	}
@@ -534,7 +534,7 @@ public:
 
 /*!
  * \ingroup CS
- * \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h})
+ * \r{auto_type_toolbox} specialization (also \r{cs::type_toolbox}; \r{su/cs.h})
  */
 template<>
 class auto_type_toolbox<char*>{
@@ -545,7 +545,7 @@ public:
 
 /*!
  * \ingroup CS
- * \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h})
+ * \r{auto_type_toolbox} specialization (also \r{cs::const_type_toolbox}; \r{su/cs.h})
  */
 template<>
 class auto_type_toolbox<char const*>{
