@@ -3410,7 +3410,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
    uz bufsize, buflen, cnt;
    off_t off1 = -1, offs;
    int flag;
-   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
+   enum {a_NONE = 0, a_INHEAD = 1u<<0, a_NLSEP = 1u<<1} state;
    s64 tim;
    long size;
    enum okay rv;
@@ -3422,13 +3422,13 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
    tim = 0;
    size = 0;
 
-   for (flag = MNEW, state = _NLSEP;;) {
+   for (flag = MNEW, state = a_NLSEP;;) {
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
-      if (bp == NULL ||
-            ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
-             is_head(buf, buflen, FAL0))) {
-         if (off1 != (off_t)-1) {
+      if(bp == NIL ||
+            ((state & (a_INHEAD | a_NLSEP)) == a_NLSEP &&
+             is_head(buf, buflen, FAL0))){
+         if(off1 != R(off_t,-1)){
             rv = imap_append1(mp, name, fp, off1, size, flag, tim);
             if (rv == STOP)
                goto jleave;
@@ -3437,7 +3437,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
          off1 = offs + buflen;
          size = 0;
          flag = MNEW;
-         state = _INHEAD;
+         state = a_INHEAD;
          if(bp == NIL){
             if(ferror(fp)){
                rv = STOP;
@@ -3450,12 +3450,12 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, s64 offset)
          size += buflen+1;
       offs += buflen;
 
-      state &= ~_NLSEP;
-      if (buf[0] == '\n') {
-         state &= ~_INHEAD;
-         state |= _NLSEP;
-      } else if (state & _INHEAD) {
-         if (su_cs_cmp_case_n(buf, "status", 6) == 0) {
+      state &= ~a_NLSEP;
+      if(buf[0] == '\n'){
+         state &= ~a_INHEAD;
+         state |= a_NLSEP;
+      }else if(state & a_INHEAD){
+         if(su_cs_cmp_case_n(buf, "status", 6) == 0){
             lp = &buf[6];
             while (su_cs_is_white(*lp))
                lp++;

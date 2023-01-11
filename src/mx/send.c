@@ -897,19 +897,19 @@ jheaders_skip:
             struct mimepart *mp;
          } outermost, * volatile curr, * volatile mpsp;
          enum {
-            _NONE,
-            _DORICH  = 1<<0,  /* We are looking for rich parts */
-            _HADPART = 1<<1,  /* Did print a part already */
-            _NEEDNL  = 1<<3   /* Need a visual separator */
+            a_NONE,
+            a_DORICH = 1u<<0, /* We are looking for rich parts */
+            a_HADPART = 1u<<1, /* Did print a part already */
+            a_NEEDNL = 1u<<3 /* Need a visual separator */
          } flags;
          struct n_sigman smalter;
 
          (curr = &outermost)->outer = NULL;
          curr->mp = ip;
-         flags = ok_blook(mime_alternative_favour_rich) ? _DORICH : _NONE;
+         flags = ok_blook(mime_alternative_favour_rich) ? a_DORICH : a_NONE;
          if(!_send_al7ive_have_better(ip->m_multipart, action,
-               ((flags & _DORICH) != 0)))
-            flags ^= _DORICH;
+               ((flags & a_DORICH) != 0)))
+            flags ^= a_DORICH;
 
          n_SIGMAN_ENTER_SWITCH(&smalter, n_SIGMAN_ALL) {
          case 0:
@@ -924,7 +924,7 @@ jalter_redo:
             level = -ABS(level);
             for(; np != NIL; np = np->m_nextpart){
                level = -ABS(level);
-               flags |= _NEEDNL;
+               flags |= a_NEEDNL;
 
                switch(np->m_mime_type){
                case mx_MIME_TYPE_ALTERNATIVE:
@@ -940,7 +940,7 @@ jalter_redo:
                   curr->mp = np;
                   curr = mpsp;
                   np = mpsp->mp;
-                  flags &= ~_NEEDNL;
+                  flags &= ~a_NEEDNL;
                   goto jalter_redo;
                default:
                   if(!(np->m_flag & MDISPLAY)){
@@ -954,8 +954,8 @@ jalter_redo:
 
                   /* This thing we are going to do */
                   quoteflt_flush(qf);
-                  flags |= _HADPART;
-                  flags &= ~_NEEDNL;
+                  flags |= a_HADPART;
+                  flags &= ~a_NEEDNL;
                   rv = ABS(level) + 1;
                   if(level < 0){
                      level = -level;

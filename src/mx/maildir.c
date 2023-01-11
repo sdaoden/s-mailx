@@ -1107,7 +1107,7 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
    off_t off1 = -1, offs;
    long size;
    int flag;
-   enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
+   enum {a_NONE = 0, a_INHEAD = 1u<<0, a_NLSEP = 1u<<1} state;
    enum okay rv;
    NYD_IN;
 
@@ -1121,26 +1121,26 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
    size = 0;
    tsp = mx_time_now(TRU1); /* TODO -> eventloop */
 
-   n_autorec_relax_create();
-   for (flag = MNEW, state = _NLSEP;;) {
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   for(flag = MNEW, state = a_NLSEP;;){
       bp = fgetline(&buf, &bufsize, &cnt, &buflen, fp, TRU1);
 
-      if (bp == NULL ||
-            ((state & (_INHEAD | _NLSEP)) == _NLSEP &&
-             is_head(buf, buflen, FAL0))) {
-         if (off1 != (off_t)-1) {
+      if(bp == NIL ||
+            ((state & (a_INHEAD | a_NLSEP)) == a_NLSEP &&
+             is_head(buf, buflen, FAL0))){
+         if(off1 != R(off_t,-1)){
             if((rv = maildir_append1(tsp, name, fp, off1, size, flag, realstat)
                   ) == STOP)
                goto jfree;
-            n_autorec_relax_unroll();
-            if (fseek(fp, offs + buflen, SEEK_SET) == -1) {
+            su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+            if(fseek(fp, offs + buflen, SEEK_SET) == -1){
                rv = STOP;
                goto jfree;
             }
          }
          off1 = offs + buflen;
          size = 0;
-         state = _INHEAD;
+         state = a_INHEAD;
          flag = MNEW;
 
          if(bp == NIL){
@@ -1154,16 +1154,16 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
          size += buflen;
       offs += buflen;
 
-      state &= ~_NLSEP;
-      if (buf[0] == '\n') {
-         state &= ~_INHEAD;
-         state |= _NLSEP;
-      } else if (state & _INHEAD) {
-         if (!su_cs_cmp_case_n(buf, "status", 6)) {
+      state &= ~a_NLSEP;
+      if(buf[0] == '\n'){
+         state &= ~a_INHEAD;
+         state |= a_NLSEP;
+      }else if(state & a_INHEAD){
+         if(!su_cs_cmp_case_n(buf, "status", 6)){
             lp = buf + 6;
-            while (su_cs_is_white(*lp))
+            while(su_cs_is_white(*lp))
                ++lp;
-            if (*lp == ':')
+            if(*lp == ':')
                while (*++lp != '\0')
                   switch (*lp) {
                   case 'R':
@@ -1197,7 +1197,7 @@ maildir_append(char const *name, FILE *fp, s64 offset, boole realstat)
 
    ASSERT(rv == OKAY);
 jfree:
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
    mx_fs_linepool_release(buf, bufsize);
 jleave:
    NYD_OU;
