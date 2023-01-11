@@ -60,7 +60,8 @@ struct su_pathinfo;
  * resolution in general is filesystem-specific. */
 struct su_pathinfo{
 	u32 pi_flags; /*!< \r{su_iopf_permission}, \r{su_iopf_protection} and \r{su_iopf_type} \r{IOPF}. */
-	u32 pi_nlink; /*!< Hard links or 1. */
+	su_64( u8 pi__pad[4]; )
+	uz pi_nlink; /*!< Hard links or 1. */
 	u64 pi_ino; /*!< Inode or 0. */
 	u64 pi_dev; /*!< pi_ino's or 0. */
 	u64 pi_rdev; /*!< Device type or 0. */
@@ -322,7 +323,7 @@ public:
 		boole is_setgid(void) const {return (pi_flags & iopf_sgid) != 0;} /*!< Is SETGID? */
 		boole is_setuid(void) const {return (pi_flags & iopf_suid) != 0;} /*!< Is SETUID? */
 
-		u32 nlink(void) const {return pi_nlink;} /*!< \copydoc{su_pathinfo::pi_nlink} */
+		uz nlink(void) const {return pi_nlink;} /*!< \copydoc{su_pathinfo::pi_nlink} */
 		u64 ino(void) const {return pi_ino;} /*!< \copydoc{su_pathinfo::pi_ino} */
 		u64 dev(void) const {return pi_dev;} /*!< \copydoc{su_pathinfo::pi_dev} */
 		u64 rdev(void) const {return pi_rdev;} /*!< \copydoc{su_pathinfo::pi_rdev} */
@@ -429,7 +430,7 @@ public:
 	}
 
 	/*! \copydoc{su_path_umask()} */
-	static boole umask(BITENUM_IS(u32,iopf_permission) perm) {return su_path_umask(perm);}
+	static u32 umask(BITENUM_IS(u32,iopf_permission) perm) {return su_path_umask(perm);}
 };
 /* }}} */
 

@@ -134,13 +134,13 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 	self->pi_gid = S(uz,stp->st_gid);
 	self->pi_blocks =
 #ifdef su_HAVE_STAT_BLOCKS
-			stp->st_blocks
+			S(u64,stp->st_blocks)
 #else
 			((S(u64,stp->st_size) + 511) & ~511) >> 9
 #endif
 			;
-	self->pi_blksize = stp->st_blksize;
-	self->pi_size = stp->st_size;
+	self->pi_blksize = S(uz,stp->st_blksize);
+	self->pi_size = S(u64,stp->st_size);
 #ifdef su_HAVE_STAT_TIMESPEC
 	self->pi_atime.ts_sec = S(s64,stp->st_atim.tv_sec);
 	self->pi_atime.ts_nano = S(sz,stp->st_atim.tv_nsec);
@@ -208,7 +208,7 @@ su_pathinfo_fstat(struct su_pathinfo *self, sz fd){
 	NYD_IN;
 	ASSERT(self);
 
-	if((rv = (fstat(fd, &sb) == 0)))
+	if((rv = (fstat(S(int,fd), &sb) == 0)))
 		a_pathinfo_copy(self, &sb);
 	else
 		su_err_no_by_errno();

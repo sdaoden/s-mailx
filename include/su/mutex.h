@@ -183,6 +183,7 @@ INLINE s32 su_mutex_create(struct su_mutex *self, char const *name_or_nil, u32 e
 /*! \_ */
 INLINE void su_mutex_gut(struct su_mutex *self){
 	ASSERT(self);
+	UNUSED(self);
 	DVLDBG( if(su__mutex_check(self, su__MUTEX_GUT, NIL su__MUTEX_ARGS_INJ)) )
 		MT( if(self->mtx_.flags & su_MUTEX_INIT) su__mutex_os_gut(self) )
 			do{}while(0);
@@ -193,6 +194,7 @@ INLINE void su_mutex_gut(struct su_mutex *self){
  * \r{su_MUTEX_FLAT_I9R()} says: \copydoc{su_MUTEX_FLAT_I9R()} */
 INLINE void su_mutex_disable_recursion(struct su_mutex *self){
 	ASSERT(self);
+	UNUSED(self);
 	ASSERT(self->mtx_.owner == NIL);
 	self->mtx_.flags |= su_MUTEX_FLAT;
 }
@@ -206,12 +208,14 @@ INLINE char const *su_mutex_name(struct su_mutex const *self){
 /*! Via \r{su_DVLDBGOR()}: filename of last operation, or \NIL. */
 INLINE char const *su_mutex_file(struct su_mutex const *self){
 	ASSERT(self);
+	UNUSED(self);
 	return DVLDBGOR(self->mtx_.file, NIL);
 }
 
 /*! Via \r{su_DVLDBGOR()}: line number of last operation, or 0. */
 INLINE u32 su_mutex_line(struct su_mutex const *self){
 	ASSERT(self);
+	UNUSED(self);
 	return DVLDBGOR(self->mtx_.line, 0);
 }
 

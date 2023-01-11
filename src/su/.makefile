@@ -13,19 +13,20 @@ ARFLAGS=rv
 
 SUFLVLC=#-std=c2x
 SUFLVLCXX=#-std=c++2b
-SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL #-Dsu_NYD_ENABLE
+SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL -Dsu_NYD_ENABLE
 SUFOPT=-O1 -g
-#SUFOPT=-O2 -DNDEBUG
+#SUFOPT=-DNDEBUG -O2
 
 # standalone: -Dsu_RANDOM_SEED=su_RANDOM_SEED_URANDOM
-SUF=$(SUFDEVEL) \
+SUF = $(SUFDEVEL) \
 	-Dsu_HAVE_CLOCK_GETTIME \
 	-Dsu_HAVE_NANOSLEEP \
 	-Dsu_HAVE_PATHCONF \
 	-Dsu_HAVE_STAT_BLOCKS -Dsu_HAVE_STAT_TIMESPEC \
 	-Dsu_HAVE_UTIMENSAT \
 
-SUFWW=-Weverything -W -Wall -pedantic \
+SUFWWW = #-Weverything
+SUFWW = -W -Wall -pedantic $(SUFWWW) \
 	-Wno-atomic-implicit-seq-cst \
 	-Wno-c++98-compat \
 	-Wno-documentation-unknown-command \
@@ -34,20 +35,22 @@ SUFWW=-Weverything -W -Wall -pedantic \
 	-Wno-reserved-macro-identifier \
 	-Wno-unused-macros
 
-SUFW=-W -Wall -pedantic
+SUFW = -W -Wall -pedantic
 
-SUFS=-fPIE \
+SUFS = -fPIE \
 	-fno-common \
 	-fstrict-aliasing -fstrict-overflow \
 	-fstack-protector-strong \
-	-D_FORTIFY_SOURCE=2 \
-	#-fsanitize=undefined \
-	#-fsanitize=address \
+	-D_FORTIFY_SOURCE=3 \
+	\
+#	-DHAVE_SANITIZER \
+#		-fsanitize=undefined \
+#		-fsanitize=address \
 
-CFLAGS+=$(SUFLVLC) $(SUF) $(SUFW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
-CXXFLAGS+=$(SUFLVLCXX) $(SUF) $(SUFW) $(SUFS) $(SUFOPT)
+CFLAGS += $(SUFLVLC) $(SUF) $(SUFWW) $(SUFS) -D_GNU_SOURCE $(SUFOPT)
+CXXFLAGS += $(SUFLVLCXX) $(SUF) $(SUFWW) $(SUFS) $(SUFOPT)
 
-LDFLAGS+=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
+LDFLAGS += -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed \
 	-Wl,--enable-new-dtags \
 	-fpie
 
