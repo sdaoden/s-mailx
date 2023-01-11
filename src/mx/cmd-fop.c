@@ -736,7 +736,7 @@ a_fop__stat(struct a_fop_ctx *fcp){
 	s = n_string_push_c(s, ' ');
 
 	s = n_string_push_cp(s, "st_nlink=");
-	s = n_string_push_cp(s, su_ienc_u32(fcp->fc_iencbuf, pi.pi_nlink, 10));
+	s = n_string_push_cp(s, su_ienc_uz(fcp->fc_iencbuf, pi.pi_nlink, 10));
 	s = n_string_push_c(s, ' ');
 
 	s = n_string_push_cp(s, "st_size=");

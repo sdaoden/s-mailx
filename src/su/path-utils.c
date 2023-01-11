@@ -89,7 +89,7 @@ su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode){
 	NYD_IN;
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
 
-	if(UNLIKELY(mode & ~su_IOPF_ACCESS_MASK)){
+	if(UNLIKELY(mode & ~S(u32,su_IOPF_ACCESS_MASK))){
 		su_err_set_no(su_ERR_INVAL);
 		rv = FAL0;
 	}else{
@@ -135,7 +135,7 @@ su_path_fchmod(sz fd, u32 permprot){
 
 	permprot &= su_IOPF_PERM_MASK | su_IOPF_PROT_MASK;
 
-	while(!(rv = (fchmod(S(s32,fd), S(int,permprot)) == 0)) && su_err_no_by_errno() == su_ERR_INTR){
+	while(!(rv = (fchmod(S(s32,fd), S(mode_t,permprot)) == 0)) && su_err_no_by_errno() == su_ERR_INTR){
 	}
 
 	NYD_OU;
