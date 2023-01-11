@@ -86,7 +86,7 @@ enum su_cs_dict_flags{
 	su_CS_DICT_OWNS = 1u<<0, /*!< Values are owned. */
 	/*! If this is set, prime spacing and modulo indexing will be used.
 	 * By default power-of-two spacing and mask indexing is used, which provides
-	 * good distribution of "normal" key data via \r{su_cs-hash()}, as well as
+	 * good distribution of "normal" key data via \r{su_cs_hash()}, as well as
 	 * with "all" key data via \r{su_cs_hash_strong()}, which is used in
 	 * conjunction with \r{su_CS_DICT_STRONG}. */
 	su_CS_DICT_PRIME_SPACED = 1u<<2,
@@ -195,7 +195,7 @@ INLINE u32 su_cs_dict_count(struct su_cs_dict const *self){
 }
 
 /*! Current size of the node management array.
- * (Might be of interest to re\r{su_cs_dict_balance()} with \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
+ * (Might be of interest to re \r{su_cs_dict_balance()} with \r{su_CS_DICT_AUTO_SHRINK} (temporarily) enabled.) */
 INLINE u32 su_cs_dict_size(struct su_cs_dict const *self){
 	ASSERT(self);
 	return self->csd_size;
