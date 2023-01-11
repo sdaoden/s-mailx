@@ -920,7 +920,7 @@ do{\
 #define su_NYD_OU_LABEL su__nydou
 
 /*! Pointer to size_t cast. */
-#define su_P2UZ(X) su_S(su_uz,/*not R(): avoid same-type++ warns*/S(su_up,X))
+#define su_P2UZ(X) su_S(su_uz,/*not R(): avoid same-type++ warns*/(su_up)(X))
 
 /*! Pointer comparison. */
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
@@ -1364,7 +1364,7 @@ enum su__state_flags{
 };
 #ifndef DOXYGEN
 MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK), "Bit ranges may not overlap")
-MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00) == 0, "Bits excess documented bounds")
+MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00u) == 0, "Bits excess documented bounds")
 #endif
 
 /*! Argument bits for \r{su_state_create()}. */
@@ -1827,11 +1827,11 @@ struct su_toolbox{
 /*! Initialize a \r{su_toolbox}. */
 #define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
 {\
-	su_FIELD_INITN(tb_clone) (su_clone_fun)(CLONE),\
-	su_FIELD_INITN(tb_del) (su_del_fun)(DELETE),\
-	su_FIELD_INITN(tb_assign) (su_assign_fun)(ASSIGN),\
-	su_FIELD_INITN(tb_cmp) (su_cmp_fun)(COMPARE),\
-	su_FIELD_INITN(tb_hash) (su_hash_fun)(HASH)\
+	su_FIELD_INITN(tb_clone) R(su_clone_fun,CLONE),\
+	su_FIELD_INITN(tb_del) R(su_del_fun,DELETE),\
+	su_FIELD_INITN(tb_assign) R(su_assign_fun,ASSIGN),\
+	su_FIELD_INITN(tb_cmp) R(su_cmp_fun,COMPARE),\
+	su_FIELD_INITN(tb_hash) R(su_hash_fun,HASH)\
 }
 
 /* BASIC TYPE TRAITS }}} */
