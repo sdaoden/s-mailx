@@ -1865,8 +1865,14 @@ a_prime(void){
 	u32 u32 = prime::lookup_next(0);
 	if(u32 != prime::lookup_min)
 		a_ERR();
-	u64 u64 = prime::get_next(u32);
+	u64 u64_2, u64 = prime::get_next(u32);
 	if(u32 == u64 || (u32 == 2 && u64 != 3))
+		a_ERR();
+	u64_2 = prime::get_next(u64, FAL0);
+	if(u64 == u64_2)
+		a_ERR();
+	u64 = prime::get_former(u64_2 + 1, FAL0);
+	if(u64 != u64_2)
 		a_ERR();
 
 	u32 = prime::lookup_former(max::u32);

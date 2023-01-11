@@ -89,10 +89,13 @@ a_prime_is_real(u64 no){ /* TODO brute force yet (at least Miller-Rabin?) */
 
 	if(no < 2)
 		goto jfal;
-	if(no != 2)
-		for(u.x64 = 3; u.x64 < no; u.x64 += 2)
+	if(no != 2){
+		u64 xno;
+
+		for(u.x64 = 3, xno = (no >> 1) + 1; u.x64 < xno; u.x64 += 2)
 			if(no % u.x64 == 0)
 				goto jfal;
+	}
 
 	u.rv = TRU1;
 jleave:
@@ -110,11 +113,11 @@ a_prime_calc(u64 no, s64 add, boole pseudo_ok){
 	/* Primes are all odd (except 2 but that is NEVER evaluated in here) */
 	if(!(no & 1)){
 		no += S(u64,add);
-		add <<= 1;
+		add += add;
 		goto jdiver;
 	}
 
-	add <<= 1;
+	add += add;
 	for(;;){
 		no += S(u64,add);
 jdiver:
