@@ -1462,7 +1462,7 @@ FL boole
 message_match(struct message *mp, struct search_expr const *sep,
       boole with_headers){
    char *line;
-   uz linesize, cnt;
+   uz linesize, cnt, len;
    FILE *fp;
    boole rv;
    NYD_IN;
@@ -1489,7 +1489,12 @@ message_match(struct message *mp, struct search_expr const *sep,
       }
    }
 
-   while(fgetline(&line, &linesize, &cnt, NIL, fp, FAL0) != NIL){
+   while(fgetline(&line, &linesize, &cnt, &len, fp, TRU1) != NIL){
+      while(len > 0 && line[--len] == '\n')
+         line[len] = '\0';
+      if(len == 0)
+         continue;
+
 #ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL){
          if(regexec(sep->ss_bodyre, line, 0,NULL, 0) == REG_NOMATCH)
