@@ -13205,7 +13205,9 @@ commas
 .Ql \&,
 need to be escaped with a reverse solidus
 .Ql \e
-when included in pairs; also different: if the equals sign
+when included in pairs
+.Pf ( Ql Options=-Bugs\e,KTLS,Certificate=~/.cert ) ;
+also different: if the equals sign
 .Ql =
 is preceded with an asterisk
 .Ql *
@@ -13286,10 +13288,18 @@ which disables the given limit.
 .It Cd Options
 Various flags to set.
 Fallback via
-.Xr SSL_CTX_set_options 3 ,
-in which case any other value but (exactly)
+.Xr SSL_CTX_set_options 3
+and
+.Xr SSL_CTX_clear_options 3 :
+value is a (escaped!) comma-separated list; whitespace is ignored.
+An option is cleared if the first character is hyphen-minus
+.Ql - ;
+understood options are
 .Ql Bugs
-results in an error.
+and
+.Ql KTLS
+.Pf ( Va tls-features :
+.Ql ,+option-ktls, ) .
 .
 .It Cd PrivateKey
 Filename of the private key in PEM format of a TLS client certificate.
