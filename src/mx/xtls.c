@@ -2048,6 +2048,11 @@ n_tls_open(struct mx_url *urlp, struct mx_socket *sop){ /* TODO split */
    SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
 #endif
 
+   /* 3.0.0 (only protocols which "detect truncation", and .. we are client) */
+#ifdef SSL_OP_IGNORE_UNEXPECTED_EOF
+   SSL_CTX_set_options(ctxp, SSL_OP_IGNORE_UNEXPECTED_EOF);
+#endif
+
    if((confp = a_xtls_conf_setup(ctxp, urlp)) == NULL)
       goto jleave;
 
