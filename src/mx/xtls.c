@@ -1045,11 +1045,32 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       }
 # endif /* !mx_XTLS_HAVE_SET_MIN_PROTO_VERSION */
    }else if(!su_cs_cmp_case(cmd, xcmd = "Options")){
-      if(su_cs_cmp_case(value, "Bugs")){
-         emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
-         goto jxerr;
+      char *iolist;
+
+      iolist = savestr(value);
+      while((value = su_cs_sep_c(&iolist, ',', TRU1)) != NIL){
+         u64 o;
+         boole clr;
+
+         if((clr = (*value == '-')))
+            ++value;
+
+         if(!su_cs_cmp_case(value, "Bugs"))
+            o = SSL_OP_ALL;
+# ifdef mx_XTLS_HAVE_OPTION_KTLS
+         else if(!su_cs_cmp_case(value, "KTLS"))
+            o = SSL_OP_ENABLE_KTLS;
+# endif
+         else{
+            emsg = N_("TLS: %s: fallback parser: unknown option: %s\n");
+            goto jxerr;
+         }
+
+         if(clr)
+            SSL_CTX_clear_options(ctxp, o);
+         else
+            SSL_CTX_set_options(ctxp, o);
       }
-      SSL_CTX_set_options(ctxp, SSL_OP_ALL);
    }else if(!su_cs_cmp_case(cmd, xcmd = "PrivateKey")){
       if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
          emsg = N_("%s: cannot load from file %s\n");
@@ -1280,8 +1301,8 @@ jenocmd:
          --cp;
       *cp = '\0';
       if(cp == val){
-         if(pairs == NULL)
-            pairs = n_UNCONST(n_empty);
+         if(pairs == NIL)
+            pairs = UNCONST(char*,su_empty);
          n_err(_("*tls-config-pairs*: missing value: %s; rest: %s\n"),
             n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(pairs, FAL0));
          goto jleave;

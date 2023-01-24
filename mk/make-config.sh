@@ -2932,7 +2932,8 @@ int main(void){
 
 VAL_TLS_FEATURES=
 if feat_yes TLS; then # {{{
-	# {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
+	# {{{ TLS lib type
+	# LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
 	# instead of keeping it at the one that corresponds to the OpenSSL at fork
 	# time: we need to test it first in order to get things right
 	if compile_check _xtls 'TLS (LibreSSL)' \
@@ -3007,7 +3008,24 @@ int nonempty;
 		feat_bail_required TLS
 	fi # }}}
 
-	if feat_yes TLS; then # {{{
+	if feat_yes TLS; then # stack_of, client_method, conf_ctx {{{
+		if compile_check xtls_stack_of '*SSL STACK_OF()' '#define mx_XTLS_HAVE_STACK_OF' << \!
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
+#include <openssl/rand.h>
+int main(void){
+	STACK_OF(GENERAL_NAME) *gens = (void*)0;
+
+	printf("%p", gens); /* to use it */
+	return 0;
+}
+!
+		then
+			:
+		fi
+
 		if link_check xtls 'TLS new style TLS_client_method(3ssl)' \
 				'#define mx_XTLS_CLIENT_METHOD TLS_client_method
 				#define mx_XTLS_SERVER_METHOD TLS_server_method' \
@@ -3048,25 +3066,6 @@ int main(void){
 			:
 		else
 			feat_bail_required TLS
-		fi
-	fi # }}}
-
-	if feat_yes TLS; then # {{{
-		if compile_check xtls_stack_of '*SSL STACK_OF()' '#define mx_XTLS_HAVE_STACK_OF' << \!
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/x509v3.h>
-#include <openssl/x509.h>
-#include <openssl/rand.h>
-int main(void){
-	STACK_OF(GENERAL_NAME) *gens = (void*)0;
-
-	printf("%p", gens); /* to use it */
-	return 0;
-}
-!
-		then
-			:
 		fi
 
 		if link_check xtls_conf 'TLS OpenSSL_modules_load_file(3ssl) support' \
@@ -3125,7 +3124,9 @@ int main(void){
 		else
 			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-config"
 		fi
+	fi # }}}
 
+	if feat_yes TLS; then # min/max, options {{{
 		if link_check xtls_set_maxmin_proto 'TLS SSL_CTX_set_min_proto_version(3ssl)' \
 			'#define mx_XTLS_HAVE_SET_MIN_PROTO_VERSION' << \!
 #include <openssl/ssl.h>
@@ -3153,6 +3154,23 @@ int main(void){
 			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
 		else
 			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-ciphersuites"
+		fi
+
+		if link_check xtls_ktls 'TLS: KTLS' \
+			'#define mx_XTLS_HAVE_OPTION_KTLS' << \!
+#include <openssl/ssl.h>
+int main(void){
+#ifdef SSL_OP_ENABLE_KTLS
+	return 0;
+#else
+# error AU
+#endif
+}
+!
+		then
+			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+option-ktls"
+		else
+			VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-option-ktls"
 		fi
 	fi # feat_yes TLS }}}
 
