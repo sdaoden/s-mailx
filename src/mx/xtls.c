@@ -159,6 +159,13 @@ su_EMPTY_FILE()
 #endif
 
 #if mx_HAVE_XTLS >= 0x30000
+   /* OpenSSL 3.0: algorithm providers are dynamic and lazily resolved,
+    * so anything "implicitly fetched" (crypto(7)) may fail later on.
+    * As pre 3.0.0 was only "implicit" it is a complicated backward-incompat-
+    * ible mess (internal lazy fetching is then a single line of code) */
+# define a_XTLS_CRYPTO_FETCH
+# define a_XTLS__JFETCH jfetch
+
 # define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
    SSL_CTX_load_verify_file(CTXP, FILE)
 # define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
@@ -174,6 +181,9 @@ su_EMPTY_FILE()
 # define a_xtls_SSL_get_peer_certificate__FREE(CERT)
 
 #else
+# undef a_XTLS_CRYPTO_FETCH
+# define a_XTLS__JFETCH jleave
+
 # define a_xtls_SSL_CTX_load_verify_file(CTXP,FILE) \
    SSL_CTX_load_verify_locations(CTXP, FILE, NIL)
 # define a_xtls_SSL_CTX_load_verify_dir(CTXP,DIR) \
@@ -295,6 +305,7 @@ static struct a_xtls_protocol const a_xtls_protocols[] = {
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
 # define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According RFC 5751 */
+# define a_XTLS_SMIME_DEFAULT_CIPHER_S "AES128"
    {"AES128", &EVP_aes_128_cbc},
    {"AES256", &EVP_aes_256_cbc},
    {"AES192", &EVP_aes_192_cbc},
@@ -302,6 +313,7 @@ static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_DES
 # ifndef a_XTLS_SMIME_DEFAULT_CIPHER
 #  define a_XTLS_SMIME_DEFAULT_CIPHER EVP_des_ede3_cbc
+#  define a_XTLS_SMIME_DEFAULT_CIPHER_S "DES3"
 # endif
    {"DES3", &EVP_des_ede3_cbc},
    {"DES", &EVP_des_cbc},
@@ -433,7 +445,7 @@ static boole a_xtls_parse_asn1_time(ASN1_TIME const *atp,
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
 static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
-               char const **normalized_name_or_null);
+               char const **normalized_name_or_nil);
 
 /* *smime-ca-flags*, *tls-ca-flags* */
 static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
@@ -453,7 +465,8 @@ static boole a_xtls_check_host(struct mx_socket *sop, X509 *peercert,
 
 static int        smime_verify(struct message *m, int n,
                      a_XTLS_STACKOF(X509) *chain, X509_STORE *store);
-static EVP_CIPHER const * _smime_cipher(char const *name);
+static EVP_CIPHER const *a_xtls_smime_cipher(char const *name, boole *freeit);
+
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
@@ -740,8 +753,8 @@ jleave:
 }
 
 static boole
-a_xtls_digest_find(char const *name,
-      EVP_MD const **mdp, char const **normalized_name_or_null){
+a_xtls_digest_find(char const *name, EVP_MD const **mdp,
+      char const **normalized_name_or_nil){
    uz i;
    char *nn;
    NYD2_IN;
@@ -750,34 +763,50 @@ a_xtls_digest_find(char const *name,
       char *cp, c;
 
       i = su_cs_len(name);
-      nn = cp = n_lofi_alloc(i +1);
+      nn = cp = su_LOFI_ALLOC(i +1);
       while((c = *name++) != '\0')
          *cp++ = su_cs_to_upper(c);
       *cp = '\0';
 
-      if(normalized_name_or_null != NULL)
-         *normalized_name_or_null = savestrbuf(nn, P2UZ(cp - nn));
+      if(normalized_name_or_nil != NIL)
+         *normalized_name_or_nil = savestrbuf(nn, P2UZ(cp - nn));
    }
 
    for(i = 0; i < NELEM(a_xtls_digests); ++i)
       if(!su_cs_cmp(a_xtls_digests[i].xd_name, nn)){
          *mdp = (*a_xtls_digests[i].xd_fun)();
-         goto jleave;
+         goto a_XTLS__JFETCH;
       }
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if((*mdp = EVP_get_digestbyname(nn)) != NULL)
-      goto jleave;
+   if((*mdp = EVP_get_digestbyname(nn)) != NIL)
+      goto a_XTLS__JFETCH;
 #endif
 
    n_err(_("Invalid message digest: %s\n"), n_shexp_quote_cp(nn, FAL0));
-   *mdp = NULL;
+   *mdp = NIL;
+
 jleave:
-   n_lofi_free(nn);
+   su_LOFI_FREE(nn);
 
    NYD2_OU;
-   return (*mdp != NULL);
+   return (*mdp != NIL);
+
+#ifdef a_XTLS_CRYPTO_FETCH
+a_XTLS__JFETCH:/* C99 */{
+      EVP_MD_CTX *mdcp;
+
+      if((mdcp = EVP_MD_CTX_new()) == NIL)
+         *mdp = NIL;
+      else{
+         if(!EVP_DigestInit_ex(mdcp, *mdp, NIL))
+            *mdp = NIL;
+         EVP_MD_CTX_free(mdcp);
+      }
+      goto jleave;
+   }
+#endif
 }
 
 static void
@@ -1516,43 +1545,55 @@ jleave:
 }
 
 static EVP_CIPHER const *
-_smime_cipher(char const *name)
-{
+a_xtls_smime_cipher(char const *name, boole *freeit){
    EVP_CIPHER const *cipher;
    char *vn;
    char const *cp;
    uz i;
    NYD_IN;
 
-   vn = n_lofi_alloc(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
-   snprintf(vn, (int)i, "smime-cipher-%s", name);
-   cp = n_var_vlook(vn, FAL0);
-   n_lofi_free(vn);
+   *freeit = FAL0;
 
-   if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
+   vn = su_LOFI_ALLOC(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
+   snprintf(vn, S(int,i), "smime-cipher-%s", name);
+   cp = n_var_vlook(vn, FAL0);
+   su_LOFI_FREE(vn);
+
+   if(cp == NIL && (cp = ok_vlook(smime_cipher)) == NIL){
       cipher = a_XTLS_SMIME_DEFAULT_CIPHER();
-      goto jleave;
+      cp = a_XTLS_SMIME_DEFAULT_CIPHER_S;
+      goto a_XTLS__JFETCH;
    }
-   cipher = NULL;
+   cipher = NIL;
 
    for(i = 0; i < NELEM(a_xtls_ciphers); ++i)
       if(!su_cs_cmp_case(a_xtls_ciphers[i].xc_name, cp)){
          cipher = (*a_xtls_ciphers[i].xc_fun)();
-         goto jleave;
+         cp = a_xtls_ciphers[i].xc_name;
+         goto a_XTLS__JFETCH;
       }
 #ifndef OPENSSL_NO_AES
-   for (i = 0; i < NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
-      if (!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
+   for(i = 0; i < NELEM(a_xtls_smime_ciphers_obs); ++i)/* TODO v15-compat */
+      if(!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)){
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
          cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
-         goto jleave;
+         cp = a_xtls_smime_ciphers_obs[i].xc_name;
+         goto a_XTLS__JFETCH;
       }
 #endif
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-   if((cipher = EVP_get_cipherbyname(cp)) != NULL)
+#if defined mx_HAVE_TLS_ALL_ALGORITHMS && !defined a_XTLS_CRYPTO_FETCH
+   if((cipher = EVP_get_cipherbyname(cp)) != NIL)
       goto jleave;
+#endif
+
+#ifdef a_XTLS_CRYPTO_FETCH
+a_XTLS__JFETCH:
+   if((cipher = EVP_CIPHER_fetch(NIL, cp, NIL)) != NIL){
+      *freeit = TRU1;
+      goto jleave;
+   }
 #endif
 
    n_err(_("Invalid S/MIME cipher(s): %s\n"), cp);
@@ -2380,10 +2421,10 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    a_XTLS_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
-   boole bail;
+   boole bail, free_cipher;
    NYD_IN;
 
-   bail = FAL0;
+   bail = free_cipher = FAL0;
    rv = yp = fp = bp = hp = NULL;
 
    if((certfile = fexpand(xcertfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
@@ -2392,7 +2433,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 
    a_xtls_init();
 
-   if ((cipher = _smime_cipher(to)) == NULL)
+   if((cipher = a_xtls_smime_cipher(to, &free_cipher)) == NIL)
       goto jleave;
 
    if((fp = mx_fs_open(certfile, "r")) == NIL){
@@ -2466,6 +2507,11 @@ jleave:
       mx_fs_close(bp);
    if(hp != NIL)
       mx_fs_close(hp);
+#ifdef a_XTLS_CRYPTO_FETCH
+   if(free_cipher)
+      EVP_CIPHER_free(UNCONST(EVP_CIPHER*,cipher));
+#endif
+
    NYD_OU;
    return rv;
 }
