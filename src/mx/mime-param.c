@@ -93,13 +93,13 @@ static s8 a_mpm_value_trim(struct str *result, char const *start, char const **e
 /* mime_param_get() found the desired parameter but it seems to use RFC 2231 extended syntax: perform full RFC 2231
  * parsing starting at this point.  Note that _join() returns is-error */
 static char *a_mpm_rfc2231_param_parse(char const *param, uz plen, char const *hbp);
-static boole a__mpm_rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const **emsg);
+static boole a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const **emsg);
 
 /* Recursive parameter builder.	Note we have a magic limit of 999 levels.
  * Prepares a portion of output in self->mpb_buf; once >mpb_value is worked completely the deepmost level joins the
  * result into >mpb_result and unrolls the stack. */
 static void a_mpm_create(struct a_mpm_builder *self);
-static void a__mpm_join(struct a_mpm_builder *head);
+static void a_mpm__join(struct a_mpm_builder *head);
 
 static char const *
 a_mpm_skip(char const *hbp){
@@ -354,7 +354,7 @@ jeeqaaster:
 	}
 	ASSERT(head != NIL); /* (always true due to jumpin:, but..) */
 
-	errors |= a__mpm_rfc2231_join(head, &rv, &emsg);
+	errors |= a_mpm__rfc2231_join(head, &rv, &emsg);
 	if(errors /*&& (n_poption & n_PO_D_V)*/){
 		/* TODO should set global flags so that at the end of an operation
 		 * TODO (for a message) a summary can be printed: faulty MIME, xy */
@@ -383,7 +383,7 @@ jerr:
 }
 
 static boole
-a__mpm_rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const **emsg){
+a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const **emsg){
 	enum a_flags{
 		a_NONE = 0,
 		a_HAVE_ENC = 1u<<0,
@@ -654,7 +654,7 @@ jneed_enc:
 	/* That level made the great and completed encoding.	Build result */
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
 	self->mpb_buf_len = P2UZ(bp - buf);
-	a__mpm_join(self);
+	a_mpm__join(self);
 
 jleave:
 	NYD2_OU;
@@ -684,7 +684,7 @@ jrecurse:
 }
 
 static void
-a__mpm_join(struct a_mpm_builder *head){
+a_mpm__join(struct a_mpm_builder *head){
 	enum a_flags{
 		a_NONE = 0,
 		a_ISENC = 1u<<0,

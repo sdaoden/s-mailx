@@ -437,21 +437,21 @@ a_boswap(void){
 // }}}
 
 // cs_dict {{{
-static void a__cs_dict(u16 addflags);
-static void a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]);
+static void a_cs_dict_(u16 addflags);
+static void a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]);
 
 static void
 a_cs_dict(void){
-	a__cs_dict(cs_dict<char const*>::f_prime_spaced);
-	a__cs_dict(cs_dict<char const*>::f_none);
+	a_cs_dict_(cs_dict<char const*>::f_prime_spaced);
+	a_cs_dict_(cs_dict<char const*>::f_none);
 
-	a__cs_dict(cs_dict<char const*>::f_strong |
+	a_cs_dict_(cs_dict<char const*>::f_strong |
 		cs_dict<char const*>::f_prime_spaced);
-	a__cs_dict(cs_dict<char const*>::f_strong);
+	a_cs_dict_(cs_dict<char const*>::f_strong);
 }
 
 static void
-a__cs_dict(u16 addflags){
+a_cs_dict_(u16 addflags){
 	{
 		cs_dict<char const*> cd(NIL, addflags);
 		char const *k[3];
@@ -460,7 +460,7 @@ a__cs_dict(u16 addflags){
 		k[1] = "k2";
 		k[2] = "k3";
 
-		a__cs_dict_case(&cd, k);
+		a_cs_dict__case(&cd, k);
 
 		if(cd.is_empty())
 			a_ERR();
@@ -531,7 +531,7 @@ a__cs_dict(u16 addflags){
 		k[1] = "K2";
 		k[2] = "K3";
 
-		a__cs_dict_case(&cd, k);
+		a_cs_dict__case(&cd, k);
 	}
 
 	/// Let's do some flag stuff and "big data"
@@ -697,7 +697,7 @@ a__cs_dict(u16 addflags){
 }
 
 static void
-a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]){
+a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]){
 	// basics
 	if(!cdp->is_empty())
 		a_ERR();
@@ -1484,40 +1484,40 @@ static struct a_siphash_t128 const a_siphash_t128[] = { // {{{
 		 0x50,0x3e,0x06,0x9a,0x97,0x3f,0xbd,0x7c}}
 }; // }}}
 
-static void a__md_siphash(void);
+static void a_md__siphash(void);
 
 template<uz KSZ, uz DGSTSZ, uz INSZ_MAX, class TDAT>
-static void a__md_test(char const *name, md *mdp, TDAT const *tdat);
+static void a_md__test(char const *name, md *mdp, TDAT const *tdat);
 
 // test vtbl, class {{{
-class a__md_sade;
+class a_md__sade;
 
-static void *a__md_new(u32 estate);
-static void a__md_del(void *self);
-static up a__md_prop(void const *self, enum su_md_prop prop);
-static s32 a__md_setup(void *self, void const *k, uz kl, uz ds);
+static void *a_md__new(u32 estate);
+static void a_md__del(void *self);
+static up a_md__prop(void const *self, enum su_md_prop prop);
+static s32 a_md__setup(void *self, void const *k, uz kl, uz ds);
 
-static struct su_md_vtbl const a__md_sade = {
-	FIN(mdvtbl_mdvtbl_new) &a__md_new,
-	FIN(mdvtbl_mdvtbl_del) &a__md_del,
-	FIN(mdvtbl_property) &a__md_prop,
-	FIN(mdvtbl_setup) &a__md_setup,
+static struct su_md_vtbl const a_md__sade = {
+	FIN(mdvtbl_mdvtbl_new) &a_md__new,
+	FIN(mdvtbl_mdvtbl_del) &a_md__del,
+	FIN(mdvtbl_property) &a_md__prop,
+	FIN(mdvtbl_setup) &a_md__setup,
 	FIN(mdvtbl_update) R(void(*)(void*,void const*,uz),&su_siphash_update),
 	FIN(mdvtbl_end) R(void(*)(void*,void*),&su_siphash_end)
 };
 
 static void *
-a__md_new(u32 estate){
+a_md__new(u32 estate){
 	return su_TALLOCF(struct su_siphash, 1, estate);
 }
 
 static void
-a__md_del(void *self){
+a_md__del(void *self){
 	su_FREE(self);
 }
 
 static up
-a__md_prop(void const *self, enum su_md_prop prop){
+a_md__prop(void const *self, enum su_md_prop prop){
 	up rv;
 	UNUSED(self);
 	switch(S(uz,prop)){
@@ -1535,7 +1535,7 @@ a__md_prop(void const *self, enum su_md_prop prop){
 }
 
 static s32
-a__md_setup(void *self, void const *k, uz kl, uz ds){
+a_md__setup(void *self, void const *k, uz kl, uz ds){
 	s32 rv;
 	if(kl != su_SIPHASH_KEY_SIZE || ds != su_SIPHASH_DIGEST_SIZE_64)
 		rv = su_ERR_INVAL;
@@ -1544,19 +1544,19 @@ a__md_setup(void *self, void const *k, uz kl, uz ds){
 	return rv;
 }
 
-class a__md_sade : public md{
+class a_md__sade : public md{
 	su_siphash m_sh;
 public:
-	a__md_sade(void) : m_sh() {}
+	a_md__sade(void) : m_sh() {}
 
-	OVRX(~a__md_sade(void)) {}
+	OVRX(~a_md__sade(void)) {}
 
 	OVRX(up property(prop prop) const){
-		return a__md_prop(NIL, S(su_md_prop,prop));
+		return a_md__prop(NIL, S(su_md_prop,prop));
 	}
 
 	OVRX(s32 setup(void const *key, uz key_len, uz digest_size)){
-		return a__md_setup(&m_sh, key, key_len, digest_size);
+		return a_md__setup(&m_sh, key, key_len, digest_size);
 	}
 
 	OVRX(void update(void const *dat, uz dat_len)){
@@ -1567,7 +1567,7 @@ public:
 
 	static md *create(u32 estate){
 		UNUSED(estate);
-		return su_NEW(a__md_sade);
+		return su_NEW(a_md__sade);
 	}
 };
 // }}}
@@ -1576,20 +1576,20 @@ public:
 static void
 a_md(void){
 #ifdef su_HAVE_MD
-	a__md_siphash();
+	a_md__siphash();
 
 	md *mdp;
 
-	a__md_test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
+	a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
 		("siphash", md::new_by_algo(md::algo_siphash), &a_siphash_t64[0]);
 
-	a__md_test<siphash::key_size, siphash::digest_size_128, NELEM(a_siphash_t128), struct a_siphash_t128>
+	a_md__test<siphash::key_size, siphash::digest_size_128, NELEM(a_siphash_t128), struct a_siphash_t128>
 		("siphash", md::new_by_algo(md::algo_siphash), &a_siphash_t128[0]);
 
-	a__md_test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
+	a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
 		("siphash", md::new_by_name("siphash"), &a_siphash_t64[0]);
 
-	a__md_test<siphash::key_size, siphash::digest_size_128, NELEM(a_siphash_t128), struct a_siphash_t128>
+	a_md__test<siphash::key_size, siphash::digest_size_128, NELEM(a_siphash_t128), struct a_siphash_t128>
 		("siphash", md::new_by_name("siphash"), &a_siphash_t128[0]);
 
 	//
@@ -1597,25 +1597,25 @@ a_md(void){
 	if((mdp = md::new_by_name("sade")) != NIL)
 		a_ERR();
 
-	if(su_md_install("sade", &a__md_sade, su_STATE_NONE) != su_STATE_NONE)
+	if(su_md_install("sade", &a_md__sade, su_STATE_NONE) != su_STATE_NONE)
 		a_ERR();
 	{
-		a__md_test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
+		a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
 			("sade", md::new_by_name("sade"), &a_siphash_t64[0]);
 	}
-	if(!su_md_uninstall("sade", &a__md_sade))
+	if(!su_md_uninstall("sade", &a_md__sade))
 		a_ERR();
 
 	if((mdp = md::new_by_name("sade")) != NIL)
 		a_ERR();
 
-	if(md::install("sade", &a__md_sade::create, su_STATE_NONE) != su_STATE_NONE)
+	if(md::install("sade", &a_md__sade::create, su_STATE_NONE) != su_STATE_NONE)
 		a_ERR();
 	{
-		a__md_test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
+		a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
 			("sade", md::new_by_name("sade"), &a_siphash_t64[0]);
 	}
-	if(!md::uninstall("sade", &a__md_sade::create))
+	if(!md::uninstall("sade", &a_md__sade::create))
 		a_ERR();
 
 	if((mdp = md::new_by_name("sade")) != NIL)
@@ -1625,7 +1625,7 @@ a_md(void){
 
 #ifdef su_HAVE_MD
 static void
-a__md_siphash(void){ // {{{
+a_md__siphash(void){ // {{{
 	for(uz idx = 0; idx < NELEM(a_siphash_t64); ++idx){
 		u8 key[siphash::key_size], digest[siphash::digest_size_max], in[NELEM(a_siphash_t64)];
 		siphash sh;
@@ -1670,7 +1670,7 @@ a__md_siphash(void){ // {{{
 
 template<uz KSZ, uz DGSTSZ, uz INSZ_MAX, class TDAT>
 static void
-a__md_test(char const *name, md *mdp, TDAT const *tdat){ // {{{
+a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 	if(mdp == NIL){
 		a_ERR();
 		goto j_leave;
@@ -1904,7 +1904,7 @@ a_sort(void){
 // random {{{
 static uz a_random_i;
 
-static boole a__random_gfun(void **cookie, void *buf, uz len);
+static boole a_random__gfun(void **cookie, void *buf, uz len);
 
 static void
 a_random(void){ // xxx too late, already initialized...
@@ -1996,7 +1996,7 @@ a_random(void){ // xxx too late, already initialized...
 	}
 
 	{
-		if(random::vsp_install(&a__random_gfun) != state::none)
+		if(random::vsp_install(&a_random__gfun) != state::none)
 			a_ERR();
 
 		a_random_i = 0;
@@ -2050,7 +2050,7 @@ a_random(void){ // xxx too late, already initialized...
 }
 
 static boole
-a__random_gfun(void **cookie, void *buf, uz len){
+a_random__gfun(void **cookie, void *buf, uz len){
 	boole rv;
 
 	rv = TRU1;
@@ -2151,17 +2151,17 @@ a_re(void){
 // }}}
 
 // time {{{
-static void a__time_utils(void);
-static void a__time_spec(void);
+static void a_time__utils(void);
+static void a_time__spec(void);
 
 static void
 a_time(void){
-	a__time_utils();
-	a__time_spec();
+	a_time__utils();
+	a_time__spec();
 }
 
 static void
-a__time_utils(void){
+a_time__utils(void){
 	u32 y, m, d, hour, min, sec;
 	uz uz;
 	s64 ep;
@@ -2291,7 +2291,7 @@ a__time_utils(void){
 }
 
 static void
-a__time_spec(void){
+a_time__spec(void){
 	if(time::spec::sec_millis != 1000l) a_ERR();
 	if(time::spec::sec_micros != 1000l * 1000) a_ERR();
 	if(time::spec::sec_nanos != 1000l * 1000 * 1000) a_ERR();
