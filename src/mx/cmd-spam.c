@@ -578,13 +578,13 @@ a_spam_cf_setup(struct a_spam_vc *vcp, boole useshell){
 	NYD2_OU;
 }
 
-static sigjmp_buf a__spam_cf_actjmp; /* TODO someday, we won't need it */
-static int volatile a__spam_cf_sig; /* TODO someday, we won't need it */
+static sigjmp_buf a_spam__cf_actjmp; /* TODO someday, we won't need it */
+static int volatile a_spam__cf_sig; /* TODO someday, we won't need it */
 static void
-a__spam_cf_onsig(int sig){ /* TODO someday, we won't need it no more */
+a_spam__cf_onsig(int sig){ /* TODO someday, we won't need it no more */
 	NYD; /* Signal handler */
-	a__spam_cf_sig = sig;
-	siglongjmp(a__spam_cf_actjmp, 1);
+	a_spam__cf_sig = sig;
+	siglongjmp(a_spam__cf_actjmp, 1);
 }
 
 static boole
@@ -625,9 +625,9 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
 	scfp->cf_ottin = safe_signal(SIGTTIN, SIG_DFL);
 	scfp->cf_ottou = safe_signal(SIGTTOU, SIG_DFL);
 	scfp->cf_opipe = safe_signal(SIGPIPE, SIG_IGN);
-	scfp->cf_ohup = safe_signal(SIGHUP, &a__spam_cf_onsig);
-	scfp->cf_oint = safe_signal(SIGINT, &a__spam_cf_onsig);
-	scfp->cf_oquit = safe_signal(SIGQUIT, &a__spam_cf_onsig);
+	scfp->cf_ohup = safe_signal(SIGHUP, &a_spam__cf_onsig);
+	scfp->cf_oint = safe_signal(SIGINT, &a_spam__cf_onsig);
+	scfp->cf_oquit = safe_signal(SIGQUIT, &a_spam__cf_onsig);
 	/* Keep sigs blocked */
 
 	if(!mx_fs_pipe_cloexec(p2c)){
@@ -644,7 +644,7 @@ a_spam_cf_interact(struct a_spam_vc *vcp){
 	}
 	state |= a_C2P;
 
-	if(sigsetjmp(a__spam_cf_actjmp, 1)){
+	if(sigsetjmp(a_spam__cf_actjmp, 1)){
 		if(*vcp->vc_esep != '\0')
 			n_err(vcp->vc_esep);
 		state |= a_JUMPED;
@@ -758,9 +758,9 @@ jtail:
 		(*vcp->vc_dtor)(vcp);
 
 		sigemptyset(&cset);
-		sigaddset(&cset, a__spam_cf_sig);
+		sigaddset(&cset, a_spam__cf_sig);
 		sigprocmask(SIG_UNBLOCK, &cset, NIL);
-		n_raise(a__spam_cf_sig);
+		n_raise(a_spam__cf_sig);
 	}
 	return !(state & (a_JUMPED | a_ERRORS));
 }

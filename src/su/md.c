@@ -48,7 +48,7 @@ struct a_md_list{
 	su_new_fun mdl_cxx_it; /* Only if C++-created */
 };
 
-static struct su_mutex *a_md_lock, a__md_lockbuf;
+static struct su_mutex *a_md_lock, a_md__lockbuf;
 static struct a_md_list *a_md_list;
 /* + vtbl's below */
 
@@ -89,7 +89,7 @@ a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 			su_FREE(tmp);
 		}
 
-		su_mutex_gut(&a__md_lockbuf);
+		su_mutex_gut(&a_md__lockbuf);
 	}
 # endif
 
@@ -166,13 +166,13 @@ su__md_init(u32 estate){
 	su__glck_gi9r();
 
 	if(a_md_lock == NIL &&
-			(rv = su_mutex_create(&a__md_lockbuf, "SU M(essage) D(igest) DB", estate)) == su_STATE_NONE){
+			(rv = su_mutex_create(&a_md__lockbuf, "SU M(essage) D(igest) DB", estate)) == su_STATE_NONE){
 #ifdef su__STATE_ON_GUT_FUN
 		if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)) != su_STATE_NONE)
-			su_mutex_gut(&a__md_lockbuf);
+			su_mutex_gut(&a_md__lockbuf);
 		else
 #endif
-			a_md_lock = &a__md_lockbuf;
+			a_md_lock = &a_md__lockbuf;
 	}
 
 	su__gnlck_gi9r();
