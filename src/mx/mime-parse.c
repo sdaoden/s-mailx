@@ -73,9 +73,9 @@ static void a_mps_pkcs7(struct message *zmp, struct mimepart *ip,
 
 static boole a_mps_multipart(struct message *zmp, struct mimepart *ip,
       BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level);
-static void a__mps_new(struct mimepart *ip, struct mimepart **np, off_t offs,
+static void a_mps__new(struct mimepart *ip, struct mimepart **np, off_t offs,
       int *part);
-static void a__mps_end(struct mimepart **np, off_t xoffs, long lines);
+static void a_mps__end(struct mimepart **np, off_t xoffs, long lines);
 
 static char *
 a_mps_ct_plain_from_ct(char const *cth){
@@ -338,7 +338,7 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
    /* TODO using part "1" for decrypted content is a hack */
    if(ip->m_partstring == NIL)
       ip->m_partstring = UNCONST(char*,n_1);
-   a__mps_new(ip, &np, offs, NIL);
+   a_mps__new(ip, &np, offs, NIL);
 
    lines = 0;
    part = 0;
@@ -361,11 +361,11 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
       if(line[boundlen] == '\n'){
          offs = ftell(ibuf);
          if(part > 0){
-            a__mps_end(&np, offs - boundlen - 2, lines);
-            a__mps_new(ip, &np, offs - boundlen - 2, NIL);
+            a_mps__end(&np, offs - boundlen - 2, lines);
+            a_mps__new(ip, &np, offs - boundlen - 2, NIL);
          }
-         a__mps_end(&np, offs, 2);
-         a__mps_new(ip, &np, offs, &part);
+         a_mps__end(&np, offs, 2);
+         a_mps__new(ip, &np, offs, &part);
          lines = 0;
          continue;
       }
@@ -381,15 +381,15 @@ a_mps_multipart(struct message *zmp, struct mimepart *ip,
          continue;
       offs = ftell(ibuf);
       if(part != 0){
-         a__mps_end(&np, offs - boundlen - 4, lines);
-         a__mps_new(ip, &np, offs - boundlen - 4, NIL);
+         a_mps__end(&np, offs - boundlen - 4, lines);
+         a_mps__new(ip, &np, offs - boundlen - 4, NIL);
       }
-      a__mps_end(&np, offs + cnt, 2);
+      a_mps__end(&np, offs + cnt, 2);
       break;
    }
    if(np){
       offs = ftell(ibuf);
-      a__mps_end(&np, offs, lines);
+      a_mps__end(&np, offs, lines);
    }
 
    for(np = ip->m_multipart; np != NIL; np = np->m_nextpart)
@@ -405,7 +405,7 @@ jleave:
 }
 
 static void
-a__mps_new(struct mimepart *ip, struct mimepart **np, off_t offs, int *part){
+a_mps__new(struct mimepart *ip, struct mimepart **np, off_t offs, int *part){
    struct mimepart *pp;
    NYD2_IN;
 
@@ -442,7 +442,7 @@ a__mps_new(struct mimepart *ip, struct mimepart **np, off_t offs, int *part){
 }
 
 static void
-a__mps_end(struct mimepart **np, off_t xoffs, long lines){
+a_mps__end(struct mimepart **np, off_t xoffs, long lines){
    off_t offs;
    NYD_IN;
 
