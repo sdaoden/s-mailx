@@ -325,33 +325,41 @@ else
 		# The actual hardware
 		printf 'all:\n' > t.mk.io
 		if ( ${MAKE} -j 10 -f t.mk.io ) >/dev/null 2>&1; then
-			if command -v nproc >/dev/null 2>&1; then
+			JOBNO=
+			if [ -z "${JOBNO}" ] && command -v nproc >/dev/null 2>&1; then
 				i=$(nproc 2>/dev/null)
 				[ ${?} -eq 0 ] && JOBNO=${i}
-			else
+			fi
+			# FreeBSD?
+			if [ -z "${JOBNO}" ] && command -v cpuset >/dev/null 2>&1 && (cpuset --count) >/dev/null 2>&1; then
+				i=$(cpuset --count 2>/dev/null)
+				[ ${?} -eq 0 ] && JOBNO=${i}
+			fi
+			# Many (but may reflect global, not the processes' reality)
+			if [ -z "${JOBNO}" ] && command -v getconf >/dev/null 2>&1; then
 				i=$(getconf _NPROCESSORS_ONLN 2>/dev/null)
-				j=${?}
-				if [ ${j} -ne 0 ]; then
+				[ ${?} -eq 0 ] && JOBNO=${i}
+				if [ -z "${JOBNO}" ]; then
+					# OpenBSD
 					i=$(getconf NPROCESSORS_ONLN 2>/dev/null)
-					j=${?}
-				fi
-				if [ ${j} -ne 0 ]; then
-					# SunOS 5.9 ++
-					if command -v kstat >/dev/null 2>&1; then
-						i=$(PERL5OPT= kstat -p cpu | ${awk} '
-								BEGIN{no=0; FS=":"}
-								{if($2 > no) max = $2; next}
-								END{print ++max}
-							' 2>/dev/null)
-						j=${?}
-					fi
-				fi
-				if [ ${j} -eq 0 ] && [ -n "${i}" ]; then
-					printf 'Job number derived from CPU number: %s\n' ${i}
-					JOBNO=${i}
+					[ ${?} -eq 0 ] && JOBNO=${i}
 				fi
 			fi
-			[ "${JOBNO}" -eq 0 ] && JOBNO=1
+			# SunOS 5.9 ++
+			if [ -z "${JOBNO}" ] && command -v kstat >/dev/null 2>&1; then
+				i=$(PERL5OPT= kstat -p cpu | ${awk} '
+						BEGIN{no=0; FS=":"}
+						{if($2 > no) max = $2; next}
+						END{print ++max}
+					' 2>/dev/null)
+				[ ${?} -eq 0 ] && JOBNO=${i}
+			fi
+			if [ -n "${JOBNO}" ]; then
+				printf 'Job number derived from CPU number: %s\n' ${JOBNO}
+			else
+				printf 'Unable to detect CPU number, using one job\n'
+				JOBNO=1
+			fi
 		fi
 	}
 fi
