@@ -1,5 +1,8 @@
 /*@ Shared implementation of associative map-alike containers.
  *@ Include once, define a_TYPE correspondingly, include again.
+ *@ todo Could be using a deque not array for large sizes (ie create assoc_map
+ *@ todo that stores the ** and sizes, make it base pointer, and turn it to
+ *@ todo ** of assoc_map that store the ** when sizes get huge.
  *@ xxx Can be optimized, some functions be made inline wrappers.
  *
  * Copyright (c) 2001 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
