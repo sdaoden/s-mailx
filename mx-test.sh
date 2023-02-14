@@ -3330,23 +3330,22 @@ t_ifelse() { #{{{
 		\else;echo 1.ok;\
 		\end
 	\set xyz
-	\if ! -N xyz; echo 2.err-1; \
-		\elif -Z xyz;echo 2.err-2;\
-		\elif -n "$xyz"	  ;	 	echo 2.err-3	 ; 	  \
-		\elif ! -z "$xyz"		 ;		  echo 2.err-4   ;	 \
-		\else;echo 2.ok;\
-		\end
+	\i ! -N xyz; echo 2.err-1; \
+		\eli -Z xyz;echo 2.err-2;\
+		\eli -n $xyz	  ;	 	echo 2.err-3	 ; 	  \
+		\eli ! -z $xyz		 ;		  echo 2.err-4   ;	 \
+		\el;echo 2.ok;\
+		\en
 	\set xyz=notempty
 	\if ! -N xyz; echo 3.err-1; \
-		\elif -Z xyz;echo 3.err-2;\
-		\elif ! -n "$xyz";echo 3.err-3;\
-		\elif -z "$xyz";echo 3.err-4;\
-		\else;echo 3.ok;\
-		\end
+		\eli -Z xyz;echo 3.err-2;\
+		\eli ! -n $xyz;echo 3.err-3;\
+		\eli -z $xyz;echo 3.err-4;\
+		\el;echo 3.ok;\
+		\en
 	\if $xyz != notempty;echo 4.err-1;else;echo 4.ok;\end
 	\if $xyz == notempty;echo 5.ok;else;echo 5.err-1;\end
 	__EOT
-
 	cke0 NnZz_whiteout 0 ./tNnZz_whiteout '4280687462 25'
 
 	#{{{ # TODO t_ifelse: individual tests as for NnZz_whiteout
