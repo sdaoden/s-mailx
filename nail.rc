@@ -17,14 +17,14 @@
 
 ## Variables {{{
 
-# The standard POSIX 2008/Cor 2-2016 mandates these initial settings
-# (* denotes built-in changes, unsupported in brackets):
+# The standard POSIX.1-2017 mandates these initial settings
+# (unsupported in brackets, deviations in parenthesis):
 # [a]   noallnet, [noappend], asksub, noaskbcc, noaskcc, noautoprint,
-# [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
-# [f-i] noflipr, nofolder, header, *nohold, noignore, noignoreeof,
-# [j-o] *nokeep, *nokeepsave, nometoo, [noonehop], nooutfolder,
-# [p-r] nopage, prompt="? ", noquiet, norecord,
-# [s]   save, nosendwait, noshowto, nosign, noSign,
+# [b-f] nobang, nocmd, nocrt, nodebug, nodot, escape='~', noflipr, nofolder,
+# [g-i] header, (no)hold, noignore, noignoreeof, indentprefix=$'\t',
+# [j-o] (no)keep, (no)keepsave, nometoo, [noonehop], nooutfolder,
+# [p-r] nopage, prompt='? ', noquiet, norecord,
+# [s]   save, noscreen, (no)sendwait, noshowto, noSign, nosign,
 # [t-z] toplines="5"
 #
 # - In this implementation:

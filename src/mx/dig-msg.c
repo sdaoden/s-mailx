@@ -190,7 +190,7 @@ a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct
 				fputs(_(
 					"header\n"
 					"  insert field content (210; 501/505/506)\n"
-					"  headerpick context (210; 501);\n"
+					"  headerpick context (210; 501/505);\n"
 					"  list [field] (210; [501]);\n"
 					"  remove field (210; 501/505)\n"
 					"  remove-at field position (210; 501/505)\n"
