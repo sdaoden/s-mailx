@@ -109,7 +109,7 @@ static void a_fop__expand(struct a_fop_ctx *fcp);
 static void a_fop__ftruncate(struct a_fop_ctx *fcp);
 static void a_fop__lock(struct a_fop_ctx *fcp);
 static void a_fop__mkdir(struct a_fop_ctx *fcp);
-static void a_fop__mktmp(struct a_fop_ctx *fcp);
+static void a_fop__mktemp(struct a_fop_ctx *fcp);
 static void a_fop__open(struct a_fop_ctx *fcp);
 static void a_fop__pass(struct a_fop_ctx *fcp);
 static void a_fop__rename(struct a_fop_ctx *fcp);
@@ -128,7 +128,7 @@ static struct a_fop_subcmd const a_fop_subcmds[] = {
 #endif
 		{&a_fop__lock, a_FOP_MOD_NOFOLLOW, "lock"},
 	{&a_fop__mkdir, 0, "mkdir"},
-	{&a_fop__mktmp, 0, "mktmp"},
+	{&a_fop__mktemp, 0, "mktemp"},
 	{&a_fop__open, 0, "open"},
 	{&a_fop__pass, 0, "pass"},
 	{&a_fop__rename, 0, "rename\0"},
@@ -429,7 +429,7 @@ jleave:
 }
 
 static void
-a_fop__mktmp(struct a_fop_ctx *fcp){
+a_fop__mktemp(struct a_fop_ctx *fcp){
 	struct mx_fs_tmp_ctx *fstcp;
 	FILE *fp;
 	char const *tdir;
