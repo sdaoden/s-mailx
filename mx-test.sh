@@ -7384,6 +7384,8 @@ t_maildir() { # {{{
 		' "${MBOX}" .tmdir1 .tmdir1 |
 		${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst 2>${E0}
 	cke0 2 0 .tlst '3442251309 8991'
+	[ -d .tmdir1 ] && [ -d .tmdir1/tmp ] && [ -d .tmdir1/new ] && [ -d .tmdir1/cur ]
+	ck_ex0 2-isdircpl ${?}
 
 	printf 'File "%s"
 			copy * "maildir://%s"
@@ -11899,7 +11901,8 @@ application/pdf; echo p-7-1\\;< %%s %s\\;echo p-7-2;test = [ "$XY" = 3 ];\\
 # stdin
 application/pdf;echo hidden;x-mailx-ignore
 application/pdf;echo hidden;copiousoutput;x-mailx-ignore
-application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
+application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort; test = [ -z "$XY" ]
+application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2\\;echo ,; x-mailx-last-resort
 	' "${cat}" > ./t.mailcap
 
 	#{{{
@@ -11916,10 +11919,15 @@ application/pdf; echo pre\\;%s\\;echo post; x-mailx-last-resort
 \unmimetype application/pdf
 \mimeview
 \echo =5
+\mimetype application/pdf pdf
+\environ set XY=y
+\mimeview
+\echo =6
 ' \
 		-Rf ./t12_13 > ./t13 2>${E0}
 	#}}}
-	cke0 13 0 ./t13 '1548239330 1957'
+	cke0 13 0 ./t13 '1163813872 2433'
+	${cmp} ./t14_1 ./t14_2 >/dev/null 2>&1; ck_ex0 14-estat ${?}
 
 	t_epilog "${@}"
 } # }}}
