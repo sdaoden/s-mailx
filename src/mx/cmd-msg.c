@@ -853,7 +853,7 @@ c_mboxit(void *vp){
    NYD_IN;
 
    if(n_pstate & n_PS_EDIT){
-      n_err(_("mbox: can only be used in a system mailbox\n")); /* TODO */
+      n_err(_("`mbox': is only usable in primary folder\n")); /* TODO */
       goto jleave;
    }
 
@@ -878,7 +878,7 @@ c_preserve(void *vp){
 
    rv = su_EX_ERR;
    if(n_pstate & n_PS_EDIT){
-      fprintf(n_stdout, _("preserve: cannot be used in a system mailbox\n"));
+      n_err(_("`hold' / `preserve': is only usable in primary folder\n"));
       goto jleave;
    }
 
@@ -887,7 +887,8 @@ c_preserve(void *vp){
    for(ip = msgvec; *ip != 0; ++ip){
       mp = &message[*ip - 1];
       mp->m_flag |= MPRESERVE;
-      mp->m_flag &= ~MBOX;
+      /* Strip MDELETED, even though MPRESERVE has higher priority anyway */
+      mp->m_flag &= ~(MBOX | MDELETED);
       setdot(mp, TRU1);
    }
 
