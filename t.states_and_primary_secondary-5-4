@@ -1,5 +1,13 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: ex1@am.ple
+Subject: s1
+Status: O
+
+b1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
 From: ex3@am.ple
 Subject: s3
 Status: O

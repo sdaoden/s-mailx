@@ -1,0 +1,49 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: ex1@am.ple
+Subject: s1
+Status: O
+
+b1
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: ex2@am.ple
+Subject: s2
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo-1>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+Status: O
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+b2, l1
+
+			b2, l3
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>b2, l1
+
+			b2, l3<BR></BODY></HTML>
+
+--=BOUNDIN=--
+
+--=BOUNDOUT=
+Content-Type: text/troff
+
+Golden Brown
+
+--=BOUNDOUT=
+Content-Type: text/x-uuencode
+
+Aprendimos a quererte
+--=BOUNDOUT=--
+
