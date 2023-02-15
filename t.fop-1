@@ -1,6 +1,8 @@
 ===T1
 0/NONE :./t1.1:
 0/NONE ::
+0/NONE :./t1.1:
+1/NODATA ::
 ===T2
 0/NONE ::
 ===readctl create 2.1
