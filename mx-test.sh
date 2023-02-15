@@ -5492,12 +5492,14 @@ t_fop() { # XXX improve writes when we have redirection {{{
 		return
 	fi
 
-	#{{{
+	# touch,stat,rm,lock,create,rewind,pass,close,remove <-> reading {{{
 	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t1 2>${E0}
 commandalias x echo '$?/$^ERRNAME :$res:'
 echo ===T1
 vput fop res touch ./t1.1;x
 unset res;vput fop res_noecho stat ./t1.1;x
+vput fop res rm ./t1.1;x
+vput fop res stat ./t1.1;x
 echo ===T2
 vput fop fd lock ./t1.2 w;x
 #xxx write on our own
@@ -5532,7 +5534,7 @@ vput fop res close $fd;x
 readctl remove $fd;x
 	__EOT
 	#}}}
-	cke0 1 0 ./t1 '3450645225 369'
+	cke0 1 0 ./t1 '2930509783 397'
 
 	if have_feat flock; then
 		#{{{
@@ -5569,7 +5571,7 @@ readctl remove $fd;x
 		t_echoskip '2:[!FLOCK]'
 	fi
 
-	#{{{
+	# open,rewind,create,close,remove,pass <-> reading {{{
 	<<- '__EOT' ${MAILX} ${ARGS} -SCAT=${cat} > ./t3 2>${E0}
 commandalias x echo '$?/$^ERRNAME :$res:'
 echo ===T1
@@ -5620,6 +5622,56 @@ fop close $fd;x 57
 	__EOT
 	#}}}
 	cke0 3 0 ./t3 '3318177702 649'
+
+	# mktemp,mkdir,rename,rmdir {{{
+	<<- '__EOT' TMPDIR=$(${pwd}) ${MAILX} ${ARGS} > ./t4 2>${E0}
+commandalias x echo '$?/$^ERRNAME:$res:'
+vput fop f1 mktemp;x
+vput fop f2 mktemp .xy;x
+\if $features =% ,regex,;\if "$f2" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
+vput fop res mkdir .ttt;x
+vput fop f3 mktemp .yz .ttt;x
+\if $features =% ,regex,;\if "$f3" =~ '(\.xy)$';\ec y=$^1;\en;\el;\ec y=.xy;\en
+eval ! echo 1 > $f1\; echo 2 > $f2\; echo 3 > $f3 # XXX w/out sh!
+vput fop res rename ./t4.1 $f1;x
+vput fop res rename ./t4.2 $f2;x
+vput fop res rename ./t4.3 $f3;x
+vput fop res rmdir .ttt;x
+	__EOT
+	#}}}
+	cke0 4 0 ./t4 '2168300126 114'
+	ck 4.1 - ./t4.1 '4219530715 2'
+	ck 4.2 - ./t4.2 '4192802898 2'
+	ck 4.3 - ./t4.3 '4164007125 2'
+
+	# ftruncate,rewind ## position write<-read+truncate {{{
+	printf 'ab\ncd\nef\n' > ./t5-in
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t5 2>${E0}
+commandalias x echo '$?/$^ERRNAME:'
+commandalias y \if '$res -eq $fd;\ec ok;\el;\ec err;\en'
+ec r,bad
+vput fop fd open ./t5-inx r;x
+vput fop fd open ./t5-in r;x
+readctl create $fd;x
+read res;x $res
+vput fop res ftruncate $fd;x <$res>
+eval !cp ./t5-in ./t5.1 # XXX our own
+vput fop res close $fd;x;y
+readctl remove $fd;x
+ec w,ok
+vput fop fd open ./t5-in w;x
+readctl create $fd;x
+read res;x $res
+vput fop res rewind $fd;x;y
+vput fop res ftruncate $fd;x;y
+eval !cp ./t5-in ./t5.2 # XXX our own
+vput fop res close $fd;x;y
+readctl remove $fd;x
+	__EOT
+	#}}}
+	cke0 5 0 ./t5 '2784691844 146'
+	ck 5.1 - ./t5.1 '533590307 9'
+	ck0 5.2 - ./t5.2
 
 	t_epilog "${@}"
 } # }}}
