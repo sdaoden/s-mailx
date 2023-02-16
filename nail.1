@@ -1485,7 +1485,10 @@ asynchronously and with some other magic attached, like
 .Bd -literal -offset indent
 set noprompt # unset prompt for this early example
 
-if "$features" !% ,+filter-html-tagsoup,
+if "$features" =% ,+filter-html-tagsoup,
+  unmimetype text/html
+  mimetype ?h text/html html htm
+else
   #set pipe-text/html='?* elinks -force-html -dump 1'
   set pipe-text/html='?* lynx -stdin -dump -force_html'
 endif
