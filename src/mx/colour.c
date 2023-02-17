@@ -394,8 +394,10 @@ a_colour_mux(char **argv){
          cmp->cm_tag = bp;
          su_mem_copy(bp, ctag, ++tl);
          /*bp += tl;*/
-      }else
+      }else if(a_COLOUR_TAG_IS_SPECIAL(ctag))
          cmp->cm_tag = ctag;
+      else
+         cmp->cm_tag = NIL;
 
       /* Non-buf stuff; default mapping */
       if(lcmp != NULL){
