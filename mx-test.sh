@@ -729,15 +729,21 @@ ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX] {{
 		check__bad=1
 	fi
 
-	csum="$(${cksum} < "${f}" | ${sed} -e 's/[	 ]\{1,\}/ /g')"
-	[ -n "${ck0}" ] && s='4294967295 0'
-	if [ "${csum}" = "${s}" ]; then
-		t_echook "${tid}"
-		check__runx=${DEVELDIFF}
+	if [ -f "${f}" ]; then
+		csum="$(${cksum} < "${f}" | ${sed} -e 's/[	 ]\{1,\}/ /g')"
+		[ -n "${ck0}" ] && s='4294967295 0'
+		if [ "${csum}" = "${s}" ]; then
+			t_echook "${tid}"
+			check__runx=${DEVELDIFF}
+		else
+			ESTAT=1
+			t_echoerr "${tid}: checksum mismatch (got ${csum})"
+			check__bad=1 check__runx=1
+		fi
 	else
 		ESTAT=1
-		t_echoerr "${tid}: checksum mismatch (got ${csum})"
-		check__bad=1 check__runx=1
+		t_echoerr "${tid}: misses expected output file: ${f}"
+		check__bad=1
 	fi
 
 	if [ -z "${check__bad}" ]; then
@@ -750,28 +756,30 @@ ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX] {{
 		x="t.${TEST_NAME}-${tid}"
 		# XXX docopy= and do-diff logic spoiled
 		docopy=
-		if [ -n "${RUN_TEST}" ]; then
-			if [ -z "${ck0}" ]; then
-				docopy=y
-			elif [ -n "${check__bad}" ]; then
-				docopy=y
+		if [ -f "${f}" ]; then
+			if [ -n "${RUN_TEST}" ]; then
+				if [ -z "${ck0}" ]; then
+					docopy=y
+				elif [ -n "${check__bad}" ]; then
+					docopy=y
+				fi
+			elif [ -n "${check__runx}${KEEP_DATA}" ]; then
+				if [ -n "${ck0}" ] && [ -n "${check__runx}" ]; then
+					docopy=y
+				elif [ -n "${KEEP_DATA}${GIT_REPO}" ]; then
+					docopy=y
+				fi
 			fi
-		elif [ -n "${check__runx}${KEEP_DATA}" ]; then
-			if [ -n "${ck0}" ] && [ -n "${check__runx}" ]; then
-				docopy=y
-			elif [ -n "${KEEP_DATA}${GIT_REPO}" ]; then
-				docopy=y
+			if [ -n "${docopy}" ]; then
+				if [ "${RUN_TEST}${check__bad}" ]; then
+					:
+				elif [ -n "${KEEP_DATA}" ] && [ -s "${f}" ]; then
+					:
+				else
+					docopy=
+				fi
+				[ -n "${docopy}" ] && ${cp} -f "${f}" ../"${x}"
 			fi
-		fi
-		if [ -n "${docopy}" ]; then
-			if [ "${RUN_TEST}${check__bad}" ]; then
-				:
-			elif [ -n "${KEEP_DATA}" ] && [ -s "${f}" ]; then
-				:
-			else
-				docopy=
-			fi
-			[ -n "${docopy}" ] && ${cp} -f "${f}" ../"${x}"
 		fi
 
 		# An empty file is not present in [test-out];
