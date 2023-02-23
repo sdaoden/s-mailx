@@ -1198,6 +1198,41 @@ t_X_Y_opt_input_go_stack() { # {{{
 	t_epilog "${@}"
 } # }}}
 
+t_more_source_go_stack() { # {{{
+	t_prolog "${@}"
+
+	# (in-account, in-folder-hook impossible in past)
+	> ./t.mbox
+	${cat} >> ./t1.rc <<'_EOT'; ${cat} >> ./t2.rc <<'_EOT'
+define ad {
+	echo ad1: $#: $*
+	source 'echo echo ecsrc|'
+	source ./t2.rc
+	echo ad2: $#: $*
+}
+account ad {
+	set inbox=./t.mbox
+	xcall ad acc
+}
+define omo {
+	echo omo1: $mailbox-display, $mailbox-basename
+	call ad omo
+	echo omo2: $mailbox-display, $mailbox-basename
+}
+set on-mailbox-open=omo
+account ad
+ec ===
+File ./t.mbox
+_EOT
+echo t2.rc
+_EOT
+
+	</dev/null ${MAILX} ${ARGS} -Y 'source ./t1.rc' > ./t1 2>${E0}
+	cke0 1 0 ./t1 '3085685359 196'
+
+	t_epilog "${@}"
+} # }}}
+
 t_X_errexit() { # {{{
 	t_prolog "${@}"
 
@@ -13696,6 +13731,7 @@ t_all() { #{{{
 	jspawn eval
 	jspawn call
 	jspawn X_Y_opt_input_go_stack
+	jspawn more_source_go_stack
 	jspawn X_errexit
 	jspawn Y_errexit
 	jspawn S_freeze
