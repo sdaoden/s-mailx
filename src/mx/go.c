@@ -753,7 +753,9 @@ jeflags:
 		}else{
 			n_err(_("%s: %s: vput: command modifier not supported\n"), n_ERROR, cdp->cd_name);
 			mx_cmd_print_synopsis(cdp, NIL);
-			flags &= ~a_VPUT;
+			nerrn = su_ERR_NOTSUP;
+			rv = -1;
+			goto jleave;
 		}
 	}
 
