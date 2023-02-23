@@ -1,0 +1,17 @@
+ad1: 1: acc
+ecsrc
+t2.rc
+ad2: 1: acc
+omo1: t.mbox, t.mbox
+ad1: 1: omo
+ecsrc
+t2.rc
+ad2: 1: omo
+omo2: t.mbox, t.mbox
+===
+omo1: t.mbox, t.mbox
+ad1: 1: omo
+ecsrc
+t2.rc
+ad2: 1: omo
+omo2: t.mbox, t.mbox
