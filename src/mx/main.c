@@ -730,6 +730,7 @@ main(int argc, char *argv[]){
 		case 'A':
 			/* Execute an account command later on */
 			mc.mc_A = avo.avo_current_arg;
+			n_PS_ROOT_BLOCK(ok_vset(account, avo.avo_current_arg));
 			break;
 		case 'a':{
 			/* Add an attachment */

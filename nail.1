@@ -191,10 +191,13 @@ Activate user
 .Ar name
 after program startup is complete (resource files loaded, only
 .Fl X
-commands to follow), and switch to its
+commands etc to follow), and switch to its
 .Mx -sx
 .Sx "primary system mailbox"
 .Pf ( Va inbox ) .
+The variable
+.Va account
+flags the account request immediately.
 Upon failure the program
 .Pf e Ic xit Ns
 s if used non-interactively, or if any of
@@ -9150,6 +9153,9 @@ and can be explicitly created or overwritten with the command
 .It Va account
 \*(RO Is set to the active
 .Ic account .
+The command line option
+.Fl A
+sets this immediately to flag the later account switch.
 .
 .Mx
 .It Va add-file-recipients
