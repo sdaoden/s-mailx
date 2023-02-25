@@ -441,7 +441,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (I | M | NOHIST | TWYSH), 0, MAC, NIL,
+	 (I | M | SC | NOHIST | TWYSH), 0, MAC, NIL,
 	 N_("<[show]|load|save|clear>, <delete> :<NO>:, or re-eval entry <NO>")},
 	{"hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(ho) In primary `folder', hold <msglist>, do not move it to *MBOX*")},

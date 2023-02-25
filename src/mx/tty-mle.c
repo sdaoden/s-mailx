@@ -4428,16 +4428,12 @@ c_history(void *vp){
 	char const **argv;
 	boole x;
 	NYD_IN;
+	ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 	if(ok_blook(line_editor_disable)){
 		n_err(_("history: *line-editor-disable* is set\n"));
 		x = FAL0;
 		goto jleave;
-	}
-
-	if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
-		mx_tty_init();
-		ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 	}
 
 	x = TRUM1;
