@@ -93,10 +93,9 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
 # ifdef mx_HAVE_KEY_BINDINGS
 	/* We have a chicken-and-egg problem with `bind' and our termcap layer, because we may not initialize the
 	 * latter automatically to allow users to specify *termcap-disable*, and let it mean exactly that.  On the
-	 * other hand users can be expected to use `bind' in resources.  Therefore bindings which involve
-	 * termcap/terminfo sequences, and which are defined before n_PSO_STARTED_CONFIG signals usability of
-	 * termcap/terminfo, will be (partially) delayed until tty_init() is called.  And we preallocate space for the
-	 * expansion of the resolved capability */
+	 * other hand users can be expected to use `bind' in resource files.  Therefore bindings which involve
+	 * termcap/terminfo sequences will be (partially) delayed until tty_init() is called.  And we preallocate space
+	 * for the expansion of the resolved capability */
 #  define a_TTY_BIND_CAPNAME_MAX 15
 #  define a_TTY_BIND_CAPEXP_ROUNDUP 16
 
@@ -312,26 +311,29 @@ struct a_tty_cell{
 
 struct a_tty_global{
 	struct a_tty_line *tg_line; /* To be able to access it from signal hdl */
+	boole tg_is_init;
+# ifndef mx_HAVE_KEY_BINDINGS
+	u8 tg__pad0[su_6432(7,3)];
+# else
+	u8 tg_bind__dummy[1];
+	boole tg_bind_isdirty;
+	boole tg_bind_isbuild;
+	u32 tg_bind_cnt; /* Overall number of bindings */
+#  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
+	char tg_bind_shcut_cancel[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+	char tg_bind_shcut_prompt_char[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+	struct a_tty_bind_ctx *tg_bind[mx__GO_INPUT_CTX_MAX1];
+	struct a_tty_bind_tree *tg_bind_tree[mx__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
+# endif
 # ifdef mx_HAVE_HISTORY
 	struct a_tty_hist *tg_hist;
 	struct a_tty_hist *tg_hist_tail;
 	uz tg_hist_size;
 	uz tg_hist_size_max;
 # endif
-# ifdef mx_HAVE_KEY_BINDINGS
-	u32 tg_bind_cnt; /* Overall number of bindings */
-	boole tg_bind_isdirty;
-	boole tg_bind_isbuild;
-#  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
-	u8 tg_bind__dummy[2];
-	char tg_bind_shcut_cancel[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-	char tg_bind_shcut_prompt_char[mx__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
-	struct a_tty_bind_ctx *tg_bind[mx__GO_INPUT_CTX_MAX1];
-	struct a_tty_bind_tree *tg_bind_tree[mx__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
-# endif
 };
 # ifdef mx_HAVE_KEY_BINDINGS
-CTA(mx__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 && su_FIELD_SIZEOF(struct a_tty_global,tg_bind__dummy) == 2,
+CTA(mx__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4,
 	"Value results in array sizes that results in bad structure layout");
 CTA(a_TTY_SHCUT_MAX > 1, "Users need at least one shortcut, plus NUL terminator");
 # endif
@@ -1116,7 +1118,7 @@ a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
 
 	/* Eliminating duplicates is expensive, but simply inacceptable so during the load of a potentially large
 	 * history file! */
-	if(n_psonce & n_PSO_LINE_EDITOR_INIT)
+	if(a_tty.tg_is_init){
 		for(thp = a_tty.tg_hist; thp != NIL; thp = thp->th_older)
 			if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
 				/* xxx Do not propagate an existing non-gabby entry to gabby */
@@ -1135,6 +1137,7 @@ a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
 					a_tty.tg_hist = othp;
 				goto jleave;
 			}
+	}
 
 	/* If ring is full, rotate */
 	if(LIKELY(a_tty.tg_hist_size < a_tty.tg_hist_size_max))
@@ -3542,8 +3545,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 	}
 
 	/* Directly resolve any termcap(5) symbol if we are already setup */
-	if((n_psonce & n_PSO_STARTED_CONFIG) &&
-			(tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) == a_TTY_BIND_RESOLVE)
+	if(a_tty.tg_is_init && (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) == a_TTY_BIND_RESOLVE)
 		a_tty_bind_resolve(tbcp);
 
 	++a_tty.tg_bind_cnt;
@@ -4244,8 +4246,11 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 void
-mx_tty_init(void){
+mx_tty_init(boole ismain){
 	NYD_IN;
+	UNUSED(ismain);
+	ASSERT(!a_tty.tg_is_init);
+	ASSERT(ismain || (n_psonce & n_PSO_STARTED_CONFIG_FILES));
 
 	if(ok_blook(line_editor_disable))
 		goto jleave;
@@ -4255,8 +4260,7 @@ mx_tty_init(void){
 	a_tty_hist_load();
 # endif
 
-	/* Force immediate resolve for anything which follows */
-	n_psonce |= n_PSO_LINE_EDITOR_INIT;
+	a_tty.tg_is_init = TRU1;
 
 # ifdef mx_HAVE_KEY_BINDINGS
 	/* `bind's (and `unbind's) done from within resource files could not be performed for real since our termcap
@@ -4318,7 +4322,7 @@ void
 mx_tty_destroy(boole xit_fastpath){
 	NYD_IN;
 
-	if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
+	if(!a_tty.tg_is_init)
 		goto jleave;
 
 # if defined mx_HAVE_KEY_BINDINGS && DVLOR(1, 0)
@@ -4338,8 +4342,6 @@ mx_tty_destroy(boole xit_fastpath){
 
 # if DVLOR(1, 0)
 	su_mem_set(&a_tty, 0, sizeof a_tty);
-
-	n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
 # endif
 
 jleave:
@@ -4353,11 +4355,10 @@ int
 	struct n_string xprompt;
 	sz nn;
 	NYD_IN;
-
 	ASSERT(!ok_blook(line_editor_disable));
-	if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
-		mx_tty_init();
-	ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
+
+	if(!a_tty.tg_is_init)
+		mx_tty_init(FAL0);
 
 	su_mem_set(&tl, 0, sizeof tl);
 	tl.tl_goinflags = gif;
@@ -4392,13 +4393,12 @@ int
 void
 mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
 	NYD_IN;
+	ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) || (gif & mx_GO_INPUT_HIST_GABBY));
 	UNUSED(s);
 	UNUSED(gif);
 
-	ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) || (gif & mx_GO_INPUT_HIST_GABBY));
-
 # ifdef mx_HAVE_HISTORY
-	if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) && a_tty.tg_hist_size_max > 0 &&
+	if(*s != '\0' && a_tty.tg_is_init && a_tty.tg_hist_size_max > 0 &&
 			(!(gif & mx_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
 			 !ok_blook(line_editor_disable)){
 		struct a_tty_input_ctx_map const *ticmp;
@@ -4428,13 +4428,13 @@ c_history(void *vp){
 	char const **argv;
 	boole x;
 	NYD_IN;
-	ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 	if(ok_blook(line_editor_disable)){
 		n_err(_("history: *line-editor-disable* is set\n"));
 		x = FAL0;
 		goto jleave;
-	}
+	}else if(!a_tty.tg_is_init)
+		mx_tty_init(FAL0);
 
 	x = TRUM1;
 	if(*(argv = vp) == NIL)
@@ -4611,8 +4611,9 @@ jleave:
 
 # if 0
 void
-mx_tty_init(void){
+mx_tty_init(boole ismain){
 	NYD_IN;
+	UNUSED(ismain);
 	NYD_OU;
 }
 
