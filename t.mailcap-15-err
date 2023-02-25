@@ -1,0 +1,1 @@
+reproducible_build: $MAILCAPS: ./t.mailcap: missing SUBTYPE, assuming /* (any): text

@@ -1,0 +1,35 @@
+[-- Message  1 -- 36 lines, 662 bytes --]:
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: ex@am.ple
+Subject: sub
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+
+[-- #1.1 16/284 --]
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+
+[-- #1.1.1 5/79 --]
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+t<text/plain> cset<'utf-8'> bnd<''>
+
+[-- #1.1.2 5/108 --]
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+t<text/html> cset<'utf-8'> bnd<''>
+
+[-- #1.2 4/39 7bit --]
+Content-Type: text/troff
+
+t<text/troff> cset<''> bnd<''>
+
+[-- #1.3 3/52 7bit --]
+Content-Type: text/x-uuencode
+
+t<text/x-uuencode> cset<''> bnd<''>
