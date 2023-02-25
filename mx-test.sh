@@ -4044,85 +4044,85 @@ t_localopts() { # {{{
 
 	#{{{ Nestable conditions test
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	define t2 {
-		echo in: t2
-		set t2=t2
-		echo $t2
-	}
-	define t1 {
-		echo in: t1
-		set gv1=gv1
-		localopts on
-		set lv1=lv1 lv2=lv2
-		set lv3=lv3
-		call t2
-		localopts off
-		set gv2=gv2
-		echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
-	}
-	define t0 {
-		echo in: t0
-		call t1
-		echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
-		echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
-	}
-	account trouble {
-		echo in: trouble
-		call t0
-	}
+define t2 {
+	echo in: t2
+	set t2=t2
+	echo $t2
+}
+define t1 {
+	echo in: t1
+	set gv1=gv1
+	localopts on
+	set lv1=lv1 lv2=lv2
+	set lv3=lv3
+	call t2
+	localopts off
+	set gv2=gv2
+	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+}
+define t0 {
+	echo in: t0
+	call t1
+	echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
+}
+account trouble {
+	echo in: trouble
 	call t0
-	unset gv1 gv2
-	account trouble
-	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
-	account null
-	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+}
+call t0
+unset gv1 gv2
+account trouble
+echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+account null
+echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
 
-	#
-	define ll2 {
-		localopts $1
-		set x=2
-		echo ll2=$x
-	}
-	define ll1 {
-		set y=$1; shift; eval localopts $y; localopts $1; shift
-		set x=1
-		echo ll1.1=$x
-		call ll2 $1
-		echo ll1.2=$x
-	}
-	define ll0 {
-		set y=$1; shift; eval localopts $y; localopts $1; shift
-		set x=0
-		echo ll0.1=$x
-		call ll1 $y "$@"
-		echo ll0.2=$x
-	}
-	define llx {
-		echo ----- $1: $2 -> $3 -> $4
-		echo ll-1.1=$x
-		eval localopts $1
-		call ll0 "$@"
-		echo ll-1.2=$x
-		unset x
-	}
-	define lly {
-		call llx 'call off' on on on
-		call llx 'call off' off on on
-		call llx 'call off' on off on
-		call llx 'call off' on off off
-		localopts call-fixate on
-		call llx 'call-fixate on' on on on
-		call llx 'call-fixate on' off on on
-		call llx 'call-fixate on' on off on
-		call llx 'call-fixate on' on off off
-		unset x;localopts call on
-		call llx 'call on' on on on
-		call llx 'call on' off on on
-		call llx 'call on' on off on
-		call llx 'call on' on off off
-	}
-	call lly
-	__EOT
+#
+define ll2 {
+	localopts $1
+	set x=2
+	echo ll2=$x
+}
+define ll1 {
+	set y=$1; shift; eval localopts $y; localopts $1; shift
+	set x=1
+	echo ll1.1=$x
+	call ll2 $1
+	echo ll1.2=$x
+}
+define ll0 {
+	set y=$1; shift; eval localopts $y; localopts $1; shift
+	set x=0
+	echo ll0.1=$x
+	call ll1 $y "$@"
+	echo ll0.2=$x
+}
+define llx {
+	echo ----- $1: $2 -> $3 -> $4
+	echo ll-1.1=$x
+	eval localopts $1
+	call ll0 "$@"
+	echo ll-1.2=$x
+	unset x
+}
+define lly {
+	call llx 'call off' on on on
+	call llx 'call off' off on on
+	call llx 'call off' on off on
+	call llx 'call off' on off off
+	localopts call-fixate on
+	call llx 'call-fixate on' on on on
+	call llx 'call-fixate on' off on on
+	call llx 'call-fixate on' on off on
+	call llx 'call-fixate on' on off off
+	unset x;localopts call on
+	call llx 'call on' on on on
+	call llx 'call on' off on on
+	call llx 'call on' on off on
+	call llx 'call on' on off off
+}
+call lly
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '4016155249 1246'
 

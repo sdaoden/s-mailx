@@ -1173,15 +1173,10 @@ je_expandargv:
 	}
 
 	/* Now we can set the account */
-	if(mc.mc_A != NIL){
-		char const *a[2];
-
-		a[0] = mc.mc_A;
-		a[1] = NIL;
-		if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
-			n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
-			goto jleave;
-		}
+	if(mc.mc_A != NIL && !mx_account_enter(mc.mc_A, TRU1) &&
+			(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
+		n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
+		goto jleave;
 	}
 
 	/*
