@@ -632,23 +632,16 @@ jwhite:
 	/* Process the arguments to the command, depending on the type it expects */
 	UNINIT(emsg, NIL);
 
-	if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
-		emsg = N_("%s: needs an active mailbox\n");
-		goto jeflags;
+	if(UNLIKELY(!(n_psonce & n_PSO_STARTED))){
+		if((cdp->cd_caflags & mx_CMD_ARG_SC) && !(n_psonce & n_PSO_STARTED_CONFIG)){
+			emsg = N_("%s: cannot be used during startup (pre -X)\n");
+			goto jeflags;
+		}
+		if(cdp->cd_caflags & mx_CMD_ARG_S){
+			emsg = N_("%s: cannot be used during startup\n");
+			goto jeflags;
+		}
 	}
-	if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG)){
-		emsg = N_("%s: can only be used in batch or interactive mode\n");
-		goto jeflags;
-	}
-	if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
-		emsg = N_("%s: cannot be used while sending\n");
-		goto jeflags;
-	}
-	if((cdp->cd_caflags & mx_CMD_ARG_NEEDMAC) && ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO)){
-		emsg = N_("%s: can only be used in a macro\n");
-		goto jeflags;
-	}
-
 	if(cdp->cd_caflags & mx_CMD_ARG_R){
 		if(n_pstate & n_PS_COMPOSE_MODE){
 			/* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
@@ -662,13 +655,25 @@ jwhite:
 			goto jeflags;
 		}
 	}
-
-	if((cdp->cd_caflags & mx_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
-		emsg = N_("%s: cannot be used during startup\n");
-		goto jeflags;
-	}
 	if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
 		emsg = N_("%s: cannot be used in a hook running in a child process\n");
+		goto jeflags;
+	}
+	if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG)){
+		emsg = N_("%s: can only be used in batch or interactive mode\n");
+		goto jeflags;
+	}
+	if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
+		emsg = N_("%s: cannot be used while sending\n");
+		goto jeflags;
+	}
+
+	if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
+		emsg = N_("%s: needs an active mailbox\n");
+		goto jeflags;
+	}
+	if((cdp->cd_caflags & mx_CMD_ARG_NEEDMAC) && ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO)){
+		emsg = N_("%s: can only be used in a macro\n");
 		goto jeflags;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
@@ -1828,7 +1833,8 @@ jforce_stdin:
 	n_pstate &= ~n_PS_READLINE_NL;
 	/* xxx once differentiated further if we `source'd */
 	iftype = (n_psonce & n_PSO_STARTED) ? "READ" : "LOAD";
-	if(!(n_pstate & n_PS_ROBOT) && (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) == (n_PSO_INTERACTIVE | n_PSO_STARTED))
+	if(!(n_pstate & n_PS_ROBOT) &&
+			(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) == (n_PSO_INTERACTIVE | n_PSO_STARTED))
 		f |= a_HISTOK;
 	if(!(f & a_HISTOK) || (gif & mx_GO_INPUT_FORCE_STDIN))
 		gif |= mx_GO_INPUT_PROMPT_NONE;
