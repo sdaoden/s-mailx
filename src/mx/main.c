@@ -1157,19 +1157,16 @@ je_expandargv:
 	}else if(argv[i] != NIL)
 		goto je_expandargv;
 
+	/* */
+	n_psonce |= n_PSO_STARTED_CONFIG_FILES;
+
 	/* We had to wait until the resource files are loaded and any command line setting has been restored, but get
 	 * the termcap up and going before we switch account or running commands */
 	if(n_psonce & n_PSO_INTERACTIVE){
 #ifdef mx_HAVE_TCAP
 		mx_termcap_init();
 #endif
-		/* We have to fake some state of readiness in order to allow resolving of lazy `bind's (from config
-		 * files); this is ok and allows one call to tty_init() (and to tty_destroy()) instead of two according
-		 * pairs for send and receive mode, which also had the ugly effect that -A account switch and -X
-		 * commands ran without properly setup tty/MLE! */
-		n_psonce |= n_PSO_STARTED_CONFIG;
-		mx_tty_init();
-		n_psonce ^= n_PSO_STARTED_CONFIG;
+		mx_tty_init(TRU1);
 	}
 
 	/* Now we can set the account */
