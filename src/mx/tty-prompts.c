@@ -82,26 +82,6 @@ mx_tty_yesorno(char const * volatile prompt, boole noninteract_default){
 
 #ifdef mx_HAVE_NET
 char *
-mx_tty_getuser(char const * volatile query){ /* TODO v15-compat obsolete */
-	uz lsize;
-	char *ldat, *user;
-	NYD_IN;
-
-	if(query == NIL)
-		query = _("User: ");
-
-	mx_fs_linepool_aquire(&ldat, &lsize);
-	if(mx_go_input(mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_NL_ESC, query, &ldat, &lsize, NIL, NIL) >= 0)
-		user = savestr(ldat);
-	else
-		user = NIL;
-	mx_fs_linepool_release(ldat, lsize);
-
-	NYD_OU;
-	return user;
-}
-
-char *
 mx_tty_getpass(char const *query){
 	uz lsize;
 	char *ldat, *pass;
