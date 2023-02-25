@@ -138,9 +138,10 @@ FL int mx_xcall(void *vp, void *lospopts);
 FL int c_call_if(void *vp);
 
 /* Accounts: `account', `unaccount' */
+FL boole mx_account_enter(char const *name, boole ismain);
 FL void mx_account_leave(void);
-FL int c_account(void *v);
-FL int c_unaccount(void *v);
+FL int c_account(void *vp);
+FL int c_unaccount(void *vp);
 
 /* `localopts', `shift', `return' */
 FL int c_localopts(void *vp);

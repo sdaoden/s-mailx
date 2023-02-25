@@ -189,12 +189,13 @@ This option overrides
 Activate user
 .Ic account
 .Ar name
-after program startup is complete (resource files loaded, only
+after program startup (resource files loaded,
 .Fl X
 commands etc to follow), and switch to its
 .Mx -sx
 .Sx "primary system mailbox"
-.Pf ( Va inbox ) .
+.Pf ( Va inbox )
+once startup is completed.
 The variable
 .Va account
 flags the account request immediately.
@@ -4207,6 +4208,9 @@ a possibly installed
 will be run, and
 .Va account
 will be updated.
+An early use of this command will have its system mailbox open delayed
+until program startup is completed (see
+.Fl A ) .
 The two argument form creates a new account macro as via
 .Ic define .
 .

@@ -2877,73 +2877,15 @@ c_call_if(void *vp){
 	return rv;
 }
 
-FL void
-mx_account_leave(void){
-	/* Note no care for *account* here */
+FL boole
+mx_account_enter(char const *name, boole ismain){
 	struct a_amv_mac_call_args *amcap;
+	int i, oqf, nqf;
 	struct a_amv_mac *amp;
-	char const *cp;
-	char *var;
 	NYD_IN;
 
-	if(a_amv_acc_curr != NIL){
-		/* Is there a cleanup hook? */
-		var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
-		if((cp = n_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
-			if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
-				amcap = su_LOFI_CALLOC(sizeof *amcap);
-				amcap->amca_name = cp;
-				amcap->amca_amp = amp;
-				amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
-				amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
-				amcap->amca_no_xcall = TRU1;
-				amcap->amca_pospar = &amcap->amca__pospar;
-				amcap->amca_re_match = &amcap->amca__re_match;
-				n_pstate |= n_PS_HOOK;
-				(void)a_amv_mac_exec(amcap, NIL);
-				n_pstate &= ~n_PS_HOOK_MASK;
-			}else
-				n_err(_("*on-account-leave* hook %s does not exist\n"), n_shexp_quote_cp(cp, FAL0));
-		}
-
-		/* `localopts'? */
-		if(a_amv_acc_curr->am_lopts != NIL)
-			a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
-
-		/* For accounts this lingers */
-		--a_amv_acc_curr->am_refcnt;
-		if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
-			a_amv_mac_free(a_amv_acc_curr);
-	}
-
-	NYD_OU;
-}
-
-FL int
-c_account(void *v){
-	struct a_amv_mac_call_args *amcap;
-	struct a_amv_mac *amp;
-	char **args;
-	int rv, i, oqf, nqf;
-	NYD_IN;
-
-	rv = 1;
-
-	if((args = v)[0] == NIL){
-		rv = (a_amv_mac_show(a_AMV_MF_ACCOUNT, NIL) == FAL0);
-		goto jleave;
-	}
-
-	if(args[1] != NIL){
-		if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
-			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
-			goto jleave;
-		}
-		if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
-			n_err(_("account: cannot use reserved name: %s\n"), ACCOUNT_NULL);
-			goto jleave;
-		}
-		rv = (a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT) == FAL0);
+	if((amp = a_amv_acc_curr) != NIL && !su_cs_cmp(amp->am_name, name)){
+		n_err(_("account: account already active: %s\n"), name);
 		goto jleave;
 	}
 
@@ -2954,9 +2896,10 @@ c_account(void *v){
 
 	save_mbox_for_possible_quitstuff();
 
-	amp = NIL;
-	if(su_cs_cmp_case(args[0], ACCOUNT_NULL) != 0 && (amp = a_amv_mac_lookup(args[0], NIL, a_AMV_MF_ACCOUNT)) == NIL){
-		n_err(_("account: account does not exist: %s\n"), args[0]);
+	if(!su_cs_cmp_case(name, ACCOUNT_NULL))
+		amp = NIL;
+	else if((amp = a_amv_mac_lookup(name, NIL, a_AMV_MF_ACCOUNT)) == NIL){
+		n_err(_("account: account does not exist: %s\n"), name);
 		goto jleave;
 	}
 
@@ -2986,42 +2929,135 @@ c_account(void *v){
 			mx_account_leave();
 			n_PS_ROOT_BLOCK(ok_vclear(account));
 			n_err(_("account: failed to switch to account: %s\n"), amp->am_name);
+			amp = NIL;
 			goto jleave;
 		}
 	}else
 		n_PS_ROOT_BLOCK(ok_vclear(account));
 
-	/* Otherwise likely initial setfile() in a_main_rcv_mode() will pick up */
+	/* Otherwise setfile("%") of a_main_rcv_mode() will pick up */
+	UNUSED(ismain);
 	if(n_psonce & n_PSO_STARTED){
-		ASSERT(!(n_pstate & n_PS_HOOK_MASK));
 		nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
 		restorequitflags(oqf);
 		i = setfile("%", FEDIT_SYSBOX | FEDIT_ACCOUNT);
 		restorequitflags(nqf);
-		if(i < 0)
+		if(i < 0){
+			amp = NIL;
 			goto jleave;
+		}
 		temporary_on_mailbox_open(FAL0);
-		if(i != 0 && !ok_blook(emptystart)) /* Avoid annoying "double message" */
+		if(i != 0 && !ok_blook(emptystart)){ /* Avoid annoying "double message" */
+			amp = NIL;
 			goto jleave;
+		}
 		n_folder_announce(n_ANNOUNCE_CHANGE);
 	}
 
-	rv = 0;
+jleave:
+	NYD_OU;
+	return (amp != NIL);
+}
+
+FL void
+mx_account_leave(void){
+	/* Note no care for *account* here */
+	struct a_amv_mac_call_args *amcap;
+	struct a_amv_mac *amp;
+	char const *cp;
+	char *var;
+	NYD_IN;
+
+	if(a_amv_acc_curr == NIL)
+		goto jleave;
+
+	/* Is there a cleanup hook? */
+	var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
+	if((cp = n_var_vlook(var, FAL0)) != NIL || (cp = ok_vlook(on_account_cleanup)) != NIL){
+		if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) != NIL){
+			amcap = su_LOFI_CALLOC(sizeof *amcap);
+			amcap->amca_name = cp;
+			amcap->amca_amp = amp;
+			amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
+			amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+			amcap->amca_no_xcall = TRU1;
+			amcap->amca_pospar = &amcap->amca__pospar;
+			amcap->amca_re_match = &amcap->amca__re_match;
+			n_pstate |= n_PS_HOOK;
+			(void)a_amv_mac_exec(amcap, NIL);
+			n_pstate &= ~n_PS_HOOK_MASK;
+		}else
+			n_err(_("*on-account-leave* hook %s does not exist\n"), n_shexp_quote_cp(cp, FAL0));
+	}
+
+	/* `localopts'? */
+	if(a_amv_acc_curr->am_lopts != NIL)
+		a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+
+	/* For accounts this lingers */
+	--a_amv_acc_curr->am_refcnt;
+	if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE){
+		ASSERT(a_amv_acc_curr->am_refcnt == 0);
+		a_amv_mac_free(a_amv_acc_curr);
+	}
+
+jleave:
+	NYD_OU;
+}
+
+FL int
+c_account(void *vp){
+	char const **args;
+	int rv;
+	NYD_IN;
+
+	rv = su_EX_ERR;
+
+	if((args = vp)[0] == NIL){
+		if(a_amv_mac_show(a_AMV_MF_ACCOUNT, NIL))
+			rv = su_EX_OK;
+		goto jleave;
+	}
+
+	if(args[1] != NIL){
+		if(args[1][0] != '{' || args[1][1] != '\0' || args[2] != NIL){
+			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("account"), NIL);
+			goto jleave;
+		}
+		if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
+			n_err(_("account: cannot use reserved name: %s\n"), ACCOUNT_NULL);
+			goto jleave;
+		}
+
+		if(a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT))
+			rv = su_EX_OK;
+		goto jleave;
+	}
+
+	if(n_pstate & n_PS_HOOK_MASK){
+		n_err(_("account: cannot change account from within a hook\n"));
+		goto jleave;
+	}
+
+	if(mx_account_enter(args[0], FAL0))
+		rv = su_EX_OK;
+
 jleave:
 	NYD_OU;
 	return rv;
 }
 
 FL int
-c_unaccount(void *v){
+c_unaccount(void *vp){
+	char const **args;
 	int rv;
-	char **args;
 	NYD_IN;
 
-	rv = 0;
-	args = v;
+	rv = su_EX_OK;
+	args = vp;
 	do
-		rv |= !a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT);
+		if(!a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT))
+			rv = su_EX_ERR;
 	while(*++args != NIL);
 
 	NYD_OU;
