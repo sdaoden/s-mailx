@@ -12032,6 +12032,12 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 	cke0 13 0 ./t13 '1163813872 2433'
 	${cmp} ./t14_1 ./t14_2 >/dev/null 2>&1; ck_ex0 14-estat ${?}
 
+	#
+	gmX from 'ex@am.ple' subject sub > ./t.mbox
+	printf 'text;echo "t<%%t> cset<%%{charset}> bnd<%%{boundary}>"\n' > ./t.mailcap
+	</dev/null MAILCAPS=./t.mailcap ${MAILX} ${ARGS} -Snomailcap-disable -Y mimeview -Rf ./t.mbox > ./t15 2>${EX}
+	ck 15 0 ./t15 '3038893485 783' '3916321356 85'
+
 	t_epilog "${@}"
 } # }}}
 # }}}
