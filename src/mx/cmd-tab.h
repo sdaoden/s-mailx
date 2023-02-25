@@ -231,7 +231,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 	/* --MKTAB-START-- */
 
-	{"!", &c_shell, (M | SC | V | X | EM | TRAWDAT), 0, 0, NIL,
+	{"!", &c_shell, (M | V | X | EM | TRAWDAT), 0, 0, NIL,
 	 N_("Execute <shell-command>")},
 	{"=", &c_pdot, (A | HG | V | X | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_pdot),
 	 N_("Show message number of [<msglist>] (or the \"dot\")")},
