@@ -995,10 +995,16 @@ a_mailcap_expand_formats(char const *format, struct mimepart const *mpp,
 
          switch(c){
          case '{':
+            /* C99 */{
+               char const *tmp;
+
+               tmp = su_cs_find_c(cp, '}');
+               ASSERT(tmp != NIL); /* (parser verified) */
+               xp = savestrbuf(cp, P2UZ(tmp - cp));
+               cp = ++tmp;
+            }
+
             s = n_string_push_c(s, '\'');
-            xp = su_cs_find_c(cp, '}');
-            ASSERT(xp != NIL); /* (parser) */
-            xp = savestrbuf(cp, P2UZ(xp - cp));
             if((xp = mime_param_get(xp, mpp->m_ct_type)) != NIL){
                /* XXX Maybe we should simply shell quote that thing? */
                while((c = *xp++) != '\0'){
