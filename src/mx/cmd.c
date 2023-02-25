@@ -207,6 +207,8 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 			rv = n_string_push_cp(rv, _(" compose-mode"));
 		if(cdp->cd_caflags & mx_CMD_ARG_S)
 			rv = n_string_push_cp(rv, _(" startup"));
+		if(cdp->cd_caflags & mx_CMD_ARG_SC)
+			rv = n_string_push_cp(rv, _(" startup (pre -X)"));
 		if(cdp->cd_caflags & mx_CMD_ARG_W)
 			rv = n_string_push_cp(rv, _(" read-only-mailbox"));
 	}
