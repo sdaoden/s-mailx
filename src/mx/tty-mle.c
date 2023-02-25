@@ -1156,11 +1156,10 @@ a_tty_hist_add(char const *s, BITENUM_IS(u32,n_go_input_flags) gif){
             goto jleave;
          }
 
-   /* If ring is full, rotate*/
-   if(LIKELY(a_tty.tg_hist_size <= a_tty.tg_hist_size_max))
+   /* If ring is full, rotate */
+   if(LIKELY(a_tty.tg_hist_size < a_tty.tg_hist_size_max))
       ++a_tty.tg_hist_size;
    else{
-      --a_tty.tg_hist_size;
       if((thp = a_tty.tg_hist_tail) != NIL){
          if((a_tty.tg_hist_tail = thp->th_younger) == NIL)
             a_tty.tg_hist = NIL;
