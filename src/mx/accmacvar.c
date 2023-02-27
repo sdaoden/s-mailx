@@ -3559,17 +3559,17 @@ n_var_setup_batch_mode(void){
 
 	n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
 	n_poption |= n_PO_S_FLAG_TEMPORARY;
-	ok_vset(MAIL, su_path_null);
-	ok_vset(MBOX, su_path_null);
 	ok_bset(emptystart);
 	ok_bclear(errexit);
 	ok_bclear(header);
-	ok_vset(inbox, su_path_null);
 	ok_bclear(posix);
 	ok_bset(quiet);
 	ok_vset(sendwait, su_empty);
 	ok_bset(typescript_mode);
 	n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+	ok_vset(MAIL, su_path_null);
+	ok_vset(MBOX, su_path_null);
+	ok_vset(inbox, su_path_null);
 	n_pstate &= ~n_PS_ROBOT;
 
 	NYD2_OU;
