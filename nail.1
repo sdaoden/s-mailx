@@ -736,13 +736,23 @@ are adjusted for batch necessities, exactly as via
 .Pf no Va posix ,
 .Va quiet ,
 .Va sendwait ,
-.Va typescript-mode
-as well as to
+.Va typescript-mode .
+The following are instead
+.Ic set
+to
 .Pa /dev/null :
 .Ev MAIL ,
 .Ev MBOX
 and
 .Va inbox .
+(Without an
+.Fl A Ns
+ccount switch a later
+.Fl f
+will avoid
+.Dq opening
+.Pa /dev/null
+in receive mode.)
 The values of
 .Ev COLUMNS
 and

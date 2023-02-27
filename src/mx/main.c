@@ -1170,10 +1170,15 @@ je_expandargv:
 	}
 
 	/* Now we can set the account */
-	if(mc.mc_A != NIL && !mx_account_enter(mc.mc_A, TRU1) &&
-			(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
-		n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
-		goto jleave;
+	if(mc.mc_A != NIL){
+		/* Reset special -# batch mode setting so usual resolving kicks in */
+		if(mc.mc_folder == su_path_null)
+			mc.mc_folder = NIL;
+		if(!mx_account_enter(mc.mc_A, TRU1) &&
+				(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix))){
+			n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
+			goto jleave;
+		}
 	}
 
 	/*
