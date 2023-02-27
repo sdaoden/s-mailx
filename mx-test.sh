@@ -3071,7 +3071,7 @@ t_ifelse() { # {{{
 	if [ -n == -n ];ec 5a;el 5b;f
 	if -n == -n;ec 6a;el 6b;f
 	if [ == ];ec 7a;el 7b;f
-	if [ == [;ec 7a;el 7b;f
+	if [ == [;ec 8a;el 8b;f
 	__EOT
 	ck0 badsyntax 0 ./tbadsyn '2718347745 864'
 
@@ -3239,9 +3239,12 @@ t_ifelse() { # {{{
 	if [ ! \-n == ] ] && true;e y33.11;f
 	if ! ! [ ! [  \-n == ] ] ] && true;e y33.12;f
 	if ! ! [ [ \-n != ] ] && true ];e y33.13;f
+	#
+	if [ = = = ];e y40;f
+	if [ = == = ];e y41;f
 	__EOT
 	#}}}
-	cke0 goodsyntax 0 ./tgoodsyn '2589130917 786'
+	cke0 goodsyntax 0 ./tgoodsyn '3800596256 794'
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./tNnZz_whiteout 2>${E0}
 	\if -N xyz; echo 1.err-1; \

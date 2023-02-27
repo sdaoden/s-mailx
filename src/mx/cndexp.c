@@ -622,6 +622,7 @@ mx_cndexp_parse(struct mx_cmd_arg_ctx const *cacp, boole log_on_error){
 			case '!': op = a_CNDEXP_OP_F_UNANOT; break;
 			case '[': op = a_CNDEXP_OP_F_LBRACK; break;
 			case ']': op = a_CNDEXP_OP_F_RBRACK; break;
+			case '=': op = a_CNDEXP_OP_8B_EQ; break; /* sh(1) compat */
 			case '<': op = a_CNDEXP_OP_8B_LT; break;
 			case '>': op = a_CNDEXP_OP_8B_GT; break;
 			}
@@ -661,6 +662,7 @@ juna_hyphen_mod:
 					goto j8b;
 				c2 = '\0';
 				switch(c){
+				case '=': op = a_CNDEXP_OP_8B_EQ | a_CNDEXP_OP_F_CASE; break; /* sh(1) compat */
 				case '<': op = a_CNDEXP_OP_8B_LT | a_CNDEXP_OP_F_CASE; break;
 				case '>': op = a_CNDEXP_OP_8B_GT | a_CNDEXP_OP_F_CASE; break;
 				}
