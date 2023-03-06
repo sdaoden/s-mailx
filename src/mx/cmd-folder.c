@@ -65,20 +65,14 @@ a_cfold_file(void *v, enum fedit_mode fm){
 
 	if(*argv == NIL){
 		n_folder_announce(n_ANNOUNCE_STATUS);
-		i = 0;
-		goto jleave;
-	}
-
-	if(n_pstate & n_PS_HOOK_MASK){
-		n_err(_("Cannot change folder from within a hook\n"));
-		i = 1;
+		i = su_EX_OK;
 		goto jleave;
 	}
 
 	save_mbox_for_possible_quitstuff();
 
 	if((i = setfile(*argv, fm)) < 0){
-		i = 1;
+		i = su_EX_ERR;
 		goto jleave;
 	}
 
@@ -93,13 +87,13 @@ a_cfold_file(void *v, enum fedit_mode fm){
 		 * TODO to react&ignore this "error" (as in "if DOSTUFF" or "DOSTUFF;
 		 * TODO if $?", then "overriding an "error"), or we need a different
 		 * TODO return that differentiates */
-		i = (n_pstate & n_PS_ROBOT) ? 0 : 1;
+		i = (n_pstate & n_PS_ROBOT) ? su_EX_OK : su_EX_ERR;
 		goto jleave;
 	}
 
 	if(n_pstate & n_PS_SETFILE_OPENED)
 		n_folder_announce(n_ANNOUNCE_CHANGE);
-	i = 0;
+	i = su_EX_OK;
 jleave:
 	NYD2_OU;
 	return i;
@@ -133,15 +127,13 @@ c_newmail(void *vp){
 	NYD_IN;
 	UNUSED(vp);
 
-	val = 1;
+	val = su_EX_ERR;
 
-	if(n_pstate & n_PS_HOOK_MASK)
-		n_err(_("Cannot call `newmail' from within a hook\n"));
 #ifdef mx_HAVE_IMAP
-	else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
-		;
+	if(mb.mb_type == MB_IMAP && !imap_newmail(1)){
+	}else
 #endif
-	else if((val = setfile(mailname, FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))) == 0){
+	if((val = setfile(mailname, FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))) == 0){
 		mdot = getmdot(1);
 		setdot(&message[mdot - 1], FAL0);
 	}
