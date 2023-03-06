@@ -225,6 +225,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #define V mx_CMD_ARG_V
 #define W mx_CMD_ARG_W
 #define X mx_CMD_ARG_X
+#define NOHOOK mx_CMD_ARG_NO_HOOK
 #define NMAC mx_CMD_ARG_NEEDMAC
 #define NOHIST mx_CMD_ARG_NO_HISTORY
 #define EM mx_CMD_ARG_EM
@@ -244,7 +245,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 
 {"alias", &c_alias, (M | TWYSH), 0, MAC, NIL,
 	 N_("(a) Show all (or [-] <alias>), or append to <alias> :<data>:")},
-	{"account", &c_account, (M | TWYSH), 0, MAC, NIL,
+	{"account", &c_account, (M | NOHOOK | TWYSH), 0, MAC, NIL,
 	 N_("Create <account {>, select <account>, or list all accounts")},
 	{"addrcodec", &c_addrcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL,
 	 N_("Mail address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>")},
@@ -385,9 +386,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(F) Like `Reply', but derive `folder' from first sender")},
 {"from", &c_from, (A | TMSGLST), 0, MMNORM, NIL,
 	 N_("(f) Type (matching) headers of <msglist> (a search specification)")},
-	{"File", &c_File, (M | T | TWYRA), 0, 1, NIL,
+	{"File", &c_File, (M | T | NOHOOK | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current one")},
-	{"file", &c_file, (M | T | TWYRA), 0, 1, NIL,
+	{"file", &c_file, (M | T | NOHOOK | TWYRA), 0, 1, NIL,
 	 N_("(fi) Open a new <folder> or show the current one")},
 	{"filetype", &c_filetype, (M | TWYSH), 0, MAC, NIL,
 	 N_("Create [:<extension> <load-cmd> <save-cmd>:] or list `folder' handlers")},
@@ -395,9 +396,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(Un)Flag <msglist> (for special attention)")},
 {"followup", &c_followup, (A | I | L | LNMAC | R | SC | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(fo) Like `reply', but derive `folder' from first sender")},
-	{"Folder", &c_File, (M | T | TWYRA), 0, 1, NIL,
+	{"Folder", &c_File, (M | T | NOHOOK | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current folder")},
-	{"folder", &c_file, (M | T | TWYRA), 0, 1, NIL,
+	{"folder", &c_file, (M | T | NOHOOK | TWYRA), 0, 1, NIL,
 	 N_("(fold) Open a new <folder>, or show the current one")},
 	{"folders", &c_folders, (M | T | TWYRA), 0, 1, NIL,
 	 N_("List mailboxes below the given or the global *folder*")},
@@ -532,7 +533,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Mark <msglist> as not being read")},
 	{"new", &c_unread, (A | TMSGLST), 0, MMNDEL, NIL,
 	 N_("Mark <msglist> as not being read")},
-	{"newmail", &c_newmail, (A | T | TWYSH), 0, 0, NIL,
+	{"newmail", &c_newmail, (A | T | NOHOOK | TWYSH), 0, 0, NIL,
 	 N_("Check for new mail in current `folder'")},
 
 	{"noop", &c_noop, (A | M | TWYSH), 0, 0, NIL,
