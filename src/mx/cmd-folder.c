@@ -76,10 +76,10 @@ a_cfold_file(void *v, enum fedit_mode fm){
 		goto jleave;
 	}
 
-	ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
 	if(n_pstate & n_PS_SETFILE_OPENED)
-		temporary_on_mailbox_open(FAL0);
+		mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);
 
+	ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
 	if(i > 0){
 		/* TODO Don't report "no messages" == 1 == error when we're in, e.g.,
 		 * TODO a macro: because that recursed commando loop will terminate the
@@ -88,12 +88,12 @@ a_cfold_file(void *v, enum fedit_mode fm){
 		 * TODO if $?", then "overriding an "error"), or we need a different
 		 * TODO return that differentiates */
 		i = (n_pstate & n_PS_ROBOT) ? su_EX_OK : su_EX_ERR;
-		goto jleave;
+	}else{
+		if(n_pstate & n_PS_SETFILE_OPENED)
+			n_folder_announce(n_ANNOUNCE_CHANGE);
+		i = su_EX_OK;
 	}
 
-	if(n_pstate & n_PS_SETFILE_OPENED)
-		n_folder_announce(n_ANNOUNCE_CHANGE);
-	i = su_EX_OK;
 jleave:
 	NYD2_OU;
 	return i;

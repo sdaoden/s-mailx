@@ -9143,33 +9143,40 @@ t_e_H_L_opts() { # {{{
 	printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
 	${MAILX} ${ARGS} -Smta=test://t.mbox \
 		-r '' -X 'set from=pony3@$LOGNAME' >>${E0} 2>&1
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test size; set autosort=size showname showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome size; set autosort=size showname showto
+			end
 		}' -fH ./t.mbox > ./t2 2>>${E0}
+	cke0 2 0 ./t2 '3285796114 409'
 
-	cke0 2 0 ./t2 '3132089442 413'
-
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test subject; set autosort=subject showname showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome subject; set autosort=subject showname showto
+			end
 		}' -fH ./t.mbox > ./t3 2>${E0}
-	cke0 3 0 ./t3 '2813644801 416'
+	cke0 3 0 ./t3 '922425541 412'
 
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test from; set autosort=from showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome from; set autosort=from showto
+			end
 		}' -fH ./t.mbox > ./t4 2>${E0}
-	cke0 4 0 ./t4 '3208236297 413'
+	cke0 4 0 ./t4 '3327093881 409'
 
-	${MAILX} ${ARGS} -S on-mailbox-open=fh-test -X 'define fh-test {
-			echo fh-test to; set autosort=to showto
+	${MAILX} ${ARGS} -S on-mailbox-event=ome -X 'define ome {
+			if $1 == open
+				echo ome to; set autosort=to showto
+			end
 		}' -fH ./t.mbox > ./t5 2>${E0}
-	cke0 5 0 ./t5 '901727002 411'
+	cke0 5 0 ./t5 '3769863165 407'
 
 	ck 6 - ./t.mbox '3540578520 839'
 
 	t_epilog "${@}"
 } # }}}
 
-t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
+t_on_mailbox() { # {{{
 	t_prolog "${@}"
 
 	gm from 'ex1@am.ple' sub s1 > ./t1x.mbox
@@ -9179,52 +9186,56 @@ t_newmail_on_folder() { #{{{ (renamed to on-mailbox)
 	xfolder=$(${pwd})
 
 	#{{{
-	${MAILX} ${ARGS} -Y '#
-		set noautosort noshowto \
-			on-mailbox-open=ofo on-mailbox-newmail=ofn \
-			on-mailbox-open-+t1x.mbox=ofo-z on-mailbox-newmail-+t1x.mbox=ofn-z \
-			on-mailbox-open-+t1y.mbox=ofo-z on-mailbox-newmail-+t1y.mbox=ofn-z
-		define ofo {
-			echo "ofo as<$autosort> showto<$showto> kuh<$kuh>"
-			set autosort=to showto kuh=muh
-		}
-		define ofn {
-			echo "ofn as<$autosort> showto<$showto> kuh<$kuh>"
-			set autosort=from kuh=wuff
-			search:u
-		}
-		define ofo-z {
-			echo ofo-z; \xcall ofo
-		}
-		define ofn-z {
-			echo ofn-z; \xcall ofn
-		}
-		echo "1 as<$autosort> showto<$showto> kuh<$kuh>"
-		File ./t1x.mbox
-		echo "2 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "3 as<$autosort> showto<$showto> kuh<$kuh>"
-		!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
-		echo "4 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "5 as<$autosort> showto<$showto> kuh<$kuh>"
-		headers
-		#
-		set folder='"${xfolder}"'
-		echo "11 as<$autosort> showto<$showto> kuh<$kuh>"
-		File +t1y.mbox
-		echo "12 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "13 as<$autosort> showto<$showto> kuh<$kuh>"
-		!'"${cat}"' ./t1z.mbox >> ./t1y.mbox
-		echo "14 as<$autosort> showto<$showto> kuh<$kuh>"
-		newmail
-		echo "15 as<$autosort> showto<$showto> kuh<$kuh>"
-		headers
-		' \
-		-R > ./t1 2>${E0}
+	</dev/null ${MAILX} ${ARGS} -Y '#
+\set noautosort noshowto \
+	on-mailbox-event=ome on-mailbox-event-+t1x.mbox=ome-z on-mailbox-event-+t1y.mbox=ome-z
+\def ome {
+	\echon "ome #<$#> 1<$1> <$mailbox-basename,$mailbox-display>: "
+	\if $1 == open
+		\ec "open as<$autosort> showto<$showto> kuh<$kuh>"
+		\set autosort=to showto kuh=muh
+	\eli $1 == newmail
+		\ec "newmail as<$autosort> showto<$showto> kuh<$kuh>"
+		\set autosort=from kuh=wuff
+		\ec =newest;\sea:N;\ec =all;\sea*
+	\el
+		\ec
+	\end
+}
+\def ome-z {
+	\ec ome-z; \xcall ome "$@"
+}
+\def em {
+	\ec "$@ as<$autosort> showto<$showto> kuh<$kuh>"
+}
+\commandalias e \call em
+#
+e 1;\Fi ./t1x.mbox
+e 2;\h;\newmail
+e 3;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+e 4;\newmail
+e 5;\h
+e 6;\!'"${cat}"' ./t1y.mbox >> ./t1x.mbox
+e 7;\set header;\newmail;\unset header
+e 8;\h
+#
+\set folder='"${xfolder}"'
+#
+e 11;\Fi +t1y.mbox
+e 12;\h;\newmail
+e 13;\!'"${cat}"' ./t1z.mbox >> ./t1y.mbox
+e 14;\newmail
+e 15;\h
+#
+e 21;\Fi ./t1x.mbox
+e 22;\h;\newmail
+e 23;\!'"${cat}"' ./t1z.mbox >> ./t1x.mbox
+e 24;\newmail
+e 25;\h
+' \
+	-R > ./t1 2>${E0}
 	#}}}
-	cke0 1 0 ./t1 '3709091196 1000'
+	cke0 1 0 ./t1 '211872035 4022'
 
 	t_epilog "${@}"
 } # }}}
@@ -13760,7 +13771,7 @@ t_all() { #{{{
 	jspawn mta_aliases # (after t_expandaddr)
 	jspawn filetype
 	jspawn e_H_L_opts
-	jspawn newmail_on_folder
+	jspawn on_mailbox
 	jspawn q_t_etc_opts
 	jspawn message_injections
 	jspawn attachments
