@@ -396,6 +396,9 @@ static boole a_amv_var_check_num(char const *val, boole posnum);
 /* Verify that the given name is an acceptable variable name */
 static boole a_amv_var_check_name(char const *name, boole forenviron);
 
+/* Verify an absolute accessible dir(ectory) */
+static boole a_amv_var_check_xdir(char const **dir);
+
 /* Try to reverse lookup a name to an enum okeys mapping, zeroing avcp.
  * Updates .avc_name and .avc_hash; .avc_map is NIL if none found.
  * We may try_harder to identify name: it may be an extended chain.
@@ -1075,14 +1078,9 @@ jefrom:
 		case ok_v_HOME:
 			/* Note this gets called from main.c during initialization, and they simply set this to pw_dir
 			 * as a fallback: do not verify _that_ call.  See main.c! */
-			if(!(n_pstate & n_PS_ROOT)){
-				struct su_pathinfo pi;
-
-				if(!su_pathinfo_stat(&pi, *val) || !su_pathinfo_is_dir(&pi) ||
-						!su_path_access(*val, (su_IOPF_READ | su_IOPF_EXEC))){
-					emsg = N_("$HOME is not a directory or not accessible: %s\n");
-					goto jerr;
-				}
+			if(!(n_pstate & n_PS_ROOT) && !a_amv_var_check_xdir(val)){
+				emsg = N_("$HOME is not a(n absolute) directory or not accessible: %s\n");
+				goto jerr;
 			}
 			break;
 #ifdef mx_HAVE_IDNA
@@ -1132,15 +1130,12 @@ jefrom:
 			*val = n_string_cp(s);
 			/* n_string_drop_ownership(so); */
 			}break;
-		case ok_v_TMPDIR:{
-				struct su_pathinfo pi;
-
-				if(!su_pathinfo_stat(&pi, *val) || !su_pathinfo_is_dir(&pi) ||
-						!su_path_access(*val, su_IOPF_ACCESS_MASK)){
-					emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
-					goto jerr;
-				}
-			}break;
+		case ok_v_TMPDIR:
+			if(!a_amv_var_check_xdir(val)){
+				emsg = N_("$TMPDIR is not a(n absolute) directory or not accessible: %s\n");
+				goto jerr;
+			}
+			break;
 		case ok_v_umask:
 			if(**val != '\0'){
 				u64 uib;
@@ -1405,6 +1400,33 @@ a_amv_var_check_name(char const *name, boole forenviron){
 		n_err(_("Invalid environment variable: %s\n"), n_shexp_quote_cp(name, TRU1));
 
 jleave:
+	NYD2_OU;
+	return rv;
+}
+
+static boole
+a_amv_var_check_xdir(char const **dir){ /* XXX DIRSEP; path_canonicalize() */
+	struct su_pathinfo pi;
+	boole rv;
+	uz i;
+	char const *cp;
+	NYD2_IN;
+
+	cp = *dir;
+
+	while(cp[0] == '/' && cp[1] == '/')
+		++cp;
+
+	for(i = su_cs_len(cp); i > 1; --i)
+		if(cp[i - 1] != '/')
+			break;
+
+	*dir = cp = savestrbuf(cp, i);
+
+	rv = (su_path_is_absolute(cp) &&
+			su_pathinfo_stat(&pi, cp) && su_pathinfo_is_dir(&pi) &&
+			su_path_access(cp, (su_IOPF_READ | su_IOPF_EXEC)));
+
 	NYD2_OU;
 	return rv;
 }
