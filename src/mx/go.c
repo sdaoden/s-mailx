@@ -659,6 +659,10 @@ jwhite:
 		emsg = N_("%s: cannot be used in a hook running in a child process\n");
 		goto jeflags;
 	}
+	if((cdp->cd_caflags & mx_CMD_ARG_NO_HOOK) && (n_pstate & n_PS_HOOK_MASK)){
+		emsg = N_("%s: cannot be used within an event hook\n");
+		goto jeflags;
+	}
 	if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG)){
 		emsg = N_("%s: can only be used in batch or interactive mode\n");
 		goto jeflags;

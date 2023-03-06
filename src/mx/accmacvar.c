@@ -2889,11 +2889,6 @@ mx_account_enter(char const *name, boole ismain){
 		goto jleave;
 	}
 
-	if(n_pstate & n_PS_HOOK_MASK){
-		n_err(_("account: cannot change account from within a hook\n"));
-		goto jleave;
-	}
-
 	save_mbox_for_possible_quitstuff();
 
 	if(!su_cs_cmp_case(name, ACCOUNT_NULL))
@@ -3031,11 +3026,6 @@ c_account(void *vp){
 
 		if(a_amv_mac_def(args[0], a_AMV_MF_ACCOUNT))
 			rv = su_EX_OK;
-		goto jleave;
-	}
-
-	if(n_pstate & n_PS_HOOK_MASK){
-		n_err(_("account: cannot change account from within a hook\n"));
 		goto jleave;
 	}
 
