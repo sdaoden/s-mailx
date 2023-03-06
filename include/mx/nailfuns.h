@@ -154,9 +154,17 @@ FL int c_return(void *vp);
 FL void temporary_on_xy_hook_caller(char const *hname, char const *mac,
       boole sigs_held);
 
-/* TODO Check whether *on-mailbox-open* exists for currently active mailbox */
-FL boole temporary_on_mailbox_open(boole only_new_mail_check);
-FL void temporary_on_mailbox_close(void); /* XXX im. hack */
+/* TODO Check whether *on-mailbox-* exists for currently active mailbox;
+ * TODO enum mx_on_mailbox_event does not belong here */
+enum mx_on_mailbox_event{
+   mx_ON_MAILBOX_EVENT_CLOSE,
+   mx_ON_MAILBOX_EVENT_ENTER,
+   mx_ON_MAILBOX_EVENT_LEAVE,
+   mx_ON_MAILBOX_EVENT_NEWMAIL,
+   mx_ON_MAILBOX_EVENT_OPEN
+};
+enum{mx__ON_MAILBOX_EVENT_MAX = mx_ON_MAILBOX_EVENT_OPEN};
+FL boole mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev);
 
 /* TODO v15 drop Invoke compose hook macname
  * _hook_control(): local argument only of interest for enable=!FAL0 */
