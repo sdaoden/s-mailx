@@ -379,35 +379,48 @@ jleave:
 
 static char *
 a_shexp_tilde(char const *s){
-	struct passwd *pwp;
-	uz nl, rl;
+	uz rl, nl;
 	char const *rp, *np;
 	char *rv;
 	NYD2_IN;
 
 	if(*(rp = &s[1]) == '/' || *rp == '\0'){
 		np = ok_vlook(HOME);
-		rl = su_cs_len(rp);
+		nl = su_cs_len(np);
+		ASSERT(nl == 1 || (nl > 0 && np[nl - 1] != '/')); /* VIP var */
 	}else{
+		struct passwd *pwp;
+
 		if((rp = su_cs_find_c(np = rp, '/')) != NIL){
 			nl = P2UZ(rp - np);
 			np = savestrbuf(np, nl);
-			rl = su_cs_len(rp);
-		}else
-			rl = 0;
+		}
 
 		if((pwp = getpwnam(np)) == NIL){
 			rv = savestr(s);
 			goto jleave;
 		}
-		np = pwp->pw_dir;
+		nl = su_cs_len(np = pwp->pw_dir);
 	}
 
-	nl = su_cs_len(np);
+	if(rp == NIL)
+		rl = 0;
+	else{
+		while(*rp == '/')
+			++rp;
+		rl = su_cs_len(rp);
+	}
+
 	rv = su_AUTO_ALLOC(nl + 1 + rl +1);
 	su_mem_copy(rv, np, nl);
+
 	if(rl > 0){
-		su_mem_copy(rv + nl, rp, rl);
+		if(nl > 1) /* DIRSEP: assumes / == ROOT */
+			rv[nl++] = '/';
+		else{
+			ASSERT(*rv == '/');
+		}
+		su_mem_copy(&rv[nl], rp, rl);
 		nl += rl;
 	}
 	rv[nl] = '\0';
