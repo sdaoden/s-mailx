@@ -1054,9 +1054,13 @@ c_from(void *vp){
       goto jleave;
 
    /* Update dot before display so that the dotmark etc. are correct */
-   for(ip = msgvec; ip[1] != 0; ++ip)
-      ;
-   setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1], FAL0);
+   n = *msgvec;
+   if(ok_blook(showlast)){
+      for(ip = msgvec; ip[1] != 0; ++ip){
+      }
+      n = *ip;
+   }
+   setdot(&message[n - 1], FAL0);
 
    if((obuf = mx_fs_tmp_open(NIL, "from", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)
          ) == NIL)

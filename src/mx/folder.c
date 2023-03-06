@@ -931,8 +931,6 @@ newmailinfo(int omsgCount)
    } else
       fprintf(n_stdout, _("Loaded %d messages.\n"), msgCount);
 
-   temporary_on_mailbox_open(TRU1);
-
    mdot = getmdot(1);
 
    if(ok_blook(header) && (i = omsgCount + 1) <= msgCount){
@@ -945,6 +943,9 @@ newmailinfo(int omsgCount)
       n_msgvec[omsgCount] = 0;
       print_headers(n_msgvec, FAL0, FAL0);
    }
+
+   mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_NEWMAIL);
+
    NYD_OU;
    return mdot;
 }

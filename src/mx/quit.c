@@ -351,7 +351,7 @@ quit(boole hold_sigs_on)
    if(mb.mb_digmsg != NIL)
       mx_dig_msg_on_mailbox_close(&mb);
 
-   temporary_on_mailbox_close();
+   mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_CLOSE);
 
    /* If we are read only, we can't do anything, so just return quickly */
    /* TODO yet we cannot return quickly if resources have to be released!
@@ -522,6 +522,7 @@ jleave:
 
    if(!hold_sigs_on)
       rele_sigs();
+
    NYD_OU;
    return rv;
 }

@@ -324,7 +324,7 @@ static struct a_amv_mac *a_amv_macs[a_AMV_PRIME]; /* TODO dynamically spaced */
 /* Unroll list of currently running macro stack (XXX grrr global byypass) */
 static struct a_amv_lostack *a_amv_lopts;
 #define a_AMV_HAVE_LOPTS_AKA_LOCAL() /* TODO */\
-	(/*mx_go_ctx_is_macro() || a_amv_on_mailbox_open_lopts != NIL || */\
+	(/*mx_go_ctx_is_macro() || a_amv_on_mailbox_lopts != NIL || */\
 	/*a_amv_compose_lostack != NIL*/ a_amv_lopts != NIL)
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
@@ -338,9 +338,9 @@ static struct a_amv_pospar a_amv_pospar;
 /* Ditto, $^[#0-9].. */
 static struct a_amv_pospar a_amv_re_match;
 
-/* TODO We really deserve localopts support for *on-mailbox-open*, so hack in today via a static lostack, it should be
+/* TODO We really deserve localopts support for *on-mailbox-*, so hack in today via a static lostack, it should be
  * TODO be a field in mailbox, once that is a real multi-instance object */
-static struct a_amv_var *a_amv_on_mailbox_open_lopts;
+static struct a_amv_var *a_amv_on_mailbox_lopts;
 
 /* TODO Rather ditto (except for storage -> cmd_ctx), compose hooks */
 static struct a_amv_lostack *a_amv_compose_lostack;
@@ -2941,7 +2941,7 @@ mx_account_enter(char const *name, boole ismain){
 			amp = NIL;
 			goto jleave;
 		}
-		temporary_on_mailbox_open(FAL0);
+		mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);
 		if(i != 0 && !ok_blook(emptystart)){ /* Avoid annoying "double message" */
 			amp = NIL;
 			goto jleave;
@@ -3207,64 +3207,76 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 }
 
 FL boole
-temporary_on_mailbox_open(boole only_new_mail_check){ /* TODO v15: drop */
-	struct{
-		char const name[30];
-		u16 ok;
-	} const looks[2] = {
-		{"on-mailbox-open-", ok_v_on_mailbox_open},
-		{"on-mailbox-newmail-", ok_v_on_mailbox_newmail}
-	};
+mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev){ /* TODO v15: drop */
+	/* TODO later we must switch to lopts for enter, and unroll for leave (not only open and [final] close!) */
+	static char const a_names[mx__ON_MAILBOX_EVENT_MAX + 1][8] = {"close", "enter", "leave", "newmail", "open"};
+
 	struct a_amv_mac_call_args *amcap;
 	struct a_amv_mac *amp;
-	char const *mn, *cp;
-	boole rv, v15_compat;
+	char const *mn, *cp, *argv[2];
 	char *var;
 	uz len;
+	boole rv, v15_compat;/*v15-compat*/
 	NYD_IN;
-
-	len = su_cs_len(mailname);
-	var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-newmail-") -1 +2);
-	only_new_mail_check = !!only_new_mail_check;
+	LCTAV(mx_ON_MAILBOX_EVENT_CLOSE == 0 && mx_ON_MAILBOX_EVENT_ENTER == 1 && mx_ON_MAILBOX_EVENT_LEAVE == 2 &&
+		mx_ON_MAILBOX_EVENT_NEWMAIL == 3 && mx_ON_MAILBOX_EVENT_OPEN == 4);
 
 	rv = TRU1;
+	len = su_cs_len(mailname);
+
+	/* */
+	if(len == sizeof(su_PATH_NULL) -1 && !su_mem_cmp(mailname, su_path_null, sizeof(su_PATH_NULL))){
+		ASSERT(a_amv_on_mailbox_lopts == NIL);
+		goto j_leave;
+	}
+
+	var = su_AUTO_ALLOC((len * 2) + sizeof("on-mailbox-event-") -1 +2);
+
+	v15_compat = TRU1;
 	mn = mailname;
 jredo:
 	/* First try the fully resolved path */
-	v15_compat = TRU1;
-	su_cs_pcopy(su_cs_pcopy(var, looks[S(u8,only_new_mail_check)].name), mn);
+	su_cs_pcopy(su_cs_pcopy(var, "on-mailbox-event-"), mn);
 	if((cp = n_var_vlook(var, FAL0)) != NIL)
 		goto jmac;
 
-	v15_compat = FAL0;
-	su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);/* v15-compat */
-	if((cp = n_var_vlook(var, FAL0)) != NIL)
-		goto jmac;
+	if(onmbev == mx_ON_MAILBOX_EVENT_OPEN || onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
+		v15_compat = FAL0;
+		su_cs_pcopy(su_cs_pcopy(var, "folder-hook-"), mn);
+		if((cp = n_var_vlook(var, FAL0)) != NIL)
+			goto jmac;
+		v15_compat = TRU1;
+	}
 
-	/* If we are under *folder*, try the usual +NAME syntax, too */
+	/* If we are under *folder*, try the usual +NAME syntax, too.  We have reserved room in var */
 	if(mn == mailname && (n_pstate & n_PS_MAILNAME_WITHIN_FOLDER)){
 		for(cp = &mailname[len]; cp != mailname; --cp)
 			if(cp[-1] == '/'){
 				char *x;
-				mn = x = &var[sizeof("on-mailbox-newmail-") -1 + len + 1];
+
+				mn = x = &var[sizeof("on-mailbox-event-") -1 + len + 1];
 				x[0] = '+';
 				su_cs_pcopy(&x[1], cp);
 				goto jredo;
 			}
 	}
 
-	/* Plain *on-mailbox-XY* is our last try */
-	v15_compat = TRU1;
-	if((cp = n_var_oklook(looks[S(u8,only_new_mail_check)].ok)) == NIL){
-		v15_compat = FAL0;
-		if((cp = ok_vlook(folder_hook)) == NIL)/*v15-compat*/
-			goto jleave;
+
+	/* Plain *on-mailbox-event* is our last try */
+	if((cp = ok_vlook(on_mailbox_event)) != NIL)
+		goto jmac;
+
+	if(onmbev == mx_ON_MAILBOX_EVENT_OPEN || onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
+		v15_compat = FAL0;/*v15-compat*/
+		if((cp = ok_vlook(folder_hook)) != NIL)
+			goto jmac;
 	}
 
+	goto jleave;
 jmac:
 	if((amp = a_amv_mac_lookup(cp, NIL, a_AMV_MF_NONE)) == NIL){
-		n_err(_("Cannot call *%s** for %s: macro does not exist: %s\n"),
-			looks[S(u8,only_new_mail_check)].name, n_shexp_quote_cp(displayname, FAL0), cp);
+		n_err(_("Cannot call *on-mailbox-event* for %s: macro does not exist: %s\n"),
+			n_shexp_quote_cp(displayname, FAL0), cp);
 		rv = FAL0;
 		goto jleave;
 	}
@@ -3272,42 +3284,45 @@ jmac:
 	amcap = su_LOFI_CALLOC(sizeof *amcap);
 	amcap->amca_name = cp;
 	amcap->amca_amp = amp;
+
 	n_pstate &= ~n_PS_HOOK_MASK;
-	if(only_new_mail_check){
+	if(onmbev == mx_ON_MAILBOX_EVENT_NEWMAIL){
 		if(v15_compat)
-			amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
+			amcap->amca_unroller = &a_amv_on_mailbox_lopts;
 		n_pstate |= n_PS_HOOK_NEWMAIL;
 	}else{
-		amcap->amca_unroller = &a_amv_on_mailbox_open_lopts;
+		amcap->amca_unroller = &a_amv_on_mailbox_lopts;
 		n_pstate |= n_PS_HOOK;
 	}
 	amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
 	amcap->amca_ps_hook_mask = TRU1;
 	amcap->amca_no_xcall = TRU1;
 	amcap->amca_pospar = &amcap->amca__pospar;
+	if(v15_compat){
+		argv[0] = a_names[S(u8,onmbev)];;
+		argv[1] = NIL;
+		amcap->amca__pospar.app_count = 1;
+		amcap->amca__pospar.app_not_heap = TRU1;
+		amcap->amca__pospar.app_dat = argv;
+	}
 	amcap->amca_re_match = &amcap->amca__re_match;
 	rv = a_amv_mac_exec(amcap, NIL);
 	n_pstate &= ~n_PS_HOOK_MASK;
 
 jleave:
-	NYD_OU;
-	return rv;
-}
+	if(onmbev == mx_ON_MAILBOX_EVENT_CLOSE && a_amv_on_mailbox_lopts != NIL){
+		void *save;
 
-FL void
-temporary_on_mailbox_close(void){ /* XXX intermediate hack */
-	NYD_IN;
-
-	if(a_amv_on_mailbox_open_lopts != NIL){
-		void *save = a_amv_lopts;
-
+		save = a_amv_lopts;
 		a_amv_lopts = NIL;
-		a_amv_lopts_unroll(&a_amv_on_mailbox_open_lopts);
-		ASSERT(a_amv_on_mailbox_open_lopts == NIL);
+		a_amv_lopts_unroll(&a_amv_on_mailbox_lopts);
+		ASSERT(a_amv_on_mailbox_lopts == NIL);
 		a_amv_lopts = save;
 	}
 
+j_leave:
 	NYD_OU;
+	return rv;
 }
 
 FL void

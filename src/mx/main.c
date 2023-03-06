@@ -337,7 +337,7 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 		n_exit_status = su_EX_ERR; /* error already reported */
 		goto jquit;
 	}
-	temporary_on_mailbox_open(FAL0);
+	mx_temporary_on_mailbox_event(mx_ON_MAILBOX_EVENT_OPEN);
 
 	if(n_poption & n_PO_QUICKRUN_MASK){
 		n_exit_status = i;
