@@ -227,37 +227,35 @@ static struct n_strlist *
 a_ml_dump(char const *cmdname, char const *key, void const *dat){
 	/* XXX real strlist + str_to_fmt() */
 	char *cp;
+	uz typel, kl, cl;
+	char const *kp;
 	union {void const *cvp; up flags;} u;
 	struct n_strlist *slp;
-	uz typel, kl, cl;
-	char const *typep, *kp;
 	NYD2_IN;
-
-	typep = su_empty;
-	typel = 0;
 
 	slp = NIL;
 	u.cvp = dat;
 	if(u.flags & TRU1){
 		u.flags &= ~TRU1;
-
 		if(!su_cs_cmp(cmdname, "mlist"))
 			goto jleave;
-
-#ifdef mx_HAVE_REGEX
-		if(u.cvp != NIL && (n_poption & n_PO_D_V)){
-			typep = " # regex(7)";
-			typel = sizeof(" # regex(7)") -1;
-		}
-#endif
 	}else if(!su_cs_cmp(cmdname, "mlsubscribe"))
 		goto jleave;
+
+#ifdef mx_HAVE_REGEX
+# undef a_X
+# define a_X "  # regex(7)"
+	if(u.cvp != NIL && (n_poption & n_PO_D_V))
+		typel = sizeof(a_X) -1;
+	else
+#endif
+		typel = 0;
 
 	kp = n_shexp_quote_cp(key, TRU1);
 	kl = su_cs_len(kp);
 	cl = su_cs_len(cmdname);
 
-	slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + typel +1);
+	slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + typel +1);
 	slp->sl_next = NIL;
 	cp = slp->sl_dat;
 	su_mem_copy(cp, cmdname, cl);
@@ -266,9 +264,11 @@ a_ml_dump(char const *cmdname, char const *key, void const *dat){
 	su_mem_copy(cp, kp, kl);
 	cp += kl;
 	if(typel > 0){
-		*cp++ = ' ';
-		su_mem_copy(cp, typep, typel);
+#ifdef mx_HAVE_REGEX
+		su_mem_copy(cp, a_X, typel);
 		cp += typel;
+# undef a_X
+#endif
 	}
 	*cp = '\0';
 	slp->sl_len = P2UZ(cp - slp->sl_dat);
