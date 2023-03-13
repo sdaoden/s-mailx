@@ -157,9 +157,9 @@ enum a_go_hist_flags{
 struct a_go_eval_ctx{
    struct str gec_line; /* The terminated data to _evaluate() */
    u32 gec_line_size; /* May be used to store line memory size */
+   boole gec_have_ln_aq; /* fs_linepool_aquire()d */
    boole gec_ever_seen; /* Has ever been used (main_loop() only) */
    boole gec_ignerr; /* Implicit `ignerr' prefix */
-   u8 gec__dummy[1];
    u8 gec_hist_flags; /* enum a_go_hist_flags */
    char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
    char const *gec_hist_args;
@@ -1423,6 +1423,12 @@ n_go_main_loop(void){ /* FIXME */
       interrupts = 0;
       DVL(su_nyd_reset_level(1);)
 
+      /* (Interruption) */
+      if(gec.gec_have_ln_aq){
+         gec.gec_have_ln_aq = FAL0;
+         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
+      }
+
       if(gec.gec_ever_seen)
          /* TODO too expensive, just do the membag (++?) here.
           * TODO in fact all other conditions would be an error, no? */
@@ -1514,6 +1520,7 @@ n_go_main_loop(void){ /* FIXME */
       n_pstate |= n_PS_ERRORS_NEED_PRINT_ONCE;
 
       mx_fs_linepool_aquire(&gec.gec_line.s, &gec.gec_line.l);
+      gec.gec_have_ln_aq = TRU1;
       gec.gec_line_size = S(u32,gec.gec_line.l);
       /* C99 */{
          boole histadd;
@@ -1533,7 +1540,6 @@ n_go_main_loop(void){ /* FIXME */
       gec.gec_line.l = S(u32,n);
 
       if(n < 0){
-         mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
          if(!(n_pstate & n_PS_ROBOT) &&
                (n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
                ++eofcnt < 4){
@@ -1579,14 +1585,15 @@ n_go_main_loop(void){ /* FIXME */
                : n_GO_INPUT_NONE)));
       }
 
-      mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
-
       if((n_psonce & n_PSO_EXIT_MASK) || !rv)
          break;
    }
 
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS |
       (rv ? 0 : a_GO_CLEANUP_ERROR));
+
+   if(gec.gec_have_ln_aq)
+      mx_fs_linepool_release(gec.gec_line.s, gec.gec_line_size);
    mx_fs_linepool_cleanup(TRU1);
 
    mx_sigs_all_rele();
