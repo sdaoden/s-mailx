@@ -207,6 +207,13 @@ a_termios_onsig(int sig){
       }
    }
 
+   /* If we shall pop this level link context in a list for later freeing in
+    * a more regular context */
+   if(dopop){
+      tiosep->tiose_prev = a_termios_g.tiosg_pend_free;
+      a_termios_g.tiosg_pend_free = tiosep;
+   }
+
    if(jobsig || (tiosep->tiose_cmd != mx_TERMIOS_CMD_HANDS_OFF &&
             oact != SIG_DFL && oact != SIG_IGN && oact != SIG_ERR)){
       myact = safe_signal(sig, oact);
@@ -243,13 +250,6 @@ a_termios_onsig(int sig){
       if(sig == SIGCONT)
          goto jsigwinch;
 #endif
-   }
-
-   /* If we shall pop this level link context in a list for later freeing in
-    * a more regular context */
-   if(dopop){
-      tiosep->tiose_prev = a_termios_g.tiosg_pend_free;
-      a_termios_g.tiosg_pend_free = tiosep;
    }
 
 jleave:
