@@ -789,8 +789,8 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto, /* {obsolete=1,notempty=1} */
-   ok_v_reply_to, /* {notempty=1} */
+ok_v_replyto, /* {vip=1,obsolete=1,notempty=1} */
+   ok_v_reply_to, /* {vip=1,notempty=1} */
    ok_v_reply_to_honour,
    ok_v_reply_to_swap_in,
    ok_b_rfc822_body_from_, /* {name=rfc822-body-from_} */

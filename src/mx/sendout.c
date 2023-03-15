@@ -2764,30 +2764,32 @@ j_mft_add:
       }
    }
 
-   if (w & GIDENT) {
+   if(w & GIDENT) do /*for break*/{
       /* Reply-To:.  Be careful not to destroy a possible user input, duplicate
        * the list first.. TODO it is a terrible codebase.. */
-      if((np = hp->h_reply_to) != NULL)
-         np = n_namelist_dup(np, np->n_type);
-      else{
-         char const *v15compat;
+      boole ckaddr;
 
-         if((v15compat = ok_vlook(replyto)) != NULL)
-            n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
-         if((addr = ok_vlook(reply_to)) == NULL)
-            addr = v15compat;
+      if((np = hp->h_reply_to) != NIL){
+         ckaddr = TRU1;
+         np = n_namelist_dup(np, np->n_type);
+      }else if((addr = ok_vlook(reply_to)) != NIL){
+         ckaddr = FAL0;
          np = lextract(addr, GEXTRA |
                (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN));
-      }
-      if (np != NULL &&
-            (np = elide(
-               checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG,
-                  NULL))) != NULL) {
-         if (!a_sendout_put_addrline("Reply-To:", np, fo, saf))
-            goto jleave;
-         ++gotcha;
-      }
-   }
+      }else
+         break;
+
+      if((np = usermap(np, TRU1)) == NIL)
+         break;
+      if(ckaddr && (np = checkaddrs(np,
+               (EACM_STRICT | EACM_NONAME | EACM_NOLOG), NIL)) == NIL)
+         break;
+      if((np = elide(np)) == NIL)
+         break;
+      if(!a_sendout_put_addrline("Reply-To:", np, fo, saf))
+         goto jleave;
+      ++gotcha;
+   }while(0);
 
    if((w & GIDENT) && !nosend_msg){
       if(mft != NIL){

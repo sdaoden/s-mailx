@@ -1390,16 +1390,14 @@ mx_header_needs_mime(struct header *hp){
       *cpp++ = cp;
 
    if((np = hp->h_reply_to) != NIL){
-      *cpp++ = np->n_name;
-      *cpp++ = np->n_fullname;
-   }else{
-      if((cp = ok_vlook(replyto)) != NIL){
-         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
-         *cpp++ = cp;
-      }
-      if((cp = ok_vlook(reply_to)) != NIL)
-         *cpp++ = cp;
-   }
+      do if(mx_mime_header_needs_mime(np->n_name) ||
+            (np->n_name != np->n_fullname &&
+             mx_mime_header_needs_mime(np->n_fullname))){
+         rv = TRU1;
+        goto jleave;
+      }while((np = np->n_flink) != NIL);
+   }else if((cp = ok_vlook(reply_to)) != NIL)
+      *cpp++ = cp;
 
    if((cp = hp->h_subject) != NIL)
       *cpp++ = cp;
@@ -1584,10 +1582,11 @@ jeseek:
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
                      EACM_STRICT, NULL));
          }
-      }else if((val = n_header_get_field(linebuf, "reply-to", NULL)) != NULL){
+      }else if((val = n_header_get_field(linebuf, "reply-to", NIL)) != NIL){
          ++seenfields;
          hq->h_reply_to = cat(hq->h_reply_to,
-               checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
+               checkaddrs(lextract(val, GEXTRA | GFULL),
+                  EACM_STRICT | EACM_NONAME, NIL));
       }else if((val = n_header_get_field(linebuf, "sender", NULL)) != NULL){
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
@@ -3453,6 +3452,7 @@ grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
 {
    /* TODO grab_headers: again, check counts etc. against RFC;
     * TODO (now assumes check_from_and_sender() is called afterwards ++ */
+   char const *cp;
    int errs;
    int volatile comma;
    NYD_IN;
@@ -3474,19 +3474,12 @@ grab_headers(u32/*mx_go_input_flags*/ gif, struct header *hp,
          hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
       hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
             GEXTRA | GFULL | GFULLEXTRA);
-      if (hp->h_reply_to == NULL) {
-         struct mx_name *v15compat;
-
-         if((v15compat = lextract(ok_vlook(replyto), GEXTRA | GFULL)) != NULL)
-            n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
-         hp->h_reply_to = lextract(ok_vlook(reply_to), GEXTRA | GFULL);
-         if(hp->h_reply_to == NULL) /* v15 */
-            hp->h_reply_to = v15compat;
-      }
+      if(hp->h_reply_to == NIL && (cp = ok_vlook(reply_to)) != NIL)
+         hp->h_reply_to = lextract(cp, GEXTRA | GFULL);
       hp->h_reply_to = grab_names(gif, "Reply-To: ", hp->h_reply_to, comma,
             GEXTRA | GFULL);
-      if (hp->h_sender == NULL)
-         hp->h_sender = n_extract_single(ok_vlook(sender), GEXTRA | GFULL);
+      if(hp->h_sender == NIL && (cp = ok_vlook(sender)) != NIL)
+         hp->h_sender = n_extract_single(cp, GEXTRA | GFULL);
       hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
             GEXTRA | GFULL | GNOT_A_LIST);
    }
