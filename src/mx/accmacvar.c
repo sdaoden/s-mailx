@@ -510,6 +510,11 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM_IS(u32,a_am
 	}
 #endif
 
+	if(UNLIKELY(*name == '\0')){
+		amp = NIL;
+		goto jleave;
+	}
+
 	save_amf = amf;
 	amf &= a_AMV_MF_TYPE_MASK;
 	/* C99 */{
