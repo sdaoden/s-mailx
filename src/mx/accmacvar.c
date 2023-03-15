@@ -1026,7 +1026,9 @@ a_amv_var_free(char *cp){
 
 static boole
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val){
-	char const *emsg;
+	struct n_string s_b, *s = &s_b;
+	char *cp;
+	char const *emsg, *ccp;
 	boole ok;
 	NYD2_IN;
 
@@ -1087,32 +1089,54 @@ jefrom:
 		case ok_v_hostname:
 		case ok_v_smtp_hostname:
 			if(**val != '\0'){
-				struct n_string cnv;
-
-				n_string_creat_auto(&cnv);
-				if(!n_idna_to_ascii(&cnv, *val, UZ_MAX)){
+				n_string_creat_auto(s);
+				if(!n_idna_to_ascii(s, *val, UZ_MAX)){
 					/*n_string_gut(&res);*/
 					emsg = N_("*hostname*/*smtp_hostname*: IDNA encoding failed: %s\n");
 					goto jerr;
 				}
-				*val = n_string_cp(&cnv);
+				*val = n_string_cp(s);
 				/*n_string_drop_ownership(&cnv);*/
 			}
 			break;
 #endif
 		case ok_v_quote_chars:{
 			char c;
-			char const *cp;
 
-			for(cp = *val; (c = *cp++) != '\0';)
+			for(ccp = *val; (c = *ccp++) != '\0';)
 				if(!su_cs_is_ascii(c) || su_cs_is_space(c)){
 					ok = FAL0;
 					break;
 				}
 			}break;
+		case ok_v_replyto:
+			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
+			FALLTHRU
+		case ok_v_reply_to:{
+			struct mx_name *np;
+
+			np = lextract(*val, GEXTRA | GFULL);
+			if(np == NIL){
+jereplyto:
+				emsg = N_("*reply-to*: invalid address(es): %s\n");
+				goto jerr;
+			}
+
+			s = n_string_creat_auto(s);
+			for(; np != NIL; np = np->n_flink){
+				if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+					goto jereplyto;
+				if(s->s_len > 0)
+					s = n_string_push_c(s, ',');
+				s = n_string_push_cp(s, np->n_fullname);
+			}
+			*val = n_string_cp(s);
+
+			if(okey == ok_v_replyto) /* v15-compat */
+				n_PS_ROOT_BLOCK(ok_vset(reply_to, *val));
+			}break;
 		case ok_v_sendcharsets:{
-			struct n_string s_b, *s = &s_b;
-			char *csv, *cp;
+			char *csv;
 
 			s = n_string_creat_auto(s);
 			csv = savestr(*val);
@@ -1175,7 +1199,7 @@ jefrom:
 			ok_bset(asksub);
 			break;
 		case ok_v_bind_timeout: /* v15-compat: drop this */
-			n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, doing it for you (for now)");
+			n_OBSOLETE("*bind-timeout*: please set *bind-inter-byte-timeout*, doing it for you");
 			n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
 			break;
 		case ok_v_customhdr:{
@@ -1207,11 +1231,10 @@ jefrom:
 			break;
 		case ok_v_ifs:{
 			char *x_b, *x, c;
-			char const *cp;
 
-			cp = *val;
-			x_b = x = su_AUTO_ALLOC(su_cs_len(cp) +1);
-			while((c = *cp++) != '\0')
+			ccp = *val;
+			x_b = x = su_AUTO_ALLOC(su_cs_len(ccp) +1);
+			while((c = *ccp++) != '\0')
 				if(su_cs_is_space(c))
 					*x++ = c;
 			*x = '\0';
