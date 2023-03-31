@@ -1041,7 +1041,7 @@ a_coll_ocs__mac(void){
    if(n_poption & n_PO_D_VV){
       char buf[128];
 
-      snprintf(buf, sizeof buf, "[%d]%s", getpid(), ok_vlook(log_prefix));
+      snprintf(buf, sizeof buf, "[%ld]%s", S(sl,getpid()), ok_vlook(log_prefix));
       ok_vset(log_prefix, buf);
    }
    /* TODO If that uses `!' it will effectively SIG_IGN SIGINT, ...and such */
