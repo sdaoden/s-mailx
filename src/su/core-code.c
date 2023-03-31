@@ -130,7 +130,7 @@ a_core_evlog(u32 lvl_a_flags, char const *fmt, va_list ap){
 			char const *cp;
 
 			*cursor++ = '[';
-			cp = su_ienc_u32(ibuf, getpid(), 10); /* XXX getpid()->process_id() */
+			cp = su_ienc_uz(ibuf, S(uz,getpid()), 10); /* XXX getpid()->process_id() */
 			cursor = su_cs_pcopy(cursor, cp);
 			*cursor++ = ']';
 		}
