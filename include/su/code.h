@@ -1268,7 +1268,7 @@ enum su_log_flags{
 /*! Adjustment possibilities for the global log domain (for example, \r{su_log_write()}),
  * to be set via \r{su_state_set()}, to be queried via \r{su_state_has()}. */
 enum su_state_log_flags{
-	su_STATE_LOG_SHOW_LEVEL = 1u<<4, /*!< Prepend a messages \r{su_log_level}. */
+	su_STATE_LOG_SHOW_LEVEL = 1u<<4, /*!< Prepend a message's \r{su_log_level}. */
 	/*! Show the PID (Process IDentification number).
 	 * This flag is only honoured if \r{su_program} set to non-\NIL. */
 	su_STATE_LOG_SHOW_PID = 1u<<5
@@ -1622,7 +1622,7 @@ INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 /*! \copydoc{su_state_set()} */
 INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
-	flags &= ~flags;
+	flags = ~flags;
 	su__glck(su__GLCK_STATE);
 	su__state &= flags;
 	su__gnlck(su__GLCK_STATE);
