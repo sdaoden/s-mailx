@@ -127,7 +127,7 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
 		if(rv != 0){
 			switch((rv
 # ifndef su_HAVE_CLOCK_NANOSLEEP
-					= su_err_no_by_errno()
+					= su_err_by_errno()
 # endif
 			)){
 			case su_ERR_INTR:

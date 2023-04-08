@@ -77,12 +77,12 @@ struct mx_file_dotlock_info{
 EXPORT boole mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm);
 
 /* Acquire a flt mx_file_lock().
- * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be acquired, NIL if not, with err_no being usable.
+ * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be acquired, NIL if not, with err being usable.
  * Otherwise a dotlock file is created, and a registered control-pipe FILE* is returned upon success which keeps the
  * link in between us and the lock-holding fork(2)ed subprocess (which conditionally replaced itself via execv(2) with
  * the privilege-separated dotlock helper program): the lock file will be removed once the control pipe is closed via
  * pipe_close().  If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the normal file lock could be
- * established, otherwise err_no() is usable */
+ * established, otherwise err() is usable */
 EXPORT FILE *mx_file_dotlock(char const *fname, int fd, BITENUM_IS(u32,mx_file_lock_mode) flm);
 
 #include <su/code-ou.h>

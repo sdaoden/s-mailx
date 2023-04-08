@@ -38,7 +38,7 @@ enum n_iconv_flags{
 	n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
 
-EXPORT_DATA s32 n_iconv_err_no; /* TODO HACK: part of CTX to not get lost */
+EXPORT_DATA s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 EXPORT_DATA iconv_t iconvd;
 #endif /* mx_HAVE_ICONV */
 
@@ -59,12 +59,12 @@ EXPORT void n_iconv_close(iconv_t cd);
 /* Reset encoding state */
 EXPORT void n_iconv_reset(iconv_t cd);
 
-/* iconv(3), but return su_err_no() or 0 upon success.
- * The err_no may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
+/* iconv(3), but return su_err() or 0 upon success.
+ * The err may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
  * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_nil may be the same object.
  * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the replacement character must be added
  * manually if that happens at EOF!
- * TODO These must be contexts.  For now we duplicate su_err_no() into n_iconv_err_no in order to be able to access it
+ * TODO These must be contexts.  For now we duplicate su_err() into n_iconv_err in order to be able to access it
  * TODO when stuff happens "in between"! */
 EXPORT int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, char **outb, uz *outbleft);
 EXPORT int n_iconv_str(iconv_t icp, enum n_iconv_flags icf, struct str *out, struct str const *in, struct str *in_rest_or_nil);

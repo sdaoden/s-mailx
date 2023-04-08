@@ -904,7 +904,7 @@ subdir_remove(char const *name, char const *sub)
    path[pathend = namelen + sublen + 2] = '\0';
 
    if ((dirp = opendir(path)) == NULL) {
-      n_perr(path, su_err_no_by_errno());
+      n_perr(path, su_err_by_errno());
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {
@@ -1031,7 +1031,7 @@ jerr:
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
          n_err(_("No mail for %s at %s\n"), who, n_shexp_quote_cp(name, FAL0));
-      su_err_set_no(su_ERR_NODATA);
+      su_err_set(su_ERR_NODATA);
       i = 1;
       goto jleave;
    }

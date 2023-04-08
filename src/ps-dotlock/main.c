@@ -66,9 +66,8 @@ uz su__state;
 boole su__mem_check(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 boole su__mem_trace(su_DVL_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
-#define su_err_no() errno
-#define su_err_no_by_errno() errno
-#define su_err_set_no(X) (errno = X)
+#define su_err() errno
+#define su_err_by_errno() errno
 #define su_path_link(X,Y) (link(Y, X) != -1)
 #define su_path_rm(X) (unlink(X) != -1)
 #define su_pathinfo_stat(X,Y) (stat(Y, X) != -1)

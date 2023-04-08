@@ -913,11 +913,11 @@ jestr:
 			if(fprintf(n_stdout, "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
 						binabuf, S(u64,vc.vc_lhv), S(u64,vc.vc_lhv), vc.vc_lhv) < 0 ||
 					((f & a_VEXPR_PBASE) && fprintf(n_stdout, "%s\n", vc.vc_varres) < 0)){
-				n_pstate_err_no = su_err_no_by_errno();
+				n_pstate_err_no = su_err_by_errno();
 				f |= a_VEXPR_ERR;
 			}
 		}else if(vc.vc_varres != NIL && fprintf(n_stdout, "%s\n", vc.vc_varres) < 0){
-			n_pstate_err_no = su_err_no_by_errno();
+			n_pstate_err_no = su_err_by_errno();
 			f |= a_VEXPR_ERR;
 		}
 	}else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){

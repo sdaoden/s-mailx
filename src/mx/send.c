@@ -1146,7 +1146,7 @@ jpipe_close:
       if (su_cs_cmp_case(tcs, ip->m_charset) &&
             su_cs_cmp_case(ok_vlook(charset_7bit), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         if (iconvd == (iconv_t)-1 && su_err_no() == su_ERR_INVAL) {
+         if (iconvd == (iconv_t)-1 && su_err() == su_ERR_INVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
          }
@@ -1532,7 +1532,7 @@ jgetname:
                mx_FS_O_EXCL))) == NIL){
          int e;
 
-         if((e = su_err_no()) != su_ERR_EXIST){
+         if((e = su_err()) != su_ERR_EXIST){
             n_err(_("Cannot open %s: %s\n"),
                n_shexp_quote_cp(f, FAL0), su_err_doc(e));
             break;
@@ -1797,8 +1797,8 @@ jleave:
    NYD_OU;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
 
-   if(rv < 0 && su_err_no() == su_ERR_NONE)
-      su_err_set_no(su_ERR_INVAL);
+   if(rv < 0 && su_err() == su_ERR_NONE)
+      su_err_set(su_ERR_INVAL);
 
    return rv;
 }

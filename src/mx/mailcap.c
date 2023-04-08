@@ -179,7 +179,7 @@ a_mailcap_create(void){
 		if((mcls.mcls_fp = mx_fs_open(mcls.mcls_name = cp, mx_FS_O_RDONLY)) == NIL){
 			s32 eno;
 
-			if((eno = su_err_no()) != su_ERR_NOENT)
+			if((eno = su_err()) != su_ERR_NOENT)
 				n_err(_("$MAILCAPS: cannot open %s: %s\n"), mcls.mcls_name_quoted, su_err_doc(eno));
 			continue;
 		}
@@ -300,7 +300,7 @@ jenomem:
 	emsg = N_("out of memory");
 	goto jerr;
 jetoolong:
-	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERRNO), _("$MAILCAPS: line too long"));
+	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERROR), _("$MAILCAPS: line too long"));
 	emsg = N_("line too long");
 jerr:
 	n_err(_("$MAILCAPS: %s while loading %s\n"), V_(emsg), mclsp->mcls_name_quoted);

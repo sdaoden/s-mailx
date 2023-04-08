@@ -112,7 +112,7 @@ a_edit_it(int *msgvec, int viored){
 				mp->m_lines = lines;
 			}else{
 jeotf:
-				n_perr(_("/tmp"), su_err_no_by_errno());
+				n_perr(_("/tmp"), su_err_by_errno());
 			}
 
 			mx_fs_close(fp);
@@ -261,7 +261,7 @@ jleave:
 	NYD_OU;
 	return nf;
 jperros:
-	viored = su_err_no_by_errno();
+	viored = su_err_by_errno();
 	goto jperrx;
 jperr:
 	viored = 0;
