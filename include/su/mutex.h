@@ -47,6 +47,7 @@ struct su_mutex;
  * Without \r{su_HAVE_MT} this is a "checking" no-op wrapper.
  * Dependent upon \r{su_DVLDBGOR()} the debug-enabled functions simply ignore their debug-only arguments.
  * Please see \r{SMP} for peculiarities of \SU lock types.
+ * Error numbers (\r{su_err(), \r{su_err_number}) are not used but for \r{su_mutex_create()}.
  * @{
  */
 
@@ -98,12 +99,12 @@ struct su_mutex{
 
 /* */
 #ifdef DOXYGEN
-	/*! Please see \r{SMP} for consequences of initializing objects like so. */
+  /*! Please see \r{SMP} for consequences of initializing objects like so. */
 # define su_MUTEX_I9R(NAME_OR_NIL)
 
   /*! Non-recursive initializer.
-	* A flat mutex can (should) be locked once only, a condition that is verified by debug-enabled code.
-	* Please see \r{SMP} for consequences of initializing objects like so. */
+   * A flat mutex can (should) be locked once only, a condition that is verified by debug-enabled code.
+   * Please see \r{SMP} for consequences of initializing objects like so. */
 # define su_MUTEX_FLAT_I9R(NAME_OR_NIL)
 #else
 # ifdef su_HAVE_MT

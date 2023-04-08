@@ -142,7 +142,7 @@ a_attachments_iconv(struct mx_attachment *ap, FILE *ifp){
 	if(icp == R(iconv_t,-1)){
 		s32 eno;
 
-		if((eno = su_err_no()) == su_ERR_INVAL)
+		if((eno = su_err()) == su_ERR_INVAL)
 			goto jeconv;
 		else
 			n_perr(_("iconv_open"), eno);
@@ -261,7 +261,7 @@ jrefexp:
 				(oucs != NIL && oucs != R(char*,-1)) ? (cnvfp = mx_fs_open(file, mx_FS_O_RDONLY)) == NIL :
 #endif
 					!su_path_access(file, su_IOPF_READ))){
-			e = su_err_no();
+			e = su_err();
 
 			/* It may not have worked because of a character-set specification,
 			 * so try to extract that and retry once */

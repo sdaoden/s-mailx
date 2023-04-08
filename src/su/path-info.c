@@ -178,7 +178,7 @@ su_pathinfo_stat(struct su_pathinfo *self, char const *path){
 	if((rv = (stat(path, &sb) == 0)))
 		a_pathinfo_copy(self, &sb);
 	else
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -195,7 +195,7 @@ su_pathinfo_lstat(struct su_pathinfo *self, char const *path){
 	if((rv = (lstat(path, &sb) == 0)))
 		a_pathinfo_copy(self, &sb);
 	else
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -211,7 +211,7 @@ su_pathinfo_fstat(struct su_pathinfo *self, sz fd){
 	if((rv = (fstat(S(int,fd), &sb) == 0)))
 		a_pathinfo_copy(self, &sb);
 	else
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;

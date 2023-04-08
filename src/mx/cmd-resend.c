@@ -848,7 +848,7 @@ a_crese_fwd(void *vp, boole recipient_record){
          n_err(_("No recipient specified.\n"));
          mx_cmd_print_synopsis(mx_cmd_by_arg_desc(cacp->cac_desc), NIL);
       }
-      su_err_set_no(n_pstate_err_no = su_ERR_DESTADDRREQ);
+      su_err_set(n_pstate_err_no = su_ERR_DESTADDRREQ);
       goto j_leave;
    }
 

@@ -233,7 +233,7 @@ a_fop__ftruncate(struct a_fop_ctx *fcp){
 		if(off != -1)
 			fcp->fc_varres = fofdp->fof_silence ? NIL : fcp->fc_arg;
 		else{
-			n_pstate_err_no = su_err_no_by_errno();
+			n_pstate_err_no = su_err_by_errno();
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		}
@@ -337,7 +337,7 @@ jflesyn:
 		oflags |= mx_FS_O_NOFOLLOW;
 
 	if((fp = mx_fs_open(fcp->fc_varres, oflags)) == NIL){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		goto jleave;
@@ -345,7 +345,7 @@ jflesyn:
 
 	flm |= mx_FILE_LOCK_MODE_RETRY;
 	if(!mx_file_lock(fileno(fp), flm)){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		if(oflags & mx_FS_O_NOREGISTER)
 			fclose(fp);
 		else
@@ -419,7 +419,7 @@ a_fop__mkdir(struct a_fop_ctx *fcp){
 	}
 
 	if(!su_path_mkdir(fcp->fc_varres, 0777, n_boolify(a1, UZ_MAX, FAL0), su_STATE_ERR_NOPASS)){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 	}
@@ -449,7 +449,7 @@ a_fop__mktemp(struct a_fop_ctx *fcp){
 		fcp->fc_varres = savestr(fstcp->fstc_filename);
 		mx_fs_close(fp);
 	}else{
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 	}
@@ -516,7 +516,7 @@ jesyn:
 		goto jesyn;
 
 	if((fp = mx_fs_open(fcp->fc_varres, oflags)) == NIL){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		goto jleave;
@@ -605,7 +605,7 @@ a_fop__rename(struct a_fop_ctx *fcp){
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		}else if(!su_path_rename(fcp->fc_varres, src)){
-			n_pstate_err_no = su_err_no();
+			n_pstate_err_no = su_err();
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		}
@@ -660,7 +660,7 @@ a_fop__rm(struct a_fop_ctx *fcp){
 	}
 
 	if(!su_path_rm(fcp->fc_varres)){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 	}
@@ -687,7 +687,7 @@ a_fop__rmdir(struct a_fop_ctx *fcp){
 	}
 
 	if(!su_path_rmdir(fcp->fc_varres)){
-		n_pstate_err_no = su_err_no();
+		n_pstate_err_no = su_err();
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 	}
@@ -802,7 +802,7 @@ a_fop__touch(struct a_fop_ctx *fcp){
 					((fcp->fc_flags & a_FOP_MOD_NOFOLLOW) ? mx_FS_O_NOFOLLOW : 0)))) != NIL)
 			mx_fs_close(fp);
 		else{
-			n_pstate_err_no = su_err_no();
+			n_pstate_err_no = su_err();
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
 		}
@@ -878,7 +878,7 @@ jestr:
 
 	if(fc.fc_varname == NIL){
 		if(fc.fc_varres != NIL && fprintf(n_stdout, "%s\n", fc.fc_varres) < 0){
-			n_pstate_err_no = su_err_no_by_errno();
+			n_pstate_err_no = su_err_by_errno();
 			f |= a_FOP_ERR;
 		}
 	}else if(!n_var_vset(fc.fc_varname, R(up,fc.fc_varres), fc.fc_cm_local)){

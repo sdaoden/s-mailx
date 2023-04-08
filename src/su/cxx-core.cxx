@@ -191,9 +191,9 @@ md::new_by_algo(algo algo, u32 estate){
 	else{
 		su_NEWF_BLK(rv, a_md, estate, (mdp));
 		if(rv == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_md_del(mdp);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 		}
 	}
 
@@ -217,9 +217,9 @@ md::new_by_name(char const *name, u32 estate){
 	else{
 		su_NEWF_BLK(rv, a_md, estate, (mdp));
 		if(rv == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_md_del(mdp);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 		}
 	}
 

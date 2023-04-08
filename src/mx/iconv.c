@@ -35,7 +35,7 @@
 #include "su/code-in.h"
 
 #ifdef mx_HAVE_ICONV
-s32 n_iconv_err_no; /* TODO HACK: part of CTX to not get lost */
+s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 iconv_t iconvd;
 #endif
 
@@ -110,7 +110,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
 	NYD_IN;
 
 	if((tocode = n_iconv_normalize_name(tocode)) == NIL || (fromcode = n_iconv_normalize_name(fromcode)) == NIL){
-		su_err_set_no(su_ERR_INVAL);
+		su_err_set(su_ERR_INVAL);
 		id = R(iconv_t,-1);
 		goto jleave;
 	}
@@ -156,7 +156,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
 	 * sensibly use it in any way.  We do not perform this as an optimization above since iconv() can otherwise be
 	 * used to check the validity of the input even with identical encoding names */
 	if(id == R(iconv_t,-1) && !su_cs_cmp_case(tocode_orig, fromcode))
-		su_err_set_no(su_ERR_NONE);
+		su_err_set(su_ERR_NONE);
 
 jleave:
 	NYD_OU;
@@ -222,7 +222,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, c
 			break;
 		}
 
-		if((err = su_err_no_by_errno()) == su_ERR_2BIG)
+		if((err = su_err_by_errno()) == su_ERR_2BIG)
 			goto jleave;
 
 		if(!(icf & n_ICONV_IGN_ILSEQ) || err != su_ERR_ILSEQ)
@@ -253,7 +253,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, c
 
 	err = 0;
 jleave:
-	n_iconv_err_no = err;
+	n_iconv_err = err;
 	NYD2_OU;
 	return err;
 }

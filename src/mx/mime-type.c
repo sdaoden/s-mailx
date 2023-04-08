@@ -274,7 +274,7 @@ jecontent:
 		else if(!a_mt__load_file((j == 0 ? a_MT_USR : (j == 1 ? a_MT_SYS : a_MT_FSPEC)), *srcs, &line, &linesize)){
 			s32 eno;
 
-			if((eno = su_err_no()) != su_ERR_NOENT || (n_poption & n_PO_D_V) || j > 1)
+			if((eno = su_err()) != su_ERR_NOENT || (n_poption & n_PO_D_V) || j > 1)
 				n_err(_("*mimetypes-load-control*: cannot open or load %s: %s\n"),
 					n_shexp_quote_cp(*srcs, FAL0), su_err_doc(eno));
 		}

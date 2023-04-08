@@ -821,7 +821,7 @@ jmsglist_go:
 				mvp[c] = n_msgvec[c];
 
 			if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM))/*XXX*/
-				su_err_set_no(su_ERR_NONE);
+				su_err_set(su_ERR_NONE);
 			rv = (*cdp->cd_func)(mvp);
 			ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		}
@@ -844,7 +844,7 @@ jmsglist_go:
 			++cp;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
-			su_err_set_no(su_ERR_NONE);
+			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(cp);
 		ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		break;
@@ -858,7 +858,7 @@ jmsglist_go:
 		*argvp = NIL;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
-			su_err_set_no(su_ERR_NONE);
+			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(argv_stack);
 		ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		break;
@@ -910,7 +910,7 @@ jmsglist_go:
 		}
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
-			su_err_set_no(su_ERR_NONE);
+			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(argv_base);
 		if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
 			goto jret0;
@@ -939,7 +939,7 @@ jmsglist_go:
 			cac.cac_vput = vput;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
-			su_err_set_no(su_ERR_NONE);
+			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(&cac);
 		if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
 			goto jret0;
@@ -964,7 +964,7 @@ jmsglist_go:
 		if(!(flags & a_NO_ERRNO)){
 			if(cdp->cd_caflags & mx_CMD_ARG_EM)
 				flags |= a_NO_ERRNO;
-			else if((nerrn = su_err_no()) == 0)
+			else if((nerrn = su_err()) == 0)
 				nerrn = su_ERR_INVAL;
 		}/*else
 			flags ^= a_NO_ERRNO;*/
@@ -2739,7 +2739,7 @@ jfound:
 			elen = 0;
 
 			if((fp = fdopen(fd, "r")) == NIL){
-				su_err_no_by_errno();
+				su_err_by_errno();
 				goto jecreate;
 			}
 		}
@@ -2784,7 +2784,7 @@ jleave:
 jecreate:
 	emsg = N_("readctl: failed to open file: %s: %s\n");
 jerrno_quote:
-	n_pstate_err_no = su_err_no();
+	n_pstate_err_no = su_err();
 	n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0), su_err_doc(n_pstate_err_no));
 	f = a_ERR;
 	goto jleave;

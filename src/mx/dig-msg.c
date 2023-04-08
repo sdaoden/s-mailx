@@ -1598,7 +1598,7 @@ c_digmsg(void * volatile vp){
 			dmcp->dmc_flags |= mx_DIG_MSG_HAVE_FP | (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE ? 0 : mx_DIG_MSG_FCLOSE);
 		else{
 			n_err(_("digmsg: create: cannot create temporary file: %s\n"),
-				su_err_doc(n_pstate_err_no = su_err_no()));
+				su_err_doc(n_pstate_err_no = su_err()));
 			vp = NIL;
 			goto jeremove;
 		}

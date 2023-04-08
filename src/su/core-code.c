@@ -435,28 +435,28 @@ su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_flags) state
 jdolog:
 		su_log_write(lvl, V_(introp), V_(msg_or_nil));
 
-	if(!(state & su_STATE_ERR_NOERRNO))
-		su_err_set_no(eno);
+	if(!(state & su_STATE_ERR_NOERROR))
+		su_err_set(eno);
 
 	NYD2_OU;
 	return eno;
 }
 
 s32
-su_err_no(void){ /* xxx INLINE? */
-	return su_thread_get_err_no();
+su_err(void){ /* xxx INLINE? */
+	return su_thread_get_err();
 }
 
 void
-su_err_set_no(s32 eno){ /* xxx INLINE? */
-	su_thread_set_err_no(su_thread_self(), eno);
+su_err_set(s32 eno){ /* xxx INLINE? */
+	su_thread_set_err(eno);
 }
 
 s32
-su_err_no_by_errno(void){
+su_err_by_errno(void){
 	s32 rv;
 
-	su_thread_set_err_no(su_thread_self(), rv = errno);
+	su_thread_set_err(rv = errno);
 	return rv;
 }
 
@@ -509,7 +509,7 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun, boole c
 	su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
 		"SU assert failed: %.60s\n  File %.60s, line %" PRIu32 "\n  Function %.142s",
 		expr, file, line, fun);
-	su_err_set_no(su_ERR_FAULT);
+	su_err_set(su_ERR_FAULT);
 }
 
 #if DVLOR(1, 0)

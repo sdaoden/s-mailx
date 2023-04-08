@@ -232,7 +232,7 @@ a_fs_unregister_file(FILE *fp){
 		}
 
 		if((fsep->fse_flags & a_FS_EF_UNLINK) && unlink(fsep->fse_realfile))
-			e = su_err_no_by_errno();
+			e = su_err_by_errno();
 
 		if(fsep->fse_realfile != NIL)
 			su_FREE(fsep->fse_realfile);
@@ -296,7 +296,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
 	if(!n_real_seek(fsep->fse_fp, fsep->fse_offset, SEEK_SET)){
 		s32 err;
 
-		err = su_err_no_by_errno();
+		err = su_err_by_errno();
 		n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
 			n_shexp_quote_cp(fsep->fse_realfile, FAL0), su_err_doc(err));
 		goto jleave;
@@ -327,7 +327,7 @@ a_fs_file_save(struct a_fs_ent *fsep){
 			(fsep->fse_oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
 		s32 err;
 
-		err = su_err_no_by_errno();
+		err = su_err_by_errno();
 		n_err(_("Fatal: cannot create %s: %s\n"), n_shexp_quote_cp(fsep->fse_realfile, FAL0), su_err_doc(err));
 		goto jleave;
 	}
@@ -362,10 +362,10 @@ mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode){
 	osiflags = a_fs_mx_to_os(oflags, &osflags);
 
 	if((fd = open(file, osiflags, mode)) == -1)
-		su_err_no_by_errno();
+		su_err_by_errno();
 #if a_FS_O_CLOEXEC == 0
 	else if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
-		su_err_no_by_errno();
+		su_err_by_errno();
 		close(fd);
 		fd = -1;
 	}
@@ -389,12 +389,12 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
 	osiflags = a_fs_mx_to_os(oflags, &osflags);
 
 	if((fd = open(file, osiflags, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
-		su_err_no_by_errno();
+		su_err_by_errno();
 		goto jleave;
 	}
 #if a_FS_O_CLOEXEC == 0
 	if(!(oflags & mx_FS_O_NOCLOEXEC) && !mx_fs_fd_cloexec_set(fd)){
-		su_err_no_by_errno();
+		su_err_by_errno();
 		close(fd);
 		goto jleave;
 	}
@@ -404,7 +404,7 @@ mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
 		if(!(oflags & mx_FS_O_NOREGISTER))
 			a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0L, NIL);
 	}else{
-		su_err_no_by_errno();
+		su_err_by_errno();
 		close(fd);
 	}
 
@@ -505,14 +505,14 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 					n_err(_("Using `filetype' handler %s to load %s\n"),
 						n_shexp_quote_cp(cload, FAL0), n_shexp_quote_cp(file, FAL0));
 			}else{
-				err = su_err_no_by_errno();
+				err = su_err_by_errno();
 				if(!(oflags & mx_FS_O_CREATE) || err != su_ERR_NOENT)
 					goto jleave;
 			}
 		}else{
 			/*flags |= a_FS_EF_RAW;*/
 			rv = mx_fs_open(file, oflags);
-			if(rv == NIL && (oflags & mx_FS_O_EXCL) && su_err_no() == su_ERR_EXIST)
+			if(rv == NIL && (oflags & mx_FS_O_EXCL) && su_err() == su_ERR_EXIST)
 				fs |= mx_FS_OPEN_STATE_EXISTS;
 			goto jleave;
 		}
@@ -521,7 +521,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 
 	/* Note rv is not yet register_file()d, fclose() it in error path! */
 	if((rv = mx_fs_tmp_open(NIL, "fopenany", tmpoflags, NIL)) == NIL){
-		n_perr(_("tmpfile"), err = su_err_no());
+		n_perr(_("tmpfile"), err = su_err());
 		goto Jerr;
 	}
 
@@ -529,7 +529,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 		;
 	else if(infd >= 0){
 		if(!a_fs_file_load(flags, infd, fileno(rv), cload)) Jerr:{
-			err = su_err_no();
+			err = su_err();
 			if(rv != NIL)
 				fclose(rv); /* Not yet registered */
 			rv = NIL;
@@ -539,7 +539,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 		}
 	}else{
 		if((infd = creat(file, (oflags & mx_FS_O_CREATE_0600 ? 0600 : 0666))) == -1){
-			err = su_err_no_by_errno();
+			err = su_err_by_errno();
 			fclose(rv);
 			rv = NIL;
 			goto jleave;
@@ -554,7 +554,7 @@ mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs
 		rewind(rv);
 
 	if((offset = ftell(rv)) == -1){
-		err = su_err_no_by_errno();
+		err = su_err_by_errno();
 		mx_fs_close(rv);
 		rv = NIL;
 		goto jleave;
@@ -565,7 +565,7 @@ jleave:
 	if(fs_or_nil != NIL)
 		*fs_or_nil = fs;
 	if(rv == NIL && err != su_ERR_NONE)
-		su_err_set_no(err);
+		su_err_set(err);
 
 	NYD_OU;
 	return rv;
@@ -604,7 +604,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 		tdir_or_nil = ok_vlook(TMPDIR);
 
 	if((maxname = su_path_max_filename(tdir_or_nil)) < a_RANDCHARS + a_HINT_MIN){
-		su_err_set_no(su_ERR_NAMETOOLONG);
+		su_err_set(su_ERR_NAMETOOLONG);
 		goto jleave;
 	}
 
@@ -615,7 +615,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 	}else{
 		hintlen = su_cs_len(namehint_or_nil);
 		if((oflags & mx_FS_O_SUFFIX) && hintlen >= maxname - a_RANDCHARS){
-			su_err_set_no(su_ERR_NAMETOOLONG);
+			su_err_set(su_ERR_NAMETOOLONG);
 			goto jleave;
 		}
 	}
@@ -682,7 +682,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 #endif
 				break;
 		}
-		e = su_err_no_by_errno();
+		e = su_err_by_errno();
 
 		relesigs = FAL0;
 		mx_sigs_all_rele();
@@ -715,7 +715,7 @@ mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(
 	}
 
 	if(fp == NIL || (oflags & mx_FS_O_UNLINK)){
-		e = su_err_no_by_errno();
+		e = su_err_by_errno();
 		su_path_rm(cp_base);
 		if(fp == NIL)
 			close(fd);
@@ -735,7 +735,7 @@ jleave:
 		mx_sigs_all_rele();
 
 	if(fp == NIL){
-		su_err_set_no(e);
+		su_err_set(e);
 		if(fstcp_or_nil != NIL)
 			*fstcp_or_nil = NIL;
 	}
@@ -789,7 +789,7 @@ mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
 
 		nfd = fcntl(fd, m, 0);
 		if(nfd == -1){
-			su_err_no_by_errno();
+			su_err_by_errno();
 			fp = NIL;
 			goto jleave;
 		}
@@ -806,7 +806,7 @@ mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
 		if(!(oflags & mx_FS_O_NOREGISTER))
 			a_fs_register_file(fp, oflags, a_FS_EF_RAW, NIL, NIL, 0, NIL);
 	}else{
-		su_err_no_by_errno();
+		su_err_by_errno();
 		if(oflags & mx_FS_O_NOCLOSEFD)
 			close(fd);
 	}
@@ -827,7 +827,7 @@ mx_fs_fd_cloexec_set(sz fd){
 		rv = (fcntl(ifd, F_SETFD, ifl | FD_CLOEXEC) != -1);
 
 	if(!rv)
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD2_OU;
 	return rv;
@@ -842,7 +842,7 @@ mx_fs_close(FILE *fp){
 
 	if(a_fs_unregister_file(fp) == su_ERR_NONE)
 		if(!(rv = (fclose(fp) == 0)))
-			su_err_no_by_errno();
+			su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -862,19 +862,19 @@ mx_fs_pipe_cloexec(sz fd[2]){
 		fd[1] = xfd[1];
 		rv = TRU1;
 	}else
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 #else
 	if(pipe(xfd) != -1){
 		fd[0] = xfd[0];
 		fd[1] = xfd[1];
 		if(!(rv = (mx_fs_fd_cloexec_set(fd[0]) && mx_fs_fd_cloexec_set(fd[1])))){
-			su_err_no_by_errno();
+			su_err_by_errno();
 			close(xfd[0]);
 			close(xfd[1]);
 		}
 	}else
-		su_err_no_by_errno();
+		su_err_by_errno();
 #endif
 
 	NYD_OU;
@@ -977,7 +977,7 @@ mx_fs_pipe_open(char const *cmd, enum mx_fs_pipe_type fspt, char const *sh, char
 		a_fs_register_file(rv, 0, ((fd0 != mx_CHILD_FD_PASS && fd1 != mx_CHILD_FD_PASS)
 				? a_FS_EF_PIPE : a_FS_EF_PIPE | a_FS_EF_FD_PASS_NEEDS_WAIT), &cc, NIL, 0L, NIL);
 	else{
-		su_err_no_by_errno();
+		su_err_by_errno();
 		close(myside);
 	}
 
@@ -1049,7 +1049,7 @@ mx_fs_flush(FILE *fp){
 	NYD_IN;
 
 	if(!(rv = (fflush(fp) != EOF)))
-		su_err_no_by_errno();
+		su_err_by_errno();
 
 	NYD_OU;
 	return rv;
@@ -1135,7 +1135,7 @@ jleave:
 	return rv;
 
 jeoverflow:
-	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERRNO),
+	su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERROR),
 		_("fs_linepool_book(): buffer size overflow"));
 	goto jleave;
 }
@@ -1237,7 +1237,7 @@ a_fs_fgetline_byone(char **line, uz *linesize, uz *llen_or_nil, FILE *fp, int ap
 				}
 				break;
 			} else {
-				su_err_no_by_errno();
+				su_err_by_errno();
 				rv = NULL;
 				goto jleave;
 			}
@@ -1295,7 +1295,7 @@ char *
 			break;
 		} else if (fgets(rv + i_llen, size, fp) == NULL) {
 			if (!feof(fp)) {
-				su_err_no_by_errno();
+				su_err_by_errno();
 				rv = NULL;
 				goto jleave;
 			}
@@ -1353,7 +1353,7 @@ jagain:
 					break;
 				}
 			} else {
-				if (size == -1 && su_err_no_by_errno() == su_ERR_INTR)
+				if (size == -1 && su_err_by_errno() == su_ERR_INTR)
 					goto jagain;
 				/* TODO eh.  what is this?  that now supposed to be a line?!? */
 				if (n > 0) {

@@ -189,7 +189,7 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp, su_new_fun cxx_
 
 	if(a_md_lock == NIL && (rv = su__md_init(estate)) != su_STATE_NONE){
 	}else if((mdlp = su_TALLOCF(struct a_md_list, 1, su_MEM_ALLOC_MAYFAIL)) == NIL)
-		rv = -su_err_no();
+		rv = -su_err();
 	else{
 		su_MUTEX_LOCK(a_md_lock);
 		mdlp->mdl_last = a_md_list;
@@ -250,14 +250,14 @@ su_md_new_by_algo(enum su_md_algo algo, u32 estate){
 	}
 
 	if(UNLIKELY(vtblp == NIL)){
-		su_err_set_no(su_ERR_NOTSUP);
+		su_err_set(su_ERR_NOTSUP);
 		self = NIL;
 	}else if((self = su_TALLOCF(struct su_md, 1, estate)) != NIL){
 		self->md_vtbl = vtblp;
 		if((self->md_vp = (*vtblp->mdvtbl_new)(estate)) == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_FREE(self);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 			self = NIL;
 		}
 	}
@@ -299,15 +299,15 @@ su_md_new_by_name(char const *name, u32 estate){
 
 	if(vtblp == NIL){
 jno:
-		su_err_set_no(su_ERR_NOTSUP);
+		su_err_set(su_ERR_NOTSUP);
 		self = NIL;
 	}else if((self = su_TALLOCF(struct su_md, 1, estate)) != NIL){
 		ASSERT(newptf != NIL);
 		self->md_vtbl = vtblp;
 		if((self->md_vp = (*newptf)(estate)) == NIL){
-			su_THREAD_ERR_NO_SCOPE_IN();
+			su_THREAD_ERR_SCOPE_IN();
 				su_FREE(self);
-			su_THREAD_ERR_NO_SCOPE_OU();
+			su_THREAD_ERR_SCOPE_OU();
 			self = NIL;
 		}
 	}

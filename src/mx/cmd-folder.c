@@ -216,10 +216,10 @@ c_remove(void *vp){
 			if(!su_path_rm(name)){
 				s32 err;
 
-				if((err = su_err_no()) == su_ERR_ISDIR){
+				if((err = su_err()) == su_ERR_ISDIR){
 					if(su_path_rmdir(name))
 						break;
-					err = su_err_no();
+					err = su_err();
 				}
 				emsg = su_err_doc(err);
 				goto jerr;
@@ -324,7 +324,7 @@ c_rename(void *vp){
 		){
 			emsg =
 #ifdef mx_HAVE_MAILDIR
-					savecatsep(_("rename(2) failed:"), ' ', _(su_err_doc(su_err_no_by_errno())))
+					savecatsep(_("rename(2) failed:"), ' ', _(su_err_doc(su_err_by_errno())))
 #else
 					_("no Maildir support available")
 #endif

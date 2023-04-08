@@ -320,7 +320,7 @@ FL void n_su_log_write_fun(u32 lvl_a_flags, char const *msg, uz len);
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);
 
-/* Our perror(3); if errval is 0 su_err_no() is used; newline appended */
+/* Our perror(3); if errval is 0 su_err() is used; newline appended */
 FL void        n_perr(char const *msg, int errval);
 
 /* Announce a fatal error (and die); newline appended */
@@ -599,7 +599,7 @@ FL char const *n_folder_query(void);
  * fout, otherwise an internal fstat(2) is performed as necessary.
  * post defines whether a message was written out, ie whether it is a hard
  * error if preparation for another message fails.
- * Returns su_err_no() of error */
+ * Returns su_err() of error */
 FL int n_folder_mbox_prepare_append(FILE *fout, boole post,
       struct su_pathinfo *pip_or_nil);
 

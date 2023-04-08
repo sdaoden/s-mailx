@@ -293,7 +293,7 @@ jdelim_empty:
       }
       name = n_hy;
    }else if((fbuf = mx_fs_open(name, mx_FS_O_RDONLY)) == NIL){
-      n_perr(name, rv = su_err_no());
+      n_perr(name, rv = su_err());
       goto jleave;
    }
 
@@ -328,7 +328,7 @@ jdelim_empty:
 
    if(fflush(_coll_fp)){
 jerrno:
-      rv = su_err_no_by_errno();
+      rv = su_err_by_errno();
       goto jleave;
    }
 
@@ -368,7 +368,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
       while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
          if(putc(c, fp) == EOF){
-            rv = su_err_no_by_errno();
+            rv = su_err_by_errno();
             break;
          }
          ++cc;
@@ -384,7 +384,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
             rv = su_ERR_IO;
       }
    }else
-      n_perr(cmd, rv = su_err_no());
+      n_perr(cmd, rv = su_err());
 
    fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
       (rv == su_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
@@ -465,7 +465,7 @@ a_coll_write(char const *name, FILE *fp, int f)
 
    if((of = mx_fs_open(name, (mx_FS_O_WRONLY | mx_FS_O_APPEND |
             mx_FS_O_CREATE))) == NIL){
-      n_perr(name, rv = su_err_no());
+      n_perr(name, rv = su_err());
       goto jerr;
    }
 
@@ -475,7 +475,7 @@ a_coll_write(char const *name, FILE *fp, int f)
       if (c == '\n')
          ++lc;
       if (putc(c, of) == EOF) {
-         n_perr(name, rv = su_err_no_by_errno());
+         n_perr(name, rv = su_err_by_errno());
          goto jerr;
       }
    }
@@ -844,7 +844,7 @@ a_coll_pipe(char const *cmd)
 
    if((nf = mx_fs_tmp_open(NIL, "colpipe", (mx_FS_O_RDWR | mx_FS_O_UNLINK),
             NIL)) == NIL){
-      rv = su_err_no();
+      rv = su_err();
 jperr:
       n_perr(_("temporary mail edit file"), rv);
       goto jout;
@@ -852,7 +852,7 @@ jperr:
 
    /* stdin = current message.  stdout = new message */
    if(fflush(_coll_fp) == EOF){
-      rv = su_err_no_by_errno();
+      rv = su_err_by_errno();
       goto jperr;
    }
    rewind(_coll_fp);
@@ -2013,7 +2013,7 @@ jout:
          goto jcont;
       }
 
-      c = su_err_no();
+      c = su_err();
       a_coll_ocs__finalize(coap);
       n_perr(_("Cannot invoke *on-compose-splice(-shell)?*"), c);
       goto jerr;
@@ -2136,7 +2136,7 @@ jreasksend:
 
       /* C99 */{
          FILE *x = UNVOLATILE(FILE*,sigfp);
-         int e = su_err_no_by_errno(), ise = ferror(x);
+         int e = su_err_by_errno(), ise = ferror(x);
 
          sigfp = NULL;
          mx_fs_close(x);

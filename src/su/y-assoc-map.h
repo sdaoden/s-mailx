@@ -211,7 +211,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const
 		if(value != NIL){
 			xvalue = value = (*self->a_T_F(tbox)->tb_clone)(value, (flags & su_STATE_ERR_MASK));
 			if(UNLIKELY(xvalue == NIL) && !(flags & a_T_PUBNAME(NILISVALO))){
-				rv = su_err_no();
+				rv = su_err();
 				goto jleave;
 			}
 		}else
@@ -273,11 +273,11 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
 				if(LIKELY(value != NIL))
 					ndat = NIL;
 				else
-					rv = su_err_no();
+					rv = su_err();
 			}else{
 				value = (*self->a_T_F(tbox)->tb_clone)(value, (flags & su_STATE_ERR_MASK));
 				if(UNLIKELY(value == NIL)){
-					rv = su_err_no();
+					rv = su_err();
 					ndat = NIL;
 				}
 			}
@@ -818,7 +818,7 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
 	/* Try to allocate new array, give up on failure */
 	narr = su_TCALLOCF(struct a_N*, nsize, (self->a_T_F(flags) & su_STATE_ERR_MASK));
 	if(UNLIKELY(narr == NIL)){
-		rv = su_err_no();
+		rv = su_err();
 		goto jleave;
 	}
 

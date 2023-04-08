@@ -127,7 +127,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
          /* Pipe target is special TODO hacked in later, normalize flow! */
          if((obuf = mx_fs_pipe_open(file, mx_FS_PIPE_WRITE_CHILD_PASS, shell,
                   NIL, -1)) == NIL){
-            n_perr(file, n_pstate_err_no = su_err_no());
+            n_perr(file, n_pstate_err_no = su_err());
             goto jleave;
          }
          disp = A_("[Piped]");
@@ -146,7 +146,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
       file = savecat("file://", file);
    if((obuf = mx_fs_open_any(file, (mx_FS_O_RDWR | mx_FS_O_APPEND |
             mx_FS_O_CREATE), &fs)) == NIL){
-      n_perr(file, n_pstate_err_no = su_err_no());
+      n_perr(file, n_pstate_err_no = su_err());
       goto jleave;
    }
    ASSERT((fs & n_PROTO_MASK) == n_PROTO_IMAP ||
@@ -170,7 +170,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
        * TODO BETTER yet: should be returned in lock state already! */
       if(!mx_file_lock(fileno(obuf), (mx_FILE_LOCK_MODE_TEXCL |
             mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-         xerr = su_err_no();
+         xerr = su_err();
          goto jeappend;
       }
 
@@ -204,7 +204,7 @@ jsend:
             !mx_ignore_is_any(mx_IGNORE_SAVE) && imap_thisaccount(file)){
          if(imap_copy(mp, P2UZ(mp - message + 1), file) == STOP){
             success = FAL0;
-            n_pstate_err_no = su_err_no_by_errno();
+            n_pstate_err_no = su_err_by_errno();
             goto jferr;
          }
          mstats[0] = mp->m_xsize;
@@ -212,7 +212,7 @@ jsend:
 #endif
            {
          if(sendmp(mp, obuf, itp, NIL, convert, mstats) < 0){
-            n_pstate_err_no = su_err_no();
+            n_pstate_err_no = su_err();
             success = FAL0;
             goto jferr;
          }
@@ -241,7 +241,7 @@ jsend:
    fflush(obuf);
 
    if (ferror(obuf)) {
-      n_pstate_err_no = su_err_no_by_errno();
+      n_pstate_err_no = su_err_by_errno();
 jferr:
       if(su_state_has(su_STATE_REPRODUCIBLE))
          file = n_filename_to_repro(file);

@@ -27,147 +27,153 @@ static char const a_corerr_names[] = {
 	'B','U','S','Y','\0',
 	/* 11. [82]+8 CANCELED */
 	'C','A','N','C','E','L','E','D','\0',
-	/* 12. [91]+5 CHILD */
+	/* 12. [91]+7 CAPMODE */
+	'C','A','P','M','O','D','E','\0',
+	/* 13. [99]+5 CHILD */
 	'C','H','I','L','D','\0',
-	/* 13. [97]+11 CONNABORTED */
+	/* 14. [105]+11 CONNABORTED */
 	'C','O','N','N','A','B','O','R','T','E','D','\0',
-	/* 14. [109]+11 CONNREFUSED */
+	/* 15. [117]+11 CONNREFUSED */
 	'C','O','N','N','R','E','F','U','S','E','D','\0',
-	/* 15. [121]+9 CONNRESET */
+	/* 16. [129]+9 CONNRESET */
 	'C','O','N','N','R','E','S','E','T','\0',
-	/* 16. [131]+6 DEADLK */
+	/* 17. [139]+6 DEADLK */
 	'D','E','A','D','L','K','\0',
-	/* 17. [138]+11 DESTADDRREQ */
+	/* 18. [146]+11 DESTADDRREQ */
 	'D','E','S','T','A','D','D','R','R','E','Q','\0',
-	/* 18. [150]+3 DOM */
+	/* 19. [158]+3 DOM */
 	'D','O','M','\0',
-	/* 19. [154]+5 DQUOT */
+	/* 20. [162]+5 DQUOT */
 	'D','Q','U','O','T','\0',
-	/* 20. [160]+5 EXIST */
+	/* 21. [168]+5 EXIST */
 	'E','X','I','S','T','\0',
-	/* 21. [166]+5 FAULT */
+	/* 22. [174]+5 FAULT */
 	'F','A','U','L','T','\0',
-	/* 22. [172]+4 FBIG */
+	/* 23. [180]+4 FBIG */
 	'F','B','I','G','\0',
-	/* 23. [177]+11 HOSTUNREACH */
+	/* 24. [185]+11 HOSTUNREACH */
 	'H','O','S','T','U','N','R','E','A','C','H','\0',
-	/* 24. [189]+4 IDRM */
+	/* 25. [197]+4 IDRM */
 	'I','D','R','M','\0',
-	/* 25. [194]+5 ILSEQ */
+	/* 26. [202]+5 ILSEQ */
 	'I','L','S','E','Q','\0',
-	/* 26. [200]+10 INPROGRESS */
+	/* 27. [208]+10 INPROGRESS */
 	'I','N','P','R','O','G','R','E','S','S','\0',
-	/* 27. [211]+4 INTR */
+	/* 28. [219]+9 INTEGRITY */
+	'I','N','T','E','G','R','I','T','Y','\0',
+	/* 29. [229]+4 INTR */
 	'I','N','T','R','\0',
-	/* 28. [216]+5 INVAL */
+	/* 30. [234]+5 INVAL */
 	'I','N','V','A','L','\0',
-	/* 29. [222]+2 IO */
+	/* 31. [240]+2 IO */
 	'I','O','\0',
-	/* 30. [225]+6 ISCONN */
+	/* 32. [243]+6 ISCONN */
 	'I','S','C','O','N','N','\0',
-	/* 31. [232]+5 ISDIR */
+	/* 33. [250]+5 ISDIR */
 	'I','S','D','I','R','\0',
-	/* 32. [238]+4 LOOP */
+	/* 34. [256]+4 LOOP */
 	'L','O','O','P','\0',
-	/* 33. [243]+5 MFILE */
+	/* 35. [261]+5 MFILE */
 	'M','F','I','L','E','\0',
-	/* 34. [249]+5 MLINK */
+	/* 36. [267]+5 MLINK */
 	'M','L','I','N','K','\0',
-	/* 35. [255]+7 MSGSIZE */
+	/* 37. [273]+7 MSGSIZE */
 	'M','S','G','S','I','Z','E','\0',
-	/* 36. [263]+8 MULTIHOP */
+	/* 38. [281]+8 MULTIHOP */
 	'M','U','L','T','I','H','O','P','\0',
-	/* 37. [272]+11 NAMETOOLONG */
+	/* 39. [290]+11 NAMETOOLONG */
 	'N','A','M','E','T','O','O','L','O','N','G','\0',
-	/* 38. [284]+7 NETDOWN */
+	/* 40. [302]+7 NETDOWN */
 	'N','E','T','D','O','W','N','\0',
-	/* 39. [292]+8 NETRESET */
+	/* 41. [310]+8 NETRESET */
 	'N','E','T','R','E','S','E','T','\0',
-	/* 40. [301]+10 NETUNREACH */
+	/* 42. [319]+10 NETUNREACH */
 	'N','E','T','U','N','R','E','A','C','H','\0',
-	/* 41. [312]+5 NFILE */
+	/* 43. [330]+5 NFILE */
 	'N','F','I','L','E','\0',
-	/* 42. [318]+6 NOBUFS */
+	/* 44. [336]+6 NOBUFS */
 	'N','O','B','U','F','S','\0',
-	/* 43. [325]+6 NODATA */
+	/* 45. [343]+6 NODATA */
 	'N','O','D','A','T','A','\0',
-	/* 44. [332]+5 NODEV */
+	/* 46. [350]+5 NODEV */
 	'N','O','D','E','V','\0',
-	/* 45. [338]+5 NOENT */
+	/* 47. [356]+5 NOENT */
 	'N','O','E','N','T','\0',
-	/* 46. [344]+6 NOEXEC */
+	/* 48. [362]+6 NOEXEC */
 	'N','O','E','X','E','C','\0',
-	/* 47. [351]+5 NOLCK */
+	/* 49. [369]+5 NOLCK */
 	'N','O','L','C','K','\0',
-	/* 48. [357]+6 NOLINK */
+	/* 50. [375]+6 NOLINK */
 	'N','O','L','I','N','K','\0',
-	/* 49. [364]+5 NOMEM */
+	/* 51. [382]+5 NOMEM */
 	'N','O','M','E','M','\0',
-	/* 50. [370]+5 NOMSG */
+	/* 52. [388]+5 NOMSG */
 	'N','O','M','S','G','\0',
-	/* 51. [376]+10 NOPROTOOPT */
+	/* 53. [394]+10 NOPROTOOPT */
 	'N','O','P','R','O','T','O','O','P','T','\0',
-	/* 52. [387]+5 NOSPC */
+	/* 54. [405]+5 NOSPC */
 	'N','O','S','P','C','\0',
-	/* 53. [393]+4 NOSR */
+	/* 55. [411]+4 NOSR */
 	'N','O','S','R','\0',
-	/* 54. [398]+5 NOSTR */
+	/* 56. [416]+5 NOSTR */
 	'N','O','S','T','R','\0',
-	/* 55. [404]+5 NOSYS */
+	/* 57. [422]+5 NOSYS */
 	'N','O','S','Y','S','\0',
-	/* 56. [410]+7 NOTCONN */
+	/* 58. [428]+10 NOTCAPABLE */
+	'N','O','T','C','A','P','A','B','L','E','\0',
+	/* 59. [439]+7 NOTCONN */
 	'N','O','T','C','O','N','N','\0',
-	/* 57. [418]+6 NOTDIR */
+	/* 60. [447]+6 NOTDIR */
 	'N','O','T','D','I','R','\0',
-	/* 58. [425]+8 NOTEMPTY */
+	/* 61. [454]+8 NOTEMPTY */
 	'N','O','T','E','M','P','T','Y','\0',
-	/* 59. [434]+9 NOTOBACCO */
+	/* 62. [463]+9 NOTOBACCO */
 	'N','O','T','O','B','A','C','C','O','\0',
-	/* 60. [444]+14 NOTRECOVERABLE */
+	/* 63. [473]+14 NOTRECOVERABLE */
 	'N','O','T','R','E','C','O','V','E','R','A','B','L','E','\0',
-	/* 61. [459]+7 NOTSOCK */
+	/* 64. [488]+7 NOTSOCK */
 	'N','O','T','S','O','C','K','\0',
-	/* 62. [467]+6 NOTSUP */
+	/* 65. [496]+6 NOTSUP */
 	'N','O','T','S','U','P','\0',
-	/* 63. [474]+5 NOTTY */
+	/* 66. [503]+5 NOTTY */
 	'N','O','T','T','Y','\0',
-	/* 64. [480]+4 NXIO */
+	/* 67. [509]+4 NXIO */
 	'N','X','I','O','\0',
-	/* 65. [485]+9 OPNOTSUPP */
+	/* 68. [514]+9 OPNOTSUPP */
 	'O','P','N','O','T','S','U','P','P','\0',
-	/* 66. [495]+8 OVERFLOW */
+	/* 69. [524]+8 OVERFLOW */
 	'O','V','E','R','F','L','O','W','\0',
-	/* 67. [504]+9 OWNERDEAD */
+	/* 70. [533]+9 OWNERDEAD */
 	'O','W','N','E','R','D','E','A','D','\0',
-	/* 68. [514]+4 PERM */
+	/* 71. [543]+4 PERM */
 	'P','E','R','M','\0',
-	/* 69. [519]+4 PIPE */
+	/* 72. [548]+4 PIPE */
 	'P','I','P','E','\0',
-	/* 70. [524]+5 PROTO */
+	/* 73. [553]+5 PROTO */
 	'P','R','O','T','O','\0',
-	/* 71. [530]+14 PROTONOSUPPORT */
+	/* 74. [559]+14 PROTONOSUPPORT */
 	'P','R','O','T','O','N','O','S','U','P','P','O','R','T','\0',
-	/* 72. [545]+9 PROTOTYPE */
+	/* 75. [574]+9 PROTOTYPE */
 	'P','R','O','T','O','T','Y','P','E','\0',
-	/* 73. [555]+5 RANGE */
+	/* 76. [584]+5 RANGE */
 	'R','A','N','G','E','\0',
-	/* 74. [561]+4 ROFS */
+	/* 77. [590]+4 ROFS */
 	'R','O','F','S','\0',
-	/* 75. [566]+5 SPIPE */
+	/* 78. [595]+5 SPIPE */
 	'S','P','I','P','E','\0',
-	/* 76. [572]+4 SRCH */
+	/* 79. [601]+4 SRCH */
 	'S','R','C','H','\0',
-	/* 77. [577]+5 STALE */
+	/* 80. [606]+5 STALE */
 	'S','T','A','L','E','\0',
-	/* 78. [583]+4 TIME */
+	/* 81. [612]+4 TIME */
 	'T','I','M','E','\0',
-	/* 79. [588]+8 TIMEDOUT */
+	/* 82. [617]+8 TIMEDOUT */
 	'T','I','M','E','D','O','U','T','\0',
-	/* 80. [597]+6 TXTBSY */
+	/* 83. [626]+6 TXTBSY */
 	'T','X','T','B','S','Y','\0',
-	/* 81. [604]+10 WOULDBLOCK */
+	/* 84. [633]+10 WOULDBLOCK */
 	'W','O','U','L','D','B','L','O','C','K','\0',
-	/* 82. [615]+4 XDEV */
+	/* 85. [644]+4 XDEV */
 	'X','D','E','V','\0',
 };
 
@@ -198,147 +204,153 @@ static char const a_corerr_docs[] = {
 	'D','e','v','i','c','e',' ','b','u','s','y','\0',
 	/* 11. [260]+18 CANCELED */ a_X(N_("Operation canceled"))
 	'O','p','e','r','a','t','i','o','n',' ','c','a','n','c','e','l','e','d','\0',
-	/* 12. [279]+18 CHILD */ a_X(N_("No child processes"))
+	/* 12. [279]+32 CAPMODE */ a_X(N_("Not permitted in capability mode"))
+	'N','o','t',' ','p','e','r','m','i','t','t','e','d',' ','i','n',' ','c','a','p','a','b','i','l','i','t','y',' ','m','o','d','e','\0',
+	/* 13. [312]+18 CHILD */ a_X(N_("No child processes"))
 	'N','o',' ','c','h','i','l','d',' ','p','r','o','c','e','s','s','e','s','\0',
-	/* 13. [298]+32 CONNABORTED */ a_X(N_("Software caused connection abort"))
+	/* 14. [331]+32 CONNABORTED */ a_X(N_("Software caused connection abort"))
 	'S','o','f','t','w','a','r','e',' ','c','a','u','s','e','d',' ','c','o','n','n','e','c','t','i','o','n',' ','a','b','o','r','t','\0',
-	/* 14. [331]+18 CONNREFUSED */ a_X(N_("Connection refused"))
+	/* 15. [364]+18 CONNREFUSED */ a_X(N_("Connection refused"))
 	'C','o','n','n','e','c','t','i','o','n',' ','r','e','f','u','s','e','d','\0',
-	/* 15. [350]+24 CONNRESET */ a_X(N_("Connection reset by peer"))
+	/* 16. [383]+24 CONNRESET */ a_X(N_("Connection reset by peer"))
 	'C','o','n','n','e','c','t','i','o','n',' ','r','e','s','e','t',' ','b','y',' ','p','e','e','r','\0',
-	/* 16. [375]+25 DEADLK */ a_X(N_("Resource deadlock avoided"))
+	/* 17. [408]+25 DEADLK */ a_X(N_("Resource deadlock avoided"))
 	'R','e','s','o','u','r','c','e',' ','d','e','a','d','l','o','c','k',' ','a','v','o','i','d','e','d','\0',
-	/* 17. [401]+28 DESTADDRREQ */ a_X(N_("Destination address required"))
+	/* 18. [434]+28 DESTADDRREQ */ a_X(N_("Destination address required"))
 	'D','e','s','t','i','n','a','t','i','o','n',' ','a','d','d','r','e','s','s',' ','r','e','q','u','i','r','e','d','\0',
-	/* 18. [430]+32 DOM */ a_X(N_("Numerical argument out of domain"))
+	/* 19. [463]+32 DOM */ a_X(N_("Numerical argument out of domain"))
 	'N','u','m','e','r','i','c','a','l',' ','a','r','g','u','m','e','n','t',' ','o','u','t',' ','o','f',' ','d','o','m','a','i','n','\0',
-	/* 19. [463]+19 DQUOT */ a_X(N_("Disc quota exceeded"))
+	/* 20. [496]+19 DQUOT */ a_X(N_("Disc quota exceeded"))
 	'D','i','s','c',' ','q','u','o','t','a',' ','e','x','c','e','e','d','e','d','\0',
-	/* 20. [483]+11 EXIST */ a_X(N_("File exists"))
+	/* 21. [516]+11 EXIST */ a_X(N_("File exists"))
 	'F','i','l','e',' ','e','x','i','s','t','s','\0',
-	/* 21. [495]+11 FAULT */ a_X(N_("Bad address"))
+	/* 22. [528]+11 FAULT */ a_X(N_("Bad address"))
 	'B','a','d',' ','a','d','d','r','e','s','s','\0',
-	/* 22. [507]+14 FBIG */ a_X(N_("File too large"))
+	/* 23. [540]+14 FBIG */ a_X(N_("File too large"))
 	'F','i','l','e',' ','t','o','o',' ','l','a','r','g','e','\0',
-	/* 23. [522]+16 HOSTUNREACH */ a_X(N_("No route to host"))
+	/* 24. [555]+16 HOSTUNREACH */ a_X(N_("No route to host"))
 	'N','o',' ','r','o','u','t','e',' ','t','o',' ','h','o','s','t','\0',
-	/* 24. [539]+18 IDRM */ a_X(N_("Identifier removed"))
+	/* 25. [572]+18 IDRM */ a_X(N_("Identifier removed"))
 	'I','d','e','n','t','i','f','i','e','r',' ','r','e','m','o','v','e','d','\0',
-	/* 25. [558]+21 ILSEQ */ a_X(N_("Illegal byte sequence"))
+	/* 26. [591]+21 ILSEQ */ a_X(N_("Illegal byte sequence"))
 	'I','l','l','e','g','a','l',' ','b','y','t','e',' ','s','e','q','u','e','n','c','e','\0',
-	/* 26. [580]+25 INPROGRESS */ a_X(N_("Operation now in progress"))
+	/* 27. [613]+25 INPROGRESS */ a_X(N_("Operation now in progress"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','w',' ','i','n',' ','p','r','o','g','r','e','s','s','\0',
-	/* 27. [606]+23 INTR */ a_X(N_("Interrupted system call"))
+	/* 28. [639]+22 INTEGRITY */ a_X(N_("Integrity check failed"))
+	'I','n','t','e','g','r','i','t','y',' ','c','h','e','c','k',' ','f','a','i','l','e','d','\0',
+	/* 29. [662]+23 INTR */ a_X(N_("Interrupted system call"))
 	'I','n','t','e','r','r','u','p','t','e','d',' ','s','y','s','t','e','m',' ','c','a','l','l','\0',
-	/* 28. [630]+16 INVAL */ a_X(N_("Invalid argument"))
+	/* 30. [686]+16 INVAL */ a_X(N_("Invalid argument"))
 	'I','n','v','a','l','i','d',' ','a','r','g','u','m','e','n','t','\0',
-	/* 29. [647]+18 IO */ a_X(N_("Input/output error"))
+	/* 31. [703]+18 IO */ a_X(N_("Input/output error"))
 	'I','n','p','u','t','/','o','u','t','p','u','t',' ','e','r','r','o','r','\0',
-	/* 30. [666]+27 ISCONN */ a_X(N_("Socket is already connected"))
+	/* 32. [722]+27 ISCONN */ a_X(N_("Socket is already connected"))
 	'S','o','c','k','e','t',' ','i','s',' ','a','l','r','e','a','d','y',' ','c','o','n','n','e','c','t','e','d','\0',
-	/* 31. [694]+14 ISDIR */ a_X(N_("Is a directory"))
+	/* 33. [750]+14 ISDIR */ a_X(N_("Is a directory"))
 	'I','s',' ','a',' ','d','i','r','e','c','t','o','r','y','\0',
-	/* 32. [709]+33 LOOP */ a_X(N_("Too many levels of symbolic links"))
+	/* 34. [765]+33 LOOP */ a_X(N_("Too many levels of symbolic links"))
 	'T','o','o',' ','m','a','n','y',' ','l','e','v','e','l','s',' ','o','f',' ','s','y','m','b','o','l','i','c',' ','l','i','n','k','s','\0',
-	/* 33. [743]+19 MFILE */ a_X(N_("Too many open files"))
+	/* 35. [799]+19 MFILE */ a_X(N_("Too many open files"))
 	'T','o','o',' ','m','a','n','y',' ','o','p','e','n',' ','f','i','l','e','s','\0',
-	/* 34. [763]+14 MLINK */ a_X(N_("Too many links"))
+	/* 36. [819]+14 MLINK */ a_X(N_("Too many links"))
 	'T','o','o',' ','m','a','n','y',' ','l','i','n','k','s','\0',
-	/* 35. [778]+16 MSGSIZE */ a_X(N_("Message too long"))
+	/* 37. [834]+16 MSGSIZE */ a_X(N_("Message too long"))
 	'M','e','s','s','a','g','e',' ','t','o','o',' ','l','o','n','g','\0',
-	/* 36. [795]+18 MULTIHOP */ a_X(N_("Multihop attempted"))
+	/* 38. [851]+18 MULTIHOP */ a_X(N_("Multihop attempted"))
 	'M','u','l','t','i','h','o','p',' ','a','t','t','e','m','p','t','e','d','\0',
-	/* 37. [814]+17 NAMETOOLONG */ a_X(N_("Filename too long"))
+	/* 39. [870]+17 NAMETOOLONG */ a_X(N_("Filename too long"))
 	'F','i','l','e','n','a','m','e',' ','t','o','o',' ','l','o','n','g','\0',
-	/* 38. [832]+15 NETDOWN */ a_X(N_("Network is down"))
+	/* 40. [888]+15 NETDOWN */ a_X(N_("Network is down"))
 	'N','e','t','w','o','r','k',' ','i','s',' ','d','o','w','n','\0',
-	/* 39. [848]+35 NETRESET */ a_X(N_("Network dropped connection on reset"))
+	/* 41. [904]+35 NETRESET */ a_X(N_("Network dropped connection on reset"))
 	'N','e','t','w','o','r','k',' ','d','r','o','p','p','e','d',' ','c','o','n','n','e','c','t','i','o','n',' ','o','n',' ','r','e','s','e','t','\0',
-	/* 40. [884]+22 NETUNREACH */ a_X(N_("Network is unreachable"))
+	/* 42. [940]+22 NETUNREACH */ a_X(N_("Network is unreachable"))
 	'N','e','t','w','o','r','k',' ','i','s',' ','u','n','r','e','a','c','h','a','b','l','e','\0',
-	/* 41. [907]+29 NFILE */ a_X(N_("Too many open files in system"))
+	/* 43. [963]+29 NFILE */ a_X(N_("Too many open files in system"))
 	'T','o','o',' ','m','a','n','y',' ','o','p','e','n',' ','f','i','l','e','s',' ','i','n',' ','s','y','s','t','e','m','\0',
-	/* 42. [937]+25 NOBUFS */ a_X(N_("No buffer space available"))
+	/* 44. [993]+25 NOBUFS */ a_X(N_("No buffer space available"))
 	'N','o',' ','b','u','f','f','e','r',' ','s','p','a','c','e',' ','a','v','a','i','l','a','b','l','e','\0',
-	/* 43. [963]+17 NODATA */ a_X(N_("No data available"))
+	/* 45. [1019]+17 NODATA */ a_X(N_("No data available"))
 	'N','o',' ','d','a','t','a',' ','a','v','a','i','l','a','b','l','e','\0',
-	/* 44. [981]+33 NODEV */ a_X(N_("Operation not supported by device"))
+	/* 46. [1037]+33 NODEV */ a_X(N_("Operation not supported by device"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d',' ','b','y',' ','d','e','v','i','c','e','\0',
-	/* 45. [1015]+32 NOENT */ a_X(N_("No such entry, file or directory"))
+	/* 47. [1071]+32 NOENT */ a_X(N_("No such entry, file or directory"))
 	'N','o',' ','s','u','c','h',' ','e','n','t','r','y',',',' ','f','i','l','e',' ','o','r',' ','d','i','r','e','c','t','o','r','y','\0',
-	/* 46. [1048]+17 NOEXEC */ a_X(N_("Exec format error"))
+	/* 48. [1104]+17 NOEXEC */ a_X(N_("Exec format error"))
 	'E','x','e','c',' ','f','o','r','m','a','t',' ','e','r','r','o','r','\0',
-	/* 47. [1066]+18 NOLCK */ a_X(N_("No locks available"))
+	/* 49. [1122]+18 NOLCK */ a_X(N_("No locks available"))
 	'N','o',' ','l','o','c','k','s',' ','a','v','a','i','l','a','b','l','e','\0',
-	/* 48. [1085]+21 NOLINK */ a_X(N_("Link has been severed"))
+	/* 50. [1141]+21 NOLINK */ a_X(N_("Link has been severed"))
 	'L','i','n','k',' ','h','a','s',' ','b','e','e','n',' ','s','e','v','e','r','e','d','\0',
-	/* 49. [1107]+22 NOMEM */ a_X(N_("Cannot allocate memory"))
+	/* 51. [1163]+22 NOMEM */ a_X(N_("Cannot allocate memory"))
 	'C','a','n','n','o','t',' ','a','l','l','o','c','a','t','e',' ','m','e','m','o','r','y','\0',
-	/* 50. [1130]+26 NOMSG */ a_X(N_("No message of desired type"))
+	/* 52. [1186]+26 NOMSG */ a_X(N_("No message of desired type"))
 	'N','o',' ','m','e','s','s','a','g','e',' ','o','f',' ','d','e','s','i','r','e','d',' ','t','y','p','e','\0',
-	/* 51. [1157]+22 NOPROTOOPT */ a_X(N_("Protocol not available"))
+	/* 53. [1213]+22 NOPROTOOPT */ a_X(N_("Protocol not available"))
 	'P','r','o','t','o','c','o','l',' ','n','o','t',' ','a','v','a','i','l','a','b','l','e','\0',
-	/* 52. [1180]+23 NOSPC */ a_X(N_("No space left on device"))
+	/* 54. [1236]+23 NOSPC */ a_X(N_("No space left on device"))
 	'N','o',' ','s','p','a','c','e',' ','l','e','f','t',' ','o','n',' ','d','e','v','i','c','e','\0',
-	/* 53. [1204]+23 NOSR */ a_X(N_("Out of streams resource"))
+	/* 55. [1260]+23 NOSR */ a_X(N_("Out of streams resource"))
 	'O','u','t',' ','o','f',' ','s','t','r','e','a','m','s',' ','r','e','s','o','u','r','c','e','\0',
-	/* 54. [1228]+19 NOSTR */ a_X(N_("Device not a stream"))
+	/* 56. [1284]+19 NOSTR */ a_X(N_("Device not a stream"))
 	'D','e','v','i','c','e',' ','n','o','t',' ','a',' ','s','t','r','e','a','m','\0',
-	/* 55. [1248]+24 NOSYS */ a_X(N_("Function not implemented"))
+	/* 57. [1304]+24 NOSYS */ a_X(N_("Function not implemented"))
 	'F','u','n','c','t','i','o','n',' ','n','o','t',' ','i','m','p','l','e','m','e','n','t','e','d','\0',
-	/* 56. [1273]+23 NOTCONN */ a_X(N_("Socket is not connected"))
+	/* 58. [1329]+25 NOTCAPABLE */ a_X(N_("Capabilities insufficient"))
+	'C','a','p','a','b','i','l','i','t','i','e','s',' ','i','n','s','u','f','f','i','c','i','e','n','t','\0',
+	/* 59. [1355]+23 NOTCONN */ a_X(N_("Socket is not connected"))
 	'S','o','c','k','e','t',' ','i','s',' ','n','o','t',' ','c','o','n','n','e','c','t','e','d','\0',
-	/* 57. [1297]+15 NOTDIR */ a_X(N_("Not a directory"))
+	/* 60. [1379]+15 NOTDIR */ a_X(N_("Not a directory"))
 	'N','o','t',' ','a',' ','d','i','r','e','c','t','o','r','y','\0',
-	/* 58. [1313]+19 NOTEMPTY */ a_X(N_("Directory not empty"))
+	/* 61. [1395]+19 NOTEMPTY */ a_X(N_("Directory not empty"))
 	'D','i','r','e','c','t','o','r','y',' ','n','o','t',' ','e','m','p','t','y','\0',
-	/* 59. [1333]+36 NOTOBACCO */ a_X(N_("No tobacco, snorkeling on empty pipe"))
+	/* 62. [1415]+36 NOTOBACCO */ a_X(N_("No tobacco, snorkeling on empty pipe"))
 	'N','o',' ','t','o','b','a','c','c','o',',',' ','s','n','o','r','k','e','l','i','n','g',' ','o','n',' ','e','m','p','t','y',' ','p','i','p','e','\0',
-	/* 60. [1370]+21 NOTRECOVERABLE */ a_X(N_("State not recoverable"))
+	/* 63. [1452]+21 NOTRECOVERABLE */ a_X(N_("State not recoverable"))
 	'S','t','a','t','e',' ','n','o','t',' ','r','e','c','o','v','e','r','a','b','l','e','\0',
-	/* 61. [1392]+30 NOTSOCK */ a_X(N_("Socket operation on non-socket"))
+	/* 64. [1474]+30 NOTSOCK */ a_X(N_("Socket operation on non-socket"))
 	'S','o','c','k','e','t',' ','o','p','e','r','a','t','i','o','n',' ','o','n',' ','n','o','n','-','s','o','c','k','e','t','\0',
-	/* 62. [1423]+23 NOTSUP */ a_X(N_("Operation not supported"))
+	/* 65. [1505]+23 NOTSUP */ a_X(N_("Operation not supported"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-	/* 63. [1447]+30 NOTTY */ a_X(N_("Inappropriate ioctl for device"))
+	/* 66. [1529]+30 NOTTY */ a_X(N_("Inappropriate ioctl for device"))
 	'I','n','a','p','p','r','o','p','r','i','a','t','e',' ','i','o','c','t','l',' ','f','o','r',' ','d','e','v','i','c','e','\0',
-	/* 64. [1478]+21 NXIO */ a_X(N_("Device not configured"))
+	/* 67. [1560]+21 NXIO */ a_X(N_("Device not configured"))
 	'D','e','v','i','c','e',' ','n','o','t',' ','c','o','n','f','i','g','u','r','e','d','\0',
-	/* 65. [1500]+23 OPNOTSUPP */ a_X(N_("Operation not supported"))
+	/* 68. [1582]+23 OPNOTSUPP */ a_X(N_("Operation not supported"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-	/* 66. [1524]+41 OVERFLOW */ a_X(N_("Value too large to be stored in data type"))
+	/* 69. [1606]+41 OVERFLOW */ a_X(N_("Value too large to be stored in data type"))
 	'V','a','l','u','e',' ','t','o','o',' ','l','a','r','g','e',' ','t','o',' ','b','e',' ','s','t','o','r','e','d',' ','i','n',' ','d','a','t','a',' ','t','y','p','e','\0',
-	/* 67. [1566]+19 OWNERDEAD */ a_X(N_("Previous owner died"))
+	/* 70. [1648]+19 OWNERDEAD */ a_X(N_("Previous owner died"))
 	'P','r','e','v','i','o','u','s',' ','o','w','n','e','r',' ','d','i','e','d','\0',
-	/* 68. [1586]+23 PERM */ a_X(N_("Operation not permitted"))
+	/* 71. [1668]+23 PERM */ a_X(N_("Operation not permitted"))
 	'O','p','e','r','a','t','i','o','n',' ','n','o','t',' ','p','e','r','m','i','t','t','e','d','\0',
-	/* 69. [1610]+11 PIPE */ a_X(N_("Broken pipe"))
+	/* 72. [1692]+11 PIPE */ a_X(N_("Broken pipe"))
 	'B','r','o','k','e','n',' ','p','i','p','e','\0',
-	/* 70. [1622]+14 PROTO */ a_X(N_("Protocol error"))
+	/* 73. [1704]+14 PROTO */ a_X(N_("Protocol error"))
 	'P','r','o','t','o','c','o','l',' ','e','r','r','o','r','\0',
-	/* 71. [1637]+22 PROTONOSUPPORT */ a_X(N_("Protocol not supported"))
+	/* 74. [1719]+22 PROTONOSUPPORT */ a_X(N_("Protocol not supported"))
 	'P','r','o','t','o','c','o','l',' ','n','o','t',' ','s','u','p','p','o','r','t','e','d','\0',
-	/* 72. [1660]+30 PROTOTYPE */ a_X(N_("Protocol wrong type for socket"))
+	/* 75. [1742]+30 PROTOTYPE */ a_X(N_("Protocol wrong type for socket"))
 	'P','r','o','t','o','c','o','l',' ','w','r','o','n','g',' ','t','y','p','e',' ','f','o','r',' ','s','o','c','k','e','t','\0',
-	/* 73. [1691]+16 RANGE */ a_X(N_("Result too large"))
+	/* 76. [1773]+16 RANGE */ a_X(N_("Result too large"))
 	'R','e','s','u','l','t',' ','t','o','o',' ','l','a','r','g','e','\0',
-	/* 74. [1708]+20 ROFS */ a_X(N_("Read-only filesystem"))
+	/* 77. [1790]+20 ROFS */ a_X(N_("Read-only filesystem"))
 	'R','e','a','d','-','o','n','l','y',' ','f','i','l','e','s','y','s','t','e','m','\0',
-	/* 75. [1729]+12 SPIPE */ a_X(N_("Invalid seek"))
+	/* 78. [1811]+12 SPIPE */ a_X(N_("Invalid seek"))
 	'I','n','v','a','l','i','d',' ','s','e','e','k','\0',
-	/* 76. [1742]+15 SRCH */ a_X(N_("No such process"))
+	/* 79. [1824]+15 SRCH */ a_X(N_("No such process"))
 	'N','o',' ','s','u','c','h',' ','p','r','o','c','e','s','s','\0',
-	/* 77. [1758]+21 STALE */ a_X(N_("Stale NFS file handle"))
+	/* 80. [1840]+21 STALE */ a_X(N_("Stale NFS file handle"))
 	'S','t','a','l','e',' ','N','F','S',' ','f','i','l','e',' ','h','a','n','d','l','e','\0',
-	/* 78. [1780]+13 TIME */ a_X(N_("Timer expired"))
+	/* 81. [1862]+13 TIME */ a_X(N_("Timer expired"))
 	'T','i','m','e','r',' ','e','x','p','i','r','e','d','\0',
-	/* 79. [1794]+19 TIMEDOUT */ a_X(N_("Operation timed out"))
+	/* 82. [1876]+19 TIMEDOUT */ a_X(N_("Operation timed out"))
 	'O','p','e','r','a','t','i','o','n',' ','t','i','m','e','d',' ','o','u','t','\0',
-	/* 80. [1814]+14 TXTBSY */ a_X(N_("Text file busy"))
+	/* 83. [1896]+14 TXTBSY */ a_X(N_("Text file busy"))
 	'T','e','x','t',' ','f','i','l','e',' ','b','u','s','y','\0',
-	/* 81. [1829]+21 WOULDBLOCK */ a_X(N_("Operation would block"))
+	/* 84. [1911]+21 WOULDBLOCK */ a_X(N_("Operation would block"))
 	'O','p','e','r','a','t','i','o','n',' ','w','o','u','l','d',' ','b','l','o','c','k','\0',
-	/* 82. [1851]+17 XDEV */ a_X(N_("Cross-device link"))
+	/* 85. [1933]+17 XDEV */ a_X(N_("Cross-device link"))
 	'C','r','o','s','s','-','d','e','v','i','c','e',' ','l','i','n','k','\0',
 };
 # undef a_X
@@ -362,100 +374,104 @@ static struct a_corerr_map const a_corerr_map[] = {
 	{3158111956u, 70u, 236u, a_X(su_ERR_BADMSG)},
 	{540720142u, 77u, 248u, a_X(su_ERR_BUSY)},
 	{1558977873u, 82u, 260u, a_X(su_ERR_CANCELED)},
-	{2919726635u, 91u, 279u, a_X(su_ERR_CHILD)},
-	{4070044494u, 97u, 298u, a_X(su_ERR_CONNABORTED)},
-	{3891312486u, 109u, 331u, a_X(su_ERR_CONNREFUSED)},
-	{4075740547u, 121u, 350u, a_X(su_ERR_CONNRESET)},
-	{1286193009u, 131u, 375u, a_X(su_ERR_DEADLK)},
-	{487183167u, 138u, 401u, a_X(su_ERR_DESTADDRREQ)},
-	{1275087668u, 150u, 430u, a_X(su_ERR_DOM)},
-	{1625064797u, 154u, 463u, a_X(su_ERR_DQUOT)},
-	{209712131u, 160u, 483u, a_X(su_ERR_EXIST)},
-	{2200690282u, 166u, 495u, a_X(su_ERR_FAULT)},
-	{1867556374u, 172u, 507u, a_X(su_ERR_FBIG)},
-	{977671325u, 177u, 522u, a_X(su_ERR_HOSTUNREACH)},
-	{2650255132u, 189u, 539u, a_X(su_ERR_IDRM)},
-	{2412233051u, 194u, 558u, a_X(su_ERR_ILSEQ)},
-	{232417195u, 200u, 580u, a_X(su_ERR_INPROGRESS)},
-	{1834216174u, 211u, 606u, a_X(su_ERR_INTR)},
-	{2778729263u, 216u, 630u, a_X(su_ERR_INVAL)},
-	{60996235u, 222u, 647u, a_X(su_ERR_IO)},
-	{1906653653u, 225u, 666u, a_X(su_ERR_ISCONN)},
-	{2703117147u, 232u, 694u, a_X(su_ERR_ISDIR)},
-	{3778570389u, 238u, 709u, a_X(su_ERR_LOOP)},
-	{3883052625u, 243u, 743u, a_X(su_ERR_MFILE)},
-	{4254424829u, 249u, 763u, a_X(su_ERR_MLINK)},
-	{3207869310u, 255u, 778u, a_X(su_ERR_MSGSIZE)},
-	{2429845702u, 263u, 795u, a_X(su_ERR_MULTIHOP)},
-	{2413025187u, 272u, 814u, a_X(su_ERR_NAMETOOLONG)},
-	{1599908174u, 284u, 832u, a_X(su_ERR_NETDOWN)},
-	{2546683399u, 292u, 848u, a_X(su_ERR_NETRESET)},
-	{126784772u, 301u, 884u, a_X(su_ERR_NETUNREACH)},
-	{1896383204u, 312u, 907u, a_X(su_ERR_NFILE)},
-	{926520351u, 318u, 937u, a_X(su_ERR_NOBUFS)},
-	{2057769072u, 325u, 963u, a_X(su_ERR_NODATA)},
-	{3065948358u, 332u, 981u, a_X(su_ERR_NODEV)},
-	{2670526869u, 338u, 1015u, a_X(su_ERR_NOENT)},
-	{76110661u, 344u, 1048u, a_X(su_ERR_NOEXEC)},
-	{601731946u, 351u, 1066u, a_X(su_ERR_NOLCK)},
-	{3857144037u, 357u, 1085u, a_X(su_ERR_NOLINK)},
-	{208857727u, 364u, 1107u, a_X(su_ERR_NOMEM)},
-	{74778096u, 370u, 1130u, a_X(su_ERR_NOMSG)},
-	{3003592202u, 376u, 1157u, a_X(su_ERR_NOPROTOOPT)},
-	{177925004u, 387u, 1180u, a_X(su_ERR_NOSPC)},
-	{514208665u, 393u, 1204u, a_X(su_ERR_NOSR)},
-	{3785574735u, 398u, 1228u, a_X(su_ERR_NOSTR)},
-	{3480363906u, 404u, 1248u, a_X(su_ERR_NOSYS)},
-	{75346310u, 410u, 1273u, a_X(su_ERR_NOTCONN)},
-	{1624312282u, 418u, 1297u, a_X(su_ERR_NOTDIR)},
-	{720759330u, 425u, 1313u, a_X(su_ERR_NOTEMPTY)},
-	{2920920986u, 434u, 1333u, a_X(su_ERR_NOTOBACCO)},
-	{976391395u, 444u, 1370u, a_X(su_ERR_NOTRECOVERABLE)},
-	{998215214u, 459u, 1392u, a_X(su_ERR_NOTSOCK)},
-	{3805023206u, 467u, 1423u, a_X(su_ERR_NOTSUP)},
-	{3435109480u, 474u, 1447u, a_X(su_ERR_NOTTY)},
-	{3914038247u, 480u, 1478u, a_X(su_ERR_NXIO)},
-	{1893827946u, 485u, 1500u, a_X(su_ERR_OPNOTSUPP)},
-	{3928670939u, 495u, 1524u, a_X(su_ERR_OVERFLOW)},
-	{2670544256u, 504u, 1566u, a_X(su_ERR_OWNERDEAD)},
-	{2347442461u, 514u, 1586u, a_X(su_ERR_PERM)},
-	{1163014026u, 519u, 1610u, a_X(su_ERR_PIPE)},
-	{568774852u, 524u, 1622u, a_X(su_ERR_PROTO)},
-	{286170084u, 530u, 1637u, a_X(su_ERR_PROTONOSUPPORT)},
-	{1271372488u, 545u, 1660u, a_X(su_ERR_PROTOTYPE)},
-	{3827478998u, 555u, 1691u, a_X(su_ERR_RANGE)},
-	{4034145621u, 561u, 1708u, a_X(su_ERR_ROFS)},
-	{3141617613u, 566u, 1729u, a_X(su_ERR_SPIPE)},
-	{3964300208u, 572u, 1742u, a_X(su_ERR_SRCH)},
-	{531247846u, 577u, 1758u, a_X(su_ERR_STALE)},
-	{193396678u, 583u, 1780u, a_X(su_ERR_TIME)},
-	{2741230255u, 588u, 1794u, a_X(su_ERR_TIMEDOUT)},
-	{153404842u, 597u, 1814u, a_X(su_ERR_TXTBSY)},
-	{799626252u, 604u, 1829u, a_X(su_ERR_WOULDBLOCK)},
-	{2462823744u, 615u, 1851u, a_X(su_ERR_XDEV)},
+	{2159322176u, 91u, 279u, a_X(su_ERR_CAPMODE)},
+	{2919726635u, 99u, 312u, a_X(su_ERR_CHILD)},
+	{4070044494u, 105u, 331u, a_X(su_ERR_CONNABORTED)},
+	{3891312486u, 117u, 364u, a_X(su_ERR_CONNREFUSED)},
+	{4075740547u, 129u, 383u, a_X(su_ERR_CONNRESET)},
+	{1286193009u, 139u, 408u, a_X(su_ERR_DEADLK)},
+	{487183167u, 146u, 434u, a_X(su_ERR_DESTADDRREQ)},
+	{1275087668u, 158u, 463u, a_X(su_ERR_DOM)},
+	{1625064797u, 162u, 496u, a_X(su_ERR_DQUOT)},
+	{209712131u, 168u, 516u, a_X(su_ERR_EXIST)},
+	{2200690282u, 174u, 528u, a_X(su_ERR_FAULT)},
+	{1867556374u, 180u, 540u, a_X(su_ERR_FBIG)},
+	{977671325u, 185u, 555u, a_X(su_ERR_HOSTUNREACH)},
+	{2650255132u, 197u, 572u, a_X(su_ERR_IDRM)},
+	{2412233051u, 202u, 591u, a_X(su_ERR_ILSEQ)},
+	{232417195u, 208u, 613u, a_X(su_ERR_INPROGRESS)},
+	{2761392053u, 219u, 639u, a_X(su_ERR_INTEGRITY)},
+	{1834216174u, 229u, 662u, a_X(su_ERR_INTR)},
+	{2778729263u, 234u, 686u, a_X(su_ERR_INVAL)},
+	{60996235u, 240u, 703u, a_X(su_ERR_IO)},
+	{1906653653u, 243u, 722u, a_X(su_ERR_ISCONN)},
+	{2703117147u, 250u, 750u, a_X(su_ERR_ISDIR)},
+	{3778570389u, 256u, 765u, a_X(su_ERR_LOOP)},
+	{3883052625u, 261u, 799u, a_X(su_ERR_MFILE)},
+	{4254424829u, 267u, 819u, a_X(su_ERR_MLINK)},
+	{3207869310u, 273u, 834u, a_X(su_ERR_MSGSIZE)},
+	{2429845702u, 281u, 851u, a_X(su_ERR_MULTIHOP)},
+	{2413025187u, 290u, 870u, a_X(su_ERR_NAMETOOLONG)},
+	{1599908174u, 302u, 888u, a_X(su_ERR_NETDOWN)},
+	{2546683399u, 310u, 904u, a_X(su_ERR_NETRESET)},
+	{126784772u, 319u, 940u, a_X(su_ERR_NETUNREACH)},
+	{1896383204u, 330u, 963u, a_X(su_ERR_NFILE)},
+	{926520351u, 336u, 993u, a_X(su_ERR_NOBUFS)},
+	{2057769072u, 343u, 1019u, a_X(su_ERR_NODATA)},
+	{3065948358u, 350u, 1037u, a_X(su_ERR_NODEV)},
+	{2670526869u, 356u, 1071u, a_X(su_ERR_NOENT)},
+	{76110661u, 362u, 1104u, a_X(su_ERR_NOEXEC)},
+	{601731946u, 369u, 1122u, a_X(su_ERR_NOLCK)},
+	{3857144037u, 375u, 1141u, a_X(su_ERR_NOLINK)},
+	{208857727u, 382u, 1163u, a_X(su_ERR_NOMEM)},
+	{74778096u, 388u, 1186u, a_X(su_ERR_NOMSG)},
+	{3003592202u, 394u, 1213u, a_X(su_ERR_NOPROTOOPT)},
+	{177925004u, 405u, 1236u, a_X(su_ERR_NOSPC)},
+	{514208665u, 411u, 1260u, a_X(su_ERR_NOSR)},
+	{3785574735u, 416u, 1284u, a_X(su_ERR_NOSTR)},
+	{3480363906u, 422u, 1304u, a_X(su_ERR_NOSYS)},
+	{3011593422u, 428u, 1329u, a_X(su_ERR_NOTCAPABLE)},
+	{75346310u, 439u, 1355u, a_X(su_ERR_NOTCONN)},
+	{1624312282u, 447u, 1379u, a_X(su_ERR_NOTDIR)},
+	{720759330u, 454u, 1395u, a_X(su_ERR_NOTEMPTY)},
+	{2920920986u, 463u, 1415u, a_X(su_ERR_NOTOBACCO)},
+	{976391395u, 473u, 1452u, a_X(su_ERR_NOTRECOVERABLE)},
+	{998215214u, 488u, 1474u, a_X(su_ERR_NOTSOCK)},
+	{3805023206u, 496u, 1505u, a_X(su_ERR_NOTSUP)},
+	{3435109480u, 503u, 1529u, a_X(su_ERR_NOTTY)},
+	{3914038247u, 509u, 1560u, a_X(su_ERR_NXIO)},
+	{1893827946u, 514u, 1582u, a_X(su_ERR_OPNOTSUPP)},
+	{3928670939u, 524u, 1606u, a_X(su_ERR_OVERFLOW)},
+	{2670544256u, 533u, 1648u, a_X(su_ERR_OWNERDEAD)},
+	{2347442461u, 543u, 1668u, a_X(su_ERR_PERM)},
+	{1163014026u, 548u, 1692u, a_X(su_ERR_PIPE)},
+	{568774852u, 553u, 1704u, a_X(su_ERR_PROTO)},
+	{286170084u, 559u, 1719u, a_X(su_ERR_PROTONOSUPPORT)},
+	{1271372488u, 574u, 1742u, a_X(su_ERR_PROTOTYPE)},
+	{3827478998u, 584u, 1773u, a_X(su_ERR_RANGE)},
+	{4034145621u, 590u, 1790u, a_X(su_ERR_ROFS)},
+	{3141617613u, 595u, 1811u, a_X(su_ERR_SPIPE)},
+	{3964300208u, 601u, 1824u, a_X(su_ERR_SRCH)},
+	{531247846u, 606u, 1840u, a_X(su_ERR_STALE)},
+	{193396678u, 612u, 1862u, a_X(su_ERR_TIME)},
+	{2741230255u, 617u, 1876u, a_X(su_ERR_TIMEDOUT)},
+	{153404842u, 626u, 1896u, a_X(su_ERR_TXTBSY)},
+	{799626252u, 633u, 1911u, a_X(su_ERR_WOULDBLOCK)},
+	{2462823744u, 644u, 1933u, a_X(su_ERR_XDEV)},
 };
 # undef a_X
 #endif /* su_SOURCE */
 
 #ifdef su_SOURCE /* Lock-out compile-time-tools */
-# define a_CORERR_REV_ILL 83u
-# define a_CORERR_REV_PRIME 139u
+# define a_CORERR_REV_ILL 86u
+# define a_CORERR_REV_PRIME 149u
 # define a_CORERR_REV_LONGEST 5u
 # define a_CORERR_REV_WRAPAROUND 0
 static u8 const a_corerr_revmap[a_CORERR_REV_PRIME] = {
-	52u, 28u, 78u, 83u, 83u, 42u, 43u, 59u, 8u, 83u,
-	83u, 83u, 83u, 83u, 83u, 83u, 16u, 83u, 73u, 83u,
-	83u, 11u, 26u, 83u, 83u, 83u, 21u, 83u, 83u, 83u,
-	83u, 83u, 83u, 83u, 2u, 55u, 68u, 83u, 83u, 83u,
-	83u, 83u, 39u, 83u, 83u, 83u, 36u, 83u, 83u, 83u,
-	83u, 20u, 22u, 69u, 74u, 33u, 76u, 70u, 61u, 4u,
-	7u, 15u, 37u, 44u, 82u, 83u, 35u, 6u, 65u, 83u,
-	83u, 83u, 45u, 60u, 83u, 64u, 83u, 83u, 75u, 83u,
-	18u, 49u, 12u, 71u, 67u, 25u, 54u, 83u, 32u, 13u,
-	19u, 23u, 40u, 41u, 48u, 24u, 62u, 72u, 66u, 46u,
-	83u, 83u, 83u, 83u, 38u, 30u, 83u, 83u, 83u, 56u,
-	83u, 83u, 47u, 27u, 83u, 83u, 29u, 63u, 0u, 14u,
-	81u, 5u, 17u, 34u, 3u, 9u, 57u, 50u, 53u, 58u,
-	83u, 83u, 31u, 77u, 10u, 1u, 79u, 80u, 51u
+	86u, 86u, 86u, 57u, 4u, 86u, 66u, 86u, 43u, 69u,
+	67u, 86u, 86u, 86u, 86u, 86u, 86u, 86u, 47u, 86u,
+	1u, 12u, 20u, 84u, 86u, 86u, 86u, 15u, 86u, 25u,
+	86u, 86u, 86u, 86u, 37u, 86u, 10u, 32u, 9u, 72u,
+	75u, 38u, 81u, 86u, 86u, 86u, 86u, 86u, 86u, 86u,
+	86u, 86u, 86u, 19u, 86u, 86u, 86u, 63u, 44u, 23u,
+	16u, 58u, 52u, 71u, 85u, 22u, 49u, 86u, 86u, 86u,
+	86u, 86u, 86u, 82u, 65u, 86u, 3u, 24u, 42u, 76u,
+	86u, 54u, 62u, 86u, 5u, 26u, 28u, 86u, 74u, 2u,
+	86u, 86u, 46u, 86u, 86u, 86u, 86u, 86u, 86u, 29u,
+	68u, 79u, 18u, 30u, 45u, 31u, 51u, 60u, 83u, 50u,
+	86u, 11u, 40u, 86u, 86u, 13u, 36u, 80u, 86u, 86u,
+	48u, 34u, 33u, 70u, 8u, 77u, 17u, 56u, 14u, 55u,
+	35u, 86u, 73u, 41u, 86u, 0u, 7u, 39u, 53u, 59u,
+	6u, 27u, 61u, 86u, 21u, 64u, 78u, 86u, 86u
 };
 #endif /* su_SOURCE */

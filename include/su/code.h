@@ -1282,7 +1282,7 @@ enum su_state_log_flags{
  *
  * This global default can be changed by including the corresponding \c{su_state_err_type} (\r{su_STATE_ERR_NOMEM} and
  * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine via \r{su_state_set()}, in which case
- * logging uses \r{su_LOG_ALERT} level, a corresponding \r{su_err_number} will be assigned for \r{su_err_no()}, and
+ * logging uses \r{su_LOG_ALERT} level, a corresponding \r{su_err_number} will be assigned for \r{su_err()}, and
  * the failed function will return error.
  *
  * Often functions and object allow additional control over the global on a by-call or by-object basis, taking a state
@@ -1312,8 +1312,8 @@ enum su_state_err_flags{
 	 * set, an actual error causes a hard program abortion. */
 	su_STATE_ERR_NOPASS = 1u<<12,
 	/*! If this flag is set and no abortion is about to happen, a corresponding
-	 * \r{su_err_number} will not be assigned to \r{su_err_no()}. */
-	su_STATE_ERR_NOERRNO = 1u<<13,
+	 * \r{su_err_number} will not be assigned to \r{su_err()}. */
+	su_STATE_ERR_NOERROR = 1u<<13,
 	/*! This is special in that it plays no role in the global state machine.
 	 * However, many types or functions which provide \a{estate} arguments and
 	 * use (NOT) \r{su_STATE_ERR_MASK} to overload that with meaning, adding
@@ -1333,7 +1333,7 @@ enum su_state_err_flags{
 	 * \remarks{This mask itself is covered by the mask \c{0xFF00}.
 	 * This condition is compile-time asserted.} */
 	su_STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
-			su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO |
+			su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERROR |
 			su_STATE_ERR_NIL_IS_VALID_OBJECT
 };
 
@@ -1635,16 +1635,16 @@ EXPORT s32 su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_f
 
 /*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
-EXPORT s32 su_err_no(void);
+EXPORT s32 su_err(void);
 
 /*! Set the \SU error number of the calling thread. */
-EXPORT void su_err_set_no(s32 eno);
+EXPORT void su_err_set(s32 eno);
 
-/*! Return string(s) describing C error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.
+/*! Return string(s) describing C error number \a{eno}, or \r{su_err()} if that is \c{-1}.
  * Effectively identical to \r{su_err_name()} if \r{su_state_has()} \r{su_STATE_REPRODUCIBLE} set. */
 EXPORT char const *su_err_doc(s32 eno);
 
-/*! Return the name of the given error number \a{eno}, or \r{su_err_no()} if that is \c{-1}.  */
+/*! Return the name of the given error number \a{eno}, or \r{su_err()} if that is \c{-1}.  */
 EXPORT char const *su_err_name(s32 eno);
 
 /*! Try to (case-insensitively) map an error name to an error number.
@@ -1652,7 +1652,7 @@ EXPORT char const *su_err_name(s32 eno);
 EXPORT s32 su_err_by_name(char const *name);
 
 /*! Set the \SU error number of the calling thread to the value of the ISO C \c{errno} variable, and return it. */
-EXPORT s32 su_err_no_by_errno(void);
+EXPORT s32 su_err_by_errno(void);
 
 /*! Get the currently installed \r{su_log_write_fun}.
  * The default is \NIL. */
@@ -1727,7 +1727,7 @@ INLINE void su_log_unlock(void){
 
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
- * If it survives it will \r{su_err_set_no()} \ERR{FAULT}.
+ * If it survives it will \r{su_err_set()} \ERR{FAULT}.
  * \remarks{Define \c{su_ASSERT_EXPAND_NOTHING} in order to get rid of linkage and make it expand to a no-op macro.} */
 EXPORT void su_assert(char const *expr, char const *file, u32 line, char const *fun, boole crash);
 #else
@@ -1783,7 +1783,7 @@ typedef void *(*su_new_fun)(u32 estate);
  * However, many return a \r{su_s32}, which then either is \r{su_STATE_NONE} upon success, one of the
  * \r{su_state_err_type}s for hardening errors, or a negative \r{su_err_number} for "normal" errors.
  * (In \r{su_ASSERT()} enabled code even \c{-su_ERR_FAULT} may happen.)
- * Those which do not usually set \r{su_err_no()}. */
+ * Those which do not usually set \r{su_err()}. */
 typedef void *(*su_clone_fun)(void const *t, u32 estate);
 
 /*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or \r{su_assign_fun}). */
@@ -1958,11 +1958,13 @@ public:
 #endif
 	};
 
-	/*! \copydoc{su_err_no()} */
-	static s32 no(void) {return su_err_no();}
+	/*! \copydoc{su_err()} */
+	static s32 get(void) {return su_err();}
+	/*! \copydoc{su_err()} */
+	static s32 no(void) {return su_err();}
 
 	/*! \copydoc{su_err_set_no()} */
-	static void set_no(s32 eno) {su_err_set_no(eno);}
+	static void set(s32 eno) {su_err_set(eno);}
 
 	/*! \copydoc{su_err_doc()} */
 	static char const *doc(s32 eno=-1) {return su_err_doc(eno);}
@@ -1973,8 +1975,8 @@ public:
 	/*! \copydoc{su_err_by_name()} */
 	static s32 by_name(char const *name) {return su_err_by_name(name);}
 
-	/*! \copydoc{su_err_no_by_errno()} */
-	static s32 no_by_errno(void) {return su_err_no_by_errno();}
+	/*! \copydoc{su_err_by_errno()} */
+	static s32 by_errno(void) {return su_err_by_errno();}
 }; // }}}
 
 /*! \_ */
@@ -2095,7 +2097,7 @@ public:
 		err_type_mask = su_STATE_ERR_TYPE_MASK, /*!< \copydoc{su_STATE_ERR_TYPE_MASK} */
 		err_pass = su_STATE_ERR_PASS, /*!< \copydoc{su_STATE_ERR_PASS} */
 		err_nopass = su_STATE_ERR_NOPASS, /*!< \copydoc{su_STATE_ERR_NOPASS} */
-		err_noerrno = su_STATE_ERR_NOERRNO, /*!< \copydoc{su_STATE_ERR_NOERRNO} */
+		err_noerror = su_STATE_ERR_NOERROR, /*!< \copydoc{su_STATE_ERR_NOERROR} */
 		err_mask = su_STATE_ERR_MASK /*!< \copydoc{su_STATE_ERR_MASK} */
 	};
 
@@ -2456,8 +2458,7 @@ NSPC_END(su)
  * Since \SU offers initialization macros like \r{su_MUTEX_I9R()} true resource aquisition might be performed upon
  * first object functionality usage (for example, mutex locking).
  * If initialization macros are used a resource aquisition failure results in abortion via \r{su_LOG_EMERG} log.
- * If that is not acceptable the normal object \c{_create()} (see \r{index})
- * function has to be used.
+ * If that is not acceptable the normal object \c{_create()} (see \r{index}) function has to be used.
  */
 
 /*!
