@@ -708,12 +708,12 @@ a_tty_hist_load(void){
 	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
 	if((fp = fopen(hfname, "r")) == NIL){
-		eno = su_err_no_by_errno();
+		eno = su_err_by_errno();
 		goto jerr;
 	}
 
 	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-		eno = su_err_no();
+		eno = su_err();
 jerr:
 		n_err(_("Cannot read/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
 		rv = FAL0;
@@ -833,12 +833,12 @@ a_tty_hist_save(void){
 
 	/* TODO temporary histfile + rename?! */
 	if((fp = fopen(v, "w")) == NIL){
-		eno = su_err_no_by_errno();
+		eno = su_err_by_errno();
 		goto jerr;
 	}
 
 	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-		eno = su_err_no();
+		eno = su_err();
 jerr:
 		n_err(_("Cannot write/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(v, FAL0), su_err_doc(eno));
 		rv = FAL0;
@@ -1487,7 +1487,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
 	buf[sizeof(buf) -1] = '\0';
 	for(i = 0;;){
 		if(read(STDIN_FILENO, &buf[i], 1) != 1){ /* xxx tty_fd */
-			if(su_err_no_by_errno() == su_ERR_INTR) /* xxx #if !SA_RESTART ? */
+			if(su_err_by_errno() == su_ERR_INTR) /* xxx #if !SA_RESTART ? */
 				continue;
 			goto jleave;
 		}
@@ -3199,7 +3199,7 @@ jread_again:
 
 				while((rv = read(STDIN_FILENO, cbufp, 1)) == -1){
 					/* TODO Currently a noop due to SA_RESTART */
-					if(su_err_no_by_errno() != su_ERR_INTR ||
+					if(su_err_by_errno() != su_ERR_INTR ||
 							((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) && !a_tty_vi_refresh(tlp)))
 						break;
 				}

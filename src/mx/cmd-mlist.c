@@ -309,7 +309,7 @@ a_ml_re_clone(void const *t, u32 estate){
 				n_shexp_quote_cp(rep, FAL0), su_re_error_doc(&rv.mlrp->mlr_regex));
 			su_re_gut(&rv.mlrp->mlr_regex);
 			su_FREE(rv.mlrp);
-			su_err_set_no(su_ERR_INVAL);
+			su_err_set(su_ERR_INVAL);
 			rv.vp = NIL;
 		}
 	}

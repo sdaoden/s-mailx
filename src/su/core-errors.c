@@ -86,7 +86,7 @@ su_err_doc(s32 eno){
 	NYD2_IN;
 
 	if(eno == -1)
-		eno = su_err_no();
+		eno = su_err();
 
 	cemp = a_corerr_map_from_no(eno);
 	rv = (!su_state_has(su_STATE_REPRODUCIBLE) ? &a_corerr_docs[cemp->cem_docoff] : &a_corerr_names[cemp->cem_nameoff]);
@@ -102,7 +102,7 @@ su_err_name(s32 eno){
 	NYD2_IN;
 
 	if(eno == -1)
-		eno = su_err_no();
+		eno = su_err();
 
 	cemp = a_corerr_map_from_no(eno);
 	rv = &a_corerr_names[cemp->cem_nameoff];

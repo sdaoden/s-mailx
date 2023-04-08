@@ -83,7 +83,7 @@ a_file_lock_dotlock_create(struct mx_file_dotlock_info *fdip){
 
 		xrv = mx_FILE_DOTLOCK_STATE_PING;
 		w = write(STDOUT_FILENO, &xrv, sizeof xrv);
-		if(w == -1 && su_err_no_by_errno() == su_ERR_PIPE){
+		if(w == -1 && su_err_by_errno() == su_ERR_PIPE){
 			rv = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
 			break;
 		}
@@ -121,14 +121,14 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip, char const *
 		if(fd != -1){
 #ifdef mx_SOURCE_PS_DOTLOCK_MAIN
 			if(fchown(fd, fdip->fdi_uid, fdip->fdi_gid)){
-				e = su_err_no_by_errno();
+				e = su_err_by_errno();
 				close(fd);
 				goto jbados;
 			}
 #endif
 			close(fd);
 			break;
-		}else if((e = su_err_no_by_errno()) != su_ERR_EXIST){
+		}else if((e = su_err_by_errno()) != su_ERR_EXIST){
 			rv = ((e == su_ERR_ROFS)
 					? mx_FILE_DOTLOCK_STATE_ROFS | mx_FILE_DOTLOCK_STATE_ABANDON
 					: mx_FILE_DOTLOCK_STATE_NOPERM);
@@ -141,14 +141,14 @@ a_file_lock_dotlock__create_excl(struct mx_file_dotlock_info *fdip, char const *
 
 	/* We link the name to the fname */
 	if(!su_path_link(fdip->fdi_lock_name, lname)){
-		e = su_err_no();
+		e = su_err();
 		goto jbados;
 	}
 
 	/* Note that we stat our own exclusively created name, not the
 	 * destination, since the destination can be affected by others */
 	if(!su_pathinfo_stat(&pi, lname)){
-		e = su_err_no();
+		e = su_err();
 		goto jbados;
 	}
 

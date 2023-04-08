@@ -113,7 +113,7 @@ a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
 	}
 
 	if(!rv)
-		switch(su_err_no_by_errno()){
+		switch(su_err_by_errno()){
 		case su_ERR_BADF:
 		case su_ERR_INVAL:
 			rv = TRUM1;
@@ -231,7 +231,7 @@ jenametool:
 		/* This may however also indicate a read-only filesystem, which is not really an error from our point
 		 * of view since the mailbox will degrade to a readonly one for which no dotlock is needed, then, and
 		 * errors may arise only due to actions which require box modifications */
-		if(su_err_no_by_errno() == su_ERR_ROFS){
+		if(su_err_by_errno() == su_ERR_ROFS){
 			fdls = mx_FILE_DOTLOCK_STATE_ROFS | mx_FILE_DOTLOCK_STATE_ABANDON;
 			goto jmsg;
 		}
@@ -360,7 +360,7 @@ mx_file_dotlock(char const *fname, int fd, BITENUM_IS(u32,mx_file_lock_mode) flm
 
 	flocked = FAL0;
 	for(u.tries = 0; !mx_file_lock(fd, flm);)
-		switch((serr = su_err_no())){
+		switch((serr = su_err())){
 		case su_ERR_ACCES:
 		case su_ERR_AGAIN:
 		case su_ERR_NOLCK:
@@ -383,7 +383,7 @@ jleave:
 	if(flocked)
 		rv = (FILE*)-1;
 	else
-		su_err_set_no(serr);
+		su_err_set(serr);
 
 	NYD_OU;
 	return rv;
@@ -397,7 +397,7 @@ jleave:
 	/* Create control-pipe for our dot file locker process, which will remove the lock and terminate once the pipe
 	 * is closed, for whatever reason */
 	if(!mx_fs_pipe_cloexec(cpipe)){
-		serr = su_err_no();
+		serr = su_err();
 		emsg = N_("  Cannot create dotlock file control pipe\n");
 		goto jemsg;
 	}
@@ -418,7 +418,7 @@ jleave:
 
 	u.ptf = &a_filo_main;
 	rv = mx_fs_pipe_open(R(char*,-1), mx_FS_PIPE_WRITE, u.sh, NIL, cpipe[1]);
-	serr = su_err_no();
+	serr = su_err();
 
 	close(S(int,cpipe[1]));
 	if(rv == NIL){
@@ -431,7 +431,7 @@ jleave:
 	for(;;){
 		u.r = read(S(int,cpipe[0]), &fdls, sizeof fdls);
 		if(UCMP(z, u.r, !=, sizeof fdls)){
-			serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no_by_errno();
+			serr = (u.r != -1) ? su_ERR_AGAIN : su_err_by_errno();
 			fdls = mx_FILE_DOTLOCK_STATE_DUNNO | mx_FILE_DOTLOCK_STATE_ABANDON;
 		}else
 			serr = su_ERR_NONE;
@@ -533,7 +533,7 @@ jleave:
 			}
 		}else
 jserr:
-			su_err_set_no(serr);
+			su_err_set(serr);
 	}
 
 	NYD_OU;

@@ -193,7 +193,7 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
 	NYD_IN;
 
 	if((afp = mx_fs_open(masp->mas_path, mx_FS_O_RDONLY)) == NIL){
-		rv = su_err_no();
+		rv = su_err();
 		n_err(_("*mta-aliases*: cannot open %s: %s\n"), n_shexp_quote_cp(masp->mas_path_usr, FAL0), su_err_doc(rv));
 		goto jleave;
 	}
@@ -224,7 +224,7 @@ a_mtaali__read_file(struct a_mtaali_stack *masp){
 		 *   A logical line starts with non-WS text.  A line that starts with WS continues a logical line. */
 		if(l.s != line.s || nsp->s_len == 0){
 			if(!n_string_can_book(nsp, l.l)){
-				su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERRNO),
+				su_state_err(su_STATE_ERR_OVERFLOW, (su_STATE_ERR_PASS | su_STATE_ERR_NOERROR),
 					_("*mta-aliases*: line too long"));
 				l.s = UNCONST(char*,N_("line too long"));
 				rv = su_ERR_OVERFLOW;

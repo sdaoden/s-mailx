@@ -48,7 +48,7 @@ struct mx_child_ctx{
 	/* Output: */
 	s32 cc_pid; /* Filled upon successful start (when not waited..) */
 	s32 cc_exit_status; /* WEXITSTATUS(); -WEXITSTATUS() if !WIFEXITED */
-	/* err_no() on failure; with SPAWN_CONTROL it could be set to errors that
+	/* err() on failure; with SPAWN_CONTROL it could be set to errors that
 	 * happen in the child, too; set to ERR_CHILD when there was error and there
 	 * was no error */
 	s32 cc_error;
@@ -94,7 +94,6 @@ EXPORT boole mx_child_run(struct mx_child_ctx *ccp);
  * children themselves, but we do not care about termios
  * XXX or child handling no more in recursive levels */
 EXPORT boole mx_child_fork(struct mx_child_ctx *ccp);
-
 
 /* Setup an image in the child; signals are still blocked before that! */
 EXPORT void mx_child_in_child_setup(struct mx_child_ctx *ccp);

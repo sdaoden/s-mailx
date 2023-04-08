@@ -3998,7 +3998,7 @@ c_environ(void *vp){
 				if(fprintf(n_stdout, "%s\n", ev) > 0)
 					rv = su_EX_OK;
 				else
-					n_pstate_err_no = su_err_no_by_errno();
+					n_pstate_err_no = su_err_by_errno();
 			}else if(!n_var_vset(vp, R(up,ev), ((avscf & a_AMV_VSETCLR_LOCAL) != 0)))
 				n_pstate_err_no = su_ERR_NOTSUP;
 			else
@@ -4256,7 +4256,7 @@ jeover:
 
 		if(cacp->cac_vput == NIL){
 			if(fprintf(n_stdout, "%s\n", varres) < 0){
-				n_pstate_err_no = su_err_no_by_errno();
+				n_pstate_err_no = su_err_by_errno();
 				f |= a_ERR;
 			}
 		}else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_cm_local)){
