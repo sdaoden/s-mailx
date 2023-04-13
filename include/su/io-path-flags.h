@@ -38,7 +38,7 @@ C_DECL_BEGIN
  * @{
  */
 
-/*! \_ */
+/*! Path access test bits, for example for \r{su_path_access()}. */
 enum su_iopf_access{
 	su_IOPF_EXIST = 0, /*!< Path exists. */
 	su_IOPF_EXEC = 1u<<0, /*!< User may execute/search. */
@@ -47,6 +47,15 @@ enum su_iopf_access{
 };
 enum{
 	su_IOPF_ACCESS_MASK = su_IOPF_READ | su_IOPF_WRITE | su_IOPF_EXEC /*!< All of \r{su_iopf_access}. */
+};
+
+/*! Flags for \c{*at()} function series, for example \r{su_path_rm_at()}. */
+enum su_iopf_at{
+	su_IOPF_AT_NONE = 0, /*!< \_ */
+	su_IOPF_AT_RMDIR = 1u<<0, /*!< Remove a(n empty) directory only, not any other file type. */
+	su_IOPF_AT_EACCESS = 1u<<1, /*!< Test with effective, not real user and group IDs. */
+	su_IOPF_AT_LNK_FOLLOW = 1u<<2, /*!< Follow symbolic links. */
+	su_IOPF_AT_LNK_NOFOLLOW = 1u<<3 /*!< Do not follow symbolic links. */
 };
 
 /*! POSIXish path permission bits.
@@ -120,6 +129,15 @@ enum iopf_access{
 };
 enum{
 	iopf_access_mask = su_IOPF_ACCESS_MASK /*!< \copydoc{su_IOPF_ACCESS_MASK} */
+};
+
+/*! \copydoc{su_iopf_at} */
+enum iopf_at{
+	iopf_at_none = su_IOPF_AT_NONE, /*!< \copydoc{su_IOPF_AT_NONE} */
+	iopf_at_rmdir = su_IOPF_AT_RMDIR, /*!< \copydoc{su_IOPF_AT_RMDIR} */
+	iopf_at_eaccess = su_IOPF_AT_EACCESS, /*!< \copydoc{su_IOPF_AT_EACCESS} */
+	iopf_at_lnk_follow = su_IOPF_AT_LNK_FOLLOW, /*!< \copydoc{su_IOPF_AT_LNK_FOLLOW} */
+	iopf_at_lnk_nofollow = su_IOPF_AT_LNK_NOFOLLOW/*!< \copydoc{su_IOPF_AT_LNK_NOFOLLOW} */
 };
 
 /*! \copydoc{su_iopf_permission} */
