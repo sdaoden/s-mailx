@@ -47,7 +47,7 @@
 # include <priv.h>
 #endif
 
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 # include <time.h>
 #endif
 
@@ -91,7 +91,7 @@ static uz
 su_time_msleep(uz millis, boole ignint){
 	uz rv;
 
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 	/* C99 */{
 		struct timespec ts, trem;
 		int i;
@@ -100,13 +100,13 @@ su_time_msleep(uz millis, boole ignint){
 		ts.tv_nsec = (millis %= 1000) * 1000 * 1000;
 
 		while((i =
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 					  clock_nanosleep
 # else
 					  nanosleep
 # endif
 					  (
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 						CLOCK_REALTIME, 0,
 # endif
 						&ts, &trem)) != 0 && ignint)
@@ -114,7 +114,7 @@ su_time_msleep(uz millis, boole ignint){
 		rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
 	}
 
-#elif defined su_HAVE_SLEEP
+#elif defined su__HAVE_SLEEP
 	if((millis /= 1000) == 0)
 		millis = 1;
 	while((rv = sleep(S(ui,millis))) != 0 && ignint)

@@ -30,8 +30,8 @@
 #endif
 
 #ifdef su_USECASE_MX
-	/* In this case we get our config, error maps etc., all from here.
-	 * We must take care not to break OPT_AMALGAMATION though */
+  /* In this case we get our config, error maps etc., all from here.
+   * We must take care not to break OPT_AMALGAMATION though */
 # ifndef mx_HAVE_AMALGAMATION
 #  include <mx/gen-config.h>
 # endif

@@ -22,8 +22,8 @@
 #include "su/code.h"
 
 su_USECASE_CONFIG_CHECKS(
-	su_HAVE_STAT_BLOCKS
-	su_HAVE_STAT_TIMESPEC su_HAVE_STAT_TIMENSEC
+	su__HAVE_STAT_BLOCKS
+	su__HAVE_STAT_TIMESPEC su__HAVE_STAT_TIMENSEC
 	)
 
 #include <sys/stat.h>
@@ -133,7 +133,7 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 	self->pi_uid = S(uz,stp->st_uid);
 	self->pi_gid = S(uz,stp->st_gid);
 	self->pi_blocks =
-#ifdef su_HAVE_STAT_BLOCKS
+#ifdef su__HAVE_STAT_BLOCKS
 			S(u64,stp->st_blocks)
 #else
 			((S(u64,stp->st_size) + 511) & ~511) >> 9
@@ -141,14 +141,14 @@ a_pathinfo_copy(struct su_pathinfo *self, struct stat *stp){
 			;
 	self->pi_blksize = S(uz,stp->st_blksize);
 	self->pi_size = S(u64,stp->st_size);
-#ifdef su_HAVE_STAT_TIMESPEC
+#ifdef su__HAVE_STAT_TIMESPEC
 	self->pi_atime.ts_sec = S(s64,stp->st_atim.tv_sec);
 	self->pi_atime.ts_nano = S(sz,stp->st_atim.tv_nsec);
 	self->pi_mtime.ts_sec = S(s64,stp->st_mtim.tv_sec);
 	self->pi_mtime.ts_nano = S(sz,stp->st_mtim.tv_nsec);
 	self->pi_ctime.ts_sec = S(s64,stp->st_ctim.tv_sec);
 	self->pi_ctime.ts_nano = S(sz,stp->st_ctim.tv_nsec);
-#elif defined su_HAVE_STAT_TIMENSEC
+#elif defined su__HAVE_STAT_TIMENSEC
 	self->pi_atime.ts_sec = S(s64,stp->st_atime);
 	self->pi_atime.ts_nano = S(sz,stp->st_atimensec);
 	self->pi_mtime.ts_sec = S(s64,stp->st_mtime);

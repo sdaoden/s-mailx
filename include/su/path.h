@@ -155,6 +155,8 @@ INLINE boole su_pathinfo_is_sock(struct su_pathinfo const *pip){
 # define su_PATH_ROOT "/"
 #endif
 
+#define su_PATH_AT_FDCWD -2l /*!< Pseudo file-descriptor referring to "current directory". */
+
 /*! Compiled-in \r{CS} version of \r{su_PATH_SEP_C}. */
 EXPORT_DATA char const su_path_sep[2];
 
@@ -234,6 +236,15 @@ EXPORT boole su_path_mkdir(char const *path, BITENUM_IS(u32,su_iopf_permission) 
 
 /*! Rename (\c{rename(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_rename(char const *dst, char const *src);
+
+#if defined su_HAVE_PATH_RM_AT || defined DOXYGEN
+/*! Delete a file or an (empty) directory.
+ * Dependent upon whether \a{flags} contains \r{su_IOPF_AT_RMDIR} this removes a directory or a file,
+ * therefore acting like \r{su_path_rm()} or \r{su_path_rmdir()}.
+ * \a{dirfd} can either be \r{su_PATH_AT_FDCWD}, or must be a file descriptor opened on a directory.
+ * \remarks{Only available if \c{su_HAVE_PATH_RM_AT} is defined.} */
+EXPORT boole su_path_rm_at(sz dirfd, char const *path, BITENUM_IS(u32,su_iopf_at) flags);
+#endif
 
 /*! Delete (\c{unlink(2)}) a file. */
 EXPORT boole su_path_rm(char const *path);
@@ -416,6 +427,14 @@ public:
 		ASSERT_RET(src != NIL, FAL0);
 		return su_path_rename(dst, src);
 	}
+
+#if defined su_HAVE_PATH_RM_AT || defined DOXYGEN
+	/*! \copydoc{su_path_rm_at()} */
+	static boole rm_at(sz dirfd, char const *path, BITENUM_IS(u32,iopf_at) flags=iopf_at_none){
+		ASSERT_RET(path != NIL, FAL0);
+		return su_path_rm_at(dirfd, path, flags);
+	}
+#endif
 
 	/*! \copydoc{su_path_rmdir()} */
 	static boole rmdir(char const *path){
