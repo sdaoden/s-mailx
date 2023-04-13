@@ -22,17 +22,17 @@
 
 #include "su/code.h"
 
-su_USECASE_CONFIG_CHECKS(su_HAVE_PATHCONF su_HAVE_UTIMENSAT)
+su_USECASE_CONFIG_CHECKS(su_HAVE_PATH_RM_AT  su__HAVE_PATHCONF su__HAVE_UTIMENSAT)
 
 #include <sys/stat.h>
 
 #include <stdio.h> /* XXX use renameat etc. */
 #include <unistd.h>
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 # include <errno.h>
 #endif
-#ifdef su_HAVE_UTIMENSAT
+#if defined su_HAVE_PATH_RM_AT || defined su__HAVE_UTIMENSAT
 # include <fcntl.h> /* For AT_* */
 #else
 # include <utime.h>
@@ -170,7 +170,7 @@ su_path_link(char const *dst, char const *src){
 uz
 su_path_max_filename(char const *path){
 	uz rv;
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	long sr;
 #endif
 	NYD_IN;
@@ -178,7 +178,7 @@ su_path_max_filename(char const *path){
 	if(path == NIL)
 		path = ".";
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	errno = 0;
 	if((sr = pathconf(path, _PC_NAME_MAX)) != -1)
 		rv = S(uz,sr);
@@ -195,7 +195,7 @@ su_path_max_filename(char const *path){
 uz
 su_path_max_pathname(char const *path){
 	uz rv;
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	long sr;
 #endif
 	NYD_IN;
@@ -203,7 +203,7 @@ su_path_max_pathname(char const *path){
 	if(path == NIL)
 		path = ".";
 
-#ifdef su_HAVE_PATHCONF
+#ifdef su__HAVE_PATHCONF
 	errno = 0;
 	if((sr = pathconf(path, _PC_PATH_MAX)) != -1)
 		rv = S(uz,sr);
@@ -321,6 +321,26 @@ su_path_rename(char const *dst, char const *src){
 	return rv;
 }
 
+#ifdef su_HAVE_PATH_RM_AT
+boole
+su_path_rm_at(sz dirfd, char const *path, BITENUM_IS(u32,su_iopf_at) flags){
+	boole rv;
+	int dfd, f;
+	NYD_IN;
+	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
+	ASSERT_NYD_EXEC((flags & ~S(u32,su_IOPF_AT_RMDIR)) == 0, rv = FAL0);
+
+	dfd = (dirfd == su_PATH_AT_FDCWD) ? S(int,AT_FDCWD) : S(int,dirfd);
+	f = (flags & su_IOPF_AT_RMDIR) ? AT_REMOVEDIR : 0;
+
+	if(!(rv = (unlinkat(dfd, path, f) == 0)))
+		su_err_by_errno();
+
+	NYD_OU;
+	return rv;
+}
+#endif
+
 boole
 su_path_rm(char const *path){
 	boole rv;
@@ -349,7 +369,7 @@ su_path_rmdir(char const *path){
 
 boole
 su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
-#ifdef su_HAVE_UTIMENSAT
+#ifdef su__HAVE_UTIMENSAT
 	struct timespec tsa[2];
 #else
 	struct su_timespec ts_x;
@@ -363,7 +383,7 @@ su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
 	if(tsp_or_nil != NIL && !su_timespec_is_valid(tsp_or_nil))
 		tsp_or_nil = NIL;
 
-#ifdef su_HAVE_UTIMENSAT
+#ifdef su__HAVE_UTIMENSAT
 	if(tsp_or_nil == NIL)
 		tsa[1].tv_nsec = UTIME_NOW;
 	else{

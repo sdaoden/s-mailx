@@ -21,7 +21,7 @@
 
 #include "su/code.h"
 
-su_USECASE_CONFIG_CHECKS(su_HAVE_CLOCK_GETTIME su_HAVE_GETTIMEOFDAY)
+su_USECASE_CONFIG_CHECKS(su__HAVE_CLOCK_GETTIME su__HAVE_GETTIMEOFDAY)
 
 #include <time.h>
 
@@ -39,7 +39,7 @@ su_timespec_current(struct su_timespec *self){
 	ASSERT(self);
 
 	/* C99 */{
-#ifdef su_HAVE_CLOCK_GETTIME
+#ifdef su__HAVE_CLOCK_GETTIME
 		struct timespec ts;
 
 		if(sizeof(*self) == sizeof(ts) && sizeof(self->ts_sec) == sizeof(ts.tv_sec))
@@ -50,7 +50,7 @@ su_timespec_current(struct su_timespec *self){
 			self->ts_nano = S(sz,ts.tv_nsec);
 		}
 
-#elif defined su_HAVE_GETTIMEOFDAY
+#elif defined su__HAVE_GETTIMEOFDAY
 		struct timeval tv;
 
 		gettimeofday(&tv, NIL);

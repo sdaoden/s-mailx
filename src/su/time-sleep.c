@@ -22,13 +22,13 @@
 #include "su/code.h"
 
 su_USECASE_CONFIG_CHECKS(
-	su_HAVE_CLOCK_NANOSLEEP su_HAVE_NANOSLEEP
-	su_HAVE_SLEEP
+	su__HAVE_CLOCK_NANOSLEEP su__HAVE_NANOSLEEP
+	su__HAVE_SLEEP
 	)
 
 #include <time.h>
 
-#ifdef su_HAVE_SLEEP
+#ifdef su__HAVE_SLEEP
 # include <unistd.h>
 #endif
 
@@ -45,7 +45,7 @@ su_time_msleep(uz millis, boole ignint){
 	uz rv;
 	NYD2_IN;
 
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 	/* C99 */{
 		struct su_timespec ts, trem;
 
@@ -72,7 +72,7 @@ su_time_msleep(uz millis, boole ignint){
 		}
 	}
 
-#elif defined su_HAVE_SLEEP
+#elif defined su__HAVE_SLEEP
 	if((millis /= su_TIMESPEC_SEC_MILLIS) == 0)
 		millis = 1;
 
@@ -100,21 +100,21 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
 	}
 
 	/* C99 */{
-#if defined su_HAVE_CLOCK_NANOSLEEP || defined su_HAVE_NANOSLEEP
+#if defined su__HAVE_CLOCK_NANOSLEEP || defined su__HAVE_NANOSLEEP
 		struct timespec ts, tsr;
 
 		ts.tv_sec = dur->ts_sec;
 		ts.tv_nsec = dur->ts_nano;
 
 		rv =
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 			clock_nanosleep
 # else
 			nanosleep
 # endif
 			(
 
-# ifdef su_HAVE_CLOCK_NANOSLEEP
+# ifdef su__HAVE_CLOCK_NANOSLEEP
 #  if defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK +0 > 0
 				CLOCK_MONOTONIC
 #  else
@@ -126,7 +126,7 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
 
 		if(rv != 0){
 			switch((rv
-# ifndef su_HAVE_CLOCK_NANOSLEEP
+# ifndef su__HAVE_CLOCK_NANOSLEEP
 					= su_err_by_errno()
 # endif
 			)){
@@ -144,7 +144,7 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
 			}
 		}
 
-#else /* su_HAVE_CLOCK_NANOSLEEP || su_HAVE_NANOSLEEP */
+#else /* su__HAVE_CLOCK_NANOSLEEP || su__HAVE_NANOSLEEP */
 		uz millis;
 
 		if(dur->ts_sec >= UZ_MAX / su_TIMESPEC_SEC_MILLIS){
@@ -165,7 +165,7 @@ su_time_nsleep(struct su_timespec const *dur, struct su_timespec *rem_or_nil){
 			}
 			rv = su_ERR_INTR;
 		}
-#endif /* !(su_HAVE_CLOCK_NANOSLEEP || su_HAVE_NANOSLEEP) */
+#endif /* !(su__HAVE_CLOCK_NANOSLEEP || su__HAVE_NANOSLEEP) */
 	}
 
 jleave:
