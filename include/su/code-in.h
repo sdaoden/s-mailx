@@ -242,6 +242,7 @@
 # endif
 #endif /* su_FILE */
 
+#define C2UZ su_C2UZ
 #define P2UZ su_P2UZ
 
 #define PCMP su_PCMP

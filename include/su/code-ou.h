@@ -161,6 +161,7 @@
 # undef NYD2
 #endif
 
+#undef C2UZ
 #undef P2UZ
 
 #undef PCMP

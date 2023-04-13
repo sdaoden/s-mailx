@@ -919,6 +919,9 @@ do{\
  * Instrumented functions will always have one label for goto: purposes. */
 #define su_NYD_OU_LABEL su__nydou
 
+/*! Byte character to size_t cast. */
+#define su_C2UZ(C) su_S(su_uz,su_S(su_u8,C))
+
 /*! Pointer to size_t cast. */
 #define su_P2UZ(X) su_S(su_uz,/*not R(): avoid same-type++ warns*/(su_up)(X))
 
