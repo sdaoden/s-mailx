@@ -81,7 +81,8 @@ NSPC_USE(su)
 extern boole su_RANDOM_HOOK_FUN(void **cookie, void *buf, uz len);
 #endif
 
-/* Data buffer.  ARC4 == 256 bytes */
+/* Data buffer.  ARC4 == 256 bytes.
+ * (Note: getentropy etc. fail if this is >256, we LCTA() as necessary) */
 #define a_RANDOM_SEED_BYTES 256
 
 /* Default bytes after which the array is reseeded.
@@ -427,7 +428,9 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
 # endif
 #elif su_RANDOM_SEED == su_RANDOM_SEED_URANDOM
 		if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){ /* TODO SU I/O!*/
-			fill = read(u.fd, rdp->b8, a_RANDOM_SEED_BYTES);
+			while((fill = read(u.fd, rdp->b8, a_RANDOM_SEED_BYTES)) == -1 &&
+					su_err_by_errno() == su_ERR_INTR){
+			}
 			close(u.fd);
 		}
 #elif su_RANDOM_SEED == su_RANDOM_SEED_HOOK
@@ -469,7 +472,7 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
 	if(self->rm_type > su_RANDOM_TYPE_P){
 		self->rm_ro1 = (rdp->b8[rdp->b8[1] ^ rdp->b8[84]]);
 		self->rm_ro2 = (rdp->b8[rdp->b8[168] ^ rdp->b8[42]]);
-		u.i = (fill != a_RANDOM_SEED_BYTES) ? NELEM(rdp->b8) + rdp->b8[110] : 0;
+		u.i = (fill != a_RANDOM_SEED_BYTES) ? NELEM(rdp->b8) + rdp->b8[110] + a_random_get8(self) : 0;
 	}else{
 		self->rm_ro1 = buf[0];
 		self->rm_ro2 = buf[2];
@@ -477,7 +480,7 @@ su_random_seed(struct su_random *self, struct su_random *with_or_nil){
 		u.i <<= 8;
 		u.i |= buf[3];
 		/*su_mem_zero(buf, NELEM(buf));*/
-		u.i = CLIP(u.i, NELEM(rdp->b8), NELEM(rdp->b8) * 5);
+		u.i = CLIP(u.i, NELEM(rdp->b8), NELEM(rdp->b8) * 4);
 	}
 
 	while(u.i-- != 0)
