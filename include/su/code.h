@@ -125,54 +125,54 @@
  */
 
 #ifdef DOXYGEN
-	/* Features */
-	/*! Whether the \SU namespace exists.
-	 * If not, facilities exist in the global namespace. */
+ /* Features */
+ /*! Whether the \SU namespace exists.
+  * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
 
-	 /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
-	  * API, and even causes a different ABI.
-	  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
+ /*! Enables a few code check paths and debug-only structure content and function arguments: it creates additional
+  * API, and even causes a different ABI.
+  * (Code assertions are disabled via the standardized NDEBUG compiler preprocessor variable.) */
 # define su_HAVE_DEBUG
-	/*! Enable developer mode: it creates additional API, and even causes a different ABI.
-	 * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
-	 * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
+ /*! Enable developer mode: it creates additional API, and even causes a different ABI.
+  * Expensive in size and runtime development code paths, like extensive memory tracing and lingering, otherwise
+  * useless on-gut cleanups, and more verbose compiler pragmas at build time. */
 # define su_HAVE_DEVEL
-	/*! \r{MD} support available?
-	 * If so, always included are
-	 * \list{\li{
-	 * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
-	 * }} */
+ /*! \r{MD} support available?
+  * If so, always included are
+  * \list{\li{
+  * \r{MD_SIPHASH}; \c{SPDX-License-Identifier: CC0-1.0}.
+  * }} */
 # define su_HAVE_MD
-	/* TODO \r{MD_BLAKE2B} support available?
-	 * RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
-	 * Subfeature of \r{su_HAVE_MD}. */
+ /* TODO \r{MD_BLAKE2B} support available?
+  * RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+  * Subfeature of \r{su_HAVE_MD}. */
 /*#  define su_HAVE_MD_BLAKE2B*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
 # define su_HAVE_MEM_BAG_LOFI /*!< \r{MEM_BAG}. */
-	/*! Normally the development library performs memory write boundary excess detection via canaries (see
-	 * \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
-	 * Since this counteracts external memory checkers like \c{valgrind(1)} or the ASAN (address sanitizer) compiler
-	 * extensions, the \SU checkers can be disabled explicitly. */
+ /*! Normally the development library performs memory write boundary excess detection via canaries (see
+  * \r{MEM_CACHE_ALLOC}, \r{su_MEM_ALLOC_DEBUG}).
+  * Since this counteracts external memory checkers like \c{valgrind(1)} or the ASAN (address sanitizer) compiler
+  * extensions, the \SU checkers can be disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
-	/*! The seed source for the built-in \r{RANDOM} seed object.
-	 * Inspected during \SU build time, and must be either \c{su_RANDOM_SEED_BUILTIN} (the default),
-	 * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
-	 * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
-	 * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
-	 * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
-	 * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
-	 * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
-	 * the latter only in special builds, of course. */
+ /*! The seed source for the built-in \r{RANDOM} seed object.
+  * Inspected during \SU build time, and must be either \c{su_RANDOM_SEED_BUILTIN} (the default),
+  * \c{su_RANDOM_SEED_GETENTROPY} for \c{gentropy(3p)} seeding,
+  * \c{su_RANDOM_SEED_GETRANDOM} for \c{getrandom(2/3)} seeding
+  * (requires \c{su_RANDOM_GETRANDOM_H} to be defined to the header name,
+  * and \c{su_RANDOM_GETRANDOM_FUN} to the name of the function),
+  * \c{su_RANDOM_SEED_URANDOM} for seeding via \c{/dev/urandom},
+  * or \c{su_RANDOM_SEED_HOOK} for seeding via \c{su_RANDOM_HOOK_FUN}, a \r{su_random_generate_fun};
+  * the latter only in special builds, of course. */
 # define su_RANDOM_SEED
 # define su_HAVE_RE /*!< \r{RE} support available? */
 # define su_HAVE_SMP /*!< \r{SMP} support available? */
-	/*! Multithreading support available?
-	 * This is a subfeature of \r{su_HAVE_SMP}. */
+ /*! Multithreading support available?
+  * This is a subfeature of \r{su_HAVE_SMP}. */
 #  define su_HAVE_MT
 # define su_HAVE_STATE_GUT_FORK /*!< \r{su_STATE_GUT_ACT_FORK} code path. */
 
-	/* Values */
+ /* Values */
 # define su_PAGE_SIZE /*!< \_ */
 #endif
 
@@ -292,7 +292,7 @@
 # define su_NSPC_USE(X)
 # define su_NSPC(X)
 
-	/* Casts */
+/* Casts */
 # define su_S(T,I) ((T)(I)) /*!< \_ */
 # define su_R(T,I) ((T)(I)) /*!< \_ */
 # define su_C(T,I) ((T)su_R(su_up,I)) /*!< \_ */
@@ -314,27 +314,27 @@
 #  define su_NSPC(X) /**/::
 # endif
 
-	/* Disable copy-construction and assignment of class */
+ /* Disable copy-construction and assignment of class */
 # define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &)
-	/* If C++ class inherits from a C class, and the C class "return self", we
-	 * have to waste a return register even if self==this */
+ /* If C++ class inherits from a C class, and the C class "return self", we
+  * have to waste a return register even if self==this */
 # define su_SELFTHIS_RET(X) /* return *(X); */ X; return *this
 
-	/* C++ only allows those at the declaration, not the definition */
+ /* C++ only allows those at the declaration, not the definition */
 # define su_PUB
 # define su_PRO
 # define su_PRI
 # define su_STA
 # define su_VIR
 # define su_OVR
-	/* This is for the declarator only */
+ /* This is for the declarator only */
 # if __cplusplus +0 < 201103l /* XXX override ?? */
 #  define su_OVRX(X) virtual X
 # else
 #  define su_OVRX(X) X override
 # endif
 
-	/* Casts */
+ /* Casts */
 # define su_S(T,I) static_cast<T>(I)
 # define su_R(T,I) reinterpret_cast<T>(I)
 # define su_C(T,I) const_cast<T>(I)
@@ -373,7 +373,7 @@
 #ifdef DOXYGEN
 # define su_CTA(T,M) /*!< \_ */
 # define su_LCTA(T,M) /*!< \remarks{Introduces a block scope.} */
-  /* ISO C variant unusable pre-C23! */
+/* ISO C variant unusable pre-C23! */
 #elif (!su_C_LANG && __cplusplus +0 >= 201103l) || \
 	(su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 202311l)
 # define su_CTA(T,M) static_assert(T, M)
@@ -428,16 +428,6 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ &&  defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-
 # if su_CC_VCHECK_CLANG(13,0) /* XXX not "real" */
 #  define su_CC_FALLTHRU __attribute__((fallthrough));
 # endif
@@ -453,16 +443,6 @@ do{\
 # define su_CC_EXTEN __extension__
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
-
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
 
 #elif defined __SUNPRO_C /* __PCC__ */
 # undef su_CC_SUNPROC
@@ -488,17 +468,7 @@ do{\
 # define su_CC_PACKED __attribute__((packed))
 # define su_CC_MEM_ZERO(X,Y) do __builtin_memset(X, 0, Y); while(0)
 
-# if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN
-#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_LITTLE
-#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#   define su_CC_BOM su_CC_BOM_BIG
-#  else
-#   error Unsupported __BYTE_ORDER__
-#  endif
-# endif
-
-	/* Dunno; unused due to gcc 11.2.0: a label can only be part of a statement and a declaration is not a statement */
+  /* Dunno; unused due to gcc 11.2.0: "a label can only be part of a statement and a declaration is not a statement" */
 # if su_CC_VCHECK_GCC(7,0)
 #  define su_CC_FALLTHRU UNUSED(0); __attribute__ ((fallthrough));
 # endif
@@ -515,8 +485,26 @@ do{\
 #endif
 
 #ifndef su_CC_ALIGNED
-	/*! Structure alignment; will be \c{_Alignas()} (C 2011) if possible. */
+ /*! Structure alignment; will be \c{_Alignas()} (C 2011) if possible. */
 # define su_CC_ALIGNED(X) TODO: ALIGNED not supported for this compiler
+#endif
+
+#if !defined su_CC_BOM && defined __BYTE_ORDER__ && defined __ORDER_LITTLE_ENDIAN__ && defined __ORDER_BIG_ENDIAN__
+# if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#  define su_CC_BOM su_CC_BOM_LITTLE
+# elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#  define su_CC_BOM su_CC_BOM_BIG
+# else
+#  error Unsupported __BYTE_ORDER__
+# endif
+#endif
+#if defined su_CC_BOM || defined DOXYGEN
+# ifdef DOXYGEN
+  /*! Only if the CC offers \r{su_BOM} macros, defined to either \r{su_CC_BOM_LITTLE} or \r{su_CC_BOM_BIG}. */
+#  define su_CC_BOM
+# endif
+# define su_CC_BOM_LITTLE 1234 /*!< Only if there is \r{su_CC_BOM}. */
+# define su_CC_BOM_BIG 4321 /*!< Only if there is \r{su_CC_BOM}. */
 #endif
 
 #ifndef su_CC_EXTEN
@@ -525,11 +513,6 @@ do{\
 
 #ifndef su_CC_FALLTHRU
 # define su_CC_FALLTHRU /* FALLTHRU */
-#endif
-
-#ifndef su_CC_PACKED
-	/*! Structure packing. */
-# define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
 #endif
 
 #if !defined su_CC_MEM_ZERO || defined su_HAVE_DEVEL
@@ -543,16 +526,9 @@ do{\
 }while(0)
 #endif
 
-#if defined su_CC_BOM || defined DOXYGEN
-# ifdef DOXYGEN
-	/*! Only if the CC offers \r{su_BOM} macros, defined to either \r{su_CC_BOM_LITTLE} or \r{su_CC_BOM_BIG}. */
-#  define su_CC_BOM
-# endif
-# define su_CC_BOM_LITTLE 1234 /*!< Only if there is \r{su_CC_BOM}. */
-# define su_CC_BOM_BIG 4321 /*!< Only if there is \r{su_CC_BOM}. */
-#endif
-#if !defined su_CC_UZ_TYPE && defined __SIZE_TYPE__
-# define su_CC_UZ_TYPE __SIZE_TYPE__
+#ifndef su_CC_PACKED
+  /*! Structure packing. */
+# define su_CC_PACKED TODO: PACKED attribute not supported for this compiler
 #endif
 
 /* Function name */
@@ -576,7 +552,7 @@ do{\
 #    define su_INLINE static inline
 #    define su_SINLINE static inline
 #   else
-	/* clang does not like inline with <-O2 */
+     /* clang does not like inline with <-O2 */
 #    define su_INLINE inline __attribute__((always_inline))
 #    define su_SINLINE static inline __attribute__((always_inline))
 #   endif
@@ -663,9 +639,9 @@ do{\
 # i5e <stdalign.h>
 # define su_ALIGNOF(X) _Alignof(X)
 #else
-	/*! Power-of-two alignment for \a{X}.
-	 * \remarks{Not \c{_Alignof()} even if available because
-	 * \c{_Alignof()} applied to an expression is a GNU extension}. */
+ /*! Power-of-two alignment for \a{X}.
+  * \remarks{Not \c{_Alignof()} even if available because
+  * \c{_Alignof()} applied to an expression is a GNU extension}. */
 # define su_ALIGNOF(X) su_ROUND_UP2(sizeof(X), su__ZAL_L)
 #endif
 
@@ -950,9 +926,9 @@ do{\
 #define su_STRUCT_ZERO(T,P) su_CC_MEM_ZERO(P, sizeof(T))
 
 #if su_C_LANG || defined DOXYGEN
-	/*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned, \a{T} is one of our homebrew integers,
-	 * for example, \c{UCMP(32, su_ABS(n), >, wleft)}.
-	 * \remarks{Does not sign-extend correctly, this is up to the caller.} */
+ /*! Compare (maybe mixed-signed) integers cases to \a{T} bits, unsigned, \a{T} is one of our homebrew integers,
+  * for example, \c{UCMP(32, su_ABS(n), >, wleft)}.
+  * \remarks{Does not sign-extend correctly, this is up to the caller.} */
 # define su_UCMP(T,A,C,B) (su_S(su_ ## u ## T,A) C su_S(su_ ## u ## T,B))
 #else
 # define su_UCMP(T,A,C,B) (su_S(su_NSPC(su) u ## T,A) C su_S(su_NSPC(su) u ## T,B))
@@ -979,9 +955,9 @@ do{\
 #define su_UNUSED(X) ((void)(X))
 
 #if (su_C_LANG && defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901l) || defined DOXYGEN
-	/*! Variable-type size (with byte array at end). */
+ /*! Variable-type size (with byte array at end). */
 # define su_VFIELD_SIZE(X)
-	/*! Variable-type size (with byte array at end). */
+ /*! Variable-type size (with byte array at end). */
 # define su_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
 # define su_VFIELD_SIZE(X) ((X) == 0 ? sizeof(su_uz) : (su_S(su_sz,X) < 0 ? sizeof(su_uz) - su_ABS(X) : su_S(su_uz,X)))
@@ -1164,8 +1140,7 @@ typedef size_t su_uz; /*!< \_ */
 # define PRIdZ "zd"
 # define su_UZ_MAX SIZE_MAX /*!< \_ */
 #elif defined SIZE_MAX
-	/* UnixWare has size_t as unsigned as required but uses a signed limit
-	 * constant (which is thus false!) */
+ /* UnixWare has size_t as unsigned as required but uses a signed limit constant (which is thus false!) */
 # if SIZE_MAX == su_U64_MAX || SIZE_MAX == su_S64_MAX
 #  define PRIuZ PRIu64
 #  define PRIdZ PRId64
