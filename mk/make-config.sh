@@ -806,6 +806,11 @@ _cc_flags_generic() {
 		fi
 		ld_runtime_flags # update!
 	fi
+	ld_check -Wl,--sort-common
+
+	if feat_no DEBUG; then
+		ld_check -Wl,-O1
+	fi
 
 	# Address randomization
 	if val_has VAL_AUTOCC pie; then
