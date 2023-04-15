@@ -2039,13 +2039,17 @@ a_random(void){ // xxx too late, already initialized...
 			a_ERR();
 	}
 
-	if(random::builtin_generate(buf, sizeof buf, state::err_pass
-			) != state::none)
+	if(random::builtin_generate(buf, sizeof buf, state::err_pass) != state::none)
 		a_ERR();
 
 	if(!random::builtin_seed(TRU1))
 		a_ERR();
 	if(!random::builtin_seed(FAL0))
+		a_ERR();
+
+	if(!random::builtin_set_reseed_after(TRU1, 0)) // xxx useless, only link-test
+		a_ERR();
+	if(!random::builtin_set_reseed_after(FAL0, 0))
 		a_ERR();
 }
 

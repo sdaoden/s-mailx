@@ -144,7 +144,8 @@ EXPORT void su_random_gut(struct su_random *self);
  * that is to say that a hooked random generator is not assumed to need seeding at all.)
  *
  * The internal built-in seeder uses the algorithm of \r{su_RANDOM_TYPE_VSP},
- * but is seeded via the \r{su_RANDOM_SEED} source chosen at build time. */
+ * but is itself seeded via the \r{su_RANDOM_SEED} source chosen at build time;
+ * see \r{su_random_builtin_seed()}, and \r{su_random_builtin_set_reseed_after()}. */
 EXPORT boole su_random_seed(struct su_random *self, struct su_random *with_or_nil);
 
 /*! Generate random bytes.
@@ -157,12 +158,12 @@ EXPORT boole su_random_generate(struct su_random *self, void *buf, uz len);
  * If \a{on_generate} is \NIL the default built-in behaviour is (re)established,
  * and be picked up by newly created objects.
  * (If \r{su_RANDOM_SEED} is \c{su_RANDOM_SEED_HOOK} the default behaviour is redirection through a hook already.)
- * \ESTATE_RV: once the first random object is created the internal machinery is setup,
- * which may fail (but see \r{su_STATE_CREATE_RANDOM}).
+ * \ESTATE_RV; the internal machinery is instantiated as necessary, which may fail; the internal seeder object
+ * is not setup: that may still fail later (but see \r{su_STATE_CREATE_RANDOM}).
  *
  * \a{cookie} of \a{on_generate} is object specific and initially \NIL.
- * For as long as \a{*cookie} is \NIL \r{su_random_seed()} will call the hook with all arguments 0,
- * and only upon r{su_random_gut()} time, when \a{cookie} is not \NIL,
+ * For as long as \c{*cookie} is \NIL \r{su_random_seed()} will call the hook with all arguments 0,
+ * and only upon \r{su_random_gut()} time, when \a{cookie} is not \NIL,
  * will the hook otherwise be called with a \NIL \a{buf} and a length of 0. */
 EXPORT s32 su_random_vsp_install(su_random_generate_fun on_generate, u32 estate);
 
@@ -174,6 +175,10 @@ EXPORT s32 su_random_builtin_generate(void *buf, uz len, u32 estate);
 /*! Like \r{su_random_seed()}, but applies to internal objects, either the \a{seeder}, or the random generator.
  * This uses \r{su_STATE_ERR_PASS} error mode. */
 EXPORT boole su_random_builtin_seed(boole seeder);
+
+/*! This sets the su_random::rm_reseed_after of internal objects, either the \a{seeder}, or the random generator.
+ * This uses \r{su_STATE_ERR_PASS} error mode. */
+EXPORT boole su_random_builtin_set_reseed_after(boole seeder, u32 reseed_after);
 /*! @} *//* }}} */
 
 C_DECL_END
@@ -255,6 +260,12 @@ public:
 
 	/*! \copydoc{su_random_builtin_seed()} */
 	static boole builtin_seed(boole seeder=FAL0) {return su_random_builtin_seed(seeder);}
+
+	/*! \copydoc{su_random_builtin_set_reseed_after()}
+	 * \remarks{Reversed argument order for C++ default argument support.} */
+	static boole builtin_set_reseed_after(u32 reseed_after, boole seeder=FAL0){
+		return su_random_builtin_set_reseed_after(seeder, reseed_after);
+	}
 };
 /* }}} */
 

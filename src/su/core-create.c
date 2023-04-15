@@ -45,9 +45,19 @@ su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *
 #undef a_V1
 #define a_V1(X) ((X) | su_STATE_CREATE_V1 | su_STATE_CREATE_ALL)
 
-	if((create_flags & a_V1(su_STATE_CREATE_RANDOM)) && (rv = su_random_vsp_install(NIL, estate)) != su_STATE_NONE)
-		goto jleave;
+	if(create_flags & a_V1(su_STATE_CREATE_RANDOM)){
+		if((rv = su_random_vsp_install(NIL, estate)) != su_STATE_NONE)
+			goto jleave;
+#if DVLDBGOR(1, 0)
+		if(!(create_flags & a_V1(su__STATE_CREATE_RANDOM_MEM_FILLER)))
+#endif
+			if(!su_random_builtin_seed(TRU1)){
+				rv = su_state_err(-su_ERR_CANCELED, estate, _("cannot seed random generator"));
+				goto jleave;
+			}
+	}
 
+	/* (*/
 #if DVLDBGOR(1, 0)
 	if(create_flags & a_V1(su__STATE_CREATE_RANDOM_MEM_FILLER)){
 		u8 mf;
