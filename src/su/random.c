@@ -660,6 +660,20 @@ jleave:
 	return rv;
 }
 
+boole
+su_random_builtin_set_reseed_after(boole seeder, u32 reseed_after){
+	boole rv;
+	NYD_IN;
+
+	rv = (a_random_bltin != NIL || a_random_init(su_STATE_ERR_PASS) == su_STATE_NONE);
+
+	if(rv)
+		(seeder ? &a_random_bltin->rndb_seed : &a_random_bltin->rndb_rand)->rm_reseed_after = reseed_after;
+
+	NYD_OU;
+	return rv;
+}
+
 #include "su/code-ou.h"
 #undef su_FILE
 #undef su_SOURCE
