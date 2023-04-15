@@ -395,51 +395,54 @@ su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 }
 
 s32
-su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
-	static char const intro_nomem[] = N_("Out of memory: %s"), intro_overflow[] = N_("Datatype overflow: %s");
-
+su_state_err(s32 err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
 	enum su_log_level lvl;
-	char const *introp;
-	s32 eno;
 	u32 xerr;
+	char const *introp;
 	NYD2_IN;
 
-	if(msg_or_nil == NIL)
-		msg_or_nil = N_("(no error information)");
 	state &= su_STATE_ERR_MASK;
 
-	xerr = err;
-	switch(xerr &= su_STATE_ERR_TYPE_MASK){
-	default:
-		ASSERT(0);
-		FALLTHRU
-	case su_STATE_ERR_NOMEM:
-		eno = su_ERR_NOMEM;
-		introp = intro_nomem;
-		break;
-	case su_STATE_ERR_OVERFLOW:
-		eno = su_ERR_OVERFLOW;
-		introp = intro_overflow;
-		break;
+	if(err < 0){
+		err = -err;
+		introp = su_err_doc(err);
+		xerr = 0;
+	}else{
+		xerr = S(u32,err & su_STATE_ERR_TYPE_MASK);
+		switch(xerr){
+		default:
+			ASSERT(0);
+			FALLTHRU
+		case su_STATE_ERR_NOMEM:
+			err = su_ERR_NOMEM;
+			introp = N_("Out of memory");
+			break;
+		case su_STATE_ERR_OVERFLOW:
+			err = su_ERR_OVERFLOW;
+			introp = N_("Datatype overflow");
+			break;
+		}
 	}
 
 	lvl = su_LOG_EMERG;
 	if(state & su_STATE_ERR_NOPASS)
 		goto jdolog;
-	if(state & su_STATE_ERR_PASS)
-		lvl = su_LOG_DEBUG;
-	else if((state & xerr) || su_state_has(xerr))
+	if((state & su_STATE_ERR_PASS) == su_STATE_ERR_PASS || su_state_has(su_STATE_ERR_PASS) ||
+			(xerr != 0 && ((state & xerr) || su_state_has(xerr))))
 		lvl = su_LOG_ALERT;
 
-	if(su_log_would_write(lvl))
+	if(su_log_would_write(lvl)){
 jdolog:
-		su_log_write(lvl, V_(introp), V_(msg_or_nil));
+		if(msg_or_nil == NIL)
+			msg_or_nil = _("(no error detail)");
+		su_log_write(lvl, _("State error: %s: %s"), V_(introp), msg_or_nil);
+	}
 
 	if(!(state & su_STATE_ERR_NOERROR))
-		su_err_set(eno);
+		su_err_set(err);
 
 	NYD2_OU;
-	return eno;
+	return err;
 }
 
 s32
