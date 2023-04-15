@@ -47,7 +47,7 @@ struct su_mutex;
  * Without \r{su_HAVE_MT} this is a "checking" no-op wrapper.
  * Dependent upon \r{su_DVLDBGOR()} the debug-enabled functions simply ignore their debug-only arguments.
  * Please see \r{SMP} for peculiarities of \SU lock types.
- * Error numbers (\r{su_err(), \r{su_err_number}) are not used but for \r{su_mutex_create()}.
+ * Error numbers (\r{su_err()}, \r{su_err_number}) are not used but for \r{su_mutex_create()}.
  * @{
  */
 

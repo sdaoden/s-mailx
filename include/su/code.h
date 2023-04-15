@@ -49,7 +49,7 @@
  * The counterpart \r{su_state_gut()} will optionally notify \r{su_state_on_gut_install()}ed handlers.
  * These functions are always in scope.
  * }\li{
- * Overflow and out-of-memory errors are usually detected and result in abortions (via \r{su_LOG_EMERG} logs).
+ * Overflow and out-of-memory errors are usually detected and result in abortions (via \r{su_LOG_EMERG}).
  * Alternatively all or individual \r{su_state_err_type}s will not cause hard-failures.
  *
  * The actual global mode of operation can be queried via \r{su_state_get()} (presence checks with \r{su_state_has()},
@@ -1259,12 +1259,12 @@ enum su_state_log_flags{
  * datatype overflow result in \r{su_LOG_EMERG}s, and thus program abortion.
  *
  * This global default can be changed by including the corresponding \c{su_state_err_type} (\r{su_STATE_ERR_NOMEM} and
- * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine via \r{su_state_set()}, in which case
- * logging uses \r{su_LOG_ALERT} level, a corresponding \r{su_err_number} will be assigned for \r{su_err()}, and
- * the failed function will return error.
+ * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine via \r{su_state_set()}, as well as by
+ * setting \r{su_STATE_ERR_PASS} generally, in which case logging uses \r{su_LOG_ALERT} level, a corresponding
+ * \r{su_err_number} will be assigned for \r{su_err()}, and the failed function will return error.
  *
- * Often functions and object allow additional control over the global on a by-call or by-object basis, taking a state
- * argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
+ * Often functions and objects allow additional control over the global on a by-call or by-object basis,
+ * taking a state argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
  * In order to support this these values do not form an enumeration, but rather are combinable bits. */
 enum su_state_err_type{
 	su_STATE_ERR_NOMEM = 1u<<8, /*!< Out-of-memory. */
@@ -1283,22 +1283,20 @@ enum su_state_err_flags{
 	su_STATE_ERR_NONE, /*!< 0. */
 	/*! A mask containing all \r{su_state_err_type} bits. */
 	su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
-	/*! Allow passing of all errors.
-	 * This is just a better name alias for \r{su_STATE_ERR_TYPE_MASK}. */
-	su_STATE_ERR_PASS = su_STATE_ERR_TYPE_MASK,
+	/*! Allow passing of all errors. */
+	su_STATE_ERR_PASS = su_STATE_ERR_TYPE_MASK, /* .. but also includes custom */
 	/*! Regardless of global (and additional local) policy, if this flag is
-	 * set, an actual error causes a hard program abortion. */
+	 * set, an actual error causes a hard program abortion (via \r{su_LOG_EMERG}). */
 	su_STATE_ERR_NOPASS = 1u<<12,
 	/*! If this flag is set and no abortion is about to happen, a corresponding
 	 * \r{su_err_number} will not be assigned to \r{su_err()}. */
 	su_STATE_ERR_NOERROR = 1u<<13,
-	/*! This is special in that it plays no role in the global state machine.
-	 * However, many types or functions which provide \a{estate} arguments and
-	 * use (NOT) \r{su_STATE_ERR_MASK} to overload that with meaning, adding
-	 * support for owning \r{COLL} (for \r{su_toolbox} users, to be exact)
-	 * actually made sense: if this bit is set it indicates that \NIL values
-	 * returned by \r{su_toolbox} members are acceptable values (and thus do not
-	 * cause actions like insertion, replacement etc. to fail). */
+	/*! Special as it plays no role in the global state machine.
+	 * Yet many types or functions that use \a{estate} arguments and use (NOT) \r{su_STATE_ERR_MASK} to overload
+	 * that with meaning, adding support for owning \r{COLL} aka \r{su_toolbox} users, actually made sense:
+	 * if set \NIL values are acceptable, and do not cause actions like insertion or removals to fail;
+	 * with it, \NIL user pointers are not passed to \r{su_toolbox} members,
+	 * and \r{su_toolbox} members may return \NIL, too. */
 	su_STATE_ERR_NIL_IS_VALID_OBJECT = 1u<<14,
 	/*! Alias for \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
 	su_STATE_ERR_NILISVALO = su_STATE_ERR_NIL_IS_VALID_OBJECT,
@@ -1347,9 +1345,9 @@ MCTA((S(uz,su_STATE_ERR_MASK) & ~0xFF00u) == 0, "Bits excess documented bounds")
 
 /*! Argument bits for \r{su_state_create()}. */
 enum su_state_create_flags{
-	su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}. */
+	su_STATE_CREATE_RANDOM = 1u<<0, /*!< (V1) Initialize \r{RANDOM}, and seed its internal seeder object. */
 	su__STATE_CREATE_RANDOM_MEM_FILLER = 1u<<1,
-	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET}.
+	/*! (V1) Create a random \r{su_MEM_CONF_FILLER_SET} (only with \r{su_MEM_ALLOC_DEBUG}).
 	 * It favours \c{0x00} and \c{0xFF} over other random numbers.
 	 * Implies \c{CREATE_RANDOM}.
 	 * \remarks{As this creates a random number, a \r{su_RANDOM_SEED} of \c{su_RANDOM_SEED_HOOK} must be carefully
@@ -1581,15 +1579,13 @@ INLINE u32 su_state_get(void){
 }
 
 /*! Interaction with the SU library (global) state machine:
- * test whether all (not any) of \a{flags} are set in \r{su_state_get()}.
- * \a{flags} can be a bitmix of (a subset of) \r{su_state_err_flags} and \r{su_state_flags}. */
+ * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
 INLINE boole su_state_has(uz flags){
 	flags &= su__STATE_GLOBAL_MASK;
 	return ((su__state & flags) == flags);
 }
 
-/*! A bitmix of (\r{su_state_err_type} and a subset of)
- * \r{su_state_err_flags}, as well as \r{su_state_flags}. */
+/*! Adjustments of the SU library (global) state machine, see \r{su_state_get()}. */
 INLINE void su_state_set(uz flags){ /* xxx not inline; no lock -> atomics? */
 	flags &= su__STATE_GLOBAL_MASK;
 	su__glck(su__GLCK_STATE);
@@ -1607,9 +1603,12 @@ INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
 }
 
 /*! Notify an error to the \SU (global) state machine.
- * Report \a{err}or and use the \r{su_state_err_flags} \a{state} to evaluate what to do.
- * If the function is allowd to return a corresponding \r{su_err_number} will be returned. */
-EXPORT s32 su_state_err(enum su_state_err_type err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
+ * Either \a{err}or is a \r{su_state_err_type}, or a negative \r{su_err_number}.
+ * The \r{su_state_err_flags} \a{state} is evaluated in conjunction with \r{su_state_get()} to decide what to do.
+ * Since individual (non-\r{su_state_err_type}) errors cannot be suppressed via states, either of \a{state} or
+ * \r{su_state_get()} must flag \r{su_STATE_ERR_PASS} to make such errors non-fatal.
+ * If this function returns, then with an according \r{su_err_number} (aka non-negated \a{err} itself). */
+EXPORT s32 su_state_err(s32 err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
 
 /*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
@@ -1941,7 +1940,7 @@ public:
 	/*! \copydoc{su_err()} */
 	static s32 no(void) {return su_err();}
 
-	/*! \copydoc{su_err_set_no()} */
+	/*! \copydoc{su_err_set()} */
 	static void set(s32 eno) {su_err_set(eno);}
 
 	/*! \copydoc{su_err_doc()} */
@@ -2144,8 +2143,8 @@ public:
 	static void clear(uz state) {su_state_clear(state);}
 
 	/*! \copydoc{su_state_err()} */
-	static s32 err(err_type err, BITENUM_IS(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
-		return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
+	static s32 err(s32 err, BITENUM_IS(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
+		return su_state_err(err, state, msg_or_nil);
 	}
 
 	/*! \copydoc{su_program} */
