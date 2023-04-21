@@ -13,6 +13,7 @@
  *@ TODO   UNLIKELY() it, and add a OnProgramStartupCompletedEvent to
  *@ TODO   incorporate what it tracks, then drop it.  Etc.
  *@ TODO   Global -> Scope -> Local, all "overlay" objects.
+ *@ TODO . Also, storing variable names can be optional for non-chain built-ins
  *
  * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -386,9 +387,9 @@ static void a_amv_lopts_unroll(struct a_amv_var **avpp);
 static char *a_amv_var_copy(char const *str);
 static void a_amv_var_free(char *cp);
 
-/* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and
- * should cause abortion */
+/* _VIP_SET_POST and _VIP_CLEAR do not fail (or propagate errors), _VIP_SET_PRE may and should cause abortion */
 static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const **val);
+static char const *a_amv_var__vips_addr(enum okeys okey, char const **val);
 
 /* _VF_NUM / _VF_POSNUM */
 static boole a_amv_var_check_num(char const *val, boole posnum);
@@ -1046,10 +1047,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			if((*val = n_iconv_normalize_name(*val)) == NIL)
 				ok = FAL0;
 			break;
-		case ok_v_customhdr:{
-			char const *ccp;
-			char *cp;
-
+		case ok_v_customhdr:
 			cp = savestr(*val);
 			while((ccp = su_cs_sep_escable_c(&cp, ',', TRU1)) != NIL){
 				if(!n_header_add_custom(NIL, ccp, TRUM1)){
@@ -1057,26 +1055,18 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 					goto jerr;
 				}
 			}
-			}break;
-		case ok_v_from:
-		case ok_v_sender:
-		case ok_v_smtp_from:{
-			struct mx_name *np;
-
-			np = (okey != ok_v_from ? n_extract_single : lextract)(*val, GEXTRA | GFULL);
-			if(np == NIL){
-jefrom:
-				emsg = N_("*from* / *sender* / *smtp-from*: invalid address(es): %s\n");
+			break;
+		case ok_v_replyto:
+			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
+			FALLTHRU
+		case ok_v_from: FALLTHRU
+		case ok_v_sender: FALLTHRU
+		case ok_v_smtp_from: FALLTHRU
+		case ok_v_reply_to:
+			emsg = a_amv_var__vips_addr(okey, val);
+			if(emsg != NIL)
 				goto jerr;
-			}else{
-				if(okey == ok_v_smtp_from)
-					*val = np->n_name;
-
-				for(; np != NIL; np = np->n_flink)
-					if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-						goto jefrom;
-			}
-			}break;
+			break;
 		case ok_v_HOME:
 			/* Note this gets called from main.c during initialization, and they simply set this to pw_dir
 			 * as a fallback: do not verify _that_ call.  See main.c! */
@@ -1108,32 +1098,6 @@ jefrom:
 					ok = FAL0;
 					break;
 				}
-			}break;
-		case ok_v_replyto:
-			n_OBSOLETE("*replyto*: please set *reply-to*, doing it for you");
-			FALLTHRU
-		case ok_v_reply_to:{
-			struct mx_name *np;
-
-			np = lextract(*val, GEXTRA | GFULL);
-			if(np == NIL){
-jereplyto:
-				emsg = N_("*reply-to*: invalid address(es): %s\n");
-				goto jerr;
-			}
-
-			s = n_string_creat_auto(s);
-			for(; np != NIL; np = np->n_flink){
-				if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-					goto jereplyto;
-				if(s->s_len > 0)
-					s = n_string_push_c(s, ',');
-				s = n_string_push_cp(s, np->n_fullname);
-			}
-			*val = n_string_cp(s);
-
-			if(okey == ok_v_replyto) /* v15-compat */
-				n_PS_ROOT_BLOCK(ok_vset(reply_to, *val));
 			}break;
 		case ok_v_sendcharsets:{
 			char *csv;
@@ -1203,9 +1167,7 @@ jereplyto:
 			n_PS_ROOT_BLOCK(ok_vset(bind_inter_byte_timeout, *val));
 			break;
 		case ok_v_customhdr:{
-			char const *ccp;
 			struct n_header_field *hflp, **hflpp;
-			char *cp;
 
 			cp = savestr(*val);
 			hflp = NIL;
@@ -1371,6 +1333,61 @@ jerr:
 	n_err(emsg, n_shexp_quote_cp(*val, FAL0));
 	ok = FAL0;
 	goto jleave;
+}
+
+static char const *
+a_amv_var__vips_addr(enum okeys okey, char const **val){
+	struct n_string s_b, *s = &s_b;
+	struct mx_name *np;
+	boole ready, single;
+	char const *emsg;
+	NYD2_IN;
+
+	s = n_string_creat_auto(s);
+
+	emsg = NIL;
+	ready = ((n_psonce & n_PSO_STARTED_CONFIG_FILES) != 0);
+	single = (okey != ok_v_from && okey != ok_v_reply_to);
+
+	np = (single ? n_extract_single : lextract)(*val, GEXTRA | GFULL);
+	if(np == NIL){
+jerr:
+		s = n_string_assign_cp(s, V_("invalid address(es): "));
+		s = n_string_push_cp(s, &a_amv_var_names[a_amv_var_map[S(u32,okey)].avm_keyoff]);
+		s = n_string_push_cp(s, ": %s\n");
+		emsg = n_string_cp(s);
+	}else{
+		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
+
+		if(ready){
+			np = usermap(np, TRU1);
+			if(np == NIL)
+				goto jerr;
+			if(single && np->n_flink != NIL)
+				goto jerr;
+		}
+
+		if(single){
+			if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+				goto jerr;
+			*val = (okey == ok_v_smtp_from) ? np->n_name : np->n_fullname;
+		}else{
+			for(; np != NIL; np = np->n_flink){
+				if(ready && is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+					goto jerr;
+				if(s->s_len > 0)
+					s = n_string_push_c(s, ',');
+				s = n_string_push_cp(s, np->n_fullname);
+			}
+			*val = n_string_cp(s);
+
+			if(okey == ok_v_replyto) /* v15-compat */
+				n_PS_ROOT_BLOCK(ok_vset(reply_to, *val));
+		}
+	}
+
+	NYD2_OU;
+	return emsg;
 }
 
 static boole
@@ -2912,8 +2929,6 @@ mx_account_enter(char const *name, boole ismain){
 		goto jleave;
 	}
 
-	save_mbox_for_possible_quitstuff();
-
 	if(!su_cs_cmp_case(name, ACCOUNT_NULL))
 		amp = NIL;
 	else if((amp = a_amv_mac_lookup(name, NIL, a_AMV_MF_ACCOUNT)) == NIL){
@@ -2921,6 +2936,14 @@ mx_account_enter(char const *name, boole ismain){
 		goto jleave;
 	}
 
+	/* In the startup phase we accumulate any `account' until n_var_setup_verify() clears it up */
+	if(!(n_psonce & n_PSO_STARTED_CONFIG_FILES)){
+		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
+		n_PS_ROOT_BLOCK(ok_vset(account, amp->am_name));
+		goto jleave;
+	}
+
+	save_mbox_for_possible_quitstuff();
 	oqf = savequitflags();
 
 	/* Shutdown the active account */
@@ -3604,6 +3627,63 @@ n_var_setup_batch_mode(void){
 }
 
 FL boole
+n_var_setup_verify(char const **account, boole error_out){
+	/* Unroll a bit: more lengthy, but lesser resources */
+	enum okeys const oa[4] = {ok_v_from, ok_v_sender, ok_v_smtp_from, ok_v_reply_to};
+
+	struct a_amv_var_carrier avc;
+	struct a_amv_var_map const *avmp;
+	uz i;
+	boole rv;
+	NYD2_IN;
+	ASSERT(n_psonce & n_PSO_VAR_SETUP_VERIFY_NEEDED);
+
+	rv = !error_out;
+
+	for(i = 0; i < NELEM(oa); ++i){
+		STRUCT_ZERO(struct a_amv_var_carrier, &avc);
+		avc.avc_map = avmp = &a_amv_var_map[avc.avc_okey = oa[i]];
+		avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
+		avc.avc_hash = avmp->avm_hash;
+
+		if(a_amv_var_lookup(&avc, a_AMV_VLOOK_I3VAL_NONEW)){
+			char const *emsg;
+			char *cp;
+
+			cp = avc.avc_var->av_value;
+
+			emsg = a_amv_var__vips_addr(oa[i], C(char const**,&avc.avc_var->av_value));
+			if(emsg == NIL){
+				a_amv_var_free(cp);
+				avc.avc_var->av_value = a_amv_var_copy(avc.avc_var->av_value);
+			}else{
+				emsg = V_(emsg);
+				n_err(emsg, n_shexp_quote_cp(cp, FAL0));
+				n_PS_ROOT_BLOCK(a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE));
+				if(error_out)
+					goto jleave;
+			}
+		}
+	}
+
+	/* Except when there was an -A ccount argument, we want an `account' to be picked up by main() */
+	if(*account == NIL){
+		STRUCT_ZERO(struct a_amv_var_carrier, &avc);
+		avc.avc_map = avmp = &a_amv_var_map[avc.avc_okey = ok_v_account];
+		avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
+		avc.avc_hash = avmp->avm_hash;
+
+		if(a_amv_var_lookup(&avc, a_AMV_VLOOK_I3VAL_NONEW))
+			*account = avc.avc_var->av_value;
+	}
+
+	rv = TRU1;
+jleave:
+	NYD2_OU;
+	return rv;
+}
+
+FL boole
 n_var_is_user_writable(char const *name){
 	struct a_amv_var_carrier avc;
 	struct a_amv_var_map const *avmp;
@@ -3627,7 +3707,7 @@ n_var_oklook(enum okeys okey){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3649,7 +3729,7 @@ n_var_okset(enum okeys okey, up val){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3668,7 +3748,7 @@ n_var_okclear(enum okeys okey){
 	struct a_amv_var_map const *avmp;
 	NYD_IN;
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_map = avmp = &a_amv_var_map[okey];
 	avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
 	avc.avc_hash = avmp->avm_hash;
@@ -3759,7 +3839,7 @@ n_var_xoklook(enum okeys okey, struct mx_url const *urlp, enum okey_xlook_mode o
 		goto jplain;
 	}
 
-	su_mem_set(&avc, 0, sizeof avc);
+	STRUCT_ZERO(struct a_amv_var_carrier, &avc);
 	avc.avc_name = &a_amv_var_names[(avc.avc_map = &a_amv_var_map[okey])->avm_keyoff];
 	avc.avc_okey = okey;
 	avc.avc_is_chain_variant = TRU1;
