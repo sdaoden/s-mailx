@@ -1160,6 +1160,14 @@ je_expandargv:
 	/* */
 	n_psonce |= n_PSO_STARTED_CONFIG_FILES;
 
+	/* Some variable checks had to wait until after resource files were loaded
+	 * XXX This actually could counteract `ignerr' requests! */
+	if((n_psonce & n_PSO_VAR_SETUP_VERIFY_NEEDED) && !n_var_setup_verify(&mc.mc_A,
+				(!(n_psonce & n_PSO_INTERACTIVE) || ok_blook(errexit) || ok_blook(posix)))){
+		n_exit_status = su_EX_USAGE | n_EXIT_SEND_ERROR;
+		goto jleave;
+	}
+
 	/* We had to wait until the resource files are loaded and any command line setting has been restored, but get
 	 * the termcap up and going before we switch account or running commands */
 	if(n_psonce & n_PSO_INTERACTIVE){

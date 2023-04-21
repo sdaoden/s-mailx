@@ -194,6 +194,9 @@ FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
 /* Setting up batch mode, variable-handling side */
 FL void n_var_setup_batch_mode(void);
 
+/* Config files loaded, do some expansions / verifications yet impossible */
+FL boole n_var_setup_verify(char const **account, boole error_out);
+
 /* Can name freely be used as a variable by users? */
 FL boole n_var_is_user_writable(char const *name);
 
