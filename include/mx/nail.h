@@ -534,8 +534,9 @@ enum n_program_state_once{
 
    /* "Later" (mostly "hacks") */
    n_PSO_t_FLAG_DONE = 1u<<15,
-   n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<16,
-   n_PSO_ERRORS_NOTED = 1u<<17,
+   n_PSO_VAR_SETUP_VERIFY_NEEDED = 1u<<16,
+   n_PSO_GETFILENAME_QUOTE_NOTED = 1u<<17,
+   n_PSO_ERRORS_NOTED = 1u<<18,
    n_PSO_TERMCAP_FULLWIDTH = 1u<<19, /* !am or am+xn (right margin wrap) */
    n_PSO_PS_DOTLOCK_NOTED = 1u<<20
 };
