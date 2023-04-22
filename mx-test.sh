@@ -1201,34 +1201,78 @@ t_X_Y_opt_input_go_stack() { # {{{
 t_more_source_go_stack() { # {{{
 	t_prolog "${@}"
 
-	# (in-account, in-folder-hook impossible in past)
-	> ./t.mbox
-	${cat} >> ./t1.rc <<'_EOT'; ${cat} >> ./t2.rc <<'_EOT'
+	# (in-account, in-folder-hook impossible in past, but now!)
+	gm sub s1 to 1 from 1 body b1 > ./tx.mbox
+	gm sub s2 to 1 from 1 body b2 > ./ty.mbox
+
+	${cat} >> ./tx.rc <<'_EOT'; ${cat} >> ./ty.rc <<'_EOT'
 define ad {
-	echo ad1: $#: $*
+	echo >ad $#: $*
 	source 'echo echo ecsrc|'
-	source ./t2.rc
-	echo ad2: $#: $*
+	source ./ty.rc
+	echo <ad $#: $*
 }
 account ad {
-	set inbox=./t.mbox
+	set inbox=./tx.mbox
 	xcall ad acc
 }
-define omo {
-	echo omo1: $mailbox-display, $mailbox-basename
-	call ad omo
-	echo omo2: $mailbox-display, $mailbox-basename
+define ome {
+	echo >ome $#: $1: $mailbox-display, $mailbox-basename
+	if $1 == open
+		call ad ome
+	end
+	echo <ome
 }
-set on-mailbox-open=omo
-account ad
-ec ===
-File ./t.mbox
+set on-mailbox-event=ome
+if "$x" =% ad; account ad; end
 _EOT
-echo t2.rc
+echo ty.rc
 _EOT
 
-	</dev/null ${MAILX} ${ARGS} -Y 'source ./t1.rc' > ./t1 2>${E0}
-	cke0 1 0 ./t1 '3085685359 196'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Yx > ./t1-1 2>${E0}
+	cke0 1-1 0 ./t1-1 '12986471 209'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad > ./t1-2 2>${E0}
+	cke0 1-2 0 ./t1-2 '214932415 272'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Yx > ./t1-3 2>${EX}
+	cke0 1-3 0 ./t1-3 '273233288 212'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad > ./t1-4 2>${EX}
+	cke0 1-4 0 ./t1-4 '888557292 275'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>${E0}
+	cke0 2-1 0 ./t2-1 '3496882298 256'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' > ./t2-2 2>${E0}
+	cke0 2-2 0 ./t2-2 '107331108 319'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
+	cke0 2-3 0 ./t2-3 '4170253008 441'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -f ty.mbox > ./t2-4 2>${E0}
+	cke0 2-4 0 ./t2-4 '4077294855 490'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' -Yx > ./t2-5 2>${EX}
+	ck 2-5 0 ./t2-5 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' > ./t2-6 2>${EX}
+	ck 2-6 0 ./t2-6 '888557292 275' '849946118 56'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' -Yx > ./t3-1 2>${EX}
+	ck 3-1 0 ./t3-1 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' > ./t3-2 2>${EX}
+	ck 3-2 0 ./t3-2 '888557292 275' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' -Yx > ./t3-3 2>${EX}
+	ck 3-3 0 ./t3-3 '273233288 212' '849946118 56'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' > ./t3-4 2>${EX}
+	ck 3-4 0 ./t3-2 '888557292 275' '849946118 56'
+
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
+	cke0 4-1 0 ./t4-1 '1045624831 256'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
+	cke0 4-2 0 ./t4-2 '2473548010 319'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
+	ck 4-3 0 ./t4-3 '1045624831 256' '849946118 56'
+	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
+	ck 4-4 0 ./t4-4 '2473548010 319' '849946118 56'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
+	cke0 5-1 0 ./t5-1 '2921315483 34'
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Xx > ./t5-2 2>${EX}
+	cke0 5-2 0 ./t5-2 '2921315483 34'
 
 	t_epilog "${@}"
 } # }}}

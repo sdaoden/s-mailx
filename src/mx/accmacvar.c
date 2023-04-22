@@ -2918,7 +2918,7 @@ c_call_if(void *vp){
 }
 
 FL boole
-mx_account_enter(char const *name, boole ismain){
+mx_account_enter(char const *name){
 	struct a_amv_mac_call_args *amcap;
 	int i, oqf, nqf;
 	struct a_amv_mac *amp;
@@ -2940,6 +2940,12 @@ mx_account_enter(char const *name, boole ismain){
 	if(!(n_psonce & n_PSO_STARTED_CONFIG_FILES)){
 		n_psonce |= n_PSO_VAR_SETUP_VERIFY_NEEDED;
 		n_PS_ROOT_BLOCK(ok_vset(account, amp->am_name));
+		goto jleave;
+	}
+	/* Otherwise it gets too complicated in here: simply forbid it! */
+	if((n_psonce & n_PSO_STARTED_CONFIG) && !(n_psonce & n_PSO_STARTED)){
+		n_err(_("account: cannot be called via -X option: %s\n"), name);
+		amp = NIL;
 		goto jleave;
 	}
 
@@ -2977,7 +2983,6 @@ mx_account_enter(char const *name, boole ismain){
 		n_PS_ROOT_BLOCK(ok_vclear(account));
 
 	/* Otherwise setfile("%") of a_main_rcv_mode() will pick up */
-	UNUSED(ismain);
 	if(n_psonce & n_PSO_STARTED){
 		nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
 		restorequitflags(oqf);
@@ -3075,7 +3080,7 @@ c_account(void *vp){
 		goto jleave;
 	}
 
-	if(mx_account_enter(args[0], FAL0))
+	if(mx_account_enter(args[0]))
 		rv = su_EX_OK;
 
 jleave:
