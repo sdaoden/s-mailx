@@ -1079,9 +1079,9 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
    }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
       struct a_xtls_protocol const *xpp;
       char *iolist, *cp, addin;
-      sl opts;
+      u64 o;
 
-      opts = 0;
+      o = 0;
 
       for(iolist = cp = savestr(value);
             (cp = su_cs_sep_c(&iolist, ',', FAL0)) != NULL;){
@@ -1105,9 +1105,9 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
                   goto jenoproto;
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
-                  opts |= xpp->xp_op_no;
+                  o |= xpp->xp_op_no;
                else
-                  opts &= ~xpp->xp_op_no;
+                  o &= ~xpp->xp_op_no;
                break;
             }else if((++xpp)->xp_last){
 jenoproto:
@@ -1118,7 +1118,7 @@ jenoproto:
       }
 
       SSL_CTX_clear_options(ctxp, SSL_OP_NO_SSL_MASK);
-      SSL_CTX_set_options(ctxp, opts);
+      SSL_CTX_set_options(ctxp, o);
    }else{
       xcmd = n_shexp_quote_cp(cmd, FAL0);
       emsg = N_("TLS: unsupported directive: %s: value: %s\n");
