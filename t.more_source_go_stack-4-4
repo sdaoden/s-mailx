@@ -1,0 +1,17 @@
+(Currently no active mailbox)
+No more mail.
+>ad 1: acc
+ecsrc
+ty.rc
+<ad 1: acc
+>ome 1: open: tx.mbox, tx.mbox
+>ad 1: ome
+ecsrc
+ty.rc
+<ad 1: ome
+<ome
+tx.mbox: 1 message 1 unread
+>U    1 From1              1996-10-02     9/  166 s1                           
+>ome 1: close: tx.mbox, tx.mbox
+<ome
+Held 1 message in tx.mbox
