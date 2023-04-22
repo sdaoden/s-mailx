@@ -307,7 +307,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TSTRING), 0, 0, NIL,
+	 (A | M | S | TSTRING), 0, 0, NIL,
 	 N_("If disconnected, connect to IMAP `folder'")},
 	{"Copy", &c_Copy, (A | M | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Copy),
 	 N_("(C) Like `copy', but derive `folder' from first sender")},
@@ -342,7 +342,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TNDMLST), 0, 0, NIL,
+	 (A | M | S | TNDMLST), 0, 0, NIL,
 	 N_("If connected, disconnect from IMAP `folder'")},
 	{"dotmove", &c_dotmove, (A | M | SC | TSTRING), 1, 1, NIL,
 	 N_("Move the dot up <-> or down <+> by one")},
@@ -386,9 +386,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(F) Like `Reply', but derive `folder' from first sender")},
 {"from", &c_from, (A | M | SC | TMSGLST), 0, MMNORM, NIL,
 	 N_("(f) Type (matching) headers of <msglist> (a search specification)")},
-	{"File", &c_File, (M | T | NOHOOK | SC | TWYRA), 0, 1, NIL,
+	{"File", &c_File, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current one")},
-	{"file", &c_file, (M | T | NOHOOK | SC | TWYRA), 0, 1, NIL,
+	{"file", &c_file, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("(fi) Open a new <folder> or show the current one")},
 	{"filetype", &c_filetype, (M | TWYSH), 0, MAC, NIL,
 	 N_("Create [:<extension> <load-cmd> <save-cmd>:] or list `folder' handlers")},
@@ -396,9 +396,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("(Un)Flag <msglist> (for special attention)")},
 {"followup", &c_followup, (A | I | L | LNMAC | R | SC | TMSGLST), 0, MMNDEL, NIL,
 	 N_("(fo) Like `reply', but derive `folder' from first sender")},
-	{"Folder", &c_File, (M | T | NOHOOK | SC | TWYRA), 0, 1, NIL,
+	{"Folder", &c_File, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("Open a new `folder' readonly, or show the current folder")},
-	{"folder", &c_file, (M | T | NOHOOK | SC | TWYRA), 0, 1, NIL,
+	{"folder", &c_file, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("(fold) Open a new <folder>, or show the current one")},
 	{"folders", &c_folders, (M | T | SC | TWYRA), 0, 1, NIL,
 	 N_("List mailboxes below the given or the global *folder*")},
@@ -456,7 +456,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 #else
 	 NIL,
 #endif
-	 (A | M | SC | TSTRING), 0, MAC, NIL,
+	 (A | M | S | TSTRING), 0, MAC, NIL,
 	 N_("Send command strings directly to the IMAP server")},
 	{"imapcodec",
 #ifdef mx_HAVE_IMAP
@@ -608,7 +608,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Mark <msglist> as seen")},
 	{"setdot", &c_setdot, (A | HG | EM | M | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_setdot),
 	 N_("Set \"dot\" to the given <msg>")},
-{"shell", &c_dosh, (I | S | EM | M | S | TWYSH), 0, 0, NIL,
+{"shell", &c_dosh, (I | EM | M | S | TWYSH), 0, 0, NIL,
 	 N_("(sh) Invoke an interactive $SHELL")},
 	{"shcodec", &c_shcodec, (HG | M | V | X | EM | TRAWDAT), 0, 0, NIL,
 	 N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")},
