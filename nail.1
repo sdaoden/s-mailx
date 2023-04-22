@@ -4226,9 +4226,11 @@ a possibly installed
 will be run, and
 .Va account
 will be updated.
-An early use of this command will have its system mailbox open delayed
-until program startup is completed (see
-.Fl A ) .
+An early use will have its system mailbox open delayed until program
+startup is completed (see
+.Fl A ) ;
+it cannot be called via
+.Fl X .
 The two argument form creates a new account macro as via
 .Ic define .
 .
