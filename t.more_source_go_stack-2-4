@@ -1,4 +1,4 @@
->ome 1: open: ty.mbox, ty.mbox
+>ome 1: open: ty.mbox,ty.mbox,<>
 >ad 1: ome
 ecsrc
 ty.rc
@@ -10,9 +10,9 @@ ty.mbox: 1 message 1 unread
 ecsrc
 ty.rc
 <ad 1: acc
->ome 1: close: ty.mbox, ty.mbox
+>ome 1: close: ty.mbox,ty.mbox,<>
 <ome
->ome 1: open: tx.mbox, tx.mbox
+>ome 1: open: tx.mbox,tx.mbox,<>
 >ad 1: ome
 ecsrc
 ty.rc
@@ -20,6 +20,6 @@ ty.rc
 <ome
 tx.mbox: 1 message 1 unread
 >U  1 from1@exam.ple     1996-10-02 01:50    9/166   s1                        
->ome 1: close: tx.mbox, tx.mbox
+>ome 1: close: tx.mbox,tx.mbox,<>
 <ome
 Held 1 message in tx.mbox

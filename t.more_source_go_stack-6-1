@@ -1,0 +1,14 @@
+>ad 1: acc
+ecsrc
+ty.rc
+<ad 1: acc
+>ome 1: open: ty.mbox,ty.mbox,<1>
+>ad 1: ome
+ecsrc
+ty.rc
+<ad 1: ome
+<ome
+ty.mbox: 1 message 1 unread [Read-only]
+>U  1 from1@exam.ple     1996-10-02 01:50    9/166   s2                        
+>ome 1: close: ty.mbox,ty.mbox,<1>
+<ome

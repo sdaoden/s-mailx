@@ -1,5 +1,5 @@
 1 as<> showto<> kuh<>
-ome #<1> 1<open> <t1x.mbox,t1x.mbox>: open as<> showto<> kuh<>
+ome #<1> 1<open> <t1x.mbox,t1x.mbox,1>: open as<> showto<> kuh<>
 2 as<to> showto<1> kuh<muh>
 >N  1 ex1@am.ple         1996-10-02 01:50    7/123   s1                        
 No new mail
@@ -7,7 +7,7 @@ No new mail
 4 as<to> showto<1> kuh<muh>
 New mail has arrived.
 Loaded 1 new message.
-ome #<1> 1<newmail> <t1x.mbox,t1x.mbox>: newmail as<to> showto<1> kuh<muh>
+ome #<1> 1<newmail> <t1x.mbox,t1x.mbox,1>: newmail as<to> showto<1> kuh<muh>
 =newest
 >N  2 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 =all
@@ -21,7 +21,7 @@ ome #<1> 1<newmail> <t1x.mbox,t1x.mbox>: newmail as<to> showto<1> kuh<muh>
 New mail has arrived.
 Loaded 1 new message.
  N  3 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
-ome #<1> 1<newmail> <t1x.mbox,t1x.mbox>: newmail as<from> showto<1> kuh<wuff>
+ome #<1> 1<newmail> <t1x.mbox,t1x.mbox,1>: newmail as<from> showto<1> kuh<wuff>
 =newest
 >N  3 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 =all
@@ -33,9 +33,9 @@ ome #<1> 1<newmail> <t1x.mbox,t1x.mbox>: newmail as<from> showto<1> kuh<wuff>
  N  2 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 >N  3 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 11 as<from> showto<1> kuh<wuff>
-ome #<1> 1<close> <t1x.mbox,t1x.mbox>: 
+ome #<1> 1<close> <t1x.mbox,t1x.mbox,1>: 
 ome-z
-ome #<1> 1<open> <t1y.mbox,+[]t1y.mbox>: open as<> showto<> kuh<>
+ome #<1> 1<open> <t1y.mbox,+[]t1y.mbox,1>: open as<> showto<> kuh<>
 12 as<to> showto<1> kuh<muh>
 >N  1 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 No new mail
@@ -44,7 +44,7 @@ No new mail
 New mail has arrived.
 Loaded 1 new message.
 ome-z
-ome #<1> 1<newmail> <t1y.mbox,+[]t1y.mbox>: newmail as<to> showto<1> kuh<muh>
+ome #<1> 1<newmail> <t1y.mbox,+[]t1y.mbox,1>: newmail as<to> showto<1> kuh<muh>
 =newest
 >N  2 ex3@am.ple         1996-10-02 01:50    7/123   s3                        
 =all
@@ -55,9 +55,9 @@ ome #<1> 1<newmail> <t1y.mbox,+[]t1y.mbox>: newmail as<to> showto<1> kuh<muh>
 >N  2 ex3@am.ple         1996-10-02 01:50    7/123   s3                        
 21 as<from> showto<1> kuh<wuff>
 ome-z
-ome #<1> 1<close> <t1y.mbox,+[]t1y.mbox>: 
+ome #<1> 1<close> <t1y.mbox,+[]t1y.mbox,1>: 
 ome-z
-ome #<1> 1<open> <t1x.mbox,+[]t1x.mbox>: open as<> showto<> kuh<>
+ome #<1> 1<open> <t1x.mbox,+[]t1x.mbox,1>: open as<> showto<> kuh<>
 22 as<to> showto<1> kuh<muh>
 >N  1 ex1@am.ple         1996-10-02 01:50    7/123   s1                        
  N  2 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
@@ -68,7 +68,7 @@ No new mail
 New mail has arrived.
 Loaded 1 new message.
 ome-z
-ome #<1> 1<newmail> <t1x.mbox,+[]t1x.mbox>: newmail as<to> showto<1> kuh<muh>
+ome #<1> 1<newmail> <t1x.mbox,+[]t1x.mbox,1>: newmail as<to> showto<1> kuh<muh>
 =newest
 >N  4 ex3@am.ple         1996-10-02 01:50    7/123   s3                        
 =all
@@ -82,4 +82,4 @@ ome #<1> 1<newmail> <t1x.mbox,+[]t1x.mbox>: newmail as<to> showto<1> kuh<muh>
  N  3 ex2@am.ple         1996-10-02 01:50    7/123   s2                        
 >N  4 ex3@am.ple         1996-10-02 01:50    7/123   s3                        
 ome-z
-ome #<1> 1<close> <t1x.mbox,+[]t1x.mbox>: 
+ome #<1> 1<close> <t1x.mbox,+[]t1x.mbox,1>: 

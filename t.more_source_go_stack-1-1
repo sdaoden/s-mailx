@@ -2,7 +2,7 @@
 ecsrc
 ty.rc
 <ad 1: acc
->ome 1: open: tx.mbox, tx.mbox
+>ome 1: open: tx.mbox,tx.mbox,<>
 >ad 1: ome
 ecsrc
 ty.rc

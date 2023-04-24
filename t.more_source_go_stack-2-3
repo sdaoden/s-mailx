@@ -1,4 +1,4 @@
->ome 1: open: ty.mbox, ty.mbox
+>ome 1: open: ty.mbox,ty.mbox,<>
 >ad 1: ome
 ecsrc
 ty.rc
@@ -10,10 +10,10 @@ ty.mbox: 1 message 1 new
 ecsrc
 ty.rc
 <ad 1: acc
->ome 1: close: ty.mbox, ty.mbox
+>ome 1: close: ty.mbox,ty.mbox,<>
 <ome
 ty.mbox updated.
->ome 1: open: tx.mbox, tx.mbox
+>ome 1: open: tx.mbox,tx.mbox,<>
 >ad 1: ome
 ecsrc
 ty.rc
