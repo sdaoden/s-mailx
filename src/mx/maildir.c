@@ -973,7 +973,7 @@ maildir_setfile(char const *who, char const * volatile name,
          fclose(mb.mb_otf);
          mb.mb_otf = NULL;
       }
-      initbox(name);
+      n_initbox(name, ((fm & FEDIT_RDONLY) != 0));
       mb.mb_type = MB_MAILDIR;
    }
 

@@ -1194,8 +1194,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			/* Invalidate any resolved folder then, too
 			 * FALLTHRU */
 		case ok_v_folder:
-			n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
-			break;
+			goto jfolder_clear;
 		case ok_v_ifs:{
 			char *x_b, *x, c;
 
@@ -1297,6 +1296,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			/* Invalidate any resolved folder then, too
 			 * FALLTHRU */
 		case ok_v_folder:
+jfolder_clear:
 			n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
 			break;
 		case ok_b_memdebug:

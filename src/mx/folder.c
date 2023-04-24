@@ -66,7 +66,7 @@
 
 /* Update mailname (if name != NIL) and displayname, return whether displayname
  * was large enough to swallow mailname */
-static boole  _update_mailname(char const *name);
+static boole a_folder_update_mailname(char const *name, boole rdonly);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
 su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 #endif
@@ -109,7 +109,7 @@ __narrow_suffix(char const *cp, uz cpl, uz maxl)
 #endif /* mx_HAVE_C90AMEND1 */
 
 static boole
-_update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Obj! */
+a_folder_update_mailname(char const *name, boole rdonly) /* TODO 2MUCH work */
 {
    char const *foldp;
    char *mailp, *dispp;
@@ -203,7 +203,8 @@ jdocopy:
    n_PS_ROOT_BLOCK((
       ok_vset(mailbox_basename, mailp),
       ok_vset(mailbox_display, displayname),
-      ok_vset(mailbox_resolved, mailname)
+      ok_vset(mailbox_resolved, mailname),
+      (rdonly ? ok_bset(mailbox_read_only) : ok_bclear(mailbox_read_only))
    ));
    NYD_OU;
    return rv;
@@ -241,7 +242,8 @@ a_folder_info(void){
    /* C99 */{
       char const *cp;
 
-      cp = _update_mailname(NULL) ? displayname : mailname;
+      cp = a_folder_update_mailname(NIL,
+            (mb.mb_perm == 0)) ? displayname : mailname;
       if(su_state_has(su_STATE_REPRODUCIBLE))
          cp = n_filename_to_repro(cp);
 
@@ -807,7 +809,7 @@ jlogname:
          n_pstate &= ~n_PS_EDIT;
       else
          n_pstate |= n_PS_EDIT;
-      initbox(name);
+      n_initbox(name, (mb.mb_perm == 0));
       offset = 0;
    } else {
       fseek(mb.mb_otf, 0L, SEEK_END);
@@ -1136,7 +1138,7 @@ jleave:
 }
 
 FL void
-initbox(char const *name)
+n_initbox(char const *name, boole rdonly)
 {
    struct mx_fs_tmp_ctx *fstcp;
    boole err;
@@ -1147,7 +1149,7 @@ initbox(char const *name)
 
    /* TODO name always NE mailname (but goes away for objects anyway)
     * TODO Well, not true no more except that in parens */
-   _update_mailname((name != mailname) ? name : NULL);
+   a_folder_update_mailname((name != mailname ? name : NIL), rdonly);
 
    err = FAL0;
    if((mb.mb_otf = mx_fs_tmp_open(NIL, "tmpmbox", (mx_FS_O_WRONLY |

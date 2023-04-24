@@ -705,6 +705,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_MBOX, /* {env=1,notempty=1,defval=VAL_MBOX} */
    ok_v_mailbox_basename, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailbox_display, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_b_mailbox_read_only, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailbox_resolved, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_mailcap_disable,
    ok_v_mailx_extra_rc, /* {notempty=1} */
