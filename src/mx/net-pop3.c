@@ -1031,7 +1031,7 @@ mx_pop3_setfile(char const *who, char const *server, enum fedit_mode fm){
       mb.mb_otf = NIL;
    }
 
-   initbox(pc.pc_url.url_p_u_h_p);
+   n_initbox(pc.pc_url.url_p_u_h_p, ((fm & FEDIT_RDONLY) != 0));
    mb.mb_type = MB_VOID;
    a_pop3_lock = 1;
 

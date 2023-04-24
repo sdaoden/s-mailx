@@ -1217,7 +1217,7 @@ account ad {
 	xcall ad acc
 }
 define ome {
-	echo >ome $#: $1: $mailbox-display, $mailbox-basename
+	echo >ome $#: $1: $mailbox-display,$mailbox-basename,<$mailbox-read-only>
 	if $1 == open
 		call ad ome
 	end
@@ -1230,49 +1230,52 @@ echo ty.rc
 _EOT
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Yx > ./t1-1 2>${E0}
-	cke0 1-1 0 ./t1-1 '12986471 209'
+	cke0 1-1 0 ./t1-1 '1161791901 211'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad > ./t1-2 2>${E0}
-	cke0 1-2 0 ./t1-2 '214932415 272'
+	cke0 1-2 0 ./t1-2 '693531161 276'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Yx > ./t1-3 2>${EX}
-	cke0 1-3 0 ./t1-3 '273233288 212'
+	cke0 1-3 0 ./t1-3 '1908918706 214'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad > ./t1-4 2>${EX}
-	cke0 1-4 0 ./t1-4 '888557292 275'
+	cke0 1-4 0 ./t1-4 '422974811 279'
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx > ./t2-1 2>${E0}
-	cke0 2-1 0 ./t2-1 '3496882298 256'
+	cke0 2-1 0 ./t2-1 '1988817349 258'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' > ./t2-2 2>${E0}
-	cke0 2-2 0 ./t2-2 '107331108 319'
+	cke0 2-2 0 ./t2-2 '172969318 323'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -Yx -f ty.mbox > ./t2-3 2>${E0}
-	cke0 2-3 0 ./t2-3 '4170253008 441'
+	cke0 2-3 0 ./t2-3 '1095948700 447'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -Y 'account ad' -f ty.mbox > ./t2-4 2>${E0}
-	cke0 2-4 0 ./t2-4 '4077294855 490'
+	cke0 2-4 0 ./t2-4 '2435929601 498'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' -Yx > ./t2-5 2>${EX}
-	ck 2-5 0 ./t2-5 '273233288 212' '849946118 56'
+	ck 2-5 0 ./t2-5 '1908918706 214' '849946118 56'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'account ad' > ./t2-6 2>${EX}
-	ck 2-6 0 ./t2-6 '888557292 275' '849946118 56'
+	ck 2-6 0 ./t2-6 '422974811 279' '849946118 56'
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' -Yx > ./t3-1 2>${EX}
-	ck 3-1 0 ./t3-1 '273233288 212' '849946118 56'
+	ck 3-1 0 ./t3-1 '1908918706 214' '849946118 56'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Y 'account ad' > ./t3-2 2>${EX}
-	ck 3-2 0 ./t3-2 '888557292 275' '849946118 56'
+	ck 3-2 0 ./t3-2 '422974811 279' '849946118 56'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' -Yx > ./t3-3 2>${EX}
-	ck 3-3 0 ./t3-3 '273233288 212' '849946118 56'
+	ck 3-3 0 ./t3-3 '1908918706 214' '849946118 56'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' > ./t3-4 2>${EX}
-	ck 3-4 0 ./t3-2 '888557292 275' '849946118 56'
+	ck 3-4 0 ./t3-2 '422974811 279' '849946118 56'
 
 	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
-	cke0 4-1 0 ./t4-1 '1045624831 256'
+	cke0 4-1 0 ./t4-1 '2562078272 258'
 	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
-	cke0 4-2 0 ./t4-2 '2473548010 319'
+	cke0 4-2 0 ./t4-2 '3337304142 323'
 	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
-	ck 4-3 0 ./t4-3 '1045624831 256' '849946118 56'
+	ck 4-3 0 ./t4-3 '2562078272 258' '849946118 56'
 	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
-	ck 4-4 0 ./t4-4 '2473548010 319' '849946118 56'
+	ck 4-4 0 ./t4-4 '3337304142 323' '849946118 56'
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
 	cke0 5-1 0 ./t5-1 '2921315483 34'
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Xx > ./t5-2 2>${EX}
 	cke0 5-2 0 ./t5-2 '2921315483 34'
+
+	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -R -:u -Sheader -S x=ad -A ad -f ty.mbox > ./t6-1 2>${EX}
+	cke0 6-1 0 ./t6-1 '3771120403 267'
 
 	t_epilog "${@}"
 } # }}}
@@ -9279,7 +9282,7 @@ t_on_mailbox() { # {{{
 \set noautosort noshowto \
 	on-mailbox-event=ome on-mailbox-event-+t1x.mbox=ome-z on-mailbox-event-+t1y.mbox=ome-z
 \def ome {
-	\echon "ome #<$#> 1<$1> <$mailbox-basename,$mailbox-display>: "
+	\echon "ome #<$#> 1<$1> <$mailbox-basename,$mailbox-display,$mailbox-read-only>: "
 	\if $1 == open
 		\ec "open as<$autosort> showto<$showto> kuh<$kuh>"
 		\set autosort=to showto kuh=muh
@@ -9324,7 +9327,7 @@ e 25;\h
 ' \
 	-R > ./t1 2>${E0}
 	#}}}
-	cke0 1 0 ./t1 '211872035 4022'
+	cke0 1 0 ./t1 '4024483557 4042'
 
 	t_epilog "${@}"
 } # }}}
