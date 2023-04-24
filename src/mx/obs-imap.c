@@ -2180,9 +2180,9 @@ jduppass:
       imap_delim_init(&mb, urlp);
       mb.mb_imap_mailbox = su_cs_dup(a_imap_path_normalize(&mb,
             urlp->url_path.s, FAL0), 0);
-      initbox(savecatsep(urlp->url_p_eu_h_p,
+      n_initbox(savecatsep(urlp->url_p_eu_h_p,
          (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
-         mb.mb_imap_mailbox));
+            mb.mb_imap_mailbox), ((fm & FEDIT_RDONLY) != 0));
    }
    mb.mb_type = MB_VOID;
    mb.mb_active = MB_NONE;

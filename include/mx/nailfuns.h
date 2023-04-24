@@ -587,7 +587,7 @@ FL void n_folder_announce(enum n_announce_flags af);
 
 FL int         getmdot(int nmail);
 
-FL void        initbox(char const *name);
+FL void n_initbox(char const *name, boole rdonly);
 
 /* Determine and expand the current *folder* name, return it (with trailing
  * solidus) or the empty string also in case of errors: since POSIX mandates
