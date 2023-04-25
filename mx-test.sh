@@ -7724,6 +7724,33 @@ t_eml_and_stdin_pipe() { # {{{
 
 	t_epilog "${@}"
 } # }}}
+
+t_write() { # c'mon {{{
+	t_prolog "${@}"
+
+	gm from c@y sub s2 > ./t.mbox
+	gmx from c@z sub s2 >> ./t.mbox
+	ck 1 0 ./t.mbox '1534223436 653'
+
+	## TODO `write' behaviour is a total mess (especially non-interactively)
+	</dev/null ${MAILX} ${ARGS} -Y '
+h
+write 1 ./t3
+h
+write 2 t4
+h
+x' -Rf ./t.mbox >./t2 2>${E0}
+	cke0 2 0 ./t2 '2922586275 538'
+	ck 3 - ./t3 '2203469094 5'
+	ck 4 - ./t4 '4294967295 0'
+	ck 5 - ./t4#1.1.1#text.plain '2203469094 5'
+	ck 6 - ./t4#1.1.2#text.html '753148583 34'
+
+	# xxx more tests for now in t_iconv_mbyte_base64() and t_binary_mainbody()
+
+	t_epilog "${@}"
+
+} # }}}
 # }}}
 
 # MIME and RFC basics {{{
@@ -13837,6 +13864,7 @@ t_all() { #{{{
 	jspawn mbox
 	jspawn maildir
 	jspawn eml_and_stdin_pipe
+	jspawn write # (not really vfs)
 	jsync
 
 	# MIME and RFC basics

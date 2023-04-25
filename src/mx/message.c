@@ -1481,7 +1481,7 @@ mx_message_match(struct message *mp, struct mx_srch_ctx const *scp,
 
    mx_fs_linepool_aquire(&line, &linesize);
 
-   if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL) < 0)
+   if(sendmp(mp, fp, NULL, NULL, SEND_TOSRCH, NULL, NIL) < 0)
       goto jleave;
    fflush_rewind(fp);
    cnt = fsize(fp);

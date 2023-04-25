@@ -211,7 +211,7 @@ jsend:
       }else
 #endif
            {
-         if(sendmp(mp, obuf, itp, NIL, convert, mstats) < 0){
+         if(sendmp(mp, obuf, itp, NIL, convert, mstats, file) < 0){
             n_pstate_err_no = su_err();
             success = FAL0;
             goto jferr;

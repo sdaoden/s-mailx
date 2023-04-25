@@ -168,7 +168,7 @@ mx_run_editor(int viored, boole rdonly, enum sendaction action, n_sighdl_t oldin
 	if(mp_or_nil != NIL){
 		ASSERT(fp_or_nil == NIL);
 		ASSERT(hp_or_nil == NIL);
-		if(sendmp(mp_or_nil, nf_tmp, NIL, NIL, action, NIL) < 0)
+		if(sendmp(mp_or_nil, nf_tmp, NIL, NIL, action, NIL, NIL) < 0)
 			goto jperr;
 	}else{
 		int c;

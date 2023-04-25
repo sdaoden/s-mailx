@@ -141,7 +141,7 @@ writeback(FILE *res, FILE *obuf){ /* TODO errors */
    for(p = 0, mp = message; PCMP(mp, <, &message[msgCount]); ++mp){
       if((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)){
          ++p;
-         if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL) < 0){
+         if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL, NIL) < 0){
             n_perr(mailname, 0);
             su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
             goto jerror;
@@ -265,7 +265,7 @@ jemailname:
       if((mp->m_flag & MDELETED) || !(mp->m_flag & MVALID))
          continue;
       ++c;
-      if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL) < 0){
+      if(sendmp(mp, obuf, NIL, NIL, SEND_MBOX, NIL, NIL) < 0){
          su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
          n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
          goto jleave;
@@ -577,7 +577,7 @@ mx_quit_automove_mbox(boole need_stat_verify){
                goto jcopyerr;
          }else
 #endif
-         if(sendmp(mp, obuf, mx_IGNORE_SAVE, NIL, SEND_MBOX, NIL) < 0){
+         if(sendmp(mp, obuf, mx_IGNORE_SAVE, NIL, SEND_MBOX, NIL, NIL) < 0){
 #ifdef mx_HAVE_IMAP
 jcopyerr:
 #endif
