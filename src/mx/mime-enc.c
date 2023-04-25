@@ -1011,7 +1011,7 @@ jrepl:
 			}else if(c == a_ME_B64_EQU && x != a_ME_B64_EQU){
 				/* This is not only invalid but bogus.  Skip it over! */
 				/* TODO This would be wrong since iconv(3) may be applied first! */
-				n_err(_("Illegal base64 encoding ignored\n"));
+				n_err(_("Invalid base64 encoding ignored\n"));
 #if 0
 				n_string_push_buf(&s, su_UTF_8_REPLACER su_UTF_8_REPLACEMENT
 					su_UTF_8_REPLACER su_UTF_8_REPLACEMENT,

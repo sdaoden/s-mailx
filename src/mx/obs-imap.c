@@ -137,7 +137,7 @@ static enum {
    RESPONSE_DATA,
    RESPONSE_FATAL,
    RESPONSE_CONT,
-   RESPONSE_ILLEGAL
+   RESPONSE_INVALID
 } response_type;
 
 static enum {
@@ -1072,14 +1072,14 @@ imap_response_parse(void)
       while (*pp && *pp != ' ')
          pp++;
       if (*pp == '\0') {
-         response_type = RESPONSE_ILLEGAL;
+         response_type = RESPONSE_INVALID;
          break;
       }
       *pp++ = '\0';
       while (*pp && *pp == ' ')
          pp++;
       if (*pp == '\0') {
-         response_type = RESPONSE_ILLEGAL;
+         response_type = RESPONSE_INVALID;
          break;
       }
       ip = &imapbuf[pp - parsebuf];
@@ -1088,7 +1088,7 @@ imap_response_parse(void)
       pp = &parsebuf[ip - imapbuf];
    }
    responded_text = pp;
-   if (response_type != RESPONSE_CONT && response_type != RESPONSE_ILLEGAL &&
+   if (response_type != RESPONSE_CONT && response_type != RESPONSE_INVALID &&
          response_status == RESPONSE_OTHER)
       imap_other_get(pp);
    NYD2_OU;
@@ -1111,7 +1111,7 @@ jagain:
       if (n_poption & n_PO_D_VV)
          n_err(">>> SERVER: %s", imapbuf);
       imap_response_parse();
-      if (response_type == RESPONSE_ILLEGAL)
+      if (response_type == RESPONSE_INVALID)
          goto jagain;
       if (response_type == RESPONSE_CONT) {
          rv = OKAY;
