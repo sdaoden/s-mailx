@@ -187,8 +187,8 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      if(sendmp(mp, obuf, (doign ? mx_IGNORE_TYPE : NIL), NIL, action, mstats
-            ) < 0){
+      if(sendmp(mp, obuf, (doign ? mx_IGNORE_TYPE : NIL), NIL, action, mstats,
+            NIL) < 0){
          rv = 1;
          break;
       }
@@ -314,7 +314,7 @@ a_cmsg_top(void *vp, struct mx_ignore const *itp){
       }
 
       if(!a_cmsg_show_overview(iobuf, mp, *ip) ||
-            sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL) < 0){
+            sendmp(mp, iobuf, itp, NULL, SEND_TODISP_ALL, NULL, NIL) < 0){
          n_err(_("top: failed to prepare message %d\n"), *ip);
          vp = NULL;
          break;
@@ -538,7 +538,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;
    else if(sendmp(mp, n_stdout, mx_IGNORE_TYPE, NIL, SEND_TODISP_PARTS,
-         NIL) < 0)
+         NIL, NIL) < 0)
       n_pstate_err_no = su_ERR_IO;
    else
       n_pstate_err_no = su_ERR_NONE;

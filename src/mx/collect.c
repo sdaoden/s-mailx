@@ -621,7 +621,7 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    }
 
    if(sendmp(cqcp->cqc_mp, cqcp->cqc_fp, cqcp->cqc_quoteitp,
-         cqcp->cqc_indent_prefix, cqcp->cqc_action, NIL) < 0)
+         cqcp->cqc_indent_prefix, cqcp->cqc_action, NIL, NIL) < 0)
       goto jleave;
 
    if(cqcp->cqc_is_forward){

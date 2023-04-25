@@ -906,10 +906,11 @@ FL void        restorequitflags(int);
  * each output line.   action = data destination
  * (SEND_MBOX,_TOFILE,_TODISP,_QUOTE,_DECRYPT).  stats[0] is line count,
  * stats[1] is character count.  stats may be NULL.  Note that stats[0] is
- * valid for SEND_MBOX only */
+ * valid for SEND_MBOX only.  store_prefix_or_nil is a hack */
 FL int         sendmp(struct message *mp, FILE *obuf,
                   struct mx_ignore const *doitp,
-                  char const *prefix, enum sendaction action, u64 *stats);
+                  char const *prefix, enum sendaction action, u64 *stats,
+                  char const *store_prefix_or_nil);
 
 /*
  * sendout.c
