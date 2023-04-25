@@ -142,7 +142,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    /* TODO all this should be URL and Mailbox-"VFS" based, and then finally
     * TODO end up as Mailbox()->append().  Unless SEND_TOFILE, of course.
     * TODO However, URL parse because that file:// prefix check is a HACK! */
-   if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
+   if(convert == SEND_TOFILE && !su_cs_starts_with_case(file, "file://"))
       file = savecat("file://", file);
    if((obuf = mx_fs_open_any(file, (mx_FS_O_RDWR | mx_FS_O_APPEND |
             mx_FS_O_CREATE), &fs)) == NIL){
@@ -174,7 +174,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
          goto jeappend;
       }
 
-      if((fs & mx_FS_OPEN_STATE_EXISTS) &&
+      if(convert != SEND_TOFILE && (fs & mx_FS_OPEN_STATE_EXISTS) &&
             (xerr = n_folder_mbox_prepare_append(obuf, FAL0, NIL)
                ) != su_ERR_NONE){
 jeappend:
@@ -394,7 +394,7 @@ c_write(void *vp){
       cap->ca_arg.ca_str.s = savestrbuf(su_path_null,
             cap->ca_arg.ca_str.l = sizeof(su_path_null));
 
-   rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
+   rv = a_cwrite_save1(vp, mx_IGNORE_ALL, SEND_TOFILE, TRU1, FAL0);
 
    NYD_OU;
    return rv;

@@ -1358,7 +1358,7 @@ n_folder_mbox_prepare_append(FILE *fout, boole post,
       }
 
       if(pip_or_nil->pi_size >= 2){
-         if(rv == ESPIPE)
+         if(rv == su_ERR_PIPE)
             rv = su_ERR_NONE; /* XXX Just cannot do our job with ESPIPE ??? */
          goto jleave;
       }
