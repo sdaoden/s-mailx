@@ -285,7 +285,7 @@ END{
 						}
 						print ".El"
 					}
-					# Rather illegal, but maybe we have seen .Ss yet no .Sh: go!
+					# Rather invalid, but maybe we have seen .Ss yet no .Sh: go!
 					else if(TOC == "Ss" && mx_ss_cnt > 0){
 						print ".Bl -tag -compact"
 						for(i = 1; i <= mx_ss_cnt; ++i)
