@@ -100,7 +100,8 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct mx_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
                         char **linedat, uz *linesize,
-                        u64 *stats, int level, boole *anyoutput/* XXX fake*/);
+                        u64 *stats, int level, boole *anyoutput/* XXX fake*/,
+                        char const *store_prefix_or_nil);
 
 /* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
  * and check whether there are any such down mpp, which is a .m_multipart of
@@ -109,7 +110,8 @@ static boole        _send_al7ive_have_better(struct mimepart *mpp,
                         enum sendaction action, boole want_rich);
 
 /* Get a file for an attachment */
-static FILE *        newfile(struct mimepart *ip, boole volatile *ispipe);
+static FILE *        newfile(struct mimepart *ip, boole volatile *ispipe,
+                        char const *store_prefix_or_nil);
 
 static boole a_send_pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
       struct quoteflt *qf, u64 *stats);
@@ -490,7 +492,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct mx_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action,
    char **linedat, uz *linesize, u64 * volatile stats, int volatile level,
-   boole *anyoutput)
+   boole *anyoutput, char const *store_prefix_or_nil)
 {
    int volatile rv = 0;
    struct mx_mime_type_handler mth_stack, * volatile mthp;
@@ -962,7 +964,8 @@ jalter_redo:
                      rv = -rv;
                   }
                   rv = sendpart(zmp, np, obuf, doitp, qf, oaction,
-                        linedat, linesize, stats, rv, anyoutput);
+                        linedat, linesize, stats, rv, anyoutput,
+                        store_prefix_or_nil);
                   quoteflt_reset(qf, origobuf);
                   if (rv < 0)
                      curr = &outermost; /* Cause overall loop termination */
@@ -1032,7 +1035,8 @@ jmulti:
                   if((obuf = mx_fs_open(su_path_null, (mx_FS_O_WRONLY |
                            mx_FS_O_CREATE | mx_FS_O_TRUNC))) == NIL)
                      continue;
-               }else if((obuf = newfile(np, &ispipe)) == NIL)
+               }else if((obuf = newfile(np, &ispipe, store_prefix_or_nil)
+                     ) == NIL)
                   continue;
                if(ispipe){
                   oldpipe = safe_signal(SIGPIPE, &_send_onpipe);
@@ -1054,7 +1058,8 @@ jmulti:
                   nlvl = -nlvl;
                }
                if(sendpart(zmp, np, obuf, doitp, qf, oaction, linedat,
-                     linesize, stats, nlvl, anyoutput) < 0)
+                     linesize, stats, nlvl, anyoutput, store_prefix_or_nil
+                     ) < 0)
                   rv = -1;
             }
             quoteflt_reset(qf, origobuf);
@@ -1435,45 +1440,86 @@ jleave:
 }
 
 static FILE *
-newfile(struct mimepart *ip, boole volatile *ispipe)
+newfile(struct mimepart *ip, boole volatile *ispipe,
+      char const *store_prefix_or_nil)
 {
    struct str in, out;
+   struct n_string shou, *shoup;
    char *f;
    FILE *fp;
    NYD_IN;
 
+   if(store_prefix_or_nil != NIL){ /* XXX all hacks */
+      char const *cp;
+
+      cp = su_cs_find(store_prefix_or_nil, "://"); /* TODO Clean path 4 real! */
+      if(cp != NIL && *(cp += 3) != '\0')
+         store_prefix_or_nil = cp;
+
+      if(!su_cs_cmp(store_prefix_or_nil, su_path_null))
+         store_prefix_or_nil = NIL;
+   }
+
    f = ip->m_filename;
    *ispipe = FAL0;
 
-   if (f != NULL && f != (char*)-1) {
+   if(f != NIL && f != R(char*,-1)){
       in.s = f;
       in.l = su_cs_len(f);
       mx_makeprint(&in, &out);
       out.l = mx_del_cntrl(out.s, out.l);
       f = savestrbuf(out.s, out.l);
-      n_free(out.s);
+      su_FREE(out.s);
+
+      shoup = n_string_creat_auto(&shou);
+      if(store_prefix_or_nil != NIL){
+         shoup = n_string_push_cp(shoup, store_prefix_or_nil);
+         shoup = n_string_push_c(shoup, '#');
+      }
+      shoup = n_string_push_cp(shoup, n_shexp_quote_cp(f, FAL0));
+      store_prefix_or_nil = n_string_cp(shoup);
+   }else if(ip->m_partstring != NIL){
+      char *cp;
+      union {uz i; char *top;} u;
+
+      shoup = n_string_creat_auto(&shou);
+      if(store_prefix_or_nil != NIL){
+         shoup = n_string_push_cp(shoup, store_prefix_or_nil);
+         shoup = n_string_push_c(shoup, '#');
+      }
+      shoup = n_string_push_cp(shoup, ip->m_partstring);
+      shoup = n_string_push_c(shoup, '#');
+      u.i = shoup->s_len;
+      shoup = n_string_push_cp(shoup, ip->m_ct_type_plain);
+      cp = &shoup->s_dat[u.i];
+      u.top = &shoup->s_dat[shoup->s_len];
+      for(; cp < u.top; ++cp)
+         if(*cp == '/')
+            *cp = '.';
+      store_prefix_or_nil = f = n_string_cp(shoup);
    }
 
    /* In interactive mode, let user perform all kind of expansions as desired,
     * and offer |SHELL-SPEC pipe targets, too */
    if (n_psonce & n_PSO_INTERACTIVE) {
       struct str prompt;
-      struct n_string shou, *shoup;
       char *f2, *f3;
 
       shoup = n_string_creat_auto(&shou);
+      if(store_prefix_or_nil != NIL)
+         shoup = n_string_assign_cp(shoup, store_prefix_or_nil);
 
       /* TODO If the current part is the first textpart the target
        * TODO is implicit from outer `write' etc! */
       /* I18N: Filename input prompt with file type indication */
       str_concat_csvl(&prompt, _("Enter filename for part "),
          (ip->m_partstring != NULL ? ip->m_partstring : n_qm),
-         " (", ip->m_ct_type_plain, "): ", NULL);
+         " (", ip->m_ct_type_plain, "): ", NIL);/*n_string_cp(shoup), NULL);*/
+
 jgetname:
       while(mx_tty_getfilename(shoup,
             (mx_GO_INPUT_CTX_DEFAULT | mx_GO_INPUT_HIST_ADD), prompt.s,
-            ((f != R(char*,-1) && f != NIL) ? n_shexp_quote_cp(f, FAL0) : NIL
-            )) < TRU1){
+            n_string_cp(shoup)) < TRU1){
       }
 
       f2 = n_string_cp(shoup);
@@ -1668,7 +1714,8 @@ put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
 
 FL int
 sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
-   char const *prefix, enum sendaction action, u64 *stats)
+   char const *prefix, enum sendaction action, u64 *stats,
+   char const *store_prefix_or_nil)
 {
    struct n_sigman linedat_protect;
    struct quoteflt qf;
@@ -1786,7 +1833,7 @@ sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
 
    anyoutput = FAL0;
    rv = sendpart(mp, ip, obuf, doitp, &qf, action, &linedat, &linesize,
-         stats, 0, &anyoutput);
+         stats, 0, &anyoutput, store_prefix_or_nil);
 
    n_sigman_cleanup_ping(&linedat_protect);
 jleave:

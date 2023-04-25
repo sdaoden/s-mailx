@@ -698,7 +698,7 @@ a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
 
    mp = &message[ap->a_msgno - 1];
    touch(mp);
-   if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
+   if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL, NIL) < 0)
       err = su_err();
 
 jleave:
