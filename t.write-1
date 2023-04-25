@@ -1,0 +1,33 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: c@y
+Subject: s2
+
+Body
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: c@z
+Subject: s2
+MIME-Version: 1.0
+Message-ID: <20200204225307.FaKeD%bo@oo-1>
+Content-Type: multipart/mixed; boundary="=BOUNDOUT="
+
+--=BOUNDOUT=
+Content-Type: multipart/alternative; boundary==BOUNDIN=
+
+--=BOUNDIN=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+Body
+
+--=BOUNDIN=
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 8-bit
+
+<HTML><BODY>Body<BR></BODY></HTML>
+
+--=BOUNDIN=--
+--=BOUNDOUT=--
+
