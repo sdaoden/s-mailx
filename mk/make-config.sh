@@ -723,11 +723,11 @@ _cc_flags_generic() {
 			if [ -n "${_i}" ]; then
 				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
 				if [ -z "${cc_no_fortify}" ]; then
-					if val_has VAL_AUTOCC fortify && cc_check -D_FORTIFY_SOURCE=2; then
-						_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -D_FORTIFY_SOURCE=2"
+					if val_has VAL_AUTOCC fortify && cc_check -D_FORTIFY_SOURCE=3; then
+						_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -D_FORTIFY_SOURCE=3"
 					fi
 				else
-					msg ' ! No check for -D_FORTIFY_SOURCE=2 ${CC} option,'
+					msg ' ! No check for -D_FORTIFY_SOURCE=3 ${CC} option,'
 					msg ' ! it caused errors in a "similar" configuration.'
 					msg ' ! You may turn off OPT_AUTOCC, then rerun.'
 				fi
@@ -739,6 +739,23 @@ _cc_flags_generic() {
 			msg ' ! You may turn off OPT_AUTOCC, then rerun.'
 			xy
 		fi
+	fi
+
+	if val_has VAL_AUTOCC cfprot; then
+		_ocf=${_CFLAGS} _old=${_LDFLAGS}
+		if cc_check -fcf-protection=full; then
+			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fcf-protection=full"
+#XXX		elif cc_check -mretpoline; then
+#			-mretpoline-external-thunk
+#			#if ld_check -Wl,-z,retpolineplt; then .. ignored in newer clang
+#				_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mretpoline"
+#			#	_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -Wl,-z,retpolineplt"
+#			#fi
+#XXX		elif cc_check -mfunction-return=thunk; then
+#			if cc_check -mindirect-branch=thunk; then
+#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mfunction-return=thunk -mindirect-branch=thunk"
+		fi
+		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
 
 	# LD (+ dependent CC)
@@ -826,22 +843,6 @@ _cc_flags_generic() {
 		fi
 		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
-
-	# Retpoline (xxx maybe later?)
-#	_ocf=${_CFLAGS} _old=${_LDFLAGS}
-#	if cc_check -fcf-protection=full; then
-#		_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -fcf-protection=full"
-#	elif cc_check -mretpoline; then
-#		#if ld_check -Wl,-z,retpolineplt; then .. ignored in newer clang
-#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mretpoline"
-#		#	_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -Wl,-z,retpolineplt"
-#		#fi
-#	elif cc_check -mfunction-return=thunk; then
-#		if cc_check -mindirect-branch=thunk; then
-#			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} -mfunction-return=thunk -mindirect-branch=thunk"
-#		fi
-#	fi
-#	_CFLAGS=${_ocf} _LDFLAGS=${_old}
 
 	_CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
 	unset __cflags __ldflags

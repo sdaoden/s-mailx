@@ -223,11 +223,12 @@ OPT_AMALGAMATION=no
 # . bind_now: -Wl,-z,now if supported (see ld(1)).
 # . pie: shall address randomization be used if supported.
 # . stackprot: shall stack protectors be used if supported.
-# . fortify: onto stackprot, enable _FORTIFY_SOURCE=2.
+# . fortify: onto stackprot, enable _FORTIFY_SOURCE=3.
 #   (This requires an optimized (-O) build.)
+# . cfprot: try -fcf-protection=full for control‐flow transfer checks.
 # $OPT_AUTOCC reacts upon $OPT_DEBUG.
 OPT_AUTOCC=yes
-	VAL_AUTOCC=bind_now,pie,stackprot,fortify
+	VAL_AUTOCC=bind_now,pie,stackprot,fortify,cfprot
 
 # Whether commands `csop', `vexpr' .. shall be included (requireable).
 OPT_CMD_CSOP=yes
