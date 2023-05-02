@@ -586,6 +586,7 @@ ok_b_autothread, /* {obsolete=1} */
    ok_v_autosort,
 
    ok_b_bang,
+   ok_v_bang_data, /* {nolopts=1,rdonly=1,nodel=1} */
 ok_v_bind_timeout, /* {vip=1,obsolete=1,notempty=1,posnum=1} */
    ok_v_bind_inter_byte_timeout, /* {\ } */
       /* {notempty=1,posnum=1,defval=mx_BIND_INTER_BYTE_TIMEOUT} */
