@@ -7,7 +7,7 @@ shell: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>
 #unset: NEK5
 environ set EK3 EK4, set NEK5
 we: EK1<EV1> EK2<EV2> EK3<EV3> EK4<EV4> NEK5<NEV5>
-shell: EK1<EV1> EK2<EV2> EK3<EV3> EK4<EV4> NEK5<>
+shell: EK1<EV1> EK2<EV2> EK3<EV3> EK4<EV4> NEK5<>!
 #unset: EK1
 #unset: EK2
 environ set EK3=EV3
@@ -15,7 +15,7 @@ environ set EK4=EV4
 set NEK5=NEV5
 removing NEK5 EK3
 we: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>!!
 #unset: EK1
 #unset: EK2
 #unset: EK3
@@ -23,7 +23,7 @@ environ set EK4=EV4
 #unset: NEK5
 changing EK1, EK4
 we: EK1<EV1_CHANGED> EK2<EV2> EK3<> EK4<EV4_CHANGED> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4_CHANGED> NEK5<>
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4_CHANGED> NEK5<>!!!
 set EK1=EV1_CHANGED
 #unset: EK2
 #unset: EK3
@@ -31,7 +31,7 @@ environ set EK4=EV4_CHANGED
 #unset: NEK5
 linking EK4, rechanging EK1, EK4
 we: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>!!!!
 set EK1=EV1
 #unset: EK2
 #unset: EK3
@@ -39,7 +39,7 @@ environ set EK4=EV4
 #unset: NEK5
 unset all
 we: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>!!!!!
 #unset: EK1
 #unset: EK2
 #unset: EK3

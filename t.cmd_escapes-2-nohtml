@@ -338,9 +338,15 @@ Interpolating: 2
 Interpolating: 1
 27.2:0/NONE
 ./t3 174/4442
-i ~w:0/NONE
+i ~w:0/NONE bang-data<>
 shell command output
-shell:0/NONE
+shell:0/NONE bang-data<echo shell command output>
+no_!_bang!
+shell:0/NONE bang-data<echo no_!_bang!>
+NO-echo no_!_bang!-BANG!
+shell:0/NONE bang-data<echo NO-echo no_!_bang!-BANG!>
+no=echo NO-echo no_!_bang!-BANG!=bang!
+shell:0/NONE bang-data<echo no=echo NO-echo no_!_bang!-BANG!=bang!>
 Interpolating: 6
 50 was F:0/NONE
 Interpolating: 6
