@@ -56,47 +56,45 @@ static sz a_cmisc_version_cmp(void const *s1, void const *s2);
 
 static char const *
 a_cmisc_bangexp(char const *cp){
-	static struct str last_bang;
-
-	struct n_string xbang, *bang;
+	/* SysV 10 and POSIX.1-2023 compatible */
+	struct n_string bang_i, *bang;
 	char c;
-	boole changed;
+	char const *obang;
+	boole doit, bangit, changed;
 	NYD_IN;
 
-	if(!ok_blook(bang))
-		goto jleave;
-
+	bang = n_string_reserve(n_string_creat_auto(&bang_i), 110);
+	doit = !(n_pstate & n_PS_ROBOT);
+	bangit = (doit && ok_blook(bang));
+	obang = bangit ? ok_vlook(bang_data) : NIL;
 	changed = FAL0;
 
-	for(bang = n_string_creat(&xbang); (c = *cp++) != '\0';){
-		if(c == '!'){
-			if(last_bang.l > 0)
-				bang = n_string_push_buf(bang, last_bang.s, last_bang.l);
+	for(; (c = *cp++) != '\0';){
+		if(bangit && c == '!'){
 			changed = TRU1;
+			if(obang != NIL && *obang != '\0')
+				bang = n_string_push_cp(bang, obang);
 		}else{
 			if(c == '\\' && *cp == '!'){
+				changed = TRU1;
 				++cp;
 				c = '!';
-				changed = TRU1;
 			}
 			bang = n_string_push_c(bang, c);
 		}
 	}
 
-	if(last_bang.s != NIL)
-		su_FREE(last_bang.s);
+	cp = n_string_cp(bang);
 
-	last_bang.s = n_string_cp(bang);
-	last_bang.l = bang->s_len;
-	cp = last_bang.s;
+	if(doit){
+		n_PS_ROOT_BLOCK(ok_vset(bang_data, cp));
 
-	bang = n_string_drop_ownership(bang);
-	n_string_gut(bang);
+		if(changed && (n_psonce & n_PSO_INTERACTIVE))
+			fprintf(n_stdout, "!%s\n", cp);
+	}
 
-	if(changed)
-		fprintf(n_stdout, "!%s\n", cp);
+	/*n_string_gut(bang);*/
 
-jleave:
 	NYD_OU;
 	return cp;
 }
@@ -305,20 +303,16 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 }
 
 int
-c_shell(void *vp){
+mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
 	struct mx_child_ctx cc;
 	sigset_t mask;
 	int rv;
 	FILE *fp;
-	boole cm_local;
-	char const **argv, *varname, *varres;
+	char const *varres;
 	NYD_IN;
 
 	n_pstate_err_no = su_ERR_NONE;
-	argv = vp;
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
 	varres = su_empty;
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 	fp = NIL;
 
 	if(varname != NIL && (fp = mx_fs_tmp_open(NIL, "shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
@@ -375,6 +369,20 @@ c_shell(void *vp){
 		fprintf(n_stdout, "!\n");
 		/* Line buffered fflush(n_stdout); */
 	}
+
+	NYD_OU;
+	return rv;
+}
+
+int
+c_shell(void *vp){
+	int rv;
+	char const **argv, *varname;
+	NYD_IN;
+
+	argv = vp;
+	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
+	rv = mx_shell_cmd(argv, varname, ((n_pstate & n_PS_ARGMOD_LOCAL) != 0));
 
 	NYD_OU;
 	return rv;

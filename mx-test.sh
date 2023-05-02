@@ -4305,6 +4305,7 @@ t_environ() { # {{{
 
 	#{{{
 	<<- '__EOT' EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>${E0}
+	set bang
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
 	varshow EK1 EK2 EK3 EK4 NEK5
@@ -4313,37 +4314,37 @@ t_environ() { # {{{
 	environ set EK3=EV3 EK4=EV4
 	set NEK5=NEV5
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!!\!
 	varshow EK1 EK2 EK3 EK4 NEK5
 
 	echo removing NEK5 EK3
 	unset NEK5
 	environ unset EK3
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!!\!
 	varshow EK1 EK2 EK3 EK4 NEK5
 
 	echo changing EK1, EK4
 	set EK1=EV1_CHANGED EK4=EV4_CHANGED
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!!\!
 	varshow EK1 EK2 EK3 EK4 NEK5
 
 	echo linking EK4, rechanging EK1, EK4
 	environ link EK4
 	set EK1=EV1 EK4=EV4
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!!\!
 	varshow EK1 EK2 EK3 EK4 NEK5
 
 	echo unset all
 	unset EK1 EK2 EK4
 	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!!\!
 	varshow EK1 EK2 EK3 EK4 NEK5
 	__EOT
 	#}}}
-	cke0 1 0 ./t1 '2826722558 1100'
+	cke0 1 0 ./t1 '1530736536 1115'
 
 	#{{{
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
@@ -10215,11 +10216,18 @@ unset fullnames, quote stuff
 !:echo 27.2:$?/$^ERRNAME # XXX forward-add-cc: not expl. tested
 and i ~w rite this out to ./t3
 !w ./t3
-!:echo i ~w:$?/$^ERRNAME
+!:echo i ~w:$?/$^ERRNAME bang-data<$bang-data>
 !:set x=$escape;set escape=~
 ~!echo shell command output
-~:echo shell:$?/$^ERRNAME
-~:set escape=$x
+~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~!echo no_!_bang\!
+~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:set bang
+~!echo NO-!-BANG\!
+~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~!echo no=!=bang\!
+~:echo shell:$?/$^ERRNAME bang-data<$bang-data>
+~:set nobang escape=$x
 50:F
 !F 6
 !:echo 50 was F:$?/$^ERRNAME
@@ -10249,7 +10257,7 @@ and i ~w rite this out to ./t3
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '1111214389 7757' '3575876476 49'
+	ck 2-nohtml - ./t2-nohtml '913351364 8043' '3575876476 49'
 	ck 3-nohtml - ./t3 '1594635428 4442'
 
 	if have_feat filter-html-tagsoup; then
@@ -10258,7 +10266,7 @@ and i ~w rite this out to ./t3
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2393038495 7697' '3575876476 49'
+		ck 2-html - ./t2-html '2160913844 7983' '3575876476 49'
 		ck 3-html - ./t3 '1594635428 4442'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
