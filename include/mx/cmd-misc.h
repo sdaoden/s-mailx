@@ -24,7 +24,9 @@
 #define mx_HEADER
 #include <su/code-in.h>
 
-/* `!': process a shell escape by saving signals, ignoring signals and sh -c */
+/* `!', `~!': save signals, ignore signals and invoke $SHELL -c with arguments; deals with *bang*.
+ * The former returns $SHELL exit status or -1, sets n_pstate_err_no on error, too */
+EXPORT int mx_shell_cmd(char const **argv, char const *varname, boole cm_local);
 EXPORT int c_shell(void *vp);
 
 /* `shell': fork an interactive shell */

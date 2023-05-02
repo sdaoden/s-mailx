@@ -1139,16 +1139,20 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
-      safe_signal(SIGINT, &_collint);
-   if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
-      safe_signal(SIGHUP, collhup);
-   if (sigsetjmp(_coll_abort, 1))
-      goto jerr;
-   if (sigsetjmp(_coll_jmp, 1))
-      goto jerr;
+
    n_pstate |= n_PS_COMPOSE_MODE;
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
+   n_pstate &= ~n_PS_ARGLIST_MASK;
+
+   if((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
+      safe_signal(SIGINT, &_collint);
+   if((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
+      safe_signal(SIGHUP, collhup);
+   if(sigsetjmp(_coll_abort, 1))
+      goto jerr;
+   if(sigsetjmp(_coll_jmp, 1))
+      goto jerr;
+
+   sigprocmask(SIG_SETMASK, &oset, NIL);
 
    if((_coll_fp = mx_fs_tmp_open(NIL, "collect", (mx_FS_O_RDWR |
             mx_FS_O_UNLINK), NIL)) == NIL){
@@ -1528,12 +1532,11 @@ jearg:
          if(cnt == 0 || coap != NULL)
             goto jearg;
          else{
-            /* TODO should NOT call c_shell() directly */
             char const *argv[2];
 
-            argv[0] = cp;
-            argv[1] = NULL;
-            n_pstate_ex_no = c_shell(argv); /* TODO history norm.; errexit? */
+            argv[0] = cp; /* TODO history normalization */
+            argv[1] = NIL;
+            n_pstate_ex_no = mx_shell_cmd(argv, NIL, FAL0);/* XXX errexit */
          }
          goto jhistcont;
       case '.':
