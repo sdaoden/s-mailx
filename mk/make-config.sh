@@ -839,7 +839,7 @@ _cc_flags_generic() {
 		fi
 		if [ -n "${_i}" ] && ld_check -pie; then
 			_CFLAGS_NOT4TESTS="${_CFLAGS_NOT4TESTS} ${_i}"
-			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -pie"
+			_LDFLAGS_NOT4TESTS="${_LDFLAGS_NOT4TESTS} -pie ${_i}"
 		fi
 		_CFLAGS=${_ocf} _LDFLAGS=${_old}
 	fi
