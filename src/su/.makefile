@@ -11,13 +11,15 @@ CXX?=c++
 # Elder BSD make use rl!
 ARFLAGS=rv
 
-SUFLVLC=#-std=c89
-SUFLVLCXX=#-std=c++98
+# c89,c99,c11,c17,c2x
+SUFLVLC=-std=c89
+# c++98,c++11,c++14,c++17,c++20,c++2b
+SUFLVLCXX=-std=c++98
 SUFDEVEL=-Dsu_HAVE_DEBUG -Dsu_HAVE_DEVEL -Dsu_NYD_ENABLE
 #SUFDEVEL=
 SUFOPT=-O1 -g
 #SUFOPT=-DNDEBUG -O2
-SULDF=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed,--enable-new-dtags -fpie
+SULDF=-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,--as-needed,--enable-new-dtags -pie -fPIE
 SULDFOPT=
 #SULDFOPT=-Wl,-O1,--sort-common
 SUSTRIP=
@@ -36,7 +38,7 @@ SUF_GEN_CONFIG_LIST = \
 
 SUF = -D_GNU_SOURCE $(SUFDEVEL)
 
-SUFWW = #-Weverything
+SUFWW = #-Weverything -Wno-unsafe-buffer-usage -Wno-format-nonliteral
 SUFW = -W -Wall -pedantic $(SUFWW) \
 	\
 	-Wno-atomic-implicit-seq-cst \
@@ -54,6 +56,7 @@ SUFS = -fPIE \
 	-fstrict-aliasing -fstrict-overflow \
 	-fstack-protector-strong \
 	-D_FORTIFY_SOURCE=3 \
+	-fcf-protection=full \
 	\
 #	-DHAVE_SANITIZER \
 #		-fsanitize=undefined \
