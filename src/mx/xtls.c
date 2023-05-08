@@ -587,9 +587,17 @@ a_xtls_init(void){
    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
       OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 # ifdef mx_HAVE_TLS_ALL_ALGORITHMS
-         | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
+#  ifdef OPENSSL_INIT_ADD_ALL_CIPHERS
+         | OPENSSL_INIT_ADD_ALL_CIPHERS
+#  endif
+#  ifdef OPENSSL_INIT_ADD_ALL_DIGESTS
+         | OPENSSL_INIT_ADD_ALL_DIGESTS
+#  endif
 # endif
-      , NULL);
+# ifdef OPENSSL_INIT_NO_LOAD_CONFIG
+         | OPENSSL_INIT_NO_LOAD_CONFIG
+# endif
+      , NIL);
 #else
    SSL_load_error_strings();
    SSL_library_init();
