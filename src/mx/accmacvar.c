@@ -14,6 +14,8 @@
  *@ TODO   incorporate what it tracks, then drop it.  Etc.
  *@ TODO   Global -> Scope -> Local, all "overlay" objects.
  *@ TODO . Also, storing variable names can be optional for non-chain built-ins
+ *@ TODO . Have macro/var counters so we know ++COUNT does not wrap U32_MAX!!
+ *@ TODO   (Ie NIL terminated array alloc+set, and such.)
  *
  * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -712,43 +714,67 @@ a_amv_mac__finalize(void *vp){
 
 static boole
 a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf, char const *name){
-	uz lc, mc, ti, i;
-	char const *typestr;
+	struct a_amv_mac *amp;
+	uz i, j, lc, mc;
 	FILE *fp;
+	char const **mna, *mna_stack[2], **mna_b, *typestr;
 	boole rv;
 	NYD2_IN;
 
+	amf &= a_AMV_MF_TYPE_MASK;
 	rv = FAL0;
 
 	if((fp = mx_fs_tmp_open(NIL, "deflist", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
 		fp = n_stdout;
 
-	amf &= a_AMV_MF_TYPE_MASK;
+	/* List all? */
+	if(name != NIL){
+		mna = mna_stack;
+		mna[0] = name;
+		mna[1] = NIL;
+	}else{
+		for(i = j = 0; j < a_AMV_PRIME; ++j)
+			for(amp = a_amv_macs[j]; amp != NIL; amp = amp->am_next)
+				if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf)
+					++i;
+		if(i == 0)
+			goto jleave;
+
+		mna = mna_b = su_AUTO_ALLOC(++i * sizeof(*mna_b));
+		for(j = 0; j < a_AMV_PRIME; ++j)
+			for(amp = a_amv_macs[j]; amp != NIL; amp = amp->am_next)
+				if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf)
+					*mna++ = amp->am_name;
+		*mna = NIL;
+		mna = mna_b;
+
+		if(i > 2)
+			su_sort_shell_vpp(S(void const**,mna), --i, su_cs_toolbox.tb_cmp);
+	}
+
 	typestr = (amf & a_AMV_MF_ACCOUNT) ? "account" : "define";
+	lc = mc = 0;
 
-	for(lc = mc = ti = 0; ti < a_AMV_PRIME; ++ti){
-		struct a_amv_mac *amp;
+	for(; *mna != NIL; ++mna){
+		struct a_amv_mac_line **amlpp;
 
-		for(amp = a_amv_macs[ti]; amp != NIL; amp = amp->am_next){
-			if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf && (name == NIL || !su_cs_cmp(name, amp->am_name))){
-				struct a_amv_mac_line **amlpp;
+		amp = a_amv_mac_lookup(*mna, NIL, amf);
+		ASSERT(amp != NIL);
 
-				if(++mc > 1){
-					putc('\n', fp);
-					++lc;
-				}
-				++lc;
-				fprintf(fp, "%s %s {\n", typestr, amp->am_name);
-				for(amlpp = amp->am_line_dat; *amlpp != NIL; ++lc, ++amlpp){
-					for(i = (*amlpp)->aml_prespc; i > 0; --i)
-						putc(' ', fp);
-					fputs((*amlpp)->aml_dat, fp);
-					putc('\n', fp);
-				}
-				fputs("}\n", fp);
-				++lc;
-			}
+		if(++mc > 1){
+			putc('\n', fp);
+			++lc;
 		}
+		++lc;
+		fprintf(fp, "%s %s {\n", typestr, amp->am_name);
+		for(amlpp = amp->am_line_dat; *amlpp != NIL; ++lc, ++amlpp){
+			for(i = (*amlpp)->aml_prespc; i > 0; --i)
+				putc(' ', fp);
+			fputs((*amlpp)->aml_dat, fp);
+			putc('\n', fp);
+		}
+		fputs("}\n", fp);
+		++lc;
 	}
 
 	if(fp != n_stdout){
@@ -762,6 +788,7 @@ a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf, char const *name){
 		rv = TRU1;
 	}
 
+jleave:
 	NYD2_OU;
 	return rv;
 }

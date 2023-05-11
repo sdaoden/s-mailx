@@ -684,7 +684,7 @@ a_vexpr_string(struct a_vexpr_ctx *vcp){
 		/* Search+Replace */
 		else{
 			mx_var_re_match_set(re.re_group_count, vcp->vc_argv[0], re.re_match);
-			{/* TODO v15-compat vexpr regex: only directly shexp via $^0++ */
+			{/* TODO v15-compat vexpr regex: directly do a_vexpr__regex_replace() */
 			char const *name, **argv, **ccpp;
 			uz i, argc;
 
