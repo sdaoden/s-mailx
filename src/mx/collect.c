@@ -771,12 +771,10 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    struct n_sigman sm;
    FILE *nf;
    n_sighdl_t volatile sigint;
-   boole saved_filrec;
    s32 volatile rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
-   saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
    case 0:
@@ -787,9 +785,6 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
       rv = su_ERR_INTR;
       goto jleave;
    }
-
-   if(!saved_filrec)
-      ok_bset(add_file_recipients);
 
    if(hp != NIL){
       hp->h_flags |= HF_COMPOSE_MODE;
@@ -817,9 +812,6 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(!saved_filrec)
-      ok_bclear(add_file_recipients);
-
    if(hp != NIL)
       hp->h_flags &= ~HF_COMPOSE_MODE;
 
@@ -2063,7 +2055,7 @@ jout:
             _("-------\n(Preliminary) Envelope contains:\n")); /* XXX */
          if(!n_puthead(TRU1, hp, n_stdout,
                GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
-               GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
+               GFILES | GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
             goto jerr;
 
 jreasksend:

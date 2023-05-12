@@ -1476,7 +1476,7 @@ n_header_put4compose(FILE *fp, struct header *hp){
    int t;
    NYD_IN;
 
-   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GREF_IRT | GNL | GCOMMA;
+   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GFILES | GREF_IRT | GNL | GCOMMA;
    if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
          (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
          (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
@@ -1485,6 +1485,7 @@ n_header_put4compose(FILE *fp, struct header *hp){
       t |= GIDENT;
 
    rv = n_puthead(TRUM1, hp, fp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+
    NYD_OU;
    return rv;
 }

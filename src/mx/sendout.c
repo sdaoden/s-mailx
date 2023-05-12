@@ -1915,9 +1915,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
             _X("references:") || _X("in-reply-to:") ||
             _X("disposition-notification-to:"))
          m |= m_NOPF | m_NONAME;
-      else if (ok_blook(add_file_recipients)) {
-         ;
-      } else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
+      else if (_X("to:") || _X("cc:") || _X("bcc:") || _X("resent-to:"))
          m |= m_NOPF;
 #undef _X
    }
@@ -1931,7 +1929,6 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
             !(saf & a_SENDOUT_AL_INC_INVADDR))
          continue;
 
-      /* File and pipe addresses only printed with set *add-file-recipients* */
       if ((m & m_NOPF) && is_fileorpipe_addr(np))
          continue;
 
