@@ -565,7 +565,6 @@ enum okeys{
    ok_v___em, /* {name=!,nolopts=1,rdonly=1,nodel=1} */
 
    ok_v_account, /* {nolopts=1,rdonly=1,nodel=1} */
-   ok_b_add_file_recipients,
 ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */

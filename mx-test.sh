@@ -8867,25 +8867,23 @@ t_expandaddr() { # {{{
 
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=-all,+file,+pipe,+name,+addr,-addr \
-		-Sadd-file-recipients \
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
 	ck 43 4 ./t.mbox '4225234603 949' '3863610168 169'
 	ck0 44 - ${E0}
-	ck 45 - t.file '1210943515 911'
-	ck 46 - t.pipe '1831110400 136'
+	ck 45 - t.file '1004872610 877'
+	ck 46 - t.pipe '130065764 102'
 
 	printf '' > ./t.pipe
 	</dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -ssub \
 		-Sexpandaddr=fail,-all,+file,+pipe,+name,+addr,-addr \
-		-Sadd-file-recipients \
 		-X'alias talias talias@exam.ple' \
 		./t.file ' | ./t.cat >./t.pipe' talias taddr@exam.ple \
 		> ${E0} 2>${EX}
 	ck 47 4 ./t.mbox '4225234603 949' '851041772 278'
 	ck0 48 - ${E0}
-	ck 49 - t.file '1210943515 911'
+	ck 49 - t.file '1004872610 877'
 	ck0 50 - t.pipe
 
 	#
@@ -8921,55 +8919,55 @@ t_expandaddr() { # {{{
 	#
 	printf '' > ./t.mbox
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-		-Sadd-file-recipients -Sexpandaddr=-all,+fcc \
+		-Sexpandaddr=-all,+fcc \
 		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
 	ck0e0 59 0 ./t.mbox
 	ck0 60 - ${EX}
-	ck 61 - t.file1 '3178309482 124'
-	ck 62 - t.file2 '3178309482 124'
+	ck 61 - t.file1 '130065764 102'
+	ck 62 - t.file2 '130065764 102'
 
 	printf '' > ./t.mbox
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-		-Sadd-file-recipients -Sexpandaddr=-all,+file \
+		-Sexpandaddr=-all,+file \
 		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
 	ck0e0 63 0 ./t.mbox
 	ck0 64 - ${EX}
-	ck 65 - t.file1 '3027266938 248'
-	ck 66 - t.file2 '3027266938 248'
+	ck 65 - t.file1 '2463545576 204'
+	ck 66 - t.file2 '2463545576 204'
 
 	printf '' > ./t.mbox
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-		-Sadd-file-recipients -Sexpandaddr=-all,+file,-fcc \
+		-Sexpandaddr=-all,+file,-fcc \
 		> ${EX} 2>${E0}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
 	ck0e0 67 0 ./t.mbox
 	ck0 68 - ${EX}
-	ck 69 - t.file1 '1875215222 372'
-	ck 70 - t.file2 '1875215222 372'
+	ck 69 - t.file1 '878848030 306'
+	ck 70 - t.file2 '878848030 306'
 
 	printf '' > ./t.mbox
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-		-Sadd-file-recipients -Sexpandaddr=-all,+fcc,-file \
+		-Sexpandaddr=-all,+fcc,-file \
 		> ${E0} 2>${EX}
 	Fcc: t.file1
 	Fcc: t.file2
 	_EOT
 	ck0 71 4 ./t.mbox '2936929607 223'
 	ck0 72 - ${E0}
-	ck 73 - t.file1 '1875215222 372'
-	ck 74 - t.file2 '1875215222 372'
+	ck 73 - t.file1 '878848030 306'
+	ck 74 - t.file2 '878848030 306'
 
 	printf '' > ./t.mbox
 	<<-_EOT ${MAILX} ${ARGS} -Snoexpandaddr -Smta=test://t.mbox -t -ssub \
-		-Sadd-file-recipients -Sexpandaddr=-all,fail,+addr \
+		-Sexpandaddr=-all,fail,+addr \
 		> ${E0} 2>${EX}
 	Fcc: t.file1
 	Fcc: t.file2
@@ -8977,8 +8975,8 @@ t_expandaddr() { # {{{
 	_EOT
 	ck0 75 4 ./t.mbox '4156837575 247'
 	ck0 76 - ${E0}
-	ck 77 - t.file1 '1875215222 372'
-	ck 78 - t.file2 '1875215222 372'
+	ck 77 - t.file1 '878848030 306'
+	ck 78 - t.file2 '878848030 306'
 
 	#
 	printf '' > ./t.mbox
