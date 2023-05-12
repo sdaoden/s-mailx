@@ -1079,8 +1079,10 @@ jgetopt_done:
 			emsg = N_("The options -e and -H are mutual exclusive");
 			goto jusage;
 		}
-		if((n_poption & (n_PO_HEADERSONLY | n_PO_HEADERLIST)) == (n_PO_HEADERSONLY | n_PO_HEADERLIST))/*v15*/
-			n_OBSOLETE(_("please use \"-e -L xy\" instead of \"-H -L xy\""));
+		if((n_poption & (n_PO_HEADERSONLY | n_PO_HEADERLIST)) == (n_PO_HEADERSONLY | n_PO_HEADERLIST)){
+			emsg = N_("The options -H and -L are mutual exclusive");
+			goto jusage;
+		}
 
 		if(mc.mc_u != NIL)
 			mc.mc_folder = mc.mc_u;
