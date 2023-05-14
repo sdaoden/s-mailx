@@ -564,7 +564,7 @@ static boole a_tty_hist_list(void);
 static boole a_tty_hist_sel_or_del(char const **vec, boole dele);
 
 /* Check whether a gabby history entry fits *history_gabby* */
-static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif);
+static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif, char const **gt);
 
 /* (Definitely) Add an entry TODO yet assumes sigs_all_hold() is held!  Returns false on allocation failure */
 static boole a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif);
@@ -1076,32 +1076,47 @@ j_leave:
 }
 
 static boole
-a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif){
-	char const *cp;
-	boole rv;
-	NYD2_IN;
+a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif, char const **gt){
+	enum{a_ERR = 1u<<0, a_FUZZ = 1u<<1, a_ALL = a_ERR | a_FUZZ};
+	static struct{char n[7]; u8 f;} const kwa[] = {{"errors\0", a_ERR}, {"fuzz", a_FUZZ}, {"all", a_ALL}};
 
-	if((cp = ok_vlook(history_gabby)) == NIL)
-		rv = FAL0;
-	else if(!(gif & mx_GO_INPUT_HIST_ERROR))
+	char const *cp;
+	boole f, rv;
+	NYD2_IN;
+	ASSERT(gt != NIL && *gt == su_empty);
+
+	if(gif & mx_GO_INPUT_HIST_ERROR){
+		f = a_ERR;
+		cp = kwa[0].n;
+	}else if(gif & mx_GO_INPUT_HIST_GABBY_FUZZ){
+		f = a_FUZZ;
+		cp = kwa[1].n;
+	}else{
+		f = a_ALL;
+		cp = kwa[2].n;
+	}
+	*gt = cp;
+
+	if((cp = ok_vlook(history_gabby)) == NIL || *cp == '\0')
 		rv = TRU1;
 	else{
-		static char const wlist[][8] = {"all", "errors\0"};
-		uz i;
 		char *buf, *e;
 
 		buf = savestr(cp);
-		while((e = su_cs_sep_c(&buf, ',', TRU1)) != NIL)
-			for(i = 0;;)
-				if(!su_cs_cmp_case(e, wlist[i])){
-					rv = TRU1;
-					goto jwl_ok;
-				}else if(++i == NELEM(wlist)){
-					n_err(_("*history-gabby*: unknown keyword: %s\n"), n_shexp_quote_cp(e, FAL0));
-					break;
+		cp = NIL;
+jouter:
+		while((e = su_cs_sep_c(&buf, ',', TRU1)) != NIL){
+			uz i;
+
+			for(i = 0; i < NELEM(kwa); ++i){
+				if(!su_cs_cmp_case(e, kwa[i].n)){
+					if(f & kwa[i].f)
+						rv = TRU1;
+					goto jouter;
 				}
-		rv = FAL0;
-jwl_ok:;
+			}
+			n_err(_("*history-gabby*: unknown keyword: %s\n"), n_shexp_quote_cp(e, FAL0));
+		}
 	}
 
 	NYD2_OU;
@@ -4394,28 +4409,41 @@ void
 mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
 	NYD_IN;
 	ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) || (gif & mx_GO_INPUT_HIST_GABBY));
+	ASSERT(!(gif & mx_GO_INPUT_HIST_GABBY_FUZZ) || (gif & mx_GO_INPUT_HIST_GABBY));
 	UNUSED(s);
 	UNUSED(gif);
 
 # ifdef mx_HAVE_HISTORY
-	if(*s != '\0' && a_tty.tg_is_init && a_tty.tg_hist_size_max > 0 &&
-			(!(gif & mx_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif)) &&
-			 !ok_blook(line_editor_disable)){
-		struct a_tty_input_ctx_map const *ticmp;
+	/* C99 */{
+	char const *gt;
 
-		ticmp = &a_tty_input_ctx_maps[gif & a_TTY_HIST_CTX_MASK];
+	gt = su_empty;
 
+	if(*s != '\0' && a_tty.tg_is_init && a_tty.tg_hist_size_max > 0 && !ok_blook(line_editor_disable) &&
+			(!(gif & mx_GO_INPUT_HIST_GABBY) || a_tty_hist_is_gabby_ok(gif, &gt))){
 		/* TODO *on-history-addition*: a future version will give the expanded
 		 * TODO command name as the third argument, followed by the tokenized
 		 * TODO command line as parsed in the remaining arguments, the first of
 		 * TODO which is the original unexpanded command name; i.e., one may do
 		 * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
-		if(temporary_addhist_hook(ticmp->ticm_name, ((gif & mx_GO_INPUT_HIST_GABBY)
-					? ((gif & mx_GO_INPUT_HIST_ERROR) ? "errors" : "all") : su_empty), s)){
+		switch(temporary_addhist_hook(a_tty_input_ctx_maps[gif & a_TTY_HIST_CTX_MASK].ticm_name, gt, s)){
+		case 3:
+			gif &= ~(mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_GABBY_FUZZ);
+			if(0){
+			FALLTHRU
+		case 2:
+				gif |= mx_GO_INPUT_HIST_GABBY;
+			}
+			FALLTHRU
+		case 0:
 			mx_sigs_all_holdx();
 			(void)a_tty_hist_add(s, gif);
 			mx_sigs_all_rele();
+			FALLTHRU
+		default:
+			break;
 		}
+	}
 	}
 # endif /* mx_HAVE_HISTORY */
 

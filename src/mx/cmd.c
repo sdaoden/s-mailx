@@ -511,14 +511,12 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
 			/* TODO CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
 				cad_idx + 1 == cadp->cad_no);
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_NDMSGLIST) ||
+				cad_idx + 1 == cadp->cad_no);
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
 				cad_idx + 1 == cadp->cad_no);
 
-			ASSERT(!opt_seen ||
-				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+			ASSERT(!opt_seen || (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
 			if(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION)
 				opt_seen = TRU1;
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY) ||
@@ -528,21 +526,20 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
 			 * TODO And they may not be CMD_ARG_DESC_OPTION */
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
 				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_NDMSGLIST) ||
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_NDMSGLIST) ||
 				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
 				(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_GREEDY));
 
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST) ||
 				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_NDMSGLIST) ||
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_NDMSGLIST) ||
 				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
-			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
-					mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
 				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
+
+			ASSERT((cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+				!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY));
 		}
 	}
 #endif /* DVLDBGOR(1,0) */
@@ -650,7 +647,7 @@ jshexp_restart:
 							n_err(_("No applicable messages\n"));
 
 						e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
-						if(e == 0)
+						if(e == su_ERR_NONE)
 							e = su_ERR_NOMSG;
 						n_pstate_err_no = e;
 						goto jerr;
@@ -663,7 +660,7 @@ jshexp_restart:
 					 * TODO results in no _TARGET argument: ensure it is there! */
 					if(target_argpp != NIL && (cap = *target_argpp) == NIL){
 						cap = su_AUTO_CALLOC(sizeof *cap);
-						cap->ca_arg.ca_str.s = UNCONST(char*,n_empty);
+						cap->ca_arg.ca_str.s = UNCONST(char*,su_empty);
 						*target_argpp = cap;
 					}
 					/* FALLTHRU */
@@ -679,6 +676,16 @@ jshexp_restart:
 			}
 			shin.l = 0;
 			f |= a_STOPLOOP; /* XXX Asserted to be last above! */
+
+			if(target_argpp != NIL &&
+					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY)){
+				struct mx_name *np;
+
+				if((np = n_extract_single((*target_argpp)->ca_arg.ca_str.s, GTO)) == NIL ||
+						!(np->n_flags & (mx_NAME_ADDRSPEC_ISNAME | mx_NAME_ADDRSPEC_ISADDR)))
+					n_pstate |= n_PS_GABBY_FUZZ;
+			}
+
 			break;
 		}
 		++parsed_args;

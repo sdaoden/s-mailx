@@ -487,7 +487,7 @@ do{\
    n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<17, /* getmsglist() saw gabby stuff TODO CmdCtx */
+   n_PS_GABBY_FUZZ = 1u<<17, /* y history-gabbyness TODO CmdCtx+FINE-GRAINED */
 
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be

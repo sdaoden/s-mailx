@@ -61,10 +61,11 @@ enum mx_go_input_flags{
 
 	mx_GO_INPUT_HIST_ADD = 1u<<16, /* Add the result to history list */
 	mx_GO_INPUT_HIST_GABBY = 1u<<17, /* Consider history entry as gabby */
+	mx_GO_INPUT_HIST_GABBY_FUZZ = 1u<<18, /* ..even fuzzy */
 	/* Command was erroneous; only in combination with _HIST_GABBY! */
-	mx_GO_INPUT_HIST_ERROR = 1u<<18,
+	mx_GO_INPUT_HIST_ERROR = 1u<<19,
 
-	mx_GO_INPUT_IGNERR = 1u<<19, /* Imply `ignerr' command modifier */
+	mx_GO_INPUT_IGNERR = 1u<<20, /* Imply `ignerr' command modifier */
 
 	mx__GO_FREEBIT = 24u
 };

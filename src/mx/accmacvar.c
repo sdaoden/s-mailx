@@ -3501,21 +3501,20 @@ temporary_compose_mode_hook_call(char const *macname){
 }
 
 #ifdef mx_HAVE_HISTORY
-FL boole
+FL s32
 temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *histent){
 	/* XXX temporary_addhist_hook(): intermediate hack */
 	struct a_amv_mac_call_args *amcap;
-	s32 perrn, pexn;
 	struct a_amv_mac *amp;
 	char const *macname, *argv[4];
-	boole rv;
+	s32 rv, perrn, pexn;
 	NYD_IN;
 
 	if((macname = ok_vlook(on_history_addition)) == NIL)
-		rv = TRUM1;
+		rv = 0;
 	else if((amp = a_amv_mac_lookup(macname, NIL, a_AMV_MF_NONE)) == NIL){
 		n_err(_("Cannot call *on-history-addition*: macro does not exist: %s\n"), macname);
-		rv = TRUM1;
+		rv = 0;
 	}else{
 		perrn = n_pstate_err_no;
 		pexn = n_pstate_ex_no;
@@ -3536,10 +3535,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 		amcap->amca__pospar.app_dat = argv;
 		amcap->amca_re_match = &amcap->amca__re_match;
 
-		if(!a_amv_mac_exec(amcap, NIL))
-			rv = TRUM1;
-		else
-			rv = (n_pstate_ex_no == 0);
+		rv = a_amv_mac_exec(amcap, NIL) ? n_pstate_ex_no : -1;
 
 		n_pstate_err_no = perrn;
 		n_pstate_ex_no = pexn;

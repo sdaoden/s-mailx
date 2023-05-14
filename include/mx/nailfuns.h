@@ -172,9 +172,9 @@ FL void temporary_compose_mode_hook_control(boole enable, boole local);
 FL void temporary_compose_mode_hook_call(char const *macname);
 
 #ifdef mx_HAVE_HISTORY
-/* TODO *on-history-addition* */
-FL boole temporary_addhist_hook(char const *ctx, char const *gabby_type,
-            char const *histent);
+/* TODO *on-history-addition*; -1 on error */
+FL s32 temporary_addhist_hook(char const *ctx, char const *gabby_type,
+      char const *histent);
 #endif
 
 /* TODO v15 drop: let shexp_parse_token take a carrier with positional
