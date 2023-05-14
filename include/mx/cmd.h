@@ -88,22 +88,25 @@ enum mx_cmd_arg_desc_flags{
 	/* - Optional flags */
 
 	/* Needs su_avopt pass (-o --ptions -- delimiter support) */
-	mx_CMD_ARG_DESC_NEEDS_AVOPT = 1u<<15, /* TODO NOT YET */
+	mx_CMD_ARG_DESC_NEEDS_AVOPT = 1u<<14, /* TODO NOT YET */
 	/* It is not an error if an optional argument is missing; once an argument
 	 * has been declared optional only optional arguments may follow */
-	mx_CMD_ARG_DESC_OPTION = 1u<<16,
+	mx_CMD_ARG_DESC_OPTION = 1u<<15,
 	/* GREEDY: parse as many of that type as possible; must be last entry */
-	mx_CMD_ARG_DESC_GREEDY = 1u<<17,
+	mx_CMD_ARG_DESC_GREEDY = 1u<<16,
 	/* If greedy, join all given arguments separated by ASCII SP right away */
-	mx_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
+	mx_CMD_ARG_DESC_GREEDY_JOIN = 1u<<17,
 	/* Honour an overall "stop" request in one of the arguments (#) */
-	mx_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
+	mx_CMD_ARG_DESC_HONOUR_STOP = 1u<<18,
 	/* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
-	mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
+	mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<19,
+	/* With MSGLIST_AND_TARGET_, check arg for email address */
+	mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY = 1u<<20, /* XXX "HACK" */
 
 	mx__CMD_ARG_DESC_FLAG_MASK = mx_CMD_ARG_DESC_NEEDS_AVOPT | mx_CMD_ARG_DESC_OPTION |
 			mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_GREEDY_JOIN | mx_CMD_ARG_DESC_HONOUR_STOP |
-			mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+			mx_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE |
+			mx_CMD_ARG_DESC_MSGLIST_AND_TARGET_NAME_ADDR_OR_GABBY,
 
 	/* We may include an error number for n_pstate_err_no shall the argument
 	 * constraints not be satisfied (and no other error is reported) */

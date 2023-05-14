@@ -10239,17 +10239,21 @@ Also see
 .
 .Mx
 .It Va history-gabby
-\*(OP Add more entries to the MLE
+\*(OP Add more entries to the
+.Mx -sx
+.Sx MLE
 .Ic history
-as is normally done.
-A comma-separated list of case-insensitive strings can be used to
-fine-tune which gabby entries shall be allowed.
-If it contains
-.Ql errors ,
-erroneous commands will also be added.
+than normal; for fine-tuning a comma-separated list of case-insensitive
+keywords may be assigned:
+.Ql errors
+allows erroneous commands,
+.Ql fuzz
+certain usage forms, for example message number or string arguments
+instead of fixed, reproducable keywords and/or colon modifiers when
+.Sx "Specifying messages"
+(\*(ID more subcommand use cases will be covered), and
 .Ql all
-adds all optional entries, and is the fallback chattiness identifier of
-.Va on-history-addition .
+adds anything, and is the default value.
 .
 .Mx
 .It Va history-gabby-persist
@@ -11332,29 +11336,42 @@ set on-compose-splice=ocsm
 .
 .Mx
 .It Va on-history-addition
-This hook will be called if an entry is about to be added to the
-.Ic history
-of the
+Executes with three arguments before a
 .Mx -sx
-.Sx MLE ,
-as documented in
-.Sx "On terminal control and line editor" .
-It will be called with three arguments: the first is the name of the
-input context (see
-.Ic bind ) ,
-the second is either an empty string or the matching
+.Sx MLE
+.Ic history
+entry is to be added (see
+.Sx "On terminal control and line editor" ) :
+the
+.Ic bind
+input context name, the
 .Va history-gabby
-type, and the third being the complete command line to be added.
-The entry will not be added to history if the hook uses a non-0
-.Ic return .
-\*(ID A future version will give the expanded command name as the third
-argument, followed by the tokenized command line as parsed in the
-remaining arguments, the first of which is the original unexpanded
-command name; i.e., one may do
+type (or the empty string), finally the entry as one token.
+If the hook
+.Ic return Ns
+s 0 the entry is added as-is, with 2 it is added as
+.Va history-gabby ,
+with 3 gabbyness is removed; any other value rejects the addition.
+\*(ID A future version will return more than 3 arguments: the expanded
+command name as the third, followed by individual tokens of the command
+line, including the used command name as the first; that is, after
 .Ql Ic shift Ns \| 4
-and will then be able to access the positional parameters as usual via
+the positional parameters will be accessable as
 .Va * , # , 1
 etc.
+.Bd -literal -offset indent
+se on-history-addition=oha
+def oha {
+  i "$2" == fuzz || "$2" == errors; retu 1; en
+  i ${#} -eq 3
+    i " $3" =% ' set ' || " $3" =% ' unset '; retu 3;en
+    i " $3" =% ' chdir '; retu 2; en
+  el
+    ec v15
+  en
+  retu 1
+}
+.Ed
 .
 .Mx Va on-mailbox-event
 .It Va on-mailbox-event-FOLDER , on-mailbox-event

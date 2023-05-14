@@ -327,7 +327,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
 
       switch(tok){
       case a_MSG_T_NUMBER:
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         n_pstate |= n_PS_GABBY_FUZZ;
 jnumber:
          if(!a_msg_check(msl.msl_no, f)){
             i = su_ERR_BADMSG;
@@ -355,11 +355,9 @@ jnumber:
                }
             }else{
                /* TODO threaded ranges are a mess */
-               enum{
-                  a_T_NONE,
-                  a_T_HOT = 1u<<0,
-                  a_T_DIR_PREV = 1u<<1
-               } tf;
+               enum{a_T_NONE, a_T_HOT = 1u<<0, a_T_DIR_PREV = 1u<<1};
+
+               u8 tf;
                int i_base;
 
                if(beg < msl.msl_no)
@@ -428,7 +426,6 @@ jnumber__thr:
          }
          break;
       case a_MSG_T_PLUS:
-         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -446,7 +443,6 @@ jnumber__thr:
          msl.msl_no = i;
          goto jnumber;
       case a_MSG_T_MINUS:
-         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          i = valdot;
          do{
             if(flags & a_THREADED){
@@ -468,10 +464,11 @@ jnumber__thr:
             goto jebadrange;
 
          /* This may be a colon modifier */
-         if((cp = msl.msl_str)[0] != ':')
+         if((cp = msl.msl_str)[0] != ':'){
+            n_pstate |= n_PS_GABBY_FUZZ;
             np = a_msg_add_to_nmadat(&nmadat, &nmasize, np,
                   savestr(msl.msl_str));
-         else{
+         }else{
             if(cp[1] == '\0')
                goto jevalcol_err;
             while(*++cp != '\0'){
@@ -495,12 +492,13 @@ jevalcol_err:
       case a_MSG_T_OPEN:
          if(flags & a_RANGE)
             goto jebadrange;
-         flags |= a_TOPEN;
 
+         flags |= a_TOPEN;
 #ifdef mx_HAVE_IMAP_SEARCH
          /* C99 */{
             sz ires;
 
+            n_pstate |= n_PS_GABBY_FUZZ; /* TODO <> imap_search()+specific! */
             if((ires = imap_search(msl.msl_str, f)) >= 0){
                if(ires > 0)
                   flags |= a_ANY;
@@ -516,7 +514,6 @@ jevalcol_err:
       case a_MSG_T_DOLLAR:
       case a_MSG_T_UP:
       case a_MSG_T_SEMI:
-         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          /* FALLTHRU */
       case a_MSG_T_DOT:
          if((msl.msl_no = i = a_msg_metamess(msl.msl_str[0], f)) < 0){
@@ -553,7 +550,6 @@ jevalcol_err:
          flags |= a_ASTER;
          break;
       case a_MSG_T_COMMA:
-         /*n_pstate |= n_PS_MSGLIST_GABBY;*/
          if(flags & a_RANGE)
             goto jebadrange;
 
@@ -590,7 +586,7 @@ jevalcol_err:
             n_err(_("Ignoring redundant specification of , selector\n"));
          break;
       case a_MSG_T_ERROR:
-         n_pstate |= n_PS_MSGLIST_GABBY;
+         n_pstate |= n_PS_GABBY_FUZZ;
          i = su_ERR_INVAL;
          goto jerr;
       }
@@ -634,6 +630,7 @@ jevalcol_err:
    if(np > nmadat || id != NIL){
       struct mx_srch_ctx *scp;
 
+      n_pstate |= n_PS_GABBY_FUZZ;
       scp = NIL;
 
       /* The @ search works with struct srch_ctx, so build an array.
@@ -750,6 +747,7 @@ jat_where_default:
             imap_getheaders(1, msgCount);
          }
 #endif
+
       if(ok_blook(allnet))
          flags |= a_ALLNET;
 
@@ -1609,7 +1607,7 @@ n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
             }
             for(;;){
                lcapp = &cap->ca_next;
-               if((cap = *lcapp)->ca_next == NULL)
+               if((cap = *lcapp)->ca_next == NIL)
                   break;
             }
             *capp_or_nil = cap;

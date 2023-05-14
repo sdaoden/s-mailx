@@ -145,7 +145,8 @@ enum a_go_hist_flags{
 	a_GO_HIST_ADD = 1u<<0,
 	a_GO_HIST_GABBY = 1u<<1,
 	a_GO_HIST_GABBY_ERROR = 1u<<2,
-	a_GO_HIST_INIT = 1u<<3
+	a_GO_HIST_GABBY_FUZZ = 1u<<3,
+	a_GO_HIST_INIT = 1u<<4
 };
 
 struct a_go_eval_ctx{
@@ -287,7 +288,7 @@ a_go_update_pstate(void){
 }
 
 static boole
-a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
+a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 	/* TODO a_go_evaluate(): old style(9), but also old code */
 	/* TODO a_go_evaluate(): should be split in multiple subfunctions!!
 	 * TODO All commands should take a_cmd_ctx argument, also to do a much
@@ -310,7 +311,8 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){
 
 		a_NO_ERRNO = 1u<<16, /* Do not set n_pstate_err_no */
 		a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
-		a_IS_EMPTY = 1u<<18 /* The empty command */
+		a_IS_EMPTY = 1u<<18, /* The empty command */
+		a_IS_GABBY_FUZZ = 1u<<19 /* Saved away state from n_PS_GABBY_FUZZ TODO -> cmdctx.. */
 	};
 
 	struct str line;
@@ -795,7 +797,7 @@ jeflags:
 			goto jmsglist_err;
 		if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, ((flags & a_IS_SKIP) != 0), NIL)) < 0){
 			nerrn = su_ERR_NOMSG;
-			flags |= a_NO_ERRNO;
+			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
 		if(c == 0){
@@ -807,12 +809,15 @@ jmsglist_err:
 				if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
 					n_err(_("No applicable messages\n"));
 				nerrn = su_ERR_NOMSG;
-				/* flags |= a_NO_ERRNO;*/
+				flags |= /*a_NO_ERRNO |*/ a_IS_GABBY_FUZZ;
 				break;
 			}
 		}
 
 jmsglist_go:
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
+
 		/* C99 */{
 			int *mvp;
 
@@ -823,6 +828,8 @@ jmsglist_go:
 			if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM))/*XXX*/
 				su_err_set(su_ERR_NONE);
 			rv = (*cdp->cd_func)(mvp);
+			if(n_pstate & n_PS_GABBY_FUZZ)
+				flags |= a_IS_GABBY_FUZZ;
 			ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		}
 		break;
@@ -833,7 +840,7 @@ jmsglist_go:
 			goto jmsglist_err;
 		if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, ((flags & a_IS_SKIP) != 0), NIL)) < 0){
 			nerrn = su_ERR_NOMSG;
-			flags |= a_NO_ERRNO;
+			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
 		goto jmsglist_go;
@@ -846,6 +853,8 @@ jmsglist_go:
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(cp);
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 		ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		break;
 
@@ -860,6 +869,8 @@ jmsglist_go:
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
 		rv = (*cdp->cd_func)(argv_stack);
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 		ASSERT(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN));
 		break;
 
@@ -890,9 +901,11 @@ jmsglist_go:
 		if((c = getrawlist((c != 0), ((flags & a_IS_SKIP) != 0), argvp, (n_MAXARGC - ((flags & a_VPUT) != 0)),
 					line.s, line.l)) < 0){
 			n_err(_("%s: invalid argument list\n"), cdp->cd_name);
-			flags |= a_NO_ERRNO;
+			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 
 		if(UCMP(32, c, <, cdp->cd_mflags_o_minargs) || UCMP(32, c, >, cdp->cd_mmask_o_maxargs)){
 			n_err(_("%s: %s: takes at least %u, and no more than %u arg(s)\n"),
@@ -914,6 +927,8 @@ jmsglist_go:
 		rv = (*cdp->cd_func)(argv_base);
 		if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
 			goto jret0;
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 		break;
 
 	case mx_CMD_ARG_TYPE_ARG:{
@@ -929,9 +944,11 @@ jmsglist_go:
 		cac.cac_msgflag = cdp->cd_mflags_o_minargs;
 		cac.cac_msgmask = cdp->cd_mmask_o_maxargs;
 		if(!mx_cmd_arg_parse(&cac, ((flags & a_IS_SKIP) != 0))){
-			flags |= a_NO_ERRNO;
+			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 
 		if(flags & a_LOCAL)
 			cac.cac_cm_local = TRU1;
@@ -943,6 +960,8 @@ jmsglist_go:
 		rv = (*cdp->cd_func)(&cac);
 		if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN)
 			goto jret0;
+		if(n_pstate & n_PS_GABBY_FUZZ)
+			flags |= a_IS_GABBY_FUZZ;
 		}break;
 
 	default:
@@ -956,8 +975,11 @@ jmsglist_go:
 	if(gecp->gec_hist_flags & a_GO_HIST_ADD){
 		if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
 			gecp->gec_hist_flags = a_GO_HIST_NONE;
-		else if((cdp->cd_caflags & mx_CMD_ARG_HGABBY) || (n_pstate & n_PS_MSGLIST_GABBY))
+		else if((cdp->cd_caflags & mx_CMD_ARG_HGABBY) || (flags & a_IS_GABBY_FUZZ)){
 			gecp->gec_hist_flags |= a_GO_HIST_GABBY;
+			if(flags & a_IS_GABBY_FUZZ)
+				gecp->gec_hist_flags |= a_GO_HIST_GABBY_FUZZ;
+		}
 	}
 
 	if(rv != 0){
@@ -1020,7 +1042,7 @@ jret:
 
 	NYD_OU;
 	return (rv == 0);
-}
+} /* }}} */
 
 static void
 a_go_hangup(int s){
@@ -1641,8 +1663,10 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 			ASSERT(cc != NIL);
 			mx_tty_addhist(cc, (mx_GO_INPUT_CTX_DEFAULT |
 				(gec.gec_hist_flags & a_GO_HIST_GABBY ? mx_GO_INPUT_HIST_GABBY : mx_GO_INPUT_NONE) |
+				(gec.gec_hist_flags & a_GO_HIST_GABBY_FUZZ
+					? mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_GABBY_FUZZ : mx_GO_INPUT_NONE) |
 				(gec.gec_hist_flags & a_GO_HIST_GABBY_ERROR
-						? mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_ERROR : mx_GO_INPUT_NONE)));
+					? mx_GO_INPUT_HIST_GABBY | mx_GO_INPUT_HIST_ERROR : mx_GO_INPUT_NONE)));
 		}
 
 		if((n_psonce & n_PSO_EXIT_MASK) || !rv)
