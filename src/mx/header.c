@@ -2301,7 +2301,8 @@ c_addrcodec(void *vp){
          s = n_string_push_c(s, c);
       }
 
-      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NULL)
+      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NIL &&
+            (np->n_flags & mx_NAME_ADDRSPEC_ISADDR))
          cp = np->n_fullname;
       else{
          n_pstate_err_no = su_ERR_INVAL;
@@ -2342,7 +2343,8 @@ c_addrcodec(void *vp){
             (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
          struct mx_name *np;
 
-         if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
+         if((np = n_extract_single(cp, GTO | GFULL)) != NIL &&
+               (np->n_flags & mx_NAME_ADDRSPEC_ISADDR)){
             s8 mltype;
 
             cp = np->n_name;
