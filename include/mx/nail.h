@@ -682,7 +682,6 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_indentprefix, /* {defval="\t"} */
 
    ok_b_keep, /* {i3val=TRU1} */
-   ok_b_keep_content_length,
    ok_b_keepsave, /* {i3val=TRU1} */
 
    ok_v_LANG, /* {vip=1,env=1,notempty=1} */

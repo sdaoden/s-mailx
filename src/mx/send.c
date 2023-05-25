@@ -656,14 +656,11 @@ jhdrput:
       /* If it is an ignored header, skip it */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
       /* C99 */{
-         if(hign || (doitp != NULL &&
-                  mx_ignore_is_ign(doitp, hlp->s_dat)) ||
+         if(hign || (doitp != NULL && mx_ignore_is_ign(doitp, hlp->s_dat)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
-               (action == SEND_MBOX &&
-                  (!su_cs_cmp_case(hlp->s_dat, "content-length") ||
-                   !su_cs_cmp_case(hlp->s_dat, "lines")) &&
-                !ok_blook(keep_content_length)))
+               !su_cs_cmp_case(hlp->s_dat, "content-length") ||
+               !su_cs_cmp_case(hlp->s_dat, "lines"))
             goto jhdrtrunc;
       }
 
