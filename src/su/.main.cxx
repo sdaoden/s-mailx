@@ -439,6 +439,7 @@ a_boswap(void){
 // cs_dict {{{
 static void a_cs_dict_(u16 addflags);
 static void a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]);
+template<class CSD> static void a_cs_dict__nilisvalo(CSD *cdp);
 
 static void
 a_cs_dict(void){
@@ -448,6 +449,20 @@ a_cs_dict(void){
 	a_cs_dict_(cs_dict<char const*>::f_strong |
 		cs_dict<char const*>::f_prime_spaced);
 	a_cs_dict_(cs_dict<char const*>::f_strong);
+
+	{
+		static type_toolbox<char const*> const xtb = su_TYPE_TOOLBOX_I9R(
+					R(type_toolbox<char const*>::clone_fun,0x1),
+					R(type_toolbox<char const*>::del_fun,0x2),
+					R(type_toolbox<char const*>::assign_fun,0x3),
+					NIL, NIL);
+
+		cs_dict<char const*, TRU1> cd1(&xtb, cs_dict<char const*, TRU1>::f_nil_is_valid_object);
+		a_cs_dict__nilisvalo(&cd1);
+
+		cs_dict<char const*> cd2(&xtb);
+		a_cs_dict__nilisvalo(&cd2);
+	}
 }
 
 static void
@@ -929,6 +944,107 @@ a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]){
 		if(cs::cmp(cdv.key(), "vk2"))
 			a_ERR();
 		if(cs::cmp(cdv.data(), "vv4"))
+			a_ERR();
+	}
+}
+
+template<class CSD>
+static void a_cs_dict__nilisvalo(CSD *cdp){
+	if(cdp->insert("one", NIL) != 0)
+		a_ERR();
+	else if(cdp->insert("two", NIL) != 0)
+		a_ERR();
+	else{
+		if(!cdp->has_key("one"))
+			a_ERR();
+		else if(cdp->lookup("one") != NIL)
+			a_ERR();
+		else if(!cdp->has_key("two"))
+			a_ERR();
+		else if(cdp->lookup("two") != NIL)
+			a_ERR();
+	}
+
+	if(cdp->replace("one", NIL) != -1)
+		a_ERR();
+	else if(cdp->replace("two", NIL) != -1)
+		a_ERR();
+	else{
+		if(!cdp->has_key("one"))
+			a_ERR();
+		else if((*cdp)["one"] != NIL)
+			a_ERR();
+		else if(!cdp->has_key("two"))
+			a_ERR();
+		else if((*cdp)["two"] != NIL)
+			a_ERR();
+	}
+
+	if(!cdp->remove("one"))
+		a_ERR();
+	else if(!cdp->remove("two"))
+		a_ERR();
+	else if(!cdp->is_empty())
+		a_ERR();
+	else if(cdp->count() != 0)
+		a_ERR();
+
+	//
+	typename CSD::view cdv(*cdp);
+
+	if(cdv.reset_insert("one", NIL) != 0)
+		a_ERR();
+	else if(cs::cmp(cdv.key(), "one"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.reset_insert("two", NIL) != 0)
+		a_ERR();
+	else if(cs::cmp(cdv.key(), "two"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else{
+		if(!cdv.find("one"))
+			a_ERR();
+		else if(cs::cmp(cdv.key(), "one"))
+			a_ERR();
+		else if(cdv.data() != NIL)
+			a_ERR();
+		else if(!cdv.find("two"))
+			a_ERR();
+		else if(cs::cmp(cdv.key(), "two"))
+			a_ERR();
+		else if(cdv.data() != NIL)
+			a_ERR();
+	}
+
+	if(cdv.reset_replace("one", NIL) != -1)
+		a_ERR();
+	else if(cs::cmp(cdv.key(), "one"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.reset_replace("two", NIL) != -1)
+		a_ERR();
+	else if(cs::cmp(cdv.key(), "two"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else{
+		if(!cdv.find("one"))
+			a_ERR();
+		else if(cs::cmp(cdv.key(), "one"))
+			a_ERR();
+		else if(cdv.data() != NIL)
+			a_ERR();
+		else if(!cdv.remove().find("two"))
+			a_ERR();
+		else if(cs::cmp(cdv.key(), "two"))
+			a_ERR();
+		else if(cdv.data() != NIL)
+			a_ERR();
+		else if(cdv.remove().is_valid())
 			a_ERR();
 	}
 }
