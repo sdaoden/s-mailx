@@ -748,7 +748,7 @@ a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp, struct a_mailcap
 
 	if(ins_or_nil != NIL)
 		*ins_or_nil = mchp;
-	else if(su_cs_dict_insert(a_mailcap_dp, mclsp->mcls_type_subtype, mchp) > 0)
+	else if(su_cs_dict_insert(a_mailcap_dp, mclsp->mcls_type_subtype, mchp) > su_ERR_NONE)
 		rv = TRUM1;
 
 jleave:

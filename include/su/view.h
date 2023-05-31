@@ -171,13 +171,13 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \list{\li{
  * \fn{s32 reset_insert(void const *key, void *dat)}:
  * Insert a new \a{key} / \a{value} pair in the parent.
- * If \a{key} already exists -1 is returned, but \fn{is_valid()} is true just
- * as for a successful insertion.
+ * Return \ERR{NONE} upon success, -1 if \a{key} already exists;
+ * \fn{is_valid()} shall be true in both cases.
  * }\li{
  * \fn{s32 reset_replace(void const *key, void *dat)}:
  * Insert a new, or update an existing \a{key} / \a{value} pair in the parent.
- * If an existing \a{key} has been updated -1 is returned, but \fn{is_valid()}
- * is true just as for insertion of a new \a{key}.
+ * Return \ERR{NONE} upon success, -1 if \a{key} already exists;
+ * \fn{is_valid()} shall be true in both cases.
  * }}
  *
  * \head2{Additions for non-associative unidirectional views}

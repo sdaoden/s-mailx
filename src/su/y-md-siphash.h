@@ -215,7 +215,7 @@ a_md_siphash_setup(struct su_siphash *self, const void *k){
 	self->sh_v2 = v2;
 	self->sh_v3 = v3;
 
-	return su_STATE_NONE;
+	return su_ERR_NONE;
 }
 
 SINLINE void

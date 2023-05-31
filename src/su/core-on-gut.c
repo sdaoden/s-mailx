@@ -84,7 +84,7 @@ su_state_on_gut_install(su_state_on_gut_fun hdl, boole is_final, u32 estate){
 	struct su__state_on_gut *sogp, **sogpp;
 	s32 rv;
 	NYD_IN;
-	ASSERT_NYD_EXEC(hdl != NIL, rv = -su_ERR_FAULT);
+	ASSERT_NYD_EXEC(hdl != NIL, rv = su_ERR_FAULT);
 
 	estate &= su_STATE_ERR_MASK;
 
@@ -106,9 +106,9 @@ su_state_on_gut_install(su_state_on_gut_fun hdl, boole is_final, u32 estate){
 
 		su__gnlck(su__GLCK_STATE);
 
-		rv = su_STATE_NONE;
+		rv = su_ERR_NONE;
 	}else
-		rv = su_STATE_ERR_NOMEM;
+		rv = su_ERR_NOMEM;
 
 	NYD_OU;
 	return rv;

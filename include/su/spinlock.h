@@ -120,7 +120,7 @@ INLINE s32 su_spinlock_create(struct su_spinlock *self, char const *dbg_name_or_
 #ifdef su__SPINLOCK_IS
 	self->sl_lck = 0;
 	DVLDBG( self->sl_name = dbg_name_or_nil; )
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 #else
 	rv = su_mutex_create(&self->sl_mtx, dbg_name_or_nil, estate);
 #endif

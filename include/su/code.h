@@ -8,6 +8,7 @@
  *@ - Some macros require su_FILE to be defined to a literal.
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
+ *@ TODO Better describe the state() bitmix
  *
  * Copyright (c) 2001 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -85,7 +86,8 @@
  * \list{\li{
  * \c{su-doc-strip.pl}: simple \c{perl(1)} program which strips \c{doxygen(1)}-style comments from all the given files.
  * }\li{
- * \c{su-doxygen.rc}: \c{doxygen(1)} configuration for \SU.  \c{doxygen mk/su-doxygen.rc} should generate documentation.
+ * \c{su-doxygen.rc}: \c{doxygen(1)} configuration for \SU.
+ * \c{doxygen mk/su-doxygen.rc} should generate documentation.
  * }\li{
  * \c{su-find-command.sh}: find an executable command within a POSIX shell.
  * Needed in a shipout.
@@ -145,7 +147,7 @@
   * }} */
 # define su_HAVE_MD
  /* TODO \r{MD_BLAKE2B} support available?
-  * RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
+  * RFC 7693: BLAKE2 Cryptographic Hash and Message Authentication Code (MAC); \c{SPDX-License-Identifier: CC0-1.0}.
   * Subfeature of \r{su_HAVE_MD}. */
 /*#  define su_HAVE_MD_BLAKE2B*/
 # define su_HAVE_MEM_BAG_AUTO /*!< \r{MEM_BAG}. */
@@ -1265,7 +1267,7 @@ enum su_state_log_flags{
  *
  * Often functions and objects allow additional control over the global on a by-call or by-object basis,
  * taking a state argument which consists of \c{su_state_err_type} and \r{su_state_err_flags} bits.
- * In order to support this these values do not form an enumeration, but rather are combinable bits. */
+ * These are combinable bits in the second byte (bits 9 to 16, value 256 to 32768, inclusive). */
 enum su_state_err_type{
 	su_STATE_ERR_NOMEM = 1u<<8, /*!< Out-of-memory. */
 	su_STATE_ERR_OVERFLOW = 1u<<9 /*!< Integer/xy domain overflow. */
@@ -1336,7 +1338,8 @@ enum su__state_flags{
 	su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
 	su__STATE_CREATED = 1u<<24,
 	/* What is not allowed in the global state machine */
-	su__STATE_GLOBAL_MASK = (su__STATE_CREATED - 1) & ~(su__STATE_LOG_MASK | (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
+	su__STATE_GLOBAL_MASK = (su__STATE_CREATED - 1) &
+			~(su__STATE_LOG_MASK | (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
 #ifndef DOXYGEN
 MCTA(S(uz,su_LOG_DEBUG) <= S(uz,su__STATE_LOG_MASK), "Bit ranges may not overlap")
@@ -1527,8 +1530,8 @@ EXPORT void su__gnlck(enum su__glck_type gt);
 /*! Initialize the \SU core (a more pleasant variant is \r{su_state_create()}).
  * If \a{name_or_nil} is given it will undergo a \c{basename(3)} operation and then be assigned to \r{su_program}.
  * \a{flags} may be a bitmix of what is allowed for \r{su_state_set()} and \r{su_log_set_level()}.
- * \ESTATE_RV, \r{su_STATE_ERR_NOPASS} might be of interest in particular.
- * Note \SU is not usable unless this returns \r{su_STATE_NONE}!
+ * \ESTATE_RV; \r{su_STATE_ERR_NOPASS} might be of interest in particular.
+ * Note \SU is not usable unless this returns \r{su_ERR_NONE}!
  * The following example initializes the library and emergency exits on error:
  *
  * \cb{
@@ -1537,7 +1540,7 @@ EXPORT void su__gnlck(enum su__glck_type gt);
  * }
  *
  * \remarks{This \b{must} be called \b{first}.
- * In threaded applications it must be called from the main thread of execution and before starting (non-\SU) threads,
+ * In threaded applications it must be called from the main thread of execution and before starting (\b{any}) threads,
  * even if, for example, \SU is only used in one specific worker thread.
  * For real MT \r{su_STATE_MT} is a required precondition.}
  *
@@ -1548,9 +1551,10 @@ EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
 /*! Like \r{su_state_create_core()}, but initializes many more subsystems according to \a{create_flags}.
  * Many subsystems need internal machineries which are initialized when needed first, an operation that may fail.
  * Because of this the public interface may generate errors that need to be handled, which may be undesireable.
- * If this function is used instead of \r{su_state_create_core()} then internals of a desired subset of subsystems
- * is initialized immediately, so that it can be asserted that these errors cannot occur. */
-EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate);
+ * If this function is used instead of \r{su_state_create_core()}, then internals of a desired subset of subsystems
+ * is initialized immediately, which asserts these errors cannot occur. */
+EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags,
+		u32 estate);
 
 /*! Tear down \SU according to \a{flags}.
  * This should be called upon normal program termination, from within the main and single thread of execution,
@@ -1646,7 +1650,8 @@ INLINE enum su_log_level su_log_get_level(void){
 	return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
 }
 
-/*! \_ */
+/*! \_
+ * Also see \r{su_state_get()}. */
 INLINE void su_log_set_level(enum su_log_level nlvl){ /* XXX maybe not state */
 	uz lvl;
 	su__glck(su__GLCK_STATE);
@@ -1756,10 +1761,11 @@ typedef void *(*su_new_fun)(u32 estate);
  * \r{su_err_number}s, of course.
  * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}.
  *
- * Many \SU functions take an \a{estate} parameter that has the same meaning as for this function.
- * However, many return a \r{su_s32}, which then either is \r{su_STATE_NONE} upon success, one of the
- * \r{su_state_err_type}s for hardening errors, or a negative \r{su_err_number} for "normal" errors.
- * (In \r{su_ASSERT()} enabled code even \c{-su_ERR_FAULT} may happen.)
+ * Many \SU functions take an \a{estate} parameter with the same meaning as here.
+ * Yet, many of those return a \r{su_s32}, which will be \r{su_ERR_NONE} upon success,
+ * or a \r{su_err_number} (maybe \r{su_state_err()} mapped \r{su_state_err_type}) on error
+ * (in \r{su_ASSERT()} enabled code even \ERR{FAULT} may happen);
+ * The negative value range may have meaning on a use-case base.
  * Those which do not usually set \r{su_err()}. */
 typedef void *(*su_clone_fun)(void const *t, u32 estate);
 
@@ -1784,10 +1790,10 @@ typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is \e less \e than \a{b}, 0 on equality, and a
  * value greater than 0 if \a{a} is \e greater \e than \a{b}. */
-typedef su_sz (*su_cmp_fun)(void const *a, void const *b);
+typedef sz (*su_cmp_fun)(void const *a, void const *b);
 
 /*! Create a hash that reproducibly represents \SELF. */
-typedef su_uz (*su_hash_fun)(void const *self);
+typedef uz (*su_hash_fun)(void const *self);
 
 /* Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}! */
 /*! A toolbox provides object handling knowledge to \r{COLL}.
@@ -2322,7 +2328,8 @@ struct type_toolbox{
 	/*! \copydoc{su_del_fun} */
 	typedef void (*del_fun)(typename type_traits::tp self);
 	/*! \copydoc{su_assign_fun} */
-	typedef typename type_traits::tp (*assign_fun)(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
+	typedef typename type_traits::tp (*assign_fun
+		)(typename type_traits::tp self, typename type_traits::tp_const t, u32 estate);
 	/*! \copydoc{su_cmp_fun} */
 	typedef sz (*cmp_fun)(typename type_traits::tp_const self, typename type_traits::tp_const t);
 	/*! \copydoc{su_hash_fun} */

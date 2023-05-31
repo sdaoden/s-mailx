@@ -195,7 +195,7 @@ jset_data:
 #endif
 					dp = a_ml_dp;
 
-				if(su_cs_dict_insert(dp, key, u.vp) > 0){
+				if(su_cs_dict_insert(dp, key, u.vp) > su_ERR_NONE){
 					n_err(_("%s: failed to create storage: %s\n"), n_shexp_quote_cp(key, FAL0));
 					notrv = 1;
 				}

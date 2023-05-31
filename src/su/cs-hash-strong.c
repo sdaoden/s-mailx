@@ -46,13 +46,13 @@ su_cs_hash_strong_setup(struct su_siphash const *tp, u32 estate){
 	s32 rv;
 	NYD_IN;
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	if(tp == NIL){
 		if(a_cshashstrong_t.sh_compress_rounds == 0){
 			su__glck_gi9r();
 			if(a_cshashstrong_t.sh_compress_rounds == 0 &&
-					(rv = su_random_builtin_generate(buf, sizeof buf, estate)) == su_STATE_NONE)
+					(rv = su_random_builtin_generate(buf, sizeof buf, estate)) == su_ERR_NONE)
 				rv = su_siphash_setup(&a_cshashstrong_t, buf);
 			su__gnlck_gi9r();
 		}
@@ -60,7 +60,7 @@ su_cs_hash_strong_setup(struct su_siphash const *tp, u32 estate){
 		tp = &a_cshashstrong_t;
 	}
 
-	if(rv == su_STATE_NONE)
+	if(rv == su_ERR_NONE)
 		a_cshashstrong_tp = tp;
 
 	NYD_OU;

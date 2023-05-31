@@ -31,7 +31,7 @@ su__mutex_os_create(struct su_mutex *self, u32 estate){
 	s32 rv;
 	UNUSED(estate);
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 	/* init self->mtx_.os */
 #ifndef su__MUTEX_SPIN
 	/* init self->mtx_.os_lck */

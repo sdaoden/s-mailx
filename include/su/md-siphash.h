@@ -83,7 +83,7 @@ struct su_siphash{
 /*! Setup a customized SipHash context.
  * \a{key} must be \r{su_SIPHASH_KEY_SIZE} bytes.
  * \a{crounds} and \a{drounds} may be given as 0, in which case the default values (2 and 4, respectively) are used.
- * Returns \r{su_STATE_NONE}. */
+ * Returns \r{su_ERR_NONE}. */
 EXPORT s32 su_siphash_setup_custom(struct su_siphash *self, void const *key, enum su_siphash_digest digest_type,
 		u8 crounds, u8 drounds);
 
