@@ -237,8 +237,8 @@ STA s32
 md::install(char const *name, md *(*ctor)(u32 estate), u32 estate){
 	s32 rv;
 	NYD_IN;
-	ASSERT_NYD_EXEC(name != NIL, rv = -err::efault);
-	ASSERT_NYD_EXEC(ctor != NIL, rv = -err::efault);
+	ASSERT_NYD_EXEC(name != NIL, rv = err::efault);
+	ASSERT_NYD_EXEC(ctor != NIL, rv = err::efault);
 
 	rv = su__md_install(name, &a_md_marshal_vtbl, R(su_new_fun,ctor), estate);
 

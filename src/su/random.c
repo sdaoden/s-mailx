@@ -150,7 +150,7 @@ a_random_init(u32 estate){
 	s32 rv;
 	NYD2_IN;
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	su__glck_gi9r();
 
@@ -159,35 +159,35 @@ a_random_init(u32 estate){
 
 		rndp = su_TCALLOCF(struct a_random_bltin, 1, (estate | su_MEM_ALLOC_CONCEAL));
 		if(rndp == NIL){
-			rv = su_STATE_ERR_NOMEM;
+			rv = su_ERR_NOMEM;
 			goto jleave;
 		}
 
 #ifdef su_USECASE_SU
-		if((rv = su_mutex_create(&rndp->rndb_cntrl_mtx, "SU random seed/cntrl", estate)) != su_STATE_NONE)
+		if((rv = su_mutex_create(&rndp->rndb_cntrl_mtx, "SU random seed/cntrl", estate)) != su_ERR_NONE)
 			goto jerrm1;
 
-		if((rv = su_mutex_create(&rndp->rndb_rand_mtx, "SU builtin random", estate)) != su_STATE_NONE)
+		if((rv = su_mutex_create(&rndp->rndb_rand_mtx, "SU builtin random", estate)) != su_ERR_NONE)
 			goto jerrm2;
 #endif
 
 		/* To reuse all the control flow we need to create the built-in seeder as
 		 * a _SP and adjust it to _VSP thereafter */
-		if((rv = a_random_create(&rndp->rndb_seed, su_RANDOM_TYPE_SP, estate)) != su_STATE_NONE)
+		if((rv = a_random_create(&rndp->rndb_seed, su_RANDOM_TYPE_SP, estate)) != su_ERR_NONE)
 			goto jerr1;
 		rndp->rndb_seed.rm_type = su_RANDOM_TYPE_VSP;
 		rndp->rndb_seed.rm_flags |= a_RANDOM_SEEDER;
 		rndp->rndb_seed.rm_reseed_after = a_RANDOM_RESEED_SEEDER_AFTER;
 
-		if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)) != su_STATE_NONE)
+		if((rv = a_random_create(&rndp->rndb_rand, su_RANDOM_TYPE_SP, estate)) != su_ERR_NONE)
 			goto jerr;
 		rndp->rndb_rand.rm_reseed_after = a_RANDOM_RESEED_AFTER;
 
-		if((rv = (su_STATE_NONE
+		if((rv = (su_ERR_NONE
 #ifdef su__STATE_ON_GUT_FUN
 					| su_state_on_gut_install(&a_random__on_gut, TRU1, estate)
 #endif
-				)) == su_STATE_NONE)
+				)) == su_ERR_NONE)
 			a_random_bltin = rndp;
 		else{
 			su_random_gut(&rndp->rndb_rand);
@@ -248,7 +248,7 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
 		u.rgf = a_random_vsp_generate;
 		if((self->rm_vp = u.vp) != NIL){
 			self->rm_flags = a_RANDOM_HOOK;
-			rv = su_STATE_NONE;
+			rv = su_ERR_NONE;
 			break;
 		}
 		}
@@ -261,16 +261,16 @@ a_random_create(struct su_random *self, enum su_random_type type, u32 estate){
 		if((self->rm_vp = su_TCALLOCF(union a_random_dat, 1, (estate | su_MEM_ALLOC_CONCEAL))) != NIL){
 			if(type == su_RANDOM_TYPE_R)
 				self->rm_flags |= a_RANDOM_REPRO;
-			rv = su_STATE_NONE;
+			rv = su_ERR_NONE;
 		}else{
 			self->rm_type = su_RANDOM_TYPE_NONE;
-			rv = su_STATE_ERR_NOMEM;
+			rv = su_ERR_NOMEM;
 		}
 		break;
 	default:
 		FALLTHRU
 	case su_RANDOM_TYPE_NONE:
-		rv = su_STATE_NONE;
+		rv = su_ERR_NONE;
 		break;
 	}
 
@@ -600,9 +600,9 @@ su_random_vsp_install(su_random_generate_fun on_generate, u32 estate){
 		on_generate = &su_RANDOM_HOOK_FUN;
 #endif
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
-	if(a_random_bltin != NIL || (rv = a_random_init(estate)) == su_STATE_NONE)
+	if(a_random_bltin != NIL || (rv = a_random_init(estate)) == su_ERR_NONE)
 		a_random_vsp_generate = on_generate; /* unlocked */
 
 	NYD_OU;
@@ -613,12 +613,12 @@ s32
 su_random_builtin_generate(void *buf, uz len, u32 estate){
 	s32 rv;
 	NYD_IN;
-	ASSERT_NYD_EXEC(len == 0 || buf != NIL, rv = su_STATE_NONE);
+	ASSERT_NYD_EXEC(len == 0 || buf != NIL, rv = su_ERR_NONE);
 
-	if(a_random_bltin == NIL && (rv = a_random_init(estate)) != su_STATE_NONE)
+	if(a_random_bltin == NIL && (rv = a_random_init(estate)) != su_ERR_NONE)
 		goto jleave;
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	if(len > 0){
 		SU( su_MUTEX_LOCK(&a_random_bltin->rndb_rand_mtx); )
@@ -638,7 +638,7 @@ su_random_builtin_seed(boole seeder){
 	boole rv;
 	NYD_IN;
 
-	if(a_random_bltin == NIL && a_random_init(su_STATE_ERR_PASS) != su_STATE_NONE){
+	if(a_random_bltin == NIL && a_random_init(su_STATE_ERR_PASS) != su_ERR_NONE){
 		rv = FAL0;
 		goto jleave;
 	}
@@ -665,7 +665,7 @@ su_random_builtin_set_reseed_after(boole seeder, u32 reseed_after){
 	boole rv;
 	NYD_IN;
 
-	rv = (a_random_bltin != NIL || a_random_init(su_STATE_ERR_PASS) == su_STATE_NONE);
+	rv = (a_random_bltin != NIL || a_random_init(su_STATE_ERR_PASS) == su_ERR_NONE);
 
 	if(rv)
 		(seeder ? &a_random_bltin->rndb_seed : &a_random_bltin->rndb_rand)->rm_reseed_after = reseed_after;

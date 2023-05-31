@@ -127,7 +127,7 @@ INLINE char const *su_md_display_name(struct su_md const *self){
  * This function must be called before \r{su_md_update()} and \r{su_md_end()} are usable. */
 INLINE s32 su_md_setup(struct su_md *self, void const *key, uz key_len, uz digest_size){
 	ASSERT(self);
-	ASSERT_RET(key_len == 0 || key != NIL, -su_ERR_FAULT);
+	ASSERT_RET(key_len == 0 || key != NIL, su_ERR_FAULT);
 	return (*self->md_vtbl->mdvtbl_setup)(self->md_vp, key, key_len, digest_size);
 }
 
@@ -153,8 +153,8 @@ INLINE void su_md_end(struct su_md *self, void *store){
  * \ESTATE_RV.
  * Nothing prevents multiple installations of \a{name} and/or \a{vtblp}; the last one installed will be found first. */
 INLINE s32 su_md_install(char const *name, struct su_md_vtbl const *vtblp, u32 estate){
-	ASSERT_RET(name != NIL, -su_ERR_FAULT);
-	ASSERT_RET(vtblp != NIL, -su_ERR_FAULT);
+	ASSERT_RET(name != NIL, su_ERR_FAULT);
+	ASSERT_RET(vtblp != NIL, su_ERR_FAULT);
 	return su__md_install(name, vtblp, NIL, estate);
 }
 

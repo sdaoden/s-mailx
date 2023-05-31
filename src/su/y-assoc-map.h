@@ -139,7 +139,7 @@ jerr:
 		self->a_T_F(count) = 0;
 	}
 
-	ASSERT_NYD_EXEC(t != NIL, rv = -su_ERR_FAULT);
+	ASSERT_NYD_EXEC(t != NIL, rv = su_ERR_FAULT);
 
 	if(flags_and_tbox){
 		self->a_T_F(flags) = t->a_T_F(flags);
@@ -183,7 +183,7 @@ jerr:
 				la.la_klen = tnp->a_N_F(klen);
 # endif
 				rv = a_FUN(node_new)(self, &np, &la, tnp->a_N_F(key), tnp->a_N_F(data));
-				if(UNLIKELY(rv != 0))
+				if(UNLIKELY(rv != su_ERR_NONE))
 					goto jerr;
 			}
 		}

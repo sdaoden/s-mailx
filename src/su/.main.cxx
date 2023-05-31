@@ -1654,7 +1654,7 @@ static s32
 a_md__setup(void *self, void const *k, uz kl, uz ds){
 	s32 rv;
 	if(kl != su_SIPHASH_KEY_SIZE || ds != su_SIPHASH_DIGEST_SIZE_64)
-		rv = su_ERR_INVAL;
+		rv = err::einval;
 	else
 		rv = su_siphash_setup(S(struct su_siphash*,self), k);
 	return rv;
@@ -1713,7 +1713,7 @@ a_md(void){
 	if((mdp = md::new_by_name("sade")) != NIL)
 		a_ERR();
 
-	if(su_md_install("sade", &a_md__sade, su_STATE_NONE) != su_STATE_NONE)
+	if(su_md_install("sade", &a_md__sade, su_STATE_NONE) != su_ERR_NONE)
 		a_ERR();
 	{
 		a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
@@ -1725,7 +1725,7 @@ a_md(void){
 	if((mdp = md::new_by_name("sade")) != NIL)
 		a_ERR();
 
-	if(md::install("sade", &a_md__sade::create, su_STATE_NONE) != su_STATE_NONE)
+	if(md::install("sade", &a_md__sade::create, state::none) != err::enone)
 		a_ERR();
 	{
 		a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>

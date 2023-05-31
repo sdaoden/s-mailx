@@ -337,6 +337,7 @@ jeval:
 				}
 
 				if((rv = su_cs_dict_view_reset_insert(&csdv, nsp->s_dat, maap)) != su_ERR_NONE){
+					ASSERT(rv > 0);
 					n_err(_("*mta_aliases*: failed to create storage: %s\n"), su_err_doc(rv));
 					goto jdone;
 				}

@@ -228,6 +228,7 @@ jenotinput:
 				s32 err;
 
 				if((err = su_cs_dict_insert(a_netrc_dp, machine, nrcep)) != su_ERR_NONE){
+					ASSERT(err > 0);
 					emsg = su_err_doc(err);
 					goto jerr;
 				}

@@ -161,14 +161,13 @@ su__md_init(u32 estate){
 	s32 rv;
 	NYD2_IN;
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	su__glck_gi9r();
 
-	if(a_md_lock == NIL &&
-			(rv = su_mutex_create(&a_md__lockbuf, "SU M(essage) D(igest) DB", estate)) == su_STATE_NONE){
+	if(a_md_lock == NIL && (rv = su_mutex_create(&a_md__lockbuf, "SU M(essage) D(igest) DB", estate)) == su_ERR_NONE){
 #ifdef su__STATE_ON_GUT_FUN
-		if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)) != su_STATE_NONE)
+		if((rv = su_state_on_gut_install(&a_md__on_gut, TRU1, estate)) != su_ERR_NONE)
 			su_mutex_gut(&a_md__lockbuf);
 		else
 #endif
@@ -187,9 +186,9 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp, su_new_fun cxx_
 	s32 rv;
 	NYD_IN;
 
-	if(a_md_lock == NIL && (rv = su__md_init(estate)) != su_STATE_NONE){
+	if(a_md_lock == NIL && (rv = su__md_init(estate)) != su_ERR_NONE){
 	}else if((mdlp = su_TALLOCF(struct a_md_list, 1, su_MEM_ALLOC_MAYFAIL)) == NIL)
-		rv = -su_err();
+		rv = su_err();
 	else{
 		su_MUTEX_LOCK(a_md_lock);
 		mdlp->mdl_last = a_md_list;
@@ -198,7 +197,7 @@ su__md_install(char const *name, struct su_md_vtbl const *vtblp, su_new_fun cxx_
 		mdlp->mdl_cxx_it = cxx_it;
 		a_md_list = mdlp;
 		su_MUTEX_UNLOCK(a_md_lock);
-		rv = su_STATE_NONE;
+		rv = su_ERR_NONE;
 	}
 
 	NYD_OU;
