@@ -39,14 +39,14 @@ s32
 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate){
 	s32 rv;
 
-	if((rv = su_state_create_core(name_or_nil, flags, estate)) != su_STATE_NONE)
+	if((rv = su_state_create_core(name_or_nil, flags, estate)) != su_ERR_NONE)
 		goto jleave;
 
 #undef a_V1
 #define a_V1(X) ((X) | su_STATE_CREATE_V1 | su_STATE_CREATE_ALL)
 
 	if(create_flags & a_V1(su_STATE_CREATE_RANDOM)){
-		if((rv = su_random_vsp_install(NIL, estate)) != su_STATE_NONE)
+		if((rv = su_random_vsp_install(NIL, estate)) != su_ERR_NONE)
 			goto jleave;
 #if DVLDBGOR(1, 0)
 		if(!(create_flags & a_V1(su__STATE_CREATE_RANDOM_MEM_FILLER)))
@@ -62,7 +62,7 @@ su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *
 	if(create_flags & a_V1(su__STATE_CREATE_RANDOM_MEM_FILLER)){
 		u8 mf;
 
-		if((rv = su_random_builtin_generate(&mf, sizeof(mf), estate)) != su_STATE_NONE)
+		if((rv = su_random_builtin_generate(&mf, sizeof(mf), estate)) != su_ERR_NONE)
 			goto jleave;
 
 		/* The patterns 0 and -1 are more likely to reveal problems */
@@ -76,7 +76,7 @@ su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *
 #endif
 
 #if defined su_HAVE_MD && !defined su_USECASE_MX
-	if((create_flags & a_V1(su_STATE_CREATE_MD)) && (rv = su__md_init(estate)) != su_STATE_NONE)
+	if((create_flags & a_V1(su_STATE_CREATE_MD)) && (rv = su__md_init(estate)) != su_ERR_NONE)
 		goto jleave;
 #endif
 

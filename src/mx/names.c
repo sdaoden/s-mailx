@@ -1174,9 +1174,10 @@ c_alias(void *vp){
 
       if(exists){
          su_cs_dict_view_set_data(&dv, head);
-         rv = !TRU1;
+         rv = su_EX_OK;
       }else
-         rv = !(su_cs_dict_insert(a_nm_alias_dp, key, head) == 0);
+         rv = (su_cs_dict_insert(a_nm_alias_dp, key, head) == su_ERR_NONE)
+               ? su_EX_OK : su_EX_ERR;
    }
 
 jleave:

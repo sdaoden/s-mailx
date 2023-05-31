@@ -173,9 +173,9 @@ INLINE s32 su_mutex_create(struct su_mutex *self, char const *name_or_nil, u32 e
 	UNUSED(estate);
 	FIELD_RANGE_ZERO(struct su_mutex, self, mtx_.lck, mtx_.file);
 	self->mtx_.name = name_or_nil;
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 	MT(
-		if((rv = su__mutex_os_create(self, estate)) == su_STATE_NONE)
+		if((rv = su__mutex_os_create(self, estate)) == su_ERR_NONE)
 			self->mtx_.flags |= su_MUTEX_INIT;
 	)
 	return rv;

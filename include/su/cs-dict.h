@@ -169,8 +169,8 @@ EXPORT SHADOW struct su_cs_dict *su_cs_dict_create_copy(struct su_cs_dict *self,
 /*! Destructor. */
 EXPORT void su_cs_dict_gut(struct su_cs_dict *self);
 
-/*! Assign \a{t}, and return 0 on success or, depending on the \r{su_CS_DICT_ERR_PASS} setting,
-  * the corresponding \r{su_state_err()} (also see \r{su_clone_fun}).
+/*! Assign \a{t}, and return 0 on success or, also dependend on \r{su_CS_DICT_ERR_PASS}, a \r{su_err_number}.
+ * (Also see \r{su_clone_fun}.)
  * \remarks{The element order of \SELF and \a{t} may not be identical.}
  * \copydoc{su_assign_fun} */
 EXPORT s32 su_cs_dict_assign(struct su_cs_dict *self, struct su_cs_dict const *t);
@@ -273,13 +273,13 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self, struct
 	return self;
 }
 
-/*! Resize the management table to accommodate for \a{xcount} elements.
- * Calculate the new size as via \r{su_cs_dict_set_threshold_shift}.
- * The \r{su_CS_DICT_FROZEN} state is ignored, but possibly needs to be set to
- * avoid an immediate automatic resize upon the next insertion (and removal, if \r{su_CS_DICT_AUTO_SHRINK} is set).
- * Returns -1 if no action was performed, \ERR{NONE} upon successful resize, or a \r{su_err_number}
- * (including, also depending on the setting of \r{su_CS_DICT_ERR_PASS}, a corresponding \r{su_state_err()}).
- * In the latter case no action has been performed. */
+/*! Resize management table to accommodate for \a{xcount} elements.
+ * Calculates new size as via \r{su_cs_dict_set_threshold_shift}.
+ * The \r{su_CS_DICT_FROZEN} state is ignored, but can avoid an automatic resize upon the next insertion
+ * (or removal with \r{su_CS_DICT_AUTO_SHRINK}).
+ * Returns -1 if no action was performed, \ERR{NONE} upon successful resize,
+ * or (also dependent on \r{su_CS_DICT_ERR_PASS}) a \r{su_err_number}.
+ * In error cases no action has been performed. */
 EXPORT s32 su_cs_dict_resize(struct su_cs_dict *self, u32 xcount);
 
 /*! Thaw and balance \a{self}.
@@ -305,22 +305,20 @@ INLINE void *su_cs_dict_lookup(struct su_cs_dict *self, char const *key){
 }
 
 /*! Insert a new \a{key} mapping to \a{value}.
- * Returns 0 upon successful insertion, -1 if \a{key} already exists (use \r{su_cs_dict_replace()} if you want to
- * insert or update a value), or a \r{su_err_number} (including, also depending on the setting of
- * \r{su_CS_DICT_ERR_PASS}, a corresponding \r{su_state_err()}).
- * If \a{value} is \NIL (after cloning) and \r{su_CS_DICT_OWNS} is set and
- * \r{su_CS_DICT_NIL_IS_VALID_OBJECT} is not, \ERR{INVAL} is returned. */
+ * Returns \ERR{NONE} upon successful insertion, -1 if \a{key} already exists (\r{su_cs_dict_replace()} also updates
+ * \a{value}), or (also dependent on \r{su_CS_DICT_ERR_PASS}) a \r{su_err_number}.
+ * If \a{value} is \NIL (after cloning) and \r{su_CS_DICT_OWNS} is set and \r{su_CS_DICT_NIL_IS_VALID_OBJECT} is not,
+ * \ERR{INVAL} is returned. */
 INLINE s32 su_cs_dict_insert(struct su_cs_dict *self, char const *key, void *value){
 	ASSERT(self);
-	ASSERT_RET(key != NIL, 0);
+	ASSERT_RET(key != NIL, su_ERR_NONE);
 	return su__cs_dict_insrep(self, key, value, FAL0);
 }
 
 /*! Insert a new, or update an existing \a{key} mapping to \a{value}.
- * Returns 0 upon successful insertion of a new \a{key}, -1 upon update of an existing \a{key},
- * or a \r{su_err_number} (including, also depending on the setting of \r{su_CS_DICT_ERR_PASS},
- * a corresponding \r{su_state_err()}).
- * If \a{value} is \NIL and \r{su_CS_DICT_OWNS} is set and \r{su_CS_DICT_NIL_IS_VALID_OBJECT} is not,
+ * Returns \ERR{NONE} upon successful insertion, -1 if \a{key} already existed and \a{value} was updated,
+ * or (also dependent on \r{su_CS_DICT_ERR_PASS}) a \r{su_err_number}.
+ * If \a{value} is \NIL (after cloning) and \r{su_CS_DICT_OWNS} is set and \r{su_CS_DICT_NIL_IS_VALID_OBJECT} is not,
  * \ERR{INVAL} is returned.
  *
  * \remarks{When \SELF owns its values and \r{su_CS_DICT_NILISVALO} is set,
@@ -331,7 +329,7 @@ INLINE s32 su_cs_dict_insert(struct su_cs_dict *self, char const *key, void *val
  * to create a duplicate of \a{value}, then the old value will remain unchanged and this function fails.} */
 INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key, void *value){
 	ASSERT(self);
-	ASSERT_RET(key != NIL, 0);
+	ASSERT_RET(key != NIL, su_ERR_NONE);
 	return su__cs_dict_insrep(self, key, value, TRU1);
 }
 
@@ -472,19 +470,19 @@ INLINE struct su_cs_dict_view *su_cs_dict_view_next(struct su_cs_dict_view *self
 EXPORT boole su_cs_dict_view_find(struct su_cs_dict_view *self, char const *key);
 
 /*! See \r{su_cs_dict_insert()}.
- * Upon success 0 is returned and \r{su_cs_dict_view_is_valid()} will be true.
+ * Upon success \ERR{NONE} is returned and \r{su_cs_dict_view_is_valid()} will be true.
  * It is also true if -1 is returned because an existing \a{key} has not been updated. */
 INLINE s32 su_cs_dict_view_reset_insert(struct su_cs_dict_view *self, char const *key, void *value){
 	ASSERT(self);
-	ASSERT_RET(key != NIL, 0);
+	ASSERT_RET(key != NIL, su_ERR_NONE);
 	return su__cs_dict_insrep(self->csdv_parent, key, value, FAL0 | R(up,self));
 }
 
 /*! See \r{su_cs_dict_replace()}.
- * Upon success 0 or -1 is returned and \r{su_cs_dict_view_is_valid()}. */
+ * Upon success \ERR{NONE} or -1 is returned and \r{su_cs_dict_view_is_valid()}. */
 INLINE s32 su_cs_dict_view_reset_replace(struct su_cs_dict_view *self, char const *key, void *value){
 	ASSERT(self);
-	ASSERT_RET(key != NIL, 0);
+	ASSERT_RET(key != NIL, su_ERR_NONE);
 	return su__cs_dict_insrep(self->csdv_parent, key, value, TRU1 | R(up,self));
 }
 

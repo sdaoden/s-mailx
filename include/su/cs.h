@@ -235,7 +235,7 @@ INLINE uz su_cs_hash_case(char const *cp){
  * \remarks{The built-in template is setup only once, but which may fail since the used
  * \r{su_random_builtin_generate()} can: implicit lazy initialization via the hash creators themselve pass
  * \r{su_STATE_ERR_NOPASS} as \a{estate}!
- * \ESTATE_RV; setup is incomplete unless this returns \r{su_STATE_NONE}.}
+ * \ESTATE_RV; setup is incomplete unless this returns \r{su_ERR_NONE}.}
  *
  * \remarks{Only available with \r{su_HAVE_MD}.
  * As of today this uses \r{MD_SIPHASH} with endianess-adjusted 64-bit output;

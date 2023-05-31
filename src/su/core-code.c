@@ -284,7 +284,7 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
 	s32 rv;
 	UNUSED(estate);
 
-	rv = su_STATE_NONE;
+	rv = su_ERR_NONE;
 
 	flags &= (su__STATE_GLOBAL_MASK | su__STATE_LOG_MASK);
 	su__state = flags;
@@ -305,17 +305,17 @@ su_state_create_core(char const *program_or_nil, uz flags, u32 estate){
 #endif
 
 #ifdef su_USECASE_SU
-	if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)))
+	if((rv = su_spinlock_create(&a_core_glck_state, "SU: GLCK_STATE", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)))
+	if((rv = su_mutex_create(&a_core_glck_gi9r, "SU: GLCK_GI9R", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)))
+	if((rv = su_mutex_create(&a_core_glck_log, "SU: GLCK_LOG", estate)) != su_ERR_NONE)
 		goto jerr;
 
 # if !su_ATOMIC_IS_REAL
-	if((rv = su_mutex_create(&su__atomic_cas_mtx, "SU: atomic CAS", estate)))
+	if((rv = su_mutex_create(&su__atomic_cas_mtx, "SU: atomic CAS", estate)) != su_ERR_NONE)
 		goto jerr;
-	if((rv = su_mutex_create(&su__atomic_xchg_mtx, "SU: atomic XCHG", estate)))
+	if((rv = su_mutex_create(&su__atomic_xchg_mtx, "SU: atomic XCHG", estate)) != su_ERR_NONE)
 		goto jerr;
 # endif
 #endif
@@ -340,11 +340,19 @@ jleave:
 
 #ifdef su_USECASE_SU
 jerr:
-	if(!(estate & su_STATE_ERR_PASS) &&
-			((estate & su_STATE_ERR_NOPASS) || !(S(u32,rv) & estate) || !(su__state & S(u32,rv)))){
-		abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
+	if(!(estate & su_STATE_ERR_NOPASS)){
+		u32 s;
+
+		if((estate & su_STATE_ERR_PASS) == su_STATE_ERR_PASS)
+			goto jleave;
+		/* That "backward mapping" is a bit disappointing */
+		s = (rv == su_ERR_NOMEM) ? su_STATE_ERR_NOMEM : su_STATE_ERR_OVERFLOW;
+		if(estate & s)
+			goto jleave;
+		if(su__state & s)
+			goto jleave;
 	}
-	goto jleave;
+	abort(); /* TODO configurable; NO ERROR LOG WHATSOEVER HERE!! */
 #endif
 }
 
