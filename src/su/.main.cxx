@@ -1654,7 +1654,7 @@ static s32
 a_md__setup(void *self, void const *k, uz kl, uz ds){
 	s32 rv;
 	if(kl != su_SIPHASH_KEY_SIZE || ds != su_SIPHASH_DIGEST_SIZE_64)
-		rv = err::einval;
+		rv = err::inval;
 	else
 		rv = su_siphash_setup(S(struct su_siphash*,self), k);
 	return rv;
@@ -1725,7 +1725,7 @@ a_md(void){
 	if((mdp = md::new_by_name("sade")) != NIL)
 		a_ERR();
 
-	if(md::install("sade", &a_md__sade::create, state::none) != err::enone)
+	if(md::install("sade", &a_md__sade::create, state::none) != err::none)
 		a_ERR();
 	{
 		a_md__test<siphash::key_size, siphash::digest_size_64, NELEM(a_siphash_t64), struct a_siphash_t64>
@@ -1819,7 +1819,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 			in[j] = j;
 
 		// once
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
@@ -1830,7 +1830,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 			a_ERR();
 
 		// bytewise
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
@@ -1842,7 +1842,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 			a_ERR();
 
 		// 2-bytewise
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
@@ -1856,7 +1856,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 			a_ERR();
 
 		// 3-bytewise
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
@@ -1872,7 +1872,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 		// blockwise
 		uz blk = mdp->property(mdp->prop_block_size);
 
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
@@ -1887,7 +1887,7 @@ a_md__test(char const *name, md *mdp, TDAT const *tdat){ // {{{
 
 		// ... blockwise + 1
 		++blk;
-		if(mdp->setup(key, KSZ, DGSTSZ) != err::enone){
+		if(mdp->setup(key, KSZ, DGSTSZ) != err::none){
 			a_ERR();
 			goto jleave;
 		}
