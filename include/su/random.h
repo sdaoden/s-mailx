@@ -254,7 +254,7 @@ public:
 
 	/*! \copydoc{su_random_builtin_generate()} */
 	static s32 builtin_generate(void *buf, uz len, u32 estate=state::none){
-		ASSERT_RET(buf != NIL || len == 0, err::efault);
+		ASSERT_RET(buf != NIL || len == 0, err::fault);
 		return su_random_builtin_generate(buf, len, estate);
 	}
 

@@ -400,7 +400,7 @@ public:\
 		return type_traits::to_tp(m_view.data());\
 	}\
 	s32 set_data(tp dat){\
-		ASSERT_RET(is_valid(), err::einval);\
+		ASSERT_RET(is_valid(), err::inval);\
 		return m_view.set_data(type_traits::to_vp(dat));\
 	}\
 	tp operator*(void) {return data();}\
@@ -437,15 +437,15 @@ public:\
 #define su__VIEW_IMPL_NONASSOC
 
 #define su__VIEW_IMPL_NONASSOC_NONCONST /*{{{*/\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 insert(tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.insert(type_traits::to_vp(dat));\
 	}\
 	s32 insert(base &startpos, base const &endpos){\
-		ASSERT_RET(is_setup(), err::einval);\
-		ASSERT_RET(startpos.is_valid(), err::einval);\
-		ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
+		ASSERT_RET(startpos.is_valid(), err::inval);\
+		ASSERT_RET(!endpos.is_valid() || startpos.is_same_parent(endpos), err::inval);\
 		if(DVLDBGOR(1, 0)){\
 			if(is_same_parent(startpos)){\
 				myself v(startpos);\
@@ -454,11 +454,11 @@ public:\
 						if(v == endpos)\
 							break;\
 						else if(!v || v == *this)\
-							return err::einval;\
+							return err::inval;\
 				}else{\
 					for(; v; ++v)\
 						if(v == *this)\
-							return err::einval;\
+							return err::inval;\
 				}\
 			}\
 		}\
@@ -483,14 +483,14 @@ public:\
 /*}}}*/
 
 #define su__VIEW_IMPL_ASSOC_NONCONST /*{{{*/\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 reset_insert(key_tp_const key, tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.reset_insert(key_type_traits::to_const_vp(key), type_traits::to_vp(dat));\
 	}\
-	/* err::enone or error */\
+	/* err::none or error */\
 	s32 reset_replace(key_tp_const key, tp dat){\
-		ASSERT_RET(is_setup(), err::einval);\
+		ASSERT_RET(is_setup(), err::inval);\
 		return m_view.reset_replace(key_type_traits::to_const_vp(key), type_traits::to_vp(dat));\
 	}\
 /*}}}*/

@@ -147,7 +147,7 @@ namespace{
 		OVRX(s32 setup(void const *key, uz key_len, uz digest_size)){
 			s32 rv;
 			NYD_IN;
-			ASSERT_NYD_EXEC(key_len == 0 || key != NIL, rv = err::efault);
+			ASSERT_NYD_EXEC(key_len == 0 || key != NIL, rv = err::fault);
 
 			rv = su_md_setup(m_md, key, key_len, digest_size);
 
@@ -237,8 +237,8 @@ STA s32
 md::install(char const *name, md *(*ctor)(u32 estate), u32 estate){
 	s32 rv;
 	NYD_IN;
-	ASSERT_NYD_EXEC(name != NIL, rv = err::efault);
-	ASSERT_NYD_EXEC(ctor != NIL, rv = err::efault);
+	ASSERT_NYD_EXEC(name != NIL, rv = err::fault);
+	ASSERT_NYD_EXEC(ctor != NIL, rv = err::fault);
 
 	rv = su__md_install(name, &a_md_marshal_vtbl, R(su_new_fun,ctor), estate);
 
