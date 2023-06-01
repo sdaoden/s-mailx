@@ -752,7 +752,8 @@ do if(!(X)){\
  * Since compilers expect enumerations to represent a single value, a normal integer is often used to store the bit
  * flags that are, effectively, part of a bit enumeration.
  * This macro awaits a future ISO C bit-enumeration: \a{X} is the pod used until then, \a{Y} the name of the
- * enumeration that is really meant. */
+ * enumeration that is really meant.
+ * \remarks{Also (mis)used to ensure a certain integer type(-size) is actually used for \c{enum} storage.} */
 #define su_BITENUM_IS(X,Y) X /* enum Y */
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
@@ -1930,11 +1931,13 @@ public:
 /*! \_ */
 class err{ // {{{
 public:
-	/*! \copydoc{su_err_number} */
+	/*! \copydoc{su_err_number}.
+	 * \remarks{The C++ variant uses lowercased names; those with non-alphabetic first bytes gain an \c{e} prefix,
+	 * for example \c{su_ERR_2BIG} becomes \c{err::e2big}}. */
 	enum number{
 #ifdef DOXYGEN
-		enone, /*!< No error. */
-		enotobacco /*!< No such errno, fallback: no mapping exists. */
+		none, /*!< No error. */
+		notobacco /*!< No such errno, fallback: no mapping exists. */
 #else
 		su__CXX_ERR_NUMBER_ENUM
 # undef su__CXX_ERR_NUMBER_ENUM
