@@ -690,7 +690,7 @@ jeflags:
 
 	if((cdp->cd_caflags & mx_CMD_ARG_O) &&/* XXX Remove! -> within cmd! */ !su_state_has(su_STATE_REPRODUCIBLE)){
 		if(UNLIKELY(a_go_obsol == NIL)){
-			a_go_obsol = su_cs_dict_set_threshold_shift(su_cs_dict_create(&a_go__obsol,
+			a_go_obsol = su_cs_dict_set_threshold(su_cs_dict_create(&a_go__obsol,
 						(su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
 			DVL( su_state_on_gut_install(&a_go__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
