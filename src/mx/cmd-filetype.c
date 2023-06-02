@@ -44,7 +44,7 @@
 /* ..of a_ft_dp */
 #define a_FT_FLAGS \
 	(su_CS_DICT_OWNS | su_CS_DICT_CASE | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_FT_THRESHOLD_SHIFT 4
+#define a_FT_THRESHOLD 4
 
 struct a_ft_dat{
 	struct str ftd_load;
@@ -211,8 +211,8 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
 		}
 	}else{
 		if(a_ft_dp == NIL){
-			a_ft_dp = su_cs_dict_set_threshold_shift(su_cs_dict_create(&a_ft__d, a_FT_FLAGS, &a_ft_tbox),
-					a_FT_THRESHOLD_SHIFT);
+			a_ft_dp = su_cs_dict_set_threshold(su_cs_dict_create(&a_ft__d, a_FT_FLAGS, &a_ft_tbox),
+					a_FT_THRESHOLD);
 			DVL( su_state_on_gut_install(&a_ft__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
 
