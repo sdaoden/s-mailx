@@ -53,7 +53,7 @@ su_EMPTY_FILE()
 
 /* Dictionary stores a_mailcap_hdl* list, not owned */
 #define a_MAILCAP_CSD_FLAGS (su_CS_DICT_CASE | su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS)
-#define a_MAILCAP_CSD_THRESHOLD_SHIFT 3
+#define a_MAILCAP_CSD_THRESHOLD 3
 
 /* Must be alphabetical */
 enum a_mailcap_sfields{
@@ -160,8 +160,8 @@ a_mailcap_create(void){
 	char *cp_base, *cp;
 	NYD_IN;
 
-	a_mailcap_dp = su_cs_dict_set_threshold_shift(su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
-			a_MAILCAP_CSD_THRESHOLD_SHIFT);
+	a_mailcap_dp = su_cs_dict_set_threshold(su_cs_dict_create(&a_mailcap__d, a_MAILCAP_CSD_FLAGS, NIL),
+			a_MAILCAP_CSD_THRESHOLD);
 	DVL( su_state_on_gut_install(&a_mailcap__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 
 	if(*(cp_base = UNCONST(char*,ok_vlook(MAILCAPS))) == '\0')

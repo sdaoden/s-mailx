@@ -440,6 +440,7 @@ a_boswap(void){
 static void a_cs_dict_(u16 addflags);
 static void a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]);
 template<class CSD> static void a_cs_dict__nilisvalo(CSD *cdp);
+static void a_cs_dict_dspc(void);
 
 static void
 a_cs_dict(void){
@@ -463,10 +464,12 @@ a_cs_dict(void){
 		cs_dict<char const*> cd2(&xtb);
 		a_cs_dict__nilisvalo(&cd2);
 	}
+
+	a_cs_dict_dspc();
 }
 
 static void
-a_cs_dict_(u16 addflags){
+a_cs_dict_(u16 addflags){ // {{{
 	{
 		cs_dict<char const*> cd(NIL, addflags);
 		char const *k[3];
@@ -557,7 +560,7 @@ a_cs_dict_(u16 addflags){
 	cs_dict<NSPC(su)up,FAL0> cdu(NIL, addflags);
 	cs_dict<char*,TRU1> cdo(auto_type_toolbox<char*>::get_instance());
 
-	cdo.set_threshold_shift(4).add_flags(cdo.f_head_resort | addflags);
+	cdo.set_threshold(4).add_flags(cdo.f_head_resort | addflags);
 
 	for(u32 = 0; u32++ < a_LOOP_NO;){
 		if((cp = ienc::convert_u32(buf, u32)) == NIL){
@@ -619,7 +622,7 @@ a_cs_dict_(u16 addflags){
 
 	a_STATS( cdo.statistics(); )
 
-	if(cdo.set_threshold_shift(2).balance().count() != a_LOOP_NO)
+	if(cdo.set_threshold(2).balance().count() != a_LOOP_NO)
 		a_ERR();
 
 	a_STATS( cdo.statistics(); )
@@ -709,10 +712,10 @@ a_cs_dict_(u16 addflags){
 		if(cdo3.count() != cdo.count())
 			a_ERR();
 	}
-}
+} // }}}
 
 static void
-a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]){
+a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]){ // {{{
 	// basics
 	if(!cdp->is_empty())
 		a_ERR();
@@ -946,10 +949,10 @@ a_cs_dict__case(cs_dict<char const*> *cdp, char const *k[3]){
 		if(cs::cmp(cdv.data(), "vv4"))
 			a_ERR();
 	}
-}
+} // }}}
 
 template<class CSD>
-static void a_cs_dict__nilisvalo(CSD *cdp){
+static void a_cs_dict__nilisvalo(CSD *cdp){ // {{{
 	if(cdp->insert("one", NIL) != 0)
 		a_ERR();
 	else if(cdp->insert("two", NIL) != 0)
@@ -1047,7 +1050,271 @@ static void a_cs_dict__nilisvalo(CSD *cdp){
 		else if(cdv.remove().is_valid())
 			a_ERR();
 	}
-}
+} // }}}
+
+static void
+a_cs_dict_dspc(void){ // {{{
+	static type_toolbox<char const*> const xtb = su_TYPE_TOOLBOX_I9R(
+				R(type_toolbox<char const*>::clone_fun,0x1),
+				R(type_toolbox<char const*>::del_fun,0x2),
+				R(type_toolbox<char const*>::assign_fun,0x3),
+				NIL, NIL);
+
+	char buf[64];
+	char const *vp;
+	cs_dict<char const*> cd(&xtb);
+
+	//
+	cd.set_data_space(5);
+
+	if((cs::pcopy(buf, "1234"), cd.insert("1", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "2341"), cd.insert("2", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "3412"), cd.insert("three-three-three-three-three-three--", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "4123"), cd.insert("four-four-four-four----", buf)) != err::none)
+		a_ERR();
+
+	if((vp = cd.lookup("1")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "1234"))
+		a_ERR();
+	else if((vp = cd.lookup("2")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "2341"))
+		a_ERR();
+	else if((vp = cd.lookup("three-three-three-three-three-three--")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "3412"))
+		a_ERR();
+	else if((vp = cd.lookup("four-four-four-four----")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "4123"))
+		a_ERR();
+
+	//
+	cd.clear();
+	cd.set_data_space(36 +1);
+
+	if((cs::pcopy(buf, "0123456789abcdefghijklmnopqrstuvwxyz"), cd.insert("1", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "123456789abcdefghijklmnopqrstuvwxyz0"), cd.insert("2", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "23456789abcdefghijklmnopqrstuvwxyz01"),
+			cd.insert("three-three-three-three-three-three--", buf)) != err::none)
+		a_ERR();
+	else if((cs::pcopy(buf, "3456789abcdefghijklmnopqrstuvwxyz012"),
+			cd.insert("four-four-four-four----", buf)) != err::none)
+		a_ERR();
+
+	if((vp = cd.lookup("1")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "0123456789abcdefghijklmnopqrstuvwxyz"))
+		a_ERR();
+	else if((vp = cd.lookup("2")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "123456789abcdefghijklmnopqrstuvwxyz0"))
+		a_ERR();
+	else if((vp = cd.lookup("three-three-three-three-three-three--")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "23456789abcdefghijklmnopqrstuvwxyz01"))
+		a_ERR();
+	else if((vp = cd.lookup("four-four-four-four----")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "3456789abcdefghijklmnopqrstuvwxyz012"))
+		a_ERR();
+
+	if(cd.count() != 4)
+		a_ERR();
+
+	//
+	if(cd.replace("1", "456789abcdefghijklmnopqrstuvwxyz0123") != -1)
+		a_ERR();
+	else if(cd.replace("2", "56789abcdefghijklmnopqrstuvwxyz01234") != -1)
+		a_ERR();
+	else if(cd.replace("three-three-three-three-three-three--", "6789abcdefghijklmnopqrstuvwxyz012345") != -1)
+		a_ERR();
+	else if(cd.replace("four-four-four-four----", "789abcdefghijklmnopqrstuvwxyz0123456") != -1)
+		a_ERR();
+
+	if((vp = cd.lookup("1")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "456789abcdefghijklmnopqrstuvwxyz0123"))
+		a_ERR();
+	else if((vp = cd.lookup("2")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "56789abcdefghijklmnopqrstuvwxyz01234"))
+		a_ERR();
+	else if((vp = cd.lookup("three-three-three-three-three-three--")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "6789abcdefghijklmnopqrstuvwxyz012345"))
+		a_ERR();
+	else if((vp = cd.lookup("four-four-four-four----")) == NIL)
+		a_ERR();
+	else if(cs::cmp(vp, "789abcdefghijklmnopqrstuvwxyz0123456"))
+		a_ERR();
+
+	if(cd.count() != 4)
+		a_ERR();
+
+	//
+	cs_dict<char const*>::view cdv(*&cd);
+
+	if(!cdv.find("1"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "456789abcdefghijklmnopqrstuvwxyz0123"))
+		a_ERR();
+	else if((cs::pcopy(buf, "-56789abcdefghijklmnopqrstuvwxyz012-"), cdv.set_data(buf)) != err::none)
+		a_ERR();
+	else if(!cdv.find("2"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "56789abcdefghijklmnopqrstuvwxyz01234"))
+		a_ERR();
+	else if((cs::pcopy(buf, "-6789abcdefghijklmnopqrstuvwxyz0123-"), cdv.set_data(buf)) != err::none)
+		a_ERR();
+	else if(!cdv.find("three-three-three-three-three-three--"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "6789abcdefghijklmnopqrstuvwxyz012345"))
+		a_ERR();
+	else if((cs::pcopy(buf, "-789abcdefghijklmnopqrstuvwxyz01234-"), cdv.set_data(buf)) != err::none)
+		a_ERR();
+	else if(!cdv.find("four-four-four-four----"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "789abcdefghijklmnopqrstuvwxyz0123456"))
+		a_ERR();
+	else if((cs::pcopy(buf, "-89abcdefghijklmnopqrstuvwxyz012345-"), cdv.set_data(buf)) != err::none)
+		a_ERR();
+	//
+	else if(!cdv.find("1"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "-56789abcdefghijklmnopqrstuvwxyz012-"))
+		a_ERR();
+	else if(cdv.set_data("--6789abcdefghijklmnopqrstuvwxyz01--") != err::none)
+		a_ERR();
+	else if(!cdv.find("2"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "-6789abcdefghijklmnopqrstuvwxyz0123-"))
+		a_ERR();
+	else if(cdv.set_data("--789abcdefghijklmnopqrstuvwxyz012--") != err::none)
+		a_ERR();
+	else if(!cdv.find("three-three-three-three-three-three--"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "-789abcdefghijklmnopqrstuvwxyz01234-"))
+		a_ERR();
+	else if(cdv.set_data("--89abcdefghijklmnopqrstuvwxyz0123--") != err::none)
+		a_ERR();
+	else if(!cdv.find("four-four-four-four----"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "-89abcdefghijklmnopqrstuvwxyz012345-"))
+		a_ERR();
+	else if(cdv.set_data("--9abcdefghijklmnopqrstuvwxyz01234--") != err::none)
+		a_ERR();
+	//
+	else if(!cdv.find("1"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "--6789abcdefghijklmnopqrstuvwxyz01--"))
+		a_ERR();
+	else if(cdv.set_data(NIL) != err::none)
+		a_ERR();
+	else if(!cdv.find("2"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "--789abcdefghijklmnopqrstuvwxyz012--"))
+		a_ERR();
+	else if(cdv.set_data(NIL) != err::none)
+		a_ERR();
+	else if(!cdv.find("three-three-three-three-three-three--"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "--89abcdefghijklmnopqrstuvwxyz0123--"))
+		a_ERR();
+	else if(cdv.set_data(NIL) != err::none)
+		a_ERR();
+	else if(!cdv.find("four-four-four-four----"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "--9abcdefghijklmnopqrstuvwxyz01234--"))
+		a_ERR();
+	else if(cdv.set_data(NIL) != err::none)
+		a_ERR();
+	//
+	else if(!cdv.find("1"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.set_data("---789abcdefghijklmnopqrstuvwxyz0---") != err::none)
+		a_ERR();
+	else if(!cdv.find("2"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.set_data("---89abcdefghijklmnopqrstuvwxyz01---") != err::none)
+		a_ERR();
+	else if(!cdv.find("three-three-three-three-three-three--"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.set_data("---9abcdefghijklmnopqrstuvwxyz012---") != err::none)
+		a_ERR();
+	else if(!cdv.find("four-four-four-four----"))
+		a_ERR();
+	else if(cdv.data() != NIL)
+		a_ERR();
+	else if(cdv.set_data("---abcdefghijklmnopqrstuvwxyz0123---") != err::none)
+		a_ERR();
+	//
+	else if(!cdv.find("1"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "---789abcdefghijklmnopqrstuvwxyz0---"))
+		a_ERR();
+	else if(!cdv.find("2"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "---89abcdefghijklmnopqrstuvwxyz01---"))
+		a_ERR();
+	else if(!cdv.find("three-three-three-three-three-three--"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "---9abcdefghijklmnopqrstuvwxyz012---"))
+		a_ERR();
+	else if(!cdv.find("four-four-four-four----"))
+		a_ERR();
+	else if(cs::cmp(cdv.data(), "---abcdefghijklmnopqrstuvwxyz0123---"))
+		a_ERR();
+
+	if(cd.count() != 4)
+		a_ERR();
+
+	//
+	cd.clear().set_data_space(10).add_flags(cd.f_data_space_raw);
+
+	if(cd.insert("1", "9876543210") != err::none)
+		a_ERR();
+	else if(cd.insert("2", "jihgfedcba") != err::none)
+		a_ERR();
+	else if((vp = cd.lookup("1")) == NIL)
+		a_ERR();
+	// these are hacks
+	else if(!mem::cmp(vp, "9876543210", 10))
+		a_ERR();
+	else if((mem::copy(C(char*,vp), "9876543210", 10), (vp = cd.lookup("1"))) == NIL)
+		a_ERR();
+	else if(mem::cmp(vp, "9876543210", 10))
+		a_ERR();
+	else if((vp = cd.lookup("2")) == NIL)
+		a_ERR();
+	else if(!mem::cmp(vp, "jihgfedcba", 10))
+		a_ERR();
+	else if((mem::copy(C(char*,vp), "jihgfedcba", 10), (vp = cd.lookup("2"))) == NIL)
+		a_ERR();
+	else if(mem::cmp(vp, "jihgfedcba", 10))
+		a_ERR();
+	//
+	else if((vp = cd.lookup("1")) == NIL)
+		a_ERR();
+	else if(mem::cmp(vp, "9876543210", 10))
+		a_ERR();
+	else if((vp = cd.lookup("2")) == NIL)
+		a_ERR();
+	else if(mem::cmp(vp, "jihgfedcba", 10))
+		a_ERR();
+} // }}}
 // }}}
 
 // icodec {{{

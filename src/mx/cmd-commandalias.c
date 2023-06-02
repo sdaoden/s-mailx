@@ -43,7 +43,7 @@
 
 /* ..of a_cmdal_dp */
 #define a_CMDAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_CMDAL_THRESHOLD_SHIFT 2
+#define a_CMDAL_THRESHOLD 2
 
 static struct su_cs_dict *a_cmdal_dp, a_cmdal__d;
 
@@ -114,9 +114,9 @@ c_commandalias(void *vp){
 		}
 	}else{
 		if(a_cmdal_dp == NIL){
-			a_cmdal_dp = su_cs_dict_set_threshold_shift(
+			a_cmdal_dp = su_cs_dict_set_threshold(
 					su_cs_dict_create(&a_cmdal__d, a_CMDAL_FLAGS, &su_cs_toolbox),
-					a_CMDAL_THRESHOLD_SHIFT);
+					a_CMDAL_THRESHOLD);
 			DVL( su_state_on_gut_install(&a_cmdal__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
 

@@ -36,6 +36,8 @@
 # undef a_T_PUBSYM
 # undef a_FUN
 # undef a_TK
+# undef a_THRESH
+# undef a_DSPC
 # undef a_N
 # undef a_N_F
 # undef a_N_ALLOC
@@ -65,10 +67,12 @@
 #  define a_T_PUBSYM(X) CONCAT(su_cs_dict_, X)
 #  define a_FUN(X) CONCAT(a_csdict_, X)
 #  define a_TK char
+#  define a_THRESH(SELF) ((SELF)->a_T_F(thresh_dspc) & a_T_PRINAME(THRESH_MASK))
+#  define a_DSPC(SELF) (((SELF)->a_T_F(thresh_dspc) /*& a_T_PRINAME(THRESH_MASK)*/) >> a_T_PRINAME(THRESH_SHIFT))
 #  define a_N su__cs_dict_node
 #  define a_N_F(X) CONCAT(csdn_, X)
-#  define a_N_ALLOC(SELF,KLEN,FLAGS) \
-	S(struct a_N*,su_ALLOCATE((VSTRUCT_SIZEOF(struct a_N, a_N_F(key)) + (KLEN) +1), 1, ((FLAGS) & su_STATE_ERR_MASK)))
+#  define a_N_ALLOC(SELF,ADD,FLAGS) \
+	S(struct a_N*,su_ALLOCATE((VSTRUCT_SIZEOF(struct a_N,a_N_F(key)) + (ADD) +1), 1, ((FLAGS) & su_STATE_ERR_MASK)))
 #  define a_N_FREE(SELF,NP) su_FREE(NP)
 #  define a_V su_cs_dict_view
 #  define a_V_F(X) CONCAT(csdv_, X)
@@ -86,20 +90,21 @@ struct a_LA{
 	struct a_N **la_slot;
 	struct a_N *la_last; /* Only with AUTO_RESORT */
 	u32 la_slotidx;
-	u32 la_klen; /* Only if a_TYPE_IS_DICT */
+# if a_TYPE_IS_DICT
+	u32 la_klen;
+# else
+	su_64(u8 la__pad[4];)
+# endif
 	uz la_khash;
 };
 
 /* force: ignore FROZEN state.  Return resize() result, -1 done nothing */
 SINLINE s32 a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount);
 
-/* */
 static s32 a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags_and_tbox);
 
-/* */
 static s32 a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const *key, void *value);
 
-/* */
 static s32 a_FUN(replace)(struct a_T *self, struct a_N *np, void *value);
 static struct a_T *a_FUN(remove)(struct a_T *self, struct a_N *np, struct a_LA *lap);
 
@@ -115,7 +120,7 @@ a_FUN(check_resize)(struct a_T *self, boole force, u32 xcount){
 	if(force || !(self->a_T_F(flags) & a_T_PUBNAME(FROZEN))){
 		s = self->a_T_F(size);
 
-		if(xcount > (s << self->a_T_F(tshift)) || (xcount < (s >>= 1) &&
+		if(xcount > (s << a_THRESH(self)) || (xcount < (s >>= 1) &&
 				 (self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK))))
 			rv = a_T_PUBSYM(resize)(self, xcount);
 	}else
@@ -131,7 +136,6 @@ a_FUN(assign)(struct a_T *self, struct a_T const *t, boole flags_and_tbox){
 	NYD_IN;
 	ASSERT(self);
 
-	/* Clear old elements first if there are any, and if necessary */
 	rv = su_ERR_NONE;
 jerr:
 	if(self->a_T_F(count) > 0){
@@ -141,20 +145,20 @@ jerr:
 
 	ASSERT_NYD_EXEC(t != NIL, rv = su_ERR_FAULT);
 
-	if(flags_and_tbox){
-		self->a_T_F(flags) = t->a_T_F(flags);
-		self->a_T_F(tbox) = t->a_T_F(tbox);
-	}
-
 	/* If coming here after jerr: */
 	if(rv != 0)
 		goto jleave;
 
+	if(flags_and_tbox){
+		self->a_T_F(flags) = t->a_T_F(flags);
+		self->a_T_F(tbox) = t->a_T_F(tbox);
+		self->a_T_F(thresh_dspc) = t->a_T_F(thresh_dspc);
+	}
+
 	if(t->a_T_F(count) == 0)
 		goto jleave;
 
-	/* We actually ignore a resize failure if we do have some backing store to
-	 * put elements into! */
+	/* We ignore a resize failure if we have some backing store to put elements into */
 	rv = a_FUN(check_resize)(self, TRU1, t->a_T_F(count));
 	if(rv > su_ERR_NONE && self->a_T_F(array) == NIL)
 		goto jleave;
@@ -198,6 +202,7 @@ jleave:
 static s32
 a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const *key, void *value){
 	s32 rv;
+	u32 nsz, dspc, adspcoff;
 	u16 flags;
 	void *xvalue;
 	struct a_N *np;
@@ -210,7 +215,7 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const
 	if(flags & a_T_PUBNAME(OWNS)){
 		if(value != NIL){
 			xvalue = value = (*self->a_T_F(tbox)->tb_clone)(value, (flags & su_STATE_ERR_MASK));
-			if(UNLIKELY(xvalue == NIL) && !(flags & a_T_PUBNAME(NILISVALO))){
+			if(UNLIKELY(xvalue == NIL && !(flags & a_T_PUBNAME(NILISVALO)))){
 				rv = su_err();
 				goto jleave;
 			}
@@ -219,7 +224,26 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const
 	}
 
 	/* ..so create a new node */
-	np = a_N_ALLOC(self, lap->la_klen, flags);
+	UNINIT(adspcoff, 0);
+	nsz = 0
+# if a_TYPE == a_TYPE_CSDICT
+		+ lap->la_klen
+# endif
+		;
+	if(UNLIKELY((dspc = a_DSPC(self)) != 0)){
+# if a_TYPE == a_TYPE_CSDICT
+		ASSERT(nsz <= S32_MAX);
+		adspcoff = S(u32,(ALIGN_Z(FIELD_OFFSETOF(struct a_N,a_N_F(key))) -
+				 FIELD_OFFSETOF(struct a_N,a_N_F(key))) + ALIGN_Z(nsz +1));
+		nsz = adspcoff -1 + dspc; /* a_N_ALLOC() does +1 (again) */
+# else
+#  error
+		adspcoff = ALIGN_Z(sizeof(*np)); /* (xxx is EQ) */
+		nsz = adspcoff + dspc;
+# endif
+	}
+
+	np = a_N_ALLOC(self, nsz, flags);
 	if(UNLIKELY(np == NIL)){
 		if(xvalue != NIL)
 			(*self->a_T_F(tbox)->tb_del)(xvalue);
@@ -230,12 +254,25 @@ a_FUN(node_new)(struct a_T *self, struct a_N **res, struct a_LA *lap, a_TK const
 
 	np->a_N_F(next) = *lap->la_slot;
 	*lap->la_slot = np;
-	np->a_N_F(data) = value;
+	if(LIKELY(dspc == 0 || value == NIL))
+		np->a_N_F(data) = value;
+	else{
+		np->a_N_F(data) =
+# if a_TYPE == a_TYPE_CSDICT
+				&np->a_N_F(key)[adspcoff]
+# else
+#  error
+				&S(char*,np)[adspcoff]
+# endif
+				;
+		ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+		if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
+			su_mem_copy(np->a_N_F(data), value, dspc);
+	}
 	np->a_N_F(khash) = lap->la_khash;
-	np->a_N_F(klen) = lap->la_klen;
 
 # if a_TYPE == a_TYPE_CSDICT
-	su_mem_copy(np->a_N_F(key), key, lap->la_klen +1);
+	su_mem_copy(np->a_N_F(key), key, (np->a_N_F(klen) = lap->la_klen) +1);
 	if(flags & a_T_PUBNAME(CASE)){
 		a_TK *nckey;
 
@@ -262,7 +299,7 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
 	rv = su_ERR_NONE;
 	flags = self->a_T_F(flags);
 
-	if(flags & a_T_PUBNAME(OWNS)){
+	if(LIKELY(flags & a_T_PUBNAME(OWNS))){
 		void *ndat;
 
 		ndat = np->a_N_F(data);
@@ -286,9 +323,28 @@ a_FUN(replace)(struct a_T *self, struct a_N *np, void *value){
 
 		if(ndat != NIL)
 			(*self->a_T_F(tbox)->tb_del)(ndat);
-	}
 
-	np->a_N_F(data) = value;
+		np->a_N_F(data) = value;
+	}else{
+		u32 dspc;
+
+		if(LIKELY(value == NIL || (dspc = a_DSPC(self)) == 0))
+			np->a_N_F(data) = value;
+		else{
+			np->a_N_F(data) =
+# if a_TYPE == a_TYPE_CSDICT
+					&np->a_N_F(key)[(ALIGN_Z(FIELD_OFFSETOF(struct a_N,a_N_F(key))) -
+						 FIELD_OFFSETOF(struct a_N,a_N_F(key))) + ALIGN_Z(np->a_N_F(klen) +1)]
+# else
+#  error
+					S(char*,&np)[ALIGN_Z(sizeof(*np))]
+# endif
+					;
+			ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+			if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
+				su_mem_copy(np->a_N_F(data), value, dspc);
+		}
+	}
 
 	NYD_OU;
 	return rv;
@@ -313,8 +369,7 @@ a_FUN(remove)(struct a_T *self, struct a_N *np, struct a_LA *lap){
 }
 
 struct a_N *
-a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
-		void *lookarg_or_nil){
+a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key, void *lookarg_or_nil){
 # if !a_TYPE_IS_DICT
 	boole const key_is = (key != NIL);
 # else
@@ -329,7 +384,7 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 	rv = NIL;
 	cnt = self->a_T_F(count);
 
-	if(UNLIKELY(cnt == 0) && UNLIKELY(lookarg_or_nil == NIL))
+	if(UNLIKELY(cnt == 0 && lookarg_or_nil == NIL))
 		goto jleave;
 
 # if a_TYPE == a_TYPE_CSDICT
@@ -352,13 +407,8 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 #  error
 # endif
 
-	if(LIKELY((slotidx = self->a_T_F(size)) > 0)){
-		boole prime;
-
-		prime = ((self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) != 0);
-
-		slotidx = prime ? khash % slotidx : khash & (slotidx - 1);
-	}
+	if(LIKELY((slotidx = self->a_T_F(size)) > 0))
+		slotidx = (self->a_T_F(flags) & a_T_PUBNAME(PRIME_SPACED)) ? khash % slotidx : khash & (slotidx - 1);
 
 	arr = &self->a_T_F(array)[slotidx];
 
@@ -431,14 +481,12 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value, up replace_an
 	viewp = R(struct a_V*,replace_and_view_or_nil & ~S(up,TRU1));
 	UNINIT(np, NIL);
 
-	/* Ensure this basic precondition */
 	if(value == NIL && (flags & a_T_PUBNAME(OWNS)) && !(flags & a_T_PUBNAME(NILISVALO))){
 		rv = su_ERR_INVAL;
 		goto jleave;
 	}
 
-	/* But on error we will put new node in case we are empty, so create some
-	 * array space right away */
+	/* But on error we will put new node in case we are empty, so create some array space right away */
 	if(UNLIKELY(self->a_T_F(size) == 0) && (rv = a_T_PUBSYM(resize)(self, 1)) > su_ERR_NONE)
 		goto jleave;
 
@@ -454,18 +502,16 @@ a_T_PRISYM(insrep)(struct a_T *self, a_TK const *key, void *value, up replace_an
 	}
 # endif
 
-	/* Is it an insertion of something new? */
+	/* An insertion of something new? */
 	if(LIKELY(np == NIL)){
 		if(UNLIKELY((rv = a_FUN(node_new)(self, &np, &la, key, value)) != su_ERR_NONE))
 			goto jleave;
 		/* Never grow array storage if no other node is in this slot.
-		 * And do not fail if a resize fails at this point, it would only be
-		 * expensive and of no value, especially as it seems the user is
-		 * ignoring ENOMEM++ */
+		 * And do not fail if a resize fails at this point, it would only be expensive and of no value,
+		 * especially as it seems the user is ignoring ENOMEM++ */
 		if(UNLIKELY(np->a_N_F(next) != NIL)){
-			/* If we did resize and we have to know the node location, it seems
-			 * easiest to simply perform another lookup */
-			/* TODO This is the most expensive thinkable approach!
+			/* Did resize and have to know node location: easiest to simply perform another lookup */
+			/* TODO Most expensive thinkable approach!
 			 * TODO Instead check_resize could take &la and update a non-NIL */
 			if(a_FUN(check_resize)(self, FAL0, self->a_T_F(count)) == su_ERR_NONE && viewp != NIL)
 				np = a_T_PRISYM(lookup)(self, key, &la);
@@ -519,8 +565,11 @@ a_T_PRISYM(stats)(struct a_T const *self){
 	}
 
 	avg = (multies != 0) ? multies : size - empties;
-	if(avg != 0)
+	if(avg != 0){
 		avg = self->a_T_F(count) / avg;
+		if(avg > maxper)
+			avg = maxper;
+	}
 
 	su_log_write(su_LOG_INFO,
 		"* Overview\n"
@@ -540,9 +589,9 @@ a_T_PRISYM(stats)(struct a_T const *self){
 			"ERR_PASS=%d "
 			"NILISVALO=%d"
 			"\n"
-		"  - threshold=%lu size=%lu (min-size=%lu) entries=%lu\n"
+		"  - count=%lu (size=%lu min-size=%lu thresh=%lu data-space=%lu)\n"
 		"* Distribution\n"
-		"  - slots: 0=%lu max=%lu multi=%lu avg/multi=~%lu"
+		"  - slots: empty=%lu multi=%lu multi/max=%lu multi/avg=~%lu"
 		,
 		((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
 # if a_TYPE != a_TYPE_CSDICT
@@ -558,9 +607,9 @@ a_T_PRISYM(stats)(struct a_T const *self){
 # endif
 			((self->a_T_F(flags) & a_T_PUBNAME(ERR_PASS)) != 0),
 			((self->a_T_F(flags) & a_T_PUBNAME(NILISVALO)) != 0),
-		S(ul,self->a_T_F(tshift)), S(ul,self->a_T_F(size)),
-			S(ul,self->a_T_F(min_size)), S(ul,self->a_T_F(count)),
-		S(ul,empties), S(ul,maxper), S(ul,multies), S(ul,avg)
+		S(ul,self->a_T_F(count)),
+			S(ul,self->a_T_F(size)), S(ul,self->a_T_F(min_size)), S(ul,a_THRESH(self)), S(ul,a_DSPC(self)),
+		S(ul,empties), S(ul,multies), S(ul,maxper), S(ul,avg)
 	);
 
 	/* Second pass: visual distribution */
@@ -575,14 +624,17 @@ a_T_PRISYM(stats)(struct a_T const *self){
 			for(j = 0, np = arr[i]; np != NIL; np = np->a_N_F(next))
 				++j;
 			d = '0';
-			if(j > 0 && j >= avg >> 1){
-				d = '_';
-				if(j >= avg){
-					d = (j == avg) ? '~' : '=';
-					if(j >= avg + ((maxper - avg) >> 1)){
-						d = '/';
-						if(j == maxper)
-							d = '^';
+			if(j > 0){
+				d = '.';
+				if(j >= avg >> 1){
+					d = '_';
+					if(j >= avg){
+						d = (j == avg) ? '-' : '=';
+						if(j >= avg + ((maxper - avg) >> 1)){
+							d = '/';
+							if(j == maxper)
+								d = '^';
+						}
 					}
 				}
 			}
@@ -620,7 +672,7 @@ a_T_PUBSYM(create)(struct a_T *self, u16 flags, struct su_toolbox const *tbox_or
 		 tbox_or_nil->tb_del != NIL && tbox_or_nil->tb_assign != NIL));
 
 	self->a_T_F(flags) = (flags &= a_T_PRINAME(CREATE_MASK));
-	self->a_T_F(tshift) = 2;
+	self->a_T_F(thresh_dspc) = a_T_PRINAME(THRESH_DSPC_DEF);
 	self->a_T_F(tbox) = tbox_or_nil;
 
 	NYD_OU;
@@ -628,7 +680,7 @@ a_T_PUBSYM(create)(struct a_T *self, u16 flags, struct su_toolbox const *tbox_or
 }
 
 SHADOW struct a_T *
-a_T_PUBSYM(create_copy)(struct a_T *self, struct a_T const *t){
+a_T_PUBSYM(create_copy)(struct a_T *self, struct a_T const *t){ /* xxx inline */
 	NYD_IN;
 	ASSERT(self);
 
@@ -763,7 +815,7 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
 		boole grow;
 
 		/* >= to catch initial 0 size */
-		grow = ((xcount >> self->a_T_F(tshift)) >= size);
+		grow = ((xcount >> a_THRESH(self)) >= size);
 		nsize = size;
 
 		for(;;){
@@ -795,15 +847,14 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
 					nsize = i;
 			}
 
-			/* Refuse to excess storage bounds, but do not fail for this: simply
-			 * keep on going and place more nodes in the slots.
-			 * Because of the numbers we are talking about this is a theoretical
+			/* Refuse to excess storage bounds, but do not fail for this: simply keep on going and place
+			 * more nodes in the slots.  Because of the numbers we are talking about this is a theoretical
 			 * issue (at the time of this writing). */
 			if(nsize == onsize)
 				break;
 			if(grow){
 				/* (Again, shift 64-bit to avoid overflow) */
-				if((S(u64,nsize) << self->a_T_F(tshift)) >= xcount)
+				if((S(u64,nsize) << a_THRESH(self)) >= xcount)
 					break;
 			}else if((nsize >> 1) <= xcount)
 				break;
@@ -815,7 +866,6 @@ a_T_PUBSYM(resize)(struct a_T *self, u32 xcount){
 		}
 	}
 
-	/* Try to allocate new array, give up on failure */
 	narr = su_TCALLOCF(struct a_N*, nsize, (self->a_T_F(flags) & su_STATE_ERR_MASK));
 	if(UNLIKELY(narr == NIL)){
 		rv = su_err();
@@ -934,13 +984,33 @@ a_V_PUBSYM(set_data)(struct a_V *self, void *value){
 	parent = self->a_V_F(parent);
 	flags = parent->a_T_F(flags);
 
-	if(flags & a_T_PUBNAME(OWNS)){
-		if(UNLIKELY(value == NIL) && UNLIKELY(!(flags & a_T_PUBNAME(NILISVALO))))
+	if(LIKELY(flags & a_T_PUBNAME(OWNS))){
+		if(UNLIKELY(value == NIL && !(flags & a_T_PUBNAME(NILISVALO))))
 			rv = su_ERR_INVAL;
 		else
 			rv = a_FUN(replace)(parent, self->a_V_F(node), value);
 	}else{
-		self->a_V_F(node)->a_N_F(data) = value;
+		u32 dspc;
+		struct a_N *np;
+
+		np = self->a_V_F(node);
+		if(LIKELY(value == NIL || (dspc = a_DSPC(parent)) == 0))
+			np->a_N_F(data) = value;
+		else{
+			np->a_N_F(data) =
+# if a_TYPE == a_TYPE_CSDICT
+					&np->a_N_F(key)[(ALIGN_Z(FIELD_OFFSETOF(struct a_N,a_N_F(key))) -
+						 FIELD_OFFSETOF(struct a_N,a_N_F(key))) + ALIGN_Z(np->a_N_F(klen) +1)]
+# else
+#  error
+					S(char*,&np)[ALIGN_Z(sizeof(*np))]
+# endif
+					;
+			ASSERT(S(up,ALIGN_Z(np->a_N_F(data))) == R(up,np->a_N_F(data)));
+			if(!(flags & a_T_PUBNAME(DATA_SPACE_RAW)))
+				su_mem_copy(np->a_N_F(data), value, dspc);
+		}
+
 		rv = su_ERR_NONE;
 	}
 
@@ -1022,6 +1092,8 @@ a_V_PUBSYM(remove)(struct a_V *self){
 # undef a_T_PRISYM
 # undef a_FUN
 # undef a_TK
+# undef a_THRESH
+# undef a_DSPC
 # undef a_N
 # undef a_N_F
 # undef a_N_ALLOC

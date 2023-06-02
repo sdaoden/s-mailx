@@ -46,8 +46,8 @@ struct su_cs_dict_view;
  * Keys will be stored in full in the list nodes which make up the dictionary.
  * They will be hashed and compared by means of \r{CS} (ASCII).
  * }\li{
- * Values are optionally owned (\r{su_CS_DICT_OWNS}), in which case the given,
- * then mandatory \r{su_toolbox} is used to manage value objects.
+ * Data values are optionally owned (\r{su_CS_DICT_OWNS}), in which case the given,
+ * then mandatory \r{su_toolbox} is used to manage data value objects.
  * Dependent upon \r{su_CS_DICT_NIL_IS_VALID_OBJECT} \NIL values will still be supported.
  * }\li{
  * Most characteristics can be adjusted via \r{su_cs_dict_add_flags()} and \r{su_cs_dict_clear_flags()}.
@@ -59,7 +59,7 @@ struct su_cs_dict_view;
  * \r{su_STATE_ERR_PASS} may be enforced on a per-object level by setting \r{su_CS_DICT_ERR_PASS}.
  * This interacts with \r{su_CS_DICT_NIL_IS_VALID_OBJECT}.
  * }\li{
- * The balance of array size / node count spacing relation is controllable via \r{su_cs_dict_set_threshold_shift()}.
+ * The balance of array size / node count spacing relation is controllable via \r{su_cs_dict_set_threshold()}.
  * Automatic shrinks are unaffected by that and happen only if \r{su_CS_DICT_AUTO_SHRINK} is enabled.
  * }\li{
  * It is possible to turn instances into \r{su_CS_DICT_FROZEN} state.
@@ -83,32 +83,35 @@ struct su_cs_dict_view;
 /*! Flags for \r{su_cs_dict_create()}, to be queried via \r{su_cs_dict_flags()},
  * and to be adjusted via \r{su_cs_dict_add_flags()} and \r{su_cs_dict_clear_flags()}. */
 enum su_cs_dict_flags{
-	su_CS_DICT_OWNS = 1u<<0, /*!< Values are owned. */
+	su_CS_DICT_OWNS = 1u<<0, /*!< Data values are owned. */
 	/*! If this is set, prime spacing and modulo indexing will be used.
 	 * By default power-of-two spacing and mask indexing is used, which provides
 	 * good distribution of "normal" key data via \r{su_cs_hash()}, as well as
 	 * with "all" key data via \r{su_cs_hash_strong()}, which is used in
 	 * conjunction with \r{su_CS_DICT_STRONG}. */
-	su_CS_DICT_PRIME_SPACED = 1u<<2,
+	su_CS_DICT_PRIME_SPACED = 1u<<1,
 	/*! Enable automatic shrinking of management array(s).
 	 * It occurs when \r{su_cs_dict_count()} is half of \r{su_cs_dict_size()}.
 	 * This is not enabled by default (array(s) only grow(s)). */
-	su_CS_DICT_AUTO_SHRINK = 1u<<3,
+	su_CS_DICT_AUTO_SHRINK = 1u<<2,
 	/*! Freeze the dictionary.
 	 * A frozen dictionary will neither grow nor shrink management array(s) of
 	 * nodes automatically. */
-	su_CS_DICT_FROZEN = 1u<<4,
+	su_CS_DICT_FROZEN = 1u<<3,
 	/*! Enable array-index list head rotation?
 	 * This dictionary uses nodes which form singly-linked lists.
 	 * With this bit set, whenever a key is found in such a list, its list node
 	 * will become the new head of the list, potentially improving lookup speed
 	 * due to lists becoming sorted by "hotness" over time. */
-	su_CS_DICT_HEAD_RESORT = 1u<<5,
-	su_CS_DICT_STRONG = 1u<<6, /*!< Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
-	su_CS_DICT_CASE = 1u<<7, /*!< Keys shall be hashed, compared and stored case-insensitively. */
+	su_CS_DICT_HEAD_RESORT = 1u<<4,
+	su_CS_DICT_STRONG = 1u<<5, /*!< Strong key hashing shall be used (\r{su_cs_hash_strong_cbuf()}). */
+	su_CS_DICT_CASE = 1u<<6, /*!< Keys shall be hashed, compared and stored case-insensitively. */
+	/*! In conjunction with \r{su_cs_dict_set_data_space()}, do not copy over non-\NIL data to the internal
+	 * reserved data space, but keep that uninitialized. */
+	su_CS_DICT_DATA_SPACE_RAW = 1u<<7,
 	su_CS_DICT_ERR_PASS = su_STATE_ERR_PASS, /*!< Mapped to \r{su_STATE_ERR_PASS}. */
 	/*! Mapped to \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}, but only honoured for
-	 * dictionaries which \r{su_CS_DICT_OWNS} its values. */
+	 * dictionaries which \r{su_CS_DICT_OWNS} its data values. */
 	su_CS_DICT_NIL_IS_VALID_OBJECT = su_STATE_ERR_NIL_IS_VALID_OBJECT,
 	su_CS_DICT_NILISVALO = su_CS_DICT_NIL_IS_VALID_OBJECT, /*!< Alias for \r{su_CS_DICT_NIL_IS_VALID_OBJECT}. */
 
@@ -116,19 +119,26 @@ enum su_cs_dict_flags{
 			su_CS_DICT_PRIME_SPACED |
 			su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
 			su_CS_DICT_HEAD_RESORT |
-			su_CS_DICT_STRONG | su_CS_DICT_CASE |
+			su_CS_DICT_STRONG | su_CS_DICT_CASE | su_CS_DICT_DATA_SPACE_RAW |
 			su_CS_DICT_ERR_PASS | su_CS_DICT_NIL_IS_VALID_OBJECT
 };
 #ifdef su_SOURCE_CS_DICT
 CTA((su_STATE_ERR_MASK & ~0xFF00u) == 0, "Reuse of low order bits impossible, or mask excesses storage");
 #endif
 
+enum{
+	su_CS_DICT_THRESHOLD_MAX = 8, /*!< \r{su_cs_dict_set_threshold()} maximum. */
+	su_CS_DICT_DATA_SPACE_MAX = 0x0FFFu, /*!< \r{su_cs_dict_set_data_space()} maximum. */
+	su__CS_DICT_THRESH_MASK = 0x000Fu,
+	su__CS_DICT_THRESH_SHIFT = 4u,
+	su__CS_DICT_THRESH_DSPC_DEF = 2
+};
+
 /*! Opaque. */
 struct su_cs_dict{
 	struct su__cs_dict_node **csd_array;
 	u16 csd_flags;
-	u8 csd_tshift;
-	u8 csd__pad[1];
+	u16 csd_thresh_dspc;
 	u32 csd_count;
 	u32 csd_size;
 	u32 csd_min_size;
@@ -162,21 +172,21 @@ EXPORT void su__cs_dict_stats(struct su_cs_dict const *self);
  * If \r{su_CS_DICT_OWNS} is specified, \a{tbox_or_nil} is a mandatory, asserted argument. */
 EXPORT struct su_cs_dict *su_cs_dict_create(struct su_cs_dict *self, u16 flags, struct su_toolbox const *tbox_or_nil);
 
-/*! Initialization plus \r{su_cs_dict_assign()}.
- * \remarks{In difference to assignment this inherits all flags and properties from \a{t}.} */
+/*! Initialization plus \r{su_cs_dict_assign()}. */
 EXPORT SHADOW struct su_cs_dict *su_cs_dict_create_copy(struct su_cs_dict *self, struct su_cs_dict const *t);
 
 /*! Destructor. */
 EXPORT void su_cs_dict_gut(struct su_cs_dict *self);
 
-/*! Assign \a{t}, and return 0 on success or, also dependend on \r{su_CS_DICT_ERR_PASS}, a \r{su_err_number}.
+/*! Assign \a{t}; return 0 on success, or, also dependend on \r{su_CS_DICT_ERR_PASS} (of \a{t}), a \r{su_err_number}.
  * (Also see \r{su_clone_fun}.)
  * \remarks{The element order of \SELF and \a{t} may not be identical.}
  * \copydoc{su_assign_fun} */
 EXPORT s32 su_cs_dict_assign(struct su_cs_dict *self, struct su_cs_dict const *t);
 
-/*! Like \r{su_cs_dict_assign()}, but it only assigns the elements of \a{t},
- * it does neither assign the toolbox nor any configuration flags. */
+/*! Different to \r{su_cs_dict_assign()} only assigns elements of \a{t},
+ * but not \r{su_cs_dict_flags()}, \r{su_cs_dict_threshold()}, \r{su_cs_dict_data_space()},
+ * or \r{su_cs_dict_toolbox()}. */
 EXPORT s32 su_cs_dict_assign_elems(struct su_cs_dict *self, struct su_cs_dict const *t);
 
 /*! Remove all elements, and release all memory. */
@@ -239,21 +249,46 @@ INLINE struct su_cs_dict *su_cs_dict_clear_flags(struct su_cs_dict *self, u16 fl
 	return self;
 }
 
-/*! Get the used threshold shift.
- * See \r{su_cs_dict_set_threshold_shift()}. */
-INLINE u8 su_cs_dict_threshold_shift(struct su_cs_dict const *self){
+/*! Get current threshold.
+ * See \r{su_cs_dict_set_threshold()}. */
+INLINE u8 su_cs_dict_threshold(struct su_cs_dict const *self){
 	ASSERT(self);
-	return self->csd_tshift;
+	return (self->csd_thresh_dspc & su__CS_DICT_THRESH_MASK);
 }
 
-/*! Set the threshold shift.
- * The threshold shift is used to decide when the internal array is to be grown according to the algorithm
- * \cb{count-of-buckets >= array-capacity << threshold-shift}
- * The value will be \r{su_CLIP()}ped in between 1 and 8; the default is 2.
- * It does not affect shrinking (controlled via \r{su_CS_DICT_AUTO_SHRINK}). */
-INLINE struct su_cs_dict *su_cs_dict_set_threshold_shift(struct su_cs_dict *self, u8 ntshift){
+/*! Set threshold used to decide when internal management array is to be grown.
+ * The algorithm is \cb{element-count >= array-capacity << threshold}.
+ * \a{nthresh} is \r{su_CLIP()}ped in between 1 and \r{su_CS_DICT_THRESHOLD_MAX}; default is 2.
+ * Does not affect shrinking (see \r{su_CS_DICT_AUTO_SHRINK}). */
+INLINE struct su_cs_dict *su_cs_dict_set_threshold(struct su_cs_dict *self, u8 nthresh){
 	ASSERT(self);
-	self->csd_tshift = CLIP(ntshift, 1, 8);
+	self->csd_thresh_dspc &= ~su__CS_DICT_THRESH_MASK;
+	self->csd_thresh_dspc |= CLIP(nthresh, 1u, S(u8,su_CS_DICT_THRESHOLD_MAX));
+	return self;
+}
+
+/*! Get in-use data space.
+ * See \r{su_cs_dict_set_data_space()}. */
+INLINE uz su_cs_dict_data_space(struct su_cs_dict const *self){
+	ASSERT(self);
+	return ((self->csd_thresh_dspc /*& ~su__CS_DICT_THRESH_MASK*/) >> su__CS_DICT_THRESH_SHIFT);
+}
+
+/*! Set data space in bytes.
+ * Non-\r{su_CS_DICT_OWNS} instances can make up to \r{su_CS_DICT_DATA_SPACE_MAX} bytes available for data values:
+ * if \a{ndspc} is not 0 nodes will henceforth reserve \a{ndspc} additional bytes;
+ * when setting a \NIL value that is always used, but otherwise the value (returned by \r{su_cs_dict_lookup()} or
+ * \r{su_cs_dict_view_data()}) points to that data space;
+ * unless \r{su_CS_DICT_DATA_SPACE_RAW} flag is set \a{ndspc} bytes of set non-\NIL data are also copied over.
+ * The data space storage will be \r{su_ALIGN_Z()} aligned.
+ * Data space changes may only happen on an empty (\r{su_cs_dict_count()} is 0) \SELF. */
+INLINE struct su_cs_dict *su_cs_dict_set_data_space(struct su_cs_dict *self, uz ndspc){
+	ASSERT(self);
+	ASSERT_RET(!(su_cs_dict_flags(self) & su_CS_DICT_OWNS), self);
+	ASSERT_RET(su_cs_dict_count(self) == 0, self);
+	ASSERT_RET(ndspc <= su_CS_DICT_DATA_SPACE_MAX, self);
+	self->csd_thresh_dspc &= su__CS_DICT_THRESH_MASK;
+	self->csd_thresh_dspc |= S(u16,ndspc << su__CS_DICT_THRESH_SHIFT);
 	return self;
 }
 
@@ -274,7 +309,7 @@ INLINE struct su_cs_dict *su_cs_dict_set_toolbox(struct su_cs_dict *self, struct
 }
 
 /*! Resize management table to accommodate for \a{xcount} elements.
- * Calculates new size as via \r{su_cs_dict_set_threshold_shift}.
+ * Calculates new size as via \r{su_cs_dict_set_threshold()}.
  * The \r{su_CS_DICT_FROZEN} state is ignored, but can avoid an automatic resize upon the next insertion
  * (or removal with \r{su_CS_DICT_AUTO_SHRINK}).
  * Returns -1 if no action was performed, \ERR{NONE} upon successful resize,
@@ -337,7 +372,7 @@ INLINE s32 su_cs_dict_replace(struct su_cs_dict *self, char const *key, void *va
 EXPORT boole su_cs_dict_remove(struct su_cs_dict *self, char const *key);
 
 /*! Via \r{su_DVLDBG()} it will \r{su_log_write()} statistics about \SELF.
- * If not too large, a visualization is shown: \c{0} denotes an empty slot, or one with less than 50% of the average
+ * Unless too large a visualization is shown: \c{0} denotes an empty slot, \c{.} one with less than 50% of the average
  * number of elements per slot, \c{_} less than average, \c{~} the average, \c{=} more than average, but less than
  * \c{/}, used for half the distance in between average and maximum; \c{^} denotes the maximum number of elements. */
 INLINE void su_cs_dict_statistics(struct su_cs_dict const *self){
@@ -559,6 +594,7 @@ public:
 		f_head_resort = su_CS_DICT_HEAD_RESORT, /*!< \copydoc{su_CS_DICT_HEAD_RESORT} */
 		f_strong = su_CS_DICT_STRONG, /*!< \copydoc{su_CS_DICT_STRONG} */
 		f_case = su_CS_DICT_CASE, /*!< \copydoc{su_CS_DICT_CASE} */
+		f_data_space_raw = su_CS_DICT_DATA_SPACE_RAW, /*!< \copydoc{su_CS_DICT_DATA_SPACE_RAW} */
 		f_err_pass = su_CS_DICT_ERR_PASS, /*!< \copydoc{su_CS_DICT_ERR_PASS} */
 		f_nil_is_valid_object = su_CS_DICT_NIL_IS_VALID_OBJECT, /*!< \copydoc{su_CS_DICT_NIL_IS_VALID_OBJECT} */
 		f_nilisvalo = su_CS_DICT_NILISVALO /*!< Alias for \r{f_nil_is_valid_object}. */
@@ -649,11 +685,21 @@ public:
 	/*! \copydoc{su_cs_dict_clear_flags()} */
 	cs_dict &clear_flags(u16 flags) {SELFTHIS_RET(su_cs_dict_clear_flags(this, flags & ~su_CS_DICT_OWNS));}
 
-	/*! \copydoc{su_cs_dict_threshold_shift()} */
-	u8 threshold_shift(void) const {return su_cs_dict_threshold_shift(this);}
+	/*! \copydoc{su_cs_dict_threshold()} */
+	u8 threshold(void) const {return su_cs_dict_threshold(this);}
 
-	/*! \copydoc{su_cs_dict_set_threshold_shift()} */
-	cs_dict &set_threshold_shift(u8 tshift) {SELFTHIS_RET(su_cs_dict_set_threshold_shift(this, tshift));}
+	/*! \copydoc{su_cs_dict_set_threshold()} */
+	cs_dict &set_threshold(u8 thresh) {SELFTHIS_RET(su_cs_dict_set_threshold(this, thresh));}
+
+	/*! \copydoc{su_cs_dict_data_space()} */
+	uz data_space(void) const {return su_cs_dict_data_space(this);}
+
+	/*! \copydoc{su_cs_dict_set_data_space()} */
+	cs_dict &set_data_space(uz dspc){
+		ASSERT_RET(!OWNS, *this);
+		ASSERT_RET(is_empty(), *this);
+		SELFTHIS_RET(su_cs_dict_set_data_space(this, dspc));
+	}
 
 	/*! \copydoc{su_cs_dict_toolbox()} */
 	type_toolbox const *toolbox(void) const {return R(type_toolbox const*,su_cs_dict_toolbox(this));}

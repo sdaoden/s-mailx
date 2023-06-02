@@ -40,7 +40,7 @@
 
 /* ..of a_csal_dp */
 #define a_CSAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
-#define a_CSAL_THRESHOLD_SHIFT 4
+#define a_CSAL_THRESHOLD 4
 
 static struct su_cs_dict *a_csal_dp, a_csal__d;
 
@@ -96,9 +96,9 @@ c_charsetalias(void *vp){
 		}
 	}else{
 		if(a_csal_dp == NIL){
-			a_csal_dp = su_cs_dict_set_threshold_shift(
+			a_csal_dp = su_cs_dict_set_threshold(
 					su_cs_dict_create(&a_csal__d, a_CSAL_FLAGS, &su_cs_toolbox),
-					a_CSAL_THRESHOLD_SHIFT);
+					a_CSAL_THRESHOLD);
 			DVL( su_state_on_gut_install(&a_csal__on_gut, FAL0, su_STATE_ERR_NOPASS); )
 		}
 
