@@ -36,10 +36,12 @@
 # include <su/utf.h>
 
 # ifdef mx_HAVE_HISTORY
+#  include <su/cs-dict.h>
 #  include <su/sort.h>
-# endif
-# ifdef mx_HAVE_REGEX
-#  include <su/re.h>
+
+#  ifdef mx_HAVE_REGEX
+#   include <su/re.h>
+#  endif
 # endif
 #endif
 
@@ -68,8 +70,8 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  * MLE: the Mailx-Line-Editor, our homebrew editor
  *
  * Only used in interactive mode.
- * TODO . This code should be split in funs/raw input/bind modules.
- * TODO . Multiline visual via CUPS; adjust srch-pos0 docu, then.
+ * TODO . This code should be splitted in funs/raw input/bind modules.
+ * TODO . Multiline visual via CUPS.
  * TODO . We work with wide characters, but not for buffer takeovers and
  * TODO   cell2save()ings.  This should be changed.  For the former the buffer
  * TODO   thus needs to be converted to wide first, and then simply be fed in.
@@ -78,7 +80,7 @@ FILE *mx_tty_fp; /* Our terminal output TODO input channel */
  * TODO   the actually visible content, keep a notion of "first modified slot"
  * TODO   and "last modified slot" (including "unknown" and "any" specials),
  * TODO   update that virtual instead, then synchronize what has truly changed.
- * TODO   I.e., add an indirection layer.
+ * TODO   That is, add an indirection layer.
  * TODO .. This also has an effect on our signal hook (as long as this codebase
  * TODO   uses SA_RESTART), which currently does a tremendous amount of work.
  * TODO   With double-buffer, it could simply write through the prepared one.
@@ -110,6 +112,10 @@ CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
 # ifdef mx_HAVE_HISTORY
 	/* The first line of the history file is used as a marker after >v14.9.6 */
 #  define a_TTY_HIST_MARKER "@s-mailx history v2"
+
+	/* Flags for a_tty_global.tg_hist_dict that uses data space; non-fatal errors we want */
+#  define a_TTY_HIST_DICT_FLAGS (su_CS_DICT_HEAD_RESORT | su_CS_DICT_DATA_SPACE_RAW | su_CS_DICT_ERR_PASS)
+#  define a_TTY_HIST_DICT_THRESHOLD 3
 # endif
 
 /* The maximum size (of a_tty_cell's) in a line */
@@ -312,10 +318,10 @@ struct a_tty_cell{
 struct a_tty_global{
 	struct a_tty_line *tg_line; /* To be able to access it from signal hdl */
 	boole tg_is_init;
+	boole tg_hist_is_init;
 # ifndef mx_HAVE_KEY_BINDINGS
-	u8 tg__pad0[su_6432(7,3)];
+	u8 tg__pad0[su_6432(6,2)];
 # else
-	u8 tg_bind__dummy[1];
 	boole tg_bind_isdirty;
 	boole tg_bind_isbuild;
 	u32 tg_bind_cnt; /* Overall number of bindings */
@@ -326,10 +332,11 @@ struct a_tty_global{
 	struct a_tty_bind_tree *tg_bind_tree[mx__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
 # endif
 # ifdef mx_HAVE_HISTORY
+	/* Our history consists of only unique entries, use a dict<a_tty_hist> to achieve that easily. */
+	uz tg_hist_size_max;
 	struct a_tty_hist *tg_hist;
 	struct a_tty_hist *tg_hist_tail;
-	uz tg_hist_size;
-	uz tg_hist_size_max;
+	struct su_cs_dict tg_hist_dict;
 # endif
 };
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -342,9 +349,10 @@ CTA(a_TTY_SHCUT_MAX > 1, "Users need at least one shortcut, plus NUL terminator"
 struct a_tty_hist{
 	struct a_tty_hist *th_older;
 	struct a_tty_hist *th_younger;
-	u32 th_len;
+	char const *th_dat; /* Points to dict key <> */
+	u32 th_len; /* Copy of key_len */
 	u8 th_flags; /* enum a_tty_hist_flags */
-	char th_dat[VFIELD_SIZE(3)];
+	u8 th__pad[3];
 };
 CTA(U8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 # endif
@@ -457,9 +465,9 @@ static char const a_tty_bind_fun_names[][24] = {
 };
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-/* The default key bindings (unless disallowed).  Update manual upon change!  A logical subset of this table is also
- * used if !mx_HAVE_KEY_BINDINGS (more expensive than a switch() on control codes directly, but less redundant).  The
- * table for the "base" context */
+/* The default key bindings (except for *line-editor-no-defaults*).  Update manual upon change!
+ * A logical subset of this table is also used if !mx_HAVE_KEY_BINDINGS (more expensive than a switch() on control
+ * codes directly, but less redundant).  The table for the "base" context */
 static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # undef a_X
 # define a_X(K,S) {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
@@ -566,7 +574,7 @@ static boole a_tty_hist_sel_or_del(char const **vec, boole dele);
 /* Check whether a gabby history entry fits *history_gabby* */
 static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif, char const **gt);
 
-/* (Definitely) Add an entry TODO yet assumes sigs_all_hold() is held!  Returns false on allocation failure */
+/* Add an entry TODO assumes sigs_all_hold() is held!  FAL0 on allocation failure, TRUM1 on length excess */
 static boole a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif);
 # endif /* mx_HAVE_HISTORY*/
 
@@ -720,17 +728,7 @@ jerr:
 		goto jrele;
 	}
 
-	/* Clear old history */
-	/* C99 */{
-		struct a_tty_hist *thp;
-
-		while((thp = a_tty.tg_hist) != NIL){
-			a_tty.tg_hist = thp->th_older;
-			su_FREE(thp);
-		}
-		a_tty.tg_hist_tail = NIL;
-		a_tty.tg_hist_size = 0;
-	}
+	a_tty_hist_clear();
 
 	mx_fs_linepool_aquire(&lbuf, &lsize);
 
@@ -818,14 +816,13 @@ a_tty_hist_save(void){
 
 	rv = TRU1;
 
-	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0)
+	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 || !a_tty.tg_hist_is_init)
 		goto jleave;
 
 	dogabby = ok_blook(history_gabby_persist);
 
 	if((thp = a_tty.tg_hist) != NIL)
-		for(i = a_tty.tg_hist_size_max; thp->th_older != NIL;
-				thp = thp->th_older)
+		for(i = a_tty.tg_hist_size_max; thp->th_older != NIL; thp = thp->th_older)
 			if((dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)) && --i == 0)
 				break;
 
@@ -894,7 +891,7 @@ a_tty_hist__query_config(void){
 	NYD2_IN;
 
 	if((cp = ok_vlook(NAIL_HISTSIZE)) != NIL)
-		n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));
+		n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*")); /* v15-compat */
 	if((rv = ok_vlook(history_size)) == NIL)
 		rv = cp;
 	if(rv == NIL)
@@ -915,15 +912,12 @@ a_tty_hist__query_config(void){
 
 static boole
 a_tty_hist_clear(void){
-	struct a_tty_hist *thp;
 	NYD_IN;
 
-	while((thp = a_tty.tg_hist) != NIL){
-		a_tty.tg_hist = thp->th_older;
-		su_FREE(thp);
+	if(a_tty.tg_hist_is_init){
+		su_cs_dict_clear(&a_tty.tg_hist_dict);
+		a_tty.tg_hist = a_tty.tg_hist_tail = NIL;
 	}
-	a_tty.tg_hist_tail = NIL;
-	a_tty.tg_hist_size = 0;
 
 	NYD_OU;
 	return TRU1;
@@ -942,7 +936,7 @@ a_tty_hist_list(void){
 	if((fp = mx_fs_tmp_open(NIL, "hist", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL)
 		fp = n_stdout;
 
-	no = a_tty.tg_hist_size;
+	no = su_cs_dict_count(&a_tty.tg_hist_dict);
 	l = b = 0;
 
 	for(thp = a_tty.tg_hist; thp != NIL; --no, ++l, thp = thp->th_older){
@@ -973,6 +967,9 @@ a_tty_hist_list(void){
 	}else
 		clearerr(fp);
 
+	if(n_poption & n_PO_D_V)
+		su_cs_dict_statistics(&a_tty.tg_hist_dict);
+
 jleave:
 	NYD_OU;
 	return TRU1;
@@ -980,11 +977,10 @@ jleave:
 
 static boole
 a_tty_hist_sel_or_del(char const **vec, boole dele){
-	struct a_tty_hist *thp, *othp, *ythp;
+	struct a_tty_hist *thp;
 	boole rv;
 	sz *lp_base, *lp, entry, delcnt, ep;
 	NYD_IN;
-	LCTAV(sizeof(sz) == sizeof(void*));
 
 	for(entry = 0; vec[entry] != NIL; ++entry){
 	}
@@ -1012,6 +1008,7 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
 		goto jleave;
 	}
 
+	/* Sort so no order changes bite us */
 	su_sort_shell_vpp(C(void const**,&lp_base[0]), entry -1, NIL);
 
 	rv = TRU1;
@@ -1023,7 +1020,7 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
 		ep = (entry < 0) ? -entry : entry;
 		ep -= delcnt++;
 
-		if(ep == 0 || UCMP(z, ep, >, a_tty.tg_hist_size)){
+		if(ep == 0 || !a_tty.tg_hist_is_init || UCMP(z, ep, >, su_cs_dict_count(&a_tty.tg_hist_dict))){
 			n_err(_("history: not a number, or no such entry: %" PRIdZ "\n"), *lp);
 			rv = FAL0;
 			continue;
@@ -1032,38 +1029,41 @@ a_tty_hist_sel_or_del(char const **vec, boole dele){
 		if(entry < 0)
 			--ep;
 		else
-			ep = S(sz,a_tty.tg_hist_size) - ep;
+			ep = S(sz,su_cs_dict_count(&a_tty.tg_hist_dict)) - ep;
 
 		for(thp = a_tty.tg_hist; ep-- != 0; thp = thp->th_older){
 			ASSERT(thp != NIL);
 		}
-
 		ASSERT(thp != NIL);
-		othp = thp->th_older;
-		ythp = thp->th_younger;
-		if(othp != NIL)
-			othp->th_younger = ythp;
-		else
-			a_tty.tg_hist_tail = ythp;
-		if(ythp != NIL)
-			ythp->th_older = othp;
-		else
-			a_tty.tg_hist = othp;
 
-		if(!dele){ /* XXX c_history(): needless double relinking done */
+		/* C99 */{
+			struct a_tty_hist *othp, *ythp;
+
+			othp = thp->th_older;
+			ythp = thp->th_younger;
+			if(othp != NIL)
+				othp->th_younger = ythp;
+			else
+				a_tty.tg_hist_tail = ythp;
+			if(ythp != NIL)
+				ythp->th_older = othp;
+			else
+				a_tty.tg_hist = othp;
+		}
+
+		if(!dele){
 			if((thp->th_older = a_tty.tg_hist) != NIL)
 				a_tty.tg_hist->th_younger = thp;
 			else
 				a_tty.tg_hist_tail = thp;
 			thp->th_younger = NIL;
-			 a_tty.tg_hist = thp;
+			a_tty.tg_hist = thp;
 
 			mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, thp->th_dat, thp->th_len);
 			break;
 		}else{
-			--a_tty.tg_hist_size;
 			fprintf(mx_tty_fp, _("history: deleting %" PRIdZ ": %s\n"), entry, thp->th_dat);
-			su_FREE(thp);
+			su_cs_dict_remove(&a_tty.tg_hist_dict, thp->th_dat);
 		}
 	}
 
@@ -1125,56 +1125,70 @@ jouter:
 
 static boole
 a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
+	struct su_cs_dict_view dv;
 	struct a_tty_hist *thp, *othp, *ythp;
-	u32 l;
+	boole rv;
+	uz kl;
 	NYD2_IN;
 
-	l = S(u32,su_cs_len(s)); /* xxx simply do not store if >= S32_MAX */
-
-	/* Eliminating duplicates is expensive, but simply inacceptable so during the load of a potentially large
-	 * history file! */
-	if(a_tty.tg_is_init){
-		for(thp = a_tty.tg_hist; thp != NIL; thp = thp->th_older)
-			if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
-				/* xxx Do not propagate an existing non-gabby entry to gabby */
-				thp->th_flags = ((gif & a_TTY_HIST_CTX_MASK) | (((gif & mx_GO_INPUT_HIST_GABBY) &&
-								(thp->th_flags & a_TTY_HIST_GABBY)
-							) ? a_TTY_HIST_GABBY : 0));
-				othp = thp->th_older;
-				ythp = thp->th_younger;
-				if(othp != NIL)
-					othp->th_younger = ythp;
-				else
-					a_tty.tg_hist_tail = ythp;
-				if(ythp != NIL)
-					ythp->th_older = othp;
-				else
-					a_tty.tg_hist = othp;
-				goto jleave;
-			}
+	if((kl = su_cs_len(s)) > S32_MAX){
+		rv = TRUM1;
+		goto jleave;
 	}
 
+	if(!a_tty.tg_hist_is_init){
+		struct su_cs_dict *dp;
+
+		dp = su_cs_dict_create(&a_tty.tg_hist_dict, a_TTY_HIST_DICT_FLAGS, NIL);
+		dp = su_cs_dict_set_threshold(dp, a_TTY_HIST_DICT_THRESHOLD);
+		dp = su_cs_dict_set_data_space(dp, sizeof(struct a_tty_hist));
+		a_tty.tg_hist_is_init = TRU1;
+	}
+
+	su_cs_dict_view_setup(&dv, &a_tty.tg_hist_dict);
+
+	if((rv = su_cs_dict_view_find(&dv, s))){
+		/* xxx Do not propagate an existing non-gabby entry to gabby */
+		thp = su_cs_dict_view_data(&dv);
+		thp->th_flags = ((gif & a_TTY_HIST_CTX_MASK) | (((gif & mx_GO_INPUT_HIST_GABBY) &&
+						(thp->th_flags & a_TTY_HIST_GABBY)
+					) ? a_TTY_HIST_GABBY : 0));
+	}
 	/* If ring is full, rotate */
-	if(LIKELY(a_tty.tg_hist_size < a_tty.tg_hist_size_max))
-		++a_tty.tg_hist_size;
-	else{
-		if((thp = a_tty.tg_hist_tail) != NIL){
-			if((a_tty.tg_hist_tail = thp->th_younger) == NIL)
-				a_tty.tg_hist = NIL;
-			else
-				a_tty.tg_hist_tail->th_older = NIL;
-			su_FREE(thp);
-		}
+	else if(UNLIKELY(su_cs_dict_count(&a_tty.tg_hist_dict) >= a_tty.tg_hist_size_max) &&
+			(thp = a_tty.tg_hist_tail) != NIL)
+		rv = TRU1 | TRU2;
+
+	if(rv & TRU1){
+		othp = thp->th_older;
+		ythp = thp->th_younger;
+		if(othp != NIL)
+			othp->th_younger = ythp;
+		else
+			a_tty.tg_hist_tail = ythp;
+		if(ythp != NIL)
+			ythp->th_older = othp;
+		else
+			a_tty.tg_hist = othp;
+
+		if(!(rv & TRU2))
+			goto jlink;
 	}
 
-	thp = su_MEM_ALLOCATE(VSTRUCT_SIZEOF(struct a_tty_hist,th_dat) + l +1, 1, su_MEM_ALLOC_NOMEM_OK);
-	if(thp == NIL)
-		goto j_leave;
-	thp->th_len = l;
-	thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) | (gif & mx_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-	su_mem_copy(thp->th_dat, s, l +1);
+	if(rv & TRU2)
+		su_cs_dict_remove(&a_tty.tg_hist_dict, thp->th_dat);
 
-jleave:
+	if(su_cs_dict_view_reset_insert(&dv, s, R(void*,0x1)) > su_ERR_NONE){
+		rv = FAL0;
+		goto jleave;
+	}
+	thp = su_cs_dict_view_data(&dv);
+	thp->th_dat = su_cs_dict_view_key(&dv);
+	thp->th_len = su_cs_dict_view_key_len(&dv);
+	thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) | (gif & mx_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+
+	rv = TRU1;
+jlink:
 	if((thp->th_older = a_tty.tg_hist) != NIL)
 		a_tty.tg_hist->th_younger = thp;
 	else
@@ -1182,9 +1196,9 @@ jleave:
 	thp->th_younger = NIL;
 	a_tty.tg_hist = thp;
 
-j_leave:
+jleave:
 	NYD2_OU;
-	return (thp != NIL);
+	return rv;
 }
 # endif /* mx_HAVE_HISTORY */
 
@@ -4270,12 +4284,12 @@ mx_tty_init(boole ismain){
 	if(ok_blook(line_editor_disable))
 		goto jleave;
 
+	a_tty.tg_is_init = TRU1;
+
 	/* Load the history file */
 # ifdef mx_HAVE_HISTORY
 	a_tty_hist_load();
 # endif
-
-	a_tty.tg_is_init = TRU1;
 
 # ifdef mx_HAVE_KEY_BINDINGS
 	/* `bind's (and `unbind's) done from within resource files could not be performed for real since our termcap
@@ -4349,9 +4363,11 @@ mx_tty_destroy(boole xit_fastpath){
 
 	/* Write the history file */
 # ifdef mx_HAVE_HISTORY
-	if(!xit_fastpath){
+	if(!xit_fastpath && a_tty.tg_hist_is_init){
 		a_tty_hist_save();
-		DVL( a_tty_hist_clear(); )
+		DVL(a_tty_hist_clear();)
+		su_cs_dict_gut(&a_tty.tg_hist_dict);
+		DVL(a_tty.tg_hist_is_init = FAL0;)
 	}
 # endif
 
