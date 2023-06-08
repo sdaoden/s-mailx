@@ -9921,126 +9921,136 @@ t_alternates() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
-	commandalias x echo '$?/$^ERRNAME'
-	commandalias y echo '$?/$^ERRNAME <$rv>'
-	echo --0
-	alternates;x
-	alternates a1@b1 a2@b2 a3@b3;x
-	alternates;x
-	vput alternates rv;y
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+commandalias x echo '$?/$^ERRNAME'
+commandalias y echo '$?/$^ERRNAME <$rv>'
+echo --0
+alternates;x
+alternates a1@b1 a2@b2 a3@b3;x
+alternates;x
+vput alternates rv;y
 
-	echo --1
-	unalternates a2@b2
-	vput alternates rv;y
-	unalternates a3@b3
-	vput alternates rv;y
-	unalternates a1@b1
-	vput alternates rv;y
+echo --1
+unalternates a2@b2
+vput alternates rv;y
+unalternates a3@b3
+vput alternates rv;y
+unalternates a1@b1
+vput alternates rv;y
 
-	echo --2
-	unalternates *
-	alternates a1@b1 a2@b2 a3@b3
-	unalternates a3@b3
-	vput alternates rv;y
-	unalternates a2@b2
-	vput alternates rv;y
-	unalternates a1@b1
-	vput alternates rv;y
+echo --2
+unalternates *
+alternates a1@b1 a2@b2 a3@b3
+unalternates a3@b3
+vput alternates rv;y
+unalternates a2@b2
+vput alternates rv;y
+unalternates a1@b1
+vput alternates rv;y
 
-	echo --3
-	alternates a1@b1 a2@b2 a3@b3
-	unalternates a1@b1
-	vput alternates rv;y
-	unalternates a2@b2
-	vput alternates rv;y
-	unalternates a3@b3
-	vput alternates rv;y
+echo --3
+alternates a1@b1 a2@b2 a3@b3
+unalternates a1@b1
+vput alternates rv;y
+unalternates a2@b2
+vput alternates rv;y
+unalternates a3@b3
+vput alternates rv;y
 
-	echo --4
-	unalternates *
-	alternates a1@b1 a2@b2 a3@b3
-	unalternates *
-	vput alternates rv;y
+echo --4
+unalternates *
+alternates a1@b1 a2@b2 a3@b3
+unalternates *
+vput alternates rv;y
 
-	echo --5
-	unalternates *
-	alternates a1@b1 a1@c1 a1@d1 a2@b2 a3@b3 a3@c3 a3@d3
-	m a1@b1 a1@c1 a1@d1
-	~s all alternates, only a1@b1 remains
-	~c a2@b2
-	~b a3@b3 a3@c3 a3@d3
-	~r - '_EOT'
-	   This body is!
-	   This also body is!!
+#> ali<>metoo<>alternates
+alias t a1@b1 a1@c1 a1@d1
+alias c a2@b2
+alias b a3@b3 a3@c3 a3@d3
+
+echo --5
+unalternates *
+alternates a1@c1 a1@d1 a2@b2 a3@b3 a3@c3 a3@d3
+m t
+~s 1 only a1@b1 remains
+~c c
+~b b
+~r - '_EOT'
+ Body
+ 1 is!
 _EOT
-	~.
+~.
 
-	echo --6
-	unalternates *
-	alternates a1@b1 a1@c1 a2@b2 a3@b3
-	m a1@b1 a1@c1 a1@d1
-	~s a1@b1 a1@d1, and a3@c3 a3@d3 remain
-	~c a2@b2
-	~b a3@b3 a3@c3 a3@d3
-	~r - '_EOT'
-	   This body2 is!
+echo --6
+unalternates *
+alternates a1@c1 a2@b2 a3@b3
+m t
+~s a1@b1 a1@d1 / a3@c3 a3@d3
+~c c
+~b b
+~r - '_EOT'
+ Body
+ 2 is!
 _EOT
-	~.
+~.
 
-	echo --7
-	alternates a1@b1 a2@b2 a3; set allnet
-	m a1@b1 a1@c1 a1@d1
-	~s all alternates via allnet, only a1@b1 remains
-	~c a2@b2
-	~b a3@b3 a3@c3 a3@d3
-	~r - '_EOT'
-	   This body3 is!
+echo --7
+set allnet
+m t a@a
+~s allnet: all / a@a
+~c c
+~b b
+~r - '_EOT'
+ Body
+ 3 is!
 _EOT
-	~.
+~.
 
-	echo --10
-	unalternates *
-	alternates a1@b1;x
-	vput alternates rv;y
-	alternates a2@b2;x
-	vput alternates rv;y
-	alternates a3@b3;x
-	vput alternates rv;y
-	alternates a4@b4;x
-	vput alternates rv;y
+unali t c b
+#< ali<>metoo<>alternates
 
-	unalternates *
-	vput alternates rv;y
+echo --10
+unalternates *
+alternates a1@b1;x
+vput alternates rv;y
+alternates a2@b2;x
+vput alternates rv;y
+alternates a3@b3;x
+vput alternates rv;y
+alternates a4@b4;x
+vput alternates rv;y
 
-	echo --11
-	set posix
-	alternates a1@b1 a2@b2;x
-	vput alternates rv;y
-	alternates a3@b3 a4@b4;x
-	vput alternates rv;y
-	__EOT
+unalternates *
+vput alternates rv;y
+
+echo --11
+set posix
+alternates a1@b1 a2@b2;x
+vput alternates rv;y
+alternates a3@b3 a4@b4;x
+vput alternates rv;y
+__EOT
 	#}}}
-	ck 1 0 ./t1 '3901995195 542'
-	cke0 2 - ./t2 '1878598364 505'
+	ck 1 0 ./t1 '2490275212 451'
+	cke0 2 - ./t2 '4293159449 505'
 
-	#{{{ Automatic alternates, also from command line (freezing etc.)
-	${cat} <<- '__EOT' > ./t3_5-in
-	From trouble-report@desy  Wed Jun  6 20:19:28 2018
-	Date: Wed, 06 Jun 2018 19:58:02 +0200
-	From: a@b.org, b@b.org, c@c.org
-	Sender: a@b.org
-	To: b@b.org
-	Cc: a@b.org, c@c.org
-	Subject: test
-	Message-ID: <20180606175802.dw-cn%a@b.org>
-	
-	sultry
-	
-	__EOT
+	#{{{ Automatic ones, also from cmdline (freezing+)
+	${cat} << '__EOT' > ./t3_5-in
+From trouble-report@desy  Wed Jun  6 20:19:28 2018
+Date: Wed, 06 Jun 2018 19:58:02 +0200
+From: a@b.org, b@b.org, c@c.org
+Sender: a@b.org
+To: b@b.org
+Cc: a@b.org, c@c.org
+Subject: test
+Message-ID: <20180606175802.dw-cn%a@b.org>
+
+sultry
+
+__EOT
 
 	printf '#
-	reply
+reply
 !^header remove to
 !^header remove cc
 !^header remove subject
@@ -10762,411 +10772,414 @@ t_compose_hooks() { # {{{ TODO monster
 
 	#{{{ Supposed to extend t_compose_edits with ~^ stress tests!
 	${cat} <<'__EOT__' > ./t.rc
-	define bail {
-		echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
-	}
-	define xerr {
-		vput csop es substr "$1" 0 1
-		if "$es" != 2; xcall bail "$2: $1"; end
-	}
-	define read_mline_res {
-		read hl; set len=$? es=$! en=$^ERRNAME; echo $len/$es/$^ERRNAME: $hl
-		if $es -ne $^ERR-NONE; xcall bail read_mline_res
-		elif $len -ne 0; \xcall read_mline_res
-		end
-	}
-	define ins_addr {
-		set xh=$1
-		echo "~^header list"; read hl; echo $hl; call xerr "$hl" "in_addr ($xh) 0-1"
+define bail {
+	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+}
+define xerr {
+	vput csop es substr "$1" 0 1
+	if "$es" != 2; xcall bail "$2: $1"; end
+}
+define read_mline_res {
+	read hl; set len=$? es=$! en=$^ERRNAME; echo $len/$es/$^ERRNAME: $hl
+	if $es -ne $^ERR-NONE; xcall bail read_mline_res
+	elif $len -ne 0; \xcall read_mline_res
+	end
+}
+define ins_addr {
+	set xh=$1
+	echo "~^header list"; read hl; echo $hl; call xerr "$hl" "in_addr ($xh) 0-1"
 
-		echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
+	echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
+	echo "~^header insert $xh <${xh}2@exam.ple>";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
+	echo "~^header insert $xh ${xh}3@exam.ple";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 1-3"
+	echo "~^header list $xh"; read hl; echo $hl;\
+		call xerr "$hl" "ins_addr $xh 1-4"
+	echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
+	call read_mline_res
+
+	if "$t_remove" == ""; return; end
+
+	echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
+	echo "~^header remove $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-2"; end
+	echo "~^header list $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-3"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-4"; end
+
+	#
+	echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
+	echo "~^header insert $xh <${xh}2@exam.ple>";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
+	echo "~^header insert $xh ${xh}3@exam.ple";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 3-3"
+	echo "~^header list $xh"; read hl; echo $hl;\
+		call xerr "$hl" "ins_addr $xh 3-4"
+	echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 3-5"
+	call read_mline_res
+
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
+	echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-9"; end
+	echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_addr $xh 3-10"; end
+	echo "~^header list $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-11"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-12"; end
+
+	#
+	echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
+ echo "~^header insert $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";\
+		read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
+	echo "~^header insert $xh ${xh}3@exam.ple";
+		read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
+	echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "header list $xh 3-4"
+	echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 4-5"
+	call read_mline_res
+
+	echo "~^header remove-at $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
+	echo "~^header remove-at $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
+	echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-9"; end
+	echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_addr $xh 4-10"; end
+	echo "~^header list $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-11"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-12"; end
+}
+define ins_ref {
+	set xh=$1 mult=$2
+	echo "~^header list"; read hl; echo $hl; call xerr "$hl" "ins_ref ($xh) 0-1"
+
+	echo "~^header insert $xh <$xh@exam.ple>"; read es; echo $es; call xerr "$es" "ins_ref $xh 1-1"
+	if $mult -ne 0
 		echo "~^header insert $xh <${xh}2@exam.ple>";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
-		echo "~^header insert $xh ${xh}3@exam.ple";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 1-3"
-		echo "~^header list $xh"; read hl; echo $hl;\
-			call xerr "$hl" "ins_addr $xh 1-4"
-		echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
-		call read_mline_res
-
-		if "$t_remove" == ""; return; end
-
-		echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
-		echo "~^header remove $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 2-2"; end
-		echo "~^header list $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 2-3"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 2-4"; end
-
-		#
-		echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
-		echo "~^header insert $xh <${xh}2@exam.ple>";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
-		echo "~^header insert $xh ${xh}3@exam.ple";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 3-3"
-		echo "~^header list $xh"; read hl; echo $hl;\
-			call xerr "$hl" "ins_addr $xh 3-4"
-		echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 3-5"
-		call read_mline_res
-
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
-		echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 3-9"; end
-		echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
-		if $es != 505; xcall bail "ins_addr $xh 3-10"; end
-		echo "~^header list $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 3-11"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 3-12"; end
-
-		#
-		echo "~^header insert $xh 'diet <$xh@exam.ple> spliced'";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
-	 echo "~^header insert $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";\
-			read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
+			read es; echo $es; call xerr "$es" "ins_ref $xh 1-2"
 		echo "~^header insert $xh ${xh}3@exam.ple";
-			read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
-		echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "header list $xh 3-4"
-		echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 4-5"
-		call read_mline_res
+			read es; echo $es; call xerr "$es" "ins_ref $xh 1-3"
+	else
+		echo "~^header insert $xh <${xh}2@exam.ple>"; read es; vput csop es substr $es 0 3
+		if $es != 506; xcall bail "ins_ref $xh 1-4"; end
+	end
 
-		echo "~^header remove-at $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
-		echo "~^header remove-at $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
-		echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 4-9"; end
-		echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
-		if $es != 505; xcall bail "ins_addr $xh 4-10"; end
-		echo "~^header list $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 4-11"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_addr $xh 4-12"; end
-	}
-	define ins_ref {
-		set xh=$1 mult=$2
-		echo "~^header list"; read hl; echo $hl; call xerr "$hl" "ins_ref ($xh) 0-1"
+	echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 1-5"
+	echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 1-6"
+	call read_mline_res
 
-		echo "~^header insert $xh <$xh@exam.ple>"; read es; echo $es; call xerr "$es" "ins_ref $xh 1-1"
-		if $mult -ne 0
-			echo "~^header insert $xh <${xh}2@exam.ple>";\
-				read es; echo $es; call xerr "$es" "ins_ref $xh 1-2"
-			echo "~^header insert $xh ${xh}3@exam.ple";
-				read es; echo $es; call xerr "$es" "ins_ref $xh 1-3"
-		else
-			echo "~^header insert $xh <${xh}2@exam.ple>"; read es; vput csop es substr $es 0 3
-			if $es != 506; xcall bail "ins_ref $xh 1-4"; end
-		end
+	if "$t_remove" == ""; return; end
 
-		echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 1-5"
-		echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 1-6"
-		call read_mline_res
+	echo "~^header remove $xh"; read es; call xerr $es "ins_ref $xh 2-1"
+	echo "~^header remove $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 2-2"; end
+	echo "~^header list $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "$es ins_ref $xh 2-3"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 2-4"; end
 
-		if "$t_remove" == ""; return; end
+	#
+	echo "~^header insert $xh <$xh@exam.ple>"; read es; echo $es; call xerr "$es" "ins_ref $xh 3-1"
+	if $mult -ne 0
+		echo "~^header insert $xh <${xh}2@exam.ple>";
+			read es; echo $es; call xerr "$es" "ins_ref $xh 3-2"
+		echo "~^header insert $xh ${xh}3@exam.ple";\
+			read es; echo $es; call xerr "$es" "ins_ref $xh 3-3"
+	end
+	echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 3-4"
+	echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 3-5"
+	call read_mline_res
 
-		echo "~^header remove $xh"; read es; call xerr $es "ins_ref $xh 2-1"
-		echo "~^header remove $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_ref $xh 2-2"; end
-		echo "~^header list $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "$es ins_ref $xh 2-3"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_ref $xh 2-4"; end
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-6"
+	if $mult -ne 0 && $xh != subject
+		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
+		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
+	end
+	echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501;;; xcall bail "ins_ref $xh 3-9"; end
+	echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_ref $xh 3-10"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 3-11"; end
 
-		#
-		echo "~^header insert $xh <$xh@exam.ple>"; read es; echo $es; call xerr "$es" "ins_ref $xh 3-1"
-		if $mult -ne 0
-			echo "~^header insert $xh <${xh}2@exam.ple>";
-				read es; echo $es; call xerr "$es" "ins_ref $xh 3-2"
-			echo "~^header insert $xh ${xh}3@exam.ple";\
-				read es; echo $es; call xerr "$es" "ins_ref $xh 3-3"
-		end
-		echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 3-4"
-		echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 3-5"
-		call read_mline_res
+	#
+	echo "~^header insert $xh <$xh@exam.ple> "; read es; echo $es; call xerr "$es" "ins_ref $xh 4-1"
+	if $mult -ne 0
+		echo "~^header insert $xh <${xh}2@exam.ple> ";
+			read es; echo $es; call xerr "$es" "ins_ref $xh 4-2"
+		echo "~^header insert $xh ${xh}3@exam.ple";\
+			read es; echo $es; call xerr "$es" "ins_ref $xh 4-3"
+	end
+	echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 4-4"
+	echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 4-5"
+	call read_mline_res
 
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-6"
-		if $mult -ne 0 && $xh != subject
-			echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
-			echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
-		end
-		echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
-		if $es != 501;;; xcall bail "ins_ref $xh 3-9"; end
-		echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
-		if $es != 505; xcall bail "ins_ref $xh 3-10"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_ref $xh 3-11"; end
+	if $mult -ne 0 && $xh != subject
+		echo "~^header remove-at $xh 3"; read es; call xerr $es "ins_ref $xh 4-6"
+		echo "~^header remove-at $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
+	end
+	echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
+	echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 4-9"; end
+	echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_ref $xh 4-10"; end
+	echo "~^header show $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 4-11"; end
+}
+define t_header {
+	echo t_header ENTER
+	# In collect.c order
+	call ins_addr from
+	call ins_ref sender 0 # Not a "ref", but works
+	call ins_addr To
+	call ins_addr cC
+	call ins_addr bCc
+	call ins_addr reply-To
+	call ins_addr mail-Followup-to
+	call ins_ref messAge-id 0
+	call ins_ref rEfErEncEs 1
+	call ins_ref in-Reply-to 1
+	call ins_ref subject 1 # Not a "ref", but works (with tweaks)
+	call ins_addr freeForm1
+	call ins_addr freeform2
 
-		#
-		echo "~^header insert $xh <$xh@exam.ple> "; read es; echo $es; call xerr "$es" "ins_ref $xh 4-1"
-		if $mult -ne 0
-			echo "~^header insert $xh <${xh}2@exam.ple> ";
-				read es; echo $es; call xerr "$es" "ins_ref $xh 4-2"
-			echo "~^header insert $xh ${xh}3@exam.ple";\
-				read es; echo $es; call xerr "$es" "ins_ref $xh 4-3"
-		end
-		echo "~^header list $xh"; read hl; echo $hl; call xerr "$hl" "ins_ref $xh 4-4"
-		echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 4-5"
-		call read_mline_res
+	echo "~^header show MAILX-Command"; read es; call xerr $es "t_header 1000"
+	call read_mline_res
+	echo "~^header show MAILX-raw-TO"; read es; call xerr $es "t_header 1001"
+	call read_mline_res
 
-		if $mult -ne 0 && $xh != subject
-			echo "~^header remove-at $xh 3"; read es; call xerr $es "ins_ref $xh 4-6"
-			echo "~^header remove-at $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
-		end
-		echo "~^header remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
-		echo "~^header remove-at $xh 1"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_ref $xh 4-9"; end
-		echo "~^header remove-at $xh T"; read es; vput csop es substr $es 0 3
-		if $es != 505; xcall bail "ins_ref $xh 4-10"; end
-		echo "~^header show $xh"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "ins_ref $xh 4-11"; end
-	}
-	define t_header {
-		echo t_header ENTER
-		# In collect.c order
-		call ins_addr from
-		call ins_ref sender 0 # Not a "ref", but works
-		call ins_addr To
-		call ins_addr cC
-		call ins_addr bCc
-		call ins_addr reply-To
-		call ins_addr mail-Followup-to
-		call ins_ref messAge-id 0
-		call ins_ref rEfErEncEs 1
-		call ins_ref in-Reply-to 1
-		call ins_ref subject 1 # Not a "ref", but works (with tweaks)
-		call ins_addr freeForm1
-		call ins_addr freeform2
+	echo t_header LEAVE
+}
+define t_attach {
+	echo t_attach ENTER
 
-		echo "~^header show MAILX-Command"; read es; call xerr $es "t_header 1000"
-		call read_mline_res
-		echo "~^header show MAILX-raw-TO"; read es; call xerr $es "t_header 1001"
-		call read_mline_res
+	echo "~^attachment"; read hl; echo $hl; vput csop es substr "$hl" 0 3
+	if "$es" != 501; xcall bail "attach 0-1"; end
 
-		echo t_header LEAVE
-	}
-	define t_attach {
-		echo t_attach ENTER
+	echo "~^attach attribute ./t.readctl"; read hl; echo $hl; vput csop es substr "$hl" 0 3
+	if "$es" != 501; xcall bail "attach 0-2"; end
+	echo "~^attachment attribute-at 1"; read hl; echo $hl; vput csop es substr "$hl" 0 3
+	if "$es" != 501; xcall bail "attach 0-3"; end
 
-		echo "~^attachment"; read hl; echo $hl; vput csop es substr "$hl" 0 3
-		if "$es" != 501; xcall bail "attach 0-1"; end
+	echo "~^attachment insert ./t.readctl=ascii"; read hl; echo $hl; call xerr "$hl" "attach 1-1"
+	echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 1-2"
+	call read_mline_res
+	echo "~^attachment attribute ./t.readctl"; read es; echo $es;call xerr "$es" "attach 1-3"
+	call read_mline_res
+	echo "~^attachment attribute t.readctl"; read es; echo $es;call xerr "$es" "attach 1-4"
+	call read_mline_res
+	echo "~^attachment attribute-at 1"; read es; echo $es;call xerr "$es" "attach 1-5"
+	call read_mline_res
 
-		echo "~^attach attribute ./t.readctl"; read hl; echo $hl; vput csop es substr "$hl" 0 3
-		if "$es" != 501; xcall bail "attach 0-2"; end
-		echo "~^attachment attribute-at 1"; read hl; echo $hl; vput csop es substr "$hl" 0 3
-		if "$es" != 501; xcall bail "attach 0-3"; end
+	echo "~^attachment attribute-set ./t.readctl filename rctl";\
+		read es; echo $es;call xerr "$es" "attach 1-6"
+	echo "~^attachment attribute-set t.readctl content-description Au";\
+		read es; echo $es;call xerr "$es" "attach 1-7"
+	echo "~^attachment attribute-set-at 1 content-id <10.du@ich>";\
+		read es; echo $es;call xerr "$es" "attach 1-8"
 
-		echo "~^attachment insert ./t.readctl=ascii"; read hl; echo $hl; call xerr "$hl" "attach 1-1"
-		echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 1-2"
-		call read_mline_res
-		echo "~^attachment attribute ./t.readctl"; read es; echo $es;call xerr "$es" "attach 1-3"
-		call read_mline_res
-		echo "~^attachment attribute t.readctl"; read es; echo $es;call xerr "$es" "attach 1-4"
-		call read_mline_res
-		echo "~^attachment attribute-at 1"; read es; echo $es;call xerr "$es" "attach 1-5"
-		call read_mline_res
+	echo "~^attachment attribute ./t.readctl"; read es; echo $es;call xerr "$es" "attach 1-9"
+	call read_mline_res
+	echo "~^attachment attribute t.readctl"; read es; echo $es;call xerr "$es" "attach 1-10"
+	call read_mline_res
+	echo "~^attachment attribute rctl"; read es; echo $es;call xerr "$es" "attach 1-11"
+	call read_mline_res
+	echo "~^attachment attribute-at 1"; read es; echo $es;call xerr "$es" "attach 1-12"
+	call read_mline_res
 
-		echo "~^attachment attribute-set ./t.readctl filename rctl";\
-			read es; echo $es;call xerr "$es" "attach 1-6"
-		echo "~^attachment attribute-set t.readctl content-description Au";\
-			read es; echo $es;call xerr "$es" "attach 1-7"
-		echo "~^attachment attribute-set-at 1 content-id <10.du@ich>";\
-			read es; echo $es;call xerr "$es" "attach 1-8"
+	#
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 2-1"
+	echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 2-2"
+	call read_mline_res
+	echo "~^attachment attribute ./t.attach"; read es; echo $es;call xerr "$es" "attach 2-3"
+	call read_mline_res
+	echo "~^attachment attribute t.attach"; read es; echo $es;call xerr "$es" "attach 2-4"
+	call read_mline_res
+	echo "~^attachment attribute-at 2"; read es; echo $es;call xerr "$es" "attach 2-5"
+	call read_mline_res
 
-		echo "~^attachment attribute ./t.readctl"; read es; echo $es;call xerr "$es" "attach 1-9"
-		call read_mline_res
-		echo "~^attachment attribute t.readctl"; read es; echo $es;call xerr "$es" "attach 1-10"
-		call read_mline_res
-		echo "~^attachment attribute rctl"; read es; echo $es;call xerr "$es" "attach 1-11"
-		call read_mline_res
-		echo "~^attachment attribute-at 1"; read es; echo $es;call xerr "$es" "attach 1-12"
-		call read_mline_res
+	echo "~^attachment attribute-set ./t.attach filename tat";
+		read es; echo $es;call xerr "$es" "attach 2-6"
+	echo "~^attachment attribute-set t.attach content-description Au2";\
+		read es; echo $es;call xerr "$es" "attach 2-7"
+	echo "~^attachment attribute-set-at 2 content-id <20.du@wir>";\
+		read es; echo $es;call xerr "$es" "attach 2-8"
+	echo "~^attachment attribute-set-at 2 content-type application/x-sh";\
+	  read es; echo $es;call xerr "$es" "attach 2-9"
 
-		#
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 2-1"
-		echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 2-2"
-		call read_mline_res
-		echo "~^attachment attribute ./t.attach"; read es; echo $es;call xerr "$es" "attach 2-3"
-		call read_mline_res
-		echo "~^attachment attribute t.attach"; read es; echo $es;call xerr "$es" "attach 2-4"
-		call read_mline_res
-		echo "~^attachment attribute-at 2"; read es; echo $es;call xerr "$es" "attach 2-5"
-		call read_mline_res
+	echo "~^attachment attribute ./t.attach"; read es; echo $es;call xerr "$es" "attach 2-10"
+	call read_mline_res
+	echo "~^attachment attribute t.attach"; read es; echo $es;call xerr "$es" "attach 2-11"
+	call read_mline_res
+	echo "~^attachment attribute tat"; read es; echo $es;call xerr "$es" "attach 2-12"
+	call read_mline_res
+	echo "~^attachment attribute-at 2"; read es; echo $es;call xerr "$es" "attach 2-13"
+	call read_mline_res
 
-		echo "~^attachment attribute-set ./t.attach filename tat";
-			read es; echo $es;call xerr "$es" "attach 2-6"
-		echo "~^attachment attribute-set t.attach content-description Au2";\
-			read es; echo $es;call xerr "$es" "attach 2-7"
-		echo "~^attachment attribute-set-at 2 content-id <20.du@wir>";\
-			read es; echo $es;call xerr "$es" "attach 2-8"
-		echo "~^attachment attribute-set-at 2 content-type application/x-sh";\
-		  read es; echo $es;call xerr "$es" "attach 2-9"
+	#
+	if "$t_remove" == ""; return; end
 
-		echo "~^attachment attribute ./t.attach"; read es; echo $es;call xerr "$es" "attach 2-10"
-		call read_mline_res
-		echo "~^attachment attribute t.attach"; read es; echo $es;call xerr "$es" "attach 2-11"
-		call read_mline_res
-		echo "~^attachment attribute tat"; read es; echo $es;call xerr "$es" "attach 2-12"
-		call read_mline_res
-		echo "~^attachment attribute-at 2"; read es; echo $es;call xerr "$es" "attach 2-13"
-		call read_mline_res
+	echo "~^attachment remove ./t.readctl"; read es; call xerr $es "attach 3-1"
+	echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 3-2"
+	echo "~^   attachment	  remove		 ./t.readctl"; read es;vput csop es substr $es 0 3
+	if [ $es != 501 ]
+		xcall bail "attach 3-3"
+	end
+	echo "~^   attachment	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 3-4"; end
+	echo "~^attachment list"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 3-5"; end
 
-		#
-		if "$t_remove" == ""; return; end
+	#
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 4-1"
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 4-2"
+	echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 4-3"
+	call read_mline_res
+	echo "~^   attachment	  remove		 t.attach"; read es;vput csop es substr $es 0 3
+	if $es != 506; xcall bail "attach 4-4 $es"; end
+	echo "~^attachment remove-at T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "attach 4-5"; end
+	echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 4-6"
+	echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 4-7"
+	echo "~^   attachment	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 4-8 $es"; end
+	echo "~^attachment list"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 4-9"; end
 
-		echo "~^attachment remove ./t.readctl"; read es; call xerr $es "attach 3-1"
-		echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 3-2"
-		echo "~^   attachment	  remove		 ./t.readctl"; read es;vput csop es substr $es 0 3
-		if [ $es != 501 ]
-			xcall bail "attach 3-3"
-		end
-		echo "~^   attachment	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 3-4"; end
-		echo "~^attachment list"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 3-5"; end
+	#
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-1"
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-2"
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-3"
+	echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 5-4"
+	call read_mline_res
 
-		#
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 4-1"
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 4-2"
-		echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 4-3"
-		call read_mline_res
-		echo "~^   attachment	  remove		 t.attach"; read es;vput csop es substr $es 0 3
-		if $es != 506; xcall bail "attach 4-4 $es"; end
-		echo "~^attachment remove-at T"; read es; vput csop es substr $es 0 3
-		if $es != 505; xcall bail "attach 4-5"; end
-		echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 4-6"
-		echo "~^attachment remove ./t.attach"; read es; call xerr $es "attach 4-7"
-		echo "~^   attachment	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 4-8 $es"; end
-		echo "~^attachment list"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 4-9"; end
+	echo "~^attachment remove-at 3"; read es; call xerr $es "attach 5-5"
+	echo "~^attachment remove-at 3"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-6"; end
+	echo "~^attachment remove-at 2"; read es; call xerr $es "attach 5-7"
+	echo "~^attachment remove-at 2"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-8"
+	end
+	echo "~^attachment remove-at 1"; read es; call xerr $es "attach 5-9"
+	echo "~^attachment remove-at 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-10"; end
 
-		#
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-1"
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-2"
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 5-3"
-		echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 5-4"
-		call read_mline_res
+	echo "~^attachment list"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-11"; end
 
-		echo "~^attachment remove-at 3"; read es; call xerr $es "attach 5-5"
-		echo "~^attachment remove-at 3"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 5-6"; end
-		echo "~^attachment remove-at 2"; read es; call xerr $es "attach 5-7"
-		echo "~^attachment remove-at 2"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 5-8"
-		end
-		echo "~^attachment remove-at 1"; read es; call xerr $es "attach 5-9"
-		echo "~^attachment remove-at 1"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 5-10"; end
+	#
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-1"
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-2"
+	echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-3"
+	echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 6-4"
+	call read_mline_res
 
-		echo "~^attachment list"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 5-11"; end
+	echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-5"
+	echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-6"
+	echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-7"
+	echo "~^attachment remove-at 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 6-8"; end
 
-		#
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-1"
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-2"
-		echo "~^attachment insert ./t.attach=latin1"; read hl; echo $hl; call xerr "$hl" "attach 6-3"
-		echo "~^attachment list"; read es; echo $es;call xerr "$es" "attach 6-4"
-		call read_mline_res
+	echo "~^attachment list"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 6-9"; end
 
-		echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-5"
-		echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-6"
-		echo "~^attachment remove-at 1"; read es; call xerr $es "attach 6-7"
-		echo "~^attachment remove-at 1"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 6-8"; end
-
-		echo "~^attachment list"; read es; vput csop es substr $es 0 3
-		if $es != 501; xcall bail "attach 6-9"; end
-
-		echo t_attach LEAVE
-	}
-	define t_ocs {
-		read ver
-		echo t_ocs
-		call t_header
-		call t_attach
-	}
-	define t_oce {
-		echo on-compose-enter
-		alternates alter1@exam.ple alter2@exam.ple
-		alternates
-		set autocc='alter1@exam.ple alter2@exam.ple'
-		digmsg create - -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;\
-			digmsg - header show mailX-command;\
-			digmsg - header show sUbject;\
-			digmsg - header show tO;\
-			digmsg - header show Cc;\
-			digmsg - header show bCc;\
-			digmsg - header show Mailx-raw-to;\
-			digmsg - header show mailX-raw-cc;\
-			digmsg - header show maiLx-raw-bcc;\
-			digmsg - header show maIlx-orig-sender;\
-			digmsg - header show mAilx-orig-from;\
-			digmsg - header show mailx-orig-tO;\
-			digmsg - header show mailx-orig-Cc;\
-			digmsg - header show mailx-oriG-bcc;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-		digmsg create -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;readall x;echon $x;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-	}
-	define t_ocl {
-		echo on-compose-leave
-		vput alternates al
-		eval alternates $al alter3@exam.ple alter4@exam.ple
-		alternates
-		set autobcc='alter3@exam.ple alter4@exam.ple'
-		digmsg create - -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;\
-			digmsg - header show mailX-command;\
-			digmsg - header show sUbject;\
-			digmsg - header show tO;\
-			digmsg - header show Cc;\
-			digmsg - header show bCc;\
-			digmsg - header show Mailx-raw-to;\
-			digmsg - header show mailX-raw-cc;\
-			digmsg - header show maiLx-raw-bcc;\
-			digmsg - header show maIlx-orig-sender;\
-			digmsg - header show mAilx-orig-from;\
-			digmsg - header show mailx-orig-tO;\
-			digmsg - header show mailx-orig-Cc;\
-			digmsg - header show mailx-oriG-bcc;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-		digmsg create -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;readall x;echon $x;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-	}
-	define t_occ {
-		echo on-compose-cleanup
-		unalternates *
-		alternates
-		# XXX error message variable digmsg create - -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;\
-			digmsg - header show mailX-command;\
-			digmsg - header show sUbject;\
-			digmsg - header show tO;\
-			digmsg - header show Cc;\
-			digmsg - header show bCc;\
-			digmsg - header show Mailx-raw-to;\
-			digmsg - header show mailX-raw-cc;\
-			digmsg - header show maiLx-raw-bcc;\
-			digmsg - header show maIlx-orig-sender;\
-			digmsg - header show mAilx-orig-from;\
-			digmsg - header show mailx-orig-tO;\
-			digmsg - header show mailx-orig-Cc;\
-			digmsg - header show mailx-oriG-bcc;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-		# ditto digmsg create -;echo $?/$!/$^ERRNAME;\
-			digmsg - header list;readall x;echon $x;\
-			digmsg remove -;echo $?/$!/$^ERRNAME
-	}
-	set on-compose-splice=t_ocs \
-		on-compose-enter=t_oce on-compose-leave=t_ocl \
-			on-compose-cleanup=t_occ
+	echo t_attach LEAVE
+}
+define t_ocs {
+	read ver
+	echo t_ocs
+	call t_header
+	call t_attach
+}
+define t_oce {
+	echo on-compose-enter
+	alternates alter1@exam.ple alter2@exam.ple
+	alternates
+	set autocc='alter1@exam.ple autocc'
+	alias autocc alter2@exam.ple
+	digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+	digmsg create -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;readall x;echon $x;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+define t_ocl {
+	echo on-compose-leave
+	#vput alternates al
+	#eval alternates $al alter3@exam.ple alter4@exam.ple
+	alternates alter3@exam.ple alter4@exam.ple
+	set autobcc=autobcc
+	alias autobcc alter3@exam.ple alter4@exam.ple
+	alternates
+	digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+	digmsg create -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;readall x;echon $x;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+define t_occ {
+	echo on-compose-cleanup
+	unalternates *
+	alternates
+	# XXX error message variable digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+	# ditto digmsg create -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;readall x;echon $x;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+set on-compose-splice=t_ocs \
+	on-compose-enter=t_oce on-compose-leave=t_ocl \
+		on-compose-cleanup=t_occ
 __EOT__
 	#}}}
 
@@ -11192,187 +11205,187 @@ __EOT__
 	' | ${MAILX} ${ARGS} -Sescape=! \
 		-Smta=test://t3 \
 		-X'
-			define bail {
-				echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
-			}
-			define xerr {
-				vput csop es substr "$1" 0 1
-				if "$es" != 2; xcall bail "$2"; end
-			}
-			define read_mline_res {
-				read hl; set len=$? es=$! en=$^ERRNAME;echo $len/$es/$^ERRNAME: $hl
-				if $es -ne $^ERR-NONE; xcall bail read_mline_res
-				elif $len -ne 0; \xcall read_mline_res
-				end
-			}
-			define _work {
-				if $# -eq 1; local set i=$1; else; local eval : \$((i = $2, ++i)); endif
-				if $i -lt 111
-					: $((j = i % 10))
-					if $j -ne 0
-						set j=xcall
-					else
-						echon "$i.. "
-						set j=call
-					end
-					eval \\$j _work $1 $i
-					return $?
-				end
-				eval : \$((i += $1))
-				return $i
-			}
-			define _read {
-				set line; read line;set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
-				if ${es} -ne -1; xcall _read; end
-				readctl remove $cwd/t.readctl; echo readctl remove:$?/$^ERRNAME
-			}
-			define t_ocs {
-				read ver
-				echo t_ocs
-				echo "~^header list"; read hl; echo $hl; vput csop es substr "$hl" 0 1
-				if "$es" != 2; xcall bail "header list"; endif
-				#
-				call _work 1; echo $?
-			  echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
-					read es; echo $es; vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be diet"; endif
-				echo "~^header insert cc <splice2@exam.ple>";\
-					read es; echo $es; vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be diet2"; endif
-				#
-				call _work 2; echo $?
-			  echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy"; endif
-				echo "~^header insert bcc juice2@exam.ple";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy2";endif
-				echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy3"; endif
-				echo "~^header insert bcc juice4@exam.ple";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy4"; endif
-				#
-				echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "remove juicy5"; endif
-				echo "~^header remove-at bcc 2"; read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "remove juicy6"; endif
-				echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 3
-				if "$es" != 501; xcall bail "failed to remove-at"; endif
-				# Add duplicates which ought to be removed!
-				echo "~^header insert bcc juice4@exam.ple";
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy4-1"; endif
-				echo "~^header insert bcc juice4@exam.ple";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy4-2"; endif
-				echo "~^header insert bcc juice4@exam.ple";\
-					read es; echo $es;vput csop es substr "$es" 0 1
-				if "$es" != 2; xcall bail "be juicy4-3"; endif
-				echo "~:set t_ocs"
+define bail {
+	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+}
+define xerr {
+	vput csop es substr "$1" 0 1
+	if "$es" != 2; xcall bail "$2"; end
+}
+define read_mline_res {
+	read hl; set len=$? es=$! en=$^ERRNAME;echo $len/$es/$^ERRNAME: $hl
+	if $es -ne $^ERR-NONE; xcall bail read_mline_res
+	elif $len -ne 0; \xcall read_mline_res
+	end
+}
+define _work {
+	if $# -eq 1; local set i=$1; else; local eval : \$((i = $2, ++i)); endif
+	if $i -lt 111
+		: $((j = i % 10))
+		if $j -ne 0
+			set j=xcall
+		else
+			echon "$i.. "
+			set j=call
+		end
+		eval \\$j _work $1 $i
+		return $?
+	end
+	eval : \$((i += $1))
+	return $i
+}
+define _read {
+	set line; read line;set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
+	if ${es} -ne -1; xcall _read; end
+	readctl remove $cwd/t.readctl; echo readctl remove:$?/$^ERRNAME
+}
+define t_ocs {
+	read ver
+	echo t_ocs
+	echo "~^header list"; read hl; echo $hl; vput csop es substr "$hl" 0 1
+	if "$es" != 2; xcall bail "header list"; endif
+	#
+	call _work 1; echo $?
+  echo "~^header insert cc splicy\ diet\ <splice@exam.ple>\ spliced";\
+		read es; echo $es; vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be diet"; endif
+	echo "~^header insert cc <splice2@exam.ple>";\
+		read es; echo $es; vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be diet2"; endif
+	#
+	call _work 2; echo $?
+  echo "~^header insert bcc juicy\ juice\ <juice@exam.ple>\ spliced";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy"; endif
+	echo "~^header insert bcc juice2@exam.ple";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy2";endif
+	echo "~^header insert bcc juice3\ <juice3@exam.ple>";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy3"; endif
+	echo "~^header insert bcc juice4@exam.ple";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy4"; endif
+	#
+	echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "remove juicy5"; endif
+	echo "~^header remove-at bcc 2"; read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "remove juicy6"; endif
+	echo "~^header remove-at bcc 3"; read es; echo $es;vput csop es substr "$es" 0 3
+	if "$es" != 501; xcall bail "failed to remove-at"; endif
+	# Add duplicates which ought to be removed!
+	echo "~^header insert bcc juice4@exam.ple";
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy4-1"; endif
+	echo "~^header insert bcc juice4@exam.ple";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy4-2"; endif
+	echo "~^header insert bcc juice4@exam.ple";\
+		read es; echo $es;vput csop es substr "$es" 0 1
+	if "$es" != 2; xcall bail "be juicy4-3"; endif
+	echo "~:set t_ocs"
 
-				#
-				call _work 3; echo $?
-				echo "~r - '__EOT'"
-				vput ! i echo just knock if you can hear me;\
-					i=0;\
-					while [ $i -lt 24 ]; do printf "%s " $i; i=$(expr $i + 1); done;\
-					echo relax
-				echon shell-cmd says $?/$^ERRNAME: $i
-				echo "~x  will not become interpreted, we are reading until __EOT"
-				echo "__EOT"
-				read r_status; echo "~~r status output: $r_status"
-				echo "~:echo $? $! $^ERRNAME"
-				read r_status
-				echo "~~r status from parent: $r_status"
+	#
+	call _work 3; echo $?
+	echo "~r - '__EOT'"
+	vput ! i echo just knock if you can hear me;\
+		i=0;\
+		while [ $i -lt 24 ]; do printf "%s " $i; i=$(expr $i + 1); done;\
+		echo relax
+	echon shell-cmd says $?/$^ERRNAME: $i
+	echo "~x  will not become interpreted, we are reading until __EOT"
+	echo "__EOT"
+	read r_status; echo "~~r status output: $r_status"
+	echo "~:echo $? $! $^ERRNAME"
+	read r_status
+	echo "~~r status from parent: $r_status"
 
-				#
-				call _work 4; echo $?
-				vput cwd cwd;echo cwd:$?
-				readctl create $cwd/t.readctl ;echo readctl:$?/$^ERRNAME; call _read
+	#
+	call _work 4; echo $?
+	vput cwd cwd;echo cwd:$?
+	readctl create $cwd/t.readctl ;echo readctl:$?/$^ERRNAME; call _read
 
-				#
-				call _work 5; echo $?
-				echo "~^header show MAILX-Command"; read es;
-					call xerr $es "t_header 1000"; call read_mline_res
-				echo "~^header show MAILX-raw-TO"; read es;\
-					call xerr $es "t_header 1001"; xcall read_mline_res
+	#
+	call _work 5; echo $?
+	echo "~^header show MAILX-Command"; read es;
+		call xerr $es "t_header 1000"; call read_mline_res
+	echo "~^header show MAILX-raw-TO"; read es;\
+		call xerr $es "t_header 1001"; xcall read_mline_res
 
-				echoerr IT IS WRONG IF YOU SEE THIS
-			}
-			define t_oce {
-				echo on-compose-enter
-				set t_oce autobcc=oce@exam.ple
-				alternates alter1@exam.ple alter2@exam.ple
-				alternates
-				digmsg create - -;echo $?/$!/$^ERRNAME;\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
-			}
-			define t_ocl {
-				echo on-compose-leave
-				set t_ocl autocc=ocl@exam.ple
-				unalternates *
-				alternates alter3@exam.ple alter4@exam.ple
-				alternates
-				digmsg create - -;echo $?/$!/$^ERRNAME;\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
-			}
-			define t_occ {
-				echo on-compose-cleanup
-				set t_occ autocc=occ@exam.ple
-				unalternates *
-				alternates
-				# XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
-					digmsg - header list;\
-					digmsg - header show mailX-command;\
-					digmsg - header show sUbject;\
-					digmsg - header show tO;\
-					digmsg - header show Cc;\
-					digmsg - header show bCc;\
-					digmsg - header show Mailx-raw-to;\
-					digmsg - header show mailX-raw-cc;\
-					digmsg - header show maiLx-raw-bcc;\
-					digmsg - header show maIlx-orig-sender;\
-					digmsg - header show mAilx-orig-from;\
-					digmsg - header show mailx-orig-tO;\
-					digmsg - header show mailx-orig-Cc;\
-					digmsg - header show mailx-oriG-bcc;\
-					digmsg remove -;echo $?/$!/$^ERRNAME
-			}
-			set on-compose-splice=t_ocs \
-				on-compose-splice-shell="read ver;echo t_ocs-shell;\
-					echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
-				on-compose-enter=t_oce on-compose-leave=t_ocl \
-				on-compose-cleanup=t_occ
+	echoerr IT IS WRONG IF YOU SEE THIS
+}
+define t_oce {
+	echo on-compose-enter
+	set t_oce autobcc=oce@exam.ple
+	alternates alter1@exam.ple alter2@exam.ple
+	alternates
+	digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+define t_ocl {
+	echo on-compose-leave
+	set t_ocl autocc=ocl@exam.ple
+	unalternates *
+	alternates alter3@exam.ple alter4@exam.ple
+	alternates
+	digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+define t_occ {
+	echo on-compose-cleanup
+	set t_occ autocc=occ@exam.ple
+	unalternates *
+	alternates
+	# XXX error message digmsg create - -;echo $?/$!/$^ERRNAME;\
+		digmsg - header list;\
+		digmsg - header show mailX-command;\
+		digmsg - header show sUbject;\
+		digmsg - header show tO;\
+		digmsg - header show Cc;\
+		digmsg - header show bCc;\
+		digmsg - header show Mailx-raw-to;\
+		digmsg - header show mailX-raw-cc;\
+		digmsg - header show maiLx-raw-bcc;\
+		digmsg - header show maIlx-orig-sender;\
+		digmsg - header show mAilx-orig-from;\
+		digmsg - header show mailx-orig-tO;\
+		digmsg - header show mailx-orig-Cc;\
+		digmsg - header show mailx-oriG-bcc;\
+		digmsg remove -;echo $?/$!/$^ERRNAME
+}
+set on-compose-splice=t_ocs \
+	on-compose-splice-shell="read ver;echo t_ocs-shell;\
+		echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
+	on-compose-enter=t_oce on-compose-leave=t_ocl \
+	on-compose-cleanup=t_occ
 		' > ./t3-x 2>${E0}
 	#}}}
 	ck_ex0 3-estat
@@ -11395,38 +11408,38 @@ b2
 
 	#{{{
 	printf '
-		echo start: $? $! $^ERRNAME
-		File ./t4
-		echo File: $? $! $^ERRNAME;echo;echo
-		reply 1
+echo start: $? $! $^ERRNAME
+File ./t4
+echo File: $? $! $^ERRNAME;echo;echo
+reply 1
 this is content of reply 1
 !.
-		echo reply 1: $? $! $^ERRNAME;echo;echo
-		Reply 1 2
+echo reply 1: $? $! $^ERRNAME;echo;echo
+Reply 1 2
 this is content of Reply 1 2
 !.
-		echo Reply 1 2: $? $! $^ERRNAME;echo;echo
-		forward 1 fwdex@am.ple
+echo Reply 1 2: $? $! $^ERRNAME;echo;echo
+forward 1 fwdex@am.ple
 this is content of forward 1
 !.
-		echo forward 1: $? $! $^ERRNAME;echo;echo
-		set forward-inject-head=$'"'"'-- \\
-			forward (%%a)(%%d)(%%f)(%%i)(%%n)(%%r) --\\n'"'"'
-		set forward-inject-tail=$'"'"'-- \\
-			end of forward (%%i) --\\n'"'"'
-		forward 2 fwdex@am.ple
+echo forward 1: $? $! $^ERRNAME;echo;echo
+set forward-inject-head=$'"'"'-- \\
+	forward (%%a)(%%d)(%%f)(%%i)(%%n)(%%r) --\\n'"'"'
+set forward-inject-tail=$'"'"'-- \\
+	end of forward (%%i) --\\n'"'"'
+forward 2 fwdex@am.ple
 this is content of forward 2
 !.
-		echo forward 2: $? $! $^ERRNAME;echo;echo
-		set showname
-		forward 2 fwdex2@am.ple
+echo forward 2: $? $! $^ERRNAME;echo;echo
+set showname
+forward 2 fwdex2@am.ple
 this is content of forward 2, 2nd, with showname set
 !.
-		echo forward 2, 2nd: $? $! $^ERRNAME;echo;echo
-		resend 1 2 resendex@am.ple
-		echo resend 1 2: $? $! $^ERRNAME;echo;echo
-		Resend 1 2 Resendex@am.ple
-		echo Resend 1 2: $? $! $^ERRNAME;echo;echo
+echo forward 2, 2nd: $? $! $^ERRNAME;echo;echo
+resend 1 2 resendex@am.ple
+echo resend 1 2: $? $! $^ERRNAME;echo;echo
+Resend 1 2 Resendex@am.ple
+echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 	' |
 	${MAILX} ${ARGS} -Sescape=! -Sfullnames -Smta=test://t4 -X'
 			define bail {
@@ -11544,32 +11557,36 @@ t_mass_recipients() { # {{{
 
 	#{{{
 	${cat} <<'__EOT__' > ./t.rc
-	define bail {
-		echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
-	}
-	define ins_addr {
-		local set nr=$1 hn=$2
-		echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
-		if "$es" -ne 0; xcall bail "ins_addr $hn 1-$nr"; end
-		: $((nr += 1))
-		if "$nr" -le "$maximum"; xcall ins_addr $nr $hn;  end
-	}
-	define bld_alter {
-		local set nr=$1 hn=$2
-		alternates $hn$nr@$hn
-		: $((nr += 2))
-		if "$nr" -le "$maximum"; xcall bld_alter $nr $hn; end
-	}
-	define t_ocs {
-		read ver
-		call ins_addr 1 t
-		call ins_addr 1 c
-		call ins_addr 1 b
-	}
-	define t_ocl {
-		if "$t_remove" != ''; call bld_alter 1 t; call bld_alter 2 c; end
-	}
-	set on-compose-splice=t_ocs on-compose-leave=t_ocl
+define bail {
+	echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+}
+define ins_addr {
+	local set nr=$1 hn=$2
+	ec "~$hn $hn$nr@$hn"; ec '~:echo $?'; read es
+	i "$es" -ne 0; xcall bail "ins_addr $hn 1-$nr"; en
+	: $((nr += 1))
+	i "$nr" -le "$maximum"; xcall ins_addr $nr $hn;  en
+}
+define bld_alter {
+	local set nr=$1 hn=$2
+	alternates $hn$nr@$hn
+	alias $hn$((nr + 1))@$hn $hn$nr@$hn
+	: $((nr += 2))
+	i "$nr" -le "$maximum"; xcall bld_alter $nr $hn; en
+}
+define t_ocs {
+	local read ver
+	call ins_addr 1 t
+	call ins_addr 1 c
+	call ins_addr 1 b
+}
+define t_ocl {
+	i -n "$t_remove"
+		call bld_alter 2 t
+		call bld_alter 1 c
+	en
+}
+set on-compose-splice=t_ocs on-compose-leave=t_ocl
 __EOT__
 	#}}}
 
@@ -11587,7 +11604,7 @@ __EOT__
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
-		-St_remove=1 -X'source ./t.rc' -Smta=test://t2 \
+		-St_remove=y -X'source ./t.rc' -Smta=test://t2 \
 		-Smaximum=${LOOPS_MAX} \
 		>./t2-x 2>${E0}
 	ck_ex0 2-estat

@@ -98,10 +98,9 @@ static struct mx_name *a_nm_extract1(char const *line, enum gfield ntype,
 static su_sz a_nm_elide_sort(void const *s1, void const *s2);
 
 /* Recursively expand an alias name, adjust nlist for result and return it;
- * limit expansion to some fixed level.
- * metoo=*metoo*, logname=$LOGNAME == optimization */
+ * limit expansion to some fixed level.  metoo=*metoo* */
 static struct mx_name *a_nm_alias_expand(uz level, struct mx_name *nlist,
-      char const *name, int ntype, boole metoo, char const *logname);
+      char const *name, int ntype, boole metoo);
 
 /* */
 static struct n_strlist *a_nm_alias_dump(char const *cmdname, char const *key,
@@ -329,7 +328,7 @@ a_nm_elide_sort(void const *s1, void const *s2){
 
 static struct mx_name *
 a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
-      boole metoo, char const *logname){
+      boole metoo){
    struct mx_name *np, *nlist_tail;
    char const *ccp;
    struct n_strlist const *slp, *slp_base, *slp_next;
@@ -365,14 +364,11 @@ jmay_linkin:
 
       /* Cannot shadow itself.  Recursion allowed for target? */
       if(su_cs_cmp(name, slp->sl_dat) && slp->sl_dat[slp->sl_len + 1] != FAL0){
-         /* For S-nail(1), the "alias" may *be* the sender in that a name
-          * to a full address specification */
-         nlist = a_nm_alias_expand(level, nlist, slp->sl_dat, ntype, metoo,
-               logname);
+         nlist = a_nm_alias_expand(level, nlist, slp->sl_dat, ntype, metoo);
          continue;
       }
 
-      /* XXX Historical: should allow expand to self if only person in alias */
+      /* Should allow expand to self if only person in alias */
       if(metoo || slp_base->sl_next == NIL ||
             !mx_name_is_metoo(slp->sl_dat, FAL0)){
          /* Use .n_name if .n_fullname is not set */
@@ -887,8 +883,8 @@ checkaddrs(struct mx_name *np, enum expand_addr_check_mode eacm,
 }
 
 struct mx_name *
-n_namelist_vaporise_head(struct header *hp, boole metoo,
-   boole strip_alternates, enum expand_addr_check_mode eacm, s8 *set_on_error)
+n_namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
+   s8 *set_on_error)
 {
    /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct mx_name *tolist, *np, **npp;
@@ -897,7 +893,7 @@ n_namelist_vaporise_head(struct header *hp, boole metoo,
    tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
    hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
-   tolist = usermap(tolist, metoo);
+   tolist = usermap(tolist, FAL0);
 
    /* MTA aliases are resolved last */
 #ifdef mx_HAVE_MTA_ALIASES
@@ -911,9 +907,6 @@ n_namelist_vaporise_head(struct header *hp, boole metoo,
       break;
    }
 #endif
-
-   if(strip_alternates)
-      tolist = mx_alternates_remove(tolist, TRU1);
 
    tolist = elide(tolist);
 
@@ -937,11 +930,9 @@ struct mx_name *
 usermap(struct mx_name *names, boole force_metoo){
    struct su_cs_dict_view dv;
    struct mx_name *nlist, **nlist_tail, *np, *nxtnp;
-   int metoo;
-   char const *logname;
+   boole metoo;
    NYD_IN;
 
-   logname = ok_vlook(LOGNAME);
    metoo = (force_metoo || ok_blook(metoo));
    nlist = NIL;
    nlist_tail = &nlist;
@@ -964,8 +955,7 @@ usermap(struct mx_name *names, boole force_metoo){
          *nlist_tail = np;
          nlist_tail = &np->n_flink;
       }else{
-         nlist = a_nm_alias_expand(0, nlist, np->n_name, np->n_type, metoo,
-               logname);
+         nlist = a_nm_alias_expand(0, nlist, np->n_name, np->n_type, metoo);
          if((np = nlist) == NIL)
             nlist_tail = &nlist;
          else for(;; np = np->n_flink)
@@ -1096,7 +1086,7 @@ c_alias(void *vp){
          }else{
             struct mx_name *np;
 
-            np = a_nm_alias_expand(0, NIL, key, 0, TRU1, ok_vlook(LOGNAME));
+            np = a_nm_alias_expand(0, NIL, key, 0, TRU1);
             np = elide(np);
             rv = (fprintf(n_stdout, "alias %s", key) < 0);
             if(!rv){
@@ -1432,7 +1422,7 @@ mx_name_is_metoo(char const *name, boole check_reply_to){
    if(a_nm_is_same_name(ok_vlook(LOGNAME), name, NIL))
       goto jleave;
 
-   if(a_nm_a8s_dp != NIL){
+   if(a_nm_a8s_dp != NIL && !ok_blook(posix)){
       if(!ok_blook(allnet)){
          if(su_cs_dict_has_key(a_nm_a8s_dp, name))
             goto jleave;
