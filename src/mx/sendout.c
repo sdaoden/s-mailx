@@ -2288,7 +2288,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * XXX S-nail thus violates POSIX, as has been pointed out correctly by
     * XXX Martin Neitzel, but logic and usability of POSIX standards is
     * XXX sometimes disputable: go for user friendliness */
-   to = n_namelist_vaporise_head(hp, TRU1, ((quote != NULL &&
+   to = n_namelist_vaporise_head(hp, FAL0, ((quote != NULL &&
             (msf & n_MAILSEND_IS_FWD) == 0) || !ok_blook(posix)),
          (EACM_NORMAL | EACM_DOMAINCHECK |
             (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),

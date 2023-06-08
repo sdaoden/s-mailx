@@ -3084,7 +3084,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 
    if((np = lextract(cp, GFULL | GSKIN)) != NULL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
-            np->n_flink == NULL && mx_name_is_mine(np->n_name)){
+            np->n_flink == NULL && mx_name_is_metoo(np->n_name, TRU1)){
          if((cp = hfield1("to", mp)) != NULL &&
                (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
             np = np2;
