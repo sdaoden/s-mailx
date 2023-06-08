@@ -8183,73 +8183,106 @@ t_alias() { # {{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
-	alias a1 ex1@a1.ple
-	alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
-	alias a1 ex4@a1.ple
-	alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
-	alias a3 a4
-	alias a4 a5 ex1@a4.ple
-	alias a5 a6
-	alias a6 a7 ex1@a6.ple
-	alias a7 a8
-	alias a8 ex1@a8.ple
-	alias a1
-	alias a2
-	alias a3
-	m a1
-	~c a2
-	~b a3
-	~r - '_EOT'
-	   This body is!
-	   This also body is!!
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
+alias a1 ex1@a1.ple
+alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
+alias a1 ex4@a1.ple
+alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
+alias a3 a4
+alias a4 a5 ex1@a4.ple
+alias a5 a6
+alias a6 a7 ex1@a6.ple
+alias a7 a8
+alias a8 ex1@a8.ple
+alias a1
+alias a2
+alias a3
+m a1
+~c a2
+~b a3
+~r - '_EOT'
+   This body is!
+   This also body is!!
 _EOT
-	__EOT
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '139467786 277'
 	ck 2 - ./t2 '1598893942 133'
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
-	commandalias x echo '$?/$^ERRNAME'
-	echo 1
-	alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
-	alias a:bra!; x
-	alias ha@m	ham-expansion	ha@m '';x
-	alias ha@m;x
-	alias beb@ra  ceb@ra beb@ra1;x
-	alias beb@ra;x
-	alias ceb@ra  ceb@ra1;x
-	alias ceb@ra;x
-	alias deb@ris	 '';x
-	alias deb@ris;x
-	echo 2
-	alias - a:bra!;x
-	alias - ha@m;x
-	alias - beb@ra;x
-	alias - ceb@ra;x
-	alias - deb@ris;x
-	echo 3
-	unalias ha@m;x
-	alias - a:bra!;x
-	unalias beb@ra;x
-	alias - a:bra!;x
-	echo 4
-	unalias*;x;alias;x
-	echo 5
-	\alias noexpa@and this@error1;x
-	\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
-	\alias ha@m;x
-	\alias - ha@m;x
-	\alias noexpa@and2 this@error2;x
-	\alias expa1@and this@error3;x
-	\alias expa@and \\expa1@and;x
-	\alias expa@and;x
-	\alias - ha@m;x
-	\alias - expa@and;x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
+commandalias x echo '$?/$^ERRNAME'
+echo 1
+alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+alias a:bra!; x
+alias ha@m	ham-expansion	ha@m '';x
+alias ha@m;x
+alias beb@ra  ceb@ra beb@ra1;x
+alias beb@ra;x
+alias ceb@ra  ceb@ra1;x
+alias ceb@ra;x
+alias deb@ris	 '';x
+alias deb@ris;x
+echo 2
+alias - a:bra!;x
+alias - ha@m;x
+alias - beb@ra;x
+alias - ceb@ra;x
+alias - deb@ris;x
+echo 3
+unalias ha@m;x
+alias - a:bra!;x
+unalias beb@ra;x
+alias - a:bra!;x
+echo 4
+unalias*;x;alias;x
+echo 5
+\alias noexpa@and this@error1;x
+\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
+\alias ha@m;x
+\alias - ha@m;x
+\alias noexpa@and2 this@error2;x
+\alias expa1@and this@error3;x
+\alias expa@and \\expa1@and;x
+\alias expa@and;x
+\alias - ha@m;x
+\alias - expa@and;x
+__EOT
 	#}}}
 	cke0 3 0 ./t3 '1513155156 796'
+
+	# metoo {{{
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 >${E0} 2>&1
+alias x a1 reproducible_build a2
+alias a1 a1-1@ex a1-2@ex
+alias a2 a3
+alias a3 al@ter reproducible_build a3@ex
+m x
+b1
+~.
+alternates al@ter
+m x
+b2
+~.
+set metoo
+m x
+b3
+~.
+set posix
+m x
+b4
+~.
+unset metoo
+m x
+b5
+~.
+alias reproducible_build reproducible_build
+m x
+b6
+~.
+__EOT
+	#}}}
+	cke0 4 0 ./t4 '982738649 820'
 
 	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
