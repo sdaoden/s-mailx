@@ -960,8 +960,7 @@ jedar:
       s8 snderr;
 
       snderr = 0;
-      myto = n_namelist_vaporise_head(&head, FAL0, !ok_blook(posix),
-            (EACM_NORMAL | EACM_DOMAINCHECK |
+      myto = n_namelist_vaporise_head(&head, (EACM_NORMAL | EACM_DOMAINCHECK |
                (mta_isexe ? EACM_NONE : EACM_NONAME | EACM_NONAME_OR_FAIL)),
             &snderr);
 

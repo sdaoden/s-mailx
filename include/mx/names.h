@@ -132,8 +132,7 @@ EXPORT struct mx_name *checkaddrs(struct mx_name *np, enum expand_addr_check_mod
  * there, ditto Cc:, after expanding aliases etc.
  * eacm and set_on_error are passed to checkaddrs().
  * After updating hp to the new state this returns a flat list of all addressees, which may be NIL */
-EXPORT struct mx_name *n_namelist_vaporise_head(struct header *hp, boole metoo, boole strip_alternates,
-		enum expand_addr_check_mode eacm, s8 *set_on_error);
+EXPORT struct mx_name *n_namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm, s8 *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them into the list */
 EXPORT struct mx_name *usermap(struct mx_name *names, boole force_metoo);
