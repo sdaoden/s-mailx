@@ -1446,16 +1446,16 @@ mx_name_is_metoo(char const *name, boole check_reply_to){
       if(a_nm_is_same_name(xp->n_name, name, NIL))
          goto jleave;
 
+   if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL &&
+         a_nm_is_same_name(xp->n_name, name, NIL))
+      goto jleave;
+
    if(check_reply_to){
       for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
             xp = xp->n_flink)
          if(a_nm_is_same_name(xp->n_name, name, NIL))
             goto jleave;
    }
-
-   if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL &&
-         a_nm_is_same_name(xp->n_name, name, NIL))
-      goto jleave;
 
    name = NIL;
 jleave:
