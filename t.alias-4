@@ -30,7 +30,13 @@ b5
 
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
-To: a1-1@ex, a1-2@ex, reproducible_build, al@ter, a3@ex
+To: a1-1@ex, a1-2@ex, al@ter, a3@ex, a4@ex
 
 b6
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: a1-1@ex, a1-2@ex, al@ter, a3@ex, a4-1@ex, a4-2@ex
+
+b7
 

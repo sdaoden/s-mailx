@@ -52,3 +52,24 @@ alias ha@m noexp@and expa1@and noexp@and2
 0/NONE
 alias expa@and expa1@and
 0/NONE
+6
+alias ha@m noexp@and expa1@and noexp@and2 alt@r
+0/NONE 0
+alias ha@m noexp@and expa1@and noexp@and2
+0/NONE 1
+alias ha@m noexp@and expa1@and noexp@and2 alt@r
+0/NONE 2
+alias ha@m noexp@and expa1@and noexp@and2 reproducible_build alt@r
+0/NONE 3
+alias ha@m noexp@and expa1@and noexp@and2 reproducible_build alt@r
+0/NONE 4-
+alias ha@m noexp@and expa1@and noexp@and2
+0/NONE 4--
+alias ha@m noexp@and expa1@and noexp@and2 reproducible_build alt@r
+0/NONE 4-+
+alias ha@m noexp@and expa1@and noexp@and2 alt@r
+0/NONE 5-
+alias ha@m noexp@and expa1@and noexp@and2 alt@r
+0/NONE 5--
+alias ha@m noexp@and expa1@and noexp@and2 reproducible_build alt@r
+0/NONE 5-+
