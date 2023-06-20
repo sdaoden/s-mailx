@@ -330,7 +330,7 @@ static struct mx_name *
 a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
       boole metoo){
    struct mx_name *np, *nlist_tail;
-   char const *ccp;
+   char const *fn, *sn;
    struct n_strlist const *slp, *slp_base, *slp_next;
    NYD2_IN;
    ASSERT_NYD(a_nm_alias_dp != NIL);
@@ -341,7 +341,7 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
    if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){ /* TODO not a real error!! */
       n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
       slp_next = NIL;
-      ccp = name;
+      fn = sn = name;
       goto jmay_linkin;
    }
 
@@ -349,46 +349,45 @@ a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
    slp = S(struct n_strlist const*,su_cs_dict_lookup(a_nm_alias_dp, name));
 
    if(slp == NIL){
-jmay_linkin:
-      if(metoo || !mx_name_is_metoo(name, FAL0)){
-         ccp = name;
-         goto jlinkin;
-      }
-      goto jleave;
+      fn = sn = name;
+      goto jmay_linkin;
    }
-   do{ /* while(slp != NIL); */
+
+   do{ /*while((slp = slp_next) != NIL);*/
       slp_next = slp->sl_next;
 
       if(slp->sl_len == 0)
          continue;
 
-      /* Cannot shadow itself.  Recursion allowed for target? */
-      if(su_cs_cmp(name, slp->sl_dat) && slp->sl_dat[slp->sl_len + 1] != FAL0){
-         nlist = a_nm_alias_expand(level, nlist, slp->sl_dat, ntype, metoo);
-         continue;
+      /* Cannot shadow itself */
+      if(su_cs_cmp(name, sn = slp->sl_dat)){
+         /* Recursion allowed for target? */
+         if(sn[slp->sl_len + 1] != FAL0){
+            nlist = a_nm_alias_expand(level, nlist, sn, ntype, metoo);
+            continue;
+         }
       }
 
-      /* Should allow expand to self if only person in alias */
-      if(metoo || slp_base->sl_next == NIL ||
-            !mx_name_is_metoo(slp->sl_dat, FAL0)){
-         /* Use .n_name if .n_fullname is not set */
-         if(*(ccp = &slp->sl_dat[slp->sl_len + 2]) == '\0')
-            ccp = slp->sl_dat;
+      /* Use .n_name if .n_fullname is not set */
+      fn = &sn[slp->sl_len + 2];
+      if(*fn == '\0')
+         fn = sn;
 
-jlinkin:
-         if((np = n_extract_single(ccp, ntype | GFULL)) != NIL){
-            if((nlist_tail = nlist) != NIL){ /* XXX su_list_push()! */
-               while(nlist_tail->n_flink != NIL)
-                  nlist_tail = nlist_tail->n_flink;
-               nlist_tail->n_flink = np;
-               np->n_blink = nlist_tail;
-            }else
-               nlist = np;
-         }
+jmay_linkin:
+      if(!metoo && mx_name_is_metoo(sn, FAL0))
+         continue;
+
+      if((np = n_extract_single(fn, ntype | GFULL)) != NIL){
+         if((nlist_tail = nlist) != NIL){ /* XXX su_list_push()! */
+            while(nlist_tail->n_flink != NIL)
+               nlist_tail = nlist_tail->n_flink;
+            nlist_tail->n_flink = np;
+            np->n_blink = nlist_tail;
+         }else
+            nlist = np;
       }
    }while((slp = slp_next) != NIL);
 
-jleave:
    NYD2_OU;
    return nlist;
 }
@@ -1049,26 +1048,27 @@ jleave:
 int
 c_alias(void *vp){
    struct su_cs_dict_view dv;
-   union {void const *cvp; boole haskey; struct n_strlist *slp;} dat;
+   union {void const *cvp; char const *cp; boole haskey; struct n_strlist *slp;
+      } dat;
    int rv;
    char const **argv, *key;
    NYD_IN;
 
-   if((key = *(argv = S(char const**,vp))) == NIL){
-      dat.slp = NIL;
-      rv = !(mx_xy_dump_dict("alias", a_nm_alias_dp, &dat.slp, NIL,
-               &a_nm_alias_dump) &&
-            mx_page_or_print_strlist("alias", dat.slp, FAL0));
-      goto jleave;
-   }
+   argv = S(char const**,vp);
+   if((key = *argv) == NIL)
+      goto jdump;
 
-   if(argv[1] != NIL && argv[2] == NIL && key[0] == '-' && key[1] == '\0')
+   /* Full expansion?  metoo=-,-+, !metoo=--, */
+   rv = su_EX_OK;
+   if(argv[1] != NIL && argv[2] == NIL && key[0] == '-' &&
+         (key[1] == '\0' || (key[2] == '\0' &&
+            ((key[1] == '-' ? (rv = TRU2) : FAL0) ||
+             (key[1] == '+' ? (rv = TRU1) : FAL0)))))
       key = argv[1];
 
    if(!mx_alias_is_valid_name(key)){
-      n_err(_("alias: not a valid name: %s\n"), n_shexp_quote_cp(key, FAL0));
-      rv = 1;
-      goto jleave;
+      dat.cp = N_("not a valid name");
+      goto jerr;
    }
 
    if(a_nm_alias_dp != NIL && su_cs_dict_view_find(
@@ -1078,101 +1078,127 @@ c_alias(void *vp){
       dat.cvp = NIL;
 
    if(argv[1] == NIL || key == argv[1]){
-      if(dat.cvp != NIL){
-         if(argv[1] == NIL){
-            dat.slp = a_nm_alias_dump("alias", key, dat.cvp);
-            rv = (fputs(dat.slp->sl_dat, n_stdout) == EOF);
-            rv |= (putc('\n', n_stdout) == EOF);
-         }else{
-            struct mx_name *np;
-
-            np = a_nm_alias_expand(0, NIL, key, 0, TRU1);
-            np = elide(np);
-            rv = (fprintf(n_stdout, "alias %s", key) < 0);
-            if(!rv){
-               for(; np != NIL; np = np->n_flink){
-                  rv |= (putc(' ', n_stdout) == EOF);
-                  rv |= (fputs(n_shexp_quote_cp(np->n_fullname, TRU1),
-                        n_stdout) == EOF);
-               }
-               rv |= (putc('\n', n_stdout) == EOF);
-            }
-         }
-      }else{
-         n_err(_("No such alias: %s\n"), n_shexp_quote_cp(key, FAL0));
-         rv = 1;
-      }
-   }else{
-      struct n_strlist *head, **tailp;
-      boole exists;
-      char const *val1, *val2;
-
-      if(a_nm_alias_dp == NIL){
-         a_nm_alias_dp = su_cs_dict_set_threshold(
-               su_cs_dict_create(&a_nm_alias__d, a_NM_ALIAS_FLAGS, NIL),
-               a_NM_ALIAS_THRESHOLD);
-         DVL(
-            if(a_nm_a8s_dp == NIL)
-               su_state_on_gut_install(&a_nm__on_gut, FAL0,
-                  su_STATE_ERR_NOPASS);
-         )
-      }
-
-      if((exists = (head = dat.slp) != NIL)){
-         while(dat.slp->sl_next != NIL)
-            dat.slp = dat.slp->sl_next;
-         tailp = &dat.slp->sl_next;
-      }else
-         head = NIL, tailp = &head;
-
-      while((val1 = *++argv) != NIL){
-         uz l1, l2;
-         struct mx_name *np;
-         boole norecur, name_eq_fullname;
-
-         if((norecur = (*val1 == '\\')))
-            ++val1;
-
-         /* We need to allow empty targets */
-         name_eq_fullname = TRU1;
-         if(*val1 == '\0')
-            val2 = val1;
-         else if((np = n_extract_single(val1, GFULL)) != NIL){
-            val1 = np->n_name;
-            val2 = np->n_fullname;
-            if((name_eq_fullname = !su_cs_cmp(val1, val2)))
-               val2 = su_empty;
-         }else{
-            n_err(_("alias: %s: invalid argument: %s\n"),
-               key, n_shexp_quote_cp(val1, FAL0));
-            /*rv = 1;*/
-            continue;
-         }
-
-         l1 = su_cs_len(val1) +1;
-         l2 = su_cs_len(val2) +1;
-         dat.slp = n_STRLIST_ALLOC(l1 + 1 + l2);
-         *tailp = dat.slp;
-         dat.slp->sl_next = NIL;
-         tailp = &dat.slp->sl_next;
-         dat.slp->sl_len = l1 -1;
-         su_mem_copy(dat.slp->sl_dat, val1, l1);
-         dat.slp->sl_dat[l1++] = (!norecur && name_eq_fullname &&
-               mx_alias_is_valid_name(val1));
-         su_mem_copy(&dat.slp->sl_dat[l1], val2, l2);
-      }
-
-      if(exists){
-         su_cs_dict_view_set_data(&dv, head);
-         rv = su_EX_OK;
-      }else
-         rv = (su_cs_dict_insert(a_nm_alias_dp, key, head) == su_ERR_NONE)
-               ? su_EX_OK : su_EX_ERR;
-   }
+      if(dat.cvp != NIL)
+         goto jlookup;
+      dat.cp = N_("no such alias");
+      goto jerr;
+   }else
+      goto jmod;
 
 jleave:
    NYD_OU;
    return rv;
+
+jerr:
+   n_err(_("alias: %s: %s\n"), V_(dat.cp), n_shexp_quote_cp(key, FAL0));
+   rv = su_EX_ERR;
+   goto jleave;
+
+jdump:
+   dat.slp = NIL;
+   rv = (mx_xy_dump_dict("alias", a_nm_alias_dp, &dat.slp, NIL,
+            &a_nm_alias_dump) &&
+         mx_page_or_print_strlist("alias", dat.slp, FAL0)
+         ) ? su_EX_OK : su_EX_ERR;
+   goto jleave;
+
+jlookup:
+   if(argv[1] == NIL){
+      dat.slp = a_nm_alias_dump("alias", key, dat.cvp);
+      rv = (fputs(dat.slp->sl_dat, n_stdout) == EOF);
+      rv |= (putc('\n', n_stdout) == EOF);
+   }else{
+      struct mx_name *np;
+
+      if(rv == su_EX_OK)
+         rv = ok_blook(metoo);
+      else if(rv == TRU2)
+         rv = FAL0;
+      else{
+         ASSERT(rv == TRU1);
+      }
+      np = a_nm_alias_expand(0, NIL, key, 0, S(boole,rv));
+      np = elide(np);
+
+      rv = (fprintf(n_stdout, "alias %s", key) < 0);
+      if(!rv){
+         for(; np != NIL; np = np->n_flink){
+            rv |= (putc(' ', n_stdout) == EOF);
+            rv |= (fputs(n_shexp_quote_cp(np->n_fullname, TRU1), n_stdout
+                  ) == EOF);
+         }
+         rv |= (putc('\n', n_stdout) == EOF);
+      }
+      rv = rv ? su_EX_ERR : su_EX_OK;
+   }
+   goto jleave;
+
+jmod:/* C99 */{
+   struct n_strlist *head, **tailp;
+   boole exists;
+   char const *val1, *val2;
+
+   if(a_nm_alias_dp == NIL){
+      a_nm_alias_dp = su_cs_dict_set_threshold(
+            su_cs_dict_create(&a_nm_alias__d, a_NM_ALIAS_FLAGS, NIL),
+            a_NM_ALIAS_THRESHOLD);
+      DVL(
+         if(a_nm_a8s_dp == NIL)
+            su_state_on_gut_install(&a_nm__on_gut, FAL0, su_STATE_ERR_NOPASS);
+      )
+   }
+
+   if((exists = (head = dat.slp) != NIL)){
+      while(dat.slp->sl_next != NIL)
+         dat.slp = dat.slp->sl_next;
+      tailp = &dat.slp->sl_next;
+   }else
+      head = NIL, tailp = &head;
+
+   while((val1 = *++argv) != NIL){
+      uz l1, l2;
+      struct mx_name *np;
+      boole norecur, name_eq_fullname;
+
+      if((norecur = (*val1 == '\\')))
+         ++val1;
+
+      /* We need to allow empty targets */
+      name_eq_fullname = TRU1;
+      if(*val1 == '\0')
+         val2 = val1;
+      else if((np = n_extract_single(val1, GFULL)) != NIL){
+         val1 = np->n_name;
+         val2 = np->n_fullname;
+         if((name_eq_fullname = !su_cs_cmp(val1, val2)))
+            val2 = su_empty;
+      }else{
+         n_err(_("alias: %s: invalid argument: %s\n"),
+            key, n_shexp_quote_cp(val1, FAL0));
+         rv = su_EX_ERR;
+         goto jleave;
+      }
+
+      l1 = su_cs_len(val1) +1;
+      l2 = su_cs_len(val2) +1;
+      dat.slp = n_STRLIST_ALLOC(l1 + 1 + l2);
+      *tailp = dat.slp;
+      dat.slp->sl_next = NIL;
+      tailp = &dat.slp->sl_next;
+      dat.slp->sl_len = l1 -1;
+      su_mem_copy(dat.slp->sl_dat, val1, l1);
+      dat.slp->sl_dat[l1++] = (!norecur && name_eq_fullname &&
+            mx_alias_is_valid_name(val1));
+      su_mem_copy(&dat.slp->sl_dat[l1], val2, l2);
+   }
+
+   if(exists){
+      su_cs_dict_view_set_data(&dv, head);
+      rv = su_EX_OK;
+   }else
+      rv = (su_cs_dict_insert(a_nm_alias_dp, key, head) == su_ERR_NONE)
+            ? su_EX_OK : su_EX_ERR;
+   }goto jleave;
 }
 
 int
@@ -1183,7 +1209,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
    int rv;
    NYD_IN;
 
-   rv = 0;
+   rv = su_EX_OK;
 
    if(a_nm_alias_dp == NIL)
       goto jleave;
@@ -1206,7 +1232,7 @@ c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
          }
       }else if(!su_cs_dict_view_find(&dv, key)){
          n_err(_("No such `alias': %s\n"), n_shexp_quote_cp(key, FAL0));
-         rv = 1;
+         rv = su_EX_ERR;
       }else{
          slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
          do{

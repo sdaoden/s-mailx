@@ -246,7 +246,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Pipe [<msglist>] to [<command>], honour `headerpick'")},
 
 {"alias", &c_alias, (M | TWYSH), 0, MAC, NIL,
-	 N_("(a) Show all (or [-] <alias>), or append to <alias> :<data>:")},
+	 N_("(a) Show all (or [*metoo*: -[-+]] <alias>), or append to <alias> :<data>:")},
 	{"account", &c_account, (M | NOHOOK | TWYSH), 0, MAC, NIL,
 	 N_("Create <account {>, select <account>, or list all accounts")},
 	{"addrcodec", &c_addrcodec, (M | V | X | EM | TRAWDAT), 0, 0, NIL,
