@@ -8185,18 +8185,18 @@ t_alias() { # {{{
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t1 > ./t2 2>${E0}
 alias a1 ex1@a1.ple
-alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
-alias a1 ex4@a1.ple
-alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
-alias a3 a4
-alias a4 a5 ex1@a4.ple
-alias a5 a6
-alias a6 a7 ex1@a6.ple
-alias a7 a8
-alias a8 ex1@a8.ple
-alias a1
-alias a2
-alias a3
+a a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
+a a1 ex4@a1.ple
+a a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
+a a3 a4
+a a4 a5 ex1@a4.ple
+a a5 a6
+a a6 a7 ex1@a6.ple
+a a7 a8
+a a8 ex1@a8.ple
+a a1
+a a2
+a a3
 m a1
 ~c a2
 ~b a3
@@ -8212,77 +8212,104 @@ __EOT
 	#{{{
 	<< '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
 commandalias x echo '$?/$^ERRNAME'
-echo 1
+ec 1
 alias a:bra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
-alias a:bra!; x
-alias ha@m	ham-expansion	ha@m '';x
+a a:bra!; x
+a ha@m	ham-expansion	ha@m '';x
+a ha@m;x
+a beb@ra  ceb@ra beb@ra1;x
+a beb@ra;x
+a ceb@ra  ceb@ra1;x
+a ceb@ra;x
+a deb@ris	 '';x
+a deb@ris;x
+ec 2
+a - a:bra!;x
+a - ha@m;x
+a - beb@ra;x
+a - ceb@ra;x
+a - deb@ris;x
+ec 3
+una ha@m;x
+a - a:bra!;x
+una beb@ra;x
+a - a:bra!;x
+ec 4
+una *;x;alias;x
+ec 5
+\a noexpa@and this@error1;x
+a ha@m '\noexp@and' expa@and \\noexp@and2;x
 alias ha@m;x
-alias beb@ra  ceb@ra beb@ra1;x
-alias beb@ra;x
-alias ceb@ra  ceb@ra1;x
-alias ceb@ra;x
-alias deb@ris	 '';x
-alias deb@ris;x
-echo 2
-alias - a:bra!;x
-alias - ha@m;x
-alias - beb@ra;x
-alias - ceb@ra;x
-alias - deb@ris;x
-echo 3
-unalias ha@m;x
-alias - a:bra!;x
-unalias beb@ra;x
-alias - a:bra!;x
-echo 4
-unalias*;x;alias;x
-echo 5
-\alias noexpa@and this@error1;x
-\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
-\alias ha@m;x
-\alias - ha@m;x
-\alias noexpa@and2 this@error2;x
-\alias expa1@and this@error3;x
-\alias expa@and \\expa1@and;x
-\alias expa@and;x
-\alias - ha@m;x
-\alias - expa@and;x
+a - ha@m;x
+a noexpa@and2 this@error2;x
+a expa1@and this@error3;x
+a expa@and \\expa1@and;x
+a expa@and;x
+a - ha@m;x
+a - expa@and;x
+ec 6
+a ha@m reproducible_build alt@r
+a - ha@m;x 0
+alternates alt@r
+a - ha@m;x 1
+set posix
+a - ha@m;x 2
+set metoo
+a - ha@m;x 3
+unset posix
+a - ha@m;x 4-
+a -- ha@m;x 4--
+a -+ ha@m;x 4-+
+unalternates alt@r
+unset metoo
+a - ha@m;x 5-
+a -- ha@m;x 5--
+a -+ ha@m;x 5-+
 __EOT
 	#}}}
-	cke0 3 0 ./t3 '1513155156 796'
+	cke0 3 0 ./t3 '628266356 1442'
 
 	# metoo {{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 >${E0} 2>&1
-alias x a1 reproducible_build a2
-alias a1 a1-1@ex a1-2@ex
-alias a2 a3
-alias a3 al@ter reproducible_build a3@ex
+a x a1 reproducible_build a2
+a a1 a1-1@ex a1-2@ex
+a a2 a3
+a a3 al@ter reproducible_build a3@ex
 m x
 b1
 ~.
-alternates al@ter
+alt al@ter
 m x
 b2
 ~.
-set metoo
+se metoo
 m x
 b3
 ~.
-set posix
+se posix
 m x
 b4
 ~.
-unset metoo
+uns metoo
 m x
 b5
 ~.
-alias reproducible_build reproducible_build
-m x
+# (Historically X -> [X] (only X in []) would force inclusion)
+a reproducible_build reproducible_build
+a a2 a4
+\a a4 '\'a4@ex # (one more)
+a a4@ex a4-1@ex a4-2@ex
+\m x
 b6
+~.
+una a4
+a a4 a4@ex
+m x
+b7
 ~.
 __EOT
 	#}}}
-	cke0 4 0 ./t4 '982738649 820'
+	cke0 4 0 ./t4 '2361898674 953'
 
 	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test
