@@ -8252,7 +8252,7 @@ a ha@m reproducible_build alt@r
 a - ha@m;x 0
 alternates alt@r
 a - ha@m;x 1
-set posix
+set posix # no effect 2023+
 a - ha@m;x 2
 set metoo
 a - ha@m;x 3
@@ -8267,7 +8267,7 @@ a -- ha@m;x 5--
 a -+ ha@m;x 5-+
 __EOT
 	#}}}
-	cke0 3 0 ./t3 '628266356 1442'
+	cke0 3 0 ./t3 '4239815443 1436'
 
 	# metoo {{{
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 >${E0} 2>&1
@@ -8286,7 +8286,7 @@ se metoo
 m x
 b3
 ~.
-se posix
+se posix # no effect 2023+
 m x
 b4
 ~.
@@ -8309,7 +8309,7 @@ b7
 ~.
 __EOT
 	#}}}
-	cke0 4 0 ./t4 '2361898674 953'
+	cke0 4 0 ./t4 '3511439903 929'
 
 	# TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
 	# TODO need to somehow provide its contents to the test, then test

@@ -1448,7 +1448,7 @@ mx_name_is_metoo(char const *name, boole check_reply_to){
    if(a_nm_is_same_name(ok_vlook(LOGNAME), name, NIL))
       goto jleave;
 
-   if(a_nm_a8s_dp != NIL && !ok_blook(posix)){
+   if(a_nm_a8s_dp != NIL){
       if(!ok_blook(allnet)){
          if(su_cs_dict_has_key(a_nm_a8s_dp, name))
             goto jleave;
