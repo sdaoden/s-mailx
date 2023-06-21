@@ -82,7 +82,9 @@ STA char const path::root[sizeof su_PATH_ROOT] = su_PATH_ROOT;
 
 // utf.h
 
+STA char const utf8::name[sizeof su_UTF8_NAME] = su_UTF8_NAME;
 STA char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
+STA char const utf32::name[sizeof su_UTF32_NAME] = su_UTF32_NAME;
 
 //
 // Conditionalized
