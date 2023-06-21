@@ -50,8 +50,14 @@ enum{
 	su_UTF8_BUFFER_SIZE = 5u /*!< Maximum buffer size of an UTF-8 sequence including terminating \NUL. */
 };
 
+/*! Character set name. */
+#define su_UTF8_NAME "UTF-8"
+
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
 #define su_UTF8_REPLACER "\xEF\xBF\xBD"
+
+/*! Compiled in version of \r{su_UTF8_NAME}. */
+EXPORT_DATA char const su_utf8_name[sizeof su_UTF8_NAME];
 
 /*! Compiled in version of \r{su_UTF8_REPLACER}. */
 EXPORT_DATA char const su_utf8_replacer[sizeof su_UTF8_REPLACER];
@@ -70,8 +76,14 @@ EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
  * @{
  */
 
+/*! Character set name. */
+#define su_UTF32_NAME "UTF-32"
+
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-32 codepoint. */
 #define su_UTF32_REPLACER 0xFFFDu
+
+/*! Compiled in version of \r{su_UTF32_NAME}. */
+EXPORT_DATA char const su_utf32_name[sizeof su_UTF32_NAME];
 
 /*! Convert an UTF-32 character to an UTF-8 sequence.
  * \a{bp} must be large enough also for the terminating \NUL (see
@@ -103,8 +115,8 @@ public:
 		buffer_size = su_UTF8_BUFFER_SIZE /*!< \copydoc{su_UTF8_BUFFER_SIZE} */
 	};
 
-	/*! \copydoc{su_UTF8_REPLACER} */
-	static char const replacer[sizeof su_UTF8_REPLACER];
+	static char const name[sizeof su_UTF8_NAME]; /*!< \copydoc{su_utf8_name} */
+	static char const replacer[sizeof su_UTF8_REPLACER]; /*!< \copydoc{su_utf8_replacer} */
 
 	/*! \copydoc{su_utf8_to_32()} */
 	static u32 convert_to_32(char const **bdat, uz *blen) {return su_utf8_to_32(bdat, blen);}
@@ -119,8 +131,8 @@ public:
 class utf32{
 	su_CLASS_NO_COPY(utf32);
 public:
-	/*! \copydoc{su_UTF32_REPLACER} */
-	static u32 const replacer = su_UTF32_REPLACER;
+	static char const name[sizeof su_UTF32_NAME]; /*!< \copydoc{su_utf32_name} */
+	static u32 const replacer = su_UTF32_REPLACER; /*!< \copydoc{su_UTF32_REPLACER} */
 
 	/*! \copydoc{su_utf32_to_8()} */
 	static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}

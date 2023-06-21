@@ -2802,8 +2802,12 @@ a_time__spec(void){
 // utf {{{
 static void
 a_utf(void){
-	char buf[utf8::buffer_size];
+	if(cs::cmp(utf8::name, su_utf8_name) || cs::cmp(utf8::name, su_UTF8_NAME))
+		a_ERR();
+	if(cs::cmp(utf32::name, su_utf32_name) || cs::cmp(utf32::name, su_UTF32_NAME))
+		a_ERR();
 
+	char buf[utf8::buffer_size];
 	char const *ccp = utf8::replacer;
 	uz i = sizeof(utf8::replacer) -1;
 	u32 u32 = utf8::convert_to_32(&ccp, &i);
