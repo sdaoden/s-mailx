@@ -1129,10 +1129,15 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 		switch(okey){
 		default:
 			break;
-		case ok_v_charset_7bit:
-		case ok_v_charset_8bit:
-		case ok_v_charset_unknown_8bit:
+		case ok_v_ttycharset_detect:
+			if(**val == '\0')
+				break;
+			FALLTHRU
+		case ok_v_charset_7bit: FALLTHRU
+		case ok_v_charset_8bit: FALLTHRU
+		case ok_v_charset_unknown_8bit: FALLTHRU
 		case ok_v_ttycharset:
+			/* (Logs on error) */
 			if((*val = n_iconv_normalize_name(*val)) == NIL)
 				ok = FAL0;
 			break;

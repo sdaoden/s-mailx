@@ -1352,15 +1352,20 @@ jleave:
 
 #ifdef mx_HAVE_ICONV
 FL boole
-mx_header_needs_mime(struct header *hp){
+mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
+   /* TODO header_needs_mime(): with charset_or_nil and *mime-utf8-detect*
+    * TODO we should not shortcut but test all and .. what if unequal ?? */
    /* TODO In the end this should be nothing than
     * TODO header_iterator=header.begin(); h_i; ++h_i
     * TODO  if(h_i.body().needs_mime())
     * TODO Until then try to inite*/
-   char const *bodies[2 + 2 + 1 + 1 +1], **cpp, *cp;
    struct mx_name *np;
+   char const *bodies[2 + 2 + 1 + 1 +1], **cpp, *cp;
    boole rv;
    NYD_IN;
+
+   if(charset_or_nil != NIL)
+      *charset_or_nil = NIL;
 
    rv = FAL0;
 
@@ -1374,7 +1379,8 @@ mx_header_needs_mime(struct header *hp){
 
       for(i = 0; i < NELEM(chlp); ++i)
          if((hfp = chlp[i]) != NIL)
-            do if(mx_mime_header_needs_mime(&hfp->hf_dat[hfp->hf_nl +1])){
+            do if(mx_mime_header_needs_mime(&hfp->hf_dat[hfp->hf_nl +1],
+                  charset_or_nil)){
                rv = TRU1;
                goto jleave;
             }while((hfp = hfp->hf_next) != NIL);
@@ -1390,11 +1396,11 @@ mx_header_needs_mime(struct header *hp){
       *cpp++ = cp;
 
    if((np = hp->h_reply_to) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
-        goto jleave;
+         goto jleave;
       }while((np = np->n_flink) != NIL);
    }else if((cp = ok_vlook(reply_to)) != NIL)
       *cpp++ = cp;
@@ -1403,18 +1409,18 @@ mx_header_needs_mime(struct header *hp){
       *cpp++ = cp;
 
    if((np = hp->h_author) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_from) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
@@ -1422,36 +1428,36 @@ mx_header_needs_mime(struct header *hp){
       *cpp++ = cp;
 
    if((np = hp->h_mft) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_to) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_cc) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_bcc) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name) ||
+      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
             (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname))){
+             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
          rv = TRU1;
          goto jleave;
       }while((np = np->n_flink) != NIL);
@@ -1461,7 +1467,7 @@ mx_header_needs_mime(struct header *hp){
    ASSERT(cpp < &bodies[NELEM(bodies)]);
    *cpp = NIL;
    for(cpp = &bodies[0]; (cp = *cpp++) != NIL;)
-      if((rv = mx_mime_header_needs_mime(cp)))
+      if((rv = mx_mime_header_needs_mime(cp, charset_or_nil)))
          break;
 
 jleave:
