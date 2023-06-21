@@ -13565,6 +13565,22 @@ Refer to the section
 for the complete picture about character sets.
 .
 .Mx
+.It Va ttycharset-detect
+By default any input text data is expected to be in
+.Va ttycharset
+.Pf ( Sx "Character sets" ) .
+If set active UTF-8 classification is performed: nothing changes for
+7-bit, but if 8-bit input is valid UTF-8 that character set is assumed;
+if set with value non-UTF-8 8-bit input uses it instead.
+.Bd -literal -offset indent
+$ echo $'\eu263A' > uni.txt
+$ echo $'Hey \eu263A' | \e
+  LC_ALL=C \*(xX -:/ -Smta=test \e
+    -S ttycharset-detect=LATIN1 \e
+    -a uni.txt -s Kn$'\e366'del bob@exam.ple
+.Ed
+.
+.Mx
 .It Va typescript-mode
 \*(BO A special multiplex variable that disables all variables and
 settings which result in behaviour that interferes with running \*(Xx in

@@ -62,7 +62,8 @@ struct mx_attachment{
 	FILE *a_tmpf; /* If AC_TMPFILE */
 	BITENUM_IS(u8,mx_attachments_conv) a_conv; /* User chosen conversion */
 	boole a_conv_force_b64; /* Encode in base64, always; only files*/
-	u8 a__pad[3];
+	boole a_input_charset_set;
+	u8 a__pad[2];
 	int a_msgno; /* message number */
 };
 

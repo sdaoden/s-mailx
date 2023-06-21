@@ -91,11 +91,12 @@ EXPORT char *mx_mime_type_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is set to *charset-7bit* or
  * mime_charset_iter_or_fallback() if NIL.
- * no_mboxo states whether 7BIT/8BIT is acceptable if only existence of a ^From_ would otherwise enforce QP/BASE64 */
+ * no_mboxo states whether 7BIT/8BIT is acceptable if only existence of a ^From_ would otherwise enforce QP/BASE64.
+ * A set fp_charset_or_nil is set according to *ttycharset-detect* */
 /* TODO this should take a carrier and only fill that in with what has been detected/classified, and suggest hints;
  * TODO rest up to caller!  This is not only more correct (no_mboxo crux++), it simplifies a lot */
 EXPORT enum conversion mx_mime_type_classify_file(FILE *fp, char const **content_type, char const **charset,
-		boole *do_iconv, boole no_mboxo);
+		boole *do_iconv, boole no_mboxo, char const **fp_charset_or_nil);
 
 /* Dependent on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set, but otherwise mpp is const.
  * is_hdl rather maps 1:1 to MIME_PARSE_FOR_USER_CONTEXT */

@@ -922,6 +922,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_b_topsqueeze,
    /* Charset lowercase conversion handled via vip= */
    ok_v_ttycharset, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_v_ttycharset_detect, /* {vip=1} */
    ok_b_typescript_mode, /* {vip=1} */
 
    ok_v_USER, /* {rdonly=1,import=1} */

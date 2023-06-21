@@ -920,21 +920,49 @@ mx_mime_charset_iter_restore(char *outer_storage[2]){ /* TODO LEGACY REMOVE */
 
 #ifdef mx_HAVE_ICONV
 boole
-mx_mime_header_needs_mime(char const *body){
-   char c;
+mx_mime_header_needs_mime(char const *body, char const **charset_or_nil){
+   char const *ttyc5t;
    boole rv;
    NYD2_IN;
    ASSERT(body != NIL);
 
    rv = FAL0;
 
-   do if(S(u8,c = *body++) & 0x80){
-      rv = TRU1;
-      break;
-   }while(c != '\0');
+   for(;;){
+      char c;
 
+      c = *body++;
+      if(c == '\0')
+         break;
+      if(S(u8,c) & 0x80){
+         rv = TRU1;
+         if(charset_or_nil != NIL &&
+               (ttyc5t = ok_vlook(ttycharset_detect)) != NIL)
+            goto jslow;
+         break;
+      }
+   }
+
+jleave:
    NYD2_OU;
    return rv;
+
+jslow:/* C99 */{
+   uz l;
+
+   l = su_cs_len(--body);
+   for(;;){
+      u32 utf;
+
+      if((utf = su_utf8_to_32(&body, &l)) == U32_MAX){
+         *charset_or_nil = (*ttyc5t != '\0') ? savestr/*xxx*/(ttyc5t) : NIL;
+         break;
+      }else if(utf == '\0'/* XXX ?? */ || l == 0){
+         *charset_or_nil = su_utf8_name;
+         break;
+      }
+   }
+   }goto jleave;
 }
 #endif
 

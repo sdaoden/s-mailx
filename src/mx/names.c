@@ -517,6 +517,7 @@ nalloc(char const *str, enum gfield ntype)
          s += i;
          in.s[in.l = s] = '\0';
 
+         /* TODO iconv <> *mime-utf8-detect* instead of *ttycharset*? how? */
          if(!mx_mime_display_from_header(&in, &out,
                mx_MIME_DISPLAY_ICONV /* TODO | mx_MIME_DISPLAY_ISPRINT */)){
             out.s = UNCONST(char*,su_empty);

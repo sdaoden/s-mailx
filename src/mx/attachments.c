@@ -250,7 +250,8 @@ jerr_fopen:
 	if(msgno >= 0)
 		nap = a_attachments_setup_msg(nap, file, msgno);
 	else{
-		nap->a_input_charset = (incs == NIL || incs == R(char*,-1)) ? savestr(ok_vlook(ttycharset)) : incs;
+		nap->a_input_charset_set = (incs != NIL && incs != R(char*,-1));
+		nap->a_input_charset = !nap->a_input_charset_set ? savestr(ok_vlook(ttycharset)) : incs;
 #ifdef mx_HAVE_ICONV
 		if(cnvfp != NIL){
 			ASSERT(nap->a_tmpf == NIL);
