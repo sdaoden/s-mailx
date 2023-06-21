@@ -141,7 +141,7 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as such is a compile-time variable
 ARGS='-:/ -Sdotlock-disable -Smta=test -Smta-bcc-ok -Smemdebug -Sstealthmua'
-	ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave'
+	ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Scharset-8bit=UTF-8 -Snosave'
 	ARGS="${ARGS}"' -Smailcap-disable -Smimetypes-load-control='
 NOBATCH_ARGS="${ARGS}"' -Sexpandaddr'
 	ARGS="${ARGS}"' -Sexpandaddr=restrict -#'
@@ -8265,7 +8265,30 @@ t_mime_force_sendout() { #{{{
 	t_epilog "${@}"
 } #}}}
 
-t_binary_mainbody() { # {{{
+t_ttycharset_detect() { #{{{
+	t_prolog "${@}"
+
+	printf 'â˜º' > u.txt
+	printf 'â˜º, â˜º, ötzi' > l.txt
+
+	if have_feat iconv; then
+		< u.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -a u.txt -s 'Knödel' x@y > ./t1 2> ${E0}
+		cke0 1 0 ./t1 '1201446047 689'
+
+		< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -a l.txt -s 'â˜º' x@y > ./t2 2> ${E0}
+		cke0 2 0 ./t2 '1788678496 762'
+	else
+		t_echoskip '1-2:[!ICONV]'
+	fi
+
+	< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -Ssendcharsets=latin1 -Sttycharset=utf8 \
+		-a l.txt -s 'â˜º, ö' x@y > ./t3 2> ${E0}
+	cke0 3 0 ./t3 '2840065603 745'
+
+	t_epilog "${@}"
+} #}}}
+
+t_binary_mainbody() { #{{{
 	t_prolog "${@}"
 
 	printf 'abra\0\nka\r\ndabra' |
@@ -8280,7 +8303,7 @@ t_binary_mainbody() { # {{{
 	ck 5 - ./t5 '3817108933 15'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
 t_C_opt_customhdr() { #{{{
 	t_prolog "${@}"
@@ -14161,6 +14184,7 @@ t_all() { #{{{
 	jspawn iconv_mbyte_base64
 	jspawn iconv_mainbody
 	jspawn mime_force_sendout
+	jspawn ttycharset_detect
 	jspawn binary_mainbody
 	jspawn C_opt_customhdr
 	jsync

@@ -450,7 +450,7 @@ a_sendout_attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
 
    /* If we don't apply charset conversion at all (fixed input=output charset)
     * we also simply copy over, since it's the users desire */
-   if (ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS) {
+   if(ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS){
       ap->a_charset = ap->a_input_charset;
       err = a_sendout__attach_file(hp, ap, fo, force);
       goto jleave;
@@ -501,7 +501,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    boole force)
 {
    FILE *fi;
-   char const *charset;
+   char const *charset, **input_charset;
    enum conversion convert;
    boole do_iconv;
    s32 err;
@@ -510,6 +510,7 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
    err = su_ERR_NONE;
 
    /* Either charset-converted temporary file, or plain path */
+   input_charset = NIL;
    if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
       fi = ap->a_tmpf;
       ASSERT(ftell(fi) == 0);
@@ -518,16 +519,20 @@ a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
          su_err_doc(err));
       goto jleave;
-   }
+   }else if(!ap->a_input_charset_set)
+      input_charset = &ap->a_input_charset;
 
    /* MIME part header for attachment */
-   {  char const *ct, *cp;
+   {  char const *ct, *ics, *cp;
 
       /* No MBOXO quoting here, never!! */
       ct = ap->a_content_type;
       charset = ap->a_charset;
+      ics = (input_charset != NIL) ? *input_charset : NIL;
       convert = mx_mime_type_classify_file(fi, (char const**)&ct,
-            &charset, &do_iconv, TRU1);
+            &charset, &do_iconv, TRU1, input_charset);
+      if(ics != NIL && *input_charset == NIL)
+         *input_charset = ics;
 
       if(ap->a_conv_force_b64)
          convert = CONV_TOB64;
@@ -770,7 +775,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    enum conversion convert;
    int err;
    boole do_iconv;
-   char const *contenttype, *charset;
+   char const *contenttype, *charset, *body_charset, *tcs;
    FILE *nfo, *nfi;
    NYD_IN;
 
@@ -810,13 +815,13 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
          contenttype = "text/plain";
 
       convert = mx_mime_type_classify_file(fi, &contenttype, &charset,
-            &do_iconv, no_mboxo);
+            &do_iconv, no_mboxo, &body_charset);
    }
 
 #ifdef mx_HAVE_ICONV
    /* C99 */{
-   char const *tcs;
    boole gut_iconv;
+   char const *header_charset;
 
    /* This is the logic behind *charset-force-transport*.  XXX very weird
     * XXX as said a thousand times, Part==object, has dump_to_{wire,user}, and
@@ -831,7 +836,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
    tcs = ok_vlook(ttycharset);
 
-   if((gut_iconv = mx_header_needs_mime(hp))){
+   if((gut_iconv = mx_header_needs_mime(hp, &header_charset))){
       char const *convhdr;
 
       convhdr = mx_mime_charset_iter_or_fallback();
@@ -841,8 +846,9 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if(!force && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
-            (iconvd = n_iconv_open(convhdr, tcs)) == R(iconv_t,-1) &&
-            (err = su_err()) != su_ERR_NONE){
+            (iconvd = n_iconv_open(convhdr,
+                  (header_charset != NIL ? header_charset : tcs))
+               ) == R(iconv_t,-1) && (err = su_err()) != su_ERR_NONE){
          charset = convhdr;
          goto jiconv_err;
       }
@@ -865,8 +871,9 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if(/*su_cs_cmp_case(charset, tcs) != 0 &&*/
-            (iconvd = n_iconv_open(charset, tcs)) == R(iconv_t,-1) &&
-            (err = su_err()) != su_ERR_NONE){
+            (iconvd = n_iconv_open(charset,
+                  (body_charset != NIL ? body_charset : tcs))
+               ) == R(iconv_t,-1) && (err = su_err()) != su_ERR_NONE){
 jiconv_err:
          if(err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);

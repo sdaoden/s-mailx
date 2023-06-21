@@ -65,10 +65,11 @@ EXPORT char const *mx_mime_charset_iter_or_fallback(void);
 EXPORT void mx_mime_charset_iter_recurse(char *outer_storage[2]);/* TODO drop*/
 EXPORT void mx_mime_charset_iter_restore(char *outer_storage[2]);/* TODO drop*/
 
-/* Check whether header body needs MIME conversion */
+/* Check whether header body needs MIME conversion.
+ * A set charset_or_nil is set according to *ttycharset-detect* */
 /* TODO mime_header_needs_mime should always be available - gross flow! */
 #ifdef mx_HAVE_ICONV
-EXPORT boole mx_mime_header_needs_mime(char const *body);
+EXPORT boole mx_mime_header_needs_mime(char const *body, char const **charset_or_nil);
 #endif
 
 /* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.

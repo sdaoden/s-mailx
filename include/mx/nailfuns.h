@@ -627,9 +627,10 @@ FL boole      is_head(char const *linebuf, uz linelen,
 FL char const *mx_header_is_valid_name(char const *name, boole lead_ws,
       struct str *cramp_or_nil);
 
-/* */
+/* If charset_or_nil is set it is set to NIL or su_utf8_name if
+ * A set charset_or_nil is set according to *ttycharset-detect* */
 #ifdef mx_HAVE_ICONV
-FL boole mx_header_needs_mime(struct header *hp);
+FL boole mx_header_needs_mime(struct header *hp, char const **charset_or_nil);
 #endif
 
 /* Print hp "to user interface" fp for composing purposes xxx what a sigh */
