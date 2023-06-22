@@ -892,10 +892,13 @@ n_namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    struct mx_name *tolist, *np, **npp;
    NYD_IN;
 
-   tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
+   tolist = cat(hp->h_to, cat(hp->h_cc, hp->h_fcc));
+   np = hp->h_bcc;
    hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
    tolist = usermap(tolist, FAL0);
+   np = usermap(np, TRU1);
+   tolist = cat(tolist, np);
 
    /* MTA aliases are resolved last */
 #ifdef mx_HAVE_MTA_ALIASES
