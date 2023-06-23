@@ -6290,6 +6290,12 @@ echo $?/$^ERRNAME
 		> ${E0} 2>&1
 	cke0 16 0 ./t.mbox '2175359047 843'
 
+	# *mta-bcc-ok* ignored for test://
+	</dev/null ${MAILX} ${ARGS} -S mta=test -S nomta-bcc-ok -s v -Y 'x' -b b@y -b c@z a@x > ./t17 2> ${E0}
+	cke0 17 0 ./t17 '2647141096 124'
+	</dev/null ${MAILX} ${ARGS} -S mta=test://./t18 -S nomta-bcc-ok -s w -Y 'y' -b b@y -b c@z a@x > ${E0} 2>&1
+	cke0 18 0 ./t18 '250796110 124'
+
 	t_epilog "${@}"
 } # }}}
 
