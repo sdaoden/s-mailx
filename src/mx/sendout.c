@@ -1386,6 +1386,7 @@ a_sendout_transfer(struct mx_send_ctx *scp, boole resent, boole *senderror){
    rv = FAL0;
 
    /* Do we need to create a Bcc: free overlay?
+    * Only for file-based non-test:// MTAs.
     * TODO In v15 we would have an object tree with dump-to-wire, we have our
     * TODO file stream which acts upon an I/O device that stores so-and-so-much
     * TODO memory, excess in a temporary file; either each object knows its
@@ -1394,7 +1395,9 @@ a_sendout_transfer(struct mx_send_ctx *scp, boole resent, boole *senderror){
     * TODO which writes data to the MTA child as it goes we simply not write
     * TODO the Bcc: as necessary; how about that? */
    input_save = scp->sc_input;
-   if((resent || (scp->sc_hp != NIL && scp->sc_hp->h_bcc != NIL)) &&
+   if(scp->sc_urlp->url_cproto == CPROTO_NONE &&
+         scp->sc_urlp->url_portno != U16_MAX &&
+         (resent || (scp->sc_hp != NIL && scp->sc_hp->h_bcc != NIL)) &&
          !ok_blook(mta_bcc_ok)){
       boole inhdr, inskip;
       uz bufsize, bcnt, llen;
@@ -2136,7 +2139,7 @@ jistest:
                mta += 3;
          }
 jisfile:
-         su_mem_set(urlp, 0, sizeof *urlp);
+         STRUCT_ZERO(struct mx_url, urlp);
          urlp->url_input = mta;
          urlp->url_portno = pno;
          urlp->url_cproto = CPROTO_NONE;

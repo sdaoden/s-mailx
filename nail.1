@@ -11090,16 +11090,16 @@ will treat its contents as that name.
 .
 .Mx
 .It Va mta-bcc-ok
-\*(BO In violation of RFC 5322 some MTAs do not remove
+\*(BO Only affects file-based
+.Va mta Ns
+s: in violation of RFC 5322 some do not remove
 .Ql Bcc:
-header lines from transported messages after having noted the respective
-recipients for addressing purposes.
-(The MTAs Exim and Courier for example require the command line option
-.Fl \&\&t
-to enforce removal.)
-Unless this is set corresponding recipients are addressed by
-protocol-specific means or MTA command line options only, the header
-itself is stripped before being sent over the wire.
+header lines from messages after having noted respective recipients for
+addressing purposes automatically.
+(Exim and Courier for example remove only with the command line option
+.Fl \&\&t . )
+Unless set corresponding recipients are only passed via command line
+(this prepares a cleaned message copy).
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
