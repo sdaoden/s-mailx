@@ -1,7 +1,8 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: a1@b1
-Subject: 1 only a1@b1 remains
+Bcc: a3@b3, a3@c3, a3@d3
+Subject: 1 only a1@b1 + bcc
 
  Body
  1 is!
@@ -9,8 +10,8 @@ Subject: 1 only a1@b1 remains
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: a1@b1, a1@d1
-Bcc: a3@c3, a3@d3
-Subject: a1@b1 a1@d1 / a3@c3 a3@d3
+Bcc: a3@b3, a3@c3, a3@d3
+Subject: a1@b1 a1@d1 + bcc
 
  Body
  2 is!
@@ -18,7 +19,8 @@ Subject: a1@b1 a1@d1 / a3@c3 a3@d3
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To: a@a
-Subject: allnet: all / a@a
+Bcc: a3@b3, a3@c3, a3@d3
+Subject: allnet: all / a@a + bcc
 
  Body
  3 is!

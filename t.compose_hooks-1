@@ -7,7 +7,8 @@ To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
  To3@exam.ple
 Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple,
  alter1@exam.ple
-Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple
+Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple,
+ alter3@exam.ple, alter4@exam.ple
 Subject: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 Message-ID: <messAge-id@exam.ple>
 In-Reply-To: <in-Reply-to@exam.ple> <in-Reply-to2@exam.ple>
@@ -38,7 +39,7 @@ Content-ID: <19961002015007.AQACA%from@exam.ple>
 
 body
 t_ocs
-t_header ENTER
+t_hea ENTER
 210 To Mailx-Raw-To Mailx-Command
 210 From 1
 210 From 2
@@ -151,7 +152,7 @@ t_header ENTER
 0/0/NONE: 
 35/0/NONE: this-goes@nowhere this-goes@nowhere
 0/0/NONE: 
-t_header LEAVE
+t_hea LEAVE
 t_attach ENTER
 501
 501

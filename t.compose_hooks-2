@@ -1,10 +1,11 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 Cc: alter1@exam.ple
+Bcc: alter3@exam.ple, alter4@exam.ple
 
 body
 t_ocs
-t_header ENTER
+t_hea ENTER
 210 To Mailx-Raw-To Mailx-Command
 210 From 1
 210 From 2
@@ -305,7 +306,7 @@ t_header ENTER
 0/0/NONE: 
 35/0/NONE: this-goes@nowhere this-goes@nowhere
 0/0/NONE: 
-t_header LEAVE
+t_hea LEAVE
 t_attach ENTER
 501
 501
