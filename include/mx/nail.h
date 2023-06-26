@@ -623,7 +623,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_COLUMNS, /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */
    ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
-   /* But unused without mx_HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
+   /* Unused without mx_HAVE_ICONV, we use n_var_oklook(CHARSET_8BIT_OKEY)! */
    ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
    ok_v_charset_locale, /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_charset_unknown_8bit, /* {vip=1,notempty=1} */
@@ -693,6 +693,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_hold, /* {i3val=TRU1} */
    ok_v_hostname, /* {vip=1} */
 
+   ok_b_iconv_disable,
    ok_b_idna_disable,
    ok_v_ifs, /* {vip=1,defval=" \t\n"} */
    ok_v_ifs_ws, /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */

@@ -77,7 +77,7 @@ n_iconv_normalize_name(char const *cset){
 	/* And some names just cannot be used as such */
 	if((!su_cs_cmp_case(cset, "unknown-8bit") || !su_cs_cmp_case(cset, "binary")) &&
 			(cset = ok_vlook(charset_unknown_8bit)) == NIL)
-		cset = ok_vlook(CHARSET_8BIT_OKEY);
+		cset = n_var_oklook(CHARSET_8BIT_OKEY);
 
 jleave:
 	NYD2_OU;

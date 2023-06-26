@@ -459,7 +459,7 @@ a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const
 #ifdef mx_HAVE_ICONV
 	UNINIT(fhicd, R(iconv_t,-1));
 
-	if(head->rj_is_enc){
+	if(head->rj_is_enc && !ok_blook(iconv_disable)){
 		char const *tcs;
 
 		f |= a_HAVE_ENC;
@@ -559,6 +559,7 @@ jhex_putc:
 	 * sufficient */
 #ifdef mx_HAVE_ICONV
 	if(f & a_HAVE_ICONV){
+		ASSERT(!ok_blook(iconv_disable));
 		sin.s = NIL;
 		sin.l = 0;
 		if(n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &sin, &sou, NIL) != 0){
