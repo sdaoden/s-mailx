@@ -172,7 +172,7 @@ jrefexp:
 		}
 
 #ifndef mx_HAVE_ICONV
-		if(oucs != NIL && oucs != (char*)-1){
+		if(oucs != NIL && oucs != R(char*,-1)){
 			n_err(_("No iconv support, cannot do %s\n"), n_shexp_quote_cp(file_user, FAL0));
 			aerr = mx_ATTACHMENTS_ERR_ICONV_NAVAIL;
 			goto jleave;

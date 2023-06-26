@@ -1121,7 +1121,8 @@ jpipe_close:
    /* TODO Unless we have filters, ensure iconvd==-1 so that mime.c:fwrite_td()
     * TODO cannot mess things up misusing outrest as line buffer */
 #ifdef mx_HAVE_ICONV
-   if (iconvd != (iconv_t)-1) {
+   if(iconvd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       n_iconv_close(iconvd);
       iconvd = (iconv_t)-1;
    }
@@ -1141,7 +1142,7 @@ jpipe_close:
             (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK
                ) == mx_MIME_TYPE_HDL_TEXT ||
             (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK
-               ) == mx_MIME_TYPE_HDL_HTML)) {
+               ) == mx_MIME_TYPE_HDL_HTML) && !ok_blook(iconv_disable)){
       char const *tcs;
 
       tcs = ok_vlook(ttycharset);
@@ -1269,8 +1270,10 @@ jsend:
          if (inrest.s != NULL)
             n_free(inrest.s);
 #ifdef mx_HAVE_ICONV
-         if (iconvd != (iconv_t)-1)
+         if(iconvd != R(iconv_t,-1)){
+            ASSERT(!ok_blook(iconv_disable));
             n_iconv_close(iconvd);
+         }
 #endif
          safe_signal(SIGPIPE, __sendp_opipe);
          n_raise(__sendp_sig);
@@ -1350,8 +1353,10 @@ jend:
    }
 
 #ifdef mx_HAVE_ICONV
-   if (iconvd != (iconv_t)-1)
+   if(iconvd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       n_iconv_close(iconvd);
+   }
 #endif
 
 jleave:

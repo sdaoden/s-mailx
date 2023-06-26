@@ -75,7 +75,7 @@ enum a_mime_structure_hack{
 static char *a_mime_cs_iter_base, *a_mime_cs_iter;
 #ifdef mx_HAVE_ICONV
 # define a_MIME_CS_ITER_GET() \
-   ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : ok_vlook(CHARSET_8BIT_OKEY))
+   ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : n_var_oklook(CHARSET_8BIT_OKEY))
 #else
 # define a_MIME_CS_ITER_GET() \
    ((a_mime_cs_iter != NIL) ? a_mime_cs_iter : ok_vlook(ttycharset))
@@ -151,6 +151,7 @@ a_mime_fwrite_display(struct str const *input,
       int err;
       char *buf;
 
+      ASSERT(!ok_blook(iconv_disable));
       buf = NIL;
 
       if(outrest != NIL && outrest->l > 0){
@@ -659,6 +660,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
    ciconv.s = NIL;
 
    if(inp->l > 0 && iconvd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       ciconv.l = 0;
       if(n_iconv_str(iconvd, n_ICONV_NONE, &ciconv, inp, NIL) != 0){
          n_iconv_reset(iconvd);
@@ -799,23 +801,25 @@ mx_mime_charset_iter_reset(char const *a_charset_to_try_first){ /* TODO dups */
    UNUSED(a_charset_to_try_first);
 
 #ifdef mx_HAVE_ICONV
-   sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
+   if(!ok_blook(iconv_disable)){
+      sarr[2] = n_var_oklook(CHARSET_8BIT_OKEY);
 
-   if(a_charset_to_try_first != NIL &&
-         su_cs_cmp(a_charset_to_try_first, sarr[2]))
-      sarr[0] = a_charset_to_try_first;
-   else
-      sarr[0] = NIL;
+      if(a_charset_to_try_first != NIL &&
+            su_cs_cmp(a_charset_to_try_first, sarr[2]))
+         sarr[0] = a_charset_to_try_first;
+      else
+         sarr[0] = NIL;
 
-   if((sarr[1] = ok_vlook(sendcharsets)) == NIL &&
-         ok_blook(sendcharsets_else_ttycharset)){
-      cp = UNCONST(char*,ok_vlook(ttycharset));
-      if(su_cs_cmp(cp, sarr[2]) && (sarr[0] == NIL || su_cs_cmp(cp, sarr[0])))
-         sarr[1] = cp;
-   }
-#else
-   sarr[2] = ok_vlook(ttycharset);
+      if((sarr[1] = ok_vlook(sendcharsets)) == NIL &&
+            ok_blook(sendcharsets_else_ttycharset)){
+         cp = UNCONST(char*,ok_vlook(ttycharset));
+         if(su_cs_cmp(cp, sarr[2]) && (sarr[0] == NIL || su_cs_cmp(cp, sarr[0])))
+            sarr[1] = cp;
+      }
+   }else
+      sarr[0] = sarr[1] = NIL,
 #endif
+      sarr[2] = ok_vlook(ttycharset);
 
    sarrl[2] = len = su_cs_len(sarr[2]);
 #ifdef mx_HAVE_ICONV
@@ -1028,7 +1032,7 @@ mx_mime_display_from_header(struct str const *in, struct str *out,
          ++p;
 
 #ifdef mx_HAVE_ICONV
-         if(flags & mx_MIME_DISPLAY_ICONV){
+         if((flags & mx_MIME_DISPLAY_ICONV) && !ok_blook(iconv_disable)){
             uz i;
 
             if(fhicd != R(iconv_t,-1)){
@@ -1118,6 +1122,7 @@ jdec_qm:
          /* TODO Does not really work if we have assigned some ASCII or even
           * TODO translated strings because of errors! */
          if((flags & mx_MIME_DISPLAY_ICONV) && fhicd != R(iconv_t,-1)){
+            ASSERT(!ok_blook(iconv_disable));
             cin.s = NIL, cin.l = 0; /* XXX string pool ! */
             convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NIL);
             out = n_str_add(out, &cin);
@@ -1167,8 +1172,10 @@ jdec_qm:
       out->l = mx_del_cntrl(out->s, out->l);
 
 #ifdef mx_HAVE_ICONV
-   if(fhicd != R(iconv_t,-1))
+   if(fhicd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       n_iconv_close(fhicd);
+   }
 #endif
 
    rv = TRU1;
@@ -1306,6 +1313,7 @@ mx_mime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
    if((dflags & mx_MIME_DISPLAY_ICONV) && iconvd != R(iconv_t,-1) &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
+      ASSERT(!ok_blook(iconv_disable));
       if(n_iconv_str(iconvd, n_ICONV_NONE, &out, &in, NIL) != 0){
          n_iconv_reset(iconvd);
          /* TODO This causes hard-failure.  We would need to have an action

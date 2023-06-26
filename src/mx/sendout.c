@@ -375,9 +375,12 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
 
    if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
 #ifdef mx_HAVE_ICONV
-         || iconvd != (iconv_t)-1
+         || iconvd != R(iconv_t,-1)
 #endif
    ){
+#ifdef mx_HAVE_ICONV
+      ASSERT(iconvd == R(iconv_t,-1) || !ok_blook(iconv_disable));
+#endif
       fflush(fi);
       cnt = fsize(fi);
    }
@@ -386,9 +389,12 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    while(!iseof){
       if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
 #ifdef mx_HAVE_ICONV
-            || iconvd != (iconv_t)-1
+            || iconvd != R(iconv_t,-1)
 #endif
       ){
+#ifdef mx_HAVE_ICONV
+      ASSERT(iconvd == R(iconv_t,-1) || !ok_blook(iconv_disable));
+#endif
          if(fgetline(&buf, &bufsize, &cnt, &size, fi, FAL0) == NIL)
             break;
          if(convert != CONV_TOQP && seenempty && is_head(buf, size, FAL0)){
@@ -586,9 +592,12 @@ jerr_header:
    }
 
 #ifdef mx_HAVE_ICONV
-   if (iconvd != (iconv_t)-1)
+   if(iconvd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       n_iconv_close(iconvd);
-   if (do_iconv) {
+   }
+
+   if(do_iconv && !ok_blook(iconv_disable)){
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if (/*su_cs_cmp_case(charset, ap->a_input_charset) &&*/
@@ -835,10 +844,14 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
    }
 
    tcs = ok_vlook(ttycharset);
+   gut_iconv = FAL0;
 
-   if((gut_iconv = mx_header_needs_mime(hp, &header_charset))){
+   if(ok_blook(iconv_disable))
+      do_iconv = FAL0;
+   else if(mx_header_needs_mime(hp, &header_charset)){
       char const *convhdr;
 
+      gut_iconv = TRU1;
       convhdr = mx_mime_charset_iter_or_fallback();
 
       if(iconvd != R(iconv_t,-1)) /* XXX  */
@@ -868,6 +881,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
       n_iconv_close(iconvd);
 
    if(do_iconv && charset != NIL){ /*TODO charset->mimetype_classify_file*/
+      ASSERT(!ok_blook(iconv_disable));
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
       if(/*su_cs_cmp_case(charset, tcs) != 0 &&*/
@@ -912,9 +926,12 @@ jerr:
 
 jleave:
 #ifdef mx_HAVE_ICONV
-   if(iconvd != R(iconv_t,-1))
+   if(iconvd != R(iconv_t,-1)){
+      ASSERT(!ok_blook(iconv_disable));
       n_iconv_close(iconvd);
+   }
 #endif
+
    if(nfi == NIL)
       su_err_set(err);
 
@@ -2388,8 +2405,9 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
          else if((nmtf = a_sendout_infix(hp, mtf, dosign, force)) != NULL)
             break;
 #ifdef mx_HAVE_ICONV
-         else if((err = n_iconv_err) == su_ERR_ILSEQ ||
-               err == su_ERR_INVAL || err == su_ERR_NOENT){
+         else if(!ok_blook(iconv_disable) &&
+               ((err = n_iconv_err) == su_ERR_ILSEQ ||
+                err == su_ERR_INVAL || err == su_ERR_NOENT)){
             rewind(mtf);
             continue;
          }
