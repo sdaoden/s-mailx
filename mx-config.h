@@ -68,18 +68,18 @@
 /* * */
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
- * Note: must be lowercase! */
+ * Note: iconv_normalize_name() MUST NOT cause modification! */
 #define CHARSET_7BIT "us-ascii"
 #ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
-# define CHARSET_8BIT_OKEY charset_8bit
+# define CHARSET_8BIT_OKEY ok_v_charset_8bit
 #else
 # ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
 #  define CHARSET_8BIT "utf-8"
 # else
 #  define CHARSET_8BIT "iso-8859-1"
 # endif
-# define CHARSET_8BIT_OKEY ttycharset
+# define CHARSET_8BIT_OKEY ok_v_ttycharset
 #endif
 
 #ifndef HOST_NAME_MAX
