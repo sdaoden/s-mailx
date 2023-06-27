@@ -99,6 +99,22 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
 	return rv;
 }
 
+boole
+n_iconv_name_is_utf8(char const *cset){ /* TODO ctext/su */
+	static char const * const names[] = {"utf8", "utf-8"};
+	boole rv;
+	char const * const *npp;
+	NYD2_IN;
+
+	npp = &names[NELEM(names)];
+	do if((rv = !su_cs_cmp_case(cset, *--npp)))
+		break;
+	while((rv = (npp != &names[0])));
+
+	NYD2_OU;
+	return rv;
+}
+
 #ifdef mx_HAVE_ICONV
 iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
