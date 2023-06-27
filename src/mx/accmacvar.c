@@ -1700,8 +1700,10 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 	avmp = avcp->avc_map;
 
 	/* Built-in internal variables are never on `local' level */
-	if(LIKELY(avmp != NIL))
+	if(LIKELY(avmp != NIL)){
 		avlf &= ~a_AMV_VLOOK_LOCAL;
+		goto jskip_local;
+	}
 
 	/* C99 */{
 		struct a_amv_var **avpp, *lavp;
@@ -1730,6 +1732,7 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 				goto jerr;
 		}
 
+jskip_local:
 		/* Global variable map */
 		avpp = &a_amv_vars[avcp->avc_prime];
 
@@ -1764,10 +1767,32 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 			}
 		}
 	}
+	ASSERT(avp == NIL);
+
 
 	/* If not an assembled var need to consider some special init cases and eventually create the variable anew */
 	if(LIKELY((avmp = avcp->avc_map) != NIL)){
 		f = avmp->avm_flags;
+
+		/* We can skip this but for i3val: these have to be cleared as they have been seen! */
+		if(LIKELY(avlf & a_AMV_VLOOK_I3VAL_NONEW)){
+			if(UNLIKELY(f & a_AMV_VF_I3VAL))
+				goto Ji3val;
+			if(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT)
+				avp = R(struct a_amv_var*,-1);
+			goto jleave;
+		}
+
+		/* The virtual variables */
+		if(UNLIKELY((f & a_AMV_VF_VIRT) != 0)){
+			/* TODO Use at least the su/prime.c approach to speed this up! */
+			for(i = 0; i < a_AMV_VAR_VIRTS_CNT; ++i)
+				if(a_amv_var_virts[i].avv_okey == avcp->avc_okey){
+					avp = UNCONST(struct a_amv_var*,a_amv_var_virts[i].avv_var);
+					goto jleave;
+				}
+			ASSERT(0); /* Not reached */
+		}
 
 		/* Does it have an import-from-environment flag? */
 		if(UNLIKELY((f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
@@ -1801,7 +1826,7 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 		}
 
 		/* A first-time init switch is to be handled now and here */
-		if(UNLIKELY((f & a_AMV_VF_I3VAL) != 0)){
+		if(UNLIKELY((f & a_AMV_VF_I3VAL) != 0)) Ji3val:{
 			static struct a_amv_var_defval const **arr, *arr_base[a_AMV_VAR_I3VALS_CNT +1];
 
 			if(UNLIKELY(arr == NIL)){
@@ -1828,14 +1853,21 @@ a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENU
 
 					if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW))
 						goto jnewval;
-					if(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT)
-						avp = R(struct a_amv_var*,-1);
-					goto jleave;
+					goto ji3val_leave;
 				}
 
 				/* Case insensitively sorted, break asap */
 				if(avcp->avc_okey < xo)
 					break;
+			}
+
+			/* Via Ji3val: */
+			if(avlf & a_AMV_VLOOK_I3VAL_NONEW){
+ji3val_leave:
+				ASSERT(avp == NIL);
+				if(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT)
+					avp = R(struct a_amv_var*,-1);
+				goto jleave;
 			}
 		}
 
@@ -1851,18 +1883,8 @@ jdefval:
 			}
 			ASSERT(0); /* Not reached */
 		}
-
-		/* The virtual variables */
-		if(UNLIKELY((f & a_AMV_VF_VIRT) != 0)){
-			/* TODO Use at least the su/prime.c approach to speed this up! */
-			for(i = 0; i < a_AMV_VAR_VIRTS_CNT; ++i)
-				if(a_amv_var_virts[i].avv_okey == avcp->avc_okey){
-					avp = UNCONST(struct a_amv_var*,a_amv_var_virts[i].avv_var);
-					goto jleave;
-				}
-			ASSERT(0); /* Not reached */
-		}
 	}
+
 
 jerr:
 	avp = NIL;
@@ -1892,6 +1914,7 @@ jnewval:
 		ASSERT(!(avlf & a_AMV_VLOOK_LOCAL));
 	ASSERT(f == avmp->avm_flags);
 	ASSERT(!(f & a_AMV_VF_EXT_LOCAL));
+	ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW));
 
 	/* E.g., $TMPDIR + non-existent: need to be able to catch that and redirect to a possible default value */
 	if((f & a_AMV_VF_VIP) && !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp)){
