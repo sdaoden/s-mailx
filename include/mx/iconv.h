@@ -47,8 +47,9 @@ EXPORT_DATA iconv_t iconvd;
  * NIL will be returned if cset is an invalid character set name */
 EXPORT char *n_iconv_normalize_name(char const *cset);
 
-/* Is it ASCII indeed? */
+/* Is it ASCII / UTF-8 indeed? */
 EXPORT boole n_iconv_name_is_ascii(char const *cset);
+EXPORT boole n_iconv_name_is_utf8(char const *cset);
 
 #ifdef mx_HAVE_ICONV
 EXPORT iconv_t n_iconv_open(char const *tocode, char const *fromcode);
