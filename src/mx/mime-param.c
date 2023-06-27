@@ -900,13 +900,9 @@ mx_mime_param_create(struct str *result, char const *name, char const *value){
 	top.mpb_charset = su_AUTO_ALLOC(++i);
 	su_mem_copy(UNCONST(char*,top.mpb_charset), name, i);
 
-	/* (charset result of iconv_normalize_name()) XXX UTF-8 check NOT here! */
-	if(top.mpb_charset_len >= 4 && !su_mem_cmp(top.mpb_charset, "utf", 3) &&
-			((top.mpb_charset[3] == '-' && top.mpb_charset[4] == '8' && top.mpb_charset_len == 5) ||
-			 (top.mpb_charset[3] == '8' && top.mpb_charset_len == 4)))
-		top.mpb_is_utf8 = TRU1;
-	else
-		top.mpb_is_utf8 = FAL0;
+	/* (charset result of iconv_normalize_name()) */
+	ASSERT(!su_cs_cmp(name, n_iconv_normalize_name(name)));
+	top.mpb_is_utf8 = n_iconv_name_is_utf8(name);
 
 	a_mpm_create(&top);
 jleave:
