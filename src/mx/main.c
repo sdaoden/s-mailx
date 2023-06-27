@@ -347,6 +347,9 @@ a_main_rcv_mode(struct a_main_ctx *mcp){
 	}
 
 	if(i > 0 && !ok_blook(emptystart)){
+		/* We never became truly interactive, set _XIT to avoid fully blown teardown!
+		 * Unfortunately we cannot set QUICKRUN_MASK instead */
+		n_psonce |= n_PSO_XIT;
 		n_exit_status = su_EX_ERR;
 		goto jleave;
 	}
