@@ -1405,24 +1405,15 @@ t_S_freeze() { # {{{
 	cke0 1 0 ./t1 '270686329 21'
 
 	#
-	${cat} <<- '__EOT' > "${BODY}"
-	echo asksub<$asksub>
-	set asksub
-	echo asksub<$asksub>
-	__EOT
-
+	echo 'ec asksub<$asksub>; se asksub; ec asksub<$asksub>' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Snoasksub -Sasksub -Snoasksub \
 		-X'echo asksub<$asksub>' -X'set asksub' -X'echo asksub<$asksub>' \
 		-Xx > ./t2 2>${E0}
 	cke0 2 0 ./t2 '3182942628 37'
 
-	${cat} <<- '__EOT' > "${BODY}"
-	echo asksub<$asksub>
-	unset asksub
-	echo asksub<$asksub>
-	__EOT
-
+	# freeze beats MAILRC, -X beats freeze
+	echo 'ec asksub<$asksub>; uns asksub; ec asksub<$asksub>' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Snoasksub -Sasksub \
 		-X'echo asksub<$asksub>' -X'unset asksub' -X'echo asksub<$asksub>' \
@@ -1430,12 +1421,7 @@ t_S_freeze() { # {{{
 	cke0 3 0 ./t3 '2006554293 39'
 
 	#
-	${cat} <<- '__EOT' > "${BODY}"
-	echo dietcurd<$dietcurd>
-	set dietcurd=cherry
-	echo dietcurd<$dietcurd>
-	__EOT
-
+	echo 'ec dietcurd<$dietcurd>; se dietcurd=cherry; ec dietcurd<$dietcurd>' > "${BODY}"
 	</dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
 		-Sdietcurd=strawberry -Snodietcurd -Sdietcurd=vanilla \
 		-X'echo dietcurd<$dietcurd>' -X'unset dietcurd' \
@@ -1443,12 +1429,7 @@ t_S_freeze() { # {{{
 		-Xx > ./t4 2>${E0}
 	cke0 4 0 ./t4 '1985768109 65'
 
-	${cat} <<- '__EOT' > ./t.rc
-	echo dietcurd<$dietcurd>
-	unset dietcurd
-	echo dietcurd<$dietcurd>
-	__EOT
-
+	echo 'ec dietcurd<$dietcurd>; uns dietcurd; ec dietcurd<$dietcurd>' > ./t.rc
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-Sdietcurd=strawberry -Snodietcurd \
 		-X'echo dietcurd<$dietcurd>' -X'set dietcurd=vanilla' \
@@ -1456,15 +1437,15 @@ t_S_freeze() { # {{{
 		-Xx > ./t5 2>${E0}
 	cke0 5 0 ./t5 '151574279 51'
 
-	${cat} <<- '__EOT' > ./t.rc
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	echo _S_MAILX_TEST<$_S_MAILX_TEST>
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	set _S_MAILX_TEST=cherry
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	echo _S_MAILX_TEST<$_S_MAILX_TEST>
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	__EOT
+	${cat} << '__EOT' > ./t.rc
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+ec _S_MAILX_TEST<$_S_MAILX_TEST>
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+se _S_MAILX_TEST=cherry
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+ec _S_MAILX_TEST<$_S_MAILX_TEST>
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+__EOT
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST -S_S_MAILX_TEST=vanilla \
@@ -1474,15 +1455,15 @@ t_S_freeze() { # {{{
 		-Xx > ./t6 2>${E0}
 	cke0 6 0 ./t6 '3512312216 239'
 
-	${cat} <<- '__EOT' > ./t.rc
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	echo _S_MAILX_TEST<$_S_MAILX_TEST>
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	set _S_MAILX_TEST=cherry
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	echo _S_MAILX_TEST<$_S_MAILX_TEST>
-	!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
-	__EOT
+	${cat} << '__EOT' > ./t.rc
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+ec _S_MAILX_TEST<$_S_MAILX_TEST>
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+se _S_MAILX_TEST=cherry
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+ec _S_MAILX_TEST<$_S_MAILX_TEST>
+!echo "shell says _S_MAILX_TEST<$_S_MAILX_TEST>"
+__EOT
 
 	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -:u \
 		-S_S_MAILX_TEST=strawberry -Sno_S_MAILX_TEST \
