@@ -1445,12 +1445,14 @@ a_icodec(void){
 
 	//
 
+	u64 = 1;
 	if(idec::convert_u64(&u64, "0x", max::uz, 0, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != 'x')
 		a_ERR();
 	if(u64 != U64_C(0))
 		a_ERR();
+	u64 = 1;
 	if(idec::convert_u64(&u64, "0X", max::uz, 16, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != 'X')
@@ -1458,12 +1460,14 @@ a_icodec(void){
 	if(u64 != U64_C(0))
 		a_ERR();
 
+	u64 = 1;
 	if(idec::convert_u64(&u64, "0b", max::uz, 0, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != 'b')
 		a_ERR();
 	if(u64 != U64_C(0))
 		a_ERR();
+	u64 = 1;
 	if(idec::convert_u64(&u64, "0B", max::uz, 2, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != 'B')
@@ -1471,6 +1475,7 @@ a_icodec(void){
 	if(u64 != U64_C(0))
 		a_ERR();
 
+	u64 = 1;
 	if(idec::convert_u64(&u64, "09", max::uz, 0, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != '9')
@@ -1478,11 +1483,77 @@ a_icodec(void){
 	if(u64 != U64_C(0))
 		a_ERR();
 
+	u64 = 1;
 	if(idec::convert_u64(&u64, "09", max::uz, 8, &ccp) != idec::state_ebase)
 		a_ERR();
 	else if(*ccp != '9')
 		a_ERR();
 	if(u64 != U64_C(0))
+		a_ERR();
+
+	// # -> invalid base / first char
+	u64 = 1;
+	if(idec::convert_u64(&u64, "1#", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(*ccp != '#')
+		a_ERR();
+	if(u64 != U64_C(1))
+		a_ERR();
+	if(idec::convert_u64(&u64, "65# ", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != '\0')
+		a_ERR();
+	if(u64 != U64_C(65))
+		a_ERR();
+	if(idec::convert_u64(&u64, "43165# ", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != '\0')
+		a_ERR();
+	if(u64 != U64_C(43165))
+		a_ERR();
+	if(idec::convert_u64(&u64, "8#9", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(*ccp != '#' || ccp[1] != '9' || ccp[2] != '\0')
+		a_ERR();
+	if(u64 != U64_C(8))
+		a_ERR();
+
+	u64 = 1;
+	if(idec::convert_u64(&u64, "3#", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(*ccp != '#')
+		a_ERR();
+	if(u64 != U64_C(3))
+		a_ERR();
+	u64 = 1;
+	if(idec::convert_u64(&u64, "3# ", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != '\0')
+		a_ERR();
+	if(u64 != U64_C(3))
+		a_ERR();
+	u64 = 1;
+	if(idec::convert(&u64, "8# 9", max::uz, 0, idec::mode_base0_numsig_rescan, &ccp
+			) != (idec::mode_base0_numsig_rescan | idec::state_ebase))
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != '9' || ccp[3] != '\0')
+		a_ERR();
+	if(u64 != U64_C(8))
+		a_ERR();
+	u64 = 1;
+	if(idec::convert(&u64, "10#10", max::uz, 0, idec::mode_base0_numsig_disable, &ccp
+			) != (idec::mode_base0_numsig_disable | idec::state_ebase))
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != '1' || ccp[2] != '0' || ccp[3] != '\0')
+		a_ERR();
+	if(u64 != U64_C(10))
+		a_ERR();
+	u64 = 1;
+	if(idec::convert_u64(&u64, "321#", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(*ccp != '#')
+		a_ERR();
+	if(u64 != U64_C(321))
 		a_ERR();
 
 	//
@@ -1531,6 +1602,29 @@ a_icodec(void){
 		else if(cs::cmp(ccp, conv[i].in))
 			a_ERR();
 	}
+
+	if(idec::convert(&u64, "2#   -10101 w ", max::uz, 0, idec::mode_base0_numsig_rescan, &ccp
+			) != (idec::mode_base0_numsig_rescan | idec::state_seen_minus))
+		a_ERR();
+	else if(ccp[0] != ' ' || ccp[1] != 'w' || ccp[2] != ' ' || ccp[3] != '\0')
+		a_ERR();
+	else if(u64 != S(NSPC(su)u64,-21))
+		a_ERR();
+
+	if(idec::convert(&u64, "2# 2 1", max::uz, 0, idec::mode_base0_numsig_rescan, &ccp
+			) != (idec::mode_base0_numsig_rescan | idec::state_ebase))
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != '2' || ccp[3] != ' ' || ccp[4] != '1' || ccp[5] != '\0')
+		a_ERR();
+	else if(u64 != S(NSPC(su)u64,2))
+		a_ERR();
+
+	if(idec::convert_u64(&u64, "2# w ", max::uz, 0, &ccp) != idec::state_ebase)
+		a_ERR();
+	else if(ccp[0] != '#' || ccp[1] != ' ' || ccp[2] != 'w' || ccp[3] != ' ' || ccp[4] != '\0')
+		a_ERR();
+	else if(u64 != 2)
+		a_ERR();
 
 	//// Limit / signed / flags
 

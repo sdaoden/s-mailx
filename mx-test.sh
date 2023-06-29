@@ -2548,13 +2548,17 @@ s I1=5 Ix=6 I2=10 I3=20;p "<$((I1=Ix?I2:I3))>";e "<$I1><$I2><$I3>"
 s I1=5 Ix=6 I2=10 I3=20;p "<$((I1*=Ix?I2:I3))>";e "<$I1><$I2><$I3>"
 s I1=5 Ix=6 I2=10 I3=20;p "<$((0,I1*=Ix?I2:I3))>";e "<$I1><$I2><$I3>"
 s I1=5 Ix=6 I2=10 I3=20;p "<$((I1*=Ix?I2:I3,Ix=21,I1*=Ix?I2:I3))>";e "<$I1><$I2><$I3>"
+e '= TEND'
+e "<$((0?44/0:99))>"
+e "<$((0?4**-1:99))>"
+e "<$((0?4**-10:99))>"
 	__EOT
 	# }}}
 	< ./tarith-good.in ${MAILX} ${ARGS} \
 		-Y 'commandalias ca \\commandalias' \
 		-Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
 		> ./tarith-good 2>${E0}
-	cke0 arith-good 0 ./tarith-good '3787811158 6560'
+	cke0 arith-good 0 ./tarith-good '1950434634 6582'
 
 	# $(())-bad {{{
 	${cat} <<- '__EOT' > ./tarith-bad.in
@@ -2571,6 +2575,8 @@ e "<$((3425#56))>"
 e "<$((7=43))>"
 e "<$((2#44))>"
 e "<$((44/0))>"
+e "<$((4**-1))>"
+e "<$((4**-10))>"
 e '= T2'
 e "<$((	 ,   2	 ))>"
 e "<$((,2))>"
@@ -2675,6 +2681,10 @@ s I1=+E+ I2=2 I3=3 I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=1 I2=+E+ I3=3 I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=0 I2=2 I3=+E+ I4=4;p "<$((1?I1?I2:I3:I4))>";e "<$I1><$I2><$I3><$I4>"
 s I1=5;p "<I1=$((xa ((512 + 511) & ~511) >> 9))>";e "<$I1>"
+e '= T12'
+e "<$((1?44/0:99))>"
+e "<$((1?4**-1:99))>"
+e "<$((1?4**-10:99))>"
 	__EOT
 	# }}}
 
@@ -2682,7 +2692,7 @@ s I1=5;p "<I1=$((xa ((512 + 511) & ~511) >> 9))>";e "<$I1>"
 		-Y 'commandalias ca \\commandalias' \
 		-Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
 		> ./tarith-bad 2>${EX}
-	ck arith-bad 0 ./tarith-bad '2406984383 471' '743629501 10691'
+	ck arith-bad 0 ./tarith-bad '2499728120 477' '492616127 11391'
 
 	</dev/null ${MAILX} ${ARGS} -Y '
 		define x {

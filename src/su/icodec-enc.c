@@ -87,7 +87,7 @@ su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, BITENUM_IS(u32,su_ie
 				*--rv = 'b';
 			else if(shiftmodu != 3){
 				++base; /* Reconvert from mask */
-				goto jnumber_sign_prefix;
+				goto jnumsig_prefix;
 			}
 			*--rv = '0';
 		}
@@ -99,7 +99,7 @@ su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, BITENUM_IS(u32,su_ie
 		}while(value != 0);
 
 		if(!(ienc_mode & su_IENC_MODE_NO_PREFIX) && base != 10){
-jnumber_sign_prefix:
+jnumsig_prefix:
 			value = base;
 			base = 10;
 			*--rv = '#';

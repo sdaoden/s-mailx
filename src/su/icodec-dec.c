@@ -31,6 +31,8 @@
 
 NSPC_USE(su)
 
+/* For bases 2..36 (11..36) lower and upper alpha are identical.
+ * For 37+ thus another table uses A-Z, @, _ for 36-61, 62, 63 */
 static u8 const a_icod_atoi_36[128] = {
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -45,10 +47,7 @@ static u8 const a_icod_atoi_36[128] = {
 	0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,
 	0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,
 	0x21,0x22,0x23,0xFF,0xFF,0xFF,0xFF,0xFF
-};
-
-/* A-Z,@,_ are 36-61,62,63 */
-static u8 const a_icod_atoi_64[128] = {
+}, a_icod_atoi_64[128] = {
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 	0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -82,7 +81,10 @@ static u64 const a_icod_cutlimit[63] = {
 BITENUM_IS(u32,su_idec_state)
 su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM_IS(u32,su_idec_mode) idec_mode,
 		char const **endptr_or_nil){
-	/* XXX Brute simple and */
+	/* XXX Brute simple and waaayy too expensive */
+	enum {a_NUMSIG = 1u<<su__IDEC_PRIVATE_SHIFT1};
+	char const *rescan_cbuf;
+	uz rescan_clen;
 	u8 currc;
 	u64 res, cut;
 	BITENUM_IS(u32,su_idec_state) rv;
@@ -95,6 +97,8 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM_IS(u32,su_idec_m
 	atoip = (base > 36) ? a_icod_atoi_64 : a_icod_atoi_36;
 	rv = su_IDEC_STATE_NONE | idec_mode;
 	res = 0;
+	UNINIT(rescan_cbuf, NIL);
+	UNINIT(rescan_clen, 0);
 
 	if(clen == UZ_MAX){
 		if(*cbuf == '\0')
@@ -105,7 +109,7 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM_IS(u32,su_idec_m
 	if(base == 1 || base > 64)
 		goto jeinval;
 
-jnumber_sign_rescan:
+jnumsig_rescan:
 	/* Leading WS */
 	while(su_cs_is_space(*cbuf))
 		if(*++cbuf == '\0' || --clen == 0)
@@ -122,62 +126,80 @@ jnumber_sign_rescan:
 		break;
 	}
 
-	/* Base detection/skip */
-	if(*cbuf != '0'){
-		if(base == 0){
+	/* Base detection/skip. {{{
+	 * Char after prefix must be valid.  However, after "some error in the tor software was reported" (OpenBSD
+	 * ports@?) all libraries (which had to: *BSD but Free) turned to an interpretation of the C standard which
+	 * says that the prefix may optionally precede an otherwise valid sequence, which means that "0x" is not
+	 * a STATE_INVAL error but gives a "0" result with a "STATE_BASE" error and a rest of "x" */
+#undef a_PREFIX_NEW_WAY
+#define a_PREFIX_NEW_WAY
+	if(UNLIKELY(*cbuf != '0')){
+		if(UNLIKELY(base == 0)){
 			base = 10;
 
-			/* Support BASE#number prefix, where BASE is decimal 2-36 XXX ASCII */
-			if(clen > 1){
-				char c1, c2, c3;
+			/* Support BASE#number prefix, where BASE is decimal 2-36 XXX ASCII
+			 *   If \c{BASE} is not a decimal in the inclusive range 2 to 64 the construct is instead
+			 *   interpreted as a number followed by a number sign. */
+			if(UNLIKELY(!(rv & su_IDEC_MODE_BASE0_NUMSIG_DISABLE) && clen > 2)){
+				uz i;
+				u8 b2;
 
-				if(((c1 = cbuf[0]) >= '0' && c1 <= '9') && (((c2 = cbuf[1]) == '#') ||
-						(c2 >= '0' && c2 <= '9' && clen > 2 && cbuf[2] == '#'))){
-					base = a_icod_atoi_36[S(u8,c1)];
-					if(c2 == '#')
-						c3 = cbuf[2];
-					else{
-						c3 = cbuf[3];
-						base *= 10; /* xxx Inline atoi decimal base */
-						base += a_icod_atoi_36[S(u8,c2)];
-					}
+				for(i = b2 = 0;;){
+					char c1;
 
-					atoip = (base > 36) ? a_icod_atoi_64 : a_icod_atoi_36;
-
-					/* We do not interpret this as BASE#number at all if either we
-					 * did not get a valid base or if the first char is not valid
-					 * according to base, to comply to the latest interpretation
-					 * of "prefix", see comment for standard prefixes below */
-					if(base < 2 || base > 64 || ((S(u8,c3) & 0x80 || atoip[S(u8,c3)] >= base) &&
-							!(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)))
-						base = 10;
-					else{
-						if(c2 == '#')
-							S(void,clen -= 2), cbuf += 2;
-						else
-							S(void,clen -= 3), cbuf += 3;
-
-						if(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)
-							goto jnumber_sign_rescan;
-					}
+					c1 = cbuf[i];
+					if(c1 == '#')
+						break;
+					if(c1 < '0' || c1 > '9')
+						goto jnumsig_skip;
+					b2 *= 10; /* xxx Inline atoi decimal base */
+					b2 += a_icod_atoi_36[S(u8,c1)];
+					if(++i > 2)
+						goto jnumsig_skip;
 				}
+				if(b2 < 2 || b2 > 64)
+					goto jnumsig_skip;
+
+				base = b2;
+				if(base > 36)
+					atoip = a_icod_atoi_64;
+				cbuf += i;
+				clen -= i;
+				rescan_cbuf = cbuf++;
+				rescan_clen = clen--;
+
+				rv |= a_NUMSIG;
+				if(rv & su_IDEC_MODE_BASE0_NUMSIG_RESCAN)
+					goto jnumsig_rescan;
 			}
 		}
 
+jnumsig_skip:
 		/* Character must be valid for base */
 		currc = S(u8,*cbuf);
-		if(currc & 0x80)
+		if(currc & 0x80){
+			if(rv & a_NUMSIG)
+				goto jnumsig_err;
 			goto jeinval;
+		}
 		currc = atoip[currc];
-		if(currc >= base)
+		if(currc >= base){
+			if(rv & a_NUMSIG){
+jnumsig_err:
+				cbuf = rescan_cbuf;
+				clen = rescan_clen;
+				res = base;
+				goto jebase;
+			}
 			goto jeinval;
+		}
 	}else{
 		/* 0 always valid as is, fallback base 10 */
 		if(*++cbuf == '\0' || --clen == 0)
 			goto jleave;
 
 		/* Base "detection" */
-		if(base == 0 || base == 2 || base == 16){
+		if(base == 0 || (!(rv & a_NUMSIG) && (base == 2 || base == 16))){
 			switch(*cbuf){
 			case 'x':
 			case 'X':
@@ -190,14 +212,8 @@ jnumber_sign_rescan:
 			case 'B':
 				if((base & 16) == 0){
 					base = 2; /* 0b10 */
-					/* Char after prefix must be valid.  However, after "some error in the tor
-					 * software was reported" (OpenBSD ports@?) all libraries (which had to: *BSD
-					 * but Free) turned to an interpretation of the C standard which says that the
-					 * prefix may optionally precede an otherwise valid sequence, which means that
-					 * "0x" is not a STATE_INVAL error but gives a "0" result with a "STATE_BASE"
-					 * error and a rest of "x" */
 jprefix_skip:
-#if 1
+#ifdef a_PREFIX_NEW_WAY
 					if(clen > 1 && (((currc = S(u8,cbuf[1])) & 0x80) == 0) && atoip[currc] < base){
 						++cbuf;
 						--clen;
@@ -231,6 +247,8 @@ jprefix_skip:
 		if(currc >= base)
 			goto jebase;
 	}
+#undef a_PREFIX_NEW_WAY
+	/* }}} */
 
 	ASSERT(clen > 0);
 	for(cut = a_icod_cutlimit[base - 2];;){
@@ -320,6 +338,7 @@ jleave:
 	if(*cbuf == '\0' || clen == 0)
 		rv |= su_IDEC_STATE_CONSUMED;
 
+	rv &= (1u << su__IDEC_PRIVATE_SHIFT1) - 1;
 	NYD_OU;
 	return rv;
 
