@@ -8,9 +8,13 @@ reproducible_build: Bad $(()) substitution: unknown operator: 3425#56: stop near
 reproducible_build: echo: invalid argument list
 reproducible_build: Bad $(()) substitution: assignment without variable (precedence error?): 7=43: stop near: 7=43
 reproducible_build: echo: invalid argument list
-reproducible_build: Bad $(()) substitution: syntax error: 2#44: stop near: 2#44
+reproducible_build: Bad $(()) substitution: unknown operator: 2#44: stop near: 2#44
 reproducible_build: echo: invalid argument list
 reproducible_build: Bad $(()) substitution: division by zero: 44/0: stop near: 44/0
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: invalid exponent: 4**-1: stop near: 4**-1
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: invalid exponent: 4**-10: stop near: 4**-10
 reproducible_build: echo: invalid argument list
 reproducible_build: Bad $(()) substitution: syntax error, expected operand:  ,   2 : stop near: , 2
 reproducible_build: echo: invalid argument list
@@ -122,3 +126,9 @@ reproducible_build: Bad $(()) substitution: syntax error, expected operand: 1?I1
 reproducible_build: echon: invalid argument list
 reproducible_build: Bad $(()) substitution: syntax error: xa ((512 + 511) & ~511) >> 9: stop near: xa ((512 + 511) & ~511) >> 9
 reproducible_build: echon: invalid argument list
+reproducible_build: Bad $(()) substitution: division by zero: 1?44/0:99: stop near: 44/0:99
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: invalid exponent: 1?4**-1:99: stop near: 4**-1:99
+reproducible_build: echo: invalid argument list
+reproducible_build: Bad $(()) substitution: invalid exponent: 1?4**-10:99: stop near: 4**-10:99
+reproducible_build: echo: invalid argument list
