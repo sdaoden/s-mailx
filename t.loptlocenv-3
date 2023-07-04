@@ -1,0 +1,6 @@
+--s:a1 password<p1> mta<test> al<al1> g<g1> z<hup1>
+--s:null password<> mta<test> al<> g<> z<>
+--s:a2 password<p2> mta<jup2> al<al2> g<g2> z<hup2>
+--s:null password<> mta<test> al<> g<> z<>
+--s:a3 password<p3> mta<jup3> al<al3> g<g3> z<hup3>
+--s:null password<> mta<test> al<> g<> z<>

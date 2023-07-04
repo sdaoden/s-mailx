@@ -18,8 +18,8 @@ du2-4 du=du2du2
 du2-5 <global> set du=global
 du-2 du=dudu
 ich-2 du=global
-------- global-3 du=global
-wir-1 du=wirwir
+------- global-3 du=global uns=
+wir-1 du=wirwir uns=an
 ich-1 du=wirwir
 du-1 du=dudu
 du2-1 du=wirwir
@@ -30,8 +30,8 @@ du2-5 <wirwir> set du=wirwir
 du-2 du=dudu
 ich-2 du=wirwir
 wir-2 du=wirwir
-------- global-4 du=global
-wir-1 du=wirwir
+------- global-4 du=global uns=
+wir-1 du=wirwir uns=an
 ich-1 du=wirwir
 du-1 du=dudu
 du2-1 du=wirwir
@@ -42,4 +42,4 @@ du2-5 <wirwir> set du=wirwir
 du-2 du=dudu
 ich-2 du=wirwir
 wir-2 du=wirwir
-------- global-5 du=wirwir
+------- global-5 du=wirwir uns=an
