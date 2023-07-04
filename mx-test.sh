@@ -4230,8 +4230,8 @@ t_local() { # {{{
 			echo ich-2 du=$du
 		}
 		define wir {
-			set du=wirwir
-			echo wir-1 du=$du
+			set du=wirwir uns=an
+			echo wir-1 du=$du uns=$uns
 			eval $1 call ich
 			echo wir-2 du=$du
 		}
@@ -4240,14 +4240,15 @@ t_local() { # {{{
 		echo ------- global-2 du=$du
 		set du=global
 		call ich
-		echo ------- global-3 du=$du
+		unset uns
+		echo ------- global-3 du=$du uns=$uns
 		local call wir local
-		echo ------- global-4 du=$du
+		echo ------- global-4 du=$du uns=$uns
 		call wir
-		echo ------- global-5 du=$du
+		echo ------- global-5 du=$du uns=$uns
 		__EOT
 	#}}}
-	cke0 1 0 ./t1 '291008203 807'
+	cke0 1 0 ./t1 '1814612206 838'
 
 	#{{{
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
@@ -4448,92 +4449,125 @@ t_environ() { # {{{
 t_loptlocenv() { # 1 combined 4 :) {{{
 	t_prolog "${@}"
 
-	if have_feat cmd-vexpr; then :; else
-		t_echoskip '[!CMD_VEXPR]'
-		t_epilog "${@}"
-		return
-	fi
-
 	#{{{
-	${cat} <<- '__EOT' > t.rc
-	set _x=x
-	# We torture the unroll stack a bit more with that
-	if "$features" =% +cmd-vexpr,
-		set _y
+	${cat} << '__EOT' > t.rc
+set _x=x
+define r5 {
+	# Break a link, too
+	local environ unlink zz; local set zz=BLA
+	echon 'ln-broken: '; varshow zz; !echo ln-broken, shell" zz=$zz"
+}
+define r4 {
+	if $# -eq 1
+		echo --r4-${1}-in;show
+		call r5
+		echon 'ln-restored: '; varshow zz; !echo ln-restored, shell" zz=$zz"
 	endif
-	define r5 {
-		# Break a link, too
-		local environ unlink zz; local set zz=BLA
-		echon 'ln-broken: '; varshow zz; !echo ln-broken, shell" zz=$zz"
-	}
-	define r4 {
-		if $# -eq 1
-			echo --r4-${1}-in;show
-			call r5
-			echon 'ln-restored: '; varshow zz; !echo ln-restored, shell" zz=$zz"
-		endif
-		local environ unset zz
-		local set noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
-		if -Z _y || [ $# -eq 2 && "$2" -ge 50 ]
-			echo --r4-${1}-ou;show
-			return
-		endif
-		local vput vexpr i + "$2" 1
-		eval ${_x}call r4 $1 $i
-	}
-	define r3 {
-		echo --r3-in;show
-		local set asksub toplines=21 xy=huhu yz=vu zz=uv _S_MAILX_TEST=wadde
-		echo --r3-mid;show
-		call r4 1
-		set _x=
-		echo --r3-mid-2;show
-		call r4 2
-		echo --r3-ou;show
-	}
-	define r2 {
-		echo --r2-in;show
-		local unset asksub toplines xy yz _S_MAILX_TEST
-		echo --r2-prexcall;show
-		xcall r3
-	}
-	define r1 {
-		echo --r1-in;show
-		set xy=bye
-		local set asksub=du toplines=10 _S_MAILX_TEST=gelle
-		local environ set yz=cry zz=yrc
-		echo --r1-mid;show
-		local call r2
-		echo --r1-ou;show
-	}
-	define r0 {
-		echo --r0-in;show
-		unset asksub
-		echo --r0-mi;show
-		local call r1
-		echo --r0-ou;show
-	}
-	commandalias show \
-		'echo as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
-		varshow asksub toplines xy yz zz _S_MAILX_TEST;\
-		!echo shell" a=$ask tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST"'
-	echo 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
-	varshow asksub toplines xy yz _S_MAILX_TEST
-	if $? -ne 0; echo Error; else; echo OK; endif
-	set asksub toplines=4 xy=hi _S_MAILX_TEST=trabbel
-	environ set yz=fi
-	environ link zz
-	echo --toplevel-in; show
-	call r0
-	echo --toplevel-ou; show
-	__EOT
+	local environ unset zz
+	local set noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
+	if $# -eq 2 && "$2" -ge 50
+		echo --r4-${1}-ou;show
+		return
+	endif
+	eval local : \$((i += $2 + 1))
+	echo --r4-stress-${1}-$i
+	eval ${_x}call r4 $1 $i
+}
+define r3 {
+	echo --r3-in;show
+	local set asksub toplines=21 xy=huhu yz=vu zz=uv _S_MAILX_TEST=wadde
+	echo --r3-mid;show
+	call r4 1
+	set _x=
+	echo --r3-mid-2;show
+	call r4 2
+	echo --r3-ou;show
+}
+define r2 {
+	echo --r2-in;show
+	local unset asksub toplines xy yz _S_MAILX_TEST
+	echo --r2-prexcall;show
+	xcall r3
+}
+define r1 {
+	echo --r1-in;show
+	set xy=bye
+	local set asksub=du toplines=10 _S_MAILX_TEST=gelle
+	local environ set yz=cry zz=yrc
+	echo --r1-mid;show
+	local call r2
+	echo --r1-ou;show
+}
+define r0 {
+	echo --r0-in;show
+	unset asksub
+	echo --r0-mi;show
+	local call r1
+	echo --r0-ou;show
+}
+commandalias show \
+	'echo as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
+	varshow asksub toplines xy yz zz _S_MAILX_TEST;\
+	!echo shell" a=$ask tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST"'
+echo 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
+varshow asksub toplines xy yz _S_MAILX_TEST
+if $? -ne 0; echo Error; else; echo OK; endif
+set asksub toplines=4 xy=hi _S_MAILX_TEST=trabbel
+environ set yz=fi
+environ link zz
+echo --toplevel-in; show
+call r0
+echo --toplevel-ou; show
+__EOT
 	#}}}
 	</dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u -X echo\ --Xcommline\;show > ./t1 2>${EX}
-	ck 1 0 ./t1 '2393857464 3890' '337581153 67'
+	ck 1 0 ./t1 '2508342830 5572' '337581153 67'
 
 	</dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u \
 		-X echo\ --Xcommline\;show -S noasksub -S toplines=7 > ./t2 2>${E0}
-	cke0 2 0 ./t2 '1797343641 4007'
+	cke0 2 0 ./t2 '1120976797 5689'
+
+	# (mta frozen via -S for -A)
+	#{{{
+	${cat} << '__EOT' > t.rc
+\se g=
+\acc a1 {
+	\call a1
+}
+\def a1 {
+	\se al=al1 g=g1
+	\xcall ax p1
+}
+\acc a2 {
+	\call a2
+}
+\def a2 {
+	\se al=al2 g=g2
+	\xcall ax p2
+}
+\acc a3 {
+	\xcall a3
+}
+\def a3 {
+	\se al=al3 g=g3
+	\xcall ax p3
+}
+\def ax {
+	\se password=$1 mta=ju$1 z=hu$1
+}
+\def s {
+	\ec --s:$1 password<$password> mta<$mta> al<$al> g<$g> z<$z>
+}
+__EOT
+	#}}}
+	</dev/null MAILRC=./t.rc ${MAILX} ${ARGS} -Aa1 -:u \
+		-Y 'call s a1' -Y 'acc null' \
+		-Y 'call s null' -Y 'acc a2' \
+		-Y 'call s a2' -Y 'acc null' \
+		-Y 'call s null' -Y 'acc a3' \
+		-Y 'call s a3' -Y 'acc null' \
+		-Y 'call s null' > ./t3 2>${E0}
+	cke0 3 0 ./t3 '3242667002 285'
 
 	t_epilog "${@}"
 } # }}}
