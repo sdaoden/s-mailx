@@ -108,10 +108,13 @@ su_EMPTY_FILE()
   /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
 # ifndef SSL_OP_NO_SSL_MASK
 #  define SSL_OP_NO_SSL_MASK \
-   (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
-   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 |\
-   SSL_OP_NO_TLSv1_3)
+   ( SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | \
+   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 | \
+   SSL_OP_NO_TLSv1_3 )
 # endif
+
+CTA(SSL_OP_NO_SSL_MASK != 0,
+   "One of _SSLv[23], _TLSv1, _TLSv1_[123] is needed");
 
 # ifndef SSL2_VERSION
 #  define SSL2_VERSION 0
