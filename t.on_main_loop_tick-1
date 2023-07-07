@@ -1,16 +1,20 @@
 hello
-one
-in omlt: 1
-two
-in omlt: 2
-three
-in omlt: 3
-calling bla
-in omlt: 4
-bla1
-bla2
-in omlt: 5
-four
-in omlt: 6
---bye
-in omlt: 7
+1
+in omlt: 1, y<> DEAD<~/dead.letter> crt<>
+2
+in omlt: 2, y<> DEAD<~/dead.letter> crt<>
+3
+in omlt: 3, y<> DEAD<~/dead.letter> crt<>
+x i=4 y=y4 DEAD=d4 crt=4
+call bla
+in omlt: 4, y<> DEAD<~/dead.letter> crt<4>
+x i=5 y=y5 DEAD=d5 crt=5
+bla: 5 y<> DEAD<~/dead.letter> crt<4>
+in omlt: 5, y<> DEAD<~/dead.letter> crt<4>
+x i=6 y=y6 DEAD=d6 crt=6
+4 y=y DEAD=~/dead.letter crt=4=
+in omlt: 6, y<> DEAD<~/dead.letter> crt<4>
+x i=7 y=y7 DEAD=d7 crt=7
+bye: i=7 y= DEAD=~/dead.letter crt=4
+in omlt: 7, y<> DEAD<~/dead.letter> crt<4>
+x i=8 y=y8 DEAD=d8 crt=8
