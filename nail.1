@@ -11424,11 +11424,13 @@ first, followed by
 .
 .Mx
 .It Va on-main-loop-tick
-This hook will be called each time before the main event loop will read
-an input line.
-Note variable and other changes it performs are not scoped as via
-.Cm local !
-The main event loop never ticks in \*(SM,
+.Mx -sx
+.Sx Macro
+invoked in
+.Pf non- Cm local
+scope before the main event loop reads an input line.
+.Sy Remarks:
+the main event loop never ticks in \*(SM,
 .Va on-compose-enter
 can be used instead.
 .

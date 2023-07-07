@@ -10763,23 +10763,35 @@ t_on_main_loop_tick() { # {{{
 	t_prolog "${@}"
 
 	printf '#
-	echo hello; set i=1
+	ec hello; se i=1
 define bla {
-	echo bla1
-	echo bla2
+	ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
 }
 define omlt {
-	echo in omlt: $((i++))
+	ec in omlt: $((i++)), y<$y> DEAD<$DEAD> crt<$crt>
+	i $i -gt 3
+		i $i -eq 4
+			xcall x
+		en
+		local xcall x
+		ec au
+	en
 }
-	echo one
-	set on-main-loop-tick=omlt
-	echo two
-	echo three
-	echo calling bla;call bla
-	echo four
-	echo --bye;xit' | ${MAILX} ${ARGS} -Smta=test://t1-x -Sescape=! >./t1 2>${E0}
-	cke0 1 0 ./t1 '3697651500 130'
-	[ -f ./t1-x ]; ck_exx 2
+define x {
+	local set DEAD=d$i y=y$i
+	set crt=$i
+	ec x i=$i y=$y DEAD=$DEAD crt=$crt
+}
+ec 1
+se on-main-loop-tick=omlt
+ec 2
+ec 3
+ec call bla;call bla
+ec 4 y=y DEAD=$DEAD crt=$crt=
+ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
+xit' \
+	| ${MAILX} ${ARGS} >./t1 2>${E0}
+	cke0 1 0 ./t1 '727086858 551'
 
 	t_epilog "${@}"
 } # }}}
