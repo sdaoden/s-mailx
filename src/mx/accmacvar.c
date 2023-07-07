@@ -3293,9 +3293,14 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 		if((amp = a_amv_mac_lookup(mac, NIL, a_AMV_MF_NONE)) != NIL){
 			if(sigs_held)
 				mx_sigs_all_rele();
+
+			ASSERT(amp->am_lopts == NIL);
+
 			amcap = su_LOFI_CALLOC(sizeof *amcap);
 			amcap->amca_name = mac;
 			amcap->amca_amp = amp;
+			amcap->amca_unroller = &amp->am_lopts;
+			amcap->amca_loflags = a_AMV_LF_NONE;
 			amcap->amca_ps_hook_mask = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
@@ -3303,6 +3308,16 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 			n_pstate &= ~n_PS_HOOK_MASK;
 			n_pstate |= n_PS_HOOK;
 			a_amv_mac_exec(amcap, NIL);
+
+			if(amp->am_lopts != NIL){
+				void *save;
+
+				save = a_amv_lopts;
+				a_amv_lopts = NIL;
+				a_amv_lopts_unroll(&amp->am_lopts);
+				a_amv_lopts = save;
+			}
+
 			if(sigs_held)
 				mx_sigs_all_holdx();
 		}else
