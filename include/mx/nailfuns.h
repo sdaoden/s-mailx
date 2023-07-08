@@ -133,7 +133,7 @@ do{\
 FL int c_define(void *vp);
 FL int c_undefine(void *vp);
 FL int c_call(void *vp);
-FL void *mx_xcall_exchange_lopts(void *vp);
+FL void mx_xcall_exchange(void *currlvl_lopts, void **old_lopts, boole *local_active);
 FL int mx_xcall(void *vp, void *lospopts);
 FL int c_call_if(void *vp);
 

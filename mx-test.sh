@@ -5172,6 +5172,53 @@ t_xcall() { # {{{
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' > ./t3 2>${EX}
 	ck 3 1 ./t3 '3857975724 2451' '782246248 530'
 
+	# Mirrors t_on_main_loop_tick():t1 (but "different code flow" at time of this writing)
+	printf '#
+define bla {
+	ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
+}
+define omlt {
+	ec in omlt: $i, y<$y> DEAD<$DEAD> crt<$crt>
+	i $((i++)) -gt 3
+		i $i -eq 5
+			xcall x
+		en
+		local xcall x
+		xit 1
+	en
+}
+define x {
+	local se DEAD=d$i y=y$i
+	ec x i=$i y=$y DEAD=$DEAD crt=$crt
+	i $i -gt 6
+		xcall y
+		xit 2
+	en
+	call y
+}
+define y {
+	se crt=$i
+	ec y i=$i y=$y DEAD=$DEAD crt=$crt
+}
+ec 0; se i=1
+ec 1
+call omlt
+ec 2
+call omlt
+ec 3
+call omlt
+ec call bla;
+call omlt
+call bla
+call omlt
+ec 4 y=$y DEAD=$DEAD crt=$crt
+call omlt
+ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
+call omlt
+xit' \
+	| ${MAILX} ${ARGS} >./t4 2>${E0}
+	cke0 4 0 ./t4 '640419166 610'
+
 	t_epilog "${@}"
 } # }}}
 
@@ -10763,35 +10810,43 @@ t_on_main_loop_tick() { # {{{
 	t_prolog "${@}"
 
 	printf '#
-	ec hello; se i=1
 define bla {
 	ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
 }
 define omlt {
-	ec in omlt: $((i++)), y<$y> DEAD<$DEAD> crt<$crt>
-	i $i -gt 3
-		i $i -eq 4
+	ec in omlt: $i, y<$y> DEAD<$DEAD> crt<$crt>
+	i $((i++)) -gt 3
+		i $i -eq 5
 			xcall x
 		en
 		local xcall x
-		ec au
+		xit 1
 	en
 }
 define x {
-	local set DEAD=d$i y=y$i
-	set crt=$i
+	local se DEAD=d$i y=y$i
 	ec x i=$i y=$y DEAD=$DEAD crt=$crt
+	i $i -gt 6
+		xcall y
+		xit 2
+	en
+	call y
 }
+define y {
+	se crt=$i
+	ec y i=$i y=$y DEAD=$DEAD crt=$crt
+}
+ec 0; se i=1
 ec 1
 se on-main-loop-tick=omlt
 ec 2
 ec 3
 ec call bla;call bla
-ec 4 y=y DEAD=$DEAD crt=$crt=
+ec 4 y=$y DEAD=$DEAD crt=$crt
 ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
 xit' \
 	| ${MAILX} ${ARGS} >./t1 2>${E0}
-	cke0 1 0 ./t1 '727086858 551'
+	cke0 1 0 ./t1 '640419166 610'
 
 	t_epilog "${@}"
 } # }}}
