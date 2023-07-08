@@ -2937,17 +2937,18 @@ c_call(void *vp){
 	return rv;
 }
 
-FL void *
-mx_xcall_exchange_lopts(void *vp){
+FL void
+mx_xcall_exchange(void *currlvl_lopts, void **old_lopts, boole *local_active){
 	struct a_amv_lostack *losp;
 	NYD2_IN;
 
-	losp = vp;
-	vp = losp->as_lopts;
+	losp = currlvl_lopts;
+	*old_lopts = losp->as_lopts;
 	losp->as_lopts = NIL;
 
+	*local_active = (a_AMV_HAVE_LOPTS_AKA_LOCAL() && a_amv_lopts->as_loflags != a_AMV_LF_NONE);
+
 	NYD2_OU;
-	return vp;
 }
 
 FL int

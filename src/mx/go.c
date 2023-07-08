@@ -2256,7 +2256,7 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **line
 			if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN_LOCAL)
 				n_pstate |= n_PS_ARGMOD_LOCAL;
 			a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
-			a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN | a_GO_XCALL_SEEN_LOCAL);
+			a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN);
 
 			mx_sigs_all_rele();
 
@@ -2524,6 +2524,7 @@ c_xcall(void *vp){
 
 		/* xxx this gc_outer!=NIL should be redundant! assert it? */
 		if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
+			boole islocal;
 			uz i;
 			struct a_go_ctx *my, *outer;
 
@@ -2535,17 +2536,16 @@ c_xcall(void *vp){
 			 * xxx go_macro(), which will enter the `xcall' loop soon */
 			gcp->gc_flags |= a_GO_XCALL_SEEN;
 
-			/* Create an auto-relaxation level, and hope it is the first so we
-			 * can effectively throw away all memory whenever we `xcall' here */
+			/* Create a relaxation level so we can throw away all memory whenever we `xcall' here */
 			if((outer = (my = gcp)->gc_outer)->gc_flags & a_GO_XCALL_LOOP)
 				su_mem_bag_auto_relax_unroll((gcp = outer)->gc_data.gdc_membag);
 			else
 				su_mem_bag_auto_relax_create(outer->gc_data.gdc_membag);
 
 			outer->gc_flags |= a_GO_XCALL_SEEN;
-			if(n_pstate & n_PS_ARGMOD_LOCAL)
+			mx_xcall_exchange(my->gc_finalize_arg, &outer->gc_xcall_lopts, &islocal);
+			if(islocal || (n_pstate & n_PS_ARGMOD_LOCAL))
 				outer->gc_flags |= a_GO_XCALL_SEEN_LOCAL;
-			outer->gc_xcall_lopts = mx_xcall_exchange_lopts(my->gc_finalize_arg);
 			i = su_cs_len(my->gc_name) +1;
 			outer->gc_xcall_callee = su_MEM_BAG_AUTO_ALLOCATE(outer->gc_data.gdc_membag, sizeof(char), i,
 					su_MEM_BAG_ALLOC_MUSTFAIL);
