@@ -81,7 +81,7 @@ EXPORT void mx_dig_msg_on_mailbox_close(struct mailbox *mbox);
 EXPORT int c_digmsg(void *vp);
 
 /* Accessibility hook for `~^' command; needs mx_DIG_MSG_COMPOSE_CREATE() */
-EXPORT boole mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd);
+EXPORT boole mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp, char const *cmd);
 
 #include <su/code-ou.h>
 #endif /* mx_DIG_MSG_H */

@@ -516,25 +516,19 @@ c_tls(void *vp){
    struct mx_socket so;
    struct mx_url url;
 #endif
-   uz i;
    enum {a_FPRINT, a_CERTIFICATE, a_CERTCHAIN} mode;
-   boole cm_local;
-   char const **argv, *varname, *varres, *cp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
-   argv = vp;
-   vp = NIL; /* -> return value (boolean) */
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-   varres = su_empty;
-   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
+   cacp = vp;
+   cap = cacp->cac_arg;
 
-   if((cp = argv[0])[0] == '\0')
-      goto jesubcmd;
-   else if(su_cs_starts_with_case("fingerprint", cp))
+   if(su_cs_starts_with_case("fingerprint", cap->ca_arg.ca_str.s))
       mode = a_FPRINT;
-   else if(su_cs_starts_with_case("certificate", cp))
+   else if(su_cs_starts_with_case("certificate", cap->ca_arg.ca_str.s))
       mode = a_CERTIFICATE;
-   else if(su_cs_starts_with_case("certchain", cp))
+   else if(su_cs_starts_with_case("certchain", cap->ca_arg.ca_str.s))
       mode = a_CERTCHAIN;
    else
       goto jesubcmd;
@@ -542,68 +536,71 @@ c_tls(void *vp){
 #ifndef mx_HAVE_NET
    n_err(_("tls: fingerprint: no +sockets in *features*\n"));
    n_pstate_err_no = su_ERR_OPNOTSUPP;
+   rv = NIL;
    goto jleave;
+
 #else
-   if(argv[1] == NULL || argv[2] != NULL)
-      goto jesynopsis;
-   if((i = su_cs_len(*++argv)) >= U32_MAX)
+   cap = cap->ca_next;
+   if(su_cs_len(cap->ca_arg.ca_str.s) >= U32_MAX)
       goto jeoverflow; /* TODO generic for ALL commands!! */
-   if(!mx_url_parse(&url, CPROTO_CERTINFO, *argv))
+   if(!mx_url_parse(&url, CPROTO_CERTINFO, cap->ca_arg.ca_str.s))
       goto jeinval;
 
    if(!mx_socket_open(&so, &url)){
       n_pstate_err_no = su_err();
+      vp = NIL;
       goto jleave;
    }
    mx_socket_close(&so);
 
    switch(mode){
    case a_FPRINT:
-      if(so.s_tls_finger == NIL)
+      if((vp = so.s_tls_finger) == NIL)
          goto jeinval;
-      varres = so.s_tls_finger;
       break;
    case a_CERTIFICATE:
-      if(so.s_tls_certificate == NIL)
+      if((vp = so.s_tls_certificate) == NIL)
          goto jeinval;
-      varres = so.s_tls_certificate;
       break;
    case a_CERTCHAIN:
-      if(so.s_tls_certchain == NIL)
+      if((vp = so.s_tls_certchain) == NIL)
          goto jeinval;
-      varres = so.s_tls_certchain;
       break;
    }
 #endif /* mx_HAVE_NET */
 
    n_pstate_err_no = su_ERR_NONE;
-   vp = R(char*,-1);
 jleave:
-   if(varname == NIL){
-      if(fprintf(n_stdout, "%s\n", varres) < 0){
+   if(cacp->cac_vput == NIL){
+      if(fprintf(n_stdout, "%s\n", (vp != NIL ? S(char const*,vp) : su_empty)
+            ) < 0){
          n_pstate_err_no = su_err_by_errno();
          vp = NIL;
       }
-   }else if(!n_var_vset(varname, R(up,varres), cm_local)){
+   }else if(!n_var_vset(cacp->cac_vput,
+         R(up,vp != NIL ? S(char const*,vp) : su_empty),
+         cacp->cac_scope_vput)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NIL;
    }
 
    NYD_OU;
-   return (vp == NIL);
+   return (vp != NIL ? su_EX_OK : su_EX_ERR);
 
 jeoverflow:
    n_err(_("tls: string length or offset overflows datatype\n"));
    n_pstate_err_no = su_ERR_OVERFLOW;
+   vp = NIL;
    goto jleave;
 
 jesubcmd:
-   n_err(_("tls: invalid subcommand: %s\n"),
-      n_shexp_quote_cp(*argv, FAL0));
-jesynopsis:
+   n_err(_("tls: invalid subcommand: %s\n"), /* XXX generic cmd_arg_parse */
+      n_shexp_quote_cp(cacp->cac_arg->ca_arg.ca_str.s, FAL0));
+/*jesynopsis:*/
    mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("tls"), NIL);
 jeinval:
    n_pstate_err_no = su_ERR_INVAL;
+   vp = NIL;
    goto jleave;
 }
 

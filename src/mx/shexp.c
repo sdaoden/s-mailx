@@ -150,6 +150,7 @@ static sz a_shexp__globsort(void const *cvpa, void const *cvpb);
 /* Parse an input string and create a sh(1)ell-quoted result */
 static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp);
 
+#define a_SHEXP_ARITH_COOKIE enum mx_scope
 #define a_SHEXP_ARITH_ERROR_TRACK
 #include "mx/shexp-arith.h" /* $(MX_SRCDIR) */
 
@@ -262,7 +263,7 @@ jnext:
 				/* TODO shexp: take care: not include backtick eval once avail! */
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
 							n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
-						shoup, &shin, NIL);
+						mx_SCOPE_NONE, shoup, &shin, NIL);
 				if(shs & n_SHEXP_STATE_STOP)
 					break;
 			}
@@ -1184,8 +1185,8 @@ mx_shexp_name_expand_multi(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
 }
 
 FL BITENUM_IS(u32,n_shexp_state)
-n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags, struct n_string *store, struct str *input,
-		void const **cookie){
+n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+		struct n_string *store, struct str *input, void const **cookie){
 	/* TODO shexp_parse_token: WCHAR (+separate in logical units if possible)
 	 * TODO This needs to be rewritten in order to support $(( )) and $( )
 	 * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
@@ -1389,7 +1390,7 @@ jrestart:
 				last_known_meta_trim_len = U32_MAX;
 			}
 			/* A comment may it be if no token has yet started */
-			else if(c == '#' && (state & a_NTOKEN) && !(flags & n_SHEXP_PARSE_IGNORE_COMMENT)){
+			else if(c == '#' && (state & a_NTOKEN) && !(flags & n_SHEXP_PARSE_IGN_COMMENT)){
 				ib += il;
 				il = 0;
 				rv |= n_SHEXP_STATE_STOP;
@@ -1542,7 +1543,7 @@ jrestart:
 						}
 						break;
 
-					/* Octal sequence: 1 to 3 octal bytes */
+					/* Octal sequence: 1 to 3 octal bytes {{{ */
 					case '0':
 						/* As an extension (dependent on where you look, echo(1), or
 						 * awk(1)/tr(1) etc.), allow leading "0" octal indicator */
@@ -1584,9 +1585,9 @@ jerr_ib_save:
 							state |= a_SKIPQ;
 							continue;
 						}
-						break;
+						break; /* }}} */
 
-					/* ISO 10646 / Unicode sequence, 8 or 4 hexadecimal bytes */
+					/* ISO 10646 / Unicode sequence, 8 or 4 hexadecimal bytes {{{ */
 					case 'U':
 						i = 8;
 						if(0){
@@ -1649,7 +1650,6 @@ jerr_ib_save:
 									if(flags & n_SHEXP_PARSE_LOG)
 										n_err(
 _("\\U argument exceeds 0x10FFFF: %.*s: %.*s\n"),
-	
 											S(int,input->l), input->s,
 											S(int,P2UZ(ib - ib_save)), ib_save);
 									rv |= n_SHEXP_STATE_ERR_NUMBER;
@@ -1694,7 +1694,7 @@ _("\\U argument exceeds 0x10FFFF: %.*s: %.*s\n"),
 							}
 							rv |= n_SHEXP_STATE_CHANGE;
 						}
-						break;
+						break; /* }}} */
 
 					/* Extension: \$ can be used to enter $xyz multiplexer.
 					 * B(ug|ad) effect: if conversion fails, not written "as-is" */
@@ -1710,14 +1710,14 @@ j_dollar_ungetc:
 						break;
 					}
 				}
-			}else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{
+			}else if(c == '$' && quotec == '"' && il > 0) J_var_expand:{ /* {{{ */
 				char const *cp, *vp;
 
 				state &= ~a_VARSUBST_MASK;
 				c2 = *ib;
 
 				/* $X is a multiplexer for an increasing amount of functionality */
-				/* 1. Arithmetic expression */
+				/* 1. Arithmetic expression {{{ */
 				if(UNLIKELY(c2 == '(')){
 					char const *emsg;
 					char *xcp;
@@ -1759,16 +1759,17 @@ jearith:
 						goto jerr_ib_save;
 					}
 
-					if((flags & n_SHEXP_PARSE_DRYRUN) || (state & a_SKIPMASK)){
-						rv |= n_SHEXP_STATE_SUB;
+					if((flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_IGN_SUBST_ARITH)) ||
+							(state & a_SKIPMASK)){
+						rv |= n_SHEXP_STATE_SUBST;
 						continue;
 					}
 
 					xcp = UNCONST(char*,&ib_save[2]);
-					switch(a_shexp_arith_eval(&res, xcp, P2UZ(&ib[-2] - xcp), &xcp)){
+					switch(a_shexp_arith_eval(scope, &res, xcp, P2UZ(&ib[-2] - xcp), &xcp)){
 					default:
 						cp = su_ienc_s64(stackbuf, res, 10);
-						rv |= n_SHEXP_STATE_SUB;
+						rv |= n_SHEXP_STATE_SUBST;
 						goto j_var_push_cp;
 #undef a_X
 #define a_X(X,N) case CONCAT(a_SHEXP_ARITH_ERR_,X): emsg = N_(N); break
@@ -1791,14 +1792,14 @@ jearith:
 							xcp);
 					rv |= n_SHEXP_STATE_ERR_BADSUB;
 					goto jerr_ib_save;
-				}
+				} /* }}} */
 
 				/* 2. Enbraced variable name */
 				if(c2 == '{')
 					state |= a_BRACE;
 
 				/* Scan variable name */
-				if(!(state & a_BRACE) || il > 1){
+				if(!(state & a_BRACE) || il > 1){ /* {{{ */
 					boole caret;
 
 					ib_save = ib - 1;
@@ -1810,8 +1811,8 @@ jearith:
 					/* In order to support $^# we need to treat caret especially */
 					for(caret = FAL0, i = 0; il > 0; --il, ++ib){
 						/* We have some special cases regarding special parameters, so ensure
-						 * these don't cause failure.  This code has counterparts in code that
-						 * manages internal variables! */
+						 * these do not cause failure.  This code has counterparts in code
+						 * that manages internal variables! */
 						c = *ib;
 						if(!a_SHEXP_ISVARC(c)){
 							if(i == 0){
@@ -1845,7 +1846,7 @@ jearith:
 					if(state & a_SKIPMASK){
 						if((state & a_BRACE) && il > 0 && *ib == '}')
 							--il, ++ib;
-						rv |= n_SHEXP_STATE_SUB;
+						rv |= n_SHEXP_STATE_SUBST;
 						continue;
 					}
 
@@ -1898,8 +1899,8 @@ jebracesubst:
 							}
 						}
 
-						rv |= n_SHEXP_STATE_SUB;
-						if(flags & n_SHEXP_PARSE_DRYRUN)
+						rv |= n_SHEXP_STATE_SUBST;
+						if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_IGN_SUBST_VAR))
 							continue;
 
 						/* We may shall explode "${@}" to a series of successive, properly
@@ -1950,8 +1951,9 @@ j_var_push_cp:
 						}
 						continue;
 					}
-				}
-			}else if(c == '`' && quotec == '"' && il > 0){ /* TODO sh command */
+				} /* }}} */
+			} /* }}} */
+			else if(c == '`' && quotec == '"' && il > 0){ /* TODO sh command */
 				continue;
 			}
 		}
@@ -2002,7 +2004,7 @@ jleave:
 		}
 
 		/* At the start of the next token: if this is a comment, simply throw away all the following data! */
-		if(il > 0 && *ib == '#' && !(flags & n_SHEXP_PARSE_IGNORE_COMMENT)){
+		if(il > 0 && *ib == '#' && !(flags & n_SHEXP_PARSE_IGN_COMMENT)){
 			ib += il;
 			il = 0;
 			rv |= n_SHEXP_STATE_STOP;
@@ -2014,7 +2016,7 @@ jleave:
 
 	if(!(rv & n_SHEXP_STATE_STOP)){
 		if(!(rv & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_META_MASK)) &&
-				(flags & n_SHEXP_PARSE_IGNORE_EMPTY) && il > 0)
+				(flags & n_SHEXP_PARSE_IGN_EMPTY) && il > 0)
 			goto jrestart_empty;
 		if(/*!(rv & n_SHEXP_STATE_OUTPUT) &&*/ il == 0)
 			rv |= n_SHEXP_STATE_STOP;
@@ -2031,7 +2033,8 @@ jleave_quick:
 }
 
 FL char *
-n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags, char const **cp){
+n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+		char const **cp){
 	struct str input;
 	struct n_string sou, *soup;
 	char *rv;
@@ -2044,7 +2047,7 @@ n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags, char const **c
 	input.l = UZ_MAX;
 	soup = n_string_creat_auto(&sou);
 
-	shs = n_shexp_parse_token(flags, soup, &input, NIL);
+	shs = n_shexp_parse_token(flags, scope, soup, &input, NIL);
 	if(shs & n_SHEXP_STATE_ERR_MASK){
 		soup = n_string_assign_cp(soup, *cp);
 		*cp = NIL;
@@ -2068,7 +2071,7 @@ n_shexp_unquote_one(struct n_string *store, char const *input){
 	dat.s = UNCONST(char*,input);
 	dat.l = UZ_MAX;
 	shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
-				n_SHEXP_PARSE_IGNORE_EMPTY), store, &dat, NIL);
+				n_SHEXP_PARSE_IGN_EMPTY), mx_SCOPE_NONE, store, &dat, NIL);
 
 	if(!(shs & n_SHEXP_STATE_STOP))
 		n_err(_("# Only one (shell-quoted) argument is expected: %s\n"), input);
@@ -2172,41 +2175,33 @@ FL int
 c_shcodec(void *vp){
 	struct str in;
 	struct n_string sou_b, *soup;
-	s32 nerrn;
-	uz alen;
-	boole cm_local, norndtrip;
-	char const **argv, *varname, *act, *cp;
+	boole norndtrip;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
+	n_pstate_err_no = su_ERR_NONE;
 	soup = n_string_creat_auto(&sou_b);
-	argv = vp;
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
+	cacp = vp;
+	cap = cacp->cac_arg;
+	in = cap->ca_next->ca_arg.ca_str;
 
-	act = *argv;
-	for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp){
+	if((norndtrip = (*cap->ca_arg.ca_str.s == '+'))){
+		++cap->ca_arg.ca_str.s;
+		/*--cap->ca_arg.ca_str.l;*/
 	}
-	if((norndtrip = (*act == '+')))
-		++act;
-	if(act == cp)
-		goto jesynopsis;
-	alen = P2UZ(cp - act);
-	if(*cp != '\0')
-		++cp;
 
-	in.l = su_cs_len(in.s = UNCONST(char*,cp));
-	nerrn = su_ERR_NONE;
-
-	if(su_cs_starts_with_case_n("encode", act, alen))
+	if(su_cs_starts_with_case("encode", cap->ca_arg.ca_str.s))
 		soup = n_shexp_quote(soup, &in, !norndtrip);
-	else if(!norndtrip && su_cs_starts_with_case_n("decode", act, alen)){
+	else if(!norndtrip && su_cs_starts_with_case("decode", cap->ca_arg.ca_str.s)){
 		for(;;){
 			BITENUM_IS(u32,n_shexp_state) shs;
 
-			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NIL);
+			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY),
+					cacp->cac_scope_pp, soup, &in, NIL);
 			if(shs & n_SHEXP_STATE_ERR_MASK){
-				soup = n_string_assign_cp(soup, cp);
-				nerrn = su_ERR_CANCELED;
+				soup = n_string_assign_cp(soup, cap->ca_next->ca_arg.ca_str.s);
+				n_pstate_err_no = su_ERR_CANCELED;
 				vp = NIL;
 				break;
 			}
@@ -2216,10 +2211,10 @@ c_shcodec(void *vp){
 	}else
 		goto jesynopsis;
 
-	if(varname != NIL){
-		cp = n_string_cp(soup);
-		if(!n_var_vset(varname, R(up,cp), cm_local)){
-			nerrn = su_ERR_NOTSUP;
+	if(cacp->cac_vput != NIL){
+		n_string_cp(soup);
+		if(!n_var_vset(cacp->cac_vput, R(up,soup->s_dat), cacp->cac_scope_vput)){
+			n_pstate_err_no = su_ERR_NOTSUP;
 			vp = NIL;
 		}
 	}else{
@@ -2229,20 +2224,19 @@ c_shcodec(void *vp){
 		in.l = soup->s_len;
 		mx_makeprint(&in, &out);
 		if(fprintf(n_stdout, "%s\n", out.s) < 0){
-			nerrn = su_err_by_errno();
+			n_pstate_err_no = su_err_by_errno();
 			vp = NIL;
 		}
 		su_FREE(out.s);
 	}
 
 jleave:
-	n_pstate_err_no = nerrn;
 	NYD_OU;
 	return (vp != NIL ? su_EX_OK : su_EX_ERR);
 
 jesynopsis:
 	mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("shcodec"), NIL);
-	nerrn = su_ERR_INVAL;
+	n_pstate_err_no = su_ERR_INVAL;
 	vp = NIL;
 	goto jleave;
 }

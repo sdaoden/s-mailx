@@ -4,15 +4,40 @@
  *@ - add an entry to nail.h:enum okeys
  *@ - run make-okey-map.pl (which is highly related..)
  *@ - update the manual!
+ *@ FIXME . Drop our way of `local' and `our'.
+ *@ FIXME   Instead only support `local' AS `our', like the sh(1)ell does.
+ *@ FIXME   This gets rid of special handling of built-ins etc for `local'.
+ *@ FIXME   We then need `our' only for `call' and `xcall', it seems better
+ *@ FIXME   to add two commands call_embed and call_if_embed, drop modifier.
+ *@ FIXME   Implement a hashmap base approach:
+ *@ FIXME   Four bits: MAP_CLONED, [SCOPE_EMBED], SCOPE_FENCE, SCOPE_INHERITED.
+ *@ FIXME   Map is lazy allocated (cloned from parent (up to where an instance is) level).
+ *@ FIXME   Values gain a "u32 level", top is 0, each macro level incs by 1.
+ *@ FIXME   Maps are cloned, but values are not, only pointer copy.
+ *@ FIXME   When a value is to be changed:
+ *@ FIXME   - if `local' modifier is used and/or SCOPE_FENCE: clone map to this level.
+ *@ FIXME     Otherwise if SCOPE_INHERITED is set find parent with SCOPE_FENCE, clone there!
+ *@ FIXME   - SCOPE_EMBED, if no other way to do that, means that the parent is the FENCE,
+ *@ FIXME     and that changes shall be moved upward to the parent once level is torn down.
+ *@ FIXME   - Replace value with "level" set to the one of where the map is.
+ *@ FIXME   - Once a level is left that has a MAP_CLONED,
+ *@ FIXME     delete all nodes with "level" set to its value.
+ *@ FIXME   - For hooks like account or folder, once the level is left,
+ *@ FIXME     instead transpose all nodes with "our" "level" to the outer level
+ *@ FIXME     (or arrange for initial according map placement, like SCOPE_EMBED),
+ *@ FIXME     and place those (nodes they are) of the outer level (ie the original values)
+ *@ FIXME     in an unroll list, to be reverted once the extended "scope" is left.
+ *@ FIXME   - call_embed and call_if_embed can maybe arrange for simply using the desired map
+ *@ FIXME     in the new levels, so that, but for values set via `local' modifier, no work
+ *@ FIXME     at all is needed.
+ *@ FIXME   - `our' modifier is gone: get rid of the special handling blocks!
+ *@ FIXME   - With this approach, implement FREEZE as a simple over dictionary.
+ *@ FIXME     We need something like n_var_setup_verify(), but called a bit later,
+ *@ FIXME     that then simply embeds anything set in the dict in the normal map.
+ *@ FIXME     ie n_var_setup_unfreeze() or something.
  *@ TODO . Split in macro / variable, use specific headers.
  .@ TODO . `global' command modifier.
  *@ TODO . Drop the VIP stuff.  Allow PTF callbacks to be specified, call them.
- *@ TODO . Optimize: with the dynamic hashmaps, and the object based approach
- *@ TODO   it should become possible to strip down the implementation again.
- *@ TODO   E.g., FREEZE is much too complicated: use an overlay object ptr,
- *@ TODO   UNLIKELY() it, and add a OnProgramStartupCompletedEvent to
- *@ TODO   incorporate what it tracks, then drop it.  Etc.
- *@ TODO   Global -> Scope -> Local, all "overlay" objects.
  *@ TODO . Also, storing variable names can be optional for non-chain built-ins
  *@ TODO . Have macro/var counters so we know ++COUNT does not wrap U32_MAX!!
  *@ TODO   (Ie NIL terminated array alloc+set, and such.)
@@ -136,8 +161,9 @@ enum a_amv_var_flags{
 	a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
 	a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1,
 	/* All the flags that could be set for customs / `local' variables */
-	a_AMV_VF_EXT__CUSTOM_MASK = a_AMV_VF_ENV | a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED | a_AMV_VF_EXT_FROZEN,
-	a_AMV_VF_EXT__LOCAL_MASK = a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED
+	a_AMV_VF_EXT__CUSTOM_MASK = a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED | a_AMV_VF_EXT_FROZEN,
+	a_AMV_VF_EXT__LOCAL_MASK = a_AMV_VF_EXT_LOCAL | a_AMV_VF_EXT_LINKED,
+	a_AMV_VF_EXT__TMP_FLAG = 1u<<27
 };
 
 enum a_amv_var_lookup_flags{
@@ -227,9 +253,10 @@ struct a_amv_mac_call_args{
 	struct a_amv_var **amca_unroller;
 	u8 amca_loflags;
 	boole amca_ps_hook_mask;
+	boole amca_any_scoped_init; /* Whether (any) outer level had unroll scope, or we have */
 	boole amca_no_xcall; /* XXX We want GO_INPUT_NO_XCALL for this */
 	boole amca_ignerr; /* XXX Use GO_INPUT_IGNERR for evaluating commands */
-	u8 amca__pad[4];
+	u8 amca__pad[3];
 	struct a_amv_pospar *amca_pospar;
 	struct a_amv_pospar *amca_re_match;
 	struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
@@ -243,7 +270,8 @@ struct a_amv_lostack{
 	struct a_amv_lostack *as_up; /* Outer context */
 	struct a_amv_var *as_lopts;
 	BITENUM_IS(u8,a_amv_mac_loflags) as_loflags;
-	u8 avs__pad[7];
+	boole as_any_scoped; /* Whether ANY outer level or we have unroll scopes */
+	u8 avs__pad[6];
 };
 
 struct a_amv_var{
@@ -300,12 +328,17 @@ struct a_amv_var_carrier{
 	u32 avc_prime;
 	struct a_amv_var *avc_var;
 	struct a_amv_var_map const *avc_map;
-	enum okeys avc_okey;
+	BITENUM_IS(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
+	u8 avc__pad[1];
+	BITENUM_IS(u16,okeys) avc_okey;
+#undef a_AMV_OKEY
+#define a_AMV_OKEY(X) S(u16,X)
 	boole avc_is_chain_variant; /* Base is a chain, this a variant thereof */
 	u8 avc_special_cat;
 	/* Numerical parameter name if .avc_special_cat=a_AMV_VSC_POSPAR, otherwise a enum a_amv_var_special_type */
 	u16 avc_special_prop;
 };
+CTAV(n_OKEYS_MAX <= U16_MAX);
 
 /* Include constant make-okey-map.pl output, and the generated version data */
 #include "mx/gen-version.h" /* - */
@@ -364,7 +397,8 @@ static void a_amv_pospar_clear(struct a_amv_pospar *appp);
 static struct a_amv_mac *a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM_IS(u32,a_amv_mac_flags) amf);
 
 /* `call', `call_if' (and `xcall' via go.c -> c_xcall()).  lospopts may only come in via the weird ways of `xcall' */
-static int a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil);
+enum {a_AMV_MAC_CALL_NONE, a_AMV_MAC_CALL_SILENT = 1u<<0, a_AMV_MAC_CALL_XCALL = 1u<<1};
+static int a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil);
 
 /* Execute a macro; amcap must reside in LOFI memory */
 static boole a_amv_mac_exec(struct a_amv_mac_call_args *amcap, void *lospopts_or_nil);
@@ -442,7 +476,7 @@ static void a_amv_var_show_all(void);
 static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local);
 
 /* Shared c_set() and c_environ():set impl, return success */
-static boole a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf);
+static boole a_amv_var_c_set(struct mx_cmd_arg_ctx *cacp, struct mx_cmd_arg *cap, boole isenviron);
 
 /* */
 #ifdef a_AMV_VAR_HAS_OBSOLETE
@@ -559,12 +593,13 @@ jleave:
 }
 
 static int
-a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
+a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 	struct a_amv_mac *amp;
 	int rv;
 	char const *name;
 	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
+	ASSERT((f & a_AMV_MAC_CALL_XCALL) || lospopts_or_nil == NIL);
 
 	cacp = vp;
 	name = cacp->cac_arg->ca_arg.ca_str.s;
@@ -574,11 +609,12 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
 		n_pstate_err_no = su_ERR_OVERFLOW;
 		rv = 1;
 	}else if(UNLIKELY((amp = a_amv_mac_lookup(name, NIL, a_AMV_MF_NONE)) == NIL)){
-		if(!silent_nexist)
+		if(!(f & a_AMV_MAC_CALL_SILENT))
 			n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
 		n_pstate_err_no = su_ERR_NOENT;
 		rv = 1;
 	}else{
+		BITENUM_IS(u8,a_amv_loflags) olof;
 		char const **argv;
 		struct a_amv_mac_call_args *amcap;
 		u32 argc;
@@ -595,11 +631,25 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
 		amcap->amca_name = name;
 		amcap->amca_amp = amp;
 
-		if(n_pstate & n_PS_ARGMOD_LOCAL)
-			amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
-		else if(a_AMV_HAVE_LOPTS_AKA_LOCAL())
+		olof = U8_MAX;
+		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
 			amcap->amca_loflags = (a_amv_lopts->as_loflags & a_AMV_LF_CALL_MASK
 					) >> a_AMV_LF_CALL_TO_SCOPE_SHIFT;
+			amcap->amca_any_scoped_init = (a_amv_lopts->as_any_scoped ||
+					((amcap->amca_loflags & a_AMV_LF_SCOPE_MASK) != 0));
+		}
+		if(cacp->cac_scope > mx_SCOPE_GLOBAL){
+			/* xcall on first macro level and no a_amv_lopts we have */
+			if(cacp->cac_scope == mx_SCOPE_OUR){
+				ASSERT(!(f & a_AMV_MAC_CALL_XCALL));
+				ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
+				olof = a_amv_lopts->as_loflags;
+				a_amv_lopts->as_loflags = (olof & ~a_AMV_LF_SCOPE_MASK) | a_AMV_LF_SCOPE_FIXATE;
+				a_amv_lopts->as_any_scoped = TRU1;
+			}else
+				amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+			amcap->amca_any_scoped_init = TRU1;
+		}
 
 		amcap->amca_pospar = &amcap->amca__pospar;
 		if(argc > 0){
@@ -611,6 +661,9 @@ a_amv_mac_call(void *vp, boole silent_nexist, void *lospopts_or_nil){
 
 		(void)a_amv_mac_exec(amcap, lospopts_or_nil);
 		rv = n_pstate_ex_no;
+
+		if(olof != U8_MAX)
+			a_amv_lopts->as_loflags = olof;
 	}
 
 	NYD_OU;
@@ -646,6 +699,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap, void *lospopts_or_nil){
 		losp->as_lopts = *amcap->amca_unroller;
 	}
 	losp->as_loflags = amcap->amca_loflags;
+	losp->as_any_scoped = amcap->amca_any_scoped_init;
 
 	a_amv_lopts = losp;
 	rv = mx_go_macro((mx_GO_INPUT_NONE | (amcap->amca_no_xcall ? mx_GO_INPUT_NO_XCALL : 0) |
@@ -954,20 +1008,22 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name, struct a_amv_var co
 	uz nl, vl;
 	NYD2_IN;
 
-	/* Propagate unrolling up the stack, as necessary.
-	 * Stop for stack level where scoping is desired */
+	/* Propagate unrolling up the stack, as necessary.  Stop for stack level where scoping is desired.
+	 * We need to test for an existing one on each level along the way (XXX use cs_dict overlays!) */
 	ASSERT(alp != NIL);
-	if(!enforce_scope)
+	if(!enforce_scope){
+		if(!alp->as_any_scoped)
+			goto jleave;
 		for(;;){
+			for(avp = alp->as_lopts; avp != NIL; avp = avp->av_link)
+				if(!su_cs_cmp(avp->av_name, name))
+					goto jleave;
 			if(alp->as_loflags & a_AMV_LF_SCOPE_MASK)
 				break;
 			if((alp = alp->as_up) == NIL)
 				goto jleave;
 		}
-
-	/* Check whether variable is handled yet at this level
-	 * TODO Boost lopts: use cs_dict! */
-	for(avp = alp->as_lopts; avp != NIL; avp = avp->av_link)
+	}else for(avp = alp->as_lopts; avp != NIL; avp = avp->av_link)
 		if(!su_cs_cmp(avp->av_name, name))
 			goto jleave;
 
@@ -975,6 +1031,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name, struct a_amv_var co
 	vl = (oavp != NIL) ? su_cs_len(oavp->av_value) +1 : 0;
 	avp = su_ALLOC(VSTRUCT_SIZEOF(struct a_amv_var,av_name) + nl + vl);
 	su_mem_set(avp, 0, VSTRUCT_SIZEOF(struct a_amv_var,av_name));
+	ASSERT(avp->av_flags == 0);
 	avp->av_link = alp->as_lopts;
 	alp->as_lopts = avp;
 	if(oavp != NIL){
@@ -1575,7 +1632,7 @@ jno_special_param:
 		avmp = &a_amv_var_map[x];
 		if(avmp->avm_hash == hash && !su_cs_cmp(&a_amv_var_names[avmp->avm_keyoff], name)){
 			avcp->avc_map = avmp;
-			avcp->avc_okey = S(enum okeys,x);
+			avcp->avc_okey = a_AMV_OKEY(x);
 			goto jleave;
 		}
 
@@ -1842,6 +1899,7 @@ jskip_local:
 			for(i = 0; arr[i] != NIL; ++i){
 				u16 xo;
 
+				LCTAV(n_OKEYS_MAX <= U16_MAX);
 				xo = arr[i]->avdv_okey;
 
 				if(avcp->avc_okey == xo){
@@ -2022,8 +2080,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 		}
 	}else
 #endif
-	/* ERR, ERRDOC, ERRNAME, plus *-NAME variants.
-	 * As well as ERRQUEUE-. */
+	/* ERR, ERRDOC, ERRNAME, plus *-NAME variants.  As well as ERRQUEUE- */
 			if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
 		if(i == 3){
 			j = n_pstate_err_no;
@@ -2263,7 +2320,7 @@ jeavmp:
 	ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL) || !(avscf & a_AMV_VSETCLR_LOCAL));
 	rv = TRU1;
 	a_amv_var_lookup(avcp, (a_AMV_VLOOK_I3VAL_NONEW |
-			((avmp != NIL || (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL)))
+			((avmp != NIL || (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL)) || avcp->avc_scope == mx_SCOPE_OUR)
 				? a_AMV_VLOOK_NONE : (a_AMV_VLOOK_LOCAL |
 					((avscf & a_AMV_VSETCLR_LOCAL) ? a_AMV_VLOOK_LOCAL_ONLY : a_AMV_VLOOK_NONE)))));
 	avp = avcp->avc_var;
@@ -2310,9 +2367,23 @@ jeavmp:
 
 	/* Optionally cover by `localopts' */
 	if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
+		boole const isloc = ((avscf & a_AMV_VSETCLR_LOCAL) != 0);
+		BITENUM_IS(u8,a_amv_loflags) olof;
+
 		ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
 		ASSERT(avp == NIL || !(avp->av_flags & a_AMV_VF_EXT_LOCAL));
-		a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var, ((avscf & a_AMV_VSETCLR_LOCAL) != 0));
+
+		olof = U8_MAX;
+		if(!isloc && avcp->avc_scope == mx_SCOPE_OUR){
+			olof = a_amv_lopts->as_loflags;
+			a_amv_lopts->as_loflags = (olof & ~a_AMV_LF_SCOPE_MASK) | a_AMV_LF_SCOPE_FIXATE;
+			a_amv_lopts->as_any_scoped = TRU1;
+		}
+
+		a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var, isloc);
+
+		if(olof != U8_MAX)
+			a_amv_lopts->as_loflags = olof;
 	}
 
 jno_lopts:
@@ -2320,6 +2391,21 @@ jno_lopts:
 joval_and_go:
 		oval = avp->av_value;
 		f = avp->av_flags;
+
+		/* When unrolling instead use flags of target */
+		if(avscf & a_AMV_VSETCLR_UNROLL){
+			/* However: if we break an environment link, putenv one last time! */
+			if(f & a_AMV_VF_EXT_LINKED)
+				f |= a_AMV_VF_EXT__TMP_FLAG;
+			f &= ~a_AMV_VF_EXT__CUSTOM_MASK;
+		}
+
+		ASSERT(!(avcp->avc_is_chain_variant) || (f & a_AMV_VF_EXT_CHAIN));
+		ASSERT((f & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)) != (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED));
+		ASSERT(avmp == NIL || !(avmp->avm_flags & a_AMV_VF_ENV) || (f & a_AMV_VF_ENV));
+
+		if(!(f & a_AMV_VF_ENV) && (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL_ENV_LINKED)))
+			f |= a_AMV_VF_EXT_LINKED;
 	}else{
 		uz l;
 		struct a_amv_var **avpp;
@@ -2328,13 +2414,22 @@ joval_and_go:
 			if((avpp = *a_amv_lopts->as_amcap->amca_local_vars) == NIL)
 				avpp = *(a_amv_lopts->as_amcap->amca_local_vars =
 						su_CALLOC(sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
-
 			avpp += avcp->avc_prime;
 			f = a_AMV_VF_EXT_LOCAL;
 		}else{
 			avpp = &a_amv_vars[avcp->avc_prime];
-			f = (avmp != NIL) ? avmp->avm_flags : a_AMV_VF_NONE;
+			f = a_AMV_VF_NONE;
+			if(avmp != NIL){
+				f = avmp->avm_flags;
+				if(avcp->avc_is_chain_variant)
+					f |= a_AMV_VF_EXT_CHAIN;
+			}
 		}
+
+		ASSERT(!(avcp->avc_is_chain_variant) || (f & a_AMV_VF_EXT_CHAIN));
+
+		if(!(f & a_AMV_VF_ENV) && (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL_ENV_LINKED)))
+			f |= a_AMV_VF_EXT_LINKED;
 
 		l = su_cs_len(avcp->avc_name) +1;
 		avcp->avc_var = avp = su_ALLOC(VSTRUCT_SIZEOF(struct a_amv_var,av_name) + l);
@@ -2344,13 +2439,6 @@ joval_and_go:
 		su_mem_copy(avp->av_name, avcp->avc_name, l);
 		oval = UNCONST(char*,su_empty); /* _var_free */
 	}
-
-	if(avcp->avc_is_chain_variant)
-		f |= a_AMV_VF_EXT_CHAIN;
-	if(avscf & a_AMV_VSETCLR_ENV)
-		f |= a_AMV_VF_ENV;
-	if(avscf & a_AMV_VSETCLR_UNROLL_ENV_LINKED)
-		f |= a_AMV_VF_EXT_LINKED;
 
 	if(avmp == NIL || !(f & a_AMV_VF_BOOL))
 		avp->av_value = a_amv_var_copy(value);
@@ -2364,7 +2452,7 @@ joval_and_go:
 
 	/* A `local' setting can skip all the crude special things */
 	if(!(f & a_AMV_VF_EXT_LOCAL)){
-		if(f & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
+		if(f & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED | a_AMV_VF_EXT__TMP_FLAG))
 			rv = a_amv_var__putenv(avcp, avp);
 
 		if(f & a_AMV_VF_VIP)
@@ -2378,6 +2466,7 @@ joval_and_go:
 		ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
 	}
 
+	f &= ~a_AMV_VF_EXT__TMP_FLAG;
 	avp->av_flags = f;
 
 	a_amv_var_free(oval);
@@ -2452,7 +2541,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM_IS(u32,a_amv_var_setclr_
 	rv = TRU1;
 	if(UNLIKELY(!a_amv_var_lookup(avcp,
 			(a_AMV_VLOOK_I3VAL_NONEW | a_AMV_VLOOK_I3VAL_NONEW_REPORT |
-			 ((avmp != NIL || (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL)))
+			 ((avmp != NIL || (avscf & (a_AMV_VSETCLR_ENV | a_AMV_VSETCLR_UNROLL)) || avcp->avc_scope == mx_SCOPE_OUR)
 				? a_AMV_VLOOK_NONE : (a_AMV_VLOOK_LOCAL |
 					((avscf & a_AMV_VSETCLR_LOCAL) ? a_AMV_VLOOK_LOCAL_ONLY : a_AMV_VLOOK_NONE))))))){
 		ASSERT(avcp->avc_var == NIL || (avcp->avc_var->av_flags & (a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET)));
@@ -2544,8 +2633,23 @@ jerr_env_unset:
 	}
 
 	if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
-		ASSERT(!(avp->av_flags & a_AMV_VF_EXT_LOCAL));
-		a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var, ((avscf & a_AMV_VSETCLR_LOCAL) != 0));
+		boole const isloc = ((avscf & a_AMV_VSETCLR_LOCAL) != 0);
+		BITENUM_IS(u8,a_amv_loflags) olof;
+
+		ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
+		ASSERT(avp == NIL || !(avp->av_flags & a_AMV_VF_EXT_LOCAL));
+
+		olof = U8_MAX;
+		if(!isloc && avcp->avc_scope > mx_SCOPE_GLOBAL){
+			olof = a_amv_lopts->as_loflags;
+			a_amv_lopts->as_loflags = (olof & ~a_AMV_LF_SCOPE_MASK) | a_AMV_LF_SCOPE_FIXATE;
+			a_amv_lopts->as_any_scoped = TRU1;
+		}
+
+		a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var, isloc);
+
+		if(olof != U8_MAX)
+			a_amv_lopts->as_loflags = olof;
 	}
 
 jdefault_path:
@@ -2557,7 +2661,7 @@ jdefault_path:
 	ASSERT(*avpp == avp); /* (always listhead after lookup()) */
 	*avpp = (*avpp)->av_link;
 
-	if(f & a_AMV_VF_ENV)
+	if(f & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
 		rv = a_amv_var__clearenv(avp->av_name, avp);
 
 	a_amv_var_free(avp->av_value);
@@ -2817,15 +2921,23 @@ jleave:
 }
 
 static boole
-a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
-	char *cp2, *varbuf, c;
-	char const *cp;
+a_amv_var_c_set(struct mx_cmd_arg_ctx *cacp, struct mx_cmd_arg *cap, boole isenviron){
+	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
 	boole rv;
 	NYD2_IN;
 
-	for(rv = TRU1; (cp = *ap++) != NIL;){
+	rv = TRU1;
+	avscf = (isenviron ? a_AMV_VSETCLR_ENV : a_AMV_VSETCLR_NONE);
+	if(cacp->cac_scope == mx_SCOPE_LOCAL)
+		avscf |= a_AMV_VSETCLR_LOCAL;
+
+	for(; cap != NIL; cap = cap->ca_next){
+		char *cp2, *varbuf, c;
+		char const *cp;
+
 		/* Isolate key */
-		cp2 = varbuf = su_AUTO_ALLOC(su_cs_len(cp) +1);
+		cp = cap->ca_arg.ca_str.s;
+		cp2 = varbuf = su_AUTO_ALLOC(cap->ca_arg.ca_str.l +1);
 
 		for(; (c = *cp) != '=' && c != '\0'; ++cp)
 			*cp2++ = c;
@@ -2838,7 +2950,7 @@ a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
 		if(varbuf == cp2){
 			n_err(_("Empty variable name ignored\n"));
 			rv = FAL0;
-		}else if(!a_amv_var_check_name(varbuf, ((avscf & a_AMV_VSETCLR_ENV) != 0))){
+		}else if(!a_amv_var_check_name(varbuf, isenviron)){
 			/* Log done */
 			rv = FAL0;
 		}else{
@@ -2853,6 +2965,7 @@ a_amv_var_c_set(char const **ap, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
 			}
 
 			a_amv_var_revlookup(&avc, varbuf, TRU1);
+			avc.avc_scope = cacp->cac_scope;
 
 			if(isunset)
 				cp = NIL;
@@ -2931,22 +3044,23 @@ c_call(void *vp){
 	int rv;
 	NYD_IN;
 
-	rv = a_amv_mac_call(vp, FAL0, NIL);
+	rv = a_amv_mac_call(vp, a_AMV_MAC_CALL_NONE, NIL);
 
 	NYD_OU;
 	return rv;
 }
 
 FL void
-mx_xcall_exchange(void *currlvl_lopts, void **old_lopts, boole *local_active){
+mx_xcall_exchange(void *currlvl_lopts, void **outer_lopts, enum mx_scope *scopep){
 	struct a_amv_lostack *losp;
 	NYD2_IN;
+	ASSERT(a_AMV_HAVE_LOPTS_AKA_LOCAL());
 
+	/* See struct a_go_ctx:gc_xcall_lopts comments */
 	losp = currlvl_lopts;
-	*old_lopts = losp->as_lopts;
+	*outer_lopts = losp->as_lopts;
 	losp->as_lopts = NIL;
-
-	*local_active = (a_AMV_HAVE_LOPTS_AKA_LOCAL() && a_amv_lopts->as_loflags != a_AMV_LF_NONE);
+	*scopep = (a_amv_lopts->as_loflags != a_AMV_LF_NONE) ? mx_SCOPE_OUR : mx_SCOPE_NONE;
 
 	NYD2_OU;
 }
@@ -2955,8 +3069,10 @@ FL int
 mx_xcall(void *vp, void *lospopts){
 	int rv;
 	NYD_IN;
+	ASSERT(S(struct mx_cmd_arg_ctx*,vp)->cac_scope != mx_SCOPE_OUR);
 
-	rv = a_amv_mac_call(vp, FAL0, lospopts);
+	/* See struct a_go_ctx:gc_xcall_lopts comments */
+	rv = a_amv_mac_call(vp, a_AMV_MAC_CALL_XCALL, lospopts);
 
 	NYD_OU;
 	return rv;
@@ -2967,7 +3083,7 @@ c_call_if(void *vp){
 	int rv;
 	NYD_IN;
 
-	rv = a_amv_mac_call(vp, TRU1, NIL);
+	rv = a_amv_mac_call(vp, a_AMV_MAC_CALL_SILENT, NIL);
 
 	NYD_OU;
 	return rv;
@@ -3023,6 +3139,7 @@ mx_account_enter(char const *name){
 		amcap->amca_amp = amp;
 		amcap->amca_unroller = &amp->am_lopts;
 		amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+		amcap->amca_any_scoped_init = TRU1;
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
 		amcap->amca_re_match = &amcap->amca__re_match;
@@ -3082,6 +3199,7 @@ mx_account_leave(void){
 			amcap->amca_amp = amp;
 			amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
 			amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+			amcap->amca_any_scoped_init = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
 			amcap->amca_re_match = &amcap->amca__re_match;
@@ -3168,7 +3286,7 @@ c_localopts(void *vp){
 	int rv;
 	NYD_IN;
 
-	n_OBSOLETE("`localopts': please use \"local [environ] set\" for variables, and \"local call\" etc. for macros");
+	n_OBSOLETE("`localopts': please use \"local|our (environ)? (un)?set\" for variables, and \"local|our x?call\" etc. for macros");
 
 	rv = su_EX_ERR;
 
@@ -3193,8 +3311,11 @@ jesynopsis:
 	if((rv = n_boolify(*argv, UZ_MAX, FAL0)) < FAL0)
 		goto jesynopsis;
 	a_amv_lopts->as_loflags &= ~alm;
-	if(rv > FAL0)
+	if(rv > FAL0){
 		a_amv_lopts->as_loflags |= alf;
+		a_amv_lopts->as_amcap->amca_any_scoped_init =
+				a_amv_lopts->as_any_scoped = TRU1;
+}
 
 	rv = su_EX_OK;
 jleave:
@@ -3418,6 +3539,7 @@ jmac:
 	}
 	amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
 	amcap->amca_ps_hook_mask = TRU1;
+	amcap->amca_any_scoped_init = TRU1;
 	amcap->amca_no_xcall = TRU1;
 	amcap->amca_pospar = &amcap->amca__pospar;
 	if(v15_compat){
@@ -3448,7 +3570,7 @@ j_leave:
 }
 
 FL void
-temporary_compose_mode_hook_control(boole enable, boole local){ /* XXX hack */
+temporary_compose_mode_hook_control(boole enable, enum mx_scope scope){ /* XXX hack */
 	NYD_IN;
 
 	if(enable){
@@ -3457,7 +3579,8 @@ temporary_compose_mode_hook_control(boole enable, boole local){ /* XXX hack */
 
 		cmh_losp = su_LOFI_CALLOC(sizeof *cmh_losp);
 		cmh_losp->as_global_saved = a_amv_lopts;
-		cmh_losp->as_loflags = local ? a_AMV_LF_SCOPE : a_AMV_LF_NONE;
+		cmh_losp->as_loflags = (scope > mx_SCOPE_GLOBAL) ? a_AMV_LF_SCOPE_FIXATE : a_AMV_LF_NONE;
+		cmh_losp->as_any_scoped = (scope > mx_SCOPE_GLOBAL);
 
 		amcap = su_LOFI_CALLOC(sizeof *amcap);
 		amcap->amca_name = "compose mode";
@@ -3465,6 +3588,7 @@ temporary_compose_mode_hook_control(boole enable, boole local){ /* XXX hack */
 		amcap->amca_unroller = &cmh_losp->as_lopts;
 		amcap->amca_loflags = cmh_losp->as_loflags;
 		amcap->amca_ps_hook_mask = FAL0;
+		amcap->amca_any_scoped_init = cmh_losp->as_any_scoped;
 		amcap->amca_no_xcall = TRU1;
 		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
 			amcap->amca_pospar = a_amv_lopts->as_amcap->amca_pospar;
@@ -3475,8 +3599,7 @@ temporary_compose_mode_hook_control(boole enable, boole local){ /* XXX hack */
 		}
 
 		cmh_losp->as_amcap = amcap;
-		a_amv_compose_lostack =
-		a_amv_lopts = cmh_losp;
+		a_amv_compose_lostack = a_amv_lopts = cmh_losp;
 	}else{
 		if(a_amv_compose_lostack->as_lopts != NIL){
 			void *save;
@@ -3520,6 +3643,7 @@ temporary_compose_mode_hook_call(char const *macname){
 		amcap->amca_unroller = &a_amv_compose_lostack->as_lopts;
 		amcap->amca_loflags = a_amv_compose_lostack->as_loflags;
 		amcap->amca_ps_hook_mask = TRU1;
+		amcap->amca_any_scoped_init = a_amv_compose_lostack->as_any_scoped;
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
 		amcap->amca_re_match = &amcap->amca__re_match;
@@ -3530,8 +3654,10 @@ temporary_compose_mode_hook_call(char const *macname){
 		else{
 			cmh_losp = su_LOFI_CALLOC(sizeof *cmh_losp);
 			cmh_losp->as_global_saved = a_amv_lopts;
-			cmh_losp->as_lopts = *(cmh_losp->as_amcap = amcap)->amca_unroller;
-			cmh_losp->as_loflags = a_amv_compose_lostack->as_loflags;
+			cmh_losp->as_lopts =
+					*(cmh_losp->as_amcap = amcap)->amca_unroller;
+			cmh_losp->as_loflags = amcap->amca_loflags;
+			cmh_losp->as_any_scoped = amcap->amca_any_scoped_init;
 			a_amv_lopts = cmh_losp;
 		}
 	}
@@ -3567,6 +3693,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 		amcap->amca_name = macname;
 		amcap->amca_amp = amp;
 		amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+		amcap->amca_any_scoped_init = TRU1;
 		amcap->amca_no_xcall = amcap->amca_ignerr = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
 		amcap->amca__pospar.app_count = 3;
@@ -3628,8 +3755,7 @@ jleave:
 }
 
 FL s32
-mx_var_re_match_set(u32 group_count, char const *dat,
-		struct su_re_match const *remp){
+mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *remp){
 	union {char **pp; char *p;} c;
 	uz i, j;
 	s32 rv;
@@ -3651,7 +3777,7 @@ mx_var_re_match_set(u32 group_count, char const *dat,
 	appp->app_count = (group_count ? ++group_count : group_count);
 
 	for(i = j = 0; i < group_count; ++i)
-		j += sizeof(char const*) +1 + remp[i].rem_end - remp[i].rem_start;
+		j += sizeof(char const*) +1 + remp[i].rem_end - remp[i].rem_start; /* XXX ERR_OVERFLOW? */
 	j += sizeof(char const*);
 
 	/* XXX Optimize: store it all in one chunk! */
@@ -3880,15 +4006,17 @@ n_var_vexplode(void const **cookie){
 }
 
 FL boole
-n_var_vset(char const *vokey, up val, boole local){
+n_var_vset(char const *vokey, up val, enum mx_scope scope){
 	struct a_amv_var_carrier avc;
 	boole ok;
+	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
 	NYD_IN;
 
 	a_amv_var_revlookup(&avc, vokey, TRU1);
+	avc.avc_scope = S(u8,scope);
+	avscf = (scope == mx_SCOPE_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
 
-	ok = a_amv_var_set(&avc, (val == 0x1 ? su_empty : R(char const*,val)),
-			(local ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE));
+	ok = a_amv_var_set(&avc, (val == 0x1 ? su_empty : R(char const*,val)), avscf);
 
 	NYD_OU;
 	return ok;
@@ -3956,17 +4084,18 @@ jleave:
 #endif /* mx_HAVE_NET */
 
 FL int
-c_set(void *vp){
+c_set(void *vp){ /* XXX NOTE: called directly from main.c!! */
 	int err;
-	char const **ap;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	if(*(ap = vp) == NIL){
+	cacp = vp;
+
+	if(cacp->cac_no == 0){
 		a_amv_var_show_all();
 		err = su_EX_OK;
 	}else
-		err = a_amv_var_c_set(ap, ((n_pstate & n_PS_ARGMOD_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE)
-				) ? su_EX_OK : su_EX_ERR;
+		err = a_amv_var_c_set(cacp, cacp->cac_arg, FAL0) ? su_EX_OK : su_EX_ERR;
 
 	NYD_OU;
 	return err;
@@ -3975,17 +4104,20 @@ c_set(void *vp){
 FL int
 c_unset(void *vp){
 	struct a_amv_var_carrier avc;
-	char **ap;
-	int err;
+	struct mx_cmd_arg *cap;
 	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	struct mx_cmd_arg_ctx *cacp;
+	int err;
 	NYD_IN;
 
-	avscf = (n_pstate & n_PS_ARGMOD_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
+	err = su_EX_OK;
+	cacp = vp;
+	avscf = (cacp->cac_scope == mx_SCOPE_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE;
 
-	for(err = su_EX_OK, ap = vp; *ap != NIL; ++ap){
-		if(a_amv_var_check_name(*ap, FAL0)){
-			a_amv_var_revlookup(&avc, *ap, FAL0);
-
+	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		if(a_amv_var_check_name(cap->ca_arg.ca_str.s, FAL0)){
+			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, FAL0);
+			avc.avc_scope = cacp->cac_scope;
 			if(a_amv_var_clear(&avc, avscf))
 				continue;
 		}
@@ -4000,8 +4132,8 @@ c_unset(void *vp){
 FL int
 c_varshow(void *vp){
 	struct n_string msg, *msgp = &msg;
-	char const **ap, *cp;
-	uz i, no;
+	struct mx_cmd_arg_ctx *cacp;
+	uz i;
 	FILE *fp;
 	NYD_IN;
 
@@ -4010,18 +4142,21 @@ c_varshow(void *vp){
 
 	msgp = n_string_creat(msgp);
 	i = 0;
+	cacp = vp;
 
-	if(*(ap = vp) == NIL){
+	if(cacp->cac_no == 0){
+		uz no;
+
 		a_amv_var_show_instantiate_all();
 
-		for(no = n_OKEYS_FIRST; no < n_OKEYS_MAX; ++no){
-			cp = &a_amv_var_names[a_amv_var_map[no].avm_keyoff];
-			i += a_amv_var_show(cp, fp, msgp, FAL0);
-		}
+		for(no = n_OKEYS_FIRST; no < n_OKEYS_MAX; ++no)
+			i += a_amv_var_show(&a_amv_var_names[a_amv_var_map[no].avm_keyoff], fp, msgp, FAL0);
 	}else{
-		for(; (cp = *ap) != NIL; ++ap)
-			if(a_amv_var_check_name(cp, FAL0))
-				i += a_amv_var_show(cp, fp, msgp, TRU1);
+		struct mx_cmd_arg *cap;
+
+		for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next)
+			if(a_amv_var_check_name(cap->ca_arg.ca_str.s, FAL0))
+				i += a_amv_var_show(cap->ca_arg.ca_str.s, fp, msgp, TRU1);
 	}
 
 	n_string_gut(msgp);
@@ -4042,53 +4177,58 @@ c_environ(void *vp){
 	struct a_amv_var_carrier avc;
 	boole islnk;
 	int rv;
-	char const **ap;
 	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
 	n_pstate_err_no = su_ERR_NONE;
+	cacp = vp;
+	cap = cacp->cac_arg;
 
-	avscf = a_AMV_VSETCLR_ENV | ((n_pstate & n_PS_ARGMOD_LOCAL) ? a_AMV_VSETCLR_LOCAL : a_AMV_VSETCLR_NONE);
-	ap = vp;
-	vp = (n_pstate & n_PS_ARGMOD_VPUT) ? UNCONST(void*,*ap++) : NIL;
+	/* Lookup is special, do it first XXX check no cmd-scope! */
+	if(su_cs_starts_with_case("lookup", cap->ca_arg.ca_str.s)){
+		char const *evcp;
 
-	/* Lookup is special, do it first */
-	if(su_cs_starts_with_case("lookup", *ap)){
-		char const *ev;
-
-		if(*++ap == NIL || ap[1] != NIL) /* XXX arg-parser, subcommand.. */
+		if(cacp->cac_no != 2) /* XXX arg-parser, subcommand.. */
 			goto jeuse;
+		cap = cap->ca_next;
 
 		rv = su_EX_ERR;
-		if((ev = getenv(*ap)) != NIL){
-			if(vp == NIL){
-				if(fprintf(n_stdout, "%s\n", ev) > 0)
+		if((evcp = getenv(cap->ca_arg.ca_str.s)) != NIL){
+			if(cacp->cac_vput == NIL){
+				if(fprintf(n_stdout, "%s\n", evcp) > 0)
 					rv = su_EX_OK;
 				else
 					n_pstate_err_no = su_err_by_errno();
-			}else if(!n_var_vset(vp, R(up,ev), ((avscf & a_AMV_VSETCLR_LOCAL) != 0)))
+			}else if(!n_var_vset(cacp->cac_vput, R(up,evcp), cacp->cac_scope_vput))
 				n_pstate_err_no = su_ERR_NOTSUP;
 			else
 				rv = su_EX_OK;
 		}else
 			n_pstate_err_no = su_ERR_NOENT;
-
 		goto jleave;
 	}
 
-	if(vp != NIL){
+	if(cacp->cac_vput != NIL){
 		n_err(_("environ: `vput' only supported for `lookup' subcommand\n"));
 		goto jeuse;
 	}
 
-	if((islnk = su_cs_starts_with_case("link", *ap)) || su_cs_starts_with_case("unlink", *ap)){
-		for(rv = su_EX_OK; *++ap != NIL;){
-			if(!a_amv_var_check_name(*ap, TRU1)){
+	avscf = a_AMV_VSETCLR_ENV;
+	if(cacp->cac_scope == mx_SCOPE_LOCAL)
+		avscf |= a_AMV_VSETCLR_LOCAL;
+
+	if((islnk = su_cs_starts_with_case("link", cap->ca_arg.ca_str.s)) ||
+			su_cs_starts_with_case("unlink", cap->ca_arg.ca_str.s)){
+		for(rv = su_EX_OK; (cap = cap->ca_next) != NIL;){
+			if(!a_amv_var_check_name(cap->ca_arg.ca_str.s, TRU1)){
 				rv = su_EX_ERR;
 				continue;
 			}
 
-			a_amv_var_revlookup(&avc, *ap, TRU1);
+			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, TRU1);
+			avc.avc_scope = cacp->cac_scope;
 
 			/* We may know about it */
 			if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_NONE | a_AMV_VLOOK_LOG_OBSOLETE)) &&
@@ -4098,54 +4238,71 @@ c_environ(void *vp){
 				f = avc.avc_var->av_flags;
 
 				if(!islnk){
-					avc.avc_var->av_flags &= ~(a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED);
+					avc.avc_var->av_flags &= ~a_AMV_VF_EXT_LINKED;
 					goto jlopts_check;
 				}else if(avc.avc_var->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)){
-					if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
-						n_err(_("environ: link: already established: %s\n"), *ap);
+					if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)))
+						n_err(_("environ: link: already established: %s\n"), avc.avc_name);
+					rv = su_EX_ERR;
 				}else{
 					avc.avc_var->av_flags |= a_AMV_VF_EXT_LINKED;
 
-					if(!(avc.avc_var->av_flags & a_AMV_VF_ENV))
-						a_amv_var__putenv(&avc, avc.avc_var);
+					ASSERT(!(avc.avc_var->av_flags & a_AMV_VF_ENV));
+					a_amv_var__putenv(&avc, avc.avc_var);
 
 jlopts_check:
 					if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avc.avc_map == NIL ||
 							 !(avc.avc_map->avm_flags & a_AMV_VF_NOLOPTS))){
+						BITENUM_IS(u8,a_amv_loflags) olof;
+
 						f2 = avc.avc_var->av_flags;
 						ASSERT(!(f2 & a_AMV_VF_EXT_LOCAL));
 						avc.avc_var->av_flags = f;
+
+						olof = U8_MAX;
+						if(cacp->cac_scope > mx_SCOPE_GLOBAL){
+							olof = a_amv_lopts->as_loflags;
+							a_amv_lopts->as_loflags = (olof & ~a_AMV_LF_SCOPE_MASK) |
+									a_AMV_LF_SCOPE_FIXATE;
+							a_amv_lopts->as_any_scoped = TRU1;
+						}
+
 						a_amv_lopts_add(a_amv_lopts, avc.avc_name, avc.avc_var,
-							((avscf & a_AMV_VSETCLR_LOCAL) != 0));
+							(cacp->cac_scope > mx_SCOPE_GLOBAL));
 						avc.avc_var->av_flags = f2;
+
+						if(olof != U8_MAX)
+							a_amv_lopts->as_loflags = olof;
 					}
 				}
 			}else if(!islnk){
-				if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
-					n_err(_("environ: unlink: no link established: %s\n"), *ap);
+				if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)))
+					n_err(_("environ: unlink: no link established: %s\n"), cap->ca_arg.ca_str.s);
 				rv = su_EX_ERR;
 			}else{
 				char const *evp;
 
-				if((evp = getenv(*ap)) != NIL){
+				if((evp = getenv(cap->ca_arg.ca_str.s)) != NIL){
 					if(!a_amv_var_set(&avc, evp, avscf))
 						rv = su_EX_ERR;
 				}else{
-					n_err(_("environ: link: cannot link to non-existent: %s\n"), *ap);
+					n_err(_("environ: link: cannot link to non-existent: %s\n"), cap->ca_arg.ca_str.s);
 					rv = su_EX_ERR;
 				}
 			}
 		}
-	}else if(su_cs_starts_with_case("set", *ap)){
-		rv = a_amv_var_c_set(++ap, avscf) ? su_EX_OK : su_EX_ERR;
-	}else if(su_cs_starts_with_case("unset", *ap)){
-		for(rv = su_EX_OK; *++ap != NIL;){
-			if(!a_amv_var_check_name(*ap, TRU1)){
+	}else if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s)){
+		cap = cap->ca_next;
+		rv = a_amv_var_c_set(cacp, cap, TRU1) ? su_EX_OK : su_EX_ERR;
+	}else if(su_cs_starts_with_case("unset", cap->ca_arg.ca_str.s)){
+		for(rv = su_EX_OK; (cap = cap->ca_next) != NIL;){
+			if(!a_amv_var_check_name(cap->ca_arg.ca_str.s, TRU1)){
 				rv = su_EX_ERR;
 				continue;
 			}
 
-			a_amv_var_revlookup(&avc, *ap, FAL0);
+			a_amv_var_revlookup(&avc, cap->ca_arg.ca_str.s, FAL0);
+			avc.avc_scope = cacp->cac_scope;
 
 			if(!a_amv_var_clear(&avc, avscf))
 				rv = su_EX_ERR;
@@ -4165,7 +4322,7 @@ jleave:
 }
 
 FL int
-c_vpospar(void *v){
+c_vpospar(void *vp){ /* {{{ */
 	enum a_flags{
 		a_NONE = 0,
 		a_ERR = 1u<<0,
@@ -4185,7 +4342,7 @@ c_vpospar(void *v){
 
 	n_pstate_err_no = su_ERR_NONE;
 	UNINIT(varres, su_empty);
-	cacp = v;
+	cacp = vp;
 	cap = cacp->cac_arg;
 
 	if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s))
@@ -4203,19 +4360,17 @@ c_vpospar(void *v){
 		f = a_ERR;
 		goto jleave;
 	}
-	--cacp->cac_no;
 
-	if((f & (a_CLEAR | a_QUOTE)) && cacp->cac_no > 0){
+	if(--cacp->cac_no > 0 && (f & (a_CLEAR | a_QUOTE))){
 		n_err(_("vpospar: %s: takes no argument\n"), cap->ca_arg.ca_str.s);
 		n_pstate_err_no = su_ERR_INVAL;
 		f = a_ERR;
 		goto jleave;
 	}
-
 	cap = cap->ca_next;
 
 	/* If in a macro, we need to overwrite the local instead of global argv */
-	appp = ((!(n_pstate & n_PS_ARGMOD_GLOBAL) && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
+	appp = ((cacp->cac_scope != mx_SCOPE_GLOBAL && a_AMV_HAVE_LOPTS_AKA_LOCAL()/* TODO compose mode.. */)
 			? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar);
 
 	if(f & (a_SET | a_CLEAR)){
@@ -4233,7 +4388,7 @@ c_vpospar(void *v){
 		if(f & a_EVALSET){
 			mx_CMD_ARG_DESC_SUBCLASS_DEF(evalset, 1, a_pseudo_evalset_arg){
 				{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
-				 n_SHEXP_PARSE_IFS_VAR |/*n_SHEXP_PARSE_TRIM_IFSSPACE |*/ n_SHEXP_PARSE_IGNORE_COMMENT}
+				 n_SHEXP_PARSE_IFS_VAR |/*n_SHEXP_PARSE_TRIM_IFSSPACE |*/ n_SHEXP_PARSE_IGN_COMMENT}
 			}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 			static struct mx_cmd_desc const a_pseudo_evalset = {
@@ -4252,7 +4407,7 @@ c_vpospar(void *v){
 			cac.cac_desc = a_pseudo_evalset.cd_cadp;
 			cac.cac_indat = cap->ca_arg.ca_str.s;
 			cac.cac_inlen = cap->ca_arg.ca_str.l;
-			if(!mx_cmd_arg_parse(&cac, FAL0)){
+			if(!mx_cmd_arg_parse(&cac, cacp->cac_scope_pp, FAL0)){
 				f = a_ERR;
 				goto jleave;
 			}
@@ -4326,7 +4481,7 @@ jeover:
 				n_pstate_err_no = su_err_by_errno();
 				f |= a_ERR;
 			}
-		}else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_cm_local)){
+		}else if(!n_var_vset(cacp->cac_vput, R(up,varres), cacp->cac_scope_vput)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			f |= a_ERR;
 		}
@@ -4335,8 +4490,9 @@ jeover:
 jleave:
 	NYD_OU;
 	return (f & a_ERR) ? su_EX_ERR : su_EX_OK;
-}
+} /* }}} */
 
+#undef a_AMV_OKEY
 #undef a_AMV_VLOOK_LOG_OBSOLETE
 
 #include "su/code-ou.h"

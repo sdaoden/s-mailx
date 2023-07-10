@@ -2372,49 +2372,40 @@ jleave:
 
 FL int
 c_addrcodec(void *vp){
-   struct str trims;
    struct n_string s_b, *s;
-   uz alen;
-   int mode;
-   boole cm_local;
-   char const **argv, *varname, *act, *cp;
+   u8 mode;
+   char const *cp;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
-   s = n_string_creat_auto(&s_b);
-   argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-
-   act = *argv;
-   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
-      ;
-   mode = 0;
-   if(*act == '+')
-      mode = 1, ++act;
-   if(*act == '+')
-      mode = 2, ++act;
-   if(*act == '+')
-      mode = 3, ++act;
-   if(act >= cp)
-      goto jesynopsis;
-   alen = P2UZ(cp - act);
-   if(*cp != '\0')
-      ++cp;
-
-   trims.l = su_cs_len(trims.s = n_UNCONST(cp));
-   n_str_trim(&trims, n_STR_TRIM_BOTH);
-   cp = savestrbuf(trims.s, trims.l);
-   if(trims.l <= UZ_MAX / 4)
-         trims.l <<= 1;
-   s = n_string_reserve(s, trims.l);
-
    n_pstate_err_no = su_ERR_NONE;
+   s = n_string_creat_auto(&s_b);
+   cacp = vp;
+   cap = cacp->cac_arg;
+   cp = cap->ca_arg.ca_str.s;
+   cap = cap->ca_next;
 
-   if(su_cs_starts_with_case_n("encode", act, alen)){
-      /* This function cannot be a simple nalloc() wrapper even later on, since
-       * we may need to turn any ", () or \ into quoted-pairs */
+   /* C99 */{
+      uz i;
+
+      i = su_cs_len(cap->ca_arg.ca_str.s);
+      if(i <= UZ_MAX / 4)
+         i <<= 1;
+      s = n_string_reserve(s, i);
+   }
+
+   for(mode = 0; *cp == '+';){
+      ++cp;
+      if(++mode == 3)
+         break;
+   }
+
+   if(su_cs_starts_with_case("encode", cp)){
       struct mx_name *np;
       char c;
+
+      cp = cap->ca_arg.ca_str.s;
 
       while((c = *cp++) != '\0'){
          if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) ||
@@ -2428,21 +2419,27 @@ c_addrcodec(void *vp){
          cp = np->n_fullname;
       else{
          n_pstate_err_no = su_ERR_INVAL;
-         vp = NULL;
+         vp = NIL;
       }
    }else if(mode == 0){
-      if(su_cs_starts_with_case_n("decode", act, alen)){
+      if(su_cs_starts_with_case("decode", cp)){
          char c;
+
+         cp = cap->ca_arg.ca_str.s;
 
          while((c = *cp++) != '\0'){
             switch(c){
             case '(':
                s = n_string_push_c(s, '(');
-               act = skip_comment(cp);
-               if(--act > cp)
-                  s = n_string_push_buf(s, cp, P2UZ(act - cp));
-               s = n_string_push_c(s, ')');
-               cp = ++act;
+               /* C99 */{
+                  char const *cpx;
+
+                  cpx = skip_comment(cp);
+                  if(--cpx > cp)
+                     s = n_string_push_buf(s, cp, P2UZ(cpx - cp));
+                  s = n_string_push_c(s, ')');
+                  cp = ++cpx;
+               }
                break;
             case '"':
                while(*cp != '\0'){
@@ -2461,9 +2458,11 @@ c_addrcodec(void *vp){
             }
          }
          cp = n_string_cp(s);
-      }else if(su_cs_starts_with_case_n("skin", act, alen) ||
-            (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
+      }else if(su_cs_starts_with_case("skin", cp) ||
+            (mode = 1, su_cs_starts_with_case("skinlist", cp))){
          struct mx_name *np;
+
+         cp = cap->ca_arg.ca_str.s;
 
          if((np = n_extract_single(cp, GTO | GFULL)) != NIL &&
                (np->n_flags & mx_NAME_ADDRSPEC_ISADDR)){
@@ -2477,26 +2476,27 @@ c_addrcodec(void *vp){
                n_pstate_err_no = su_ERR_EXIST;
          }else{
             n_pstate_err_no = su_ERR_INVAL;
-            vp = NULL;
+            vp = NIL;
          }
       }else
          goto jesynopsis;
    }else
       goto jesynopsis;
 
-   if(varname == NIL){
+   if(cacp->cac_vput == NIL){
       if(fprintf(n_stdout, "%s\n", cp) < 0){
          n_pstate_err_no = su_err_by_errno();
          vp = NIL;
       }
-   }else if(!n_var_vset(varname, R(up,cp), cm_local)){
+   }else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
       n_pstate_err_no = su_ERR_NOTSUP;
-      vp = NULL;
+      vp = NIL;
    }
 
 jleave:
    NYD_OU;
-   return (vp != NIL ? 0 : 1);
+   return (vp != NIL ? su_EX_OK : su_EX_ERR);
+
 jesynopsis:
    mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("addrcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;

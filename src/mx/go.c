@@ -125,8 +125,7 @@ enum a_go_flags{
 	a_GO_XCALL_LOOP_ERROR = 1u<<26, /* .. state machine error transporter */
 	/* For "this" level: `xcall' seen; for parent: XCALL_LOOP entered */
 	a_GO_XCALL_SEEN = 1u<<27,
-	a_GO_XCALL_SEEN_LOCAL = 1u<<28,
-	a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN | a_GO_XCALL_SEEN_LOCAL
+	a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN
 };
 
 enum a_go_cleanup_mode{
@@ -289,39 +288,47 @@ a_go_update_pstate(void){
 
 static boole
 a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
-	/* TODO a_go_evaluate(): old style(9), but also old code */
+	/* TODO a_go_evaluate(): old style(9), but also old code  MONSTER! */
 	/* TODO a_go_evaluate(): should be split in multiple subfunctions!!
 	 * TODO All commands should take a_cmd_ctx argument, also to do a much
 	 * TODO better history handling, now below! etc (cmd_arg parser able to
-	 * TODO deal with subcommands of multiplexers directly) etc etc */
+	 * TODO deal with subcommands of multiplexers directly) etc etc.
+	 * TODO Error messages should mention the original line data */
 	enum a_flags{
 		a_NONE = 0,
 		/* Alias recursion counter bits */
 		a_ALIAS_MASK = su_BITENUM_MASK(0, 2),
 
 		/* Modifiers */
-		a_NOALIAS = 1u<<4,
-		a_IGNERR = 1u<<5,
-		a_LOCAL = 1u<<6,
-		a_GLOBAL = 1u<<7, /* TODO global modifier */
-		a_U = 1u<<8, /* TODO UTF-8 modifier prefix */
-		a_VPUT = 1u<<9,
-		a_WYSH = 1u<<10, /* XXX v15+ drop wysh modifier prefix */
+		a_WYSH = 1u<<4, /* XXX v15+ drop wysh modifier prefix */
+		a_NOALIAS = 1u<<5,
+		a_IGNERR = 1u<<6,
+		a_U = 1u<<7, /* TODO UTF-8 modifier prefix */
+		a_VPUT = 1u<<8,
+
+		/* (scopes) */
+		a__SCOPE_SHIFT = 9,
+		a_SCOPE_GLOBAL = mx_SCOPE_GLOBAL << a__SCOPE_SHIFT,
+		a_SCOPE_OUR = mx_SCOPE_OUR << a__SCOPE_SHIFT,
+		a_SCOPE_LOCAL = mx_SCOPE_LOCAL << a__SCOPE_SHIFT,
+		a__SCOPE_MASK = a_SCOPE_GLOBAL | a_SCOPE_OUR | a_SCOPE_LOCAL,
+
 		/*a_MODE_MASK = su_BITENUM_MASK(4, 10),*/
 
-		a_NO_ERRNO = 1u<<16, /* Do not set n_pstate_err_no */
-		a_IS_SKIP = 1u<<17, /* Conditional active, is skipping */
-		a_IS_EMPTY = 1u<<18, /* The empty command */
-		a_IS_GABBY_FUZZ = 1u<<19 /* Saved away state from n_PS_GABBY_FUZZ TODO -> cmdctx.. */
+		a_NO_ERRNO = 1u<<24, /* Do not set n_pstate_err_no */
+		a_IS_SKIP = 1u<<25, /* Conditional active, is skipping */
+		a_IS_EMPTY = 1u<<26, /* The empty command */
+		a_IS_GABBY_FUZZ = 1u<<27 /* Saved away state from n_PS_GABBY_FUZZ TODO -> cmdctx.. */
 	};
 
 	struct str line;
 	struct n_string s_b, *s;
 	char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
-	char const *alias_name, *emsg;
+	char const *alias_name, *ccp;
 	struct mx_cmd_desc const *cdp;
 	s32 nerrn, nexn; /* TODO n_pstate_ex_no -> s64! */
 	int rv, c;
+	/*enum mx_scope*/u8 scope_pp, scope_vput, scope_cmd;
 	u32 eval_cnt;
 	BITENUM_IS(u32,a_flags) flags;
 	NYD_IN;
@@ -332,6 +339,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 
 	flags = ((mx_cnd_if_exists(NIL) == TRUM1 ? a_IS_SKIP : a_NONE) | (gecp->gec_ignerr ? a_IGNERR : a_NONE));
 	eval_cnt = 0;
+	scope_pp = scope_vput = scope_cmd = mx_SCOPE_NONE;
 	rv = 1;
 	nerrn = su_ERR_NONE;
 	nexn = su_EX_OK;
@@ -349,16 +357,9 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 
 	/* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
-	/* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
-	 * TODO does not use any of those list commands which strip this mask,
-	 * TODO and for now we misuse bits for checking relation to history;
-	 * TODO argument state should be property of a per-cmd carrier instead */
-	n_pstate &= ~n_PS_ARGLIST_MASK;
-
 	if(n_str_trim_ifs(&line, TRU1)->l == 0){
 		line.s[0] = '\0';
 		flags |= a_IS_EMPTY;
-		cdp = mx_cmd_get_default();
 		gecp->gec_hist_flags = a_GO_HIST_NONE;
 		goto jexec;
 	}
@@ -392,26 +393,9 @@ jrestart:
 	line.l -= c;
 	line.s = cp;
 
-	/* It may be a(ny other) modifier.  NOTE: changing modifiers must be reflected in cmd_is_valid_name() */
+	/* It may be a(ny other) modifier.  NOTE: changing modifiers must be reflected in cmd_is_valid_name() {{{ */
 	switch(c){
 	default:
-		break;
-	case sizeof("global") -1:
-	/*case sizeof("ignerr") -1:*/
-		if(!su_cs_cmp_case(word, "ignerr")){
-			flags |= a_IGNERR;
-			goto jrestart;
-		}
-		if(!su_cs_cmp_case(word, "global")){ /* (2nd because rarer) */
-			flags |= a_GLOBAL;
-			goto jrestart;
-		}
-		break;
-	case sizeof("local") -1:
-		if(!su_cs_cmp_case(word, "local")){
-			flags |= a_LOCAL;
-			goto jrestart;
-		}
 		break;
 	case sizeof("u") -1:
 		if(*word == 'u' || *word == 'U'){
@@ -423,23 +407,66 @@ jrestart:
 		if(*word == ':')
 			flags |= a_NOALIAS;
 		break;
+	case sizeof("pp") -1:
+		if(!su_cs_cmp_case(word, "pp")){
+			if(!(flags & a__SCOPE_MASK)){
+				ccp = N_("`pp' command modifier senseless without scope");
+				goto jeopnotsupp;
+			}
+			scope_pp = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
+			flags &= ~a__SCOPE_MASK;
+			goto jrestart;
+		}
+		break;
+	case sizeof("our") -1:
+		if(!su_cs_cmp_case(word, "our")){
+			flags &= ~a__SCOPE_MASK;
+			flags |= a_SCOPE_OUR;
+			goto jrestart;
+		}
+		break;
 	case sizeof("eval") -1:
 	/*case sizeof("vput") -1:*/
-	/*case sizeof("wysh") -1:*/
+	/*case sizeof("wysh") -1: v15-compat*/
 		if(!su_cs_cmp_case(word, "eval")){
 			++eval_cnt;
 			goto jrestart;
 		}
 		if(!su_cs_cmp_case(word, "vput")){
 			flags |= a_VPUT;
+			scope_vput = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
+			flags &= ~a__SCOPE_MASK;
 			goto jrestart;
 		}
-		if(!su_cs_cmp_case(word, "wysh")){
+		if(!su_cs_cmp_case(word, "wysh")){/* v15-compat */
 			flags |= a_WYSH;
 			goto jrestart;
 		}
 		break;
-	}
+	case sizeof("local") -1:
+		if(!su_cs_cmp_case(word, "local")){
+			flags &= ~a__SCOPE_MASK;
+			flags |= a_SCOPE_LOCAL;
+			goto jrestart;
+		}
+		break;
+	case sizeof("global") -1:
+	/*case sizeof("ignerr") -1:*/
+		if(!su_cs_cmp_case(word, "global")){
+			flags &= ~a__SCOPE_MASK;
+			flags |= a_SCOPE_GLOBAL;
+			goto jrestart;
+		}
+		if(!su_cs_cmp_case(word, "ignerr")){
+			flags |= a_IGNERR;
+			goto jrestart;
+		}
+		break;
+	} /* }}} */
+
+	/* Per-cmd scope; keep those flags for later "hot" tests */
+	if(flags & a__SCOPE_MASK)
+		scope_cmd = (flags & a__SCOPE_MASK) >> a__SCOPE_SHIFT;
 
 	/* We need to trim for a possible history entry, but do it anyway and insert a space for argument separation in
 	 * case of alias expansion.  Also, do terminate again because nothing prevents aliases from introducing WS */
@@ -451,7 +478,12 @@ jrestart:
 	 * TODO In v15 the history entry will be deduced from the argument vector,
 	 * TODO possibly modified by the command itself, i.e., from the cmd_ctx
 	 * TODO structure which is passed along.  And only if we have to do it */
-	if((gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)) == a_GO_HIST_ADD){
+	if((gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)) == a_GO_HIST_ADD){ /* {{{ */
+		static char const a_mod[4][6 + 1 +1] = {"", "global ", "our ", "local "};
+		LCTAV(mx_SCOPE_GLOBAL == 1);
+		LCTAV(mx_SCOPE_OUR == 2);
+		LCTAV(mx_SCOPE_LOCAL == 3);
+
 		if(line.l > 0){
 			s = n_string_creat_auto(&s_b);
 			s = n_string_assign_buf(s, line.s, line.l);
@@ -464,32 +496,45 @@ jrestart:
 
 		if(flags & a_NOALIAS)
 			s = n_string_push_c(s, '\\');
+
 		if(eval_cnt > 0){
 			u32 i;
 
 			for(i = eval_cnt; i-- > 0;)
 				s = n_string_push_buf(s, "eval ", sizeof("eval ") -1);
 		}
+
 		if(flags & a_WYSH)/* v15-compat */
 			s = n_string_push_buf(s, "wysh ", sizeof("wysh ") -1);
+
 		if(flags & a_IGNERR)
 			s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
-		if(flags & a_GLOBAL)
-			s = n_string_push_buf(s, "global ", sizeof("global ") -1);
-		if(flags & a_LOCAL)
-			s = n_string_push_buf(s, "local ", sizeof("local ") -1);
-		if(flags & a_VPUT)
+
+		if(*(ccp = a_mod[scope_pp]) != '\0'){
+			s = n_string_push_cp(s, ccp);
+			s = n_string_push_buf(s, "pp ", sizeof("pp ") -1);
+		}
+
+		if(flags & a_VPUT){
+			if(*(ccp = a_mod[scope_vput]) != '\0')
+				s = n_string_push_cp(s, ccp);
 			s = n_string_push_buf(s, "vput ", sizeof("vput ") -1);
+		}
+
+		if(*(ccp = a_mod[scope_cmd]) != '\0')
+			s = n_string_push_cp(s, ccp);
 
 		/* Fixate content! */
 		gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
-	}
+	} /* }}} */
 
-	if(eval_cnt > 0 && mx_cnd_if_exists(NIL) >= FAL0){
+	if(eval_cnt > 0 && !(flags & a_IS_SKIP)){
 		/* $(()) may set variables, check and set now! */
-		if(flags & a_LOCAL)
-			n_pstate |= n_PS_ARGMOD_LOCAL;
-		if(!mx_cmd_eval(&line, eval_cnt, word)){
+		if(scope_pp != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+			ccp = N_("cannot use scope modifier in this context");
+			goto jeopnotsupp;
+		}
+		if(!mx_cmd_eval(eval_cnt, scope_pp, &line, word)){
 			flags |= a_NO_ERRNO;
 			goto jleave;
 		}
@@ -497,15 +542,14 @@ jrestart:
 		goto jrestart;
 	}
 
-	/* Look up the command; if not found, bitch.  An empty cmd maps to the first command table entry.. */
-	if(*word == '\0'){
+	/* An "empty cmd" maps to the first command table entry (in interactive mode) */
+	if(UNLIKELY(*word == '\0')){
 		flags |= a_IS_EMPTY;
-		cdp = mx_cmd_get_default();
 		goto jexec;
 	}
 
 	/* Can we expand an alias from what we have? */
-	if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){
+	if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){ /* {{{ */
 		char const *alias_exp;
 		u8 expcnt;
 
@@ -544,7 +588,7 @@ jrestart:
 			line.l = i;
 			goto jrestart;
 		}
-	}
+	} /* }}} */
 
 	if((cdp = mx_cmd_by_name_firstfit(word)) == NIL){
 		boole isskip;
@@ -567,13 +611,15 @@ jrestart:
 	}
 
 jexec:
-	/* The default command is not executed in a macro or when sourcing, when having expanded an alias etc.  To be
-	 * able to deal with ";reply;~." we need to perform the shell expansion anyway, however */
-	if(UNLIKELY(flags & a_IS_EMPTY) &&
-			((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) || alias_name != NIL))
-		goto jwhite;
+	/* The default command is not executed in a macro or when sourcing, when having expanded an alias etc.
+	 * To be able to deal with ";reply;~." we need to perform the shell expansion anyway, however (see there) */
+	if(UNLIKELY(flags & a_IS_EMPTY)){
+		cdp = mx_cmd_get_default();
+		if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) || alias_name != NIL)
+			goto jwhite;
+	}
 
-	/* See if we should execute the command -- a conditional is always executed, otherwise check state of cond. */
+	/* Whether to execute the command -- a conditional is always executed, otherwise check state of cond {{{ */
 	if(cdp->cd_caflags & mx_CMD_ARG_F){
 		/* This may change the IS_SKIP status, and therefore whether shell evaluation happens on arguments, we
 		 * may not do so for an `elif' that will be a whiteout, even if we are going currently */
@@ -587,6 +633,8 @@ jexec:
 jwhite:
 		gecp->gec_hist_flags = a_GO_HIST_NONE;
 
+		s = n_string_creat_auto(&s_b);
+
 		switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
 		case mx_CMD_ARG_TYPE_WYRA:{
 				char const *v15compat;
@@ -599,12 +647,12 @@ jwhite:
 		case mx_CMD_ARG_TYPE_NDMLIST:
 		case mx_CMD_ARG_TYPE_WYSH:
 		case mx_CMD_ARG_TYPE_ARG:{
-			emsg = line.s;
-			for(s = n_string_creat_auto(&s_b);;){
+			for(;;){
 				u32 shs;
 
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_DRYRUN |
-						n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE), s, &line, NIL);
+						n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE),
+						mx_SCOPE_NONE, s, &line, NIL);
 				if(line.l == 0)
 					break;
 				if(shs & n_SHEXP_STATE_META_SEMICOLON){
@@ -619,8 +667,14 @@ jwhite:
 		case mx_CMD_ARG_TYPE_RAWLIST:
 			break;
 		}
+
+		/* Back to defcmd problem: we cannot truly tell bogus with an (dryrun) `eval' on the line, either */
+		if(UNLIKELY((flags & a_IS_EMPTY) && s->s_len != 0 && eval_cnt == 0)){
+			ccp = N_("default command (with arguments) unsupported here and now");
+			goto jeopnotsupp;
+		}
 		goto jret0;
-	}
+	} /* }}} */
 
 	if(s != NIL && gecp->gec_hist_flags != a_GO_HIST_NONE){
 		s = n_string_push_cp(s, cdp->cd_name);
@@ -632,65 +686,63 @@ jwhite:
 	nerrn = su_ERR_INVAL;
 
 	/* Process the arguments to the command, depending on the type it expects */
-	UNINIT(emsg, NIL);
+	UNINIT(ccp, NIL);
 
+	/* Verify flag / state {{{ */
 	if(UNLIKELY(!(n_psonce & n_PSO_STARTED))){
 		if((cdp->cd_caflags & mx_CMD_ARG_SC) && !(n_psonce & n_PSO_STARTED_CONFIG)){
-			emsg = N_("%s: cannot be used during startup (pre -X)\n");
-			goto jeflags;
+			ccp = N_("cannot be used during startup (pre -X)");
+			goto jeopnotsupp;
 		}
 		if(cdp->cd_caflags & mx_CMD_ARG_S){
-			emsg = N_("%s: cannot be used during startup\n");
-			goto jeflags;
+			ccp = N_("cannot be used during startup");
+			goto jeopnotsupp;
 		}
 	}
 	if(cdp->cd_caflags & mx_CMD_ARG_R){
 		if(n_pstate & n_PS_COMPOSE_MODE){
 			/* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
-			emsg = N_("%s: compose mode can be entered once only\n");
-			goto jeflags;
+			ccp = N_("compose mode can be entered once only");
+			goto jeopnotsupp;
 		}
 		/* TODO Nothing should prevent mx_CMD_ARG_R in conjunction with
 		 * TODO n_PS_ROBOT; see a.._may_yield_control()! */
 		if((n_pstate & n_PS_ROBOT) && !mx_go_may_yield_control()){
-			emsg = N_("%s: cannot be used in this program state\n");
-			goto jeflags;
+			ccp = N_("cannot be used in this program state");
+			goto jeopnotsupp;
 		}
 	}
 	if(!(cdp->cd_caflags & mx_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
-		emsg = N_("%s: cannot be used in a hook running in a child process\n");
-		goto jeflags;
+		ccp = N_("cannot be used in a hook running in a child process");
+		goto jeopnotsupp;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_NO_HOOK) && (n_pstate & n_PS_HOOK_MASK)){
-		emsg = N_("%s: cannot be used within an event hook\n");
-		goto jeflags;
+		ccp = N_("cannot be used within an event hook");
+		goto jeopnotsupp;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG)){
-		emsg = N_("%s: can only be used in batch or interactive mode\n");
-		goto jeflags;
+		ccp = N_("can only be used in interactive or batch mode");
+		goto jeopnotsupp;
 	}
 	if(!(cdp->cd_caflags & mx_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
-		emsg = N_("%s: cannot be used while sending\n");
-		goto jeflags;
+		ccp = N_("cannot be used while sending");
+		goto jeopnotsupp;
 	}
-
+	/* */
 	if((cdp->cd_caflags & mx_CMD_ARG_A) && mb.mb_type == MB_VOID){
-		emsg = N_("%s: needs an active mailbox\n");
-		goto jeflags;
+		ccp = N_("needs an active mailbox");
+		goto jeopnotsupp;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_NEEDMAC) && ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO)){
-		emsg = N_("%s: can only be used in a macro\n");
-		goto jeflags;
+		ccp = N_("can only be used in a macro");
+		goto jeopnotsupp;
 	}
 	if((cdp->cd_caflags & mx_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
-		emsg = N_("%s: cannot be used in read-only mailbox\n");
-jeflags:
-		n_err(V_(emsg), cdp->cd_name);
-		nerrn = su_ERR_OPNOTSUPP;
-		goto jleave;
+		ccp = N_("cannot be used in read-only mailbox");
+		goto jeopnotsupp;
 	}
-
-	if((cdp->cd_caflags & mx_CMD_ARG_O) &&/* XXX Remove! -> within cmd! */ !su_state_has(su_STATE_REPRODUCIBLE)){
+	if(UNLIKELY(cdp->cd_caflags & mx_CMD_ARG_OBS) &&/* XXX Remove! -> within cmd! */
+			!su_state_has(su_STATE_REPRODUCIBLE)){
 		if(UNLIKELY(a_go_obsol == NIL)){
 			a_go_obsol = su_cs_dict_set_threshold(su_cs_dict_create(&a_go__obsol,
 						(su_CS_DICT_HEAD_RESORT | su_CS_DICT_ERR_PASS), NIL), 2);
@@ -703,7 +755,7 @@ jeflags:
 		}
 	}
 
-	if(flags & a_WYSH){
+	if(flags & a_WYSH){ /* v15-cpmpat */
 		switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
 		case mx_CMD_ARG_TYPE_MSGLIST:
 		case mx_CMD_ARG_TYPE_NDMLIST:
@@ -713,89 +765,99 @@ jeflags:
 			flags ^= a_WYSH;
 			/* FALLTHRU */
 		case mx_CMD_ARG_TYPE_WYRA:
-			n_pstate |= n_PS_ARGMOD_WYSH;
 			break;
 		case mx_CMD_ARG_TYPE_RAWDAT:
 		case mx_CMD_ARG_TYPE_STRING:
 		case mx_CMD_ARG_TYPE_RAWLIST:
-			n_err(_("%s: wysh: command modifier not supported\n"), cdp->cd_name);
-			goto jleave;
+			ccp = N_("`wysh' command modifier not supported");
+			goto jeopnotsupp;
 		}
 	}
+	/* }}}*/
 
-	if(flags & a_LOCAL){
-		/* `local' is always allowed if `vput' is! */
-		if(!(flags & a_VPUT) && !(cdp->cd_caflags & mx_CMD_ARG_L)){
-			emsg = N_("%s: command modifier `local' not supported\n");
-			goto jeflags; /* above */
-		}
-		if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO && !(cdp->cd_caflags & mx_CMD_ARG_L_NOMAC)){
-			emsg = N_("%s: cannot use `local' modifier in this context\n");
-			goto jeflags; /* above */
-		}
-		flags |= a_WYSH;
-		n_pstate |= n_PS_ARGMOD_LOCAL | n_PS_ARGMOD_WYSH;
-	}
+	/* Check cmd scope support {{{ */
+	if(flags & a__SCOPE_MASK){
+		boole const notmac = ((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO);
 
-	if(flags & a_VPUT){
-		if(cdp->cd_caflags & mx_CMD_ARG_V){
-			emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
-			vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
-						n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
-						n_SHEXP_PARSE_META_KEEP), &emsg);
-			line.l -= P2UZ(emsg - line.s);
-			line.s = UNCONST(char*,emsg);
-			if(emsg == NIL)
-				emsg = N_("could not parse input token");
-			else if(!n_shexp_is_valid_varname(vput, FAL0))
-				emsg = N_("not a valid variable name");
-			else if(!n_var_is_user_writable(vput))
-				emsg = N_("either not a user writable, or a boolean variable");
-			else
-				emsg = NIL;
-			if(emsg != NIL){
-				n_err("%s: %s: vput: %s: %s\n",
-					n_ERROR, cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
-				nerrn = su_ERR_NOTSUP;
-				rv = -1;
-				goto jleave;
+		flags |= a_WYSH; /* Imply this XXX v15-compat */
+		if(scope_cmd == mx_SCOPE_LOCAL){
+			if(!(cdp->cd_caflags & mx_CMD_ARG_L)){
+				ccp = N_("command modifier `local' not supported");
+				goto jeopnotsupp;
 			}
-			n_pstate |= n_PS_ARGMOD_VPUT;
+			if(notmac && !(cdp->cd_caflags & mx_CMD_ARG_L_NOMAC)){
+				ccp = N_("cannot use `local' modifier in this context");
+				goto jeopnotsupp;
+			}
+		}else if(scope_cmd == mx_SCOPE_OUR){
+			if(!(cdp->cd_caflags & mx_CMD_ARG_O)){
+				ccp = N_("command modifier `our' not supported");
+				goto jeopnotsupp;
+			}
+			if(notmac){
+				ccp = N_("cannot use `our' modifier in this context");
+				goto jeopnotsupp;
+			}
 		}else{
-			n_err(_("%s: %s: vput: command modifier not supported\n"), n_ERROR, cdp->cd_name);
-			mx_cmd_print_synopsis(cdp, NIL);
-			nerrn = su_ERR_NOTSUP;
-			rv = -1;
-			goto jleave;
+			if(!(cdp->cd_caflags & mx_CMD_ARG_G)){
+				ccp = N_("command modifier `global' not supported");
+				goto jeopnotsupp;
+			}
+			if(notmac){
+				ccp = N_("cannot use `global' modifier in this context");
+				goto jeopnotsupp;
+			}
 		}
 	}
 
-	if(flags & a_GLOBAL){
-		if(!(cdp->cd_caflags & mx_CMD_ARG_G)){
-			emsg = N_("%s: command modifier `global' not supported\n");
-			goto jeflags; /* above */
-		}
-		if((a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
-			emsg = N_("%s: cannot use `global' modifier in this context\n");
-			goto jeflags; /* above */
-		}
-		/* In conjunction with vput local refers to the vput variable */
-		if((flags & (a_LOCAL | a_VPUT)) == a_LOCAL){ /* local known to be ok */
-			emsg = N_("%s: `global' and `local' are mutual exclusive\n");
-			goto jeflags; /* above */
-		}
-		n_pstate |= n_PS_ARGMOD_GLOBAL; /* (only new commands use this) */
+	/* We may have done that already, but now we really have to */
+	if((scope_pp | scope_vput) != mx_SCOPE_NONE && (a_go_ctx->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
+		ccp = N_("cannot use pp/vput scope modifiers in this context");
+		goto jeopnotsupp;
 	}
+	/* }}} */
+
+	if(flags & a_VPUT){ /* {{{ */
+		if(UNLIKELY(!(cdp->cd_caflags & mx_CMD_ARG_V))){
+			ccp = N_("vput: command modifier not supported");
+			rv = -1;
+			goto jeopnotsupp;
+		}
+
+		ccp = line.s;
+		vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+					n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_SEMICOLON |
+					n_SHEXP_PARSE_META_KEEP), scope_pp, &ccp);
+		cp = UNCONST(char*,ccp);
+		if(ccp == NIL)
+			ccp = N_("vput: could not parse input token");
+		else if(!n_shexp_is_valid_varname(vput, FAL0))
+			ccp = N_("vput: not a valid variable name");
+		else if(!n_var_is_user_writable(vput))
+			ccp = N_("vput: either not a user writable, or a boolean variable");
+		else
+			ccp = NIL;
+		if(ccp != NIL){
+			rv = -1;
+			goto jeopnotsupp;
+		}
+		line.l -= P2UZ(cp - line.s);
+		line.s = cp;
+	} /* }}} */
 
 	if(n_poption & n_PO_D_VV)
 		n_err(_("COMMAND <%s> %s\n"), cdp->cd_name, line.s);
 
+	/* Process arguments / command {{{ */
+	/* TODO v15: strip FUZZ off, -> cmd_ctx! */
+	n_pstate &= ~n_PS_GABBY_FUZZ;
 	switch(cdp->cd_caflags & mx_CMD_ARG_TYPE_MASK){
 	case mx_CMD_ARG_TYPE_MSGLIST:
 		/* Message list defaulting to nearest forward legal message */
 		if(n_msgvec == NIL)
 			goto jmsglist_err;
-		if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, ((flags & a_IS_SKIP) != 0), NIL)) < 0){
+		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0), line.s, n_msgvec, cdp->cd_mflags_o_minargs,
+				NIL)) < 0){
 			nerrn = su_ERR_NOMSG;
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
@@ -838,7 +900,8 @@ jmsglist_go:
 		/* Message list with no defaults, but no error if none exist */
 		if(n_msgvec == NIL)
 			goto jmsglist_err;
-		if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_mflags_o_minargs, ((flags & a_IS_SKIP) != 0), NIL)) < 0){
+		if((c = n_getmsglist(scope_pp, ((flags & a_IS_SKIP) != 0),line.s, n_msgvec, cdp->cd_mflags_o_minargs,
+				NIL)) < 0){
 			nerrn = su_ERR_NOMSG;
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
@@ -886,8 +949,7 @@ jmsglist_go:
 					flags |= a_WYSH;
 			}
 
-			if((c = (flags & a_WYSH) ? 1 : 0))
-				n_pstate |= n_PS_ARGMOD_WYSH;
+			c = ((flags & a_WYSH) != 0);
 			if(0){
 	case mx_CMD_ARG_TYPE_RAWLIST:
 				c = 0;
@@ -898,8 +960,8 @@ jmsglist_go:
 		if(flags & a_VPUT)
 			*argvp++ = vput;
 
-		if((c = getrawlist((c != 0), ((flags & a_IS_SKIP) != 0), argvp, (n_MAXARGC - ((flags & a_VPUT) != 0)),
-					line.s, line.l)) < 0){
+		if((c = getrawlist(scope_pp, (c != 0), ((flags & a_IS_SKIP) != 0), argvp,
+				(n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
 			n_err(_("%s: invalid argument list\n"), cdp->cd_name);
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
@@ -913,12 +975,6 @@ jmsglist_go:
 				S(u32,cdp->cd_mmask_o_maxargs));
 			mx_cmd_print_synopsis(cdp, NIL);
 			flags |= a_NO_ERRNO;
-			break;
-		}
-
-		/* : no-effect is special */
-		if(cdp->cd_func == R(int(*)(void*),-1)){
-			rv = 0;
 			break;
 		}
 
@@ -943,17 +999,24 @@ jmsglist_go:
 		cac.cac_inlen = line.l;
 		cac.cac_msgflag = cdp->cd_mflags_o_minargs;
 		cac.cac_msgmask = cdp->cd_mmask_o_maxargs;
-		if(!mx_cmd_arg_parse(&cac, ((flags & a_IS_SKIP) != 0))){
+		if(!mx_cmd_arg_parse(&cac, scope_pp, ((flags & a_IS_SKIP) != 0))){
 			flags |= a_NO_ERRNO | a_IS_GABBY_FUZZ;
 			break;
 		}
 		if(n_pstate & n_PS_GABBY_FUZZ)
 			flags |= a_IS_GABBY_FUZZ;
 
-		if(flags & a_LOCAL)
-			cac.cac_cm_local = TRU1;
+		/* : no-effect is special */
+		if(cdp->cd_func == R(int(*)(void*),-1)){
+			rv = 0;
+			break;
+		}
+
 		if(flags & a_VPUT)
 			cac.cac_vput = vput;
+		cac.cac_scope = scope_cmd;
+		cac.cac_scope_vput = scope_vput;
+		cac.cac_scope_pp = scope_pp;
 
 		if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & mx_CMD_ARG_EM)) /* XXX */
 			su_err_set(su_ERR_NONE);
@@ -970,7 +1033,7 @@ jmsglist_go:
 		nerrn = su_ERR_NOTOBACCO;
 		nexn = 1;
 		goto jret0;
-	}
+	} /* }}} */
 
 	if(gecp->gec_hist_flags & a_GO_HIST_ADD){
 		if(cdp->cd_caflags & mx_CMD_ARG_NO_HISTORY)
@@ -1005,7 +1068,7 @@ jleave:
 		if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
 			n_exit_status = su_EX_OK;
 		n_pstate &= ~n_PS_ERR_EXIT_MASK;
-	}else if(rv != 0){
+	}else if(UNLIKELY(rv != 0)){
 		if(ok_blook(errexit))
 			n_pstate |= n_PS_ERR_QUIT;
 		else if(ok_blook(posix)){
@@ -1042,6 +1105,16 @@ jret:
 
 	NYD_OU;
 	return (rv == 0);
+
+jeopnotsupp:
+	n_err("%s%s%s: %s%s%s\n", n_ERROR, (cdp != NIL ? ": " : su_empty), (cdp != NIL ? cdp->cd_name : su_empty),
+		V_(ccp), (*line.s != '\0' ? ": " : su_empty),
+		(*line.s != '\0' ? n_shexp_quote_cp(line.s, FAL0) : su_empty));
+	if(cdp != NIL)
+		mx_cmd_print_synopsis(cdp, NIL);
+	nerrn = su_ERR_OPNOTSUPP;
+	ASSERT(rv == 1 || rv == -1);
+	goto jleave;
 } /* }}} */
 
 static void
@@ -2235,8 +2308,8 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **line
 	n_pstate |= n_PS_ROBOT;
 	rv = a_go_event_loop(gcp, gif);
 
-	/* Shall this (aka its parent!) enter a `xcall' stack avoidance optimization (loop) after being teared down?
-	 * This goes in line with code from c_xcall() */
+	/* Shall this (aka its parent!) enter a `xcall' stack avoidance (tail call) optimization (loop) after being
+	 * teared down?  This goes in line with code from c_xcall() */
 	if((a_go_ctx->gc_flags & (a_GO_XCALL_LOOP | a_GO_XCALL_SEEN)) == a_GO_XCALL_SEEN){
 		for(;;){
 			void *lopts;
@@ -2253,8 +2326,6 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **line
 
 			if(!(a_go_ctx->gc_flags & a_GO_XCALL_SEEN))
 				break;
-			if(a_go_ctx->gc_flags & a_GO_XCALL_SEEN_LOCAL)
-				n_pstate |= n_PS_ARGMOD_LOCAL;
 			a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
 			a_go_ctx->gc_flags &= ~(a_GO_XCALL_LOOP_ERROR | a_GO_XCALL_SEEN);
 
@@ -2524,15 +2595,11 @@ c_xcall(void *vp){
 
 		/* xxx this gc_outer!=NIL should be redundant! assert it? */
 		if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NIL){
-			boole islocal;
+			enum mx_scope scope;
 			uz i;
 			struct a_go_ctx *my, *outer;
 
-			/* xxx It is an ugly optimization, but for now worth the effort.
-			 * xxx `xcall' should become hollow when we have loops etc. ???
-			 * xxx Anyhow, save away the name of the current level, and of course
-			 * xxx its `localopts', to be used by deeper levels of recursion.
-			 * xxx Setup is a bit weird and shared in between c_xcall() and
+			/* xxx xxx Setup is a bit weird and shared in between c_xcall() and
 			 * xxx go_macro(), which will enter the `xcall' loop soon */
 			gcp->gc_flags |= a_GO_XCALL_SEEN;
 
@@ -2543,15 +2610,23 @@ c_xcall(void *vp){
 				su_mem_bag_auto_relax_create(outer->gc_data.gdc_membag);
 
 			outer->gc_flags |= a_GO_XCALL_SEEN;
-			mx_xcall_exchange(my->gc_finalize_arg, &outer->gc_xcall_lopts, &islocal);
-			if(islocal || (n_pstate & n_PS_ARGMOD_LOCAL))
-				outer->gc_flags |= a_GO_XCALL_SEEN_LOCAL;
+			mx_xcall_exchange(my->gc_finalize_arg, &outer->gc_xcall_lopts, &scope);
 			i = su_cs_len(my->gc_name) +1;
 			outer->gc_xcall_callee = su_MEM_BAG_AUTO_ALLOCATE(outer->gc_data.gdc_membag, sizeof(char), i,
 					su_MEM_BAG_ALLOC_MUSTFAIL);
 			su_mem_copy(outer->gc_xcall_callee, my->gc_name, i);
-			outer->gc_xcall_cacp = mx_cmd_arg_save_to_bag(vp, outer->gc_data.gdc_membag);
+			/* C99 */{
+				struct mx_cmd_arg_ctx *cacp;
 
+				cacp = vp;
+				if(scope < cacp->cac_scope)
+					scope = cacp->cac_scope;
+				outer->gc_xcall_cacp = cacp = mx_cmd_arg_save_to_bag(cacp, outer->gc_data.gdc_membag);
+				/* our senseless for xcall, warp to local (manual!) */
+				if(scope == mx_SCOPE_OUR)
+					scope = mx_SCOPE_LOCAL;
+				cacp->cac_scope = scope;
+			}
 			rv = 0;
 		}else{
 			/* This mostly means we are being invoked from the outermost aka first
@@ -2609,7 +2684,7 @@ c_quit(void *vp){
 }
 
 int
-c_readctl(void *vp){
+c_readctl(void *vp){ /* {{{ */
 	/* TODO We would need OnForkEvent and then simply remove some internal
 	 * TODO management; we do not have this, therefore we need global
 	 * TODO n_readctl_read_overlay to be accessible via =NIL, and to make that
@@ -2841,7 +2916,7 @@ jshow:
 	}
 	f = a_NONE;
 	goto jleave;
-}
+} /* }}} */
 
 #include "su/code-ou.h"
 #undef su_FILE

@@ -31,6 +31,7 @@
 #include <su/sort.h>
 
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/sigs.h"
@@ -49,7 +50,7 @@ static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 
 /* c_read(), c_readsh() */
 static int a_cmisc_read(void *vp, boole atifs);
-static boole a_cmisc_read_set(char const *cp, char const *value, boole local);
+static boole a_cmisc_read_set(char const *cp, char const *value, enum mx_scope scope);
 
 /* c_version() */
 static sz a_cmisc_version_cmp(void const *s1, void const *s2);
@@ -103,29 +104,27 @@ static int
 a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
 	struct n_string s_b, *s;
 	int rv;
-	boole cm_local, doerr;
-	char const **argv, *varname, **ap, *cp;
+	char const *cp;
+	struct mx_cmd_arg *cap;
+	boole doerr;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD2_IN;
 
-	argv = vp;
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 	s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
+	cacp = vp;
 	doerr = (fp == n_stderr);
 
-	for(ap = argv; *ap != NIL; ++ap){
-		if(ap != argv)
+	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		if(cap != cacp->cac_arg)
 			s = n_string_push_c(s, ' ');
-		/* TODO -t/-T en/disable if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)
-		 *   cp = *ap;*/
-		cp = *ap;
-		s = n_string_push_cp(s, cp);
+		/* TODO -t/-T en/disable if((cp = fexpand(*ap, FEXP_NVAR)) == NIL)*/
+		s = n_string_push_buf(s, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l);
 	}
 	if(donl)
 		s = n_string_push_c(s, '\n');
 	cp = n_string_cp(s);
 
-	if(varname == NIL){
+	if(cacp->cac_vput == NIL){
 		s32 e;
 
 		e = su_ERR_NONE;
@@ -140,7 +139,7 @@ a_cmisc_echo(void *vp, FILE *fp, boole donl){/* TODO -t=enable FEXP!! */
 			e = su_err_by_errno();
 		rv |= ferror(fp) ? 1 : 0; /* FIXME stupid! */
 		n_pstate_err_no = e;
-	}else if(!n_var_vset(varname, R(up,cp), cm_local)){
+	}else if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		rv = -1;
 	}else{
@@ -158,19 +157,20 @@ a_cmisc_read(void * volatile vp, boole atifs){
 	struct str trim;
 	struct n_string s_b, *s;
 	int rv;
-	char const *ifs, **argv, *cp;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
+	char const *ifs, *cp;
 	char *linebuf;
 	uz linesize, i;
-	boole cm_local;
 	NYD2_IN;
 
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 	s = n_string_creat_auto(&s_b);
 	s = n_string_reserve(s, 64 -1);
 	mx_fs_linepool_aquire(&linebuf, &linesize);
 
 	ifs = atifs ? ok_vlook(ifs) : NIL; /* (ifs has default value) */
-	argv = vp;
+	cacp = vp;
+	cap = cacp->cac_arg;
 
 	n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 	case 0:
@@ -198,7 +198,7 @@ a_cmisc_read(void * volatile vp, boole atifs){
 		trim.s = linebuf;
 		trim.l = rv;
 
-		for(; *argv != NIL; ++argv){
+		for(; cap != NIL; cap = cap->ca_next){
 			if(trim.l == 0 || (atifs && n_str_trim_ifs(&trim, FAL0)->l == 0))
 				break;
 
@@ -213,7 +213,7 @@ a_cmisc_read(void * volatile vp, boole atifs){
 						 *   . The delimiter(s) that follow the field corresponding to last var
 						 *   . The remaining fields and their delimiters, with trailing IFS
 						 *   white space ignored */
-						if(argv[1] == NIL && trim.l - i != 0)
+						if(cap->ca_next == NIL && trim.l - i != 0)
 							goto jitall;
 						s = n_string_assign_buf(s, trim.s, i - 1);
 						trim.s += i;
@@ -233,13 +233,13 @@ jitall:
 jsh_redo:
 				if(n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IFS_VAR |
 							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE),
-						s, &trim, NIL) & n_SHEXP_STATE_STOP)
+						cacp->cac_scope_pp, s, &trim, NIL) & n_SHEXP_STATE_STOP)
 					trim.l = 0;
-				else if(argv[1] == NIL)
+				else if(cap->ca_next == NIL)
 					goto jsh_redo;
 			}
 
-			if(!a_cmisc_read_set(*argv, n_string_cp(s), cm_local)){
+			if(!a_cmisc_read_set(cap->ca_arg.ca_str.s, n_string_cp(s), cacp->cac_scope)){
 				n_pstate_err_no = su_ERR_NOTSUP;
 				rv = -1;
 				break;
@@ -248,8 +248,8 @@ jsh_redo:
 	}
 
 	/* Set the remains to the empty string */
-	for(; *argv != NIL; ++argv)
-		if(!a_cmisc_read_set(*argv, su_empty, cm_local)){
+	for(; cap != NIL; cap = cap->ca_next)
+		if(!a_cmisc_read_set(cap->ca_arg.ca_str.s, su_empty, cacp->cac_scope)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			rv = -1;
 			break;
@@ -265,7 +265,7 @@ jleave:
 }
 
 static boole
-a_cmisc_read_set(char const *cp, char const *value, boole local){
+a_cmisc_read_set(char const *cp, char const *value, enum mx_scope scope){
 	boole rv;
 	NYD2_IN;
 
@@ -273,7 +273,7 @@ a_cmisc_read_set(char const *cp, char const *value, boole local){
 		value = N_("not a valid variable name");
 	else if(!n_var_is_user_writable(cp))
 		value = N_("variable is read-only");
-	else if(!n_var_vset(cp, S(up,value), local))
+	else if(!n_var_vset(cp, S(up,value), scope))
 		value = N_("failed to update variable value");
 	else{
 		rv = TRU1;
@@ -303,7 +303,7 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 }
 
 int
-mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
+mx_shell_cmd(char const *cmd, char const *vputvar_or_nil, enum mx_scope scope){
 	struct mx_child_ctx cc;
 	sigset_t mask;
 	int rv;
@@ -315,7 +315,7 @@ mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
 	varres = su_empty;
 	fp = NIL;
 
-	if(varname != NIL && (fp = mx_fs_tmp_open(NIL, "shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+	if(vputvar_or_nil != NIL && (fp = mx_fs_tmp_open(NIL, "shell", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
 		n_pstate_err_no = su_ERR_CANCELED;
 		rv = -1;
 	}else{
@@ -325,7 +325,7 @@ mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
 		cc.cc_mask = &mask;
 		if(fp != NIL)
 			cc.cc_fds[mx_CHILD_FD_OUT] = fileno(fp);
-		mx_child_ctx_set_args_for_sh(&cc, NIL, a_cmisc_bangexp(*argv));
+		mx_child_ctx_set_args_for_sh(&cc, NIL, a_cmisc_bangexp(cmd));
 
 		if(!mx_child_run(&cc) || (rv = cc.cc_exit_status) < su_EX_OK){
 			n_pstate_err_no = cc.cc_error;
@@ -360,8 +360,8 @@ mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
 		mx_fs_close(fp);
 	}
 
-	if(varname != NIL){
-		if(!n_var_vset(varname, R(up,varres), cm_local)){
+	if(vputvar_or_nil != NIL){
+		if(!n_var_vset(vputvar_or_nil, R(up,varres), scope)){
 			n_pstate_err_no = su_ERR_NOTSUP;
 			rv = -1;
 		}
@@ -377,12 +377,11 @@ mx_shell_cmd(char const **argv, char const *varname, boole cm_local){
 int
 c_shell(void *vp){
 	int rv;
-	char const **argv, *varname;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	argv = vp;
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-	rv = mx_shell_cmd(argv, varname, ((n_pstate & n_PS_ARGMOD_LOCAL) != 0));
+	cacp = vp;
+	rv = mx_shell_cmd(cacp->cac_arg->ca_arg.ca_str.s, cacp->cac_vput, cacp->cac_scope_vput);
 
 	NYD_OU;
 	return rv;
@@ -416,13 +415,11 @@ int
 c_cwd(void *vp){
 	struct n_string s_b, *s;
 	uz l;
-	boole cm_local;
-	char const *varname;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
 	s = n_string_creat_auto(&s_b);
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *S(char const**,vp) : NIL;
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
+	cacp = vp;
 	l = PATH_MAX;
 
 	for(;; l += PATH_MAX){
@@ -439,8 +436,8 @@ c_cwd(void *vp){
 			break;
 		}
 
-		if(varname != NIL){
-			if(!n_var_vset(varname, R(up,s->s_dat), cm_local))
+		if(cacp->cac_vput != NIL){
+			if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput))
 				vp = NIL;
 		}else{
 			l = su_cs_len(s->s_dat);
@@ -549,7 +546,7 @@ c_readall(void *vp){ /* TODO 64-bit retval */
 	char *linebuf;
 	uz linesize;
 	int rv;
-	char const **argv;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD2_IN;
 
 	s = n_string_creat_auto(&s_b);
@@ -557,7 +554,7 @@ c_readall(void *vp){ /* TODO 64-bit retval */
 
 	linesize = 0;
 	linebuf = NIL;
-	argv = vp;
+	cacp = vp;
 
 	n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 	case 0:
@@ -604,7 +601,7 @@ c_readall(void *vp){ /* TODO 64-bit retval */
 		}
 	}
 
-	if(!a_cmisc_read_set(argv[0], n_string_cp(s), ((n_pstate & n_PS_ARGMOD_LOCAL) != 0))){
+	if(!a_cmisc_read_set(cacp->cac_arg->ca_arg.ca_str.s, n_string_cp(s), cacp->cac_scope)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		rv = -1;
 		goto jleave;
@@ -626,6 +623,7 @@ c_version(void *vp){
 	struct utsname ut;
 	struct n_string s_b, *s;
 	int rv;
+	struct mx_cmd_arg_ctx *cacp;
 	char *iop;
 	char const *cp, **arr;
 	uz i, lnlen, j;
@@ -690,17 +688,16 @@ c_version(void *vp){
 	/* Done */
 	cp = n_string_cp(s);
 
-	if(n_pstate & n_PS_ARGMOD_VPUT){
-		if(n_var_vset(*(char const**)vp, R(up,cp), ((n_pstate & n_PS_ARGMOD_LOCAL) != 0)))
-			rv = 0;
-		else
-			rv = -1;
-	}else{
+	cacp = vp;
+
+	if(cacp->cac_vput != NIL)
+		rv = n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput) ? su_EX_OK : -1;
+	else{
 		if(fputs(cp, n_stdout) != EOF)
-			rv = 0;
+			rv = su_EX_OK;
 		else{
 			clearerr(n_stdout);
-			rv = 1;
+			rv = su_EX_ERR;
 		}
 	}
 
