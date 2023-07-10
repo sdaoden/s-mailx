@@ -42,81 +42,64 @@ struct su_avopt;
  * Any printable ASCII (7-bit) character except hyphen-minus \c{-} may be used
  * as a short option.
  * }\li{
- * This implementation always differentiates in between
- * \r{su_AVOPT_STATE_ERR_OPT} and \r{su_AVOPT_STATE_ERR_ARG} errors.
- * A leading colon \c{:} in the short option definition string is thus treated
- * as a normal argument (at any other position it would be mistreated as an
- * argument indicator for the preceding option).
+ * It is always differentiated in between \r{su_AVOPT_STATE_ERR_OPT} and \r{su_AVOPT_STATE_ERR_ARG} errors.
+ * A leading colon \c{:} in the short option definition string is thus treated as a normal argument
+ * (at any other position it would be mistreated as an argument indicator for the preceding option).
  *
  * For example \c{::ab:c} defines an option \c{:} that takes an argument,
  * an option \c{a} that does not, \c{b} which does, and \c{c} which does not.
- * A user could use it for example like \c{-cabHello -: World}
- * or \c{-a -c -b Hello -:World}.
+ * A user could use it like for example \c{-cabHello -: World} or \c{-a -c -b Hello -:World}.
  * }\li{
  * Long options are supported.
- * They may consist of any printable ASCII (7-bit) character except
- * colon \c{:} (indicating the option has an argument),
- * equal-sign \c{=} (separates an option from its argument),
- * and semicolon \c{;} (definition separator).
+ * They may consist of any printable ASCII (7-bit) character except colon \c{:} (indicating a needed argument),
+ * equal-sign \c{=} (separates an option from its argument), and semicolon \c{;} (definition separator).
  *
- * Long options need to be identified, either via a short option equivalence
- * mapping, or a unique identifier, a (negative) 32-bit decimal value.
+ * Long options need to be identified, either via a short option equivalence mapping,
+ * or a unique identifier, a (negative) 32-bit decimal value.
  * The identifier is placed after a semicolon \c{;} separator,
- * after the possible \c{:} which indicates an argument requirement,
- * it is what is returned by \r{su_avopt_parse()} and
- * \r{su_avopt_parse_line()}, and what is stored in
- * \r{su_avopt::avo_current_opt}.
+ * after the possible \c{:} which indicates an argument requirement;
+ * it is what is returned by \r{su_avopt_parse()} and \r{su_avopt_parse_line()},
+ * and what is stored in \r{su_avopt::avo_current_opt}.
  *
  * For example \c{name:;n} defines an option \c{name} that takes an argument,
  * and maps to the short option \c{n}, whether that is itself defined or not.
- * (However, debug enabled code will check that an existing \c{n} would also
- * take an argument.)
- * A user could use it like \c{--name=Jonah} or \c{--name Jonah}, and it would
- * always appear as if \c{-n Jonah} (aka \c{-nJonah}) had been used.
- * And \c{long-help;-99} defines an option \c{long-help} without argument and
- * the identifier \c{-99}.
+ * (However, debug enabled code will check that an existing \c{n} would also take an argument.)
+ * A user could use it like \c{--name=Jonah} or \c{--name Jonah},
+ * and it would always appear as if \c{-n Jonah} (aka \c{-nJonah}) had been used.
+ * And \c{long-help;-99} defines an option \c{long-help} without argument and the identifier \c{-99}.
  * }\li{
- * Documentation strings can optionally be appended to long option definitions
- * after another \c{;} separator that follows the identifier.
+ * Documentation strings can optionally be appended to long option definitions after another \c{;} separator that
+ * follows the identifier.
  * These documentation strings may be dumped via \r{su_avopt_dump_doc()}.
  *
- * For example \c{account:;a;Activate the given account name} defines an option
- * \c{account} that takes an argument, maps to the short option \c{a}, and has
- * a documentation string, whereas \c{follow-symlinks;-3;Follow symbolic links}
- * defines an option \c{follow-symlinks} with identifier \c{-3} and has the
- * documentation string \c{Follow symbolic links}.
+ * For example \c{account:;a;Activate the given account name} defines an option \c{account} that takes an argument,
+ * maps to the short option \c{a}, and has a documentation string, whereas \c{follow-symlinks;-3;Follow symbolic links}
+ * defines an option \c{follow-symlinks} with identifier \c{-3} and the documentation string \c{Follow symbolic links}.
  * }\li{
- * When parsing an argument vector via \r{su_avopt_parse()} an option (not
- * argument) double hyphen-minus \c{--} stops argument processing, anything
- * that follows is no longer recognized as an option.
- * The function still returns \r{su_AVOPT_STATE_DONE} then, but
- * \r{su_avopt::avo_current_opt} contains \r{su_AVOPT_STATE_STOP} in this case.
+ * When parsing an argument vector via \r{su_avopt_parse()} an option (not argument) double hyphen-minus \c{--} stops
+ * argument processing, anything that follows is no longer recognized as an option.
+ * The function still returns \r{su_AVOPT_STATE_DONE} then, but \r{su_avopt::avo_current_opt} contains
+ * \r{su_AVOPT_STATE_STOP} in this case.
  *
- * If \c{--} is not given processing is stopped at the first non-option or if
- * the argument list is exhausted, whatever comes first.
+ * If \c{--} is not given processing is stopped at the first non-option or if the argument list is exhausted, whatever
+ * comes first.
  *
- * An option (not argument) single hyphen-minus \c{-} is also not recognized as
- * an option, but also stops processing.
- * The difference is that \c{--} is consumed from the argument list, whereas
- * \c{-} is not and remains in \r{su_avopt::avo_argv}.
+ * An option (not argument) single hyphen-minus \c{-} is also not recognized as an option, but also stops processing.
+ * The difference is that \c{--} is consumed from the argument list, whereas \c{-} is not and remains in
+ * \r{su_avopt::avo_argv}.
  * }\li{
  * Error messages are not logged.
- * Instead, the format strings \r{su_avopt_fmt_err_arg} and
- * \r{su_avopt_fmt_err_opt} can be used with an argument of
+ * Instead, the format strings \r{su_avopt_fmt_err_arg} and \r{su_avopt_fmt_err_opt} can be used with an argument of
  * \r{su_avopt::avo_current_err_opt} whenever an error is generated.
  * }\li{
- * There is a \r{su_avopt_parse_line()} interface that realizes a simple
- * configuration file syntax which mirrors long command line options to
- * per-line directives.
+ * There is a \r{su_avopt_parse_line()} interface that realizes a simple configuration file syntax which mirrors long
+ * command line options to per-line directives.
  *
- * For example, the long option \c{account} which can be specified as
- * \c{--account myself} or \c{--account=myself} on the command line is then
- * expected on a line on its own as \c{account myself} or \c{account=myself}.
+ * For example, the long option \c{account}, which can be specified as \c{--account myself} or \c{--account=myself} on
+ * the command line, is then expected on a line on its own as \c{account myself} or \c{account=myself}.
  * }\li{
- * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} content of short and long
- * option strings are checked for notational errors.
- * If long options are used which map to existing short options, it is verified
- * that the "takes argument" state is identical.
+ * With \r{su_HAVE_DEBUG} and/or \r{su_HAVE_DEVEL} of short and long option strings are checked for notational errors.
+ * If long options map to existing short options, it is verified their "takes argument" state is identical.
  * }}
  *
  * \cb{
