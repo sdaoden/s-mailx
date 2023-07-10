@@ -35,6 +35,7 @@
 #include <su/path.h>
 
 #include "mx/attachments.h"
+#include "mx/cmd.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/iconv.h"
@@ -444,17 +445,23 @@ jleave:
 static char const *
 a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 	struct str sin;
+	struct mx_cmd_arg ca;
+	struct mx_cmd_arg_ctx cac;
 	struct n_string s_b, *s;
 	boole b;
-	char const *rv, *a[2];
+	char const *rv;
 	NYD2_IN;
 	UNUSED(mcp);
 
+	STRUCT_ZERO(struct mx_cmd_arg_ctx, &cac);
+	STRUCT_ZERO(struct mx_cmd_arg, &ca);
+	cac.cac_arg = &ca;
+	cac.cac_no = 1;
 	rv = NIL;
 
 	/* May be called from _opt_r(), for example */
 	if(avop->avo_current_opt != 'S' || ok_vlook(v15_compat) == NIL){
-		a[0] = avop->avo_current_arg;
+		ca.ca_arg.ca_str.l = su_cs_len(ca.ca_arg.ca_str.s = UNCONST(char*,avop->avo_current_arg));
 		s = NIL;
 	}else{
 		BITENUM_IS(u32,n_shexp_state) shs;
@@ -463,19 +470,20 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 		s = n_string_creat_auto(&s_b);
 		sin.s = UNCONST(char*,avop->avo_current_arg);
 		sin.l = UZ_MAX;
-		shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY |
-				n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NIL);
+		shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY |
+				n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DSQ),
+				mx_SCOPE_NONE, s, &sin, NIL);
 		if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
 			su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 			goto je_S;
 		}
-		a[0] = n_string_cp_const(s);
+		ca.ca_arg.ca_str.l = s->s_len;
+		ca.ca_arg.ca_str.s = n_string_cp(s);
 	}
 
-	a[1] = NIL;
 	n_poption |= n_PO_S_FLAG_TEMPORARY;
 	n_pstate |= n_PS_ROBOT;
-	b = (c_set(a) == su_EX_OK);
+	b = (c_set(&cac) == su_EX_OK);
 	n_pstate &= ~n_PS_ROBOT;
 	n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 

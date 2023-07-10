@@ -90,14 +90,12 @@ CTA(((S(u32,a_CSOP_CMD__MAX | a_CSOP_ERR__MAX) << a_CSOP__FSHIFT) & ~a_CSOP__FCM
 struct a_csop_ctx{
 	u32 csc_flags;
 	u8 csc_cmderr; /* On input, a_csop_cmd, on output (maybe) a_csop_err */
-	boole csc_cm_local; /* `local' command modifier */
-	u8 csc__pad[2];
-	char const **csc_argv;
+	u8 csc__pad[3];
 	char const *csc_cmd_name;
-	char const *csc_varname; /* `vput' command modifier */
 	char const *csc_varres;
 	char const *csc_arg; /* The current arg (_ERR: which caused failure) */
 	s64 csc_lhv;
+	char const *csc_argv[4];
 	char csc_iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
 };
 
@@ -300,16 +298,26 @@ c_csop(void *vp){
 	char const *cp;
 	u32 f;
 	uz i, j;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	DVLDBG( su_mem_set(&csc, 0xAA, sizeof csc); )
+	STRUCT_ZERO(struct a_csop_ctx, &csc);
+	cacp = vp;
 	csc.csc_flags = a_CSOP_ERR;
 	csc.csc_cmderr = a_CSOP_ERR_SUBCMD;
-	csc.csc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-	csc.csc_argv = S(char const**,vp);
-	csc.csc_varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *csc.csc_argv++ : NIL;
-	csc.csc_arg = csc.csc_cmd_name = *csc.csc_argv++;
 	csc.csc_varres = su_empty;
+	/* C99 */{
+		struct mx_cmd_arg *cap;
+
+		cap = cacp->cac_arg;
+		csc.csc_arg = csc.csc_cmd_name = cap->ca_arg.ca_str.s;
+
+		for(i = 0; (cap = cap->ca_next) != NIL;){
+			if(i >= NELEM(csc.csc_argv))
+				goto jesyno;
+			csc.csc_argv[i++] = cap->ca_arg.ca_str.s;
+		}
+	}
 
 	if((cp = su_cs_find_c(csc.csc_cmd_name, '?')) != NIL){
 		j = P2UZ(cp - csc.csc_cmd_name);
@@ -368,6 +376,7 @@ c_csop(void *vp){
 		ASSERT(0);
 		break;
 	case a_CSOP_ERR_SYNOPSIS:
+jesyno:
 		mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("csop"), NIL);
 		n_pstate_err_no = su_ERR_INVAL;
 		goto jenum;
@@ -414,21 +423,21 @@ jestr:
 		}
 	}
 
-	if(csc.csc_varname == NIL){
+	if(cacp->cac_vput == NIL){
 		/* If there was no error and we are printing a numeric result, print some
 		 * more bases for the fun of it */
 		if(csc.csc_varres != NIL && fprintf(n_stdout, "%s\n", csc.csc_varres) < 0){
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_CSOP_ERR;
 		}
-	}else if(!n_var_vset(csc.csc_varname, S(up,csc.csc_varres), csc.csc_cm_local)){
+	}else if(!n_var_vset(cacp->cac_vput, S(up,csc.csc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_CSOP_ERR;
 	}
 
 jleave:
 	NYD_OU;
-	return (f & a_CSOP_ERR) ? 1 : 0;
+	return (f & a_CSOP_ERR) ? su_EX_ERR : su_EX_OK;
 }
 
 #include "su/code-ou.h"

@@ -1166,7 +1166,7 @@ jquick:
 
 		if(!ign){
 			bp = su_ienc_s64(buf, val, 10);
-			n_var_vset(nums_top->sav_var, S(up,bp), ((n_pstate & n_PS_ARGMOD_LOCAL) != 0));
+			n_var_vset(nums_top->sav_var, S(up,bp), self->sac_cookie);
 		}
 
 		/* And restore the stack value again for postfix operators */

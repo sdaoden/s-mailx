@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/time.h>
 
 #include "mx/attachments.h"
@@ -83,18 +84,18 @@ static void a_crese_rt_swap_in(struct header *hp, struct mx_name *the_rt);
 static void a_crese_make_ref_and_cs(struct message *mp, struct header *head);
 
 /* `reply' and `Lreply' workhorse */
-static int a_crese_list_reply(int *msgvec, enum header_flags hf);
+static int a_crese_list_reply(void *vp, enum header_flags hf);
 
 /* Get PTF to implementation of command c (i.e., take care for *flipr*) */
-static int (*a_crese_reply_or_Reply(char c))(int *, boole);
+SINLINE int (*a_crese_reply_or_Reply(char c))(void*, boole);
 
 /* Reply to a single message.  Extract each name from the message header and
  * send them off to mail1() */
-static int a_crese_reply(int *msgvec, boole recipient_record);
+static int a_crese_reply(void *vp, boole recipient_record);
 
 /* Reply to a series of messages by simply mailing to the senders and not
  * messing around with the To: and Cc: lists as in normal reply */
-static int a_crese_Reply(int *msgvec, boole recipient_record);
+static int a_crese_Reply(void *vp, boole recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
 static int a_crese_fwd(void *vp, boole recipient_record);
@@ -486,28 +487,59 @@ jleave:
 }
 
 static int
-a_crese_list_reply(int *msgvec, enum header_flags hf){
+a_crese_list_reply(void *vp, enum header_flags hf){
+   enum a_flags{
+      a_NONE,
+      a_LOCAL = 1u<<0,
+      a_TICKED_ONCE = 1u<<1,
+
+      a_PERSIST_MASK = a_LOCAL | a_TICKED_ONCE,
+
+      a_REC_IN_CC = 1u<<8,
+      a_MARK_ANSWER = 1u<<9,
+      a_FULLNAMES = 1u<<10
+   };
+
    struct header head;
    struct message *mp;
    char const *cp, *cp2;
-   struct mx_name *rt, *the_rt, *mft, *np;
+   struct mx_name *the_rt, *mft, *np;
    enum gfield gf;
-   boole local;
+   BITENUM_IS(u32,a_flags) flags;
+   int *msgvec;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
-   n_autorec_relax_create();
-
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    n_pstate_err_no = su_ERR_NONE;
-   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
+   cacp = vp;
+   msgvec = cacp->cac_arg->ca_arg.ca_msglist;
+   flags = (cacp->cac_scope == mx_SCOPE_LOCAL) ? a_LOCAL : a_NONE;
+   UNINIT(gf, GSKIN);
 
 jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp, FAL0);
 
-   su_mem_set(&head, 0, sizeof head);
+   /* */
+   if(!(flags & a_LOCAL) || !(flags & a_TICKED_ONCE)){
+      flags &= a_PERSIST_MASK;
+      if(ok_blook(recipients_in_cc))
+         flags |= a_REC_IN_CC;
+      if(ok_blook(markanswered))
+         flags |= a_MARK_ANSWER;
+
+      gf = GSKIN;
+      if(ok_blook(fullnames)){
+         flags |= a_FULLNAMES;
+         gf |= GFULL;
+      }
+   }
+   flags |= a_TICKED_ONCE;
+
+   STRUCT_ZERO(struct header, &head);
    head.h_flags = hf;
    head.h_subject = a_crese_sub_edit(mp, FAL0);
    /* XXX Why did i do it so, no fallback to n_header_senderfield_of()? */
@@ -521,17 +553,17 @@ jwork_msg:
     * if honoured, take precedence over anything else.  We will join the
     * resulting list together if so desired.
     * So if we shall honour R-T: or M-F-T:, then these are our receivers! */
-   rt = a_crese_reply_to(mp, &the_rt);
+   the_rt = a_crese_reply_to(mp, &the_rt);
    mft = a_crese_mail_followup_to(mp);
 
-   if(rt != NIL || mft != NIL){
-      np = cat(rt, mft);
+   if(the_rt != NIL || mft != NIL){
+      np = cat(the_rt, mft);
       if(mft != NIL)
          head.h_mft = n_namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
 
       /* Optionally do not propagate a recipient that originally was in
        * secondary Cc: to the primary To: list */
-      if(ok_blook(recipients_in_cc)){
+      if(flags & a_REC_IN_CC){
          a_crese_polite_rt_mft_move(mp, &head, np);
 
          head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
@@ -558,8 +590,8 @@ jwork_msg:
       cp2 = n_header_senderfield_of(mp);
 
    /* Cc: */
-   np = NULL;
-   if(ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
+   np = NIL;
+   if((flags & a_REC_IN_CC) && (cp = hfield1("to", mp)) != NIL)
       np = lextract(cp, GCC | gf);
    if((cp = hfield1("cc", mp)) != NULL){
       struct mx_name *x;
@@ -576,7 +608,7 @@ jwork_msg:
    np = NULL;
    if(cp2 != NULL)
       np = lextract(cp2, GTO | gf);
-   if(!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL){
+   if(!(flags & a_REC_IN_CC) && (cp = hfield1("to", mp)) != NULL){
       struct mx_name *x;
 
       if((x = lextract(cp, GTO | gf)) != NULL)
@@ -607,7 +639,7 @@ jrecipients_done:
          if(lpnp == R(struct mx_name*,-1)){
             /* Default is TRU1 because if there are still other addresses that
              * seems to be ok, otherwise we fail anyway */
-            if(mx_tty_yesorno(_("List-Post: disallows posting; "
+            if(mx_tty_yesorno(_("List-Post: header disallows posting; "
                   "reply nonetheless"), TRU1))
                lpnp = NIL;
             else{
@@ -627,9 +659,9 @@ jrecipients_done:
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
           * a single address which points to the same domain as List-Post: */
-         if(rt != NIL && rt->n_flink == NIL &&
-               (lpnp == NIL || mx_name_is_same_domain(lpnp, rt)))
-            cp = rt->n_name; /* rt is EACM_STRICT tested */
+         if(the_rt != NIL && the_rt->n_flink == NIL &&
+               (lpnp == NIL || mx_name_is_same_domain(lpnp, the_rt)))
+            cp = the_rt->n_name; /* rt is EACM_STRICT tested */
          else
             cp = (lpnp == NIL) ? NIL : lpnp->n_name;
 
@@ -700,72 +732,66 @@ j_lt_redo:
 
    if(n_mail1((n_MAILSEND_HEADERS_PRINT |
             (hf & HF_RECIPIENT_RECORD ? n_MAILSEND_RECORD_RECIPIENT : 0)),
-         &head, mp, NIL, local) != OKAY){
+         cacp->cac_scope, &head, mp, NIL) != OKAY){
       msgvec = NIL;
       goto jleave;
    }
 
-   if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
+   if((flags & a_MARK_ANSWER) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 
 jskip_to_next:
-
    if(*++msgvec != 0){
-      /* TODO message (error) ring.., less sleep */
-      if(n_psonce & n_PSO_INTERACTIVE){
-         fprintf(n_stdout,
-            _("Waiting a second before proceeding to the next message..\n"));
-         fflush(n_stdout);
-         su_time_msleep(1000, FAL0);
-      }
-      n_autorec_relax_unroll();
-      goto jwork_msg;
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+
+      if(mx_tty_yesorno(NIL, TRU1))
+         goto jwork_msg;
    }
 
 jleave:
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
    NYD2_OU;
    return (msgvec == NIL ? su_EX_ERR : su_EX_OK);
 }
 
-static int
-(*a_crese_reply_or_Reply(char c))(int *, boole){
-   int (*rv)(int*, boole);
+SINLINE int
+(*a_crese_reply_or_Reply(char c))(void*, boole){
+   int (*rv)(void*, boole);
    NYD2_IN;
 
    rv = (ok_blook(flipr) ^ (c == 'R')) ? &a_crese_Reply : &a_crese_reply;
+
    NYD2_OU;
    return rv;
 }
 
 static int
-a_crese_reply(int *msgvec, boole recipient_record){
+a_crese_reply(void *vp, boole recipient_record){
    int rv;
    NYD2_IN;
 
-   rv = a_crese_list_reply(msgvec,
+   rv = a_crese_list_reply(vp,
          HF_CMD_reply | (recipient_record ? HF_RECIPIENT_RECORD : HF_NONE));
+
    NYD2_OU;
    return rv;
 }
 
 static int
-a_crese_Reply(int *msgvec, boole recipient_record){
+a_crese_Reply(void *vp, boole recipient_record){
    struct header head;
-   struct message *mp;
    int *ap;
+   struct message *mp;
    enum gfield gf;
-   boole local;
+   struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 
-   su_mem_set(&head, 0, sizeof head);
-
+   STRUCT_ZERO(struct header, &head);
    n_pstate_err_no = su_ERR_NONE;
-   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
 
+   cacp = vp;
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-
    mp = n_msgmark1;
    ASSERT(mp != NIL);
    head.h_flags = HF_CMD_Reply;
@@ -777,7 +803,7 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
    head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
-   for(ap = msgvec; *ap != 0; ++ap){
+   for(ap = cacp->cac_arg->ca_arg.ca_msglist; *ap != 0; ++ap){
       struct mx_name *np, *the_rt;
 
       mp = &message[*ap - 1];
@@ -807,8 +833,9 @@ a_crese_Reply(int *msgvec, boole recipient_record){
    head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
    if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
-            n_MAILSEND_HEADERS_PRINT), &head, mp, NIL, local) != OKAY){
-      msgvec = NIL;
+            n_MAILSEND_HEADERS_PRINT), cacp->cac_scope,
+            &head, mp, NIL) != OKAY){
+      ap = NIL;
       goto jleave;
    }
 
@@ -817,30 +844,42 @@ a_crese_Reply(int *msgvec, boole recipient_record){
 
 jleave:
    NYD2_OU;
-   return (msgvec == NIL ? su_EX_ERR : su_EX_OK);
+   return (ap == NIL ? su_EX_ERR : su_EX_OK);
 }
 
 static int
 a_crese_fwd(void *vp, boole recipient_record){
+   enum a_flags{
+      a_NONE,
+      a_LOCAL = 1u<<0,
+      a_TICKED_ONCE = 1u<<1,
+
+      a_PERSIST_MASK = a_LOCAL | a_TICKED_ONCE,
+
+      a_AS_ATTACHMENT = 1u<<8,
+      a_ADD_CC = 1u<<9,
+      a_FULLNAMES = 1u<<10
+   };
+
    struct header head;
    struct message *mp;
-   struct mx_name *recp;
+   struct mx_name *recp_base, *recp;
    enum gfield gf;
-   boole forward_as_attachment;
    int *msgvec, rv;
    struct mx_cmd_arg *cap;
+   BITENUM_IS(u32,a_flags) flags;
    struct mx_cmd_arg_ctx *cacp;
-   boole local;
    NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
-   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-
    cacp = vp;
+   flags = (cacp->cac_scope == mx_SCOPE_LOCAL) ? a_LOCAL : a_NONE;
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
    rv = su_EX_ERR;
+   UNINIT(gf, GSKIN);
+   UNINIT(recp_base, NIL);
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
@@ -852,18 +891,34 @@ a_crese_fwd(void *vp, boole recipient_record){
       goto j_leave;
    }
 
-   forward_as_attachment = ok_blook(forward_as_attachment);
-   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-   recp = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
-
-   n_autorec_relax_create();
-
 jwork_msg:
    mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp, FAL0);
 
-   su_mem_set(&head, 0, sizeof head);
+   /* */
+   if(!(flags & a_LOCAL) || !(flags & a_TICKED_ONCE)){
+      flags &= a_PERSIST_MASK;
+      if(ok_blook(forward_as_attachment))
+         flags |= a_AS_ATTACHMENT;
+      if(ok_blook(forward_add_cc))
+         flags |= a_ADD_CC;
+      gf = GSKIN;
+      if(ok_blook(fullnames)){
+         flags |= a_FULLNAMES;
+         gf |= GFULL;
+      }
+
+      recp_base = lextract(cap->ca_arg.ca_str.s, (GTO | GNOT_A_LIST | gf));
+
+      if(!(flags & a_TICKED_ONCE))
+         su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
+   }
+   flags |= a_TICKED_ONCE;
+
+   recp = ndup(recp_base, (GTO | GNOT_A_LIST | gf));
+
+   STRUCT_ZERO(struct header, &head);
    head.h_flags = HF_CMD_forward;
    head.h_to = ndup(recp, (GTO | gf));
    head.h_subject = a_crese_sub_edit(mp, TRU1);
@@ -874,13 +929,13 @@ jwork_msg:
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
    head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
-   if(forward_as_attachment){
-      head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
+   if(flags & a_AS_ATTACHMENT){
+      head.h_attach = su_AUTO_TCALLOC(struct mx_attachment, 1);
       head.h_attach->a_msgno = *msgvec;
       head.h_attach->a_content_description =
          ok_vlook(content_description_forwarded_message);
 
-      if(head.h_mailx_orig_sender != NIL && ok_blook(forward_add_cc)){
+      if(head.h_mailx_orig_sender != NIL && (flags & a_ADD_CC)){
          gf = GCC | GSKIN;
          if(ok_blook(fullnames))
             gf |= GFULL;
@@ -890,25 +945,22 @@ jwork_msg:
 
    if(n_mail1((n_MAILSEND_IS_FWD |
             (recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
-            n_MAILSEND_HEADERS_PRINT), &head,
-         (forward_as_attachment ? NIL : mp), NIL, local) != OKAY)
+            n_MAILSEND_HEADERS_PRINT),
+            cacp->cac_scope, &head,
+         ((flags & a_AS_ATTACHMENT) ? NIL : mp), NIL) != OKAY)
       goto jleave;
 
    if(*++msgvec != 0){
-      /* TODO message (error) ring.., less sleep */
-      if(n_psonce & n_PSO_INTERACTIVE){
-         fprintf(n_stdout,
-            _("Waiting a second before proceeding to the next message..\n"));
-         fflush(n_stdout);
-         su_time_msleep(1000, FAL0);
-      }
-      n_autorec_relax_unroll();
-      goto jwork_msg;
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
+
+      if(mx_tty_yesorno(NIL, TRU1))
+         goto jwork_msg;
    }
 
    rv = su_EX_OK;
 jleave:
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
+
 j_leave:
    NYD2_OU;
    return rv;
@@ -924,10 +976,8 @@ a_crese_resend1(void *vp, boole add_resent){
    int *msgvec, rv, *ip;
    struct mx_cmd_arg *cap;
    struct mx_cmd_arg_ctx *cacp;
-   boole local;
    NYD2_IN;
 
-   local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
    cacp = vp;
    cap = cacp->cac_arg;
    msgvec = cap->ca_arg.ca_msglist;
@@ -973,7 +1023,7 @@ jedar:
          goto jedar;
    }
 
-   n_autorec_relax_create();
+   su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
    for(ip = msgvec; *ip != 0; ++ip){
       struct message *mp;
 
@@ -991,13 +1041,13 @@ jedar:
       head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | GFULL | gf);
       head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | GFULL | gf);
 
-      if(n_resend_msg(mp, urlp, &head, add_resent, local) != OKAY){
+      if(n_resend_msg(cacp->cac_scope, mp, urlp, &head, add_resent) != OKAY){
          /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
       }
-      n_autorec_relax_unroll();
+      su_mem_bag_auto_relax_unroll(su_MEM_BAG_SELF);
    }
-   n_autorec_relax_gut();
+   su_mem_bag_auto_relax_gut(su_MEM_BAG_SELF);
 
    n_pstate_err_no = su_ERR_NONE;
    rv = 0;
@@ -1006,143 +1056,157 @@ jleave:
    return rv;
 }
 
-FL int
+int
 c_reply(void *vp){
    int rv;
    NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('r'))(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_replyall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
    rv = a_crese_reply(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_replysender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
    rv = a_crese_Reply(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Reply(void *vp){
    int rv;
    NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('R'))(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Lreply(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_list_reply(vp, HF_CMD_Lreply | HF_LIST_REPLY);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_followup(void *vp){
    int rv;
    NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('r'))(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_followupall(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
    rv = a_crese_reply(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_followupsender(void *vp){ /* v15-compat */
    int rv;
    NYD_IN;
 
    rv = a_crese_Reply(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Followup(void *vp){
    int rv;
    NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('R'))(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Lfollowup(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_list_reply(vp,
          HF_CMD_Lreply | HF_LIST_REPLY | HF_RECIPIENT_RECORD);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_forward(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_fwd(vp, FAL0);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Forward(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_fwd(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_resend(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_resend1(vp, TRU1);
+
    NYD_OU;
    return rv;
 }
 
-FL int
+int
 c_Resend(void *vp){
    int rv;
    NYD_IN;
 
    rv = a_crese_resend1(vp, FAL0);
+
    NYD_OU;
    return rv;
 }

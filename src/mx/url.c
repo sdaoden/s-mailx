@@ -142,53 +142,47 @@ char *
 
 int
 c_urlcodec(void *vp){
-	uz alen;
-	boole cm_local, ispath;
-	char const **argv, *varname, *varres, *act, *cp;
+	boole ispath;
+	char const *cp;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	argv = vp;
-	varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-	cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-
-	act = *argv;
-	for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
-		;
-	if((ispath = (*act == 'p'))){
-		if(!su_cs_cmp_case_n(++act, "ath", 3))
-			act += 3;
-	}
-	if(act >= cp)
-		goto jesynopsis;
-	alen = P2UZ(cp - act);
-	if(*cp != '\0')
-		++cp;
-
 	n_pstate_err_no = su_ERR_NONE;
+	cacp = vp;
+	cap = cacp->cac_arg;
+	cp = cap->ca_arg.ca_str.s;
+	cap = cap->ca_next;
 
-	if(su_cs_starts_with_case_n("encode", act, alen))
-		varres = mx_url_xenc(cp, ispath);
-	else if(su_cs_starts_with_case_n("decode", act, alen))
-		/* TODO `urlcodec pathdecode': should not decode dirsep!! */
-		varres = mx_url_xdec(cp);
+	if((ispath = (*cp == 'p' || *cp == 'P'))){
+		++cp;
+		if(!su_cs_cmp_case_n(cp, "ath", 3))
+			cp += 3;
+	}
+
+	if(su_cs_starts_with_case("encode", cp))
+		cp = mx_url_xenc(cap->ca_arg.ca_str.s, ispath);
+	else if(su_cs_starts_with_case("decode", cp))
+		/* TODO `urlcodec pathdecode': should not decode dirsep!! (manual!) */
+		cp = mx_url_xdec(cap->ca_arg.ca_str.s);
 	else
 		goto jesynopsis;
 
-	if(varres == NIL){
+	if(cp == NIL){
 		n_pstate_err_no = su_ERR_CANCELED;
-		varres = cp;
 		vp = NIL;
+		cp = cacp->cac_arg->ca_arg.ca_str.s;
 	}
 
-	if(varname != NIL){
-		if(!n_var_vset(varname, R(up,varres), cm_local)){
+	if(cacp->cac_vput != NIL){
+		if(!n_var_vset(cacp->cac_vput, R(up,cp), cacp->cac_scope_vput)){
 			n_pstate_err_no = su_ERR_NOTSUP;
-			cp = NIL;
+			vp = NIL;
 		}
 	}else{
 		struct str in, out;
 
-		in.l = su_cs_len(in.s = UNCONST(char*,varres));
+		in.l = su_cs_len(in.s = UNCONST(char*,cp));
 		mx_makeprint(&in, &out);
 		if(fprintf(n_stdout, "%s\n", out.s) < 0){
 			n_pstate_err_no = su_err_by_errno();
@@ -199,7 +193,8 @@ c_urlcodec(void *vp){
 
 jleave:
 	NYD_OU;
-	return (vp != NIL ? 0 : 1);
+	return (vp != NIL ? su_EX_OK : su_EX_ERR);
+
 jesynopsis:
 	mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("urlcodec"), NIL);
 	n_pstate_err_no = su_ERR_INVAL;

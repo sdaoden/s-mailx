@@ -376,7 +376,8 @@ mx_attachments_append_list(struct mx_attachment *aplist, char const *names){
 		BITENUM_IS(u32,n_shexp_state) shs;
 
 		shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
-				n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY), shoup, &shin, NIL);
+				n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGN_EMPTY), mx_SCOPE_NONE,
+				shoup, &shin, NIL);
 		if(shs & n_SHEXP_STATE_ERR_MASK)
 			break;
 

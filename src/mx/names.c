@@ -47,6 +47,7 @@
 #include <su/mem.h>
 #include <su/sort.h>
 
+#include "mx/cmd.h"
 #include "mx/compat.h"
 #include "mx/go.h"
 #include "mx/iconv.h"
@@ -730,8 +731,9 @@ lextract(char const *line, enum gfield ntype)
       sin.s = UNCONST(char*,line); /* logical */
       sin.l = UZ_MAX;
       shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NULL);
+            n_SHEXP_PARSE_IGN_EMPTY |
+            n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DSQ),
+            mx_SCOPE_NONE, s, &sin, NULL);
       if(!(shs & n_SHEXP_STATE_ERR_MASK) && (shs & n_SHEXP_STATE_STOP)){
          line = cp = n_lofi_alloc(s->s_len +1);
          su_mem_copy(cp, n_string_cp(s), s->s_len +1);
@@ -1281,23 +1283,23 @@ mx_alias_is_valid_name(char const *name){
 int
 c_alternates(void *vp){
    struct n_string s_b, *s;
-   struct n_strlist *slp;
    int rv;
-   boole cm_local;
-   char const **argv, *varname, *key;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
+   cacp = vp;
+   cap = cacp->cac_arg;
 
-   argv = S(char const**,vp);
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
+   if(cacp->cac_no == 0){
+      struct n_strlist *slp;
 
-   if((key = *argv) == NIL){
       slp = NIL;
-      rv = !mx_xy_dump_dict("alternates", a_nm_a8s_dp, &slp, NIL,
-               &a_nm_a8s_dump);
-      if(!rv){
+      rv = mx_xy_dump_dict("alternates", a_nm_a8s_dp, &slp, NIL,
+            &a_nm_a8s_dump) ? su_EX_OK : su_EX_ERR;
+
+      if(rv == su_EX_OK){
          s = n_string_creat_auto(&s_b);
          s = n_string_book(s, 500); /* xxx */
 
@@ -1306,22 +1308,25 @@ c_alternates(void *vp){
                s = n_string_push_c(s, ' ');
             s = n_string_push_buf(s, slp->sl_dat, slp->sl_len);
          }
-         key = n_string_cp(s);
+         n_string_cp(s);
 
-         if(varname != NIL){
-            if(!n_var_vset(varname, R(up,key), cm_local)){
+         if(cacp->cac_vput != NIL){
+            if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
                n_pstate_err_no = su_ERR_NOTSUP;
-               rv = 1;
+               rv = su_EX_ERR;
             }
-         }else if(*key != '\0')
-            rv = !(fprintf(n_stdout, "alternates %s\n", key) >= 0);
+         }else if(*s->s_dat != '\0') /* xxx s->s_len>0 */
+            rv = (fprintf(n_stdout, "alternates %s\n", s->s_dat) >= 0
+                  ) ? su_EX_OK : su_EX_ERR;
          else
-            rv = !(fprintf(n_stdout, _("# no alternates registered\n")) >= 0);
+            rv = (fprintf(n_stdout, _("# no alternates registered\n")) >= 0
+                  ) ? su_EX_OK : su_EX_ERR;
       }
-   }else{
-      if(varname != NULL)
+   }else if(cacp->cac_vput != NIL){ /* XXX cmd_arg parser, subcommand.. */
          n_err(_("alternates: `vput' only supported in \"show\" mode\n"));
-
+         n_pstate_err_no = su_ERR_NOTSUP;
+         rv = su_EX_ERR;
+   }else{
       if(a_nm_a8s_dp == NIL){
          a_nm_a8s_dp = su_cs_dict_set_threshold(
                su_cs_dict_create(&a_nm_a8s__d, a_NM_A8S_FLAGS, NIL),
@@ -1336,24 +1341,23 @@ c_alternates(void *vp){
       else if(ok_blook(posix))
          su_cs_dict_clear_elems(a_nm_a8s_dp);
 
-      for(rv = 0; (key = *argv++) != NIL;){
+      for(rv = su_EX_OK; cap != NIL; cap = cap->ca_next){
          struct mx_name *np;
 
-         if((np = n_extract_single(key, 0)) == NIL ||
+         if((np = n_extract_single(cap->ca_arg.ca_str.s, 0)) == NIL ||
                (np = checkaddrs(np, EACM_STRICT, NIL)) == NIL){
             n_err(_("Invalid `alternates' argument: %s\n"),
-               n_shexp_quote_cp(key, FAL0));
+               n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
             n_pstate_err_no = su_ERR_INVAL;
-            rv = 1;
+            rv = su_EX_ERR;
             continue;
          }
-         key = np->n_name;
 
-         if(su_cs_dict_replace(a_nm_a8s_dp, key, NIL) > 0){
+         if(su_cs_dict_replace(a_nm_a8s_dp, np->n_name, NIL) > 0){
             n_err(_("Failed to create `alternates' storage: %s\n"),
-               n_shexp_quote_cp(key, FAL0));
+               n_shexp_quote_cp(np->n_name, FAL0));
             n_pstate_err_no = su_ERR_INVAL;
-            rv = 1;
+            rv = su_EX_ERR;
          }
       }
    }
@@ -1368,6 +1372,7 @@ c_unalternates(void *vp){
    NYD_IN;
 
    rv = !mx_unxy_dict("alternates", a_nm_a8s_dp, vp);
+
    NYD_OU;
    return rv;
 }

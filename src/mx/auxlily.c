@@ -51,6 +51,7 @@
 #include <su/sort.h>
 
 #include "mx/child.h"
+#include "mx/cmd.h"
 #include "mx/colour.h"
 #include "mx/file-streams.h"
 #include "mx/go.h"
@@ -911,14 +912,18 @@ jclear:
 
 FL boole
 mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
-	char const **argv, *key;
+	struct mx_cmd_arg *cap;
+	struct mx_cmd_arg_ctx *cacp;
 	boole rv;
 	NYD_IN;
 
 	rv = TRU1;
-	key = (argv = vp)[0];
+	cacp = vp;
 
-	do{
+	for(cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
+		char const *key;
+
+		key = cap->ca_arg.ca_str.s;
 		if(key[1] == '\0' && key[0] == '*'){
 			if(dp != NIL)
 				su_cs_dict_clear(dp);
@@ -926,7 +931,7 @@ mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
 			n_err(_("No such `%s': %s\n"), cmdname, n_shexp_quote_cp(key, FAL0));
 			rv = FAL0;
 		}
-	}while((key = *++argv) != NIL);
+	}
 
 	NYD_OU;
 	return rv;

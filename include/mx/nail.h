@@ -288,6 +288,14 @@ PROTO_UNKNOWN = n_PROTO_UNKNOWN,
    n_PROTO_MASK = (1u << 5) - 1
 };
 
+/* In "strictening" privacy (we do eg xy>_GLOBAL)! */
+enum mx_scope{
+	mx_SCOPE_NONE,
+	mx_SCOPE_GLOBAL,
+	mx_SCOPE_OUR,
+	mx_SCOPE_LOCAL
+};
+
 enum sendaction{
    SEND_MBOX, /* no conversion to perform */
    SEND_RFC822, /* no conversion, no From_ line */
@@ -305,8 +313,8 @@ enum sendaction{
 
 enum n_shexp_parse_flags{
    n_SHEXP_PARSE_NONE,
-   /* Don't perform expansions or interpret reverse solidus escape sequences.
-    * Output may be NULL, otherwise the possibly trimmed non-expanded input is
+   /* Do not perform expansions or interpret reverse solidus escape sequences.
+    * Output may be NIL, otherwise the possibly trimmed non-expanded input is
     * used as output (implies _PARSE_META_KEEP) */
    n_SHEXP_PARSE_DRYRUN = 1u<<0,
    n_SHEXP_PARSE_TRUNC = 1u<<1, /* Truncate result storage on entry */
@@ -317,8 +325,13 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_IFS_VAR = 1u<<6, /* IFS is *ifs*, not su_cs_is_blank() */
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
-   n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
-   n_SHEXP_PARSE_IGNORE_COMMENT = 1u<<10, /* # does not start a comment */
+   n_SHEXP_PARSE_IGN_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
+   n_SHEXP_PARSE_IGN_COMMENT = 1u<<10, /* # does not start a comment */
+   n_SHEXP_PARSE_IGN_SUBST_VAR = 1u<<11, /* ${} are skipped not expanded */
+   n_SHEXP_PARSE_IGN_SUBST_ARITH = 1u<<12, /* $(()) is skipped not expanded */
+   /* Skip anything "dangerous" or environment changing, like command
+    * substitation or arithmetic expansions */
+   n_SHEXP_PARSE_IGN_SUBST_ACTIVE = n_SHEXP_PARSE_IGN_SUBST_ARITH,
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
@@ -358,10 +371,10 @@ enum n_shexp_state{
 
    n_SHEXP_STATE_UNICODE = 1u<<2, /* \[Uu] used */
    n_SHEXP_STATE_QUOTE = 1u<<3, /* Any quotes seen */
-   n_SHEXP_STATE_SUB = 1u<<4, /* Any ${/( substitution seen */
+   n_SHEXP_STATE_SUBST = 1u<<4, /* Any ${/( substitution seen */
    n_SHEXP_STATE_CHANGE = 1u<<5, /* Any other expansion/change */
    n_SHEXP_STATE_CHANGE_MASK = n_SHEXP_STATE_UNICODE | n_SHEXP_STATE_QUOTE |
-         n_SHEXP_STATE_SUB | n_SHEXP_STATE_CHANGE,
+         n_SHEXP_STATE_SUBST | n_SHEXP_STATE_CHANGE,
 
    n_SHEXP_STATE_CONTROL = 1u<<10, /* Control characters seen */
    n_SHEXP_STATE_WS_LEAD = 1u<<11, /* _TRIM_{IFS,}SPACE: seen.. */
@@ -383,6 +396,12 @@ enum n_shexp_state{
 
    n_SHEXP_STATE_ERR_MASK = su_BITENUM_MASK(16, 22)
 };
+/* Ignore Unicode error, just keep the normalized \[Uu] */
+#define n_SHEXP_STATE_ERR_ADJUST(X) \
+do{\
+	if(((X) & n_SHEXP_STATE_ERR_MASK) == n_SHEXP_STATE_ERR_UNICODE) \
+      (X) ^= n_SHEXP_STATE_ERR_UNICODE;\
+}while(0)
 
 enum n_str_trim_flags{
    n_STR_TRIM_FRONT = 1u<<0,
@@ -481,13 +500,8 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<12, /* Need $COLUMNS/$LINES update (xxx atomic) */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = su_BITENUM_MASK(13, 17),
-   n_PS_MSGLIST_MASK = su_BITENUM_MASK(17, 17),
-   n_PS_ARGMOD_GLOBAL = 1u<<13, /* "global" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
-   n_PS_GABBY_FUZZ = 1u<<17, /* y history-gabbyness TODO CmdCtx+FINE-GRAINED */
+   n_PS_MSGLIST_MASK = su_BITENUM_MASK(15, 15),
+   n_PS_GABBY_FUZZ = 1u<<15, /* y history-gabbyness TODO CmdCtx+FINE-GRAINED */
 
    /* In the interactive mainloop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be

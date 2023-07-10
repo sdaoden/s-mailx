@@ -178,6 +178,8 @@ a_cmd_cmdinfo(struct mx_cmd_desc const *cdp){
 		rv = n_string_push_cp(rv, _(" | `global'"));
 	if(cdp->cd_caflags & mx_CMD_ARG_L)
 		rv = n_string_push_cp(rv, _(" | `local'"));
+	if(cdp->cd_caflags & mx_CMD_ARG_O)
+		rv = n_string_push_cp(rv, _(" | `our'"));
 	if(cdp->cd_caflags & mx_CMD_ARG_U)
 		rv = n_string_push_cp(rv, _(" | `u'"));
 
@@ -251,9 +253,11 @@ a_cmd_c_list(void *vp){
 		if(n_poption & n_PO_D_V){
 			fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
 			++l;
-			fprintf(fp, " : %s%s\n", ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty), V_(cdp->cd_doc));
+			fprintf(fp, " : %s%s\n", ((cdp->cd_caflags & mx_CMD_ARG_OBS) ? "OBSOLETE: " : su_empty),
+				V_(cdp->cd_doc));
 			++l;
-			fprintf(fp, " : %s\n", (cdp->cd_func != NIL ? a_cmd_cmdinfo(cdp) : _("command is not compiled in")));
+			fprintf(fp, " : %s\n", ((cdp->cd_func != NIL ? a_cmd_cmdinfo(cdp)
+				: _("command is not compiled in"))));
 			++l;
 		}else{
 			uz j;
@@ -321,7 +325,8 @@ a_cmd_c_help(void *vp){
 			fputs(arg, fp);
 			if(su_cs_cmp(arg, cdp->cd_name))
 				fprintf(fp, " (%s)", cdp->cd_name);
-			fprintf(fp, ": %s%s", ((cdp->cd_caflags & mx_CMD_ARG_O) ? "OBSOLETE: " : su_empty), V_(cdp->cd_doc));
+			fprintf(fp, ": %s%s", ((cdp->cd_caflags & mx_CMD_ARG_OBS) ? "OBSOLETE: " : su_empty),
+				V_(cdp->cd_doc));
 			if(n_poption & n_PO_D_V)
 				fprintf(fp, "\n  : %s", a_cmd_cmdinfo(cdp));
 			putc('\n', fp);
@@ -402,7 +407,7 @@ mx_cmd_isolate_name(char const *cmd){
 boole
 mx_cmd_is_valid_name(char const *cmd){
 	/* Mirrors things from go.c */
-	static char const a_prefixes[][8] = {"global", "ignerr", "local", "wysh", "u", "vput"};
+	static char const a_prefixes[][8] = {"eval", "global", "ignerr", "local", "our", "pp", "u", "vput", "wysh"};
 	uz i;
 	NYD2_IN;
 
@@ -472,15 +477,18 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 	NYD2_IN;
 
 	rv = TRU1;
-	name = (cdp_or_nil != NIL) ? cdp_or_nil->cd_name : su_empty;
-	if((doc = mx_cmd_get_brief_doc(cdp_or_nil)) != NIL)
-		doc = V_(doc);
 
-	if(*name != '\0'){
-		if(fp_or_nil == NIL)
-			n_err(_("Synopsis: %s: %s\n"), name, doc);
-		else
-			rv = (fprintf(fp_or_nil, _("Synopsis: %s: %s\n"), name, doc) >= 0);
+	if(!su_state_has(su_STATE_REPRODUCIBLE)){
+		name = (cdp_or_nil != NIL) ? cdp_or_nil->cd_name : su_empty;
+		if((doc = mx_cmd_get_brief_doc(cdp_or_nil)) != NIL)
+			doc = V_(doc);
+
+		if(*name != '\0'){
+			if(fp_or_nil == NIL)
+				n_err(_("Synopsis: %s: %s\n"), name, doc);
+			else
+				rv = (fprintf(fp_or_nil, _("Synopsis: %s: %s\n"), name, doc) >= 0);
+		}
 	}
 
 	NYD2_OU;
@@ -488,19 +496,21 @@ mx_cmd_print_synopsis(struct mx_cmd_desc const *cdp_or_nil, FILE *fp_or_nil){
 }
 
 boole
-mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
+mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_aka_dryrun){
 	enum {a_NONE, a_STOPLOOP = 1u<<0, a_GREEDYJOIN = 1u<<1, a_REDID = 1u<<2};
 
 	struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
+	struct n_string shou, *shoup;
 	struct str shin_orig, shin;
-	u8 f;
-	void const *cookie;
-	uz cad_idx, parsed_args;
+	BITENUM_IS(u32,n_shexp_state) shs;
 	struct mx_cmd_arg_desc const *cadp;
+	uz parsed_args, cad_idx;
+	void const *cookie;
+	u8 f;
+	s32 nerr;
 	NYD_IN;
 
 	ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NIL);
-	ASSERT(cacp->cac_desc->cad_no > 0);
 #if DVLDBGOR(1, 0)
 	/* C99 */{
 		boole opt_seen = FAL0;
@@ -514,6 +524,8 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_NDMSGLIST) ||
 				cad_idx + 1 == cadp->cad_no);
 			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+				cad_idx + 1 == cadp->cad_no);
+			ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_RAW) ||
 				cad_idx + 1 == cadp->cad_no);
 
 			ASSERT(!opt_seen || (cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION));
@@ -544,25 +556,48 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, boole skip_aka_dryrun){
 	}
 #endif /* DVLDBGOR(1,0) */
 
-	n_pstate_err_no = su_ERR_NONE;
+	nerr = su_ERR_NONE;
 	shin.s = UNCONST(char*,cacp->cac_indat);
 	shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
 	shin_orig = shin;
 	cacp->cac_no = 0;
-	cacp->cac_cm_local = FAL0;
+	cacp->cac_scope = cacp->cac_scope_vput = cacp->cac_scope_pp = mx_SCOPE_NONE;
 	cacp->cac_arg = lcap = NIL;
 	cacp->cac_vput = NIL;
 
-	cookie = NIL;
-	parsed_args = 0;
 	f = a_NONE;
+	cookie = NIL;
+	cad_idx = parsed_args = 0;
+	cadp = cacp->cac_desc;
+
+	/* Handle 0 args */
+	if(UNLIKELY(cacp->cac_desc->cad_no == 0)){
+		shoup = n_string_creat_auto(&shou);
+		shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+					(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
+					n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
+				scope, shoup, &shin, NIL);
+		n_SHEXP_STATE_ERR_ADJUST(shs);
+		if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
+			ASSERT(shs & n_SHEXP_STATE_STOP);
+			mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
+			shin.l = 0;
+		}
+
+		if(shoup->s_len > 0){
+			nerr = su_ERR_NOTSUP;
+			goto jerr;
+		}
+		lcap = R(struct mx_cmd_arg*,-1);
+		goto jleave;
+	}
 
 	/* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
 	 * TODO those use getmsglist() and that needs to deal with that situation.
 	 * TODO In the future that should change; see jloop_break TODO below */
-	for(cadp = cacp->cac_desc, cad_idx = 0; /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
+	for(; /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
-		su_mem_set(&ncap, 0, sizeof ncap);
+		STRUCT_ZERO(struct mx_cmd_arg, &ncap);
 		ncap.ca_indat = shin.s;
 		/* >ca_inline once we know */
 		su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0], sizeof ncap.ca_ent_flags);
@@ -571,10 +606,7 @@ jredo:
 
 		switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
 		default:
-		case mx_CMD_ARG_DESC_SHEXP:{
-			struct n_string shou, *shoup;
-			BITENUM_IS(u32,n_shexp_state) shs;
-
+		case mx_CMD_ARG_DESC_SHEXP:
 jshexp_restart:
 			if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
 
@@ -584,7 +616,7 @@ jshexp_restart:
 			shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
 						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
 						n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
-					shoup, &shin,
+					scope, shoup, &shin,
 					(ncap.ca_ent_flags[0] & mx_CMD_ARG_DESC_GREEDY ? &cookie : NIL));
 
 			if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
@@ -593,14 +625,16 @@ jshexp_restart:
 				shin.l = 0;
 			}
 
+			n_SHEXP_STATE_ERR_ADJUST(shs);
+			if(shs & n_SHEXP_STATE_ERR_MASK)
+				goto jerr;
+
 			ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
-			if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) == n_SHEXP_STATE_OUTPUT){
+			if(shs & n_SHEXP_STATE_OUTPUT){
 				ncap.ca_arg.ca_str.s = n_string_cp(shoup);
 				ncap.ca_arg.ca_str.l = shou.s_len;
 			}
 
-			if(shs & n_SHEXP_STATE_ERR_MASK)
-				goto jerr;
 			if((shs & n_SHEXP_STATE_STOP) &&
 					(ncap.ca_ent_flags[0] & (mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP))){
 				if(!(shs & n_SHEXP_STATE_OUTPUT)){
@@ -621,7 +655,8 @@ jshexp_restart:
 				 * We simply treat it as if it was not given at all */
 				goto jshexp_restart;
 			}
-			}break;
+			break;
+
 		case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
 			target_argpp = &target_argp;
 			/* FALLTHRU */
@@ -630,15 +665,16 @@ jshexp_restart:
 			/* TODO _MSGLIST yet at end and greedy only (fast hack).
 			 * TODO And consumes too much memory */
 			ASSERT(shin.s[shin.l] == '\0');
-			if(n_getmsglist(shin.s,
+			n_pstate_err_no = su_ERR_NONE;
+			if(n_getmsglist(scope, skip_aka_dryrun, shin.s,
 					(ncap.ca_arg.ca_msglist = su_AUTO_CALLOC_N(sizeof *ncap.ca_arg.ca_msglist, msgCount +1)),
-					cacp->cac_msgflag, skip_aka_dryrun, target_argpp) < 0){
+					cacp->cac_msgflag, target_argpp) < 0){
+				if(n_pstate_err_no != su_ERR_NONE)
+					nerr = n_pstate_err_no;
 				goto jerr;
 			}
 
 			if(ncap.ca_arg.ca_msglist[0] == 0){
-				u32 e;
-
 				switch(ncap.ca_ent_flags[0] & mx__CMD_ARG_DESC_TYPE_MASK){
 				case mx_CMD_ARG_DESC_MSGLIST_AND_TARGET:
 				case mx_CMD_ARG_DESC_MSGLIST:
@@ -646,10 +682,9 @@ jshexp_restart:
 						if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
 							n_err(_("No applicable messages\n"));
 
-						e = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
-						if(e == su_ERR_NONE)
-							e = su_ERR_NOMSG;
-						n_pstate_err_no = e;
+						nerr = mx_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+						if(nerr == su_ERR_NONE)
+							nerr = su_ERR_NOMSG;
 						goto jerr;
 					}
 					ncap.ca_arg.ca_msglist[1] = 0;
@@ -671,7 +706,7 @@ jshexp_restart:
 					ncap.ca_arg.ca_msglist[1] != 0){
 				if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
 					n_err(_("Cannot specify multiple messages at once\n"));
-				n_pstate_err_no = su_ERR_NOTSUP;
+				nerr = su_ERR_NOTSUP;
 				goto jerr;
 			}
 			shin.l = 0;
@@ -686,6 +721,18 @@ jshexp_restart:
 					n_pstate |= n_PS_GABBY_FUZZ;
 			}
 
+			break;
+
+		case mx_CMD_ARG_DESC_RAW:
+			if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot XXX really, for RAW?? */
+			shoup = n_string_creat_auto(&shou);
+			shoup = n_string_assign_buf(shoup, shin.s, shin.l);
+			shin.s += shin.l;
+			ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
+			ncap.ca_arg_flags = shs = n_SHEXP_STATE_OUTPUT;
+			ncap.ca_arg.ca_str.s = n_string_cp(shoup);
+			ncap.ca_arg.ca_str.l = shoup->s_len;
+			f |= a_STOPLOOP;
 			break;
 		}
 		++parsed_args;
@@ -713,7 +760,7 @@ jshexp_restart:
 				lcap->ca_next = cap;
 			lcap = cap;
 			if(++cacp->cac_no == U32_MAX){
-				n_pstate_err_no = su_ERR_OVERFLOW;
+				nerr = su_ERR_OVERFLOW;
 				goto jerr;
 			}
 
@@ -722,7 +769,7 @@ jshexp_restart:
 				if(cap != NIL){
 					lcap = cap;
 					if(++cacp->cac_no == U32_MAX){
-						n_pstate_err_no = su_ERR_OVERFLOW;
+						nerr = su_ERR_OVERFLOW;
 						goto jerr;
 					}
 				}
@@ -750,39 +797,49 @@ jloop_break:
 		if(!(cadp->cad_ent_flags[cad_idx][0] & mx_CMD_ARG_DESC_OPTION))
 			goto jerr;
 	}else if(!(f & a_STOPLOOP) && shin.l > 0){
-		n_pstate_err_no = su_ERR_2BIG;
+		nerr = su_ERR_2BIG;
 		goto jerr;
 	}
 
-	lcap = (struct mx_cmd_arg*)-1;
+	lcap = R(struct mx_cmd_arg*,-1);
 jleave:
+	n_pstate_err_no = nerr;
+
 	NYD_OU;
 	return (lcap != NIL);
 
 jerr:
 	if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V)){
-		if(n_pstate_err_no != su_ERR_NONE)
-			n_err(_("%s: %s\n"), cadp->cad_name, su_err_doc(n_pstate_err_no));
+		if(nerr != su_ERR_NONE)
+			n_err(_("%s: %s\n"), cadp->cad_name, su_err_doc(nerr));
 		else{
 			uz i;
 
-			for(i = 0; (i < cadp->cad_no && !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i)
-				;
+			for(i = 0; (i < cadp->cad_no && !(cadp->cad_ent_flags[i][0] & mx_CMD_ARG_DESC_OPTION)); ++i){
+			}
 
-			n_err(_("%s: parsing stopped after %" PRIuZ " arguments (need %" PRIuZ "%s)\n"
-					"  Input: %.*s\n"
-					"  Stopped: %.*s\n"),
-				cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? su_empty : "+"),
-				S(int,shin_orig.l), shin_orig.s,
-				S(int,shin.l), shin.s);
+			shoup = n_string_creat_auto(&shou);
+			shoup = n_shexp_quote(shoup, &shin_orig, TRU1);
+			shin_orig.s = n_string_cp(shoup);
+			shin_orig.l = shoup->s_len;
+
+			shoup = n_string_creat_auto(&shou);
+			shoup = n_shexp_quote(shoup, &shin, TRU1);
+			shin.s = n_string_cp(shoup);
+			shin.l = shoup->s_len;
+
+			n_err(_("%s: invalid argument(s), stopped after %" PRIuZ " of %" PRIuZ "%s\n"
+					"  Input was %s, Rest is %s\n"),
+				cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? su_empty : _(" (or more)")),
+				shin_orig.s, shin.s);
 		}
 
 		if(!su_state_has(su_STATE_REPRODUCIBLE))
 			mx_cmd_print_synopsis(mx_cmd_by_name_firstfit(cadp->cad_name), NIL);
 	}
 
-	if(n_pstate_err_no == su_ERR_NONE)
-		n_pstate_err_no = su_ERR_INVAL;
+	if(nerr == su_ERR_NONE)
+		nerr = su_ERR_INVAL;
 
 	lcap = NIL;
 	goto jleave;
@@ -816,7 +873,7 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
 
 	for(ncap = NIL, cap = cacp->cac_arg; cap != NIL; cap = cap->ca_next){
 		vp = buf;
-		DVLDBG( su_mem_set(vp, 0, sizeof *ncap); )
+		DVLDBG( STRUCT_ZERO(struct mx_cmd_arg_ctx, vp); )
 
 		if(ncap == NIL)
 			ncacp->cac_arg = vp;
@@ -845,11 +902,12 @@ mx_cmd_arg_save_to_bag(struct mx_cmd_arg_ctx const *cacp, void *vp){
 }
 
 int
-getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size, char const *line, uz linesize){
+getrawlist(enum mx_scope scope, boole wysh/* v15-cpmpat */, boole skip_aka_dryrun, char **res_dat, uz res_size,
+		char const *line, uz linesize){
 	int res_no;
 	NYD_IN;
 
-	n_pstate &= ~n_PS_MSGLIST_MASK;
+	n_pstate &= ~n_PS_GABBY_FUZZ;
 
 	if(res_size == 0){
 		res_no = -1;
@@ -937,7 +995,7 @@ getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size, char 
 						(cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
 						(skip_aka_dryrun ? n_SHEXP_PARSE_DRYRUN : 0) |
 						/* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
-						n_SHEXP_PARSE_META_SEMICOLON),
+						n_SHEXP_PARSE_META_SEMICOLON), scope,
 						(skip_aka_dryrun ? NIL : &store), &input, &cookie);
 
 				if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
@@ -945,12 +1003,10 @@ getrawlist(boole wysh, boole skip_aka_dryrun, char **res_dat, uz res_size, char 
 					mx_go_input_inject(mx_GO_INPUT_INJECT_COMMIT, input.s, input.l);
 				}
 
+				n_SHEXP_STATE_ERR_ADJUST(shs);
 				if(shs & n_SHEXP_STATE_ERR_MASK){
-					/* Ignore Unicode error, just keep the normalized \[Uu] */
-					if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
-						res_no = -1;
-						break;
-					}
+					res_no = -1;
+					break;
 				}
 
 				if(shs & n_SHEXP_STATE_OUTPUT){
@@ -974,7 +1030,7 @@ jleave:
 }
 
 boole
-mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
+mx_cmd_eval(u32 cnt, enum mx_scope scope, struct str *io, char const *prefix_or_nil){
 	mx_CMD_ARG_DESC_SUBCLASS_DEF(eval, 1, a_cmd_cad_eval){
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
 		 n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
@@ -998,7 +1054,7 @@ mx_cmd_eval(struct str *io, u32 cnt, char const *prefix_or_nil){
 		cac.cac_desc = a_cmd_eval.cd_cadp;
 		cac.cac_indat = io->s;
 		cac.cac_inlen = io->l;
-		if(!mx_cmd_arg_parse(&cac, FAL0))
+		if(!mx_cmd_arg_parse(&cac, scope, FAL0))
 			goto jleave;
 
 		for(i = 0, cap = cac.cac_arg; cap != NIL; cap = cap->ca_next)

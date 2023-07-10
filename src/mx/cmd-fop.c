@@ -74,14 +74,13 @@ struct a_fop_ctx{
 	struct a_fop_subcmd const *fc_subcmd;
 	u32 fc_flags;
 	u8 fc_cmderr; /* On input, a_fop_cmd, on output (maybe) a_fop_err */
-	boole fc_cm_local; /* `local' command modifier */
+	boole fc_vput; /* `vput' active? */
 	u8 fc__pad[2];
-	char const **fc_argv;
-	char const *fc_varname; /* `vput' command modifier */
 	char const *fc_varres;
 	char const *fc_arg; /* The current arg (_ERR: which caused failure) */
 	s64 fc_lhv;
 	s32 fc_estat; /* To be used as `fop' exit status With FOP_USE_ESTAT */
+	char const *fc_argv[4];
 	char fc_iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
 };
 
@@ -381,7 +380,7 @@ jflesyn:
 
 		if(mx_child_run(&cc)){
 			fcp->fc_estat = cc.cc_exit_status;
-			fcp->fc_varres = (fcp->fc_varname == NIL) ? NIL : su_ienc_s32(fcp->fc_iencbuf, fcp->fc_estat, 10);
+			fcp->fc_varres = !fcp->fc_vput ? NIL : su_ienc_s32(fcp->fc_iencbuf, fcp->fc_estat, 10);
 			fcp->fc_flags |= a_FOP_USE_ESTAT;
 		}else{
 			fcp->fc_flags |= a_FOP_ERR;
@@ -576,7 +575,7 @@ jredo:
 
 	if(mx_child_run(&cc)){
 		fcp->fc_estat = cc.cc_exit_status;
-		fcp->fc_varres = (fcp->fc_varname == NIL) ? NIL : su_ienc_s32(fcp->fc_iencbuf, fcp->fc_estat, 10);
+		fcp->fc_varres = !fcp->fc_vput ? NIL : su_ienc_s32(fcp->fc_iencbuf, fcp->fc_estat, 10);
 		fcp->fc_flags |= a_FOP_USE_ESTAT;
 	}else{
 		fcp->fc_flags |= a_FOP_ERR;
@@ -818,16 +817,27 @@ c_fop(void *vp){
 	boole is_l, was_l;
 	uz i, j;
 	u32 f;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	/*DVLDBG(*/ su_mem_set(&fc, 0xAA, sizeof fc); /*)*/
+	STRUCT_ZERO(struct a_fop_ctx, &fc);
+	cacp = vp;
 	fc.fc_flags = a_FOP_ERR;
 	fc.fc_cmderr = a_FOP_ERR_SUBCMD;
-	fc.fc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-	fc.fc_argv = S(char const**,vp);
-	fc.fc_varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *fc.fc_argv++ : NIL;
+	fc.fc_vput = (cacp->cac_vput != NIL);
 	fc.fc_varres = su_empty;
-	fc.fc_arg = *fc.fc_argv++;
+	/* C99 */{
+		struct mx_cmd_arg *cap;
+
+		cap = cacp->cac_arg;
+		fc.fc_arg = cap->ca_arg.ca_str.s;
+
+		for(i = 0; (cap = cap->ca_next) != NIL;){
+			if(i >= NELEM(fc.fc_argv))
+				goto jesyno;
+			fc.fc_argv[i++] = cap->ca_arg.ca_str.s;
+		}
+	}
 
 	f = a_FOP_NONE;
 	j = su_cs_len(fc.fc_arg);
@@ -854,6 +864,7 @@ c_fop(void *vp){
 		ASSERT(0);
 		break;
 	case a_FOP_ERR_SYNOPSIS:
+jesyno:
 		mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("fop"), NIL);
 		n_pstate_err_no = su_ERR_INVAL;
 		goto jestr;
@@ -876,12 +887,12 @@ jestr:
 		break;
 	}
 
-	if(fc.fc_varname == NIL){
+	if(cacp->cac_vput == NIL){
 		if(fc.fc_varres != NIL && fprintf(n_stdout, "%s\n", fc.fc_varres) < 0){
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_FOP_ERR;
 		}
-	}else if(!n_var_vset(fc.fc_varname, R(up,fc.fc_varres), fc.fc_cm_local)){
+	}else if(!n_var_vset(cacp->cac_vput, R(up,fc.fc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_FOP_ERR;
 	}

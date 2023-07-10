@@ -191,8 +191,8 @@ jredo:
 		store = n_string_drop_ownership(store);
 
 		shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-					n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-					n_SHEXP_PARSE_QUOTE_AUTO_DSQ), store, &in, NIL);
+					n_SHEXP_PARSE_IGN_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+					n_SHEXP_PARSE_QUOTE_AUTO_DSQ), mx_SCOPE_NONE, store, &in, NIL);
 		if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
 			store = n_string_clear(store);
 			store = n_string_take_ownership(store, out.s, out.l +1, out.l);

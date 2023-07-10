@@ -3103,49 +3103,40 @@ tag(int new)
 
 FL int
 c_imapcodec(void *vp){
-   uz alen;
-   boole cm_local, err;
-   char const **argv, *varname, *varres, *act, *cp;
+   boole err;
+   char const *vres;
+   struct mx_cmd_arg *cap;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
-   argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
-   cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-
-   act = *argv;
-   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
-      ;
-   if(act == cp)
-      goto jesynopsis;
-   alen = P2UZ(cp - act);
-   if(*cp != '\0')
-      ++cp;
-
    n_pstate_err_no = su_ERR_NONE;
-   varres = a_imap_path_normalize(NULL, cp, TRU1);
+   cacp = vp;
+   cap = cacp->cac_arg;
 
-   if(su_cs_starts_with_case_n("encode", act, alen))
-      varres = imap_path_encode(varres, &err);
-   else if(su_cs_starts_with_case_n("decode", act, alen))
-      varres = imap_path_decode(varres, &err);
+   vres = a_imap_path_normalize(NIL, cap->ca_next->ca_arg.ca_str.s, TRU1);
+
+   if(su_cs_starts_with_case("encode", cap->ca_arg.ca_str.s))
+      vres = imap_path_encode(vres, &err);
+   else if(su_cs_starts_with_case("decode", cap->ca_arg.ca_str.s))
+      vres = imap_path_decode(vres, &err);
    else
       goto jesynopsis;
 
    if(err){
       n_pstate_err_no = su_ERR_CANCELED;
-      varres = cp;
-      vp = NULL;
+      vres = cap->ca_next->ca_arg.ca_str.s;
+      vp = NIL;
    }
 
-   if(varname != NIL){
-      if(!n_var_vset(varname, R(up,varres), cm_local)){
+   if(cacp->cac_vput != NIL){
+      if(!n_var_vset(cacp->cac_vput, R(up,vres), cacp->cac_scope_vput)){
          n_pstate_err_no = su_ERR_NOTSUP;
          vp = NIL;
       }
    }else{
       struct str in, out;
 
-      in.l = su_cs_len(in.s = UNCONST(char*,varres));
+      in.l = su_cs_len(in.s = UNCONST(char*,vres));
       mx_makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_by_errno();
@@ -3156,7 +3147,8 @@ c_imapcodec(void *vp){
 
 jleave:
    NYD_OU;
-   return (vp != NIL ? 0 : 1);
+   return (vp != NIL ? su_EX_OK : su_EX_ERR);
+
 jesynopsis:
    mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("imapcodec"), NIL);
    n_pstate_err_no = su_ERR_INVAL;
@@ -4529,7 +4521,8 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       goto jleave;
    }
    ok_bclear(disconnected);
-   n_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL), FAL0);
+   n_var_vset(savecat("disconnected-", url.url_u_h_p.s), R(up,NIL),
+      mx_SCOPE_NONE);
 
    if (mb.mb_type == MB_CACHE) {
       enum fedit_mode fm = FEDIT_NONE;

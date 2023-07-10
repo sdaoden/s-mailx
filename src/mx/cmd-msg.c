@@ -719,14 +719,14 @@ c_pdot(void *vp){
       s = n_string_push_cp(s,
             su_ienc(cbuf, S(u32,*mlp), 10, su_IENC_MODE_NONE));
    }
-
    (void)n_string_cp(s);
+
    if(cacp->cac_vput == NIL){
       if(fprintf(n_stdout, "%s\n", s->s_dat) < 0){
          n_pstate_err_no = su_err_by_errno();
          vp = NIL;
       }
-   }else if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_cm_local)){
+   }else if(!n_var_vset(cacp->cac_vput, R(up,s->s_dat), cacp->cac_scope_vput)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NIL;
    }

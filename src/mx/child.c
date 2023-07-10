@@ -322,7 +322,7 @@ jchild:{
 		environ = env;
 	}
 
-	i = (int)getrawlist(TRU1, FAL0, argv, NELEM(argv) - 4, ccp->cc_cmd,
+	i = (int)getrawlist(mx_SCOPE_NONE, TRU1, FAL0, argv, NELEM(argv) - 4, ccp->cc_cmd,
 			su_cs_len(ccp->cc_cmd));
 	if(i >= 0){
 		if((argv[i++] = UNCONST(char*,ccp->cc_args[0])) != NIL &&
