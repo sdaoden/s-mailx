@@ -149,7 +149,7 @@ static boole        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
                         FILE *fo);
 
 /* Send mail to a bunch of user names.  The interface is through mail() */
-static int a_sendout_sendmail(void *v, enum n_mailsend_flags msf);
+static int a_sendout_sendmail(void *vp, enum n_mailsend_flags msf);
 
 /* Deal with file and pipe addressees */
 static struct mx_name *a_sendout_file_a_pipe(struct mx_name *names, FILE *fo,
@@ -944,20 +944,21 @@ jleave:
 }
 
 static int
-a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
-{
+a_sendout_sendmail(void *vp, enum n_mailsend_flags msf){
    struct header head;
-   char *str = v;
    int rv;
+   struct mx_cmd_arg_ctx *cacp;
    NYD_IN;
 
-   su_mem_set(&head, 0, sizeof head);
+   STRUCT_ZERO(struct header, &head);
    head.h_flags = HF_CMD_mail;
-   if((head.h_to = lextract(str, GTO |
-         (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
+   cacp = vp;
+   if(cacp->cac_no > 0 &&
+         (head.h_to = lextract(cacp->cac_arg->ca_arg.ca_str.s,
+            (GTO | (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN)))) != NIL)
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, head.h_to->n_type);
 
-   rv = n_mail1(msf, &head, NIL, NIL, ((n_pstate & n_PS_ARGMOD_LOCAL) != 0));
+   rv = n_mail1(msf, cacp->cac_scope, &head, NIL, NIL);
 
    NYD_OU;
    return (rv != OKAY); /* reverse! */
@@ -1651,7 +1652,7 @@ a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
        * like this getrawlist will never overflow (and return -1) */
       j = su_cs_len(cp);
       vas = su_LOFI_ALLOC(sizeof(*vas) * j);
-      vas_cnt = S(uz,getrawlist(TRU1, FAL0, vas, j, cp, j));
+      vas_cnt = S(uz,getrawlist(mx_SCOPE_LOCAL, TRU1, FAL0, vas, j, cp, j));
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
@@ -2211,37 +2212,38 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
 
    head.h_attach = attach;
 
-   /* TODO n_exit_status only!!?? */n_mail1(msf, &head, NIL, quotefile, FAL0);
+   /* TODO n_exit_status only!!?? */n_mail1(msf, mx_SCOPE_NONE, &head, NIL,
+      quotefile);
 
    NYD_OU;
    return 0;
 }
 
 FL int
-c_sendmail(void *v)
-{
+c_sendmail(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_sendout_sendmail(v, n_MAILSEND_NONE);
+   rv = a_sendout_sendmail(vp, n_MAILSEND_NONE);
+
    NYD_OU;
    return rv;
 }
 
 FL int
-c_Sendmail(void *v)
-{
+c_Sendmail(void *vp){
    int rv;
    NYD_IN;
 
-   rv = a_sendout_sendmail(v, n_MAILSEND_RECORD_RECIPIENT);
+   rv = a_sendout_sendmail(vp, n_MAILSEND_RECORD_RECIPIENT);
+
    NYD_OU;
    return rv;
 }
 
 FL enum okay
-n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
-   char const *quotefile, boole local)
+n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
+   struct header *hp, struct message *quote, char const *quotefile)
 {
 #ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
@@ -2271,10 +2273,10 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    /* Update some globals we likely need first */
    mx_time_current_update(NIL, TRU1);
 
-   temporary_compose_mode_hook_control(TRU1, local);
+   temporary_compose_mode_hook_control(TRU1, scope);
 
    /* Collect user's mail from standard input.  Get the result as mtf */
-   mtf = n_collect(msf, hp, quote, quotefile, &_sendout_error);
+   mtf = n_collect(msf, scope, hp, quote, quotefile, &_sendout_error);
    if (mtf == NULL)
       goto jleave;
    /* TODO All custom headers should be joined here at latest
@@ -2370,7 +2372,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
       for(any = FAL0, mx_mime_charset_iter_reset(hp->h_charset);;
             any = TRU1, mx_mime_charset_iter_next()){
-         int err;
+         int volatile err;
          boole volatile force;
 
          force = FAL0;
@@ -2453,7 +2455,7 @@ jleave:
          temporary_compose_mode_hook_call(cp);
    }
 
-   temporary_compose_mode_hook_control(FAL0, FAL0);
+   temporary_compose_mode_hook_control(FAL0, mx_SCOPE_NONE);
 
    if(_sendout_error){
       n_psonce |= n_PSO_SEND_ERROR;
@@ -2899,8 +2901,8 @@ mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
 }
 
 FL enum okay
-n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
-   boole add_resent, boole local)
+n_resend_msg(enum mx_scope scope, struct message *mp, struct mx_url *urlp,
+   struct header *hp, boole add_resent)
 {
 #ifdef mx_HAVE_NET
    struct mx_cred_ctx cc;
@@ -2956,7 +2958,7 @@ n_resend_msg(struct message *mp, struct mx_url *urlp, struct header *hp,
       goto jerr_io;
    }
 
-   temporary_compose_mode_hook_control(TRU1, local);
+   temporary_compose_mode_hook_control(TRU1, scope);
 
    /* C99 */{
       char const *cp;
@@ -3042,7 +3044,7 @@ jleave:
          if((cp = ok_vlook(on_resend_cleanup)) != NIL)
             temporary_compose_mode_hook_call(cp);
 
-         temporary_compose_mode_hook_control(FAL0, FAL0);
+         temporary_compose_mode_hook_control(FAL0, mx_SCOPE_NONE);
       }
    }
 

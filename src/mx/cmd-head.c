@@ -1029,7 +1029,7 @@ jerr:
       if(msgCount == 0){
          fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
-      }else if(n_getmsglist(UNCONST(char*,args), msgvec, 0, FAL0, NIL) > 0){
+      }else if(n_getmsglist(mx_SCOPE_NONE, FAL0, UNCONST(char*,args), msgvec, 0, NIL) > 0){
          setdot(&message[msgvec[0] - 1], FAL0);
          msgvec[1] = 0;
          rv = c_headers(msgvec);

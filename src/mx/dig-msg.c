@@ -1713,11 +1713,11 @@ jeinval:
 }
 
 boole
-mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
+mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp, char const *cmd){
 	/* Identical to (subset of) c_digmsg() cmd-tab */
 	mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(dm, "digmsg", 5, pseudo_cad){
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
-			n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE},
+			n_SHEXP_PARSE_IGN_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE},
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP,
 			n_SHEXP_PARSE_TRIM_IFSSPACE}, /* arg1 */
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_HONOUR_STOP,
@@ -1738,7 +1738,7 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
 	cac.cac_inlen = UZ_MAX;
 	cac.cac_msgflag = cac.cac_msgmask = 0;
 
-	if((rv = mx_cmd_arg_parse(&cac, FAL0)))
+	if((rv = mx_cmd_arg_parse(&cac, scope, FAL0)))
 		rv = a_dmsg_cmd(fp, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
 
 	NYD_OU;

@@ -922,7 +922,7 @@ a_msg_scan(struct a_msg_speclex *mslp){
 
    rv = a_MSG_T_EOL;
 
-   /* Empty cap's even for IGNORE_EMPTY (quoted empty tokens produce output) */
+   /* Empty cap's even for IGN_EMPTY (quoted empty tokens produce output) */
    for(;; mslp->msl_cap = mslp->msl_cap->ca_next){
       if(mslp->msl_cap == NULL)
          goto jleave;
@@ -1552,13 +1552,13 @@ touch(struct message *mp){
 }
 
 FL int
-n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
-      struct mx_cmd_arg **capp_or_nil){
+n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun, char const *buf,
+      int *vector, int flags, struct mx_cmd_arg **capp_or_nil){
    int *ip, mc;
    struct message *mp;
    NYD_IN;
 
-   n_pstate &= ~n_PS_MSGLIST_MASK;
+	n_pstate &= ~n_PS_GABBY_FUZZ;
    n_msgmark1 = NIL;
    a_msg_list_last_saw_d = a_msg_list_saw_d;
    a_msg_list_saw_d = FAL0;
@@ -1580,7 +1580,7 @@ n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
          {mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION |
                mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
             n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
-               n_SHEXP_PARSE_IGNORE_EMPTY}
+               n_SHEXP_PARSE_IGN_EMPTY}
       }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
       struct mx_cmd_arg_ctx cac;
 
@@ -1589,7 +1589,7 @@ n_getmsglist(char const *buf, int *vector, int flags, boole skip_aka_dryrun,
       cac.cac_inlen = UZ_MAX;
       cac.cac_msgflag = flags;
       cac.cac_msgmask = 0;
-      if(!mx_cmd_arg_parse(&cac, skip_aka_dryrun)){
+      if(!mx_cmd_arg_parse(&cac, scope, skip_aka_dryrun)){
          mc = -1;
          goto jleave;
       }else if(cac.cac_no == 0){

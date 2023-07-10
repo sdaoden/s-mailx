@@ -2389,8 +2389,8 @@ a_tty_kht(struct a_tty_line *tlp){
 
 				exp = sub;
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
-							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-							n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NIL, &sub, NIL);
+							n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGN_EMPTY |
+							n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), mx_SCOPE_NONE, NIL, &sub, NIL);
 				if(sub.l != 0){
 					uz x;
 
@@ -2410,8 +2410,8 @@ a_tty_kht(struct a_tty_line *tlp){
 				if(exp.l == 0 || (shs & n_SHEXP_STATE_WS_TRAIL))
 					break;
 
-				n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-						n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &exp, NIL);
+				n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGN_EMPTY |
+						n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), mx_SCOPE_NONE, shoup, &exp, NIL);
 				break;
 			}
 
@@ -3619,8 +3619,9 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
 		BITENUM_IS(u32,n_shexp_state) shs;
 
 		shin_save = shin;
-		shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
-					n_SHEXP_PARSE_IFS_IS_COMMA), shoup, &shin, NIL);
+		shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGN_EMPTY |
+					n_SHEXP_PARSE_IGN_SUBST_ACTIVE | n_SHEXP_PARSE_IFS_IS_COMMA), mx_SCOPE_NONE,
+					shoup, &shin, NIL);
 		if(shs & n_SHEXP_STATE_ERR_UNICODE){
 			f |= a_TTY_BIND_DEFUNCT;
 			if(isbindcmd && (n_poption & n_PO_D_V))

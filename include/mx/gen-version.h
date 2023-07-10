@@ -1,5 +1,5 @@
-#define mx_VERSION "v14.9.24"
-#define mx_VERSION_DATE "2022-03-26"
+#define mx_VERSION "v14.9.24-508-g6929720f1a-dirty"
+#define mx_VERSION_DATE "2023-07-15"
 #define mx_VERSION_MAJOR "14"
 #define mx_VERSION_MINOR "9"
 #define mx_VERSION_UPDATE "24"

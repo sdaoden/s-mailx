@@ -1,5 +1,7 @@
 #!/bin/sh -
 #@ See usage() below.
+#@ MUST be edited as LATIN1!
+#@ P.S.: some redundancy cannot be avoided.
 #
 # Public Domain
 
@@ -102,7 +104,7 @@ if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
 
 	export CHECK RUN_TEST MAILX  KEEP_DATA NO_COLOUR
 fi
-# }}}
+#}}}
 
 # Config {{{
 # Instead of figuring out the environment in here, require a configured build system and include that!  Our makefile
@@ -158,10 +160,11 @@ export ARGS NOBATCH_ARGS ADDARG_UNI CONF BODY MBOX ERR MAIL TMPDIR
 
 # When testing mass mail/loops, maximum number of recipients/loops.
 # TODO note we do not gracefully handle ARG_MAX excess yet!
-# Those which use this have checksums for 2001 and 201.  Some use the smaller automatically if +debug
+# Those which use this have checksums for 2001 and 201.  Some use the smaller automatically if +debug.
+# With KEEP_DATA all cases run!
 LOOPS_BIG=2001 LOOPS_SMALL=201
-: ${LOOPS_MAX:=$LOOPS_SMALL}
-# }}}
+: ${LOOPS_MAX:=${LOOPS_SMALL}} ${LOOPS_MAX_OTHER:=${LOOPS_BIG}}
+#}}}
 
 # Setup and exec support {{{
 
@@ -271,7 +274,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
 fi
 
 export UTF8_LOCALE HONOURS_READONLY_NOT
-# }}}
+#}}}
 
 GIT_REPO=
 [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
@@ -568,7 +571,7 @@ jtimeout() {
 		fi
 	done
 }
-# }}}
+#}}}
 
 # add, modulo, color_init, have_feat, echoes, checks, $FILTER_ERR impls {{{
 if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
@@ -845,7 +848,7 @@ ck_it() { # check-empty-$f check-empty-$E0 real-$? . . file cksum [cksum-$EX] {{
 		eval $FILTER_ERR ${tid} "${EX}"
 		ck_it '' '' 0 ${tid}-err - "${EX}" "${es}"
 	fi
-} # }}}
+} #}}}
 
 ck_ex0() {
 	# $1=test name [$2=status]
@@ -904,11 +907,11 @@ filter_err_sani() {
 		${rm} -f "${__f__}.sani"
 	fi
 }
-# }}}
-# }}}
+#}}}
+#}}}
 
 # Absolute Basics {{{
-t_eval() { # {{{
+t_eval() { #{{{
 	t_prolog "${@}"
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
@@ -927,44 +930,44 @@ eval eval eval eval echo "\"'$i'\""
 	cke0 1 0 ./t1 '847277817 33'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_call() { # {{{
+t_call_xcall() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	define one {
-		echo one<$0>: $#: $*
-	}
-	call one
-	call one 1
-	call one 1 2
-	call one 1 2 3
-	define two {
-		echo two<$0>: $#: $*
-		call one "$@"
-	}
-	call two
-	call two a
-	call two a b
-	call two a b c
-	define three {
-		echo three<$0>: $#: $*
-		call two "$@"
-	}
-	call three
-	call three not
-	call three not my
-	call three not my love
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+define one {
+	echo one<$0>: $#: $*
+}
+call one
+call one 1
+call one 1 2
+call one 1 2 3
+define two {
+	echo two<$0>: $#: $*
+	call one "$@"
+}
+call two
+call two a
+call two a b
+call two a b c
+define three {
+	echo three<$0>: $#: $*
+	call two "$@"
+}
+call three
+call three not
+call three not my
+call three not my love
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '59079195 403'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_X_Y_opt_input_go_stack() { # {{{
+t_X_Y_opt_input_go_stack() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -1196,9 +1199,9 @@ t_X_Y_opt_input_go_stack() { # {{{
 	cke0 11 0 ./t11 '2740730424 120'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_more_source_go_stack() { # {{{
+t_more_source_go_stack() { #{{{
 	t_prolog "${@}"
 
 	# (in-account, in-folder-hook impossible in past, but now!)
@@ -1278,9 +1281,9 @@ _EOT
 	cke0 6-1 0 ./t6-1 '3771120403 267'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_X_errexit() { # {{{
+t_X_errexit() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<- '__EOT' > ./t.rc
@@ -1355,9 +1358,9 @@ t_X_errexit() { # {{{
 	ck 14 0 ./t14 '1772040099 3' '515198292 93'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_Y_errexit() { # {{{
+t_Y_errexit() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<- '__EOT' > ./t.rc
@@ -1393,9 +1396,9 @@ t_Y_errexit() { # {{{
 	ck 6 0 ./t6 '3865817952 8' '2734035291 92'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_S_freeze() { # {{{
+t_S_freeze() { #{{{
 	t_prolog "${@}"
 
 	# Test basic assumption
@@ -1474,9 +1477,9 @@ __EOT
 	cke0 7 0 ./t7 '167059161 213'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_f_batch_order() { # {{{
+t_f_batch_order() { #{{{
 	t_prolog "${@}"
 
 	gm sub f-batch-order > ./t.mbox
@@ -1491,9 +1494,9 @@ t_f_batch_order() { # {{{
 	cke0 2 0 ./t2 '1690247457 86'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_input_inject_semicolon_seq() { # {{{
+t_input_inject_semicolon_seq() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -1514,9 +1517,9 @@ t_input_inject_semicolon_seq() { # {{{
 	cke0 1 0 ./t1 '512117110 140'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_wysh() { # {{{
+t_wysh() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -1589,11 +1592,11 @@ e a$'\c@'b c d
 	else
 		< ./t.rc DIET=CURD TIED= \
 		LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > ./tunicode 2>${EX}
-		ck unicode 0 ./tunicode '1126664893 337' '466473069 346'
+		ck unicode 0 ./tunicode '1126664893 337' '1444508169 628'
 	fi
 
 	< ./t.rc DIET=CURD TIED= ${MAILX} ${ARGS} > ./tc 2>${EX}
-	ck c 0 ./tc '3138417346 341' '466473069 346'
+	ck c 0 ./tc '3138417346 341' '1444508169 628'
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t3 2>${E0}
 	set mager='\hey\'
@@ -2537,7 +2540,7 @@ e "<$((0?44/0:99))>"
 e "<$((0?4**-1:99))>"
 e "<$((0?4**-10:99))>"
 	__EOT
-	# }}}
+	#}}}
 	< ./tarith-good.in ${MAILX} ${ARGS} \
 		-Y 'commandalias ca \\commandalias' \
 		-Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
@@ -2670,29 +2673,29 @@ e "<$((1?44/0:99))>"
 e "<$((1?4**-1:99))>"
 e "<$((1?4**-10:99))>"
 	__EOT
-	# }}}
+	#}}}
 
 	< ./tarith-bad.in ${MAILX} ${ARGS} \
 		-Y 'commandalias ca \\commandalias' \
 		-Y 'ca p \\echon' -Y 'ca e \\echo' -Y 'ca s \\set' \
 		> ./tarith-bad 2>${EX}
-	ck arith-bad 0 ./tarith-bad '2499728120 477' '492616127 11391'
+	ck arith-bad 0 ./tarith-bad '2499728120 477' '4230090043 18590'
 
 	</dev/null ${MAILX} ${ARGS} -Y '
-		define x {
-			\local :$((myvar=1+1))
-			\vars myvar
-		}
-		\vars myvar
-		\call x
-		\vars myvar
-	' > ./tarith-local 2>${E0}
+define x {
+	\local pp :$((myvar=1+1))
+	\vars myvar
+}
+\vars myvar
+\call x
+\vars myvar' \
+	> ./tarith-local 2>${E0}
 	cke0 arith-local 0 ./tarith-local '455497105 40'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_commandalias() { # {{{
+t_commandalias() { #{{{
 	t_prolog "${@}"
 
 	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
@@ -2716,9 +2719,9 @@ t_commandalias() { # {{{
 	cke0 1 0 ./t1 '1638809585 36'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_posix_abbrev() { # {{{
+t_posix_abbrev() { #{{{
 	t_prolog "${@}"
 
 	#{{{ In POSIX C181 standard order
@@ -2766,11 +2769,11 @@ t_posix_abbrev() { # {{{
 	cke0 1 0 ./t1 '1012680481 968'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Basics {{{
-t_shcodec() { # {{{
+t_shcodec() { #{{{
 	t_prolog "${@}"
 
 	#{{{ XXX the first needs to be checked, it is quite dumb as such
@@ -2963,9 +2966,9 @@ t_shcodec() { # {{{
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_ifelse() { # {{{
+t_ifelse() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -3064,7 +3067,7 @@ t_ifelse() { # {{{
 	#}}}
 	cke0 easy 0 ./teasy '1243020683 28'
 
-	# {{{
+	#{{{
 	<<- '__EOT' ${MAILX} ${ARGS} > ./tshexpign 2>${E0}
 	commandalias e \\echo
 	set i=0
@@ -4110,9 +4113,182 @@ t_ifelse() { # {{{
 	cke0 fileops 0 ./tfops '571055761 33'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_localopts() { # {{{
+t_call_xcall_scope() { #{{{
+	t_prolog "${@}"
+
+	t__scope_monster > ./tscope.in
+
+	<./tscope.in ${MAILX} ${ARGS} >./tnscope 2>${E0}
+	cke0 nscope 0 ./tnscope '3962150483 819'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=local >./tlocal 2>${E0}
+	cke0 local 0 ./tlocal '191972668 885'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=our >./tour 2>${E0}
+	cke0 our 0 ./tour '3263504530 899'
+
+	# (xxx revealed environ link scope bugs t_environ() did not catch) {{{
+	${cat} << '__EOT' | ${MAILX} ${ARGS} >./tft 2>${E0}
+define 1 {
+	x 1>; eval our $C1 2; x 1<
+}
+define 2 {
+	x 2>; our environ link j; set j=j2 DEAD=d2; x 2=; eval $C2 3; x 2<
+}
+define 3 {
+	# (j remains in env)
+	x 3>; our environ set i=i3 _S_MAILX_TEST=MXT3; local unset j; x 3=; eval $C1 4; x 3<
+}
+define 4 {
+	# (j env link still exists)
+	x 4>; our unset asksub; local set j=j4x toplines=4; our set j=j4; x 4=; eval $C2 5; x 4<
+}
+define 5 {
+	x 5>; our set toplines=5; x 5=; eval local $C1 6; x 5<
+}
+define 6 {
+	x 6>; environ link i toplines; set toplines=6 i=i6 DEAD=d6; x 6=; eval $C2 7; x 6<
+}
+define 7 {
+	x 7>; environ unset j; unset i; x 7=; x 7<
+}
+commandalias x \
+	'eval !printf \"sh i<\$i> j<\$j> D<\$DEAD> MXT<\$_S_MAILX_TEST>\";\
+	echo " / "<$0> i<$i> j<$j> D<$DEAD> as<$asksub> tl<$toplines> MXT<$_S_MAILX_TEST>'
+environ unset i j;se asksub toplines=4 j=j1 _S_MAILX_TEST=mxt1;x
+se C1=call C2=xcall;ec;ec C1=call C2=xcall;call 1;x ==1
+se toplines=8 j=J1 _S_MAILX_TEST=MXT1 C1=xcall C2=call;ec;ec C1=xcall C2=call;call 1;x ==2
+se toplines=10 j=J3 _S_MAILX_TEST=mxt3 C1=call C2=call;ec;ec C1=call C2=call;call 1;x ==3
+se toplines=12 j=J4 _S_MAILX_TEST=MXT4 C1=xcall C2=xcall;ec;ec C1=xcall C2=xcall;call 1;x ==4
+__EOT
+	#}}}
+	cke0 forest 0 ./tft '1917268724 6062'
+
+	t_epilog "${@}"
+} #}}}
+
+t_call_ret() { #{{{
+	t_prolog "${@}"
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+define w1 {
+	echon ">$1 "
+	eval local pp : \$((i = $1 + 1))
+	if $i -le 42
+		local pp : $((j = i & 7))
+		if $j -eq 7; echo .; end
+		call w1 $i
+		local set i=$? k=$!
+		: $((j = i & 7))
+		echon "<$1/$i/$k "
+		if $j -eq 7; echo .; end
+	else
+		echo ! The end for $1
+	end
+	return $1
+}
+# Transport $?/$! up the call chain
+define w2 {
+	echon ">$1 "
+	eval local pp : \$((i = $1 + 1))
+	if $1 -lt 42
+		call w2 $i
+		local set i=$? j=$! k=$^ERRNAME
+		echon "<$1/$i/$k "
+		return $i $j
+	else
+		echo ! The end for $1
+		return $i $^ERR-BUSY
+	end
+	echoerr au
+}
+# Up and down it goes
+define w3 {
+	echon ">$1/$2 "
+	eval local pp : \$((i = $1 + 1))
+	if $1 -lt 42
+		call w3 $i $2
+		local set i=$? j=$!
+		eval local pp : \$((k = $1 - $2))
+		if $k -eq 21
+			eval : \$((i = $1 + 1, j = $2 + 1))
+			echo "# <$i/$j> .. "
+			call w3 $i $j
+			set i=$? j=$!
+		end
+		eval echon "<\$1=\$i/\$^ERRNAME-$j "
+		return $i $j
+	else
+		echo ! The end for $1=$i/$2
+		if -n "$2"
+			return $i $^ERR-DOM
+		else
+			return $i $^ERR-BUSY
+		end
+	end
+	echoerr au
+}
+
+call w1 0; echo ?=$? !=$!; echo -----;
+call w2 0; echo ?=$? !=$^ERRNAME; echo -----;
+call w3 0 1; echo ?=$? !=$^ERRNAME; echo -----;
+__EOT
+	#}}}
+	cke0 1 0 ./t1 '1572045517 5922'
+
+	t_epilog "${@}"
+} #}}}
+
+t_macro_param_shift() { #{{{
+	t_prolog "${@}"
+
+	#{{{
+	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
+	define t2 {
+		echo in: t2
+		echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+		local set ignerr=$1
+		shift
+		echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+		if [ $# > 1 ] || [ $ignerr == '' ]
+			shift 2
+		else
+			ignerr shift 2
+		endif
+		echo t2.2:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+		shift 0
+		echo t2.3:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+		if [ $# > 0 ]
+			shift
+		endif
+		echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	}
+	define t1 {
+		set errexit
+		echo in: t1
+		call t2 1 you get four args
+		echo t1.1: $?';' ignerr ($ignerr) should not exist
+		call t2 1 you get 'three args'
+		echo t1.2: $?';' ignerr ($ignerr) should not exist
+		call t2 1 you 'get two args'
+		echo t1.3: $?';' ignerr ($ignerr) should not exist
+		call t2 1 'you get one arg'
+		echo t1.4: $?';' ignerr ($ignerr) should not exist
+		ignerr call t2 '' 'you get one arg'
+		echo t1.5: $?';' ignerr ($ignerr) should not exist
+	}
+	call t1
+	__EOT
+	#}}}
+	ck 1 0 ./t1 '1402489146 1682' '4015700295 116'
+
+	t_epilog "${@}"
+} #}}}
+
+t_localopts() { # v15-compat {{{
 	t_prolog "${@}"
 
 	#{{{ Nestable conditions test
@@ -4200,215 +4376,151 @@ __EOT
 	cke0 1 0 ./t1 '4016155249 1246'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_local() { # {{{
+t_environ() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-		define du2 {
-			echo du2-1 du=$du
-			local set du=$1
-			echo du2-2 du=$du
-			local unset du
-			echon du2-3\ <$du>\ ; varshow du
-			local set du=$1
-			echo du2-4 du=$du
-			local set nodu
-			echon du2-5\ <$du>\ ; varshow du
-		}
-		define du {
-			local set du=dudu
-			echo du-1 du=$du
-			call du2 du2du2
-			echo du-2 du=$du
-		}
-		define ich {
-			echo ich-1 du=$du
-			call du
-			echo ich-2 du=$du
-		}
-		define wir {
-			set du=wirwir uns=an
-			echo wir-1 du=$du uns=$uns
-			eval $1 call ich
-			echo wir-2 du=$du
-		}
-		echo ------- global-1 du=$du
-		call ich
-		echo ------- global-2 du=$du
-		set du=global
-		call ich
-		unset uns
-		echo ------- global-3 du=$du uns=$uns
-		local call wir local
-		echo ------- global-4 du=$du uns=$uns
-		call wir
-		echo ------- global-5 du=$du uns=$uns
-		__EOT
+	<< '__EOT' EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>${EX}
+se bang
+ec "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+varshow EK1 EK2 EK3 EK4 NEK5
+
+ec environ set EK3 EK4, set NEK5
+environ set EK3=EV3 EK4=EV4
+se NEK5=NEV5
+ec "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!!\!
+varshow EK1 EK2 EK3 EK4 NEK5
+
+ec removing NEK5 EK3
+uns NEK5
+environ unset EK3
+ec "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!!\!
+varshow EK1 EK2 EK3 EK4 NEK5
+
+ec changing EK1, EK4
+se EK1=EV1_CHANGED EK4=EV4_CHANGED
+ec "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!!\!
+varshow EK1 EK2 EK3 EK4 NEK5
+
+ec link games EK4
+environ link EK4
+ec $?/$!/$^ERRNAME
+environ unlink EK4
+ec $?/$!/$^ERRNAME
+se EK4=.EV4
+varshow EK4
+environ lookup EK4
+ec $?/$!/$^ERRNAME
+!!\!
+environ link EK4
+ec $?/$!/$^ERRNAME
+varshow EK4
+environ lookup EK4
+ec $?/$!/$^ERRNAME
+!!\!
+
+ec rechanging EK1, EK4
+set EK1=EV1 EK4=EV4
+echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!!\!
+varshow EK1 EK2 EK3 EK4 NEK5
+
+echo unset all
+unset EK1 EK2 EK4
+echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+!!\!
+varshow EK1 EK2 EK3 EK4 NEK5
+__EOT
 	#}}}
-	cke0 1 0 ./t1 '1814612206 838'
+	ck 1 0 ./t1 '2715218197 1331' '40081036 60'
 
-	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${E0}
-		define z {
-			echo z-1: x=$x y=$y z=$z crt=$crt
-			local set z=1 y=2 crt=10
-			echo z-2: x=$x y=$y z=$z crt=$crt
-		}
-		define y {
-			echo y-1: x=$x y=$y z=$z crt=$crt
-			local set x=2 y=1 crt=5
-			echo y-2: x=$x y=$y z=$z crt=$crt
-			call z
-			echo y-3: x=$x y=$y z=$z crt=$crt
-		}
-		define x {
-			echo x-1: x=$x y=$y z=$z crt=$crt
-			local set x=1 crt=1
-			echo x-2: x=$x y=$y z=$z crt=$crt
-			call y
-			echo x-3: x=$x y=$y z=$z crt=$crt
-		}
-		set crt
-		echo global-1: x=$x y=$y z=$z crt=$crt
-		call x
-		echo global-2: x=$x y=$y z=$z crt=$crt
-		__EOT
-	#}}}
-	cke0 2 0 ./t2 '2560788669 216'
-
-	t_epilog "${@}"
-} # }}}
-
-t_environ() { # {{{
-	t_prolog "${@}"
-
-	#{{{
-	<<- '__EOT' EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > ./t1 2>${E0}
-	set bang
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	varshow EK1 EK2 EK3 EK4 NEK5
-
-	echo environ set EK3 EK4, set NEK5
-	environ set EK3=EV3 EK4=EV4
-	set NEK5=NEV5
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!!\!
-	varshow EK1 EK2 EK3 EK4 NEK5
-
-	echo removing NEK5 EK3
-	unset NEK5
-	environ unset EK3
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!!\!
-	varshow EK1 EK2 EK3 EK4 NEK5
-
-	echo changing EK1, EK4
-	set EK1=EV1_CHANGED EK4=EV4_CHANGED
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!!\!
-	varshow EK1 EK2 EK3 EK4 NEK5
-
-	echo linking EK4, rechanging EK1, EK4
-	environ link EK4
-	set EK1=EV1 EK4=EV4
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!!\!
-	varshow EK1 EK2 EK3 EK4 NEK5
-
-	echo unset all
-	unset EK1 EK2 EK4
-	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
-	!!\!
-	varshow EK1 EK2 EK3 EK4 NEK5
-	__EOT
-	#}}}
-	cke0 1 0 ./t1 '1530736536 1115'
-
-	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
-	define l4 {
-		echo --l4-in;show
-		eval $1 environ unlink LK1
-		eval $1 environ unset EK1
-		local set LK1=LK1_L4
-		echo --l4-ou;show
-	}
-	define l3 {
-		echo --l3-in;show
-		set LK1=LK1_L3 EK1=EK1_L3
-		echo --l3-mid;show
-		call l4 local
-		echo --l3-preou;show
-		local xcall l4
-	}
-	define l3.local {
-		echo --l3.local-in;show
-		local set LK1=LK1_L3.local
-		echo --l3.local-ou;show
-	}
-	define l2 {
-		echo --l2-in;show
-		set LK1=LK1_L2 EK1=EK1_L2
-		echo --l2-mid-1;show
-		call l3
-		echo --l2-mid-2;show
-		call l3.local
-		echo --l2-ou;show
-	}
-	define l1 {
-		echo --l1-in;show
-		environ set LK1=LK1_L1 EK1=EK1_L1
-		environ link LK1
-		echo --l1-mid;show
-		local call l2
-		echo --l1-ou;show
-	}
-	commandalias show \
-		'echo LK1=$LK1 EK1=$EK1;\
-		varshow LK1 EK1;\
-		!echo shell" LK1<$LK1> EK1<$EK1>"'
-	environ set EK1=EV1 noLK1
-	echoerr pre
+	# (xxx t_call_scope() revealed link scope bugs years after that one) {{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./t2 2>${EX}
+define l4 {
+	ec --l4-in;show
+	eval $1 environ unlink LK1
+	eval $1 environ unset EK1
+	local se LK1=LK1_L4
+	ec --l4-ou;show
+}
+define l3 {
+	ec --l3-in;show
+	se LK1=LK1_L3 EK1=EK1_L3
+	ec --l3-mid;show
+	call l4 our
+	ec --l3-preou;show
+	local xcall l4
+}
+define l3.local {
+	ec --l3.local-in;show
+	local set LK1=LK1_L3.local
+	ec --l3.local-ou;show
+}
+define l2 {
+	ec --l2-in;show
+	se LK1=LK1_L2 EK1=EK1_L2
+	ec --l2-mid-1;show
+	call l3
+	ec --l2-mid-2;show
+	call l3.local
+	ec --l2-ou;show
+}
+define l1 {
+	ec --l1-in;show
+	environ set LK1=LK1_L1 EK1=EK1_L1
 	environ link LK1
-	echoerr post
-	echo --toplevel-in; show
-	call l1
-	echo --toplevel-ou; show
-	__EOT
+	ec --l1-mid;show
+	local call l2
+	ec --l1-ou;show
+}
+commandalias show \
+	'ec LK1=$LK1 EK1=$EK1;\
+	varshow LK1 EK1;\
+	!echo shell" LK1<$LK1> EK1<$EK1>"'
+environ set EK1=EV1 noLK1
+echoerr pre
+environ link LK1
+echoerr post
+ec --toplevel-in; show
+call l1
+echo --toplevel-ou; show
+__EOT
 	#}}}
 	ck 2 0 ./t2 '2028138132 1821' '3634674220 117'
 
 	# Rather redundant, but came up during tests so let's use it
 	if have_feat cmd-vexpr; then
 		#{{{
-		${cat} <<- '__EOT' > ./t3_4_5.dat
-	set recu=0
-	define du {
-		echon 1 only env (outer) du=$du:; var du; !echo sh=$du
-		local set du=au
-		echon 2 only local (au) du=$du:; var du; !echo sh=$du
-		environ link du
-		echon 3 also env linked du=$du:; var du; !echo sh=$du
-		vput vexpr recu + $recu 1
-		if $recu -eq 1
-			echo ----------------RECURSION STARTS
-			call du
-			echon ----------------RECURSION ENDS: du=$du:; var du; !echo sh=$du
-		end
-		local unset du
-		echon 4 local ($recu) unset du=$du:; var du; !echo sh=$du
-		vput vexpr recu + $recu 1
-		set du=updated$recu
-		echon 5 updated ($recu) du=$du:; var du; !echo sh=$du
-	}
-	echon outer-1 du=$du:; var du; !echo sh=$du
-	call du
-	echon outer-2 du=$du:; var du; !echo sh=$du
-		__EOT
+		${cat} << '__EOT' > ./t3_4_5.dat
+set recu=0
+define du {
+	echon 1 only env (outer) du=$du:; var du; !echo sh=$du
+	local set du=au
+	echon 2 only local (au) du=$du:; var du; !echo sh=$du
+	environ link du
+	echon 3 also env linked du=$du:; var du; !echo sh=$du
+	vput vexpr recu + $recu 1
+	if $recu -eq 1
+		echo ----------------RECURSION STARTS
+		call du
+		echon ----------------RECURSION ENDS: du=$du:; var du; !echo sh=$du
+	end
+	local unset du
+	echon 4 local ($recu) unset du=$du:; var du; !echo sh=$du
+	vput vexpr recu + $recu 1
+	set du=updated$recu
+	echon 5 updated ($recu) du=$du:; var du; !echo sh=$du
+}
+echon outer-1 du=$du:; var du; !echo sh=$du
+call du
+echon outer-2 du=$du:; var du; !echo sh=$du
+__EOT
 		#}}}
 		< ./t3_4_5.dat du=outer ${MAILX} ${ARGS} > ./t3 2>${E0}
 		cke0 3 0 ./t3 '3778746136 711'
@@ -4425,106 +4537,107 @@ t_environ() { # {{{
 
 	#{{{ lookup
 	unset du
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t6 2>${EX}
-	commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
-	environ lookup du
-	x
-	vput environ d1 lookup du
-	x
-	environ set du=1
-	environ lookup du
-	x
-	vput environ d1 lookup du
-	x
-	echoerr pre
-	vput environ d+ lookup du
-	x
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t6 2>${EX}
+commandalias x echon '$?/$^ERRNAME\; du=$du\; d1=$d1:;var du'
+environ lookup du
+x
+vput environ d1 lookup du
+x
+environ set du=1
+environ lookup du
+x
+vput environ d1 lookup du
+x
+echoerr pre
+vput environ d+ lookup du
+x
+__EOT
 	#}}}
-	ck 6 0 ./t6 '1502695313 170' '1396566516 96'
+	ck 6 0 ./t6 '1502695313 170' '2304864661 108'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_loptlocenv() { # 1 combined 4 :) {{{
+t_loptlocenv() { #{{{
 	t_prolog "${@}"
 
-	#{{{
+	# (xxx) call_xcall_scope():forest later found bugs, that not: drop? {{{
 	${cat} << '__EOT' > t.rc
 set _x=x
 define r5 {
 	# Break a link, too
-	local environ unlink zz; local set zz=BLA
-	echon 'ln-broken: '; varshow zz; !echo ln-broken, shell" zz=$zz"
+	our env unlink zz; local se zz=BLA
+	echon 'ln-broken: '; vars zz; !echo ln-broken, shell" zz=$zz"
 }
 define r4 {
 	if $# -eq 1
-		echo --r4-${1}-in;show
+		ec --r4-${1}-in;show
 		call r5
-		echon 'ln-restored: '; varshow zz; !echo ln-restored, shell" zz=$zz"
-	endif
-	local environ unset zz
-	local set noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
+		echon 'ln-restored: '; vars zz; !echo ln-restored, shell" zz=$zz"
+	end
+	our env unset zz
+	local se noasksub notoplines noxy yz=YZ! zz=!ZY no_S_MAILX_TEST
 	if $# -eq 2 && "$2" -ge 50
-		echo --r4-${1}-ou;show
+		ec --r4-${1}-ou;show
 		return
-	endif
-	eval local : \$((i += $2 + 1))
-	echo --r4-stress-${1}-$i
+	end
+	eval local pp : \$((i += $2 + 1))
+	ec --r4-stress-${1}-$i
 	eval ${_x}call r4 $1 $i
 }
 define r3 {
-	echo --r3-in;show
-	local set asksub toplines=21 xy=huhu yz=vu zz=uv _S_MAILX_TEST=wadde
-	echo --r3-mid;show
+	ec --r3-in;show
+	local se asksub toplines=21 xy=huhu yz=vu zz=uv _S_MAILX_TEST=wadde
+	ec --r3-mid;show
 	call r4 1
-	set _x=
-	echo --r3-mid-2;show
+	se _x=
+	ec --r3-mid-2;show
 	call r4 2
-	echo --r3-ou;show
+	ec --r3-ou;show
 }
 define r2 {
-	echo --r2-in;show
-	local unset asksub toplines xy yz _S_MAILX_TEST
-	echo --r2-prexcall;show
+	ec --r2-in;show
+	local uns asksub toplines xy yz _S_MAILX_TEST
+	ec --r2-prexcall;show
 	xcall r3
 }
 define r1 {
-	echo --r1-in;show
-	set xy=bye
-	local set asksub=du toplines=10 _S_MAILX_TEST=gelle
-	local environ set yz=cry zz=yrc
-	echo --r1-mid;show
+	ec --r1-in;show
+	se xy=bye
+	local se asksub=du toplines=10 _S_MAILX_TEST=gelle
+	our env set yz=cry zz=yrc
+	ec --r1-mid;show
 	local call r2
-	echo --r1-ou;show
+	ec --r1-ou;show
 }
 define r0 {
-	echo --r0-in;show
-	unset asksub
-	echo --r0-mi;show
+	ec --r0-in;show
+	uns asksub
+	ec --r0-mi;show
 	local call r1
-	echo --r0-ou;show
+	ec --r0-ou;show
 }
 commandalias show \
-	'echo as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
-	varshow asksub toplines xy yz zz _S_MAILX_TEST;\
+	'ec as=$asksub tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST;\
+	vars asksub toplines xy yz zz _S_MAILX_TEST;\
 	!echo shell" a=$ask tl=$toplines xy=$xy yz=$yz zz=$zz MT=$_S_MAILX_TEST"'
-echo 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
-varshow asksub toplines xy yz _S_MAILX_TEST
-if $? -ne 0; echo Error; else; echo OK; endif
-set asksub toplines=4 xy=hi _S_MAILX_TEST=trabbel
-environ set yz=fi
-environ link zz
-echo --toplevel-in; show
+ec 'test asserts asksub tl=5 noxy noyz no_S_MAILX_TEST'
+vars asksub toplines xy yz _S_MAILX_TEST
+if $? -ne 0; ec Error; el; echo OK; en
+se asksub toplines=4 xy=hi _S_MAILX_TEST=trabbel
+env set yz=fi
+env link zz
+ec --toplevel-in; show
 call r0
-echo --toplevel-ou; show
+ec --toplevel-ou; show
 __EOT
 	#}}}
-	</dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u -X echo\ --Xcommline\;show > ./t1 2>${EX}
+	</dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u \
+		-X ec\ --Xcommline\;show > ./t1 2>${EX}
 	ck 1 0 ./t1 '2508342830 5572' '337581153 67'
 
 	</dev/null MAILRC=./t.rc ask= zz=if ${MAILX} ${ARGS} -:u \
-		-X echo\ --Xcommline\;show -S noasksub -S toplines=7 > ./t2 2>${E0}
+		-X ec\ --Xcommline\;show -S noasksub -S toplines=7 > ./t2 2>${E0}
 	cke0 2 0 ./t2 '1120976797 5689'
 
 	# (mta frozen via -S for -A)
@@ -4570,55 +4683,9 @@ __EOT
 	cke0 3 0 ./t3 '3242667002 285'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_macro_param_shift() { # {{{
-	t_prolog "${@}"
-
-	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
-	define t2 {
-		echo in: t2
-		echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		local set ignerr=$1
-		shift
-		echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		if [ $# > 1 ] || [ $ignerr == '' ]
-			shift 2
-		else
-			ignerr shift 2
-		endif
-		echo t2.2:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		shift 0
-		echo t2.3:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		if [ $# > 0 ]
-			shift
-		endif
-		echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-	}
-	define t1 {
-		set errexit
-		echo in: t1
-		call t2 1 you get four args
-		echo t1.1: $?';' ignerr ($ignerr) should not exist
-		call t2 1 you get 'three args'
-		echo t1.2: $?';' ignerr ($ignerr) should not exist
-		call t2 1 you 'get two args'
-		echo t1.3: $?';' ignerr ($ignerr) should not exist
-		call t2 1 'you get one arg'
-		echo t1.4: $?';' ignerr ($ignerr) should not exist
-		ignerr call t2 '' 'you get one arg'
-		echo t1.5: $?';' ignerr ($ignerr) should not exist
-	}
-	call t1
-	__EOT
-	#}}}
-	ck 1 0 ./t1 '1402489146 1682' '4015700295 116'
-
-	t_epilog "${@}"
-} # }}}
-
-t_csop() { # {{{
+t_csop() { #{{{
 	t_prolog "${@}"
 
 	if have_feat cmd-csop; then :; else
@@ -4693,9 +4760,9 @@ t_csop() { # {{{
 	cke0 1 0 ./t1 '1892119538 755'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_vexpr() { # {{{
+t_vexpr() { #{{{
 	t_prolog "${@}"
 
 	if have_feat cmd-vexpr; then :; else
@@ -5004,167 +5071,93 @@ t_vexpr() { # {{{
 	cke0 agnostic 0 ./tagnostic '638877393 602'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_call_ret() { # {{{
+t_xcall_heavy() { #{{{
 	t_prolog "${@}"
 
-	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	define w1 {
-		echon ">$1 "
-		eval local : \$((i = $1 + 1))
-		if $i -le 42
-			local : $((j = i & 7))
-			if $j -eq 7; echo .; end
-			call w1 $i
-			set i=$? k=$!
-			: $((j = i & 7))
-			echon "<$1/$i/$k "
-			if $j -eq 7; echo .; end
-		else
-			echo ! The end for $1
-		end
-		return $1
-	}
-	# Transport $?/$! up the call chain
-	define w2 {
-		echon ">$1 "
-		eval local : \$((i = $1 + 1))
-		if $1 -lt 42
-			call w2 $i
-			local set i=$? j=$! k=$^ERRNAME
-			echon "<$1/$i/$k "
-			return $i $j
-		else
-			echo ! The end for $1
-			return $i $^ERR-BUSY
-		end
-		echoerr au
-	}
-	# Up and down it goes
-	define w3 {
-		echon ">$1/$2 "
-		eval local : \$((i = $1 + 1))
-		if $1 -lt 42
-			call w3 $i $2
-			local set i=$? j=$!
-			eval local : \$((k = $1 - $2))
-			if $k -eq 21
-				eval : \$((i = $1 + 1))
-				eval : \$((j = $2 + 1))
-				echo "# <$i/$j> .. "
-				call w3 $i $j
-				set i=$? j=$!
-			end
-			eval echon "<\$1=\$i/\$^ERRNAME-$j "
-			return $i $j
-		else
-			echo ! The end for $1=$i/$2
-			if "$2" != ""
-				return $i $^ERR-DOM
-			else
-				return $i $^ERR-BUSY
-			end
-		end
-		echoerr au
-	}
-
-	call w1 0; echo ?=$? !=$!; echo -----;
-	call w2 0; echo ?=$? !=$^ERRNAME; echo -----;
-	call w3 0 1; echo ?=$? !=$^ERRNAME; echo -----;
-	__EOT
-	#}}}
-	cke0 1 0 ./t1 '1572045517 5922'
-
-	t_epilog "${@}"
-} # }}}
-
-t_xcall() { # {{{
-	t_prolog "${@}"
-
-	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} -Smax=${LOOPS_MAX} > ./t1 2>${E0}
-	define work {
-		echon "$1 "
-		\if "$3" == ""; local set l=local; else; local set l=;\endif
-		eval $l : \$((i = $1 + 1))
-		if $i -le "$max"
-			eval $l : \$((j = i & 7))
-			if $j -eq 7
-				echo .
-			end
-			eval $l \xcall work \"$i\" \"$2\" $l
-		end
-		echo ! The end for $1/$2
-		if "$2" != ""
-			return $i $^ERR-BUSY
-		end
-	}
-	define xwork {
-		\xcall work 0 $2
-	}
-	call work 0
-	echo 1: ?=$? !=$!
-	call xwork
-	echo 2: ?=$? !=$!
-	local xcall xwork
-	echo 3: ?=$? !=$^ERRNAME
-	#
-	local call work 0 yes
-	echo 4: ?=$? !=$^ERRNAME
-	call xwork 0 yes
-	echo 5: ?=$? !=$^ERRNAME
-	__EOT
-	#}}}
-	ck_ex0 1
-	if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
-		cke0 1-${LOOPS_BIG} - ./t1 '2492586545 47176'
-	else
-		cke0 1-${LOOPS_SMALL} - ./t1 '2786527999 3909'
+	t1() { #{{{
+	<< '__EOT' ${MAILX} ${ARGS} -Smax=${2} > ./t1.${1} 2>${E0}
+define work {
+	echon "$1 "
+	i "$3" == ""; local se l='local pp'; el; local se l; en
+	eval $l : \$((i = $1 + 1))
+	if $i -le "$max"
+		eval $l : \$((j = i & 7))
+		if $j -eq 7
+			echo .
+		en
+		eval $l \xcall work \"$i\" \"$2\" $l
+	en
+	ec ! The end for $1/$2
+	if "$2" != ""
+		return $i $^ERR-BUSY
+	end
+}
+define xwork {
+	\xcall work 0 $2
+}
+call work 0
+echo 1: ?=$? !=$!
+call xwork
+echo 2: ?=$? !=$!
+local xcall xwork
+echo 3: ?=$? !=$^ERRNAME
+#
+local call work 0 yes
+echo 4: ?=$? !=$^ERRNAME
+call xwork 0 yes
+echo 5: ?=$? !=$^ERRNAME
+__EOT
+	} #}}}
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
+		t1 big ${LOOPS_BIG}
+		cke0 1.big 0 ./t1.big '2492586545 47176'
+	fi
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
+		t1 small ${LOOPS_SMALL}
+		cke0 1.small - ./t1.small '2786527999 3909'
 	fi
 
-	##
-
 	#{{{
-	${cat} <<- '__EOT' > ./t.in
-	\define __w {
-		\echon "$1 "
-		local eval : \$((i = $1 + 1))
-		\if $i -le 111
-			local : $((j = i & 7))
-			\if $j -eq 7; \echo .; \end
-			\xcall __w $i $2
-		\end
-		\echo ! The end for $1
-		\if $2 -eq 0
-			\echoerr pre
-			nonexistingcommand
-			\echoerr post
-			\echo would be err with errexit
-			\return
-		\end
-		\echo calling exit
-		\exit
-	}
-	\define work {
-		\echo eins
-		\call __w 0 0
-		\echo zwei, ?=$? !=$!
-		\local set errexit
-		\ignerr call __w 0 0
-		\echo drei, ?=$? !=$^ERRNAME
-		\call __w 0 $1
-		\echo vier, ?=$? !=$^ERRNAME, this is an error
-	}
-	\ignerr call work 0
-	\echo outer 1, ?=$? !=$^ERRNAME
-	xxxign \call work 0
-	\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-	\call work 1
-	\echo outer 3, ?=$? !=$^ERRNAME
-	\echo this is definitely an error
-	__EOT
+	${cat} << '__EOT' > ./t.in
+\define __w {
+	\echon "$1 "
+	local pp eval : \$((i = $1 + 1))
+	\if $i -le 111
+		local pp : $((j = i & 7))
+		\if $j -eq 7; \echo .; \end
+		\xcall __w $i $2
+	\end
+	\echo ! The end for $1
+	\if $2 -eq 0
+		\echoerr pre
+		nonexistingcommand
+		\echoerr post
+		\echo would be err with errexit
+		\return
+	\end
+	\echo calling exit
+	\exit
+}
+\define work {
+	\echo eins
+	\call __w 0 0
+	\echo zwei, ?=$? !=$!
+	\local set errexit
+	\ignerr call __w 0 0
+	\echo drei, ?=$? !=$^ERRNAME
+	\call __w 0 $1
+	\echo vier, ?=$? !=$^ERRNAME, this is an error
+}
+\ignerr call work 0
+\echo outer 1, ?=$? !=$^ERRNAME
+xxxign \call work 0
+\echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+\call work 1
+\echo outer 3, ?=$? !=$^ERRNAME
+\echo this is definitely an error
+__EOT
 	#}}}
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' > ./t2 2>${EX}
 	ck 2 0 ./t2 '2293035624 3736' '723082170 715'
@@ -5172,315 +5165,298 @@ t_xcall() { # {{{
 	< ./t.in ${MAILX} ${ARGS} -X'commandalias xxxign " "' > ./t3 2>${EX}
 	ck 3 1 ./t3 '3857975724 2451' '782246248 530'
 
-	# Mirrors t_on_main_loop_tick():t1 (but "different code flow" at time of this writing)
-	printf '#
-define bla {
-	ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
-}
-define omlt {
-	ec in omlt: $i, y<$y> DEAD<$DEAD> crt<$crt>
-	i $((i++)) -gt 3
-		i $i -eq 5
-			xcall x
-		en
-		local xcall x
-		xit 1
-	en
-}
-define x {
-	local se DEAD=d$i y=y$i
-	ec x i=$i y=$y DEAD=$DEAD crt=$crt
-	i $i -gt 6
-		xcall y
-		xit 2
-	en
-	call y
-}
-define y {
-	se crt=$i
-	ec y i=$i y=$y DEAD=$DEAD crt=$crt
-}
-ec 0; se i=1
-ec 1
-call omlt
-ec 2
-call omlt
-ec 3
-call omlt
-ec call bla;
-call omlt
-call bla
-call omlt
-ec 4 y=$y DEAD=$DEAD crt=$crt
-call omlt
-ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
-call omlt
-xit' \
-	| ${MAILX} ${ARGS} >./t4 2>${E0}
-	cke0 4 0 ./t4 '640419166 610'
+	##
+	t__scope_monster > ./tscope.in
+
+	<./tscope.in ${MAILX} ${ARGS} -SCALL1=xcall -SCALL2=call >./tnscope 2>${E0}
+	cke0 nscope 0 ./tnscope '1512383453 687'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=local -SCALL1=xcall -SCALL2=call >./tlocal 2>${E0}
+	cke0 local 0 ./tlocal '4101514850 721'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=our -SCALL1=xcall -SCALL2=call >./tour 2>${E0}
+	cke0 our 0 ./tour '1862738759 735'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_local_x_call_environ() { # {{{
+t_local_x_call_environ() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	\commandalias show '\
-		\vput environ x lookup DEAD;\
-		\if "$DEAD" != dead.0 || "$x" != dead.0;\echo 1:$DEAD:$x;\end;\
-		\vput environ x lookup U;\
-		\if "$U" != u.0 || "$x" != u.0;\echo 2 env[U=$x] U=$U;\end;\
-		\vput environ x lookup N;\
-		\if $? -eq 0;\echo 3:$N;\end;\
-		\if "$N" != n.0;\echo 4:$N;\end'
-	define l2 {
-		echo ----${1}l2
-		show
-	}
-	define l1 {
-		eval $1 set DEAD=dead.0 U=u.0 N=n.0 x
-		echo --l1
-		show
-		call l2
-		xcall l2 $1
-	}
-	define xl0 {
-		eval $1 xcall l1 "$2"
-	}
-	define l0 {
-		local call l1 "$1"
-	}
-	define xi {
-		set DEAD=dead.$1 U=u.$1 N=n.$1
-	}
-	define xo {
-		echo -top-${1}
-		echo DEAD=$DEAD U=$U N=$N;varshow DEAD U N
-		!echo shell" DEAD<$DEAD> U<$U> N<$N>"
-	}
-	commandalias xi call xi
-	commandalias xo call xo
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+\commandalias show '\
+	\vput environ x lookup DEAD;\
+	\if "$DEAD" != dead.0 || "$x" != dead.0;\echo 1:$DEAD:$x;\end;\
+	\vput environ x lookup U;\
+	\if "$U" != u.0 || "$x" != u.0;\echo 2 env[U=$x] U=$U;\end;\
+	\vput environ x lookup N;\
+	\if $? -eq 0;\echo 3:$N;\end;\
+	\if "$N" != n.0;\echo 4:$N;\end'
+define l2 {
+	echo ----${1}l2
+	show
+}
+define l1 {
+	eval $1 set DEAD=dead.0 U=u.0 N=n.0 x
+	echo --l1
+	show
+	call l2
+	xcall l2 $1
+}
+define xl0 {
+	eval $1 xcall l1 "$2"
+}
+define l0 {
+	local call l1 "$1"
+}
+define xi {
+	set DEAD=dead.$1 U=u.$1 N=n.$1
+}
+define xo {
+	echo -top-${1}
+	echo DEAD=$DEAD U=$U N=$N;varshow DEAD U N
+	!echo shell" DEAD<$DEAD> U<$U> N<$N>"
+}
+commandalias xi call xi
+commandalias xo call xo
 
-	environ unset N
-	set U=u.0
-	environ link U
+environ unset N
+set U=u.0
+environ link U
 
-	xi 1;call l1;xo 1
-	xi 2;local call l1;xo 2
-	xi 3;call l1 local;xo 3
+xi 1;call l1;xo 1
+xi 2;local call l1;xo 2
+xi 3;call l1 local;xo 3
 
-	xi 4;call xl0;xo 4
-	xi 5;call xl0 local;xo 5
-	xi 6;call xl0 '' local;xo 6
-	xi 7;call xl0 local local;xo 7
+xi 4;call xl0;xo 4
+xi 5;call xl0 local;xo 5
+xi 6;call xl0 '' local;xo 6
+xi 7;call xl0 local local;xo 7
 
-	xi 8;call l0;xo 8
-	xi 9;call l0 local;xo 9
-	__EOT
+xi 8;call l0;xo 8
+xi 9;call l0 local;xo 9
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '368283413 1412'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_vpospar() { # {{{
+t_vpospar() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
-	commandalias y echo 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
-	vpospar set hey, "'you    ", world!
-	x
-	vput vpospar x quote; echo x<$x>
-	vpospar clear;x
-	vput vpospar y quote;echo y<$y>
-	eval vpospar set ${x};x
-	eval vpospar set ${y};x
-	eval vpospar set ${x};x
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${E0}
+commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
+commandalias y echo 'infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>'
+vpospar set hey, "'you    ", world!
+x
+vput vpospar x quote; echo x<$x>
+vpospar clear;x
+vput vpospar y quote;echo y<$y>
+eval vpospar set ${x};x
+eval vpospar set ${y};x
+eval vpospar set ${x};x
 
-	define infun2 {
-		echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
-		vput vpospar z quote;echo infun2:z<$z>
-	}
+define infun2 {
+	echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+	vput vpospar z quote;echo infun2:z<$z>
+}
 
-	define infun {
-		y
-		vput vpospar y quote;echo infun:y<$y>
-		eval vpospar set ${x};y
-		vpospar clear;y
-		eval call infun2 $x
-		y
-		eval vpospar set ${y};y
-	}
+define infun {
+	y
+	vput vpospar y quote;echo infun:y<$y>
+	eval vpospar set ${x};y
+	vpospar clear;y
+	eval call infun2 $x
+	y
+	eval vpospar set ${y};y
+}
 
-	call infun This "in a" fun
-	x
-	vpospar clear;x
-	__EOT
+call infun This "in a" fun
+x
+vpospar clear;x
+__EOT
 	#}}}
 	cke0 1 0 ./t1 '155175639 866'
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./tifs 2>${E0}
-	commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
-	set ifs=\'
-	echo ifs<$ifs> ifs-ws<$ifs-ws>
-	vpospar set hey, "'you    ", world!
-	x
-	vput vpospar x quote; echo x<$x>
-	vpospar clear;x
-	eval vpospar set ${x};x
+	<< '__EOT' ${MAILX} ${ARGS} > ./tifs 2>${E0}
+commandalias x echo '$?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>'
+set ifs=\'
+echo ifs<$ifs> ifs-ws<$ifs-ws>
+vpospar set hey, "'you    ", world!
+x
+vput vpospar x quote; echo x<$x>
+vpospar clear;x
+eval vpospar set ${x};x
 
-	set ifs=,
-	echo ifs<$ifs> ifs-ws<$ifs-ws>
-	vpospar set hey, "'you    ", world!
+set ifs=,
+echo ifs<$ifs> ifs-ws<$ifs-ws>
+vpospar set hey, "'you    ", world!
+unset ifs;x
+set ifs=,
+vput vpospar x quote; echo x<$x>
+vpospar clear;x
+eval vpospar set ${x};\
 	unset ifs;x
-	set ifs=,
-	vput vpospar x quote; echo x<$x>
-	vpospar clear;x
-	eval vpospar set ${x};\
-		unset ifs;x
 
-	set ifs=$',\t'
-	echo ifs<$ifs> ifs-ws<$ifs-ws>
-	vpospar set hey, "'you    ", world!
-	unset ifs; x
-	set ifs=$',\t'
-	vput vpospar x quote; echo x<$x>
-	vpospar clear;x
-	eval vpospar set ${x};\
-	unset ifs;x
-	__EOT
+set ifs=$',\t'
+echo ifs<$ifs> ifs-ws<$ifs-ws>
+vpospar set hey, "'you    ", world!
+unset ifs; x
+set ifs=$',\t'
+vput vpospar x quote; echo x<$x>
+vpospar clear;x
+eval vpospar set ${x};\
+unset ifs;x
+__EOT
 	#}}}
 	cke0 ifs 0 ./tifs '2015927702 706'
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
-		commandalias x echo '"'"'$?: $#: <$*>: <$1><$2><$3><$4><$5><$6>'"'"'
-		set x=$'"'"'a b\nc d\ne f\n'"'"'
-		vpospar set $x
-		x
-		eval vpospar set $x
-		x
-		set ifs=$'"'"'\n'"'"'
-		eval vpospar set $x
-		x
-		unset ifs
-		vput vpospar i quote
-		x
-		vpospar clear
-		x
-		echo i<$i>
-		eval vpospar set $i
-		x
-		' > ./tifs-2 2>${E0}
+commandalias x echo '"'"'$?: $#: <$*>: <$1><$2><$3><$4><$5><$6>'"'"'
+set x=$'"'"'a b\nc d\ne f\n'"'"'
+vpospar set $x
+x
+eval vpospar set $x
+x
+set ifs=$'"'"'\n'"'"'
+eval vpospar set $x
+x
+unset ifs
+vput vpospar i quote
+x
+vpospar clear
+x
+echo i<$i>
+eval vpospar set $i
+x
+' \
+	> ./tifs-2 2>${E0}
 	#}}}
 	cke0 ifs-2 0 ./tifs-2 '1412306707 260'
 
 	#{{{
 	</dev/null ${MAILX} ${ARGS} -X '
-		commandalias x echo '"'"'$#: <$1><$2><$3>'"'"'
-		set x=$'"'"'a b\n#c d\ne f\n'"'"'
-		set ifs=$'"'"'\n'"'"'; vpospar set $x; unset ifs
-		x
-		set ifs=$'"'"'\n'"'"'; eval vpospar set $x; unset ifs
-		x
-		set ifs=$'"'"'\n'"'"'; vpospar evalset $x; unset ifs
-		x
-		vpospar evalset ""
-		x
-		vpospar evalset "a b c"
-		x
-		' > ./tevalset 2>${E0}
+commandalias x echo '"'"'$#: <$1><$2><$3>'"'"'
+set x=$'"'"'a b\n#c d\ne f\n'"'"'
+set ifs=$'"'"'\n'"'"'; vpospar set $x; unset ifs
+x
+set ifs=$'"'"'\n'"'"'; eval vpospar set $x; unset ifs
+x
+set ifs=$'"'"'\n'"'"'; vpospar evalset $x; unset ifs
+x
+vpospar evalset ""
+x
+vpospar evalset "a b c"
+x
+' \
+	> ./tevalset 2>${E0}
 	#}}}
 	cke0 evalset 0 ./tevalset '2054446552 79'
 
 	#{{{
-	${MAILX} ${ARGS} -X '
-		commandalias x echo '"'"'$?: $#: <$1><$2><$3><$4> x<$x>'"'"'
-		define t1 {
-			x
-			global vpospar set a1 b1 c1 d1
-			x
-		}
-		define t2 {
-			x
-			global local vput vpospar x quote
-			x
-			echo "x <$x>"
-			local vput vpospar x quote
-			x
-			echo "x <$x>"
-		}
-		x
-		vpospar set a b c d
-		x
-		call t1 t1.1 t1.2 t1.3 t1.4
-		x
-		call t2 t2.1 t2.2 t2.3 t2.4
-		x
-		local call t2 t3.1 t3.2 t3.3 t3.4
-		x
-		' > ./tglobal 2>${E0}
+	</dev/null ${MAILX} ${ARGS} -X '
+commandalias x echo '"'"'$?: $#: <$1><$2><$3><$4> x<$x>'"'"'
+define t1 {
+	x
+	global vpospar set a1 b1 c1 d1
+	x
+}
+define t2 {
+	x
+	local vput global vpospar x quote
+	x
+	echo "x <$x>"
+	local vput vpospar x quote
+	x
+	echo "x <$x>"
+}
+x
+vpospar set a b c d
+x
+call t1 t1.1 t1.2 t1.3 t1.4
+x
+call t2 t2.1 t2.2 t2.3 t2.4
+x
+local call t2 t3.1 t3.2 t3.3 t3.4
+x' \
+	> ./tglobal 2>${E0}
 	#}}}
 	cke0 global 0 ./tglobal '2494928013 543'
 
-	t_epilog "${@}"
-} # }}}
+	#{{{
+	</dev/null ${MAILX} ${ARGS} -X '
+define hi {
+	local pp our vput global vpospar i$((i = 1 + 1)) quote
+	xcall t "$@"
+}
+define t {
+	ec "args<$*> i2<$i2> i<$i>"
+}
+vpospar se three four
+call hi one two
+var i2 i' \
+	> ./tmulsco 2>${E0}
+	#}}}
+	cke0 mulsco 0 ./tmulsco '1683530866 54'
 
-t_atxplode() { # {{{
+	t_epilog "${@}"
+} #}}}
+
+t_atxplode() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	${cat} > ./t.sh <<- '___'; ${cat} > ./t.rc <<- '___'
-	x() { echo $#; }
-	xxx() {
-	  printf " (1/$#: <$1>)"
-	  shift
-	  if [ $# -gt 0 ]; then
-		 xxx "$@"
-	  else
-		 echo
-	  fi
-	}
-	yyy() {
-	  eval "$@ ' ball"
-	}
-	set --
-	x "$@"
-	x "$@"''
-	x " $@"
-	x "$@ "
-	printf yyy;yyy 'xxx' "b\$'\t'u ' "
-	printf xxx;xxx arg ,b		u.
-	printf xxx;xxx arg ,  .
-	printf xxx;xxx arg ,ball.
-	___
-	define x {
-	  echo $#
-	}
-	define xxx {
-	  echon " (1/$#: <$1>)"
-	  shift
-	  if $# -gt 0; \xcall xxx "$@"; endif
-	  echo
-	}
-	define yyy {
-	  eval "$@ ' ball"
-	}
-	vpospar set
-	call x "$@"
-	call x "$@"''
-	call x " $@"
-	call x "$@ "
-	echon yyy;call yyy '\call xxx' "b\$'\t'u ' "
-	echon xxx;call xxx arg ,b		 u.
-	echon xxx;call xxx arg ,  .
-	echon xxx;call xxx arg ,ball.
-	___
+	${cat} > ./t.sh << '_EOT'; ${cat} > ./t.rc << '_EOT'
+x() { echo $#; }
+xxx() {
+	printf " (1/$#: <$1>)"
+	shift
+	if [ $# -gt 0 ]; then
+		xxx "$@"
+	else
+		echo
+	fi
+}
+yyy() {
+	eval "$@ ' ball"
+}
+set --
+x "$@"
+x "$@"''
+x " $@"
+x "$@ "
+printf yyy;yyy 'xxx' "b\$'\t'u ' "
+printf xxx;xxx arg ,b		u.
+printf xxx;xxx arg ,  .
+printf xxx;xxx arg ,ball.
+_EOT
+define x {
+	echo $#
+}
+define xxx {
+	echon " (1/$#: <$1>)"
+	shift
+	if $# -gt 0; \xcall xxx "$@"; end
+	ec
+}
+define yyy {
+	eval "$@ ' ball"
+}
+vpospar set
+call x "$@"
+call x "$@"''
+call x " $@"
+call x "$@ "
+echon yyy;call yyy '\call xxx' "b\$'\t'u ' "
+echon xxx;call xxx arg ,b		 u.
+echon xxx;call xxx arg ,  .
+echon xxx;call xxx arg ,ball.
+_EOT
 	#}}}
 	${MAILX} ${ARGS} -X'source ./t.rc' -Xx > ./t1 2>${E0}
 	cke0 1 0 ./t1 '41566293 164'
@@ -5489,53 +5465,56 @@ t_atxplode() { # {{{
 	#cke0 1disproof 0 ./t1disproof '41566293 164'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_read() { # {{{
+t_read() { #{{{
 	t_prolog "${@}"
 
-	${cat} <<- '__EOT' > ./t1in
+	#{{{
+	${cat} << '__EOT' > ./t1in
    hey1, "'you    ", world!
    hey2, "'you    ", bugs bunny!
    hey3, "'you    ",     
    hey4, "'you    "
-	__EOT
-
-	<<- '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	unset a b c;read a b c;x
-	readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
-	__EOT
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
+commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+read a b c;x
+read a b c;x
+read a b c;x
+read a b c;x
+unset a b c;read a b c;x
+readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
 	cke0 1 0 ./t1 '1527910147 173'
 
-	${cat} <<- '__EOT' > ./tifsin
+	#{{{
+	${cat} << '__EOT' > ./tifsin
    hey2.0,:"'you    ",:world!:mars.:
    hey2.1,:"'you    ",:world!
    hey2.2,:"'you    ",:bugs bunny!
    hey2.3,:"'you    ",:    
    hey2.4,:"'you    ":
    :
-	__EOT
-
-	<<- '__EOT' 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
-	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
-	set ifs=:
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	read a b c;x
-	unset a b c;read a b c;x
-	read a b c;x
-	readctl remove 6;echo readctl remove:$?/$^ERRNAME
-	__EOT
+__EOT
+	<< '__EOT' 6< ./tifsin ${MAILX} ${ARGS} -X 'readctl create 6' > ./tifs 2>${E0}
+commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+set ifs=:
+read a b c;x
+read a b c;x
+read a b c;x
+read a b c;x
+read a b c;x
+read a b c;x
+unset a b c;read a b c;x
+read a b c;x
+readctl remove 6;echo readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
 	cke0 ifs 0 ./tifs '890153490 298'
 
+	#{{{
 	{
 		echo 'hey1.0,:'"'"'you    ",:world!:mars.	'
 		echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
@@ -5544,110 +5523,206 @@ t_read() { # {{{
 		echo 'hey2.0,:'"'"'you    ",:world!:mars.:	'
 		echo 'hey3.0,:'"'"'you    ",:world!:mars.::	'
 	} > ./tifsin-2
-
 	</dev/null ${MAILX} ${ARGS} -X '
-		commandalias r read
-		commandalias x echo \$?/\$^ERRNAME
-		commandalias y x <\$a><\$b><\$c><\$d><\$e>
-		define x {
-			local set v=$*
-			readctl creat ./tifsin-2;x
-			set ifs=":	";eval r $v;unset ifs;y
-			set ifs=":	";eval r $v;unset ifs;y
-			set ifs=":	";eval r $v;unset ifs;y
-			set ifs=:;eval r $v;unset ifs;y
-			set ifs=:;eval r $v;unset ifs;y
-			set ifs=:;eval r $v;unset ifs;y
-			readctl remo ./tifsin-2;x
-		}
-		call x a b c
-		call x a b c d
-		call x a b c d e
-		' > ./tifs-2 2>${E0}
+commandalias r read
+commandalias x echo \$?/\$^ERRNAME
+commandalias y x <\$a><\$b><\$c><\$d><\$e>
+define x {
+	local set v=$*
+	readctl creat ./tifsin-2;x
+	set ifs=":	";eval r $v;unset ifs;y
+	set ifs=":	";eval r $v;unset ifs;y
+	set ifs=":	";eval r $v;unset ifs;y
+	set ifs=:;eval r $v;unset ifs;y
+	set ifs=:;eval r $v;unset ifs;y
+	set ifs=:;eval r $v;unset ifs;y
+	readctl remo ./tifsin-2;x
+}
+call x a b c
+call x a b c d
+call x a b c d e
+' \
+	> ./tifs-2 2>${E0}
+	#}}}
 	cke0 ifs-2 0 ./tifs-2 '3840749226 897'
 
-	<<- '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
-	commandalias x echo '$?/$^ERRNAME / <$d>'
-	readctl create ./t1in
-	readall d;x
-	set d;readall d;x
-	readctl create tifsin
-	readall d;x
-	set d;readall d;x
-	readctl remove ./t1in;echo $?/$^ERRNAME;\
-		readctl remove tifsin;echo $?/$^ERRNAME
-	echo '### now with empty lines'
-	! printf 'one line\n\ntwo line\n\n' > ./temptynl
-	readctl create ./temptynl;echo $?/$^ERRNAME
-	readall d;x
-	readctl remove ./temptynl;echo $?/$^ERRNAME
-	__EOT
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} > ./treadall 2>${E0}
+commandalias x echo '$?/$^ERRNAME / <$d>'
+readctl create ./t1in
+readall d;x
+set d;readall d;x
+readctl create tifsin
+readall d;x
+set d;readall d;x
+readctl remove ./t1in;echo $?/$^ERRNAME;\
+	readctl remove tifsin;echo $?/$^ERRNAME
+echo '### now with empty lines'
+! printf 'one line\n\ntwo line\n\n' > ./temptynl
+readctl create ./temptynl;echo $?/$^ERRNAME
+readall d;x
+readctl remove ./temptynl;echo $?/$^ERRNAME
+__EOT
+	#}}}
 	cke0 readall 0 ./treadall '4113506527 405'
 
+	#{{{
 	{
 		echo abra
 		echo kadabra
 	} > ./tlocalin
-
 	</dev/null ${MAILX} ${ARGS} -X '
-		commandalias r read
-		commandalias x echo \$?/\$^ERRNAME
-		define x {
-			echo ==$1
-			readctl creat ./tlocalin;x
-			local eval $1 locvar;x;echo "L<$locvar>"
-			readctl remo ./tlocalin;x
-		}
-		set locvar=run
-		call x read;echo "G<$locvar>"
-		call x readall;echo "G<$locvar>"
-		' > ./tlocal 2>${E0}
-	cke0 local 0 ./tlocal '293471176 99'
+commandalias x echo \$?/\$^ERRNAME
+define x {
+	echo ==$1
+	readctl creat ./tlocalin;x
+	eval local $1 locvar;x;echo "L<$locvar>"
+	readctl remo ./tlocalin;x
+}
+define x2 {
+	echo ==$1/$locvar
+	readctl creat ./tlocalin;x
+	eval local $1 locvar;x;echo "L<$locvar>"
+	xcall y2 $1
+}
+define y2 {
+	echo ===$1/$locvar
+	eval local $1 locvar;x;echo "L<$locvar>"
+	readctl remo ./tlocalin;x
+}
+set locvar=run
+call x read;echo "G<$locvar>"
+call x readall;echo "G<$locvar>"
+call x2 read;echo "G<$locvar>"
+call x2 readall;echo "G<$locvar>"
+' \
+	> ./tlocal 2>${E0}
+	#}}}
+	cke0 local 0 ./tlocal '140963573 266'
+
+	#{{{
+	{
+		echo abra
+		echo kadabra
+	} > ./tourin
+	</dev/null ${MAILX} ${ARGS} -X '
+commandalias x echo \$?/\$^ERRNAME
+define x {
+	echo ==$1
+	readctl creat ./tourin;x
+	eval our $1 ourvar;x;echo "L<$ourvar>"
+	readctl remo ./tourin;x
+}
+define x2 {
+	echo ==$1/$ourvar
+	readctl creat ./tourin;x
+	eval our $1 ourvar;x;echo "L<$ourvar>"
+	xcall y2 $1
+}
+define y2 {
+	echo ===$1/$ourvar
+	eval our $1 ourvar;x;echo "L<$ourvar>"
+	readctl remo ./tourin;x
+}
+set ourvar=run
+call x read;echo "G<$ourvar>"
+call x readall;echo "G<$ourvar>"
+call x2 read;echo "G<$ourvar>"
+call x2 readall;echo "G<$ourvar>"
+' \
+	> ./tour 2>${E0}
+	#}}}
+	cke0 our 0 ./tour '4284478842 287'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_readsh() { # {{{ TODO not enough
+t_readsh() { #{{{
 	t_prolog "${@}"
 
-	${cat} <<- '__EOT' > ./t1in
+	#{{{
+	${cat} << '__EOT' > ./t1in
    from@exam.ple	   ' diet spliced <from@exam.ple>   '	   'a' 
    from@exam.ple ' diet spliced <from@exam.ple>   ' 'a'	 
    from@exam.ple ' diet spliced <from@exam.ple>   ''a'  
    from@exam.ple' diet spliced <from@exam.ple>   ''a'  
-	__EOT
-
-	<<- '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
-	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
-	readsh a b c;x
-	readsh a b c;x
-	readsh a b c;x
-	readsh a b c;x
-	unset a b c;read a b c;x
-	readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
-	__EOT
+__EOT
+	<< '__EOT' ${MAILX} ${ARGS} -X'readctl create ./t1in' > ./t1 2>${E0}
+commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+readsh a b c;x
+readsh a b c;x
+readsh a b c;x
+readsh a b c;x
+unset a b c;read a b c;x
+readctl remove ./t1in;echo readctl remove:$?/$^ERRNAME
+__EOT
+	#}}}
 	cke0 1 0 ./t1 '2955084684 291'
 
+	#{{{
 	{
 		echo abra
 		echo kadabra
 	} > ./tlocalin
-
 	</dev/null ${MAILX} ${ARGS} -X '
-		commandalias r read
-		commandalias x echo \$?/\$^ERRNAME
-		define x {
-			readctl creat ./tlocalin;x
-			local readsh locvar;x;echo "L<$locvar>"
-			readctl remo ./tlocalin;x
-		}
-		set locvar=run
-		call x;echo "G<$locvar>"
-		' > ./tlocal 2>${E0}
-	cke0 local 0 ./tlocal '2737640059 36'
+commandalias x echo \$?/\$^ERRNAME
+define x {
+	readctl creat ./tlocalin;x
+	local readsh locvar;x;echo "L<$locvar>"
+	readctl remo ./tlocalin;x
+}
+define x2 {
+	echo ==$locvar
+	readctl creat ./tlocalin;x
+	local readsh locvar;x;echo "L<$locvar>"
+	xcall y2
+}
+define y2 {
+	echo ===$locvar
+	local readsh locvar;x;echo "L<$locvar>"
+	readctl remo ./tlocalin;x
+}
+set locvar=run
+call x;echo "G<$locvar>"
+call x2;echo "G<$locvar>"
+' \
+	> ./tlocal 2>${E0}
+	#}}}
+	cke0 local 0 ./tlocal '3023528107 103'
+
+	#{{{
+	{
+		echo abra
+		echo kadabra
+	} > ./tourin
+	</dev/null ${MAILX} ${ARGS} -X '
+commandalias x echo \$?/\$^ERRNAME
+define x {
+	readctl creat ./tourin;x
+	our readsh ourvar;x;echo "L<$ourvar>"
+	readctl remo ./tourin;x
+}
+define x2 {
+	echo ==$ourvar
+	readctl creat ./tourin;x
+	our readsh ourvar;x;echo "L<$ourvar>"
+	xcall y2
+}
+define y2 {
+	echo ===$ourvar
+	our readsh ourvar;x;echo "L<$ourvar>"
+	readctl remo ./tourin;x
+}
+set ourvar=run
+call x;echo "G<$ourvar>"
+call x2;echo "G<$ourvar>"
+' \
+	> ./tour 2>${E0}
+	#}}}
+	cke0 our 0 ./tour '4070904975 104'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
 t_fop() { # XXX improve writes when we have redirection {{{
 	t_prolog "${@}"
@@ -5840,9 +5915,9 @@ readctl remove $fd;x
 	ck0 5.2 - ./t5.2
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_msg_number_list() { # {{{
+t_msg_number_list() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -5881,11 +5956,11 @@ t_msg_number_list() { # {{{
 	cke0 1 0 ./t1 '3152029378 118'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Send/RFC absolute basics {{{
-t_addrcodec() { # {{{
+t_addrcodec() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -6069,9 +6144,9 @@ t_addrcodec() { # {{{
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_headerpick() { # {{{
+t_headerpick() { #{{{
 	t_prolog "${@}"
 
 	t__x1_msg > ./tmbox
@@ -6164,7 +6239,7 @@ x20
 		t_echoskip '2:[!REGEX]'
 	fi
 
-	# {{{object
+	#{{{object
 	</dev/null ${MAILX} ${ARGS} -Y '
 commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
 headerp create au;x1
@@ -6199,9 +6274,9 @@ headerp;x26
 	ck 3 0 ./t3 '3721136776 1564' '4195608296 125'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_can_send_rfc() { # {{{
+t_can_send_rfc() { #{{{
 	t_prolog "${@}"
 
 	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -s Sub.1 receiver@number.1 > ${E0} 2>&1
@@ -6359,9 +6434,9 @@ echo $?/$^ERRNAME
 	cke0 18 0 ./t18 '250796110 124'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mta_args() { # {{{
+t_mta_args() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<-_EOT > ./tmta.sh
@@ -6449,9 +6524,9 @@ t_mta_args() { # {{{
 	cke0 16 0 ./t.mbox '1330910444 69'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_reply() { # {{{
+t_reply() { #{{{
 	# Alternates and ML related address massage etc. somewhere else
 	t_prolog "${@}"
 
@@ -6508,7 +6583,7 @@ body3
 	echo 4:$?/$^ERRNAME
 	#' \
 		> ./.tall 2>${EX}
-	ck 5 0 ./.tall '3088217220 382' '2514745519 544'
+	ck 5 0 ./.tall '3088217220 382' '522145961 578'
 
 	# ..but Maildir will not
 	if have_feat maildir; then
@@ -6530,7 +6605,7 @@ body3
 		echo 4:$?/$^ERRNAME
 		#' \
 			> ./.tall 2>${EX}
-		ck 7 0 ./.tall '3631170341 244' '1074346767 629'
+		ck 7 0 ./.tall '3631170341 244' '2337093063 663'
 	else
 		t_echoskip '7:[!MAILDIR]'
 	fi
@@ -6718,9 +6793,9 @@ b7
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_forward() { # {{{
+t_forward() { #{{{
 	t_prolog "${@}"
 
 	gm sub fwd1 body origb1 from 1 to 2 > "${MBOX}"
@@ -6774,10 +6849,10 @@ b8
 	#}}}
 
 	t_it forward
-	ck 1 0 ./.tall '2356713156 2219' '3453317104 495'
+	ck 1 0 ./.tall '2356713156 2219' '3210435868 425'
 
 	t_it Forward
-	ck 3 0 ./.tall '2356713156 2219' '401173854 515'
+	ck 3 0 ./.tall '2356713156 2219' '3210435868 425'
 	${rm} -f ex*
 
 	#{{{ *record*, *outfolder* (reuses $MBOX)
@@ -6878,9 +6953,9 @@ b6
 	cke0 10 0 ./.tall '799103633 1250'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_resend() { # {{{
+t_resend() { #{{{
 	t_prolog "${@}"
 
 	gm sub fwd1 body origb1 from 1 to 2 > "${MBOX}"
@@ -6946,11 +7021,11 @@ t_resend() { # {{{
 	t_it Resend 7 8
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # VFS {{{
-t_copy() { # {{{
+t_copy() { #{{{
 	t_prolog "${@}"
 
 	gm sub Copy1 from 1 to 1 body 'Body1' > "${MBOX}"
@@ -7080,9 +7155,9 @@ t_copy() { # {{{
 	ck 8-3 - ./.tlst '3190056903 4'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_save() { # {{{
+t_save() { #{{{
 	t_prolog "${@}"
 
 	gm sub Save1 from 1 to 1 body 'Body1' > "${MBOX}"
@@ -7235,9 +7310,9 @@ t_save() { # {{{
 	[ -f ./.tmbox ]; ck_exx 10-3
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_move() { # {{{
+t_move() { #{{{
 	t_prolog "${@}"
 
 	gm sub Move1 from 1 to 1 body 'Body1' > "${MBOX}"
@@ -7360,9 +7435,9 @@ t_move() { # {{{
 	ck 8-3 - ./.tlst '3190056903 4'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mbox() { # {{{
+t_mbox() { #{{{
 	t_prolog "${@}"
 
 	(
@@ -7580,9 +7655,9 @@ t_mbox() { # {{{
 	ck 28 - ./t28 '2228574283 184'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_maildir() { # {{{
+t_maildir() { #{{{
 	t_prolog "${@}"
 
 	if have_feat maildir; then :; else
@@ -7737,9 +7812,9 @@ t_maildir() { # {{{
 	cke0 12 0 ./t12 '3236247792 1567'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_eml_and_stdin_pipe() { # {{{
+t_eml_and_stdin_pipe() { #{{{
 	t_prolog "${@}"
 
 	gm from pipe-committee sub stdin > ./t.mbox
@@ -7792,7 +7867,7 @@ t_eml_and_stdin_pipe() { # {{{
 	cke0 15 0 ./t15 '2143650081 96'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
 t_write() { # c'mon {{{
 	t_prolog "${@}"
@@ -7819,11 +7894,11 @@ x' -Rf ./t.mbox >./t2 2>${E0}
 
 	t_epilog "${@}"
 
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # MIME and RFC basics {{{
-t_mime_if_not_ascii() { # {{{
+t_mime_if_not_ascii() { #{{{
 	t_prolog "${@}"
 
 	</dev/null ${MAILX} ${ARGS} -s Subject ./t.mbox >> ./t.mbox 2>${E0}
@@ -7833,9 +7908,9 @@ t_mime_if_not_ascii() { # {{{
 	cke0 2 0 ./t.mbox '3964303752 274'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mime_encoding() { # {{{
+t_mime_encoding() { #{{{
 	t_prolog "${@}"
 
 	# 8B
@@ -7866,9 +7941,9 @@ t_mime_encoding() { # {{{
 	cke0 6 0 ./t.mbox '3926760595 1034'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_xxxheads_rfc2047() { # {{{
+t_xxxheads_rfc2047() { #{{{
 	t_prolog "${@}"
 
 	echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
@@ -7974,9 +8049,9 @@ _EOT
 
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
+t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 	t_prolog "${@}"
 
 	if [ -n "${UTF8_LOCALE}" ] && have_feat multibyte-charsets && have_feat iconv; then
@@ -8091,9 +8166,9 @@ t_iconv_mbyte_base64() { # {{{ TODO uses sed(1) and special *headline*!!
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_iconv_mainbody() { # {{{
+t_iconv_mainbody() { #{{{
 	t_prolog "${@}"
 
 	if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then :; else
@@ -8138,26 +8213,9 @@ t_iconv_mainbody() { # {{{
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_binary_mainbody() { # {{{
-	t_prolog "${@}"
-
-	printf 'abra\0\nka\r\ndabra' |
-		${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' ./t.mbox >${EX} 2>${E0}
-	cke0 1 0 ./t.mbox '1629827 239'
-	ck0 2 - ${EX}
-
-	printf 'p\necho\necho writing now\nwrite ./t5\n' |
-		${MAILX} ${ARGS} -Rf -Spipe-application/octet-stream="?* ${cat} > ./t4" ./t.mbox >./t3 2>${E0}
-	cke0 3 0 ./t3 '207118784 312'
-	ck 4 - ./t4 '3817108933 15'
-	ck 5 - ./t5 '3817108933 15'
-
-	t_epilog "${@}"
-} # }}}
-
-t_mime_force_sendout() { # {{{
+t_mime_force_sendout() { #{{{
 	t_prolog "${@}"
 
 	if have_feat iconv; then :; else
@@ -8203,9 +8261,26 @@ t_mime_force_sendout() { # {{{
 	cke0 8 0 ./t.mbox '4002905306 2565'
 
 	t_epilog "${@}"
+} #}}}
+
+t_binary_mainbody() { # {{{
+	t_prolog "${@}"
+
+	printf 'abra\0\nka\r\ndabra' |
+		${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' ./t.mbox >${EX} 2>${E0}
+	cke0 1 0 ./t.mbox '1629827 239'
+	ck0 2 - ${EX}
+
+	printf 'p\necho\necho writing now\nwrite ./t5\n' |
+		${MAILX} ${ARGS} -Rf -Spipe-application/octet-stream="?* ${cat} > ./t4" ./t.mbox >./t3 2>${E0}
+	cke0 3 0 ./t3 '207118784 312'
+	ck 4 - ./t4 '3817108933 15'
+	ck 5 - ./t5 '3817108933 15'
+
+	t_epilog "${@}"
 } # }}}
 
-t_C_opt_customhdr() { # {{{
+t_C_opt_customhdr() { #{{{
 	t_prolog "${@}"
 
 	echo bla |
@@ -8243,11 +8318,11 @@ t_C_opt_customhdr() { # {{{
 
 	t_epilog "${@}"
 }
-# }}}
-# }}}
+#}}}
+#}}}
 
 # Operational basics with trivial tests {{{
-t_alias() { # {{{
+t_alias() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -8383,9 +8458,9 @@ __EOT
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_charsetalias() { # {{{
+t_charsetalias() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -8415,9 +8490,9 @@ t_charsetalias() { # {{{
 	cke0 1 0 ./t1 '3551595280 433'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_shortcut() { # {{{
+t_shortcut() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -8441,9 +8516,9 @@ t_shortcut() { # {{{
 	cke0 1 0 ./t1 '1970515669 430'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_netrc() { # {{{
+t_netrc() { #{{{
 	t_prolog "${@}"
 
 	if have_feat netrc; then :; else
@@ -8507,9 +8582,9 @@ t_netrc() { # {{{
 	cke0 2 0 ./t2 '3076722625 893'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_states_and_primary_secondary() { # {{{
+t_states_and_primary_secondary() { #{{{
 	t_prolog "${@}"
 
 	{
@@ -8683,9 +8758,9 @@ ec =5;set MBOX=./t5-6m inbox=./t5-6;Fi ./t.tpl;x;c * $inbox;x;fi %;x;tou 1;x;mb 
 	ck 5-6 - ./t5-6 '3292035903 131'; ck 5-6m - ./t5-6m '3305129155 831'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_specifying_sorting() { # {{{
+t_specifying_sorting() { #{{{
 	t_prolog "${@}"
 
 	{
@@ -8866,11 +8941,11 @@ sea @>@^b10?$;x
 	# fi
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Operational basics with easy tests {{{
-t_expandaddr() { # {{{
+t_expandaddr() { #{{{
 	# after: t_alias
 	# MTA alias specific part in t_mta_aliases()
 	# This only tests from command line, rest later on (iff any)
@@ -9156,9 +9231,9 @@ t_expandaddr() { # {{{
 	ck0 90 - ${EX}
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mta_aliases() { # {{{
+t_mta_aliases() { #{{{
 	# after: t_expandaddr
 	t_prolog "${@}"
 
@@ -9290,9 +9365,9 @@ t_mta_aliases() { # {{{
 	# TODO need to somehow provide its contents to the test, then test
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_filetype() { # {{{
+t_filetype() { #{{{
 	t_prolog "${@}"
 
 	printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
@@ -9331,9 +9406,9 @@ t_filetype() { # {{{
 	ck 5 - ./t5 '2436024965 163'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_e_H_L_opts() { # {{{
+t_e_H_L_opts() { #{{{
 	t_prolog "${@}"
 
 	touch ./t.mbox
@@ -9420,9 +9495,9 @@ t_e_H_L_opts() { # {{{
 	ck 6 - ./t.mbox '3540578520 839'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_on_mailbox() { # {{{
+t_on_mailbox() { #{{{
 	t_prolog "${@}"
 
 	gm from 'ex1@am.ple' sub s1 > ./t1x.mbox
@@ -9484,9 +9559,9 @@ e 25;\h
 	cke0 1 0 ./t1 '4024483557 4042'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_q_t_etc_opts() { # {{{
+t_q_t_etc_opts() { #{{{
 	# Simple, if we need more here, place in a later vim fold!
 	t_prolog "${@}"
 
@@ -9534,9 +9609,9 @@ t_q_t_etc_opts() { # {{{
 	ck0 10 - ./t10
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_message_injections() { # {{{
+t_message_injections() { #{{{
 	# Simple, if we need more here, place in a later vim fold!
 	t_prolog "${@}"
 
@@ -9563,9 +9638,9 @@ t_message_injections() { # {{{
 	cke0 3 0 ./t3 '2646789247 218'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_attachments() { # {{{
+t_attachments() { #{{{
 	# TODO More should be in compose mode stuff aka digmsg
 	t_prolog "${@}"
 
@@ -9801,9 +9876,9 @@ reply 1 2
 	ck cnv-2.9.write - ./tcnv#1.2#1.2#1.2#1.2 '3312016702 10'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_rfc2231() { # {{{
+t_rfc2231() { #{{{
 	# (after attachments) 
 	t_prolog "${@}"
 
@@ -9909,9 +9984,9 @@ t_rfc2231() { # {{{
 	ck 4 0 ./t4 '4094731083 905' '3713266499 473'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mimetype() { # {{{
+t_mimetype() { #{{{
 	t_prolog "${@}"
 
 	tmt='#
@@ -9961,9 +10036,9 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
 	# Note: further type-marker stuff is done in t_pipe_handlers()
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mime_types_load_control() { # {{{
+t_mime_types_load_control() { #{{{
 	t_prolog "${@}"
 
 	${cat} <<-'_EOT' > ./t.mts1
@@ -10008,11 +10083,11 @@ t_mime_types_load_control() { # {{{
 	ck 2 0 ./t2 '636721402 1131' '1623174727 82'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Around state machine, after basics {{{
-t_alternates() { # {{{
+t_alternates() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -10210,9 +10285,9 @@ my body
 	ck0e0 14 - ./t14
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_cmd_escapes() { # {{{
+t_cmd_escapes() { #{{{
 	# quote and cmd escapes because this (since Mail times) is worked in the
 	# big collect() monster of functions
 	t_prolog "${@}"
@@ -10466,9 +10541,9 @@ and i ~w rite this out to ./t3
 	[ -f ./t7 ]; ck_exx 7
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_compose_edits() { # {{{ XXX very rudimentary
+t_compose_edits() { #{{{ XXX very rudimentary
 	# after: t_cmd_escapes
 	t_prolog "${@}"
 
@@ -10608,9 +10683,9 @@ mail ./t15
 	ck 15 - ./t15 '3755507589 637'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_digmsg() { # {{{ XXX rudimentary; <> compose_edits()?
+t_digmsg() { #{{{ XXX rudimentary; <> compose_edits()?
 	t_prolog "${@}"
 
 	#{{{
@@ -10804,54 +10879,26 @@ XY
 	cke0 9 0 ./t9 '3321043850 245'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_on_main_loop_tick() { # {{{
+t_on_main_loop_tick() { #{{{
 	t_prolog "${@}"
 
-	printf '#
-define bla {
-	ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
-}
-define omlt {
-	ec in omlt: $i, y<$y> DEAD<$DEAD> crt<$crt>
-	i $((i++)) -gt 3
-		i $i -eq 5
-			xcall x
-		en
-		local xcall x
-		xit 1
-	en
-}
-define x {
-	local se DEAD=d$i y=y$i
-	ec x i=$i y=$y DEAD=$DEAD crt=$crt
-	i $i -gt 6
-		xcall y
-		xit 2
-	en
-	call y
-}
-define y {
-	se crt=$i
-	ec y i=$i y=$y DEAD=$DEAD crt=$crt
-}
-ec 0; se i=1
-ec 1
-se on-main-loop-tick=omlt
-ec 2
-ec 3
-ec call bla;call bla
-ec 4 y=$y DEAD=$DEAD crt=$crt
-ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
-xit' \
-	| ${MAILX} ${ARGS} >./t1 2>${E0}
-	cke0 1 0 ./t1 '640419166 610'
+	t__scope_monster > ./tscope.in
+
+	<./tscope.in ${MAILX} ${ARGS} -SNTICK='se on-main-loop-tick=v' >./tnscope 2>${E0}
+	cke0 nscope 0 ./tnscope '2085181420 3810'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=local -SNTICK='se on-main-loop-tick=v' >./tlocal 2>${E0}
+	cke0 local 0 ./tlocal '2921881988 3973'
+
+	<./tscope.in ${MAILX} ${ARGS} -SSCOPE=our -SNTICK='se on-main-loop-tick=v' >./tour 2>${E0}
+	cke0 our 0 ./tour '2569220389 4117'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_on_program_exit() { # {{{
+t_on_program_exit() { #{{{
 	t_prolog "${@}"
 
 	${MAILX} ${ARGS} -X 'define x {' -X 'echo jay' -X '}' -X x -Son-program-exit=x > ./t1 2>${E0}
@@ -10869,11 +10916,11 @@ t_on_program_exit() { # {{{
 	ck 5 - ./t5 '561900352 118'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
-t_compose_hooks() { # {{{ TODO monster
+t_compose_hooks() { #{{{ TODO monster
 	t_prolog "${@}"
 
 	if have_feat cmd-csop; then :; else
@@ -11334,7 +11381,7 @@ define read_mline_res {
 	end
 }
 define _work {
-	if $# -eq 1; local set i=$1; else; local eval : \$((i = $2, ++i)); endif
+	if $# -eq 1; local set i=$1; else; eval local pp : \$((i = $2, ++i)); endif
 	if $i -lt 111
 		: $((j = i % 10))
 		if $j -ne 0
@@ -11665,9 +11712,9 @@ echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 	ck 4 - ./t4 '1461166401 9997' '1312459649 605'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mass_recipients() { # {{{
+t_mass_recipients() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -11705,35 +11752,46 @@ set on-compose-splice=t_ocs on-compose-leave=t_ocl
 __EOT__
 	#}}}
 
-	printf 'm this-goes@nowhere\nbody\n!.\n' |
-	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
-		-X'source ./t.rc' -Smta=test://t1 -Smaximum=${LOOPS_MAX} \
-		>./t1-x 2>${E0}
-	ck_ex0 1-estat
-	${cat} ./t1-x >> ./t1
-	if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
-		cke0 1-${LOOPS_BIG} - ./t1 '3835365533 51534'
-	elif [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
-		cke0 1-${LOOPS_SMALL} - ./t1 '3647549277 4686'
+	t1() {
+		printf 'm this-goes@nowhere\nbody\n!.\n' |
+			${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
+				-X'source ./t.rc' -Smta=test://t1.${1} -Smaximum=${2} \
+				>./t1.${1}-x 2>${E0}
+		E=${?}
+		${cat} ./t1.${1}-x >> ./t1.${1}
+		return ${E}
+	}
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
+		t1 big ${LOOPS_BIG}
+		cke0 1.big 0 ./t1.big '3835365533 51534'
+	fi
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
+		t1 small ${LOOPS_SMALL}
+		cke0 1.small - ./t1.small '3647549277 4686'
 	fi
 
-	printf 'm this-goes@nowhere\nbody\n!.\n' |
-	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
-		-St_remove=y -X'source ./t.rc' -Smta=test://t2 \
-		-Smaximum=${LOOPS_MAX} \
-		>./t2-x 2>${E0}
-	ck_ex0 2-estat
-	${cat} ./t2-x >> ./t2
-	if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
-		cke0 2-${LOOPS_BIG} - ./t2 '3768249992 34402'
-	elif [ $LOOPS_MAX -eq ${LOOPS_SMALL} ]; then
-		cke0 2-${LOOPS_SMALL} - ./t2 '4042568441 3170'
+	t2() {
+		printf 'm this-goes@nowhere\nbody\n!.\n' |
+		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent \
+			-St_remove=y -X'source ./t.rc' -Smta=test://t2.${1} -Smaximum=${2} \
+			>./t2.${1}-x 2>${E0}
+		E=${?}
+		${cat} ./t2.${1}-x >> ./t2.${1}
+		return ${E}
+	}
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
+		t2 big ${LOOPS_BIG}
+		cke0 2.big 0 ./t2.big '3768249992 34402'
+	fi
+	if [ -n "${KEEP_DATA}" ] || [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
+		t2 small ${LOOPS_SMALL}
+		cke0 2.small - ./t2.small '4042568441 3170'
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_lreply_futh_rth_etc() { # {{{
+t_lreply_futh_rth_etc() { #{{{
 	t_prolog "${@}"
 
 	#{{{
@@ -11936,9 +11994,9 @@ t_lreply_futh_rth_etc() { # {{{
 	cke0 6 0 ./t2_11 '968429240 2282'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_pipe_handlers() { # {{{
+t_pipe_handlers() { #{{{
 	t_prolog "${@}"
 
 	if have_feat cmd-fop; then :; else
@@ -12111,9 +12169,9 @@ mimetype ${x} application/x-gzip  tgz gz emz
 	cke0 25 0 ./t25 '2423141259 2813'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_mailcap() { # {{{
+t_mailcap() { #{{{
 	t_prolog "${@}"
 
 	if have_feat mailcap; then :; else
@@ -12343,11 +12401,11 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 	ck 15 0 ./t15 '3038893485 783' '3916321356 85'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Unclassified rest {{{
-t_top() { # {{{
+t_top() { #{{{
 	t_prolog "${@}"
 
 	gm sub top1 to 1 from 1 cc 1 body 'body1-1
@@ -12388,13 +12446,13 @@ body2-5
 	cke0 1 0 ./t1 '2556125754 705'
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
 # xxx Note: t_z() was the first test (series) written.  Today many
 # xxx aspects are (better) covered by other tests above, some are not.
 # xxx At some future date and time, convert the last remains not covered
 # xxx elsewhere to a real t_* test and drop it
-t_z() { # {{{
+t_z() { #{{{
 	t_prolog "${@}"
 
 	# Test for [260e19d] (Juergen Daubert)
@@ -12410,11 +12468,11 @@ t_z() { # {{{
 	cke0 7 0 ./t7 '1707496413 61812'
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # OPT_TLS (basics, like S/MIME) {{{
-t_s_mime() { # {{{
+t_s_mime() { #{{{
 	t_prolog "${@}"
 
 	if have_feat smime; then :; else
@@ -12528,11 +12586,11 @@ t_s_mime() { # {{{
 	doit passwd
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # OPT_NET_TEST {{{
-t_net_pop3() { # {{{ TODO TLS tests, then also EXTERN*
+t_net_pop3() { #{{{ TODO TLS tests, then also EXTERN*
 	t_prolog "${@}"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat pop3; then :; else
@@ -12541,7 +12599,7 @@ t_net_pop3() { # {{{ TODO TLS tests, then also EXTERN*
 		return
 	fi
 
-	pop3_logged_in() { # {{{
+	pop3_logged_in() { #{{{
 		printf '\002
 +OK Logged in.
 \001
@@ -12587,7 +12645,7 @@ QUIT
 \002
 +OK Logging out.
 '
-	} # }}}
+	} #}}}
 
 	# Authentication types {{{
 	t__net_script .t.sh pop3 \
@@ -12631,12 +12689,12 @@ AUTH XOAUTH2 dXNlcj1zdGVmZmVuAWF1dGg9QmVhcmVyIFN3YXkBAQ==
 	else
 		t_echoskip '3:[false/TODO/!TLS]'
 	fi
-	# }}}
+	#}}}
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_net_imap() { # {{{ TODO TLS tests, then also EXTERN*
+t_net_imap() { #{{{ TODO TLS tests, then also EXTERN*
 	t_prolog "${@}"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat imap; then :; else
@@ -12656,7 +12714,7 @@ T1 OK Pre-login capabilities listed, post-login capabilities have more.
 '
 	} # }}}
 
-	imap_logged_in() { # {{{
+	imap_logged_in() { #{{{
 		__xno1__=2
 		[ ${#} -eq 1 ] && __xno1__=${1}
 
@@ -12726,7 +12784,7 @@ T%s LOGOUT
 		"${__xno4__}" "${__xno4__}" \
 		"${__xno5__}" "${__xno5__}" \
 		"${__xno6__}"
-	} # }}}
+	} #}}}
 
 	t__net_script .t.sh imap \
 		-Simap-auth=login -Snoimap-use-starttls
@@ -12765,9 +12823,9 @@ c3RlZmZlbiA1MTdlZDhlNDhkMDhhN2FkNDUwZDdlNzljYWFhMzNmZQ==
 	fi
 
 	t_epilog "${@}"
-} # }}}
+} #}}}
 
-t_net_smtp() { # {{{ TODO v15: drop smtp-hostname tests
+t_net_smtp() { #{{{ TODO v15: drop smtp-hostname tests
 	t_prolog "${@}"
 
 	if [ -n "${TESTS_NET_TEST}" ] && have_feat smtp; then :; else
@@ -12890,7 +12948,7 @@ Message-ID: <19961002015007.AQACAAAA@am.ple>'
 		smtp__script /dev/null "$@" -Shostname=am.ple \
 			-Sfrom=${from} -Ssmtp-from=steffen2@am2.ple2
 	}
-	# }}}
+	#}}}
 
 	# HE-EH-LOs {{{
 	smtp_helo() {
@@ -12917,7 +12975,7 @@ EHLO %s
 		[ ${#} -eq 0 ] && [ -n "${ext_tls}" ] && printf '%s\n' "${ext_tls}"
 		printf '250-8BITMIME\n250 PIPELINING\n'
 	}
-	# }}}
+	#}}}
 
 	smtp_auth_ok() { printf '\002\n235 2.7.0 Authentication successful\n'; }
 
@@ -12985,7 +13043,7 @@ QUIT
 	}
 
 	smtp_go() { smtp_head_all && smtp_quit; }
-	# }}}
+	#}}}
 
 	# Check the *from* / *hostname* / *smtp-from* .. interaction {{{
 	smtp_script smtp -Ssmtp-config=-ehlo
@@ -13023,7 +13081,7 @@ QUIT
 	smtp_script_from_hostname_smtp_from smtp -Ssmtp-config=-ehlo
 	{ smtp_helo && smtp_go; } | ../net-test t.sh > ./t9 2>${E0}
 	ck0e0 9 0 ./t9
-	# }}}
+	#}}}
 
 	# Real EHLO authentication types {{{
 	smtp_script smtp -Ssmtp-config=-all,,plain,, #,ehlo<-implied,plain
@@ -13123,7 +13181,7 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 	else
 		t_echoskip 'auth-{6-9}:[!TLS]'
 	fi
-	# }}}
+	#}}}
 
 	# Some data feeding {{{
 	# body data
@@ -13236,11 +13294,11 @@ Content-Transfer-Encoding: 8bit'
 	else
 		t_echoskip '4:[!ICONV]'
 	fi
-	# }}}
+	#}}}
 
 	t_epilog "${@}"
-} # }}}
-# }}}
+} #}}}
+#}}}
 
 # Test support {{{
 # Message generation and other header/message content {{{
@@ -13496,7 +13554,63 @@ t__put_body() {
 "Die letzte Zeile war ein Leerschritt.\n"\
 ' '
 }
-# }}}
+#}}}
+
+t__scope_monster() { #{{{ $NTICK[if set `eval'ed after setup!], $SCOPE[=],$CALL1[=call],$CALL2[=xcall]
+	${cat} << '__EOT'
+\i -Z SCOPE; \se SCOPE; \en
+\i -Z CALL1; \se CALL1=call; \en
+\i -Z CALL2; \se CALL2=xcall; \en
+\define bla {
+	\ec bla: $i y<$y> DEAD<$DEAD> crt<$crt>
+}
+\define v {
+	\ec in v: $i, y<$y> DEAD<$DEAD> crt<$crt>
+	\i $((i++)) -gt 3
+		\i $i -eq 5
+			\eval $CALL1 x
+		\el
+			\eval $SCOPE $CALL1 x
+		\en
+		\ec out v: $i, y<$y> DEAD<$DEAD> crt<$crt>
+	\en
+}
+\define x {
+	\eval $SCOPE se DEAD=d\$i y=y\$i
+	\ec x i=$i y=$y DEAD=$DEAD crt=$crt
+	\i $i -gt 6
+		\eval $CALL2 y
+	\el
+		\eval $CALL1 y
+	\en
+}
+\define y {
+	\se crt=$i
+	\ec y i=$i y=$y DEAD=$DEAD crt=$crt
+	\eval $SCOPE $CALL2 z
+}
+\define z {
+	\eval local pp se crt=$((i + 10))
+	\ec z i=$i y=$y DEAD=$DEAD crt=$crt
+}
+\ec 0: SCOPE=$SCOPE CALL1=$CALL1 CALL2=$CALL2; \se i=1
+\ec 1
+\i -Z NTICK; \call v; \el; eval $NTICK; \en
+\ec 2
+\i -Z NTICK; \call v; \en
+\ec 3
+\i -Z NTICK; \call v; \en
+\ec call bla
+\i -Z NTICK; \call v; \en
+\call bla
+\i -Z NTICK; \call v; \en
+\ec 4 y=$y DEAD=$DEAD crt=$crt
+\i -Z NTICK; \call v; \en
+\ec bye: i=$i y=$y DEAD=$DEAD crt=$crt
+\i -Z NTICK; \call v; \en
+\xit
+__EOT
+} #}}}
 
 t__net_script() {
 	file=${1}
@@ -13814,8 +13928,8 @@ t__tls__copy() {
 	[ -n "${ln}" ] && __cp=${ln}
 	${__cp} -f ../t.tls.db/*.* .
 }
-# }}}
-# }}}
+#}}}
+#}}}
 
 # Test all configs TODO does not cover all *combinations*, stupid!
 cc_all_configs() { #{{{
@@ -13984,7 +14098,7 @@ cc_all_configs() { #{{{
 t_all() { #{{{
 	# Absolute Basics
 	jspawn eval
-	jspawn call
+	jspawn call_xcall
 	jspawn X_Y_opt_input_go_stack
 	jspawn more_source_go_stack
 	jspawn X_errexit
@@ -14000,15 +14114,15 @@ t_all() { #{{{
 	# Basics (variables, program logic, arg stuff etc.: all here)
 	jspawn shcodec
 	jspawn ifelse
-	jspawn localopts
-	jspawn local
+	jspawn call_xcall_scope
+	jspawn call_ret
+	jspawn macro_param_shift
+	jspawn localopts # v15-compat
 	jspawn environ
 	jspawn loptlocenv
-	jspawn macro_param_shift
 	jspawn csop # often used
 	jspawn vexpr # often used
-	jspawn call_ret
-	jspawn xcall
+	jspawn xcall_heavy
 	jspawn local_x_call_environ
 	jspawn vpospar
 	jspawn atxplode
@@ -14178,4 +14292,4 @@ fi
 #}}}
 
 exit ${ESTAT}
-# s-sht-mode
+# s-sht-mode  vim:set fenc=latin1:

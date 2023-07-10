@@ -128,15 +128,13 @@ struct a_vexpr_ctx{
 	u32 vc_flags;
 	u8 vc_cmderr; /* On input, a_vexpr_cmd, on output (maybe) a_vexpr_err */
 	u8 vc_pbase;
-	boole vc_cm_local; /* `local' command modifier */
-	u8 vc__pad[1];
-	char const **vc_argv;
+	u8 vc__pad[2];
 	char const *vc_cmd_name;
-	char const *vc_varname; /* `vput' command modifier */
 	char const *vc_varres;
 	char const *vc_arg; /* The current arg (_ERR: which caused failure) */
 	s64 vc_lhv;
 	s64 vc_rhv;
+	char const *vc_argv[7];
 	char vc_iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
 };
 
@@ -739,8 +737,8 @@ a_vexpr__regex_replace(void *uservp){
 
 	templ.s = S(char*,uservp);
 	templ.l = UZ_MAX;
-	shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-				n_SHEXP_PARSE_QUOTE_AUTO_DSQ), n_string_creat_auto(&s_b), &templ, NIL);
+	shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+				n_SHEXP_PARSE_QUOTE_AUTO_DSQ), mx_SCOPE_NONE, n_string_creat_auto(&s_b), &templ, NIL);
 	if((shs & (n_SHEXP_STATE_ERR_MASK | n_SHEXP_STATE_STOP)) == n_SHEXP_STATE_STOP){
 		rv = n_string_cp(&s_b);
 		n_string_drop_ownership(&s_b);
@@ -758,17 +756,27 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
 	char const *cp;
 	u32 f;
 	uz i, j;
+	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
-	/*DVLDBG(*/ su_mem_set(&vc, 0xAA, sizeof vc); /*)*/
+	STRUCT_ZERO(struct a_vexpr_ctx, &vc);
+	cacp = vp;
 	vc.vc_flags = a_VEXPR_ERR | a_VEXPR_ISNUM;
 	vc.vc_cmderr = a_VEXPR_ERR_SUBCMD;
-	vc.vc_cm_local = ((n_pstate & n_PS_ARGMOD_LOCAL) != 0);
-	vc.vc_argv = S(char const**,vp);
-	vc.vc_varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *vc.vc_argv++ : NIL;
 	vc.vc_varres = su_empty;
-	vc.vc_arg =
-	vc.vc_cmd_name = *vc.vc_argv++;
+	/* C99 */{
+		struct mx_cmd_arg *cap;
+
+		cap = cacp->cac_arg;
+		vc.vc_arg =
+		vc.vc_cmd_name = cap->ca_arg.ca_str.s;
+
+		for(i = 0; (cap = cap->ca_next) != NIL;){
+			if(i >= NELEM(vc.vc_argv))
+				goto jesyno;
+			vc.vc_argv[i++] = cap->ca_arg.ca_str.s;
+		}
+	}
 
 	if((cp = su_cs_find_c(vc.vc_cmd_name, '?')) != NIL){
 		j = P2UZ(cp - vc.vc_cmd_name);
@@ -834,6 +842,7 @@ c_vexpr(void *vp){ /* TODO POSIX expr(1) comp. exit status */
 		ASSERT(0);
 		break;
 	case a_VEXPR_ERR_SYNOPSIS:
+jesyno:
 		mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("vexpr"), NIL);
 		n_pstate_err_no = su_ERR_INVAL;
 		goto jenum;
@@ -883,7 +892,7 @@ jestr:
 
 	/* Generate the variable value content for numerics.
 	 * Anticipate in our handling below!  (Avoid needless work) */
-	if((f & a_VEXPR_ISNUM) && ((f & (a_VEXPR_ISDECIMAL | a_VEXPR_PBASE)) || vc.vc_varname != NIL)){
+	if((f & a_VEXPR_ISNUM) && ((f & (a_VEXPR_ISDECIMAL | a_VEXPR_PBASE)) || cacp->cac_vput != NIL)){
 		cp = su_ienc(vc.vc_iencbuf, vc.vc_lhv, ((!(f & a_VEXPR_ERR) && (f & a_VEXPR_PBASE)) ? vc.vc_pbase : 10),
 				(((f & (a_VEXPR_PBASE | a_VEXPR_PBASE_FORCE_UNSIGNED)) ==
 						(a_VEXPR_PBASE | a_VEXPR_PBASE_FORCE_UNSIGNED))
@@ -896,7 +905,7 @@ jestr:
 		}
 	}
 
-	if(vc.vc_varname == NIL){
+	if(cacp->cac_vput == NIL){
 		/* If no error and we are printing a numeric result, print some more bases for the fun of it */
 		if((f & (a_VEXPR_ERR | a_VEXPR_ISNUM | a_VEXPR_ISDECIMAL)) == a_VEXPR_ISNUM){
 			char binabuf[64 + 64 / 8 +1];
@@ -920,14 +929,14 @@ jestr:
 			n_pstate_err_no = su_err_by_errno();
 			f |= a_VEXPR_ERR;
 		}
-	}else if(!n_var_vset(vc.vc_varname, R(up,vc.vc_varres), vc.vc_cm_local)){
+	}else if(!n_var_vset(cacp->cac_vput, R(up,vc.vc_varres), cacp->cac_scope_vput)){
 		n_pstate_err_no = su_ERR_NOTSUP;
 		f |= a_VEXPR_ERR;
 	}
 
 jleave:
 	NYD_OU;
-	return (f & a_VEXPR_ERR) ? 1 : 0;
+	return (f & a_VEXPR_ERR) ? su_EX_ERR : su_EX_OK;
 }
 
 #include "su/code-ou.h"

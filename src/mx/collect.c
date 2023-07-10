@@ -166,7 +166,8 @@ static s32 a_coll_pipe(char const *cmd);
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
-static s32 a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f);
+static s32 a_coll_forward(enum mx_scope scope, char const *ms, FILE *fp,
+      struct header *hp, int f);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -882,13 +883,14 @@ jout:
 }
 
 static s32
-a_coll_forward(char const *ms, FILE *fp, struct header *hp, int f){
+a_coll_forward(enum mx_scope scope, char const *ms, FILE *fp,
+      struct header *hp, int f){
    struct a_coll_quote_ctx cqc;
    struct su_mem_bag membag;
    int rv, *msgvec;
    NYD_IN;
 
-   if((rv = n_getmsglist(ms, n_msgvec, 0, FAL0, NIL)) < 0){
+   if((rv = n_getmsglist(scope, FAL0, ms, n_msgvec, 0, NIL)) < 0){
       rv = n_pstate_err_no; /* XXX not really, should be handled there! */
       goto jleave;
    }
@@ -1077,8 +1079,8 @@ a_coll_ocs__finalize(void *vp){
 }
 
 FL FILE *
-n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
-   char const *quotefile, s8 *checkaddr_err)
+n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp,
+   struct message *mp, char const *quotefile, s8 *checkaddr_err)
 {
    enum{
       a_NONE,
@@ -1133,7 +1135,6 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    sigprocmask(SIG_BLOCK, &nset, &oset);
 
    n_pstate |= n_PS_COMPOSE_MODE;
-   n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
@@ -1490,7 +1491,7 @@ jputnl:
 
          io.s = UNCONST(char*,cp);
          io.l = S(uz,cnt);
-         if(!mx_cmd_eval(&io, eval_cnt, NIL))
+         if(!mx_cmd_eval(eval_cnt, scope, &io, NIL))
             goto jearg;
          cp = io.s;
          cnt = S(long,io.l);
@@ -1523,13 +1524,8 @@ jearg:
          /* Shell escape, send the balance of line to sh -c */
          if(cnt == 0 || coap != NULL)
             goto jearg;
-         else{
-            char const *argv[2];
-
-            argv[0] = cp; /* TODO history normalization */
-            argv[1] = NIL;
-            n_pstate_ex_no = mx_shell_cmd(argv, NIL, FAL0);/* XXX errexit */
-         }
+         else
+            n_pstate_ex_no = mx_shell_cmd(cp, NIL, scope);/*XXX hi norm, errex*/
          goto jhistcont;
       case '.':
          /* Simulate end of file on input */
@@ -1603,7 +1599,7 @@ jearg:
          n_pstate_ex_no = 0; /* XXX */
          }break;
       case '^':
-         if(!mx_dig_msg_circumflex(&dmc, n_stdout, cp)){
+         if(!mx_dig_msg_circumflex(&dmc, scope, n_stdout, cp)){
             if(ferror(_coll_fp))
                goto jerr;
             goto jearg;
@@ -1774,7 +1770,7 @@ jev_go:
       case 'U':
       case 'u':
          /* Interpolate the named messages */
-         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, hp, c)
+         if((n_pstate_err_no = a_coll_forward(scope, cp, _coll_fp, hp, c)
                ) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))

@@ -133,7 +133,8 @@ do{\
 FL int c_define(void *vp);
 FL int c_undefine(void *vp);
 FL int c_call(void *vp);
-FL void mx_xcall_exchange(void *currlvl_lopts, void **old_lopts, boole *local_active);
+FL void mx_xcall_exchange(void *currlvl_lopts, void **outer_lopts,
+      enum mx_scope *scopep);
 FL int mx_xcall(void *vp, void *lospopts);
 FL int c_call_if(void *vp);
 
@@ -167,8 +168,8 @@ enum{mx__ON_MAILBOX_EVENT_MAX = mx_ON_MAILBOX_EVENT_OPEN};
 FL boole mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev);
 
 /* TODO v15 drop Invoke compose hook macname
- * _hook_control(): local argument only of interest for enable=!FAL0 */
-FL void temporary_compose_mode_hook_control(boole enable, boole local);
+ * _hook_control(): scope argument only of interest for enable=!FAL0 */
+FL void temporary_compose_mode_hook_control(boole enable, enum mx_scope scope);
 FL void temporary_compose_mode_hook_call(char const *macname);
 
 #ifdef mx_HAVE_HISTORY
@@ -223,11 +224,10 @@ FL boole n_var_okclear(enum okeys okey);
  * _vexplode() is to be used by the shell expansion stuff when encountering
  * ${@} in double-quotes, in order to provide sh(1)ell compatible behaviour;
  * it returns whether there are any elements in argv (*cookie).
- * Calling vset with val==NIL is a clear request; local specifies whether the
- * `local' command modifier is active */
+ * Calling vset with val==NIL is a clear request */
 FL char const *n_var_vlook(char const *vokey, boole try_getenv);
 FL boole n_var_vexplode(void const **cookie);
-FL boole n_var_vset(char const *vokey, up val, boole local);
+FL boole n_var_vset(char const *vokey, up val, enum mx_scope scope);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
@@ -559,8 +559,9 @@ FL int c_write(void *vp);
 
 /* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
-FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
-            struct message *mp, char const *quotefile, s8 *checkaddr_err);
+FL FILE *n_collect(enum n_mailsend_flags msf, enum mx_scope scope,
+      struct header *hp, struct message *mp, char const *quotefile,
+      s8 *checkaddr_err);
 
 /*
  * folder.c
@@ -853,8 +854,9 @@ FL void        touch(struct message *mp);
  * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_nil=NIL].
  * skip_aka_dryrun is passed through to shell expression scanner.
  * Returns the count of messages picked up or -1 on error */
-FL int n_getmsglist(char const *buf, int *vector, int flags,
-      boole skip_aka_dryrun, struct mx_cmd_arg **capp_or_nil);
+FL int n_getmsglist(enum mx_scope scope, boole skip_aka_dryrun,
+      char const *buf, int *vector, int flags,
+      struct mx_cmd_arg **capp_or_nil);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
@@ -935,10 +937,10 @@ FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
 FL int c_sendmail(void *v);
 FL int c_Sendmail(void *v);
 
-/* Mail a message on standard input to the people indicated in the passed
- * header, applying all the address massages first.  (Internal interface) */
-FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
-      struct message *quote, char const *quotefile, boole local);
+/* (Internal interface) Mail a message on standard input to the people
+ * indicated in the passed header, applying all the address massages first */
+FL enum okay n_mail1(enum n_mailsend_flags flags, enum mx_scope scope,
+      struct header *hp, struct message *quote, char const *quotefile);
 
 /* Dump the to, subject, cc header on the passed file buffer.
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
@@ -964,8 +966,8 @@ FL int mx_sendout_header_date(FILE *fo, char const *field,
 /* Note: hp->h_to must already have undergone address massage(s), it is taken
  * as-is; h_cc and h_bcc are asserted to be NIL.  urlp must have undergone
  * mx_sendout_mta_url() processing */
-FL enum okay n_resend_msg(struct message *mp, struct mx_url *urlp,
-      struct header *hp, boole add_resent, boole local);
+FL enum okay n_resend_msg(enum mx_scope scope, struct message *mp,
+      struct mx_url *urlp, struct header *hp, boole add_resent);
 
 /* *save* / $DEAD */
 FL void        savedeadletter(FILE *fp, boole fflush_rewind_first);
@@ -998,16 +1000,16 @@ FL char **mx_shexp_name_expand_multi(char const *name,
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
- * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
- * just as known from the sh(1)ell in that case */
+ * If cookie is not NULL and we are in double-quotes then ${@} will be exploded
+ * just as known from the sh(1)ell */
 FL BITENUM_IS(u32,n_shexp_state) n_shexp_parse_token(
-      BITENUM_IS(u32,n_shexp_parse_flags) flags, struct n_string *store,
-      struct str *input, void const **cookie);
+      BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+      struct n_string *store, struct str *input, void const **cookie);
 
 /* Quick+dirty simplified : if an error occurs, returns a copy of *cp and set
  * *cp to NULL, otherwise advances *cp to over the parsed token */
 FL char *n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
-      char const **cp);
+      enum mx_scope scope, char const **cp);
 
 /* Another variant of parse_token_cp(): unquote the argument, ensure the result
  * is "alone": after WS/IFS trimming STATE_STOP must be set, returns TRUM1 if
