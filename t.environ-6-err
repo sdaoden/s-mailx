@@ -1,2 +1,2 @@
 reproducible_build: pre
-reproducible_build: ERROR: environ: vput: not a valid variable name: d+
+reproducible_build: ERROR: environ: vput: not a valid variable name: 'd+ lookup du'

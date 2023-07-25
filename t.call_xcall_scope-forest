@@ -1,0 +1,81 @@
+sh i<> j<> D<> MXT<mxt1> / <reproducible_build> i<> j<j1> D<~/dead.letter> as<1> tl<4> MXT<mxt1>
+
+C1=call C2=xcall
+sh i<> j<> D<~/dead.letter> MXT<mxt1> / <> i<> j<j1> D<~/dead.letter> as<1> tl<4> MXT<mxt1> 1>
+sh i<> j<> D<~/dead.letter> MXT<mxt1> / <1> i<> j<j1> D<~/dead.letter> as<1> tl<4> MXT<mxt1> 2>
+sh i<> j<j2> D<d2> MXT<mxt1> / <1> i<> j<j2> D<d2> as<1> tl<4> MXT<mxt1> 2=
+sh i<> j<j2> D<d2> MXT<mxt1> / <2> i<> j<j2> D<d2> as<1> tl<4> MXT<mxt1> 3>
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<4> MXT<MXT3> 3=
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <3> i<i3> j<j2> D<d2> as<1> tl<4> MXT<MXT3> 4>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<4> MXT<MXT3> 5>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <5> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 6>
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <5> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 6=
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <6> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 7>
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7=
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7<
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5<
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<4> MXT<MXT3> 3<
+sh i<> j<j1> D<d2> MXT<mxt1> / <> i<> j<j1> D<d2> as<1> tl<4> MXT<mxt1> 1<
+sh i<> j<j1> D<~/dead.letter> MXT<mxt1> / <reproducible_build> i<> j<j1> D<~/dead.letter> as<1> tl<4> MXT<mxt1> ==1
+
+C1=xcall C2=call
+sh i<> j<j1> D<~/dead.letter> MXT<MXT1> / <> i<> j<J1> D<~/dead.letter> as<1> tl<8> MXT<MXT1> 1>
+sh i<> j<j1> D<~/dead.letter> MXT<MXT1> / <1> i<> j<J1> D<~/dead.letter> as<1> tl<8> MXT<MXT1> 2>
+sh i<> j<j2> D<d2> MXT<MXT1> / <1> i<> j<j2> D<d2> as<1> tl<8> MXT<MXT1> 2=
+sh i<> j<j2> D<d2> MXT<MXT1> / <2> i<> j<j2> D<d2> as<1> tl<8> MXT<MXT1> 3>
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<8> MXT<MXT3> 3=
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <3> i<i3> j<j2> D<d2> as<1> tl<8> MXT<MXT3> 4>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<4> MXT<MXT3> 5>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <5> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 6>
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <5> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 6=
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <6> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 7>
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7=
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7<
+sh i<> j<> D<d6> MXT<MXT3> / <5> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 6<
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4<
+sh i<> j<j2> D<d2> MXT<MXT1> / <1> i<> j<j2> D<d2> as<1> tl<8> MXT<MXT1> 2<
+sh i<> j<J1> D<~/dead.letter> MXT<MXT1> / <reproducible_build> i<> j<J1> D<~/dead.letter> as<1> tl<8> MXT<MXT1> ==2
+
+C1=call C2=call
+sh i<> j<J1> D<~/dead.letter> MXT<mxt3> / <> i<> j<J3> D<~/dead.letter> as<1> tl<10> MXT<mxt3> 1>
+sh i<> j<J1> D<~/dead.letter> MXT<mxt3> / <1> i<> j<J3> D<~/dead.letter> as<1> tl<10> MXT<mxt3> 2>
+sh i<> j<j2> D<d2> MXT<mxt3> / <1> i<> j<j2> D<d2> as<1> tl<10> MXT<mxt3> 2=
+sh i<> j<j2> D<d2> MXT<mxt3> / <2> i<> j<j2> D<d2> as<1> tl<10> MXT<mxt3> 3>
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<10> MXT<MXT3> 3=
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <3> i<i3> j<j2> D<d2> as<1> tl<10> MXT<MXT3> 4>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<4> MXT<MXT3> 5>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <5> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 6>
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <5> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 6=
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <6> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 7>
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7=
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7<
+sh i<> j<> D<d6> MXT<MXT3> / <5> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 6<
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5<
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4<
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<10> MXT<MXT3> 3<
+sh i<> j<j2> D<d2> MXT<mxt3> / <1> i<> j<j2> D<d2> as<1> tl<10> MXT<mxt3> 2<
+sh i<> j<J3> D<d2> MXT<mxt3> / <> i<> j<J3> D<d2> as<1> tl<10> MXT<mxt3> 1<
+sh i<> j<J3> D<~/dead.letter> MXT<mxt3> / <reproducible_build> i<> j<J3> D<~/dead.letter> as<1> tl<10> MXT<mxt3> ==3
+
+C1=xcall C2=xcall
+sh i<> j<J3> D<~/dead.letter> MXT<MXT4> / <> i<> j<J4> D<~/dead.letter> as<1> tl<12> MXT<MXT4> 1>
+sh i<> j<J3> D<~/dead.letter> MXT<MXT4> / <1> i<> j<J4> D<~/dead.letter> as<1> tl<12> MXT<MXT4> 2>
+sh i<> j<j2> D<d2> MXT<MXT4> / <1> i<> j<j2> D<d2> as<1> tl<12> MXT<MXT4> 2=
+sh i<> j<j2> D<d2> MXT<MXT4> / <2> i<> j<j2> D<d2> as<1> tl<12> MXT<MXT4> 3>
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <2> i<i3> j<j2> D<d2> as<1> tl<12> MXT<MXT3> 3=
+sh i<i3> j<j2> D<d2> MXT<MXT3> / <3> i<i3> j<j2> D<d2> as<1> tl<12> MXT<MXT3> 4>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <3> i<i3> j<j4x> D<d2> as<> tl<4> MXT<MXT3> 4=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<4> MXT<MXT3> 5>
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <4> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 5=
+sh i<i3> j<j4> D<d2> MXT<MXT3> / <5> i<i3> j<j4> D<d2> as<> tl<5> MXT<MXT3> 6>
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <5> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 6=
+sh i<i6> j<j4> D<d6> MXT<MXT3> / <6> i<i6> j<j4> D<d6> as<> tl<6> MXT<MXT3> 7>
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7=
+sh i<> j<> D<d6> MXT<MXT3> / <6> i<> j<> D<d6> as<> tl<6> MXT<MXT3> 7<
+sh i<> j<> D<~/dead.letter> MXT<MXT4> / <reproducible_build> i<> j<J4> D<~/dead.letter> as<1> tl<12> MXT<MXT4> ==4

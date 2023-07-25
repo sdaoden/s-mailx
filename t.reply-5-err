@@ -6,3 +6,4 @@ reproducible_build: cc2@exam.ple: *expandaddr* does not allow mail address targe
 reproducible_build: No recipients specified
 reproducible_build: ... message not sent
 reproducible_build: 10: Invalid message number
+reproducible_build: reply: BADMSG

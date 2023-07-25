@@ -29,9 +29,21 @@ set EK1=EV1_CHANGED
 #unset: EK3
 environ set EK4=EV4_CHANGED
 #unset: NEK5
-linking EK4, rechanging EK1, EK4
+link games EK4
+1/22/INVAL
+0/0/NONE
+set EK4=.EV4
+EV4_CHANGED
+0/0/NONE
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4_CHANGED> NEK5<>!!!!
+0/0/NONE
+environ set EK4=.EV4
+.EV4
+0/0/NONE
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<.EV4> NEK5<>!!!!!
+rechanging EK1, EK4
 we: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>!!!!
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<EV4> NEK5<>!!!!!!
 set EK1=EV1
 #unset: EK2
 #unset: EK3
@@ -39,7 +51,7 @@ environ set EK4=EV4
 #unset: NEK5
 unset all
 we: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>
-shell: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>!!!!!
+shell: EK1<EV1> EK2<EV2> EK3<> EK4<> NEK5<>!!!!!!!
 #unset: EK1
 #unset: EK2
 #unset: EK3

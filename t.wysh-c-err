@@ -1,6 +1,9 @@
 reproducible_build: \0 argument exceeds byte: a$'\400'c: \400
-reproducible_build: echo: invalid argument list
+reproducible_build: echoXX: invalid argument(s), stopped after 0 of 0 (or more)
+reproducible_build:   Input was $'a$\'\\400\'c', Rest is ''
 reproducible_build: \0 argument exceeds byte: a$'\0400'c: \0400
-reproducible_build: echo: invalid argument list
+reproducible_build: echoXX: invalid argument(s), stopped after 0 of 0 (or more)
+reproducible_build:   Input was $'a$\'\\0400\'c', Rest is ''
 reproducible_build: \U argument exceeds 0x10FFFF: a$'\U1100001'c: \U1100001
-reproducible_build: echo: invalid argument list
+reproducible_build: echoXX: invalid argument(s), stopped after 0 of 0 (or more)
+reproducible_build:   Input was $'a$\'\\U1100001\'c', Rest is ''

@@ -1,0 +1,126 @@
+0: SCOPE= CALL1=call CALL2=xcall
+1
+in v: 1, y<> DEAD<~/dead.letter> crt<>
+in v: 2, y<> DEAD<~/dead.letter> crt<>
+2
+in v: 3, y<> DEAD<~/dead.letter> crt<>
+in v: 4, y<> DEAD<~/dead.letter> crt<>
+x i=5 y=y5 DEAD=d5 crt=
+y i=5 y=y5 DEAD=d5 crt=5
+z i=5 y=y5 DEAD=d5 crt=15
+out v: 5, y<y5> DEAD<d5> crt<15>
+in v: 5, y<y5> DEAD<d5> crt<15>
+x i=6 y=y6 DEAD=d6 crt=15
+y i=6 y=y6 DEAD=d6 crt=6
+z i=6 y=y6 DEAD=d6 crt=16
+out v: 6, y<y6> DEAD<d6> crt<16>
+in v: 6, y<y6> DEAD<d6> crt<16>
+x i=7 y=y7 DEAD=d7 crt=16
+y i=7 y=y7 DEAD=d7 crt=7
+z i=7 y=y7 DEAD=d7 crt=17
+out v: 7, y<y7> DEAD<d7> crt<17>
+3
+in v: 7, y<y7> DEAD<d7> crt<17>
+x i=8 y=y8 DEAD=d8 crt=17
+y i=8 y=y8 DEAD=d8 crt=8
+z i=8 y=y8 DEAD=d8 crt=18
+out v: 8, y<y8> DEAD<d8> crt<18>
+in v: 8, y<y8> DEAD<d8> crt<18>
+x i=9 y=y9 DEAD=d9 crt=18
+y i=9 y=y9 DEAD=d9 crt=9
+z i=9 y=y9 DEAD=d9 crt=19
+out v: 9, y<y9> DEAD<d9> crt<19>
+in v: 9, y<y9> DEAD<d9> crt<19>
+x i=10 y=y10 DEAD=d10 crt=19
+y i=10 y=y10 DEAD=d10 crt=10
+z i=10 y=y10 DEAD=d10 crt=20
+out v: 10, y<y10> DEAD<d10> crt<20>
+in v: 10, y<y10> DEAD<d10> crt<20>
+x i=11 y=y11 DEAD=d11 crt=20
+y i=11 y=y11 DEAD=d11 crt=11
+z i=11 y=y11 DEAD=d11 crt=21
+out v: 11, y<y11> DEAD<d11> crt<21>
+call bla
+in v: 11, y<y11> DEAD<d11> crt<21>
+x i=12 y=y12 DEAD=d12 crt=21
+y i=12 y=y12 DEAD=d12 crt=12
+z i=12 y=y12 DEAD=d12 crt=22
+out v: 12, y<y12> DEAD<d12> crt<22>
+in v: 12, y<y12> DEAD<d12> crt<22>
+x i=13 y=y13 DEAD=d13 crt=22
+y i=13 y=y13 DEAD=d13 crt=13
+z i=13 y=y13 DEAD=d13 crt=23
+out v: 13, y<y13> DEAD<d13> crt<23>
+in v: 13, y<y13> DEAD<d13> crt<23>
+x i=14 y=y14 DEAD=d14 crt=23
+y i=14 y=y14 DEAD=d14 crt=14
+z i=14 y=y14 DEAD=d14 crt=24
+out v: 14, y<y14> DEAD<d14> crt<24>
+in v: 14, y<y14> DEAD<d14> crt<24>
+x i=15 y=y15 DEAD=d15 crt=24
+y i=15 y=y15 DEAD=d15 crt=15
+z i=15 y=y15 DEAD=d15 crt=25
+out v: 15, y<y15> DEAD<d15> crt<25>
+bla: 15 y<y15> DEAD<d15> crt<25>
+in v: 15, y<y15> DEAD<d15> crt<25>
+x i=16 y=y16 DEAD=d16 crt=25
+y i=16 y=y16 DEAD=d16 crt=16
+z i=16 y=y16 DEAD=d16 crt=26
+out v: 16, y<y16> DEAD<d16> crt<26>
+in v: 16, y<y16> DEAD<d16> crt<26>
+x i=17 y=y17 DEAD=d17 crt=26
+y i=17 y=y17 DEAD=d17 crt=17
+z i=17 y=y17 DEAD=d17 crt=27
+out v: 17, y<y17> DEAD<d17> crt<27>
+in v: 17, y<y17> DEAD<d17> crt<27>
+x i=18 y=y18 DEAD=d18 crt=27
+y i=18 y=y18 DEAD=d18 crt=18
+z i=18 y=y18 DEAD=d18 crt=28
+out v: 18, y<y18> DEAD<d18> crt<28>
+in v: 18, y<y18> DEAD<d18> crt<28>
+x i=19 y=y19 DEAD=d19 crt=28
+y i=19 y=y19 DEAD=d19 crt=19
+z i=19 y=y19 DEAD=d19 crt=29
+out v: 19, y<y19> DEAD<d19> crt<29>
+4 y=y19 DEAD=d19 crt=29
+in v: 19, y<y19> DEAD<d19> crt<29>
+x i=20 y=y20 DEAD=d20 crt=29
+y i=20 y=y20 DEAD=d20 crt=20
+z i=20 y=y20 DEAD=d20 crt=30
+out v: 20, y<y20> DEAD<d20> crt<30>
+in v: 20, y<y20> DEAD<d20> crt<30>
+x i=21 y=y21 DEAD=d21 crt=30
+y i=21 y=y21 DEAD=d21 crt=21
+z i=21 y=y21 DEAD=d21 crt=31
+out v: 21, y<y21> DEAD<d21> crt<31>
+in v: 21, y<y21> DEAD<d21> crt<31>
+x i=22 y=y22 DEAD=d22 crt=31
+y i=22 y=y22 DEAD=d22 crt=22
+z i=22 y=y22 DEAD=d22 crt=32
+out v: 22, y<y22> DEAD<d22> crt<32>
+in v: 22, y<y22> DEAD<d22> crt<32>
+x i=23 y=y23 DEAD=d23 crt=32
+y i=23 y=y23 DEAD=d23 crt=23
+z i=23 y=y23 DEAD=d23 crt=33
+out v: 23, y<y23> DEAD<d23> crt<33>
+bye: i=23 y=y23 DEAD=d23 crt=33
+in v: 23, y<y23> DEAD<d23> crt<33>
+x i=24 y=y24 DEAD=d24 crt=33
+y i=24 y=y24 DEAD=d24 crt=24
+z i=24 y=y24 DEAD=d24 crt=34
+out v: 24, y<y24> DEAD<d24> crt<34>
+in v: 24, y<y24> DEAD<d24> crt<34>
+x i=25 y=y25 DEAD=d25 crt=34
+y i=25 y=y25 DEAD=d25 crt=25
+z i=25 y=y25 DEAD=d25 crt=35
+out v: 25, y<y25> DEAD<d25> crt<35>
+in v: 25, y<y25> DEAD<d25> crt<35>
+x i=26 y=y26 DEAD=d26 crt=35
+y i=26 y=y26 DEAD=d26 crt=26
+z i=26 y=y26 DEAD=d26 crt=36
+out v: 26, y<y26> DEAD<d26> crt<36>
+in v: 26, y<y26> DEAD<d26> crt<36>
+x i=27 y=y27 DEAD=d27 crt=36
+y i=27 y=y27 DEAD=d27 crt=27
+z i=27 y=y27 DEAD=d27 crt=37
+out v: 27, y<y27> DEAD<d27> crt<37>
