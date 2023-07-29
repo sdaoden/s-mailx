@@ -1144,8 +1144,14 @@ a_shexp__arith_op_apply(struct a_shexp_arith_ctx *self){
 			}else{
 				s64 i;
 
-				for(i = 1; rval > 0; --rval)
-					i *= val;
+				/* Optimize via "exponentiation by squaring" ("binary exponentiation" in German,
+				 * algorithm from ~200 before Christ in India, as "written in the opus Chandah-sûtra".
+				 * Implemented almost like bash:expr.c:ipow(), after having seen a busybox commit */
+				for(i = 1; rval > 0; rval >>= 1){
+					if(rval & 1)
+						i *= val;
+					val *= val;
+				}
 				val = i;
 			}
 			break;
