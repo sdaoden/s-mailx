@@ -2786,7 +2786,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 	/* XXX a_amv_var_show(): if we iterate over all the actually set variables via a_amv_var_show_all() there is no
 	 * XXX need to call a_amv_var_revlookup() at all!  Revisit this call chain */
 	struct a_amv_var_carrier avc;
-	char const *quote;
+	char const *value, *quote;
+	BITENUM_IS(u32,a_amv_var_flags) flags;
 	struct a_amv_var *avp;
 	boole isset;
 	uz i;
@@ -2796,8 +2797,34 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 	i = 0;
 
 	a_amv_var_revlookup(&avc, name, TRU1);
-	isset = a_amv_var_lookup(&avc, (local ? a_AMV_VLOOK_LOCAL : a_AMV_VLOOK_NONE));
-	avp = avc.avc_var;
+
+	avp = NIL;
+	flags = 0;
+	value = NIL;
+	switch(S(enum a_amv_var_special_category,avc.avc_special_cat)){
+	default: /* silence CC */
+	case a_AMV_VSC_NONE:
+		isset = a_amv_var_lookup(&avc, (local ? a_AMV_VLOOK_LOCAL : a_AMV_VLOOK_NONE));
+		if(isset){
+			avp = avc.avc_var;
+			flags = avp->av_flags;
+			value = avp->av_value;
+		}
+		break;
+	case a_AMV_VSC_GLOBAL:
+		value = a_amv_var_vsc_global(&avc);
+		goto jspecial;
+	case a_AMV_VSC_MULTIPLEX:
+		value = a_amv_var_vsc_multiplex(&avc);
+		goto jspecial;
+	case a_AMV_VSC_POSPAR:
+	case a_AMV_VSC_POSPAR_ENV:
+		value = a_amv_var_vsc_pospar(&avc);
+jspecial:
+		isset = (value != NIL);
+		flags = avc.avc_map->avm_flags;
+		break;
+	}
 
 	if(n_poption & n_PO_D_V){
 		if(avc.avc_map == NIL){
@@ -2815,12 +2842,11 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 					{a_AMV_VF_EXT_LINKED, "`environ' linked"},
 					{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)\0"}
 				}, *tp;
-				ASSERT((avp->av_flags & ~a_AMV_VF_EXT__CUSTOM_MASK) == 0);
-				ASSERT(!(avp->av_flags & a_AMV_VF_EXT_LOCAL) ||
-					(avp->av_flags & ~a_AMV_VF_EXT__LOCAL_MASK) == 0);
+				ASSERT((flags & ~a_AMV_VF_EXT__CUSTOM_MASK) == 0);
+				ASSERT(!(flags & a_AMV_VF_EXT_LOCAL) || (flags & ~a_AMV_VF_EXT__LOCAL_MASK) == 0);
 
 				for(tp = tbase; PCMP(tp, <, &tbase[NELEM(tbase)]); ++tp){
-					if(avp->av_flags & tp->flag){
+					if(flags & tp->flag){
 						msgp = n_string_push_c(msgp, ',');
 						msgp = n_string_push_cp(msgp, tp->msg);
 					}
@@ -2848,15 +2874,14 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 				{a_AMV_VF_EXT_LINKED, "`environ' linked"},
 				{a_AMV_VF_EXT_FROZEN, "frozen (set via -S)\0"}
 			}, *tp;
-			ASSERT(!isset || ((avp->av_flags & a_AMV_VF__MASK) ==
-				(avc.avc_map->avm_flags & a_AMV_VF__MASK)));
+			ASSERT(!isset || ((flags & a_AMV_VF__MASK) == (avc.avc_map->avm_flags & a_AMV_VF__MASK)));
 
 			for(tp = tbase; PCMP(tp, <, &tbase[NELEM(tbase)]); ++tp){
-				if(isset ? (avp->av_flags & tp->flag) : (avc.avc_map->avm_flags & tp->flag)){
+				if(isset ? (flags & tp->flag) : (avc.avc_map->avm_flags & tp->flag)){
 					msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
 					msgp = n_string_push_cp(msgp, tp->msg);
 					if(isset){
-						if((tp->flag == a_AMV_VF_CHAIN) && (avp->av_flags & a_AMV_VF_EXT_CHAIN))
+						if((tp->flag == a_AMV_VF_CHAIN) && (flags & a_AMV_VF_EXT_CHAIN))
 							msgp = n_string_push_cp(msgp, " (extension)");
 					}
 				}
@@ -2864,7 +2889,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 		}
 
 		if(isset){
-			if(avp->av_flags & a_AMV_VF_EXT_FROZEN){
+			if(flags & a_AMV_VF_EXT_FROZEN){
 				msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
 				msgp = n_string_push_cp(msgp, "(un)?set via -S");
 			}
@@ -2875,7 +2900,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 	}
 
 	/* (Read-only variables are generally shown via comments..) */
-	if(!isset || (avp->av_flags & a_AMV_VF_RDONLY)){
+	if(!isset || (flags & a_AMV_VF_RDONLY)){
 		msgp = n_string_push_c(msgp, n_ns[0]);
 		if(!isset){
 			if(avc.avc_map != NIL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
@@ -2886,27 +2911,27 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 		}
 	}
 
-	UNINIT(quote, NIL);
 	/* C99 */{
 	boole v15_compat; /* Temporary block */
 
 	quote = ok_vlook(v15_compat);
 	v15_compat = (quote != NIL && *quote != '\0');
 
-	if(!(avp->av_flags & a_AMV_VF_BOOL)){
-		quote = n_shexp_quote_cp(avp->av_value, TRU1);
-		if(!v15_compat && su_cs_cmp(quote, avp->av_value))
+	if(!(flags & a_AMV_VF_BOOL)){
+		quote = n_shexp_quote_cp(value, TRU1);
+		if(!v15_compat && su_cs_cmp(quote, value))
 			msgp = n_string_push_cp(msgp, "wysh ");
 	}else if(!v15_compat && (n_poption & n_PO_D_V))
 		msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
 	}
 
-	if(avc.avc_map == NIL && (avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)))
+	if(avc.avc_map == NIL && (flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)))
 		msgp = n_string_push_cp(msgp, "environ ");
-	msgp = n_string_push_cp(msgp, "set ");
+	if(avp != NIL)
+		msgp = n_string_push_cp(msgp, "set ");
 	msgp = n_string_push_cp(msgp, name);
 
-	if(!(avp->av_flags & a_AMV_VF_BOOL)){
+	if(!(flags & a_AMV_VF_BOOL)){
 		msgp = n_string_push_c(msgp, '=');
 		msgp = n_string_push_cp(msgp, quote);
 	}else if(n_poption & n_PO_D_V)
