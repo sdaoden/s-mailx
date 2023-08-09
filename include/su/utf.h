@@ -53,11 +53,17 @@ enum{
 /*! Character set name. */
 #define su_UTF8_NAME "UTF-8"
 
+/*! Character set name, lowercase. */
+#define su_UTF8_NAME_LOWER "utf-8"
+
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
 #define su_UTF8_REPLACER "\xEF\xBF\xBD"
 
 /*! Compiled in version of \r{su_UTF8_NAME}. */
 EXPORT_DATA char const su_utf8_name[sizeof su_UTF8_NAME];
+
+/*! Compiled in version of \r{su_UTF8_NAME_LOWER}. */
+EXPORT_DATA char const su_utf8_name_lower[sizeof su_UTF8_NAME_LOWER];
 
 /*! Compiled in version of \r{su_UTF8_REPLACER}. */
 EXPORT_DATA char const su_utf8_replacer[sizeof su_UTF8_REPLACER];
@@ -79,11 +85,17 @@ EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
 /*! Character set name. */
 #define su_UTF32_NAME "UTF-32"
 
+/*! Character set name, lowercase. */
+#define su_UTF32_NAME_LOWER "utf-32"
+
 /*! The Unicode replacement character \c{0xFFFD} as an UTF-32 codepoint. */
 #define su_UTF32_REPLACER 0xFFFDu
 
 /*! Compiled in version of \r{su_UTF32_NAME}. */
 EXPORT_DATA char const su_utf32_name[sizeof su_UTF32_NAME];
+
+/*! Compiled in version of \r{su_UTF32_NAME_LOWER}. */
+EXPORT_DATA char const su_utf32_name_lower[sizeof su_UTF32_NAME_LOWER];
 
 /*! Convert an UTF-32 character to an UTF-8 sequence.
  * \a{bp} must be large enough also for the terminating \NUL (see
@@ -116,6 +128,7 @@ public:
 	};
 
 	static char const name[sizeof su_UTF8_NAME]; /*!< \copydoc{su_utf8_name} */
+	static char const name_lower[sizeof su_UTF8_NAME_LOWER]; /*!< \copydoc{su_utf8_name_lower} */
 	static char const replacer[sizeof su_UTF8_REPLACER]; /*!< \copydoc{su_utf8_replacer} */
 
 	/*! \copydoc{su_utf8_to_32()} */
@@ -132,6 +145,7 @@ class utf32{
 	su_CLASS_NO_COPY(utf32);
 public:
 	static char const name[sizeof su_UTF32_NAME]; /*!< \copydoc{su_utf32_name} */
+	static char const name_lower[sizeof su_UTF32_NAME_LOWER]; /*!< \copydoc{su_utf32_name_lower} */
 	static u32 const replacer = su_UTF32_REPLACER; /*!< \copydoc{su_UTF32_REPLACER} */
 
 	/*! \copydoc{su_utf32_to_8()} */

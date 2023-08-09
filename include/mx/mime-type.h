@@ -25,6 +25,7 @@
 #include <su/code-in.h>
 
 struct mx_mime_type_handler;
+struct mx_mime_type_classify_fp_ctx;
 
 enum mx_mime_type{
 	mx_MIME_TYPE_UNKNOWN, /* unknown */
@@ -77,6 +78,24 @@ struct mx_mime_type_handler{
 	struct str mth_msg; /* Message describing this command */
 };
 
+struct mx_mime_type_classify_fp_ctx{
+	struct mx_mime_probe_charset_ctx *mtcfc_mpccp_or_nil; /*@[I] */
+	char const *mtcfc_content_type; /*@I(O) */
+	/*@I Whether 7BIT/8BIT Content-transfer-encoding: is acceptable if only a "^From " would enforce QP/BASE64 */
+	boole mtcfc_cte_not_for_from_;
+	boole mtcfc_7bit_clean;
+	boole mtcfc_do_iconv; /* Needs iconv */
+	boole mtcfc_charset_is_ascii; /* .mtcfc_charset is US-ASCII (unrelated: mtcfc_mpccp_or_nil->mpcc_cs_7bit!) */
+	boole mtcfc_ct_is_text_plain; /* It is text/plain */
+	u8 mtcfc__pad[1];
+	ZIPENUM(u8,conversion) mtcfc_conversion;
+	ZIPENUM(u8,mx_mime_enc) mtcfc_mime_enc;
+	char const *mtcfc_charset; /* NIL: "*sendcharsets*" ("usual algorithm" -- only with .mtcfc_do_iconv!) */
+	char const *mtcfc_input_charset;
+	/* [rest: iff used, readily prepared MIME part header in auto-memory v15-compat] */
+	struct str mtcfc_data;
+};
+
 /* Check whether name is correct according to RFC 4288, 4.2.
  * With t_a_subt, check for valid TYPE/SUBTYPE.
  * With subt_wildcard_ok, allow * as a SUBTYPE. */
@@ -86,17 +105,21 @@ EXPORT boole mx_mime_type_is_valid(char const *name, boole t_a_subt, boole subt_
  * This only matches non-local MIME types (?* handler-only type-marker) */
 EXPORT boole mx_mime_type_is_known(char const *name);
 
-/* Return a Content-Type matching the name, or NIL if none could be found */
-EXPORT char *mx_mime_type_classify_filename(char const *name);
+/* Return a Content-Type matching a path(name), or NIL if none could be found */
+EXPORT char *mx_mime_type_classify_path(char const *path);
 
-/* Classify content of *fp* as necessary and fill in arguments; **charset* is set to *charset-7bit* or
- * mime_charset_iter_or_fallback() if NIL.
- * no_mboxo states whether 7BIT/8BIT is acceptable if only existence of a ^From_ would otherwise enforce QP/BASE64.
- * A set fp_charset_or_nil is set according to *ttycharset-detect* */
-/* TODO this should take a carrier and only fill that in with what has been detected/classified, and suggest hints;
- * TODO rest up to caller!  This is not only more correct (no_mboxo crux++), it simplifies a lot */
-EXPORT enum conversion mx_mime_type_classify_file(FILE *fp, char const **content_type, char const **charset,
-		boole *do_iconv, boole no_mboxo, char const **fp_charset_or_nil);
+/* See struct def. for setup() args; fp must be ftell()==0, su_err() on error, mtcfcp then invalid */
+INLINE struct mx_mime_type_classify_fp_ctx *mx_mime_type_classify_fp_setup(struct mx_mime_type_classify_fp_ctx *mtcfcp,
+		boole mtcfc_cte_not_for_from_, char const *mtcfc_content_type,
+		struct mx_mime_probe_charset_ctx *mtcfc_mpccp_or_nil){
+	STRUCT_ZERO(struct mx_mime_type_classify_fp_ctx, mtcfcp);
+	mtcfcp->mtcfc_mpccp_or_nil = mtcfc_mpccp_or_nil;
+	mtcfcp->mtcfc_content_type = mtcfc_content_type;
+	mtcfcp->mtcfc_cte_not_for_from_ = mtcfc_cte_not_for_from_;
+	return mtcfcp;
+}
+
+EXPORT boole mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp);
 
 /* Dependent on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set, but otherwise mpp is const.
  * is_hdl rather maps 1:1 to MIME_PARSE_FOR_USER_CONTEXT */

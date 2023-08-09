@@ -1269,14 +1269,14 @@ _EOT
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -S x=ad -A ad -Y 'account ad' > ./t3-4 2>${EX}
 	ck 3-4 0 ./t3-2 '422974811 279' '849946118 56'
 
-	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
-	cke0 4-1 0 ./t4-1 '2562078272 258'
-	</dev/null ${MAILX} ${ARGS} -:u -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
-	cke0 4-2 0 ./t4-2 '3337304142 323'
-	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
-	ck 4-3 0 ./t4-3 '2562078272 258' '849946118 56'
-	</dev/null ${MAILX} ${ARGS} -:u -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
-	ck 4-4 0 ./t4-4 '3337304142 323' '849946118 56'
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-1 2>${E0}
+	cke0 4-1 0 ./t4-1 '1988817349 258'
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -Y 'source ./tx.rc' -Y 'account ad' > ./t4-2 2>${E0}
+	cke0 4-2 0 ./t4-2 '172969318 323'
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' -Yx > ./t4-3 2>${EX}
+	ck 4-3 0 ./t4-3 '1988817349 258' '849946118 56'
+	</dev/null ${MAILX} ${ARGS} -:/ -Sheader -S x=ad -Y 'source ./tx.rc' -Y 'account ad' > ./t4-4 2>${EX}
+	ck 4-4 0 ./t4-4 '172969318 323' '849946118 56'
 
 	</dev/null MAILRC=./tx.rc ${MAILX} ${ARGS} -:u -Sheader -A ad -Xx > ./t5-1 2>${E0}
 	cke0 5-1 0 ./t5-1 '2921315483 34'
@@ -6605,6 +6605,9 @@ headerp;x26
 t_can_send_rfc() { #{{{
 	t_prolog "${@}"
 
+	</dev/null ${MAILX} ${ARGS} u@h > ./t0.mbox 2>${EX}
+	ck 0 0 ./t0.mbox '3215459377 97' '3597477661 59'
+
 	</dev/null ${MAILX} ${ARGS} -Smta=test://./t.mbox -s Sub.1 receiver@number.1 > ${E0} 2>&1
 	cke0 1 0 ./t.mbox '550126528 126'
 
@@ -7083,7 +7086,7 @@ __EOT
 		-Y 'set quote-as-attachment fullnames' \
 		-Y ';reply;yb3' -Y !. \
 		./.tmbox >./.tall 2>${E0}
-	cke0 19 0 ./.tall '2774517283 2571'
+	cke0 19 0 ./.tall '2061651232 2575'
 
 	# Moreover, quoting of several parts with all*
 	gmX from 'ex1@am.ple' subject for-repl > ./.tmbox
@@ -7265,7 +7268,7 @@ __EOT
 			-Y 'unset forward-as-attachment' \
 			-Y 'forward ex1@am.ple;b2' -Y !. \
 			./.tmbox >./.tall 2>${E0}
-	cke0 10 0 ./.tall '799103633 1250'
+	cke0 10 0 ./.tall '1004154085 1252'
 
 	t_epilog "${@}"
 } #}}}
@@ -7458,8 +7461,7 @@ t_copy() { #{{{
 		${chmod} 0444 .tf3
 		</dev/null ${MAILX} ${ARGS} -f -Y '#
 			copy 1 2 .tf3
-			echo 5:$?/$^ERRNAME
-			#' "${MBOX}" > ./.tall 2>${EX}
+			echo 5:$?/$^ERRNAME' "${MBOX}" > ./.tall 2>${EX}
 		ck 2-5 - ./.tall '1553358948 10' '2555077523 32'
 	else
 		t_echoskip '2-5:[!READONLY-AWARE-FS/USER]'
@@ -8289,11 +8291,49 @@ x' -Rf ./t.mbox >./t2 2>${E0}
 t_mime_if_not_ascii() { #{{{
 	t_prolog "${@}"
 
-	</dev/null ${MAILX} ${ARGS} -s Subject ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 1 0 ./t.mbox '3647956381 106'
+	cs=-Scharset-7bit=ISO-8859-15
 
-	</dev/null ${MAILX} ${ARGS} -Scharset-7bit=not-ascii -s Subject ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 2 0 ./t.mbox '3964303752 274'
+	# empty body
+	</dev/null ${MAILX} ${ARGS} -s sub u@h > ./t.mbox 2>${E0}
+	cke0 1 0 ./t.mbox '2038635766 110'
+
+	</dev/null ${MAILX} ${ARGS} $cs -s sub u@h > ./t.mbox 2>${E0}
+	cke0 2 0 ./t.mbox '2397967228 146'
+
+	# body
+	</dev/null ${MAILX} ${ARGS} $cs -Y body u@h > ./t.mbox 2>${E0}
+	cke0 3 0 ./t.mbox '324720182 168'
+
+	</dev/null ${MAILX} ${ARGS} $cs -s sub -Y body u@h > ./t.mbox 2>${E0}
+	cke0 4 0 ./t.mbox '3408344661 199'
+
+	# empty attach
+	> ./tea
+	echo a > ./tnea
+
+	</dev/null ${MAILX} ${ARGS} -a ./tea u@h > ./t.mbox 2>${EX}
+	ck att1-0 0 ./t.mbox '496266484 434' '3597477661 59'
+
+	</dev/null ${MAILX} ${ARGS} $cs -a ./tea u@h > ./t.mbox 2>${EX}
+	ck att1-1 0 ./t.mbox '2379574072 449' '3597477661 59'
+
+	</dev/null ${MAILX} ${ARGS} -a ./tnea u@h > ./t.mbox 2>${EX}
+	ck att1-2 0 ./t.mbox '3361798369 437' '3597477661 59'
+
+	</dev/null ${MAILX} ${ARGS} $cs -a ./tnea u@h > ./t.mbox 2>${EX}
+	ck att1-3 0 ./t.mbox '395586537 452' '3597477661 59'
+
+	</dev/null ${MAILX} ${ARGS} -ssub -a ./tea u@h > ./t.mbox 2>${E0}
+	cke0 att2-0 0 ./t.mbox '2446281266 447'
+
+	</dev/null ${MAILX} ${ARGS} $cs -ssub -a ./tea u@h > ./t.mbox 2>${E0}
+	cke0 att2-1 0 ./t.mbox '4200997258 480'
+
+	</dev/null ${MAILX} ${ARGS} -ssub -a ./tnea u@h > ./t.mbox 2>${E0}
+	cke0 att2-2 0 ./t.mbox '2934645186 450'
+
+	</dev/null ${MAILX} ${ARGS} $cs -ssub -a ./tnea u@h > ./t.mbox 2>${E0}
+	cke0 att2-3 0 ./t.mbox '1991686029 483'
 
 	t_epilog "${@}"
 } #}}}
@@ -8317,16 +8357,16 @@ t_mime_encoding() { #{{{
 
 	printf 'Hey, you.\nFrom me to you\nCiao\n' |
 		${MAILX} ${ARGS} -s Subject -Smime-encoding=qp ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 4 0 ./t.mbox '2075263697 655'
+	cke0 4 0 ./t.mbox '3094236996 657'
 
 	# B64
 	printf 'Hey, you.\n From me to you\nCiao\n' |
 		${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 5 0 ./t.mbox '601672771 792'
+	cke0 5 0 ./t.mbox '2116656810 794'
 
 	printf 'Hey, you.\nFrom me to you\nCiao\n' |
 		${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 ./t.mbox >> ./t.mbox 2>${E0}
-	cke0 6 0 ./t.mbox '3926760595 1034'
+	cke0 6 0 ./t.mbox '1859178313 1038'
 
 	t_epilog "${@}"
 } #}}}
@@ -8334,16 +8374,17 @@ t_mime_encoding() { #{{{
 t_xxxheads_rfc2047() { #{{{
 	t_prolog "${@}"
 
-	echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-		-s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
-		./t1 2>${E0}
-	cke0 1 0 ./t1 '3422562347 371'
+	ts='a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲'
+	</dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} -s "$ts" ./t0 2>${E0}
+	cke0 0 0 ./t0 '644075718 327'
+	echo | ${MAILX} ${ARGS} ${ADDARG_UNI} -s "$ts" ./t1 2>${E0}
+	cke0 1 0 ./t1 '3392613492 373'
 
 	# Single word (overlong line split -- bad standard! Requires injection of
 	# artificial data!!  But can be prevented by using RFC 2047 encoding)
 	i=$(${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}')
 	echo | ${MAILX} ${ARGS} -s "${i}" ./t2 2>${E0}
-	cke0 2 0 ./t2 '3317256266 1714'
+	cke0 2 0 ./t2 '3572991724 1716'
 
 	# Combination of encoded words, space and tabs of varying sort
 	echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
@@ -8353,7 +8394,7 @@ t_xxxheads_rfc2047() { #{{{
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
 		./t3 2>${E0}
-	cke0 3 0 ./t3 '786672837 587'
+	cke0 3 0 ./t3 '2486173254 589'
 
 	# Overlong multibyte sequence that must be forcefully split
 	# todo This works even before v15.0, but only by accident
@@ -8362,7 +8403,7 @@ t_xxxheads_rfc2047() { #{{{
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
 		./t4 2>${E0}
-	cke0 4 0 ./t4 '2889557767 655'
+	cke0 4 0 ./t4 '502772465 657'
 
 	# Trailing WS
 	echo | ${MAILX} ${ARGS} \
@@ -8389,7 +8430,7 @@ t_xxxheads_rfc2047() { #{{{
 		${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=test://./t7 \
 			-s Hühöttchen \
 			'Schnödes "Früchtchen" <do@du> (Hä!)' 2>${E0}
-	cke0 7 0 ./t7 '3681801246 373'
+	cke0 7 0 ./t7 '3270368010 375'
 
 	# RFC 2047 in an address field, and iconv involved
 	if have_feat iconv; then
@@ -8409,7 +8450,12 @@ _EOT
 		echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
 			-Sfullnames -Sreply-in-same-charset \
 			-Smta=test://t8 -Rf ./t8-in 2>${E0}
-		cke0 8 0 ./t8 '3499372945 285'
+		cke0 8 0 ./t8 '2453939560 242'
+
+		printf 'reply\ndätte\n' | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+			-Sfullnames -Sreply-in-same-charset \
+			-Smta=test://t8-body -Rf ./t8-in 2>${E0}
+		cke0 8body 0 ./t8-body '3681395067 341'
 
 		# TODO This test is false: mx_mime_display_from_header() rewrite!!!
 		${cat} > ./t9-in <<'_EOT'
@@ -8435,7 +8481,6 @@ _EOT
 		t_echoskip '8,9:[!ICONV]'
 	fi
 
-
 	t_epilog "${@}"
 } #}}}
 
@@ -8459,11 +8504,12 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 	fi
 
 	if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
-		<<-'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+		#{{{
+		<<'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t1_to_4 \
 				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
-			set ttycharset=utf-8 sendcharsets=iso-2022-jp
-			m t1@exam.ple
+set ttycharset=utf-8 sendcharsets=iso-2022-jp
+m t1@exam.ple
 !s Japanese from UTF-8 to ISO-2022-JP
 シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
 
@@ -8474,9 +8520,8 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 
 シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
 !.
-
-			set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
-			m t2@exam.ple
+set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
+m t2@exam.ple
 !s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
 $B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 
@@ -8487,11 +8532,11 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 
 $B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 !.
-		_EOT
-		# May not presume iconv output as long as roundtrip possible [489a7122]
+_EOT
+		# }}} May not presume iconv output as long as roundtrip possible [489a7122]
 		ck_ex0 1-estat
 		${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' < ./t1_to_4 > ./t1
-		cke0 1 - ./t1 '3314001564 516'
+		cke0 1 - ./t1 '3855225379 726'
 		ck0 2 - ${EX}
 
 		printf 'eval f 1; eval write ./t3; eval type 1; eval type 2\n' |
@@ -8501,17 +8546,18 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 		cke0 3 0 ./t3 '1259742080 686'
 		# TODO check 4 - ./t4 '3214068822 2123'
 			${sed} -e '/^\[-- M/d' < ./t4 > ./t4-x
-			ck 4 - ./t4-x '576175209 2023'
+			ck 4 - ./t4-x '1126114755 2027'
 	else
 		t_echoskip '1-4:[ICONV/iconv(1):ISO-2022-JP unsupported]'
 	fi
 
 	if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-		<<-'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+		#{{{
+		<<'_EOT' LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
 				-Smta=test://t5_to_8 \
 				-Sescape=! -Smime-encoding=base64 >${EX} 2>${E0}
-			set ttycharset=utf-8 sendcharsets=euc-jp
-			m t1@exam.ple
+set ttycharset=utf-8 sendcharsets=euc-jp
+m t1@exam.ple
 !s Japanese from UTF-8 to EUC-JP
 シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
 
@@ -8522,9 +8568,8 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 
 シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
 !.
-
-			set ttycharset=EUC-JP sendcharsets=utf-8
-			m t2@exam.ple
+set ttycharset=EUC-JP sendcharsets=utf-8
+m t2@exam.ple
 !s Japanese from EUC-JP to UTF-8
 �����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
 
@@ -8535,10 +8580,11 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 
 �����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
 !.
-		_EOT
+_EOT
+		#}}}
 		ck_ex0 5-estat
 		${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' < t5_to_8 > ./t5
-		cke0 5 - ./t5 '1754179361 469'
+		cke0 5 - ./t5 '1202207574 473'
 		ck0 6 - ${EX}
 
 		printf 'eval f 1; eval write ./t7; eval type 1; eval type 2\n' |
@@ -8548,7 +8594,7 @@ t_iconv_mbyte_base64() { #{{{ TODO uses sed(1) and special *headline*!!
 		cke0 7 0 ./t7 '1259742080 686'
 		#TODO check 8 - ./t8 '2506063395 2075'
 			${sed} -e '/^\[-- M/d' < ./t8 > ./t8-x
-			ck 8 - ./t8-x '1803103494 1976'
+			ck 8 - ./t8-x '1326462994 1980'
 	else
 		t_echoskip '5-8:[ICONV/iconv(1):EUC-JP unsupported]'
 	fi
@@ -8568,15 +8614,15 @@ t_iconv_mainbody() { #{{{
 	printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://t.mbox \
 		-S charset-7bit=us-ascii -S charset-8bit=utf-8 \
 		-s '–' over-the@rain.bow >${EX} 2>${E0}
-	cke0 1 0 ./t.mbox '3559538297 250'
+	cke0 1 0 ./t.mbox '2571458951 252'
 	ck0 2 - ${EX}
 
 	printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=test://t.mbox \
 		-S charset-7bit=us-ascii -S charset-8bit=us-ascii \
 		-s '–' over-the@rain.bow >${E0} 2>${EX}
 	ck_exx 3
-	ck 3 - ./t.mbox '3559538297 250'
-	ck0 4 - ${E0} '271380835 121'
+	ck 3 - ./t.mbox '2571458951 252'
+	ck0 4 - ${E0} '3007987737 110'
 
 	# The different iconv(3) implementations use different replacement sequence
 	# types (character-wise, byte-wise, and the character(s) used differ)
@@ -8618,7 +8664,7 @@ t_mime_force_sendout() { #{{{
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
 		over-the@rain.bow > ${EX} 2>&1
-	ck0 1 4 ./t.mbox '271380835 121'
+	ck0 1 4 ./t.mbox '3007987737 110'
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s go -Smime-force-sendout \
 		over-the@rain.bow > ${E0} 2>&1
@@ -8626,50 +8672,57 @@ t_mime_force_sendout() { #{{{
 
 	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
 		-a ./.tmba over-the@rain.bow > ${EX} 2>&1
-	ck 3 4 ./t.mbox '1866273282 219' '271380835 121'
+	ck 3 4 ./t.mbox '1866273282 219' '483826185 119'
 
 	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s go -Smime-force-sendout \
 		-a ./.tmba over-the@rain.bow > ${E0} 2>&1
-	cke0 4 0 ./t.mbox '644433809 880'
+	cke0 4 0 ./t.mbox '4275772439 882'
 
 	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${EX} 2>&1
-	ck 5 4 ./t.mbox '644433809 880' '271380835 121'
+	ck 5 4 ./t.mbox '4275772439 882' '483826185 119'
 
 	printf ha | ${MAILX} ${ARGS} -Smta=test://t.mbox -s go -Smime-force-sendout \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${E0} 2>&1
-	cke0 6 0 ./t.mbox '3172365123 1729'
+	cke0 6 0 ./t.mbox '3249858209 1735'
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s nogo \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${EX} 2>&1
-	ck 7 4 ./t.mbox '3172365123 1729' '271380835 121'
+	ck 7 4 ./t.mbox '3249858209 1735' '3007987737 110'
 
 	printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=test://t.mbox -s go -Smime-force-sendout \
 		-a ./.tsba -a ./.tmba over-the@rain.bow > ${E0} 2>&1
-	cke0 8 0 ./t.mbox '4002905306 2565'
+	cke0 8 0 ./t.mbox '1969206 2573'
 
 	t_epilog "${@}"
 } #}}}
 
 t_ttycharset_detect() { #{{{
 	t_prolog "${@}"
+	[ "$LC_ALL" != C ] && echo >&2 AU
 
 	printf '☺' > u.txt
 	printf '☺, ☺, �tzi' > l.txt
+	printf 'd�deld�' > l2.txt
 
 	if have_feat iconv; then
-		< u.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -a u.txt -s 'Kn�del' x@y > ./t1 2> ${E0}
-		cke0 1 0 ./t1 '1201446047 689'
+		< u.txt ${MAILX} ${ARGS} -Sttycharset-detect=l1 -a u.txt -s 'Kn�del' x@y > ./t1 2> ${E0}
+		cke0 1 0 ./t1 '4118552667 695'
 
-		< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -a l.txt -s '☺' x@y > ./t2 2> ${E0}
-		cke0 2 0 ./t2 '1788678496 762'
+		< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=l1 -a l.txt -s '☺' x@y > ./t2 2> ${E0}
+		cke0 2 0 ./t2 '3511208580 766'
 	else
 		t_echoskip '1-2:[!ICONV]'
 	fi
 
-	< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=latin1 -Ssendcharsets=latin1 -Sttycharset=utf8 \
-		-a l.txt -s '☺, �' x@y > ./t3 2> ${E0}
-	cke0 3 0 ./t3 '2840065603 745'
+	# with iconv: sendcharsets; without: (only) -detect
+	< l.txt ${MAILX} ${ARGS} -Sttycharset-detect=l1 -Ssendcharsets=l1 -a l.txt -s '☺, �' x@y > ./t3 2> ${E0}
+	cke0 3 0 ./t3 '328719751 765'
+
+	#..
+	< l2.txt ${MAILX} ${ARGS} -Siconv-disable -Sttycharset-detect=CP1252 \
+		-a l.txt -a u.txt -a l2.txt -a l2.txt=l1 -s $(cat l2.txt) x@y > ./t4 2> ${E0}
+	cke0 4 0 ./t4 '2175093842 1311'
 
 	t_epilog "${@}"
 } #}}}
@@ -9783,7 +9836,7 @@ t_filetype() { #{{{
 
 	printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
 		"${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=test://t.mbox > ${E0} 2>&1
-	cke0 1 0 ./t.mbox '1314354444 13536'
+	cke0 1 0 ./t.mbox '970408791 13538'
 
 	if (echo | gzip -c) >/dev/null 2>&1; then
 		{
@@ -9792,8 +9845,8 @@ t_filetype() { #{{{
 			printf 'File ./t2.mbox.gz\ncopy * ./t2.mbox\n' |
 				${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
 		} > ./t3 2>${E0}
-		cke0 2 - ./t2.mbox '1314354444 13536'
-		ck 3 - ./t3 '3960901924 97'
+		cke0 2 - ./t2.mbox '970408791 13538'
+		ck 3 - ./t3 '4165397337 97'
 	else
 		t_echoskip '2-3:[missing gzip(1)]'
 	fi
@@ -9813,8 +9866,8 @@ t_filetype() { #{{{
 				-X'filetype gz gzip\ -dc gzip\ -c' \
 				-X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
 	} > ./t5 2>${E0}
-	cke0 4 - ./t4.mbox '2687765142 27092'
-	ck 5 - ./t5 '2436024965 163'
+	cke0 4 - ./t4.mbox '2964866653 27096'
+	ck 5 - ./t5 '2735232731 163'
 
 	t_epilog "${@}"
 } #}}}
@@ -9981,15 +10034,15 @@ t_q_t_etc_opts() { #{{{
 	t__put_body > ./t.in
 
 	< ./t.in ${MAILX} ${ARGS} ${ADDARG_UNI} -a ./t.in -s "$(t__put_subject)" ./t1 > ${E0} 2>&1
-	cke0 1 0 ./t1 '589355579 6642'
+	cke0 1 0 ./t1 '62109864 6646'
 
 	< /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} -a ./t.in -s "$(t__put_subject)" -q ./t.in ./t2 > ${E0} 2>&1
-	cke0 2 0 ./t2 '589355579 6642'
+	cke0 2 0 ./t2 '62109864 6646'
 
 	( echo "To: ./t3" && echo "Subject: $(t__put_subject)" && echo &&
 		${cat} ./t.in
 	) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a ./t.in -t > ${E0} 2>&1
-	cke0 3 0 ./t3 '589355579 6642'
+	cke0 3 0 ./t3 '62109864 6646'
 
 	# Check comments in the header
 	<<-'_EOT' ${MAILX} ${ARGS} -Snodot -t ./t4 > ${E0} 2>&1
@@ -10055,28 +10108,31 @@ t_attachments() { #{{{
 	# TODO More should be in compose mode stuff aka digmsg
 	t_prolog "${@}"
 
-	${cat} <<-'_EOT' > ./tx.box
-	From steffen Sun Feb 18 02:48:40 2018
-	Date: Sun, 18 Feb 2018 02:48:40 +0100
-	To:
-	Subject: m1
-	User-Agent: s-nail v14.9.7
-	
-	
-	From steffen Sun Feb 18 02:48:42 2018
-	Date: Sun, 18 Feb 2018 02:48:42 +0100
-	To:
-	Subject: m2
-	User-Agent: s-nail v14.9.7
-	
-	
-	_EOT
+	# input {{{
+	${cat} <<'_EOT' > ./tx.box
+From steffen Sun Feb 18 02:48:40 2018
+Date: Sun, 18 Feb 2018 02:48:40 +0100
+To:
+Subject: m1
+User-Agent: s-nail v14.9.7
+
+
+From steffen Sun Feb 18 02:48:42 2018
+Date: Sun, 18 Feb 2018 02:48:42 +0100
+To:
+Subject: m2
+User-Agent: s-nail v14.9.7
+
+
+_EOT
 	echo att1 > ./tx.a1
 	printf 'att2-1\natt2-2\natt2-4\n' > ./'tx a2'
 	printf 'att3-1\natt3-2\natt3-4\n' > ./txa3
 	printf 'att4-1\natt4-2\natt4-4\n' > './tx a4'
+	#}}}
 
-	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 \
+	#{{{
+	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t1 \
 		-a ./tx.a1 -a './tx a2' \
 		-s attachment-test \
 		ex@am.ple > ./t2 2>${E0}
@@ -10088,12 +10144,13 @@ t_attachments() { #{{{
 
 !p
 !.
-	_EOT
-	cke0 1 0 ./t1 '113047025 646'
+_EOT
+	#}}}
+	cke0 1 0 ./t1 '175118512 650'
 	ck 2 - ./t2 '3897935448 734'
 
 	#{{{
-	cat <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>${E0}
+	cat <<'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=test://t3 -Rf ./tx.box > ./t4 2>${E0}
 mail ex@amp.ple
 !s This the subject is
 !@  ./txa3	 	 	"#2"	 	 "./tx a4"	 	 	  "#1"	""
@@ -10137,13 +10194,13 @@ mail ex@amp.ple
 
 !p
 !.
-	_EOT
+_EOT
 	#}}}
-	cke0 3 0 ./t3 '542557236 2337'
+	cke0 3 0 ./t3 '45059832 2341'
 	ck 4 - ./t4 '2071033724 1930'
 
 	#{{{
-	<<-'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>${E0}
+	<<'_EOT' ${MAILX} ${ARGS} -Sescape=! -Smta=test://t5 -Rf ./tx.box > ./t6 2>${E0}
 mail ex@amp.ple
 !s Subject One
 !@ "#."
@@ -10168,9 +10225,9 @@ reply 1 2
 
 !p
 !.
-	_EOT
+_EOT
 	#}}}
-	cke0 5 0 ./t5 '1604688179 2316'
+	cke0 5 0 ./t5 '35531411 2320'
 	ck 6 - ./t6 '1210753005 508'
 
 	##
@@ -10182,7 +10239,7 @@ reply 1 2
 		-a ./txa3 -a './tx a4' \
 		-s Y \
 		ex@am.ple > ./t7 2>${E0}
-	cke0 7 0 ./t7 '3543778186 1408'
+	cke0 7 0 ./t7 '1809232322 1416'
 
 	# input charset
 	</dev/null ${MAILX} ${ARGS} -Smta=test -Sttycharset=utf8 \
@@ -10190,7 +10247,7 @@ reply 1 2
 		-a ./txa3=UTF-8 -a './tx a4'=- \
 		-s Y \
 		ex@am.ple > ./t8 2>${E0}
-	cke0 8 0 ./t8 '2442101854 926'
+	cke0 8 0 ./t8 '1413564432 945'
 
 	# input+output charset, no iconv
 	</dev/null ${MAILX} ${ARGS} -Smta=test \
@@ -10198,7 +10255,7 @@ reply 1 2
 		-a ./txa3=UTF-8#- -a './tx a4'=utf8#- \
 		-s Y \
 		ex@am.ple > ./t9 2>${E0}
-	cke0 9 0 ./t9 '2360896571 938'
+	cke0 9 0 ./t9 '1328722137 946'
 
 	if have_feat iconv; then
 		printf 'ein \303\244ffchen und ein pferd\n' > ./txa10
@@ -10209,7 +10266,7 @@ reply 1 2
 				--attach ./txa10=utf8#iso-8859-1 \
 				--subject Y \
 				ex@am.ple > ./t10 2>${E0}
-			cke0 10 0 ./t10 '3301907455 984'
+			cke0 10 0 ./t10 '3571320489 989'
 		else
 			t_echoskip '10:[ICONV/iconv(1):missing conversion(1)]'
 		fi
@@ -10225,34 +10282,34 @@ reply 1 2
 		-Y '~:mimetype ?* application/nono txa3' \
 		-Y '~@ ./txa3' \
 		ex@am.ple > ./t11 2>${E0}
-	cke0 11 0 ./t11 '602355274 477'
+	cke0 11 0 ./t11 '334854921 459'
 
 	# default conv with ! base64 enforcement, too
 	printf 'one line\012' > ./tcnv
 	ck cnv-1.0 - ./tcnv '665489461 9'
 
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-1.1 2>${E0}
-	cke0 cnv-1.1 0 ./tcnv-1.1 '1383471891 569'
+	cke0 cnv-1.1 0 ./tcnv-1.1 '3049784352 573'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-1.2 2>${E0}
-	cke0 cnv-1.2 0 ./tcnv-1.2 '1383471891 569'
+	cke0 cnv-1.2 0 ./tcnv-1.2 '3049784352 573'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-1.3 2>${E0}
-	cke0 cnv-1.3 0 ./tcnv-1.3 '1383471891 569'
+	cke0 cnv-1.3 0 ./tcnv-1.3 '3049784352 573'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-1.4 2>${E0}
-	cke0 cnv-1.4 0 ./tcnv-1.3 '1383471891 569'
+	cke0 cnv-1.4 0 ./tcnv-1.3 '3049784352 573'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-1.5 2>${E0}
-	cke0 cnv-1.5 0 ./tcnv-1.5 '1383471891 569'
+	cke0 cnv-1.5 0 ./tcnv-1.5 '3049784352 573'
 	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.5 > ./tcnv-1.5.verify 2>${E0}
 	cke0 cnv-1.5.verify 0 ./tcnv-1.5.verify '3289363155 36'
 	ck cnv-1.5.write - ./tcnv#1.2 '665489461 9'
 
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-1.6 2>${E0}
-	cke0 cnv-1.6 0 ./tcnv-1.6 '1023221665 607'
+	cke0 cnv-1.6 0 ./tcnv-1.6 '1770868129 611'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-1.7 2>${E0}
-	cke0 cnv-1.7 0 ./tcnv-1.7 '1023221665 607'
+	cke0 cnv-1.7 0 ./tcnv-1.7 '1770868129 611'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-1.8 2>${E0}
-	cke0 cnv-1.8 0 ./tcnv-1.8 '1023221665 607'
+	cke0 cnv-1.8 0 ./tcnv-1.8 '1770868129 611'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-1.9 2>${E0}
-	cke0 cnv-1.9 0 ./tcnv-1.9 '1023221665 607'
+	cke0 cnv-1.9 0 ./tcnv-1.9 '1770868129 611'
 	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-1.9 > ./tcnv-1.9.verify 2>${E0}
 	cke0 cnv-1.9.verify 0 ./tcnv-1.9.verify '3289363155 36'
 	ck cnv-1.9.write - ./tcnv#1.2#1.2 '665489461 9'
@@ -10261,27 +10318,27 @@ reply 1 2
 	ck cnv-2.0 - ./tcnv '3312016702 10'
 
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv t@t > ./tcnv-2.1 2>${E0}
-	cke0 cnv-2.1 0 ./tcnv-2.1 '286434252 671'
+	cke0 cnv-2.1 0 ./tcnv-2.1 '963951735 675'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=# t@t > ./tcnv-2.2 2>${E0}
-	cke0 cnv-2.2 0 ./tcnv-2.2 '286434252 671'
+	cke0 cnv-2.2 0 ./tcnv-2.2 '963951735 675'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-# t@t > ./tcnv-2.3 2>${E0}
-	cke0 cnv-2.3 0 ./tcnv-2.3 '286434252 671'
+	cke0 cnv-2.3 0 ./tcnv-2.3 '963951735 675'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#- t@t > ./tcnv-2.4 2>${E0}
-	cke0 cnv-2.4 0 ./tcnv-2.3 '286434252 671'
+	cke0 cnv-2.4 0 ./tcnv-2.3 '963951735 675'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#- t@t > ./tcnv-2.5 2>${E0}
-	cke0 cnv-2.5 0 ./tcnv-2.5 '286434252 671'
+	cke0 cnv-2.5 0 ./tcnv-2.5 '963951735 675'
 	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.5 > ./tcnv-2.5.verify 2>${E0}
 	cke0 cnv-2.5.verify 0 ./tcnv-2.5.verify '3289363155 36'
 	ck cnv-2.5.write - ./tcnv#1.2#1.2#1.2 '3312016702 10'
 
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!# t@t > ./tcnv-2.6 2>${E0}
-	cke0 cnv-2.6 0 ./tcnv-2.6 '3314429964 662'
+	cke0 cnv-2.6 0 ./tcnv-2.6 '3458846618 666'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=!-# t@t > ./tcnv-2.7 2>${E0}
-	cke0 cnv-2.7 0 ./tcnv-2.7 '3314429964 662'
+	cke0 cnv-2.7 0 ./tcnv-2.7 '3458846618 666'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=#!- t@t > ./tcnv-2.8 2>${E0}
-	cke0 cnv-2.8 0 ./tcnv-2.8 '3314429964 662'
+	cke0 cnv-2.8 0 ./tcnv-2.8 '3458846618 666'
 	< ./tcnv ${MAILX} ${ARGS} -Smta=test -a ./tcnv=-#!- t@t > ./tcnv-2.9 2>${E0}
-	cke0 cnv-2.9 0 ./tcnv-2.9 '3314429964 662'
+	cke0 cnv-2.9 0 ./tcnv-2.9 '3458846618 666'
 	</dev/null ${MAILX} ${ARGS} -Y 'write;xit' -Rf ./tcnv-2.9 > ./tcnv-2.9.verify 2>${E0}
 	cke0 cnv-2.9.verify 0 ./tcnv-2.9.verify '3289363155 36'
 	ck cnv-2.9.write - ./tcnv#1.2#1.2#1.2#1.2 '3312016702 10'
@@ -10293,106 +10350,118 @@ t_rfc2231() { #{{{
 	# (after attachments) 
 	t_prolog "${@}"
 
+	t1="ma'ger.txt"
+	t2="mä'ger.txt"
+	t3='diet\ is \curd.txt'
+	t4='diet "is" curd.txt'
+	t5=höde-tröge.txt
+	t6=höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+	t7=höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+	t8=hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+	t9=✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+	t10='Averte faciem tuam a peccatis meis: et omnes iniquitates meas dele. Cor mundum crea in me, Deus: et spiritum rectum innova in visceribus meis.txt'
 	(
 		mkdir ./ttt || exit 1
 		cd ./ttt || exit 2
 
-		: > "ma'ger.txt"
-		: > "mä'ger.txt"
-		: > 'diet\ is \curd.txt'
-		: > 'diet "is" curd.txt'
-		: > höde-tröge.txt
-		: > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
-		: > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
-		: > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
-		: > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+		> "$t1"
+		> "$t2"
+		> "$t3"
+		> "$t4"
+		> "$t5"
+		> "$t6"
+		> "$t7"
+		> "$t8"
+		> "$t9"
+		> "$t10"
 	)
 
 	echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-		-a "./ttt/ma'ger.txt" -a "./ttt/mä'ger.txt" \
-		-a './ttt/diet\ is \curd.txt' -a './ttt/diet "is" curd.txt' \
-		-a ./ttt/höde-tröge.txt \
-		-a ./ttt/höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-		-a ./ttt/höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-		-a ./ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-		-a ./ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+		-a "./ttt/$t1" -a "./ttt/$t2" -a "./ttt/$t3" -a "./ttt/$t4" -a ./ttt/"$t5" \
+		-a ./ttt/"$t6" -a "./ttt/$t7" -a ./ttt/"$t8" -a ./ttt/"$t9" -a ./ttt/"$t10" \
 		./t1 >${E0} 2>&1
-	cke0 1 0 ./t1 '3720896054 3088'
+	cke0 1 0 ./t1 '581890207 3426'
+
+	echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+		-S charset-7bit=not-ascii \
+		-a "./ttt/$t1" -a "./ttt/$t2" -a "./ttt/$t3" -a "./ttt/$t4" -a ./ttt/"$t5" \
+		-a ./ttt/"$t6" -a "./ttt/$t7" -a ./ttt/"$t8" -a ./ttt/"$t9" -a ./ttt/"$t10" \
+		./t1-notascii >${E0} 2>&1
+	cke0 1-notascii 0 ./t1-notascii '2517219442 3487'
 
 	# `resend' test, reusing $MBOX
 	printf "Resend ./t2\nx\n" | ${MAILX} ${ARGS} -Rf ./t1 >${E0} 2>&1
-	cke0 2 0 ./t2 '3720896054 3088'
+	cke0 2 0 ./t2 '581890207 3426'
 
 	printf "resend ./t3\nx\n" | ${MAILX} ${ARGS} -Rf ./t1 >${E0} 2>&1
-	cke0 3 0 ./t3 '3979736592 3133'
+	cke0 3 0 ./t3 '3123904690 3471'
 
 	#{{{ And a primitive test for reading messages with invalid parameters
-	${cat} <<-'_EOT' > ./t.inv
-	From a@b.invalid Wed May 15 12:43:00 2018
-	MIME-Version: 1.0
-	Content-Type: multipart/mixed; boundary="1"
-	
-	This is a multi-part message in MIME format.
-	--1
-	Content-Type: text/plain; charset=UTF-8
-	Content-Transfer-Encoding: quoted-printable
-	
-	foo
-	--1
-	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
-	Content-Transfer-Encoding: 7bit
-	Content-Disposition: inline
-	
-	bar
-	--1--
-	
-	From a@b.invalid Wed May 15 12:43:00 2018
-	MIME-Version: 1.0
-	Content-Type: multipart/mixed; boundary="2"
-	
-	This is a multi-part message in MIME format.
-	--2
-	Content-Type: text/plain; charset=UTF-8
-	Content-Transfer-Encoding: quoted-printable
-	
-	foo
-	--2
-	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
-	Content-Transfer-Encoding: 7bit
-	Content-Disposition: inline;
-	        filename*0="na";
-	        filename*998999999999999999999999999999="me-c-d"
-	
-	bar
-	--2--
-	
-	From a@b.invalid Wed May 15 12:43:00 2018
-	MIME-Version: 1.0
-	Content-Type: multipart/mixed; boundary="3"
-	
-	This is a multi-part message in MIME format.
-	--3
-	Content-Type: text/plain; charset=UTF-8
-	Content-Transfer-Encoding: quoted-printable
-	
-	foo
-	--3
-	Content-Type: text/plain; name*17="na"; name*18="me-c-t"
-	Content-Transfer-Encoding: 7bit
-	Content-Disposition: inline;
-	        filename*0="na"; filename*998="me-c-d"
-	
-	bar
-	--3--
-	_EOT
-	#}}}
+	${cat} << '_EOT' > ./t.inv
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="1"
 
+This is a multi-part message in MIME format.
+--1
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+foo
+--1
+Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+bar
+--1--
+
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="2"
+
+This is a multi-part message in MIME format.
+--2
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+foo
+--2
+Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+  filename*0="na";
+ filename*998999999999999999999999999999="me-c-d"
+
+bar
+--2--
+
+From a@b.invalid Wed May 15 12:43:00 2018
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="3"
+
+This is a multi-part message in MIME format.
+--3
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+foo
+--3
+Content-Type: text/plain; name*17="na"; name*18="me-c-t"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename*0="na"; filename*998="me-c-d"
+
+bar
+--3--
+_EOT
+	#}}}
 	printf '\\#
 		\\headerpick type ignore Content-Type Content-Disposition
 		\\type 1 2 3
 		\\xit
 		' | ${MAILX} ${ARGS} -Rf ./t.inv > ./t4 2>${EX}
-	ck 4 0 ./t4 '2715043865 875' '3713266499 473'
+	ck 4 0 ./t4 '1003858254 875' '3713266499 473'
 
 	t_epilog "${@}"
 } #}}}
@@ -10420,7 +10489,7 @@ mimetype application/gzip	tgz gz emz
 	for f in ${tfs}; do printf '' > ./${f}; done
 
 	printf 'm ./t2\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -Y "${tmt}" ${ARGS} > ${E0} 2>&1
-	cke0 2 0 ./t2 '2606517416 2221'
+	cke0 2 0 ./t2 '3012229910 2047'
 
 	# Cache management
 	printf '#!%s\n%s | %s '"'2,"'$'"d'"' >> ./t4 2>&1\n' \
@@ -10452,24 +10521,20 @@ echo 15;unmimetype application/booms;echo 16;unmimetype application/boom;echo x
 t_mime_types_load_control() { #{{{
 	t_prolog "${@}"
 
-	${cat} <<-'_EOT' > ./t.mts1
-	? application/mathml+xml mathml
-	_EOT
-
-	${cat} <<-'_EOT' > ./t.mts2
-	? x-conference/x-cooltalk ice
-	   ?t aga-aga aga
-	? application/aga-aga aga
-	_EOT
-
-	${cat} <<-'_EOT' > ./t.mts1.mathml
-	   <head>nonsense ML</head>
-	_EOT
-
-	${cat} <<-'_EOT' > ./t.mts2.ice
-	   Icy, icy road.
-	_EOT
-
+	${cat} <<'_EOT' > ./t.mts1
+? application/mathml+xml mathml
+_EOT
+	${cat} <<'_EOT' > ./t.mts2
+? x-conference/x-cooltalk ice
+   ?t aga-aga aga
+? application/aga-aga aga
+_EOT
+	${cat} <<'_EOT' > ./t.mts1.mathml
+   <head>nonsense ML</head>
+_EOT
+	${cat} <<'_EOT' > ./t.mts2.ice
+   Icy, icy road.
+_EOT
 	printf 'of which the crack is coming soon' > ./t.mtsx.doom
 	printf 'of which the crack is coming soon' > ./t.mtsx.aga
 
@@ -10488,10 +10553,10 @@ xit
 __EOT
 	ck_ex0 1-estat
 	${cat} ./t1_2-x >> ./t1
-	ck 1 - ./t1 '4140378521 2383' '2706464282 93'
+	ck 1 - ./t1 '2084524398 2315' '2706464282 93'
 
 	echo type | ${MAILX} ${ARGS} -R -Smimetypes-load-control=f=./t.mts1,f=./t.mts3 -f ./t1_2-x > ./t2 2>${EX}
-	ck 2 0 ./t2 '636721402 1131' '1623174727 82'
+	ck 2 0 ./t2 '1121731582 1097' '1623174727 82'
 
 	t_epilog "${@}"
 } #}}}
@@ -10928,7 +10993,7 @@ __EOT
 		-Smta=test://t2-nohtml -S pipe-text/html=@ ./t.mbox >./t2-x 2>${EX}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> t2-nohtml
-	ck 2-nohtml - ./t2-nohtml '134380868 8505' '3575876476 49'
+	ck 2-nohtml - ./t2-nohtml '600677470 8507' '3575876476 49'
 	ck 3-nohtml - ./t3 '1553884295 4748'
 
 	if have_feat filter-html-tagsoup; then
@@ -10937,7 +11002,7 @@ __EOT
 			-Smta=test://t2-html ./t.mbox >./t2-x 2>${EX}
 		ck_ex0 2-estat
 		${cat} ./t2-x >> t2-html
-		ck 2-html - ./t2-html '2021040974 8445' '3575876476 49'
+		ck 2-html - ./t2-html '996062905 8447' '3575876476 49'
 		ck 3-html - ./t3 '1553884295 4748'
 	else
 		t_echoskip '{2,3}-html:[!FILTER_HTML_TAGSOUP]'
@@ -11187,7 +11252,7 @@ mail ./t15
 __EOT
 	#}}}
 	cke0 14 0 ./t14 '3756641871 1600'
-	ck 15 - ./t15 '3755507589 637'
+	ck 15 - ./t15 '3890424254 641'
 
 	t_epilog "${@}"
 } #}}}
@@ -12032,7 +12097,7 @@ __EOT
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://tm1 > ./tm1.out 2>${E0}
-	cke0 m1 0 ./tm1 '196756037 2078'
+	cke0 m1 0 ./tm1 '2955987796 2069'
 	ck m1-out - ./tm1.out '1099505374 10256'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -12437,7 +12502,7 @@ __EOT__
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
-	cke0 1 - ./t1 '2493529550 10391'
+	cke0 1 - ./t1 '3586279020 10382'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -St_remove=1 -X'source ./t.rc' -Smta=test://t2 > ./t2-x 2>${E0}
@@ -13116,8 +13181,8 @@ t_pipe_handlers() { #{{{
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[	 ]\{1,\}/ /g"; } > ./t4-x 2>&1;'"${mv}"' ./t4-x ./t4-y' \
 				> ./t4 2>${E0}
-	ck 3 0 ./t3_7 '1933681911 13435'
-	cke0 4 - ./t4 '2036666633 493'
+	ck 3 0 ./t3_7 '686702965 13437'
+	cke0 4 - ./t4 '4176760868 495'
 	ckasync 4-hdl - ./t4-y '144517347 151'
 
 	# Keep $MBOX..
@@ -13140,7 +13205,7 @@ t_pipe_handlers() { #{{{
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
 					> ./t5 2>${E0}
-		cke0 5 0 ./t5 '4260004050 661'
+		cke0 5 0 ./t5 '604845616 663'
 
 		# Fill in ourselfs, test auto-deletion
 		printf 'Fi ./t3_7\nmimeview\n>v fop stat .t6.one-link\n'\
@@ -13159,7 +13224,7 @@ t_pipe_handlers() { #{{{
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
 					> ./t6 2>${E0}
-		cke0 6 0 ./t6 '4260004050 661'
+		cke0 6 0 ./t6 '604845616 663'
 
 		# And the same, via copiousoutput (fake)
 		printf 'Fi ./t3_7\np\n>v fop stat .t7.one-link\n'\
@@ -13178,7 +13243,7 @@ t_pipe_handlers() { #{{{
 ''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
 ''"${sed}"' -e "s/[	 ]\{1,\}/ /g"' \
 					> ./t7 2>${E0}
-		cke0 7 0 ./t7 '709946464 677'
+		cke0 7 0 ./t7 '2698061312 679'
 	fi
 
 	## Extension chains, type-markers (note: "linked" by t_mimetype())
@@ -13210,33 +13275,33 @@ mimetype ${x} application/x-gzip  tgz gz emz
 
 	printf 'm ./t11\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x -Y "${tmt}" ${ARGS} > ./t10 2>${E0}
 	ck0e0 10 0 ./t10
-	ck 11 - ./t11 '3184122137 2390'
+	ck 11 - ./t11 '567955322 2176'
 
 	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t12 2>${E0}
-	cke0 12 0 ./t12 '1151825807 2610'
+	cke0 12 0 ./t12 '1737171988 2390'
 
 	# base handler: text
 	printf 'type\nxit' | ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t13 2>${E0}
-	cke0 13 0 ./t13 '4188775633 2079'
+	cke0 13 0 ./t13 '2402061837 1859'
 
 	# handler-only, text: text
 	printf 'type\nxit' | ${MAILX} -S x='?*t' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t14 2>${E0}
-	cke0 14 0 ./t14 '4188775633 2079'
+	cke0 14 0 ./t14 '2402061837 1859'
 
 	# handler-only, no text: unhandled
 	printf 'type\nxit' | ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} -Rf ./t11 > ./t15 2>${E0}
-	cke0 15 0 ./t15 '1151825807 2610'
+	cke0 15 0 ./t15 '1737171988 2390'
 
 	# hdl-only type-marker is honoured when sending
 	printf 'm ./t21\nLine1\n~@ %s\n~.\nxit' "${tfs}" | ${MAILX} -S x='?*' -Y "${tmt}" ${ARGS} > ./t20 2>${E0}
 	ck0e0 20 0 ./t20
-	ck 21 - ./t21 '2035947076 2390'
+	ck 21 - ./t21 '3051683085 2176'
 
 	printf 'type\nxit' | ${MAILX} -S x -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t22 2>${E0}
-	cke0 22 0 ./t22 '576517884 2610'
+	cke0 22 0 ./t22 '1367388189 2390'
 
 	printf 'type\nxit' | ${MAILX} -S x=? -Y "${tmt}" ${ARGS} -Rf ./t21 > ./t23 2>${E0}
-	cke0 23 0 ./t23 '576517884 2610'
+	cke0 23 0 ./t23 '1367388189 2390'
 
 	printf 'type\nxit' |
 		${MAILX} -Sx -Y "${tmt}" \
@@ -13244,7 +13309,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
 		-Y 'mimetype ?t* application/x-x-ma-tar-gz x.ma.tar.gz' \
 		-Y 'mimetype ?t application/x-unix-readme README' \
 		${ARGS} -Rf ./t21 > ./t24 2>${E0}
-	cke0 24 0 ./t24 '1515966968 2531'
+	cke0 24 0 ./t24 '4241547105 2311'
 
 	# .. and * still needs a handler
 	printf 'type\nxit' |
@@ -13256,7 +13321,7 @@ mimetype ${x} application/x-gzip  tgz gz emz
 		-Y 'mimetype ?* application/z-fun x.tar' \
 		-S pipe-application/z-fun="?* echo in; ${cat}; echo out" \
 		${ARGS} -Rf ./t21 > ./t25 2>${E0}
-	cke0 25 0 ./t25 '2423141259 2813'
+	cke0 25 0 ./t25 '1303101797 2473'
 
 	t_epilog "${@}"
 } #}}}
@@ -13337,7 +13402,7 @@ _EOT
 	##
 
 	echo 'From me with love' | ${MAILX} ${ARGS} -s sub1 ./t3_7 >${E0} 2>&1
-	cke0 3 0 ./t3_7 '4224630386 228'
+	cke0 3 0 ./t3_7 '571811717 230'
 
 	# For reproducability, one pseudo check with cat(1) and mv(1)
 	${cat} << '__EOT' > ./t.mailcap
@@ -13379,7 +13444,7 @@ text/plain; echo p-4-1\\;%s\\;echo p-4-2;copiousoutput
 \echo =4
 ' \
 		-Rf ./t3_7 > ./t4 2>${E0}
-	cke0 4 0 ./t4 '1912261831 831'
+	cke0 4 0 ./t4 '2796785744 837'
 	ck 6 - ./t.errmc '2376112102 6'
 	ckasync 7 - ./t-asy '3913344578 37'
 
@@ -13388,7 +13453,7 @@ text/plain; echo p-4-1\\;%s\\;echo p-4-2;copiousoutput
 
 	printf 'dubo�om' > ./tatt.pdf
 	printf 'du' | ${MAILX} ${ARGS} -a ./tatt.pdf -s test ./t8_9 >${E0} 2>&1
-	cke0 8 0 ./t8_9 '1092812996 643'
+	cke0 8 0 ./t8_9 '761199910 645'
 
 	#{{{
 	printf '#
@@ -13443,14 +13508,14 @@ application/pdf; echo p-7-1\\;< %%s %s\\;echo p-7-2;test = [ "$XY" = 3 ];\\
 ' \
 		-Rf ./t8_9 > ./t9 2>${E0}
 	#}}}
-	cke0 9 0 ./t9 '2191230537 3843'
+	cke0 9 0 ./t9 '488019350 3857'
 	ckasync 11 - ./t-asy '842146666 27'
 
 	# x-mailx-last-resort, x-mailx-ignore
 
 	printf 'in a pdf\n' > ./tatt.pdf
 	printf 'du\n' | ${MAILX} ${ARGS} -a ./tatt.pdf -s test ./t12_13 >${E0} 2>&1
-	cke0 12 0 ./t12_13 '1933817004 578'
+	cke0 12 0 ./t12_13 '192796029 562'
 
 	printf '#
 # stdin
@@ -13481,7 +13546,7 @@ application/pdf; echo "%%s" >./t14_1\\;echo "$MAILX_FILENAME_TEMPORARY" >./t14_2
 ' \
 		-Rf ./t12_13 > ./t13 2>${E0}
 	#}}}
-	cke0 13 0 ./t13 '1163813872 2433'
+	cke0 13 0 ./t13 '3822219561 2348'
 	${cmp} ./t14_1 ./t14_2 >/dev/null 2>&1; ck_ex0 14-estat ${?}
 
 	#
@@ -13555,7 +13620,7 @@ t_z() { #{{{
 			printf "\xC3\xBC"
 			#printf "\xF0\x90\x87\x90"
 		}' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject ./t7 >${E0} 2>&1
-	cke0 7 0 ./t7 '1707496413 61812'
+	cke0 7 0 ./t7 '3909047397 61814'
 
 	t_epilog "${@}"
 } #}}}
@@ -14371,7 +14436,7 @@ AUTH OAUTHBEARER bixhPXN0ZWZmZW4sAWhvc3Q9bG9jYWxob3N0AXBvcnQ9NTAwMDABYXV0aD1CZWF
 		mail_from_8bitmime=8BITMIME
 		head_tail='
 MIME-Version: 1.0
-Content-Type: text/plain; charset=latin1
+Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: 8bit'
 		smtp_rcpt_to all,-starttls,-allmechs \
 			smtp_ehlo \

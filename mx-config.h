@@ -66,7 +66,7 @@
 /* * */
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
- * Note: iconv_normalize_name() MUST NOT cause modification! */
+ * Note: iconv_norm_name() MUST NOT cause modification! */
 #define CHARSET_7BIT "us-ascii"
 #ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
