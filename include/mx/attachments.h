@@ -29,11 +29,12 @@
 struct mx_attachment;
 
 /* Forwards */
+struct mx_mime_type_classify_fp_ctx;
 struct mx_name;
 
 /* MIME attachments */
 enum mx_attachments_conv{
-	mx_ATTACHMENTS_CONV_DEFAULT, /* _get_lc() -> _iter_*() */
+	mx_ATTACHMENTS_CONV_DEFAULT, /* MIME probe, act accordingly */
 	mx_ATTACHMENTS_CONV_FIX_INCS, /* "charset=".a_input_charset (nocnv) */
 	mx_ATTACHMENTS_CONV_TMPFILE /* attachment.a_tmpf is converted */
 };
@@ -61,10 +62,11 @@ struct mx_attachment{
 	char const *a_charset; /* ... */
 	FILE *a_tmpf; /* If AC_TMPFILE */
 	BITENUM(u8,mx_attachments_conv) a_conv; /* User chosen conversion */
-	boole a_conv_force_b64; /* Encode in base64, always; only files*/
+	boole a_conv_force_b64; /* Encode in base64, always (only files) */
 	boole a_input_charset_set;
-	u8 a__pad[2];
-	int a_msgno; /* message number */
+	u8 a__pad[1];
+	s32 a_msgno; /* message number */
+	struct mx_mime_type_classify_fp_ctx *a_mtcfc_or_nil; /* MIME probing */
 };
 
 /* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed, return the new aplist aphead.

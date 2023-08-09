@@ -30,12 +30,15 @@
 #include <su/icodec.h>
 #include <su/mem.h>
 #include <su/mem-bag.h>
+#include <su/path.h>
 #include <su/utf.h>
 
 #include "mx/fexpand.h"
 #include "mx/file-streams.h"
+#include "mx/iconv.h"
 #include "mx/mime.h"
 #include "mx/mime-enc.h"
+#include "mx/mime-probe.h"
 
 #ifdef mx_HAVE_MAILCAP
 # include "mx/mailcap.h"
@@ -77,28 +80,6 @@ enum a_mt_flags{
 	a_MT_TM_HDL_ONLY = 1u<<20
 };
 
-enum a_mt_class{
-	a_MT_C_NONE,
-	a_MT_C_CLEAN = a_MT_C_NONE, /* Plain RFC 5322 message */
-	a_MT_C_DEEP_INSPECT = 1u<<0, /* Always test all the file */
-	a_MT_C_NCTT = 1u<<1, /* *content_type == NIL */
-	a_MT_C_ISTXT = 1u<<2, /* *content_type =~ text\/ */
-	a_MT_C_ISTXTCOK = 1u<<3, /* _ISTXT + *mime-allow-text-controls* XXX latter brain damage */
-	a_MT_C_HIGHBIT = 1u<<4, /* Not 7bit clean */
-	a_MT_C_TTYC5T_UTF8 = 1u<<5, /* *ttycharset-detect* was set and only UTF-8 seen, .. */
-	a_MT_C_TTYC5T_OTHER = 1u<<6, /* ..set non-empty, use the other */
-	a_MT_C_LONGLINES = 1u<<7, /* MIME_LINELEN_LIMIT exceed. */
-	a_MT_C_CRLF = 1u<<8, /* \x0D\x0A sequences HACK v15: simply reencode */
-	a_MT_C_CTRLCHAR = 1u<<9, /* Control characters seen */
-	a_MT_C_HASNUL = 1u<<10, /* Contains \0 characters */
-	a_MT_C_NOTERMNL = 1u<<11, /* Lacks a final newline */
-	a_MT_C_FROM_ = 1u<<12, /* ^From_ seen */
-	a_MT_C_FROM_1STLINE = 1u<<13, /* From_ line seen */
-	a_MT_C_SUGGEST_DONE = 1u<<16, /* Inspector suggests parse stop */
-	a_MT_C__1STLINE = 1u<<17, /* .. */
-	a_MT_C__TTYC5T_DETECT = 1u<<18 /* *ttycharset-detect* */
-};
-
 enum a_mt_counter_evidence{
 	a_MT_CE_NONE,
 	a_MT_CE_SET = 1u<<0, /* *mime-counter-evidence* was set */
@@ -123,20 +104,6 @@ struct a_mt_node{
 struct a_mt_lookup{
 	struct a_mt_node const *mtl_node;
 	char *mtl_result; /* If requested, AUTO_ALLOC()ed MIME type */
-};
-
-struct a_mt_class_arg{
-	char const *mtca_buf;
-	uz mtca_len;
-	sz mtca_curlnlen;
-	/*char mtca_lastc;*/
-	char mtca_c;
-	u8 mtca__dummy[3];
-	BITENUM(u32,a_mt_class) mtca_mtc;
-	u64 mtca_all_len;
-	u64 mtca_all_highbit; /* TODO not yet interpreted */
-	u64 mtca_all_bogus;
-	char const *mtca_ttyc5t_detect;
 };
 
 static struct a_mt_bltin const a_mt_bltin[] = {
@@ -167,12 +134,6 @@ static struct a_mt_node *a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) or
 static struct a_mt_lookup *a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name, boole is_hdl);
 static struct a_mt_lookup *a_mt_by_name(struct a_mt_lookup *mtlp, char const *name, boole is_hdl);
 
-/* In-depth inspection of raw content: call _round() repeatedly, last time with a 0 length buffer, finally check
- * .mtca_mtc for result.
- * No further call if _round() return includes _C_SUGGEST_DONE, as the resulting classification is unambiguous */
-SINLINE struct a_mt_class_arg *a_mt_classify_init(struct a_mt_class_arg *mtcap, BITENUM(u32,a_mt_class) initval);
-static BITENUM(u32,a_mt_class) a_mt_classify_round(struct a_mt_class_arg *mtcap);
-
 /* We need an in-depth inspection of an application/octet-stream part */
 static enum mx_mime_type a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_envidence) mce, struct mimepart *mpp,
 		boole deep_inspect);
@@ -182,7 +143,7 @@ static enum mx_mime_type a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_enviden
 static BITENUM(u32,mx_mime_type_handler_flags) a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action);
 
 static void
-a_mt_init(void){
+a_mt_init(void){ /* {{{ */
 	uz linesize;
 	char c, *line;
 	char const *srcs_arr[10], *ccp, **srcs;
@@ -289,10 +250,10 @@ jecontent:
 jleave:
 	a_mt_is_init = TRU1;
 	NYD_OU;
-}
+} /* }}} */
 
 static boole
-a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){
+a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){ /* {{{ */
 	uz len;
 	struct a_mt_node *head, *tail, *hhead, *htail, *mtnp;
 	FILE *fp;
@@ -341,7 +302,7 @@ a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){
 jleave:
 	NYD_OU;
 	return (cp != NIL);
-}
+} /* }}} */
 
 #if DVLOR(1, 0)
 static void
@@ -368,7 +329,7 @@ a_mt__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 #endif /* DVLOR(1, 0) */
 
 static struct a_mt_node *
-a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, uz len){
+a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, uz len){ /* {{{ */
 	struct str work;
 	uz len_orig, tlen, i;
 	char const *line_orig, *typ, *subtyp;
@@ -498,20 +459,20 @@ jeinval:
 jleave:
 	NYD_OU;
 	return mtnp;
-}
+} /* }}} */
 
 static struct a_mt_lookup *
-a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name, boole is_hdl){
+a_mt_by_filename(struct a_mt_lookup *mtlp, char const *name, boole is_hdl){ /* {{{ */
 	boole ever;
 	uz nlen, i, j;
 	char const *ext, *cp;
 	NYD2_IN;
 
-	su_mem_set(mtlp, 0, sizeof *mtlp);
+	STRUCT_ZERO(struct a_mt_lookup, mtlp);
 
 	/* "basename()" it */
 	nlen = su_cs_len(name); /* TODO should be URI! */
-	for(i = nlen; i > 0 && name[i - 1] != '/';)
+	for(i = nlen; i > 0 && name[i - 1] != su_PATH_SEP_C;)
 		--i;
 	name += i;
 	nlen -= i;
@@ -587,16 +548,16 @@ jnil_leave:
 jleave:
 	NYD2_OU;
 	return mtlp;
-}
+} /* }}} */
 
 static struct a_mt_lookup *
-a_mt_by_name(struct a_mt_lookup *mtlp, char const *name, boole is_hdl){
+a_mt_by_name(struct a_mt_lookup *mtlp, char const *name, boole is_hdl){ /* {{{ */
 	uz nlen, i, j;
 	char const *cp;
 	struct a_mt_node *mtnp_base, *mtnp;
 	NYD2_IN;
 
-	su_mem_set(mtlp, 0, sizeof *mtlp);
+	STRUCT_ZERO(struct a_mt_lookup, mtlp);
 
 	if((nlen = su_cs_len(name)) == 0)
 		goto jnil_leave;
@@ -645,169 +606,18 @@ jnil_leave:
 jleave:
 	NYD2_OU;
 	return mtlp;
-}
-
-SINLINE struct a_mt_class_arg *
-a_mt_classify_init(struct a_mt_class_arg * mtcap, BITENUM(u32,a_mt_class) initval){
-	NYD2_IN;
-
-	STRUCT_ZERO(struct a_mt_class_arg, mtcap);
-	/*mtcap->mtca_lastc =*/ mtcap->mtca_c = EOF;
-	mtcap->mtca_ttyc5t_detect = ok_vlook(ttycharset_detect);
-	mtcap->mtca_mtc = initval | a_MT_C__1STLINE |
-			(mtcap->mtca_ttyc5t_detect != NIL ? a_MT_C__TTYC5T_DETECT : a_MT_C_NONE);
-
-	NYD2_OU;
-	return mtcap;
-}
-
-static BITENUM(u32,a_mt_class)
-a_mt_classify_round(struct a_mt_class_arg *mtcap){
-	/* TODO BTW., after the MIME/send layer rewrite we could use a MIME
-	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
-	 * TODO and report that state (to mime_param_boundary_create()) */
-#define a_F_ "From "
-#define a_F_SIZEOF (sizeof(a_F_) -1)
-
-	char f_buf[a_F_SIZEOF], *f_p = f_buf;
-	BITENUM(u32,a_mt_class) mtc;
-	int c, lastc;
-	s64 alllen;
-	sz curlnlen;
-	uz blen;
-	char const *buf;
-	NYD2_IN;
-
-	buf = mtcap->mtca_buf;
-	blen = mtcap->mtca_len;
-	curlnlen = mtcap->mtca_curlnlen;
-	alllen = mtcap->mtca_all_len;
-	c = mtcap->mtca_c;
-	/*lastc = mtcap->mtca_lastc;*/
-	mtc = mtcap->mtca_mtc;
-
-	for(;; ++curlnlen){
-		if(blen == 0){
-			/* Real EOF, or only current buffer end? */
-			if(mtcap->mtca_len == 0){
-				lastc = c;
-				c = EOF;
-			}else{
-				lastc = EOF;
-				break;
-			}
-		}else{
-			++alllen;
-			lastc = c;
-			c = S(uc,*buf++);
-		}
-		--blen;
-
-		if(c == '\0'){
-			mtc |= a_MT_C_HASNUL;
-			if(!(mtc & a_MT_C_ISTXTCOK)){
-				mtc |= a_MT_C_SUGGEST_DONE;
-				break;
-			}
-			continue;
-		}
-		if(c == '\n' || c == EOF){
-			mtc &= ~a_MT_C__1STLINE;
-			if(curlnlen >= MIME_LINELEN_LIMIT)
-				mtc |= a_MT_C_LONGLINES;
-			if(lastc == '\r')
-				mtc |= a_MT_C_CRLF;
-			if(c == EOF)
-				break;
-			f_p = f_buf;
-			curlnlen = -1;
-			continue;
-		}
-		/* A bit hairy is handling of \r=\x0D=CR.
-		 * RFC 2045, 6.7:
-		 * Control characters other than TAB, or CR and LF as parts of CRLF pairs, must not appear.  \r alone
-		 * does not force _CTRLCHAR below since we cannot peek the next character.  Thus right here, inspect
-		 * the last seen character for if its \r and set _CTRLCHAR in a delayed fashion */
-		 /*else*/ if(lastc == '\r')
-			mtc |= a_MT_C_CTRLCHAR;
-
-		/* Control character? XXX this is all ASCII here */
-		if(c < 0x20 || c == 0x7F){
-			/* RFC 2045, 6.7, as above ... */
-			if(c != '\t' && c != '\r')
-				mtc |= a_MT_C_CTRLCHAR;
-
-			/* If there is a escape sequence in reverse solidus notation defined for this in ANSI
-			 * X3.159-1989 (ANSI C89), do not treat it as a control for real.
-			 * I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.
-			 * Do not follow libmagic(1) in respect to \v=\x0B=VT.  \f=\x0C=NP; ignore \e=\x1B=ESC */
-			if((c >= '\x07' && c <= '\x0D') || c == '\x1B')
-				continue;
-
-			/* As a special case, if we are going for displaying data to the user or quoting a message then
-			 * simply continue this, in the end, in case we get there, we will decide upon the
-			 * all_len/all_bogus ratio whether this is usable plain text or not */
-			++mtcap->mtca_all_bogus;
-			if(mtc & a_MT_C_DEEP_INSPECT)
-				continue;
-
-			mtc |= a_MT_C_HASNUL; /* Force base64 */
-			if(!(mtc & a_MT_C_ISTXTCOK)){
-				mtc |= a_MT_C_SUGGEST_DONE;
-				break;
-			}
-		}else if(S(u8,c) & 0x80){
-			mtc |= a_MT_C_HIGHBIT;
-			++mtcap->mtca_all_highbit;
-			if(!(mtc & (a_MT_C_NCTT | a_MT_C_ISTXT))){/* TODO _NCTT?*/
-				mtc |= a_MT_C_HASNUL /*base64*/ | a_MT_C_SUGGEST_DONE;
-				break;
-			}else if(mtc & a_MT_C__TTYC5T_DETECT){
-				--buf;
-				++blen;
-				if(su_utf8_to_32(&buf, &blen) != U32_MAX)
-					mtc |= a_MT_C_TTYC5T_UTF8;
-				else{
-					mtc &= ~(a_MT_C__TTYC5T_DETECT | a_MT_C_TTYC5T_UTF8);
-					mtc |= a_MT_C_TTYC5T_OTHER;
-				}
-			}
-		}else if(!(mtc & a_MT_C_FROM_) && UCMP(z, curlnlen, <, a_F_SIZEOF)){
-			*f_p++ = S(char,c);
-			if(UCMP(z, curlnlen, ==, a_F_SIZEOF - 1) && P2UZ(f_p - f_buf) == a_F_SIZEOF &&
-					!su_mem_cmp(f_buf, a_F_, a_F_SIZEOF)){
-				mtc |= a_MT_C_FROM_;
-				if(mtc & a_MT_C__1STLINE)
-					mtc |= a_MT_C_FROM_1STLINE;
-			}
-		}
-	}
-	if(c == EOF && lastc != '\n')
-		mtc |= a_MT_C_NOTERMNL;
-
-	mtcap->mtca_curlnlen = curlnlen;
-	/*mtcap->mtca_lastc = lastc*/;
-	mtcap->mtca_c = c;
-	mtcap->mtca_mtc = mtc;
-	mtcap->mtca_all_len = alllen;
-
-	NYD2_OU;
-	return mtc;
-
-#undef a_F_
-#undef a_F_SIZEOF
-}
+} /* }}} */
 
 static enum mx_mime_type
-a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_evidence) mce, struct mimepart *mpp, boole deep_inspect){
+a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_evidence) mce, struct mimepart *mpp, boole deep_inspect){ /* {{{ */
 	struct str in = {NIL, 0}, outrest, inrest, dec;
-	struct a_mt_class_arg mtca;
+	struct mx_mime_probe_ctx mpc;
 	int lc, c;
 	uz cnt, lsz;
 	FILE *ibuf;
 	long start_off;
 	boole did_inrest;
-	BITENUM(u32,a_mt_class) mtc;
+	BITENUM(u32,mx_mime_probe_flags) mpf;
 	enum mx_mime_type mt;
 	NYD2_IN;
 
@@ -815,7 +625,7 @@ a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_evidence) mce, struct mimepart *
 
 	outrest = inrest = dec = in;
 	mt = mx_MIME_TYPE_UNKNOWN;
-	mtc = a_MT_C_NONE;
+	mpf = mx_MIME_PROBE_NONE;
 	did_inrest = FAL0;
 
 	/* TODO v15-compat Note we actually bypass our usual file handling by
@@ -843,7 +653,8 @@ jos_leave:
 	 * TODO In fact m_mime_classifier_(setup|call|call_part|finalize)() and the
 	 * TODO state(s) should become reported to the outer
 	 * TODO world like that (see MIME boundary TODO around here) */
-	a_mt_classify_init(&mtca, (a_MT_C_ISTXT | (deep_inspect ? a_MT_C_DEEP_INSPECT : a_MT_C_NONE)));
+	mx_mime_probe_setup(&mpc,
+		(mx_MIME_PROBE_CT_TXT | (deep_inspect ? mx_MIME_PROBE_DEEP_INSPECT : mx_MIME_PROBE_NONE)));
 
 	for(lsz = 0;;){
 		boole dobuf;
@@ -865,19 +676,20 @@ jos_leave:
 		if(!dobuf)
 			continue;
 
+		/* On failure set PROBE_HASNUL so mt stays TYPE_UNKNOWN below */
 jdobuf:
 		switch(mpp->m_mime_enc){
 		case mx_MIME_ENC_B64:
 			if(!mx_b64_dec_part(&dec, &in, &outrest, (did_inrest ? NIL : &inrest))){
-				mtca.mtca_mtc = a_MT_C_HASNUL;
-				goto jstopit; /* break;break; */
+				mpc.mpc_mpf = mx_MIME_PROBE_HASNUL;
+				goto jstopit;
 			}
 			break;
 		case mx_MIME_ENC_QP:
 			/* Drin */
 			if(!mx_qp_dec_part(&dec, &in, &outrest, &inrest)){
-				mtca.mtca_mtc = a_MT_C_HASNUL;
-				goto jstopit; /* break;break; */
+				mpc.mpc_mpf = mx_MIME_PROBE_HASNUL;
+				goto jstopit;
 			}
 			if(dec.l == 0 && c != EOF){
 				in.l = 0;
@@ -892,11 +704,9 @@ jdobuf:
 			break;
 		}
 
-		mtca.mtca_buf = dec.s;
-		mtca.mtca_len = S(sz,dec.l);
-		if((mtc = a_mt_classify_round(&mtca)) & a_MT_C_SUGGEST_DONE){
-			mtc = a_MT_C_HASNUL;
-			break;
+		if((mpf = mx_mime_probe_round(&mpc, dec.s, S(sz,dec.l))) & mx_MIME_PROBE_NO_TXT_4SURE){
+			mpf = mx_MIME_PROBE_HASNUL;
+			goto jstopit;
 		}
 
 		if(c == EOF)
@@ -931,11 +741,11 @@ jstopit:
 	/* Restore file position to what caller expects (sic) */
 	fseek(mb.mb_itf, start_off, SEEK_SET);
 
-	if(!(mtc & (a_MT_C_HASNUL /*| a_MT_C_CTRLCHAR XXX really? */))){
+	if(!(mpf & (mx_MIME_PROBE_HASNUL /*| mx_MIME_PROBE_CTRLCHAR XXX really? */))){
 		/* In that special relaxed case we may very well wave through octet-streams full of control characters,
 		 * as they do no harm */
 		/* TODO This should be part of m_mime_classifier_finalize() then! */
-		if(deep_inspect && mtca.mtca_all_len - mtca.mtca_all_bogus < mtca.mtca_all_len >> 2)
+		if(deep_inspect && mpc.mpc_all_len - mpc.mpc_all_bogus < mpc.mpc_all_len >> 2)
 			goto jleave;
 
 		mt = mx_MIME_TYPE_TEXT_PLAIN;
@@ -948,10 +758,10 @@ jstopit:
 jleave:
 	NYD2_OU;
 	return mt;
-}
+} /* }}} */
 
 static BITENUM(u32,mx_mime_type_handler_flags)
-a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action){
+a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action){ /* {{{ */
 	char const *cp;
 	BITENUM(u32,mx_mime_type_handler_flags) rv_orig, rv;
 	NYD2_IN;
@@ -1092,7 +902,7 @@ jerrlog:
 jerr:
 	rv = rv_orig;
 	goto jleave;
-}
+} /* }}} */
 
 boole
 mx_mime_type_is_valid(char const *name, boole t_a_subt, boole subt_wildcard_ok){
@@ -1138,145 +948,187 @@ mx_mime_type_is_known(char const *name){
 }
 
 char *
-mx_mime_type_classify_filename(char const *name){
+mx_mime_type_classify_path(char const *path){
 	struct a_mt_lookup mtl;
 	NYD_IN;
 
-	a_mt_by_filename(&mtl, name, FAL0);
+	a_mt_by_filename(&mtl, path, FAL0);
 
 	NYD_OU;
 	return mtl.mtl_result;
 }
 
-enum conversion
-mx_mime_type_classify_file(FILE *fp, char const **content_type, char const **charset, boole *do_iconv, boole no_mboxo,
-		char const **fp_charset_or_nil){
-	/* TODO classify once only PLEASE PLEASE PLEASE */
+boole
+mx_mime_type_classify_fp(struct mx_mime_type_classify_fp_ctx *mtcfcp, FILE *fp){ /* {{{ XXX cleanup */
 	/* TODO message/rfc822 is special in that it may only be 7bit, 8bit or
 	 * TODO binary according to RFC 2046, 5.2.1
 	 * TODO The handling of which is a hack */
-	struct a_mt_class_arg mtca;
-	enum conversion c;
+	struct mx_mime_probe_ctx mpc;
 	off_t fpsz;
 	enum mx_mime_enc menc;
+	enum mx_mime_probe_flags mpf;
 	boole rfc822;
-	enum a_mt_class mtc;
+	struct mx_mime_probe_charset_ctx mpcc, *mpccp;
 	NYD_IN;
-
 	ASSERT(ftell(fp) == 0x0l);
 
-	*do_iconv = FAL0;
+	if((mpccp = mtcfcp->mtcfc_mpccp_or_nil) == NIL)
+		mpccp = mx_mime_probe_charset_ctx_setup(&mpcc);
 
-	if(*content_type == NIL){
-		mtc = a_MT_C_NCTT;
-		rfc822 = FAL0;
-	}else if(!su_cs_cmp_case_n(*content_type, "text/", 5)){
-		mtc = ok_blook(mime_allow_text_controls) ? a_MT_C_ISTXT | a_MT_C_ISTXTCOK : a_MT_C_ISTXT;
-		rfc822 = FAL0;
-	}else if(!su_cs_cmp_case(*content_type, "message/rfc822")){
-		mtc = a_MT_C_ISTXT;
+	rfc822 = FAL0;
+	if(mtcfcp->mtcfc_content_type == NIL)
+		mpf = mx_MIME_PROBE_CT_NONE;
+	else if(!su_cs_cmp_case_n(mtcfcp->mtcfc_content_type, "text/", 5))
+		mpf = ok_blook(mime_allow_text_controls) ? mx_MIME_PROBE_CT_TXT | mx_MIME_PROBE_CT_TXT_COK
+				: mx_MIME_PROBE_CT_TXT;
+	else if(!su_cs_cmp_case(mtcfcp->mtcfc_content_type, "message/rfc822")){
+		mpf = mx_MIME_PROBE_CT_TXT;
 		rfc822 = TRU1;
+	}else
+		mpf = mx_MIME_PROBE_CLEAN;
+
+	mpf = mx_mime_probe_setup(&mpc, mpf)->mpc_mpf;
+
+	if((fpsz = fsize(fp)) == 0){
+		menc = mx_MIME_ENC_7B;
+		goto jleave;
 	}else{
-		mtc = a_MT_C_CLEAN;
-		rfc822 = FAL0;
-	}
-
-	menc = mx_mime_enc_target();
-	a_mt_classify_init(&mtca, mtc);
-
-	if((fpsz = fsize(fp)) == 0)
-		goto j7bit;
-	else{
 		char *buf;
 
 		buf = su_LOFI_ALLOC(mx_BUFFER_SIZE);
 		for(;;){
-			mtca.mtca_len = fread(buf, sizeof(buf[0]), mx_BUFFER_SIZE, fp);
-			mtca.mtca_buf = buf;
-			if((mtc = a_mt_classify_round(&mtca)) & a_MT_C_SUGGEST_DONE)
+			uz i;
+
+			i = fread(buf, sizeof(buf[0]), mx_BUFFER_SIZE, fp);
+			if(i == 0 && !feof(fp)){
+				if(su_err_by_errno() == su_ERR_INTR)
+					continue;
+				if(su_err() == su_ERR_NONE)
+					su_err_set(su_ERR_IO);
+				mtcfcp = NIL;
 				break;
-			if(mtca.mtca_len == 0)
+			}
+			if((mpf = mx_mime_probe_round(&mpc, buf, i)) & mx_MIME_PROBE_NO_TXT_4SURE)
+				break;
+			if(i == 0)
 				break;
 		}
 		su_LOFI_FREE(buf);
 
-		/* TODO ferror(fp) ! */
+		if(mtcfcp == NIL)
+			goto jerr;
+
 		rewind(fp);
 	}
 
-	if(mtc & a_MT_C_HASNUL){
+	if(mpf & mx_MIME_PROBE_HASNUL){
 		menc = mx_MIME_ENC_B64;
 		/* XXX Do not overwrite text content-type to allow UTF-16 and such, but
 		 * XXX only on request; otherwise enforce what file(1)/libmagic(3) would
 		 * XXX suggest.  This is crap, of course, need to deal with UTF->8! */
-		if(mtc & a_MT_C_ISTXTCOK)
-			goto jcharset;
-		if(mtc & (a_MT_C_NCTT | a_MT_C_ISTXT))
-			*content_type = "application/octet-stream";
+		if(mpf & mx_MIME_PROBE_CT_TXT_COK)
+			goto jleave;
+		if(mpf & (mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT)){
+			mpf &= ~(mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT | mx_MIME_PROBE_CT_TXT_COK |
+					mx_MIME_PROBE_TTYC5T_UTF8 | mx_MIME_PROBE_TTYC5T_OTHER);
+			mtcfcp->mtcfc_content_type = "application/octet-stream";
+		}
+		rfc822 = FAL0;
 		goto jleave;
-	}
+	}else
+		menc = mx_mime_enc_target();
 
-	if(mtc & (a_MT_C_LONGLINES | a_MT_C_CRLF | a_MT_C_CTRLCHAR | a_MT_C_NOTERMNL | a_MT_C_FROM_)){
+	if(mpf & (mx_MIME_PROBE_LONGLINES | mx_MIME_PROBE_CRLF | mx_MIME_PROBE_CTRLCHAR | mx_MIME_PROBE_NOTERMNL |
+			mx_MIME_PROBE_FROM_)){
 		if(menc != mx_MIME_ENC_B64 && menc != mx_MIME_ENC_QP){
 			/* If the user chooses 8bit, and we do not privacy-sign the message,
 			 * then if encoding would be enforced only because of a ^From_, no */
-			if((mtc & (a_MT_C_LONGLINES | a_MT_C_CRLF | a_MT_C_CTRLCHAR | a_MT_C_NOTERMNL | a_MT_C_FROM_)
-					) != a_MT_C_FROM_ || no_mboxo)
+			if((mpf & (mx_MIME_PROBE_LONGLINES | mx_MIME_PROBE_CRLF | mx_MIME_PROBE_CTRLCHAR |
+						mx_MIME_PROBE_NOTERMNL | mx_MIME_PROBE_FROM_)) != mx_MIME_PROBE_FROM_ ||
+					!mtcfcp->mtcfc_cte_not_for_from_)
 				menc = mx_MIME_ENC_QP;
 			else{
 				ASSERT(menc != mx_MIME_ENC_7B);
-				menc = (mtc & a_MT_C_HIGHBIT) ? mx_MIME_ENC_8B : mx_MIME_ENC_7B;
+				menc = (mpf & mx_MIME_PROBE_HIGHBIT) ? mx_MIME_ENC_8B : mx_MIME_ENC_7B;
 			}
 		}
-		*do_iconv = ((mtc & a_MT_C_HIGHBIT) != 0);
-	}else if(mtc & a_MT_C_HIGHBIT){
-		ASSERT(!(mtc & (a_MT_C_TTYC5T_UTF8 | a_MT_C_TTYC5T_OTHER)) || (mtc & (a_MT_C_NCTT | a_MT_C_ISTXT)));
-		if(mtc & (a_MT_C_NCTT | a_MT_C_ISTXT))
-			*do_iconv = TRU1;
-	}else
-j7bit:
+
+		mtcfcp->mtcfc_do_iconv = ((mpf & mx_MIME_PROBE_HIGHBIT) != 0);
+	}else if(mpf & mx_MIME_PROBE_HIGHBIT){
+		ASSERT(menc != mx_MIME_ENC_7B);
+		ASSERT(!(mpf & (mx_MIME_PROBE_TTYC5T_UTF8 | mx_MIME_PROBE_TTYC5T_OTHER)) ||
+			(mpf & (mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT)));
+		if(mpf & (mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT))
+			mtcfcp->mtcfc_do_iconv = TRU1;
+	}else{
+		ASSERT(menc != mx_MIME_ENC_7B);
 		menc = mx_MIME_ENC_7B;
-
-	if(mtc & a_MT_C_NCTT)
-		*content_type = "text/plain";
-
-	/* Not an attachment with specified target charset? */
-jcharset:
-	if(*charset == NIL) /* TODO MIME/send: iter active? iter! else */
-		*charset = (mtc & a_MT_C_HIGHBIT) ? mx_mime_charset_iter_or_fallback() : ok_vlook(charset_7bit);
-jleave:
-	/* TODO mime_type_file_classify() should not return conversion */
-	if(rfc822){
-		if(mtc & a_MT_C_FROM_1STLINE){
-			n_err(_("Pre-v15 %s cannot handle message/rfc822 that indeed is a RFC 4155 MBOX!\n  Forcing a content-type of application/mbox!\n"),
-				n_uagent);
-			*content_type = "application/mbox";
-			goto jnorfc822;
-		}
-		c = (menc == mx_MIME_ENC_7B ? CONV_7BIT
-				: (menc == mx_MIME_ENC_8B ? CONV_8BIT
-				/* May have only 7-bit, 8-bit and binary.  Try to avoid latter */
-				: ((mtc & a_MT_C_HASNUL) ? CONV_NONE
-				: ((mtc & a_MT_C_HIGHBIT) ? CONV_8BIT : CONV_7BIT))));
-	}else
-jnorfc822:
-		c = (menc == mx_MIME_ENC_7B ? CONV_7BIT
-				: (menc == mx_MIME_ENC_8B ? CONV_8BIT
-				: (menc == mx_MIME_ENC_QP ? CONV_TOQP : CONV_TOB64)));
-
-	if(fp_charset_or_nil != NIL){
-		ASSERT(!(mtc & (a_MT_C_TTYC5T_UTF8 | a_MT_C_TTYC5T_OTHER)) || (mtc & (a_MT_C_NCTT | a_MT_C_ISTXT)));
-		*fp_charset_or_nil = ((mtc & a_MT_C_TTYC5T_UTF8) ? su_utf8_name
-				: (((mtc & a_MT_C_TTYC5T_OTHER) && *mtca.mtca_ttyc5t_detect != '\0')
-					? savestr/*xxx*/(mtca.mtca_ttyc5t_detect) : NIL));
 	}
 
+jleave:
+	if(!(mpf & (mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT | mx_MIME_PROBE_CT_TXT_COK))){
+		mtcfcp->mtcfc_7bit_clean = mtcfcp->mtcfc_do_iconv = FAL0;
+		ASSERT(mtcfcp->mtcfc_charset == NIL);
+		ASSERT(mtcfcp->mtcfc_input_charset == NIL);
+		ASSERT(mtcfcp->mtcfc_charset_is_ascii == FAL0);
+		mtcfcp->mtcfc_conversion = (menc == mx_MIME_ENC_7B ? CONV_7BIT
+				: (menc == mx_MIME_ENC_8B ? CONV_8BIT
+				: (menc == mx_MIME_ENC_QP ? CONV_TOQP : CONV_TOB64)));
+	}else{
+		if(!(mpf & mx_MIME_PROBE_HIGHBIT))
+			mtcfcp->mtcfc_7bit_clean = TRU1;
+		if(mpccp->mpcc_iconv_disable)
+			mtcfcp->mtcfc_do_iconv = FAL0;
+		if(mpf & mx_MIME_PROBE_CT_NONE){
+			mpf |= mx_MIME_PROBE_CT_TXT;
+			mtcfcp->mtcfc_content_type = "text/plain";
+			mtcfcp->mtcfc_ct_is_text_plain = TRU1;
+		}else if((mpf & mx_MIME_PROBE_CT_TXT) && !su_cs_cmp_case(mtcfcp->mtcfc_content_type, "text/plain"))
+			mtcfcp->mtcfc_ct_is_text_plain = TRU1;
+
+		if(rfc822){
+			if(mpf & mx_MIME_PROBE_FROM_1STLINE){
+				n_err(
+_("Pre-v15 %s cannot handle message/rfc822 that indeed is a RFC 4155 MBOX!\n  Forcing a content-type of application/mbox!\n"),
+					n_uagent);
+				mtcfcp->mtcfc_content_type = "application/mbox";
+				goto jnorfc822;
+			}
+			mtcfcp->mtcfc_conversion = (menc == mx_MIME_ENC_7B ? CONV_7BIT
+					: (menc == mx_MIME_ENC_8B ? CONV_8BIT
+					/* May have only 7-bit, 8-bit and binary.  Try to avoid latter */
+					: ((mpf & mx_MIME_PROBE_HASNUL) ? CONV_NONE
+					: ((mpf & mx_MIME_PROBE_HIGHBIT) ? CONV_8BIT : CONV_7BIT))));
+		}else
+jnorfc822:
+			mtcfcp->mtcfc_conversion = (menc == mx_MIME_ENC_7B ? CONV_7BIT
+					: (menc == mx_MIME_ENC_8B ? CONV_8BIT
+					: (menc == mx_MIME_ENC_QP ? CONV_TOQP : CONV_TOB64)));
+		mtcfcp->mtcfc_mime_enc = menc;
+
+		ASSERT(!(mpf & (mx_MIME_PROBE_TTYC5T_UTF8 | mx_MIME_PROBE_TTYC5T_OTHER)) ||
+			(mpf & (mx_MIME_PROBE_CT_NONE | mx_MIME_PROBE_CT_TXT)));
+
+		mtcfcp->mtcfc_input_charset = ((mpf & mx_MIME_PROBE_TTYC5T_UTF8) ? su_utf8_name_lower
+				: (((mpf & mx_MIME_PROBE_TTYC5T_OTHER) && *mpc.mpc_ttyc5t_detect != '\0')
+					? mpc.mpc_ttyc5t_detect :
+					  ((mpf & mx_MIME_PROBE_HIGHBIT) ? mpccp->mpcc_ttyc5t : mpccp->mpcc_cs_7bit)));
+		if(!mtcfcp->mtcfc_do_iconv){
+			mtcfcp->mtcfc_charset = mtcfcp->mtcfc_input_charset;
+			mtcfcp->mtcfc_charset_is_ascii = n_iconv_name_is_ascii(mtcfcp->mtcfc_charset);
+		}else{
+			ASSERT(mtcfcp->mtcfc_charset == NIL);
+			ASSERT(mtcfcp->mtcfc_charset_is_ascii == FAL0);
+		}
+	}
+
+jerr:
 	NYD_OU;
-	return c;
-}
+	return (mtcfcp != NIL);
+} /* }}} */
 
 enum mx_mime_type
-mx_mime_type_classify_part(struct mimepart *mpp, boole is_hdl){
+mx_mime_type_classify_part(struct mimepart *mpp, boole is_hdl){ /* {{{ */
 	/* TODO n_mimetype_classify_part() <-> m_mime_classifier_ with life cycle */
 	struct a_mt_lookup mtl;
 	boole is_os;
@@ -1365,10 +1217,10 @@ jos_content_check:
 	if((mce.f & a_MT_CE_BIN_PARSE) && mpp->m_mime_enc != mx_MIME_ENC_BIN && mpp->m_charset_or_nil != NIL)
 		mc = a_mt_classify_o_s_part(mce.f, mpp, is_hdl);
 	goto jleave;
-}
+} /* }}} */
 
 BITENUM(u32,mx_mime_type_handler_flags)
-mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *mpp, enum sendaction action){
+mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *mpp, enum sendaction action){ /* {{{ */
 #define a__S "pipe-"
 #define a__L (sizeof(a__S) -1)
 
@@ -1379,7 +1231,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *m
 	BITENUM(u32,mx_mime_type_hander_flags) rv, xrv;
 	NYD_IN;
 
-	su_mem_set(mthp, 0, sizeof *mthp);
+	STRUCT_ZERO(struct mx_mime_type_handler, mthp);
 	buf = NIL;
 	xrv = rv = mx_MIME_TYPE_HDL_NIL;
 
@@ -1404,7 +1256,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *m
 		boole ever;
 
 		/* "basename()" it */
-		for(l = el; l > 0 && es[l - 1] != '/';)
+		for(l = el; l > 0 && es[l - 1] != su_PATH_SEP_C;)
 			--l;
 		es += l;
 		el -= l;
@@ -1526,10 +1378,10 @@ jleave:
 
 #undef a__L
 #undef a__S
-}
+} /* }}} */
 
 int
-c_mimetype(void *vp){
+c_mimetype(void *vp){ /* {{{ */
 	struct n_string s_b, *s;
 	struct a_mt_node *mtnp_base, *mtnp;
 	char **argv;
@@ -1642,10 +1494,10 @@ jiter:
 jleave:
 	NYD_OU;
 	return (vp == NIL ? su_EX_ERR : su_EX_OK);
-}
+} /* }}} */
 
 int
-c_unmimetype(void *vp){
+c_unmimetype(void *vp){ /* {{{ */
 	boole match;
 	struct a_mt_node **mtnpp, *mtnp, **lnpp;
 	char **argv;
@@ -1721,7 +1573,7 @@ j1by1:
 
 	NYD_OU;
 	return (vp == NIL ? su_EX_ERR : su_EX_OK);
-}
+} /* }}} */
 
 #include "su/code-ou.h"
 #undef su_FILE

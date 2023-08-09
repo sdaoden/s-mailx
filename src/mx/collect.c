@@ -174,7 +174,7 @@ static boole a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err, b
 
 /* Edit the message being collected on fp.
  * If c=='|' pipecmd must be set and is passed through to run_editor().
- * On successful return, make the edit file the new temp file; return errno */
+ * On successful return, make edit draft the new draft file; return errno */
 static s32 a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
 /* Pipe the message through the command.  Old message is on stdin of command, new message collected from stdout.
@@ -501,8 +501,8 @@ a_coll_print(FILE *cf, struct header *hp){
 	if(fprintf(obuf, _("-------\nMessage contains:\n")) < 0)
 		goto jleave;
 
-	if(!n_puthead(TRU1, hp, obuf, (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES | GCOMMA),
-			SEND_TODISP, CONV_NONE, NIL, NIL))
+	if(!n_puthead(SEND_TODISP, TRU1, obuf, hp, (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC |
+			GNL | GFILES | GCOMMA)))
 		goto jleave;
 
 	fflush_rewind(cf);
@@ -1306,8 +1306,7 @@ jy_inject_restart:
 					goto jloop;
 				}else{
 					if(msf & n_MAILSEND_HEADERS_PRINT)
-						n_puthead(TRU1, hp, n_stdout, gfield, SEND_TODISP, CONV_NONE,
-							NIL, NIL);
+						n_puthead(SEND_TODISP, TRU1, n_stdout, hp, gfield);
 
 					rewind(cc.cc_fp);
 					while((c = getc(cc.cc_fp)) != EOF) /* XXX bytewise, yuck! */
@@ -1471,9 +1470,8 @@ jout:	/* Tail processing after user edit: hooks, auto-injections (update manual 
 			boole b;
 
 			fprintf(n_stdout, _("-------\n(Preliminary) Envelope contains:\n")); /* XXX */
-			if(!n_puthead(TRU1, hp, n_stdout,
-					(GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
-						GFILES | GCOMMA), SEND_TODISP, CONV_NONE, NIL, NIL))
+			if(!n_puthead(SEND_TODISP, TRU1, n_stdout, hp, (GIDENT | GREF_IRT  | GSUBJECT |
+					GTO | GCC | GBCC | GBCC_IS_FCC | GFILES | GCOMMA)))
 				goto jerr;
 
 jreasksend:

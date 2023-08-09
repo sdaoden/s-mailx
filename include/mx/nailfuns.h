@@ -43,6 +43,7 @@ struct mx_attachment;
 struct mx_cmd_arg;
 struct mx_go_data_ctx;
 struct mx_ignore;
+struct mx_mime_probe_charset_ctx;
 struct mx_name; /* xxx already from nail.h */
 struct mx_srch_ctx;
 struct quoteflt;
@@ -114,15 +115,24 @@ do{\
    rewind(stream);\
 }while(0)
 
-/* Truncate a file to the last character written.  This is useful just before
- * closing an old file that was opened for read/write */
-#define ftrunc(stream) \
+/**/
+#define ftrunc_x_tell(FP,OFF) \
 do{\
-   off_t off;\
-   fflush(stream);\
-   off = ftell(stream);\
-   if(off >= 0)\
-      ftruncate(fileno(stream), off);\
+   fflush(FP);\
+   OFF = ftell(FP);\
+}while(0)
+#define ftrunc_x_trunc(FP,OFF,RES) \
+do{\
+   ASSERT(ftell(FP) <= OFF);\
+   RES = (OFF >= 0) ? ftruncate(fileno(FP), OFF) : 0;\
+}while(0)
+#define ftrunc(FP) \
+do{\
+   int a__res;\
+   off_t a__off;\
+   ftrunc_x_tell(FP, a__off);\
+   ftrunc_x_trunc(FP, a__off, a__res);\
+   UNUSED(a__res);\
 }while(0)
 
 /*
@@ -636,11 +646,10 @@ FL boole      is_head(char const *linebuf, uz linelen,
 FL char const *mx_header_is_valid_name(char const *name, boole lead_ws,
       struct str *cramp_or_nil);
 
-/* If charset_or_nil is set it is set to NIL or su_utf8_name if
- * A set charset_or_nil is set according to *ttycharset-detect* */
-#ifdef mx_HAVE_ICONV
-FL boole mx_header_needs_mime(struct header *hp, char const **charset_or_nil);
-#endif
+/* Check all relevant headers of hp via mime_probe_head_cp() (returns its'
+ * value), set *charset according to mpccp */
+FL boole mx_header_needs_mime(struct header const *hp, char const **charset,
+      struct mx_mime_probe_charset_ctx const *mpccp);
 
 /* Print hp "to user interface" fp for composing purposes xxx what a sigh */
 FL boole n_header_put4compose(FILE *fp, struct header *hp);
@@ -958,10 +967,8 @@ FL enum okay n_mail1(enum n_mailsend_flags flags, enum mx_scope scope,
  * editing a message (yet we are stupid and cannot do it any better).
  * If hp->h_flags&HF_COMPOSE_MODE then we are really in compose mode and
  * produce some fields for easier filling in */
-FL boole n_puthead(boole nosend_msg, struct header *hp, FILE *fo,
-                  enum gfield w, enum sendaction action,
-                  enum conversion convert, char const *contenttype,
-                  char const *charset);
+FL boole n_puthead(enum sendaction action, boole nosend_msg, FILE *fo,
+      struct header *hp, enum gfield w);
 
 /* Create Date:-style header field body (not field itself).
  * We compare the localtime() and gmtime() results to get the timezone, because

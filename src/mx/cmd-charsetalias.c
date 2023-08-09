@@ -78,7 +78,7 @@ c_charsetalias(void *vp){
 			key = argv[1];
 		dat = key;
 
-		if((key = n_iconv_normalize_name(key)) != NIL && a_csal_dp != NIL &&
+		if((key = n_iconv_norm_name(key, FAL0)) != NIL && a_csal_dp != NIL &&
 				su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_csal_dp), key)){
 			struct n_strlist *slp;
 
@@ -103,7 +103,7 @@ c_charsetalias(void *vp){
 		}
 
 		for(rv = 0; key != NIL; argv += 2, key = *argv){
-			if((key = n_iconv_normalize_name(key)) == NIL){
+			if((key = n_iconv_norm_name(key, FAL0)) == NIL){
 				n_err(_("charsetalias: invalid source charset %s\n"), n_shexp_quote_cp(*argv, FAL0));
 				rv = 1;
 				continue;
@@ -111,7 +111,7 @@ c_charsetalias(void *vp){
 				mx_cmd_print_synopsis(mx_cmd_by_name_firstfit("charsetalias"), NIL);
 				rv = 1;
 				break;
-			}else if((dat = n_iconv_normalize_name(dat)) == NIL){
+			}else if((dat = n_iconv_norm_name(dat, FAL0)) == NIL){
 				n_err(_("charsetalias: %s: invalid target charset %s\n"),
 					n_shexp_quote_cp(argv[0], FAL0), n_shexp_quote_cp(argv[1], FAL0));
 				rv = 1;
@@ -142,7 +142,7 @@ c_uncharsetalias(void *vp){
 		if(cp[1] == '\0' && cp[0] == '*'){
 			if(a_csal_dp != NIL)
 				su_cs_dict_clear(a_csal_dp);
-		}else if((key = n_iconv_normalize_name(cp)) == NIL || a_csal_dp == NIL ||
+		}else if((key = n_iconv_norm_name(cp, FAL0)) == NIL || a_csal_dp == NIL ||
 				!su_cs_dict_remove(a_csal_dp, key)){
 			n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(cp, FAL0));
 			rv = 1;
@@ -162,7 +162,7 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 	cp_orig = cp;
 
 	if(!is_normalized)
-		cp = n_iconv_normalize_name(cp);
+		cp = n_iconv_norm_name(cp, FAL0);
 
 	if(a_csal_dp != NIL)
 		for(i = 0;; ++i){
@@ -174,7 +174,7 @@ mx_charsetalias_expand(char const *cp, boole is_normalized){
 		}
 
 	if(cp != cp_orig)
-		cp = savestr(cp);
+		cp = savestr(n_iconv_norm_name(cp, TRU1));
 
 	NYD_OU;
 	return cp;
