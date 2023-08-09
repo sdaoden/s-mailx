@@ -251,7 +251,7 @@ jleave:
 		mx_fs_close(nf_pipetmp);
 
 	if(nf_tmp != NIL && !mx_fs_close(nf_tmp)){
-		n_perr(_("closing of temporary mail edit file"), 0);
+		n_perr(_("closing of mail draft"), 0);
 		if(nf != NIL){
 			mx_fs_close(nf);
 			nf = NIL;

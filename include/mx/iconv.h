@@ -38,21 +38,32 @@ enum n_iconv_flags{
 	n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
 	n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
+#endif
 
-EXPORT_DATA s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
-EXPORT_DATA iconv_t iconvd;
-#endif /* mx_HAVE_ICONV */
-
-/* Returns a newly AUTO_ALLOC()ated thing if there were adjustments.
- * Return value is always smaller or of equal size.
- * NIL will be returned if cset is an invalid character set name */
-EXPORT char *n_iconv_normalize_name(char const *cset);
-
-/* Is it ASCII / UTF-8 indeed? */
-EXPORT boole n_iconv_name_is_ascii(char const *cset);
-EXPORT boole n_iconv_name_is_utf8(char const *cset);
+enum n__iconv_set{
+	n__ICONV_SET_U8,
+	n__ICONV_SET_US,
+	n__ICONV_SET__MAX
+};
 
 #ifdef mx_HAVE_ICONV
+EXPORT_DATA s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
+EXPORT_DATA iconv_t iconvd;
+#endif
+
+EXPORT boole n__iconv_name_is(char const *cset, u32 set);
+
+/* May return newly AUTO_ALLOC()ated thing or a constant if there were adjustments.
+ * NIL will be returned if cset is an invalid character set name.
+ * If mime_name_norm is set and we know the "preferred MIME name" (IANA term), we use that */
+EXPORT char *n_iconv_norm_name(char const *cset, boole mime_name_norm);
+
+/* Is it ASCII / UTF-8 indeed? */
+INLINE boole n_iconv_name_is_ascii(char const *cset) {return n__iconv_name_is(cset, n__ICONV_SET_US);}
+INLINE boole n_iconv_name_is_utf8(char const *cset) {return n__iconv_name_is(cset, n__ICONV_SET_U8);}
+
+#ifdef mx_HAVE_ICONV
+/* This sets err(ERR_NONE) if tocode and fromcode are de-facto identical but iconv does not deal with them. */
 EXPORT iconv_t n_iconv_open(char const *tocode, char const *fromcode);
 
 /* If *cd* == *iconvd*, assigns -1 to the latter */
@@ -61,13 +72,13 @@ EXPORT void n_iconv_close(iconv_t cd);
 /* Reset encoding state */
 EXPORT void n_iconv_reset(iconv_t cd);
 
-/* iconv(3), but return su_err() or 0 upon success.
+/* iconv(3), but return a su_err_number, or ERR_NONE upon success.
  * The err may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
  * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_nil may be the same object.
  * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the replacement character must be added
  * manually if that happens at EOF!
- * TODO These must be contexts.  For now we duplicate su_err() into n_iconv_err in order to be able to access it
- * TODO when stuff happens "in between"! */
+ * TODO These must be contexts.  For now we duplicate errors into n_iconv_err in order to be able to access it
+ * TODO when stuff happens "in between"!  su_err() is not set anyhow! */
 EXPORT int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, char **outb, uz *outbleft);
 EXPORT int n_iconv_str(iconv_t icp, enum n_iconv_flags icf, struct str *out, struct str const *in, struct str *in_rest_or_nil);
 
@@ -78,6 +89,7 @@ EXPORT char *n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode, char
 /* Convert the entire file ifp.  If tocode==NIL, uses *ttycharset*.  If fromcode==NIL, uses UTF-8.
  * If *ofpp_or_nil is NIL a FS_O_RDWR|FS_O_UNLINK file is created and stored on ERR_NONE return.
  * No file positioning on ifp is done before or after it has been worked.
+ * n_iconv_err may be used internally, but only return code shall be used!
  * The output file is fflush_rewind()ed on success */
 EXPORT s32 n_iconv_onetime_fp(enum n_iconv_flags icf, FILE **ofpp_or_nil, FILE *ifp,
 		char const *tocode, char const *fromcode);
