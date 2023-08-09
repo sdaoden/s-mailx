@@ -3521,20 +3521,28 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat, boole heap){
    bl = S(u32,su_cs_len(cp));
    while(bl > 0 && su_cs_is_space(cp[bl - 1]))
       --bl;
-   for(i = bl++; i-- != 0;)
+   for(i = bl; i-- != 0;)
       if(su_cs_is_cntrl(cp[i])){
          cp = N_("Invalid custom header: contains control characters: %s\n");
          goto jerr;
       }
 
-   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + hname.l +1 + bl +1;
-   *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
-   hfp->hf_next = NULL;
+   i = VSTRUCT_SIZEOF(struct n_header_field,hf_dat) + hname.l +1 + bl +1;
+   *hflp = hfp = heap ? su_ALLOC(i) : su_AUTO_ALLOC(i);
+   hfp->hf_next = NIL;
    hfp->hf_nl = hname.l;
-   hfp->hf_bl = bl - 1;
-   su_mem_copy(hfp->hf_dat, hname.s, hname.l);
-      hfp->hf_dat[hname.l++] = '\0';
-      su_mem_copy(&hfp->hf_dat[hname.l], cp, bl);
+   hfp->hf_bl = bl;
+   /* C99 */{
+      char *xp;
+
+      xp = hfp->hf_dat;
+      su_mem_copy(xp, hname.s, hname.l);
+      xp[hname.l] = '\0';
+      xp += ++hname.l;
+      if(bl > 0)
+         su_mem_copy(xp, cp, bl);
+      xp[bl] = '\0';
+   }
 
 jleave:
    NYD_OU;
