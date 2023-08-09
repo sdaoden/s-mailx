@@ -1,5 +1,11 @@
 TODO reminder.
 
+1. Moin.
+2. Moin Moin.
+3. MUSTs for the next release
+
+===================== 1. Moin.
+
 Rename S-nail to S-mailx in v15.0, change things i have messed with
 a single, massively backward incompatible change.
 
@@ -34,9 +40,6 @@ with us.
 -- Also, when the folder was modified concurrently we should bail, or,
    in an interactive session, prompt the user what to do.
 
-- IDNA decoding.  Needs a complete design change.
-  (Unless wants to brute force decode anything before display, of course.)
-
 - Line editing should gain possibility of context sensitive tab completion.
 -- Offer a(n optional, and on/off switchable) Damerau-Levenshtein
    mode for command completion;
@@ -68,17 +71,6 @@ with us.
 Low-Level
 ---------
 
-- Improve name extraction rules.  And field parsing.  There
-  are structured and unstructured fields.  There are quoted pairs and
-  comments etc.  Rewrite the entire parsing mechanism to comply to RFC
-  5322, and try to merge all those many subparsers around in the codebase,
-  and accordingly.  So much duplicated work ...
-  Name parsing improved a bit for v13 and v14.9, but it's still broken.
-  yankword(), *extract(), etc.: RFC 5322 says that comments in address
-  fields SHOULD NOT be used (mutt(1) maps them to full name-addr forms if
-  approbiate, even if that actually changes content!!?), and that full
-  name-addr SHOULD be used.
-
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
   should be able to parse that?
@@ -104,6 +96,7 @@ Low-Level
 - Add TODO notes for those RFCs:
   RFC 977 -> 3977 - Network News Transfer Protocol
   RFC 1036 - Standard for USENET Messages
+  RFC 1870 - SMTP Size Declaration
   RFC 1939 - Post Office Protocol v3
   RFC 2017 - URL External-Body Access-Type
   RFC 2183 - The Content-Disposition Header
@@ -126,7 +119,7 @@ Low-Level
       Status Notifications (DSNs),
     An Extensible Message Format for Delivery Status Notifications
   RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
-    text (format=flowed).   (Martin Neitzel)
+    text (format=flowed).   (Martin Neitzel, Stephen Isard)
   rfc4315.txt Internet Message Access Protocol (IMAP) - UIDPLUS extension
   RFC 4422, 4505 - Simple Authentication and Security layer (SASL)
             (Tarqi Kazan)
@@ -154,12 +147,10 @@ Low-Level
        used in applications other than Internet mail.  If protection of the
        RFC-822 header is required, the use of the message/rfc822 media type
        is explained later in this section.
-  RFC 6125 - Representation and Verification of Domain-Based Application
+  RFC 6125->9525 - Representation and Verification of Domain-Based Application
     Service Identity within Internet Public Key Infrastructure Using
     X.509 (PKIX) Certificates in the Context of Transport Layer Security
     (TLS)
-  RFC 6152 - SMTP Service Extension for 8-bit MIME Transport
-  RFC 6409 - Message Submission for Mail
   rfc6530.txt Overview and Framework for Internationalized Email
   rfc6531.txt SMTP Extension for Internationalized Email
   rfc6532.txt Internationalized Email Headers
@@ -171,9 +162,12 @@ Low-Level
     Email Messages
   rfc6858.txt Simplified POP and IMAP Downgrading for Internationalized Email
   RFC 7162                IMAP CONDSTORE & QRESYNC
+  RFC 7817 Updated Transport Layer Security (TLS) Server Identity Check Procedure for Email-Related Protocols
   RFC 8058 Signaling One-Click Functionality for List Email Headers
+  RFC 8314 Cleartext Considered Obsolete: Use of Transport Layer Security (TLS) for Email Submission and Access
   RFC 8460 on SMTP TLS Reporting
   RFC 8461 on SMTP MTA Strict Transport Security (MTA-STS)
+
   RFC 8474 IMAP Extension for Object Identifiers
   RFC 8484 on DNS Queries over HTTPS (DoH)
   RFC 8550 Secure/Multipurpose Internet Mail Extensions (S/MIME)
@@ -184,14 +178,12 @@ Low-Level
   RFC 8616 Email Authentication for Internationalized Mail
   RFC 8621 The JSON Meta Application Protocol (JMAP) for Mail
   RFC 8689 SMTP Require TLS Option
+  RFC 9422 SMTP LIMITS EXTENSION
+  RFC 9787 Guidance on End-to-End Email Security
+  RFC 9788 Header Protection for Cryptographically Protected Email
 
   draft-ietf-uta-email-tls-certs-01.txt
      SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
-  draft-melnikov-smime-header-signing
-     Considerations for protecting Email header with S/MIME
-
-  Read https://tools.ietf.org/html/draft-ietf-uta-tls-bcp-07.
-    Can we implement OCSP (see RFC 6066; -> RFC 6960)????
 
 - This is how the codebase has to be reworked in respect to signals and
   jumping:
@@ -256,7 +248,7 @@ Low-Level
  34. We need a new abstraction: `vie[ws]'.  I.e, viewset, viewclear,
      view(show|look)?  We will have (possibly readonly) boxes, a summary
      cache file, which is created when a mailbox is read in, and all
-     that crap that we currently have (setptr(), setmsize(), etc.!) must
+     that c2rap that we currently have (setptr(), setmsize(), etc.!) must
      vanish.  Instead there is another, in-memory abstraction, the view.
      Some views are built-in and are somehow selectable (the "all" view,
      for example, and the "new" view).
@@ -275,10 +267,17 @@ Low-Level
      much logic for no purpose, instead we'll (hopefully) add some
      scriptable abstraction, with an optional built-in Lua binding.
 
- 50. Support SASL.  (I do not like it.)
-
  80. The MIME rewrite: mime_parser <-> mime "DOM" analyzer <->
      selectively create filter chains per part and do XY.
+
+     Best this would be a protocol for dump_to_wire / dump_to_user mode.
+      . IDENT - or NONE if it does not change current "mode" (ie, main
+        header, info msg, part header, part body.
+      . Data len
+      . Data
+      Would make sense to allow "no change" meaning "continues current
+      xy", or it should be bit carrier to "allow that".
+      So the filter chain handle for example colours its own, etc etc.
 
      This also affects sending, and it will allow us to dig MIME
      (multipart) mail for -t/-m _correctly_.  Also in sofar as we can
@@ -333,13 +332,6 @@ Low-Level
   deal with IPv6 addresses (as in '[ADDR]:PORT').  Pimp url_parse().
   And socket I/O.
 
-- I had a connection collapse during a POP3 download, and neither was
-  there a chance to get access to the 22 yet downloaded mails (after
-  five minutes of waiting followed by CNTRL-C), nor did the layer
-  recognize this very well (got myriads of `POP3 connection already
-  closed.' messages, btw., the thirty-something messages which were not
-  yet downloaded caused (after CNTRL-C) this: ETC. ETC.
-
 - I got an email in base64 that obviously used CRNL line endings, and once
   i've replied the CR where quoted as *control* characters.
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
@@ -362,7 +354,10 @@ Low-Level
 
 - edit.c doesn't do NEED_BODY (but IMAP won't work anyway).
 
-- Stuff
+===================== 2. Moin Moin.
+
+- stuff
+
   . s-nail </dev/null should work interactively when STDERR_FILENO is
     a terminal!  (Built-in editor; how do editline and readline work?
     should this be documented?  POSIX says for sh(1) (APPLICATION USAGE):
@@ -410,14 +405,6 @@ Low-Level
     It should track the number of contained parts, so that the
     "fits-onto-the-screen" tests are more useful than today.
 
-  . Given how many temporary files we use, it would make sense to
-    support a reusable single temporary file, as in singletmp_take() and
-    singletmp_release(), where singletmp_release() would close and thus
-    drop the file if it excesses a specific (configurable) size, and the
-    mainloop tick would close it (after X (configurable) unused ticks))
-    otherwise.  I guess this would improve performance for searching
-    etc. etc.
-
   . Searching body/text yet includes headers from attachments and
     attachment data.  This is shit.  :)
 
@@ -449,7 +436,8 @@ Low-Level
   . mutt list handling (`~') is very powerful
 
   . We have some use of *at() functions, especially anything which
-    temporarily switches cwd.
+    temporarily switches cwd.  (Quite some paths can be improved with
+    more modern system calls, *at()s are not alone.)
 
   . *newmail* is terrible.  At some later time we need to do somethings
     with timeouts etc. (for MBOX and Maildir it's not that bad, but for
@@ -464,6 +452,9 @@ Low-Level
 
   .. Also, there is DSN as a SMTP extension, see the RFCs 3461, 346 (as
      above) and 6522 (Wikipedia).
+          MAIL FROM:<notified-envelope-sender> ENVID=<unique-envid> RET=hdrs
+          RCPT TO:<each-recipient> NOTIFY=success,failure
+          ...
 
   . The var_* series should return "const char*" not "char*".
     This should already work today because otherwise we would get SEGV
@@ -482,12 +473,11 @@ Low-Level
   . We need a `spamcheck' command that is like `spamrate' but updates
     the mail in-place, i.e., with the headers that the spam engine adds.
 
-  . __narrow_suffix() is wrong (for stateful encodings that we
-    don't support yet) and should inject a reset sequence if it shortens
-    the string.
-
   . When a user edits a specific header, it should no longer be
     modified.  (Do not loose knowledge that collect() edited it.)
+
+  .. if -t is used and the file includes Mail-Followup-To:, then we should
+     NOT add to it, OR we need to offer a way to get there!
 
   . The new internal ~/$ expansion mechanism should get support
      for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
@@ -497,10 +487,11 @@ Low-Level
 
   . With very long input Heirloom mailx(1) / S-nail(1) can produce
     encoded-words (RFC 2047) with incomplete multibyte sequences (i.e.,
-    non self-contained encoded-words).
+    non self-contained encoded-words).  (<> MIME rewrite.)
 
   . Group addresses, especially the undisclosed recipients but also
-    "Bla": addresses; are missing.
+    "Bla": addresses; are missing.  They come with SU IMF, but this is
+    only parser, it gets lost (as a group).
 
   . Per-folder (S/MIME) en- and decryption key (Tarqi Kazan): if a xy
     variable is set (that points to a key) add a transparent en- and
@@ -523,7 +514,8 @@ Low-Level
 
   . `pipe' is total shit regarding MIME.  We need some defined and
      documented method to configure which parts are displayed and/or how
-     they are visually separated.
+     they are visually separated.  We now have `Pipe' meaning "raw", but
+     that is just equally bad.
 
   . Exit status handling is sick.
 
@@ -533,52 +525,286 @@ Low-Level
      Unicode mode?  I.e.: continue to force the user to set such
      a switch, but do it in a sensible fashion, because the UTF-16 data
      stream may nonetheless contain control characters??
---
 
-. smime_verify(): only dump the multipart that is signed into the file for
+- smime_verify(): only dump the multipart that is signed into the file for
   verification purposes.  DOCUMENT that only the FIRST such part is verified.
-  Ditto, we don't decrypt but on toplevel.  Sic.
+  Ditto, we don't decrypt but on toplevel.  Sic.  RFC 9788!!
 
-. convert iconv so that it always "places the reset sequence" i.e.
+- convert iconv so that it always "places the reset sequence" i.e.
  finalizes the string properly.  we don't do this at all right now!
 
-. -:, *mimetypes-load-control*, ?, should honour the given load order; as
+- -:, *mimetypes-load-control*, ?, should honour the given load order; as
   appropriate, add a "b" for built-in!
   It happened to me that i searched for at least 30 minutes for a bug
   that resulted in text/plain not text/x-diff only to find out that this
   was because of ArchLinux's /etc/mime.types!
 
-. getapproval() should support a TRUM1 return, meaning "cancel",
+- getapproval() should support a TRUM1 return, meaning "cancel",
   to be understood as appropriate.
 
-. `mbox' _can_ be made usable anywhere with yet another PS_MBOX global
+- `mbox' _can_ be made usable anywhere with yet another PS_MBOX global
   bypass!  ditto touch,save,Save
 
-. when doing Lreply we may ask for Reply-To:, but strip out the address
+- when doing Lreply we may ask for Reply-To:, but strip out the address
   actively even if user said yes to the question.  That should not
   happen?  It somehow matches the documentation however.  unsure.
 
-. if -t is used and the file includes Mail-Followup-To:, then we should
-  NOT add to it, OR we need to offer a way to get there!
+-- It is also, that with DMARC etc mitigations, the X via Y with the list
+   address will be used if Reply-To: is not used, however the reply-to
+   address then is lost completely; it would be better if, if we know it
+   is a list we are going for, another question would arise that would
+   ask to take the Reply-To: BUT otherwise take all the other addresses
+   as we would if we would not take Repy-To:, and ensure the list
+   address now (possibly) discarded is nonetheless inclded, possibly
+   even via the List-Post: header content!!
 
-. `mimetype': more type markers: i want to be able to send
+- `mimetype': more type markers: i want to be able to send
   application/mbox as text if it is 7bit clean; ditto application/x-sh.
   Ditto xml etc.  And: if highbits, try conversion, but fall back to
   base64 instead of failing to send the message.
      ?ui=t,wire=7bit,8bit-or-base64
   Something like that.
 
-- negation
-  In fact the message selection should be an object with lifetime.
-  Like this we can not only provide "type SPEC" in match order, but also
-  support for example colour or the header summary with message spec
-  preconditions, a la
+-- also see:
+  (REJECTED) `write': honour !mailcap ISTXT, iactive ask for ovwr+iconv..
 
-    colour 256 sum-header ft=reverse @BLABLA :n
+  + Stephen Isard: RFC 2045 6.8 etc, canonicalization of attachments
+  etc, for now we `write` a DOS file as a DOS file, whereas mutt etc
+  save a Linux file.  I said "option or new command", but how about
+  checking text files for "line endings inside
+  content-transfer-encoding", and actively ask in interactive context?
+  In batch mode etc we would still need a flag (make it quadoption!!)
 
-  (Keep "older" and "dot" forever, even though that is "." and a colon
-  modifier that we yet do not have.)
+===================== 3. MUSTs for the next release
 
-- redirections
+- XDG support?  Optional!?
+
+- OAUTH-HELPER -> replace example sextion!!
+
+-     bounce  Takes a list of messages and prompts for an address to bounce the
+             messages to.  All the original header fields are preserved except
+             for the ``Delivered-To'', ``X-Original-To'' and ``Status''
+             fields.  The new ``To'' field contains the bounce address(es)
+             plus any addresses in the old ``To'' field minus the user's local
+             address and any on the alternates list.  (See the alternates com-
+             mand.)
+
+- Stephen: treat IMAP (and POP) errors as "disconnect" requests, automatically
+  "connect" when the next operation comes in (that does not leave the box)
+   compare mutt
+          commit 2efcabc4e90fa1f6e477c778d38040de9ce7fae6
+
+            Add $imap_reconnect_tries and $imap_reconnect_sleep.
+
+            Try to make imap_reconnect() work a little harder by introducing
+            options to control the number of reconnect attempts, and how long to
+            sleep between each attempt.
+
+- mailaliases: support :include: directive! (credit NetBSD thread initiator)!
+
+- attachments: we should create their Content-ID: early, so that digmsg etc can
+  fetch it.  Or create it on such a request, and document it is like that.
+  If so, in-mail-message references are possible, eg, some big mailers (Apple
+  Mail?, Outlook?) create messages where the (HTML) text parts includes links to
+  images that are attached!! like     src="cid:image001.jpg@01D9B55C.CFA9CA10"
+  	    src="cid:image001.jpg@01D9B55C.CFA9CA10"
+	    https://www.w3.org/Addressing/URL/4_1_Cid.html
+	    :
+	    The second scheme, "cid:", is similar to "mid:" , but makes
+	    reference to a body part of a MIME message by the value of its
+	    content-id field. This allows, for example, a master document being
+	    the first part of a multipart/related MIME message to refer to
+	    component parts which are transferred in the same message.
+	    Note
+	    Beware however, that content identifiers are only required to be
+	    unique within the context of a given MIME message, and so the cid:
+	    URL is only meaningful with the context the same MIME message. For
+	    a reference outside the message, it would need to be appended to the
+	    message-id of the whole message. A syntax for this has not been
+	    defined.
+
+- digmsg attachment save
+	- digmsg attachment write
+- digmsg decrypt [password]!!
+	?? decrypt-recurse [password callback]
+
+- digmsg should have possibility to adjust message states
+  	WE SHOULD HAVE A COMMAND FOR SUCH
+
+- tmix 3.3
+	* Send Unicode directional isolate characters around horizontal pane borders if
+	  the terminal supports UTF-8 and an extension terminfo(5) capability "Bidi" is
+	    present.
+  adjust our bidi thing?
+
+- network _comm_ credentials could be XXXed out but in verbose=3
+
+- we must not use recursive parsers for 2231 etc., as that can be triggered from
+  the outside!  when it is a library at latest
+
+- addrcodec:
+	/* Maximum size of the triple client_address/sender/recipient we look out for,
+	 * anything beyond is DUNNO.  RFC 5321 limits:
+	  *    4.5.3.1.1.  Local-part
+	   *    The maximum total length of a user name or other local-part is 64
+	   *    octets.
+	    *    4.5.3.1.2.  Domain
+	     *    The maximum total length of a domain name or number is 255 octets. */
+	we do not verify this!!
+
+- If i ~m then forwarded by gives wrong source!
+
+	....also not ../reply-goes-to-wrong-maybe.mbox!!!
+
+	.. but works for ~Q????
+
+- SMTP: RFC 5321: 4.5.3.1.8., 4.5.3.1.10.  Too Many Recipients Code.
+	- count number of recipients
+	- if the number exceeds 99, suspend pipelining, fetch all responses.
+	  afterwards work receiver-by-receiver until either list exhausted or
+	  452 (OR 552) response code is seen.
+	- Be capable to redo jsend: with the rest of the receivers!
+	++ FALSE! NOTE: we need to restart and work in chunks of X-1 in case of
+	452 / 552.
+
+- SMTP: partial send with retry of rest
+	as well as
+	To take an example from part of a different recent discussion,
+	there really is a difference among {500, 501, 502, 503, 504,
+	555} and 550: the first group indicates that the server thinks
+	the client messed up and is not following the specs, while 550
+	represents a specific problem with the address.  If I were
+	maintaining SMTP-sender software, I'd certainly want to know
+	about that even though the action I might take on that
+	particular message might still depend only on that first digit.
+	It is probably not a bug if the SMTP-sender ignores that
+	information, but it shows a certain level of indifference and
+	would not be, IMO, good programming practice.
+
+- authbearer/xoauth2 cannot be automatic since the token expires!
+	we need to be able to call a hook BEFORE we enter actual server communication
+	(i.e., we call it whenever the user enables it, if its chosen or not, only like
+	so we can refresh that before subprocess is running.
+	offer "pseudo-hosts"
+		USER@HOST.oauth-client-id
+		USER@HOST.oauth-client-secret
+		USER@HOST.oauth-client-refresh-token
+	pass these as MAILX_... to the update script.  The update script should
+	only know about and store the access token and the timeout.
+	In fact: offer an on-oauth-login macro hook with the three resolved
+	passwords passed as arguments, so ..
+
+- digmsg should offer access to parameters (like %{..} mailcap)
+
+- MAIN LOOP TICK COULD GET STATUS WHETHER NEW MAIL WAS THERE
+
+- mutt reply_self
+	in manual, below or above, see (mutt release announcment saying reply-to
+	now honoured before reply-self???)
+
+	supercedes
+	[If i !Q a message of mine MY ADDRESS IS PUT IN CC even if the message goes to
+		a list i am subscribed to!!]
+
+- test -Wformat-zero-length, unset it
+	2without ui strings etc.
+
+	++also
+		how about .PROFILE
+
+- accmacvar: extend bit range for a_amv_var_map.avm_flags, add boolean-string and
+	URL ?part-specifieable bits, assert those are looked up only via xok_().
+
+- wildcard certificate name matching support is incomplete!!!!  RFC 2818, RFC
+	6125 6.4.3 [NOTE IDNA!], 7.2 -> 9525.  But as we do it, we are on the safe side.
+  public_suffix_list with dafsa algorithm is ~52000 bytes.
+
+- negation: message specification needs AND-OR lists, unary not, and
+  grouping.
+
+  + In fact the message selection should be an object with lifetime.
+    Like this we can not only provide "type SPEC" in match order, but also
+    support for example colour or the header summary with message spec
+    preconditions, a la
+
+      colour 256 sum-header ft=reverse @BLABLA :n
+
+    (Keep "older" and "dot" forever, even though that is "." and a colon
+    modifier that we yet do not have.)
+
+- Actually somehow hack in RFC 3461 and credit (Wiesław Magusiak)
+
+- We do not support TLS verification of ipaddresses GEN_IPADD, ie a host
+  specification that indeed is an IP address we fail for.
+
+- i had
+    Cc: A
+    Bcc: A
+  with autobcc -- how can this happen?  i forgot.
+
+- *quote*: add alltextbodies.  (allheadersandtextbodies)
+
+- if a character="set" is missing _OR_ "wrong" (iconv failure), treat
+  it as US-ASCII!  RFC 2046.
+
+- Kevin Bloom:
+  The list of doing things proper is:
+  1. s-nail points to ${PREFIX}/etc/s-nail.rc for default
+  2. pkgsrc install s-nail.rc to ${PREFIX}/share/examples/s-nail/
+  3. pkgsrc copies s-nail.rc from examples to etc if it's missing
+     from etc.
+
+  You can probably see the issue given that list -- s-nail doesn't want
+  to install the default config in a different location than it expects
+  it to be. Therefore, the patch was born. I hope that makes sense.
+  ---
+  Possibly the best would thus be to add another packager option,
+  like VAL_INSTALL_SYSCONFDIR, or similar.  Then the MUA would
+  continue to look for VAL_SYSCONFDIR/VAL_SYSCONFRC, but the
+  installation script would instead install only to
+  VAL_INSTALL_SYSCONFDIR/VAL_SYSCONFRC.
+  Does this sound sane enough?  Will do!
+
+- arekm@maven.pl Arkadiusz Miśkiewicz
+  TEST_SHELL for the test, if set
+  SHELL=${CONFIG_SHELL-/bin/sh} <-> is an autotools thing
+  very good for OpenIndiana:
+    SHELL = /usr/xpg4/bin/sh
+  but
+    /export/home/steffen/src/nail.git/./mx-test.sh: line 7162: syntax error at line 7428: `<<__EOT' here-document not contained within command substitution
+
+- .. DVLDBG -- shouldn't this be "DEVEL || (DEBUG && !NDEBUG)"???
+
+- offer some support macro to avoid masses of
+    if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+  (or similar) to "protect" n_err() logs
+
+- change all the n_real*, fflush_rewind, ftrunc*() to a n_stdio_X()
+  scheme, as these are all hacks which should vanish.
+
+- mime-param.c <> PARAM_QUOTE: we CAN apply MIME quoting only as
+  necessary, but it requires an update of many tests, at the time of
+  this writing impossible without major effort.  Do this!
+
+- MESS FIXME lazy attachment resolve -> immediate -- HAS ALREADY
+  COMMIT on TEST-OUT!!!  And FIXME comments in sendout.c
+
+- MESS we have STRUCT_ZERO XX and FIELD_ XXX range copy and zero and
+  such; i wanted only the former in SU!
+
+- MESS n_stdin, mx_stdin: cpl drop former; ditto stdout, stderr
+- Join n_poption stuff into n_psonce (rename that to n_pso, too)
+- smopts_cnt: u32 is sufficient
+- mb_cur_max could be u8
+
+- CAN'T WE ADD A yield COMMAND MODIFIER THAT FINALLY ALLOWS THINGS LIKE
+    define au {
+      local uns flipr
+      yield reply "$@"
+    }
+  and similar such things?
+  If i recall correctly it is only that we cannot make an automatic
+  decision (mx_go_may_yield_control()?), but an explicit one should be
+  doable, should it??
 
 # s-ts-mode
