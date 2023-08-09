@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Message sending lifecycle, header composing, etc.
+ *@ TODO total mess
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
@@ -59,6 +60,7 @@
 #include "mx/mime.h"
 #include "mx/mime-enc.h"
 #include "mx/mime-param.h"
+#include "mx/mime-probe.h"
 #include "mx/mime-type.h"
 #include "mx/names.h"
 #include "mx/net-smtp.h"
@@ -69,7 +71,7 @@
 #include "mx/tty.h"
 #include "mx/url.h"
 
-/* TODO fake */
+/* TODO fake; old style; wrong sortage */
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
 /*#define NYD2_ENABLE*/
@@ -96,8 +98,22 @@ enum a_sendout_sendwait_flags{
    a_SENDOUT_SWF_MASK = a_SENDOUT_SWF_MTA | a_SENDOUT_SWF_PCC
 };
 
+struct a_sendout_infix_ctx{
+   s32 sic_eno; /* ==su_ERR_NONE = return */
+   boole sic_no_body; /* no main part */
+   boole sic_gen_ids; /* generate message-id: and content-id: */
+   u8 sic__pad[2];
+   char const *sic_emsg;
+   char const *sic_emsg_arg;
+   FILE *sic_encfp;
+   FILE *sic_encfp_input;
+   struct mx_send_ctx *sic_sctxp;
+   char const *sic_mime_boundary;
+   struct mx_mime_probe_charset_ctx sic_mpcc;
+   struct mx_mime_type_classify_fp_ctx sic_mtcfc; /* Of mainbody */
+};
+
 static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
-static char *  _sendout_boundary;
 static s8   _sendout_error;
 
 /* */
@@ -111,40 +127,32 @@ static boole a_sendout_put_name(char const *line, enum gfield w,
       enum sendaction action, char const *prefix, FILE *fo,
       struct mx_name **xp);
 
-/* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
- * headers, respectively */
-static int a_sendout_put_ct(FILE *fo, char const *contenttype,
-               char const *charset);
-su_SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
-static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
-
 /* Put all entries of the given header list */
 static boole        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
                         boole nodisp);
 
-/* */
-static s32 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
-
-/* Write an attachment to the file buffer, converting to MIME */
-static s32 a_sendout_attach_file(struct header *hp, struct mx_attachment *ap,
-      FILE *fo, boole force);
-static s32 a_sendout__attach_file(struct header *hp, struct mx_attachment *ap,
-      FILE *f, boole force);
-
 /* There are non-local recipients, collect credentials etc. */
 static boole a_sendout_setup_creds(struct mx_send_ctx *scp, boole sign_caps);
 
-/* Attach a message to the file buffer */
-static s32 a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap,
-               FILE *fo);
-
-/* Generate the body of a MIME multipart message */
-static s32 make_multipart(struct header *hp, int convert, FILE *fi,
-   FILE *fo, char const *contenttype, char const *charset, boole force);
-
 /* Prepend a header in front of the collected stuff and return the new file */
-static FILE *a_sendout_infix(struct header *hp, FILE *fi, boole dosign,
-      boole force);
+static boole a_sendout_infix(struct mx_send_ctx *sctxp, boole dosign);
+
+static s32 a_sendout__infix_attach(struct mx_send_ctx *sctxp,
+      struct a_sendout_infix_ctx *sicp);
+static s32 a_sendout__infix_heads(struct mx_send_ctx *sctxp,
+      struct a_sendout_infix_ctx *sicp);
+static s32 a_sendout__infix_dump(struct mx_send_ctx *sctxp,
+      struct a_sendout_infix_ctx *sicp);
+static s32 a_sendout__infix_file(enum conversion conv, FILE *ofp, FILE *ifp);
+
+/* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
+ * unless RFC's allow leaving them off */
+static int a_sendout__infix_cd(FILE *ofp, char const *cd, char const *filename,
+      struct mx_mime_probe_charset_ctx const *mpccp);
+static int a_sendout__infix_ct(FILE *ofp,
+      struct mx_mime_type_classify_fp_ctx *mtcfcp);
+static int a_sendout__infix_cte(FILE *ofp,
+      struct mx_mime_type_classify_fp_ctx *mtcfcp);
 
 /* Check whether Disposition-Notification-To: is desired */
 static boole        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
@@ -174,7 +182,7 @@ static void a_sendout_mta_file_debug(struct mx_send_ctx *scp, char const *mta,
       char const **args);
 static boole a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta);
 
-/* Create a Message-ID: header field.  Use either host name or from address */
+/* Create a (Message-ID|Content): header field (via *message-id*) */
 static char const *a_sendout_random_id(struct header *hp, boole msgid);
 
 /* Format the given header line to not exceed 72 characters */
@@ -235,110 +243,18 @@ a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
    NYD_IN;
 
    np = (w & GNOT_A_LIST ? n_extract_single : lextract)(line, GEXTRA | GFULL);
-   if(xp != NULL)
+   if(xp != NIL)
       *xp = np;
 
-   if(np == NULL)
+   if(np == NIL){
+      su_err_set(su_ERR_INVAL);
       rv = FAL0;
-   else
+   }else
       rv = a_sendout_put_addrline(prefix, np, fo, ((w & GCOMMA) |
             ((action != SEND_TODISP) ? a_SENDOUT_AL_DOMIME : 0)));
+
    NYD_OU;
    return rv;
-}
-
-static int
-a_sendout_put_ct(FILE *fo, char const *contenttype, char const *charset){
-   int rv;
-   NYD2_IN;
-
-   if((rv = fprintf(fo, "Content-Type: %s", contenttype)) < 0)
-      goto jerr;
-
-   if(charset == NULL)
-      goto jend;
-
-   if(putc(';', fo) == EOF)
-      goto jerr;
-   ++rv;
-
-   if(su_cs_len(contenttype) + sizeof("Content-Type: ;")-1 > 50){
-      if(putc('\n', fo) == EOF)
-         goto jerr;
-      ++rv;
-   }
-
-   /* C99 */{
-      int i;
-
-      i = fprintf(fo, " charset=%s", charset);
-      if(i < 0)
-         goto jerr;
-      rv += i;
-   }
-
-jend:
-   if(putc('\n', fo) == EOF)
-      goto jerr;
-   ++rv;
-jleave:
-   NYD2_OU;
-   return rv;
-jerr:
-   rv = -1;
-   goto jleave;
-}
-
-su_SINLINE int
-a_sendout_put_cte(FILE *fo, enum conversion conv){
-   int rv;
-   NYD2_IN;
-
-   /* RFC 2045, 6.1.:
-    *    This is the default value -- that is,
-    *    "Content-Transfer-Encoding: 7BIT" is assumed if the
-    *     Content-Transfer-Encoding header field is not present.
-    */
-   rv = (conv == CONV_7BIT) ? 0
-         : fprintf(fo, "Content-Transfer-Encoding: %s\n",
-            mx_mime_enc_name_from_conversion(conv));
-
-   NYD2_OU;
-   return rv;
-}
-
-static int
-a_sendout_put_cd(FILE *fo, char const *cd, char const *filename){
-   struct str f;
-   s8 mpc;
-   int rv;
-   NYD2_IN;
-
-   f.s = NULL;
-
-   /* xxx Ugly with the trailing space in case of wrap! */
-   if((rv = fprintf(fo, "Content-Disposition: %s; ", cd)) < 0)
-      goto jerr;
-
-   if(!(mpc = mx_mime_param_create(&f, "filename", filename)))
-      goto jerr;
-   /* Always fold if result contains newlines */
-   if(mpc < 0 || f.l + rv > MIME_LINELEN) { /* FIXME MIME_LINELEN_MAX */
-      if(putc('\n', fo) == EOF || putc(' ', fo) == EOF)
-         goto jerr;
-      rv += 2;
-   }
-   if(fputs(f.s, fo) == EOF || putc('\n', fo) == EOF)
-      goto jerr;
-   rv += (int)++f.l;
-
-jleave:
-   NYD2_OU;
-   return rv;
-jerr:
-   rv = -1;
-   goto jleave;
-
 }
 
 static boole
@@ -346,283 +262,27 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, boole nodisp){
    boole rv;
    NYD2_IN;
 
-   for(rv = TRU1; hfp != NULL; hfp = hfp->hf_next)
+   for(rv = TRU1; hfp != NIL; hfp = hfp->hf_next){
       if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
-            putc(':', fo) == EOF || putc(' ', fo) == EOF ||
-            mx_xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
+            putc(':', fo) == EOF || putc(' ', fo) == EOF)
+         goto jerr;
+      if(mx_xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
                (!nodisp ? CONV_NONE : CONV_TOHDR),
                (!nodisp ? mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT
-                : mx_MIME_DISPLAY_ICONV), NIL, NIL) < 0 ||
-            putc('\n', fo) == EOF){
+                : mx_MIME_DISPLAY_ICONV), NIL, NIL) < 0){
          rv = FAL0;
          break;
       }
-   NYD2_OU;
-   return rv;
-}
-
-static s32
-a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
-   struct str outrest, inrest;
-   boole iseof, seenempty;
-   char *buf;
-   uz size, bufsize, cnt;
-   s32 rv;
-   NYD2_IN;
-
-   rv = su_ERR_INVAL;
-   mx_fs_linepool_aquire(&buf, &bufsize);
-   outrest.s = inrest.s = NIL;
-   outrest.l = inrest.l = 0;
-
-   if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
-#ifdef mx_HAVE_ICONV
-         || iconvd != R(iconv_t,-1)
-#endif
-   ){
-#ifdef mx_HAVE_ICONV
-      ASSERT(iconvd == R(iconv_t,-1) || !ok_blook(iconv_disable));
-#endif
-      fflush(fi);
-      cnt = fsize(fi);
-   }
-
-   seenempty = iseof = FAL0;
-   while(!iseof){
-      if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
-#ifdef mx_HAVE_ICONV
-            || iconvd != R(iconv_t,-1)
-#endif
-      ){
-#ifdef mx_HAVE_ICONV
-      ASSERT(iconvd == R(iconv_t,-1) || !ok_blook(iconv_disable));
-#endif
-         if(fgetline(&buf, &bufsize, &cnt, &size, fi, FAL0) == NIL)
-            break;
-         if(convert != CONV_TOQP && seenempty && is_head(buf, size, FAL0)){
-            if(bufsize - 1 >= size + 1){
-               bufsize += 32;
-               buf = su_MEM_REALLOC(buf, bufsize);
-            }
-            su_mem_move(&buf[1], &buf[0], ++size);
-            buf[0] = '>';
-            seenempty = FAL0;
-         }else
-            seenempty = (size == 1 /*&& buf[0] == '\n'*/);
-      }else if((size = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+      if(putc('\n', fo) == EOF){
+jerr:
+         su_err_by_errno();
+         rv = FAL0;
          break;
-joutln:
-      if(mx_xmime_write(buf, size, fo, convert, mx_MIME_DISPLAY_ICONV,
-            &outrest, (iseof > FAL0 ? NULL : &inrest)) < 0)
-         goto jleave;
+      }
    }
-   if(iseof <= FAL0 && (outrest.l != 0 || inrest.l != 0)){
-      size = 0;
-      iseof = (iseof || inrest.l == 0) ? TRU1 : TRUM1;
-      goto joutln;
-   }
-
-   rv = ferror(fi) ? su_ERR_IO : su_ERR_NONE;
-jleave:
-   if(outrest.s != NIL)
-      su_FREE(outrest.s);
-   if(inrest.s != NIL)
-      su_FREE(inrest.s);
-   mx_fs_linepool_release(buf, bufsize);
 
    NYD2_OU;
    return rv;
-}
-
-static s32
-a_sendout_attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
-   boole force)
-{
-   /* TODO of course, the MIME classification needs to performed once
-    * TODO only, not for each and every charset anew ... ;-// */
-   char *charset_iter_orig[2];
-   boole any;
-   long offs;
-   s32 err;
-   NYD_IN;
-
-   err = su_ERR_NONE;
-
-   /* Is this already in target charset?  Simply copy over */
-   if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
-      err = a_sendout__attach_file(hp, ap, fo, force);
-      mx_fs_close(ap->a_tmpf);
-      DVLDBG( ap->a_tmpf = NIL; )
-      goto jleave;
-   }
-
-   /* If we don't apply charset conversion at all (fixed input=output charset)
-    * we also simply copy over, since it's the users desire */
-   if(ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS){
-      ap->a_charset = ap->a_input_charset;
-      err = a_sendout__attach_file(hp, ap, fo, force);
-      goto jleave;
-   } else
-      ASSERT(ap->a_input_charset != NULL);
-
-   /* Otherwise we need to iterate over all possible output charsets */
-   if ((offs = ftell(fo)) == -1) {
-      err = su_ERR_IO;
-      goto jleave;
-   }
-
-   mx_mime_charset_iter_recurse(charset_iter_orig);
-   for(any = FAL0, mx_mime_charset_iter_reset(NIL);;
-         any = TRU1, mx_mime_charset_iter_next()){
-      boole myforce;
-
-      myforce = FAL0;
-      if(!mx_mime_charset_iter_is_valid()) {
-         if(!any || !(myforce = force)){
-            err = su_ERR_NOENT;
-            break;
-         }
-      }
-      err = a_sendout__attach_file(hp, ap, fo, myforce);
-      if (err == su_ERR_NONE || (err != su_ERR_ILSEQ && err != su_ERR_INVAL))
-         break;
-      clearerr(fo);
-      if (fseek(fo, offs, SEEK_SET) == -1) {
-         err = su_ERR_IO;
-         break;
-      }
-      if (ap->a_conv != mx_ATTACHMENTS_CONV_DEFAULT) {
-         err = su_ERR_ILSEQ;
-         break;
-      }
-      ap->a_charset = NULL;
-   }
-   mx_mime_charset_iter_restore(charset_iter_orig);
-
-jleave:
-   NYD_OU;
-   return err;
-}
-
-static s32
-a_sendout__attach_file(struct header *hp, struct mx_attachment *ap, FILE *fo,
-   boole force)
-{
-   FILE *fi;
-   char const *charset, **input_charset;
-   enum conversion convert;
-   boole do_iconv;
-   s32 err;
-   NYD_IN;
-
-   err = su_ERR_NONE;
-
-   /* Either charset-converted temporary file, or plain path */
-   input_charset = NIL;
-   if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE){
-      fi = ap->a_tmpf;
-      ASSERT(ftell(fi) == 0);
-   }else if((fi = mx_fs_open(ap->a_path, mx_FS_O_RDONLY)) == NIL){
-      err = su_err();
-      n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
-         su_err_doc(err));
-      goto jleave;
-   }else if(!ap->a_input_charset_set)
-      input_charset = &ap->a_input_charset;
-
-   /* MIME part header for attachment */
-   {  char const *ct, *ics, *cp;
-
-      /* No MBOXO quoting here, never!! */
-      ct = ap->a_content_type;
-      charset = ap->a_charset;
-      ics = (input_charset != NIL) ? *input_charset : NIL;
-      convert = mx_mime_type_classify_file(fi, (char const**)&ct,
-            &charset, &do_iconv, TRU1, input_charset);
-      if(ics != NIL && *input_charset == NIL)
-         *input_charset = ics;
-
-      if(ap->a_conv_force_b64)
-         convert = CONV_TOB64;
-      else if(convert == CONV_8BIT)
-         hp->h_flags |= HF_MESSAGE_8BITMIME;
-
-      if(charset == NIL || ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS ||
-            ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
-         do_iconv = FAL0;
-
-      if(force && do_iconv){
-         convert = CONV_TOB64;
-         ap->a_content_type = ct = "application/octet-stream";
-         ap->a_charset = charset = NULL;
-         do_iconv = FAL0;
-      }
-
-      if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
-            a_sendout_put_ct(fo, ct, charset) < 0 ||
-            a_sendout_put_cte(fo, convert) < 0 ||
-            a_sendout_put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
-         goto jerr_header;
-
-      if((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")){
-         struct mx_name *np;
-
-         /* TODO RFC 2046 specifies that the same Content-ID should be used
-          * TODO for identical data; this is too hard for use right now,
-          * TODO because if done right it should be checksum based!?! */
-         if((np = ap->a_content_id) != NULL)
-            cp = np->n_name;
-         else
-            cp = a_sendout_random_id(hp, FAL0);
-
-         if(cp != NULL && fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
-            goto jerr_header;
-      }
-
-      if ((cp = ap->a_content_description) != NULL &&
-            (fputs("Content-Description: ", fo) == EOF ||
-             mx_xmime_write(cp, su_cs_len(cp), fo, CONV_TOHDR,
-                  (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT), NIL, NIL
-               ) < 0 || putc('\n', fo) == EOF))
-         goto jerr_header;
-
-      if (putc('\n', fo) == EOF) {
-jerr_header:
-         err = su_err_by_errno();
-         goto jerr_fclose;
-      }
-   }
-
-#ifdef mx_HAVE_ICONV
-   if(iconvd != R(iconv_t,-1)){
-      ASSERT(!ok_blook(iconv_disable));
-      n_iconv_close(iconvd);
-   }
-
-   if(do_iconv && !ok_blook(iconv_disable)){
-      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
-       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
-      if (/*su_cs_cmp_case(charset, ap->a_input_charset) &&*/
-            (iconvd = n_iconv_open(charset, ap->a_input_charset)
-               ) == (iconv_t)-1 && (err = su_err()) != 0) {
-         if (err == su_ERR_INVAL)
-            n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
-               charset);
-         else
-            n_err(_("iconv_open: %s\n"), su_err_doc(err));
-         goto jerr_fclose;
-      }
-   }
-#endif
-
-   err = a_sendout_body(fo, fi, convert);
-jerr_fclose:
-   if(ap->a_conv != mx_ATTACHMENTS_CONV_TMPFILE)
-      mx_fs_close(fi);
-
-jleave:
-   NYD_OU;
-   return err;
 }
 
 static boole
@@ -673,268 +333,846 @@ jleave:
    return rv;
 }
 
-static s32
-a_sendout_attach_msg(struct header *hp, struct mx_attachment *ap, FILE *fo)
-{
-   struct message *mp;
-   char const *ccp;
-   s32 err;
-   NYD_IN;
-   UNUSED(hp);
-
-   err = su_ERR_NONE;
-
-   if(fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
-         "Content-Disposition: inline\n", _sendout_boundary) < 0)
-      goto jerrio;
-
-   if((ccp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(ccp, "noagent")){
-      struct mx_name *np;
-
-      /* TODO RFC 2046 specifies that the same Content-ID should be used
-       * TODO for identical data; this is too hard for use right now,
-       * TODO because if done right it should be checksum based!?! */
-      if((np = ap->a_content_id) != NULL)
-         ccp = np->n_name;
-      else
-         ccp = a_sendout_random_id(hp, FAL0);
-
-      if(ccp != NULL && fprintf(fo, "Content-ID: <%s>\n", ccp) < 0)
-         goto jerrio;
-   }
-
-   if((ccp = ap->a_content_description) != NULL &&
-         (fputs("Content-Description: ", fo) == EOF ||
-          mx_xmime_write(ccp, su_cs_len(ccp), fo, CONV_TOHDR,
-               (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT), NIL, NIL
-            ) < 0 || putc('\n', fo) == EOF))
-      goto jerrio;
-   if(putc('\n', fo) == EOF)
-      goto jerrio;
-
-   mp = &message[ap->a_msgno - 1];
-   touch(mp);
-   if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL, NIL) < 0)
-      err = su_err();
-
-jleave:
-   NYD_OU;
-   return err;
-jerrio:
-   err = su_ERR_IO;
-   goto jleave;
-}
-
-static s32
-make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
-   char const *contenttype, char const *charset, boole force)
-{
-   struct mx_attachment *att;
-   s32 err;
+static boole
+a_sendout_infix(struct mx_send_ctx *sctxp, boole dosign){ /* {{{ */
+   struct mx_fs_tmp_ctx *fstcp;
+   struct a_sendout_infix_ctx sic;
    NYD_IN;
 
-   err = su_ERR_NONE;
+   STRUCT_ZERO(struct a_sendout_infix_ctx, &sic);
+   mx_mime_probe_charset_ctx_setup(&sic.sic_mpcc);
+   sic.sic_sctxp = sctxp;
 
-   if(fputs("This is a multi-part message in MIME format.\n", fo) == EOF)
-      goto jerr;
-
-   if(fsize(fi) != 0){
+   /* C99 */{
       char const *cp;
 
-      if(fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
-            a_sendout_put_ct(fo, contenttype, charset) < 0 ||
-            a_sendout_put_cte(fo, convert) < 0 ||
-            fprintf(fo, "Content-Disposition: inline\n") < 0)
-         goto jerr;
-      if (((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")) &&
-            (cp = a_sendout_random_id(hp, FAL0)) != NULL &&
-            fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
-         goto jerr;
-      if(putc('\n', fo) == EOF)
-         goto jerr;
-
-      if((err = a_sendout_body(fo, fi, convert)) != su_ERR_NONE)
-         goto jleave;
-
-      if(ferror(fi))
-         goto jerr;
+      if((cp = ok_vlook(stealthmua)) == NIL || !su_cs_cmp(cp, "noagent"))
+         sic.sic_gen_ids = TRU1;
    }
 
-   for (att = hp->h_attach; att != NULL; att = att->a_flink) {
-      if (att->a_msgno) {
-         if ((err = a_sendout_attach_msg(hp, att, fo)) != su_ERR_NONE)
-            goto jleave;
-      }else if((err = a_sendout_attach_file(hp, att, fo, force)
-            ) != su_ERR_NONE)
-         goto jleave;
+   /* Classify body first */
+   if(fsize(sctxp->sc_input) == 0)
+      sic.sic_no_body = TRU1;
+   else{
+      mx_mime_type_classify_fp_setup(&sic.sic_mtcfc, !dosign, NIL, &sic.sic_mpcc);
+      if(!mx_mime_type_classify_fp(&sic.sic_mtcfc, sctxp->sc_input)){
+#ifdef mx_HAVE_ICONV
+jedraft:
+#endif
+         sic.sic_emsg = N_("Mail draft MIME classification failed");
+         goto jxerr;
+      }
+
+      /* Need iconv?  And re-classify the converted body! */
+#ifdef mx_HAVE_ICONV
+      if(sic.sic_mtcfc.mtcfc_do_iconv){
+         FILE *nfp;
+
+         nfp = NIL;
+         if((sic.sic_eno = mx_mime_charset_iter_onetime_fp(&nfp, sctxp->sc_input,
+                  &sic.sic_mtcfc, sctxp->sc_hp->h_charset, &sic.sic_emsg)
+               ) != su_ERR_NONE)
+            goto jerr;
+
+         /* If success came only due to *mime-force-sendout*, take "as-is"! */
+         if(nfp != NIL){
+            char const *ics, *cs;
+
+            mx_fs_close(sctxp->sc_input);
+            sctxp->sc_input = nfp;
+
+            ics = sic.sic_mtcfc.mtcfc_input_charset;
+            cs = sic.sic_mtcfc.mtcfc_charset;
+            mx_mime_type_classify_fp_setup(&sic.sic_mtcfc, !dosign, NIL, &sic.sic_mpcc);
+            if(!mx_mime_type_classify_fp(&sic.sic_mtcfc, sctxp->sc_input))
+               goto jedraft;
+            sic.sic_mtcfc.mtcfc_input_charset = ics;
+            sic.sic_mtcfc.mtcfc_charset = cs;
+            ASSERT(sic.sic_mtcfc.mtcfc_input_charset != NIL);
+            ASSERT(sic.sic_mtcfc.mtcfc_charset != NIL);
+         }
+      }
+#endif /* mx_HAVE_ICONV */
+
+      if(sic.sic_mtcfc.mtcfc_conversion == CONV_8BIT)
+         sctxp->sc_hp->h_flags |= HF_MESSAGE_8BITMIME;
    }
 
-   /* the final boundary with two attached dashes */
-   if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
-jerr:
-      if((err = su_err_by_errno()) == su_ERR_NONE)
-         err = su_ERR_IO;
-jleave:
-   NYD_OU;
-   return err;
-}
+   /* Classify and readily iconv-prepare attachments */
+   if(sctxp->sc_hp->h_attach != NIL){
+      if(a_sendout__infix_attach(sctxp, &sic) != su_ERR_NONE)
+         goto jerr;
 
-static FILE *
-a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
-{
-   struct mx_fs_tmp_ctx *fstcp;
-   enum conversion convert;
-   int err;
-   boole do_iconv;
-   char const *contenttype, *charset, *body_charset, *tcs;
-   FILE *nfo, *nfi;
-   NYD_IN;
-
-   nfi = NULL;
-   charset = NULL;
-   do_iconv = FAL0;
-   err = su_ERR_NONE;
-
-   if((nfo = mx_fs_tmp_open(NIL, "infix", (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS),
-            &fstcp)) == NIL){
-      n_perr(_("infix: temporary mail file"), err = su_err());
-      goto jleave;
+      sic.sic_mime_boundary = mx_mime_param_boundary_create();
    }
 
-   if((nfi = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY)) == NIL){
-      n_perr(fstcp->fstc_filename, err = su_err());
-      mx_fs_close(nfo);
+   /* We have classified and charset-converted anything and are ready to go.
+    * What is missing is the header, and its' classification and conversion.
+    * Start creating our real output with infix_heads() using it already,
+    * also creating readily prepared MIME-converted headers for all parts,
+    * assuming' their meta data comes from same user context / locale / etc */
+
+   /* Setup temporary file that holds readily prepared email. */
+   sic.sic_encfp = mx_fs_tmp_open(NIL, "infix",
+         (mx_FS_O_WRONLY | mx_FS_O_HOLDSIGS), &fstcp);
+   if(sic.sic_encfp == NIL){
+         sic.sic_emsg = N_("cannot create temporary mail file");
+         goto jxerr;
    }
+
+   sic.sic_encfp_input = mx_fs_open(fstcp->fstc_filename, mx_FS_O_RDONLY);
+   if(sic.sic_encfp_input == NIL)
+      sic.sic_eno = su_err();
 
    mx_fs_tmp_release(fstcp);
 
-   if(nfi == NIL)
-      goto jleave;
-
-   n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
-
-   /* C99 */{
-      boole no_mboxo;
-
-      no_mboxo = dosign;
-
-      contenttype = "text/plain";
-
-      convert = mx_mime_type_classify_file(fi, &contenttype, &charset,
-            &do_iconv, no_mboxo, &body_charset);
-   }
-
-#ifdef mx_HAVE_ICONV
-   /* C99 */{
-   boole gut_iconv;
-   char const *header_charset;
-
-   /* This is the logic behind *charset-force-transport*.  XXX very weird
-    * XXX as said a thousand times, Part==object, has dump_to_{wire,user}, and
-    * XXX does it (including _force_) for _itself_ only; the global header
-    * XXX has then to become spliced in (for multipart messages) */
-   if(force && do_iconv){
-      convert = CONV_TOB64;
-      contenttype = "application/octet-stream";
-      charset = NIL;
-      do_iconv = FAL0;
-   }
-
-   tcs = ok_vlook(ttycharset);
-   gut_iconv = FAL0;
-
-   if(ok_blook(iconv_disable))
-      do_iconv = FAL0;
-   else if(mx_header_needs_mime(hp, &header_charset)){
-      char const *convhdr;
-
-      gut_iconv = TRU1;
-      convhdr = mx_mime_charset_iter_or_fallback();
-
-      if(iconvd != R(iconv_t,-1)) /* XXX  */
-         n_iconv_close(iconvd);
-      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
-       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
-      if(!force && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
-            (iconvd = n_iconv_open(convhdr,
-                  (header_charset != NIL ? header_charset : tcs))
-               ) == R(iconv_t,-1) && (err = su_err()) != su_ERR_NONE){
-         charset = convhdr;
-         goto jiconv_err;
-      }
-   }
-#endif /* mx_HAVE_ICONV */
-
-   if(!n_puthead(FAL0, hp, nfo,
-         (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
-         GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
-      if((err = su_err()) == su_ERR_NONE)
-         err = su_ERR_IO;
+   if(sic.sic_encfp_input == NIL){
+      sic.sic_emsg = N_("cannot open temporary mail file for reading");
       goto jerr;
    }
 
-#ifdef mx_HAVE_ICONV
-   if(gut_iconv)
-      n_iconv_close(iconvd);
-
-   if(do_iconv && charset != NIL){ /*TODO charset->mimetype_classify_file*/
-      ASSERT(!ok_blook(iconv_disable));
-      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
-       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
-      if(/*su_cs_cmp_case(charset, tcs) != 0 &&*/
-            (iconvd = n_iconv_open(charset,
-                  (body_charset != NIL ? body_charset : tcs))
-               ) == R(iconv_t,-1) && (err = su_err()) != su_ERR_NONE){
-jiconv_err:
-         if(err == su_ERR_INVAL)
-            n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
-         else
-            n_perr("iconv_open", err);
-         goto jerr;
-      }
-   }
-
-   }
-#endif /* mx_HAVE_ICONV */
-
-   if(hp->h_attach != NULL){
-      if((err = make_multipart(hp, convert, fi, nfo, contenttype, charset,
-            force)) != su_ERR_NONE)
-         goto jerr;
-   }else if((err = a_sendout_body(nfo, fi, convert)) != su_ERR_NONE)
+   if(a_sendout__infix_heads(sctxp, &sic) != su_ERR_NONE)
       goto jerr;
 
-   if(fflush(nfo) == EOF)
-      err = su_err_by_errno();
+   if(a_sendout__infix_dump(sctxp, &sic) != su_ERR_NONE)
+      goto jerr;
 
-jerr:
-   mx_fs_close(nfo);
+   /* We have readily created a converted message */
+   rewind(sic.sic_encfp_input);
+   mx_fs_close(sctxp->sc_input);
+   sctxp->sc_input = sic.sic_encfp_input;
+   sic.sic_encfp_input = NIL;
 
-   if(err == su_ERR_NONE){
-      fflush_rewind(nfi);
-      mx_fs_close(fi);
+   ASSERT(sic.sic_eno == su_ERR_NONE);
+jleave:
+   if(sic.sic_encfp_input != NIL)
+      mx_fs_close(sic.sic_encfp_input);
+   if(sic.sic_encfp != NIL)
+      mx_fs_close(sic.sic_encfp);
 
-      if(convert == CONV_8BIT)
-         hp->h_flags |= HF_MESSAGE_8BITMIME;
+   n_pstate_err_no = sic.sic_eno;
+
+   NYD_OU;
+   return (sic.sic_eno == su_ERR_NONE);
+
+jxerr:
+   if((sic.sic_eno = su_err()) != su_ERR_IO)
+      sic.sic_eno = su_ERR_INVAL;
+jerr:/* C99 */{
+   char const *cp;
+
+   ASSERT(sic.sic_eno != su_ERR_NONE);
+   cp = sic.sic_emsg;
+   if(sic.sic_emsg_arg != NIL){
+      if(cp == NIL)
+         cp = N_("Cannot convert message via *sendcharsets*: %s: %s\n");
+      n_err(V_(cp), sic.sic_emsg_arg, su_err_doc(sic.sic_eno));
    }else{
-      mx_fs_close(nfi);
-      nfi = NIL;
+      if(cp == NIL)
+         cp = N_("Cannot convert message via *sendcharsets*");
+      n_perr(V_(cp), sic.sic_eno);
+   }
+   }goto jleave;
+} /* }}} */
+
+static s32
+a_sendout__infix_attach(struct mx_send_ctx *sctxp, /* {{{ */
+      struct a_sendout_infix_ctx *sicp){
+   struct mx_attachment *ap;
+   NYD_IN;
+
+   for(ap = sctxp->sc_hp->h_attach; ap != NIL;
+         ap->a_conv = mx_ATTACHMENTS_CONV_TMPFILE, ap = ap->a_flink){
+      struct mx_mime_type_classify_fp_ctx *mtcfcp;
+      FILE *ifp, *nfp;
+
+      if(ap->a_conv == mx_ATTACHMENTS_CONV_TMPFILE)
+         ifp = ap->a_tmpf;
+      else if(ap->a_msgno){
+/* FIXME these should be NOW not LAZY
+ FIXME then also remove collect.c messages and so dealing with moving
+ FIXME mailboxes when having msgno attachments */
+         ap->a_mtcfc_or_nil = mtcfcp =
+               su_AUTO_TCALLOC(struct mx_mime_type_classify_fp_ctx, 1);
+         continue;
+      }else if((ifp = mx_fs_open(ap->a_path, mx_FS_O_RDONLY)) != NIL)
+         ap->a_tmpf = ifp;
+      else{
+         sicp->sic_eno = su_err();
+         sicp->sic_emsg = N_("cannot open attachment file: %s: %s");
+         sicp->sic_emsg_arg = ap->a_path;
+         goto jleave;
+      }
+
+      /* */
+      ap->a_mtcfc_or_nil = mtcfcp =
+            su_AUTO_TCALLOC(struct mx_mime_type_classify_fp_ctx, 1);
+
+      mx_mime_type_classify_fp_setup(mtcfcp, FAL0, ap->a_content_type, &sicp->sic_mpcc);
+      if(!mx_mime_type_classify_fp(mtcfcp, ifp)){
+#ifdef mx_HAVE_ICONV
+jeclass:
+#endif
+         if((sicp->sic_eno = su_err()) == su_ERR_INVAL)
+            sicp->sic_eno = su_ERR_IO;
+         sicp->sic_emsg = N_("attachment MIME classification failed: %s: %s");
+         sicp->sic_emsg_arg = ap->a_path;
+         goto jleave;
+      }
+      if(ap->a_conv_force_b64)
+         mtcfcp->mtcfc_conversion = CONV_TOB64;
+
+      /* Unless iconv is not applicable / desired, try to convert to a desired
+       * send character set, then re-classify the final content.
+       * Otherwise restore user choices */
+      if(ap->a_conv != mx_ATTACHMENTS_CONV_DEFAULT
+#ifdef mx_HAVE_ICONV
+            || !mtcfcp->mtcfc_do_iconv
+#endif
+            ){
+         if(ap->a_charset != NIL)
+            mtcfcp->mtcfc_charset = ap->a_charset;
+         if(ap->a_input_charset_set)
+            mtcfcp->mtcfc_input_charset = ap->a_input_charset;
+         if(ap->a_conv == mx_ATTACHMENTS_CONV_FIX_INCS &&
+               mtcfcp->mtcfc_ct_is_text_plain)
+            mtcfcp->mtcfc_charset = mtcfcp->mtcfc_input_charset;
+         if(mtcfcp->mtcfc_conversion == CONV_8BIT)
+            sctxp->sc_hp->h_flags |= HF_MESSAGE_8BITMIME;
+         continue;
+      }
+
+#ifdef mx_HAVE_ICONV
+      nfp = NIL;
+      if((sicp->sic_eno = mx_mime_charset_iter_onetime_fp(&nfp, ifp,
+               mtcfcp, sctxp->sc_hp->h_charset, &sicp->sic_emsg)
+            ) != su_ERR_NONE){
+         ASSERT(nfp == NIL);
+         sicp->sic_emsg_arg = ap->a_path;
+         goto jleave;
+      }
+
+      /* If success came only due to *mime-force-sendout*, take "as-is"! */
+      if(nfp != NIL){
+         char const *ics, *cs;
+
+         mx_fs_close(ifp);
+         ap->a_tmpf = ifp = nfp;
+
+         ics = mtcfcp->mtcfc_input_charset;
+         cs = mtcfcp->mtcfc_charset;
+         /* XXX We retry with original content-type after iconv'ersion here!? */
+         mx_mime_type_classify_fp_setup(mtcfcp, FAL0, ap->a_content_type, &sicp->sic_mpcc);
+         if(!mx_mime_type_classify_fp(mtcfcp, ifp))
+            goto jeclass;
+         mtcfcp->mtcfc_input_charset = ics;
+         mtcfcp->mtcfc_charset = cs;
+         ASSERT(mtcfcp->mtcfc_input_charset != NIL);
+         ASSERT(mtcfcp->mtcfc_charset != NIL);
+      }
+
+      if(ap->a_conv_force_b64)
+         mtcfcp->mtcfc_conversion = CONV_TOB64;
+      else if(mtcfcp->mtcfc_conversion == CONV_8BIT)
+         sctxp->sc_hp->h_flags |= HF_MESSAGE_8BITMIME;
+#endif /* mx_HAVE_ICONV */
    }
 
 jleave:
+   NYD_OU;
+   return sicp->sic_eno;
+} /* }}} */
+
+static s32
+a_sendout__infix_heads(struct mx_send_ctx *sctxp, /* {{{ */
+      struct a_sendout_infix_ctx *sicp){
+   char const *hcs, *hcs_orig;
+   boole need_cnv;
+   struct mx_mime_probe_charset_ctx *mpccp;
+   NYD_IN;
+
+   mpccp = &sicp->sic_mpcc;
+   need_cnv = mx_header_needs_mime(sctxp->sc_hp, &hcs, mpccp);
+   hcs_orig = hcs;
+   UNUSED(need_cnv);
+   UNUSED(hcs_orig);
+
 #ifdef mx_HAVE_ICONV
-   if(iconvd != R(iconv_t,-1)){
-      ASSERT(!ok_blook(iconv_disable));
+   if(iconvd != R(iconv_t,-1)) /* XXX anyway for mime.c++ :-( */
       n_iconv_close(iconvd);
+
+   if(mpccp->mpcc_iconv_disable){
+      if(need_cnv > FAL0)
+#endif
+      {
+         /* TODO v15-compat hack: until rewrite, mime.c etc does not have any
+          * TODO glue of mime_probe_charset_ctx but simply uses variables:
+          * TODO therefore inject mime_probe result at the front of the
+          * TODO mime_charset_iter! */
+         mx_mime_charset_iter_reset(hcs, NIL);
+         ASSERT(mx_mime_charset_iter_is_valid());
+      }
+      need_cnv = FAL0;
+#ifdef mx_HAVE_ICONV
+   }else if(need_cnv > FAL0){
+      ASSERT(hcs != NIL);
+      mx_mime_charset_iter_reset(sctxp->sc_hp->h_charset, hcs);
+      ASSERT(mx_mime_charset_iter_is_valid());
+
+      if(0){
+j_redo:
+         rewind(sicp->sic_encfp);
+         ftrunc_x_trunc(sicp->sic_encfp, 0, sicp->sic_eno);
+         if(sicp->sic_eno != 0){
+            if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+               sicp->sic_eno = su_ERR_IO;
+            goto jleave;
+         }
+      }
+
+      /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
+       * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
+      if(need_cnv > FAL0 && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
+            (iconvd = n_iconv_open(mx_mime_charset_iter(), hcs)
+                  ) == R(iconv_t,-1)){
+jiter:
+         if(need_cnv > FAL0){
+            if(mx_mime_charset_iter_next())
+               goto j_redo;
+            if(ok_blook(mime_force_sendout)){
+               need_cnv = TRUM1;
+               hcs = hcs_orig;
+               goto j_redo;
+            }
+            sicp->sic_eno = su_ERR_INVAL; /* xxx NOTSUP */
+            goto jleave;
+         }
+      }
+   }
+#endif /* mx_HAVE_ICONV */
+
+   /* */
+   n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
+   if(!n_puthead(SEND_MBOX, FAL0, sicp->sic_encfp, sctxp->sc_hp,
+         (GTO | GSUBJECT | GCC | GBCC | GCOMMA | GUA | GMSGID |
+          GIDENT | GREF | GDATE))){
+#ifdef mx_HAVE_ICONV
+      if((sicp->sic_eno = n_iconv_err) == su_ERR_ILSEQ ||
+            sicp->sic_eno == su_ERR_NOENT || sicp->sic_eno == su_ERR_INVAL)
+         goto jiter;
+#endif
+      if((sicp->sic_eno = su_err()) == su_ERR_NONE)
+         sicp->sic_eno = su_ERR_INVAL;
+      goto jleave;
+   }
+
+   /* If we have attachments, prepare their headers with the very same
+    * character set that succeeded for the main header!
+    * TODO Because of MIME layer restrictions we need to dump that to a file,
+    * TODO and move over the attachment MIME headers to memory thereafter,
+    * TODO until the attachment is then dumped; added mtcfc_data.* for this! */
+   if(sctxp->sc_hp->h_attach != NIL){
+      s64 off, len;
+      struct mx_attachment *ap;
+
+      ftrunc_x_tell(sicp->sic_encfp, off);
+      if(off == -1){
+         if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+            sicp->sic_eno = su_ERR_IO;
+         goto jleave;
+      }
+
+      for(ap = sctxp->sc_hp->h_attach; ap != NIL; ap = ap->a_flink){
+         /* Content-ID: in _dump() */
+         if(!ap->a_msgno){
+            if(a_sendout__infix_cd(sicp->sic_encfp, ap->a_content_disposition,
+                     ap->a_name, mpccp) < 0 ||
+                  a_sendout__infix_ct(sicp->sic_encfp, ap->a_mtcfc_or_nil
+                     ) < 0 ||
+                  a_sendout__infix_cte(sicp->sic_encfp, ap->a_mtcfc_or_nil
+                     ) < 0){
+               sicp->sic_eno = su_err();
+#ifdef mx_HAVE_ICONV
+               if(sicp->sic_eno == su_ERR_INVAL)
+                  goto jiter;
+#endif
+               ASSERT(sicp->sic_eno != su_ERR_NONE);
+               goto jleave;
+            }
+         }
+
+         if(ap->a_content_description != NIL){
+            if(fputs("Content-Description: ", sicp->sic_encfp) == EOF){
+               sicp->sic_eno = su_err_by_errno();
+               goto jleave;
+            }
+            if(mx_xmime_write(ap->a_content_description,
+                  su_cs_len(ap->a_content_description), sicp->sic_encfp,
+                  CONV_TOHDR, (mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT),
+                  NIL, NIL) < 0){
+               sicp->sic_eno = su_err();
+#ifdef mx_HAVE_ICONV
+               if(sicp->sic_eno == su_ERR_INVAL)
+                  goto jiter;
+#endif
+               ASSERT(sicp->sic_eno != su_ERR_NONE);
+               goto jleave;
+            }
+            if(putc('\n', sicp->sic_encfp) == EOF){
+               sicp->sic_eno = su_err_by_errno();
+               goto jleave;
+            }
+         }
+
+         ftrunc_x_tell(sicp->sic_encfp, len);
+
+         if(len == -1){
+            if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+               sicp->sic_eno = su_ERR_IO;
+            goto jleave;
+         }
+
+         if(off > S32_MAX || len > S32_MAX){ /* TODO no 64-bit I/O stuff */
+            sicp->sic_eno = su_ERR_MSGSIZE;
+            goto jleave;
+         }
+         len -= off;
+
+         /* I first wanted to loop over all, then on success once again and
+          * store once; but even in the worst case these should not exceed
+          * a few kilobytes, and so this now seems good enough v15-compat */
+         if((ap->a_mtcfc_or_nil->mtcfc_data.l = S(uz,len)) == 0)
+            continue;
+
+         ap->a_mtcfc_or_nil->mtcfc_data.s = su_AUTO_ALLOC(
+               ap->a_mtcfc_or_nil->mtcfc_data.l); /* (no NUL) */
+
+         if(!n_real_seek(sicp->sic_encfp_input, off, SEEK_SET)/* XXX std! */ ||
+               fread(ap->a_mtcfc_or_nil->mtcfc_data.s,
+                  sizeof(*ap->a_mtcfc_or_nil->mtcfc_data.s),
+                  ap->a_mtcfc_or_nil->mtcfc_data.l, sicp->sic_encfp_input
+               ) != ap->a_mtcfc_or_nil->mtcfc_data.l){
+            if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+               sicp->sic_eno = su_ERR_IO;
+            goto jleave;
+         }
+
+         if(fseek(sicp->sic_encfp, off, SEEK_SET) == -1){
+            if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+               sicp->sic_eno = su_ERR_IO;
+            goto jleave;
+         }
+      }
+
+      /* v15-compat TODO totally trunc away our temporary headers */
+      ftrunc_x_trunc(sicp->sic_encfp, off, len);
+      if(len != 0){
+         if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+            sicp->sic_eno = su_ERR_IO;
+         goto jleave;
+      }
+   }
+
+   /* We were able to create all message headers */
+jleave:
+   NYD_OU;
+   return sicp->sic_eno;
+} /* }}} */
+
+static s32
+a_sendout__infix_dump(struct mx_send_ctx *sctxp, /* {{{ */
+      struct a_sendout_infix_ctx *sicp){
+   struct mx_mime_type_classify_fp_ctx *mtcfcp;
+   NYD_IN;
+   ASSERT(sicp->sic_eno == su_ERR_NONE);
+
+   mtcfcp = &sicp->sic_mtcfc;
+
+   /* Finalize main header block.
+    *
+    * RFC 5322 says:
+    *    2.1.  General Description
+    *    At the most basic level, a message is a series of characters.  A
+    *    message that is conformant with this specification is composed of
+    *    characters with values in the range of 1 through 127 and interpreted
+    *    as US-ASCII [ANSI.X3-4.1986] characters.  For brevity, this document
+    *    sometimes refers to this range of characters as simply "US-ASCII
+    *    characters".
+    *
+    * And thus we place MIME only when needed despite RFC 2045 says
+    *
+    *    4.  MIME-Version Header Field
+    *    [.]In the absence of a MIME-Version field, a receiving mail user agent
+    *    (whether conforming to MIME requirements or not) may optionally
+    *    choose to interpret the body of the message according to local
+    *    conventions.  Many such conventions are currently in use and it
+    *    should be noted that in practice non-MIME messages can contain just
+    *    about anything.
+    *
+    *    It is impossible to be certain that a non-MIME mail message is
+    *    actually plain text in the US-ASCII character set[.]
+    *
+    * Let aside it also says
+    *
+    *    5.2.  Content-Type Defaults
+    *    [.]Plain US-ASCII text may still be assumed in the absence of a
+    *    MIME-Version or the presence of an syntactically invalid Content-Type
+    *    header field, but the sender's intent might have been otherwise.
+    *
+    * TODO RFC 2046 specifies that the same Content-ID should be used
+    * TODO for identical data; this is too hard for us right now,
+    * TODO because if done right it should be checksum based!?! */
+   if((n_pstate & n_PS_HEADER_NEEDED_MIME) || sctxp->sc_hp->h_attach != NIL ||
+         (!sicp->sic_no_body &&
+            (mtcfcp->mtcfc_conversion != CONV_7BIT ||
+             !mtcfcp->mtcfc_charset_is_ascii))){
+      if(fputs("MIME-Version: 1.0\n", sicp->sic_encfp) == EOF)
+         goto jerr;
+
+      if(sctxp->sc_hp->h_attach != NIL){
+         if(fputs("Content-Type: multipart/mixed;", sicp->sic_encfp) == EOF ||
+               ((su_cs_len(sicp->sic_mime_boundary) > 37)
+                  ? (putc('\n', sicp->sic_encfp) == EOF) : FAL0) ||
+               putc(' ', sicp->sic_encfp) == EOF ||
+               fputs("boundary=\"", sicp->sic_encfp) == EOF ||
+               fputs(sicp->sic_mime_boundary, sicp->sic_encfp) == EOF ||
+               fputs("\"\n\nThis is a multi-part message in MIME format.\n",
+                  sicp->sic_encfp) == EOF)
+            goto jerr;
+
+         if(!sicp->sic_no_body){
+            /* (initial \n debatable) */
+            if(fputs("\n--", sicp->sic_encfp) == EOF ||
+                  fputs(sicp->sic_mime_boundary, sicp->sic_encfp) == EOF ||
+                  fputs("\nContent-Disposition: inline\n", sicp->sic_encfp
+                     ) == EOF)
+               goto jerr;
+
+            if(sicp->sic_gen_ids){
+               char const *cp;
+
+               if((cp = a_sendout_random_id(sctxp->sc_hp, FAL0)) != NIL &&
+                     fprintf(sicp->sic_encfp, "Content-ID: <%s>\n", cp) < 0)
+                  goto jerr;
+            }
+         }
+      }
+
+      if(!sicp->sic_no_body){
+         if(a_sendout__infix_ct(sicp->sic_encfp, mtcfcp) < 0 ||
+               a_sendout__infix_cte(sicp->sic_encfp, mtcfcp) < 0){
+            sicp->sic_eno = su_err();
+            goto jenono;
+         }
+      }
+   }
+
+   if(putc('\n', sicp->sic_encfp) == EOF){
+      if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+         sicp->sic_eno = su_ERR_IO;
+      goto jenono;
+   }
+
+   if(!sicp->sic_no_body){
+      if((sicp->sic_eno = a_sendout__infix_file(mtcfcp->mtcfc_conversion,
+               sicp->sic_encfp, sctxp->sc_input)) != su_ERR_NONE)
+         goto jenono;
+   }
+
+   if(sctxp->sc_hp->h_attach != NIL){
+      struct mx_attachment *ap;
+
+      for(ap = sctxp->sc_hp->h_attach; ap != NIL; ap = ap->a_flink){
+         char const *cp;
+
+         /* TODO RFC 2046 says:
+          * TODO  NOTE:  The CRLF preceding the boundary delimiter line is
+          * TODO  conceptually attached to the boundary so that it is possible
+          * TODO  to have a part that does not end with a CRLF (line  break).
+          * TODO  Body parts that must be considered to end with line breaks,
+          * TODO  therefore, must have two CRLFs preceding the boundary
+          * TODO  delimiter line, the first of which is part of the preceding
+          * TODO  body part, and the second of which is part of the
+          * TODO  encapsulation boundary,
+          * TODO Unfortunately this software uses the very same logic to deal
+          * TODO with RFC 5322 5321 4155, meaning that IF we would adhere to
+          * TODO this a `write' of such a MIME part ends up without trailing
+          * TODO newline, for example.
+          * TODO So, before v15-compat, we consciously do it wrong in order to
+          * TODO end up with something we can deal with. */
+         if((!sicp->sic_no_body || ap != sctxp->sc_hp->h_attach) &&
+               putc('\n', sicp->sic_encfp) == EOF)
+            goto jerr;
+
+         if(fputs("--", sicp->sic_encfp) == EOF ||
+               fputs(sicp->sic_mime_boundary, sicp->sic_encfp) == EOF ||
+               putc('\n', sicp->sic_encfp) == EOF)
+            goto jerr;
+
+         /* TODO no msgno handling, should be TMPFILE already! */
+         if(ap->a_msgno &&
+               fputs(
+                  "Content-Disposition: inline\nContent-Type: message/rfc822\n",
+                  sicp->sic_encfp) == EOF)
+            goto jerr;
+
+         if(ap->a_mtcfc_or_nil->mtcfc_data.l > 0 &&
+               fwrite(ap->a_mtcfc_or_nil->mtcfc_data.s,
+                  sizeof(*ap->a_mtcfc_or_nil->mtcfc_data.s),
+                  ap->a_mtcfc_or_nil->mtcfc_data.l, sicp->sic_encfp
+               ) != ap->a_mtcfc_or_nil->mtcfc_data.l)
+            goto jerr;
+
+         if(sicp->sic_gen_ids){
+            if(ap->a_content_id != NIL)
+               cp = ap->a_content_id->n_name;
+            else
+               cp = a_sendout_random_id(sctxp->sc_hp, FAL0);
+            if(cp != NIL &&
+                  fprintf(sicp->sic_encfp, "Content-ID: <%s>\n", cp) < 0)
+               goto jerr;
+         }
+
+         if(putc('\n', sicp->sic_encfp) == EOF)
+            goto jerr;
+
+         if(ap->a_msgno){
+            struct message *mp;
+
+            mp = &message[ap->a_msgno - 1]; /* TODO early init to tmpfile! */
+            touch(mp);
+
+            if(sendmp(mp, sicp->sic_encfp, 0, NIL, SEND_RFC822, NIL, NIL) < 0){
+               if((sicp->sic_eno = su_err()) == su_ERR_NONE)
+                  sicp->sic_eno = su_ERR_IO;
+               goto jenono;
+            }
+         }else if((sicp->sic_eno = a_sendout__infix_file(
+                  ap->a_mtcfc_or_nil->mtcfc_conversion,
+                  sicp->sic_encfp, ap->a_tmpf)) != su_ERR_NONE)
+            goto jenono;
+      }
+
+      /* TODO Again, as above! */
+      if(putc('\n', sicp->sic_encfp) == EOF)
+         goto jerr;
+      if(fputs("--", sicp->sic_encfp) == EOF ||
+            fputs(sicp->sic_mime_boundary, sicp->sic_encfp) == EOF ||
+            fputs("--\n", sicp->sic_encfp) == EOF)
+         goto jerr;
+   }
+
+   if(fflush(sicp->sic_encfp) == EOF)
+      goto jerr;
+
+jleave:
+   NYD_OU;
+   return sicp->sic_eno;
+
+jerr:
+   if((sicp->sic_eno = su_err_by_errno()) == su_ERR_NONE)
+      sicp->sic_eno = su_ERR_IO;
+jenono:
+   sicp->sic_emsg = N_("I/O error occurred while creating mail message");
+   goto jleave;
+} /* }}} */
+
+static s32
+a_sendout__infix_file(enum conversion conv, FILE *ofp, FILE *ifp){ /* {{{ */
+   struct str outrest, inrest;
+   boole easy, iseof, seenempty;
+   char *buf;
+   uz size, bufsize, cnt;
+   s32 rv;
+   NYD2_IN;
+   ASSERT(ftell(ifp) == 0);
+
+   mx_fs_linepool_aquire(&buf, &bufsize);
+   outrest.s = inrest.s = NIL;
+   outrest.l = inrest.l = 0;
+
+   easy = (conv != CONV_TOQP && conv != CONV_8BIT && conv != CONV_7BIT);
+   if(!easy)
+      cnt = fsize(ifp);
+
+   seenempty = iseof = FAL0;
+   while(!iseof){
+      if(!easy){
+         if(fgetline(&buf, &bufsize, &cnt, &size, ifp, FAL0) == NIL)
+            break;
+         if(conv == CONV_TOQP)
+            seenempty = (size == 1 /*&& buf[0] == '\n'*/);
+         else{
+            if(seenempty && is_head(buf, size, FAL0)){
+               if(putc('>', ofp) == EOF){
+                  rv = su_err_by_errno();
+                  goto jleave;
+               }
+               seenempty = FAL0;
+            }else
+               seenempty = (size == 1 /*&& buf[0] == '\n'*/);
+
+            /* Thanks to classification we can simply write through! */
+            if(fwrite(buf, sizeof *buf, size, ofp) != size){
+               rv = su_err_by_errno();
+               goto jleave;
+            }
+            continue;
+         }
+      }else if((size = fread(buf, sizeof *buf, bufsize, ifp)) == 0)
+         break;
+
+      /* TODO QP and base64 could now also be written *here* via mime-enc
+       * TODO which would be much faster! */
+joutln:
+      if(mx_xmime_write(buf, size, ofp, conv, mx_MIME_DISPLAY_NONE, &outrest,
+               (iseof > FAL0 ? NIL : &inrest)) < 0){
+         rv = su_err();
+         goto jleave;
+      }
+   }
+   if(iseof <= FAL0 && (outrest.l != 0 || inrest.l != 0)){
+      size = 0;
+      iseof = (iseof || inrest.l == 0) ? TRU1 : TRUM1;
+      goto joutln;
+   }
+
+   rv = ferror(ifp) ? su_ERR_IO : su_ERR_NONE;
+jleave:
+   if(outrest.s != NIL)
+      su_FREE(outrest.s);
+   if(inrest.s != NIL)
+      su_FREE(inrest.s);
+   mx_fs_linepool_release(buf, bufsize);
+
+   NYD_OU;
+   return rv;
+} /* }}} */
+
+static int
+a_sendout__infix_ct(FILE *ofp, /* {{{ */
+      struct mx_mime_type_classify_fp_ctx *mtcfcp){
+   int rv;
+   NYD2_IN;
+
+   /* RFC 2045, 5.2.  Content-Type Defaults:
+    *    Default RFC 822 messages without a MIME Content-Type header are taken
+    *    by this protocol to be plain text in the US-ASCII character set,
+    *    which can be explicitly specified as:
+    *       Content-type: text/plain; charset=us-ascii */
+#if 0
+XXX explicit is better, and i am in fear of some version of some software not
+XXX liking that: make it an option??
+   if(mtcfcp->mtcfc_charset_is_ascii && mtcfcp->mtcfc_ct_is_text_plain){
+      rv = 0;
+      goto jleave;
    }
 #endif
 
-   if(nfi == NIL)
-      su_err_set(err);
+   if((rv = fprintf(ofp, "Content-Type: %s", mtcfcp->mtcfc_content_type)) < 0)
+      goto jerr;
 
-   NYD_OU;
-   return nfi;
+   if(mtcfcp->mtcfc_charset != NIL){
+      struct str s;
+
+      if(mx_mime_param_create(TRU1, &s, "charset", mtcfcp->mtcfc_charset,
+            mtcfcp->mtcfc_mpccp_or_nil) <= FAL0){
+         su_err_set(su_ERR_INVAL);
+         rv = -1;
+         goto jleave;
+      }
+
+      if(putc(';', ofp) == EOF)
+         goto jerr;
+      ++rv;
+
+      /* It fits in MIME_LINELEN_LIMIT anyhow! */
+      if(s.l + rv >= MIME_LINELEN){
+         ++rv;
+         if(putc('\n', ofp) == EOF)
+            goto jerr;
+      }
+
+      if(putc(' ', ofp) == EOF || fputs(s.s, ofp) == EOF)
+         goto jerr;
+
+      rv += 2 + S(int,s.l);
+   }
+
+   if(putc('\n', ofp) != EOF)
+      ++rv;
+   else{
+jerr:
+      su_err_by_errno();
+      rv = -1;
+   }
+
+jleave:
+   NYD2_OU;
+   return rv;
+} /* }}} */
+
+static int
+a_sendout__infix_cte(FILE *ofp, struct mx_mime_type_classify_fp_ctx *mtcfcp){
+   int rv;
+   NYD2_IN;
+
+   /* RFC 2045, 6.1.:
+    *    This is the default value -- that is,
+    *    "Content-Transfer-Encoding: 7BIT" is assumed if the
+    *     Content-Transfer-Encoding header field is not present. */
+   if(mtcfcp->mtcfc_conversion == CONV_7BIT)
+      rv = 0;
+   else{
+      rv = fprintf(ofp, "Content-Transfer-Encoding: %s\n",
+            mx_mime_enc_name_from_conversion(mtcfcp->mtcfc_conversion));
+      if(rv < 0)
+         su_err_by_errno();
+   }
+
+   NYD2_OU;
+   return rv;
 }
+
+static int
+a_sendout__infix_cd(FILE *ofp, char const *cd, char const *filename, /* {{{ */
+      struct mx_mime_probe_charset_ctx const *mpccp){
+   struct str f;
+   s8 mpc;
+   int rv;
+   NYD2_IN;
+
+   f.s = NIL;
+
+   /* xxx Ugly with the trailing space in case of wrap! */
+   rv = fprintf(ofp, "Content-Disposition: %s; ", cd);
+   if(rv < 0)
+      goto jerr;
+
+   mpc = mx_mime_param_create(FAL0, &f, "filename", filename, mpccp);
+   if(!mpc){
+      su_err_set(su_ERR_INVAL);
+      rv = -1;
+      goto jleave;
+   }
+   /* Always fold if result contains newlines */
+   if(mpc < 0 || f.l + rv > MIME_LINELEN /* XXX always <MIME_LINELEN_MAX */){
+      if(putc('\n', ofp) == EOF || putc(' ', ofp) == EOF)
+         goto jerr;
+      rv += 2;
+   }
+   if(fputs(f.s, ofp) != EOF && putc('\n', ofp) != EOF)
+      rv += S(int,++f.l);
+   else{
+jerr:
+      su_err_by_errno();
+      rv = -1;
+   }
+
+jleave:
+   NYD2_OU;
+   return rv;
+} /* }}} */
 
 static boole
 _check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
@@ -986,7 +1224,7 @@ a_sendout_sendmail(void *vp, enum n_mailsend_flags msf){
 }
 
 static struct mx_name *
-a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
+a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){/*{{{*/
    boole mfap;
    u32 pipecnt, xcnt, i, swf;
    struct mx_name *np;
@@ -1205,10 +1443,10 @@ jerror:
       np = np->n_flink;
    }
    goto jleave;
-}
+} /* }}} */
 
 static boole
-a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
+a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){ /* {{{ */
    char const *ccp;
    char *cp;
    boole rv;
@@ -1298,10 +1536,10 @@ jbail:
 jleave:
    NYD2_OU;
    return rv;
-}
+} /* }}} */
 
 static boole
-a_sendout__savemail(char const *name, FILE *fp, boole resend){
+a_sendout__savemail(char const *name, FILE *fp, boole resend){ /* {{{ */
    FILE *fo;
    uz bufsize, buflen, cnt;
    BITENUM(u32,mx_fs_open_state) fs;
@@ -1395,10 +1633,11 @@ j_leave:
 
    NYD_OU;
    return rv;
-}
+} /* }}} */
 
 static boole
-a_sendout_transfer(struct mx_send_ctx *scp, boole resent, boole *senderror){
+a_sendout_transfer(struct mx_send_ctx *scp, boole resent, /* {{{ */
+      boole *senderror){
    u32 cnt;
    struct mx_name *np;
    FILE *input_save;
@@ -1521,11 +1760,10 @@ jleave:
 
    NYD_OU;
    return rv;
-}
+} /* }}} */
 
 static boole
-a_sendout_mta_start(struct mx_send_ctx *scp)
-{
+a_sendout_mta_start(struct mx_send_ctx *scp){ /* {{{ */
    struct mx_child_ctx cc;
    sigset_t nset;
    char const **args, *mta;
@@ -1649,8 +1887,9 @@ jkid:
    }
    for(;;)
       _exit(su_EX_ERR);
-}
+} /* }}} */
 
+/* a_sendout_mta_file* {{{ */
 static char const **
 a_sendout_mta_file_args(struct mx_name *to, struct header *hp)
 {
@@ -1785,10 +2024,10 @@ a_sendout_mta_file_debug(struct mx_send_ctx *scp, char const *mta,
    mx_fs_linepool_release(buf, bufsize);
    NYD_OU;
 }
+/* }}} */
 
 static boole
-a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta)
-{
+a_sendout_mta_test(struct mx_send_ctx *scp, char const *mta){ /* {{{ */
    enum{
       a_OK = 0,
       a_ERR = 1u<<0,
@@ -1862,7 +2101,7 @@ jefo:
    if(fp != NIL)
       goto jdone;
    goto jleave;
-}
+} /* }}} */
 
 static char const *
 a_sendout_random_id(struct header *hp, boole msgid){ /* {{{ */
@@ -2344,7 +2583,7 @@ c_Sendmail(void *vp){
 }
 
 FL enum okay
-n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
+n_mail1(enum n_mailsend_flags msf, enum mx_scope scope, /* {{{ */
    struct header *hp, struct message *quote, char const *quotefile)
 {
 #ifdef mx_HAVE_NET
@@ -2355,9 +2594,14 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
    struct mx_send_ctx sctx;
    struct mx_name *to;
    boole dosign, mta_isexe;
-   FILE * volatile mtf, *nmtf;
+   FILE * volatile mtf;
    enum okay volatile rv;
    NYD_IN;
+
+#ifdef mx_HAVE_ICONV
+   if(iconvd != R(iconv_t,-1)) /* XXX anyway for mime.c++ :-( */
+      n_iconv_close(iconvd);
+#endif
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
@@ -2452,7 +2696,7 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
    }
 
    /* */
-   su_mem_set(&sctx, 0, sizeof sctx);
+   STRUCT_ZERO(struct mx_send_ctx, &sctx);
    sctx.sc_hp = hp;
    sctx.sc_to = to;
    sctx.sc_input = mtf;
@@ -2468,43 +2712,23 @@ n_mail1(enum n_mailsend_flags msf, enum mx_scope scope,
       goto jfail_dead;
    }
 
-   /* 'Bit ugly kind of control flow until we find a charset that does it */
    /* C99 */{
-      boole any;
+      boole x;
 
-      for(any = FAL0, mx_mime_charset_iter_reset(hp->h_charset);;
-            any = TRU1, mx_mime_charset_iter_next()){
-         int volatile err;
-         boole volatile force;
-
-         force = FAL0;
-         if(!mx_mime_charset_iter_is_valid() &&
-               (!any || !(force = ok_blook(mime_force_sendout))))
-            err = su_ERR_NOENT;
-         else if((nmtf = a_sendout_infix(hp, mtf, dosign, force)) != NULL)
-            break;
-#ifdef mx_HAVE_ICONV
-         else if(!ok_blook(iconv_disable) &&
-               ((err = n_iconv_err) == su_ERR_ILSEQ ||
-                err == su_ERR_INVAL || err == su_ERR_NOENT)){
-            rewind(mtf);
-            continue;
-         }
-#endif
-
-         n_perr(_("Cannot find a usable character set to encode message"),
-            err);
-         n_pstate_err_no = su_ERR_NOTSUP;
+      x = a_sendout_infix(&sctx, dosign);
+      mtf = sctx.sc_input;
+      if(!x)
          goto jfail_dead;
-      }
    }
-   mtf = nmtf;
 
    /*  */
 #ifdef mx_HAVE_PRIVACY
    if(dosign){
+      FILE *nmtf;
+
       if((nmtf = mx_privacy_sign(mtf, sctx.sc_signer.s)) == NIL)
          goto jfail_dead;
+
       mx_fs_close(mtf);
       mtf = nmtf;
    }
@@ -2576,13 +2800,11 @@ jfail_dead:
    savedeadletter(mtf, TRU1);
    n_err(_("... message not sent\n"));
    goto jleave;
-}
+} /* }}} */
 
 FL boole
-n_puthead(boole nosend_msg, struct header *hp, FILE *fo, enum gfield w,
-   enum sendaction action, enum conversion convert, char const *contenttype,
-   char const *charset)
-{
+n_puthead(enum sendaction action, boole nosend_msg, FILE *fo, /*{{{*/
+      struct header *hp, enum gfield w){
 #define a_SENDOUT_PUT_CC_BCC_FCC() \
 do{\
    if((w & GCC) && (hp->h_cc != NIL || nosend_msg == TRUM1)){\
@@ -2612,6 +2834,9 @@ do{\
    struct mx_name *np, *fromasender, *mft, **mftp;
    boole rv;
    NYD_IN;
+#ifdef mx_HAVE_ICONV
+   ASSERT(!nosend_msg || iconvd == R(iconv_t,-1));
+#endif
 
    mftp = NIL;
    fromasender = mft = NIL;
@@ -2799,6 +3024,7 @@ j_mft_add:
       if(fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
             "To?: exa, <m@ple>\n"), fo) == EOF)
          goto jleave;
+      ++gotcha;
    }
 
    if((w & GTO) && (hp->h_to != NULL || (nosend_msg &&
@@ -2820,8 +3046,8 @@ j_mft_add:
                (!nodisp ? mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT
                   : mx_MIME_DISPLAY_ICONV), NIL,NIL) < 0))
          goto jleave;
-      ++gotcha;
       putc('\n', fo);
+      ++gotcha;
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
@@ -2926,36 +3152,15 @@ j_mft_add:
       }
    }
 
-   /* We don't need MIME unless.. we need MIME?! */
-   if ((w & GMIME) && ((n_pstate & n_PS_HEADER_NEEDED_MIME) ||
-         hp->h_attach != NULL ||
-         convert != CONV_7BIT || !n_iconv_name_is_ascii(charset))) {
-      ++gotcha;
-      if (fputs("MIME-Version: 1.0\n", fo) == EOF)
-         goto jleave;
-      if (hp->h_attach != NULL) {
-         _sendout_boundary = mx_mime_param_boundary_create();/*TODO carrier*/
-         if (fprintf(fo,
-               "Content-Type: multipart/mixed;\n boundary=\"%s\"\n",
-               _sendout_boundary) < 0)
-            goto jleave;
-      } else {
-         if(a_sendout_put_ct(fo, contenttype, charset) < 0 ||
-               a_sendout_put_cte(fo, convert) < 0)
-            goto jleave;
-      }
-   }
-
-   if (gotcha && (w & GNL))
-      if (putc('\n', fo) == EOF)
-         goto jleave;
+   if(gotcha && (w & GNL) && putc('\n', fo) == EOF)
+      goto jleave;
 
    rv = TRU1;
 jleave:
    NYD_OU;
    return rv;
 #undef a_SENDOUT_PUT_CC_BCC_FCC
-}
+} /* }}} */
 
 FL int
 mx_sendout_header_date(FILE *fo, char const *field, boole must_locale){
@@ -3167,7 +3372,7 @@ jleave:
 }
 
 FL void
-savedeadletter(FILE *fp, boole fflush_rewind_first){
+savedeadletter(FILE *fp, boole fflush_rewind_first){ /* {{{ */
    struct n_string line;
    int c;
    enum {a_NONE, a_INIT = 1<<0, a_BODY = 1<<1, a_NL = 1<<2} flags;
@@ -3272,11 +3477,11 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
    rewind(fp);
 jleave:
    NYD_OU;
-}
+} /* }}} */
 
 #ifdef mx_HAVE_REGEX
 FL boole
-mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
+mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp, /* {{{ */
       struct header *envelope_or_nil, boole is_main_mp){
    /* It is a terrible hack; we need a DOM and just dump_to_wire() */
    FILE *ifp;
@@ -3393,7 +3598,7 @@ jleave:
 
    NYD2_OU;
    return rv;
-}
+} /* }}} */
 #endif /* mx_HAVE_REGEX */
 
 #undef SEND_LINESIZE

@@ -1205,7 +1205,7 @@ enum header_flags{
    HF_COMPOSE_MODE = 1u<<11, /* XXX not here Header in compose-mode */
    HF_USER_EDITED = 1u<<12, /* User has edited the template at least once */
 
-   HF_MESSAGE_8BITMIME = 1u<<15, /* 1+ use cases of CONV_8BIT */
+   HF_MESSAGE_8BITMIME = 1u<<15, /* 1+ use cases of CONV_8BIT XXX HACK */
    HF__NEXT_SHIFT = 16u
 };
 #define HF_CMD_TO_OFF(CMD) ((CMD) - 1)

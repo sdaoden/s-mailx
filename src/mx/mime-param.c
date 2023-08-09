@@ -1,5 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of mime-param.h.
+ *@ TODO even without 2231 we need "" quotes only for specials/space!! REVISE!
+ *@ TODO (Though it seems some mailers have problems without, especially boundary param?)
+ *@ TODO this should be rewritten as such; reread RFCs first ;>
+ *@ TODO Ie, param_create()'s clean_is_ascii argument could still use RFC 2231!!
  *
  * Copyright (c) 2016 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -31,6 +35,7 @@
 
 #include "mx/iconv.h"
 #include "mx/mime.h"
+#include "mx/mime-probe.h"
 #include "mx/random.h"
 
 #include "mx/mime-param.h"
@@ -56,15 +61,16 @@ struct a_mpm_builder {
 	u32 mpb_level; /* of recursion (<-> continuation number) */
 	u32 mpb_name_len; /* of the parameter .mpb_name */
 	u32 mpb_value_len; /* of remaining value */
-	u32 mpb_charset_len; /* of .mpb_charset (iff in outermost level) */
+	u32 mpb_csx_len; /* longer of .mpb_cs[78] (IFF in outermost level) TODO yet only cs8 */
 	u32 mpb_buf_len; /* Usable result of this level in .mpb_buf */
-	boole mpb_is_enc; /* Level requires encoding */
-	u8 mpb__dummy[1];
-	boole mpb_is_utf8; /* Encoding is UTF-8 */
+	boole mpb_is_enc; /* Level requires encoding.. */
+	boole mpb_is_8bit__TODO; /* ..and 8-bit charset *//* TODO */
+	boole mpb_is_utf8; /* .mpb_cs8 is UTF-8 */
 	s8 mpb_rv;
 	char const *mpb_name;
 	char const *mpb_value; /* Remains of, once the level was entered */
-	char const *mpb_charset; /* *ttycharset* */
+	char const *mpb_cs8; /* 8-bit charset */
+	/*char const *mpb_cs7;*/ /* 7-bit charset */
 	char *mpb_buf; /* Pointer to on-stack buffer */
 };
 
@@ -460,30 +466,26 @@ a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const
 	UNINIT(fhicd, R(iconv_t,-1));
 
 	if(head->rj_is_enc && !ok_blook(iconv_disable)){
-		char const *tcs;
-
 		f |= a_HAVE_ENC;
 		if(head->rj_cs_len == 0){
 			/* It is an error if the character set is not set, the language alone cannot convert
 			 * characters, let aside that we don't use it at all */
 			*emsg = N_("MIME RFC 2231 invalidity: missing character set\n");
 			f |= a_ERRORS;
-		}else if(su_cs_cmp_case_n(tcs = ok_vlook(ttycharset), head->rj_dat, head->rj_cs_len) ||
-				tcs[head->rj_cs_len] != '\0'){
-			char *cs;
+		}else{
+			char const *tcs;
 
-			cs = su_LOFI_ALLOC(head->rj_cs_len +1);
-
-			su_mem_copy(cs, head->rj_dat, head->rj_cs_len);
-			cs[head->rj_cs_len] = '\0';
-			if((fhicd = n_iconv_open(tcs, cs)) != R(iconv_t,-1))
-				f |= a_HAVE_ICONV;
-			else{
-				*emsg = N_("necessary character set conversion missing");
-				f |= a_ERRORS;
+			tcs = ok_vlook(ttycharset);
+			cp = n_iconv_norm_name(savestrbuf(head->rj_dat, head->rj_cs_len), TRU1);
+			/* XXX In mime.c we do iconv'ert anyway to catch errors? */
+			if(su_cs_cmp(tcs, cp)){
+				if((fhicd = n_iconv_open(tcs, cp)) != R(iconv_t,-1))
+					f |= a_HAVE_ICONV;
+				else{
+					*emsg = N_("necessary character set conversion missing");
+					f |= a_ERRORS;
+				}
 			}
-
-			su_LOFI_FREE(cs);
 		}
 	}
 #endif /* mx_HAVE_ICONV */
@@ -603,7 +605,7 @@ a_mpm_create(struct a_mpm_builder *self){
 	NYD2_IN;
 	LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
 
-	f = a_NONE;
+	f = self->mpb_is_enc ? a_ISENC : a_NONE;
 jneed_enc:
 	self->mpb_buf = bp = bp_lanoenc = buf;
 	self->mpb_buf_len = 0;
@@ -616,8 +618,8 @@ jneed_enc:
 	bp_xmax = (buf + sizeof(buf)) - (1 + self->mpb_name_len + sizeof("*999*='';") -1 + 2);
 
 	if((f & a_ISENC) && self->mpb_level == 0){
-		bp_max -= self->mpb_charset_len;
-		bp_xmax -= self->mpb_charset_len;
+		bp_max -= self->mpb_csx_len;
+		bp_xmax -= self->mpb_csx_len;
 	}
 	if(PCMP(bp_max, <=, &buf[sizeof("Hunky Dory")])){
 		DVLDBG( n_alert("a_mpm_create(): Hunky Dory!"); )
@@ -731,7 +733,7 @@ jrecurse:
 	self->mpb_is_enc = ((f & a_ISENC) != 0);
 	self->mpb_buf_len = P2UZ(bp - buf);
 
-	su_mem_set(&next, 0, sizeof next);
+	STRUCT_ZERO(struct a_mpm_builder, &next);
 	next.mpb_next = self;
 	next.mpb_level = self->mpb_level + 1;
 	next.mpb_name_len = self->mpb_name_len;
@@ -775,7 +777,7 @@ a_mpm__join(struct a_mpm_builder *head){
 		np = tmp;
 	}
 	if(f & a_ISENC)
-		i += head->mpb_charset_len; /* sizeof("''") -1 covered by \"\" above */
+		i += head->mpb_csx_len; /* sizeof("''") -1 covered by \"\" above */
 	ASSERT_INJ( len_max = i; )
 	head->mpb_rv = TRU1;
 
@@ -820,7 +822,7 @@ a_mpm__join(struct a_mpm_builder *head){
 		/* Value part */
 		if(f & a_ISENC){
 			f &= ~a_ISENC;
-			su_mem_copy(cp, np->mpb_charset, i = np->mpb_charset_len);
+			su_mem_copy(cp, np->mpb_cs8, i = np->mpb_csx_len);
 			cp += i;
 			cp[0] = '\'';
 			cp[1] = '\'';
@@ -933,7 +935,8 @@ jleave:
 }
 
 s8
-mx_mime_param_create(struct str *result, char const *name, char const *value){
+mx_mime_param_create(boole clean_is_ascii, struct str *result, char const *name, char const *value,
+		struct mx_mime_probe_charset_ctx const *mpccp){
 	/* TODO All this needs rework when we have (1) a real string and even more
 	 * TODO (2) use objects instead of stupid string concat; it's temporary
 	 * TODO I.e., this function should return a HeaderBodyParam */
@@ -941,9 +944,8 @@ mx_mime_param_create(struct str *result, char const *name, char const *value){
 	uz i;
 	NYD_IN;
 
-	su_mem_set(result, 0, sizeof *result);
-
-	su_mem_set(&top, 0, sizeof top);
+	STRUCT_ZERO(struct str, result);
+	STRUCT_ZERO(struct a_mpm_builder, &top);
 	top.mpb_result = result;
 
 	if((i = su_cs_len(top.mpb_name = name)) >= U32_MAX)
@@ -954,15 +956,22 @@ mx_mime_param_create(struct str *result, char const *name, char const *value){
 		goto jleave;
 	top.mpb_value_len = S(u32,i);
 
-	if((i = su_cs_len(name = ok_vlook(ttycharset))) >= U32_MAX)
+	/* Strictly speaking .., but extending *ttycharset-detect* logic also to MIME parameters seems logical.
+	 * Shamelessly reuse name */
+	mx_mime_probe_head_cp(&name, value, mpccp);
+	if((i = su_cs_len(name)) >= U32_MAX)
 		goto jleave;
-	top.mpb_charset_len = S(u32,i);
-	top.mpb_charset = su_AUTO_ALLOC(++i);
-	su_mem_copy(UNCONST(char*,top.mpb_charset), name, i);
-
-	/* (charset result of iconv_normalize_name()) */
-	ASSERT(!su_cs_cmp(name, n_iconv_normalize_name(name)));
+	top.mpb_csx_len = S(u32,i);
+	top.mpb_cs8 = name;
+#if 0 /* TODO */
+	top.mpb_cs7 = mpccp->mpcc_cs_7bit;
+	if((i = su_cs_len(top.mpb_cs7)) > top.mpb_csx_len)
+		top.mpb_csx_len = S(u32,i);
+#endif
+	/* (charset result of iconv_norm_name()) */
+	ASSERT(!su_cs_cmp(name, n_iconv_norm_name(name, TRU1)));
 	top.mpb_is_utf8 = n_iconv_name_is_utf8(name);
+	top.mpb_is_enc = !clean_is_ascii && !mpccp->mpcc_cs_7bit_is_ascii;
 
 	a_mpm_create(&top);
 jleave:
@@ -996,6 +1005,9 @@ mx_mime_param_boundary_get(char const *headerbody, uz *len){
 
 char *
 mx_mime_param_boundary_create(void){
+	/* TODO when header fun docu todo is addressed, RFC 2045 says
+	 * TODO (A good strategy is to choose a boundary that includes a character sequence such as "=_" which can
+	 * TODO  never  appear in a quoted-printable body.  See the definition of multipart messages in RFC 2046.) */
 	static u32 reprocnt;
 	char *bp;
 	NYD_IN;

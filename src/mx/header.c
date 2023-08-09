@@ -56,6 +56,7 @@
 #include "mx/file-streams.h"
 #include "mx/go.h"
 #include "mx/mime.h"
+#include "mx/mime-probe.h"
 #include "mx/names.h"
 #include "mx/srch-ctx.h"
 #include "mx/termios.h"
@@ -1353,24 +1354,21 @@ jleave:
    return name;
 }
 
-#ifdef mx_HAVE_ICONV
 FL boole
-mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
-   /* TODO header_needs_mime(): with charset_or_nil and *mime-utf8-detect*
-    * TODO we should not shortcut but test all and .. what if unequal ?? */
-   /* TODO In the end this should be nothing than
-    * TODO header_iterator=header.begin(); h_i; ++h_i
-    * TODO  if(h_i.body().needs_mime())
-    * TODO Until then try to inite*/
+mx_header_needs_mime(struct header const *hp, char const **charset,
+      struct mx_mime_probe_charset_ctx const *mpccp){
    struct mx_name *np;
-   char const *bodies[2 + 2 + 1 + 1 +1], **cpp, *cp;
+   char const *bodies[2 + 2 + 1 + 1 +1], *ocs, **cpp, *cp;
    boole rv;
    NYD_IN;
+   ASSERT(charset != NIL);
 
-   if(charset_or_nil != NIL)
-      *charset_or_nil = NIL;
+   /* (In case mime_probe_head_cp() not called at all) */
+   mx_MIME_PROBE_HEAD_DEFAULT_RES(rv, charset, mpccp);
 
-   rv = FAL0;
+   /* */
+#undef a_X
+#define a_X(CP) if(mx_mime_probe_head_cp(&ocs, CP, mpccp) > FAL0) goto jneed
 
    /* C99 */{
       struct n_header_field *hfp, *chlp[3]; /* TODO . JOINED AFTER COMPOSE! */
@@ -1381,12 +1379,11 @@ mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
       chlp[2] = hp->h_user_headers;
 
       for(i = 0; i < NELEM(chlp); ++i)
-         if((hfp = chlp[i]) != NIL)
-            do if(mx_mime_header_needs_mime(&hfp->hf_dat[hfp->hf_nl +1],
-                  charset_or_nil)){
-               rv = TRU1;
-               goto jleave;
-            }while((hfp = hfp->hf_next) != NIL);
+         if((hfp = chlp[i]) != NIL){
+            do
+               a_X(&hfp->hf_dat[hfp->hf_nl +1]);
+            while((hfp = hfp->hf_next) != NIL);
+         }
    }
 
    /*s_mem_set(bodies, 0, sizeof(bodies));*/
@@ -1399,11 +1396,10 @@ mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
       *cpp++ = cp;
 
    if((np = hp->h_reply_to) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }else if((cp = ok_vlook(reply_to)) != NIL)
       *cpp++ = cp;
@@ -1412,57 +1408,51 @@ mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
       *cpp++ = cp;
 
    if((np = hp->h_author) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_from) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }else if((cp = myaddrs(NIL)) != NIL)
       *cpp++ = cp;
 
    if((np = hp->h_mft) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_to) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_cc) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }
 
    if((np = hp->h_bcc) != NIL){
-      do if(mx_mime_header_needs_mime(np->n_name, charset_or_nil) ||
-            (np->n_name != np->n_fullname &&
-             mx_mime_header_needs_mime(np->n_fullname, charset_or_nil))){
-         rv = TRU1;
-         goto jleave;
+      do{
+         a_X(np->n_name);
+         if(np->n_name != np->n_fullname)
+            a_X(np->n_fullname);
       }while((np = np->n_flink) != NIL);
    }
 
@@ -1470,14 +1460,16 @@ mx_header_needs_mime(struct header *hp, char const **charset_or_nil){
    ASSERT(cpp < &bodies[NELEM(bodies)]);
    *cpp = NIL;
    for(cpp = &bodies[0]; (cp = *cpp++) != NIL;)
-      if((rv = mx_mime_header_needs_mime(cp, charset_or_nil)))
-         break;
+      a_X(cp);
 
 jleave:
    NYD_OU;
    return rv;
+jneed:
+   *charset = ocs;
+   rv = TRU1;
+   goto jleave;
 }
-#endif /* mx_HAVE_ICONV */
 
 FL boole
 n_header_put4compose(FILE *fp, struct header *hp){
@@ -1485,7 +1477,8 @@ n_header_put4compose(FILE *fp, struct header *hp){
    int t;
    NYD_IN;
 
-   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GFILES | GREF_IRT | GNL | GCOMMA;
+   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GFILES |
+         GREF_IRT | GNL | GCOMMA;
    if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
          (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
          (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
@@ -1493,7 +1486,7 @@ n_header_put4compose(FILE *fp, struct header *hp){
          hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
       t |= GIDENT;
 
-   rv = n_puthead(TRUM1, hp, fp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+   rv = n_puthead(SEND_TODISP, TRUM1, fp, hp, t);
 
    NYD_OU;
    return rv;
@@ -3281,9 +3274,10 @@ jredo_localtime:
          su_mem_copy(&tmlocal, tmp, sizeof *tmp);
       }
 
-      if((i & 2) && (UCMP(64, t, >, mx_time_current.tc_time + su_TIME_DAY_SECS) ||
+      if((i & 2) &&
+            (UCMP(64, t, >, mx_time_current.tc_time + su_TIME_DAY_SECS) ||
 #define _6M ((su_TIME_YEAR_DAYS / 2) * su_TIME_DAY_SECS)
-            UCMP(64, t + _6M, <, mx_time_current.tc_time))){
+             UCMP(64, t + _6M, <, mx_time_current.tc_time))){
 #undef _6M
          if((fmt = (i & 4) ? cp : NULL) == NULL){
             char *x;

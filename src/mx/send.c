@@ -1126,7 +1126,7 @@ jpipe_close:
     * TODO cannot mess things up misusing outrest as line buffer */
 #ifdef mx_HAVE_ICONV
    if(iconvd != R(iconv_t,-1)){
-      ASSERT(!ok_blook(iconv_disable));
+      /* could live from some former try ASSERT(!ok_blook(iconv_disable));*/
       n_iconv_close(iconvd);
       iconvd = (iconv_t)-1;
    }
@@ -1150,7 +1150,9 @@ jpipe_close:
       char const *pcs, *tcs;
 
       pcs = ip->m_charset_or_nil;
-      if(pcs == NIL)
+      if(pcs != NIL)
+         pcs = n_iconv_norm_name(pcs, TRU1);
+      else
          pcs = ok_vlook(charset_7bit); /* TODO actually US-ASCII!?! */
       tcs = ok_vlook(ttycharset);
 
@@ -1278,7 +1280,7 @@ jsend:
             n_free(inrest.s);
 #ifdef mx_HAVE_ICONV
          if(iconvd != R(iconv_t,-1)){
-            ASSERT(!ok_blook(iconv_disable));
+            /* could live from past ASSERT(!ok_blook(iconv_disable)); */
             n_iconv_close(iconvd);
          }
 #endif
@@ -1361,7 +1363,7 @@ jend:
 
 #ifdef mx_HAVE_ICONV
    if(iconvd != R(iconv_t,-1)){
-      ASSERT(!ok_blook(iconv_disable));
+      /* could live from past ASSERT(!ok_blook(iconv_disable)); */
       n_iconv_close(iconvd);
    }
 #endif

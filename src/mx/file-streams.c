@@ -512,8 +512,11 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 		}else{
 			/*flags |= a_FS_EF_RAW;*/
 			rv = mx_fs_open(file, oflags);
-			if(rv == NIL && (oflags & mx_FS_O_EXCL) && su_err() == su_ERR_EXIST)
-				fs |= mx_FS_OPEN_STATE_EXISTS;
+			if(rv == NIL){
+				err = su_err();
+				if((oflags & mx_FS_O_EXCL) && err == su_ERR_EXIST)
+					fs |= mx_FS_OPEN_STATE_EXISTS;
+			}
 			goto jleave;
 		}
 		}break;
@@ -521,15 +524,16 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 
 	/* Note rv is not yet register_file()d, fclose() it in error path! */
 	if((rv = mx_fs_tmp_open(NIL, "fopenany", tmpoflags, NIL)) == NIL){
-		n_perr(_("tmpfile"), err = su_err());
-		goto Jerr;
+		err = su_err();
+		n_perr(_("tmpfile"), err);
+		goto jerr;
 	}
 
-	if(flags & (a_FS_EF_IMAP | a_FS_EF_MAILDIR))
-		;
-	else if(infd >= 0){
-		if(!a_fs_file_load(flags, infd, fileno(rv), cload)) Jerr:{
+	if(flags & (a_FS_EF_IMAP | a_FS_EF_MAILDIR)){
+	}else if(infd >= 0){
+		if(!a_fs_file_load(flags, infd, fileno(rv), cload)){
 			err = su_err();
+jerr:
 			if(rv != NIL)
 				fclose(rv); /* Not yet registered */
 			rv = NIL;
@@ -564,8 +568,11 @@ mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_op
 jleave:
 	if(fs_or_nil != NIL)
 		*fs_or_nil = fs;
-	if(rv == NIL && err != su_ERR_NONE)
+	if(rv == NIL){
+		if(err == su_ERR_NONE)
+			err = su_ERR_IO;
 		su_err_set(err);
+	}
 
 	NYD_OU;
 	return rv;
@@ -735,6 +742,8 @@ jleave:
 		mx_sigs_all_rele();
 
 	if(fp == NIL){
+		if(e == su_ERR_NONE)
+			e = su_ERR_IO;
 		su_err_set(e);
 		if(fstcp_or_nil != NIL)
 			*fstcp_or_nil = NIL;

@@ -1,12 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Content-Transfer-Encodings as defined in RFC 2045 (and RFC 2047;
- *@ for _header() versions: including "encoded word" as of RFC 2049):
- *@ - Quoted-Printable, section 6.7
- *@ - Base64, section 6.8
- * TODO For now this is pretty mixed up regarding this external interface
- * TODO (and due to that the code is, too).
- * TODO In v15.0 CTE will be filter based, and explicit conversion will
- * TODO gain clear error codes
+ *@ MIME-to-display and MIME-from-data.
+ * TODO This should be filter, object-dump-to-{wire,user} etc.
  *
  * Copyright (c) 2012 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -37,6 +31,9 @@ struct header;
 struct quoteflt;
 struct str;
 
+/**/
+struct mx_mime_type_classify_fp_ctx;
+
 enum mx_mime_display_flags{
 	mx_MIME_DISPLAY_NONE,
 	mx_MIME_DISPLAY_ICONV = 1u<<1, /* iconv() buffer */
@@ -49,11 +46,11 @@ enum mx_mime_display_flags{
 	mx__MIME_DISPLAY_BUF_CONST = 1u<<15 /* Buffer may be const, copy it */
 };
 
-/* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be used to prepend a charset to this list
+/* *sendcharsets* .. *charset-8bit* iterator; two character sets may be prepended to try first
  * (e.g., for *reply-in-same-charset*).
  * The returned boolean indicates charset_iter_is_valid().
  * Without HAVE_ICONV, this "iterates" over *ttycharset* only */
-EXPORT boole mx_mime_charset_iter_reset(char const *a_charset_to_try_first);
+EXPORT boole mx_mime_charset_iter_reset(char const *cset_try1_or_nil, char const *cset_try2_or_nil);
 EXPORT boole mx_mime_charset_iter_next(void);
 EXPORT boole mx_mime_charset_iter_is_valid(void);
 EXPORT char const *mx_mime_charset_iter(void);
@@ -62,19 +59,24 @@ EXPORT char const *mx_mime_charset_iter(void);
  * *ttycharset*, dep. on mx_HAVE_ICONV */
 EXPORT char const *mx_mime_charset_iter_or_fallback(void);
 
-EXPORT void mx_mime_charset_iter_recurse(char *outer_storage[2]);/* TODO drop*/
-EXPORT void mx_mime_charset_iter_restore(char *outer_storage[2]);/* TODO drop*/
-
-/* Check whether header body needs MIME conversion.
- * A set charset_or_nil is set according to *ttycharset-detect* */
-/* TODO mime_header_needs_mime should always be available - gross flow! */
 #ifdef mx_HAVE_ICONV
-EXPORT boole mx_mime_header_needs_mime(char const *body, char const **charset_or_nil);
+/* Successively try to convert ifp via iconv_onetime_fp() via complete iter_reset(cset_to_try_first_or_nil) cycle.
+ * Any iconv_onetime_cp() docu is valid for this one; a set *ofpp_or_nil is ftrunc_x_trunc() in between cycles.
+ * mtcfcp must hold classification data for ifp, .mtcfc_do_iconv and .mtcfc_mpccp_or_nil are ASSERT()ed;
+ * .mtcfc_input_charset, .mtcfc_charset and .mtcfc_charset_is_ascii are updated.
+ * With *mime-force-sendout* this function succeeds even if iconv is impossible: result differences are that
+ * *ofpp_or_nil is not set (ifp is result), .mtcfc_do_iconv=FAL0, .mtcfc_conversion=CONV_TOB64,
+ * .mtcfc_content_type="application/octet-stream", as well as .mtcfc_charset=.mtcfc_input_charset=NIL,
+ * .mtcfc_charset_is_ascii=FAL0, and ifp is rewind()ed.
+ * INVAL is returned on iter excess XXX NOTSUP */
+EXPORT s32 mx_mime_charset_iter_onetime_fp(FILE **ofpp_or_nil, FILE *ifp, struct mx_mime_type_classify_fp_ctx *mtcfcp,
+		char const *cset_to_try_first_or_nil, char const **emsg_or_nil);
 #endif
 
 /* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.
  * FAL0 on hard error, in which case out->s is NIL */
-EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out, BITENUM(u32,mx_mime_display_flags) flags);
+EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out,
+		BITENUM(u32,mx_mime_display_flags) flags);
 
 /* Interpret MIME strings in parts of an address field.
  * NIL on error or NIL input */

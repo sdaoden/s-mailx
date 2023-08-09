@@ -2914,7 +2914,11 @@ static void
 a_utf(void){
 	if(cs::cmp(utf8::name, su_utf8_name) || cs::cmp(utf8::name, su_UTF8_NAME))
 		a_ERR();
+	if(cs::cmp(utf8::name_lower, su_utf8_name_lower) || cs::cmp(utf8::name_lower, su_UTF8_NAME_LOWER))
+		a_ERR();
 	if(cs::cmp(utf32::name, su_utf32_name) || cs::cmp(utf32::name, su_UTF32_NAME))
+		a_ERR();
+	if(cs::cmp(utf32::name_lower, su_utf32_name_lower) || cs::cmp(utf32::name_lower, su_UTF32_NAME_LOWER))
 		a_ERR();
 
 	char buf[utf8::buffer_size];

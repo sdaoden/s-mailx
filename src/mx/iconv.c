@@ -43,8 +43,59 @@ s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 iconv_t iconvd;
 #endif
 
+/* TODO character set names should be ctext/su */
+struct a_iconv_set{
+	uz is_cnt;
+	char const * const *is_dat;
+};
+
+/* In reversed MIME preference order, lowercased */
+static char const
+#if 0
+	* const a_iconv_l1_names[] = {"csISOLatin1", "iso-ir-100", "l1",
+			"IBM819", "CP819",  "ISO_8859-1",
+			"ISO_8859-1:1987", "latin1", "ISO-8859-1"},
+	* const a_iconv_u8_names[] = {"utf8", "utf-8"},
+	* const a_iconv_us_names[] = {"csASCII", "cp367", "IBM367", "us",
+			"ISO646-US", "ISO_646.irv:1991", "ANSI_X3.4-1986", "iso-ir-6",
+			"ANSI_X3.4-1968", "ASCII", "US-ASCII"};
+#else
+#if 0
+	* const a_iconv_l1_names[] = {"csisolatin1", "iso-ir-100", "l1",
+			"ibm819", "cp819",  "iso_8859-1",
+			"iso_8859-1:1987", "latin1", "iso-8859-1"},
+#endif
+	* const a_iconv_u8_names[] = {"utf8", "utf-8"},
+	* const a_iconv_us_names[] = {"csascii", "cp367", "ibm367", "us",
+			"iso646-us", "iso_646.irv:1991", "ansi_x3.4-1986", "iso-ir-6",
+			"ansi_x3.4-1968", "ascii", "us-ascii"};
+#endif
+
+static struct a_iconv_set const a_iconv_sets[] = {
+	FII(n__ICONV_SET_U8) {NELEM(a_iconv_u8_names), a_iconv_u8_names},
+	FII(n__ICONV_SET_US) {NELEM(a_iconv_us_names), a_iconv_us_names}
+};
+
+boole
+n__iconv_name_is(char const *cset, u32 set){
+	boole rv;
+	char const * const *npp;
+	struct a_iconv_set const *isp;
+	NYD2_IN;
+
+	isp = &a_iconv_sets[set];
+	npp = &isp->is_dat[set = S(u32,isp->is_cnt)];
+
+	do if((rv = !su_cs_cmp_case(cset, *--npp)))
+		break;
+	while(--set != 0);
+
+	NYD2_OU;
+	return rv;
+}
+
 char *
-n_iconv_normalize_name(char const *cset){
+n_iconv_norm_name(char const *cset, boole mime_norm_name){
 	char *cp, c, *tcp, tc;
 	boole any;
 	NYD2_IN;
@@ -75,48 +126,23 @@ n_iconv_normalize_name(char const *cset){
 	}
 
 	/* And some names just cannot be used as such */
-	if((!su_cs_cmp_case(cset, "unknown-8bit") || !su_cs_cmp_case(cset, "binary")) &&
-			(cset = ok_vlook(charset_unknown_8bit)) == NIL)
-		cset = n_var_oklook(CHARSET_8BIT_OKEY);
+	if(!su_cs_cmp_case(cset, "unknown-8bit") || !su_cs_cmp_case(cset, "binary")){
+		if((cset = ok_vlook(charset_unknown_8bit)) == NIL)
+			cset = n_var_oklook(CHARSET_8BIT_OKEY);
+		cset = n_iconv_norm_name(cset, mime_norm_name);
+	}else if(mime_norm_name){
+		u32 i;
+
+		for(i = 0; i < n__ICONV_SET__MAX; ++i)
+			if(n__iconv_name_is(cset, i)){
+				cset = a_iconv_sets[i].is_dat[a_iconv_sets[i].is_cnt - 1];
+				break;
+			}
+	}
 
 jleave:
 	NYD2_OU;
 	return UNCONST(char*,cset);
-}
-
-boole
-n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
-	/* In reversed MIME preference order */
-	static char const * const names[] = {"csASCII", "cp367", "IBM367", "us",
-			"ISO646-US", "ISO_646.irv:1991", "ANSI_X3.4-1986", "iso-ir-6",
-			"ANSI_X3.4-1968", "ASCII", "US-ASCII"};
-	boole rv;
-	char const * const *npp;
-	NYD2_IN;
-
-	npp = &names[NELEM(names)];
-	do if((rv = !su_cs_cmp_case(cset, *--npp)))
-		break;
-	while((rv = (npp != &names[0])));
-
-	NYD2_OU;
-	return rv;
-}
-
-boole
-n_iconv_name_is_utf8(char const *cset){ /* TODO ctext/su */
-	static char const * const names[] = {"utf8", "utf-8"};
-	boole rv;
-	char const * const *npp;
-	NYD2_IN;
-
-	npp = &names[NELEM(names)];
-	do if((rv = !su_cs_cmp_case(cset, *--npp)))
-		break;
-	while((rv = (npp != &names[0])));
-
-	NYD2_OU;
-	return rv;
 }
 
 #ifdef mx_HAVE_ICONV
@@ -129,7 +155,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
 	char const *tocode_orig;
 	NYD_IN;
 
-	if((tocode = n_iconv_normalize_name(tocode)) == NIL || (fromcode = n_iconv_normalize_name(fromcode)) == NIL){
+	if((tocode = n_iconv_norm_name(tocode, TRU1)) == NIL || (fromcode = n_iconv_norm_name(fromcode, TRU1)) == NIL){
 		su_err_set(su_ERR_INVAL);
 		id = R(iconv_t,-1);
 		goto jleave;
@@ -356,7 +382,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode, char const *fromc
 	if(tocode == NIL)
 		tocode = ok_vlook(ttycharset);
 	if(fromcode == NIL)
-		fromcode = su_utf8_name;
+		fromcode = su_utf8_name_lower;
 
 	if((icd = iconv_open(tocode, fromcode)) == R(iconv_t,-1))
 		goto jleave;
@@ -387,7 +413,7 @@ n_iconv_onetime_fp(enum n_iconv_flags icf, FILE **ofpp_or_nil, FILE *ifp, char c
 	if(tocode == NIL)
 		tocode = ok_vlook(ttycharset);
 	if(fromcode == NIL)
-		fromcode = su_utf8_name;
+		fromcode = su_utf8_name_lower;
 
 	if((icd = iconv_open(tocode, fromcode)) == R(iconv_t,-1)){
 		err = su_err();
@@ -418,7 +444,6 @@ n_iconv_onetime_fp(enum n_iconv_flags icf, FILE **ofpp_or_nil, FILE *ifp, char c
 		}
 
 		if(n_iconv_str(icd, icf, &ou, &in, NIL) != 0){
-			n_err(_("Cannot convert from %s to %s\n"), fromcode, tocode);
 			err = n_iconv_err;
 			goto jerr;
 		}

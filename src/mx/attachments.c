@@ -56,7 +56,7 @@ static int a_attachments_is_msg(char const *file);
 /* Fill in some basic attachment fields */
 static struct mx_attachment *a_attachments_setup_base(struct mx_attachment *ap, char const *file);
 
-/* Setup ap to point to a message */
+/* Setup setup_base()d ap to point to a message */
 static struct mx_attachment *a_attachments_setup_msg(struct mx_attachment *ap, char const *msgcp, int msgno);
 
 /* */
@@ -91,16 +91,14 @@ static struct mx_attachment *
 a_attachments_setup_base(struct mx_attachment *ap, char const *file){
 	NYD2_IN;
 
-	ap->a_input_charset = ap->a_charset = NIL;
+	STRUCT_ZERO(struct mx_attachment, ap);
 	ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = file;
 	if((file = su_cs_rfind_c(file, '/')) != NIL)
 		ap->a_path_bname = ap->a_name = ++file;
 	else
 		file = ap->a_name;
-	ap->a_content_type = mx_mime_type_classify_filename(file);
+	ap->a_content_type = mx_mime_type_classify_path(file);
 	ap->a_content_disposition = "attachment";
-	ap->a_content_description = NIL;
-	ap->a_content_id = NIL;
 
 	NYD2_OU;
 	return ap;
@@ -112,10 +110,6 @@ a_attachments_setup_msg(struct mx_attachment *ap, char const *msgcp, int msgno){
 
 	ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = msgcp;
 	ap->a_msgno = msgno;
-	ap->a_content_type =
-	ap->a_content_description =
-	ap->a_content_disposition = NIL;
-	ap->a_content_id = NIL;
 
 	NYD2_OU;
 	return ap;
@@ -206,7 +200,8 @@ jrefexp:
 							i = P2UZ(cp - ncp);
 							if(i == 0 || (i == 1 && ncp[0] == '-'))
 								incs = (char*)-1;
-							else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))) == NIL){
+							else if((incs = n_iconv_norm_name(savestrbuf(ncp, i), TRU1)
+									) == NIL){
 								e = su_ERR_INVAL;
 								goto jerr_fopen;
 							}
@@ -224,7 +219,7 @@ jrefexp:
 					i = P2UZ(cp - ncp);
 					if(i == 0 || (i == 1 && ncp[0] == '-'))
 						xp = R(char*,-1);
-					else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))) == NIL){
+					else if((xp = n_iconv_norm_name(savestrbuf(ncp, i), TRU1)) == NIL){
 						e = su_ERR_INVAL;
 						goto jerr_fopen;
 					}
@@ -244,7 +239,7 @@ jerr_fopen:
 		}
 	}
 
-	nap = a_attachments_setup_base(su_AUTO_CALLOC(sizeof *nap), file);
+	nap = a_attachments_setup_base(su_AUTO_ALLOC(sizeof *nap), file);
 	nap->a_conv_force_b64 = force_b64;
 	nap->a_path_user = file_user;
 
@@ -252,12 +247,19 @@ jerr_fopen:
 		nap = a_attachments_setup_msg(nap, file, msgno);
 	else{
 		nap->a_input_charset_set = (incs != NIL && incs != R(char*,-1));
-		nap->a_input_charset = !nap->a_input_charset_set ? savestr(ok_vlook(ttycharset)) : incs;
+		nap->a_input_charset = nap->a_input_charset_set ? incs : NIL;
+
 #ifdef mx_HAVE_ICONV
 		if(cnvfp != NIL){
 			ASSERT(nap->a_tmpf == NIL);
-			if(n_iconv_onetime_fp(n_ICONV_NONE, &nap->a_tmpf, cnvfp,
-					(nap->a_charset = oucs), nap->a_input_charset) != su_ERR_NONE){
+			if(!nap->a_input_charset_set)
+/* FIXME we could go for ttycharset-detect instead of ttycharset for attachments with NAME=-!
+ * FIXME then however docu and surely tests have to be revisited!! */
+				nap->a_input_charset = ok_vlook(ttycharset);
+			nap->a_charset = oucs;
+
+			if(n_iconv_onetime_fp(n_ICONV_NONE, &nap->a_tmpf, cnvfp, oucs, nap->a_input_charset
+					) != su_ERR_NONE){
 				nap = NIL;
 				aerr = mx_ATTACHMENTS_ERR_ICONV_FAILED;
 				goto jleave;
@@ -265,7 +267,7 @@ jerr_fopen:
 			nap->a_conv = mx_ATTACHMENTS_CONV_TMPFILE;
 		}else
 #endif
-				if(incs != NIL && oucs == NIL)
+		      if(incs != NIL && oucs == NIL)
 			nap->a_conv = mx_ATTACHMENTS_CONV_FIX_INCS;
 		else
 			nap->a_conv = mx_ATTACHMENTS_CONV_DEFAULT;
@@ -480,7 +482,7 @@ mx_attachments_list_print(struct mx_attachment const *aplist, FILE *fp){
 			char const *incs, *oucs;
 
 			if(!su_state_has(su_STATE_REPRODUCIBLE)){
-				incs = ap->a_input_charset;
+				incs = (ap->a_input_charset != NIL) ? ap->a_input_charset : _("*ttycharset*");
 				oucs = ap->a_charset;
 			}else
 				incs = oucs = su_reproducible_build;

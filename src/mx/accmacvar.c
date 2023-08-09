@@ -1151,7 +1151,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 		case ok_v_charset_unknown_8bit: FALLTHRU
 		case ok_v_ttycharset:
 			/* (Logs on error) */
-			if((*val = n_iconv_normalize_name(*val)) == NIL)
+			if((*val = n_iconv_norm_name(*val, TRU1)) == NIL)
 				ok = FAL0;
 			break;
 		case ok_v_customhdr:
@@ -1213,7 +1213,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey, char const *
 			csv = savestr(*val);
 
 			while((cp = su_cs_sep_c(&csv, ',', TRU1)) != NIL){
-				if((cp = n_iconv_normalize_name(cp)) == NIL){
+				if((cp = n_iconv_norm_name(cp, TRU1)) == NIL){
 					ok = FAL0;
 					break;
 				}
