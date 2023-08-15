@@ -81,12 +81,12 @@ enum su_re_errors{
 /*! \_ */
 struct su_re{
 	 /*! \r{su_re_setup_flags} as given to \r{su_re_setup_cp()}. */
-	BITENUM_IS(u8,su_re_setup_flags) re_setup_flags;
+	BITENUM(u8,su_re_setup_flags) re_setup_flags;
 	/*! After \r{su_re_setup_cp()}: one of the \r{su_re_errors}. */
-	BITENUM_IS(u8,su_re_errors) re_error; /* (to make it fit in 8-bit) */
+	BITENUM(u8,su_re_errors) re_error; /* (to make it fit in 8-bit) */
 	boole re_eval_ok; /*!< Whether last \r{su_re_eval_cp()} matched. */
 	/*! \r{su_re_eval_flags} as given to last \r{su_re_eval_cp()}. */
-	BITENUM_IS(u8,su_re_eval_flags) re_eval_flags;
+	BITENUM(u8,su_re_eval_flags) re_eval_flags;
 	/*! Number of parenthesized subexpression groups found by
 	 * \r{su_re_setup_cp()}, and entries in \r{#re_match} (starting at index 1).
 	 * If \r{su_RE_SETUP_TEST_ONLY} was given this is always 0. */
@@ -142,8 +142,8 @@ INLINE struct su_re *su_re_reset(struct su_re *self){
  * A \r{su_re_errors} is (stored in \r{su_re::re_error} and) returned,
  * and \r{su_re_error_doc()} might be used; memory is allocated with
  * \r{su_MEM_ALLOC_MAYFAIL} and errors are mapped to \r{su_RE_ERROR_SPACE}. */
-EXPORT BITENUM_IS(u8,su_re_errors) su_re_setup_cp(struct su_re *self,
-		char const *expr, BITENUM_IS(u8,su_re_setup_flags) flags);
+EXPORT BITENUM(u8,su_re_errors) su_re_setup_cp(struct su_re *self,
+		char const *expr, BITENUM(u8,su_re_setup_flags) flags);
 
 /*! This condition is asserted by most functions below. */
 INLINE boole su_re_is_setup(struct su_re const *self){
@@ -160,7 +160,7 @@ INLINE char const *su_re_error_doc(struct su_re const *self){
 /*! Evaluate whether \a{input} is matched by a \r{su_re_is_setup()} \SELF.
  * \r{su_re::re_eval_ok} and \r{su_re::re_input} will always be set, but
  * \r{su_re::re_match} is only upon success (if so configured). */
-EXPORT boole su_re_eval_cp(struct su_re *self, char const *input, BITENUM_IS(u8,su_re_eval_flags) flags);
+EXPORT boole su_re_eval_cp(struct su_re *self, char const *input, BITENUM(u8,su_re_eval_flags) flags);
 
 /*! \_ */
 INLINE char const *su_re_get_error_doc(enum su_re_errors error) {return su__re_error_doc(S(u8,error));}
@@ -256,7 +256,7 @@ public:
 
 	/*! \copydoc{su_re_setup_cp()}.
 	 * \remarks{Sets \r{#setup_ext} by default.} */
-	BITENUM_IS(u8,errors) setup(char const *expr, BITENUM_IS(u8,setup_flags) flags=setup_ext){
+	BITENUM(u8,errors) setup(char const *expr, BITENUM(u8,setup_flags) flags=setup_ext){
 		return S(errors,su_re_setup_cp(this, expr, S(u8,flags)));
 	}
 
@@ -276,7 +276,7 @@ public:
 	uz group_count(void) const {return re_group_count;}
 
 	/*! \copydoc{su_re_eval_cp()} */
-	boole eval(char const *input, BITENUM_IS(u8,eval_flags) flags=eval_none){
+	boole eval(char const *input, BITENUM(u8,eval_flags) flags=eval_none){
 		return su_re_eval_cp(this, input, S(u8,flags));
 	}
 

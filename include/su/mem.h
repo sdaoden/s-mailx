@@ -165,11 +165,11 @@ EXPORT boole su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL);
 /*! Rather internal, but due to the \r{su_mem_alloc_flags} \a{maf} maybe
  * handy sometimes.
  * Normally to be used through the macros below */
-EXPORT void *su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
+EXPORT void *su_mem_allocate(uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! If \NIL is returned, then the original memory has not been freed.
  * (From our point of view. TODO We are yet backed by OS malloc.) */
-EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
+EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 EXPORT void su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL);
@@ -354,7 +354,7 @@ INLINE boole su_mem_get_can_book(uz size, uz no, uz notoadd){
  * \c{LINGER_FREE_RELEASE} completely ignores \a{val}.
  * Using this flag will perform a \r{su_mem_check()} first.
  * }} */
-EXPORT void su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val);
+EXPORT void su_mem_set_conf(BITENUM(u32,su_mem_conf_option) mco, uz val);
 
 /*! Check all existing allocations for bound violations etc.
  * Return \TRU1 on errors, \TRUM1 on fatal errors.
@@ -586,7 +586,7 @@ public:
 	static u32 get_usable_size_32(uz size) {return su_mem_get_usable_size_32(size);}
 
 	/*! \copydoc{su_mem_conf_option()} */
-	static void set_conf(BITENUM_IS(u32,conf_option) co, uz val) {su_mem_set_conf(co, val);}
+	static void set_conf(BITENUM(u32,conf_option) co, uz val) {su_mem_set_conf(co, val);}
 
 	/*! \r{su_mem_check()} */
 	static void check(void) {su_mem_check();}

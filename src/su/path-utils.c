@@ -84,7 +84,7 @@ NSPC_USE(su)
 #endif
 
 boole
-su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode){
+su_path_access(char const *path, BITENUM(u32,su_iopf_access) mode){
 	boole rv;
 	NYD_IN;
 	ASSERT_NYD_EXEC(path != NIL, rv = FAL0);
@@ -323,7 +323,7 @@ su_path_rename(char const *dst, char const *src){
 
 #ifdef su_HAVE_PATH_RM_AT
 boole
-su_path_rm_at(sz dirfd, char const *path, BITENUM_IS(u32,su_iopf_at) flags){
+su_path_rm_at(sz dirfd, char const *path, BITENUM(u32,su_iopf_at) flags){
 	boole rv;
 	int dfd, f;
 	NYD_IN;
@@ -411,7 +411,7 @@ su_path_touch(char const *path, struct su_timespec const *tsp_or_nil){
 }
 
 u32
-su_path_umask(BITENUM_IS(u32,su_iopf_permission) perm){
+su_path_umask(BITENUM(u32,su_iopf_permission) perm){
 	u32 rv;
 	NYD_IN;
 

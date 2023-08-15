@@ -357,7 +357,7 @@ jerr:
 }
 
 void
-su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+su_state_gut(BITENUM(u32,su_state_gut_flags) flags){
 	struct su__state_on_gut *sogp;
 	NYD_IN;
 
@@ -403,7 +403,7 @@ su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 }
 
 s32
-su_state_err(s32 err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil){
+su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil){
 	enum su_log_level lvl;
 	u32 xerr;
 	char const *introp;

@@ -1628,7 +1628,7 @@ a_icodec(void){
 
 	//// Limit / signed / flags
 
-	BITENUM_IS(NSPC(su)u32,idec::mode) m;
+	BITENUM(NSPC(su)u32,idec::mode) m;
 
 	//
 	ccp = "0x7FFFFFFFFFFFFFFF ";

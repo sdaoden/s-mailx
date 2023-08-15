@@ -521,7 +521,7 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 }
 
 void *
-su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf
+su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, BITENUM(u32,su_mem_bag_alloc_flags) mbaf
 		su_DVL_LOC_ARGS_DECL){
 	void *rv;
 	NYD_IN;
@@ -694,7 +694,7 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 }
 
 void *
-su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf
+su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, BITENUM(u32,su_mem_bag_alloc_flags) mbaf
 		su_DVL_LOC_ARGS_DECL){
 	void *rv;
 	NYD_IN;

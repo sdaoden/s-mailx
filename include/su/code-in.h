@@ -153,8 +153,10 @@
 
 #define ATOMIC su_ATOMIC
 
-#define BITENUM_IS su_BITENUM_IS
+#define BITENUM_IS su_BITENUM /* FIXME DROP THIS */
+#define BITENUM su_BITENUM
 #define BITENUM_MASK su_BITENUM_MASK
+#define PADENUM su_PADENUM
 
 #define DBG su_DBG
 #define NDGB su_NDBG

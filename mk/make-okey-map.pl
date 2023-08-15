@@ -129,7 +129,7 @@ sub create_c_tool{
 #include <string.h>
 
 #define NELEM(A) (sizeof(A) / sizeof(A[0]))
-#define BITENUM_IS(P,E) P
+#define BITENUM(P,E) P
 
 #define u32 uint32_t
 #define u16 uint16_t
@@ -174,7 +174,7 @@ enum a_amv_var_flags{
 struct a_amv_var_map{
 	u32 avm_hash;
 	u16 avm_keyoff;
-	BITENUM_IS(u16,a_amv_var_flags) avm_flags;
+	BITENUM(u16,a_amv_var_flags) avm_flags;
 };
 
 struct a_amv_var_chain_map_bsrch{

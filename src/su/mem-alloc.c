@@ -456,7 +456,7 @@ su__mem_trace(boole dumpmem  su_DVL_LOC_ARGS_DECL){
 #endif /* su_MEM_ALLOC_DEBUG */
 
 void *
-su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
+su_mem_allocate(uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
 	u32 mark;
 	union a_mema_ptr p;
@@ -532,7 +532,7 @@ su_mem_allocate(uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_L
 }
 
 void *
-su_mem_reallocate(void *ovp, uz size, uz no, BITENUM_IS(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
+su_mem_reallocate(void *ovp, uz size, uz no, BITENUM(u32,su_mem_alloc_flags) maf  su_DVL_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
 	u32 mark;
 	union a_mema_ptr p;
@@ -703,7 +703,7 @@ su_mem_free(void *ovp  su_DVL_LOC_ARGS_DECL){
 }
 
 void
-su_mem_set_conf(BITENUM_IS(u32,su_mem_conf_option) mco, uz val){
+su_mem_set_conf(BITENUM(u32,su_mem_conf_option) mco, uz val){
 	uz rmco;
 	NYD_IN;
 

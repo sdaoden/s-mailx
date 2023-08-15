@@ -128,7 +128,7 @@ INLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
 #undef a_X
 
 /*! Test \a{x} for any of the \r{su_cs_ctype} bits given in \a{csct}. */
-INLINE boole su_cs_is_ctype(s32 x, BITENUM_IS(u32,ctype) csct){
+INLINE boole su_cs_is_ctype(s32 x, BITENUM(u32,ctype) csct){
 	return (su_cs_is_ascii(x) && (su__cs_ctype[x] & csct) != 0);
 }
 
@@ -410,7 +410,7 @@ public:
 	static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
 	/*! \copydoc{su_cs_is_ctype()} */
-	static boole is_ctype(s32 x, BITENUM_IS(u32,ctype) ct) {return su_cs_is_ctype(x, ct);}
+	static boole is_ctype(s32 x, BITENUM(u32,ctype) ct) {return su_cs_is_ctype(x, ct);}
 
 	/*! \copydoc{su_cs_cmp()} */
 	static sz cmp(char const *cp1, char const *cp2) {return su_cs_cmp(cp1, cp2);}

@@ -50,7 +50,7 @@ STA char const * const avopt::fmt_err_opt = su_avopt_fmt_err_opt;
 // code.h
 
 STA void
-log::write(BITENUM_IS(u32,level) lvl, char const *fmt, ...){ // XXX unroll
+log::write(BITENUM(u32,level) lvl, char const *fmt, ...){ // XXX unroll
 	va_list va;
 	NYD_IN;
 

@@ -36,7 +36,7 @@
 NSPC_USE(su)
 
 s32
-su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate){
+su_state_create(BITENUM(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags, u32 estate){
 	s32 rv;
 
 	if((rv = su_state_create_core(name_or_nil, flags, estate)) != su_ERR_NONE)

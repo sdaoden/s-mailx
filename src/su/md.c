@@ -54,7 +54,7 @@ static struct a_md_list *a_md_list;
 
 /* su__md_init() */
 #ifdef su__STATE_ON_GUT_FUN
-static void a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+static void a_md__on_gut(BITENUM(u32,su_state_gut_flags) flags);
 #endif
 
 static void a_md_del(void *self);
@@ -74,7 +74,7 @@ static struct su_md_vtbl const a_md_siphash = {
 
 #ifdef su__STATE_ON_GUT_FUN
 static void
-a_md__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_md__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 	UNUSED(flags);
 

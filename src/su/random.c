@@ -133,7 +133,7 @@ static su_random_generate_fun a_random_vsp_generate
 /* */
 static s32 a_random_init(u32 estate);
 #ifdef su__STATE_ON_GUT_FUN
-static void a_random__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+static void a_random__on_gut(BITENUM(u32,su_state_gut_flags) flags);
 #endif
 
 /* (_init() needs ctor, but public ctor needs _init()) */
@@ -213,7 +213,7 @@ jleave:
 
 #ifdef su__STATE_ON_GUT_FUN
 static void
-a_random__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_random__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 # if DVLOR(1, 0)
