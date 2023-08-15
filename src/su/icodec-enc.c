@@ -47,7 +47,7 @@ static char const a_icoe_upper[36 +1] = "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ
 static char const a_icoe_lower[64 +1] = "0123456789" "abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "@_";
 
 char *
-su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, BITENUM_IS(u32,su_ienc_mode) ienc_mode){
+su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, BITENUM(u32,su_ienc_mode) ienc_mode){
 	enum{a_ISNEG = 1u<<su__IENC_MODE_SHIFT};
 
 	u8 shiftmodu;

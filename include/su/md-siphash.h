@@ -70,7 +70,7 @@ enum su_siphash_digest{
 
 /*! \_ */
 struct su_siphash{
-	BITENUM_IS(u8,su_siphash_digest) sh_digest; /*!< \_ */
+	BITENUM(u8,su_siphash_digest) sh_digest; /*!< \_ */
 	u8 sh_compress_rounds; /*!< \_ */
 	u8 sh_finalize_rounds; /*!< \_ */
 	u8 sh__pad[1];

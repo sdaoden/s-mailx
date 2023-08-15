@@ -190,7 +190,7 @@ EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(struct su_mem_bag *self);
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-		BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
+		BITENUM(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_AUTO_ALLOCATE(BAGP,SZ,NO,F) su_mem_bag_auto_allocate(BAGP, SZ, NO, F  su_DVL_LOC_ARGS_INJ)
@@ -272,7 +272,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, v
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-		BITENUM_IS(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
+		BITENUM(u32,su_mem_bag_alloc_flags) mbaf  su_DVL_LOC_ARGS_DECL);
 
 /*! Free \a{ovp}; \r{su_HAVE_DEBUG} will log if it is not stack top. */
 EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp su_DVL_LOC_ARGS_DECL);
@@ -413,7 +413,7 @@ public:
 	mem_bag &auto_relax_unroll(void) {SELFTHIS_RET(su_mem_bag_auto_relax_unroll(this));}
 
 	/*! \copydoc{su_mem_bag_auto_allocate()} */
-	void *auto_allocate(uz size, uz no=1, BITENUM_IS(u32,alloc_flags) af=alloc_none){
+	void *auto_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){
 		return su_mem_bag_auto_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
 	}
 #endif /* su_HAVE_MEM_BAG_AUTO */
@@ -426,7 +426,7 @@ public:
 	mem_bag &lofi_snap_unroll(void *cookie) {SELFTHIS_RET(su_mem_bag_lofi_snap_unroll(this, cookie));}
 
 	/*! \copydoc{su_mem_bag_lofi_allocate()} */
-	void *lofi_allocate(uz size, uz no=1, BITENUM_IS(u32,alloc_flags) af=alloc_none){
+	void *lofi_allocate(uz size, uz no=1, BITENUM(u32,alloc_flags) af=alloc_none){
 		return su_mem_bag_lofi_allocate(this, size, no, af  su_DVL_LOC_ARGS_INJ);
 	}
 
