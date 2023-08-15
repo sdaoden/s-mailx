@@ -754,12 +754,15 @@ do if(!(X)){\
  * This macro awaits a future ISO C bit-enumeration: \a{X} is the pod used until then, \a{Y} the name of the
  * enumeration that is really meant.
  * \remarks{Also (mis)used to ensure a certain integer type(-size) is actually used for \c{enum} storage.} */
-#define su_BITENUM_IS(X,Y) X /* enum Y */
+#define su_BITENUM(X,Y) X /* enum Y */
 
 /*! Create a bit mask for the inclusive bit range \a{LO} to \a{HI}.
  * \remarks{\a{HI} cannot use highest bit!}
  * \remarks{Identical to \r{su_BITS_RANGE_MASK()}.} */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
+
+/*! It is not possible to enforce a type size for enumerations, thus enforce \a{X}, but mean \a{Y}. */
+#define su_PADENUM(X,Y) X /* enum Y */
 
 /*! For injection macros like \r{su_DBG()}, NDBG, DBGOR, 64, 32, 6432. */
 #define su_COMMA ,
@@ -1465,7 +1468,7 @@ union su__bom_union{
 };
 
 /*! See \r{su_state_on_gut_install()}. */
-typedef void (*su_state_on_gut_fun)(BITENUM_IS(u32,su_state_gut_flags) flags);
+typedef void (*su_state_on_gut_fun)(BITENUM(u32,su_state_gut_flags) flags);
 
 /*! See \r{su_log_set_write_fun()}.
  * \a{lvl_a_flags} is a bitmix of a \r{su_log_level} and \r{su_log_flags}.
@@ -1554,7 +1557,7 @@ EXPORT s32 su_state_create_core(char const *name_or_nil, uz flags, u32 estate);
  * Because of this the public interface may generate errors that need to be handled, which may be undesireable.
  * If this function is used instead of \r{su_state_create_core()}, then internals of a desired subset of subsystems
  * is initialized immediately, which asserts these errors cannot occur. */
-EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags,
+EXPORT s32 su_state_create(BITENUM(u32,su_state_create_flags) create_flags, char const *name_or_nil, uz flags,
 		u32 estate);
 
 /*! Tear down \SU according to \a{flags}.
@@ -1562,7 +1565,7 @@ EXPORT s32 su_state_create(BITENUM_IS(u32,su_state_create_flags) create_flags, c
  * but \a{flags} can be used for configuration.
  * \SU needs to be reinitialized after this has been called.
  * Also see \r{su_state_on_gut_install()}. */
-EXPORT void su_state_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+EXPORT void su_state_gut(BITENUM(u32,su_state_gut_flags) flags);
 
 /*! Install an \a{is_final} \a{hdl} to be called upon \r{su_state_gut()} time in last-in first-out order.
  * Final handlers execute after all (normal) handlers have been processed.
@@ -1613,7 +1616,7 @@ INLINE void su_state_clear(uz flags){ /* xxx not inline; no lock -> atomics? */
  * Since individual (non-\r{su_state_err_type}) errors cannot be suppressed via states, either of \a{state} or
  * \r{su_state_get()} must flag \r{su_STATE_ERR_PASS} to make such errors non-fatal.
  * If this function returns, then with an according \r{su_err_number} (aka non-negated \a{err} itself). */
-EXPORT s32 su_state_err(s32 err, BITENUM_IS(uz,su_state_err_flags) state, char const *msg_or_nil);
+EXPORT s32 su_state_err(s32 err, BITENUM(uz,su_state_err_flags) state, char const *msg_or_nil);
 
 /*! Get the \SU error number of the calling thread.
  * \remarks{For convenience we avoid the usual \c{_get_} name style.} */
@@ -2124,7 +2127,7 @@ public:
 	};
 
 	/*! See \r{su_state_on_gut_fun()}. */
-	typedef void (*on_gut_fun)(BITENUM_IS(u32,gut_flags) flags);
+	typedef void (*on_gut_fun)(BITENUM(u32,gut_flags) flags);
 
 	/*! \copydoc{su_state_create_core()} */
 	static s32 create_core(char const *program_or_nil, uz flags, u32 estate=none){
@@ -2132,12 +2135,12 @@ public:
 	}
 
 	/*! \copydoc{su_state_create()} */
-	static s32 create(BITENUM_IS(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
+	static s32 create(BITENUM(u32,create_flags) create_flags, char const *program_or_nil, uz flags, u32 estate=none){
 		return su_state_create(create_flags, program_or_nil, flags, estate);
 	}
 
 	/*! \copydoc{su_state_gut()} */
-	static void gut(BITENUM_IS(u32,gut_flags) flags=gut_act_norm) {su_state_gut(S(enum su_state_gut_flags,flags));}
+	static void gut(BITENUM(u32,gut_flags) flags=gut_act_norm) {su_state_gut(S(enum su_state_gut_flags,flags));}
 
 	/*! \copydoc{su_state_get()} */
 	static u32 get(void) {return su_state_get();}
@@ -2152,7 +2155,7 @@ public:
 	static void clear(uz state) {su_state_clear(state);}
 
 	/*! \copydoc{su_state_err()} */
-	static s32 err(s32 err, BITENUM_IS(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
+	static s32 err(s32 err, BITENUM(uz,err_flags) state=err_none, char const *msg_or_nil=NIL){
 		return su_state_err(err, state, msg_or_nil);
 	}
 

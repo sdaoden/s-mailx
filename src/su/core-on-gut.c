@@ -37,12 +37,12 @@ static struct su__state_on_gut a_corgut_mgr;
 #endif
 
 #ifdef su__STATE_ON_GUT_FUN
-static void a_corgut_fun(BITENUM_IS(u32,su_state_gut_flags) flags);
+static void a_corgut_fun(BITENUM(u32,su_state_gut_flags) flags);
 #endif
 
 #ifdef su__STATE_ON_GUT_FUN
 static void
-a_corgut_fun(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_corgut_fun(BITENUM(u32,su_state_gut_flags) flags){
 	NYD_IN;
 
 # if DVLOR(1, 0)

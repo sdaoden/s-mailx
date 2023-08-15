@@ -87,8 +87,8 @@ su__re_error_doc(u8 error){
 	return rv;
 }
 
-BITENUM_IS(u8,su_re_errors)
-su_re_setup_cp(struct su_re *self, char const *expr, BITENUM_IS(u8,su_re_setup_flags) flags){
+BITENUM(u8,su_re_errors)
+su_re_setup_cp(struct su_re *self, char const *expr, BITENUM(u8,su_re_setup_flags) flags){
 	regex_t re;
 	uz i;
 	int ef;
@@ -166,8 +166,7 @@ jleave:
 }
 
 boole
-su_re_eval_cp(struct su_re *self, char const *input,
-		BITENUM_IS(u8,su_re_eval_flags) flags){
+su_re_eval_cp(struct su_re *self, char const *input, BITENUM(u8,su_re_eval_flags) flags){
 	boole const direct_use = sizeof(struct su_re_match) == sizeof(regmatch_t) &&
 			FIELD_SIZEOF(struct su_re_match,rem_start) == FIELD_SIZEOF(regmatch_t,rm_so) &&
 			FIELD_SIZEOF(struct su_re_match,rem_end) == FIELD_SIZEOF(regmatch_t,rm_eo);

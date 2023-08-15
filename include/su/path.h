@@ -200,7 +200,7 @@ INLINE boole su_path_is_absolute(char const *path){
 /* physical */
 
 /*! Test bitmix of \r{su_iopf_access}. */
-EXPORT boole su_path_access(char const *path, BITENUM_IS(u32,su_iopf_access) mode);
+EXPORT boole su_path_access(char const *path, BITENUM(u32,su_iopf_access) mode);
 
 /*! Change current working directory. */
 EXPORT boole su_path_chdir(char const *path);
@@ -232,7 +232,7 @@ EXPORT uz su_path_max_pathname(char const *path);
  * A \c{su_ERR_EXIST} error results in success if \a{path} is a directory.
  * In \a{recursive} operation mode heap memory may be needed:
  * errors as via \r{su_state_err_type} can thus occur; \ESTATE. */
-EXPORT boole su_path_mkdir(char const *path, BITENUM_IS(u32,su_iopf_permission) mode, boole recursive, u32 estate);
+EXPORT boole su_path_mkdir(char const *path, BITENUM(u32,su_iopf_permission) mode, boole recursive, u32 estate);
 
 /*! Rename (\c{rename(2)}) \a{src} to \a{dst}. */
 EXPORT boole su_path_rename(char const *dst, char const *src);
@@ -243,7 +243,7 @@ EXPORT boole su_path_rename(char const *dst, char const *src);
  * therefore acting like \r{su_path_rm()} or \r{su_path_rmdir()}.
  * \a{dirfd} can either be \r{su_PATH_AT_FDCWD}, or must be a file descriptor opened on a directory.
  * \remarks{Only available if \c{su_HAVE_PATH_RM_AT} is defined.} */
-EXPORT boole su_path_rm_at(sz dirfd, char const *path, BITENUM_IS(u32,su_iopf_at) flags);
+EXPORT boole su_path_rm_at(sz dirfd, char const *path, BITENUM(u32,su_iopf_at) flags);
 #endif
 
 /*! Delete (\c{unlink(2)}) a file. */
@@ -257,7 +257,7 @@ EXPORT boole su_path_rmdir(char const *path);
 EXPORT boole su_path_touch(char const *path, struct su_timespec const *tsp_or_nil);
 
 /*! Set the file-mode creation mask, and return the former one. *//* XXX POSIX */
-EXPORT u32 su_path_umask(BITENUM_IS(u32,su_iopf_permission) perm);
+EXPORT u32 su_path_umask(BITENUM(u32,su_iopf_permission) perm);
 /* }}} */
 
 /*! @} *//* }}} */
@@ -390,7 +390,7 @@ public:
 	// physical
 
 	/*! \copydoc{su_path_access()} */
-	static boole access(char const *path, BITENUM_IS(u32,iopf_access) mode){
+	static boole access(char const *path, BITENUM(u32,iopf_access) mode){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_access(path, mode);
 	}
@@ -415,7 +415,7 @@ public:
 	static uz max_pathname(char const *path=NIL) {return su_path_max_pathname(path);}
 
 	/*! \copydoc{su_path_mkdir()} */
-	static boole mkdir(char const *path, BITENUM_IS(u32,iopf_permission) perm=iopf_perm_mask,
+	static boole mkdir(char const *path, BITENUM(u32,iopf_permission) perm=iopf_perm_mask,
 			boole recursive=FAL0, u32 estate=state::none){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_mkdir(path, perm, recursive, estate);
@@ -430,7 +430,7 @@ public:
 
 #if defined su_HAVE_PATH_RM_AT || defined DOXYGEN
 	/*! \copydoc{su_path_rm_at()} */
-	static boole rm_at(sz dirfd, char const *path, BITENUM_IS(u32,iopf_at) flags=iopf_at_none){
+	static boole rm_at(sz dirfd, char const *path, BITENUM(u32,iopf_at) flags=iopf_at_none){
 		ASSERT_RET(path != NIL, FAL0);
 		return su_path_rm_at(dirfd, path, flags);
 	}
@@ -449,7 +449,7 @@ public:
 	}
 
 	/*! \copydoc{su_path_umask()} */
-	static u32 umask(BITENUM_IS(u32,iopf_permission) perm) {return su_path_umask(perm);}
+	static u32 umask(BITENUM(u32,iopf_permission) perm) {return su_path_umask(perm);}
 };
 /* }}} */
 

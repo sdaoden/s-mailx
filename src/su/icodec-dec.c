@@ -78,8 +78,8 @@ static u64 const a_icod_cutlimit[63] = {
 };
 #undef a_X
 
-BITENUM_IS(u32,su_idec_state)
-su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM_IS(u32,su_idec_mode) idec_mode,
+BITENUM(u32,su_idec_state)
+su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM(u32,su_idec_mode) idec_mode,
 		char const **endptr_or_nil){
 	/* XXX Brute simple and waaayy too expensive */
 	enum {a_NUMSIG = 1u<<su__IDEC_PRIVATE_SHIFT1};
@@ -87,7 +87,7 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, BITENUM_IS(u32,su_idec_m
 	uz rescan_clen;
 	u8 currc;
 	u64 res, cut;
-	BITENUM_IS(u32,su_idec_state) rv;
+	BITENUM(u32,su_idec_state) rv;
 	u8 const *atoip;
 	NYD_IN;
 	ASSERT(resp != NIL);

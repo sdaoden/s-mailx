@@ -108,7 +108,7 @@ typedef boole (*su_random_generate_fun)(void **cookie, void *buf, uz len);
 
 /*! \_ */
 struct su_random{
-	BITENUM_IS(u8,su_random_type) rm_type; /*!< \_ */
+	BITENUM(u8,su_random_type) rm_type; /*!< \_ */
 	u8 rm_flags;
 	u8 rm_ro1;
 	u8 rm_ro2;
