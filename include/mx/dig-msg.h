@@ -43,7 +43,7 @@ struct mx_dig_msg_ctx{
 	struct mx_dig_msg_ctx *dmc_next;
 	struct message *dmc_mp; /* XXX NIL if DIG_MSG_COMPOSE */
 	struct mimepart *dmc_mime; /* XXX ditto */
-	BITENUM_IS(u32,mx_dig_msg_flags) dmc_flags;
+	BITENUM(u32,mx_dig_msg_flags) dmc_flags;
 	u32 dmc_msgno; /* XXX Only if !DIG_MSG_COMPOSE */
 	FILE *dmc_fp;
 	struct header *dmc_hp;

@@ -270,7 +270,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    char const *id;
    char **nmadat_lofi, **nmadat, **np, **nq, *cp;
    struct message *mp, *mx;
-   BITENUM_IS(u32,mflag) mf;
+   BITENUM(u32,mflag) mf;
    int i, valdot, beg, colmod, tok, colresult;
    enum{
       a_NONE = 0,

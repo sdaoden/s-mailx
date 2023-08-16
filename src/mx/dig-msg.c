@@ -1154,7 +1154,7 @@ jatt_attset:
 			goto jatt_attset;
 		goto j501;
 	}else if(su_cs_starts_with_case("insert", cp)){
-		BITENUM_IS(u32,mx_attach_error) aerr;
+		BITENUM(u32,mx_attach_error) aerr;
 
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;

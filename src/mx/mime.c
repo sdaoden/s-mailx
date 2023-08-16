@@ -85,7 +85,7 @@ static char *a_mime_cs_iter_base, *a_mime_cs_iter;
 
 /* fwrite(3) while checking for displayability */
 static sz a_mime_fwrite_display(struct str const *input,
-      BITENUM_IS(u32,mx_mime_display_flags) flags,
+      BITENUM(u32,mx_mime_display_flags) flags,
       struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
@@ -121,7 +121,7 @@ __mimefwtd_onsig(int sig){ /* TODO someday, we won't need it no more */
 
 static sz
 a_mime_fwrite_display(struct str const *input,
-      BITENUM_IS(u32,mx_mime_display_flags) flags,
+      BITENUM(u32,mx_mime_display_flags) flags,
       struct str *outrest, struct quoteflt *qf){
    /* TODO note: after send/MIME layer rewrite we will have a string pool
     * TODO so that memory allocation count drops down massively; for now,
@@ -338,7 +338,7 @@ a_mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
    u32 cset7_len, cset8_len;
    uz col, i, j;
    sz size;
-   BITENUM_IS(u32,a_flags) flags;
+   BITENUM(u32,a_flags) flags;
    NYD_IN;
 
    cout.s = NIL, cout.l = 0;
@@ -972,7 +972,7 @@ jslow:/* C99 */{
 
 boole
 mx_mime_display_from_header(struct str const *in, struct str *out,
-      BITENUM_IS(u32,mx_mime_display_flags) flags){
+      BITENUM(u32,mx_mime_display_flags) flags){
    /* TODO mime_fromhdr(): is called with strings that contain newlines;
     * TODO this is the usual newline problem all around the codebase;
     * TODO i.e., if we strip it, then the display misses it ;>
@@ -1255,7 +1255,7 @@ jleave:
 
 sz
 mx_xmime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
-      BITENUM_IS(u32,mx_mime_display_flags) dflags,
+      BITENUM(u32,mx_mime_display_flags) dflags,
       struct str * volatile outrest, struct str * volatile inrest){
    sz rv;
    struct quoteflt *qf;
@@ -1281,7 +1281,7 @@ __mimemw_onsig(int sig){ /* TODO someday, we won't need it no more */
 
 sz
 mx_mime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
-      BITENUM_IS(u32,mx_mime_display_flags) volatile dflags,
+      BITENUM(u32,mx_mime_display_flags) volatile dflags,
       struct quoteflt *qf, struct str * volatile outrest,
       struct str * volatile inrest){
    /* TODO note: after send/MIME layer rewrite we will have a string pool

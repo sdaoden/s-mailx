@@ -107,10 +107,10 @@ static struct mx_ignore *a_ignore_list;
 static boole a_ignore_on_gut_installed;
 #endif
 
-DVL( static void a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_ignore__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* */
-static struct mx_ignore *a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f);
+static struct mx_ignore *a_ignore_new(char const *name, BITENUM(u32,a_ignore_new_flags) f);
 
 /* Return real self, which is xself unless that is a built-in special, in which case NIL is returned if nonexistent
  * and docreate is false.  The other statics assume self has been resolved (unless noted) */
@@ -142,7 +142,7 @@ static boole a_ignore_insert(struct a_ignore_type *itp, char const *dat, uz len,
 
 #if DVLOR(1, 0)
 static void
-a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_ignore__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
@@ -166,7 +166,7 @@ a_ignore__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 #endif
 
 static struct mx_ignore *
-a_ignore_new(char const *name, BITENUM_IS(u32,a_ignore_new_flags) f){
+a_ignore_new(char const *name, BITENUM(u32,a_ignore_new_flags) f){
 	struct mx_ignore *self;
 	uz l;
 	NYD2_IN;

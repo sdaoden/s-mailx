@@ -738,7 +738,7 @@ a_vexpr__regex_replace(void *uservp){
 	struct str templ;
 	struct n_string s_b;
 	char *rv;
-	BITENUM_IS(u32,n_shexp_state) shs;
+	BITENUM(u32,n_shexp_state) shs;
 	NYD2_IN;
 
 	templ.s = S(char*,uservp);

@@ -79,7 +79,7 @@ struct mx_visual_info_ctx{
 	wc_t *vic_woudat; /*[O] if so requested */
 	uz vic_woulen; /*[O] entries in .vic_woudat, if used */
 	wc_t vic_waccu; /*O The last wchar_t/char processed (if any) */
-	BITENUM_IS(u32,mx_visual_info_flags) vic_flags; /*O Copy of parse flags */
+	BITENUM(u32,mx_visual_info_flags) vic_flags; /*O Copy of parse flags */
 	/* TODO bidi */
 #ifdef mx_HAVE_C90AMEND1
 	mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
@@ -93,7 +93,7 @@ EXPORT void mx_locale_init(void);
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
  * vicp must be zeroed before first use */
-EXPORT boole mx_visual_info(struct mx_visual_info_ctx *vicp, BITENUM_IS(u32,mx_visual_info_flags) vif);
+EXPORT boole mx_visual_info(struct mx_visual_info_ctx *vicp, BITENUM(u32,mx_visual_info_flags) vif);
 
 /* Check (MB-safe) how many bytes of buf (blen bytes) can be safely placed in a buffer (field width) of maxlen bytes */
 EXPORT uz mx_field_detect_clip(uz maxlen, char const *buf, uz blen);

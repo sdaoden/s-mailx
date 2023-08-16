@@ -59,7 +59,7 @@ static struct mx_file_dotlock_info *a_filo_fdip;
 #endif
 
 /* Workhorse */
-static boole a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm);
+static boole a_filo_lock(int fd, BITENUM(u32,mx_file_lock_mode) flm);
 
 /* main() of fork(2)ed dot file locker */
 #ifdef mx_HAVE_DOTLOCK
@@ -71,7 +71,7 @@ static int a_filo_main(void);
 #endif
 
 static boole
-a_filo_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
+a_filo_lock(int fd, BITENUM(u32,mx_file_lock_mode) flm){
 	boole rv;
 	NYD2_IN;
 
@@ -135,7 +135,7 @@ a_filo_main(void){
 	enum mx_file_dotlock_state fdls;
 	char const *cp;
 	int fd;
-	BITENUM_IS(u32,mx_file_lock_mode) flm;
+	BITENUM(u32,mx_file_lock_mode) flm;
 	NYD_IN;
 
 	/* Ignore SIGPIPE, we will see ERR_PIPE and "fall through" */
@@ -287,7 +287,7 @@ jmsg:
 #endif /* mx_HAVE_DOTLOCK */
 
 boole
-mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
+mx_file_lock(int fd, BITENUM(u32,mx_file_lock_mode) flm){
 	uz tries;
 	boole didmsg, rv;
 	NYD2_IN;
@@ -323,7 +323,7 @@ mx_file_lock(int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
 }
 
 FILE *
-mx_file_dotlock(char const *fname, int fd, BITENUM_IS(u32,mx_file_lock_mode) flm){
+mx_file_dotlock(char const *fname, int fd, BITENUM(u32,mx_file_lock_mode) flm){
 #undef a_DOMSG
 #define a_DOMSG() \
 	do if(!didmsg){\

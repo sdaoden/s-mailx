@@ -87,7 +87,7 @@ CTA(a_MAILCAP_F_MAX <= S32_MAX, "a_mailcap_hdl.mch_flags bit range excessed");
 
 struct a_mailcap_hdl{
 	struct a_mailcap_hdl *mch_next;
-	BITENUM_IS(u32,a_mailcap_handler_flags) mch_flags;
+	BITENUM(u32,a_mailcap_handler_flags) mch_flags;
 	u8 mch__pad[2];
 	/* All strings are placed in successive memory after "self".  Since mch_cmd always exists 0 is the invalid
 	 * offset for the rest.  The sum of all strings fits in S32_MAX.  sfield_has_format is a bitset */
@@ -110,7 +110,7 @@ struct a_mailcap_load_stack{
 };
 
 struct a_mailcap_flags{
-	BITENUM_IS(u32,a_mailcap_handler_flags) mcf_flags;
+	BITENUM(u32,a_mailcap_handler_flags) mcf_flags;
 	char mcf_name[28];
 };
 
@@ -143,7 +143,7 @@ static boole a_mailcap__parse_flag(struct a_mailcap_load_stack *mclsp, char *fla
 static boole a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp, struct a_mailcap_hdl **ins_or_nil);
 
 static void a_mailcap_gut(boole gut_dp);
-DVL( static void a_mailcap__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_mailcap__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct n_strlist *a_mailcap_dump(char const *cmdname, char const *key, void const *dat);
@@ -679,7 +679,7 @@ static boole
 a_mailcap__parse_create_hdl(struct a_mailcap_load_stack *mclsp, struct a_mailcap_hdl **ins_or_nil){
 	struct a_mailcap_hdl *mchp;
 	char const *emsg;
-	BITENUM_IS(u32,a_mailcap_handler_flags) f;
+	BITENUM(u32,a_mailcap_handler_flags) f;
 	boole rv;
 	NYD2_IN;
 
@@ -794,7 +794,7 @@ a_mailcap_gut(boole gut_dp){
 
 #if DVLOR(1, 0)
 static void
-a_mailcap__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_mailcap__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)

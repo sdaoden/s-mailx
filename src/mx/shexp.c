@@ -85,7 +85,7 @@ enum a_shexp_quote_flags{
 
 struct a_shexp_name_exp_ctx{
 	char const *snec_name;
-	BITENUM_IS(u32,fexp_mode) snec_fexpm;
+	BITENUM(u32,fexp_mode) snec_fexpm;
 	boole snec_multi_ok;
 	u8 snec__pad[3];
 	char **snec_res;
@@ -258,7 +258,7 @@ jnext:
 			shin.l = UZ_MAX;
 			shoup = n_string_creat_auto(&shou);
 			for(;;){
-				BITENUM_IS(u32,n_shexp_state) shs;
+				BITENUM(u32,n_shexp_state) shs;
 
 				/* TODO shexp: take care: not include backtick eval once avail! */
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
@@ -1124,7 +1124,7 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
+fexpand(char const *name, BITENUM(u32,fexp_mode) fexpm){
 	struct a_shexp_name_exp_ctx snec;
 	NYD_IN;
 
@@ -1138,7 +1138,7 @@ fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
 }
 
 FL char **
-mx_shexp_name_expand_multi(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
+mx_shexp_name_expand_multi(char const *name, BITENUM(u32,fexp_mode) fexpm){
 	struct a_shexp_name_exp_ctx snec;
 	NYD_IN;
 
@@ -1151,8 +1151,8 @@ mx_shexp_name_expand_multi(char const *name, BITENUM_IS(u32,fexp_mode) fexpm){
 	return snec.snec_res;
 }
 
-FL BITENUM_IS(u32,n_shexp_state)
-n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+FL BITENUM(u32,n_shexp_state)
+n_shexp_parse_token(BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
 		struct n_string *store, struct str *input, void const **cookie){
 	/* TODO shexp_parse_token: WCHAR (+separate in logical units if possible)
 	 * TODO This needs to be rewritten in order to support $(( )) and $( )
@@ -1190,7 +1190,7 @@ n_shexp_parse_token(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope sco
 	};
 
 	char c2, c, quotec, stackbuf[su_IENC_BUFFER_SIZE];
-	BITENUM_IS(u32,n_shexp_state) rv;
+	BITENUM(u32,n_shexp_state) rv;
 	uz i, il;
 	u32 state, last_known_meta_trim_len;
 	char const *ifs, *ifs_ws, *ib_save, *ib;
@@ -2002,12 +2002,12 @@ jleave_quick:
 }
 
 FL char *
-n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+n_shexp_parse_token_cp(BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
 		char const **cp){
 	struct str input;
 	struct n_string sou, *soup;
 	char *rv;
-	BITENUM_IS(u32,n_shexp_state) shs;
+	BITENUM(u32,n_shexp_state) shs;
 	NYD2_IN;
 
 	ASSERT(cp != NIL);
@@ -2033,7 +2033,7 @@ n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope 
 FL boole
 n_shexp_unquote_one(struct n_string *store, char const *input){
 	struct str dat;
-	BITENUM_IS(u32,n_shexp_state) shs;
+	BITENUM(u32,n_shexp_state) shs;
 	boole rv;
 	NYD_IN;
 
@@ -2164,7 +2164,7 @@ c_shcodec(void *vp){
 		soup = n_shexp_quote(soup, &in, !norndtrip);
 	else if(!norndtrip && su_cs_starts_with_case("decode", cap->ca_arg.ca_str.s)){
 		for(;;){
-			BITENUM_IS(u32,n_shexp_state) shs;
+			BITENUM(u32,n_shexp_state) shs;
 
 			shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGN_EMPTY),
 					cacp->cac_scope_pp, soup, &in, NIL);

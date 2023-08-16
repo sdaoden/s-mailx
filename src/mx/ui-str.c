@@ -197,7 +197,7 @@ mx_locale_init(void){
 
 boole
 mx_visual_info(struct mx_visual_info_ctx *vicp,
-      BITENUM_IS(u32,mx_visual_info_flags) vif){
+      BITENUM(u32,mx_visual_info_flags) vif){
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
 #endif

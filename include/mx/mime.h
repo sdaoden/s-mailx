@@ -74,7 +74,7 @@ EXPORT boole mx_mime_header_needs_mime(char const *body, char const **charset_or
 
 /* Convert header fields from RFC 5322 format; out-> must be su_FREE()d.
  * FAL0 on hard error, in which case out->s is NIL */
-EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out, BITENUM_IS(u32,mx_mime_display_flags) flags);
+EXPORT boole mx_mime_display_from_header(struct str const *in, struct str *out, BITENUM(u32,mx_mime_display_flags) flags);
 
 /* Interpret MIME strings in parts of an address field.
  * NIL on error or NIL input */
@@ -82,10 +82,10 @@ EXPORT char *mx_mime_fromaddr(char const *name);
 
 /* fwrite(3) performing the given MIME conversion TODO mess! filter!! */
 EXPORT sz mx_mime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
-		BITENUM_IS(u32,mx_mime_display_flags) dflags, struct quoteflt *qf, struct str *outrest,
+		BITENUM(u32,mx_mime_display_flags) dflags, struct quoteflt *qf, struct str *outrest,
 		struct str *inrest);
 EXPORT sz mx_xmime_write /* TODO drop */(char const *ptr, uz size, FILE *f, enum conversion convert,
-		BITENUM_IS(u32,mx_mime_display_flags) dflags, struct str *outrest, struct str *inrest);
+		BITENUM(u32,mx_mime_display_flags) dflags, struct str *outrest, struct str *inrest);
 
 #include <su/code-ou.h>
 #endif /* mx_MIME_H */

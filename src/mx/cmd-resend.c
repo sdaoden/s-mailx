@@ -106,7 +106,7 @@ static int a_crese_resend1(void *v, boole add_resent);
 static char *
 a_crese_sub_edit(struct message *mp, boole isfwd){
    char *newsubj;
-   BITENUM_IS(u32,mx_header_subject_edit_flags) hsef;
+   BITENUM(u32,mx_header_subject_edit_flags) hsef;
    char const *subj;
    NYD2_IN;
 
@@ -505,7 +505,7 @@ a_crese_list_reply(void *vp, enum header_flags hf){
    char const *cp, *cp2;
    struct mx_name *the_rt, *mft, *np;
    enum gfield gf;
-   BITENUM_IS(u32,a_flags) flags;
+   BITENUM(u32,a_flags) flags;
    int *msgvec;
    struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
@@ -867,7 +867,7 @@ a_crese_fwd(void *vp, boole recipient_record){
    enum gfield gf;
    int *msgvec, rv;
    struct mx_cmd_arg *cap;
-   BITENUM_IS(u32,a_flags) flags;
+   BITENUM(u32,a_flags) flags;
    struct mx_cmd_arg_ctx *cacp;
    NYD2_IN;
 

@@ -170,7 +170,7 @@ struct a_go_input_inject{
 struct a_go_ctx{
 	struct a_go_ctx *gc_outer;
 	sigset_t gc_osigmask;
-	BITENUM_IS(u32,a_go_flags) gc_flags;
+	BITENUM(u32,a_go_flags) gc_flags;
 	u32 gc_loff; /* Pseudo (macro): index in .gc_lines */
 	char **gc_lines; /* Pseudo content, lines unfolded */
 	FILE *gc_file; /* File we were in, if applicable */
@@ -224,7 +224,7 @@ static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
 struct mx_go_data_ctx *mx_go_data;
 
-DVL( static void a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_go__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
@@ -240,7 +240,7 @@ static void a_go_onintr(int s);
 
 /* Cleanup gcp (current execution context; xxx update the program state).  If _CLEANUP_ERROR is set then we do not
  * alert and error out if the stack does not exist at all, unless _CLEANUP_HOLDALLSIGS we sigs_all_hold() */
-static void a_go_cleanup(struct a_go_ctx *gcp, BITENUM_IS(u32,a_go_cleanup_mode) gcm);
+static void a_go_cleanup(struct a_go_ctx *gcp, BITENUM(u32,a_go_cleanup_mode) gcm);
 
 /* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
  * Returns FAL0 if file is not usable (unless silent_open_error) or upon evaluation error, and TRU1 on success */
@@ -250,11 +250,11 @@ static boole a_go_file(char const *file, boole silent_open_error);
 static boole a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
-static boole a_go_event_loop(struct a_go_ctx *gcp, BITENUM_IS(u32,mx_go_input_flags) gif);
+static boole a_go_event_loop(struct a_go_ctx *gcp, BITENUM(u32,mx_go_input_flags) gif);
 
 #if DVLOR(1, 0)
 static void
-a_go__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_go__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)
@@ -330,7 +330,7 @@ a_go_evaluate(struct a_go_ctx *gcp, struct a_go_eval_ctx *gecp){ /* {{{ */
 	int rv, c;
 	/*enum mx_scope*/u8 scope_pp, scope_vput, scope_cmd;
 	u32 eval_cnt;
-	BITENUM_IS(u32,a_flags) flags;
+	BITENUM(u32,a_flags) flags;
 	NYD_IN;
 
 	/* Take care not to overwrite existing exit status */
@@ -1152,7 +1152,7 @@ a_go_onintr(int s){ /* TODO block signals while acting */
 }
 
 static void
-a_go_cleanup(struct a_go_ctx *gcp, BITENUM_IS(u32,a_go_cleanup_mode) gcm){
+a_go_cleanup(struct a_go_ctx *gcp, BITENUM(u32,a_go_cleanup_mode) gcm){
 	/* Signals blocked */
 	NYD_IN;
 
@@ -1451,7 +1451,7 @@ a_go__eloopint(int sig){ /* TODO one day, we don't need it no more */
 }
 
 static boole
-a_go_event_loop(struct a_go_ctx *gcp, BITENUM_IS(u32,mx_go_input_flags) gif){
+a_go_event_loop(struct a_go_ctx *gcp, BITENUM(u32,mx_go_input_flags) gif){
 	n_sighdl_t soldhdl;
 	struct a_go_eval_ctx gec;
 	enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
@@ -1808,7 +1808,7 @@ mx_go_input_have_injections(void){ /* xxx inline */
 }
 
 void
-mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags) giif,
+mx_go_input_inject(BITENUM(u32,mx_go_input_inject_flags) giif,
 		char const *buf, uz len){
 	NYD_IN;
 
@@ -1836,7 +1836,7 @@ mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags) giif,
 }
 
 int
-(mx_go_input)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize,
+(mx_go_input)(BITENUM(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize,
 		char const *string, boole *histok_or_nil su_DVL_LOC_ARGS_DECL){
 	/* TODO readline: linebuf pool!; mx_go_input should return s64.
 	 * TODO This thing should be replaced by a(n) (stack of) event generator(s)
@@ -1854,7 +1854,7 @@ int
 	char const *iftype;
 	struct a_go_input_inject *giip;
 	int nold, n;
-	BITENUM_IS(u32, af_) f;
+	BITENUM(u32, af_) f;
 	NYD2_IN;
 
 	if(!(gif & mx_GO_INPUT_HOLDALLSIGS))
@@ -2089,7 +2089,7 @@ jleave:
 }
 
 char *
-mx_go_input_cp(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt, char const *string){
+mx_go_input_cp(BITENUM(u32,mx_go_input_flags) gif, char const *prompt, char const *string){
 	struct n_sigman sm;
 	boole histadd;
 	uz linesize;
@@ -2277,7 +2277,7 @@ mx_go_load_lines(boole injectit, char const **lines, uz cnt){
 }
 
 boole
-mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **lines, void (*on_finalize)(void*),
+mx_go_macro(BITENUM(u32,mx_go_input_flags) gif, char const *name, char **lines, void (*on_finalize)(void*),
 		void *finalize_arg){
 	struct a_go_ctx *gcp;
 	uz i;
@@ -2347,7 +2347,7 @@ mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **line
 }
 
 boole
-mx_go_command(BITENUM_IS(u32,mx_go_input_flags) gif, char const *cmd){
+mx_go_command(BITENUM(u32,mx_go_input_flags) gif, char const *cmd){
 	struct a_go_ctx *gcp;
 	boole rv;
 	uz i, ial;
