@@ -72,6 +72,7 @@ enum a_vexpr_cmd{
 	a_VEXPR_CMD_AGN_DATE_UTC = a_VEXPR_CMD_AGN__MIN,
 	a_VEXPR_CMD_AGN_DATE_STAMP_UTC,
 	a_VEXPR_CMD_AGN_EPOCH,
+	a_VEXPR_CMD_AGN_SECONDS,
 	a_VEXPR_CMD_AGN_RANDOM,
 	a_VEXPR_CMD_AGN__MAX,
 
@@ -165,6 +166,7 @@ static struct a_vexpr_subcmd const a_vexpr_subcmds[] = {
 	{a_X(a_VEXPR_CMD_AGN_DATE_UTC, 0), "date-utc"},
 	{a_X(a_VEXPR_CMD_AGN_DATE_STAMP_UTC, 0), "date-stamp-utc"},
 	{a_X(a_VEXPR_CMD_AGN_EPOCH, 0), "epoch"},
+		{a_X(a_VEXPR_CMD_AGN_SECONDS, 0), "seconds"},
 	{a_X(a_VEXPR_CMD_AGN_RANDOM, 0), "random"},
 
 	{a_X(a_VEXPR_CMD_STR_MAKEPRINT, 0), "makeprint"},
@@ -542,6 +544,7 @@ jedutc_num:
 		break;
 
 	case a_VEXPR_CMD_AGN_EPOCH:
+	case a_VEXPR_CMD_AGN_SECONDS:
 		if(vcp->vc_argv[0] == NIL)
 			su_timespec_current(&ts);
 		else{
@@ -578,12 +581,15 @@ jeepoch_num:
 
 		s = n_string_book(n_string_creat_auto(&s_b), 31);
 
-		s = n_string_push_cp(s, "epoch_sec=");
+		if(vcp->vc_cmderr != a_VEXPR_CMD_AGN_SECONDS)
+			s = n_string_push_cp(s, "epoch_sec=");
 		s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, ts.ts_sec, 10));
-		s = n_string_push_c(s, ' ');
+		if(vcp->vc_cmderr != a_VEXPR_CMD_AGN_SECONDS){
+			s = n_string_push_c(s, ' ');
 
-		s = n_string_push_cp(s, "epoch_nsec=");
-		s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, ts.ts_nano, 10));
+			s = n_string_push_cp(s, "epoch_nsec=");
+			s = n_string_push_cp(s, su_ienc_s64(vcp->vc_iencbuf, ts.ts_nano, 10));
+		}
 
 		vcp->vc_varres = n_string_cp(s);
 		/* n_string_gut(n_string_drop_ownership(s)); */
