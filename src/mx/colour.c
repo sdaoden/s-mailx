@@ -155,7 +155,7 @@ static struct a_colour_g a_colour_g;
 static void a_colour_init(void);
 static boole a_colour_termcap_init(void);
 
-DVL( static void a_colour__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_colour__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* May we work with colour at the very moment? */
 SINLINE boole a_colour_ok_to_go(u32 get_flags);
@@ -235,7 +235,7 @@ a_colour_termcap_init(void){
 
 #if DVLOR(1, 0)
 static void
-a_colour__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_colour__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){

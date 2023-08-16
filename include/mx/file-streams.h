@@ -91,16 +91,16 @@ struct mx_fs_tmp_ctx{
 };
 
 /* Open according to oflags (see there); mx_FS_O_NOREGISTER is implied! */
-EXPORT s32 mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode);
+EXPORT s32 mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode);
 
 /* Open according to oflags (see there) */
-EXPORT FILE *mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags);
+EXPORT FILE *mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags);
 
 /* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
  * Open file according to oflags and register it -- NOREGISTER is NOT allowed.
  * Handles compressed files, maildir etc.
  * If fs_or_nil is given it will be filled accordingly */
-EXPORT FILE *mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil);
+EXPORT FILE *mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil);
 
 /* Create a temporary file in tdir_or_nil, use namehint_or_nil for its name (prefix unless O_SUFFIX is set in the
  * fs_oflags oflags and *namehint_or_nil!=NUL), and return a stdio FILE pointer with access oflags.
@@ -113,7 +113,7 @@ EXPORT FILE *mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflag
  *   filled in, tmp_release() is not callable.
  * In the latter two cases autorec memory storage will be created (on success).
  * One of O_WRONLY and O_RDWR must be set */
-EXPORT FILE *mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(u32,mx_fs_oflags) oflags,
+EXPORT FILE *mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32,mx_fs_oflags) oflags,
 		struct mx_fs_tmp_ctx **fstcp_or_nil);
 
 /* If (!O_NOREGISTER|)O_HOLDSIGS and a context pointer was set when calling tmp_open(), then sigs_all_*() had not been
@@ -122,7 +122,7 @@ EXPORT FILE *mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil
 EXPORT void mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp);
 
 /* */
-EXPORT FILE *mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags);
+EXPORT FILE *mx_fs_fd_open(sz fd, BITENUM(u32,mx_fs_oflags) oflags);
 
 /* */
 EXPORT boole mx_fs_fd_cloexec_set(sz fd);

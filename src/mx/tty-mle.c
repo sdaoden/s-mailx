@@ -359,7 +359,7 @@ CTA(U8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 
 #if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 struct a_tty_input_ctx_map{
-	BITENUM_IS(u32,mx_go_input_flags) ticm_ctx;
+	BITENUM(u32,mx_go_input_flags) ticm_ctx;
 	char const ticm_name[12]; /* Name of `bind' context */
 };
 #endif
@@ -383,9 +383,9 @@ struct a_tty_line{
 	struct a_tty_hist *tl_hist; /* History cursor */
 # endif
 	u32 tl_count_max; /* ..before buffer needs to grow */
-	BITENUM_IS(u16,a_tty_config_flags) tl_conf_flags;
+	BITENUM(u16,a_tty_config_flags) tl_conf_flags;
 	/* Visual data representation handling */
-	BITENUM_IS(u16,a_tty_visual_flags) tl_vi_flags;
+	BITENUM(u16,a_tty_visual_flags) tl_vi_flags;
 	u32 tl_lst_count; /* .tl_count after last sync */
 	u32 tl_lst_cursor; /* .tl_cursor after last sync */
 	/* TODO Add another indirection layer by adding a tl_phy_line of
@@ -394,7 +394,7 @@ struct a_tty_line{
 	struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
 	u32 tl_phy_cursor; /* Physical cursor position */
 	su_64( u8 tl__pad2[4]; )
-	BITENUM_IS(u32,mx_go_input_flags) tl_goinflags;
+	BITENUM(u32,mx_go_input_flags) tl_goinflags;
 	u32 tl_prompt_width;
 	struct n_string *tl_prompt; /* Preformatted prompt (including colours) */
 	char const *tl_prompt_base; /* Original prompt as passed to readline */
@@ -572,10 +572,10 @@ static boole a_tty_hist_list(void);
 static boole a_tty_hist_sel_or_del(char const **vec, boole dele);
 
 /* Check whether a gabby history entry fits *history_gabby* */
-static boole a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif, char const **gt);
+static boole a_tty_hist_is_gabby_ok(BITENUM(u32,mx_go_input_flags) gif, char const **gt);
 
 /* Add an entry TODO assumes sigs_all_hold() is held!  FAL0 on allocation failure, TRUM1 on length excess */
-static boole a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif);
+static boole a_tty_hist_add(char const *s, BITENUM(u32,mx_go_input_flags) gif);
 # endif /* mx_HAVE_HISTORY*/
 
 /* Setup configurable aspects of a line (the first time) */
@@ -640,7 +640,7 @@ static sz a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil  s
 
 # ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
-static BITENUM_IS(u32,mx_go_input_flags) a_tty_bind_ctx_find(char const *name);
+static BITENUM(u32,mx_go_input_flags) a_tty_bind_ctx_find(char const *name);
 
 /* Create (or replace, if allowed) a binding */
 static boole a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace);
@@ -751,7 +751,7 @@ a_tty_hist_load(boole feedback){
 			continue;
 
 		/* C99 */{
-			BITENUM_IS(u32,mx_go_input_flags) gif;
+			BITENUM(u32,mx_go_input_flags) gif;
 
 			if(version == 2){
 				if(llen <= 2){
@@ -1088,7 +1088,7 @@ j_leave:
 }
 
 static boole
-a_tty_hist_is_gabby_ok(BITENUM_IS(u32,mx_go_input_flags) gif, char const **gt){
+a_tty_hist_is_gabby_ok(BITENUM(u32,mx_go_input_flags) gif, char const **gt){
 	enum{a_ERR = 1u<<0, a_FUZZ = 1u<<1, a_ALL = a_ERR | a_FUZZ};
 	static struct{char n[7]; u8 f;} const kwa[] = {{"errors\0", a_ERR}, {"fuzz", a_FUZZ}, {"all", a_ALL}};
 
@@ -1136,7 +1136,7 @@ jouter:
 }
 
 static boole
-a_tty_hist_add(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
+a_tty_hist_add(char const *s, BITENUM(u32,mx_go_input_flags) gif){
 	struct su_cs_dict_view dv;
 	struct a_tty_hist *thp, *othp, *ythp;
 	boole rv;
@@ -2397,7 +2397,7 @@ a_tty_kht(struct a_tty_line *tlp){
 
 		if(max > 0){
 			for(;;){
-				BITENUM_IS(u32,n_shexp_state) shs;
+				BITENUM(u32,n_shexp_state) shs;
 
 				exp = sub;
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
@@ -3125,7 +3125,7 @@ a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_nil  su_DVL_LOC_
 	mbstate_t ps[2];
 	char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
 	wchar_t wc;
-	BITENUM_IS(u32,a_tty_bind_flags) tbf;
+	BITENUM(u32,a_tty_bind_flags) tbf;
 	sz rv;
 	NYD_IN;
 
@@ -3518,9 +3518,9 @@ jinject_input:{
 }
 
 # ifdef mx_HAVE_KEY_BINDINGS
-static BITENUM_IS(u32,mx_go_input_flags)
+static BITENUM(u32,mx_go_input_flags)
 a_tty_bind_ctx_find(char const *name){
-	BITENUM_IS(u32,mx_go_input_flags) rv;
+	BITENUM(u32,mx_go_input_flags) rv;
 	struct a_tty_input_ctx_map const *ticmp;
 	NYD2_IN;
 
@@ -3530,7 +3530,7 @@ a_tty_bind_ctx_find(char const *name){
 		goto jleave;
 	}while(PCMP(++ticmp, <, &a_tty_input_ctx_maps[NELEM(a_tty_input_ctx_maps)]));
 
-	rv = R(BITENUM_IS(u32,mx_go_input_flags),-1);
+	rv = R(BITENUM(u32,mx_go_input_flags),-1);
 jleave:
 	NYD2_OU;
 	return rv;
@@ -3567,7 +3567,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
 			tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
 			tbpcp->tbpc_ltbcp->tbc_next = tbcp;
 		}else{
-			BITENUM_IS(u32,mx_go_input_flags) gif;
+			BITENUM(u32,mx_go_input_flags) gif;
 
 			gif = tbpcp->tbpc_flags & mx__GO_INPUT_CTX_MASK;
 			tbcp->tbc_next = a_tty.tg_bind[gif];
@@ -3628,7 +3628,7 @@ a_tty_bind_parse(struct a_tty_bind_parse_ctx *tbpcp, boole isbindcmd){
 	/* Parse the key-sequence */
 	for(shin.s = UNCONST(char*,tbpcp->tbpc_in_seq), shin.l = UZ_MAX;;){
 		struct kse *ep;
-		BITENUM_IS(u32,n_shexp_state) shs;
+		BITENUM(u32,n_shexp_state) shs;
 
 		shin_save = shin;
 		shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGN_EMPTY |
@@ -3810,7 +3810,7 @@ jeempty:
 
 		/* Search for a yet existing identical mapping */
 		/* C99 */{
-			BITENUM_IS(u32,mx_go_input_flags) gif;
+			BITENUM(u32,mx_go_input_flags) gif;
 
 			gif = tbpcp->tbpc_flags & mx__GO_INPUT_CTX_MASK;
 
@@ -4309,7 +4309,7 @@ mx_tty_init(boole ismain){
 	 * driver wasn't yet loaded, and we cannot perform automatic init since the user may have disallowed so */
 	/* C99 */{ /* TODO outsource into own file */
 		struct a_tty_bind_ctx *tbcp;
-		BITENUM_IS(u32,mx_go_input_flags) gif;
+		BITENUM(u32,mx_go_input_flags) gif;
 
 		for(gif = 0; gif < mx__GO_INPUT_CTX_MAX1; ++gif)
 			for(tbcp = a_tty.tg_bind[gif]; tbcp != NIL; tbcp = tbcp->tbc_next)
@@ -4393,7 +4393,7 @@ jleave:
 }
 
 int
-(mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize, uz n,
+(mx_tty_readline)(BITENUM(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize, uz n,
 		boole *histok_or_nil  su_DVL_LOC_ARGS_DECL){
 	struct a_tty_line tl;
 	struct n_string xprompt;
@@ -4435,7 +4435,7 @@ int
 }
 
 void
-mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
+mx_tty_addhist(char const *s, BITENUM(u32,mx_go_input_flags) gif){
 	NYD_IN;
 	ASSERT(!(gif & mx_GO_INPUT_HIST_ERROR) || (gif & mx_GO_INPUT_HIST_GABBY));
 	ASSERT(!(gif & mx_GO_INPUT_HIST_GABBY_FUZZ) || (gif & mx_GO_INPUT_HIST_GABBY));
@@ -4526,7 +4526,7 @@ c_bind(void *vp){
 	struct a_tty_bind_ctx *tbcp;
 	union {char const *cp; char *p; char c;} c;
 	boole show, aster;
-	BITENUM_IS(u32,mx_go_input_flags) gif;
+	BITENUM(u32,mx_go_input_flags) gif;
 	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
 
@@ -4540,7 +4540,7 @@ c_bind(void *vp){
 		show = (cacp->cac_no == 1);
 		aster = FAL0;
 
-		if((gif = a_tty_bind_ctx_find(c.cp)) == R(BITENUM_IS(u32,mx_go_input_flags),-1)){
+		if((gif = a_tty_bind_ctx_find(c.cp)) == R(BITENUM(u32,mx_go_input_flags),-1)){
 			if(!(aster = n_is_all_or_aster(c.cp)) || !show){
 				n_err(_("bind: invalid context: %s\n"), c.cp);
 				vp = NIL;
@@ -4588,7 +4588,7 @@ c_bind(void *vp){
 				vp = NIL;
 		}else{
 			if(!a_tty_bind_parse(&tbpc, TRUM1) || tbpc.tbpc_tbcp == NIL){
-				ASSERT(gif != R(BITENUM_IS(u32,mx_go_input_flags),-1));
+				ASSERT(gif != R(BITENUM(u32,mx_go_input_flags),-1));
 				n_err(_("bind: no such `bind'ing to show: %s %s\n"),
 					a_tty_input_ctx_maps[gif].ticm_name,
 					n_shexp_quote_cp(tbpc.tbpc_in_seq, FAL0));
@@ -4609,7 +4609,7 @@ int
 c_unbind(void *vp){
 	struct a_tty_bind_parse_ctx tbpc;
 	struct a_tty_bind_ctx *tbcp;
-	BITENUM_IS(u32,mx_go_input_flags) gif;
+	BITENUM(u32,mx_go_input_flags) gif;
 	boole aster;
 	union {char const *cp; char *p;} c;
 	struct mx_cmd_arg_ctx *cacp;
@@ -4619,7 +4619,7 @@ c_unbind(void *vp){
 	c.cp = cacp->cac_arg->ca_arg.ca_str.s;
 	aster = FAL0;
 
-	if((gif = a_tty_bind_ctx_find(c.cp)) == R(BITENUM_IS(u32,mx_go_input_flags),-1)){
+	if((gif = a_tty_bind_ctx_find(c.cp)) == R(BITENUM(u32,mx_go_input_flags),-1)){
 		if(!(aster = n_is_all_or_aster(c.cp))){
 			n_err(_("unbind: invalid context: %s\n"), c.cp);
 			vp = NIL;
@@ -4683,7 +4683,7 @@ mx_tty_destroy(boole xit_fastpath){
 # endif /* 0 */
 
 int
-(mx_tty_readline)(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize, uz n,
+(mx_tty_readline)(BITENUM(u32,mx_go_input_flags) gif, char const *prompt, char **linebuf, uz *linesize, uz n,
 		boole *histok_or_nil  su_DVL_LOC_ARGS_DECL){
 	struct n_string xprompt;
 	int rv;
@@ -4704,7 +4704,7 @@ int
 }
 
 void
-mx_tty_addhist(char const *s, BITENUM_IS(u32,mx_go_input_flags) gif){
+mx_tty_addhist(char const *s, BITENUM(u32,mx_go_input_flags) gif){
 	NYD_IN;
 	UNUSED(s);
 	UNUSED(gif);

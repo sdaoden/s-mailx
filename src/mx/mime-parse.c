@@ -61,18 +61,18 @@
 static char *a_mps_ct_plain_from_ct(char const *cth);
 
 static boole a_mps_part(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level);
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level);
 
 static void a_mps_rfc822(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level);
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level);
 
 #ifdef mx_HAVE_TLS
 static void a_mps_pkcs7(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level);
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level);
 #endif
 
 static boole a_mps_multipart(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level);
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level);
 static void a_mps__new(struct mimepart *ip, struct mimepart **np, off_t offs,
       int *part);
 static void a_mps__end(struct mimepart **np, off_t xoffs, long lines);
@@ -98,7 +98,7 @@ a_mps_ct_plain_from_ct(char const *cth){
 
 static boole
 a_mps_part(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level){
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level){
    char const *cp;
    boole rv;
    NYD_IN;
@@ -198,7 +198,7 @@ jleave:
 
 static void
 a_mps_rfc822(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level){
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level){
    off_t offs;
    struct mimepart *np;
    long lines;
@@ -262,7 +262,7 @@ jleave:
 #ifdef mx_HAVE_TLS
 static void
 a_mps_pkcs7(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level){
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level){
    struct mimepart *np;
    struct message m, *xmp;
    char *to, *cc;
@@ -302,7 +302,7 @@ a_mps_pkcs7(struct message *zmp, struct mimepart *ip,
 
 static boole
 a_mps_multipart(struct message *zmp, struct mimepart *ip,
-      BITENUM_IS(u32,mx_mime_parse_flags) mpf, int level){
+      BITENUM(u32,mx_mime_parse_flags) mpf, int level){
    struct mimepart *np;
    int part;
    long lines;
@@ -455,7 +455,7 @@ a_mps__end(struct mimepart **np, off_t xoffs, long lines){
 }
 
 struct mimepart *
-mx_mime_parse_msg(struct message *mp, BITENUM_IS(u32,mx_mime_parse_flags) mpf){
+mx_mime_parse_msg(struct message *mp, BITENUM(u32,mx_mime_parse_flags) mpf){
    struct mimepart *ip;
    NYD_IN;
 

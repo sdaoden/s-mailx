@@ -44,11 +44,11 @@
 
 static struct su_cs_dict *a_csal_dp, a_csal__d;
 
-DVL( static void a_csal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_csal__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 #if DVLOR(1, 0)
 static void
-a_csal__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_csal__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)

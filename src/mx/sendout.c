@@ -1146,7 +1146,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
             fout = n_stdout;
          else{
             int xerr;
-            BITENUM_IS(u32,mx_fs_open_state) fs;
+            BITENUM(u32,mx_fs_open_state) fs;
 
             if((fout = mx_fs_open_any(fname, (mx_FS_O_CREATE |
                      (mfap ? mx_FS_O_RDWR | mx_FS_O_APPEND
@@ -1307,7 +1307,7 @@ static boole
 a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
    uz bufsize, buflen, cnt;
-   BITENUM_IS(u32,mx_fs_open_state) fs;
+   BITENUM(u32,mx_fs_open_state) fs;
    char *buf;
    boole rv, emptyline;
    NYD_IN;
@@ -3238,7 +3238,7 @@ do{\
       goto jleave;\
 }while(0)
 
-      BITENUM_IS(u32,a_sendout_addrline_flags) const saf =
+      BITENUM(u32,a_sendout_addrline_flags) const saf =
             a_SENDOUT_AL_DOMIME | a_SENDOUT_AL_COMMA;
 
       struct n_header_field *chlp[3], *hfp;

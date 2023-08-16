@@ -119,7 +119,7 @@ EXPORT boole mx_go_input_have_injections(void);
 
 /* Force mx_go_input() to read that buffer next.
  * If mx_GO_INPUT_INJECT_COMMIT is not set the line editor is reentered with buf as the default/initial line content */
-EXPORT void mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags giif), char const *buf, uz len);
+EXPORT void mx_go_input_inject(BITENUM(u32,mx_go_input_inject_flags giif), char const *buf, uz len);
 
 /* Read a complete line of input, with editing if interactive and possible.
  * string_or_nil is the optional initial line content if in interactive mode, otherwise this argument is ignored for
@@ -129,7 +129,7 @@ EXPORT void mx_go_input_inject(BITENUM_IS(u32,mx_go_input_inject_flags giif), ch
  * Note: may use the currently `source'd file stream instead of stdin!
  * Manages the n_PS_READLINE_NL hack
  * TODO We need an OnReadLineCompletedEvent and drop this function */
-EXPORT int mx_go_input(BITENUM_IS(u32,mx_go_input_flags gif), char const *prompt_or_nil, char **linebuf, uz *linesize,
+EXPORT int mx_go_input(BITENUM(u32,mx_go_input_flags gif), char const *prompt_or_nil, char **linebuf, uz *linesize,
 		char const *string_or_nil, boole *histok_or_nil  su_DVL_LOC_ARGS_DECL);
 #ifdef su_HAVE_DVL_LOC_ARGS
 # define mx_go_input(A,B,C,D,E,F) mx_go_input(A,B,C,D,E,F  su_DVL_LOC_ARGS_INJ)
@@ -137,7 +137,7 @@ EXPORT int mx_go_input(BITENUM_IS(u32,mx_go_input_flags gif), char const *prompt
 
 /* Like go_input(), but return savestr()d result or NIL in case of errors or if an empty line would be returned.
  * This may only be called from toplevel (not during n_PS_ROBOT) */
-EXPORT char *mx_go_input_cp(BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt_or_nil, char const *string_or_nil);
+EXPORT char *mx_go_input_cp(BITENUM(u32,mx_go_input_flags) gif, char const *prompt_or_nil, char const *string_or_nil);
 
 /* Load a file of user system startup resources.
  * *Only* for main(), returns whether program shall continue */
@@ -150,9 +150,9 @@ EXPORT boole mx_go_load_lines(boole injectit, char const **lines, uz cnt);
 
 /* Evaluate a complete macro / a single command.
  * For the former lines will be free()d, for the latter cmd will always be duplicated internally */
-EXPORT boole mx_go_macro(BITENUM_IS(u32,mx_go_input_flags) gif, char const *name, char **lines,
+EXPORT boole mx_go_macro(BITENUM(u32,mx_go_input_flags) gif, char const *name, char **lines,
 		void (*on_finalize)(void*), void *finalize_arg);
-EXPORT boole mx_go_command(BITENUM_IS(u32,mx_go_input_flags) gif, char const *cmd);
+EXPORT boole mx_go_command(BITENUM(u32,mx_go_input_flags) gif, char const *cmd);
 
 /* XXX See a_GO_SPLICE in source */
 EXPORT void mx_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout, u32 new_psonce,

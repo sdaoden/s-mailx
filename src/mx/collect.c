@@ -1283,7 +1283,7 @@ jcont:
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
          /* Need to go over mx_go_input() to handle injections nonetheless */
-         BITENUM_IS(u32,mx_go_input_flags) gif;
+         BITENUM(u32,mx_go_input_flags) gif;
 
          ASSERT(!(flags & a_NEED_INJECT_RESTART));
          for(gif = mx_GO_INPUT_CTX_COMPOSE | mx_GO_INPUT_DELAY_INJECTIONS;;){
@@ -1326,7 +1326,7 @@ jcont:
       enum {a_HIST_NONE, a_HIST_ADD = 1u<<0, a_HIST_GABBY = 1u<<1} hist;
 
       /* C99 */{
-         BITENUM_IS(u32,mx_go_input_flags) gif;
+         BITENUM(u32,mx_go_input_flags) gif;
          boole histadd;
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */

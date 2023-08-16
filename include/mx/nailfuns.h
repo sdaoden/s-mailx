@@ -712,7 +712,7 @@ FL char *n_header_senderfield_of(struct message *mp);
 /* Trim and possibly edit the Subject: sp according to hsef.
  * The return value may logically cast away "const", give _DUP to be safe */
 FL char *mx_header_subject_edit(char const *subp,
-      BITENUM_IS(u32,mx_header_subject_edit_flags) hsef);
+      BITENUM(u32,mx_header_subject_edit_flags) hsef);
 
 FL int         msgidcmp(char const *s1, char const *s2);
 
@@ -991,26 +991,26 @@ FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
  * . +file file in folder directory
  * . any shell meta character (except for FEXP_NSHELL)
  * XXX ->name_expand */
-FL char *fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm);
+FL char *fexpand(char const *name, BITENUM(u32,fexp_mode) fexpm);
 
 /* Like fexpand(), but may instead return an array of strings in the
  * auto-reclaimed result storage; might have expanded the first member before
  * fnmatch, but no further: these come directly via fnmatch! */
 FL char **mx_shexp_name_expand_multi(char const *name,
-      BITENUM_IS(u32,fexp_mode) fexpm);
+      BITENUM(u32,fexp_mode) fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
  * EQ UZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
  * If cookie is not NULL and we are in double-quotes then ${@} will be exploded
  * just as known from the sh(1)ell */
-FL BITENUM_IS(u32,n_shexp_state) n_shexp_parse_token(
-      BITENUM_IS(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
+FL BITENUM(u32,n_shexp_state) n_shexp_parse_token(
+      BITENUM(u32,n_shexp_parse_flags) flags, enum mx_scope scope,
       struct n_string *store, struct str *input, void const **cookie);
 
 /* Quick+dirty simplified : if an error occurs, returns a copy of *cp and set
  * *cp to NULL, otherwise advances *cp to over the parsed token */
-FL char *n_shexp_parse_token_cp(BITENUM_IS(u32,n_shexp_parse_flags) flags,
+FL char *n_shexp_parse_token_cp(BITENUM(u32,n_shexp_parse_flags) flags,
       enum mx_scope scope, char const **cp);
 
 /* Another variant of parse_token_cp(): unquote the argument, ensure the result

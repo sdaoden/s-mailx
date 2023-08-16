@@ -447,7 +447,7 @@ static void a_xtls__load_algos(void);
 #  define a_xtls_load_algos a_xtls__load_algos
 # endif
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
-static void a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags);
+static void a_xtls__on_gut(BITENUM(u32,su_state_gut_flags) flags);
 # endif
 #endif
 #ifndef a_xtls_load_algos
@@ -675,7 +675,7 @@ a_xtls__load_algos(void){
 
 # if defined mx_XTLS_HAVE_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void
-a_xtls__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_xtls__on_gut(BITENUM(u32,su_state_gut_flags) flags){
    NYD2_IN;
 
    if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){

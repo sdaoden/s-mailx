@@ -74,7 +74,7 @@ static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
 static FILE *a_cache_queue1(struct mailbox *mp,
-      BITENUM_IS(u32,mx_fs_oflags) oflags, char **xname);
+      BITENUM(u32,mx_fs_oflags) oflags, char **xname);
 static enum okay        dequeue1(struct mailbox *mp);
 
 static const char infofmt[] = "%c %lu %d %lu %ld";
@@ -797,7 +797,7 @@ jleave:
 }
 
 static FILE *
-a_cache_queue1(struct mailbox *mp, BITENUM_IS(u32,mx_fs_oflags) oflags,
+a_cache_queue1(struct mailbox *mp, BITENUM(u32,mx_fs_oflags) oflags,
       char **xname)
 {
    char *name;

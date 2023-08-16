@@ -451,7 +451,7 @@ a_mpm__rfc2231_join(struct a_mpm_rfc2231_joiner *head, char **result, char const
 #ifdef mx_HAVE_ICONV
 	iconv_t fhicd;
 #endif
-	BITENUM_IS(u32,a_flags) f;
+	BITENUM(u32,a_flags) f;
 	NYD2_IN;
 
 	f = a_NONE;
@@ -599,7 +599,7 @@ a_mpm_create(struct a_mpm_builder *self){
 	char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)], *bp, *bp_max, *bp_xmax, *bp_lanoenc;
 	char const *vb, *vb_lanoenc;
 	uz vl;
-	BITENUM_IS(u32,a_flags) f;
+	BITENUM(u32,a_flags) f;
 	NYD2_IN;
 	LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
 
@@ -756,7 +756,7 @@ a_mpm__join(struct a_mpm_builder *head){
 	struct str *result;
 	struct a_mpm_builder *np;
 	uz i, ll;  ASSERT_INJ( uz len_max; )
-	BITENUM_IS(u32,a_flags) f;
+	BITENUM(u32,a_flags) f;
 	NYD2_IN;
 
 	f = a_NONE;

@@ -37,7 +37,7 @@ enum mx_mime_parse_flags{
 };
 
 /* Create MIME part object tree for and of mp */
-EXPORT struct mimepart *mx_mime_parse_msg(struct message *mp, BITENUM_IS(u32,mx_mime_parse_flags) mpf);
+EXPORT struct mimepart *mx_mime_parse_msg(struct message *mp, BITENUM(u32,mx_mime_parse_flags) mpf);
 
 #include <su/code-ou.h>
 #endif /* mx_MIME_PARSE_H */

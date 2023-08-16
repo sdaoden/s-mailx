@@ -43,11 +43,11 @@
 
 static struct su_cs_dict *a_scut_dp, a_scut__d;
 
-DVL( static void a_scut__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_scut__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 #if DVLOR(1, 0)
 static void
-a_scut__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_scut__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)

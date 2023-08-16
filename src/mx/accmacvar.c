@@ -236,7 +236,7 @@ struct a_amv_mac{
 	struct a_amv_mac_line **am_line_dat; /* TODO use deque? */
 	struct a_amv_var *am_lopts; /* `localopts' unroll list */
 	u32 am_refcnt; /* 0-based for `un{account,define}' purposes */
-	BITENUM_IS(u8,a_amv_mac_flags) am_flags;
+	BITENUM(u8,a_amv_mac_flags) am_flags;
 	char am_name[VFIELD_SIZE(3)]; /* ..of this macro */
 };
 CTA(a_AMV_MF__MAX <= U8_MAX, "Enumeration excesses storage datatype");
@@ -269,7 +269,7 @@ struct a_amv_lostack{
 	struct a_amv_mac_call_args *as_amcap;
 	struct a_amv_lostack *as_up; /* Outer context */
 	struct a_amv_var *as_lopts;
-	BITENUM_IS(u8,a_amv_mac_loflags) as_loflags;
+	BITENUM(u8,a_amv_mac_loflags) as_loflags;
 	boole as_any_scoped; /* Whether ANY outer level or we have unroll scopes */
 	u8 avs__pad[6];
 };
@@ -280,7 +280,7 @@ struct a_amv_var{
 #ifdef mx_HAVE_PUTENV
 	char *av_env; /* Actively managed putenv(3) memory, or NIL */
 #endif
-	BITENUM_IS(u32,a_amv_var_flags) av_flags; /* Plus extended bits */
+	BITENUM(u32,a_amv_var_flags) av_flags; /* Plus extended bits */
 	char av_name[VFIELD_SIZE(4)];
 };
 CTA(a_AMV_VF_EXT__MASK <= U32_MAX, "Enumeration excesses storage datatype");
@@ -289,7 +289,7 @@ CTA(a_AMV_VF_EXT__MASK <= U32_MAX, "Enumeration excesses storage datatype");
 struct a_amv_var_map{
 	u32 avm_hash;
 	u16 avm_keyoff;
-	BITENUM_IS(u16,a_amv_var_flags) avm_flags; /* Without extended bits */
+	BITENUM(u16,a_amv_var_flags) avm_flags; /* Without extended bits */
 };
 CTA(a_AMV_VF__MASK <= U16_MAX, "Enumeration excesses storage datatype");
 
@@ -328,9 +328,9 @@ struct a_amv_var_carrier{
 	u32 avc_prime;
 	struct a_amv_var *avc_var;
 	struct a_amv_var_map const *avc_map;
-	BITENUM_IS(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
+	BITENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
 	u8 avc__pad[1];
-	BITENUM_IS(u16,okeys) avc_okey;
+	BITENUM(u16,okeys) avc_okey;
 #undef a_AMV_OKEY
 #define a_AMV_OKEY(X) S(u16,X)
 	boole avc_is_chain_variant; /* Base is a chain, this a variant thereof */
@@ -385,7 +385,7 @@ static struct a_amv_lostack *a_amv_compose_lostack;
 static boole a_amv_on_gut_installed;
 #endif
 
-DVL( static void a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_amv__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /**/
 static void a_amv_pospar_clear(struct a_amv_pospar *appp);
@@ -394,7 +394,7 @@ static void a_amv_pospar_clear(struct a_amv_pospar *appp);
  * existing entry will be removed (first).  Returns NIL if a lookup failed, or if newamp was set, the found entry in
  * plain lookup cases or when _UNDEF was performed on a currently active entry (the entry will have been unlinked, and
  * the _MF_DELETE will be honoured once the reference count reaches 0), and (*)-1 if an _UNDEF was performed */
-static struct a_amv_mac *a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM_IS(u32,a_amv_mac_flags) amf);
+static struct a_amv_mac *a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM(u32,a_amv_mac_flags) amf);
 
 /* `call', `call_if' (and `xcall' via go.c -> c_xcall()).  lospopts may only come in via the weird ways of `xcall' */
 enum {a_AMV_MAC_CALL_NONE, a_AMV_MAC_CALL_SILENT = 1u<<0, a_AMV_MAC_CALL_XCALL = 1u<<1};
@@ -406,11 +406,11 @@ static boole a_amv_mac_exec(struct a_amv_mac_call_args *amcap, void *lospopts_or
 static void a_amv_mac__finalize(void *vp);
 
 /* User display helpers */
-static boole a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf, char const *name);
+static boole a_amv_mac_show(BITENUM(u32,a_amv_mac_flags) amf, char const *name);
 
 /* _def() returns error for faulty defs and yet existing names, _undef() if a named thing does not exist */
-static boole a_amv_mac_def(char const *name, BITENUM_IS(u32,a_amv_mac_flags) amf);
-static boole a_amv_mac_undef(char const *name, BITENUM_IS(u32,a_amv_mac_flags) amf);
+static boole a_amv_mac_def(char const *name, BITENUM(u32,a_amv_mac_flags) amf);
+static boole a_amv_mac_undef(char const *name, BITENUM(u32,a_amv_mac_flags) amf);
 
 /* */
 static void a_amv_mac_free(struct a_amv_mac *amp);
@@ -449,7 +449,7 @@ static boole a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char cons
  * .avc_var to -1 and return true if that was the case, otherwise we will return FAL0, then!
  * xxx freezing: One more special case with freezing: a frozen clearance request in conjunction with
  * xxx AMV_VLOOK_I3VAL_NONEW will return NIL and set .avc_var to the set variable */
-static boole a_amv_var_lookup(struct a_amv_var_carrier *avcp, BITENUM_IS(u32,a_amv_var_lookup_flags) avlf);
+static boole a_amv_var_lookup(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_var_lookup_flags) avlf);
 
 /* Lookup functions for special category variables, _pospar drives all positional parameter etc. special categories */
 static char const *a_amv_var_vsc_global(struct a_amv_var_carrier *avcp);
@@ -457,12 +457,12 @@ static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
 
 /* Set var from .avc_(map|name|hash), return success */
-static boole a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf);
+static boole a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM(u32,a_amv_var_setclr_flags) avscf);
 
 static boole a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp);
 
 /* Clear var from .avc_(map|name|hash); sets .avc_var=NIL, return success */
-static boole a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf);
+static boole a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_var_setclr_flags) avscf);
 
 static boole a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
@@ -485,7 +485,7 @@ static void a_amv_var_obsolete(char const *name);
 
 #if DVLOR(1, 0)
 static void
-a_amv__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_amv__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
@@ -534,9 +534,9 @@ a_amv_pospar_clear(struct a_amv_pospar *appp){
 }
 
 static struct a_amv_mac *
-a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM_IS(u32,a_amv_mac_flags) amf){
+a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp, BITENUM(u32,a_amv_mac_flags) amf){
 	struct a_amv_mac *amp, **ampp, **ampp_base;
-	BITENUM_IS(u32,a_amv_mac_flags) save_amf;
+	BITENUM(u32,a_amv_mac_flags) save_amf;
 	NYD2_IN;
 
 #if DVLOR(1, 0)
@@ -614,7 +614,7 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 		n_pstate_err_no = su_ERR_NOENT;
 		rv = 1;
 	}else{
-		BITENUM_IS(u8,a_amv_loflags) olof;
+		BITENUM(u8,a_amv_loflags) olof;
 		char const **argv;
 		struct a_amv_mac_call_args *amcap;
 		u32 argc;
@@ -767,7 +767,7 @@ a_amv_mac__finalize(void *vp){
 }
 
 static boole
-a_amv_mac_show(BITENUM_IS(u32,a_amv_mac_flags) amf, char const *name){
+a_amv_mac_show(BITENUM(u32,a_amv_mac_flags) amf, char const *name){
 	struct a_amv_mac *amp;
 	uz i, j, lc, mc;
 	FILE *fp;
@@ -848,7 +848,7 @@ jleave:
 }
 
 static boole
-a_amv_mac_def(char const *name, BITENUM_IS(u32,a_amv_mac_flags) amf){
+a_amv_mac_def(char const *name, BITENUM(u32,a_amv_mac_flags) amf){
 	struct str line;
 	u32 line_cnt, maxlen;
 	struct linelist{
@@ -957,7 +957,7 @@ jerr:
 }
 
 static boole
-a_amv_mac_undef(char const *name, BITENUM_IS(u32,a_amv_mac_flags) amf){
+a_amv_mac_undef(char const *name, BITENUM(u32,a_amv_mac_flags) amf){
 	struct a_amv_mac *amp;
 	boole rv;
 	NYD2_IN;
@@ -1055,7 +1055,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
 	*avpp = NIL;
 
 	while(avp != NIL){
-		BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+		BITENUM(u32,a_amv_var_setclr_flags) avscf;
 
 		x = avp;
 		avp = avp->av_link;
@@ -1496,7 +1496,7 @@ a_amv_var_check_num(char const *val, boole posnum){
 
 	if(*val != '\0'){ /* Would be _VF_NOTEMPTY if not allowed */
 		u64 uib;
-		BITENUM_IS(u32,su_idec_state) ids;
+		BITENUM(u32,su_idec_state) ids;
 
 		ids = su_idec_cp(&uib, val, 0, (su_IDEC_MODE_LIMIT_32BIT |
 				(posnum ? su_IDEC_MODE_SIGNED_TYPE : su_IDEC_MODE_NONE)), NIL);
@@ -1739,7 +1739,7 @@ jleave:
 }
 
 static boole
-a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENUM_IS(u32,a_amv_var_lookup_flags) avlf){
+a_amv_var_lookup/* XXX too complicated */(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_var_lookup_flags) avlf){
 	uz i;
 	char const *cp;
 	u32 f;
@@ -2253,10 +2253,10 @@ jleave:
 }
 
 static boole
-a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
+a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM(u32,a_amv_var_setclr_flags) avscf){
 	struct a_amv_var *avp;
 	char *oval;
-	BITENUM_IS(u32,a_amv_var_flags) f;
+	BITENUM(u32,a_amv_var_flags) f;
 	struct a_amv_var_map const *avmp;
 	boole rv;
 	NYD2_IN;
@@ -2373,7 +2373,7 @@ jeavmp:
 	/* Optionally cover by `localopts' */
 	if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
 		boole const isloc = ((avscf & a_AMV_VSETCLR_LOCAL) != 0);
-		BITENUM_IS(u8,a_amv_loflags) olof;
+		BITENUM(u8,a_amv_loflags) olof;
 
 		ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
 		ASSERT(avp == NIL || !(avp->av_flags & a_AMV_VF_EXT_LOCAL));
@@ -2511,9 +2511,9 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
 }
 
 static boole
-a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM_IS(u32,a_amv_var_setclr_flags) avscf){
+a_amv_var_clear(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_var_setclr_flags) avscf){
 	struct a_amv_var **avpp, *avp;
-	BITENUM_IS(u32,a_amv_var_flags) f;
+	BITENUM(u32,a_amv_var_flags) f;
 	boole rv;
 	struct a_amv_var_map const *avmp;
 	NYD2_IN;
@@ -2639,7 +2639,7 @@ jerr_env_unset:
 
 	if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avmp == NIL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS))){
 		boole const isloc = ((avscf & a_AMV_VSETCLR_LOCAL) != 0);
-		BITENUM_IS(u8,a_amv_loflags) olof;
+		BITENUM(u8,a_amv_loflags) olof;
 
 		ASSERT(!(avscf & a_AMV_VSETCLR_UNROLL));
 		ASSERT(avp == NIL || !(avp->av_flags & a_AMV_VF_EXT_LOCAL));
@@ -2792,7 +2792,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp, boole local){
 	 * XXX need to call a_amv_var_revlookup() at all!  Revisit this call chain */
 	struct a_amv_var_carrier avc;
 	char const *value, *quote;
-	BITENUM_IS(u32,a_amv_var_flags) flags;
+	BITENUM(u32,a_amv_var_flags) flags;
 	struct a_amv_var *avp;
 	boole isset;
 	uz i;
@@ -2952,7 +2952,7 @@ jleave:
 
 static boole
 a_amv_var_c_set(struct mx_cmd_arg_ctx *cacp, struct mx_cmd_arg *cap, boole isenviron){
-	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	BITENUM(u32,a_amv_var_setclr_flags) avscf;
 	boole rv;
 	NYD2_IN;
 
@@ -3311,7 +3311,7 @@ c_unaccount(void *vp){
 
 FL int
 c_localopts(void *vp){
-	BITENUM_IS(u8,a_amv_loflags) alf, alm;
+	BITENUM(u8,a_amv_loflags) alf, alm;
 	char const **argv;
 	int rv;
 	NYD_IN;
@@ -4039,7 +4039,7 @@ FL boole
 n_var_vset(char const *vokey, up val, enum mx_scope scope){
 	struct a_amv_var_carrier avc;
 	boole ok;
-	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	BITENUM(u32,a_amv_var_setclr_flags) avscf;
 	NYD_IN;
 
 	a_amv_var_revlookup(&avc, vokey, TRU1);
@@ -4135,7 +4135,7 @@ FL int
 c_unset(void *vp){
 	struct a_amv_var_carrier avc;
 	struct mx_cmd_arg *cap;
-	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	BITENUM(u32,a_amv_var_setclr_flags) avscf;
 	struct mx_cmd_arg_ctx *cacp;
 	int err;
 	NYD_IN;
@@ -4207,7 +4207,7 @@ c_environ(void *vp){
 	struct a_amv_var_carrier avc;
 	boole islnk;
 	int rv;
-	BITENUM_IS(u32,a_amv_var_setclr_flags) avscf;
+	BITENUM(u32,a_amv_var_setclr_flags) avscf;
 	struct mx_cmd_arg *cap;
 	struct mx_cmd_arg_ctx *cacp;
 	NYD_IN;
@@ -4263,7 +4263,7 @@ c_environ(void *vp){
 			/* We may know about it */
 			if(a_amv_var_lookup(&avc, (a_AMV_VLOOK_NONE | a_AMV_VLOOK_LOG_OBSOLETE)) &&
 					(islnk || (avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED))){
-				BITENUM_IS(u32,a_amv_var_flags) f, f2;
+				BITENUM(u32,a_amv_var_flags) f, f2;
 
 				f = avc.avc_var->av_flags;
 
@@ -4283,7 +4283,7 @@ c_environ(void *vp){
 jlopts_check:
 					if(UNLIKELY(a_AMV_HAVE_LOPTS_AKA_LOCAL()) && (avc.avc_map == NIL ||
 							 !(avc.avc_map->avm_flags & a_AMV_VF_NOLOPTS))){
-						BITENUM_IS(u8,a_amv_loflags) olof;
+						BITENUM(u8,a_amv_loflags) olof;
 
 						f2 = avc.avc_var->av_flags;
 						ASSERT(!(f2 & a_AMV_VF_EXT_LOCAL));
@@ -4365,7 +4365,7 @@ c_vpospar(void *vp){ /* {{{ */
 	struct mx_cmd_arg *cap;
 	uz i;
 	struct a_amv_pospar *appp;
-	BITENUM_IS(u32,a_flags) f;
+	BITENUM(u32,a_flags) f;
 	char const *varres;
 	struct mx_cmd_arg_ctx *cacp, cac;
 	NYD_IN;

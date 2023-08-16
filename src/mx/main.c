@@ -464,7 +464,7 @@ a_main_o_S(struct a_main_ctx *mcp, struct su_avopt *avop){
 		ca.ca_arg.ca_str.l = su_cs_len(ca.ca_arg.ca_str.s = UNCONST(char*,avop->avo_current_arg));
 		s = NIL;
 	}else{
-		BITENUM_IS(u32,n_shexp_state) shs;
+		BITENUM(u32,n_shexp_state) shs;
 
 		su_mem_bag_auto_relax_create(su_MEM_BAG_SELF);
 		s = n_string_creat_auto(&s_b);
@@ -526,7 +526,7 @@ static char const *
 a_main_o_T(struct a_main_ctx *mcp, struct su_avopt *avop){
 	struct str suffix;
 	struct mx_name **npp, *np;
-	BITENUM_IS(u32,gfield) gf;
+	BITENUM(u32,gfield) gf;
 	char const *rv, *a;
 	NYD2_IN;
 
@@ -717,7 +717,7 @@ main(int argc, char *argv[]){
 	s32 i;
 	char const *emsg;
 	char *cp;
-	BITENUM_IS(u32,a_rf_ids) resfiles;
+	BITENUM(u32,a_rf_ids) resfiles;
 	NYD_IN;
 
 	/*
@@ -1236,7 +1236,7 @@ je_expandargv:
 		/* XXX This may use savestr(), but since we will not enter the command
 		 * XXX loop we do not need to care about that */
 		for(; mc.mc_a_head != NIL; mc.mc_a_head = mc.mc_a_head->maa_next){
-			BITENUM_IS(u32,mx_attachments_error) aerr;
+			BITENUM(u32,mx_attachments_error) aerr;
 
 			mc.mc_attach = mx_attachments_append(mc.mc_attach, mc.mc_a_head->maa_file, &aerr, NIL);
 			if(aerr != mx_ATTACHMENTS_ERR_NONE){

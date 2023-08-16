@@ -90,8 +90,8 @@ enum a_fs_ent_flags{
 struct a_fs_ent{
 	char *fse_realfile;
 	struct a_fs_ent *fse_link;
-	BITENUM_IS(u32,a_fs_ent_flags) fse_flags;
-	BITENUM_IS(u32,mx_fs_oflags) fse_oflags;
+	BITENUM(u32,a_fs_ent_flags) fse_flags;
+	BITENUM(u32,mx_fs_oflags) fse_oflags;
 	s64 fse_offset;
 	FILE *fse_fp;
 	char *fse_save_cmd;
@@ -111,11 +111,11 @@ struct a_fs_lpool_ent *a_fs_lpool_used;
 
 /* Convert oflags to open(2) flags; if os_or_nil is not NIL, store in there the best approximation to STDIO
  * r[,r+],w,w+,a,a+ for fdopen(3) */
-static int a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil);
+static int a_fs_mx_to_os(BITENUM(u32,mx_fs_oflags) oflags, char const **os_or_nil);
 
 /* Of oflags only mx__FS_O_RWMASK|mx_FS_O_APPEND is used */
-static struct a_fs_ent *a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags,
-		BITENUM_IS(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp, char const *realfile,
+static struct a_fs_ent *a_fs_register_file(FILE *fp, BITENUM(u32,mx_fs_oflags) oflags,
+		BITENUM(u32,a_fs_ent_flags) flags, struct mx_child_ctx *ccp, char const *realfile,
 		s64 offset, char const *save_cmd);
 static s32 a_fs_unregister_file(FILE *fp);
 
@@ -124,7 +124,7 @@ static boole a_fs_file_load(uz flags, int infd, int outfd, char const *load_cmd)
 static boole a_fs_file_save(struct a_fs_ent *fpp);
 
 static int
-a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil){
+a_fs_mx_to_os(BITENUM(u32,mx_fs_oflags) oflags, char const **os_or_nil){
 	char const *os;
 	int rv;
 	NYD2_IN;
@@ -177,7 +177,7 @@ a_fs_mx_to_os(BITENUM_IS(u32,mx_fs_oflags) oflags, char const **os_or_nil){
 }
 
 static struct a_fs_ent *
-a_fs_register_file(FILE *fp, BITENUM_IS(u32,mx_fs_oflags) oflags, BITENUM_IS(u32,a_fs_ent_flags) flags,
+a_fs_register_file(FILE *fp, BITENUM(u32,mx_fs_oflags) oflags, BITENUM(u32,a_fs_ent_flags) flags,
 		struct mx_child_ctx *ccp, char const *realfile, s64 offset, char const *save_cmd){
 	struct a_fs_ent *fsep;
 	NYD2_IN;
@@ -353,7 +353,7 @@ jleave:
 }
 
 s32
-mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode){
+mx_fs_open_fd(char const *file, BITENUM(u32,mx_fs_oflags) oflags, s32 mode){
 	s32 fd;
 	char const *osflags;
 	int osiflags;
@@ -376,7 +376,7 @@ mx_fs_open_fd(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, s32 mode){
 }
 
 FILE *
-mx_fs_open(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags){
+mx_fs_open(char const *file, BITENUM(u32,mx_fs_oflags) oflags){
 	int osiflags, fd;
 	char const *osflags;
 	FILE *fp;
@@ -414,15 +414,15 @@ jleave:
 }
 
 FILE *
-mx_fs_open_any(char const *file, BITENUM_IS(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil){ /* TODO as bits, return state */
+mx_fs_open_any(char const *file, BITENUM(u32,mx_fs_oflags) oflags, enum mx_fs_open_state *fs_or_nil){ /* TODO as bits, return state */
 	/* TODO Support file locking upon open time */
 	s64 offset;
 	enum protocol p;
 	uz flags;
-	BITENUM_IS(u32,mx_fs_oflags) tmpoflags;
+	BITENUM(u32,mx_fs_oflags) tmpoflags;
 	int /*osiflags,*/ omode, infd;
 	char const *cload, *csave;
-	BITENUM_IS(u32, mx_fs_open_state) fs;
+	BITENUM(u32, mx_fs_open_state) fs;
 	s32 err;
 	FILE *rv;
 	NYD_IN;
@@ -572,7 +572,7 @@ jleave:
 }
 
 FILE *
-mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM_IS(u32,mx_fs_oflags) oflags,
+mx_fs_tmp_open(char const *tdir_or_nil, char const *namehint_or_nil, BITENUM(u32,mx_fs_oflags) oflags,
 		struct mx_fs_tmp_ctx **fstcp_or_nil){
 	/* The 6 is arbitrary but leaves room for an eight character hint (the POSIX minimum path length is 14, though
 	 * we do not check that XXX).  6 should be more than sufficient given that we use base64url encoding for our
@@ -771,7 +771,7 @@ mx_fs_tmp_release(struct mx_fs_tmp_ctx *fstcp){
 }
 
 FILE *
-mx_fs_fd_open(sz fd, BITENUM_IS(u32,mx_fs_oflags) oflags){
+mx_fs_fd_open(sz fd, BITENUM(u32,mx_fs_oflags) oflags){
 	FILE *fp;
 	char const *osflags;
 	NYD_IN;

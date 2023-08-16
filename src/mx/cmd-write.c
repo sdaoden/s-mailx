@@ -68,7 +68,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    int convert, boole domark, boole domove)
 {
    u64 mstats[1], tstats[2];
-   BITENUM_IS(u32,mx_fs_open_state) fs;
+   BITENUM(u32,mx_fs_open_state) fs;
    struct message *mp;
    char *file, *cp, *cq;
    FILE *obuf;

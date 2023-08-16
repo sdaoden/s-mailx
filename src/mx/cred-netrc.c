@@ -79,7 +79,7 @@ static struct su_cs_dict *a_netrc_dp, a_netrc__d;
 static void a_netrc_create(void);
 static enum a_netrc_token a_netrc__token(FILE *fi, char buffer[a_NETRC_TOKEN_MAXLEN], boole *nl_last);
 static void a_netrc_gut(boole gut_dp);
-DVL( static void a_netrc__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_netrc__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* */
 static struct n_strlist *a_netrc_dump(char const *cmdname, char const *key, void const *dat);
@@ -399,7 +399,7 @@ a_netrc_gut(boole gut_dp){
 
 #if DVLOR(1, 0)
 static void
-a_netrc__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_netrc__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 	UNUSED(flags);
 

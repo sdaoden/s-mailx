@@ -89,7 +89,7 @@ static struct a_mtaali_g a_mtaali_g;
 static void a_mtaali_gut_csd(struct su_cs_dict *csdp);
 
 static s32 a_mtaali_cache_init(char const *usrfile);
-DVL( static void a_mtaali__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_mtaali__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 static s32 a_mtaali__read_file(struct a_mtaali_stack *masp);
 
 static void a_mtaali_expand(uz lvl, char const *name, struct a_mtaali_query *maqp);
@@ -166,7 +166,7 @@ jerr_nolog:
 
 #if DVLOR(1, 0)
 static void
-a_mtaali__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_mtaali__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM)

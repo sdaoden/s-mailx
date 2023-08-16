@@ -189,7 +189,7 @@ edstop(void) /* TODO oh my god */
    int gotcha, c;
    struct message *mp;
    FILE *obuf = NULL, *ibuf = NULL;
-   BITENUM_IS(u32,mx_fs_open_state) fs;
+   BITENUM(u32,mx_fs_open_state) fs;
    boole rv;
    NYD_IN;
 

@@ -134,7 +134,7 @@ a_attachments_yay(struct mx_attachment const *ap){
 }
 
 struct mx_attachment *
-mx_attachments_append(struct mx_attachment *aplist, char const *file, BITENUM_IS(u32,mx_attachments_error) *aerr_or_nil,
+mx_attachments_append(struct mx_attachment *aplist, char const *file, BITENUM(u32,mx_attachments_error) *aerr_or_nil,
 		struct mx_attachment **newap_or_nil){
 #ifdef mx_HAVE_ICONV
 	FILE *cnvfp;
@@ -298,7 +298,7 @@ mx_attachments_append_list(struct mx_attachment *aplist, char const *names){
 
 	for(shin.s = n_UNCONST(names), shin.l = UZ_MAX;;){
 		struct mx_attachment *nap;
-		BITENUM_IS(u32,n_shexp_state) shs;
+		BITENUM(u32,n_shexp_state) shs;
 
 		shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
 				n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGN_EMPTY), mx_SCOPE_NONE,
@@ -413,7 +413,7 @@ jleave:
 }
 
 struct mx_attachment *
-mx_attachments_list_edit(struct mx_attachment *aplist, BITENUM_IS(u32,mx_go_input_flags) gif){
+mx_attachments_list_edit(struct mx_attachment *aplist, BITENUM(u32,mx_go_input_flags) gif){
 	/* Modify already present ones? Append some more? */
 	char prefix[32];
 	char const *inidat;

@@ -1176,7 +1176,7 @@ jpipe_close:
             (mx_MIME_TYPE_HDL_TMPF | mx_MIME_TYPE_HDL_NEEDSTERM)){
          struct mx_fs_tmp_ctx *fstcp;
          char const *pref;
-         BITENUM_IS(u32,mx_fs_oflags) of;
+         BITENUM(u32,mx_fs_oflags) of;
 
          of = mx_FS_O_RDWR;
 
@@ -1723,7 +1723,7 @@ sendmp(struct message *mp, FILE *obuf, struct mx_ignore const *doitp,
    struct quoteflt qf;
    boole anyoutput;
    FILE *ibuf;
-   BITENUM_IS(u32,mx_mime_parse_flags) mpf;
+   BITENUM(u32,mx_mime_parse_flags) mpf;
    struct mimepart *ip;
    uz linesize, cnt, size, i;
    char *linedat;

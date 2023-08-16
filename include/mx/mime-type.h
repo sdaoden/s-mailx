@@ -69,7 +69,7 @@ enum mx_mime_type_handler_flags{
 enum {mx_MIME_TYPE_HDL_MAX = mx_MIME_TYPE_HDL_TMPF_NAMETMPL_SUFFIX};
 
 struct mx_mime_type_handler{
-	BITENUM_IS(u32,mx_mime_type_handler_flags) mth_flags;
+	BITENUM(u32,mx_mime_type_handler_flags) mth_flags;
 	su_64( u8 mth__dummy[4]; )
 	char const *mth_tmpf_nametmpl; /* Only with HDL_TMPF_NAMETMPL */
 	/* XXX union{} the following? */
@@ -104,7 +104,7 @@ EXPORT enum mx_mime_type mx_mime_type_classify_part(struct mimepart *mpp, boole 
 
 /* Query handler for a part, return the plain type (& HDL_TYPE_MASK).
  * mthp is anyway initialized (.mth_flags, .mth_msg) */
-EXPORT BITENUM_IS(u32,mx_mime_type_handler_flags) mx_mime_type_handler(struct mx_mime_type_handler *mthp,
+EXPORT BITENUM(u32,mx_mime_type_handler_flags) mx_mime_type_handler(struct mx_mime_type_handler *mthp,
 		struct mimepart const *mpp, enum sendaction action);
 
 /* `(un)?mimetype' commands */

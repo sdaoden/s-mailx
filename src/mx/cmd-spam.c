@@ -770,7 +770,7 @@ jtail:
 static void
 a_spam_rate2score(struct a_spam_vc *vcp, char *buf){
 	u32 m, s;
-	BITENUM_IS(u32,su_idec_state) ids;
+	BITENUM(u32,su_idec_state) ids;
 	NYD2_IN;
 
 	/* C99 */{ /* Overcome ISO C / compiler weirdness */

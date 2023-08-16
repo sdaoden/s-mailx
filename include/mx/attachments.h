@@ -60,7 +60,7 @@ struct mx_attachment{
 	char const *a_input_charset; /* Interpretation depends on .a_conv */
 	char const *a_charset; /* ... */
 	FILE *a_tmpf; /* If AC_TMPFILE */
-	BITENUM_IS(u8,mx_attachments_conv) a_conv; /* User chosen conversion */
+	BITENUM(u8,mx_attachments_conv) a_conv; /* User chosen conversion */
 	boole a_conv_force_b64; /* Encode in base64, always; only files*/
 	boole a_input_charset_set;
 	u8 a__pad[2];
@@ -70,7 +70,7 @@ struct mx_attachment{
 /* Try to add an attachment for file, fexpand(_LOCAL|_NOPROTO)ed, return the new aplist aphead.
  * The newly created attachment may be stored in *newap, or NIL on error */
 EXPORT struct mx_attachment *mx_attachments_append(struct mx_attachment *aplist, char const *file,
-		BITENUM_IS(u32,mx_attach_error) *aerr_or_nil, struct mx_attachment **newap_or_nil);
+		BITENUM(u32,mx_attach_error) *aerr_or_nil, struct mx_attachment **newap_or_nil);
 
 /* Shell-token parse names, and append resulting filenames to aplist, return (new) aplist head */
 EXPORT struct mx_attachment *mx_attachments_append_list(struct mx_attachment *aplist, char const *names);
@@ -87,7 +87,7 @@ EXPORT struct mx_attachment *mx_attachments_remove(struct mx_attachment *aplist,
 EXPORT struct mx_attachment *mx_attachments_find(struct mx_attachment *aplist, char const *name, boole *stat_or_nil);
 
 /* Interactively edit the attachment list, return updated list */
-EXPORT struct mx_attachment *mx_attachments_list_edit(struct mx_attachment *aplist, BITENUM_IS(u32,mx_go_input_flags) gif);
+EXPORT struct mx_attachment *mx_attachments_list_edit(struct mx_attachment *aplist, BITENUM(u32,mx_go_input_flags) gif);
 
 /* Print all attachments, return number of lines written, -1 on error */
 EXPORT sz mx_attachments_list_print(struct mx_attachment const *aplist, FILE *fp);

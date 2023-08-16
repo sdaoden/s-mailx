@@ -119,7 +119,7 @@ EXPORT uz mx_qp_enc_calc_size(uz len);
  * are not generated.
  * Otherwise complete input lines are assumed and soft line breaks are generated as necessary.
  * Return NIL on error (overflow) */
-EXPORT struct str *mx_qp_enc(struct str *out, struct str const *in, BITENUM_IS(u32,mx_qp_flags) flags);
+EXPORT struct str *mx_qp_enc(struct str *out, struct str const *in, BITENUM(u32,mx_qp_flags) flags);
 
 /* The buffers of out and *rest* will be managed via n_realloc().
  * If inrest_or_nil is needed but NIL an error occurs, otherwise tolerant.
@@ -137,8 +137,8 @@ EXPORT uz mx_b64_enc_calc_size(uz len);
  * is set (and multiple thereof if B64_MULTILINE is set).
  * Thus, in the B64_BUF case, better call b64_enc_calc_size() first.
  * Return NIL on error (overflow; cannot happen for B64_BUF) */
-EXPORT struct str *mx_b64_enc(struct str *out, struct str const *in, BITENUM_IS(u32,mx_b64_flags) flags);
-EXPORT struct str *mx_b64_enc_buf(struct str *out, void const *vp, uz vp_len, BITENUM_IS(u32,mx_b64_flags) flags);
+EXPORT struct str *mx_b64_enc(struct str *out, struct str const *in, BITENUM(u32,mx_b64_flags) flags);
+EXPORT struct str *mx_b64_enc_buf(struct str *out, void const *vp, uz vp_len, BITENUM(u32,mx_b64_flags) flags);
 
 /* The _{header,part}() variants are failure tolerant, the latter requires outrest to be set; due to the odd 4:3
  * relation inrest_or_nil should be given, _then_, it is an error if it is needed but not set.

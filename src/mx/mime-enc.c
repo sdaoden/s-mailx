@@ -123,7 +123,7 @@ enum a_me_ctes_off{
 
 /* Check whether *s must be quoted according to flags, else body rules;
  * sol indicates whether we are at the first character of a line/field */
-SINLINE enum a_me_qact a_me_mustquote(char const *s, char const *e, boole sol, BITENUM_IS(u32,mx_mime_enc_flags) flags);
+SINLINE enum a_me_qact a_me_mustquote(char const *s, char const *e, boole sol, BITENUM(u32,mx_mime_enc_flags) flags);
 
 /* Trim WS and make work point to the decodable range of in.
  * Return the amount of bytes a b64_dec operation on that buffer requires, or UZ_MAX on overflow error */
@@ -135,7 +135,7 @@ static uz a_me_b64_dec_prepare(struct str *work, struct str const *in);
 static sz a_me_b64_dec(struct str *out, struct str *in);
 
 SINLINE enum a_me_qact
-a_me_mustquote(char const *s, char const *e, boole sol, BITENUM_IS(u32,mx_mime_enc_flags) flags){
+a_me_mustquote(char const *s, char const *e, boole sol, BITENUM(u32,mx_mime_enc_flags) flags){
 	u8 const *qtab;
 	enum a_me_qact a, r;
 	NYD2_IN;
@@ -385,7 +385,7 @@ uz
 mx_mime_enc_mustquote(char const *ln, uz lnlen, boole ishead){
 	uz rv;
 	boole sol;
-	BITENUM_IS(u32,mx_mime_enc_flags) flags;
+	BITENUM(u32,mx_mime_enc_flags) flags;
 	NYD2_IN;
 
 	flags = ishead ? mx_MIME_ENC_F_ISHEAD : mx_MIME_ENC_F_NONE;
@@ -449,7 +449,7 @@ jleave:
 }
 
 struct str *
-mx_qp_enc(struct str *out, struct str const *in, BITENUM_IS(u32,mx_qp_flags) flags){
+mx_qp_enc(struct str *out, struct str const *in, BITENUM(u32,mx_qp_flags) flags){
 	uz lnlen;
 	char *qp;
 	char const *is, *ie;
@@ -471,7 +471,7 @@ mx_qp_enc(struct str *out, struct str const *in, BITENUM_IS(u32,mx_qp_flags) fla
 	ie = is + in->l;
 
 	if(flags & mx_QP_ISHEAD){
-		BITENUM_IS(u32,mx_mime_enc_flags) ef;
+		BITENUM(u32,mx_mime_enc_flags) ef;
 
 		ef = mx_MIME_ENC_F_ISHEAD | (flags & mx_QP_ISENCWORD ? mx_MIME_ENC_F_ISENCWORD : 0);
 
@@ -750,7 +750,7 @@ mx_b64_enc_calc_size(uz len){
 }
 
 struct str *
-mx_b64_enc(struct str *out, struct str const *in, BITENUM_IS(u32,mx_b64_flags) flags){
+mx_b64_enc(struct str *out, struct str const *in, BITENUM(u32,mx_b64_flags) flags){
 	u8 const *p;
 	uz i, lnlen;
 	char *b64;
@@ -844,7 +844,7 @@ jleave:
 }
 
 struct str *
-mx_b64_enc_buf(struct str *out, void const *vp, uz vp_len, BITENUM_IS(u32,mx_b64_flags) flags){
+mx_b64_enc_buf(struct str *out, void const *vp, uz vp_len, BITENUM(u32,mx_b64_flags) flags){
 	struct str in;
 	NYD_IN;
 

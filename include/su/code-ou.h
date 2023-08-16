@@ -113,7 +113,7 @@
 
 #undef ATOMIC
 
-#undef BITENUM_IS /* FIXME DROP THIS */
+#undef BITENUM /* FIXME DROP THIS */
 #undef BITENUM
 #undef BITENUM_MASK
 #undef PADENUM

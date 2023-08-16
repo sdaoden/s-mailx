@@ -398,7 +398,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    struct message *m;
    char const *cp, *xp;
    s64 t;
-   BITENUM_IS(u32,mflag) f;
+   BITENUM(u32,mflag) f;
    NYD_IN;
    UNUSED(name);
 
