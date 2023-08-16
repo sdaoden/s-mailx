@@ -5042,6 +5042,8 @@ t_vexpr() { #{{{
 	vput vexpr res epoch 2021 05 13 21 47 26;x
 	eval set $res
 	if 16209424460 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
+	vput vexpr res seconds 2021 05 13 21 47 26;x
+	if 1620942446 != "$res"; echo ERROR; endif
 	#
 	vput vexpr res date-utc 0x1D30BE2E1FF;x
 	eval set $res
@@ -5068,7 +5070,7 @@ t_vexpr() { #{{{
 	if 15829381230 != "$epoch_sec$epoch_nsec"; echo ERROR; endif
 	__EOT
 	#}}}
-	cke0 agnostic 0 ./tagnostic '638877393 602'
+	cke0 agnostic 0 ./tagnostic '138745713 622'
 
 	t_epilog "${@}"
 } #}}}
