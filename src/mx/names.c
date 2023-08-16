@@ -77,7 +77,7 @@
 static struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d;
 static struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d;
 
-DVL( static void a_nm__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_nm__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* Same name, while taking care for *allnet*? */
 static boole a_nm_is_same_name(char const *n1, char const *n2,
@@ -113,7 +113,7 @@ static struct n_strlist *a_nm_a8s_dump(char const *cmdname, char const *key,
 
 #if DVLOR(1, 0)
 static void
-a_nm__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_nm__on_gut(BITENUM(u32,su_state_gut_flags) flags){
    NYD2_IN;
 
    if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){
@@ -725,7 +725,7 @@ lextract(char const *line, enum gfield ntype)
    else{
       struct str sin;
       struct n_string s_b, *s;
-      BITENUM_IS(u32,n_shexp_state) shs;
+      BITENUM(u32,n_shexp_state) shs;
 
       n_autorec_relax_create();
       s = n_string_creat_auto(&s_b);

@@ -502,7 +502,7 @@ mx_cmd_arg_parse(struct mx_cmd_arg_ctx *cacp, enum mx_scope scope, boole skip_ak
 	struct mx_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
 	struct n_string shou, *shoup;
 	struct str shin_orig, shin;
-	BITENUM_IS(u32,n_shexp_state) shs;
+	BITENUM(u32,n_shexp_state) shs;
 	struct mx_cmd_arg_desc const *cadp;
 	uz parsed_args, cad_idx;
 	void const *cookie;
@@ -989,7 +989,7 @@ getrawlist(enum mx_scope scope, boole wysh/* v15-cpmpat */, boole skip_aka_dryru
 			}
 
 			/* C99 */{
-				BITENUM_IS(u32,n_shexp_state) shs;
+				BITENUM(u32,n_shexp_state) shs;
 
 				shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
 						(cookie == NIL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |

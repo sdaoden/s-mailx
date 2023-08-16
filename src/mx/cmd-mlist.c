@@ -79,7 +79,7 @@ static struct a_ml_regex *a_ml_re_def, *a_ml_re_sub;
 /* +toolbox below */
 #endif
 
-DVL( static void a_ml__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_ml__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* */
 static boole a_ml_mux(boole subscribe, char const **argv);
@@ -101,7 +101,7 @@ static struct su_toolbox const a_ml_re_tbox = su_TOOLBOX_I9R(&a_ml_re_clone, &a_
 
 #if DVLOR(1, 0)
 static void
-a_ml__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_ml__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	NYD2_IN;
 
 	if((flags & su_STATE_GUT_ACT_MASK) == su_STATE_GUT_ACT_NORM){

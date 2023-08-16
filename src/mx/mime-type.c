@@ -107,14 +107,14 @@ enum a_mt_counter_evidence{
 };
 
 struct a_mt_bltin{
-	BITENUM_IS(u32,a_mt_flags) mtb_flags;
+	BITENUM(u32,a_mt_flags) mtb_flags;
 	u32 mtb_mtlen;
 	char const *mtb_line;
 };
 
 struct a_mt_node{
 	struct a_mt_node *mtn_next;
-	BITENUM_IS(u32,a_mt_flags) mtn_flags;
+	BITENUM(u32,a_mt_flags) mtn_flags;
 	u32 mtn_len; /* Length of MIME type string, rest thereafter */
 	char const *mtn_line;
 };
@@ -131,7 +131,7 @@ struct a_mt_class_arg{
 	/*char mtca_lastc;*/
 	char mtca_c;
 	u8 mtca__dummy[3];
-	BITENUM_IS(u32,a_mt_class) mtca_mtc;
+	BITENUM(u32,a_mt_class) mtca_mtc;
 	u64 mtca_all_len;
 	u64 mtca_all_highbit; /* TODO not yet interpreted */
 	u64 mtca_all_bogus;
@@ -153,13 +153,13 @@ static struct a_mt_node *a_mt_hdl_list;
 
 /* Initialize MIME type list in order */
 static void a_mt_init(void);
-static boole a_mt__load_file(BITENUM_IS(u32,a_mt_flags) orflags, char const *file, char **line, uz *linesize);
+static boole a_mt__load_file(BITENUM(u32,a_mt_flags) orflags, char const *file, char **line, uz *linesize);
 
-DVL( static void a_mt__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags); )
+DVL( static void a_mt__on_gut(BITENUM(u32,su_state_gut_flags) flags); )
 
 /* Create (prepend) a new MIME type; cmdcalled results in a bit more verbosity for `mimetype'; line is terminated, len
  * is just an optimization */
-static struct a_mt_node *a_mt_create(boole cmdcalled, BITENUM_IS(u32,a_mt_flags) orflags, char const *line, uz len);
+static struct a_mt_node *a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, uz len);
 
 /* Try to find MIME type by X (after zeroing mtlp), return NIL if not found.
  * is_hdl: whether for handler aka user context */
@@ -169,16 +169,16 @@ static struct a_mt_lookup *a_mt_by_name(struct a_mt_lookup *mtlp, char const *na
 /* In-depth inspection of raw content: call _round() repeatedly, last time with a 0 length buffer, finally check
  * .mtca_mtc for result.
  * No further call if _round() return includes _C_SUGGEST_DONE, as the resulting classification is unambiguous */
-SINLINE struct a_mt_class_arg *a_mt_classify_init(struct a_mt_class_arg *mtcap, BITENUM_IS(u32,a_mt_class) initval);
-static BITENUM_IS(u32,a_mt_class) a_mt_classify_round(struct a_mt_class_arg *mtcap);
+SINLINE struct a_mt_class_arg *a_mt_classify_init(struct a_mt_class_arg *mtcap, BITENUM(u32,a_mt_class) initval);
+static BITENUM(u32,a_mt_class) a_mt_classify_round(struct a_mt_class_arg *mtcap);
 
 /* We need an in-depth inspection of an application/octet-stream part */
-static enum mx_mime_type a_mt_classify_o_s_part(BITENUM_IS(u32,a_mt_counter_envidence) mce, struct mimepart *mpp,
+static enum mx_mime_type a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_envidence) mce, struct mimepart *mpp,
 		boole deep_inspect);
 
 /* Check whether a *pipe-XY* handler is applicable, and adjust flags according to the defined trigger characters; upon
  * entry MIME_TYPE_HDL_NIL is set, and that is not changed if mthp does not apply */
-static BITENUM_IS(u32,mx_mime_type_handler_flags) a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action);
+static BITENUM(u32,mx_mime_type_handler_flags) a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action);
 
 static void
 a_mt_init(void){
@@ -344,7 +344,7 @@ jleave:
 
 #if DVLOR(1, 0)
 static void
-a_mt__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
+a_mt__on_gut(BITENUM(u32,su_state_gut_flags) flags){
 	struct a_mt_node **mtnpp, *mtnp;
 	NYD2_IN;
 
@@ -367,7 +367,7 @@ a_mt__on_gut(BITENUM_IS(u32,su_state_gut_flags) flags){
 #endif /* DVLOR(1, 0) */
 
 static struct a_mt_node *
-a_mt_create(boole cmdcalled, BITENUM_IS(u32,a_mt_flags) orflags, char const *line, uz len){
+a_mt_create(boole cmdcalled, BITENUM(u32,a_mt_flags) orflags, char const *line, uz len){
 	struct str work;
 	uz len_orig, tlen, i;
 	char const *line_orig, *typ, *subtyp;
@@ -647,7 +647,7 @@ jleave:
 }
 
 SINLINE struct a_mt_class_arg *
-a_mt_classify_init(struct a_mt_class_arg * mtcap, BITENUM_IS(u32,a_mt_class) initval){
+a_mt_classify_init(struct a_mt_class_arg * mtcap, BITENUM(u32,a_mt_class) initval){
 	NYD2_IN;
 
 	STRUCT_ZERO(struct a_mt_class_arg, mtcap);
@@ -660,7 +660,7 @@ a_mt_classify_init(struct a_mt_class_arg * mtcap, BITENUM_IS(u32,a_mt_class) ini
 	return mtcap;
 }
 
-static BITENUM_IS(u32,a_mt_class)
+static BITENUM(u32,a_mt_class)
 a_mt_classify_round(struct a_mt_class_arg *mtcap){
 	/* TODO BTW., after the MIME/send layer rewrite we could use a MIME
 	 * TODO boundary of "=-=-=" if we would add a B_ in EQ spirit to F_,
@@ -669,7 +669,7 @@ a_mt_classify_round(struct a_mt_class_arg *mtcap){
 #define a_F_SIZEOF (sizeof(a_F_) -1)
 
 	char f_buf[a_F_SIZEOF], *f_p = f_buf;
-	BITENUM_IS(u32,a_mt_class) mtc;
+	BITENUM(u32,a_mt_class) mtc;
 	int c, lastc;
 	s64 alllen;
 	sz curlnlen;
@@ -798,7 +798,7 @@ a_mt_classify_round(struct a_mt_class_arg *mtcap){
 }
 
 static enum mx_mime_type
-a_mt_classify_o_s_part(BITENUM_IS(u32,a_mt_counter_evidence) mce, struct mimepart *mpp, boole deep_inspect){
+a_mt_classify_o_s_part(BITENUM(u32,a_mt_counter_evidence) mce, struct mimepart *mpp, boole deep_inspect){
 	struct str in = {NIL, 0}, outrest, inrest, dec;
 	struct a_mt_class_arg mtca;
 	int lc, c;
@@ -806,7 +806,7 @@ a_mt_classify_o_s_part(BITENUM_IS(u32,a_mt_counter_evidence) mce, struct mimepar
 	FILE *ibuf;
 	long start_off;
 	boole did_inrest;
-	BITENUM_IS(u32,a_mt_class) mtc;
+	BITENUM(u32,a_mt_class) mtc;
 	enum mx_mime_type mt;
 	NYD2_IN;
 
@@ -949,10 +949,10 @@ jleave:
 	return mt;
 }
 
-static BITENUM_IS(u32,mx_mime_type_handler_flags)
+static BITENUM(u32,mx_mime_type_handler_flags)
 a_mt_pipe_check(struct mx_mime_type_handler *mthp, enum sendaction action){
 	char const *cp;
-	BITENUM_IS(u32,mx_mime_type_handler_flags) rv_orig, rv;
+	BITENUM(u32,mx_mime_type_handler_flags) rv_orig, rv;
 	NYD2_IN;
 
 	rv_orig = rv = mthp->mth_flags;
@@ -1366,7 +1366,7 @@ jos_content_check:
 	goto jleave;
 }
 
-BITENUM_IS(u32,mx_mime_type_handler_flags)
+BITENUM(u32,mx_mime_type_handler_flags)
 mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *mpp, enum sendaction action){
 #define a__S "pipe-"
 #define a__L (sizeof(a__S) -1)
@@ -1375,7 +1375,7 @@ mx_mime_type_handler(struct mx_mime_type_handler *mthp, struct mimepart const *m
 	char const *es, *cs;
 	uz el, cl, l;
 	char *buf, *cp;
-	BITENUM_IS(u32,mx_mime_type_hander_flags) rv, xrv;
+	BITENUM(u32,mx_mime_type_hander_flags) rv, xrv;
 	NYD_IN;
 
 	su_mem_set(mthp, 0, sizeof *mthp);

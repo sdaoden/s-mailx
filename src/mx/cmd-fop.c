@@ -249,9 +249,9 @@ static void
 a_fop__lock(struct a_fop_ctx *fcp){
 	FILE *fp;
 	boole silence;
-	BITENUM_IS(u32,mx_fs_oflags) oflags;
+	BITENUM(u32,mx_fs_oflags) oflags;
 	char const *mode;
-	BITENUM_IS(u32,mx_file_lock_mode) flm;
+	BITENUM(u32,mx_file_lock_mode) flm;
 	NYD2_IN;
 
 #ifdef mx_HAVE_FLOCK
@@ -461,7 +461,7 @@ static void
 a_fop__open(struct a_fop_ctx *fcp){
 	FILE *fp;
 	boole silence;
-	BITENUM_IS(u32,mx_fs_oflags) oflags;
+	BITENUM(u32,mx_fs_oflags) oflags;
 	char const *mode;
 	NYD2_IN;
 

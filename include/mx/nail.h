@@ -1233,7 +1233,7 @@ struct n_header_field{
 };
 
 struct header{
-   BITENUM_IS(u32,header_flags) h_flags;
+   BITENUM(u32,header_flags) h_flags;
    u32 h_dummy;
    char *h_subject; /* Subject string */
    char const *h_charset; /* preferred charset */

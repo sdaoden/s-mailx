@@ -114,7 +114,7 @@ mx_tty_getpass(char const *query){
 #endif /* mx_HAVE_NET */
 
 boole
-mx_tty_getfilename(struct n_string *store, BITENUM_IS(u32,mx_go_input_flags) gif, char const *prompt_or_nil,
+mx_tty_getfilename(struct n_string *store, BITENUM(u32,mx_go_input_flags) gif, char const *prompt_or_nil,
 		char const *init_content_or_nil){
 	char const *cp;
 	boole rv;
@@ -136,7 +136,7 @@ mx_tty_getfilename(struct n_string *store, BITENUM_IS(u32,mx_go_input_flags) gif
 }
 
 u32
-mx_tty_create_prompt(struct n_string *store, char const *xprompt, BITENUM_IS(u32,mx_go_input_flags) gif){
+mx_tty_create_prompt(struct n_string *store, char const *xprompt, BITENUM(u32,mx_go_input_flags) gif){
 	struct mx_visual_info_ctx vic;
 	struct str in, out;
 	u32 pwidth, poff;
@@ -182,7 +182,7 @@ jredo:
 	cp = (gif & mx_GO_INPUT_PROMPT_EVAL) ? (gif & mx_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
 			: xprompt;
 	if(cp != NIL && *cp != '\0'){
-		BITENUM_IS(u32,n_shexp_state) shs;
+		BITENUM(u32,n_shexp_state) shs;
 
 		store = n_string_push_cp(store, cp);
 		in.s = n_string_cp(store);

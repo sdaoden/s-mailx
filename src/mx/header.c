@@ -1610,7 +1610,7 @@ jeseek:
 
          /* But after conscious user edit perform a subject cleanup */
          if(!(hp->h_flags & HF_USER_EDITED)){
-            BITENUM_IS(u32,mx_header_subject_edit_flags) hsef;
+            BITENUM(u32,mx_header_subject_edit_flags) hsef;
 
             switch(hp->h_flags & HF_CMD_MASK){
             default:
@@ -2786,7 +2786,7 @@ jleave:
 
 FL char *
 mx_header_subject_edit(char const *subp,
-      BITENUM_IS(u32,mx_header_subject_edit_flags) hsef){
+      BITENUM(u32,mx_header_subject_edit_flags) hsef){
    struct{
       u8 len;
       char dat[7];
@@ -2806,7 +2806,7 @@ mx_header_subject_edit(char const *subp,
    char *re_st_base, *re_st, *re_st_x;
    uz re_l;
    boole any;
-   BITENUM_IS(u32,mx_header_subject_edit_flags) hsef_any;
+   BITENUM(u32,mx_header_subject_edit_flags) hsef_any;
    NYD_IN;
 
    if(subp == NIL){

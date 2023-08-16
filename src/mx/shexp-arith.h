@@ -82,7 +82,7 @@
 # define a_SHEXP_ISVARC_BADNST(C) FAL0
 # define ASSERT(X)
 # define ASSERT_NYD_EXEC(X,Y)
-# define BITENUM_IS(X,Y) X
+# define BITENUM(X,Y) X
 # define CONCAT(S1,S2) su__CONCAT_1(S1, S2)
 #  define su__CONCAT_1(S1,S2) su__CONCAT_2(S1, S2)
 #  define su__CONCAT_2(S1,S2) S1 ## S2
@@ -483,7 +483,7 @@ jenomem:
 
 		/* A number? */
 		if(su_cs_is_digit(*ep)){
-			BITENUM_IS(u32,su_idec_state) is;
+			BITENUM(u32,su_idec_state) is;
 
 			is = su_idec_cp(&sasp->sas_nums_top->sav_val, ep, 0, a_SHEXP_ARITH_IDEC_MODE, S(char const**,&ep));
 			if((is &= su_IDEC_STATE_EMASK) && is != su_IDEC_STATE_EBASE)
