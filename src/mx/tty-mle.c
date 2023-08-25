@@ -560,8 +560,8 @@ static boole a_tty_on_state_change(up cookie, u32 tiossc, s32 sig);
 
 # ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
-static boole a_tty_hist_load(void);
-static boole a_tty_hist_save(void);
+static boole a_tty_hist_load(boole feedback);
+static boole a_tty_hist_save(boole feedback);
 
 /* Initialize .tg_hist_size_max and return desired history file, or NIL */
 static char const *a_tty_hist__query_config(void);
@@ -698,9 +698,9 @@ a_tty_on_state_change(up cookie, u32 tiossc, s32 sig){
 
 # ifdef mx_HAVE_HISTORY
 static boole
-a_tty_hist_load(void){
+a_tty_hist_load(boole feedback){
 	u8 version;
-	uz lsize, cnt, llen;
+	uz lsize, cnt, llen, ents;
 	char *lbuf, *cp;
 	s32 eno;
 	FILE *fp;
@@ -711,7 +711,7 @@ a_tty_hist_load(void){
 	rv = TRU1;
 
 	if((hfname = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0)
-		goto jleave;
+		goto j_leave;
 
 	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
@@ -722,10 +722,7 @@ a_tty_hist_load(void){
 
 	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TSHARE | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
 		eno = su_err();
-jerr:
-		n_err(_("Cannot read/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
-		rv = FAL0;
-		goto jrele;
+		goto jerr;
 	}
 
 	a_tty_hist_clear();
@@ -733,6 +730,7 @@ jerr:
 	mx_fs_linepool_aquire(&lbuf, &lsize);
 
 	cnt = S(uz,fsize(fp));
+	ents = 0;
 	version = 0;
 
 	while(fgetline(&lbuf, &lsize, &cnt, &llen, fp, FAL0) != NIL){
@@ -786,38 +784,50 @@ jerr:
 
 			if(!a_tty_hist_add(cp, gif))
 				break;
+			++ents;
 		}
 	}
 
 	mx_fs_linepool_release(lbuf, lsize);
 
 	if(ferror(fp))
-		n_err(_("I/O error while reading *history-file*=%s\n"), n_shexp_quote_cp(hfname, FAL0));
+		goto jioerr;
 
-jrele:
+	if(feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
+		n_err(_("Loaded %" PRIuZ " entries from *history-file*=%s\n"), ents, n_shexp_quote_cp(hfname, FAL0));
+
+jleave:
 	if(fp != NIL)
 		fclose(fp);
 
 	mx_sigs_all_rele(); /* XXX remove jumps */
-jleave:
+j_leave:
 	NYD_OU;
 	return rv;
+
+jioerr:
+	n_err(_("I/O error while reading *history-file*=%s\n"), n_shexp_quote_cp(hfname, FAL0));
+	rv = FAL0;
+	goto jleave;
+jerr:
+	n_err(_("Cannot read/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(hfname, FAL0), su_err_doc(eno));
+	rv = FAL0;
+	goto jleave;
 }
 
 static boole
-a_tty_hist_save(void){
-	uz i;
+a_tty_hist_save(boole feedback){
+	uz i, ents;
 	struct a_tty_hist *thp;
-	s32 eno;
 	FILE *fp;
-	char const *v;
+	char const *v, *emsg;
 	boole rv, dogabby;
 	NYD_IN;
 
 	rv = TRU1;
 
 	if((v = a_tty_hist__query_config()) == NIL || a_tty.tg_hist_size_max == 0 || !a_tty.tg_hist_is_init)
-		goto jleave;
+		goto j_leave;
 
 	dogabby = ok_blook(history_gabby_persist);
 
@@ -828,61 +838,63 @@ a_tty_hist_save(void){
 
 	mx_sigs_all_holdx(); /* TODO too heavy, yet we may jump even here!? */
 
-	/* TODO temporary histfile + rename?! */
-	if((fp = fopen(v, "w")) == NIL){
-		eno = su_err_by_errno();
+	emsg = NIL;
+
+	if((fp = fopen(v, "w")) == NIL){ /* TODO mx_fs_tmp_open() + rename? */
+		su_err_by_errno();
 		goto jerr;
 	}
 
-	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG))){
-		eno = su_err();
-jerr:
-		n_err(_("Cannot write/lock *history-file*=%s: %s\n"), n_shexp_quote_cp(v, FAL0), su_err_doc(eno));
-		rv = FAL0;
-		goto jrele;
-	}
+	if(!mx_file_lock(fileno(fp), (mx_FILE_LOCK_MODE_TEXCL | mx_FILE_LOCK_MODE_RETRY | mx_FILE_LOCK_MODE_LOG)))
+		goto jerr;
 
 	if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER, sizeof(a_TTY_HIST_MARKER "\n") -1, fp
 			) != sizeof(a_TTY_HIST_MARKER "\n") -1)
 		goto jioerr;
-	else for(; thp != NIL; thp = thp->th_younger){
+
+	for(ents = 0; thp != NIL; thp = thp->th_younger){
 		if(dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)){
 			char c;
 
-			switch(thp->th_flags & a_TTY_HIST_CTX_MASK){
-			default:
-			case a_TTY_HIST_CTX_DEFAULT:
-				c = 'd';
-				break;
-			case a_TTY_HIST_CTX_COMPOSE:
-				c = 'c';
-				break;
-			}
+			c = ((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE) ? 'd' : 'c';
+
 			if(putc(c, fp) == EOF)
 				goto jioerr;
-
 			if((thp->th_flags & a_TTY_HIST_GABBY) && putc('*', fp) == EOF)
 				goto jioerr;
-
 			if(putc(' ', fp) == EOF || fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, fp
 						) != sizeof(*thp->th_dat) * thp->th_len ||
-					putc('\n', fp) == EOF){
-jioerr:
-				n_err(_("I/O error while writing *history-file* %s\n"), n_shexp_quote_cp(v, FAL0));
-				rv = FAL0;
-				break;
-			}
+					putc('\n', fp) == EOF)
+				goto jioerr;
+
+			++ents;
 		}
 	}
 
-jrele:
+	if(fflush(fp) == EOF)
+		goto jioerr;
+
+	if(feedback && (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
+		n_err(_("Saved %" PRIuZ " entries to *history-file*=%s\n"), ents, n_shexp_quote_cp(v, FAL0));
+
+jleave:
 	if(fp != NIL)
 		fclose(fp);
 
 	mx_sigs_all_rele(); /* XXX remove jumps */
-jleave:
+j_leave:
 	NYD_OU;
 	return rv;
+
+jioerr:
+	su_err_by_errno();
+	emsg = N_("I/O error while writing *history-file*=%s\n");
+jerr:
+	if(emsg == NIL)
+		emsg = N_("Cannot write/lock *history-file*=%s %s\n");
+	n_err(V_(emsg), n_shexp_quote_cp(v, FAL0), su_err_doc(-1));
+	rv = FAL0;
+	goto jleave;
 }
 
 static char const *
@@ -4289,7 +4301,7 @@ mx_tty_init(boole ismain){
 
 	/* Load the history file */
 # ifdef mx_HAVE_HISTORY
-	a_tty_hist_load();
+	a_tty_hist_load(FAL0);
 # endif
 
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -4365,7 +4377,7 @@ mx_tty_destroy(boole xit_fastpath){
 	/* Write the history file */
 # ifdef mx_HAVE_HISTORY
 	if(!xit_fastpath && a_tty.tg_hist_is_init){
-		a_tty_hist_save();
+		a_tty_hist_save(FAL0);
 		DVL(a_tty_hist_clear();)
 		su_cs_dict_gut(&a_tty.tg_hist_dict);
 		DVL(a_tty.tg_hist_is_init = FAL0;)
@@ -4490,9 +4502,9 @@ c_history(void *vp){
 		if(su_cs_starts_with_case("clear", *argv))
 			x = a_tty_hist_clear();
 		else if(su_cs_starts_with_case("load", *argv))
-			x = a_tty_hist_load();
+			x = a_tty_hist_load(TRU1);
 		else if(su_cs_starts_with_case("save", *argv))
-			x = a_tty_hist_save();
+			x = a_tty_hist_save(TRU1);
 		else if(su_cs_starts_with_case("show", *argv))
 			x = a_tty_hist_list();
 		else
