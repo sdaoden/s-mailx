@@ -221,8 +221,10 @@
 #define su_OS_DRAGONFLY 0 /*!< \_ */
 #define su_OS_EMX 0 /*!< \_ */
 #define su_OS_FREEBSD 0 /*!< \_ */
+#define su_OS_HAIKU 0 /*!< \_ */
 #define su_OS_LINUX 0 /*!< \_ */
 #define su_OS_MINIX 0 /*!< \_ */
+#define su_OS_MACOS 0 /*!< \_ */
 #define su_OS_MSDOS 0 /*!< \_ */
 #define su_OS_NETBSD 0 /*!< \_ */
 #define su_OS_OPENBSD 0 /*!< \_ */
@@ -249,12 +251,18 @@
 #elif defined __FreeBSD__
 # undef su_OS_FREEBSD
 # define su_OS_FREEBSD 1
+#elif defined __HAIKU__
+# undef su_OS_HAIKU
+# define su_OS_HAIKU 1
 #elif defined __linux__ || defined __linux
 # undef su_OS_LINUX
 # define su_OS_LINUX 1
 #elif defined __minix
 # undef su_OS_MINIX
 # define su_OS_MINIX 1
+#elif defined __APPLE__
+# undef su_OS_MACOS
+# define su_OS_MACOS 1
 #elif defined __MSDOS__
 # undef su_OS_MSDOS
 # undef su_OS_POSIX
