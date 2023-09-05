@@ -277,6 +277,11 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(resend, 1, a_cmd_cad_resend){
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+mx_CMD_ARG_DESC_SUBCLASS_DEF(return, 1, a_cmd_cad_return){
+	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_OPTION | mx_CMD_ARG_DESC_GREEDY | mx_CMD_ARG_DESC_HONOUR_STOP,
+		n_SHEXP_PARSE_TRIM_IFSSPACE}
+}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 mx_CMD_ARG_DESC_SUBCLASS_DEF(Save, 1, a_cmd_cad_Save){
 	{mx_CMD_ARG_DESC_MSGLIST | mx_CMD_ARG_DESC_GREEDY,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -780,8 +785,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Reply to originators and recipients of <msglist>")},
 	{"retain", &c_retain, (M | TWYRA), 0, MAC, NIL,
 	 N_("(ret) Add <headers> to \"headerpick type retain\", or show that list")},
-	{"return", &c_return, (HG | M | X | EM | NMAC |TWYSH), 0, 2, NIL,
-	 N_("Return control from macro [<return value> [<exit status>]]")},
+	{"return", &c_return, (HG | M | X | EM | NMAC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_return),
+	 N_("Return from macro [[<return value> [<exit status>]] [^ val1[ val2[..]]]]")},
 {"replyall", &c_replyall, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replyall),
  N_("Please use `reply'")},
 {"replysender", &c_replysender, (OBS | A | I | L | LNMAC | R | EM | SC | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_replysender),
