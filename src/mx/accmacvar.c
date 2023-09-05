@@ -221,11 +221,12 @@ enum a_amv_var_vip_mode{
 };
 
 struct a_amv_pospar{
-	u32 app_max_count; /* == slots in .app_dat (or 0 upon single-chunk alloc) */
+	u32 app_max_count; /* == slots in .app_dat (or 0 upon "single-chunk alloc") */
 	u32 app_count; /* Maximum is S32_MAX */
 	u32 app_idx; /* `shift' moves this one, decs .app_count */
 	boole app_not_heap; /* .app_dat stuff not dynamically allocated */
-	u8 app__dummy[3];
+	boole app_is_ret; /* $^? */
+	u8 app__dummy[2];
 	char const **app_dat; /* NIL terminated (for "$@" explosion support) */
 };
 
@@ -257,11 +258,13 @@ struct a_amv_mac_call_args{
 	boole amca_no_xcall; /* XXX We want GO_INPUT_NO_XCALL for this */
 	boole amca_ignerr; /* XXX Use GO_INPUT_IGNERR for evaluating commands */
 	u8 amca__pad[3];
-	struct a_amv_pospar *amca_pospar;
-	struct a_amv_pospar *amca_re_match;
+	struct a_amv_pospar *amca_pospar; /* Positional parameters: $#, $1.. */
+	struct a_amv_pospar *amca_rem_rval; /* Regular expression matches, or return values [$^?]: $^#, $^0.. */
 	struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
+	/* v15: we only need the pointers above for temporary_compose_mode_hook_control() and
+	 * temporary_pospar_access_hook() */
 	struct a_amv_pospar amca__pospar;
-	struct a_amv_pospar amca__re_match;
+	struct a_amv_pospar amca__rem_rval;
 };
 
 struct a_amv_lostack{
@@ -371,8 +374,8 @@ static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
 
-/* Ditto, $^[#0-9].. */
-static struct a_amv_pospar a_amv_re_match;
+/* Ditto, $^[?#0-9].. */
+static struct a_amv_pospar a_amv_rem_rval;
 
 /* TODO We really deserve localopts support for *on-mailbox-*, so hack in today via a static lostack, it should be
  * TODO be a field in mailbox, once that is a real multi-instance object */
@@ -607,12 +610,12 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 	if(UNLIKELY(cacp->cac_no > S32_MAX)){
 		n_err(_("Too many arguments to macro `call': %s\n"), name);
 		n_pstate_err_no = su_ERR_OVERFLOW;
-		rv = 1;
+		rv = su_EX_ERR;
 	}else if(UNLIKELY((amp = a_amv_mac_lookup(name, NIL, a_AMV_MF_NONE)) == NIL)){
 		if(!(f & a_AMV_MAC_CALL_SILENT))
 			n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
 		n_pstate_err_no = su_ERR_NOENT;
-		rv = 1;
+		rv = su_EX_ERR;
 	}else{
 		BITENUM(u8,a_amv_loflags) olof;
 		char const **argv;
@@ -633,11 +636,15 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 
 		olof = U8_MAX;
 		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
+			/* `return' is optional, ensure $^? gives correct result */
+			a_amv_lopts->as_amcap->amca_rem_rval->app_is_ret = FAL0;
 			amcap->amca_loflags = (a_amv_lopts->as_loflags & a_AMV_LF_CALL_MASK
 					) >> a_AMV_LF_CALL_TO_SCOPE_SHIFT;
 			amcap->amca_any_scoped_init = (a_amv_lopts->as_any_scoped ||
 					((amcap->amca_loflags & a_AMV_LF_SCOPE_MASK) != 0));
-		}
+		}else
+			a_amv_rem_rval.app_is_ret = FAL0;
+
 		if(cacp->cac_scope > mx_SCOPE_GLOBAL){
 			/* xcall on first macro level and no a_amv_lopts we have */
 			if(cacp->cac_scope == mx_SCOPE_OUR){
@@ -657,7 +664,7 @@ a_amv_mac_call(void *vp, u32 f, void *lospopts_or_nil){
 			amcap->amca__pospar.app_not_heap = TRU1;
 			amcap->amca__pospar.app_dat = argv;
 		}
-		amcap->amca_re_match = &amcap->amca__re_match;
+		amcap->amca_rem_rval = &amcap->amca__rem_rval;
 
 		(void)a_amv_mac_exec(amcap, lospopts_or_nil);
 		rv = n_pstate_ex_no;
@@ -725,8 +732,8 @@ a_amv_mac__finalize(void *vp){
 	/* Delete positional parameter stack */
 	if(amcap->amca_pospar == &amcap->amca__pospar)
 		a_amv_pospar_clear(&amcap->amca__pospar);
-	if(amcap->amca_re_match == &amcap->amca__re_match)
-		a_amv_pospar_clear(&amcap->amca__re_match);
+	if(amcap->amca_rem_rval == &amcap->amca__rem_rval)
+		a_amv_pospar_clear(&amcap->amca__rem_rval);
 
 	/* `local' variable hashmap.  These have no environment map, never */
 	if(amcap->amca_local_vars != NIL){
@@ -2067,26 +2074,26 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 	i = su_cs_len(rv = &avcp->avc_name[1]);
 
 	/* #, digit+ */
-#ifdef mx_HAVE_REGEX
-	if(rv[0] == '#' || su_cs_is_digit(rv[0])){
+	if(rv[0] == '#' || rv[0] == '?' || su_cs_is_digit(rv[0])){
 		struct a_amv_pospar *appp;
 
-		appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match;
-		ASSERT(appp->app_max_count == 0);
+		appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval;
 
-		if(rv[0] == '#'){
-			j = appp->app_count;
-			goto jienc;
+		if(i == 1){
+			switch(rv[0]){
+			case '#': j = appp->app_count; goto jienc;
+			case '?': j = appp->app_is_ret; goto jienc;
+			}
 		}
+
 		if((su_idec_s32_cp(&j, &rv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) == su_IDEC_STATE_CONSUMED && j >= 0 && S(u32,j) < appp->app_count){
 			rv = appp->app_dat[j];
 			goto jleave;
 		}
-	}else
-#endif
+	}
 	/* ERR, ERRDOC, ERRNAME, plus *-NAME variants.  As well as ERRQUEUE- */
-			if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
+	else if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
 		if(i == 3){
 			j = n_pstate_err_no;
 			goto jienc;
@@ -3172,7 +3179,7 @@ mx_account_enter(char const *name){
 		amcap->amca_any_scoped_init = TRU1;
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
-		amcap->amca_re_match = &amcap->amca__re_match;
+		amcap->amca_rem_rval = &amcap->amca__rem_rval;
 		++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
 		if(!a_amv_mac_exec(amcap, NIL) || n_pstate_ex_no != 0){
 			/* XXX account switch incomplete, unroll? */
@@ -3232,7 +3239,7 @@ mx_account_leave(void){
 			amcap->amca_any_scoped_init = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
-			amcap->amca_re_match = &amcap->amca__re_match;
+			amcap->amca_rem_rval = &amcap->amca__rem_rval;
 			n_pstate |= n_PS_HOOK;
 			(void)a_amv_mac_exec(amcap, NIL);
 			n_pstate &= ~n_PS_HOOK_MASK;
@@ -3398,39 +3405,77 @@ jleave:
 
 FL int
 c_return(void *vp){ /* TODO the exit status should be m_si64! */
-	char const **argv;
+	struct mx_cmd_arg *cap, *cap_save;
+	struct mx_cmd_arg_ctx *cacp;
 	int rv;
 	NYD_IN;
 
+	/* xxx Force EOF and thus end of macro processing */
 	mx_go_input_force_eof();
 
 	n_pstate_err_no = su_ERR_NONE;
 	rv = su_EX_OK;
 
-	if((argv = vp)[0] != NIL){
-		s32 i;
+	cacp = vp;
+	for(cacp->cac_no = 0, cap_save = NIL, cap = cacp->cac_arg; cap != NIL; ++cacp->cac_no, cap = cap->ca_next){
+		char const *cp;
 
-		if((su_idec_s32_cp(&i, argv[0], 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) == su_IDEC_STATE_CONSUMED && i >= 0)
-			rv = S(int,i);
-		else{
-			n_err(_("return: return value argument is invalid: %s\n"), argv[0]);
-			n_pstate_err_no = su_ERR_INVAL;
-			rv = su_EX_ERR;
-		}
+		if(cap_save != NIL)
+			continue;
 
-		if(argv[1] != NIL){
-			if((su_idec_s32_cp(&i, argv[1], 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-					) == su_IDEC_STATE_CONSUMED && i >= 0)
-				n_pstate_err_no = i;
-			else{
-				n_err(_("return: error number argument is invalid: %s\n"), argv[1]);
+		cp = cap->ca_arg.ca_str.s;
+
+		if(cp[0] == '^' && cp[1] == '\0'){
+			cap_save = cap;
+			cacp->cac_no = 0;
+		}else if(cacp->cac_no < 2){
+			/* First argument return code, second error value */
+			s32 i;
+
+			if((su_idec_s32_cp(&i, cp, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+					) != su_IDEC_STATE_CONSUMED || i < 0){
+				n_err(_("return: invalid return value or error number: %s\n"), cp);
 				n_pstate_err_no = su_ERR_INVAL;
 				rv = su_EX_ERR;
+				goto jleave;
 			}
+			if(cacp->cac_no == 0)
+				rv = S(int,i);
+			else
+				n_pstate_err_no = i;
+		}else{
+jeover:
+			n_pstate_err_no = su_ERR_OVERFLOW;
+			rv = su_EX_ERR;
+			goto jleave;
 		}
 	}
 
+	/* Additional return values? */
+	if(cap_save != NIL){
+		char **cpp;
+		struct a_amv_pospar *appp;
+
+		if(cacp->cac_no >= S32_MAX)
+			goto jeover;
+
+		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_rem_rval : &a_amv_rem_rval;
+		a_amv_pospar_clear(appp);
+		appp->app_is_ret = TRU1;
+
+		/* XXX `return' ^ ARGS: all ARGS should fit well into S32_MAX bytes: use single alloc? */
+		appp->app_max_count = cacp->cac_no;
+		appp->app_count = cacp->cac_no;
+		appp->app_dat = C(char const**,cpp = su_TALLOC(char*,cacp->cac_no + 1));
+
+		/* xxx catch enomem? */
+		for(cap = cap_save; cap != NIL; cap = cap->ca_next)
+			*cpp++ = su_cs_dup((cap == cap_save ? a_amv_lopts->as_amcap->amca_name : cap->ca_arg.ca_str.s), 0);
+		*cpp = NIL;
+		ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == appp->app_count);
+	}
+
+jleave:
 	NYD_OU;
 	return rv;
 }
@@ -3456,7 +3501,7 @@ temporary_on_xy_hook_caller(char const *hname, char const *mac, boole sigs_held)
 			amcap->amca_ps_hook_mask = TRU1;
 			amcap->amca_no_xcall = TRU1;
 			amcap->amca_pospar = &amcap->amca__pospar;
-			amcap->amca_re_match = &amcap->amca__re_match;
+			amcap->amca_rem_rval = &amcap->amca__rem_rval;
 			n_pstate &= ~n_PS_HOOK_MASK;
 			n_pstate |= n_PS_HOOK;
 			a_amv_mac_exec(amcap, NIL);
@@ -3579,7 +3624,7 @@ jmac:
 		amcap->amca__pospar.app_not_heap = TRU1;
 		amcap->amca__pospar.app_dat = argv;
 	}
-	amcap->amca_re_match = &amcap->amca__re_match;
+	amcap->amca_rem_rval = &amcap->amca__rem_rval;
 	rv = a_amv_mac_exec(amcap, NIL);
 	n_pstate &= ~n_PS_HOOK_MASK;
 
@@ -3622,10 +3667,10 @@ temporary_compose_mode_hook_control(boole enable, enum mx_scope scope){ /* XXX h
 		amcap->amca_no_xcall = TRU1;
 		if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
 			amcap->amca_pospar = a_amv_lopts->as_amcap->amca_pospar;
-			amcap->amca_re_match = a_amv_lopts->as_amcap->amca_re_match;
+			amcap->amca_rem_rval = a_amv_lopts->as_amcap->amca_rem_rval;
 		}else{
 			amcap->amca_pospar = &a_amv_pospar;
-			amcap->amca_re_match = &a_amv_re_match;
+			amcap->amca_rem_rval = &a_amv_rem_rval;
 		}
 
 		cmh_losp->as_amcap = amcap;
@@ -3676,7 +3721,7 @@ temporary_compose_mode_hook_call(char const *macname){
 		amcap->amca_any_scoped_init = a_amv_compose_lostack->as_any_scoped;
 		amcap->amca_no_xcall = TRU1;
 		amcap->amca_pospar = &amcap->amca__pospar;
-		amcap->amca_re_match = &amcap->amca__re_match;
+		amcap->amca_rem_rval = &amcap->amca__rem_rval;
 		n_pstate &= ~n_PS_HOOK_MASK;
 		n_pstate |= n_PS_HOOK;
 		if(macname != NIL)
@@ -3729,7 +3774,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 		amcap->amca__pospar.app_count = 3;
 		amcap->amca__pospar.app_not_heap = TRU1;
 		amcap->amca__pospar.app_dat = argv;
-		amcap->amca_re_match = &amcap->amca__re_match;
+		amcap->amca_rem_rval = &amcap->amca__rem_rval;
 
 		rv = a_amv_mac_exec(amcap, NIL) ? n_pstate_ex_no : -1;
 
@@ -3762,7 +3807,7 @@ temporary_pospar_access_hook(char const *name, char const **argv, u32 argc, char
 	amca.amca__pospar.app_count = argc;
 	amca.amca__pospar.app_not_heap = TRU1;
 	amca.amca__pospar.app_dat = argv;
-	amca.amca_re_match = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match);
+	amca.amca_rem_rval = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval);
 
 	STRUCT_ZERO(struct a_amv_lostack, &los);
 
@@ -3793,7 +3838,7 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 	NYD_IN;
 
 	/* If in a macro, we need to overwrite the local instead of global argv */
-	appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL()/*TODO compose mode*/ ? a_amv_lopts->as_amcap->amca_re_match : &a_amv_re_match);
+	appp = (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval);
 
 	a_amv_pospar_clear(appp);
 

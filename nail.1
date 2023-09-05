@@ -7079,20 +7079,29 @@ Any error stops processing of further messages.
 .
 .Mx
 .It Ic return
-Return control of execution to the outer scope.
-Two optional positive decimal number arguments (default 0):
-the first is the 32-bit (\*(ID later 64-bit) return value
-.Pf ( Va \&? ) ,
-the second the 32-bit error number
-.Pf ( Va \&! ) .
-As documented for
-.Va \&?
-a non-0 exit status may cause the program to exit.
-Only available inside of a
+Returns control of execution to the outer scope of a
 .Mx -sx
 .Sx Macro
-(and
+(or
 .Ic account ) .
+All arguments are optional.
+Up to two positive decimal numbers,
+a 32-bit (\*(ID later 64-bit) return value
+.Pf ( Va \&? ) ,
+and a 32-bit error number
+.Pf ( Va \&! ) ,
+both defaulting to 0; as documented for
+.Va \&?
+a non-0 exit status may cause a program exit.
+After a separating
+.Ql ^
+any number of arguments can be made accessible to the callee via
+.Va ^? , ^# , ^0 , ^1
+etc; on excess
+.Va \&!
+as
+.Va ^ERR Ns -OVERFLOW
+occurs.
 .
 .Mx
 .It Ic Save
@@ -9265,24 +9274,40 @@ will likely be used.
 .Mx
 .Mx
 .Mx
-.It Va ^# , ^0 , ^1 , ..
-Access to match groups of the last regular expression evaluation in
+.Mx
+.It Va ^? , ^# , ^0 , ^1 , ..
+Access extended
+.Ic return
+values of the last
+.Mx -sx
+.Sx Macro
+.Ic call Ns
+ed (if
+.Va \&\&^?
+is true), or regular expression match groups as created for example by
+.Ic if
+and
+.Ic vexpr ,
+in the
 .Cm local Ns
 -most
 .Mx -sx
-.Sx scope ,
-created for example by
-.Ic if
-or
-.Ic vexpr .
-The first denotes the number of available groups including
+.Sx scope .
+.Va \&\&^#
+holds the number of accessible values.
+For return values
 .Va \&\&^0
-that holds the entire matching string; for example
+stores the macro name, for regular expressions the entire match.
 .Bd -literal -offset indent
-\eif abrakadabra =~ (.+)ka.*(b.+)a
-  \eecho $^#: <$^0> <$^1> <$^2>
-\eend
+define x {
+  if abrakadabra =~ (.+)ka.*(b.+)a
+    echo $^#: <$^0> <$^1> <$^2>
+    return ^ says $^2
+  end
+}
+call x; echo $^?, $^#, $^0 $^1 $^2
 \*(OU3: <abrakadabra> <abra> <br>
+\*(OU1, 3, x says br
 .Ed
 .
 .Mx
