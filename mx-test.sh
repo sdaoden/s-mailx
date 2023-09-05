@@ -4072,7 +4072,7 @@ t_ifelse() { #{{{
 
 		#{{{
 		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex-match 2>${E0}
-		commandalias x \\echo '$?/$^ERRNAME.. $^#<$^0, $^1, $^2, $^3, $^4>'
+		commandalias x \\echo '$?/$^ERRNAME.. $^?/$^#<$^0, $^1, $^2, $^3, $^4>'
 		commandalias e \\echoerr err:
 		\if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
 		\if abrakadabra =~ ^.*(ra)(.*)(ra)'$'; x; \else; e 2; \end
@@ -4080,7 +4080,7 @@ t_ifelse() { #{{{
 		\if bananarama =~?case (.*)NANA(.*); x; \else; e 4; \end
 		__EOT
 		#}}}
-		cke0 regex-match 0 ./tregex-match '1787920457 135'
+		cke0 regex-match 0 ./tregex-match '4120715348 143'
 	else
 		t_echoskip 'regex,regex-match:[!REGEX]'
 	fi
@@ -4197,10 +4197,10 @@ define w2 {
 		call w2 $i
 		local set i=$? j=$! k=$^ERRNAME
 		echon "<$1/$i/$k "
-		return $i $j
+		return $i $j ^ $((i + j))
 	else
 		echo ! The end for $1
-		return $i $^ERR-BUSY
+		return $i $^ERR-BUSY ^ $((i + 1))
 	end
 	echoerr au
 }
@@ -4218,25 +4218,25 @@ define w3 {
 			call w3 $i $j
 			set i=$? j=$!
 		end
-		eval echon "<\$1=\$i/\$^ERRNAME-$j "
-		return $i $j
+		eval echon "<\$1=\$i/\$^ERRNAME-$j"
+		return $i $j ^ $^1 $^2 $^3 $^4
 	else
 		echo ! The end for $1=$i/$2
 		if -n "$2"
-			return $i $^ERR-DOM
+			return $i $^ERR-DOM ^ $i $((i + 1))
 		else
-			return $i $^ERR-BUSY
+			return $i $^ERR-BUSY ^ $i $((i + 2))
 		end
 	end
 	echoerr au
 }
-
-call w1 0; echo ?=$? !=$!; echo -----;
-call w2 0; echo ?=$? !=$^ERRNAME; echo -----;
-call w3 0 1; echo ?=$? !=$^ERRNAME; echo -----;
+commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
+call w1 0; x
+call w2 0; x
+call w3 0 1; x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '1572045517 5922'
+	cke0 1 0 ./t1 '52207058 6013'
 
 	t_epilog "${@}"
 } #}}}
