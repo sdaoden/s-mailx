@@ -1421,7 +1421,7 @@ jrestart:
 				/*last_known_meta_trim_len = U32_MAX;*/
 				break;
 			}else if(c == ',' && (flags & (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
-				/* The parsed sequence may be _the_ output, so ensure we do nt include metacharacter */
+				/* The parsed sequence may be _the_ output, so ensure we do not include metacharacter */
 				if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){
 					if(!(flags & n_SHEXP_PARSE_META_KEEP))
 						state |= a_CHOP_ONE;
@@ -1983,15 +1983,13 @@ jleave:
 		}
 	}
 
-	if(state & a_CHOP_ONE)
-		++ib, --il;
-
 	if(il > 0){
 		if(flags & n_SHEXP_PARSE_TRIM_SPACE){
 			for(; il > 0; ++ib, --il){
 				if(!su_cs_is_space(*ib))
 					break;
 				rv |= n_SHEXP_STATE_WS_TRAIL;
+				state &= ~a_CHOP_ONE;
 			}
 		}
 
@@ -2000,8 +1998,12 @@ jleave:
 				if(su_cs_find_c(ifs_ws, *ib) == NIL)
 					break;
 				rv |= n_SHEXP_STATE_WS_TRAIL;
+				state &= ~a_CHOP_ONE;
 			}
 		}
+
+		if(state & a_CHOP_ONE)
+			++ib, --il;
 
 		/* At the start of the next token: if this is a comment, simply throw away all the following data! */
 		if(il > 0 && *ib == '#' && !(flags & n_SHEXP_PARSE_IGN_COMMENT)){
