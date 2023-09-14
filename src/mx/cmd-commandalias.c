@@ -32,6 +32,8 @@
 
 #include <su/cs.h>
 #include <su/cs-dict.h>
+#include <su/mem.h>
+#include <su/mem-bag.h>
 
 #include "mx/cmd.h"
 
@@ -75,6 +77,35 @@ mx_commandalias_exists(char const *name, char const **expansion_or_nil){
 
 	NYD_OU;
 	return name;
+}
+
+void
+mx_commandalias_name_match_all(struct n_strlist **slpp, struct str const *token){
+	struct su_cs_dict_view dv;
+	NYD2_IN;
+
+	if(a_cmdal_dp != NIL){
+		su_CS_DICT_FOREACH(a_cmdal_dp, &dv){
+			uz i;
+			char const *cp;
+
+			cp = su_cs_dict_view_key(&dv);
+			i = su_cs_dict_view_key_len(&dv);
+
+			if(token == NIL || (*cp == *token->s && token->l <= i &&
+					su_cs_starts_with_n(cp, token->s, token->l))){
+				struct n_strlist *xslp;
+
+				*slpp = xslp = n_STRLIST_AUTO_ALLOC(i);
+				xslp->sl_next = NIL;
+				xslp->sl_len = i;
+				su_mem_copy(xslp->sl_dat, cp, ++i);
+				slpp = &xslp->sl_next;
+			}
+		}
+	}
+
+	NYD2_OU;
 }
 
 int

@@ -76,6 +76,8 @@ static int a_cmd_c_list(void *vp);
 /* `help' / `?' command */
 static int a_cmd_c_help(void *vp);
 
+static char const a_cmd_prefixes[][8] = {"eval", "global", "ignerr", "local", "our", "pp", "u", "vput", "wysh"};
+
 /* List of all commands; but first their cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
 static struct mx_cmd_desc const a_cmd_ctable[] = {
@@ -407,15 +409,14 @@ mx_cmd_isolate_name(char const *cmd){
 boole
 mx_cmd_is_valid_name(char const *cmd){
 	/* Mirrors things from go.c */
-	static char const a_prefixes[][8] = {"eval", "global", "ignerr", "local", "our", "pp", "u", "vput", "wysh"};
 	uz i;
 	NYD2_IN;
 
 	i = 0;
-	do if(!su_cs_cmp_case(cmd, a_prefixes[i])){
+	do if(!su_cs_cmp_case(cmd, a_cmd_prefixes[i])){
 		cmd = NIL;
 		break;
-	}while(++i < NELEM(a_prefixes));
+	}while(++i < NELEM(a_cmd_prefixes));
 
 	NYD2_OU;
 	return (cmd != NIL);
@@ -440,23 +441,117 @@ jleave:
 struct mx_cmd_desc const *
 mx_cmd_by_name_firstfit(char const *cmd){ /* TODO v15: by_arg_desc; but go.c */
 	struct mx_cmd_desc const *cdp;
-	char c, C, x;
+	char cc, cC, cx;
 	NYD2_IN;
 
-	C = su_cs_to_upper(c = *cmd);
-	cdp = &a_cmd_ctable[a_CMD_CIDX(c)];
-	c = su_cs_to_lower(c);
+	cC = su_cs_to_upper(cc = *cmd);
+	cdp = &a_cmd_ctable[a_CMD_CIDX(cc)];
+	cc = su_cs_to_lower(cc);
 
 	for(; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp)
 		if(cdp->cd_func != NIL && su_cs_starts_with(cdp->cd_name, cmd))
 			goto jleave;
-		else if((x = *cdp->cd_name) != c && x != C)
+		else if((cx = *cdp->cd_name) != cc && cx != cC)
 			break;
 
 	cdp = NIL;
 jleave:
 	NYD2_OU;
 	return cdp;
+}
+
+char **
+mx_cmd_by_name_match_all(struct str const *token){
+	uz i;
+	struct n_strlist *slp_base, **slpp, *xslp;
+	boole isaster;
+	char **rv;
+	NYD2_IN;
+
+	rv = NIL;
+
+	/* bash: leading \ prevents match for non-paths */
+	if(*token->s == '\\')
+		goto jleave;
+
+	/* Match all? */
+	if(token->l == 1 && *token->s == '*'){
+		token = NIL;
+		isaster = TRU1;
+	}
+	/* Only if plain command */
+	else if(*mx_cmd_isolate_name(token->s) != '\0')
+		goto jleave;
+	else
+		isaster = FAL0;
+
+	slp_base = NIL;
+	slpp = &slp_base;
+
+	i = 0;
+	do{
+		char const *cp;
+
+		cp = a_cmd_prefixes[i];
+
+		if(isaster || !su_cs_cmp_case_n(cp, token->s, token->l)){
+			uz j;
+
+			j = su_cs_len(cp);
+			*slpp = xslp = n_STRLIST_AUTO_ALLOC(j);
+			xslp->sl_next = NIL;
+			xslp->sl_len = j;
+			su_mem_copy(xslp->sl_dat, cp, ++j);
+			slpp = &xslp->sl_next;
+		}
+	}while(++i < NELEM(a_cmd_prefixes));
+
+	/* C99 */{
+		char cc, cC, cx;
+		struct mx_cmd_desc const *cdp;
+
+		cdp = &a_cmd_ctable[0];
+		if(!isaster){
+			cC = su_cs_to_upper(cc = *token->s);
+			cc = su_cs_to_lower(cc);
+			cdp += a_CMD_CIDX(cc);
+		}else{
+			UNINIT(cc, '\0');
+			UNINIT(cC, '\0');
+		}
+
+		for(; cdp < &a_cmd_ctable[NELEM(a_cmd_ctable)]; ++cdp){
+			if(cdp->cd_func != NIL &&
+					(isaster || su_cs_starts_with_n(cdp->cd_name, token->s, token->l))){
+				i = su_cs_len(cdp->cd_name);
+				*slpp = xslp = n_STRLIST_AUTO_ALLOC(i);
+				xslp->sl_next = NIL;
+				xslp->sl_len = i;
+				su_mem_copy(xslp->sl_dat, cdp->cd_name, ++i);
+				slpp = &xslp->sl_next;
+			}else if(!isaster && (cx = *cdp->cd_name) != cc && cx != cC)
+				break;
+		}
+	}
+
+	mx_commandalias_name_match_all(slpp, token);
+
+	if(slp_base == NIL)
+		goto jleave;
+
+	for(i = 0, xslp = slp_base; xslp != NIL; ++i, xslp = xslp->sl_next){
+	}
+
+	rv = su_AUTO_TALLOC(char*, i +1);
+	for(i = 0, xslp = slp_base; xslp != NIL; ++i, xslp = xslp->sl_next)
+		rv[i] = xslp->sl_dat;
+	rv[i] = NIL;
+
+	su_sort_shell_vpp(S(void const**,rv), i, su_cs_toolbox.tb_cmp);
+
+jleave:
+	NYD2_OU;
+	return rv;
 }
 
 struct mx_cmd_desc const *

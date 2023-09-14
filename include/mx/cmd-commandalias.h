@@ -28,6 +28,9 @@
  * expansion_or_nil to expansion if set: both point into internal storage */
 EXPORT char const *mx_commandalias_exists(char const *name, char const **expansion_or_nil);
 
+/* Only for mx_cmd_by_name_match_all() */
+EXPORT void mx_commandalias_name_match_all(struct n_strlist **slpp, struct str const *token);
+
 /* `(un)?commandalias' */
 EXPORT int c_commandalias(void *vp);
 EXPORT int c_uncommandalias(void *vp);
