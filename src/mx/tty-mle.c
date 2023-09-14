@@ -2337,14 +2337,14 @@ jleave:
 }
 
 static u32
-a_tty_kht(struct a_tty_line *tlp){
+a_tty_kht(struct a_tty_line *tlp){ /* xxx huge: monster: split */
 	struct su_pathinfo pi;
 	struct su_mem_bag *membag, *membag_persist, membag__buf[1];
 	struct str orig, bot, topp, sub, exp, preexp;
 	struct n_string shou, *shoup;
 	char **exp_res;
 	struct a_tty_cell *ctop, *cx;
-	boole wedid, set_savec;
+	boole set_savec, first_token, wedid;
 	u32 rv, f;
 	NYD2_IN;
 
@@ -2395,8 +2395,9 @@ a_tty_kht(struct a_tty_line *tlp){
 		bot.l = 0;
 		sub.l = max;
 
+		first_token = TRU1;
 		if(max > 0){
-			for(;;){
+			for(;; first_token = FAL0){
 				BITENUM(u32,n_shexp_state) shs;
 
 				exp = sub;
@@ -2418,12 +2419,18 @@ a_tty_kht(struct a_tty_line *tlp){
 					goto jnope;
 				}
 
-				/* All WS?  Trailing WS that has been "jumped over"? */
-				if(exp.l == 0 || (shs & n_SHEXP_STATE_WS_TRAIL))
+				/* All WS? */
+				if(exp.l == 0)
 					break;
+				/* After something, trailing WS that has been "jumped over"? */
+				if(shs & n_SHEXP_STATE_WS_TRAIL){
+					first_token = FAL0;
+					break;
+				}
 
 				n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGN_EMPTY |
 						n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), mx_SCOPE_NONE, shoup, &exp, NIL);
+
 				break;
 			}
 
@@ -2444,7 +2451,11 @@ a_tty_kht(struct a_tty_line *tlp){
 jredo:
 	/* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
 	mx_sigs_all_holdx();
-	exp_res = mx_shexp_name_expand_multi(sub.s, a_TTY_TAB_FEXP_FL);
+	exp_res = first_token ? mx_cmd_by_name_match_all(&sub) : NIL;
+	if(exp_res == NIL){
+		first_token = FAL0;
+		exp_res = mx_shexp_name_expand_multi(sub.s, a_TTY_TAB_FEXP_FL);
+	}
 	mx_sigs_all_rele();
 
 	if(exp_res == NIL || exp_res[0][0] == '\0'){
@@ -2568,7 +2579,7 @@ jleave:
 	NYD2_OU;
 	return rv;
 
-jmulti:{
+jmulti:{ /* xxx huge: own function */
 		struct mx_visual_info_ctx vic;
 		struct str input;
 		wc_t c2, c1;
@@ -2587,7 +2598,7 @@ jmulti:{
 		scrwid = mx_TERMIOS_WIDTH_OF_LISTS();
 		lnlen = lncnt = 0;
 		UNINIT(locolen, 0);
-		UNINIT(prefixlen, 0);
+		prefixlen = 0;
 		UNINIT(lococp, NIL);
 		UNINIT(c1, '\0');
 		for(idx = 0; (sub.s = exp_res[idx]) != NIL; c1 = c2, ++idx){
@@ -2597,17 +2608,17 @@ jmulti:{
 
 			/* Separate dirname and basename */
 			fullpath = sub.s;
-			if(idx == 0){
-				char const *cp;
+			if(!first_token){
+				if(idx == 0){
+					char const *cp;
 
-				if((cp = su_cs_rfind_c(fullpath, '/')) != NIL)
-					prefixlen = P2UZ(++cp - fullpath);
-				else
-					prefixlen = 0;
-			}
-			if(prefixlen > 0 && prefixlen < sub.l){
-				sub.l -= prefixlen;
-				sub.s += prefixlen;
+					if((cp = su_cs_rfind_c(fullpath, '/')) != NIL)
+						prefixlen = P2UZ(++cp - fullpath);
+				}
+				if(prefixlen > 0 && prefixlen < sub.l){
+					sub.l -= prefixlen;
+					sub.s += prefixlen;
+				}
 			}
 
 			/* We want case-insensitive sort-order */
@@ -2672,7 +2683,7 @@ jsep:
 
 			/* Support the known filename tagging
 			 * XXX *line-editor-completion-filetype* or so */
-			if(su_pathinfo_lstat(&pi, fullpath)){
+			if(!first_token && su_pathinfo_lstat(&pi, fullpath)){
 				char c;
 
 				c = su_pathinfo_descriptive_char(&pi);

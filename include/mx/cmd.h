@@ -204,6 +204,9 @@ EXPORT char const *mx_cmd_isolate_name(char const *cmd);
 /* Whether cmd is a valid command name (and not a modifier, for example) */
 EXPORT boole mx_cmd_is_valid_name(char const *cmd);
 
+/* Try to substring-match token against commands and `commandalias'es; NIL terminated AUTO_ALLOC or NIL result */
+EXPORT char **mx_cmd_by_name_match_all(struct str const *token);/* TODO su_list/vector? */
+
 /* First command which fits for cmd, or NIL */
 EXPORT struct mx_cmd_desc const *mx_cmd_by_arg_desc(struct mx_cmd_arg_desc const *cac_desc);
 
