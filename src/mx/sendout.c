@@ -828,7 +828,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
          n_iconv_close(iconvd);
       /* Do not avoid things like utf-8 -> utf-8 to be able to detect encoding
        * errors XXX also this should be !iconv_is_same_charset(), and THAT.. */
-      if(/*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
+      if(!force && /*su_cs_cmp_case(convhdr, tcs) != 0 &&*/
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE)
          goto jiconv_err;
