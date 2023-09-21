@@ -68,17 +68,68 @@ struct a_mpm_builder {
 	char *mpb_buf; /* Pointer to on-stack buffer */
 };
 
-/* All ASCII characters which cause RFC 2231 to be applied */
-static boole const a_mpm_rfc2231_etab[] = {
-	 1, 1, 1, 1,  1, 1, 1, 1,  1, 1,-1,-1,  1,-1, 1, 1, /* NUL..SI */
-	 1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, /* DLE..US */
-	 1, 0, 1, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 1, /* CAN.. / */
-	 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 1, 1,  1, 1, 1, 1, /* 0.. ? */
-
-	 1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /* @.. O */
-	 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,  1, 1, 0, 0, /* P.. _ */
-	 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /* `.. o */
-	 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1, /* p..DEL */
+/* RFC 2045, 5.1.:
+ *	parameter := attribute "=" value
+ *	attribute := token # case-insensitive
+ *	value := token / quoted-string
+ *	token := 1*<any (US-ASCII) CHAR except SPACE, CTLs, or tspecials>
+ *	tspecials := "(" / ")" / "<" / ">" / "@" /
+ *			"," / ";" / ":" / "\" / <">
+ *			"/" / "[" / "]" / "?" / "=" # only in quoted-string
+ *
+ * quoted-string comes from RFC 822/2822/5322:
+ *	# Printable US-ASCII characters not including "\" or the quote character
+ *	qtext = %d33 / %d35-91 / %d93-126 / obs-qtext
+ *	qcontent = qtext / quoted-pair
+ *	quoted-string = [CFWS] DQUOTE *([FWS] qcontent) [FWS] DQUOTE [CFWS]
+ *	quoted-pair = ("\" (VCHAR / WSP)) / obs-qp
+ *
+ * WSP is defined as
+ *	space (SP, ASCII value 32) and horizontal tab (HTAB, ASCII value 9) characters (together known as the white
+ *	space characters, WSP)
+ *
+ * VCHAR is from RFC 5234:
+ *	VCHAR = %x21-7E # visible (printing) characters
+ *
+ * RFC 2231, 7. changes the RFC 2045 above:
+ *	parameter := regular-parameter / extended-parameter
+ *	regular-parameter := regular-parameter-name "=" value
+ *	regular-parameter-name := attribute [section]
+ *	attribute := 1*attribute-char
+ *	attribute-char := <any (US-ASCII) CHAR except SPACE, CTLs, "*", "'", "%", or tspecials>
+ *	section := initial-section / other-sections
+ *	initial-section := "*0"
+ *	other-sections := "*" ("1" / "2" / "3" / "4" / "5" / "6" / "7" / "8" / "9") *DIGIT)
+ *	extended-parameter := (extended-initial-name "=" extended-value) /
+ *			(extended-other-names "=" extended-other-values)
+ *	extended-initial-name := attribute [initial-section] "*"
+ *	extended-other-names := attribute other-sections "*"
+ *	extended-initial-value := [charset] "'" [language] "'" extended-other-values
+ *	extended-other-values := *(ext-octet / attribute-char)
+ *	ext-octet := "%" 2(DIGIT / "A" / "B" / "C" / "D" / "E" / "F")
+ *	charset := <registered character set name>
+ *	language := <registered language tag [RFC-1766]> */
+/*
+ *for(i = 0; i <= 0x7f; ++i)
+ *	printf("%2d,%c",
+ *		((
+ *			(i == ' ' || i == '\t') ||
+ *			(i == '*' || i == '\'' || i == '%') ||
+ *			(i == '(' || i == ')' || i == '<' || i == '>' || i == '@' ||
+ *			   i == ',' || i == ';' || i == ':' || i == '\\' || i == '"' ||
+ *			   i == '/' || i == '[' || i == ']' || i == '?' || i == '=')
+ *		) ? 1 : (iscntrl(i) ? -1 : 0)
+ *		), ((i + 1) % 16 ? ' ' : '\n'));
+ */
+static boole const a_mpm_rfc2231_value_tab[] = {
+	-1, -1, -1, -1, -1, -1, -1, -1, -1,  1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 1,  0,  1,  0,  0,  1,  0,  1,  1,  1,  1,  0,  1,  0,  0,  1,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,
+	 1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, -1,
 };
 
 /* In a headerbody, at a "param=XY" we are not interested in, skip over the entire construct, return pointer to the
@@ -600,11 +651,19 @@ jneed_enc:
 				bp[1] = u.c;
 				bp += 2;
 			}
-		}else if(u.uc > 0x7F || a_mpm_rfc2231_etab[u.uc]){
+		}else if(u.uc > 0x7F){
+jpercent:
 			f ^= a_RAW;
 			bp[0] = '%';
 			n_c_to_hex_base16(bp + 1, u.c);
 			bp += 3;
+		}else switch(a_mpm_rfc2231_value_tab[u.uc]){
+		case 0: break;
+		case 1: goto jpercent;
+		default:
+			/*if (n_poption & n_PO_D_V)*/
+				n_err(_("%s: invalid parameter value\n"), self->mpb_name);
+			goto jleave;
 		}
 
 		++vb;
