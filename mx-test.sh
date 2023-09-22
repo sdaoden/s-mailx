@@ -213,7 +213,7 @@ if [ -n "${CHECK}${RUN_TEST}" ]; then
 			# C,POSIX last due to faulty localedef(1) result of GNU C lib 2.3[24]
 			i=$(</dev/null LC_ALL=de_DE.utf8 ${RAWMAILX} ${ARGS} -X '
 				\define cset_test {
-					\if "${ttycharset}" =%?case utf
+					\if "${charset-locale}" =%?case utf
 						\echo $LC_ALL
 						\xit 0
 					\end
