@@ -165,9 +165,11 @@ mx_locale_init(void){
    /* C99 */{
       char const *cp;
 
-      if((cp = nl_langinfo(CODESET)) != NIL)
+      if((cp = nl_langinfo(CODESET)) != NIL && *cp != '\0'){
          /* (Will log during startup if user set that via -S) */
          ok_vset(ttycharset, cp);
+         n_PS_ROOT_BLOCK(ok_vset(charset_locale, cp));
+      }
    }
 # endif /* mx_HAVE_SETLOCALE */
 

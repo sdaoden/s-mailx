@@ -620,7 +620,8 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_charset_7bit, /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* But unused without mx_HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
    ok_v_charset_8bit, /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_v_charset_unknown_8bit, /* {vip=1} */
+   ok_v_charset_locale, /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_charset_unknown_8bit, /* {vip=1,notempty=1} */
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager, /* {obsolete=1} */
