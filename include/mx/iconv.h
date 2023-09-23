@@ -33,7 +33,8 @@ enum n_iconv_flags{
 	n_ICONV_NONE,
 	n_ICONV_IGN_ILSEQ = 1u<<0, /* Ignore input EILSEQ (replacement char) */
 	n_ICONV_IGN_NOREVERSE = 1u<<1, /* .. non-reversible conversions in output */
-	n_ICONV_UNIREPL = 1u<<2, /* Use Unicode replacement 0xFFFD=EF BF BD */
+	/* With n_PSO_UNICODE use Unicode replacement 0xFFFD=EF BF BD TODO iconv_open tocode! */
+	n_ICONV_UNIREPL = 1u<<2,
 	n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
 	n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
 };
@@ -42,7 +43,7 @@ EXPORT_DATA s32 n_iconv_err; /* TODO HACK: part of CTX to not get lost */
 EXPORT_DATA iconv_t iconvd;
 #endif /* mx_HAVE_ICONV */
 
-/* Returns a newly n_autorec_alloc()ated thing if there were adjustments.
+/* Returns a newly AUTO_ALLOC()ated thing if there were adjustments.
  * Return value is always smaller or of equal size.
  * NIL will be returned if cset is an invalid character set name */
 EXPORT char *n_iconv_normalize_name(char const *cset);
@@ -70,9 +71,16 @@ EXPORT void n_iconv_reset(iconv_t cd);
 EXPORT int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, char **outb, uz *outbleft);
 EXPORT int n_iconv_str(iconv_t icp, enum n_iconv_flags icf, struct str *out, struct str const *in, struct str *in_rest_or_nil);
 
-/* If tocode==NIL, uses *ttycharset*.	If fromcode==NIL, uses UTF-8.
- * Returns a autorec_alloc()ed buffer or NIL */
+/* If tocode==NIL, uses *ttycharset*.  If fromcode==NIL, uses UTF-8.
+ * Returns a AUTO_ALLOC()ed buffer or NIL */
 EXPORT char *n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode, char const *fromcode, char const *input);
+
+/* Convert the entire file ifp.  If tocode==NIL, uses *ttycharset*.  If fromcode==NIL, uses UTF-8.
+ * If *ofpp_or_nil is NIL a FS_O_RDWR|FS_O_UNLINK file is created and stored on ERR_NONE return.
+ * No file positioning on ifp is done before or after it has been worked.
+ * The output file is fflush_rewind()ed on success */
+EXPORT s32 n_iconv_onetime_fp(enum n_iconv_flags icf, FILE **ofpp_or_nil, FILE *ifp,
+		char const *tocode, char const *fromcode);
 #endif /* mx_HAVE_ICONV */
 
 #include <su/code-ou.h>
