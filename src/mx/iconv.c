@@ -28,6 +28,10 @@
 #include <su/mem.h>
 #include <su/utf.h>
 
+#ifdef mx_HAVE_ICONV
+# include "mx/file-streams.h"
+#endif
+
 #include "mx/iconv.h"
 /*#define NYDPROF_ENABLE*/
 /*#define NYD_ENABLE*/
@@ -216,13 +220,12 @@ n_iconv_reset(iconv_t cd){
 # ifndef a_X
 #  define a_X(X) S(char**,S(void*,UNCONST(char*,X)))
 # endif
-
 int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf, char const **inb, uz *inbleft, char **outb, uz *outbleft){
 	int err;
 	NYD2_IN;
 
-	if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE))
+	if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE)) /* TODO depends on iconv_open tocode though! */
 		icf &= ~n_ICONV_UNIREPL;
 
 	for(;;){
@@ -353,7 +356,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode, char const *fromc
 	if(tocode == NIL)
 		tocode = ok_vlook(ttycharset);
 	if(fromcode == NIL)
-		fromcode = "utf-8";
+		fromcode = su_utf8_name;
 
 	if((icd = iconv_open(tocode, fromcode)) == R(iconv_t,-1))
 		goto jleave;
@@ -370,6 +373,84 @@ n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode, char const *fromc
 jleave:
 	NYD2_OU;
 	return rv;
+}
+
+s32
+n_iconv_onetime_fp(enum n_iconv_flags icf, FILE **ofpp_or_nil, FILE *ifp, char const *tocode, char const *fromcode){
+	struct str in, ou;
+	uz cnt, len;
+	iconv_t icd;
+	s32 err;
+	FILE *ofp;
+	NYD2_IN;
+
+	if(tocode == NIL)
+		tocode = ok_vlook(ttycharset);
+	if(fromcode == NIL)
+		fromcode = su_utf8_name;
+
+	if((icd = iconv_open(tocode, fromcode)) == R(iconv_t,-1)){
+		err = su_err();
+		if(err == su_ERR_NONE)
+			err = su_ERR_INVAL;
+		goto jleave;
+	}
+
+	if((ofp = *ofpp_or_nil) == NIL &&
+			(ofp = mx_fs_tmp_open(NIL, "iconv", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
+		err = su_err();
+		goto jerr1;
+	}
+
+	mx_fs_linepool_aquire(&in.s, &len);
+	STRUCT_ZERO(struct str, &ou);
+
+	for(cnt = S(uz,fsize(ifp));;){ /* XXX s64 */
+		if(fgetline(&in.s, &len, &cnt, &in.l, ifp, FAL0) == NIL){
+			if(ferror(ifp)){
+				err = su_err();
+				if(err == su_ERR_NONE)
+					err = su_ERR_IO;
+				goto jerr;
+			}
+			/* cnt==0||feof */
+			break;
+		}
+
+		if(n_iconv_str(icd, icf, &ou, &in, NIL) != 0){
+			n_err(_("Cannot convert from %s to %s\n"), fromcode, tocode);
+			err = n_iconv_err;
+			goto jerr;
+		}
+
+		if(fwrite(ou.s, sizeof(*ou.s), ou.l, ofp) != ou.l){
+			err = su_err_by_errno();
+			if(err == su_ERR_NONE)
+				err = su_ERR_IO;
+			goto jerr;
+		}
+	}
+	fflush_rewind(ofp);
+
+	err = su_ERR_NONE;
+jerr:
+	if(ou.s != NIL)
+		su_FREE(ou.s);
+	mx_fs_linepool_release(in.s, len);
+
+	if(*ofpp_or_nil == NIL){
+		if(err == su_ERR_NONE)
+			*ofpp_or_nil = ofp;
+		else
+			mx_fs_close(ofp);
+	}
+
+jerr1:
+	iconv_close(icd);
+
+jleave:
+	NYD2_OU;
+	return err;
 }
 #endif /* mx_HAVE_ICONV */
 
