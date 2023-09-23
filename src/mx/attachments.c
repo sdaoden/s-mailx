@@ -58,11 +58,6 @@ static struct mx_attachment *a_attachments_setup_base(struct mx_attachment *ap, 
 /* Setup ap to point to a message */
 static struct mx_attachment *a_attachments_setup_msg(struct mx_attachment *ap, char const *msgcp, int msgno);
 
-/* Try to create temporary charset converted version */
-#ifdef mx_HAVE_ICONV
-static boole a_attachments_iconv(struct mx_attachment *ap, FILE *ifp);
-#endif
-
 /* */
 static void a_attachments_yay(struct mx_attachment const *ap);
 
@@ -124,79 +119,6 @@ a_attachments_setup_msg(struct mx_attachment *ap, char const *msgcp, int msgno){
 	NYD2_OU;
 	return ap;
 }
-
-#ifdef mx_HAVE_ICONV
-static boole
-a_attachments_iconv(struct mx_attachment *ap, FILE *ifp){
-	struct str oul = {NIL, 0}, inl = {NIL, 0};
-	uz cnt, lbsize;
-	iconv_t icp;
-	FILE *ofp;
-	NYD_IN;
-
-	hold_sigs(); /* TODO until we have signal manager (see TODO) */
-
-	ofp = NIL;
-
-	icp = n_iconv_open(ap->a_charset, ap->a_input_charset);
-	if(icp == R(iconv_t,-1)){
-		s32 eno;
-
-		if((eno = su_err()) == su_ERR_INVAL)
-			goto jeconv;
-		else
-			n_perr(_("iconv_open"), eno);
-		goto jerr;
-	}
-
-	cnt = S(uz,fsize(ifp));
-
-	if((ofp = mx_fs_tmp_open(NIL, "atticonv", (mx_FS_O_RDWR | mx_FS_O_UNLINK), NIL)) == NIL){
-		n_perr(_("Temporary attachment data file"), 0);
-		goto jerr;
-	}
-
-	for(lbsize = 0;;){
-		if(fgetline(&inl.s, &lbsize, &cnt, &inl.l, ifp, FAL0) == NIL){
-			if(!cnt || feof(ifp))
-				break;
-			n_perr(_("I/O read error occurred"), 0);
-			goto jerr;
-		}
-
-		if(n_iconv_str(icp, n_ICONV_IGN_NOREVERSE, &oul, &inl, NIL) != 0)
-			goto jeconv;
-		if((inl.l = fwrite(oul.s, sizeof *oul.s, oul.l, ofp)) != oul.l){
-			n_perr(_("I/O write error occurred"), 0);
-			goto jerr;
-		}
-	}
-	fflush_rewind(ofp);
-
-	ap->a_tmpf = ofp;
-jleave:
-	if(inl.s != NIL)
-		su_FREE(inl.s);
-	if(oul.s != NIL)
-		su_FREE(oul.s);
-	if(icp != R(iconv_t,-1))
-		n_iconv_close(icp);
-
-	mx_fs_close(ifp);
-
-	rele_sigs(); /* TODO until we have signal manager (see TODO) */
-	NYD_OU;
-	return (ofp != NIL);
-
-jeconv:
-	n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset, ap->a_charset);
-jerr:
-	if(ofp != NIL)
-		mx_fs_close(ofp);
-	ofp = NIL;
-	goto jleave;
-}
-#endif /* mx_HAVE_ICONV */
 
 static void
 a_attachments_yay(struct mx_attachment const *ap){
@@ -330,8 +252,9 @@ jerr_fopen:
 		nap->a_input_charset = (incs == NIL || incs == R(char*,-1)) ? savestr(ok_vlook(ttycharset)) : incs;
 #ifdef mx_HAVE_ICONV
 		if(cnvfp != NIL){
-			nap->a_charset = oucs;
-			if(!a_attachments_iconv(nap, cnvfp)){
+			ASSERT(nap->a_tmpf == NIL);
+			if(n_iconv_onetime_fp(n_ICONV_NONE, &nap->a_tmpf, cnvfp,
+					(nap->a_charset = oucs), nap->a_input_charset) != su_ERR_NONE){
 				nap = NIL;
 				aerr = mx_ATTACHMENTS_ERR_ICONV_FAILED;
 				goto jleave;
