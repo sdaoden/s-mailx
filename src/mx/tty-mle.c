@@ -129,7 +129,7 @@ CTA(a_TTY_LINE_MAX <= S32_MAX, "a_TTY_LINE_MAX larger than S32_MAX, but the MLE 
 # define a_TTY_SCROLL_MARGIN_RIGHT 10
 
 /* fexpand() flags for expand-on-tab */
-# define a_TTY_TAB_FEXP_FL (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT)
+# define a_TTY_TAB_FEXP_FL (FEXP_SILENT | FEXP_LOCAL | FEXP_SHORTCUT)
 
 /* Columns to ripoff: position indicator.
  * Should be >= 4 to dig the position indicator that we place (if there is
@@ -916,7 +916,7 @@ a_tty_hist__query_config(void){
 	if((rv = ok_vlook(history_file)) == NIL)
 		rv = cp;
 	if(rv != NIL)
-		rv = fexpand(rv, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL));
+		rv = fexpand(rv, FEXP_DEF_LOCAL_FILE_VAR);
 
 	NYD2_OU;
 	return rv;

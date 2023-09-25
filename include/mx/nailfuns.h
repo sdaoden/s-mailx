@@ -993,7 +993,8 @@ FL boole mx_sendout_temporary_digdump(FILE *ofp, struct mimepart *mp,
 FL char *fexpand(char const *name, BITENUM_IS(u32,fexp_mode) fexpm);
 
 /* Like fexpand(), but may instead return an array of strings in the
- * auto-reclaimed result storage */
+ * auto-reclaimed result storage; might have expanded the first member before
+ * fnmatch, but no further: these come directly via fnmatch! */
 FL char **mx_shexp_name_expand_multi(char const *name,
       BITENUM_IS(u32,fexp_mode) fexpm);
 

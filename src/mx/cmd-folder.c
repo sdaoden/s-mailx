@@ -184,7 +184,7 @@ c_remove(void *vp){
 	fmt_len = su_cs_len(fmt = _("Remove "));
 
 	do{ /* }while(*++argv != NIL); */
-		if((name = fexpand(*argv, FEXP_NVAR)) == NIL){
+		if((name = fexpand(*argv, FEXP_DEF_FOLDER)) == NIL){
 			emsg = N_("file expansion failed");
 			goto jerr;
 		}
@@ -286,11 +286,11 @@ c_rename(void *vp){
 
 	emsg = N_("file expansion failed");
 
-	if((oldn = fexpand(argv[0], FEXP_FULL)) == NIL)
+	if((oldn = fexpand(argv[0], FEXP_DEF_FOLDER)) == NIL)
 		goto jerr;
 	oldp = which_protocol(oldn, TRU1, FAL0, NIL);
 
-	if((newn = fexpand(argv[1], FEXP_FULL)) == NIL)
+	if((newn = fexpand(argv[1], FEXP_DEF_FOLDER)) == NIL)
 		goto jerr;
 	if(oldp != which_protocol(newn, TRU1, FAL0, NIL)){
 		emsg = N_("can only rename folders of same type\n");
@@ -371,12 +371,7 @@ jerrnotr:
 }
 
 FL int
-c_folders(void *v){ /* TODO fexpand*/
-	enum fexp_mode const fexp = FEXP_NSHELL
-#ifndef mx_HAVE_IMAP
-			| FEXP_LOCAL
-#endif
-		;
+c_folders(void *v){
 	struct mx_child_ctx cc;
 	char const *cp;
 	char **argv;
@@ -386,7 +381,7 @@ c_folders(void *v){ /* TODO fexpand*/
 	rv = su_EX_ERR;
 
 	if(*(argv = v) != NIL){
-		if((cp = fexpand(*argv, fexp)) == NIL)
+		if((cp = fexpand(*argv, FEXP_DEF_FOLDER)) == NIL)
 			goto jleave;
 	}else if(*(cp = n_folder_query()) == '\0'){
 		n_err(_("folders: *folder* not set, or not resolvable\n"));

@@ -124,7 +124,7 @@ a_mtaali_cache_init(char const *usrfile){
 	s32 rv;
 	NYD_IN;
 
-	if((mas.mas_path = fexpand(mas.mas_path_usr = usrfile, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))) == NIL){
+	if((mas.mas_path = fexpand(mas.mas_path_usr = usrfile, FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
 		rv = su_ERR_NOENT;
 		goto jerr;
 	}else if(a_mtaali_g.mag_path == NIL || a_mtaali_g.mag_path == a_MTAALI_G_ERR ||
