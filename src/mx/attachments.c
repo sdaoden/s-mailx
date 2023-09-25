@@ -164,8 +164,9 @@ mx_attachments_append(struct mx_attachment *aplist, char const *file, BITENUM_IS
 		int e;
 		char const *cp, *ncp;
 
+		/* Only ~/ tilde expansion */
 jrefexp:
-		if((file = fexpand(file, (FEXP_NONE | FEXP_LOCAL_FILE))) == NIL){
+		if((file = fexpand(file, (FEXP_LOCAL_FILE | FEXP_NONE))) == NIL){
 			aerr = mx_ATTACHMENTS_ERR_OTHER;
 			goto jleave;
 		}

@@ -293,8 +293,7 @@ a_mt__load_file(u32 orflags, char const *file, char **line, uz *linesize){
 	char const *cp;
 	NYD_IN;
 
-	if((cp = fexpand(file, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))) == NIL ||
-			(fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
+	if((cp = fexpand(file, FEXP_DEF_LOCAL_FILE_VAR)) == NIL || (fp = mx_fs_open(cp, mx_FS_O_RDONLY)) == NIL){
 		cp = NIL;
 		goto jleave;
 	}

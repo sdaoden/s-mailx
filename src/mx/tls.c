@@ -465,8 +465,7 @@ c_certsave(void *vp){
       char *file, *cp;
 
       file = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
-      if((cp = fexpand(file, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-            ) == NIL || *cp == '\0'){
+      if((cp = fexpand(file, FEXP_DEF_LOCAL_FILE)) == NIL || *cp == '\0'){
          n_err(_("certsave: file expansion failed: %s\n"),
             n_shexp_quote_cp(file, FAL0));
          vp = NULL;

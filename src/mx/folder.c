@@ -572,7 +572,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
       enum fexp_mode fexpm;
 
       if((who = mx_shortcut_expand(name)) != NIL){
-         fexpm = FEXP_NSHELL;
+         fexpm = FEXP_NVAR;
          name = who;
       }else
          fexpm = FEXP_SHORTCUT | FEXP_NSHELL;
@@ -1214,8 +1214,9 @@ n_folder_query(void){
       /* Expand the *folder*; skip %: prefix for simplicity of use */
       if(cp[0] == '%' && cp[1] == ':')
          cp += 2;
-      if((err = (cp = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
-            ) == NIL) /*|| *cp == '\0'*/)
+      if((err = (cp = fexpand(cp,
+               (FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL | FEXP_NGLOB))
+               ) == NIL) /*|| *cp == '\0'*/)
          goto jset;
       else{
          uz i;

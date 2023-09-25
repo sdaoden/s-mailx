@@ -1720,8 +1720,7 @@ jearg:
 
                cp = n_string_cp(s2p);
 
-               if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL | FEXP_NVAR))
-                     ) == NIL){
+               if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
                   if(a_HARDERR())
                      goto jerr;
                   n_pstate_err_no = su_ERR_INVAL;
@@ -1906,8 +1905,7 @@ jIi_putesc:
          /* Write the message on a file */
          if(cnt == 0)
             goto jearg;
-         if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL)
-               )) == NIL){
+         if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
             n_err(_("Write what file!?\n"));
             if(a_HARDERR())
                goto jerr;
@@ -2101,8 +2099,7 @@ jreasksend:
       n_OBSOLETE(_("please use *on-compose-{leave,splice}* and/or "
          "*message-inject-tail*, not *signature*"));
 
-      if((cpq = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-            ) == NIL){
+      if((cpq = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL){
          n_err(_("*signature* expands to invalid file: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jerr;

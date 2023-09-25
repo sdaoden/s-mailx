@@ -230,11 +230,10 @@ jnext:
 		res = str_concat_csvl(&s, cp, &res[1], NIL)->s;
 
 	/* Do some meta expansions */
-	if((snecp->snec_fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR && ((snecp->snec_fexpm & FEXP_NSHELL)
-				? (su_cs_find_c(res, '$') != NIL) : (su_cs_first_of(res, "{}[]*?$") != UZ_MAX))){
+	if((snecp->snec_fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR){
 		boole doexp;
 
-		if(snecp->snec_fexpm & FEXP_NOPROTO)
+		if(snecp->snec_fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE))
 			doexp = TRU1;
 		else{
 			cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
@@ -254,6 +253,7 @@ jnext:
 			struct str shin;
 			struct n_string shou, *shoup;
 
+			/* XXX when backtick eval ++ prepend proto if haveproto!? */
 			shin.s = UNCONST(char*,res);
 			shin.l = UZ_MAX;
 			shoup = n_string_creat_auto(&shou);
@@ -270,23 +270,29 @@ jnext:
 			res = n_string_cp(shoup);
 			/*shoup = n_string_drop_ownership(shoup);*/
 
-			if(res[0] == '~')
-				res = a_shexp_tilde(res);
+			/* XXX haveproto?  might have changed?!? */
+		}
+	}
 
-			if(!(snecp->snec_fexpm & FEXP_NSHELL)){
-				snecp->snec_name = res;
-				if((eno = a_shexp_globname(snecp)) != su_ERR_NONE){
-					res = NIL;
-					goto jleave;
-				}
-
-				if(snecp->snec_multi_ok && snecp->snec_res[1] != NIL)
-					goto su_NYD_OU_LABEL;
-				res = snecp->snec_res[0];
-			}
-		}/* else no tilde */
-	}else if(res[0] == '~')
+	if(!(snecp->snec_fexpm & FEXP_NTILDE) && res[0] == '~')
 		res = a_shexp_tilde(res);
+
+	if(!(snecp->snec_fexpm & FEXP_NGLOB) && su_cs_first_of(res, "{}[]*?") != UZ_MAX){
+		snecp->snec_name = res;
+		if((eno = a_shexp_globname(snecp)) != su_ERR_NONE){
+			res = NIL;
+			goto jleave;
+		}
+
+		if(snecp->snec_res[1] != NIL){
+			if(snecp->snec_multi_ok)
+				goto su_NYD_OU_LABEL;
+			eno = su_ERR_RANGE;
+			res = NIL;
+			goto jleave;
+		}
+		res = snecp->snec_res[0];
+	}
 
 jislocal:
 	if(res != NIL && haveproto)
@@ -299,6 +305,7 @@ jislocal:
 				FALLTHRU
 		case n_PROTO_FILE:
 		case n_PROTO_EML:
+				/* Drop a possible PROTO:// etc */
 				if(snecp->snec_fexpm & FEXP_LOCAL_FILE)
 					res = cp;
 				break;

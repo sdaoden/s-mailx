@@ -123,8 +123,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       res = NULL;
 
       if((cachedir = ok_vlook(imap_cache)) == NIL ||
-            (cachedir = fexpand(cachedir, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-               FEXP_NSHELL))) == NIL)
+            (cachedir = fexpand(cachedir, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
          goto jleave;
       eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
 
@@ -462,8 +461,7 @@ clean(struct mailbox *mp, struct cw *cw)
    NYD_IN;
 
    if((cachedir = ok_vlook(imap_cache)) == NIL ||
-         (cachedir = fexpand(cachedir, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-            FEXP_NSHELL))) == NIL)
+         (cachedir = fexpand(cachedir, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
       goto jleave;
    eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    if (su_cs_cmp_case(emailbox = mp->mb_imap_mailbox, "INBOX")) {
@@ -681,8 +679,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    NYD_IN;
 
    if((cachedir = ok_vlook(imap_cache)) == NIL ||
-         (cachedir = fexpand(cachedir, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-            FEXP_NSHELL))) == NIL)
+         (cachedir = fexpand(cachedir, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
       goto jleave;
    eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    name = n_autorec_alloc(namesz = su_cs_len(cachedir) +
@@ -841,8 +838,7 @@ cache_dequeue(struct mailbox *mp)
    NYD_IN;
 
    if((cachedir = ok_vlook(imap_cache)) == NIL ||
-         (cachedir = fexpand(cachedir, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-            FEXP_NSHELL))) == NIL)
+         (cachedir = fexpand(cachedir, FEXP_DEF_LOCAL_FILE_VAR)) == NIL)
       goto jleave;
    eaccount = mx_url_xenc(mp->mb_imap_account, TRU1);
    buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) +

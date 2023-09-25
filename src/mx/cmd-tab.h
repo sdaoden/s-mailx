@@ -597,7 +597,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 N_("Open a new `folder' readonly, or show the current folder")},
 	{"folder", &c_file, (M | T | NOHOOK | S | TWYRA), 0, 1, NIL,
 	 N_("(fold) Open a new <folder>, or show the current one")},
-	{"folders", &c_folders, (M | T | SC | TWYRA), 0, 1, NIL,
+	{"folders", &c_folders, (M | T | SC | TWYSH), 0, 1, NIL,
 	 N_("List mailboxes below the given or the global *folder*")},
 	{"fop",
 #ifdef mx_HAVE_CMD_FOP

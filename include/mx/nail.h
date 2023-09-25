@@ -185,19 +185,24 @@ enum fedit_mode{
 
 enum fexp_mode{
    FEXP_MOST,
-   FEXP_NOPROTO = 1u<<0, /* TODO no which_protocol() to decide sh expansion */
-   FEXP_SILENT = 1u<<1, /* Do not print but only return errors */
-   FEXP_LOCAL = 1u<<2, /* Result must be local file/maildir */
-   FEXP_LOCAL_FILE = 1u<<3, /* ..must be a local file: strips protocol://! */
-   FEXP_SHORTCUT = 1u<<4, /* Do expand shortcuts */
-   FEXP_NSPECIAL = 1u<<5, /* No %,#,& specials */
-   FEXP_NFOLDER = 1u<<6, /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1u<<7, /* Do not do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1u<<8, /* ..not even $VAR expansion */
+   FEXP_SILENT = 1u<<0, /* Do not print but only return errors */
+   FEXP_LOCAL = 1u<<1, /* Result must be local file/maildir (glob-expands) */
+   FEXP_LOCAL_FILE = 1u<<2, /* ^ local FILE: strips PROTO:// (glob-expands)! */
+   FEXP_SHORTCUT = 1u<<3, /* Do expand shortcuts */
+   FEXP_NSPECIAL = 1u<<4, /* No %,#,& specials */
+   FEXP_NFOLDER = 1u<<5, /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1u<<6, /* No shell expansion (does not cover ~/, $VAR) */
+   FEXP_NTILDE = 1u<<7, /* No ~/ expansion */
+   FEXP_NVAR = 1u<<8, /* No $VAR expansion */
+   FEXP_NGLOB = 1u<<9, /* No globbing */
 
    /* Actually does expand ~/ etc. */
-   FEXP_NONE = FEXP_NOPROTO | FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR,
-   FEXP_FULL = FEXP_SHORTCUT /* Full expansion */
+   FEXP_NONE = FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NVAR | FEXP_NGLOB,
+   /* What comes in via variable usually should be expanded */
+   FEXP_DEF_FOLDER_VAR = FEXP_SHORTCUT | FEXP_NGLOB,
+   FEXP_DEF_FOLDER = FEXP_DEF_FOLDER_VAR | FEXP_NVAR,
+   FEXP_DEF_LOCAL_FILE_VAR = FEXP_LOCAL_FILE | FEXP_DEF_FOLDER_VAR,
+   FEXP_DEF_LOCAL_FILE = FEXP_DEF_LOCAL_FILE_VAR | FEXP_NVAR
 };
 
 enum mx_header_subject_edit_flags{
