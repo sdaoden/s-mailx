@@ -1124,8 +1124,8 @@ jgetopt_done:
 		}
 
 		if((resfiles & a_RF_USER) &&
-				(cp = fexpand(ok_vlook(MAILRC), (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))
-				) != NIL && !mx_go_load_rc(cp))
+				(cp = fexpand(ok_vlook(MAILRC), FEXP_DEF_LOCAL_FILE_VAR)) != NIL &&
+				!mx_go_load_rc(cp))
 			goto jleave;
 
 		if((resfiles & a_RF_BLTIN) && !mx_go_load_lines(FAL0, NIL, 0))
@@ -1135,7 +1135,7 @@ jgetopt_done:
 	if((cp = ok_vlook(NAIL_EXTRA_RC)) != NIL)
 		n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
 	if((cp != NIL || (cp = ok_vlook(mailx_extra_rc)) != NIL) &&
-			(cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))) != NIL && !mx_go_load_rc(cp))
+			(cp = fexpand(cp, FEXP_DEF_LOCAL_FILE_VAR)) != NIL && !mx_go_load_rc(cp))
 		goto jleave;
 
 	/* Additional options to pass-through to MTA, and allowed to do so? */

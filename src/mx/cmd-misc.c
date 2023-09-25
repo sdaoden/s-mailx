@@ -460,7 +460,7 @@ c_chdir(void *vp){
 
 	if(*(arglist = vp) == NIL)
 		cp = ok_vlook(HOME);
-	else if((cp = fexpand(*arglist, /*FEXP_NOPROTO |*/ FEXP_LOCAL_FILE | FEXP_NVAR)) == NIL)
+	else if((cp = fexpand(*arglist, (FEXP_LOCAL | FEXP_DEF_FOLDER))) == NIL)
 		goto jleave;
 
 	if(chdir(cp) == -1){

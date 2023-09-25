@@ -172,7 +172,7 @@ a_mailcap_create(void){
 	n_string_book(n_string_creat(&mcls.mcls_hdl_buf), 248); /* ovflw not yet */
 
 	for(cp_base = savestr(cp_base); (cp = su_cs_sep_c(&cp_base, ':', TRU1)) != NIL;){
-		if((cp = fexpand(cp, (FEXP_NOPROTO | FEXP_LOCAL_FILE | FEXP_NSHELL))) == NIL)
+		if((cp = fexpand(cp, FEXP_DEF_LOCAL_FILE)) == NIL)
 			continue;
 
 		mcls.mcls_name_quoted = n_shexp_quote_cp(cp, FAL0);

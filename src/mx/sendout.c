@@ -1114,7 +1114,7 @@ a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
          FILE *fout;
          char const *fname, *fnameq;
 
-         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NIL) /* TODO */
+         if((fname = fexpand(np->n_name, FEXP_DEF_FOLDER_VAR)) == NIL)/* TODO */
             goto jerror;
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
@@ -1206,7 +1206,7 @@ a_sendout_mightrecord(FILE *fp, struct mx_name *to, boole resend){
    if(ccp == NIL)
       goto jleave;
 
-   if((cp = fexpand(ccp, FEXP_NSHELL)) == NIL) /* TODO */
+   if((cp = fexpand(ccp, FEXP_DEF_FOLDER_VAR)) == NIL)
       goto jbail;
 
    switch(which_protocol(ccp, FAL0, FAL0, NIL)){
@@ -1540,8 +1540,7 @@ a_sendout_mta_start(struct mx_send_ctx *scp)
    if(rv != TRU1){
       char const *mta_base;
 
-      if((mta = fexpand(mta_base = mta, (FEXP_NOPROTO | FEXP_LOCAL_FILE |
-            FEXP_NSHELL))) == NIL){
+      if((mta = fexpand(mta_base = mta, FEXP_DEF_LOCAL_FILE_VAR)) == NIL){
          n_err(_("*mta* variable file expansion failure: %s\n"),
             n_shexp_quote_cp(mta_base, FAL0));
          goto jstop;

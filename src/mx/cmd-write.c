@@ -116,7 +116,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
    }else{
       cap = cap->ca_next;
       if((file = cap->ca_arg.ca_str.s)[0] == '\0')
-         file = fexpand("&", FEXP_NVAR);
+         file = fexpand("&", FEXP_DEF_FOLDER);
 
       while(su_cs_is_space(*file))
          ++file;
@@ -136,7 +136,7 @@ a_cwrite_save1(void *vp, struct mx_ignore const *itp,
       }
    }
 
-   if ((file = fexpand(file, FEXP_FULL)) == NULL)
+   if ((file = fexpand(file, FEXP_DEF_FOLDER)) == NIL)
       goto jleave;
 
    /* TODO all this should be URL and Mailbox-"VFS" based, and then finally

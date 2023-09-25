@@ -1531,7 +1531,7 @@ jgetname:
       if(*f2 == '|')
          /* Pipes are expanded by the shell */
          f = f2;
-      else if((f3 = fexpand(f2, (FEXP_LOCAL_FILE | FEXP_NVAR))) == NIL)
+      else if((f3 = fexpand(f2, FEXP_DEF_LOCAL_FILE)) == NIL)
          /* (Error message written by fexpand()) */
          goto jgetname;
       else
