@@ -374,7 +374,7 @@ static struct su_cs_dict a_amv_var__obsol, *a_amv_var_obsol;
 /* The global a_AMV_VSC_POSPAR stack */
 static struct a_amv_pospar a_amv_pospar;
 
-/* Ditto, $^[?#0-9].. */
+/* Ditto, $^[*@#?0-9].. */
 static struct a_amv_pospar a_amv_rem_rval;
 
 /* TODO We really deserve localopts support for *on-mailbox-*, so hack in today via a static lostack, it should be
@@ -458,6 +458,8 @@ static boole a_amv_var_lookup(struct a_amv_var_carrier *avcp, BITENUM(u32,a_amv_
 static char const *a_amv_var_vsc_global(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
+
+static char const *a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, u16 specprop);
 
 /* Set var from .avc_(map|name|hash), return success */
 static boole a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM(u32,a_amv_var_setclr_flags) avscf);
@@ -2073,14 +2075,16 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 
 	i = su_cs_len(rv = &avcp->avc_name[1]);
 
-	/* #, digit+ */
-	if(rv[0] == '#' || rv[0] == '?' || su_cs_is_digit(rv[0])){
+	/* [*@#?], digit+ */
+	if(rv[0] == '*' || rv[0] == '@' || rv[0] == '#' || rv[0] == '?' || su_cs_is_digit(rv[0])){
 		struct a_amv_pospar *appp;
 
 		appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval;
 
 		if(i == 1){
 			switch(rv[0]){
+			case '*': rv = a_amv_var__vsc_pospar_array(appp, a_AMV_VST_STAR); goto jleave;
+			case '@': rv = a_amv_var__vsc_pospar_array(appp, a_AMV_VST_AT); goto jleave;
 			case '#': j = appp->app_count; goto jienc;
 			case '?': j = appp->app_is_ret; goto jienc;
 			}
@@ -2156,17 +2160,15 @@ jienc:
 	switch(j){
 	case 0: rv = n_0; break;
 	case 1: rv = n_1; break;
-	default:
-		rv = savestr(su_ienc(iencbuf, j, 10, su_IENC_MODE_SIGNED_TYPE));
-		break;
+	default: rv = savestr(su_ienc(iencbuf, j, 10, su_IENC_MODE_SIGNED_TYPE)); break;
 	}
 	goto jleave;
 }
 
 static char const *
 a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
-	uz i, j;
 	u32 argc;
+	struct a_amv_pospar *appp;
 	char const *rv, **argv;
 	NYD2_IN;
 
@@ -2180,9 +2182,10 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 		amcap = a_amv_lopts->as_amcap;
 		ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK);
 
-		argc = amcap->amca_pospar->app_count;
-		argv = amcap->amca_pospar->app_dat;
-		argv += amcap->amca_pospar->app_idx;
+		appp = amcap->amca_pospar;
+		argc = appp->app_count;
+		argv = appp->app_dat;
+		argv += appp->app_idx;
 
 		if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
 			if(avcp->avc_special_prop > 0){
@@ -2201,12 +2204,14 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 			goto jleave;
 		}
 	}else{
-		argc = a_amv_pospar.app_count;
-		argv = a_amv_pospar.app_dat;
-		argv += a_amv_pospar.app_idx;
+		appp = &a_amv_pospar;
 
 		if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
 			if(avcp->avc_special_prop > 0){
+				argc = appp->app_count;
+				argv = appp->app_dat;
+				argv += appp->app_idx;
+
 				if(argc >= avcp->avc_special_prop)
 					rv = argv[avcp->avc_special_prop - 1];
 			}else
@@ -2216,7 +2221,35 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 	}
 
 	switch(avcp->avc_special_prop){ /* XXX OPTIMIZE */
+	case a_AMV_VST_STAR:
+	case a_AMV_VST_AT:
+	case a_AMV_VST_NOSIGN:
+		rv = a_amv_var__vsc_pospar_array(appp, avcp->avc_special_prop);
+		break;
+	default:
+		rv = su_empty;
+		break;
+	}
+
+jleave:
+	NYD2_OU;
+	return rv;
+}
+
+static char const *
+a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, u16 specprot){
+	char const **argv, *rv;
+	u32 argc;
+	NYD2_IN;
+
+	argc = appp->app_count;
+	argv = appp->app_dat;
+	argv += appp->app_idx;
+
+	switch(specprot){
+	default:
 	case a_AMV_VST_STAR:{
+		uz i, j;
 		char sep;
 
 		sep = *ok_vlook(ifs);
@@ -2224,8 +2257,10 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 	case a_AMV_VST_AT:
 			sep = ' ';
 		}
+
 		for(i = j = 0; i < argc; ++i)
 			j += su_cs_len(argv[i]) + 1;
+
 		if(j == 0)
 			rv = su_empty;
 		else{
@@ -2244,17 +2279,14 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 			*cp = '\0';
 		}
 		}break;
+
 	case a_AMV_VST_NOSIGN:{
 		char iencbuf[su_IENC_BUFFER_SIZE];
 
 		rv = savestr(su_ienc(iencbuf, argc, 10, su_IENC_MODE_NONE));
 		}break;
-	default:
-		rv = su_empty;
-		break;
 	}
 
-jleave:
 	NYD2_OU;
 	return rv;
 }
@@ -4069,14 +4101,21 @@ n_var_vlook(char const *vokey, boole try_getenv){
 }
 
 FL boole
-n_var_vexplode(void const **cookie){
+n_var_vexplode(void const **cookie, boole caret){
 	struct a_amv_pospar *appp;
-	NYD_IN;
+	NYD2_IN;
 
-	appp = a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_pospar : &a_amv_pospar;
+	if(a_AMV_HAVE_LOPTS_AKA_LOCAL()){
+		struct a_amv_mac_call_args *amcap;
+
+		amcap = a_amv_lopts->as_amcap;
+		appp = !caret ? amcap->amca_pospar : amcap->amca_rem_rval;
+	}else
+		appp = !caret ? &a_amv_pospar : &a_amv_rem_rval;
+
 	*cookie = (appp->app_count > 0) ? &appp->app_dat[appp->app_idx] : NIL;
 
-	NYD_OU;
+	NYD2_OU;
 	return (*cookie != NIL);
 }
 

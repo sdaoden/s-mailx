@@ -4072,7 +4072,7 @@ t_ifelse() { #{{{
 
 		#{{{
 		<<- '__EOT' ${MAILX} ${ARGS} > ./tregex-match 2>${E0}
-		commandalias x \\echo '$?/$^ERRNAME.. $^?/$^#<$^0, $^1, $^2, $^3, $^4>'
+		commandalias x \\echo '$?/$^ERRNAME.. $^?/$^#<$^0, <$^*>, <"$^@">, $^1, $^2, $^3, $^4>'
 		commandalias e \\echoerr err:
 		\if abrakadabra =~ (.+)ka.*; x; \else; e 1; \end
 		\if abrakadabra =~ ^.*(ra)(.*)(ra)'$'; x; \else; e 2; \end
@@ -4080,7 +4080,7 @@ t_ifelse() { #{{{
 		\if bananarama =~?case (.*)NANA(.*); x; \else; e 4; \end
 		__EOT
 		#}}}
-		cke0 regex-match 0 ./tregex-match '4120715348 143'
+		cke0 regex-match 0 ./tregex-match '272746288 289'
 	else
 		t_echoskip 'regex,regex-match:[!REGEX]'
 	fi
@@ -4230,13 +4230,13 @@ define w3 {
 	end
 	echoerr au
 }
-commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
+commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<"$^@"> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
 call w1 0; x
 call w2 0; x
 call w3 0 1; x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '52207058 6013'
+	cke0 1 0 ./t1 '9453814 6069'
 
 	t_epilog "${@}"
 } #}}}
