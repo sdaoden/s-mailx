@@ -9275,7 +9275,9 @@ will likely be used.
 .Mx
 .Mx
 .Mx
-.It Va ^? , ^# , ^0 , ^1 , ..
+.Mx
+.Mx
+.It Va ^? , ^* , ^@ , ^# , ^0 , ^1 , ..
 Access extended
 .Ic return
 values of the last
@@ -9298,6 +9300,16 @@ holds the number of accessible values.
 For return values
 .Va \&\&^0
 stores the macro name, for regular expressions the entire match.
+.Va \&\&^*
+and
+.Va \&\&^@
+behave like
+.Va *
+and
+.Va @
+except that
+.Va \&\&^0
+is a counted and accessible parameter!
 .Bd -literal -offset indent
 define x {
   if abrakadabra =~ (.+)ka.*(b.+)a

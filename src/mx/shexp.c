@@ -1783,7 +1783,7 @@ jearith:
 						c = *ib;
 						if(!a_SHEXP_ISVARC(c)){
 							if(i == 0){
-								/* Simply skip over multiplexer, do not count it */
+								/* Skip over multiplexer, do not count it for now */
 								if(c == '^'){
 									caret = TRU1;
 									continue;
@@ -1875,7 +1875,7 @@ jebracesubst:
 						 * the current token */
 						if(UNLIKELY(state & a_EXPLODE) && !(flags & n_SHEXP_PARSE_DRYRUN) &&
 								cookie != NIL){
-							if(n_var_vexplode(cookie))
+							if(n_var_vexplode(cookie, caret))
 								state |= a_COOKIE;
 							/* On the other hand, if $@ expands to nothing and is the
 							 * sole content of this quote then act like the shell does
