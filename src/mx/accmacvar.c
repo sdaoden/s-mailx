@@ -227,7 +227,7 @@ struct a_amv_pospar{
 	boole app_not_heap; /* .app_dat stuff not dynamically allocated */
 	boole app_is_ret; /* $^? */
 	u8 app__dummy[2];
-	char const **app_dat; /* NIL terminated (for "$@" explosion support) */
+	char const **app_dat; /* NIL terminated (for "$@" explosion support)! */
 };
 
 struct a_amv_mac{
@@ -3488,27 +3488,17 @@ jeover:
 
 	/* Additional return values? */
 	if(cap_save != NIL){
-		char **cpp;
+		s32 xrv;
 		struct a_amv_pospar *appp;
 
-		if(cacp->cac_no >= S32_MAX)
-			goto jeover;
-
 		appp = (a_amv_lopts->as_up != NIL) ? a_amv_lopts->as_up->as_amcap->amca_rem_rval : &a_amv_rem_rval;
-		a_amv_pospar_clear(appp);
+
+		ASSERT(cacp->cac_no > 0);
+		xrv = mx_var_caret_array_set(appp, a_amv_lopts->as_amcap->amca_name, --cacp->cac_no, cap_save->ca_next, NIL);
 		appp->app_is_ret = TRU1;
 
-		/* XXX `return' ^ ARGS: all ARGS should fit well into S32_MAX bytes: use single alloc? */
-		appp->app_max_count = cacp->cac_no;
-		appp->app_count = cacp->cac_no - 1;
-		appp->app_idx = 1;
-		appp->app_dat = C(char const**,cpp = su_TALLOC(char*,cacp->cac_no + 1));
-
-		/* xxx catch enomem? */
-		for(cap = cap_save; cap != NIL; cap = cap->ca_next)
-			*cpp++ = su_cs_dup((cap == cap_save ? a_amv_lopts->as_amcap->amca_name : cap->ca_arg.ca_str.s), 0);
-		*cpp = NIL;
-		ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == cacp->cac_no);
+		if(xrv != su_ERR_NONE)
+			goto jeover;
 	}
 
 jleave:
@@ -3915,6 +3905,52 @@ jleave:
 	return rv;
 }
 #endif /* mx_HAVE_REGEX */
+
+FL s32
+mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
+		struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil){
+	char **cpp;
+	s32 rv;
+	struct a_amv_pospar *appp;
+	NYD_IN;
+
+	/* If in a macro, we need to overwrite the local instead of global argv */
+	appp = ((appp_or_nil != NIL) ? appp_or_nil
+		: (a_AMV_HAVE_LOPTS_AKA_LOCAL() ? a_amv_lopts->as_amcap->amca_rem_rval : &a_amv_rem_rval));
+
+	a_amv_pospar_clear(appp);
+
+	/* Add $^0 */
+	if(argc >= S32_MAX){
+		rv = su_ERR_OVERFLOW;
+		goto jleave;
+	}
+
+	appp->app_count = argc;
+	appp->app_max_count = ++argc;
+	appp->app_idx = 1;
+	appp->app_dat = C(char const**,cpp = su_TALLOC(char*, argc +1));
+
+	/* xxx catch enomem? */
+	*cpp++ = su_cs_dup(name, 0);
+	while(--argc > 0){
+		char const *cp;
+
+		if(cap_or_nil != NIL){
+			cp = cap_or_nil->ca_arg.ca_str.s;
+			cap_or_nil = cap_or_nil->ca_next;
+		}else
+			cp = *argv_or_nil++;
+		*cpp++ = su_cs_dup(cp, 0);
+	}
+	*cpp = NIL;
+	ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == appp->app_max_count);
+
+	rv = su_ERR_NONE;
+jleave:
+	NYD_OU;
+	return rv;
+}
 
 FL void
 n_var_setup_batch_mode(void){
@@ -4548,10 +4584,7 @@ c_vpospar(void *vp){ /* {{{ */
 
 		appp->app_max_count = appp->app_count = S(u32,i);
 		/* XXX Optimize: store it all in one chunk! */
-		++i;
-		i *= sizeof *appp->app_dat;
-		appp->app_dat = su_ALLOC(i);
-
+		appp->app_dat = su_TALLOC(char const*, i +1);
 		for(i = 0; cap != NIL; ++i, cap = cap->ca_next){
 			appp->app_dat[i] = su_ALLOC(cap->ca_arg.ca_str.l +1);
 			su_mem_copy(UNCONST(char*,appp->app_dat[i]), cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);

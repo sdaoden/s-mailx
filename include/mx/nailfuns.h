@@ -187,10 +187,16 @@ FL s32 temporary_addhist_hook(char const *ctx, char const *gabby_type,
 FL char *temporary_pospar_access_hook(char const *name, char const **argv,
       u32 argc, char *(*hook)(void *uservp), void *uservp);
 
-/* group_count does not include $^0!  If 0, only clear.  NONE,OVERFLOW,NOMEM */
+/* group_count *does not* include $^0!  If 0, only clear.  NONE,OVERFLOW,NOMEM */
 FL s32 mx_var_re_match_set(u32 group_count, char const *dat,
       struct su_re_match const *remp);
 #endif
+
+/* argc *does not* include $^0 (name)!  If argc is 0 clears and sets $^0.
+ * [appp_or_nil defaults to the current scope; always NIL, local to _amv_.]
+ * One of cap_or_nil and argv_or_nil must be set.  NONE,OVERFLOW,NOMEM */
+FL s32 mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
+      struct mx_cmd_arg const *cap_or_nil, char const * const *argv_or_nil);
 
 /* Setting up batch mode, variable-handling side */
 FL void n_var_setup_batch_mode(void);
