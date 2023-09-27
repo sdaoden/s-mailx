@@ -605,7 +605,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 		dp = NIL;
 		sgoc.sgoc_dt_type = -1;
 		sgoc.sgoc_name = sgcp->sgc_patdat;
-		if((ccp = a_shexp__glob_one(&sgoc)) == su_NIL || ccp == R(char*,-1))
+		if((ccp = a_shexp__glob_one(&sgoc)) == NIL || ccp == R(char*,-1))
 			goto jleave;
 		goto jerr;
 	}
@@ -642,47 +642,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 		}
 	}
 
-	/* As necessary, quote bytes in the current pattern TODO This will not
-	 * TODO truly work out in case the user would try to quote a character
-	 * TODO class, for example: in "\[a-z]" the "\" would be doubled!  For that
-	 * TODO to work out, we need the original user input or the shell-expression
-	 * TODO parse tree, otherwise we do not know what is desired! */
-	/* C99 */{
-		char *ncp;
-		uz i;
-		boole need;
-
-		for(need = FAL0, i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
-			switch(*myp){
-			case '\'': case '"': case '\\': case '$':
-			case ' ': case '\t':
-				need = TRU1;
-				++i;
-				FALLTHRU
-			default:
-				++i;
-				break;
-			}
-
-		if(need){
-			ncp = su_LOFI_ALLOC(i +1);
-			for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
-				switch(*myp){
-				case '\'': case '"': case '\\': case '$':
-				case ' ': case '\t':
-					ncp[i++] = '\\';
-					FALLTHRU
-				default:
-					ncp[i++] = *myp;
-					break;
-				}
-			ncp[i] = '\0';
-			myp = ncp;
-		}else
-			myp = sgcp->sgc_patdat;
-	}
-
-	while((dep = readdir(dp)) != su_NIL){
+	for(myp = sgcp->sgc_patdat; (dep = readdir(dp)) != NIL;){
 		switch(fnmatch(myp, dep->d_name, FNM_PATHNAME | FNM_PERIOD)){
 		case 0:
 			sgoc.sgoc_dt_type =
@@ -693,7 +653,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 #endif
 					;
 			sgoc.sgoc_name = dep->d_name;
-			if((ccp = a_shexp__glob_one(&sgoc)) != su_NIL){
+			if((ccp = a_shexp__glob_one(&sgoc)) != NIL){
 				if(ccp == R(char*,-1))
 					goto jleave;
 				goto jerr;
