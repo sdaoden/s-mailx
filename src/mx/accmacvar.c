@@ -196,7 +196,7 @@ enum a_amv_var_setclr_flags{
 enum a_amv_var_special_category{
 	a_AMV_VSC_NONE, /* Normal variable, no special treatment */
 	a_AMV_VSC_GLOBAL, /* ${[?!]} are specially mapped, but global */
-	a_AMV_VSC_MULTIPLEX, /* ${^.*} circumflex accent multiplexer */
+	a_AMV_VSC_MULTIPLEX, /* ${^.+} circumflex accent multiplexer */
 	a_AMV_VSC_POSPAR, /* ${[1-9][0-9]*} positional parameters */
 	a_AMV_VSC_POSPAR_ENV /* ${[*@#]} positional parameter support variables */
 };
@@ -331,15 +331,16 @@ struct a_amv_var_carrier{
 	u32 avc_prime;
 	struct a_amv_var *avc_var;
 	struct a_amv_var_map const *avc_map;
-	BITENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
-	u8 avc__pad[1];
 	BITENUM(u16,okeys) avc_okey;
+	BITENUM(u8,mx_scope) avc_scope; /* xxx Later added, only rarely used! */
 #undef a_AMV_OKEY
 #define a_AMV_OKEY(X) S(u16,X)
 	boole avc_is_chain_variant; /* Base is a chain, this a variant thereof */
 	u8 avc_special_cat;
-	/* Numerical parameter name if .avc_special_cat=a_AMV_VSC_POSPAR, otherwise a enum a_amv_var_special_type */
-	u16 avc_special_prop;
+	BITENUM(u8,a_amv_var_special_type) avc_special_type;
+	u8 avc__pad1[2];
+	u32 avc_param_position;
+	su_64(u8 avc__pad2[4];)
 };
 CTAV(n_OKEYS_MAX <= U16_MAX);
 
@@ -459,7 +460,7 @@ static char const *a_amv_var_vsc_global(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
 
-static char const *a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, u16 specprop);
+static char const *a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, BITENUM(u8,a_amv_var_special_type) avst);
 
 /* Set var from .avc_(map|name|hash), return success */
 static boole a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value, BITENUM(u32,a_amv_var_setclr_flags) avscf);
@@ -1586,7 +1587,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name, boole try_
 	/* It may be a special a.k.a. macro-local or one-letter parameter */
 	c = name[0];
 	if(UNLIKELY(su_cs_is_digit(c))){
-		/* (Inline dec. atoi, ugh) */
+		/* (xxx Inline decimal atoi, ugh) */
 		for(j = S(u8,c) - '0', i = 1;; ++i){
 			c = name[i];
 			if(c == '\0')
@@ -1597,7 +1598,9 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name, boole try_
 		}
 		if(j > S32_MAX)
 			goto jerr;
+		avcp->avc_param_position = j;
 		avcp->avc_special_cat = a_AMV_VSC_POSPAR;
+		j = 0;
 		goto jspecial_param;
 	}else if(UNLIKELY(name[1] == '\0')){
 		switch(c){
@@ -1675,7 +1678,7 @@ jleave:
 	/* All these are mapped to *--special-param* */
 jspecial_param:
 	avcp->avc_name = name;
-	avcp->avc_special_prop = S(u16,j);
+	avcp->avc_special_type = S(u8,j);
 	avmp = &a_amv_var_map[a_AMV_VAR__SPECIAL_PARAM_MAP_IDX];
 	avcp->avc_hash = avmp->avm_hash;
 	avcp->avc_map = avmp;
@@ -2034,7 +2037,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 	NYD2_IN;
 
 	/* Not function local, TODO but lazy evaluated for now */
-	if(avcp->avc_special_prop == a_AMV_VST_QM){
+	if(avcp->avc_special_type == a_AMV_VST_QM){
 		avmp = &a_amv_var_map[a_AMV_VAR__QM_MAP_IDX];
 		avcp->avc_okey = ok_v___qm;
 		ep = &n_pstate_ex_no;
@@ -2091,7 +2094,8 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 		}
 
 		if((su_idec_s32_cp(&j, &rv[0], 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) == su_IDEC_STATE_CONSUMED && j >= 0 && S(u32,j) < appp->app_count){
+				) == su_IDEC_STATE_CONSUMED && j >= 0 &&
+				S(u32,j) < S(uz,appp->app_idx) + appp->app_count){
 			rv = appp->app_dat[j];
 			goto jleave;
 		}
@@ -2188,9 +2192,9 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 		argv += appp->app_idx;
 
 		if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
-			if(avcp->avc_special_prop > 0){
-				if(argc >= avcp->avc_special_prop)
-					rv = argv[avcp->avc_special_prop - 1];
+			if(avcp->avc_param_position > 0){
+				if(argc >= avcp->avc_param_position)
+					rv = argv[avcp->avc_param_position - 1];
 			}else if(ismacky || amcap->amca_amp == NIL)
 				rv = amcap->amca_name;
 			else if((rv = mx_go_ctx_parent_name()) == NIL)
@@ -2207,24 +2211,23 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 		appp = &a_amv_pospar;
 
 		if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
-			if(avcp->avc_special_prop > 0){
+			if(avcp->avc_param_position > 0){
 				argc = appp->app_count;
 				argv = appp->app_dat;
 				argv += appp->app_idx;
-
-				if(argc >= avcp->avc_special_prop)
-					rv = argv[avcp->avc_special_prop - 1];
+				if(argc >= avcp->avc_param_position)
+					rv = argv[avcp->avc_param_position - 1];
 			}else
 				rv = su_program;
 			goto jleave;
 		}
 	}
 
-	switch(avcp->avc_special_prop){ /* XXX OPTIMIZE */
+	switch(avcp->avc_special_type){ /* XXX OPTIMIZE */
 	case a_AMV_VST_STAR:
 	case a_AMV_VST_AT:
 	case a_AMV_VST_NOSIGN:
-		rv = a_amv_var__vsc_pospar_array(appp, avcp->avc_special_prop);
+		rv = a_amv_var__vsc_pospar_array(appp, avcp->avc_special_type);
 		break;
 	default:
 		rv = su_empty;
@@ -2237,7 +2240,7 @@ jleave:
 }
 
 static char const *
-a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, u16 specprot){
+a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, BITENUM(u8,a_amv_var_special_type) avst){
 	char const **argv, *rv;
 	u32 argc;
 	NYD2_IN;
@@ -2246,7 +2249,7 @@ a_amv_var__vsc_pospar_array(struct a_amv_pospar *appp, u16 specprot){
 	argv = appp->app_dat;
 	argv += appp->app_idx;
 
-	switch(specprot){
+	switch(avst){
 	default:
 	case a_AMV_VST_STAR:{
 		uz i, j;
@@ -3497,14 +3500,15 @@ jeover:
 
 		/* XXX `return' ^ ARGS: all ARGS should fit well into S32_MAX bytes: use single alloc? */
 		appp->app_max_count = cacp->cac_no;
-		appp->app_count = cacp->cac_no;
+		appp->app_count = cacp->cac_no - 1;
+		appp->app_idx = 1;
 		appp->app_dat = C(char const**,cpp = su_TALLOC(char*,cacp->cac_no + 1));
 
 		/* xxx catch enomem? */
 		for(cap = cap_save; cap != NIL; cap = cap->ca_next)
 			*cpp++ = su_cs_dup((cap == cap_save ? a_amv_lopts->as_amcap->amca_name : cap->ca_arg.ca_str.s), 0);
 		*cpp = NIL;
-		ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == appp->app_count);
+		ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == cacp->cac_no);
 	}
 
 jleave:
@@ -3881,7 +3885,10 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 	}
 
 	/* Not used, single-chunk alloc: appp->app_max_count = 0;*/
-	appp->app_count = (group_count ? ++group_count : group_count);
+	if(group_count > 0){
+		appp->app_count = group_count++;
+		appp->app_idx = 1;
+	}
 
 	for(i = j = 0; i < group_count; ++i)
 		j += sizeof(char const*) +1 + remp[i].rem_end - remp[i].rem_start; /* XXX ERR_OVERFLOW? */

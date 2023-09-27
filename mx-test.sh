@@ -4080,7 +4080,7 @@ t_ifelse() { #{{{
 		\if bananarama =~?case (.*)NANA(.*); x; \else; e 4; \end
 		__EOT
 		#}}}
-		cke0 regex-match 0 ./tregex-match '272746288 289'
+		cke0 regex-match 0 ./tregex-match '1075116293 219'
 	else
 		t_echoskip 'regex,regex-match:[!REGEX]'
 	fi
@@ -4230,13 +4230,19 @@ define w3 {
 	end
 	echoerr au
 }
+define nada {
+	return ^
+}
 commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^# ^*<$^*> ^@<"$^@"> ^0=$^0 ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
 call w1 0; x
+call nada; x
 call w2 0; x
+call nada; x
 call w3 0 1; x
+call nada; x
 __EOT
 	#}}}
-	cke0 1 0 ./t1 '9453814 6069'
+	cke0 1 0 ./t1 '4226571465 6228'
 
 	t_epilog "${@}"
 } #}}}
