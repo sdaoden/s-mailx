@@ -5810,6 +5810,22 @@ and the normal result is suppressed but for
 .Cm vput ;
 the descriptor will be closed automatically.
 .
+.It Cm glob
+.Xr glob 7
+expands all arguments; upon success it makes none to many results
+accessible in
+.Cm local Ns
+-\:most scope via
+.Va ^# , ^1
+etc, and outputs
+.Va ^# ;
+.Va ^0
+holds the argument(s as a space-separated string).
+Without
+.Xr fnmatch 3
+support in the operating system environment the error is
+.Va ^ERR Ns -NOSYS .
+.
 .It Cm mkdir
 Create a new directory.
 The optional second argument is a boolean that denotes whether parent
@@ -6268,7 +6284,7 @@ or
 .Xr regex 7 ,
 dependent on host system) can be accessed in
 .Cm local Ns
--most scope via the
+-\:most scope via the
 .Va ^
 multiplexer sub-variables
 .Va ^# , ^0 , ^1
@@ -7947,7 +7963,7 @@ With the optional third argument the match group accessors
 .Va ^# , ^0 , ^1
 are set (in
 .Cm local Ns
--most scope) for successful matches, and the argument is interpreted
+-\:most scope) for successful matches, and the argument is interpreted
 as if specified within dollar-single-quote
 .Pf ( Sx "Shell-style argument quoting" ) :
 .Bd -literal -offset indent
@@ -9292,13 +9308,16 @@ values of the last
 .Ic call Ns
 ed (if
 .Va \&\&^?
-is true), or regular expression match groups as created for example by
+is true), regular expression match groups as created for example by
 .Ic if
 and
 .Ic vexpr ,
+and other dedicated documented result sets, for example of
+.Ic fop
+.Cm \&\&glob ,
 in the
 .Cm local Ns
--most
+-\:most
 .Mx -sx
 .Sx scope .
 .Va \&\&^#
@@ -9307,7 +9326,8 @@ holds the number of accessible values
 etc).
 For return values
 .Va \&\&^0
-stores the macro name, for regular expressions the entire match.
+stores the macro name, for regular expressions the entire match,
+per-command documentation applies otherwise.
 .Va \&\&^*
 and
 .Va \&\&^@

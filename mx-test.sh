@@ -5921,6 +5921,37 @@ readctl remove $fd;x
 	ck 5.1 - ./t5.1 '533590307 9'
 	ck0 5.2 - ./t5.2
 
+
+	# glob {{{
+	touch .tz1 .tz2 .tz4 '.tx 3' .tx5
+	<<- '__EOT' ${MAILX} ${ARGS} > ./tglob 2>${E0}
+commandali x 'echo ?=$? !=$^ERRNAME ^?=$^? ^#=$^#/x=$x ^*<$^*> ^@<"$^@"> ^0<$^0> ^1=$^1 ^2=$^2 ^3=$^3; echo -----;'
+vput fop x glob .
+if $? -ne 0 && $^ERR -eq $^ERR-NOSYS
+	xit 11
+end
+vput fop x glob .tz*
+x
+vput fop x glob .tx*
+x
+vput fop x glob .t[xz]*
+x
+vput fop x glob .t[xz]?
+x
+vput fop x glob .tz* .tx*
+x
+vput fop x glob .tx* .tz*
+x
+	__EOT
+	#}}}
+	i=$?
+	if [ $i -eq 11 ]; then
+		t_echoskip 'glob:[no fnmatch(3)]'
+	else
+		ck_ex0 glob $i
+		cke0 glob - ./tglob '3802555029 695'
+	fi
+
 	t_epilog "${@}"
 } #}}}
 

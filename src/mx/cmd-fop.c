@@ -34,6 +34,10 @@ su_EMPTY_FILE()
 #include <su/path.h>
 #include <su/time.h>
 
+#ifdef mx_HAVE_FNMATCH
+# include <su/mem-bag.h>
+#endif
+
 #include "mx/child.h"
 #include "mx/cmd.h"
 #include "mx/file-locks.h"
@@ -67,7 +71,10 @@ enum a_fop_flags{
 	 * fop_ctx.fc_flags: NOFOLLOW variant _was_ actually used */
 	a_FOP_MOD_NOFOLLOW = 1u<<2,
 	a_FOP_MOD_FLOCK = 1u<<3, /* Only fop_subcmd.fs_flags: indeed flock lock */
-	a_FOP_MOD_MASK = a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK
+	a_FOP_MOD_GLOB = 1u<<4, /* Only fop_subcmd.fs_flags: indeed glob(7) */
+	a_FOP_MOD_LARGER_ARGV = 1u<<5,
+	a_FOP_MOD_MASK = a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK | a_FOP_MOD_GLOB |
+			a_FOP_MOD_LARGER_ARGV
 };
 
 struct a_fop_ctx{
@@ -81,6 +88,7 @@ struct a_fop_ctx{
 	s64 fc_lhv;
 	s32 fc_estat; /* To be used as `fop' exit status With FOP_USE_ESTAT */
 	char const *fc_argv[4];
+	struct mx_cmd_arg *fc_cap; /* For more args, subcmd-dependent */
 	char fc_iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
 };
 
@@ -121,6 +129,7 @@ static void a_fop__touch(struct a_fop_ctx *fcp);
 static struct a_fop_subcmd const a_fop_subcmds[] = {
 	{&a_fop__close, 0, "close"},
 	{&a_fop__expand, 0, "expand\0"},
+		{&a_fop__expand, a_FOP_MOD_GLOB | a_FOP_MOD_LARGER_ARGV, "glob"},
 	{&a_fop__ftruncate, 0, "ftruncate\0"},
 #ifdef mx_HAVE_FLOCK
 	{&a_fop__lock, a_FOP_MOD_NOFOLLOW | a_FOP_MOD_FLOCK, "flock\0"},
@@ -199,16 +208,84 @@ static void
 a_fop__expand(struct a_fop_ctx *fcp){
 	NYD2_IN;
 
-	if(fcp->fc_argv[0] == NIL || fcp->fc_argv[1] != NIL){
+	if(fcp->fc_argv[0] == NIL ||
+			(fcp->fc_argv[1] != NIL && !(fcp->fc_subcmd->fs_flags & a_FOP_MOD_LARGER_ARGV))){
 		fcp->fc_flags |= a_FOP_ERR;
 		fcp->fc_cmderr = a_FOP_ERR_SYNOPSIS;
-	}else{
+	}else if(!(fcp->fc_subcmd->fs_flags & a_FOP_MOD_GLOB)){
 		fcp->fc_arg = fcp->fc_argv[0];
 
 		if((fcp->fc_varres = fexpand(fcp->fc_arg, (FEXP_DEF_LOCAL_FILE & ~FEXP_NGLOB))) == NIL){
 			fcp->fc_flags |= a_FOP_ERR;
 			fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
 		}
+	}else{
+#ifndef mx_HAVE_FNMATCH
+		n_pstate_err_no = su_ERR_NOSYS;
+		fcp->fc_flags |= a_FOP_ERR;
+		fcp->fc_cmderr = a_FOP_ERR_STR_GENERIC;
+#else
+		char const *arg0;
+		struct mx_cmd_arg *cap;
+		char **cpp_all, **cpp;
+		u32 i_all, i;
+
+		i_all = 0;
+		cpp_all = NIL;
+		cap = fcp->fc_cap;
+		arg0 = cap->ca_arg.ca_str.s;
+		if(0){
+jglob_next:
+			arg0 = savecatsep(arg0, ' ', cap->ca_arg.ca_str.s);
+		}
+
+		cpp = mx_shexp_name_expand_multi(cap->ca_arg.ca_str.s, (FEXP_DEF_LOCAL_FILE_VAR & ~FEXP_NGLOB));
+
+		if(cpp != NIL){
+			for(i = 0; cpp[i] != NIL; ++i){
+				if(i == S32_MAX - 1)
+					goto jglob_eover;
+			}
+
+			if(i_all == 0){
+				i_all = i;
+				cpp_all = cpp;
+			}else{
+				char **xcpp;
+
+				if(i >= S32_MAX - i_all)
+					goto jglob_eover;
+
+				xcpp = su_AUTO_TALLOC(char*, i_all + i +1);
+
+				for(i_all = 0; cpp_all[i_all] != NIL; ++i_all)
+					xcpp[i_all] = cpp_all[i_all];
+				for(i = 0; cpp[i] != NIL; ++i)
+					xcpp[i_all++] = cpp[i];
+				xcpp[i_all] = NIL;
+				cpp_all = xcpp;
+			}
+		}
+
+		if(cap->ca_next != NIL){
+			cap = cap->ca_next;
+			goto jglob_next;
+		}else if(i_all == 0){
+			fcp->fc_varres = NIL;
+			fcp->fc_flags |= a_FOP_ERR;
+			fcp->fc_cmderr = a_FOP_ERR_STR_NODATA;
+			goto su_NYD_OU_LABEL;
+		}
+
+		if(mx_var_caret_array_set(NIL, arg0, i_all, NIL, C(char const*const*,cpp_all)) == su_ERR_NONE)
+			fcp->fc_varres = su_ienc_uz(fcp->fc_iencbuf, i_all, 10);
+		else{
+jglob_eover:
+			fcp->fc_varres = NIL;
+			fcp->fc_flags |= a_FOP_ERR;
+			fcp->fc_cmderr = a_FOP_ERR_STR_OVERFLOW;
+		}
+#endif /* mx_HAVE_FNMATCH */
 	}
 
 	NYD2_OU;
@@ -826,20 +903,24 @@ c_fop(void *vp){
 	fc.fc_cmderr = a_FOP_ERR_SUBCMD;
 	fc.fc_vput = (cacp->cac_vput != NIL);
 	fc.fc_varres = su_empty;
+
+	f = a_FOP_NONE;
 	/* C99 */{
 		struct mx_cmd_arg *cap;
 
 		cap = cacp->cac_arg;
+		fc.fc_cap = cap->ca_next;
 		fc.fc_arg = cap->ca_arg.ca_str.s;
 
 		for(i = 0; (cap = cap->ca_next) != NIL;){
-			if(i >= NELEM(fc.fc_argv))
-				goto jesyno;
+			if(i == NELEM(fc.fc_argv)){
+				f |= a_FOP_MOD_LARGER_ARGV;
+				break;
+			}
 			fc.fc_argv[i++] = cap->ca_arg.ca_str.s;
 		}
 	}
 
-	f = a_FOP_NONE;
 	j = su_cs_len(fc.fc_arg);
 	is_l = (j > 0 && su_cs_to_lower(fc.fc_arg[0]) == 'l');
 
@@ -848,7 +929,12 @@ c_fop(void *vp){
 		if(su_cs_starts_with_case_n(a_fop_subcmds[i].fs_name, fc.fc_arg, j) ||
 				(is_l && (a_fop_subcmds[i].fs_flags & a_FOP_MOD_NOFOLLOW) &&
 				 (was_l = su_cs_starts_with_case_n(a_fop_subcmds[i].fs_name, &fc.fc_arg[1], j - 1)))){
-			fc.fc_arg = (fc.fc_subcmd = &a_fop_subcmds[i])->fs_name;
+			fc.fc_subcmd = &a_fop_subcmds[i];
+
+			if((f & a_FOP_MOD_LARGER_ARGV) && !(fc.fc_subcmd->fs_flags & a_FOP_MOD_LARGER_ARGV))
+				goto jesyno;
+
+			fc.fc_arg = fc.fc_subcmd->fs_name;
 			fc.fc_flags = f | (was_l ? a_FOP_MOD_NOFOLLOW : 0);
 
 			(*fc.fc_subcmd->fs_cmd)(&fc);
