@@ -7095,9 +7095,15 @@ both defaulting to 0; as documented for
 a non-0 exit status may cause a program exit.
 After a separating
 .Ql ^
-any number of arguments can be made accessible to the callee via
-.Va ^? , ^# , ^0 , ^1
-etc; on excess
+any number of arguments can be made accessible to the callee,
+then announced via
+.Va ^? :
+.Va ^0
+is set to the macro name,
+.Va ^#
+indicates arguments
+.Pf ( Va ^1
+etc); on excess
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW
@@ -9296,7 +9302,9 @@ in the
 .Mx -sx
 .Sx scope .
 .Va \&\&^#
-holds the number of accessible values.
+holds the number of accessible values
+.Pf ( Va \&\&^1
+etc).
 For return values
 .Va \&\&^0
 stores the macro name, for regular expressions the entire match.
@@ -9306,10 +9314,7 @@ and
 behave like
 .Va *
 and
-.Va @
-except that
-.Va \&\&^0
-is a counted and accessible parameter!
+.Va @ .
 .Bd -literal -offset indent
 define x {
   if abrakadabra =~ (.+)ka.*(b.+)a
