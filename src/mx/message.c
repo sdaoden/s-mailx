@@ -318,7 +318,7 @@ a_msg_markall(char const *orig, struct mx_cmd_arg *cap, int f){
    colmod = 0;
    id = NULL;
    flags = (a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
-         ((!(n_pstate & n_PS_HOOK_MASK) || (n_poption & n_PO_D_V))
+         ((!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
             ? a_LOG : 0));
 
    while((tok = a_msg_scan(&msl)) != a_MSG_T_EOL){
