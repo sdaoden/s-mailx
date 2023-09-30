@@ -7566,7 +7566,7 @@ t_mbox() { #{{{
 		call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>${E0}
 	ck_ex0 14-estat
 	${cat} ./.tinv1 ./.tok >> .tall
-	cke0 14 - ./.tall '839364783 614'
+	cke0 14 - ./.tall '685885983 588'
 
 	printf \
 		'file ./.tinv1 # ^From not repaired, but missing trailing NL is

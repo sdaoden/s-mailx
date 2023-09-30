@@ -267,11 +267,17 @@ jferr:
             disp = A_("[Appended]");
       }
 #endif
-      if(su_state_has(su_STATE_REPRODUCIBLE))
-         file = n_filename_to_repro(file);
-      fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
-         n_shexp_quote_cp(file, FAL0), disp,
-         /*tstats[1], TODO v15: lines written */ tstats[0]);
+
+      if((!(n_poption & n_PO_BATCH_FLAG) ||
+               su_state_has(su_STATE_REPRODUCIBLE)) &&
+            (!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+               (n_poption & n_PO_D_V))){
+         if(su_state_has(su_STATE_REPRODUCIBLE))
+            file = n_filename_to_repro(file);
+         fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
+            n_shexp_quote_cp(file, FAL0), disp,
+            /*tstats[1], TODO v15: lines written */ tstats[0]);
+      }
    } else if (domark) {
       for (ip = msgvec; *ip != 0; ++ip) {
          mp = message + *ip - 1;
