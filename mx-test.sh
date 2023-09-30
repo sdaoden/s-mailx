@@ -4251,44 +4251,49 @@ t_macro_param_shift() { #{{{
 	t_prolog "${@}"
 
 	#{{{
-	<<- '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
-	define t2 {
-		echo in: t2
-		echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		local set ignerr=$1
-		shift
-		echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		if [ $# > 1 ] || [ $ignerr == '' ]
-			shift 2
-		else
-			ignerr shift 2
-		endif
-		echo t2.2:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		shift 0
-		echo t2.3:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-		if [ $# > 0 ]
-			shift
-		endif
-		echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
-	}
-	define t1 {
-		set errexit
-		echo in: t1
-		call t2 1 you get four args
-		echo t1.1: $?';' ignerr ($ignerr) should not exist
-		call t2 1 you get 'three args'
-		echo t1.2: $?';' ignerr ($ignerr) should not exist
-		call t2 1 you 'get two args'
-		echo t1.3: $?';' ignerr ($ignerr) should not exist
-		call t2 1 'you get one arg'
-		echo t1.4: $?';' ignerr ($ignerr) should not exist
-		ignerr call t2 '' 'you get one arg'
-		echo t1.5: $?';' ignerr ($ignerr) should not exist
-	}
-	call t1
-	__EOT
+	<< '__EOT' ${MAILX} ${ARGS} > ./t1 2>${EX}
+commandalias x ec 'n<$n>s<$s>,?<$?><$^ERRNAME>,#<$#>,*<$*>,@<"$@">'
+define t {
+	local se n=$1 s=$2 ie=$3
+	if -n "$ie"
+		se ie=ignerr
+	en
+	shift 3
+	x
+	eval $ie shift ${s}2
+	x
+	shift ${s}0
+	x
+	if $# -gt 0
+		shift ${s}1
+	en
+	x;ec
+}
+#unset errexit
+call t 1.1 - '' 1
+call t 1.2 - '' 1 2
+call t 1.3 - '' 1 2 3
+call t 1.4 - '' 1 2 3 4
+set errexit
+call t 2.1 - ' ' 1
+call t 2.2 - ' ' 1 2
+call t 2.3 - ' ' 1 2 3
+call t 2.4 - ' ' 1 2 3 4
+unset errexit
+call t 3.1 '' '' 1
+call t 3.2 '' '' 1 2
+call t 3.3 '' '' 1 2 3
+call t 3.4 '' '' 1 2 3 4
+set errexit
+call t 4.1 '' ' ' 1
+call t 4.2 '' ' ' 1 2
+call t 4.3 '' ' ' 1 2 3
+call t 4.4 '' ' ' 1 2 3 4
+#
+call t X.Y '' '' 1
+__EOT
 	#}}}
-	ck 1 0 ./t1 '1402489146 1682' '4015700295 116'
+	ck 1 1 ./t1 '3671555072 2480' '1985631949 292'
 
 	t_epilog "${@}"
 } #}}}
