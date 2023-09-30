@@ -7305,7 +7305,9 @@ creating new or updating already existing ones.
 .It Ic shift
 \*(NQ Shift positional parameters (so former 2 becomes
 .Va 1
-etc.) by 1 or a given positive number (0 does nothing, successfully).
+etc.) by 1 or the given number of positions.
+Positive numbers remove at the front, negative at the back.
+0 does nothing, successfully.
 Shifting more than
 .Va #
 is an error.

@@ -227,7 +227,7 @@ struct a_amv_pospar{
 	boole app_not_heap; /* .app_dat stuff not dynamically allocated */
 	boole app_is_ret; /* $^? */
 	u8 app__dummy[2];
-	char const **app_dat; /* NIL terminated (for "$@" explosion support)! */
+	char const **app_dat;
 };
 
 struct a_amv_mac{
@@ -3398,24 +3398,24 @@ jleave:
 FL int
 c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
 	struct a_amv_pospar *appp;
-	u32 i;
+	struct mx_cmd_arg_ctx *cacp;
+	s64 c, ca;
 	int rv;
 	NYD_IN;
 
-	rv = 1;
+	rv = su_EX_ERR;
+	c = 1;
+	cacp = vp;
 
-	if((vp = *S(char**,vp)) == NIL)
-		i = 1;
-	else{
-		s32 sib;
-
-		if((su_idec_s32_cp(&sib, vp, 10, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-				) != su_IDEC_STATE_CONSUMED || sib < 0){
-			n_err(_("shift: invalid argument: %s\n"), vp);
-			goto jleave;
-		}
-		i = S(u32,sib);
+	if(cacp->cac_no > 0 &&
+			(su_idec_s64_cp(&c, cacp->cac_arg->ca_arg.ca_str.s, 10, NIL
+				) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED){
+		n_err(_("shift: invalid argument: %s\n"), cacp->cac_arg->ca_arg.ca_str.s);
+		goto jleave;
 	}
+
+	if(c == 0)
+		goto jok;
 
 	/* If in in a macro/xy */
 	if(mx_go_ctx_is_macro()){
@@ -3424,15 +3424,18 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
 	}else
 		appp = &a_amv_pospar;
 
-	if(i > appp->app_count){
-		n_err(_("shift: cannot shift %u of %u parameters\n"), i, appp->app_count);
+	ca = ABS(c);
+	if(UCMP(64, ca, >, appp->app_count)){
+		n_err(_("shift: cannot shift %" PRId64 " of %u parameters\n"), c, appp->app_count);
 		goto jleave;
-	}else{
-		appp->app_idx += i;
-		appp->app_count -= i;
-		rv = 0;
 	}
 
+	if(c > 0)
+		appp->app_idx += S(u32,ca);
+	appp->app_count -= S(u32,ca);
+
+jok:
+	rv = su_EX_OK;
 jleave:
 	NYD_OU;
 	return rv;
@@ -3557,7 +3560,7 @@ mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev){ /* TODO v15: dro
 
 	struct a_amv_mac_call_args *amcap;
 	struct a_amv_mac *amp;
-	char const *mn, *cp, *argv[2];
+	char const *mn, *cp, *argv[1];
 	char *var;
 	uz len;
 	boole rv, v15_compat;/*v15-compat*/
@@ -3645,7 +3648,6 @@ jmac:
 	amcap->amca_pospar = &amcap->amca__pospar;
 	if(v15_compat){
 		argv[0] = a_names[S(u8,onmbev)];;
-		argv[1] = NIL;
 		amcap->amca__pospar.app_count = 1;
 		amcap->amca__pospar.app_not_heap = TRU1;
 		amcap->amca__pospar.app_dat = argv;
@@ -3772,7 +3774,7 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 	/* XXX temporary_addhist_hook(): intermediate hack */
 	struct a_amv_mac_call_args *amcap;
 	struct a_amv_mac *amp;
-	char const *macname, *argv[4];
+	char const *macname, *argv[3];
 	s32 rv, perrn, pexn;
 	NYD_IN;
 
@@ -3788,7 +3790,6 @@ temporary_addhist_hook(char const *ctx, char const *gabby_type, char const *hist
 		argv[0] = ctx;
 		argv[1] = gabby_type;
 		argv[2] = histent;
-		argv[3] = NIL;
 
 		amcap = su_LOFI_CALLOC(sizeof *amcap);
 		amcap->amca_name = macname;
@@ -3887,7 +3888,6 @@ mx_var_re_match_set(u32 group_count, char const *dat, struct su_re_match const *
 	/* XXX Optimize: store it all in one chunk! */
 	appp->app_dat = C(char const**,c.pp = S(char**,su_ALLOC(j)));
 	c.pp += group_count;
-	*c.pp++ = NIL;
 	c.p = R(char*,c.pp);
 
 	for(remp += group_count; group_count-- > 0;){
@@ -3929,7 +3929,7 @@ mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
 	appp->app_count = argc;
 	appp->app_max_count = ++argc;
 	appp->app_idx = 1;
-	appp->app_dat = C(char const**,cpp = su_TALLOC(char*, argc +1));
+	appp->app_dat = C(char const**,cpp = su_TALLOC(char*, argc));
 
 	/* xxx catch enomem? */
 	*cpp++ = su_cs_dup(name, 0);
@@ -3943,7 +3943,6 @@ mx_var_caret_array_set(void *appp_or_nil, char const *name, u32 argc,
 			cp = *argv_or_nil++;
 		*cpp++ = su_cs_dup(cp, 0);
 	}
-	*cpp = NIL;
 	ASSERT(P2UZ(cpp - C(char**,appp->app_dat)) == appp->app_max_count);
 
 	rv = su_ERR_NONE;
@@ -4156,7 +4155,15 @@ n_var_vexplode(void const **cookie, boole caret){
 	}else
 		appp = !caret ? &a_amv_pospar : &a_amv_rem_rval;
 
-	*cookie = (appp->app_count > 0) ? &appp->app_dat[appp->app_idx] : NIL;
+	if(appp->app_count == 0)
+		*cookie = NIL;
+	else{
+		char **cpp;
+
+		*cookie = cpp = su_AUTO_TALLOC(char*, appp->app_count +1);
+		su_mem_copy(cpp, &appp->app_dat[appp->app_idx], sizeof(char*) * appp->app_count);
+		cpp[appp->app_count] = NIL;
+	}
 
 	NYD2_OU;
 	return (*cookie != NIL);
@@ -4584,12 +4591,11 @@ c_vpospar(void *vp){ /* {{{ */
 
 		appp->app_max_count = appp->app_count = S(u32,i);
 		/* XXX Optimize: store it all in one chunk! */
-		appp->app_dat = su_TALLOC(char const*, i +1);
+		appp->app_dat = su_TALLOC(char const*, i);
 		for(i = 0; cap != NIL; ++i, cap = cap->ca_next){
 			appp->app_dat[i] = su_ALLOC(cap->ca_arg.ca_str.l +1);
 			su_mem_copy(UNCONST(char*,appp->app_dat[i]), cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
 		}
-		appp->app_dat[i] = NIL;
 	}else{
 		if(appp->app_count == 0)
 			varres = su_empty;
