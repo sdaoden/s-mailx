@@ -97,6 +97,9 @@
  * \c{su-make-errors.sh}: either create src/su/gen-errors.h, or, at compile time, the \c{OS<>SU} map.
  * Needed in a shipout.
  * }\li{
+ * \c{su-make-signals.sh}: either create src/su/gen-signal.h, or, at compile time, the \c{OS<>SU} map.
+ * (TODO Needed in a shipout.)
+ * }\li{
  * \c{su-make-strip-cxx.sh}: \c{cd(1)}s into include/su and removes C++ code
  * (tagged \c{(SPACE)CXX_DOXYGEN..(SPACE)@CXX_DOXYGEN}) from all header files.
  * POSIX shell and tools.
