@@ -155,6 +155,7 @@ update_release_hook() {
 		mk/mdocmx.sh \
 		\
 		mk/su-doc-strip.pl mk/su-doxygen.rc mk/su-make-cs-ctype.sh \
+			mk/su-make-signals.sh \
 		\
 		${fs}
 }
