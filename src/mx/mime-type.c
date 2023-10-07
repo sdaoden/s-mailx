@@ -92,7 +92,8 @@ enum a_mt_counter_evidence{
 	a_MT_CE_SET = 1u<<0, /* *mime-counter-evidence* was set */
 	a_MT_CE_BIN_OVWR = 1u<<1, /* appli../o.-s.: check, ovw if possible */
 	a_MT_CE_ALL_OVWR = 1u<<2, /* all: check, ovw if possible */
-	a_MT_CE_BIN_PARSE = 1u<<3 /* appli../o.-s.: classify contents last */
+	a_MT_CE_BIN_PARSE = 1u<<3, /* appli../o.-s.: classify contents last */
+	a_MT_CE_MASK = a_MT_CE_SET | a_MT_CE_BIN_OVWR | a_MT_CE_ALL_OVWR | a_MT_CE_BIN_PARSE
 };
 
 struct a_mt_bltin{
@@ -1184,28 +1185,29 @@ mx_mime_type_classify_part(struct mimepart *mpp, boole is_hdl){ /* {{{ */
 	if((ct = mpp->m_ct_type_plain) == NIL) /* TODO may not */
 		ct = su_empty;
 
-	if((mce.cp = ok_vlook(mime_counter_evidence)) != NIL && *mce.cp != '\0'){
-		if(su_idec_u32_cp(&mce.f, mce.cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_REMAINS)){
-			n_err(_("Invalid *mime-counter-evidence* value content\n"));
-			is_os = FAL0;
-		}else{
+	is_os = FAL0;
+	if((mce.cp = ok_vlook(mime_counter_evidence)) != NIL){
+		if(*mce.cp == '\0')
+			mce.f = a_MT_CE_MASK;
+		else{
+			su_idec_u32_cp(&mce.f, mce.cp, 0, NIL);/* AMV_VF_POSNUM */
 			mce.f |= a_MT_CE_SET;
-			is_os = !su_cs_cmp_case(ct, "application/octet-stream");
+		}
 
-			if(mpp->m_filename != NIL && (is_os || (mce.f & a_MT_CE_ALL_OVWR))){
-				if(a_mt_by_filename(&mtl, mpp->m_filename, is_hdl) == NIL){
-					if(is_os)
-						goto jos_content_check;
-				}else if(is_os || su_cs_cmp_case(ct, mtl.mtl_result)){
-					if(mce.f & a_MT_CE_ALL_OVWR)
-						mpp->m_ct_type_plain = ct = mtl.mtl_result;
-					if(mce.f & (a_MT_CE_BIN_OVWR | a_MT_CE_ALL_OVWR))
-						mpp->m_ct_type_usr_ovwr = ct = mtl.mtl_result;
-				}
+		is_os = !su_cs_cmp_case(ct, "application/octet-stream");
+
+		if(mpp->m_filename != NIL && (is_os || (mce.f & a_MT_CE_ALL_OVWR))){
+			if(a_mt_by_filename(&mtl, mpp->m_filename, is_hdl) == NIL){
+				if(is_os)
+					goto jos_content_check;
+			}else if(is_os || su_cs_cmp_case(ct, mtl.mtl_result)){
+				if(mce.f & a_MT_CE_ALL_OVWR)
+					mpp->m_ct_type_plain = ct = mtl.mtl_result;
+				if(mce.f & (a_MT_CE_BIN_OVWR | a_MT_CE_ALL_OVWR))
+					mpp->m_ct_type_usr_ovwr = ct = mtl.mtl_result;
 			}
 		}
-	}else
-		is_os = FAL0;
+	}
 
 	if(*ct == '\0' || su_cs_find_c(ct, '/') == NIL) /* Compat with non-MIME */
 		mc = mx_MIME_TYPE_TEXT;
