@@ -1,33 +1,81 @@
-in: t1
-in: t2
-t2.0 has 5/5 parameters: 1,you,get (1 you get four args) [1 you get four args]
-t2.1 has 4/4 parameters: you,get,four (you get four args) [you get four args]
-t2.2:0 has 2/2 parameters: four,args, (four args) [four args]
-t2.3:0 has 2/2 parameters: four,args, (four args) [four args]
-t2.4:0 has 1/1 parameters: args,, (args) [args]
-t1.1: 0; ignerr () should not exist
-in: t2
-t2.0 has 4/4 parameters: 1,you,get (1 you get three args) [1 you get three args]
-t2.1 has 3/3 parameters: you,get,three args (you get three args) [you get three args]
-t2.2:0 has 1/1 parameters: three args,, (three args) [three args]
-t2.3:0 has 1/1 parameters: three args,, (three args) [three args]
-t2.4:0 has 0/0 parameters: ,, () []
-t1.2: 0; ignerr () should not exist
-in: t2
-t2.0 has 3/3 parameters: 1,you,get two args (1 you get two args) [1 you get two args]
-t2.1 has 2/2 parameters: you,get two args, (you get two args) [you get two args]
-t2.2:0 has 0/0 parameters: ,, () []
-t2.3:0 has 0/0 parameters: ,, () []
-t2.4:0 has 0/0 parameters: ,, () []
-t1.3: 0; ignerr () should not exist
-in: t2
-t2.0 has 2/2 parameters: 1,you get one arg, (1 you get one arg) [1 you get one arg]
-t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
-t2.2:0 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
-t2.3:0 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
-t2.4:0 has 0/0 parameters: ,, () []
-t1.4: 0; ignerr () should not exist
-in: t2
-t2.0 has 2/2 parameters: ,you get one arg, ( you get one arg) [ you get one arg]
-t2.1 has 1/1 parameters: you get one arg,, (you get one arg) [you get one arg]
-t1.5: 1; ignerr () should not exist
+n<1.1>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<1.1>s<->,?<1><INVAL>,#<1>,*<1>,@<1>
+n<1.1>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<1.1>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<1.2>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<1.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+n<1.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+n<1.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<1.3>s<->,?<0><NONE>,#<3>,*<1 2 3>,@<1 2 3>
+n<1.3>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<1.3>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<1.3>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<1.4>s<->,?<0><NONE>,#<4>,*<1 2 3 4>,@<1 2 3 4>
+n<1.4>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<1.4>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<1.4>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+
+n<2.1>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<2.1>s<->,?<1><INVAL>,#<1>,*<1>,@<1>
+n<2.1>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<2.1>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<2.2>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<2.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+n<2.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+n<2.2>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<2.3>s<->,?<0><NONE>,#<3>,*<1 2 3>,@<1 2 3>
+n<2.3>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<2.3>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+n<2.3>s<->,?<0><NONE>,#<0>,*<>,@<>
+
+n<2.4>s<->,?<0><NONE>,#<4>,*<1 2 3 4>,@<1 2 3 4>
+n<2.4>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<2.4>s<->,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<2.4>s<->,?<0><NONE>,#<1>,*<1>,@<1>
+
+n<3.1>s<>,?<0><NONE>,#<1>,*<1>,@<1>
+n<3.1>s<>,?<1><INVAL>,#<1>,*<1>,@<1>
+n<3.1>s<>,?<0><NONE>,#<1>,*<1>,@<1>
+n<3.1>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<3.2>s<>,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<3.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+n<3.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+n<3.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<3.3>s<>,?<0><NONE>,#<3>,*<1 2 3>,@<1 2 3>
+n<3.3>s<>,?<0><NONE>,#<1>,*<3>,@<3>
+n<3.3>s<>,?<0><NONE>,#<1>,*<3>,@<3>
+n<3.3>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<3.4>s<>,?<0><NONE>,#<4>,*<1 2 3 4>,@<1 2 3 4>
+n<3.4>s<>,?<0><NONE>,#<2>,*<3 4>,@<3 4>
+n<3.4>s<>,?<0><NONE>,#<2>,*<3 4>,@<3 4>
+n<3.4>s<>,?<0><NONE>,#<1>,*<4>,@<4>
+
+n<4.1>s<>,?<0><NONE>,#<1>,*<1>,@<1>
+n<4.1>s<>,?<1><INVAL>,#<1>,*<1>,@<1>
+n<4.1>s<>,?<0><NONE>,#<1>,*<1>,@<1>
+n<4.1>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<4.2>s<>,?<0><NONE>,#<2>,*<1 2>,@<1 2>
+n<4.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+n<4.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+n<4.2>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<4.3>s<>,?<0><NONE>,#<3>,*<1 2 3>,@<1 2 3>
+n<4.3>s<>,?<0><NONE>,#<1>,*<3>,@<3>
+n<4.3>s<>,?<0><NONE>,#<1>,*<3>,@<3>
+n<4.3>s<>,?<0><NONE>,#<0>,*<>,@<>
+
+n<4.4>s<>,?<0><NONE>,#<4>,*<1 2 3 4>,@<1 2 3 4>
+n<4.4>s<>,?<0><NONE>,#<2>,*<3 4>,@<3 4>
+n<4.4>s<>,?<0><NONE>,#<2>,*<3 4>,@<3 4>
+n<4.4>s<>,?<0><NONE>,#<1>,*<4>,@<4>
+
+n<X.Y>s<>,?<0><NONE>,#<1>,*<1>,@<1>
