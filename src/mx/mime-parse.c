@@ -117,10 +117,8 @@ a_mps_part(struct message *zmp, struct mimepart *ip,
 
    if((cp = ip->m_ct_type) != NIL)
       cp = mx_mime_param_get("charset", cp);
-   if(cp == NIL)
-      ip->m_charset = ok_vlook(charset_7bit);
-   else
-      ip->m_charset = mx_charsetalias_expand(cp, FAL0);
+   if(cp != NIL)
+      ip->m_charset_or_nil = mx_charsetalias_expand(cp, FAL0);
 
    if((ip->m_ct_enc = hfield1("content-transfer-encoding",
          R(struct message*,ip))) == NIL)

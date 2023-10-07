@@ -248,8 +248,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       needsep = TRU1;
    }
 
-   if (want_ct && mpp->m_multipart == NULL/* TODO */ &&
-         (cp = mpp->m_charset) != NULL) {
+   if(want_ct && mpp->m_multipart == NIL/* TODO */ &&
+         (cp = mpp->m_charset_or_nil) != NIL){
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats,
@@ -1143,19 +1143,22 @@ jpipe_close:
                ) == mx_MIME_TYPE_HDL_TEXT ||
             (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK
                ) == mx_MIME_TYPE_HDL_HTML) && !ok_blook(iconv_disable)){
-      char const *tcs;
+      char const *pcs, *tcs;
 
+      pcs = ip->m_charset_or_nil;
+      if(pcs == NIL)
+         pcs = ok_vlook(charset_7bit); /* TODO actually US-ASCII!?! */
       tcs = ok_vlook(ttycharset);
-      if (su_cs_cmp_case(tcs, ip->m_charset) &&
-            su_cs_cmp_case(ok_vlook(charset_7bit), ip->m_charset)) {
-         iconvd = n_iconv_open(tcs, ip->m_charset);
-         if (iconvd == (iconv_t)-1 && su_err() == su_ERR_INVAL) {
-            n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
+
+      if(su_cs_cmp_case(tcs, pcs)){
+         iconvd = n_iconv_open(tcs, pcs);
+         if(iconvd == R(iconv_t,-1) && su_err() == su_ERR_INVAL){
+            n_err(_("Cannot convert from %s to %s\n"), pcs, tcs);
             /*rv = 1; goto jleave;*/
          }
       }
    }
-#endif
+#endif /* mx_HAVE_ICONV */
 
    switch (mthp->mth_flags & mx_MIME_TYPE_HDL_TYPE_MASK) {
    case mx_MIME_TYPE_HDL_CMD:
