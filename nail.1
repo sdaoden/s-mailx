@@ -3120,8 +3120,9 @@ forward-secrecy ciphers:
 .
 .Bd -literal -offset indent
 set tls-config-pairs='MinProtocol=TLSv1.2,\e
-    CipherString=EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:\e
-      !TLSv1'
+    CipherString=\e
+      EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:\e
+      !DHE:!AESCCM8'#!TLSv1'
 .Ed
 .
 .Pp
@@ -3927,7 +3928,7 @@ Within
 an unquoted dollar sign
 .Ql $
 triggers expression expansions.
-The simplemost expression is an optionally brace enclosed variable name,
+The simplemost expression is an optionally curly bracket enclosed variable name,
 for example
 .Ql $NAME
 or
@@ -6232,7 +6233,8 @@ The only portable operators are
 (receive mode)
 and
 .Cm s
-(send mode), all others are extensions.
+(send mode), used on a line by themselves without variable expressions,
+anything else is an extension.
 This includes case-insensitivity, and the (partially) spelled-out
 .Cm receive
 and
@@ -8076,8 +8078,9 @@ the scope's
 is instead addressed;
 .Va ^0
 is unused (empty).
-The global scope's stack(s) can be chosen with
-.Cm global .
+With the
+.Cm global
+modifier the global scope may be addressed.
 The argument
 .Ql clear
 erases the stack.
@@ -9318,12 +9321,6 @@ The standard \*(PO mandates these initial settings
 .Va toplines Ns =5 .
 .
 .Pp
-Some initial and some default settings are built-in, some deviate,
-some may be tweaked by
-.Sx "Resource files" .
-Displaying the former is accomplished via
-.Ic set :
-.Ql $ \*(xX -:/ -v -Xset -Xx .
 This implementation sets
 .Va sendwait
 (with extended meaning), and does not support the
@@ -9343,6 +9340,9 @@ and
 and the system-wide resource file as shipped establishes a default
 .Ic headerpick
 selection and more.
+The full list of defaults can be seen via
+.Ic set :
+.Ql $ \*(xX -:/ -v -Xset -Xx .
 .\" }}}
 .
 .\" .Ss "Built-in variables" {{{
@@ -10715,7 +10715,9 @@ when doing
 .Sx "Filename transformations" ;
 also see
 .Ic folder .
-The value supports a subset of transformations itself.
+The value only supports a subset of the transformations itself
+.Pf ( Ql +
+not).
 .
 .Mx
 .It Va indentprefix
@@ -11052,6 +11054,7 @@ versions when displaying messages, provided that a
 MIME handler exists
 .Pf ( Sx "HTML mail and MIME attachments" ) .
 .
+.\" FIXME polish until this point
 .Mx
 .It Va mime-counter-evidence
 Normally the
@@ -14900,7 +14903,7 @@ Any named parameter from a messages'
 .Ql Content-type:
 field may be embedded into the command line using the format
 .Ql %{
-followed by the parameter name and a closing brace
+followed by the parameter name and the closing curly bracket
 .Ql }
 character.
 The entire parameter should appear as a single command line argument,
@@ -15190,7 +15193,7 @@ Create a private key and a certificate request on your local computer
 knowledge on what the used arguments etc. do):
 .
 .Pp
-.Dl $ openssl req -nodes -newkey rsa:4096 -keyout key.pem -out creq.pem
+.Dl $ openssl req -noenc -newkey rsa:4096 -keyout key.pem -out creq.pem
 .
 .Pp
 Afterwards copy-and-paste the content of
@@ -15956,7 +15959,11 @@ In September 1980, with RFC 772, the M(ail) T(ransfer) P(rotocol) was
 introduced, which had
 .Dq strong similarities to portions of the File Transfer Protocol .
 RFC 821 in August 1982 then introduced the refined S(imple) M(ail)
-T(ransfer) P(rotocol) in use, and usable, almost 42 years later.
+T(ransfer) P(rotocol) in use, and usable, almost 42 years later,
+accompanied by RFC 822 that moved from
+.Dq ARPA network text
+to
+.Dq internet text message .
 Queen Elizabeth II of England became the first head of state to send
 electronic mail on March 26 1976 while ceremonially opening a building
 in the British Royal Signals and Radar Establishment (RSRE) in Malvern.
