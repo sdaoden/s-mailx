@@ -9329,12 +9329,6 @@ The standard \*(PO mandates these initial settings
 .Va toplines Ns =5 .
 .
 .Pp
-Some initial and some default settings are built-in, some deviate,
-some may be tweaked by
-.Sx "Resource files" .
-Displaying the former is accomplished via
-.Ic set :
-.Ql $ \*(xX -:/ -v -Xset -Xx .
 This implementation sets
 .Va sendwait
 (with extended meaning), and does not support the
@@ -9354,6 +9348,9 @@ and
 and the system-wide resource file as shipped establishes a default
 .Ic headerpick
 selection and more.
+The full list of defaults can be seen via
+.Ic set :
+.Ql $ \*(xX -:/ -v -Xset -Xx .
 .\" }}}
 .
 .\" .Ss "Built-in variables" {{{
@@ -11060,6 +11057,7 @@ versions when displaying messages, provided that a
 MIME handler exists
 .Pf ( Sx "HTML mail and MIME attachments" ) .
 .
+.\" FIXME polish until this point
 .Mx
 .It Va mime-counter-evidence
 Normally the
@@ -15172,7 +15170,7 @@ Create a private key and a certificate request on your local computer
 knowledge on what the used arguments etc. do):
 .
 .Pp
-.Dl $ openssl req -nodes -newkey rsa:4096 -keyout key.pem -out creq.pem
+.Dl $ openssl req -noenc -newkey rsa:4096 -keyout key.pem -out creq.pem
 .
 .Pp
 Afterwards copy-and-paste the content of
