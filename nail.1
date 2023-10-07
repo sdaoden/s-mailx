@@ -37,7 +37,7 @@
 .\"
 .ds BO (Boolean)
 .ds CM (Compose mode)
-.ds ID [v15 behaviour may differ]
+.ds ID [v15 behavior may differ]
 .ds NF [No field splitting]
 .ds NQ [Only new quoting rules]
 .ds OB [Obsolete]
@@ -496,14 +496,14 @@ is assigned to
 .Va from ,
 and in addition file-based
 .Va mta Ns s
-are invoked with
-.Fl \&\&f Ar from-addr .
+are invoked via
+.Ql Fl \&\&f Ar from-addr .
 If
 .Ar from-addr
 includes non-address components
 .Pf ( Va fullnames ) ,
 these are instead passed via
-.Fl \&\&F Ar name .
+.Ql Fl \&\&F Ar name .
 If
 .Ar from-addr
 is an empty string
@@ -520,7 +520,7 @@ Even though not a recipient the
 flag is supported.
 .Pp
 Remarks: many MTA installations and sites disallow setting an explicit
-reverse-path, but for members of dedicated user groups, or after MTA
+reverse-path but for members of dedicated user groups or after MTA
 reconfiguration.
 .
 .Mx
@@ -600,10 +600,6 @@ checked, and added onto the command line ones:
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc: ;
-the line is parsed as a single recipient with the modifier
-.Ql ?single ,
-for example
-.Ql To?single: exa, <m@ple> .
 .Ql Fcc:
 is supported (see
 .Sx "Compose mode" ) .
@@ -819,7 +815,7 @@ or its
 mental equivalent
 .Ev POSIXLY_CORRECT
 .Pf ( Sx ENVIRONMENT )
-needs to be set to tweak behaviour accordingly.
+needs to be set to tweak behavior accordingly.
 There is an important deviation: POSIX
 .Sx "Shell-style argument quoting"
 is (\*(ID increasingly) used instead of POSIX mailx's
@@ -2583,14 +2579,14 @@ also see
 \*(OP Complete line content from (the remaining) older history entries
 .Mx
 .Pf ( Cd mle-hist-srch-bwd ) .
-Search behaviour is configurable via
+Search behavior is configurable via
 .Va line-editor-config .
 .
 .It Ql \ecS
 \*(OP Complete line content from (the remaining) newer history entries
 .Mx
 .Pf ( Cd mle-hist-srch-fwd ) .
-Search behaviour is configurable via
+Search behavior is configurable via
 .Va line-editor-config .
 .
 .It Ql \ecT
@@ -2722,13 +2718,12 @@ if
 is supported by the
 .Ev TERM Ns
 inal (see
-.Va termcap )
+.Va termcap ) ,
 enabled regardless of
 .Va line-editor-no-defaults
 to prevent undesired interpretation of pasted (clipboard) content.
-Though documented and shown by
-.Ic bind
-an implementation detail.
+An implementation detail though documented and shown by
+.Ic bind .
 .El
 .\" }}}
 .
@@ -3154,8 +3149,9 @@ forward-secrecy ciphers:
 .
 .Bd -literal -offset indent
 set tls-config-pairs='MinProtocol=TLSv1.2,\e
-    CipherString=EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:\e
-      !TLSv1'
+    CipherString=\e
+      EECDH+AESGCM:EECDH+AES256:EDH+AESGCM:CHACHA20:\e
+      !DHE:!AESCCM8'#!TLSv1'
 .Ed
 .
 .Pp
@@ -3356,7 +3352,7 @@ In interactive mode a command-less line (with optional arguments) invokes
 .
 .Bd -filled -offset indent
 .Sy Remarks:
-this behaviour is different to the
+this behavior is different to the
 .Ev SHELL
 programming language with its syntactic elements of clearly defined
 semantics, capable to sequentially expand and evaluate individual
@@ -3420,7 +3416,7 @@ xv ? set
 .\" .Ss "Command modifiers" {{{
 .Ss "Command modifiers"
 .
-Modifiers adjust behaviour of argument processing and
+Modifiers adjust behavior of argument processing and
 .Sx Commands .
 None to multiple may be prepended (case-insensitively) to a command,
 the order of which is insignificant, except for scopes.
@@ -3960,7 +3956,7 @@ When and how these expansions occur is documented in
 An unquoted dollar sign
 .Ql $
 triggers expression expansions.
-The simplemost expression is an optionally brace enclosed variable name,
+The simplemost expression is an optionally curly bracket enclosed variable name,
 for example
 .Ql $NAME
 or
@@ -3993,9 +3989,6 @@ to fail due to invalid arguments.
 Variable NAMEs can be referenced: unset or empty values expand to 0,
 otherwise the value is interpreted as a self-contained expression to
 expand arithmetically first.
-(Recall that hyphen-minus
-.Ql -
-is valid as part of NAMEs.)
 .Mx -ix "number syntax rules"
 Numbers prefixed with
 .Ql 0x
@@ -4015,9 +4008,27 @@ parse mode (see example) is used for the
 notation;
 .Ql BASE
 is an unsigned decimal in the range 2 and 64, inclusive.
+(Beware:
+.Ql 008
+is an invalid octal number, parsed as 0 and the string 8; better is
+.Ql 10#008 . )
 Power-of-two bases are parsed as unsigned integers (making for overflow
 constant differences).
 The following list of operators is sorted in decreasing precedence.
+.
+.Bd -filled -offset indent
+.Sy Remarks:
+Recall that different to the shell hyphen-minus
+.Ql -
+is a valid part of NAMEs, therefore contractions like
+.Ql J-I
+reference a name
+.Ql J-I
+instead of subtracting the name
+.Ql I
+from
+.Ql J !
+.Ed
 .
 .Bd -literal -offset indent
 set i=0; echo $((i + i)), $((i+=1)), $((i + i)); varshow i
@@ -6067,8 +6078,8 @@ will remove all existing handlers.
 .Pp
 When used without arguments the former shows a list of all types,
 with one argument the expansion of the given one.
-Otherwise three argument tuples are expected: the first specifies the file
-extension, the second and third define load- and save commands;
+Otherwise tuples of three arguments are expected: the first specifies
+the file extension, the second and third define load- and save commands;
 both must read from standard input and write to standard output.
 Changing hooks will not affect already opened mailboxes (\*(ID except below).
 \*(ID For now too much work is done, and files are oftened read in twice
@@ -6353,7 +6364,7 @@ uses the system call
 and creates locks which are inherited by child processes.
 .Pf ( Cm lflock
 does not follow symbolic links.)
-A third argument changes behaviour: it is passed to a newly spawned
+A third argument changes behavior: it is passed to a newly spawned
 .Ev SHELL
 (via
 .Fl \&\&c )
@@ -6754,7 +6765,8 @@ The only portable operators are
 (receive mode)
 and
 .Cm s
-(send mode), all others are extensions.
+(send mode), used on a line by themselves without variable expressions,
+anything else is an extension.
 This includes case-insensitivity, and the (partially) spelled-out
 .Cm receive
 and
@@ -6996,9 +7008,10 @@ en
 .\"{{{list
 .Mx
 .It Ic list
-Shows all built-in commands in a lookup order that does not always
-correlate to the alphabetical one: names can be abbreviated,
-and \*(PO standardized some abbreviations.
+Shows all built-in
+.Sx COMMANDS
+in lookup order (diverse alphabetical deviations due to \*(PO
+standardized abbreviations).
 \*(OP In
 .Va verbose
 mode argument types and documentation abstracts, flags and supported
@@ -7662,7 +7675,7 @@ processing.
 .Va reply-to-honour
 as well as
 .Va recipients-in-cc
-influence response behaviour.
+influence response behavior.
 .Va quote
 as well as
 .Va quote-as-attachment
@@ -8612,7 +8625,7 @@ or
 dependent on host system) given as the second argument.
 .Ql \&?
 modifier suffix is supported.
-With the optional third argument the
+With and within the optional third argument the
 .Mx -sx
 .Sx "result set"
 accessors
@@ -8649,8 +8662,9 @@ the scope's
 is instead addressed;
 .Va ^0
 is unused (empty).
-The global scope's stack(s) can be chosen with
-.Cm global .
+With the
+.Cm global
+modifier the global scope may be addressed.
 The argument
 .Ql clear
 erases the stack.
@@ -9537,12 +9551,6 @@ The standard \*(PO mandates these initial settings
 .Va toplines Ns =5 .
 .
 .Pp
-Some initial and some default settings are built-in, some deviate,
-some may be tweaked by
-.Sx "Resource files" .
-Displaying the former is accomplished via
-.Ic set :
-.Ql $ \*(xX -:/ -v -Xset -Xx .
 This implementation sets
 .Va sendwait
 (with extended meaning), and does not support the
@@ -9562,6 +9570,9 @@ and
 and the system-wide resource file as shipped establishes a default
 .Ic headerpick
 selection and more.
+The full list of defaults can be seen via
+.Ic set :
+.Ql $ \*(xX -:/ -v -Xset -Xx .
 .\" }}}
 .
 .\" .Ss "Built-in variables" {{{
@@ -9969,12 +9980,6 @@ but processing input lines (also via
 expansion.
 .
 .Mx
-.It Va bind-timeout
-\*(OB Predecessor of
-.Va bind-inter-byte-timeout .
-\*(ID Setting this automatically sets the successor.
-.
-.Mx
 .It Va bind-inter-byte-timeout
 \*(OP Often terminals generate multibyte sequences for diverse keys,
 yet these cannot be read as a unit.
@@ -10011,7 +10016,7 @@ has the same affect as setting
 .Va askatend
 and all other variables prefixed with
 .Ql bsd ;
-it also changes the behaviour of
+it also changes the behavior of
 .Va emptystart
 (but which does not exist in BSD).
 .
@@ -10963,7 +10968,9 @@ when doing
 .Sx "Filename transformations" ;
 also see
 .Ic folder .
-The value supports a subset of transformations itself.
+The value only supports a subset of the transformations itself
+.Pf ( Ql +
+not).
 .
 .Mx
 .It Va indentprefix
@@ -11297,6 +11304,7 @@ versions when displaying messages, provided that a
 MIME handler exists
 .Pf ( Sx "HTML mail and MIME attachments" ) .
 .
+.\" FIXME polish until this point
 .Mx
 .It Va mime-counter-evidence
 Normally the
@@ -11313,15 +11321,16 @@ even for plain text attachments.
 If this variable is set then \*(Xx will try to re-classify such MIME
 message parts, if possible, for example via a possibly existing
 attachment filename.
-A non-empty value may also be given, in which case a number is expected,
-actually a carrier of bits, best specified as a binary value, like
-.Ql mime-counter-evidence=0b1110 .
+A non-empty value is interpreted as a positive number carrying bits, like
+.Ql set\0mime-counter-evidence=0b1110
+(or
+.Ql set\0mime-counter-evidence=$((2 | 4 | 8)) ) .
 .Pp
 .Bl -bullet -compact
 .It
-If bit two is set (counting from 1, decimal 2) then the detected
+Bit two (counting from 1, decimal 2) causes carrying the detected
 .Ic mimetype
-will be carried along with the message and be used for deciding which
+along with the message and be used for deciding which
 MIME handler is to be used, for example;
 when displaying such a MIME part the part-info will indicate the
 overridden content-type by showing a plus sign
@@ -11631,7 +11640,7 @@ from other sources, for example
 \*(BO By default all recipient addresses will be passed as command line
 options to a file-based
 .Va mta .
-Setting this variable disables this behaviour to aid those MTAs which
+Setting this variable disables this behavior to aid those MTAs which
 employ special treatment of such arguments.
 Doing so can make it necessary to pass a
 .Fl \&\&t
@@ -12308,7 +12317,7 @@ is set.
 .It
 Setting
 .Va ignoreeof
-implies the behaviour described by
+implies the behavior described by
 .Va dot .
 .
 .It
@@ -12802,7 +12811,11 @@ contains multiple addresses.
 .Va from
 and
 .Va sender
-relationship (requiring an address order in the former).
+relationship: the first address of
+.Va from
+will automatically be used as the sender
+(this goes in line with what for example the RFC 6376 DKIM standard
+implicitly performs).
 .Ic alias Ns
 es are expanded instantly with senders kept;
 Contextually this address is a member of
@@ -12898,7 +12911,7 @@ and further fine-tuning is possible via
 .
 .Mx
 .It Va smime-ca-flags
-\*(OP Can be used to fine-tune behaviour of the X509 CA certificate
+\*(OP Can be used to fine-tune behavior of the X509 CA certificate
 storage, and the certificate verification that is used.
 The actual values and their meanings are documented for
 .Va tls-ca-flags .
@@ -13377,7 +13390,7 @@ flag of a message for the command
 generic spam filter support via freely configurable hooks.
 This interface is meant for programs like
 .Xr bogofilter 1
-and requires according behaviour in respect to the hooks' exit
+and requires according behavior in respect to the hooks' exit
 status for at least the command
 .Ic spamrate
 .Pf ( Ql 0
@@ -13386,7 +13399,7 @@ meaning a message is spam,
 for non-spam,
 .Ql 2
 for unsure and any other return value indicating a hard error);
-since the hooks can include shell code snippets diverting behaviour
+since the hooks can include shell code snippets diverting behavior
 can be intercepted as necessary.
 The hooks are
 .Va spamfilter-ham , spamfilter-noham , spamfilter-nospam , \
@@ -13741,7 +13754,7 @@ and
 .
 .Mx Va tls-ca-flags
 .It Va tls-ca-flags-USER@HOST , tls-ca-flags-HOST , tls-ca-flags
-\*(OP Can be used to fine-tune behaviour of the X509 CA certificate
+\*(OP Can be used to fine-tune behavior of the X509 CA certificate
 storage, and the certificate verification that is used (also see
 .Va tls-verify ) .
 The value is expected to consist of a comma-separated list of
@@ -13781,7 +13794,7 @@ Disable workarounds for broken certificates.
 Try building a chain using issuers in the trusted store first to avoid
 problems with server-sent legacy intermediate certificates.
 Newer versions of OpenSSL support alternative chain checking and enable
-it by default, resulting in the same behaviour; also see
+it by default, resulting in the same behavior; also see
 .Cd no-alt-chains .
 .El
 .
@@ -14199,7 +14212,7 @@ $ echo $'Hey \eu263A' | \e
 .Mx
 .It Va typescript-mode
 \*(BO A special multiplex variable that disables all variables and
-settings which result in behaviour that interferes with running \*(Xx in
+settings which result in behavior that interferes with running \*(Xx in
 .Xr script 1 ;
 it sets
 .Va colour-disable ,
@@ -14423,7 +14436,7 @@ which includes updating
 .Mx
 .It Ev LINES
 The user's preferred number of lines for the terminal screen.
-The behaviour is as described for
+The behavior is as described for
 .Ev COLUMNS ,
 yet the compile-time constant used in non-interactive mode and as
 a fallback defaults to 24 (lines).
@@ -15002,23 +15015,25 @@ Data consuming shell commands will be fed message (MIME part) data on
 standard input unless one or more instances of the (unquoted) string
 .Ql %s
 are used: these formats will be replaced with a temporary file(name)
-that has been prefilled with the parts data.
-Data producing shell commands are expected to generata data on their
-standard output unless that format is used.
-In all cases any given
-.Ql %s
-format is replaced with a properly shell quoted pathname.
-When a command requests a temporary file via
-.Ql %s
-then that will be removed again, as if the
+that has been prefilled with the parts data, as if the
 .Cd x-mailx-tmpfile
 and
 .Cd x-mailx-tmpfile-fill
-flags had been set; unless the command requests
+flags had been set;
+any given
+.Ql %s
+format is replaced with a properly shell quoted pathname;
+unless
 .Cd x-mailx-async
-the
+was requested the
 .Cd x-mailx-tmpfile-unlink
-flag is also implied; see below for more.
+flag is also implied, and the temporary file is removed.
+Data producing shell commands are expected to generata data on their
+standard output unless the
+.Ql %s
+format is used, or the
+.Cd x-mailx-async
+flag is set.
 .
 .Pp
 Optional fields define single-word flags (case-insensitive), or key
@@ -15226,7 +15241,7 @@ Any named parameter from a messages'
 .Ql Content-type:
 field may be embedded into the command line using the format
 .Ql %{
-followed by the parameter name and a closing brace
+followed by the parameter name and the closing curly bracket
 .Ql }
 character.
 The entire parameter should appear as a single command line argument,
@@ -15255,7 +15270,7 @@ and
 An example file, also showing how to properly deal with the expansion of
 .Ql %s ,
 which includes any quotes that are necessary to make it a valid shell
-argument by itself and thus will cause undesired behaviour when placed
+argument by itself and thus will cause undesired behavior when placed
 in additional user-provided quotes:
 .
 .Bd -literal -offset indent
@@ -15516,7 +15531,7 @@ Create a private key and a certificate request on your local computer
 knowledge on what the used arguments etc. do):
 .
 .Pp
-.Dl $ openssl req -nodes -newkey rsa:4096 -keyout key.pem -out creq.pem
+.Dl $ openssl req -noenc -newkey rsa:4096 -keyout key.pem -out creq.pem
 .
 .Pp
 Afterwards copy-and-paste the content of
@@ -15865,8 +15880,8 @@ $ git format-patch -M --stdout HEAD^ |
 .Ed
 .\" }}}
 .
-.\" .Ss "Howto handle stale dotlock files" {{{
-.Ss "Howto handle stale dotlock files"
+.\" .Ss "How to handle stale dotlock files" {{{
+.Ss "How to handle stale dotlock files"
 .
 .Ic folder
 sometimes fails to open MBOX mail files because creation of
@@ -15888,6 +15903,32 @@ $ </dev/null \*(xX -s 'MTA: be no frog, handle lock' $LOGNAME
 By sending a mail to yourself the local MTA can use its normal queue
 mechanism to try the delivery multiple times, finally decide a lock file
 has become stale, and remove it.
+.\" }}}
+.
+.\" .Ss "How to loop" {{{
+.Ss "How to loop"
+.
+Unfortunately loop control structures are not yet supported.
+One can make use of manual tail-call
+.Ic xcall
+with a callback to (uncomfortably) work around this until they are
+available, for example:
+.
+.Bd -literal -offset indent
+\edefine foreach_call {
+	\eif $# -le 1; \eretu; \een
+	\ecall "$1" "$2"
+	\elocal se f="$1"
+	\eshift 2
+	\excall foreach_call "$f" "$@"
+}
+commandalias foreach_call \e\ecall foreach_call
+
+define e {
+  echo "$@"
+}
+foreach_call e hello world
+.Ed
 .\" }}}
 .
 .\" }}}
@@ -16256,9 +16297,9 @@ instance of transmitting a file, and so MAIL and MLFL commands were
 introduced with RFC 385 as an extension to the file transfer protocol FTP
 of RFC 354, both in 1972.
 Until early 1973 many discussions and meetings around FTP occurred, and
-whereas RFC 475 paved a way towards standardization of mail via FTP, the
-final FTP RFC 542 took the opinion that mail shall become an auxiliary
-protocol.
+whereas RFC 475 paved a way towards standardization of mail via FTP,
+RFC 524 proposed a specialized mail protocol,
+an opinion that was officially picked up by the FTP RFC 542.
 Still, for many years, ARPANET mail was sent via FTP.
 .
 .Pp
@@ -16280,7 +16321,11 @@ In September 1980, with RFC 772, the M(ail) T(ransfer) P(rotocol) was
 introduced, which had
 .Dq strong similarities to portions of the File Transfer Protocol .
 RFC 821 in August 1982 then introduced the refined S(imple) M(ail)
-T(ransfer) P(rotocol) in use, and usable, almost 42 years later.
+T(ransfer) P(rotocol) in use, and usable, almost 42 years later,
+accompanied by RFC 822 that moved from
+.Dq ARPA network text
+to
+.Dq internet text message .
 Queen Elizabeth II of England became the first head of state to send
 electronic mail on March 26 1976 while ceremonially opening a building
 in the British Royal Signals and Radar Establishment (RSRE) in Malvern.
