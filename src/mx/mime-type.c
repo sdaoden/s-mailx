@@ -1361,7 +1361,7 @@ jleave:
 	return mc;
 
 jos_content_check:
-	if((mce.f & a_MT_CE_BIN_PARSE) && mpp->m_mime_enc != mx_MIME_ENC_BIN && mpp->m_charset != NIL)
+	if((mce.f & a_MT_CE_BIN_PARSE) && mpp->m_mime_enc != mx_MIME_ENC_BIN && mpp->m_charset_or_nil != NIL)
 		mc = a_mt_classify_o_s_part(mce.f, mpp, is_hdl);
 	goto jleave;
 }

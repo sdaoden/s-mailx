@@ -1118,7 +1118,7 @@ struct mimepart{
    char const *m_ct_type; /* Content-type */
    char const *m_ct_type_plain; /* Content-type without specs */
    char const *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
-   char const *m_charset;
+   char const *m_charset_or_nil;
    char const *m_ct_enc; /* Content-Transfer-Encoding */
    u32/*enum mx_mime_type*/ m_mime_type;
    u32/*enum mx_mime_enc*/ m_mime_enc;
