@@ -9,7 +9,7 @@ Content-Transfer-Encoding: quoted-printable
 
 foo
 
-[-- #1.2 5/121 text/plain, 7bit, us-ascii --]
+[-- #1.2 5/121 text/plain, 7bit --]
 [-- name-c-t --]
 Content-Transfer-Encoding: 7bit
 
@@ -26,7 +26,7 @@ Content-Transfer-Encoding: quoted-printable
 
 foo
 
-[-- #1.2 7/204 text/plain, 7bit, us-ascii --]
+[-- #1.2 7/204 text/plain, 7bit --]
 [-- name-c-t --]
 Content-Transfer-Encoding: 7bit
 
@@ -43,7 +43,7 @@ Content-Transfer-Encoding: quoted-printable
 
 foo
 
-[-- #1.2 6/169 text/plain, 7bit, us-ascii --]
+[-- #1.2 6/169 text/plain, 7bit --]
 [-- name-c-d --]
 Content-Transfer-Encoding: 7bit
 
