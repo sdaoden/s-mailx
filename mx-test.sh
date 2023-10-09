@@ -10757,6 +10757,8 @@ t_digmsg() { #{{{ XXX rudimentary; <> compose_edits()?
 	#{{{
 	printf '#
 	mail ./t1\n!s This subject is\nThis body is
+!:echo --zero
+!:digmsg - header list
 !:echo --one
 !:digmsg create - -
 !:digmsg - header list
@@ -10786,6 +10788,8 @@ t_digmsg() { #{{{ XXX rudimentary; <> compose_edits()?
 !:digmsg - header insert fcc ./t3
 !:echo --seven
 !:digmsg remove -
+!:echo --eight
+!:digmsg - header list
 !:echo bye
 !.
 	echo --hello again
@@ -10855,7 +10859,7 @@ t_digmsg() { #{{{ XXX rudimentary; <> compose_edits()?
 		${MAILX} ${ARGS} -Smta=test://t1 -Sescape=! >./t2 2>${EX}
 	#}}}
 	ck 1 0 ./t1 '665881681 179'
-	ck 2 - ./t2 '218732148 1097' '2464191144 269'
+	ck 2 - ./t2 '3966869425 1197' '2464191144 269'
 	ck 3 - ./t3 '3993703854 127'
 	ck0 4 - ./t4
 	ck 5 - ./t5 '2157992522 256'

@@ -53,11 +53,15 @@ struct mx_dig_msg_ctx{
 
 /* Compose mode uses a "pseudo object" <> mx_dig_msg_compose_ctx TODO
  * A bit hairy (requires mx/go.h + su/mem.h that are NOT included) */
+
+#define mx_DIG_MSG_COMPOSE_DEF_FD n_stdout
+
 #define mx_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
 do{\
 	mx_dig_msg_compose_ctx = DMCP;\
-	su_mem_set(mx_dig_msg_compose_ctx, 0, sizeof(*mx_dig_msg_compose_ctx));\
+	STRUCT_ZERO(struct mx_dig_msg_ctx, mx_dig_msg_compose_ctx);\
 	(DMCP)->dmc_flags = mx_DIG_MSG_COMPOSE;\
+	(DMCP)->dmc_fp = mx_DIG_MSG_COMPOSE_DEF_FD;\
 	(DMCP)->dmc_hp = HP;\
 	(DMCP)->dmc_membag = su_mem_bag_top(mx_go_data->gdc_membag);\
 }while(0)
