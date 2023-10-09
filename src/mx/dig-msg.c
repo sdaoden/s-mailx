@@ -97,7 +97,7 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
 			if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE_DIGGED)
 				rv = oexcl ? su_ERR_EXIST : su_ERR_NONE;
 			else
-				rv = oexcl ? su_ERR_NONE : su_ERR_NOENT;
+				rv = /*oexcl ?*/ su_ERR_NONE /*: su_ERR_NOENT*/;
 		}else
 			rv = su_ERR_INVAL;
 		goto jleave;
@@ -1647,9 +1647,10 @@ jeremove:
 		if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
 			su_mem_bag_gut(dmcp->dmc_membag);
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
+		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE){
 			dmcp->dmc_flags = mx_DIG_MSG_COMPOSE;
-		else
+			dmcp->dmc_fp = mx_DIG_MSG_COMPOSE_DEF_FD; /* Restore default */
+		}else
 			su_FREE(dmcp);
 	}else{
 		switch(a_dmsg_find(cp, &dmcp, FAL0)){
