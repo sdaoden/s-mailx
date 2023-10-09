@@ -61,10 +61,12 @@ application/x-tar	tar
 application/x-bzip2	bz2 tbz2 boz
 application/zip	zip
 
+application/pem-certificate-chain	pem
 application/pgp-encrypted	pgp
 ?q application/pgp-signature	sig asc
 application/pkcs7-mime	p7m p7c
 ?q application/pkcs7-signature  p7s
+
 application/postscript	ps eps epsf epsi
 
 image/gif	gif
