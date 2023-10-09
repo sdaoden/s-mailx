@@ -1,3 +1,5 @@
+--zero
+210 Subject To Mailx-Raw-To Mailx-Command
 --one
 210 Subject To Mailx-Raw-To Mailx-Command
 212 Subject
@@ -28,6 +30,8 @@
 501 Fcc
 210 Fcc 1
 --seven
+--eight
+210 Subject Fcc Mailx-Raw-To Mailx-Command
 bye
 --hello again
 --one
