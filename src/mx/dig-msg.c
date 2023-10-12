@@ -1731,16 +1731,30 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp
 	}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 	struct mx_cmd_arg_ctx cac;
+	struct su_mem_bag *membag, membag__buf[1];
 	boole rv;
 	NYD_IN;
+
+	ASSERT(mx_go_data->gdc_membag == dmcp->dmc_membag);
+	ASSERT(su_mem_bag_top(dmcp->dmc_membag) == dmcp->dmc_membag);
+	membag = su_mem_bag_create(&membag__buf[0], 0);
+	su_mem_bag_push(mx_go_data->gdc_membag, membag);
 
 	cac.cac_desc = mx_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
 	cac.cac_indat = cmd;
 	cac.cac_inlen = UZ_MAX;
 	cac.cac_msgflag = cac.cac_msgmask = 0;
 
-	if((rv = mx_cmd_arg_parse(&cac, scope, FAL0)))
+	rv = mx_cmd_arg_parse(&cac, scope, FAL0);
+
+	if(rv){
+		su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
 		rv = a_dmsg_cmd(fp, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
+		su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+	}
+
+	su_mem_bag_pop(mx_go_data->gdc_membag, membag);
+	su_mem_bag_gut(membag);
 
 	NYD_OU;
 	return rv;
