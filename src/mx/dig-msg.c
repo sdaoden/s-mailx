@@ -258,7 +258,7 @@ a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp,
             hp->h_subject = savecatsep(hp->h_subject, ' ',
                   a3p->ca_arg.ca_str.s);
          else
-            hp->h_subject = a3p->ca_arg.ca_str.s;
+            hp->h_subject = savestr(a3p->ca_arg.ca_str.s);
          if(fprintf(fp, "210 %s 1\n", cp) < 0)
             cp = NIL;
          goto jleave;
@@ -890,9 +890,9 @@ jatt_attset:
          c = *cp;
 
          if(!su_cs_cmp_case(keyw, "filename"))
-            ap->a_name = (c == '\0') ? ap->a_path_bname : cp;
+            ap->a_name = (c == '\0') ? ap->a_path_bname : savestr(cp);
          else if(!su_cs_cmp_case(keyw, "content-description"))
-            ap->a_content_description = (c == '\0') ? NIL : cp;
+            ap->a_content_description = (c == '\0') ? NIL : savestr(cp);
          else if(!su_cs_cmp_case(keyw, "content-id")){
             ap->a_content_id = NIL;
 
@@ -909,7 +909,7 @@ jatt_attset:
                   cp = NIL;
             }
          }else if(!su_cs_cmp_case(keyw, "content-type")){
-            if((ap->a_content_type = (c == '\0') ? NIL : cp) != NIL){
+            if((ap->a_content_type = (c == '\0') ? NIL : (cp = savestr(cp))) != NIL){
                char *cp2;
 
                for(cp2 = UNCONST(char*,cp); (c = *cp++) != '\0';)
@@ -921,7 +921,7 @@ jatt_attset:
                }
             }
          }else if(!su_cs_cmp_case(keyw, "content-disposition"))
-            ap->a_content_disposition = (c == '\0') ? NIL : cp;
+            ap->a_content_disposition = (c == '\0') ? NIL : savestr(cp);
          else
             cp = NIL;
 
