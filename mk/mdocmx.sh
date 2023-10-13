@@ -296,6 +296,7 @@ END{
 					print
 			}
 		}
+		close(mx_fo)
 	}
 }
 
@@ -371,7 +372,7 @@ function arg_parse(no){
 		ap_j = $(no)
 
 		# The good news about quotation mode is that entering it requires
-		# a preceeding space: we get it almost for free with awk(1)!
+		# a preceding space: we get it almost for free with awk(1)!
 		if(!ap_i){
 			if(ap_j ~ /^"/){
 				ap_i = 1
