@@ -527,7 +527,8 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 NIL,
 #endif
 	 (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_csop),
-	 N_("C-style byte string <operation>s on given :<argument>:")},
+	 N_("C-style byte string <operation>s on given :<argument>:.  Operations are: "
+		"length, hash, hash32, find, substring, trim, trim-front, trim-end")},
 	{"cwd", &c_cwd, (M | V | X | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_cwd),
 	 N_("Print current working directory (CWD)")},
 
@@ -616,7 +617,9 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 NIL,
 #endif
 	 (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_fop),
-	 N_("<Operation>s on file-/paths with [:<arguments>:]")},
+	 N_("<Operation>s on file-/paths with [:<arguments>:].  Operations are: "
+			"close, expand, ftruncate, flock/lflock/lock/llock, glob, mkdir, mktemp, open, pass, "
+			"rename, rewind, rm, rmdir, stat/lstat, touch/ltouch")},
 	{"Forward", &c_Forward, (A | I | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_Forward),
 	 N_("Like `forward', but derive `folder' from <address>")},
 	{"forward", &c_forward, (A | I | L | LNMAC | R | SC | EM | TARG), 0, MMNDEL, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_forward),
@@ -1013,7 +1016,10 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	 NIL,
 #endif
 	 (M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vexpr),
-	 N_("Evaluate [according to] <operator> [any :<argument>:]")},
+	 N_("Evaluate [according to] <operation> [any :<argument>:].  Operations are: "
+		"locale-agnostic: date-utc, date-stamp-utc, epoch, seconds, random; "
+		"locale-aware: makeprint, regex; "
+		"numeric: unary: =, ~, +, -; binary: +, -, *, /, %, |, &, ^, <<, >>, >>>, pbase")},
 	{"vpospar", &c_vpospar, (HG | G | M | V | X | EM | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_vpospar),
 	 N_("Positional parameters: <clear>, <quote>, or <set> from [:<arg>:]")},
 
