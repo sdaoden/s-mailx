@@ -55,6 +55,8 @@ a GNU Mailman list, so posting to LISTNAME-request@ and the subject
 "subscribe" will also do).  We have a browser-accessible and searchable
 archive[9], and The Mail Archive is so kind and offers it, with all its
 services[10]!  We are at Gmane.org[11] and Gwene.org[12]: thank you!
+There is a #mailx IRC channel on irc.libera.chat[15,16] that is logged
+by libera.irclog.whitequark.org[17]: thank you, too!
 
 Commits to the [master], [release/*] and [stable/*] branches are
 posted to [13], and announcements will also be posted to [14], both
@@ -68,6 +70,9 @@ are receive-only mailing-lists.
   [12] news.gwene.org/gwene.mail.s-mailx
   [13] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
   [14] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
+  [15] ircs://irc.libera.chat:6697
+  [16] https://libera.chat
+  [17] https://libera.irclog.whitequark.org/mailx
 
 Our heraldic animal snailmail.jpg had been found at [+1].
 Thank you!
