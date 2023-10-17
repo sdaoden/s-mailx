@@ -322,7 +322,7 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self, void *ov
 		su_S(T *,su_MEM_BAG_SELF_LOFI_ALLOC_N_LOC(sizeof(T), su_S(su_uz,NO), FNAME, LNNO))
 
 #  define su_MEM_BAG_SELF_LOFI_TCALLOC(T,NO) \
-		su_S(T *,su_MEM_BAG_SELF_LOFI_CALLOC_N(sizeof(T), su_S(su_uz,NO))
+		su_S(T *,su_MEM_BAG_SELF_LOFI_CALLOC_N(sizeof(T), su_S(su_uz,NO)))
 #  define su_MEM_BAG_SELF_LOFI_TCALLOC_LOC(T,NO,FNAME,LNNO) \
 		su_S(T *,su_MEM_BAG_SELF_LOFI_CALLOC_N_LOC(sizeof(T), su_S(su_uz,NO), FNAME, LNNO))
 
