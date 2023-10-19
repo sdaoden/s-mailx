@@ -2,3 +2,5 @@ reproducible_build: digmsg: message number invalid: 1
 reproducible_build: digmsg: create: message number invalid: -
 reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
 reproducible_build: abcc: *expandaddr* does not allow user name target
+reproducible_build: no-name-allowed: *expandaddr* does not allow user name target
+reproducible_build: abcc: *expandaddr* does not allow user name target

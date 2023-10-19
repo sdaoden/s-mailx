@@ -6,171 +6,171 @@ Bcc: alter3@exam.ple, alter4@exam.ple
 body
 t_ocs
 t_hea ENTER
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 210 From 1
 210 From 2
 210 From 3
 210 From
-44/0/NONE: from@exam.ple 'diet spliced <from@exam.ple>'
-33/0/NONE: from2@exam.ple '<from2@exam.ple>'
+44/0/NONE: from@exam.ple diet spliced <from@exam.ple>
+33/0/NONE: from2@exam.ple <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
 210 From 1
 210 From 2
 210 From 3
 210 From
-44/0/NONE: from@exam.ple 'diet spliced <from@exam.ple>'
-33/0/NONE: from2@exam.ple '<from2@exam.ple>'
+44/0/NONE: from@exam.ple diet spliced <from@exam.ple>
+33/0/NONE: from2@exam.ple <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
 210 From 1
 210 From 2
 210 From 3
 210 From
-44/0/NONE: from@exam.ple 'diet spliced <from@exam.ple>'
-54/0/NONE: from2@exam.ple '(comment) "Quot(e)d" <from2@exam.ple>'
+44/0/NONE: from@exam.ple diet spliced <from@exam.ple>
+54/0/NONE: from2@exam.ple (comment) "Quot(e)d" <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 210 Sender 1
 210 Sender
-35/0/NONE: sender@exam.ple '<sender@exam.ple>'
+35/0/NONE: sender@exam.ple <sender@exam.ple>
 0/0/NONE: 
 210 Sender 1
 210 Sender
-35/0/NONE: sender@exam.ple '<sender@exam.ple>'
+35/0/NONE: sender@exam.ple <sender@exam.ple>
 0/0/NONE: 
 210 Sender 1
 210 Sender
-35/0/NONE: sender@exam.ple '<sender@exam.ple>'
+35/0/NONE: sender@exam.ple <sender@exam.ple>
 0/0/NONE: 
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 210 To 2
 210 To 3
 210 To 4
 210 To
 35/0/NONE: this-goes@nowhere this-goes@nowhere
-40/0/NONE: To@exam.ple 'diet spliced <To@exam.ple>'
-29/0/NONE: To2@exam.ple '<To2@exam.ple>'
+40/0/NONE: To@exam.ple diet spliced <To@exam.ple>
+29/0/NONE: To2@exam.ple <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
 0/0/NONE: 
 210 To 1
 210 To 2
 210 To 3
 210 To
-40/0/NONE: To@exam.ple 'diet spliced <To@exam.ple>'
-29/0/NONE: To2@exam.ple '<To2@exam.ple>'
+40/0/NONE: To@exam.ple diet spliced <To@exam.ple>
+29/0/NONE: To2@exam.ple <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
 0/0/NONE: 
 210 To 1
 210 To 2
 210 To 3
 210 To
-40/0/NONE: To@exam.ple 'diet spliced <To@exam.ple>'
-50/0/NONE: To2@exam.ple '(comment) "Quot(e)d" <To2@exam.ple>'
+40/0/NONE: To@exam.ple diet spliced <To@exam.ple>
+50/0/NONE: To2@exam.ple (comment) "Quot(e)d" <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Cc 1
 210 Cc 2
 210 Cc 3
 210 Cc
-40/0/NONE: cC@exam.ple 'diet spliced <cC@exam.ple>'
-29/0/NONE: cC2@exam.ple '<cC2@exam.ple>'
+40/0/NONE: cC@exam.ple diet spliced <cC@exam.ple>
+29/0/NONE: cC2@exam.ple <cC2@exam.ple>
 25/0/NONE: cC3@exam.ple cC3@exam.ple
 0/0/NONE: 
 210 Cc 1
 210 Cc 2
 210 Cc 3
 210 Cc
-40/0/NONE: cC@exam.ple 'diet spliced <cC@exam.ple>'
-29/0/NONE: cC2@exam.ple '<cC2@exam.ple>'
+40/0/NONE: cC@exam.ple diet spliced <cC@exam.ple>
+29/0/NONE: cC2@exam.ple <cC2@exam.ple>
 25/0/NONE: cC3@exam.ple cC3@exam.ple
 0/0/NONE: 
 210 Cc 1
 210 Cc 2
 210 Cc 3
 210 Cc
-40/0/NONE: cC@exam.ple 'diet spliced <cC@exam.ple>'
-50/0/NONE: cC2@exam.ple '(comment) "Quot(e)d" <cC2@exam.ple>'
+40/0/NONE: cC@exam.ple diet spliced <cC@exam.ple>
+50/0/NONE: cC2@exam.ple (comment) "Quot(e)d" <cC2@exam.ple>
 25/0/NONE: cC3@exam.ple cC3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Bcc 1
 210 Bcc 2
 210 Bcc 3
 210 Bcc
-42/0/NONE: bCc@exam.ple 'diet spliced <bCc@exam.ple>'
-31/0/NONE: bCc2@exam.ple '<bCc2@exam.ple>'
+42/0/NONE: bCc@exam.ple diet spliced <bCc@exam.ple>
+31/0/NONE: bCc2@exam.ple <bCc2@exam.ple>
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
 0/0/NONE: 
 210 Bcc 1
 210 Bcc 2
 210 Bcc 3
 210 Bcc
-42/0/NONE: bCc@exam.ple 'diet spliced <bCc@exam.ple>'
-31/0/NONE: bCc2@exam.ple '<bCc2@exam.ple>'
+42/0/NONE: bCc@exam.ple diet spliced <bCc@exam.ple>
+31/0/NONE: bCc2@exam.ple <bCc2@exam.ple>
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
 0/0/NONE: 
 210 Bcc 1
 210 Bcc 2
 210 Bcc 3
 210 Bcc
-42/0/NONE: bCc@exam.ple 'diet spliced <bCc@exam.ple>'
-52/0/NONE: bCc2@exam.ple '(comment) "Quot(e)d" <bCc2@exam.ple>'
+42/0/NONE: bCc@exam.ple diet spliced <bCc@exam.ple>
+52/0/NONE: bCc2@exam.ple (comment) "Quot(e)d" <bCc2@exam.ple>
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Reply-To 1
 210 Reply-To 2
 210 Reply-To 3
 210 Reply-To
-52/0/NONE: reply-To@exam.ple 'diet spliced <reply-To@exam.ple>'
-41/0/NONE: reply-To2@exam.ple '<reply-To2@exam.ple>'
+52/0/NONE: reply-To@exam.ple diet spliced <reply-To@exam.ple>
+41/0/NONE: reply-To2@exam.ple <reply-To2@exam.ple>
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
 0/0/NONE: 
 210 Reply-To 1
 210 Reply-To 2
 210 Reply-To 3
 210 Reply-To
-52/0/NONE: reply-To@exam.ple 'diet spliced <reply-To@exam.ple>'
-41/0/NONE: reply-To2@exam.ple '<reply-To2@exam.ple>'
+52/0/NONE: reply-To@exam.ple diet spliced <reply-To@exam.ple>
+41/0/NONE: reply-To2@exam.ple <reply-To2@exam.ple>
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
 0/0/NONE: 
 210 Reply-To 1
 210 Reply-To 2
 210 Reply-To 3
 210 Reply-To
-52/0/NONE: reply-To@exam.ple 'diet spliced <reply-To@exam.ple>'
-62/0/NONE: reply-To2@exam.ple '(comment) "Quot(e)d" <reply-To2@exam.ple>'
+52/0/NONE: reply-To@exam.ple diet spliced <reply-To@exam.ple>
+62/0/NONE: reply-To2@exam.ple (comment) "Quot(e)d" <reply-To2@exam.ple>
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Mail-Followup-To 1
 210 Mail-Followup-To 2
 210 Mail-Followup-To 3
 210 Mail-Followup-To
-68/0/NONE: mail-Followup-to@exam.ple 'diet spliced <mail-Followup-to@exam.ple>'
-57/0/NONE: mail-Followup-to2@exam.ple '<mail-Followup-to2@exam.ple>'
+68/0/NONE: mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple>
+57/0/NONE: mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple>
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
 0/0/NONE: 
 210 Mail-Followup-To 1
 210 Mail-Followup-To 2
 210 Mail-Followup-To 3
 210 Mail-Followup-To
-68/0/NONE: mail-Followup-to@exam.ple 'diet spliced <mail-Followup-to@exam.ple>'
-57/0/NONE: mail-Followup-to2@exam.ple '<mail-Followup-to2@exam.ple>'
+68/0/NONE: mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple>
+57/0/NONE: mail-Followup-to2@exam.ple <mail-Followup-to2@exam.ple>
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
 0/0/NONE: 
 210 Mail-Followup-To 1
 210 Mail-Followup-To 2
 210 Mail-Followup-To 3
 210 Mail-Followup-To
-68/0/NONE: mail-Followup-to@exam.ple 'diet spliced <mail-Followup-to@exam.ple>'
-78/0/NONE: mail-Followup-to2@exam.ple '(comment) "Quot(e)d" <mail-Followup-to2@exam.ple>'
+68/0/NONE: mail-Followup-to@exam.ple diet spliced <mail-Followup-to@exam.ple>
+78/0/NONE: mail-Followup-to2@exam.ple (comment) "Quot(e)d" <mail-Followup-to2@exam.ple>
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Message-ID 1
 210 Message-ID
 39/0/NONE: messAge-id@exam.ple messAge-id@exam.ple
@@ -183,7 +183,7 @@ t_hea ENTER
 210 Message-ID
 39/0/NONE: messAge-id@exam.ple messAge-id@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 References 1
 210 References 2
 210 References 3
@@ -208,7 +208,7 @@ t_hea ENTER
 41/0/NONE: rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple
 41/0/NONE: rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 In-Reply-To 1
 210 In-Reply-To 2
 210 In-Reply-To 3
@@ -233,73 +233,73 @@ t_hea ENTER
 43/0/NONE: in-Reply-to2@exam.ple in-Reply-to2@exam.ple
 43/0/NONE: in-Reply-to3@exam.ple in-Reply-to3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 Subject 1
 210 Subject 1
 210 Subject 1
 210 Subject
-58/0/NONE: '<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
+58/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 0/0/NONE: 
 210 Subject 1
 210 Subject 1
 210 Subject 1
 210 Subject
-58/0/NONE: '<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
+58/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 0/0/NONE: 
 210 Subject 1
 210 Subject 1
 210 Subject 1
 210 Subject
-58/0/NONE: '<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple'
+58/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 freeForm1 1
 210 freeForm1 2
 210 freeForm1 3
 210 freeForm1
-35/0/NONE: 'diet <freeForm1@exam.ple> spliced'
-23/0/NONE: '<freeForm12@exam.ple>'
+35/0/NONE: diet <freeForm1@exam.ple> spliced
+23/0/NONE: <freeForm12@exam.ple>
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
 210 freeForm1 1
 210 freeForm1 2
 210 freeForm1 3
 210 freeForm1
-35/0/NONE: 'diet <freeForm1@exam.ple> spliced'
-23/0/NONE: '<freeForm12@exam.ple>'
+35/0/NONE: diet <freeForm1@exam.ple> spliced
+23/0/NONE: <freeForm12@exam.ple>
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
 210 freeForm1 1
 210 freeForm1 2
 210 freeForm1 3
 210 freeForm1
-35/0/NONE: 'diet <freeForm1@exam.ple> spliced'
-44/0/NONE: '<freeForm12@exam.ple> (comment) "Quot(e)d"'
+35/0/NONE: diet <freeForm1@exam.ple> spliced
+44/0/NONE: <freeForm12@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 210 freeform2 1
 210 freeform2 2
 210 freeform2 3
 210 freeform2
-35/0/NONE: 'diet <freeform2@exam.ple> spliced'
-23/0/NONE: '<freeform22@exam.ple>'
+35/0/NONE: diet <freeform2@exam.ple> spliced
+23/0/NONE: <freeform22@exam.ple>
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
 210 freeform2 1
 210 freeform2 2
 210 freeform2 3
 210 freeform2
-35/0/NONE: 'diet <freeform2@exam.ple> spliced'
-23/0/NONE: '<freeform22@exam.ple>'
+35/0/NONE: diet <freeform2@exam.ple> spliced
+23/0/NONE: <freeform22@exam.ple>
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
 210 freeform2 1
 210 freeform2 2
 210 freeform2 3
 210 freeform2
-35/0/NONE: 'diet <freeform2@exam.ple> spliced'
-44/0/NONE: '<freeform22@exam.ple> (comment) "Quot(e)d"'
+35/0/NONE: diet <freeform2@exam.ple> spliced
+44/0/NONE: <freeform22@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
 4/0/NONE: mail
@@ -458,7 +458,7 @@ t_attach LEAVE
 on-compose-enter
 alternates alter1@exam.ple alter2@exam.ple
 0/0/NONE
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 212 Mailx-Command
 mail
 
@@ -480,12 +480,12 @@ this-goes@nowhere this-goes@nowhere
 501 Mailx-Orig-Bcc
 0/0/NONE
 0/0/NONE
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 0/0/NONE
 on-compose-leave
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
 0/0/NONE
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 212 Mailx-Command
 mail
 
@@ -505,7 +505,7 @@ this-goes@nowhere this-goes@nowhere
 501 Mailx-Orig-Bcc
 0/0/NONE
 0/0/NONE
-210 Mailx-Raw-To Mailx-Command
+210 'Mailx-Raw-To Mailx-Command'
 0/0/NONE
 on-compose-cleanup
 # no alternates registered

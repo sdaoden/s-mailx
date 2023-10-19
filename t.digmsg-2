@@ -1,7 +1,7 @@
 --zero
-210 Subject To Mailx-Raw-To Mailx-Command
+?<0> #<1> 0<210> 1<Subject To Mailx-Raw-To Mailx-Command> 2<> *<Subject To Mailx-Raw-To Mailx-Command>
 --one
-210 Subject To Mailx-Raw-To Mailx-Command
+210 'Subject To Mailx-Raw-To Mailx-Command'
 212 Subject
 'This subject is'
 
@@ -9,33 +9,33 @@
 - ./t1
 
 210 To
-210 Subject Mailx-Raw-To Mailx-Command
+210 'Subject Mailx-Raw-To Mailx-Command'
 501 To
 --two
-<210 Subject Mailx-Raw-To Mailx-Command
+<210 'Subject Mailx-Raw-To Mailx-Command'
 ><212 Subject
 'This subject is'
 
 >--three
 210 Fcc 1
 --four
-210 Subject Fcc Mailx-Raw-To Mailx-Command
+210 'Subject Fcc Mailx-Raw-To Mailx-Command'
 211 Fcc
 - ./t3
 
 --five
 210 Fcc
 --six
-210 Subject Mailx-Raw-To Mailx-Command
+210 'Subject Mailx-Raw-To Mailx-Command'
 501 Fcc
 210 Fcc 1
 --seven
 --eight
-210 Subject Fcc Mailx-Raw-To Mailx-Command
+?<0> #<1> 0<210> 1<Subject Fcc Mailx-Raw-To Mailx-Command> 2<> *<Subject Fcc Mailx-Raw-To Mailx-Command>
 bye
 --hello again
 --one
-210 Subject Date
+210 'Subject Date'
 212 Subject
 'This subject is'
 
@@ -50,17 +50,17 @@ bye
 0/NONE
 ===2.1
 0/NONE
-34/NONE <210 To Mailx-Raw-To Mailx-Command
+36/NONE <210 'To Mailx-Raw-To Mailx-Command'
 >
 =2.2
 0/NONE
-17/NONE <210 Subject Date
+19/NONE <210 'Subject Date'
 >
 =2.3
-210 To Mailx-Raw-To Mailx-Command
+210 'To Mailx-Raw-To Mailx-Command'
 =2.4
 0/NONE
-17/NONE <210 Subject Date
+19/NONE <210 'Subject Date'
 >
 ===3.1
 0/NONE
@@ -89,7 +89,7 @@ nowhere@exam.ple nowhere@exam.ple
 0/NONE
 0/NONE
 ======= new game new fun!
--oneo
+-one
 210 To 2
 0/NONE
 --two
@@ -102,4 +102,13 @@ nowhere@exam.ple nowhere@exam.ple
 0/NONE
 210 Bcc 1
 0/0/NONE
+======= in-mem
+-one
+^#=2 ^0<210> ^1<To> ^2<2> 0/NONE
+--two
+^#=1 ^0<505> ^1<Cc> ^2<> 0/NONE
+^#=2 ^0<210> ^1<Cc> ^2<1> 0/NONE
+--three
+^#=1 ^0<505> ^1<Bcc> ^2<> 0/NONE
+^#=2 ^0<210> ^1<Bcc> ^2<1> 0/NONE
 --bye

@@ -1,14 +1,31 @@
 ==1
 --- 0/NONE, 1
-210 Subject To Date MIME-Version Content-Type
+210 'Subject To Date MIME-Version Content-Type'
 --- 0/NONE, 2
 --- 0/NONE, 3
+--- 0/NONE, 4
 210
-210 MIME-Version Content-Type
+210 'MIME-Version Content-Type'
+--- 0/NONE, 5
 ==2
 --- 0/NONE, 10
-210 Subject To Date MIME-Version Content-Type
+210 'Subject To Date MIME-Version Content-Type'
+--- 0/NONE, 11
 --- 0/NONE, 12
 --- 0/NONE, 13
 210
-210 Subject To Date
+210 'Subject To Date'
+--- 0/NONE, 14
+--- 0/NONE, 15
+==20
+--- 0//<> 0/NONE, 21
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 22
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 23
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 24
+--- 1/210/<MIME-Version Content-Type> 0/NONE, 25
+==30
+--- 1/210/<MIME-Version Content-Type> 0/NONE, 31
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 32
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 33
+--- 1/210/<Subject To Date MIME-Version Content-Type> 0/NONE, 34
+--- 1/210/<Subject To Date> 0/NONE, 35

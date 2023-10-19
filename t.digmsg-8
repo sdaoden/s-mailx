@@ -1,1 +1,2 @@
-!=0 ?=32 es<501 `digmsg epoch': invalid date>
+!=0 ?=33 es<501 'digmsg: epoch: invalid date'>
+!=0 ?=0 ^#<1> ^0<501> ^1<digmsg: epoch: invalid date>
