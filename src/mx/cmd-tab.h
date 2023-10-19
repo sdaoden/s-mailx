@@ -101,7 +101,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(decrypt, 1, a_cmd_cad_decrypt){
 		n_SHEXP_PARSE_TRIM_IFSSPACE}
 }mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-/* Superset of the one in mx_dig_msg_circumflex() */
+/* Superset of the one in mx_dig_msg_caret() */
 mx_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 6, a_cmd_cad_digmsg){ /* XXX 4 OR 5 */
 	{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
 		n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand (/ msgno/-) */
@@ -543,7 +543,7 @@ mx_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_cmd_cad_write){
 	{"define", &c_define, (HG | M | X | TWYSH), 0, 2, NIL,
 	 N_("Define a <macro {>, or list [<macro>]/all existing ones")},
 	{"digmsg", &c_digmsg, (M | X | EM | SC | TARG), 0, 0, mx_CMD_ARG_DESC_SUBCLASS_CAST(&a_cmd_cad_digmsg),
-	 N_("<create|remove> <-|msgno> [<->] | <-|msgno> <cmd>: message access")},
+	 N_("<create|remove> <-|msgno> [<^|->] | <-|msgno> <cmd>: message access (cmd \"help\" for summary)")},
 	{"disconnect",
 #ifdef mx_HAVE_IMAP
 	 &c_disconnect,

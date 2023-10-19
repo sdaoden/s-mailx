@@ -28,7 +28,7 @@ struct mx_fs_tmp_ctx;
 
 /* MX open flags; always implied are some to avoid takeovers, like O_NOCTTY.
  * Normally implied (except stated otherwise) are O_CLOEXEC and "registration" for auto closing upon signal jump (sic)
- * or regular mainloop tick (shall no regular close have been issued by then, of course), they have to be disabled
+ * or regular main loop tick (shall no regular close have been issued by then, of course), they have to be disabled
  * explicitly (via FS_O_NOCLOEXEC, FS_O_NOREGISTER) */
 enum mx_fs_oflags{
 	mx_FS_O_NONE,
@@ -161,7 +161,7 @@ EXPORT void mx_fs_close_all(void);
 /* XXX Temporary (pre v15 I/O) line buffer "pool".
  * (Possibly) Get a line buffer, and release one to the pool, respectively.
  * _book() returns false for integer overflow, or if reallocation survives su_STATE_ERR_NOMEM.
- * The last is driven by the mainloop to perform cleanups */
+ * The last is driven by the main loop to perform cleanups */
 EXPORT void mx_fs_linepool_aquire(char **dp, uz *dsp);
 EXPORT void mx_fs_linepool_release(char *dp, uz ds);
 EXPORT boole mx_fs_linepool_book(char **dp, uz *dsp, uz len, uz toadd  su_DVL_LOC_ARGS_DECL);

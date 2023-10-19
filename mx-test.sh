@@ -1186,15 +1186,16 @@ t_X_Y_opt_input_go_stack() { #{{{
 		echo r4: $*
 	}
 	_EOT
-	printf '#
-		echo round 1: call
-		source ./t11-1.rc
-		call r1 call
-		echo round 2: xcall
-		source ./t11-1.rc
-		call r1 xcall
-		echo alive and well
-	#' | ${MAILX} ${ARGS} > ./t11 2>${E0}
+
+	<< '__EOT' ${MAILX} ${ARGS} > ./t11 2>${E0}
+echo round 1: call
+source ./t11-1.rc
+call r1 call
+echo round 2: xcall
+source ./t11-1.rc
+call r1 xcall
+echo alive and well
+__EOT
 	#}}}
 	cke0 11 0 ./t11 '2740730424 120'
 
@@ -6753,45 +6754,38 @@ Repbody6
 	${rm} -f "${MBOX}"
 	t__x2_msg > ./.tmbox
 
-	printf '#
-		set indentprefix=" |" quote
-		reply
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! -Sindentprefix=' >' ./.tmbox >./.tall 2>${E0}
+set indentprefix=" |" quote
+reply
 b1
 !.
-		set quote=noheading quote-inject-head
-		reply
+set quote=noheading quote-inject-head
+reply
 b2
 !.
-		headerpick type retain cc date from message-id reply-to subject to
-		set quote=headers
-		reply
+headerpick type retain cc date from message-id reply-to subject to
+set quote=headers
+reply
 b3
 !.
-		set quote=allheaders
-		reply
+set quote=allheaders
+reply
 b4
 !.
-		set quote-inject-head=%% quote-inject-tail=%% quote=headers
-		reply
+set quote-inject-head=%% quote-inject-tail=%% quote=headers
+reply
 b5
 !.
-		set quote \\
-			quote-inject-head='"\$'"'\\
-				(%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
-				\\n'"'"' \\
-			quote-inject-tail='"\$'"'\\
-				(%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
-				\\n'"'"'
-		reply
+set quote quote-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
+	quote-inject-tail=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n'
+reply
 b6
 !.
-		set showname datefield=%%y nodatefield-markout-older indentprefix=\\ :
-		reply
+set showname datefield=%y nodatefield-markout-older indentprefix=\ :
+reply
 b7
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf \
-			-Sescape=! -Sindentprefix=' >' \
-			./.tmbox >./.tall 2>${E0}
+__EOT
 	#}}}
 	ck_ex0 18-estat
 	${cat} ./.tall >> "${MBOX}"
@@ -6945,38 +6939,34 @@ b4
 	${rm} -f "${MBOX}"
 	t__x2_msg > ./.tmbox
 
-	printf '#
-		set quote=noheading forward-inject-head
-		forward 1 ex1@am.ple
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! ./.tmbox >./.tall 2>${E0}
+se quote=noheading forward-inject-head
+forward 1 ex1@am.ple
 b1
 !.
-		headerpick forward retain cc from subject to
-		forward 1 ex1@am.ple
+headerpick forward retain cc from subject to
+forward 1 ex1@am.ple
 b2
 !.
-		unheaderpick forward retain *
-		forward 1 ex1@am.ple
+unheaderpick forward retain *
+forward 1 ex1@am.ple
 b3
 !.
-		headerpick forward ignore in-reply-to reply-to message-id status
-		set forward-inject-head=%% forward-inject-tail=%%
-		forward 1 ex1@am.ple
+headerpick forward ignore in-reply-to reply-to message-id status
+set forward-inject-head=% forward-inject-tail=%
+forward 1 ex1@am.ple
 b4
 !.
-		set forward-inject-head='"\$'"'\\
-				(%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
-				\\n'"'"' \\
-			forward-inject-tail='"\$'"'\\
-				(%%%%a=%%a %%%%d=%%d %%%%f=%%f %%%%i=%%i %%%%n=%%n %%%%r=%%r)\\
-				\\n'"'"'
-		forward 1 ex1@am.ple
+set forward-inject-head=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n' \
+	forward-inject-tail=$'(%%a=%a %%d=%d %%f=%f %%i=%i %%n=%n %%r=%r)\n'
+forward 1 ex1@am.ple
 b5
 !.
-		set showname datefield=%%y nodatefield-markout-older
-		forward 1 ex1@am.ple
+set showname datefield=%y nodatefield-markout-older
+forward 1 ex1@am.ple
 b6
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://"$MBOX" -Rf -Sescape=! ./.tmbox >./.tall 2>${E0}
+__EOT
 	#}}}
 	ck_ex0 9-estat
 	${cat} ./.tall >> "${MBOX}"
@@ -7168,19 +7158,19 @@ t_copy() { #{{{
 	t__x2_msg > ./.tmbox
 
 	t_it() {
-		printf '#
-			'"${1}"'
-			echo 1:$?/$^ERRNAME
-			headerpick save retain cc date from subject to
-			'"${1}"'
-			echo 2:$?/$^ERRNAME
-			unheaderpick save retain *
-			'"${1}"'
-			echo 3:$?/$^ERRNAME
-			headerpick save ignore status in-reply-to
-			'"${1}"'
-			echo 4:$?/$^ERRNAME
-		#' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>${E0}
+		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${1}" -Rf ./.tmbox > ./.tall 2>${E0}
+eval $arg
+echo 1:$?/$^ERRNAME
+headerpick save retain cc date from subject to
+eval $arg
+echo 2:$?/$^ERRNAME
+unheaderpick save retain *
+eval $arg
+echo 3:$?/$^ERRNAME
+headerpick save ignore status in-reply-to
+eval $arg
+echo 4:$?/$^ERRNAME
+__EOT
 		return ${?}
 	}
 	#}}}
@@ -7304,21 +7294,21 @@ t_save() { #{{{
 		a='-Rf'
 		[ ${#} -gt 2 ] && a='-S MBOX=./.tmboxx'
 		[ ${#} -gt 3 ] && a="${a}"' -S inbox=./.tmbox -Snohold -Snokeep -Snokeepsave'
-		printf '#
-			headers
-			'"${2}"'
-			echo 1:$?/$^ERRNAME
-			headers
-			headerpick save retain cc date from subject to
-			'"${2}"'
-			echo 2:$?/$^ERRNAME
-			unheaderpick save retain *
-			'"${2}"'
-			echo 3:$?/$^ERRNAME
-			headerpick save ignore status in-reply-to
-			'"${2}"'
-			echo 4:$?/$^ERRNAME
-		#' | ${MAILX} ${ARGS} -f ${a} ./.tmbox > ./.tall 2>${E0}
+		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${2}" -f ${a} ./.tmbox > ./.tall 2>${E0}
+headers
+eval $arg
+echo 1:$?/$^ERRNAME
+headers
+headerpick save retain cc date from subject to
+eval $arg
+echo 2:$?/$^ERRNAME
+unheaderpick save retain *
+eval $arg
+echo 3:$?/$^ERRNAME
+headerpick save ignore status in-reply-to
+eval $arg
+echo 4:$?/$^ERRNAME
+__EOT
 		return ${?}
 	}
 	#}}}
@@ -7448,19 +7438,19 @@ t_move() { #{{{
 	t__x2_msg > ./.tmbox
 
 	t_it() {
-		printf '#
-			'"${1}"'
-			echo 1:$?/$^ERRNAME
-			headerpick save retain cc date from subject to
-			'"${1}"'
-			echo 2:$?/$^ERRNAME
-			unheaderpick save retain *
-			'"${1}"'
-			echo 3:$?/$^ERRNAME
-			headerpick save ignore status in-reply-to
-			'"${1}"'
-			echo 4:$?/$^ERRNAME
-		#' | ${MAILX} ${ARGS} -Rf ./.tmbox > ./.tall 2>${E0}
+		<< '__EOT' ${MAILX} ${ARGS} -Sarg="${1}" -Rf ./.tmbox > ./.tall 2>${E0}
+eval $arg
+echo 1:$?/$^ERRNAME
+headerpick save retain cc date from subject to
+eval $arg
+echo 2:$?/$^ERRNAME
+unheaderpick save retain *
+eval $arg
+echo 3:$?/$^ERRNAME
+headerpick save ignore status in-reply-to
+eval $arg
+echo 4:$?/$^ERRNAME
+__EOT
 		return ${?}
 	}
 	#}}}
@@ -7564,21 +7554,23 @@ t_mbox() { #{{{
 		_EOT
 	${cp} ./.tinv1 ./.tinv2
 
-	printf \
-		'define mboxfix {
-			\\local set mbox-rfc4155; \\File "${1}"; \\eval copy * "${2}"
-		}
-		call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} > .tall 2>${E0}
+define mboxfix {
+	\local set mbox-rfc4155; \File "${1}"; \eval copy * "${2}"
+}
+call mboxfix ./.tinv1 ./.tok
+__EOT
 	ck_ex0 14-estat
 	${cat} ./.tinv1 ./.tok >> .tall
 	cke0 14 - ./.tall '685885983 588'
 
-	printf \
-		'file ./.tinv1 # ^From not repaired, but missing trailing NL is
-		File ./.tok # Just move away to nowhere
-		set mbox-rfc4155
-		file ./.tinv2 # Fully repaired
-		File ./.tok' | ${MAILX} ${ARGS} >./t15 2>${EX}
+	<< '__EOT' ${MAILX} ${ARGS} >./t15 2>${EX}
+file ./.tinv1 # ^From not repaired, but missing trailing NL is
+File ./.tok # Just move away to nowhere
+set mbox-rfc4155
+file ./.tinv2 # Fully repaired
+File ./.tok
+__EOT
 	ck_ex0 15-estat
 	# Almost EQ since [Auto-fix when MBOX had From_ errors on read (Dr. Werner Fink).]
 	ck 15 - ./t15 '1370453225 32' '3396438084 367'
@@ -7646,12 +7638,13 @@ t_mbox() { #{{{
 		
 		b2
 		_EOT
-	printf \
-		'File ./.tinv1
-		sort date
-		remove ./.tinv2
-		copy * ./.tinv2
-		file ./.tinv1' | ${MAILX} ${ARGS} >./t24 2>${EX}
+	<< '__EOT' ${MAILX} ${ARGS} >./t24 2>${EX}
+File ./.tinv1
+sort date
+remove ./.tinv2
+copy * ./.tinv2
+file ./.tinv1
+__EOT
 	#}}}
 	ck 24 0 ./t24 '3398158582 44' '3755289952 734'
 	ck 25-1 - ./.tinv2 '853754737 510'
@@ -7712,73 +7705,62 @@ t_maildir() { #{{{
 	(
 		i=0
 		while [ ${i} -lt 112 ]; do
-			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
-				"${MBOX}" "${i}" "${i}"
+			printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' "${MBOX}" "${i}" "${i}"
 			i=$(add ${i} 1)
 		done
 	) | ${MAILX} ${ARGS} > ${E0} 2>&1
 	cke0 1 0 "${MBOX}" '2366902811 13332'
 
-	printf 'File "%s"
-			copy * "%s"
-			File "%s"
-			from*
-		' "${MBOX}" .tmdir1 .tmdir1 |
-		${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Snewfolders=maildir -Sshowlast > .tlst 2>${E0}
+eval File $arg
+copy * .tmdir1
+File .tmdir1
+from*
+__EOT
 	cke0 2 0 .tlst '3442251309 8991'
 	[ -d .tmdir1 ] && [ -d .tmdir1/tmp ] && [ -d .tmdir1/new ] && [ -d .tmdir1/cur ]
 	ck_ex0 2-isdircpl ${?}
 
-	printf 'File "%s"
-			copy * "maildir://%s"
-			File "maildir://%s"
-			from*
-		' "${MBOX}" .tmdir2 .tmdir2 |
-		${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} -Sarg="${MBOX}" -Sshowlast > .tlst 2>${E0}
+File $arg
+copy * maildir://.tmdir2
+File maildir://.tmdir2
+from*
+__EOT
 	cke0 3 0 .tlst '3524806062 9001'
 
-	printf 'File "maildir://%s"
-			copy * "file://%s"
-			File "file://%s"
-			from*
-		' .tmdir2 .tmbox1 .tmbox1 |
-		${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+	<< '__EOT' ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
+File maildir://.tmdir2
+copy * file://.tmbox1
+File file://.tmbox1
+from*
+__EOT
 	cke0 4 0 .tmbox1 '4096198846 12772'
 	ck 5 - .tlst '1262452287 8998'
 
 	# only the odd (even)
 	(
-		printf 'File "maildir://%s"
-			copy ' .tmdir2
+		printf 'File "maildir://%s"\ncopy ' .tmdir2
 		i=0
 		while [ ${i} -lt 112 ]; do
 			j=$(modulo ${i} 2)
 			[ ${j} -eq 1 ] && printf '%s ' "${i}"
 			i=$(add ${i} 1)
 		done
-		printf ' file://%s
-			File "file://%s"
-			from*
-			' .tmbox2 .tmbox2
+		printf ' file://%s\nFile file://%s\nfrom*' .tmbox2 .tmbox2
 	) | ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
 	cke0 6 0 .tmbox2 '4228337024 6386'
 	ck 7 - .tlst '2078821439 4517'
 	# ...
 	(
-		printf 'file "maildir://%s"
-			move ' .tmdir2
+		printf 'file maildir://%s\nmove ' .tmdir2
 		i=0
 		while [ ${i} -lt 112 ]; do
 			j=$(modulo ${i} 2)
 			[ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
 			i=$(add ${i} 1)
 		done
-		printf 'file://%s
-			File "file://%s"
-			from*
-			File "maildir://%s"
-			from*
-			' .tmbox2 .tmbox2 .tmdir2
+		printf 'file://%s\nFile file://%s\nfrom*\nFile maildir://%s\nfrom*' .tmbox2 .tmbox2 .tmdir2
 	) | ${MAILX} ${ARGS} -Sshowlast > .tlst 2>${E0}
 	cke0 8 0 .tmbox2 '978751761 12656'
 	${sed} 2d < .tlst > .tlstx
@@ -7823,16 +7805,17 @@ t_maildir() { #{{{
 		
 		b2
 		_EOT
+
+	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" >./.t10 2>${EX}
+File ./.tinv1
+sort date
+copy * maildir://./.tmdir10
+eval !{ for f in ./.tmdir10/new/*\; do echo ===\; $cat \$f\; done\; } > ./.t11
+File ./.tmdir10
+sort date
+copy * ./.t10warp
+__EOT
 	#}}}
-	printf \
-		'File ./.tinv1
-		sort date
-		copy * maildir://./.tmdir10
-		!{ for f in ./.tmdir10/new/*; do echo ===; %s $f; done; } > ./.t11
-		File ./.tmdir10
-		sort date
-		copy * ./.t10warp
-	' "${cat}" | ${MAILX} ${ARGS} >./.t10 2>${EX}
 	# Note that substdate() fixes all but one From_ line to $SOURCE_DATE_EPOCH!
 	ck 10 - ./.t10 '3358647049 70' '3396438084 367'
 	ck 10-warp 0 ./.t10warp '3551111321 502'
@@ -8594,7 +8577,8 @@ t_netrc() { #{{{
 	fi
 
 	#{{{
-	printf '# comment
+	${cat} << '__EOT' > ./.tnetrc
+# comment
 		machine x.local login a1 machine x.local login a2 password p2
 		machine	x.local	login	a3	password	"p 3"
 		machine
@@ -8610,7 +8594,7 @@ t_netrc() { #{{{
 		noupa
 		# and unused default
 		default login defacc password defpass
-	' > ./.tnetrc
+__EOT
 	${chmod} 0600 ./.tnetrc
 	#}}}
 
@@ -8619,31 +8603,32 @@ t_netrc() { #{{{
 	cke0 1 0 ./t1 '2911708535 542'
 
 	#{{{
-	printf '# Comment
-		echo ==host
-		netrc loo x.local
-		netrc loo y.local
-		netrc loo z.local
-		echo ==(re)load cache
-		netrc load;echo $?/$^ERRNAME
-		echo ==usr@host
-		netrc loo a1@x.local
-		netrc loo a2@x.local
-		netrc loo a3@x.local
-		netrc loo a4@x.local
-		echo ==clear cache
-		netrc clear;echo $?/$^ERRNAME
-		echo ==usr@x.host
-		netrc loo a2@pop.x.local
-		netrc loo a2@imap.x.local
-		netrc loo a2@smtp.x.local
-		echo ==usr@y.x.host
-		netrc loo a2@nono.smtp.x.local
-		echo ==[usr@]unknown-host
-		netrc loo a.local
-		netrc loo defacc@a.local
-		netrc loo a1@a.local
-	' | NETRC=./.tnetrc ${MAILX} ${ARGS} > ./t2 2>${E0}
+	<< '__EOT' NETRC=./.tnetrc ${MAILX} ${ARGS} > ./t2 2>${E0}
+# Comment
+ec ==host
+netrc loo x.local
+netrc loo y.local
+netrc loo z.local
+ec ==(re)load cache
+netrc load;ec $?/$^ERRNAME
+ec ==usr@host
+netrc loo a1@x.local
+netrc loo a2@x.local
+netrc loo a3@x.local
+netrc loo a4@x.local
+ec ==clear cache
+netrc clear;echo $?/$^ERRNAME
+ec ==usr@x.host
+netrc loo a2@pop.x.local
+netrc loo a2@imap.x.local
+netrc loo a2@smtp.x.local
+ec ==usr@y.x.host
+netrc loo a2@nono.smtp.x.local
+ec ==[usr@]unknown-host
+netrc loo a.local
+netrc loo defacc@a.local
+netrc loo a1@a.local
+__EOT
 	#}}}
 	cke0 2 0 ./t2 '3076722625 893'
 
@@ -9385,40 +9370,38 @@ t_mta_aliases() { #{{{
 	cke0 11 0 ./t.mbox '2422268299 722'
 
 	#{{{
-	printf '#
-	set expandaddr=-name
-	mail a1
+	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" -Smta=test://t.mbox -Sescape=! -Smta-aliases=./t.ali > ./t14 2>${EX}
+se expandaddr=-name
+mail a1
 !c a2
-!:echo $?/$^ERRNAME
+!:ec $?/$^ERRNAME
 !^header insert bcc a3
-!:echo $?/$^ERRNAME
-!:set expandaddr
+!:ec $?/$^ERRNAME
+!:se expandaddr
 !t a1
 !c a2
-!:echo $?/$^ERRNAME
-!^header insert bcc a3
-!:echo $?/$^ERRNAME
+!:ec $?/$^ERRNAME
+!^h i bcc a3
+!:ec $?/$^ERRNAME
 !.
-	echo and, once again, check that cache is updated
-	# Enclose one pipe in quotes: immense stress for our stupid address parser:(
-	!echo "a10:./t.f1,|%s>./t.p1,\\"|%s > ./t.p2\\",./t.f2" >> ./t.ali
-	mtaaliases load
-	mail a1
+ec and, once again, check that cache is updated
+# Enclose one pipe in quotes: immense stress for our stupid address parser:(
+eval !echo \"a10:./t.f1,|$cat>./t.p1,\\\"|$cat > ./t.p2\\\",./t.f2\" >> ./t.ali
+mtaaliases load
+mail a1
 !c a2
-!:echo $?/$^ERRNAME
-!^header insert bcc a3
+!:ec $?/$^ERRNAME
+!^h i bcc a3
 !:echo $?/$^ERRNAME
 !.
-	echo trigger happiness
-	mail a1
+ec trigger happiness
+mail a1
 !c a2
-!:echo $?/$^ERRNAME
-!^header insert bcc "a3 a10"
-!:echo $?/$^ERRNAME
+!:ec $?/$^ERRNAME
+!^h i bcc "a3 a10"
+!:ec $?/$^ERRNAME
 !.
-	' "${cat}" "${cat}" | ${MAILX} ${ARGS} -Smta=test://t.mbox -Sescape=! \
-		-Smta-aliases=./t.ali \
-		> ./t14 2>${EX}
+__EOT
 	#}}}
 	ck 13 0 ./t.mbox '550955032 1469' '2654195888 315'
 	ck 14 - ./t14 '2924332769 158'
@@ -10128,19 +10111,19 @@ t_mime_types_load_control() { #{{{
 	printf 'of which the crack is coming soon' > ./t.mtsx.doom
 	printf 'of which the crack is coming soon' > ./t.mtsx.aga
 
-	printf '
-			m ./t1_2-x
+	<< '__EOT' ${MAILX} ${ARGS} -Smimetypes-load-control=f=./t.mts1,f=./t.mts2 > ./t1 2>${EX}
+m ./t1_2-x
          Schub-di-du
 ~@ ./t.mts1.mathml
 ~@ ./t.mts2.ice
 ~@ ./t.mtsx.doom
 ~@ ./t.mtsx.aga
 ~.
-			File ./t1_2-x
-			from*
-			type
-			xit
-		' | ${MAILX} ${ARGS} -Smimetypes-load-control=f=./t.mts1,f=./t.mts2 > ./t1 2>${EX}
+File ./t1_2-x
+from*
+type
+xit
+__EOT
 	ck_ex0 1-estat
 	${cat} ./t1_2-x >> ./t1
 	ck 1 - ./t1 '4140378521 2383' '2706464282 93'
@@ -10285,35 +10268,34 @@ sultry
 
 __EOT
 
-	printf '#
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t3 -Sescape=! \
+		-S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
+		-Rf ./t3_5-in > ./t4 2>${E0}
 reply
-!^header remove to
-!^header remove cc
-!^header remove subject
-!^header insert to b@b.org
-!^header insert cc "a@b.org  b@b.org c@c.org"
+!^h rem to
+!^h r cc
+!^h r subject
+!^h ins to b@b.org
+!^h i cc "a@b.org  b@b.org c@c.org"
 my body
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://t3 -Sescape=! \
-			-S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
-			-Rf ./t3_5-in > ./t4 2>${E0}
+__EOT
 	#}}}
 	ck 3 0 ./t3 '917782413 299'
 	cke0 4 - ./t4 '3604001424 44'
 
 	# same, per command
-	printf '#
-	set from=a@b.org,b@b.org,c@c.org sender=a@b.org
-	reply
-!^header remove to
-!^header remove cc
-!^header remove subject
-!^header insert to b@b.org
-!^header insert cc "a@b.org  b@b.org c@c.org"
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t5 -Sescape=! -Rf ./t3_5-in > ./t6 2>${E0}
+se from=a@b.org,b@b.org,c@c.org sender=a@b.org
+reply
+!^h rem to
+!^h r cc
+!^h r subject
+!^h ins to b@b.org
+!^h i cc "a@b.org  b@b.org c@c.org"
 my body
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://t5 -Sescape=! \
-			-Rf ./t3_5-in > ./t6 2>${E0}
+__EOT
 	ck 5 0 ./t5 '917782413 299'
 	cke0 6 - ./t6 '3604001424 44'
 
@@ -10550,26 +10532,27 @@ and i ~w rite this out to ./t3
 	fi
 
 	#{{{ Simple return/error value after *expandaddr* failure test
-	printf 'body
-!:echo --one
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! -s testsub one@to.invalid >./t5 2>${EX}
+body
+!:ec --one
 !s This a new subject is
-!:set expandaddr=-name
+!:se expandaddr=-name
 !t two@to.invalid
-!:echo $?/$^ERRNAME
-!:echo --two
+!:ec $?/$^ERRNAME
+!:ec --two
 !c no-name-allowed
-!:echo $?/$^ERRNAME
+!:ec $?/$^ERRNAME
 !c one@cc.invalid
-!:echo $?/$^ERRNAME
-!:echo --three
+!:ec $?/$^ERRNAME
+!:ec --three
 !:alias abcc one@bcc.invalid
 !b abcc
-!:echo $?/$^ERRNAME
-!:set expandaddr=+addr
+!:ec $?/$^ERRNAME
+!:se expandaddr=+addr
 !b abcc
-!:echo $!/$?/$^ERRNAME
+!:ec $!/$?/$^ERRNAME
 !.
-	' | ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! -s testsub one@to.invalid >./t5 2>${EX}
+__EOT
 	#}}}
 	ck 4 0 ./t4 "3422189437 200"
 	ck 5 - ./t5 '1818580177 59' '4278315359 153'
@@ -10643,33 +10626,35 @@ t_compose_edits() { #{{{ XXX very rudimentary
 	${rm} ./t.out1 ./t.out2 ./t.out3
 
 	#{{{ Note t_compose_hooks adds ~^ stress tests
-	printf '#
-	mail ./t8\n!s This subject is\nThis body is
+	<< '__EOT' ${MAILX} ${ARGS} -Sescape=! >./t11 2>${E0}
+mail ./t8
+!s This subject is
+This body is
 !^header
-!^header list
-!^header list fcc
-!^header show fcc
-!^header remove to
-!^header insert fcc				 ./t8
-!^header insert fcc		 t9-x
-!^header insert fcc	 ./t10-x
-!^header list
-!^header show fcc
-!^header remove-at fcc 2
-!^header remove-at fcc 2
-!^header show fcc
-!^head remove fcc
-!^header show fcc
-!^header insert fcc ./t8
-!^header show fcc
-!^header list
+!^heade list
+!^head list fcc
+!^hea show fcc
+!^he remove to
+!^h insert fcc				 ./t8
+!^h in fcc		 t9-x
+!^h i fcc	 ./t10-x
+!^h list
+!^h show fcc
+!^h remove-at fcc 2
+!^h remove-a fcc 2
+!^h sh fcc
+!^h rem fcc
+!^h s fcc
+!^h i fcc ./t8
+!^h sh fcc
+!^h list
 !.
-		' | ${MAILX} ${ARGS} -Sescape=! >./t11 2>${E0}
+__EOT
 	#}}}
 	ck 8 0 ./t8 '3993703854 127'
 	[ -f ./t9-x ]; ck_exx 9
 	[ -f ./t10-x ]; ck_exx 10
-	cke0 11 - ./t11 '2907383252 330'
+	cke0 11 - ./t11 '781253576 338'
 
 	<<-_EOT ${MAILX} ${ARGS} -t >${E0} 2>&1
 	Fcc: t12
@@ -10682,70 +10667,70 @@ t_compose_edits() { #{{{ XXX very rudimentary
 	#{{{ This test assumes code of `^' and `digmsg' is shared: see t_digmsg()
 	echo 'b 1' > ./t14' x 1'
 	echo 'b 2' > ./t14' x 2'
-	printf '#
+	<< '__EOT' ${MAILX} ${ARGS} -Sescape=! >./t14 2>${E0}
 mail ./t15
-!^header insert	  subject		subject		  
-!:set i="./t14 x 1"
-!^header list
-!:echo =0
-!^attachment
-!:echo =1
-!^attachment insert "$i"
-!:echo =2
-!^attachment
-!:echo =3
+!^h i	  subject		subject		  
+!:se i="./t14 x 1"
+!^h
+!:ec =0
 !^attachment list
-!:echo =4
-!^attachment insert '"'"'./t14 x 2'"'"'
-!:echo =5
-!^attachment list
+!:ec =1
+!^a insert "$i"
+!:ec =2
+!^a
+!:ec =3
+!^a list
+!:ec =4
+!^a i './t14 x 2'
+!:ec =5
+!^a
 !:echo =6
-!^attachment remove "$i"
-!:echo =7
-!^attachment list
-!:echo =8
-!^attachment insert $'"'"'\\$i'"'"'
-!:echo =10
-!^attachment list
-!:echo =11
-!^header list
-!:echo =12
+!^a remove "$i"
+!:ec =7
+!^a
+!:ec =8
+!^a i $'\$i'
+!:ec =10
+!^a
+!:ec =11
+!^h
+!:ec =12
 !^a a  $i
 !:echo =13
 !^a attribute-set  "$i"		 filenames "  cannot wait	for you "
-!:echo =14
+!:ec =14
 !^a a  $i
-!:echo =15
-!^a attribute-set  "$i"		 filename "  cannot wait  for you "
-!:echo =16
+!:ec =15
+!^a attribute-s  "$i"		 filename "  cannot wait  for you "
+!:ec =16
 !^a a  $i
-!:echo =17
-!^a attribute-at 2
-!:echo =18
+!:ec =17
+!^a attribute-a 2
+!:ec =18
 !^a attribute-set-at 2	"filename"	 "private  eyes"
-!:echo =19
+!:ec =19
 !^a attribute-at 2
-!:echo =20
-!^a attribute-set-at 2 content-description "private c-desc"
-!:echo =21
+!:ec =20
+!^a attribute-set-a 2 content-description "private c-desc"
+!:ec =21
+!^a attribute- 2
+!:ec =22
+!^a attribute-set- 2 content-ID "priv invd c-id"
+!:ec =23
 !^a attribute-at 2
-!:echo =22
-!^a attribute-set-at 2 content-ID "priv invd c-id"
-!:echo =23
-!^a attribute-at 2
-!:echo =24
+!:ec =24
 !^a attribute-set-at 2 content-TyPE tExT/mARkLO
-!:echo =25
+!:ec =25
 !^a attribute-at 2
-!:echo =26
+!:ec =26
 !^a attribute-set-at 2 content-TyPE ""
-!:echo =27
+!:ec =27
 !^a attribute-at 2
-!:echo =28
+!:ec =28
 !.
-	' | ${MAILX} ${ARGS} -Sescape=! >./t14 2>${E0}
+__EOT
 	#}}}
-	cke0 14 0 ./t14 '2420103204 1596'
+	cke0 14 0 ./t14 '3756641871 1600'
 	ck 15 - ./t15 '3755507589 637'
 
 	t_epilog "${@}"
@@ -10755,111 +10740,130 @@ t_digmsg() { #{{{ XXX rudimentary; <> compose_edits()?
 	t_prolog "${@}"
 
 	#{{{
-	printf '#
-	mail ./t1\n!s This subject is\nThis body is
-!:echo --zero
+	<< '__EOT' ${MAILX} ${ARGS} -Scat="${cat}" -Ssed="${sed}" -Smta=test://t1 -Sescape=! >./t2 2>${EX}
+mail ./t1
+!s This subject is
+This body is
+!:ec --zero
 !:digmsg - header list
-!:echo --one
+!:ec "?<$^?> #<$^#> 0<$^0> 1<$^1> 2<$^2> *<$^*>"
+!:ec --one
 !:digmsg create - -
-!:digmsg - header list
-!:digmsg - header show subject
-!:digmsg - header show to
-!:digmsg - header remove to
-!:digmsg - header list
-!:digmsg - header show to
-!:digmsg remove -
-!:echo --two
-!:digmsg create -
-!:digmsg - header list;   readall x;	echon "<$x>";
-!:digmsg - header show subject;readall x;echon "<$x>";;
-!:digmsg remove -
-!:echo --three
+!:dig - header list
+!:dig - h show subject
+!:dig - h s to
+!:dig - h remove to
+!:dig - h
+!:dig - h s to
+!:dig rem -
+!:ec --two
+!:dig crea -
+!:dig - h;   readall x;	echon "<$x>";
+!:dig - h s subject;readall x;echon "<$x>";;
+!:dig r -
+!:ec --three
 !:		# nothing here as is comment
-!^header insert fcc	 ./t3
-!:echo --four
-!:digmsg create - -
-!:digmsg - header list
-!:digmsg - header show fcc
-!:echo --five
-!^head remove fcc
-!:echo --six
-!:digmsg - header list
-!:digmsg - header show fcc
-!:digmsg - header insert fcc ./t3
-!:echo --seven
-!:digmsg remove -
-!:echo --eight
-!:digmsg - header list
-!:echo bye
+!^h i fcc	 ./t3
+!:ec --four
+!:dig c - -
+!:dig - h
+!:dig - h s fcc
+!:ec --five
+!^h r fcc
+!:ec --six
+!:dig - h
+!:dig - h s fcc
+!:dig - h i fcc ./t3
+!:ec --seven
+!:dig r -
+!:ec --eight
+!:dig - h
+!:ec "?<$^?> #<$^#> 0<$^0> 1<$^1> 2<$^2> *<$^*>"
+!:ec bye
 !.
-	echo --hello again
-	File ./t3
-	echo --one
-	digmsg create 1 -
-	digmsg 1 header list
-	digmsg 1 header show subject
-	echo --two
-	! : > ./t4
-	File ./t4
-	echo --three
-	digmsg 1 header list; echo $?/$^ERRNAME
-	digmsg create -; echo $?/$^ERRNAME
-	echo ==========
-	! %s ./t3 > ./t5
-	! %s "s/This subject is/There subject was/" < ./t3 >> ./t5
-	File ./t5
-	mail nowhere@exam.ple
-!:echo ===1
-!:digmsg create -; echo $?/$^ERRNAME;\\
-	digmsg create 1; echo $?/$^ERRNAME;\\
-	digmsg create 2; echo $?/$^ERRNAME
-!:echo ===2.1
-!:digmsg - h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo =2.2
-!:digmsg 1 h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo =2.3
+ec --hello again
+File ./t3
+ec --one
+dig c 1 -
+dig 1 h
+dig 1 h s subject
+ec --two
+! > ./t4
+File ./t4
+ec --three
+dig 1 h; ec $?/$^ERRNAME
+dig c -; ec $?/$^ERRNAME
+ec ==========
+eval ! $cat ./t3 > ./t5
+eval ! $sed \"s/This subject is/There subject was/\" < ./t3 >> ./t5
+File ./t5
+mail nowhere@exam.ple
+!:ec ===1
+!:dig c -; ec $?/$^ERRNAME; dig c 1; ec $?/$^ERRNAME; dig c 2; ec $?/$^ERRNAME
+!:ec ===2.1
+!:dig - h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec =2.2
+!:dig 1 h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec =2.3
 !^ h l
-!:echo =2.4
-!:digmsg 2 h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo ===3.1
-!:digmsg - h s to;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo =3.2
-!:digmsg 1 h s subject;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo =3.3
+!:ec =2.4
+!:dig 2 h l;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec ===3.1
+!:dig - h s to;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec =3.2
+!:dig 1 h s subject;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec =3.3
 !^ h s to
-!:echo =3.4
-!:digmsg 2 h s subject;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
-!:echo ==4.1
-!:digmsg remove -; echo $?/$^ERRNAME;\\
-	digmsg remove 1; echo $?/$^ERRNAME;\\
-	digmsg remove 2; echo $?/$^ERRNAME;
+!:ec =3.4
+!:dig 2 h s subject;ec $?/$^ERRNAME;readall d;ec "$?/$^ERRNAME <$d>"
+!:ec ==4.1
+!:dig r -; ec $?/$^ERRNAME; dig r 1; ec $?/$^ERRNAME; dig r 2; ec $?/$^ERRNAME
 !x
-	echo ======= new game new fun!
-	mail one@to.invalid
+ec ======= new game new fun!
+mail one@to.invalid
 !s hossa
-!:set expandaddr=-name
-!:echo -oneo
-!^ header insert to two@to.invalid
-!:echo $?/$^ERRNAME
-!:echo --two
-!^ header insert cc no-name-allowed
-!:echo $?/$^ERRNAME
-!^ header insert cc one@cc.invalid
-!:echo $?/$^ERRNAME
-!:echo --three
+!:se expandaddr=-name
+!:ec -one
+!^ h i to two@to.invalid
+!:ec $?/$^ERRNAME
+!:ec --two
+!^ h i cc no-name-allowed
+!:ec $?/$^ERRNAME
+!^ h i cc one@cc.invalid
+!:ec $?/$^ERRNAME
+!:ec --three
 !:alias abcc one@bcc.invalid
-!^ header insert bcc abcc
-!:echo $?/$^ERRNAME
-!:set expandaddr=+addr
-!^ header insert bcc abcc
-!:echo $!/$?/$^ERRNAME
+!^ h i bcc abcc
+!:ec $?/$^ERRNAME
+!:se expandaddr=+addr
+!^ h i bcc abcc
+!:ec $!/$?/$^ERRNAME
 !.
-	echo --bye
-		' "${cat}" "${sed}" |
-		${MAILX} ${ARGS} -Smta=test://t1 -Sescape=! >./t2 2>${EX}
+ec ======= in-mem
+mail one@to.invalid
+!s hossa
+!:se expandaddr=-name
+!:ec -one
+!^^ h i to two@to.invalid
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec --two
+!^^ h i cc no-name-allowed
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!^^ h i cc one@cc.invalid
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:ec --three
+!:alias abcc one@bcc.invalid
+!^^ h i bcc abcc
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!:se expandaddr=+addr
+!^^ h i bcc abcc
+!:ec ^#=$^# ^0<$^0> ^1<$^1> ^2<$^2> $?/$^ERRNAME
+!.
+ec --bye
+__EOT
 	#}}}
-	ck 1 0 ./t1 '665881681 179'
-	ck 2 - ./t2 '3966869425 1197' '2464191144 269'
+	ck 1 0 ./t1 '2857830423 358'
+	ck 2 - ./t2 '2066473197 1538' '1339985655 422'
 	ck 3 - ./t3 '3993703854 127'
 	ck0 4 - ./t4
 	ck 5 - ./t5 '2157992522 256'
@@ -10876,77 +10880,84 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 _EOT
 
-	printf '#
-		define a_read_header_mline_res {
-			local set name fullname
-			read name fullname
-			local set read=$? es=$! en=$^ERRNAME
-			echo "read<$read> es=<$es> en<$en> name<$name> fullname<$fullname>"
-			if $read -gt 0
-				xcall a_read_header_mline_res
-			elif $read -eq 0
-				# That not! read name
-			else
-				echoerr err
-				xit
-			end
-		}
-		digmsg create 1
-		digmsg 1 header show to
-		read es
-		echo "!=$! ?=$? es<$es>"
-		call a_read_header_mline_res
-		digmsg remove 1
-		commandalias XY echo hui
-		read xy
+	<< '__EOT' ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t6 2>${E0}
+define a_read_header_mline_res {
+	local se name fullname
+	read name fullname
+	local se read=$? es=$! en=$^ERRNAME
+	ec "read<$read> es=<$es> en<$en> name<$name> fullname<$fullname>"
+	if $read -gt 0
+		xcall a_read_header_mline_res
+	elif $read -eq 0
+		# That not! read name
+	el
+		echoe err
+		xit
+	en
+}
+dig c 1
+dig 1 h show to
+read es
+ec "!=$! ?=$? es<$es>"
+call a_read_header_mline_res
+dig r 1
+commandalias XY echo hui
+read xy
 XY
-		echo "back !<$!> ?<$?> xy<$xy>"
-		' | ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t6 2>${E0}
+ec "back !<$!> ?<$?> xy<$xy>"
+#
+dig c 1 ^
+dig 1 h show to
+ec \#=$^# 0<$^0> 1<$^1> 2<$^2> 3<$^3> *<$^*> !=$! ?=$?
+dig r 1
+__EOT
 	#}}}
-	cke0 6 0 ./t6 '1687359537 184'
+	cke0 6 0 ./t6 '3098918646 337'
 
 	#
-	printf '#
-		digmsg create 1
-		digmsg 1 epoch
-		read es
-		echo "!=$! ?=$? es<$es>"
-		digmsg remove 1
-		' | ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t7 2>${E0}
-	cke0 7 0 ./t7 '3727574170 28'
+	<< '__EOT' ${MAILX} ${ARGS} -Rf eml://./t6-7.eml >./t7 2>${E0}
+dig c 1; dig 1 e; read es; ec "!=$! ?=$? es<$es>"; dig r 1
+dig c 1 ^; dig 1 e; ec "!=$! ?=$? ^#<$^#> ^0<$^0> ^1<$^1>"; dig r 1
+__EOT
+	cke0 7 0 ./t7 '1152956067 65'
 
 	</dev/null ${MAILX} ${ARGS} -Y '#
-			digmsg create 1
-			digmsg 1 epoch
-			read es
-			echo "!=$! ?=$? es<$es>"
-			digmsg remove 1
-			xit
+dig c 1; dig 1 e; read es; ec "!=$! ?=$? es<$es>"; dig r 1
+dig c 1 ^; dig 1 e; ec "!=$! ?=$? ^#<$^#> ^0<$^0> ^1<$^1>"; dig r 1
+xit
 		' -Rf eml://- >./t8 2>${E0}
-	cke0 8 0 ./t8 '2215033944 46'
+	cke0 8 0 ./t8 '3776893695 101'
 
 	#
 	</dev/null ${MAILX} ${ARGS} -Y '#
-			commandalias x \echo '"'"'--- $?/$^ERRNAME, '"'"'
-			echo ==1
-			digmsg create 1 -;x 1
-			digmsg 1 header list
-			headerpick create t;x 2
-			headerpick t ignore date subject to;x 3
-			digmsg 1 header headerpick t
-			digmsg 1 header list
-			digmsg remove 1
-			echo ==2
-			digmsg create 1 -;x 10
-			digmsg 1 header list
-			unheaderpick t ignore *;x 12
-			headerpick t retain date subject to;x 13
-			digmsg 1 header headerpick t
-			digmsg 1 header list
-			digmsg remove 1
-			xit
+commandalias x \ec '"'"'--- $?/$^ERRNAME, '"'"'
+ec ==1
+dig c 1 -;x 1; dig 1 h; x 2
+headerpick create t;x 3
+headerpick t ignore date subject to;x 4
+dig 1 h headerpick t; dig 1 h; dig r 1; x 5
+ec ==2
+dig c 1 -;x 10; dig 1 h; x 11
+unheaderpick t ignore *;x 12
+headerpick t retain date subject to; x 13
+dig 1 h headerp t; dig 1 h; dig r 1; x 14
+headerpick remove t;x 15
+#
+commandalias x \ec '"'"'--- $^#/$^0/<$^1> $?/$^ERRNAME, '"'"'
+ec ==20
+dig c 1 ^;x 21; dig 1 h;x 22
+headerpick create t;x 23
+headerpick t ignore date subject to;x 24
+dig 1 h headerpick t; dig 1 h; dig r 1;x 25
+ec ==30
+dig c 1 ^;x 31; dig 1 h;x 32
+unheaderpick t ignore *;x 33
+headerpick t retain date subject to;x 34
+dig 1 h headerp t; dig 1 h; dig r 1;x 35
+xit
+
 		' -f t6-7.eml >./t9 2>${E0}
-	cke0 9 0 ./t9 '3321043850 245'
+	cke0 9 0 ./t9 '1340411131 884'
 
 	t_epilog "${@}"
 } #}}}
@@ -11009,158 +11020,146 @@ define bail {
 }
 define xerr {
 	vput csop es substr "$1" 0 1
-	if "$es" != 2; xcall bail "$2: $1"; end
+	if "$es" -ne 2; xcall bail "$2: $1"; en
 }
 define read_mline_res {
-	read hl; set len=$? es=$! en=$^ERRNAME; ec $len/$es/$^ERRNAME: $hl
+	readsh hl; set len=$? es=$! en=$^ERRNAME; ec $len/$es/$^ERRNAME: $hl
 	if $es -ne $^ERR-NONE; xcall bail read_mline_res
-	elif $len -ne 0; \xcall read_mline_res
-	end
+	eli $len -ne 0; \xcall read_mline_res
+	en
 }
 define ins_addr {
 	set xh=$1
 	ec "~^hea list"; read hl; ec $hl; call xerr "$hl" "in_addr ($xh) 0-1"
 
-	ec "~^hea insert $xh 'diet <$xh@exam.ple> spliced'";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 1-1"
-	ec "~^hea insert $xh <${xh}2@exam.ple>";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 1-2"
-	ec "~^hea insert $xh ${xh}3@exam.ple";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 1-3"
-	ec "~^hea list $xh"; read hl; ec $hl;\
-		call xerr "$hl" "ins_addr $xh 1-4"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
+	ec "~^h insert $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-1"
+	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-2"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 1-3"
+	ec "~^h list $xh"; read hl; ec $hl; call xerr "$hl" "ins_addr $xh 1-4"
+	ec "~^h show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
 	call read_mline_res
 
-	if "$t_remove" == ""; return; end
+	if "$t_remove" == ""; return; en
 
-	ec "~^hea remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
-	ec "~^hea remove $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 2-2"; end
-	ec "~^hea list $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 2-3"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 2-4"; end
+	ec "~^h remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
+	ec "~^h r $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-2"; en
+	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-3"; en
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 2-4"; en
 
 	#
-	ec "~^hea insert $xh 'diet <$xh@exam.ple> spliced'";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 3-1"
-	ec "~^hea insert $xh <${xh}2@exam.ple>";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 3-2"
-	ec "~^hea insert $xh ${xh}3@exam.ple";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 3-3"
-	ec "~^hea list $xh"; read hl; ec $hl;\
-		call xerr "$hl" "ins_addr $xh 3-4"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_addr $xh 3-5"
+	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-1"
+	ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-2"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 3-3"
+	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_addr $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr $es "ins_addr $xh 3-5"
 	call read_mline_res
 
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
-	ec "~^hea remove-at $xh 1"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 3-9"; end
-	ec "~^hea remove-at $xh T"; read es; vput csop es substr $es 0 3
-	if $es != 505; xcall bail "ins_addr $xh 3-10"; end
-	ec "~^hea list $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 3-11"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 3-12"; end
+	ec "~^h remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 3-6"
+	ec "~^h remove-a $xh 1"; read es; call xerr $es "ins_addr $xh 3-7"
+	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 3-8"
+	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-9"; en
+	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_addr $xh 3-10"; en
+	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-11"; en
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 3-12"; en
 
 	#
-	ec "~^hea insert $xh 'diet <$xh@exam.ple> spliced'";\
-		read es; ec $es; call xerr "$es" "ins_addr $xh 4-1"
-	ec "~^hea insert $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";\
+	ec "~^h i $xh 'diet <$xh@exam.ple> spliced'"; read es; ec $es; call xerr "$es" "ins_addr $xh 4-1"
+	ec "~^h i $xh <${xh}2@exam.ple>\ (comment)\ \\\"Quot(e)d\\\"";
 		read es; ec $es; call xerr "$es" "ins_addr $xh 4-2"
-	ec "~^hea insert $xh ${xh}3@exam.ple";
-		read es; ec $es; call xerr "$es" "ins_addr $xh 4-3"
-	ec "~^hea list $xh"; read hl; ec $hl; call xerr "$hl" "hea list $xh 3-4"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_addr $xh 4-5"
+	ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_addr $xh 4-3"
+	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "hea list $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr $es "ins_addr $xh 4-5"
 	call read_mline_res
 
-	ec "~^hea remove-at $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
-	ec "~^hea remove-at $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
-	ec "~^hea remove-at $xh 1"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 4-9"; end
-	ec "~^hea remove-at $xh T"; read es; vput csop es substr $es 0 3
-	if $es != 505; xcall bail "ins_addr $xh 4-10"; end
-	ec "~^hea list $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 4-11"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_addr $xh 4-12"; end
+	ec "~^h remove- $xh 3"; read es; call xerr $es "ins_addr $xh 4-6"
+	ec "~^h remove- $xh 2"; read es; call xerr $es "ins_addr $xh 4-7"
+	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_addr $xh 4-8"
+	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-9"; en
+	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_addr $xh 4-10"; en
+	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-11"; en
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_addr $xh 4-12"; en
 }
 define ins_ref {
 	set xh=$1 mult=$2
-	ec "~^hea list"; read hl; ec $hl; call xerr "$hl" "ins_ref ($xh) 0-1"
+	ec "~^h"; read hl; ec $hl; call xerr "$hl" "ins_ref ($xh) 0-1"
 
-	ec "~^hea insert $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-1"
+	ec "~^h i $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-1"
 	if $mult -ne 0
-		ec "~^hea insert $xh <${xh}2@exam.ple>";\
-			read es; ec $es; call xerr "$es" "ins_ref $xh 1-2"
-		ec "~^hea insert $xh ${xh}3@exam.ple";
-			read es; ec $es; call xerr "$es" "ins_ref $xh 1-3"
-	else
-		ec "~^hea insert $xh <${xh}2@exam.ple>"; read es; vput csop es substr $es 0 3
-		if $es != 506; xcall bail "ins_ref $xh 1-4"; end
-	end
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 1-3"
+	el
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; vput csop es substr $es 0 3
+		if $es != 506; xcall bail "ins_ref $xh 1-4"; en
+	en
 
-	ec "~^hea list $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 1-5"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_ref $xh 1-6"
+	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 1-5"
+	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 1-6"
 	call read_mline_res
 
-	if -z "$t_remove"; return; end
+	if -z "$t_remove"; return; en
 
-	ec "~^hea remove $xh"; read es; call xerr $es "ins_ref $xh 2-1"
-	ec "~^hea remove $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_ref $xh 2-2"; end
-	ec "~^hea list $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "$es ins_ref $xh 2-3"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_ref $xh 2-4"; end
+	ec "~^h r $xh"; read es; call xerr $es "ins_ref $xh 2-1"
+	ec "~^h r $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 2-2"; en
+	ec "~^h l $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "$es ins_ref $xh 2-3"; en
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 2-4"; en
 
 	#
-	ec "~^hea insert $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-1"
+	ec "~^h i $xh <$xh@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-1"
 	if $mult -ne 0
-		ec "~^hea insert $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-2"
-		ec "~^hea insert $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-3"
-	end
-	ec "~^hea list $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 3-4"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_ref $xh 3-5"
+		ec "~^h i $xh <${xh}2@exam.ple>"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 3-3"
+	en
+	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 3-4"
+	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 3-5"
 	call read_mline_res
 
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-6"
+	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-6"
 	if $mult -ne 0 && $xh != subject
-		ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
-		ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
-	end
-	ec "~^hea remove-at $xh 1"; read es; vput csop es substr $es 0 3
-	if $es != 501;;; xcall bail "ins_ref $xh 3-9"; end
-	ec "~^hea remove-at $xh T"; read es; vput csop es substr $es 0 3
-	if $es != 505; xcall bail "ins_ref $xh 3-10"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_ref $xh 3-11"; end
+		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-7"
+		ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 3-8"
+	en
+	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501;;; xcall bail "ins_ref $xh 3-9"; en
+	ec "~^hea remove- $xh T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "ins_ref $xh 3-10"; en
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 3-11"; en
 
 	#
-	ec "~^hea insert $xh <$xh@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-1"
+	ec "~^h i $xh <$xh@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-1"
 	if $mult -ne 0
-		ec "~^hea insert $xh <${xh}2@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-2"
-		ec "~^hea insert $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 4-3"
-	end
-	ec "~^hea list $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 4-4"
-	ec "~^hea show $xh"; read es; call xerr $es "ins_ref $xh 4-5"
+		ec "~^h i $xh <${xh}2@exam.ple> "; read es; ec $es; call xerr "$es" "ins_ref $xh 4-2"
+		ec "~^h i $xh ${xh}3@exam.ple"; read es; ec $es; call xerr "$es" "ins_ref $xh 4-3"
+	en
+	ec "~^h l $xh"; read hl; ec $hl; call xerr "$hl" "ins_ref $xh 4-4"
+	ec "~^h s $xh"; read es; call xerr $es "ins_ref $xh 4-5"
 	call read_mline_res
 
 	if $mult -ne 0 && $xh != subject
-		ec "~^hea remove-at $xh 3"; read es; call xerr $es "ins_ref $xh 4-6"
-		ec "~^hea remove-at $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
-	end
-	ec "~^hea remove-at $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
-	ec "~^hea remove-at $xh 1"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_ref $xh 4-9"; end
-	ec "~^hea remove-at $xh T"; read es; vput csop es substr $es 0 3
+		ec "~^h remove- $xh 3"; read es; call xerr $es "ins_ref $xh 4-6"
+		ec "~^h remove- $xh 2"; read es; call xerr $es "ins_ref $xh 4-7"
+	en
+	ec "~^h remove- $xh 1"; read es; call xerr $es "ins_ref $xh 4-8"
+	ec "~^h remove- $xh 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 4-9"; en
+	ec "~^h remove- $xh T"; read es; vput csop es substr $es 0 3
 	if $es != 505; xcall bail "ins_ref $xh 4-10"; end
-	ec "~^hea show $xh"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "ins_ref $xh 4-11"; end
+	ec "~^h s $xh"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "ins_ref $xh 4-11"; en
 }
 define t_hea {
 	ec t_hea ENTER
@@ -11179,9 +11178,9 @@ define t_hea {
 	call ins_addr freeForm1
 	call ins_addr freeform2
 
-	ec "~^hea show MAILX-Command"; read es; call xerr $es "t_hea 1000"
+	ec "~^h s MAILX-Command"; read es; call xerr $es "t_hea 1000"
 	call read_mline_res
-	ec "~^hea show MAILX-raw-TO"; read es; call xerr $es "t_hea 1001"
+	ec "~^h s MAILX-raw-TO"; read es; call xerr $es "t_hea 1001"
 	call read_mline_res
 
 	ec t_hea LEAVE
@@ -11190,134 +11189,127 @@ define t_attach {
 	ec t_attach ENTER
 
 	ec "~^attachment"; read hl; ec $hl; vput csop es substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-1"; end
+	if "$es" != 501; xcall bail "attach 0-1"; en
 
-	ec "~^attach attribute ./t.readctl"; read hl; ec $hl; vput csop es substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-2"; end
-	ec "~^att attribute-at 1"; read hl; ec $hl; vput csop es substr "$hl" 0 3
-	if "$es" != 501; xcall bail "attach 0-3"; end
+	ec "~^att a ./t.readctl"; read hl; ec $hl; vput csop es substr "$hl" 0 3
+	if "$es" != 501; xcall bail "attach 0-2"; en
+	ec "~^a attribute- 1"; read hl; ec $hl; vput csop es substr "$hl" 0 3
+	if "$es" != 501; xcall bail "attach 0-3"; en
 
-	ec "~^att insert ./t.readctl=ascii"; read hl; ec $hl; call xerr "$hl" "attach 1-1"
-	ec "~^att list"; read es; ec $es;call xerr "$es" "attach 1-2"
+	ec "~^a i ./t.readctl=ascii"; read hl; ec $hl; call xerr "$hl" "attach 1-1"
+	ec "~^a l"; read es; ec $es;call xerr "$es" "attach 1-2"
 	call read_mline_res
-	ec "~^att attribute ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-3"
+	ec "~^a a ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-3"
 	call read_mline_res
-	ec "~^att attribute t.readctl"; read es; ec $es;call xerr "$es" "attach 1-4"
+	ec "~^a a t.readctl"; read es; ec $es;call xerr "$es" "attach 1-4"
 	call read_mline_res
-	ec "~^att attribute-at 1"; read es; ec $es;call xerr "$es" "attach 1-5"
+	ec "~^a attribute- 1"; read es; ec $es;call xerr "$es" "attach 1-5"
 	call read_mline_res
 
-	ec "~^att attribute-set ./t.readctl filename rctl";\
-		read es; ec $es;call xerr "$es" "attach 1-6"
-	ec "~^att attribute-set t.readctl content-description Au";\
-		read es; ec $es;call xerr "$es" "attach 1-7"
-	ec "~^att attribute-set-at 1 content-id <10.du@ich>";\
-		read es; ec $es;call xerr "$es" "attach 1-8"
+	ec "~^a attribute-set ./t.readctl filename rctl"; read es; ec $es;call xerr "$es" "attach 1-6"
+	ec "~^a attribute-s t.readctl content-description Au"; read es; ec $es;call xerr "$es" "attach 1-7"
+	ec "~^a attribute-set- 1 content-id <10.du@ich>"; read es; ec $es;call xerr "$es" "attach 1-8"
 
-	ec "~^att attribute ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-9"
+	ec "~^a a ./t.readctl"; read es; ec $es;call xerr "$es" "attach 1-9"
 	call read_mline_res
-	ec "~^att attribute t.readctl"; read es; ec $es;call xerr "$es" "attach 1-10"
+	ec "~^a a t.readctl"; read es; ec $es;call xerr "$es" "attach 1-10"
 	call read_mline_res
-	ec "~^att attribute rctl"; read es; ec $es;call xerr "$es" "attach 1-11"
+	ec "~^a a rctl"; read es; ec $es;call xerr "$es" "attach 1-11"
 	call read_mline_res
-	ec "~^att attribute-at 1"; read es; ec $es;call xerr "$es" "attach 1-12"
+	ec "~^a attribute- 1"; read es; ec $es;call xerr "$es" "attach 1-12"
 	call read_mline_res
 
 	#
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 2-1"
-	ec "~^att list"; read es; ec $es;call xerr "$es" "attach 2-2"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 2-1"
+	ec "~^a"; read es; ec $es;call xerr "$es" "attach 2-2"
 	call read_mline_res
-	ec "~^att attribute ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-3"
+	ec "~^a a ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-3"
 	call read_mline_res
-	ec "~^att attribute t.attach"; read es; ec $es;call xerr "$es" "attach 2-4"
+	ec "~^a a t.attach"; read es; ec $es;call xerr "$es" "attach 2-4"
 	call read_mline_res
-	ec "~^att attribute-at 2"; read es; ec $es;call xerr "$es" "attach 2-5"
+	ec "~^a attribute- 2"; read es; ec $es;call xerr "$es" "attach 2-5"
 	call read_mline_res
 
-	ec "~^att attribute-set ./t.attach filename tat";
-		read es; ec $es;call xerr "$es" "attach 2-6"
-	ec "~^att attribute-set t.attach content-description Au2";\
-		read es; ec $es;call xerr "$es" "attach 2-7"
-	ec "~^att attribute-set-at 2 content-id <20.du@wir>";\
-		read es; ec $es;call xerr "$es" "attach 2-8"
-	ec "~^att attribute-set-at 2 content-type application/x-sh";\
-	  read es; ec $es;call xerr "$es" "attach 2-9"
+	ec "~^a attribute-s ./t.attach filename tat"; read es; ec $es;call xerr "$es" "attach 2-6"
+	ec "~^a attribute-s t.attach content-description Au2"; read es; ec $es;call xerr "$es" "attach 2-7"
+	ec "~^a attribute-set- 2 content-id <20.du@wir>"; read es; ec $es;call xerr "$es" "attach 2-8"
+	ec "~^a attribute-set- 2 content-type application/x-sh"; read es; ec $es;call xerr "$es" "attach 2-9"
 
-	ec "~^att attribute ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-10"
+	ec "~^a a ./t.attach"; read es; ec $es;call xerr "$es" "attach 2-10"
 	call read_mline_res
-	ec "~^att attribute t.attach"; read es; ec $es;call xerr "$es" "attach 2-11"
+	ec "~^a a t.attach"; read es; ec $es;call xerr "$es" "attach 2-11"
 	call read_mline_res
-	ec "~^att attribute tat"; read es; ec $es;call xerr "$es" "attach 2-12"
+	ec "~^a a tat"; read es; ec $es;call xerr "$es" "attach 2-12"
 	call read_mline_res
-	ec "~^att attribute-at 2"; read es; ec $es;call xerr "$es" "attach 2-13"
+	ec "~^a attribute- 2"; read es; ec $es;call xerr "$es" "attach 2-13"
 	call read_mline_res
 
 	#
-	if "$t_remove" == ""; return; end
+	if "$t_remove" == ""; return; en
 
-	ec "~^att remove ./t.readctl"; read es; call xerr $es "attach 3-1"
-	ec "~^att remove ./t.attach"; read es; call xerr $es "attach 3-2"
-	ec "~^   att	  remove		 ./t.readctl"; read es;vput csop es substr $es 0 3
-	if [ $es != 501 ]
+	ec "~^a remove ./t.readctl"; read es; call xerr $es "attach 3-1"
+	ec "~^a r ./t.attach"; read es; call xerr $es "attach 3-2"
+	ec "~^   a	  r		 ./t.readctl"; read es;vput csop es substr $es 0 3
+	if $es != 501
 		xcall bail "attach 3-3"
-	end
-	ec "~^   att	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 3-4"; end
-	ec "~^att list"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 3-5"; end
+	en
+	ec "~^   a	  r		 ./t.attach"; read es;vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 3-4"; en
+	ec "~^a l"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 3-5"; en
 
 	#
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-1"
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-2"
-	ec "~^att list"; read es; ec $es;call xerr "$es" "attach 4-3"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 4-2"
+	ec "~^a"; read es; ec $es;call xerr "$es" "attach 4-3"
 	call read_mline_res
-	ec "~^   att	  remove		 t.attach"; read es;vput csop es substr $es 0 3
-	if $es != 506; xcall bail "attach 4-4 $es"; end
-	ec "~^att remove-at T"; read es; vput csop es substr $es 0 3
-	if $es != 505; xcall bail "attach 4-5"; end
-	ec "~^att remove ./t.attach"; read es; call xerr $es "attach 4-6"
-	ec "~^att remove ./t.attach"; read es; call xerr $es "attach 4-7"
-	ec "~^   att	  remove		 ./t.attach"; read es;vput csop es substr $es 0 3
+	ec "~^   a	  r		 t.attach"; read es;vput csop es substr $es 0 3
+	if $es != 506; xcall bail "attach 4-4 $es"; en
+	ec "~^a remove- T"; read es; vput csop es substr $es 0 3
+	if $es != 505; xcall bail "attach 4-5"; en
+	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-6"
+	ec "~^a r ./t.attach"; read es; call xerr $es "attach 4-7"
+	ec "~^   a	  r		 ./t.attach"; read es;vput csop es substr $es 0 3
 	if $es != 501; xcall bail "attach 4-8 $es"; end
-	ec "~^att list"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 4-9"; end
+	ec "~^a"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 4-9"; en
 
 	#
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-1"
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-2"
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-3"
-	ec "~^att list"; read es; ec $es;call xerr "$es" "attach 5-4"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-2"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 5-3"
+	ec "~^a"; read es; ec $es;call xerr "$es" "attach 5-4"
 	call read_mline_res
 
-	ec "~^att remove-at 3"; read es; call xerr $es "attach 5-5"
-	ec "~^att remove-at 3"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 5-6"; end
-	ec "~^att remove-at 2"; read es; call xerr $es "attach 5-7"
-	ec "~^att remove-at 2"; read es; vput csop es substr $es 0 3
+	ec "~^a remove- 3"; read es; call xerr $es "attach 5-5"
+	ec "~^a remove- 3"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-6"; en
+	ec "~^a remove- 2"; read es; call xerr $es "attach 5-7"
+	ec "~^a remove- 2"; read es; vput csop es substr $es 0 3
 	if $es != 501; xcall bail "attach 5-8"
-	end
-	ec "~^att remove-at 1"; read es; call xerr $es "attach 5-9"
-	ec "~^att remove-at 1"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 5-10"; end
+	en
+	ec "~^a remove- 1"; read es; call xerr $es "attach 5-9"
+	ec "~^a remove- 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-10"; en
 
-	ec "~^att list"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 5-11"; end
+	ec "~^a"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 5-11"; en
 
 	#
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-1"
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-2"
-	ec "~^att insert ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-3"
-	ec "~^att list"; read es; ec $es;call xerr "$es" "attach 6-4"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-1"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-2"
+	ec "~^a i ./t.attach=latin1"; read hl; ec $hl; call xerr "$hl" "attach 6-3"
+	ec "~^a"; read es; ec $es;call xerr "$es" "attach 6-4"
 	call read_mline_res
 
-	ec "~^att remove-at 1"; read es; call xerr $es "attach 6-5"
-	ec "~^att remove-at 1"; read es; call xerr $es "attach 6-6"
-	ec "~^att remove-at 1"; read es; call xerr $es "attach 6-7"
-	ec "~^att remove-at 1"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 6-8"; end
+	ec "~^a remove- 1"; read es; call xerr $es "attach 6-5"
+	ec "~^a remove- 1"; read es; call xerr $es "attach 6-6"
+	ec "~^a remove- 1"; read es; call xerr $es "attach 6-7"
+	ec "~^a remove- 1"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 6-8"; en
 
-	ec "~^att list"; read es; vput csop es substr $es 0 3
-	if $es != 501; xcall bail "attach 6-9"; end
+	ec "~^a"; read es; vput csop es substr $es 0 3
+	if $es != 501; xcall bail "attach 6-9"; en
 
 	ec t_attach LEAVE
 }
@@ -11415,13 +11407,13 @@ __EOT__
 		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://t1 > ./t1-x 2>${E0}
 	ck_ex0 1-estat
 	${cat} ./t1-x >> ./t1
-	cke0 1 - ./t1 '154742660 10390'
+	cke0 1 - ./t1 '559131876 10388'
 
 	printf 'm this-goes@nowhere\nbody\n!.\n' |
 	${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -St_remove=1 -X'source ./t.rc' -Smta=test://t2 > ./t2-x 2>${E0}
 	ck_ex0 2-estat
 	${cat} ./t2-x >> ./t2
-	cke0 2 - ./t2 '4289540616 12704'
+	cke0 2 - ./t2 '1033439970 12630'
 
 	##
 
@@ -11618,24 +11610,24 @@ set on-compose-splice=t_ocs \
 	#}}}
 	ck_ex0 3-estat
 	${cat} ./t3-x >> ./t3
-	cke0 3 - ./t3 '3524594623 2348'
+	cke0 3 - ./t3 '2390285044 2354'
 
 	# Reply, forward, resend, Resend
 
-	printf '#
-		set from="f1@z"
-		m t1@z
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! > ./t4-x 2>${EX}
+set from="f1@z"
+m t1@z
 b1
 !.
-		set from="du <f2@z>" stealthmua=noagent
-		m t2@z
+set from="du <f2@z>" stealthmua=noagent
+m t2@z
 b2
 !.
-		' | ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! > ./t4-x 2>${EX}
+__EOT
 	ck_ex0 4-intro-estat
 
 	#{{{
-	printf '
+	${cat} << '__EOT' > ./t5.in
 echo start: $? $! $^ERRNAME
 File ./t4
 echo File: $? $! $^ERRNAME;echo;echo
@@ -11651,10 +11643,8 @@ forward 1 fwdex@am.ple
 this is content of forward 1
 !.
 echo forward 1: $? $! $^ERRNAME;echo;echo
-set forward-inject-head=$'"'"'-- \\
-	forward (%%a)(%%d)(%%f)(%%i)(%%n)(%%r) --\\n'"'"'
-set forward-inject-tail=$'"'"'-- \\
-	end of forward (%%i) --\\n'"'"'
+set forward-inject-head=$'-- forward (%a)(%d)(%f)(%i)(%n)(%r) --\n'
+set forward-inject-tail=$'-- end of forward (%i) --\n'
 forward 2 fwdex@am.ple
 this is content of forward 2
 !.
@@ -11668,8 +11658,8 @@ resend 1 2 resendex@am.ple
 echo resend 1 2: $? $! $^ERRNAME;echo;echo
 Resend 1 2 Resendex@am.ple
 echo Resend 1 2: $? $! $^ERRNAME;echo;echo
-	' |
-	${MAILX} ${ARGS} -Sescape=! -Sfullnames -Smta=test://t4 -X'
+__EOT
+	< ./t5.in ${MAILX} ${ARGS} -Sescape=! -Sfullnames -Smta=test://t4 -X'
 			define bail {
 				echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
 			}
@@ -11678,7 +11668,7 @@ echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 				if "$es" != 2; xcall bail "$2"; end
 			}
 			define read_mline_res {
-				read hl; set len=$? es=$! en=$^ERRNAME;echo \ \ mline_res:$len/$es/$^ERRNAME: $hl
+				readsh hl; set len=$? es=$! en=$^ERRNAME;echo \ \ mline_res:$len/$es/$^ERRNAME: $hl
 				if $es -ne $^ERR-NONE
 					xcall bail read_mline_res
 				elif $len -ne 0
@@ -11696,7 +11686,7 @@ echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 			define t_ocs {
 				read ver
 				echo t_ocs version $ver
-				echo "~^header list"; read hl; echo $hl;
+				echo "~^header list"; readsh hl; echo $hl;
 				echoerr the header list is $hl; call xerr "$hl" "header list"
 				eval vpospar set $hl
 				shift
@@ -11775,7 +11765,7 @@ echo Resend 1 2: $? $! $^ERRNAME;echo;echo
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '1461166401 9997' '1312459649 605'
+	ck 4 - ./t4 '2133647863 10005' '1312459649 605'
 
 	t_epilog "${@}"
 } #}}}
@@ -12316,16 +12306,16 @@ _EOT
 	cke0 3 0 ./t3_7 '4224630386 228'
 
 	# For reproducability, one pseudo check with cat(1) and mv(1)
-	printf '#
-text/plain; echo p-1-1\\;< %%s cat\\;echo p-1-2;\\
-		test=echo X >> ./t.errmc\\; [ -n "$XY" ];x-mailx-test-once
-text/plain; echo p-2-1\\;< %%s cat\\;echo p-2-2;\\
-		test=echo Y >> ./t.errmc\\;[ -z "$XY" ]
-text/plain; { file=%%s\\; echo p-3-1 = ${file##*.}\\;\\
-         </dev/null cat %%s\\;echo p-3-2\\; } > ./t-x\\; mv -f ./t-x ./t-asy;\\
-		test=[ -n "$XY" ];nametemplate=%%s.txt;x-mailx-async
-text/plain; echo p-4-1\\;cat\\;echo p-4-2;copiousoutput
-	' > ./t.mailcap
+	${cat} << '__EOT' > ./t.mailcap
+text/plain; echo p-1-1\;< %s cat\;echo p-1-2;\
+		test=echo X >> ./t.errmc\; [ -n "$XY" ];x-mailx-test-once
+text/plain; echo p-2-1\;< %s cat\;echo p-2-2;\
+		test=echo Y >> ./t.errmc\;[ -z "$XY" ]
+text/plain; { file=%s\; echo p-3-1 = ${file##*.}\;\
+         </dev/null cat %s\;echo p-3-2\; } > ./t-x\; mv -f ./t-x ./t-asy;\
+		test=[ -n "$XY" ];nametemplate=%s.txt;x-mailx-async
+text/plain; echo p-4-1\;cat\;echo p-4-2;copiousoutput
+__EOT
 
 	</dev/null MAILCAPS=./t.mailcap TMPDIR=$(${pwd}) \
 	${MAILX} ${ARGS} -Snomailcap-disable -Y '\mailcap' -Rf ./t3_7 > ./t4.virt 2>${E0}

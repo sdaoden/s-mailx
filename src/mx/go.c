@@ -1593,7 +1593,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 			a_go_cleanup(a_go_ctx, a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
 		/* TODO This condition test may not be here: if the condition is not true
-		 * TODO a recursive mainloop object without that cruft should be used! */
+		 * TODO a recursive main loop object without that cruft should be used! */
 		if(!(n_pstate & n_PS_ROBOT)){
 			if(a_go_ctx->gc_inject == NIL)
 				mx_fs_linepool_cleanup(FAL0);
@@ -1602,7 +1602,7 @@ mx_go_main_loop(boole main_call){ /* FIXME */
 			 * TODO *newmail* thing below, and possibly other caches
 			 * TODO (mime.types, mta-aliases, mailcap, netrc; if not yet:
 			 * TODO convert!!) can attach: they should trigger a switch and
-			 * TODO update cache state only once per mainloop tick!! */
+			 * TODO update cache state only once per main loop tick!! */
 			/* C99 */{
 				char const *ccp;
 

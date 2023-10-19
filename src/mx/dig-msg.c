@@ -1,10 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Dig message objects. TODO Very very restricted (especially non-compose)
  *@ Protocol change: adjust mx-config.h:mx_DIG_MSG_PLUMBING_VERSION + `~^' man.
- *@ TODO - a_dmsg_cmd() should generate string lists, not perform real I/O.
- *@ TODO   I.e., drop FILE* arg, generate stringlist; up to callers...
- *@ TODO - With our own I/O there should then be a StringListDevice as the
- *@ TODO   owner and I/O overlay provider: NO temporary file (sic)!
  *@ TODO - Turn X-SERIES in something regular and documented
  *@ XXX - Multiple objects per message could be possible (a_dmsg_find()),
  *@ XXX   except in compose mode
@@ -56,8 +52,6 @@
 /*#define NYD2_ENABLE*/
 #include "su/code-in.h"
 
-#define a_DMSG_QUOTE(S) n_shexp_quote_cp(S, FAL0)
-
 /**/
 CTAV(HF_CMD_TO_OFF(HF_CMD_forward) == 0);
 CTAV(HF_CMD_TO_OFF(HF_CMD_mail) == 1);
@@ -67,7 +61,15 @@ CTAV(HF_CMD_TO_OFF(HF_CMD_reply) == 4);
 CTAV(HF_CMD_TO_OFF(HF_CMD_resend) == 5);
 CTAV(HF_CMD_TO_OFF(HF_CMD_MASK) == 6);
 
+struct a_dmsg_sl{
+	struct a_dmsg_sl *dmsl_next;
+	u32 dmsl_status_or_new_ent; /* First node: status; else: is new result record (new line before) */
+	u32 dmsl_len; /* May be 0 TODO some "real" uz->u32 trunc checks please */
+	char const *dmsl_dat;
+};
+
 static char const a_dmsg_hf_cmd[7][8] = {"forward\0", "mail", "Lreply", "Reply", "reply", "resend", ""};
+static char const a_dmsg_subj[] = "Subject";
 
 struct mx_dig_msg_ctx *mx_dig_msg_read_overlay; /* XXX HACK */
 struct mx_dig_msg_ctx *mx_dig_msg_compose_ctx; /* Or NIL XXX HACK*/
@@ -80,10 +82,17 @@ static s32 a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexc
 /* Subcommand drivers */
 static boole a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct mx_cmd_arg *args);
 
-static boole a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args);
-static boole a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args);
-static boole a_dmsg__part(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args);
+static struct a_dmsg_sl *a_dmsg__help(void);
+static struct a_dmsg_sl *a_dmsg__header(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
+		struct a_dmsg_sl *dmslp, struct n_string *sp);
+static struct a_dmsg_sl *a_dmsg__attach(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
+		struct a_dmsg_sl *dmslp, struct n_string *sp);
+static struct a_dmsg_sl *a_dmsg__part(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args,
+		struct a_dmsg_sl *dmslp, struct n_string *sp);
 
+static struct a_dmsg_sl *a_dmsg___line_tuple(char const *name, boole ndup, char const *value, boole vdup);
+
+/* a_dmsg_find {{{ */
 static s32
 a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
 	struct mx_dig_msg_ctx *dmcp;
@@ -94,7 +103,7 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
 	if(cp[0] == '-' && cp[1] == '\0'){
 		if((dmcp = mx_dig_msg_compose_ctx) != NIL){
 			*dmcpp = dmcp;
-			if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE_DIGGED)
+			if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE_DIGGED)
 				rv = oexcl ? su_ERR_EXIST : su_ERR_NONE;
 			else
 				rv = /*oexcl ?*/ su_ERR_NONE /*: su_ERR_NOENT*/;
@@ -122,7 +131,7 @@ a_dmsg_find(char const *cp, struct mx_dig_msg_ctx **dmcpp, boole oexcl){
 
 	*dmcpp = dmcp = su_CALLOC(ALIGN_Z(sizeof *dmcp) + sizeof(struct header));
 	dmcp->dmc_mp = &message[msgno - 1];
-	dmcp->dmc_flags = mx_DIG_MSG_OWN_MEMBAG | (!(mb.mb_perm & MB_DELE) ? mx_DIG_MSG_RDONLY : mx_DIG_MSG_NONE);
+	dmcp->dmc_flags = mx__DIG_MSG_OWN_MEMBAG | (!(mb.mb_perm & MB_DELE) ? mx__DIG_MSG_RDONLY : mx__DIG_MSG_NONE);
 	dmcp->dmc_msgno = msgno;
 	dmcp->dmc_hp = R(struct header*,ALIGN_Z(P2UZ(&dmcp[1])));
 	dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
@@ -132,91 +141,237 @@ jleave:
 	NYD2_OU;
 	return rv;
 }
+/* }}} */
 
 /* a_dmsg_cmd {{{ */
 static boole
 a_dmsg_cmd(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *cmd, struct mx_cmd_arg *args){
-	union {struct mx_cmd_arg *ca; char *c; struct str const *s; boole rv;} p;
+	char cb_i[su_IENC_BUFFER_SIZE], cb_s[8], *cps;
+	struct n_string s;
+	struct a_dmsg_sl *dmslp, dmsl_s[1];
+	struct str *sp;
+	void *lofi_snap;
 	NYD2_IN;
 
-	if(cmd == NIL)
-		goto jecmd;
+	ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
+	lofi_snap = su_mem_bag_lofi_snap_create(su_MEM_BAG_SELF);
 
-	p.s = &cmd->ca_arg.ca_str;
-	if(su_cs_starts_with_case_n("header", p.s->s, p.s->l))
-		p.rv = a_dmsg__header(fp, dmcp, args);
-	else if(su_cs_starts_with_case_n("attachment", p.s->s, p.s->l)){
-		if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)) /* TODO attachment support */
-			p.rv = (fputs("505 `digmsg attachment' only in compose mode (yet)\n", fp) != EOF);
-		else
-			p.rv = a_dmsg__attach(fp, dmcp, args);
-	}else if(su_cs_starts_with_case_n("x-part", p.s->s, p.s->l)){ /* X-SERIES */
-		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
-			p.rv = (fputs("505 `digmsg part' not in compose mode\n", fp) != EOF);
-		else
-			p.rv = a_dmsg__part(fp, dmcp, args);
-	}else if(su_cs_starts_with_case_n("epoch", p.s->s, p.s->l)){
-		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
-			p.rv = (fputs("505 `digmsg epoch' not in compose mode\n", fp) != EOF);
+	n_string_reserve(n_string_creat(&s), 128);
+
+	STRUCT_ZERO(struct a_dmsg_sl, dmslp = &dmsl_s[0]);
+	UNINIT(dmslp->dmsl_len, 0);
+
+	if(cmd == NIL)
+		goto Jecmd;
+
+	sp = &cmd->ca_arg.ca_str;
+	if(su_cs_starts_with_case_n("header", sp->s, sp->l))
+		dmslp = a_dmsg__header(dmcp, args, dmslp, &s);
+	else if(su_cs_starts_with_case_n("attachment", sp->s, sp->l)){
+		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)
+			dmslp = a_dmsg__attach(dmcp, args, dmslp, &s);
+		else{
+			static char const ca[] = "digmsg: attachment: only in compose mode (yet)";/* TODO v15-compat */
+
+			dmslp->dmsl_status_or_new_ent = 505;
+			dmslp->dmsl_len = sizeof(ca) - 1;
+			dmslp->dmsl_dat = ca;
+		}
+	}else if(su_cs_starts_with_case_n("x-part", sp->s, sp->l)){ /* X-SERIES */
+		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE){
+			static char const ca[] = "digmsg: part: not in compose mode";
+
+			dmslp->dmsl_status_or_new_ent = 505;
+			dmslp->dmsl_len = sizeof(ca) - 1;
+			dmslp->dmsl_dat = ca;
+		}else
+			dmslp = a_dmsg__part(dmcp, args, dmslp, &s);
+	}else if(su_cs_starts_with_case_n("epoch", sp->s, sp->l)){
+		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE){
+			static char const ca[] = "digmsg: epoch: not in compose mode";
+
+			dmslp->dmsl_status_or_new_ent = 505;
+			dmslp->dmsl_len = sizeof(ca) - 1;
+			dmslp->dmsl_dat = ca;
+		}else if(args != NIL)
+			goto Jecmd;
 		else{
 			s64 t;
 			char const *cp;
 
-			if((cp = hfield1("date", dmcp->dmc_mp)) == NIL ||
-					/* TODO .m_date! */ (t = mx_header_rfctime(cp)) == 0)
-				p.rv = (fputs("501 `digmsg epoch': invalid date\n", fp) != EOF);
-			else
-				p.rv = (fprintf(fp, "210 %" PRIu64 "\n", S(u64,t)) > 0);
-		}
-	}else if(su_cs_starts_with_case_n("version", p.s->s, p.s->l)){
-		if(args != NIL)
-			goto jecmd;
-		p.rv = (fputs("210 " mx_DIG_MSG_PLUMBING_VERSION "\n", fp) != EOF);
-	}else if((p.s->l == 1 && p.s->s[0] == '?') || su_cs_starts_with_case_n("help", p.s->s, p.s->l)){
-		if(args != NIL)
-			goto jecmd;
-		p.rv = (fputs(_("211 (Arguments undergo shell-style evaluation)\n"), fp) != EOF &&
-				fputs(_(
-					"attachment:\n"
-					"  attribute name (212; 501)\n"
-					"  attribute-at position\n"
-					"  attribute-set name key value (210; 505/501)\n"
-					"  attribute-set-at position key value\n"
-					"  insert file[=input-charset[#output-charset]] (210; 501/505/506)\n"
-					"  insert #message-number\n"
-					"  list (212; 501)\n"
-					"  remove name (210; 501/506)\n"
-					"  remove-at position (210; 501/505)\n"), fp) != EOF &&
-				fputs(_(
-					"header\n"
-					"  insert field content (210; 501/505/506)\n"
-					"  headerpick context (210; 501/505);\n"
-					"  list [field] (210; [501]);\n"
-					"  remove field (210; 501/505)\n"
-					"  remove-at field position (210; 501/505)\n"
-					"  show field (211/212; 501)\n"), fp) != EOF &&
-				fputs(_(
-					"epoch (210; 501[/505])\n"
-					"help (211)\n"
-					"version (210)\n"), fp) != EOF &&
-				putc('\n', fp) != EOF);
-	}else
-jecmd:
-		p.rv = (fputs("500\n", fp) != EOF);
+			if((cp = hfield1("date", dmcp->dmc_mp)) == NIL || (t = mx_header_rfctime(cp)) == 0){
+				static char const ca[] = "digmsg: epoch: invalid date";/* XXX .m_date! */
 
-	fflush(fp);
+				dmslp->dmsl_status_or_new_ent = 501;
+				dmslp->dmsl_len = sizeof(ca) - 1;
+				dmslp->dmsl_dat = ca;
+			}else{
+				dmslp->dmsl_status_or_new_ent = 210;
+				dmslp->dmsl_len = su_cs_len(dmslp->dmsl_dat = su_ienc_u64(cb_i, t, 10));
+			}
+		}
+	}else if(su_cs_starts_with_case_n("version", sp->s, sp->l)){
+		static char const ca[] = mx_DIG_MSG_PLUMBING_VERSION;
+
+		if(args != NIL)
+			goto Jecmd;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_len = sizeof(ca) - 1;
+		dmslp->dmsl_dat = ca;
+	}else if((sp->l == 1 && sp->s[0] == '?') || su_cs_starts_with_case_n("help", sp->s, sp->l)){
+		if(args != NIL)
+			goto Jecmd;
+		dmslp = a_dmsg__help();
+	}else Jecmd:{
+		dmslp->dmsl_status_or_new_ent = 500;
+		ASSERT(dmslp->dmsl_len == 0);
+	}
+
+	/* Visualize status xxx make it char* directly? */
+	/* C99 */{
+		u32 i;
+
+		cps = &cb_s[NELEM(cb_s)];
+		*--cps = '\0';
+		i = dmslp->dmsl_status_or_new_ent;
+		do
+			*--cps = "0123456789"[i % 10]; /* xxx inline atoi */
+		while((i /= 10) != 0);
+	}
+
+	/* Create output */
+	if(dmcp->dmc_flags & mx__DIG_MSG_MODE_CARET){
+		char const **cpp;
+		struct a_dmsg_sl *x;
+		u32 i;
+
+		for(i = 0, x = dmslp; x != NIL; ++i, x = x->dmsl_next){
+		}
+
+		cpp = su_LOFI_TALLOC(char const*, i +1);
+
+		for(i = 0, x = dmslp; x != NIL; x = x->dmsl_next)
+			cpp[i++] = UNCONST(char*,(x->dmsl_len > 0) ? x->dmsl_dat : su_empty);
+		cpp[i] = NIL;
+
+		if(mx_var_caret_array_set(NIL, cps, i, NIL, cpp) != su_ERR_NONE)
+			dmslp = NIL;
+	}else{
+		struct str s_b;
+		struct a_dmsg_sl *x;
+
+		if(fputs(cps, fp) == EOF)
+			dmslp = NIL;
+		else for(x = dmslp; x != NIL; x = x->dmsl_next){
+			boole neednl;
+
+			neednl = (x != dmslp && x->dmsl_status_or_new_ent != FAL0);
+
+			if(x->dmsl_len > 0){
+				if(putc((neednl ? '\n' : ' '), fp) == EOF){
+					dmslp = NIL;
+					break;
+				}
+
+				s_b.s = UNCONST(char*,x->dmsl_dat);
+				s_b.l = x->dmsl_len;
+				ASSERT(s_b.s != NIL);
+				n_shexp_quote(n_string_trunc(&s, 0), &s_b, FAL0);
+
+				if(fwrite(s.s_dat, sizeof(*s.s_dat), s.s_len, fp) != s.s_len){
+					dmslp = NIL;
+					break;
+				}
+				neednl = TRU1;
+			}else if(neednl && putc('\n', fp) == EOF){
+				dmslp = NIL;
+				break;
+			}
+		}
+
+		if(dmslp != NIL){
+			if(putc('\n', fp) == EOF)
+				dmslp = NIL;
+			/* Multi-line output needs empty last line */
+			else if(*cps != '5' && dmslp->dmsl_status_or_new_ent != 210 && putc('\n', fp) == EOF)
+				dmslp = NIL;
+		}
+
+		if(fflush(fp) == EOF)
+			dmslp = NIL;
+	}
+
+	n_string_gut(&s);
+
+	ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
+	su_mem_bag_lofi_snap_unroll(su_MEM_BAG_SELF, lofi_snap);
 
 	NYD2_OU;
-	return p.rv;
+	return (dmslp != NIL);
 }
 /* }}} */
 
+/* a_dmsg__help {{{ */
+static struct a_dmsg_sl *
+a_dmsg__help(void){
+	struct{char const *d; uz l;} const h[] = {
+#undef a_X
+#define a_X(S) {S, sizeof(S) -1}
+		a_X("attachment [CMD (default: list)]"),
+		a_X("  attribute ATTACHMENT (212; 501)"),
+		a_X("  attribute-at NUMBER"),
+		a_X("  attribute-set ATTACHMENT NAME VALUE (210; 505/501)"),
+		a_X("  attribute-set-at NUMBER NAME VALUE"),
+		a_X("  insert FILE[=input-charset[#output-charset]] (210; 501/505/506)"),
+		a_X("  insert #MSG-NUMBER"),
+		a_X("  list (212; 501)"),
+		a_X("  remove ATTACHMENT (210; 501/506)"),
+		a_X("  remove-at NUMBER (210; 501/505)"),
+		a_X("header [CMD (default: list)]"),
+		a_X("  insert HEADER VALUE (210; 501/505/506)"),
+		a_X("  headerpick CTX (210; 501/505)"),
+		a_X("  list [HEADER] (210; [501])"),
+		a_X("  remove HEADER (210; 501/505)"),
+		a_X("  remove-at HEADER NUMBER (210; 501/505)"),
+		a_X("  show HEADER (211/212; 501)"),
+		a_X("epoch (210; 501[/505])"),
+		a_X("help (212)"),
+		a_X("version (210)")
+#undef a_X
+	};
+	static char const ca[] = "(Arguments undergo shell-style evaluation)";
+
+	uz i;
+	struct a_dmsg_sl *dmslp, **x;
+	NYD2_IN;
+
+	dmslp = su_LOFI_TALLOC(struct a_dmsg_sl, 1);
+	dmslp->dmsl_status_or_new_ent = 212;
+	dmslp->dmsl_len = sizeof(ca) - 1;
+	dmslp->dmsl_dat = ca;
+
+	x = &dmslp->dmsl_next;
+	for(i = 0; i < NELEM(h); ++i){
+		*x = su_LOFI_TALLOC(struct a_dmsg_sl, 1);
+		(*x)->dmsl_status_or_new_ent = TRU1;
+		(*x)->dmsl_dat = h[i].d;
+		(*x)->dmsl_len = S(u32,h[i].l);
+		x = &(*x)->dmsl_next;
+	}
+	*x = NIL;
+
+	NYD2_OU;
+	return dmslp;
+} /* }}} */
+
 /* a_dmsg__header {{{ */
-static boole
-a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
+static struct a_dmsg_sl *
+a_dmsg__header(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sp){
+	char ienc_b[su_IENC_BUFFER_SIZE];
 	struct str sin, sou;
 	struct n_header_field *hfp;
 	struct mx_name *np, **npp;
+	struct a_dmsg_sl *x;
 	uz i;
 	struct mx_cmd_arg *a3p;
 	char const *cp;
@@ -227,7 +382,7 @@ a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
 	UNINIT(a3p, NIL);
 
 	if(args == NIL){
-		cp = su_empty; /* xxx not NIL anyway */
+		cp = su_empty;
 		goto jdefault;
 	}
 
@@ -240,18 +395,21 @@ a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
 
 		a3p = a3p->ca_next;
 
-		for(xp = args->ca_arg.ca_str.s;; ++xp)
-			if(*xp == '\0')
-				break;
-			else if(*xp == ':'){
-				*xp = '\0';
-				break;
-			}
+		for(xp = args->ca_arg.ca_str.s; *xp != '\0'; ++xp)
+			if(*xp == ':')
+				/* Do not loose possible modifier! */
+				su_cs_pcopy(xp, &xp[1]);
 	}
 
 	/* TODO ERR_2BIG should happen on the cmd_arg parser side */
-	if(a3p != NIL && a3p->ca_next != NIL)
-		goto jecmd;
+	if(a3p != NIL && a3p->ca_next != NIL){
+		/* TODO until argparser can deal with subcmds: unroll convenience (CMD_ARG_DESC_GREEDY_JOIN arg3) */
+		if(!su_cs_starts_with_case("insert", cp))
+			goto jecmd;
+		a3p->ca_arg.ca_str.s = savecatsep(a3p->ca_arg.ca_str.s, ' ', a3p->ca_next->ca_arg.ca_str.s);
+		a3p->ca_arg.ca_str.l = su_cs_len(a3p->ca_arg.ca_str.s);
+		goto jcmd_insert;
+	}
 
 	if(su_cs_starts_with_case("insert", cp))
 		goto jcmd_insert;
@@ -269,21 +427,22 @@ a_dmsg__header(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
 		goto jcmd_x_decode;
 
 jecmd:
-	if(fputs("500\n", fp) == EOF)
-		cp = NIL;
-
-	cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 500;
 jleave:
 	NYD2_OU;
-	return (cp != NIL);
+	return dmslp;
 
 j505r:
-	if(fprintf(fp, "505 read-only: %s\n", cp) < 0)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 505;
+	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
+	sp = n_string_push_cp(sp, cp);
+	dmslp->dmsl_len = sp->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
 	goto jleave;
 j501cp:
-	if(fprintf(fp, "501 %s\n", cp) < 0)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 501;
+	dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 	goto jleave;
 
 jcmd_insert:{ /* {{{ */
@@ -301,7 +460,7 @@ jcmd_insert:{ /* {{{ */
 
 	if(args == NIL || a3p == NIL)
 		goto jecmd;
-	if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
 	/* Strip [\r\n] which would render a body invalid XXX all controls? */
@@ -313,7 +472,7 @@ jcmd_insert:{ /* {{{ */
 				*UNCONST(char*,cp) = ' ';
 	}
 
-	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
+	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){
 		if(a3p->ca_arg.ca_str.l == 0)
 			goto j501cp;
 
@@ -321,8 +480,14 @@ jcmd_insert:{ /* {{{ */
 			hp->h_subject = savecatsep(hp->h_subject, ' ', a3p->ca_arg.ca_str.s);
 		else
 			hp->h_subject = savestr(a3p->ca_arg.ca_str.s);
-		if(fprintf(fp, "210 %s 1\n", cp) < 0)
-			cp = NIL;
+
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
+		dmslp->dmsl_dat = a_dmsg_subj;
+
+		dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
+		x->dmsl_len = 1;
+		x->dmsl_dat = n_1;
 		goto jleave;
 	}
 
@@ -341,20 +506,19 @@ jins:
 			if(is_addr_invalid(np, eacm))
 				goto jins_505;
 		}else{
-			if((np = (mult_ok > FAL0 ? lextract : n_extract_single)(a3p->ca_arg.ca_str.s, ntype | GNULL_OK)
-					) == NIL)
+			np = ((mult_ok > FAL0) ? lextract : n_extract_single)(a3p->ca_arg.ca_str.s, (ntype | GNULL_OK));
+			if(np == NIL)
 				goto j501cp;
 
 			if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
 jins_505:
-				if(fprintf(fp, "505 %s\n", cp) < 0)
-					cp = NIL;
+				dmslp->dmsl_status_or_new_ent = 505;
+				dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 				goto jleave;
 			}
 		}
 
-		/* Go to the end of the list, track whether it contains any
-		 * non-deleted entries */
+		/* Go to the end of the list, track whether it contains any non-deleted entries */
 		i = 0;
 		if((xnp = *npp) != NIL)
 			for(;; xnp = xnp->n_flink){
@@ -365,16 +529,25 @@ jins_505:
 			}
 
 		if(!mult_ok && (i != 0 || np->n_flink != NIL)){
-			if(fprintf(fp, "506 %s\n", cp) < 0)
-				cp = NIL;
+			dmslp->dmsl_status_or_new_ent = 506;
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 		}else{
 			if(xnp == NIL)
 				*npp = np;
 			else
 				xnp->n_flink = np;
 			np->n_blink = xnp;
-			if(fprintf(fp, "210 %s %" PRIuZ "\n", cp, ++i) < 0)
-				cp = NIL;
+
+			dmslp->dmsl_status_or_new_ent = 210;
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
+
+			i = su_cs_len(cp = su_ienc_uz(ienc_b, ++i, 10));
+			dmslp->dmsl_next = x = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + i +1);
+			x->dmsl_next = NIL;
+			x->dmsl_status_or_new_ent = FAL0;
+			x->dmsl_len = S(u32,i);
+			x->dmsl_dat = S(char*,&x[1]);
+			su_mem_copy(UNCONST(char*,x->dmsl_dat), cp, i +1);
 		}
 		goto jleave;
 	}
@@ -386,6 +559,7 @@ jins_505:
 	/* Same as From:*/
 	a_X("Author", h_author, UNUSED(0));
 
+	/* Modifier? */
 	if((cp = su_cs_find_c(args->ca_arg.ca_str.s, '?')) != NIL){
 		mod_suff = cp;
 		args->ca_arg.ca_str.s[P2UZ(cp - args->ca_arg.ca_str.s)] = '\0';
@@ -412,7 +586,6 @@ jins_505:
 	a_X("Message-ID", h_message_id, mult_ok = FAL0 su_COMMA ntype = GREF su_COMMA eacm = EACM_NONAME);
 	a_X("References", h_ref, ntype = GREF su_COMMA eacm = EACM_NONAME);
 	a_X("In-Reply-To", h_in_reply_to, ntype = GREF su_COMMA eacm = EACM_NONAME);
-
 #undef a_X
 
 	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
@@ -440,8 +613,19 @@ jins_505:
 		hfp->hf_bl = bl - 1;
 		su_mem_copy(&hfp->hf_dat[0], cp, nl);
 		su_mem_copy(&hfp->hf_dat[nl], a3p->ca_arg.ca_str.s, bl);
-		if(fprintf(fp, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], ++i) < 0)
-			cp = NIL;
+
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_dat = &hfp->hf_dat[0];
+		dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
+
+		cp = su_ienc_uz(ienc_b, ++i, 10);
+		i = su_cs_len(cp);
+		dmslp->dmsl_next = x = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + i +1);
+		x->dmsl_next = NIL;
+		x->dmsl_status_or_new_ent = FAL0;
+		x->dmsl_len = S(u32,i);
+		x->dmsl_dat = S(char*,&x[1]);
+		su_mem_copy(UNCONST(char*,x->dmsl_dat), cp, i +1);
 	}
 
 	goto jleave;
@@ -453,10 +637,11 @@ jcmd_headerpick:{ /* TODO v15-compat: oooooh: an iterator! {{{ */
 
 	if(args == NIL)
 		goto jecmd;
-	if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
-	if((ip = mx_ignore_by_name(cp = args->ca_arg.ca_str.s)) == NIL)
+	cp = args->ca_arg.ca_str.s;
+	if((ip = mx_ignore_by_name(cp)) == NIL)
 		goto j501cp;
 
 #undef a_X
@@ -487,25 +672,19 @@ jcmd_headerpick:{ /* TODO v15-compat: oooooh: an iterator! {{{ */
 			hfpp = &(*hfpp)->hf_next;
 	}
 
-	if(fputs("210\n", fp) == EOF)
-		cp = NIL;
-
+	dmslp->dmsl_status_or_new_ent = 210;
 	goto jleave;
 	} /* }}} */
 
 jcmd_list: jdefault:{ /* {{{ */
 	if(args == NIL){
-		if(fputs("210", fp) == EOF){
-			cp = NIL;
-			goto jleave;
-		}
+		n_string_trunc(sp, 0);
 
 #undef a_X
 #define a_X(F,S) \
-		if(su_CONCAT(hp->h_, F) != NIL && fputs(" " su_STRING(S), fp) == EOF){\
-			cp = NIL;\
-			goto jleave;\
-		}
+		if(su_CONCAT(hp->h_, F) != NIL)\
+			n_string_push_buf((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp),\
+				su_STRING(S), sizeof(su_STRING(S)) -1);\
 
 		a_X(subject, Subject);
 		a_X(author, Author);
@@ -529,40 +708,46 @@ jcmd_list: jdefault:{ /* {{{ */
 		a_X(mailx_orig_to, Mailx-Orig-To);
 		a_X(mailx_orig_cc, Mailx-Orig-Cc);
 		a_X(mailx_orig_bcc, Mailx-Orig-Bcc)
-
-		if((hp->h_flags & HF_CMD_MASK) != HF_NONE && fputs(" " su_STRING(Mailx-Command), fp) == EOF){
-			cp = NIL;
-			goto jleave;
-		}
-
 #undef a_X
+
+		if((hp->h_flags & HF_CMD_MASK) != HF_NONE){
+			static char const ca[] = "Mailx-Command";
+
+			n_string_push_buf((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp), ca, sizeof(ca) -1);
+		}
 
 		/* Print only one instance of each free-form header */
 		for(hfp = hp->h_user_headers; hfp != NIL; hfp = hfp->hf_next){
 			struct n_header_field *hfpx;
 
-			for(hfpx = hp->h_user_headers;; hfpx = hfpx->hf_next)
+			for(hfpx = hp->h_user_headers;; hfpx = hfpx->hf_next){
 				if(hfpx == hfp){
-					putc(' ', fp);
-					fputs(&hfp->hf_dat[0], fp);
+					n_string_push_cp((sp->s_len > 0 ? n_string_push_c(sp, ' ') : sp),
+						&hfp->hf_dat[0]);
 					break;
 				}else if(!su_cs_cmp_case(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
 					break;
+			}
 		}
-		if(putc('\n', fp) == EOF)
-			cp = NIL;
+
+		dmslp->dmsl_status_or_new_ent = 210;
+		if((dmslp->dmsl_len = sp->s_len) > 0){
+			dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
+		}
 	}else{
 		if(a3p != NIL)
 			goto jecmd;
 
-		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
+		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_subj)){
 			np = (hp->h_subject != NIL) ? R(struct mx_name*,-1) : NIL;
 			goto jlist;
 		}
 		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "From")){
 			np = hp->h_from;
 jlist:
-			fprintf(fp, "%s %s\n", (np == NIL ? "501" : "210"), cp);
+			dmslp->dmsl_status_or_new_ent = (np == NIL) ? 501 : 210;
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 			goto jleave;
 		}
 
@@ -593,13 +778,12 @@ jlist:
 		a_X(Mailx-Orig-To, mailx_orig_to);
 		a_X(Mailx-Orig-Cc, mailx_orig_cc);
 		a_X(Mailx-Orig-Bcc, mailx_orig_bcc);
+#undef a_X
 
 		if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
 			np = ((hp->h_flags & HF_CMD_MASK) != HF_NONE) ? R(struct mx_name*,-1) : NIL;
 			goto jlist;
 		}
-
-#undef a_X
 
 		/* Free-form header fields */
 		for(cp = args->ca_arg.ca_str.s; *cp != '\0'; ++cp)
@@ -613,8 +797,9 @@ jlist:
 			if(hfp == NIL)
 				goto j501cp;
 			else if(!su_cs_cmp_case(cp, &hfp->hf_dat[0])){
-				if(fprintf(fp, "210 %s\n", &hfp->hf_dat[0]) < 0)
-					cp = NIL;
+				dmslp->dmsl_status_or_new_ent = 210;
+				dmslp->dmsl_dat = &hfp->hf_dat[0];
+				dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
 				break;
 			}
 		}
@@ -626,16 +811,16 @@ jlist:
 jcmd_remove:{ /* {{{ */
 	if(args == NIL || a3p != NIL)
 		goto jecmd;
-	if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
-	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
+	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){
 		if(hp->h_subject == NIL)
 			goto j501cp;
-
 		hp->h_subject = NIL;
-		if(fprintf(fp, "210 %s\n", cp) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_dat = a_dmsg_subj;
+		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
 		goto jleave;
 	}
 
@@ -644,8 +829,8 @@ jcmd_remove:{ /* {{{ */
 jrem:
 		if(*npp != NIL){
 			*npp = NIL;
-			if(fprintf(fp, "210 %s\n", cp) < 0)
-				cp = NIL;
+			dmslp->dmsl_status_or_new_ent = 210;
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 			goto jleave;
 		}else
 			goto j501cp;
@@ -669,7 +854,6 @@ jrem:
 	a_X(Message-ID, message_id);
 	a_X(References, ref);
 	a_X(In-Reply-To, in_reply_to);
-
 #undef a_X
 
 	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
@@ -691,10 +875,9 @@ jrem:
 			if(!su_cs_cmp_case(cp, &hfp->hf_dat[0])){
 				*hfpp = hfp->hf_next;
 				if(!any){
-					if(fprintf(fp, "210 %s\n", &hfp->hf_dat[0]) < 0){
-						cp = NIL;
-						goto jleave;
-					}
+					dmslp->dmsl_status_or_new_ent = 210;
+					dmslp->dmsl_dat = &hfp->hf_dat[0];
+					dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
 				}
 				any = TRU1;
 			}else
@@ -710,21 +893,31 @@ jrem:
 jcmd_remove_at:{ /* {{{ */
 	if(args == NIL || a3p == NIL)
 		goto jecmd;
-	if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
 	if((su_idec_uz_cp(&i, a3p->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 			) != su_IDEC_STATE_CONSUMED || i == 0){
-		if(fprintf(fp, "505 invalid position: %s\n", a3p->ca_arg.ca_str.s) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 505;
+		sp = n_string_trunc(sp, 0);
+		sp = n_string_push_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
+		sp = n_string_push_buf(sp, a3p->ca_arg.ca_str.s, a3p->ca_arg.ca_str.l);
+		dmslp->dmsl_len = sp->s_len;
+		dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+		su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
 		goto jleave;
 	}
 
-	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
+	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, a_dmsg_subj)){
 		if(hp->h_subject != NIL && i == 1){
 			hp->h_subject = NIL;
-			if(fprintf(fp, "210 %s 1\n", cp) < 0)
-				cp = NIL;
+			dmslp->dmsl_status_or_new_ent = 210;
+			dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
+			dmslp->dmsl_dat = a_dmsg_subj;
+
+			dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
+			x->dmsl_len = 1;
+			x->dmsl_dat = n_1;
 			goto jleave;
 		}else
 			goto j501cp;
@@ -747,8 +940,8 @@ jremat:
 		if(np->n_flink != NIL)
 			np->n_flink->n_blink = np->n_blink;
 
-		if(fprintf(fp, "210 %s\n", cp) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 		goto jleave;
 	}
 
@@ -770,7 +963,6 @@ jremat:
 	a_X(Message-ID, message_id);
 	a_X(References, ref);
 	a_X(In-Reply-To, in_reply_to);
-
 #undef a_X
 
 	if((cp = n_header_is_known(args->ca_arg.ca_str.s, UZ_MAX)) != NIL)
@@ -790,10 +982,18 @@ jremat:
 		for(hfpp = &hp->h_user_headers; (hfp = *hfpp) != NIL;){
 			if(--i == 0){
 				*hfpp = hfp->hf_next;
-				if(fprintf(fp, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], i) < 0){
-					cp = NIL;
-					goto jleave;
-				}
+
+				dmslp->dmsl_status_or_new_ent = 210;
+				dmslp->dmsl_dat = &hfp->hf_dat[0];
+				dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
+
+				i = su_cs_len(cp = su_ienc_uz(ienc_b, i, 10));
+				dmslp->dmsl_next = x = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + i +1);
+				x->dmsl_next = NIL;
+				x->dmsl_status_or_new_ent = FAL0;
+				x->dmsl_len = S(u32,i);
+				x->dmsl_dat = S(char*,&x[1]);
+				su_mem_copy(UNCONST(char*,x->dmsl_dat), cp, i +1);
 				break;
 			}else
 				hfpp = &hfp->hf_next;
@@ -809,7 +1009,7 @@ jcmd_show:{ /* {{{ */
 	if(args == NIL || a3p != NIL)
 		goto jecmd;
 
-	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Subject")){
+	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = a_dmsg_subj)){
 		if((sin.s = hp->h_subject) == NIL)
 			goto j501cp;
 		sin.l = su_cs_len(sin.s);
@@ -817,8 +1017,16 @@ jcmd_show:{ /* {{{ */
 		if(!mx_mime_display_from_header(&sin, &sou, mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT))
 			goto j501cp;
 
-		if(fprintf(fp, "212 %s\n%s\n\n", cp, a_DMSG_QUOTE(sou.s)) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 212;
+		dmslp->dmsl_len = sizeof(a_dmsg_subj) -1;
+		dmslp->dmsl_dat = a_dmsg_subj;
+
+		dmslp->dmsl_next = x = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + sou.l +1);
+		x->dmsl_next = NIL;
+		x->dmsl_status_or_new_ent = TRU1;
+		x->dmsl_len = S(u32,sou.l);
+		x->dmsl_dat = S(char*,&x[1]);
+		su_mem_copy(UNCONST(char*,x->dmsl_dat), sou.s, sou.l +1);
 
 		su_FREE(sou.s);
 		goto jleave;
@@ -830,8 +1038,11 @@ jshow:
 		if(np == NIL)
 			goto j501cp;
 
-		fprintf(fp, "211 %s\n", cp);
-		do if(!(np->n_type & GDEL)){
+		dmslp->dmsl_status_or_new_ent = 211;
+		dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
+
+		x = NIL;
+		for(x = NIL; np != NIL; np = np->n_flink){
 			char const *intro, *a;
 
 			switch(np->n_flags & mx_NAME_ADDRSPEC_ISMASK){
@@ -841,11 +1052,26 @@ jshow:
 			default: intro = np->n_name; break;
 			}
 
-			if((a = mx_mime_fromaddr(np->n_fullname)) != NIL)
-				fprintf(fp, "%s %s\n", intro, a_DMSG_QUOTE(a));
-		}while((np = np->n_flink) != NIL);
-		if(putc('\n', fp) == EOF)
-			cp = NIL;
+			if((a = mx_mime_fromaddr(np->n_fullname)) != NIL){ /* XXX error?? */
+				struct a_dmsg_sl *y;
+
+				y = su_LOFI_TALLOC(struct a_dmsg_sl, 2);
+				if(x != NIL)
+					x->dmsl_next = y;
+				else
+					dmslp->dmsl_next = y;
+				x = y;
+				x->dmsl_status_or_new_ent = TRU1;
+				x->dmsl_len = S(u32,su_cs_len(x->dmsl_dat = intro));
+
+				y = &y[1];
+				x->dmsl_next = y;
+				x = y;
+				x->dmsl_status_or_new_ent = FAL0;
+				x->dmsl_next = NIL;
+				x->dmsl_len = S(u32,su_cs_len(x->dmsl_dat = a));
+			}
+		}
 		goto jleave;
 	}
 
@@ -876,16 +1102,23 @@ jshow:
 	a_X(Mailx-Orig-To, mailx_orig_to);
 	a_X(Mailx-Orig-Cc, mailx_orig_cc);
 	a_X(Mailx-Orig-Bcc, mailx_orig_bcc);
+#undef a_X
 
+	x = 0;
 	if(!su_cs_cmp_case(args->ca_arg.ca_str.s, cp = "Mailx-Command")){
 		if((i = hp->h_flags & HF_CMD_MASK) == HF_NONE)
 			goto j501cp;
-		if(fprintf(fp, "212 %s\n%s\n\n", cp, a_dmsg_hf_cmd[HF_CMD_TO_OFF(i)]) < 0)
-			cp = NIL;
+
+		dmslp->dmsl_status_or_new_ent = 212;
+		dmslp->dmsl_len = sizeof("Mailx-Command") -1;
+		dmslp->dmsl_dat = cp;
+
+		dmslp->dmsl_next = x = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
+		x->dmsl_status_or_new_ent = TRU1;
+		x->dmsl_dat = a_dmsg_hf_cmd[HF_CMD_TO_OFF(i)];
+		x->dmsl_len = S(u32,su_cs_len(x->dmsl_dat));
 		goto jleave;
 	}
-
-#undef a_X
 
 	/* Free-form header fields */
 	/* C99 */{
@@ -900,23 +1133,36 @@ jshow:
 
 		for(any = FAL0, hfp = hp->h_user_headers; hfp != NIL; hfp = hfp->hf_next){
 			if(!su_cs_cmp_case(cp, &hfp->hf_dat[0])){
-				if(!any){
-					any = TRU1;
-					fprintf(fp, "212 %s\n", &hfp->hf_dat[0]);
-				}
+				struct a_dmsg_sl *y;
 
-				sin.l = su_cs_len(sin.s = &hfp->hf_dat[hfp->hf_nl +1]);
+				sin.s = &hfp->hf_dat[hfp->hf_nl +1];
+				sin.l = su_cs_len(sin.s);
 				mx_mime_display_from_header(&sin, &sou, mx_MIME_DISPLAY_ICONV | mx_MIME_DISPLAY_ISPRINT);
 
-				fprintf(fp, "%s\n", a_DMSG_QUOTE(sou.s));
+				y = su_LOFI_ALLOC(sizeof(struct a_dmsg_sl) + sou.l +1);
+
+				if(any)
+					x->dmsl_next = y;
+				else{
+					any = TRU1;
+					dmslp->dmsl_status_or_new_ent = 212;
+					dmslp->dmsl_dat = &hfp->hf_dat[0];
+					dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
+					dmslp->dmsl_next = y;
+				}
+				x = y;
+
+				x->dmsl_next = NIL;
+				x->dmsl_status_or_new_ent = TRU1;
+				x->dmsl_len = S(u32,sou.l);
+				x->dmsl_dat = S(char*,&x[1]);
+				su_mem_copy(UNCONST(char*,x->dmsl_dat), sou.s, sou.l +1);
 
 				su_FREE(sou.s);
 			}
 		}
 		if(!any)
 			goto j501cp;
-		if(putc('\n', fp) == EOF)
-			cp = NIL;
 	}
 
 	goto jleave;
@@ -928,7 +1174,7 @@ jcmd_x_decode:{ /* TODO v15-compat: not at all needed! {{{ */
 
 	if(args != NIL)
 		goto jecmd;
-	if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+	if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 		goto j505r;
 
 	if((sin.s = hp->h_subject) != NIL){
@@ -985,19 +1231,20 @@ jcmd_x_decode:{ /* TODO v15-compat: not at all needed! {{{ */
 		} /* XXX else error */
 	}
 
-	if(fputs("210\n", fp) == EOF)
-		cp = NIL;
-
+	dmslp->dmsl_status_or_new_ent = 210;
 	goto jleave;
 	} /* }}} */
 }
 /* }}} */
 
 /* a_dmsg__attach {{{ */
-static boole
-a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
+static struct a_dmsg_sl *
+a_dmsg__attach(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args, struct a_dmsg_sl *dmslp, struct n_string *sp){
+	char ienc_b[su_IENC_BUFFER_SIZE];
 	boole status;
 	struct mx_attachment *ap;
+	struct a_dmsg_sl *x;
+	uz i;
 	char const *cp;
 	struct header *hp;
 	NYD2_IN;
@@ -1021,35 +1268,54 @@ a_dmsg__attach(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg *args){
 			goto j501;
 
 jatt_att:
-		fprintf(fp, "212 %s\n", a_DMSG_QUOTE(cp));
-		if(ap->a_msgno > 0){
-			if(fprintf(fp, "message-number %d\n\n", ap->a_msgno) < 0)
-				cp = NIL;
-		}else{
-			fprintf(fp, "creation-name %s\nopen-path %s\nfilename %s\n",
-				a_DMSG_QUOTE(ap->a_path_user), a_DMSG_QUOTE(ap->a_path), a_DMSG_QUOTE(ap->a_name));
-			if((cp = ap->a_content_description) != NIL)
-				fprintf(fp, "content-description %s\n", a_DMSG_QUOTE(cp));
-			if(ap->a_content_id != NIL)
-				fprintf(fp, "content-id %s\n", ap->a_content_id->n_name);
-			if((cp = ap->a_content_type) != NIL)
-				fprintf(fp, "content-type %s\n", a_DMSG_QUOTE(cp));
-			if((cp = ap->a_content_disposition) != NIL)
-				fprintf(fp, "content-disposition %s\n", a_DMSG_QUOTE(cp));
-			cp = (putc('\n', fp) != EOF) ? su_empty : NIL;
+		dmslp->dmsl_status_or_new_ent = 212;
+		dmslp->dmsl_len = S(u32,su_cs_len(cp));
+		dmslp->dmsl_dat = cp;
+
+		if(ap->a_msgno > 0)
+			dmslp->dmsl_next = a_dmsg___line_tuple("message-number", FAL0,
+					su_ienc_uz(ienc_b, ap->a_msgno, 10), TRU1);
+		else{
+			dmslp->dmsl_next = x = a_dmsg___line_tuple("creation-name", FAL0, ap->a_path_user, FAL0);
+			x = x->dmsl_next;
+
+			x->dmsl_next = a_dmsg___line_tuple("open-path", FAL0, ap->a_path, FAL0);
+			x = x->dmsl_next->dmsl_next;
+
+			x->dmsl_next = a_dmsg___line_tuple("filename", FAL0, ap->a_name, FAL0);
+			x = x->dmsl_next->dmsl_next;
+
+			if((cp = ap->a_content_description) != NIL){
+				x->dmsl_next = a_dmsg___line_tuple("content-description", FAL0, cp, FAL0);
+				x = x->dmsl_next->dmsl_next;
+			}
+
+			if(ap->a_content_id != NIL){
+				x->dmsl_next = a_dmsg___line_tuple("content-id", FAL0, ap->a_content_id->n_name, FAL0);
+				x = x->dmsl_next->dmsl_next;
+			}
+
+			if((cp = ap->a_content_type) != NIL){
+				x->dmsl_next = a_dmsg___line_tuple("content-type", FAL0, cp, FAL0);
+				x = x->dmsl_next->dmsl_next;
+			}
+
+			if((cp = ap->a_content_disposition) != NIL){
+				x->dmsl_next = a_dmsg___line_tuple("content-disposition", FAL0, cp, FAL0);
+				x = x->dmsl_next->dmsl_next;
+			}
 		}
 	}else if(su_cs_starts_with_case("attribute-at", cp)){
-		uz i;
-
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;
 
-		if((su_idec_uz_cp(&i, cp = args->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+		cp = args->ca_arg.ca_str.s;
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) != su_IDEC_STATE_CONSUMED || i == 0)
 			goto j505invpos;
 
-		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink)
-			;
+		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink){
+		}
 		if(ap != NIL)
 			goto jatt_att;
 		goto j501;
@@ -1063,7 +1329,7 @@ jatt_att:
 
 		if(args == NIL || args->ca_next == NIL || args->ca_next->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
 		if((ap = mx_attachments_find(hp->h_attach, cp, NIL)) == NIL)
@@ -1071,8 +1337,15 @@ jatt_att:
 
 jatt_attset:
 		if(ap->a_msgno > 0){
-			if(fprintf(fp, "505 RFC822 message attachment: %s\n", cp) < 0)
-				cp = NIL;
+			static char const ca[] = "RFC822 message attachment: ";
+
+			dmslp->dmsl_status_or_new_ent = 505;
+			sp = n_string_trunc(sp, 0);
+			sp = n_string_push_buf(sp, ca, sizeof(ca) -1);
+			sp = n_string_push_cp(sp, cp);
+			dmslp->dmsl_len = sp->s_len;
+			dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len);
 		}else{
 			char c;
 			char const *keyw, *xcp;
@@ -1122,26 +1395,25 @@ jatt_attset:
 				cp = NIL;
 
 			if(cp != NIL){
-				uz i;
-
-				for(i = 0; ap != NIL; ++i, ap = ap->a_blink)
-					;
-				if(fprintf(fp, "210 %" PRIuZ "\n", i) < 0)
-					cp = NIL;
+				for(i = 0; ap != NIL; ++i, ap = ap->a_blink){
+				}
+				dmslp->dmsl_status_or_new_ent = 210;
+				i = su_cs_len(cp = su_ienc_uz(ienc_b, i, 10));
+				dmslp->dmsl_len = S(u32,i);
+				dmslp->dmsl_dat = su_LOFI_ALLOC(i +1);
+				su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), cp, i +1);
 			}else{
 				cp = xcp;
 				goto j505; /* xxx jecmd; */
 			}
 		}
 	}else if(su_cs_starts_with_case("attribute-set-at", cp)){
-		uz i;
-
 		cp = args->ca_arg.ca_str.s;
 		args = args->ca_next;
 
 		if(args == NIL || args->ca_next == NIL || args->ca_next->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
 		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -1158,29 +1430,30 @@ jatt_attset:
 
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
 		hp->h_attach = mx_attachments_append(hp->h_attach, args->ca_arg.ca_str.s, &aerr, &ap);
 		switch(aerr){
-		case mx_ATTACHMENTS_ERR_FILE_OPEN: cp = "505"; goto jatt__ins;
-		case mx_ATTACHMENTS_ERR_ICONV_FAILED: cp = "506"; goto jatt__ins;
+		case mx_ATTACHMENTS_ERR_FILE_OPEN: i = 505; goto jatt__ins;
+		case mx_ATTACHMENTS_ERR_ICONV_FAILED: i = 506; goto jatt__ins;
 		case mx_ATTACHMENTS_ERR_ICONV_NAVAIL: /* FALLTHRU */
 		case mx_ATTACHMENTS_ERR_OTHER: /* FALLTHRU */
 		default:
-			cp = "501";
+			i = 501;
 jatt__ins:
-			if(fprintf(fp, "%s %s\n", cp, a_DMSG_QUOTE(args->ca_arg.ca_str.s)) < 0)
-				cp = NIL;
+			dmslp->dmsl_status_or_new_ent = S(u32,i);
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = args->ca_arg.ca_str.s));
 			break;
-		case mx_ATTACHMENTS_ERR_NONE:{
-			uz i;
-
+		case mx_ATTACHMENTS_ERR_NONE:
 			for(i = 0; ap != NIL; ++i, ap = ap->a_blink){
 			}
-			if(fprintf(fp, "210 %" PRIuZ "\n", i) < 0)
-				cp = NIL;
-			}break;
+			dmslp->dmsl_status_or_new_ent = 210;
+			i = su_cs_len(cp = su_ienc_uz(ienc_b, i, 10));
+			dmslp->dmsl_len = S(u32,i);
+			dmslp->dmsl_dat = su_LOFI_ALLOC(i +1);
+			su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), cp, i +1);
+			break;
 		}
 	}else if(su_cs_starts_with_case("list", cp)){
 jdefault:
@@ -1190,16 +1463,19 @@ jdefault:
 		if((ap = hp->h_attach) == NIL)
 			goto j501;
 
-		fputs("212\n", fp);
-		do
-			fprintf(fp, "%s\n", a_DMSG_QUOTE(ap->a_path_user));
-		while((ap = ap->a_flink) != NIL);
-		if(putc('\n', fp) == EOF)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 212;
+		x = dmslp;
+		do{
+			x->dmsl_next = su_LOFI_TALLOC(struct a_dmsg_sl, 1);
+			x = x->dmsl_next;
+			x->dmsl_next = NIL;
+			x->dmsl_status_or_new_ent = TRU1;
+			x->dmsl_len = S(u32,su_cs_len(x->dmsl_dat = ap->a_path_user));
+		}while((ap = ap->a_flink) != NIL);
 	}else if(su_cs_starts_with_case("remove", cp)){
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
 		cp = args->ca_arg.ca_str.s;
@@ -1209,26 +1485,25 @@ jdefault:
 			goto j506;
 
 		hp->h_attach = mx_attachments_remove(hp->h_attach, ap);
-		if(fprintf(fp, "210 %s\n", a_DMSG_QUOTE(cp)) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 	}else if(su_cs_starts_with_case("remove-at", cp)){
-		uz i;
-
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
-		if((su_idec_uz_cp(&i, cp = args->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+		cp = args->ca_arg.ca_str.s;
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) != su_IDEC_STATE_CONSUMED || i == 0)
 			goto j505invpos;
 
-		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink)
-			;
+		for(ap = hp->h_attach; ap != NIL && --i != 0; ap = ap->a_flink){
+		}
 		if(ap != NIL){
 			hp->h_attach = mx_attachments_remove(hp->h_attach, ap);
-			if(fprintf(fp, "210 %s\n", cp) < 0)
-				cp = NIL;
+			dmslp->dmsl_status_or_new_ent = 210;
+			dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 		}else
 			goto j501;
 	}else
@@ -1236,43 +1511,44 @@ jdefault:
 
 jleave:
 	NYD2_OU;
-	return (cp != NIL);
+	return dmslp;
 
 jecmd:
-	if(fputs("500\n", fp) == EOF)
-		cp = NIL;
-	cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 500;
 	goto jleave;
 j501:
-	if(fputs("501\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 501;
 	goto jleave;
 j505:
-	if(fputs("505\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 505;
 	goto jleave;
 j505r:
-	if(fprintf(fp, "505 read-only: %s\n", cp) < 0)
-		cp = NIL;
-	goto jleave;
+	dmslp->dmsl_status_or_new_ent = 505;
+	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
+	goto jeapp;
 j505invpos:
-	if(fprintf(fp, "505 invalid position: %s\n", cp) < 0)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 505;
+	sp = n_string_assign_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
+jeapp:
+	sp = n_string_push_cp(sp, cp);
+	dmslp->dmsl_len = sp->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
 	goto jleave;
 j506:
-	if(fputs("506\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 506;
 	goto jleave;
 }
 /* }}} */
 
 /* a_dmsg__part X-SERIES {{{ */
-static boole
-a_dmsg__part(FILE *fp, struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg * volatile args){
+static struct a_dmsg_sl *
+a_dmsg__part(struct mx_dig_msg_ctx *dmcp, struct mx_cmd_arg * volatile args, struct a_dmsg_sl *dmslp, struct n_string *sp){
 	/* TODO `part': all of this is a gross hack to be able to write a simple
 	 * TODO mailing-list manager; after the MIME rewrite we have a tree of
 	 * TODO objects which can be created/deleted at will, and which know how to
 	 * TODO dump_to_{wire,user} themselves.  Until then we cut out bytes */
+	struct a_dmsg_sl *x;
 	struct mimepart *mp, *xmp, **mpp;
 	char const * volatile cp;
 	NYD2_IN;
@@ -1297,10 +1573,15 @@ jdefault:
 		if((mp = dmcp->dmc_mime) == NIL)
 			goto j501;
 
-		fputs("212\n", fp);
+		dmslp->dmsl_status_or_new_ent = 212;
+		x = dmslp;
 		while(mp != NIL){
-			if(mp->m_mime_type != mx_MIME_TYPE_DISCARD)
-				fprintf(fp, "%s\n", mp->m_ct_type_plain);
+			if(mp->m_mime_type != mx_MIME_TYPE_DISCARD){
+				x->dmsl_next = su_LOFI_TCALLOC(struct a_dmsg_sl, 1);
+				x = x->dmsl_next;
+				x->dmsl_status_or_new_ent = TRU1;
+				x->dmsl_len = S(u32,su_cs_len(x->dmsl_dat = mp->m_ct_type_plain));
+			}
 
 			if(mp->m_multipart != NIL)
 				mp = mp->m_multipart;
@@ -1312,17 +1593,16 @@ jdefault:
 			}
 			mp = mp->m_nextpart;
 		}
-		if(putc('\n', fp) == EOF)
-			cp = NIL;
 	}else if(su_cs_starts_with_case("remove-at", cp)){
 		uz i;
 
 		if(args == NIL || args->ca_next != NIL)
 			goto jecmd;
-		if(dmcp->dmc_flags & mx_DIG_MSG_RDONLY)
+		if(dmcp->dmc_flags & mx__DIG_MSG_RDONLY)
 			goto j505r;
 
-		if((su_idec_uz_cp(&i, cp = args->ca_arg.ca_str.s, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+		cp = args->ca_arg.ca_str.s;
+		if((su_idec_uz_cp(&i, cp, 0, NIL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
 				) != su_IDEC_STATE_CONSUMED || i == 0)
 			goto j505invpos;
 
@@ -1375,42 +1655,42 @@ jdefault:
 			mp = mp->m_nextpart;
 		*mpp = mp;
 
-		if(fprintf(fp, "210 %s\n", cp) < 0)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 210;
+		dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat = cp));
 	}else
 		goto jecmd;
 
 jleave:
 	NYD2_OU;
-	return (cp != NIL);
+	return dmslp;
 
 jecmd:
-	if(fputs("500\n", fp) == EOF)
-		cp = NIL;
-	cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 500;
 	goto jleave;
 j501:
-	if(fputs("501\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 501;
 	goto jleave;
 #ifdef mx_HAVE_REGEX
 j505:
-	if(fputs("505\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 505;
 	goto jleave;
 #endif
 j505r:
-	if(fprintf(fp, "505 read-only: %s\n", cp) < 0)
-		cp = NIL;
-	goto jleave;
+	dmslp->dmsl_status_or_new_ent = 505;
+	sp = n_string_assign_buf(sp, "read-only: ", sizeof("read-only: ") -1);
+	goto jeapp;
 j505invpos:
-	if(fprintf(fp, "505 invalid position: %s\n", cp) < 0)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 505;
+	sp = n_string_assign_buf(sp, "invalid position: ", sizeof("invalid position: ") -1);
+jeapp:
+	sp = n_string_push_cp(sp, cp);
+	dmslp->dmsl_len = sp->s_len;
+	dmslp->dmsl_dat = su_LOFI_ALLOC(sp->s_len +1);
+	su_mem_copy(UNCONST(char*,dmslp->dmsl_dat), n_string_cp(sp), sp->s_len +1);
 	goto jleave;
 /*
 j506:
-	if(fputs("506\n", fp) == EOF)
-		cp = NIL;
+	dmslp->dmsl_status_or_new_ent = 506;
 	goto jleave;
 */
 
@@ -1419,30 +1699,25 @@ jdump:{ /* X-SERIES */
 	struct n_sigman sm;
 	FILE * volatile ofp;
 
-	if(args == NIL)
-		ofp = fp;
-	else{
-		if(args->ca_next != NIL)
-			goto jecmd;
-		if(!su_cs_cmp(args->ca_arg.ca_str.s, n_hy))
-			ofp = fp;
-		else if((ofp = mx_fop_get_file_by_cp(args->ca_arg.ca_str.s)) == NIL)
-			goto j505;
-	}
+	if(args == NIL || args->ca_next != NIL)
+		goto jecmd;
+	if(!su_cs_cmp(args->ca_arg.ca_str.s, n_hy))
+		ofp = n_stdout;
+	else if((ofp = mx_fop_get_file_by_cp(args->ca_arg.ca_str.s)) == NIL)
+		goto j505;
 
 	if((mp = dmcp->dmc_mime) == NIL)
 		goto j501;
 
 	n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 	case 0:
-		su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+		su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
 		break;
 	default:
 jedump_506:
-		su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
+		su_mem_bag_push(su_MEM_BAG_SELF, dmcp->dmc_membag);
 
-		if(fputs("506\n", fp) == EOF)
-			cp = NIL;
+		dmslp->dmsl_status_or_new_ent = 506;
 
 		n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 		goto jleave;
@@ -1468,15 +1743,57 @@ jedump_506:
 
 	n_sigman_cleanup_ping(&sm);
 
-	su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
+	su_mem_bag_push(su_MEM_BAG_SELF, dmcp->dmc_membag);
 
 	n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 
-	if(fprintf(fp, "210 %s\n", (args == NIL ? n_hy : args->ca_arg.ca_str.s)) < 0)
-		cp = NIL;
-	}
-	goto jleave;
+	dmslp->dmsl_status_or_new_ent = 210;
+	dmslp->dmsl_dat = (args == NIL) ? n_hy : args->ca_arg.ca_str.s;
+	dmslp->dmsl_len = S(u32,su_cs_len(dmslp->dmsl_dat));
+	}goto jleave;
 #endif /* mx_HAVE_REGEX */
+}
+/* }}} */
+
+/* a_dmsg___line_tuple {{{ */
+static struct a_dmsg_sl *
+a_dmsg___line_tuple(char const *name, boole ndup, char const *value, boole vdup){
+	char *cp;
+	struct a_dmsg_sl *rv, *x;
+	uz l1, l2;
+	NYD2_IN;
+
+	l1 = su_cs_len(name);
+	l2 = su_cs_len(value);
+
+	rv = su_LOFI_ALLOC((sizeof(struct a_dmsg_sl) * 2) + (ndup ? l1 +1 : 0) + (vdup ? l2 +1 : 0));
+	cp = S(char*,&rv[2]);
+
+	x = &rv[0];
+	x->dmsl_next = &rv[1];
+	x->dmsl_status_or_new_ent = TRU1;
+	x->dmsl_len = S(u32,l1);
+	if(!ndup)
+		x->dmsl_dat = name;
+	else{
+		x->dmsl_dat = cp;
+		su_mem_copy(cp, name, ++l1);
+		cp += l1;
+	}
+
+	x = &rv[1];
+	x->dmsl_next = NIL;
+	x->dmsl_status_or_new_ent = FAL0;
+	x->dmsl_len = S(u32,l2);
+	if(!vdup)
+		x->dmsl_dat = value;
+	else{
+		x->dmsl_dat = cp;
+		su_mem_copy(cp, value, ++l2);
+	}
+
+	NYD2_OU;
+	return rv;
 }
 /* }}} */
 
@@ -1486,10 +1803,11 @@ mx_dig_msg_on_mailbox_close(struct mailbox *mbp){ /* XXX HACK <- event! */
 	NYD_IN;
 
 	while((dmcp = mbp->mb_digmsg) != NIL){
+		ASSERT(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE));
 		mbp->mb_digmsg = dmcp->dmc_next;
-		if(dmcp->dmc_flags & mx_DIG_MSG_FCLOSE)
+		if(dmcp->dmc_flags & mx__DIG_MSG_OWN_FD)
 			fclose(dmcp->dmc_fp);
-		if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
+		if(dmcp->dmc_flags & mx__DIG_MSG_OWN_MEMBAG)
 			su_mem_bag_gut(dmcp->dmc_membag);
 		su_FREE(dmcp);
 	}
@@ -1497,6 +1815,7 @@ mx_dig_msg_on_mailbox_close(struct mailbox *mbp){ /* XXX HACK <- event! */
 	NYD_OU;
 }
 
+/* c_digmsg {{{ */
 int
 c_digmsg(void * volatile vp){
 	struct n_sigman sm;
@@ -1520,7 +1839,7 @@ c_digmsg(void * volatile vp){
 		/* Request to use STDOUT? */
 		if(cacp->cac_no == 3){
 			cp = cap->ca_next->ca_arg.ca_str.s;
-			if(*cp != '-' || cp[1] != '\0'){
+			if(cp[1] != '\0' || (cp[0] != '-' && cp[0] != '^')){
 				emsg = N_("digmsg: create: invalid I/O channel: %s\n");
 				goto jeinval_quote;
 			}
@@ -1538,8 +1857,8 @@ c_digmsg(void * volatile vp){
 			break;
 		}
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)
-			dmcp->dmc_flags = mx_DIG_MSG_COMPOSE | mx_DIG_MSG_COMPOSE_DIGGED;
+		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)
+			dmcp->dmc_flags = mx__DIG_MSG_COMPOSE | mx__DIG_MSG_COMPOSE_DIGGED;
 		else{
 			FILE *fp;
 
@@ -1555,10 +1874,10 @@ c_digmsg(void * volatile vp){
 			have_sm = TRU1;
 			n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 			case 0:
-				su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
+				su_mem_bag_push(su_MEM_BAG_SELF, dmcp->dmc_membag);
 				break;
 			default:
-				su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+				su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
 				vp = NIL;
 				goto jeremove;
 			}
@@ -1570,7 +1889,7 @@ c_digmsg(void * volatile vp){
 			/* X-SERIES */
 			if(*cacp->cac_arg->ca_arg.ca_str.s == 'x'){
 				if((dmcp->dmc_mime = mx_mime_parse_msg(dmcp->dmc_mp, mx_MIME_PARSE_PARTS)) == NIL){
-					su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+					su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
 					n_err(_("digmsg: create: cannot parse MIME\n"));
 					vp = NIL;
 					goto jeremove;
@@ -1579,23 +1898,37 @@ c_digmsg(void * volatile vp){
 				/* TODO for now x-create strips RDONLY; we need a regular approach
 				 * TODO though, the question is how?  Strip on request?  Keep in
 				 * TODO mind original state nonetheless? Allow saving/dumping?? */
-				dmcp->dmc_flags &= ~mx_DIG_MSG_RDONLY;
+				dmcp->dmc_flags &= ~mx__DIG_MSG_RDONLY;
 			}
 
 			n_sigman_cleanup_ping(&sm);
 
-			su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+			su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
 		}
 
-		if(cacp->cac_no == 3)
-			dmcp->dmc_fp = n_stdout;
-		/* For compose mode simply do no use FS_O_NOREGISTER, the number of dangling deleted files with open
-		 * descriptors until next fs_close_all() should be very small; if this paradigm is changed
-		 * DIG_MSG_COMPOSE_GUT() needs to be adjusted */
-		else if((dmcp->dmc_fp = mx_fs_tmp_open(NIL, "digmsg", (mx_FS_O_RDWR | mx_FS_O_UNLINK |
-					((dmcp->dmc_flags & mx_DIG_MSG_COMPOSE) ? 0 : mx_FS_O_NOREGISTER)), NIL)
-				) != NIL)
-			dmcp->dmc_flags |= mx_DIG_MSG_HAVE_FP | (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE ? 0 : mx_DIG_MSG_FCLOSE);
+		if(cacp->cac_no == 3){
+			cap = cap->ca_next;
+			if(cap->ca_arg.ca_str.s[1] != '\0')
+				goto jesynopsis;
+			switch(cap->ca_arg.ca_str.s[0]){
+			case '^':
+				dmcp->dmc_flags |= mx__DIG_MSG_MODE_CARET;
+				break;
+			case '-':
+				dmcp->dmc_flags |= mx__DIG_MSG_MODE_FP;
+				dmcp->dmc_fp = n_stdout;
+				break;
+			default:
+				goto jesynopsis;
+			}
+		}
+		/* We must set mx_FS_O_NOREGISTER to avoid cleanup on main loop tick!
+		 * For *the* compose mode object (_DIGGED prevents multi-instance opens) do not mind, but to avoid too
+		 * many stale descriptors for multiple create/remove, special-case their removals */
+		else if((dmcp->dmc_fp = mx_fs_tmp_open(NIL, "digmsg",
+				(mx_FS_O_RDWR | mx_FS_O_UNLINK |
+				 ((dmcp->dmc_flags & mx__DIG_MSG_COMPOSE) ? 0 : mx_FS_O_NOREGISTER)), NIL)) != NIL)
+			dmcp->dmc_flags |= mx__DIG_MSG_MODE_FP | mx__DIG_MSG_OWN_FD;
 		else{
 			n_err(_("digmsg: create: cannot create temporary file: %s\n"),
 				su_err_doc(n_pstate_err_no = su_err()));
@@ -1603,7 +1936,7 @@ c_digmsg(void * volatile vp){
 			goto jeremove;
 		}
 
-		if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)){
+		if(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)){
 			dmcp->dmc_last = NIL;
 			if((dmcp->dmc_next = mb.mb_digmsg) != NIL)
 				dmcp->dmc_next->dmc_last = dmcp;
@@ -1619,7 +1952,7 @@ c_digmsg(void * volatile vp){
 			emsg = N_("digmsg: remove: message number invalid: %s\n");
 			goto jeinval_quote;
 		default:
-			if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE) || (dmcp->dmc_flags & mx_DIG_MSG_COMPOSE_DIGGED))
+			if(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE) || (dmcp->dmc_flags & mx__DIG_MSG_COMPOSE_DIGGED))
 				break;
 			/* FALLTHRU */
 		case su_ERR_NOENT:
@@ -1627,7 +1960,7 @@ c_digmsg(void * volatile vp){
 			goto jeinval_quote;
 		}
 
-		if(!(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE)){
+		if(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)){
 			if(dmcp->dmc_last != NIL)
 				dmcp->dmc_last->dmc_next = dmcp->dmc_next;
 			else{
@@ -1638,18 +1971,27 @@ c_digmsg(void * volatile vp){
 				dmcp->dmc_next->dmc_last = dmcp->dmc_last;
 		}
 
-		if((dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP) && mx_dig_msg_read_overlay == dmcp)
-			mx_dig_msg_read_overlay = NIL;
+		if(dmcp->dmc_flags & mx__DIG_MSG_MODE_FP){
+			if(mx_dig_msg_read_overlay == dmcp)
+				mx_dig_msg_read_overlay = NIL;
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_FCLOSE)
-			fclose(dmcp->dmc_fp);
+			if(dmcp->dmc_flags & mx__DIG_MSG_OWN_FD){
+				if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE)
+					mx_fs_close(dmcp->dmc_fp);
+				else
+					fclose(dmcp->dmc_fp);
+			}
+		}
 jeremove:
-		if(dmcp->dmc_flags & mx_DIG_MSG_OWN_MEMBAG)
+		if(dmcp->dmc_flags & mx__DIG_MSG_OWN_MEMBAG){
+			ASSERT(!(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE));
 			su_mem_bag_gut(dmcp->dmc_membag);
+		}
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_COMPOSE){
-			dmcp->dmc_flags = mx_DIG_MSG_COMPOSE;
-			dmcp->dmc_fp = mx_DIG_MSG_COMPOSE_DEF_FD; /* Restore default */
+		/* For compose mode default object simply restore defaults */
+		if(dmcp->dmc_flags & mx__DIG_MSG_COMPOSE){
+			dmcp->dmc_flags = mx__DIG_MSG_COMPOSE_FLAGS;
+			dmcp->dmc_fp = n_stdout;
 		}else
 			su_FREE(dmcp);
 	}else{
@@ -1665,15 +2007,19 @@ jeremove:
 		}
 		cap = cap->ca_next;
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
-			rewind(dmcp->dmc_fp);
-			ftruncate(fileno(dmcp->dmc_fp), 0);
+		if(dmcp->dmc_flags & mx__DIG_MSG_MODE_FP){
+			if(dmcp->dmc_flags & mx__DIG_MSG_OWN_FD){
+				rewind(dmcp->dmc_fp);
+				ftruncate(fileno(dmcp->dmc_fp), 0);
+			}else
+				clearerr(dmcp->dmc_fp);
 		}
 
 		have_sm = TRU1;
 		n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
 		case 0:
-			su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
+			su_mem_bag_push(su_MEM_BAG_SELF, dmcp->dmc_membag);
+			ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
 
 			if(!a_dmsg_cmd(dmcp->dmc_fp, dmcp, cap, ((cap != NIL) ? cap->ca_next : NIL)))
 				vp = NIL;
@@ -1685,10 +2031,13 @@ jeremove:
 
 		n_sigman_cleanup_ping(&sm);
 
-		su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+		su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
 
-		if(dmcp->dmc_flags & mx_DIG_MSG_HAVE_FP){
-			rewind(dmcp->dmc_fp);
+		if(dmcp->dmc_flags & mx__DIG_MSG_MODE_FP){
+			if(dmcp->dmc_flags & mx__DIG_MSG_OWN_FD)
+				rewind(dmcp->dmc_fp);
+			else
+				clearerr(dmcp->dmc_fp);
 			/* This will be reset by go_input() _if_ we read to EOF */
 			mx_dig_msg_read_overlay = dmcp;
 		}
@@ -1699,7 +2048,7 @@ jleave:
 		n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 
 	NYD_OU;
-	return (vp == NIL);
+	return (vp != NIL ? su_EX_OK : su_EX_ERR);
 
 jesynopsis:
 	mx_cmd_print_synopsis(mx_cmd_by_arg_desc(cacp->cac_desc), NIL);
@@ -1712,9 +2061,11 @@ jeinval:
 	vp = NIL;
 	goto jleave;
 }
+/* }}} */
 
+/* mx_dig_msg_caret {{{ */
 boole
-mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp, char const *cmd){
+mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd){
 	/* Identical to (subset of) c_digmsg() cmd-tab */
 	mx_CMD_ARG_DESC_SUBCLASS_DEF_NAME(dm, "digmsg", 5, pseudo_cad){
 		{mx_CMD_ARG_DESC_SHEXP | mx_CMD_ARG_DESC_HONOUR_STOP,
@@ -1731,14 +2082,15 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp
 	}mx_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 	struct mx_cmd_arg_ctx cac;
-	struct su_mem_bag *membag, membag__buf[1];
+	struct su_mem_bag membag;
 	boole rv;
+	struct mx_dig_msg_ctx *dmcp;
 	NYD_IN;
 
-	ASSERT(mx_go_data->gdc_membag == dmcp->dmc_membag);
-	ASSERT(su_mem_bag_top(dmcp->dmc_membag) == dmcp->dmc_membag);
-	membag = su_mem_bag_create(&membag__buf[0], 0);
-	su_mem_bag_push(mx_go_data->gdc_membag, membag);
+	dmcp = mx_dig_msg_compose_ctx;
+
+	ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
+	su_mem_bag_push(su_MEM_BAG_SELF, su_mem_bag_create(&membag, 0));
 
 	cac.cac_desc = mx_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
 	cac.cac_indat = cmd;
@@ -1748,17 +2100,30 @@ mx_dig_msg_circumflex(struct mx_dig_msg_ctx *dmcp, enum mx_scope scope, FILE *fp
 	rv = mx_cmd_arg_parse(&cac, scope, FAL0);
 
 	if(rv){
-		su_mem_bag_push(mx_go_data->gdc_membag, dmcp->dmc_membag);
-		rv = a_dmsg_cmd(fp, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
-		su_mem_bag_pop(mx_go_data->gdc_membag, dmcp->dmc_membag);
+		BITENUM(u32,mx_dig_msg_flags) f;
+
+		su_mem_bag_push(su_MEM_BAG_SELF, dmcp->dmc_membag);
+		ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
+
+		f = dmcp->dmc_flags;
+		dmcp->dmc_flags = ((f & ~mx__DIG_MSG_MODE_MASK) |
+				(force_mode_caret ? mx__DIG_MSG_MODE_CARET : mx__DIG_MSG_MODE_FP));
+		rv = a_dmsg_cmd(n_stdout, dmcp, cac.cac_arg, cac.cac_arg->ca_next);
+		dmcp->dmc_flags = f;
+
+		su_mem_bag_pop(su_MEM_BAG_SELF, dmcp->dmc_membag);
+
+		/*if(!rv)
+		 *	clearerr(n_stdout); XXX no: yet done in caller */
 	}
 
-	su_mem_bag_pop(mx_go_data->gdc_membag, membag);
-	su_mem_bag_gut(membag);
+	su_mem_bag_pop(su_MEM_BAG_SELF, &membag);
+	su_mem_bag_gut(&membag);
 
 	NYD_OU;
 	return rv;
 }
+/* }}} */
 
 #include "su/code-ou.h"
 #undef su_FILE

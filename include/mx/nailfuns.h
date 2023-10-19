@@ -1062,9 +1062,6 @@ FL char *savecatsep(char const *cp1, char sep, char const *cp2
 # define savecatsep(S1,SEP,S2) savecatsep(S1, SEP, S2  su_DVL_LOC_ARGS_INJ)
 #endif
 
-/* Make copy of argument incorporating old one, if set, separated by space */
-#define save2str(S,O)            savecatsep(O, ' ', S)
-
 /* strcat */
 #define savecat(S1,S2)           savecatsep(S1, '\0', S2)
 

@@ -548,10 +548,10 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
 
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(forward_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_push(su_MEM_BAG_SELF, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_pop(su_MEM_BAG_SELF, cqcp->cqc_membag_persist);
       }
 
       if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
@@ -566,10 +566,10 @@ a_coll_quote_message(struct a_coll_quote_ctx *cqcp){
    }else{
       if(cqcp->cqc_add_cc && cqcp->cqc_hp != NIL && ok_blook(quote_add_cc)){
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_push(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_push(su_MEM_BAG_SELF, cqcp->cqc_membag_persist);
          a_collect_add_sender_to_cc(cqcp->cqc_hp, cqcp->cqc_mp);
          if(cqcp->cqc_membag_persist != NIL)
-            su_mem_bag_pop(mx_go_data->gdc_membag, cqcp->cqc_membag_persist);
+            su_mem_bag_pop(su_MEM_BAG_SELF, cqcp->cqc_membag_persist);
       }
 
       if(cqcp->cqc_quoteitp == NIL)
@@ -907,9 +907,9 @@ a_coll_forward(enum mx_scope scope, char const *ms, FILE *fp,
    msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
    su_mem_copy(msgvec, n_msgvec, sizeof(*msgvec) * S(uz,rv));
 
-   su_mem_set(&cqc, 0, sizeof cqc);
-   cqc.cqc_membag_persist = su_mem_bag_top(mx_go_data->gdc_membag);
-   su_mem_bag_push(mx_go_data->gdc_membag, su_mem_bag_create(&membag, 0));
+   STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
+   cqc.cqc_membag_persist = su_mem_bag_top(su_MEM_BAG_SELF);
+   su_mem_bag_push(su_MEM_BAG_SELF, su_mem_bag_create(&membag, 0));
    cqc.cqc_fp = fp;
    cqc.cqc_hp = hp;
    cqc.cqc_add_cc = TRU1;
@@ -950,7 +950,7 @@ a_coll_forward(enum mx_scope scope, char const *ms, FILE *fp,
    n_autorec_relax_gut();
    fprintf(n_stdout, "\n");
 
-   su_mem_bag_pop(mx_go_data->gdc_membag, &membag);
+   su_mem_bag_pop(su_MEM_BAG_SELF, &membag);
    su_mem_bag_gut(&membag);
 
 jleave:
@@ -1202,7 +1202,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp,
          if(mp != NIL){
             struct a_coll_quote_ctx cqc;
 
-            su_mem_set(&cqc, 0, sizeof cqc);
+            STRUCT_ZERO(struct a_coll_quote_ctx, &cqc);
             cqc.cqc_fp = _coll_fp;
             cqc.cqc_hp = hp;
             if(msf & n_MAILSEND_IS_FWD){
@@ -1460,6 +1460,8 @@ jputnl:
             c = *++cp;
          }
       }
+
+      /* Trim whitespace, NUL terminate */
       if(cnt > 0){
          ++cp;
          while(--cnt > 0 && su_cs_is_space(*cp))
@@ -1551,6 +1553,7 @@ jearg:
          break;
       /* case '<': <> 'd' */
       case '?':
+         /* (ISO C string size limits) */
          fputs(_(
 "COMMAND ESCAPES (to be placed after a newline; excerpt).\n"
 "~: <command>  Execute command\n"
@@ -1598,16 +1601,22 @@ jearg:
          n_pstate_err_no = su_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
          }break;
-      case '^':
-         if(!mx_dig_msg_circumflex(&dmc, scope, n_stdout, cp)){
-            if(ferror(_coll_fp))
+      case '^':{
+         boole force_mode_caret;
+
+         if((force_mode_caret = (*cp == '^')))
+            ++cp;
+         if(!mx_dig_msg_caret(scope, force_mode_caret, cp)){
+            if(ferror(n_stdout)){/* xxx */
+               clearerr(n_stdout);
                goto jerr;
+            }
             goto jearg;
          }
          n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          hist &= ~a_HIST_GABBY;
-         break;
+         }break;
       /* case '_': <> ':' */
       case '|':
          /* Pipe message through command. Collect output as new message */
