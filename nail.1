@@ -1196,10 +1196,31 @@ which are pretty restricted due to the nature of the operation.)
 .Pp
 Once ready
 .Ic ~.
-will leave compose mode, call according hooks, perform auto-insertions
-.Pf ( Va message-inject-tail , autocc , autobcc ) ,
-and pass the final message to the
-.Va mta .
+leaves compose mode:
+.Va on-compose-splice-shell
+and
+.Va on-compose-splice
+hooks are called (in order);
+in interactive mode
+.Va askatend
+(leading to
+.Va askcc , askbcc )
+and
+.Va askattach
+will be checked, then
+.Va asksend
+is honoured;
+Thereafter a set
+.Va on-compose-leave
+hook may perform final message adjustments via
+.Ic digmsg ;
+finally
+.Va autocc
+and
+.Va autobcc
+are joined into receiver lists, and a given
+.Va message-inject-tail
+will be inserted.
 Unless
 .Va ignoreeof
 is set typing end-of-transmission (EOT)
@@ -1219,9 +1240,6 @@ Typing end-of-text (ETX) twice via
 .Pf ( Ql ^C )
 equals
 .Ic ~q .
-With
-.Va asksend
-set a confirmation is required.
 .
 .Pp
 .Sx COMMANDS
@@ -5221,35 +5239,47 @@ d; also see
 .
 .Mx
 .It Ic digmsg
-\*(NQ An object that digs (information out of) a message can be
+\*(NQ An inspection object can be
 .Cm create Ns
 d for the given message number; in
 .Sx "Compose mode"
-the hyphen-minus
+hyphen-minus
 .Ql -
-instead uses the draft message.
-The optional third argument hyphen-minus redirects object output
-to standard output instead of making it consumable by
+addresses the message draft.
+By default output of each subcommand has to be consumed via
 .Ic readall ,
 .Ic read
 or
-.Ic readsh .
-Without redirection output must always be consumed (until end of
-file, EOF)!
-Objects should be
+.Ic readsh
+(until end of file, EOF); the optional third argument selects
+an output mode: circumflex
+.Ql ^
+stores results in the
+.Va ^
+multiplexer sub-variables
+.Va ^# , ^0 , ^1
+etc,
+.Ql -
+selects standard output.
+Objects can be
 .Cm remove Ns
-d to prevent resource exhaustion; this is done automatically when their
+d to release resources; leaving their
 .Ic folder
-(or compose mode) is left.
-The special compose mode object can also be used without creating it,
-but then always redirects to standard output.
-.Pp
-In all other use cases the first argument is the object's message
-number, the remaining arguments are interpreted as for
+does so automatically.
+The compose mode object is special, it can be used directly, without
+.Cm create
+(or after
+.Cm remove )
+it places results in the
+.Va ^
+multiplexer; it is removed when compose mode is left.
+In all other use cases the first argument is the object identifier,
+and remaining arguments are interpreted as for
 .Ic ~^
 .Pf ( Sx "COMMAND ESCAPES" ) :
 .Bd -literal -offset indent
-vput = msgno; digmsg create $msgno
+vput = msgno
+digmsg create $msgno
 digmsg $msgno header list;   readall x;   echon $x
 \*(OU210 Subject From To Message-ID References In-Reply-To
 digmsg $msgno header show Subject;readall x;echon $x
@@ -5257,6 +5287,12 @@ digmsg $msgno header show Subject;readall x;echon $x
 \*(OU\(aqHello, world'
 \*(OU
 digmsg remove $msgno
+
+vput = mn
+digmsg crea $mn ^
+digmsg $mn he sh Subject; ec $^0: $^#: $^1: $^2
+\*(OU212: 2: Subject: Hello, world
+digmsg rem $mn
 .Ed
 .
 .Mx
@@ -8287,28 +8323,7 @@ is set (see there); reverse solidus has no other special meaning.
 .Mx
 .It Ic ~.
 .Sx "Compose mode"
-is left, and the message is sent.
-The hooks
-.Va on-compose-splice-shell
-and
-.Va on-compose-splice ,
-in order, are called when set, after which, in interactive mode,
-.Va askatend
-(leading to
-.Va askcc , askbcc )
-and
-.Va askattach
-will be checked as well as
-.Va asksend ,
-after which a set
-.Va on-compose-leave
-hook will be called,
-.Va autocc
-and
-.Va autobcc
-will be joined in if set, finally a given
-.Va message-inject-tail
-will be incorporated.
+(see there) is left, and the message is sent.
 .
 .Mx
 .It Ic ~: Ar command Ns \0or Ic ~_ Ar command
@@ -8423,7 +8438,25 @@ and
 .Cm eval ,
 to name a few.
 Responses must be fully consumed before further commands can be issued!
-Status codes:
+.
+.Pp
+.Ql ~^^
+does not use the input/output protocol, but instead stores results in the
+.Va ^
+multiplexer sub-variables
+.Va ^# , ^0 , ^1
+etc:
+.Va ^0
+stores the status code, the remains are those sequential fields that
+otherwise make up lines,
+.Dq missing
+optional fields are stored as empty results, also meaning that
+.Va ^1
+may hold what would make up optional status code line remains.
+Variable values are not quoted,
+.Va ^@
+is to be expanded to achieve this result.
+The status codes are:
 .
 .
 .Pp
@@ -8475,17 +8508,15 @@ a single address only.
 .
 .
 .Pp
+All
+.Ql 50x
+status codes may show additional data on the rest of the line.
 The message remains unmodified upon error.
 Most commands can fail with
 .Ql 500
 if required arguments are missing, or on otherwise false command usage.
-(\*(ID The latter does not yet occur regularly, because as stated in
-.Sx "Shell-style argument quoting"
-our argument parser is not yet smart enough to work on subcommand base;
-for example one might get excess argument error for a three argument
-subcommand that receives four arguments, but not for a four argument
-subcommand which receives six arguments: here excess will be joined.)
-The following (case-insensitive) commands are supported:
+The following (case-insensitive) commands and sub-commands are
+supported, abbreviating is possible:
 .
 .
 .Bl -hang -width ".It Cm version"
@@ -8770,20 +8801,18 @@ for using this command in
 .Ic vexpr
 can be used to convert times, for example:
 .Bd -literal -offset indent
-digmsg create 1
-digmsg 1 epoch
-readsh t1 t2
-if $t1 -eq 210
-  vput vexpr t1 date-utc $t2
-end
-ec t1: $t1
-\*(OUt1: dutc_year=2023 [..]
-digmsg remove 1
+dig cre 1 ^
+dig 1 epo
+if $^0 -eq 210
+  vex date-utc $^1
+en
+dig rem 1
+\*(OUdutc_year=2023 [..]
 .Ed
 .
 .It Cm help , \&?
 Show a command abstract via
-.Ql 211 .
+.Ql 212 .
 .
 .It Cm version
 Print the protocol version via
@@ -9304,7 +9333,12 @@ will likely be used.
 .Mx
 .Mx
 .It Va ^? , ^* , ^@ , ^# , ^0 , ^1 , ..
-Access extended
+Access, in the
+.Cm local Ns
+-\:most
+.Mx -sx
+.Sx scope ,
+extended
 .Ic return
 values of the last
 .Mx -sx
@@ -9316,14 +9350,13 @@ is true), regular expression match groups as created for example by
 .Ic if
 and
 .Ic vexpr ,
-and other dedicated documented result sets, for example of
+as well as other dedicated (documented) result sets, for example of
 .Ic fop
 .Cm \&\&glob ,
-in the
-.Cm local Ns
--\:most
-.Mx -sx
-.Sx scope .
+or the circumflex mode of
+.Ic digmsg
+and
+.Ic ~^ .
 .Va \&\&^#
 holds the number of accessible values
 .Pf ( Va \&\&^1
@@ -11345,77 +11378,72 @@ The specialized form is used in favour of the generic one if found.
 .It Va on-compose-cleanup
 .Mx -sx
 .Sx Macro
-hook which will be called after the message has been sent (or not,
-in case of failures), as the very last step before unrolling compose mode
+hook called as the last step inside
+.Sx "Compose mode"
 .Mx -sx
 .Sx scope .
-This hook is run even in case of fatal errors, and it is advisable to
-perform only absolutely necessary actions, like cleaning up
-.Ic alternates ,
-for example.
-.Pp
-For compose mode hooks that may affect the message content see
-.Va on-compose-enter , on-compose-leave , on-compose-splice .
-\*(ID This hook exists because
+It is run even in case of fatal errors, and it is advisable to
+perform only absolutely necessary actions.
+\*(ID This hook mostly exists because
 .Ic alias , alternates , commandalias , shortcut ,
-to name a few, are not yet covered by
-.Cm local
-or
-.Cm our
-.Mx -sx
-.Sx scope :
-changes applied in compose mode will continue to be in effect thereafter.
-.
+to name a few, are not yet covered by scopes:
+changes applied in
+.Sx "Compose mode"
+will continue to be in effect thereafter.
 .
 .Mx
-.Mx
-.It Va on-compose-enter , on-compose-leave
+.It Va on-compose-enter
 .Mx -sx
 .Sx Macro
-hooks which will be called once compose mode is entered,
-and after composing has been finished, respectively;
-the exact order of the steps taken is documented for
-.Ic ~. ,
-one of the
-.Sx "COMMAND ESCAPES" .
-Context about the message being worked on can be queried via
-.Ic digmsg .
-.Va on-compose-cleanup
-can be used to perform other necessary cleanup steps.
+hook that is invoked once
+.Sx "Compose mode"
+is entered;
+.Ic digmsg
+may access the message.
 .
-.Pp
-Here is an example that injects a signature (also see
+.
+.Mx
+.It Va on-compose-leave
+.Mx -sx
+.Sx Macro
+hook which is run before
+.Sx "Compose mode"
+is left; the message can be accessed via
+.Ic digmsg .
+Here is an example that injects a signature via
+.Va message-inject-tail
+(but also see
 .Va Sign , sign
 as well as
-.Ic ~A , ~a )
-via
-.Va message-inject-tail ;
-instead using
+.Ic ~A , ~a ) ;
+using
 .Va on-compose-splice
-to simply inject the file of desire via
+to inject the file of desire via
 .Ic ~<
 or
 .Ic ~<!
-may be a better approach.
+.Sx "COMMAND ESCAPES"
+might be a better approach.
 .
 .Bd -literal -offset indent
+set on-compose-leave=t_ocl
 define t_ocl {
-  vput ! i cat ~/.mysig
+  local vput ! i cat ~/.mysig
   if $? -eq 0
-     vput csop message-inject-tail trim-end $i
-  end
-
-  # Alternatively
+     vput csop i trim-end $i
+     our se message-inject-tail=$i
+  en
+}
+define t_ocl {
   readctl create ~/.mysig
   if $? -eq 0
-    readall i
-    if $? -eq 0
-      vput csop message-inject-tail trim-end $i
-    end
+    local readall i
+    if $? -gt 0
+      our vput csop message-inject-tail trim-end $i
+    en
     readctl remove ~/.mysig
-  end
+  en
 }
-set on-compose-leave=t_ocl
 .Ed
 .
 .
@@ -11426,7 +11454,7 @@ These hooks run after compose mode is finished, but before
 .Va on-compose-leave .
 Both are executed in a subprocess, with their input and output connected
 such that they can act like an interactive user: \*(Xx's output they
-.Ic read ,
+.Ic readsh ,
 input for \*(Xx they can
 .Ic echo .
 Whereas the latter is a
@@ -11434,7 +11462,7 @@ Whereas the latter is a
 command, the former is a
 .Mx -sx
 .Sx Macro
-that is evaluated in a restricted mode with only a small set of
+name that is evaluated in a restricted mode with only a small set of
 commands available (the
 .Va verbose
 output of for example
@@ -11456,7 +11484,7 @@ The escape
 .Ic ~^
 has been especially designed for scriptability: the first line these
 hooks will read on standard input is the escape's protocol version
-.Pf ( Dq 0 0 2 ) ,
+.Pf ( Dq 0 0 3 ) ,
 backward incompatible protocol changes have to be expected.
 .
 .Pp
@@ -11478,7 +11506,7 @@ isolated session, which is signalled in its entirety as necessary.
 .Bd -literal -offset indent
 define ocs_signature {
   read proto_version
-  echo '~< ~/.mysig' # '~<! fortune pathtofortunefile'
+  echo '~< ~/.mysig'
 }
 set on-compose-splice=ocs_signature
 
@@ -11492,19 +11520,31 @@ set on-compose-splice-shell=$'\e
 
 define ocsm {
   read proto_version
-  echo Splice protocol version is $proto_version
-  echo '~^h l'; read hl; vput csop es subs "${hl}" 0 1
-  if "$es" != 2
-    echoerr 'Cannot read header list'; echo '~x'; xit
-  endif
-  if "$hl" !%?case ' cc'
-    echo '~^h i cc "Diet is your <mirr.or>"'; read es;\e
-      vput csop es substring "${es}" 0 1
-    if "$es" != 2
-      echoerr 'Cannot insert Cc: header'; echo '~x'
-      # (no xit, macro finishes anyway)
-    endif
-  endif
+  if $proto_version != '0 0 3'
+    echoe ocsm: protocol version mismatch
+    xit
+  elif $features !% ,+regex,
+    echoe ocsm: needs regular expressions
+    xit
+  en
+
+  ec '~^h'
+  readsh stat dat
+  if $stat !~ ^2
+    echoe 'ocsm: header list'
+    ec '~x'
+    xit
+  en
+
+  if "$dat" !~? '(^| )cc($| )'
+    ec '~^h i cc:?sing hey, you <hey@you>'
+    readsh stat dat
+    if $stat !~ ^2
+      echoe 'ocsm: cc: insert'
+      ec '~x'
+      xit
+    en
+  en
 }
 set on-compose-splice=ocsm
 .Ed

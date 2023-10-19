@@ -30,7 +30,7 @@
 #define mx_CONTENT_DESC_SMIME_SIG "S/MIME digital signature"
 
 /* Protocol version for *on-compose-splice** -- update manual on change! */
-#define mx_DIG_MSG_PLUMBING_VERSION "0 0 2"
+#define mx_DIG_MSG_PLUMBING_VERSION "0 0 3"
 #define mx_DOTLOCK_TRIES 5 /* Number of open(2) calls for dotlock */
 
 #define n_ERROR "ERROR" /* Is-error?  Also as n_error[] */
