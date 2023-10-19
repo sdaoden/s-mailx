@@ -508,7 +508,7 @@ do{\
    n_PS_MSGLIST_MASK = su_BITENUM_MASK(15, 15),
    n_PS_GABBY_FUZZ = 1u<<15, /* y history-gabbyness TODO CmdCtx+FINE-GRAINED */
 
-   /* In the interactive mainloop, we want any error to appear once for each
+   /* In the interactive main loop, we want any error to appear once for each
     * tick, even if it is the same as in the tick before and would normally be
     * suppressed */
    n_PS_ERRORS_NEED_PRINT_ONCE = 1u<<18,

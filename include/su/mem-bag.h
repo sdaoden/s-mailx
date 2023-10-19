@@ -154,14 +154,6 @@ EXPORT struct su_mem_bag *su_mem_bag_pop(struct su_mem_bag *self, struct su_mem_
  * Returns \SELF if there is no stack. */
 INLINE struct su_mem_bag *su_mem_bag_top(struct su_mem_bag *self){
 	ASSERT_RET(self != NIL, NIL);
-#if ASSERT_INJOR(1, 0)
-	if(self->mb_outer != NIL){
-		ASSERT_EXEC(self->mb_outer == NIL, (void)0);
-		do
-			self = self->mb_outer;
-		while(self->mb_outer != NIL);
-	}
-#endif
 	return (self->mb_top != NIL) ? self->mb_top : self;
 }
 

@@ -226,7 +226,7 @@ su_mem_bag_create(struct su_mem_bag *self, uz bsz){
 	NYD_IN;
 	ASSERT(self);
 
-	su_mem_set(self, 0, sizeof *self);
+	STRUCT_ZERO(struct su_mem_bag, self);
 
 	if(bsz == 0)
 		bsz = su_PAGE_SIZE * 2;
