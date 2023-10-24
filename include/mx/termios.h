@@ -51,7 +51,8 @@ enum mx_termios_cmd{
 	mx_TERMIOS_CMD_PASSWORD = 2u<<3, /* Password input mode */
 	mx_TERMIOS_CMD_RAW = 3u<<3, /* Raw mode, use by-(the given-)byte(s) input */
 	mx_TERMIOS_CMD_RAW_TIMEOUT = 4u<<3, /* Raw mode, use (the given) timeout */
-	mx_TERMIOS_CMD_HANDS_OFF = 5u<<3, /* We do not own the terminal */
+	/* CMD_NORMAL + install "signal condome" (job control still handled) */
+	mx_TERMIOS_CMD_HANDS_OFF = 5u<<3,
 	mx__TERMIOS_CMD_ACT_MASK = 7u<<3
 };
 
