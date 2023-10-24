@@ -138,6 +138,7 @@ EXPORT boole mx_fs_pipe_cloexec(sz fd[2]);
  * implicitly CHILD_FD_PASS, otherwise it is ignored.
  * In CHILD_FD_PASS cases pipe_close() must be called with waiting enabled, which is asserted!
  * Note that child.h is NOT included (reason for _CHILD_PASS).
+ * Note that in CHILD_FD_PASS cases the used mx_child_fork() may cause a "signal condome" to be activated!
  * envadd may be NIL, otherwise it is expected to be a NIL terminated array of "K=V" strings to be placed additionally
  * into the children's environment.
  * TODO v15 hack: If cmd==(char*)-1 then sh(ell) is indeed expected to be a PTF
