@@ -187,7 +187,7 @@ a_termios_onsig(int sig){
 	dopop = FAL0;
 	tiosep = a_termios_g.tiosg_envp;
 
-	if(!jobsig || sig != SIGCONT){
+	if(/*!jobsig ||*/ sig != SIGCONT){
 		if(!tiosep->tiose_suspended){
 			tiosep->tiose_suspended = TRU1;
 

@@ -1209,7 +1209,9 @@ and
 .Va askattach
 will be checked, then
 .Va asksend
-is honoured;
+is honoured: choosing to reenter compose mode will not run the
+.Va on-compose-enter
+hook again;
 Thereafter a set
 .Va on-compose-leave
 hook may perform final message adjustments via
@@ -9537,7 +9539,7 @@ or
 .It Va asksend
 \*(BO Prompt (interactively) for send confirmation before leaving
 .Sx "Compose mode"
-after having shown a preliminary envelope summary.
+after having been shown a preliminary envelope summary.
 .
 .Mx
 .It Va asksign
