@@ -435,7 +435,6 @@ enum n_program_option{
    n_PO_E_FLAG = 1u<<7, /* -E / *skipemptybody* */
    n_PO_F_FLAG = 1u<<8, /* -F */
    n_PO_f_FLAG = 1u<<9, /* -f [and file on command line] */
-   n_PO_Mm_FLAG = 1u<<10, /* -M or -m (plus n_poption_arg_Mm) */
    n_PO_R_FLAG = 1u<<11, /* -R */
    n_PO_r_FLAG = 1u<<12, /* -r (plus n_poption_arg_r) */
    n_PO_S_FLAG_TEMPORARY = 1u<<13, /* -S about to set a variable */
@@ -1343,7 +1342,6 @@ VL pid_t n_pid; /* getpid() (lazy initialized) */
 VL int n_exit_status; /* Program exit status TODO long term: ex_no */
 VL u32 n_poption; /* Bits of enum n_program_option */
 VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
-VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct mx_name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts; /* MTA options from command line */
 VL uz n_smopts_cnt; /* Entries in n_smopts */

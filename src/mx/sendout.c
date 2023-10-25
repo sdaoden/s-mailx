@@ -816,12 +816,7 @@ a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 
       no_mboxo = dosign;
 
-      /* Will be NULL for text/plain */
-      if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL){
-         contenttype = n_poption_arg_Mm;
-         no_mboxo = TRU1;
-      }else
-         contenttype = "text/plain";
+      contenttype = "text/plain";
 
       convert = mx_mime_type_classify_file(fi, &contenttype, &charset,
             &do_iconv, no_mboxo, &body_charset);
@@ -2850,7 +2845,6 @@ j_mft_add:
    /* We don't need MIME unless.. we need MIME?! */
    if ((w & GMIME) && ((n_pstate & n_PS_HEADER_NEEDED_MIME) ||
          hp->h_attach != NULL ||
-         ((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL) ||
          convert != CONV_7BIT || !n_iconv_name_is_ascii(charset))) {
       ++gotcha;
       if (fputs("MIME-Version: 1.0\n", fo) == EOF)

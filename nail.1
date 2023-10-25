@@ -75,7 +75,7 @@
 .Op : Ns Fl b Ar bcc-addr Ns \&:
 .Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Op : Ns Fl c Ar cc-addr Ns \&:
-.Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
+.Op Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
 .Oo : Ns Fl S\0 Ns Ar var Ns Oo Ns = Ns Ar value Ns Oc Ns : Ns Oc
 .Op Fl s Ar subject
@@ -446,31 +446,6 @@ can be honoured in batch mode
 .Pf ( Fl # ) .
 .
 .Mx
-.It Fl M Ar type
-\*(SM Will flag standard input with MIME
-.Ql Content-Type:
-.Ar type
-.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files" ) ,
-and use it as the main message body.
-\*(ID Using this option will bypass processing of
-.Va message-inject-head
-and
-.Va message-inject-tail .
-Also see
-.Fl m , q , t .
-.
-.Mx
-.It Fl m Ar file
-\*(SM Initialize the message body from MIME classified
-.Ar file .
-\*(ID Using this option will bypass processing of
-.Va message-inject-head
-and
-.Va message-inject-tail .
-Also see
-.Fl q , M , t .
-.
-.Mx
 .It Fl N , Fl Fl no-header-summary
 .Ic unset
 .Va header
@@ -491,7 +466,7 @@ Inhibit reading the system-wide
 only non-interactively this may denote standard input (hyphen-minus
 .Ql - ) .
 Also see
-.Fl M , m , t .
+.Fl t .
 .
 .Mx
 .It Fl R , Fl Fl read-only
@@ -659,7 +634,7 @@ or
 .Sx "COMMAND ESCAPES"
 are evaluated.
 Also see
-.Fl M , m , q .
+.Fl q .
 .
 .
 .Mx
