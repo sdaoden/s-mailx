@@ -676,7 +676,7 @@ main(int argc, char *argv[]){
 		a_RF_MASK = a_RF_SYSTEM | a_RF_USER | a_RF_BLTIN
 	};
 
-	static char const a_sopts[] = "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
+	static char const a_sopts[] = "::A:a:Bb:C:c:DdEeFfHhiL:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
 	static char const * const a_lopts[] = {
 		"account:;A;" N_("execute an `account' command"),
 			"attach:;a;" N_("attach a file to the message to be sent"),
@@ -848,23 +848,6 @@ main(int argc, char *argv[]){
 				}
 			}
 			break;
-		case 'M':
-			/* Flag message body (standard input) with given MIME type */
-			if(mc.mc_quote != NIL && (!(n_poption & n_PO_Mm_FLAG) || mc.mc_quote != R(char*,-1)))
-				goto jeMmq;
-			n_poption_arg_Mm = avo.avo_current_arg;
-			mc.mc_quote = R(char*,-1);
-			if(0){
-				FALLTHRU
-		case 'm':
-				/* Flag the given file with MIME type and use as message body */
-				if(mc.mc_quote != NIL && (!(n_poption & n_PO_Mm_FLAG) || mc.mc_quote == R(char*,-1)))
-					goto jeMmq;
-				mc.mc_quote = avo.avo_current_arg;
-			}
-			n_poption |= n_PO_Mm_FLAG;
-			n_psonce |= n_PSO_SENDMODE;
-			break;
 		case 'N':
 			/* Avoid initial header printing */
 			ok_bclear(header);
@@ -886,11 +869,6 @@ main(int argc, char *argv[]){
 		case 'q':
 			/* "Quote" file: use as message body (-t without headers etc.) */
 			/* XXX Traditional.  Add -Q to initialize as *quote*d content? */
-			if(mc.mc_quote != NIL && (n_poption & n_PO_Mm_FLAG)){
-jeMmq:
-				emsg = N_("Only one of -M, -m or -q may be given");
-				goto jusage;
-			}
 			n_psonce |= n_PSO_SENDMODE;
 			/* Allow, we have to special check validity of -q- later on! */
 			mc.mc_quote = ((avo.avo_current_arg[0] == '-' && avo.avo_current_arg[1] == '\0') ? R(char*,-1)
@@ -1062,7 +1040,7 @@ jgetopt_done:
 			goto jusage;
 		}
 		if((n_poption & n_PO_t_FLAG) && mc.mc_quote != NIL){
-			emsg = N_("The -M, -m, -q and -t options are mutual exclusive.");
+			emsg = N_("The -q and -t options are mutual exclusive.");
 			goto jusage;
 		}
 		if(n_poption & (n_PO_EXISTONLY | n_PO_HEADERSONLY | n_PO_HEADERLIST)){
@@ -1076,8 +1054,7 @@ jgetopt_done:
 
 		if(n_psonce & n_PSO_INTERACTIVE){
 			if(mc.mc_quote == R(char*,-1)){
-				if(!(n_poption & n_PO_Mm_FLAG))
-					emsg = N_("-q can't use standard input when interactive.\n");
+				emsg = N_("-q cannot use standard input when interactive.\n");
 				goto jusage;
 			}
 		}
@@ -1207,23 +1184,6 @@ je_expandargv:
 	/* "load()" commands given on command line */
 	if(mc.mc_X_cnt > 0 && !mx_go_load_lines(FAL0, mc.mc_X, mc.mc_X_cnt))
 		goto jleave_full;
-
-	/* Final tests last, after anything but -Y has been evaluated */
-	if(n_poption & n_PO_Mm_FLAG){
-		if(mc.mc_quote == R(char*,-1)){
-			if(!mx_mime_type_is_known(n_poption_arg_Mm)){
-				n_err(_("Could not find `mimetype' for -M argument: %s\n"), n_poption_arg_Mm);
-				n_exit_status = su_EX_ERR;
-				goto jleave_full;
-			}
-		}else if(/* XXX only to satisfy Coverity! */mc.mc_quote != NIL &&
-				(n_poption_arg_Mm = mx_mime_type_classify_filename(mc.mc_quote)) == NIL){
-			n_err(_("Could not `mimetype'-classify -m argument: %s\n"), n_shexp_quote_cp(mc.mc_quote, FAL0));
-			n_exit_status = su_EX_ERR;
-			goto jleave_full;
-		}else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
-			n_poption_arg_Mm = NULL;
-	}
 
 	/*
 	 * We are finally completely setup and ready to go!

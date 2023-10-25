@@ -1137,8 +1137,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 			temporary_compose_mode_hook_call(cp);
 		}
 
-		/* TODO Mm: nope: it may require turning this into a multipart one */
-		if(!(n_poption & (n_PO_Mm_FLAG | n_PO_t_FLAG))){
+		if(!(n_poption & n_PO_t_FLAG)){
 			if(!a_coll_message_inject_head(a_coll->cc_fp))
 				goto jerr;
 
@@ -1173,7 +1172,7 @@ n_collect(enum n_mailsend_flags msf, enum mx_scope scope, struct header *hp, str
 			if(!(n_pstate & n_PS_ROBOT))
 				a_coll->cc_hist_s = n_string_reserve(n_string_creat_auto(&a_coll->cc_hist_s_b), 80);
 
-			if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
+			if(!(n_pstate & n_PS_ROBOT)){
 				/* Print what we have sofar also on the terminal (if useful) */
 				if(mx_go_input_have_injections()){
 					a_coll->cc_flags |= a_COLL_NEED_Y_INJECT_RESTART;
@@ -1209,9 +1208,6 @@ jcont:
 
 	/* If not under shell hook control */
 	if(a_coll->cc_coap == NIL){
-		/* We are done with -M or -m TODO because: we are too stupid yet, above */
-		if(n_poption & n_PO_Mm_FLAG)
-			goto jout;
 		/* No command escapes, interrupts not expected? */
 		if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
 			/* Need to go over mx_go_input() to handle injections nonetheless */
@@ -2008,10 +2004,6 @@ jreasksend:
 	if(*checkaddr_err != 0)
 		goto jerr;
 
-	/* TODO Cannot do since it may require turning this into a multipart one */
-	if(n_poption & n_PO_Mm_FLAG)
-		goto jskiptails;
-
 	/* Place signature? */
 	if((cp = ok_vlook(signature)) != NIL && *cp != '\0'){ /* TODO OBSOLETE v15-compat */
 		char const *cpq;
@@ -2066,7 +2058,6 @@ jreasksend:
 		goto jerr;
 	}
 
-jskiptails:
 	if(fflush(a_coll->cc_fp))
 		goto jerr;
 	rewind(a_coll->cc_fp);
