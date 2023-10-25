@@ -765,10 +765,11 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
 
    ok_v_on_account_cleanup, /* {notempty=1} */
    ok_v_on_compose_cleanup, /* {notempty=1} */
+   ok_v_on_compose_embed, /* {notempty=1} */
    ok_v_on_compose_enter, /* {notempty=1} */
    ok_v_on_compose_leave, /* {notempty=1} */
-   ok_v_on_compose_splice, /* {notempty=1} */
-   ok_v_on_compose_splice_shell, /* {notempty=1} */
+   ok_v_on_compose_splice, /* {notempty=1,obsolete=1} */
+   ok_v_on_compose_splice_shell, /* {notempty=1,obsolete=1} */
    ok_v_on_history_addition, /* {notempty=1} */
    ok_v_on_mailbox_event, /* {notempty=1} */
    ok_v_on_main_loop_tick, /* {notempty=1} */

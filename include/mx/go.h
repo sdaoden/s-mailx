@@ -66,6 +66,7 @@ enum mx_go_input_flags{
 	mx_GO_INPUT_HIST_ERROR = 1u<<19,
 
 	mx_GO_INPUT_IGNERR = 1u<<20, /* Imply `ignerr' command modifier */
+	mx_GO_INPUT_COMPOSE_REDIRECT = 1u<<21, /* *on-compose-embed*: use different onlinecompletedevent target TODO */
 
 	mx__GO_FREEBIT = 24u
 };
@@ -154,7 +155,7 @@ EXPORT boole mx_go_macro(BITENUM(u32,mx_go_input_flags) gif, char const *name, c
 		void (*on_finalize)(void*), void *finalize_arg);
 EXPORT boole mx_go_command(BITENUM(u32,mx_go_input_flags) gif, char const *cmd);
 
-/* XXX See a_GO_SPLICE in source */
+/* TODO v15-compat: remove SPLICE */
 EXPORT void mx_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout, u32 new_psonce,
 		void (*on_finalize)(void*), void *finalize_arg);
 EXPORT void mx_go_splice_hack_remove_after_jump(void);

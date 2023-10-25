@@ -257,7 +257,8 @@ struct a_amv_mac_call_args{
 	boole amca_any_scoped_init; /* Whether (any) outer level had unroll scope, or we have */
 	boole amca_no_xcall; /* XXX We want GO_INPUT_NO_XCALL for this */
 	boole amca_ignerr; /* XXX Use GO_INPUT_IGNERR for evaluating commands */
-	u8 amca__pad[3];
+	boole amca_compose_redirect;
+	u8 amca__pad[2];
 	struct a_amv_pospar *amca_pospar; /* Positional parameters: $#, $1.. */
 	struct a_amv_pospar *amca_rem_rval; /* Regular expression matches, or return values [$^?]: $^#, $^0.. */
 	struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NIL */
@@ -713,6 +714,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap, void *lospopts_or_nil){
 
 	a_amv_lopts = losp;
 	rv = mx_go_macro((mx_GO_INPUT_NONE | (amcap->amca_no_xcall ? mx_GO_INPUT_NO_XCALL : 0) |
+				(amcap->amca_compose_redirect ? mx_GO_INPUT_COMPOSE_REDIRECT : 0) |
 				(amcap->amca_ignerr ? mx_GO_INPUT_IGNERR : 0)),
 			amp->am_name, args_base, &a_amv_mac__finalize, losp);
 
@@ -3724,7 +3726,7 @@ temporary_compose_mode_hook_control(boole enable, enum mx_scope scope){ /* XXX h
 }
 
 FL void
-temporary_compose_mode_hook_call(char const *macname){
+temporary_compose_mode_hook_call(char const *macname, boole compose_redirect){
 	/* TODO compose_mode_hook_call() temporary, v15: generalize; see a_GO_SPLICE
 	 * TODO comment in go.c for the right way of doing things! */
 	static struct a_amv_lostack *cmh_losp;
@@ -3748,6 +3750,7 @@ temporary_compose_mode_hook_call(char const *macname){
 		amcap->amca_ps_hook_mask = TRU1;
 		amcap->amca_any_scoped_init = a_amv_compose_lostack->as_any_scoped;
 		amcap->amca_no_xcall = TRU1;
+		amcap->amca_compose_redirect = compose_redirect;
 		amcap->amca_pospar = &amcap->amca__pospar;
 		amcap->amca_rem_rval = &amcap->amca__rem_rval;
 		n_pstate &= ~n_PS_HOOK_MASK;

@@ -1144,18 +1144,22 @@ Any local file and pipe command recipient honours
 .Va mbox-fcc-and-pcc .
 .
 .Pp
-.Va on-compose-enter , on-compose-splice , on-compose-leave
+.Va on-compose-enter , on-compose-embed , on-compose-leave
 and
 .Va on-compose-cleanup
 are hooks that may each be set to a
 .Ic define Ns
 d
 .Mx -sx
-.Sx Macro .
-The splice hook can operate on messages like a user, and use
+.Sx Macro :
+.Va on-compose-embed
+itself can operate on messages like a user and directly use
 .Sx "COMMAND ESCAPES" ,
 .Ic digmsg
-may be helpful to query and adjust status of message(s) otherwise.
+may also be used by
+.Va on-compose-enter
+and
+.Va on-compose-leave .
 (\*(ID The compose mode hooks work for
 .Ic forward , mail , reply
 and variants;
@@ -1171,12 +1175,9 @@ which are pretty restricted due to the nature of the operation.)
 .Pp
 Once ready
 .Ic ~.
-leaves compose mode:
-.Va on-compose-splice-shell
-and
-.Va on-compose-splice
-hooks are called (in order);
-in interactive mode
+leaves compose mode, which involves invoking a set
+.Va on-compose-embed
+hook; in interactive mode
 .Va askatend
 (leading to
 .Va askcc , askbcc )
@@ -3263,7 +3264,9 @@ and
 .Sh COMMANDS
 .
 .\" intro {{{
-Input is read in lines.
+In normal input mode (when not in
+.Sx "Compose mode" )
+input is read in lines.
 An unquoted reverse solidus
 .Ql \e
 at the end of a line
@@ -6452,9 +6455,6 @@ usable in interactive or batch mode
 .Pf ( Fl # ) .
 .It Ql send-mode
 usable in send mode.
-.It Ql subprocess
-allowed when running in a subprocess, for example via
-.Va on-compose-splice .
 .El
 .It Ql not ok:
 is not \&.\h'.3m'.\h'.3m'.
@@ -8536,6 +8536,10 @@ if no such attachment can be found.
 The following keywords may be used (case-insensitively):
 .Pp
 .Bl -hang -compact -width ".It Ql filename"
+.It Ql creation-name
+\*(RO Value used when creating the attachment.
+.It Ql open-path
+\*(RO Path that will be used when reading the file to be attached.
 .It Ql filename
 Sets the filename of the MIME part, that is, the name that is used for
 display and when (suggesting a name for) saving (purposes).
@@ -11368,6 +11372,54 @@ changes applied in
 .Sx "Compose mode"
 will continue to be in effect thereafter.
 .
+.
+.Mx
+.It Va on-compose-embed
+.Mx -sx
+.Sx Macro
+hook that is invoked once the
+.Sx "Compose mode"
+user interaction has ended (but see
+.Va asksend ) .
+It can act like an interactive user, and for example use
+.Sx "COMMAND ESCAPES"
+or
+.Ic digmsg :
+.
+.Bd -literal -offset indent
+# Create a signature
+set on-compose-embed=ocm
+define ocm {
+  ~< ~/.mysig
+}
+
+define ocm {
+  Yes, part of message body!
+  Ciao!
+  ~:set sign=$'\en--Silver'
+  ~a
+  ~:call .ocm
+}
+define .ocm {
+  echo normal macro: no body access
+
+  digmsg - h l
+  ec 1:$^0: $^*
+
+  # via I/O protocol
+  digmsg create -
+  digmsg - h l
+  local readall x
+  ec 2:$x
+  digmsg remove -
+
+  # back to built-in "in-memory"
+  digmsg - h l
+  ec 3:$^0: $^*
+}
+.Ed
+.
+.
 .Mx
 .It Va on-compose-enter
 .Mx -sx
@@ -11385,33 +11437,12 @@ may access the message.
 .Sx Macro
 hook which is run before
 .Sx "Compose mode"
-is left; the message can be accessed via
+is left; the message can still be accessed via
 .Ic digmsg .
-Here is an example that injects a signature via
-.Va message-inject-tail
-(but also see
-.Va Sign , sign
-as well as
-.Ic ~A , ~a ) ;
-using
-.Va on-compose-splice
-to inject the file of desire via
-.Ic ~<
-or
-.Ic ~<!
-.Sx "COMMAND ESCAPES"
-might be a better approach.
-.
 .Bd -literal -offset indent
-set on-compose-leave=t_ocl
-define t_ocl {
-  local vput ! i cat ~/.mysig
-  if $? -eq 0
-     vput csop i trim-end $i
-     our se message-inject-tail=$i
-  en
-}
-define t_ocl {
+# Create a signature
+set on-compose-leave=ocl
+define ocl {
   readctl create ~/.mysig
   if $? -eq 0
     local readall i
@@ -11422,110 +11453,6 @@ define t_ocl {
   en
 }
 .Ed
-.
-.
-.Mx
-.Mx
-.It Va on-compose-splice , on-compose-splice-shell
-These hooks run after compose mode is finished, but before
-.Va on-compose-leave .
-Both are executed in a subprocess, with their input and output connected
-such that they can act like an interactive user: \*(Xx's output they
-.Ic readsh ,
-input for \*(Xx they can
-.Ic echo .
-Whereas the latter is a
-.Ev SHELL
-command, the former is a
-.Mx -sx
-.Sx Macro
-name that is evaluated in a restricted mode with only a small set of
-commands available (the
-.Va verbose
-output of for example
-.Ic list
-indicates the
-.Ql subprocess
-capability).
-.
-.Pp
-In the subprocess (a restricted set of)
-.Sx "COMMAND ESCAPES"
-will always be available.
-For guaranteed reproducibilities' sake
-.Va escape
-and
-.Va ifs
-are set to their defaults.
-The escape
-.Ic ~^
-has been especially designed for scriptability: the first line these
-hooks will read on standard input is the escape's protocol version
-.Pf ( Dq 0 0 3 ) ,
-backward incompatible protocol changes have to be expected.
-.
-.Pp
-Care must be taken to avoid deadlocks and other false control flow:
-if subprocess and \*(Xx both wait for more input, or if one does not
-expect more input, whereas the other waits for consumption of its output.
-Hooks are not automatically synchronized: if a hook emits
-.Ql ~x
-to cause \*(Xx to exit compose mode, the subprocess will keep running
-nonetheless until the macro is completely worked or
-.Ic xit
-is called explicitly.
-They will however receive a termination signal if the parent enters
-an error condition.
-\*(ID Protection against and interaction with signals is not yet given;
-it is likely that in the future these scripts will be placed in an
-isolated session, which is signalled in its entirety as necessary.
-.
-.Bd -literal -offset indent
-define ocs_signature {
-  read proto_version
-  echo '~< ~/.mysig'
-}
-set on-compose-splice=ocs_signature
-
-set on-compose-splice-shell=$'\e
-  read proto_version;\e
-  printf "hello $version!  Headers: ";\e
-  echo \e'~^header list\e';\e
-  read status result;\e
-  echo "status=$status result=$result";\e
-  '
-
-define ocsm {
-  read proto_version
-  if $proto_version != '0 0 3'
-    echoe ocsm: protocol version mismatch
-    xit
-  elif $features !% ,+regex,
-    echoe ocsm: needs regular expressions
-    xit
-  en
-
-  ec '~^h'
-  readsh stat dat
-  if $stat !~ ^2
-    echoe 'ocsm: header list'
-    ec '~x'
-    xit
-  en
-
-  if "$dat" !~? '(^| )cc($| )'
-    ec '~^h i cc:?sing hey, you <hey@you>'
-    readsh stat dat
-    if $stat !~ ^2
-      echoe 'ocsm: cc: insert'
-      ec '~x'
-      xit
-    en
-  en
-}
-set on-compose-splice=ocsm
-.Ed
-.
 .
 .Mx
 .It Va on-history-addition
@@ -11555,14 +11482,14 @@ etc.
 .Bd -literal -offset indent
 se on-history-addition=oha
 def oha {
-  i "$2" == fuzz || "$2" == errors; retu 1; en
-  i ${#} -eq 3
-    i " $3" =% ' set ' || " $3" =% ' unset '; retu 3;en
-    i " $3" =% ' chdir '; retu 2; en
+  if "$2" == fuzz || "$2" == errors; return 1; en
+  if ${#} -eq 3
+    if " $3" =% ' set ' || " $3" =% ' unset '; return 3; en
+    if " $3" =% ' chdir '; return 2; en
   el
     ec v15
   en
-  retu 1
+  return 1
 }
 .Ed
 .
@@ -12476,9 +12403,7 @@ one of the
 .Sx "COMMAND ESCAPES" .
 Also see
 .Va message-inject-tail ,
-.Va on-compose-leave
-and
-.Va on-compose-splice .
+.Va on-compose-embed .
 .
 .Mx
 .It Va sign
@@ -12488,9 +12413,7 @@ one of the
 .Sx "COMMAND ESCAPES" .
 Also see
 .Va message-inject-tail ,
-.Va on-compose-leave
-and
-.Va on-compose-splice .
+.Va on-compose-embed .
 .
 .Mx
 .It Va skipemptybody
