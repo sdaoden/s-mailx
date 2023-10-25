@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `digmsg', and `~^'.
+ *@ `digmsg', and `~^'.  (XXX not cmd-digmsg.h because of v15 extension plan)
  *
  * Copyright (c) 2016 - 2023 Steffen Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -54,6 +54,9 @@ struct mx_dig_msg_ctx{
 	struct su_mem_bag dmc__membag_buf[1];
 };
 
+/* Protocol version -- update manual on change! */
+#define mx_DIG_MSG_PLUMBING_VERSION "0 0 3"
+
 /* Compose mode uses a "pseudo object" <> mx_dig_msg_compose_ctx TODO
  * Hacky (requires mx/go.h + su/mem.h that are NOT included) */
 #define mx__DIG_MSG_COMPOSE_FLAGS (mx__DIG_MSG_COMPOSE | mx__DIG_MSG_MODE_CARET)
@@ -85,7 +88,7 @@ EXPORT void mx_dig_msg_on_mailbox_close(struct mailbox *mbox);
 /* `digmsg' */
 EXPORT int c_digmsg(void *vp);
 
-/* `~^' within mx_DIG_MSG_COMPOSE_CREATE() */
+/* `~^' within mx_DIG_MSG_COMPOSE_CREATE()..mx_DIG_MSG_COMPOSE_GUT() */
 EXPORT boole mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd);
 
 #include <su/code-ou.h>

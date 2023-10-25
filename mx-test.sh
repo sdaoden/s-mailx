@@ -10577,8 +10577,7 @@ __EOT
 		!	 :		 set i=./t.nosuch
 		!	  -	  $	 <			$i
 		!:echo three
-		!	 :		 set \
-										 errexit
+		!	 :		 set errexit
 		!	  -	$	<	 $i
 		!-$: echo four
 		!$<		./t.nosuch
@@ -10751,16 +10750,16 @@ This body is
 !:digmsg create - -
 !:dig - header list
 !:dig - h show subject
-!:dig - h s to
+!:dig - H S to
 !:dig - h remove to
-!:dig - h
+!:dig - H
 !:dig - h s to
 !:dig rem -
 !:ec --two
-!:dig crea -
+!:dig CREA -
 !:dig - h;   readall x;	echon "<$x>";
 !:dig - h s subject;readall x;echon "<$x>";;
-!:dig r -
+!:dig R -
 !:ec --three
 !:		# nothing here as is comment
 !^h i fcc	 ./t3
@@ -10773,7 +10772,7 @@ This body is
 !:ec --six
 !:dig - h
 !:dig - h s fcc
-!:dig - h i fcc ./t3
+!:dig - H I fcc ./t3
 !:ec --seven
 !:dig r -
 !:ec --eight
@@ -11010,8 +11009,452 @@ t_compose_hooks() { #{{{ TODO monster
 		return
 	fi
 
+	#{{{
+	printf '\n--\nmysig\n' > ./tsig.in
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://tsig -Sescape=! > ./tsig.out 2>${E0}
+define h1 {
+	!< ./tsig.in
+}
+define h2 {
+	!r ./tsig.in
+}
+define h3 {
+	!:set indentprefix='_/\_'
+	!R ./tsig.in
+}
+define h4 {
+  Ciao!
+  !:se sign=$'\n--Silver'
+  !a
+  !:call .h4
+}
+define .h4 {
+  digmsg - h l
+  ec 1:$^0: $^*
+  digmsg c -
+  digmsg - h l
+  local readall x
+  ec 2:$x
+  digmsg r -
+  digmsg - h l
+  ec 3:$^0: $^*
+}
+se on-compose-embed=h1
+mail t1@o
+!ss1
+b1
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=h2
+mail t2@o
+!ss2
+b2
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=h3
+mail t3@o
+!ss3
+b3
+!.
+ec $!/$?/$^ERRNAME
+se on-compose-embed=h4
+m t4@o
+!ss4
+b4
+!.
+ec $!/$?/$^ERRNAME
+__EOT
+	#}}}
+	cke0 sig 0 ./tsig '2082310561 510'
+	ck sig-out - ./tsig.out '4217399061 218'
+
+	#{{{
+	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://teasy -Sescape=! > ./teasy.out 2>${E0}
+define oce {
+	se oce=$((oce + 1))
+	ec in oce=$oce
+}
+define ocm {
+	!:se ocm=$((ocm + 1))
+	!:ec in embed=$ocm
+	embed>
+	!i oce
+	!i ocm
+	!p
+	!i ocl
+	embed<
+}
+define ocl {
+	se ocl=$((ocl + 1))
+	ec in ocl=$ocl
+	se from=u$ocl@i
+}
+define occ {
+	se occ=$((occ + 1))
+	ec in occ=$occ
+	se from=c$occ@i
+}
+se on-compose-enter=oce on-compose-embed=ocm on-compose-leave=ocl on-compose-cleanup=occ from=i@u
+#
+var oce ocm ocl occ
+mail
+!tt@o
+!ssub
+!.
+var oce ocm ocl occ
+local mail t@o
+!ssub
+!.
+var oce ocm ocl occ
+__EOT
+	#}}}
+	cke0 easy 0 ./teasy '2727359398 304'
+	ck easy-out - ./teasy.out '2448673264 368'
+
 	{ echo line one&&echo line two&&echo line three; } > ./t.readctl
 	{ echo echo four&&echo echo five&&echo echo six; } > ./t.attach
+
+	#{{{ Supposed to extend t_compose_edits with ~^ stress tests!
+	${cat} <<'__EOT' > ./t.rc
+commandali d \\digmsg
+define bail {
+	echoerr "Failed: $1.  Bailing out"
+	xit
+}
+define x {
+	if $1 -ne $2; xcall bail "$3: $1!=$2"; el; ec $3: ok; en
+}
+commandali x 'ec $^0=$^#="$^@"; \call x $^0'
+define ia {
+	local se xh=$1 mls=$2
+	if -z "$mls"; se mls=211; en
+
+	d - h; x 210 "ia $xh 1-0"
+	d - h i $xh diet <"$xh"@exam.ple> spliced; x 210 "ia $xh 1-1"
+	d - h i $xh <${xh}2@exam.ple>; x 210 "ia $xh 1-2"
+	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 1-3"
+	d - h l $xh; x 210 "ia $xh 1-4"
+	d - h s $xh; x $mls "ia $xh 1-5"
+
+	if -z "$t_remove"; return; en
+
+	d - h r $xh; x 210 "ia $xh 2-1"
+	d - h r $xh; x 501 "ia $xh 2-2"
+	d - h l $xh; x 501 "ia $xh 2-3"
+	d - h s $xh; x 501 "ia $xh 2-4"
+
+	#
+	d - h i $xh "diet <x$xh@exam.ple> spliced"; x 210 "ia $xh 3-1"
+	d - h i $xh "<x${xh}2@exam.ple>"; x 210 "ia $xh 3-2"
+	d - h i $xh "x${xh}3@exam.ple"; x 210 "ia $xh 3-3"
+	d - h l $xh; x 210 "ia $xh 3-4"
+	d - h s $xh; x $mls "ia $xh 3-5"
+
+	d - h remove-at $xh 1; x 210 "ia $xh 3-6"
+	d - h remove-a $xh 1; x 210 "ia $xh 3-7"
+	d - h remove- $xh 1; x 210 "ia $xh 3-8"
+	d - h remove- $xh 1; x 501 "ia $xh 3-9"
+	d - h remove- $xh T; x 505 "ia $xh 3-10"
+	d - h l $xh; x 501 "ia $xh 3-11"
+	d - h s $xh; x 501 "ia $xh 3-12"
+
+	#
+	d - h i $xh "diet <$xh@exam.ple>"; x 210 "ia $xh 4-1"
+	d - h i $xh "<${xh}2@exam.ple> (comment) \\\"Quot(e)d\\\""; x 210 "ia $xh 4-2"
+	d - h i $xh ${xh}3@exam.ple; x 210 "ia $xh 4-3"
+	d - h l $xh; x 210 "hea list $xh 4-4"
+	d - h s $xh; x $mls "ia $xh 4-5"
+
+	d - h remove- $xh 3; x 210 "ia $xh 4-6"
+	d - h s $xh; x $mls "ia $xh 4-7"
+	d - h remove- $xh 2; x 210 "ia $xh 4-8"
+	d - h s $xh; x $mls "ia $xh 4-9"
+	d - h remove- $xh 1; x 210 "ia $xh 4-10"
+	d - h remove- $xh 1; x 501 "ia $xh 4-11"
+	d - h remove- $xh T; x 505 "ia $xh 4-12"
+	d - h l $xh; x 501 "ia $xh 4-13"
+	d - h s $xh; x 501 "ia $xh 4-14"
+}
+define ir {
+	local se xh=$1 mult=$2 mls=$3
+	if -z "$mls"; se mls=211; en
+
+	d - h; x 210 "ir ($xh) 0-1"
+
+	d - h i $xh <$xh@exam.ple>; x 210 "ir $xh 1-1"
+	if $mult -ne 0
+		d - h i $xh <${xh}2@exam.ple>; x 210 "ir $xh 1-2"
+		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 1-3"
+	el
+		d - h i $xh <${xh}2@exam.ple>; x 506 "ir $xh 1-4"
+	en
+
+	d - h l $xh; x 210 "ir $xh 1-5"
+	d - h s $xh; x $mls "ir $xh 1-6"
+
+	if -z "$t_remove"; return; en
+
+	d - h r $xh; x 210 "ir $xh 2-1"
+	d - h r $xh; x 501 "ir $xh 2-2"
+	d - h l $xh; x 501 "$es ir $xh 2-3"
+	d - h s $xh; x 501 "ir $xh 2-4"
+
+	#
+	d - h i $xh <$xh@exam.ple>; x 210 "ir $xh 3-1"
+	if $mult -ne 0
+		d - h i $xh <${xh}2@exam.ple>; x 210 "ir $xh 3-2"
+		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 3-3"
+	en
+	d - h l $xh; x 210 "ir $xh 3-4"
+	d - h s $xh; x $mls "ir $xh 3-5"
+
+	d - h remove- $xh 1; x 210 "ir $xh 3-6"
+	if $mult -ne 0 && $xh != subject
+		d - h remove- $xh 1; x 210 "ir $xh 3-7"
+		d - h remove- $xh 1; x 210 "ir $xh 3-8"
+	en
+	d - h remove- $xh 1; x 501 "ir $xh 3-9"
+	d - h remove- $xh T; x 505 "ir $xh 3-10"
+	d - h s $xh; x 501 "ir $xh 3-11"
+
+	#
+	d - h i $xh " $xh <$xh@exam.ple> "; x 210 "ir $xh 4-1"
+	if $mult -ne 0
+		d - h i $xh "<${xh}2@exam.ple> "; x 210 "ir $xh 4-2"
+		d - h i $xh ${xh}3@exam.ple; x 210 "ir $xh 4-3"
+	en
+	d - h l $xh; x 210 "ir $xh 4-4"
+	d - h s $xh; x $mls "ir $xh 4-5"
+
+	if $mult -ne 0 && $xh != subject
+		d - h remove- $xh 3; x 210 "ir $xh 4-6"
+		d - h s $xh; x $mls "ir $xh 4-7"
+		d - h remove- $xh 2; x 210 "ir $xh 4-8"
+		d - h s $xh; x $mls "ir $xh 4-9"
+	en
+	d - h remove- $xh 1; x 210 "ir $xh 4-10"
+	d - h remove- $xh 1; x 501 "ir $xh 4-11"
+	d - h remove- $xh T; x 505 "ir $xh 4-12"
+	d - h s $xh; x 501 "ir $xh 4-13"
+}
+define t_hea {
+	ec t_hea ENTER
+	# In collect.c order
+	call ia from
+	call ir sender 0 # Not a "ref", but works
+	call ia To
+	call ia cC
+	call ia bCc
+	call ia reply-To
+	call ia mail-Followup-to
+	call ir messAge-id 0
+	call ir rEfErEncEs 1
+	call ir in-Reply-to 1
+	call ir subject 1 212 # Not a "ref", but works (with tweaks)
+	call ia freeForm1 212
+	call ia freeform2 212
+
+	d - h s MAILX-Command; x 212 "t_hea 1000"
+	d - h s MAILX-raw-TO; x 211 "t_hea 1001"
+
+	ec t_hea LEAVE
+}
+define t_attach {
+	ec t_attach ENTER
+
+	d - a; x 501 "a 0-1"
+	d - a a ./t.readctl; x 501 "attach 0-2"
+	d - a attribute- 1; x 501 "attach 0-3"
+
+	d - a i ./t.readctl=ascii; x 210 "attach 1-1"
+	d - a l; x 212 "attach 1-2"
+	d - a a ./t.readctl; x 212 "attach 1-3"
+	d - a a t.readctl; x 212 "attach 1-4"
+	d - a attribute- 1; x 212 "attach 1-5"
+
+	d - a attribute-set ./t.readctl filename rctl; x 210 "attach 1-6"
+	d - a attribute-s t.readctl content-description Au; x 210 "attach 1-7"
+	d - a attribute-set- 1 content-id <10.du@ich>; x 210 "attach 1-8"
+
+	d - a a ./t.readctl; x 212 "attach 1-9"
+	d - a a t.readctl; x 212 "attach 1-10"
+	d - a a rctl; x 212 "attach 1-11"
+	d - a attribute- 1; x 212 "attach 1-12"
+
+	#
+	d - a i ./t.attach=latin1; x 210 "attach 2-1"
+	d - a; x 212 "attach 2-2"
+	d - a a ./t.attach; x 212 "attach 2-3"
+	d - a a t.attach; x 212 "attach 2-4"
+	d - a attribute- 2; x 212 "attach 2-5"
+
+	d - a attribute-s ./t.attach filename tat; x 210 "attach 2-6"
+	d - a attribute-s t.attach content-description Au2; x 210 "attach 2-7"
+	d - a attribute-set- 2 content-id <20.du@wir>; x 210 "attach 2-8"
+	d - a attribute-set- 2 content-type application/x-sh; x 210 "attach 2-9"
+
+	d - a a ./t.attach; x 212 "attach 2-10"
+	d - a a t.attach; x 212 "attach 2-11"
+	d - a a tat; x 212 "attach 2-12"
+	d - a attribute- 2; x 212 "attach 2-13"
+
+	#
+	if -z "$t_remove"; return; en
+
+	d - a remove ./t.readctl; x 210 "attach 3-1"
+	d - a r ./t.attach; x 210 "attach 3-2"
+	d - a	  r		 ./t.readctl; x 501 "attach 3-3"
+	d - a	  r		 ./t.attach; x 501 "attach 3-4"
+	d - a l; x 501 "attach 3-5"
+
+	#
+	d - a i ./t.attach=latin1; x 210 "attach 4-1"
+	d - a i ./t.attach=latin1; x 210 "attach 4-2"
+	d - a; x 212 "attach 4-3"
+	d - a	  r		 t.attach; x 506 "attach 4-4 $es"
+	d - a remove- T; x 505 "attach 4-5"
+	d - a r ./t.attach; x 210 "attach 4-6"
+	d - a r ./t.attach; x 210 "attach 4-7"
+	d - a	  r		 ./t.attach; x 501 "aattach 4-8 $es"
+	d - a; x 501 "attach 4-9"
+
+	#
+	d - a i ./t.attach=latin1; x 210 "attach 5-1"
+	d - a i ./t.attach=latin1; x 210 "attach 5-2"
+	d - a i ./t.attach=latin1; x 210 "attach 5-3"
+	d - a; x 212 "attach 5-4"
+
+	d - a remove- 3; x 210 "attach 5-5"
+	d - a remove- 3; x 501 "attach 5-6"
+	d - a remove- 2; x 210 "attach 5-7"
+	d - a remove- 2; x 501 "attach 5-8"
+	d - a remove- 1; x 210 "attach 5-9"
+	d - a remove- 1; x 501 "attach 5-10"
+
+	d - a; x 501 "attach 5-11"
+
+	#
+	d - a i ./t.attach=latin1; x 210 "attach 6-1"
+	d - a i ./t.attach=latin1; x 210 "attach 6-2"
+	d - a i ./t.attach=latin1; x 210 "attach 6-3"
+	d - a; x 212 "attach 6-4"
+
+	d - a remove- 1; x 210 "attach 6-5"
+	d - a remove- 1; x 210 "attach 6-6"
+	d - a remove- 1; x 210 "attach 6-7"
+	d - a remove- 1; x 501 "attach 6-8"
+
+	d - a; x 501 "attach 6-9"
+
+	ec t_attach LEAVE
+}
+define t_oce {
+	ec on-compose-enter
+	alt alter1@exam.ple alter2@exam.ple
+	alt
+	set autocc='alter1@exam.ple autocc'
+	alias autocc alter2@exam.ple
+	digmsg create - -;ec $?/$!/$^ERRNAME;\
+		dig - h;\
+		dig - h s mailX-command;\
+		dig - H S sUbject;\
+		dig - h s tO;\
+		dig - h s Cc;\
+		dig - h s bCc;\
+		dig - h s Mailx-raw-to;\
+		dig - h s mailX-raw-cc;\
+		dig - h s maiLx-raw-bcc;\
+		dig - h s maIlx-orig-sender;\
+		dig - h s mAilx-orig-from;\
+		dig - h s mailx-orig-tO;\
+		dig - h s mailx-orig-Cc;\
+		dig - h s mailx-oriG-bcc;\
+		dig r -;ec $?/$!/$^ERRNAME
+	dig c -;ec $?/$!/$^ERRNAME;\
+		dig - h;readall x;echon $x;\
+		dig r -;ec $?/$!/$^ERRNAME
+}
+define t_ocm {
+	oce>
+	!:ec on-compose-embed
+	!:call t_hea
+	!:call t_attach
+	oce=
+	!^^h
+	!:ec $^0: $^*
+	!^^a
+	!:ec $^0: $^*
+	!p
+	oce<
+}
+define t_ocl {
+	ec on-compose-leave
+	#vput alt al
+	#eval alt $al alter3@exam.ple alter4@exam.ple
+	alt alter3@exam.ple alter4@exam.ple
+	se autobcc=autobcc
+	alias autobcc alter3@exam.ple alter4@exam.ple # always metoo in Bcc:!
+	alt
+	digmsg c - -;ec $?/$!/$^ERRNAME;\
+		dig - h;\
+		dig - h s mailX-command;\
+		dig - h s sUbject;\
+		dig - h s tO;\
+		dig - h s Cc;\
+		dig - h s bCc;\
+		dig - h s Mailx-raw-to;\
+		dig - h s mailX-raw-cc;\
+		dig - h s maiLx-raw-bcc;\
+		dig - h s maIlx-orig-sender;\
+		dig - h s mAilx-orig-from;\
+		dig - h s mailx-orig-tO;\
+		dig - h s mailx-orig-Cc;\
+		dig - h s mailx-oriG-bcc;\
+		dig r -;ec $?/$!/$^ERRNAME
+	dig c -;ec $?/$!/$^ERRNAME;\
+		dig - h;readall x;echon $x;\
+		dig r -;ec $?/$!/$^ERRNAME
+}
+define t_occ {
+	ec on-compose-cleanup
+	unalt *
+	alt
+	# XXX error message variable digmsg create - -;ec $?/$!/$^ERRNAME;\
+		digmsg - hea;\
+		dig - h show mailX-command;\
+		dig - h s sUbject;\
+		dig - h s tO;\
+		dig - h s Cc;\
+		dig - h S bCc;\
+		dig - h s Mailx-raw-to;\
+		dig - h s mailX-raw-cc;\
+		dig - h s maiLx-raw-bcc;\
+		dig - h s maIlx-orig-sender;\
+		dig - h s mAilx-orig-from;\
+		dig - h s mailx-orig-tO;\
+		dig - h s mailx-orig-Cc;\
+		dig - H S mailx-oriG-bcc;\
+		dig r -;ec $?/$!/$^ERRNAME
+	# ditto dig c -;ec $?/$!/$^ERRNAME;\
+		dig - h;readall x;echon $x;\
+		dig r -;ec $?/$!/$^ERRNAME
+}
+set on-compose-enter=t_oce on-compose-embed=t_ocm on-compose-leave=t_ocl on-compose-cleanup=t_occ
+__EOT
+	#}}}
+
+	printf 'm this-goes@nowhere\nbody\n!.\n' |
+		${MAILX} ${ARGS} -Sescape=! -Sstealthmua=noagent -X'source ./t.rc' -Smta=test://tm1 > ./tm1.out 2>${E0}
+	cke0 m1 0 ./tm1 '1586614654 2075'
+	ck m1-out - ./tm1.out '1099505374 10256'
+
+	printf 'm this-goes@nowhere\nbody\n!.\n' |
+		MAILRC=./t.rc ${MAILX} ${ARGS} -:u -Sescape=! -Sstealthmua=noagent -Smta=test://tm2 \
+			-St_remove=1 > ./tm2.out 2>${E0}
+	cke0 m2 0 ./tm2 '161605867 167'
+	ck m2-out - ./tm2.out '3179236083 25546'
+
+	## OLD v15-compat
 
 	#{{{ Supposed to extend t_compose_edits with ~^ stress tests!
 	${cat} <<'__EOT__' > ./t.rc
@@ -11615,14 +12058,18 @@ set on-compose-splice=t_ocs \
 	# Reply, forward, resend, Resend
 
 	<< '__EOT' ${MAILX} ${ARGS} -Smta=test://t4 -Sescape=! > ./t4-x 2>${EX}
-set from="f1@z"
+set from=f1@z
 m t1@z
 b1
 !.
-set from="du <f2@z>" stealthmua=noagent
-m t2@z
+se stealthmua=noagent
+var from
+local m
+!t t2@z
+!:se from='du <f2@z>'
 b2
 !.
+var from
 __EOT
 	ck_ex0 4-intro-estat
 
@@ -11765,7 +12212,7 @@ __EOT
 	#}}}
 	ck_ex0 4-estat
 	${cat} ./t4-x >> ./t4
-	ck 4 - ./t4 '2133647863 10005' '1312459649 605'
+	ck 4 - ./t4 '2446950910 10033' '1312459649 605'
 
 	t_epilog "${@}"
 } #}}}

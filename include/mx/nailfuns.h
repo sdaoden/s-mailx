@@ -170,7 +170,7 @@ FL boole mx_temporary_on_mailbox_event(enum mx_on_mailbox_event onmbev);
 /* TODO v15 drop Invoke compose hook macname
  * _hook_control(): scope argument only of interest for enable=!FAL0 */
 FL void temporary_compose_mode_hook_control(boole enable, enum mx_scope scope);
-FL void temporary_compose_mode_hook_call(char const *macname);
+FL void temporary_compose_mode_hook_call(char const *macname, boole compose_redirect);
 
 #ifdef mx_HAVE_HISTORY
 /* TODO *on-history-addition*; -1 on error */
@@ -568,6 +568,9 @@ FL int c_write(void *vp);
 FL FILE *n_collect(enum n_mailsend_flags msf, enum mx_scope scope,
       struct header *hp, struct message *mp, char const *quotefile,
       s8 *checkaddr_err);
+
+/* TODO *on-compose-embed* onlinecompletedevent target for go_event_loop() */
+FL boole mx_collect_input_loop(void);
 
 /*
  * folder.c

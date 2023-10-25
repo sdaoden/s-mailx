@@ -2089,7 +2089,7 @@ mx_dig_msg_caret(enum mx_scope scope, boole force_mode_caret, char const *cmd){
 
 	dmcp = mx_dig_msg_compose_ctx;
 
-	ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);
+	/*ASSERT(su_mem_bag_top(su_MEM_BAG_SELF) == dmcp->dmc_membag);*/
 	su_mem_bag_push(su_MEM_BAG_SELF, su_mem_bag_create(&membag, 0));
 
 	cac.cac_desc = mx_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);

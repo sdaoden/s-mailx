@@ -69,25 +69,7 @@ enum a_go_flags{
 	a_GO_MACRO_X_OPTION = 1u<<5, /* Macro indeed command line -X option */
 	a_GO_MACRO_BLTIN_RC = 1u<<6, /* Macro indeed command line -:x option */
 	a_GO_MACRO_CMD = 1u<<7, /* Macro indeed single-line: ~:COMMAND */
-	/* TODO a_GO_SPLICE: the right way to support *on-compose-splice(-shell)?*
-	 * TODO would be a command_loop object that emits an on_read_line event, and
-	 * TODO have a special handler for the compose mode; with that, then,
-	 * TODO _event_loop() would not call _evaluate() but CTX->on_read_line,
-	 * TODO and _evaluate() would be the standard impl.,
-	 * TODO whereas the COMMAND ESCAPE switch in collect.c would be another one.
-	 * TODO With this generic accmacvar.c:temporary_compose_mode_hook_call()
-	 * TODO could be dropped, and go_macro() could become extended,
-	 * TODO and/or we would add a go_anything(), which would allow special
-	 * TODO input handlers, special I/O input and output, special `localopts'
-	 * TODO etc., to be glued to the new execution context.  And all I/O all
-	 * TODO over this software should not use stdin/stdout, but CTX->in/out.
-	 * TODO The pstate must be a property of the current execution context, too.
-	 * TODO This not today. :(  For now we invent a special SPLICE execution
-	 * TODO context overlay that at least allows to temporarily modify the
-	 * TODO global pstate, and the global stdin and stdout pointers.  HACK!
-	 * TODO This splice thing is very special and has to go again.  HACK!!
-	 * TODO a_go_input() will drop it once it sees EOF (HACK!), but care for
-	 * TODO jumps must be taken by splice creators.  HACK!!!  But works. ;} */
+	/* TODO v15-compat: remove! <> search SPLICE! <> *on-compose-splice(-shell)?* */
 	a_GO_SPLICE = 1u<<8,
 	/* If it is none of those, it must be the outermost, the global one */
 	a_GO_TYPE_MASK = a_GO_PIPE | a_GO_FILE | a_GO_MACRO |
@@ -249,7 +231,7 @@ static boole a_go_file(char const *file, boole silent_open_error);
 /* System resource file load()ing or -X command line option array traversal */
 static boole a_go_load(struct a_go_ctx *gcp);
 
-/* A simplified command loop for recursed state machines */
+/* A simplified command loop for recursed state machines (sigs_all_holdx() must be held) */
 static boole a_go_event_loop(struct a_go_ctx *gcp, BITENUM(u32,mx_go_input_flags) gif);
 
 #if DVLOR(1, 0)
@@ -1227,7 +1209,7 @@ jrestart:
 		su_mem_bag_reset(gcp->gc_data.gdc_membag);
 		DBGX( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 		goto jxleave;
-	}else if(gcp->gc_flags & a_GO_SPLICE){ /* TODO Temporary hack */
+	}else if(gcp->gc_flags & a_GO_SPLICE){
 		n_stdin = gcp->gc_splice_stdin;
 		n_stdout = gcp->gc_splice_stdout;
 		n_psonce = gcp->gc_splice_psonce;
@@ -1479,7 +1461,12 @@ a_go_event_loop(struct a_go_ctx *gcp, BITENUM(u32,mx_go_input_flags) gif){
 		}
 	}
 
-	for(;; f |= a_TICKED){
+	if(gif & mx_GO_INPUT_COMPOSE_REDIRECT){
+		mx_sigs_all_rele();
+		if(!mx_collect_input_loop())
+			f &= ~a_RETOK;
+		mx_sigs_all_holdx();
+	}else for(;; f |= a_TICKED){
 		int n;
 
 		if(f & a_TICKED){
@@ -1522,10 +1509,9 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE!
 
 	NYD2_OU;
 	mx_sigs_all_rele();
-	if(hadint){
-		sigprocmask(SIG_SETMASK, &osigmask, NIL);
+	sigprocmask(SIG_SETMASK, &osigmask, NIL);
+	if(hadint)
 		n_raise(SIGINT);
-	}
 	return (f & a_RETOK);
 }
 
@@ -2581,7 +2567,7 @@ c_xcall(void *vp){
 	gcp = a_go_ctx;
 
 	/* Only top level object it can be */
-	ASSERT(!(gcp->gc_flags & a_GO_MACRO_CMD));
+	ASSERT(!(gcp->gc_flags & a_GO_MACRO_CMD) || (n_pstate & n_PS_COMPOSE_MODE));
 
 	if((gcp->gc_flags & a_GO_TYPE_MACRO_MASK) != a_GO_MACRO){
 		if(n_poption & n_PO_D_V)
